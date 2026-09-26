@@ -1,0 +1,17 @@
+{
+  "name": "ironlog",
+  "version": "2026.9.26-r13",
+  "private": true,
+  "description": "Ironlog workout tracker: single-file web app plus its test suites",
+  "scripts": {
+    "test": "node tests/run.js",
+    "setup": "npx playwright install chromium"
+  },
+  "devDependencies": {
+    "@fontsource/big-shoulders-display": "^5.0.0",
+    "@fontsource/hanken-grotesk": "^5.0.0",
+    "chart.js": "4.4.1",
+    "playwright": "^1.56.0",
+    "sortablejs": "1.15.2"
+  }
+}
