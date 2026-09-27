@@ -4,7 +4,10 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Ironlog</title>
-<meta name="theme-color" content="#0a0b0d">
+<script>window.IRONLOG_APP=true;window.__installEvt=null;
+window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();window.__installEvt=e;if(window.ironlogInstallReady)window.ironlogInstallReady();});
+window.addEventListener('appinstalled',()=>{window.__installEvt=null;if(window.ironlogInstallReady)window.ironlogInstallReady();});</script>
+<meta name="theme-color" content="#08090b">
 <meta name="color-scheme" content="dark light">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
@@ -17,7 +20,7 @@
 <link rel="stylesheet" href="fonts/fonts.css">
 <style>
 /* ============================================================
-   IRONLOG — visual system (r15)
+   IRONLOG visual system (r20)
    Night gym by default: near-black surfaces, white type, and one
    volt accent that means "go" and "done" (the Start button, a
    finished set, a trained day, the active tab, progress). Gold is
@@ -32,20 +35,30 @@
    Light mode keeps the same structure on cool paper; volt stays a
    fill with dark type on it, and thin volt lines turn dark there,
    since volt on white cannot be seen.
+   r20 layout: sections are open space on the page, not boxes. A
+   section is a big condensed title with its summary, separated
+   from the next by a hairline; what sits inside is set on soft
+   filled surfaces (a stat row, a panel, a card per exercise), not
+   outlined. Controls are filled, not outlined: pills for the main
+   action, soft tiles for the rest. The header and tab bar are
+   frosted glass over the page. One inked hero card leads Today.
    ============================================================ */
 :root{
-  --bg:#eef0f2; --surface:#ffffff; --surface-2:#eff1f4; --surface-3:#e1e4e9;
-  --ink:#0d0f12; --ink-2:#23272d; --muted:#565e69; --line:#d8dce2; --line-soft:#e7eaee;
+  --bg:#f2f3f5; --surface:#ffffff; --surface-2:#eceef1; --surface-3:#e0e3e8;
+  --ink:#0d0f12; --ink-2:#23272d; --muted:#565e69; --line:#d8dce2; --line-soft:#e3e6ea;
+  --btn:#ffffff; --btn-b:#dcdfe4; --field:#ffffff; --field-b:#d3d7dd; --card-b:#e3e6ea;
+  --glass:rgba(242,243,245,.9);
   --green:#0b7a42; --yellow:#8a5300; --red:#b42318; --blue:#1d5bd6;
   --green-bg:#dcf2e5; --yellow-bg:#fbebd0; --red-bg:#fde3e0; --blue-bg:#e1ebfd;
   --on-accent:#ffffff; --on-ink:#f4f5f7;
   --volt:#d4ff3f; --on-volt:#0b0c0e; --volt-line:#0d0f12; --volt-soft:#f0ffc4;
   --gold:#ffc53d; --on-gold:#1a1300;
   --hero:#0d0f12; --on-hero:#f4f5f7; --hero-2:#1b1e23;
-  --shadow:0 1px 2px rgba(13,15,18,.06),0 8px 24px rgba(13,15,18,.06);
+  --shadow:0 1px 2px rgba(13,15,18,.05),0 10px 30px rgba(13,15,18,.06);
+  --hero-bg:radial-gradient(140px 140px at 90% 12%,color-mix(in srgb,var(--volt) 18%,transparent),transparent 70%),linear-gradient(165deg,#1b1e23,#0d0f12 70%);
   --font:'Hanken Grotesk',system-ui,-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;
   --display:'Big Shoulders Display','Arial Narrow','Roboto Condensed','Helvetica Neue',system-ui,sans-serif;
-  --r-lg:18px; --r-md:12px; --r-sm:10px;
+  --r-lg:22px; --r-md:14px; --r-sm:12px;
   --head-h:52px;
   color-scheme:light;
   box-sizing:border-box;
@@ -54,28 +67,47 @@
 }
 @media (prefers-color-scheme:dark){
   :root:not([data-theme="light"]){
-    --bg:#0a0b0d; --surface:#141619; --surface-2:#1d2024; --surface-3:#282c31;
-    --ink:#f3f4f6; --ink-2:#d9dce1; --muted:#9aa1ab; --line:#262a30; --line-soft:#1d2025;
+    --bg:#08090b; --surface:#131518; --surface-2:#1c1f23; --surface-3:#272b30;
+    --ink:#f3f4f6; --ink-2:#d9dce1; --muted:#9aa1ab; --line:#262a30; --line-soft:#1b1e22;
+    --btn:#1e2125; --btn-b:transparent; --field:#1e2125; --field-b:transparent; --card-b:transparent;
+    --glass:rgba(8,9,11,.88);
     --green:#3ddc84; --yellow:#ffb020; --red:#ff5a4e; --blue:#5aa7ff;
     --green-bg:#0f2a1c; --yellow-bg:#33250a; --red-bg:#3a1512; --blue-bg:#0f2440;
     --on-accent:#0a0b0d; --on-ink:#0a0b0d;
     --volt:#d4ff3f; --on-volt:#0b0c0e; --volt-line:#d4ff3f; --volt-soft:#232c0c;
-    --hero:#141619; --on-hero:#f3f4f6; --hero-2:#1d2024;
+    --hero:#131518; --on-hero:#f3f4f6; --hero-2:#1c1f23;
+    --hero-bg:radial-gradient(150px 150px at 90% 10%,color-mix(in srgb,var(--volt) 15%,transparent),transparent 70%),linear-gradient(165deg,#1a1d21,#101215 72%);
     --shadow:none;
     color-scheme:dark;
   }
 }
 :root[data-theme="dark"]{
-  --bg:#0a0b0d; --surface:#141619; --surface-2:#1d2024; --surface-3:#282c31;
-  --ink:#f3f4f6; --ink-2:#d9dce1; --muted:#9aa1ab; --line:#262a30; --line-soft:#1d2025;
+  --bg:#08090b; --surface:#131518; --surface-2:#1c1f23; --surface-3:#272b30;
+  --ink:#f3f4f6; --ink-2:#d9dce1; --muted:#9aa1ab; --line:#262a30; --line-soft:#1b1e22;
+  --btn:#1e2125; --btn-b:transparent; --field:#1e2125; --field-b:transparent; --card-b:transparent;
+  --glass:rgba(8,9,11,.88);
   --green:#3ddc84; --yellow:#ffb020; --red:#ff5a4e; --blue:#5aa7ff;
   --green-bg:#0f2a1c; --yellow-bg:#33250a; --red-bg:#3a1512; --blue-bg:#0f2440;
   --on-accent:#0a0b0d; --on-ink:#0a0b0d;
   --volt:#d4ff3f; --on-volt:#0b0c0e; --volt-line:#d4ff3f; --volt-soft:#232c0c;
-  --hero:#141619; --on-hero:#f3f4f6; --hero-2:#1d2024;
+  --hero:#131518; --on-hero:#f3f4f6; --hero-2:#1c1f23;
+  --hero-bg:radial-gradient(150px 150px at 90% 10%,color-mix(in srgb,var(--volt) 15%,transparent),transparent 70%),linear-gradient(165deg,#1a1d21,#101215 72%);
   --shadow:none;
   color-scheme:dark;
 }
+/* Accent colour, chosen in Settings > General. The tokens keep the name
+   --volt (the original accent) and mean "the accent": go, done, progress.
+   Blue is the default. With the blue accent, the blue status colour (above
+   target, information, supersets) turns violet, so "done" and "above target"
+   never look alike. Every pair is checked for 4.5:1 in tests/design.js. */
+:root[data-accent="blue"]{--volt:#2a63f5;--on-volt:#ffffff;--volt-line:#1f4fd1;--volt-soft:#e2ebff;--blue:#6d28d9;--blue-bg:#efe9ff}
+:root[data-accent="ember"]{--volt:#ff6a2b;--on-volt:#0b0c0e;--volt-line:#c2410c;--volt-soft:#ffe6db}
+@media (prefers-color-scheme:dark){
+  :root[data-accent="blue"]:not([data-theme="light"]){--volt:#2a63f5;--on-volt:#ffffff;--volt-line:#6f9bff;--volt-soft:#0f1d40;--blue:#b69cff;--blue-bg:#221a3d}
+  :root[data-accent="ember"]:not([data-theme="light"]){--volt:#ff6a2b;--on-volt:#0b0c0e;--volt-line:#ff7a3d;--volt-soft:#2f1609}
+}
+:root[data-accent="blue"][data-theme="dark"]{--volt:#2a63f5;--on-volt:#ffffff;--volt-line:#6f9bff;--volt-soft:#0f1d40;--blue:#b69cff;--blue-bg:#221a3d}
+:root[data-accent="ember"][data-theme="dark"]{--volt:#ff6a2b;--on-volt:#0b0c0e;--volt-line:#ff7a3d;--volt-soft:#2f1609}
 *,*::before,*::after{box-sizing:inherit}
 [hidden]{display:none!important}
 /* Content inside <details> is rendered through the browser's own shadow slot,
@@ -98,26 +130,30 @@ b{font-weight:650}
 /* One sticky bar on every tab: the wordmark, this calendar week, and the save
    state. It replaced a decorative four-colour strip and the week grid that
    used to sit only on Today. */
-.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:20;background:var(--bg);display:flex;align-items:center;gap:10px;height:var(--head-h);padding:0 16px;border-bottom:1px solid var(--line)}
+.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:20;background:var(--glass);-webkit-backdrop-filter:saturate(170%) blur(18px);backdrop-filter:saturate(170%) blur(18px);display:flex;align-items:center;gap:10px;height:var(--head-h);padding:0 16px;border-bottom:1px solid var(--line-soft)}
 .top h1{font-size:22px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;line-height:1;flex:none}
 .top h1 span{color:var(--muted);font-weight:600}
-@media (max-width:374px){.top{gap:7px;padding:0 10px}.top h1{font-size:18px;letter-spacing:.03em}}
+/* A small phone keeps the week bar as wide as it can: the wordmark drops to
+   IRON, which frees room for seven days. */
+@media (max-width:374px){.top{gap:6px;padding:0 10px}.top h1{font-size:18px;letter-spacing:.03em}.top h1 span{display:none}}
 .wkbar{flex:1 1 auto;min-width:0;display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:3px}
-.wkbar .w{-webkit-appearance:none;appearance:none;position:relative;min-width:0;border:1px solid transparent;border-radius:8px;background:var(--surface-2);padding:3px 0 4px;margin:0;display:flex;flex-direction:column;align-items:center;font:inherit;line-height:1;color:var(--muted);cursor:pointer;-webkit-tap-highlight-color:transparent}
+.wkbar .w{-webkit-appearance:none;appearance:none;position:relative;min-width:0;border:0;border-radius:12px;background:transparent;padding:2px 0;margin:0;display:flex;flex-direction:column;align-items:center;gap:2px;font:inherit;line-height:1;color:var(--muted);cursor:pointer;-webkit-tap-highlight-color:transparent}
 .wkbar div.w{cursor:default}
 .wkbar .w .wd{font:650 9.5px/1.1 var(--font);letter-spacing:.06em;text-transform:uppercase}
-.wkbar .w .dn{font:800 16px/1.1 var(--display);color:var(--ink);font-variant-numeric:tabular-nums}
+/* Each day is a small disc, like an activity ring: filled volt when trained,
+   dashed when planned, a ring around today. */
+.wkbar .w .dn{display:flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:50%;font:800 15px/1 var(--display);color:var(--ink);font-variant-numeric:tabular-nums;background:var(--surface-2)}
 .wkbar .w .nm{display:none;font-size:10px;line-height:1.25;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding:0 3px}
-.wkbar .w.on{background:var(--volt);color:var(--on-volt)}
-.wkbar .w.on .dn{color:var(--on-volt)}
-.wkbar .w.plan{background:transparent;border:1px dashed var(--muted);color:var(--ink)}
-.wkbar .w.miss{background:transparent;border:1px dashed var(--red)}
-.wkbar .w.rest{background:transparent}
-.wkbar .w.rest .dn{color:var(--muted)}
-.wkbar .w.cardio{background:transparent;border:1px solid var(--volt-line)}
-.wkbar .w.today{box-shadow:0 0 0 2px var(--ink)}
-.wkbar .w.live::after{content:"";position:absolute;top:-3px;right:-3px;width:9px;height:9px;border-radius:50%;background:var(--volt);box-shadow:0 0 0 2px var(--bg),0 0 0 3px var(--volt-line)}
-.ssb{flex:none;width:30px;height:30px;border-radius:50%;border:1px solid var(--line);background:transparent;display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:0;font:700 14px/1 var(--font);color:var(--muted);cursor:pointer}
+.wkbar .w.on .dn{background:var(--volt);color:var(--on-volt)}
+.wkbar .w.plan .dn{background:transparent;box-shadow:inset 0 0 0 1.5px var(--muted)}
+.wkbar .w.miss .dn{background:transparent;box-shadow:inset 0 0 0 1.5px var(--red)}
+.wkbar .w.rest .dn{background:transparent;color:var(--muted)}
+.wkbar .w.cardio .dn{background:transparent;box-shadow:inset 0 0 0 2px var(--volt-line)}
+.wkbar .w.today .wd{color:var(--ink)}
+.wkbar .w.today .dn{outline:2px solid var(--ink);outline-offset:2px}
+.wkbar .w.live::after{content:"";position:absolute;top:0;right:calc(50% - 18px);width:9px;height:9px;border-radius:50%;background:var(--volt);box-shadow:0 0 0 2px var(--bg),0 0 0 3px var(--volt-line)}
+@media (max-width:374px){.wkbar .w .dn{width:24px;height:24px;font-size:13.5px}.wkbar .w.today .dn{outline-offset:1px}}
+.ssb{flex:none;width:30px;height:30px;border-radius:50%;border:0;background:var(--surface-2);display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:0;font:700 14px/1 var(--font);color:var(--muted);cursor:pointer}
 .ssb .sst{display:none;font:600 12.5px var(--font)}
 .ssb.ok{color:var(--green);border-color:color-mix(in srgb,var(--green) 45%,transparent)}
 .ssb.warn{color:var(--yellow);border-color:var(--yellow);background:var(--yellow-bg)}
@@ -133,84 +169,90 @@ b{font-weight:650}
 main{max-width:760px;margin:0 auto;padding:6px 16px 150px}
 
 /* ---------- page header ---------- */
-.ph{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;flex-wrap:wrap;margin:18px 0 10px}
-.ph h2{font-size:38px;font-weight:800;letter-spacing:.02em}
+.ph{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;flex-wrap:wrap;margin:22px 0 14px}
+.ph h2{font-size:46px;font-weight:800;letter-spacing:.01em;line-height:.95}
 .ph .kick{font:600 12px var(--font);letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin:0 0 2px}
 .ph .meta{font-size:14px;color:var(--muted);margin:3px 0 0}
 .ph-a{display:flex;gap:6px;flex-wrap:wrap}
 
 /* ---------- bottom tabs ---------- */
-.tabs{position:fixed;left:0;right:0;bottom:0;z-index:30;background:var(--surface);border-top:1px solid var(--line);display:grid;grid-template-columns:repeat(5,minmax(0,1fr));padding-bottom:env(safe-area-inset-bottom,0px)}
+.tabs{position:fixed;left:0;right:0;bottom:0;z-index:30;background:var(--glass);-webkit-backdrop-filter:saturate(170%) blur(18px);backdrop-filter:saturate(170%) blur(18px);border-top:1px solid var(--line-soft);display:grid;grid-template-columns:repeat(5,minmax(0,1fr));padding-bottom:env(safe-area-inset-bottom,0px)}
 .tabs button{position:relative;background:none;border:0;min-height:58px;min-width:0;padding:7px 1px 6px;font:600 11px var(--font);letter-spacing:.04em;text-transform:uppercase;color:var(--muted);cursor:pointer;white-space:nowrap;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px}
 .tabs button svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
 .tabs button[aria-current="page"]{color:var(--ink)}
-.tabs button[aria-current="page"]::before{content:"";position:absolute;top:-1px;left:50%;width:32px;height:3px;margin-left:-16px;border-radius:0 0 3px 3px;background:var(--volt-line)}
+.tabs button[aria-current="page"] svg{stroke:var(--volt-line);stroke-width:2.1}
+.tabs button[aria-current="page"]::before{content:"";position:absolute;top:5px;left:50%;width:44px;height:30px;margin-left:-22px;border-radius:999px;background:color-mix(in srgb,var(--volt) 14%,transparent);z-index:-1}
+.tabs button{isolation:isolate}
 /* A session in progress: the Today tab reads Session and carries a dot, so it
    can be found again from any tab. */
-.tabs button.live::after{content:"";position:absolute;top:7px;left:50%;margin-left:9px;width:8px;height:8px;border-radius:50%;background:var(--volt);box-shadow:0 0 0 2px var(--surface),0 0 0 3px var(--volt-line)}
+.tabs button.live::after{content:"";position:absolute;top:7px;left:50%;margin-left:9px;width:8px;height:8px;border-radius:50%;background:var(--volt);box-shadow:0 0 0 2px var(--bg),0 0 0 3px var(--volt-line)}
 
 /* ---------- help ---------- */
-.hb{width:26px;height:26px;border-radius:50%;border:1px solid var(--line);background:transparent;color:var(--muted);font:700 13px var(--font);display:inline-flex;align-items:center;justify-content:center;cursor:pointer;flex:none;padding:0}
+.hb{width:24px;height:24px;border-radius:50%;border:1.5px solid var(--line);background:transparent;color:var(--muted);font:700 13px var(--font);display:inline-flex;align-items:center;justify-content:center;cursor:pointer;flex:none;padding:0}
 .hb[aria-expanded="true"]{background:var(--ink);color:var(--on-ink);border-color:transparent}
-.ht{font-size:14px;color:var(--ink-2);margin:4px 0 10px;padding:9px 11px;background:var(--surface-2);border-radius:var(--r-sm);line-height:1.5}
+.ht{font-size:14px;color:var(--ink-2);margin:4px 0 12px;padding:11px 13px;background:var(--surface);border-radius:var(--r-md);line-height:1.5}
+.block .ht,.card .ht,.sheet .ht{background:var(--surface-2)}
 .hrow{display:flex;align-items:center;gap:8px}
 
 /* ---------- the one section component ----------
-   Every foldable block on every tab is a .sec: one box, one header
-   layout (handle, title, summary, help, chevron). Folds inside a
-   section are .subsec: a hairline and a smaller title, never a box
-   inside a box. */
-.sec{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-lg);margin:10px 0;overflow:clip;box-shadow:var(--shadow)}
-.sec>summary{list-style:none;cursor:pointer;display:flex;align-items:center;gap:8px;min-height:58px;padding:10px 12px 10px 14px;-webkit-tap-highlight-color:transparent;user-select:none;-webkit-user-select:none}
+   Every foldable block on every tab is a .sec. It is open space on the
+   page: a big condensed title and its summary, a hairline above, and no
+   box. What sits inside is set on soft filled surfaces. Folds inside a
+   section are .subsec: a hairline and a smaller title. */
+.sec{background:transparent;border:0;border-top:1px solid var(--line-soft);border-radius:0;margin:0;overflow:visible}
+.hero+.sec,.ph+.sec,.jump+.sec,.sec:first-child{border-top:0}
+.sec>summary{list-style:none;cursor:pointer;display:flex;align-items:center;gap:10px;min-height:66px;padding:12px 0;-webkit-tap-highlight-color:transparent;user-select:none;-webkit-user-select:none}
 .sec>summary::-webkit-details-marker{display:none}
-.sec-t{font:700 21px/1 var(--display);letter-spacing:.03em;text-transform:uppercase;white-space:nowrap;flex:none}
-.sec-s{flex:1 1 auto;min-width:0;text-align:right;font-size:13px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-variant-numeric:tabular-nums}
-.chev{width:28px;height:28px;border-radius:50%;background:var(--surface-2);flex:none;display:inline-flex;align-items:center;justify-content:center}
-.chev::before{content:"";width:7px;height:7px;border-right:2px solid var(--ink);border-bottom:2px solid var(--ink);transform:translateY(-2px) rotate(45deg);transition:transform .18s ease}
+.sec-t{font:700 21px/1.15 var(--font);letter-spacing:-.015em;white-space:nowrap;flex:none}
+/* The summary wraps to a second line instead of being cut off on a small phone. */
+.sec-s{flex:1 1 auto;min-width:0;text-align:right;font-size:13px;line-height:1.3;color:var(--muted);font-variant-numeric:tabular-nums;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.chev{width:22px;height:28px;border-radius:0;background:transparent;flex:none;display:inline-flex;align-items:center;justify-content:center}
+.chev::before{content:"";width:8px;height:8px;border-right:2px solid var(--muted);border-bottom:2px solid var(--muted);transform:translateY(-2px) rotate(45deg);transition:transform .18s ease}
 details[open]>summary .chev::before{transform:translateY(2px) rotate(-135deg)}
-.sec[open]>summary{border-bottom:1px solid var(--line-soft)}
-.sec-b{padding:12px 14px 14px}
-.sec>summary:focus-visible{outline:3px solid var(--ink);outline-offset:-3px;border-radius:var(--r-lg)}
-.subsec{border-top:1px solid var(--line-soft);margin:12px -14px 0;padding:0 14px}
-.subsec:last-child{margin-bottom:-14px}
-.subsec>summary{list-style:none;cursor:pointer;display:flex;align-items:center;gap:8px;min-height:50px;padding:6px 0;-webkit-tap-highlight-color:transparent}
+.sec-b{padding:0 0 22px}
+.sec>summary:focus-visible{outline:3px solid var(--ink);outline-offset:2px;border-radius:var(--r-md)}
+.subsec{border-top:1px solid var(--line-soft);margin:14px 0 0;padding:0}
+.subsec:last-child{margin-bottom:-8px}
+.subsec>summary{list-style:none;cursor:pointer;display:flex;align-items:center;gap:8px;min-height:52px;padding:6px 0;-webkit-tap-highlight-color:transparent}
 .subsec>summary::-webkit-details-marker{display:none}
-.subsec>summary .chev{width:24px;height:24px;background:transparent;border:1px solid var(--line)}
-.subsec-t{font-weight:650;font-size:15px;flex:none}
+.subsec-t{font-weight:700;font-size:16px;flex:none}
 .subsec>.sec-b{padding:2px 0 14px}
 /* Inner cards lose their box inside a section: the section is the box. */
-.sec-b .card{background:none;border:0;border-radius:0;padding:0;margin:12px 0 0}
+.sec-b .card{background:none;border:0;border-radius:0;padding:0;margin:14px 0 0;box-shadow:none}
 .sec-b>.card:first-child{margin-top:0}
-.panel{background:var(--surface-2);border-radius:var(--r-md);padding:12px}
-.callout{border-radius:var(--r-md);padding:10px 12px;font-size:14px;background:var(--surface-2)}
+.panel{background:var(--surface);border-radius:var(--r-md);padding:13px 14px}
+.block .panel,.card .panel,.sheet .panel{background:var(--surface-2)}
+
+.callout{border-radius:var(--r-md);padding:11px 13px;font-size:14px;background:var(--surface)}
 .callout.green{background:var(--green-bg)}.callout.yellow{background:var(--yellow-bg)}.callout.red{background:var(--red-bg)}.callout.blue{background:var(--blue-bg)}
 .callout b{font-weight:650}
-.pill{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:650;letter-spacing:.02em;padding:3px 9px;border-radius:999px;background:var(--surface-2);color:var(--ink);white-space:nowrap}
+.pill{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:650;letter-spacing:.02em;padding:4px 10px;border-radius:999px;background:var(--surface);color:var(--ink);white-space:nowrap}
 .pill::before{content:"";width:7px;height:7px;border-radius:50%;background:currentColor}
 .pill.green{background:var(--green-bg);color:var(--green)}.pill.yellow{background:var(--yellow-bg);color:var(--yellow)}.pill.red{background:var(--red-bg);color:var(--red)}.pill.blue{background:var(--blue-bg);color:var(--blue)}
 
 /* ---------- basic blocks ---------- */
-.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-lg);padding:14px;margin:10px 0;box-shadow:var(--shadow)}
+.card{background:var(--surface);border:1px solid var(--card-b);border-radius:var(--r-lg);padding:16px;margin:12px 0;box-shadow:var(--shadow)}
 .section{margin:18px 0 8px}
 .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
 .row.spread{justify-content:space-between}
 .stack>*+*{margin-top:10px}
 .explain{font-size:14px;color:var(--muted);margin:2px 0 8px}
 
-.btn{min-height:44px;border-radius:var(--r-md);border:1px solid var(--line);background:var(--surface);font-weight:650;font-size:15px;padding:0 15px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:6px;color:var(--ink);transition:background .12s,transform .06s}
-.btn:active{transform:translateY(1px)}
-.btn.primary{background:var(--volt);color:var(--on-volt);border-color:transparent}
+.btn{min-height:44px;border-radius:var(--r-md);border:1px solid var(--btn-b);background:var(--btn);font-weight:650;font-size:15px;padding:0 16px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:6px;color:var(--ink);transition:background .12s,transform .08s}
+.btn:active{transform:scale(.97)}
+.block .btn,.card .btn,.sheet .btn,.panel .btn{background:var(--surface-2);border-color:transparent}
+.btn.primary,.block .btn.primary,.card .btn.primary,.sheet .btn.primary,.panel .btn.primary{background:var(--volt);color:var(--on-volt);border-color:transparent;border-radius:999px}
 .btn.danger{color:var(--red)}
 .btn.sm{min-height:44px;padding:0 12px;font-size:14px;border-radius:var(--r-sm)}
 .btn.block{width:100%}
 .btn:disabled{opacity:.4;cursor:default}
 .btn.noted{border-color:var(--ink);box-shadow:inset 0 0 0 1px var(--ink)}
-.ib{width:44px;height:44px;border-radius:var(--r-sm);border:1px solid var(--line);background:var(--surface);cursor:pointer;font-size:16px;display:inline-flex;align-items:center;justify-content:center;flex:none;color:var(--ink)}
+.ib{width:44px;height:44px;border-radius:50%;border:1px solid var(--btn-b);background:var(--btn);cursor:pointer;font-size:16px;display:inline-flex;align-items:center;justify-content:center;flex:none;color:var(--ink)}
 .ib.sm{width:32px;height:32px;font-size:13px;color:var(--muted)}
 :focus-visible{outline:3px solid var(--ink);outline-offset:2px}
 
-input[type=text],input[type=email],input[type=password],input[type=number],input[type=date],input[type=search],select,textarea{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-sm);min-height:44px;padding:6px 11px;font-size:16px;width:100%;min-width:0;color:var(--ink)}
-.sec input[type=text],.sec input[type=date],.sec input[type=search],.sec select,.sec textarea,.block input,.block select{background:var(--bg)}
+input[type=text],input[type=email],input[type=password],input[type=number],input[type=date],input[type=search],select,textarea{background:var(--field);border:1px solid var(--field-b);border-radius:var(--r-sm);min-height:44px;padding:6px 11px;font-size:16px;width:100%;min-width:0;color:var(--ink)}
+.block input,.block select,.sheet input,.sheet select,.sheet textarea,.card input,.card select{background:var(--surface-2);border-color:var(--field-b)}
 input:focus,select:focus,textarea:focus{border-color:var(--ink);outline:none;box-shadow:0 0 0 1px var(--ink)}
 textarea{min-height:74px;resize:vertical}
 label.field{display:block;font-size:13px;font-weight:600;color:var(--muted);letter-spacing:.01em}
@@ -221,37 +263,37 @@ label.field>input,label.field>select,label.field>textarea{margin-top:4px;color:v
 .check-inline input{width:20px;height:20px;flex:none;margin:0;accent-color:var(--ink)}
 .dmeta .check-inline{min-height:44px;align-items:center;cursor:pointer}
 
-.tag{display:inline-block;font-size:11.5px;font-weight:650;letter-spacing:.02em;padding:2px 8px;border-radius:999px;background:var(--surface-2);color:var(--muted);white-space:nowrap;vertical-align:1px}
+.tag{display:inline-block;font-size:11.5px;font-weight:650;letter-spacing:.02em;padding:3px 9px;border-radius:999px;background:var(--surface-2);color:var(--muted);white-space:nowrap;vertical-align:1px}
 .tag.rare,.tag.yellow{background:var(--yellow-bg);color:var(--yellow)}
 .tag.green{background:var(--green-bg);color:var(--green)}
 .tag.red{background:var(--red-bg);color:var(--red)}
 .tag.blue{background:var(--blue-bg);color:var(--blue)}
 .chips{display:flex;flex-wrap:wrap;gap:6px}
-.chip{min-height:40px;position:relative;padding:0 13px;border-radius:999px;border:1px solid var(--line);background:var(--surface);cursor:pointer;font-size:14px;font-weight:600;color:var(--ink)}
+.chip{min-height:40px;position:relative;padding:0 14px;border-radius:999px;border:1px solid var(--btn-b);background:var(--btn);cursor:pointer;font-size:14px;font-weight:600;color:var(--ink)}
 .chip.on{background:var(--ink);color:var(--on-ink);border-color:transparent}
 
 .plate{display:inline-block;width:6px;height:22px;border-radius:2px;flex:none}
 .plate.green{background:var(--green)} .plate.yellow{background:var(--yellow)} .plate.red{background:var(--red)} .plate.blue{background:var(--blue)} .plate.none{background:var(--line)}
 
 /* ---------- program: days ---------- */
-.day{background:var(--surface-2);border-radius:var(--r-md);margin:10px 0;overflow:hidden}
+.day{background:var(--surface);border:1px solid var(--card-b);border-radius:var(--r-lg);margin:10px 0;overflow:hidden}
 .day:first-child{margin-top:4px}
 .day.rest{opacity:.75}
 .dh{display:flex;gap:8px;align-items:center;padding:8px 8px 6px 10px}
 .dh .dlabel{font:700 20px var(--display);text-transform:uppercase;letter-spacing:.03em;white-space:nowrap;flex:none}
-.dh input[type=text]{font-weight:600;min-height:40px;background:var(--surface)}
+.dh input[type=text]{font-weight:600;min-height:40px;background:var(--surface-2);border-color:transparent}
 .dmeta{padding:0 12px 4px;font-size:13.5px;color:var(--muted)}
 .dmeta.row{flex-wrap:nowrap;gap:8px}
 .dmeta .check-inline{flex:none;color:var(--ink);font-size:14px;align-items:center}
 ul.items,ul.lib{list-style:none;margin:0;padding:2px 10px 6px}
 ul.items:empty{min-height:54px;margin:6px 12px;border:2px dashed var(--line);border-radius:var(--r-sm)}
 ul.items:empty::before{content:"Drop or add exercises here";display:block;padding:14px;color:var(--muted);font-size:14px;text-align:center}
-.it{border-bottom:1px solid var(--line);padding:3px 0}
+.it{border-bottom:1px solid var(--line-soft);padding:3px 0}
 .it:last-child{border-bottom:0}
 .ir{display:flex;align-items:center;gap:6px}
 .ir .ib{width:40px;height:40px;background:transparent}
 .ib:disabled{opacity:.35;cursor:default}
-.sgrip{width:26px;height:32px;display:inline-flex;align-items:center;justify-content:center;cursor:grab;color:var(--muted);font-size:17px;touch-action:none;flex:none;user-select:none;-webkit-user-select:none;border-radius:6px;margin-left:-6px;opacity:.7}
+.sgrip{width:22px;height:32px;display:inline-flex;align-items:center;justify-content:center;cursor:grab;color:var(--muted);font-size:15px;touch-action:none;flex:none;user-select:none;-webkit-user-select:none;border-radius:6px;margin-left:-6px;opacity:.4}
 .sgrip:focus-visible{outline:2px solid var(--ink);outline-offset:1px}
 .dgrip{width:26px;height:40px;display:inline-flex;align-items:center;justify-content:center;cursor:grab;color:var(--muted);font-size:19px;touch-action:none;flex:none;user-select:none;-webkit-user-select:none;margin-left:-4px}
 .dfold{background:transparent!important;border:0!important}
@@ -259,25 +301,25 @@ ul.items:empty::before{content:"Drop or add exercises here";display:block;paddin
 .dfold[aria-expanded="true"]::before{transform:translateY(2px) rotate(-135deg)}
 .grip{width:30px;height:40px;display:inline-flex;align-items:center;justify-content:center;cursor:grab;color:var(--muted);font-size:19px;touch-action:none;flex:none;user-select:none;-webkit-user-select:none}
 .imain{flex:1;min-width:0;text-align:left;background:none;border:0;padding:6px 2px;cursor:pointer;color:var(--ink)}
-.imain b{display:block;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.imain b{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;font-weight:600;line-height:1.25}
 .imain span{font-size:13px;color:var(--muted);font-variant-numeric:tabular-nums}
 .ied{padding:8px 2px 12px 36px}
 .sortable-ghost{opacity:.35}
 .sortable-chosen{background:var(--surface-3)}
-.lib-panel{max-height:340px;overflow:auto;border-radius:var(--r-md);margin-top:10px;background:var(--surface-2)}
+.lib-panel{max-height:340px;overflow:auto;border-radius:var(--r-md);margin-top:10px;background:var(--surface)}
 .lib-panel .it{border-color:var(--line)}
 
 /* ---------- logger ---------- */
-.block{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-lg);padding:14px;margin:10px 0}
+.block{background:var(--surface);border:1px solid var(--card-b);border-radius:var(--r-lg);padding:16px;margin:12px 0;box-shadow:var(--shadow)}
 .block.ss{box-shadow:inset 3px 0 0 var(--blue)}
 .block.ss+.block.ss{margin-top:-4px}
 .it.ss .imain b::after{content:" · SS";color:var(--blue);font-size:12px}
 .bh{display:flex;justify-content:space-between;gap:8px;align-items:flex-start}
 .bh-acts{display:flex;gap:3px;flex:none}
-.bh h3{overflow-wrap:anywhere;font-size:22px;text-transform:uppercase;letter-spacing:.02em}
+.bh h3{overflow-wrap:anywhere;font-size:24px;text-transform:uppercase;letter-spacing:.02em}
 .bh p{margin-top:3px}
 .bh>div:first-child{min-width:0}
-.hint{font-size:14px;background:var(--surface-2);padding:9px 11px;border-radius:var(--r-sm);margin:10px 0 6px;line-height:1.45}
+.hint{font-size:14px;background:var(--surface-2);padding:10px 12px;border-radius:var(--r-md);margin:12px 0 6px;line-height:1.45}
 .hint b{font-weight:650}
 .lmrow{display:flex;gap:5px;flex-wrap:wrap;margin:6px 0 0}
 .lm{display:inline-block;font:650 12px/1 var(--font);letter-spacing:.02em;padding:4px 8px;border-radius:999px;border:1px solid var(--ink);color:var(--ink);white-space:nowrap}
@@ -302,10 +344,11 @@ ul.items:empty::before{content:"Drop or add exercises here";display:block;paddin
 .sg.norir{grid-template-columns:24px minmax(0,1.3fr) minmax(0,1fr) 40px 44px}
 .sg .n.drop{color:var(--blue)}
 .sg .n.warm{color:var(--yellow);font-size:15px}
-.wbtn,.cbtn{height:44px;border-radius:var(--r-sm);border:1px solid var(--line);background:var(--bg);cursor:pointer;font-weight:700;color:var(--muted)}
+.wbtn,.cbtn{height:44px;border-radius:var(--r-sm);border:1px solid var(--field-b);background:var(--surface-2);cursor:pointer;font-weight:700;color:var(--muted)}
 .wbtn.on{background:var(--yellow);color:var(--on-accent);border-color:transparent}
 .wbtn.drop{background:var(--blue);color:var(--on-accent);border-color:transparent}
 .cbtn{font-size:17px}
+.cbtn{border-radius:50%;width:44px}
 .cbtn.on{background:var(--volt);color:var(--on-volt);border-color:transparent}
 .sg.pr::after{content:attr(data-pr);position:absolute;right:0;top:-9px;background:var(--gold);color:var(--on-gold);font:700 10px/1 var(--font);letter-spacing:.06em;text-transform:uppercase;padding:3px 6px;border-radius:6px;pointer-events:none}
 .ci-row{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:8px;flex-wrap:wrap}
@@ -313,7 +356,7 @@ ul.items:empty::before{content:"Drop or add exercises here";display:block;paddin
 .caldue{margin:6px 0 0;color:var(--blue)}
 ol.steps{margin:6px 0 10px;padding-left:22px;font-size:15px}
 ol.steps li{margin:2px 0}
-.welcome h3{margin-bottom:6px;font-size:26px;text-transform:uppercase}
+.welcome h3{margin-bottom:6px;font:700 24px/1.15 var(--font);letter-spacing:-.015em}
 .short-list{list-style:none;margin:10px 0 0;padding:0}
 .short-list li{padding:6px 0;border-bottom:1px solid var(--line-soft);font-size:15px}
 .short-list li:last-child{border-bottom:0}
@@ -324,12 +367,11 @@ ol.steps li{margin:2px 0}
 .whtr{margin:8px 0 0}
 
 /* ---------- stats ---------- */
-.kpis{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.kpis{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1px;background:var(--line-soft);border:1px solid var(--card-b);border-radius:var(--r-lg);overflow:hidden}
 @media(min-width:560px){.kpis{grid-template-columns:repeat(4,minmax(0,1fr))}}
 @media(max-width:559px){.kpis>.kpi:last-child:nth-child(odd){grid-column:1/-1}}
-.kpi{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-md);padding:11px 12px 12px}
-.sec .kpi{background:var(--surface-2);border:0}
-.kpi .v{font:800 36px/1 var(--display);font-variant-numeric:tabular-nums;letter-spacing:.01em}
+.kpi{background:var(--surface);border:0;border-radius:0;padding:14px 16px 15px}
+.kpi .v{font:800 40px/1 var(--display);font-variant-numeric:tabular-nums;letter-spacing:.005em}
 .kpi .v .small{font:600 14px var(--font);color:var(--muted)}
 .kpi .l{font-size:12.5px;color:var(--muted);margin-top:5px;line-height:1.35}
 .mrow{display:grid;grid-template-columns:6px 92px minmax(0,1fr) auto;gap:9px;align-items:center;padding:6px 0;border-bottom:1px solid var(--line-soft);font-size:14.5px}
@@ -337,9 +379,9 @@ ol.steps li{margin:2px 0}
 .mrow .plate{height:18px}
 .mrow .r{text-align:right;white-space:nowrap;min-width:60px;font-variant-numeric:tabular-nums}
 .band{position:relative;height:12px;background:var(--surface-3);border-radius:6px;overflow:hidden}
-.sec .band{background:var(--bg)}
+.sec .band{background:var(--surface-2)}
 .band .zone{position:absolute;top:0;bottom:0;background:var(--green-bg)}
-.band .fill{position:absolute;top:2px;bottom:2px;left:0;border-radius:5px}
+.band .fill{position:absolute;top:0;bottom:0;left:0;border-radius:6px}
 .band .fill.prog{background:var(--volt);box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--volt-line) 40%,transparent)}
 .band .fill.under{background:var(--yellow)} .band .fill.in{background:var(--green)} .band .fill.over{background:var(--blue)}
 .band .fill.down{background:var(--red)}
@@ -353,7 +395,7 @@ ol.steps li{margin:2px 0}
 .chips.rng .chip{min-height:30px;padding:0 11px;font-size:13px}
 .chartbox.tall{height:320px}
 .heat{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-top:8px}
-.heat div{aspect-ratio:1;border-radius:4px;background:var(--surface-2)}
+.heat div{aspect-ratio:1;border-radius:50%;background:var(--surface-2)}
 .heat div.on{background:var(--volt)}
 .heat div.fut{opacity:.35}
 .heat div.today{outline:2px solid var(--ink);outline-offset:-2px}
@@ -363,7 +405,7 @@ table.t th,table.t td{padding:7px 4px;border-bottom:1px solid var(--line-soft);t
 table.t th{color:var(--muted);font-weight:650;font-size:12px;letter-spacing:.04em;text-transform:uppercase}
 table.t td.r,table.t th.r{text-align:right}
 .scroll-x{overflow-x:auto}
-.jump{position:sticky;top:calc(var(--head-h) + env(safe-area-inset-top,0px));z-index:15;display:flex;gap:6px;overflow-x:auto;padding:8px 16px;margin:0 -16px;background:var(--bg);scrollbar-width:none;-webkit-overflow-scrolling:touch}
+.jump{position:sticky;top:calc(var(--head-h) + env(safe-area-inset-top,0px));z-index:15;display:flex;gap:6px;overflow-x:auto;padding:8px 16px;margin:0 -16px;background:var(--glass);-webkit-backdrop-filter:saturate(170%) blur(18px);backdrop-filter:saturate(170%) blur(18px);scrollbar-width:none;-webkit-overflow-scrolling:touch}
 .jump::-webkit-scrollbar{display:none}
 .jump .chip{flex:none;min-height:32px;font-size:13px}
 .sec[id^="sec-"]{scroll-margin-top:calc(var(--head-h) + 56px + env(safe-area-inset-top,0px))}
@@ -374,15 +416,15 @@ table.t td.r,table.t th.r{text-align:right}
 .bw-list li:last-child{border-bottom:0}
 .bw-list .d{color:var(--muted);flex:1}
 .body-sum{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
-.body-sum>div{background:var(--surface-2);border-radius:var(--r-md);padding:10px 12px}
+.body-sum>div{background:var(--surface);border-radius:var(--r-md);padding:12px 14px}
 .body-sum>div:only-child{grid-column:1/-1}
-.body-sum .v{font:800 30px/1 var(--display);font-variant-numeric:tabular-nums}
+.body-sum .v{font:800 34px/1 var(--display);font-variant-numeric:tabular-nums}
 .body-sum .v .small{font:600 13px var(--font);color:var(--muted)}
 .body-sum .l{font-size:12px;color:var(--muted);margin-top:4px}
 
 /* ---------- week strip ---------- */
 .wk{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px;margin:0 0 8px}
-.wk .d{-webkit-appearance:none;appearance:none;width:100%;min-width:0;border:1px solid transparent;border-radius:var(--r-sm);background:var(--surface-2);padding:6px 2px 7px;display:flex;flex-direction:column;align-items:center;gap:1px;font:inherit;color:var(--muted);cursor:default}
+.wk .d{-webkit-appearance:none;appearance:none;width:100%;min-width:0;border:1px solid transparent;border-radius:var(--r-md);background:var(--surface);padding:6px 2px 7px;display:flex;flex-direction:column;align-items:center;gap:1px;font:inherit;color:var(--muted);cursor:default}
 .wk .d .wd{font:600 10.5px var(--font);letter-spacing:.08em;text-transform:uppercase}
 .wk .d .dn{font:800 19px/1.05 var(--display);color:var(--ink);font-variant-numeric:tabular-nums}
 .wk .d .nm{font-size:10px;line-height:1.25;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding:0 2px}
@@ -395,39 +437,42 @@ table.t td.r,table.t th.r{text-align:right}
 .wk .d.cardio{border-color:var(--volt-line);color:var(--ink)}
 .cyc{display:flex;gap:4px;overflow-x:auto;padding:2px 0 10px;scrollbar-width:none;-webkit-overflow-scrolling:touch}
 .cyc::-webkit-scrollbar{display:none}
-.cyc .c{flex:0 0 auto;border:1px solid var(--line);border-radius:999px;padding:3px 10px;font-size:12px;white-space:nowrap;color:var(--muted);background:transparent}
+/* A soft fade at the right edge shows the row scrolls. */
+.cyc{-webkit-mask-image:linear-gradient(90deg,#000 86%,transparent);mask-image:linear-gradient(90deg,#000 86%,transparent);padding-right:24px}
+.cyc .c{flex:0 0 auto;border:1px solid var(--line);border-radius:999px;padding:4px 10px;font-size:12px;white-space:nowrap;color:var(--muted);background:transparent}
 .cyc .c b{margin-right:5px;font:800 13px var(--display)}
 .cyc .c.done{background:var(--volt);color:var(--on-volt);border-color:transparent}
 .cyc .c.next{border:2px solid var(--ink);color:var(--ink);font-weight:650}
 .cyc .c.rest{color:var(--muted);border-style:dashed}
 
 /* ---------- today: the hero is the one inked block ---------- */
-.hero{background:var(--hero);color:var(--on-hero);border:1px solid var(--line);border-radius:22px;padding:16px 16px 14px;margin:14px 0 12px}
+.hero{background:var(--hero-bg),var(--hero);color:var(--on-hero);border:0;border-radius:28px;padding:18px 18px 16px;margin:14px 0 14px;box-shadow:0 1px 0 rgba(255,255,255,.04) inset,0 14px 40px rgba(0,0,0,.18)}
 .hero .eyebrow{color:var(--on-hero);opacity:.7}
-.hero h2{font-size:48px;font-weight:800;line-height:.95;margin:6px 0 6px;letter-spacing:.015em;overflow-wrap:anywhere}
+.hero .hello{font:700 17px/1.2 var(--font);letter-spacing:-.01em;margin:0 0 6px;color:var(--on-hero)}
+.hero h2{font-size:54px;font-weight:800;line-height:.92;margin:6px 0 8px;letter-spacing:.01em;overflow-wrap:anywhere}
 .hero .muted{color:var(--on-hero);opacity:.72}
 .hero .overb{color:var(--yellow)}
 .eyebrow{font:600 12px var(--font);letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin:0}
-.hero-note{background:color-mix(in srgb,var(--on-hero) 12%,transparent);border-radius:var(--r-sm);padding:8px 10px;margin:10px 0 0}
-.hero .btn{background:transparent;color:var(--on-hero);border-color:color-mix(in srgb,var(--on-hero) 30%,transparent)}
+.hero-note{background:color-mix(in srgb,var(--on-hero) 9%,transparent);border-radius:var(--r-md);padding:10px 12px;margin:10px 0 0}
+.hero .btn{background:color-mix(in srgb,var(--on-hero) 9%,transparent);color:var(--on-hero);border-color:transparent}
 .hero .btn.primary{background:var(--volt);color:var(--on-volt);border-color:transparent;box-shadow:0 0 0 1px rgba(0,0,0,.2),0 6px 20px color-mix(in srgb,var(--volt) 25%,transparent)}
 .hero .btn.noted{box-shadow:inset 0 0 0 1px var(--on-hero)}
 .hero .tag.blue{background:color-mix(in srgb,var(--on-hero) 16%,transparent);color:var(--on-hero)}
-.btn.big{font:800 22px var(--display);letter-spacing:.06em;text-transform:uppercase;min-height:56px;margin-top:14px}
+.btn.big{font:800 23px var(--display);letter-spacing:.07em;text-transform:uppercase;min-height:58px;margin-top:16px;border-radius:999px}
 .inline-sel{display:flex;align-items:center;gap:8px;color:inherit;margin:0;white-space:nowrap;min-width:0;font-size:13px;opacity:.9}
 .inline-sel select{max-width:200px;min-width:0;flex:1 1 auto;padding:6px 8px;font-size:13px;min-height:36px}
 .hero .inline-sel{flex:1 1 auto}
 .hero .inline-sel select{max-width:none;background:color-mix(in srgb,var(--on-hero) 10%,transparent);color:var(--on-hero);border-color:color-mix(in srgb,var(--on-hero) 25%,transparent)}
 .hero .inline-sel select option{color:initial}
 /* Start variants: a two-line button each, so what it does is on the button. */
-.rirb{height:44px;min-width:0;width:100%;border-radius:var(--r-sm);border:1px solid var(--line);background:var(--surface);color:var(--ink);font:700 16px var(--font);font-variant-numeric:tabular-nums;cursor:pointer;padding:0}
+.rirb{height:44px;min-width:0;width:100%;border-radius:var(--r-sm);border:1px solid var(--field-b);background:var(--surface-2);color:var(--ink);font:700 16px var(--font);font-variant-numeric:tabular-nums;cursor:pointer;padding:0}
 .rirb.unset{color:var(--muted);font-weight:600}
 .rirb[aria-expanded="true"]{border-color:var(--volt-line);box-shadow:0 0 0 1px var(--volt-line)}
 .sg.done .rirb{border-color:color-mix(in srgb,var(--volt-line) 55%,transparent);background:var(--volt-soft)}
-.rirstrip{display:flex;align-items:center;gap:6px;margin:6px 0 2px;padding:6px;border-radius:var(--r-md);background:var(--surface-2);border:1px solid var(--line);animation:rsIn .14s ease-out}
+.rirstrip{display:flex;align-items:center;gap:6px;margin:6px 0 2px;padding:6px;border-radius:999px;background:var(--surface-2);border:0;animation:rsIn .14s ease-out}
 @keyframes rsIn{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:none}}
 .rirstrip .rs-l{font:700 11px var(--font);letter-spacing:.1em;color:var(--muted);padding:0 4px 0 2px}
-.rirstrip button{flex:1 1 0;min-width:0;height:44px;border-radius:var(--r-sm);border:1px solid var(--line);background:var(--surface);color:var(--ink);font:800 18px var(--display);font-variant-numeric:tabular-nums;cursor:pointer;padding:0}
+.rirstrip button{flex:1 1 0;min-width:0;height:44px;border-radius:50%;border:0;background:var(--surface);color:var(--ink);font:800 18px var(--display);font-variant-numeric:tabular-nums;cursor:pointer;padding:0}
 .rirstrip button.on{background:var(--volt);color:var(--on-volt);border-color:transparent}
 .rirstrip .rs-x{flex:0 0 40px;font:700 14px var(--font);color:var(--muted)}
 @media (prefers-reduced-motion:reduce){.rirstrip{animation:none}}
@@ -448,11 +493,11 @@ table.t td.r,table.t th.r{text-align:right}
 .bfold .chev{flex:none}
 .hero-top{display:flex;align-items:flex-start;gap:12px}
 .hero-t{min-width:0;flex:1 1 auto}
-.ring{flex:none;position:relative;width:72px;height:72px;margin:2px -2px 0 0;padding:0;border:0;background:none;color:var(--on-hero);cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.ring{flex:none;position:relative;width:78px;height:78px;margin:2px -2px 0 0;padding:0;border:0;background:none;color:var(--on-hero);cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center}
 .ring svg{position:absolute;inset:0;width:100%;height:100%}
-.ring .rt{fill:none;stroke:color-mix(in srgb,var(--on-hero) 14%,transparent);stroke-width:6}
-.ring .rp{fill:none;stroke:var(--volt);stroke-width:6;stroke-linecap:round;transition:stroke-dasharray .6s ease}
-.ring .rv{position:relative;font:800 22px/1 var(--display);font-variant-numeric:tabular-nums}
+.ring .rt{fill:none;stroke:color-mix(in srgb,var(--volt) 16%,transparent);stroke-width:7}
+.ring .rp{fill:none;stroke:var(--volt);stroke-width:7;stroke-linecap:round;transition:stroke-dasharray .6s ease;filter:drop-shadow(0 0 4px color-mix(in srgb,var(--volt) 45%,transparent))}
+.ring .rv{position:relative;font:800 25px/1 var(--display);font-variant-numeric:tabular-nums}
 .ring .rv small{font-size:12px;margin-left:1px}
 .ring .rl{position:relative;font:600 9.5px/1.2 var(--font);letter-spacing:.1em;text-transform:uppercase;opacity:.7}
 .hero-alt{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}
@@ -462,15 +507,15 @@ table.t td.r,table.t th.r{text-align:right}
 .hero .hb[aria-expanded="true"]{background:var(--on-hero);color:var(--hero)}
 .hero .ht{background:color-mix(in srgb,var(--on-hero) 12%,transparent);color:var(--on-hero)}
 .hero .ht b{font-weight:700}
-.tiles{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.tiles{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1px;background:var(--line-soft);border:1px solid var(--card-b);border-radius:var(--r-lg);overflow:hidden}
 .tile.wide{grid-column:1/-1;min-height:0}
 .tu{font:600 15px var(--font);color:var(--muted)}
-@media (min-width:620px){.tiles{grid-template-columns:repeat(4,minmax(0,1fr))}}
-.tile{-webkit-appearance:none;appearance:none;font:inherit;color:var(--ink);text-align:left;background:var(--surface-2);border:0;border-radius:var(--r-md);padding:11px 12px;display:flex;flex-direction:column;gap:2px;cursor:pointer;min-height:104px;min-width:0}
-.tile:active{transform:scale(.98)}
-.tile .tv{font:800 40px/1 var(--display);font-variant-numeric:tabular-nums}
+@media (min-width:620px){.tiles{grid-template-columns:repeat(4,minmax(0,1fr))}.tile.wide{grid-column:auto}}
+.tile{-webkit-appearance:none;appearance:none;font:inherit;color:var(--ink);text-align:left;background:var(--surface);border:0;border-radius:0;padding:14px 16px;display:flex;flex-direction:column;gap:3px;cursor:pointer;min-height:108px;min-width:0}
+.tile:active{background:var(--surface-2)}
+.tile .tv{font:800 46px/1 var(--display);font-variant-numeric:tabular-nums}
 .tile .tl{font-size:12.5px;font-weight:600;color:var(--ink-2)}
-.tile .ts{font-size:11.5px;color:var(--muted);margin-top:auto;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tile .ts{font-size:11.5px;line-height:1.3;color:var(--muted);margin-top:auto;overflow-wrap:anywhere}
 .seg{display:flex;gap:4px;flex-wrap:wrap;justify-content:flex-end}
 .bm-wrap{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:10px}
 .bm{margin:0;text-align:center}
@@ -478,7 +523,7 @@ table.t td.r,table.t th.r{text-align:right}
 .bm figcaption{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-top:4px}
 .bm-base *{fill:var(--surface-2);stroke:var(--line);stroke-width:.8}
 .mm{cursor:pointer;outline:none}
-.mm *{stroke:var(--surface);stroke-width:.8}
+.mm *{stroke:var(--bg);stroke-width:.8}
 .mm.st-none *{fill:var(--surface-3)}
 .mm.st-under *{fill:var(--yellow)}
 .mm.st-in *{fill:var(--green)}
@@ -489,12 +534,32 @@ table.t td.r,table.t th.r{text-align:right}
 .bm-legend{display:flex;flex-wrap:wrap;gap:4px 12px;margin-top:8px;color:var(--muted)}
 .bm-legend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:5px;vertical-align:-1px}
 .bm-legend i.st-none{background:var(--surface-3)}.bm-legend i.st-track{background:var(--muted)}.bm-legend i.st-under{background:var(--yellow)}.bm-legend i.st-in{background:var(--green)}.bm-legend i.st-over{background:var(--blue)}
-.bm-detail{margin-top:10px;padding:10px 12px;border-radius:var(--r-md);background:var(--surface-2)}
+.tpl-list{display:flex;flex-direction:column;gap:8px}
+.tpl{-webkit-appearance:none;appearance:none;display:flex;flex-direction:column;gap:3px;text-align:left;width:100%;border:1px solid var(--btn-b);background:var(--surface-2);border-radius:var(--r-md);padding:13px 14px;cursor:pointer;color:var(--ink);font:inherit;min-height:44px}
+.tpl:active{transform:scale(.99)}
+.tpl-t{font-weight:700;font-size:16px}
+.tpl-w{font-size:14px;color:var(--ink-2)}
+.tpl-m{font-size:12.5px;color:var(--muted);line-height:1.35}
+.isteps{list-style:none;margin:6px 0 0;padding:0}
+.isteps li{display:flex;gap:12px;align-items:flex-start;padding:10px 0;border-bottom:1px solid var(--line-soft);font-size:15px;line-height:1.45}
+.isteps li:last-child{border-bottom:0}
+.stepn{flex:none;width:28px;height:28px;border-radius:50%;background:var(--volt);color:var(--on-volt);font:800 15px/28px var(--display);text-align:center}
+.ico{width:20px;height:20px;vertical-align:-4px;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round;display:inline-block;margin:0 1px}
+.chip.acc{display:inline-flex;align-items:center;gap:8px}
+.sw{display:inline-block;width:14px;height:14px;border-radius:50%;box-shadow:inset 0 0 0 1px rgba(0,0,0,.15)}
+.sw-blue{background:#2a63f5}.sw-volt{background:#d4ff3f}.sw-ember{background:#ff6a2b}
+.bm3d{margin-top:10px}
+.bm3d-stage{position:relative;border-radius:var(--r-lg);background:radial-gradient(60% 55% at 50% 42%,var(--surface) 0%,transparent 75%);min-height:220px;overflow:hidden}
+.bm3d-canvas{display:block;touch-action:pan-y;cursor:grab;-webkit-tap-highlight-color:transparent}
+.bm3d-canvas:active{cursor:grabbing}
+.bm3d-msg{text-align:center;margin:8px 0}
+.bm3d-turn{justify-content:center;margin-top:8px}
+.bm-detail{margin-top:12px;padding:12px 14px;border-radius:var(--r-md);background:var(--surface)}
 
 /* ---------- summary rows ---------- */
 .headline{font-size:15px;line-height:1.5;margin:0 0 8px;color:var(--ink)}
-.summary{padding:2px 0!important}
-.srow{-webkit-appearance:none;appearance:none;display:grid;grid-template-columns:8px 64px minmax(0,1fr) 10px;gap:10px;align-items:start;width:100%;text-align:left;background:none;border:0;border-bottom:1px solid var(--line-soft);padding:12px 14px;font:inherit;color:var(--ink);cursor:pointer}
+.summary{padding:2px 0!important;background:var(--surface)!important;border:1px solid var(--card-b)!important;border-radius:var(--r-lg)!important;margin-top:12px!important}
+.srow{-webkit-appearance:none;appearance:none;display:grid;grid-template-columns:8px 64px minmax(0,1fr) 10px;gap:10px;align-items:start;width:100%;text-align:left;background:none;border:0;border-bottom:1px solid var(--line-soft);padding:13px 16px;font:inherit;color:var(--ink);cursor:pointer}
 .srow:last-child{border-bottom:0}
 .srow.static{cursor:default;grid-template-columns:8px 64px minmax(0,1fr)}
 .srow .sl{font:600 11px var(--font);text-transform:uppercase;letter-spacing:.1em;color:var(--muted);padding-top:3px}
@@ -512,8 +577,10 @@ table.t td.r,table.t th.r{text-align:right}
 .hitem.open{background:none}
 
 /* ---------- modal, toast, timer ---------- */
-#modal{position:fixed;inset:0;z-index:50;background:rgba(10,10,12,.5);display:flex;align-items:flex-end;justify-content:center}
-.sheet{background:var(--surface);width:100%;max-width:640px;max-height:88vh;overflow:auto;overscroll-behavior:contain;border-radius:20px 20px 0 0;padding:18px 16px calc(18px + env(safe-area-inset-bottom,0px))}
+#modal{position:fixed;inset:0;z-index:50;background:rgba(6,7,9,.55);-webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px);display:flex;align-items:flex-end;justify-content:center}
+.sheet{position:relative;background:var(--surface);width:100%;max-width:640px;max-height:88vh;overflow:auto;overscroll-behavior:contain;border-radius:28px 28px 0 0;padding:22px 18px calc(18px + env(safe-area-inset-bottom,0px))}
+/* The grabber tells a phone user this slides up from the bottom. */
+.sheet::before{content:"";position:absolute;top:8px;left:50%;width:38px;height:5px;margin-left:-19px;border-radius:3px;background:var(--surface-3)}
 /* Pickers keep one height while you type, so the search box does not jump as
    the list shrinks; only the list scrolls. */
 .sheet.fixed{height:88vh;height:88dvh;display:flex;flex-direction:column;overflow:hidden;padding-bottom:calc(10px + env(safe-area-inset-bottom,0px))}
@@ -553,8 +620,8 @@ details.more>summary .small{display:block;font-weight:400}
 .block,.day{scroll-margin-top:calc(var(--head-h) + 12px + env(safe-area-inset-top,0px))}
 @keyframes flashIn{0%{box-shadow:0 0 0 3px var(--volt-line)}100%{box-shadow:0 0 0 0 transparent}}
 .block.flash{animation:flashIn 1.4s ease-out}
-.sheet h3{font-size:24px;text-transform:uppercase;letter-spacing:.02em}
-@media(min-width:700px){#modal{align-items:center}.sheet{border-radius:20px}}
+.sheet h3{font:700 22px/1.15 var(--font);letter-spacing:-.015em}
+@media(min-width:700px){#modal{align-items:center}.sheet{border-radius:28px}.sheet::before{display:none}}
 .sheet-h{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:10px}
 .pick{display:flex;justify-content:space-between;align-items:center;gap:8px;width:100%;text-align:left;background:none;border:0;border-bottom:1px solid var(--line-soft);padding:11px 2px;cursor:pointer;color:var(--ink)}
 .pick b{font-weight:650}
@@ -563,15 +630,15 @@ details.more>summary .small{display:block;font-weight:400}
 #toast{position:fixed;left:50%;transform:translateX(-50%);top:calc(var(--head-h) + 8px + env(safe-area-inset-top,0px));z-index:60;pointer-events:none;background:var(--ink);color:var(--on-ink);padding:11px 15px;border-radius:var(--r-md);font-size:15px;display:flex;gap:12px;align-items:center;max-width:92vw;box-shadow:0 8px 24px rgba(0,0,0,.22)}
 /* Sits under the sticky header and stays in view while scrolling, so a new
    version is noticed without covering anything. */
-#updbar{position:sticky;top:calc(var(--head-h) + env(safe-area-inset-top,0px));z-index:19;display:flex;align-items:center;gap:8px;padding:6px 16px;background:var(--surface);border-bottom:1px solid var(--line)}
+#updbar{position:sticky;top:calc(var(--head-h) + env(safe-area-inset-top,0px));z-index:19;display:flex;align-items:center;gap:8px;padding:6px 16px;background:var(--glass);-webkit-backdrop-filter:saturate(170%) blur(18px);backdrop-filter:saturate(170%) blur(18px);border-bottom:1px solid var(--line-soft)}
 #updbar[hidden]{display:none}
-.acctbar{display:flex;align-items:center;gap:8px;margin:0 0 12px;padding:6px 6px 6px 14px;border:1px solid var(--line);border-radius:var(--r-md);background:var(--surface)}
+.acctbar{display:flex;align-items:center;gap:8px;margin:0 0 12px;padding:6px 6px 6px 16px;border:1px solid var(--card-b);border-radius:999px;background:var(--surface)}
 .acctbar>span{flex:1 1 auto;min-width:0}
 .acctbar .btn,.acctbar .ib{flex:none;white-space:nowrap}
 #updbar .ut{flex:1 1 auto;min-width:0;font-weight:650;font-size:15px}
 #updbar .ut::before{content:"";display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--volt);margin-right:8px;vertical-align:1px}
 #toast button{background:none;border:0;color:inherit;font-weight:700;text-decoration:underline;cursor:pointer;pointer-events:auto;min-height:44px;padding:0 6px;margin:-12px 0}
-#timer{position:fixed;left:0;right:0;bottom:calc(58px + env(safe-area-inset-bottom,0px));z-index:25;background:var(--hero);color:var(--on-hero);border-top:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;padding:6px 16px}
+#timer{position:fixed;left:0;right:0;bottom:calc(58px + env(safe-area-inset-bottom,0px));z-index:25;background:var(--hero-bg),var(--hero);color:var(--on-hero);border-top:0;display:flex;align-items:center;justify-content:space-between;padding:6px 16px}
 #timer.done{background:var(--volt);color:var(--on-volt)}
 #timer.compact{left:auto;right:12px;bottom:calc(66px + env(safe-area-inset-bottom,0px));border-radius:999px;padding:4px 4px 4px 14px;gap:10px;box-shadow:0 4px 14px rgba(0,0,0,.25)}
 #timer.compact .tv{font-size:22px}
@@ -1013,6 +1080,51 @@ function defaultRoutine(){
     D('Rest',[],true)
   ]};
 }
+/* Ready-made routines, so nobody has to build one from scratch. Each lands
+   near 10 to 20 hard sets a week for the major muscles, trains most of them
+   twice a week where the days allow it (Schoenfeld 2016 and later reviews:
+   frequency matters mainly as a way to spread volume), and keeps sessions
+   near an hour. Rep ranges and RIR follow the same conventions as the rest of
+   the app. They are starting points: everything is editable in Plan. */
+const TEMPLATES=(()=>{
+  const I=(exId,sets,repMin,repMax,rir,rest)=>({exId,sets,repMin,repMax,rir,rest});
+  const D=(name,items)=>({name,items}),R=()=>({name:'Rest',items:[],rest:true});
+  return [
+    {key:'full3',name:'Full body, 3 days',who:'New to lifting, or short on days. A lighter start: most muscles get 6 to 9 hard sets a week, below the 10-set mark on purpose. Add a set to an exercise once it feels easy',meta:'3 days a week',days:[
+      D('Full body A',[I('backSquat',3,6,10,2,150),I('bench',3,6,10,2,150),I('latPulldown',3,8,12,2,120),I('dbLateral',3,10,20,1,60),I('seatedCurl',3,10,15,1,75),I('inclineCurl',2,10,15,1,60),I('cableCrunch',2,10,15,1,60)]),R(),
+      D('Full body B',[I('rdl',3,6,10,2,150),I('incDb',3,8,12,2,120),I('cableRow',3,8,12,2,120),I('legPress',3,10,15,2,120),I('cableLateral',3,10,20,1,60),I('pressdown',3,10,15,1,60),I('standCalf',3,10,15,1,60)]),R(),
+      D('Full body C',[I('hackSquat',3,8,12,1,150),I('machPress',3,8,12,1,120),I('pullup',3,6,10,2,150),I('lyingCurl',3,10,15,1,75),I('reversePecDeck',3,12,20,1,60),I('hammer',2,10,15,1,60),I('seatedCalf',3,10,15,1,60)]),R(),R()]},
+    {key:'ul4',name:'Upper / lower, 4 days',who:'The common all-round choice',meta:'4 days a week',days:[
+      D('Upper A',[I('bench',4,6,10,2,150),I('bbRow',3,6,10,2,150),I('latPulldown',4,8,12,1,120),I('cableFly',2,10,15,1,75),I('dbLateral',5,10,20,1,60),I('facePull',2,12,20,1,60),I('pressdown',3,10,15,1,60),I('inclineCurl',3,10,15,1,60)]),
+      D('Lower A',[I('backSquat',3,6,10,2,180),I('rdl',3,6,10,2,150),I('legExt',3,10,15,1,75),I('seatedCurl',3,10,15,1,75),I('standCalf',4,10,15,1,60),I('cableCrunch',3,10,15,1,60)]),R(),
+      D('Upper B',[I('incDb',4,8,12,2,120),I('cableRow',4,8,12,1,120),I('pullup',3,6,10,2,150),I('cableLateral',5,10,20,1,60),I('reversePecDeck',3,12,20,1,60),I('ohCableExt',3,10,15,1,60),I('hammer',3,10,15,1,60)]),
+      D('Lower B',[I('hackSquat',3,8,12,1,150),I('hipThrust',3,8,12,1,120),I('lyingCurl',3,10,15,1,75),I('bss',2,8,12,1,90),I('seatedCalf',4,10,15,1,60),I('hangingLegRaise',3,10,15,1,60)]),R(),R()]},
+    {key:'ppl6',name:'Push / pull / legs, 6 days',who:'Training most days, wants more volume',meta:'6 days a week',days:[
+      D('Push A',[I('bench',3,6,10,2,150),I('seatedDbPress',3,8,12,1,120),I('cableFly',3,10,15,1,75),I('cableLateral',4,10,20,1,60),I('ohCableExt',3,10,15,1,60)]),
+      D('Pull A',[I('pullup',4,6,10,1,150),I('bbRow',3,6,10,2,150),I('facePull',3,12,20,1,60),I('inclineCurl',3,10,15,1,60),I('hammer',2,10,15,1,60)]),
+      D('Legs A',[I('backSquat',3,6,10,2,180),I('rdl',3,6,10,2,150),I('legExt',3,10,15,1,75),I('seatedCurl',3,10,15,1,75),I('standCalf',4,10,15,1,60),I('cableCrunch',3,10,15,1,60)]),
+      D('Push B',[I('incBench',3,6,10,2,150),I('machShoulder',3,8,12,1,120),I('pecDeck',3,10,15,0,75),I('dbLateral',4,12,20,0,60),I('pressdown',3,10,15,1,60)]),
+      D('Pull B',[I('latPulldown',4,8,12,1,120),I('machRow',3,8,12,1,120),I('reversePecDeck',3,12,20,0,60),I('bayesianCurl',3,10,15,0,60),I('reverseCurl',2,10,15,1,60)]),
+      D('Legs B',[I('hackSquat',3,8,12,1,150),I('hipThrust',3,8,12,1,120),I('lyingCurl',3,10,15,1,75),I('bss',2,8,12,1,90),I('seatedCalf',4,10,15,1,60),I('hangingLegRaise',3,10,15,1,60)]),R()]},
+    {key:'split5',name:'Body-part split, 5 days',who:'The classic gym split, one or two muscles a day. Arms day adds a short second leg session so legs still reach 10 sets a week',meta:'5 days a week',days:[
+      D('Chest',[I('bench',3,6,10,2,150),I('incDb',3,8,12,1,120),I('cableFly',3,10,15,1,75),I('dips',2,8,12,1,120),I('cableCrunch',3,10,15,1,60)]),
+      D('Back',[I('pullup',4,6,10,1,150),I('bbRow',3,6,10,2,150),I('cableRow',3,8,12,1,120),I('latPulldown',3,8,12,1,120),I('reversePecDeck',3,12,20,0,60)]),
+      D('Legs',[I('backSquat',3,6,10,2,180),I('rdl',3,6,10,2,150),I('legPress',3,10,15,1,120),I('legExt',3,10,15,1,75),I('seatedCurl',4,10,15,1,75),I('hipThrust',3,8,12,1,120),I('standCalf',4,10,15,1,60)]),
+      D('Shoulders',[I('ohp',3,6,10,2,150),I('cableLateral',4,10,20,1,60),I('dbLateral',5,12,20,0,60),I('facePull',3,12,20,1,60),I('dbShrug',3,10,15,1,60),I('seatedCalf',4,10,15,1,60),I('hangingLegRaise',3,10,15,1,60)]),
+      D('Arms and legs',[I('inclineCurl',4,8,12,1,75),I('ohCableExt',4,8,12,1,75),I('hammer',3,10,12,1,60),I('pressdown',3,10,15,1,60),I('bss',3,8,12,1,90),I('lyingCurl',3,10,15,1,75)]),R(),R()]},
+    {key:'db3',name:'Dumbbells only, 3 days',who:'Home or hotel gym: dumbbells and a bench. A lighter start, like full body: some muscles sit below the 10-set mark',meta:'3 days a week',days:[
+      D('Dumbbell A',[I('goblet',3,8,15,2,120),I('dbBench',3,8,12,2,120),I('dbRow',3,8,12,2,90),I('dbLateral',3,12,20,1,60),I('dbRearFly',3,12,20,1,60),I('dbCurl',3,10,15,1,60),I('slCalf',3,10,15,1,45)]),R(),
+      D('Dumbbell B',[I('dbRdl',3,8,12,2,120),I('seatedDbPress',3,8,12,2,120),I('csDbRow',3,8,12,1,90),I('revLunge',3,8,12,2,90),I('dbLateral',3,12,20,1,60),I('ohDbExt',3,10,15,1,60),I('reverseCrunch',2,10,15,1,60)]),R(),
+      D('Dumbbell C',[I('bss',3,8,12,2,90),I('incDb',3,8,12,2,120),I('dbPullover',3,10,15,1,75),I('slRdl',3,8,12,1,75),I('dbRearFly',2,12,20,1,60),I('hammer',3,10,15,1,60),I('slCalf',3,10,15,1,45)]),R(),R()]},
+    {key:'onemuscle',name:'One muscle a day, high volume',who:'Experienced, six days a week. The routine Ironlog starts with. Most days pass 11 sets for one muscle in a session, which Plan flags',meta:'6 days a week',build:()=>defaultRoutine()}
+  ];
+})();
+/* A routine from a template, with its own ids so it is independent of the template. */
+function routineFromTemplate(key){
+  const t=TEMPLATES.find(x=>x.key===key);if(!t)return null;
+  if(t.build)return t.build();
+  return {id:uid(),name:t.name,schedule:'cycle',days:t.days.map(d=>({id:uid(),name:d.name,rest:!!d.rest,items:d.items.map(it=>({uid:uid(),...it,inc:5*LB}))}))};
+}
 function freshState(){
   const r=defaultRoutine();
   return {version:STATE_VERSION,settings:{unit:'lb',theme:'dark',bands:JSON.parse(JSON.stringify(BANDS)),priorities:[],dashFolded:DSEC_FOLDED.slice(),lastExport:null,barKg:null,bwGoalPct:null,removedLib:[],timerMode:'auto',timerSound:true,timerCompact:false,autoDone:false,homeFolded:[],wakeLock:false,timeBudget:null,rirMode:'on',hidden:[],onboarded:false,calSnooze:null},
@@ -1023,7 +1135,7 @@ function freshState(){
 const KEY='ironlog.v1';
 /* Shown in Settings, in diagnostics and in backups, so a bug report can be
    matched to the exact build. */
-const APP_VERSION='2026.09.27-r19';
+const APP_VERSION='2026.09.27-r20';
 /* Diagnostics log: the last 60 errors, kept in this browser only. Errors that
    used to be swallowed silently land here, and Settings can copy them. */
 const LOGK=KEY+'.log';
@@ -1170,6 +1282,11 @@ function normalize(s){
   out.settings.timerSound=out.settings.timerSound!==false;
   out.settings.timerCompact=out.settings.timerCompact===true;
   out.settings.autoDone=out.settings.autoDone===true;
+  // Optional settings added in r20 stay undefined unless set, so older
+  // records keep their fingerprints and sync does not see them as edited.
+  if(!['blue','volt','ember'].includes(out.settings.accent))delete out.settings.accent;
+  if(out.settings.rirAsk!==true)delete out.settings.rirAsk;
+  {const n=typeof out.settings.userName==='string'?out.settings.userName.replace(/\s+/g,' ').trim().slice(0,40):'';if(n)out.settings.userName=n;else delete out.settings.userName;}
   out.settings.homeFolded=Array.isArray(out.settings.homeFolded)?out.settings.homeFolded.filter(k=>['map','body','week','tiles','coach','injuries'].includes(k)):[];
   // Section order per tab (drag the ⠿ in a section header) and the folded
   // state of sections that older builds had no fold for. Absent means the
@@ -1961,7 +2078,7 @@ function loadLabel(ex,kg){if(ex.bw){return kg>0?`BW+${fmtW(kg)}`:'BW';}return fm
 
 /* ---------- analytics ---------- */
 let _idx=null,_cal=null;
-function invalidate(){_idx=null;EXMAP=null;_cal=null;}
+function invalidate(){_idx=null;EXMAP=null;_cal=null;_rirUse=null;}
 function bwAt(date){
   let best=null,earliest=null;
   for(const b of state.bodyweights){if(b.date<=date&&(!best||b.date>=best.date))best=b;if(!earliest||b.date<earliest.date)earliest=b;}
@@ -2010,11 +2127,31 @@ function calStats(){
     cls:{c:calSummary(rec.filter(p=>p.c==='c')),i:calSummary(rec.filter(p=>p.c==='i'))}};
   return _cal;
 }
+/* A blank RIR, for estimates and the hard-set count. RIR is optional and
+   opened with a tap, so most logs mix rated and blank sets. Reading every
+   blank as 0 made the same 100 x 8 estimate lower when left blank than when
+   rated 2, so trends dipped, stalls were flagged and PRs appeared just from
+   whether RIR was tapped. A blank is instead read as your usual RIR on that
+   lift: the median of your rated working sets of it (not warm-ups, drop sets
+   or RIR checks) in the last 12 weeks, once there are at least 3. That is a
+   convention, not a study figure. With fewer, a blank counts as hard and as 0
+   for estimates, which errs low and never inflates a PR. Recovery and the
+   "that load was light" step read only the RIR you entered, since both act on
+   what you said about effort. RIR off: no ratings are read at all. */
+let _rirUse=null;
+function rirUsual(exId){
+  if(state.settings.rirMode==='off')return null;
+  if(!_rirUse){_rirUse=Object.create(null);const cut=addDays(today(),-7*CAL_WEEKS);const by=Object.create(null);
+    for(const ss of state.sessions){if(ss.date<cut)continue;for(const b of ss.ex){const ex=EX(b.exId);if(ex.timed)continue;for(const x of b.sets){if(!isWork(x)||x.drop||x.cal)continue;const q=rirEff(x,ex);if(q!=null)(by[b.exId]||(by[b.exId]=[])).push(q);}}}
+    for(const k in by)if(by[k].length>=3)_rirUse[k]=median(by[k]);}
+  const v=_rirUse[exId];return v==null?null:v;
+}
+const rirEst=(s,ex)=>{const q=rirEff(s,ex);return q!=null?q:ex?rirUsual(ex.id):null;};
 /* Hard set: RIR 3 or less (Robinson 2024, Refalo 2023: growth rises as sets
-   end closer to failure; the exact cut-off is a convention). A blank RIR
-   counts as hard and is shown as assumed. A drop set is half a set: one heavy
+   end closer to failure; the exact cut-off is a convention). A blank RIR is
+   read as above and shown as assumed. A drop set is half a set: one heavy
    set with three drops is not four sets of work. */
-const isHard=(s,ex)=>{if(!isWork(s))return false;const q=rirEff(s,ex);return q==null||q<=3;};
+const isHard=(s,ex)=>{if(!isWork(s))return false;const q=rirEst(s,ex);return q==null||q<=3;};
 const setCredit=s=>s.drop?0.5:1;
 /* One set as text, for history, tables and the coach: 225×5, or 45 s for a timed hold. */
 function setShort(ex,w,r){return ex.timed?`${loadLabel(ex,+w||0)} for ${r}s`:`${loadLabel(ex,+w||0)}×${r}`;}
@@ -2154,7 +2291,7 @@ function IDX(){
          PRs, or next session's target. If a block is nothing but drop sets,
          use them rather than have no exposure at all. */
       const main=work.filter(s=>!s.drop);const ptsSrc=main.length?main:work;
-      const pts=ptsSrc.map(s=>({load:loadOf(ex,s,ss.date),r:+s.r,w:+s.w||0,rir:rirEff(s,ex)}));
+      const pts=ptsSrc.map(s=>({load:loadOf(ex,s,ss.date),r:+s.r,w:+s.w||0,rir:rirEff(s,ex),rq:rirEst(s,ex)}));
       // Mean logged RIR on the sets at this session's top load, or null if none was logged.
       const topW=Math.max(...pts.map(p=>p.w));const tr=pts.filter(p=>Math.abs(p.w-topW)<1e-6&&p.rir!=null);
       const atTop=pts.filter(p=>Math.abs(p.w-topW)<1e-6);
@@ -2163,7 +2300,7 @@ function IDX(){
       const drop=atTop.length>=2?atTop[0].r-atTop[atTop.length-1].r:null;
       // Timed holds and joint-rotation bodyweight lifts have no 1RM, and
       // seconds times load is not tonnage. bb: rep band of the best set.
-      let best=null,bb=null;if(!noE1(ex))for(const p of pts){const v=e1(p.load,p.r,p.rir);if(v!=null&&(best==null||v>best)){best=v;bb=rtfBand(rtfOf(p.r,p.rir));}}
+      let best=null,bb=null;if(!noE1(ex))for(const p of pts){const v=e1(p.load,p.r,p.rq);if(v!=null&&(best==null||v>best)){best=v;bb=rtfBand(rtfOf(p.r,p.rq));}}
       const v=noE1(ex)?0:work.reduce((a,s)=>a+tonnage(ex,s,ss.date),0);vol+=v;
       (byEx[b.exId]||(byEx[b.exId]=[])).push({date:ss.date,sid:ss.id,pts,best,bb,vol:v,n:work.length,topW,topRir,topReps,drop,deload:!!ss.deload,light:!!ss.light,rr:b.rr||null,topN:atTop.length,cut:!!b.cut});
     }
@@ -2196,7 +2333,7 @@ function IDX(){
       let repPR=null;
       // Every set in this exposure is judged against the frontier as it stood
       // before the exposure, so sets within one session cannot cancel each other.
-      const sc=q=>e1(q.load,q.r,q.rir)||q.load*(1+q.r/30);
+      const sc=q=>e1(q.load,q.r,q.rq)||q.load*(1+q.r/30);
       if(i>0){for(const p of x.pts){if(!dominated(p)&&(!repPR||sc(p)>sc(repPR)))repPR=p;}}
       const pb=bestIn(i);const e1PR=i>0&&x.best!=null&&pb!=null&&x.best>pb+1e-6;
       x.progress=i>0&&(!!repPR||e1PR);
@@ -2534,7 +2671,7 @@ function suggest(exId,plan,opts){
     const prev=exps.length>=2?exps[exps.length-2]:null;
     const repeat=!!prev&&Math.abs(prev.topW-top)<1e-6&&prev.pts.filter(p=>Math.abs(p.w-top)<1e-6).every(p=>p.r<+plan.repMin);
     if(gap>=2||repeat){
-      let est=null;for(const p of topPts){const v=e1(p.load,p.r,p.rir);if(v!=null&&(est==null||v>est))est=v;}
+      let est=null;for(const p of topPts){const v=e1(p.load,p.r,p.rq);if(v!=null&&(est==null||v>est))est=v;}
       const bwNow=bwLoad(ex,today());
       if(est!=null){
         const want=e1inv(est,+plan.repMin+Math.min(tgtRir,E1_MAX_RIR))-bwNow;
@@ -2661,6 +2798,20 @@ function plateLine(b,si){
   if(loadMode(ex)==='side')return plateText(kg*2+(pm==='bar'?barKg():0),pm).replace(/^Per side at [^:]+:/,'Plates a side:');
   return plateText(kg,pm);
 }
+/* A load typed on a working set fills the empty load fields of the working
+   sets after it, so an exercise with no history (nothing to prefill from) is
+   not typed out once per set. Only blanks are filled: a prefilled target, a
+   changed row, a done set, a warm-up or a drop set is never touched. Rows it
+   filled follow a correction (100 typed as 10, then fixed) until the lifter
+   edits them; that memory is in-page only, so after a reload they are plain
+   typed rows. */
+const carried=new WeakSet();
+function carryLoad(bi,si){
+  const b=state.draft&&state.draft.ex[bi];const s=b&&b.sets[si];if(!s||s.warm||s.drop||s.w==null)return;
+  for(let j=si+1;j<b.sets.length;j++){const x=b.sets[j];if(x.warm||x.drop||x.done||!(x.w==null||carried.has(x)))continue;
+    x.w=s.w;carried.add(x);const inp=document.querySelector(`.sg input[data-f="w"][data-b="${bi}"][data-s="${j}"]`);if(inp)inp.value=fmtW(x.w);}
+  updateProgress(bi);
+}
 function updatePlates(bi,si){const el=document.getElementById('pl-'+bi);if(!el||!state.draft||!state.draft.ex[bi])return;el.textContent=plateLine(state.draft.ex[bi],si);}
 /* Live score for one logger block against its target. Only sets marked done,
    not warm-up, with reps, at or above the target load count. */
@@ -2695,7 +2846,7 @@ function blockProgress(b){
   const heavier=done.filter(s=>(+s.w||0)>t.w+1e-6);
   let heavyBeat=false,heavyTxt='';
   if(heavier.length&&t.prevBest!=null&&!ex.timed){
-    let best=null;for(const s of heavier){const v=e1(bw+(+s.w||0),+s.r,rirEff(s,ex));if(v!=null&&(best==null||v>best))best=v;}
+    let best=null;for(const s of heavier){const v=e1(bw+(+s.w||0),+s.r,rirEst(s,ex));if(v!=null&&(best==null||v>best))best=v;}
     if(best!=null){
       heavyBeat=best>t.prevBest+1e-6;
       heavyTxt=heavyBeat?`Beaten by load: ${fmtW(best)} ${U()} estimated, previous best ${fmtW(t.prevBest)}`
@@ -2967,7 +3118,9 @@ function setDone(bi,si,val){
   if(autoRest)startTimer(+b.plan.rest);
   updateProgress(bi);updatePlates(bi);updateSessBar();
   clearTimeout(foldT);foldT=null;
-  const askRir=val&&!s.warm&&s.rir==null&&rirShow(EX(b.exId))&&!!document.querySelector(`.rirb[data-b="${bi}"][data-s="${si}"]`);
+  // RIR opens by itself only if asked for in Settings > Effort; otherwise a tap
+  // on the set's RIR box opens it. A blank RIR is fine: see rirSettings().
+  const askRir=val&&state.settings.rirAsk===true&&!s.warm&&s.rir==null&&rirShow(EX(b.exId))&&!!document.querySelector(`.rirb[data-b="${bi}"][data-s="${si}"]`);
   if(askRir)rirShowStrip(bi,si);else if(!val)rirClose();
   if(val&&!askRir&&!state.draft.editingId&&blockDone(b))foldT=setTimeout(()=>autoFold(bi),1200);
   saveNow();
@@ -3018,11 +3171,17 @@ document.addEventListener('visibilitychange',()=>{if(document.visibilityState===
 /* ---------- render ---------- */
 const charts=[];let sortables=[];
 function killDynamic(){while(charts.length){try{charts.pop().destroy();}catch(e){/* chart already gone */}}sortables.forEach(s=>{try{s.destroy();}catch(e){/* list already gone */}});sortables=[];}
+const ACCENTS=[['blue','Blue'],['volt','Volt'],['ember','Ember']];
 function applyTheme(){const t=state.settings.theme;if(t==='system')delete document.documentElement.dataset.theme;else document.documentElement.dataset.theme=t;
+  document.documentElement.dataset.accent=state.settings.accent||'blue';
   // The installed app's status bar takes this colour, so it follows the theme.
-  const m=document.querySelector('meta[name="theme-color"]');if(m)try{m.setAttribute('content',getComputedStyle(document.body).backgroundColor||'#0a0b0d');}catch(e){/* cosmetic */}}
+  const m=document.querySelector('meta[name="theme-color"]');if(m)try{m.setAttribute('content',getComputedStyle(document.body).backgroundColor||'#08090b');}catch(e){/* cosmetic */}}
 /* A code bug inside a view used to leave a blank screen. Now the error is
    logged and a recovery screen offers your data and a way back. */
+/* True while #view is being replaced. Replacing it removes a focused field,
+   and the browser then fires that field's change as if the lifter had left it.
+   They did not, so that change must not tick a set. */
+let rebuilding=false;
 function render(){
   try{renderInner();}
   catch(e){log('render',e);renderCrash(e);}
@@ -3043,11 +3202,12 @@ function renderInner(){
   renderWeekBar();
   if(ui.tab==='library')ui.tab='program';
   const v={today:viewToday,program:()=>ui.planView==='library'?viewLibrary():viewProgram(),dash:viewDash,history:viewHistory,settings:viewSettings}[ui.tab];
-  $('#view').innerHTML=v();
+  rebuilding=true;try{$('#view').innerHTML=v();}finally{rebuilding=false;}
   applySecOrder();applyHidden();openMain();
   if(!(ui.tab==='today'&&state.draft)&&!(ui.tab==='program'&&ui.planView==='library'))mountSecSortable();
   if(ui.tab==='program'&&ui.planView!=='library')mountSortable();
   if(ui.tab==='dash')mountCharts();
+  if(ui.tab==='today'&&!state.draft)mount3D();
   if(ui.modal)renderModal();
 }
 /* Re-rendering replaces #view wholesale, which used to blow away whatever the
@@ -3093,7 +3253,7 @@ function viewToday(){
   const playable=!day.rest&&day.items.length>0;
   const deload=isDeloadWeek();
   const sel=`<label class="inline-sel small">Change day<select data-bind="todayDay">${R.days.map((d,i)=>`<option value="${i}" ${i===di?'selected':''}>${dayLabel(R,i)}: ${esc(d.name)}${d.rest?' (rest)':''}${mark(i)}</option>`).join('')}</select></label>`;
-  let h=welcomeCard()+acctBar()+`<section class="hero" data-day="${di}"><div class="hero-top"><div class="hero-t"><p class="eyebrow">${esc(new Date().toLocaleDateString(undefined,{weekday:'long',month:'short',day:'numeric'}))} · ${esc(eyebrow)}${deload?' · deload week':''}</p><h2>${esc(day.name)}</h2>
+  let h=welcomeCard()+(installBar()||acctBar())+`<section class="hero" data-day="${di}"><div class="hero-top"><div class="hero-t">${state.settings.userName?`<p class="hello">${esc(greeting())}, ${esc(state.settings.userName)}</p>`:''}<p class="eyebrow">${esc(new Date().toLocaleDateString(undefined,{weekday:'long',month:'short',day:'numeric'}))} · ${esc(eyebrow)}${deload?' · deload week':''}</p><h2>${esc(day.name)}</h2>
   <p class="muted small" style="margin:0" data-tip="${esc('Routine: '+R.name)}">${playable?`${day.items.length} exercises · ${deload?day.items.reduce((a,it)=>a+Math.max(1,Math.ceil(it.sets/2)),0)+' sets (deload)':daySets(day)+' sets'} · ${minTxt(dayMinutes(day,deload))}`:(day.rest?'Rest day':'No exercises planned')}</p></div>${heroRing(weekStats())}</div>
   ${note?`<p class="hero-note small">${note}</p>`:''}`;
   /* Four ways to start besides the plan as written, each saying on its face
@@ -3147,6 +3307,41 @@ function acctBar(){
   try{if(localStorage.getItem(ACCT_LATER))return '';}catch(e){/* storage blocked: show it */}
   return `<div class="acctbar" id="acctBar"><span class="small"><b>Only on this phone.</b> Sync it with an account.</span><button class="btn sm primary" data-act="acctOpen" data-mode="signup">Set up</button><button class="ib" aria-label="Not now" data-act="acctLater">✕</button></div>`;
 }
+/* The greeting on Today, when a name is set in Settings > General. */
+function greeting(){const h=new Date().getHours();return h<5?'Evening':h<12?'Morning':h<17?'Afternoon':'Evening';}
+/* ---------- install (the installable build opened in a browser) ----------
+   Android and desktop Chrome offer a real install: the build catches that
+   offer and Install uses it. An iPhone has no install button for websites
+   (Apple allows only Share > Add to Home Screen), so there Install opens a
+   short picture guide for the browser in use. Nothing shows once installed,
+   inside Claude, or in the plain source file. */
+const INSTALL_LATER=KEY+'.installLater';
+function canInstallHere(){return !!window.IRONLOG_APP&&!isStandalone()&&!(window.claude&&typeof window.claude.use==='function');}
+function installKind(){
+  const ua=navigator.userAgent||'';
+  const ios=/iPhone|iPad|iPod/.test(ua)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
+  if(window.__installEvt)return 'prompt';
+  if(ios)return /CriOS/.test(ua)?'ios-chrome':/FxiOS|EdgiOS|OPiOS/.test(ua)?'ios-other':'ios-safari';
+  return 'menu';
+}
+window.ironlogInstallReady=()=>{if(ui.tab==='today'||ui.tab==='settings')rerenderKeepScroll();};
+function installBar(){
+  if(!canInstallHere())return '';
+  try{if(localStorage.getItem(INSTALL_LATER))return '';}catch(e){/* storage blocked: show it */}
+  return `<div class="acctbar" id="installBar"><span class="small"><b>Get the app.</b> Install Ironlog on your home screen.</span><button class="btn sm primary" data-act="install">Install</button><button class="ib" aria-label="Not now" data-act="installLater">✕</button></div>`;
+}
+const SHARE_ICON='<svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12M8 7l4-4 4 4"/><path d="M6 11H5a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-8a1 1 0 0 0-1-1h-1"/></svg>';
+const ADD_ICON='<svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="4"/><path d="M12 8v8M8 12h8"/></svg>';
+function installSheet(m){
+  const step=(n,html)=>`<li><span class="stepn">${n}</span><span>${html}</span></li>`;
+  const tail=`<p class="small muted" style="margin:12px 0 0">Then open Ironlog from your home screen. It starts full screen and works offline. A log kept in this browser does not move by itself: sign in inside the app, or export a backup here and import it there.</p>`;
+  let body;
+  if(m.how==='ios-safari')body=`<ol class="isteps">${step(1,`Tap the Share button ${SHARE_ICON} in Safari's bar at the bottom (at the top on an iPad).`)}${step(2,`Scroll down and tap <b>Add to Home Screen</b> ${ADD_ICON}.`)}${step(3,'Tap <b>Add</b>.')}</ol>`;
+  else if(m.how==='ios-chrome')body=`<ol class="isteps">${step(1,`Tap the Share button ${SHARE_ICON} at the right of Chrome's address bar.`)}${step(2,`Tap <b>Add to Home Screen</b> ${ADD_ICON}.`)}${step(3,'Tap <b>Add</b>.')}</ol>`;
+  else if(m.how==='ios-other')body=`<ol class="isteps">${step(1,'Open this page in Safari: vqx7.github.io/Ironlog.')}${step(2,`Tap the Share button ${SHARE_ICON}, then <b>Add to Home Screen</b>.`)}${step(3,'Tap <b>Add</b>.')}</ol>`;
+  else body=`<ol class="isteps">${step(1,"Open your browser's menu (⋮ or ⋯).")}${step(2,'Choose <b>Install app</b> or <b>Add to Home screen</b>.')}${step(3,'Confirm.')}</ol>`;
+  return `<div class="sheet" role="dialog" aria-modal="true"><div class="sheet-h"><h3>Install Ironlog</h3><button class="ib" aria-label="Close" data-act="mClose">✕</button></div>${/^ios/.test(m.how)?'<p class="small muted" style="margin:0 0 10px">iPhone apps from the web are added from the Share menu; Apple does not allow an install button.</p>':''}${body}${tail}<button type="button" class="btn primary block" style="margin-top:14px" data-act="mClose">Done</button></div>`;
+}
 /* First run with no sessions: three ways in. Shown only after the cloud check,
    so a device about to load your data never flashes it. */
 function welcomeCard(){
@@ -3159,8 +3354,8 @@ function welcomeCard(){
   <label class="field">Units<select data-bind="unit"><option value="lb" ${U()==='lb'?'selected':''}>lb and inches</option><option value="kg" ${U()==='kg'?'selected':''}>kg and cm</option></select></label>
   ${AUTH()&&!acct.user&&!window.claude?`<div class="panel" style="margin-top:10px"><p class="small" style="margin:0 0 8px"><b>Have an account?</b> Sign in to bring your log here. New? Create one so your log is kept off this phone too. Optional.</p><div class="row"><button class="btn sm" data-act="acctOpen" data-mode="signin">Sign in</button><button class="btn sm" data-act="acctOpen" data-mode="signup">Create account</button></div></div>`:''}
   <div class="stack" style="margin-top:10px">
-  <button class="btn block primary" data-act="obSample">Use the sample routine</button>
-  <p class="small muted" style="margin:2px 0 0">A six-day split with load and rep targets worked out for you each session. Edit any of it in Program.</p>
+  <button class="btn block primary" data-act="obSample">Pick a ready-made routine</button>
+  <p class="small muted" style="margin:2px 0 0">Full body, upper / lower, push / pull / legs, a body-part split, dumbbells only, or high volume. Load and rep targets are worked out for you each session; edit any of it in Plan.</p>
   <button class="btn block" data-act="obOwn">Build my own routine</button>
   <button class="btn block" data-act="obFree">Just log what I do</button>
   <p class="small muted" style="margin:2px 0 0">Freestyle: add exercises as you go, no routine needed. Targets still appear from your second session of each lift.</p></div></div>`;
@@ -3240,8 +3435,7 @@ function coach(){
     }
   }
   if(stalled.length){const id=stalled[0];return {tone:'yellow',text:`${exName(id)} has trended flat or down over its last few sessions. Change the rep range or swap to a close variation for a few weeks.`,act:{label:'See the lift',sec:'exercise',ex:id}};}
-  const rc=I.rirCov;
-  if(state.settings.rirMode!=='off'&&rc.total>=10&&rc.logged/rc.total<0.35)return {tone:'blue',text:`Only ${Math.round(rc.logged/rc.total*100)}% of your recent working sets have RIR logged, so most of your weekly volume is assumed rather than measured. Pick the RIR on each set this week.`,act:null};
+  // Missing RIR is not coached: it is optional by design and blanks are read as your usual RIR.
   // Scores are sorted high to low, so the steepest fall is the last one.
   const lag=I.scores.filter(x=>x.score<=-GROW_PCT);
   if(lag.length){const x=lag[lag.length-1];return {tone:'yellow',text:`${ML[x.m]} strength is down ${r1(Math.abs(x.score))}% over 6 weeks. Check sleep and recovery before adding sets.`,act:{label:`See ${ML[x.m]}`,sec:'rank',m:x.m}};}
@@ -3340,6 +3534,164 @@ function dashSummary(){
    sets sit against your own target band. Coordinates are for a 120 x 210 box;
    left-side shapes are mirrored to the right. */
 const BM_BASE='<circle cx="60" cy="16" r="11"/><rect x="38" y="35" width="44" height="72" rx="12"/><rect x="23" y="39" width="14" height="42" rx="7"/><rect x="83" y="39" width="14" height="42" rx="7"/><rect x="21" y="78" width="11" height="36" rx="5.5"/><rect x="88" y="78" width="11" height="36" rx="5.5"/><circle cx="26" cy="118" r="5"/><circle cx="94" cy="118" r="5"/><rect x="37" y="102" width="21" height="54" rx="9"/><rect x="62" y="102" width="21" height="54" rx="9"/><rect x="40" y="152" width="14" height="46" rx="7"/><rect x="66" y="152" width="14" height="46" rx="7"/><ellipse cx="47" cy="202" rx="8" ry="4"/><ellipse cx="73" cy="202" rx="8" ry="4"/>';
+/* ---------- 3D body (Today > Muscle map > 3D) ----------
+   A stylized, sculpted body built from smooth shapes, one region per muscle
+   group, shaded exactly like the flat map (below, on, above target, none,
+   tracked only) from the same numbers. Drag sideways to turn it; the page
+   still scrolls vertically. Tap a region for the same detail as the flat map.
+   three.js loads only the first time 3D is opened, and the drawing happens
+   only when something changes, so it costs nothing while idle. One renderer
+   is kept for the whole visit: each re-render of Today moves its canvas into
+   the new card instead of building a new one. */
+const MAPVIEW_KEY=KEY+'.mapView';
+const THREE_URLS=['./vendor/three.module.min.js','https://cdn.jsdelivr.net/npm/three@0.159.0/build/three.module.min.js','https://unpkg.com/three@0.159.0/build/three.module.min.js'];
+const B3={state:'idle',wait:[],r:null,scene:null,cam:null,root:null,meshes:[],mats:{},yaw:0.35,anim:0,status:null,sel:null,fail:'',viewMem:null,drag:null};
+function mapView(){
+  if(B3.viewMem)return B3.viewMem;
+  try{B3.viewMem=localStorage.getItem(MAPVIEW_KEY)==='3d'?'3d':'flat';}catch(e){B3.viewMem='flat';}
+  return B3.viewMem;
+}
+/* Shapes, in metres, for the right side (x > 0); the left side mirrors them.
+   l: a lathe (a profile of [radius, height] turned around its own axis, for
+   smooth tapered limbs and the torso), s: a sphere scaled to an ellipsoid,
+   c: a capsule [radius, length]. kz flattens front to back. m names the
+   muscle group; parts without one are the neutral body underneath, and the
+   muscle shapes sit almost flush on it, like an anatomy figure. */
+const B3_PARTS=[
+  // neutral body
+  {g:'l',prof:[[0,.84],[.13,.85],[.155,.88],[.165,.93],[.145,1],[.142,1.08],[.152,1.18],[.168,1.28],[.176,1.35],[.172,1.42],[.14,1.47],[.08,1.51],[0,1.52]],p:[0,0,0],kz:.62,one:1},
+  {g:'c',d:[.046,.1],p:[0,1.55,-.005],one:1},
+  {g:'s',p:[0,1.695,.005],k:[.086,.108,.098],one:1},
+  {g:'s',p:[.19,1.43,0],k:[.06,.06,.06]},
+  {g:'l',prof:[[0,0],[.036,.01],[.04,.07],[.045,.17],[.049,.25],[.046,.3],[0,.31]],p:[.236,1.13,0],r:[0,0,.112]},
+  {g:'s',p:[.236,1.13,0],k:[.037,.037,.037]},
+  {g:'s',p:[.262,.815,.012],k:[.03,.062,.02]},
+  {g:'l',prof:[[0,0],[.05,.01],[.058,.1],[.072,.24],[.083,.33],[.075,.38],[0,.39]],p:[.095,.49,0]},
+  {g:'s',p:[.096,.47,.008],k:[.05,.05,.05]},
+  {g:'l',prof:[[0,0],[.032,.02],[.036,.1],[.049,.25],[.045,.34],[0,.35]],p:[.096,.08,-.004]},
+  {g:'s',p:[.098,.045,.045],k:[.044,.038,.105]},
+  // muscle groups
+  {m:'neck',g:'c',d:[.052,.07],p:[0,1.56,-.004],one:1},
+  {m:'traps',g:'s',p:[.072,1.47,-.022],k:[.082,.035,.05],r:[0,0,-.4]},
+  {m:'traps',g:'s',p:[0,1.38,-.078],k:[.066,.09,.036],one:1},
+  {m:'frontDelts',g:'s',p:[.19,1.42,.034],k:[.05,.07,.046]},
+  {m:'sideDelts',g:'s',p:[.214,1.425,0],k:[.046,.075,.05]},
+  {m:'rearDelts',g:'s',p:[.19,1.42,-.035],k:[.05,.07,.046]},
+  {m:'rotatorCuff',g:'s',p:[.1,1.35,-.086],k:[.045,.04,.026]},
+  {m:'chest',g:'s',p:[.074,1.34,.084],k:[.085,.07,.04],r:[0,0,-.08]},
+  {m:'serratus',g:'s',p:[.14,1.24,.05],k:[.03,.055,.035]},
+  {m:'upperBack',g:'s',p:[0,1.29,-.078],k:[.1,.08,.04],one:1},
+  {m:'lats',g:'s',p:[.112,1.19,-.05],k:[.068,.13,.05],r:[0,0,-.16]},
+  {m:'lowerBack',g:'s',p:[.036,1.02,-.068],k:[.035,.085,.03]},
+  {m:'abs',g:'s',p:[0,1.1,.07],k:[.07,.14,.036],one:1},
+  {m:'obliques',g:'s',p:[.112,1.07,.044],k:[.045,.09,.05]},
+  {m:'biceps',g:'s',p:[.221,1.28,.03],k:[.036,.1,.035],r:[0,0,.112]},
+  {m:'triceps',g:'s',p:[.223,1.29,-.03],k:[.04,.11,.038],r:[0,0,.112]},
+  {m:'forearms',g:'l',prof:[[0,0],[.027,.01],[.031,.08],[.041,.2],[.039,.25],[0,.26]],p:[.262,.87,.006],r:[0,0,.1]},
+  {m:'glutes',g:'s',p:[.07,.92,-.068],k:[.08,.08,.06]},
+  {m:'abductors',g:'s',p:[.142,.95,-.018],k:[.04,.06,.045]},
+  {m:'quads',g:'s',p:[.096,.68,.034],k:[.066,.17,.055]},
+  {m:'hamstrings',g:'s',p:[.094,.68,-.034],k:[.06,.16,.05]},
+  {m:'adductors',g:'s',p:[.05,.72,.002],k:[.03,.13,.045]},
+  {m:'calves',g:'s',p:[.096,.32,-.024],k:[.042,.1,.04]},
+  {m:'tibialis',g:'s',p:[.1,.29,.028],k:[.022,.1,.022]}
+];
+function map3dColors(){
+  const cs=getComputedStyle(document.documentElement);const v=n=>cs.getPropertyValue(n).trim();
+  const dark=(document.documentElement.dataset.theme||(matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light'))==='dark';
+  return {base:dark?'#3b4048':'#d5d9de',none:dark?'#5d646d':'#a9b0b8',track:v('--muted'),under:v('--yellow'),in:v('--green'),over:v('--blue')};
+}
+function map3dLoad(cb){
+  if(B3.state==='ready'||B3.state==='fail'){cb();return;}
+  B3.wait.push(cb);if(B3.state==='loading')return;
+  B3.state='loading';
+  // three.js as a module, from each address in turn: this build's own copy
+  // first where there is one.
+  const load=(urls,done)=>{if(!urls.length){done(false);return;}import(urls[0]).then(mod=>{window.THREE=mod;done(true);},()=>load(urls.slice(1),done));};
+  load(THREE_URLS,ok=>{
+    if(!ok||!window.THREE){B3.state='fail';B3.fail='The 3D view could not load. Check your connection; the flat view still works.';}
+    else{try{map3dBuild();B3.state='ready';}catch(e){log('map3d',e);B3.state='fail';B3.fail='This phone or browser cannot draw 3D here. The flat view shows the same numbers.';}}
+    const w=B3.wait;B3.wait=[];w.forEach(f=>{try{f();}catch(e){log('map3d',e);}});
+  });
+}
+function map3dBuild(){
+  const T=window.THREE;
+  const r=new T.WebGLRenderer({antialias:true,alpha:true,powerPreference:'low-power'});
+  r.setPixelRatio(Math.min(2,window.devicePixelRatio||1));
+  const scene=new T.Scene();
+  const cam=new T.PerspectiveCamera(28,1,.1,20);cam.position.set(0,.93,3.8);cam.lookAt(0,.9,0);
+  scene.add(new T.HemisphereLight(0xffffff,0x40444a,1.15));
+  const key=new T.DirectionalLight(0xffffff,1.7);key.position.set(1.6,2.6,3);scene.add(key);
+  const rim=new T.DirectionalLight(0xffffff,1.1);rim.position.set(-2.2,1.6,-2.6);scene.add(rim);
+  const root=new T.Group();scene.add(root);
+  const sph=new T.SphereGeometry(1,40,28);const caps={};
+  const mat=m=>B3.mats[m]||(B3.mats[m]=new T.MeshStandardMaterial({roughness:.55,metalness:.05}));
+  const add=(pt,side)=>{
+    const g=pt.g==='s'?sph:pt.g==='l'?new T.LatheGeometry(pt.prof.map(([r,y])=>new T.Vector2(r,y)),40):(caps[pt.d.join()]||(caps[pt.d.join()]=new T.CapsuleGeometry(pt.d[0],pt.d[1],10,28)));
+    const me=new T.Mesh(g,mat(pt.m||'_base'));
+    me.position.set(pt.p[0]*side,pt.p[1],pt.p[2]);
+    if(pt.k)me.scale.set(pt.k[0],pt.k[1],pt.k[2]);
+    if(pt.kz)me.scale.set(1,1,pt.kz);
+    if(pt.r)me.rotation.set(pt.r[0],pt.r[1],pt.r[2]*side);
+    me.userData.m=pt.m||null;root.add(me);B3.meshes.push(me);
+  };
+  for(const pt of B3_PARTS){add(pt,1);if(!pt.one)add(pt,-1);}
+  // A soft shadow on the floor grounds the figure.
+  {const cv=document.createElement('canvas');cv.width=cv.height=64;const x=cv.getContext('2d');const gr=x.createRadialGradient(32,32,2,32,32,32);gr.addColorStop(0,'rgba(0,0,0,.45)');gr.addColorStop(1,'rgba(0,0,0,0)');x.fillStyle=gr;x.fillRect(0,0,64,64);
+   const sh=new T.Mesh(new T.PlaneGeometry(.7,.34),new T.MeshBasicMaterial({map:new T.CanvasTexture(cv),transparent:true,depthWrite:false}));sh.rotation.x=-Math.PI/2;sh.position.y=.002;scene.add(sh);}
+  const c=r.domElement;c.className='bm3d-canvas';
+  // Sideways drags turn the body; vertical moves stay page scrolls.
+  c.addEventListener('pointerdown',e=>{B3.drag={x:e.clientX,y:e.clientY,yaw:B3.yaw,moved:false};cancelAnimationFrame(B3.anim);});
+  c.addEventListener('pointermove',e=>{const d=B3.drag;if(!d)return;const dx=e.clientX-d.x;if(Math.abs(dx)>4)d.moved=true;if(d.moved){B3.yaw=d.yaw+dx*.012;map3dDraw();}});
+  const end=e=>{const d=B3.drag;B3.drag=null;if(d&&!d.moved&&e.type==='pointerup')map3dTap(e.clientX,e.clientY);};
+  c.addEventListener('pointerup',end);c.addEventListener('pointercancel',end);c.addEventListener('pointerleave',()=>{B3.drag=null;});
+  Object.assign(B3,{r,scene,cam,root});
+}
+function map3dPick(cx,cy){
+  const T=window.THREE;if(!B3.r)return null;
+  const rc=B3.r.domElement.getBoundingClientRect();
+  const v=new T.Vector2(((cx-rc.left)/rc.width)*2-1,-((cy-rc.top)/rc.height)*2+1);
+  const ray=new T.Raycaster();ray.setFromCamera(v,B3.cam);
+  const hit=ray.intersectObjects(B3.root.children,false).find(h=>h.object.userData.m);
+  return hit?hit.object.userData.m:null;
+}
+function map3dTap(cx,cy){const m=map3dPick(cx,cy);if(!m)return;ui.mapSel=ui.mapSel===m?null:m;rerenderKeepScroll();}
+function map3dTurnTo(to){
+  if(!B3.r)return;cancelAnimationFrame(B3.anim);
+  // The shorter way round.
+  let from=B3.yaw;const tau=Math.PI*2;from=((from%tau)+tau)%tau;let d=to-from;if(d>Math.PI)d-=tau;if(d<-Math.PI)d+=tau;
+  let reduce=false;try{reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;}catch(e){/* animate */}
+  if(reduce){B3.yaw=to;map3dDraw();return;}
+  const t0=performance.now(),dur=420;
+  const step=t=>{const k=Math.min(1,(t-t0)/dur);const e=1-Math.pow(1-k,3);B3.yaw=from+d*e;map3dDraw();if(k<1)B3.anim=requestAnimationFrame(step);};
+  B3.anim=requestAnimationFrame(step);
+}
+function map3dDraw(){
+  const host=document.querySelector('#bm3d .bm3d-stage');if(!B3.r||!host)return;
+  const w=Math.max(200,host.clientWidth||320),h=Math.round(Math.min(440,w*1.12));
+  const c=B3.r.domElement;
+  if(c.parentNode!==host)host.appendChild(c);
+  if(B3.w!==w||B3.h!==h){B3.r.setSize(w,h,false);c.style.width='100%';c.style.height=h+'px';B3.cam.aspect=w/h;B3.cam.updateProjectionMatrix();B3.w=w;B3.h=h;}
+  B3.root.rotation.y=B3.yaw;B3.r.render(B3.scene,B3.cam);
+}
+function mount3D(){
+  const host=document.getElementById('bm3d');if(!host)return;
+  const msg=host.querySelector('.bm3d-msg');
+  if(B3.state!=='ready'){
+    if(B3.state==='fail'){msg.hidden=false;msg.textContent=B3.fail;host.querySelector('.bm3d-turn').hidden=true;return;}
+    msg.hidden=false;msg.textContent='Loading the 3D body';
+    map3dLoad(()=>{if(document.getElementById('bm3d'))mount3D();});return;
+  }
+  msg.hidden=true;
+  const col=map3dColors();const T=window.THREE;
+  for(const [m,mt] of Object.entries(B3.mats)){
+    const st=m==='_base'?null:B3.status&&B3.status[m];
+    mt.color.set(m==='_base'?col.base:st?col[st.st]||col.none:col.none);
+    mt.emissive=mt.emissive||new T.Color(0,0,0);
+    mt.emissive.set(m===B3.sel?'#ffffff':'#000000');mt.emissiveIntensity=m===B3.sel?.28:0;
+  }
+  map3dDraw();
+}
 const BM=(()=>{
   const E=(cx,cy,rx,ry)=>[['e',cx,cy,rx,ry],['e',120-cx,cy,rx,ry]];
   const Rr=(x,y,w,h,r)=>[['r',x,y,w,h,r],['r',120-x-w,y,w,h,r]];
@@ -3375,11 +3727,14 @@ function bodyMapCard(){
     detail=`<div class="bm-detail"><div class="row spread"><b>${ML[sel]}</b><span class="tag ${x.st==='in'?'green':x.st==='under'?'yellow':x.st==='over'?'blue':''}">${where}</span></div><p class="small" style="margin:4px 0 6px">${r1(x.v)} hard sets a week ${src==='avg'?`on average over your last ${avg._weeks} full week${avg._weeks>1?'s':''}`:'so far this week'}, target ${x.lo} to ${x.hi}. ${tr}</p><div class="row"><button class="btn sm" data-act="goDash" data-sec="volume" data-m="${sel}">Weekly trend</button><button class="btn sm" data-act="mapSel" data-m="${sel}">Close</button></div></div>`;
   }else{
     const low=MK.filter(m=>!TRACK_ONLY.has(m)&&(st[m].st==='under'||st[m].st==='none'));
-    detail=`<p class="small muted" style="margin:6px 0 0">Tap a muscle for its numbers.${src==='week'?' Week so far, so most read low.':''}</p>${low.length&&src==='avg'?`<div class="row" style="margin-top:6px;gap:4px"><span class="small muted">Below target:</span>${low.slice(0,8).map(m=>`<button class="chip" data-act="mapSel" data-m="${m}">${ML[m]}</button>`).join('')}</div>`:''}`;
+    detail=`<p class="small muted" style="margin:6px 0 0">${mapView()==='3d'?'Drag sideways to turn it. ':''}Tap a muscle for its numbers.${src==='week'?' Week so far, so most read low.':''}</p>${low.length&&src==='avg'?`<div class="row" style="margin-top:6px;gap:4px"><span class="small muted">Below target:</span>${low.slice(0,8).map(m=>`<button class="chip" data-act="mapSel" data-m="${m}">${ML[m]}</button>`).join('')}</div>`:''}`;
   }
   const msub=(()=>{if(!avg){const n=MK.filter(m=>st[m].st==='in'||st[m].st==='over').length;return `this week, ${n} at target`;}const sa=muscleStatus(avg);const inA=MK.filter(m=>sa[m].st==='in').length;const lowA=MK.filter(m=>sa[m].st==='under'||sa[m].st==='none').length;return `${inA} on target, ${lowA} below`;})();
-  return sec({sk:'today:map',key:'map',title:'Muscle map',sub:msub,body:`<div class="row" style="justify-content:flex-end"><div class="seg" role="group" aria-label="Time range">${avg?`<button class="chip ${src==='avg'?'on':''}" data-act="mapSrc" data-v="avg" aria-pressed="${src==='avg'}">4-week average</button>`:''}<button class="chip ${src==='week'?'on':''}" data-act="mapSrc" data-v="week" aria-pressed="${src==='week'}">This week</button></div></div>
-  <div class="bm-wrap">${fig('f','Front')}${fig('b','Back')}</div>
+  const v3=mapView()==='3d';
+  B3.status=st;B3.sel=sel;
+  const stage=v3?`<div class="bm3d" id="bm3d"><div class="bm3d-stage" role="img" aria-label="3D body, shaded by hard sets a week. Drag sideways to turn it, tap a muscle for its numbers. The same numbers are in the flat view."></div><p class="bm3d-msg small muted" hidden></p><div class="seg bm3d-turn" role="group" aria-label="Turn the body"><button class="chip" data-act="map3dTurn" data-v="0">Front</button><button class="chip" data-act="map3dTurn" data-v="1">Side</button><button class="chip" data-act="map3dTurn" data-v="2">Back</button></div></div>`:`<div class="bm-wrap">${fig('f','Front')}${fig('b','Back')}</div>`;
+  return sec({sk:'today:map',key:'map',title:'Muscle map',sub:msub,body:`<div class="row spread"><div class="seg" role="group" aria-label="View"><button class="chip ${v3?'':'on'}" data-act="mapView" data-v="flat" aria-pressed="${!v3}">Flat</button><button class="chip ${v3?'on':''}" data-act="mapView" data-v="3d" aria-pressed="${v3}">3D</button></div><div class="seg" role="group" aria-label="Time range">${avg?`<button class="chip ${src==='avg'?'on':''}" data-act="mapSrc" data-v="avg" aria-pressed="${src==='avg'}">4-week avg</button>`:''}<button class="chip ${src==='week'?'on':''}" data-act="mapSrc" data-v="week" aria-pressed="${src==='week'}">This week</button></div></div>
+  ${stage}
   <div class="bm-legend small"><span><i class="st-under"></i>Below target ${counts.under}</span><span><i class="st-in"></i>On target ${counts.in}</span><span><i class="st-over"></i>Above ${counts.over}</span><span><i class="st-none"></i>None ${counts.none}</span>${counts.track?`<span class="hastip" data-tip="Serratus and rotator cuff: sets are counted, but no study sets a weekly dose, so they are never called under or over."><i class="st-track"></i>Tracked only ${counts.track}</span>`:''}</div>
   ${detail}`});
 }
@@ -3399,9 +3754,9 @@ function livePR(exId,s,date){
   if(!s||s.warm||s.drop||!(+s.r>0))return null;
   const I=IDX();const exps=I.byEx[exId];if(!exps||!exps.length)return null;
   const ex=EX(exId);const load=loadOf(ex,s,date);if(!(load>0)&&!ex.timed)return null;
-  const st=I.exStats[exId];const v=noE1(ex)?null:e1(load,+s.r,rirEff(s,ex));
+  const st=I.exStats[exId];const v=noE1(ex)?null:e1(load,+s.r,rirEst(s,ex));
   // A new best is judged within the set's own band of reps to failure.
-  if(v!=null&&st){const bd=st.byBand&&st.byBand[rtfBand(rtfOf(+s.r,rirEff(s,ex)))];if(bd!=null&&v>bd+1e-6)return 'Best';}
+  if(v!=null&&st){const bd=st.byBand&&st.byBand[rtfBand(rtfOf(+s.r,rirEst(s,ex)))];if(bd!=null&&v>bd+1e-6)return 'Best';}
   for(const x of exps)for(const q of x.pts)if(q.load>=load-1e-6&&q.r>=+s.r)return null;
   return ex.timed?'Time PR':'Rep PR';
 }
@@ -3905,7 +4260,7 @@ function viewLogger(){
   const left=d.editingId||d.free?0:remainMin(d);
   let h=`<div class="ph"><div style="min-width:0;flex:1 1 auto"><p class="kick">${d.editingId?'Editing a saved session':'Session in progress'}</p><div class="hrow"><h2 style="overflow-wrap:anywhere;min-width:0">${esc(d.dayName)}</h2>${helpBtn('log')}<button class="btn sm danger" style="margin-left:auto;flex:none" data-act="discard">${d.editingId?'Cancel edit':'Discard'}</button></div><p class="meta"><span id="doneCount">${doneN}</span> <span id="doneWord">${doneN===1?'set':'sets'}</span> done${d.startedAt?`, started ${new Date(d.startedAt).toLocaleTimeString([],{hour:'numeric',minute:'2-digit'})}`:''}${left>0?`, about ${left} min left`:''}</p>${(()=>{const sp=sessProgress(d);return sp.n?`<div class="sprog" aria-hidden="true"><div class="band"><div class="fill prog" id="sessBar" style="width:${sp.pct}%"></div></div><span id="sessOf">${sp.k} of ${sp.n}</span></div>`:'';})()}
   <div class="row lh-row"><input type="date" data-bind="draftDate" value="${d.date}" max="${today()}" aria-label="Session date" data-tip="Change to log a past session">${left>0?'<button class="btn sm" data-act="shortOpen">Short on time</button>':''}</div></div></div>
-  ${helpText('log',(state.settings.rirMode==='off'?'RIR is switched off in Settings, so every working set counts as hard. ':'RIR is reps left in the tank: 3 or less counts the set as hard for weekly volume, 4 or more stays in history only, blank counts as hard but is flagged as assumed. ')+'W marks a warm-up (kept, never analysed); tap it again for D, a drop set (counts as work and volume, never as a PR or target). To add a new warm-up or drop set row, use the ⋯ menu on the exercise. In a superset the rest timer starts after the last exercise of the pair. Timed holds log seconds in the Sec column. The date can be changed to log a past session.'+(state.settings.autoDone?' Auto-mark is on: sets tick themselves when you leave the reps field.':''))}
+  ${helpText('log',(state.settings.rirMode==='off'?'RIR is switched off in Settings, so every working set counts as hard. ':'RIR is reps left in the tank: 3 or less counts the set as hard for weekly volume, 4 or more stays in history only. RIR is optional: a blank is read as your usual RIR on that lift, or as hard until you have rated a few of its sets. ')+'W marks a warm-up (kept, never analysed); tap it again for D, a drop set (counts as work and volume, never as a PR or target). To add a new warm-up or drop set row, use the ⋯ menu on the exercise. In a superset the rest timer starts after the last exercise of the pair. Timed holds log seconds in the Sec column. The date can be changed to log a past session.'+(state.settings.autoDone?' Auto-mark is on: sets tick themselves when you leave the reps field.':''))}
   ${d.free?`<label class="field" style="margin-top:8px">Name<input type="text" data-bind="draftName" maxlength="40" value="${esc(d.dayName)}"></label><p class="small muted" style="margin:4px 0 0">Not tied to a routine day, so your cycle stays put.</p>`:''}
   ${checkinCard(d)}`;
   if(!d.ex.length)h+=`<div class="card"><p class="small" style="margin:0">No exercises yet. Tap + Add exercise below${d.editingId?'':', or Pick for me for a suggestion based on your last 7 days,'} and log as you go.</p></div>`;
@@ -3974,7 +4329,7 @@ function viewProgram(){
     <label class="field">Routine<select data-bind="bRoutine">${state.routines.map(r=>`<option value="${r.id}" ${r.id===R.id?'selected':''}>${esc(r.name)}${r.id===state.activeRoutineId?' (active)':''}${r.days.every(d=>!d.items.length)?' (empty)':''}</option>`).join('')}</select></label>
     <label class="field">Name<input type="text" data-bind="routineName" value="${esc(R.name)}"></label>
     <div class="row">${isActive?'<span class="pill green">Active routine</span>':'<button class="btn sm primary" data-act="rActive">Make active</button>'}
-      <button class="btn sm" data-act="rNew">New blank</button><button class="btn sm" data-act="rTemplate">New from default</button><button class="btn sm" data-act="rDup">Duplicate</button><button class="btn sm danger" data-act="rDel" ${state.routines.length<2?'disabled':''}>Delete</button></div></div>`});
+      <button class="btn sm" data-act="rNew">New blank</button><button class="btn sm" data-act="rTemplate">New from a template</button><button class="btn sm" data-act="rDup">Duplicate</button><button class="btn sm danger" data-act="rDel" ${state.routines.length<2?'disabled':''}>Delete</button></div></div>`});
   h+=(()=>{const c=routineClutter();return c.length?`<div class="callout yellow" style="margin:10px 0"><p style="margin:0 0 8px">${c.length} routine${c.length>1?'s are':' is'} empty or an exact duplicate, with no logged sessions: ${c.map(r=>esc(r.name)+(routineEmpty(r)?' (empty)':' (duplicate)')).join(', ')}.</p><button class="btn sm" data-act="rClean">Remove ${c.length>1?'them':'it'}</button></div>`:'';})();
   h+=sec({sk:'program:library',key:'library',title:'Add exercises',sub:'drag into a day, or tap +',body:`<div class="grid2"><input type="search" placeholder="Search" aria-label="Search exercises" data-bind="bLibQ" value="${esc(ui.bLibQ)}"><select data-bind="bLibM" aria-label="Muscle"><option value="">All muscles</option>${MUSCLES.map(([k,l])=>`<option value="${k}" ${ui.bLibM===k?'selected':''}>${l}</option>`).join('')}</select></div>
     <label class="field" style="margin-top:8px">+ adds to<select data-bind="bTarget">${R.days.map((d,i)=>`<option value="${i}" ${i===ui.bTarget?'selected':''}>${dayLabel(R,i)}: ${esc(d.name)}</option>`).join('')}</select></label>
@@ -4097,7 +4452,7 @@ function viewDash(){
   // How much of the last 4 weeks of volume is measured rather than assumed.
   const rc=I.rirCov;const covPct=rc.total&&state.settings.rirMode!=='off'?Math.round(rc.logged/rc.total*100):null;
   // Only said when it matters: under 70% of recent sets carry an RIR.
-  const cov=covPct==null||covPct>=70?'':`<div class="callout ${covPct>=35?'yellow':'red'}" style="margin:0 0 12px"><p class="small hastip" style="margin:0" data-tip="Sets with a blank RIR still count as hard, so the bars below are partly assumed. The RIR picker on each set takes one tap."><b>RIR on ${covPct}% of recent sets.</b> The bars below are partly assumed.</p></div>`;
+  const cov=covPct==null||covPct>=70?'':`<p class="small muted hastip" style="margin:0 0 12px" data-tip="A blank RIR is read as your usual RIR on that lift once you have rated 3 of its sets in 12 weeks, else the set counts as hard. The lighter shading shows those sets.">RIR on ${covPct}% of recent sets. The lighter part of each bar is assumed.</p>`;
   let h=pageHead('Your log, measured','Stats',`${state.sessions.length} session${state.sessions.length===1?'':'s'} logged${state.sessions.length?`, since ${fmtDate(sortedSessions()[0].date)}`:''}`,helpBtn('stats'))+`${helpText('stats','Everything here is calculated from your logged sets: performance trends, not direct measurements of muscle size. Tap a section title to open or fold it. Each visit starts with only the top section open. Each section has its own ? for what the numbers mean.')}
   <nav class="jump" aria-label="Stats sections">${orderKeys(state.settings.secOrder.dash||[],DSEC_KEYS).filter(k=>!state.settings.hidden.includes('dash:'+k)).map(k=>DSECS.find(x=>x[0]===k)).map(([k,l])=>`<button class="chip" data-act="dashJump" data-sec="${k}">${l}</button>`).join('')}</nav>`;
   if(!state.sessions.length){
@@ -4112,7 +4467,7 @@ function viewDash(){
   const avg=actualAvg4();const plan=plannedSets(R);const bands=state.settings.bands;
 
   // volume: five ways to read the same hard-set counts, plus tonnage
-  h+=dsec('volume','Volume','Hard sets per muscle. Direct work counts 1, secondary counts 0.5. A set counts as hard when you logged RIR 3 or less, and also when you left RIR blank, because most working sets are. Blank sets are shaded lighter so you can see how much of the bar is measured and how much is assumed. Amber is under your band, green is inside it, blue is over. Load is total weight × reps per week, comparable week to week but not session to session.',
+  h+=dsec('volume','Volume','Hard sets per muscle. Direct work counts 1, secondary counts 0.5. A set counts as hard when you logged RIR 3 or less. A blank RIR is read as your usual RIR on that lift once you have rated 3 of its sets in the last 12 weeks, and until then counts as hard, because most working sets are. Blank sets are shaded lighter so you can see how much of the bar is measured and how much is assumed. Amber is under your band, green is inside it, blue is over. Load is total weight × reps per week, comparable week to week but not session to session.',
     `${cov}
   <div class="chips">${[['planned','Planned'],['week','This week'],['avg','Recent average'],['trend','Weekly trend'],['region','By region'],['load','Load']].map(([k,l])=>`<button class="chip ${ui.volMode===k?'on':''}" data-act="volMode" data-v="${k}">${l}</button>`).join('')}</div>
   ${ui.volMode==='region'?regionBody(avg,thisWeek):ui.volMode==='trend'?trendBody():ui.volMode==='load'?`<div class="card">${volHeadline()}${state.sessions.length?`${rangeChips('vol',weeksSpan(firstDate(state.sessions)),8)}<div class="chartbox"><canvas id="chVol"></canvas></div>${chartFallback()}`:'<p class="small muted">Log a session to start this chart.</p>'}</div>`:`<div class="card">${ui.volMode==='planned'?volumeRows(plan):ui.volMode==='week'?volumeRows(thisWeek,state.settings.rirMode==='off'?null:thisWeekConf):(avg?`<p class="small muted" style="margin:0 0 6px">Averaged over the ${avg._weeks} week${avg._weeks===1?'':'s'} with training in the last 4. Weeks with no sessions are excluded rather than counted as zero.</p>${volumeRows(avg,state.settings.rirMode==='off'?null:avg._conf)}`:'<p class="muted">No sessions in the previous 4 full weeks.</p>')}</div>`}`,`${wkHard} hard sets this week`);
@@ -4555,6 +4910,8 @@ function viewSettings(){
   return `${pageHead('Ironlog '+APP_VERSION,'Settings',cloud.on?(window.claude?'Saved to your Claude account and this device':'Synced to your account and saved on this device'):'Saved on this device')}
   ${G('general','General')}<div class="card stack"><div class="grid2"><label class="field">Units<select data-bind="unit"><option value="lb" ${s.unit==='lb'?'selected':''}>lb and inches</option><option value="kg" ${s.unit==='kg'?'selected':''}>kg and cm</option></select></label>
   <label class="field">Theme<select data-bind="theme"><option value="system" ${s.theme==='system'?'selected':''}>Match device</option><option value="dark" ${s.theme==='dark'?'selected':''}>Dark</option><option value="light" ${s.theme==='light'?'selected':''}>Light</option></select></label></div>
+  <label class="field">Your name (optional)<input type="text" data-bind="userName" value="${esc(s.userName||'')}" maxlength="40" autocomplete="given-name" placeholder="Shown on Today"></label>
+  <div><p class="small muted" style="margin:0 0 6px;font-weight:600">Accent colour</p><div class="chips" role="group" aria-label="Accent colour">${ACCENTS.map(([k,l])=>`<button class="chip acc ${(s.accent||'blue')===k?'on':''}" data-act="accent" data-v="${k}" aria-pressed="${(s.accent||'blue')===k}"><i class="sw sw-${k}" aria-hidden="true"></i>${l}</button>`).join('')}</div></div>
   <div class="grid2"><label class="field"><span class="hastip" data-tip="Used by the plates-per-side line in the logger.">Bar weight (${U()})</span><input type="text" inputmode="decimal" data-bind="barKg" value="${fmtW(barKg())}"></label>
   <label class="field"><span class="hastip" data-tip="Compared with your 7-day-average bodyweight trend on Stats. Leave blank to track without a target.">Bodyweight goal (%/wk)</span><input type="text" inputmode="decimal" data-bind="bwGoalPct" value="${s.bwGoalPct==null?'':s.bwGoalPct}" placeholder="e.g. 0.3 or -0.5"></label></div>
   <div class="row"><button class="btn sm" data-act="layoutReset" data-tip="Puts the sections on every tab back in their default order.">Reset section order</button></div></div></div></details>
@@ -4576,6 +4933,7 @@ function viewSettings(){
   <div class="card"><table class="t"><tr><th>Muscle</th><th class="r">Min</th><th class="r">Max</th></tr>${MUSCLES.map(([k,l])=>`<tr><td>${l}</td><td class="r"><input style="width:70px" type="text" inputmode="numeric" aria-label="${l} minimum hard sets a week" data-band="${k}" data-bi="0" value="${s.bands[k][0]}"></td><td class="r"><input style="width:70px" type="text" inputmode="numeric" aria-label="${l} maximum hard sets a week" data-band="${k}" data-bi="1" value="${s.bands[k][1]}"></td></tr>`).join('')}</table></div></div></details>
   ${G('data','Your data','','dataSec')}
   <div class="panel" id="syncInfo">${syncInfo()}</div>
+  ${canInstallHere()?`<div class="panel row spread" id="installPanel" style="margin-top:8px"><p class="small" style="margin:0;flex:1 1 180px"><b>Install the app.</b> Full screen, offline, one tap from your home screen.</p><button class="btn sm primary" data-act="install">Install</button></div>`:''}
   ${acctPanel()}
   ${privacyLine()}
   ${backupDue()?`<p class="callout yellow" style="margin:10px 0 0"><b>Backup due.</b> ${s.lastExport?`Last backup file ${fmtDate(s.lastExport)}.`:'No backup file yet.'} ${cloud.on?'Export one below; the cloud copy mirrors deletions, so it is not a backup.':'Export one below; this device holds the only copy.'}</p>`:''}
@@ -4601,6 +4959,8 @@ function rirSettings(){
     <option value="on" ${s.rirMode==='on'?'selected':''}>On: log RIR and use it as logged</option>
     <option value="cal" ${s.rirMode==='cal'?'selected':''}>On, corrected by my calibration sets</option>
     <option value="off" ${s.rirMode==='off'?'selected':''}>Off: don't ask, count every working set as hard</option></select></label>
+  ${s.rirMode==='off'?'':`<label class="check-inline"><input type="checkbox" data-bind="rirAsk" ${s.rirAsk===true?'checked':''}><span class="hastip" data-tip="Off: tap a set's RIR box when you want to rate it. On: the 0 to 5 picker opens by itself after each set you tick.">Open the RIR picker after each set</span></label>
+  <p class="small muted hastip" style="margin:0" data-tip="A blank RIR is read as your usual RIR on that lift: the middle value of the sets of it you rated in the last 12 weeks, once there are 3. That is a convention, so rating a set only sometimes cannot make it look stronger or weaker. Until there are 3, a blank set counts as hard and as 0 reps left for 1RM estimates, which errs low and never inflates a PR. Recovery, calibration and the light-load check use only the RIR you entered.">Skipping RIR on some sets is fine.</p>`}
   ${s.rirMode==='cal'&&c.recent<2?'<p class="small" style="margin:0"><b>Needs 2 calibration sets from the last 12 weeks before any correction applies.</b></p>':''}
   <p class="small hastip" style="margin:0" data-tip="Off hides the RIR picker: every working set counts as hard and estimates use reps alone. Corrected shifts RIR you called at 4 or less by your typical error, shrunk toward zero while you have few calibration sets and capped at 2 reps; compound and isolation lifts use their own sets once each has 2. A set called at 0 is shifted too: unless a rep actually failed, 0 is still a call, and people under-call reps left by about 1 on average, only slightly less near failure (Halperin 2022). Your log never changes, so switching is reversible.">${esc(sum)}</p>`;
 }
@@ -4636,6 +4996,7 @@ function renderModalBody(){
   const m=ui.modal;const el=$('#modal');if(!m){el.hidden=true;return;}
   let h='';
   if(m.kind==='account'){h=acctSheet(m);}
+  else if(m.kind==='install'){h=installSheet(m);}
   else if(m.kind==='confirm'){
     h=`<div class="sheet" role="dialog" aria-modal="true"><div class="sheet-h"><h3>${esc(m.title)}</h3></div><p>${esc(m.body)}</p><div class="row" style="margin-top:12px"><button class="btn ${m.danger?'danger':'primary'}" data-act="mOk">${esc(m.okLabel)}</button>${m.alt?`<button class="btn" data-act="mAlt">${esc(m.alt.label)}</button>`:''}<button class="btn" data-act="mClose">Cancel</button></div></div>`;
   }else if(m.kind==='picker'){
@@ -4680,6 +5041,13 @@ function renderModalBody(){
     h=`<div class="sheet" role="dialog" aria-modal="true"><div class="sheet-h"><h3>${esc(m.title)}</h3><button class="ib" aria-label="Close" data-act="mClose">✕</button></div><ul class="recap">${m.lines.map(l=>`<li>${esc(l)}</li>`).join('')}</ul>${m.note?`<p class="small muted">${esc(m.note)}</p>`:''}${aiOn()&&m.sid?`<button class="btn block" style="margin-bottom:8px" data-act="aiDebrief" data-sid="${esc(m.sid)}">Debrief with Claude</button>`:''}
     ${u?`<div class="hint"><b>Update ${esc(u.dayName)} in your routine?</b><br>${esc(u.text)}. Next time this day starts with the change.</div><button class="btn block" data-act="applyUpd">Update ${esc(u.dayName)}</button>`:''}
     <button class="btn primary block" style="margin-top:10px" data-act="mClose">${u?'Not now':'Done'}</button></div>`;
+  }else if(m.kind==='templates'){
+    h=`<div class="sheet" role="dialog" aria-modal="true"><div class="sheet-h"><h3>Pick a routine</h3><button class="ib" aria-label="Close" data-act="mClose">✕</button></div>
+    <p class="small muted" style="margin:0 0 8px">A starting point with sets, reps and rest worked out. Change anything later in Plan.</p>
+    <div class="tpl-list">${TEMPLATES.map(t=>{
+      // Minutes come from the same time model as Plan, so the list and the plan agree.
+      const r=routineFromTemplate(t.key);const tr=r.days.filter(d=>!d.rest);const min=Math.round(tr.reduce((a,d)=>a+dayMinutes(d),0)/Math.max(1,tr.length)/5)*5;
+      return `<button class="tpl" data-act="tplPick" data-k="${t.key}"><span class="tpl-t">${esc(t.name)}</span><span class="tpl-w">${esc(t.who)}</span><span class="tpl-m">${esc(t.meta)} · about ${min} min · ${tr.map(d=>esc(d.name)).join(', ')}</span></button>`;}).join('')}</div></div>`;
   }else if(m.kind==='routineNew'){
     h=`<div class="sheet" role="dialog" aria-modal="true"><div class="sheet-h"><h3>New routine</h3><button class="ib" aria-label="Close" data-act="mClose">✕</button></div>
     <label class="field">Name<input type="text" id="rNewName" placeholder="e.g. Upper focus, 6 days"></label>
@@ -4868,7 +5236,10 @@ function linkToggle(arr,i,get){
   const tmp=arr.map(get);fixSupersets(tmp);return true;
 }
 function move(arr,i,j){if(j<0||j>=arr.length)return;const [x]=arr.splice(i,1);arr.splice(j,0,x);}
-function draftSet(t){return state.draft.ex[+t.dataset.b].sets[+t.dataset.s];}
+/* Null when the row is gone. Rebuilding the view removes a still-focused reps
+   field, and the browser then fires its pending change for a set that − Set,
+   Swap or Undo has just removed. */
+function draftSet(t){const b=state.draft&&state.draft.ex[+t.dataset.b];return b&&b.sets[+t.dataset.s]||null;}
 /* Exercises added or swapped in a session, relative to the routine day it was
    logged against, so Finish can offer to make the change permanent. */
 function routineUpdates(d){
@@ -4942,7 +5313,7 @@ function exportCSV(){
     for(const b of ss.ex){
       const ex=EX(b.exId);
       b.sets.forEach((s,i)=>{
-        const total=loadOf(ex,s,ss.date);const est=s.warm||s.drop||noE1(ex)?null:e1(total,+s.r,rirEff(s,ex));
+        const total=loadOf(ex,s,ss.date);const est=s.warm||s.drop||noE1(ex)?null:e1(total,+s.r,rirEst(s,ex));
         rows.push([ss.date,ss.dayName,ss.deload?'yes':'no',ex.name,ML[ex.primary]||ex.primary,i+1,s.warm?'yes':'no',s.drop?'yes':'no',ex.perSide?'yes':'no',loadWords(ex),
           fmtW(+s.w||0),fmtW(total),s.r,(s.rir==null||s.rir==='')?'':s.rir,est==null?'':fmtW(est),b.note||'',ss.notes||'',ss.durMin||'','',ex.timed?'seconds':'reps',s.cal?`stop at ${s.cal.at}, called ${s.cal.pred} left`:'']);
       });
@@ -4974,7 +5345,8 @@ function makeDemo(){
   state.sessions=state.sessions.filter(s=>!s.demo);state.bodyweights=state.bodyweights.filter(b=>!b.demo);state.measurements=state.measurements.filter(m=>!m.demo);
   const R=activeRoutine();const rnd=mulberry(11);
   const rate={chest:.006,lats:.009,upperBack:.008,traps:.005,lowerBack:.004,frontDelts:.005,sideDelts:0,rearDelts:.007,biceps:.012,triceps:.004,forearms:.006,abs:.007,obliques:.005,neck:.01,quads:.011,hamstrings:.001,glutes:.008,adductors:.008,abductors:.006,calves:.003,tibialis:.01};
-  const base={bench:275,incBench:245,rackPull:455,sldl:315,hackSquat:405,legPress:720,bss:90,seatedDbPress:130,cableLateral:30,leanAwayLat:35,cableY:25,lowHighFly:60,pecDeck:220,dbPullover:110,kelsoShrug:180,dbShrug:140,reversePecDeck:140,inclineCurl:55,bayesianCurl:45,preacher:110,hammer:70,wristCurl:115,revWristCurl:60,ohCableExt:110,jmPress:185,pressdown:120,woodchop:70,cableCrunch:150,legExt:250,adductor:250,abductor:250,standCalf:350,seatedCalf:220,seatedCurl:180,tibRaise:50,neckCurl:45,neckExt:70,landmineRow:250,cableRow:250,pullup:45,dips:90,hyperext:45};
+  // Dumbbell lifts logged per dumbbell carry per-hand numbers (these were totals before r13 gave dumbbells that meaning).
+  const base={bench:275,incBench:245,rackPull:455,sldl:315,hackSquat:405,legPress:720,bss:45,seatedDbPress:65,cableLateral:30,leanAwayLat:35,cableY:25,lowHighFly:60,pecDeck:220,dbPullover:110,kelsoShrug:180,dbShrug:70,reversePecDeck:140,inclineCurl:30,bayesianCurl:45,preacher:110,hammer:35,wristCurl:115,revWristCurl:60,ohCableExt:110,jmPress:185,pressdown:120,woodchop:70,cableCrunch:150,legExt:250,adductor:250,abductor:250,standCalf:350,seatedCalf:220,seatedCurl:180,tibRaise:50,neckCurl:45,neckExt:70,landmineRow:250,cableRow:250,pullup:45,dips:90,hyperext:45};
   const eqBase={barbell:185,dumbbell:60,cable:100,machine:200,smith:185,landmine:180,other:50,bodyweight:0};
   const BW=185;const cur=weekStart(today());const t=today();
   // Weekly routines land on their weekdays; cycles run in order, one cycle day
@@ -5033,6 +5405,17 @@ const ACT={
   },
   appUpdateLater(){upd.later=true;updRender();},
   async acctRetry(){await cloudInit();acctRerender();if(!cloud.on)toast('Still not syncing. Check your connection, or sign out and in again.');},
+  install(){
+    const how=installKind();
+    if(how==='prompt'){
+      const e=window.__installEvt;window.__installEvt=null;
+      try{e.prompt();Promise.resolve(e.userChoice).then(r=>{if(r&&r.outcome==='accepted')toast('Installing Ironlog. Open it from your home screen.');rerenderKeepScroll();},()=>{});}
+      catch(err){log('install',err);openModal({kind:'install',how:'menu'});}
+      return;
+    }
+    openModal({kind:'install',how});
+  },
+  installLater(){try{localStorage.setItem(INSTALL_LATER,'1');}catch(e){log('storage',e);}rerenderKeepScroll();toast('Hidden. Settings > Your data has it any time.');},
   acctLater(){try{localStorage.setItem(ACCT_LATER,'1');}catch(e){log('storage',e);}rerenderKeepScroll();toast('Hidden. Settings > Your data has it any time.');},
   acctOpen(t){openModal({kind:'account',mode:t.dataset.mode==='signup'?'signup':'signin',email:'',pw:''});},
   acctMode(t){const m=ui.modal;if(!m||m.kind!=='account')return;m.mode=t.dataset.mode;m.err='';m.pw='';renderModal();},
@@ -5167,7 +5550,23 @@ const ACT={
   },
   layoutSimple(){state.settings.hidden=SIMPLE_HIDE.slice();commit();rerenderKeepScroll();toast('Simple view on. Show everything brings the rest back.');},
   layoutAll(){state.settings.hidden=[];commit();rerenderKeepScroll();toast('Every section shown');},
-  obSample(){state.settings.onboarded=true;commit();render();toast('Sample routine ready. Start session when you are at the gym.');},
+  obSample(){openModal({kind:'templates',from:'welcome'});},
+  tplPick(t){
+    const m=ui.modal;const from=m&&m.kind==='templates'?m.from:'plan';const k=t.getAttribute('data-k');
+    const r=routineFromTemplate(k);if(!r)return;closeModal();
+    // The same template added again, unchanged, is opened rather than duplicated.
+    const same=state.routines.find(x=>routineSig(x)===routineSig(r));
+    if(from==='welcome'){
+      // First run: the untouched starter routine is replaced by the pick, not
+      // kept beside it. A routine with sessions logged against it always stays.
+      if(same)state.activeRoutineId=same.id;
+      else{const starter=routineSig(defaultRoutine());state.routines=state.routines.filter(x=>routineSig(x)!==starter||state.sessions.some(q=>q.routineId===x.id));state.routines.push(r);state.activeRoutineId=r.id;}
+      state.settings.onboarded=true;ui.todayDay=null;ui.tab='today';commit();window.scrollTo(0,0);render();
+      toast(`${r.name} is ready. Start a session when you are at the gym.`);return;
+    }
+    if(same){ui.bRoutine=same.id;render();toast('You already have this routine unchanged. Opened it instead.');return;}
+    state.routines.push(r);ui.bRoutine=r.id;commit();render();toast(`${r.name} added. Tap Make active to use it.`);
+  },
   obOwn(){
     state.settings.onboarded=true;
     const r={id:uid(),name:'My routine',schedule:'cycle',days:[1,2,3].map(()=>({id:uid(),name:'Training day',rest:false,items:[]}))};
@@ -5255,7 +5654,11 @@ const ACT={
   },
   cardioDel(t){const c=state.cardio.find(x=>x.id===t.dataset.id);if(!c)return;toTrash('cardio',c);state.cardio=state.cardio.filter(x=>x.id!==c.id);commit();rerenderKeepScroll();toast('Cardio entry moved to Recently deleted');},
   cDraftAdd(t){const d=state.draft;(d.cardio||(d.cardio=[])).push(cleanCardio({id:uid(),kind:'walk',when:t.dataset.when},true));saveNow();rerenderKeepScroll();},
-  cDraftDel(t){state.draft.cardio.splice(+t.dataset.c,1);saveNow();rerenderKeepScroll();},
+  /* A filled cardio entry goes with an Undo, like a set with reps; an empty one goes quietly. */
+  cDraftDel(t){const d=state.draft;const list=d&&d.cardio;const i=+t.dataset.c;const c=list&&list[i];if(!c)return;
+    if(+c.min>0||+c.hr>0||(c.note||'').trim()){const did=d.id;snapshot(()=>{const dd=state.draft;if(!dd||dd.id!==did)return false;(dd.cardio||(dd.cardio=[])).splice(Math.min(i,dd.cardio.length),0,c);return true;});
+      list.splice(i,1);saveNow();rerenderKeepScroll();toast(`${CARDIOL[c.kind]||'Entry'} removed`,true);return;}
+    list.splice(i,1);saveNow();rerenderKeepScroll();},
   restore(t){
     const x=state.trash.find(y=>y.id===t.dataset.id&&y.kind===t.dataset.k);if(!x)return;
     state.trash=state.trash.filter(y=>y!==x);
@@ -5324,7 +5727,7 @@ const ACT={
      the session on a single tap. On a long day that is well over a hundred
      elements per checkmark. Patch the one row instead. */
   sDone(t){
-    const bi=+t.dataset.b,si=+t.dataset.s;const s=draftSet(t);
+    const bi=+t.dataset.b,si=+t.dataset.s;const s=draftSet(t);if(!s)return;
     /* With auto-done on, leaving the reps field marks the set done, and on a
        phone that blur happens a moment before the tap on the checkmark lands.
        Without this guard the tap would immediately undo the auto-mark. */
@@ -5341,7 +5744,7 @@ const ACT={
   },
   tStart(t){const b=state.draft&&state.draft.ex[+t.dataset.b];if(b&&+b.plan.rest>0)startTimer(+b.plan.rest);},
   sWarm(t){
-    const s=draftSet(t);const bi=+t.dataset.b,si=+t.dataset.s;
+    const s=draftSet(t);const bi=+t.dataset.b,si=+t.dataset.s;if(!s)return;
     if(!s.warm&&!s.drop)s.warm=true;else if(s.warm){s.warm=false;s.drop=true;}else s.drop=false;
     t.classList.toggle('on',s.warm);t.classList.toggle('drop',!!s.drop);t.textContent=s.drop?'D':s.warm?'W':'–';
     t.setAttribute('aria-label',`Set ${si+1} type: ${s.warm?'warm-up':s.drop?'drop set':'working set'}. Tap to change`);
@@ -5420,7 +5823,14 @@ const ACT={
      every set is done, and then with Undo, since it holds real numbers. */
   sDel(t){const b=state.draft.ex[+t.dataset.b];if(!b||!b.sets.length)return;
     let i=-1;for(let k=b.sets.length-1;k>=0;k--)if(!b.sets[k].done){i=k;break;}
-    if(i>=0){b.sets.splice(i,1);saveNow();rerenderKeepScroll();return;}
+    if(i>=0){
+      /* A row with reps typed in is work in progress: it goes with an Undo,
+         like a logged set. A row with nothing typed (its load is only the
+         suggestion) goes quietly. */
+      const x=b.sets[i];
+      if(+x.r>0){const did=state.draft.id;snapshot(()=>{const dd=state.draft;if(!dd||dd.id!==did||!dd.ex.includes(b))return false;b.sets.splice(Math.min(i,b.sets.length),0,x);return true;});
+        b.sets.splice(i,1);saveNow();rerenderKeepScroll();toast('Set removed',true);return;}
+      b.sets.splice(i,1);saveNow();rerenderKeepScroll();return;}
     const gone=b.sets[b.sets.length-1],at=b.sets.length-1,did=state.draft.id;
     snapshot(()=>{const dd=state.draft;if(!dd||dd.id!==did||!dd.ex.includes(b))return false;b.sets.splice(Math.min(at,b.sets.length),0,gone);return true;});
     b.sets.pop();saveNow();rerenderKeepScroll();toast('Logged set removed',true);},
@@ -5578,7 +5988,7 @@ const ACT={
     // An existing empty routine is reused rather than stacking another blank one.
     const blank=state.routines.find(r=>routineEmpty(r)&&r.id!==state.activeRoutineId);
     if(blank){blank.name=nm||blank.name;ui.bRoutine=blank.id;commit();render();toast('Reused your empty routine');return;}const r={id:uid(),name:nm||'New routine',schedule:'cycle',days:[1,2,3].map(()=>({id:uid(),name:'Training day',rest:false,items:[]}))};state.routines.push(r);ui.bRoutine=r.id;commit();render();},
-  rTemplate(){const r=defaultRoutine();const same=state.routines.find(x=>routineSig(x)===routineSig(r));if(same){ui.bRoutine=same.id;render();toast('You already have this routine unchanged. Opened it instead.');return;}state.routines.push(r);ui.bRoutine=r.id;commit();render();toast('Default routine added');},
+  rTemplate(){openModal({kind:'templates',from:'plan'});},
   rDup(){const src=curRoutineB();const r=JSON.parse(JSON.stringify(src));r.id=uid();r.name=src.name+' (copy)';r.days.forEach(d=>{d.id=uid();d.items.forEach(it=>it.uid=uid());});state.routines.push(r);ui.bRoutine=r.id;commit();render();},
   rDel(){const R=curRoutineB();if(state.routines.length<2)return;confirmBox('Delete routine?',`"${R.name}" will be removed. Logged sessions are kept, and the routine stays under Recently deleted in History for ${TRASH_DAYS} days.`,'Delete routine',()=>{const Rn=state.routines.find(r=>r.id===R.id);if(!Rn||state.routines.length<2){rerenderKeepScroll();return;}snapshot();toTrash('routine',Rn);state.routines=state.routines.filter(r=>r.id!==R.id);if(state.activeRoutineId===R.id)state.activeRoutineId=state.routines[0].id;ui.bRoutine=state.activeRoutineId;commit();render();toast('Routine deleted',true);},true);},
   exNew(){openModal({kind:'exEdit',isNew:true,e:{id:'c_'+uid(),name:'',primary:'chest',secondary:[],equip:'cable',bw:false,rare:false,note:'',custom:true,archived:false}});},
@@ -5628,7 +6038,10 @@ const ACT={
   chartRange(t){ui.rng=ui.rng||{};ui.rng[t.dataset.id]=t.dataset.v;rerenderKeepScroll();},
   histMore(){ui.histLimit+=HIST_PAGE;rerenderKeepScroll();},
   mapSel(t){const m=t.getAttribute('data-m');ui.mapSel=ui.mapSel===m?null:m;rerenderKeepScroll();},
+  accent(t){const v=t.getAttribute('data-v');if(!ACCENTS.some(([k])=>k===v))return;if(v==='blue')delete state.settings.accent;else state.settings.accent=v;commit();rerenderKeepScroll();},
   mapSrc(t){ui.mapSrc=t.getAttribute('data-v');rerenderKeepScroll();},
+  mapView(t){try{localStorage.setItem(MAPVIEW_KEY,t.getAttribute('data-v')==='3d'?'3d':'flat');}catch(e){/* remembered for this visit only */}B3.viewMem=t.getAttribute('data-v')==='3d'?'3d':'flat';rerenderKeepScroll();},
+  map3dTurn(t){map3dTurnTo([0,Math.PI/2,Math.PI][+t.getAttribute('data-v')]||0);},
   /* Every tile, summary row and map detail lands on the matching dashboard
      section, opened even if you had folded it, with the relevant muscle or
      exercise already selected. */
@@ -5776,11 +6189,11 @@ document.addEventListener('input',e=>{
     else if(k==='hr'){const n=numIn(t.value);c.hr=n!=null&&n>=30&&n<=230?Math.round(n):null;}
     else if(k==='kind'&&CARDIOL[t.value])c.kind=t.value;else if(k==='when'&&CWHENL[t.value])c.when=t.value;
     saveSoon();return;}
-  if(t.dataset.f&&state.draft){const s=draftSet(t);const v=t.value;
+  if(t.dataset.f&&state.draft){const s=draftSet(t);if(!s)return;const v=t.value;
     // Clamp what gets stored. The field keeps whatever was typed so the user is
     // not fought mid-keystroke, but history can never take a negative load or
     // an impossible rep count, which used to push session volume negative.
-    if(t.dataset.f==='w'){const n=numIn(v);s.w=n==null?null:fromD(Math.min(Math.max(n,0),20000));}
+    if(t.dataset.f==='w'){const n=numIn(v);s.w=n==null?null:fromD(Math.min(Math.max(n,0),20000));carried.delete(s);}
     else if(t.dataset.f==='r'){const n=numIn(v);s.r=n==null?null:Math.min(Math.max(Math.round(n),0),1000);}
     else{const n=numIn(v);s.rir=n==null?null:Math.min(Math.max(n,0),10);if(t.tagName==='SELECT')t.classList.toggle('unset',v==='');}
     if(t.dataset.f!=='rir')updateProgress(+t.dataset.b);
@@ -5816,16 +6229,19 @@ document.addEventListener('change',e=>{
   if(t.dataset.mbind)return;
   if(t.dataset.cf&&state.draft&&state.draft.cardio){const c=state.draft.cardio[+t.dataset.c];if(c){const k=t.dataset.cf;if(k==='kind'&&CARDIOL[t.value])c.kind=t.value;else if(k==='when'&&CWHENL[t.value])c.when=t.value;saveNow();}return;}
   if(t.dataset.f==='r'&&state.draft){
-    const bi=+t.dataset.b,si=+t.dataset.s;const s=draftSet(t);
+    const bi=+t.dataset.b,si=+t.dataset.s;const s=draftSet(t);if(!s)return;
+    // The typed value is already stored (the input handler). A done set whose
+    // reps were cleared is still undone, once the new rows are in place.
+    if(rebuilding){if(s.done&&!(+s.r>0))queueMicrotask(()=>{const b2=state.draft&&state.draft.ex[bi];const s2=b2&&b2.sets[si];if(s2&&s2.done&&!(+s2.r>0))setDone(bi,si,false);});return;}
     // A set with no reps cannot be a done set: finishing would save it as 0 reps.
     if(s.done&&!(+s.r>0))setDone(bi,si,false);
     else if(state.settings.autoDone&&!s.done&&+s.r>0){lastAuto={b:bi,s:si,t:Date.now()};setDone(bi,si,true);}
     else if(s.done)refreshPR(bi,si,false);
     saveSoon();return;}
   if(t.dataset.f){
-    if(t.dataset.f==='w'&&state.draft){const s=draftSet(t);if(s&&s.done)refreshPR(+t.dataset.b,+t.dataset.s,false);mixCheck(+t.dataset.b,+t.dataset.s);}
+    if(t.dataset.f==='w'&&state.draft){const s=draftSet(t);if(!s)return;if(s.done)refreshPR(+t.dataset.b,+t.dataset.s,false);mixCheck(+t.dataset.b,+t.dataset.s);carryLoad(+t.dataset.b,+t.dataset.s);}
     if(t.tagName==='SELECT'&&state.draft){
-      const s=draftSet(t);const n=numIn(t.value);
+      const s=draftSet(t);if(!s)return;const n=numIn(t.value);
       s.rir=n==null?null:Math.min(Math.max(n,0),10);
       t.classList.toggle('unset',t.value==='');
       // No invalidate() here. The draft is not part of IDX, so this only threw
@@ -5860,12 +6276,14 @@ document.addEventListener('change',e=>{
     case 'timerSound':state.settings.timerSound=t.checked;if(t.checked)primeAudio();commit();break;
     case 'timerCompact':state.settings.timerCompact=t.checked;commit();if(!$('#timer').hidden)tick();break;
     case 'autoDone':state.settings.autoDone=t.checked;commit();rerenderKeepScroll();break;
+    case 'rirAsk':if(t.checked)state.settings.rirAsk=true;else delete state.settings.rirAsk;commit();rerenderKeepScroll();break;
     case 'wakeLock':state.settings.wakeLock=t.checked;commit();if(t.checked&&state.draft)wakeOn();else if(!t.checked)wakeOff();break;
     case 'timeBudget':{const n=numIn(t.value);state.settings.timeBudget=n==null||n<10?null:Math.min(Math.round(n),300);commit();break;}
     case 'height':{const v=t.value.trim();if(!v){state.settings.heightCm=null;commit();rerenderKeepScroll();break;}
       const cm=parseHeight(v);if(cm==null){toast(U()==='lb'?'Enter height like 5\'10 or 70 (inches)':'Enter height in cm, like 178');break;}
       state.settings.heightCm=cm;commit();rerenderKeepScroll();toast(`Height ${heightTxt(cm)}`);break;}
     case 'barKg':{const n=numIn(t.value);state.settings.barKg=n==null||n<=0?null:fromD(Math.min(n,U()==='lb'?110:50));commit();rerenderKeepScroll();break;}
+    case 'userName':{const n=t.value.replace(/\s+/g,' ').trim().slice(0,40);if(n)state.settings.userName=n;else delete state.settings.userName;commit();break;}
     case 'bwGoalPct':{const n=numIn(t.value);state.settings.bwGoalPct=n==null?null:Math.min(Math.max(n,-2),2);commit();break;}
     case 'histEx':ui.histEx=t.value;ui.histLimit=HIST_PAGE;rerenderKeepScroll();break;
   }
@@ -5885,7 +6303,11 @@ document.addEventListener('keydown',e=>{
   // In a set row, Enter (the keyboard's Next) goes load, reps, then the next
   // set's load, which is the order sets are typed in.
   if(e.key==='Enter'&&e.target&&e.target.matches&&e.target.matches('.sg input[data-f]')){
-    e.preventDefault();const all=[...document.querySelectorAll('.sg input[data-f]')];const i=all.indexOf(e.target);
+    e.preventDefault();
+    // Next on an empty reps field accepts the grey number (see acceptGrey).
+    const t=e.target;
+    if(t.dataset.f==='r'&&!t.value.trim())acceptGrey(+t.dataset.b,+t.dataset.s);
+    const all=[...document.querySelectorAll('.sg input[data-f]')];const i=all.indexOf(e.target);
     const nx=all[i+1];if(nx){try{nx.focus();nx.select&&nx.select();}catch(x){/* focus is best effort */}}else e.target.blur();return;}
   if(e.key==='Escape'&&document.querySelector('.rirstrip')){rirClose();return;}
   if(e.key==='Escape'&&ui.modal){closeModal();return;}
@@ -5894,6 +6316,37 @@ document.addEventListener('keydown',e=>{
   const first=f[0],last=f[f.length-1],a=document.activeElement;
   if(e.shiftKey&&(a===first||!$('#modal').contains(a))){e.preventDefault();last.focus();}
   else if(!e.shiftKey&&(a===last||!$('#modal').contains(a))){e.preventDefault();first.focus();}
+});
+
+/* Auto-mark and the grey reps. With auto-mark on, typing reps and leaving the
+   field ticks the set (the change handler). Leaving an empty field whose grey
+   number is last time's reps is the same confirmation without the typing, so
+   it ticks the set with that number, like tapping the checkmark. The iPhone
+   number pad has no Next key; its keyboard Done or a tap elsewhere is how a
+   field is left there, so both routes land here. Moving to the same row's load
+   or RIR is not leaving the set, a tap on a button does that button's job
+   instead (the row's own checkmark already takes the grey number), and a
+   locked or backgrounded phone blurs fields without the lifter doing anything. */
+function acceptGrey(bi,si){
+  if(!state.draft||!state.settings.autoDone||rebuilding)return false;
+  const b=state.draft.ex[bi];const x=b&&b.sets[si];
+  if(!x||x.done||x.warm||x.drop||+x.r>0)return false;
+  const lr=lastRFor(b,si);if(!(lr>0))return false;
+  x.r=Math.round(lr);const inp=document.querySelector(`.sg input[data-f="r"][data-b="${bi}"][data-s="${si}"]`);if(inp)inp.value=String(x.r);
+  lastAuto={b:bi,s:si,t:Date.now()};setDone(bi,si,true);return true;
+}
+let lastDown={el:null,t:0};
+document.addEventListener('pointerdown',e=>{lastDown={el:e.target,t:Date.now()};},true);
+document.addEventListener('focusout',e=>{
+  const t=e.target;if(!t||!t.matches||!t.matches('.sg input[data-f="r"]')||t.value.trim())return;
+  if(rebuilding||!state.draft||!state.settings.autoDone)return;
+  const bi=+t.dataset.b,si=+t.dataset.s;const to=e.relatedTarget;
+  if(to&&to.dataset&&to.dataset.b===t.dataset.b&&to.dataset.s===t.dataset.s)return;
+  // Where the lifter went: the newly focused element, or on an iPhone (where
+  // buttons never take focus) whatever was just touched.
+  const d=lastDown;const dest=to||(Date.now()-d.t<700&&d.el!==t?d.el:null);
+  if(dest&&dest.closest&&!dest.closest('.sg input[data-f]')&&dest.closest('button,a,select,label,input,textarea,summary,[data-act]'))return;
+  setTimeout(()=>{if(document.visibilityState!=='visible'||!document.hasFocus())return;acceptGrey(bi,si);},0);
 });
 
 /* ---------- movable, foldable sections ----------
@@ -6132,7 +6585,7 @@ function swapPrompt(b,reason){
 }
 
 window.__onLib=(which)=>{if((which==='chart'&&ui.tab==='dash')||(which==='sortable'&&ui.tab==='program'))rerenderKeepScroll();};
-window.__ironlog={get state(){return state;},set state(v){state=v;},e1inv,rtfAt,rtfOf,rtfBand,calStats,rirEff,isHard,setCredit,tonnage,loadMode,loadWords,loadNote,progStep,jumpCap,setSecs,setupSecs,recovery,rolling7,rankDays,rankExercises,isCompound,patternOf,noE1,whtrLine,exHeadline,remainMin,shortPlan,weekPlan,cycleProjection,lastLighterWeek,regionBalance,parseHeight,mixCheck,swapCands,eqPlan,exportCSV,importData,chunksOf,assemble,sessionMuscles,TRACK_ONLY,cloud,Hx,mergeChunk,baseOf,sync:()=>cq(cloudPull),cloudState:()=>({on:cloud.on,status:cloud.status,err:cloud.err,uid:cloud.uid,acct:cloud.acct}),acctUser:()=>acct.user,flush:()=>cq(cloudFlush),backupDue,routineUpdates,planFor,platesMode,plateText,chunksOf,IDX,suggest,e1,render,ACT,ui,makeDemo,invalidate,normalize,snapshot,saveNow,timer,weekStats,weekStart,today,EX,blockProgress,dayMinutes,weekStreak,coach,tonnageNow,livePR,exProjection,movers,stalledIds,muscleStatus,actualAvg4,plannedPerWeek,parseSets,aiSetsValid,fillSets,newBlock,lastNoteOf,sizeRows,sessionMuscleSets,sessionCapNote,routineClutter,aiDigest,debriefPrompt,reviewPrompt,swapPrompt,AI,sameRR};
+window.__ironlog={get state(){return state;},set state(v){state=v;},e1inv,rtfAt,rtfOf,rtfBand,calStats,rirEff,isHard,setCredit,tonnage,loadMode,loadWords,loadNote,progStep,jumpCap,setSecs,setupSecs,recovery,rolling7,rankDays,rankExercises,isCompound,patternOf,noE1,whtrLine,exHeadline,remainMin,shortPlan,weekPlan,cycleProjection,lastLighterWeek,regionBalance,parseHeight,mixCheck,swapCands,eqPlan,exportCSV,importData,chunksOf,assemble,sessionMuscles,TRACK_ONLY,cloud,Hx,mergeChunk,baseOf,sync:()=>cq(cloudPull),TEMPLATES,lastRFor,fmtW,rirUsual,rirEst,routineFromTemplate,plannedSets,map3d:()=>({state:B3.state,fail:B3.fail,meshes:B3.meshes.length,yaw:B3.yaw,glow:Object.keys(B3.mats).filter(m=>B3.mats[m].emissiveIntensity>0),canvas:!!document.querySelector('#bm3d canvas'),colors:Object.fromEntries(Object.entries(B3.mats).map(([m,mt])=>[m,'#'+mt.color.getHexString()])),pick:(x,y)=>map3dPick(x,y),want:map3dColors()}),cloudState:()=>({on:cloud.on,status:cloud.status,err:cloud.err,uid:cloud.uid,acct:cloud.acct}),acctUser:()=>acct.user,flush:()=>cq(cloudFlush),backupDue,routineUpdates,planFor,platesMode,plateText,chunksOf,IDX,suggest,e1,render,ACT,ui,makeDemo,invalidate,normalize,snapshot,saveNow,timer,weekStats,weekStart,today,EX,blockProgress,dayMinutes,weekStreak,coach,tonnageNow,livePR,exProjection,movers,stalledIds,muscleStatus,actualAvg4,plannedPerWeek,parseSets,aiSetsValid,fillSets,newBlock,lastNoteOf,sizeRows,sessionMuscleSets,sessionCapNote,routineClutter,aiDigest,debriefPrompt,reviewPrompt,swapPrompt,AI,sameRR};
 render();
 wakeOn();
 timerResume();
