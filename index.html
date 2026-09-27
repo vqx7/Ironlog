@@ -959,7 +959,13 @@ const STATE_VERSION=5;
 /* v3: routines became numbered cycles of 1 to 14 days. Older routines keep the
    same days in the same order and only change label, so no session loses its
    link to the day it was logged against. Fixed weekdays remain as an option. */
-let storageOk=true;let bootHadLocal=false;
+let storageOk=true;let bootHadLocal=false;let storageBoot=true;
+/* The text this tab last wrote or adopted. Another tab's change is merged
+   against it (see the storage listener). */
+let lastSaved=null;
+/* Undo steps: the state before a destructive action, and the state right
+   after it (captured at the next save). See snapshot() and ACT.undo. */
+const undoStack=[],UNDO_MAX=20;
 function storageTest(){try{localStorage.setItem('__il','1');localStorage.removeItem('__il');return true;}catch(e){return false;}}
 /* Every field below is validated rather than trusted. The old version only
    checked that five keys were arrays, so a backup containing sessions:[{}]
@@ -972,11 +978,25 @@ const isNum=v=>typeof v==='number'&&isFinite(v);
 const numOr=(v,d)=>{const n=typeof v==='string'?parseFloat(v):v;return isNum(n)?n:d;};
 const clampN=(v,lo,hi,d)=>{const n=numOr(v,d);return Math.min(Math.max(n,lo),hi);};
 const isDate=v=>typeof v==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(v);
+/* Upper limits for body entries. Past these a number is a typo, and an
+   unbounded one showed as "Infinity lb" and broke waist-to-height. */
+const BW_MAX_KG=400,BW_MIN_KG=20,MEAS_MAX_CM=300;
 /* One cardio or mobility entry. In a draft the minutes may still be blank. */
 /* Stable id for a record that arrived without one. It used to be random, so two
    devices repairing the same record made two different ids and a merge kept
    both. The position is included so identical records stay distinct. */
 function did(tag,obj,i){let j='';try{j=JSON.stringify(obj);}catch(e){j=String(i);}return tag+hashStr(j+'#'+i);}
+/* Ids go straight into HTML attributes and CSS selectors, so an imported
+   backup or a cloud document must not be able to smuggle markup in through
+   one. Every id the app makes itself fits this pattern. Anything else is
+   replaced by a hash of itself, which is the same on every device, so a
+   record and the references to it (an exercise and its logged sets) still
+   match after the repair. */
+// Names Object already has ("constructor", "__proto__") are out too: many
+// lookups key plain objects by id, and those would find the built-in instead.
+const okId=v=>typeof v==='string'&&/^[\w.:-]{1,100}$/.test(v)&&!(v in Object.prototype);
+function fixId(v){return okId(v)?v:'x'+hashStr(String(v));}
+const safeKey=k=>typeof k==='string'&&!/["'<>&`]/.test(k);
 /* A calibration set: the rep you would normally have stopped at, and the reps
    you thought were left there. The set itself is logged to failure. */
 function cleanCal(c){
@@ -993,9 +1013,51 @@ function cleanChk(c){
 }
 function cleanCardio(c,draft,i){
   const m=numOr(c.min,NaN),hr=numOr(c.hr,NaN);
-  return {id:typeof c.id==='string'?c.id:did('c',c,i),date:isDate(c.date)?c.date:today(),kind:CARDIOL[c.kind]?c.kind:'other',
+  return {id:typeof c.id==='string'?fixId(c.id):did('c',c,i),date:isDate(c.date)?c.date:today(),kind:CARDIOL[c.kind]?c.kind:'other',
     min:isNum(m)&&m>0?Math.min(Math.round(m),600):(draft?null:1),hr:isNum(hr)&&hr>=30&&hr<=230?Math.round(hr):null,
     when:CWHENL[c.when]?c.when:'solo',note:typeof c.note==='string'?c.note.slice(0,200):'',demo:!!c.demo};
+}
+/* The load or reps target set when the session started. Only its numbers are
+   read, so only numbers survive. */
+function cleanTgt(t){
+  if(!t||typeof t!=='object'||(t.kind!=='load'&&t.kind!=='reps'))return null;
+  const o={kind:t.kind};
+  for(const k of ['w','repMin','total','n','prevBest']){if(!(k in t))continue;const v=t[k];o[k]=v==null?null:(isNum(numOr(v,NaN))?numOr(v,0):null);}
+  return o;
+}
+/* One logged session, every field checked. Also used on the copies kept in
+   Recently deleted, so a copy there can be compared with a live one. */
+const okSess=ss=>!!ss&&typeof ss==='object'&&isDate(ss.date)&&Array.isArray(ss.ex);
+function cleanSess(ss,si){
+  return ({
+    id:typeof ss.id==='string'?fixId(ss.id):did('s',ss,si),date:ss.date,
+    dayIdx:clampN(ss.dayIdx,0,MAX_DAYS-1,0),
+    dayId:typeof ss.dayId==='string'?fixId(ss.dayId):null,
+    durMin:Number.isFinite(+ss.durMin)&&+ss.durMin>=1&&+ss.durMin<=600?Math.round(+ss.durMin):null,
+    dayName:typeof ss.dayName==='string'?ss.dayName:'Session',
+    routineId:typeof ss.routineId==='string'&&ss.routineId?fixId(ss.routineId):'',
+    notes:typeof ss.notes==='string'?ss.notes:'',
+    demo:!!ss.demo,deload:!!ss.deload,
+    light:ss.light===true||(ss.light==null&&typeof ss.dayName==='string'&&/ \(lighter\)$/.test(ss.dayName)),
+    // Freestyle: not tied to a routine day. Check-in: the three pre-session taps.
+    free:ss.free===true?true:undefined,
+    chk:cleanChk(ss.chk)||undefined,
+    ex:ss.ex.filter(b=>b&&typeof b.exId==='string'&&Array.isArray(b.sets)).map(b=>({
+      exId:fixId(b.exId),
+      note:typeof b.note==='string'?b.note:'',
+      // Planned rep range at the time, [min,max]. Older sessions have none.
+      rr:Array.isArray(b.rr)&&b.rr.length===2&&b.rr.every(v=>Number.isFinite(+v)&&+v>0)?[Math.round(+b.rr[0]),Math.round(+b.rr[1])]:null,
+      // Sets trimmed by Short on time: kept out of trends like a lighter session.
+      cut:b.cut===true?true:undefined,
+      sets:b.sets.filter(x=>x&&typeof x==='object').map(x=>({
+        w:clampN(x.w,0,20000*LB,0),
+        r:Math.round(clampN(x.r,0,1000,0)),
+        rir:x.rir==null||x.rir===''?null:clampN(x.rir,0,10,null),
+        warm:!!x.warm,drop:!!x.drop&&!x.warm,
+        cal:x.warm?undefined:(cleanCal(x.cal)||undefined)
+      }))
+    })).filter(b=>b.sets.length)
+  });
 }
 function normalize(s){
   const f=freshState();
@@ -1020,9 +1082,9 @@ function normalize(s){
   // state of sections that older builds had no fold for. Absent means the
   // default order with everything open, exactly as before.
   {const so=out.settings.secOrder;const clean={};
-   if(so&&typeof so==='object')for(const t of SEC_TABS)if(Array.isArray(so[t]))clean[t]=so[t].filter(k=>typeof k==='string'&&k.length<40).slice(0,40);
+   if(so&&typeof so==='object')for(const t of SEC_TABS)if(Array.isArray(so[t]))clean[t]=so[t].filter(k=>safeKey(k)&&k.length<40).slice(0,40);
    out.settings.secOrder=clean;}
-  out.settings.folds=Array.isArray(out.settings.folds)?out.settings.folds.filter(k=>typeof k==='string'&&k.length<80).slice(0,200):[];
+  out.settings.folds=Array.isArray(out.settings.folds)?out.settings.folds.filter(k=>safeKey(k)&&k.length<80).slice(0,200):[];
   out.settings.wakeLock=out.settings.wakeLock===true;
   // RIR: on (as logged), cal (on, shifted by your calibration sets), off.
   out.settings.rirMode=['on','off','cal'].includes(out.settings.rirMode)?out.settings.rirMode:'on';
@@ -1040,7 +1102,7 @@ function normalize(s){
   out.settings.lastExport=isDate(out.settings.lastExport)?out.settings.lastExport:null;
   // Built-in exercises the user deleted. Without this the library list below
   // silently puts every one of them back on the next load.
-  out.settings.removedLib=Array.isArray((s.settings||{}).removedLib)?s.settings.removedLib.filter(x=>typeof x==='string'):[];
+  out.settings.removedLib=Array.isArray((s.settings||{}).removedLib)?s.settings.removedLib.filter(x=>typeof x==='string').map(fixId):[];
   const bk=numOr(out.settings.barKg,NaN);out.settings.barKg=isNum(bk)&&bk>0?Math.min(bk,50):null;
   const bg=numOr(out.settings.bwGoalPct,NaN);out.settings.bwGoalPct=isNum(bg)?Math.min(Math.max(bg,-2),2):null;
   const inBands={...((s.settings||{}).bands||{})};
@@ -1056,7 +1118,7 @@ function normalize(s){
   for(const k of ['exercises','routines','sessions','bodyweights','measurements','cardio','trash'])if(!Array.isArray(out[k]))out[k]=[];
 
   out.exercises=out.exercises.filter(e=>e&&typeof e==='object'&&typeof e.id==='string'&&typeof e.name==='string').map(e=>({
-    id:e.id,name:e.name,
+    id:fixId(e.id),name:e.name,
     primary:MK.includes(e.primary)?e.primary:'chest',
     secondary:Array.isArray(e.secondary)?e.secondary.filter(m=>MK.includes(m)&&m!==e.primary):[],
     equip:typeof e.equip==='string'?e.equip:'other',
@@ -1100,7 +1162,7 @@ function normalize(s){
   }
 
   out.routines=out.routines.filter(r=>r&&typeof r==='object'&&Array.isArray(r.days)).map((r,ri)=>{
-    const rid=typeof r.id==='string'?r.id:did('r',r,ri);
+    const rid=typeof r.id==='string'?fixId(r.id):did('r',r,ri);
     // Anything that is not explicitly fixed-weekday becomes a cycle, which is
     // how every pre-v3 routine migrates. A "weekly" routine with more than 7
     // days cannot exist through the UI; if one arrives, keep all its days as a
@@ -1115,16 +1177,16 @@ function normalize(s){
         days.push(schedule==='weekly'?{id:rid+'-w'+i,name:i===6?'Rest':'Training day',rest:i===6,items:[]}:{id:rid+'-p'+i,name:'Training day',rest:false,items:[]});
         continue;
       }
-      const dbase=typeof d.id==='string'?d.id:rid+'-d'+i;
+      const dbase=typeof d.id==='string'?fixId(d.id):rid+'-d'+i;
       const items=(Array.isArray(d.items)?d.items:[]).filter(it=>it&&typeof it.exId==='string').map((it,ii)=>({
-        uid:typeof it.uid==='string'?it.uid:dbase+'-i'+ii,exId:it.exId,
+        uid:typeof it.uid==='string'?fixId(it.uid):dbase+'-i'+ii,exId:fixId(it.exId),
         sets:clampN(it.sets,1,30,3),
         repMin:clampN(it.repMin,1,600,8),
         repMax:clampN(it.repMax,1,600,12),
         rir:clampN(it.rir,0,10,1),
         rest:clampN(it.rest,0,1800,90),
         inc:clampN(it.inc,0,500,5*LB),
-        ss:typeof it.ss==='string'&&it.ss?it.ss:null
+        ss:typeof it.ss==='string'&&it.ss?fixId(it.ss):null
       })).map(it=>(it.repMax<it.repMin?{...it,repMax:it.repMin}:it));
       fixSupersets(items);
       let id=dbase;if(seen.has(id))id=id+'-'+i;seen.add(id);
@@ -1135,52 +1197,49 @@ function normalize(s){
 
   const cutoff=addDays(today(),-TRASH_DAYS);
   out.trash=out.trash.filter(t=>t&&typeof t==='object'&&typeof t.id==='string'&&['session','routine','cardio'].includes(t.kind)&&isDate(t.date)&&t.date>=cutoff&&t.data&&typeof t.data==='object')
-    .map(t=>({id:t.id,kind:t.kind,date:t.date,data:t.data})).sort((a,b)=>a.date<b.date?1:a.date>b.date?-1:0).slice(0,TRASH_MAX);
+    .map(t=>({id:fixId(t.id),kind:t.kind,date:t.date,data:t.data})).sort((a,b)=>a.date<b.date?1:a.date>b.date?-1:0).slice(0,TRASH_MAX);
   while(out.trash.length>1&&JSON.stringify(out.trash).length>TRASH_BYTES)out.trash.pop();
-  const tomb=new Set(out.trash.filter(t=>t.kind!=='routine').map(t=>t.id));
   const before=out.sessions.length;
-  out.sessions=out.sessions.filter(ss=>ss&&typeof ss==='object'&&isDate(ss.date)&&Array.isArray(ss.ex)).map((ss,si)=>({
-    id:typeof ss.id==='string'?ss.id:did('s',ss,si),date:ss.date,
-    dayIdx:clampN(ss.dayIdx,0,MAX_DAYS-1,0),
-    dayId:typeof ss.dayId==='string'?ss.dayId:null,
-    durMin:Number.isFinite(+ss.durMin)&&+ss.durMin>=1&&+ss.durMin<=600?Math.round(+ss.durMin):null,
-    dayName:typeof ss.dayName==='string'?ss.dayName:'Session',
-    routineId:typeof ss.routineId==='string'?ss.routineId:'',
-    notes:typeof ss.notes==='string'?ss.notes:'',
-    demo:!!ss.demo,deload:!!ss.deload,
-    light:ss.light===true||(ss.light==null&&typeof ss.dayName==='string'&&/ \(lighter\)$/.test(ss.dayName)),
-    // Freestyle: not tied to a routine day. Check-in: the three pre-session taps.
-    free:ss.free===true?true:undefined,
-    chk:cleanChk(ss.chk)||undefined,
-    ex:ss.ex.filter(b=>b&&typeof b.exId==='string'&&Array.isArray(b.sets)).map(b=>({
-      exId:b.exId,
-      note:typeof b.note==='string'?b.note:'',
-      // Planned rep range at the time, [min,max]. Older sessions have none.
-      rr:Array.isArray(b.rr)&&b.rr.length===2&&b.rr.every(v=>Number.isFinite(+v)&&+v>0)?[Math.round(+b.rr[0]),Math.round(+b.rr[1])]:null,
-      // Sets trimmed by Short on time: kept out of trends like a lighter session.
-      cut:b.cut===true?true:undefined,
-      sets:b.sets.filter(x=>x&&typeof x==='object').map(x=>({
-        w:clampN(x.w,0,20000*LB,0),
-        r:Math.round(clampN(x.r,0,1000,0)),
-        rir:x.rir==null||x.rir===''?null:clampN(x.rir,0,10,null),
-        warm:!!x.warm,drop:!!x.drop&&!x.warm,
-        cal:x.warm?undefined:(cleanCal(x.cal)||undefined)
-      }))
-    })).filter(b=>b.sets.length)
-  })).filter(ss=>ss.ex.length);
+  out.sessions=out.sessions.filter(okSess).map(cleanSess).filter(ss=>ss.ex.length);
   drop(before-out.sessions.length);
-  out.sessions=out.sessions.filter(ss=>!tomb.has(ss.id));
-  out.cardio=out.cardio.filter(c=>c&&typeof c==='object'&&isDate(c.date)&&isNum(numOr(c.min,NaN))&&numOr(c.min,0)>0).map((c,ci)=>cleanCardio(c,false,ci)).filter(c=>!tomb.has(c.id));
+  /* A trashed id is a tombstone, but only for the copy that was deleted. If
+     the same session was edited afterwards (on another device, or in an edit
+     that was open while it was deleted), the edit is newer than the delete:
+     keep it and retire the tombstone, because keeping data is the mistake
+     that can be undone. Sessions are compared in their cleaned form, so
+     field order and defaults added by newer builds do not count as edits. */
+  {const tS=new Map(),tC=new Map();for(const t of out.trash){if(t.kind==='session')tS.set(t.id,t);else if(t.kind==='cardio')tC.set(t.id,t);}
+   const revived=new Set();
+   const same=(cur,t,clean,ok)=>{try{return !ok(t.data)||canon(clean(t.data,0))===canon(cur);}catch(e){return true;}};
+   out.sessions=out.sessions.filter(ss=>{const t=tS.get(ss.id);if(!t)return true;if(same({...ss,id:ss.id},{data:{...t.data,id:ss.id}},(x,i)=>cleanSess(x,i),okSess))return false;revived.add(t.id);return true;});
+   out.cardio=out.cardio.filter(c=>c&&typeof c==='object'&&isDate(c.date)&&isNum(numOr(c.min,NaN))&&numOr(c.min,0)>0).map((c,ci)=>cleanCardio(c,false,ci))
+     .filter(c=>{const t=tC.get(c.id);if(!t)return true;if(same(c,{data:{...t.data,id:c.id}},(x,i)=>cleanCardio(x,false,i),x=>x&&typeof x==='object'))return false;revived.add(t.id);return true;});
+   if(revived.size)out.trash=out.trash.filter(t=>t.kind==='routine'||!revived.has(t.id));}
+  /* One id, two different copies: a session moved to a date in another
+     half-month on one device while it was edited on another. Both used to be
+     kept and counted twice. Keep the copy with more logged sets (then the
+     later date) and put the other in Recently deleted under its own id, so
+     nothing is lost. Every device resolves it the same way. */
+  for(const [key,kind] of [['sessions','session'],['cardio','cardio']]){
+    const byId=new Map(),extra=[];
+    const size=x=>kind==='session'?x.ex.reduce((a,b)=>a+b.sets.length,0):x.min;
+    for(const x of out[key]){const o=byId.get(x.id);if(!o){byId.set(x.id,x);continue;}
+      if(canon(o)===canon(x))continue;
+      const keepNew=size(x)>size(o)||(size(x)===size(o)&&(x.date>o.date||(x.date===o.date&&canon(x)>canon(o))));
+      byId.set(x.id,keepNew?x:o);extra.push(keepNew?o:x);}
+    if(extra.length){out[key]=[...byId.values()];
+      for(const x of extra){const id=fixId(x.id+'-dup'+hashStr(canon(x)).slice(0,6));if(!out.trash.some(t=>t.id===id))out.trash.unshift({id,kind,date:today(),data:{...x,id}});}}
+  }
 
   const bBefore=out.bodyweights.length;
   out.bodyweights=out.bodyweights.filter(b=>b&&isDate(b.date)&&isNum(numOr(b.kg,NaN))&&numOr(b.kg,0)>0)
-    .map((b,bi)=>({id:typeof b.id==='string'?b.id:did('b',b,bi),date:b.date,kg:numOr(b.kg,0),demo:!!b.demo}));
+    .map((b,bi)=>({id:typeof b.id==='string'?fixId(b.id):did('b',b,bi),date:b.date,kg:Math.min(numOr(b.kg,0),BW_MAX_KG),demo:!!b.demo}));
   drop(bBefore-out.bodyweights.length);
 
   const mBefore=out.measurements.length;
   out.measurements=out.measurements.filter(m=>m&&isDate(m.date)).map((m,mi)=>{
-    const o={id:typeof m.id==='string'?m.id:did('m',m,mi),date:m.date,demo:!!m.demo};
-    for(const [k] of MEAS){const v=numOr(m[k],NaN);if(isNum(v)&&v>0)o[k]=v;}
+    const o={id:typeof m.id==='string'?fixId(m.id):did('m',m,mi),date:m.date,demo:!!m.demo};
+    for(const [k] of MEAS){const v=numOr(m[k],NaN);if(isNum(v)&&v>0)o[k]=Math.min(v,MEAS_MAX_CM);}
     return o;
   });
   drop(mBefore-out.measurements.length);
@@ -1192,15 +1251,15 @@ function normalize(s){
   if(out.draft&&(typeof out.draft!=='object'||!Array.isArray(out.draft.ex)||!isDate(out.draft.date)))out.draft=null;
   if(out.draft){
     const d=out.draft;
-    d.id=typeof d.id==='string'?d.id:did('x',{date:d.date,dayName:d.dayName},0);
+    d.id=typeof d.id==='string'?fixId(d.id):did('x',{date:d.date,dayName:d.dayName},0);
     d.dayIdx=clampN(d.dayIdx,0,MAX_DAYS-1,0);
-    d.dayId=typeof d.dayId==='string'?d.dayId:null;
+    d.dayId=typeof d.dayId==='string'?fixId(d.dayId):null;
     d.startedAt=Number.isFinite(+d.startedAt)&&+d.startedAt>0?+d.startedAt:null;
     d.durMin=Number.isFinite(+d.durMin)&&+d.durMin>=1?Math.round(+d.durMin):null;
     d.dayName=typeof d.dayName==='string'?d.dayName:'Session';
-    d.routineId=typeof d.routineId==='string'?d.routineId:'';
+    d.routineId=typeof d.routineId==='string'&&d.routineId?fixId(d.routineId):'';
     d.notes=typeof d.notes==='string'?d.notes:'';
-    d.editingId=typeof d.editingId==='string'?d.editingId:null;
+    d.editingId=typeof d.editingId==='string'?fixId(d.editingId):null;
     d.deload=!!d.deload;
     d.light=!!d.light;
     d.limited=d.limited===true?true:undefined;
@@ -1210,18 +1269,19 @@ function normalize(s){
     d.ex=d.ex.filter(b=>b&&typeof b.exId==='string'&&Array.isArray(b.sets)).map(b=>{
       const pl=b.plan&&typeof b.plan==='object'?b.plan:{};
       const plan={sets:clampN(pl.sets,1,30,3),repMin:clampN(pl.repMin,1,600,8),repMax:clampN(pl.repMax,1,600,12),
-        rir:clampN(pl.rir,0,10,1),rest:clampN(pl.rest,0,1800,90),inc:clampN(pl.inc,0,500,5*LB),ss:typeof pl.ss==='string'&&pl.ss?pl.ss:null};
+        rir:clampN(pl.rir,0,10,1),rest:clampN(pl.rest,0,1800,90),inc:clampN(pl.inc,0,500,5*LB),ss:typeof pl.ss==='string'&&pl.ss?fixId(pl.ss):null};
       if(plan.repMax<plan.repMin)plan.repMax=plan.repMin;
-      return {exId:b.exId,plan,
+      return {exId:fixId(b.exId),plan,
         note:typeof b.note==='string'?b.note:'',
         inj:typeof b.inj==='string'&&MK.includes(b.inj)?b.inj:null,
         hint:typeof b.hint==='string'?b.hint:'',
         last:typeof b.last==='string'?b.last:'',
         target:typeof b.target==='string'?b.target:'',
         easier:typeof b.easier==='string'?b.easier:null,
-        tgt:b.tgt&&typeof b.tgt==='object'?b.tgt:null,
-        lastR:Array.isArray(b.lastR)?b.lastR:[],
-        swappedFrom:typeof b.swappedFrom==='string'?b.swappedFrom:null,
+        tgt:cleanTgt(b.tgt),
+        // Last time's reps per set: shown as placeholders, so numbers only.
+        lastR:Array.isArray(b.lastR)?b.lastR.slice(0,30).map(v=>{const n=numOr(v,NaN);return isNum(n)&&n>=0?Math.min(n,1000):null;}):[],
+        swappedFrom:typeof b.swappedFrom==='string'?fixId(b.swappedFrom):null,
         cut:b.cut===true?true:undefined,
         // Editing a saved session keeps the rep range it was logged under.
         keepRR:b.keepRR===undefined?undefined:(Array.isArray(b.keepRR)&&b.keepRR.length===2?b.keepRR.map(v=>Math.round(+v)||1):null),
@@ -1237,27 +1297,28 @@ function normalize(s){
   }
 
   out.deloadWeek=isDate(out.deloadWeek)?out.deloadWeek:null;
-  out.injuries=(Array.isArray(out.injuries)?out.injuries:[]).filter(x=>x&&MK.includes(x.m)).map((x,xi)=>({id:typeof x.id==='string'?x.id:did('j',x,xi),m:x.m,note:typeof x.note==='string'?x.note:'',date:isDate(x.date)?x.date:today()}));
+  out.injuries=(Array.isArray(out.injuries)?out.injuries:[]).filter(x=>x&&MK.includes(x.m)).map((x,xi)=>({id:typeof x.id==='string'?fixId(x.id):did('j',x,xi),m:x.m,note:typeof x.note==='string'?x.note:'',date:isDate(x.date)?x.date:today()}));
   /* Former bests for the comeback tracker: one per exercise, load in kg (added
      load for bodyweight lifts) and 1 to 20 reps, where the estimate holds. */
   {const seen=new Map();
    (Array.isArray(out.priors)?out.priors:[]).forEach((p,pi)=>{
      if(!p||typeof p!=='object'||typeof p.exId!=='string')return;
      const w=numOr(p.w,NaN),r=Math.round(numOr(p.r,NaN));if(!(r>=1&&r<=PRIOR_MAX_REPS))return;
-     seen.set(p.exId,{id:typeof p.id==='string'?p.id:did('p',p,pi),exId:p.exId,w:isNum(w)&&w>=0?Math.min(w,20000*LB):0,r,note:typeof p.note==='string'?p.note.slice(0,80):''});
+     seen.set(fixId(p.exId),{id:typeof p.id==='string'?fixId(p.id):did('p',p,pi),exId:fixId(p.exId),w:isNum(w)&&w>=0?Math.min(w,20000*LB):0,r,note:typeof p.note==='string'?p.note.slice(0,80):''});
    });
    out.priors=[...seen.values()];}
   if(!out.routines.length)out.routines=[defaultRoutine()];
+  if(typeof out.activeRoutineId==='string')out.activeRoutineId=fixId(out.activeRoutineId);
   if(!out.routines.find(r=>r.id===out.activeRoutineId))out.activeRoutineId=out.routines[0].id;
   out.version=STATE_VERSION;
   return out;
 }
 normalize.dropped=0;
 function load(){
-  storageOk=storageTest();
+  storageOk=storageBoot=storageTest();
   if(!storageOk)return normalize(null);
   let raw=null;
-  try{raw=localStorage.getItem(KEY);if(raw){bootHadLocal=true;return normalize(JSON.parse(raw));}}
+  try{raw=localStorage.getItem(KEY);if(raw){const st=normalize(JSON.parse(raw));bootHadLocal=true;lastSaved=raw;return st;}}
   catch(e){
     /* An unreadable save used to be replaced by a fresh state on the next
        save, destroying it. Keep the raw text aside so it can be recovered. */
@@ -1270,8 +1331,14 @@ let state=load();
 let saveT=null;
 function saveNow(){
   clearTimeout(saveT);saveT=null;
-  if(!storageOk){setSaveState();return;}
-  try{localStorage.setItem(KEY,JSON.stringify(state));}catch(e){storageOk=false;log('storage',e);}
+  capturePost();
+  /* Storage that failed its check at startup stays off: its old contents were
+     never read, so writing now could overwrite them. A write that fails later
+     (storage full) is tried again on every save, and saving resumes as soon
+     as one succeeds, rather than stopping for the rest of the visit. */
+  if(storageBoot){
+    try{const j=JSON.stringify(state);localStorage.setItem(KEY,j);lastSaved=j;storageOk=true;}catch(e){storageOk=false;log('storage',e);}
+  }
   markEdit();setSaveState();cloudSoon();
 }
 function saveSoon(){clearTimeout(saveT);saveT=setTimeout(saveNow,400);}
@@ -1323,6 +1390,11 @@ const cloud={on:false,db:null,uid:null,status:'local',last:null,meta:{},editAt:{
 const SYNC_KEY=KEY+'.sync';
 try{const m=JSON.parse(localStorage.getItem(SYNC_KEY)||'null');if(m&&typeof m==='object'){cloud.meta=m.meta&&typeof m.meta==='object'?m.meta:{};cloud.last=m.last||null;cloud.editAt=m.editAt&&typeof m.editAt==='object'?m.editAt:{};cloud.devId=typeof m.devId==='string'?m.devId:null;}}catch(e){log('sync-meta',e);}
 if(!cloud.devId)cloud.devId='dev-'+uid();
+/* No readable local data at startup (unreadable save, or storage cleared but
+   the sync notes survived): the fresh state here is not an edit. Forget what
+   was last agreed with the cloud, so the first pull adopts the cloud copy
+   instead of the first flush writing an empty state over it. */
+if(!bootHadLocal){cloud.meta={};cloud.editAt={};}
 function saveMeta(){try{localStorage.setItem(SYNC_KEY,JSON.stringify({meta:cloud.meta,last:cloud.last,editAt:cloud.editAt,devId:cloud.devId}));}catch(e){log('sync-meta',e);}}
 function hashStr(str){let h1=0xdeadbeef,h2=0x41c6ce57;for(let i=0;i<str.length;i++){const c=str.charCodeAt(i);h1=Math.imul(h1^c,2654435761);h2=Math.imul(h2^c,1597334677);}
   h1=Math.imul(h1^(h1>>>16),2246822507)^Math.imul(h2^(h2>>>13),3266489909);h2=Math.imul(h2^(h2>>>16),2246822507)^Math.imul(h1^(h1>>>13),3266489909);return (h2>>>0).toString(36)+(h1>>>0).toString(36);}
@@ -1502,30 +1574,40 @@ async function cloudFlush(){
   setCloud('saving');
   try{
     if(!(await takeLease())){clearTimeout(cloud.t);cloud.t=setTimeout(()=>cq(cloudFlush),2500);return;}
-    let adopted=false;const stat={conflicts:0};
+    let adopted=false;const stat={conflicts:0};const tooBig=[];
     for(const x of todo){
       /* Read before write. If another device changed this document since we
          last agreed on it, merge record by record instead of overwriting. */
-      let json=x.json;const m=cloud.meta[x.id];
+      const m=cloud.meta[x.id];
       const snap=await withTimeout(ref(x.id).get(),20000);
+      /* Sets logged while that read was in flight are in state, not in the
+         copy taken before it. Work from the current document, or the merge
+         below would write the older copy back and lose them. */
+      let json=JSON.stringify(chunksOf(state)[x.id]||emptyChunk(x.id));
       const b=snap&&snap.exists?snap.data():null;
-      if(b&&typeof b.json==='string'&&(!m||+b.at>m.at)&&(!m||hashStr(b.json)!==m.h)){
+      /* Changed in the cloud means its content differs from what we last
+         agreed on. Timestamps are not compared: they come from each device's
+         own clock, and one running behind made a newer write look older. */
+      if(b&&typeof b.json==='string'&&(!m||hashStr(b.json)!==m.h)){
         let rd=null;try{rd=JSON.parse(b.json);}catch(e){log('sync-parse',e);}
         if(rd){
-          const ret=+b.et||+b.at;const merged=mergeChunk(x.id,m&&m.b,JSON.parse(x.json),rd,ret>(cloud.editAt[x.id]||0),stat);
+          const ret=+b.et||+b.at;const merged=mergeChunk(x.id,m&&m.b,JSON.parse(json),rd,ret>(cloud.editAt[x.id]||0),stat);
           cloud.editAt[x.id]=Math.max(cloud.editAt[x.id]||0,ret);
           applyChunk(x.id,merged);adopted=true;
           json=JSON.stringify(chunksOf(state)[x.id]||emptyChunk(x.id));
           if(hashStr(json)===hashStr(b.json)){cloud.meta[x.id]={h:hashStr(b.json),at:+b.at,b:baseOf(x.id,rd)};saveMeta();continue;}
         }
       }
-      if(json.length>250000)throw {code:'too_big'};
+      // One document over the size cap must not stop the others from syncing.
+      if(json.length>250000){tooBig.push(x.id);log('sync-flush',{code:'too_big',id:x.id,len:json.length});continue;}
       const at=Date.now();
       await withTimeout(ref(x.id).set({v:1,at,et:cloud.editAt[x.id]||at,json}),20000);
       cloud.meta[x.id]={h:hashStr(json),at,b:baseOf(x.id,JSON.parse(json))};saveMeta();
     }
     if(adopted){invalidate();try{localStorage.setItem(KEY,JSON.stringify(state));}catch(e){log('storage',e);}resyncLocalH();if(!ui.modal)rerenderKeepScroll();conflictNote(stat);}
-    cloud.retry=0;cloud.last=Date.now();saveMeta();setCloud('synced');
+    cloud.retry=0;
+    if(tooBig.length){saveMeta();setCloud('offline',tooBig.includes('core')?'Body and routine data is too large to sync. Export a backup.':'One month of sessions is too large to sync. Export a backup.');return;}
+    cloud.last=Date.now();saveMeta();setCloud('synced');
   }catch(e){log('sync-flush',e);cloudFail(e);}
 }
 /* Pull what other devices wrote. Per document:
@@ -1552,8 +1634,12 @@ async function cloudPull(){
       parts=Object.fromEntries(rids.map(k=>[k,remote[k].data]));rids.forEach(k=>adoptedIds.add(k));
     }else{
       snapshot();merged=true;
-      const base=realCount(state)>realCount(rState)?state:rState;
-      state=normalize({...base,sessions:unionById(state.sessions,rState.sessions),bodyweights:unionById(state.bodyweights,rState.bodyweights),measurements:unionById(state.measurements,rState.measurements),cardio:unionById(state.cardio,rState.cardio),trash:unionById(state.trash,rState.trash),priors:unionById(state.priors,rState.priors),draft:state.draft||rState.draft});
+      const base=realCount(state)>realCount(rState)?state:rState,other=base===state?rState:state;
+      /* Settings come from the side with more sessions, but exercises and
+         routines are combined by id (that side's copy wins a clash), so a
+         custom exercise or routine made on the other device is not lost and
+         its logged sets keep their name. */
+      state=normalize({...base,exercises:unionById(base.exercises,other.exercises),routines:unionById(base.routines,other.routines),sessions:unionById(state.sessions,rState.sessions),bodyweights:unionById(state.bodyweights,rState.bodyweights),measurements:unionById(state.measurements,rState.measurements),cardio:unionById(state.cardio,rState.cardio),trash:unionById(state.trash,rState.trash),priors:unionById(state.priors,rState.priors),draft:state.draft||rState.draft});
       // The cloud copy becomes the agreed base, so the merged result is what
       // the flush writes, rather than being merged a second time.
       for(const id of rids){cloud.meta[id]={h:remote[id].h,at:remote[id].at,b:baseOf(id,remote[id].data)};cloud.editAt[id]=Date.now();}
@@ -1562,7 +1648,8 @@ async function cloudPull(){
     parts={...local};let any=false;
     for(const id of rids){
       const r=remote[id],m=cloud.meta[id];
-      if(m&&(r.h===m.h||r.at<=m.at))continue;
+      // Unchanged in the cloud since we last agreed. Content, not clocks, decides.
+      if(m&&r.h===m.h)continue;
       const lJson=JSON.stringify(local[id]||emptyChunk(id));const localDirty=!m||hashStr(lJson)!==m.h;
       if(!localDirty){parts[id]=r.data;adoptedIds.add(id);any=true;continue;}
       parts[id]=mergeChunk(id,m&&m.b,local[id]||emptyChunk(id),r.data,r.et>(cloud.editAt[id]||0),stat);
@@ -1575,11 +1662,11 @@ async function cloudPull(){
   if(parts){state=assemble(parts);}
   if(parts||merged){
     invalidate();try{localStorage.setItem(KEY,JSON.stringify(state));}catch(e){log('storage',e);}
-    const now=chunksOf(state);
-    for(const id of adoptedIds){const j=JSON.stringify(now[id]||emptyChunk(id));
-      // Mark adopted documents as in sync. Normalizing can change a document
-      // (a newer build adds defaults); those are then written back by the flush.
-      cloud.meta[id]={h:hashStr(j)===remote[id].h?remote[id].h:hashStr(j),at:remote[id].at,b:baseOf(id,remote[id].data)};}
+    for(const id of adoptedIds){
+      // Mark adopted documents as agreed with the cloud copy. Normalizing can
+      // change a document (a newer build adds defaults); it then differs from
+      // the agreed hash, so the flush below writes the normalized form back.
+      cloud.meta[id]={h:remote[id].h,at:remote[id].at,b:baseOf(id,remote[id].data)};}
     saveMeta();resyncLocalH();
     if(!ui.modal)rerenderKeepScroll();else render();
     if(merged)toast('Merged this device with your cloud copy',true);
@@ -1616,6 +1703,38 @@ function syncInfo(){
   return `<div class="sync-row">${st}<span class="small muted">Last synced ${when}</span><button class="btn sm" data-act="syncNow">Sync now</button></div>
   <p class="small hastip" style="margin:6px 0 0" data-tip="Clearing this browser, iOS storage cleanup or a new phone loses nothing: open this same link while signed in. Works offline and catches up. The cloud copy mirrors deletions and keeps no history: deleted items wait in History for ${TRASH_DAYS} days, and a backup file covers the rest.">Saved to your Claude account and this device.${cloud.err?` <b style="color:var(--red)">${esc(cloud.err)}</b>`:''}</p>`;
 }
+/* Two tabs (or the app and a second window) used to overwrite each other: each
+   wrote its whole state, so the one that saved last erased what the other had
+   saved. Now each tab hears the other's save and merges it into its own
+   state, record by record, with this tab's last save as the base: changes
+   made only there are taken, changes made only here are kept. Content is
+   compared with canon(), which ignores key order, so two tabs holding the
+   same data never keep rewriting it back and forth. */
+window.addEventListener('storage',ev=>{
+  if(ev.storageArea&&ev.storageArea!==localStorage)return;
+  if(ev.key===SYNC_KEY&&ev.newValue){
+    try{const m=JSON.parse(ev.newValue);if(m&&typeof m==='object'){if(m.meta&&typeof m.meta==='object')cloud.meta=m.meta;if(m.editAt&&typeof m.editAt==='object')cloud.editAt=m.editAt;if(m.last)cloud.last=m.last;}}catch(e){log('tabs',e);}
+    return;
+  }
+  if(ev.key!==KEY||ev.newValue==null||ev.newValue===lastSaved)return;
+  let incoming,base=null;
+  try{incoming=normalize(JSON.parse(ev.newValue));}catch(e){log('tabs',e);return;}
+  try{base=lastSaved?normalize(JSON.parse(lastSaved)):null;}catch(e){base=null;}
+  const stat={conflicts:0};
+  if(!base||canon(state)===canon(base))state=incoming;
+  else{
+    const L=chunksOf(state),Rr=chunksOf(incoming),B=chunksOf(base),parts={};
+    for(const id of new Set([...Object.keys(L),...Object.keys(Rr),...Object.keys(B)]))
+      parts[id]=mergeChunk(id,baseOf(id,B[id]||emptyChunk(id)),L[id]||emptyChunk(id),Rr[id]||emptyChunk(id),true,stat);
+    state=assemble(parts);
+  }
+  lastSaved=ev.newValue;clearTimeout(saveT);saveT=null;
+  invalidate();resyncLocalH();
+  // Anything that was only here goes back out, so the other tab has it too.
+  if(canon(state)!==canon(incoming))saveNow();
+  if(!ui.modal)rerenderKeepScroll();else render();
+  conflictNote(stat);
+});
 document.addEventListener('visibilitychange',()=>{
   if(document.visibilityState==='hidden'){if(saveT)saveNow();if(cloud.on){clearTimeout(cloud.t);cq(cloudFlush);}}
   else if(cloud.on&&Date.now()-cloud.lastPull>20000)cq(cloudPull);
@@ -1635,7 +1754,8 @@ function numIn(v){if(v===''||v==null)return null;const n=parseFloat(String(v).re
 
 /* ---------- lookups ---------- */
 let EXMAP=null;
-function EX(id){if(!EXMAP){EXMAP={};for(const e of state.exercises)EXMAP[e.id]=e;}return EXMAP[id]||{id,name:'Deleted exercise',primary:'chest',secondary:[],equip:'other',bw:false,archived:true};}
+// No prototype: an exercise id such as "constructor" must not find Object's.
+function EX(id){if(!EXMAP){EXMAP=Object.create(null);for(const e of state.exercises)EXMAP[e.id]=e;}return EXMAP[id]||{id,name:'Deleted exercise',primary:'chest',secondary:[],equip:'other',bw:false,archived:true};}
 const exName=id=>EX(id).name;
 function activeRoutine(){return state.routines.find(r=>r.id===state.activeRoutineId)||state.routines[0];}
 function loadLabel(ex,kg){if(ex.bw){return kg>0?`BW+${fmtW(kg)}`:'BW';}return fmtW(kg);}
@@ -2358,7 +2478,8 @@ function blockProgress(b){
     return {text:heavyTxt?`${base}. ${heavyTxt}`:base,beat:n>t.total||heavyBeat};
   }
   const hit=done.filter(s=>(+s.w||0)>=t.w-1e-6&&+s.r>=t.repMin).length;
-  const planned=b.sets.filter(s=>!s.warm).length;
+  // Drop sets are extra work after the working sets, never part of the target.
+  const planned=b.sets.filter(s=>!s.warm&&!s.drop).length;
   const base=`${hit} of ${planned} sets hit ${t.repMin}${ex.timed?'s':''}+ at the new load`;
   return {text:heavyTxt?`${base}. ${heavyTxt}`:base,beat:(planned>0&&hit>=planned)||heavyBeat};
 }
@@ -2407,15 +2528,18 @@ const ui={tab:'today',todayDay:null,mapSel:null,mapSrc:null,prevOpen:false,help:
 /* Undo used to be one snapshot that the toast timer nulled out after six
    seconds. Destructive actions deserve better than that, so keep a bounded
    stack for the life of the tab and expose it in Settings as well. */
-let toastT=null;const undoStack=[],UNDO_MAX=20;
+let toastT=null;
 function toast(msg,undo,ms){
   const el=$('#toast');el.innerHTML=`<span>${esc(msg)}</span>${undo?'<button data-act="undo">Undo</button>':''}`;el.hidden=false;
   clearTimeout(toastT);toastT=setTimeout(()=>{el.hidden=true;},ms||(undo?6000:2600));
 }
 function snapshot(){
-  try{undoStack.push(JSON.stringify(state));}catch(e){return;}
+  try{undoStack.push({pre:JSON.stringify(state),post:null});}catch(e){return;}
   while(undoStack.length>UNDO_MAX)undoStack.shift();
 }
+/* The first save after a snapshot is the action itself; remember the result,
+   so Undo can tell the action apart from anything logged after it. */
+function capturePost(){const e=undoStack[undoStack.length-1];if(e&&e.post==null){try{e.post=JSON.stringify(state);}catch(x){log('undo',x);}}}
 /* Focus used to stay behind the overlay, so keyboard and screen-reader users
    could tab through the page underneath a supposedly modal sheet. */
 let modalReturn=null;
@@ -4637,8 +4761,25 @@ const ACT={
   diagClear(){logBuf.length=0;try{localStorage.removeItem(LOGK);}catch(e){log('diag',e);}rerenderKeepScroll();toast('Log cleared');},
   undo(){
     if(!undoStack.length){toast('Nothing left to undo');return;}
-    const prev=undoStack.pop();
-    try{state=normalize(JSON.parse(prev));}catch(e){toast('Could not undo that');return;}
+    /* Undo used to put back the whole state from before the action, which
+       also threw away every session, weigh-in or set logged since then. Now
+       only the action is reversed: a three-way merge with the state right
+       after the action as the base, what is here now as one side and the
+       state before the action as the other. Records changed since the action
+       keep their newer version. */
+    const e=undoStack.pop();
+    try{
+      const pre=normalize(JSON.parse(e.pre));const post=e.post?normalize(JSON.parse(e.post)):state;
+      const P=chunksOf(pre),Q=chunksOf(post),C=chunksOf(state);const stat={conflicts:0};const parts={};
+      for(const id of new Set([...Object.keys(P),...Object.keys(Q),...Object.keys(C)])){
+        const q=Q[id]||emptyChunk(id);
+        parts[id]=mergeChunk(id,q?baseOf(id,q):null,C[id]||emptyChunk(id),P[id]||emptyChunk(id),false,stat);
+      }
+      state=assemble(parts);
+    }catch(x){log('undo',x);toast('Could not undo that');return;}
+    // If the step below never saw a save of its own, its result is the state
+    // before the step just undone, not what this undo is about to save.
+    const below=undoStack[undoStack.length-1];if(below&&below.post==null)below.post=e.pre;
     commit();$('#toast').hidden=true;render();
     toast(`Undone. ${undoStack.length} step${undoStack.length===1?'':'s'} left`);
   },
@@ -4922,6 +5063,9 @@ const ACT={
       const upd=d.editingId?null:routineUpdates(d);
       if(d.editingId){const i=state.sessions.findIndex(s=>s.id===d.editingId);if(i>=0){sess.demo=state.sessions[i].demo;state.sessions[i]=sess;}else state.sessions.push(sess);}
       else state.sessions.push(sess);
+      // Saving an edit of a session that was deleted while the edit was open
+      // brings it back: the save is the newer action.
+      state.trash=state.trash.filter(t=>!(t.kind==='session'&&t.id===sess.id));
       // Recap is computed before the draft is cleared, while the done flags exist.
       const targets=d.ex.filter(b=>b.tgt).length,beaten=d.ex.filter(b=>{const pr=blockProgress(b);return pr&&pr.beat;}).length;
       const editing=!!d.editingId;
@@ -4942,9 +5086,9 @@ const ACT={
     else save();
   },
   discard(){confirmBox('Discard this session?',state.draft.editingId?'Your edits will be lost. The saved session stays as it was.':'Sets and cardio logged in this session will not be saved.','Discard',()=>{state.draft=null;saveNow();stopTimer();wakeOff();render();},true);},
-  addBW(){const v=numIn($('#bwVal').value);const de=$('#bwDate');const date=(de&&de.value)||today();if(v==null||v<=0){toast('Enter a bodyweight');return;}state.bodyweights=state.bodyweights.filter(b=>b.date!==date);state.bodyweights.push({id:uid(),date,kg:fromD(v)});commit();rerenderKeepScroll();toast('Bodyweight logged');},
+  addBW(){const v=numIn($('#bwVal').value);const de=$('#bwDate');const date=(de&&de.value)||today();if(v==null||v<=0){toast('Enter a bodyweight');return;}{const kg=fromD(v);if(kg<BW_MIN_KG||kg>BW_MAX_KG){toast(`Bodyweight must be between ${fmtW(BW_MIN_KG)} and ${fmtW(BW_MAX_KG)} ${U()}`);return;}}state.bodyweights=state.bodyweights.filter(b=>b.date!==date);state.bodyweights.push({id:uid(),date,kg:fromD(v)});commit();rerenderKeepScroll();toast('Bodyweight logged');},
   delBW(t){snapshot();state.bodyweights=state.bodyweights.filter(b=>b.id!==t.dataset.id);commit();rerenderKeepScroll();toast('Entry deleted',true);},
-  addMeas(){const m={id:uid(),date:today()};let any=false;for(const [k] of MEAS){const v=numIn($('#ms_'+k).value);if(v!=null&&v>0){m[k]=lenFrom(v);any=true;}}if(!any){toast('Enter at least one measurement');return;}state.measurements=state.measurements.filter(x=>x.date!==m.date);state.measurements.push(m);commit();rerenderKeepScroll();toast('Measurements saved');},
+  addMeas(){const m={id:uid(),date:today()};let any=false;for(const [k,lab] of MEAS){const v=numIn($('#ms_'+k).value);if(v!=null&&v>0){const cm=lenFrom(v);if(!(cm<=MEAS_MAX_CM)){toast(`${lab} looks too large. Check the number.`);return;}m[k]=cm;any=true;}}if(!any){toast('Enter at least one measurement');return;}state.measurements=state.measurements.filter(x=>x.date!==m.date);state.measurements.push(m);commit();rerenderKeepScroll();toast('Measurements saved');},
   delMeas(t){snapshot();state.measurements=state.measurements.filter(m=>m.id!==t.dataset.id);commit();rerenderKeepScroll();toast('Entry deleted',true);},
   toggleItem(t){ui.openItem=ui.openItem===t.dataset.uid?null:t.dataset.uid;rerenderKeepScroll();},
   iUp(t){const R=curRoutineB();move(R.days[+t.dataset.day].items,+t.dataset.i,+t.dataset.i-1);commit();rerenderKeepScroll();},
@@ -5502,7 +5646,7 @@ function swapPrompt(b,reason){
 }
 
 window.__onLib=(which)=>{if((which==='chart'&&ui.tab==='dash')||(which==='sortable'&&ui.tab==='program'))rerenderKeepScroll();};
-window.__ironlog={get state(){return state;},set state(v){state=v;},e1inv,rtfAt,rtfOf,rtfBand,calStats,rirEff,isHard,setCredit,tonnage,loadMode,loadWords,loadNote,progStep,jumpCap,setSecs,setupSecs,recovery,rolling7,rankDays,rankExercises,isCompound,patternOf,noE1,whtrLine,exHeadline,remainMin,shortPlan,weekPlan,cycleProjection,lastLighterWeek,regionBalance,parseHeight,mixCheck,swapCands,eqPlan,exportCSV,importData,chunksOf,assemble,sessionMuscles,TRACK_ONLY,cloud,Hx,mergeChunk,baseOf,sync:()=>cq(cloudPull),flush:()=>cq(cloudFlush),backupDue,routineUpdates,planFor,platesMode,plateText,chunksOf,IDX,suggest,e1,render,ACT,ui,makeDemo,invalidate,normalize,blockProgress,dayMinutes,weekStreak,coach,tonnageNow,livePR,exProjection,movers,stalledIds,muscleStatus,actualAvg4,plannedPerWeek,parseSets,aiSetsValid,fillSets,newBlock,lastNoteOf,sizeRows,sessionMuscleSets,sessionCapNote,routineClutter,aiDigest,debriefPrompt,reviewPrompt,swapPrompt,AI,sameRR};
+window.__ironlog={get state(){return state;},set state(v){state=v;},e1inv,rtfAt,rtfOf,rtfBand,calStats,rirEff,isHard,setCredit,tonnage,loadMode,loadWords,loadNote,progStep,jumpCap,setSecs,setupSecs,recovery,rolling7,rankDays,rankExercises,isCompound,patternOf,noE1,whtrLine,exHeadline,remainMin,shortPlan,weekPlan,cycleProjection,lastLighterWeek,regionBalance,parseHeight,mixCheck,swapCands,eqPlan,exportCSV,importData,chunksOf,assemble,sessionMuscles,TRACK_ONLY,cloud,Hx,mergeChunk,baseOf,sync:()=>cq(cloudPull),flush:()=>cq(cloudFlush),backupDue,routineUpdates,planFor,platesMode,plateText,chunksOf,IDX,suggest,e1,render,ACT,ui,makeDemo,invalidate,normalize,snapshot,saveNow,blockProgress,dayMinutes,weekStreak,coach,tonnageNow,livePR,exProjection,movers,stalledIds,muscleStatus,actualAvg4,plannedPerWeek,parseSets,aiSetsValid,fillSets,newBlock,lastNoteOf,sizeRows,sessionMuscleSets,sessionCapNote,routineClutter,aiDigest,debriefPrompt,reviewPrompt,swapPrompt,AI,sameRR};
 render();
 wakeOn();
 cloudInit();
