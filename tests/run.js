@@ -1,7 +1,7 @@
 // Runs every suite from the repo root and fails if any suite does not pass.
 const {execFileSync}=require('child_process');const fs=require('fs');
 fs.mkdirSync('screenshots',{recursive:true});
-const suites=['unit-math','unit-analytics','dataflow','migration','acceptance','flows','charts-layout','cycle-create','fuzz','integrity','gym-ux','design','uat','comeback-off','pwa'];
+const suites=['unit-math','unit-analytics','dataflow','migration','acceptance','flows','charts-layout','cycle-create','fuzz','integrity','gym-ux','design','uat','comeback-off','pwa','update'];
 // The standalone build (dist/, made by the pwa suite) runs the user-facing suites again.
 const distSuites=['dataflow','acceptance','flows','gym-ux','design','uat','comeback-off'];
 let bad=0;

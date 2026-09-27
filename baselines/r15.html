@@ -560,12 +560,6 @@ details.more>summary .small{display:block;font-weight:400}
 /* Docked under the header: at the bottom it sat over the next set rows and
    swallowed taps on them. Only its Undo button takes taps. */
 #toast{position:fixed;left:50%;transform:translateX(-50%);top:calc(var(--head-h) + 8px + env(safe-area-inset-top,0px));z-index:60;pointer-events:none;background:var(--ink);color:var(--on-ink);padding:11px 15px;border-radius:var(--r-md);font-size:15px;display:flex;gap:12px;align-items:center;max-width:92vw;box-shadow:0 8px 24px rgba(0,0,0,.22)}
-/* Sits under the sticky header and stays in view while scrolling, so a new
-   version is noticed without covering anything. */
-#updbar{position:sticky;top:calc(var(--head-h) + env(safe-area-inset-top,0px));z-index:19;display:flex;align-items:center;gap:8px;padding:6px 16px;background:var(--surface);border-bottom:1px solid var(--line)}
-#updbar[hidden]{display:none}
-#updbar .ut{flex:1 1 auto;min-width:0;font-weight:650;font-size:15px}
-#updbar .ut::before{content:"";display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--volt);margin-right:8px;vertical-align:1px}
 #toast button{background:none;border:0;color:inherit;font-weight:700;text-decoration:underline;cursor:pointer;pointer-events:auto;min-height:44px;padding:0 6px;margin:-12px 0}
 #timer{position:fixed;left:0;right:0;bottom:calc(58px + env(safe-area-inset-bottom,0px));z-index:25;background:var(--hero);color:var(--on-hero);border-top:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;padding:6px 16px}
 #timer.done{background:var(--volt);color:var(--on-volt)}
@@ -586,7 +580,6 @@ details.more>summary .small{display:block;font-weight:400}
 </head>
 <body>
 <header class="top"><h1>Iron<span>log</span></h1><nav class="wkbar" id="wkbar" aria-label="This week"></nav><button type="button" class="ssb" id="saveState" data-act="goBackup"></button></header>
-<div id="updbar" role="status" aria-live="polite" hidden></div>
 <main id="view"></main>
 <div id="timer" hidden></div>
 <nav class="tabs" id="tabs" aria-label="Sections">
@@ -621,19 +614,6 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
 (function(){
 'use strict';
 const $=(s,r=document)=>r.querySelector(s);
-/* Update prompt (standalone app only). The build's boot script registers the
-   service worker and calls ironlogUpdateReady() once a new version has been
-   downloaded and is waiting. Nothing reloads by itself, because a reload in
-   the middle of a set is jarring: the lifter picks the moment, and the
-   session in progress is saved first, so it comes back as it was. "Later"
-   hides the bar until the next launch. */
-const upd={ready:false,later:false};
-function updRender(){
-  const el=document.getElementById('updbar');if(!el)return;
-  const show=upd.ready&&!upd.later;el.hidden=!show;
-  if(show&&!el.firstChild)el.innerHTML='<span class="ut">New version ready</span><button type="button" class="btn sm primary" data-act="appUpdate">Reload</button><button type="button" class="btn sm" data-act="appUpdateLater">Later</button>';
-}
-window.ironlogUpdateReady=()=>{upd.ready=true;updRender();};
 const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const uid=()=>Math.random().toString(36).slice(2,9)+Date.now().toString(36).slice(-4);
 const LB=0.45359237, IN=2.54;
@@ -1021,7 +1001,7 @@ function freshState(){
 const KEY='ironlog.v1';
 /* Shown in Settings, in diagnostics and in backups, so a bug report can be
    matched to the exact build. */
-const APP_VERSION='2026.09.27-r16';
+const APP_VERSION='2026.09.27-r15';
 /* Diagnostics log: the last 60 errors, kept in this browser only. Errors that
    used to be swallowed silently land here, and Settings can copy them. */
 const LOGK=KEY+'.log';
@@ -1800,15 +1780,6 @@ async function cloudInit(){
     cloudChecked=true;
     if(!state.settings.onboarded&&ui.tab==='today'&&!state.draft&&!ui.modal&&!state.sessions.some(s=>!s.demo))rerenderKeepScroll();
   }
-}
-/* Says plainly where the data lives and what leaves the device. Inside Claude
-   the log is stored with the Claude account; anywhere else there is no server
-   at all. This must change when cloud sync for the standalone app arrives. */
-function privacyLine(){
-  const inClaude=!!(window.claude&&typeof window.claude.use==='function');
-  return inClaude
-    ?`<p class="small muted" id="privacy" style="margin:8px 0 0"><b>Privacy:</b> no ads, no tracking. Your log is stored with your Claude account. ${tipi('Claude features (debrief, Ask Claude, swaps, reading typed sets) send the part of your log they need to Claude, and only when you tap them. Export and CSV files go only where you save them.','About privacy')}</p>`
-    :`<p class="small muted" id="privacy" style="margin:8px 0 0"><b>Privacy:</b> no account, no ads, no tracking. Your log stays on this device and is sent nowhere. ${tipi('Ironlog has no server. Opening or updating the app downloads it from GitHub Pages, which, like any website host, sees your IP address; after that it works offline. Backup files go only where you save them. Deleting the app or this site\'s data deletes your log, so keep a backup file.','About privacy')}</p>`;
 }
 function syncInfo(){
   if(!cloud.on)return isStandalone()
@@ -4524,7 +4495,6 @@ function viewSettings(){
   <div class="card"><table class="t"><tr><th>Muscle</th><th class="r">Min</th><th class="r">Max</th></tr>${MUSCLES.map(([k,l])=>`<tr><td>${l}</td><td class="r"><input style="width:70px" type="text" inputmode="numeric" aria-label="${l} minimum hard sets a week" data-band="${k}" data-bi="0" value="${s.bands[k][0]}"></td><td class="r"><input style="width:70px" type="text" inputmode="numeric" aria-label="${l} maximum hard sets a week" data-band="${k}" data-bi="1" value="${s.bands[k][1]}"></td></tr>`).join('')}</table></div></div></details>
   ${G('data','Your data','','dataSec')}
   <div class="panel" id="syncInfo">${syncInfo()}</div>
-  ${privacyLine()}
   ${backupDue()?`<p class="callout yellow" style="margin:10px 0 0"><b>Backup due.</b> ${s.lastExport?`Last backup file ${fmtDate(s.lastExport)}.`:'No backup file yet.'} ${cloud.on?'Export one below; the cloud copy mirrors deletions, so it is not a backup.':'Export one below; this device holds the only copy.'}</p>`:''}
   ${storageOk?'':'<p class="small" style="color:var(--red)">This browser is blocking local storage, so this device keeps nothing between reloads without cloud sync.</p>'}
   <div class="card stack"><div class="row"><button class="btn primary" data-act="export" data-tip="The backup: restores everything, on any device.">Export backup (.json)</button><button class="btn" data-act="showBackup" data-tip="The same backup as text, to copy somewhere safe.">Show backup text</button><button class="btn" data-act="exportCsv" data-tip="One row per set for spreadsheets. Not a backup: it cannot be imported.">Export sets (.csv)</button></div>
@@ -4986,12 +4956,6 @@ function refreshBlock(b){
   for(const x of b.sets)if(!x.done&&!x.warm&&!x.drop&&x.r==null&&x.w===oldW)x.w=sg.w;
 }
 const ACT={
-  appUpdate(){
-    if(ui.modal&&ui.modal.dirty){toast('Save or cancel first. Your changes are still here.');return;}
-    saveNow();upd.ready=false;updRender();
-    if(typeof window.ironlogApplyUpdate==='function')window.ironlogApplyUpdate();else location.reload();
-  },
-  appUpdateLater(){upd.later=true;updRender();},
   startFree(){
     if(state.draft){ui.tab='today';render();return;}
     state.draft=freeDraft('Freestyle');ui.tab='today';

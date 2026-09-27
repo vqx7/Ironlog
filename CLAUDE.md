@@ -1,13 +1,13 @@
 # Ironlog
 
-A personal hypertrophy and strength tracker for one lifter. It is used on a phone at the gym. It ships two ways from one source file: as a Claude artifact (a hosted single-page app with cloud sync) and as a standalone installable web app (dist/, hosted on GitHub Pages, offline, data on the phone). Build r15, state schema v5.
+A personal hypertrophy and strength tracker for one lifter. It is used on a phone at the gym. It ships two ways from one source file: as a Claude artifact (a hosted single-page app with cloud sync) and as a standalone installable web app (dist/, hosted on GitHub Pages, offline, data on the phone). Build r16, state schema v5.
 
 ## What is in this repo
 
 - `index.html`: the whole app and the only source. One file of about 5,800 lines: CSS, markup, then one script in an IIFE. It has no build step and no framework. Chart.js 4.4.1 and SortableJS 1.15.2 load from cdnjs, with jsdelivr as fallback, and the fonts come from Google Fonts.
 - `tests/`: Playwright suites that drive the real page in Chromium. `tests/h.js` is the harness. It serves Chart.js, Sortable and the fonts from `node_modules`, blocks every other network call, and can fake the clock (`clock`), seed localStorage (`state`), and inject a mock cloud (`setup`).
 - `scripts/build.js`: writes the standalone app to `dist/` (fonts and libraries copied in, manifest, icons, service worker). `scripts/icons.py` draws the icons into `assets/`.
-- `baselines/r11.html` to `r14.html`: previous published builds. `tests/migration.js` saves data with them and loads it into the current build. Never delete them. When you publish a new build, add the build it replaces here.
+- `baselines/r11.html` to `r15.html`: previous published builds. `tests/migration.js` saves data with them and loads it into the current build. Never delete them. When you publish a new build, add the build it replaces here.
 
 ## Commands
 
@@ -25,7 +25,7 @@ Run a single suite with `node tests/<name>.js`. Each suite prints `ok`/`FAIL` li
 | unit-math | 1RM formulas, inverses, rep bands, hard sets, drop credit, load modes, tonnage, load steps, time model |
 | unit-analytics | stalls (all frequencies), moving/falling with the t interval, projection, PR bands, calibration shrink/cap/expiry and rounding, recovery tiers across doses, WHtR, lighter week, coach, deload rounding |
 | dataflow | draft survives reload, save, backup round trip, CSV, delete/restore, two devices syncing through a mock cloud |
-| migration | saves from r11 and r12 load with every session, set, setting, custom exercise, prior and injury intact |
+| migration | saves from r11 to r15 load with every session, set, setting, custom exercise, prior and injury intact |
 | acceptance | load labels, mix-up warning, hover/hold tips, text volume vs r12, full logged session, kg, RIR off, per-side plates |
 | flows | picker, create-from-picker, Pick for me, Discard, Limited equipment |
 | charts-layout | week bar, charts anchored at first data, range chips, height field, no horizontal overflow at 320–768 px in light and dark |
@@ -37,6 +37,7 @@ Run a single suite with `node tests/<name>.js`. Each suite prints `ok`/`FAIL` li
 | uat | acceptance regressions: Undo inside a session, Swap keeps logged sets, warm-ups and last time's reps, trimmed targets, Short on time, deload count, day scrolling, RIR strip above the rest bar, timing |
 | comeback-off | Comeback is switched off: no card, line, menu item, editor fields or toast, and saved former bests stay untouched |
 | pwa | builds dist/, serves it: no requests to other sites, fonts local, manifest and icons valid, service worker in control, offline open, log and reload |
+| update | two builds served in turn: no prompt on first install, "New version ready" after a publish without the page changing, Later, back on relaunch, Reload swaps once with the session kept and the old cache gone; the privacy line outside and inside Claude |
 
 ## How the code is organised (search for these names)
 
@@ -50,6 +51,8 @@ Run a single suite with `node tests/<name>.js`. Each suite prints `ok`/`FAIL` li
 - **Undo:** `snapshot(inv)` records the state before an action; the first save after it records the result. `ACT.undo` runs `inv` when given (in-session actions: remove exercise, remove logged set, swap), else a three-way merge (per exercise for the session in progress, `mergeDraft`), so work logged after the action survives.
 - **Last time's reps:** `lastRFor(b,si)` maps a row to last session's working sets (warm-ups and drop sets excluded); never index `lastR` by row.
 - **Logger flow:** a finished exercise folds to one line (`blockDone`, `autoFold`, `ui.blkOpen`); ticking done on an empty reps field logs last time's reps (`lastR`); RIR is a 0 to 5 strip (`rirSelect`, `rirShowStrip`, `ACT.rirPick`) that opens by itself after a set is done.
+- **Updates (standalone app):** the service worker made by `scripts/build.js` precaches past the HTTP cache, and a new version waits instead of taking over. The build's boot script calls `ironlogUpdateReady()`, which shows `#updbar` ("New version ready", Reload, Later); Reload saves, then `ironlogApplyUpdate()` lets the waiting worker take over and the page reloads once. It also checks for updates whenever the app returns to the foreground.
+- **Privacy:** `privacyLine()` in Settings > Your data says where the log lives (this device, or the Claude account inside Claude). Change it when cloud sync for the standalone app arrives.
 - **Standalone app:** `isStandalone()` switches export to the share sheet (Save to Files) and the storage wording. `cloudProvider()` is the seam for a future backend: define `window.ironlogCloud` returning `{db, userId}` with the same doc/collection calls the Claude db offers, and sync, merging and chunking work unchanged.
 - **Comeback (former bests):** switched off at the owner's request with `COMEBACK_ON=false`. The code and any saved former bests (`state.priors`) are kept; the flag gates every place it shows.
 - **Tips:** any element with `data-tip` shows it on mouse hover (350 ms), keyboard focus, or a touch hold (480 ms; the click that follows is swallowed). `tipi(text)` makes a small "i" button that shows its tip on a tap. Long explanations go here, not on screen.
@@ -67,7 +70,7 @@ Run a single suite with `node tests/<name>.js`. Each suite prints `ok`/`FAIL` li
 
 ## Publishing
 
-- **Standalone app:** `npm test` (which builds dist/), then publish dist/ to the `gh-pages` branch: `git worktree add ../pages gh-pages`, copy dist/* in, commit, push. GitHub Pages serves that branch. The service worker picks the new version up on the next launch.
+- **Standalone app:** `npm test` (which builds dist/), then publish dist/ to the `gh-pages` branch: `git worktree add ../pages gh-pages`, copy dist/* in, commit, push. GitHub Pages serves that branch. Open apps show "New version ready" the next time they come to the foreground.
 - **Claude artifact:** paste `index.html` into Claude (claude.ai) and ask it to republish the Ironlog artifact at its existing link. The page declares the capabilities `db`, `downloads`, `sample` and `user`; keep them.
 - After publishing, copy the build it replaced into `baselines/` and add it to `tests/migration.js`.
 
