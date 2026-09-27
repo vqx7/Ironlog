@@ -21,7 +21,7 @@ Run a single suite with `node tests/<name>.js`. Each suite prints `ok`/`FAIL` li
 | Suite | Covers |
 |---|---|
 | unit-math | 1RM formulas, inverses, rep bands, hard sets, drop credit, load modes, tonnage, load steps, time model |
-| unit-analytics | stalls, moving/falling, projection, PR bands, calibration shrink/cap/expiry, recovery tiers, WHtR, lighter week, coach |
+| unit-analytics | stalls (all frequencies), moving/falling with the t interval, projection, PR bands, calibration shrink/cap/expiry and rounding, recovery tiers across doses, WHtR, lighter week, coach, deload rounding |
 | dataflow | draft survives reload, save, backup round trip, CSV, delete/restore, two devices syncing through a mock cloud |
 | migration | saves from r11 and r12 load with every session, set, setting, custom exercise, prior and injury intact |
 | acceptance | load labels, mix-up warning, hover/hold tips, text volume vs r12, full logged session, kg, RIR off, per-side plates |
@@ -29,6 +29,7 @@ Run a single suite with `node tests/<name>.js`. Each suite prints `ok`/`FAIL` li
 | charts-layout | week bar, charts anchored at first data, range chips, height field, no horizontal overflow at 320–768 px in light and dark |
 | cycle-create | cycle projection, freestyle pick, create into a routine day, editor re-render |
 | fuzz | 25 random odd logs: no crash, no NaN/undefined/Infinity on any screen |
+| integrity | tests/repro/ scenarios: sync races and clock skew, unreadable saves, Undo, two tabs, edit vs delete, hostile ids, duplicates, size cap, storage errors |
 
 ## How the code is organised (search for these names)
 
@@ -60,7 +61,7 @@ The live copy is a Claude artifact. To publish, paste `index.html` into Claude (
 - **1RM:** Brzycki up to 10 reps to failure, Epley at 11–12 (they agree at 10). Nuzzo 2024 and Halperin 2022 on how estimates spread at higher reps.
 - **Hard sets:** RIR ≤ 3 (Robinson 2024, Refalo 2023). Helper muscles count 0.5 (Pelland 2025).
 - **Weekly and per-session volume:** major-muscle bands of 10–20 are typical, not a ceiling. The per-session flag sits above 11 sets (Remmert 2025, preprint).
-- **Moving and stalls:** "moving" needs ≥ 3% and a slope whose 80% interval is above zero; estimated 1RM varies 2–8% day to day (Sigvaldsen 2023). A stall is a flat or falling slope over 4–6 sessions spanning ≥ 21 days.
+- **Moving and stalls:** "moving" needs ≥ 3% and a slope whose two-sided 80% interval (Student's t, n−2 degrees of freedom; `t90`) is above zero; estimated 1RM varies 2–8% day to day (Sigvaldsen 2023). Muscle trends count only lifts that are moving or falling. A stall is a flat or falling slope over the last 6 sessions, widened to cover ≥ 21 days when 6 do not (at least 4 sessions).
 - **Recovery tiers:** 1, 2 or 3 days by set count, +1 day after failure sets or a new lift, +0.5 after heavy hinges, Nordics or walking lunges, −1 if every set stopped at RIR ≥ 3. This is a rule of thumb, used only for ranking.
 - **Bodyweight share:** only the push-up figure is measured (64%, Ebben 2011); the rest are segment-mass estimates.
 - **Waist-to-height:** 0.5 / 0.6 bands (NICE 2022).

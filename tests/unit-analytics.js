@@ -70,6 +70,48 @@ const res=await page.evaluate(()=>{
   // ---- tracked-only muscles never drive the coach
   L.state.sessions=[];for(let k=1;k<=4;k++)L.state.sessions.push(S(addDays(T,-7*k),'bench',Array.from({length:12},()=>[100,8,1])));L.invalidate();
   const co=L.coach();ok(!/Serratus|Rotator/.test(co.text),'coach never leads with a tracked-only muscle',co.text);
+  // ================= r14 review corrections =================
+  L.state.settings.heightCm=null;L.state.measurements=[];
+  const LB=0.45359237;
+  // Stall detection at 2 and 3 sessions a week (6 sessions span under 21 days).
+  {const days=[];for(let d=-70;d<=0;){days.push(d);d+=(days.length%2?4:3);}
+   I=reset(days.map(k=>S(addDays(T,k),'bench',[[100,8,2]])));ok(I.exStats.bench.stalled,'r14: flat at twice a week is stalled');
+   I=reset(days.map((k,i)=>S(addDays(T,k),'bench',[[110-i*0.5,8,2]])));ok(I.exStats.bench.stalled&&I.exStats.bench.falling,'r14: slow decline at twice a week is stalled and falling');
+   const d3=[];for(let d=-70;d<=0;d+=2)d3.push(d);
+   I=reset(d3.map(k=>S(addDays(T,k),'bench',[[100,8,2]])));ok(I.exStats.bench.stalled,'r14: flat every other day is stalled');
+   I=reset(d3.map((k,i)=>S(addDays(T,k),'bench',[[100+i*0.4,8,2]])));ok(!I.exStats.bench.stalled,'r14: rising every other day is not stalled');}
+  // Moving uses the t quantile for n-2 degrees of freedom, not z.
+  I=reset([[0,100],[7,104],[14,104.5]].map(([k,w])=>S(addDays(T,-14+k),'bench',[[w/L.e1(1,8,2),8,2]])));
+  ok(!I.exStats.bench.moving,'r14: 3 sessions, +4.5%, wide interval: not moving',[I.exStats.bench.pct,I.exStats.bench.slope,I.exStats.bench.slopeSe]);
+  // Recovery reads the least recovered dose in the window.
+  L.state.sessions=[S(addDays(T,-2),'bench',Array.from({length:12},()=>[100,8,0])),S(addDays(T,-1),'bench',[[100,8,2],[100,8,2]])];L.invalidate();
+  {const rc=L.recovery('chest');ok(rc.r===0.5&&rc.need===4&&rc.days===1&&rc.sets===2,'r14: big dose 2 days ago still counts after a small one yesterday',rc);}
+  // A noisy lift does not make its muscle "rising".
+  I=reset([[0,100],[7,90],[14,110],[21,104]].map(([k,w])=>S(addDays(T,-21+k),'bench',[[w,8,2]])));
+  {const sc=I.scores.find(x=>x.m==='chest');ok(!I.exStats.bench.moving&&sc&&sc.score===0&&sc.label!=='progressing','r14: muscle score ignores a change that is not a clear trend',sc);}
+  // Drop sets are not planned sets.
+  {const b={exId:'bench',tgt:{kind:'load',w:100,repMin:8,prevBest:null},sets:[{w:100,r:8,rir:1,done:true},{w:100,r:8,rir:1,done:true},{w:100,r:8,rir:1,done:true},{w:75,r:8,rir:0,done:true,drop:true}]};
+   L.state.draft=null;const p=L.blockProgress(b);ok(p.beat&&/3 of 3/.test(p.text),'r14: target beaten with a drop set after it',p);}
+  // Stopped early is not too heavy.
+  {const u=L.state.settings.unit;L.state.settings.unit='kg';reset([S(addDays(T,-3),'bench',[[100,6,4],[100,6,4],[100,6,4]])]);
+   const sg=L.suggest('bench',{repMin:8,repMax:12,rir:2,inc:2.5},{});ok(sg.w===100&&!sg.down,'r14: no forced drop when the estimate says the load fits',sg.text);L.state.settings.unit=u;}
+  // Deloads never round back up to the full load.
+  {const u=L.state.settings.unit;L.state.settings.unit='lb';reset([S(addDays(T,-3),'dbLateral',[[25*LB,12,1],[25*LB,12,1]])]);
+   const sg=L.suggest('dbLateral',{repMin:8,repMax:12,rir:1,inc:5*LB},{deload:true});ok(near(sg.w/LB,20,1e-6),'r14: 25 lb deload is 20 lb, not 25',sg.w/LB);L.state.settings.unit=u;}
+  // Calibration bias rounds symmetrically.
+  {L.state.settings.rirMode='cal';const cal=(date,at,pred,total)=>S(date,'bench',[[100,total,0,{cal:{at,pred}}]]);
+   L.state.sessions=[1,2,3].map(i=>cal(addDays(T,-i),8,0,9.5));L.invalidate();const a=L.calStats().bias;
+   L.state.sessions=[1,2,3].map(i=>cal(addDays(T,-i),8,1.5,8));L.invalidate();const b=L.calStats().bias;
+   ok(a===1&&b===-1,'r14: +1.5 and -1.5 shrink to +1 and -1',[a,b]);L.state.settings.rirMode='on';}
+  // WHtR band matches the number shown.
+  L.state.settings.heightCm=180;L.state.measurements=[{id:'m',date:T,waist:89.95}];L.invalidate();
+  {const t=L.whtrLine(true).replace(/<[^>]+>/g,' ');ok(/0\.50/.test(t)&&/increased/.test(t),'r14: 0.4997 shows 0.50 and the 0.50 band',t.slice(0,60));}
+  L.state.settings.heightCm=null;L.state.measurements=[];
+  // "x bodyweight" only for total loads.
+  reset([S(addDays(T,-3),'legPress',[[90,10,0]])]);
+  {const lp=L.state.exercises.find(e=>e.id==='legPress');const old=lp.load;lp.load='side';L.state.bodyweights=[{id:'b',date:T,kg:80}];L.invalidate();
+   const h1=L.exHeadline('legPress');lp.load='total';L.invalidate();const h2=L.exHeadline('legPress');lp.load=old;L.state.bodyweights=[];L.invalidate();
+   ok(!/bodyweight/.test(h1)&&/× bodyweight/.test(h2),'r14: bodyweight ratio shown for total loads only');}
   return out;});
 let f=0;for(const [p,m] of res){console.log((p?'ok  ':'FAIL')+' '+m);if(!p)f++;}
 console.log(errors.length?errors:'no errors');console.log(f?'FAILURES '+f:'ALL PASS');await browser.close();})();
