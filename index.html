@@ -211,6 +211,7 @@ label.field>input,label.field>select,label.field>textarea{margin-top:4px;color:v
 .grid3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
 .check-inline{display:flex;align-items:flex-start;gap:10px;font-size:15px;line-height:1.35}
 .check-inline input{width:20px;height:20px;flex:none;margin:0;accent-color:var(--ink)}
+.dmeta .check-inline{min-height:44px;align-items:center;cursor:pointer}
 
 .tag{display:inline-block;font-size:11.5px;font-weight:650;letter-spacing:.02em;padding:2px 8px;border-radius:999px;background:var(--surface-2);color:var(--muted);white-space:nowrap;vertical-align:1px}
 .tag.rare,.tag.yellow{background:var(--yellow-bg);color:var(--yellow)}
@@ -285,12 +286,14 @@ ul.items:empty::before{content:"Drop or add exercises here";display:block;paddin
 .sg{position:relative;display:grid;grid-template-columns:24px minmax(0,1.3fr) minmax(0,1fr) minmax(0,.8fr) 40px 44px;gap:6px;align-items:center;margin-top:6px}
 .sg.head{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:650;margin-top:12px}
 .sg .n{font:700 17px var(--display);color:var(--muted);text-align:center}
+@media (max-width:360px){.sg input::placeholder{font-size:13px;letter-spacing:-.02em}}
 .sg input{text-align:center;padding:6px 4px;font-variant-numeric:tabular-nums;font-weight:600}
 .sg select{text-align:center;padding:6px 2px;min-height:44px}
 .sg select.unset{color:var(--muted)}
 .sg.done input,.sg.done select{border-color:color-mix(in srgb,var(--volt-line) 55%,transparent);background:var(--volt-soft)}
 .sg.norir{grid-template-columns:24px minmax(0,1.3fr) minmax(0,1fr) 40px 44px}
 .sg .n.drop{color:var(--blue)}
+.sg .n.warm{color:var(--yellow);font-size:15px}
 .wbtn,.cbtn{height:44px;border-radius:var(--r-sm);border:1px solid var(--line);background:var(--bg);cursor:pointer;font-weight:700;color:var(--muted)}
 .wbtn.on{background:var(--yellow);color:var(--on-accent);border-color:transparent}
 .wbtn.drop{background:var(--blue);color:var(--on-accent);border-color:transparent}
@@ -546,7 +549,7 @@ details.more>summary::-webkit-details-marker{display:none}
 details.more>summary::before{content:"+ ";}
 details.more[open]>summary::before{content:"− ";}
 details.more>summary .small{display:block;font-weight:400}
-.block{scroll-margin-top:calc(var(--head-h) + 12px + env(safe-area-inset-top,0px))}
+.block,.day{scroll-margin-top:calc(var(--head-h) + 12px + env(safe-area-inset-top,0px))}
 @keyframes flashIn{0%{box-shadow:0 0 0 3px var(--volt-line)}100%{box-shadow:0 0 0 0 transparent}}
 .block.flash{animation:flashIn 1.4s ease-out}
 .sheet h3{font-size:24px;text-transform:uppercase;letter-spacing:.02em}
@@ -581,7 +584,7 @@ details.more>summary .small{display:block;font-weight:400}
 <div id="timer" hidden></div>
 <nav class="tabs" id="tabs" aria-label="Sections">
   <button data-tab="today" aria-label="Today"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="5" width="17" height="15.5" rx="2.5"/><path d="M3.5 10h17M8 3v4M16 3v4"/></svg><span>Today</span></button>
-  <button data-tab="program" aria-label="Program"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9.5 6h10.5M9.5 12h10.5M9.5 18h10.5"/><circle cx="5" cy="6" r="1.4"/><circle cx="5" cy="12" r="1.4"/><circle cx="5" cy="18" r="1.4"/></svg><span>Plan</span></button>
+  <button data-tab="program" aria-label="Plan"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9.5 6h10.5M9.5 12h10.5M9.5 18h10.5"/><circle cx="5" cy="6" r="1.4"/><circle cx="5" cy="12" r="1.4"/><circle cx="5" cy="18" r="1.4"/></svg><span>Plan</span></button>
   <button data-tab="dash" aria-label="Stats"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 20v-7M11 20V5M17 20v-10M3 20.5h18"/></svg><span>Stats</span></button>
   <button data-tab="history" aria-label="History"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></svg><span>History</span></button>
   <button data-tab="settings" aria-label="Settings"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h9M18 7h2M4 17h3M12 17h8"/><circle cx="15.5" cy="7" r="2.2"/><circle cx="9.5" cy="17" r="2.2"/></svg><span>Settings</span></button>
@@ -767,7 +770,7 @@ const HIDEABLE=[
   ['settings','timer','Rest timer and logging'],['settings','rir','Effort (RIR)'],['settings','prio','Priority muscles'],['settings','bands','Weekly set targets'],['settings','demo','Demo data'],['settings','reset','Reset'],['settings','diag','Diagnostics']
 ];
 const HIDEABLE_KEYS=new Set(HIDEABLE.map(([t,k])=>t+':'+k));
-const HIDE_TABS=[['today','Today'],['program','Program'],['dash','Stats'],['history','History'],['settings','Settings']];
+const HIDE_TABS=[['today','Today'],['program','Plan'],['dash','Stats'],['history','History'],['settings','Settings']];
 /* Main section per tab: the top one on Today and Stats (drag another up to
    change it), Days on Program, Sessions on History, General on Settings.
    See MAIN_FIXED and openMain(). */
@@ -1085,6 +1088,7 @@ function cleanTgt(t){
   if(!t||typeof t!=='object'||(t.kind!=='load'&&t.kind!=='reps'))return null;
   const o={kind:t.kind};
   for(const k of ['w','repMin','total','n','prevBest']){if(!(k in t))continue;const v=t[k];o[k]=v==null?null:(isNum(numOr(v,NaN))?numOr(v,0):null);}
+  if(Array.isArray(t.rs))o.rs=t.rs.slice(0,30).map(v=>{const n=numOr(v,NaN);return isNum(n)&&n>=0?Math.min(n,1000):0;});
   return o;
 }
 /* One logged session, every field checked. Also used on the copies kept in
@@ -1127,7 +1131,8 @@ function normalize(s){
   // A new device and Erase everything both start here, fully normalized:
   // the raw fresh state lacks fields (section order, folds) every view reads.
   if(!s||typeof s!=='object')s=f;
-  const drop=n=>{normalize.dropped+=n||1;};
+  // drop() is one record; drop(n) is n, and drop(0) is none (it used to count 1).
+  const drop=n=>{normalize.dropped+=n==null?1:Math.max(0,n);};
   const out={...f,...s};
 
   out.settings={...f.settings,...(s.settings||{})};
@@ -2443,7 +2448,7 @@ function suggest(exId,plan,opts){
     const tip=maxed?` Every set reached ${ext}+ at the heaviest load available, so make each rep harder instead: lower for 3 to 4 seconds and pause at the stretch, go one arm or one leg at a time, or finish with a drop set. Add a note when you change it so the numbers stay comparable.`
       :` That is the heaviest load available, so keep adding reps past ${plan.repMax}.`;
     return {w:top,text:`${lastS} Beat ${total} reps ${over} at ${lbl(top)}.${tip}`,lastR,
-      last:lastS,target:`${total+1}+ reps ${over} at ${lbl(top)}, the heaviest available`,tgt:{kind:'reps',w:top,total,n:nT,prevBest},
+      last:lastS,target:`${total+1}+ reps ${over} at ${lbl(top)}, the heaviest available`,tgt:{kind:'reps',w:top,total,n:nT,rs:topPts.map(p=>p.r),prevBest},
       easier:maxed?`Past ${ext} reps at the heaviest load: slow the lowering to 3 to 4 seconds with a pause at the stretch, go one side at a time, or add a drop set.`:null,capped:true};
   }
   if(topPts.every(p=>p.r>=plan.repMax)){
@@ -2456,7 +2461,7 @@ function suggest(exId,plan,opts){
   const total=topPts.reduce((a,p)=>a+p.r,0);const nT=topPts.length;
   const over=nT===1?'in one set':`over your first ${nT} sets`;
   return {w:top,text:`${lastS} Beat ${total} reps ${over} at ${lbl(top)}. When every set at that load reaches ${plan.repMax}, add load.`,lastR,
-    last:lastS,target:`${total+1}+ reps ${over} at ${lbl(top)}`,tgt:{kind:'reps',w:top,total,n:nT,prevBest},easier:stx.easier?easierText(ex,stx.easier):null};
+    last:lastS,target:`${total+1}+ reps ${over} at ${lbl(top)}`,tgt:{kind:'reps',w:top,total,n:nT,rs:topPts.map(p=>p.r),prevBest},easier:stx.easier?easierText(ex,stx.easier):null};
 }
 /* Timed holds: double progression on seconds. Beat the total time at the same
    load; when every hold reaches the top of the range, add the load step. */
@@ -2483,7 +2488,7 @@ function suggestTimed(ex,plan,exps,opts,injM){
   const total=topPts.reduce((a,p)=>a+p.r,0);const nT=topPts.length;
   const over=nT===1?'in one hold':`over your first ${nT} holds`;
   return {w:top,text:`${lastS} Beat ${total}s ${over} at ${lbl(top)}. When every hold reaches ${plan.repMax}s, add load.`,lastR,
-    last:lastS,target:`${total+1}s+ ${over} at ${lbl(top)}`,tgt:{kind:'reps',w:top,total,n:nT,prevBest:null},easier:null};
+    last:lastS,target:`${total+1}s+ ${over} at ${lbl(top)}`,tgt:{kind:'reps',w:top,total,n:nT,rs:topPts.map(p=>p.r),prevBest:null},easier:null};
 }
 /* Default plan for an exercise that is not in the routine yet. Timed holds
    start at 30 to 60 seconds rather than 8 to 12. */
@@ -2550,8 +2555,24 @@ function updatePlates(bi,si){const el=document.getElementById('pl-'+bi);if(!el||
    heavy set could read as beaten without the comparison meaning anything.
    Reps are now compared only at the target load; anything heavier is judged on
    estimated 1RM against your previous best, which is the comparable number. */
+/* A reps target compares today's first n sets at the load with last time's
+   first n. When today has fewer working sets (removed, or trimmed by Short on
+   time), the target shrinks to those sets, since the old total could no
+   longer be reached. Targets saved before rs existed keep the old numbers. */
+function effTarget(b){
+  const t=b.tgt;if(!t||t.kind!=='reps')return t;
+  const nw=b.sets.filter(x=>!x.warm&&!x.drop).length;
+  if(!Array.isArray(t.rs)||!(nw>0)||nw>=t.n)return t;
+  return {...t,n:nw,total:t.rs.slice(0,nw).reduce((a,v)=>a+v,0)};
+}
+function targetText(b){
+  const t=b.tgt,e=effTarget(b);if(!t||t===e||!b.target)return b.target;
+  const m=b.target.match(/^(\d+)(s?)\+ (reps )?(?:in one set|over your first \d+ sets|in one hold|over your first \d+ holds)( at .*)$/);if(!m)return b.target;
+  const hold=m[2]==='s';const over=e.n===1?(hold?'in one hold':'in one set'):`over your first ${e.n} ${hold?'holds':'sets'}`;
+  return `${e.total+1}${m[2]}+ ${m[3]||''}${over}${m[4]}`;
+}
 function blockProgress(b){
-  const t=b.tgt;if(!t)return null;
+  const t0=b.tgt;if(!t0)return null;const t=effTarget(b);
   const ex=EX(b.exId);const bw=bwLoad(ex,state.draft?state.draft.date:today());
   const done=b.sets.filter(s=>s.done&&!s.warm&&!s.drop&&+s.r>0);
   if(!done.length)return {text:'',beat:false};
@@ -2586,7 +2607,17 @@ function progressLine(b,bi){const p=blockProgress(b);return p?`<span class="tp${
    session it folds to one line (tap to reopen), so the page gets shorter as
    the workout goes and the next exercise is always near the top. Editing a
    saved session never folds, since everything there is already done. */
-const blkKey=(bi,b)=>bi+':'+b.exId;
+/* Last time's reps for row si. lastR lists last session's working sets in
+   order (no warm-ups, no drop sets), so a row's number is found by counting
+   the working rows above it. Indexing by row put a warm-up added at the top
+   on last time's first set, and shifted every set below it by one. */
+function lastRFor(b,si){
+  const s=b.sets[si];if(!s||s.warm||s.drop||!Array.isArray(b.lastR))return null;
+  let k=0;for(let i=0;i<si;i++){const x=b.sets[i];if(!x.warm&&!x.drop)k++;}
+  const v=b.lastR[k];return v!=null&&v>0?v:null;
+}
+// Keyed by session too, so a block opened in one session is not open in the next.
+const blkKey=(bi,b)=>((state.draft&&state.draft.id)||'')+':'+bi+':'+b.exId;
 function blockDone(b){const w=b.sets.filter(x=>!x.warm);return w.length>0&&w.every(x=>x.done);}
 function sessProgress(d){let n=0,k=0;for(const b of d.ex)for(const x of b.sets)if(!x.warm){n++;if(x.done)k++;}return {n,k,pct:n?k/n*100:0};}
 function updateSessBar(){const d=state.draft;const el=document.getElementById('sessBar');if(!d||!el)return;const p=sessProgress(d);el.style.width=p.pct+'%';const t=document.getElementById('sessOf');if(t)t.textContent=`${p.k} of ${p.n}`;}
@@ -2653,9 +2684,33 @@ function toast(msg,undo,ms){
   const el=$('#toast');el.innerHTML=`<span>${esc(msg)}</span>${undo?'<button data-act="undo">Undo</button>':''}`;el.hidden=false;
   clearTimeout(toastT);toastT=setTimeout(()=>{el.hidden=true;},ms||(undo?6000:2600));
 }
-function snapshot(){
-  try{undoStack.push({pre:JSON.stringify(state),post:null});}catch(e){return;}
+/* inv, when given, reverses the action directly on the current state and
+   returns true, or returns false when things have moved on too far, in which
+   case Undo falls back to the merge. Used for the in-session actions, where
+   a set logged a second later touches the same record. */
+function snapshot(inv){
+  try{undoStack.push({pre:JSON.stringify(state),post:null,inv:typeof inv==='function'?inv:null});}catch(e){return;}
   while(undoStack.length>UNDO_MAX)undoStack.shift();
+}
+/* Undo inside a session: the session in progress merged exercise by
+   exercise (keyed by exercise and its occurrence), base = right after the
+   action, local = now, other = before it. Exercises changed only by the
+   action go back; ones changed since keep the newer version. As a whole
+   record, any set logged after the action used to block the undo. */
+function mergeDraft(base,cur,pre){
+  if(!pre||!cur||!base||pre.id!==cur.id||base.id!==cur.id)return cur===undefined?null:cur;
+  const keyed=list=>{const seen={};return (list||[]).map(b=>{const k=b.exId+'#'+(seen[b.exId]=(seen[b.exId]||0)+1);return [k,b];});};
+  const B=new Map(keyed(base.ex)),C=keyed(cur.ex),P=keyed(pre.ex);const Cm=new Map(C);
+  const pick=(k)=>{const b=B.get(k),c=Cm.get(k),p=P.find(x=>x[0]===k);const pv=p?p[1]:undefined;
+    const bh=b?canon(b):null,ch=c?canon(c):null,ph=pv?canon(pv):null;
+    if(ch===bh)return pv;if(ph===bh)return c;return c;};
+  const out=[];
+  // Keep the order of the version before the action, then anything added since.
+  for(const [k] of P){const v=pick(k);if(v)out.push(v);}
+  for(const [k,c] of C){if(!P.some(x=>x[0]===k)){const v=pick(k);if(v&&!out.includes(v))out.push(v);}}
+  const res={...cur,ex:out};
+  for(const f of ['notes','dayName','deload','light','limited','cardio','chk']){if(canon(cur[f])===canon(base[f]))res[f]=pre[f];}
+  return res;
 }
 /* The first save after a snapshot is the action itself; remember the result,
    so Undo can tell the action apart from anything logged after it. */
@@ -2699,7 +2754,10 @@ function openModal(m){
 }
 function closeModal(){
   if(AI.ctl){try{AI.ctl.abort();}catch(e){/* already finished */}AI.ctl=null;}
-  ui.modal=null;$('#modal').hidden=true;$('#modal').innerHTML='';document.body.classList.remove('modal-open');renderModal.last=null;
+  const was=ui.modal;
+  ui.modal=null;
+  if(was&&was.kind==='short'&&was.temp&&!was.applied&&state.draft&&state.draft.id===was.temp&&!state.draft.ex.some(b=>b.sets.some(x=>x.done))){
+    state.draft=null;stopTimer();wakeOff();saveNow();setTimeout(render,0);}$('#modal').hidden=true;$('#modal').innerHTML='';document.body.classList.remove('modal-open');renderModal.last=null;
   const r=modalReturn;modalReturn=null;
   if(r&&document.contains(r)&&typeof r.focus==='function')try{r.focus({preventScroll:true});}catch(e){/* focus is best effort */}
 }
@@ -2764,8 +2822,8 @@ function setDone(bi,si,val){
   if(btn){btn.classList.toggle('on',val);btn.setAttribute('aria-pressed',String(val));const row=btn.closest('.sg');if(row)row.classList.toggle('done',val);}
   refreshPR(bi,si,true);
   const c=$('#doneCount');
-  if(c){const n=state.draft.ex.reduce((a,x)=>a+x.sets.filter(y=>y.done).length,0);c.textContent=String(n);const w=$('#doneWord');if(w)w.textContent=n===1?'set':'sets';}
-  let autoRest=val&&!s.warm&&+b.plan.rest>0&&state.settings.timerMode==='auto';
+  if(c){const n=state.draft.ex.reduce((a,x)=>a+x.sets.filter(y=>y.done&&!y.warm).length,0);c.textContent=String(n);const w=$('#doneWord');if(w)w.textContent=n===1?'set':'sets';}
+  let autoRest=val&&!s.warm&&!state.draft.editingId&&+b.plan.rest>0&&state.settings.timerMode==='auto';
   // In a superset the rest is taken after the last exercise of the group.
   if(autoRest&&b.plan.ss){const grp=state.draft.ex.filter(x=>x.plan&&x.plan.ss===b.plan.ss);if(grp[grp.length-1]!==b)autoRest=false;}
   if(autoRest)startTimer(+b.plan.rest);
@@ -2822,7 +2880,9 @@ document.addEventListener('visibilitychange',()=>{if(document.visibilityState===
 /* ---------- render ---------- */
 const charts=[];let sortables=[];
 function killDynamic(){while(charts.length){try{charts.pop().destroy();}catch(e){/* chart already gone */}}sortables.forEach(s=>{try{s.destroy();}catch(e){/* list already gone */}});sortables=[];}
-function applyTheme(){const t=state.settings.theme;if(t==='system')delete document.documentElement.dataset.theme;else document.documentElement.dataset.theme=t;}
+function applyTheme(){const t=state.settings.theme;if(t==='system')delete document.documentElement.dataset.theme;else document.documentElement.dataset.theme=t;
+  // The installed app's status bar takes this colour, so it follows the theme.
+  const m=document.querySelector('meta[name="theme-color"]');if(m)try{m.setAttribute('content',getComputedStyle(document.body).backgroundColor||'#0a0b0d');}catch(e){/* cosmetic */}}
 /* A code bug inside a view used to leave a blank screen. Now the error is
    logged and a recovery screen offers your data and a way back. */
 function render(){
@@ -2895,7 +2955,7 @@ function viewToday(){
   const deload=isDeloadWeek();
   const sel=`<label class="inline-sel small">Change day<select data-bind="todayDay">${R.days.map((d,i)=>`<option value="${i}" ${i===di?'selected':''}>${dayLabel(R,i)}: ${esc(d.name)}${d.rest?' (rest)':''}${mark(i)}</option>`).join('')}</select></label>`;
   let h=welcomeCard()+`<section class="hero" data-day="${di}"><div class="hero-top"><div class="hero-t"><p class="eyebrow">${esc(new Date().toLocaleDateString(undefined,{weekday:'long',month:'short',day:'numeric'}))} · ${esc(eyebrow)}${deload?' · deload week':''}</p><h2>${esc(day.name)}</h2>
-  <p class="muted small" style="margin:0" data-tip="${esc('Routine: '+R.name)}">${playable?`${day.items.length} exercises · ${deload?Math.ceil(daySets(day)/2)+' sets (deload)':daySets(day)+' sets'} · ${minTxt(dayMinutes(day,deload))}`:(day.rest?'Rest day':'No exercises planned')}</p></div>${heroRing(weekStats())}</div>
+  <p class="muted small" style="margin:0" data-tip="${esc('Routine: '+R.name)}">${playable?`${day.items.length} exercises · ${deload?day.items.reduce((a,it)=>a+Math.max(1,Math.ceil(it.sets/2)),0)+' sets (deload)':daySets(day)+' sets'} · ${minTxt(dayMinutes(day,deload))}`:(day.rest?'Rest day':'No exercises planned')}</p></div>${heroRing(weekStats())}</div>
   ${note?`<p class="hero-note small">${note}</p>`:''}`;
   /* Four ways to start besides the plan as written, each saying on its face
      what it changes. Lighter and Short on time answer different problems:
@@ -3298,9 +3358,10 @@ function checkinCard(d){
    setup for an exercise not started yet. */
 function blockRest(d,bi){const b=d.ex[bi],nx=d.ex[bi+1];return (b.plan.ss&&nx&&nx.plan.ss===b.plan.ss)?0:(+b.plan.rest||0);}
 function remainMin(d){
-  let s=0,cN=0;
-  d.ex.forEach((b,bi)=>{const ex=EX(b.exId);const su=setupSecs(ex,cN);if(isCompound(ex))cN++;const n=b.sets.filter(x=>!x.done&&!x.warm).length;if(!n)return;s+=n*(setSecs(ex,b.plan)+blockRest(d,bi))+(b.sets.some(x=>x.done)?0:su);});
-  return Math.round(s/60);
+  // No rest is taken after the very last set, the same as the plan's estimate.
+  let s=0,cN=0,lastRest=0;
+  d.ex.forEach((b,bi)=>{const ex=EX(b.exId);const su=setupSecs(ex,cN);if(isCompound(ex))cN++;const n=b.sets.filter(x=>!x.done&&!x.warm).length;if(!n)return;const r=blockRest(d,bi);s+=n*(setSecs(ex,b.plan)+r)+(b.sets.some(x=>x.done)?0:su);lastRest=r;});
+  return Math.round(Math.max(0,s-lastRest)/60);
 }
 /* Trim to fit. Lowest priority first: sets come off down to 2 per exercise,
    then whole exercises not started yet drop out, then exercises in progress
@@ -3314,13 +3375,16 @@ function shortPlan(d,mins){
   let cN=0;
   const bl=d.ex.map((b,bi)=>{const ex=EX(b.exId);const undone=b.sets.filter(x=>!x.done&&!x.warm).length;const done=b.sets.filter(x=>x.done&&!x.warm).length;const started=b.sets.some(x=>x.done);
     const su=setupSecs(ex,cN);if(isCompound(ex))cN++;
-    return {bi,ex,undone,done,started,keep:undone,rest:blockRest(d,bi),per:setSecs(ex,b.plan),su,score:(pri.has(ex.primary)?4:0)+(lag.has(ex.primary)?2:0)-bi*0.01};});
+    // Main (compound) lifts rank above isolation work, as the Short on time
+    // help promises; priority and lagging muscles above both.
+    return {bi,ex,undone,done,started,keep:undone,rest:blockRest(d,bi),per:setSecs(ex,b.plan),su,score:(pri.has(ex.primary)?4:0)+(lag.has(ex.primary)?2:0)+(isCompound(ex)?1:0)-bi*0.01};});
   const cost=()=>bl.reduce((a,x)=>a+(x.keep?x.keep*(x.per+x.rest)+(x.started?0:x.su):0),0)/60;
   const byLow=arr=>arr.slice().sort((a,b)=>a.score-b.score);
   let guard=0;
   while(cost()>mins&&guard++<500){const c=byLow(bl.filter(x=>x.keep>0&&x.done+x.keep>2));if(!c.length)break;c[0].keep--;}
   const kept=x=>x.keep>0||x.done>0;
-  const covered=x=>bl.some(y=>y!==x&&kept(y)&&y.ex.primary===x.ex.primary);
+  // A fly does not cover a bench press: only a compound covers a compound.
+  const covered=x=>bl.some(y=>y!==x&&kept(y)&&y.ex.primary===x.ex.primary&&(isCompound(y.ex)||!isCompound(x.ex)));
   while(cost()>mins&&guard++<1000){const c=bl.filter(x=>x.keep>0&&!x.started);if(!c.length)break;const red=c.filter(covered);byLow(red.length?red:c)[0].keep=0;}
   while(cost()>mins&&guard++<1500){const c=byLow(bl.filter(x=>x.keep>0&&x.started));if(!c.length)break;c[0].keep--;}
   const changes=[];
@@ -3730,6 +3794,11 @@ function rirShowStrip(bi,si){
   rirClose();const btn=document.querySelector(`.rirb[data-b="${bi}"][data-s="${si}"]`);const s=state.draft&&state.draft.ex[bi]&&state.draft.ex[bi].sets[si];
   if(!btn||!s)return;const row=btn.closest('.sg');if(!row)return;
   row.insertAdjacentHTML('afterend',rirStripHTML(bi,si,s.rir==null?'':String(s.rir)));btn.setAttribute('aria-expanded','true');
+  // The rest bar appears on the same tap and can cover the strip; lift it
+  // into view above the bar and the tabs.
+  requestAnimationFrame(()=>{const st=row.nextElementSibling;if(!st||!st.classList.contains('rirstrip'))return;
+    let lim=window.innerHeight;for(const id of ['timer','tabs']){const el=document.getElementById(id);if(el&&!el.hidden){const t=el.getBoundingClientRect().top;if(t>0)lim=Math.min(lim,t);}}
+    const r=st.getBoundingClientRect();if(r.bottom>lim-8)window.scrollBy({top:r.bottom-lim+16,behavior:'smooth'});});
 }
 /* Cardio and mobility inside a session: saved as their own entries on Finish,
    never counted as lifting sets. */
@@ -3743,7 +3812,8 @@ function cardioDraftCard(d){
   <div class="row" style="margin-top:${n?10:0}px"><button class="btn sm" data-act="cDraftAdd" data-when="pre">+ Before lifting</button><button class="btn sm" data-act="cDraftAdd" data-when="post">+ After lifting</button></div>`});
 }
 function viewLogger(){
-  const d=state.draft;const doneN=d.ex.reduce((a,b)=>a+b.sets.filter(s=>s.done).length,0);
+  // Warm-ups are not counted, the same as the progress bar under it.
+  const d=state.draft;const doneN=d.ex.reduce((a,b)=>a+b.sets.filter(s=>s.done&&!s.warm).length,0);
   const left=d.editingId||d.free?0:remainMin(d);
   let h=`<div class="ph"><div style="min-width:0;flex:1 1 auto"><p class="kick">${d.editingId?'Editing a saved session':'Session in progress'}</p><div class="hrow"><h2 style="overflow-wrap:anywhere;min-width:0">${esc(d.dayName)}</h2>${helpBtn('log')}<button class="btn sm danger" style="margin-left:auto;flex:none" data-act="discard">${d.editingId?'Cancel edit':'Discard'}</button></div><p class="meta"><span id="doneCount">${doneN}</span> <span id="doneWord">${doneN===1?'set':'sets'}</span> done${d.startedAt?`, started ${new Date(d.startedAt).toLocaleTimeString([],{hour:'numeric',minute:'2-digit'})}`:''}${left>0?`, about ${left} min left`:''}</p>${(()=>{const sp=sessProgress(d);return sp.n?`<div class="sprog" aria-hidden="true"><div class="band"><div class="fill prog" id="sessBar" style="width:${sp.pct}%"></div></div><span id="sessOf">${sp.k} of ${sp.n}</span></div>`:'';})()}
   <div class="row lh-row"><input type="date" data-bind="draftDate" value="${d.date}" max="${today()}" aria-label="Session date" data-tip="Change to log a past session">${left>0?'<button class="btn sm" data-act="shortOpen">Short on time</button>':''}</div></div></div>
@@ -3762,27 +3832,28 @@ function viewLogger(){
       return;
     }
     const partner=ss?d.ex.filter(x=>x!==b&&x.plan.ss===p.ss).map(x=>exName(x.exId)).join(' + '):'';
-    h+=`<section class="block${ss?' ss':''}" id="blk-${bi}"><div class="bh"><div><h3>${esc(ex.name)}${ex.note?` ${tipi(ex.note,'About '+ex.name)}`:''}</h3><p class="small muted">${esc(ML[ex.primary])} · ${p.sets}×${p.repMin}-${p.repMax}${ex.timed?'s':''}${ex.perSide?'/side':''}${nr?'':` @${p.rir} RIR`} · ${p.rest}s${ss?` · <span class="tag blue">Superset ${ss}</span>`:''}${b.inj?` · <span class="tag red">Injury: ${ML[b.inj]}</span>`:''}</p>${lmChips(ex)}</div>
+    h+=`<section class="block${ss?' ss':''}" id="blk-${bi}"><div class="bh"><div><h3>${esc(ex.name)}${ex.note?` ${tipi(ex.note,'About '+ex.name)}`:''}</h3><p class="small muted">${esc(ML[ex.primary])} · ${b.sets.filter(x=>!x.warm&&!x.drop).length||p.sets}×${p.repMin}-${p.repMax}${ex.timed?'s':''}${ex.perSide?'/side':''}${nr?'':` @${p.rir} RIR`} · ${p.rest}s${ss?` · <span class="tag blue">Superset ${ss}</span>`:''}${b.inj?` · <span class="tag red">Injury: ${ML[b.inj]}</span>`:''}</p>${lmChips(ex)}</div>
       <div class="bh-acts">${!d.editingId&&blockDone(b)?`<button class="ib" aria-label="Fold ${esc(ex.name)}" data-act="bFold" data-b="${bi}">▴</button>`:''}<button class="ib" aria-label="Exercise options" data-act="bMenu" data-b="${bi}">⋯</button></div></div>
-      ${b.target?`<p class="hint"><b>Today: ${esc(b.target)}</b><span class="tp muted" style="display:block">${esc(b.last)}</span>${b.easier?`<span class="tp ez">${esc(b.easier)}</span>`:''}${progressLine(b,bi)}</p>`:`<p class="hint">${esc(b.hint||'')}</p>`}${ex.timed?'':cbLine(cbm[b.exId])}${bi===calIdx?`<p class="small caldue">Due for an RIR check: take one set here to failure. <button class="linkbtn" data-act="bCal" data-b="${bi}">Calibration set</button> <button class="linkbtn" data-act="calSnooze">Not now</button></p>`:''}
+      ${b.target?`<p class="hint"><b>Today: ${esc(targetText(b))}</b><span class="tp muted" style="display:block">${esc(b.last)}</span>${b.easier?`<span class="tp ez">${esc(b.easier)}</span>`:''}${progressLine(b,bi)}</p>`:`<p class="hint">${esc(b.hint||'')}</p>`}${ex.timed?'':cbLine(cbm[b.exId])}${bi===calIdx?`<p class="small caldue">Due for an RIR check: take one set here to failure. <button class="linkbtn" data-act="bCal" data-b="${bi}">Calibration set</button> <button class="linkbtn" data-act="calSnooze">Not now</button></p>`:''}
       ${ss&&partner?`<p class="small muted" style="margin:2px 0 0">Superset with ${esc(partner)}; rest after the pair.</p>`:''}
       ${b.lastNote&&!b.note?`<p class="small lnote">Your note, ${esc(fmtDate(b.lastNote.date))}: ${esc(b.lastNote.text)} <button class="linkbtn" data-act="noteReuse" data-b="${bi}">Use again</button></p>`:''}
       ${b.note?`<p class="small bnote" id="bn-${bi}">${esc(b.note)}</p>`:`<p class="small bnote" id="bn-${bi}" hidden></p>`}
       <div class="sg head${nr?' norir':''}"><span>#</span><span data-tip="${esc('Load: '+loadWords(ex))}">${loadHead(ex)}</span><span>${ex.timed?(ex.perSide?'Sec/side':'Sec'):ex.perSide?'Reps/side':'Reps'}</span>${nr?'':'<span>RIR</span>'}<span>W/D</span><span>Done</span></div>`;
     b.sets.forEach((s,si)=>{
-      const ph=b.lastR[si]!=null?b.lastR[si]:`${p.repMin}-${p.repMax}`;
+      const lr=lastRFor(b,si);const ph=s.warm?'':lr!=null?lr:`${p.repMin}-${p.repMax}`;
       const pr=s.done?livePR(b.exId,s,d.date):null;
-      h+=`<div class="sg${nr?' norir':''} ${s.done?'done':''}${pr?' pr':''}"${pr?` data-pr="${pr}"`:''}><span class="n${s.drop?' drop':''}">${s.drop?'↓':si+1}</span>
+      const wn=b.sets.slice(0,si+1).filter(x=>!x.warm&&!x.drop).length;
+      h+=`<div class="sg${nr?' norir':''} ${s.done?'done':''}${pr?' pr':''}"${pr?` data-pr="${pr}"`:''}><span class="n${s.drop?' drop':s.warm?' warm':''}">${s.drop?'↓':s.warm?'W':wn}</span>
         <input type="text" inputmode="decimal" enterkeyhint="next" aria-label="${esc(ex.name)}, set ${si+1} load" data-f="w" data-b="${bi}" data-s="${si}" value="${s.w==null?'':fmtW(s.w)}" placeholder="${ex.bw?'0':''}">
         <input type="text" inputmode="numeric" enterkeyhint="next" aria-label="${esc(ex.name)}, set ${si+1} ${ex.timed?'seconds':'reps'}${ex.perSide?' per side':''}" data-f="r" data-b="${bi}" data-s="${si}" value="${s.r==null?'':s.r}" placeholder="${ph}">
         ${nr?'':rirSelect(s.rir,bi,si,p.rir)}
-        <button class="wbtn ${s.warm?'on':s.drop?'drop':''}" aria-label="Set ${si+1} type: ${s.warm?'warm-up':s.drop?'drop set':'working set'}" data-act="sWarm" data-b="${bi}" data-s="${si}">${s.drop?'D':'W'}</button>
+        <button class="wbtn ${s.warm?'on':s.drop?'drop':''}" aria-label="Set ${si+1} type: ${s.warm?'warm-up':s.drop?'drop set':'working set'}. Tap to change" data-act="sWarm" data-b="${bi}" data-s="${si}">${s.drop?'D':s.warm?'W':'–'}</button>
         <button class="cbtn ${s.done?'on':''}" aria-label="Set ${si+1} done" aria-pressed="${s.done?'true':'false'}" data-act="sDone" data-b="${bi}" data-s="${si}">✓</button></div>`;
     });
     if(platesMode(ex)!=='none')h+=`<p class="small muted" id="pl-${bi}" style="margin:6px 0 0">${esc(plateLine(b))}</p>`;
     // Copy last reps used to be hidden whenever the suggestion was "add load",
     // which is exactly the session where prefilled reps save the most typing.
-    const canFill=b.lastR&&b.lastR.some(r=>r!=null)&&b.sets.some((s,i)=>!s.done&&!s.warm&&!s.drop&&s.r==null&&b.lastR[i]!=null);
+    const canFill=b.lastR&&b.lastR.some(r=>r!=null)&&b.sets.some((s,i)=>!s.done&&!s.warm&&!s.drop&&s.r==null&&lastRFor(b,i)!=null);
     h+=`<div class="row" style="margin-top:8px">${canFill?`<button class="btn sm" data-act="fillLast" data-b="${bi}" aria-label="Copy last session's reps" data-tip="Fill empty rows with last session's reps.">Copy last</button>`:''}<button class="btn sm" data-act="sAdd" data-b="${bi}" aria-label="Add a set" data-tip="Add a working set at the last load.">+ Set</button><button class="btn sm" data-act="sDel" data-b="${bi}" aria-label="Remove a set" data-tip="Removes the last set not yet done." ${b.sets.length?'':'disabled'}>− Set</button>${state.settings.timerMode!=='off'&&+p.rest>0?`<button class="btn sm rest" data-act="tStart" data-b="${bi}" aria-label="Start a ${p.rest} second rest" data-tip="Start the rest timer.">⏱ ${p.rest}s</button>`:''}</div></section>`;
   });
   h+=`<div class="row"><button class="btn" style="flex:1" data-act="pickSession">+ Add exercise</button>${d.editingId?'':'<button class="btn" data-act="pickEx">Pick for me</button>'}</div>`;
@@ -3810,7 +3881,7 @@ function viewProgram(){
   const R=state.routines.find(r=>r.id===ui.bRoutine);const isActive=R.id===state.activeRoutineId;
   if(ui.bTarget>=R.days.length)ui.bTarget=0;
   const totSets=R.days.reduce((a,d)=>a+(d.rest?0:daySets(d)),0);const weekly=R.schedule==='weekly';
-  let h=pageHead(isActive?'Active routine':'Not active',`Program`,`<b>${esc(R.name)}</b> · ${trainDaysOf(R)} training days${weekly?' a week':` in a ${R.days.length}-day cycle`} · ${weekly?totSets:Math.round(totSets*weekFactor(R))} planned sets a week`,`${helpBtn('plan')}<button class="btn sm" data-act="planLib">Exercise library</button>`)
+  let h=pageHead(isActive?'Active routine':'Not active',`Plan`,`<b>${esc(R.name)}</b> · ${trainDaysOf(R)} training days${weekly?' a week':` in a ${R.days.length}-day cycle`} · ${weekly?totSets:Math.round(totSets*weekFactor(R))} planned sets a week`,`${helpBtn('plan')}<button class="btn sm" data-act="planLib">Exercise library</button>`)
   +helpText('plan','Drag the ⠿ handle to reorder or move exercises between days; the arrows and "Move to" do the same. Tap an exercise to edit sets, reps, RIR, rest and load increment, or to superset it with the next exercise. The library button manages every exercise, including your own. In a numbered cycle, drag a day by the ⠿ beside its number to reorder days (or focus the ⠿ and use the arrow keys); they renumber from their new position. On every tab, the ⠿ beside a section title moves that section, and the order is remembered.');
   h+=sec({sk:'program:routine',key:'routine',title:'Routine',sub:esc(R.name),body:`<div class="stack">
     <label class="field">Routine<select data-bind="bRoutine">${state.routines.map(r=>`<option value="${r.id}" ${r.id===R.id?'selected':''}>${esc(r.name)}${r.id===state.activeRoutineId?' (active)':''}${r.days.every(d=>!d.items.length)?' (empty)':''}</option>`).join('')}</select></label>
@@ -3894,7 +3965,7 @@ function volumeRows(sets,conf){
 
 /* ---------- LIBRARY ---------- */
 function viewLibrary(){
-  return pageHead('Program','Exercise library',`${state.exercises.filter(e=>!e.archived).length} exercises, all editable`,`<button class="btn sm" data-act="planBack">← Program</button><button class="btn sm primary" data-act="exNew">New exercise</button>`)+`
+  return pageHead('Plan','Exercise library',`${state.exercises.filter(e=>!e.archived).length} exercises, all editable`,`<button class="btn sm" data-act="planBack">← Program</button><button class="btn sm primary" data-act="exNew">New exercise</button>`)+`
   <div class="card stack"><input type="search" placeholder="Search exercises" aria-label="Search exercises" data-bind="libQ" value="${esc(ui.libQ)}">
   <div class="grid2"><select data-bind="libM" aria-label="Filter by muscle"><option value="">All muscles</option>${MUSCLES.map(([k,l])=>`<option value="${k}" ${ui.libM===k?'selected':''}>${l}</option>`).join('')}</select>
   <select data-bind="libE" aria-label="Filter by equipment"><option value="">All equipment</option>${EQUIP.map(([k,l])=>`<option value="${k}" ${ui.libE===k?'selected':''}>${l}</option>`).join('')}</select></div>
@@ -3995,7 +4066,7 @@ function viewDash(){
   if(ui.dashEx){
     const st=I.exStats[ui.dashEx];const ex=EX(ui.dashEx);const exps=I.byEx[ui.dashEx];
     exh+=`<select data-bind="dashEx" aria-label="Exercise">${withData.map(id=>`<option value="${id}" ${id===ui.dashEx?'selected':''}>${esc(exName(id))}</option>`).join('')}</select>
-    <div style="margin-top:8px">${exHeadline(ui.dashEx)}</div>${noE1(ex)?`<div class="kpis" style="margin-top:8px"><div class="kpi"><div class="v">${st.n}</div><div class="l">Sessions logged</div></div><div class="kpi"><div class="v">${st.stalled?'Yes':'No'}</div><div class="l">Stalled</div></div></div>`:''}<div class="kpis" style="margin-top:8px${noE1(ex)?';display:none':''}"><div class="kpi"><div class="v">${st.best?(ex.bw?'≈':'')+fmtW(st.best):'n/a'}</div><div class="l">Best e1RM (${U()}${loadNote(ex)})</div></div><div class="kpi"><div class="v">${st.pct==null?'n/a':(st.pct>=0?'+':'')+r1(st.pct)+'%'}</div><div class="l">Change, first to last exposure</div></div><div class="kpi"><div class="v">${st.slope==null?'n/a':(st.slope>=0?'+':'')+r1(st.slope)+'%'}</div><div class="l">Fitted trend per week</div></div><div class="kpi"><div class="v">${st.n}</div><div class="l">Sessions logged</div></div></div>
+    <div style="margin-top:8px">${exHeadline(ui.dashEx)}</div>${noE1(ex)?`<div class="kpis" style="margin-top:8px"><div class="kpi"><div class="v">${st.n}</div><div class="l">Sessions logged</div></div><div class="kpi"><div class="v">${st.stalled?'Yes':'No'}</div><div class="l">Stalled</div></div></div>`:''}<div class="kpis" style="margin-top:8px${noE1(ex)?';display:none':''}"><div class="kpi"><div class="v">${st.best?(ex.bw?'≈':'')+fmtW(st.best):'n/a'}</div><div class="l">Best e1RM (${U()}${loadNote(ex)})</div></div><div class="kpi"><div class="v">${st.pct==null?'n/a':(st.pct>=0?'+':'')+r1(st.pct)+'%'}</div><div class="l">Change over 6 weeks</div></div><div class="kpi"><div class="v">${st.slope==null?'n/a':(st.slope>=0?'+':'')+r1(st.slope)+'%'}</div><div class="l">Fitted trend per week</div></div><div class="kpi"><div class="v">${st.n}</div><div class="l">Sessions logged</div></div></div>
     ${st.pct!=null&&st.slope!=null&&(st.pct>0)!==(st.slope>0)&&Math.abs(st.pct)>0.5&&Math.abs(st.slope)>0.1?`<p class="small muted hastip" style="margin-top:6px" data-tip="The change compares the endpoints; the trend fits a line through every session. When they split, trust the trend: one unusual session is pulling an endpoint.">Change and trend disagree</p>`:''}
     ${noE1(ex)?'':`${rangeChips('ex',weeksSpan(exps[0].date),8,'all')}<div class="chartbox"><canvas id="chEx"></canvas></div>${chartFallback()}
     <p class="small muted hastip" style="margin:4px 0 0" data-tip="Filled diamond: a new best estimate. Hollow diamond: a rep PR, more reps at a load than ever before, which can sit below an earlier best. The dashed line to the right appears only when the trend is clearly up, with a range, 4 weeks out. The thin dotted line is your RIR at the top load.">Reading the chart</p>`}
@@ -4486,7 +4557,7 @@ function renderModalBody(){
     const e=m.e;
     h=`<div class="sheet" role="dialog" aria-modal="true"><div class="sheet-h"><h3>${m.isNew?'New exercise':'Edit exercise'}</h3><button class="ib" aria-label="Close" data-act="mClose">✕</button></div><div class="stack">
     <label class="field">Name<input type="text" data-ebind="name" value="${esc(e.name)}"></label>
-    <div class="grid2"><label class="field">Primary muscle<select data-ebind="primary">${MUSCLES.map(([k,l])=>`<option value="${k}" ${e.primary===k?'selected':''}>${l}</option>`).join('')}</select></label>
+    <div class="grid2"><label class="field">Primary muscle<select data-ebind="primary">${e.primary?'':'<option value="" selected disabled>Pick one</option>'}${MUSCLES.map(([k,l])=>`<option value="${k}" ${e.primary===k?'selected':''}>${l}</option>`).join('')}</select></label>
     <label class="field">Equipment<select data-ebind="equip">${EQUIP.map(([k,l])=>`<option value="${k}" ${e.equip===k?'selected':''}>${l}</option>`).join('')}</select></label></div>
     ${e.bw?'':(()=>{const def=loadWords({...e,load:undefined});const has=!m.isNew&&state.sessions.some(s=>s.ex.some(b=>b.exId===e.id));
       return `<label class="field"><span class="hastip" data-tip="${esc('What the number you type means. Estimates and targets stay in this frame; weight lifted counts both dumbbells or both sides.'+(has?' Changing it does not convert sets already logged.':''))}">Weight is entered as</span><select data-ebind="load"><option value="auto" ${!e.load?'selected':''}>Default for this equipment: ${esc(def)}</option>${LOAD_MODES.map(([k,l])=>`<option value="${k}" ${e.load===k?'selected':''}>${l}</option>`).join('')}</select></label>`;})()}
@@ -4668,7 +4739,21 @@ function applyPick(m,id){
   const d=state.draft;closeModal();if(!d){rerenderKeepScroll();return;}
   const half=p=>(d.deload||d.light)?{...p,sets:Math.max(1,Math.ceil(p.sets/2))}:p;
   if(m.mode==='addBlock'){d.ex.push(newBlock(id,half(planFor(id)),{deload:!!d.deload}));saveNow();afterAdd(d.ex.length-1);return;}
-  if(m.mode==='swapBlock'){const b=d.ex[m.b];if(!b){rerenderKeepScroll();return;}const nb=newBlock(id,{...b.plan},{deload:!!d.deload});nb.swappedFrom=b.swappedFrom||b.exId;if(nb.swappedFrom===id)nb.swappedFrom=null;d.ex[m.b]=nb;saveNow();rerenderKeepScroll();return;}
+  /* Swapping used to replace the whole block, so sets already logged on the
+     old exercise vanished. Now logged sets stay with the exercise they were
+     done on, and the new one takes over the sets still to do. */
+  if(m.mode==='swapBlock'){const b=d.ex[m.b];if(!b){rerenderKeepScroll();return;}
+    const orig=JSON.parse(JSON.stringify(b));const bi=m.b,did=d.id;
+    const done=b.sets.filter(x=>x.done);const left=b.sets.filter(x=>!x.done&&!x.warm&&!x.drop).length;
+    const nb=newBlock(id,{...b.plan,sets:done.length?Math.max(1,left):b.plan.sets},{deload:!!d.deload});nb.swappedFrom=b.swappedFrom||b.exId;if(nb.swappedFrom===id)nb.swappedFrom=null;
+    snapshot(()=>{const dd=state.draft;if(!dd||dd.id!==did)return false;
+      const at=dd.ex.findIndex(x=>x===nb);if(at<0||nb.sets.some(x=>x.done))return false;
+      if(done.length){dd.ex.splice(at,1);const i=dd.ex.findIndex(x=>x===b);if(i>=0)dd.ex[i]=orig;else return false;}else dd.ex[at]=orig;
+      return true;});
+    if(done.length){b.sets=done;b.plan={...b.plan,sets:done.filter(x=>!x.warm&&!x.drop).length||1};d.ex.splice(bi+1,0,nb);}
+    else d.ex[bi]=nb;
+    fixSupersets(d.ex.map(x=>x.plan));saveNow();rerenderKeepScroll();
+    toast(done.length?`${EX(id).name} added for the sets left. Logged sets stay with ${EX(orig.exId).name}.`:`Swapped to ${EX(id).name}`,true);return;}
   rerenderKeepScroll();
 }
 function afterAdd(bi){
@@ -4871,12 +4956,15 @@ const ACT={
     saveNow();window.scrollTo(0,0);render();wakeOn();
     openModal({kind:'picker',mode:'addBlock',title:'Add exercise to session',q:'',m:''});
   },
-  startShort(t){ACT.startSession(t);if(state.draft)openModal({kind:'short',mins:null});},
+  /* The session is built first so the sheet can preview what gets trimmed. If
+     the sheet is closed without applying and nothing was logged, the session
+     is removed again, since the user only asked a question. */
+  startShort(t){const had=!!state.draft;ACT.startSession(t);if(state.draft&&!had)openModal({kind:'short',mins:null,temp:state.draft.id});},
   shortOpen(){if(state.draft)openModal({kind:'short',mins:null});},
   shortPick(t){const m=ui.modal;if(!m||m.kind!=='short')return;m.mins=+t.dataset.v;renderModal();},
   shortApply(){
     const m=ui.modal;const d=state.draft;if(!m||!d||!m.mins){closeModal();return;}
-    const pl=shortPlan(d,m.mins);if(!pl.changes.length){closeModal();return;}
+    const pl=shortPlan(d,m.mins);m.applied=true;if(!pl.changes.length){closeModal();return;}
     snapshot();const drop=new Set();
     for(const x of pl.bl){
       if(x.keep===x.undone)continue;const b=d.ex[x.bi];
@@ -4998,16 +5086,20 @@ const ACT={
        after the action as the base, what is here now as one side and the
        state before the action as the other. Records changed since the action
        keep their newer version. */
-    const e=undoStack.pop();
-    try{
+    const e=undoStack.pop();const before=canon(state);
+    let done=false;
+    if(e.inv){try{done=e.inv()===true;}catch(x){log('undo',x);done=false;}if(done)state=normalize(state);}
+    if(!done)try{
       const pre=normalize(JSON.parse(e.pre));const post=e.post?normalize(JSON.parse(e.post)):state;
       const P=chunksOf(pre),Q=chunksOf(post),C=chunksOf(state);const stat={conflicts:0};const parts={};
       for(const id of new Set([...Object.keys(P),...Object.keys(Q),...Object.keys(C)])){
         const q=Q[id]||emptyChunk(id);
-        parts[id]=mergeChunk(id,q?baseOf(id,q):null,C[id]||emptyChunk(id),P[id]||emptyChunk(id),false,stat);
+        parts[id]=id==='draft'?{draft:mergeDraft(Q.draft&&Q.draft.draft,C.draft&&C.draft.draft,P.draft&&P.draft.draft)}
+          :mergeChunk(id,q?baseOf(id,q):null,C[id]||emptyChunk(id),P[id]||emptyChunk(id),false,stat);
       }
       state=assemble(parts);
     }catch(x){log('undo',x);toast('Could not undo that');return;}
+    if(canon(state)===before){toast('Nothing to undo there: it has changed since.');const below0=undoStack[undoStack.length-1];if(below0&&below0.post==null)below0.post=e.pre;return;}
     // If the step below never saw a save of its own, its result is the state
     // before the step just undone, not what this undo is about to save.
     const below=undoStack[undoStack.length-1];if(below&&below.post==null)below.post=e.pre;
@@ -5123,7 +5215,7 @@ const ACT={
        time's reps for that set, like the paper log you copy from. With no
        history there is no number to take, so it still asks. */
     if(!s.done&&!(+s.r>0)){
-      const b=state.draft.ex[bi];const lr=b&&b.lastR?b.lastR[si]:null;
+      const b=state.draft.ex[bi];const lr=b?lastRFor(b,si):null;
       if(!(lr>0)){toast('Enter reps first');return;}
       s.r=Math.round(lr);const inp=document.querySelector(`.sg input[data-f="r"][data-b="${bi}"][data-s="${si}"]`);if(inp)inp.value=String(s.r);
     }
@@ -5133,15 +5225,15 @@ const ACT={
   sWarm(t){
     const s=draftSet(t);const bi=+t.dataset.b,si=+t.dataset.s;
     if(!s.warm&&!s.drop)s.warm=true;else if(s.warm){s.warm=false;s.drop=true;}else s.drop=false;
-    t.classList.toggle('on',s.warm);t.classList.toggle('drop',!!s.drop);t.textContent=s.drop?'D':'W';
-    t.setAttribute('aria-label',`Set ${si+1} type: ${s.warm?'warm-up':s.drop?'drop set':'working set'}`);
-    const row=t.closest('.sg');const n=row&&row.querySelector('.n');if(n){n.textContent=s.drop?'↓':String(si+1);n.classList.toggle('drop',!!s.drop);}
-    refreshPR(bi,si,false);updateProgress(bi);
-    saveNow();
+    t.classList.toggle('on',s.warm);t.classList.toggle('drop',!!s.drop);t.textContent=s.drop?'D':s.warm?'W':'–';
+    t.setAttribute('aria-label',`Set ${si+1} type: ${s.warm?'warm-up':s.drop?'drop set':'working set'}. Tap to change`);
+    // Numbers, placeholders and the progress bar all depend on which rows are
+    // working sets, so redraw the block rather than patch one row.
+    refreshPR(bi,si,false);updateProgress(bi);updateSessBar();saveNow();rerenderKeepScroll();
   },
   fillLast(t){
     const b=state.draft.ex[+t.dataset.b];let n=0;
-    b.sets.forEach((s,i)=>{if(!s.done&&!s.warm&&!s.drop&&s.r==null&&b.lastR[i]!=null){s.r=b.lastR[i];n++;}});
+    b.sets.forEach((s,i)=>{const lr=lastRFor(b,i);if(!s.done&&!s.warm&&!s.drop&&s.r==null&&lr!=null){s.r=lr;n++;}});
     if(!n){toast('Nothing to fill');return;}
     saveNow();rerenderKeepScroll();toast(`${n} set${n===1?'':'s'} filled with last time's reps`);
   },
@@ -5211,10 +5303,14 @@ const ACT={
   sDel(t){const b=state.draft.ex[+t.dataset.b];if(!b||!b.sets.length)return;
     let i=-1;for(let k=b.sets.length-1;k>=0;k--)if(!b.sets[k].done){i=k;break;}
     if(i>=0){b.sets.splice(i,1);saveNow();rerenderKeepScroll();return;}
-    snapshot();b.sets.pop();saveNow();rerenderKeepScroll();toast('Logged set removed',true);},
+    const gone=b.sets[b.sets.length-1],at=b.sets.length-1,did=state.draft.id;
+    snapshot(()=>{const dd=state.draft;if(!dd||dd.id!==did||!dd.ex.includes(b))return false;b.sets.splice(Math.min(at,b.sets.length),0,gone);return true;});
+    b.sets.pop();saveNow();rerenderKeepScroll();toast('Logged set removed',true);},
   bUp(t){move(state.draft.ex,+t.dataset.b,+t.dataset.b-1);saveNow();rerenderKeepScroll();},
   bDown(t){move(state.draft.ex,+t.dataset.b,+t.dataset.b+1);saveNow();rerenderKeepScroll();},
-  bDel(t){snapshot();state.draft.ex.splice(+t.dataset.b,1);saveNow();rerenderKeepScroll();toast('Exercise removed',true);},
+  bDel(t){const d=state.draft;const bi=+t.dataset.b;const blk=d.ex[bi];if(!blk)return;const did=d.id;
+    snapshot(()=>{const dd=state.draft;if(!dd||dd.id!==did)return false;dd.ex.splice(Math.min(bi,dd.ex.length),0,blk);fixSupersets(dd.ex.map(x=>x.plan));return true;});
+    d.ex.splice(bi,1);saveNow();rerenderKeepScroll();toast('Exercise removed',true);},
   bSwap(t){openModal({kind:'picker',mode:'swapBlock',b:+t.dataset.b,title:'Swap exercise',q:'',m:EX(state.draft.ex[+t.dataset.b].exId).primary});},
   pickSession(){openModal({kind:'picker',mode:'addBlock',title:'Add exercise to session',q:'',m:''});},
   pickDay(t){openModal({kind:'picker',mode:'addDay',day:+t.dataset.day,title:`Add to ${dayLabel(curRoutineB(),+t.dataset.day)}`,q:'',m:''});},
@@ -5369,13 +5465,16 @@ const ACT={
   rDup(){const src=curRoutineB();const r=JSON.parse(JSON.stringify(src));r.id=uid();r.name=src.name+' (copy)';r.days.forEach(d=>{d.id=uid();d.items.forEach(it=>it.uid=uid());});state.routines.push(r);ui.bRoutine=r.id;commit();render();},
   rDel(){const R=curRoutineB();if(state.routines.length<2)return;confirmBox('Delete routine?',`"${R.name}" will be removed. Logged sessions are kept, and the routine stays under Recently deleted in History for ${TRASH_DAYS} days.`,'Delete routine',()=>{const Rn=state.routines.find(r=>r.id===R.id);if(!Rn||state.routines.length<2){rerenderKeepScroll();return;}snapshot();toTrash('routine',Rn);state.routines=state.routines.filter(r=>r.id!==R.id);if(state.activeRoutineId===R.id)state.activeRoutineId=state.routines[0].id;ui.bRoutine=state.activeRoutineId;commit();render();toast('Routine deleted',true);},true);},
   exNew(){openModal({kind:'exEdit',isNew:true,e:{id:'c_'+uid(),name:'',primary:'chest',secondary:[],equip:'cable',bw:false,rare:false,note:'',custom:true,archived:false}});},
-  exNewFromPicker(){const back=ui.modal;if(!back||back.kind!=='picker')return;openModal({kind:'exEdit',isNew:true,back,e:{id:'c_'+uid(),name:(back.q||'').trim(),primary:back.m||'chest',secondary:[],equip:'cable',bw:false,rare:false,note:'',custom:true,archived:false,incRaw:''}});},
+  exNewFromPicker(){const back=ui.modal;if(!back||back.kind!=='picker')return;openModal({kind:'exEdit',isNew:true,back,e:{id:'c_'+uid(),name:(back.q||'').trim(),primary:back.m||'',secondary:[],equip:'cable',bw:false,rare:false,note:'',custom:true,archived:false,incRaw:''}});},
   exBack(){const m=ui.modal;if(m&&m.back)openModal(m.back);else closeModal();},
   exEdit(t){const e=JSON.parse(JSON.stringify(EX(t.dataset.ex)));e.incRaw=e.inc!=null?fmtW(e.inc):'';e.bwfRaw=String(Math.round(bwShare(e)*100));e.maxRaw=e.maxLoad!=null?fmtW(e.maxLoad):'';
     const p=priorOf(e.id);e.priorW=p?fmtW(p.w):'';e.priorR=p?String(p.r):'';openModal({kind:'exEdit',isNew:false,e});},
   secToggle(t){const e=ui.modal.e;const k=t.dataset.m;e.secondary=e.secondary.includes(k)?e.secondary.filter(x=>x!==k):[...e.secondary,k];renderModal();},
   exSave(){
     const m=ui.modal;const e=m.e;e.name=(e.name||'').trim();if(!e.name){toast('Give the exercise a name');return;}
+    // A quick create from search used to default to Chest, so a curl made in a
+    // hurry was counted as chest work from then on.
+    if(!MK.includes(e.primary)){toast('Pick the main muscle it trains');const el=document.querySelector('[data-ebind="primary"]');if(el)try{el.focus();}catch(x){/* focus is best effort */}return;}
     // Former best from the editor: both fields set saves it, both blank removes it.
     {const pw=numIn(e.priorW),pr=String(e.priorR||'').trim()===''?null:Math.round(numIn(e.priorR));
      const blank=String(e.priorW||'').trim()===''&&pr==null;
@@ -5450,7 +5549,7 @@ const ACT={
   dFold(t){const R=curRoutineB();const id=t.dataset.id;const open=dayFocusId(R)===id;
     ui.dayFocus=open?'':id;if(!open){const i=R.days.findIndex(d=>d.id===id);if(i>=0)ui.bTarget=i;}
     rerenderKeepScroll();
-    if(!open){const el=document.querySelector(`.day[data-did="${CSS.escape(id)}"]`);if(el)try{el.scrollIntoView({block:'nearest',behavior:'smooth'});}catch(e){/* scroll is best effort */}}},
+    if(!open){const el=document.querySelector(`.day[data-did="${CSS.escape(id)}"]`);if(el)try{el.scrollIntoView({block:'start',behavior:'smooth'});}catch(e){/* scroll is best effort */}}},
   layoutReset(){state.settings.secOrder={};commit();render();toast('Section order reset on every tab');},
   dUp(t){const R=curRoutineB();const i=+t.dataset.day;if(i<1)return;move(R.days,i,i-1);ui.todayDay=null;commit();rerenderKeepScroll();},
   dDown(t){const R=curRoutineB();const i=+t.dataset.day;if(i>=R.days.length-1)return;move(R.days,i,i+1);ui.todayDay=null;commit();rerenderKeepScroll();},
@@ -5599,7 +5698,7 @@ document.addEventListener('change',e=>{
   if(t.dataset.it){commit();rerenderKeepScroll();return;}
   if(t.dataset.band){const k=t.dataset.band;const b=state.settings.bands[k];if(b[0]>b[1])b.reverse();commit();rerenderKeepScroll();return;}
   if(t.dataset.dayname!=null){commit();rerenderKeepScroll();return;}
-  if(t.dataset.dayrest!=null){curRoutineB().days[+t.dataset.dayrest].rest=t.checked;commit();rerenderKeepScroll();return;}
+  if(t.dataset.dayrest!=null){const R=curRoutineB();const d=R.days[+t.dataset.dayrest];if(!d)return;snapshot();d.rest=t.checked;commit();rerenderKeepScroll();toast(t.checked?`${d.name||'Day'} is now a rest day. Its exercises are kept.`:`${d.name||'Day'} is a training day again`,true);return;}
   if(t.dataset.moveto){const f=findItem(t.dataset.moveto);if(!f)return;const to=+t.value;if(to===f.di)return;f.r.days[f.di].items.splice(f.i,1);f.r.days[to].items.push(f.it);if(f.r.days[to].rest)f.r.days[to].rest=false;commit();rerenderKeepScroll();toast(`Moved to ${dayLabel(f.r,to)}`);return;}
   if(t.dataset.ebind&&ui.modal&&ui.modal.kind==='exEdit'){const k=t.dataset.ebind;ui.modal.e[k]=t.type==='checkbox'?t.checked:t.value;if(k==='primary'){ui.modal.e.secondary=ui.modal.e.secondary.filter(x=>x!==t.value);renderModal();}if(k==='bw'){if(t.checked&&!ui.modal.e.bwfRaw)ui.modal.e.bwfRaw=String(Math.round(bwShare(ui.modal.e)*100));renderModal();}if(k==='timed'||k==='equip')renderModal();return;}
   if(t.dataset.mbind)return;
@@ -5922,7 +6021,7 @@ function swapPrompt(b,reason){
 }
 
 window.__onLib=(which)=>{if((which==='chart'&&ui.tab==='dash')||(which==='sortable'&&ui.tab==='program'))rerenderKeepScroll();};
-window.__ironlog={get state(){return state;},set state(v){state=v;},e1inv,rtfAt,rtfOf,rtfBand,calStats,rirEff,isHard,setCredit,tonnage,loadMode,loadWords,loadNote,progStep,jumpCap,setSecs,setupSecs,recovery,rolling7,rankDays,rankExercises,isCompound,patternOf,noE1,whtrLine,exHeadline,remainMin,shortPlan,weekPlan,cycleProjection,lastLighterWeek,regionBalance,parseHeight,mixCheck,swapCands,eqPlan,exportCSV,importData,chunksOf,assemble,sessionMuscles,TRACK_ONLY,cloud,Hx,mergeChunk,baseOf,sync:()=>cq(cloudPull),flush:()=>cq(cloudFlush),backupDue,routineUpdates,planFor,platesMode,plateText,chunksOf,IDX,suggest,e1,render,ACT,ui,makeDemo,invalidate,normalize,snapshot,saveNow,timer,weekStats,weekStart,today,blockProgress,dayMinutes,weekStreak,coach,tonnageNow,livePR,exProjection,movers,stalledIds,muscleStatus,actualAvg4,plannedPerWeek,parseSets,aiSetsValid,fillSets,newBlock,lastNoteOf,sizeRows,sessionMuscleSets,sessionCapNote,routineClutter,aiDigest,debriefPrompt,reviewPrompt,swapPrompt,AI,sameRR};
+window.__ironlog={get state(){return state;},set state(v){state=v;},e1inv,rtfAt,rtfOf,rtfBand,calStats,rirEff,isHard,setCredit,tonnage,loadMode,loadWords,loadNote,progStep,jumpCap,setSecs,setupSecs,recovery,rolling7,rankDays,rankExercises,isCompound,patternOf,noE1,whtrLine,exHeadline,remainMin,shortPlan,weekPlan,cycleProjection,lastLighterWeek,regionBalance,parseHeight,mixCheck,swapCands,eqPlan,exportCSV,importData,chunksOf,assemble,sessionMuscles,TRACK_ONLY,cloud,Hx,mergeChunk,baseOf,sync:()=>cq(cloudPull),flush:()=>cq(cloudFlush),backupDue,routineUpdates,planFor,platesMode,plateText,chunksOf,IDX,suggest,e1,render,ACT,ui,makeDemo,invalidate,normalize,snapshot,saveNow,timer,weekStats,weekStart,today,EX,blockProgress,dayMinutes,weekStreak,coach,tonnageNow,livePR,exProjection,movers,stalledIds,muscleStatus,actualAvg4,plannedPerWeek,parseSets,aiSetsValid,fillSets,newBlock,lastNoteOf,sizeRows,sessionMuscleSets,sessionCapNote,routineClutter,aiDigest,debriefPrompt,reviewPrompt,swapPrompt,AI,sameRR};
 render();
 wakeOn();
 timerResume();

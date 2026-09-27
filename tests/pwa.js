@@ -37,7 +37,9 @@ const server = http.createServer((req, res) => {
     return { j, icons, apple: !!document.querySelector('link[rel=apple-touch-icon]'), theme: document.querySelector('meta[name=theme-color]').content }; });
   ok(man.j.display === 'standalone' && man.j.start_url === './' && man.j.scope === './' && man.j.name === 'Ironlog', 'manifest: standalone, relative start and scope');
   ok(man.icons.length === 3 && man.icons.every(i => i.ok && i.sizes === `${i.w}x${i.h}`) && man.icons.some(i => i.purpose === 'maskable') && man.icons.some(i => i.w >= 512), 'manifest icons exist and match their sizes, with a maskable one');
-  ok(man.apple && man.theme === '#0a0b0d', 'iOS home-screen icon and theme colour set');
+  ok(man.apple && /^(#0a0b0d|rgb\(10, 11, 13\))$/.test(man.theme), 'iOS home-screen icon and theme colour set (' + man.theme + ')');
+  const lightTheme = await page.evaluate(() => { const L = window.__ironlog; L.state.settings.theme = 'light'; L.render(); const v = document.querySelector('meta[name=theme-color]').content; L.state.settings.theme = 'dark'; L.render(); return v; });
+  ok(/^rgb\(238, 240, 242\)$/.test(lightTheme), 'the status bar colour follows the light theme (' + lightTheme + ')');
   // Service worker.
   await page.waitForFunction(() => navigator.serviceWorker && navigator.serviceWorker.controller || false, null, { timeout: 15000 }).catch(() => {});
   if (!(await page.evaluate(() => !!navigator.serviceWorker.controller))) { await page.reload(); await page.waitForFunction(() => !!navigator.serviceWorker.controller, null, { timeout: 15000 }).catch(() => {}); }

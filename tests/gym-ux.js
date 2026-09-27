@@ -39,7 +39,7 @@ const fails = []; const ok = (c, m) => { if (!c) { fails.push(m); console.log('F
   const r1 = await ev(() => { const L = window.__ironlog; const b = L.state.draft.ex[0]; const n = b.sets.length; const doneBefore = b.sets.filter(s => s.done).length;
     document.querySelector('[data-act="sDel"][data-b="0"]').click(); const b2 = L.state.draft.ex[0]; return { n, n2: b2.sets.length, doneBefore, doneAfter: b2.sets.filter(s => s.done).length }; });
   ok(r1.n2 === r1.n - 1 && r1.doneAfter === r1.doneBefore, '− Set removed a set that was not done (' + JSON.stringify(r1) + ')');
-  const r2 = await ev(() => { const L = window.__ironlog; const b = L.state.draft.ex[0]; L.ui.blkOpen.add('0:' + b.exId); b.sets.forEach(s => { s.w = 50; s.r = 8; s.done = true; }); L.saveNow(); L.render();
+  const r2 = await ev(() => { const L = window.__ironlog; const b = L.state.draft.ex[0]; L.ui.blkOpen.add(L.state.draft.id + ':0:' + b.exId); b.sets.forEach(s => { s.w = 50; s.r = 8; s.done = true; }); L.saveNow(); L.render();
     const n = b.sets.length; document.querySelector('[data-act="sDel"][data-b="0"]').click(); const n2 = L.state.draft.ex[0].sets.length;
     const undo = !!document.querySelector('#toast [data-act="undo"]'); L.ACT.undo(); return { n, n2, undo, n3: L.state.draft.ex[0].sets.length }; });
   ok(r2.n2 === r2.n - 1 && r2.undo && r2.n3 === r2.n, 'removing a logged set offers Undo, and Undo brings it back (' + JSON.stringify(r2) + ')');

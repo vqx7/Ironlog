@@ -25,7 +25,12 @@ ok(await ev(()=>document.querySelectorAll('.day .dbody:not([hidden])').length===
 await page.click('[data-act="pickDay"][data-day="1"]');await page.waitForTimeout(50);
 await page.fill('#pickQ','Band Face Pull');await page.click('#pickList .pick.new');await page.waitForTimeout(50);
 ok(/add to day/i.test(await ev(()=>document.querySelector('[data-act="exSave"]').innerText)),'create button reads add to day');
+// A quick create from search must name its main muscle before it saves.
 await page.click('[data-act="exSave"]');await page.waitForTimeout(80);
+ok(await ev(()=>!!window.__ironlog.ui.modal&&window.__ironlog.ui.modal.kind==='exEdit'&&/main muscle/.test(document.getElementById('toast').textContent)),'saving without a main muscle asks for one');
+await page.selectOption('[data-ebind="primary"]','rearDelts');
+await page.click('[data-act="exSave"]');await page.waitForTimeout(80);
+ok(await ev(()=>{const e=window.__ironlog.state.exercises.find(x=>x.name==='Band Face Pull');return e&&e.primary==='rearDelts';}),'created with the chosen main muscle');
 ok(await ev(()=>{const L=window.__ironlog;const d=L.state.routines[0].days[1];const e=L.state.exercises.find(x=>x.name==='Band Face Pull');return e&&d.items.some(i=>i.exId===e.id);}),'created exercise added to routine day');
 // exEdit timed toggle rerenders former best fields
 await ev(()=>{window.__ironlog.ui.planView='library';window.__ironlog.render();});
