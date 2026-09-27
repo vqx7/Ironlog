@@ -1,21 +1,24 @@
-# Ironlog kit
+# Ironlog
 
-This kit is the Ironlog r13 source with its full test suite, ready for Claude Code.
+A lifting log for the phone: plan a routine, log sets at the gym, and see progress, weak points and trends. It works offline and installs to the home screen.
 
-## Start
+- **Standalone app:** built into `dist/` and served by GitHub Pages from the `gh-pages` branch. Data stays on the phone, so export a backup weekly from Settings > Your data.
+- **Claude artifact:** the same `index.html`, published in Claude, with cloud sync to your Claude account.
 
-1. Unzip it, then open the folder in a terminal.
-2. Run `npm install && npm run setup && npm test`. It should end with "All suites passed". You need Node 18 or later.
-3. Run `claude` in the folder, then paste the prompt from `PROMPT.md`.
+## Develop
 
-## Files
+```
+npm install
+npm run setup     # Chromium for the tests, once
+npm test          # every suite, on the source and on the standalone build
+npm run build     # dist/ only
+```
 
-- `index.html`: the app (r13).
-- `CLAUDE.md`: the project rules and code map. Claude Code reads it on its own.
-- `PROMPT.md`: the next-steps prompt, with 8 tasks in priority order.
-- `tests/`: 9 Playwright suites. `npm test` runs all of them.
-- `baselines/`: earlier builds, used to prove that saved data survives upgrades.
+`CLAUDE.md` has the code map, the rules for changes, and the evidence behind the math. `PROMPT.md` lists the open work.
 
-## Updating the live app
+## Moving from the Claude artifact to the app
 
-Paste `index.html` into Claude and ask it to republish Ironlog at its existing link. Your data lives with the artifact, so it carries over.
+1. In the artifact, go to Settings > Your data > Export backup (.json), and save the file to Files.
+2. Open the app link on your iPhone in Safari. Tap Share > Add to Home Screen.
+3. Open the app from the home screen. Go to Settings > Your data > Import a backup file, and pick that file.
+4. Check that your sessions are there, then keep logging in the app.

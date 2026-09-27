@@ -9,35 +9,26 @@
 <link href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@600;700;800&family=Hanken+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
 /* ============================================================
-   IRONLOG — visual system (r15)
-   Night gym by default: near-black surfaces, white type, and one
-   volt accent that means "go" and "done" (the Start button, a
-   finished set, a trained day, the active tab, progress). Gold is
-   kept for personal records only. The four plate colours still
-   carry meaning and nothing else:
-     green  on target, rising
+   IRONLOG — visual system
+   Chalk and iron neutrals. Ink is the action colour (primary
+   buttons, selected chips, the active tab); the four plate
+   colours are reserved for meaning:
+     green  on target, done, PR
      amber  under target, needs a look
      blue   over target, information, supersets
      red    falling, injured, destructive
    Display: Big Shoulders Display (condensed, signage). Body:
    Hanken Grotesk. Every number is tabular.
-   Light mode keeps the same structure on cool paper; volt stays a
-   fill with dark type on it, and thin volt lines turn dark there,
-   since volt on white cannot be seen.
    ============================================================ */
 :root{
-  --bg:#eef0f2; --surface:#ffffff; --surface-2:#eff1f4; --surface-3:#e1e4e9;
-  --ink:#0d0f12; --ink-2:#23272d; --muted:#565e69; --line:#d8dce2; --line-soft:#e7eaee;
-  --green:#0b7a42; --yellow:#8a5300; --red:#b42318; --blue:#1d5bd6;
-  --green-bg:#dcf2e5; --yellow-bg:#fbebd0; --red-bg:#fde3e0; --blue-bg:#e1ebfd;
-  --on-accent:#ffffff; --on-ink:#f4f5f7;
-  --volt:#d4ff3f; --on-volt:#0b0c0e; --volt-line:#0d0f12; --volt-soft:#f0ffc4;
-  --gold:#ffc53d; --on-gold:#1a1300;
-  --hero:#0d0f12; --on-hero:#f4f5f7; --hero-2:#1b1e23;
-  --shadow:0 1px 2px rgba(13,15,18,.06),0 8px 24px rgba(13,15,18,.06);
+  --bg:#ebe9e4; --surface:#f9f8f5; --surface-2:#e4e1da; --surface-3:#d9d5cc;
+  --ink:#16171a; --ink-2:#2a2c30; --muted:#5f5b54; --line:#d4cfc5; --line-soft:#e2ded6;
+  --green:#23804f; --yellow:#a86a0c; --red:#c0392b; --blue:#2958b8;
+  --green-bg:#dcebe1; --yellow-bg:#f1e5cf; --red-bg:#f3dcd8; --blue-bg:#dde5f4;
+  --on-accent:#ffffff; --on-ink:#f4f2ed;
   --font:'Hanken Grotesk',system-ui,-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;
   --display:'Big Shoulders Display','Arial Narrow','Roboto Condensed','Helvetica Neue',system-ui,sans-serif;
-  --r-lg:18px; --r-md:12px; --r-sm:10px;
+  --r-lg:16px; --r-md:12px; --r-sm:9px;
   --head-h:52px;
   color-scheme:light;
   box-sizing:border-box;
@@ -46,26 +37,20 @@
 }
 @media (prefers-color-scheme:dark){
   :root:not([data-theme="light"]){
-    --bg:#0a0b0d; --surface:#141619; --surface-2:#1d2024; --surface-3:#282c31;
-    --ink:#f3f4f6; --ink-2:#d9dce1; --muted:#9aa1ab; --line:#262a30; --line-soft:#1d2025;
-    --green:#3ddc84; --yellow:#ffb020; --red:#ff5a4e; --blue:#5aa7ff;
-    --green-bg:#0f2a1c; --yellow-bg:#33250a; --red-bg:#3a1512; --blue-bg:#0f2440;
-    --on-accent:#0a0b0d; --on-ink:#0a0b0d;
-    --volt:#d4ff3f; --on-volt:#0b0c0e; --volt-line:#d4ff3f; --volt-soft:#232c0c;
-    --hero:#141619; --on-hero:#f3f4f6; --hero-2:#1d2024;
-    --shadow:none;
+    --bg:#0f1011; --surface:#17191b; --surface-2:#212326; --surface-3:#2b2e32;
+    --ink:#ecebe6; --ink-2:#d6d4ce; --muted:#9b978f; --line:#2c2f33; --line-soft:#232629;
+    --green:#4cc38a; --yellow:#e2a940; --red:#f06a57; --blue:#7aa2f0;
+    --green-bg:#173327; --yellow-bg:#3a2c12; --red-bg:#3d1c18; --blue-bg:#1a2744;
+    --on-accent:#0f1011; --on-ink:#131415;
     color-scheme:dark;
   }
 }
 :root[data-theme="dark"]{
-  --bg:#0a0b0d; --surface:#141619; --surface-2:#1d2024; --surface-3:#282c31;
-  --ink:#f3f4f6; --ink-2:#d9dce1; --muted:#9aa1ab; --line:#262a30; --line-soft:#1d2025;
-  --green:#3ddc84; --yellow:#ffb020; --red:#ff5a4e; --blue:#5aa7ff;
-  --green-bg:#0f2a1c; --yellow-bg:#33250a; --red-bg:#3a1512; --blue-bg:#0f2440;
-  --on-accent:#0a0b0d; --on-ink:#0a0b0d;
-  --volt:#d4ff3f; --on-volt:#0b0c0e; --volt-line:#d4ff3f; --volt-soft:#232c0c;
-  --hero:#141619; --on-hero:#f3f4f6; --hero-2:#1d2024;
-  --shadow:none;
+  --bg:#0f1011; --surface:#17191b; --surface-2:#212326; --surface-3:#2b2e32;
+  --ink:#ecebe6; --ink-2:#d6d4ce; --muted:#9b978f; --line:#2c2f33; --line-soft:#232629;
+  --green:#4cc38a; --yellow:#e2a940; --red:#f06a57; --blue:#7aa2f0;
+  --green-bg:#173327; --yellow-bg:#3a2c12; --red-bg:#3d1c18; --blue-bg:#1a2744;
+  --on-accent:#0f1011; --on-ink:#131415;
   color-scheme:dark;
 }
 *,*::before,*::after{box-sizing:inherit}
@@ -100,15 +85,15 @@ b{font-weight:650}
 .wkbar .w .wd{font:650 9.5px/1.1 var(--font);letter-spacing:.06em;text-transform:uppercase}
 .wkbar .w .dn{font:800 16px/1.1 var(--display);color:var(--ink);font-variant-numeric:tabular-nums}
 .wkbar .w .nm{display:none;font-size:10px;line-height:1.25;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding:0 3px}
-.wkbar .w.on{background:var(--volt);color:var(--on-volt)}
-.wkbar .w.on .dn{color:var(--on-volt)}
+.wkbar .w.on{background:var(--green);color:var(--on-accent)}
+.wkbar .w.on .dn{color:var(--on-accent)}
 .wkbar .w.plan{background:transparent;border:1px dashed var(--muted);color:var(--ink)}
 .wkbar .w.miss{background:transparent;border:1px dashed var(--red)}
 .wkbar .w.rest{background:transparent}
 .wkbar .w.rest .dn{color:var(--muted)}
-.wkbar .w.cardio{background:transparent;border:1px solid var(--volt-line)}
+.wkbar .w.cardio{background:transparent;border:1px solid var(--green)}
 .wkbar .w.today{box-shadow:0 0 0 2px var(--ink)}
-.wkbar .w.live::after{content:"";position:absolute;top:-3px;right:-3px;width:9px;height:9px;border-radius:50%;background:var(--volt);box-shadow:0 0 0 2px var(--bg),0 0 0 3px var(--volt-line)}
+.wkbar .w.live::after{content:"";position:absolute;top:-3px;right:-3px;width:9px;height:9px;border-radius:50%;background:var(--green);box-shadow:0 0 0 2px var(--bg)}
 .ssb{flex:none;width:30px;height:30px;border-radius:50%;border:1px solid var(--line);background:transparent;display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:0;font:700 14px/1 var(--font);color:var(--muted);cursor:pointer}
 .ssb .sst{display:none;font:600 12.5px var(--font)}
 .ssb.ok{color:var(--green);border-color:color-mix(in srgb,var(--green) 45%,transparent)}
@@ -136,10 +121,10 @@ main{max-width:760px;margin:0 auto;padding:6px 16px 150px}
 .tabs button{position:relative;background:none;border:0;min-height:58px;min-width:0;padding:7px 1px 6px;font:600 11px var(--font);letter-spacing:.04em;text-transform:uppercase;color:var(--muted);cursor:pointer;white-space:nowrap;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px}
 .tabs button svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
 .tabs button[aria-current="page"]{color:var(--ink)}
-.tabs button[aria-current="page"]::before{content:"";position:absolute;top:-1px;left:50%;width:32px;height:3px;margin-left:-16px;border-radius:0 0 3px 3px;background:var(--volt-line)}
+.tabs button[aria-current="page"]::before{content:"";position:absolute;top:-1px;left:50%;width:28px;height:3px;margin-left:-14px;border-radius:0 0 3px 3px;background:var(--ink)}
 /* A session in progress: the Today tab reads Session and carries a dot, so it
    can be found again from any tab. */
-.tabs button.live::after{content:"";position:absolute;top:7px;left:50%;margin-left:9px;width:8px;height:8px;border-radius:50%;background:var(--volt);box-shadow:0 0 0 2px var(--surface),0 0 0 3px var(--volt-line)}
+.tabs button.live::after{content:"";position:absolute;top:7px;left:50%;margin-left:9px;width:8px;height:8px;border-radius:50%;background:var(--green);box-shadow:0 0 0 2px var(--surface)}
 
 /* ---------- help ---------- */
 .hb{width:26px;height:26px;border-radius:50%;border:1px solid var(--line);background:transparent;color:var(--muted);font:700 13px var(--font);display:inline-flex;align-items:center;justify-content:center;cursor:pointer;flex:none;padding:0}
@@ -152,7 +137,7 @@ main{max-width:760px;margin:0 auto;padding:6px 16px 150px}
    layout (handle, title, summary, help, chevron). Folds inside a
    section are .subsec: a hairline and a smaller title, never a box
    inside a box. */
-.sec{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-lg);margin:10px 0;overflow:clip;box-shadow:var(--shadow)}
+.sec{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-lg);margin:10px 0;overflow:clip}
 .sec>summary{list-style:none;cursor:pointer;display:flex;align-items:center;gap:8px;min-height:58px;padding:10px 12px 10px 14px;-webkit-tap-highlight-color:transparent;user-select:none;-webkit-user-select:none}
 .sec>summary::-webkit-details-marker{display:none}
 .sec-t{font:700 21px/1 var(--display);letter-spacing:.03em;text-transform:uppercase;white-space:nowrap;flex:none}
@@ -182,7 +167,7 @@ details[open]>summary .chev::before{transform:translateY(2px) rotate(-135deg)}
 .pill.green{background:var(--green-bg);color:var(--green)}.pill.yellow{background:var(--yellow-bg);color:var(--yellow)}.pill.red{background:var(--red-bg);color:var(--red)}.pill.blue{background:var(--blue-bg);color:var(--blue)}
 
 /* ---------- basic blocks ---------- */
-.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-lg);padding:14px;margin:10px 0;box-shadow:var(--shadow)}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-lg);padding:14px;margin:10px 0}
 .section{margin:18px 0 8px}
 .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
 .row.spread{justify-content:space-between}
@@ -191,13 +176,13 @@ details[open]>summary .chev::before{transform:translateY(2px) rotate(-135deg)}
 
 .btn{min-height:44px;border-radius:var(--r-md);border:1px solid var(--line);background:var(--surface);font-weight:650;font-size:15px;padding:0 15px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:6px;color:var(--ink);transition:background .12s,transform .06s}
 .btn:active{transform:translateY(1px)}
-.btn.primary{background:var(--volt);color:var(--on-volt);border-color:transparent}
+.btn.primary{background:var(--ink);color:var(--on-ink);border-color:transparent}
 .btn.danger{color:var(--red)}
-.btn.sm{min-height:44px;padding:0 12px;font-size:14px;border-radius:var(--r-sm)}
+.btn.sm{min-height:36px;padding:0 12px;font-size:14px;border-radius:var(--r-sm)}
 .btn.block{width:100%}
 .btn:disabled{opacity:.4;cursor:default}
 .btn.noted{border-color:var(--ink);box-shadow:inset 0 0 0 1px var(--ink)}
-.ib{width:44px;height:44px;border-radius:var(--r-sm);border:1px solid var(--line);background:var(--surface);cursor:pointer;font-size:16px;display:inline-flex;align-items:center;justify-content:center;flex:none;color:var(--ink)}
+.ib{width:40px;height:40px;border-radius:var(--r-sm);border:1px solid var(--line);background:var(--surface);cursor:pointer;font-size:16px;display:inline-flex;align-items:center;justify-content:center;flex:none;color:var(--ink)}
 .ib.sm{width:32px;height:32px;font-size:13px;color:var(--muted)}
 :focus-visible{outline:3px solid var(--ink);outline-offset:2px}
 
@@ -218,7 +203,7 @@ label.field>input,label.field>select,label.field>textarea{margin-top:4px;color:v
 .tag.red{background:var(--red-bg);color:var(--red)}
 .tag.blue{background:var(--blue-bg);color:var(--blue)}
 .chips{display:flex;flex-wrap:wrap;gap:6px}
-.chip{min-height:40px;position:relative;padding:0 13px;border-radius:999px;border:1px solid var(--line);background:var(--surface);cursor:pointer;font-size:14px;font-weight:600;color:var(--ink)}
+.chip{min-height:36px;padding:0 13px;border-radius:999px;border:1px solid var(--line);background:var(--surface);cursor:pointer;font-size:14px;font-weight:600;color:var(--ink)}
 .chip.on{background:var(--ink);color:var(--on-ink);border-color:transparent}
 
 .plate{display:inline-block;width:6px;height:22px;border-radius:2px;flex:none}
@@ -240,8 +225,7 @@ ul.items:empty::before{content:"Drop or add exercises here";display:block;paddin
 .it{border-bottom:1px solid var(--line);padding:3px 0}
 .it:last-child{border-bottom:0}
 .ir{display:flex;align-items:center;gap:6px}
-.ir .ib{width:40px;height:40px;background:transparent}
-.ib:disabled{opacity:.35;cursor:default}
+.ir .ib{width:34px;height:34px;background:transparent}
 .sgrip{width:26px;height:32px;display:inline-flex;align-items:center;justify-content:center;cursor:grab;color:var(--muted);font-size:17px;touch-action:none;flex:none;user-select:none;-webkit-user-select:none;border-radius:6px;margin-left:-6px;opacity:.7}
 .sgrip:focus-visible{outline:2px solid var(--ink);outline-offset:1px}
 .dgrip{width:26px;height:40px;display:inline-flex;align-items:center;justify-content:center;cursor:grab;color:var(--muted);font-size:19px;touch-action:none;flex:none;user-select:none;-webkit-user-select:none;margin-left:-4px}
@@ -288,15 +272,15 @@ ul.items:empty::before{content:"Drop or add exercises here";display:block;paddin
 .sg input{text-align:center;padding:6px 4px;font-variant-numeric:tabular-nums;font-weight:600}
 .sg select{text-align:center;padding:6px 2px;min-height:44px}
 .sg select.unset{color:var(--muted)}
-.sg.done input,.sg.done select{border-color:color-mix(in srgb,var(--volt-line) 55%,transparent);background:var(--volt-soft)}
+.sg.done input,.sg.done select{border-color:var(--green);background:var(--green-bg)}
 .sg.norir{grid-template-columns:24px minmax(0,1.3fr) minmax(0,1fr) 40px 44px}
 .sg .n.drop{color:var(--blue)}
 .wbtn,.cbtn{height:44px;border-radius:var(--r-sm);border:1px solid var(--line);background:var(--bg);cursor:pointer;font-weight:700;color:var(--muted)}
 .wbtn.on{background:var(--yellow);color:var(--on-accent);border-color:transparent}
 .wbtn.drop{background:var(--blue);color:var(--on-accent);border-color:transparent}
 .cbtn{font-size:17px}
-.cbtn.on{background:var(--volt);color:var(--on-volt);border-color:transparent}
-.sg.pr::after{content:attr(data-pr);position:absolute;right:0;top:-9px;background:var(--gold);color:var(--on-gold);font:700 10px/1 var(--font);letter-spacing:.06em;text-transform:uppercase;padding:3px 6px;border-radius:6px;pointer-events:none}
+.cbtn.on{background:var(--green);color:var(--on-accent);border-color:transparent}
+.sg.pr::after{content:attr(data-pr);position:absolute;right:0;top:-9px;background:var(--green);color:var(--on-accent);font:700 10px/1 var(--font);letter-spacing:.06em;text-transform:uppercase;padding:3px 6px;border-radius:6px;pointer-events:none}
 .ci-row{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:8px;flex-wrap:wrap}
 .ci-row>span{min-width:58px;font-weight:600}
 .cb-row{padding:10px 0;border-bottom:1px solid var(--line-soft)}
@@ -316,7 +300,7 @@ ol.steps li{margin:2px 0}
 .hide-grp{margin-top:12px}
 .hide-grp>p{margin:0 0 6px}
 .lh-row{margin-top:10px;flex-wrap:wrap}
-.lh-row input[type=date]{width:auto;flex:0 1 160px;min-height:44px;padding:4px 8px;font-size:16px}
+.lh-row input[type=date]{width:auto;flex:0 1 160px;min-height:36px;padding:4px 8px;font-size:16px}
 .whtr{margin:8px 0 0}
 
 /* ---------- stats ---------- */
@@ -332,11 +316,10 @@ ol.steps li{margin:2px 0}
 .mrow:last-child{border-bottom:0}
 .mrow .plate{height:18px}
 .mrow .r{text-align:right;white-space:nowrap;min-width:60px;font-variant-numeric:tabular-nums}
-.band{position:relative;height:12px;background:var(--surface-3);border-radius:6px;overflow:hidden}
+.band{position:relative;height:12px;background:var(--surface-2);border-radius:6px;overflow:hidden}
 .sec .band{background:var(--bg)}
 .band .zone{position:absolute;top:0;bottom:0;background:var(--green-bg)}
 .band .fill{position:absolute;top:2px;bottom:2px;left:0;border-radius:5px}
-.band .fill.prog{background:var(--volt);box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--volt-line) 40%,transparent)}
 .band .fill.under{background:var(--yellow)} .band .fill.in{background:var(--green)} .band .fill.over{background:var(--blue)}
 .band .fill.down{background:var(--red)}
 .band .fill.track{background:var(--muted)}
@@ -350,7 +333,7 @@ ol.steps li{margin:2px 0}
 .chartbox.tall{height:320px}
 .heat{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-top:8px}
 .heat div{aspect-ratio:1;border-radius:4px;background:var(--surface-2)}
-.heat div.on{background:var(--volt)}
+.heat div.on{background:var(--green)}
 .heat div.fut{opacity:.35}
 .heat div.today{outline:2px solid var(--ink);outline-offset:-2px}
 .heat-h{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;font-size:11px;font-weight:600;letter-spacing:.06em;color:var(--muted);text-align:center}
@@ -384,79 +367,44 @@ table.t td.r,table.t th.r{text-align:right}
 .wk .d .nm{font-size:10px;line-height:1.25;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding:0 2px}
 .wk .d.plan{border:1px dashed var(--muted);background:transparent;color:var(--ink)}
 .wk .d.miss{border:1px dashed var(--red);background:transparent}
-.wk .d.on{background:var(--volt);color:var(--on-volt);cursor:pointer}
-.wk .d.on .dn{color:var(--on-volt)}
+.wk .d.on{background:var(--green);color:var(--on-accent);cursor:pointer}
+.wk .d.on .dn{color:var(--on-accent)}
 .wk .d.today{box-shadow:0 0 0 2px var(--ink)}
 .wk .d.fut{opacity:.75}
-.wk .d.cardio{border-color:var(--volt-line);color:var(--ink)}
+.wk .d.cardio{border-color:var(--green);color:var(--ink)}
 .cyc{display:flex;gap:4px;overflow-x:auto;padding:2px 0 10px;scrollbar-width:none;-webkit-overflow-scrolling:touch}
 .cyc::-webkit-scrollbar{display:none}
 .cyc .c{flex:0 0 auto;border:1px solid var(--line);border-radius:999px;padding:3px 10px;font-size:12px;white-space:nowrap;color:var(--muted);background:transparent}
 .cyc .c b{margin-right:5px;font:800 13px var(--display)}
-.cyc .c.done{background:var(--volt);color:var(--on-volt);border-color:transparent}
+.cyc .c.done{background:var(--green);color:var(--on-accent);border-color:transparent}
 .cyc .c.next{border:2px solid var(--ink);color:var(--ink);font-weight:650}
-.cyc .c.rest{color:var(--muted);border-style:dashed}
+.cyc .c.rest{opacity:.55}
 
 /* ---------- today: the hero is the one inked block ---------- */
-.hero{background:var(--hero);color:var(--on-hero);border:1px solid var(--line);border-radius:22px;padding:16px 16px 14px;margin:14px 0 12px}
-.hero .eyebrow{color:var(--on-hero);opacity:.7}
+.hero{background:var(--ink);color:var(--on-ink);border-radius:20px;padding:16px 16px 14px;margin:14px 0 12px}
+.hero .eyebrow{color:var(--on-ink);opacity:.7}
 .hero h2{font-size:48px;font-weight:800;line-height:.95;margin:6px 0 6px;letter-spacing:.015em;overflow-wrap:anywhere}
-.hero .muted{color:var(--on-hero);opacity:.72}
+.hero .muted{color:var(--on-ink);opacity:.72}
 .hero .overb{color:var(--yellow)}
 .eyebrow{font:600 12px var(--font);letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin:0}
-.hero-note{background:color-mix(in srgb,var(--on-hero) 12%,transparent);border-radius:var(--r-sm);padding:8px 10px;margin:10px 0 0}
-.hero .btn{background:transparent;color:var(--on-hero);border-color:color-mix(in srgb,var(--on-hero) 30%,transparent)}
-.hero .btn.primary{background:var(--volt);color:var(--on-volt);border-color:transparent;box-shadow:0 0 0 1px rgba(0,0,0,.2),0 6px 20px color-mix(in srgb,var(--volt) 25%,transparent)}
-.hero .btn.noted{box-shadow:inset 0 0 0 1px var(--on-hero)}
-.hero .tag.blue{background:color-mix(in srgb,var(--on-hero) 16%,transparent);color:var(--on-hero)}
+.hero-note{background:color-mix(in srgb,var(--on-ink) 12%,transparent);border-radius:var(--r-sm);padding:8px 10px;margin:10px 0 0}
+.hero .btn{background:transparent;color:var(--on-ink);border-color:color-mix(in srgb,var(--on-ink) 30%,transparent)}
+.hero .btn.primary{background:var(--on-ink);color:var(--ink);border-color:transparent}
+.hero .btn.noted{box-shadow:inset 0 0 0 1px var(--on-ink)}
+.hero .tag.blue{background:color-mix(in srgb,var(--on-ink) 16%,transparent);color:var(--on-ink)}
 .btn.big{font:800 22px var(--display);letter-spacing:.06em;text-transform:uppercase;min-height:56px;margin-top:14px}
 .inline-sel{display:flex;align-items:center;gap:8px;color:inherit;margin:0;white-space:nowrap;min-width:0;font-size:13px;opacity:.9}
 .inline-sel select{max-width:200px;min-width:0;flex:1 1 auto;padding:6px 8px;font-size:13px;min-height:36px}
 .hero .inline-sel{flex:1 1 auto}
-.hero .inline-sel select{max-width:none;background:color-mix(in srgb,var(--on-hero) 10%,transparent);color:var(--on-hero);border-color:color-mix(in srgb,var(--on-hero) 25%,transparent)}
+.hero .inline-sel select{max-width:none;background:color-mix(in srgb,var(--on-ink) 10%,transparent);color:var(--on-ink);border-color:color-mix(in srgb,var(--on-ink) 25%,transparent)}
 .hero .inline-sel select option{color:initial}
 /* Start variants: a two-line button each, so what it does is on the button. */
-.rirb{height:44px;min-width:0;width:100%;border-radius:var(--r-sm);border:1px solid var(--line);background:var(--surface);color:var(--ink);font:700 16px var(--font);font-variant-numeric:tabular-nums;cursor:pointer;padding:0}
-.rirb.unset{color:var(--muted);font-weight:600}
-.rirb[aria-expanded="true"]{border-color:var(--volt-line);box-shadow:0 0 0 1px var(--volt-line)}
-.sg.done .rirb{border-color:color-mix(in srgb,var(--volt-line) 55%,transparent);background:var(--volt-soft)}
-.rirstrip{display:flex;align-items:center;gap:6px;margin:6px 0 2px;padding:6px;border-radius:var(--r-md);background:var(--surface-2);border:1px solid var(--line);animation:rsIn .14s ease-out}
-@keyframes rsIn{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:none}}
-.rirstrip .rs-l{font:700 11px var(--font);letter-spacing:.1em;color:var(--muted);padding:0 4px 0 2px}
-.rirstrip button{flex:1 1 0;min-width:0;height:44px;border-radius:var(--r-sm);border:1px solid var(--line);background:var(--surface);color:var(--ink);font:800 18px var(--display);font-variant-numeric:tabular-nums;cursor:pointer;padding:0}
-.rirstrip button.on{background:var(--volt);color:var(--on-volt);border-color:transparent}
-.rirstrip .rs-x{flex:0 0 40px;font:700 14px var(--font);color:var(--muted)}
-@media (prefers-reduced-motion:reduce){.rirstrip{animation:none}}
-.hweek{display:flex;justify-content:space-between;align-items:baseline;gap:10px;margin:16px 0 2px;padding:0 0 6px;border-bottom:2px solid var(--volt-line)}
-.hweek:first-child{margin-top:4px}
-.hw-t{font:800 18px/1.1 var(--display);text-transform:uppercase;letter-spacing:.02em}
-.hw-s{font-size:13px;color:var(--muted);font-variant-numeric:tabular-nums;text-align:right}
-.sprog{display:flex;align-items:center;gap:10px;margin:8px 0 2px}
-.sprog .band{flex:1 1 auto;margin:0}
-.sprog span{font:700 13px var(--font);font-variant-numeric:tabular-nums;color:var(--muted);white-space:nowrap}
-.block.folded{padding:0;overflow:hidden}
-.bfold{display:flex;align-items:center;gap:12px;width:100%;min-height:60px;padding:10px 14px;background:none;border:0;color:var(--ink);text-align:left;cursor:pointer;font:inherit}
-.bf-ck{flex:none;width:30px;height:30px;border-radius:50%;background:var(--volt);color:var(--on-volt);display:inline-flex;align-items:center;justify-content:center;font-weight:800;font-size:15px}
-.bf-t{min-width:0;flex:1 1 auto;display:flex;flex-direction:column;gap:2px}
-.bf-t b{font:700 18px/1.1 var(--display);text-transform:uppercase;letter-spacing:.01em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.bf-t span{font-size:13px;color:var(--muted);font-variant-numeric:tabular-nums;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.bf-pr{flex:none;background:var(--gold);color:var(--on-gold);font:800 11px/1 var(--font);letter-spacing:.08em;padding:4px 7px;border-radius:6px}
-.bfold .chev{flex:none}
-.hero-top{display:flex;align-items:flex-start;gap:12px}
-.hero-t{min-width:0;flex:1 1 auto}
-.ring{flex:none;position:relative;width:72px;height:72px;margin:2px -2px 0 0;padding:0;border:0;background:none;color:var(--on-hero);cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center}
-.ring svg{position:absolute;inset:0;width:100%;height:100%}
-.ring .rt{fill:none;stroke:color-mix(in srgb,var(--on-hero) 14%,transparent);stroke-width:6}
-.ring .rp{fill:none;stroke:var(--volt);stroke-width:6;stroke-linecap:round;transition:stroke-dasharray .6s ease}
-.ring .rv{position:relative;font:800 22px/1 var(--display);font-variant-numeric:tabular-nums}
-.ring .rv small{font-size:12px;margin-left:1px}
-.ring .rl{position:relative;font:600 9.5px/1.2 var(--font);letter-spacing:.1em;text-transform:uppercase;opacity:.7}
 .hero-alt{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}
 .hero-alt .btn{min-width:0;min-height:44px;padding:0 10px;line-height:1.15;text-align:center}
 .hero-alt .btn:last-child:nth-child(odd){grid-column:1/-1}
-.hero .hb{border-color:color-mix(in srgb,var(--on-hero) 35%,transparent);color:var(--on-hero)}
-.hero .hb[aria-expanded="true"]{background:var(--on-hero);color:var(--hero)}
-.hero .ht{background:color-mix(in srgb,var(--on-hero) 12%,transparent);color:var(--on-hero)}
+.hero .hb{border-color:color-mix(in srgb,var(--on-ink) 35%,transparent);color:var(--on-ink)}
+.hero .hb[aria-expanded="true"]{background:var(--on-ink);color:var(--ink)}
+.hero .ht{background:color-mix(in srgb,var(--on-ink) 12%,transparent);color:var(--on-ink)}
 .hero .ht b{font-weight:700}
 .tiles{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
 .tile.wide{grid-column:1/-1;min-height:0}
@@ -532,13 +480,6 @@ body.modal-open{overflow:hidden}
 [data-tip]{-webkit-touch-callout:none}
 button[data-tip],.lm[data-tip]{-webkit-user-select:none;user-select:none}
 .hastip{text-decoration:underline dotted;text-underline-offset:3px;text-decoration-color:var(--muted);cursor:help}
-/* Small controls keep their look but get a touch area of at least 44 px from
-   an invisible pseudo-element, so a thumb at the gym does not miss them. */
-.tipi,.hb,.ssb,.ib.sm,.ir .ib,.chip,.wkbar .w{position:relative}
-.tipi::before,.hb::before,.ssb::before,.ib.sm::before,.ir .ib::before,.chip::before,.wkbar .w::before{content:"";position:absolute;left:50%;top:50%;width:max(100%,44px);height:max(100%,44px);transform:translate(-50%,-50%)}
-/* Week days sit 3 px apart, so theirs only grows in height; wider would reach
-   into the neighbouring day. */
-.wkbar .w::before{width:100%}
 .tipi{display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:50%;border:1px solid var(--line);background:transparent;color:var(--muted);font:700 11px/1 var(--font);font-style:italic;padding:0;margin-left:4px;vertical-align:3px;cursor:help;letter-spacing:0;text-transform:none}
 details.more{border-top:1px solid var(--line-soft);padding-top:4px}
 details.more>summary{list-style:none;cursor:pointer;padding:8px 0;font-weight:650}
@@ -547,24 +488,23 @@ details.more>summary::before{content:"+ ";}
 details.more[open]>summary::before{content:"− ";}
 details.more>summary .small{display:block;font-weight:400}
 .block{scroll-margin-top:calc(var(--head-h) + 12px + env(safe-area-inset-top,0px))}
-@keyframes flashIn{0%{box-shadow:0 0 0 3px var(--volt-line)}100%{box-shadow:0 0 0 0 transparent}}
+@keyframes flashIn{0%{box-shadow:0 0 0 3px var(--green)}100%{box-shadow:0 0 0 0 transparent}}
 .block.flash{animation:flashIn 1.4s ease-out}
 .sheet h3{font-size:24px;text-transform:uppercase;letter-spacing:.02em}
 @media(min-width:700px){#modal{align-items:center}.sheet{border-radius:20px}}
 .sheet-h{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:10px}
 .pick{display:flex;justify-content:space-between;align-items:center;gap:8px;width:100%;text-align:left;background:none;border:0;border-bottom:1px solid var(--line-soft);padding:11px 2px;cursor:pointer;color:var(--ink)}
 .pick b{font-weight:650}
-/* Docked under the header: at the bottom it sat over the next set rows and
-   swallowed taps on them. Only its Undo button takes taps. */
-#toast{position:fixed;left:50%;transform:translateX(-50%);top:calc(var(--head-h) + 8px + env(safe-area-inset-top,0px));z-index:60;pointer-events:none;background:var(--ink);color:var(--on-ink);padding:11px 15px;border-radius:var(--r-md);font-size:15px;display:flex;gap:12px;align-items:center;max-width:92vw;box-shadow:0 8px 24px rgba(0,0,0,.22)}
-#toast button{background:none;border:0;color:inherit;font-weight:700;text-decoration:underline;cursor:pointer;pointer-events:auto;min-height:44px;padding:0 6px;margin:-12px 0}
-#timer{position:fixed;left:0;right:0;bottom:calc(58px + env(safe-area-inset-bottom,0px));z-index:25;background:var(--hero);color:var(--on-hero);border-top:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;padding:6px 16px}
-#timer.done{background:var(--volt);color:var(--on-volt)}
+#toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(78px + env(safe-area-inset-bottom,0px));z-index:60;background:var(--ink);color:var(--on-ink);padding:11px 15px;border-radius:var(--r-md);font-size:15px;display:flex;gap:12px;align-items:center;max-width:92vw;box-shadow:0 8px 24px rgba(0,0,0,.22)}
+body.timer-on #toast{bottom:calc(128px + env(safe-area-inset-bottom,0px))}
+#toast button{background:none;border:0;color:inherit;font-weight:700;text-decoration:underline;cursor:pointer}
+#timer{position:fixed;left:0;right:0;bottom:calc(58px + env(safe-area-inset-bottom,0px));z-index:25;background:var(--ink);color:var(--on-ink);display:flex;align-items:center;justify-content:space-between;padding:6px 16px}
+#timer.done{background:var(--green);color:var(--on-accent)}
 #timer.compact{left:auto;right:12px;bottom:calc(66px + env(safe-area-inset-bottom,0px));border-radius:999px;padding:4px 4px 4px 14px;gap:10px;box-shadow:0 4px 14px rgba(0,0,0,.25)}
 #timer.compact .tv{font-size:22px}
 .btn.rest{font-variant-numeric:tabular-nums}
 #timer .tv{font:800 30px var(--display);font-variant-numeric:tabular-nums;letter-spacing:.03em}
-#timer button{background:color-mix(in srgb,currentColor 18%,transparent);border:0;color:inherit;border-radius:8px;min-height:44px;padding:0 11px;font-weight:650;cursor:pointer}
+#timer button{background:color-mix(in srgb,currentColor 18%,transparent);border:0;color:inherit;border-radius:8px;min-height:36px;padding:0 11px;font-weight:650;cursor:pointer}
 .overb{color:var(--yellow);font-weight:650}
 .cgrid{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(0,.8fr) minmax(0,.8fr);gap:8px;margin-top:8px}
 .clist{list-style:none;margin:0;padding:0}
@@ -697,8 +637,6 @@ const daysBetween=(a,b)=>Math.round((parse(b)-parse(a))/86400000);
 const today=()=>iso(new Date());
 const fmtDate=s=>parse(s).toLocaleDateString(undefined,{month:'short',day:'numeric'});
 const fmtDateLong=s=>parse(s).toLocaleDateString(undefined,{weekday:'short',month:'short',day:'numeric',year:'numeric'});
-// History rows sit under a week header, so the year only shows when it is not this one.
-const fmtDateRow=s=>parse(s).toLocaleDateString(undefined,{weekday:'short',month:'short',day:'numeric',...(s.slice(0,4)===today().slice(0,4)?{}:{year:'numeric'})});
 
 /* ---------- reference data ---------- */
 /* Serratus anterior and the rotator cuff (the external rotators) joined in v5.
@@ -986,7 +924,7 @@ function defaultRoutine(){
 }
 function freshState(){
   const r=defaultRoutine();
-  return {version:STATE_VERSION,settings:{unit:'lb',theme:'dark',bands:JSON.parse(JSON.stringify(BANDS)),priorities:[],dashFolded:DSEC_FOLDED.slice(),lastExport:null,barKg:null,bwGoalPct:null,removedLib:[],timerMode:'auto',timerSound:true,timerCompact:false,autoDone:false,homeFolded:[],wakeLock:false,timeBudget:null,rirMode:'on',hidden:[],onboarded:false,calSnooze:null},
+  return {version:STATE_VERSION,settings:{unit:'lb',theme:'system',bands:JSON.parse(JSON.stringify(BANDS)),priorities:[],dashFolded:DSEC_FOLDED.slice(),lastExport:null,barKg:null,bwGoalPct:null,removedLib:[],timerMode:'auto',timerSound:true,timerCompact:false,autoDone:false,homeFolded:[],wakeLock:false,timeBudget:null,rirMode:'on',hidden:[],onboarded:false,calSnooze:null},
     exercises:libExercises(),routines:[r],activeRoutineId:r.id,sessions:[],bodyweights:[],measurements:[],draft:null,deloadWeek:null,injuries:[],cardio:[],trash:[],priors:[]};
 }
 
@@ -994,7 +932,7 @@ function freshState(){
 const KEY='ironlog.v1';
 /* Shown in Settings, in diagnostics and in backups, so a bug report can be
    matched to the exact build. */
-const APP_VERSION='2026.09.26-r14';
+const APP_VERSION='2026.09.26-r13';
 /* Diagnostics log: the last 60 errors, kept in this browser only. Errors that
    used to be swallowed silently land here, and Settings can copy them. */
 const LOGK=KEY+'.log';
@@ -1021,13 +959,7 @@ const STATE_VERSION=5;
 /* v3: routines became numbered cycles of 1 to 14 days. Older routines keep the
    same days in the same order and only change label, so no session loses its
    link to the day it was logged against. Fixed weekdays remain as an option. */
-let storageOk=true;let bootHadLocal=false;let storageBoot=true;
-/* The text this tab last wrote or adopted. Another tab's change is merged
-   against it (see the storage listener). */
-let lastSaved=null;
-/* Undo steps: the state before a destructive action, and the state right
-   after it (captured at the next save). See snapshot() and ACT.undo. */
-const undoStack=[],UNDO_MAX=20;
+let storageOk=true;let bootHadLocal=false;
 function storageTest(){try{localStorage.setItem('__il','1');localStorage.removeItem('__il');return true;}catch(e){return false;}}
 /* Every field below is validated rather than trusted. The old version only
    checked that five keys were arrays, so a backup containing sessions:[{}]
@@ -1040,25 +972,11 @@ const isNum=v=>typeof v==='number'&&isFinite(v);
 const numOr=(v,d)=>{const n=typeof v==='string'?parseFloat(v):v;return isNum(n)?n:d;};
 const clampN=(v,lo,hi,d)=>{const n=numOr(v,d);return Math.min(Math.max(n,lo),hi);};
 const isDate=v=>typeof v==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(v);
-/* Upper limits for body entries. Past these a number is a typo, and an
-   unbounded one showed as "Infinity lb" and broke waist-to-height. */
-const BW_MAX_KG=400,BW_MIN_KG=20,MEAS_MAX_CM=300;
 /* One cardio or mobility entry. In a draft the minutes may still be blank. */
 /* Stable id for a record that arrived without one. It used to be random, so two
    devices repairing the same record made two different ids and a merge kept
    both. The position is included so identical records stay distinct. */
 function did(tag,obj,i){let j='';try{j=JSON.stringify(obj);}catch(e){j=String(i);}return tag+hashStr(j+'#'+i);}
-/* Ids go straight into HTML attributes and CSS selectors, so an imported
-   backup or a cloud document must not be able to smuggle markup in through
-   one. Every id the app makes itself fits this pattern. Anything else is
-   replaced by a hash of itself, which is the same on every device, so a
-   record and the references to it (an exercise and its logged sets) still
-   match after the repair. */
-// Names Object already has ("constructor", "__proto__") are out too: many
-// lookups key plain objects by id, and those would find the built-in instead.
-const okId=v=>typeof v==='string'&&/^[\w.:-]{1,100}$/.test(v)&&!(v in Object.prototype);
-function fixId(v){return okId(v)?v:'x'+hashStr(String(v));}
-const safeKey=k=>typeof k==='string'&&!/["'<>&`]/.test(k);
 /* A calibration set: the rep you would normally have stopped at, and the reps
    you thought were left there. The set itself is logged to failure. */
 function cleanCal(c){
@@ -1075,51 +993,9 @@ function cleanChk(c){
 }
 function cleanCardio(c,draft,i){
   const m=numOr(c.min,NaN),hr=numOr(c.hr,NaN);
-  return {id:typeof c.id==='string'?fixId(c.id):did('c',c,i),date:isDate(c.date)?c.date:today(),kind:CARDIOL[c.kind]?c.kind:'other',
+  return {id:typeof c.id==='string'?c.id:did('c',c,i),date:isDate(c.date)?c.date:today(),kind:CARDIOL[c.kind]?c.kind:'other',
     min:isNum(m)&&m>0?Math.min(Math.round(m),600):(draft?null:1),hr:isNum(hr)&&hr>=30&&hr<=230?Math.round(hr):null,
     when:CWHENL[c.when]?c.when:'solo',note:typeof c.note==='string'?c.note.slice(0,200):'',demo:!!c.demo};
-}
-/* The load or reps target set when the session started. Only its numbers are
-   read, so only numbers survive. */
-function cleanTgt(t){
-  if(!t||typeof t!=='object'||(t.kind!=='load'&&t.kind!=='reps'))return null;
-  const o={kind:t.kind};
-  for(const k of ['w','repMin','total','n','prevBest']){if(!(k in t))continue;const v=t[k];o[k]=v==null?null:(isNum(numOr(v,NaN))?numOr(v,0):null);}
-  return o;
-}
-/* One logged session, every field checked. Also used on the copies kept in
-   Recently deleted, so a copy there can be compared with a live one. */
-const okSess=ss=>!!ss&&typeof ss==='object'&&isDate(ss.date)&&Array.isArray(ss.ex);
-function cleanSess(ss,si){
-  return ({
-    id:typeof ss.id==='string'?fixId(ss.id):did('s',ss,si),date:ss.date,
-    dayIdx:clampN(ss.dayIdx,0,MAX_DAYS-1,0),
-    dayId:typeof ss.dayId==='string'?fixId(ss.dayId):null,
-    durMin:Number.isFinite(+ss.durMin)&&+ss.durMin>=1&&+ss.durMin<=600?Math.round(+ss.durMin):null,
-    dayName:typeof ss.dayName==='string'?ss.dayName:'Session',
-    routineId:typeof ss.routineId==='string'&&ss.routineId?fixId(ss.routineId):'',
-    notes:typeof ss.notes==='string'?ss.notes:'',
-    demo:!!ss.demo,deload:!!ss.deload,
-    light:ss.light===true||(ss.light==null&&typeof ss.dayName==='string'&&/ \(lighter\)$/.test(ss.dayName)),
-    // Freestyle: not tied to a routine day. Check-in: the three pre-session taps.
-    free:ss.free===true?true:undefined,
-    chk:cleanChk(ss.chk)||undefined,
-    ex:ss.ex.filter(b=>b&&typeof b.exId==='string'&&Array.isArray(b.sets)).map(b=>({
-      exId:fixId(b.exId),
-      note:typeof b.note==='string'?b.note:'',
-      // Planned rep range at the time, [min,max]. Older sessions have none.
-      rr:Array.isArray(b.rr)&&b.rr.length===2&&b.rr.every(v=>Number.isFinite(+v)&&+v>0)?[Math.round(+b.rr[0]),Math.round(+b.rr[1])]:null,
-      // Sets trimmed by Short on time: kept out of trends like a lighter session.
-      cut:b.cut===true?true:undefined,
-      sets:b.sets.filter(x=>x&&typeof x==='object').map(x=>({
-        w:clampN(x.w,0,20000*LB,0),
-        r:Math.round(clampN(x.r,0,1000,0)),
-        rir:x.rir==null||x.rir===''?null:clampN(x.rir,0,10,null),
-        warm:!!x.warm,drop:!!x.drop&&!x.warm,
-        cal:x.warm?undefined:(cleanCal(x.cal)||undefined)
-      }))
-    })).filter(b=>b.sets.length)
-  });
 }
 function normalize(s){
   const f=freshState();
@@ -1144,9 +1020,9 @@ function normalize(s){
   // state of sections that older builds had no fold for. Absent means the
   // default order with everything open, exactly as before.
   {const so=out.settings.secOrder;const clean={};
-   if(so&&typeof so==='object')for(const t of SEC_TABS)if(Array.isArray(so[t]))clean[t]=so[t].filter(k=>safeKey(k)&&k.length<40).slice(0,40);
+   if(so&&typeof so==='object')for(const t of SEC_TABS)if(Array.isArray(so[t]))clean[t]=so[t].filter(k=>typeof k==='string'&&k.length<40).slice(0,40);
    out.settings.secOrder=clean;}
-  out.settings.folds=Array.isArray(out.settings.folds)?out.settings.folds.filter(k=>safeKey(k)&&k.length<80).slice(0,200):[];
+  out.settings.folds=Array.isArray(out.settings.folds)?out.settings.folds.filter(k=>typeof k==='string'&&k.length<80).slice(0,200):[];
   out.settings.wakeLock=out.settings.wakeLock===true;
   // RIR: on (as logged), cal (on, shifted by your calibration sets), off.
   out.settings.rirMode=['on','off','cal'].includes(out.settings.rirMode)?out.settings.rirMode:'on';
@@ -1164,7 +1040,7 @@ function normalize(s){
   out.settings.lastExport=isDate(out.settings.lastExport)?out.settings.lastExport:null;
   // Built-in exercises the user deleted. Without this the library list below
   // silently puts every one of them back on the next load.
-  out.settings.removedLib=Array.isArray((s.settings||{}).removedLib)?s.settings.removedLib.filter(x=>typeof x==='string').map(fixId):[];
+  out.settings.removedLib=Array.isArray((s.settings||{}).removedLib)?s.settings.removedLib.filter(x=>typeof x==='string'):[];
   const bk=numOr(out.settings.barKg,NaN);out.settings.barKg=isNum(bk)&&bk>0?Math.min(bk,50):null;
   const bg=numOr(out.settings.bwGoalPct,NaN);out.settings.bwGoalPct=isNum(bg)?Math.min(Math.max(bg,-2),2):null;
   const inBands={...((s.settings||{}).bands||{})};
@@ -1180,7 +1056,7 @@ function normalize(s){
   for(const k of ['exercises','routines','sessions','bodyweights','measurements','cardio','trash'])if(!Array.isArray(out[k]))out[k]=[];
 
   out.exercises=out.exercises.filter(e=>e&&typeof e==='object'&&typeof e.id==='string'&&typeof e.name==='string').map(e=>({
-    id:fixId(e.id),name:e.name,
+    id:e.id,name:e.name,
     primary:MK.includes(e.primary)?e.primary:'chest',
     secondary:Array.isArray(e.secondary)?e.secondary.filter(m=>MK.includes(m)&&m!==e.primary):[],
     equip:typeof e.equip==='string'?e.equip:'other',
@@ -1224,7 +1100,7 @@ function normalize(s){
   }
 
   out.routines=out.routines.filter(r=>r&&typeof r==='object'&&Array.isArray(r.days)).map((r,ri)=>{
-    const rid=typeof r.id==='string'?fixId(r.id):did('r',r,ri);
+    const rid=typeof r.id==='string'?r.id:did('r',r,ri);
     // Anything that is not explicitly fixed-weekday becomes a cycle, which is
     // how every pre-v3 routine migrates. A "weekly" routine with more than 7
     // days cannot exist through the UI; if one arrives, keep all its days as a
@@ -1239,16 +1115,16 @@ function normalize(s){
         days.push(schedule==='weekly'?{id:rid+'-w'+i,name:i===6?'Rest':'Training day',rest:i===6,items:[]}:{id:rid+'-p'+i,name:'Training day',rest:false,items:[]});
         continue;
       }
-      const dbase=typeof d.id==='string'?fixId(d.id):rid+'-d'+i;
+      const dbase=typeof d.id==='string'?d.id:rid+'-d'+i;
       const items=(Array.isArray(d.items)?d.items:[]).filter(it=>it&&typeof it.exId==='string').map((it,ii)=>({
-        uid:typeof it.uid==='string'?fixId(it.uid):dbase+'-i'+ii,exId:fixId(it.exId),
+        uid:typeof it.uid==='string'?it.uid:dbase+'-i'+ii,exId:it.exId,
         sets:clampN(it.sets,1,30,3),
         repMin:clampN(it.repMin,1,600,8),
         repMax:clampN(it.repMax,1,600,12),
         rir:clampN(it.rir,0,10,1),
         rest:clampN(it.rest,0,1800,90),
         inc:clampN(it.inc,0,500,5*LB),
-        ss:typeof it.ss==='string'&&it.ss?fixId(it.ss):null
+        ss:typeof it.ss==='string'&&it.ss?it.ss:null
       })).map(it=>(it.repMax<it.repMin?{...it,repMax:it.repMin}:it));
       fixSupersets(items);
       let id=dbase;if(seen.has(id))id=id+'-'+i;seen.add(id);
@@ -1259,49 +1135,52 @@ function normalize(s){
 
   const cutoff=addDays(today(),-TRASH_DAYS);
   out.trash=out.trash.filter(t=>t&&typeof t==='object'&&typeof t.id==='string'&&['session','routine','cardio'].includes(t.kind)&&isDate(t.date)&&t.date>=cutoff&&t.data&&typeof t.data==='object')
-    .map(t=>({id:fixId(t.id),kind:t.kind,date:t.date,data:t.data})).sort((a,b)=>a.date<b.date?1:a.date>b.date?-1:0).slice(0,TRASH_MAX);
+    .map(t=>({id:t.id,kind:t.kind,date:t.date,data:t.data})).sort((a,b)=>a.date<b.date?1:a.date>b.date?-1:0).slice(0,TRASH_MAX);
   while(out.trash.length>1&&JSON.stringify(out.trash).length>TRASH_BYTES)out.trash.pop();
+  const tomb=new Set(out.trash.filter(t=>t.kind!=='routine').map(t=>t.id));
   const before=out.sessions.length;
-  out.sessions=out.sessions.filter(okSess).map(cleanSess).filter(ss=>ss.ex.length);
+  out.sessions=out.sessions.filter(ss=>ss&&typeof ss==='object'&&isDate(ss.date)&&Array.isArray(ss.ex)).map((ss,si)=>({
+    id:typeof ss.id==='string'?ss.id:did('s',ss,si),date:ss.date,
+    dayIdx:clampN(ss.dayIdx,0,MAX_DAYS-1,0),
+    dayId:typeof ss.dayId==='string'?ss.dayId:null,
+    durMin:Number.isFinite(+ss.durMin)&&+ss.durMin>=1&&+ss.durMin<=600?Math.round(+ss.durMin):null,
+    dayName:typeof ss.dayName==='string'?ss.dayName:'Session',
+    routineId:typeof ss.routineId==='string'?ss.routineId:'',
+    notes:typeof ss.notes==='string'?ss.notes:'',
+    demo:!!ss.demo,deload:!!ss.deload,
+    light:ss.light===true||(ss.light==null&&typeof ss.dayName==='string'&&/ \(lighter\)$/.test(ss.dayName)),
+    // Freestyle: not tied to a routine day. Check-in: the three pre-session taps.
+    free:ss.free===true?true:undefined,
+    chk:cleanChk(ss.chk)||undefined,
+    ex:ss.ex.filter(b=>b&&typeof b.exId==='string'&&Array.isArray(b.sets)).map(b=>({
+      exId:b.exId,
+      note:typeof b.note==='string'?b.note:'',
+      // Planned rep range at the time, [min,max]. Older sessions have none.
+      rr:Array.isArray(b.rr)&&b.rr.length===2&&b.rr.every(v=>Number.isFinite(+v)&&+v>0)?[Math.round(+b.rr[0]),Math.round(+b.rr[1])]:null,
+      // Sets trimmed by Short on time: kept out of trends like a lighter session.
+      cut:b.cut===true?true:undefined,
+      sets:b.sets.filter(x=>x&&typeof x==='object').map(x=>({
+        w:clampN(x.w,0,20000*LB,0),
+        r:Math.round(clampN(x.r,0,1000,0)),
+        rir:x.rir==null||x.rir===''?null:clampN(x.rir,0,10,null),
+        warm:!!x.warm,drop:!!x.drop&&!x.warm,
+        cal:x.warm?undefined:(cleanCal(x.cal)||undefined)
+      }))
+    })).filter(b=>b.sets.length)
+  })).filter(ss=>ss.ex.length);
   drop(before-out.sessions.length);
-  /* A trashed id is a tombstone, but only for the copy that was deleted. If
-     the same session was edited afterwards (on another device, or in an edit
-     that was open while it was deleted), the edit is newer than the delete:
-     keep it and retire the tombstone, because keeping data is the mistake
-     that can be undone. Sessions are compared in their cleaned form, so
-     field order and defaults added by newer builds do not count as edits. */
-  {const tS=new Map(),tC=new Map();for(const t of out.trash){if(t.kind==='session')tS.set(t.id,t);else if(t.kind==='cardio')tC.set(t.id,t);}
-   const revived=new Set();
-   const same=(cur,t,clean,ok)=>{try{return !ok(t.data)||canon(clean(t.data,0))===canon(cur);}catch(e){return true;}};
-   out.sessions=out.sessions.filter(ss=>{const t=tS.get(ss.id);if(!t)return true;if(same({...ss,id:ss.id},{data:{...t.data,id:ss.id}},(x,i)=>cleanSess(x,i),okSess))return false;revived.add(t.id);return true;});
-   out.cardio=out.cardio.filter(c=>c&&typeof c==='object'&&isDate(c.date)&&isNum(numOr(c.min,NaN))&&numOr(c.min,0)>0).map((c,ci)=>cleanCardio(c,false,ci))
-     .filter(c=>{const t=tC.get(c.id);if(!t)return true;if(same(c,{data:{...t.data,id:c.id}},(x,i)=>cleanCardio(x,false,i),x=>x&&typeof x==='object'))return false;revived.add(t.id);return true;});
-   if(revived.size)out.trash=out.trash.filter(t=>t.kind==='routine'||!revived.has(t.id));}
-  /* One id, two different copies: a session moved to a date in another
-     half-month on one device while it was edited on another. Both used to be
-     kept and counted twice. Keep the copy with more logged sets (then the
-     later date) and put the other in Recently deleted under its own id, so
-     nothing is lost. Every device resolves it the same way. */
-  for(const [key,kind] of [['sessions','session'],['cardio','cardio']]){
-    const byId=new Map(),extra=[];
-    const size=x=>kind==='session'?x.ex.reduce((a,b)=>a+b.sets.length,0):x.min;
-    for(const x of out[key]){const o=byId.get(x.id);if(!o){byId.set(x.id,x);continue;}
-      if(canon(o)===canon(x))continue;
-      const keepNew=size(x)>size(o)||(size(x)===size(o)&&(x.date>o.date||(x.date===o.date&&canon(x)>canon(o))));
-      byId.set(x.id,keepNew?x:o);extra.push(keepNew?o:x);}
-    if(extra.length){out[key]=[...byId.values()];
-      for(const x of extra){const id=fixId(x.id+'-dup'+hashStr(canon(x)).slice(0,6));if(!out.trash.some(t=>t.id===id))out.trash.unshift({id,kind,date:today(),data:{...x,id}});}}
-  }
+  out.sessions=out.sessions.filter(ss=>!tomb.has(ss.id));
+  out.cardio=out.cardio.filter(c=>c&&typeof c==='object'&&isDate(c.date)&&isNum(numOr(c.min,NaN))&&numOr(c.min,0)>0).map((c,ci)=>cleanCardio(c,false,ci)).filter(c=>!tomb.has(c.id));
 
   const bBefore=out.bodyweights.length;
   out.bodyweights=out.bodyweights.filter(b=>b&&isDate(b.date)&&isNum(numOr(b.kg,NaN))&&numOr(b.kg,0)>0)
-    .map((b,bi)=>({id:typeof b.id==='string'?fixId(b.id):did('b',b,bi),date:b.date,kg:Math.min(numOr(b.kg,0),BW_MAX_KG),demo:!!b.demo}));
+    .map((b,bi)=>({id:typeof b.id==='string'?b.id:did('b',b,bi),date:b.date,kg:numOr(b.kg,0),demo:!!b.demo}));
   drop(bBefore-out.bodyweights.length);
 
   const mBefore=out.measurements.length;
   out.measurements=out.measurements.filter(m=>m&&isDate(m.date)).map((m,mi)=>{
-    const o={id:typeof m.id==='string'?fixId(m.id):did('m',m,mi),date:m.date,demo:!!m.demo};
-    for(const [k] of MEAS){const v=numOr(m[k],NaN);if(isNum(v)&&v>0)o[k]=Math.min(v,MEAS_MAX_CM);}
+    const o={id:typeof m.id==='string'?m.id:did('m',m,mi),date:m.date,demo:!!m.demo};
+    for(const [k] of MEAS){const v=numOr(m[k],NaN);if(isNum(v)&&v>0)o[k]=v;}
     return o;
   });
   drop(mBefore-out.measurements.length);
@@ -1313,15 +1192,15 @@ function normalize(s){
   if(out.draft&&(typeof out.draft!=='object'||!Array.isArray(out.draft.ex)||!isDate(out.draft.date)))out.draft=null;
   if(out.draft){
     const d=out.draft;
-    d.id=typeof d.id==='string'?fixId(d.id):did('x',{date:d.date,dayName:d.dayName},0);
+    d.id=typeof d.id==='string'?d.id:did('x',{date:d.date,dayName:d.dayName},0);
     d.dayIdx=clampN(d.dayIdx,0,MAX_DAYS-1,0);
-    d.dayId=typeof d.dayId==='string'?fixId(d.dayId):null;
+    d.dayId=typeof d.dayId==='string'?d.dayId:null;
     d.startedAt=Number.isFinite(+d.startedAt)&&+d.startedAt>0?+d.startedAt:null;
     d.durMin=Number.isFinite(+d.durMin)&&+d.durMin>=1?Math.round(+d.durMin):null;
     d.dayName=typeof d.dayName==='string'?d.dayName:'Session';
-    d.routineId=typeof d.routineId==='string'&&d.routineId?fixId(d.routineId):'';
+    d.routineId=typeof d.routineId==='string'?d.routineId:'';
     d.notes=typeof d.notes==='string'?d.notes:'';
-    d.editingId=typeof d.editingId==='string'?fixId(d.editingId):null;
+    d.editingId=typeof d.editingId==='string'?d.editingId:null;
     d.deload=!!d.deload;
     d.light=!!d.light;
     d.limited=d.limited===true?true:undefined;
@@ -1331,19 +1210,18 @@ function normalize(s){
     d.ex=d.ex.filter(b=>b&&typeof b.exId==='string'&&Array.isArray(b.sets)).map(b=>{
       const pl=b.plan&&typeof b.plan==='object'?b.plan:{};
       const plan={sets:clampN(pl.sets,1,30,3),repMin:clampN(pl.repMin,1,600,8),repMax:clampN(pl.repMax,1,600,12),
-        rir:clampN(pl.rir,0,10,1),rest:clampN(pl.rest,0,1800,90),inc:clampN(pl.inc,0,500,5*LB),ss:typeof pl.ss==='string'&&pl.ss?fixId(pl.ss):null};
+        rir:clampN(pl.rir,0,10,1),rest:clampN(pl.rest,0,1800,90),inc:clampN(pl.inc,0,500,5*LB),ss:typeof pl.ss==='string'&&pl.ss?pl.ss:null};
       if(plan.repMax<plan.repMin)plan.repMax=plan.repMin;
-      return {exId:fixId(b.exId),plan,
+      return {exId:b.exId,plan,
         note:typeof b.note==='string'?b.note:'',
         inj:typeof b.inj==='string'&&MK.includes(b.inj)?b.inj:null,
         hint:typeof b.hint==='string'?b.hint:'',
         last:typeof b.last==='string'?b.last:'',
         target:typeof b.target==='string'?b.target:'',
         easier:typeof b.easier==='string'?b.easier:null,
-        tgt:cleanTgt(b.tgt),
-        // Last time's reps per set: shown as placeholders, so numbers only.
-        lastR:Array.isArray(b.lastR)?b.lastR.slice(0,30).map(v=>{const n=numOr(v,NaN);return isNum(n)&&n>=0?Math.min(n,1000):null;}):[],
-        swappedFrom:typeof b.swappedFrom==='string'?fixId(b.swappedFrom):null,
+        tgt:b.tgt&&typeof b.tgt==='object'?b.tgt:null,
+        lastR:Array.isArray(b.lastR)?b.lastR:[],
+        swappedFrom:typeof b.swappedFrom==='string'?b.swappedFrom:null,
         cut:b.cut===true?true:undefined,
         // Editing a saved session keeps the rep range it was logged under.
         keepRR:b.keepRR===undefined?undefined:(Array.isArray(b.keepRR)&&b.keepRR.length===2?b.keepRR.map(v=>Math.round(+v)||1):null),
@@ -1359,28 +1237,27 @@ function normalize(s){
   }
 
   out.deloadWeek=isDate(out.deloadWeek)?out.deloadWeek:null;
-  out.injuries=(Array.isArray(out.injuries)?out.injuries:[]).filter(x=>x&&MK.includes(x.m)).map((x,xi)=>({id:typeof x.id==='string'?fixId(x.id):did('j',x,xi),m:x.m,note:typeof x.note==='string'?x.note:'',date:isDate(x.date)?x.date:today()}));
+  out.injuries=(Array.isArray(out.injuries)?out.injuries:[]).filter(x=>x&&MK.includes(x.m)).map((x,xi)=>({id:typeof x.id==='string'?x.id:did('j',x,xi),m:x.m,note:typeof x.note==='string'?x.note:'',date:isDate(x.date)?x.date:today()}));
   /* Former bests for the comeback tracker: one per exercise, load in kg (added
      load for bodyweight lifts) and 1 to 20 reps, where the estimate holds. */
   {const seen=new Map();
    (Array.isArray(out.priors)?out.priors:[]).forEach((p,pi)=>{
      if(!p||typeof p!=='object'||typeof p.exId!=='string')return;
      const w=numOr(p.w,NaN),r=Math.round(numOr(p.r,NaN));if(!(r>=1&&r<=PRIOR_MAX_REPS))return;
-     seen.set(fixId(p.exId),{id:typeof p.id==='string'?fixId(p.id):did('p',p,pi),exId:fixId(p.exId),w:isNum(w)&&w>=0?Math.min(w,20000*LB):0,r,note:typeof p.note==='string'?p.note.slice(0,80):''});
+     seen.set(p.exId,{id:typeof p.id==='string'?p.id:did('p',p,pi),exId:p.exId,w:isNum(w)&&w>=0?Math.min(w,20000*LB):0,r,note:typeof p.note==='string'?p.note.slice(0,80):''});
    });
    out.priors=[...seen.values()];}
   if(!out.routines.length)out.routines=[defaultRoutine()];
-  if(typeof out.activeRoutineId==='string')out.activeRoutineId=fixId(out.activeRoutineId);
   if(!out.routines.find(r=>r.id===out.activeRoutineId))out.activeRoutineId=out.routines[0].id;
   out.version=STATE_VERSION;
   return out;
 }
 normalize.dropped=0;
 function load(){
-  storageOk=storageBoot=storageTest();
+  storageOk=storageTest();
   if(!storageOk)return normalize(null);
   let raw=null;
-  try{raw=localStorage.getItem(KEY);if(raw){const st=normalize(JSON.parse(raw));bootHadLocal=true;lastSaved=raw;return st;}}
+  try{raw=localStorage.getItem(KEY);if(raw){bootHadLocal=true;return normalize(JSON.parse(raw));}}
   catch(e){
     /* An unreadable save used to be replaced by a fresh state on the next
        save, destroying it. Keep the raw text aside so it can be recovered. */
@@ -1393,22 +1270,16 @@ let state=load();
 let saveT=null;
 function saveNow(){
   clearTimeout(saveT);saveT=null;
-  capturePost();
-  /* Storage that failed its check at startup stays off: its old contents were
-     never read, so writing now could overwrite them. A write that fails later
-     (storage full) is tried again on every save, and saving resumes as soon
-     as one succeeds, rather than stopping for the rest of the visit. */
-  if(storageBoot){
-    try{const j=JSON.stringify(state);localStorage.setItem(KEY,j);lastSaved=j;storageOk=true;}catch(e){storageOk=false;log('storage',e);}
-  }
+  if(!storageOk){setSaveState();return;}
+  try{localStorage.setItem(KEY,JSON.stringify(state));}catch(e){storageOk=false;log('storage',e);}
   markEdit();setSaveState();cloudSoon();
 }
 function saveSoon(){clearTimeout(saveT);saveT=setTimeout(saveNow,400);}
 function commit(){invalidate();saveNow();}
 /* Everything lives in this one browser, so a backup is the only thing that
    survives a cleared cache or a new phone. Once real sessions exist, the
-   header says so until a backup has been exported or copied in the last week.
-   Demo data does not count. */
+   header says so until a backup has been exported or copied in the last two
+   weeks. Demo data does not count. */
 function backupDue(){
   /* The cloud copy mirrors every change, deletions included, and keeps no
      history, so it is not a backup. With it on, the reminder comes monthly
@@ -1417,9 +1288,7 @@ function backupDue(){
   const synced=cloud.on&&cloud.last&&Date.now()-cloud.last<7*864e5;
   if(!storageOk&&!synced)return false;
   const le=state.settings.lastExport;
-  // Weekly when this device holds the only copy: a phone that is lost or wiped
-  // loses everything since the last backup.
-  return !le||daysBetween(le,today())>(synced?30:7);
+  return !le||daysBetween(le,today())>(synced?30:14);
 }
 /* The save state is one small round button at the end of the top bar: a
    check when your data is safe, dots while syncing, amber when something
@@ -1454,11 +1323,6 @@ const cloud={on:false,db:null,uid:null,status:'local',last:null,meta:{},editAt:{
 const SYNC_KEY=KEY+'.sync';
 try{const m=JSON.parse(localStorage.getItem(SYNC_KEY)||'null');if(m&&typeof m==='object'){cloud.meta=m.meta&&typeof m.meta==='object'?m.meta:{};cloud.last=m.last||null;cloud.editAt=m.editAt&&typeof m.editAt==='object'?m.editAt:{};cloud.devId=typeof m.devId==='string'?m.devId:null;}}catch(e){log('sync-meta',e);}
 if(!cloud.devId)cloud.devId='dev-'+uid();
-/* No readable local data at startup (unreadable save, or storage cleared but
-   the sync notes survived): the fresh state here is not an edit. Forget what
-   was last agreed with the cloud, so the first pull adopts the cloud copy
-   instead of the first flush writing an empty state over it. */
-if(!bootHadLocal){cloud.meta={};cloud.editAt={};}
 function saveMeta(){try{localStorage.setItem(SYNC_KEY,JSON.stringify({meta:cloud.meta,last:cloud.last,editAt:cloud.editAt,devId:cloud.devId}));}catch(e){log('sync-meta',e);}}
 function hashStr(str){let h1=0xdeadbeef,h2=0x41c6ce57;for(let i=0;i<str.length;i++){const c=str.charCodeAt(i);h1=Math.imul(h1^c,2654435761);h2=Math.imul(h2^c,1597334677);}
   h1=Math.imul(h1^(h1>>>16),2246822507)^Math.imul(h2^(h2>>>13),3266489909);h2=Math.imul(h2^(h2>>>16),2246822507)^Math.imul(h1^(h1>>>13),3266489909);return (h2>>>0).toString(36)+(h1>>>0).toString(36);}
@@ -1638,40 +1502,30 @@ async function cloudFlush(){
   setCloud('saving');
   try{
     if(!(await takeLease())){clearTimeout(cloud.t);cloud.t=setTimeout(()=>cq(cloudFlush),2500);return;}
-    let adopted=false;const stat={conflicts:0};const tooBig=[];
+    let adopted=false;const stat={conflicts:0};
     for(const x of todo){
       /* Read before write. If another device changed this document since we
          last agreed on it, merge record by record instead of overwriting. */
-      const m=cloud.meta[x.id];
+      let json=x.json;const m=cloud.meta[x.id];
       const snap=await withTimeout(ref(x.id).get(),20000);
-      /* Sets logged while that read was in flight are in state, not in the
-         copy taken before it. Work from the current document, or the merge
-         below would write the older copy back and lose them. */
-      let json=JSON.stringify(chunksOf(state)[x.id]||emptyChunk(x.id));
       const b=snap&&snap.exists?snap.data():null;
-      /* Changed in the cloud means its content differs from what we last
-         agreed on. Timestamps are not compared: they come from each device's
-         own clock, and one running behind made a newer write look older. */
-      if(b&&typeof b.json==='string'&&(!m||hashStr(b.json)!==m.h)){
+      if(b&&typeof b.json==='string'&&(!m||+b.at>m.at)&&(!m||hashStr(b.json)!==m.h)){
         let rd=null;try{rd=JSON.parse(b.json);}catch(e){log('sync-parse',e);}
         if(rd){
-          const ret=+b.et||+b.at;const merged=mergeChunk(x.id,m&&m.b,JSON.parse(json),rd,ret>(cloud.editAt[x.id]||0),stat);
+          const ret=+b.et||+b.at;const merged=mergeChunk(x.id,m&&m.b,JSON.parse(x.json),rd,ret>(cloud.editAt[x.id]||0),stat);
           cloud.editAt[x.id]=Math.max(cloud.editAt[x.id]||0,ret);
           applyChunk(x.id,merged);adopted=true;
           json=JSON.stringify(chunksOf(state)[x.id]||emptyChunk(x.id));
           if(hashStr(json)===hashStr(b.json)){cloud.meta[x.id]={h:hashStr(b.json),at:+b.at,b:baseOf(x.id,rd)};saveMeta();continue;}
         }
       }
-      // One document over the size cap must not stop the others from syncing.
-      if(json.length>250000){tooBig.push(x.id);log('sync-flush',{code:'too_big',id:x.id,len:json.length});continue;}
+      if(json.length>250000)throw {code:'too_big'};
       const at=Date.now();
       await withTimeout(ref(x.id).set({v:1,at,et:cloud.editAt[x.id]||at,json}),20000);
       cloud.meta[x.id]={h:hashStr(json),at,b:baseOf(x.id,JSON.parse(json))};saveMeta();
     }
     if(adopted){invalidate();try{localStorage.setItem(KEY,JSON.stringify(state));}catch(e){log('storage',e);}resyncLocalH();if(!ui.modal)rerenderKeepScroll();conflictNote(stat);}
-    cloud.retry=0;
-    if(tooBig.length){saveMeta();setCloud('offline',tooBig.includes('core')?'Body and routine data is too large to sync. Export a backup.':'One month of sessions is too large to sync. Export a backup.');return;}
-    cloud.last=Date.now();saveMeta();setCloud('synced');
+    cloud.retry=0;cloud.last=Date.now();saveMeta();setCloud('synced');
   }catch(e){log('sync-flush',e);cloudFail(e);}
 }
 /* Pull what other devices wrote. Per document:
@@ -1698,12 +1552,8 @@ async function cloudPull(){
       parts=Object.fromEntries(rids.map(k=>[k,remote[k].data]));rids.forEach(k=>adoptedIds.add(k));
     }else{
       snapshot();merged=true;
-      const base=realCount(state)>realCount(rState)?state:rState,other=base===state?rState:state;
-      /* Settings come from the side with more sessions, but exercises and
-         routines are combined by id (that side's copy wins a clash), so a
-         custom exercise or routine made on the other device is not lost and
-         its logged sets keep their name. */
-      state=normalize({...base,exercises:unionById(base.exercises,other.exercises),routines:unionById(base.routines,other.routines),sessions:unionById(state.sessions,rState.sessions),bodyweights:unionById(state.bodyweights,rState.bodyweights),measurements:unionById(state.measurements,rState.measurements),cardio:unionById(state.cardio,rState.cardio),trash:unionById(state.trash,rState.trash),priors:unionById(state.priors,rState.priors),draft:state.draft||rState.draft});
+      const base=realCount(state)>realCount(rState)?state:rState;
+      state=normalize({...base,sessions:unionById(state.sessions,rState.sessions),bodyweights:unionById(state.bodyweights,rState.bodyweights),measurements:unionById(state.measurements,rState.measurements),cardio:unionById(state.cardio,rState.cardio),trash:unionById(state.trash,rState.trash),priors:unionById(state.priors,rState.priors),draft:state.draft||rState.draft});
       // The cloud copy becomes the agreed base, so the merged result is what
       // the flush writes, rather than being merged a second time.
       for(const id of rids){cloud.meta[id]={h:remote[id].h,at:remote[id].at,b:baseOf(id,remote[id].data)};cloud.editAt[id]=Date.now();}
@@ -1712,8 +1562,7 @@ async function cloudPull(){
     parts={...local};let any=false;
     for(const id of rids){
       const r=remote[id],m=cloud.meta[id];
-      // Unchanged in the cloud since we last agreed. Content, not clocks, decides.
-      if(m&&r.h===m.h)continue;
+      if(m&&(r.h===m.h||r.at<=m.at))continue;
       const lJson=JSON.stringify(local[id]||emptyChunk(id));const localDirty=!m||hashStr(lJson)!==m.h;
       if(!localDirty){parts[id]=r.data;adoptedIds.add(id);any=true;continue;}
       parts[id]=mergeChunk(id,m&&m.b,local[id]||emptyChunk(id),r.data,r.et>(cloud.editAt[id]||0),stat);
@@ -1726,11 +1575,11 @@ async function cloudPull(){
   if(parts){state=assemble(parts);}
   if(parts||merged){
     invalidate();try{localStorage.setItem(KEY,JSON.stringify(state));}catch(e){log('storage',e);}
-    for(const id of adoptedIds){
-      // Mark adopted documents as agreed with the cloud copy. Normalizing can
-      // change a document (a newer build adds defaults); it then differs from
-      // the agreed hash, so the flush below writes the normalized form back.
-      cloud.meta[id]={h:remote[id].h,at:remote[id].at,b:baseOf(id,remote[id].data)};}
+    const now=chunksOf(state);
+    for(const id of adoptedIds){const j=JSON.stringify(now[id]||emptyChunk(id));
+      // Mark adopted documents as in sync. Normalizing can change a document
+      // (a newer build adds defaults); those are then written back by the flush.
+      cloud.meta[id]={h:hashStr(j)===remote[id].h?remote[id].h:hashStr(j),at:remote[id].at,b:baseOf(id,remote[id].data)};}
     saveMeta();resyncLocalH();
     if(!ui.modal)rerenderKeepScroll();else render();
     if(merged)toast('Merged this device with your cloud copy',true);
@@ -1744,25 +1593,12 @@ resyncLocalH();
 /* Set once the first cloud check has finished either way, so the welcome
    card never flashes on a device that is about to load your cloud copy. */
 let cloudChecked=false;
-/* Where the cloud copy lives. Inside Claude it is the artifact's database.
-   The standalone app has none yet; a future backend (for example a hosted
-   database with sign-in) plugs in by defining window.ironlogCloud as an async
-   function returning {db, userId}, where db offers the same calls the code
-   below uses: doc(path).get() / .set(obj) / optional .acquire(), and
-   collection(path).get() listing {id, exists, data()}. Nothing else changes:
-   merging, chunking and conflict handling stay as they are. */
-async function cloudProvider(){
-  if(window.claude&&typeof window.claude.use==='function'){
-    const [db,user]=await Promise.all([window.claude.use('db'),window.claude.use('user')]);
-    if(!db||!user)return null;const id=await user.id();return id?{db,userId:id}:null;
-  }
-  if(typeof window.ironlogCloud==='function'){const p=await window.ironlogCloud();return p&&p.db&&p.userId?{db:p.db,userId:String(p.userId)}:null;}
-  return null;
-}
 async function cloudInit(){
   try{
-    const pv=await cloudProvider();if(!pv)return;
-    const db=pv.db,id=pv.userId;
+    if(!window.claude||typeof window.claude.use!=='function')return;
+    const [db,user]=await Promise.all([window.claude.use('db'),window.claude.use('user')]);
+    if(!db||!user)return;
+    const id=await user.id();if(!id)return;
     cloud.db=db;cloud.uid=id;cloud.on=true;setCloud('connecting');
     if(ui.tab==='settings')render();
     await cq(cloudPull);
@@ -1773,47 +1609,13 @@ async function cloudInit(){
   }
 }
 function syncInfo(){
-  if(!cloud.on)return isStandalone()
-    ?`<p class="small hastip" style="margin:0" data-tip="This app keeps your data on this phone only. Deleting the app from the home screen deletes it too. A backup file saved to Files or iCloud Drive is your copy off the phone; Import brings it back on any device."><b>Saved on this phone.</b> Export a backup weekly.</p>`
-    :`<p class="small hastip" style="margin:0" data-tip="Sync turns on by itself when this page is opened inside Claude while signed in. Until then everything is saved in this browser only."><b>Cloud sync off in this view.</b> Saved in this browser only.</p>`;
+  if(!cloud.on)return `<p class="small hastip" style="margin:0" data-tip="Sync turns on by itself when this page is opened inside Claude while signed in. Until then everything is saved in this browser only."><b>Cloud sync off in this view.</b> Saved in this browser only.</p>`;
   const ago=cloud.last?Math.round((Date.now()-cloud.last)/60000):null;
   const when=ago==null?'not yet':ago<1?'just now':ago<60?`${ago} min ago`:ago<1440?`${Math.round(ago/60)} h ago`:fmtDate(iso(new Date(cloud.last)));
   const st=cloud.status==='synced'?'<span class="tag green">Synced</span>':cloud.status==='offline'?'<span class="tag yellow">Waiting to sync</span>':'<span class="tag blue">Syncing</span>';
   return `<div class="sync-row">${st}<span class="small muted">Last synced ${when}</span><button class="btn sm" data-act="syncNow">Sync now</button></div>
   <p class="small hastip" style="margin:6px 0 0" data-tip="Clearing this browser, iOS storage cleanup or a new phone loses nothing: open this same link while signed in. Works offline and catches up. The cloud copy mirrors deletions and keeps no history: deleted items wait in History for ${TRASH_DAYS} days, and a backup file covers the rest.">Saved to your Claude account and this device.${cloud.err?` <b style="color:var(--red)">${esc(cloud.err)}</b>`:''}</p>`;
 }
-/* Two tabs (or the app and a second window) used to overwrite each other: each
-   wrote its whole state, so the one that saved last erased what the other had
-   saved. Now each tab hears the other's save and merges it into its own
-   state, record by record, with this tab's last save as the base: changes
-   made only there are taken, changes made only here are kept. Content is
-   compared with canon(), which ignores key order, so two tabs holding the
-   same data never keep rewriting it back and forth. */
-window.addEventListener('storage',ev=>{
-  if(ev.storageArea&&ev.storageArea!==localStorage)return;
-  if(ev.key===SYNC_KEY&&ev.newValue){
-    try{const m=JSON.parse(ev.newValue);if(m&&typeof m==='object'){if(m.meta&&typeof m.meta==='object')cloud.meta=m.meta;if(m.editAt&&typeof m.editAt==='object')cloud.editAt=m.editAt;if(m.last)cloud.last=m.last;}}catch(e){log('tabs',e);}
-    return;
-  }
-  if(ev.key!==KEY||ev.newValue==null||ev.newValue===lastSaved)return;
-  let incoming,base=null;
-  try{incoming=normalize(JSON.parse(ev.newValue));}catch(e){log('tabs',e);return;}
-  try{base=lastSaved?normalize(JSON.parse(lastSaved)):null;}catch(e){base=null;}
-  const stat={conflicts:0};
-  if(!base||canon(state)===canon(base))state=incoming;
-  else{
-    const L=chunksOf(state),Rr=chunksOf(incoming),B=chunksOf(base),parts={};
-    for(const id of new Set([...Object.keys(L),...Object.keys(Rr),...Object.keys(B)]))
-      parts[id]=mergeChunk(id,baseOf(id,B[id]||emptyChunk(id)),L[id]||emptyChunk(id),Rr[id]||emptyChunk(id),true,stat);
-    state=assemble(parts);
-  }
-  lastSaved=ev.newValue;clearTimeout(saveT);saveT=null;
-  invalidate();resyncLocalH();
-  // Anything that was only here goes back out, so the other tab has it too.
-  if(canon(state)!==canon(incoming))saveNow();
-  if(!ui.modal)rerenderKeepScroll();else render();
-  conflictNote(stat);
-});
 document.addEventListener('visibilitychange',()=>{
   if(document.visibilityState==='hidden'){if(saveT)saveNow();if(cloud.on){clearTimeout(cloud.t);cq(cloudFlush);}}
   else if(cloud.on&&Date.now()-cloud.lastPull>20000)cq(cloudPull);
@@ -1833,8 +1635,7 @@ function numIn(v){if(v===''||v==null)return null;const n=parseFloat(String(v).re
 
 /* ---------- lookups ---------- */
 let EXMAP=null;
-// No prototype: an exercise id such as "constructor" must not find Object's.
-function EX(id){if(!EXMAP){EXMAP=Object.create(null);for(const e of state.exercises)EXMAP[e.id]=e;}return EXMAP[id]||{id,name:'Deleted exercise',primary:'chest',secondary:[],equip:'other',bw:false,archived:true};}
+function EX(id){if(!EXMAP){EXMAP={};for(const e of state.exercises)EXMAP[e.id]=e;}return EXMAP[id]||{id,name:'Deleted exercise',primary:'chest',secondary:[],equip:'other',bw:false,archived:true};}
 const exName=id=>EX(id).name;
 function activeRoutine(){return state.routines.find(r=>r.id===state.activeRoutineId)||state.routines[0];}
 function loadLabel(ex,kg){if(ex.bw){return kg>0?`BW+${fmtW(kg)}`:'BW';}return fmtW(kg);}
@@ -1876,9 +1677,7 @@ const CAL_WEEKS=12;
 function calSummary(list){
   const last=list.slice(-8);const n=last.length;const med=n?median(last.map(p=>p.err)):null;
   const shr=med==null?0:med*n/(n+3);
-  // Rounded to the nearest half rep symmetrically: Math.round sends x.5 up,
-  // which made +1.5 and -1.5 shrink to +1 and -0.5.
-  return {recent:n,raw:med,bias:Math.max(-2,Math.min(2,Math.sign(shr)*Math.round(Math.abs(shr)*2)/2)),mae:n?last.reduce((a,p)=>a+Math.abs(p.err),0)/n:null};
+  return {recent:n,raw:med,bias:Math.max(-2,Math.min(2,Math.round(shr*2)/2)),mae:n?last.reduce((a,p)=>a+Math.abs(p.err),0)/n:null};
 }
 function calStats(){
   if(_cal)return _cal;
@@ -2101,8 +1900,7 @@ function IDX(){
        tests cannot see. Such a lift is marked capped rather than stalled. */
     const exI=EX(id);const lastReal=real.length?real[real.length-1]:null;
     const capped=exI.maxLoad!=null&&!!lastReal&&lastReal.topW>=exI.maxLoad-1e-6;
-    /* Stalled: the fitted e1RM line over the last 6 real sessions (4 at least,
-       widened to cover 21 days when 6 do not) in the
+    /* Stalled: the fitted e1RM line over the last 4 to 6 real sessions in the
        current rep range, spanning 3 weeks or more, is flat or falling. The old
        test, no PR in 3 sessions, fired on normal day-to-day noise. A lift with
        no estimates (timed, joint-rotation, sets past 12 reps) keeps a
@@ -2110,18 +1908,11 @@ function IDX(){
     const slopeOf=list=>{const xs=list.map(x=>daysBetween(list[0].date,x.date)),ys=list.map(x=>x.best);const n=xs.length;
       const mx=xs.reduce((a,b)=>a+b,0)/n,my=ys.reduce((a,b)=>a+b,0)/n;let sxy=0,sxx=0;xs.forEach((xv,k)=>{sxy+=(xv-mx)*(ys[k]-my);sxx+=(xv-mx)**2;});
       if(!(sxx>0))return null;const b=sxy/sxx;let rss=0;xs.forEach((xv,k)=>{const e=ys[k]-(my+b*(xv-mx));rss+=e*e;});
-      const se=n>2?Math.sqrt(rss/(n-2)/sxx):null;return {b,se,my,n};};
+      const se=n>2?Math.sqrt(rss/(n-2)/sxx):null;return {b,se,my};};
     const withE1=inRange.filter(x=>x.best!=null);
     let stalled=false;
     if(!capped){
-      /* The window is the last 6 sessions, widened to reach back 21 days when
-         6 sessions do not. Taking just the last 6 meant a lift trained twice a
-         week (6 sessions in about 17 days) could never be marked stalled. */
-      if(withE1.length>=4){
-        const lastD=withE1[withE1.length-1].date;let i0=withE1.length-1;
-        while(i0>0&&(withE1.length-i0<6||daysBetween(withE1[i0].date,lastD)<21))i0--;
-        const l=withE1.slice(i0);
-        if(daysBetween(l[0].date,lastD)>=21){const f=slopeOf(l);stalled=!!f&&f.b<=0;}}
+      if(withE1.length>=4){const l=withE1.slice(-6);if(daysBetween(l[0].date,l[l.length-1].date)>=21){const f=slopeOf(l);stalled=!!f&&f.b<=0;}}
       else if(withE1.length<2)stalled=inRange.length>=4&&inRange.slice(-3).every(x=>!x.progress);
     }
     const w=inRange.filter(x=>x.date>=winStart&&x.best!=null);
@@ -2140,7 +1931,7 @@ function IDX(){
       // falling needs 3% or more and the slope's 80% interval clear of zero.
       const f=slopeOf(w);
       if(f){slope=f.b*7/f.my*100;slopeSe=f.se!=null?f.se*7/f.my*100:null;
-        const tq=t90(f.n-2);const lo=slopeSe!=null?slope-tq*slopeSe:slope,hi=slopeSe!=null?slope+tq*slopeSe:slope;
+        const lo=slopeSe!=null?slope-1.2816*slopeSe:slope,hi=slopeSe!=null?slope+1.2816*slopeSe:slope;
         moving=pct>=GROW_PCT&&lo>0;falling=pct<=-GROW_PCT&&hi<0;}
     }
     /* RIR drift: the same load and at least the same reps across the last three
@@ -2173,16 +1964,12 @@ function IDX(){
   // fallback, so muscles trained indirectly (front delts, forearms, traps)
   // get a trend instead of sitting at "not enough data" forever. Rows scored
   // this way are flagged so the dashboard can say so.
-  /* Each lift contributes its change only when that change is a clear trend
-     (moving or falling). A noisy +10% that the exercise view calls "no clear
-     change" used to label the whole muscle as rising, so the two views
-     disagreed; such a lift now counts as 0. */
   const byMuscle={},bySecondary={};
   for(const [id,st] of Object.entries(exStats)){
     if(st.pct==null)continue;
-    const ex=EX(id);const v=st.moving||st.falling?st.pct:0;
-    (byMuscle[ex.primary]||(byMuscle[ex.primary]=[])).push(v);
-    for(const m of ex.secondary)(bySecondary[m]||(bySecondary[m]=[])).push(v);
+    const ex=EX(id);
+    (byMuscle[ex.primary]||(byMuscle[ex.primary]=[])).push(st.pct);
+    for(const m of ex.secondary)(bySecondary[m]||(bySecondary[m]=[])).push(st.pct);
   }
   const scoreMuscles={};
   for(const m of MK){
@@ -2199,8 +1986,7 @@ function IDX(){
      backwards is always called lagging even if the rest of the list is worse. */
   const t=Math.max(1,Math.floor(scores.length/3));
   scores.forEach((s,i)=>{
-    // The same 3% boundary, inclusive, that marks a lift as moving or falling.
-    const growing=s.score>=GROW_PCT,declining=s.score<=-GROW_PCT;
+    const growing=s.score>GROW_PCT,declining=s.score<-GROW_PCT;
     // Going backwards is an absolute fact and does not need a ranking to be
     // worth saying, so it is checked before the too-few-muscles-to-rank guard.
     if(declining)s.label='lagging';
@@ -2383,7 +2169,7 @@ function suggest(exId,plan,opts){
      half the sets (done by the caller), 3 or more in reserve. Neither sets a
      target, so nothing in this session reads as "beaten" or "missed". */
   if(injM)return {w:top,text:`${lastS} Injury flagged (${ML[injM]}): stay at or below ${lbl(top)}, keep 3 or more reps in reserve, stop on pain.`,lastR,last:lastS,target:'',tgt:null,easier:null,inj:injM};
-  if(opts.deload){const bl=bwLoad(ex,today());const dw=ex.bw?((top+bl)*0.9-bl>0?roundLoad((top+bl)*0.9-bl,true):0):roundLoad(top*0.9,true);return {w:top>0?dw:top,text:`${lastS} Deload: about ${lbl(top>0?dw:top)} for ${plan.repMin}-${plan.repMax} with 3 or more reps in reserve. Half the usual sets.`,lastR,last:lastS,target:'',tgt:null,easier:null};}
+  if(opts.deload){const bl=bwLoad(ex,today());const dw=ex.bw?((top+bl)*0.9-bl>0?roundLoad((top+bl)*0.9-bl):0):roundLoad(top*0.9);return {w:top>0?dw:top,text:`${lastS} Deload: about ${lbl(top>0?dw:top)} for ${plan.repMin}-${plan.repMax} with 3 or more reps in reserve. Half the usual sets.`,lastR,last:lastS,target:'',tgt:null,easier:null};}
   /* Recalibrate when every top set was logged with RIR at least 2 above the
      target. It uses the same e1() estimate as everything else,
      and the new load is what leaves the middle of the rep range at the target
@@ -2418,13 +2204,9 @@ function suggest(exId,plan,opts){
       const bwNow=bwLoad(ex,today());
       if(est!=null){
         const want=e1inv(est,+plan.repMin+Math.min(tgtRir,E1_MAX_RIR))-bwNow;
-        /* Whole steps down to the estimated load. None needed means the
-           estimate already puts this load at repMin for the target RIR: the
-           sets were stopped early, not too heavy, so the usual rep target
-           below applies instead of a forced drop. */
-        const k=Math.ceil((top-want)/step-1e-6);
+        const k=Math.max(1,Math.ceil((top-want)/step-1e-6));
         const nw=top-k*step;
-        if(k>=1&&(nw>0||(ex.bw&&nw>=0))){
+        if(nw>0||(ex.bw&&nw>=0)){
           const bestR=Math.max(...topPts.map(p=>p.r));
           return {w:nw,text:`${lastS} Top sets at ${lbl(top)} stopped at ${bestR} reps, below your ${plan.repMin}-${plan.repMax} range. Drop to ${lbl(nw)} and build back up.`,lastR,
             last:lastS,target:`${lbl(nw)} for ${plan.repMin}+ reps in every set`,tgt:{kind:'load',w:nw,repMin:+plan.repMin,prevBest},easier:null,down:true};
@@ -2576,34 +2358,11 @@ function blockProgress(b){
     return {text:heavyTxt?`${base}. ${heavyTxt}`:base,beat:n>t.total||heavyBeat};
   }
   const hit=done.filter(s=>(+s.w||0)>=t.w-1e-6&&+s.r>=t.repMin).length;
-  // Drop sets are extra work after the working sets, never part of the target.
-  const planned=b.sets.filter(s=>!s.warm&&!s.drop).length;
+  const planned=b.sets.filter(s=>!s.warm).length;
   const base=`${hit} of ${planned} sets hit ${t.repMin}${ex.timed?'s':''}+ at the new load`;
   return {text:heavyTxt?`${base}. ${heavyTxt}`:base,beat:(planned>0&&hit>=planned)||heavyBeat};
 }
 function progressLine(b,bi){const p=blockProgress(b);return p?`<span class="tp${p.beat?' beat':''}" id="tp-${bi}">${esc(p.text)}</span>`:'';}
-/* A finished exercise: it has working sets and every one is done. In a live
-   session it folds to one line (tap to reopen), so the page gets shorter as
-   the workout goes and the next exercise is always near the top. Editing a
-   saved session never folds, since everything there is already done. */
-const blkKey=(bi,b)=>bi+':'+b.exId;
-function blockDone(b){const w=b.sets.filter(x=>!x.warm);return w.length>0&&w.every(x=>x.done);}
-function sessProgress(d){let n=0,k=0;for(const b of d.ex)for(const x of b.sets)if(!x.warm){n++;if(x.done)k++;}return {n,k,pct:n?k/n*100:0};}
-function updateSessBar(){const d=state.draft;const el=document.getElementById('sessBar');if(!d||!el)return;const p=sessProgress(d);el.style.width=p.pct+'%';const t=document.getElementById('sessOf');if(t)t.textContent=`${p.k} of ${p.n}`;}
-let foldT=null;
-function autoFold(bi){
-  foldT=null;const d=state.draft;
-  if(!d||d.editingId||ui.modal||ui.tab!=='today')return;
-  const b=d.ex[bi];if(!b||!blockDone(b)||ui.blkOpen.has(blkKey(bi,b)))return;
-  if(document.querySelector(`.rirstrip[data-b="${bi}"]`))return;
-  let nx=d.ex.findIndex((x,i)=>i>bi&&!blockDone(x));if(nx<0)nx=d.ex.findIndex(x=>!blockDone(x));
-  const a0=nx>=0?document.getElementById('blk-'+nx):null;const top0=a0?a0.getBoundingClientRect().top:null;
-  rerenderKeepScroll();
-  const a1=nx>=0?document.getElementById('blk-'+nx):null;
-  if(a1&&top0!=null){window.scrollBy(0,a1.getBoundingClientRect().top-top0);
-    // Then bring the next exercise up, unless the thumb is already in it.
-    const ae=document.activeElement;if(!(ae&&a1.contains(ae)))try{a1.scrollIntoView({block:'start',behavior:'smooth'});}catch(e){/* scroll is best effort */}}
-}
 function updateProgress(bi){const el=document.getElementById('tp-'+bi);if(!el||!state.draft||!state.draft.ex[bi])return;const p=blockProgress(state.draft.ex[bi]);if(!p)return;el.textContent=p.text;el.classList.toggle('beat',p.beat);}
 
 /* ---------- help ---------- */
@@ -2642,24 +2401,21 @@ function pageHead(kick,title,meta,actions){return `<div class="ph"><div><p class
 
 /* ---------- UI state ---------- */
 const HIST_PAGE=25;
-const ui={blkOpen:new Set(),tab:'today',todayDay:null,mapSel:null,mapSrc:null,prevOpen:false,help:new Set(),planView:'routine',histEx:'',histLimit:HIST_PAGE,wkOpen:false,libQ:'',libM:'',libE:'',libRare:false,bRoutine:null,bLibOpen:false,bLibQ:'',bLibM:'',bTarget:0,openItem:null,dashEx:null,dashMuscle:'chest',volMode:'planned',histOpen:null,modal:null,folds:{},rng:{},eqLast:null};
+const ui={tab:'today',todayDay:null,mapSel:null,mapSrc:null,prevOpen:false,help:new Set(),planView:'routine',histEx:'',histLimit:HIST_PAGE,wkOpen:false,libQ:'',libM:'',libE:'',libRare:false,bRoutine:null,bLibOpen:false,bLibQ:'',bLibM:'',bTarget:0,openItem:null,dashEx:null,dashMuscle:'chest',volMode:'planned',histOpen:null,modal:null,folds:{},rng:{},eqLast:null};
 
 /* ---------- toast / modal ---------- */
 /* Undo used to be one snapshot that the toast timer nulled out after six
    seconds. Destructive actions deserve better than that, so keep a bounded
    stack for the life of the tab and expose it in Settings as well. */
-let toastT=null;
+let toastT=null;const undoStack=[],UNDO_MAX=20;
 function toast(msg,undo,ms){
   const el=$('#toast');el.innerHTML=`<span>${esc(msg)}</span>${undo?'<button data-act="undo">Undo</button>':''}`;el.hidden=false;
   clearTimeout(toastT);toastT=setTimeout(()=>{el.hidden=true;},ms||(undo?6000:2600));
 }
 function snapshot(){
-  try{undoStack.push({pre:JSON.stringify(state),post:null});}catch(e){return;}
+  try{undoStack.push(JSON.stringify(state));}catch(e){return;}
   while(undoStack.length>UNDO_MAX)undoStack.shift();
 }
-/* The first save after a snapshot is the action itself; remember the result,
-   so Undo can tell the action apart from anything logged after it. */
-function capturePost(){const e=undoStack[undoStack.length-1];if(e&&e.post==null){try{e.post=JSON.stringify(state);}catch(x){log('undo',x);}}}
 /* Focus used to stay behind the overlay, so keyboard and screen-reader users
    could tab through the page underneath a supposedly modal sheet. */
 let modalReturn=null;
@@ -2672,18 +2428,9 @@ function modalFocusables(){
    keyboard over the list you came to scroll. Touch screens get the sheet
    focused instead; a tap on the search box brings the keyboard when wanted. */
 const coarse=()=>{try{return window.matchMedia('(pointer:coarse)').matches;}catch(e){return false;}};
-/* The phone's Back gesture used to leave the app with a sheet open. Opening a
-   sheet adds one history entry, and Back closes the sheet instead. Closing
-   a sheet with its own buttons leaves that entry in place and the next sheet
-   reuses it, rather than calling history.back(), whose delayed event could
-   land on a sheet opened a moment later. */
-// Sheets whose fields hold something typed. Search boxes in pickers do not count.
-const FORM_SHEETS=new Set(['exEdit','injury','cardio','quick','prior','note','text','routineNew','inc','max','load','reps','cal','walk']);
-function modalPush(){try{if(!(history.state&&history.state.ilModal))history.pushState({ilModal:1},'');}catch(e){/* history is best effort in a frame */}}
-window.addEventListener('popstate',()=>{if(ui.modal)closeModal();});
 function openModal(m){
   const fresh=!ui.modal;
-  if(fresh){modalReturn=document.activeElement;modalPush();}
+  if(fresh)modalReturn=document.activeElement;
   ui.modal=m;renderModal();
   const el=$('#modal');if(!el)return;
   // A new name field (creating an exercise) is always focused, since typing
@@ -2742,18 +2489,9 @@ function primeAudio(){
 function wakeTip(){
   if(state.settings.wakeLock)return;
   try{if(localStorage.getItem(KEY+'.tipWake'))return;localStorage.setItem(KEY+'.tipWake','1');}catch(e){return;}
-  setTimeout(()=>toast('A locked screen holds the rest alert until you unlock. Settings can keep the screen on.',false,6000),600);
+  setTimeout(()=>toast('If the screen locks, the rest timer cannot alert you until you unlock. Settings has Keep the screen on during a session.',false,8000),600);
 }
-/* The end time is kept on this device, so a phone that reloads a backgrounded
-   tab mid-rest comes back to the same countdown. */
-const TIMER_KEY=KEY+'.timer';
-function timerSave(){try{if(timer.end&&!$('#timer').hidden)localStorage.setItem(TIMER_KEY,String(timer.end));else localStorage.removeItem(TIMER_KEY);}catch(e){log('timer',e);}}
-function startTimer(sec){wakeTip();timer.end=Date.now()+sec*1000;timer.fired=false;primeAudio();$('#timer').hidden=false;timerBuild();timerSave();if(!timer.iv)timer.iv=setInterval(tick,250);tick();}
-function timerResume(){
-  let end=0;try{end=+localStorage.getItem(TIMER_KEY)||0;}catch(e){return;}
-  if(!state.draft||!(end>Date.now())){try{localStorage.removeItem(TIMER_KEY);}catch(e){/* nothing to clear */}return;}
-  timer.end=end;timer.fired=false;$('#timer').hidden=false;timerBuild();if(!timer.iv)timer.iv=setInterval(tick,250);tick();
-}
+function startTimer(sec){wakeTip();timer.end=Date.now()+sec*1000;timer.fired=false;primeAudio();$('#timer').hidden=false;if(!timer.iv)timer.iv=setInterval(tick,250);tick();}
 /* One place that marks a set done or not done, so the checkmark and auto-done
    paths cannot drift apart. The rest timer starts here only in Auto mode. */
 let lastAuto=null;
@@ -2764,16 +2502,12 @@ function setDone(bi,si,val){
   if(btn){btn.classList.toggle('on',val);btn.setAttribute('aria-pressed',String(val));const row=btn.closest('.sg');if(row)row.classList.toggle('done',val);}
   refreshPR(bi,si,true);
   const c=$('#doneCount');
-  if(c){const n=state.draft.ex.reduce((a,x)=>a+x.sets.filter(y=>y.done).length,0);c.textContent=String(n);const w=$('#doneWord');if(w)w.textContent=n===1?'set':'sets';}
+  if(c)c.textContent=String(state.draft.ex.reduce((a,x)=>a+x.sets.filter(y=>y.done).length,0));
   let autoRest=val&&!s.warm&&+b.plan.rest>0&&state.settings.timerMode==='auto';
   // In a superset the rest is taken after the last exercise of the group.
   if(autoRest&&b.plan.ss){const grp=state.draft.ex.filter(x=>x.plan&&x.plan.ss===b.plan.ss);if(grp[grp.length-1]!==b)autoRest=false;}
   if(autoRest)startTimer(+b.plan.rest);
-  updateProgress(bi);updatePlates(bi);updateSessBar();
-  clearTimeout(foldT);foldT=null;
-  const askRir=val&&!s.warm&&s.rir==null&&rirShow(EX(b.exId))&&!!document.querySelector(`.rirb[data-b="${bi}"][data-s="${si}"]`);
-  if(askRir)rirShowStrip(bi,si);else if(!val)rirClose();
-  if(val&&!askRir&&!state.draft.editingId&&blockDone(b))foldT=setTimeout(()=>autoFold(bi),1200);
+  updateProgress(bi);updatePlates(bi);
   saveNow();
 }
 /* Screen wake lock, optional. A locked phone suspends the page and with it the
@@ -2787,28 +2521,16 @@ async function wakeOn(){
 }
 function wakeOff(){try{if(wakeSentinel)wakeSentinel.release();}catch(e){/* already released */}wakeSentinel=null;}
 document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')wakeOn();});
-function stopTimer(){clearInterval(timer.iv);timer.iv=null;timer.fired=false;$('#timer').hidden=true;document.body.classList.remove('timer-on');timerSave();}
-/* The bar is built once per start (or when its style setting changes) and
-   each tick only rewrites the time. Rebuilding its buttons four times a
-   second made clicks land on a button that no longer existed and threw
-   keyboard focus back to the page. */
-function timerBuild(){
-  const el=$('#timer');const compact=!!state.settings.timerCompact;
-  if(el.dataset.mode===(compact?'c':'f')&&el.firstChild)return;
-  el.dataset.mode=compact?'c':'f';el.classList.toggle('compact',compact);
-  el.innerHTML=compact
-    ?`<span class="tv" data-t="v"></span><button data-act="tAdd" aria-label="Add 15 seconds">+15</button><button data-act="tStop" aria-label="Dismiss timer">✕</button>`
-    :`<span data-t="l"></span><span class="tv" data-t="v"></span><span class="row"><button data-act="tAdd">+15s</button><button data-act="tStop">Dismiss</button></span>`;
-}
+function stopTimer(){clearInterval(timer.iv);timer.iv=null;timer.fired=false;$('#timer').hidden=true;document.body.classList.remove('timer-on');}
 function tick(){
   const left=Math.max(0,Math.round((timer.end-Date.now())/1000));
   const el=$('#timer');
-  timerBuild();
+  const compact=state.settings.timerCompact;
+  el.classList.toggle('compact',compact);
   document.body.classList.toggle('timer-on',!el.hidden);
-  const v=el.querySelector('[data-t="v"]'),l=el.querySelector('[data-t="l"]');
-  const txt=Math.floor(left/60)+':'+pad(left%60);
-  if(el.dataset.mode==='c'){const t=left?txt:'Go';if(v.textContent!==t)v.textContent=t;v.setAttribute('aria-label',left?'Rest remaining':'Rest done');}
-  else{if(v.textContent!==txt)v.textContent=txt;const lt=left?'Rest':'Rest done';if(l.textContent!==lt)l.textContent=lt;}
+  el.innerHTML=compact
+    ?`<span class="tv" aria-label="${left?'Rest remaining':'Rest done'}">${left?Math.floor(left/60)+':'+pad(left%60):'Go'}</span><button data-act="tAdd" aria-label="Add 15 seconds">+15</button><button data-act="tStop" aria-label="Dismiss timer">✕</button>`
+    :`<span>${left?'Rest':'Rest done'}</span><span class="tv">${Math.floor(left/60)}:${pad(left%60)}</span><span class="row"><button data-act="tAdd">+15s</button><button data-act="tStop">Dismiss</button></span>`;
   el.classList.toggle('done',!left);
   if(!left){
     clearInterval(timer.iv);timer.iv=null;
@@ -2894,8 +2616,8 @@ function viewToday(){
   const playable=!day.rest&&day.items.length>0;
   const deload=isDeloadWeek();
   const sel=`<label class="inline-sel small">Change day<select data-bind="todayDay">${R.days.map((d,i)=>`<option value="${i}" ${i===di?'selected':''}>${dayLabel(R,i)}: ${esc(d.name)}${d.rest?' (rest)':''}${mark(i)}</option>`).join('')}</select></label>`;
-  let h=welcomeCard()+`<section class="hero" data-day="${di}"><div class="hero-top"><div class="hero-t"><p class="eyebrow">${esc(new Date().toLocaleDateString(undefined,{weekday:'long',month:'short',day:'numeric'}))} · ${esc(eyebrow)}${deload?' · deload week':''}</p><h2>${esc(day.name)}</h2>
-  <p class="muted small" style="margin:0" data-tip="${esc('Routine: '+R.name)}">${playable?`${day.items.length} exercises · ${deload?Math.ceil(daySets(day)/2)+' sets (deload)':daySets(day)+' sets'} · ${minTxt(dayMinutes(day,deload))}`:(day.rest?'Rest day':'No exercises planned')}</p></div>${heroRing(weekStats())}</div>
+  let h=welcomeCard()+`<section class="hero" data-day="${di}"><p class="eyebrow">${esc(new Date().toLocaleDateString(undefined,{weekday:'long',month:'short',day:'numeric'}))} · ${esc(eyebrow)}${deload?' · deload week':''}</p><h2>${esc(day.name)}</h2>
+  <p class="muted small" style="margin:0" data-tip="${esc('Routine: '+R.name)}">${playable?`${day.items.length} exercises · ${deload?Math.ceil(daySets(day)/2)+' sets (deload)':daySets(day)+' sets'} · ${minTxt(dayMinutes(day,deload))}`:(day.rest?'Rest day':'No exercises planned')}</p>
   ${note?`<p class="hero-note small">${note}</p>`:''}`;
   /* Four ways to start besides the plan as written, each saying on its face
      what it changes. Lighter and Short on time answer different problems:
@@ -3031,9 +2753,8 @@ function coach(){
   if(stalled.length){const id=stalled[0];return {tone:'yellow',text:`${exName(id)} has trended flat or down over its last few sessions. Change the rep range or swap to a close variation for a few weeks.`,act:{label:'See the lift',sec:'exercise',ex:id}};}
   const rc=I.rirCov;
   if(state.settings.rirMode!=='off'&&rc.total>=10&&rc.logged/rc.total<0.35)return {tone:'blue',text:`Only ${Math.round(rc.logged/rc.total*100)}% of your recent working sets have RIR logged, so most of your weekly volume is assumed rather than measured. Pick the RIR on each set this week.`,act:null};
-  // Scores are sorted high to low, so the steepest fall is the last one.
-  const lag=I.scores.filter(x=>x.score<=-GROW_PCT);
-  if(lag.length){const x=lag[lag.length-1];return {tone:'yellow',text:`${ML[x.m]} strength is down ${r1(Math.abs(x.score))}% over 6 weeks. Check sleep and recovery before adding sets.`,act:{label:`See ${ML[x.m]}`,sec:'rank',m:x.m}};}
+  const lag=I.scores.filter(x=>x.score<-GROW_PCT);
+  if(lag.length){const x=lag[0];return {tone:'yellow',text:`${ML[x.m]} strength is down ${r1(Math.abs(x.score))}% over 6 weeks. Check sleep and recovery before adding sets.`,act:{label:`See ${ML[x.m]}`,sec:'rank',m:x.m}};}
   if(!avg)return {tone:'green',text:'Nothing has stalled. Finish a full week and volume advice appears here.',act:null};
   return {tone:'green',text:'On track. Every muscle is at or above its target and nothing has stalled. Keep going as planned.',act:null};
 }
@@ -3062,8 +2783,8 @@ function exProjection(exId){
   const I=IDX();const st=I.exStats[exId];if(!st||st.slope==null||st.stalled||!st.moving||st.slope<=0.25)return null;
   if(st.wN<6||st.wSpan<28)return null;
   const base=st.last&&st.last.best!=null?st.last.best:st.best;if(base==null)return null;
-  const se=st.slopeSe||0;const at=p=>base*(1+Math.max(0,p)/100*4);const tq=t90(st.wN-2);
-  return {value:at(st.slope),lo:at(st.slope-tq*se),hi:at(st.slope+tq*se),weeks:4};
+  const se=st.slopeSe||0;const at=p=>base*(1+Math.max(0,p)/100*4);
+  return {value:at(st.slope),lo:at(st.slope-1.2816*se),hi:at(st.slope+1.2816*se),weeks:4};
 }
 function exHeadline(exId){
   const I=IDX();const st=I.exStats[exId];if(!st)return '';const ex=EX(exId);
@@ -3076,10 +2797,10 @@ function exHeadline(exId){
     return `<p class="headline">${esc(`Progress here is reps and added load; no 1RM is estimated for a lift that turns about a joint.${best?` Best set: ${setShort(ex,best.w,best.r)}.`:''}${st.stalled?' No rep or load PR in the last 3 sessions.':''}`)}</p>`;
   }
   const bw=state.bodyweights.length?bwAt(today()):null;const parts=[];
-  if(st.best!=null)parts.push(`Best estimate ${ex.bw?'≈':''}${fmtW(st.best)} ${U()}${loadNote(ex)}${bw&&!ex.bw&&loadMode(ex)==='total'?`, ${(st.best/bw).toFixed(2)}× bodyweight`:''}.`);
+  if(st.best!=null)parts.push(`Best estimate ${ex.bw?'≈':''}${fmtW(st.best)} ${U()}${loadNote(ex)}${bw&&!ex.bw&&loadMode(ex)!=='each'&&!ex.perSide?`, ${(st.best/bw).toFixed(2)}× bodyweight`:''}.`);
   if(st.capped)parts.push('At the heaviest load available, so progress is counted in reps and harder reps.');
   const sg=v=>(v>=0?'+':'')+r1(v)+'%';
-  if(st.stalled)parts.push(`Stalled: the trend over at least 3 weeks is flat or down${st.pct!=null?` (${sg(st.pct)} over 6 weeks)`:''}. Change the rep range or the variation.`);
+  if(st.stalled)parts.push(`Stalled: the trend over the last 4 to 6 sessions is flat or down${st.pct!=null?` (${sg(st.pct)} over 6 weeks)`:''}. Change the rep range or the variation.`);
   else if(st.pct==null)parts.push('Needs 3 sessions within 6 weeks for a trend.');
   else if(st.moving)parts.push(`Up ${r1(st.pct)}% over 6 weeks, about ${r1(st.slope)}% a week.`);
   else if(st.falling)parts.push(`Down ${r1(Math.abs(st.pct))}% over 6 weeks. Look at recovery before adding work.`);
@@ -3091,7 +2812,7 @@ function muscleHeadline(m){
   const I=IDX();const avg=actualAvg4();const [lo,hi]=state.settings.bands[m];const sc=I.scores.find(x=>x.m===m);const parts=[];
   if(avg){const v=avg[m]||0;parts.push(`${r1(v)} hard sets a week over your last ${avg._weeks} full week${avg._weeks>1?'s':''}, ${v<lo?`${r1(lo-v)} below`:v>hi?`${r1(v-hi)} above`:'inside'} your ${lo} to ${hi} target.`);}
   else parts.push(`Target ${lo} to ${hi} hard sets a week. Finish a full week to compare against it.`);
-  if(sc)parts.push(`${Math.abs(sc.score)<GROW_PCT?'No clear strength change over 6 weeks':`Strength trend ${sc.score>=0?'+':''}${r1(sc.score)}% over 6 weeks`}${sc.indirect?', read from exercises that train it indirectly':''}${sc.label==='lagging'?', flagged as lagging':''}.`);
+  if(sc)parts.push(`Strength trend ${sc.score>=0?'+':''}${r1(sc.score)}% over 6 weeks${sc.indirect?', read from exercises that train it indirectly':''}${sc.label==='lagging'?', flagged as lagging':''}.`);
   return `<p class="headline"><b>${esc(ML[m])}.</b> ${esc(parts.join(' '))}</p>`;
 }
 function volHeadline(){
@@ -3350,13 +3071,6 @@ function shortPlan(d,mins){
    (Maeo 2023), standing over seated calf raises for the gastrocnemius
    (Kinoshita 2023). Incline and Bayesian curls rest on mechanics only. A small
    tie-breaking nudge, never more. */
-/* The 0.90 quantile of Student's t, for the two-sided 80% interval of a fitted
-   slope with n-2 degrees of freedom. The normal value (1.2816) was used
-   before; with 3 to 6 sessions the interval came out up to 2.4 times too
-   narrow, so noise was called a trend. Past 30 degrees of freedom the
-   approximation below is within 0.001 of the table. */
-const T90=[NaN,3.078,1.886,1.638,1.533,1.476,1.440,1.415,1.397,1.383,1.372,1.363,1.356,1.350,1.345,1.341,1.337,1.333,1.330,1.328,1.325,1.323,1.321,1.319,1.318,1.316,1.315,1.314,1.313,1.311,1.310];
-function t90(df){df=Math.floor(df);if(!(df>=1))return T90[1];return df<=30?T90[df]:1.2816+0.8521/df;}
 const LONG_TRIAL=new Set(['seatedCurl','ohCableExt','ohDbExt','standCalf']);
 const LONG_IDS=new Set([...LONG_TRIAL,'katana','inclineCurl','bayesianCurl','rdl','sldl','dbRdl','slRdl','donkeyCalf','sissy']);
 function rolling7(m,extra,at){
@@ -3371,23 +3085,13 @@ function rolling7(m,extra,at){
    is mostly back within 24 h, after failure work 24 to 48 h or more
    (Moran-Navarro 2017, Pareja-Blanco 2020). These tiers are a rule of thumb
    built on that, used only to rank, never to block. */
-/* Every qualifying day in the window is checked, not just the latest: 2 easy
-   sets yesterday must not hide 12 sets to failure the day before. r and need
-   come from whichever dose leaves the muscle least recovered; days and sets
-   describe the most recent one, which is what "last trained" reports. */
 function recovery(m,at){
   const I=IDX();const dm=I.dayMus;const t=at||today();
-  let recent=null,worst=null;
   for(let k=0;k<=21;k++){const d=addDays(t,-k);const v=dm[d]&&dm[d][m];if(v>=2){
     const o=(I.dayMeta[d]||{})[m]||{};let need=v>=8?3:v>=4?2:1;
     if((o.fail||0)>=2||o.novel)need+=1;if(o.slow)need+=0.5;if(o.hard>0&&o.easy===o.hard)need=Math.max(1,need-1);
-    const x={r:Math.min(1,k/need),days:k,sets:v,need};
-    if(!recent)recent=x;
-    if(!worst||x.r<worst.r)worst=x;
-    // Nothing older can need more than 3.5 days, so stop once past that.
-    if(k>4)break;}}
-  if(!recent)return {r:1,days:null,sets:0,need:0};
-  return {r:worst.r,days:recent.days,sets:recent.sets,need:worst.need};
+    return {r:Math.min(1,k/need),days:k,sets:v,need};}}
+  return {r:1,days:null,sets:0,need:0};
 }
 function agoTxt(k){return k===0?'today':k===1?'yesterday':`${k} days ago`;}
 function lastHitTxt(m){const rc=recovery(m);return rc.days==null?'not trained hard in the last 3 weeks':`last trained hard ${agoTxt(rc.days)} (${r1(rc.sets)} sets)`;}
@@ -3471,7 +3175,7 @@ function rankExercises(d){
     // touching many muscles; tired or maxed helpers still count against it.
     {let sb=0;for(const m2 of e.secondary){const d2=Math.max(0,bands[m2][0]-r7[m2]);sb+=Math.min(d2,3)*0.15;s-=(1-rec[m2].r)*0.5;if((sess[m2]||0)>=SESSION_CAP)s-=0.5;}s+=Math.min(sb,0.6);}
     const st=I.exStats[e.id];const n=(I.byEx[e.id]||[]).length;
-    if(n){s+=0.8;if(st&&st.moving&&!st.stalled)s+=0.4;if(st&&st.stalled)s-=0.8;}else{if(e.rare)s-=0.4;if(!inR.has(e.id))s-=0.3;}
+    if(n){s+=0.8;if(st&&st.pct!=null&&st.pct>GROW_PCT&&!st.stalled)s+=0.4;if(st&&st.stalled)s-=0.8;}else{if(e.rare)s-=0.4;if(!inR.has(e.id))s-=0.3;}
     if(inR.has(e.id))s+=0.5;
     if(LONG_IDS.has(e.id))s+=0.4;
     if(pri.has(m)||lag.has(m))s+=def>0?1.2:0.3;
@@ -3606,15 +3310,6 @@ function weekBar(){
   return h;
 }
 function renderWeekBar(){const el=document.getElementById('wkbar');if(!el)return;try{el.innerHTML=weekBar();}catch(e){log('weekbar',e);el.innerHTML='';}}
-/* The week at a glance, beside the day's name: hard sets logged against the
-   routine's plan, the same two numbers as This week. A ring fills, which
-   reads faster than a sentence. Tapping it opens This week. */
-function heroRing(w){
-  if(!(w.tgt>0))return '';
-  const r=26,c=2*Math.PI*r,p=Math.max(0,Math.min(1,w.got/w.tgt));
-  const lbl=`${r1(w.got)} of ${w.tgt} hard sets this week`;
-  return `<button type="button" class="ring" data-act="goWeek" aria-label="${esc(lbl)}. Open This week" data-tip="${esc(lbl)}"><svg viewBox="0 0 64 64" aria-hidden="true"><circle cx="32" cy="32" r="${r}" class="rt"/><circle cx="32" cy="32" r="${r}" class="rp" stroke-dasharray="${(c*p).toFixed(2)} ${c.toFixed(2)}" transform="rotate(-90 32 32)"/></svg><span class="rv">${Math.round(p*100)}<small>%</small></span><span class="rl">week</span></button>`;
-}
 function weekStats(){
   const R=activeRoutine();
   const cur=weekStart(today());const weekly=R.schedule==='weekly';
@@ -3646,7 +3341,7 @@ function weekBody(w){
      only the sets that counted as hard. You cannot reach 100% on a week where
      you left RIR at 4 or above. The day-by-day week is the bar at the top. */
   return `${w.weekly?'':cycleStrip(w.R)}
-  <div class="band" data-tip="${w.got} hard sets logged of ${w.tgt} planned"><div class="fill prog" style="width:${w.pct}%"></div></div>
+  <div class="band" data-tip="${w.got} hard sets logged of ${w.tgt} planned"><div class="fill in" style="width:${w.pct}%"></div></div>
   ${w.cardioMin?`<p class="small" style="margin:5px 0 0">Cardio and mobility: ${w.cardioMin} min in ${w.cardioN} entr${w.cardioN===1?'y':'ies'}</p>`:''}
   <div class="hrow" style="margin:5px 0 0"><p class="small muted" style="margin:0" id="wkSets">${w.got} hard sets logged of ${w.tgt} planned${w.tgt>0?` (${Math.round(w.pct)}%)`:''}.</p>${helpBtn('wk')}</div>
   ${helpText('wk',`Each set counts once; a set at RIR 4 or more is not hard and does not count. The bar at the top of every tab is this calendar week: filled green is a day you lifted, a green outline is cardio only, dashed is a workout planned ahead${w.weekly?', dashed red is a planned workout that was missed':''}. Tap a filled day to open it in History, or today or a day ahead to see its workout here.${w.weekly?'':' The row above the bar is your cycle: green is done this round, outlined is next.'}`)}`;
@@ -3702,34 +3397,23 @@ const DEFAULT_PLAN={sets:3,repMin:8,repMax:12,rir:1,rest:90,inc:5*LB};
 /* Round a load to something you can actually put on a bar or pick off a rack:
    nearest 5 lb, or nearest 2.5 kg. Used for suggested warm-up loads only;
    anything the user types is left exactly as typed. */
-/* down: round toward lighter. A deload rounded to nearest could land back on
-   the full load (90% of 25 lb is 22.5, which rounded up to 25). */
-function roundLoad(kg,down){
+function roundLoad(kg){
   const step=U()==='lb'?5:2.5;const d=toD(kg);
-  return fromD(Math.max(step,(down?Math.floor(d/step+1e-9):Math.round(d/step))*step));
+  return fromD(Math.max(step,Math.round(d/step)*step));
 }
 /* RIR used to be a free-text field, which on a phone means opening the keyboard
    mid-set. Almost nobody does that, so almost every set came through blank and
    the volume bands silently counted it as hard anyway. A native picker is one
    tap, which is the difference between measuring and assuming. */
-/* RIR is picked from a strip of 0 to 5 instead of the phone's dropdown wheel
-   (open, spin, confirm on every set). The cell shows the value; tapping it
-   opens the strip under that set, and ticking a set done with no RIR yet
-   opens it by itself, so logging effort is one tap. */
-const RIR_OPTS=['0','1','2','3','4','5'];
 function rirSelect(val,bi,si,target){
   const cur=val==null||val===''?'':String(val);
-  return `<button type="button" class="rirb${cur===''?' unset':''}" data-act="rirOpen" data-f="rir" data-b="${bi}" data-s="${si}" aria-haspopup="true" aria-expanded="false" aria-label="Reps in reserve for set ${si+1}: ${cur===''?'not set':cur}">${cur===''?(target!=null?'–':'RIR'):esc(cur)}</button>`;
-}
-function rirStripHTML(bi,si,cur){
-  const opts=RIR_OPTS.slice();if(cur!==''&&!opts.includes(cur)){opts.push(cur);opts.sort((a,b)=>a-b);}
-  return `<div class="rirstrip" role="group" aria-label="Reps in reserve for set ${si+1}" data-b="${bi}" data-s="${si}"><span class="rs-l">RIR</span>${opts.map(o=>`<button type="button" data-act="rirPick" data-b="${bi}" data-s="${si}" data-v="${o}" aria-pressed="${cur===o}"${cur===o?' class="on"':''}>${o}</button>`).join('')}<button type="button" class="rs-x" data-act="rirPick" data-b="${bi}" data-s="${si}" data-v="" aria-label="Clear RIR">✕</button></div>`;
-}
-function rirClose(){const el=document.querySelector('.rirstrip');if(!el)return;const b=document.querySelector(`.rirb[data-b="${el.dataset.b}"][data-s="${el.dataset.s}"]`);if(b)b.setAttribute('aria-expanded','false');el.remove();}
-function rirShowStrip(bi,si){
-  rirClose();const btn=document.querySelector(`.rirb[data-b="${bi}"][data-s="${si}"]`);const s=state.draft&&state.draft.ex[bi]&&state.draft.ex[bi].sets[si];
-  if(!btn||!s)return;const row=btn.closest('.sg');if(!row)return;
-  row.insertAdjacentHTML('afterend',rirStripHTML(bi,si,s.rir==null?'':String(s.rir)));btn.setAttribute('aria-expanded','true');
+  const opts=['0','1','2','3','4','5'];
+  if(cur&&!opts.includes(cur))opts.push(cur);
+  opts.sort((a,b)=>a-b);
+  return `<select class="${cur===''?'unset':''}" aria-label="Reps in reserve for set ${si+1}" data-f="rir" data-b="${bi}" data-s="${si}">`
+    +`<option value="" ${cur===''?'selected':''}>${target!=null?'–':'RIR'}</option>`
+    +opts.map(o=>`<option value="${o}" ${cur===o?'selected':''}>${o}</option>`).join('')
+    +`</select>`;
 }
 /* Cardio and mobility inside a session: saved as their own entries on Finish,
    never counted as lifting sets. */
@@ -3745,7 +3429,7 @@ function cardioDraftCard(d){
 function viewLogger(){
   const d=state.draft;const doneN=d.ex.reduce((a,b)=>a+b.sets.filter(s=>s.done).length,0);
   const left=d.editingId||d.free?0:remainMin(d);
-  let h=`<div class="ph"><div style="min-width:0;flex:1 1 auto"><p class="kick">${d.editingId?'Editing a saved session':'Session in progress'}</p><div class="hrow"><h2 style="overflow-wrap:anywhere;min-width:0">${esc(d.dayName)}</h2>${helpBtn('log')}<button class="btn sm danger" style="margin-left:auto;flex:none" data-act="discard">${d.editingId?'Cancel edit':'Discard'}</button></div><p class="meta"><span id="doneCount">${doneN}</span> <span id="doneWord">${doneN===1?'set':'sets'}</span> done${d.startedAt?`, started ${new Date(d.startedAt).toLocaleTimeString([],{hour:'numeric',minute:'2-digit'})}`:''}${left>0?`, about ${left} min left`:''}</p>${(()=>{const sp=sessProgress(d);return sp.n?`<div class="sprog" aria-hidden="true"><div class="band"><div class="fill prog" id="sessBar" style="width:${sp.pct}%"></div></div><span id="sessOf">${sp.k} of ${sp.n}</span></div>`:'';})()}
+  let h=`<div class="ph"><div style="min-width:0;flex:1 1 auto"><p class="kick">${d.editingId?'Editing a saved session':'Session in progress'}</p><div class="hrow"><h2 style="overflow-wrap:anywhere;min-width:0">${esc(d.dayName)}</h2>${helpBtn('log')}<button class="btn sm danger" style="margin-left:auto;flex:none" data-act="discard">${d.editingId?'Cancel edit':'Discard'}</button></div><p class="meta"><span id="doneCount">${doneN}</span> sets done${d.startedAt?`, started ${new Date(d.startedAt).toLocaleTimeString([],{hour:'numeric',minute:'2-digit'})}`:''}${left>0?`, about ${left} min left`:''}</p>
   <div class="row lh-row"><input type="date" data-bind="draftDate" value="${d.date}" max="${today()}" aria-label="Session date" data-tip="Change to log a past session">${left>0?'<button class="btn sm" data-act="shortOpen">Short on time</button>':''}</div></div></div>
   ${helpText('log',(state.settings.rirMode==='off'?'RIR is switched off in Settings, so every working set counts as hard. ':'RIR is reps left in the tank: 3 or less counts the set as hard for weekly volume, 4 or more stays in history only, blank counts as hard but is flagged as assumed. ')+'W marks a warm-up (kept, never analysed); tap it again for D, a drop set (counts as work and volume, never as a PR or target). In a superset the rest timer starts after the last exercise of the pair. Timed holds log seconds in the Sec column. The date can be changed to log a past session.'+(state.settings.autoDone?' Auto-mark is on: sets tick themselves when you leave the reps field.':''))}
   ${d.free?`<label class="field" style="margin-top:8px">Name<input type="text" data-bind="draftName" maxlength="40" value="${esc(d.dayName)}"></label><p class="small muted" style="margin:4px 0 0">Not tied to a routine day, so your cycle stays put.</p>`:''}
@@ -3756,14 +3440,9 @@ function viewLogger(){
   const letters=ssLetters(d.ex.map(b=>b.plan));
   d.ex.forEach((b,bi)=>{
     const ex=EX(b.exId);const p=b.plan;const ss=p.ss?letters[p.ss]:null;const nr=!rirShow(ex);
-    if(!d.editingId&&blockDone(b)&&!ui.blkOpen.has(blkKey(bi,b))){
-      const ws=b.sets.filter(x=>!x.warm);const prs=ws.filter(x=>livePR(b.exId,x,d.date)).length;
-      h+=`<section class="block folded" id="blk-${bi}"><button class="bfold" data-act="bOpen" data-b="${bi}" aria-expanded="false" aria-label="${esc(ex.name)}, done. Open to edit"><span class="bf-ck" aria-hidden="true">✓</span><span class="bf-t"><b>${esc(ex.name)}</b><span>${esc(ws.map(x=>setShort(ex,x.w,x.r)).join(', '))}</span></span>${prs?`<span class="bf-pr">PR</span>`:''}<span class="chev" aria-hidden="true"></span></button></section>`;
-      return;
-    }
     const partner=ss?d.ex.filter(x=>x!==b&&x.plan.ss===p.ss).map(x=>exName(x.exId)).join(' + '):'';
     h+=`<section class="block${ss?' ss':''}" id="blk-${bi}"><div class="bh"><div><h3>${esc(ex.name)}${ex.note?` ${tipi(ex.note,'About '+ex.name)}`:''}</h3><p class="small muted">${esc(ML[ex.primary])} · ${p.sets}×${p.repMin}-${p.repMax}${ex.timed?'s':''}${ex.perSide?'/side':''}${nr?'':` @${p.rir} RIR`} · ${p.rest}s${ss?` · <span class="tag blue">Superset ${ss}</span>`:''}${b.inj?` · <span class="tag red">Injury: ${ML[b.inj]}</span>`:''}</p>${lmChips(ex)}</div>
-      <div class="bh-acts">${!d.editingId&&blockDone(b)?`<button class="ib" aria-label="Fold ${esc(ex.name)}" data-act="bFold" data-b="${bi}">▴</button>`:''}<button class="ib" aria-label="Exercise options" data-act="bMenu" data-b="${bi}">⋯</button></div></div>
+      <div class="bh-acts"><button class="ib" aria-label="Exercise options" data-act="bMenu" data-b="${bi}">⋯</button></div></div>
       ${b.target?`<p class="hint"><b>Today: ${esc(b.target)}</b><span class="tp muted" style="display:block">${esc(b.last)}</span>${b.easier?`<span class="tp ez">${esc(b.easier)}</span>`:''}${progressLine(b,bi)}</p>`:`<p class="hint">${esc(b.hint||'')}</p>`}${ex.timed?'':cbLine(cbm[b.exId])}${bi===calIdx?`<p class="small caldue">Due for an RIR check: take one set here to failure. <button class="linkbtn" data-act="bCal" data-b="${bi}">Calibration set</button> <button class="linkbtn" data-act="calSnooze">Not now</button></p>`:''}
       ${ss&&partner?`<p class="small muted" style="margin:2px 0 0">Superset with ${esc(partner)}; rest after the pair.</p>`:''}
       ${b.lastNote&&!b.note?`<p class="small lnote">Your note, ${esc(fmtDate(b.lastNote.date))}: ${esc(b.lastNote.text)} <button class="linkbtn" data-act="noteReuse" data-b="${bi}">Use again</button></p>`:''}
@@ -3773,8 +3452,8 @@ function viewLogger(){
       const ph=b.lastR[si]!=null?b.lastR[si]:`${p.repMin}-${p.repMax}`;
       const pr=s.done?livePR(b.exId,s,d.date):null;
       h+=`<div class="sg${nr?' norir':''} ${s.done?'done':''}${pr?' pr':''}"${pr?` data-pr="${pr}"`:''}><span class="n${s.drop?' drop':''}">${s.drop?'↓':si+1}</span>
-        <input type="text" inputmode="decimal" enterkeyhint="next" aria-label="${esc(ex.name)}, set ${si+1} load" data-f="w" data-b="${bi}" data-s="${si}" value="${s.w==null?'':fmtW(s.w)}" placeholder="${ex.bw?'0':''}">
-        <input type="text" inputmode="numeric" enterkeyhint="next" aria-label="${esc(ex.name)}, set ${si+1} ${ex.timed?'seconds':'reps'}${ex.perSide?' per side':''}" data-f="r" data-b="${bi}" data-s="${si}" value="${s.r==null?'':s.r}" placeholder="${ph}">
+        <input type="text" inputmode="decimal" aria-label="Load" data-f="w" data-b="${bi}" data-s="${si}" value="${s.w==null?'':fmtW(s.w)}" placeholder="${ex.bw?'0':''}">
+        <input type="text" inputmode="numeric" aria-label="${ex.timed?'Seconds':'Reps'}${ex.perSide?' per side':''}" data-f="r" data-b="${bi}" data-s="${si}" value="${s.r==null?'':s.r}" placeholder="${ph}">
         ${nr?'':rirSelect(s.rir,bi,si,p.rir)}
         <button class="wbtn ${s.warm?'on':s.drop?'drop':''}" aria-label="Set ${si+1} type: ${s.warm?'warm-up':s.drop?'drop set':'working set'}" data-act="sWarm" data-b="${bi}" data-s="${si}">${s.drop?'D':'W'}</button>
         <button class="cbtn ${s.done?'on':''}" aria-label="Set ${si+1} done" aria-pressed="${s.done?'true':'false'}" data-act="sDone" data-b="${bi}" data-s="${si}">✓</button></div>`;
@@ -3783,7 +3462,7 @@ function viewLogger(){
     // Copy last reps used to be hidden whenever the suggestion was "add load",
     // which is exactly the session where prefilled reps save the most typing.
     const canFill=b.lastR&&b.lastR.some(r=>r!=null)&&b.sets.some((s,i)=>!s.done&&!s.warm&&!s.drop&&s.r==null&&b.lastR[i]!=null);
-    h+=`<div class="row" style="margin-top:8px">${canFill?`<button class="btn sm" data-act="fillLast" data-b="${bi}" aria-label="Copy last session's reps" data-tip="Fill empty rows with last session's reps.">Copy last</button>`:''}<button class="btn sm" data-act="sAdd" data-b="${bi}" aria-label="Add a set" data-tip="Add a working set at the last load.">+ Set</button><button class="btn sm" data-act="sDel" data-b="${bi}" aria-label="Remove a set" data-tip="Removes the last set not yet done." ${b.sets.length?'':'disabled'}>− Set</button>${state.settings.timerMode!=='off'&&+p.rest>0?`<button class="btn sm rest" data-act="tStart" data-b="${bi}" aria-label="Start a ${p.rest} second rest" data-tip="Start the rest timer.">⏱ ${p.rest}s</button>`:''}</div></section>`;
+    h+=`<div class="row" style="margin-top:8px">${canFill?`<button class="btn sm" data-act="fillLast" data-b="${bi}" aria-label="Copy last session's reps" data-tip="Fill empty rows with last session's reps.">Copy last</button>`:''}<button class="btn sm" data-act="sAdd" data-b="${bi}" aria-label="Add a set" data-tip="Add a working set at the last load.">+ Set</button><button class="btn sm" data-act="sDel" data-b="${bi}" aria-label="Remove the last set" data-tip="Remove the last set." ${b.sets.length?'':'disabled'}>− Set</button><button class="btn sm" data-act="wAdd" data-b="${bi}" aria-label="Add a warm-up set" data-tip="Add a warm-up at the top, seeded from your working load. Warm-ups are kept in history but left out of every number.">+ Warm</button><button class="btn sm" data-act="dropAdd" data-b="${bi}" aria-label="Add a drop set" data-tip="Add a drop set at about 75% of the last load. It counts as half a set of volume and never as a PR.">+ Drop</button>${state.settings.timerMode!=='off'&&+p.rest>0?`<button class="btn sm rest" data-act="tStart" data-b="${bi}" aria-label="Start a ${p.rest} second rest" data-tip="Start the rest timer.">⏱ ${p.rest}s</button>`:''}</div></section>`;
   });
   h+=`<div class="row"><button class="btn" style="flex:1" data-act="pickSession">+ Add exercise</button>${d.editingId?'':'<button class="btn" data-act="pickEx">Pick for me</button>'}</div>`;
   if(!d.editingId)h+=cardioDraftCard(d);
@@ -3830,13 +3509,9 @@ function viewProgram(){
      position, so a day dragged to second place becomes Day 2. */
   let db=`<p class="muted small" style="margin:0 0 4px">${weekly?'':'Drag ⠿ to reorder days. '}${totSets} planned sets per ${weekly?'week':`cycle${R.days.length!==7?`, about ${Math.round(totSets*weekFactor(R))} per week`:''}`}.</p><div id="dayList">`;
   const dnd=!!(window.__libs&&window.__libs.sortable);
-  /* One day open at a time. With every day open the tab ran to several
-     screens of exercises; now each closed day is one line with its totals,
-     and opening a day closes the others and makes it where + adds to. */
-  const focus=dayFocusId(R);
   R.days.forEach((d,di)=>{
     fixSupersets(d.items);
-    const dOpen=d.id===focus;
+    const dOpen=isOpen('day:'+d.id,true);
     db+=`<section class="day ${d.rest?'rest':''}" data-did="${esc(d.id)}"><div class="dh">${weekly?'':`<span class="dgrip" role="button" tabindex="0" data-di="${di}" aria-label="Move ${esc(dayLabel(R,di))}: drag, or use the arrow keys" data-tip="Drag to reorder days">⠿</span>`}<span class="dlabel">${dayLabel(R,di)}</span><input type="text" aria-label="Day name" data-dayname="${di}" value="${esc(d.name)}"><button class="ib dfold" data-act="dFold" data-id="${esc(d.id)}" aria-expanded="${dOpen}" aria-label="${dOpen?'Fold':'Unfold'} ${esc(dayLabel(R,di))}"></button></div>
     <div class="dmeta row spread"><span>${d.rest?'Rest day':`${d.items.length} exercises, ${daySets(d)} sets, ${minTxt(dayMinutes(d))}`}</span><label class="check-inline"><input type="checkbox" data-dayrest="${di}" ${d.rest?'checked':''}>Rest day</label></div><div class="dbody" ${dOpen?'':'hidden'}>${sessionCapNote(d)}
     <ul class="items" data-day="${di}">${d.items.map((it,ii)=>itemHTML(R,di,it,ii)).join('')}</ul>
@@ -3849,18 +3524,11 @@ function viewProgram(){
   h+=sec({sk:'program:pvol',key:'pvol',title:'Weekly volume',sub:pUnder?`<span class="pill yellow">${pUnder} under target</span>`:'<span class="pill green">all on target</span>',help:'pvol',helpBody:`Hard sets per muscle this routine plans for a week${weekly?'':`, scaled from a ${R.days.length}-day cycle to 7 days`}. Direct work counts 1 set, secondary involvement counts 0.5. The shaded zone is your target band (editable in Settings).`,body:volumeRows(pv)});
   return h;
 }
-/* The open day: the one picked last, else the day + adds to, else the first
-   training day. An empty string means the user closed them all. */
-function dayFocusId(R){
-  if(typeof ui.dayFocus==='string'&&(ui.dayFocus===''||R.days.some(d=>d.id===ui.dayFocus)))return ui.dayFocus;
-  const t=R.days[ui.bTarget];if(t)return t.id;
-  const f=R.days.find(d=>!d.rest)||R.days[0];return f?f.id:'';
-}
 function itemHTML(R,di,it,ii){
   const ex=EX(it.exId);const open=ui.openItem===it.uid;
   const items=R.days[di].items;const nx=items[ii+1];const letters=ssLetters(items);
   const linked=!!(it.ss&&nx&&nx.ss===it.ss);
-  return `<li class="it${it.ss?' ss':''}" data-uid="${it.uid}"><div class="ir"><span class="grip" aria-hidden="true">⠿</span><button class="imain" data-act="toggleItem" data-uid="${it.uid}"><b>${esc(ex.name)}</b><span>${it.sets} × ${it.repMin}-${it.repMax}${ex.timed?'s':''}, ${rirShow(ex)?`${it.rir} RIR, `:''}rest ${it.rest}s${it.ss?` · superset ${letters[it.ss]}`:''}</span></button><button class="ib" aria-label="Move ${esc(ex.name)} up" data-act="iUp" data-day="${di}" data-i="${ii}"${ii===0?' disabled':''}>↑</button><button class="ib" aria-label="Move ${esc(ex.name)} down" data-act="iDown" data-day="${di}" data-i="${ii}"${ii===items.length-1?' disabled':''}>↓</button></div>
+  return `<li class="it${it.ss?' ss':''}" data-uid="${it.uid}"><div class="ir"><span class="grip" aria-hidden="true">⠿</span><button class="imain" data-act="toggleItem" data-uid="${it.uid}"><b>${esc(ex.name)}</b><span>${it.sets} × ${it.repMin}-${it.repMax}${ex.timed?'s':''}, ${rirShow(ex)?`${it.rir} RIR, `:''}rest ${it.rest}s${it.ss?` · superset ${letters[it.ss]}`:''}</span></button><button class="ib" aria-label="Move up" data-act="iUp" data-day="${di}" data-i="${ii}">↑</button><button class="ib" aria-label="Move down" data-act="iDown" data-day="${di}" data-i="${ii}">↓</button></div>
   ${open?`<div class="ied"><div class="grid3">
     <label class="field">Sets<input type="text" inputmode="numeric" data-it="sets" data-uid="${it.uid}" value="${it.sets}"></label>
     <label class="field">${ex.timed?'Min seconds':'Rep min'}<input type="text" inputmode="numeric" data-it="repMin" data-uid="${it.uid}" value="${it.repMin}"></label>
@@ -3896,8 +3564,8 @@ function volumeRows(sets,conf){
 function viewLibrary(){
   return pageHead('Program','Exercise library',`${state.exercises.filter(e=>!e.archived).length} exercises, all editable`,`<button class="btn sm" data-act="planBack">← Program</button><button class="btn sm primary" data-act="exNew">New exercise</button>`)+`
   <div class="card stack"><input type="search" placeholder="Search exercises" aria-label="Search exercises" data-bind="libQ" value="${esc(ui.libQ)}">
-  <div class="grid2"><select data-bind="libM" aria-label="Filter by muscle"><option value="">All muscles</option>${MUSCLES.map(([k,l])=>`<option value="${k}" ${ui.libM===k?'selected':''}>${l}</option>`).join('')}</select>
-  <select data-bind="libE" aria-label="Filter by equipment"><option value="">All equipment</option>${EQUIP.map(([k,l])=>`<option value="${k}" ${ui.libE===k?'selected':''}>${l}</option>`).join('')}</select></div>
+  <div class="grid2"><select data-bind="libM"><option value="">All muscles</option>${MUSCLES.map(([k,l])=>`<option value="${k}" ${ui.libM===k?'selected':''}>${l}</option>`).join('')}</select>
+  <select data-bind="libE"><option value="">All equipment</option>${EQUIP.map(([k,l])=>`<option value="${k}" ${ui.libE===k?'selected':''}>${l}</option>`).join('')}</select></div>
   <label class="check-inline"><input type="checkbox" data-bind="libRare" ${ui.libRare?'checked':''}>Less common and overlooked only</label></div>
   <div id="libList">${libCards()}</div>`;
 }
@@ -3994,7 +3662,7 @@ function viewDash(){
   let exh='<div class="card">';
   if(ui.dashEx){
     const st=I.exStats[ui.dashEx];const ex=EX(ui.dashEx);const exps=I.byEx[ui.dashEx];
-    exh+=`<select data-bind="dashEx" aria-label="Exercise">${withData.map(id=>`<option value="${id}" ${id===ui.dashEx?'selected':''}>${esc(exName(id))}</option>`).join('')}</select>
+    exh+=`<select data-bind="dashEx">${withData.map(id=>`<option value="${id}" ${id===ui.dashEx?'selected':''}>${esc(exName(id))}</option>`).join('')}</select>
     <div style="margin-top:8px">${exHeadline(ui.dashEx)}</div>${noE1(ex)?`<div class="kpis" style="margin-top:8px"><div class="kpi"><div class="v">${st.n}</div><div class="l">Sessions logged</div></div><div class="kpi"><div class="v">${st.stalled?'Yes':'No'}</div><div class="l">Stalled</div></div></div>`:''}<div class="kpis" style="margin-top:8px${noE1(ex)?';display:none':''}"><div class="kpi"><div class="v">${st.best?(ex.bw?'≈':'')+fmtW(st.best):'n/a'}</div><div class="l">Best e1RM (${U()}${loadNote(ex)})</div></div><div class="kpi"><div class="v">${st.pct==null?'n/a':(st.pct>=0?'+':'')+r1(st.pct)+'%'}</div><div class="l">Change, first to last exposure</div></div><div class="kpi"><div class="v">${st.slope==null?'n/a':(st.slope>=0?'+':'')+r1(st.slope)+'%'}</div><div class="l">Fitted trend per week</div></div><div class="kpi"><div class="v">${st.n}</div><div class="l">Sessions logged</div></div></div>
     ${st.pct!=null&&st.slope!=null&&(st.pct>0)!==(st.slope>0)&&Math.abs(st.pct)>0.5&&Math.abs(st.slope)>0.1?`<p class="small muted hastip" style="margin-top:6px" data-tip="The change compares the endpoints; the trend fits a line through every session. When they split, trust the trend: one unusual session is pulling an endpoint.">Change and trend disagree</p>`:''}
     ${noE1(ex)?'':`${rangeChips('ex',weeksSpan(exps[0].date),8,'all')}<div class="chartbox"><canvas id="chEx"></canvas></div>${chartFallback()}
@@ -4006,7 +3674,7 @@ function viewDash(){
   }else exh+='<p class="muted">Log a session to see exercise trends.</p>';
   exh+='</div>';
   const prBody=I.prs.length?I.prs.slice(0,15).map(p=>{const ex=EX(p.exId);return `<div class="row spread" style="padding:6px 0;border-bottom:1px solid var(--line)"><span>${esc(ex.name)} <span class="tag ${p.type==='e1RM'?'green':'blue'}">${ex.timed&&p.type==='Rep PR'?'Time PR':p.type}</span></span><span class="num">${p.type==='e1RM'?fmtW(p.value)+' '+U():setShort(ex,p.w,p.r)} <span class="muted small">${fmtDate(p.date)}</span></span></div>`;}).join(''):'<p class="muted">No PRs yet. Your first session of an exercise sets the baseline.</p>';
-  h+=dsec('exercise','Lifts',`Estimated 1RM works on reps to failure (reps plus RIR; a blank RIR counts as 0, so it errs low): Brzycki up to 10, Epley for 11 and 12, nothing past 12, and a set called at more than 4 RIR is left out. It is in the same frame you log in, so per dumbbell or per side where that applies. Bodyweight lifts add the share of your bodyweight they move (≈): all of it for pull-ups and dips, 64% for push-ups. Leg raises, crunches, Nordics and similar lifts that turn about a joint get no estimate; their progress is reps and load. A lift is moving or falling only past 3% over 6 weeks with a clear trend, since estimates swing 2 to 8% day to day. Stalled: the trend over your last 6 sessions, or the last 3 weeks if that covers more, is flat or down (at least 4 sessions), leaving out deload, lighter and trimmed sessions. An e1RM PR beats your best from the same band of reps to failure (1-5, 6-10, 11-12); a rep PR is a set no earlier set matched on both load and reps.`,
+  h+=dsec('exercise','Lifts',`Estimated 1RM works on reps to failure (reps plus RIR; a blank RIR counts as 0, so it errs low): Brzycki up to 10, Epley for 11 and 12, nothing past 12, and a set called at more than 4 RIR is left out. It is in the same frame you log in, so per dumbbell or per side where that applies. Bodyweight lifts add the share of your bodyweight they move (≈): all of it for pull-ups and dips, 64% for push-ups. Leg raises, crunches, Nordics and similar lifts that turn about a joint get no estimate; their progress is reps and load. A lift is moving or falling only past 3% over 6 weeks with a clear trend, since estimates swing 2 to 8% day to day. Stalled: the trend over the last 4 to 6 sessions, 3 weeks or more, is flat or down, leaving out deload, lighter and trimmed sessions. An e1RM PR beats your best from the same band of reps to failure (1-5, 6-10, 11-12); a rep PR is a set no earlier set matched on both load and reps.`,
     exh+sub('stalls','Stalls',stl,stalled.length?`<span class="pill ${stalled.length>=3?'red':'yellow'}">${stalled.length} stalled</span>`:'none')+sub('prs','Recent PRs',prBody,`${pr14} in 14 days`),`${Object.keys(I.byEx).length} lifts tracked`);
 
   // consistency heat map
@@ -4025,8 +3693,8 @@ function viewDash(){
     const src=avg||thisWeek;
     rank+=I.scores.map(s=>{const c=s.label==='progressing'?'green':s.label==='lagging'?'red':'none';
       const sets=src[s.m]||0;const [lo,hi]=bands[s.m];
-      const read=s.score>=GROW_PCT?(sets<lo?'Rising on low volume: leave it.':'Rising: hold this volume.')
-        :s.score<=-GROW_PCT?'Falling: check recovery first.'
+      const read=s.score>GROW_PCT?(sets<lo?'Rising on low volume: leave it.':'Rising: hold this volume.')
+        :s.score<-GROW_PCT?'Falling: check recovery first.'
         :(sets>=hi?'Flat at high volume: change exercises or effort, not sets.':'Flat: try 2 more sets a week for 3 weeks.');
       return `<div style="padding:6px 0;border-bottom:1px solid var(--line)"><div class="mrow" style="border:0;padding:0"><span class="plate ${c}"></span><span>${ML[s.m]}${s.indirect?' <span class="tag" data-tip="No direct exercise for this muscle. Trend inferred from lifts where it assists.">indirect</span>':''}</span><div class="band"><div class="fill ${s.score>=0?'in':'down'}" style="width:${Math.abs(s.score)/maxAbs*100}%"></div></div><span class="r num">${s.score>=0?'+':''}${r1(s.score)}%</span></div><p class="small muted" style="margin:2px 0 0">${r1(sets)} sets a week · ${read}</p></div>`;}).join('');
     const missing=MK.filter(m=>!I.scores.find(s=>s.m===m));
@@ -4170,8 +3838,7 @@ function whtrLine(prompt){
   /* NICE 2022: under 0.5 healthy, 0.5 to 0.59 increased, 0.6 or more high
      central-fat risk. A screening number, not a diagnosis; measured midway
      between the lowest rib and the top of the hip bone. */
-  // Banded on the number shown, so 0.4997 cannot read "0.50 · healthy range".
-  const r=Math.round(w.waist/hc*100)/100;const band=r<0.5?['green','healthy range']:r<0.6?['yellow','increased risk']:['red','high risk'];
+  const r=w.waist/hc;const band=r<0.5?['green','healthy range']:r<0.6?['yellow','increased risk']:['red','high risk'];
   return `<p class="small whtr"><b>Waist to height ${r.toFixed(2)}</b> <span class="tag ${band[0]}">${band[1]}</span> <span class="muted hastip" data-tip="Waist ${lenD(w.waist)} ${LU()} on ${fmtDate(w.date)}, height ${heightTxt(hc)}. Under 0.50 healthy, 0.50 to 0.59 increased, 0.60 or more high (NICE 2022). A screening number: measure midway between the lowest rib and the top of the hip bone. Unlike BMI it does not count muscle against you.">how it reads</span></p>`;
 }
 function heightField(){return `<label class="field"><span class="hastip" data-tip="Set once. With a waist measurement it gives waist to height.">Height</span><input type="text" data-bind="height" value="${esc(heightTxt(state.settings.heightCm))}" placeholder="${U()==='lb'?'e.g. 5\'10':'e.g. 178'}" autocomplete="off"></label>`;}
@@ -4359,19 +4026,9 @@ function viewHistory(){
   // few hundred logs that is a visible stall on a phone for rows nobody has
   // scrolled to yet.
   const page=shown.slice(0,ui.histLimit);
-  /* Sessions sit under their week (Monday start), with the week's totals on
-     the header, so a light or missed week shows without counting rows. The
-     totals cover every session of that week in the current filter, not only
-     the rows loaded so far. */
-  const wkTot={};
-  for(const s of shown){const w=weekStart(s.date);const o=wkTot[w]||(wkTot[w]={n:0,sets:0,vol:0});o.n++;o.sets+=s.ex.reduce((a,b)=>a+b.sets.filter(isWork).length,0);o.vol+=(I.sessVol.find(v=>v.id===s.id)||{}).vol||0;}
-  const thisWk=weekStart(today());let lastWk=null;
   for(const s of page){
-    const wk=weekStart(s.date);
-    if(wk!==lastWk){lastWk=wk;const o=wkTot[wk];const lbl=wk===thisWk?'This week':wk===addDays(thisWk,-7)?'Last week':`Week of ${fmtDate(wk)}`;
-      body+=`<div class="hweek"><span class="hw-t">${lbl}</span><span class="hw-s" data-tip="${esc(`${o.n} session${o.n===1?'':'s'}, ${o.sets} working sets, ${Math.round(toD(o.vol)).toLocaleString()} ${U()} lifted`)}">${o.sets} sets · ${fmtK(o.vol)} ${U()}</span></div>`;}
     const nSets=s.ex.reduce((a,b)=>a+b.sets.filter(isWork).length,0);const vol=(I.sessVol.find(v=>v.id===s.id)||{}).vol||0;const open=ui.histOpen===s.id;
-    body+=`<div class="hitem${open?' open':''}"><button class="pick" style="border:0;padding:0" data-act="histToggle" data-id="${s.id}" aria-expanded="${open}"><span style="min-width:0"><b>${esc(s.dayName||'Session')}</b>${s.deload?' <span class="tag blue">deload</span>':''}${s.free?' <span class="tag">freestyle</span>':''}${s.ex.some(b=>b.cut)?' <span class="tag">trimmed</span>':''}${s.demo?' <span class="tag">demo</span>':''}<br><span class="small muted">${fmtDateRow(s.date)}</span></span><span class="num small" style="text-align:right;flex:none">${nSets} sets<br><span class="muted">${Math.round(toD(vol)).toLocaleString()} ${U()}${s.durMin?` · ${s.durMin} min`:''}</span></span></button>`;
+    body+=`<div class="hitem${open?' open':''}"><button class="pick" style="border:0;padding:0" data-act="histToggle" data-id="${s.id}" aria-expanded="${open}"><span style="min-width:0"><b>${esc(s.dayName||'Session')}</b>${s.deload?' <span class="tag blue">deload</span>':''}${s.free?' <span class="tag">freestyle</span>':''}${s.ex.some(b=>b.cut)?' <span class="tag">trimmed</span>':''}${s.demo?' <span class="tag">demo</span>':''}<br><span class="small muted">${fmtDateLong(s.date)}</span></span><span class="num small" style="text-align:right;flex:none">${nSets} sets<br><span class="muted">${Math.round(toD(vol)).toLocaleString()} ${U()}${s.durMin?` · ${s.durMin} min`:''}</span></span></button>`;
     if(ui.histEx&&!open){const b=s.ex.find(x=>x.exId===ui.histEx);const ex=EX(ui.histEx);if(b)body+=`<p class="small" style="margin:6px 0 0">${b.sets.map(x=>setStr(ex,x)).join(', ')}${histUnits(ex)}</p>`;}
     if(open){
       body+='<div class="panel" style="margin-top:10px">';
@@ -4415,10 +4072,10 @@ function viewSettings(){
   ${G('prio','Priority muscles','prio')}${helpText('prio','Shown in Weak points so they stay on your radar.')}
   <div class="card chips">${MUSCLES.map(([k,l])=>`<button class="chip ${s.priorities.includes(k)?'on':''}" data-act="prio" data-m="${k}">${l}</button>`).join('')}</div></div></details>
   ${G('bands','Weekly set targets','bands')}${helpText('bands','Fractional hard sets per week: direct work 1, helper muscles 0.5 (Pelland 2025). 10 to 20 for major muscles fits the dose-response data; the upper number is typical, not a ceiling, and more still helps a little at more cost. Smaller muscles are set lower because compound lifts hit them indirectly, and their numbers are convention: no study has tested a dose for them. Serratus and rotator cuff are tracked only. Raise one or two muscles for a specialisation block.')}
-  <div class="card"><table class="t"><tr><th>Muscle</th><th class="r">Min</th><th class="r">Max</th></tr>${MUSCLES.map(([k,l])=>`<tr><td>${l}</td><td class="r"><input style="width:70px" type="text" inputmode="numeric" aria-label="${l} minimum hard sets a week" data-band="${k}" data-bi="0" value="${s.bands[k][0]}"></td><td class="r"><input style="width:70px" type="text" inputmode="numeric" aria-label="${l} maximum hard sets a week" data-band="${k}" data-bi="1" value="${s.bands[k][1]}"></td></tr>`).join('')}</table></div></div></details>
+  <div class="card"><table class="t"><tr><th>Muscle</th><th class="r">Min</th><th class="r">Max</th></tr>${MUSCLES.map(([k,l])=>`<tr><td>${l}</td><td class="r"><input style="width:70px" type="text" inputmode="numeric" data-band="${k}" data-bi="0" value="${s.bands[k][0]}"></td><td class="r"><input style="width:70px" type="text" inputmode="numeric" data-band="${k}" data-bi="1" value="${s.bands[k][1]}"></td></tr>`).join('')}</table></div></div></details>
   ${G('data','Your data','','dataSec')}
   <div class="panel" id="syncInfo">${syncInfo()}</div>
-  ${backupDue()?`<p class="callout yellow" style="margin:10px 0 0"><b>Backup due.</b> ${s.lastExport?`Last backup file ${fmtDate(s.lastExport)}.`:'No backup file yet.'} ${cloud.on?'Export one below; the cloud copy mirrors deletions, so it is not a backup.':'Export one below; this device holds the only copy.'}</p>`:''}
+  ${backupDue()?`<p class="callout yellow" style="margin:10px 0 0"><b>Backup due.</b> ${s.lastExport?`Last backup file ${fmtDate(s.lastExport)}.`:'No backup file yet.'} Export one below; the cloud copy mirrors deletions, so it is not a backup.</p>`:''}
   ${storageOk?'':'<p class="small" style="color:var(--red)">This browser is blocking local storage, so this device keeps nothing between reloads without cloud sync.</p>'}
   <div class="card stack"><div class="row"><button class="btn primary" data-act="export" data-tip="The backup: restores everything, on any device.">Export backup (.json)</button><button class="btn" data-act="showBackup" data-tip="The same backup as text, to copy somewhere safe.">Show backup text</button><button class="btn" data-act="exportCsv" data-tip="One row per set for spreadsheets. Not a backup: it cannot be imported.">Export sets (.csv)</button></div>
   <label class="field">Import a backup file<input type="file" accept=".json,application/json" id="importFile"></label>
@@ -4508,7 +4165,7 @@ function renderModalBody(){
     const nx=d.ex[m.b+1];const linked=!!(nx&&b.plan.ss&&nx.plan.ss===b.plan.ss);
     const op=(o,l,dis,cls)=>`<button class="btn block ${cls||''}" style="margin-top:6px" data-act="bMenuDo" data-op="${o}" data-b="${m.b}" ${dis?'disabled':''}>${l}</button>`;
     h=`<div class="sheet" role="dialog" aria-modal="true"><div class="sheet-h"><h3>${esc(exName(b.exId))}</h3><button class="ib" aria-label="Close" data-act="mClose">✕</button></div>
-    ${op('wAdd','Add a warm-up set')}${op('dropAdd','Add a drop set (about 75% load)')}${op('bQuick','Type or dictate sets')}${op('bNote',b.note?'Edit note':'Add note')}${op('bSwap','Swap exercise')}${aiOn()?op('bAiSwap','Ask Claude for a swap'):''}${op('bInc',`Load step: ${fmtW(incOf(EX(b.exId),b.plan))} ${U()}`)}${op('bMax',`Heaviest available: ${EX(b.exId).maxLoad!=null?fmtW(EX(b.exId).maxLoad)+' '+U():'no limit'}`)}${rirShow(EX(b.exId))?op('bCal','Calibration set (RIR check)'):''}${EX(b.exId).timed?'':op('bPrior',priorOf(b.exId)?'Former best: edit':'Former best (after a break)')}${nx?op('bSs',linked?'Unlink superset':`Superset with ${esc(exName(nx.exId))}`):''}${op('bUp','Move up',m.b===0)}${op('bDown','Move down',!nx)}${op('bDel','Remove from session',false,'danger')}</div>`;
+    ${op('bQuick','Type or dictate sets')}${op('bNote',b.note?'Edit note':'Add note')}${op('bSwap','Swap exercise')}${aiOn()?op('bAiSwap','Ask Claude for a swap'):''}${op('bInc',`Load step: ${fmtW(incOf(EX(b.exId),b.plan))} ${U()}`)}${op('bMax',`Heaviest available: ${EX(b.exId).maxLoad!=null?fmtW(EX(b.exId).maxLoad)+' '+U():'no limit'}`)}${rirShow(EX(b.exId))?op('bCal','Calibration set (RIR check)'):''}${EX(b.exId).timed?'':op('bPrior',priorOf(b.exId)?'Former best: edit':'Former best (after a break)')}${nx?op('bSs',linked?'Unlink superset':`Superset with ${esc(exName(nx.exId))}`):''}${op('bUp','Move up',m.b===0)}${op('bDown','Move down',!nx)}${op('bDel','Remove from session',false,'danger')}</div>`;
   }else if(m.kind==='injury'){
     h=`<div class="sheet" role="dialog" aria-modal="true"><div class="sheet-h"><h3>Flag an injury</h3><button class="ib" aria-label="Close" data-act="mClose">✕</button></div>
     <p class="small muted hastip" data-tip="Every exercise that loads this muscle, directly or as a helper, is marked in your sessions: its target pauses, loads cap at last time, and it is left out of below-target advice until cleared.">Training aid, not medical advice: sharp, worsening or lasting pain needs a clinician.</p>
@@ -4607,7 +4264,7 @@ function renderModalBody(){
   }else if(m.kind==='note'){
     h=`<div class="sheet" role="dialog" aria-modal="true"><div class="sheet-h"><h3>${esc(m.title)}</h3><button class="ib" aria-label="Close" data-act="mClose">✕</button></div>
     <p class="small muted">Saved with this session and shown next time: a cue, a niggle, which machine.</p>
-    <textarea id="mNote" aria-label="Note" style="min-height:110px">${esc(m.text||'')}</textarea>
+    <textarea id="mNote" style="min-height:110px">${esc(m.text||'')}</textarea>
     <div class="row" style="margin-top:10px"><button class="btn primary" data-act="noteSave">Save note</button><button class="btn" data-act="mClose">Cancel</button></div></div>`;
   }else if(m.kind==='pickToday'){
     const rk=rankDays();const top=rk.rows.slice(0,3);
@@ -4646,7 +4303,7 @@ function renderModalBody(){
     <p class="small muted" style="margin:8px 0 0">Sets, reps and rest as planned; swaps are for this session only.</p></div>`;
   }else if(m.kind==='text'){
     h=`<div class="sheet" role="dialog" aria-modal="true"><div class="sheet-h"><h3>${esc(m.title)}</h3><button class="ib" aria-label="Close" data-act="mClose">✕</button></div>
-    <p class="small muted">${esc(m.help)}</p><textarea id="mText" aria-label="${esc(m.title||'Text')}" style="min-height:220px;font-size:13px" ${m.readonly?'readonly':''}>${esc(m.text||'')}</textarea>
+    <p class="small muted">${esc(m.help)}</p><textarea id="mText" style="min-height:220px;font-size:13px" ${m.readonly?'readonly':''}>${esc(m.text||'')}</textarea>
     <div class="row" style="margin-top:10px">${m.readonly?'<button class="btn primary" data-act="copyText">Copy</button>':'<button class="btn primary" data-act="importText">Import</button>'}<button class="btn" data-act="mClose">Close</button></div></div>`;
   }
   el.innerHTML=h;el.hidden=false;
@@ -4729,8 +4386,6 @@ function toTrash(kind,data){
   state.trash=[{id:data.id,kind,date:today(),data:JSON.parse(JSON.stringify(data))},...(state.trash||[]).filter(t=>!(t.id===data.id&&t.kind===kind))].slice(0,TRASH_MAX);
   while(state.trash.length>1&&JSON.stringify(state.trash).length>TRASH_BYTES)state.trash.pop();
 }
-/* Running as an installed app (home screen), not in a browser tab or inside Claude. */
-function isStandalone(){try{return window.matchMedia('(display-mode: standalone)').matches||navigator.standalone===true;}catch(e){return false;}}
 function markExported(){state.settings.lastExport=today();saveNow();}
 /* Everything in this app lives in one browser, so "did the backup actually
    land" is the single question that matters. The downloads capability confirms
@@ -4742,16 +4397,6 @@ async function exportFile(data,filename,mime,okMsg,onSaved,fallbackTitle,fallbac
     if(window.claude&&typeof window.claude.use==='function'){
       const dl=await window.claude.use('downloads');
       if(dl){try{await dl.save({filename,data});onSaved&&onSaved();toast(okMsg);return;}catch(e){if(e&&e.code==='declined'){toast('Save cancelled');return;}log('export',e);}}
-    }
-  }catch(e){log('export',e);}
-  /* The installed app on a phone: the share sheet is how a file reaches Files
-     or iCloud Drive (a download link inside a home-screen app on iOS opens a
-     preview with nowhere to save). A completed share is taken as saved. */
-  try{
-    const file=typeof File==='function'?new File([data],filename,{type:mime}):null;
-    if(file&&isStandalone()&&navigator.canShare&&navigator.canShare({files:[file]})){
-      try{await navigator.share({files:[file],title:filename});onSaved&&onSaved();toast(okMsg);return;}
-      catch(e){if(e&&e.name==='AbortError'){toast('Save cancelled');return;}log('export',e);}
     }
   }catch(e){log('export',e);}
   let clicked=false;
@@ -4992,25 +4637,8 @@ const ACT={
   diagClear(){logBuf.length=0;try{localStorage.removeItem(LOGK);}catch(e){log('diag',e);}rerenderKeepScroll();toast('Log cleared');},
   undo(){
     if(!undoStack.length){toast('Nothing left to undo');return;}
-    /* Undo used to put back the whole state from before the action, which
-       also threw away every session, weigh-in or set logged since then. Now
-       only the action is reversed: a three-way merge with the state right
-       after the action as the base, what is here now as one side and the
-       state before the action as the other. Records changed since the action
-       keep their newer version. */
-    const e=undoStack.pop();
-    try{
-      const pre=normalize(JSON.parse(e.pre));const post=e.post?normalize(JSON.parse(e.post)):state;
-      const P=chunksOf(pre),Q=chunksOf(post),C=chunksOf(state);const stat={conflicts:0};const parts={};
-      for(const id of new Set([...Object.keys(P),...Object.keys(Q),...Object.keys(C)])){
-        const q=Q[id]||emptyChunk(id);
-        parts[id]=mergeChunk(id,q?baseOf(id,q):null,C[id]||emptyChunk(id),P[id]||emptyChunk(id),false,stat);
-      }
-      state=assemble(parts);
-    }catch(x){log('undo',x);toast('Could not undo that');return;}
-    // If the step below never saw a save of its own, its result is the state
-    // before the step just undone, not what this undo is about to save.
-    const below=undoStack[undoStack.length-1];if(below&&below.post==null)below.post=e.pre;
+    const prev=undoStack.pop();
+    try{state=normalize(JSON.parse(prev));}catch(e){toast('Could not undo that');return;}
     commit();$('#toast').hidden=true;render();
     toast(`Undone. ${undoStack.length} step${undoStack.length===1?'':'s'} left`);
   },
@@ -5065,21 +4693,6 @@ const ACT={
     closeModal();commit();render();toast(`${ML[m]} flagged`);},
   injClear(t){snapshot();const x=(state.injuries||[]).find(i=>i.id===t.dataset.id);state.injuries=(state.injuries||[]).filter(i=>i.id!==t.dataset.id);commit();render();toast(`${x?ML[x.m]:'Injury'} cleared`,true);},
   bMenu(t){openModal({kind:'bmenu',b:+t.dataset.b});},
-  rirOpen(t){const bi=+t.dataset.b,si=+t.dataset.s;const open=document.querySelector(`.rirstrip[data-b="${bi}"][data-s="${si}"]`);if(open){rirClose();return;}rirShowStrip(bi,si);
-    const f=document.querySelector('.rirstrip button.on')||document.querySelector('.rirstrip button');if(f&&!coarse())try{f.focus({preventScroll:true});}catch(e){/* focus is best effort */}},
-  rirPick(t){
-    const bi=+t.dataset.b,si=+t.dataset.s;const d=state.draft;const b=d&&d.ex[bi];const s=b&&b.sets[si];if(!s)return;
-    const n=numIn(t.dataset.v);s.rir=n==null?null:Math.min(Math.max(n,0),10);
-    const btn=document.querySelector(`.rirb[data-b="${bi}"][data-s="${si}"]`);
-    if(btn){const cur=s.rir==null?'':String(s.rir);btn.textContent=cur===''?(b.plan&&b.plan.rir!=null?'–':'RIR'):cur;btn.classList.toggle('unset',cur==='');btn.setAttribute('aria-label',`Reps in reserve for set ${si+1}: ${cur===''?'not set':cur}`);}
-    rirClose();if(btn)try{btn.focus({preventScroll:true});}catch(e){/* focus is best effort */}
-    if(s.done)refreshPR(bi,si,false);updateProgress(bi);
-    // The fold waits for the effort of the last set, then goes.
-    if(!d.editingId&&blockDone(b)){clearTimeout(foldT);foldT=setTimeout(()=>autoFold(bi),900);}
-    saveSoon();},
-  bOpen(t){const bi=+t.dataset.b;const b=state.draft&&state.draft.ex[bi];if(!b)return;ui.blkOpen.add(blkKey(bi,b));rerenderKeepScroll();
-    const el=document.getElementById('blk-'+bi);if(el)try{el.scrollIntoView({block:'nearest'});}catch(e){/* scroll is best effort */}},
-  bFold(t){const bi=+t.dataset.b;const b=state.draft&&state.draft.ex[bi];if(!b)return;ui.blkOpen.delete(blkKey(bi,b));rerenderKeepScroll();},
   bMenuDo(t){const op=t.dataset.op;closeModal();
     if(op==='bSs'){const bi=+t.dataset.b;if(linkToggle(state.draft.ex,bi,x=>x.plan)){saveNow();rerenderKeepScroll();}return;}
     const f=ACT[op];if(f)f(t);},
@@ -5092,9 +4705,7 @@ const ACT={
     b.sets.push({w:base>0?roundLoad(base*0.75):null,r:null,rir:null,warm:false,drop:true,done:false});
     saveNow();rerenderKeepScroll();toast('Drop set added: half a set of volume, never a PR.');
   },
-  // Once the rest is over, +15 counts from now (not from the old end, which
-  // left it at 0:00) and the alert is armed again.
-  tAdd(){timer.end=Math.max(timer.end,Date.now())+15000;timer.fired=false;timerSave();if(!timer.iv)timer.iv=setInterval(tick,250);tick();},
+  tAdd(){timer.end+=15000;if(!timer.iv)timer.iv=setInterval(tick,250);tick();},
   tStop(){stopTimer();},
   mClose(){closeModal();},
   mOk(){const fn=ui.modal&&ui.modal.fn;closeModal();fn&&fn();},
@@ -5119,14 +4730,7 @@ const ACT={
        phone that blur happens a moment before the tap on the checkmark lands.
        Without this guard the tap would immediately undo the auto-mark. */
     if(lastAuto&&lastAuto.b===bi&&lastAuto.s===si&&Date.now()-lastAuto.t<800){lastAuto=null;return;}
-    /* Tapping done on an empty reps field logs the grey number in it, last
-       time's reps for that set, like the paper log you copy from. With no
-       history there is no number to take, so it still asks. */
-    if(!s.done&&!(+s.r>0)){
-      const b=state.draft.ex[bi];const lr=b&&b.lastR?b.lastR[si]:null;
-      if(!(lr>0)){toast('Enter reps first');return;}
-      s.r=Math.round(lr);const inp=document.querySelector(`.sg input[data-f="r"][data-b="${bi}"][data-s="${si}"]`);if(inp)inp.value=String(s.r);
-    }
+    if(!s.done&&!(+s.r>0)){toast('Enter reps first');return;}
     setDone(bi,si,!s.done);
   },
   tStart(t){const b=state.draft&&state.draft.ex[+t.dataset.b];if(b&&+b.plan.rest>0)startTimer(+b.plan.rest);},
@@ -5151,9 +4755,7 @@ const ACT={
     el.scrollIntoView({block:'start',behavior:'smooth'});
   },
   goBackup(){ui.tab='settings';ui.folds['settings:data']=true;window.scrollTo(0,0);render();const el=document.getElementById('dataSec');if(el)el.scrollIntoView({block:'start'});},
-  // The new working set copies the last working set's load, not a drop set's
-  // (75%) or a warm-up's.
-  sAdd(t){const b=state.draft.ex[+t.dataset.b];const last=[...b.sets].reverse().find(x=>!x.drop&&!x.warm)||b.sets[b.sets.length-1];b.sets.push({w:last?last.w:null,r:null,rir:null,warm:false,drop:false,done:false});saveNow();rerenderKeepScroll();},
+  sAdd(t){const b=state.draft.ex[+t.dataset.b];const last=b.sets[b.sets.length-1];b.sets.push({w:last?last.w:null,r:null,rir:null,warm:false,done:false});saveNow();rerenderKeepScroll();},
   /* Warm-ups were missing entirely, which is also why the planned time estimate
      was optimistic. New warm-ups go in at the top, already flagged, so they
      stay out of every analytic, and are seeded from the working load. */
@@ -5206,12 +4808,7 @@ const ACT={
     const b=state.draft.ex[m.bi];if(b)b.note=ta.value.trim();
     closeModal();saveNow();rerenderKeepScroll();
   },
-  /* Removes the last set not yet done. A logged set is only removed when
-     every set is done, and then with Undo, since it holds real numbers. */
-  sDel(t){const b=state.draft.ex[+t.dataset.b];if(!b||!b.sets.length)return;
-    let i=-1;for(let k=b.sets.length-1;k>=0;k--)if(!b.sets[k].done){i=k;break;}
-    if(i>=0){b.sets.splice(i,1);saveNow();rerenderKeepScroll();return;}
-    snapshot();b.sets.pop();saveNow();rerenderKeepScroll();toast('Logged set removed',true);},
+  sDel(t){const b=state.draft.ex[+t.dataset.b];b.sets.pop();saveNow();rerenderKeepScroll();},
   bUp(t){move(state.draft.ex,+t.dataset.b,+t.dataset.b-1);saveNow();rerenderKeepScroll();},
   bDown(t){move(state.draft.ex,+t.dataset.b,+t.dataset.b+1);saveNow();rerenderKeepScroll();},
   bDel(t){snapshot();state.draft.ex.splice(+t.dataset.b,1);saveNow();rerenderKeepScroll();toast('Exercise removed',true);},
@@ -5325,9 +4922,6 @@ const ACT={
       const upd=d.editingId?null:routineUpdates(d);
       if(d.editingId){const i=state.sessions.findIndex(s=>s.id===d.editingId);if(i>=0){sess.demo=state.sessions[i].demo;state.sessions[i]=sess;}else state.sessions.push(sess);}
       else state.sessions.push(sess);
-      // Saving an edit of a session that was deleted while the edit was open
-      // brings it back: the save is the newer action.
-      state.trash=state.trash.filter(t=>!(t.kind==='session'&&t.id===sess.id));
       // Recap is computed before the draft is cleared, while the done flags exist.
       const targets=d.ex.filter(b=>b.tgt).length,beaten=d.ex.filter(b=>{const pr=blockProgress(b);return pr&&pr.beat;}).length;
       const editing=!!d.editingId;
@@ -5348,9 +4942,9 @@ const ACT={
     else save();
   },
   discard(){confirmBox('Discard this session?',state.draft.editingId?'Your edits will be lost. The saved session stays as it was.':'Sets and cardio logged in this session will not be saved.','Discard',()=>{state.draft=null;saveNow();stopTimer();wakeOff();render();},true);},
-  addBW(){const v=numIn($('#bwVal').value);const de=$('#bwDate');const date=(de&&de.value)||today();if(v==null||v<=0){toast('Enter a bodyweight');return;}{const kg=fromD(v);if(kg<BW_MIN_KG||kg>BW_MAX_KG){toast(`Bodyweight must be between ${fmtW(BW_MIN_KG)} and ${fmtW(BW_MAX_KG)} ${U()}`);return;}}state.bodyweights=state.bodyweights.filter(b=>b.date!==date);state.bodyweights.push({id:uid(),date,kg:fromD(v)});commit();rerenderKeepScroll();toast('Bodyweight logged');},
+  addBW(){const v=numIn($('#bwVal').value);const de=$('#bwDate');const date=(de&&de.value)||today();if(v==null||v<=0){toast('Enter a bodyweight');return;}state.bodyweights=state.bodyweights.filter(b=>b.date!==date);state.bodyweights.push({id:uid(),date,kg:fromD(v)});commit();rerenderKeepScroll();toast('Bodyweight logged');},
   delBW(t){snapshot();state.bodyweights=state.bodyweights.filter(b=>b.id!==t.dataset.id);commit();rerenderKeepScroll();toast('Entry deleted',true);},
-  addMeas(){const m={id:uid(),date:today()};let any=false;for(const [k,lab] of MEAS){const v=numIn($('#ms_'+k).value);if(v!=null&&v>0){const cm=lenFrom(v);if(!(cm<=MEAS_MAX_CM)){toast(`${lab} looks too large. Check the number.`);return;}m[k]=cm;any=true;}}if(!any){toast('Enter at least one measurement');return;}state.measurements=state.measurements.filter(x=>x.date!==m.date);state.measurements.push(m);commit();rerenderKeepScroll();toast('Measurements saved');},
+  addMeas(){const m={id:uid(),date:today()};let any=false;for(const [k] of MEAS){const v=numIn($('#ms_'+k).value);if(v!=null&&v>0){m[k]=lenFrom(v);any=true;}}if(!any){toast('Enter at least one measurement');return;}state.measurements=state.measurements.filter(x=>x.date!==m.date);state.measurements.push(m);commit();rerenderKeepScroll();toast('Measurements saved');},
   delMeas(t){snapshot();state.measurements=state.measurements.filter(m=>m.id!==t.dataset.id);commit();rerenderKeepScroll();toast('Entry deleted',true);},
   toggleItem(t){ui.openItem=ui.openItem===t.dataset.uid?null:t.dataset.uid;rerenderKeepScroll();},
   iUp(t){const R=curRoutineB();move(R.days[+t.dataset.day].items,+t.dataset.i,+t.dataset.i-1);commit();rerenderKeepScroll();},
@@ -5426,7 +5020,6 @@ const ACT={
   /* Every tile, summary row and map detail lands on the matching dashboard
      section, opened even if you had folded it, with the relevant muscle or
      exercise already selected. */
-  goWeek(){ui.folds['today:week']=true;render();try{const el=document.querySelector('[data-sk="today:week"]');if(el){el.open=true;el.scrollIntoView({block:'start',behavior:'smooth'});}}catch(e){/* scroll is best effort */}},
   goDash(t){
     const raw=t.getAttribute('data-sec'),m=t.getAttribute('data-m'),ex=t.getAttribute('data-ex');
     const sec=raw&&DSEC_ALIAS[raw]?DSEC_ALIAS[raw]:raw;
@@ -5445,12 +5038,9 @@ const ACT={
     window.scrollTo(0,0);render();
     try{const el=document.querySelector(`[data-act="histToggle"][data-id="${id}"]`);if(el&&el.scrollIntoView)el.scrollIntoView({block:'start'});}catch(e){/* scroll is best effort */}
   },
-  dAdd(){const R=curRoutineB();if(R.schedule==='weekly'||R.days.length>=MAX_DAYS)return;R.days.push({id:uid(),name:'Training day',rest:false,items:[]});ui.bTarget=R.days.length-1;ui.dayFocus=undefined;commit();rerenderKeepScroll();toast(`Day ${R.days.length} added`);},
+  dAdd(){const R=curRoutineB();if(R.schedule==='weekly'||R.days.length>=MAX_DAYS)return;R.days.push({id:uid(),name:'Training day',rest:false,items:[]});ui.bTarget=R.days.length-1;commit();rerenderKeepScroll();toast(`Day ${R.days.length} added`);},
   dAddRest(){const R=curRoutineB();if(R.schedule==='weekly'||R.days.length>=MAX_DAYS)return;R.days.push({id:uid(),name:'Rest',rest:true,items:[]});commit();rerenderKeepScroll();toast(`Day ${R.days.length} added as rest`);},
-  dFold(t){const R=curRoutineB();const id=t.dataset.id;const open=dayFocusId(R)===id;
-    ui.dayFocus=open?'':id;if(!open){const i=R.days.findIndex(d=>d.id===id);if(i>=0)ui.bTarget=i;}
-    rerenderKeepScroll();
-    if(!open){const el=document.querySelector(`.day[data-did="${CSS.escape(id)}"]`);if(el)try{el.scrollIntoView({block:'nearest',behavior:'smooth'});}catch(e){/* scroll is best effort */}}},
+  dFold(t){const k='day:'+t.dataset.id;ui.folds[k]=!isOpen(k,true);rerenderKeepScroll();},
   layoutReset(){state.settings.secOrder={};commit();render();toast('Section order reset on every tab');},
   dUp(t){const R=curRoutineB();const i=+t.dataset.day;if(i<1)return;move(R.days,i,i-1);ui.todayDay=null;commit();rerenderKeepScroll();},
   dDown(t){const R=curRoutineB();const i=+t.dataset.day;if(i>=R.days.length-1)return;move(R.days,i,i+1);ui.todayDay=null;commit();rerenderKeepScroll();},
@@ -5546,9 +5136,7 @@ document.addEventListener('keydown',e=>{if(e.key==='Escape'&&TIP.el)tipHide();})
 document.addEventListener('click',e=>{
   const tab=e.target.closest('#tabs button');
   if(tab){ui.tab=tab.dataset.tab;if(ui.tab==='program')ui.planView='routine';window.scrollTo(0,0);render();return;}
-  /* A tap outside a sheet closes it, unless something was typed there: a
-     half-filled new exercise or note is not thrown away by a stray tap. */
-  if(e.target.id==='modal'){if(ui.modal&&ui.modal.dirty){toast('Save or cancel first. Your changes are still here.');return;}closeModal();return;}
+  if(e.target.id==='modal'){closeModal();return;}
   const t=e.target.closest('[data-act]');if(!t)return;
   // getAttribute rather than dataset: the muscle map's targets are SVG groups.
   const fn=ACT[t.getAttribute('data-act')];if(fn){e.preventDefault();fn(t,e);}
@@ -5560,7 +5148,6 @@ document.addEventListener('keydown',e=>{
 });
 document.addEventListener('input',e=>{
   const t=e.target;
-  if(ui.modal&&FORM_SHEETS.has(ui.modal.kind)&&t&&t.closest&&t.closest('#modal'))ui.modal.dirty=true;
   if(t.dataset.cf&&state.draft&&state.draft.cardio){const c=state.draft.cardio[+t.dataset.c];if(!c)return;const k=t.dataset.cf;
     if(k==='min'){const n=numIn(t.value);c.min=n==null||n<=0?null:Math.min(Math.round(n),600);}
     else if(k==='hr'){const n=numIn(t.value);c.hr=n!=null&&n>=30&&n<=230?Math.round(n):null;}
@@ -5594,7 +5181,6 @@ document.addEventListener('input',e=>{
 });
 document.addEventListener('change',e=>{
   const t=e.target;
-  if(ui.modal&&FORM_SHEETS.has(ui.modal.kind)&&t&&t.closest&&t.closest('#modal'))ui.modal.dirty=true;
   if(t.id==='importFile'&&t.files&&t.files[0]){const fr=new FileReader();fr.onload=()=>importData(String(fr.result));fr.onerror=()=>toast('Could not read that file');fr.readAsText(t.files[0]);t.value='';return;}
   if(t.dataset.it){commit();rerenderKeepScroll();return;}
   if(t.dataset.band){const k=t.dataset.band;const b=state.settings.bands[k];if(b[0]>b[1])b.reverse();commit();rerenderKeepScroll();return;}
@@ -5637,7 +5223,7 @@ document.addEventListener('change',e=>{
       R.schedule=v;ui.todayDay=null;commit();rerenderKeepScroll();
       toast(v==='weekly'?'Days are now pinned to Monday to Sunday':'Days are now a numbered cycle',true);break;}
     case 'bLibM':ui.bLibM=t.value;rerenderKeepScroll();break;
-    case 'bTarget':ui.bTarget=+t.value;ui.dayFocus=undefined;rerenderKeepScroll();break;
+    case 'bTarget':ui.bTarget=+t.value;break;
     case 'libM':case 'libE':ui[b]=t.value;rerenderKeepScroll();break;
     case 'libRare':ui.libRare=t.checked;rerenderKeepScroll();break;
     case 'dashMuscle':ui.dashMuscle=t.value;rerenderKeepScroll();break;
@@ -5671,12 +5257,6 @@ document.addEventListener('toggle',e=>{
 },true);
 document.addEventListener('keydown',e=>{
   if(e.key==='Enter'&&e.target&&e.target.id==='bwVal'){e.preventDefault();ACT.addBW();return;}
-  // In a set row, Enter (the keyboard's Next) goes load, reps, then the next
-  // set's load, which is the order sets are typed in.
-  if(e.key==='Enter'&&e.target&&e.target.matches&&e.target.matches('.sg input[data-f]')){
-    e.preventDefault();const all=[...document.querySelectorAll('.sg input[data-f]')];const i=all.indexOf(e.target);
-    const nx=all[i+1];if(nx){try{nx.focus();nx.select&&nx.select();}catch(x){/* focus is best effort */}}else e.target.blur();return;}
-  if(e.key==='Escape'&&document.querySelector('.rirstrip')){rirClose();return;}
   if(e.key==='Escape'&&ui.modal){closeModal();return;}
   if(e.key!=='Tab'||!ui.modal)return;
   const f=modalFocusables();if(!f.length)return;
@@ -5922,10 +5502,9 @@ function swapPrompt(b,reason){
 }
 
 window.__onLib=(which)=>{if((which==='chart'&&ui.tab==='dash')||(which==='sortable'&&ui.tab==='program'))rerenderKeepScroll();};
-window.__ironlog={get state(){return state;},set state(v){state=v;},e1inv,rtfAt,rtfOf,rtfBand,calStats,rirEff,isHard,setCredit,tonnage,loadMode,loadWords,loadNote,progStep,jumpCap,setSecs,setupSecs,recovery,rolling7,rankDays,rankExercises,isCompound,patternOf,noE1,whtrLine,exHeadline,remainMin,shortPlan,weekPlan,cycleProjection,lastLighterWeek,regionBalance,parseHeight,mixCheck,swapCands,eqPlan,exportCSV,importData,chunksOf,assemble,sessionMuscles,TRACK_ONLY,cloud,Hx,mergeChunk,baseOf,sync:()=>cq(cloudPull),flush:()=>cq(cloudFlush),backupDue,routineUpdates,planFor,platesMode,plateText,chunksOf,IDX,suggest,e1,render,ACT,ui,makeDemo,invalidate,normalize,snapshot,saveNow,timer,weekStats,weekStart,today,blockProgress,dayMinutes,weekStreak,coach,tonnageNow,livePR,exProjection,movers,stalledIds,muscleStatus,actualAvg4,plannedPerWeek,parseSets,aiSetsValid,fillSets,newBlock,lastNoteOf,sizeRows,sessionMuscleSets,sessionCapNote,routineClutter,aiDigest,debriefPrompt,reviewPrompt,swapPrompt,AI,sameRR};
+window.__ironlog={get state(){return state;},set state(v){state=v;},e1inv,rtfAt,rtfOf,rtfBand,calStats,rirEff,isHard,setCredit,tonnage,loadMode,loadWords,loadNote,progStep,jumpCap,setSecs,setupSecs,recovery,rolling7,rankDays,rankExercises,isCompound,patternOf,noE1,whtrLine,exHeadline,remainMin,shortPlan,weekPlan,cycleProjection,lastLighterWeek,regionBalance,parseHeight,mixCheck,swapCands,eqPlan,exportCSV,importData,chunksOf,assemble,sessionMuscles,TRACK_ONLY,cloud,Hx,mergeChunk,baseOf,sync:()=>cq(cloudPull),flush:()=>cq(cloudFlush),backupDue,routineUpdates,planFor,platesMode,plateText,chunksOf,IDX,suggest,e1,render,ACT,ui,makeDemo,invalidate,normalize,blockProgress,dayMinutes,weekStreak,coach,tonnageNow,livePR,exProjection,movers,stalledIds,muscleStatus,actualAvg4,plannedPerWeek,parseSets,aiSetsValid,fillSets,newBlock,lastNoteOf,sizeRows,sessionMuscleSets,sessionCapNote,routineClutter,aiDigest,debriefPrompt,reviewPrompt,swapPrompt,AI,sameRR};
 render();
 wakeOn();
-timerResume();
 cloudInit();
 aiInit();
 })();

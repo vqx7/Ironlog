@@ -9,6 +9,8 @@ let FCSS = '';
 for (const w of [600, 700, 800]) FCSS += `@font-face{font-family:'Big Shoulders Display';font-weight:${w};src:url(https://fonts.local/bsd-${w}.woff2) format('woff2');}`;
 for (const w of [400, 500, 600, 700]) FCSS += `@font-face{font-family:'Hanken Grotesk';font-weight:${w};src:url(https://fonts.local/hg-${w}.woff2) format('woff2');}`;
 async function open(file, opts = {}) {
+  // IRONLOG_FILE runs the same suites against another build (the standalone dist/index.html).
+  if (file === 'index.html' && process.env.IRONLOG_FILE) file = process.env.IRONLOG_FILE;
   const browser = opts.browser || await chromium.launch();
   const ctx = await browser.newContext({ viewport: { width: opts.w || 390, height: opts.h || 844 }, deviceScaleFactor: opts.dpr || 1, hasTouch: !!opts.touch, isMobile: !!opts.touch, colorScheme: opts.dark ? 'dark' : 'light' });
   if (opts.clock) await ctx.addInitScript(`(()=>{const T=${JSON.stringify(opts.clock)};const R=Date;const off=new R(T).getTime()-R.now();class D extends R{constructor(...a){if(a.length)super(...a);else super(R.now()+off);}static now(){return R.now()+off;}}window.Date=D;})()`);
