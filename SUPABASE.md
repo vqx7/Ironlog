@@ -1,0 +1,62 @@
+# Supabase setup for Ironlog accounts and sync
+
+What V does in the Supabase dashboard, once. The app code (sign-in screen, sync adapter, tests, keep-alive) is build work tracked in `PENDING.md` 12 to 17. All of this is free on the Supabase Free plan: 2 active projects, 500 MB database, 50,000 monthly active users. Ironlog uses a few MB per person per year.
+
+## Part 1: for V alone (free, about 15 minutes)
+
+1. **Account.** Go to supabase.com, Start your project, sign in with GitHub.
+2. **Project.** New project. Name `ironlog`. Region: West US (North California). Generate a database password and save it in your password manager (the app never uses it). Plan: Free. Wait about 2 minutes while it starts.
+3. **Keys.** Project Settings > API Keys. Copy the **Project URL** and the **publishable key** (older projects call it `anon`). Both are safe to put in the app: they identify the project, and the table rules below decide what each signed-in person can read. Never copy the **secret key** (older name `service_role`) anywhere.
+4. **Email sign-in.** Authentication > Sign In / Providers > Email: enabled (the default). Leave "Confirm email" on.
+5. **Links in emails.** Authentication > URL Configuration. Site URL: `https://vqx7.github.io/Ironlog/`. Add the same address under Redirect URLs. Confirmation and password-reset emails send people back here.
+6. **The table and its privacy rule.** SQL Editor > New query, paste this, Run:
+
+```sql
+-- One row per Ironlog document (core, draft, session chunks) per person.
+create table public.docs (
+  user_id uuid not null default auth.uid() references auth.users(id) on delete cascade,
+  path text not null,
+  data jsonb not null,
+  updated_at timestamptz not null default now(),
+  primary key (user_id, path)
+);
+-- Row level security: a signed-in person can read and write only their own rows.
+alter table public.docs enable row level security;
+create policy "own rows only" on public.docs
+  for all to authenticated
+  using ((select auth.uid()) = user_id)
+  with check ((select auth.uid()) = user_id);
+```
+
+   `on delete cascade` means deleting an account deletes its data too.
+7. **Hand over.** Paste the Project URL and the publishable key into the build chat. Nothing else is needed from the dashboard.
+
+At this stage sign-up emails work only for you: Supabase's built-in email service sends only to members of the project's team, at most 2 emails an hour. That is enough for one person.
+
+## Part 2: before friends sign up (about $10 to $12 a year)
+
+Friends need confirmation and password-reset emails, which needs your own email sender, which needs a domain.
+
+1. **Domain.** Buy one (Cloudflare Registrar sells at cost, about $10 a year for a `.com`). The same domain can later serve the app itself instead of `vqx7.github.io` (`PENDING.md` item 23), so decide both at once, before friends install.
+2. **Sender.** resend.com, free plan (100 emails a day, 3,000 a month). Add the domain, then add the DNS records it lists at your registrar. Wait until it shows Verified. Create an API key.
+3. **Connect it.** Supabase: Authentication > Emails > SMTP Settings > Enable custom SMTP. Host `smtp.resend.com`, port `465`, username `resend`, password the Resend API key, sender `no-reply@yourdomain.com`, sender name `Ironlog`.
+4. **Rate limit.** Authentication > Rate Limits: raise the email limit (30 an hour is plenty).
+
+## What the app will do (build work)
+
+- First open: Create account or Sign in, with email and password. Forgot password sends a reset email. "Email me a sign-in link" sits underneath as an option.
+- Stays signed in on the phone and keeps working offline; changes sync when there is signal. The data already on the phone is merged in at first sign-in, not replaced.
+- Settings: signed-in email, Sign out, Delete my account (needs one small server function), and an updated privacy line.
+- A daily keep-alive request (GitHub Action), because free projects pause after a week without activity. A paused project loses nothing and can be restored from the dashboard, but the app cannot sync until then.
+
+## Who can see the data
+
+- Other users: never. The rule in step 6 is enforced by the database for every request.
+- You, as project owner: yes. The dashboard's Table Editor shows every row, friends' included. The privacy line in the app must say so.
+- Supabase: stores it, encrypted on disk, like any host.
+
+## Encryption (optional, later)
+
+End-to-end encryption means the phone encrypts the log before upload, so neither you nor Supabase can read it. It is free (the browser's built-in Web Crypto, AES-GCM with a key derived from a passphrase) and about one build session. The cost: each person keeps a separate encryption passphrase, typed once per new device, and a forgotten passphrase makes the cloud copy unreadable forever; nobody can recover it. Recommendation: launch without it, and offer it as an opt-in setting before friends join if they care that you can see their logs.
+
+Sources: supabase.com/pricing, supabase.com/docs/guides/auth/auth-smtp, resend.com/docs/knowledge-base/account-quotas-and-limits (checked 2026-09-27).

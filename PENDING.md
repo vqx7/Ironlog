@@ -8,7 +8,7 @@ This is the tracking list. Items are built only when V says go; nothing here is 
 3. The Claude artifact is still r13 and still has the sync data-loss bugs fixed in r14. V still logs real workouts there. Decide: update it to the current build now, or keep it until cloud sync lands and then retire it.
 4. Move data off the artifact once cloud sync exists: export a backup there, install the app from Safari, sign in, import.
 5. After importing, set Settings > General > Theme to Dark if wanted: an imported backup brings the old "Match device" setting.
-6. Supabase: create the project and the email settings (steps in the setup guide from the 2026-09-27 chat; to be written into `SUPABASE.md` when sync is built).
+6. Supabase: follow `SUPABASE.md` Part 1 (project, keys, email sign-in, the table and its privacy rule), then paste the Project URL and publishable key into the build chat. Part 2 (a domain plus a free email sender) is needed before friends sign up.
 
 ## Verification
 7. V has used r14 on iPhone Safari and Chrome. Still unchecked on the real phone: rest timer across a screen lock, the share sheet to Files for backups, import count matches, the notch in the home-screen app, and the new "New version ready" bar.
@@ -23,7 +23,7 @@ This is the tracking list. Items are built only when V says go; nothing here is 
 14. Delete my account (needs a server-side function; admin rights cannot live in the app).
 15. Client-side encryption, optional and later: the owner cannot read data, but a forgotten passphrase loses the data. Decide once sync works.
 16. Supabase free projects pause after 7 days with no activity. Add a keep-alive (for example a scheduled GitHub Action that makes one small request a day).
-17. Update the privacy line (`privacyLine()`) and `SUPABASE.md` when sync lands: say what is stored on the server and who can see it.
+17. Update the privacy line (`privacyLine()`) when sync lands: what is stored on the server, and that the project owner can see it in the dashboard unless encryption (15) is on.
 18. Until sync exists, backups are manual exports. The stated goal, durable saving without manual downloads, is not met yet.
 19. Cloud core document: bodyweights and measurements sit in one document; after years of daily weigh-ins it passes 250 KB and stops syncing. Split them by date like sessions.
 20. Undo history lives in memory only and is lost on reload (Recently deleted still keeps deleted items for 30 days).
