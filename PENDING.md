@@ -39,6 +39,16 @@ Nothing here is done unless it says partial. Owner items need V; the rest is bui
 24. At 320 px: long section subtitles and Plan exercise names are cut with an ellipsis; the week bar days are 26 px wide (tap area extended in height only); muscle-map areas (e.g. neck) are below 44 px.
 25. The logger help text still describes warm-up and drop as W/D toggles only; add that + Warm and + Drop moved to the exercise menu.
 
+## Raised by V in the r14 chat
+32. The overall look still reads as generic AI styling in places. Needs a proper visual design pass (type scale, spacing rhythm, card treatment, iconography, less uniform boxes), shown as before and after screenshots for approval.
+33. Comeback on Today: V questioned why it is there. It is the "former you" tracker V approved on 2026-09-25 (enter old bests, shows % of former best and when you pass it). It appears on Today only once a former best exists, and can be hidden in Settings > Layout. Decide: keep on Today, fold by default, or move.
+
+## From earlier Ironlog chats (checked 2026-09-26; other chats may hold more)
+34. The standalone app has no Claude features: typed or dictated sets fall back to the offline parser only, and the post-session debrief, Ask Claude and AI swap need Claude's sample capability, which exists only inside the artifact. Decide whether to keep them artifact-only or add another AI provider.
+35. A 3D rotatable body model was proposed in an early chat and never built; the app has the flat front and back muscle map.
+36. The Claude features and long drag gestures were only ever tested with stand-ins, never on V's phone.
+37. Program review (a training conversation, not an app fix): Chest 17, Quads 15 and Upper back 14 sets in single sessions, Arms and Shoulders days around 80 minutes.
+
 ## Feature backlog (optional; see PROMPT.md)
 26. Tape measurement error from your own repeat measurements (TEM, 2.77 x TEM threshold).
 27. Setting: count RIR 4-5 as half a set (off by default).
