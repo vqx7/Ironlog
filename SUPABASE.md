@@ -41,7 +41,7 @@ At this stage sign-up emails work only for you: Supabase's built-in email servic
 Friends need confirmation and password-reset emails, which needs your own email sender, which needs a domain.
 
 1. **Domain.** Buy one (Cloudflare Registrar sells at cost, about $10 a year for a `.com`). The same domain can later serve the app itself instead of `vqx7.github.io` (`PENDING.md` item 23), so decide both at once, before friends install.
-2. **Sender.** resend.com, free plan (100 emails a day, 3,000 a month). Add the domain, then add the DNS records it lists at your registrar. Wait until it shows Verified. Create an API key.
+2. **Sender.** resend.com, free plan (100 emails a day, 3,000 a month). Add the domain, then add the DNS records it lists at your registrar (DKIM, SPF and MX; add the optional DMARC record `v=DMARC1; p=none;` at `_dmarc` too, since Gmail and Yahoo favour it). Wait until it shows Verified. Create an API key with sending access only. It is a secret: it goes only into Supabase's SMTP password field.
 3. **Connect it.** Supabase: Authentication > Emails > SMTP Settings > Enable custom SMTP. Host `smtp.resend.com`, port `465`, username `resend`, password the Resend API key, sender `no-reply@yourdomain.com`, sender name `Ironlog`.
 4. **Rate limit.** Authentication > Rate Limits: raise the email limit (30 an hour is plenty).
 
@@ -65,6 +65,8 @@ While only Part 1 is done, confirmation and reset emails go only to the email ad
 4. Turn **Verify JWT** (or "Enforce JWT verification") **off** for this function. The function checks who is calling itself, with the Auth server, so this is safe; with it on, the app's request is refused before the function runs.
 5. **Deploy**.
 
+To check it without deleting anything, open `https://fqvupierxrvpoidtwlon.supabase.co/functions/v1/delete-account` in a browser. `{"error":"Use POST"}` means it is deployed with Verify JWT off. A message about a missing authorization header means Verify JWT is still on. "Requested function was not found" means it is not deployed or the name is wrong.
+
 Until this is done, Delete my account says it is not set up yet and deletes nothing. When it runs, the account and every synced row go (the table's `on delete cascade`); the copy on the phone stays.
 
 **Keep-alive.** Free projects pause after a week without activity. Run this once in the SQL Editor:
@@ -74,6 +76,8 @@ Until this is done, Delete my account says it is not set up yet and deletes noth
 create or replace function public.ping() returns text language sql stable as $$ select 'ok' $$;
 grant execute on function public.ping() to anon;
 ```
+
+To check it, run `select public.ping();` in the SQL Editor: it returns `ok`.
 
 The GitHub Action in `.github/workflows/keepalive.yml` calls it once a day. GitHub pauses scheduled Actions in a repository with no commits for 60 days; if that happens, Actions > Keep Supabase awake > Enable workflow turns it back on. A paused project loses nothing and can be restored from the dashboard, but the app cannot sync until then.
 
