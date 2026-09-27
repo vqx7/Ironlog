@@ -51,8 +51,8 @@ const server = http.createServer((req, res) => {
   // Privacy line, outside Claude.
   const priv = await page.evaluate(() => { const L = window.__ironlog; L.state.settings.onboarded = true; L.ui.tab = 'settings'; L.ui.folds['settings:data'] = true; L.render();
     document.querySelectorAll('#view details').forEach(d => d.open = true); const p = document.getElementById('privacy'); return p ? { t: p.innerText, tip: (p.querySelector('.tipi') || {}).dataset } : null; });
-  ok(priv && /no account, no ads, no tracking/.test(priv.t) && /stays on this device/.test(priv.t), 'Settings shows the privacy line for the app: ' + (priv && priv.t));
-  ok(priv && priv.tip && /GitHub Pages/.test(priv.tip.tip) && /keep a backup file/.test(priv.tip.tip), 'the privacy tip explains the host and backups');
+  ok(priv && /no ads, no tracking/.test(priv.t) && /stays on this device and is sent nowhere unless you sign in/.test(priv.t), 'Settings shows the privacy line for the app: ' + (priv && priv.t));
+  ok(priv && priv.tip && /GitHub Pages/.test(priv.tip.tip) && /app owner/.test(priv.tip.tip) && /keep a backup file or an account/.test(priv.tip.tip), 'the privacy tip explains the host, the account option and backups');
 
   // A session in progress with one logged set.
   await page.evaluate(() => { const L = window.__ironlog; L.makeDemo(); L.ui.tab = 'today'; L.render(); localStorage.setItem('ironlog.v1.tipWake', '1'); });

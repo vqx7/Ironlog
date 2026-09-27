@@ -26,6 +26,9 @@ create policy "own rows only" on public.docs
   for all to authenticated
   using ((select auth.uid()) = user_id)
   with check ((select auth.uid()) = user_id);
+-- Signed-in users may use the table (subject to the rule above); signed-out visitors may not.
+grant select, insert, update, delete on public.docs to authenticated;
+revoke all on public.docs from anon;
 ```
 
    `on delete cascade` means deleting an account deletes its data too.
@@ -42,12 +45,17 @@ Friends need confirmation and password-reset emails, which needs your own email 
 3. **Connect it.** Supabase: Authentication > Emails > SMTP Settings > Enable custom SMTP. Host `smtp.resend.com`, port `465`, username `resend`, password the Resend API key, sender `no-reply@yourdomain.com`, sender name `Ironlog`.
 4. **Rate limit.** Authentication > Rate Limits: raise the email limit (30 an hour is plenty).
 
-## What the app will do (build work)
+## What the app does (built in r17)
 
-- First open: Create account or Sign in, with email and password. Forgot password sends a reset email. "Email me a sign-in link" sits underneath as an option.
-- Stays signed in on the phone and keeps working offline; changes sync when there is signal. The data already on the phone is merged in at first sign-in, not replaced.
-- Settings: signed-in email, Sign out, Delete my account (needs one small server function), and an updated privacy line.
-- A daily keep-alive request (GitHub Action), because free projects pause after a week without activity. A paused project loses nothing and can be restored from the dashboard, but the app cannot sync until then.
+- Settings > Your data: Create account or Sign in, with email and password, and Forgot password. Accounts are optional; without one the app works on the phone as before.
+- Sign-up sends a confirmation email. The link opens in the browser (on an iPhone, Safari, which keeps its own storage apart from the home-screen app), says it worked, and signs that browser out again so it never uploads whatever it holds. You then sign in inside the app.
+- Stays signed in on the phone and keeps working offline; changes sync when there is signal. The log already on the phone is merged in at first sign-in, not replaced, with Undo.
+- Sign out asks whether to keep a copy on the phone or remove it (for a shared phone). Removing only happens once everything has synced.
+- An emailed sign-in link without a password is left out on purpose: it would sign in Safari, not the installed app.
+
+While only Part 1 is done, confirmation and reset emails go only to the email address you use for your Supabase account (the built-in sender's rule), at most 2 an hour. Sign up in Ironlog with that address.
+
+Still to build (PENDING.md): Delete my account (one small server function), and a daily keep-alive request (GitHub Action), because free projects pause after a week without activity. A paused project loses nothing and can be restored from the dashboard, but the app cannot sync until then.
 
 ## Who can see the data
 

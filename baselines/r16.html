@@ -201,7 +201,7 @@ details[open]>summary .chev::before{transform:translateY(2px) rotate(-135deg)}
 .ib.sm{width:32px;height:32px;font-size:13px;color:var(--muted)}
 :focus-visible{outline:3px solid var(--ink);outline-offset:2px}
 
-input[type=text],input[type=email],input[type=password],input[type=number],input[type=date],input[type=search],select,textarea{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-sm);min-height:44px;padding:6px 11px;font-size:16px;width:100%;min-width:0;color:var(--ink)}
+input[type=text],input[type=number],input[type=date],input[type=search],select,textarea{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-sm);min-height:44px;padding:6px 11px;font-size:16px;width:100%;min-width:0;color:var(--ink)}
 .sec input[type=text],.sec input[type=date],.sec input[type=search],.sec select,.sec textarea,.block input,.block select{background:var(--bg)}
 input:focus,select:focus,textarea:focus{border-color:var(--ink);outline:none;box-shadow:0 0 0 1px var(--ink)}
 textarea{min-height:74px;resize:vertical}
@@ -1021,7 +1021,7 @@ function freshState(){
 const KEY='ironlog.v1';
 /* Shown in Settings, in diagnostics and in backups, so a bug report can be
    matched to the exact build. */
-const APP_VERSION='2026.09.27-r17';
+const APP_VERSION='2026.09.27-r16';
 /* Diagnostics log: the last 60 errors, kept in this browser only. Errors that
    used to be swallowed silently land here, and Settings can copy them. */
 const LOGK=KEY+'.log';
@@ -1481,14 +1481,14 @@ function setSaveState(){const el=$('#saveState');if(!el)return;
    whose content changed are written, one at a time, in order. */
 const cloud={on:false,db:null,uid:null,status:'local',last:null,meta:{},editAt:{},localH:{},devId:null,pendAt:null,chain:Promise.resolve(),t:null,retry:0,dirtyAt:0,lastPull:0,err:null};
 const SYNC_KEY=KEY+'.sync';
-try{const m=JSON.parse(localStorage.getItem(SYNC_KEY)||'null');if(m&&typeof m==='object'){cloud.meta=m.meta&&typeof m.meta==='object'?m.meta:{};cloud.last=m.last||null;cloud.editAt=m.editAt&&typeof m.editAt==='object'?m.editAt:{};cloud.devId=typeof m.devId==='string'?m.devId:null;cloud.acct=typeof m.acct==='string'?m.acct:null;}}catch(e){log('sync-meta',e);}
+try{const m=JSON.parse(localStorage.getItem(SYNC_KEY)||'null');if(m&&typeof m==='object'){cloud.meta=m.meta&&typeof m.meta==='object'?m.meta:{};cloud.last=m.last||null;cloud.editAt=m.editAt&&typeof m.editAt==='object'?m.editAt:{};cloud.devId=typeof m.devId==='string'?m.devId:null;}}catch(e){log('sync-meta',e);}
 if(!cloud.devId)cloud.devId='dev-'+uid();
 /* No readable local data at startup (unreadable save, or storage cleared but
    the sync notes survived): the fresh state here is not an edit. Forget what
    was last agreed with the cloud, so the first pull adopts the cloud copy
    instead of the first flush writing an empty state over it. */
 if(!bootHadLocal){cloud.meta={};cloud.editAt={};}
-function saveMeta(){try{localStorage.setItem(SYNC_KEY,JSON.stringify({meta:cloud.meta,last:cloud.last,editAt:cloud.editAt,devId:cloud.devId,acct:cloud.acct||undefined}));}catch(e){log('sync-meta',e);}}
+function saveMeta(){try{localStorage.setItem(SYNC_KEY,JSON.stringify({meta:cloud.meta,last:cloud.last,editAt:cloud.editAt,devId:cloud.devId}));}catch(e){log('sync-meta',e);}}
 function hashStr(str){let h1=0xdeadbeef,h2=0x41c6ce57;for(let i=0;i<str.length;i++){const c=str.charCodeAt(i);h1=Math.imul(h1^c,2654435761);h2=Math.imul(h2^c,1597334677);}
   h1=Math.imul(h1^(h1>>>16),2246822507)^Math.imul(h2^(h2>>>13),3266489909);h2=Math.imul(h2^(h2>>>16),2246822507)^Math.imul(h1^(h1>>>13),3266489909);return (h2>>>0).toString(36)+(h1>>>0).toString(36);}
 const chunkOf=date=>`s-${date.slice(0,7)}-${+date.slice(8,10)<=15?1:2}`;
@@ -1518,7 +1518,7 @@ function cloudFail(e){
   const c=e&&e.code;
   if(c==='revoked'||c==='not_granted'||c==='capability_disabled'||c==='capability_removed'){cloud.on=false;setCloud('local');render();return;}
   if(c==='quota_exceeded'){setCloud('offline','The cloud copy is full. Export a backup and delete old demo data.');return;}
-  setCloud('offline',c==='denied'?e.message:undefined);
+  setCloud('offline');
   const wait=[5,15,60,180][Math.min(cloud.retry++,3)]*1000;clearTimeout(cloud.t);cloud.t=setTimeout(()=>cq(cloudFlush),wait);
 }
 /* ---------- three-way merge ----------
@@ -1788,119 +1788,36 @@ async function cloudProvider(){
   if(typeof window.ironlogCloud==='function'){const p=await window.ironlogCloud();return p&&p.db&&p.userId?{db:p.db,userId:String(p.userId)}:null;}
   return null;
 }
-let cloudStarting=false;
 async function cloudInit(){
-  if(cloud.on||cloudStarting)return;
-  cloudStarting=true;
   try{
     const pv=await cloudProvider();if(!pv)return;
     const db=pv.db,id=pv.userId;
-    /* Sync notes belong to one account. Signing in to a different account on
-       this device starts over as a first link (a merge with Undo), never as a
-       continuation that could judge the other account's records deleted.
-       Notes saved before accounts existed have no owner and are kept. */
-    if(cloud.acct&&cloud.acct!==id){cloud.meta={};cloud.editAt={};cloud.last=null;}
-    cloud.acct=id;saveMeta();
     cloud.db=db;cloud.uid=id;cloud.on=true;setCloud('connecting');
     if(ui.tab==='settings')render();
     await cq(cloudPull);
   }catch(e){cloud.on=false;setCloud('local');}
   finally{
-    cloudStarting=false;
     cloudChecked=true;
     if(!state.settings.onboarded&&ui.tab==='today'&&!state.draft&&!ui.modal&&!state.sessions.some(s=>!s.demo))rerenderKeepScroll();
   }
-}
-/* ---------- account (standalone app) ----------
-   The build's cloud script defines window.ironlogAuth when a backend is
-   configured; inside Claude and in the plain source file there is none, and
-   nothing below shows. An account is optional: without one the app keeps
-   working on this device exactly as before. */
-const AUTH=()=>window.ironlogAuth&&typeof window.ironlogAuth.user==='function'?window.ironlogAuth:null;
-const acct={user:null};
-function cloudStop(){
-  clearTimeout(cloud.t);cloud.on=false;cloud.db=null;cloud.uid=null;cloud.acct=null;
-  cloud.meta={};cloud.editAt={};cloud.last=null;cloud.retry=0;saveMeta();setCloud('local');
-}
-function acctRerender(){if(ui.tab==='settings'&&!ui.modal)rerenderKeepScroll();else{const el=document.getElementById('syncInfo');if(el)el.innerHTML=syncInfo();}}
-async function acctInit(){
-  const A=AUTH();if(!A)return;
-  A.onChange((ev,user)=>{
-    acct.user=user;
-    if(ev==='PASSWORD_RECOVERY'&&!(ui.modal&&ui.modal.kind==='account'))openModal({kind:'account',mode:'newpw',pw:''});
-    if(ev==='SIGNED_IN'&&!cloud.on)cloudInit();
-    if(ev==='SIGNED_OUT'&&cloud.on&&!window.claude)cloudStop();
-    acctRerender();
-  });
-  acct.user=await A.user();
-  const L=A.landing;
-  if(L&&L.error){openModal({kind:'account',mode:'sent',title:'Link did not work',msg:/expired|invalid/i.test(L.error)?'That link has expired or was already used. Ask for a new one.':L.error});}
-  else if(L&&L.type==='recovery'){if(!(ui.modal&&ui.modal.kind==='account'))openModal({kind:'account',mode:'newpw',pw:''});}
-  else if(L&&L.type&&!isStandalone()){
-    /* A confirmation link opened in the browser, not the installed app. It
-       signed this browser in; sign it out again so it never syncs what this
-       browser holds, and say where to go next. */
-    try{await A.signOut();}catch(e){log('auth',e);}
-    acct.user=null;
-    openModal({kind:'account',mode:'sent',title:'Email confirmed',msg:'Open Ironlog from your home screen and sign in there. If you use Ironlog in this browser instead, sign in here.'});
-  }
-  acctRerender();
-}
-/* Retry when the phone comes back online or the app returns to the
-   foreground: a sign-in that could not refresh offline starts syncing then. */
-window.addEventListener('online',()=>{
-  if(AUTH()&&!cloud.on)cloudInit();
-  // Back from a dead zone: sync now instead of waiting out the retry timer.
-  else if(cloud.on&&cloud.status==='offline'){cloud.retry=0;clearTimeout(cloud.t);cq(cloudPull);}
-});
-document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&AUTH()&&!cloud.on)cloudInit();});
-function acctPanel(){
-  if(!AUTH()||(window.claude&&typeof window.claude.use==='function'))return '';
-  const u=acct.user;
-  // Signed in but not syncing: the sign-in could not be used (offline at
-  // launch, or refused). Say so and offer a retry rather than looking fine.
-  const stuck=u&&!cloud.on?`<div class="row spread" style="margin-top:6px"><p class="small" style="margin:0;color:var(--yellow)">Not syncing right now.</p><button class="btn sm" data-act="acctRetry">Try again</button></div>`:'';
-  return u
-    ?`<div class="panel" id="acctPanel" style="margin-top:8px"><div class="row spread"><p class="small" style="margin:0;min-width:0;overflow-wrap:anywhere">Signed in as <b>${esc(u.email)}</b></p><button class="btn sm" data-act="acctSignOut">Sign out</button></div>${stuck}</div>`
-    :`<div class="panel" id="acctPanel" style="margin-top:8px"><p class="small" style="margin:0 0 8px"><b>Sync with an account.</b> Your log is then kept off this phone and on any device you sign in on.</p><div class="row"><button class="btn sm primary" data-act="acctOpen" data-mode="signup">Create account</button><button class="btn sm" data-act="acctOpen" data-mode="signin">Sign in</button></div></div>`;
-}
-const EMAIL_RE=/^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-function acctSheet(m){
-  const f=(label,k,type,ac,extra)=>`<label class="field">${label}<input type="${type}" data-abind="${k}" value="${esc(m[k]||'')}" autocomplete="${ac}" ${extra||''}></label>`;
-  const email=f('Email','email','email','email','autocapitalize="off" autocorrect="off" spellcheck="false" inputmode="email" enterkeyhint="next"');
-  const err=m.err?`<p class="small" role="alert" style="color:var(--red);margin:0">${esc(m.err)}</p>`:'';
-  const go=(label)=>`<button type="submit" class="btn primary block" data-act="acctSubmit" ${m.busy?'disabled':''}>${m.busy?'Working':esc(label)}</button>`;
-  const link=(mode,label)=>`<button type="button" class="linkbtn" data-act="acctMode" data-mode="${mode}">${label}</button>`;
-  const T={signin:'Sign in',signup:'Create account',forgot:'Reset password',newpw:'New password',sent:m.title||'Check your email'};
-  let b='';
-  if(m.mode==='signin')b=`${email}${f('Password','pw','password','current-password','enterkeyhint="go"')}${err}${go('Sign in')}<div class="row spread">${link('forgot','Forgot password?')}${link('signup','Create an account')}</div>`;
-  else if(m.mode==='signup')b=`${email}${f('Password (8 or more characters)','pw','password','new-password','minlength="8" enterkeyhint="go"')}${err}${go('Create account')}<p class="small muted" style="margin:0">We email you a link to confirm the address. Open it, then sign in here.</p><div class="row">${link('signin','I have an account')}</div>`;
-  else if(m.mode==='forgot')b=`${email}${err}${go('Email me a reset link')}<p class="small muted" style="margin:0">The link opens in your browser. Set the new password there, then sign in here.</p><div class="row">${link('signin','Back to sign in')}</div>`;
-  else if(m.mode==='newpw')b=`${f('New password (8 or more characters)','pw','password','new-password','minlength="8" enterkeyhint="go"')}${err}${go('Save new password')}`;
-  else b=`<p style="margin:0">${esc(m.msg||'')}</p><button type="button" class="btn primary block" data-act="mClose">OK</button>`;
-  return `<div class="sheet" role="dialog" aria-modal="true" aria-label="${esc(T[m.mode]||'Account')}"><div class="sheet-h"><h3>${esc(T[m.mode]||'Account')}</h3><button class="ib" aria-label="Close" data-act="mClose">✕</button></div><form class="stack" id="acctForm" novalidate>${b}</form></div>`;
 }
 /* Says plainly where the data lives and what leaves the device. Inside Claude
    the log is stored with the Claude account; anywhere else there is no server
    at all. This must change when cloud sync for the standalone app arrives. */
 function privacyLine(){
   const inClaude=!!(window.claude&&typeof window.claude.use==='function');
-  if(!inClaude&&AUTH()&&acct.user)return `<p class="small muted" id="privacy" style="margin:8px 0 0"><b>Privacy:</b> no ads, no tracking. Your log syncs to your Ironlog account. Only you and the app's owner can see it. ${tipi('It is stored in a Supabase database. Database rules let each account read and write only its own data. The person who runs that database, the app owner, can see stored data, as with any app without end-to-end encryption. Backup files go only where you save them.','About privacy')}</p>`;
-  if(!inClaude&&AUTH())return `<p class="small muted" id="privacy" style="margin:8px 0 0"><b>Privacy:</b> no ads, no tracking. Your log stays on this device and is sent nowhere unless you sign in to sync. ${tipi('Opening or updating the app downloads it from GitHub Pages, which, like any website host, sees your IP address; after that it works offline. With an account, your log is also stored in a Supabase database, readable by your account and by the app owner. Deleting the app or this site\'s data deletes the copy on this device, so keep a backup file or an account.','About privacy')}</p>`;
   return inClaude
     ?`<p class="small muted" id="privacy" style="margin:8px 0 0"><b>Privacy:</b> no ads, no tracking. Your log is stored with your Claude account. ${tipi('Claude features (debrief, Ask Claude, swaps, reading typed sets) send the part of your log they need to Claude, and only when you tap them. Export and CSV files go only where you save them.','About privacy')}</p>`
     :`<p class="small muted" id="privacy" style="margin:8px 0 0"><b>Privacy:</b> no account, no ads, no tracking. Your log stays on this device and is sent nowhere. ${tipi('Ironlog has no server. Opening or updating the app downloads it from GitHub Pages, which, like any website host, sees your IP address; after that it works offline. Backup files go only where you save them. Deleting the app or this site\'s data deletes your log, so keep a backup file.','About privacy')}</p>`;
 }
 function syncInfo(){
   if(!cloud.on)return isStandalone()
-    ?`<p class="small hastip" style="margin:0" data-tip="Without an account this app keeps your data on this phone only. Deleting the app from the home screen deletes it too. Sign in to keep a copy in your account, or save a backup file to Files or iCloud Drive; Import brings it back on any device."><b>Saved on this phone.</b> ${AUTH()?'Sign in to sync, or export a backup weekly.':'Export a backup weekly.'}</p>`
-    :AUTH()
-      ?`<p class="small hastip" style="margin:0" data-tip="Everything is saved in this browser only. Clearing its data deletes it. Sign in below to keep a copy in your account, or export a backup."><b>Saved in this browser only.</b> Sign in to sync, or export a backup.</p>`
-      :`<p class="small hastip" style="margin:0" data-tip="Sync turns on by itself when this page is opened inside Claude while signed in. Until then everything is saved in this browser only."><b>Cloud sync off in this view.</b> Saved in this browser only.</p>`;
+    ?`<p class="small hastip" style="margin:0" data-tip="This app keeps your data on this phone only. Deleting the app from the home screen deletes it too. A backup file saved to Files or iCloud Drive is your copy off the phone; Import brings it back on any device."><b>Saved on this phone.</b> Export a backup weekly.</p>`
+    :`<p class="small hastip" style="margin:0" data-tip="Sync turns on by itself when this page is opened inside Claude while signed in. Until then everything is saved in this browser only."><b>Cloud sync off in this view.</b> Saved in this browser only.</p>`;
   const ago=cloud.last?Math.round((Date.now()-cloud.last)/60000):null;
   const when=ago==null?'not yet':ago<1?'just now':ago<60?`${ago} min ago`:ago<1440?`${Math.round(ago/60)} h ago`:fmtDate(iso(new Date(cloud.last)));
   const st=cloud.status==='synced'?'<span class="tag green">Synced</span>':cloud.status==='offline'?'<span class="tag yellow">Waiting to sync</span>':'<span class="tag blue">Syncing</span>';
-  return `<div class="sync-row">${st}<span class="small muted">Last synced ${when}</span><button class="btn sm" data-act="syncNow">Sync now</button></div>${cloud.err?`<p class="small" role="alert" style="color:var(--red);margin:6px 0 0">${esc(cloud.err)}</p>`:''}
+  return `<div class="sync-row">${st}<span class="small muted">Last synced ${when}</span><button class="btn sm" data-act="syncNow">Sync now</button></div>
   <p class="small hastip" style="margin:6px 0 0" data-tip="Clearing this browser, iOS storage cleanup or a new phone loses nothing: open this same link while signed in. Works offline and catches up. The cloud copy mirrors deletions and keeps no history: deleted items wait in History for ${TRASH_DAYS} days, and a backup file covers the rest.">Saved to your Claude account and this device.${cloud.err?` <b style="color:var(--red)">${esc(cloud.err)}</b>`:''}</p>`;
 }
 /* Two tabs (or the app and a second window) used to overwrite each other: each
@@ -2849,7 +2766,7 @@ const coarse=()=>{try{return window.matchMedia('(pointer:coarse)').matches;}catc
    reuses it, rather than calling history.back(), whose delayed event could
    land on a sheet opened a moment later. */
 // Sheets whose fields hold something typed. Search boxes in pickers do not count.
-const FORM_SHEETS=new Set(['account','exEdit','injury','cardio','quick','prior','note','text','routineNew','inc','max','load','reps','cal','walk']);
+const FORM_SHEETS=new Set(['exEdit','injury','cardio','quick','prior','note','text','routineNew','inc','max','load','reps','cal','walk']);
 function modalPush(){try{if(!(history.state&&history.state.ilModal))history.pushState({ilModal:1},'');}catch(e){/* history is best effort in a frame */}}
 window.addEventListener('popstate',()=>{if(ui.modal)closeModal();});
 function openModal(m){
@@ -4607,7 +4524,6 @@ function viewSettings(){
   <div class="card"><table class="t"><tr><th>Muscle</th><th class="r">Min</th><th class="r">Max</th></tr>${MUSCLES.map(([k,l])=>`<tr><td>${l}</td><td class="r"><input style="width:70px" type="text" inputmode="numeric" aria-label="${l} minimum hard sets a week" data-band="${k}" data-bi="0" value="${s.bands[k][0]}"></td><td class="r"><input style="width:70px" type="text" inputmode="numeric" aria-label="${l} maximum hard sets a week" data-band="${k}" data-bi="1" value="${s.bands[k][1]}"></td></tr>`).join('')}</table></div></div></details>
   ${G('data','Your data','','dataSec')}
   <div class="panel" id="syncInfo">${syncInfo()}</div>
-  ${acctPanel()}
   ${privacyLine()}
   ${backupDue()?`<p class="callout yellow" style="margin:10px 0 0"><b>Backup due.</b> ${s.lastExport?`Last backup file ${fmtDate(s.lastExport)}.`:'No backup file yet.'} ${cloud.on?'Export one below; the cloud copy mirrors deletions, so it is not a backup.':'Export one below; this device holds the only copy.'}</p>`:''}
   ${storageOk?'':'<p class="small" style="color:var(--red)">This browser is blocking local storage, so this device keeps nothing between reloads without cloud sync.</p>'}
@@ -4666,8 +4582,7 @@ renderModal.last=null;
 function renderModalBody(){
   const m=ui.modal;const el=$('#modal');if(!m){el.hidden=true;return;}
   let h='';
-  if(m.kind==='account'){h=acctSheet(m);}
-  else if(m.kind==='confirm'){
+  if(m.kind==='confirm'){
     h=`<div class="sheet" role="dialog" aria-modal="true"><div class="sheet-h"><h3>${esc(m.title)}</h3></div><p>${esc(m.body)}</p><div class="row" style="margin-top:12px"><button class="btn ${m.danger?'danger':'primary'}" data-act="mOk">${esc(m.okLabel)}</button>${m.alt?`<button class="btn" data-act="mAlt">${esc(m.alt.label)}</button>`:''}<button class="btn" data-act="mClose">Cancel</button></div></div>`;
   }else if(m.kind==='picker'){
     h=`<div class="sheet fixed" role="dialog" aria-modal="true"><div class="sheet-h"><h3>${esc(m.title)}</h3><button class="ib" aria-label="Close" data-act="mClose">✕</button></div>
@@ -5077,56 +4992,6 @@ const ACT={
     if(typeof window.ironlogApplyUpdate==='function')window.ironlogApplyUpdate();else location.reload();
   },
   appUpdateLater(){upd.later=true;updRender();},
-  async acctRetry(){await cloudInit();acctRerender();if(!cloud.on)toast('Still not syncing. Check your connection, or sign out and in again.');},
-  acctOpen(t){openModal({kind:'account',mode:t.dataset.mode==='signup'?'signup':'signin',email:'',pw:''});},
-  acctMode(t){const m=ui.modal;if(!m||m.kind!=='account')return;m.mode=t.dataset.mode;m.err='';m.pw='';renderModal();},
-  async acctSubmit(){
-    const m=ui.modal,A=AUTH();if(!m||m.kind!=='account'||m.busy||!A)return;
-    // Read the fields as they are now: autofill does not always fire input events.
-    for(const el of document.querySelectorAll('#modal [data-abind]'))m[el.dataset.abind]=el.value;
-    const email=String(m.email||'').trim().toLowerCase(),pw=String(m.pw||'');
-    const need=(ok,msg)=>{if(!ok){m.err=msg;renderModal();}return ok;};
-    if(m.mode!=='newpw'&&!need(EMAIL_RE.test(email),'Enter your email address.'))return;
-    if((m.mode==='signup'||m.mode==='newpw')&&!need(pw.length>=8,'Use 8 or more characters.'))return;
-    if(m.mode==='signin'&&!need(pw.length>0,'Enter your password.'))return;
-    m.busy=true;m.err='';renderModal();
-    const done=next=>{if(ui.modal!==m)return;if(next){ui.modal={kind:'account',...next};renderModal();}else closeModal();};
-    try{
-      if(m.mode==='signin'){
-        acct.user=await A.signIn(email,pw);done(null);
-        toast('Signed in. Syncing your log.');await cloudInit();acctRerender();
-      }else if(m.mode==='signup'){
-        const r=await A.signUp(email,pw);
-        if(r.confirm)done({mode:'sent',title:'Check your email',msg:`We sent a confirmation link to ${email}. Open it, then come back here and sign in.`});
-        else{acct.user=r.user;done(null);toast('Account created. Syncing your log.');await cloudInit();acctRerender();}
-      }else if(m.mode==='forgot'){
-        await A.resetPassword(email);
-        done({mode:'sent',title:'Check your email',msg:`If there is an account for ${email}, a reset link is on its way. It opens in your browser: set the new password there, then sign in here.`});
-      }else if(m.mode==='newpw'){
-        await A.updatePassword(pw);
-        if(!isStandalone()){
-          // Same reason as a confirmation link: this browser was signed in by
-          // the emailed link only. The installed app signs in with the new password.
-          try{await A.signOut();}catch(e){log('auth',e);}acct.user=null;
-          done({mode:'sent',title:'Password changed',msg:'Open Ironlog from your home screen and sign in with the new password. If you use Ironlog in this browser instead, sign in here.'});
-        }else{done(null);toast('Password changed');}
-      }
-    }catch(e){log('auth',e);if(ui.modal===m){m.err=(e&&e.message)||'Something went wrong. Try again.';}}
-    finally{if(ui.modal===m){m.busy=false;renderModal();}}
-  },
-  acctSignOut(){
-    const A=AUTH();if(!A)return;
-    const out=async remove=>{
-      // Send anything not yet synced first, so signing out never loses work.
-      if(cloud.on){try{clearTimeout(cloud.t);await withTimeout(cq(cloudFlush),15000);}catch(e){log('auth',e);}}
-      if(remove&&!(cloud.on&&cloud.status==='synced')){toast('Not synced yet, so nothing was removed. Connect and try again.');return;}
-      try{await A.signOut();}catch(e){log('auth',e);toast(e.message||'Could not sign out');return;}
-      acct.user=null;cloudStop();
-      if(remove){undoStack.length=0;state=normalize(null);saveNow();invalidate();ui.tab='today';render();toast('Signed out. Your log was removed from this phone and is safe in your account.');}
-      else{rerenderKeepScroll();toast('Signed out. Your log stays on this phone.');}
-    };
-    confirmBox('Sign out?','Your log is saved in your account. Keep a copy on this phone too? Removing it suits a shared phone.','Sign out, keep copy',()=>out(false),false,{label:'Sign out and remove',fn:()=>out(true)});
-  },
   startFree(){
     if(state.draft){ui.tab='today';render();return;}
     state.draft=freeDraft('Freestyle');ui.tab='today';
@@ -5820,9 +5685,6 @@ window.addEventListener('scroll',()=>{if(TIP.el)tipHide();},{passive:true});
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&TIP.el)tipHide();});
 
 /* ---------- events ---------- */
-/* The sign-in sheet is a real form so the phone offers to save and fill the
-   password; it never navigates. Enter submits it through its button. */
-document.addEventListener('submit',e=>{if(e.target&&e.target.id==='acctForm'){e.preventDefault();const b=e.target.querySelector('[data-act="acctSubmit"]');if(b&&!b.disabled&&!(e.submitter===b))ACT.acctSubmit();}});
 document.addEventListener('click',e=>{
   const tab=e.target.closest('#tabs button');
   if(tab){ui.tab=tab.dataset.tab;if(ui.tab==='program')ui.planView='routine';window.scrollTo(0,0);render();return;}
@@ -5863,7 +5725,6 @@ document.addEventListener('input',e=>{
     saveSoon();invalidate();return;}
   if(t.dataset.band){const n=numIn(t.value);if(n==null)return;state.settings.bands[t.dataset.band][+t.dataset.bi]=Math.min(Math.max(Math.round(n*2)/2,0),100);saveSoon();return;}
   if(t.dataset.dayname!=null){curRoutineB().days[+t.dataset.dayname].name=t.value;saveSoon();return;}
-  if(t.dataset.abind&&ui.modal&&ui.modal.kind==='account'){ui.modal[t.dataset.abind]=t.value;if(ui.modal.err){ui.modal.err='';}return;}
   if(t.dataset.ebind&&ui.modal&&ui.modal.kind==='exEdit'){const k=t.dataset.ebind;if(t.type==='checkbox')return;ui.modal.e[k]=t.value;return;}
   if(t.dataset.mbind&&ui.modal&&ui.modal.kind==='picker'){ui.modal[t.dataset.mbind]=t.value;const pl=$('#pickList');if(pl){pl.innerHTML=pickerBody(ui.modal);pl.scrollTop=0;}return;}
   const b=t.dataset.bind;
@@ -6203,12 +6064,11 @@ function swapPrompt(b,reason){
 }
 
 window.__onLib=(which)=>{if((which==='chart'&&ui.tab==='dash')||(which==='sortable'&&ui.tab==='program'))rerenderKeepScroll();};
-window.__ironlog={get state(){return state;},set state(v){state=v;},e1inv,rtfAt,rtfOf,rtfBand,calStats,rirEff,isHard,setCredit,tonnage,loadMode,loadWords,loadNote,progStep,jumpCap,setSecs,setupSecs,recovery,rolling7,rankDays,rankExercises,isCompound,patternOf,noE1,whtrLine,exHeadline,remainMin,shortPlan,weekPlan,cycleProjection,lastLighterWeek,regionBalance,parseHeight,mixCheck,swapCands,eqPlan,exportCSV,importData,chunksOf,assemble,sessionMuscles,TRACK_ONLY,cloud,Hx,mergeChunk,baseOf,sync:()=>cq(cloudPull),cloudState:()=>({on:cloud.on,status:cloud.status,err:cloud.err,uid:cloud.uid,acct:cloud.acct}),acctUser:()=>acct.user,flush:()=>cq(cloudFlush),backupDue,routineUpdates,planFor,platesMode,plateText,chunksOf,IDX,suggest,e1,render,ACT,ui,makeDemo,invalidate,normalize,snapshot,saveNow,timer,weekStats,weekStart,today,EX,blockProgress,dayMinutes,weekStreak,coach,tonnageNow,livePR,exProjection,movers,stalledIds,muscleStatus,actualAvg4,plannedPerWeek,parseSets,aiSetsValid,fillSets,newBlock,lastNoteOf,sizeRows,sessionMuscleSets,sessionCapNote,routineClutter,aiDigest,debriefPrompt,reviewPrompt,swapPrompt,AI,sameRR};
+window.__ironlog={get state(){return state;},set state(v){state=v;},e1inv,rtfAt,rtfOf,rtfBand,calStats,rirEff,isHard,setCredit,tonnage,loadMode,loadWords,loadNote,progStep,jumpCap,setSecs,setupSecs,recovery,rolling7,rankDays,rankExercises,isCompound,patternOf,noE1,whtrLine,exHeadline,remainMin,shortPlan,weekPlan,cycleProjection,lastLighterWeek,regionBalance,parseHeight,mixCheck,swapCands,eqPlan,exportCSV,importData,chunksOf,assemble,sessionMuscles,TRACK_ONLY,cloud,Hx,mergeChunk,baseOf,sync:()=>cq(cloudPull),flush:()=>cq(cloudFlush),backupDue,routineUpdates,planFor,platesMode,plateText,chunksOf,IDX,suggest,e1,render,ACT,ui,makeDemo,invalidate,normalize,snapshot,saveNow,timer,weekStats,weekStart,today,EX,blockProgress,dayMinutes,weekStreak,coach,tonnageNow,livePR,exProjection,movers,stalledIds,muscleStatus,actualAvg4,plannedPerWeek,parseSets,aiSetsValid,fillSets,newBlock,lastNoteOf,sizeRows,sessionMuscleSets,sessionCapNote,routineClutter,aiDigest,debriefPrompt,reviewPrompt,swapPrompt,AI,sameRR};
 render();
 wakeOn();
 timerResume();
 cloudInit();
-acctInit().catch(e=>log('auth',e));
 aiInit();
 })();
 </script>

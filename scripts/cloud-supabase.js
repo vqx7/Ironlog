@@ -61,6 +61,11 @@
     const out = new Error(text);
     // 401/403 from the database means the sign-in is no longer valid: sync
     // switches itself off (cloudFail treats 'revoked' that way).
+    // A table without permissions for signed-in users is a setup problem, not
+    // a sign-out: say so and keep retrying. 401/403 otherwise, or an expired
+    // or rejected token, means this sign-in is no longer valid and sync
+    // switches itself off (cloudFail treats 'revoked' that way).
+    if (code === '42501' || /permission denied/i.test(msg)) { out.message = 'The cloud database refused access. Its table permissions need fixing (SUPABASE.md, step 6).'; out.code = 'denied'; return out; }
     out.code = status === 401 || status === 403 || /jwt|PGRST30[0-3]/i.test(code + msg) ? 'revoked' : (code || 'error');
     return out;
   }
@@ -109,18 +114,30 @@
 
   const last = p => p.slice(p.lastIndexOf('/') + 1);
   const likeEsc = s => s.replace(/[\\%_]/g, m => '\\' + m);
+  /* The server can reject a token the phone still thinks is valid (its clock
+     runs ahead, or the token was revoked). Refresh once and try again before
+     calling the sign-in lost. */
+  async function authed(run) {
+    let r = await run();
+    const e = r && r.error;
+    if (e && (+e.status === 401 || /PGRST30[0-3]|jwt/i.test(String(e.code || '') + String(e.message || ''))) && !/42501|permission denied/i.test(String(e.code || '') + String(e.message || ''))) {
+      const { error } = await sb.auth.refreshSession();
+      if (!error) r = await run();
+    }
+    return r;
+  }
   async function uid() { const s = await session(); if (!s) throw Object.assign(new Error('Signed out'), { code: 'revoked' }); return s.user.id; }
   const db = {
     doc(path) {
       return {
         async get() {
-          const { data, error } = await sb.from('docs').select('data').eq('path', path).maybeSingle();
+          const { data, error } = await authed(() => sb.from('docs').select('data').eq('path', path).maybeSingle());
           if (error) throw friendly(error);
           return { id: last(path), exists: !!data, data: () => (data ? data.data : undefined) };
         },
         async set(obj) {
           const user_id = await uid();
-          const { error } = await sb.from('docs').upsert({ user_id, path, data: obj, updated_at: new Date().toISOString() }, { onConflict: 'user_id,path' });
+          const { error } = await authed(() => sb.from('docs').upsert({ user_id, path, data: obj, updated_at: new Date().toISOString() }, { onConflict: 'user_id,path' }));
           if (error) throw friendly(error);
         }
       };
@@ -128,7 +145,7 @@
     collection(path) {
       return {
         async get() {
-          const { data, error } = await sb.from('docs').select('path,data').like('path', likeEsc(path) + '/%');
+          const { data, error } = await authed(() => sb.from('docs').select('path,data').like('path', likeEsc(path) + '/%'));
           if (error) throw friendly(error);
           // Direct children only, like a document store's collection listing.
           const docs = (data || []).filter(r => r.path.indexOf('/', path.length + 1) < 0)

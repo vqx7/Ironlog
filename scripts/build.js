@@ -34,6 +34,20 @@ for (const d of ['vendor', 'fonts', 'icons']) fs.mkdirSync(path.join(DIST, d), {
 fs.copyFileSync(path.join(NM, 'chart.js/dist/chart.umd.js'), path.join(DIST, 'vendor/chart.umd.js'));
 fs.copyFileSync(path.join(NM, 'sortablejs/Sortable.min.js'), path.join(DIST, 'vendor/Sortable.min.js'));
 
+// Accounts and cloud sync (Supabase), only when supabase.config.json exists.
+// It holds the project URL and the publishable key, both public by design:
+// the database's row level security decides what each signed-in person can
+// read. The secret key never goes anywhere near this repo.
+const CFG_FILE = path.join(ROOT, 'supabase.config.json');
+const cloudCfg = fs.existsSync(CFG_FILE) ? JSON.parse(fs.readFileSync(CFG_FILE, 'utf8')) : null;
+if (cloudCfg) {
+  must(/^https:\/\/[a-z0-9-]+\.supabase\.co$/.test(cloudCfg.url || ''), 'supabase.config.json: url must look like https://<project>.supabase.co');
+  must(/^sb_publishable_/.test(cloudCfg.key || '') || /^eyJ/.test(cloudCfg.key || ''), 'supabase.config.json: key must be the publishable (or legacy anon) key');
+  must(!/secret|service_role/i.test(cloudCfg.key), 'supabase.config.json: never the secret key');
+  fs.copyFileSync(path.join(NM, '@supabase/supabase-js/dist/umd/supabase.js'), path.join(DIST, 'vendor/supabase.js'));
+  fs.copyFileSync(path.join(ROOT, 'scripts/cloud-supabase.js'), path.join(DIST, 'cloud.js'));
+}
+
 // Fonts: the weights the page asks Google Fonts for, latin subset.
 const FONTS = [['Big Shoulders Display', 'big-shoulders-display', [600, 700, 800]], ['Hanken Grotesk', 'hanken-grotesk', [400, 500, 600, 700]]];
 let css = '/* Self-hosted copies of the Google Fonts the app uses (SIL Open Font License). */\n';
@@ -72,6 +86,12 @@ const head = `<meta name="theme-color" content="#0a0b0d">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 `;
 html = replaceOnce(html, '<title>Ironlog</title>\n', '<title>Ironlog</title>\n' + head, 'title');
+// The cloud script runs before the app's own script, so cloudProvider() finds
+// window.ironlogCloud on its first check.
+if (cloudCfg) html = replaceOnce(html, '</head>', `<script>window.IRONLOG_SUPABASE=${JSON.stringify({ url: cloudCfg.url, key: cloudCfg.key })};</script>
+<script src="vendor/supabase.js"></script>
+<script src="cloud.js"></script>
+</head>`, 'closing head tag');
 // Offline: register the service worker, and ask the browser to keep this
 // site's storage (an installed app's data is then not evicted under
 // storage pressure).
@@ -117,7 +137,7 @@ fs.writeFileSync(path.join(DIST, 'manifest.webmanifest'), JSON.stringify(manifes
 // contents, so any change ships as a new cache and the old one is dropped.
 const files = ['./', 'index.html', 'manifest.webmanifest', 'fonts/fonts.css',
   ...fs.readdirSync(path.join(DIST, 'fonts')).filter(f => f.endsWith('.woff2')).map(f => 'fonts/' + f),
-  'vendor/chart.umd.js', 'vendor/Sortable.min.js', ...ICONS.map(f => 'icons/' + f)];
+  'vendor/chart.umd.js', 'vendor/Sortable.min.js', ...(cloudCfg ? ['vendor/supabase.js', 'cloud.js'] : []), ...ICONS.map(f => 'icons/' + f)];
 const h = crypto.createHash('sha256');
 for (const f of files) if (f !== './') h.update(fs.readFileSync(path.join(DIST, f)));
 const cacheName = `ironlog-${version}-${h.digest('hex').slice(0, 10)}`;

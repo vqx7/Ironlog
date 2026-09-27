@@ -1,13 +1,14 @@
 # Ironlog
 
-A personal hypertrophy and strength tracker for one lifter. It is used on a phone at the gym. It ships two ways from one source file: as a Claude artifact (a hosted single-page app with cloud sync) and as a standalone installable web app (dist/, hosted on GitHub Pages, offline, data on the phone). Build r16, state schema v5.
+A personal hypertrophy and strength tracker for one lifter. It is used on a phone at the gym. It ships two ways from one source file: as a Claude artifact (a hosted single-page app with cloud sync) and as a standalone installable web app (dist/, hosted on GitHub Pages, offline, data on the phone). Build r17, state schema v5.
 
 ## What is in this repo
 
 - `index.html`: the whole app and the only source. One file of about 5,800 lines: CSS, markup, then one script in an IIFE. It has no build step and no framework. Chart.js 4.4.1 and SortableJS 1.15.2 load from cdnjs, with jsdelivr as fallback, and the fonts come from Google Fonts.
 - `tests/`: Playwright suites that drive the real page in Chromium. `tests/h.js` is the harness. It serves Chart.js, Sortable and the fonts from `node_modules`, blocks every other network call, and can fake the clock (`clock`), seed localStorage (`state`), and inject a mock cloud (`setup`).
 - `scripts/build.js`: writes the standalone app to `dist/` (fonts and libraries copied in, manifest, icons, service worker). `scripts/icons.py` draws the icons into `assets/`.
-- `baselines/r11.html` to `r15.html`: previous published builds. `tests/migration.js` saves data with them and loads it into the current build. Never delete them. When you publish a new build, add the build it replaces here.
+- `scripts/cloud-supabase.js` and `supabase.config.json`: accounts and cloud sync for the standalone app. The build copies the script into dist/ as `cloud.js` with the supabase-js bundle, and injects the project URL and publishable key (both public; row level security protects the data). The secret key never goes in this repo. `SUPABASE.md` is the dashboard setup.
+- `baselines/r11.html` to `r16.html`: previous published builds. `tests/migration.js` saves data with them and loads it into the current build. Never delete them. When you publish a new build, add the build it replaces here.
 
 ## Commands
 
@@ -25,7 +26,7 @@ Run a single suite with `node tests/<name>.js`. Each suite prints `ok`/`FAIL` li
 | unit-math | 1RM formulas, inverses, rep bands, hard sets, drop credit, load modes, tonnage, load steps, time model |
 | unit-analytics | stalls (all frequencies), moving/falling with the t interval, projection, PR bands, calibration shrink/cap/expiry and rounding, recovery tiers across doses, WHtR, lighter week, coach, deload rounding |
 | dataflow | draft survives reload, save, backup round trip, CSV, delete/restore, two devices syncing through a mock cloud |
-| migration | saves from r11 to r15 load with every session, set, setting, custom exercise, prior and injury intact |
+| migration | saves from r11 to r16 load with every session, set, setting, custom exercise, prior and injury intact |
 | acceptance | load labels, mix-up warning, hover/hold tips, text volume vs r12, full logged session, kg, RIR off, per-side plates |
 | flows | picker, create-from-picker, Pick for me, Discard, Limited equipment |
 | charts-layout | week bar, charts anchored at first data, range chips, height field, no horizontal overflow at 320–768 px in light and dark |
@@ -38,6 +39,7 @@ Run a single suite with `node tests/<name>.js`. Each suite prints `ok`/`FAIL` li
 | comeback-off | Comeback is switched off: no card, line, menu item, editor fields or toast, and saved former bests stay untouched |
 | pwa | builds dist/, serves it: no requests to other sites, fonts local, manifest and icons valid, service worker in control, offline open, log and reload |
 | update | two builds served in turn: no prompt on first install, "New version ready" after a publish without the page changing, Later, back on relaunch, Reload swaps once with the session kept and the old cache gone; the privacy line outside and inside Claude |
+| accounts | the real build (supabase-js + cloud.js) against a stand-in Supabase (`tests/fake-supabase.js`, same per-user row rule): sign-up, confirmation, wrong password, sign-in merging the phone's log, a second phone, a second person kept apart, sign-out keep or remove, emailed links opened in a browser (confirm, reset), expired link, expired token, offline launch then back online, a table without permissions, 320 px |
 
 ## How the code is organised (search for these names)
 
@@ -52,8 +54,9 @@ Run a single suite with `node tests/<name>.js`. Each suite prints `ok`/`FAIL` li
 - **Last time's reps:** `lastRFor(b,si)` maps a row to last session's working sets (warm-ups and drop sets excluded); never index `lastR` by row.
 - **Logger flow:** a finished exercise folds to one line (`blockDone`, `autoFold`, `ui.blkOpen`); ticking done on an empty reps field logs last time's reps (`lastR`); RIR is a 0 to 5 strip (`rirSelect`, `rirShowStrip`, `ACT.rirPick`) that opens by itself after a set is done.
 - **Updates (standalone app):** the service worker made by `scripts/build.js` precaches past the HTTP cache, and a new version waits instead of taking over. The build's boot script calls `ironlogUpdateReady()`, which shows `#updbar` ("New version ready", Reload, Later); Reload saves, then `ironlogApplyUpdate()` lets the waiting worker take over and the page reloads once. It also checks for updates whenever the app returns to the foreground.
-- **Privacy:** `privacyLine()` in Settings > Your data says where the log lives (this device, or the Claude account inside Claude). Change it when cloud sync for the standalone app arrives.
-- **Standalone app:** `isStandalone()` switches export to the share sheet (Save to Files) and the storage wording. `cloudProvider()` is the seam for a future backend: define `window.ironlogCloud` returning `{db, userId}` with the same doc/collection calls the Claude db offers, and sync, merging and chunking work unchanged.
+- **Privacy:** `privacyLine()` in Settings > Your data says where the log lives and who can see it: this device, the Ironlog account (you and the app owner), or the Claude account inside Claude.
+- **Accounts (standalone app):** the app only looks for `window.ironlogAuth` (`AUTH()`) and `window.ironlogCloud`; `scripts/cloud-supabase.js` defines both. `acctInit`, `acctPanel`, `acctSheet` (modes signin, signup, forgot, newpw, sent), `ACT.acctSubmit`, `ACT.acctSignOut` (keep or remove the phone's copy), `cloudStop`. Sync notes carry the account id (`cloud.acct`): a different account on the same device starts over as a first link. An emailed link opened in a browser (not the installed app) is handled there, then that browser is signed out again so it never uploads what it holds. Accounts are optional; without one nothing changes. The emailed sign-in link option was left out on purpose: on an iPhone it opens in Safari, whose storage is separate from the home-screen app.
+- **Standalone app:** `isStandalone()` switches export to the share sheet (Save to Files) and the storage wording. `cloudProvider()` takes Claude's db inside Claude, else `window.ironlogCloud` (`{db, userId}` with the same doc/collection calls), and sync, merging and chunking work unchanged.
 - **Comeback (former bests):** switched off at the owner's request with `COMEBACK_ON=false`. The code and any saved former bests (`state.priors`) are kept; the flag gates every place it shows.
 - **Tips:** any element with `data-tip` shows it on mouse hover (350 ms), keyboard focus, or a touch hold (480 ms; the click that follows is swallowed). `tipi(text)` makes a small "i" button that shows its tip on a tap. Long explanations go here, not on screen.
 - **Test hooks:** `window.__ironlog` exposes state and most functions, and it is how the tests reach in. Keep it.
