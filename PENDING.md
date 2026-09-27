@@ -2,6 +2,9 @@
 
 This is the tracking list. Items are built only when V says go. Owner items need V; the rest is build work. Nothing is done unless it says so. Numbers are kept stable; finished items move to Done at the bottom.
 
+## Critical, next to build
+53. Log a missed workout easily (raised by V 2026-09-27: phone left at home, sets on paper or from memory). Today it works but is buried: start a session, change the date box at the top to the past day, log, Finish; it saves under that date and "next up" moves on correctly. Build: tap an empty past day in the week bar (and a "Log a past workout" button in History) to open that date with a choice of routine day or Freestyle; a quick-entry mode for past dates with no rest timer and no auto-open of anything, every set typed in one pass; the session is placed in date order, so "next up", last time's numbers and PRs read correctly even when it is entered after later sessions.
+
 ## Owner items (V)
 1. Delete the `r14-review`, `r15-design`, `r17-accounts` and `r20-design` branches on GitHub (`r20-design` is fully merged into `main`) (the first two hold the old commit with the personal Gmail address; `main` and `gh-pages` are clean). Parked by V on 2026-09-27; come back to it.
 2. GitHub Settings > Emails: tick "Keep my email addresses private" and "Block command line pushes that expose my email". Optionally ask GitHub Support to purge cached views of the old commit. Parked with item 1.
@@ -10,7 +13,6 @@ This is the tracking list. Items are built only when V says go. Owner items need
 ## Verification
 7. Still unchecked on the real phone: rest timer across a screen lock, the share sheet to Files for backups, the notch in the home-screen app, and the "New version ready" bar. New in r20, tested in Chromium but not yet in iPhone Safari: auto-mark when the keyboard's Done is tapped on a grey reps field, the 3D body's drag and tap, and the Install guide.
 8. One to two weeks of real gym use before new features beyond batch 2.
-9. Never tested on V's phone: the Claude features and long drag gestures (only stand-ins so far).
 10. Accounts and sync are tested against a stand-in Supabase server (`tests/accounts.js`), because the build machine cannot reach supabase.co. V confirmed real sign-up and sync on 2026-09-27 (3 rows: core, draft, s-2026-09-2).
 11. Some fixes for sheets that held stale data after a cloud refresh (2026-09-23) still have no test.
 
@@ -51,6 +53,7 @@ This is the tracking list. Items are built only when V says go. Owner items need
 46. Native app wrapper (Capacitor), only if needed: rest timer alerts through a locked screen, Apple Health, a real App Store install. Costs $99 a year for Apple and needs a Mac.
 
 ## Done
+- Item 9 dropped (2026-09-27): it concerned the Claude features, which only run in the Claude artifact, now retired.
 - Owner items 3 and 6 (2026-09-27): V retired the Claude artifact and uses only the installed app. Supabase Part 3 done by V: the delete-account function is deployed with Verify JWT off (a plain visit returns 405 "Use POST") and ping() returns "ok", checked from the build machine.
 - r20 (approved by V and published 2026-09-27): design pass (25, 26), 320 px fixes (30: nothing is cut off with an ellipsis any more; see 52 for the week bar), stylized 3D body next to the flat map (35), Install button with the iPhone guide (47).
 - r20 (V's requests of 2026-09-27): accent picker with Blue as the default (Volt and Ember too); optional name with a greeting on Today; six ready-made routines; RIR picker opens only on tap, with a setting to open it after each set, and "Off" still turns RIR off entirely; a blank RIR is read as your usual RIR on that lift (3 or more rated sets in 12 weeks), else hard and 0 for estimates; the coach no longer asks for RIR on every set; − Set on a row with reps typed and removing a filled cardio entry give an Undo; auto-mark now also accepts the grey reps when you leave the field (keyboard Done, Next or a tap elsewhere), since the iPhone number pad has no Next key; a load typed with no history fills the empty rows below; a screen refresh while typing no longer ticks a set; demo dumbbell loads corrected to per-dumbbell numbers.
