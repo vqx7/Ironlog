@@ -52,7 +52,7 @@ if(hasI){await page.tap('.tipi');await page.waitForTimeout(50);ok(await ev(()=>!
 // full set entry and finish
 await ev(()=>{window.__ironlog.state.draft=null;window.__ironlog.render();});
 await startDay('Chest');
-for(let si=0;si<2;si++){await page.fill(`[data-f="w"][data-b="0"][data-s="${si}"]`,'265');await page.fill(`[data-f="r"][data-b="0"][data-s="${si}"]`,'9');await page.selectOption(`select[data-f="rir"][data-b="0"][data-s="${si}"]`,'1');await page.tap(`[data-act="sDone"][data-b="0"][data-s="${si}"]`);}
+for(let si=0;si<2;si++){await page.fill(`[data-f="w"][data-b="0"][data-s="${si}"]`,'265');await page.fill(`[data-f="r"][data-b="0"][data-s="${si}"]`,'9');await page.tap(`.rirb[data-b="0"][data-s="${si}"]`);await page.tap(`.rirstrip [data-v="1"]`);await page.tap(`[data-act="sDone"][data-b="0"][data-s="${si}"]`);}
 await page.waitForTimeout(200);
 const pr=await ev(()=>!!document.querySelector('.sg.pr'));ok(pr,'a heavier set shows a live PR badge');
 ok(await ev(()=>!document.getElementById('timer').hidden),'rest timer started on done');
@@ -70,7 +70,7 @@ const kg=await ev(()=>({v:document.querySelector('[data-f="w"][data-b="0"][data-
 ok(/KG/i.test(kg.head),'kg mode labels the load column',kg);
 // RIR off hides the picker
 await ev(()=>{const L=window.__ironlog;L.state.settings.rirMode='off';L.render();});
-ok(await ev(()=>!document.querySelector('select[data-f="rir"]')),'RIR off hides the picker');
+ok(await ev(()=>!document.querySelector('[data-f="rir"]')),'RIR off hides the picker');
 ok(!errors.length,'no console errors',errors);
 await ctx.close();
 }

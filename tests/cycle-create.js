@@ -19,6 +19,9 @@ ok(await ev(()=>window.__ironlog.state.draft.ex.length===1),'added in freestyle'
 await ev(()=>{window.__ironlog.state.draft=null;window.__ironlog.render();});
 // program: add to day via create
 await page.click('#tabs button[data-tab="program"]');await page.waitForTimeout(80);
+// Program shows one day at a time: open Day 2 first.
+await ev(()=>document.querySelector('[data-act="pickDay"][data-day="1"]').closest('.day').querySelector('[data-act="dFold"]').click());await page.waitForTimeout(80);
+ok(await ev(()=>document.querySelectorAll('.day .dbody:not([hidden])').length===1),'one day open at a time');
 await page.click('[data-act="pickDay"][data-day="1"]');await page.waitForTimeout(50);
 await page.fill('#pickQ','Band Face Pull');await page.click('#pickList .pick.new');await page.waitForTimeout(50);
 ok(/add to day/i.test(await ev(()=>document.querySelector('[data-act="exSave"]').innerText)),'create button reads add to day');

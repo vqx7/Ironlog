@@ -395,7 +395,7 @@ table.t td.r,table.t th.r{text-align:right}
 .cyc .c b{margin-right:5px;font:800 13px var(--display)}
 .cyc .c.done{background:var(--volt);color:var(--on-volt);border-color:transparent}
 .cyc .c.next{border:2px solid var(--ink);color:var(--ink);font-weight:650}
-.cyc .c.rest{opacity:.55}
+.cyc .c.rest{color:var(--muted);border-style:dashed}
 
 /* ---------- today: the hero is the one inked block ---------- */
 .hero{background:var(--hero);color:var(--on-hero);border:1px solid var(--line);border-radius:22px;padding:16px 16px 14px;margin:14px 0 12px}
@@ -416,6 +416,21 @@ table.t td.r,table.t th.r{text-align:right}
 .hero .inline-sel select{max-width:none;background:color-mix(in srgb,var(--on-hero) 10%,transparent);color:var(--on-hero);border-color:color-mix(in srgb,var(--on-hero) 25%,transparent)}
 .hero .inline-sel select option{color:initial}
 /* Start variants: a two-line button each, so what it does is on the button. */
+.rirb{height:44px;min-width:0;width:100%;border-radius:var(--r-sm);border:1px solid var(--line);background:var(--surface);color:var(--ink);font:700 16px var(--font);font-variant-numeric:tabular-nums;cursor:pointer;padding:0}
+.rirb.unset{color:var(--muted);font-weight:600}
+.rirb[aria-expanded="true"]{border-color:var(--volt-line);box-shadow:0 0 0 1px var(--volt-line)}
+.sg.done .rirb{border-color:color-mix(in srgb,var(--volt-line) 55%,transparent);background:var(--volt-soft)}
+.rirstrip{display:flex;align-items:center;gap:6px;margin:6px 0 2px;padding:6px;border-radius:var(--r-md);background:var(--surface-2);border:1px solid var(--line);animation:rsIn .14s ease-out}
+@keyframes rsIn{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:none}}
+.rirstrip .rs-l{font:700 11px var(--font);letter-spacing:.1em;color:var(--muted);padding:0 4px 0 2px}
+.rirstrip button{flex:1 1 0;min-width:0;height:44px;border-radius:var(--r-sm);border:1px solid var(--line);background:var(--surface);color:var(--ink);font:800 18px var(--display);font-variant-numeric:tabular-nums;cursor:pointer;padding:0}
+.rirstrip button.on{background:var(--volt);color:var(--on-volt);border-color:transparent}
+.rirstrip .rs-x{flex:0 0 40px;font:700 14px var(--font);color:var(--muted)}
+@media (prefers-reduced-motion:reduce){.rirstrip{animation:none}}
+.hweek{display:flex;justify-content:space-between;align-items:baseline;gap:10px;margin:16px 0 2px;padding:0 0 6px;border-bottom:2px solid var(--volt-line)}
+.hweek:first-child{margin-top:4px}
+.hw-t{font:800 18px/1.1 var(--display);text-transform:uppercase;letter-spacing:.02em}
+.hw-s{font-size:13px;color:var(--muted);font-variant-numeric:tabular-nums;text-align:right}
 .sprog{display:flex;align-items:center;gap:10px;margin:8px 0 2px}
 .sprog .band{flex:1 1 auto;margin:0}
 .sprog span{font:700 13px var(--font);font-variant-numeric:tabular-nums;color:var(--muted);white-space:nowrap}
@@ -682,6 +697,8 @@ const daysBetween=(a,b)=>Math.round((parse(b)-parse(a))/86400000);
 const today=()=>iso(new Date());
 const fmtDate=s=>parse(s).toLocaleDateString(undefined,{month:'short',day:'numeric'});
 const fmtDateLong=s=>parse(s).toLocaleDateString(undefined,{weekday:'short',month:'short',day:'numeric',year:'numeric'});
+// History rows sit under a week header, so the year only shows when it is not this one.
+const fmtDateRow=s=>parse(s).toLocaleDateString(undefined,{weekday:'short',month:'short',day:'numeric',...(s.slice(0,4)===today().slice(0,4)?{}:{year:'numeric'})});
 
 /* ---------- reference data ---------- */
 /* Serratus anterior and the rotator cuff (the external rotators) joined in v5.
@@ -2561,6 +2578,7 @@ function autoFold(bi){
   foldT=null;const d=state.draft;
   if(!d||d.editingId||ui.modal||ui.tab!=='today')return;
   const b=d.ex[bi];if(!b||!blockDone(b)||ui.blkOpen.has(blkKey(bi,b)))return;
+  if(document.querySelector(`.rirstrip[data-b="${bi}"]`))return;
   let nx=d.ex.findIndex((x,i)=>i>bi&&!blockDone(x));if(nx<0)nx=d.ex.findIndex(x=>!blockDone(x));
   const a0=nx>=0?document.getElementById('blk-'+nx):null;const top0=a0?a0.getBoundingClientRect().top:null;
   rerenderKeepScroll();
@@ -2736,7 +2754,9 @@ function setDone(bi,si,val){
   if(autoRest)startTimer(+b.plan.rest);
   updateProgress(bi);updatePlates(bi);updateSessBar();
   clearTimeout(foldT);foldT=null;
-  if(val&&!state.draft.editingId&&blockDone(b))foldT=setTimeout(()=>autoFold(bi),1200);
+  const askRir=val&&!s.warm&&s.rir==null&&rirShow(EX(b.exId))&&!!document.querySelector(`.rirb[data-b="${bi}"][data-s="${si}"]`);
+  if(askRir)rirShowStrip(bi,si);else if(!val)rirClose();
+  if(val&&!askRir&&!state.draft.editingId&&blockDone(b))foldT=setTimeout(()=>autoFold(bi),1200);
   saveNow();
 }
 /* Screen wake lock, optional. A locked phone suspends the page and with it the
@@ -3675,15 +3695,24 @@ function roundLoad(kg,down){
    mid-set. Almost nobody does that, so almost every set came through blank and
    the volume bands silently counted it as hard anyway. A native picker is one
    tap, which is the difference between measuring and assuming. */
+/* RIR is picked from a strip of 0 to 5 instead of the phone's dropdown wheel
+   (open, spin, confirm on every set). The cell shows the value; tapping it
+   opens the strip under that set, and ticking a set done with no RIR yet
+   opens it by itself, so logging effort is one tap. */
+const RIR_OPTS=['0','1','2','3','4','5'];
 function rirSelect(val,bi,si,target){
   const cur=val==null||val===''?'':String(val);
-  const opts=['0','1','2','3','4','5'];
-  if(cur&&!opts.includes(cur))opts.push(cur);
-  opts.sort((a,b)=>a-b);
-  return `<select class="${cur===''?'unset':''}" aria-label="Reps in reserve for set ${si+1}" data-f="rir" data-b="${bi}" data-s="${si}">`
-    +`<option value="" ${cur===''?'selected':''}>${target!=null?'–':'RIR'}</option>`
-    +opts.map(o=>`<option value="${o}" ${cur===o?'selected':''}>${o}</option>`).join('')
-    +`</select>`;
+  return `<button type="button" class="rirb${cur===''?' unset':''}" data-act="rirOpen" data-f="rir" data-b="${bi}" data-s="${si}" aria-haspopup="true" aria-expanded="false" aria-label="Reps in reserve for set ${si+1}: ${cur===''?'not set':cur}">${cur===''?(target!=null?'–':'RIR'):esc(cur)}</button>`;
+}
+function rirStripHTML(bi,si,cur){
+  const opts=RIR_OPTS.slice();if(cur!==''&&!opts.includes(cur)){opts.push(cur);opts.sort((a,b)=>a-b);}
+  return `<div class="rirstrip" role="group" aria-label="Reps in reserve for set ${si+1}" data-b="${bi}" data-s="${si}"><span class="rs-l">RIR</span>${opts.map(o=>`<button type="button" data-act="rirPick" data-b="${bi}" data-s="${si}" data-v="${o}" aria-pressed="${cur===o}"${cur===o?' class="on"':''}>${o}</button>`).join('')}<button type="button" class="rs-x" data-act="rirPick" data-b="${bi}" data-s="${si}" data-v="" aria-label="Clear RIR">✕</button></div>`;
+}
+function rirClose(){const el=document.querySelector('.rirstrip');if(!el)return;const b=document.querySelector(`.rirb[data-b="${el.dataset.b}"][data-s="${el.dataset.s}"]`);if(b)b.setAttribute('aria-expanded','false');el.remove();}
+function rirShowStrip(bi,si){
+  rirClose();const btn=document.querySelector(`.rirb[data-b="${bi}"][data-s="${si}"]`);const s=state.draft&&state.draft.ex[bi]&&state.draft.ex[bi].sets[si];
+  if(!btn||!s)return;const row=btn.closest('.sg');if(!row)return;
+  row.insertAdjacentHTML('afterend',rirStripHTML(bi,si,s.rir==null?'':String(s.rir)));btn.setAttribute('aria-expanded','true');
 }
 /* Cardio and mobility inside a session: saved as their own entries on Finish,
    never counted as lifting sets. */
@@ -3784,9 +3813,13 @@ function viewProgram(){
      position, so a day dragged to second place becomes Day 2. */
   let db=`<p class="muted small" style="margin:0 0 4px">${weekly?'':'Drag ⠿ to reorder days. '}${totSets} planned sets per ${weekly?'week':`cycle${R.days.length!==7?`, about ${Math.round(totSets*weekFactor(R))} per week`:''}`}.</p><div id="dayList">`;
   const dnd=!!(window.__libs&&window.__libs.sortable);
+  /* One day open at a time. With every day open the tab ran to several
+     screens of exercises; now each closed day is one line with its totals,
+     and opening a day closes the others and makes it where + adds to. */
+  const focus=dayFocusId(R);
   R.days.forEach((d,di)=>{
     fixSupersets(d.items);
-    const dOpen=isOpen('day:'+d.id,true);
+    const dOpen=d.id===focus;
     db+=`<section class="day ${d.rest?'rest':''}" data-did="${esc(d.id)}"><div class="dh">${weekly?'':`<span class="dgrip" role="button" tabindex="0" data-di="${di}" aria-label="Move ${esc(dayLabel(R,di))}: drag, or use the arrow keys" data-tip="Drag to reorder days">⠿</span>`}<span class="dlabel">${dayLabel(R,di)}</span><input type="text" aria-label="Day name" data-dayname="${di}" value="${esc(d.name)}"><button class="ib dfold" data-act="dFold" data-id="${esc(d.id)}" aria-expanded="${dOpen}" aria-label="${dOpen?'Fold':'Unfold'} ${esc(dayLabel(R,di))}"></button></div>
     <div class="dmeta row spread"><span>${d.rest?'Rest day':`${d.items.length} exercises, ${daySets(d)} sets, ${minTxt(dayMinutes(d))}`}</span><label class="check-inline"><input type="checkbox" data-dayrest="${di}" ${d.rest?'checked':''}>Rest day</label></div><div class="dbody" ${dOpen?'':'hidden'}>${sessionCapNote(d)}
     <ul class="items" data-day="${di}">${d.items.map((it,ii)=>itemHTML(R,di,it,ii)).join('')}</ul>
@@ -3798,6 +3831,13 @@ function viewProgram(){
   const pv=plannedSets(R);const bands=state.settings.bands;const pUnder=MK.filter(m=>!TRACK_ONLY.has(m)&&(pv[m]||0)<bands[m][0]).length;
   h+=sec({sk:'program:pvol',key:'pvol',title:'Weekly volume',sub:pUnder?`<span class="pill yellow">${pUnder} under target</span>`:'<span class="pill green">all on target</span>',help:'pvol',helpBody:`Hard sets per muscle this routine plans for a week${weekly?'':`, scaled from a ${R.days.length}-day cycle to 7 days`}. Direct work counts 1 set, secondary involvement counts 0.5. The shaded zone is your target band (editable in Settings).`,body:volumeRows(pv)});
   return h;
+}
+/* The open day: the one picked last, else the day + adds to, else the first
+   training day. An empty string means the user closed them all. */
+function dayFocusId(R){
+  if(typeof ui.dayFocus==='string'&&(ui.dayFocus===''||R.days.some(d=>d.id===ui.dayFocus)))return ui.dayFocus;
+  const t=R.days[ui.bTarget];if(t)return t.id;
+  const f=R.days.find(d=>!d.rest)||R.days[0];return f?f.id:'';
 }
 function itemHTML(R,di,it,ii){
   const ex=EX(it.exId);const open=ui.openItem===it.uid;
@@ -4302,9 +4342,19 @@ function viewHistory(){
   // few hundred logs that is a visible stall on a phone for rows nobody has
   // scrolled to yet.
   const page=shown.slice(0,ui.histLimit);
+  /* Sessions sit under their week (Monday start), with the week's totals on
+     the header, so a light or missed week shows without counting rows. The
+     totals cover every session of that week in the current filter, not only
+     the rows loaded so far. */
+  const wkTot={};
+  for(const s of shown){const w=weekStart(s.date);const o=wkTot[w]||(wkTot[w]={n:0,sets:0,vol:0});o.n++;o.sets+=s.ex.reduce((a,b)=>a+b.sets.filter(isWork).length,0);o.vol+=(I.sessVol.find(v=>v.id===s.id)||{}).vol||0;}
+  const thisWk=weekStart(today());let lastWk=null;
   for(const s of page){
+    const wk=weekStart(s.date);
+    if(wk!==lastWk){lastWk=wk;const o=wkTot[wk];const lbl=wk===thisWk?'This week':wk===addDays(thisWk,-7)?'Last week':`Week of ${fmtDate(wk)}`;
+      body+=`<div class="hweek"><span class="hw-t">${lbl}</span><span class="hw-s" data-tip="${esc(`${o.n} session${o.n===1?'':'s'}, ${o.sets} working sets, ${Math.round(toD(o.vol)).toLocaleString()} ${U()} lifted`)}">${o.sets} sets · ${fmtK(o.vol)} ${U()}</span></div>`;}
     const nSets=s.ex.reduce((a,b)=>a+b.sets.filter(isWork).length,0);const vol=(I.sessVol.find(v=>v.id===s.id)||{}).vol||0;const open=ui.histOpen===s.id;
-    body+=`<div class="hitem${open?' open':''}"><button class="pick" style="border:0;padding:0" data-act="histToggle" data-id="${s.id}" aria-expanded="${open}"><span style="min-width:0"><b>${esc(s.dayName||'Session')}</b>${s.deload?' <span class="tag blue">deload</span>':''}${s.free?' <span class="tag">freestyle</span>':''}${s.ex.some(b=>b.cut)?' <span class="tag">trimmed</span>':''}${s.demo?' <span class="tag">demo</span>':''}<br><span class="small muted">${fmtDateLong(s.date)}</span></span><span class="num small" style="text-align:right;flex:none">${nSets} sets<br><span class="muted">${Math.round(toD(vol)).toLocaleString()} ${U()}${s.durMin?` · ${s.durMin} min`:''}</span></span></button>`;
+    body+=`<div class="hitem${open?' open':''}"><button class="pick" style="border:0;padding:0" data-act="histToggle" data-id="${s.id}" aria-expanded="${open}"><span style="min-width:0"><b>${esc(s.dayName||'Session')}</b>${s.deload?' <span class="tag blue">deload</span>':''}${s.free?' <span class="tag">freestyle</span>':''}${s.ex.some(b=>b.cut)?' <span class="tag">trimmed</span>':''}${s.demo?' <span class="tag">demo</span>':''}<br><span class="small muted">${fmtDateRow(s.date)}</span></span><span class="num small" style="text-align:right;flex:none">${nSets} sets<br><span class="muted">${Math.round(toD(vol)).toLocaleString()} ${U()}${s.durMin?` · ${s.durMin} min`:''}</span></span></button>`;
     if(ui.histEx&&!open){const b=s.ex.find(x=>x.exId===ui.histEx);const ex=EX(ui.histEx);if(b)body+=`<p class="small" style="margin:6px 0 0">${b.sets.map(x=>setStr(ex,x)).join(', ')}${histUnits(ex)}</p>`;}
     if(open){
       body+='<div class="panel" style="margin-top:10px">';
@@ -4986,6 +5036,18 @@ const ACT={
     closeModal();commit();render();toast(`${ML[m]} flagged`);},
   injClear(t){snapshot();const x=(state.injuries||[]).find(i=>i.id===t.dataset.id);state.injuries=(state.injuries||[]).filter(i=>i.id!==t.dataset.id);commit();render();toast(`${x?ML[x.m]:'Injury'} cleared`,true);},
   bMenu(t){openModal({kind:'bmenu',b:+t.dataset.b});},
+  rirOpen(t){const bi=+t.dataset.b,si=+t.dataset.s;const open=document.querySelector(`.rirstrip[data-b="${bi}"][data-s="${si}"]`);if(open){rirClose();return;}rirShowStrip(bi,si);
+    const f=document.querySelector('.rirstrip button.on')||document.querySelector('.rirstrip button');if(f&&!coarse())try{f.focus({preventScroll:true});}catch(e){/* focus is best effort */}},
+  rirPick(t){
+    const bi=+t.dataset.b,si=+t.dataset.s;const d=state.draft;const b=d&&d.ex[bi];const s=b&&b.sets[si];if(!s)return;
+    const n=numIn(t.dataset.v);s.rir=n==null?null:Math.min(Math.max(n,0),10);
+    const btn=document.querySelector(`.rirb[data-b="${bi}"][data-s="${si}"]`);
+    if(btn){const cur=s.rir==null?'':String(s.rir);btn.textContent=cur===''?(b.plan&&b.plan.rir!=null?'–':'RIR'):cur;btn.classList.toggle('unset',cur==='');btn.setAttribute('aria-label',`Reps in reserve for set ${si+1}: ${cur===''?'not set':cur}`);}
+    rirClose();if(btn)try{btn.focus({preventScroll:true});}catch(e){/* focus is best effort */}
+    if(s.done)refreshPR(bi,si,false);updateProgress(bi);
+    // The fold waits for the effort of the last set, then goes.
+    if(!d.editingId&&blockDone(b)){clearTimeout(foldT);foldT=setTimeout(()=>autoFold(bi),900);}
+    saveSoon();},
   bOpen(t){const bi=+t.dataset.b;const b=state.draft&&state.draft.ex[bi];if(!b)return;ui.blkOpen.add(blkKey(bi,b));rerenderKeepScroll();
     const el=document.getElementById('blk-'+bi);if(el)try{el.scrollIntoView({block:'nearest'});}catch(e){/* scroll is best effort */}},
   bFold(t){const bi=+t.dataset.b;const b=state.draft&&state.draft.ex[bi];if(!b)return;ui.blkOpen.delete(blkKey(bi,b));rerenderKeepScroll();},
@@ -5354,9 +5416,12 @@ const ACT={
     window.scrollTo(0,0);render();
     try{const el=document.querySelector(`[data-act="histToggle"][data-id="${id}"]`);if(el&&el.scrollIntoView)el.scrollIntoView({block:'start'});}catch(e){/* scroll is best effort */}
   },
-  dAdd(){const R=curRoutineB();if(R.schedule==='weekly'||R.days.length>=MAX_DAYS)return;R.days.push({id:uid(),name:'Training day',rest:false,items:[]});ui.bTarget=R.days.length-1;commit();rerenderKeepScroll();toast(`Day ${R.days.length} added`);},
+  dAdd(){const R=curRoutineB();if(R.schedule==='weekly'||R.days.length>=MAX_DAYS)return;R.days.push({id:uid(),name:'Training day',rest:false,items:[]});ui.bTarget=R.days.length-1;ui.dayFocus=undefined;commit();rerenderKeepScroll();toast(`Day ${R.days.length} added`);},
   dAddRest(){const R=curRoutineB();if(R.schedule==='weekly'||R.days.length>=MAX_DAYS)return;R.days.push({id:uid(),name:'Rest',rest:true,items:[]});commit();rerenderKeepScroll();toast(`Day ${R.days.length} added as rest`);},
-  dFold(t){const k='day:'+t.dataset.id;ui.folds[k]=!isOpen(k,true);rerenderKeepScroll();},
+  dFold(t){const R=curRoutineB();const id=t.dataset.id;const open=dayFocusId(R)===id;
+    ui.dayFocus=open?'':id;if(!open){const i=R.days.findIndex(d=>d.id===id);if(i>=0)ui.bTarget=i;}
+    rerenderKeepScroll();
+    if(!open){const el=document.querySelector(`.day[data-did="${CSS.escape(id)}"]`);if(el)try{el.scrollIntoView({block:'nearest',behavior:'smooth'});}catch(e){/* scroll is best effort */}}},
   layoutReset(){state.settings.secOrder={};commit();render();toast('Section order reset on every tab');},
   dUp(t){const R=curRoutineB();const i=+t.dataset.day;if(i<1)return;move(R.days,i,i-1);ui.todayDay=null;commit();rerenderKeepScroll();},
   dDown(t){const R=curRoutineB();const i=+t.dataset.day;if(i>=R.days.length-1)return;move(R.days,i,i+1);ui.todayDay=null;commit();rerenderKeepScroll();},
@@ -5543,7 +5608,7 @@ document.addEventListener('change',e=>{
       R.schedule=v;ui.todayDay=null;commit();rerenderKeepScroll();
       toast(v==='weekly'?'Days are now pinned to Monday to Sunday':'Days are now a numbered cycle',true);break;}
     case 'bLibM':ui.bLibM=t.value;rerenderKeepScroll();break;
-    case 'bTarget':ui.bTarget=+t.value;break;
+    case 'bTarget':ui.bTarget=+t.value;ui.dayFocus=undefined;rerenderKeepScroll();break;
     case 'libM':case 'libE':ui[b]=t.value;rerenderKeepScroll();break;
     case 'libRare':ui.libRare=t.checked;rerenderKeepScroll();break;
     case 'dashMuscle':ui.dashMuscle=t.value;rerenderKeepScroll();break;
@@ -5582,6 +5647,7 @@ document.addEventListener('keydown',e=>{
   if(e.key==='Enter'&&e.target&&e.target.matches&&e.target.matches('.sg input[data-f]')){
     e.preventDefault();const all=[...document.querySelectorAll('.sg input[data-f]')];const i=all.indexOf(e.target);
     const nx=all[i+1];if(nx){try{nx.focus();nx.select&&nx.select();}catch(x){/* focus is best effort */}}else e.target.blur();return;}
+  if(e.key==='Escape'&&document.querySelector('.rirstrip')){rirClose();return;}
   if(e.key==='Escape'&&ui.modal){closeModal();return;}
   if(e.key!=='Tab'||!ui.modal)return;
   const f=modalFocusables();if(!f.length)return;
@@ -5827,7 +5893,7 @@ function swapPrompt(b,reason){
 }
 
 window.__onLib=(which)=>{if((which==='chart'&&ui.tab==='dash')||(which==='sortable'&&ui.tab==='program'))rerenderKeepScroll();};
-window.__ironlog={get state(){return state;},set state(v){state=v;},e1inv,rtfAt,rtfOf,rtfBand,calStats,rirEff,isHard,setCredit,tonnage,loadMode,loadWords,loadNote,progStep,jumpCap,setSecs,setupSecs,recovery,rolling7,rankDays,rankExercises,isCompound,patternOf,noE1,whtrLine,exHeadline,remainMin,shortPlan,weekPlan,cycleProjection,lastLighterWeek,regionBalance,parseHeight,mixCheck,swapCands,eqPlan,exportCSV,importData,chunksOf,assemble,sessionMuscles,TRACK_ONLY,cloud,Hx,mergeChunk,baseOf,sync:()=>cq(cloudPull),flush:()=>cq(cloudFlush),backupDue,routineUpdates,planFor,platesMode,plateText,chunksOf,IDX,suggest,e1,render,ACT,ui,makeDemo,invalidate,normalize,snapshot,saveNow,timer,blockProgress,dayMinutes,weekStreak,coach,tonnageNow,livePR,exProjection,movers,stalledIds,muscleStatus,actualAvg4,plannedPerWeek,parseSets,aiSetsValid,fillSets,newBlock,lastNoteOf,sizeRows,sessionMuscleSets,sessionCapNote,routineClutter,aiDigest,debriefPrompt,reviewPrompt,swapPrompt,AI,sameRR};
+window.__ironlog={get state(){return state;},set state(v){state=v;},e1inv,rtfAt,rtfOf,rtfBand,calStats,rirEff,isHard,setCredit,tonnage,loadMode,loadWords,loadNote,progStep,jumpCap,setSecs,setupSecs,recovery,rolling7,rankDays,rankExercises,isCompound,patternOf,noE1,whtrLine,exHeadline,remainMin,shortPlan,weekPlan,cycleProjection,lastLighterWeek,regionBalance,parseHeight,mixCheck,swapCands,eqPlan,exportCSV,importData,chunksOf,assemble,sessionMuscles,TRACK_ONLY,cloud,Hx,mergeChunk,baseOf,sync:()=>cq(cloudPull),flush:()=>cq(cloudFlush),backupDue,routineUpdates,planFor,platesMode,plateText,chunksOf,IDX,suggest,e1,render,ACT,ui,makeDemo,invalidate,normalize,snapshot,saveNow,timer,weekStats,weekStart,today,blockProgress,dayMinutes,weekStreak,coach,tonnageNow,livePR,exProjection,movers,stalledIds,muscleStatus,actualAvg4,plannedPerWeek,parseSets,aiSetsValid,fillSets,newBlock,lastNoteOf,sizeRows,sessionMuscleSets,sessionCapNote,routineClutter,aiDigest,debriefPrompt,reviewPrompt,swapPrompt,AI,sameRR};
 render();
 wakeOn();
 timerResume();

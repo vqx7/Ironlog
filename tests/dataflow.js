@@ -20,7 +20,7 @@ const ev=(f,a)=>page.evaluate(f,a);
 await ev(()=>{const L=window.__ironlog;L.state.settings.onboarded=true;L.render();});
 await page.click('.hero [data-act="startSession"]:not([data-light])');
 await page.fill('[data-f="w"][data-b="0"][data-s="0"]','185');await page.fill('[data-f="r"][data-b="0"][data-s="0"]','8');
-await page.selectOption('select[data-f="rir"][data-b="0"][data-s="0"]','2');
+await page.click('.rirb[data-b="0"][data-s="0"]');await page.click('.rirstrip [data-v="2"]');
 await page.click('[data-act="sDone"][data-b="0"][data-s="0"]');
 await page.waitForTimeout(600);
 await page.reload();await page.waitForFunction(()=>window.__ironlog);
