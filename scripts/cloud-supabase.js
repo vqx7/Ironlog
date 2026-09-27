@@ -126,6 +126,10 @@
       try { await sb.auth.signOut({ scope: 'local' }); } catch (e) { /* the account is already gone */ }
       hold = false;
     },
+    /* The person said this browser is where they use Ironlog (the question
+       after a confirmation link, or the link opened where the app waits for
+       it): let it sync. */
+    release() { hold = false; },
     /* cb(event, user): SIGNED_IN, SIGNED_OUT, PASSWORD_RECOVERY, TOKEN_REFRESHED, USER_UPDATED. */
     onChange(cb) { sb.auth.onAuthStateChange((ev, s) => { try { cb(ev, who(s)); } catch (e) { /* the app logs its own errors */ } }); }
   };

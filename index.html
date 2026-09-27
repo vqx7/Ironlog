@@ -42,9 +42,15 @@
   --on-accent:#ffffff; --on-ink:#f4f5f7;
   --volt:#d4ff3f; --on-volt:#0b0c0e; --volt-line:#0d0f12; --volt-soft:#f0ffc4;
   --gold:#ffc53d; --on-gold:#1a1300;
-  --hero:#0d0f12; --on-hero:#f4f5f7; --hero-2:#1b1e23;
+  /* The Today card follows the theme (item 57): light on a light page. The
+     rest-timer dock stays inked in both themes, so it reads as a bar laid
+     over the page rather than part of it. */
+  --hero:#ffffff; --on-hero:#0d0f12; --hero-2:#f1f3f5;
   --shadow:0 1px 2px rgba(13,15,18,.05),0 10px 30px rgba(13,15,18,.06);
-  --hero-bg:radial-gradient(140px 140px at 90% 12%,color-mix(in srgb,var(--volt) 18%,transparent),transparent 70%),linear-gradient(165deg,#1b1e23,#0d0f12 70%);
+  --hero-bg:radial-gradient(150px 150px at 90% 12%,color-mix(in srgb,var(--volt) 14%,transparent),transparent 70%),linear-gradient(165deg,#ffffff,#f6f7f9 72%);
+  --hero-ring:var(--volt-line); --hero-shadow:0 0 0 1px var(--card-b),0 1px 2px rgba(13,15,18,.05),0 12px 32px rgba(13,15,18,.08);
+  --dock:#0d0f12; --on-dock:#f4f5f7;
+  --dock-bg:radial-gradient(140px 140px at 90% 12%,color-mix(in srgb,var(--volt) 18%,transparent),transparent 70%),linear-gradient(165deg,#1b1e23,#0d0f12 70%);
   --font:'Hanken Grotesk',system-ui,-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;
   --display:'Big Shoulders Display','Arial Narrow','Roboto Condensed','Helvetica Neue',system-ui,sans-serif;
   --r-lg:22px; --r-md:14px; --r-sm:12px;
@@ -66,6 +72,8 @@
     --volt:#d4ff3f; --on-volt:#0b0c0e; --volt-line:#d4ff3f; --volt-soft:#232c0c;
     --hero:#131518; --on-hero:#f3f4f6; --hero-2:#1c1f23;
     --hero-bg:radial-gradient(150px 150px at 90% 10%,color-mix(in srgb,var(--volt) 15%,transparent),transparent 70%),linear-gradient(165deg,#1a1d21,#101215 72%);
+    --hero-ring:var(--volt); --hero-shadow:0 1px 0 rgba(255,255,255,.04) inset,0 14px 40px rgba(0,0,0,.18);
+    --dock:var(--hero); --on-dock:var(--on-hero); --dock-bg:var(--hero-bg);
     --shadow:none;
     color-scheme:dark;
   }
@@ -81,6 +89,8 @@
   --volt:#d4ff3f; --on-volt:#0b0c0e; --volt-line:#d4ff3f; --volt-soft:#232c0c;
   --hero:#131518; --on-hero:#f3f4f6; --hero-2:#1c1f23;
   --hero-bg:radial-gradient(150px 150px at 90% 10%,color-mix(in srgb,var(--volt) 15%,transparent),transparent 70%),linear-gradient(165deg,#1a1d21,#101215 72%);
+  --hero-ring:var(--volt); --hero-shadow:0 1px 0 rgba(255,255,255,.04) inset,0 14px 40px rgba(0,0,0,.18);
+  --dock:var(--hero); --on-dock:var(--on-hero); --dock-bg:var(--hero-bg);
   --shadow:none;
   color-scheme:dark;
 }
@@ -128,6 +138,13 @@ b{font-weight:650}
 .wkbar{flex:1 1 auto;min-width:0;display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:3px}
 .wkbar .w{-webkit-appearance:none;appearance:none;position:relative;min-width:0;border:0;border-radius:12px;background:transparent;padding:2px 0;margin:0;display:flex;flex-direction:column;align-items:center;gap:2px;font:inherit;line-height:1;color:var(--muted);cursor:pointer;-webkit-tap-highlight-color:transparent}
 .wkbar div.w{cursor:default}
+/* Every day is a button, so each disc answers a press. An empty past day
+   carries a small + : tapping it logs a workout for that date. */
+.wkbar .w .dn{transition:transform .12s ease}
+.wkbar .w:active .dn{transform:scale(.9)}
+.wkbar .w.add .dn{position:relative}
+.wkbar .w.add .dn::after{content:"+";position:absolute;right:-3px;bottom:-3px;width:13px;height:13px;border-radius:50%;background:var(--surface);color:var(--muted);box-shadow:0 0 0 1px var(--line);font:800 11px/13px var(--font);text-align:center}
+@media (prefers-reduced-motion:reduce){.wkbar .w .dn{transition:none}}
 .wkbar .w .wd{font:650 9.5px/1.1 var(--font);letter-spacing:.06em;text-transform:uppercase}
 /* Each day is a small disc, like an activity ring: filled volt when trained,
    dashed when planned, a ring around today. */
@@ -194,7 +211,7 @@ main{max-width:760px;margin:0 auto;padding:6px 16px 150px}
 .sec>summary::-webkit-details-marker{display:none}
 .sec-t{font:700 21px/1.15 var(--font);letter-spacing:-.015em;white-space:nowrap;flex:none}
 /* The summary wraps to a second line instead of being cut off on a small phone. */
-.sec-s{flex:1 1 auto;min-width:0;text-align:right;font-size:13px;line-height:1.3;color:var(--muted);font-variant-numeric:tabular-nums;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.sec-s{flex:1 1 auto;min-width:0;text-align:right;font-size:12px;line-height:1.3;color:var(--muted);font-variant-numeric:tabular-nums;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 .chev{width:22px;height:28px;border-radius:0;background:transparent;flex:none;display:inline-flex;align-items:center;justify-content:center}
 .chev::before{content:"";width:8px;height:8px;border-right:2px solid var(--muted);border-bottom:2px solid var(--muted);transform:translateY(-2px) rotate(45deg);transition:transform .18s ease}
 details[open]>summary .chev::before{transform:translateY(2px) rotate(-135deg)}
@@ -225,7 +242,7 @@ details[open]>summary .chev::before{transform:translateY(2px) rotate(-135deg)}
 .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
 .row.spread{justify-content:space-between}
 .stack>*+*{margin-top:10px}
-.explain{font-size:14px;color:var(--muted);margin:2px 0 8px}
+.explain{font-size:13px;color:var(--muted);margin:2px 0 8px}
 
 .btn{min-height:44px;border-radius:var(--r-md);border:1px solid var(--btn-b);background:var(--btn);font-weight:650;font-size:15px;padding:0 16px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:6px;color:var(--ink);transition:background .12s,transform .08s}
 .btn:active{transform:scale(.97)}
@@ -345,7 +362,12 @@ ul.items:empty::before{content:"Drop or add exercises here";display:block;paddin
 .caldue{margin:6px 0 0;color:var(--blue)}
 ol.steps{margin:6px 0 10px;padding-left:22px;font-size:15px}
 ol.steps li{margin:2px 0}
-.welcome h3{margin-bottom:6px;font:700 24px/1.15 var(--font);letter-spacing:-.015em}
+.welcome h3{margin-bottom:10px;font:700 24px/1.15 var(--font);letter-spacing:-.015em}
+/* The account offer on the welcome card: an accent edge so it reads as the first step. */
+.welcome .acct-offer{box-shadow:inset 3px 0 0 var(--volt)}
+/* Log a past workout: one row per routine day, name left, detail right. */
+.btn.pastday{display:flex;justify-content:space-between;align-items:center;gap:10px;text-align:left;min-height:48px}
+.btn.pastday small{font-weight:500;opacity:.75;white-space:nowrap}
 .short-list{list-style:none;margin:10px 0 0;padding:0}
 .short-list li{padding:6px 0;border-bottom:1px solid var(--line-soft);font-size:15px}
 .short-list li:last-child{border-bottom:0}
@@ -435,7 +457,7 @@ table.t td.r,table.t th.r{text-align:right}
 .cyc .c.rest{color:var(--muted);border-style:dashed}
 
 /* ---------- today: the hero is the one inked block ---------- */
-.hero{background:var(--hero-bg),var(--hero);color:var(--on-hero);border:0;border-radius:28px;padding:18px 18px 16px;margin:14px 0 14px;box-shadow:0 1px 0 rgba(255,255,255,.04) inset,0 14px 40px rgba(0,0,0,.18)}
+.hero{background:var(--hero-bg),var(--hero);color:var(--on-hero);border:0;border-radius:28px;padding:18px 18px 16px;margin:14px 0 14px;box-shadow:var(--hero-shadow)}
 .hero .eyebrow{color:var(--on-hero);opacity:.7}
 .hero .hello{font:700 17px/1.2 var(--font);letter-spacing:-.01em;margin:0 0 6px;color:var(--on-hero)}
 .hero h2{font-size:54px;font-weight:800;line-height:.92;margin:6px 0 8px;letter-spacing:.01em;overflow-wrap:anywhere}
@@ -485,7 +507,7 @@ table.t td.r,table.t th.r{text-align:right}
 .ring{flex:none;position:relative;width:78px;height:78px;margin:2px -2px 0 0;padding:0;border:0;background:none;color:var(--on-hero);cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center}
 .ring svg{position:absolute;inset:0;width:100%;height:100%}
 .ring .rt{fill:none;stroke:color-mix(in srgb,var(--volt) 16%,transparent);stroke-width:7}
-.ring .rp{fill:none;stroke:var(--volt);stroke-width:7;stroke-linecap:round;transition:stroke-dasharray .6s ease;filter:drop-shadow(0 0 4px color-mix(in srgb,var(--volt) 45%,transparent))}
+.ring .rp{fill:none;stroke:var(--hero-ring);stroke-width:7;stroke-linecap:round;transition:stroke-dasharray .6s ease;filter:drop-shadow(0 0 4px color-mix(in srgb,var(--volt) 45%,transparent))}
 .ring .rv{position:relative;font:800 25px/1 var(--display);font-variant-numeric:tabular-nums}
 .ring .rv small{font-size:12px;margin-left:1px}
 .ring .rl{position:relative;font:600 9.5px/1.2 var(--font);letter-spacing:.1em;text-transform:uppercase;opacity:.7}
@@ -533,6 +555,14 @@ table.t td.r,table.t th.r{text-align:right}
 .isteps li{display:flex;gap:12px;align-items:flex-start;padding:10px 0;border-bottom:1px solid var(--line-soft);font-size:15px;line-height:1.45}
 .isteps li:last-child{border-bottom:0}
 .stepn{flex:none;width:28px;height:28px;border-radius:50%;background:var(--volt);color:var(--on-volt);font:800 15px/28px var(--display);text-align:center}
+/* The picture of where to tap, in the install guide. */
+.ipic{display:block;width:100%;max-width:320px;height:auto;margin:4px auto 2px}
+.ipic .ip-b{fill:var(--surface-2);stroke:var(--line)}
+.ipic .ip-t{fill:var(--muted);font:500 13px var(--font)}
+.ipic .ip-i{fill:none;stroke:var(--ink);stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.ipic .ip-dim{opacity:.35}
+.ipic .ip-d{fill:var(--ink)}
+.ipic .ip-hl{fill:none;stroke:var(--volt);stroke-width:3}
 .ico{width:20px;height:20px;vertical-align:-4px;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round;display:inline-block;margin:0 1px}
 .chip.acc{display:inline-flex;align-items:center;gap:8px}
 .sw{display:inline-block;width:14px;height:14px;border-radius:50%;box-shadow:inset 0 0 0 1px rgba(0,0,0,.15)}
@@ -621,13 +651,14 @@ details.more>summary .small{display:block;font-weight:400}
    version is noticed without covering anything. */
 #updbar{position:sticky;top:calc(var(--head-h) + env(safe-area-inset-top,0px));z-index:19;display:flex;align-items:center;gap:8px;padding:6px 16px;background:var(--glass);-webkit-backdrop-filter:saturate(170%) blur(18px);backdrop-filter:saturate(170%) blur(18px);border-bottom:1px solid var(--line-soft)}
 #updbar[hidden]{display:none}
+.acctbar+.acctbar{margin-top:-6px}
 .acctbar{display:flex;align-items:center;gap:8px;margin:0 0 12px;padding:6px 6px 6px 16px;border:1px solid var(--card-b);border-radius:999px;background:var(--surface)}
 .acctbar>span{flex:1 1 auto;min-width:0}
 .acctbar .btn,.acctbar .ib{flex:none;white-space:nowrap}
 #updbar .ut{flex:1 1 auto;min-width:0;font-weight:650;font-size:15px}
 #updbar .ut::before{content:"";display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--volt);margin-right:8px;vertical-align:1px}
 #toast button{background:none;border:0;color:inherit;font-weight:700;text-decoration:underline;cursor:pointer;pointer-events:auto;min-height:44px;padding:0 6px;margin:-12px 0}
-#timer{position:fixed;left:0;right:0;bottom:calc(58px + env(safe-area-inset-bottom,0px));z-index:25;background:var(--hero-bg),var(--hero);color:var(--on-hero);border-top:0;display:flex;align-items:center;justify-content:space-between;padding:6px 16px}
+#timer{position:fixed;left:0;right:0;bottom:calc(58px + env(safe-area-inset-bottom,0px));z-index:25;background:var(--dock-bg),var(--dock);color:var(--on-dock);border-top:0;display:flex;align-items:center;justify-content:space-between;padding:6px 16px}
 #timer.done{background:var(--volt);color:var(--on-volt)}
 #timer.compact{left:auto;right:12px;bottom:calc(66px + env(safe-area-inset-bottom,0px));border-radius:999px;padding:4px 4px 4px 14px;gap:10px;box-shadow:0 4px 14px rgba(0,0,0,.25)}
 #timer.compact .tv{font-size:22px}
@@ -717,11 +748,13 @@ function sessDayIdx(R,s){
    one you logged, so a missed day moves with you instead of being skipped.
    A rest day right after your last session counts as scheduled only while the
    calendar says you are inside it. */
-function cycleState(R){
-  const n=R.days.length;
+/* asOf: read the cycle as it stood on a past date (sessions up to that day),
+   which is what a past workout entered late was due to be. */
+function cycleState(R,asOf){
+  const n=R.days.length;const T=asOf||today();
   const isTrain=i=>!R.days[i].rest&&R.days[i].items.length>0;
   let first=0;for(let i=0;i<n;i++)if(isTrain(i)){first=i;break;}
-  const mine=state.sessions.filter(x=>x.routineId===R.id).map(x=>({s:x,i:sessDayIdx(R,x)})).filter(x=>x.i>=0)
+  const mine=state.sessions.filter(x=>x.routineId===R.id&&(!asOf||x.date<=asOf)).map(x=>({s:x,i:sessDayIdx(R,x)})).filter(x=>x.i>=0)
     .sort((a,b)=>a.s.date<b.s.date?-1:a.s.date>b.s.date?1:0);
   if(!mine.length)return {last:-1,lastDate:null,next:first,done:new Set(),restToday:false,restIdx:-1};
   const L=mine[mine.length-1];
@@ -730,7 +763,7 @@ function cycleState(R){
   const done=new Set();
   if(next>L.i){done.add(L.i);let prev=L.i;for(let k=mine.length-2;k>=0;k--){const i=mine[k].i;if(i<prev){done.add(i);prev=i;}else break;}}
   let run=0;for(let k=1;k<n;k++){if(R.days[(L.i+k)%n].rest)run++;else break;}
-  const since=daysBetween(L.s.date,today());
+  const since=daysBetween(L.s.date,T);
   const restToday=since>=1&&since<=run;
   return {last:L.i,lastDate:L.s.date,next,done,restToday,restIdx:restToday?(L.i+since)%n:-1};
 }
@@ -1460,6 +1493,10 @@ function normalize(s){
     d.light=!!d.light;
     d.limited=d.limited===true?true:undefined;
     d.free=d.free===true?true:undefined;
+    // A past workout typed in after the fact: no rest timer, no clock, no check-in.
+    d.past=d.past===true?true:undefined;
+    // The notes the app wrote when the session started, so Discard can tell them from yours.
+    d.note0=typeof d.note0==='string'?d.note0.slice(0,2000):undefined;
     d.chk=cleanChk(d.chk)||undefined;
     d.cardio=(Array.isArray(d.cardio)?d.cardio:[]).filter(c=>c&&typeof c==='object').map((c,ci)=>cleanCardio(c,true,ci));
     d.ex=d.ex.filter(b=>b&&typeof b.exId==='string'&&Array.isArray(b.sets)).map(b=>{
@@ -1925,11 +1962,63 @@ function cloudStop(){
   cloud.meta={};cloud.editAt={};cloud.last=null;cloud.retry=0;saveMeta();setCloud('local');
 }
 function acctRerender(){if((ui.tab==='settings'||ui.tab==='today')&&!ui.modal)rerenderKeepScroll();else{const el=document.getElementById('syncInfo');if(el)el.innerHTML=syncInfo();}}
+/* ---------- waiting for the confirmation email (item 61) ----------
+   On an iPhone the link in the email opens the browser, never the
+   home-screen app, so the app cannot be told the account was confirmed.
+   Instead, while its "Check your email" sheet is open, it tries to sign in
+   with the email and password just typed: when the app comes back to the
+   front, when "I have confirmed" is tapped, and every 20 seconds while it is
+   on screen (every minute after 5 minutes; Supabase allows about 30 sign-in
+   attempts per 5 minutes). The password is held in memory only, and is
+   forgotten once signed in, when the sheet closes, or after 30 minutes.
+   A marker without the password is kept in storage while waiting: a browser
+   that shares this storage (the same browser, or Android's installed app)
+   can then tell that the link was opened where Ironlog lives. */
+const ACCT_WAIT=KEY+'.acctWait';
+const acctWait={email:'',pw:'',t:0,timer:null,busy:false,last:0};
+function waitStart(email,pw){
+  acctWait.email=email;acctWait.pw=pw;acctWait.t=Date.now();
+  try{localStorage.setItem(ACCT_WAIT,JSON.stringify({t:Date.now()}));}catch(e){/* storage blocked: the app still waits */}
+  waitSchedule();
+}
+function waitStop(){
+  clearTimeout(acctWait.timer);acctWait.timer=null;acctWait.pw='';acctWait.email='';acctWait.t=0;
+  try{localStorage.removeItem(ACCT_WAIT);}catch(e){/* nothing to clear */}
+}
+function waitSchedule(){
+  clearTimeout(acctWait.timer);acctWait.timer=null;if(!acctWait.pw)return;
+  const age=Date.now()-acctWait.t;
+  if(age>30*60000){waitStop();const m=ui.modal;if(m&&m.kind==='account'&&m.mode==='wait'){m.mode='signin';m.err='Still not confirmed. Once you have opened the link, sign in here.';renderModal();}return;}
+  acctWait.timer=setTimeout(()=>waitTry(false),age<5*60000?20000:60000);
+}
+async function waitTry(manual){
+  const A=AUTH();if(!A||!acctWait.pw||acctWait.busy)return;
+  if(!manual&&(document.visibilityState!=='visible'||Date.now()-acctWait.last<3000)){waitSchedule();return;}
+  acctWait.busy=true;acctWait.last=Date.now();const m0=ui.modal;
+  const sheet=()=>{const m=ui.modal;return m&&m.kind==='account'&&m.mode==='wait'?m:null;};
+  if(manual&&sheet()){m0.busy=true;m0.err='';renderModal();}
+  try{
+    acct.user=await A.signIn(acctWait.email,acctWait.pw);waitStop();
+    try{localStorage.removeItem(ACCT_LATER);}catch(e){/* nothing to clear */}
+    if(sheet())closeModal();
+    toast('Email confirmed. Signed in and syncing.');await cloudInit();acctRerender();
+  }catch(e){
+    const m=sheet();
+    const unconfirmed=e&&(e.code==='email_not_confirmed'||/Confirm your email/i.test(e.message||''));
+    if(!unconfirmed&&/Wrong email or password/.test((e&&e.message)||'')){waitStop();if(m){m.mode='signin';m.err='That password did not work. Sign in with the one you chose.';}}
+    else if(m&&manual)m.err=unconfirmed?'Not confirmed yet. Open the link in the email first.':((e&&e.message)||'Try again.');
+    if(!unconfirmed)log('auth',e);
+  }finally{acctWait.busy=false;const m=sheet();if(m){m.busy=false;renderModal();}waitSchedule();}
+}
+window.addEventListener('focus',()=>{if(acctWait.pw)waitTry(false);});
+window.addEventListener('pageshow',()=>{if(acctWait.pw)waitTry(false);});
 async function acctInit(){
   const A=AUTH();if(!A)return;
   A.onChange((ev,user)=>{
     acct.user=user;
     if(ev==='PASSWORD_RECOVERY'&&!(ui.modal&&ui.modal.kind==='account'))openModal({kind:'account',mode:'newpw',pw:''});
+    // Signed in some other way while waiting for the confirmation (another tab sharing this storage): stop waiting.
+    if(ev==='SIGNED_IN'&&user&&acctWait.pw){waitStop();const m=ui.modal;if(m&&m.kind==='account'&&m.mode==='wait'){closeModal();toast('Email confirmed. Signed in and syncing.');}}
     if(ev==='SIGNED_IN'&&!cloud.on)cloudInit();
     if(ev==='SIGNED_OUT'&&cloud.on&&!window.claude)cloudStop();
     acctRerender();
@@ -1940,11 +2029,19 @@ async function acctInit(){
   else if(L&&L.type==='recovery'){if(!(ui.modal&&ui.modal.kind==='account'))openModal({kind:'account',mode:'newpw',pw:''});}
   else if(L&&L.type&&!isStandalone()){
     /* A confirmation link opened in the browser, not the installed app. It
-       signed this browser in; sign it out again so it never syncs what this
-       browser holds, and say where to go next. */
-    try{await A.signOut();}catch(e){log('auth',e);}
-    acct.user=null;
-    openModal({kind:'account',mode:'sent',title:'Email confirmed',msg:'Open Ironlog from your home screen and sign in there. If you use Ironlog in this browser instead, sign in here.'});
+       signed this browser in, but nothing syncs here until we know this is
+       where Ironlog is used (cloud-supabase.js holds it). If this storage
+       is the one waiting for the confirmation (the same browser, or an
+       Android app sharing it), this is the place: stay signed in. Otherwise
+       ask (item 61): here, or the home-screen app, which on an iPhone keeps
+       separate storage and signs itself in when it comes back to the front. */
+    let mine=null;try{mine=JSON.parse(localStorage.getItem(ACCT_WAIT)||'null');}catch(e){/* no marker */}
+    if(mine&&Date.now()-(+mine.t||0)<60*60000){
+      try{localStorage.removeItem(ACCT_WAIT);}catch(e){/* nothing to clear */}
+      if(typeof A.release==='function')A.release();
+      openModal({kind:'account',mode:'sent',title:'Email confirmed',msg:'You are signed in. Your log syncs to your account.'});
+      cloudInit();
+    }else openModal({kind:'account',mode:'where',title:'Email confirmed'});
   }
   acctRerender();
 }
@@ -1955,7 +2052,11 @@ window.addEventListener('online',()=>{
   // Back from a dead zone: sync now instead of waiting out the retry timer.
   else if(cloud.on&&cloud.status==='offline'){cloud.retry=0;clearTimeout(cloud.t);cq(cloudPull);}
 });
-document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&AUTH()&&!cloud.on)cloudInit();});
+document.addEventListener('visibilitychange',()=>{
+  if(document.visibilityState!=='visible')return;
+  if(acctWait.pw){waitTry(false);return;}
+  if(AUTH()&&!cloud.on)cloudInit();
+});
 function acctPanel(){
   if(!AUTH()||(window.claude&&typeof window.claude.use==='function'))return '';
   const u=acct.user;
@@ -1963,8 +2064,8 @@ function acctPanel(){
   // launch, or refused). Say so and offer a retry rather than looking fine.
   const stuck=u&&!cloud.on?`<div class="row spread" style="margin-top:6px"><p class="small" style="margin:0;color:var(--yellow)">Not syncing right now.</p><button class="btn sm" data-act="acctRetry">Try again</button></div>`:'';
   return u
-    ?`<div class="panel" id="acctPanel" style="margin-top:8px"><div class="row spread"><p class="small" style="margin:0;min-width:0;overflow-wrap:anywhere">Signed in as <b>${esc(u.email)}</b></p><button class="btn sm" data-act="acctSignOut">Sign out</button></div>${stuck}${typeof AUTH().deleteAccount==='function'?`<button type="button" class="linkbtn" style="margin-top:8px;color:var(--red)" data-act="acctDelete">Delete my account</button>`:''}</div>`
-    :`<div class="panel" id="acctPanel" style="margin-top:8px"><p class="small" style="margin:0 0 8px"><b>Sync with an account.</b> Your log is then kept off this phone and on any device you sign in on.</p><div class="row"><button class="btn sm primary" data-act="acctOpen" data-mode="signup">Create account</button><button class="btn sm" data-act="acctOpen" data-mode="signin">Sign in</button></div></div>`;
+    ?`<div class="panel" id="acctPanel"><div class="row spread"><p class="small" style="margin:0;min-width:0;overflow-wrap:anywhere">Signed in as <b>${esc(u.email)}</b></p><button class="btn sm" data-act="acctSignOut">Sign out</button></div>${stuck}${typeof AUTH().deleteAccount==='function'?`<button type="button" class="linkbtn" style="margin-top:8px;color:var(--red)" data-act="acctDelete">Delete my account</button>`:''}</div>`
+    :`<div class="panel" id="acctPanel"><p class="small" style="margin:0 0 8px"><b>Sync with an account.</b> Your log is then kept off this phone and on any device you sign in on.</p><div class="row"><button class="btn sm primary" data-act="acctOpen" data-mode="signup">Create account</button><button class="btn sm" data-act="acctOpen" data-mode="signin">Sign in</button></div></div>`;
 }
 const EMAIL_RE=/^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 function acctSheet(m){
@@ -1973,12 +2074,14 @@ function acctSheet(m){
   const err=m.err?`<p class="small" role="alert" style="color:var(--red);margin:0">${esc(m.err)}</p>`:'';
   const go=(label)=>`<button type="submit" class="btn primary block" data-act="acctSubmit" ${m.busy?'disabled':''}>${m.busy?'Working':esc(label)}</button>`;
   const link=(mode,label)=>`<button type="button" class="linkbtn" data-act="acctMode" data-mode="${mode}">${label}</button>`;
-  const T={signin:'Sign in',signup:'Create account',forgot:'Reset password',newpw:'New password',sent:m.title||'Check your email'};
+  const T={signin:'Sign in',signup:'Create account',forgot:'Reset password',newpw:'New password',sent:m.title||'Check your email',wait:'Check your email',where:m.title||'Email confirmed'};
   let b='';
   if(m.mode==='signin')b=`${email}${f('Password','pw','password','current-password','enterkeyhint="go"')}${err}${go('Sign in')}<div class="row spread">${link('forgot','Forgot password?')}${link('signup','Create an account')}</div>`;
   else if(m.mode==='signup')b=`${email}${f('Password (8 or more characters)','pw','password','new-password','minlength="8" enterkeyhint="go"')}${err}${go('Create account')}<p class="small muted" style="margin:0">We email you a link to confirm the address. Open it, then sign in here.</p><div class="row">${link('signin','I have an account')}</div>`;
   else if(m.mode==='forgot')b=`${email}${err}${go('Email me a reset link')}<p class="small muted" style="margin:0">The link opens in your browser. Set the new password there, then sign in here.</p><div class="row">${link('signin','Back to sign in')}</div>`;
   else if(m.mode==='newpw')b=`${f('New password (8 or more characters)','pw','password','new-password','minlength="8" enterkeyhint="go"')}${err}${go('Save new password')}`;
+  else if(m.mode==='wait')b=`<p style="margin:0">We sent a confirmation link to <b>${esc(m.email||'')}</b>. Tap it, then come back here. Ironlog signs you in by itself.</p><p class="small muted waitline" style="margin:0" aria-live="polite">${m.busy?'Checking':'Waiting for the confirmation'}</p>${err}<button type="button" class="btn primary block" data-act="acctWaitNow" ${m.busy?'disabled':''}>I have confirmed</button><div class="row">${link('signup','Use a different email')}</div>`;
+  else if(m.mode==='where')b=`<p style="margin:0">Where do you use Ironlog?</p><button type="button" class="btn primary block" data-act="acctWhere" data-v="app">The home-screen app</button><button type="button" class="btn block" data-act="acctWhere" data-v="here">Here in this browser</button><p class="small muted" style="margin:0">Your log is kept where you use it.</p>`;
   else b=`<p style="margin:0">${esc(m.msg||'')}</p><button type="button" class="btn primary block" data-act="mClose">OK</button>`;
   return `<div class="sheet" role="dialog" aria-modal="true" aria-label="${esc(T[m.mode]||'Account')}"><div class="sheet-h"><h3>${esc(T[m.mode]||'Account')}</h3><button class="ib" aria-label="Close" data-act="mClose">✕</button></div><form class="stack" id="acctForm" novalidate>${b}</form></div>`;
 }
@@ -2598,7 +2701,11 @@ function regionBalance(sets){
    {kind:'load', w, repMin} means hit repMin+ reps in every set at the new load w. */
 function suggest(exId,plan,opts){
   opts=opts||{};
-  const all=IDX().byEx[exId];const ex=EX(exId);const injM=exInjury(ex);
+  /* opts.before: the date of a past session being logged. Only what was
+     logged up to that date counts, so a workout entered after later ones
+     gets the target and "Last" it would have had on the day. */
+  const T=opts.before&&isDate(opts.before)?opts.before:today();
+  const every=IDX().byEx[exId];const all=every?every.filter(x=>x.date<=T):every;const ex=EX(exId);const injM=exInjury(ex);
   // Deload and lighter sessions are short or light on purpose, so the last
   // full session sets the target. If there is nothing else, use them.
   const full=all?all.filter(x=>!x.deload&&!x.light&&!x.cut):[];
@@ -2608,7 +2715,7 @@ function suggest(exId,plan,opts){
     if(injM)return {w:ex.bw?0:null,text:`Injury flagged (${ML[injM]}). Start light, keep 3 or more reps in reserve, and stop on pain.`,lastR:[],last:'',target:'',tgt:null,inj:injM};
     return {w:ex.bw?0:null,text:`No history yet. Pick a load you can take to ${plan.repMin}-${plan.repMax} reps at ${plan.rir} RIR.`,lastR:[],last:'',target:'',tgt:null};
   }
-  const last=exps[exps.length-1],ws=last.pts;const stx=IDX().exStats[exId]||{};
+  const last=exps[exps.length-1],ws=last.pts;const stx=all.length<every.length?statsUpTo(exId,all):(IDX().exStats[exId]||{});
   const top=Math.max(...ws.map(p=>p.w));
   const step=incOf(ex,plan);
   // Heaviest available load (top of the stack or rack), if set.
@@ -2626,7 +2733,7 @@ function suggest(exId,plan,opts){
      half the sets (done by the caller), 3 or more in reserve. Neither sets a
      target, so nothing in this session reads as "beaten" or "missed". */
   if(injM)return {w:top,text:`${lastS} Injury flagged (${ML[injM]}): stay at or below ${lbl(top)}, keep 3 or more reps in reserve, stop on pain.`,lastR,last:lastS,target:'',tgt:null,easier:null,inj:injM};
-  if(opts.deload){const bl=bwLoad(ex,today());const dw=ex.bw?((top+bl)*0.9-bl>0?roundLoad((top+bl)*0.9-bl,true):0):roundLoad(top*0.9,true);return {w:top>0?dw:top,text:`${lastS} Deload: about ${lbl(top>0?dw:top)} for ${plan.repMin}-${plan.repMax} with 3 or more reps in reserve. Half the usual sets.`,lastR,last:lastS,target:'',tgt:null,easier:null};}
+  if(opts.deload){const bl=bwLoad(ex,T);const dw=ex.bw?((top+bl)*0.9-bl>0?roundLoad((top+bl)*0.9-bl,true):0):roundLoad(top*0.9,true);return {w:top>0?dw:top,text:`${lastS} Deload: about ${lbl(top>0?dw:top)} for ${plan.repMin}-${plan.repMax} with 3 or more reps in reserve. Half the usual sets.`,lastR,last:lastS,target:'',tgt:null,easier:null};}
   /* Recalibrate when every top set was logged with RIR at least 2 above the
      target. It uses the same e1() estimate as everything else,
      and the new load is what leaves the middle of the rep range at the target
@@ -2636,7 +2743,7 @@ function suggest(exId,plan,opts){
   const tgtRir=+plan.rir||0;
   if(step>0&&!atCap&&!noE1(ex)&&topPts.length&&topPts.every(p=>p.rir!=null&&p.rir>=tgtRir+2&&p.r>=plan.repMin)){
     let est=null;for(const p of topPts){const v=e1(p.load,p.r,Math.min(p.rir,E1_MAX_RIR));if(v!=null&&(est==null||v>est))est=v;}
-    const bwNow=bwLoad(ex,today());const topLoad=top+bwNow;
+    const bwNow=bwLoad(ex,T);const topLoad=top+bwNow;
     if(est!=null&&topLoad>0){
       const want=Math.min(e1inv(est,Math.round((+plan.repMin+ +plan.repMax)/2)+Math.min(tgtRir,E1_MAX_RIR)),topLoad*jumpCap(ex,topLoad))-bwNow;
       const k=Math.floor((want-top)/step+1e-6);
@@ -2658,7 +2765,7 @@ function suggest(exId,plan,opts){
     const repeat=!!prev&&Math.abs(prev.topW-top)<1e-6&&prev.pts.filter(p=>Math.abs(p.w-top)<1e-6).every(p=>p.r<+plan.repMin);
     if(gap>=2||repeat){
       let est=null;for(const p of topPts){const v=e1(p.load,p.r,p.rq);if(v!=null&&(est==null||v>est))est=v;}
-      const bwNow=bwLoad(ex,today());
+      const bwNow=bwLoad(ex,T);
       if(est!=null){
         const want=e1inv(est,+plan.repMin+Math.min(tgtRir,E1_MAX_RIR))-bwNow;
         /* Whole steps down to the estimated load. None needed means the
@@ -2690,7 +2797,7 @@ function suggest(exId,plan,opts){
       easier:maxed?`Past ${ext} reps at the heaviest load: slow the lowering to 3 to 4 seconds with a pause at the stretch, go one side at a time, or add a drop set.`:null,capped:true};
   }
   if(topPts.every(p=>p.r>=plan.repMax)){
-    const nw=capW(top+progStep(ex,plan,top+bwLoad(ex,today())));
+    const nw=capW(top+progStep(ex,plan,top+bwLoad(ex,T)));
     return {w:nw,text:`${lastS} Every set at ${lbl(top)} hit ${plan.repMax}: add ${fmtW(nw-top)} ${U()}${cap!=null&&nw>=cap-1e-6?', which is the heaviest available,':''} and aim for ${plan.repMin}+ reps.`,lastR,
       last:lastS,target:`${lbl(nw)} for ${plan.repMin}+ reps in every set`,tgt:{kind:'load',w:nw,repMin:+plan.repMin,prevBest},easier:null};
   }
@@ -2868,6 +2975,22 @@ function lastRFor(b,si){
   let k=0;for(let i=0;i<si;i++){const x=b.sets[i];if(!x.warm&&!x.drop)k++;}
   const v=b.lastR[k];return v!=null&&v>0?v:null;
 }
+/* The grey number in an empty reps field, which the checkmark, auto-mark and
+   the keyboard's Done take as the set's reps: last time's reps for that set;
+   with none (a new or just-swapped exercise, or more sets than last time),
+   the reps of the working set above it in this session; else the bottom of
+   the planned range. Warm-ups and drop sets have none. */
+function greyR(b,si){
+  const s=b&&b.sets[si];if(!s||s.warm||s.drop)return null;
+  const lr=lastRFor(b,si);if(lr!=null)return lr;
+  for(let i=si-1;i>=0;i--){const x=b.sets[i];if(!x.warm&&!x.drop&&+x.r>0)return +x.r;}
+  const m=+(b.plan&&b.plan.repMin);return m>0?m:null;
+}
+/* Typed reps change the grey number of the empty rows under them. */
+function refreshGrey(bi){
+  const b=state.draft&&state.draft.ex[bi];if(!b)return;
+  b.sets.forEach((x,si)=>{if(+x.r>0)return;const el=document.querySelector(`.sg input[data-f="r"][data-b="${bi}"][data-s="${si}"]`);if(!el)return;const g=greyR(b,si);const v=g==null?'':String(g);if(el.placeholder!==v)el.placeholder=v;});
+}
 // Keyed by session too, so a block opened in one session is not open in the next.
 const blkKey=(bi,b)=>((state.draft&&state.draft.id)||'')+':'+bi+':'+b.exId;
 function blockDone(b){const w=b.sets.filter(x=>!x.warm);return w.length>0&&w.every(x=>x.done);}
@@ -3023,7 +3146,7 @@ function openModal(m){
   if(!fresh)return;
   // Prefer a text field. Never auto-focus the confirm button of a destructive
   // dialog, or a stray Enter would carry out the deletion.
-  const noKb=m.kind==='picker'&&coarse();
+  const noKb=(m.kind==='picker'||m.kind==='past')&&coarse();
   const target=(!noKb&&el.querySelector('input,select,textarea'))||el.querySelector('.sheet');
   if(target)try{target.focus({preventScroll:true});}catch(e){/* focus is best effort */}
 }
@@ -3031,6 +3154,11 @@ function closeModal(){
   if(AI.ctl){try{AI.ctl.abort();}catch(e){/* already finished */}AI.ctl=null;}
   const was=ui.modal;
   ui.modal=null;
+  if(was&&was.kind==='account'){
+    if(was.mode==='wait')waitStop();
+    // No answer to "Where do you use Ironlog?": the safe choice, as before item 61.
+    if(was.mode==='where'&&!was.answered){const A=AUTH();acct.user=null;if(A)A.signOut().catch(e=>log('auth',e)).then(()=>acctRerender());}
+  }
   if(was&&was.kind==='short'&&was.temp&&!was.applied&&state.draft&&state.draft.id===was.temp&&!state.draft.ex.some(b=>b.sets.some(x=>x.done))){
     state.draft=null;stopTimer();wakeOff();saveNow();setTimeout(render,0);}$('#modal').hidden=true;$('#modal').innerHTML='';document.body.classList.remove('modal-open');renderModal.last=null;
   const r=modalReturn;modalReturn=null;
@@ -3098,7 +3226,7 @@ function setDone(bi,si,val){
   refreshPR(bi,si,true);
   const c=$('#doneCount');
   if(c){const n=state.draft.ex.reduce((a,x)=>a+x.sets.filter(y=>y.done&&!y.warm).length,0);c.textContent=String(n);const w=$('#doneWord');if(w)w.textContent=n===1?'set':'sets';}
-  let autoRest=val&&!s.warm&&!state.draft.editingId&&+b.plan.rest>0&&state.settings.timerMode==='auto';
+  let autoRest=val&&!s.warm&&!state.draft.editingId&&!state.draft.past&&+b.plan.rest>0&&state.settings.timerMode==='auto';
   // In a superset the rest is taken after the last exercise of the group.
   if(autoRest&&b.plan.ss){const grp=state.draft.ex.filter(x=>x.plan&&x.plan.ss===b.plan.ss);if(grp[grp.length-1]!==b)autoRest=false;}
   if(autoRest)startTimer(+b.plan.rest);
@@ -3239,7 +3367,7 @@ function viewToday(){
   const playable=!day.rest&&day.items.length>0;
   const deload=isDeloadWeek();
   const sel=`<label class="inline-sel small">Change day<select data-bind="todayDay">${R.days.map((d,i)=>`<option value="${i}" ${i===di?'selected':''}>${dayLabel(R,i)}: ${esc(d.name)}${d.rest?' (rest)':''}${mark(i)}</option>`).join('')}</select></label>`;
-  let h=welcomeCard()+(installBar()||acctBar())+`<section class="hero" data-day="${di}"><div class="hero-top"><div class="hero-t">${state.settings.userName?`<p class="hello">${esc(greeting())}, ${esc(state.settings.userName)}</p>`:''}<p class="eyebrow">${esc(new Date().toLocaleDateString(undefined,{weekday:'long',month:'short',day:'numeric'}))} · ${esc(eyebrow)}${deload?' · deload week':''}</p><h2>${esc(day.name)}</h2>
+  let h=welcomeCard()+acctBar()+installBar()+`<section class="hero" data-day="${di}"><div class="hero-top"><div class="hero-t">${state.settings.userName?`<p class="hello">${esc(greeting())}, ${esc(state.settings.userName)}</p>`:''}<p class="eyebrow">${esc(new Date().toLocaleDateString(undefined,{weekday:'long',month:'short',day:'numeric'}))} · ${esc(eyebrow)}${deload?' · deload week':''}</p><h2>${esc(day.name)}</h2>
   <p class="muted small" style="margin:0" data-tip="${esc('Routine: '+R.name)}">${playable?`${day.items.length} exercises · ${deload?day.items.reduce((a,it)=>a+Math.max(1,Math.ceil(it.sets/2)),0)+' sets (deload)':daySets(day)+' sets'} · ${minTxt(dayMinutes(day,deload))}`:(day.rest?'Rest day':'No exercises planned')}</p></div>${heroRing(weekStats())}</div>
   ${note?`<p class="hero-note small">${note}</p>`:''}`;
   /* Four ways to start besides the plan as written, each saying on its face
@@ -3264,7 +3392,8 @@ function viewToday(){
   // This week sits right under the Start card by default; every section below
   // the Start card can be dragged into any order by its ⠿ handle.
   h+=weekCard();
-  h+=sec({sk:'today:tiles',key:'tiles',title:'At a glance',sub:'streak, PRs, volume',body:homeTiles()});
+  // Item 62: a section's subtitle states a number, not what the section is about.
+  h+=sec({sk:'today:tiles',key:'tiles',title:'At a glance',sub:(()=>{const n=weekStreak().weeks;return `${n}-week streak`;})(),body:homeTiles()});
   const c=coach();
   const startIdx=playable?di:(cs?cs.next:di);
   const toneWord={red:'Act now',yellow:'One change',green:'On track',blue:'Note'}[c.tone]||'Note';
@@ -3274,20 +3403,24 @@ function viewToday(){
   if(playable){
     const flagged=day.items.filter(it=>liftTags(it.exId)).length;
     const letters=ssLetters(day.items);
-    let pv='';
+    let pv='';let fresh=0;
     day.items.forEach((it,k)=>{const ex=EX(it.exId);const sg=suggest(it.exId,it,{deload});
-      // The target alone; the full reasoning is a hold or hover away.
-      const short=sg.target?`Today: ${sg.target}`:sg.inj?'Injury flagged: start light, stop on pain.':(sg.last&&String(sg.text).startsWith(sg.last)?String(sg.text).slice(sg.last.length).trim():String(sg.text||''));
+      // The target alone; the full reasoning is a hold or hover away. A lift
+      // with no history says so once for the whole day, not on every row.
+      const none=!sg.last&&!sg.inj&&!sg.target;if(none)fresh++;
+      const short=none?'':sg.target?`Today: ${sg.target}`:sg.inj?'Injury flagged: start light, stop on pain.':(sg.last&&String(sg.text).startsWith(sg.last)?String(sg.text).slice(sg.last.length).trim():String(sg.text||''));
       pv+=`<div class="pvi"${k?' style="border-top:1px solid var(--line-soft);padding-top:10px;margin-top:10px"':''}><div class="row spread"><span><b>${esc(ex.name)}</b> <span class="muted small">${it.sets} × ${it.repMin}-${it.repMax}${ex.timed?'s':''}${ex.perSide?' per side':''}${rirShow(ex)?`, ${it.rir} RIR`:''}</span>${it.ss?` <span class="tag blue">Superset ${letters[it.ss]}</span>`:''}${sg.inj?` <span class="tag red">Injury: ${ML[sg.inj]}</span>`:''}</span>${liftTags(it.exId)}</div>${liftTrend(it.exId)}${short?`<p class="small muted hastip" style="margin-bottom:0" data-tip="${esc(sg.text)}">${esc(short)}</p>`:''}</div>`;});
+    if(fresh)pv=`<p class="small muted" style="margin:0 0 10px">${fresh===day.items.length?'First time':`${fresh} new`}: pick loads you can take into each rep range. ${tipi('No history yet, so there is no target. Pick a load you can take into the rep range at the RIR shown. Targets appear from the next session.','About first sessions')}</p>`+pv;
     h+=sec({sk:'today:session',key:'session',title:'Workout preview',sub:`${day.items.length} exercises${flagged?`, ${flagged} flagged`:''}`,body:pv});
   }
   h+=bodyCard();
   return h;
 }
-/* Signed out in the installed app: one slim line on Today, because a log
-   that lives only on the phone is the biggest risk to it. "Not now" hides it
-   on this device until an account is used. Never shown inside Claude, during
-   a first run (the welcome card offers it there), or before the sign-in check. */
+/* Signed out: one slim line on Today, because a log that lives only on the
+   phone is the biggest risk to it. It comes before the Install line in a
+   browser (item 55). "Not now" hides it on this device until an account is
+   used. Never shown inside Claude, during a first run (the welcome card
+   offers it there), or before the sign-in check. */
 function acctBar(){
   if(!AUTH()||window.claude||!acct.checked||acct.user||cloud.on||!state.settings.onboarded)return '';
   try{if(localStorage.getItem(ACCT_LATER))return '';}catch(e){/* storage blocked: show it */}
@@ -3307,26 +3440,54 @@ function installKind(){
   const ua=navigator.userAgent||'';
   const ios=/iPhone|iPad|iPod/.test(ua)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
   if(window.__installEvt)return 'prompt';
-  if(ios)return /CriOS/.test(ua)?'ios-chrome':/FxiOS|EdgiOS|OPiOS/.test(ua)?'ios-other':'ios-safari';
+  /* Safari 26 (iOS 26) hides Share behind the ⋯ button beside the address
+     in its default compact bar. Its user agent keeps the OS number frozen,
+     but Version/ is Safari's own. */
+  if(ios){if(/CriOS/.test(ua))return 'ios-chrome';if(/FxiOS|EdgiOS|OPiOS/.test(ua))return 'ios-other';const v=+((ua.match(/Version\/(\d+)/)||[])[1]||0);return v>=26?'ios-safari26':'ios-safari';}
   return 'menu';
 }
 window.ironlogInstallReady=()=>{if(ui.tab==='today'||ui.tab==='settings')rerenderKeepScroll();};
 function installBar(){
   if(!canInstallHere())return '';
   try{if(localStorage.getItem(INSTALL_LATER))return '';}catch(e){/* storage blocked: show it */}
-  return `<div class="acctbar" id="installBar"><span class="small"><b>Get the app.</b> Install Ironlog on your home screen.</span><button class="btn sm primary" data-act="install">Install</button><button class="ib" aria-label="Not now" data-act="installLater">✕</button></div>`;
+  // An iPhone has no install, only Add to Home Screen, so the button says that (item 56).
+  const ios=/^ios/.test(installKind());
+  return `<div class="acctbar" id="installBar"><span class="small"><b>Get the app.</b>${ios?'':' Install Ironlog on your home screen.'}</span><button class="btn sm primary" data-act="install">${ios?'Add to Home Screen':'Install'}</button><button class="ib" aria-label="Not now" data-act="installLater">✕</button></div>`;
 }
 const SHARE_ICON='<svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12M8 7l4-4 4 4"/><path d="M6 11H5a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-8a1 1 0 0 0-1-1h-1"/></svg>';
 const ADD_ICON='<svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="4"/><path d="M12 8v8M8 12h8"/></svg>';
+/* Where the button is, drawn: Safari 26's compact bar (⋯ beside the
+   address), older Safari's bottom toolbar (Share in the middle), Chrome's
+   address bar (Share at its right). The ring marks the one to tap. */
+function installPic(how){
+  const hl=(x,y)=>`<circle cx="${x}" cy="${y}" r="25" class="ip-hl"/>`;
+  const url=(x,y,w)=>`<rect x="${x}" y="${y}" width="${w}" height="40" rx="20" class="ip-b"/><text x="${x+w/2}" y="${y+25}" text-anchor="middle" class="ip-t">vqx7.github.io</text>`;
+  const share=(x,y)=>`<g class="ip-i" transform="translate(${x-12} ${y-13})"><path d="M12 3v12M8 7l4-4 4 4"/><path d="M6 11H5a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-8a1 1 0 0 0-1-1h-1"/></g>`;
+  let g,lbl;
+  if(how==='ios-safari26'){lbl="Safari's bar at the bottom of the screen. The ⋯ button is to the right of the address.";
+    g=`<circle cx="36" cy="48" r="20" class="ip-b"/><path class="ip-i" d="M40 40l-8 8 8 8"/>${url(64,28,190)}<circle cx="284" cy="48" r="20" class="ip-b"/><circle cx="276" cy="48" r="2.6" class="ip-d"/><circle cx="284" cy="48" r="2.6" class="ip-d"/><circle cx="292" cy="48" r="2.6" class="ip-d"/>${hl(284,48)}`;}
+  else if(how==='ios-safari'){lbl="Safari's toolbar at the bottom of the screen. Share is the middle button.";
+    g=`${url(40,4,240)}<path class="ip-i" d="M36 62l-8 8 8 8"/><path class="ip-i ip-dim" d="M96 62l8 8-8 8"/>${share(160,71)}<path class="ip-i ip-dim" d="M214 63c5-2 11-2 17 1v16c-6-3-12-3-17-1zM248 63c-5-2-11-2-17 1v16c6-3 12-3 17-1z"/><rect x="276" y="66" width="15" height="15" rx="3" class="ip-i ip-dim"/><path class="ip-i ip-dim" d="M281 62h11a3 3 0 0 1 3 3v11"/>${hl(160,70)}`;}
+  else if(how==='ios-chrome'){lbl="Chrome's address bar at the top of the screen. Share is at its right end.";
+    g=`<rect x="16" y="24" width="288" height="44" rx="22" class="ip-b"/><text x="140" y="51" text-anchor="middle" class="ip-t">vqx7.github.io</text>${share(274,46)}${hl(274,46)}`;}
+  else return '';
+  return `<svg class="ipic" viewBox="0 0 320 96" role="img" aria-label="${esc(lbl)}">${g}</svg>`;
+}
 function installSheet(m){
   const step=(n,html)=>`<li><span class="stepn">${n}</span><span>${html}</span></li>`;
-  const tail=`<p class="small muted" style="margin:12px 0 0">Then open Ironlog from your home screen. It starts full screen and works offline. A log kept in this browser does not move by itself: sign in inside the app, or export a backup here and import it there.</p>`;
+  const ios=/^ios/.test(m.how);
+  const add=step(2,`Tap <b>Add to Home Screen</b> ${ADD_ICON}, then <b>Add</b>.`);
   let body;
-  if(m.how==='ios-safari')body=`<ol class="isteps">${step(1,`Tap the Share button ${SHARE_ICON} in Safari's bar at the bottom (at the top on an iPad).`)}${step(2,`Scroll down and tap <b>Add to Home Screen</b> ${ADD_ICON}.`)}${step(3,'Tap <b>Add</b>.')}</ol>`;
-  else if(m.how==='ios-chrome')body=`<ol class="isteps">${step(1,`Tap the Share button ${SHARE_ICON} at the right of Chrome's address bar.`)}${step(2,`Tap <b>Add to Home Screen</b> ${ADD_ICON}.`)}${step(3,'Tap <b>Add</b>.')}</ol>`;
-  else if(m.how==='ios-other')body=`<ol class="isteps">${step(1,'Open this page in Safari: vqx7.github.io/Ironlog.')}${step(2,`Tap the Share button ${SHARE_ICON}, then <b>Add to Home Screen</b>.`)}${step(3,'Tap <b>Add</b>.')}</ol>`;
-  else body=`<ol class="isteps">${step(1,"Open your browser's menu (⋮ or ⋯).")}${step(2,'Choose <b>Install app</b> or <b>Add to Home screen</b>.')}${step(3,'Confirm.')}</ol>`;
-  return `<div class="sheet" role="dialog" aria-modal="true"><div class="sheet-h"><h3>Install Ironlog</h3><button class="ib" aria-label="Close" data-act="mClose">✕</button></div>${/^ios/.test(m.how)?'<p class="small muted" style="margin:0 0 10px">iPhone apps from the web are added from the Share menu; Apple does not allow an install button.</p>':''}${body}${tail}<button type="button" class="btn primary block" style="margin-top:14px" data-act="mClose">Done</button></div>`;
+  if(m.how==='ios-safari26')body=`<ol class="isteps">${step(1,'Tap <b>⋯</b> right of the address, then <b>Share</b> '+SHARE_ICON+'.')}${add}</ol>`;
+  else if(m.how==='ios-safari')body=`<ol class="isteps">${step(1,`Tap <b>Share</b> ${SHARE_ICON} in the bar at the bottom.`)}${add}</ol>`;
+  else if(m.how==='ios-chrome')body=`<ol class="isteps">${step(1,`Tap <b>Share</b> ${SHARE_ICON} at the right of the address bar.`)}${add}</ol>`;
+  else if(m.how==='ios-other')body=`<ol class="isteps">${step(1,'Open <b>vqx7.github.io/Ironlog</b> in Safari.')}${step(2,'Tap <b>⋯</b>, then <b>Share</b>, then <b>Add to Home Screen</b>.')}</ol>`;
+  else body=`<ol class="isteps">${step(1,"Open your browser's menu (⋮ or ⋯).")}${step(2,'Choose <b>Install app</b> or <b>Add to Home screen</b>, then confirm.')}</ol>`;
+  /* The reasons go in a tip (item 56). One line stays on screen only when it
+     matters: a log already kept in this browser does not follow the app. */
+  const tip=(ios?'An iPhone installs web apps only from the Share menu; Apple allows no install button. If Add to Home Screen is not in the list, scroll down or tap More. Keep Open as Web App on if it is shown. ':'')+'Then open Ironlog from your home screen: it starts full screen and works offline. A log kept in this browser does not move by itself: sign in inside the app, or export a backup here and import it there.';
+  const hasLog=state.sessions.some(x=>!x.demo)&&!acct.user;
+  return `<div class="sheet" role="dialog" aria-modal="true" aria-labelledby="instH"><div class="sheet-h"><h3 id="instH">${ios?'Add to Home Screen':'Install Ironlog'}</h3>${tipi(tip,'About installing')}<button class="ib" aria-label="Close" data-act="mClose" style="margin-left:auto">✕</button></div>${installPic(m.how)}${body}${hasLog?'<p class="small" style="margin:10px 0 0">Your log here does not move by itself. Sign in in the app, or use a backup.</p>':''}<button type="button" class="btn primary block" style="margin-top:14px" data-act="mClose">Done</button></div>`;
 }
 /* First run with no sessions: three ways in. Shown only after the cloud check,
    so a device about to load your data never flashes it. */
@@ -3336,15 +3497,17 @@ function welcomeCard(){
   /* Demo data loaded before choosing how to start: a short note instead of
      the full welcome on top of the demo, and one tap back to a clean start. */
   if(state.sessions.some(s=>s.demo))return `<div class="card welcome" id="demoNote"><p class="small" style="margin:0 0 8px"><b>You are looking at demo data.</b> 8 weeks of generated sessions to look around; none of it is yours.</p><button class="btn sm primary" data-act="demoStart">Clear demo and set up</button></div>`;
-  return `<div class="card welcome"><h3>Welcome to Ironlog</h3><p class="small" style="margin:0 0 8px">Pick how you want to start. All of it can be changed later.</p>
+  /* The account comes first (item 55): a log kept only on the phone is the
+     biggest risk to it, and signing in here is also how an existing log
+     arrives on a new phone. Still optional. */
+  return `<div class="card welcome"><h3>Welcome to Ironlog</h3>
+  ${AUTH()&&!acct.user&&!window.claude?`<div class="panel acct-offer" id="welcomeAcct"><p class="small" style="margin:0 0 10px"><b>Keep your log safe with a free account.</b> It syncs across your devices. Optional.</p><div class="row"><button class="btn primary" data-act="acctOpen" data-mode="signup">Create account</button><button class="btn" data-act="acctOpen" data-mode="signin">Sign in</button></div></div>`:''}
+  <p class="small" style="margin:12px 0 8px">${AUTH()&&!acct.user&&!window.claude?'Then pick':'Pick'} how you want to start. You can change it all later.</p>
   <label class="field">Units<select data-bind="unit"><option value="lb" ${U()==='lb'?'selected':''}>lb and inches</option><option value="kg" ${U()==='kg'?'selected':''}>kg and cm</option></select></label>
-  ${AUTH()&&!acct.user&&!window.claude?`<div class="panel" style="margin-top:10px"><p class="small" style="margin:0 0 8px"><b>Have an account?</b> Sign in to bring your log here. New? Create one so your log is kept off this phone too. Optional.</p><div class="row"><button class="btn sm" data-act="acctOpen" data-mode="signin">Sign in</button><button class="btn sm" data-act="acctOpen" data-mode="signup">Create account</button></div></div>`:''}
   <div class="stack" style="margin-top:10px">
-  <button class="btn block primary" data-act="obSample">Pick a ready-made routine</button>
-  <p class="small muted" style="margin:2px 0 0">Full body, upper / lower, push / pull / legs, a body-part split, dumbbells only, or high volume. Load and rep targets are worked out for you each session; edit any of it in Plan.</p>
+  <button class="btn block primary" data-act="obSample" data-tip="Full body, upper / lower, push / pull / legs, a body-part split, dumbbells only, or high volume. Load and rep targets are worked out for you each session; edit any of it in Plan.">Pick a ready-made routine</button>
   <button class="btn block" data-act="obOwn">Build my own routine</button>
-  <button class="btn block" data-act="obFree">Just log what I do</button>
-  <p class="small muted" style="margin:2px 0 0">Freestyle: add exercises as you go, no routine needed. Targets still appear from your second session of each lift.</p></div></div>`;
+  <button class="btn block" data-act="obFree" data-tip="Freestyle: add exercises as you go, no routine needed. Targets still appear from your second session of each lift.">Just log what I do</button></div></div>`;
 }
 /* Injuries: one line per flagged muscle. Exercises that load it are marked in
    every session, their progression target is paused, and the muscle is left
@@ -3713,7 +3876,7 @@ function bodyMapCard(){
     detail=`<div class="bm-detail"><div class="row spread"><b>${ML[sel]}</b><span class="tag ${x.st==='in'?'green':x.st==='under'?'yellow':x.st==='over'?'blue':''}">${where}</span></div><p class="small" style="margin:4px 0 6px">${r1(x.v)} hard sets a week ${src==='avg'?`on average over your last ${avg._weeks} full week${avg._weeks>1?'s':''}`:'so far this week'}, target ${x.lo} to ${x.hi}. ${tr}</p><div class="row"><button class="btn sm" data-act="goDash" data-sec="volume" data-m="${sel}">Weekly trend</button><button class="btn sm" data-act="mapSel" data-m="${sel}">Close</button></div></div>`;
   }else{
     const low=MK.filter(m=>!TRACK_ONLY.has(m)&&(st[m].st==='under'||st[m].st==='none'));
-    detail=`<p class="small muted" style="margin:6px 0 0">${mapView()==='3d'?'Drag sideways to turn it. ':''}Tap a muscle for its numbers.${src==='week'?' Week so far, so most read low.':''}</p>${low.length&&src==='avg'?`<div class="row" style="margin-top:6px;gap:4px"><span class="small muted">Below target:</span>${low.slice(0,8).map(m=>`<button class="chip" data-act="mapSel" data-m="${m}">${ML[m]}</button>`).join('')}</div>`:''}`;
+    detail=`<p class="small muted" style="margin:6px 0 0">Tap a muscle ${tipi(`${mapView()==='3d'?'Drag sideways to turn it. ':''}Tap a muscle for its numbers.${src==='week'?' This is the week so far, so most muscles read low early in the week.':''}`,'About the map')}</p>${low.length&&src==='avg'?`<div class="row" style="margin-top:6px;gap:4px"><span class="small muted">Below target:</span>${low.slice(0,8).map(m=>`<button class="chip" data-act="mapSel" data-m="${m}">${ML[m]}</button>`).join('')}</div>`:''}`;
   }
   const msub=(()=>{if(!avg){const n=MK.filter(m=>st[m].st==='in'||st[m].st==='over').length;return `this week, ${n} at target`;}const sa=muscleStatus(avg);const inA=MK.filter(m=>sa[m].st==='in').length;const lowA=MK.filter(m=>sa[m].st==='under'||sa[m].st==='none').length;return `${inA} on target, ${lowA} below`;})();
   const v3=mapView()==='3d';
@@ -3734,13 +3897,25 @@ function sessionLength(){
   const pl=ss.filter(x=>x.routineId===R.id).map(x=>{const i=sessDayIdx(R,x);return i>=0?dayMinutes(R.days[i],x.light||x.deload):0;}).filter(x=>x>0);
   return {avg,n:ss.length,plan:pl.length?Math.round(pl.reduce((a,b)=>a+b,0)/pl.length):null};
 }
+/* The bests a lift had up to a date, for a past session entered after later
+   ones: the same fields exStats gives for the whole log (best in the current
+   rep range, best per band of reps to failure, best overall). No "easier"
+   read, since that is about the lift now. */
+function statsUpTo(exId,exps){
+  const now=IDX().exStats[exId]||{};let best=null,bestAll=null;const byBand={};
+  for(const x of exps){if(x.best==null)continue;if(sameRR(x.rr,now.rr))best=best==null?x.best:Math.max(best,x.best);bestAll=bestAll==null?x.best:Math.max(bestAll,x.best);byBand[x.bb]=Math.max(byBand[x.bb]||0,x.best);}
+  return {best,bestAll,byBand,rr:now.rr,easier:null};
+}
 /* A set is a PR live if its estimate beats your best, or no earlier set matched
-   it on both load and reps: the same two tests the PR list uses. */
+   it on both load and reps: the same two tests the PR list uses. Only sets
+   logged up to the session's date count, so a past session entered late is
+   judged against what came before it. */
 function livePR(exId,s,date){
   if(!s||s.warm||s.drop||!(+s.r>0))return null;
-  const I=IDX();const exps=I.byEx[exId];if(!exps||!exps.length)return null;
+  const I=IDX();const every=I.byEx[exId];if(!every||!every.length)return null;
+  const exps=date?every.filter(x=>x.date<=date):every;if(!exps.length)return null;
   const ex=EX(exId);const load=loadOf(ex,s,date);if(!(load>0)&&!ex.timed)return null;
-  const st=I.exStats[exId];const v=noE1(ex)?null:e1(load,+s.r,rirEst(s,ex));
+  const st=exps.length<every.length?statsUpTo(exId,exps):I.exStats[exId];const v=noE1(ex)?null:e1(load,+s.r,rirEst(s,ex));
   // A new best is judged within the set's own band of reps to failure.
   if(v!=null&&st){const bd=st.byBand&&st.byBand[rtfBand(rtfOf(+s.r,rirEst(s,ex)))];if(bd!=null&&v>bd+1e-6)return 'Best';}
   for(const x of exps)for(const q of x.pts)if(q.load>=load-1e-6&&q.r>=+s.r)return null;
@@ -3778,7 +3953,7 @@ function checkinCard(d){
   const c=d.chk||{};
   const sum=CHK_Q.filter(([k])=>c[k]).map(([k,l,n])=>`${l.toLowerCase()} ${chkWord(n[c[k]-1])}`).join(', ');
   const low=CHK_Q.filter(([k])=>c[k]===1).length;
-  return sec({sk:'logger:checkin',title:'Check-in',sub:sum?esc(sum):'3 taps: sleep, energy, aches',body:`${CHK_Q.map(([k,l,names])=>`<div class="ci-row"><span class="small">${l}</span><div class="seg" role="group" aria-label="${l}">${names.map((n,i)=>`<button class="chip ${c[k]===i+1?'on':''}" data-act="chk" data-k="${k}" data-v="${i+1}" aria-pressed="${c[k]===i+1}">${n}</button>`).join('')}</div></div>`).join('')}
+  return sec({sk:'logger:checkin',title:'Check-in',sub:sum?esc(sum):'optional',body:`${CHK_Q.map(([k,l,names])=>`<div class="ci-row"><span class="small">${l}</span><div class="seg" role="group" aria-label="${l}">${names.map((n,i)=>`<button class="chip ${c[k]===i+1?'on':''}" data-act="chk" data-k="${k}" data-v="${i+1}" aria-pressed="${c[k]===i+1}">${n}</button>`).join('')}</div></div>`).join('')}
   ${low>=2?`<p class="callout yellow" style="margin:10px 0 0">Low readiness today. Keep the loads, leave one more rep in reserve than planned, and use Short on time if you want less volume.</p>`:''}`});
 }
 /* ---------- SHORT ON TIME ----------
@@ -4086,15 +4261,18 @@ function weekBar(){
   for(let i=0;i<7;i++){
     const d=addDays(cur,i),ss=(byDate[d]||[]).slice().sort((a,b)=>a.id<b.id?-1:1),trained=ss.length>0,cd=cByDate[d]||[];
     const p=plan[d];const pd=p?p.day:null;const isPlan=!!pd&&!pd.rest&&pd.items.length>0;const isRest=!!pd&&pd.rest;
-    const live=d===t&&!!state.draft&&!state.draft.editingId;
+    // The session in progress sits on its own date, which for a past workout is not today.
+    const live=!!state.draft&&!state.draft.editingId&&d===state.draft.date;
     const cls=['w',trained?'on':'',!trained&&cd.length?'cardio':'',!trained&&!cd.length&&isPlan&&d>=t?'plan':'',!trained&&weekly&&isPlan&&d<t?'miss':'',!trained&&!cd.length&&isRest&&d>=t?'rest':'',d===t?'today':'',live?'live':''].filter(Boolean).join(' ');
     const name=trained?ss[0].dayName+(ss.length>1?` +${ss.length-1}`:''):cd.length?'Cardio':p&&d>=t?(isRest?'Rest':pd.name):(weekly&&isPlan&&d<t?pd.name:'');
     const what=trained?`${ss.map(x=>x.dayName).join(', ')}, logged`:live?'session in progress':isPlan?(d<t?(weekly?`${pd.name}, missed`:'nothing logged'):`${pd.name}, planned`):isRest&&d>=t?'rest day':'nothing logged';
     const label=`${DAYS[i]} ${fmtDate(d)}: ${what}${cd.length?`, cardio ${cd.reduce((a,c)=>a+c.min,0)} min`:''}`;
     const inner=`<span class="wd">${WD2[i]}</span><span class="dn">${+d.slice(8)}</span><span class="nm">${name?esc(name):'&nbsp;'}</span>`;
-    if(trained)h+=`<button type="button" class="${cls}" data-act="wkOpen" data-id="${ss[0].id}" data-tip="${esc(label)}" aria-label="${esc(label)}. Open in History">${inner}</button>`;
+    if(live&&d<t)h+=`<button type="button" class="${cls}" data-act="wkGo" data-date="${d}" data-tip="${esc(label)}" aria-label="${esc(label)}. Open the session">${inner}</button>`;
+    else if(trained)h+=`<button type="button" class="${cls}" data-act="wkOpen" data-id="${ss[0].id}" data-tip="${esc(label)}" aria-label="${esc(label)}. Open in History">${inner}</button>`;
     else if(d>=t)h+=`<button type="button" class="${cls}" data-act="wkGo" data-date="${d}"${p?` data-day="${p.di}"`:''} data-tip="${esc(label)}" aria-label="${esc(label)}. Open on Today">${inner}</button>`;
-    else h+=`<div class="${cls}" role="img" data-tip="${esc(label)}" aria-label="${esc(label)}">${inner}</div>`;
+    // An empty past day logs a workout for that date (item 53): every day in the bar does something.
+    else h+=`<button type="button" class="${cls} add" data-act="pastOpen" data-date="${d}" data-tip="${esc(label+'. Tap to log it')}" aria-label="${esc(label)}. Log a workout for this day">${inner}</button>`;
   }
   return h;
 }
@@ -4142,7 +4320,7 @@ function weekBody(w){
   <div class="band" data-tip="${w.got} hard sets logged of ${w.tgt} planned"><div class="fill prog" style="width:${w.pct}%"></div></div>
   ${w.cardioMin?`<p class="small" style="margin:5px 0 0">Cardio and mobility: ${w.cardioMin} min in ${w.cardioN} entr${w.cardioN===1?'y':'ies'}</p>`:''}
   <div class="hrow" style="margin:5px 0 0"><p class="small muted" style="margin:0" id="wkSets">${w.got} hard sets logged of ${w.tgt} planned${w.tgt>0?` (${Math.round(w.pct)}%)`:''}.</p>${helpBtn('wk')}</div>
-  ${helpText('wk',`Each set counts once; a set at RIR 4 or more is not hard and does not count. The bar at the top of every tab is this calendar week: filled green is a day you lifted, a green outline is cardio only, dashed is a workout planned ahead${w.weekly?', dashed red is a planned workout that was missed':''}. Tap a filled day to open it in History, or today or a day ahead to see its workout here.${w.weekly?'':' The row above the bar is your cycle: green is done this round, outlined is next.'}`)}`;
+  ${helpText('wk',`Each set counts once; a set at RIR 4 or more is not hard and does not count. The bar at the top of every tab is this calendar week: filled green is a day you lifted, a green outline is cardio only, dashed is a workout planned ahead${w.weekly?', dashed red is a planned workout that was missed':''}. Tap a filled day to open it in History, today or a day ahead to see its workout here, or an empty past day (marked +) to log a workout for it.${w.weekly?'':' The row above the bar is your cycle: green is done this round, outlined is next.'}`)}`;
 }
 function weekCard(){
   const w=weekStats();
@@ -4171,8 +4349,8 @@ function bodyCard(){
   const pc=v=>Math.abs(v)<0.05?'Flat':(v>0?'+':'−')+Math.abs(v).toFixed(1)+'%';
   const sub=last?`${fmtW(last.kg)} ${U()}${r?` · ${pc(r.pct)}/wk`:''}`:'Not logged yet';
   const chg=bws.length>1?last.kg-bws[1].kg:null;
-  return sec({sk:'today:body',key:'body',title:'Body',sub:esc(sub),body:`${last?`<div class="body-sum"><div><div class="v">${fmtW(last.kg)}<span class="small"> ${U()}</span></div><div class="l">Latest, ${fmtDate(last.date)}${chg!=null?`, ${chg>=0?'+':'−'}${fmtW(Math.abs(chg))} vs previous`:''}</div></div>${r?`<div><div class="v">${pc(r.pct)}</div><div class="l">per week, from 7-day averages</div></div>`:''}</div>`:'<p class="small muted" style="margin:0">Used for pull-ups, dips and other bodyweight lifts.</p>'}
-  <div class="bw-entry"><label class="field">Date<input type="date" id="bwDate" value="${today()}" max="${today()}"></label><label class="field">Weight (${U()})<input type="text" inputmode="decimal" id="bwVal" placeholder="${last?fmtW(last.kg):''}" enterkeyhint="done"></label><button class="btn primary" data-act="addBW">${loggedToday?'Update':'Log'}</button></div>
+  return sec({sk:'today:body',key:'body',title:'Body',sub:esc(sub),body:`${last?`<div class="body-sum"><div><div class="v">${fmtW(last.kg)}<span class="small"> ${U()}</span></div><div class="l">Latest, ${fmtDate(last.date)}${chg!=null?`, ${chg>=0?'+':'−'}${fmtW(Math.abs(chg))} vs previous`:''}</div></div>${r?`<div><div class="v">${pc(r.pct)}</div><div class="l">per week, from 7-day averages</div></div>`:''}</div>`:''}
+  <div class="bw-entry"><label class="field">Date<input type="date" id="bwDate" value="${today()}" max="${today()}"></label><label class="field">Weight (${U()})<input type="text" inputmode="decimal" id="bwVal" placeholder="${last?fmtW(last.kg):''}" enterkeyhint="done"></label><button class="btn primary" data-act="addBW" data-tip="Also used for pull-ups, dips and other bodyweight lifts.">${loggedToday?'Update':'Log'}</button></div>
   ${bws.length?`<ul class="bw-list" aria-label="Recent bodyweights">${bws.slice(0,5).map(b=>`<li><span class="d">${fmtDate(b.date)}</span><span class="num">${fmtW(b.kg)} ${U()}</span><button class="ib sm" data-act="delBW" data-id="${b.id}" aria-label="Delete ${fmtDate(b.date)} entry">✕</button></li>`).join('')}</ul>${bws.length>5?`<p class="small muted" style="margin:4px 0 0">${bws.length-5} older on Stats.</p>`:''}`:''}
   ${subsec('today:tape',`Tape measurements (${LU()})`,`<div class="grid2" style="align-items:end">${heightField()}<span></span></div>
     <div class="grid3" style="margin-top:10px">${MEAS.map(([k,l])=>`<label class="field">${l}<input type="text" inputmode="decimal" id="ms_${k}"></label>`).join('')}</div>
@@ -4182,14 +4360,14 @@ function bodyCard(){
 }
 /* The most recent non-empty note you left on this exercise in a saved session:
    seat height, pin, grip, which station. Shown when the exercise comes up again. */
-function lastNoteOf(exId){
+function lastNoteOf(exId,before){
   let best=null;
-  for(const ss of state.sessions)for(const b of ss.ex)if(b.exId===exId&&b.note&&b.note.trim()&&(!best||ss.date>best.date))best={date:ss.date,text:b.note.trim()};
+  for(const ss of state.sessions)if(!before||ss.date<=before)for(const b of ss.ex)if(b.exId===exId&&b.note&&b.note.trim()&&(!best||ss.date>best.date))best={date:ss.date,text:b.note.trim()};
   return best;
 }
 function newBlock(exId,plan,opts){
   const sg=suggest(exId,plan,opts);
-  return {exId,plan:{...plan},note:'',lastNote:lastNoteOf(exId),inj:sg.inj||null,hint:sg.text,last:sg.last,target:sg.target,tgt:sg.tgt,easier:sg.easier||null,lastR:sg.lastR,sets:Array.from({length:+plan.sets||3},()=>({w:sg.w,r:null,rir:null,warm:false,drop:false,done:false}))};
+  return {exId,plan:{...plan},note:'',lastNote:lastNoteOf(exId,opts&&opts.before),inj:sg.inj||null,hint:sg.text,last:sg.last,target:sg.target,tgt:sg.tgt,easier:sg.easier||null,lastR:sg.lastR,sets:Array.from({length:+plan.sets||3},()=>({w:sg.w,r:null,rir:null,warm:false,drop:false,done:false}))};
 }
 const DEFAULT_PLAN={sets:3,repMin:8,repMax:12,rir:1,rest:90,inc:5*LB};
 /* Round a load to something you can actually put on a bar or pick off a rack:
@@ -4243,12 +4421,12 @@ function cardioDraftCard(d){
 function viewLogger(){
   // Warm-ups are not counted, the same as the progress bar under it.
   const d=state.draft;const doneN=d.ex.reduce((a,b)=>a+b.sets.filter(s=>s.done&&!s.warm).length,0);
-  const left=d.editingId||d.free?0:remainMin(d);
-  let h=`<div class="ph"><div style="min-width:0;flex:1 1 auto"><p class="kick">${d.editingId?'Editing a saved session':'Session in progress'}</p><div class="hrow"><h2 style="overflow-wrap:anywhere;min-width:0">${esc(d.dayName)}</h2>${helpBtn('log')}<button class="btn sm danger" style="margin-left:auto;flex:none" data-act="discard">${d.editingId?'Cancel edit':'Discard'}</button></div><p class="meta"><span id="doneCount">${doneN}</span> <span id="doneWord">${doneN===1?'set':'sets'}</span> done${d.startedAt?`, started ${new Date(d.startedAt).toLocaleTimeString([],{hour:'numeric',minute:'2-digit'})}`:''}${left>0?`, about ${left} min left`:''}</p>${(()=>{const sp=sessProgress(d);return sp.n?`<div class="sprog" aria-hidden="true"><div class="band"><div class="fill prog" id="sessBar" style="width:${sp.pct}%"></div></div><span id="sessOf">${sp.k} of ${sp.n}</span></div>`:'';})()}
+  const left=d.editingId||d.free||d.past?0:remainMin(d);
+  let h=`<div class="ph"><div style="min-width:0;flex:1 1 auto"><p class="kick">${d.editingId?'Editing a saved session':d.past?'Past workout':'Session in progress'}</p><div class="hrow"><h2 style="overflow-wrap:anywhere;min-width:0">${esc(d.dayName)}</h2>${helpBtn('log')}<button class="btn sm danger" style="margin-left:auto;flex:none" data-act="discard">${d.editingId?'Cancel edit':'Discard'}</button></div><p class="meta"><span id="doneCount">${doneN}</span> <span id="doneWord">${doneN===1?'set':'sets'}</span> done${d.past?`, for ${esc(fmtDateLong(d.date))}`:''}${d.startedAt&&!d.past?`, started ${new Date(d.startedAt).toLocaleTimeString([],{hour:'numeric',minute:'2-digit'})}`:''}${left>0?`, about ${left} min left`:''}</p>${(()=>{const sp=sessProgress(d);return sp.n?`<div class="sprog" aria-hidden="true"><div class="band"><div class="fill prog" id="sessBar" style="width:${sp.pct}%"></div></div><span id="sessOf">${sp.k} of ${sp.n}</span></div>`:'';})()}
   <div class="row lh-row"><input type="date" data-bind="draftDate" value="${d.date}" max="${today()}" aria-label="Session date" data-tip="Change to log a past session">${left>0?'<button class="btn sm" data-act="shortOpen">Short on time</button>':''}</div></div></div>
-  ${helpText('log',(state.settings.rirMode==='off'?'RIR is switched off in Settings, so every working set counts as hard. ':'RIR is reps left in the tank: 3 or less counts the set as hard for weekly volume, 4 or more stays in history only. RIR is optional: a blank is read as your usual RIR on that lift, or as hard until you have rated a few of its sets. ')+'W marks a warm-up (kept, never analysed); tap it again for D, a drop set (counts as work and volume, never as a PR or target). To add a new warm-up or drop set row, use the ⋯ menu on the exercise. In a superset the rest timer starts after the last exercise of the pair. Timed holds log seconds in the Sec column. The date can be changed to log a past session.'+(state.settings.autoDone?' Auto-mark is on: sets tick themselves when you leave the reps field.':''))}
+  ${helpText('log',(state.settings.rirMode==='off'?'RIR is switched off in Settings, so every working set counts as hard. ':'RIR is reps left in the tank: 3 or less counts the set as hard for weekly volume, 4 or more stays in history only. RIR is optional: a blank is read as your usual RIR on that lift, or as hard until you have rated a few of its sets. ')+'W marks a warm-up (kept, never analysed); tap it again for D, a drop set (counts as work and volume, never as a PR or target). To add a new warm-up or drop set row, use the ⋯ menu on the exercise. In a superset the rest timer starts after the last exercise of the pair. Timed holds log seconds in the Sec column. The date can be changed to log a past session.'+(d.past?' Quick entry: no rest timer, and a set counts as done once its reps are typed.':state.settings.autoDone?' Auto-mark is on: sets tick themselves when you leave the reps field.':''))}
   ${d.free?`<label class="field" style="margin-top:8px">Name<input type="text" data-bind="draftName" maxlength="40" value="${esc(d.dayName)}"></label><p class="small muted" style="margin:4px 0 0">Not tied to a routine day, so your cycle stays put.</p>`:''}
-  ${checkinCard(d)}`;
+  ${d.past?'':checkinCard(d)}`;
   if(!d.ex.length)h+=`<div class="card"><p class="small" style="margin:0">No exercises yet. Tap + Add exercise below${d.editingId?'':', or Pick for me for a suggestion based on your last 7 days,'} and log as you go.</p></div>`;
   const calIdx=d.editingId?-1:calDueIdx(d);
   const letters=ssLetters(d.ex.map(b=>b.plan));
@@ -4268,7 +4446,7 @@ function viewLogger(){
       ${b.note?`<p class="small bnote" id="bn-${bi}">${esc(b.note)}</p>`:`<p class="small bnote" id="bn-${bi}" hidden></p>`}
       <div class="sg head${nr?' norir':''}"><span>#</span><span data-tip="${esc('Load: '+loadWords(ex))}">${loadHead(ex)}</span><span>${ex.timed?(ex.perSide?'Sec/side':'Sec'):ex.perSide?'Reps/side':'Reps'}</span>${nr?'':'<span>RIR</span>'}<span>W/D</span><span>Done</span></div>`;
     b.sets.forEach((s,si)=>{
-      const lr=lastRFor(b,si);const ph=s.warm?'':lr!=null?lr:`${p.repMin}-${p.repMax}`;
+      const g=greyR(b,si);const ph=g==null?'':g;
       const pr=s.done?livePR(b.exId,s,d.date):null;
       const wn=b.sets.slice(0,si+1).filter(x=>!x.warm&&!x.drop).length;
       h+=`<div class="sg${nr?' norir':''} ${s.done?'done':''}${pr?' pr':''}"${pr?` data-pr="${pr}"`:''}><span class="n${s.drop?' drop':s.warm?' warm':''}">${s.drop?'↓':s.warm?'W':wn}</span>
@@ -4282,12 +4460,12 @@ function viewLogger(){
     // Copy last reps used to be hidden whenever the suggestion was "add load",
     // which is exactly the session where prefilled reps save the most typing.
     const canFill=b.lastR&&b.lastR.some(r=>r!=null)&&b.sets.some((s,i)=>!s.done&&!s.warm&&!s.drop&&s.r==null&&lastRFor(b,i)!=null);
-    h+=`<div class="row" style="margin-top:8px">${canFill?`<button class="btn sm" data-act="fillLast" data-b="${bi}" aria-label="Copy last session's reps" data-tip="Fill empty rows with last session's reps.">Copy last</button>`:''}<button class="btn sm" data-act="sAdd" data-b="${bi}" aria-label="Add a set" data-tip="Add a working set at the last load.">+ Set</button><button class="btn sm" data-act="sDel" data-b="${bi}" aria-label="Remove a set" data-tip="Removes the last set not yet done." ${b.sets.length?'':'disabled'}>− Set</button>${state.settings.timerMode!=='off'&&+p.rest>0?`<button class="btn sm rest" data-act="tStart" data-b="${bi}" aria-label="Start a ${p.rest} second rest" data-tip="Start the rest timer.">⏱ ${p.rest}s</button>`:''}</div></section>`;
+    h+=`<div class="row" style="margin-top:8px">${canFill?`<button class="btn sm" data-act="fillLast" data-b="${bi}" aria-label="Copy last session's reps" data-tip="Fill empty rows with last session's reps.">Copy last</button>`:''}<button class="btn sm" data-act="sAdd" data-b="${bi}" aria-label="Add a set" data-tip="Add a working set at the last load.">+ Set</button><button class="btn sm" data-act="sDel" data-b="${bi}" aria-label="Remove a set" data-tip="Removes the last set not yet done." ${b.sets.length?'':'disabled'}>− Set</button>${state.settings.timerMode!=='off'&&+p.rest>0&&!d.past?`<button class="btn sm rest" data-act="tStart" data-b="${bi}" aria-label="Start a ${p.rest} second rest" data-tip="Start the rest timer.">⏱ ${p.rest}s</button>`:''}</div></section>`;
   });
   h+=`<div class="row"><button class="btn" style="flex:1" data-act="pickSession">+ Add exercise</button>${d.editingId?'':'<button class="btn" data-act="pickEx">Pick for me</button>'}</div>`;
   if(!d.editingId)h+=cardioDraftCard(d);
   h+=`<label class="field" style="margin-top:12px">Notes<textarea data-bind="draftNotes">${esc(d.notes||'')}</textarea></label>
-  <div class="row" style="margin-top:12px"><button class="btn primary block" data-act="finish" data-tip="Only sets marked done are saved; you are asked about any with reps but no checkmark.">${d.editingId?'Save changes':'Finish and save'}</button></div>`;
+  <div class="row fin-row" style="margin-top:12px"><button class="btn danger" data-act="discard">${d.editingId?'Cancel edit':'Discard'}</button><button class="btn primary" style="flex:1" data-act="finish" data-tip="Only sets marked done are saved; you are asked about any with reps but no checkmark.">${d.editingId?'Save changes':'Finish and save'}</button></div>`;
   return h;
 }
 
@@ -4317,7 +4495,7 @@ function viewProgram(){
     <div class="row">${isActive?'<span class="pill green">Active routine</span>':'<button class="btn sm primary" data-act="rActive">Make active</button>'}
       <button class="btn sm" data-act="rNew">New blank</button><button class="btn sm" data-act="rTemplate">New from a template</button><button class="btn sm" data-act="rDup">Duplicate</button><button class="btn sm danger" data-act="rDel" ${state.routines.length<2?'disabled':''}>Delete</button></div></div>`});
   h+=(()=>{const c=routineClutter();return c.length?`<div class="callout yellow" style="margin:10px 0"><p style="margin:0 0 8px">${c.length} routine${c.length>1?'s are':' is'} empty or an exact duplicate, with no logged sessions: ${c.map(r=>esc(r.name)+(routineEmpty(r)?' (empty)':' (duplicate)')).join(', ')}.</p><button class="btn sm" data-act="rClean">Remove ${c.length>1?'them':'it'}</button></div>`:'';})();
-  h+=sec({sk:'program:library',key:'library',title:'Add exercises',sub:'drag into a day, or tap +',body:`<div class="grid2"><input type="search" placeholder="Search" aria-label="Search exercises" data-bind="bLibQ" value="${esc(ui.bLibQ)}"><select data-bind="bLibM" aria-label="Muscle"><option value="">All muscles</option>${MUSCLES.map(([k,l])=>`<option value="${k}" ${ui.bLibM===k?'selected':''}>${l}</option>`).join('')}</select></div>
+  h+=sec({sk:'program:library',key:'library',title:'Add exercises',sub:'',body:`<div class="grid2"><input type="search" placeholder="Search" aria-label="Search exercises" data-bind="bLibQ" value="${esc(ui.bLibQ)}"><select data-bind="bLibM" aria-label="Muscle"><option value="">All muscles</option>${MUSCLES.map(([k,l])=>`<option value="${k}" ${ui.bLibM===k?'selected':''}>${l}</option>`).join('')}</select></div>
     <label class="field" style="margin-top:8px">+ adds to<select data-bind="bTarget">${R.days.map((d,i)=>`<option value="${i}" ${i===ui.bTarget?'selected':''}>${dayLabel(R,i)}: ${esc(d.name)}</option>`).join('')}</select></label>
     <div class="lib-panel"><ul class="lib" id="bLib">${bLibItems()}</ul></div>`});
   h+=sec({sk:'program:schedule',key:'schedule',title:'Schedule',sub:weekly?'Fixed weekdays':'Numbered cycle',body:`<div class="stack"><label class="field">Schedule<select data-bind="rSchedule">
@@ -4327,7 +4505,7 @@ function viewProgram(){
   /* Days: the main section. Inside it each day folds on its own chevron
      and, in a numbered cycle, drags by its ⠿ handle; labels renumber from
      position, so a day dragged to second place becomes Day 2. */
-  let db=`<p class="muted small" style="margin:0 0 4px">${weekly?'':'Drag ⠿ to reorder days. '}${totSets} planned sets per ${weekly?'week':`cycle${R.days.length!==7?`, about ${Math.round(totSets*weekFactor(R))} per week`:''}`}.</p><div id="dayList">`;
+  let db=`<p class="muted small" style="margin:0 0 4px">${totSets} sets a ${weekly?'week':`cycle${R.days.length!==7?`, about ${Math.round(totSets*weekFactor(R))} a week`:''}`}${weekly?'':` ${tipi('Drag the ⠿ beside a day number to reorder days; they renumber from their new position.','About days')}`}</p><div id="dayList">`;
   const dnd=!!(window.__libs&&window.__libs.sortable);
   /* One day open at a time. With every day open the tab ran to several
      screens of exercises; now each closed day is one line with its totals,
@@ -4442,7 +4620,7 @@ function viewDash(){
   let h=pageHead('Your log, measured','Stats',`${state.sessions.length} session${state.sessions.length===1?'':'s'} logged${state.sessions.length?`, since ${fmtDate(sortedSessions()[0].date)}`:''}`,helpBtn('stats'))+`${helpText('stats','Everything here is calculated from your logged sets: performance trends, not direct measurements of muscle size. Tap a section title to open or fold it. Each visit starts with only the top section open. Each section has its own ? for what the numbers mean.')}
   <nav class="jump" aria-label="Stats sections">${orderKeys(state.settings.secOrder.dash||[],DSEC_KEYS).filter(k=>!state.settings.hidden.includes('dash:'+k)).map(k=>DSECS.find(x=>x[0]===k)).map(([k,l])=>`<button class="chip" data-act="dashJump" data-sec="${k}">${l}</button>`).join('')}</nav>`;
   if(!state.sessions.length){
-    h+=`<div class="card"><p><b>No sessions logged yet.</b> Trends, stall detection and rankings appear after a few sessions per exercise. Your planned volume works right away. To preview the full Stats page, load demo data in Settings.</p></div>`;
+    h+=`<div class="card"><p style="margin:0"><b>No sessions yet.</b> Planned volume works now; trends start after a few sessions. ${tipi('Trends, stall detection and rankings need a few sessions of each exercise. To preview the full Stats page, load demo data in Settings.','About Stats')}</p></div>`;
   }
   h+=`<div class="kpis"><div class="kpi"><div class="v">${adher==null?'n/a':adher+'%'}</div><div class="l">${!planned?'Adherence: no planned days':adher==null?'Adherence: appears after your first full week':`Adherence, previous ${wks4} full week${wks4===1?'':'s'} (${r1(done4)}/${r1(planned*wks4)})`}</div></div>
   <div class="kpi"><div class="v">${wkHard}</div><div class="l">Hard sets this week, of ${weekStats().tgt} planned</div></div>
@@ -4843,12 +5021,12 @@ function viewHistory(){
   const ss=[...state.sessions].sort((a,b)=>a.date<b.date?1:a.date>b.date?-1:0);
   const I=IDX();
   const real=ss.filter(x=>!x.demo).length;
-  let h=pageHead('Every session, newest first','History',`${ss.length} session${ss.length===1?'':'s'}${ss.length&&real!==ss.length?` (${ss.length-real} demo)`:''}`);
+  let h=pageHead('Every session, newest first','History',`${ss.length} session${ss.length===1?'':'s'}${ss.length&&real!==ss.length?` (${ss.length-real} demo)`:''}`,'<button class="btn sm" data-act="pastOpen">Log a past workout</button>');
   const cs=[...state.cardio].sort((a,b)=>a.date<b.date?1:a.date>b.date?-1:0);
   if(cs.length)h+=sec({sk:'history:cardio',key:'cardio',title:'Cardio and mobility',sub:`${cs.length} entr${cs.length===1?'y':'ies'}`,body:`<ul class="clist">${cs.slice(0,40).map(c=>`<li><span><b>${esc(CARDIOL[c.kind])}</b> <span class="small muted">${fmtDate(c.date)} · ${c.min} min${c.hr?` · ${c.hr} bpm`:''}${c.when!=='solo'?' · '+CWHENL[c.when].toLowerCase():''}${c.note?' · '+esc(c.note):''}</span></span><button class="ib sm" data-act="cardioDel" data-id="${c.id}" aria-label="Delete ${fmtDate(c.date)} cardio">✕</button></li>`).join('')}</ul>${cs.length>40?`<p class="small muted">${cs.length-40} older entries are in the CSV export.</p>`:''}`});
   const tr=state.trash||[];
-  if(tr.length)h+=sec({sk:'history:trash',key:'trash',title:'Recently deleted',sub:`${tr.length} of ${TRASH_MAX} · kept ${TRASH_DAYS} days`,body:`<ul class="clist">${tr.map(x=>{const nm=x.kind==='session'?`${x.data.dayName||'Session'}, ${fmtDate(x.data.date)}`:x.kind==='cardio'?`${CARDIOL[x.data.kind]||'Cardio'}, ${fmtDate(x.data.date)}`:`Routine: ${x.data.name||'Routine'}`;return `<li><span>${esc(nm)} <span class="small muted">deleted ${fmtDate(x.date)}</span></span><button class="btn sm" data-act="restore" data-id="${x.id}" data-k="${x.kind}">Restore</button></li>`;}).join('')}</ul>`});
-  if(!ss.length)return h+'<div class="card"><p style="margin:0">No sessions yet. Start one from the Today tab.</p></div>';
+  if(tr.length)h+=sec({sk:'history:trash',key:'trash',title:'Recently deleted',sub:`<span class="hastip" data-tip="${esc(`The ${TRASH_MAX} most recent deletions, each kept ${TRASH_DAYS} days`)}">${tr.length}</span>`,body:`<ul class="clist">${tr.map(x=>{const nm=x.kind==='session'?`${x.data.dayName||'Session'}, ${fmtDate(x.data.date)}`:x.kind==='cardio'?`${CARDIOL[x.data.kind]||'Cardio'}, ${fmtDate(x.data.date)}`:`Routine: ${x.data.name||'Routine'}`;return `<li><span>${esc(nm)} <span class="small muted">deleted ${fmtDate(x.date)}</span></span><button class="btn sm" data-act="restore" data-id="${x.id}" data-k="${x.kind}">Restore</button></li>`;}).join('')}</ul>`});
+  if(!ss.length)return h+'<div class="card"><p style="margin:0">No sessions yet. Start one on Today, or log one you did without the app with Log a past workout.</p></div>';
   const withData=Object.keys(I.byEx).sort((a,b)=>exName(a).localeCompare(exName(b)));
   if(ui.histEx&&!I.byEx[ui.histEx])ui.histEx='';
   let body=`<label class="field">Show sessions with<select data-bind="histEx"><option value="">Any exercise</option>${withData.map(id=>`<option value="${id}" ${ui.histEx===id?'selected':''}>${esc(exName(id))}</option>`).join('')}</select></label><div style="margin-top:6px">`;
@@ -4918,9 +5096,8 @@ function viewSettings(){
   ${G('bands','Weekly set targets','bands')}${helpText('bands','Fractional hard sets per week: direct work 1, helper muscles 0.5 (Pelland 2025). 10 to 20 for major muscles fits the dose-response data; the upper number is typical, not a ceiling, and more still helps a little at more cost. Smaller muscles are set lower because compound lifts hit them indirectly, and their numbers are convention: no study has tested a dose for them. Serratus and rotator cuff are tracked only. Raise one or two muscles for a specialisation block.')}
   <div class="card"><table class="t"><tr><th>Muscle</th><th class="r">Min</th><th class="r">Max</th></tr>${MUSCLES.map(([k,l])=>`<tr><td>${l}</td><td class="r"><input style="width:70px" type="text" inputmode="numeric" aria-label="${l} minimum hard sets a week" data-band="${k}" data-bi="0" value="${s.bands[k][0]}"></td><td class="r"><input style="width:70px" type="text" inputmode="numeric" aria-label="${l} maximum hard sets a week" data-band="${k}" data-bi="1" value="${s.bands[k][1]}"></td></tr>`).join('')}</table></div></div></details>
   ${G('data','Your data','','dataSec')}
-  <div class="panel" id="syncInfo">${syncInfo()}</div>
-  ${canInstallHere()?`<div class="panel row spread" id="installPanel" style="margin-top:8px"><p class="small" style="margin:0;flex:1 1 180px"><b>Install the app.</b> Full screen, offline, one tap from your home screen.</p><button class="btn sm primary" data-act="install">Install</button></div>`:''}
-  ${acctPanel()}
+  ${(()=>{const ap=acctPanel();return `${ap}<div class="panel" id="syncInfo"${ap?' style="margin-top:8px"':''}>${syncInfo()}</div>`;})()}
+  ${canInstallHere()?`<div class="panel row spread" id="installPanel" style="margin-top:8px"><p class="small" style="margin:0;flex:1 1 180px"><b>Install the app.</b> Full screen, offline, one tap from your home screen.</p><button class="btn sm primary" data-act="install">${/^ios/.test(installKind())?'Add to Home Screen':'Install'}</button></div>`:''}
   ${privacyLine()}
   ${backupDue()?`<p class="callout yellow" style="margin:10px 0 0"><b>Backup due.</b> ${s.lastExport?`Last backup file ${fmtDate(s.lastExport)}.`:'No backup file yet.'} ${cloud.on?'Export one below; the cloud copy mirrors deletions, so it is not a backup.':'Export one below; this device holds the only copy.'}</p>`:''}
   ${storageOk?'':'<p class="small" style="color:var(--red)">This browser is blocking local storage, so this device keeps nothing between reloads without cloud sync.</p>'}
@@ -4983,6 +5160,7 @@ function renderModalBody(){
   let h='';
   if(m.kind==='account'){h=acctSheet(m);}
   else if(m.kind==='install'){h=installSheet(m);}
+  else if(m.kind==='past'){h=pastSheet(m);}
   else if(m.kind==='confirm'){
     h=`<div class="sheet" role="dialog" aria-modal="true"><div class="sheet-h"><h3>${esc(m.title)}</h3></div><p>${esc(m.body)}</p><div class="row" style="margin-top:12px"><button class="btn ${m.danger?'danger':'primary'}" data-act="mOk">${esc(m.okLabel)}</button>${m.alt?`<button class="btn" data-act="mAlt">${esc(m.alt.label)}</button>`:''}<button class="btn" data-act="mClose">Cancel</button></div></div>`;
   }else if(m.kind==='picker'){
@@ -5168,14 +5346,14 @@ function applyPick(m,id){
   if(m.mode==='swapItem'){const f=findItem(m.uid);if(f){f.it.exId=id;commit();}closeModal();rerenderKeepScroll();return;}
   const d=state.draft;closeModal();if(!d){rerenderKeepScroll();return;}
   const half=p=>(d.deload||d.light)?{...p,sets:Math.max(1,Math.ceil(p.sets/2))}:p;
-  if(m.mode==='addBlock'){d.ex.push(newBlock(id,half(planFor(id)),{deload:!!d.deload}));saveNow();afterAdd(d.ex.length-1);return;}
+  if(m.mode==='addBlock'){d.ex.push(newBlock(id,half(planFor(id)),{deload:!!d.deload,before:d.date}));saveNow();afterAdd(d.ex.length-1);return;}
   /* Swapping used to replace the whole block, so sets already logged on the
      old exercise vanished. Now logged sets stay with the exercise they were
      done on, and the new one takes over the sets still to do. */
   if(m.mode==='swapBlock'){const b=d.ex[m.b];if(!b){rerenderKeepScroll();return;}
     const orig=JSON.parse(JSON.stringify(b));const bi=m.b,did=d.id;
     const done=b.sets.filter(x=>x.done);const left=b.sets.filter(x=>!x.done&&!x.warm&&!x.drop).length;
-    const nb=newBlock(id,{...b.plan,sets:done.length?Math.max(1,left):b.plan.sets},{deload:!!d.deload});nb.swappedFrom=b.swappedFrom||b.exId;if(nb.swappedFrom===id)nb.swappedFrom=null;
+    const nb=newBlock(id,{...b.plan,sets:done.length?Math.max(1,left):b.plan.sets},{deload:!!d.deload,before:d.date});nb.swappedFrom=b.swappedFrom||b.exId;if(nb.swappedFrom===id)nb.swappedFrom=null;
     snapshot(()=>{const dd=state.draft;if(!dd||dd.id!==did)return false;
       const at=dd.ex.findIndex(x=>x===nb);if(at<0||nb.sets.some(x=>x.done))return false;
       if(done.length){dd.ex.splice(at,1);const i=dd.ex.findIndex(x=>x===b);if(i>=0)dd.ex[i]=orig;else return false;}else dd.ex[at]=orig;
@@ -5375,12 +5553,54 @@ function makeDemo(){
 /* Freestyle and Do again build a session that is not tied to a routine day:
    no dayId and no routineId, so the cycle never advances on it. */
 function freeDraft(name,ex){return {id:uid(),startedAt:Date.now(),date:today(),dayIdx:0,dayId:null,dayName:name,routineId:'',free:true,deload:false,light:false,cardio:[],notes:'',editingId:null,ex:ex||[]};}
+/* ---------- a past workout, date first ----------
+   The phone was left at home, so the sets are on paper or in memory. The
+   date comes first and everything is read as of that day: which routine day
+   was due, last time's numbers and targets, and PRs. The logger then runs in
+   quick entry (draft.past): no rest timer, no clock, no check-in, and a set
+   ticks itself once its reps are typed, so a whole workout goes in one pass.
+   The session is saved under its date, so next up, targets and PRs after it
+   read correctly even when it is entered after later sessions. */
+function pastDue(R,date){
+  const ok=i=>!!R.days[i]&&!R.days[i].rest&&R.days[i].items.length>0;
+  if(R.schedule==='weekly'){const i=(parse(date).getDay()+6)%7;return ok(i)?i:-1;}
+  const cs=cycleState(R,date);return ok(cs.next)?cs.next:-1;
+}
+function pastDraft(date,di){
+  const R=activeRoutine();const deload=!!state.deloadWeek&&state.deloadWeek===weekStart(date);
+  const day=di==null?null:R.days[di];
+  if(!day){const d=freeDraft('Freestyle');return {...d,date,startedAt:null,past:true};}
+  const items=day.items.map(it=>deload?{...it,sets:Math.max(1,Math.ceil(it.sets/2))}:it);
+  const note=deload?'Deload: half sets, about 90% loads, 3+ RIR.':'';
+  return {id:uid(),startedAt:null,date,dayIdx:di,dayId:day.id,dayName:day.name+(deload?' (deload)':''),routineId:R.id,deload,light:false,past:true,cardio:[],notes:note,note0:note,editingId:null,ex:items.map(it=>newBlock(it.exId,it,{deload,before:date}))};
+}
+/* Anything the lifter put into a session: a ticked set, typed reps, cardio
+   minutes, a note on an exercise, or session notes other than the text the
+   app wrote itself. The grey numbers and prefilled loads are the app's. */
+function draftEntered(d){
+  if(!d)return false;
+  if(d.ex.some(b=>(b.note&&b.note.trim())||b.sets.some(x=>x.done||+x.r>0)))return true;
+  if((d.cardio||[]).some(c=>c.min>0))return true;
+  const n=(d.notes||'').trim();if(!n)return false;
+  return typeof d.note0==='string'?n!==d.note0.trim():true;
+}
+function pastSheet(m){
+  const R=activeRoutine();const due=pastDue(R,m.date);
+  const on=state.sessions.filter(x=>x.date===m.date).map(x=>x.dayName||'Session');
+  const opts=R.days.map((d,i)=>({d,i})).filter(x=>!x.d.rest&&x.d.items.length>0).sort((a,b)=>(b.i===due)-(a.i===due));
+  const btn=({d,i})=>`<button class="btn block${i===due?' primary':''} pastday" data-act="pastGo" data-day="${i}"><span>${esc(dayLabel(R,i))}: ${esc(d.name)}</span>${i===due?'<small>due then</small>':`<small>${d.items.length} exercises</small>`}</button>`;
+  return `<div class="sheet" role="dialog" aria-modal="true" aria-labelledby="pastH"><div class="sheet-h"><h3 id="pastH">Log a past workout</h3><button class="ib" aria-label="Close" data-act="mClose">✕</button></div>
+  <label class="field">Date<input type="date" data-pbind="date" value="${m.date}" max="${today()}"></label>
+  ${on.length?`<p class="small muted" style="margin:6px 0 0">Already logged that day: ${esc(on.join(', '))}.</p>`:''}
+  <div class="stack" style="margin-top:12px">${opts.map(btn).join('')}<button class="btn block pastday" data-act="pastGo" data-day="free"><span>Freestyle</span><small>any exercises</small></button></div>
+  <p class="small muted" style="margin:10px 0 0">Quick entry: type each set. ${tipi('No rest timer or clock. A set counts as done once its reps are typed. Last time, targets and PRs are read as of that date.','About quick entry')}</p></div>`;
+}
 /* Re-run the suggestion for one block, for example after its heaviest
    available load changes. Only untouched sets take the new load. */
 function refreshBlock(b){
   const d=state.draft;if(!d||!b)return;const old=b.sets.find(x=>!x.done&&!x.warm);const oldW=old?old.w:null;
-  const sg=suggest(b.exId,b.plan,{deload:!!d.deload});
-  Object.assign(b,{inj:sg.inj||null,hint:sg.text,last:sg.last,target:sg.target,tgt:sg.tgt,easier:sg.easier||null,lastR:sg.lastR});
+  const sg=suggest(b.exId,b.plan,{deload:!!d.deload,before:d.date});
+  Object.assign(b,{inj:sg.inj||null,hint:sg.text,last:sg.last,target:sg.target,tgt:sg.tgt,easier:sg.easier||null,lastR:sg.lastR,lastNote:lastNoteOf(b.exId,d.date)});
   for(const x of b.sets)if(!x.done&&!x.warm&&!x.drop&&x.r==null&&x.w===oldW)x.w=sg.w;
 }
 const ACT={
@@ -5404,7 +5624,19 @@ const ACT={
   installLater(){try{localStorage.setItem(INSTALL_LATER,'1');}catch(e){log('storage',e);}rerenderKeepScroll();toast('Hidden. Settings > Your data has it any time.');},
   acctLater(){try{localStorage.setItem(ACCT_LATER,'1');}catch(e){log('storage',e);}rerenderKeepScroll();toast('Hidden. Settings > Your data has it any time.');},
   acctOpen(t){openModal({kind:'account',mode:t.dataset.mode==='signup'?'signup':'signin',email:'',pw:''});},
-  acctMode(t){const m=ui.modal;if(!m||m.kind!=='account')return;m.mode=t.dataset.mode;m.err='';m.pw='';renderModal();},
+  acctMode(t){const m=ui.modal;if(!m||m.kind!=='account')return;if(m.mode==='wait')waitStop();m.mode=t.dataset.mode;m.err='';m.pw='';renderModal();},
+  acctWaitNow(){waitTry(true);},
+  /* The answer on a browser that opened the confirmation link (item 61b). */
+  async acctWhere(t){
+    const m=ui.modal,A=AUTH();if(!m||m.kind!=='account'||m.mode!=='where'||!A)return;m.answered=true;
+    if(t.dataset.v==='here'){
+      if(typeof A.release==='function')A.release();
+      closeModal();toast('Signed in here. Syncing your log.');await cloudInit();acctRerender();return;
+    }
+    try{await A.signOut();}catch(e){log('auth',e);}
+    acct.user=null;
+    ui.modal={kind:'account',mode:'sent',title:'Switch back to the app',msg:'Open Ironlog from your home screen. If it still shows Check your email, it signs in by itself; otherwise sign in there.'};renderModal();acctRerender();
+  },
   async acctSubmit(){
     const m=ui.modal,A=AUTH();if(!m||m.kind!=='account'||m.busy||!A)return;
     // Read the fields as they are now: autofill does not always fire input events.
@@ -5422,7 +5654,7 @@ const ACT={
         toast('Signed in. Syncing your log.');await cloudInit();acctRerender();
       }else if(m.mode==='signup'){
         const r=await A.signUp(email,pw);
-        if(r.confirm)done({mode:'sent',title:'Check your email',msg:`We sent a confirmation link to ${email}. Open it, then come back here and sign in.`});
+        if(r.confirm){done({mode:'wait',email});waitStart(email,pw);}
         else{acct.user=r.user;done(null);toast('Account created. Syncing your log.');await cloudInit();acctRerender();}
       }else if(m.mode==='forgot'){
         await A.resetPassword(email);
@@ -5463,7 +5695,7 @@ const ACT={
   startFree(){
     if(state.draft){ui.tab='today';render();return;}
     state.draft=freeDraft('Freestyle');ui.tab='today';
-    saveNow();window.scrollTo(0,0);render();wakeOn();
+    state.draft.note0=state.draft.notes||'';saveNow();window.scrollTo(0,0);render();wakeOn();
     openModal({kind:'picker',mode:'addBlock',title:'Add exercise to session',q:'',m:''});
   },
   /* The session is built first so the sheet can preview what gets trimmed. If
@@ -5573,7 +5805,7 @@ const ACT={
       const ex=s.ex.map(b=>newBlock(b.exId,plan(b),{deload}));
       state.draft=day?{id:uid(),startedAt:Date.now(),date:today(),dayIdx:R.days.indexOf(day),dayId:day.id,dayName:day.name+(deload?' (deload)':''),routineId:R.id,deload,light:false,cardio:[],notes:deload?'Deload: half sets, about 90% loads, 3+ RIR.':'',editingId:null,ex}
         :{...freeDraft(s.free?s.dayName:`Again: ${s.dayName}`.slice(0,40),ex),deload};
-      ui.tab='today';saveNow();window.scrollTo(0,0);render();wakeOn();
+      if(state.draft)state.draft.note0=state.draft.notes||'';ui.tab='today';saveNow();window.scrollTo(0,0);render();wakeOn();
       toast(day?`${day.name} started with the same exercises`:'Started as a freestyle session');
     };
     if(state.draft)confirmBox('Replace the session in progress?','You have an unsaved session open. Starting this one discards it.','Discard and start',go,true);else go();
@@ -5707,7 +5939,7 @@ const ACT={
     // against a lift's trend or stall read.
     const items=d.rest?[]:d.items.map(it=>(light||deload)?{...it,sets:Math.max(1,Math.ceil(it.sets/2))}:it);
     state.draft={id:uid(),startedAt:Date.now(),date:today(),dayIdx:di,dayId:d.id,dayName:d.name+(light?' (lighter)':deload?' (deload)':''),routineId:R.id,deload,light,cardio:[],notes:light?'Lighter session: half sets, same loads.':deload?'Deload: half sets, about 90% loads, 3+ RIR.':'',editingId:null,ex:items.map(it=>newBlock(it.exId,it,{deload}))};
-    saveNow();window.scrollTo(0,0);render();wakeOn();
+    state.draft.note0=state.draft.notes||'';saveNow();window.scrollTo(0,0);render();wakeOn();
   },
   /* These two used to call rerenderKeepScroll(), which rebuilt every set row in
      the session on a single tap. On a long day that is well over a hundred
@@ -5718,11 +5950,11 @@ const ACT={
        phone that blur happens a moment before the tap on the checkmark lands.
        Without this guard the tap would immediately undo the auto-mark. */
     if(lastAuto&&lastAuto.b===bi&&lastAuto.s===si&&Date.now()-lastAuto.t<800){lastAuto=null;return;}
-    /* Tapping done on an empty reps field logs the grey number in it, last
-       time's reps for that set, like the paper log you copy from. With no
-       history there is no number to take, so it still asks. */
+    /* Tapping done on an empty reps field logs the grey number in it (see
+       greyR), like the paper log you copy from. Warm-ups have none, so
+       those still ask. */
     if(!s.done&&!(+s.r>0)){
-      const b=state.draft.ex[bi];const lr=b?lastRFor(b,si):null;
+      const b=state.draft.ex[bi];const lr=b?greyR(b,si):null;
       if(!(lr>0)){toast('Enter reps first');return;}
       s.r=Math.round(lr);const inp=document.querySelector(`.sg input[data-f="r"][data-b="${bi}"][data-s="${si}"]`);if(inp)inp.value=String(s.r);
     }
@@ -5838,7 +6070,7 @@ const ACT={
   pickExAdd(t){
     const d=state.draft;if(!d)return;const id=t.dataset.ex;if(!state.exercises.some(e=>e.id===id)){closeModal();return;}
     const p=planFor(id);const n=Math.round(+t.dataset.sets);if(n>=1&&n<=30)p.sets=n;
-    d.ex.push(newBlock(id,p,{deload:!!d.deload}));saveNow();closeModal();afterAdd(d.ex.length-1);
+    d.ex.push(newBlock(id,p,{deload:!!d.deload,before:d.date}));saveNow();closeModal();afterAdd(d.ex.length-1);
     toast(`${exName(id)} added: ${p.sets} set${p.sets===1?'':'s'}`);
   },
   /* Limited equipment: pick what is available, preview the swaps, start. */
@@ -5853,7 +6085,26 @@ const ACT={
     const sw=eqPlan(day,eq).filter(x=>x.from);
     const note=sw.length?'Limited equipment: '+sw.map(x=>`${exName(x.from)} → ${x.to?exName(x.to):'left out'}`).join('; ')+'.':'';
     state.draft={id:uid(),startedAt:Date.now(),date:today(),dayIdx:m.day,dayId:day.id,dayName:day.name+(deload?' (deload)':''),routineId:R.id,deload,light:false,limited:true,cardio:[],notes:[deload?'Deload: half sets, about 90% loads, 3+ RIR.':'',note].filter(Boolean).join(' '),editingId:null,ex};
-    saveNow();window.scrollTo(0,0);render();wakeOn();
+    state.draft.note0=state.draft.notes||'';saveNow();window.scrollTo(0,0);render();wakeOn();
+  },
+  /* Log a past workout: from an empty past day in the top bar (that date),
+     or from History (yesterday, changeable in the sheet). */
+  pastOpen(t){
+    const d=t&&t.dataset&&isDate(t.dataset.date)&&t.dataset.date<=today()?t.dataset.date:addDays(today(),-1);
+    openModal({kind:'past',date:d});
+  },
+  pastGo(t){
+    const m=ui.modal;if(!m||m.kind!=='past')return;const date=m.date;
+    const di=t.dataset.day==='free'?null:+t.dataset.day;
+    const go=()=>{
+      stopTimer();wakeOff();
+      state.draft=pastDraft(date,di);ui.tab='today';ui.todayDay=null;
+      saveNow();window.scrollTo(0,0);render();
+      if(di==null)openModal({kind:'picker',mode:'addBlock',title:'Add exercise to session',q:'',m:''});
+    };
+    closeModal();
+    if(state.draft&&(state.draft.editingId||draftEntered(state.draft)))confirmBox('Replace the session in progress?',state.draft.editingId?'You are editing a saved session. Your edits will be lost.':'You have an unsaved session open. Starting this one discards it.','Discard and start',go,true);
+    else go();
   },
   /* A day in the top bar: today or ahead opens Today on it. */
   wkGo(t){
@@ -5947,6 +6198,8 @@ const ACT={
       ui.todayDay=null;window.scrollTo(0,0);render();
       if(editing){toast('Session updated');return;}
       const lines=[`${work} working set${work===1?'':'s'}, ${hard} counted as hard`];
+      // A session dated in the past says where it went, since it is not at the top of History.
+      if(sess.date!==today())lines.unshift(`Saved under ${fmtDateLong(sess.date)}`);
       if(durMin){const Rr=state.routines.find(r=>r.id===sess.routineId);const ix=Rr?sessDayIdx(Rr,sess):-1;const pm=ix>=0?dayMinutes(Rr.days[ix],sess.light||sess.deload):0;lines.push(`${durMin} minutes${pm?`, planned about ${pm}`:''}`);}
       if(targets)lines.push(`${beaten} of ${targets} exercise target${targets===1?'':'s'} beaten`);
       for(const pr of prs){const e=EX(pr.exId);lines.push(`${e.name}: ${pr.type==='e1RM'?`e1RM PR, ${fmtW(pr.value)} ${U()}`:`${e.timed?'time':'rep'} PR, ${setShort(e,pr.w,pr.r)}`}`);}
@@ -5956,7 +6209,15 @@ const ACT={
     if(blanks.length)confirmBox('Some sets have no load','These are not bodyweight exercises, so they will save as 0 and pull your volume down: '+blanks.join(', ')+'.','Save anyway',save);
     else save();
   },
-  discard(){confirmBox('Discard this session?',state.draft.editingId?'Your edits will be lost. The saved session stays as it was.':'Sets and cardio logged in this session will not be saved.','Discard',()=>{state.draft=null;saveNow();stopTimer();wakeOff();render();},true);},
+  /* A session with nothing in it goes at once; one with anything entered
+     (sets, reps, cardio, a note) asks first. An edit always asks, since the
+     saved sets are already in it. */
+  discard(){
+    const d=state.draft;if(!d)return;
+    const out=()=>{state.draft=null;saveNow();stopTimer();wakeOff();window.scrollTo(0,0);render();};
+    if(!d.editingId&&!draftEntered(d)){out();toast('Session discarded');return;}
+    confirmBox('Discard this session?',d.editingId?'Your edits will be lost. The saved session stays as it was.':'Sets and cardio logged in this session will not be saved.','Discard',out,true);
+  },
   addBW(){const v=numIn($('#bwVal').value);const de=$('#bwDate');const date=(de&&de.value)||today();if(v==null||v<=0){toast('Enter a bodyweight');return;}{const kg=fromD(v);if(kg<BW_MIN_KG||kg>BW_MAX_KG){toast(`Bodyweight must be between ${fmtW(BW_MIN_KG)} and ${fmtW(BW_MAX_KG)} ${U()}`);return;}}state.bodyweights=state.bodyweights.filter(b=>b.date!==date);state.bodyweights.push({id:uid(),date,kg:fromD(v)});commit();rerenderKeepScroll();toast('Bodyweight logged');},
   delBW(t){snapshot();state.bodyweights=state.bodyweights.filter(b=>b.id!==t.dataset.id);commit();rerenderKeepScroll();toast('Entry deleted',true);},
   addMeas(){const m={id:uid(),date:today()};let any=false;for(const [k,lab] of MEAS){const v=numIn($('#ms_'+k).value);if(v!=null&&v>0){const cm=lenFrom(v);if(!(cm<=MEAS_MAX_CM)){toast(`${lab} looks too large. Check the number.`);return;}m[k]=cm;any=true;}}if(!any){toast('Enter at least one measurement');return;}state.measurements=state.measurements.filter(x=>x.date!==m.date);state.measurements.push(m);commit();rerenderKeepScroll();toast('Measurements saved');},
@@ -6180,7 +6441,7 @@ document.addEventListener('input',e=>{
     // not fought mid-keystroke, but history can never take a negative load or
     // an impossible rep count, which used to push session volume negative.
     if(t.dataset.f==='w'){const n=numIn(v);s.w=n==null?null:fromD(Math.min(Math.max(n,0),20000));carried.delete(s);}
-    else if(t.dataset.f==='r'){const n=numIn(v);s.r=n==null?null:Math.min(Math.max(Math.round(n),0),1000);}
+    else if(t.dataset.f==='r'){const n=numIn(v);s.r=n==null?null:Math.min(Math.max(Math.round(n),0),1000);refreshGrey(+t.dataset.b);}
     else{const n=numIn(v);s.rir=n==null?null:Math.min(Math.max(n,0),10);if(t.tagName==='SELECT')t.classList.toggle('unset',v==='');}
     if(t.dataset.f!=='rir')updateProgress(+t.dataset.b);
     if(t.dataset.f==='w')updatePlates(+t.dataset.b,+t.dataset.s);
@@ -6213,6 +6474,7 @@ document.addEventListener('change',e=>{
   if(t.dataset.moveto){const f=findItem(t.dataset.moveto);if(!f)return;const to=+t.value;if(to===f.di)return;f.r.days[f.di].items.splice(f.i,1);f.r.days[to].items.push(f.it);if(f.r.days[to].rest)f.r.days[to].rest=false;commit();rerenderKeepScroll();toast(`Moved to ${dayLabel(f.r,to)}`);return;}
   if(t.dataset.ebind&&ui.modal&&ui.modal.kind==='exEdit'){const k=t.dataset.ebind;ui.modal.e[k]=t.type==='checkbox'?t.checked:t.value;if(k==='primary'){ui.modal.e.secondary=ui.modal.e.secondary.filter(x=>x!==t.value);renderModal();}if(k==='bw'){if(t.checked&&!ui.modal.e.bwfRaw)ui.modal.e.bwfRaw=String(Math.round(bwShare(ui.modal.e)*100));renderModal();}if(k==='timed'||k==='equip')renderModal();return;}
   if(t.dataset.mbind)return;
+  if(t.dataset.pbind==='date'&&ui.modal&&ui.modal.kind==='past'){if(isDate(t.value)&&t.value<=today())ui.modal.date=t.value;else toast('Pick today or an earlier date');renderModal();return;}
   if(t.dataset.cf&&state.draft&&state.draft.cardio){const c=state.draft.cardio[+t.dataset.c];if(c){const k=t.dataset.cf;if(k==='kind'&&CARDIOL[t.value])c.kind=t.value;else if(k==='when'&&CWHENL[t.value])c.when=t.value;saveNow();}return;}
   if(t.dataset.f==='r'&&state.draft){
     const bi=+t.dataset.b,si=+t.dataset.s;const s=draftSet(t);if(!s)return;
@@ -6221,7 +6483,7 @@ document.addEventListener('change',e=>{
     if(rebuilding){if(s.done&&!(+s.r>0))queueMicrotask(()=>{const b2=state.draft&&state.draft.ex[bi];const s2=b2&&b2.sets[si];if(s2&&s2.done&&!(+s2.r>0))setDone(bi,si,false);});return;}
     // A set with no reps cannot be a done set: finishing would save it as 0 reps.
     if(s.done&&!(+s.r>0))setDone(bi,si,false);
-    else if(state.settings.autoDone&&!s.done&&+s.r>0){lastAuto={b:bi,s:si,t:Date.now()};setDone(bi,si,true);}
+    else if((state.settings.autoDone||state.draft.past)&&!s.done&&+s.r>0){lastAuto={b:bi,s:si,t:Date.now()};setDone(bi,si,true);}
     else if(s.done)refreshPR(bi,si,false);
     saveSoon();return;}
   if(t.dataset.f){
@@ -6239,7 +6501,12 @@ document.addEventListener('change',e=>{
   const b=t.dataset.bind;if(!b)return;
   switch(b){
     case 'todayDay':ui.todayDay=+t.value;render();break;
-    case 'draftDate':if(isDate(t.value)&&t.value<=today()){state.draft.date=t.value;saveNow();}else{t.value=state.draft.date;toast('A session cannot be dated in the future');}break;
+    case 'draftDate':if(isDate(t.value)&&t.value<=today()){
+      /* Last time and the targets are read as of the session's date, so a
+         new date re-reads them; typed and ticked sets are left alone. */
+      const d=state.draft;const moved=d.date!==t.value;d.date=t.value;
+      if(moved&&!d.editingId){for(const b of d.ex)refreshBlock(b);saveNow();rerenderKeepScroll();}else saveNow();
+    }else{t.value=state.draft.date;toast('A session cannot be dated in the future');}break;
     case 'bRoutine':ui.bRoutine=t.value;ui.openItem=null;render();break;
     case 'routineName':{const R=curRoutineB();if(!R.name.trim())R.name='Routine';if(nameTaken(R.name,R.id))toast('Another routine has the same name');commit();render();break;}
     case 'rSchedule':{
@@ -6317,7 +6584,7 @@ function acceptGrey(bi,si){
   if(!state.draft||!state.settings.autoDone||rebuilding)return false;
   const b=state.draft.ex[bi];const x=b&&b.sets[si];
   if(!x||x.done||x.warm||x.drop||+x.r>0)return false;
-  const lr=lastRFor(b,si);if(!(lr>0))return false;
+  const lr=greyR(b,si);if(!(lr>0))return false;
   x.r=Math.round(lr);const inp=document.querySelector(`.sg input[data-f="r"][data-b="${bi}"][data-s="${si}"]`);if(inp)inp.value=String(x.r);
   lastAuto={b:bi,s:si,t:Date.now()};setDone(bi,si,true);return true;
 }
@@ -6571,7 +6838,7 @@ function swapPrompt(b,reason){
 }
 
 window.__onLib=(which)=>{if((which==='chart'&&ui.tab==='dash')||(which==='sortable'&&ui.tab==='program'))rerenderKeepScroll();};
-window.__ironlog={get state(){return state;},set state(v){state=v;},e1inv,rtfAt,rtfOf,rtfBand,calStats,rirEff,isHard,setCredit,tonnage,loadMode,loadWords,loadNote,progStep,jumpCap,setSecs,setupSecs,recovery,rolling7,rankDays,rankExercises,isCompound,patternOf,noE1,whtrLine,exHeadline,remainMin,shortPlan,weekPlan,cycleProjection,lastLighterWeek,regionBalance,parseHeight,mixCheck,swapCands,eqPlan,exportCSV,importData,chunksOf,assemble,sessionMuscles,TRACK_ONLY,cloud,Hx,mergeChunk,baseOf,sync:()=>cq(cloudPull),TEMPLATES,lastRFor,fmtW,rirUsual,rirEst,routineFromTemplate,plannedSets,map3d:()=>({state:B3.state,fail:B3.fail,meshes:B3.meshes.length,yaw:B3.yaw,glow:Object.keys(B3.mats).filter(m=>B3.mats[m].emissiveIntensity>0),canvas:!!document.querySelector('#bm3d canvas'),colors:Object.fromEntries(Object.entries(B3.mats).map(([m,mt])=>[m,'#'+mt.color.getHexString()])),pick:(x,y)=>map3dPick(x,y),want:map3dColors()}),cloudState:()=>({on:cloud.on,status:cloud.status,err:cloud.err,uid:cloud.uid,acct:cloud.acct}),acctUser:()=>acct.user,flush:()=>cq(cloudFlush),backupDue,routineUpdates,planFor,platesMode,plateText,chunksOf,IDX,suggest,e1,render,ACT,ui,makeDemo,invalidate,normalize,snapshot,saveNow,timer,weekStats,weekStart,today,EX,blockProgress,dayMinutes,weekStreak,coach,tonnageNow,livePR,exProjection,movers,stalledIds,muscleStatus,actualAvg4,plannedPerWeek,parseSets,aiSetsValid,fillSets,newBlock,lastNoteOf,sizeRows,sessionMuscleSets,sessionCapNote,routineClutter,aiDigest,debriefPrompt,reviewPrompt,swapPrompt,AI,sameRR};
+window.__ironlog={get state(){return state;},set state(v){state=v;},e1inv,rtfAt,rtfOf,rtfBand,calStats,rirEff,isHard,setCredit,tonnage,loadMode,loadWords,loadNote,progStep,jumpCap,setSecs,setupSecs,recovery,rolling7,rankDays,rankExercises,isCompound,patternOf,noE1,whtrLine,exHeadline,remainMin,shortPlan,weekPlan,cycleProjection,lastLighterWeek,regionBalance,parseHeight,mixCheck,swapCands,eqPlan,exportCSV,importData,chunksOf,assemble,sessionMuscles,TRACK_ONLY,cloud,Hx,mergeChunk,baseOf,sync:()=>cq(cloudPull),TEMPLATES,lastRFor,fmtW,rirUsual,rirEst,routineFromTemplate,plannedSets,map3d:()=>({state:B3.state,fail:B3.fail,meshes:B3.meshes.length,yaw:B3.yaw,glow:Object.keys(B3.mats).filter(m=>B3.mats[m].emissiveIntensity>0),canvas:!!document.querySelector('#bm3d canvas'),colors:Object.fromEntries(Object.entries(B3.mats).map(([m,mt])=>[m,'#'+mt.color.getHexString()])),pick:(x,y)=>map3dPick(x,y),want:map3dColors()}),cloudState:()=>({on:cloud.on,status:cloud.status,err:cloud.err,uid:cloud.uid,acct:cloud.acct}),acctUser:()=>acct.user,acctWaiting:()=>!!acctWait.pw,flush:()=>cq(cloudFlush),backupDue,routineUpdates,planFor,platesMode,plateText,chunksOf,IDX,suggest,e1,render,ACT,ui,makeDemo,invalidate,normalize,snapshot,saveNow,timer,weekStats,weekStart,today,EX,blockProgress,dayMinutes,weekStreak,coach,tonnageNow,livePR,exProjection,movers,stalledIds,muscleStatus,actualAvg4,plannedPerWeek,parseSets,aiSetsValid,fillSets,newBlock,lastNoteOf,sizeRows,sessionMuscleSets,sessionCapNote,routineClutter,aiDigest,debriefPrompt,reviewPrompt,swapPrompt,AI,sameRR};
 render();
 wakeOn();
 timerResume();

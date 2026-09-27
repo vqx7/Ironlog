@@ -1,4 +1,4 @@
-// Session flows: picker, create-from-picker, pick for me, discard at top, limited equipment.
+// Session flows: picker, create-from-picker, pick for me, discard at the top, limited equipment.
 const {open}=require('./h');
 const fails=[];const ok=(c,m)=>{if(!c){fails.push(m);console.log('FAIL',m);}else console.log('ok  ',m);};
 (async()=>{
@@ -13,7 +13,7 @@ ok(hero.length===4,'hero has 4 start variants: '+hero.join(' ; '));
 await page.click('.hero [data-act="startSession"]:not([data-light])');
 await page.waitForTimeout(100);
 const top=await ev(()=>{const ph=document.querySelector('.ph');return {topDiscard:!!ph.querySelector('[data-act="discard"]'),all:document.querySelectorAll('[data-act="discard"]').length,tab:document.querySelector('#tabs button[data-tab="today"]').innerText,live:document.querySelector('#tabs button[data-tab="today"]').classList.contains('live'),wlive:!!document.querySelector('#wkbar .w.live')};});
-ok(top.topDiscard&&top.all===1,'discard only at top');
+ok(top.topDiscard&&top.all===2,'discard at the top and beside Finish (item 60)');
 ok(top.tab.trim().toLowerCase()==='session'&&top.live,'today tab reads Session with dot');
 ok(top.wlive,'week bar marks live session today');
 // picker
@@ -68,6 +68,8 @@ ok(sw.some(x=>/Closest matches/i.test(x)),'swap shows closest matches: '+sw.join
 await page.click('#modal [data-act="mClose"]');
 // discard at top
 await ev(()=>window.scrollTo(0,0));
+// Reps typed in a set: Discard asks first (a blank session would go at once, see r21.js).
+await page.fill('.sg input[data-f="r"][data-b="0"][data-s="0"]','8');await page.waitForTimeout(30);
 await page.click('.ph [data-act="discard"]');await page.waitForTimeout(50);await page.click('[data-act="mOk"]');await page.waitForTimeout(80);
 ok(await ev(()=>window.__ironlog.state.draft===null),'discard from top works');
 ok(await ev(()=>document.querySelector('#tabs button[data-tab="today"]').innerText.trim().toLowerCase()==='today'),'tab back to Today');
