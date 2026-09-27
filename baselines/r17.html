@@ -564,9 +564,6 @@ details.more>summary .small{display:block;font-weight:400}
    version is noticed without covering anything. */
 #updbar{position:sticky;top:calc(var(--head-h) + env(safe-area-inset-top,0px));z-index:19;display:flex;align-items:center;gap:8px;padding:6px 16px;background:var(--surface);border-bottom:1px solid var(--line)}
 #updbar[hidden]{display:none}
-.acctbar{display:flex;align-items:center;gap:8px;margin:0 0 12px;padding:6px 6px 6px 14px;border:1px solid var(--line);border-radius:var(--r-md);background:var(--surface)}
-.acctbar>span{flex:1 1 auto;min-width:0}
-.acctbar .btn,.acctbar .ib{flex:none;white-space:nowrap}
 #updbar .ut{flex:1 1 auto;min-width:0;font-weight:650;font-size:15px}
 #updbar .ut::before{content:"";display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--volt);margin-right:8px;vertical-align:1px}
 #toast button{background:none;border:0;color:inherit;font-weight:700;text-decoration:underline;cursor:pointer;pointer-events:auto;min-height:44px;padding:0 6px;margin:-12px 0}
@@ -1024,7 +1021,7 @@ function freshState(){
 const KEY='ironlog.v1';
 /* Shown in Settings, in diagnostics and in backups, so a bug report can be
    matched to the exact build. */
-const APP_VERSION='2026.09.27-r18';
+const APP_VERSION='2026.09.27-r17';
 /* Diagnostics log: the last 60 errors, kept in this browser only. Errors that
    used to be swallowed silently land here, and Settings can copy them. */
 const LOGK=KEY+'.log';
@@ -1820,13 +1817,12 @@ async function cloudInit(){
    nothing below shows. An account is optional: without one the app keeps
    working on this device exactly as before. */
 const AUTH=()=>window.ironlogAuth&&typeof window.ironlogAuth.user==='function'?window.ironlogAuth:null;
-const acct={user:null,checked:false};
-const ACCT_LATER=KEY+'.acctLater';
+const acct={user:null};
 function cloudStop(){
   clearTimeout(cloud.t);cloud.on=false;cloud.db=null;cloud.uid=null;cloud.acct=null;
   cloud.meta={};cloud.editAt={};cloud.last=null;cloud.retry=0;saveMeta();setCloud('local');
 }
-function acctRerender(){if((ui.tab==='settings'||ui.tab==='today')&&!ui.modal)rerenderKeepScroll();else{const el=document.getElementById('syncInfo');if(el)el.innerHTML=syncInfo();}}
+function acctRerender(){if(ui.tab==='settings'&&!ui.modal)rerenderKeepScroll();else{const el=document.getElementById('syncInfo');if(el)el.innerHTML=syncInfo();}}
 async function acctInit(){
   const A=AUTH();if(!A)return;
   A.onChange((ev,user)=>{
@@ -1836,7 +1832,7 @@ async function acctInit(){
     if(ev==='SIGNED_OUT'&&cloud.on&&!window.claude)cloudStop();
     acctRerender();
   });
-  acct.user=await A.user();acct.checked=true;
+  acct.user=await A.user();
   const L=A.landing;
   if(L&&L.error){openModal({kind:'account',mode:'sent',title:'Link did not work',msg:/expired|invalid/i.test(L.error)?'That link has expired or was already used. Ask for a new one.':L.error});}
   else if(L&&L.type==='recovery'){if(!(ui.modal&&ui.modal.kind==='account'))openModal({kind:'account',mode:'newpw',pw:''});}
@@ -1904,8 +1900,8 @@ function syncInfo(){
   const ago=cloud.last?Math.round((Date.now()-cloud.last)/60000):null;
   const when=ago==null?'not yet':ago<1?'just now':ago<60?`${ago} min ago`:ago<1440?`${Math.round(ago/60)} h ago`:fmtDate(iso(new Date(cloud.last)));
   const st=cloud.status==='synced'?'<span class="tag green">Synced</span>':cloud.status==='offline'?'<span class="tag yellow">Waiting to sync</span>':'<span class="tag blue">Syncing</span>';
-  return `<div class="sync-row">${st}<span class="small muted">Last synced ${when}</span><button class="btn sm" data-act="syncNow">Sync now</button></div>
-  <p class="small hastip" style="margin:6px 0 0" data-tip="Clearing this browser, iOS storage cleanup or a new phone loses nothing: open this same link while signed in. Works offline and catches up. The cloud copy mirrors deletions and keeps no history: deleted items wait in History for ${TRASH_DAYS} days, and a backup file covers the rest.">${window.claude?'Saved to your Claude account and this device.':'Saved to your account and this device.'}${cloud.err?` <b style="color:var(--red)">${esc(cloud.err)}</b>`:''}</p>`;
+  return `<div class="sync-row">${st}<span class="small muted">Last synced ${when}</span><button class="btn sm" data-act="syncNow">Sync now</button></div>${cloud.err?`<p class="small" role="alert" style="color:var(--red);margin:6px 0 0">${esc(cloud.err)}</p>`:''}
+  <p class="small hastip" style="margin:6px 0 0" data-tip="Clearing this browser, iOS storage cleanup or a new phone loses nothing: open this same link while signed in. Works offline and catches up. The cloud copy mirrors deletions and keeps no history: deleted items wait in History for ${TRASH_DAYS} days, and a backup file covers the rest.">Saved to your Claude account and this device.${cloud.err?` <b style="color:var(--red)">${esc(cloud.err)}</b>`:''}</p>`;
 }
 /* Two tabs (or the app and a second window) used to overwrite each other: each
    wrote its whole state, so the one that saved last erased what the other had
@@ -3074,7 +3070,7 @@ function viewToday(){
   const playable=!day.rest&&day.items.length>0;
   const deload=isDeloadWeek();
   const sel=`<label class="inline-sel small">Change day<select data-bind="todayDay">${R.days.map((d,i)=>`<option value="${i}" ${i===di?'selected':''}>${dayLabel(R,i)}: ${esc(d.name)}${d.rest?' (rest)':''}${mark(i)}</option>`).join('')}</select></label>`;
-  let h=welcomeCard()+acctBar()+`<section class="hero" data-day="${di}"><div class="hero-top"><div class="hero-t"><p class="eyebrow">${esc(new Date().toLocaleDateString(undefined,{weekday:'long',month:'short',day:'numeric'}))} · ${esc(eyebrow)}${deload?' · deload week':''}</p><h2>${esc(day.name)}</h2>
+  let h=welcomeCard()+`<section class="hero" data-day="${di}"><div class="hero-top"><div class="hero-t"><p class="eyebrow">${esc(new Date().toLocaleDateString(undefined,{weekday:'long',month:'short',day:'numeric'}))} · ${esc(eyebrow)}${deload?' · deload week':''}</p><h2>${esc(day.name)}</h2>
   <p class="muted small" style="margin:0" data-tip="${esc('Routine: '+R.name)}">${playable?`${day.items.length} exercises · ${deload?day.items.reduce((a,it)=>a+Math.max(1,Math.ceil(it.sets/2)),0)+' sets (deload)':daySets(day)+' sets'} · ${minTxt(dayMinutes(day,deload))}`:(day.rest?'Rest day':'No exercises planned')}</p></div>${heroRing(weekStats())}</div>
   ${note?`<p class="hero-note small">${note}</p>`:''}`;
   /* Four ways to start besides the plan as written, each saying on its face
@@ -3120,15 +3116,6 @@ function viewToday(){
   h+=bodyCard();
   return h;
 }
-/* Signed out in the installed app: one slim line on Today, because a log
-   that lives only on the phone is the biggest risk to it. "Not now" hides it
-   on this device until an account is used. Never shown inside Claude, during
-   a first run (the welcome card offers it there), or before the sign-in check. */
-function acctBar(){
-  if(!AUTH()||window.claude||!acct.checked||acct.user||cloud.on||!state.settings.onboarded)return '';
-  try{if(localStorage.getItem(ACCT_LATER))return '';}catch(e){/* storage blocked: show it */}
-  return `<div class="acctbar" id="acctBar"><span class="small"><b>Only on this phone.</b> Sync it with an account.</span><button class="btn sm primary" data-act="acctOpen" data-mode="signup">Set up</button><button class="ib" aria-label="Not now" data-act="acctLater">✕</button></div>`;
-}
 /* First run with no sessions: three ways in. Shown only after the cloud check,
    so a device about to load your data never flashes it. */
 function welcomeCard(){
@@ -3136,7 +3123,6 @@ function welcomeCard(){
   if(cloud.on&&!cloud.lastPull)return '';
   return `<div class="card welcome"><h3>Welcome to Ironlog</h3><p class="small" style="margin:0 0 8px">Pick how you want to start. All of it can be changed later.</p>
   <label class="field">Units<select data-bind="unit"><option value="lb" ${U()==='lb'?'selected':''}>lb and inches</option><option value="kg" ${U()==='kg'?'selected':''}>kg and cm</option></select></label>
-  ${AUTH()&&!acct.user&&!window.claude?`<div class="panel" style="margin-top:10px"><p class="small" style="margin:0 0 8px"><b>Have an account?</b> Sign in to bring your log here. New? Create one so your log is kept off this phone too. Optional.</p><div class="row"><button class="btn sm" data-act="acctOpen" data-mode="signin">Sign in</button><button class="btn sm" data-act="acctOpen" data-mode="signup">Create account</button></div></div>`:''}
   <div class="stack" style="margin-top:10px">
   <button class="btn block primary" data-act="obSample">Use the sample routine</button>
   <p class="small muted" style="margin:2px 0 0">A six-day split with load and rep targets worked out for you each session. Edit any of it in Program.</p>
@@ -4597,7 +4583,7 @@ function viewSettings(){
   // Each group folds (for this visit) and moves (order is saved).
   const SUB={general:`${s.unit==='kg'?'kg, cm':'lb, in'} · ${s.theme==='system'?'device theme':s.theme}`,timer:`${s.timerMode==='off'?'timer off':s.timerMode+' timer'}${s.timeBudget?` · ${s.timeBudget} min budget`:''}`,rir:{on:'on',cal:'corrected',off:'off'}[s.rirMode],layout:s.hidden.length?`${s.hidden.length} hidden`:'everything shown',prio:s.priorities.length?s.priorities.map(m=>ML[m]).join(', '):'none',bands:'hard sets a week',data:cloud.on?(cloud.status==='synced'?'synced':'syncing'):'this device only',demo:hasDemo?'loaded':'off',reset:'',diag:`build ${APP_VERSION}`};
   const G=(k,title,help,id)=>`<details class="sec" ${id?`id="${id}"`:''} data-sk="settings:${k}" data-mkey="${k}" ${isOpen('settings:'+k,k==='general')?'open':''}><summary>${sgrip(title)}<span class="sec-t">${esc(title)}</span><span class="sec-s">${esc(SUB[k]||'')}</span>${help?helpBtn(help):''}<span class="chev" aria-hidden="true"></span></summary><div class="sec-b">`;
-  return `${pageHead('Ironlog '+APP_VERSION,'Settings',cloud.on?(window.claude?'Saved to your Claude account and this device':'Synced to your account and saved on this device'):'Saved on this device')}
+  return `${pageHead('Ironlog '+APP_VERSION,'Settings',cloud.on?'Saved to your Claude account and this device':'Saved on this device')}
   ${G('general','General')}<div class="card stack"><div class="grid2"><label class="field">Units<select data-bind="unit"><option value="lb" ${s.unit==='lb'?'selected':''}>lb and inches</option><option value="kg" ${s.unit==='kg'?'selected':''}>kg and cm</option></select></label>
   <label class="field">Theme<select data-bind="theme"><option value="system" ${s.theme==='system'?'selected':''}>Match device</option><option value="dark" ${s.theme==='dark'?'selected':''}>Dark</option><option value="light" ${s.theme==='light'?'selected':''}>Light</option></select></label></div>
   <div class="grid2"><label class="field"><span class="hastip" data-tip="Used by the plates-per-side line in the logger.">Bar weight (${U()})</span><input type="text" inputmode="decimal" data-bind="barKg" value="${fmtW(barKg())}"></label>
@@ -5092,7 +5078,6 @@ const ACT={
   },
   appUpdateLater(){upd.later=true;updRender();},
   async acctRetry(){await cloudInit();acctRerender();if(!cloud.on)toast('Still not syncing. Check your connection, or sign out and in again.');},
-  acctLater(){try{localStorage.setItem(ACCT_LATER,'1');}catch(e){log('storage',e);}rerenderKeepScroll();toast('Hidden. Settings > Your data has it any time.');},
   acctOpen(t){openModal({kind:'account',mode:t.dataset.mode==='signup'?'signup':'signin',email:'',pw:''});},
   acctMode(t){const m=ui.modal;if(!m||m.kind!=='account')return;m.mode=t.dataset.mode;m.err='';m.pw='';renderModal();},
   async acctSubmit(){
@@ -5108,7 +5093,7 @@ const ACT={
     const done=next=>{if(ui.modal!==m)return;if(next){ui.modal={kind:'account',...next};renderModal();}else closeModal();};
     try{
       if(m.mode==='signin'){
-        acct.user=await A.signIn(email,pw);try{localStorage.removeItem(ACCT_LATER);}catch(e){/* nothing to clear */}done(null);
+        acct.user=await A.signIn(email,pw);done(null);
         toast('Signed in. Syncing your log.');await cloudInit();acctRerender();
       }else if(m.mode==='signup'){
         const r=await A.signUp(email,pw);

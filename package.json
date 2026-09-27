@@ -1,6 +1,6 @@
 {
   "name": "ironlog",
-  "version": "2026.9.27-r17",
+  "version": "2026.9.27-r18",
   "private": true,
   "description": "Ironlog workout tracker: single-file web app plus its test suites",
   "scripts": {

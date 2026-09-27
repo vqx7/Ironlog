@@ -29,7 +29,7 @@ fs.cpSync(DIST, tmp, { recursive: true });
   const APP = fake.base + '/ironlog/';
   const browser = await chromium.launch();
   const devices = [];
-  async function device(url, sw) {
+  async function device(url, sw, fresh) {
     const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true, serviceWorkers: sw ? 'allow' : 'block' });
     const page = await ctx.newPage();
     const errors = [];
@@ -37,7 +37,7 @@ fs.cpSync(DIST, tmp, { recursive: true });
     // A refused sign-in shows up as a failed request in the console; that is expected here.
     page.on('console', m => { if (m.type() === 'error' && !/Failed to load resource|status of 4\d\d/.test(m.text())) errors.push(m.text()); });
     await page.goto(url || APP); await page.waitForFunction(() => window.__ironlog && window.__libs && window.__libs.chart, null, { timeout: 15000 });
-    await page.evaluate(() => { const L = window.__ironlog; L.state.settings.onboarded = true; L.saveNow(); L.render(); localStorage.setItem('ironlog.v1.tipWake', '1'); });
+    if (!fresh) await page.evaluate(() => { const L = window.__ironlog; L.state.settings.onboarded = true; L.saveNow(); L.render(); localStorage.setItem('ironlog.v1.tipWake', '1'); });
     const d = { ctx, page, errors, ev: (f, a) => page.evaluate(f, a) };
     devices.push(d); return d;
   }
@@ -56,9 +56,22 @@ fs.cpSync(DIST, tmp, { recursive: true });
   const rowsOf = email => { const u = fake.users.get(email); return u ? [...fake.rows.values()].filter(r => r.user_id === u.id) : []; };
   const sessIn = rows => { const out = []; for (const r of rows) if (/\/s-\d/.test(r.path)) { try { for (const s of JSON.parse(r.data.json).sessions || []) out.push(s.id); } catch (e) { /* not a session chunk */ } } return out.sort(); };
 
+  // ---- 0. First run: the welcome card offers an account up front.
+  const W = await device(null, false, true); await wait(600);
+  const wel = await text(W, '.welcome');
+  ok(wel && /Have an account\?/.test(wel) && !!(await W.ev(() => document.querySelector('.welcome [data-act="acctOpen"][data-mode="signin"]') && document.querySelector('.welcome [data-act="acctOpen"][data-mode="signup"]'))), 'first run: Sign in and Create account are offered on the welcome card');
+  ok(!(await W.ev(() => document.getElementById('acctBar'))), 'first run: no second prompt on top of the welcome card');
+
   // ---- 1. Signed out: the phone works as before, and Settings offers an account.
   const A = await device();
   await logOn(A, 'sA1', 100);
+  await A.ev(() => { const L = window.__ironlog; L.ui.tab = 'today'; L.render(); }); await wait(200);
+  ok(/Only on this phone/.test((await text(A, '#acctBar')) || ''), 'Today: signed out, a slim line offers to set up sync');
+  ok(await A.ev(() => { const b = document.getElementById('acctBar'), h = document.querySelector('.hero'); return !!b && !!h && b.getBoundingClientRect().bottom <= h.getBoundingClientRect().top + 1 && b.getBoundingClientRect().height < 70; }), 'Today: the line sits above the session card and stays slim');
+  await A.page.click('#acctBar [data-act="acctLater"]'); await wait(150);
+  ok(!(await A.ev(() => document.getElementById('acctBar'))), 'Not now hides it');
+  await A.page.reload(); await A.page.waitForFunction(() => window.__ironlog, null, { timeout: 15000 }); await wait(800);
+  ok(!(await A.ev(() => document.getElementById('acctBar'))), 'and it stays hidden after a relaunch');
   await openData(A);
   ok(/Create account/.test(await text(A, '#acctPanel')) && /Sign in/.test(await text(A, '#acctPanel')), 'signed out: Your data offers Create account and Sign in');
   ok(/stays on this device and is sent nowhere unless you sign in/.test(await text(A, '#privacy')), 'signed out: the privacy line says nothing leaves the phone');
@@ -98,6 +111,9 @@ fs.cpSync(DIST, tmp, { recursive: true });
   ok(/Signed in as v@example\.com/.test(await text(A, '#acctPanel')), 'Your data shows who is signed in');
   ok(/syncs to your Ironlog account\. Only you and the app's owner can see it/.test(await text(A, '#privacy')), 'the privacy line says where the log goes and who can see it');
   ok(/Synced/.test(await A.ev(() => document.getElementById('saveState').getAttribute('aria-label'))), 'the header says Synced');
+  ok(/Synced to your account and saved on this device/i.test(await A.ev(() => document.getElementById('view').innerText)) && !/Claude account/i.test(await A.ev(() => document.getElementById('view').innerText)), 'Settings says "your account", never "Claude account", in the installed app');
+  await A.ev(() => { const L = window.__ironlog; L.ui.tab = 'today'; L.render(); });
+  ok(!(await A.ev(() => document.getElementById('acctBar'))), 'signed in: no prompt on Today');
 
   // ---- 5. A second phone signs in and gets the log; changes flow both ways.
   const B = await device();
@@ -227,7 +243,7 @@ fs.cpSync(DIST, tmp, { recursive: true });
   await logOn(A, 'sA-denied', 140); await A.ev(() => window.__ironlog.flush()); await wait(800);
   await openData(A);
   const st = await A.ev(() => window.__ironlog.cloudState());
-  ok(st.on && /table permissions need fixing/.test(st.err || '') && /table permissions need fixing/.test(await text(A, '#syncInfo')), 'refused by the database: says the table permissions need fixing and keeps retrying', st);
+  ok(st.on && /table permissions need fixing/.test(st.err || '') && ((await text(A, '#syncInfo')).match(/table permissions need fixing/g) || []).length === 1, 'refused by the database: says the table permissions need fixing and keeps retrying', st);
   fake.setDeny(false);
   await A.ev(() => window.__ironlog.flush()); await wait(800);
   ok(sessIn(rowsOf('v@example.com')).includes('sA-denied') && (await A.ev(() => window.__ironlog.cloudState().status)) === 'synced', 'once fixed, sync catches up');

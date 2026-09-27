@@ -1,4 +1,4 @@
-# Everything still open (as of r17, 2026-09-27)
+# Everything still open (as of r18, 2026-09-27)
 
 This is the tracking list. Items are built only when V says go; nothing here is scheduled. Owner items need V; the rest is build work. Nothing is done unless it says so.
 
@@ -34,7 +34,7 @@ This is the tracking list. Items are built only when V says go; nothing here is 
 23. Custom domain, only if wanted, decided before friends install.
 
 ## Friends readiness
-24. Clean first run without demo data leftovers (the welcome card also stays while only demo data is loaded). The account option lives only in Settings > Your data; a friend's first run should offer it up front.
+24. Clean first run without demo data leftovers (the welcome card also stays while only demo data is loaded).
 
 ## Design and engagement
 25. Visual design pass. The look still reads as generic AI styling: same uniform rounded cards and stacked sections under the new colours. Needs type scale, spacing rhythm, card treatment, iconography, less uniform boxes, shown as before and after screenshots for approval before anything ships. Not started.
@@ -67,6 +67,7 @@ This is the tracking list. Items are built only when V says go; nothing here is 
 46. Native app wrapper (Capacitor), only if needed: rest timer alerts through a locked screen and Apple Health. Costs $99 a year for Apple and needs a Mac.
 
 ## Done recently
+- r18: the account is offered up front (first-run welcome card, and a slim line on Today while signed out, with Not now); fixed "Claude account" wording in the installed app and a doubled error line.
 - r17: accounts and cloud sync (see 12), sync that resumes by itself when signal returns, and a visible message when the database refuses access instead of sync quietly stopping.
 - r15: Comeback switched off everywhere (see 34 for full removal).
 - r16: "New version ready" bar with Reload and Later in the installed app; it checks for updates whenever the app is reopened, and reloading keeps a session in progress.
