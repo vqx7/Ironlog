@@ -35,10 +35,12 @@ ok(await ev(()=>{const L=window.__ironlog;const d=L.state.routines[0].days[1];co
 // exEdit timed toggle rerenders former best fields
 await ev(()=>{window.__ironlog.ui.planView='library';window.__ironlog.render();});
 await page.click('[data-act="exEdit"]');await page.waitForTimeout(50);
-const before=await ev(()=>!!document.querySelector('[data-ebind="priorW"]'));
+// Comeback is switched off: the editor has no former-best fields at all.
+ok(await ev(()=>!document.querySelector('[data-ebind="priorW"]')),'no former-best fields in the editor');
+const before=await ev(()=>document.querySelector('[data-ebind="timed"]').checked);
 await page.click('[data-ebind="timed"]');await page.waitForTimeout(50);
-const after=await ev(()=>!!document.querySelector('[data-ebind="priorW"]'));
-ok(before&&!after,'timed toggle updates editor');
+const after=await ev(()=>document.querySelector('[data-ebind="timed"]').checked);
+ok(before!==after,'timed toggle updates editor');
 ok(await ev(()=>document.querySelector('details.more').open),'library editor shows all options');
 console.log(errors);ok(!errors.length,'no errors');
 console.log(fails.length?'FAILURES':'ALL PASS');await browser.close();})();

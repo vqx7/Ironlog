@@ -1,13 +1,13 @@
 # Ironlog
 
-A personal hypertrophy and strength tracker for one lifter. It is used on a phone at the gym. It ships two ways from one source file: as a Claude artifact (a hosted single-page app with cloud sync) and as a standalone installable web app (dist/, hosted on GitHub Pages, offline, data on the phone). Build r14, state schema v5.
+A personal hypertrophy and strength tracker for one lifter. It is used on a phone at the gym. It ships two ways from one source file: as a Claude artifact (a hosted single-page app with cloud sync) and as a standalone installable web app (dist/, hosted on GitHub Pages, offline, data on the phone). Build r15, state schema v5.
 
 ## What is in this repo
 
 - `index.html`: the whole app and the only source. One file of about 5,800 lines: CSS, markup, then one script in an IIFE. It has no build step and no framework. Chart.js 4.4.1 and SortableJS 1.15.2 load from cdnjs, with jsdelivr as fallback, and the fonts come from Google Fonts.
 - `tests/`: Playwright suites that drive the real page in Chromium. `tests/h.js` is the harness. It serves Chart.js, Sortable and the fonts from `node_modules`, blocks every other network call, and can fake the clock (`clock`), seed localStorage (`state`), and inject a mock cloud (`setup`).
 - `scripts/build.js`: writes the standalone app to `dist/` (fonts and libraries copied in, manifest, icons, service worker). `scripts/icons.py` draws the icons into `assets/`.
-- `baselines/r11.html`, `r12.html`, `r13.html`: previous published builds. `tests/migration.js` saves data with them and loads it into the current build. Never delete them. When you publish a new build, add the build it replaces here.
+- `baselines/r11.html` to `r14.html`: previous published builds. `tests/migration.js` saves data with them and loads it into the current build. Never delete them. When you publish a new build, add the build it replaces here.
 
 ## Commands
 
@@ -35,6 +35,7 @@ Run a single suite with `node tests/<name>.js`. Each suite prints `ok`/`FAIL` li
 | gym-ux | toast never blocks taps, − Set and Undo, + Set after a drop, rest timer stability and reload, Back closes sheets, typed sheets survive outside taps, Enter order, labels, 44 px targets |
 | design | week ring, one-tap sets, RIR strip, folding exercises, menu, one day open in Program, History by week, dark default, WCAG AA contrast of key colour pairs in both themes |
 | uat | acceptance regressions: Undo inside a session, Swap keeps logged sets, warm-ups and last time's reps, trimmed targets, Short on time, deload count, day scrolling, RIR strip above the rest bar, timing |
+| comeback-off | Comeback is switched off: no card, line, menu item, editor fields or toast, and saved former bests stay untouched |
 | pwa | builds dist/, serves it: no requests to other sites, fonts local, manifest and icons valid, service worker in control, offline open, log and reload |
 
 ## How the code is organised (search for these names)
@@ -50,6 +51,7 @@ Run a single suite with `node tests/<name>.js`. Each suite prints `ok`/`FAIL` li
 - **Last time's reps:** `lastRFor(b,si)` maps a row to last session's working sets (warm-ups and drop sets excluded); never index `lastR` by row.
 - **Logger flow:** a finished exercise folds to one line (`blockDone`, `autoFold`, `ui.blkOpen`); ticking done on an empty reps field logs last time's reps (`lastR`); RIR is a 0 to 5 strip (`rirSelect`, `rirShowStrip`, `ACT.rirPick`) that opens by itself after a set is done.
 - **Standalone app:** `isStandalone()` switches export to the share sheet (Save to Files) and the storage wording. `cloudProvider()` is the seam for a future backend: define `window.ironlogCloud` returning `{db, userId}` with the same doc/collection calls the Claude db offers, and sync, merging and chunking work unchanged.
+- **Comeback (former bests):** switched off at the owner's request with `COMEBACK_ON=false`. The code and any saved former bests (`state.priors`) are kept; the flag gates every place it shows.
 - **Tips:** any element with `data-tip` shows it on mouse hover (350 ms), keyboard focus, or a touch hold (480 ms; the click that follows is swallowed). `tipi(text)` makes a small "i" button that shows its tip on a tap. Long explanations go here, not on screen.
 - **Test hooks:** `window.__ironlog` exposes state and most functions, and it is how the tests reach in. Keep it.
 

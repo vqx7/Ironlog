@@ -41,7 +41,7 @@ Nothing here is done unless it says partial. Owner items need V; the rest is bui
 
 ## Raised by V in the r14 chat
 32. The overall look still reads as generic AI styling in places. Needs a proper visual design pass (type scale, spacing rhythm, card treatment, iconography, less uniform boxes), shown as before and after screenshots for approval.
-33. Comeback on Today: V questioned why it is there. It is the "former you" tracker V approved on 2026-09-25 (enter old bests, shows % of former best and when you pass it). It appears on Today only once a former best exists, and can be hidden in Settings > Layout. Decide: keep on Today, fold by default, or move.
+33. Done in r15: Comeback switched off everywhere at V's request (`COMEBACK_ON=false`); saved former bests are kept, and the flag turns it back on.
 
 ## From earlier Ironlog chats (checked 2026-09-26; other chats may hold more)
 34. The standalone app has no Claude features: typed or dictated sets fall back to the offline parser only, and the post-session debrief, Ask Claude and AI swap need Claude's sample capability, which exists only inside the artifact. Decide whether to keep them artifact-only or add another AI provider.
