@@ -178,11 +178,11 @@ details[open]>summary .chev::before{transform:translateY(2px) rotate(-135deg)}
 .btn:active{transform:translateY(1px)}
 .btn.primary{background:var(--ink);color:var(--on-ink);border-color:transparent}
 .btn.danger{color:var(--red)}
-.btn.sm{min-height:36px;padding:0 12px;font-size:14px;border-radius:var(--r-sm)}
+.btn.sm{min-height:44px;padding:0 12px;font-size:14px;border-radius:var(--r-sm)}
 .btn.block{width:100%}
 .btn:disabled{opacity:.4;cursor:default}
 .btn.noted{border-color:var(--ink);box-shadow:inset 0 0 0 1px var(--ink)}
-.ib{width:40px;height:40px;border-radius:var(--r-sm);border:1px solid var(--line);background:var(--surface);cursor:pointer;font-size:16px;display:inline-flex;align-items:center;justify-content:center;flex:none;color:var(--ink)}
+.ib{width:44px;height:44px;border-radius:var(--r-sm);border:1px solid var(--line);background:var(--surface);cursor:pointer;font-size:16px;display:inline-flex;align-items:center;justify-content:center;flex:none;color:var(--ink)}
 .ib.sm{width:32px;height:32px;font-size:13px;color:var(--muted)}
 :focus-visible{outline:3px solid var(--ink);outline-offset:2px}
 
@@ -203,7 +203,7 @@ label.field>input,label.field>select,label.field>textarea{margin-top:4px;color:v
 .tag.red{background:var(--red-bg);color:var(--red)}
 .tag.blue{background:var(--blue-bg);color:var(--blue)}
 .chips{display:flex;flex-wrap:wrap;gap:6px}
-.chip{min-height:36px;padding:0 13px;border-radius:999px;border:1px solid var(--line);background:var(--surface);cursor:pointer;font-size:14px;font-weight:600;color:var(--ink)}
+.chip{min-height:40px;position:relative;padding:0 13px;border-radius:999px;border:1px solid var(--line);background:var(--surface);cursor:pointer;font-size:14px;font-weight:600;color:var(--ink)}
 .chip.on{background:var(--ink);color:var(--on-ink);border-color:transparent}
 
 .plate{display:inline-block;width:6px;height:22px;border-radius:2px;flex:none}
@@ -225,7 +225,8 @@ ul.items:empty::before{content:"Drop or add exercises here";display:block;paddin
 .it{border-bottom:1px solid var(--line);padding:3px 0}
 .it:last-child{border-bottom:0}
 .ir{display:flex;align-items:center;gap:6px}
-.ir .ib{width:34px;height:34px;background:transparent}
+.ir .ib{width:40px;height:40px;background:transparent}
+.ib:disabled{opacity:.35;cursor:default}
 .sgrip{width:26px;height:32px;display:inline-flex;align-items:center;justify-content:center;cursor:grab;color:var(--muted);font-size:17px;touch-action:none;flex:none;user-select:none;-webkit-user-select:none;border-radius:6px;margin-left:-6px;opacity:.7}
 .sgrip:focus-visible{outline:2px solid var(--ink);outline-offset:1px}
 .dgrip{width:26px;height:40px;display:inline-flex;align-items:center;justify-content:center;cursor:grab;color:var(--muted);font-size:19px;touch-action:none;flex:none;user-select:none;-webkit-user-select:none;margin-left:-4px}
@@ -300,7 +301,7 @@ ol.steps li{margin:2px 0}
 .hide-grp{margin-top:12px}
 .hide-grp>p{margin:0 0 6px}
 .lh-row{margin-top:10px;flex-wrap:wrap}
-.lh-row input[type=date]{width:auto;flex:0 1 160px;min-height:36px;padding:4px 8px;font-size:16px}
+.lh-row input[type=date]{width:auto;flex:0 1 160px;min-height:44px;padding:4px 8px;font-size:16px}
 .whtr{margin:8px 0 0}
 
 /* ---------- stats ---------- */
@@ -480,6 +481,13 @@ body.modal-open{overflow:hidden}
 [data-tip]{-webkit-touch-callout:none}
 button[data-tip],.lm[data-tip]{-webkit-user-select:none;user-select:none}
 .hastip{text-decoration:underline dotted;text-underline-offset:3px;text-decoration-color:var(--muted);cursor:help}
+/* Small controls keep their look but get a touch area of at least 44 px from
+   an invisible pseudo-element, so a thumb at the gym does not miss them. */
+.tipi,.hb,.ssb,.ib.sm,.ir .ib,.chip,.wkbar .w{position:relative}
+.tipi::before,.hb::before,.ssb::before,.ib.sm::before,.ir .ib::before,.chip::before,.wkbar .w::before{content:"";position:absolute;left:50%;top:50%;width:max(100%,44px);height:max(100%,44px);transform:translate(-50%,-50%)}
+/* Week days sit 3 px apart, so theirs only grows in height; wider would reach
+   into the neighbouring day. */
+.wkbar .w::before{width:100%}
 .tipi{display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:50%;border:1px solid var(--line);background:transparent;color:var(--muted);font:700 11px/1 var(--font);font-style:italic;padding:0;margin-left:4px;vertical-align:3px;cursor:help;letter-spacing:0;text-transform:none}
 details.more{border-top:1px solid var(--line-soft);padding-top:4px}
 details.more>summary{list-style:none;cursor:pointer;padding:8px 0;font-weight:650}
@@ -495,16 +503,17 @@ details.more>summary .small{display:block;font-weight:400}
 .sheet-h{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:10px}
 .pick{display:flex;justify-content:space-between;align-items:center;gap:8px;width:100%;text-align:left;background:none;border:0;border-bottom:1px solid var(--line-soft);padding:11px 2px;cursor:pointer;color:var(--ink)}
 .pick b{font-weight:650}
-#toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(78px + env(safe-area-inset-bottom,0px));z-index:60;background:var(--ink);color:var(--on-ink);padding:11px 15px;border-radius:var(--r-md);font-size:15px;display:flex;gap:12px;align-items:center;max-width:92vw;box-shadow:0 8px 24px rgba(0,0,0,.22)}
-body.timer-on #toast{bottom:calc(128px + env(safe-area-inset-bottom,0px))}
-#toast button{background:none;border:0;color:inherit;font-weight:700;text-decoration:underline;cursor:pointer}
+/* Docked under the header: at the bottom it sat over the next set rows and
+   swallowed taps on them. Only its Undo button takes taps. */
+#toast{position:fixed;left:50%;transform:translateX(-50%);top:calc(var(--head-h) + 8px + env(safe-area-inset-top,0px));z-index:60;pointer-events:none;background:var(--ink);color:var(--on-ink);padding:11px 15px;border-radius:var(--r-md);font-size:15px;display:flex;gap:12px;align-items:center;max-width:92vw;box-shadow:0 8px 24px rgba(0,0,0,.22)}
+#toast button{background:none;border:0;color:inherit;font-weight:700;text-decoration:underline;cursor:pointer;pointer-events:auto;min-height:44px;padding:0 6px;margin:-12px 0}
 #timer{position:fixed;left:0;right:0;bottom:calc(58px + env(safe-area-inset-bottom,0px));z-index:25;background:var(--ink);color:var(--on-ink);display:flex;align-items:center;justify-content:space-between;padding:6px 16px}
 #timer.done{background:var(--green);color:var(--on-accent)}
 #timer.compact{left:auto;right:12px;bottom:calc(66px + env(safe-area-inset-bottom,0px));border-radius:999px;padding:4px 4px 4px 14px;gap:10px;box-shadow:0 4px 14px rgba(0,0,0,.25)}
 #timer.compact .tv{font-size:22px}
 .btn.rest{font-variant-numeric:tabular-nums}
 #timer .tv{font:800 30px var(--display);font-variant-numeric:tabular-nums;letter-spacing:.03em}
-#timer button{background:color-mix(in srgb,currentColor 18%,transparent);border:0;color:inherit;border-radius:8px;min-height:36px;padding:0 11px;font-weight:650;cursor:pointer}
+#timer button{background:color-mix(in srgb,currentColor 18%,transparent);border:0;color:inherit;border-radius:8px;min-height:44px;padding:0 11px;font-weight:650;cursor:pointer}
 .overb{color:var(--yellow);font-weight:650}
 .cgrid{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(0,.8fr) minmax(0,.8fr);gap:8px;margin-top:8px}
 .clist{list-style:none;margin:0;padding:0}
@@ -2571,9 +2580,18 @@ function modalFocusables(){
    keyboard over the list you came to scroll. Touch screens get the sheet
    focused instead; a tap on the search box brings the keyboard when wanted. */
 const coarse=()=>{try{return window.matchMedia('(pointer:coarse)').matches;}catch(e){return false;}};
+/* The phone's Back gesture used to leave the app with a sheet open. Opening a
+   sheet adds one history entry, and Back closes the sheet instead. Closing
+   a sheet with its own buttons leaves that entry in place and the next sheet
+   reuses it, rather than calling history.back(), whose delayed event could
+   land on a sheet opened a moment later. */
+// Sheets whose fields hold something typed. Search boxes in pickers do not count.
+const FORM_SHEETS=new Set(['exEdit','injury','cardio','quick','prior','note','text','routineNew','inc','max','load','reps','cal','walk']);
+function modalPush(){try{if(!(history.state&&history.state.ilModal))history.pushState({ilModal:1},'');}catch(e){/* history is best effort in a frame */}}
+window.addEventListener('popstate',()=>{if(ui.modal)closeModal();});
 function openModal(m){
   const fresh=!ui.modal;
-  if(fresh)modalReturn=document.activeElement;
+  if(fresh){modalReturn=document.activeElement;modalPush();}
   ui.modal=m;renderModal();
   const el=$('#modal');if(!el)return;
   // A new name field (creating an exercise) is always focused, since typing
@@ -2634,7 +2652,16 @@ function wakeTip(){
   try{if(localStorage.getItem(KEY+'.tipWake'))return;localStorage.setItem(KEY+'.tipWake','1');}catch(e){return;}
   setTimeout(()=>toast('If the screen locks, the rest timer cannot alert you until you unlock. Settings has Keep the screen on during a session.',false,8000),600);
 }
-function startTimer(sec){wakeTip();timer.end=Date.now()+sec*1000;timer.fired=false;primeAudio();$('#timer').hidden=false;if(!timer.iv)timer.iv=setInterval(tick,250);tick();}
+/* The end time is kept on this device, so a phone that reloads a backgrounded
+   tab mid-rest comes back to the same countdown. */
+const TIMER_KEY=KEY+'.timer';
+function timerSave(){try{if(timer.end&&!$('#timer').hidden)localStorage.setItem(TIMER_KEY,String(timer.end));else localStorage.removeItem(TIMER_KEY);}catch(e){log('timer',e);}}
+function startTimer(sec){wakeTip();timer.end=Date.now()+sec*1000;timer.fired=false;primeAudio();$('#timer').hidden=false;timerBuild();timerSave();if(!timer.iv)timer.iv=setInterval(tick,250);tick();}
+function timerResume(){
+  let end=0;try{end=+localStorage.getItem(TIMER_KEY)||0;}catch(e){return;}
+  if(!state.draft||!(end>Date.now())){try{localStorage.removeItem(TIMER_KEY);}catch(e){/* nothing to clear */}return;}
+  timer.end=end;timer.fired=false;$('#timer').hidden=false;timerBuild();if(!timer.iv)timer.iv=setInterval(tick,250);tick();
+}
 /* One place that marks a set done or not done, so the checkmark and auto-done
    paths cannot drift apart. The rest timer starts here only in Auto mode. */
 let lastAuto=null;
@@ -2645,7 +2672,7 @@ function setDone(bi,si,val){
   if(btn){btn.classList.toggle('on',val);btn.setAttribute('aria-pressed',String(val));const row=btn.closest('.sg');if(row)row.classList.toggle('done',val);}
   refreshPR(bi,si,true);
   const c=$('#doneCount');
-  if(c)c.textContent=String(state.draft.ex.reduce((a,x)=>a+x.sets.filter(y=>y.done).length,0));
+  if(c){const n=state.draft.ex.reduce((a,x)=>a+x.sets.filter(y=>y.done).length,0);c.textContent=String(n);const w=$('#doneWord');if(w)w.textContent=n===1?'set':'sets';}
   let autoRest=val&&!s.warm&&+b.plan.rest>0&&state.settings.timerMode==='auto';
   // In a superset the rest is taken after the last exercise of the group.
   if(autoRest&&b.plan.ss){const grp=state.draft.ex.filter(x=>x.plan&&x.plan.ss===b.plan.ss);if(grp[grp.length-1]!==b)autoRest=false;}
@@ -2664,16 +2691,28 @@ async function wakeOn(){
 }
 function wakeOff(){try{if(wakeSentinel)wakeSentinel.release();}catch(e){/* already released */}wakeSentinel=null;}
 document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')wakeOn();});
-function stopTimer(){clearInterval(timer.iv);timer.iv=null;timer.fired=false;$('#timer').hidden=true;document.body.classList.remove('timer-on');}
+function stopTimer(){clearInterval(timer.iv);timer.iv=null;timer.fired=false;$('#timer').hidden=true;document.body.classList.remove('timer-on');timerSave();}
+/* The bar is built once per start (or when its style setting changes) and
+   each tick only rewrites the time. Rebuilding its buttons four times a
+   second made clicks land on a button that no longer existed and threw
+   keyboard focus back to the page. */
+function timerBuild(){
+  const el=$('#timer');const compact=!!state.settings.timerCompact;
+  if(el.dataset.mode===(compact?'c':'f')&&el.firstChild)return;
+  el.dataset.mode=compact?'c':'f';el.classList.toggle('compact',compact);
+  el.innerHTML=compact
+    ?`<span class="tv" data-t="v"></span><button data-act="tAdd" aria-label="Add 15 seconds">+15</button><button data-act="tStop" aria-label="Dismiss timer">✕</button>`
+    :`<span data-t="l"></span><span class="tv" data-t="v"></span><span class="row"><button data-act="tAdd">+15s</button><button data-act="tStop">Dismiss</button></span>`;
+}
 function tick(){
   const left=Math.max(0,Math.round((timer.end-Date.now())/1000));
   const el=$('#timer');
-  const compact=state.settings.timerCompact;
-  el.classList.toggle('compact',compact);
+  timerBuild();
   document.body.classList.toggle('timer-on',!el.hidden);
-  el.innerHTML=compact
-    ?`<span class="tv" aria-label="${left?'Rest remaining':'Rest done'}">${left?Math.floor(left/60)+':'+pad(left%60):'Go'}</span><button data-act="tAdd" aria-label="Add 15 seconds">+15</button><button data-act="tStop" aria-label="Dismiss timer">✕</button>`
-    :`<span>${left?'Rest':'Rest done'}</span><span class="tv">${Math.floor(left/60)}:${pad(left%60)}</span><span class="row"><button data-act="tAdd">+15s</button><button data-act="tStop">Dismiss</button></span>`;
+  const v=el.querySelector('[data-t="v"]'),l=el.querySelector('[data-t="l"]');
+  const txt=Math.floor(left/60)+':'+pad(left%60);
+  if(el.dataset.mode==='c'){const t=left?txt:'Go';if(v.textContent!==t)v.textContent=t;v.setAttribute('aria-label',left?'Rest remaining':'Rest done');}
+  else{if(v.textContent!==txt)v.textContent=txt;const lt=left?'Rest':'Rest done';if(l.textContent!==lt)l.textContent=lt;}
   el.classList.toggle('done',!left);
   if(!left){
     clearInterval(timer.iv);timer.iv=null;
@@ -3592,7 +3631,7 @@ function cardioDraftCard(d){
 function viewLogger(){
   const d=state.draft;const doneN=d.ex.reduce((a,b)=>a+b.sets.filter(s=>s.done).length,0);
   const left=d.editingId||d.free?0:remainMin(d);
-  let h=`<div class="ph"><div style="min-width:0;flex:1 1 auto"><p class="kick">${d.editingId?'Editing a saved session':'Session in progress'}</p><div class="hrow"><h2 style="overflow-wrap:anywhere;min-width:0">${esc(d.dayName)}</h2>${helpBtn('log')}<button class="btn sm danger" style="margin-left:auto;flex:none" data-act="discard">${d.editingId?'Cancel edit':'Discard'}</button></div><p class="meta"><span id="doneCount">${doneN}</span> sets done${d.startedAt?`, started ${new Date(d.startedAt).toLocaleTimeString([],{hour:'numeric',minute:'2-digit'})}`:''}${left>0?`, about ${left} min left`:''}</p>
+  let h=`<div class="ph"><div style="min-width:0;flex:1 1 auto"><p class="kick">${d.editingId?'Editing a saved session':'Session in progress'}</p><div class="hrow"><h2 style="overflow-wrap:anywhere;min-width:0">${esc(d.dayName)}</h2>${helpBtn('log')}<button class="btn sm danger" style="margin-left:auto;flex:none" data-act="discard">${d.editingId?'Cancel edit':'Discard'}</button></div><p class="meta"><span id="doneCount">${doneN}</span> <span id="doneWord">${doneN===1?'set':'sets'}</span> done${d.startedAt?`, started ${new Date(d.startedAt).toLocaleTimeString([],{hour:'numeric',minute:'2-digit'})}`:''}${left>0?`, about ${left} min left`:''}</p>
   <div class="row lh-row"><input type="date" data-bind="draftDate" value="${d.date}" max="${today()}" aria-label="Session date" data-tip="Change to log a past session">${left>0?'<button class="btn sm" data-act="shortOpen">Short on time</button>':''}</div></div></div>
   ${helpText('log',(state.settings.rirMode==='off'?'RIR is switched off in Settings, so every working set counts as hard. ':'RIR is reps left in the tank: 3 or less counts the set as hard for weekly volume, 4 or more stays in history only, blank counts as hard but is flagged as assumed. ')+'W marks a warm-up (kept, never analysed); tap it again for D, a drop set (counts as work and volume, never as a PR or target). In a superset the rest timer starts after the last exercise of the pair. Timed holds log seconds in the Sec column. The date can be changed to log a past session.'+(state.settings.autoDone?' Auto-mark is on: sets tick themselves when you leave the reps field.':''))}
   ${d.free?`<label class="field" style="margin-top:8px">Name<input type="text" data-bind="draftName" maxlength="40" value="${esc(d.dayName)}"></label><p class="small muted" style="margin:4px 0 0">Not tied to a routine day, so your cycle stays put.</p>`:''}
@@ -3615,8 +3654,8 @@ function viewLogger(){
       const ph=b.lastR[si]!=null?b.lastR[si]:`${p.repMin}-${p.repMax}`;
       const pr=s.done?livePR(b.exId,s,d.date):null;
       h+=`<div class="sg${nr?' norir':''} ${s.done?'done':''}${pr?' pr':''}"${pr?` data-pr="${pr}"`:''}><span class="n${s.drop?' drop':''}">${s.drop?'↓':si+1}</span>
-        <input type="text" inputmode="decimal" aria-label="Load" data-f="w" data-b="${bi}" data-s="${si}" value="${s.w==null?'':fmtW(s.w)}" placeholder="${ex.bw?'0':''}">
-        <input type="text" inputmode="numeric" aria-label="${ex.timed?'Seconds':'Reps'}${ex.perSide?' per side':''}" data-f="r" data-b="${bi}" data-s="${si}" value="${s.r==null?'':s.r}" placeholder="${ph}">
+        <input type="text" inputmode="decimal" enterkeyhint="next" aria-label="${esc(ex.name)}, set ${si+1} load" data-f="w" data-b="${bi}" data-s="${si}" value="${s.w==null?'':fmtW(s.w)}" placeholder="${ex.bw?'0':''}">
+        <input type="text" inputmode="numeric" enterkeyhint="next" aria-label="${esc(ex.name)}, set ${si+1} ${ex.timed?'seconds':'reps'}${ex.perSide?' per side':''}" data-f="r" data-b="${bi}" data-s="${si}" value="${s.r==null?'':s.r}" placeholder="${ph}">
         ${nr?'':rirSelect(s.rir,bi,si,p.rir)}
         <button class="wbtn ${s.warm?'on':s.drop?'drop':''}" aria-label="Set ${si+1} type: ${s.warm?'warm-up':s.drop?'drop set':'working set'}" data-act="sWarm" data-b="${bi}" data-s="${si}">${s.drop?'D':'W'}</button>
         <button class="cbtn ${s.done?'on':''}" aria-label="Set ${si+1} done" aria-pressed="${s.done?'true':'false'}" data-act="sDone" data-b="${bi}" data-s="${si}">✓</button></div>`;
@@ -3625,7 +3664,7 @@ function viewLogger(){
     // Copy last reps used to be hidden whenever the suggestion was "add load",
     // which is exactly the session where prefilled reps save the most typing.
     const canFill=b.lastR&&b.lastR.some(r=>r!=null)&&b.sets.some((s,i)=>!s.done&&!s.warm&&!s.drop&&s.r==null&&b.lastR[i]!=null);
-    h+=`<div class="row" style="margin-top:8px">${canFill?`<button class="btn sm" data-act="fillLast" data-b="${bi}" aria-label="Copy last session's reps" data-tip="Fill empty rows with last session's reps.">Copy last</button>`:''}<button class="btn sm" data-act="sAdd" data-b="${bi}" aria-label="Add a set" data-tip="Add a working set at the last load.">+ Set</button><button class="btn sm" data-act="sDel" data-b="${bi}" aria-label="Remove the last set" data-tip="Remove the last set." ${b.sets.length?'':'disabled'}>− Set</button><button class="btn sm" data-act="wAdd" data-b="${bi}" aria-label="Add a warm-up set" data-tip="Add a warm-up at the top, seeded from your working load. Warm-ups are kept in history but left out of every number.">+ Warm</button><button class="btn sm" data-act="dropAdd" data-b="${bi}" aria-label="Add a drop set" data-tip="Add a drop set at about 75% of the last load. It counts as half a set of volume and never as a PR.">+ Drop</button>${state.settings.timerMode!=='off'&&+p.rest>0?`<button class="btn sm rest" data-act="tStart" data-b="${bi}" aria-label="Start a ${p.rest} second rest" data-tip="Start the rest timer.">⏱ ${p.rest}s</button>`:''}</div></section>`;
+    h+=`<div class="row" style="margin-top:8px">${canFill?`<button class="btn sm" data-act="fillLast" data-b="${bi}" aria-label="Copy last session's reps" data-tip="Fill empty rows with last session's reps.">Copy last</button>`:''}<button class="btn sm" data-act="sAdd" data-b="${bi}" aria-label="Add a set" data-tip="Add a working set at the last load.">+ Set</button><button class="btn sm" data-act="sDel" data-b="${bi}" aria-label="Remove a set" data-tip="Removes the last set not yet done." ${b.sets.length?'':'disabled'}>− Set</button><button class="btn sm" data-act="wAdd" data-b="${bi}" aria-label="Add a warm-up set" data-tip="Add a warm-up at the top, seeded from your working load. Warm-ups are kept in history but left out of every number.">+ Warm</button><button class="btn sm" data-act="dropAdd" data-b="${bi}" aria-label="Add a drop set" data-tip="Add a drop set at about 75% of the last load. It counts as half a set of volume and never as a PR.">+ Drop</button>${state.settings.timerMode!=='off'&&+p.rest>0?`<button class="btn sm rest" data-act="tStart" data-b="${bi}" aria-label="Start a ${p.rest} second rest" data-tip="Start the rest timer.">⏱ ${p.rest}s</button>`:''}</div></section>`;
   });
   h+=`<div class="row"><button class="btn" style="flex:1" data-act="pickSession">+ Add exercise</button>${d.editingId?'':'<button class="btn" data-act="pickEx">Pick for me</button>'}</div>`;
   if(!d.editingId)h+=cardioDraftCard(d);
@@ -3691,7 +3730,7 @@ function itemHTML(R,di,it,ii){
   const ex=EX(it.exId);const open=ui.openItem===it.uid;
   const items=R.days[di].items;const nx=items[ii+1];const letters=ssLetters(items);
   const linked=!!(it.ss&&nx&&nx.ss===it.ss);
-  return `<li class="it${it.ss?' ss':''}" data-uid="${it.uid}"><div class="ir"><span class="grip" aria-hidden="true">⠿</span><button class="imain" data-act="toggleItem" data-uid="${it.uid}"><b>${esc(ex.name)}</b><span>${it.sets} × ${it.repMin}-${it.repMax}${ex.timed?'s':''}, ${rirShow(ex)?`${it.rir} RIR, `:''}rest ${it.rest}s${it.ss?` · superset ${letters[it.ss]}`:''}</span></button><button class="ib" aria-label="Move up" data-act="iUp" data-day="${di}" data-i="${ii}">↑</button><button class="ib" aria-label="Move down" data-act="iDown" data-day="${di}" data-i="${ii}">↓</button></div>
+  return `<li class="it${it.ss?' ss':''}" data-uid="${it.uid}"><div class="ir"><span class="grip" aria-hidden="true">⠿</span><button class="imain" data-act="toggleItem" data-uid="${it.uid}"><b>${esc(ex.name)}</b><span>${it.sets} × ${it.repMin}-${it.repMax}${ex.timed?'s':''}, ${rirShow(ex)?`${it.rir} RIR, `:''}rest ${it.rest}s${it.ss?` · superset ${letters[it.ss]}`:''}</span></button><button class="ib" aria-label="Move ${esc(ex.name)} up" data-act="iUp" data-day="${di}" data-i="${ii}"${ii===0?' disabled':''}>↑</button><button class="ib" aria-label="Move ${esc(ex.name)} down" data-act="iDown" data-day="${di}" data-i="${ii}"${ii===items.length-1?' disabled':''}>↓</button></div>
   ${open?`<div class="ied"><div class="grid3">
     <label class="field">Sets<input type="text" inputmode="numeric" data-it="sets" data-uid="${it.uid}" value="${it.sets}"></label>
     <label class="field">${ex.timed?'Min seconds':'Rep min'}<input type="text" inputmode="numeric" data-it="repMin" data-uid="${it.uid}" value="${it.repMin}"></label>
@@ -3727,8 +3766,8 @@ function volumeRows(sets,conf){
 function viewLibrary(){
   return pageHead('Program','Exercise library',`${state.exercises.filter(e=>!e.archived).length} exercises, all editable`,`<button class="btn sm" data-act="planBack">← Program</button><button class="btn sm primary" data-act="exNew">New exercise</button>`)+`
   <div class="card stack"><input type="search" placeholder="Search exercises" aria-label="Search exercises" data-bind="libQ" value="${esc(ui.libQ)}">
-  <div class="grid2"><select data-bind="libM"><option value="">All muscles</option>${MUSCLES.map(([k,l])=>`<option value="${k}" ${ui.libM===k?'selected':''}>${l}</option>`).join('')}</select>
-  <select data-bind="libE"><option value="">All equipment</option>${EQUIP.map(([k,l])=>`<option value="${k}" ${ui.libE===k?'selected':''}>${l}</option>`).join('')}</select></div>
+  <div class="grid2"><select data-bind="libM" aria-label="Filter by muscle"><option value="">All muscles</option>${MUSCLES.map(([k,l])=>`<option value="${k}" ${ui.libM===k?'selected':''}>${l}</option>`).join('')}</select>
+  <select data-bind="libE" aria-label="Filter by equipment"><option value="">All equipment</option>${EQUIP.map(([k,l])=>`<option value="${k}" ${ui.libE===k?'selected':''}>${l}</option>`).join('')}</select></div>
   <label class="check-inline"><input type="checkbox" data-bind="libRare" ${ui.libRare?'checked':''}>Less common and overlooked only</label></div>
   <div id="libList">${libCards()}</div>`;
 }
@@ -3825,7 +3864,7 @@ function viewDash(){
   let exh='<div class="card">';
   if(ui.dashEx){
     const st=I.exStats[ui.dashEx];const ex=EX(ui.dashEx);const exps=I.byEx[ui.dashEx];
-    exh+=`<select data-bind="dashEx">${withData.map(id=>`<option value="${id}" ${id===ui.dashEx?'selected':''}>${esc(exName(id))}</option>`).join('')}</select>
+    exh+=`<select data-bind="dashEx" aria-label="Exercise">${withData.map(id=>`<option value="${id}" ${id===ui.dashEx?'selected':''}>${esc(exName(id))}</option>`).join('')}</select>
     <div style="margin-top:8px">${exHeadline(ui.dashEx)}</div>${noE1(ex)?`<div class="kpis" style="margin-top:8px"><div class="kpi"><div class="v">${st.n}</div><div class="l">Sessions logged</div></div><div class="kpi"><div class="v">${st.stalled?'Yes':'No'}</div><div class="l">Stalled</div></div></div>`:''}<div class="kpis" style="margin-top:8px${noE1(ex)?';display:none':''}"><div class="kpi"><div class="v">${st.best?(ex.bw?'≈':'')+fmtW(st.best):'n/a'}</div><div class="l">Best e1RM (${U()}${loadNote(ex)})</div></div><div class="kpi"><div class="v">${st.pct==null?'n/a':(st.pct>=0?'+':'')+r1(st.pct)+'%'}</div><div class="l">Change, first to last exposure</div></div><div class="kpi"><div class="v">${st.slope==null?'n/a':(st.slope>=0?'+':'')+r1(st.slope)+'%'}</div><div class="l">Fitted trend per week</div></div><div class="kpi"><div class="v">${st.n}</div><div class="l">Sessions logged</div></div></div>
     ${st.pct!=null&&st.slope!=null&&(st.pct>0)!==(st.slope>0)&&Math.abs(st.pct)>0.5&&Math.abs(st.slope)>0.1?`<p class="small muted hastip" style="margin-top:6px" data-tip="The change compares the endpoints; the trend fits a line through every session. When they split, trust the trend: one unusual session is pulling an endpoint.">Change and trend disagree</p>`:''}
     ${noE1(ex)?'':`${rangeChips('ex',weeksSpan(exps[0].date),8,'all')}<div class="chartbox"><canvas id="chEx"></canvas></div>${chartFallback()}
@@ -4236,7 +4275,7 @@ function viewSettings(){
   ${G('prio','Priority muscles','prio')}${helpText('prio','Shown in Weak points so they stay on your radar.')}
   <div class="card chips">${MUSCLES.map(([k,l])=>`<button class="chip ${s.priorities.includes(k)?'on':''}" data-act="prio" data-m="${k}">${l}</button>`).join('')}</div></div></details>
   ${G('bands','Weekly set targets','bands')}${helpText('bands','Fractional hard sets per week: direct work 1, helper muscles 0.5 (Pelland 2025). 10 to 20 for major muscles fits the dose-response data; the upper number is typical, not a ceiling, and more still helps a little at more cost. Smaller muscles are set lower because compound lifts hit them indirectly, and their numbers are convention: no study has tested a dose for them. Serratus and rotator cuff are tracked only. Raise one or two muscles for a specialisation block.')}
-  <div class="card"><table class="t"><tr><th>Muscle</th><th class="r">Min</th><th class="r">Max</th></tr>${MUSCLES.map(([k,l])=>`<tr><td>${l}</td><td class="r"><input style="width:70px" type="text" inputmode="numeric" data-band="${k}" data-bi="0" value="${s.bands[k][0]}"></td><td class="r"><input style="width:70px" type="text" inputmode="numeric" data-band="${k}" data-bi="1" value="${s.bands[k][1]}"></td></tr>`).join('')}</table></div></div></details>
+  <div class="card"><table class="t"><tr><th>Muscle</th><th class="r">Min</th><th class="r">Max</th></tr>${MUSCLES.map(([k,l])=>`<tr><td>${l}</td><td class="r"><input style="width:70px" type="text" inputmode="numeric" aria-label="${l} minimum hard sets a week" data-band="${k}" data-bi="0" value="${s.bands[k][0]}"></td><td class="r"><input style="width:70px" type="text" inputmode="numeric" aria-label="${l} maximum hard sets a week" data-band="${k}" data-bi="1" value="${s.bands[k][1]}"></td></tr>`).join('')}</table></div></div></details>
   ${G('data','Your data','','dataSec')}
   <div class="panel" id="syncInfo">${syncInfo()}</div>
   ${backupDue()?`<p class="callout yellow" style="margin:10px 0 0"><b>Backup due.</b> ${s.lastExport?`Last backup file ${fmtDate(s.lastExport)}.`:'No backup file yet.'} Export one below; the cloud copy mirrors deletions, so it is not a backup.</p>`:''}
@@ -4428,7 +4467,7 @@ function renderModalBody(){
   }else if(m.kind==='note'){
     h=`<div class="sheet" role="dialog" aria-modal="true"><div class="sheet-h"><h3>${esc(m.title)}</h3><button class="ib" aria-label="Close" data-act="mClose">✕</button></div>
     <p class="small muted">Saved with this session and shown next time: a cue, a niggle, which machine.</p>
-    <textarea id="mNote" style="min-height:110px">${esc(m.text||'')}</textarea>
+    <textarea id="mNote" aria-label="Note" style="min-height:110px">${esc(m.text||'')}</textarea>
     <div class="row" style="margin-top:10px"><button class="btn primary" data-act="noteSave">Save note</button><button class="btn" data-act="mClose">Cancel</button></div></div>`;
   }else if(m.kind==='pickToday'){
     const rk=rankDays();const top=rk.rows.slice(0,3);
@@ -4467,7 +4506,7 @@ function renderModalBody(){
     <p class="small muted" style="margin:8px 0 0">Sets, reps and rest as planned; swaps are for this session only.</p></div>`;
   }else if(m.kind==='text'){
     h=`<div class="sheet" role="dialog" aria-modal="true"><div class="sheet-h"><h3>${esc(m.title)}</h3><button class="ib" aria-label="Close" data-act="mClose">✕</button></div>
-    <p class="small muted">${esc(m.help)}</p><textarea id="mText" style="min-height:220px;font-size:13px" ${m.readonly?'readonly':''}>${esc(m.text||'')}</textarea>
+    <p class="small muted">${esc(m.help)}</p><textarea id="mText" aria-label="${esc(m.title||'Text')}" style="min-height:220px;font-size:13px" ${m.readonly?'readonly':''}>${esc(m.text||'')}</textarea>
     <div class="row" style="margin-top:10px">${m.readonly?'<button class="btn primary" data-act="copyText">Copy</button>':'<button class="btn primary" data-act="importText">Import</button>'}<button class="btn" data-act="mClose">Close</button></div></div>`;
   }
   el.innerHTML=h;el.hidden=false;
@@ -4886,7 +4925,9 @@ const ACT={
     b.sets.push({w:base>0?roundLoad(base*0.75):null,r:null,rir:null,warm:false,drop:true,done:false});
     saveNow();rerenderKeepScroll();toast('Drop set added: half a set of volume, never a PR.');
   },
-  tAdd(){timer.end+=15000;if(!timer.iv)timer.iv=setInterval(tick,250);tick();},
+  // Once the rest is over, +15 counts from now (not from the old end, which
+  // left it at 0:00) and the alert is armed again.
+  tAdd(){timer.end=Math.max(timer.end,Date.now())+15000;timer.fired=false;timerSave();if(!timer.iv)timer.iv=setInterval(tick,250);tick();},
   tStop(){stopTimer();},
   mClose(){closeModal();},
   mOk(){const fn=ui.modal&&ui.modal.fn;closeModal();fn&&fn();},
@@ -4936,7 +4977,9 @@ const ACT={
     el.scrollIntoView({block:'start',behavior:'smooth'});
   },
   goBackup(){ui.tab='settings';ui.folds['settings:data']=true;window.scrollTo(0,0);render();const el=document.getElementById('dataSec');if(el)el.scrollIntoView({block:'start'});},
-  sAdd(t){const b=state.draft.ex[+t.dataset.b];const last=b.sets[b.sets.length-1];b.sets.push({w:last?last.w:null,r:null,rir:null,warm:false,done:false});saveNow();rerenderKeepScroll();},
+  // The new working set copies the last working set's load, not a drop set's
+  // (75%) or a warm-up's.
+  sAdd(t){const b=state.draft.ex[+t.dataset.b];const last=[...b.sets].reverse().find(x=>!x.drop&&!x.warm)||b.sets[b.sets.length-1];b.sets.push({w:last?last.w:null,r:null,rir:null,warm:false,drop:false,done:false});saveNow();rerenderKeepScroll();},
   /* Warm-ups were missing entirely, which is also why the planned time estimate
      was optimistic. New warm-ups go in at the top, already flagged, so they
      stay out of every analytic, and are seeded from the working load. */
@@ -4989,7 +5032,12 @@ const ACT={
     const b=state.draft.ex[m.bi];if(b)b.note=ta.value.trim();
     closeModal();saveNow();rerenderKeepScroll();
   },
-  sDel(t){const b=state.draft.ex[+t.dataset.b];b.sets.pop();saveNow();rerenderKeepScroll();},
+  /* Removes the last set not yet done. A logged set is only removed when
+     every set is done, and then with Undo, since it holds real numbers. */
+  sDel(t){const b=state.draft.ex[+t.dataset.b];if(!b||!b.sets.length)return;
+    let i=-1;for(let k=b.sets.length-1;k>=0;k--)if(!b.sets[k].done){i=k;break;}
+    if(i>=0){b.sets.splice(i,1);saveNow();rerenderKeepScroll();return;}
+    snapshot();b.sets.pop();saveNow();rerenderKeepScroll();toast('Logged set removed',true);},
   bUp(t){move(state.draft.ex,+t.dataset.b,+t.dataset.b-1);saveNow();rerenderKeepScroll();},
   bDown(t){move(state.draft.ex,+t.dataset.b,+t.dataset.b+1);saveNow();rerenderKeepScroll();},
   bDel(t){snapshot();state.draft.ex.splice(+t.dataset.b,1);saveNow();rerenderKeepScroll();toast('Exercise removed',true);},
@@ -5320,7 +5368,9 @@ document.addEventListener('keydown',e=>{if(e.key==='Escape'&&TIP.el)tipHide();})
 document.addEventListener('click',e=>{
   const tab=e.target.closest('#tabs button');
   if(tab){ui.tab=tab.dataset.tab;if(ui.tab==='program')ui.planView='routine';window.scrollTo(0,0);render();return;}
-  if(e.target.id==='modal'){closeModal();return;}
+  /* A tap outside a sheet closes it, unless something was typed there: a
+     half-filled new exercise or note is not thrown away by a stray tap. */
+  if(e.target.id==='modal'){if(ui.modal&&ui.modal.dirty){toast('Save or cancel first. Your changes are still here.');return;}closeModal();return;}
   const t=e.target.closest('[data-act]');if(!t)return;
   // getAttribute rather than dataset: the muscle map's targets are SVG groups.
   const fn=ACT[t.getAttribute('data-act')];if(fn){e.preventDefault();fn(t,e);}
@@ -5332,6 +5382,7 @@ document.addEventListener('keydown',e=>{
 });
 document.addEventListener('input',e=>{
   const t=e.target;
+  if(ui.modal&&FORM_SHEETS.has(ui.modal.kind)&&t&&t.closest&&t.closest('#modal'))ui.modal.dirty=true;
   if(t.dataset.cf&&state.draft&&state.draft.cardio){const c=state.draft.cardio[+t.dataset.c];if(!c)return;const k=t.dataset.cf;
     if(k==='min'){const n=numIn(t.value);c.min=n==null||n<=0?null:Math.min(Math.round(n),600);}
     else if(k==='hr'){const n=numIn(t.value);c.hr=n!=null&&n>=30&&n<=230?Math.round(n):null;}
@@ -5365,6 +5416,7 @@ document.addEventListener('input',e=>{
 });
 document.addEventListener('change',e=>{
   const t=e.target;
+  if(ui.modal&&FORM_SHEETS.has(ui.modal.kind)&&t&&t.closest&&t.closest('#modal'))ui.modal.dirty=true;
   if(t.id==='importFile'&&t.files&&t.files[0]){const fr=new FileReader();fr.onload=()=>importData(String(fr.result));fr.onerror=()=>toast('Could not read that file');fr.readAsText(t.files[0]);t.value='';return;}
   if(t.dataset.it){commit();rerenderKeepScroll();return;}
   if(t.dataset.band){const k=t.dataset.band;const b=state.settings.bands[k];if(b[0]>b[1])b.reverse();commit();rerenderKeepScroll();return;}
@@ -5441,6 +5493,11 @@ document.addEventListener('toggle',e=>{
 },true);
 document.addEventListener('keydown',e=>{
   if(e.key==='Enter'&&e.target&&e.target.id==='bwVal'){e.preventDefault();ACT.addBW();return;}
+  // In a set row, Enter (the keyboard's Next) goes load, reps, then the next
+  // set's load, which is the order sets are typed in.
+  if(e.key==='Enter'&&e.target&&e.target.matches&&e.target.matches('.sg input[data-f]')){
+    e.preventDefault();const all=[...document.querySelectorAll('.sg input[data-f]')];const i=all.indexOf(e.target);
+    const nx=all[i+1];if(nx){try{nx.focus();nx.select&&nx.select();}catch(x){/* focus is best effort */}}else e.target.blur();return;}
   if(e.key==='Escape'&&ui.modal){closeModal();return;}
   if(e.key!=='Tab'||!ui.modal)return;
   const f=modalFocusables();if(!f.length)return;
@@ -5686,9 +5743,10 @@ function swapPrompt(b,reason){
 }
 
 window.__onLib=(which)=>{if((which==='chart'&&ui.tab==='dash')||(which==='sortable'&&ui.tab==='program'))rerenderKeepScroll();};
-window.__ironlog={get state(){return state;},set state(v){state=v;},e1inv,rtfAt,rtfOf,rtfBand,calStats,rirEff,isHard,setCredit,tonnage,loadMode,loadWords,loadNote,progStep,jumpCap,setSecs,setupSecs,recovery,rolling7,rankDays,rankExercises,isCompound,patternOf,noE1,whtrLine,exHeadline,remainMin,shortPlan,weekPlan,cycleProjection,lastLighterWeek,regionBalance,parseHeight,mixCheck,swapCands,eqPlan,exportCSV,importData,chunksOf,assemble,sessionMuscles,TRACK_ONLY,cloud,Hx,mergeChunk,baseOf,sync:()=>cq(cloudPull),flush:()=>cq(cloudFlush),backupDue,routineUpdates,planFor,platesMode,plateText,chunksOf,IDX,suggest,e1,render,ACT,ui,makeDemo,invalidate,normalize,snapshot,saveNow,blockProgress,dayMinutes,weekStreak,coach,tonnageNow,livePR,exProjection,movers,stalledIds,muscleStatus,actualAvg4,plannedPerWeek,parseSets,aiSetsValid,fillSets,newBlock,lastNoteOf,sizeRows,sessionMuscleSets,sessionCapNote,routineClutter,aiDigest,debriefPrompt,reviewPrompt,swapPrompt,AI,sameRR};
+window.__ironlog={get state(){return state;},set state(v){state=v;},e1inv,rtfAt,rtfOf,rtfBand,calStats,rirEff,isHard,setCredit,tonnage,loadMode,loadWords,loadNote,progStep,jumpCap,setSecs,setupSecs,recovery,rolling7,rankDays,rankExercises,isCompound,patternOf,noE1,whtrLine,exHeadline,remainMin,shortPlan,weekPlan,cycleProjection,lastLighterWeek,regionBalance,parseHeight,mixCheck,swapCands,eqPlan,exportCSV,importData,chunksOf,assemble,sessionMuscles,TRACK_ONLY,cloud,Hx,mergeChunk,baseOf,sync:()=>cq(cloudPull),flush:()=>cq(cloudFlush),backupDue,routineUpdates,planFor,platesMode,plateText,chunksOf,IDX,suggest,e1,render,ACT,ui,makeDemo,invalidate,normalize,snapshot,saveNow,timer,blockProgress,dayMinutes,weekStreak,coach,tonnageNow,livePR,exProjection,movers,stalledIds,muscleStatus,actualAvg4,plannedPerWeek,parseSets,aiSetsValid,fillSets,newBlock,lastNoteOf,sizeRows,sessionMuscleSets,sessionCapNote,routineClutter,aiDigest,debriefPrompt,reviewPrompt,swapPrompt,AI,sameRR};
 render();
 wakeOn();
+timerResume();
 cloudInit();
 aiInit();
 })();
