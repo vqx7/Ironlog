@@ -4,6 +4,7 @@ const path = require('path');
 const fs = require('fs');
 const CHART = fs.readFileSync(path.join(__dirname, '..', 'node_modules/chart.js/dist/chart.umd.js'), 'utf8');
 const SORT = fs.readFileSync(path.join(__dirname, '..', 'node_modules/sortablejs/Sortable.min.js'), 'utf8');
+const THREE = fs.readFileSync(path.join(__dirname, '..', 'node_modules/three/build/three.module.min.js'), 'utf8');
 const FD = path.join(__dirname, '..', 'node_modules/@fontsource');
 let FCSS = '';
 for (const w of [600, 700, 800]) FCSS += `@font-face{font-family:'Big Shoulders Display';font-weight:${w};src:url(https://fonts.local/bsd-${w}.woff2) format('woff2');}`;
@@ -18,11 +19,13 @@ async function open(file, opts = {}) {
   const page = await ctx.newPage();
   const errors = [];
   page.on('pageerror', e => errors.push('pageerror: ' + e.message));
-  page.on('console', m => { if ((m.type() === 'error' || m.type() === 'warning') && !m.text().includes('Failed to load resource')) errors.push(m.type() + ': ' + m.text()); });
+  // Software WebGL in headless Chromium reports itself as warnings; that is the test machine, not the app.
+  page.on('console', m => { const t = m.text(); if ((m.type() === 'error' || m.type() === 'warning') && !t.includes('Failed to load resource') && !/GroupMarkerNotSet|swiftshader|GL Driver Message|WebGL-0x/i.test(t)) errors.push(m.type() + ': ' + t); });
   await page.route('**/*', r => {
     const u = r.request().url();
     if (u.includes('Chart.js') || u.includes('chart.js')) return r.fulfill({ contentType: 'application/javascript', body: CHART });
     if (u.includes('Sortable')) return r.fulfill({ contentType: 'application/javascript', body: SORT });
+    if (/three(@[\d.]+)?\/build\/three\.module\.min\.js/.test(u)) return r.fulfill({ contentType: 'application/javascript', headers: { 'Access-Control-Allow-Origin': '*' }, body: THREE });
     if (u.startsWith('file:')) return r.continue();
     if (u.includes('fonts.googleapis.com/css')) return r.fulfill({ contentType: 'text/css', body: FCSS });
     let m = u.match(/fonts\.local\/bsd-(\d+)/); if (m) return r.fulfill({ contentType: 'font/woff2', body: fs.readFileSync(`${FD}/big-shoulders-display/files/big-shoulders-display-latin-${m[1]}-normal.woff2`) });

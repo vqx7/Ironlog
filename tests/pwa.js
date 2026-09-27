@@ -37,9 +37,9 @@ const server = http.createServer((req, res) => {
     return { j, icons, apple: !!document.querySelector('link[rel=apple-touch-icon]'), theme: document.querySelector('meta[name=theme-color]').content }; });
   ok(man.j.display === 'standalone' && man.j.start_url === './' && man.j.scope === './' && man.j.name === 'Ironlog', 'manifest: standalone, relative start and scope');
   ok(man.icons.length === 3 && man.icons.every(i => i.ok && i.sizes === `${i.w}x${i.h}`) && man.icons.some(i => i.purpose === 'maskable') && man.icons.some(i => i.w >= 512), 'manifest icons exist and match their sizes, with a maskable one');
-  ok(man.apple && /^(#0a0b0d|rgb\(10, 11, 13\))$/.test(man.theme), 'iOS home-screen icon and theme colour set (' + man.theme + ')');
+  ok(man.apple && /^(#08090b|rgb\(8, 9, 11\))$/.test(man.theme), 'iOS home-screen icon and theme colour set (' + man.theme + ')');
   const lightTheme = await page.evaluate(() => { const L = window.__ironlog; L.state.settings.theme = 'light'; L.render(); const v = document.querySelector('meta[name=theme-color]').content; L.state.settings.theme = 'dark'; L.render(); return v; });
-  ok(/^rgb\(238, 240, 242\)$/.test(lightTheme), 'the status bar colour follows the light theme (' + lightTheme + ')');
+  ok(/^rgb\(242, 243, 245\)$/.test(lightTheme), 'the status bar colour follows the light theme (' + lightTheme + ')');
   // Service worker.
   await page.waitForFunction(() => navigator.serviceWorker && navigator.serviceWorker.controller || false, null, { timeout: 15000 }).catch(() => {});
   if (!(await page.evaluate(() => !!navigator.serviceWorker.controller))) { await page.reload(); await page.waitForFunction(() => !!navigator.serviceWorker.controller, null, { timeout: 15000 }).catch(() => {}); }
@@ -58,6 +58,10 @@ const server = http.createServer((req, res) => {
   const kept = await page.evaluate(() => { const d = window.__ironlog.state.draft; return d && d.ex[0].sets[0].done && d.ex[0].sets[0].rir === 1; });
   ok(kept, 'offline: a set logged offline survives a reload');
   ok(await page.evaluate(() => { const L = window.__ironlog; L.ui.tab = 'dash'; L.render(); return !!document.querySelector('canvas'); }), 'offline: charts still draw');
+  // The 3D body loads from the app's own copy of three.js, offline.
+  await page.evaluate(() => { const L = window.__ironlog; L.state.draft = null; L.saveNow(); L.ui.tab = 'today'; L.ui.folds['today:map'] = true; L.render(); document.querySelector('[data-act="mapView"][data-v="3d"]').click(); });
+  await page.waitForFunction(() => ['ready', 'fail'].includes(window.__ironlog.map3d().state), null, { timeout: 20000 }).catch(() => {});
+  ok(await page.evaluate(() => window.__ironlog.map3d().state === 'ready' && !!document.querySelector('#bm3d canvas')), 'offline: the 3D body loads from the app itself');
   await ctx.setOffline(false);
   ok(errors.length === 0, 'no console errors' + (errors.length ? ': ' + errors.slice(0, 3).join(' | ') : ''));
   console.log(fails.length ? `FAILURES ${fails.length}` : 'ALL PASS');

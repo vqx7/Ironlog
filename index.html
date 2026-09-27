@@ -9,7 +9,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@600;700;800&family=Hanken+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
 /* ============================================================
-   IRONLOG — visual system (r15)
+   IRONLOG — visual system (r20)
    Night gym by default: near-black surfaces, white type, and one
    volt accent that means "go" and "done" (the Start button, a
    finished set, a trained day, the active tab, progress). Gold is
@@ -24,20 +24,30 @@
    Light mode keeps the same structure on cool paper; volt stays a
    fill with dark type on it, and thin volt lines turn dark there,
    since volt on white cannot be seen.
+   r20 layout: sections are open space on the page, not boxes. A
+   section is a big condensed title with its summary, separated
+   from the next by a hairline; what sits inside is set on soft
+   filled surfaces (a stat row, a panel, a card per exercise), not
+   outlined. Controls are filled, not outlined: pills for the main
+   action, soft tiles for the rest. The header and tab bar are
+   frosted glass over the page. One inked hero card leads Today.
    ============================================================ */
 :root{
-  --bg:#eef0f2; --surface:#ffffff; --surface-2:#eff1f4; --surface-3:#e1e4e9;
-  --ink:#0d0f12; --ink-2:#23272d; --muted:#565e69; --line:#d8dce2; --line-soft:#e7eaee;
+  --bg:#f2f3f5; --surface:#ffffff; --surface-2:#eceef1; --surface-3:#e0e3e8;
+  --ink:#0d0f12; --ink-2:#23272d; --muted:#565e69; --line:#d8dce2; --line-soft:#e3e6ea;
+  --btn:#ffffff; --btn-b:#dcdfe4; --field:#ffffff; --field-b:#d3d7dd; --card-b:#e3e6ea;
+  --glass:rgba(242,243,245,.9);
   --green:#0b7a42; --yellow:#8a5300; --red:#b42318; --blue:#1d5bd6;
   --green-bg:#dcf2e5; --yellow-bg:#fbebd0; --red-bg:#fde3e0; --blue-bg:#e1ebfd;
   --on-accent:#ffffff; --on-ink:#f4f5f7;
   --volt:#d4ff3f; --on-volt:#0b0c0e; --volt-line:#0d0f12; --volt-soft:#f0ffc4;
   --gold:#ffc53d; --on-gold:#1a1300;
   --hero:#0d0f12; --on-hero:#f4f5f7; --hero-2:#1b1e23;
-  --shadow:0 1px 2px rgba(13,15,18,.06),0 8px 24px rgba(13,15,18,.06);
+  --shadow:0 1px 2px rgba(13,15,18,.05),0 10px 30px rgba(13,15,18,.06);
+  --hero-bg:radial-gradient(140px 140px at 90% 12%,rgba(212,255,63,.16),transparent 70%),linear-gradient(165deg,#1b1e23,#0d0f12 70%);
   --font:'Hanken Grotesk',system-ui,-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;
   --display:'Big Shoulders Display','Arial Narrow','Roboto Condensed','Helvetica Neue',system-ui,sans-serif;
-  --r-lg:18px; --r-md:12px; --r-sm:10px;
+  --r-lg:22px; --r-md:14px; --r-sm:12px;
   --head-h:52px;
   color-scheme:light;
   box-sizing:border-box;
@@ -46,25 +56,31 @@
 }
 @media (prefers-color-scheme:dark){
   :root:not([data-theme="light"]){
-    --bg:#0a0b0d; --surface:#141619; --surface-2:#1d2024; --surface-3:#282c31;
-    --ink:#f3f4f6; --ink-2:#d9dce1; --muted:#9aa1ab; --line:#262a30; --line-soft:#1d2025;
+    --bg:#08090b; --surface:#131518; --surface-2:#1c1f23; --surface-3:#272b30;
+    --ink:#f3f4f6; --ink-2:#d9dce1; --muted:#9aa1ab; --line:#262a30; --line-soft:#1b1e22;
+    --btn:#1e2125; --btn-b:transparent; --field:#1e2125; --field-b:transparent; --card-b:transparent;
+    --glass:rgba(8,9,11,.88);
     --green:#3ddc84; --yellow:#ffb020; --red:#ff5a4e; --blue:#5aa7ff;
     --green-bg:#0f2a1c; --yellow-bg:#33250a; --red-bg:#3a1512; --blue-bg:#0f2440;
     --on-accent:#0a0b0d; --on-ink:#0a0b0d;
     --volt:#d4ff3f; --on-volt:#0b0c0e; --volt-line:#d4ff3f; --volt-soft:#232c0c;
-    --hero:#141619; --on-hero:#f3f4f6; --hero-2:#1d2024;
+    --hero:#131518; --on-hero:#f3f4f6; --hero-2:#1c1f23;
+    --hero-bg:radial-gradient(150px 150px at 90% 10%,rgba(212,255,63,.13),transparent 70%),linear-gradient(165deg,#1a1d21,#101215 72%);
     --shadow:none;
     color-scheme:dark;
   }
 }
 :root[data-theme="dark"]{
-  --bg:#0a0b0d; --surface:#141619; --surface-2:#1d2024; --surface-3:#282c31;
-  --ink:#f3f4f6; --ink-2:#d9dce1; --muted:#9aa1ab; --line:#262a30; --line-soft:#1d2025;
+  --bg:#08090b; --surface:#131518; --surface-2:#1c1f23; --surface-3:#272b30;
+  --ink:#f3f4f6; --ink-2:#d9dce1; --muted:#9aa1ab; --line:#262a30; --line-soft:#1b1e22;
+  --btn:#1e2125; --btn-b:transparent; --field:#1e2125; --field-b:transparent; --card-b:transparent;
+  --glass:rgba(8,9,11,.88);
   --green:#3ddc84; --yellow:#ffb020; --red:#ff5a4e; --blue:#5aa7ff;
   --green-bg:#0f2a1c; --yellow-bg:#33250a; --red-bg:#3a1512; --blue-bg:#0f2440;
   --on-accent:#0a0b0d; --on-ink:#0a0b0d;
   --volt:#d4ff3f; --on-volt:#0b0c0e; --volt-line:#d4ff3f; --volt-soft:#232c0c;
-  --hero:#141619; --on-hero:#f3f4f6; --hero-2:#1d2024;
+  --hero:#131518; --on-hero:#f3f4f6; --hero-2:#1c1f23;
+  --hero-bg:radial-gradient(150px 150px at 90% 10%,rgba(212,255,63,.13),transparent 70%),linear-gradient(165deg,#1a1d21,#101215 72%);
   --shadow:none;
   color-scheme:dark;
 }
@@ -90,26 +106,30 @@ b{font-weight:650}
 /* One sticky bar on every tab: the wordmark, this calendar week, and the save
    state. It replaced a decorative four-colour strip and the week grid that
    used to sit only on Today. */
-.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:20;background:var(--bg);display:flex;align-items:center;gap:10px;height:var(--head-h);padding:0 16px;border-bottom:1px solid var(--line)}
+.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:20;background:var(--glass);-webkit-backdrop-filter:saturate(170%) blur(18px);backdrop-filter:saturate(170%) blur(18px);display:flex;align-items:center;gap:10px;height:var(--head-h);padding:0 16px;border-bottom:1px solid var(--line-soft)}
 .top h1{font-size:22px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;line-height:1;flex:none}
 .top h1 span{color:var(--muted);font-weight:600}
-@media (max-width:374px){.top{gap:7px;padding:0 10px}.top h1{font-size:18px;letter-spacing:.03em}}
+/* A small phone keeps the week bar as wide as it can: the wordmark drops to
+   IRON, which frees room for seven days. */
+@media (max-width:374px){.top{gap:6px;padding:0 10px}.top h1{font-size:18px;letter-spacing:.03em}.top h1 span{display:none}}
 .wkbar{flex:1 1 auto;min-width:0;display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:3px}
-.wkbar .w{-webkit-appearance:none;appearance:none;position:relative;min-width:0;border:1px solid transparent;border-radius:8px;background:var(--surface-2);padding:3px 0 4px;margin:0;display:flex;flex-direction:column;align-items:center;font:inherit;line-height:1;color:var(--muted);cursor:pointer;-webkit-tap-highlight-color:transparent}
+.wkbar .w{-webkit-appearance:none;appearance:none;position:relative;min-width:0;border:0;border-radius:12px;background:transparent;padding:2px 0;margin:0;display:flex;flex-direction:column;align-items:center;gap:2px;font:inherit;line-height:1;color:var(--muted);cursor:pointer;-webkit-tap-highlight-color:transparent}
 .wkbar div.w{cursor:default}
 .wkbar .w .wd{font:650 9.5px/1.1 var(--font);letter-spacing:.06em;text-transform:uppercase}
-.wkbar .w .dn{font:800 16px/1.1 var(--display);color:var(--ink);font-variant-numeric:tabular-nums}
+/* Each day is a small disc, like an activity ring: filled volt when trained,
+   dashed when planned, a ring around today. */
+.wkbar .w .dn{display:flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:50%;font:800 15px/1 var(--display);color:var(--ink);font-variant-numeric:tabular-nums;background:var(--surface-2)}
 .wkbar .w .nm{display:none;font-size:10px;line-height:1.25;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding:0 3px}
-.wkbar .w.on{background:var(--volt);color:var(--on-volt)}
-.wkbar .w.on .dn{color:var(--on-volt)}
-.wkbar .w.plan{background:transparent;border:1px dashed var(--muted);color:var(--ink)}
-.wkbar .w.miss{background:transparent;border:1px dashed var(--red)}
-.wkbar .w.rest{background:transparent}
-.wkbar .w.rest .dn{color:var(--muted)}
-.wkbar .w.cardio{background:transparent;border:1px solid var(--volt-line)}
-.wkbar .w.today{box-shadow:0 0 0 2px var(--ink)}
-.wkbar .w.live::after{content:"";position:absolute;top:-3px;right:-3px;width:9px;height:9px;border-radius:50%;background:var(--volt);box-shadow:0 0 0 2px var(--bg),0 0 0 3px var(--volt-line)}
-.ssb{flex:none;width:30px;height:30px;border-radius:50%;border:1px solid var(--line);background:transparent;display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:0;font:700 14px/1 var(--font);color:var(--muted);cursor:pointer}
+.wkbar .w.on .dn{background:var(--volt);color:var(--on-volt)}
+.wkbar .w.plan .dn{background:transparent;box-shadow:inset 0 0 0 1.5px var(--muted)}
+.wkbar .w.miss .dn{background:transparent;box-shadow:inset 0 0 0 1.5px var(--red)}
+.wkbar .w.rest .dn{background:transparent;color:var(--muted)}
+.wkbar .w.cardio .dn{background:transparent;box-shadow:inset 0 0 0 2px var(--volt-line)}
+.wkbar .w.today .wd{color:var(--ink)}
+.wkbar .w.today .dn{outline:2px solid var(--ink);outline-offset:2px}
+.wkbar .w.live::after{content:"";position:absolute;top:0;right:calc(50% - 18px);width:9px;height:9px;border-radius:50%;background:var(--volt);box-shadow:0 0 0 2px var(--bg),0 0 0 3px var(--volt-line)}
+@media (max-width:374px){.wkbar .w .dn{width:24px;height:24px;font-size:13.5px}.wkbar .w.today .dn{outline-offset:1px}}
+.ssb{flex:none;width:30px;height:30px;border-radius:50%;border:0;background:var(--surface-2);display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:0;font:700 14px/1 var(--font);color:var(--muted);cursor:pointer}
 .ssb .sst{display:none;font:600 12.5px var(--font)}
 .ssb.ok{color:var(--green);border-color:color-mix(in srgb,var(--green) 45%,transparent)}
 .ssb.warn{color:var(--yellow);border-color:var(--yellow);background:var(--yellow-bg)}
@@ -125,84 +145,90 @@ b{font-weight:650}
 main{max-width:760px;margin:0 auto;padding:6px 16px 150px}
 
 /* ---------- page header ---------- */
-.ph{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;flex-wrap:wrap;margin:18px 0 10px}
-.ph h2{font-size:38px;font-weight:800;letter-spacing:.02em}
+.ph{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;flex-wrap:wrap;margin:22px 0 14px}
+.ph h2{font-size:46px;font-weight:800;letter-spacing:.01em;line-height:.95}
 .ph .kick{font:600 12px var(--font);letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin:0 0 2px}
 .ph .meta{font-size:14px;color:var(--muted);margin:3px 0 0}
 .ph-a{display:flex;gap:6px;flex-wrap:wrap}
 
 /* ---------- bottom tabs ---------- */
-.tabs{position:fixed;left:0;right:0;bottom:0;z-index:30;background:var(--surface);border-top:1px solid var(--line);display:grid;grid-template-columns:repeat(5,minmax(0,1fr));padding-bottom:env(safe-area-inset-bottom,0px)}
+.tabs{position:fixed;left:0;right:0;bottom:0;z-index:30;background:var(--glass);-webkit-backdrop-filter:saturate(170%) blur(18px);backdrop-filter:saturate(170%) blur(18px);border-top:1px solid var(--line-soft);display:grid;grid-template-columns:repeat(5,minmax(0,1fr));padding-bottom:env(safe-area-inset-bottom,0px)}
 .tabs button{position:relative;background:none;border:0;min-height:58px;min-width:0;padding:7px 1px 6px;font:600 11px var(--font);letter-spacing:.04em;text-transform:uppercase;color:var(--muted);cursor:pointer;white-space:nowrap;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px}
 .tabs button svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
 .tabs button[aria-current="page"]{color:var(--ink)}
-.tabs button[aria-current="page"]::before{content:"";position:absolute;top:-1px;left:50%;width:32px;height:3px;margin-left:-16px;border-radius:0 0 3px 3px;background:var(--volt-line)}
+.tabs button[aria-current="page"] svg{stroke:var(--volt-line);stroke-width:2.1}
+.tabs button[aria-current="page"]::before{content:"";position:absolute;top:5px;left:50%;width:44px;height:30px;margin-left:-22px;border-radius:999px;background:color-mix(in srgb,var(--volt) 14%,transparent);z-index:-1}
+.tabs button{isolation:isolate}
 /* A session in progress: the Today tab reads Session and carries a dot, so it
    can be found again from any tab. */
-.tabs button.live::after{content:"";position:absolute;top:7px;left:50%;margin-left:9px;width:8px;height:8px;border-radius:50%;background:var(--volt);box-shadow:0 0 0 2px var(--surface),0 0 0 3px var(--volt-line)}
+.tabs button.live::after{content:"";position:absolute;top:7px;left:50%;margin-left:9px;width:8px;height:8px;border-radius:50%;background:var(--volt);box-shadow:0 0 0 2px var(--bg),0 0 0 3px var(--volt-line)}
 
 /* ---------- help ---------- */
-.hb{width:26px;height:26px;border-radius:50%;border:1px solid var(--line);background:transparent;color:var(--muted);font:700 13px var(--font);display:inline-flex;align-items:center;justify-content:center;cursor:pointer;flex:none;padding:0}
+.hb{width:24px;height:24px;border-radius:50%;border:1.5px solid var(--line);background:transparent;color:var(--muted);font:700 13px var(--font);display:inline-flex;align-items:center;justify-content:center;cursor:pointer;flex:none;padding:0}
 .hb[aria-expanded="true"]{background:var(--ink);color:var(--on-ink);border-color:transparent}
-.ht{font-size:14px;color:var(--ink-2);margin:4px 0 10px;padding:9px 11px;background:var(--surface-2);border-radius:var(--r-sm);line-height:1.5}
+.ht{font-size:14px;color:var(--ink-2);margin:4px 0 12px;padding:11px 13px;background:var(--surface);border-radius:var(--r-md);line-height:1.5}
+.block .ht,.card .ht,.sheet .ht{background:var(--surface-2)}
 .hrow{display:flex;align-items:center;gap:8px}
 
 /* ---------- the one section component ----------
-   Every foldable block on every tab is a .sec: one box, one header
-   layout (handle, title, summary, help, chevron). Folds inside a
-   section are .subsec: a hairline and a smaller title, never a box
-   inside a box. */
-.sec{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-lg);margin:10px 0;overflow:clip;box-shadow:var(--shadow)}
-.sec>summary{list-style:none;cursor:pointer;display:flex;align-items:center;gap:8px;min-height:58px;padding:10px 12px 10px 14px;-webkit-tap-highlight-color:transparent;user-select:none;-webkit-user-select:none}
+   Every foldable block on every tab is a .sec. It is open space on the
+   page: a big condensed title and its summary, a hairline above, and no
+   box. What sits inside is set on soft filled surfaces. Folds inside a
+   section are .subsec: a hairline and a smaller title. */
+.sec{background:transparent;border:0;border-top:1px solid var(--line-soft);border-radius:0;margin:0;overflow:visible}
+.hero+.sec,.ph+.sec,.jump+.sec,.sec:first-child{border-top:0}
+.sec>summary{list-style:none;cursor:pointer;display:flex;align-items:center;gap:10px;min-height:66px;padding:12px 0;-webkit-tap-highlight-color:transparent;user-select:none;-webkit-user-select:none}
 .sec>summary::-webkit-details-marker{display:none}
-.sec-t{font:700 21px/1 var(--display);letter-spacing:.03em;text-transform:uppercase;white-space:nowrap;flex:none}
-.sec-s{flex:1 1 auto;min-width:0;text-align:right;font-size:13px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-variant-numeric:tabular-nums}
-.chev{width:28px;height:28px;border-radius:50%;background:var(--surface-2);flex:none;display:inline-flex;align-items:center;justify-content:center}
-.chev::before{content:"";width:7px;height:7px;border-right:2px solid var(--ink);border-bottom:2px solid var(--ink);transform:translateY(-2px) rotate(45deg);transition:transform .18s ease}
+.sec-t{font:700 21px/1.15 var(--font);letter-spacing:-.015em;white-space:nowrap;flex:none}
+/* The summary wraps to a second line instead of being cut off on a small phone. */
+.sec-s{flex:1 1 auto;min-width:0;text-align:right;font-size:13px;line-height:1.3;color:var(--muted);font-variant-numeric:tabular-nums;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.chev{width:22px;height:28px;border-radius:0;background:transparent;flex:none;display:inline-flex;align-items:center;justify-content:center}
+.chev::before{content:"";width:8px;height:8px;border-right:2px solid var(--muted);border-bottom:2px solid var(--muted);transform:translateY(-2px) rotate(45deg);transition:transform .18s ease}
 details[open]>summary .chev::before{transform:translateY(2px) rotate(-135deg)}
-.sec[open]>summary{border-bottom:1px solid var(--line-soft)}
-.sec-b{padding:12px 14px 14px}
-.sec>summary:focus-visible{outline:3px solid var(--ink);outline-offset:-3px;border-radius:var(--r-lg)}
-.subsec{border-top:1px solid var(--line-soft);margin:12px -14px 0;padding:0 14px}
-.subsec:last-child{margin-bottom:-14px}
-.subsec>summary{list-style:none;cursor:pointer;display:flex;align-items:center;gap:8px;min-height:50px;padding:6px 0;-webkit-tap-highlight-color:transparent}
+.sec-b{padding:0 0 22px}
+.sec>summary:focus-visible{outline:3px solid var(--ink);outline-offset:2px;border-radius:var(--r-md)}
+.subsec{border-top:1px solid var(--line-soft);margin:14px 0 0;padding:0}
+.subsec:last-child{margin-bottom:-8px}
+.subsec>summary{list-style:none;cursor:pointer;display:flex;align-items:center;gap:8px;min-height:52px;padding:6px 0;-webkit-tap-highlight-color:transparent}
 .subsec>summary::-webkit-details-marker{display:none}
-.subsec>summary .chev{width:24px;height:24px;background:transparent;border:1px solid var(--line)}
-.subsec-t{font-weight:650;font-size:15px;flex:none}
+.subsec-t{font-weight:700;font-size:16px;flex:none}
 .subsec>.sec-b{padding:2px 0 14px}
 /* Inner cards lose their box inside a section: the section is the box. */
-.sec-b .card{background:none;border:0;border-radius:0;padding:0;margin:12px 0 0}
+.sec-b .card{background:none;border:0;border-radius:0;padding:0;margin:14px 0 0;box-shadow:none}
 .sec-b>.card:first-child{margin-top:0}
-.panel{background:var(--surface-2);border-radius:var(--r-md);padding:12px}
-.callout{border-radius:var(--r-md);padding:10px 12px;font-size:14px;background:var(--surface-2)}
+.panel{background:var(--surface);border-radius:var(--r-md);padding:13px 14px}
+.block .panel,.card .panel,.sheet .panel{background:var(--surface-2)}
+
+.callout{border-radius:var(--r-md);padding:11px 13px;font-size:14px;background:var(--surface)}
 .callout.green{background:var(--green-bg)}.callout.yellow{background:var(--yellow-bg)}.callout.red{background:var(--red-bg)}.callout.blue{background:var(--blue-bg)}
 .callout b{font-weight:650}
-.pill{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:650;letter-spacing:.02em;padding:3px 9px;border-radius:999px;background:var(--surface-2);color:var(--ink);white-space:nowrap}
+.pill{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:650;letter-spacing:.02em;padding:4px 10px;border-radius:999px;background:var(--surface);color:var(--ink);white-space:nowrap}
 .pill::before{content:"";width:7px;height:7px;border-radius:50%;background:currentColor}
 .pill.green{background:var(--green-bg);color:var(--green)}.pill.yellow{background:var(--yellow-bg);color:var(--yellow)}.pill.red{background:var(--red-bg);color:var(--red)}.pill.blue{background:var(--blue-bg);color:var(--blue)}
 
 /* ---------- basic blocks ---------- */
-.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-lg);padding:14px;margin:10px 0;box-shadow:var(--shadow)}
+.card{background:var(--surface);border:1px solid var(--card-b);border-radius:var(--r-lg);padding:16px;margin:12px 0;box-shadow:var(--shadow)}
 .section{margin:18px 0 8px}
 .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
 .row.spread{justify-content:space-between}
 .stack>*+*{margin-top:10px}
 .explain{font-size:14px;color:var(--muted);margin:2px 0 8px}
 
-.btn{min-height:44px;border-radius:var(--r-md);border:1px solid var(--line);background:var(--surface);font-weight:650;font-size:15px;padding:0 15px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:6px;color:var(--ink);transition:background .12s,transform .06s}
-.btn:active{transform:translateY(1px)}
-.btn.primary{background:var(--volt);color:var(--on-volt);border-color:transparent}
+.btn{min-height:44px;border-radius:var(--r-md);border:1px solid var(--btn-b);background:var(--btn);font-weight:650;font-size:15px;padding:0 16px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:6px;color:var(--ink);transition:background .12s,transform .08s}
+.btn:active{transform:scale(.97)}
+.block .btn,.card .btn,.sheet .btn,.panel .btn{background:var(--surface-2);border-color:transparent}
+.btn.primary,.block .btn.primary,.card .btn.primary,.sheet .btn.primary,.panel .btn.primary{background:var(--volt);color:var(--on-volt);border-color:transparent;border-radius:999px}
 .btn.danger{color:var(--red)}
 .btn.sm{min-height:44px;padding:0 12px;font-size:14px;border-radius:var(--r-sm)}
 .btn.block{width:100%}
 .btn:disabled{opacity:.4;cursor:default}
 .btn.noted{border-color:var(--ink);box-shadow:inset 0 0 0 1px var(--ink)}
-.ib{width:44px;height:44px;border-radius:var(--r-sm);border:1px solid var(--line);background:var(--surface);cursor:pointer;font-size:16px;display:inline-flex;align-items:center;justify-content:center;flex:none;color:var(--ink)}
+.ib{width:44px;height:44px;border-radius:50%;border:1px solid var(--btn-b);background:var(--btn);cursor:pointer;font-size:16px;display:inline-flex;align-items:center;justify-content:center;flex:none;color:var(--ink)}
 .ib.sm{width:32px;height:32px;font-size:13px;color:var(--muted)}
 :focus-visible{outline:3px solid var(--ink);outline-offset:2px}
 
-input[type=text],input[type=email],input[type=password],input[type=number],input[type=date],input[type=search],select,textarea{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-sm);min-height:44px;padding:6px 11px;font-size:16px;width:100%;min-width:0;color:var(--ink)}
-.sec input[type=text],.sec input[type=date],.sec input[type=search],.sec select,.sec textarea,.block input,.block select{background:var(--bg)}
+input[type=text],input[type=email],input[type=password],input[type=number],input[type=date],input[type=search],select,textarea{background:var(--field);border:1px solid var(--field-b);border-radius:var(--r-sm);min-height:44px;padding:6px 11px;font-size:16px;width:100%;min-width:0;color:var(--ink)}
+.block input,.block select,.sheet input,.sheet select,.sheet textarea,.card input,.card select{background:var(--surface-2);border-color:var(--field-b)}
 input:focus,select:focus,textarea:focus{border-color:var(--ink);outline:none;box-shadow:0 0 0 1px var(--ink)}
 textarea{min-height:74px;resize:vertical}
 label.field{display:block;font-size:13px;font-weight:600;color:var(--muted);letter-spacing:.01em}
@@ -213,37 +239,37 @@ label.field>input,label.field>select,label.field>textarea{margin-top:4px;color:v
 .check-inline input{width:20px;height:20px;flex:none;margin:0;accent-color:var(--ink)}
 .dmeta .check-inline{min-height:44px;align-items:center;cursor:pointer}
 
-.tag{display:inline-block;font-size:11.5px;font-weight:650;letter-spacing:.02em;padding:2px 8px;border-radius:999px;background:var(--surface-2);color:var(--muted);white-space:nowrap;vertical-align:1px}
+.tag{display:inline-block;font-size:11.5px;font-weight:650;letter-spacing:.02em;padding:3px 9px;border-radius:999px;background:var(--surface-2);color:var(--muted);white-space:nowrap;vertical-align:1px}
 .tag.rare,.tag.yellow{background:var(--yellow-bg);color:var(--yellow)}
 .tag.green{background:var(--green-bg);color:var(--green)}
 .tag.red{background:var(--red-bg);color:var(--red)}
 .tag.blue{background:var(--blue-bg);color:var(--blue)}
 .chips{display:flex;flex-wrap:wrap;gap:6px}
-.chip{min-height:40px;position:relative;padding:0 13px;border-radius:999px;border:1px solid var(--line);background:var(--surface);cursor:pointer;font-size:14px;font-weight:600;color:var(--ink)}
+.chip{min-height:40px;position:relative;padding:0 14px;border-radius:999px;border:1px solid var(--btn-b);background:var(--btn);cursor:pointer;font-size:14px;font-weight:600;color:var(--ink)}
 .chip.on{background:var(--ink);color:var(--on-ink);border-color:transparent}
 
 .plate{display:inline-block;width:6px;height:22px;border-radius:2px;flex:none}
 .plate.green{background:var(--green)} .plate.yellow{background:var(--yellow)} .plate.red{background:var(--red)} .plate.blue{background:var(--blue)} .plate.none{background:var(--line)}
 
 /* ---------- program: days ---------- */
-.day{background:var(--surface-2);border-radius:var(--r-md);margin:10px 0;overflow:hidden}
+.day{background:var(--surface);border:1px solid var(--card-b);border-radius:var(--r-lg);margin:10px 0;overflow:hidden}
 .day:first-child{margin-top:4px}
 .day.rest{opacity:.75}
 .dh{display:flex;gap:8px;align-items:center;padding:8px 8px 6px 10px}
 .dh .dlabel{font:700 20px var(--display);text-transform:uppercase;letter-spacing:.03em;white-space:nowrap;flex:none}
-.dh input[type=text]{font-weight:600;min-height:40px;background:var(--surface)}
+.dh input[type=text]{font-weight:600;min-height:40px;background:var(--surface-2);border-color:transparent}
 .dmeta{padding:0 12px 4px;font-size:13.5px;color:var(--muted)}
 .dmeta.row{flex-wrap:nowrap;gap:8px}
 .dmeta .check-inline{flex:none;color:var(--ink);font-size:14px;align-items:center}
 ul.items,ul.lib{list-style:none;margin:0;padding:2px 10px 6px}
 ul.items:empty{min-height:54px;margin:6px 12px;border:2px dashed var(--line);border-radius:var(--r-sm)}
 ul.items:empty::before{content:"Drop or add exercises here";display:block;padding:14px;color:var(--muted);font-size:14px;text-align:center}
-.it{border-bottom:1px solid var(--line);padding:3px 0}
+.it{border-bottom:1px solid var(--line-soft);padding:3px 0}
 .it:last-child{border-bottom:0}
 .ir{display:flex;align-items:center;gap:6px}
 .ir .ib{width:40px;height:40px;background:transparent}
 .ib:disabled{opacity:.35;cursor:default}
-.sgrip{width:26px;height:32px;display:inline-flex;align-items:center;justify-content:center;cursor:grab;color:var(--muted);font-size:17px;touch-action:none;flex:none;user-select:none;-webkit-user-select:none;border-radius:6px;margin-left:-6px;opacity:.7}
+.sgrip{width:22px;height:32px;display:inline-flex;align-items:center;justify-content:center;cursor:grab;color:var(--muted);font-size:15px;touch-action:none;flex:none;user-select:none;-webkit-user-select:none;border-radius:6px;margin-left:-6px;opacity:.4}
 .sgrip:focus-visible{outline:2px solid var(--ink);outline-offset:1px}
 .dgrip{width:26px;height:40px;display:inline-flex;align-items:center;justify-content:center;cursor:grab;color:var(--muted);font-size:19px;touch-action:none;flex:none;user-select:none;-webkit-user-select:none;margin-left:-4px}
 .dfold{background:transparent!important;border:0!important}
@@ -251,25 +277,25 @@ ul.items:empty::before{content:"Drop or add exercises here";display:block;paddin
 .dfold[aria-expanded="true"]::before{transform:translateY(2px) rotate(-135deg)}
 .grip{width:30px;height:40px;display:inline-flex;align-items:center;justify-content:center;cursor:grab;color:var(--muted);font-size:19px;touch-action:none;flex:none;user-select:none;-webkit-user-select:none}
 .imain{flex:1;min-width:0;text-align:left;background:none;border:0;padding:6px 2px;cursor:pointer;color:var(--ink)}
-.imain b{display:block;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.imain b{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;font-weight:600;line-height:1.25}
 .imain span{font-size:13px;color:var(--muted);font-variant-numeric:tabular-nums}
 .ied{padding:8px 2px 12px 36px}
 .sortable-ghost{opacity:.35}
 .sortable-chosen{background:var(--surface-3)}
-.lib-panel{max-height:340px;overflow:auto;border-radius:var(--r-md);margin-top:10px;background:var(--surface-2)}
+.lib-panel{max-height:340px;overflow:auto;border-radius:var(--r-md);margin-top:10px;background:var(--surface)}
 .lib-panel .it{border-color:var(--line)}
 
 /* ---------- logger ---------- */
-.block{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-lg);padding:14px;margin:10px 0}
+.block{background:var(--surface);border:1px solid var(--card-b);border-radius:var(--r-lg);padding:16px;margin:12px 0;box-shadow:var(--shadow)}
 .block.ss{box-shadow:inset 3px 0 0 var(--blue)}
 .block.ss+.block.ss{margin-top:-4px}
 .it.ss .imain b::after{content:" · SS";color:var(--blue);font-size:12px}
 .bh{display:flex;justify-content:space-between;gap:8px;align-items:flex-start}
 .bh-acts{display:flex;gap:3px;flex:none}
-.bh h3{overflow-wrap:anywhere;font-size:22px;text-transform:uppercase;letter-spacing:.02em}
+.bh h3{overflow-wrap:anywhere;font-size:24px;text-transform:uppercase;letter-spacing:.02em}
 .bh p{margin-top:3px}
 .bh>div:first-child{min-width:0}
-.hint{font-size:14px;background:var(--surface-2);padding:9px 11px;border-radius:var(--r-sm);margin:10px 0 6px;line-height:1.45}
+.hint{font-size:14px;background:var(--surface-2);padding:10px 12px;border-radius:var(--r-md);margin:12px 0 6px;line-height:1.45}
 .hint b{font-weight:650}
 .lmrow{display:flex;gap:5px;flex-wrap:wrap;margin:6px 0 0}
 .lm{display:inline-block;font:650 12px/1 var(--font);letter-spacing:.02em;padding:4px 8px;border-radius:999px;border:1px solid var(--ink);color:var(--ink);white-space:nowrap}
@@ -294,10 +320,11 @@ ul.items:empty::before{content:"Drop or add exercises here";display:block;paddin
 .sg.norir{grid-template-columns:24px minmax(0,1.3fr) minmax(0,1fr) 40px 44px}
 .sg .n.drop{color:var(--blue)}
 .sg .n.warm{color:var(--yellow);font-size:15px}
-.wbtn,.cbtn{height:44px;border-radius:var(--r-sm);border:1px solid var(--line);background:var(--bg);cursor:pointer;font-weight:700;color:var(--muted)}
+.wbtn,.cbtn{height:44px;border-radius:var(--r-sm);border:1px solid var(--field-b);background:var(--surface-2);cursor:pointer;font-weight:700;color:var(--muted)}
 .wbtn.on{background:var(--yellow);color:var(--on-accent);border-color:transparent}
 .wbtn.drop{background:var(--blue);color:var(--on-accent);border-color:transparent}
 .cbtn{font-size:17px}
+.cbtn{border-radius:50%;width:44px}
 .cbtn.on{background:var(--volt);color:var(--on-volt);border-color:transparent}
 .sg.pr::after{content:attr(data-pr);position:absolute;right:0;top:-9px;background:var(--gold);color:var(--on-gold);font:700 10px/1 var(--font);letter-spacing:.06em;text-transform:uppercase;padding:3px 6px;border-radius:6px;pointer-events:none}
 .ci-row{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:8px;flex-wrap:wrap}
@@ -305,7 +332,7 @@ ul.items:empty::before{content:"Drop or add exercises here";display:block;paddin
 .caldue{margin:6px 0 0;color:var(--blue)}
 ol.steps{margin:6px 0 10px;padding-left:22px;font-size:15px}
 ol.steps li{margin:2px 0}
-.welcome h3{margin-bottom:6px;font-size:26px;text-transform:uppercase}
+.welcome h3{margin-bottom:6px;font:700 24px/1.15 var(--font);letter-spacing:-.015em}
 .short-list{list-style:none;margin:10px 0 0;padding:0}
 .short-list li{padding:6px 0;border-bottom:1px solid var(--line-soft);font-size:15px}
 .short-list li:last-child{border-bottom:0}
@@ -316,12 +343,11 @@ ol.steps li{margin:2px 0}
 .whtr{margin:8px 0 0}
 
 /* ---------- stats ---------- */
-.kpis{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.kpis{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1px;background:var(--line-soft);border:1px solid var(--card-b);border-radius:var(--r-lg);overflow:hidden}
 @media(min-width:560px){.kpis{grid-template-columns:repeat(4,minmax(0,1fr))}}
 @media(max-width:559px){.kpis>.kpi:last-child:nth-child(odd){grid-column:1/-1}}
-.kpi{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-md);padding:11px 12px 12px}
-.sec .kpi{background:var(--surface-2);border:0}
-.kpi .v{font:800 36px/1 var(--display);font-variant-numeric:tabular-nums;letter-spacing:.01em}
+.kpi{background:var(--surface);border:0;border-radius:0;padding:14px 16px 15px}
+.kpi .v{font:800 40px/1 var(--display);font-variant-numeric:tabular-nums;letter-spacing:.005em}
 .kpi .v .small{font:600 14px var(--font);color:var(--muted)}
 .kpi .l{font-size:12.5px;color:var(--muted);margin-top:5px;line-height:1.35}
 .mrow{display:grid;grid-template-columns:6px 92px minmax(0,1fr) auto;gap:9px;align-items:center;padding:6px 0;border-bottom:1px solid var(--line-soft);font-size:14.5px}
@@ -329,9 +355,9 @@ ol.steps li{margin:2px 0}
 .mrow .plate{height:18px}
 .mrow .r{text-align:right;white-space:nowrap;min-width:60px;font-variant-numeric:tabular-nums}
 .band{position:relative;height:12px;background:var(--surface-3);border-radius:6px;overflow:hidden}
-.sec .band{background:var(--bg)}
+.sec .band{background:var(--surface-2)}
 .band .zone{position:absolute;top:0;bottom:0;background:var(--green-bg)}
-.band .fill{position:absolute;top:2px;bottom:2px;left:0;border-radius:5px}
+.band .fill{position:absolute;top:0;bottom:0;left:0;border-radius:6px}
 .band .fill.prog{background:var(--volt);box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--volt-line) 40%,transparent)}
 .band .fill.under{background:var(--yellow)} .band .fill.in{background:var(--green)} .band .fill.over{background:var(--blue)}
 .band .fill.down{background:var(--red)}
@@ -345,7 +371,7 @@ ol.steps li{margin:2px 0}
 .chips.rng .chip{min-height:30px;padding:0 11px;font-size:13px}
 .chartbox.tall{height:320px}
 .heat{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-top:8px}
-.heat div{aspect-ratio:1;border-radius:4px;background:var(--surface-2)}
+.heat div{aspect-ratio:1;border-radius:50%;background:var(--surface-2)}
 .heat div.on{background:var(--volt)}
 .heat div.fut{opacity:.35}
 .heat div.today{outline:2px solid var(--ink);outline-offset:-2px}
@@ -355,7 +381,7 @@ table.t th,table.t td{padding:7px 4px;border-bottom:1px solid var(--line-soft);t
 table.t th{color:var(--muted);font-weight:650;font-size:12px;letter-spacing:.04em;text-transform:uppercase}
 table.t td.r,table.t th.r{text-align:right}
 .scroll-x{overflow-x:auto}
-.jump{position:sticky;top:calc(var(--head-h) + env(safe-area-inset-top,0px));z-index:15;display:flex;gap:6px;overflow-x:auto;padding:8px 16px;margin:0 -16px;background:var(--bg);scrollbar-width:none;-webkit-overflow-scrolling:touch}
+.jump{position:sticky;top:calc(var(--head-h) + env(safe-area-inset-top,0px));z-index:15;display:flex;gap:6px;overflow-x:auto;padding:8px 16px;margin:0 -16px;background:var(--glass);-webkit-backdrop-filter:saturate(170%) blur(18px);backdrop-filter:saturate(170%) blur(18px);scrollbar-width:none;-webkit-overflow-scrolling:touch}
 .jump::-webkit-scrollbar{display:none}
 .jump .chip{flex:none;min-height:32px;font-size:13px}
 .sec[id^="sec-"]{scroll-margin-top:calc(var(--head-h) + 56px + env(safe-area-inset-top,0px))}
@@ -366,15 +392,15 @@ table.t td.r,table.t th.r{text-align:right}
 .bw-list li:last-child{border-bottom:0}
 .bw-list .d{color:var(--muted);flex:1}
 .body-sum{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
-.body-sum>div{background:var(--surface-2);border-radius:var(--r-md);padding:10px 12px}
+.body-sum>div{background:var(--surface);border-radius:var(--r-md);padding:12px 14px}
 .body-sum>div:only-child{grid-column:1/-1}
-.body-sum .v{font:800 30px/1 var(--display);font-variant-numeric:tabular-nums}
+.body-sum .v{font:800 34px/1 var(--display);font-variant-numeric:tabular-nums}
 .body-sum .v .small{font:600 13px var(--font);color:var(--muted)}
 .body-sum .l{font-size:12px;color:var(--muted);margin-top:4px}
 
 /* ---------- week strip ---------- */
 .wk{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px;margin:0 0 8px}
-.wk .d{-webkit-appearance:none;appearance:none;width:100%;min-width:0;border:1px solid transparent;border-radius:var(--r-sm);background:var(--surface-2);padding:6px 2px 7px;display:flex;flex-direction:column;align-items:center;gap:1px;font:inherit;color:var(--muted);cursor:default}
+.wk .d{-webkit-appearance:none;appearance:none;width:100%;min-width:0;border:1px solid transparent;border-radius:var(--r-md);background:var(--surface);padding:6px 2px 7px;display:flex;flex-direction:column;align-items:center;gap:1px;font:inherit;color:var(--muted);cursor:default}
 .wk .d .wd{font:600 10.5px var(--font);letter-spacing:.08em;text-transform:uppercase}
 .wk .d .dn{font:800 19px/1.05 var(--display);color:var(--ink);font-variant-numeric:tabular-nums}
 .wk .d .nm{font-size:10px;line-height:1.25;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding:0 2px}
@@ -387,39 +413,41 @@ table.t td.r,table.t th.r{text-align:right}
 .wk .d.cardio{border-color:var(--volt-line);color:var(--ink)}
 .cyc{display:flex;gap:4px;overflow-x:auto;padding:2px 0 10px;scrollbar-width:none;-webkit-overflow-scrolling:touch}
 .cyc::-webkit-scrollbar{display:none}
-.cyc .c{flex:0 0 auto;border:1px solid var(--line);border-radius:999px;padding:3px 10px;font-size:12px;white-space:nowrap;color:var(--muted);background:transparent}
+/* A soft fade at the right edge shows the row scrolls. */
+.cyc{-webkit-mask-image:linear-gradient(90deg,#000 86%,transparent);mask-image:linear-gradient(90deg,#000 86%,transparent);padding-right:24px}
+.cyc .c{flex:0 0 auto;border:1px solid var(--line);border-radius:999px;padding:4px 10px;font-size:12px;white-space:nowrap;color:var(--muted);background:transparent}
 .cyc .c b{margin-right:5px;font:800 13px var(--display)}
 .cyc .c.done{background:var(--volt);color:var(--on-volt);border-color:transparent}
 .cyc .c.next{border:2px solid var(--ink);color:var(--ink);font-weight:650}
 .cyc .c.rest{color:var(--muted);border-style:dashed}
 
 /* ---------- today: the hero is the one inked block ---------- */
-.hero{background:var(--hero);color:var(--on-hero);border:1px solid var(--line);border-radius:22px;padding:16px 16px 14px;margin:14px 0 12px}
+.hero{background:var(--hero-bg),var(--hero);color:var(--on-hero);border:0;border-radius:28px;padding:18px 18px 16px;margin:14px 0 14px;box-shadow:0 1px 0 rgba(255,255,255,.04) inset,0 14px 40px rgba(0,0,0,.18)}
 .hero .eyebrow{color:var(--on-hero);opacity:.7}
-.hero h2{font-size:48px;font-weight:800;line-height:.95;margin:6px 0 6px;letter-spacing:.015em;overflow-wrap:anywhere}
+.hero h2{font-size:54px;font-weight:800;line-height:.92;margin:6px 0 8px;letter-spacing:.01em;overflow-wrap:anywhere}
 .hero .muted{color:var(--on-hero);opacity:.72}
 .hero .overb{color:var(--yellow)}
 .eyebrow{font:600 12px var(--font);letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin:0}
-.hero-note{background:color-mix(in srgb,var(--on-hero) 12%,transparent);border-radius:var(--r-sm);padding:8px 10px;margin:10px 0 0}
-.hero .btn{background:transparent;color:var(--on-hero);border-color:color-mix(in srgb,var(--on-hero) 30%,transparent)}
+.hero-note{background:color-mix(in srgb,var(--on-hero) 9%,transparent);border-radius:var(--r-md);padding:10px 12px;margin:10px 0 0}
+.hero .btn{background:color-mix(in srgb,var(--on-hero) 9%,transparent);color:var(--on-hero);border-color:transparent}
 .hero .btn.primary{background:var(--volt);color:var(--on-volt);border-color:transparent;box-shadow:0 0 0 1px rgba(0,0,0,.2),0 6px 20px color-mix(in srgb,var(--volt) 25%,transparent)}
 .hero .btn.noted{box-shadow:inset 0 0 0 1px var(--on-hero)}
 .hero .tag.blue{background:color-mix(in srgb,var(--on-hero) 16%,transparent);color:var(--on-hero)}
-.btn.big{font:800 22px var(--display);letter-spacing:.06em;text-transform:uppercase;min-height:56px;margin-top:14px}
+.btn.big{font:800 23px var(--display);letter-spacing:.07em;text-transform:uppercase;min-height:58px;margin-top:16px;border-radius:999px}
 .inline-sel{display:flex;align-items:center;gap:8px;color:inherit;margin:0;white-space:nowrap;min-width:0;font-size:13px;opacity:.9}
 .inline-sel select{max-width:200px;min-width:0;flex:1 1 auto;padding:6px 8px;font-size:13px;min-height:36px}
 .hero .inline-sel{flex:1 1 auto}
 .hero .inline-sel select{max-width:none;background:color-mix(in srgb,var(--on-hero) 10%,transparent);color:var(--on-hero);border-color:color-mix(in srgb,var(--on-hero) 25%,transparent)}
 .hero .inline-sel select option{color:initial}
 /* Start variants: a two-line button each, so what it does is on the button. */
-.rirb{height:44px;min-width:0;width:100%;border-radius:var(--r-sm);border:1px solid var(--line);background:var(--surface);color:var(--ink);font:700 16px var(--font);font-variant-numeric:tabular-nums;cursor:pointer;padding:0}
+.rirb{height:44px;min-width:0;width:100%;border-radius:var(--r-sm);border:1px solid var(--field-b);background:var(--surface-2);color:var(--ink);font:700 16px var(--font);font-variant-numeric:tabular-nums;cursor:pointer;padding:0}
 .rirb.unset{color:var(--muted);font-weight:600}
 .rirb[aria-expanded="true"]{border-color:var(--volt-line);box-shadow:0 0 0 1px var(--volt-line)}
 .sg.done .rirb{border-color:color-mix(in srgb,var(--volt-line) 55%,transparent);background:var(--volt-soft)}
-.rirstrip{display:flex;align-items:center;gap:6px;margin:6px 0 2px;padding:6px;border-radius:var(--r-md);background:var(--surface-2);border:1px solid var(--line);animation:rsIn .14s ease-out}
+.rirstrip{display:flex;align-items:center;gap:6px;margin:6px 0 2px;padding:6px;border-radius:999px;background:var(--surface-2);border:0;animation:rsIn .14s ease-out}
 @keyframes rsIn{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:none}}
 .rirstrip .rs-l{font:700 11px var(--font);letter-spacing:.1em;color:var(--muted);padding:0 4px 0 2px}
-.rirstrip button{flex:1 1 0;min-width:0;height:44px;border-radius:var(--r-sm);border:1px solid var(--line);background:var(--surface);color:var(--ink);font:800 18px var(--display);font-variant-numeric:tabular-nums;cursor:pointer;padding:0}
+.rirstrip button{flex:1 1 0;min-width:0;height:44px;border-radius:50%;border:0;background:var(--surface);color:var(--ink);font:800 18px var(--display);font-variant-numeric:tabular-nums;cursor:pointer;padding:0}
 .rirstrip button.on{background:var(--volt);color:var(--on-volt);border-color:transparent}
 .rirstrip .rs-x{flex:0 0 40px;font:700 14px var(--font);color:var(--muted)}
 @media (prefers-reduced-motion:reduce){.rirstrip{animation:none}}
@@ -440,11 +468,11 @@ table.t td.r,table.t th.r{text-align:right}
 .bfold .chev{flex:none}
 .hero-top{display:flex;align-items:flex-start;gap:12px}
 .hero-t{min-width:0;flex:1 1 auto}
-.ring{flex:none;position:relative;width:72px;height:72px;margin:2px -2px 0 0;padding:0;border:0;background:none;color:var(--on-hero);cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.ring{flex:none;position:relative;width:78px;height:78px;margin:2px -2px 0 0;padding:0;border:0;background:none;color:var(--on-hero);cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center}
 .ring svg{position:absolute;inset:0;width:100%;height:100%}
-.ring .rt{fill:none;stroke:color-mix(in srgb,var(--on-hero) 14%,transparent);stroke-width:6}
-.ring .rp{fill:none;stroke:var(--volt);stroke-width:6;stroke-linecap:round;transition:stroke-dasharray .6s ease}
-.ring .rv{position:relative;font:800 22px/1 var(--display);font-variant-numeric:tabular-nums}
+.ring .rt{fill:none;stroke:color-mix(in srgb,var(--volt) 16%,transparent);stroke-width:7}
+.ring .rp{fill:none;stroke:var(--volt);stroke-width:7;stroke-linecap:round;transition:stroke-dasharray .6s ease;filter:drop-shadow(0 0 4px color-mix(in srgb,var(--volt) 45%,transparent))}
+.ring .rv{position:relative;font:800 25px/1 var(--display);font-variant-numeric:tabular-nums}
 .ring .rv small{font-size:12px;margin-left:1px}
 .ring .rl{position:relative;font:600 9.5px/1.2 var(--font);letter-spacing:.1em;text-transform:uppercase;opacity:.7}
 .hero-alt{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}
@@ -454,13 +482,13 @@ table.t td.r,table.t th.r{text-align:right}
 .hero .hb[aria-expanded="true"]{background:var(--on-hero);color:var(--hero)}
 .hero .ht{background:color-mix(in srgb,var(--on-hero) 12%,transparent);color:var(--on-hero)}
 .hero .ht b{font-weight:700}
-.tiles{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.tiles{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1px;background:var(--line-soft);border:1px solid var(--card-b);border-radius:var(--r-lg);overflow:hidden}
 .tile.wide{grid-column:1/-1;min-height:0}
 .tu{font:600 15px var(--font);color:var(--muted)}
-@media (min-width:620px){.tiles{grid-template-columns:repeat(4,minmax(0,1fr))}}
-.tile{-webkit-appearance:none;appearance:none;font:inherit;color:var(--ink);text-align:left;background:var(--surface-2);border:0;border-radius:var(--r-md);padding:11px 12px;display:flex;flex-direction:column;gap:2px;cursor:pointer;min-height:104px;min-width:0}
-.tile:active{transform:scale(.98)}
-.tile .tv{font:800 40px/1 var(--display);font-variant-numeric:tabular-nums}
+@media (min-width:620px){.tiles{grid-template-columns:repeat(4,minmax(0,1fr))}.tile.wide{grid-column:auto}}
+.tile{-webkit-appearance:none;appearance:none;font:inherit;color:var(--ink);text-align:left;background:var(--surface);border:0;border-radius:0;padding:14px 16px;display:flex;flex-direction:column;gap:3px;cursor:pointer;min-height:108px;min-width:0}
+.tile:active{background:var(--surface-2)}
+.tile .tv{font:800 46px/1 var(--display);font-variant-numeric:tabular-nums}
 .tile .tl{font-size:12.5px;font-weight:600;color:var(--ink-2)}
 .tile .ts{font-size:11.5px;color:var(--muted);margin-top:auto;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .seg{display:flex;gap:4px;flex-wrap:wrap;justify-content:flex-end}
@@ -470,7 +498,7 @@ table.t td.r,table.t th.r{text-align:right}
 .bm figcaption{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-top:4px}
 .bm-base *{fill:var(--surface-2);stroke:var(--line);stroke-width:.8}
 .mm{cursor:pointer;outline:none}
-.mm *{stroke:var(--surface);stroke-width:.8}
+.mm *{stroke:var(--bg);stroke-width:.8}
 .mm.st-none *{fill:var(--surface-3)}
 .mm.st-under *{fill:var(--yellow)}
 .mm.st-in *{fill:var(--green)}
@@ -481,12 +509,23 @@ table.t td.r,table.t th.r{text-align:right}
 .bm-legend{display:flex;flex-wrap:wrap;gap:4px 12px;margin-top:8px;color:var(--muted)}
 .bm-legend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:5px;vertical-align:-1px}
 .bm-legend i.st-none{background:var(--surface-3)}.bm-legend i.st-track{background:var(--muted)}.bm-legend i.st-under{background:var(--yellow)}.bm-legend i.st-in{background:var(--green)}.bm-legend i.st-over{background:var(--blue)}
-.bm-detail{margin-top:10px;padding:10px 12px;border-radius:var(--r-md);background:var(--surface-2)}
+.isteps{list-style:none;margin:6px 0 0;padding:0}
+.isteps li{display:flex;gap:12px;align-items:flex-start;padding:10px 0;border-bottom:1px solid var(--line-soft);font-size:15px;line-height:1.45}
+.isteps li:last-child{border-bottom:0}
+.stepn{flex:none;width:28px;height:28px;border-radius:50%;background:var(--volt);color:var(--on-volt);font:800 15px/28px var(--display);text-align:center}
+.ico{width:20px;height:20px;vertical-align:-4px;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round;display:inline-block;margin:0 1px}
+.bm3d{margin-top:10px}
+.bm3d-stage{position:relative;border-radius:var(--r-lg);background:radial-gradient(60% 55% at 50% 42%,var(--surface) 0%,transparent 75%);min-height:220px;overflow:hidden}
+.bm3d-canvas{display:block;touch-action:pan-y;cursor:grab;-webkit-tap-highlight-color:transparent}
+.bm3d-canvas:active{cursor:grabbing}
+.bm3d-msg{text-align:center;margin:8px 0}
+.bm3d-turn{justify-content:center;margin-top:8px}
+.bm-detail{margin-top:12px;padding:12px 14px;border-radius:var(--r-md);background:var(--surface)}
 
 /* ---------- summary rows ---------- */
 .headline{font-size:15px;line-height:1.5;margin:0 0 8px;color:var(--ink)}
-.summary{padding:2px 0!important}
-.srow{-webkit-appearance:none;appearance:none;display:grid;grid-template-columns:8px 64px minmax(0,1fr) 10px;gap:10px;align-items:start;width:100%;text-align:left;background:none;border:0;border-bottom:1px solid var(--line-soft);padding:12px 14px;font:inherit;color:var(--ink);cursor:pointer}
+.summary{padding:2px 0!important;background:var(--surface)!important;border:1px solid var(--card-b)!important;border-radius:var(--r-lg)!important;margin-top:12px!important}
+.srow{-webkit-appearance:none;appearance:none;display:grid;grid-template-columns:8px 64px minmax(0,1fr) 10px;gap:10px;align-items:start;width:100%;text-align:left;background:none;border:0;border-bottom:1px solid var(--line-soft);padding:13px 16px;font:inherit;color:var(--ink);cursor:pointer}
 .srow:last-child{border-bottom:0}
 .srow.static{cursor:default;grid-template-columns:8px 64px minmax(0,1fr)}
 .srow .sl{font:600 11px var(--font);text-transform:uppercase;letter-spacing:.1em;color:var(--muted);padding-top:3px}
@@ -504,8 +543,10 @@ table.t td.r,table.t th.r{text-align:right}
 .hitem.open{background:none}
 
 /* ---------- modal, toast, timer ---------- */
-#modal{position:fixed;inset:0;z-index:50;background:rgba(10,10,12,.5);display:flex;align-items:flex-end;justify-content:center}
-.sheet{background:var(--surface);width:100%;max-width:640px;max-height:88vh;overflow:auto;overscroll-behavior:contain;border-radius:20px 20px 0 0;padding:18px 16px calc(18px + env(safe-area-inset-bottom,0px))}
+#modal{position:fixed;inset:0;z-index:50;background:rgba(6,7,9,.55);-webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px);display:flex;align-items:flex-end;justify-content:center}
+.sheet{position:relative;background:var(--surface);width:100%;max-width:640px;max-height:88vh;overflow:auto;overscroll-behavior:contain;border-radius:28px 28px 0 0;padding:22px 18px calc(18px + env(safe-area-inset-bottom,0px))}
+/* The grabber tells a phone user this slides up from the bottom. */
+.sheet::before{content:"";position:absolute;top:8px;left:50%;width:38px;height:5px;margin-left:-19px;border-radius:3px;background:var(--surface-3)}
 /* Pickers keep one height while you type, so the search box does not jump as
    the list shrinks; only the list scrolls. */
 .sheet.fixed{height:88vh;height:88dvh;display:flex;flex-direction:column;overflow:hidden;padding-bottom:calc(10px + env(safe-area-inset-bottom,0px))}
@@ -545,8 +586,8 @@ details.more>summary .small{display:block;font-weight:400}
 .block,.day{scroll-margin-top:calc(var(--head-h) + 12px + env(safe-area-inset-top,0px))}
 @keyframes flashIn{0%{box-shadow:0 0 0 3px var(--volt-line)}100%{box-shadow:0 0 0 0 transparent}}
 .block.flash{animation:flashIn 1.4s ease-out}
-.sheet h3{font-size:24px;text-transform:uppercase;letter-spacing:.02em}
-@media(min-width:700px){#modal{align-items:center}.sheet{border-radius:20px}}
+.sheet h3{font:700 22px/1.15 var(--font);letter-spacing:-.015em}
+@media(min-width:700px){#modal{align-items:center}.sheet{border-radius:28px}.sheet::before{display:none}}
 .sheet-h{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:10px}
 .pick{display:flex;justify-content:space-between;align-items:center;gap:8px;width:100%;text-align:left;background:none;border:0;border-bottom:1px solid var(--line-soft);padding:11px 2px;cursor:pointer;color:var(--ink)}
 .pick b{font-weight:650}
@@ -555,15 +596,15 @@ details.more>summary .small{display:block;font-weight:400}
 #toast{position:fixed;left:50%;transform:translateX(-50%);top:calc(var(--head-h) + 8px + env(safe-area-inset-top,0px));z-index:60;pointer-events:none;background:var(--ink);color:var(--on-ink);padding:11px 15px;border-radius:var(--r-md);font-size:15px;display:flex;gap:12px;align-items:center;max-width:92vw;box-shadow:0 8px 24px rgba(0,0,0,.22)}
 /* Sits under the sticky header and stays in view while scrolling, so a new
    version is noticed without covering anything. */
-#updbar{position:sticky;top:calc(var(--head-h) + env(safe-area-inset-top,0px));z-index:19;display:flex;align-items:center;gap:8px;padding:6px 16px;background:var(--surface);border-bottom:1px solid var(--line)}
+#updbar{position:sticky;top:calc(var(--head-h) + env(safe-area-inset-top,0px));z-index:19;display:flex;align-items:center;gap:8px;padding:6px 16px;background:var(--glass);-webkit-backdrop-filter:saturate(170%) blur(18px);backdrop-filter:saturate(170%) blur(18px);border-bottom:1px solid var(--line-soft)}
 #updbar[hidden]{display:none}
-.acctbar{display:flex;align-items:center;gap:8px;margin:0 0 12px;padding:6px 6px 6px 14px;border:1px solid var(--line);border-radius:var(--r-md);background:var(--surface)}
+.acctbar{display:flex;align-items:center;gap:8px;margin:0 0 12px;padding:6px 6px 6px 16px;border:1px solid var(--card-b);border-radius:999px;background:var(--surface)}
 .acctbar>span{flex:1 1 auto;min-width:0}
 .acctbar .btn,.acctbar .ib{flex:none;white-space:nowrap}
 #updbar .ut{flex:1 1 auto;min-width:0;font-weight:650;font-size:15px}
 #updbar .ut::before{content:"";display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--volt);margin-right:8px;vertical-align:1px}
 #toast button{background:none;border:0;color:inherit;font-weight:700;text-decoration:underline;cursor:pointer;pointer-events:auto;min-height:44px;padding:0 6px;margin:-12px 0}
-#timer{position:fixed;left:0;right:0;bottom:calc(58px + env(safe-area-inset-bottom,0px));z-index:25;background:var(--hero);color:var(--on-hero);border-top:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;padding:6px 16px}
+#timer{position:fixed;left:0;right:0;bottom:calc(58px + env(safe-area-inset-bottom,0px));z-index:25;background:var(--hero-bg),var(--hero);color:var(--on-hero);border-top:0;display:flex;align-items:center;justify-content:space-between;padding:6px 16px}
 #timer.done{background:var(--volt);color:var(--on-volt)}
 #timer.compact{left:auto;right:12px;bottom:calc(66px + env(safe-area-inset-bottom,0px));border-radius:999px;padding:4px 4px 4px 14px;gap:10px;box-shadow:0 4px 14px rgba(0,0,0,.25)}
 #timer.compact .tv{font-size:22px}
@@ -3009,7 +3050,7 @@ const charts=[];let sortables=[];
 function killDynamic(){while(charts.length){try{charts.pop().destroy();}catch(e){/* chart already gone */}}sortables.forEach(s=>{try{s.destroy();}catch(e){/* list already gone */}});sortables=[];}
 function applyTheme(){const t=state.settings.theme;if(t==='system')delete document.documentElement.dataset.theme;else document.documentElement.dataset.theme=t;
   // The installed app's status bar takes this colour, so it follows the theme.
-  const m=document.querySelector('meta[name="theme-color"]');if(m)try{m.setAttribute('content',getComputedStyle(document.body).backgroundColor||'#0a0b0d');}catch(e){/* cosmetic */}}
+  const m=document.querySelector('meta[name="theme-color"]');if(m)try{m.setAttribute('content',getComputedStyle(document.body).backgroundColor||'#08090b');}catch(e){/* cosmetic */}}
 /* A code bug inside a view used to leave a blank screen. Now the error is
    logged and a recovery screen offers your data and a way back. */
 function render(){
@@ -3037,6 +3078,7 @@ function renderInner(){
   if(!(ui.tab==='today'&&state.draft)&&!(ui.tab==='program'&&ui.planView==='library'))mountSecSortable();
   if(ui.tab==='program'&&ui.planView!=='library')mountSortable();
   if(ui.tab==='dash')mountCharts();
+  if(ui.tab==='today'&&!state.draft)mount3D();
   if(ui.modal)renderModal();
 }
 /* Re-rendering replaces #view wholesale, which used to blow away whatever the
@@ -3082,7 +3124,7 @@ function viewToday(){
   const playable=!day.rest&&day.items.length>0;
   const deload=isDeloadWeek();
   const sel=`<label class="inline-sel small">Change day<select data-bind="todayDay">${R.days.map((d,i)=>`<option value="${i}" ${i===di?'selected':''}>${dayLabel(R,i)}: ${esc(d.name)}${d.rest?' (rest)':''}${mark(i)}</option>`).join('')}</select></label>`;
-  let h=welcomeCard()+acctBar()+`<section class="hero" data-day="${di}"><div class="hero-top"><div class="hero-t"><p class="eyebrow">${esc(new Date().toLocaleDateString(undefined,{weekday:'long',month:'short',day:'numeric'}))} · ${esc(eyebrow)}${deload?' · deload week':''}</p><h2>${esc(day.name)}</h2>
+  let h=welcomeCard()+(installBar()||acctBar())+`<section class="hero" data-day="${di}"><div class="hero-top"><div class="hero-t"><p class="eyebrow">${esc(new Date().toLocaleDateString(undefined,{weekday:'long',month:'short',day:'numeric'}))} · ${esc(eyebrow)}${deload?' · deload week':''}</p><h2>${esc(day.name)}</h2>
   <p class="muted small" style="margin:0" data-tip="${esc('Routine: '+R.name)}">${playable?`${day.items.length} exercises · ${deload?day.items.reduce((a,it)=>a+Math.max(1,Math.ceil(it.sets/2)),0)+' sets (deload)':daySets(day)+' sets'} · ${minTxt(dayMinutes(day,deload))}`:(day.rest?'Rest day':'No exercises planned')}</p></div>${heroRing(weekStats())}</div>
   ${note?`<p class="hero-note small">${note}</p>`:''}`;
   /* Four ways to start besides the plan as written, each saying on its face
@@ -3135,6 +3177,39 @@ function acctBar(){
   if(!AUTH()||window.claude||!acct.checked||acct.user||cloud.on||!state.settings.onboarded)return '';
   try{if(localStorage.getItem(ACCT_LATER))return '';}catch(e){/* storage blocked: show it */}
   return `<div class="acctbar" id="acctBar"><span class="small"><b>Only on this phone.</b> Sync it with an account.</span><button class="btn sm primary" data-act="acctOpen" data-mode="signup">Set up</button><button class="ib" aria-label="Not now" data-act="acctLater">✕</button></div>`;
+}
+/* ---------- install (the installable build opened in a browser) ----------
+   Android and desktop Chrome offer a real install: the build catches that
+   offer and Install uses it. An iPhone has no install button for websites
+   (Apple allows only Share > Add to Home Screen), so there Install opens a
+   short picture guide for the browser in use. Nothing shows once installed,
+   inside Claude, or in the plain source file. */
+const INSTALL_LATER=KEY+'.installLater';
+function canInstallHere(){return !!window.IRONLOG_APP&&!isStandalone()&&!(window.claude&&typeof window.claude.use==='function');}
+function installKind(){
+  const ua=navigator.userAgent||'';
+  const ios=/iPhone|iPad|iPod/.test(ua)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
+  if(window.__installEvt)return 'prompt';
+  if(ios)return /CriOS/.test(ua)?'ios-chrome':/FxiOS|EdgiOS|OPiOS/.test(ua)?'ios-other':'ios-safari';
+  return 'menu';
+}
+window.ironlogInstallReady=()=>{if(ui.tab==='today'||ui.tab==='settings')rerenderKeepScroll();};
+function installBar(){
+  if(!canInstallHere())return '';
+  try{if(localStorage.getItem(INSTALL_LATER))return '';}catch(e){/* storage blocked: show it */}
+  return `<div class="acctbar" id="installBar"><span class="small"><b>Get the app.</b> Install Ironlog on your home screen.</span><button class="btn sm primary" data-act="install">Install</button><button class="ib" aria-label="Not now" data-act="installLater">✕</button></div>`;
+}
+const SHARE_ICON='<svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12M8 7l4-4 4 4"/><path d="M6 11H5a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-8a1 1 0 0 0-1-1h-1"/></svg>';
+const ADD_ICON='<svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="4"/><path d="M12 8v8M8 12h8"/></svg>';
+function installSheet(m){
+  const step=(n,html)=>`<li><span class="stepn">${n}</span><span>${html}</span></li>`;
+  const tail=`<p class="small muted" style="margin:12px 0 0">Then open Ironlog from your home screen. It starts full screen and works offline. A log kept in this browser does not move by itself: sign in inside the app, or export a backup here and import it there.</p>`;
+  let body;
+  if(m.how==='ios-safari')body=`<ol class="isteps">${step(1,`Tap the Share button ${SHARE_ICON} in Safari's bar at the bottom (at the top on an iPad).`)}${step(2,`Scroll down and tap <b>Add to Home Screen</b> ${ADD_ICON}.`)}${step(3,'Tap <b>Add</b>.')}</ol>`;
+  else if(m.how==='ios-chrome')body=`<ol class="isteps">${step(1,`Tap the Share button ${SHARE_ICON} at the right of Chrome's address bar.`)}${step(2,`Tap <b>Add to Home Screen</b> ${ADD_ICON}.`)}${step(3,'Tap <b>Add</b>.')}</ol>`;
+  else if(m.how==='ios-other')body=`<ol class="isteps">${step(1,'Open this page in Safari: vqx7.github.io/Ironlog.')}${step(2,`Tap the Share button ${SHARE_ICON}, then <b>Add to Home Screen</b>.`)}${step(3,'Tap <b>Add</b>.')}</ol>`;
+  else body=`<ol class="isteps">${step(1,"Open your browser's menu (⋮ or ⋯).")}${step(2,'Choose <b>Install app</b> or <b>Add to Home screen</b>.')}${step(3,'Confirm.')}</ol>`;
+  return `<div class="sheet" role="dialog" aria-modal="true"><div class="sheet-h"><h3>Install Ironlog</h3><button class="ib" aria-label="Close" data-act="mClose">✕</button></div>${/^ios/.test(m.how)?'<p class="small muted" style="margin:0 0 10px">iPhone apps from the web are added from the Share menu; Apple does not allow an install button.</p>':''}${body}${tail}<button type="button" class="btn primary block" style="margin-top:14px" data-act="mClose">Done</button></div>`;
 }
 /* First run with no sessions: three ways in. Shown only after the cloud check,
    so a device about to load your data never flashes it. */
@@ -3329,6 +3404,164 @@ function dashSummary(){
    sets sit against your own target band. Coordinates are for a 120 x 210 box;
    left-side shapes are mirrored to the right. */
 const BM_BASE='<circle cx="60" cy="16" r="11"/><rect x="38" y="35" width="44" height="72" rx="12"/><rect x="23" y="39" width="14" height="42" rx="7"/><rect x="83" y="39" width="14" height="42" rx="7"/><rect x="21" y="78" width="11" height="36" rx="5.5"/><rect x="88" y="78" width="11" height="36" rx="5.5"/><circle cx="26" cy="118" r="5"/><circle cx="94" cy="118" r="5"/><rect x="37" y="102" width="21" height="54" rx="9"/><rect x="62" y="102" width="21" height="54" rx="9"/><rect x="40" y="152" width="14" height="46" rx="7"/><rect x="66" y="152" width="14" height="46" rx="7"/><ellipse cx="47" cy="202" rx="8" ry="4"/><ellipse cx="73" cy="202" rx="8" ry="4"/>';
+/* ---------- 3D body (Today > Muscle map > 3D) ----------
+   A stylized, sculpted body built from smooth shapes, one region per muscle
+   group, shaded exactly like the flat map (below, on, above target, none,
+   tracked only) from the same numbers. Drag sideways to turn it; the page
+   still scrolls vertically. Tap a region for the same detail as the flat map.
+   three.js loads only the first time 3D is opened, and the drawing happens
+   only when something changes, so it costs nothing while idle. One renderer
+   is kept for the whole visit: each re-render of Today moves its canvas into
+   the new card instead of building a new one. */
+const MAPVIEW_KEY=KEY+'.mapView';
+const THREE_URLS=['https://cdn.jsdelivr.net/npm/three@0.159.0/build/three.module.min.js','https://unpkg.com/three@0.159.0/build/three.module.min.js'];
+const B3={state:'idle',wait:[],r:null,scene:null,cam:null,root:null,meshes:[],mats:{},yaw:0.35,anim:0,status:null,sel:null,fail:'',viewMem:null,drag:null};
+function mapView(){
+  if(B3.viewMem)return B3.viewMem;
+  try{B3.viewMem=localStorage.getItem(MAPVIEW_KEY)==='3d'?'3d':'flat';}catch(e){B3.viewMem='flat';}
+  return B3.viewMem;
+}
+/* Shapes, in metres, for the right side (x > 0); the left side mirrors them.
+   l: a lathe (a profile of [radius, height] turned around its own axis, for
+   smooth tapered limbs and the torso), s: a sphere scaled to an ellipsoid,
+   c: a capsule [radius, length]. kz flattens front to back. m names the
+   muscle group; parts without one are the neutral body underneath, and the
+   muscle shapes sit almost flush on it, like an anatomy figure. */
+const B3_PARTS=[
+  // neutral body
+  {g:'l',prof:[[0,.84],[.13,.85],[.155,.88],[.165,.93],[.145,1],[.142,1.08],[.152,1.18],[.168,1.28],[.176,1.35],[.172,1.42],[.14,1.47],[.08,1.51],[0,1.52]],p:[0,0,0],kz:.62,one:1},
+  {g:'c',d:[.046,.1],p:[0,1.55,-.005],one:1},
+  {g:'s',p:[0,1.695,.005],k:[.086,.108,.098],one:1},
+  {g:'s',p:[.19,1.43,0],k:[.06,.06,.06]},
+  {g:'l',prof:[[0,0],[.036,.01],[.04,.07],[.045,.17],[.049,.25],[.046,.3],[0,.31]],p:[.236,1.13,0],r:[0,0,.112]},
+  {g:'s',p:[.236,1.13,0],k:[.037,.037,.037]},
+  {g:'s',p:[.262,.815,.012],k:[.03,.062,.02]},
+  {g:'l',prof:[[0,0],[.05,.01],[.058,.1],[.072,.24],[.083,.33],[.075,.38],[0,.39]],p:[.095,.49,0]},
+  {g:'s',p:[.096,.47,.008],k:[.05,.05,.05]},
+  {g:'l',prof:[[0,0],[.032,.02],[.036,.1],[.049,.25],[.045,.34],[0,.35]],p:[.096,.08,-.004]},
+  {g:'s',p:[.098,.045,.045],k:[.044,.038,.105]},
+  // muscle groups
+  {m:'neck',g:'c',d:[.052,.07],p:[0,1.56,-.004],one:1},
+  {m:'traps',g:'s',p:[.072,1.47,-.022],k:[.082,.035,.05],r:[0,0,-.4]},
+  {m:'traps',g:'s',p:[0,1.38,-.078],k:[.066,.09,.036],one:1},
+  {m:'frontDelts',g:'s',p:[.19,1.42,.034],k:[.05,.07,.046]},
+  {m:'sideDelts',g:'s',p:[.214,1.425,0],k:[.046,.075,.05]},
+  {m:'rearDelts',g:'s',p:[.19,1.42,-.035],k:[.05,.07,.046]},
+  {m:'rotatorCuff',g:'s',p:[.1,1.35,-.086],k:[.045,.04,.026]},
+  {m:'chest',g:'s',p:[.074,1.34,.084],k:[.085,.07,.04],r:[0,0,-.08]},
+  {m:'serratus',g:'s',p:[.14,1.24,.05],k:[.03,.055,.035]},
+  {m:'upperBack',g:'s',p:[0,1.29,-.078],k:[.1,.08,.04],one:1},
+  {m:'lats',g:'s',p:[.112,1.19,-.05],k:[.068,.13,.05],r:[0,0,-.16]},
+  {m:'lowerBack',g:'s',p:[.036,1.02,-.068],k:[.035,.085,.03]},
+  {m:'abs',g:'s',p:[0,1.1,.07],k:[.07,.14,.036],one:1},
+  {m:'obliques',g:'s',p:[.112,1.07,.044],k:[.045,.09,.05]},
+  {m:'biceps',g:'s',p:[.221,1.28,.03],k:[.036,.1,.035],r:[0,0,.112]},
+  {m:'triceps',g:'s',p:[.223,1.29,-.03],k:[.04,.11,.038],r:[0,0,.112]},
+  {m:'forearms',g:'l',prof:[[0,0],[.027,.01],[.031,.08],[.041,.2],[.039,.25],[0,.26]],p:[.262,.87,.006],r:[0,0,.1]},
+  {m:'glutes',g:'s',p:[.07,.92,-.068],k:[.08,.08,.06]},
+  {m:'abductors',g:'s',p:[.142,.95,-.018],k:[.04,.06,.045]},
+  {m:'quads',g:'s',p:[.096,.68,.034],k:[.066,.17,.055]},
+  {m:'hamstrings',g:'s',p:[.094,.68,-.034],k:[.06,.16,.05]},
+  {m:'adductors',g:'s',p:[.05,.72,.002],k:[.03,.13,.045]},
+  {m:'calves',g:'s',p:[.096,.32,-.024],k:[.042,.1,.04]},
+  {m:'tibialis',g:'s',p:[.1,.29,.028],k:[.022,.1,.022]}
+];
+function map3dColors(){
+  const cs=getComputedStyle(document.documentElement);const v=n=>cs.getPropertyValue(n).trim();
+  const dark=(document.documentElement.dataset.theme||(matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light'))==='dark';
+  return {base:dark?'#3b4048':'#d5d9de',none:dark?'#5d646d':'#a9b0b8',track:v('--muted'),under:v('--yellow'),in:v('--green'),over:v('--blue')};
+}
+function map3dLoad(cb){
+  if(B3.state==='ready'||B3.state==='fail'){cb();return;}
+  B3.wait.push(cb);if(B3.state==='loading')return;
+  B3.state='loading';
+  // three.js as a module, from each address in turn: this build's own copy
+  // first where there is one.
+  const load=(urls,done)=>{if(!urls.length){done(false);return;}import(urls[0]).then(mod=>{window.THREE=mod;done(true);},()=>load(urls.slice(1),done));};
+  load(THREE_URLS,ok=>{
+    if(!ok||!window.THREE){B3.state='fail';B3.fail='The 3D view could not load. Check your connection; the flat view still works.';}
+    else{try{map3dBuild();B3.state='ready';}catch(e){log('map3d',e);B3.state='fail';B3.fail='This phone or browser cannot draw 3D here. The flat view shows the same numbers.';}}
+    const w=B3.wait;B3.wait=[];w.forEach(f=>{try{f();}catch(e){log('map3d',e);}});
+  });
+}
+function map3dBuild(){
+  const T=window.THREE;
+  const r=new T.WebGLRenderer({antialias:true,alpha:true,powerPreference:'low-power'});
+  r.setPixelRatio(Math.min(2,window.devicePixelRatio||1));
+  const scene=new T.Scene();
+  const cam=new T.PerspectiveCamera(28,1,.1,20);cam.position.set(0,.93,3.8);cam.lookAt(0,.9,0);
+  scene.add(new T.HemisphereLight(0xffffff,0x40444a,1.15));
+  const key=new T.DirectionalLight(0xffffff,1.7);key.position.set(1.6,2.6,3);scene.add(key);
+  const rim=new T.DirectionalLight(0xffffff,1.1);rim.position.set(-2.2,1.6,-2.6);scene.add(rim);
+  const root=new T.Group();scene.add(root);
+  const sph=new T.SphereGeometry(1,40,28);const caps={};
+  const mat=m=>B3.mats[m]||(B3.mats[m]=new T.MeshStandardMaterial({roughness:.55,metalness:.05}));
+  const add=(pt,side)=>{
+    const g=pt.g==='s'?sph:pt.g==='l'?new T.LatheGeometry(pt.prof.map(([r,y])=>new T.Vector2(r,y)),40):(caps[pt.d.join()]||(caps[pt.d.join()]=new T.CapsuleGeometry(pt.d[0],pt.d[1],10,28)));
+    const me=new T.Mesh(g,mat(pt.m||'_base'));
+    me.position.set(pt.p[0]*side,pt.p[1],pt.p[2]);
+    if(pt.k)me.scale.set(pt.k[0],pt.k[1],pt.k[2]);
+    if(pt.kz)me.scale.set(1,1,pt.kz);
+    if(pt.r)me.rotation.set(pt.r[0],pt.r[1],pt.r[2]*side);
+    me.userData.m=pt.m||null;root.add(me);B3.meshes.push(me);
+  };
+  for(const pt of B3_PARTS){add(pt,1);if(!pt.one)add(pt,-1);}
+  // A soft shadow on the floor grounds the figure.
+  {const cv=document.createElement('canvas');cv.width=cv.height=64;const x=cv.getContext('2d');const gr=x.createRadialGradient(32,32,2,32,32,32);gr.addColorStop(0,'rgba(0,0,0,.45)');gr.addColorStop(1,'rgba(0,0,0,0)');x.fillStyle=gr;x.fillRect(0,0,64,64);
+   const sh=new T.Mesh(new T.PlaneGeometry(.7,.34),new T.MeshBasicMaterial({map:new T.CanvasTexture(cv),transparent:true,depthWrite:false}));sh.rotation.x=-Math.PI/2;sh.position.y=.002;scene.add(sh);}
+  const c=r.domElement;c.className='bm3d-canvas';
+  // Sideways drags turn the body; vertical moves stay page scrolls.
+  c.addEventListener('pointerdown',e=>{B3.drag={x:e.clientX,y:e.clientY,yaw:B3.yaw,moved:false};cancelAnimationFrame(B3.anim);});
+  c.addEventListener('pointermove',e=>{const d=B3.drag;if(!d)return;const dx=e.clientX-d.x;if(Math.abs(dx)>4)d.moved=true;if(d.moved){B3.yaw=d.yaw+dx*.012;map3dDraw();}});
+  const end=e=>{const d=B3.drag;B3.drag=null;if(d&&!d.moved&&e.type==='pointerup')map3dTap(e.clientX,e.clientY);};
+  c.addEventListener('pointerup',end);c.addEventListener('pointercancel',end);c.addEventListener('pointerleave',()=>{B3.drag=null;});
+  Object.assign(B3,{r,scene,cam,root});
+}
+function map3dPick(cx,cy){
+  const T=window.THREE;if(!B3.r)return null;
+  const rc=B3.r.domElement.getBoundingClientRect();
+  const v=new T.Vector2(((cx-rc.left)/rc.width)*2-1,-((cy-rc.top)/rc.height)*2+1);
+  const ray=new T.Raycaster();ray.setFromCamera(v,B3.cam);
+  const hit=ray.intersectObjects(B3.root.children,false).find(h=>h.object.userData.m);
+  return hit?hit.object.userData.m:null;
+}
+function map3dTap(cx,cy){const m=map3dPick(cx,cy);if(!m)return;ui.mapSel=ui.mapSel===m?null:m;rerenderKeepScroll();}
+function map3dTurnTo(to){
+  if(!B3.r)return;cancelAnimationFrame(B3.anim);
+  // The shorter way round.
+  let from=B3.yaw;const tau=Math.PI*2;from=((from%tau)+tau)%tau;let d=to-from;if(d>Math.PI)d-=tau;if(d<-Math.PI)d+=tau;
+  let reduce=false;try{reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;}catch(e){/* animate */}
+  if(reduce){B3.yaw=to;map3dDraw();return;}
+  const t0=performance.now(),dur=420;
+  const step=t=>{const k=Math.min(1,(t-t0)/dur);const e=1-Math.pow(1-k,3);B3.yaw=from+d*e;map3dDraw();if(k<1)B3.anim=requestAnimationFrame(step);};
+  B3.anim=requestAnimationFrame(step);
+}
+function map3dDraw(){
+  const host=document.querySelector('#bm3d .bm3d-stage');if(!B3.r||!host)return;
+  const w=Math.max(200,host.clientWidth||320),h=Math.round(Math.min(440,w*1.12));
+  const c=B3.r.domElement;
+  if(c.parentNode!==host)host.appendChild(c);
+  if(B3.w!==w||B3.h!==h){B3.r.setSize(w,h,false);c.style.width='100%';c.style.height=h+'px';B3.cam.aspect=w/h;B3.cam.updateProjectionMatrix();B3.w=w;B3.h=h;}
+  B3.root.rotation.y=B3.yaw;B3.r.render(B3.scene,B3.cam);
+}
+function mount3D(){
+  const host=document.getElementById('bm3d');if(!host)return;
+  const msg=host.querySelector('.bm3d-msg');
+  if(B3.state!=='ready'){
+    if(B3.state==='fail'){msg.hidden=false;msg.textContent=B3.fail;host.querySelector('.bm3d-turn').hidden=true;return;}
+    msg.hidden=false;msg.textContent='Loading the 3D body';
+    map3dLoad(()=>{if(document.getElementById('bm3d'))mount3D();});return;
+  }
+  msg.hidden=true;
+  const col=map3dColors();const T=window.THREE;
+  for(const [m,mt] of Object.entries(B3.mats)){
+    const st=m==='_base'?null:B3.status&&B3.status[m];
+    mt.color.set(m==='_base'?col.base:st?col[st.st]||col.none:col.none);
+    mt.emissive=mt.emissive||new T.Color(0,0,0);
+    mt.emissive.set(m===B3.sel?'#ffffff':'#000000');mt.emissiveIntensity=m===B3.sel?.28:0;
+  }
+  map3dDraw();
+}
 const BM=(()=>{
   const E=(cx,cy,rx,ry)=>[['e',cx,cy,rx,ry],['e',120-cx,cy,rx,ry]];
   const Rr=(x,y,w,h,r)=>[['r',x,y,w,h,r],['r',120-x-w,y,w,h,r]];
@@ -3364,11 +3597,14 @@ function bodyMapCard(){
     detail=`<div class="bm-detail"><div class="row spread"><b>${ML[sel]}</b><span class="tag ${x.st==='in'?'green':x.st==='under'?'yellow':x.st==='over'?'blue':''}">${where}</span></div><p class="small" style="margin:4px 0 6px">${r1(x.v)} hard sets a week ${src==='avg'?`on average over your last ${avg._weeks} full week${avg._weeks>1?'s':''}`:'so far this week'}, target ${x.lo} to ${x.hi}. ${tr}</p><div class="row"><button class="btn sm" data-act="goDash" data-sec="volume" data-m="${sel}">Weekly trend</button><button class="btn sm" data-act="mapSel" data-m="${sel}">Close</button></div></div>`;
   }else{
     const low=MK.filter(m=>!TRACK_ONLY.has(m)&&(st[m].st==='under'||st[m].st==='none'));
-    detail=`<p class="small muted" style="margin:6px 0 0">Tap a muscle for its numbers.${src==='week'?' Week so far, so most read low.':''}</p>${low.length&&src==='avg'?`<div class="row" style="margin-top:6px;gap:4px"><span class="small muted">Below target:</span>${low.slice(0,8).map(m=>`<button class="chip" data-act="mapSel" data-m="${m}">${ML[m]}</button>`).join('')}</div>`:''}`;
+    detail=`<p class="small muted" style="margin:6px 0 0">${mapView()==='3d'?'Drag sideways to turn it. ':''}Tap a muscle for its numbers.${src==='week'?' Week so far, so most read low.':''}</p>${low.length&&src==='avg'?`<div class="row" style="margin-top:6px;gap:4px"><span class="small muted">Below target:</span>${low.slice(0,8).map(m=>`<button class="chip" data-act="mapSel" data-m="${m}">${ML[m]}</button>`).join('')}</div>`:''}`;
   }
   const msub=(()=>{if(!avg){const n=MK.filter(m=>st[m].st==='in'||st[m].st==='over').length;return `this week, ${n} at target`;}const sa=muscleStatus(avg);const inA=MK.filter(m=>sa[m].st==='in').length;const lowA=MK.filter(m=>sa[m].st==='under'||sa[m].st==='none').length;return `${inA} on target, ${lowA} below`;})();
-  return sec({sk:'today:map',key:'map',title:'Muscle map',sub:msub,body:`<div class="row" style="justify-content:flex-end"><div class="seg" role="group" aria-label="Time range">${avg?`<button class="chip ${src==='avg'?'on':''}" data-act="mapSrc" data-v="avg" aria-pressed="${src==='avg'}">4-week average</button>`:''}<button class="chip ${src==='week'?'on':''}" data-act="mapSrc" data-v="week" aria-pressed="${src==='week'}">This week</button></div></div>
-  <div class="bm-wrap">${fig('f','Front')}${fig('b','Back')}</div>
+  const v3=mapView()==='3d';
+  B3.status=st;B3.sel=sel;
+  const stage=v3?`<div class="bm3d" id="bm3d"><div class="bm3d-stage" role="img" aria-label="3D body, shaded by hard sets a week. Drag sideways to turn it, tap a muscle for its numbers. The same numbers are in the flat view."></div><p class="bm3d-msg small muted" hidden></p><div class="seg bm3d-turn" role="group" aria-label="Turn the body"><button class="chip" data-act="map3dTurn" data-v="0">Front</button><button class="chip" data-act="map3dTurn" data-v="1">Side</button><button class="chip" data-act="map3dTurn" data-v="2">Back</button></div></div>`:`<div class="bm-wrap">${fig('f','Front')}${fig('b','Back')}</div>`;
+  return sec({sk:'today:map',key:'map',title:'Muscle map',sub:msub,body:`<div class="row spread"><div class="seg" role="group" aria-label="View"><button class="chip ${v3?'':'on'}" data-act="mapView" data-v="flat" aria-pressed="${!v3}">Flat</button><button class="chip ${v3?'on':''}" data-act="mapView" data-v="3d" aria-pressed="${v3}">3D</button></div><div class="seg" role="group" aria-label="Time range">${avg?`<button class="chip ${src==='avg'?'on':''}" data-act="mapSrc" data-v="avg" aria-pressed="${src==='avg'}">4-week avg</button>`:''}<button class="chip ${src==='week'?'on':''}" data-act="mapSrc" data-v="week" aria-pressed="${src==='week'}">This week</button></div></div>
+  ${stage}
   <div class="bm-legend small"><span><i class="st-under"></i>Below target ${counts.under}</span><span><i class="st-in"></i>On target ${counts.in}</span><span><i class="st-over"></i>Above ${counts.over}</span><span><i class="st-none"></i>None ${counts.none}</span>${counts.track?`<span class="hastip" data-tip="Serratus and rotator cuff: sets are counted, but no study sets a weekly dose, so they are never called under or over."><i class="st-track"></i>Tracked only ${counts.track}</span>`:''}</div>
   ${detail}`});
 }
@@ -4565,6 +4801,7 @@ function viewSettings(){
   <div class="card"><table class="t"><tr><th>Muscle</th><th class="r">Min</th><th class="r">Max</th></tr>${MUSCLES.map(([k,l])=>`<tr><td>${l}</td><td class="r"><input style="width:70px" type="text" inputmode="numeric" aria-label="${l} minimum hard sets a week" data-band="${k}" data-bi="0" value="${s.bands[k][0]}"></td><td class="r"><input style="width:70px" type="text" inputmode="numeric" aria-label="${l} maximum hard sets a week" data-band="${k}" data-bi="1" value="${s.bands[k][1]}"></td></tr>`).join('')}</table></div></div></details>
   ${G('data','Your data','','dataSec')}
   <div class="panel" id="syncInfo">${syncInfo()}</div>
+  ${canInstallHere()?`<div class="panel row spread" id="installPanel" style="margin-top:8px"><p class="small" style="margin:0;flex:1 1 180px"><b>Install the app.</b> Full screen, offline, one tap from your home screen.</p><button class="btn sm primary" data-act="install">Install</button></div>`:''}
   ${acctPanel()}
   ${privacyLine()}
   ${backupDue()?`<p class="callout yellow" style="margin:10px 0 0"><b>Backup due.</b> ${s.lastExport?`Last backup file ${fmtDate(s.lastExport)}.`:'No backup file yet.'} ${cloud.on?'Export one below; the cloud copy mirrors deletions, so it is not a backup.':'Export one below; this device holds the only copy.'}</p>`:''}
@@ -4625,6 +4862,7 @@ function renderModalBody(){
   const m=ui.modal;const el=$('#modal');if(!m){el.hidden=true;return;}
   let h='';
   if(m.kind==='account'){h=acctSheet(m);}
+  else if(m.kind==='install'){h=installSheet(m);}
   else if(m.kind==='confirm'){
     h=`<div class="sheet" role="dialog" aria-modal="true"><div class="sheet-h"><h3>${esc(m.title)}</h3></div><p>${esc(m.body)}</p><div class="row" style="margin-top:12px"><button class="btn ${m.danger?'danger':'primary'}" data-act="mOk">${esc(m.okLabel)}</button>${m.alt?`<button class="btn" data-act="mAlt">${esc(m.alt.label)}</button>`:''}<button class="btn" data-act="mClose">Cancel</button></div></div>`;
   }else if(m.kind==='picker'){
@@ -5022,6 +5260,17 @@ const ACT={
   },
   appUpdateLater(){upd.later=true;updRender();},
   async acctRetry(){await cloudInit();acctRerender();if(!cloud.on)toast('Still not syncing. Check your connection, or sign out and in again.');},
+  install(){
+    const how=installKind();
+    if(how==='prompt'){
+      const e=window.__installEvt;window.__installEvt=null;
+      try{e.prompt();Promise.resolve(e.userChoice).then(r=>{if(r&&r.outcome==='accepted')toast('Installing Ironlog. Open it from your home screen.');rerenderKeepScroll();},()=>{});}
+      catch(err){log('install',err);openModal({kind:'install',how:'menu'});}
+      return;
+    }
+    openModal({kind:'install',how});
+  },
+  installLater(){try{localStorage.setItem(INSTALL_LATER,'1');}catch(e){log('storage',e);}rerenderKeepScroll();toast('Hidden. Settings > Your data has it any time.');},
   acctLater(){try{localStorage.setItem(ACCT_LATER,'1');}catch(e){log('storage',e);}rerenderKeepScroll();toast('Hidden. Settings > Your data has it any time.');},
   acctOpen(t){openModal({kind:'account',mode:t.dataset.mode==='signup'?'signup':'signin',email:'',pw:''});},
   acctMode(t){const m=ui.modal;if(!m||m.kind!=='account')return;m.mode=t.dataset.mode;m.err='';m.pw='';renderModal();},
@@ -5618,6 +5867,8 @@ const ACT={
   histMore(){ui.histLimit+=HIST_PAGE;rerenderKeepScroll();},
   mapSel(t){const m=t.getAttribute('data-m');ui.mapSel=ui.mapSel===m?null:m;rerenderKeepScroll();},
   mapSrc(t){ui.mapSrc=t.getAttribute('data-v');rerenderKeepScroll();},
+  mapView(t){try{localStorage.setItem(MAPVIEW_KEY,t.getAttribute('data-v')==='3d'?'3d':'flat');}catch(e){/* remembered for this visit only */}B3.viewMem=t.getAttribute('data-v')==='3d'?'3d':'flat';rerenderKeepScroll();},
+  map3dTurn(t){map3dTurnTo([0,Math.PI/2,Math.PI][+t.getAttribute('data-v')]||0);},
   /* Every tile, summary row and map detail lands on the matching dashboard
      section, opened even if you had folded it, with the relevant muscle or
      exercise already selected. */
@@ -6121,7 +6372,7 @@ function swapPrompt(b,reason){
 }
 
 window.__onLib=(which)=>{if((which==='chart'&&ui.tab==='dash')||(which==='sortable'&&ui.tab==='program'))rerenderKeepScroll();};
-window.__ironlog={get state(){return state;},set state(v){state=v;},e1inv,rtfAt,rtfOf,rtfBand,calStats,rirEff,isHard,setCredit,tonnage,loadMode,loadWords,loadNote,progStep,jumpCap,setSecs,setupSecs,recovery,rolling7,rankDays,rankExercises,isCompound,patternOf,noE1,whtrLine,exHeadline,remainMin,shortPlan,weekPlan,cycleProjection,lastLighterWeek,regionBalance,parseHeight,mixCheck,swapCands,eqPlan,exportCSV,importData,chunksOf,assemble,sessionMuscles,TRACK_ONLY,cloud,Hx,mergeChunk,baseOf,sync:()=>cq(cloudPull),cloudState:()=>({on:cloud.on,status:cloud.status,err:cloud.err,uid:cloud.uid,acct:cloud.acct}),acctUser:()=>acct.user,flush:()=>cq(cloudFlush),backupDue,routineUpdates,planFor,platesMode,plateText,chunksOf,IDX,suggest,e1,render,ACT,ui,makeDemo,invalidate,normalize,snapshot,saveNow,timer,weekStats,weekStart,today,EX,blockProgress,dayMinutes,weekStreak,coach,tonnageNow,livePR,exProjection,movers,stalledIds,muscleStatus,actualAvg4,plannedPerWeek,parseSets,aiSetsValid,fillSets,newBlock,lastNoteOf,sizeRows,sessionMuscleSets,sessionCapNote,routineClutter,aiDigest,debriefPrompt,reviewPrompt,swapPrompt,AI,sameRR};
+window.__ironlog={get state(){return state;},set state(v){state=v;},e1inv,rtfAt,rtfOf,rtfBand,calStats,rirEff,isHard,setCredit,tonnage,loadMode,loadWords,loadNote,progStep,jumpCap,setSecs,setupSecs,recovery,rolling7,rankDays,rankExercises,isCompound,patternOf,noE1,whtrLine,exHeadline,remainMin,shortPlan,weekPlan,cycleProjection,lastLighterWeek,regionBalance,parseHeight,mixCheck,swapCands,eqPlan,exportCSV,importData,chunksOf,assemble,sessionMuscles,TRACK_ONLY,cloud,Hx,mergeChunk,baseOf,sync:()=>cq(cloudPull),map3d:()=>({state:B3.state,fail:B3.fail,meshes:B3.meshes.length,yaw:B3.yaw,glow:Object.keys(B3.mats).filter(m=>B3.mats[m].emissiveIntensity>0),canvas:!!document.querySelector('#bm3d canvas'),colors:Object.fromEntries(Object.entries(B3.mats).map(([m,mt])=>[m,'#'+mt.color.getHexString()])),pick:(x,y)=>map3dPick(x,y),want:map3dColors()}),cloudState:()=>({on:cloud.on,status:cloud.status,err:cloud.err,uid:cloud.uid,acct:cloud.acct}),acctUser:()=>acct.user,flush:()=>cq(cloudFlush),backupDue,routineUpdates,planFor,platesMode,plateText,chunksOf,IDX,suggest,e1,render,ACT,ui,makeDemo,invalidate,normalize,snapshot,saveNow,timer,weekStats,weekStart,today,EX,blockProgress,dayMinutes,weekStreak,coach,tonnageNow,livePR,exProjection,movers,stalledIds,muscleStatus,actualAvg4,plannedPerWeek,parseSets,aiSetsValid,fillSets,newBlock,lastNoteOf,sizeRows,sessionMuscleSets,sessionCapNote,routineClutter,aiDigest,debriefPrompt,reviewPrompt,swapPrompt,AI,sameRR};
 render();
 wakeOn();
 timerResume();

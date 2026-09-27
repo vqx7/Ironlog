@@ -37,6 +37,8 @@ fs.cpSync(DIST, tmp, { recursive: true });
     // A refused sign-in shows up as a failed request in the console; that is expected here.
     page.on('console', m => { if (m.type() === 'error' && !/Failed to load resource|status of 4\d\d/.test(m.text())) errors.push(m.text()); });
     await page.goto(url || APP); await page.waitForFunction(() => window.__ironlog && window.__libs && window.__libs.chart, null, { timeout: 15000 });
+    // The install offer has its own suite (tests/install.js); here it is dismissed so the account line shows.
+    await page.evaluate(() => { localStorage.setItem('ironlog.v1.installLater', '1'); });
     if (!fresh) await page.evaluate(() => { const L = window.__ironlog; L.state.settings.onboarded = true; L.saveNow(); L.render(); localStorage.setItem('ironlog.v1.tipWake', '1'); });
     const d = { ctx, page, errors, ev: (f, a) => page.evaluate(f, a) };
     devices.push(d); return d;

@@ -33,6 +33,8 @@ for (const d of ['vendor', 'fonts', 'icons']) fs.mkdirSync(path.join(DIST, d), {
 // Libraries: the exact versions the artifact loads from cdnjs.
 fs.copyFileSync(path.join(NM, 'chart.js/dist/chart.umd.js'), path.join(DIST, 'vendor/chart.umd.js'));
 fs.copyFileSync(path.join(NM, 'sortablejs/Sortable.min.js'), path.join(DIST, 'vendor/Sortable.min.js'));
+// three.js for the 3D body; the app loads it only when 3D is first opened.
+fs.copyFileSync(path.join(NM, 'three/build/three.module.min.js'), path.join(DIST, 'vendor/three.module.min.js'));
 
 // Accounts and cloud sync (Supabase), only when supabase.config.json exists.
 // It holds the project URL and the publishable key, both public by design:
@@ -73,8 +75,16 @@ must(!/fonts\.googleapis/.test(html), 'Google Fonts link still present');
 // Libraries: the local copy first, the CDNs stay as fallbacks.
 html = replaceOnce(html, "loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.2/Sortable.min.js',", "loadScript(['vendor/Sortable.min.js','https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.2/Sortable.min.js',", 'Sortable loader');
 html = replaceOnce(html, "loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js',", "loadScript(['vendor/chart.umd.js','https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js',", 'Chart.js loader');
+html = replaceOnce(html, "const THREE_URLS=['https://cdn.jsdelivr.net/npm/three@0.159.0/build/three.module.min.js',", "const THREE_URLS=['./vendor/three.module.min.js','https://cdn.jsdelivr.net/npm/three@0.159.0/build/three.module.min.js',", 'three.js loader');
 // Install metadata.
-const head = `<meta name="theme-color" content="#0a0b0d">
+// IRONLOG_APP marks the installable build, so the app can offer to install
+// itself. The browser's install offer (Android and desktop Chrome) can fire
+// before the app's own script runs, so it is caught here, first thing, and
+// kept until the lifter taps Install.
+const head = `<script>window.IRONLOG_APP=true;window.__installEvt=null;
+window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();window.__installEvt=e;if(window.ironlogInstallReady)window.ironlogInstallReady();});
+window.addEventListener('appinstalled',()=>{window.__installEvt=null;if(window.ironlogInstallReady)window.ironlogInstallReady();});</script>
+<meta name="theme-color" content="#08090b">
 <meta name="color-scheme" content="dark light">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
@@ -124,7 +134,7 @@ fs.writeFileSync(path.join(DIST, 'index.html'), html);
 const manifest = {
   name: 'Ironlog', short_name: 'Ironlog', description: 'Log lifting sessions, track progress and plan training. Works offline.',
   id: './', start_url: './', scope: './', display: 'standalone', orientation: 'portrait',
-  background_color: '#0a0b0d', theme_color: '#0a0b0d', categories: ['health', 'fitness', 'sports'],
+  background_color: '#08090b', theme_color: '#08090b', categories: ['health', 'fitness', 'sports'],
   icons: [
     { src: 'icons/icon-192.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
     { src: 'icons/icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'any' },
@@ -137,7 +147,7 @@ fs.writeFileSync(path.join(DIST, 'manifest.webmanifest'), JSON.stringify(manifes
 // contents, so any change ships as a new cache and the old one is dropped.
 const files = ['./', 'index.html', 'manifest.webmanifest', 'fonts/fonts.css',
   ...fs.readdirSync(path.join(DIST, 'fonts')).filter(f => f.endsWith('.woff2')).map(f => 'fonts/' + f),
-  'vendor/chart.umd.js', 'vendor/Sortable.min.js', ...(cloudCfg ? ['vendor/supabase.js', 'cloud.js'] : []), ...ICONS.map(f => 'icons/' + f)];
+  'vendor/chart.umd.js', 'vendor/Sortable.min.js', 'vendor/three.module.min.js', ...(cloudCfg ? ['vendor/supabase.js', 'cloud.js'] : []), ...ICONS.map(f => 'icons/' + f)];
 const h = crypto.createHash('sha256');
 for (const f of files) if (f !== './') h.update(fs.readFileSync(path.join(DIST, f)));
 const cacheName = `ironlog-${version}-${h.digest('hex').slice(0, 10)}`;

@@ -1,8 +1,9 @@
 // Runs every suite from the repo root and fails if any suite does not pass.
 const {execFileSync}=require('child_process');const fs=require('fs');
 fs.mkdirSync('screenshots',{recursive:true});
-const suites=['unit-math','unit-analytics','dataflow','migration','acceptance','flows','charts-layout','cycle-create','fuzz','integrity','gym-ux','design','uat','comeback-removed','pwa','update','accounts'];
+const suites=['unit-math','unit-analytics','dataflow','migration','acceptance','flows','charts-layout','cycle-create','fuzz','integrity','gym-ux','design','uat','comeback-removed','map3d','pwa','update','accounts','install'];
 // The standalone build (dist/, made by the pwa suite) runs the user-facing suites again.
+// map3d is not among them: a file:// page cannot import a module, and pwa checks the 3D body in dist/ over http.
 const distSuites=['dataflow','acceptance','flows','gym-ux','design','uat','comeback-removed'];
 let bad=0;
 function run(s,env,tag){
