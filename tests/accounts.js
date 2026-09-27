@@ -248,7 +248,31 @@ fs.cpSync(DIST, tmp, { recursive: true });
   await A.ev(() => window.__ironlog.flush()); await wait(800);
   ok(sessIn(rowsOf('v@example.com')).includes('sA-denied') && (await A.ev(() => window.__ironlog.cloudState().status)) === 'synced', 'once fixed, sync catches up');
 
-  // ---- 13. Layout: the sheet and panel fit a small phone.
+  // ---- 13. Delete my account: refused clearly until the function is deployed, then deletes account and synced log, keeps the phone's copy.
+  const K = await device();
+  await logOn(K, 'sK1', 70);
+  await openData(K);
+  await K.page.click('#acctPanel [data-act="acctOpen"][data-mode="signup"]'); await wait(100);
+  await fill(K, 'signup', 'leaver@example.com', 'bye bye 123'); fake.confirm('leaver@example.com');
+  await K.page.click('#modal [data-act="mClose"]');
+  await K.page.click('#acctPanel [data-act="acctOpen"][data-mode="signin"]'); await wait(100);
+  await fill(K, 'signin', 'leaver@example.com', 'bye bye 123');
+  ok(await synced(K) && sessIn(rowsOf('leaver@example.com')).join() === 'sK1', 'a third account is set up and synced');
+  await openData(K);
+  await K.page.click('#acctPanel [data-act="acctDelete"]'); await wait(100);
+  ok(/deleted for good/.test(await text(K, '#modal')), 'Delete asks first and says it is permanent');
+  await K.page.click('#modal [data-act="mOk"]'); await wait(1200);
+  ok(/not set up yet/.test(await K.ev(() => document.getElementById('toast').innerText)) && fake.users.has('leaver@example.com'), 'before the function is deployed: a clear message, nothing deleted');
+  fake.deployDelete(true);
+  await openData(K);
+  await K.page.click('#acctPanel [data-act="acctDelete"]'); await wait(100);
+  await K.page.click('#modal [data-act="mOk"]'); await wait(1500);
+  ok(!fake.users.has('leaver@example.com') && [...fake.rows.values()].every(r => !/sK1/.test(JSON.stringify(r.data))), 'deployed: the account and its synced log are gone from the server');
+  ok(!(await K.ev(() => window.__ironlog.cloudState().on)) && !(await K.ev(() => window.__ironlog.acctUser())), 'the phone is signed out and no longer syncing');
+  ok((await K.ev(() => window.__ironlog.state.sessions.map(s => s.id).join())) === 'sK1', 'the log on the phone is kept');
+  ok(sessIn(rowsOf('v@example.com')).length > 0, 'other accounts are untouched');
+
+  // ---- 14. Layout: the sheet and panel fit a small phone.
   await G.page.setViewportSize({ width: 320, height: 640 });
   await openData(G);
   await G.page.click('#acctPanel [data-act="acctSignOut"]'); await wait(100); await G.page.click('#modal [data-act="mClose"]').catch(() => {});

@@ -89,6 +89,37 @@ const fails = []; const ok = (c, m) => { if (!c) { fails.push(m); console.log('F
       const w = Math.max(r.width, bw), h = Math.max(r.height, bh); if (h < 43.5 && !el.closest('.wkbar') && !el.closest('.map')) out.push(el.outerHTML.slice(0, 70) + ' ' + Math.round(w) + 'x' + Math.round(h)); } return out; });
   ok(small.length === 0, 'logger controls are at least 44 px tall to the touch' + (small.length ? ': ' + small.slice(0, 5).join(' | ') : ''));
 
+  // 8. Back steps back through tabs, sheets first, and a sheet closed with its button costs no extra Back.
+  {
+    const T = await open('index.html', { touch: true, w: 390, h: 844, clock: '2026-09-20T10:00:00' });
+    const tp = T.page; const tev = (f, a) => tp.evaluate(f, a);
+    await tev(() => { const L = window.__ironlog; L.state.settings.onboarded = true; L.makeDemo(); L.ui.tab = 'today'; L.render(); });
+    const tab = () => tev(() => window.__ironlog.ui.tab);
+    const url0 = tp.url();
+    await tp.click('#tabs [data-tab="program"]'); await tp.click('#tabs [data-tab="dash"]'); await tp.click('#tabs [data-tab="history"]'); await tp.waitForTimeout(100);
+    await tp.goBack(); await tp.waitForTimeout(150);
+    ok((await tab()) === 'dash', 'Back from History returns to Stats');
+    await tp.click('#tabs [data-tab="settings"]'); await tp.waitForTimeout(80);
+    await tev(() => { document.querySelectorAll('#view details').forEach(d => d.open = true); document.querySelector('[data-act="showBackup"]').click(); }); await tp.waitForTimeout(150);
+    ok(!(await tev(() => document.getElementById('modal').hidden)), 'a sheet is open on Settings');
+    await tp.goBack(); await tp.waitForTimeout(150);
+    ok((await tev(() => document.getElementById('modal').hidden)) && (await tab()) === 'settings', 'Back closes the sheet first and stays on Settings');
+    await tev(() => document.querySelector('[data-act="showBackup"]').click()); await tp.waitForTimeout(150);
+    await tev(() => document.querySelector('#modal [data-act="mClose"]').click()); await tp.waitForTimeout(100);
+    await tp.click('#tabs [data-tab="today"]'); await tp.waitForTimeout(80);
+    await tp.goBack(); await tp.waitForTimeout(150);
+    ok((await tab()) === 'settings', 'after a sheet closed with its button, one Back still returns to the previous tab (' + (await tab()) + ')');
+    await tp.goBack(); await tp.waitForTimeout(150);
+    ok((await tab()) === 'dash', 'and the next Back goes on to Stats');
+    await tev(() => { const L = window.__ironlog; const b = document.createElement('button'); b.dataset.sec = 'volume'; L.ACT.goDash(b); }); await tp.waitForTimeout(100);
+    await tev(() => { const L = window.__ironlog; L.ui.tab = 'today'; L.render(); }); await tp.waitForTimeout(80);
+    await tp.goBack(); await tp.waitForTimeout(150);
+    ok((await tab()) === 'dash', 'tabs changed from inside the app count too');
+    ok(tp.url().split('#')[0] === url0.split('#')[0], 'still inside the app');
+    ok(T.errors.length === 0, 'no console errors while going back', T.errors);
+    await T.browser.close();
+  }
+
   ok(errors.length === 0, 'no console errors' + (errors.length ? ': ' + errors.join(' | ') : ''));
   console.log(fails.length ? `FAILURES ${fails.length}` : 'ALL PASS');
   await browser.close(); process.exit(fails.length ? 1 : 0);

@@ -38,7 +38,8 @@ const server = http.createServer((req, res) => {
   const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true });
   const page = await ctx.newPage();
   const errors = []; page.on('pageerror', e => errors.push(e.message)); page.on('console', m => { if (m.type() === 'error') errors.push(m.text()); });
-  let navs = 0; page.on('framenavigated', f => { if (f === page.mainFrame()) navs++; });
+  // Full page loads only: the app's own history entries (Back through tabs) are same-page and do not count.
+  let navs = 0; page.on('load', () => { navs++; });
   const ready = () => page.waitForFunction(() => window.__ironlog && window.__libs && window.__libs.chart, null, { timeout: 15000 });
   const ver = () => page.evaluate(() => (document.documentElement.innerHTML.match(/const APP_VERSION='([^']+)'/) || [])[1]);
   const bar = () => page.evaluate(() => { const b = document.getElementById('updbar'); return !!b && !b.hidden && b.getBoundingClientRect().height > 0; });

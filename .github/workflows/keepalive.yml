@@ -1,0 +1,21 @@
+# Free Supabase projects pause after a week without activity. This makes one
+# tiny database call a day so the project never pauses while nobody logs.
+# It uses only the public publishable key from supabase.config.json and the
+# ping() function from SUPABASE.md, which reads nothing and returns "ok".
+# GitHub stops scheduled runs in a repository with no commits for 60 days;
+# Actions > Keep Supabase awake > Enable workflow turns it back on.
+name: Keep Supabase awake
+on:
+  schedule:
+    - cron: '17 15 * * *'
+  workflow_dispatch:
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Ping the database
+        run: |
+          URL=$(jq -r .url supabase.config.json)
+          KEY=$(jq -r .key supabase.config.json)
+          curl -fsS -X POST "$URL/rest/v1/rpc/ping" -H "apikey: $KEY" -H "Content-Type: application/json" -d '{}'

@@ -55,7 +55,27 @@ Friends need confirmation and password-reset emails, which needs your own email 
 
 While only Part 1 is done, confirmation and reset emails go only to the email address you use for your Supabase account (the built-in sender's rule), at most 2 an hour. Sign up in Ironlog with that address.
 
-Still to build (PENDING.md): Delete my account (one small server function), and a daily keep-alive request (GitHub Action), because free projects pause after a week without activity. A paused project loses nothing and can be restored from the dashboard, but the app cannot sync until then.
+## Part 3: Delete my account and keep-alive (added in r19, about 5 minutes)
+
+**Delete my account** (Settings > Your data, when signed in). Admin rights cannot live in the app, so the deleting happens in a small function on Supabase:
+
+1. Supabase > **Edge Functions** > **Deploy a new function** > **Via editor**.
+2. Name it exactly `delete-account`.
+3. Replace the sample code with everything in `supabase/functions/delete-account/index.ts` from this repo.
+4. Turn **Verify JWT** (or "Enforce JWT verification") **off** for this function. The function checks who is calling itself, with the Auth server, so this is safe; with it on, the app's request is refused before the function runs.
+5. **Deploy**.
+
+Until this is done, Delete my account says it is not set up yet and deletes nothing. When it runs, the account and every synced row go (the table's `on delete cascade`); the copy on the phone stays.
+
+**Keep-alive.** Free projects pause after a week without activity. Run this once in the SQL Editor:
+
+```sql
+-- A harmless call that touches the database and returns "ok". Reads nothing.
+create or replace function public.ping() returns text language sql stable as $$ select 'ok' $$;
+grant execute on function public.ping() to anon;
+```
+
+The GitHub Action in `.github/workflows/keepalive.yml` calls it once a day. GitHub pauses scheduled Actions in a repository with no commits for 60 days; if that happens, Actions > Keep Supabase awake > Enable workflow turns it back on. A paused project loses nothing and can be restored from the dashboard, but the app cannot sync until then.
 
 ## Who can see the data
 

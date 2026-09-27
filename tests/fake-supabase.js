@@ -19,7 +19,7 @@ function start(root) {
   const refresh = new Map();    // refresh token -> uid
   const rows = new Map();       // `${uid} ${path}` -> {user_id, path, data, updated_at}
   const log = [];
-  let tokenLife = 3600; let deny = false;
+  let tokenLife = 3600; let deny = false; let fnDeployed = false;
   const now = () => Math.floor(Date.now() / 1000);
   const userJson = u => ({ id: u.id, aud: 'authenticated', role: 'authenticated', email: u.email,
     email_confirmed_at: u.confirmed ? u.created : null, confirmed_at: u.confirmed ? u.created : null,
@@ -101,6 +101,14 @@ function start(root) {
       }
       if (p === '/auth/v1/logout') { const t = (req.headers.authorization || '').replace(/^Bearer /, ''); tokens.delete(t); return send(res, 204); }
       if (p === '/auth/v1/recover') return send(res, 200, {});
+      // ---- Edge Function: delete-account ----
+      if (p === '/functions/v1/delete-account') {
+        if (!fnDeployed) return send(res, 404, { code: 'NOT_FOUND', message: 'Requested function was not found' });
+        const c = caller(req); if (!c || c.expired) return send(res, 401, { error: 'Not signed in' });
+        for (const [k, r] of [...rows]) if (r.user_id === c.id) rows.delete(k);
+        users.delete(c.email); for (const [t, v] of [...tokens]) if (v.uid === c.id) tokens.delete(t);
+        return send(res, 200, { deleted: true });
+      }
       // ---- Data API: table docs ----
       if (p === '/rest/v1/docs') {
         const c = caller(req);
@@ -149,6 +157,7 @@ function start(root) {
       expireTokens() { for (const v of tokens.values()) v.exp = now() - 10; },
       setTokenLife(s) { tokenLife = s; },
       setDeny(v) { deny = !!v; },
+      deployDelete(v) { fnDeployed = !!v; },
       close: () => new Promise(q => server.close(q)) });
   }));
 }
