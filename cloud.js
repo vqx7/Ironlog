@@ -57,6 +57,7 @@
     else if (/rate limit|over_email_send_rate_limit|too many/i.test(msg + code) || status === 429) text = 'Too many emails in the last hour. Try again later.';
     else if (/weak_password|password should/i.test(msg + code)) text = msg || 'Choose a longer password.';
     else if (/same_password|should be different/i.test(msg + code)) text = 'Choose a password different from the old one.';
+    else if (/send a request to the edge function/i.test(msg)) text = 'Could not reach the delete function. Check it is deployed with Verify JWT off (SUPABASE.md), and that you have signal.';
     else if (/failed to fetch|network|load failed|fetch/i.test(msg) || e instanceof TypeError) text = 'No connection. Try again when you have signal.';
     const out = new Error(text);
     // 401/403 from the database means the sign-in is no longer valid: sync
@@ -107,6 +108,23 @@
     async updatePassword(password) {
       const { error } = await sb.auth.updateUser({ password });
       if (error) throw friendly(error);
+    },
+    /* Deletes the account and, by the table's cascade, its synced log. The
+       work happens in the delete-account function on the server, because
+       admin rights can never live in the app. */
+    async deleteAccount() {
+      const s = await session();
+      if (!s) throw Object.assign(new Error('Sign in first.'), { code: 'revoked' });
+      const { data, error } = await sb.functions.invoke('delete-account', { method: 'POST' });
+      if (error) {
+        const status = error.context && error.context.status;
+        if (status === 404) throw Object.assign(new Error('Account deletion is not set up yet (SUPABASE.md, Delete my account).'), { code: 'not_deployed' });
+        if (status === 401) throw Object.assign(new Error('Your sign-in has expired. Sign out, sign in again, then delete.'), { code: 'revoked' });
+        throw friendly(error);
+      }
+      if (!data || !data.deleted) throw Object.assign(new Error('The account was not deleted. Try again.'), { code: 'error' });
+      try { await sb.auth.signOut({ scope: 'local' }); } catch (e) { /* the account is already gone */ }
+      hold = false;
     },
     /* cb(event, user): SIGNED_IN, SIGNED_OUT, PASSWORD_RECOVERY, TOKEN_REFRESHED, USER_UPDATED. */
     onChange(cb) { sb.auth.onAuthStateChange((ev, s) => { try { cb(ev, who(s)); } catch (e) { /* the app logs its own errors */ } }); }
