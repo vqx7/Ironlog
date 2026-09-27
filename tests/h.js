@@ -18,7 +18,7 @@ async function open(file, opts = {}) {
   if (opts.state && !opts.stateOnce) await ctx.addInitScript(`localStorage.setItem('ironlog.v1', ${JSON.stringify(JSON.stringify(opts.state))});`);
   const page = await ctx.newPage();
   const errors = [];
-  page.on('pageerror', e => errors.push('pageerror: ' + e.message));
+  page.on('pageerror', e => { errors.push('pageerror: ' + e.message); if (process.env.IL_STACK) console.log(e.stack); });
   // Software WebGL in headless Chromium reports itself as warnings; that is the test machine, not the app.
   page.on('console', m => { const t = m.text(); if ((m.type() === 'error' || m.type() === 'warning') && !t.includes('Failed to load resource') && !/GroupMarkerNotSet|swiftshader|GL Driver Message|WebGL-0x/i.test(t)) errors.push(m.type() + ': ' + t); });
   await page.route('**/*', r => {

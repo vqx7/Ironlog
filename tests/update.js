@@ -59,6 +59,7 @@ const server = http.createServer((req, res) => {
   await page.evaluate(() => { const L = window.__ironlog; L.makeDemo(); L.ui.tab = 'today'; L.render(); localStorage.setItem('ironlog.v1.tipWake', '1'); });
   await page.click('.hero [data-act="startSession"]:not([data-light])'); await page.waitForTimeout(150);
   await page.click('[data-act="sDone"][data-b="0"][data-s="0"]'); await page.waitForTimeout(150);
+  await page.click('.rirb[data-b="0"][data-s="0"]'); await page.waitForTimeout(100);
   await page.click('.rirstrip [data-v="2"]'); await page.waitForTimeout(600);
 
   // Publish build two; the app checks when it comes back to the foreground.

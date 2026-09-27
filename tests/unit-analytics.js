@@ -112,6 +112,25 @@ const res=await page.evaluate(()=>{
   {const lp=L.state.exercises.find(e=>e.id==='legPress');const old=lp.load;lp.load='side';L.state.bodyweights=[{id:'b',date:T,kg:80}];L.invalidate();
    const h1=L.exHeadline('legPress');lp.load='total';L.invalidate();const h2=L.exHeadline('legPress');lp.load=old;L.state.bodyweights=[];L.invalidate();
    ok(!/bodyweight/.test(h1)&&/× bodyweight/.test(h2),'r14: bodyweight ratio shown for total loads only');}
+  // r20: a blank RIR is read as your usual RIR on that lift (3+ rated sets in 12 weeks).
+  {const mix=[0,7,14,21,28,35].map((k,i)=>S(addDays(T,-35+k),'bench',[[100,8,i%2?null:2],[100,8,i%2?null:2]]));
+   let I=reset(mix);const bests=I.byEx.bench.map(x=>x.best);
+   ok(new Set(bests.map(v=>v.toFixed(6))).size===1&&near(bests[1],L.e1(100,8,2)),'mixed rated and blank at the same load and reps: one estimate, no dips',bests.map(v=>+v.toFixed(1)));
+   ok(!I.prs.some(p=>p.exId==='bench'&&p.date>addDays(T,-35)),'rating RIR on some days creates no PRs by itself',I.prs.filter(p=>p.exId==='bench').map(p=>p.type+'@'+p.date));
+   ok(L.rirUsual('bench')===2&&L.rirEst({r:8,w:100,rir:null},L.EX('bench'))===2,'the usual RIR is the median of rated working sets');
+   I=reset([S(addDays(T,-14),'bench',[[100,8,2]]),S(addDays(T,-7),'bench',[[100,8,2]]),S(T,'bench',[[100,8,null]])]);
+   ok(L.rirUsual('bench')==null&&near(I.byEx.bench[2].best,L.e1(100,8,0))&&I.weekHard[Object.keys(I.weekHard).pop()]>=1,'fewer than 3 rated sets: a blank is hard and 0 for estimates (errs low)');
+   I=reset([S(addDays(T,-14),'inclineCurl',[[20,12,5],[20,12,5],[20,12,5]]),S(T,'inclineCurl',[[20,12,null]])]);
+   ok(L.rirUsual('inclineCurl')===5&&!L.isHard({r:12,w:20,rir:null,warm:false},L.EX('inclineCurl'))&&(I.weekHard[Object.keys(I.weekHard).pop()]||0)===0,'usually 5 in reserve: a blank set there is not hard');
+   I=reset([S(addDays(T,-7),'bench',[[100,8,0],[100,8,0],[100,8,0]]),S(T,'bench',[[100,8,null],[100,8,null]])]);
+   ok(L.rirUsual('bench')===0&&I.dayMeta[T].chest.fail===0,'recovery reads only entered RIR: blanks never count as failure sets',I.dayMeta[T].chest);
+   reset([S(addDays(T,-7),'bench',[[100,8,3,{drop:true}],[100,8,3,{drop:true}],[100,8,3,{warm:true}],[100,8,3,{cal:{at:8,pred:3}}]])]);
+   ok(L.rirUsual('bench')==null,'warm-ups, drop sets and RIR checks are not part of the usual RIR');
+   reset([S(addDays(T,-90),'bench',[[100,8,2],[100,8,2],[100,8,2]])]);
+   ok(L.rirUsual('bench')==null,'ratings older than 12 weeks do not count');
+   reset(mix);L.state.settings.rirMode='off';L.invalidate();
+   ok(L.rirUsual('bench')==null&&L.isHard({r:8,w:100,rir:5,warm:false},L.EX('bench')),'RIR off: nothing is read, every working set is hard');
+   L.state.settings.rirMode='on';L.invalidate();}
   return out;});
 let f=0;for(const [p,m] of res){console.log((p?'ok  ':'FAIL')+' '+m);if(!p)f++;}
 console.log(errors.length?errors:'no errors');console.log(f?'FAILURES '+f:'ALL PASS');await browser.close();})();

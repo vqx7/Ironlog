@@ -53,6 +53,7 @@ const server = http.createServer((req, res) => {
   ok(await page.evaluate(() => !!document.querySelector('.hero') && document.querySelectorAll('#view .sec').length > 2), 'offline: the app opens with its data');
   await page.click('.hero [data-act="startSession"]:not([data-light])'); await page.waitForTimeout(150);
   await page.click('[data-act="sDone"][data-b="0"][data-s="0"]'); await page.waitForTimeout(150);
+  await page.click('.rirb[data-b="0"][data-s="0"]'); await page.waitForTimeout(100);
   await page.click('.rirstrip [data-v="1"]'); await page.waitForTimeout(600);
   await page.reload(); await page.waitForFunction(() => window.__ironlog, null, { timeout: 15000 });
   const kept = await page.evaluate(() => { const d = window.__ironlog.state.draft; return d && d.ex[0].sets[0].done && d.ex[0].sets[0].rir === 1; });

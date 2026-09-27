@@ -22,7 +22,9 @@ const fails = []; const ok = (c, m) => { if (!c) { fails.push(m); console.log('F
   await page.click('[data-act="sDone"][data-b="0"][data-s="0"]'); await page.waitForTimeout(120);
   const one = await ev(() => { const s = window.__ironlog.state.draft.ex[0].sets[0]; const inp = document.querySelector('.sg input[data-f="r"][data-b="0"][data-s="0"]'); return { r: s.r, done: s.done, shown: inp.value, strip: !!document.querySelector('.rirstrip[data-b="0"][data-s="0"]') }; });
   ok(one.done && one.r === n0.lastR[0] && one.shown === String(n0.lastR[0]), 'done on empty reps logs last time\'s reps (' + one.r + ')');
-  ok(one.strip, 'the RIR strip opens after a set is done without RIR');
+  ok(!one.strip, 'by default the RIR strip does not open by itself after a set');
+  await page.click('.rirb[data-b="0"][data-s="0"]'); await page.waitForTimeout(80);
+  ok(await ev(() => !!document.querySelector('.rirstrip[data-b="0"][data-s="0"]')), 'tapping the set\'s RIR box opens the strip');
   await page.click('.rirstrip [data-v="2"]'); await page.waitForTimeout(80);
   const rr = await ev(() => ({ rir: window.__ironlog.state.draft.ex[0].sets[0].rir, btn: document.querySelector('.rirb[data-b="0"][data-s="0"]').textContent, strip: !!document.querySelector('.rirstrip') }));
   ok(rr.rir === 2 && rr.btn === '2' && !rr.strip, 'picking 2 stores RIR 2, shows it and closes the strip');
@@ -32,7 +34,11 @@ const fails = []; const ok = (c, m) => { if (!c) { fails.push(m); console.log('F
   ok(await ev(() => window.__ironlog.state.draft.ex[0].sets[1].rir == null && !document.querySelector('.rirstrip')), 'the clear button leaves RIR empty');
   const nWork = await ev(() => { const d = window.__ironlog.state.draft; return d.ex.reduce((a, b) => a + b.sets.filter(s => !s.warm).length, 0); });
   ok(await ev(n => document.getElementById('sessOf').textContent === `1 of ${n}`, nWork), 'progress reads 1 of ' + nWork);
+  // With "Open the RIR picker after each set" on, it opens by itself after each tick.
+  await ev(() => { window.__ironlog.state.settings.rirAsk = true; });
   for (let i = 1; i < n0.n; i++) { await page.click(`[data-act="sDone"][data-b="0"][data-s="${i}"]`); await page.waitForTimeout(80); await page.click(`.rirstrip [data-v="1"]`); await page.waitForTimeout(80); }
+  ok(await ev(n => window.__ironlog.state.draft.ex[0].sets.slice(1, n).every(x => x.rir === 1), n0.n), 'with the setting on, the strip opened after each tick and took the rating');
+  await ev(() => { delete window.__ironlog.state.settings.rirAsk; });
   await page.waitForTimeout(1600);
   const fold = await ev(() => { const el = document.getElementById('blk-0'); return { folded: el.classList.contains('folded'), text: el.textContent, next: !!document.querySelector('#blk-1 .sg') }; });
   ok(fold.folded && /×/.test(fold.text) && fold.next, 'a finished exercise folds to one line and the next stays open');
@@ -75,14 +81,14 @@ const fails = []; const ok = (c, m) => { if (!c) { fails.push(m); console.log('F
     const probe = document.createElement('div'); document.body.appendChild(probe);
     const col = v => { probe.style.color = `var(${v})`; return getComputedStyle(probe).color; };
     const out = {};
-    for (const th of ['dark', 'light']) {
-      document.documentElement.dataset.theme = th;
-      const pairs = [['--ink', '--bg'], ['--ink', '--surface'], ['--muted', '--surface'], ['--muted', '--bg'], ['--on-volt', '--volt'], ['--green', '--green-bg'], ['--yellow', '--yellow-bg'], ['--red', '--red-bg'], ['--blue', '--blue-bg'], ['--on-gold', '--gold'], ['--on-hero', '--hero']];
-      out[th] = pairs.map(([a, b]) => [a + ' on ' + b, Math.round(ratio(col(a), col(b)) * 100) / 100]);
+    for (const ac of ['blue', 'volt', 'ember']) for (const th of ['dark', 'light']) {
+      document.documentElement.dataset.theme = th; document.documentElement.dataset.accent = ac;
+      const pairs = [['--ink', '--bg'], ['--ink', '--surface'], ['--muted', '--surface'], ['--muted', '--bg'], ['--on-volt', '--volt'], ['--green', '--green-bg'], ['--yellow', '--yellow-bg'], ['--red', '--red-bg'], ['--blue', '--blue-bg'], ['--on-gold', '--gold'], ['--on-hero', '--hero'], ['--volt-line', '--bg'], ['--volt-line', '--surface']];
+      out[ac + ' ' + th] = pairs.map(([a, b]) => [a + ' on ' + b, Math.round(ratio(col(a), col(b)) * 100) / 100]);
     }
-    probe.remove(); document.documentElement.dataset.theme = 'dark'; return out;
+    probe.remove(); document.documentElement.dataset.theme = 'dark'; document.documentElement.dataset.accent = 'blue'; return out;
   });
-  for (const th of ['dark', 'light']) { const low = contrast[th].filter(([, r]) => r < 4.5); ok(!low.length, `${th}: every key text pair reaches 4.5:1` + (low.length ? ' ' + JSON.stringify(low) : '')); }
+  for (const k of Object.keys(contrast)) { const low = contrast[k].filter(([, r]) => r < 4.5); ok(!low.length, `${k}: every key text pair reaches 4.5:1` + (low.length ? ' ' + JSON.stringify(low) : '')); }
 
   ok(errors.length === 0, 'no console errors' + (errors.length ? ': ' + errors.join(' | ') : ''));
   console.log(fails.length ? `FAILURES ${fails.length}` : 'ALL PASS');
