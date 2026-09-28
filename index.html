@@ -5060,11 +5060,13 @@ function bestsBoard(){
   if(!rows.length)return {n:0,html:'<p class="muted">Your bests appear here after your first session.</p>'};
   // A bodyweight lift's estimate includes the body, so it says total; its sets read BW+x.
   const u=ex=>' '+U()+(ex.bw?' total':'');
-  return {n:rows.length,html:`<div class="bests">${rows.map(r=>{const ex=r.ex;
+  // The newest six first; the rest one tap away, so the list stays short on a phone.
+  const shown=ui.bestsAll?rows:rows.slice(0,6);
+  return {n:rows.length,html:`<div class="bests">${shown.map(r=>{const ex=r.ex;
     const top=[r.est?`best est ${fmtW(r.est.v)}${u(ex)}`:'',r.heavy?`heaviest ${setShort(ex,r.heavy.p.w,r.heavy.p.r)}`:''].filter(Boolean).join(' · ');
     return `<details class="bx" data-ex="${ex.id}"><summary><span class="bn">${esc(ex.name)}</span><span class="bs">${top}${loadNote(ex)} · ${fmtDate(r.last)}</span></summary>
     ${r.est?`<p class="small" style="margin:0 0 6px">Best estimate <b>${fmtW(r.est.v)}${u(ex)}</b> from ${setShort(ex,r.est.p.w,r.est.p.r)}, ${fmtDate(r.est.date)}</p>`:''}
-    <table class="t"><tr><th>${esc(loadHead(ex))}</th><th class="r">${ex.timed?'Seconds':'Reps'}</th><th class="r">First done</th></tr>${r.front.map(f=>`<tr><td class="num">${esc(loadLabel(ex,f.p.w))}</td><td class="r num">${f.p.r}</td><td class="r">${fmtDate(f.date)}</td></tr>`).join('')}</table></details>`;}).join('')}</div><p class="small muted hastip" style="margin:8px 0 0" data-tip="For each load, the most reps you have done, where no heavier set did as many. Beating a line is a rep PR. The best estimate is the highest estimated 1RM from any set, in the frame you log in. Warm-ups and drop sets are left out.">How to read this</p>`};
+    <table class="t"><tr><th>${esc(loadHead(ex))}</th><th class="r">${ex.timed?'Seconds':'Reps'}</th><th class="r">First done</th></tr>${r.front.map(f=>`<tr><td class="num">${esc(loadLabel(ex,f.p.w))}</td><td class="r num">${f.p.r}</td><td class="r">${fmtDate(f.date)}</td></tr>`).join('')}</table></details>`;}).join('')}</div>${rows.length>shown.length?`<button class="btn sm" style="margin-top:8px" data-act="bestsAll">Show all ${rows.length} lifts</button>`:''}<p class="small muted hastip" style="margin:8px 0 0" data-tip="For each load, the most reps you have done, where no heavier set did as many. Beating a line is a rep PR. The best estimate is the highest estimated 1RM from any set, in the frame you log in. Warm-ups and drop sets are left out.">How to read this</p>`};
 }
 function sub(key,title,body,subTxt){return subsec('dash:sub:'+key,title,body,subTxt).replace('<details class="subsec"',`<details class="subsec" id="sub-${key}"`);}
 /* This used to print under all five charts at once. It is one fact about the
@@ -6039,6 +6041,7 @@ const ACT={
   },
   layoutSimple(){state.settings.hidden=SIMPLE_HIDE.slice();commit();rerenderKeepScroll();toast('Simple view on. Show everything brings the rest back.');},
   layoutAll(){state.settings.hidden=[];commit();rerenderKeepScroll();toast('Every section shown');},
+  bestsAll(){ui.bestsAll=true;rerenderKeepScroll();},
   obSample(){openModal({kind:'templates',from:'welcome'});},
   obAcctLater(){try{localStorage.setItem(OB_ACCT,'later');}catch(e){/* per device only */}window.scrollTo(0,0);render();},
   obAcctBack(){try{localStorage.removeItem(OB_ACCT);}catch(e){/* nothing to clear */}window.scrollTo(0,0);render();},
