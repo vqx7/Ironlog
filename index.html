@@ -162,7 +162,8 @@ b{font-weight:650}
 .wkbar .w.cardio .dn{background:transparent;box-shadow:inset 0 0 0 2px var(--volt-line)}
 .wkbar .w.today .wd{color:var(--ink)}
 .wkbar .w.today .dn{outline:2px solid var(--ink);outline-offset:2px}
-.wkbar .w.live::after{content:"";position:absolute;top:0;right:calc(50% - 18px);width:9px;height:9px;border-radius:50%;background:var(--volt);box-shadow:0 0 0 2px var(--bg),0 0 0 3px var(--volt-line)}
+/* The live mark sits on the disc's top-right shoulder, clear of the weekday label now that the row is wider. */
+.wkbar .w.live::after{content:"";position:absolute;top:12px;right:calc(50% - 19px);width:9px;height:9px;border-radius:50%;background:var(--volt);box-shadow:0 0 0 2px var(--bg),0 0 0 3px var(--volt-line)}
 @media (max-width:374px){.wkbar .w .dn{width:24px;height:24px;font-size:13.5px}.wkbar .w.today .dn{outline-offset:1px}}
 .ssb{flex:none;width:30px;height:30px;border-radius:50%;border:0;background:var(--surface-2);display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:0;font:700 14px/1 var(--font);color:var(--muted);cursor:pointer}
 .ssb .sst{display:none;font:600 12.5px var(--font)}
@@ -2505,7 +2506,8 @@ function lmChips(ex){
 /* Weight actually moved by one set, for weekly totals. */
 function tonnage(ex,s,date){
   const m=loadMode(ex);const w=+s.w||0;
-  const load=m==='bw'?bwLoad(ex,date)+w:(m==='each'||m==='side')?w*2:w;
+  // Assisted with no bodyweight logged would go below 0; weight lifted is then 0.
+  const load=m==='bw'?Math.max(0,bwLoad(ex,date)+w):(m==='each'||m==='side')?w*2:w;
   return load*(+s.r||0)*(ex.perSide?2:1);
 }
 /* The one 1RM estimate used everywhere: trends, PRs, live badges, targets,
@@ -2935,7 +2937,7 @@ function suggest(exId,plan,opts){
   if(injM)return {w:top,text:`${lastS} Injury flagged (${ML[injM]}): stay at or below ${lbl(top)}, keep 3 or more reps in reserve, stop on pain.`,lastR,last:lastS,target:'',tgt:null,easier:null,inj:injM};
   if(opts.deload){const bl=bwLoad(ex,T);
     // Assisted: 90% of the lifted load means more help, rounded up to the machine's step so it never lands back on the full load.
-    const hs=U()==='lb'?5:2.5;const dw=ex.assist?-fromD(Math.ceil(toD(bl-(top+bl)*0.9)/hs-1e-9)*hs):ex.bw?((top+bl)*0.9-bl>0?roundLoad((top+bl)*0.9-bl,true):0):roundLoad(top*0.9,true);return {w:top>0||ex.assist?dw:top,text:`${lastS} Deload: about ${lbl(top>0||ex.assist?dw:top)} for ${plan.repMin}-${plan.repMax} with 3 or more reps in reserve. Half the usual sets.`,lastR,last:lastS,target:'',tgt:null,easier:null};}
+    const hs=step>0?toD(step):U()==='lb'?5:2.5;const dw=ex.assist?-fromD(Math.ceil(toD(bl>0?bl-(top+bl)*0.9:-top*1.1)/hs-1e-9)*hs):ex.bw?((top+bl)*0.9-bl>0?roundLoad((top+bl)*0.9-bl,true):0):roundLoad(top*0.9,true);return {w:top>0||ex.assist?dw:top,text:`${lastS} Deload: about ${lbl(top>0||ex.assist?dw:top)} for ${plan.repMin}-${plan.repMax} with 3 or more reps in reserve. Half the usual sets.`,lastR,last:lastS,target:'',tgt:null,easier:null};}
   /* Recalibrate when every top set was logged with RIR at least 2 above the
      target. It uses the same e1() estimate as everything else,
      and the new load is what leaves the middle of the rep range at the target
@@ -2950,7 +2952,7 @@ function suggest(exId,plan,opts){
       const want=Math.min(e1inv(est,Math.round((+plan.repMin+ +plan.repMax)/2)+Math.min(tgtRir,E1_MAX_RIR)),topLoad*jumpCap(ex,topLoad))-bwNow;
       const k=Math.floor((want-top)/step+1e-6);
       if(k>=1){
-        const nw=ex.assist?Math.min(0,top+k*step):capW(top+k*step);const rr=r1(topPts.reduce((a,p)=>a+p.rir,0)/topPts.length);
+        const nw=ex.assist&&top<0?Math.min(0,top+k*step):capW(top+k*step);const rr=r1(topPts.reduce((a,p)=>a+p.rir,0)/topPts.length);
         return {w:nw,text:`${lastS} RIR ${rr} at ${lbl(top)} against a target of ${tgtRir}, so that load was light. Try ${lbl(nw)} for ${plan.repMin}-${plan.repMax} reps.`,lastR,
           last:lastS,target:`${lbl(nw)} for ${plan.repMin}+ reps in every set`,tgt:{kind:'load',w:nw,repMin:+plan.repMin,prevBest},easier:null};
       }
@@ -3000,7 +3002,7 @@ function suggest(exId,plan,opts){
   }
   if(topPts.every(p=>p.r>=plan.repMax)){
     const nw=capW(top+progStep(ex,plan,top+bwLoad(ex,T)));
-    if(ex.assist){const aw=Math.min(0,nw);return {w:aw,text:`${lastS} Every set at ${lbl(top)} hit ${plan.repMax}: ${aw===0?'try it without help':`take ${fmtW(aw-top)} ${U()} of help off`} and aim for ${plan.repMin}+ reps.`,lastR,
+    if(ex.assist){const aw=top<0?Math.min(0,nw):nw;return {w:aw,text:`${lastS} Every set at ${lbl(top)} hit ${plan.repMax}: ${aw===0?'try it without help':`take ${fmtW(aw-top)} ${U()} of help off`} and aim for ${plan.repMin}+ reps.`,lastR,
       last:lastS,target:`${lbl(aw)} for ${plan.repMin}+ reps in every set`,tgt:{kind:'load',w:aw,repMin:+plan.repMin,prevBest},easier:null};}
     return {w:nw,text:`${lastS} Every set at ${lbl(top)} hit ${plan.repMax}: add ${fmtW(nw-top)} ${U()}${cap!=null&&nw>=cap-1e-6?', which is the heaviest available,':''} and aim for ${plan.repMin}+ reps.`,lastR,
       last:lastS,target:`${lbl(nw)} for ${plan.repMin}+ reps in every set`,tgt:{kind:'load',w:nw,repMin:+plan.repMin,prevBest},easier:null};
@@ -5327,7 +5329,7 @@ function viewHistory(){
   if(cs.length)h+=sec({sk:'history:cardio',key:'cardio',title:'Cardio and mobility',sub:`${cs.length} entr${cs.length===1?'y':'ies'}`,body:`<ul class="clist">${cs.slice(0,40).map(c=>`<li><span><b>${esc(CARDIOL[c.kind])}</b> <span class="small muted">${fmtDate(c.date)} · ${c.min} min${c.hr?` · ${c.hr} bpm`:''}${c.when!=='solo'?' · '+CWHENL[c.when].toLowerCase():''}${c.note?' · '+esc(c.note):''}</span></span><button class="ib sm" data-act="cardioDel" data-id="${c.id}" aria-label="Delete ${fmtDate(c.date)} cardio">✕</button></li>`).join('')}</ul>${cs.length>40?`<p class="small muted">${cs.length-40} older entries are in the CSV export.</p>`:''}`});
   const tr=state.trash||[];
   if(tr.length)h+=sec({sk:'history:trash',key:'trash',title:'Recently deleted',sub:`<span class="hastip" data-tip="${esc(`The ${TRASH_MAX} most recent deletions, each kept ${TRASH_DAYS} days`)}">${tr.length}</span>`,body:`<ul class="clist">${tr.map(x=>{const nm=x.kind==='session'?`${x.data.dayName||'Session'}, ${fmtDate(x.data.date)}`:x.kind==='cardio'?`${CARDIOL[x.data.kind]||'Cardio'}, ${fmtDate(x.data.date)}`:`Routine: ${x.data.name||'Routine'}`;return `<li><span>${esc(nm)} <span class="small muted">deleted ${fmtDate(x.date)}</span></span><button class="btn sm" data-act="restore" data-id="${x.id}" data-k="${x.kind}">Restore</button></li>`;}).join('')}</ul>`});
-  const impLine='<p class="small" style="margin:14px 0 0"><button class="linkbtn" data-act="impOpen">Import workouts</button> <span class="muted">from notes, a spreadsheet, Strong or Hevy</span></p>';
+  const impLine='<p class="small" style="margin:14px 0 0"><button class="linkbtn" style="min-height:44px" data-act="impOpen" data-tip="From notes, a spreadsheet, Strong or Hevy. You check it before anything is saved.">Import workouts</button></p>';
   if(!ss.length)return h+'<div class="card"><p style="margin:0">No sessions yet. Start one on Today, or log one you did without the app with Log a past workout.</p></div>'+impLine;
   const withData=Object.keys(I.byEx).sort((a,b)=>exName(a).localeCompare(exName(b)));
   if(ui.histEx&&!I.byEx[ui.histEx])ui.histEx='';
@@ -5821,9 +5823,10 @@ function impDate(str,ref){
   const mk=(y,m,d)=>{if(!(m>=1&&m<=12&&d>=1&&d<=31))return null;const iso=`${y}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`;return isDate(iso)&&new Date(y,m-1,d).getDate()===d?iso:null;};
   const noYear=(m,d)=>{let x=mk(ty,m,d);if(x&&x>t)x=mk(ty-1,m,d);return x;};
   const yy=y=>y<100?2000+y:y;
-  let g=s.match(/\b(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})\b/);if(g)return mk(+g[1],+g[2],+g[3]);
+  let g=s.match(/(?<!\d)(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})(?!\d)/);if(g)return mk(+g[1],+g[2],+g[3]);
   g=s.match(/\b(\d{1,2})[/.-](\d{1,2})(?:[/.-](\d{2,4}))?\b/);
-  if(g){let a=+g[1],b=+g[2];let m=a,d=b;if(a>12&&b<=12){m=b;d=a;}return g[3]?mk(yy(+g[3]),m,d):noYear(m,d);}
+  // A date more than 20 years back is not a training log (10/10/10 is three sets of 10).
+  if(g){let a=+g[1],b=+g[2];let m=a,d=b;if(a>12&&b<=12){m=b;d=a;}const x=g[3]?mk(yy(+g[3]),m,d):noYear(m,d);return x&&+x.slice(0,4)>=ty-20?x:null;}
   g=s.match(/\b(\d{1,2})\s+([a-z]{3,9})\.?,?\s*(\d{4})?\b/);if(g&&MON[g[2].slice(0,4)]||g&&MON[g[2].slice(0,3)]){const m=MON[g[2].slice(0,4)]||MON[g[2].slice(0,3)];return g[3]?mk(+g[3],m,+g[1]):noYear(m,+g[1]);}
   g=s.match(/\b([a-z]{3,9})\.?\s+(\d{1,2})(?:,?\s*(\d{4}))?\b/);if(g&&(MON[g[1].slice(0,4)]||MON[g[1].slice(0,3)])){const m=MON[g[1].slice(0,4)]||MON[g[1].slice(0,3)];return g[3]?mk(+g[3],m,+g[2]):noYear(m,+g[2]);}
   return null;
@@ -5869,14 +5872,21 @@ async function impXlsx(buf){
 const IMP_SYN=[[/\bdumb ?bells?\b|\bdbs?\b/g,'db'],[/\bbar ?bells?\b|\bbb\b/g,'bb'],[/\bpull[ -]?downs?\b/g,'pulldown'],[/\bpull[ -]?ups?\b/g,'pullup'],[/\bchin[ -]?ups?\b/g,'chinup'],[/\bpush[ -]?ups?\b/g,'pushup'],[/\bsit[ -]?ups?\b/g,'situp'],[/\b(push|press)[ -]?downs?\b/g,'pushdown'],[/\bdead[ -]?lifts?\b/g,'deadlift'],[/\bromanian deadlift\b|\brdls?\b/g,'rdl'],[/\bover ?head press\b|\bohp\b/g,'ohp'],[/\bskull ?crushers?\b/g,'skullcrusher'],[/\btriceps?\b/g,'tricep'],[/\bbiceps?\b/g,'bicep'],[/\bext\b|\bextensions?\b/g,'extension'],[/\braises?\b/g,'raise'],[/\bflyes?\b|\bflies\b|\bflys?\b/g,'fly'],[/\bmachine\b/g,'machine'],[/\bsmith machine\b/g,'smith'],[/\bcurls\b/g,'curl'],[/\brows\b/g,'row'],[/\bsquats\b/g,'squat'],[/\blunges\b/g,'lunge'],[/\bdips\b/g,'dip'],[/\bshrugs\b/g,'shrug'],[/\bpresses\b/g,'press'],[/\bcrunches\b/g,'crunch'],[/\bcalves\b|\bcalfs\b/g,'calf'],[/\bhamstrings?\b/g,'ham'],[/\bdeg(rees?)?\b|°/g,'']];
 function impNorm(name){let s=String(name||'').toLowerCase().replace(/[()\[\],.&/+_-]/g,' ').replace(/\s+/g,' ').trim();for(const [re,v] of IMP_SYN)s=s.replace(re,v);return s.split(' ').filter(w=>w&&!['the','a','with','of','and','on','exercise'].includes(w));}
 /* Bare everyday names mean the classic lift. */
-const IMP_ALIAS={'assisted pullup':'assistPullup','pullup assisted':'assistPullup','assisted dip':'assistDip','dip assisted':'assistDip','squat':'backSquat','bb squat':'backSquat','back squat':'backSquat','bench':'bench','bench press':'bench','bb bench':'bench','flat bench':'bench','deadlift':'deadlift','ohp':'ohp','shoulder press':'ohp','military press':'ohp','pullup':'pullup','chinup':'chinup','row':'bbRow','bb row':'bbRow','bent over row':'bbRow','leg press':'legPress','lat pulldown':'latPulldown','pulldown':'latPulldown','dip':'dips','rdl':'rdl','hip thrust':'hipThrust','pushdown':'pressdown','tricep pushdown':'pressdown','pushup':'pushup','curl':'dbCurl','db curl':'dbCurl','bicep curl':'dbCurl','bb curl':'bbCurl'};
+const IMP_ALIAS={'calf raise':'standCalf','standing calf raise':'standCalf','seated calf raise':'seatedCalf','db shoulder press':'seatedDbPress','shoulder press db':'seatedDbPress','overhead press':'ohp','skullcrusher':'skull','assisted pullup':'assistPullup','assisted chinup':'assistPullup','chinup assisted':'assistPullup','assisted dip':'assistDip','tricep dip assisted':'assistDip','pullup assisted':'assistPullup','assisted dip':'assistDip','dip assisted':'assistDip','squat':'backSquat','bb squat':'backSquat','back squat':'backSquat','bench':'bench','bench press':'bench','bb bench':'bench','flat bench':'bench','deadlift':'deadlift','ohp':'ohp','shoulder press':'ohp','military press':'ohp','pullup':'pullup','chinup':'chinup','row':'bbRow','bb row':'bbRow','bent over row':'bbRow','leg press':'legPress','lat pulldown':'latPulldown','pulldown':'latPulldown','dip':'dips','rdl':'rdl','hip thrust':'hipThrust','pushdown':'pressdown','tricep pushdown':'pressdown','pushup':'pushup','curl':'dbCurl','db curl':'dbCurl','bicep curl':'dbCurl','bb curl':'bbCurl'};
 function impMatch(name){
   const a=new Set(impNorm(name));if(!a.size)return [];
-  const out=[];const al=IMP_ALIAS[[...a].join(' ')];if(al&&state.exercises.some(e=>e.id===al&&!e.archived))out.push({id:al,sc:1});
+  const out=[];const EQW={db:'dumbbell',bb:'barbell',cable:'cable',machine:'machine',smith:'smith'};
+  // An alias by the name alone, or by the name without its equipment word when the equipment agrees ("Deadlift (Barbell)").
+  let al=IMP_ALIAS[[...a].join(' ')];
+  if(!al){const eq=[...a].filter(w=>EQW[w]);const bare=[...a].filter(w=>!EQW[w]).join(' ');const c=IMP_ALIAS[bare];if(c&&eq.length===1&&state.exercises.some(e=>e.id===c&&e.equip===EQW[eq[0]]))al=c;}
+  if(!(al&&state.exercises.some(e=>e.id===al&&!e.archived)))al=null;else out.push({id:al,sc:1});
+  // Words that make a different exercise: one side having it and the other not costs a lot.
+  const MOD=['incline','decline','reverse','seated','standing','lying','single','one','close','wide','front','rear','hammer','preacher','sumo','rdl','hack','split','bulgarian','goblet','overhead','assisted','weighted','deficit','pause','spider','concentration','upright','face'];
   for(const e of state.exercises){if(e.archived)continue;const b=new Set(impNorm(e.name));if(!b.size)continue;let hit=0;for(const w of a)if(b.has(w))hit++;if(!hit)continue;
     const union=new Set([...a,...b]).size;let sc=hit/union;
     // Equipment named on one side and a different one on the other is a different exercise.
     const eq=['db','bb','cable','machine','smith'];const ea=eq.filter(w=>a.has(w)),eb=eq.filter(w=>b.has(w));if(ea.length&&eb.length&&!ea.some(w=>eb.includes(w)))sc*=0.5;
+    for(const w of MOD)if(a.has(w)!==b.has(w))sc*=0.7;
     if(e.id!==al)out.push({id:e.id,sc});}
   return out.sort((x,y)=>y.sc-x.sc).slice(0,8);
 }
@@ -5885,13 +5895,22 @@ function impMatch(name){
 function impGuess(name){
   const w=impNorm(name).join(' ');const has=re=>re.test(w);
   const primary=has(/tricep|pushdown|skullcrusher|kickback/)?'triceps':has(/curl/)&&!has(/leg|ham/)?'biceps':has(/leg curl|ham|rdl|good morning/)?'hamstrings':has(/calf/)?'calves':has(/lateral|side raise/)?'sideDelts':has(/rear|face pull|reverse fly/)?'rearDelts':has(/ohp|shoulder press|military|front raise/)?'frontDelts':has(/shrug/)?'traps':has(/pulldown|pullup|chinup|pullover/)?'lats':has(/row/)?'upperBack':has(/squat|leg press|lunge|leg extension|hack|split/)?'quads':has(/deadlift|hip thrust|glute|bridge/)?'glutes':has(/crunch|situp|plank|ab |abs|leg raise/)?'abs':'chest';
+  if(has(/assist/))return {primary:has(/dip/)?'chest':'lats',equip:'machine',assist:true};
   const equip=has(/\bdb\b/)?'dumbbell':has(/\bbb\b/)?'barbell':has(/cable/)?'cable':has(/smith/)?'smith':has(/machine/)?'machine':has(/pullup|chinup|pushup|dip|plank|situp/)?'bodyweight':'other';
   return {primary,equip};
 }
 /* Header words for each field, across Strong, Hevy and hand-made sheets. */
-const IMP_COLS={date:/^(date|day|start_?time|workout date|when)$/,name:/^(workout name|workout|title|session|routine)$/,ex:/^(exercise( name)?|exercise_title|movement|lift|name)$/,w:/^(weight|weight_kg|weight_lbs|load|kg|lbs?|weight \((kg|lbs?)\))$/,r:/^(reps?|repetitions|rep count)$/,sets:/^(sets)$/,rir:/^(rir)$/,rpe:/^(rpe)$/,type:/^(set order|set_type|set type|type)$/,secs:/^(seconds|duration_seconds|time \(s\)|secs)$/,note:/^(notes?|exercise_notes|comment)$/,unit:/^(weight unit|unit|units)$/,dist:/^(distance|distance_km|distance_miles)$/};
-function impHeader(row){const map={};row.forEach((h,i)=>{const k=String(h||'').trim().toLowerCase();for(const f in IMP_COLS)if(map[f]==null&&IMP_COLS[f].test(k))map[f]=i;});return map;}
-function impUnitOf(headers,map){const h=map.w!=null?String(headers[map.w]).toLowerCase():'';return /kg/.test(h)?'kg':/lb/.test(h)?'lb':null;}
+/* Each field lists header names best first, so a sheet with both Date and Day
+   takes Date, and a total-load column never passes for the weight. */
+const IMP_COLS={date:[/^date$/,/^(workout date|start_?time|date ?time|when)$/,/^day$/],name:[/^(workout name|workout|title|session|routine)$/],ex:[/^(exercise( name)?|exercise_title|movement|lift)$/,/^name$/],
+  w:[/^(weight|load)$/,/^load_(lb|kg)$/,/^(weight|load)[ _]?\(?(kgs?|lbs?|pounds?|kilos?)\)?$/,/^(kgs?|lbs?)$/,/^(?!total).*\b(weight|load)\b.*$/],r:[/^(reps?|repetitions|rep count)$/],sets:[/^sets$/],rir:[/^rir$/],rpe:[/^rpe$/],
+  type:[/^(set order|set_type|set type|type)$/],warm:[/^(warm ?up|warmup)$/],drop:[/^(drop ?set|dropset)$/],secs:[/^(seconds|duration_seconds|time \(s\)|secs)$/],note:[/^(notes?|exercise_notes|exercise_note|comment)$/],unit:[/^(weight unit|unit|units)$/],dist:[/^(distance|distance_km|distance_miles)$/]};
+function impHeader(row){const map={};const k=row.map(h=>String(h||'').trim().toLowerCase().replace(/\s+/g,' '));
+  for(const f in IMP_COLS)for(const re of IMP_COLS[f]){const i=k.findIndex((h,j)=>re.test(h)&&!Object.values(map).includes(j));if(i>=0){map[f]=i;break;}}
+  // Ironlog's own CSV names the load load_lb or load_kg (and total_load_* for both sides, which is not it).
+  if(map.w==null){const i=k.findIndex(h=>/^load_(lb|kg)$/.test(h));if(i>=0)map.w=i;}
+  return map;}
+function impUnitOf(headers,map){const h=map.w!=null?String(headers[map.w]).toLowerCase():'';return /kg|kilo/.test(h)?'kg':/lb|pound/.test(h)?'lb':null;}
 /* Table rows to sessions: grouped by date and workout name, exercises in
    order of first appearance. A row with no date or exercise continues the
    one above (sheets often write the date once). Rows without reps or
@@ -5900,7 +5919,8 @@ function impFromTable(rows,map){
   const head=rows[0];let unit=impUnitOf(head,map);
   // Strong's Set Order is the set's number (W, D and F mark types); only Hevy's set_type uses numbers as types.
   const numTypes=map.type!=null&&/set_type/i.test(String(head[map.type]));
-  if(!unit&&map.unit!=null)for(let i=1;i<rows.length&&!unit;i++){const v=String(rows[i][map.unit]||'').toLowerCase();unit=/kg/.test(v)?'kg':/lb/.test(v)?'lb':null;}const S=new Map();let lastDate=null,lastEx=null,lastName='';let skipped=0,cardio=0;const bad=[];
+  const rowUnit=r=>{if(map.unit==null)return null;const v=String(r[map.unit]||'').toLowerCase();return /kg|kilo/.test(v)?'kg':/lb|pound/.test(v)?'lb':null;};
+  if(!unit&&map.unit!=null)for(let i=1;i<rows.length&&!unit;i++)unit=rowUnit(rows[i]);const S=new Map();let lastDate=null,lastEx=null,lastName='';let skipped=0,cardio=0;const bad=[];
   const num=v=>{const n=parseFloat(String(v==null?'':v).replace(',','.'));return isFinite(n)?n:null;};
   for(let i=1;i<rows.length;i++){const r=rows[i];const cell=f=>map[f]==null?'':String(r[map[f]]==null?'':r[map[f]]).trim();
     let date=cell('date');date=date?(impDate(date)||impSerial(num(date))):lastDate;const ex=cell('ex')||lastEx;
@@ -5908,20 +5928,20 @@ function impFromTable(rows,map){
     lastDate=date;lastEx=ex;const name=cell('name')||(cell('date')?'':lastName);lastName=name;
     const reps=num(cell('r')),secs=num(cell('secs'));const w=num(cell('w'))||0;
     // Strong's rest timer rows, and cardio (a distance), are not lifting sets.
-    if(/^rest timer$/i.test(ex)){skipped++;continue;}
+    if(/^rest timer$/i.test(ex)||/rest/i.test(cell('type'))){skipped++;continue;}
     if(num(cell('dist'))>0){cardio++;continue;}
     if(!(reps>0)&&!(secs>0)){skipped++;continue;}
-    const ty=cell('type').toLowerCase();const rpe=num(cell('rpe'));let rir=num(cell('rir'));
+    const ty=cell('type').toLowerCase();const yes=v=>/^(1|true|yes|y|x)$/i.test(v);const rpe=num(cell('rpe'));let rir=num(cell('rir'));
     // RPE 10 is no reps left, so RIR is taken as 10 minus RPE (the usual RIR-based RPE scale).
     if(rir==null&&rpe!=null&&rpe>=5&&rpe<=10)rir=Math.max(0,10-rpe);
     const code=numTypes?ty:'';
     if(ty==='f'||ty==='failure'||code==='4')rir=0;
-    const set={w,r:reps>0?Math.round(reps):Math.round(secs),rir:rir!=null&&rir>=0&&rir<=10?rir:null,warm:ty==='w'||ty==='warmup'||ty==='warm-up'||code==='2',drop:ty==='d'||ty==='dropset'||ty==='drop'||code==='3',timed:!(reps>0)};
+    const set={w,r:reps>0?Math.round(reps):Math.round(secs),rir:rir!=null&&rir>=0&&rir<=10?rir:null,warm:ty==='w'||ty==='warmup'||ty==='warm-up'||code==='2'||yes(cell('warm')),drop:ty==='d'||ty==='dropset'||ty==='drop'||code==='3'||yes(cell('drop')),timed:!(reps>0),u:rowUnit(r)};
     const k=date+'|'+name;if(!S.has(k))S.set(k,{date,name,items:new Map(),note:''});const ss=S.get(k);
     if(!ss.items.has(ex))ss.items.set(ex,{name:ex,sets:[],note:cell('note')});
     const n=Math.min(Math.max(Math.round(num(cell('sets'))||1),1),20);for(let j=0;j<n;j++)ss.items.get(ex).sets.push({...set});
   }
-  return {sessions:[...S.values()].map(x=>({date:x.date,name:x.name,items:[...x.items.values()]})),unit,skipped,cardio,unread:bad};
+  return {sessions:[...S.values()].map(x=>({date:x.date,name:x.name,items:[...x.items.values()]})),unit,skipped,cardio,unread:bad,cut:rows.length>IMP_MAX_ROWS};
 }
 /* Free text: a date line starts a day; each other line is an exercise name
    followed by its sets, or sets alone continuing the exercise above, or a
@@ -5930,6 +5950,7 @@ function impFromTable(rows,map){
    of reps at a load, and units written next to numbers. */
 function impSetsText(t){
   let s=' '+String(t).toLowerCase()+' ';
+  s=s.replace(/(\d),(\d{1,2})(?=\s*(?:lbs?|kgs?)?\s*[x×*])/g,'$1.$2');
   s=s.replace(/(\d)\s*(lbs?|kgs?|#)(?=[\s,x×*@;/]|$)/g,'$1 ');
   s=s.replace(/(\d)\s*(?:s|sec|secs|seconds)\b/g,'$1');
   // sets x reps @ load, and "3 sets of 10 at 60"
@@ -5944,11 +5965,14 @@ function impFromText(text){
   const lines=String(text).split(/\r?\n/);const S=[];let cur=null,ex=null,pend=null,hint=null;const unread=[];
   const day=(date,name)=>{if(pend)unread.push(pend.raw);cur={date,name:name||'',items:[]};S.push(cur);ex=null;pend=null;};
   const raw=v=>v;
-  for(const L0 of lines){const L=L0.replace(/^[\s\-•*–]+/,'').trim();if(!L)continue;
+  const nextIsName=i=>{for(let j=i+1;j<lines.length;j++){const t=lines[j].trim();if(t)return /^[\s\-•*–]*[a-z]{3,}/i.test(t)&&!impDate(t);}return true;};
+  for(let li=0;li<lines.length;li++){const L0=lines[li];const L=L0.replace(/^[\s\-•*–]+/,'').trim();if(!L)continue;
     if(/\bkgs?\b|\dkg/i.test(L))hint=hint||'kg';else if(/\blbs?\b|\dlb|#/i.test(L))hint=hint||'lb';
     const words=L.split(/\s+/);
     // A date line: a date and no sets on it; what is left may be the workout's name.
-    const dt=impDate(L);
+    let dt=impDate(L);
+    // Only numbers and slashes after an exercise, with sets (not a new exercise) after: reps, not a date.
+    if(dt&&(ex||pend)&&/^[\d\s/.,-]+$/.test(L)&&!nextIsName(li))dt=null;
     if(dt){const rest=L.replace(/\b(mon|tues?|wed(nes)?|thu(rs)?|fri|sat(ur)?|sun)(day)?\b/ig,'').replace(/\b\d{4}[-/.]\d{1,2}[-/.]\d{1,2}\b|\b\d{1,2}[/.-]\d{1,2}([/.-]\d{2,4})?\b|\b\d{1,2}(st|nd|rd|th)?\s+[a-z]{3,9}\.?,?(\s*\d{4})?\b|\b[a-z]{3,9}\.?\s+\d{1,2}(st|nd|rd|th)?(,?\s*\d{4})?\b/ig,'').replace(/[,:;\-–|]+/g,' ').trim();
       if(!/\d/.test(rest)){day(dt,rest);continue;}}
     // Sets alone continue the exercise above, or the name waiting on the line before.
@@ -5972,7 +5996,13 @@ function impFromText(text){
 }
 /* Sets from text are read once the exercise is known, so a bodyweight lift
    may have reps alone. The unit is applied at the end. */
-function impTextSets(it,exo,conv){const out=[];for(const t of it.setsText){const g=parseSets(impSetsText(t),{bw:!!exo.bw||!!exo.timed},null,conv);if(!g)return null;out.push(...g.map(x=>({w:x.w,r:x.r,rir:x.rir,warm:false,drop:false})));}return out;}
+function impTextSets(it,exo,conv){const out=[];let defW=null;
+  for(const t of it.setsText){let st=impSetsText(t);
+    // On a bodyweight lift a bare "3x10" is sets of reps (no load to read); on a weighted lift it stays load x reps.
+    if(exo.bw&&!exo.assist)st=st.replace(/(^|[\s,])(\d{1,2})x(\d{1,3})(?=$|[\s,])/g,(m,p,a,b)=>+a<=10&&!/@/.test(st)?p+Array(+a).fill('bwx'+b).join(' '):m);
+    const g=parseSets(st,{bw:!!exo.bw||!!exo.timed},defW,conv);if(!g)return null;
+    out.push(...g.map(x=>({w:x.w,r:x.r,rir:x.rir,warm:false,drop:false})));defW=g[g.length-1].w;}
+  return out;}
 /* Reads the input and opens the preview. */
 async function impStart(input){
   const m={kind:'imp',step:'input',text:'',err:''};
@@ -5991,32 +6021,41 @@ async function impStart(input){
       if(rows&&Object.keys(impHeader(rows[0])).filter(k=>['date','ex','r','w'].includes(k)).length<2&&!/\t/.test(t.split(/\r?\n/)[0]))rows=null;
       if(!rows){openPreview(impFromText(t),null);return;}}
     const map=impHeader(rows[0]);
-    openPreview(map.ex!=null&&(map.r!=null||map.secs!=null)?impFromTable(rows,map):{sessions:[],needMap:true},{rows,map});
+    // Without a weight column every load would read 0, so that also asks which column is which.
+    openPreview(map.ex!=null&&(map.r!=null||map.secs!=null)&&map.w!=null&&map.date!=null?impFromTable(rows,map):{sessions:[],needMap:true},{rows,map});
   }catch(e){log('import',e);openModal({...m,err:'That could not be read.'});}
 }
 function openPreview(res,tab){
   const names=[...new Set(res.sessions.flatMap(x=>x.items.map(i=>i.name)))];
-  const pick={};for(const n of names){const c=impMatch(n);pick[n]=c[0]&&c[0].sc>=0.6?c[0].id:'new';}
-  const guess={};for(const n of names)guess[n]=impGuess(n);
+  const pick=Object.create(null),guess=Object.create(null);
+  const ASSISTED={pullup:'assistPullup',chinup:'assistPullup',dips:'assistDip',triDips:'assistDip'};
+  for(const n of names){const c=impMatch(n);let id=c[0]&&c[0].sc>=0.6?c[0].id:'new';
+    // Help written as a minus weight means the assisted machine.
+    const neg=res.sessions.some(x=>x.items.some(i=>i.name===n&&i.sets&&i.sets.some(q=>q.w<0)));
+    if(neg&&id!=='new'&&!EX(id).assist)id=ASSISTED[id]&&state.exercises.some(e=>e.id===ASSISTED[id])?ASSISTED[id]:'new';
+    pick[n]=id;guess[n]=impGuess(n);if(neg&&id==='new')guess[n]={...guess[n],assist:true,equip:'machine'};}
   openModal({kind:'imp',step:'preview',res,tab,pick,guess,unit:res.unit||U(),unitKnown:!!res.unit,date:today(),showAll:false});
 }
 /* Sessions as they would be saved, and which are already in the log. */
 function impBuild(m){
-  const conv=m.unit==='kg'?(v=>v):(v=>v*LB);const newEx={};const out=[];let bad=0;
-  for(const n in m.pick)if(m.pick[n]==='new'){const g=m.guess[n];newEx[n]={id:'c_'+uid(),name:n.slice(0,60),primary:g.primary,secondary:[],equip:g.equip,bw:g.equip==='bodyweight',rare:false,note:'',custom:true,archived:false};}
+  const conv=m.unit==='kg'?(v=>v):(v=>v*LB);const newEx=Object.create(null);const out=[];let bad=0,timedOff=0;
+  const allTimed=n=>m.res.sessions.every(x=>x.items.every(i=>i.name!==n||(i.sets&&i.sets.length&&i.sets.every(q=>q.timed))));
+  for(const n in m.pick)if(m.pick[n]==='new'){const g=m.guess[n];const e={id:'c_'+uid(),name:n.slice(0,60),primary:g.primary,secondary:[],equip:g.equip,bw:g.equip==='bodyweight'||!!g.assist,rare:false,note:'',custom:true,archived:false};if(g.assist)e.assist=true;if(!m.res.text&&allTimed(n))e.timed=true;newEx[n]=e;}
   for(const x of m.res.sessions){const date=x.date||m.date;const ex=[];
     for(const it of x.items){const exo=m.pick[it.name]==='new'?newEx[it.name]:EX(m.pick[it.name]);
-      let sets=it.setsText?impTextSets(it,exo,conv):it.sets.map(s=>({w:conv(s.w),r:s.r,rir:s.rir,warm:s.warm,drop:s.drop&&!s.warm}));
+      // A set timed in seconds on a lift that counts reps would turn seconds into reps: left out and counted.
+      if(!it.setsText&&!exo.timed&&it.sets.some(q=>q.timed)){timedOff+=it.sets.filter(q=>q.timed).length;}
+      let sets=it.setsText?impTextSets(it,exo,conv):it.sets.filter(q=>exo.timed||!q.timed).map(s=>({w:(s.u?(s.u==='kg'?s.w:s.w*LB):conv(s.w)),r:s.r,rir:s.rir,warm:s.warm,drop:s.drop&&!s.warm}));
       if(!sets||!sets.length){bad++;continue;}
       // Assisted: files write the help as a plus or a minus number; it is help either way. Other lifts never go below 0.
-      for(const q of sets){if(exo.assist)q.w=-Math.abs(q.w);else if(q.w<0&&!exo.bw)q.w=0;}
+      for(const q of sets){if(exo.assist)q.w=-Math.abs(q.w);else if(q.w<0)q.w=0;}
       // A lift's sets across rows of the same exercise stay together.
       const prev=ex.find(b=>b.exId===exo.id);if(prev)prev.sets.push(...sets);else ex.push({exId:exo.id,note:it.note||'',rr:null,sets});}
     if(ex.length)out.push({id:uid(),date,dayIdx:0,dayId:null,dayName:(x.name||'').slice(0,60)||'Imported',routineId:'',free:true,ex,notes:'',durMin:null,deload:false,light:false});}
   const fp=ss=>ss.date+'|'+ss.ex.map(b=>b.exId+':'+b.sets.map(q=>(Math.round((+q.w||0)*100)/100)+'x'+q.r).join(',')).sort().join(';');
   const have=new Set(state.sessions.map(fp));const seen=new Set();const fresh=[];let dup=0;
   for(const ss of out){const k=fp(ss);if(have.has(k)||seen.has(k)){dup++;continue;}seen.add(k);fresh.push(ss);}
-  return {sessions:fresh,dup,bad,newEx:Object.values(newEx).filter(e=>fresh.some(ss=>ss.ex.some(b=>b.exId===e.id)))};
+  return {sessions:fresh,dup,bad,timedOff,newEx:Object.values(newEx).filter(e=>fresh.some(ss=>ss.ex.some(b=>b.exId===e.id)))};
 }
 function impSheet(m){
   const H=(t)=>`<div class="sheet fixed" role="dialog" aria-modal="true" aria-labelledby="impH"><div class="sheet-h"><h3 id="impH">${t}</h3><button class="ib" aria-label="Close" data-act="mClose">✕</button></div><div class="sheet-scroll">`;
@@ -6029,7 +6068,7 @@ function impSheet(m){
     <p class="small muted hastip" style="margin:10px 0 0" data-tip="Notes: a date on its own line, then one exercise per line with its sets (185x8, 185x7 or 3x10 @ 120). A spreadsheet: a file, or copy the cells and paste them, with columns such as date, exercise, weight and reps. Strong: Settings, Export data. Hevy: Settings, Export and import data, Export workouts. Handwritten: photograph the page, open it in Photos, press and hold the writing, tap Copy, and paste it here. An Ironlog backup file restores your whole log instead.">What can I import?</p></div></div>`;
   const r=m.res;
   if(r.needMap){const head=m.tab.rows[0];const opt=(f,label,need)=>`<label class="field">${label}${need?'':' <span class="muted">(optional)</span>'}<select data-mapf="${f}"><option value="">None</option>${head.map((h,i)=>`<option value="${i}" ${m.tab.map[f]===i?'selected':''}>${esc(String(h||'Column '+(i+1)).slice(0,30))}</option>`).join('')}</select></label>`;
-    return H('Which column is which?')+`<p class="small muted" style="margin:0 0 8px">The first row is read as column names.</p>${opt('date','Date',1)}${opt('ex','Exercise',1)}${opt('w','Weight')}${opt('r','Reps',1)}${opt('sets','Sets')}${opt('rir','RIR')}${opt('name','Workout name')}
+    return H('Which column is which?')+`<p class="small muted" style="margin:0 0 8px">The first row is read as column names.</p>${opt('date','Date',1)}${opt('ex','Exercise',1)}${opt('w','Weight, none if bodyweight only')}${opt('r','Reps',1)}${opt('sets','Sets')}${opt('rir','RIR')}${opt('name','Workout name')}
       <button class="btn primary block" style="margin-top:10px" data-act="impMapDone">Continue</button></div></div>`;}
   const b=impBuild(m);const nSets=b.sessions.reduce((a,x)=>a+x.ex.reduce((c,e)=>c+e.sets.length,0),0);const dates=b.sessions.map(x=>x.date).sort();
   const names=Object.keys(m.pick);const lib=state.exercises.filter(e=>!e.archived).sort((x,y)=>x.name.localeCompare(y.name));
@@ -6041,13 +6080,16 @@ function impSheet(m){
   return H('Check the import')+`<div class="kpis"><div class="kpi"><div class="v">${b.sessions.length}</div><div class="l">sessions</div></div><div class="kpi"><div class="v">${nSets}</div><div class="l">sets</div></div><div class="kpi"><div class="v">${names.length}</div><div class="l">exercises</div></div></div>
   ${dates.length?`<p class="small muted" style="margin:6px 0 0">${fmtDate(dates[0])}${dates.length>1?' to '+fmtDate(dates[dates.length-1]):''}</p>`:''}
   ${b.dup?`<p class="small" style="margin:6px 0 0">${b.dup} already in your log, skipped.</p>`:''}
-  <div style="margin-top:10px"><p class="small muted" style="margin:0 0 6px;font-weight:600">Weights in the file are</p><div class="ob-units">${['lb','kg'].map(k=>`<button class="chip ${m.unit===k?'on':''}" data-act="impUnit" data-v="${k}" aria-pressed="${m.unit===k}">${k}</button>`).join('')}</div>${m.unitKnown?'':'<p class="small muted" style="margin:4px 0 0">The file does not say; check this.</p>'}</div>
+  <div style="margin-top:10px"><p class="small muted" style="margin:0 0 6px;font-weight:600">Weights in the file are</p><div class="ob-units">${['lb','kg'].map(k=>`<button class="chip ${m.unit===k?'on':''}" data-act="impUnit" data-v="${k}" aria-pressed="${m.unit===k}">${k}</button>`).join('')}</div>${m.unitKnown?'':'<p class="small muted" style="margin:4px 0 0">It does not say which; check this.</p>'}</div>
   ${noDate?`<label class="field" style="margin-top:10px">No date found. Log it on<input type="date" data-impdate value="${m.date}" max="${today()}"></label>`:''}
   ${unsure.length?`<p class="small" style="margin:12px 0 4px;font-weight:650">Check these exercises</p>${unsure.map(row).join('')}`:''}
   ${sure.length?`<details class="subsec" style="margin-top:8px"><summary>${sure.length} matched</summary>${sure.map(row).join('')}</details>`:''}
   ${r.unreadN||r.unread&&r.unread.length?`<details class="subsec" style="margin-top:8px"><summary>${r.unreadN||r.unread.length} line${(r.unreadN||r.unread.length)===1?'':'s'} not understood</summary><ul class="small" style="margin:6px 0 0;padding-left:18px">${r.unread.map(l=>`<li>${esc(l)}</li>`).join('')}</ul></details>`:''}
   ${r.skipped?`<p class="small muted" style="margin:6px 0 0">${r.skipped} row${r.skipped===1?'':'s'} without an exercise, date or reps were skipped.</p>`:''}${r.cardio?`<p class="small muted" style="margin:6px 0 0">${r.cardio} cardio row${r.cardio===1?'':'s'} left out.</p>`:''}
   ${b.bad?`<p class="small" style="margin:6px 0 0;color:var(--yellow)">${b.bad} exercise${b.bad===1?' has':'s have'} sets that need a weight; check the unit or the exercise.</p>`:''}
+  ${b.timedOff?`<p class="small" style="margin:6px 0 0;color:var(--yellow)">${b.timedOff} timed set${b.timedOff===1?' was':'s were'} left out: the exercise chosen counts reps. Pick a timed one to keep them.</p>`:''}
+  ${r.cut?`<p class="small" style="margin:6px 0 0;color:var(--yellow)">Only the first ${IMP_MAX_ROWS.toLocaleString()} rows were read. Split the file to import the rest.</p>`:''}
+  ${b.sessions.length?`<details class="subsec" style="margin-top:8px" id="impRead"><summary>What was read</summary>${b.sessions.slice(0,40).map(x=>`<p class="small" style="margin:8px 0 2px;font-weight:650">${fmtDate(x.date)}${x.dayName&&x.dayName!=='Imported'?' · '+esc(x.dayName):''}</p>${x.ex.map(e=>{const exo=EX(e.exId).id===e.exId&&!EX(e.exId).archived?EX(e.exId):(b.newEx.find(n=>n.id===e.exId)||EX(e.exId));return `<p class="small muted" style="margin:0">${esc(exo.name)}: ${e.sets.map(q=>(q.warm?'W ':q.drop?'D ':'')+setShort(exo,q.w,q.r)).join(', ')}</p>`;}).join('')}`).join('')}${b.sessions.length>40?`<p class="small muted">and ${b.sessions.length-40} more</p>`:''}</details>`:''}
   <button class="btn primary block" style="margin-top:12px" data-act="impGo" ${b.sessions.length?'':'disabled'}>Import ${b.sessions.length} session${b.sessions.length===1?'':'s'}</button>
   <button class="btn block" style="margin-top:6px" data-act="impBack">Back</button></div></div>`;
 }
@@ -6336,7 +6378,7 @@ const ACT={
   impMapDone(){const m=ui.modal;if(!m||!m.tab)return;const mp=m.tab.map;if(mp.date==null||mp.ex==null||mp.r==null){toast('Choose the date, exercise and reps columns');return;}openPreview(impFromTable(m.tab.rows,mp),m.tab);},
   impGo(){
     const m=ui.modal;if(!m||m.kind!=='imp'||m.step!=='preview')return;const b=impBuild(m);if(!b.sessions.length)return;
-    snapshot();for(const e of b.newEx)state.exercises.push(e);state.sessions.push(...b.sessions);state.settings.onboarded=true;
+    snapshot();state=normalize({...state,exercises:state.exercises.concat(b.newEx),sessions:state.sessions.concat(b.sessions),settings:{...state.settings,onboarded:true}});invalidate();
     commit();closeModal();ui.tab='history';window.scrollTo(0,0);render();
     toast(`Imported ${b.sessions.length} session${b.sessions.length===1?'':'s'}${b.newEx.length?`, ${b.newEx.length} new exercise${b.newEx.length===1?'':'s'}`:''}`,true);
   },
@@ -6865,6 +6907,8 @@ const ACT={
     if(e.timed!==true)delete e.timed;
     e.plates=['bar','side','sleeve','none'].includes(e.plates)?e.plates:null;
     if(['each','total','side','stack'].includes(e.load)&&!e.bw)e.load=e.load;else delete e.load;
+    // Sets already logged with machine help are below 0; the exercise must stay assisted to read them right.
+    if(!m.isNew&&!(e.bw&&e.assist)&&(state.sessions.some(x=>x.ex.some(b=>b.exId===e.id&&b.sets.some(q=>+q.w<0)))||(state.draft&&state.draft.ex.some(b=>b.exId===e.id&&b.sets.some(q=>+q.w<0))))){toast('This exercise has sets logged with machine help, so it stays assisted.');return;}
     if(m.isNew)state.exercises.push(e);else{const i=state.exercises.findIndex(x=>x.id===e.id);if(i>=0)state.exercises[i]=e;}
     commit();
     // Created from a picker: it goes straight where the picker was adding or
@@ -7048,7 +7092,7 @@ document.addEventListener('input',e=>{
     // Clamp what gets stored. The field keeps whatever was typed so the user is
     // not fought mid-keystroke, but history can never take a negative load or
     // an impossible rep count, which used to push session volume negative.
-    if(t.dataset.f==='w'){const n=numIn(v);const bx=state.draft.ex[+t.dataset.b];const as=bx&&EX(bx.exId).assist;s.w=n==null?null:fromD(Math.min(Math.max(n,0),as?660:20000))*(as?-1:1);if(s.w===0)s.w=0;carried.delete(s);}
+    if(t.dataset.f==='w'){const n=numIn(v);const bx=state.draft.ex[+t.dataset.b];const as=bx&&EX(bx.exId).assist;s.w=n==null?null:as?-fromD(Math.min(Math.abs(n),660)):fromD(Math.min(Math.max(n,0),20000));if(s.w===0)s.w=0;carried.delete(s);}
     else if(t.dataset.f==='r'){const n=numIn(v);s.r=n==null?null:Math.min(Math.max(Math.round(n),0),1000);refreshGrey(+t.dataset.b);}
     else{const n=numIn(v);s.rir=n==null?null:Math.min(Math.max(n,0),10);if(t.tagName==='SELECT')t.classList.toggle('unset',v==='');}
     if(t.dataset.f!=='rir')updateProgress(+t.dataset.b);
@@ -7421,6 +7465,8 @@ function aiSetsValid(a){
 }
 function fillSets(bi,list){
   const d=state.draft;const b=d&&d.ex[bi];if(!b)return 0;
+  // On an assisted lift the numbers typed or said are the machine's help.
+  if(EX(b.exId).assist)for(const p of list)if(p.w>0)p.w=-p.w;
   let si=b.sets.findIndex(x=>!x.done&&!x.warm);if(si<0)si=b.sets.length;
   for(const p of list){
     if(si>=b.sets.length)b.sets.push({w:null,r:null,rir:null,warm:false,drop:false,done:false});

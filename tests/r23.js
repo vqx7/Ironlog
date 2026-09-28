@@ -105,7 +105,7 @@ function xlsx(rows) {
     const A = await page({ unit: 'kg' }); const ev = (f, a) => A.page.evaluate(f, a);
     await choose(A, file(nm, text));
     const m = await ev(() => { const m = window.__ironlog.ui.modal; return { step: m.step, known: m.unitKnown, skipped: m.res.skipped, cardio: m.res.cardio, t: document.getElementById('modal').innerText.replace(/\s+/g, ' ') }; });
-    ok(m.step === 'preview' && !m.known && /does not say; check this/.test(m.t) && m.skipped === 1 && m.cardio === 1, `${nm}: preview asks the unit (Strong does not write it), leaves out the rest timer and the run`, m);
+    ok(m.step === 'preview' && !m.known && /does not say which; check this/.test(m.t) && m.skipped === 1 && m.cardio === 1, `${nm}: preview asks the unit (Strong does not write it), leaves out the rest timer and the run`, m);
     await A.page.click('[data-act="impUnit"][data-v="lb"]'); await wait(80); await A.page.click('[data-act="impGo"]'); await wait(300);
     const got = await sessTxt(ev);
     ok(JSON.stringify(got) === JSON.stringify(['2026-09-10 Evening Workout: Barbell Bench Press [W43.1x10 83.9x8@2 83.9x7@1]; Lat Pulldown [63.5x10]; Plank [0x60]', '2026-09-12 Legs: Barbell Back Squat [102.1x5 D83.9x8]']),
@@ -149,6 +149,44 @@ function xlsx(rows) {
     await A.ctx.close();
   }
 
+  // ---- Found in review: each case that read wrong before.
+  {
+    const A = await page({ unit: 'lb' }); const ev = (f, a) => A.page.evaluate(f, a);
+    // Bare 3x10 on a bodyweight lift; reps on a line of their own; a date line after them; the preview lists what was read.
+    await openImp(A); await A.page.fill('#impText', 'Sep 21\nPull ups 3x10\nBench 185x8\n10/8/7\n9/22\nSquat 225x5\nCurls 82,5x8'); await A.page.click('[data-act="impRead"]'); await wait(300);
+    const read = await ev(() => { const d = document.getElementById('impRead'); d.open = true; return d.innerText.replace(/\s+/g, ' '); });
+    ok(/Pull-up: BW×10, BW×10, BW×10/.test(read), 'bodyweight "3x10" is 3 sets of 10, and the preview lists what was read', read);
+    ok(/Barbell Bench Press: 185×8, 185×10, 185×8, 185×7/.test(read) && /Sep 22/.test(read) && /Barbell Back Squat: 225×5/.test(read), 'reps on their own line (10/8/7) continue the lift at its load; the date line after them still starts a day', read);
+    ok(/82\.5×8/.test(read), 'a comma decimal (82,5x8) reads as 82.5', read);
+    await A.page.click('#modal [data-act="mClose"]'); await wait(80);
+    const tbl = async (nm, text) => { await choose(A, file(nm, text)); return ev(() => { const m = window.__ironlog.ui.modal; return { need: !!m.res.needMap, map: m.tab && m.tab.map, step: m.step }; }); };
+    let t = await tbl('kgs.csv', 'Date,Exercise,Weight (kgs),Reps\n2026-09-01,Leg Press,180,10\n');
+    ok(!t.need && await ev(() => window.__ironlog.ui.modal.unit === 'kg'), '"Weight (kgs)" is the weight column, in kg');
+    await A.page.click('#modal [data-act="mClose"]');
+    t = await tbl('odd.csv', 'Date,Exercise,Poundage,Reps\n2026-09-01,Leg Press,400,10\n');
+    ok(t.need, 'a weight column it cannot name: it asks instead of importing loads of 0');
+    await A.page.click('#modal [data-act="mClose"]');
+    t = await tbl('dayanddate.csv', 'Day,Date,Exercise,Weight,Reps\nPush,2024-01-15T08:05:00Z,Bench Press,185,5\n');
+    await A.page.click('[data-act="impGo"]'); await wait(300);
+    ok((await sessTxt(ev)).some(x => x.startsWith('2024-01-15')), 'Date wins over Day, and an ISO timestamp with T reads', await sessTxt(ev));
+    // Strong's rest timer in the Set Order column; a seconds-only row on a lift that counts reps.
+    await choose(A, file('strong2.csv', 'Date,Workout Name,Duration,Exercise Name,Set Order,Weight,Reps,Distance,Seconds,Notes,Workout Notes,RPE\n2026-09-02 10:00:00,"W",1h,"Bench Press (Barbell)",1,185,5,0,0,"","",\n2026-09-02 10:00:00,"W",1h,"Bench Press (Barbell)",Rest Timer,0,0,0,120,"","",\n2026-09-02 10:00:00,"W",1h,"Bench Press (Barbell)",2,0,0,0,45,"","",\n'));
+    const s2 = await ev(() => { const m = window.__ironlog.ui.modal; return { skipped: m.res.skipped, t: document.getElementById('modal').innerText }; });
+    ok(s2.skipped === 1 && /1 timed set was left out/.test(s2.t), 'Strong: a rest timer in Set Order is skipped; seconds on a rep lift are left out and said', s2.skipped);
+    await A.page.click('[data-act="impUnit"][data-v="lb"]'); await A.page.click('[data-act="impGo"]'); await wait(300);
+    ok((await sessTxt(ev)).some(x => x === '2026-09-02 W: Barbell Bench Press [83.9x5]'), 'only the real set is imported', await sessTxt(ev));
+    // Ironlog's own CSV export imports back, and into the same log adds nothing.
+    const csv = await ev(() => { const L = window.__ironlog; let out = null; const orig = URL.createObjectURL; const B = window.Blob; window.Blob = function (parts, o) { out = parts.join(''); return new B(parts, o); }; try { L.ACT.exportCsv(); } catch (e) { } window.Blob = B; return out; });
+    if (csv) {
+      await choose(A, file('ironlog.csv', csv));
+      const m3 = await ev(() => { const m = window.__ironlog.ui.modal; return { need: !!(m.res && m.res.needMap), t: document.getElementById('modal').innerText.replace(/\s+/g, ' ') }; });
+      ok(!m3.need && /already in your log, skipped/.test(m3.t), 'Ironlog\'s own CSV reads back, and into the same log it is all skipped as already there', m3.t.slice(0, 160));
+      await A.page.click('#modal [data-act="mClose"]');
+    } else ok(false, 'CSV export captured for the round trip');
+    ok(!A.errors.length, 'no console errors (review cases)', A.errors);
+    await A.ctx.close();
+  }
+
   // ---- Entry points, and a backup file still restores the whole log.
   {
     const A = await page(); const ev = (f, a) => A.page.evaluate(f, a);
@@ -174,6 +212,20 @@ function xlsx(rows) {
     ok(row.v === '55' && /HELP LB/i.test(row.head) && /machine help/.test(row.head), 'in a session: the load field shows the help (55), headed Help lb', row);
     await A.page.fill('.sg input[data-f="w"][data-b="0"][data-s="0"]', '50'); await A.page.dispatchEvent('.sg input[data-f="w"][data-b="0"][data-s="0"]', 'input');
     ok(await ev(LB => Math.round(window.__ironlog.state.draft.ex[0].sets[0].w / LB) === -50, LB), 'typing 50 stores bodyweight minus 50');
+    // Typing -20 means 20 of help; Type or dictate sets reads numbers as help too.
+    await A.page.fill('.sg input[data-f="w"][data-b="0"][data-s="1"]', '-20'); await A.page.dispatchEvent('.sg input[data-f="w"][data-b="0"][data-s="1"]', 'input');
+    ok(await ev(LB => Math.round(window.__ironlog.state.draft.ex[0].sets[1].w / LB) === -20, LB), 'typing -20 stores 20 of help, not 0');
+    await ev(() => window.__ironlog.ACT.bQuick({ dataset: { b: '0' } })); await wait(100);
+    await A.page.fill('#qTxt', '45x8'); await ev(() => window.__ironlog.ACT.qFill()); await wait(200);
+    ok(await ev(LB => window.__ironlog.state.draft.ex[0].sets.some(q => q.done && Math.round(q.w / LB) === -45 && q.r === 8), LB), 'Type or dictate sets: "45x8" is 45 of help');
+    // Without a logged bodyweight: a deload still adds help, and weight lifted is never below 0.
+    const nb = await ev(LB => { const L = window.__ironlog; const keep = L.state.bodyweights; L.state.bodyweights = []; L.invalidate(); const d = L.suggest('assistPullup', { sets: 3, repMin: 8, repMax: 12, rir: 1, inc: 5 * LB }, { deload: true }); const t = L.tonnage(L.EX('assistPullup'), { w: -40 * LB, r: 8 }, '2026-09-20'); L.state.bodyweights = keep; L.invalidate(); return { dw: Math.round(d.w / LB), t }; }, LB);
+    ok(nb.dw === -70 && nb.t === 0, 'no bodyweight logged: deload is 10% more help (60 to 70), weight lifted is 0 not negative', nb);
+    // The editor keeps an exercise with helped sets assisted.
+    await ev(() => { const L = window.__ironlog; L.ACT.exEdit({ dataset: { ex: 'assistPullup' } }); }); await wait(150);
+    await A.page.uncheck('#modal [data-ebind="assist"]'); await wait(80);
+    await ev(() => document.querySelector('#modal [data-act="exSave"]').click()); await wait(200);
+    ok(await ev(() => window.__ironlog.EX('assistPullup').assist === true && /stays assisted/.test(document.getElementById('toast').innerText)), 'turning Assisted off with helped sets logged is refused, and it says why');
     // The flag survives a reload, only on bodyweight exercises.
     const n = await ev(() => { const L = window.__ironlog; const x = L.normalize({ exercises: [{ id: 'c1', name: 'A', primary: 'lats', bw: true, assist: true }, { id: 'c2', name: 'B', primary: 'lats', bw: false, assist: true }] }); return [x.exercises.find(e => e.id === 'c1').assist, x.exercises.find(e => e.id === 'c2').assist]; });
     ok(n[0] === true && n[1] === undefined, 'assisted is kept only on a bodyweight exercise', n);
