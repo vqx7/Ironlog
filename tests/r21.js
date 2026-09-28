@@ -192,9 +192,9 @@ const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log
   // ---- 62: less text for a new user.
   const N = await open('index.html', { touch: true, w: 390, h: 844, clock: '2026-09-24T18:00:00' });
   const nev = (f, a) => N.page.evaluate(f, a);
-  // The account offer (standalone build only) is item 55's; the rest of the card is what item 62 trims.
-  const wel = await nev(() => { const c = document.querySelector('.welcome').cloneNode(true); const a = c.querySelector('#welcomeAcct'); if (a) a.remove(); document.body.appendChild(c); const t = c.innerText.replace(/\s+/g, ' '); c.remove(); return t; });
-  ok(wel.length < 200 && !/Full body, upper/.test(wel) && await nev(() => /Full body, upper/.test(document.querySelector('[data-act="obSample"]').dataset.tip)), 'welcome card: the explanations moved into tips (' + wel.length + ' characters)', wel);
+  // r22: the first run is its own Set up page. Item 62 still holds there: short lines, no paragraphs.
+  const lines = await nev(() => [...document.querySelectorAll('#obPage *')].filter(e => e.children.length === 0 && e.textContent.trim()).map(e => e.textContent.trim()));
+  ok(lines.length && lines.every(t => t.length <= 45) && lines.join(' ').length < 400, 'Set up page: every line is short, no paragraphs (' + lines.join(' ').length + ' characters)', lines.filter(t => t.length > 45));
   await nev(() => { const L = window.__ironlog; L.state.settings.onboarded = true; L.ui.tab = 'today'; L.render(); document.querySelectorAll('#view details.sec').forEach(d => d.open = true); });
   const nt = await nev(() => ({ subs: [...document.querySelectorAll('.sec>summary .sec-s')].map(e => e.textContent.trim()), fs: getComputedStyle(document.querySelector('.sec-s')).fontSize, preview: [...document.querySelectorAll('[data-mkey="session"] p')].map(p => p.textContent.trim()).filter(Boolean), body: (document.querySelector('[data-mkey="body"] .sec-b') || {}).innerText || '' }));
   ok(nt.subs.every(x => !x || /\d|on target|below|none|optional|Not logged|Act now|Note|On track|One change/i.test(x)) && !nt.subs.includes('streak, PRs, volume'), 'Today: every section subtitle is a number or a state', nt.subs);

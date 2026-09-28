@@ -58,13 +58,39 @@ fs.cpSync(DIST, tmp, { recursive: true });
   const rowsOf = email => { const u = fake.users.get(email); return u ? [...fake.rows.values()].filter(r => r.user_id === u.id) : []; };
   const sessIn = rows => { const out = []; for (const r of rows) if (/\/s-\d/.test(r.path)) { try { for (const s of JSON.parse(r.data.json).sessions || []) out.push(s.id); } catch (e) { /* not a session chunk */ } } return out.sort(); };
 
-  // ---- 0. First run: the welcome card offers an account up front.
+  // ---- 0. First run (r22): its own pages. Page 1 is the account; Not now leads to Set up.
   const W = await device(null, false, true); await wait(600);
-  const wel = await text(W, '.welcome');
-  ok(wel && /free account/.test(wel) && !!(await W.ev(() => document.querySelector('.welcome [data-act="acctOpen"][data-mode="signin"]') && document.querySelector('.welcome [data-act="acctOpen"][data-mode="signup"]'))), 'first run: Sign in and Create account are offered on the welcome card');
-  // Item 55: the offer is the first thing on the card, and Create account is a full button, not small text.
-  ok(await W.ev(() => { const w = document.querySelector('.welcome'); const a = w.querySelector('#welcomeAcct'); const u = w.querySelector('[data-bind="unit"]'); const r = w.querySelector('[data-act="obSample"]'); const c = a && a.querySelector('[data-mode="signup"]'); return !!a && a.compareDocumentPosition(u) & 4 && a.compareDocumentPosition(r) & 4 && c.classList.contains('primary') && !c.classList.contains('sm') && c.getBoundingClientRect().height >= 44; }), 'first run: the account offer comes before Units and the routine choices, with a full-size Create account button');
-  ok(!(await W.ev(() => document.getElementById('acctBar'))), 'first run: no second prompt on top of the welcome card');
+  const pg = D => D.ev(() => { const p = document.getElementById('obPage'); return p ? p.dataset.step : null; });
+  ok((await pg(W)) === 'acct', 'first run opens on the account page, not Today');
+  ok(await W.ev(() => { const c = document.querySelector('#obPage [data-act="acctOpen"][data-mode="signup"]'), s = document.querySelector('#obPage [data-act="acctOpen"][data-mode="signin"]'); return !!c && !!s && c.classList.contains('primary') && c.getBoundingClientRect().height >= 44 && s.getBoundingClientRect().height >= 44; }), 'Create account is the main button, with I have an account under it');
+  ok(await W.ev(() => getComputedStyle(document.querySelector('.tabs')).display === 'none' && getComputedStyle(document.querySelector('header.top')).display === 'none' && !document.getElementById('acctBar') && !document.querySelector('.hero')), 'the setup pages stand alone: no tabs, header, second prompt or session card');
+  await W.page.click('#obPage [data-act="obAcctLater"]'); await wait(150);
+  ok((await pg(W)) === 'start' && await W.ev(() => !!document.querySelector('#obPage [data-bind="userName"]') && document.querySelectorAll('#obPage [data-act="obUnit"]').length === 2 && ['obSample', 'obFree', 'obOwn'].every(a => document.querySelector(`#obPage [data-act="${a}"]`)) && !!document.querySelector('#obPage #importFile')), 'Not now: Set up asks an optional name and the units, then how to start (routine, log now, build, import)');
+  await W.page.reload(); await W.page.waitForFunction(() => window.__ironlog && document.getElementById('obPage') && document.getElementById('obPage').dataset.step !== undefined, null, { timeout: 15000 }); await wait(600);
+  ok((await pg(W)) === 'start', 'Not now is remembered on this device after a relaunch');
+  await W.page.click('#obPage [data-act="obAcctBack"]'); await wait(150);
+  ok((await pg(W)) === 'acct', '‹ Account goes back to the account page');
+  // A new person signs up from page 1: once the email is confirmed, Set up follows by itself.
+  await W.page.click('#obPage [data-act="acctOpen"][data-mode="signup"]'); await wait(100);
+  await fill(W, 'signup', 'newbie@example.com', 'first pass 1');
+  ok((await sheet(W) || {}).mode === 'wait', 'Create account on page 1 goes to Check your email');
+  fake.confirm('newbie@example.com');
+  await W.page.click('#modal [data-act="acctWaitNow"]').catch(() => {}); await wait(1500);
+  ok(await synced(W) && !(await sheet(W)) && (await pg(W)) === 'start' && !(await W.ev(() => document.querySelector('#obPage [data-act="obAcctBack"]'))), 'confirmed: signed in and on Set up, with no way back to the account page', await pg(W));
+  await W.page.fill('#obPage [data-bind="userName"]', 'Sam'); await W.page.dispatchEvent('#obPage [data-bind="userName"]', 'change');
+  await W.page.click('#obPage [data-act="obUnit"][data-v="kg"]'); await wait(100);
+  await W.page.click('#obPage [data-act="obSample"]'); await wait(150);
+  await W.page.click('#modal [data-act="tplPick"][data-k="ul4"]'); await wait(300);
+  ok(await W.ev(() => { const L = window.__ironlog; return !document.getElementById('obPage') && L.state.settings.onboarded && L.state.settings.userName === 'Sam' && L.state.settings.unit === 'kg' && L.ui.tab === 'today' && !!document.querySelector('.hero') && getComputedStyle(document.querySelector('.tabs')).display !== 'none'; }), 'name, kg and a routine picked: Today opens with the tabs back');
+  // An existing account signed in on page 1 brings its log: straight to Today, no setup.
+  const W3 = await device(null, false, true); await wait(600);
+  await W3.page.click('#obPage [data-act="acctOpen"][data-mode="signin"]'); await wait(100);
+  await fill(W3, 'signin', 'newbie@example.com', 'first pass 1');
+  await synced(W3); await wait(600);
+  ok(await W3.ev(() => !document.getElementById('obPage') && window.__ironlog.state.settings.onboarded && window.__ironlog.state.settings.userName === 'Sam'), 'a second phone signing in on page 1 gets the settings and goes to Today');
+  await W3.ctx.close(); await W.ctx.close();
+  // The checks below start from an empty server, as before this section existed.
+  fake.log.length = 0; fake.users.clear(); fake.rows.clear();
 
   // ---- 1. Signed out: the phone works as before, and Settings offers an account.
   const A = await device();
@@ -174,9 +200,9 @@ fs.cpSync(DIST, tmp, { recursive: true });
   await C.page.click('#modal [data-act="mAlt"]'); await wait(1000);
   ok((await C.ev(() => window.__ironlog.state.sessions.length)) === 0 && !(await C.ev(() => window.__ironlog.cloudState().on)), 'remove: signed out and the log is gone from the phone');
   ok(sessIn(rowsOf('friend@example.com')).join() === 'sC1', 'remove: the account still holds the log');
-  // Signing back in on that phone brings it back.
-  await openData(C);
-  await C.page.click('#acctPanel [data-act="acctOpen"][data-mode="signin"]'); await wait(100);
+  // A removed phone is a fresh start: the setup pages, account first. Signing back in there brings the log back.
+  ok((await C.ev(() => (document.getElementById('obPage') || {}).dataset || {})).step === 'acct', 'remove: the phone opens on the account page, like a new install');
+  await C.page.click('#obPage [data-act="acctOpen"][data-mode="signin"]'); await wait(100);
   await fill(C, 'signin', 'friend@example.com', 'another pass 2');
   ok(await synced(C) && (await C.ev(() => window.__ironlog.state.sessions.map(s => s.id).join())) === 'sC1', 'signing back in restores the log from the account');
   // A different account on a phone that held another person's log starts over as a merge, never a continuation.
