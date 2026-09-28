@@ -129,18 +129,13 @@ b{font-weight:650}
 /* One sticky bar on every tab: the wordmark, this calendar week, and the save
    state. It replaced a decorative four-colour strip and the week grid that
    used to sit only on Today. */
-.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:20;background:var(--glass);-webkit-backdrop-filter:saturate(170%) blur(18px);backdrop-filter:saturate(170%) blur(18px);display:flex;align-items:center;gap:8px;height:var(--head-h);padding:0 12px;border-bottom:1px solid var(--line-soft)}
-.vh{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
-/* The wordmark left the header in r23 (V's request): it took 68 px of the
-   row and squeezed the week to 32 px a day. The name stays for screen
-   readers, on the setup pages and at the top of Settings. The days touch, so
-   each tap target is the full slot: 44 px wide from 375 px phones up. */
-.top h1:not(.vh){font-size:22px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;line-height:1;flex:none}
+.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:20;background:var(--glass);-webkit-backdrop-filter:saturate(170%) blur(18px);backdrop-filter:saturate(170%) blur(18px);display:flex;align-items:center;gap:10px;height:var(--head-h);padding:0 16px;border-bottom:1px solid var(--line-soft)}
+.top h1{font-size:22px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;line-height:1;flex:none}
 .top h1 span{color:var(--muted);font-weight:600}
 /* A small phone keeps the week bar as wide as it can: the wordmark drops to
    IRON, which frees room for seven days. */
 @media (max-width:374px){.top{gap:6px;padding:0 10px}.top h1{font-size:18px;letter-spacing:.03em}.top h1 span{display:none}}
-.wkbar{flex:1 1 auto;min-width:0;display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:0}
+.wkbar{flex:1 1 auto;min-width:0;display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:3px}
 .wkbar .w{-webkit-appearance:none;appearance:none;position:relative;min-width:0;border:0;border-radius:12px;background:transparent;padding:2px 0;margin:0;display:flex;flex-direction:column;align-items:center;gap:2px;font:inherit;line-height:1;color:var(--muted);cursor:pointer;-webkit-tap-highlight-color:transparent}
 .wkbar div.w{cursor:default}
 /* Every day is a button, so each disc answers a press. An empty past day
@@ -395,9 +390,6 @@ body.obmode main,body.obmode #view{padding-bottom:24px}
 .ob-opt.primary{background:var(--volt);border-color:var(--volt);color:var(--on-volt)}
 .ob-opt.primary span{color:var(--on-volt);opacity:.8}
 .ob-opt input[type=file]{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none}
-.wklift{min-height:44px;display:flex;align-items:center;gap:6px;flex-wrap:wrap}
-.imp-ex{padding:8px 0;border-bottom:1px solid var(--line);display:flex;flex-direction:column;gap:6px}
-.imp-n{font-weight:650;overflow-wrap:anywhere}
 .ob-splash{min-height:60vh;display:flex;align-items:center;justify-content:center}
 .welcome h3{margin-bottom:10px;font:700 24px/1.15 var(--font);letter-spacing:-.015em}
 /* The account offer on the welcome card: an accent edge so it reads as the first step. */
@@ -738,7 +730,7 @@ details.more>summary .small{display:block;font-weight:400}
 </style>
 </head>
 <body>
-<header class="top"><h1 class="vh">Ironlog</h1><nav class="wkbar" id="wkbar" aria-label="This week"></nav><button type="button" class="ssb" id="saveState" data-act="goBackup"></button></header>
+<header class="top"><h1>Iron<span>log</span></h1><nav class="wkbar" id="wkbar" aria-label="This week"></nav><button type="button" class="ssb" id="saveState" data-act="goBackup"></button></header>
 <div id="updbar" role="status" aria-live="polite" hidden></div>
 <main id="view"></main>
 <div id="timer" hidden></div>
@@ -917,7 +909,7 @@ const SEC_TABS=['today','program','dash','history','settings'];
 const DSEC_FOLDED=['consistency','body'];
 // Old section keys still arrive from tiles, summary rows and the coach. They
 // land on the section that absorbed them, opening the matching fold inside it.
-const DSEC_ALIAS={stalls:'exercise',prs:'exercise',bests:'exercise',rank:'weak',svol:'volume'};
+const DSEC_ALIAS={stalls:'exercise',prs:'exercise',rank:'weak',svol:'volume'};
 const CARDIO=[['walk','Treadmill walk'],['incline','Incline walk'],['elliptical','Elliptical'],['bike','Bike'],['stairs','Stair climber'],['rower','Rower'],['run','Run'],['hiit','HIIT'],['mobility','Mobility / stretching'],['other','Other']];
 const CARDIOL=Object.fromEntries(CARDIO);
 const CWHEN=[['pre','Before lifting'],['post','After lifting'],['solo','On its own']];
@@ -973,8 +965,6 @@ const LIB=[
 ['declinePushup','Decline Push-up (feet raised)','chest','frontDelts triceps serratus','bodyweight','b','Feet on a bench: about 70% of bodyweight, against 64% for a floor push-up (Ebben 2011).'],
 ['pullup','Pull-up','lats','biceps upperBack','bodyweight','b','Log added load only. Bodyweight is added automatically for trends.'],
 ['chinup','Chin-up','lats','biceps upperBack','bodyweight','b',''],
-['assistPullup','Assisted Pull-up (machine)','lats','biceps upperBack','machine','ba','Type the help the machine gives. Less help is progress.'],
-['assistDip','Assisted Dip (machine)','chest','triceps frontDelts','machine','ba','Type the help the machine gives. Less help is progress.'],
 ['latPulldown','Lat Pulldown','lats','biceps upperBack','cable','',''],
 ['singlePulldown','Single-Arm Cable Pulldown','lats','biceps','cable','rs','Kneeling. Drive the elbow toward the hip with a long stretch at the top.'],
 ['straightArm','Straight-Arm Cable Pulldown','lats','','cable','',''],
@@ -1131,7 +1121,7 @@ const LIB=[
 ['farmerHold','Farmer Carry or Hold','forearms','traps upperBack','dumbbell','rt','Timed: log seconds and the load in each hand.'],
 ];
 function libExercises(){
-  return LIB.map(([id,name,primary,sec,equip,flags,note])=>{const o={id,name,primary,secondary:sec?sec.split(' '):[],equip,bw:flags.includes('b'),rare:flags.includes('r'),perSide:flags.includes('s'),note,custom:false,archived:false};if(flags.includes('t'))o.timed=true;if(flags.includes('a'))o.assist=true;return o;});
+  return LIB.map(([id,name,primary,sec,equip,flags,note])=>{const o={id,name,primary,secondary:sec?sec.split(' '):[],equip,bw:flags.includes('b'),rare:flags.includes('r'),perSide:flags.includes('s'),note,custom:false,archived:false};if(flags.includes('t'))o.timed=true;return o;});
 }
 /* Movement pattern from the name, so a fly is replaced by a fly rather than a
    press that happens to share helper muscles. Checked in order. */
@@ -1218,7 +1208,7 @@ function freshState(){
 const KEY='ironlog.v1';
 /* Shown in Settings, in diagnostics and in backups, so a bug report can be
    matched to the exact build. */
-const APP_VERSION='2026.09.28-r23';
+const APP_VERSION='2026.09.28-r22';
 /* Diagnostics log: the last 60 errors, kept in this browser only. Errors that
    used to be swallowed silently land here, and Settings can copy them. */
 const LOGK=KEY+'.log';
@@ -1361,8 +1351,7 @@ function cleanSess(ss,si){
       // Sets trimmed by Short on time: kept out of trends like a lighter session.
       cut:b.cut===true?true:undefined,
       sets:b.sets.filter(x=>x&&typeof x==='object').map(x=>({
-        // Below 0 only for assisted sets (bodyweight minus the machine's help).
-        w:clampN(x.w,-300,20000*LB,0),
+        w:clampN(x.w,0,20000*LB,0),
         r:Math.round(clampN(x.r,0,1000,0)),
         rir:x.rir==null||x.rir===''?null:clampN(x.rir,0,10,null),
         warm:!!x.warm,drop:!!x.drop&&!x.warm,
@@ -1451,8 +1440,6 @@ function normalize(s){
     // stack or rack, past which progression moves to reps. Absent when unset,
     // so records saved before these existed hash exactly as before.
     timed:e.timed===true?true:undefined,
-    // Assisted (item 45): the load number is the machine's help, stored below 0.
-    assist:e.assist===true&&!!e.bw?true:undefined,
     bwf:(()=>{const f=numOr(e.bwf,NaN);return isNum(f)&&f>0&&f<=1.5?Math.round(f*100)/100:undefined;})(),
     maxLoad:(()=>{const ml=numOr(e.maxLoad,NaN);return isNum(ml)&&ml>0?Math.min(ml,20000*LB):undefined;})()
   }));
@@ -1611,7 +1598,7 @@ function normalize(s){
         keepRR:b.keepRR===undefined?undefined:(Array.isArray(b.keepRR)&&b.keepRR.length===2?b.keepRR.map(v=>Math.round(+v)||1):null),
         lastNote:b.lastNote&&typeof b.lastNote==='object'&&typeof b.lastNote.text==='string'&&isDate(b.lastNote.date)?{date:b.lastNote.date,text:b.lastNote.text}:null,
         sets:b.sets.filter(x=>x&&typeof x==='object').map(x=>({
-          w:x.w==null?null:clampN(x.w,-300,20000*LB,0),
+          w:x.w==null?null:clampN(x.w,0,20000*LB,0),
           r:x.r==null||x.r===''?null:Math.round(clampN(x.r,0,1000,0)),
           rir:x.rir==null||x.rir===''?null:clampN(x.rir,0,10,null),
           warm:!!x.warm,drop:!!x.drop&&!x.warm,done:!!x.done,
@@ -2356,11 +2343,7 @@ let EXMAP=null;
 function EX(id){if(!EXMAP){EXMAP=Object.create(null);for(const e of state.exercises)EXMAP[e.id]=e;}return EXMAP[id]||{id,name:'Deleted exercise',primary:'chest',secondary:[],equip:'other',bw:false,archived:true};}
 const exName=id=>EX(id).name;
 function activeRoutine(){return state.routines.find(r=>r.id===state.activeRoutineId)||state.routines[0];}
-function loadLabel(ex,kg){if(ex.bw){return kg>0?`BW+${fmtW(kg)}`:kg<0?`BW−${fmtW(-kg)}`:'BW';}return fmtW(kg);}
-/* An assisted lift keeps its sets as bodyweight minus the help, below 0, so
-   every estimate, target and record works unchanged; the field shows and
-   takes the help as a plain number, since phone number pads have no minus. */
-const loadIn=(ex,w)=>w==null?'':fmtW(ex&&ex.assist?-w:w);
+function loadLabel(ex,kg){if(ex.bw){return kg>0?`BW+${fmtW(kg)}`:'BW';}return fmtW(kg);}
 
 /* ---------- analytics ---------- */
 let _idx=null,_cal=null;
@@ -2448,7 +2431,7 @@ function setStr(ex,x){return `${x.warm?'(W) ':x.drop?'(D) ':''}${setShort(ex,x.w
    use the whole body (the hands and forearms barely move; about 95% by
    segment tables). The rest are estimates from segment masses (de Leva 1996)
    and are editable per exercise. Only a user edit is stored. */
-const BWF={assistPullup:1,assistDip:1,pullup:1,chinup:1,dips:1,triDips:1,pushup:.64,deficitPushup:.64,declinePushup:.7,invertedRow:.6,hyperext:.6,hangingLegRaise:.35,abWheel:.5,dragonFlag:.7,neckBridge:.3,sissy:.85,revNordic:.85,nordic:.85,ghr:.85,plank:.65,sidePlank:.6,deadHang:1,neckBridgeHold:.3,wallSit:.7,pushupPlus:.64,kneeRaise:.3,reverseCrunch:.3,crunch:.3,russianTwist:.4,copenhagen:.5};
+const BWF={pullup:1,chinup:1,dips:1,triDips:1,pushup:.64,deficitPushup:.64,declinePushup:.7,invertedRow:.6,hyperext:.6,hangingLegRaise:.35,abWheel:.5,dragonFlag:.7,neckBridge:.3,sissy:.85,revNordic:.85,nordic:.85,ghr:.85,plank:.65,sidePlank:.6,deadHang:1,neckBridgeHold:.3,wallSit:.7,pushupPlus:.64,kneeRaise:.3,reverseCrunch:.3,crunch:.3,russianTwist:.4,copenhagen:.5};
 function bwShare(ex){return ex&&ex.bwf!=null?ex.bwf:(ex&&BWF[ex.id]!=null?BWF[ex.id]:1);}
 function bwLoad(ex,date){return ex&&ex.bw?(bwAt(date)||0)*bwShare(ex):0;}
 function loadOf(ex,s,date){return bwLoad(ex,date)+(+s.w||0);}
@@ -2477,7 +2460,6 @@ function loadMode(ex){
 /* Short words for the load: shown next to numbers and on the exercise. */
 function loadWords(ex){
   const m=loadMode(ex);
-  if(ex&&ex.assist)return 'machine help';
   if(m==='each')return 'per dumbbell';
   if(m==='side')return 'plates per side';
   if(m==='stack')return 'stack setting';
@@ -2492,13 +2474,12 @@ function loadWords(ex){
 /* After a number in running text: "80 lb per dumbbell", "90 lb per side". */
 function loadNote(ex){const m=loadMode(ex);return m==='each'?' per dumbbell':m==='side'?' per side':'';}
 /* Load column heading in the logger. */
-function loadHead(ex){const m=loadMode(ex),u=U().toUpperCase();if(ex&&ex.assist)return 'Help '+u;return m==='each'?u+' each':m==='side'?u+'/side':m==='stack'?'Stack':m==='bw'?'+'+u:u;}
+function loadHead(ex){const m=loadMode(ex),u=U().toUpperCase();return m==='each'?u+' each':m==='side'?u+'/side':m==='stack'?'Stack':m==='bw'?'+'+u:u;}
 /* On the exercise, always visible: what the load number is, and reps per
    side when that applies. Tap or hold for the longer version. */
 function lmChips(ex){
   if(ex.timed&&!ex.bw&&loadMode(ex)!=='each')return ex.perSide?'<p class="lmrow"><span class="lm">seconds per side</span></p>':'';
   const m=loadMode(ex);
-  if(ex.assist)return `<p class="lmrow"><span class="lm" data-tip="Enter the help the machine gives, as on its pin. Less help is progress; your logged bodyweight minus the help is what counts.">machine help</span></p>`;
   const long={each:'Enter the weight of one dumbbell. Weight lifted counts both.',side:'Enter the plates on one side. Weight lifted counts both sides.',stack:'Enter the pin setting. It is not comparable across machines.',bw:'Enter only what you add (belt, vest, dumbbell); 0 for bodyweight. Your logged bodyweight is added for estimates.'}[m]||(ex.equip==='barbell'?'Enter everything on the bar, the bar included.':ex.equip==='dumbbell'?'Enter the weight of the one dumbbell you hold.':'Enter the total load.');
   return `<p class="lmrow"><span class="lm" data-tip="${esc(long)}">${esc(loadWords(ex))}</span>${ex.perSide?`<span class="lm" data-tip="${esc(ex.timed?'Seconds for one side; do the same on the other.':'Reps for one side; do the same on the other. One set still counts as one set.')}">${ex.timed?'seconds':'reps'} per side</span>`:''}</p>`;
 }
@@ -2933,9 +2914,7 @@ function suggest(exId,plan,opts){
      half the sets (done by the caller), 3 or more in reserve. Neither sets a
      target, so nothing in this session reads as "beaten" or "missed". */
   if(injM)return {w:top,text:`${lastS} Injury flagged (${ML[injM]}): stay at or below ${lbl(top)}, keep 3 or more reps in reserve, stop on pain.`,lastR,last:lastS,target:'',tgt:null,easier:null,inj:injM};
-  if(opts.deload){const bl=bwLoad(ex,T);
-    // Assisted: 90% of the lifted load means more help, rounded up to the machine's step so it never lands back on the full load.
-    const hs=U()==='lb'?5:2.5;const dw=ex.assist?-fromD(Math.ceil(toD(bl-(top+bl)*0.9)/hs-1e-9)*hs):ex.bw?((top+bl)*0.9-bl>0?roundLoad((top+bl)*0.9-bl,true):0):roundLoad(top*0.9,true);return {w:top>0||ex.assist?dw:top,text:`${lastS} Deload: about ${lbl(top>0||ex.assist?dw:top)} for ${plan.repMin}-${plan.repMax} with 3 or more reps in reserve. Half the usual sets.`,lastR,last:lastS,target:'',tgt:null,easier:null};}
+  if(opts.deload){const bl=bwLoad(ex,T);const dw=ex.bw?((top+bl)*0.9-bl>0?roundLoad((top+bl)*0.9-bl,true):0):roundLoad(top*0.9,true);return {w:top>0?dw:top,text:`${lastS} Deload: about ${lbl(top>0?dw:top)} for ${plan.repMin}-${plan.repMax} with 3 or more reps in reserve. Half the usual sets.`,lastR,last:lastS,target:'',tgt:null,easier:null};}
   /* Recalibrate when every top set was logged with RIR at least 2 above the
      target. It uses the same e1() estimate as everything else,
      and the new load is what leaves the middle of the rep range at the target
@@ -2950,7 +2929,7 @@ function suggest(exId,plan,opts){
       const want=Math.min(e1inv(est,Math.round((+plan.repMin+ +plan.repMax)/2)+Math.min(tgtRir,E1_MAX_RIR)),topLoad*jumpCap(ex,topLoad))-bwNow;
       const k=Math.floor((want-top)/step+1e-6);
       if(k>=1){
-        const nw=ex.assist?Math.min(0,top+k*step):capW(top+k*step);const rr=r1(topPts.reduce((a,p)=>a+p.rir,0)/topPts.length);
+        const nw=capW(top+k*step);const rr=r1(topPts.reduce((a,p)=>a+p.rir,0)/topPts.length);
         return {w:nw,text:`${lastS} RIR ${rr} at ${lbl(top)} against a target of ${tgtRir}, so that load was light. Try ${lbl(nw)} for ${plan.repMin}-${plan.repMax} reps.`,lastR,
           last:lastS,target:`${lbl(nw)} for ${plan.repMin}+ reps in every set`,tgt:{kind:'load',w:nw,repMin:+plan.repMin,prevBest},easier:null};
       }
@@ -2976,7 +2955,7 @@ function suggest(exId,plan,opts){
            below applies instead of a forced drop. */
         const k=Math.ceil((top-want)/step-1e-6);
         const nw=top-k*step;
-        if(k>=1&&(nw>0||(ex.bw&&(nw>=0||ex.assist)))){
+        if(k>=1&&(nw>0||(ex.bw&&nw>=0))){
           const bestR=Math.max(...topPts.map(p=>p.r));
           return {w:nw,text:`${lastS} Top sets at ${lbl(top)} stopped at ${bestR} reps, below your ${plan.repMin}-${plan.repMax} range. Drop to ${lbl(nw)} and build back up.`,lastR,
             last:lastS,target:`${lbl(nw)} for ${plan.repMin}+ reps in every set`,tgt:{kind:'load',w:nw,repMin:+plan.repMin,prevBest},easier:null,down:true};
@@ -3000,8 +2979,6 @@ function suggest(exId,plan,opts){
   }
   if(topPts.every(p=>p.r>=plan.repMax)){
     const nw=capW(top+progStep(ex,plan,top+bwLoad(ex,T)));
-    if(ex.assist){const aw=Math.min(0,nw);return {w:aw,text:`${lastS} Every set at ${lbl(top)} hit ${plan.repMax}: ${aw===0?'try it without help':`take ${fmtW(aw-top)} ${U()} of help off`} and aim for ${plan.repMin}+ reps.`,lastR,
-      last:lastS,target:`${lbl(aw)} for ${plan.repMin}+ reps in every set`,tgt:{kind:'load',w:aw,repMin:+plan.repMin,prevBest},easier:null};}
     return {w:nw,text:`${lastS} Every set at ${lbl(top)} hit ${plan.repMax}: add ${fmtW(nw-top)} ${U()}${cap!=null&&nw>=cap-1e-6?', which is the heaviest available,':''} and aim for ${plan.repMin}+ reps.`,lastR,
       last:lastS,target:`${lbl(nw)} for ${plan.repMin}+ reps in every set`,tgt:{kind:'load',w:nw,repMin:+plan.repMin,prevBest},easier:null};
   }
@@ -3106,7 +3083,7 @@ const carried=new WeakSet();
 function carryLoad(bi,si){
   const b=state.draft&&state.draft.ex[bi];const s=b&&b.sets[si];if(!s||s.warm||s.drop||s.w==null)return;
   for(let j=si+1;j<b.sets.length;j++){const x=b.sets[j];if(x.warm||x.drop||x.done||!(x.w==null||carried.has(x)))continue;
-    x.w=s.w;carried.add(x);const inp=document.querySelector(`.sg input[data-f="w"][data-b="${bi}"][data-s="${j}"]`);if(inp)inp.value=loadIn(EX(b.exId),x.w);}
+    x.w=s.w;carried.add(x);const inp=document.querySelector(`.sg input[data-f="w"][data-b="${bi}"][data-s="${j}"]`);if(inp)inp.value=fmtW(x.w);}
   updateProgress(bi);
 }
 function updatePlates(bi,si){const el=document.getElementById('pl-'+bi);if(!el||!state.draft||!state.draft.ex[bi])return;el.textContent=plateLine(state.draft.ex[bi],si);}
@@ -3313,7 +3290,7 @@ const coarse=()=>{try{return window.matchMedia('(pointer:coarse)').matches;}catc
    reuses it, rather than calling history.back(), whose delayed event could
    land on a sheet opened a moment later. */
 // Sheets whose fields hold something typed. Search boxes in pickers do not count.
-const FORM_SHEETS=new Set(['imp','feedback','account','exEdit','injury','cardio','quick','note','text','routineNew','inc','max','load','reps','cal','walk']);
+const FORM_SHEETS=new Set(['feedback','account','exEdit','injury','cardio','quick','note','text','routineNew','inc','max','load','reps','cal','walk']);
 function modalPush(){try{if(!(history.state&&history.state.ilModal))history.pushState({ilModal:1,ilTab:ui.tab},'');}catch(e){/* history is best effort in a frame */}}
 /* Back also steps back through tabs, like a native app: each tab change adds
    one history entry holding the tab, and Back shows the tab of the entry it
@@ -3722,7 +3699,7 @@ function obView(){
   <button class="btn primary block" data-act="acctOpen" data-mode="signup">Create account</button>
   <button class="btn block" data-act="acctOpen" data-mode="signin">I have an account</button></div>
   <button class="linkbtn ob-skip" data-act="obAcctLater">Not now</button>${dots(1)}</div>`;
-  const imp=`<button class="ob-opt" data-act="impOpen"><b>Import my workouts</b><span>Notes, a spreadsheet, Strong, Hevy, a backup</span></button>`;
+  const imp=`<label class="ob-opt" style="position:relative"><b>Import a backup</b><span>An Ironlog backup file (.json)</span><input type="file" accept=".json,application/json" id="importFile"></label>`;
   return `<div class="ob welcome" id="obPage" data-step="start">
   ${acctStep&&!acct.user?'<button class="linkbtn ob-back" data-act="obAcctBack">‹ Account</button>':''}
   <h2 class="ob-h">Set up</h2>
@@ -3834,11 +3811,12 @@ function coachButton(c,di){
   return `<button class="btn sm" style="margin-top:8px" data-act="goDash" data-sec="${c.act.sec}"${c.act.m?` data-m="${c.act.m}"`:''}${c.act.ex?` data-ex="${c.act.ex}"`:''}>${esc(c.act.label)}</button>`;
 }
 function homeTiles(){
-  const sk=weekStreak();const pr=prsWithin(30);
+  const sk=weekStreak();const pr=prsWithin(30);const tn=tonnageNow();
   const last=pr[0];const ago=last?daysBetween(last.date,today()):null;
   return `<div class="tiles">
   <button class="tile" data-act="goDash" data-sec="consistency" aria-label="${sk.weeks} week streak. Open consistency"><div class="tv">${sk.weeks}</div><div class="tl">week streak</div><div class="ts">${sk.thisWeek>=sk.need?'This week done':`Weeks with ${sk.need}+ sessions`}${sk.best>sk.weeks?` · best ${sk.best}`:''}</div></button>
-  <button class="tile" data-act="goDash" data-sec="bests" aria-label="${pr.length} PRs in the last 30 days. Open all-time bests"><div class="tv">${pr.length}</div><div class="tl">PRs, last 30 days</div><div class="ts">${last?`Latest: ${esc(exName(last.exId))}, ${ago===0?'today':ago===1?'yesterday':ago+' days ago'}`:'None yet'}</div></button>
+  <button class="tile" data-act="goDash" data-sec="prs" aria-label="${pr.length} PRs in the last 30 days"><div class="tv">${pr.length}</div><div class="tl">PRs, last 30 days</div><div class="ts">${last?`Latest: ${esc(exName(last.exId))}, ${ago===0?'today':ago===1?'yesterday':ago+' days ago'}`:'None yet'}</div></button>
+  <button class="tile wide" data-act="goDash" data-sec="volume" aria-label="Weight lifted this week"><div class="tv">${tn.now?fmtK(tn.now):'0'} <span class="tu">${U()}</span></div><div class="tl">lifted this week</div><div class="ts">${!tn.now?(tn.prevFull?`Last week ${fmtK(tn.prevFull)} ${U()}`:'Nothing logged yet'):tn.delta==null?'First week with volume':`${tn.delta>=0?'+':''}${Math.round(tn.delta)}% vs last week`}</div></button>
   </div>`;
 }
 /* Only projected when the trend is measurably up, not stalled, and fitted on at
@@ -4563,14 +4541,6 @@ function cycleStrip(R){
     return `<span role="listitem" class="c ${st}" data-tip="${esc(dayLabel(R,i)+': '+d.name+what)}"><b>${i+1}</b>${esc(d.rest?'Rest':d.name)}</span>`;
   }).join('')}</div>`;
 }
-/* Weight lifted this week, against last week to this point. It moved here from
-   At a glance in r23 (item 32): This week owns everything about this week,
-   At a glance the longer view. */
-function liftedLine(){
-  const tn=tonnageNow();if(!tn.now&&!tn.prevFull)return '';
-  const d=tn.now&&tn.delta!=null?` <span class="muted">${tn.delta>0?'+':''}${Math.round(tn.delta)}% vs last week</span>`:'';
-  return `<button class="linkbtn wklift" data-act="goDash" data-sec="svol" style="margin:6px 0 0;text-decoration:none;text-align:left"><b>${tn.now?fmtBig(tn.now):0} ${U()}</b> lifted${d}</button>`;
-}
 function weekBody(w){
   /* The two numbers are counted differently on purpose and the label has to
      say so: the denominator is every set the routine plans, the numerator is
@@ -4580,12 +4550,11 @@ function weekBody(w){
   <div class="band" data-tip="${w.got} hard sets logged of ${w.tgt} planned"><div class="fill prog" style="width:${w.pct}%"></div></div>
   ${w.cardioMin?`<p class="small" style="margin:5px 0 0">Cardio and mobility: ${w.cardioMin} min in ${w.cardioN} entr${w.cardioN===1?'y':'ies'}</p>`:''}
   <div class="hrow" style="margin:5px 0 0"><p class="small muted" style="margin:0" id="wkSets">${w.got} hard sets logged of ${w.tgt} planned${w.tgt>0?` (${Math.round(w.pct)}%)`:''}.</p>${helpBtn('wk')}</div>
-  ${liftedLine()}
   ${helpText('wk',`Each set counts once; a set at RIR 4 or more is not hard and does not count. The bar at the top of every tab is this calendar week: filled green is a day you lifted, a green outline is cardio only, dashed is a workout planned ahead${w.weekly?', dashed red is a planned workout that was missed':''}. Tap a filled day to open it in History, today or a day ahead to see its workout here, or an empty past day (marked +) to log a workout for it.${w.weekly?'':' The row above the bar is your cycle: green is done this round, outlined is next.'}`)}`;
 }
 function weekCard(){
   const w=weekStats();
-  return sec({sk:'today:week',key:'week',title:'This week',sub:`${w.doneDays} of ${w.weekly||weekFactor(w.R)===1?'':'~'}${w.planDays} sessions`,body:weekBody(w)});
+  return sec({sk:'today:week',key:'week',title:'This week',sub:`${w.doneDays} of ${w.weekly||weekFactor(w.R)===1?'':'~'}${w.planDays} sessions · ${w.got}/${w.tgt} sets`,body:weekBody(w)});
 }
 /* Quick answers before a session starts: is this lift moving, and what to do. */
 function liftTags(exId){
@@ -4711,7 +4680,7 @@ function viewLogger(){
       const pr=s.done?livePR(b.exId,s,d.date):null;
       const wn=b.sets.slice(0,si+1).filter(x=>!x.warm&&!x.drop).length;
       h+=`<div class="sg${nr?' norir':''} ${s.done?'done':''}${pr?' pr':''}"${pr?` data-pr="${pr}"`:''}><span class="n${s.drop?' drop':s.warm?' warm':''}">${s.drop?'↓':s.warm?'W':wn}</span>
-        <input type="text" inputmode="decimal" enterkeyhint="next" aria-label="${esc(ex.name)}, set ${si+1} load" data-f="w" data-b="${bi}" data-s="${si}" value="${loadIn(ex,s.w)}" placeholder="${ex.bw?'0':''}">
+        <input type="text" inputmode="decimal" enterkeyhint="next" aria-label="${esc(ex.name)}, set ${si+1} load" data-f="w" data-b="${bi}" data-s="${si}" value="${s.w==null?'':fmtW(s.w)}" placeholder="${ex.bw?'0':''}">
         <input type="text" inputmode="numeric" enterkeyhint="next" aria-label="${esc(ex.name)}, set ${si+1} ${ex.timed?'seconds':'reps'}${ex.perSide?' per side':''}" data-f="r" data-b="${bi}" data-s="${si}" value="${s.r==null?'':s.r}" placeholder="${ph}">
         ${nr?'':rirSelect(s.rir,bi,si,p.rir)}
         <button class="wbtn ${s.warm?'on':s.drop?'drop':''}" aria-label="Set ${si+1} type: ${s.warm?'warm-up':s.drop?'drop set':'working set'}. Tap to change" data-act="sWarm" data-b="${bi}" data-s="${si}">${s.drop?'D':s.warm?'W':'–'}</button>
@@ -5327,8 +5296,7 @@ function viewHistory(){
   if(cs.length)h+=sec({sk:'history:cardio',key:'cardio',title:'Cardio and mobility',sub:`${cs.length} entr${cs.length===1?'y':'ies'}`,body:`<ul class="clist">${cs.slice(0,40).map(c=>`<li><span><b>${esc(CARDIOL[c.kind])}</b> <span class="small muted">${fmtDate(c.date)} · ${c.min} min${c.hr?` · ${c.hr} bpm`:''}${c.when!=='solo'?' · '+CWHENL[c.when].toLowerCase():''}${c.note?' · '+esc(c.note):''}</span></span><button class="ib sm" data-act="cardioDel" data-id="${c.id}" aria-label="Delete ${fmtDate(c.date)} cardio">✕</button></li>`).join('')}</ul>${cs.length>40?`<p class="small muted">${cs.length-40} older entries are in the CSV export.</p>`:''}`});
   const tr=state.trash||[];
   if(tr.length)h+=sec({sk:'history:trash',key:'trash',title:'Recently deleted',sub:`<span class="hastip" data-tip="${esc(`The ${TRASH_MAX} most recent deletions, each kept ${TRASH_DAYS} days`)}">${tr.length}</span>`,body:`<ul class="clist">${tr.map(x=>{const nm=x.kind==='session'?`${x.data.dayName||'Session'}, ${fmtDate(x.data.date)}`:x.kind==='cardio'?`${CARDIOL[x.data.kind]||'Cardio'}, ${fmtDate(x.data.date)}`:`Routine: ${x.data.name||'Routine'}`;return `<li><span>${esc(nm)} <span class="small muted">deleted ${fmtDate(x.date)}</span></span><button class="btn sm" data-act="restore" data-id="${x.id}" data-k="${x.kind}">Restore</button></li>`;}).join('')}</ul>`});
-  const impLine='<p class="small" style="margin:14px 0 0"><button class="linkbtn" data-act="impOpen">Import workouts</button> <span class="muted">from notes, a spreadsheet, Strong or Hevy</span></p>';
-  if(!ss.length)return h+'<div class="card"><p style="margin:0">No sessions yet. Start one on Today, or log one you did without the app with Log a past workout.</p></div>'+impLine;
+  if(!ss.length)return h+'<div class="card"><p style="margin:0">No sessions yet. Start one on Today, or log one you did without the app with Log a past workout.</p></div>';
   const withData=Object.keys(I.byEx).sort((a,b)=>exName(a).localeCompare(exName(b)));
   if(ui.histEx&&!I.byEx[ui.histEx])ui.histEx='';
   let body=`<label class="field">Show sessions with<select data-bind="histEx"><option value="">Any exercise</option>${withData.map(id=>`<option value="${id}" ${ui.histEx===id?'selected':''}>${esc(exName(id))}</option>`).join('')}</select></label><div style="margin-top:6px">`;
@@ -5364,7 +5332,6 @@ function viewHistory(){
   body+='</div>';
   if(shown.length>page.length)body+=`<button class="btn block" style="margin-top:10px" data-act="histMore">Show ${Math.min(HIST_PAGE,shown.length-page.length)} more (${page.length} of ${shown.length})</button>`;
   h+=sec({sk:'history:sessions',key:'sessions',title:'Sessions',sub:ui.histEx?`${shown.length} with ${esc(exName(ui.histEx))}`:`${ss.length} logged`,body,def:true});
-  h+=impLine;
   return h;
 }
 
@@ -5405,8 +5372,7 @@ function viewSettings(){
   ${backupDue()?`<p class="callout yellow" style="margin:10px 0 0"><b>Backup due.</b> ${s.lastExport?`Last backup file ${fmtDate(s.lastExport)}.`:'No backup file yet.'} ${cloud.on?'Export one below; the cloud copy mirrors deletions, so it is not a backup.':'Export one below; this device holds the only copy.'}</p>`:''}
   ${storageOk?'':'<p class="small" style="color:var(--red)">This browser is blocking local storage, so this device keeps nothing between reloads without cloud sync.</p>'}
   <div class="card stack"><div class="row"><button class="btn primary" data-act="export" data-tip="The backup: restores everything, on any device.">Export backup (.json)</button><button class="btn" data-act="showBackup" data-tip="The same backup as text, to copy somewhere safe.">Show backup text</button><button class="btn" data-act="exportCsv" data-tip="One row per set for spreadsheets. Not a backup: it cannot be imported.">Export sets (.csv)</button></div>
-  <button class="btn" data-act="impOpen" data-tip="Adds sessions from notes, a spreadsheet, Strong or Hevy. You check everything before it is saved.">Import workouts</button>
-  <label class="field">Restore a backup file (replaces everything)<input type="file" accept=".json,application/json" id="importFile"></label>
+  <label class="field">Import a backup file<input type="file" accept=".json,application/json" id="importFile"></label>
   <button class="btn" data-act="pasteImport">Paste backup text instead</button>
   <div class="row"><button class="btn" data-act="undo" ${undoStack.length?'':'disabled'} data-tip="Deletes, resets and imports from the last 7 days, kept after the app is closed. Edits are not undoable. Deleted sessions, cardio and routines also wait in History for ${TRASH_DAYS} days.">Undo last delete or reset${undoStack.length?` (${undoStack.length} available)`:''}</button></div></div></div></details>
   ${G('demo','Demo data','demo')}${helpText('demo','8 weeks of generated sessions to preview Today and Stats. Everything demo is tagged and removed in one tap; your real logs are untouched.')}
@@ -5485,7 +5451,6 @@ function renderModalBody(){
       return `<label class="field"><span class="hastip" data-tip="${esc('What the number you type means. Estimates and targets stay in this frame; weight lifted counts both dumbbells or both sides.'+(has?' Changing it does not convert sets already logged.':''))}">Weight is entered as</span><select data-ebind="load"><option value="auto" ${!e.load?'selected':''}>Default for this equipment: ${esc(def)}</option>${LOAD_MODES.map(([k,l])=>`<option value="${k}" ${e.load===k?'selected':''}>${l}</option>`).join('')}</select></label>`;})()}
     <div><p class="small muted">Helper muscles (count as half a set)</p><div class="chips">${MUSCLES.filter(([k])=>k!==e.primary).map(([k,l])=>`<button class="chip ${e.secondary.includes(k)?'on':''}" data-act="secToggle" data-m="${k}">${l}</button>`).join('')}</div></div>
     <label class="check-inline"><input type="checkbox" data-ebind="bw" ${e.bw?'checked':''}><span class="hastip" data-tip="Log only what you add (0 for bodyweight). Your logged bodyweight is added for estimates and weight lifted.">Bodyweight exercise</span></label>
-    ${e.bw?`<label class="check-inline"><input type="checkbox" data-ebind="assist" ${e.assist?'checked':''}><span class="hastip" data-tip="For an assisted machine: you type the help it gives, and less help is progress.">Assisted (a machine takes weight off)</span></label>`:''}
     ${e.bw?`<label class="field"><span class="hastip" data-tip="Measured only for push-ups (64%, force plates). Pull-ups and dips count all of it; the rest are segment-mass estimates.">Share of bodyweight moved (%)</span><input type="text" inputmode="numeric" data-ebind="bwfRaw" value="${esc(e.bwfRaw||'')}"></label>`:''}
     <label class="check-inline"><input type="checkbox" data-ebind="perSide" ${e.perSide?'checked':''}><span class="hastip" data-tip="Reps are logged for one side. One set still counts as one set; weight lifted counts both sides.">One side at a time (reps per side)</span></label>
     <label class="check-inline"><input type="checkbox" data-ebind="timed" ${e.timed?'checked':''}><span class="hastip" data-tip="${!m.isNew&&state.sessions.some(s=>s.ex.some(b=>b.exId===e.id))?'This exercise has logged sets: switching changes how those numbers read.':'The reps column holds seconds.'}">Timed hold (log seconds)</span></label>
@@ -5513,7 +5478,6 @@ function renderModalBody(){
     h=`<div class="sheet" role="dialog" aria-modal="true"><div class="sheet-h"><h3>${esc(m.title)}</h3><button class="ib" aria-label="Close" data-act="mClose">✕</button></div>${m.prs&&m.prs.length?`<div class="prblk" id="recapPR"><h4>${m.prs.length===1?'New PR':`${m.prs.length} new PRs`}</h4><ul>${m.prs.map(p=>`<li><b>${esc(p.name)}</b>: ${esc(p.what)}${p.was?` <span class="was">(${esc(p.was)})</span>`:''}</li>`).join('')}</ul></div>`:''}<ul class="recap">${m.lines.map(l=>`<li>${esc(l)}</li>`).join('')}</ul>${m.note?`<p class="small muted">${esc(m.note)}</p>`:''}${aiOn()&&m.sid?`<button class="btn block" style="margin-bottom:8px" data-act="aiDebrief" data-sid="${esc(m.sid)}">Debrief with Claude</button>`:''}
     ${u?`<div class="hint"><b>Update ${esc(u.dayName)} in your routine?</b><br>${esc(u.text)}. Next time this day starts with the change.</div><button class="btn block" data-act="applyUpd">Update ${esc(u.dayName)}</button>`:''}
     <button class="btn primary block" style="margin-top:10px" data-act="mClose">${u?'Not now':'Done'}</button></div>`;
-  }else if(m.kind==='imp'){h=impSheet(m);
   }else if(m.kind==='templates'){
     h=`<div class="sheet" role="dialog" aria-modal="true"><div class="sheet-h"><h3>Pick a routine</h3><button class="ib" aria-label="Close" data-act="mClose">✕</button></div>
     <p class="small muted" style="margin:0 0 8px">A starting point with sets, reps and rest worked out. Change anything later in Plan.</p>
@@ -5799,258 +5763,6 @@ function exportCSV(){
   return exportFile(data,`ironlog-sets-${today()}.csv`,'text/csv','CSV saved',null,
     'CSV text','Copy all of this and paste it into a spreadsheet. This is not a backup.');
 }
-/* ---------- importing workouts (r23, PENDING 65 and V's 2026-09-28 ask) ----------
-   Any log a person already keeps comes in the same way: text pasted from
-   Notes (or copied from a photo of a handwritten log with the iPhone's Live
-   Text), a spreadsheet (a CSV or .xlsx file, or cells copied and pasted),
-   and the CSV exports of Strong and Hevy. An Ironlog backup still restores
-   the whole log (importData). Nothing is saved until the preview is
-   confirmed: it shows what was understood, the unit, which library exercise
-   each name was matched to (changeable, or a new custom exercise), lines that
-   were not understood, and sessions already in the log, which are skipped so
-   importing the same file twice adds nothing. Imported sessions are
-   freestyle sessions, so they never move a routine's "next up". Undo reverses
-   the whole import. Numbers stay in the file's unit until the preview. */
-const IMP_MAX_ROWS=50000;
-const MON={jan:1,feb:2,mar:3,apr:4,may:5,jun:6,jul:7,aug:8,sep:9,sept:9,oct:10,nov:11,dec:12};
-/* A date written any common way. Without a year it is the latest such day not
-   after today. Numbers are month first unless the first is over 12. */
-function impDate(str,ref){
-  const s=String(str||'').toLowerCase().replace(/(\d)(st|nd|rd|th)\b/g,'$1').trim();if(!s)return null;
-  const t=ref||today();const ty=+t.slice(0,4);
-  const mk=(y,m,d)=>{if(!(m>=1&&m<=12&&d>=1&&d<=31))return null;const iso=`${y}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`;return isDate(iso)&&new Date(y,m-1,d).getDate()===d?iso:null;};
-  const noYear=(m,d)=>{let x=mk(ty,m,d);if(x&&x>t)x=mk(ty-1,m,d);return x;};
-  const yy=y=>y<100?2000+y:y;
-  let g=s.match(/\b(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})\b/);if(g)return mk(+g[1],+g[2],+g[3]);
-  g=s.match(/\b(\d{1,2})[/.-](\d{1,2})(?:[/.-](\d{2,4}))?\b/);
-  if(g){let a=+g[1],b=+g[2];let m=a,d=b;if(a>12&&b<=12){m=b;d=a;}return g[3]?mk(yy(+g[3]),m,d):noYear(m,d);}
-  g=s.match(/\b(\d{1,2})\s+([a-z]{3,9})\.?,?\s*(\d{4})?\b/);if(g&&MON[g[2].slice(0,4)]||g&&MON[g[2].slice(0,3)]){const m=MON[g[2].slice(0,4)]||MON[g[2].slice(0,3)];return g[3]?mk(+g[3],m,+g[1]):noYear(m,+g[1]);}
-  g=s.match(/\b([a-z]{3,9})\.?\s+(\d{1,2})(?:,?\s*(\d{4}))?\b/);if(g&&(MON[g[1].slice(0,4)]||MON[g[1].slice(0,3)])){const m=MON[g[1].slice(0,4)]||MON[g[1].slice(0,3)];return g[3]?mk(+g[3],m,+g[2]):noYear(m,+g[2]);}
-  return null;
-}
-/* Spreadsheet day numbers (days since 30 Dec 1899). */
-function impSerial(n){if(!(n>20000&&n<80000))return null;const d=new Date(Date.UTC(1899,11,30)+Math.floor(n)*864e5);return d.toISOString().slice(0,10);}
-/* Rows from CSV or tab-separated text, quotes respected. The separator is the
-   one most used on the first line: comma, semicolon (Strong in some regions)
-   or tab (cells pasted from a spreadsheet). */
-function impRows(text){
-  const first=(text.split(/\r?\n/)[0]||'');const cnt=c=>first.split(c).length-1;
-  const sep=[['\t',cnt('\t')],[';',cnt(';')],[',',cnt(',')]].sort((a,b)=>b[1]-a[1])[0];if(!sep[1])return null;
-  const d=sep[0];const rows=[];let row=[],f='',q=false;
-  for(let i=0;i<text.length;i++){const c=text[i];
-    if(q){if(c==='"'){if(text[i+1]==='"'){f+='"';i++;}else q=false;}else f+=c;continue;}
-    if(c==='"'&&f==='')q=true;else if(c===d){row.push(f);f='';}else if(c==='\n'||c==='\r'){if(c==='\r'&&text[i+1]==='\n')i++;row.push(f);f='';if(row.some(x=>x.trim()))rows.push(row);row=[];if(rows.length>IMP_MAX_ROWS)break;}else f+=c;}
-  row.push(f);if(row.some(x=>x.trim()))rows.push(row);
-  return rows.length>=2?rows:null;
-}
-/* An .xlsx file is a zip of XML. Read the first sheet with the browser's own
-   decompressor (Safari 16.4 and later), so no library is needed. */
-async function impXlsx(buf){
-  if(typeof DecompressionStream!=='function')throw new Error('old');
-  const u=new Uint8Array(buf),dv=new DataView(buf);let eo=-1;for(let i=u.length-22;i>=0&&i>u.length-70000;i--)if(dv.getUint32(i,true)===0x06054b50){eo=i;break;}if(eo<0)throw new Error('zip');
-  const n=dv.getUint16(eo+10,true);let p=dv.getUint32(eo+16,true);const files={};
-  for(let k=0;k<n;k++){const meth=dv.getUint16(p+10,true),cs=dv.getUint32(p+20,true),nl=dv.getUint16(p+28,true),el=dv.getUint16(p+30,true),cl=dv.getUint16(p+32,true),lo=dv.getUint32(p+42,true);
-    const name=new TextDecoder().decode(u.subarray(p+46,p+46+nl));files[name]={meth,cs,lo};p+=46+nl+el+cl;}
-  const read=async name=>{const f=files[name];if(!f)return null;const ln=dv.getUint16(f.lo+26,true),le=dv.getUint16(f.lo+28,true);const data=u.subarray(f.lo+30+ln+le,f.lo+30+ln+le+f.cs);
-    if(f.meth===0)return new TextDecoder().decode(data);
-    const out=await new Response(new Blob([data]).stream().pipeThrough(new DecompressionStream('deflate-raw'))).arrayBuffer();return new TextDecoder().decode(out);};
-  const X=t=>new DOMParser().parseFromString(t,'application/xml');
-  const ss=[];const sst=await read('xl/sharedStrings.xml');if(sst)for(const si of X(sst).getElementsByTagName('si'))ss.push([...si.getElementsByTagName('t')].map(t=>t.textContent).join(''));
-  const sheet=Object.keys(files).filter(k=>/^xl\/worksheets\/sheet\d+\.xml$/.test(k)).sort((a,b)=>parseInt(a.match(/\d+/)[0])-parseInt(b.match(/\d+/)[0]))[0];if(!sheet)throw new Error('sheet');
-  const rows=[];const col=r=>{let c=0;for(const ch of r.replace(/\d+/g,''))c=c*26+(ch.charCodeAt(0)-64);return c-1;};
-  for(const rw of X(await read(sheet)).getElementsByTagName('row')){const row=[];for(const c of rw.getElementsByTagName('c')){const i=col(c.getAttribute('r')||'A');const t=c.getAttribute('t');const v=c.getElementsByTagName('v')[0];let val='';
-      if(t==='s')val=ss[+(v&&v.textContent)]||'';else if(t==='inlineStr')val=[...c.getElementsByTagName('t')].map(x=>x.textContent).join('');else val=v?v.textContent:'';row[i]=val;}
-    for(let i=0;i<row.length;i++)if(row[i]==null)row[i]='';if(row.some(x=>String(x).trim()))rows.push(row);if(rows.length>IMP_MAX_ROWS)break;}
-  return rows;
-}
-/* Exercise names from other apps and from people: "Bench Press (Barbell)",
-   "DB curls", "lat pull down". Words are reduced to one spelling, then the
-   closest library exercise is found by shared words. */
-const IMP_SYN=[[/\bdumb ?bells?\b|\bdbs?\b/g,'db'],[/\bbar ?bells?\b|\bbb\b/g,'bb'],[/\bpull[ -]?downs?\b/g,'pulldown'],[/\bpull[ -]?ups?\b/g,'pullup'],[/\bchin[ -]?ups?\b/g,'chinup'],[/\bpush[ -]?ups?\b/g,'pushup'],[/\bsit[ -]?ups?\b/g,'situp'],[/\b(push|press)[ -]?downs?\b/g,'pushdown'],[/\bdead[ -]?lifts?\b/g,'deadlift'],[/\bromanian deadlift\b|\brdls?\b/g,'rdl'],[/\bover ?head press\b|\bohp\b/g,'ohp'],[/\bskull ?crushers?\b/g,'skullcrusher'],[/\btriceps?\b/g,'tricep'],[/\bbiceps?\b/g,'bicep'],[/\bext\b|\bextensions?\b/g,'extension'],[/\braises?\b/g,'raise'],[/\bflyes?\b|\bflies\b|\bflys?\b/g,'fly'],[/\bmachine\b/g,'machine'],[/\bsmith machine\b/g,'smith'],[/\bcurls\b/g,'curl'],[/\brows\b/g,'row'],[/\bsquats\b/g,'squat'],[/\blunges\b/g,'lunge'],[/\bdips\b/g,'dip'],[/\bshrugs\b/g,'shrug'],[/\bpresses\b/g,'press'],[/\bcrunches\b/g,'crunch'],[/\bcalves\b|\bcalfs\b/g,'calf'],[/\bhamstrings?\b/g,'ham'],[/\bdeg(rees?)?\b|°/g,'']];
-function impNorm(name){let s=String(name||'').toLowerCase().replace(/[()\[\],.&/+_-]/g,' ').replace(/\s+/g,' ').trim();for(const [re,v] of IMP_SYN)s=s.replace(re,v);return s.split(' ').filter(w=>w&&!['the','a','with','of','and','on','exercise'].includes(w));}
-/* Bare everyday names mean the classic lift. */
-const IMP_ALIAS={'assisted pullup':'assistPullup','pullup assisted':'assistPullup','assisted dip':'assistDip','dip assisted':'assistDip','squat':'backSquat','bb squat':'backSquat','back squat':'backSquat','bench':'bench','bench press':'bench','bb bench':'bench','flat bench':'bench','deadlift':'deadlift','ohp':'ohp','shoulder press':'ohp','military press':'ohp','pullup':'pullup','chinup':'chinup','row':'bbRow','bb row':'bbRow','bent over row':'bbRow','leg press':'legPress','lat pulldown':'latPulldown','pulldown':'latPulldown','dip':'dips','rdl':'rdl','hip thrust':'hipThrust','pushdown':'pressdown','tricep pushdown':'pressdown','pushup':'pushup','curl':'dbCurl','db curl':'dbCurl','bicep curl':'dbCurl','bb curl':'bbCurl'};
-function impMatch(name){
-  const a=new Set(impNorm(name));if(!a.size)return [];
-  const out=[];const al=IMP_ALIAS[[...a].join(' ')];if(al&&state.exercises.some(e=>e.id===al&&!e.archived))out.push({id:al,sc:1});
-  for(const e of state.exercises){if(e.archived)continue;const b=new Set(impNorm(e.name));if(!b.size)continue;let hit=0;for(const w of a)if(b.has(w))hit++;if(!hit)continue;
-    const union=new Set([...a,...b]).size;let sc=hit/union;
-    // Equipment named on one side and a different one on the other is a different exercise.
-    const eq=['db','bb','cable','machine','smith'];const ea=eq.filter(w=>a.has(w)),eb=eq.filter(w=>b.has(w));if(ea.length&&eb.length&&!ea.some(w=>eb.includes(w)))sc*=0.5;
-    if(e.id!==al)out.push({id:e.id,sc});}
-  return out.sort((x,y)=>y.sc-x.sc).slice(0,8);
-}
-/* For a new custom exercise: a first guess at the muscle and equipment,
-   shown in the preview to change. */
-function impGuess(name){
-  const w=impNorm(name).join(' ');const has=re=>re.test(w);
-  const primary=has(/tricep|pushdown|skullcrusher|kickback/)?'triceps':has(/curl/)&&!has(/leg|ham/)?'biceps':has(/leg curl|ham|rdl|good morning/)?'hamstrings':has(/calf/)?'calves':has(/lateral|side raise/)?'sideDelts':has(/rear|face pull|reverse fly/)?'rearDelts':has(/ohp|shoulder press|military|front raise/)?'frontDelts':has(/shrug/)?'traps':has(/pulldown|pullup|chinup|pullover/)?'lats':has(/row/)?'upperBack':has(/squat|leg press|lunge|leg extension|hack|split/)?'quads':has(/deadlift|hip thrust|glute|bridge/)?'glutes':has(/crunch|situp|plank|ab |abs|leg raise/)?'abs':'chest';
-  const equip=has(/\bdb\b/)?'dumbbell':has(/\bbb\b/)?'barbell':has(/cable/)?'cable':has(/smith/)?'smith':has(/machine/)?'machine':has(/pullup|chinup|pushup|dip|plank|situp/)?'bodyweight':'other';
-  return {primary,equip};
-}
-/* Header words for each field, across Strong, Hevy and hand-made sheets. */
-const IMP_COLS={date:/^(date|day|start_?time|workout date|when)$/,name:/^(workout name|workout|title|session|routine)$/,ex:/^(exercise( name)?|exercise_title|movement|lift|name)$/,w:/^(weight|weight_kg|weight_lbs|load|kg|lbs?|weight \((kg|lbs?)\))$/,r:/^(reps?|repetitions|rep count)$/,sets:/^(sets)$/,rir:/^(rir)$/,rpe:/^(rpe)$/,type:/^(set order|set_type|set type|type)$/,secs:/^(seconds|duration_seconds|time \(s\)|secs)$/,note:/^(notes?|exercise_notes|comment)$/,unit:/^(weight unit|unit|units)$/,dist:/^(distance|distance_km|distance_miles)$/};
-function impHeader(row){const map={};row.forEach((h,i)=>{const k=String(h||'').trim().toLowerCase();for(const f in IMP_COLS)if(map[f]==null&&IMP_COLS[f].test(k))map[f]=i;});return map;}
-function impUnitOf(headers,map){const h=map.w!=null?String(headers[map.w]).toLowerCase():'';return /kg/.test(h)?'kg':/lb/.test(h)?'lb':null;}
-/* Table rows to sessions: grouped by date and workout name, exercises in
-   order of first appearance. A row with no date or exercise continues the
-   one above (sheets often write the date once). Rows without reps or
-   seconds (Strong's rest timer, cardio distance rows) are skipped and counted. */
-function impFromTable(rows,map){
-  const head=rows[0];let unit=impUnitOf(head,map);
-  // Strong's Set Order is the set's number (W, D and F mark types); only Hevy's set_type uses numbers as types.
-  const numTypes=map.type!=null&&/set_type/i.test(String(head[map.type]));
-  if(!unit&&map.unit!=null)for(let i=1;i<rows.length&&!unit;i++){const v=String(rows[i][map.unit]||'').toLowerCase();unit=/kg/.test(v)?'kg':/lb/.test(v)?'lb':null;}const S=new Map();let lastDate=null,lastEx=null,lastName='';let skipped=0,cardio=0;const bad=[];
-  const num=v=>{const n=parseFloat(String(v==null?'':v).replace(',','.'));return isFinite(n)?n:null;};
-  for(let i=1;i<rows.length;i++){const r=rows[i];const cell=f=>map[f]==null?'':String(r[map[f]]==null?'':r[map[f]]).trim();
-    let date=cell('date');date=date?(impDate(date)||impSerial(num(date))):lastDate;const ex=cell('ex')||lastEx;
-    if(!date||!ex){skipped++;if(bad.length<8)bad.push(r.join(', ').slice(0,80));continue;}
-    lastDate=date;lastEx=ex;const name=cell('name')||(cell('date')?'':lastName);lastName=name;
-    const reps=num(cell('r')),secs=num(cell('secs'));const w=num(cell('w'))||0;
-    // Strong's rest timer rows, and cardio (a distance), are not lifting sets.
-    if(/^rest timer$/i.test(ex)){skipped++;continue;}
-    if(num(cell('dist'))>0){cardio++;continue;}
-    if(!(reps>0)&&!(secs>0)){skipped++;continue;}
-    const ty=cell('type').toLowerCase();const rpe=num(cell('rpe'));let rir=num(cell('rir'));
-    // RPE 10 is no reps left, so RIR is taken as 10 minus RPE (the usual RIR-based RPE scale).
-    if(rir==null&&rpe!=null&&rpe>=5&&rpe<=10)rir=Math.max(0,10-rpe);
-    const code=numTypes?ty:'';
-    if(ty==='f'||ty==='failure'||code==='4')rir=0;
-    const set={w,r:reps>0?Math.round(reps):Math.round(secs),rir:rir!=null&&rir>=0&&rir<=10?rir:null,warm:ty==='w'||ty==='warmup'||ty==='warm-up'||code==='2',drop:ty==='d'||ty==='dropset'||ty==='drop'||code==='3',timed:!(reps>0)};
-    const k=date+'|'+name;if(!S.has(k))S.set(k,{date,name,items:new Map(),note:''});const ss=S.get(k);
-    if(!ss.items.has(ex))ss.items.set(ex,{name:ex,sets:[],note:cell('note')});
-    const n=Math.min(Math.max(Math.round(num(cell('sets'))||1),1),20);for(let j=0;j<n;j++)ss.items.get(ex).sets.push({...set});
-  }
-  return {sessions:[...S.values()].map(x=>({date:x.date,name:x.name,items:[...x.items.values()]})),unit,skipped,cardio,unread:bad};
-}
-/* Free text: a date line starts a day; each other line is an exercise name
-   followed by its sets, or sets alone continuing the exercise above, or a
-   name alone with its sets on the next lines. Sets use the same reading as
-   Type or dictate sets (parseSets), plus "3x10 @ 60" and "60x10x3" for sets
-   of reps at a load, and units written next to numbers. */
-function impSetsText(t){
-  let s=' '+String(t).toLowerCase()+' ';
-  s=s.replace(/(\d)\s*(lbs?|kgs?|#)(?=[\s,x×*@;/]|$)/g,'$1 ');
-  s=s.replace(/(\d)\s*(?:s|sec|secs|seconds)\b/g,'$1');
-  // sets x reps @ load, and "3 sets of 10 at 60"
-  s=s.replace(/\b(\d{1,2})\s*(?:x|×|\*|sets? of)\s*(\d{1,3})\s*(?:@|at)\s*(\d+(?:\.\d+)?)\b/g,(m,a,b,c)=>+a<=10&&+c>+a?Array(+a).fill(`${c}x${b}`).join(' '):m);
-  // load x reps x sets
-  s=s.replace(/\b(\d+(?:\.\d+)?)\s*[x×*]\s*(\d{1,3})\s*[x×*]\s*(\d{1,2})\b/g,(m,a,b,c)=>+c<=10?Array(+c).fill(`${a}x${b}`).join(' '):m);
-  // load then sets x reps: "225 5x5"
-  s=s.replace(/(^|\s)(\d{2,}(?:\.\d+)?)\s+(\d{1,2})\s*[x×*]\s*(\d{1,3})(?=\s|,|$)/g,(m,p,a,b,c)=>+b<=10?p+Array(+b).fill(`${a}x${c}`).join(' '):m);
-  return s.trim();
-}
-function impFromText(text){
-  const lines=String(text).split(/\r?\n/);const S=[];let cur=null,ex=null,pend=null,hint=null;const unread=[];
-  const day=(date,name)=>{if(pend)unread.push(pend.raw);cur={date,name:name||'',items:[]};S.push(cur);ex=null;pend=null;};
-  const raw=v=>v;
-  for(const L0 of lines){const L=L0.replace(/^[\s\-•*–]+/,'').trim();if(!L)continue;
-    if(/\bkgs?\b|\dkg/i.test(L))hint=hint||'kg';else if(/\blbs?\b|\dlb|#/i.test(L))hint=hint||'lb';
-    const words=L.split(/\s+/);
-    // A date line: a date and no sets on it; what is left may be the workout's name.
-    const dt=impDate(L);
-    if(dt){const rest=L.replace(/\b(mon|tues?|wed(nes)?|thu(rs)?|fri|sat(ur)?|sun)(day)?\b/ig,'').replace(/\b\d{4}[-/.]\d{1,2}[-/.]\d{1,2}\b|\b\d{1,2}[/.-]\d{1,2}([/.-]\d{2,4})?\b|\b\d{1,2}(st|nd|rd|th)?\s+[a-z]{3,9}\.?,?(\s*\d{4})?\b|\b[a-z]{3,9}\.?\s+\d{1,2}(st|nd|rd|th)?(,?\s*\d{4})?\b/ig,'').replace(/[,:;\-–|]+/g,' ').trim();
-      if(!/\d/.test(rest)){day(dt,rest);continue;}}
-    // Sets alone continue the exercise above, or the name waiting on the line before.
-    const target=ex||pend;
-    const alone=parseSets(impSetsText(L),{bw:true},null,raw);
-    if(alone&&target&&!/[a-z]{3,}/i.test(L.replace(/\b(bw|x|at|for|rir|reps?|sets?|of|lbs?|kgs?|sec|secs|seconds)\b/ig,''))){
-      const p=pend;if(!cur){pend=null;day(null,'');}if(p&&target===p){ex={name:p.name,sets:[],setsText:[]};cur.items.push(ex);pend=null;}
-      ex.setsText.push(L);continue;}
-    // Name then sets: the shortest name whose remainder reads as sets, so no set is read as part of the name.
-    let done=false;
-    for(let i=1;i<words.length;i++){const name=words.slice(0,i).join(' ').replace(/[:\-–]+$/,'').trim();const rest=words.slice(i).join(' ');
-      if(!/[a-z]/i.test(name))continue;const got=parseSets(impSetsText(rest),{bw:true},null,raw);
-      if(got){if(!cur)day(null,'');ex={name,sets:[],setsText:[rest]};cur.items.push(ex);pend=null;done=true;break;}}
-    if(done)continue;
-    // A name alone: its sets may follow on the next lines.
-    if(/[a-z]{3,}/i.test(L)&&!/\d{2,}\s*[x×*]/.test(L)){if(pend)unread.push(pend.raw);pend={name:L.replace(/[:\-–]+$/,'').trim(),raw:L0.trim()};ex=null;continue;}
-    unread.push(L0.trim());
-  }
-  if(pend)unread.push(pend.raw);
-  return {sessions:S.filter(x=>x.items.length).map(x=>({date:x.date,name:x.name,items:x.items})),unit:hint,skipped:0,cardio:0,unread:unread.slice(0,50),unreadN:unread.length,text:true};
-}
-/* Sets from text are read once the exercise is known, so a bodyweight lift
-   may have reps alone. The unit is applied at the end. */
-function impTextSets(it,exo,conv){const out=[];for(const t of it.setsText){const g=parseSets(impSetsText(t),{bw:!!exo.bw||!!exo.timed},null,conv);if(!g)return null;out.push(...g.map(x=>({w:x.w,r:x.r,rir:x.rir,warm:false,drop:false})));}return out;}
-/* Reads the input and opens the preview. */
-async function impStart(input){
-  const m={kind:'imp',step:'input',text:'',err:''};
-  try{
-    let rows=null,text=null;
-    if(input&&input.file){const f=input.file;const nm=(f.name||'').toLowerCase();
-      if(/\.json$/.test(nm)||f.type==='application/json'){importData(await f.text());return;}
-      if(/\.xlsx$/.test(nm)){try{rows=await impXlsx(await f.arrayBuffer());}catch(e){openModal({...m,err:e&&e.message==='old'?'This phone cannot open .xlsx files. Save the sheet as CSV and try again.':'That spreadsheet could not be read. Save it as CSV and try again.'});return;}}
-      else if(/\.(xls|numbers|pdf|docx?)$/.test(nm)){openModal({...m,err:'Save it as CSV (or copy the cells and paste them here) and try again.'});return;}
-      else text=await f.text();}
-    else text=String(input&&input.text||'');
-    if(text!=null){const t=text.trim();if(!t){openModal({...m,err:'Paste your log or choose a file.'});return;}
-      if(/^\s*\{/.test(t)&&/"sessions"/.test(t)){importData(t);return;}
-      rows=impRows(t);
-      // A table only when its first row names real columns, or cells were pasted (tabs); notes with commas stay notes.
-      if(rows&&Object.keys(impHeader(rows[0])).filter(k=>['date','ex','r','w'].includes(k)).length<2&&!/\t/.test(t.split(/\r?\n/)[0]))rows=null;
-      if(!rows){openPreview(impFromText(t),null);return;}}
-    const map=impHeader(rows[0]);
-    openPreview(map.ex!=null&&(map.r!=null||map.secs!=null)?impFromTable(rows,map):{sessions:[],needMap:true},{rows,map});
-  }catch(e){log('import',e);openModal({...m,err:'That could not be read.'});}
-}
-function openPreview(res,tab){
-  const names=[...new Set(res.sessions.flatMap(x=>x.items.map(i=>i.name)))];
-  const pick={};for(const n of names){const c=impMatch(n);pick[n]=c[0]&&c[0].sc>=0.6?c[0].id:'new';}
-  const guess={};for(const n of names)guess[n]=impGuess(n);
-  openModal({kind:'imp',step:'preview',res,tab,pick,guess,unit:res.unit||U(),unitKnown:!!res.unit,date:today(),showAll:false});
-}
-/* Sessions as they would be saved, and which are already in the log. */
-function impBuild(m){
-  const conv=m.unit==='kg'?(v=>v):(v=>v*LB);const newEx={};const out=[];let bad=0;
-  for(const n in m.pick)if(m.pick[n]==='new'){const g=m.guess[n];newEx[n]={id:'c_'+uid(),name:n.slice(0,60),primary:g.primary,secondary:[],equip:g.equip,bw:g.equip==='bodyweight',rare:false,note:'',custom:true,archived:false};}
-  for(const x of m.res.sessions){const date=x.date||m.date;const ex=[];
-    for(const it of x.items){const exo=m.pick[it.name]==='new'?newEx[it.name]:EX(m.pick[it.name]);
-      let sets=it.setsText?impTextSets(it,exo,conv):it.sets.map(s=>({w:conv(s.w),r:s.r,rir:s.rir,warm:s.warm,drop:s.drop&&!s.warm}));
-      if(!sets||!sets.length){bad++;continue;}
-      // Assisted: files write the help as a plus or a minus number; it is help either way. Other lifts never go below 0.
-      for(const q of sets){if(exo.assist)q.w=-Math.abs(q.w);else if(q.w<0&&!exo.bw)q.w=0;}
-      // A lift's sets across rows of the same exercise stay together.
-      const prev=ex.find(b=>b.exId===exo.id);if(prev)prev.sets.push(...sets);else ex.push({exId:exo.id,note:it.note||'',rr:null,sets});}
-    if(ex.length)out.push({id:uid(),date,dayIdx:0,dayId:null,dayName:(x.name||'').slice(0,60)||'Imported',routineId:'',free:true,ex,notes:'',durMin:null,deload:false,light:false});}
-  const fp=ss=>ss.date+'|'+ss.ex.map(b=>b.exId+':'+b.sets.map(q=>(Math.round((+q.w||0)*100)/100)+'x'+q.r).join(',')).sort().join(';');
-  const have=new Set(state.sessions.map(fp));const seen=new Set();const fresh=[];let dup=0;
-  for(const ss of out){const k=fp(ss);if(have.has(k)||seen.has(k)){dup++;continue;}seen.add(k);fresh.push(ss);}
-  return {sessions:fresh,dup,bad,newEx:Object.values(newEx).filter(e=>fresh.some(ss=>ss.ex.some(b=>b.exId===e.id)))};
-}
-function impSheet(m){
-  const H=(t)=>`<div class="sheet fixed" role="dialog" aria-modal="true" aria-labelledby="impH"><div class="sheet-h"><h3 id="impH">${t}</h3><button class="ib" aria-label="Close" data-act="mClose">✕</button></div><div class="sheet-scroll">`;
-  if(m.step==='input')return H('Import workouts')+`<p class="small muted" style="margin:0 0 8px">Notes, a spreadsheet, Strong or Hevy. Nothing is saved until you check it.</p>
-    <label class="btn primary block" style="position:relative">Choose a file<input type="file" id="impFile" accept=".csv,.tsv,.txt,.xlsx,.json,text/csv,text/plain,application/json" style="position:absolute;width:1px;height:1px;opacity:0"></label>
-    <p class="small muted" style="margin:10px 0 4px">or paste it</p>
-    <textarea id="impText" aria-label="Paste your log" style="min-height:160px;font-size:14px" placeholder="Sep 20&#10;Bench press 185x8, 185x7, 185x6&#10;Lat pulldown 3x10 @ 120">${esc(m.text||'')}</textarea>
-    ${m.err?`<p class="small" style="color:var(--red);margin:8px 0 0">${esc(m.err)}</p>`:''}
-    <button class="btn block" style="margin-top:10px" data-act="impRead">Read it</button>
-    <p class="small muted hastip" style="margin:10px 0 0" data-tip="Notes: a date on its own line, then one exercise per line with its sets (185x8, 185x7 or 3x10 @ 120). A spreadsheet: a file, or copy the cells and paste them, with columns such as date, exercise, weight and reps. Strong: Settings, Export data. Hevy: Settings, Export and import data, Export workouts. Handwritten: photograph the page, open it in Photos, press and hold the writing, tap Copy, and paste it here. An Ironlog backup file restores your whole log instead.">What can I import?</p></div></div>`;
-  const r=m.res;
-  if(r.needMap){const head=m.tab.rows[0];const opt=(f,label,need)=>`<label class="field">${label}${need?'':' <span class="muted">(optional)</span>'}<select data-mapf="${f}"><option value="">None</option>${head.map((h,i)=>`<option value="${i}" ${m.tab.map[f]===i?'selected':''}>${esc(String(h||'Column '+(i+1)).slice(0,30))}</option>`).join('')}</select></label>`;
-    return H('Which column is which?')+`<p class="small muted" style="margin:0 0 8px">The first row is read as column names.</p>${opt('date','Date',1)}${opt('ex','Exercise',1)}${opt('w','Weight')}${opt('r','Reps',1)}${opt('sets','Sets')}${opt('rir','RIR')}${opt('name','Workout name')}
-      <button class="btn primary block" style="margin-top:10px" data-act="impMapDone">Continue</button></div></div>`;}
-  const b=impBuild(m);const nSets=b.sessions.reduce((a,x)=>a+x.ex.reduce((c,e)=>c+e.sets.length,0),0);const dates=b.sessions.map(x=>x.date).sort();
-  const names=Object.keys(m.pick);const lib=state.exercises.filter(e=>!e.archived).sort((x,y)=>x.name.localeCompare(y.name));
-  const row=n=>{const c=impMatch(n);const top=new Set(c.map(x=>x.id));const v=m.pick[n];
-    return `<div class="imp-ex"><div class="imp-n">${esc(n)}</div><select data-imppick="${esc(n)}" aria-label="${esc(n)} is">${`<option value="new" ${v==='new'?'selected':''}>New exercise</option>`}${c.map(x=>`<option value="${x.id}" ${v===x.id?'selected':''}>${esc(exName(x.id))}</option>`).join('')}<option disabled>──────</option>${lib.filter(e=>!top.has(e.id)).map(e=>`<option value="${e.id}" ${v===e.id?'selected':''}>${esc(e.name)}</option>`).join('')}</select>
-    ${v==='new'?`<select data-impmus="${esc(n)}" aria-label="Main muscle for ${esc(n)}">${MUSCLES.map(([k,l])=>`<option value="${k}" ${m.guess[n].primary===k?'selected':''}>${l}</option>`).join('')}</select>`:''}</div>`;};
-  const unsure=names.filter(n=>{const c=impMatch(n);return m.pick[n]==='new'||!c[0]||c[0].id!==m.pick[n]||c[0].sc<0.85;});const sure=names.filter(n=>!unsure.includes(n));
-  const noDate=r.sessions.some(x=>!x.date);
-  return H('Check the import')+`<div class="kpis"><div class="kpi"><div class="v">${b.sessions.length}</div><div class="l">sessions</div></div><div class="kpi"><div class="v">${nSets}</div><div class="l">sets</div></div><div class="kpi"><div class="v">${names.length}</div><div class="l">exercises</div></div></div>
-  ${dates.length?`<p class="small muted" style="margin:6px 0 0">${fmtDate(dates[0])}${dates.length>1?' to '+fmtDate(dates[dates.length-1]):''}</p>`:''}
-  ${b.dup?`<p class="small" style="margin:6px 0 0">${b.dup} already in your log, skipped.</p>`:''}
-  <div style="margin-top:10px"><p class="small muted" style="margin:0 0 6px;font-weight:600">Weights in the file are</p><div class="ob-units">${['lb','kg'].map(k=>`<button class="chip ${m.unit===k?'on':''}" data-act="impUnit" data-v="${k}" aria-pressed="${m.unit===k}">${k}</button>`).join('')}</div>${m.unitKnown?'':'<p class="small muted" style="margin:4px 0 0">The file does not say; check this.</p>'}</div>
-  ${noDate?`<label class="field" style="margin-top:10px">No date found. Log it on<input type="date" data-impdate value="${m.date}" max="${today()}"></label>`:''}
-  ${unsure.length?`<p class="small" style="margin:12px 0 4px;font-weight:650">Check these exercises</p>${unsure.map(row).join('')}`:''}
-  ${sure.length?`<details class="subsec" style="margin-top:8px"><summary>${sure.length} matched</summary>${sure.map(row).join('')}</details>`:''}
-  ${r.unreadN||r.unread&&r.unread.length?`<details class="subsec" style="margin-top:8px"><summary>${r.unreadN||r.unread.length} line${(r.unreadN||r.unread.length)===1?'':'s'} not understood</summary><ul class="small" style="margin:6px 0 0;padding-left:18px">${r.unread.map(l=>`<li>${esc(l)}</li>`).join('')}</ul></details>`:''}
-  ${r.skipped?`<p class="small muted" style="margin:6px 0 0">${r.skipped} row${r.skipped===1?'':'s'} without an exercise, date or reps were skipped.</p>`:''}${r.cardio?`<p class="small muted" style="margin:6px 0 0">${r.cardio} cardio row${r.cardio===1?'':'s'} left out.</p>`:''}
-  ${b.bad?`<p class="small" style="margin:6px 0 0;color:var(--yellow)">${b.bad} exercise${b.bad===1?' has':'s have'} sets that need a weight; check the unit or the exercise.</p>`:''}
-  <button class="btn primary block" style="margin-top:12px" data-act="impGo" ${b.sessions.length?'':'disabled'}>Import ${b.sessions.length} session${b.sessions.length===1?'':'s'}</button>
-  <button class="btn block" style="margin-top:6px" data-act="impBack">Back</button></div></div>`;
-}
 function importData(text){
   let obj;try{obj=JSON.parse(text);}catch(e){toast('That is not valid backup text');return;}
   const s=obj&&obj.state?obj.state:obj;
@@ -6329,17 +6041,6 @@ const ACT={
   },
   layoutSimple(){state.settings.hidden=SIMPLE_HIDE.slice();commit();rerenderKeepScroll();toast('Simple view on. Show everything brings the rest back.');},
   layoutAll(){state.settings.hidden=[];commit();rerenderKeepScroll();toast('Every section shown');},
-  impOpen(){openModal({kind:'imp',step:'input',text:'',err:''});},
-  impRead(){const el=$('#impText');const text=el?el.value:'';if(ui.modal)ui.modal.text=text;impStart({text});},
-  impUnit(t){const m=ui.modal;if(!m||m.kind!=='imp'||!['lb','kg'].includes(t.dataset.v))return;m.unit=t.dataset.v;renderModal();},
-  impBack(){openModal({kind:'imp',step:'input',text:'',err:''});},
-  impMapDone(){const m=ui.modal;if(!m||!m.tab)return;const mp=m.tab.map;if(mp.date==null||mp.ex==null||mp.r==null){toast('Choose the date, exercise and reps columns');return;}openPreview(impFromTable(m.tab.rows,mp),m.tab);},
-  impGo(){
-    const m=ui.modal;if(!m||m.kind!=='imp'||m.step!=='preview')return;const b=impBuild(m);if(!b.sessions.length)return;
-    snapshot();for(const e of b.newEx)state.exercises.push(e);state.sessions.push(...b.sessions);state.settings.onboarded=true;
-    commit();closeModal();ui.tab='history';window.scrollTo(0,0);render();
-    toast(`Imported ${b.sessions.length} session${b.sessions.length===1?'':'s'}${b.newEx.length?`, ${b.newEx.length} new exercise${b.newEx.length===1?'':'s'}`:''}`,true);
-  },
   bestsAll(){ui.bestsAll=true;rerenderKeepScroll();},
   obSample(){openModal({kind:'templates',from:'welcome'});},
   obAcctLater(){try{localStorage.setItem(OB_ACCT,'later');}catch(e){/* per device only */}window.scrollTo(0,0);render();},
@@ -7048,7 +6749,7 @@ document.addEventListener('input',e=>{
     // Clamp what gets stored. The field keeps whatever was typed so the user is
     // not fought mid-keystroke, but history can never take a negative load or
     // an impossible rep count, which used to push session volume negative.
-    if(t.dataset.f==='w'){const n=numIn(v);const bx=state.draft.ex[+t.dataset.b];const as=bx&&EX(bx.exId).assist;s.w=n==null?null:fromD(Math.min(Math.max(n,0),as?660:20000))*(as?-1:1);if(s.w===0)s.w=0;carried.delete(s);}
+    if(t.dataset.f==='w'){const n=numIn(v);s.w=n==null?null:fromD(Math.min(Math.max(n,0),20000));carried.delete(s);}
     else if(t.dataset.f==='r'){const n=numIn(v);s.r=n==null?null:Math.min(Math.max(Math.round(n),0),1000);refreshGrey(+t.dataset.b);}
     else{const n=numIn(v);s.rir=n==null?null:Math.min(Math.max(n,0),10);if(t.tagName==='SELECT')t.classList.toggle('unset',v==='');}
     if(t.dataset.f!=='rir')updateProgress(+t.dataset.b);
@@ -7076,7 +6777,6 @@ document.addEventListener('change',e=>{
   const t=e.target;
   if(ui.modal&&FORM_SHEETS.has(ui.modal.kind)&&t&&t.closest&&t.closest('#modal'))ui.modal.dirty=true;
   if(t.id==='fbShot'&&t.files&&t.files[0]&&ui.modal&&ui.modal.kind==='feedback'){const m=ui.modal;fbShrink(t.files[0]).then(d=>{if(ui.modal!==m)return;if(!d){toast('That picture is too large');return;}m.shot=d;m.dirty=true;renderModal();},e=>{log('feedback',e);toast('Could not read that picture');});t.value='';return;}
-  if(t.id==='impFile'&&t.files&&t.files[0]){const f=t.files[0];t.value='';impStart({file:f});return;}
   if(t.id==='importFile'&&t.files&&t.files[0]){const fr=new FileReader();fr.onload=()=>importData(String(fr.result));fr.onerror=()=>toast('Could not read that file');fr.readAsText(t.files[0]);t.value='';return;}
   if(t.dataset.it){commit();rerenderKeepScroll();return;}
   if(t.dataset.band){const k=t.dataset.band;const b=state.settings.bands[k];if(b[0]>b[1])b.reverse();commit();rerenderKeepScroll();return;}
@@ -7084,11 +6784,6 @@ document.addEventListener('change',e=>{
   if(t.dataset.dayrest!=null){const R=curRoutineB();const d=R.days[+t.dataset.dayrest];if(!d)return;snapshot();d.rest=t.checked;commit();rerenderKeepScroll();toast(t.checked?`${d.name||'Day'} is now a rest day. Its exercises are kept.`:`${d.name||'Day'} is a training day again`,true);return;}
   if(t.dataset.moveto){const f=findItem(t.dataset.moveto);if(!f)return;const to=+t.value;if(to===f.di)return;f.r.days[f.di].items.splice(f.i,1);f.r.days[to].items.push(f.it);if(f.r.days[to].rest)f.r.days[to].rest=false;commit();rerenderKeepScroll();toast(`Moved to ${dayLabel(f.r,to)}`);return;}
   if(t.dataset.ebind&&ui.modal&&ui.modal.kind==='exEdit'){const k=t.dataset.ebind;ui.modal.e[k]=t.type==='checkbox'?t.checked:t.value;if(k==='primary'){ui.modal.e.secondary=ui.modal.e.secondary.filter(x=>x!==t.value);renderModal();}if(k==='bw'){if(t.checked&&!ui.modal.e.bwfRaw)ui.modal.e.bwfRaw=String(Math.round(bwShare(ui.modal.e)*100));renderModal();}if(k==='timed'||k==='equip')renderModal();return;}
-  if(ui.modal&&ui.modal.kind==='imp'){const m=ui.modal;
-    if(t.dataset.imppick!=null){m.pick[t.dataset.imppick]=t.value;renderModal();return;}
-    if(t.dataset.impmus!=null){if(ML[t.value])m.guess[t.dataset.impmus].primary=t.value;return;}
-    if(t.dataset.impdate!=null){if(isDate(t.value)&&t.value<=today())m.date=t.value;else t.value=m.date;renderModal();return;}
-    if(t.dataset.mapf!=null){m.tab.map[t.dataset.mapf]=t.value===''?undefined:+t.value;return;}}
   if(t.dataset.mbind)return;
   if(t.dataset.pbind==='date'&&ui.modal&&ui.modal.kind==='past'){if(isDate(t.value)&&t.value<=today())ui.modal.date=t.value;else toast('Pick today or an earlier date');renderModal();return;}
   if(t.dataset.cf&&state.draft&&state.draft.cardio){const c=state.draft.cardio[+t.dataset.c];if(c){const k=t.dataset.cf;if(k==='kind'&&CARDIOL[t.value])c.kind=t.value;else if(k==='when'&&CWHENL[t.value])c.when=t.value;saveNow();}return;}
@@ -7390,8 +7085,7 @@ function aiDigest(maxBytes){
    "bw x 10, bw+25 x 6"   bodyweight exercises, added load after the plus
    A bare number after the first set repeats the last load. Anything it
    cannot read returns null, and Claude is asked instead. */
-function parseSets(text,ex,defW,conv){
-  conv=conv||fromD;
+function parseSets(text,ex,defW){
   let s=String(text||'').toLowerCase().replace(/[×*]/g,'x').replace(/\bfor\b/g,'x').replace(/\bat\b/g,'@').replace(/\breps?\b/g,'').replace(/\blbs?\b|\bkgs?\b/g,'');
   let allRir=null;const m=s.match(/\brir\s*(\d+(?:\.\d+)?)\s*$/);if(m){allRir=+m[1];s=s.slice(0,m.index);}
   s=s.replace(/\s*x\s*/g,'x').replace(/\s*@\s*/g,'@').replace(/\s*\+\s*/g,'+').trim();
@@ -7401,7 +7095,7 @@ function parseSets(text,ex,defW,conv){
   let w=defW==null?null:defW;const out=[];
   for(const t of toks){
     const g=t.match(re);if(!g)return null;
-    if(g[1])w=g[2]?conv(+g[2]):0;else if(g[3]!=null)w=conv(+g[3]);
+    if(g[1])w=g[2]?fromD(+g[2]):0;else if(g[3]!=null)w=fromD(+g[3]);
     const r=+g[4];if(!(r>=1&&r<=100))return null;
     const rir=g[5]!=null?+g[5]:allRir;if(rir!=null&&!(rir>=0&&rir<=10))return null;
     if(w==null&&!ex.bw)return null;
@@ -7455,7 +7149,7 @@ function swapPrompt(b,reason){
 }
 
 window.__onLib=(which)=>{if((which==='chart'&&ui.tab==='dash')||(which==='sortable'&&ui.tab==='program'))rerenderKeepScroll();};
-window.__ironlog={get state(){return state;},set state(v){state=v;},e1inv,rtfAt,rtfOf,rtfBand,calStats,rirEff,isHard,setCredit,tonnage,loadMode,loadWords,loadNote,progStep,jumpCap,setSecs,setupSecs,recovery,rolling7,rankDays,rankExercises,isCompound,patternOf,noE1,whtrLine,exHeadline,remainMin,shortPlan,weekPlan,cycleProjection,lastLighterWeek,regionBalance,parseHeight,mixCheck,swapCands,eqPlan,exportCSV,importData,chunksOf,assemble,sessionMuscles,TRACK_ONLY,cloud,Hx,mergeChunk,baseOf,sync:()=>cq(cloudPull),TEMPLATES,lastRFor,impDate,impRows,impNorm,impMatch,impFromText,impFromTable,impHeader,impBuild,impStart,impXlsx,parseSets,undoStack,undoRestore,undoForget,allTimeBests,bestsBoard,obActive,fmtW,rirUsual,rirEst,routineFromTemplate,plannedSets,map3d:()=>({state:B3.state,fail:B3.fail,meshes:B3.meshes.length,yaw:B3.yaw,glow:Object.keys(B3.mats).filter(m=>B3.mats[m].emissiveIntensity>0),canvas:!!document.querySelector('#bm3d canvas'),colors:Object.fromEntries(Object.entries(B3.mats).map(([m,mt])=>[m,'#'+mt.color.getHexString()])),pick:(x,y)=>map3dPick(x,y),want:map3dColors()}),cloudState:()=>({on:cloud.on,status:cloud.status,err:cloud.err,uid:cloud.uid,acct:cloud.acct}),acctUser:()=>acct.user,acctWaiting:()=>!!acctWait.pw,flush:()=>cq(cloudFlush),backupDue,routineUpdates,planFor,platesMode,plateText,chunksOf,IDX,suggest,e1,render,ACT,ui,makeDemo,invalidate,normalize,snapshot,saveNow,timer,weekStats,weekStart,today,EX,blockProgress,dayMinutes,weekStreak,coach,tonnageNow,livePR,exProjection,movers,stalledIds,muscleStatus,actualAvg4,plannedPerWeek,parseSets,aiSetsValid,fillSets,newBlock,lastNoteOf,sizeRows,sessionMuscleSets,sessionCapNote,routineClutter,aiDigest,debriefPrompt,reviewPrompt,swapPrompt,AI,sameRR};
+window.__ironlog={get state(){return state;},set state(v){state=v;},e1inv,rtfAt,rtfOf,rtfBand,calStats,rirEff,isHard,setCredit,tonnage,loadMode,loadWords,loadNote,progStep,jumpCap,setSecs,setupSecs,recovery,rolling7,rankDays,rankExercises,isCompound,patternOf,noE1,whtrLine,exHeadline,remainMin,shortPlan,weekPlan,cycleProjection,lastLighterWeek,regionBalance,parseHeight,mixCheck,swapCands,eqPlan,exportCSV,importData,chunksOf,assemble,sessionMuscles,TRACK_ONLY,cloud,Hx,mergeChunk,baseOf,sync:()=>cq(cloudPull),TEMPLATES,lastRFor,undoStack,undoRestore,undoForget,allTimeBests,bestsBoard,obActive,fmtW,rirUsual,rirEst,routineFromTemplate,plannedSets,map3d:()=>({state:B3.state,fail:B3.fail,meshes:B3.meshes.length,yaw:B3.yaw,glow:Object.keys(B3.mats).filter(m=>B3.mats[m].emissiveIntensity>0),canvas:!!document.querySelector('#bm3d canvas'),colors:Object.fromEntries(Object.entries(B3.mats).map(([m,mt])=>[m,'#'+mt.color.getHexString()])),pick:(x,y)=>map3dPick(x,y),want:map3dColors()}),cloudState:()=>({on:cloud.on,status:cloud.status,err:cloud.err,uid:cloud.uid,acct:cloud.acct}),acctUser:()=>acct.user,acctWaiting:()=>!!acctWait.pw,flush:()=>cq(cloudFlush),backupDue,routineUpdates,planFor,platesMode,plateText,chunksOf,IDX,suggest,e1,render,ACT,ui,makeDemo,invalidate,normalize,snapshot,saveNow,timer,weekStats,weekStart,today,EX,blockProgress,dayMinutes,weekStreak,coach,tonnageNow,livePR,exProjection,movers,stalledIds,muscleStatus,actualAvg4,plannedPerWeek,parseSets,aiSetsValid,fillSets,newBlock,lastNoteOf,sizeRows,sessionMuscleSets,sessionCapNote,routineClutter,aiDigest,debriefPrompt,reviewPrompt,swapPrompt,AI,sameRR};
 render();
 wakeOn();
 timerResume();
