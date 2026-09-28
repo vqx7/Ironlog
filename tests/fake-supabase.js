@@ -4,7 +4,7 @@
 // rows, signed-out requests see nothing). It also serves a folder of static
 // files, so the app and its "cloud" share one origin like in production.
 //
-// start(root) -> {base, users, rows, confirm(email), expireTokens(), log, close()}
+// start(root) -> {base, users, rows, feedback, confirm(email), addReader(email), expireTokens(), log, close()}
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
@@ -18,6 +18,9 @@ function start(root) {
   const tokens = new Map();     // access token -> {uid, exp}
   const refresh = new Map();    // refresh token -> uid
   const rows = new Map();       // `${uid} ${path}` -> {user_id, path, data, updated_at}
+  const feedback = [];          // rows of public.feedback
+  const readers = new Set();    // user ids in public.feedback_readers
+  let fbOn = true;              // false: the feedback tables are not created yet
   const log = [];
   let tokenLife = 3600; let deny = false; let fnDeployed = false;
   const now = () => Math.floor(Date.now() / 1000);
@@ -109,6 +112,29 @@ function start(root) {
         users.delete(c.email); for (const [t, v] of [...tokens]) if (v.uid === c.id) tokens.delete(t);
         return send(res, 200, { deleted: true });
       }
+      // ---- Data API: feedback (anyone adds; only listed readers read) ----
+      if (p === '/rest/v1/feedback' || p === '/rest/v1/feedback_readers') {
+        const c = caller(req);
+        if (c && c.expired) return send(res, 401, { code: 'PGRST303', message: 'JWT expired' });
+        if (!fbOn) return send(res, 404, { code: 'PGRST205', message: `Could not find the table 'public.${p.slice(9)}' in the schema cache` });
+        if (p === '/rest/v1/feedback_readers') {
+          if (req.method !== 'GET') return send(res, 405, { message: 'method' });
+          const mine = c && readers.has(c.id) ? [{ user_id: c.id }] : [];
+          if (/vnd\.pgrst\.object/.test(req.headers.accept || '')) return mine.length ? send(res, 200, mine[0]) : send(res, 406, { code: 'PGRST116', message: 'no rows' });
+          return send(res, 200, mine);
+        }
+        if (req.method === 'POST') {
+          const b = json(); const arr = Array.isArray(b) ? b : [b];
+          for (const r of arr) {
+            if (r.user_id && (!c || r.user_id !== c.id)) return send(res, 403, { code: '42501', message: 'new row violates row-level security policy for table "feedback"' });
+            if (!['bug', 'idea', 'question'].includes(r.category) || !r.message || String(r.message).length > 4000) return send(res, 400, { code: '23514', message: 'new row violates check constraint' });
+            feedback.push({ id: feedback.length + 1, created_at: new Date().toISOString(), user_id: c ? c.id : null, category: r.category, message: r.message, reply_to: r.reply_to || null, screenshot: r.screenshot || null, context: r.context || {}, issue_url: null });
+          }
+          return send(res, 201);
+        }
+        if (req.method === 'GET') return send(res, 200, c && readers.has(c.id) ? feedback.slice().reverse() : []);
+        return send(res, 405, { message: 'method' });
+      }
       // ---- Data API: table docs ----
       if (p === '/rest/v1/docs') {
         const c = caller(req);
@@ -158,6 +184,7 @@ function start(root) {
       setTokenLife(s) { tokenLife = s; },
       setDeny(v) { deny = !!v; },
       deployDelete(v) { fnDeployed = !!v; },
+      feedback, addReader(email) { const x = users.get(email); if (x) readers.add(x.id); }, feedbackTables(v) { fbOn = !!v; },
       close: () => new Promise(q => server.close(q)) });
   }));
 }

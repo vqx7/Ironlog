@@ -192,7 +192,8 @@ const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log
   // ---- 62: less text for a new user.
   const N = await open('index.html', { touch: true, w: 390, h: 844, clock: '2026-09-24T18:00:00' });
   const nev = (f, a) => N.page.evaluate(f, a);
-  const wel = await nev(() => document.querySelector('.welcome').innerText.replace(/\s+/g, ' '));
+  // The account offer (standalone build only) is item 55's; the rest of the card is what item 62 trims.
+  const wel = await nev(() => { const c = document.querySelector('.welcome').cloneNode(true); const a = c.querySelector('#welcomeAcct'); if (a) a.remove(); document.body.appendChild(c); const t = c.innerText.replace(/\s+/g, ' '); c.remove(); return t; });
   ok(wel.length < 200 && !/Full body, upper/.test(wel) && await nev(() => /Full body, upper/.test(document.querySelector('[data-act="obSample"]').dataset.tip)), 'welcome card: the explanations moved into tips (' + wel.length + ' characters)', wel);
   await nev(() => { const L = window.__ironlog; L.state.settings.onboarded = true; L.ui.tab = 'today'; L.render(); document.querySelectorAll('#view details.sec').forEach(d => d.open = true); });
   const nt = await nev(() => ({ subs: [...document.querySelectorAll('.sec>summary .sec-s')].map(e => e.textContent.trim()), fs: getComputedStyle(document.querySelector('.sec-s')).fontSize, preview: [...document.querySelectorAll('[data-mkey="session"] p')].map(p => p.textContent.trim()).filter(Boolean), body: (document.querySelector('[data-mkey="body"] .sec-b') || {}).innerText || '' }));
@@ -205,6 +206,42 @@ const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log
   ok(st.length < 100 && /No sessions yet/.test(st), 'Stats with no sessions: one short line, the rest in a tip', st);
   await nev(() => { const L = window.__ironlog; L.ui.tab = 'program'; L.render(); document.querySelectorAll('#view details.sec').forEach(d => d.open = true); });
   ok(await nev(() => !/Drag ⠿ to reorder days/.test(document.getElementById('view').innerText) && !/drag into a day/.test(document.getElementById('view').innerText)), 'Plan: drag hints moved into tips');
+  ok(await nev(() => !document.querySelector('#wkbar .w.add') && [...document.querySelectorAll('#wkbar .w')].every(w => w.tagName === 'BUTTON')), 'a brand-new week bar shows no + marks, but every day is still a button');
+
+  // ---- 58, in the source file: the feedback sheet (no service here, so it copies the report).
+  await nev(() => { const L = window.__ironlog; L.ui.tab = 'history'; L.render(); L.ui.tab = 'settings'; L.ui.folds['settings:feedback'] = true; L.render(); });
+  ok(await nev(() => !!document.querySelector('[data-mkey="feedback"] [data-act="fbOpen"]') && !document.querySelector('[data-act="fbInbox"]')), 'Settings > Feedback offers Send feedback (no inbox without an owner account)');
+  await N.page.click('[data-mkey="feedback"] [data-act="fbOpen"]'); await N.page.waitForTimeout(80);
+  const fb0 = await nev(() => { const m = window.__ironlog.ui.modal; return { kind: m.kind, from: m.from, cats: [...document.querySelectorAll('#modal [data-act="fbCat"]')].map(b => b.textContent), btn: document.querySelector('#modal [data-act="fbSend"]').textContent, tip: document.querySelector('#modal .tipi').dataset.tip }; });
+  ok(fb0.kind === 'feedback' && fb0.from === 'history' && fb0.cats.join() === 'Bug,Idea,Question', 'the sheet: bug, idea or question, and it knows the screen you came from', fb0);
+  ok(/Never your workouts/.test(fb0.tip) && /app owner/.test(fb0.tip), 'it says what is attached, and that it goes to the app owner');
+  await N.page.fill('#modal [data-fbind="msg"]', 'ok'); await N.page.click('#modal [data-act="fbSend"]'); await N.page.waitForTimeout(60);
+  ok(/few words/.test(await nev(() => window.__ironlog.ui.modal.err || '')), 'an empty report is refused');
+  await N.page.fill('#modal [data-fbind="msg"]', 'The chart on Stats is blank'); await N.page.click('#modal [data-act="fbCat"][data-v="idea"]'); await N.page.waitForTimeout(40);
+  ok(await nev(() => document.querySelector('#modal [data-fbind="msg"]').value === 'The chart on Stats is blank' && /What would help/.test(document.getElementById('modal').innerText)), 'switching the kind keeps the text and changes the question');
+  await N.page.fill('#modal [data-fbind="reply"]', 'not-an-email'); await N.page.click('#modal [data-act="fbSend"]'); await N.page.waitForTimeout(60);
+  ok(/does not look right/.test(await nev(() => window.__ironlog.ui.modal.err || '')), 'a bad reply address is caught');
+  await N.page.fill('#modal [data-fbind="reply"]', '');
+  // A picked screenshot is shrunk to a JPEG.
+  const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAIAAAD91JpzAAAAFklEQVR4nGP4z8DAwMDAxMDAwMDAAAANHQEDasKb6QAAAABJRU5ErkJggg==', 'base64');
+  await N.page.setInputFiles('#fbShot', { name: 'shot.png', mimeType: 'image/png', buffer: png }); await N.page.waitForTimeout(300);
+  ok(await nev(() => /^data:image\/jpeg;base64,/.test(window.__ironlog.ui.modal.shot || '') && !!document.querySelector('#modal .fbshot img')), 'a screenshot from the phone is attached as a small JPEG, with a preview and Remove');
+  await N.page.click('#modal [data-act="fbSend"]'); await N.page.waitForTimeout(200);
+  const fb1 = await nev(() => { const m = window.__ironlog.ui.modal; return { kind: m && m.kind, sent: m && m.sent, text: m && m.text }; });
+  if (await nev(() => !!window.ironlogFeedback)) {
+    // The standalone build has the service, but this harness blocks the network: the text stays, with a message.
+    const off = await nev(() => { const m = window.__ironlog.ui.modal; return { kind: m.kind, sent: !!m.sent, err: m.err || '', msg: document.querySelector('#modal [data-fbind="msg"]').value }; });
+    ok(off.kind === 'feedback' && !off.sent && off.err && off.msg === 'The chart on Stats is blank', 'no connection: the report stays in the sheet with a message', off);
+  } else ok((fb1.kind === 'feedback' && fb1.sent) || (fb1.kind === 'text' && /Ironlog feedback \(idea\)/.test(fb1.text) && /"build"/.test(fb1.text) && /"errors"/.test(fb1.text)), 'without the service: the report is copied, or shown to copy, with the build and recent errors', fb1);
+  await nev(() => window.__ironlog.ACT.mClose());
+  // From an exercise's ⋯ menu the exercise is attached.
+  await nev(() => { const L = window.__ironlog; L.ui.tab = 'today'; L.render(); L.ACT.startSession({ dataset: { day: '0' } }); });
+  await nev(() => document.querySelector('[data-act="bMenu"][data-b="0"]').click()); await N.page.waitForTimeout(60);
+  ok(await nev(() => !!document.querySelector('#modal [data-op="fbOpen"]')), 'an exercise\'s ⋯ menu has Send feedback');
+  await N.page.click('#modal [data-op="fbOpen"]'); await N.page.waitForTimeout(80);
+  const fb2 = await nev(() => { const L = window.__ironlog; const m = L.ui.modal; return { kind: m.kind, ex: m.ex, from: m.from, want: L.EX(L.state.draft.ex[0].exId).name }; });
+  ok(fb2.kind === 'feedback' && fb2.ex === fb2.want && fb2.from === 'session', 'from a session: the exercise and "session" are attached', fb2);
+  await nev(() => { const L = window.__ironlog; L.ACT.mClose(); L.state.draft = null; L.saveNow(); L.render(); });
   ok(N.errors.length === 0, 'no page errors (new user)', N.errors);
   await N.browser.close();
 

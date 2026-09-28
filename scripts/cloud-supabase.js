@@ -177,6 +177,29 @@
       };
     }
   };
+  /* Feedback (PENDING 58): anyone can add a report, signed in or out; only
+     accounts listed in feedback_readers (the app owner) can read them. The
+     table rules in SUPABASE.md, Part 4, enforce both. */
+  window.ironlogFeedback = {
+    async send(fb) {
+      const row = { category: fb.category, message: fb.message, reply_to: fb.reply_to || null, screenshot: fb.screenshot || null, context: fb.context || {} };
+      const { error } = await sb.from('feedback').insert(row);
+      if (error) {
+        if (/relation .*feedback.* does not exist|PGRST205|42P01/i.test(String(error.code || '') + String(error.message || ''))) throw Object.assign(new Error('Feedback is not set up yet (SUPABASE.md, Part 4).'), { code: 'not_set_up' });
+        throw friendly(error);
+      }
+    },
+    async isReader() {
+      const s = await session().catch(() => null); if (!s) return false;
+      const { data, error } = await sb.from('feedback_readers').select('user_id').eq('user_id', s.user.id).maybeSingle();
+      return !error && !!data;
+    },
+    async inbox(limit) {
+      const { data, error } = await sb.from('feedback').select('id,created_at,category,message,reply_to,context,screenshot,issue_url').order('created_at', { ascending: false }).limit(limit || 50);
+      if (error) throw friendly(error);
+      return data || [];
+    }
+  };
   window.ironlogCloud = async () => {
     if (hold) return null;
     const s = await session().catch(() => null);
