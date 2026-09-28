@@ -48,7 +48,7 @@ Friends need confirmation and password-reset emails, which needs your own email 
 ## What the app does (built in r17)
 
 - Settings > Your data: Create account or Sign in, with email and password, and Forgot password. Accounts are optional; without one the app works on the phone as before.
-- Sign-up sends a confirmation email. The link opens in the browser (on an iPhone, Safari, which keeps its own storage apart from the home-screen app), says it worked, and signs that browser out again so it never uploads whatever it holds. You then sign in inside the app.
+- Sign-up sends a confirmation email. The link opens in the browser (on an iPhone, Safari, which keeps its own storage apart from the home-screen app). Since r21 that browser asks "Where do you use Ironlog?": the home-screen app (it signs itself out, so it never uploads whatever it holds) or here in this browser (it stays signed in). Meanwhile the app, still on "Check your email", signs itself in when it comes back to the front, with the email and password just typed, held in memory only. If the link opens in the same storage the app is waiting in (the same browser, or Android's installed app), it signs in there without asking.
 - Stays signed in on the phone and keeps working offline; changes sync when there is signal. The log already on the phone is merged in at first sign-in, not replaced, with Undo.
 - Sign out asks whether to keep a copy on the phone or remove it (for a shared phone). Removing only happens once everything has synced.
 - An emailed sign-in link without a password is left out on purpose: it would sign in Safari, not the installed app.
@@ -81,10 +81,64 @@ To check it, run `select public.ping();` in the SQL Editor: it returns `ok`.
 
 The GitHub Action in `.github/workflows/keepalive.yml` calls it once a day. GitHub pauses scheduled Actions in a repository with no commits for 60 days; if that happens, Actions > Keep Supabase awake > Enable workflow turns it back on. A paused project loses nothing and can be restored from the dashboard, but the app cannot sync until then.
 
+## Part 4: Feedback (added in r21, about 15 minutes)
+
+Settings > Feedback (and Send feedback in an exercise's ⋯ menu) stores reports in a table anyone can add to, signed in or out, and only you can read. Until step 1 is done, Send says feedback is not set up yet and keeps the text.
+
+1. **The tables.** SQL Editor > New query, paste this, Run. On the last line, put the email you use for your own Ironlog account (type it here in the SQL editor only; it is not stored in the repo):
+
+```sql
+-- One row per report. Anyone may add one; nobody but the readers below may read.
+create table public.feedback (
+  id bigint generated always as identity primary key,
+  created_at timestamptz not null default now(),
+  user_id uuid default auth.uid() references auth.users(id) on delete set null,
+  category text not null check (category in ('bug', 'idea', 'question')),
+  message text not null check (char_length(message) between 1 and 4000),
+  reply_to text check (reply_to is null or char_length(reply_to) <= 200),
+  screenshot text check (screenshot is null or (screenshot like 'data:image/jpeg;base64,%' and char_length(screenshot) <= 1500000)),
+  context jsonb not null default '{}'::jsonb check (pg_column_size(context) <= 20000),
+  issue_url text
+);
+alter table public.feedback enable row level security;
+create policy "anyone can add" on public.feedback
+  for insert to anon, authenticated
+  with check (user_id is null or user_id = (select auth.uid()));
+-- Who may read reports: you. The app shows an Inbox button to these accounts only.
+create table public.feedback_readers (user_id uuid primary key references auth.users(id) on delete cascade);
+alter table public.feedback_readers enable row level security;
+create policy "see own reader row" on public.feedback_readers
+  for select to authenticated using (user_id = (select auth.uid()));
+create policy "readers read feedback" on public.feedback
+  for select to authenticated
+  using (exists (select 1 from public.feedback_readers r where r.user_id = (select auth.uid())));
+grant insert on public.feedback to anon, authenticated;
+grant select on public.feedback to authenticated;
+grant select on public.feedback_readers to authenticated;
+insert into public.feedback_readers (user_id) select id from auth.users where email = 'YOUR IRONLOG ACCOUNT EMAIL';
+```
+
+   To check: send a report from the app, then Table Editor > feedback shows it; in the app, signed in with that account, Settings > Feedback shows Inbox.
+
+   Reports can come from people who are not signed in, so the table limits each one's size (4,000 characters of text, one screenshot of about 1 MB). If someone ever floods it, turn off the "anyone can add" policy for `anon` and only signed-in people can send.
+
+Steps 2 to 5 turn each report into a GitHub issue, which is what lets Claude pick it up (`FEEDBACK.md`). They can wait.
+
+2. **A private repository for tickets.** GitHub > New repository, name `ironlog-feedback`, **Private**, tick "Add a README". Reports quote what people wrote and may show their screen, so they must not go into the public Ironlog repository.
+3. **A GitHub token for it.** GitHub > Settings > Developer settings > Fine-grained tokens > Generate new token. Repository access: Only select repositories > `ironlog-feedback`. Permissions: Issues read and write, Contents read and write. Nothing else. Expiry: a year. Copy it.
+4. **The function.** Supabase > Edge Functions > Deploy a new function > Via editor. Name it exactly `feedback-to-issue`, paste everything in `supabase/functions/feedback-to-issue/index.ts`, turn **Verify JWT off**, Deploy. Then Edge Functions > Secrets, add:
+   - `GITHUB_TOKEN`: the token from step 3.
+   - `TICKETS_REPO`: `vqx7/ironlog-feedback`.
+   - `WEBHOOK_SECRET`: a long random string (a password manager can make one). Keep it for step 5.
+5. **The trigger.** Database > Webhooks > Create a new hook. Name `feedback-to-issue`, table `feedback`, events **Insert** only, type **Supabase Edge Functions**, function `feedback-to-issue`, method POST. Under HTTP Headers add `x-webhook-secret` with the same random string. Create.
+
+   To check: send a report from the app. Within a few seconds an issue labelled `feedback` appears in `ironlog-feedback`, with any screenshot saved under `shots/`, and the report's row gets its `issue_url`. If nothing appears, Edge Functions > feedback-to-issue > Logs says why (a 401 means the header and the secret differ).
+
 ## Who can see the data
 
 - Other users: never. The rule in step 6 is enforced by the database for every request.
 - You, as project owner: yes. The dashboard's Table Editor shows every row, friends' included. The privacy line in the app must say so.
+- Feedback: only accounts in `feedback_readers` (you) and the dashboard. The privacy line says feedback goes to the app owner.
 - Supabase: stores it, encrypted on disk, like any host.
 
 ## Encryption (optional, later)

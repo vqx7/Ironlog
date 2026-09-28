@@ -61,7 +61,9 @@ fs.cpSync(DIST, tmp, { recursive: true });
   // ---- 0. First run: the welcome card offers an account up front.
   const W = await device(null, false, true); await wait(600);
   const wel = await text(W, '.welcome');
-  ok(wel && /Have an account\?/.test(wel) && !!(await W.ev(() => document.querySelector('.welcome [data-act="acctOpen"][data-mode="signin"]') && document.querySelector('.welcome [data-act="acctOpen"][data-mode="signup"]'))), 'first run: Sign in and Create account are offered on the welcome card');
+  ok(wel && /free account/.test(wel) && !!(await W.ev(() => document.querySelector('.welcome [data-act="acctOpen"][data-mode="signin"]') && document.querySelector('.welcome [data-act="acctOpen"][data-mode="signup"]'))), 'first run: Sign in and Create account are offered on the welcome card');
+  // Item 55: the offer is the first thing on the card, and Create account is a full button, not small text.
+  ok(await W.ev(() => { const w = document.querySelector('.welcome'); const a = w.querySelector('#welcomeAcct'); const u = w.querySelector('[data-bind="unit"]'); const r = w.querySelector('[data-act="obSample"]'); const c = a && a.querySelector('[data-mode="signup"]'); return !!a && a.compareDocumentPosition(u) & 4 && a.compareDocumentPosition(r) & 4 && c.classList.contains('primary') && !c.classList.contains('sm') && c.getBoundingClientRect().height >= 44; }), 'first run: the account offer comes before Units and the routine choices, with a full-size Create account button');
   ok(!(await W.ev(() => document.getElementById('acctBar'))), 'first run: no second prompt on top of the welcome card');
 
   // ---- 1. Signed out: the phone works as before, and Settings offers an account.
@@ -75,6 +77,7 @@ fs.cpSync(DIST, tmp, { recursive: true });
   await A.page.reload(); await A.page.waitForFunction(() => window.__ironlog, null, { timeout: 15000 }); await wait(800);
   ok(!(await A.ev(() => document.getElementById('acctBar'))), 'and it stays hidden after a relaunch');
   await openData(A);
+  ok(await A.ev(() => { const p = document.getElementById('acctPanel'), i = document.getElementById('syncInfo'); return !!p && !!i && (p.compareDocumentPosition(i) & 4) > 0; }), 'Your data: the account panel is at the top');
   ok(/Create account/.test(await text(A, '#acctPanel')) && /Sign in/.test(await text(A, '#acctPanel')), 'signed out: Your data offers Create account and Sign in');
   ok(/stays on this device and is sent nowhere unless you sign in/.test(await text(A, '#privacy')), 'signed out: the privacy line says nothing leaves the phone');
   ok(!(await A.ev(() => window.__ironlog.cloudState().on)) && fake.log.filter(l => l.startsWith('GET /rest') || l.startsWith('POST /rest')).length === 0, 'signed out: no requests to the database');
@@ -90,9 +93,15 @@ fs.cpSync(DIST, tmp, { recursive: true });
   ok(/email address/.test((await sheet(A)).err), 'a bad email is refused');
   await fill(A, 'signup', 'V@Example.com ', 'correct horse 1');
   let sh = await sheet(A);
-  ok(sh && sh.mode === 'sent' && /confirmation link to v@example\.com/.test(sh.text), 'sign-up asks to confirm the email', sh);
+  ok(sh && sh.mode === 'wait' && /confirmation link to v@example\.com/.test(sh.text) && /signs you in by itself/.test(sh.text), 'sign-up asks to confirm the email, and says the app signs in by itself', sh);
   ok(fake.users.has('v@example.com') && !fake.users.get('v@example.com').confirmed, 'the account exists, unconfirmed (email stored lowercase)');
+  // Item 61a: "I have confirmed" before the link was opened says so, and nothing is signed in.
+  await A.page.click('#modal [data-act="acctWaitNow"]'); await A.page.waitForFunction(() => { const m = window.__ironlog.ui.modal; return m && !m.busy && m.err; }, null, { timeout: 10000 });
+  sh = await sheet(A);
+  ok(sh && sh.mode === 'wait' && /Not confirmed yet/.test(sh.err) && !(await A.ev(() => window.__ironlog.acctUser())), 'before the link is opened, "I have confirmed" says not yet', sh);
+  ok(await A.ev(() => window.__ironlog.acctWaiting() && !Object.keys(localStorage).some(k => (localStorage.getItem(k) || '').includes('correct horse 1'))), 'while waiting, the password is held in memory only, never stored');
   await A.page.click('#modal [data-act="mClose"]');
+  ok(!(await A.ev(() => window.__ironlog.acctWaiting())) && !(await A.ev(() => localStorage.getItem('ironlog.v1.acctWait'))), 'closing the sheet stops waiting and forgets the password');
 
   // ---- 3. Sign in before confirming, then with a wrong password.
   await A.page.click('#acctPanel [data-act="acctOpen"][data-mode="signin"]'); await wait(100);
@@ -138,9 +147,8 @@ fs.cpSync(DIST, tmp, { recursive: true });
   await C.page.click('#acctPanel [data-act="acctOpen"][data-mode="signup"]'); await wait(100);
   await fill(C, 'signup', 'friend@example.com', 'another pass 2');
   fake.confirm('friend@example.com');
-  await C.page.click('#modal [data-act="acctMode"][data-mode="signin"]').catch(() => {});
-  if (!(await sheet(C)) || (await sheet(C)).mode !== 'signin') { await C.page.click('#modal [data-act="mClose"]').catch(() => {}); await C.page.click('#acctPanel [data-act="acctOpen"][data-mode="signin"]'); await wait(100); }
-  await fill(C, 'signin', 'friend@example.com', 'another pass 2');
+  // Item 61a: after opening the link, "I have confirmed" signs in with what was just typed.
+  await C.page.click('#modal [data-act="acctWaitNow"]');
   ok(await synced(C), 'second person: signed in and synced');
   ok((await C.ev(() => window.__ironlog.state.sessions.map(s => s.id).join())) === 'sC1', 'second person sees only their own log');
   ok(sessIn(rowsOf('friend@example.com')).join() === 'sC1' && sessIn(rowsOf('v@example.com')).join() === 'sB1', 'the database keeps the two accounts apart');
@@ -182,10 +190,55 @@ fs.cpSync(DIST, tmp, { recursive: true });
   const frag = `#access_token=${sess.access_token}&expires_at=${sess.expires_at}&expires_in=3600&refresh_token=${sess.refresh_token}&token_type=bearer&type=signup`;
   await D.page.goto(fake.base + '/ironlog/index.html' + frag); await D.page.waitForFunction(() => window.__ironlog, null, { timeout: 15000 }); await wait(1500);
   sh = await sheet(D);
-  ok(sh && /Email confirmed/i.test(sh.text) && /home screen/.test(sh.text), 'confirmation link in a browser: says it worked and where to sign in', sh);
+  // Item 61b: the confirming browser asks where Ironlog is used, and syncs nothing until answered.
+  ok(sh && sh.mode === 'where' && /Email confirmed/i.test(sh.text) && /Where do you use Ironlog\?/.test(sh.text) && /home-screen app/.test(sh.text) && /Here in this browser/.test(sh.text), 'confirmation link in a browser: says it worked and asks where Ironlog is used', sh);
+  ok(!(await D.ev(() => window.__ironlog.cloudState().on)), 'nothing syncs in that browser before the answer');
+  await D.page.click('#modal [data-act="acctWhere"][data-v="app"]'); await wait(600);
+  sh = await sheet(D);
+  ok(sh && /Switch back to the app/.test(sh.text) && /signs in by itself/.test(sh.text), '"The home-screen app": says to switch back, where it signs in by itself', sh);
   ok(!(await D.ev(() => window.__ironlog.cloudState().on)) && !(await D.ev(() => window.__ironlog.acctUser())), 'that browser is signed out again and not syncing');
   ok(sessIn(rowsOf('v@example.com')).join() === before, 'nothing that browser held was uploaded', sessIn(rowsOf('v@example.com')));
   ok(!(await D.ev(() => location.hash)), 'the tokens are cleared from the address bar');
+
+  // ---- 8b. Item 61a: the app waiting on "Check your email" signs itself in when it comes back to the front.
+  const W2 = await device();
+  await logOn(W2, 'sW2', 70);
+  await openData(W2);
+  await W2.page.click('#acctPanel [data-act="acctOpen"][data-mode="signup"]'); await wait(100);
+  await fill(W2, 'signup', 'auto@example.com', 'auto pass 12');
+  ok((await sheet(W2) || {}).mode === 'wait' && await W2.ev(() => window.__ironlog.acctWaiting() && !!localStorage.getItem('ironlog.v1.acctWait')), 'after sign-up the app waits (a marker without the password is kept)');
+  await W2.ev(() => document.dispatchEvent(new Event('visibilitychange'))); await wait(700);
+  sh = await sheet(W2);
+  ok(sh && sh.mode === 'wait' && !sh.err && !(await W2.ev(() => window.__ironlog.acctUser())), 'back to the front before the link: still waiting, quietly', sh);
+  fake.confirm('auto@example.com');
+  await wait(3200);
+  await W2.ev(() => document.dispatchEvent(new Event('visibilitychange')));
+  ok(await synced(W2), 'the link opened (elsewhere), back to the app: signed in and syncing without typing anything');
+  ok(!(await sheet(W2)) && !(await W2.ev(() => window.__ironlog.acctWaiting())) && !(await W2.ev(() => localStorage.getItem('ironlog.v1.acctWait'))), 'the sheet closes, the password is forgotten and the marker removed');
+  ok(sessIn(rowsOf('auto@example.com')).join() === 'sW2', 'the phone\'s log is in the new account', sessIn(rowsOf('auto@example.com')));
+  ok(/Email confirmed\. Signed in/.test(await W2.ev(() => document.getElementById('toast').innerText)), 'and it says so');
+
+  // ---- 8c. "Here in this browser": that browser stays signed in and syncs its log.
+  const tok = async email => (await (await fetch(fake.base + '/auth/v1/token?grant_type=password', { method: 'POST', headers: { apikey: 'x', 'Content-Type': 'application/json' }, body: JSON.stringify({ email, password: 'auto pass 12' }) })).json());
+  const linkOf = t => `${fake.base}/ironlog/index.html#access_token=${t.access_token}&expires_at=${t.expires_at}&expires_in=3600&refresh_token=${t.refresh_token}&token_type=bearer&type=signup`;
+  const D2 = await device();
+  await logOn(D2, 'sD2-here', 75);
+  await D2.page.goto(linkOf(await tok('auto@example.com'))); await D2.page.waitForFunction(() => window.__ironlog, null, { timeout: 15000 }); await wait(1200);
+  await D2.page.click('#modal [data-act="acctWhere"][data-v="here"]');
+  ok(await synced(D2) && !(await sheet(D2)), '"Here in this browser": signed in and syncing');
+  ok(sessIn(rowsOf('auto@example.com')).includes('sD2-here'), 'that browser\'s log joins the account', sessIn(rowsOf('auto@example.com')));
+  // Closing the question without answering is the safe choice: signed out, nothing sent.
+  const D3 = await device();
+  await logOn(D3, 'sD3-closed', 76);
+  await D3.page.goto(linkOf(await tok('auto@example.com'))); await D3.page.waitForFunction(() => window.__ironlog, null, { timeout: 15000 }); await wait(1200);
+  await D3.page.click('#modal [data-act="mClose"]'); await wait(600);
+  ok(!(await D3.ev(() => window.__ironlog.acctUser())) && !(await D3.ev(() => window.__ironlog.cloudState().on)) && !sessIn(rowsOf('auto@example.com')).includes('sD3-closed'), 'no answer: that browser is signed out and nothing is sent');
+  // The link opened in the same storage the app waits in (Android shares it): no question, signed in there.
+  const D4 = await device();
+  await D4.ev(() => localStorage.setItem('ironlog.v1.acctWait', JSON.stringify({ t: Date.now() })));
+  await D4.page.goto(linkOf(await tok('auto@example.com'))); await D4.page.waitForFunction(() => window.__ironlog, null, { timeout: 15000 }); await wait(1200);
+  sh = await sheet(D4);
+  ok(sh && sh.mode === 'sent' && /You are signed in/.test(sh.text) && await synced(D4), 'opened where the app waits: signed in and syncing, no question', sh);
 
   // ---- 9. Password reset: request, then the emailed link opened in a browser.
   await openData(D);
@@ -273,6 +326,56 @@ fs.cpSync(DIST, tmp, { recursive: true });
   ok(!(await K.ev(() => window.__ironlog.cloudState().on)) && !(await K.ev(() => window.__ironlog.acctUser())), 'the phone is signed out and no longer syncing');
   ok((await K.ev(() => window.__ironlog.state.sessions.map(s => s.id).join())) === 'sK1', 'the log on the phone is kept');
   ok(sessIn(rowsOf('v@example.com')).length > 0, 'other accounts are untouched');
+
+  // ---- 13b. Feedback (PENDING 58): anyone can send; only the owner reads.
+  const sendFb = async (D, text, cat) => {
+    await D.ev(() => { const L = window.__ironlog; L.ui.tab = 'settings'; L.ui.folds['settings:feedback'] = true; L.render(); });
+    await D.page.click('[data-mkey="feedback"] [data-act="fbOpen"]'); await wait(80);
+    if (cat) await D.page.click(`#modal [data-act="fbCat"][data-v="${cat}"]`);
+    await D.page.fill('#modal [data-fbind="msg"]', text);
+    await D.page.click('#modal [data-act="fbSend"]');
+    await D.page.waitForFunction(() => { const m = window.__ironlog.ui.modal; return m && m.kind === 'feedback' && !m.busy; }, null, { timeout: 10000 });
+    return D.ev(() => { const m = window.__ironlog.ui.modal; return { sent: !!m.sent, err: m.err || '', text: document.getElementById('modal').innerText.replace(/\s+/g, ' ') }; });
+  };
+  fake.feedbackTables(false);
+  const Q = await device();
+  let fr = await sendFb(Q, 'Tables not there yet');
+  ok(!fr.sent && /not set up yet/.test(fr.err), 'before the feedback table exists: a clear message, the text kept', fr);
+  fake.feedbackTables(true);
+  await Q.page.click('#modal [data-act="fbSend"]'); await Q.page.waitForFunction(() => { const m = window.__ironlog.ui.modal; return m && !m.busy; }, null, { timeout: 10000 });
+  ok(await Q.ev(() => window.__ironlog.ui.modal.sent) && fake.feedback.length === 1, 'signed out: the report is sent (a retry works once the table exists)');
+  const f1 = fake.feedback[0];
+  ok(f1.user_id === null && f1.category === 'bug' && f1.message === 'Tables not there yet' && f1.context.build && Array.isArray(f1.context.errors) && /\d+x\d+/.test(f1.context.screen) && f1.context.from === 'today', 'it carries the build, screen size, recent errors and where it came from, with no account', f1.context);
+  ok(!JSON.stringify(f1.context).includes('"ex"') && !JSON.stringify(f1.context).includes('bench'), 'no workout data is attached');
+  ok(/Feedback you send goes to the app owner/.test(await Q.ev(() => { const L = window.__ironlog; L.ACT.mClose(); L.ui.tab = 'settings'; L.ui.folds['settings:data'] = true; L.render(); return document.getElementById('privacy').innerText; })), 'the privacy line says feedback goes to the app owner');
+  // Signed in, with a screenshot.
+  const R2 = await device();
+  await openData(R2);
+  await R2.page.click('#acctPanel [data-act="acctOpen"][data-mode="signin"]'); await wait(100);
+  await fill(R2, 'signin', 'auto@example.com', 'auto pass 12');
+  await synced(R2);
+  await R2.ev(() => { const L = window.__ironlog; L.ui.tab = 'settings'; L.ui.folds['settings:feedback'] = true; L.render(); });
+  await R2.page.click('[data-mkey="feedback"] [data-act="fbOpen"]'); await wait(80);
+  ok(await R2.ev(() => document.querySelector('#modal [data-fbind="reply"]').value === 'auto@example.com'), 'signed in: the reply address is filled in');
+  const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAIAAAD91JpzAAAAFklEQVR4nGP4z8DAwMDAxMDAwMDAAAANHQEDasKb6QAAAABJRU5ErkJggg==', 'base64');
+  await R2.page.setInputFiles('#fbShot', { name: 's.png', mimeType: 'image/png', buffer: png }); await wait(300);
+  await R2.page.click('#modal [data-act="fbCat"][data-v="question"]');
+  await R2.page.fill('#modal [data-fbind="msg"]', 'How do I log a missed day?');
+  await R2.page.click('#modal [data-act="fbSend"]'); await R2.page.waitForFunction(() => { const m = window.__ironlog.ui.modal; return m && !m.busy; }, null, { timeout: 10000 });
+  const f2 = fake.feedback[1];
+  ok(f2 && f2.user_id === fake.users.get('auto@example.com').id && f2.category === 'question' && f2.reply_to === 'auto@example.com' && /^data:image\/jpeg;base64,/.test(f2.screenshot || '') && f2.context.signedIn === true, 'signed in: sent with the account, reply address and screenshot', f2 && { ...f2, screenshot: (f2.screenshot || '').slice(0, 30) });
+  ok(!(await R2.ev(() => { const L = window.__ironlog; L.ACT.mClose(); L.render(); return !!document.querySelector('[data-act="fbInbox"]'); })), 'not the owner: no inbox');
+  ok((await R2.ev(async () => { const r = await window.ironlogFeedback.inbox(); return r.length; })) === 0, 'not the owner: the database returns no reports');
+  // The owner reads them in the app.
+  fake.addReader('auto@example.com');
+  await R2.page.reload(); await R2.page.waitForFunction(() => window.__ironlog, null, { timeout: 15000 }); await wait(1200);
+  await R2.ev(() => { const L = window.__ironlog; L.ui.tab = 'settings'; L.ui.folds['settings:feedback'] = true; L.render(); });
+  ok(await R2.ev(() => !!document.querySelector('[data-act="fbInbox"]')), 'the owner\'s account shows Inbox');
+  await R2.page.click('[data-act="fbInbox"]'); await R2.page.waitForFunction(() => { const m = window.__ironlog.ui.modal; return m && m.kind === 'fbInbox' && m.items; }, null, { timeout: 10000 });
+  const inbox = await R2.ev(() => document.getElementById('modal').innerText);
+  ok(/How do I log a missed day\?/.test(inbox) && /Tables not there yet/.test(inbox) && inbox.indexOf('How do I') < inbox.indexOf('Tables not'), 'the inbox lists every report, newest first', inbox.slice(0, 200));
+  ok(await R2.ev(() => !!document.querySelector('#modal .fbthumb')), 'with the screenshot');
+  await R2.ev(() => window.__ironlog.ACT.mClose());
 
   // ---- 14. Layout: the sheet and panel fit a small phone.
   await G.page.setViewportSize({ width: 320, height: 640 });

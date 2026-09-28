@@ -1,8 +1,8 @@
 // The install offer in the installable build (dist/): shown only in a
 // browser, never once installed; Android/desktop Chrome use the browser's own
 // install prompt; an iPhone gets the Share > Add to Home Screen guide for its
-// browser; Not now hides it on that device; the Today line replaces the
-// account line rather than stacking on it; nothing shows in the source file.
+// browser; Not now hides it on that device; on Today it sits under the
+// account line (item 55); nothing shows in the source file.
 const { execFileSync } = require('child_process');
 const fs = require('fs'); const os = require('os'); const path = require('path');
 const { chromium } = require('playwright');
@@ -13,6 +13,7 @@ execFileSync('node', [path.join(__dirname, '..', 'scripts', 'build.js')], { stdi
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'ironlog-inst-'));
 fs.cpSync(path.join(__dirname, '..', 'dist'), tmp, { recursive: true });
 const IPHONE_SAFARI = 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1';
+const IPHONE_SAFARI_26 = 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.0 Mobile/15E148 Safari/604.1';
 const IPHONE_CHROME = 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) CriOS/129.0 Mobile/15E148 Safari/604.1';
 (async () => {
   const fake = await start(tmp);
@@ -36,7 +37,8 @@ const IPHONE_CHROME = 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) Ap
   // Android or desktop Chrome: the browser's own install prompt.
   const A = await dev();
   ok(!!(await A.ev(() => document.getElementById('installBar'))), 'in a browser: Today offers Install');
-  ok(!(await A.ev(() => document.getElementById('acctBar'))), 'the install line replaces the account line instead of stacking');
+  // Item 55: signed out in a browser, the account line comes first and Install second.
+  ok(await A.ev(() => { const a = document.getElementById('acctBar'), i = document.getElementById('installBar'), h = document.querySelector('.hero'); return !!a && !!i && a.getBoundingClientRect().bottom <= i.getBoundingClientRect().top + 1 && i.getBoundingClientRect().bottom <= h.getBoundingClientRect().top + 1; }), 'signed out: the account line first, then Install, both above the session card');
   await A.ev(() => { const e = new Event('beforeinstallprompt', { cancelable: true }); e.prompt = () => { window.__prompted = (window.__prompted || 0) + 1; }; e.userChoice = Promise.resolve({ outcome: 'accepted' }); window.dispatchEvent(e); });
   await A.page.waitForTimeout(200);
   await A.page.click('#installBar [data-act="install"]'); await A.page.waitForTimeout(300);
@@ -48,7 +50,7 @@ const IPHONE_CHROME = 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) Ap
   await A.page.click('#modal [data-act="mClose"]');
   // Not now.
   await A.page.click('#installBar [data-act="installLater"]'); await A.page.waitForTimeout(150);
-  ok(!(await A.ev(() => document.getElementById('installBar'))) && !!(await A.ev(() => document.getElementById('acctBar'))), 'Not now hides it, and the account line takes its place');
+  ok(!(await A.ev(() => document.getElementById('installBar'))) && !!(await A.ev(() => document.getElementById('acctBar'))), 'Not now hides it, and the account line stays');
   await A.ev(() => { const L = window.__ironlog; L.ui.tab = 'settings'; L.ui.folds['settings:data'] = true; L.render(); document.querySelectorAll('#view details').forEach(x => x.open = true); });
   ok(!!(await A.ev(() => document.querySelector('#installPanel [data-act="install"]'))), 'Settings > Your data still offers Install');
 
@@ -56,9 +58,24 @@ const IPHONE_CHROME = 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) Ap
   const I = await dev({ ua: IPHONE_SAFARI });
   await I.page.click('#installBar [data-act="install"]'); await I.page.waitForTimeout(200);
   let t = await sheetText(I);
-  ok(/Share button/.test(t) && /bottom/.test(t) && /Add to Home Screen/.test(t) && /Apple does not allow an install button/.test(t), 'iPhone Safari: the Share guide for Safari', t.slice(0, 160));
-  ok(await I.ev(() => document.querySelectorAll('#modal .isteps li').length === 3 && !!document.querySelector('#modal .isteps svg')), 'three numbered steps with the Share and Add icons');
-  ok(/export a backup here and import it there/.test(t), 'it says a browser log does not move by itself');
+  // Item 56: labelled Add to Home Screen, a picture of where Share is, two short steps, the reasons in a tip.
+  ok(/^Add to Home Screen/.test(t) && /Share/.test(t) && /bottom/.test(t), 'iPhone Safari: the sheet is titled Add to Home Screen, Share at the bottom', t.slice(0, 160));
+  ok(await I.ev(() => document.querySelectorAll('#modal .isteps li').length === 2 && !!document.querySelector('#modal .isteps svg') && !!document.querySelector('#modal svg.ipic[role="img"] .ip-hl')), 'two numbered steps with icons, and a picture with the Share button ringed');
+  ok(await I.ev(() => { const tip = document.querySelector('#modal .sheet-h .tipi'); return !!tip && /Apple allows no install button/.test(tip.dataset.tip) && /export a backup here and import it there/.test(tip.dataset.tip); }), 'why there is no install button, and what happens to a browser log, sit in a tip');
+  ok(t.length < 260, 'the sheet is short: ' + t.length + ' characters', t);
+  ok(await I.ev(() => { const b = document.querySelector('#installBar [data-act="install"]'); return b.textContent === 'Add to Home Screen' && b.getBoundingClientRect().right <= document.documentElement.clientWidth; }), 'the Today button reads Add to Home Screen and fits');
+  await I.page.click('#modal [data-act="mClose"]');
+  // iOS 26 Safari: Share is behind ⋯ beside the address (the default compact bar).
+  const I26 = await dev({ ua: IPHONE_SAFARI_26 });
+  await I26.page.click('#installBar [data-act="install"]'); await I26.page.waitForTimeout(200);
+  t = await sheetText(I26);
+  ok(/⋯/.test(t) && /address/.test(t) && /Share/.test(t) && !/bottom/.test(t), 'iPhone Safari 26: tap ⋯ beside the address, then Share', t.slice(0, 160));
+  ok(await I26.ev(() => /⋯ button/.test(document.querySelector('#modal svg.ipic').getAttribute('aria-label'))), 'the picture shows the ⋯ button');
+  // A log kept in this browser: one short line says it does not follow the app.
+  await I26.page.click('#modal [data-act="mClose"]');
+  await I26.ev(() => { const L = window.__ironlog; L.state.sessions.forEach(x => { delete x.demo; }); L.render(); });
+  await I26.page.click('#installBar [data-act="install"]'); await I26.page.waitForTimeout(200);
+  ok(/does not move by itself/.test(await sheetText(I26)), 'with a real log in this browser, the sheet says it does not move by itself');
   // iPhone Chrome.
   const C = await dev({ ua: IPHONE_CHROME });
   await C.page.click('#installBar [data-act="install"]'); await C.page.waitForTimeout(200);
