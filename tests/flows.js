@@ -99,11 +99,11 @@ ok(await ev(()=>{const m=window.__ironlog.ui.modal;return m&&m.kind==='recap'&&!
 console.log('errors',errors);ok(!errors.length,'no console errors');
 // First run with demo data: a short note, not the full welcome on top of the demo; one tap back to a clean start.
 {const F=await open('index.html',{browser,touch:true,w:390,h:844});const fe=(f,a)=>F.page.evaluate(f,a);await F.page.waitForTimeout(400);
-ok(await fe(()=>!!document.querySelector('.welcome h3')),'first run: the welcome card shows');
+ok(await fe(()=>!!document.getElementById('obPage')),'first run: the setup pages show');
 await fe(()=>{const L=window.__ironlog;L.makeDemo();L.ui.tab='today';L.render();});
-ok(await fe(()=>!!document.getElementById('demoNote')&&!document.querySelector('.welcome h3')),'demo loaded before setup: a short demo note instead of the full welcome');
+ok(await fe(()=>!!document.getElementById('demoNote')&&!document.getElementById('obPage')),'demo loaded before setup: a short demo note instead of the setup pages');
 await F.page.click('#demoNote [data-act="demoStart"]');await F.page.waitForTimeout(150);
-const cl=await fe(()=>{const s=window.__ironlog.state;return {d:s.sessions.filter(x=>x.demo).length+s.bodyweights.filter(x=>x.demo).length+s.measurements.filter(x=>x.demo).length,w:!!document.querySelector('.welcome h3')};});
-ok(cl.d===0&&cl.w,'Clear demo and set up: no demo data left and the welcome is back');
+const cl=await fe(()=>{const s=window.__ironlog.state;return {d:s.sessions.filter(x=>x.demo).length+s.bodyweights.filter(x=>x.demo).length+s.measurements.filter(x=>x.demo).length,w:!!document.getElementById('obPage')};});
+ok(cl.d===0&&cl.w,'Clear demo and set up: no demo data left and the setup pages are back');
 ok(!F.errors.length,'no console errors on first run');await F.ctx.close();}
 console.log(fails.length?'FAILURES '+fails.length:'ALL PASS');await browser.close();})();
