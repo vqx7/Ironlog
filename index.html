@@ -3011,7 +3011,7 @@ function suggest(exId,plan,opts){
      set can never count as progress on its own. */
   const total=topPts.reduce((a,p)=>a+p.r,0);const nT=topPts.length;
   const over=nT===1?'in one set':`over your first ${nT} sets`;
-  return {w:top,text:`${lastS} Beat ${total} reps ${over} at ${lbl(top)}. When every set at that load reaches ${plan.repMax}, add load.`,lastR,
+  return {w:top,text:`${lastS} Beat ${total} reps ${over} at ${lbl(top)}. When every set at that load reaches ${plan.repMax}, ${ex.assist?'take some help off':'add load'}.`,lastR,
     last:lastS,target:`${total+1}+ reps ${over} at ${lbl(top)}`,tgt:{kind:'reps',w:top,total,n:nT,rs:topPts.map(p=>p.r),prevBest},easier:stx.easier?easierText(ex,stx.easier):null};
 }
 /* Timed holds: double progression on seconds. Beat the total time at the same
@@ -5099,7 +5099,7 @@ function bestsBoard(){
     const top=[r.est?`best est ${fmtW(r.est.v)}${u(ex)}`:'',r.heavy?`heaviest ${setShort(ex,r.heavy.p.w,r.heavy.p.r)}`:''].filter(Boolean).join(' · ');
     return `<details class="bx" data-ex="${ex.id}"><summary><span class="bn">${esc(ex.name)}</span><span class="bs">${top}${loadNote(ex)} · ${fmtDate(r.last)}</span></summary>
     ${r.est?`<p class="small" style="margin:0 0 6px">Best estimate <b>${fmtW(r.est.v)}${u(ex)}</b> from ${setShort(ex,r.est.p.w,r.est.p.r)}, ${fmtDate(r.est.date)}</p>`:''}
-    <table class="t"><tr><th>${esc(loadHead(ex))}</th><th class="r">${ex.timed?'Seconds':'Reps'}</th><th class="r">First done</th></tr>${r.front.map(f=>`<tr><td class="num">${esc(loadLabel(ex,f.p.w))}</td><td class="r num">${f.p.r}</td><td class="r">${fmtDate(f.date)}</td></tr>`).join('')}</table></details>`;}).join('')}</div>${rows.length>shown.length?`<button class="btn sm" style="margin-top:8px" data-act="bestsAll">Show all ${rows.length} lifts</button>`:''}<p class="small muted hastip" style="margin:8px 0 0" data-tip="For each load, the most reps you have done, where no heavier set did as many. Beating a line is a rep PR. The best estimate is the highest estimated 1RM from any set, in the frame you log in. Warm-ups and drop sets are left out.">How to read this</p>`};
+    <table class="t"><tr><th>${esc(ex.assist?'Load':loadHead(ex))}</th><th class="r">${ex.timed?'Seconds':'Reps'}</th><th class="r">First done</th></tr>${r.front.map(f=>`<tr><td class="num">${esc(loadLabel(ex,f.p.w))}</td><td class="r num">${f.p.r}</td><td class="r">${fmtDate(f.date)}</td></tr>`).join('')}</table></details>`;}).join('')}</div>${rows.length>shown.length?`<button class="btn sm" style="margin-top:8px" data-act="bestsAll">Show all ${rows.length} lifts</button>`:''}<p class="small muted hastip" style="margin:8px 0 0" data-tip="For each load, the most reps you have done, where no heavier set did as many. Beating a line is a rep PR. The best estimate is the highest estimated 1RM from any set, in the frame you log in. Warm-ups and drop sets are left out.">How to read this</p>`};
 }
 function sub(key,title,body,subTxt){return subsec('dash:sub:'+key,title,body,subTxt).replace('<details class="subsec"',`<details class="subsec" id="sub-${key}"`);}
 /* This used to print under all five charts at once. It is one fact about the
@@ -5957,6 +5957,8 @@ function impSetsText(t){
   s=s.replace(/\b(\d{1,2})\s*(?:x|×|\*|sets? of)\s*(\d{1,3})\s*(?:@|at)\s*(\d+(?:\.\d+)?)\b/g,(m,a,b,c)=>+a<=10&&+c>+a?Array(+a).fill(`${c}x${b}`).join(' '):m);
   // load x reps x sets
   s=s.replace(/\b(\d+(?:\.\d+)?)\s*[x×*]\s*(\d{1,3})\s*[x×*]\s*(\d{1,2})\b/g,(m,a,b,c)=>+c<=10?Array(+c).fill(`${a}x${b}`).join(' '):m);
+  // A load then a list of reps: "185: 10/8/8" or "185 - 10, 8, 8" is each rep count at 185.
+  s=s.replace(/(^|\s)(\d{2,}(?:\.\d+)?)(?:\s*[:\-–]\s*|\s+)(\d{1,2}(?:\s*[/,]\s*\d{1,2})+)(?=\s*$)/g,(m,p,a,l)=>p+l.split(/\s*[/,]\s*/).map(r=>`${a}x${r}`).join(' '));
   // load then sets x reps: "225 5x5"
   s=s.replace(/(^|\s)(\d{2,}(?:\.\d+)?)\s+(\d{1,2})\s*[x×*]\s*(\d{1,3})(?=\s|,|$)/g,(m,p,a,b,c)=>+b<=10?p+Array(+b).fill(`${a}x${c}`).join(' '):m);
   return s.trim();
@@ -5966,13 +5968,20 @@ function impFromText(text){
   const day=(date,name)=>{if(pend)unread.push(pend.raw);cur={date,name:name||'',items:[]};S.push(cur);ex=null;pend=null;};
   const raw=v=>v;
   const nextIsName=i=>{for(let j=i+1;j<lines.length;j++){const t=lines[j].trim();if(t)return /^[\s\-•*–]*[a-z]{3,}/i.test(t)&&!impDate(t);}return true;};
+  const REPS=/^\d{1,2}(\s*[/,]\s*\d{1,2})+$/;
   for(let li=0;li<lines.length;li++){const L0=lines[li];const L=L0.replace(/^[\s\-•*–]+/,'').trim();if(!L)continue;
+    const under=li>0&&!!lines[li-1].trim();
     if(/\bkgs?\b|\dkg/i.test(L))hint=hint||'kg';else if(/\blbs?\b|\dlb|#/i.test(L))hint=hint||'lb';
     const words=L.split(/\s+/);
     // A date line: a date and no sets on it; what is left may be the workout's name.
     let dt=impDate(L);
     // Only numbers and slashes after an exercise, with sets (not a new exercise) after: reps, not a date.
     if(dt&&(ex||pend)&&/^[\d\s/.,-]+$/.test(L)&&!nextIsName(li))dt=null;
+    // "Bench press 185" then "10/10/10": the line under a lone load is its reps, even when it could be a date.
+    const lone=ex&&ex.setsText.length&&/^\d{2,}(\.\d+)?$/.test(ex.setsText[ex.setsText.length-1].trim());
+    if(lone&&REPS.test(L)){ex.setsText[ex.setsText.length-1]+=' '+L;continue;}
+    // Numbers directly under a lift still waiting for its sets (no blank line between) are its reps.
+    if(dt&&pend&&under&&REPS.test(L))dt=null;
     if(dt){const rest=L.replace(/\b(mon|tues?|wed(nes)?|thu(rs)?|fri|sat(ur)?|sun)(day)?\b/ig,'').replace(/\b\d{4}[-/.]\d{1,2}[-/.]\d{1,2}\b|\b\d{1,2}[/.-]\d{1,2}([/.-]\d{2,4})?\b|\b\d{1,2}(st|nd|rd|th)?\s+[a-z]{3,9}\.?,?(\s*\d{4})?\b|\b[a-z]{3,9}\.?\s+\d{1,2}(st|nd|rd|th)?(,?\s*\d{4})?\b/ig,'').replace(/[,:;\-–|]+/g,' ').trim();
       if(!/\d/.test(rest)){day(dt,rest);continue;}}
     // Sets alone continue the exercise above, or the name waiting on the line before.
@@ -5987,6 +5996,9 @@ function impFromText(text){
       if(!/[a-z]/i.test(name))continue;const got=parseSets(impSetsText(rest),{bw:true},null,raw);
       if(got){if(!cur)day(null,'');ex={name,sets:[],setsText:[rest]};cur.items.push(ex);pend=null;done=true;break;}}
     if(done)continue;
+    // A name then a load, with the reps on the line right under it: "Bench press 185" then "10/10/10".
+    {const g=L.match(/^(.*?[a-z].*?)\s+(\d{2,}(?:\.\d+)?\s*(?:lbs?|kgs?|#)?)$/i);const nx=(lines[li+1]||'').replace(/^[\s\-•*–]+/,'').trim();
+      if(g&&REPS.test(nx)){if(!cur)day(null,'');if(pend)unread.push(pend.raw);pend=null;ex={name:g[1].replace(/[:\-–]+$/,'').trim(),sets:[],setsText:[g[2]+' '+nx]};cur.items.push(ex);li++;continue;}}
     // A name alone: its sets may follow on the next lines.
     if(/[a-z]{3,}/i.test(L)&&!/\d{2,}\s*[x×*]/.test(L)){if(pend)unread.push(pend.raw);pend={name:L.replace(/[:\-–]+$/,'').trim(),raw:L0.trim()};ex=null;continue;}
     unread.push(L0.trim());
@@ -6000,6 +6012,10 @@ function impTextSets(it,exo,conv){const out=[];let defW=null;
   for(const t of it.setsText){let st=impSetsText(t);
     // On a bodyweight lift a bare "3x10" is sets of reps (no load to read); on a weighted lift it stays load x reps.
     if(exo.bw&&!exo.assist)st=st.replace(/(^|[\s,])(\d{1,2})x(\d{1,3})(?=$|[\s,])/g,(m,p,a,b)=>+a<=10&&!/@/.test(st)?p+Array(+a).fill('bwx'+b).join(' '):m);
+    // On a weighted lift a bare "3x10" (up to 5 sets, no unit, no load anywhere on the line) is sets of reps with no load:
+    // at the load carried from the line above, else asked for rather than read as 3 lb for 10 reps.
+    else if(!exo.timed&&/^\s*[1-5]\s*[x×*]\s*\d{1,3}(\s*,?\s*[1-5]\s*[x×*]\s*\d{1,3})*\s*$/.test(String(t).toLowerCase())){if(defW==null)return null;
+      for(const g of String(t).toLowerCase().matchAll(/([1-5])\s*[x×*]\s*(\d{1,3})/g))for(let k=0;k<+g[1];k++)out.push({w:defW,r:+g[2],rir:undefined,warm:false,drop:false});continue;}
     const g=parseSets(st,{bw:!!exo.bw||!!exo.timed},defW,conv);if(!g)return null;
     out.push(...g.map(x=>({w:x.w,r:x.r,rir:x.rir,warm:false,drop:false})));defW=g[g.length-1].w;}
   return out;}
@@ -6038,7 +6054,7 @@ function openPreview(res,tab){
 }
 /* Sessions as they would be saved, and which are already in the log. */
 function impBuild(m){
-  const conv=m.unit==='kg'?(v=>v):(v=>v*LB);const newEx=Object.create(null);const out=[];let bad=0,timedOff=0;
+  const conv=m.unit==='kg'?(v=>v):(v=>v*LB);const newEx=Object.create(null);const out=[];const bad=[];let timedOff=0;
   const allTimed=n=>m.res.sessions.every(x=>x.items.every(i=>i.name!==n||(i.sets&&i.sets.length&&i.sets.every(q=>q.timed))));
   for(const n in m.pick)if(m.pick[n]==='new'){const g=m.guess[n];const e={id:'c_'+uid(),name:n.slice(0,60),primary:g.primary,secondary:[],equip:g.equip,bw:g.equip==='bodyweight'||!!g.assist,rare:false,note:'',custom:true,archived:false};if(g.assist)e.assist=true;if(!m.res.text&&allTimed(n))e.timed=true;newEx[n]=e;}
   for(const x of m.res.sessions){const date=x.date||m.date;const ex=[];
@@ -6046,7 +6062,7 @@ function impBuild(m){
       // A set timed in seconds on a lift that counts reps would turn seconds into reps: left out and counted.
       if(!it.setsText&&!exo.timed&&it.sets.some(q=>q.timed)){timedOff+=it.sets.filter(q=>q.timed).length;}
       let sets=it.setsText?impTextSets(it,exo,conv):it.sets.filter(q=>exo.timed||!q.timed).map(s=>({w:(s.u?(s.u==='kg'?s.w:s.w*LB):conv(s.w)),r:s.r,rir:s.rir,warm:s.warm,drop:s.drop&&!s.warm}));
-      if(!sets||!sets.length){bad++;continue;}
+      if(!sets||!sets.length){if(!bad.includes(it.name))bad.push(it.name);continue;}
       // Assisted: files write the help as a plus or a minus number; it is help either way. Other lifts never go below 0.
       for(const q of sets){if(exo.assist)q.w=-Math.abs(q.w);else if(q.w<0)q.w=0;}
       // A lift's sets across rows of the same exercise stay together.
@@ -6086,7 +6102,7 @@ function impSheet(m){
   ${sure.length?`<details class="subsec" style="margin-top:8px"><summary>${sure.length} matched</summary>${sure.map(row).join('')}</details>`:''}
   ${r.unreadN||r.unread&&r.unread.length?`<details class="subsec" style="margin-top:8px"><summary>${r.unreadN||r.unread.length} line${(r.unreadN||r.unread.length)===1?'':'s'} not understood</summary><ul class="small" style="margin:6px 0 0;padding-left:18px">${r.unread.map(l=>`<li>${esc(l)}</li>`).join('')}</ul></details>`:''}
   ${r.skipped?`<p class="small muted" style="margin:6px 0 0">${r.skipped} row${r.skipped===1?'':'s'} without an exercise, date or reps were skipped.</p>`:''}${r.cardio?`<p class="small muted" style="margin:6px 0 0">${r.cardio} cardio row${r.cardio===1?'':'s'} left out.</p>`:''}
-  ${b.bad?`<p class="small" style="margin:6px 0 0;color:var(--yellow)">${b.bad} exercise${b.bad===1?' has':'s have'} sets that need a weight; check the unit or the exercise.</p>`:''}
+  ${b.bad.length?`<p class="small" style="margin:6px 0 0;color:var(--yellow)">Not imported, no weight given: ${esc(b.bad.slice(0,8).join(', '))}${b.bad.length>8?' and '+(b.bad.length-8)+' more':''}. Write the load in, like 3x10 @ 60, and read it again.</p>`:''}
   ${b.timedOff?`<p class="small" style="margin:6px 0 0;color:var(--yellow)">${b.timedOff} timed set${b.timedOff===1?' was':'s were'} left out: the exercise chosen counts reps. Pick a timed one to keep them.</p>`:''}
   ${r.cut?`<p class="small" style="margin:6px 0 0;color:var(--yellow)">Only the first ${IMP_MAX_ROWS.toLocaleString()} rows were read. Split the file to import the rest.</p>`:''}
   ${b.sessions.length?`<details class="subsec" style="margin-top:8px" id="impRead"><summary>What was read</summary>${b.sessions.slice(0,40).map(x=>`<p class="small" style="margin:8px 0 2px;font-weight:650">${fmtDate(x.date)}${x.dayName&&x.dayName!=='Imported'?' · '+esc(x.dayName):''}</p>${x.ex.map(e=>{const exo=EX(e.exId).id===e.exId&&!EX(e.exId).archived?EX(e.exId):(b.newEx.find(n=>n.id===e.exId)||EX(e.exId));return `<p class="small muted" style="margin:0">${esc(exo.name)}: ${e.sets.map(q=>(q.warm?'W ':q.drop?'D ':'')+setShort(exo,q.w,q.r)).join(', ')}</p>`;}).join('')}`).join('')}${b.sessions.length>40?`<p class="small muted">and ${b.sessions.length-40} more</p>`:''}</details>`:''}
@@ -6909,6 +6925,9 @@ const ACT={
     if(['each','total','side','stack'].includes(e.load)&&!e.bw)e.load=e.load;else delete e.load;
     // Sets already logged with machine help are below 0; the exercise must stay assisted to read them right.
     if(!m.isNew&&!(e.bw&&e.assist)&&(state.sessions.some(x=>x.ex.some(b=>b.exId===e.id&&b.sets.some(q=>+q.w<0)))||(state.draft&&state.draft.ex.some(b=>b.exId===e.id&&b.sets.some(q=>+q.w<0))))){toast('This exercise has sets logged with machine help, so it stays assisted.');return;}
+    // The reverse: sets with added weight would read as help once Assisted is on, so it goes on a separate exercise.
+    const wasA=!m.isNew&&(state.exercises.find(x=>x.id===e.id)||{}).assist;
+    if(!m.isNew&&e.bw&&e.assist&&!wasA&&(state.sessions.some(x=>x.ex.some(b=>b.exId===e.id&&b.sets.some(q=>+q.w>0)))||(state.draft&&state.draft.ex.some(b=>b.exId===e.id&&b.sets.some(q=>+q.w>0))))){toast('This exercise has sets with added weight. Use Assisted Pull-up or Assisted Dip, or a new exercise, for machine help.');return;}
     if(m.isNew)state.exercises.push(e);else{const i=state.exercises.findIndex(x=>x.id===e.id);if(i>=0)state.exercises[i]=e;}
     commit();
     // Created from a picker: it goes straight where the picker was adding or

@@ -198,6 +198,40 @@ function xlsx(rows) {
     await A.ctx.close();
   }
 
+  // ---- Second review: a load then its reps, a bare 3x10 on a weighted lift, assisted names, the editor the other way.
+  {
+    const A = await page({ unit: 'lb' }); const ev = (f, a) => A.page.evaluate(f, a);
+    const lbTxt = () => ev(() => { const L = window.__ironlog; return L.state.sessions.filter(s => !s.demo).sort((a, b) => a.date < b.date ? -1 : 1).map(s => s.date + ': ' + s.ex.map(b => L.EX(b.exId).name + ' [' + b.sets.map(x => Math.round(x.w / 0.45359237) + 'x' + x.r).join(' ') + ']').join('; ')); });
+    const paste = async t => { await openImp(A); await A.page.fill('#impText', t); await A.page.click('[data-act="impRead"]'); await wait(300); return ev(() => document.getElementById('modal').innerText.replace(/\s+/g, ' ')); };
+    let pv = await paste('Sep 20\nBench press 185\n10/10/10\nCurl 30\n12/10\nLeg press 270: 12/10/10\nSquat 225x5\nPull ups\n10/10/10\nDips\n12,10');
+    ok(/1 session/.test(pv) && !/not understood/.test(pv), 'a load then a line of reps (10/10/10, 12/10) is reps, not a date; "270: 12/10/10" is three sets', pv.slice(0, 160));
+    await A.page.click('[data-act="impGo"]'); await wait(300);
+    let got = await lbTxt();
+    ok(JSON.stringify(got) === JSON.stringify(['2026-09-20: Barbell Bench Press [185x10 185x10 185x10]; DB Curl [30x12 30x10]; Leg Press [270x12 270x10 270x10]; Barbell Back Squat [225x5]; Pull-up [0x10 0x10 0x10]; Dips (chest lean) [0x12 0x10]']), 'every lift on Sep 20 with its load and reps', got);
+    await ev(() => { const L = window.__ironlog; L.state.sessions = []; L.saveNow(); L.invalidate(); });
+    pv = await paste('Sep 21\nLateral raises 3x15\nRow 135x8\n3x10\nPull ups 3x8');
+    ok(/Not imported, no weight given: Lateral raises\b/.test(pv) && /3x10 @ 60/.test(pv), 'a bare 3x15 on a weighted lift is not read as 3 lb: it is named and the fix is shown', pv);
+    await A.page.click('[data-act="impGo"]'); await wait(300);
+    got = await lbTxt();
+    ok(JSON.stringify(got) === JSON.stringify(['2026-09-21: Barbell Row [135x8 135x10 135x10 135x10]; Pull-up [0x8 0x8 0x8]']), 'a bare 3x10 under a loaded line is 3 sets at that load; on a bodyweight lift it is sets of reps', got);
+    await ev(() => { const L = window.__ironlog; L.state.sessions = []; L.saveNow(); L.invalidate(); });
+    pv = await paste('Date,Exercise,Weight,Reps\n2026-09-22,Chin Up (Assisted),-40,8\n2026-09-22,Triceps Dip (Assisted),30,10\n2026-09-22,Pull-up,-20,8');
+    await A.page.click('[data-act="impGo"]'); await wait(300);
+    got = await lbTxt();
+    ok(JSON.stringify(got) === JSON.stringify(['2026-09-22: Assisted Pull-up (machine) [-40x8 -20x8]; Assisted Dip (machine) [-30x10]']), 'assisted names and a minus weight on a pull-up all land on the assisted machines as help', got);
+    // The editor: a pull-up with added-weight sets is not turned into an assisted one.
+    await ev(LB => { const L = window.__ironlog; L.state.sessions.push({ id: 'pw', date: '2026-09-15', dayIdx: 0, dayId: null, dayName: 'X', routineId: '', free: true, notes: '', ex: [{ exId: 'pullup', sets: [{ w: 25 * LB, r: 8, rir: 1, warm: false, drop: false }] }] }); L.saveNow(); L.invalidate(); L.ACT.exEdit({ dataset: { ex: 'pullup' } }); }, LB); await wait(150);
+    await A.page.check('#modal [data-ebind="assist"]'); await wait(80);
+    await ev(() => document.querySelector('#modal [data-act="exSave"]').click()); await wait(200);
+    ok(await ev(() => !window.__ironlog.EX('pullup').assist && /added weight/.test(document.getElementById('toast').innerText)), 'turning Assisted on for a lift with added-weight sets is refused, and it says why');
+    const mid = await ev(LB => { const L = window.__ironlog; L.state.bodyweights.push({ id: 'bw2', date: '2026-09-01', kg: 180 * LB }); L.state.sessions.push({ id: 'am', date: '2026-09-16', dayIdx: 0, dayId: null, dayName: 'X', routineId: '', free: true, notes: '', ex: [{ exId: 'assistPullup', sets: [10, 10, 9].map(r => ({ w: -60 * LB, r, rir: 1, warm: false, drop: false })) }] }); L.invalidate(); return L.suggest('assistPullup', { sets: 3, repMin: 8, repMax: 12, rir: 1, inc: 5 * LB }).text; }, LB);
+    ok(/take some help off\.$/.test(mid) && !/add load/.test(mid), 'assisted, mid-range: the target says to take help off, not add load', mid);
+    const bh = await ev(() => { const d = document.createElement('div'); d.innerHTML = window.__ironlog.bestsBoard().html; const t = [...d.querySelectorAll('details')].find(x => /Assisted Pull-up/.test(x.textContent)); return t ? t.querySelector('th').textContent + ' / ' + t.querySelector('td').textContent : null; });
+    ok(/^Load \/ BW−\d+$/.test(bh || ''), 'All-time bests: an assisted lift is headed Load, its rows read BW−x', bh);
+    ok(!A.errors.length, 'no console errors (second review)', A.errors);
+    await A.ctx.close();
+  }
+
   // ---- Assisted pull-up: type the help, progress is less help, deload is more.
   {
     const A = await page({ unit: 'lb' }); const ev = (f, a) => A.page.evaluate(f, a);
