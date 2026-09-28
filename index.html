@@ -3694,8 +3694,8 @@ function obView(){
   if(!cloudChecked||(AUTH()&&!window.claude&&!acct.checked)||(cloud.on&&!cloud.lastPull))return `<div class="ob"><div class="ob-splash"><p class="ob-logo">Iron<span>log</span></p></div></div>`;
   const acctStep=!!AUTH()&&!window.claude;const dots=n=>acctStep?`<div class="ob-dots" aria-hidden="true"><i class="${n===1?'on':''}"></i><i class="${n===2?'on':''}"></i></div>`:'';
   if(obAcctOffered())return `<div class="ob" id="obPage" data-step="acct">
-  <div class="ob-top"><h1 class="ob-logo">Iron<span>log</span></h1><p class="ob-tag">Log your lifts. Each session's targets are worked out from the last one.</p></div>
-  <div class="ob-card"><h2>Save your log</h2><p>A free account keeps it safe and on every phone you use.</p>
+  <div class="ob-top"><h1 class="ob-logo">Iron<span>log</span></h1><p class="ob-tag">Your lifts, and what to beat next time.</p></div>
+  <div class="ob-card"><h2>Save your log</h2><p>Free, and on every phone you use.</p>
   <button class="btn primary block" data-act="acctOpen" data-mode="signup">Create account</button>
   <button class="btn block" data-act="acctOpen" data-mode="signin">I have an account</button></div>
   <button class="linkbtn ob-skip" data-act="obAcctLater">Not now</button>${dots(1)}</div>`;

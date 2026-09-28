@@ -124,6 +124,8 @@ const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log
   const F = await open('index.html', { touch: true, w: 390, h: 844 });
   ev = (f, a) => F.page.evaluate(f, a);
   await F.page.waitForTimeout(400);
+  // The installed build opens on the account page first; Not now leads to Set up, as for a real person.
+  if (await ev(() => (document.getElementById('obPage') || {}).dataset.step === 'acct')) { await F.page.click('#obPage [data-act="obAcctLater"]'); await F.page.waitForTimeout(200); }
   await F.page.click('.welcome [data-act="obSample"]'); await F.page.waitForTimeout(200);
   const list = await ev(() => [...document.querySelectorAll('#modal .tpl')].map(b => b.innerText.replace(/\s+/g, ' ')));
   ok(list.length === 6 && /Full body, 3 days/.test(list[0]) && list.every(t => /about \d+ min/.test(t)), 'first run: six ready-made routines, each with days and minutes', list.map(t => t.slice(0, 60)));
