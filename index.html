@@ -1717,7 +1717,10 @@ const bySess=(a,b)=>a.date<b.date?-1:a.date>b.date?1:(a.id<b.id?-1:a.id>b.id?1:0
    into core, and those are picked up (legacyBody) and moved on the next sync. */
 const bodyChunkOf=date=>'b-'+String(date||'').slice(0,4);
 function chunksOf(st){
-  const out={core:{version:st.version,settings:st.settings,exercises:st.exercises,routines:st.routines,activeRoutineId:st.activeRoutineId,deloadWeek:st.deloadWeek||null,injuries:st.injuries||[],trash:st.trash||[]},draft:{draft:st.draft||null}};
+  /* Core still carries the two keys, always empty, in the place r21 wrote
+     them. An older build then reads a core shaped like its own and writes it
+     back unchanged, instead of both builds rewriting core on every sync. */
+  const out={core:{version:st.version,settings:st.settings,exercises:st.exercises,routines:st.routines,activeRoutineId:st.activeRoutineId,bodyweights:[],measurements:[],deloadWeek:st.deloadWeek||null,injuries:st.injuries||[],trash:st.trash||[]},draft:{draft:st.draft||null}};
   for(const k of ['bodyweights','measurements'])for(const x of (st[k]||[])){const c=out[bodyChunkOf(x.date)]||(out[bodyChunkOf(x.date)]={});(c[k]||(c[k]=[])).push(x);}
   for(const id in out)if(id.startsWith('b-'))for(const k in out[id])out[id][k].sort(bySess);
   for(const x of st.sessions){const k=chunkOf(x.date);(out[k]||(out[k]={sessions:[]})).sessions.push(x);}
@@ -1737,6 +1740,13 @@ function assemble(parts){
   return normalize({...core,bodyweights:unionById(bw,L.bodyweights),measurements:unionById(ms,L.measurements),sessions,cardio,draft:parts.draft?parts.draft.draft:null});
 }
 /* Weigh-ins and measurements that a build before r22 wrote into core. */
+/* The first time a device sees a body document it has no base for it. Its
+   core base from before r22 already records which weigh-ins both sides had
+   agreed on, by id, so that serves as the base: a weigh-in deleted on a
+   device that updated first stays deleted when this one updates. Read before
+   any document is processed, since syncing core replaces that base. */
+function legacyBodyBase(){const a=cloud.meta.core&&cloud.meta.core.b&&cloud.meta.core.b.a;if(!a||!(a.bodyweights||a.measurements))return null;return {a:{bodyweights:a.bodyweights||{},measurements:a.measurements||{}}};}
+const baseFor=(id,m,legB)=>m&&m.b?m.b:id.startsWith('b-')?legB:null;
 function legacyBody(raw){return {bodyweights:raw&&Array.isArray(raw.bodyweights)?raw.bodyweights:[],measurements:raw&&Array.isArray(raw.measurements)?raw.measurements:[]};}
 /* Adds them to the log without replacing anything already here; the next
    sync writes them into their body documents. Returns whether any were new. */
@@ -1912,7 +1922,7 @@ async function cloudFlush(){
   setCloud('saving');
   try{
     if(!(await takeLease())){clearTimeout(cloud.t);cloud.t=setTimeout(()=>cq(cloudFlush),2500);return;}
-    let adopted=false,moreBody=false;const stat={conflicts:0};const tooBig=[];
+    let adopted=false,moreBody=false;const stat={conflicts:0};const tooBig=[];const legB=legacyBodyBase();
     for(const x of todo){
       /* Read before write. If another device changed this document since we
          last agreed on it, merge record by record instead of overwriting. */
@@ -1929,7 +1939,7 @@ async function cloudFlush(){
       if(b&&typeof b.json==='string'&&(!m||hashStr(b.json)!==m.h)){
         let rd=null;try{rd=JSON.parse(b.json);}catch(e){log('sync-parse',e);}
         if(rd){
-          const ret=+b.et||+b.at;const merged=mergeChunk(x.id,m&&m.b,JSON.parse(json),rd,ret>(cloud.editAt[x.id]||0),stat);
+          const ret=+b.et||+b.at;const merged=mergeChunk(x.id,baseFor(x.id,m,legB),JSON.parse(json),rd,ret>(cloud.editAt[x.id]||0),stat);
           cloud.editAt[x.id]=Math.max(cloud.editAt[x.id]||0,ret);
           applyChunk(x.id,merged);adopted=true;
           if(x.id==='core'&&absorbLegacy(legacyBody(rd)))moreBody=true;
@@ -1968,10 +1978,10 @@ async function cloudPull(){
   const rids=Object.keys(remote);
   if(!rids.length){await cloudFlush();return;}
   const local=chunksOf(state);const first=!Object.keys(cloud.meta).length;
-  let parts=null,merged=false;const stat={conflicts:0};const adoptedIds=new Set();const leg={bodyweights:[],measurements:[]};
+  let parts=null,merged=false;const stat={conflicts:0};const adoptedIds=new Set();const leg={bodyweights:[],measurements:[]};const legB=legacyBodyBase();
   if(first){
     const rState=assemble(Object.fromEntries(rids.map(k=>[k,remote[k].data])));
-    if(!bootHadLocal||(!realCount(state)&&!state.bodyweights.some(b=>!b.demo)&&!state.draft&&!(state.cardio||[]).length)){
+    if(!bootHadLocal||(!realCount(state)&&!state.bodyweights.some(b=>!b.demo)&&!state.measurements.some(x=>!x.demo)&&!state.draft&&!(state.cardio||[]).length)){
       parts=Object.fromEntries(rids.map(k=>[k,remote[k].data]));rids.forEach(k=>adoptedIds.add(k));
     }else{
       snapshot();merged=true;
@@ -1994,7 +2004,7 @@ async function cloudPull(){
       const lJson=JSON.stringify(local[id]||emptyChunk(id));const localDirty=!m||hashStr(lJson)!==m.h;
       if(!localDirty){parts[id]=r.data;adoptedIds.add(id);any=true;continue;}
       if(id==='core'){const L=legacyBody(r.data);leg.bodyweights.push(...L.bodyweights);leg.measurements.push(...L.measurements);}
-      parts[id]=mergeChunk(id,m&&m.b,local[id]||emptyChunk(id),r.data,r.et>(cloud.editAt[id]||0),stat);
+      parts[id]=mergeChunk(id,baseFor(id,m,legB),local[id]||emptyChunk(id),r.data,r.et>(cloud.editAt[id]||0),stat);
       cloud.editAt[id]=Math.max(cloud.editAt[id]||0,r.et);
       // The cloud copy is now the agreed base; the merge result is written by the flush below.
       cloud.meta[id]={h:r.h,at:r.at,b:baseOf(id,r.data)};any=true;

@@ -35,7 +35,7 @@ const ids = list => (list || []).map(x => x.id).sort().join();
   const nev = (f, a) => N.page.evaluate(f, a);
   await wait(1200); await nev(() => window.__ironlog.flush()); await wait(500);
   ok(await nev(() => { const s = window.__ironlog.state; return s.bodyweights.map(x => x.id).sort().join() === 'bw1,bw2' && s.measurements.map(x => x.id).join() === 'm1'; }), 'r22 phone signs in: gets every weigh-in and measurement from the older core');
-  ok(!('bodyweights' in doc('core')) && !('measurements' in doc('core')) && ids(doc('b-2025').bodyweights) === 'bw1' && ids(doc('b-2026').bodyweights) === 'bw2' && ids(doc('b-2026').measurements) === 'm1', 'the cloud copy moves them into one document per year, and core no longer holds them', [...store.keys()]);
+  ok(!(doc('core').bodyweights || []).length && !(doc('core').measurements || []).length && ids(doc('b-2025').bodyweights) === 'bw1' && ids(doc('b-2026').bodyweights) === 'bw2' && ids(doc('b-2026').measurements) === 'm1', 'the cloud copy moves them into one document per year, and core no longer holds them', [...store.keys()]);
   // The r21 phone syncs: its core has no weigh-ins now, but nothing is deleted from the cloud.
   await oev(() => window.__ironlog.sync()); await wait(600);
   ok(ids(doc('b-2026').bodyweights) === 'bw2' && ids(doc('b-2025').bodyweights) === 'bw1', 'an r21 phone syncing afterwards never touches the yearly documents');
@@ -65,6 +65,56 @@ const ids = list => (list || []).map(x => x.id).sort().join();
   ok(both[0] === 'bw1,bw4' && both[1] === 'bw1,bw4' && ids(doc('b-2026').bodyweights) === 'bw4', 'delete on one r22 phone, add on the other: both phones and the cloud agree', both);
   ok(await nev(() => window.__ironlog.state.sessions.length === 0) && !O.errors.length && !N.errors.length && !N2.errors.length, 'no console errors on any phone', [...O.errors, ...N.errors, ...N2.errors]);
   await O.ctx.close(); await N.ctx.close(); await N2.ctx.close();
+
+  // ---- 19, found in review: phones updating one after another.
+  // Both on r21 and synced; B updates and deletes a weigh-in; then A updates. The delete must stick.
+  {
+    store.clear();
+    const path = require('path'); const NEW = 'file://' + path.resolve('index.html');
+    const A = await open('baselines/r21.html', { browser, clock: '2026-09-26T10:00:00', setup: cloudSetup });
+    const B = await open('baselines/r21.html', { browser, clock: '2026-09-26T10:00:00', setup: cloudSetup });
+    const a = (f, x) => A.page.evaluate(f, x), b = (f, x) => B.page.evaluate(f, x);
+    await wait(600);
+    await a(() => { const L = window.__ironlog; L.state.settings.onboarded = true; L.state.bodyweights.push({ id: 'x1', date: '2026-09-20', kg: 81 }, { id: 'x2', date: '2026-09-21', kg: 80.8 }); L.saveNow(); });
+    await a(() => window.__ironlog.flush()); await wait(400); await b(() => window.__ironlog.sync()); await wait(600); await a(() => window.__ironlog.sync()); await wait(400);
+    ok(await b(() => window.__ironlog.state.bodyweights.length === 2), 'two r21 phones in sync with two weigh-ins');
+    await B.page.goto(NEW); await B.page.waitForFunction(() => window.__ironlog && window.__ironlog.cloudState().on); await wait(1200);
+    await b(() => { const L = window.__ironlog; L.state.bodyweights = L.state.bodyweights.filter(x => x.id !== 'x1'); L.saveNow(); }); await b(() => window.__ironlog.flush()); await wait(600);
+    ok(ids(doc('b-2026').bodyweights) === 'x2', 'B updates to r22 and deletes one: the cloud holds the other');
+    await A.page.goto(NEW); await A.page.waitForFunction(() => window.__ironlog && window.__ironlog.cloudState().on); await wait(1500);
+    await a(() => window.__ironlog.flush()); await wait(600); await b(() => window.__ironlog.sync()); await wait(600);
+    const got = [await a(() => window.__ironlog.state.bodyweights.map(x => x.id).join()), await b(() => window.__ironlog.state.bodyweights.map(x => x.id).join()), ids(doc('b-2026').bodyweights)];
+    ok(got.every(g => g === 'x2'), 'A updates later: the deleted weigh-in stays deleted everywhere', got);
+    ok(!A.errors.length && !B.errors.length, 'no console errors (staggered update)', [...A.errors, ...B.errors]);
+    await A.ctx.close(); await B.ctx.close();
+  }
+  // An r21 phone and an r22 phone together: once in step, syncing again writes nothing.
+  {
+    store.clear();
+    const O2 = await open('baselines/r21.html', { browser, clock: '2026-09-26T10:00:00', setup: cloudSetup });
+    const o = (f, x) => O2.page.evaluate(f, x);
+    await wait(600);
+    await o(() => { const L = window.__ironlog; L.state.settings.onboarded = true; L.state.bodyweights.push({ id: 'y1', date: '2026-09-20', kg: 81 }); L.saveNow(); }); await o(() => window.__ironlog.flush()); await wait(400);
+    const N3 = await open('index.html', { browser, clock: '2026-09-26T10:00:00', setup: cloudSetup });
+    const n = (f, x) => N3.page.evaluate(f, x);
+    await wait(1200);
+    for (let i = 0; i < 2; i++) { await n(() => window.__ironlog.flush()); await wait(400); await o(() => window.__ironlog.sync()); await wait(500); await n(() => window.__ironlog.sync()); await wait(500); }
+    const at0 = JSON.parse(store.get('data/users/u1/core')).at;
+    for (let i = 0; i < 2; i++) { await o(() => window.__ironlog.sync()); await wait(500); await n(() => window.__ironlog.sync()); await wait(500); }
+    ok(JSON.parse(store.get('data/users/u1/core')).at === at0, 'r21 and r22 phones in step: further syncs do not rewrite core');
+    ok(ids(doc('b-2026').bodyweights) === 'y1', 'and the weigh-in is safe in its yearly document');
+    await O2.ctx.close(); await N3.ctx.close();
+  }
+  // A phone holding only tape measurements signs in to an account with a log: both kept (was lost before r22).
+  {
+    const M = await open('index.html', { browser, clock: '2026-09-26T10:00:00' });
+    const raw = await M.page.evaluate(() => { const L = window.__ironlog; L.state.settings.onboarded = true; L.state.measurements.push({ id: 'mm1', date: '2026-09-22', waist: 83 }); L.saveNow(); return localStorage.getItem('ironlog.v1'); });
+    await M.ctx.close();
+    const M2 = await open('index.html', { browser, clock: '2026-09-26T10:00:00', setup: cloudSetup, state: JSON.parse(raw) });
+    await wait(1500);
+    ok(await M2.page.evaluate(() => { const s = window.__ironlog.state; return s.measurements.some(x => x.id === 'mm1') && s.bodyweights.some(x => x.id === 'y1'); }), 'measurements-only phone signing in: its measurement and the account\'s weigh-in are both kept');
+    await M2.ctx.close();
+  }
 
   // ---- 20. Undo after a reload, and forgotten with a removed log.
   {
