@@ -152,7 +152,9 @@ const ids = list => (list || []).map(x => x.id).sort().join();
     ok(await ev(() => document.documentElement.scrollWidth <= 320 && [...document.querySelectorAll('#obPage button, #obPage label.ob-opt, #obPage input:not([type=file])')].every(e => e.getBoundingClientRect().height >= 44)), '320 px: no sideways scroll, every control 44 px tall');
     // Import a backup straight from Set up.
     const bk = await ev(() => { const L = window.__ironlog; const s = JSON.parse(JSON.stringify(L.state)); s.settings.onboarded = true; s.sessions = [{ id: 'imp1', date: '2026-09-20', dayIdx: 0, dayId: null, dayName: 'Chest', routineId: '', notes: '', ex: [{ exId: 'bench', sets: [{ w: 100, r: 8, rir: 2, warm: false, drop: false }] }] }]; return JSON.stringify({ app: 'ironlog', state: s }); });
-    await F.page.setInputFiles('#obPage #importFile', { name: 'backup.json', mimeType: 'application/json', buffer: Buffer.from(bk) }); await wait(300);
+    // r23: the Set up option opens the import sheet; a backup file chosen there restores the log as before.
+    await F.page.click('#obPage [data-act="impOpen"]'); await wait(150);
+    await F.page.setInputFiles('#impFile', { name: 'backup.json', mimeType: 'application/json', buffer: Buffer.from(bk) }); await wait(400);
     await ev(() => document.querySelector('#modal [data-act="mOk"]').click()); await wait(400);
     ok(await ev(() => !document.getElementById('obPage') && window.__ironlog.state.sessions.some(s => s.id === 'imp1') && window.__ironlog.ui.tab === 'today'), 'Import a backup from Set up: the log is in and Today opens');
     // Sample data first, then back to a clean start.

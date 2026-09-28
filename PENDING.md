@@ -1,17 +1,19 @@
-# Everything still open (as of r22, 2026-09-28)
+# Everything still open (as of r23, 2026-09-28)
 
 This is the tracking list. Items are built only when V says go. Owner items need V; the rest is build work. Nothing is done unless it says so. Numbers are kept stable; finished items move to Done at the bottom.
 
-## Built in r22, awaiting V's approval (pull request from branch r22)
-64 (first-run pages), 27, 28, 19, 20 and 11. What each does is under Done > r22 below. Nothing is live until V merges the pull request; the merge then tests and publishes by itself (item 22).
+## Built in r23, awaiting V's approval (pull request from branch r23)
+52 (logo out of the header), 65 (import from notes, spreadsheets, Strong, Hevy), 45 (assisted pull-up and dip), 32 and 33. What each does is under Done > r23 below. Nothing is live until V merges the pull request; the merge then tests and publishes by itself (item 22).
+
+Open count after r23: 27 (3 critical, 3 owner, 3 verification, 18 build or decision items).
 
 ## Critical, still open
 58. Part 2 needs V: SUPABASE.md, Part 4, steps 1 to 5 (the tables, a private `ironlog-feedback` repository, a GitHub token for it, the function and its webhook), then FEEDBACK.md, "What V does" steps 2 and 3 (protect `main`; choose a scheduled Claude task or Claude's GitHub Action to pick up tickets). Until step 1, Send feedback says it is not set up yet and keeps the text.
 61. (c) A 6-digit code in the confirmation email, typed into the app, which works even if the app was closed. Needs owner item 6 (the email sender) first.
-63. Check on the iPhone itself (r21 is live; add these after r22 merges: the first-run pages on a fresh install, a PR set's toast and pulse, Undo in Settings after closing the app): the Add to Home Screen guide on iOS 26 Safari (Share is behind ⋯ in the compact bar; checked against MacRumors and a Glide bug report, not on a device), the app signing itself in after the confirmation link (Safari to the home-screen app and back), a past workout from the week bar, the light Today card, and a screenshot picked in Send feedback.
+63. Check on the iPhone itself (r22 is live: the first-run pages on a fresh install, a PR set's toast and pulse, Undo in Settings after closing the app; after r23 merges: the week bar without the logo, an import from Notes or a spreadsheet file, an assisted pull-up session): the Add to Home Screen guide on iOS 26 Safari (Share is behind ⋯ in the compact bar; checked against MacRumors and a Glide bug report, not on a device), the app signing itself in after the confirmation link (Safari to the home-screen app and back), a past workout from the week bar, the light Today card, and a screenshot picked in Send feedback.
 
 ## Owner items (V)
-1. Delete the `r14-review`, `r15-design`, `r17-accounts`, `r20-design` and `r21` branches on GitHub (and `r22` once merged) (`r20-design` is fully merged into `main`) (the first two hold the old commit with the personal Gmail address; `main` and `gh-pages` are clean). Parked by V on 2026-09-27; come back to it.
+1. Delete the `r14-review`, `r15-design`, `r17-accounts`, `r20-design` `r21` and `r22` branches on GitHub (and `r23` once merged) (`r20-design` is fully merged into `main`) (the first two hold the old commit with the personal Gmail address; `main` and `gh-pages` are clean). Parked by V on 2026-09-27; come back to it.
 2. GitHub Settings > Emails: tick "Keep my email addresses private" and "Block command line pushes that expose my email". Optionally ask GitHub Support to purge cached views of the old commit. Parked with item 1.
 6. Supabase Part 2 (`SUPABASE.md`): a domain and the Resend email sender, needed before friends sign up. Until then confirmation and reset emails reach only the Supabase account's own email address, at most 2 an hour.
 
@@ -21,7 +23,7 @@ This is the tracking list. Items are built only when V says go. Owner items need
 10. Accounts, sync and feedback are tested against a stand-in Supabase server (`tests/accounts.js`), because the build machine cannot reach supabase.co. V confirmed real sign-up and sync on 2026-09-27 (3 rows: core, draft, s-2026-09-2). The feedback function (`supabase/functions/feedback-to-issue`) and the publish workflow have no automated test here: the first real report and the first merge are their check (Supabase function logs, GitHub Actions tab).
 
 ## Cloud sync and accounts
-66. Every device should run the same build. While a phone still runs r21 or older, a weigh-in deleted or corrected on that phone is not removed on r22 phones (r22 only adds what an older build writes), and the older phone shows no body data. Nothing is lost. Tell friends to tap Reload when "New version ready" shows.
+66. Every device should run the same build. While a phone still runs r21 or older, a weigh-in deleted or corrected on that phone is not removed on r22 phones (r22 only adds what an older build writes), and the older phone shows no body data. Nothing is lost. Tell friends to tap Reload when "New version ready" shows. r23 adds one more reason: assisted pull-ups and dips store the load as bodyweight minus help (a negative number), and a phone still on r22 reads those sets as bodyweight only (0) and writes them back that way. Update every device before logging an assisted set.
 13. An emailed sign-in link without a password was left out: on an iPhone it opens in Safari, whose storage is separate from the home-screen app. A 6-digit emailed code would work instead, if wanted (needs Part 2's email sender).
 15. Client-side encryption, optional and later: the owner cannot read data, but a forgotten passphrase loses the data.
 21. The standalone app has no Claude features (debrief, Ask Claude, AI swap, Claude reading typed sets). The code is there but only works inside Claude. Decide: artifact-only, or add another AI service (its key would have to live in a Supabase function, never in the app).
@@ -30,16 +32,12 @@ This is the tracking list. Items are built only when V says go. Owner items need
 23. Custom domain, only if wanted, decided before friends install.
 
 ## Asked for on 2026-09-27, for later
-65. Import from other apps (raised by V 2026-09-28: "importing any compatible historical data files"). Today only an Ironlog backup (.json) imports. Strong and Hevy export CSV files of every set; reading those (exercise names matched to the library, units, dates) would let a new user bring years of history on day one.
 48. Custom routine generator (the unmet need: most people will not build or import a routine). From a few answers (goal, days a week, minutes per session, equipment, experience, muscles to bring up) build a routine from the library that meets the weekly targets and stays under the per-session flag, then keep adjusting it from the log. First step already taken in r20: six ready-made routines on the first-run card and in Plan. Demand cannot be measured inside the app, because the privacy line promises no tracking; ask friends who try it instead.
 49. Age and sex as optional profile fields, only when a feature needs them (for example strength standards or bodyweight-share estimates). r20 adds the optional name only.
 50. Fitness app and health integrations. Web APIs with sign-in (Strava, Fitbit, Garmin, Oura, Whoop, Withings) work from the installed web app, with each service's tokens kept in a Supabase function, never in the app. Apple Health and Android Health Connect have no web API: they need the native wrapper (item 46). CSV export already exists.
 51. Payments, if Ironlog is ever charged for (information only, nothing built): Stripe Checkout for a subscription or a one-time lifetime price, the Stripe customer portal for cancelling and card changes, and a webhook into a Supabase function that stores who has paid; the app only reads that flag. Needs terms, a privacy policy, a refund policy and sales tax handling (Stripe Tax). If it ever ships in the App Store, Apple's in-app purchase rules apply to digital features.
-52. Week bar: at 320 to 430 px the day discs are 44 px tall (from 375 px) but 30 to 37 px wide; 44 px wide needs the logo moved off that row. Left as a design decision for V.
-
-## Design and engagement
-32. At a glance vs This week on Today overlap in what they show; decide which card owns what (raised 2026-09-24).
-33. Order of the section chips at the top of Stats (raised 2026-09-24).
+67. Import a photo of a handwritten log. Reading handwriting needs an AI service (see 21). Works today without it: on an iPhone, open the photo, press on the text (Live Text), Copy, and paste into Import workouts; the same for a photo of a whiteboard or a printed sheet.
+68. Other apps' exports. Strong, Hevy, FitNotes-style columns ("Weight (kgs)") and any sheet with a header row are tested; JEFIT, Fitbod and others are read through the column picker but not tested against a real export. Add one when a friend sends a file.
 
 ## Training (a conversation, not an app fix)
 39. Program review: Chest 17, Quads 15 and Upper back 14 sets in single sessions; Arms and Shoulders days around 80 minutes.
@@ -50,11 +48,16 @@ This is the tracking list. Items are built only when V says go. Owner items need
 42. RIR calibration split by rep band once there is enough data.
 43. Specialisation: Focus on up to 2 muscles.
 44. Pick for me "Strength focus".
-45. Assisted pull-up and dip load mode (bodyweight minus assistance).
 46. Native app wrapper (Capacitor), only if needed: rest timer alerts through a locked screen, Apple Health, a real App Store install. Costs $99 a year for Apple and needs a Mac.
 
 ## Done
-- r22 (built 2026-09-28, awaiting approval):
+- r23 (built 2026-09-28, awaiting approval):
+  - 52 (V's request 2026-09-28): the Ironlog wordmark is out of the header (kept for screen readers); the week bar has the whole row, so from 375 px each day is at least 44 px wide as well as tall.
+  - 65 (V's request, widened to "any other raw data type"): Import workouts (first-run Set up page, Settings > Your data, History) reads a note pasted from Notes or typed by hand ("Bench 60x8, 60x8" or "3x10 @ 60" under a date line), a spreadsheet (.csv, .tsv, .xlsx, or cells pasted from Excel, Numbers or Google Sheets, with a column picker when the headers are unclear), Strong and Hevy exports, and an Ironlog CSV. A preview shows sessions, sets, dates and units first, asks about any exercise it is unsure of (pick one or create it), lists anything it could not read, and skips rest timers, cardio rows, timed sets and sets already in the log. A lift given only as "3x10" with no load anywhere is not guessed: the preview names it and asks for the load ("3x10 @ 60"); under a loaded line it is 3 sets at that load. A load with its reps on the next line ("Bench press 185" then "10/10/10") reads as reps, not a date. The import has Undo. Restoring a backup is a separate button that says it replaces everything.
+  - 45: Assisted Pull-up and Assisted Dip in the library, and an "Assisted (machine help)" switch on any bodyweight exercise. The field takes the help (55 means 55 lb of help), the label reads BW−55, progress takes help off, a deload adds help, and tonnage counts bodyweight minus help.
+  - 32: This week owns the week (sessions, hard sets, lifted); At a glance keeps PRs, streak and bodyweight; the PR tile opens All-time bests.
+  - 33: already done 2026-09-24 (the chips follow the section order and hide hidden sections); checked again.
+- r22 (approved by V and published 2026-09-28):
   - 64 (V's request 2026-09-28): a new install opens on its own pages. Page 1, Save your log: Create account, I have an account, Not now. Page 2, Set up: optional name, units, then Pick a ready-made routine, Log a workout now, Build my own routine, Import a backup, and Look around with sample data. No tabs or header until a way to start is picked; signing in with an existing log goes straight to Today; a phone whose log was removed at sign-out starts here again. Name is optional (V's choice). A new user's routine comes with exercises, sets, reps and rest but no loads: the first session's loads are typed once (the rest of the rows fill from set 1), and from the second session on, loads and targets come from the log.
   - 27: Stats > Lifts > All-time bests: every lift's best estimate, heaviest set and rep records (most reps at each load, where no heavier set did as many) with the date each was first reached, newest record first; six show at once, Show all lists the rest.
   - 28: the PR moment: a gold toast saying what the set beat, a gold pulse on the row (none with reduced motion), a buzz on Android; the recap opens with a gold block listing each PR against the old record.
