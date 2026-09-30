@@ -2,13 +2,11 @@
 
 This is the tracking list. Items are built only when V says go. Owner items need V; the rest is build work. Nothing is done unless it says so. Numbers are kept stable; finished items move to Done at the bottom.
 
-## Built in r24, awaiting V's approval (pull request from branch r24)
-69 (a swap undid Short on time) and 70 (the preview environment). What each does is under Done > r24 below. Nothing is live until V merges the pull request; the merge then tests and publishes by itself (item 22). r24 goes first because the live app's offline worker is what blocks a preview; from r25 on, every pull request can be tried at vqx7.github.io/Ironlog/preview/ before it is merged.
-
-After r24 merges, once: open vqx7.github.io/Ironlog/ in Safari (not the home-screen app) and tap Reload when "New version ready" shows. Until that Safari copy updates, its old worker would open the live app at the preview link.
+## After r24 (live since 2026-09-30), once
+Open vqx7.github.io/Ironlog/ in Safari (not the home-screen app) and tap Reload when "New version ready" shows. Until that Safari copy updates, its old worker opens the live app at the preview link.
 
 ## Built in r25, to try in the preview, then V's approval (pull request from branch r25)
-71 to 77 below, all built; what each does is under Done > r25. Merge #4 (r24) first: the preview needs it.
+71 to 77 below, all built; what each does is under Done > r25. r24 is live, so the preview works once Safari's copy of the live app has reloaded to r24.
 
 ## Asked for on 2026-09-30 (built in r25, see Done)
 71. Suggested loads show grey until typed, like reps: the checkmark and auto-mark accept them. A setting switches back to filled-in loads. Nothing typed is ever overwritten (V chose grey as the default).
@@ -74,7 +72,7 @@ Open count after r24: 35 (3 critical, 4 owner, 3 verification, 25 build or decis
   - 75: copy trimmed: coach messages keep the finding and the action, the reasons moved into an info tip; shorter toasts; no filler lines above Stats and History; the build number moved off the top of Settings (it is in Diagnostics); routine descriptions shortened.
   - 76: the design pass kept the type and layout that work and added the brand: the amber mark, the wordmark lockup, the handle under the week bar, a segmented Problem/Question/Suggestion control.
   - 77: new-user, sign-in, sign-out (keep or remove) and install checked end to end on the built app at iPhone size: iPhone gets Add to Home Screen with the picture and two steps; Android Chrome's Install button opens the browser's own install prompt. Screenshots sent to V. Fixes from it: the sign-up note no longer says to come back and sign in (the app does it), the routine toast is short.
-- r24 (built 2026-09-30, awaiting approval):
+- r24 (approved by V and published 2026-09-30):
   - 69 (V's report 2026-09-30): a swap rebuilt the exercise from the routine's planned set count, so after Short on time (or a lighter day, + Set, − Set) the new exercise came back with the full sets, and it lost the trimmed mark, so trimmed work counted in trends. Now a swap keeps the sets the exercise has right now and the mark, through a second swap, Undo, a reload and Finish. Found in the same audit: changing a session's date replaced a load typed on the first set with the app's suggestion; it now replaces only rows still on the suggestion. An r23 session left open carries on after the update. Suite `tests/r24.js`.
   - 70 (V's request 2026-09-30): the preview environment. Every pull request that passes the tests is published to vqx7.github.io/Ironlog/preview/ as its own app ("Ironlog Preview", striped icon and edge), installable next to the live one. It keeps its own log, undo history, sign-in and offline copy, signs in with the same account and syncs to its own table (Part 5), so nothing tried there touches the real log; it has no Delete my account. The live app's worker now lets the preview load (the old one would have opened the live app instead, and each would have deleted the other's offline copy). Merging still is the only way to the live app. Suite `tests/preview.js`.
 - r23 (approved by V and published 2026-09-28):
