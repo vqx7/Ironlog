@@ -206,6 +206,10 @@ main{max-width:760px;margin:0 auto;padding:6px 16px 150px}
 .tabs button[aria-current="page"] svg{stroke:var(--volt-line);stroke-width:2.1}
 .tabs button[aria-current="page"]::before{content:"";position:absolute;top:5px;left:50%;width:44px;height:30px;margin-left:-22px;border-radius:999px;background:color-mix(in srgb,var(--volt) 14%,transparent);z-index:-1}
 .tabs button{isolation:isolate}
+/* The preview build (r24) wears a striped edge above the tabs and under the
+   status bar, so it is never mistaken for the live app. */
+html[data-env="preview"] .tabs{border-top:3px solid transparent;border-image:repeating-linear-gradient(135deg,#f5a524 0 10px,#15161a 10px 20px) 3}
+html[data-env="preview"] body::before{content:"";position:fixed;top:0;left:0;right:0;height:env(safe-area-inset-top,0px);z-index:60;pointer-events:none;background:repeating-linear-gradient(135deg,#f5a524 0 10px,#15161a 10px 20px)}
 /* A session in progress: the Today tab reads Session and carries a dot, so it
    can be found again from any tab. */
 .tabs button.live::after{content:"";position:absolute;top:7px;left:50%;margin-left:9px;width:8px;height:8px;border-radius:50%;background:var(--volt);box-shadow:0 0 0 2px var(--bg),0 0 0 3px var(--volt-line)}
@@ -1230,10 +1234,18 @@ function freshState(){
 }
 
 /* ---------- storage ---------- */
-const KEY='ironlog.v1';
+/* The preview build (r24) is served from the same site as the live app, so
+   the two would otherwise share this browser's storage: a preview could
+   rewrite the live log, or migrate it forward to a shape the live build
+   cannot read. Every stored key here is derived from KEY, so a different KEY
+   (and undo database) keeps the preview's log apart. Only scripts/build.js
+   --preview sets IRONLOG_ENV. */
+const ENV=window.IRONLOG_ENV==='preview'?'preview':'live';
+const KEY=ENV==='preview'?'ironlog-preview.v1':'ironlog.v1';
+if(ENV==='preview')document.documentElement.dataset.env='preview';
 /* Shown in Settings, in diagnostics and in backups, so a bug report can be
    matched to the exact build. */
-const APP_VERSION='2026.09.28-r23';
+const APP_VERSION='2026.09.30-r24';
 /* Diagnostics log: the last 60 errors, kept in this browser only. Errors that
    used to be swallowed silently land here, and Settings can copy them. */
 const LOGK=KEY+'.log';
@@ -1274,7 +1286,7 @@ const undoStack=[],UNDO_MAX=20;
    in-session entries carry cannot be stored; after a reload those entries
    undo through the three-way merge, which gives the same result. Best
    effort: without IndexedDB, Undo works as before, for this visit only. */
-const UNDO_DB='ironlog-undo',UNDO_TTL=7*864e5;let undoDbP=null,undoT=null;
+const UNDO_DB=ENV==='preview'?'ironlog-preview-undo':'ironlog-undo',UNDO_TTL=7*864e5;let undoDbP=null,undoT=null;
 function undoDb(){
   if(!undoDbP)undoDbP=new Promise(res=>{try{const r=indexedDB.open(UNDO_DB,1);r.onupgradeneeded=()=>r.result.createObjectStore('kv');r.onsuccess=()=>res(r.result);r.onerror=()=>res(null);}catch(e){res(null);}});
   return undoDbP;
@@ -1622,6 +1634,8 @@ function normalize(s){
         lastR:Array.isArray(b.lastR)?b.lastR.slice(0,30).map(v=>{const n=numOr(v,NaN);return isNum(n)&&n>=0?Math.min(n,1000):null;}):[],
         swappedFrom:typeof b.swappedFrom==='string'?fixId(b.swappedFrom):null,
         cut:b.cut===true?true:undefined,
+        // The suggested load the rows started from (r24); absent in older drafts.
+        sw:b.sw===null?null:b.sw===undefined||!isNum(+b.sw)?undefined:clampN(b.sw,-300,20000*LB,0),
         // Editing a saved session keeps the rep range it was logged under.
         keepRR:b.keepRR===undefined?undefined:(Array.isArray(b.keepRR)&&b.keepRR.length===2?b.keepRR.map(v=>Math.round(+v)||1):null),
         lastNote:b.lastNote&&typeof b.lastNote==='object'&&typeof b.lastNote.text==='string'&&isDate(b.lastNote.date)?{date:b.lastNote.date,text:b.lastNote.text}:null,
@@ -2131,7 +2145,7 @@ async function fbCheckReader(){
 }
 function fbContext(m){
   const d=state.draft;
-  return {build:APP_VERSION,at:new Date().toISOString(),device:String(navigator.userAgent||'').slice(0,300),
+  return {build:APP_VERSION,env:ENV,at:new Date().toISOString(),device:String(navigator.userAgent||'').slice(0,300),
     screen:`${window.innerWidth}x${window.innerHeight} @${window.devicePixelRatio||1}x`,installed:isStandalone(),
     theme:state.settings.theme,accent:state.settings.accent||'blue',unit:U(),from:m.from||ui.tab,exercise:m.ex||undefined,
     session:d?{past:!!d.past,free:!!d.free,editing:!!d.editingId,exercises:d.ex.length}:null,
@@ -4644,7 +4658,9 @@ function lastNoteOf(exId,before){
 }
 function newBlock(exId,plan,opts){
   const sg=suggest(exId,plan,opts);
-  return {exId,plan:{...plan},note:'',lastNote:lastNoteOf(exId,opts&&opts.before),inj:sg.inj||null,hint:sg.text,last:sg.last,target:sg.target,tgt:sg.tgt,easier:sg.easier||null,lastR:sg.lastR,sets:Array.from({length:+plan.sets||3},()=>({w:sg.w,r:null,rir:null,warm:false,drop:false,done:false}))};
+  // sw is the load the app suggested, kept so a later refresh can tell a row
+  // still on the suggestion from one the lifter typed (refreshBlock).
+  return {exId,plan:{...plan},note:'',lastNote:lastNoteOf(exId,opts&&opts.before),inj:sg.inj||null,hint:sg.text,last:sg.last,target:sg.target,tgt:sg.tgt,easier:sg.easier||null,lastR:sg.lastR,sw:sg.w==null?null:sg.w,sets:Array.from({length:+plan.sets||3},()=>({w:sg.w,r:null,rir:null,warm:false,drop:false,done:false}))};
 }
 const DEFAULT_PLAN={sets:3,repMin:8,repMax:12,rir:1,rest:90,inc:5*LB};
 /* Round a load to something you can actually put on a bar or pick off a rack:
@@ -5390,7 +5406,7 @@ function viewSettings(){
   // Each group folds (for this visit) and moves (order is saved).
   const SUB={general:`${s.unit==='kg'?'kg, cm':'lb, in'} · ${s.theme==='system'?'device theme':s.theme}`,timer:`${s.timerMode==='off'?'timer off':s.timerMode+' timer'}${s.timeBudget?` · ${s.timeBudget} min budget`:''}`,rir:{on:'on',cal:'corrected',off:'off'}[s.rirMode],layout:s.hidden.length?`${s.hidden.length} hidden`:'everything shown',prio:s.priorities.length?s.priorities.map(m=>ML[m]).join(', '):'none',bands:'',data:cloud.on?(cloud.status==='synced'?'synced':'syncing'):'this device only',demo:hasDemo?'loaded':'off',reset:'',diag:`build ${APP_VERSION}`};
   const G=(k,title,help,id)=>`<details class="sec" ${id?`id="${id}"`:''} data-sk="settings:${k}" data-mkey="${k}" ${isOpen('settings:'+k,k==='general')?'open':''}><summary>${sgrip(title)}<span class="sec-t">${esc(title)}</span><span class="sec-s">${esc(SUB[k]||'')}</span>${help?helpBtn(help):''}<span class="chev" aria-hidden="true"></span></summary><div class="sec-b">`;
-  return `${pageHead('Ironlog '+APP_VERSION,'Settings',cloud.on?(window.claude?'Saved to your Claude account and this device':'Synced to your account and saved on this device'):'Saved on this device')}
+  return `${pageHead('Ironlog '+(ENV==='preview'?'Preview ':'')+APP_VERSION,'Settings',cloud.on?(window.claude?'Saved to your Claude account and this device':'Synced to your account and saved on this device'):'Saved on this device')}
   ${G('general','General')}<div class="card stack"><div class="grid2"><label class="field">Units<select data-bind="unit"><option value="lb" ${s.unit==='lb'?'selected':''}>lb and inches</option><option value="kg" ${s.unit==='kg'?'selected':''}>kg and cm</option></select></label>
   <label class="field">Theme<select data-bind="theme"><option value="system" ${s.theme==='system'?'selected':''}>Match device</option><option value="dark" ${s.theme==='dark'?'selected':''}>Dark</option><option value="light" ${s.theme==='light'?'selected':''}>Light</option></select></label></div>
   <label class="field">Your name (optional)<input type="text" data-bind="userName" value="${esc(s.userName||'')}" maxlength="40" autocomplete="given-name" placeholder="Shown on Today"></label>
@@ -5674,11 +5690,16 @@ function applyPick(m,id){
   if(m.mode==='addBlock'){d.ex.push(newBlock(id,half(planFor(id)),{deload:!!d.deload,before:d.date}));saveNow();afterAdd(d.ex.length-1);return;}
   /* Swapping used to replace the whole block, so sets already logged on the
      old exercise vanished. Now logged sets stay with the exercise they were
-     done on, and the new one takes over the sets still to do. */
+     done on, and the new one takes over the sets still to do. The count comes
+     from the rows the exercise has now, not the routine's plan: the plan's
+     count undid Short on time, + Set and − Set (r24). A trimmed exercise
+     stays trimmed, so its replacement is kept out of trends too. */
   if(m.mode==='swapBlock'){const b=d.ex[m.b];if(!b){rerenderKeepScroll();return;}
     const orig=JSON.parse(JSON.stringify(b));const bi=m.b,did=d.id;
     const done=b.sets.filter(x=>x.done);const left=b.sets.filter(x=>!x.done&&!x.warm&&!x.drop).length;
-    const nb=newBlock(id,{...b.plan,sets:done.length?Math.max(1,left):b.plan.sets},{deload:!!d.deload,before:d.date});nb.swappedFrom=b.swappedFrom||b.exId;if(nb.swappedFrom===id)nb.swappedFrom=null;
+    const rows=b.sets.filter(x=>!x.warm&&!x.drop).length;
+    const nb=newBlock(id,{...b.plan,sets:done.length?Math.max(1,left):Math.max(1,rows||+b.plan.sets||1)},{deload:!!d.deload,before:d.date});nb.swappedFrom=b.swappedFrom||b.exId;if(nb.swappedFrom===id)nb.swappedFrom=null;
+    if(b.cut)nb.cut=true;
     snapshot(()=>{const dd=state.draft;if(!dd||dd.id!==did)return false;
       const at=dd.ex.findIndex(x=>x===nb);if(at<0||nb.sets.some(x=>x.done))return false;
       if(done.length){dd.ex.splice(at,1);const i=dd.ex.findIndex(x=>x===b);if(i>=0)dd.ex[i]=orig;else return false;}else dd.ex[at]=orig;
@@ -6229,12 +6250,16 @@ function pastSheet(m){
   <p class="small muted" style="margin:10px 0 0">Quick entry: type each set. ${tipi('No rest timer or clock. A set counts as done once its reps are typed. Last time, targets and PRs are read as of that date.','About quick entry')}</p></div>`;
 }
 /* Re-run the suggestion for one block, for example after its heaviest
-   available load changes. Only untouched sets take the new load. */
+   available load changes. Only untouched sets take the new load. A row is
+   untouched when it still holds the load the app suggested (b.sw, null when
+   there was none). Drafts from before r24 have no b.sw and fall back to the
+   old test, the first undone row's load; that test took a load typed on the
+   first row for the app's, and replaced it. */
 function refreshBlock(b){
-  const d=state.draft;if(!d||!b)return;const old=b.sets.find(x=>!x.done&&!x.warm);const oldW=old?old.w:null;
+  const d=state.draft;if(!d||!b)return;const old=b.sets.find(x=>!x.done&&!x.warm);const oldW=b.sw!==undefined?b.sw:old?old.w:null;
   const sg=suggest(b.exId,b.plan,{deload:!!d.deload,before:d.date});
-  Object.assign(b,{inj:sg.inj||null,hint:sg.text,last:sg.last,target:sg.target,tgt:sg.tgt,easier:sg.easier||null,lastR:sg.lastR,lastNote:lastNoteOf(b.exId,d.date)});
-  for(const x of b.sets)if(!x.done&&!x.warm&&!x.drop&&x.r==null&&x.w===oldW)x.w=sg.w;
+  Object.assign(b,{inj:sg.inj||null,hint:sg.text,last:sg.last,target:sg.target,tgt:sg.tgt,easier:sg.easier||null,lastR:sg.lastR,lastNote:lastNoteOf(b.exId,d.date),sw:sg.w==null?null:sg.w});
+  for(const x of b.sets)if(!x.done&&!x.warm&&!x.drop&&x.r==null&&x.w===oldW&&!carried.has(x))x.w=sg.w;
 }
 const ACT={
   appUpdate(){
@@ -7534,7 +7559,7 @@ function swapPrompt(b,reason){
 }
 
 window.__onLib=(which)=>{if((which==='chart'&&ui.tab==='dash')||(which==='sortable'&&ui.tab==='program'))rerenderKeepScroll();};
-window.__ironlog={get state(){return state;},set state(v){state=v;},e1inv,rtfAt,rtfOf,rtfBand,calStats,rirEff,isHard,setCredit,tonnage,loadMode,loadWords,loadNote,progStep,jumpCap,setSecs,setupSecs,recovery,rolling7,rankDays,rankExercises,isCompound,patternOf,noE1,whtrLine,exHeadline,remainMin,shortPlan,weekPlan,cycleProjection,lastLighterWeek,regionBalance,parseHeight,mixCheck,swapCands,eqPlan,exportCSV,importData,chunksOf,assemble,sessionMuscles,TRACK_ONLY,cloud,Hx,mergeChunk,baseOf,sync:()=>cq(cloudPull),TEMPLATES,lastRFor,impDate,impRows,impNorm,impMatch,impFromText,impFromTable,impHeader,impBuild,impStart,impXlsx,parseSets,undoStack,undoRestore,undoForget,allTimeBests,bestsBoard,obActive,fmtW,rirUsual,rirEst,routineFromTemplate,plannedSets,map3d:()=>({state:B3.state,fail:B3.fail,meshes:B3.meshes.length,yaw:B3.yaw,glow:Object.keys(B3.mats).filter(m=>B3.mats[m].emissiveIntensity>0),canvas:!!document.querySelector('#bm3d canvas'),colors:Object.fromEntries(Object.entries(B3.mats).map(([m,mt])=>[m,'#'+mt.color.getHexString()])),pick:(x,y)=>map3dPick(x,y),want:map3dColors()}),cloudState:()=>({on:cloud.on,status:cloud.status,err:cloud.err,uid:cloud.uid,acct:cloud.acct}),acctUser:()=>acct.user,acctWaiting:()=>!!acctWait.pw,flush:()=>cq(cloudFlush),backupDue,routineUpdates,planFor,platesMode,plateText,chunksOf,IDX,suggest,e1,render,ACT,ui,makeDemo,invalidate,normalize,snapshot,saveNow,timer,weekStats,weekStart,today,EX,blockProgress,dayMinutes,weekStreak,coach,tonnageNow,livePR,exProjection,movers,stalledIds,muscleStatus,actualAvg4,plannedPerWeek,parseSets,aiSetsValid,fillSets,newBlock,lastNoteOf,sizeRows,sessionMuscleSets,sessionCapNote,routineClutter,aiDigest,debriefPrompt,reviewPrompt,swapPrompt,AI,sameRR};
+window.__ironlog={get state(){return state;},set state(v){state=v;},ENV,KEY,e1inv,rtfAt,rtfOf,rtfBand,calStats,rirEff,isHard,setCredit,tonnage,loadMode,loadWords,loadNote,progStep,jumpCap,setSecs,setupSecs,recovery,rolling7,rankDays,rankExercises,isCompound,patternOf,noE1,whtrLine,exHeadline,remainMin,shortPlan,weekPlan,cycleProjection,lastLighterWeek,regionBalance,parseHeight,mixCheck,swapCands,eqPlan,exportCSV,importData,chunksOf,assemble,sessionMuscles,TRACK_ONLY,cloud,Hx,mergeChunk,baseOf,sync:()=>cq(cloudPull),TEMPLATES,lastRFor,impDate,impRows,impNorm,impMatch,impFromText,impFromTable,impHeader,impBuild,impStart,impXlsx,parseSets,undoStack,undoRestore,undoForget,allTimeBests,bestsBoard,obActive,fmtW,rirUsual,rirEst,routineFromTemplate,plannedSets,map3d:()=>({state:B3.state,fail:B3.fail,meshes:B3.meshes.length,yaw:B3.yaw,glow:Object.keys(B3.mats).filter(m=>B3.mats[m].emissiveIntensity>0),canvas:!!document.querySelector('#bm3d canvas'),colors:Object.fromEntries(Object.entries(B3.mats).map(([m,mt])=>[m,'#'+mt.color.getHexString()])),pick:(x,y)=>map3dPick(x,y),want:map3dColors()}),cloudState:()=>({on:cloud.on,status:cloud.status,err:cloud.err,uid:cloud.uid,acct:cloud.acct}),acctUser:()=>acct.user,acctWaiting:()=>!!acctWait.pw,flush:()=>cq(cloudFlush),backupDue,routineUpdates,planFor,platesMode,plateText,chunksOf,IDX,suggest,e1,render,ACT,ui,makeDemo,invalidate,normalize,snapshot,saveNow,timer,weekStats,weekStart,today,EX,blockProgress,dayMinutes,weekStreak,coach,tonnageNow,livePR,exProjection,movers,stalledIds,muscleStatus,actualAvg4,plannedPerWeek,parseSets,aiSetsValid,fillSets,newBlock,lastNoteOf,sizeRows,sessionMuscleSets,sessionCapNote,routineClutter,aiDigest,debriefPrompt,reviewPrompt,swapPrompt,AI,sameRR};
 render();
 wakeOn();
 timerResume();
