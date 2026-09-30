@@ -1,7 +1,11 @@
-"""Draws the app icons into assets/ (a barbell: volt plates on a white bar),
-and the preview build's icons into assets/preview/: the same mark with an
-amber and black striped band under it, so the two apps are told apart on a
-home screen at a glance.
+"""Draws the app icons into assets/: a dumbbell stood upright, amber plates on
+a light handle, so the mark is a weight and the "I" of Ironlog at once (r25,
+V's request; it replaced a volt barbell). The preview build's icons go into
+assets/preview/: the same mark with an amber and black striped band under it,
+so the two apps are told apart on a home screen at a glance.
+
+index.html draws the same mark as an inline SVG (ICON_SVG) from the same
+numbers, for the first-run pages and the loading screen.
 
 Run: python3 scripts/icons.py   (needs Pillow)
 The maskable icon keeps the mark inside the central safe zone, since Android
@@ -9,7 +13,7 @@ crops it to a circle or squircle; iOS rounds the corners of apple-touch-icon.
 """
 from PIL import Image, ImageDraw
 
-VOLT = (212, 255, 63)
+AMBER = (255, 176, 32)
 BG = (10, 11, 13)
 BAR = (242, 244, 246)
 STRIPE_AMBER = (245, 165, 36)
@@ -20,18 +24,23 @@ def icon(size, pad_frac, preview=False):
     s = 1024
     im = Image.new('RGB', (s, s), BG)
     d = ImageDraw.Draw(im)
+    # The preview's mark sits smaller and higher, leaving room for its band.
+    if preview:
+        pad_frac += 0.07
     k = 1 - pad_frac * 2
-    cx = cy = s / 2
+    cx = s / 2
+    cy = s / 2 - (s * 0.05 if preview else 0)
 
     def rect(x0, y0, x1, y1, r, fill):
         d.rounded_rectangle([cx + x0 * k, cy + y0 * k, cx + x1 * k, cy + y1 * k], radius=r * k, fill=fill)
 
-    rect(-410, -22, 410, 22, 14, BAR)                                  # bar
-    rect(-156, -64, -128, 64, 10, BAR); rect(128, -64, 156, 64, 10, BAR)   # collars
-    rect(-360, -250, -268, 250, 26, VOLT); rect(268, -250, 360, 250, 26, VOLT)  # outer plates
-    rect(-250, -200, -170, 200, 24, VOLT); rect(170, -200, 250, 200, 24, VOLT)  # inner plates
+    rect(-30, -300, 30, 300, 14, BAR)                                    # handle
+    rect(-80, -192, 80, -160, 12, BAR); rect(-80, 160, 80, 192, 12, BAR)   # collars
+    rect(-240, -376, 240, -284, 30, AMBER); rect(-240, 284, 240, 376, 30, AMBER)  # outer plates
+    rect(-190, -270, 190, -204, 26, AMBER); rect(-190, 204, 190, 270, 26, AMBER)      # inner plates
     if preview:
-        band(im, 0.765, 0.855)
+        y0 = (cy + 376 * k) / s + 0.045
+        band(im, y0, y0 + 0.085)
     return im.resize((size, size), Image.LANCZOS)
 
 

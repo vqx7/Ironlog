@@ -44,10 +44,12 @@ const fails = []; const ok = (c, m) => { if (!c) { fails.push(m); console.log('F
     const undo = !!document.querySelector('#toast [data-act="undo"]'); L.ACT.undo(); return { n, n2, undo, n3: L.state.draft.ex[0].sets.length }; });
   ok(r2.n2 === r2.n - 1 && r2.undo && r2.n3 === r2.n, 'removing a logged set offers Undo, and Undo brings it back (' + JSON.stringify(r2) + ')');
 
-  // 4. + Set after a drop set copies the working load.
+  // 4. + Set after a drop set takes the working load: grey by default (r25), filled in with "Fill in suggested loads".
   const r3 = await ev(() => { const L = window.__ironlog; const b = L.state.draft.ex[0]; b.sets.push({ w: 37.5, r: 10, rir: 0, warm: false, drop: true, done: true }); L.render();
-    document.querySelector('[data-act="sAdd"][data-b="0"]').click(); const s = L.state.draft.ex[0].sets; return { w: s[s.length - 1].w, drop: s[s.length - 1].drop }; });
-  ok(r3.w === 50 && !r3.drop, '+ Set after a drop set uses the working load (' + JSON.stringify(r3) + ')');
+    document.querySelector('[data-act="sAdd"][data-b="0"]').click(); const s = L.state.draft.ex[0].sets; return { w: s[s.length - 1].w, grey: L.effW(L.state.draft.ex[0], s.length - 1), drop: s[s.length - 1].drop }; });
+  ok(r3.w === null && r3.grey === 50 && !r3.drop, '+ Set after a drop set shows the working load in grey (' + JSON.stringify(r3) + ')');
+  const r3b = await ev(() => { const L = window.__ironlog; L.state.settings.loadFill = 'fill'; document.querySelector('[data-act="sAdd"][data-b="0"]').click(); const s = L.state.draft.ex[0].sets; const out = { w: s[s.length - 1].w, drop: s[s.length - 1].drop }; delete L.state.settings.loadFill; return out; });
+  ok(r3b.w === 50 && !r3b.drop, '+ Set after a drop set with filled-in loads uses the working load (' + JSON.stringify(r3b) + ')');
 
   // 5. Grammar and Enter order.
   const word = await ev(() => { const L = window.__ironlog; L.state.draft.ex.forEach((b, i) => b.sets.forEach((s, j) => { s.done = i === 0 && j === 0; })); L.render(); return document.querySelector('.ph .meta').textContent; });
@@ -86,7 +88,8 @@ const fails = []; const ok = (c, m) => { if (!c) { fails.push(m); console.log('F
   await ev(() => { const L = window.__ironlog; L.ui.tab = 'today'; L.render(); });
   const small = await ev(() => { const out = []; for (const el of document.querySelectorAll('button,select,input:not([type=hidden])')) { if (!el.offsetParent) continue; const r = el.getBoundingClientRect();
       const b = getComputedStyle(el, '::before'); const bw = b.content !== 'none' && b.position === 'absolute' ? parseFloat(b.width) : 0; const bh = b.content !== 'none' && b.position === 'absolute' ? parseFloat(b.height) : 0;
-      const w = Math.max(r.width, bw), h = Math.max(r.height, bh); if (h < 43.5 && !el.closest('.wkbar') && !el.closest('.map')) out.push(el.outerHTML.slice(0, 70) + ' ' + Math.round(w) + 'x' + Math.round(h)); } return out; });
+      const w = Math.max(r.width, bw), h = Math.max(r.height, bh); if (h < 43.5 && !el.closest('.wkbar') && !el.closest('.map') && !el.classList.contains('wkpull')) out.push(el.outerHTML.slice(0, 70) + ' ' + Math.round(w) + 'x' + Math.round(h)); } return out; });
+  // The handle under the week bar (r25) is a full-width strip and a second way in: the pull and History's Calendar button are the main ones.
   ok(small.length === 0, 'logger controls are at least 44 px tall to the touch' + (small.length ? ': ' + small.slice(0, 5).join(' | ') : ''));
 
   // 8. Back steps back through tabs, sheets first, and a sheet closed with its button costs no extra Back.

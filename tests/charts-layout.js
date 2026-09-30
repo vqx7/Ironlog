@@ -40,7 +40,8 @@ await ev(()=>{const L=window.__ironlog;L.ui.volMode='load';L.render();});await p
 const vl=await ev(()=>{const c=Chart.getChart(document.getElementById('chVol'));return c&&c.data.labels;});
 ok(vl&&vl[0]==='Sep 14'&&vl[1]==='This wk','load chart starts at first week: '+JSON.stringify(vl));
 // heat
-const heat=await ev(()=>({n:document.querySelectorAll('.heat div').length,fut:document.querySelectorAll('.heat div.fut').length,first:document.querySelector('.heat div').getAttribute('data-tip')}));
+// Past days are buttons since r25 (a tap opens the date); days ahead stay plain squares.
+const heat=await ev(()=>({n:document.querySelectorAll('.heat>*').length,fut:document.querySelectorAll('.heat>.fut').length,first:document.querySelector('.heat>*').getAttribute('data-tip')}));
 ok(heat.n===84&&heat.first.startsWith('Mon, Sep 14'),'consistency grid starts at first week: '+JSON.stringify(heat));
 ok(!(await ev(()=>!!document.querySelector('.chips.rng'))),'no range chips with young data');
 await page.screenshot({path:'screenshots/n_stats_young.png',fullPage:true});

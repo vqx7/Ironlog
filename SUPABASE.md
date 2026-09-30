@@ -81,29 +81,38 @@ To check it, run `select public.ping();` in the SQL Editor: it returns `ok`.
 
 The GitHub Action in `.github/workflows/keepalive.yml` calls it once a day. GitHub pauses scheduled Actions in a repository with no commits for 60 days; if that happens, Actions > Keep Supabase awake > Enable workflow turns it back on. A paused project loses nothing and can be restored from the dashboard, but the app cannot sync until then.
 
-## Part 4: Feedback (added in r21, about 15 minutes)
+## Part 4: Problem reports (added in r21, signed in only since r25, about 15 minutes)
 
-Settings > Feedback (and Send feedback in an exercise's ⋯ menu) stores reports in a table anyone can add to, signed in or out, and only you can read. Until step 1 is done, Send says feedback is not set up yet and keeps the text.
+Settings > Help (Report a problem, Ask a question, Suggest something) and Report a problem in an exercise's ⋯ menu store reports in a table that signed-in people can add to and only you can read. Until step 1 is done, Send says reports are not set up yet and keeps the text.
 
 1. **The tables.** SQL Editor > New query, paste this, Run. On the last line, put the email you use for your own Ironlog account (type it here in the SQL editor only; it is not stored in the repo):
 
 ```sql
--- One row per report. Anyone may add one; nobody but the readers below may read.
+-- One row per report. Signed-in people may add one; nobody but the readers below may read.
 create table public.feedback (
   id bigint generated always as identity primary key,
   created_at timestamptz not null default now(),
-  user_id uuid default auth.uid() references auth.users(id) on delete set null,
+  user_id uuid not null default auth.uid() references auth.users(id) on delete cascade,
   category text not null check (category in ('bug', 'idea', 'question')),
-  message text not null check (char_length(message) between 1 and 4000),
+  message text not null check (char_length(message) between 10 and 1000),
   reply_to text check (reply_to is null or char_length(reply_to) <= 200),
   screenshot text check (screenshot is null or (screenshot like 'data:image/jpeg;base64,%' and char_length(screenshot) <= 1500000)),
   context jsonb not null default '{}'::jsonb check (pg_column_size(context) <= 20000),
   issue_url text
 );
 alter table public.feedback enable row level security;
-create policy "anyone can add" on public.feedback
-  for insert to anon, authenticated
-  with check (user_id is null or user_id = (select auth.uid()));
+create policy "signed-in people can add" on public.feedback
+  for insert to authenticated
+  with check (user_id = (select auth.uid()));
+-- At most 5 reports a day per account, whatever the app does.
+create function public.feedback_limit() returns trigger language plpgsql security definer set search_path = public as $$
+begin
+  if (select count(*) from public.feedback where user_id = new.user_id and created_at > now() - interval '24 hours') >= 5 then
+    raise exception 'feedback_rate_limited' using errcode = 'P0001';
+  end if;
+  return new;
+end $$;
+create trigger feedback_limit before insert on public.feedback for each row execute function public.feedback_limit();
 -- Who may read reports: you. The app shows an Inbox button to these accounts only.
 create table public.feedback_readers (user_id uuid primary key references auth.users(id) on delete cascade);
 alter table public.feedback_readers enable row level security;
@@ -112,15 +121,35 @@ create policy "see own reader row" on public.feedback_readers
 create policy "readers read feedback" on public.feedback
   for select to authenticated
   using (exists (select 1 from public.feedback_readers r where r.user_id = (select auth.uid())));
-grant insert on public.feedback to anon, authenticated;
+grant insert on public.feedback to authenticated;
 grant select on public.feedback to authenticated;
 grant select on public.feedback_readers to authenticated;
 insert into public.feedback_readers (user_id) select id from auth.users where email = 'YOUR IRONLOG ACCOUNT EMAIL';
 ```
 
-   To check: send a report from the app, then Table Editor > feedback shows it; in the app, signed in with that account, Settings > Feedback shows Inbox.
+   To check: send a report from the app, then Table Editor > feedback shows it; in the app, signed in with that account, Settings > Help shows Inbox.
 
-   Reports can come from people who are not signed in, so the table limits each one's size (4,000 characters of text, one screenshot of about 1 MB). If someone ever floods it, turn off the "anyone can add" policy for `anon` and only signed-in people can send.
+   Limits, enforced here as well as in the app: signed-in accounts only, 5 reports a day each, 10 to 1,000 characters of text, one screenshot of about 1 MB.
+
+   **Already ran the older version of this step (before r25)?** Run this instead of the block above, to bring the table up to the new rules:
+
+```sql
+delete from public.feedback where user_id is null;
+alter table public.feedback alter column user_id set not null;
+alter table public.feedback drop constraint if exists feedback_message_check;
+alter table public.feedback add constraint feedback_message_check check (char_length(message) between 1 and 1000) not valid;
+drop policy if exists "anyone can add" on public.feedback;
+create policy "signed-in people can add" on public.feedback for insert to authenticated with check (user_id = (select auth.uid()));
+revoke insert on public.feedback from anon;
+create or replace function public.feedback_limit() returns trigger language plpgsql security definer set search_path = public as $$
+begin
+  if (select count(*) from public.feedback where user_id = new.user_id and created_at > now() - interval '24 hours') >= 5 then
+    raise exception 'feedback_rate_limited' using errcode = 'P0001';
+  end if;
+  return new;
+end $$;
+create trigger feedback_limit before insert on public.feedback for each row execute function public.feedback_limit();
+```
 
 Steps 2 to 5 turn each report into a GitHub issue, which is what lets Claude pick it up (`FEEDBACK.md`). They can wait.
 

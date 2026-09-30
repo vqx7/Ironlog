@@ -52,7 +52,8 @@ const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log
 
   // ---- Prefilled fields are still there: loads from the target, reps shown grey from last time.
   const pre = await ev(() => { const b = window.__ironlog.state.draft.ex[0]; const w = document.querySelector('[data-f="w"][data-b="0"][data-s="1"]'); const r = document.querySelector('[data-f="r"][data-b="0"][data-s="1"]'); return { w: w.value, rph: r.placeholder, rv: r.value, last: b.lastR }; });
-  ok(+pre.w > 0 && pre.rv === '' && +pre.rph === pre.last[1], 'loads come filled from the target; reps show last time\'s number in grey', pre);
+  const preW = await ev(() => document.querySelector('[data-f="w"][data-b="0"][data-s="1"]').placeholder);
+  ok(pre.w === '' && +preW > 0 && pre.rv === '' && +pre.rph === pre.last[1], 'loads show the target in grey (r25 default); reps show last time\'s number in grey', { ...pre, preW });
 
   // ---- Auto-mark: Next on an empty reps field takes the grey number and marks the set done.
   await ev(() => { window.__ironlog.state.settings.autoDone = true; });
@@ -148,8 +149,8 @@ const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log
   const capHit = await ev(() => { const L = window.__ironlog; const out = []; for (const t of L.TEMPLATES) { const r = L.routineFromTemplate(t.key); for (const d of r.days) { if (d.rest) continue; const ms = L.sessionMuscleSets(d); const o = Object.entries(ms).filter(([, v]) => v > 11); if (o.length) out.push(t.key + ' ' + d.name); } } return out; });
   ok(capHit.every(x => x.startsWith('onemuscle ')), 'no ready-made day passes 11 sets for one muscle, apart from the high-volume one, which says so', capHit);
   ok(await ev(() => /pass 11 sets/.test(window.__ironlog.TEMPLATES.find(t => t.key === 'onemuscle').who)), 'the high-volume template says it passes the per-session flag');
-  // A new routine has no history: the load typed on set 1 fills the empty rows below.
-  await ev(() => { const L = window.__ironlog; L.ui.tab = 'today'; L.render(); localStorage.setItem('ironlog.v1.tipWake', '1'); window.scrollTo(0, 0); });
+  // A new routine has no history: with "Fill in suggested loads" on, the load typed on set 1 fills the empty rows below.
+  await ev(() => { const L = window.__ironlog; L.state.settings.loadFill = 'fill'; L.ui.tab = 'today'; L.render(); localStorage.setItem('ironlog.v1.tipWake', '1'); window.scrollTo(0, 0); });
   await F.page.click('.hero [data-act="startSession"]:not([data-light])'); await F.page.waitForTimeout(200);
   const W = (s) => `.sg input[data-f="w"][data-b="0"][data-s="${s}"]`;
   const loads = () => ev(() => [...document.querySelectorAll('.sg input[data-f="w"][data-b="0"]')].map(i => i.value));

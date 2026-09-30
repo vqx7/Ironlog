@@ -353,43 +353,57 @@ fs.cpSync(DIST, tmp, { recursive: true });
   ok((await K.ev(() => window.__ironlog.state.sessions.map(s => s.id).join())) === 'sK1', 'the log on the phone is kept');
   ok(sessIn(rowsOf('v@example.com')).length > 0, 'other accounts are untouched');
 
-  // ---- 13b. Feedback (PENDING 58): anyone can send; only the owner reads.
+  // ---- 13b. Problem reports (PENDING 58; signed in only since r25): only the owner reads.
+  const openFb = async (D, cat) => {
+    await D.ev(() => { const L = window.__ironlog; L.ACT.mClose(); L.ui.tab = 'settings'; L.ui.folds['settings:feedback'] = true; L.render(); });
+    await D.page.click(`[data-mkey="feedback"] [data-act="fbOpen"][data-cat="${cat || 'bug'}"]`); await wait(80);
+  };
   const sendFb = async (D, text, cat) => {
-    await D.ev(() => { const L = window.__ironlog; L.ui.tab = 'settings'; L.ui.folds['settings:feedback'] = true; L.render(); });
-    await D.page.click('[data-mkey="feedback"] [data-act="fbOpen"]'); await wait(80);
-    if (cat) await D.page.click(`#modal [data-act="fbCat"][data-v="${cat}"]`);
+    await openFb(D, cat);
     await D.page.fill('#modal [data-fbind="msg"]', text);
     await D.page.click('#modal [data-act="fbSend"]');
     await D.page.waitForFunction(() => { const m = window.__ironlog.ui.modal; return m && m.kind === 'feedback' && !m.busy; }, null, { timeout: 10000 });
     return D.ev(() => { const m = window.__ironlog.ui.modal; return { sent: !!m.sent, err: m.err || '', text: document.getElementById('modal').innerText.replace(/\s+/g, ' ') }; });
   };
-  fake.feedbackTables(false);
+  // Signed out: no form, a sign-in, and a way to copy the details instead.
   const Q = await device();
-  let fr = await sendFb(Q, 'Tables not there yet');
-  ok(!fr.sent && /not set up yet/.test(fr.err), 'before the feedback table exists: a clear message, the text kept', fr);
-  fake.feedbackTables(true);
-  await Q.page.click('#modal [data-act="fbSend"]'); await Q.page.waitForFunction(() => { const m = window.__ironlog.ui.modal; return m && !m.busy; }, null, { timeout: 10000 });
-  ok(await Q.ev(() => window.__ironlog.ui.modal.sent) && fake.feedback.length === 1, 'signed out: the report is sent (a retry works once the table exists)');
-  const f1 = fake.feedback[0];
-  ok(f1.user_id === null && f1.category === 'bug' && f1.message === 'Tables not there yet' && f1.context.build && Array.isArray(f1.context.errors) && /\d+x\d+/.test(f1.context.screen) && f1.context.from === 'today', 'it carries the build, screen size, recent errors and where it came from, with no account', f1.context);
-  ok(!JSON.stringify(f1.context).includes('"ex"') && !JSON.stringify(f1.context).includes('bench'), 'no workout data is attached');
-  ok(/Feedback you send goes to the app owner/.test(await Q.ev(() => { const L = window.__ironlog; L.ACT.mClose(); L.ui.tab = 'settings'; L.ui.folds['settings:data'] = true; L.render(); return document.getElementById('privacy').innerText; })), 'the privacy line says feedback goes to the app owner');
-  // Signed in, with a screenshot.
+  await openFb(Q);
+  const qs = await Q.ev(() => { const m = document.getElementById('modal'); return { t: m.innerText, box: !!m.querySelector('[data-fbind="msg"]'), signin: !!m.querySelector('[data-act="acctOpen"][data-mode="signin"]') }; });
+  ok(/Sign in to send a report/.test(qs.t) && qs.signin && !qs.box && fake.feedback.length === 0, 'signed out: Report a problem asks to sign in, and nothing can be sent', qs);
+  // The server refuses a signed-out report even if the app were bypassed.
+  ok(await Q.ev(async (base) => { const r = await fetch(base + '/rest/v1/feedback', { method: 'POST', headers: { apikey: 'x', 'Content-Type': 'application/json' }, body: JSON.stringify({ category: 'bug', message: 'spam spam spam spam' }) }); return r.status === 401; }, fake.base) && fake.feedback.length === 0, 'the database refuses a report without an account');
+  ok(/Reports you send go to the app owner/.test(await Q.ev(() => { const L = window.__ironlog; L.ACT.mClose(); L.ui.tab = 'settings'; L.ui.folds['settings:data'] = true; L.render(); return document.getElementById('privacy').innerText; })), 'the privacy line says reports go to the app owner');
+  // Signed in.
   const R2 = await device();
   await openData(R2);
   await R2.page.click('#acctPanel [data-act="acctOpen"][data-mode="signin"]'); await wait(100);
   await fill(R2, 'signin', 'auto@example.com', 'auto pass 12');
   await synced(R2);
-  await R2.ev(() => { const L = window.__ironlog; L.ui.tab = 'settings'; L.ui.folds['settings:feedback'] = true; L.render(); });
-  await R2.page.click('[data-mkey="feedback"] [data-act="fbOpen"]'); await wait(80);
-  ok(await R2.ev(() => document.querySelector('#modal [data-fbind="reply"]').value === 'auto@example.com'), 'signed in: the reply address is filled in');
+  fake.feedbackTables(false);
+  let fr = await sendFb(R2, 'Tables not there yet');
+  ok(!fr.sent && /not set up yet/.test(fr.err) && await R2.ev(() => document.querySelector('#modal [data-fbind="msg"]').value === 'Tables not there yet'), 'before the report table exists: a clear message, the text kept', fr);
+  fake.feedbackTables(true);
+  await R2.page.click('#modal [data-act="fbSend"]'); await R2.page.waitForFunction(() => { const m = window.__ironlog.ui.modal; return m && !m.busy; }, null, { timeout: 10000 });
+  ok(await R2.ev(() => window.__ironlog.ui.modal.sent && /Any reply goes to auto@example\.com/.test(document.getElementById('modal').innerText)) && fake.feedback.length === 1, 'sent once the table exists, and the thanks says where a reply goes');
+  const f1 = fake.feedback[0];
+  ok(f1.user_id === fake.users.get('auto@example.com').id && f1.reply_to === 'auto@example.com' && f1.category === 'bug' && f1.message === 'Tables not there yet' && f1.context.build && f1.context.env === 'live' && Array.isArray(f1.context.errors) && /\d+x\d+/.test(f1.context.screen) && f1.context.signedIn === true, 'it carries the account, the reply address, the build, screen size and recent errors', f1.context);
+  ok(!JSON.stringify(f1.context).includes('"ex"') && !JSON.stringify(f1.context).includes('bench'), 'no workout data is attached');
+  // A question with a screenshot.
+  await openFb(R2, 'question');
   const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAIAAAD91JpzAAAAFklEQVR4nGP4z8DAwMDAxMDAwMDAAAANHQEDasKb6QAAAABJRU5ErkJggg==', 'base64');
   await R2.page.setInputFiles('#fbShot', { name: 's.png', mimeType: 'image/png', buffer: png }); await wait(300);
-  await R2.page.click('#modal [data-act="fbCat"][data-v="question"]');
   await R2.page.fill('#modal [data-fbind="msg"]', 'How do I log a missed day?');
   await R2.page.click('#modal [data-act="fbSend"]'); await R2.page.waitForFunction(() => { const m = window.__ironlog.ui.modal; return m && !m.busy; }, null, { timeout: 10000 });
   const f2 = fake.feedback[1];
-  ok(f2 && f2.user_id === fake.users.get('auto@example.com').id && f2.category === 'question' && f2.reply_to === 'auto@example.com' && /^data:image\/jpeg;base64,/.test(f2.screenshot || '') && f2.context.signedIn === true, 'signed in: sent with the account, reply address and screenshot', f2 && { ...f2, screenshot: (f2.screenshot || '').slice(0, 30) });
+  ok(f2 && f2.category === 'question' && /^data:image\/jpeg;base64,/.test(f2.screenshot || ''), 'a question with a screenshot is sent', f2 && { ...f2, screenshot: (f2.screenshot || '').slice(0, 30) });
+  // Five a day: the app stops the sixth, and so does the database.
+  for (const t of ['Third report here', 'Fourth report here', 'Fifth report here']) await sendFb(R2, t);
+  ok(fake.feedback.length === 5, 'five reports in a day go through', fake.feedback.length);
+  fr = await sendFb(R2, 'Sixth report here');
+  ok(!fr.sent && /5 reports today/.test(fr.err) && fake.feedback.length === 5, 'the sixth is stopped with a plain message', fr);
+  await R2.ev(() => { localStorage.removeItem(window.__ironlog.KEY + '.fbSent'); });
+  await R2.page.click('#modal [data-act="fbSend"]'); await R2.page.waitForFunction(() => { const m = window.__ironlog.ui.modal; return m && !m.busy; }, null, { timeout: 10000 });
+  ok(await R2.ev(() => /5 reports today/.test(window.__ironlog.ui.modal.err || '')) && fake.feedback.length === 5, 'with the app\'s own count cleared, the database still refuses the sixth');
   ok(!(await R2.ev(() => { const L = window.__ironlog; L.ACT.mClose(); L.render(); return !!document.querySelector('[data-act="fbInbox"]'); })), 'not the owner: no inbox');
   ok((await R2.ev(async () => { const r = await window.ironlogFeedback.inbox(); return r.length; })) === 0, 'not the owner: the database returns no reports');
   // The owner reads them in the app.
@@ -399,7 +413,7 @@ fs.cpSync(DIST, tmp, { recursive: true });
   ok(await R2.ev(() => !!document.querySelector('[data-act="fbInbox"]')), 'the owner\'s account shows Inbox');
   await R2.page.click('[data-act="fbInbox"]'); await R2.page.waitForFunction(() => { const m = window.__ironlog.ui.modal; return m && m.kind === 'fbInbox' && m.items; }, null, { timeout: 10000 });
   const inbox = await R2.ev(() => document.getElementById('modal').innerText);
-  ok(/How do I log a missed day\?/.test(inbox) && /Tables not there yet/.test(inbox) && inbox.indexOf('How do I') < inbox.indexOf('Tables not'), 'the inbox lists every report, newest first', inbox.slice(0, 200));
+  ok(/Fifth report here/.test(inbox) && /Tables not there yet/.test(inbox) && inbox.indexOf('Fifth report') < inbox.indexOf('Tables not'), 'the inbox lists every report, newest first', inbox.slice(0, 200));
   ok(await R2.ev(() => !!document.querySelector('#modal .fbthumb')), 'with the screenshot');
   await R2.ev(() => window.__ironlog.ACT.mClose());
 
