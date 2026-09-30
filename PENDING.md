@@ -1,4 +1,4 @@
-# Everything still open (as of r24, 2026-09-30)
+# Everything still open (as of r25, 2026-10-01)
 
 This is the tracking list. Items are built only when V says go. Owner items need V; the rest is build work. Nothing is done unless it says so. Numbers are kept stable; finished items move to Done at the bottom.
 
@@ -7,7 +7,10 @@ This is the tracking list. Items are built only when V says go. Owner items need
 
 After r24 merges, once: open vqx7.github.io/Ironlog/ in Safari (not the home-screen app) and tap Reload when "New version ready" shows. Until that Safari copy updates, its old worker would open the live app at the preview link.
 
-## Asked for on 2026-09-30, next build (r25), to try in the preview first
+## Built in r25, to try in the preview, then V's approval (pull request from branch r25)
+71 to 77 below, all built; what each does is under Done > r25. Merge #4 (r24) first: the preview needs it.
+
+## Asked for on 2026-09-30 (built in r25, see Done)
 71. Suggested loads show grey until typed, like reps: the checkmark and auto-mark accept them. A setting switches back to filled-in loads. Nothing typed is ever overwritten (V chose grey as the default).
 72. The logo: a dumbbell stood upright so it also reads as the "I" of Ironlog, amber on dark instead of volt green, in every icon, the favicon, the loading screen and the first-run page. iPhone never refreshes a home-screen icon: a one-time note says how to get the new one (remove and re-add), and that removing the app deletes the log on the phone unless signed in. Android updates it by itself.
 73. Report a problem as the main action, with Question and Suggestion secondary; more professional wording; signed in only (V's choice), at most 5 a day per account (enforced by the database too), clear text and screenshot limits, everything but the description marked optional.
@@ -63,6 +66,14 @@ Open count after r24: 35 (3 critical, 4 owner, 3 verification, 25 build or decis
 46. Native app wrapper (Capacitor), only if needed: rest timer alerts through a locked screen, Apple Health, a real App Store install. Costs $99 a year for Apple and needs a Mac.
 
 ## Done
+- r25 (built 2026-10-01, in the preview, awaiting approval):
+  - 71: loads grey until typed; the checkmark, auto-mark, quick entry and Finish take them; a load typed on a set moves the grey loads under it; nothing typed is ever overwritten. Settings > Rest timer and logging > "Fill in suggested loads" brings back filled rows.
+  - 72: the logo. An upright amber dumbbell that doubles as the I of Ironlog, in every icon, the favicon, the loading screen and the first-run pages (where it is the I of the wordmark). An iPhone that installed Ironlog before r25 gets a one-time note on Today: iPhone keeps a home-screen icon as it was, so the new one needs a remove and re-add, and removing the app removes the log on the phone unless signed in (the note says so, with Sign in and Save a backup first). New installs and Android need nothing.
+  - 73: Report a problem (Settings > Help, the top of Settings, an exercise's ⋯ menu), with Ask a question and Suggest something as the other two kinds. Signed in only; 10 to 1,000 characters with a counter; one optional image up to 10 MB; 5 a day per account, enforced by the database too (SUPABASE.md Part 4 updated; run it when setting up reports, or the upgrade block if Part 4 was already done). Replies go to the account's email. Signed out, it asks to sign in or copies the details for a message.
+  - 74: the month calendar: History > Calendar, a tap on a Consistency square, a pull down on the week bar, or a tap on the handle under it. A lifted day opens its session in History (also ones far back), an empty past day opens Log a past workout, today opens Today, days ahead do nothing.
+  - 75: copy trimmed: coach messages keep the finding and the action, the reasons moved into an info tip; shorter toasts; no filler lines above Stats and History; the build number moved off the top of Settings (it is in Diagnostics); routine descriptions shortened.
+  - 76: the design pass kept the type and layout that work and added the brand: the amber mark, the wordmark lockup, the handle under the week bar, a segmented Problem/Question/Suggestion control.
+  - 77: new-user, sign-in, sign-out (keep or remove) and install checked end to end on the built app at iPhone size: iPhone gets Add to Home Screen with the picture and two steps; Android Chrome's Install button opens the browser's own install prompt. Screenshots sent to V. Fixes from it: the sign-up note no longer says to come back and sign in (the app does it), the routine toast is short.
 - r24 (built 2026-09-30, awaiting approval):
   - 69 (V's report 2026-09-30): a swap rebuilt the exercise from the routine's planned set count, so after Short on time (or a lighter day, + Set, − Set) the new exercise came back with the full sets, and it lost the trimmed mark, so trimmed work counted in trends. Now a swap keeps the sets the exercise has right now and the mark, through a second swap, Undo, a reload and Finish. Found in the same audit: changing a session's date replaced a load typed on the first set with the app's suggestion; it now replaces only rows still on the suggestion. An r23 session left open carries on after the update. Suite `tests/r24.js`.
   - 70 (V's request 2026-09-30): the preview environment. Every pull request that passes the tests is published to vqx7.github.io/Ironlog/preview/ as its own app ("Ironlog Preview", striped icon and edge), installable next to the live one. It keeps its own log, undo history, sign-in and offline copy, signs in with the same account and syncs to its own table (Part 5), so nothing tried there touches the real log; it has no Delete my account. The live app's worker now lets the preview load (the old one would have opened the live app instead, and each would have deleted the other's offline copy). Merging still is the only way to the live app. Suite `tests/preview.js`.

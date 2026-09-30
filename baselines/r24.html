@@ -42,8 +42,6 @@
   --on-accent:#ffffff; --on-ink:#f4f5f7;
   --volt:#d4ff3f; --on-volt:#0b0c0e; --volt-line:#0d0f12; --volt-soft:#f0ffc4;
   --gold:#ffc53d; --on-gold:#1a1300;
-  /* The logo (r25): amber plates on a handle in the ink colour. */
-  --brand:#e59a0c; --brand-bar:#15171b;
   /* The Today card follows the theme (item 57): light on a light page. The
      rest-timer dock stays inked in both themes, so it reads as a bar laid
      over the page rather than part of it. */
@@ -56,7 +54,7 @@
   --font:'Hanken Grotesk',system-ui,-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;
   --display:'Big Shoulders Display','Arial Narrow','Roboto Condensed','Helvetica Neue',system-ui,sans-serif;
   --r-lg:22px; --r-md:14px; --r-sm:12px;
-  --head-h:64px;
+  --head-h:52px;
   color-scheme:light;
   box-sizing:border-box;
   padding-top:env(safe-area-inset-top,0px);
@@ -68,7 +66,7 @@
     --ink:#f3f4f6; --ink-2:#d9dce1; --muted:#9aa1ab; --line:#262a30; --line-soft:#1b1e22;
     --btn:#1e2125; --btn-b:transparent; --field:#1e2125; --field-b:transparent; --card-b:transparent;
     --glass:rgba(8,9,11,.88);
-    --green:#3ddc84; --yellow:#ffb020; --red:#ff5a4e; --blue:#5aa7ff; --brand:#ffb020; --brand-bar:#f2f4f6;
+    --green:#3ddc84; --yellow:#ffb020; --red:#ff5a4e; --blue:#5aa7ff;
     --green-bg:#0f2a1c; --yellow-bg:#33250a; --red-bg:#3a1512; --blue-bg:#0f2440;
     --on-accent:#0a0b0d; --on-ink:#0a0b0d;
     --volt:#d4ff3f; --on-volt:#0b0c0e; --volt-line:#d4ff3f; --volt-soft:#232c0c;
@@ -85,7 +83,7 @@
   --ink:#f3f4f6; --ink-2:#d9dce1; --muted:#9aa1ab; --line:#262a30; --line-soft:#1b1e22;
   --btn:#1e2125; --btn-b:transparent; --field:#1e2125; --field-b:transparent; --card-b:transparent;
   --glass:rgba(8,9,11,.88);
-  --green:#3ddc84; --yellow:#ffb020; --red:#ff5a4e; --blue:#5aa7ff; --brand:#ffb020; --brand-bar:#f2f4f6;
+  --green:#3ddc84; --yellow:#ffb020; --red:#ff5a4e; --blue:#5aa7ff;
   --green-bg:#0f2a1c; --yellow-bg:#33250a; --red-bg:#3a1512; --blue-bg:#0f2440;
   --on-accent:#0a0b0d; --on-ink:#0a0b0d;
   --volt:#d4ff3f; --on-volt:#0b0c0e; --volt-line:#d4ff3f; --volt-soft:#232c0c;
@@ -133,29 +131,6 @@ b{font-weight:650}
    used to sit only on Today. */
 .top{position:sticky;top:env(safe-area-inset-top,0px);z-index:20;background:var(--glass);-webkit-backdrop-filter:saturate(170%) blur(18px);backdrop-filter:saturate(170%) blur(18px);display:flex;align-items:center;gap:8px;height:var(--head-h);padding:0 12px;border-bottom:1px solid var(--line-soft)}
 .vh{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
-/* r25: the week row, then a handle under it. Pulling the bar down (or a tap
-   on the handle) opens the month calendar. The header takes no page scroll,
-   so a pull is never mistaken for one; taps and holds on the days are
-   unchanged, because a pull only starts on a clear downward move. */
-.top{display:grid;grid-template-columns:minmax(0,1fr) auto;grid-template-rows:minmax(0,1fr) 14px;column-gap:8px;align-items:center;touch-action:none}
-.top .wkbar{grid-row:1;grid-column:1}.top .ssb{grid-row:1;grid-column:2}
-.wkpull{grid-row:2;grid-column:1/-1;align-self:stretch;-webkit-appearance:none;appearance:none;border:0;background:none;padding:0;margin:0;display:flex;justify-content:center;align-items:flex-start;cursor:pointer;-webkit-tap-highlight-color:transparent}
-.wkpull i{display:block;width:34px;height:4px;border-radius:2px;background:var(--line);transition:width .15s ease,background .15s ease}
-.top.pulling .wkpull i,.wkpull:focus-visible i{width:54px;background:var(--volt)}
-@media (prefers-reduced-motion:reduce){.wkpull i{transition:none}}
-/* The month calendar sheet. */
-.cal-h{display:flex;align-items:center;gap:6px}
-.cal-h h3{flex:1;text-align:center;margin:0;font:800 24px/1 var(--display);letter-spacing:.03em;text-transform:uppercase}
-.cal-g{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px;margin-top:10px}
-.cal-g .wd{font:650 10.5px var(--font);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);text-align:center;padding:2px 0 4px}
-.cal-g .cd{-webkit-appearance:none;appearance:none;border:0;min-height:44px;border-radius:12px;background:transparent;color:var(--ink);font:700 16px/1 var(--font);font-variant-numeric:tabular-nums;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;cursor:pointer;padding:0}
-.cal-g .cd .n{width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:var(--surface-2)}
-.cal-g .cd.on .n{background:var(--volt);color:var(--on-volt)}
-.cal-g .cd.cardio .n{box-shadow:inset 0 0 0 2px var(--volt-line)}
-.cal-g .cd.today .n{box-shadow:0 0 0 2px var(--bg),0 0 0 4px var(--ink)}
-.cal-g .cd.fut{cursor:default;color:var(--muted)}.cal-g .cd.fut .n{background:transparent}
-.cal-g .cd .x{font:700 9px/1 var(--font);color:var(--muted);height:9px}
-.cal-g .cd:active:not(.fut) .n{transform:scale(.92)}
 /* The wordmark left the header in r23 (V's request): it took 68 px of the
    row and squeezed the week to 32 px a day. The name stays for screen
    readers, on the setup pages and at the top of Settings. The days touch, so
@@ -196,7 +171,7 @@ b{font-weight:650}
 .ssb.warn{color:var(--yellow);border-color:var(--yellow);background:var(--yellow-bg)}
 .ssb.bad{color:var(--red);border-color:var(--red);background:var(--red-bg)}
 @media (min-width:620px){
-  :root{--head-h:74px}
+  :root{--head-h:62px}
   .wkbar{gap:5px}
   .wkbar .w .nm{display:block}
   .ssb{width:auto;border-radius:999px;padding:0 10px}
@@ -403,14 +378,8 @@ body.obmode .ob{padding-top:calc(env(safe-area-inset-top,0px) + 10px)}
 .ob-card .btn:not(.primary){background:transparent;box-shadow:inset 0 0 0 1px var(--line)}
 body.obmode main,body.obmode #view{padding-bottom:24px}
 .ob-top{padding:18px 2px 4px}
-.ob-logo{font:800 44px/1 var(--display);letter-spacing:.06em;text-transform:uppercase;display:flex;align-items:flex-end;gap:0;margin:0}
+.ob-logo{font:800 44px/1 var(--display);letter-spacing:.06em;text-transform:uppercase}
 .ob-logo span{color:var(--muted);font-weight:600}
-.ob-logo .rn{color:var(--ink);font-weight:800}
-/* The mark is the I of the wordmark: cap height, a hair of space after it. */
-.ob-logo .mark{height:.9em;width:auto;margin:0 .08em .03em 0;flex:none}
-.ob-splash .ob-logo{font-size:52px}
-.ob-logo.sm{font-size:26px;margin:6px 0 0}
-.mark .mk-p{fill:var(--brand)}.mark .mk-h{fill:var(--brand-bar)}
 .ob-tag{margin:10px 0 0;color:var(--muted);font-size:16px;line-height:1.4}
 .ob-card{background:var(--surface);border:1px solid var(--card-b);border-radius:var(--r-lg);padding:18px}
 .ob-card h2{font:700 26px/1.1 var(--display);letter-spacing:.01em;margin:0 0 6px}
@@ -440,11 +409,6 @@ body.obmode main,body.obmode #view{padding-bottom:24px}
 .welcome .acct-offer{box-shadow:inset 3px 0 0 var(--volt)}
 /* Log a past workout: one row per routine day, name left, detail right. */
 .fbshot{display:flex;align-items:center;gap:10px}
-/* Report kind: one segmented control, the problem first. */
-.fbkind{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:4px;padding:4px;border-radius:14px;background:var(--field)}
-.fbkind button{min-height:44px;border:0;border-radius:10px;background:none;color:var(--muted);font:650 14px var(--font);cursor:pointer}
-.fbkind button.on{background:var(--card,var(--surface));color:var(--ink);box-shadow:0 1px 3px rgba(0,0,0,.18)}
-.fbcount{display:block;text-align:right;margin-top:4px;font-weight:500}
 .fbshot img{width:64px;height:64px;object-fit:cover;border-radius:10px;border:1px solid var(--line)}
 .fbpick{cursor:pointer}
 .fbinbox li{align-items:flex-start}
@@ -490,11 +454,10 @@ body.obmode main,body.obmode #view{padding-bottom:24px}
 .chips.rng .chip{min-height:30px;padding:0 11px;font-size:13px}
 .chartbox.tall{height:320px}
 .heat{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-top:8px}
-.heat>*{aspect-ratio:1;border-radius:50%;background:var(--surface-2)}
-.heat button{-webkit-appearance:none;appearance:none;border:0;padding:0;margin:0;cursor:pointer;min-width:0;width:100%}
-.heat>.on{background:var(--volt)}
-.heat>.fut{opacity:.35}
-.heat>.today{outline:2px solid var(--ink);outline-offset:-2px}
+.heat div{aspect-ratio:1;border-radius:50%;background:var(--surface-2)}
+.heat div.on{background:var(--volt)}
+.heat div.fut{opacity:.35}
+.heat div.today{outline:2px solid var(--ink);outline-offset:-2px}
 .heat-h{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;font-size:11px;font-weight:600;letter-spacing:.06em;color:var(--muted);text-align:center}
 table.t{width:100%;border-collapse:collapse;font-size:14px;font-variant-numeric:tabular-nums}
 table.t th,table.t td{padding:7px 4px;border-bottom:1px solid var(--line-soft);text-align:left}
@@ -780,7 +743,7 @@ details.more>summary .small{display:block;font-weight:400}
 </style>
 </head>
 <body>
-<header class="top"><h1 class="vh">Ironlog</h1><nav class="wkbar" id="wkbar" aria-label="This week"></nav><button type="button" class="ssb" id="saveState" data-act="goBackup"></button><button type="button" class="wkpull" data-act="calOpen" aria-label="Open the calendar"><i aria-hidden="true"></i></button></header>
+<header class="top"><h1 class="vh">Ironlog</h1><nav class="wkbar" id="wkbar" aria-label="This week"></nav><button type="button" class="ssb" id="saveState" data-act="goBackup"></button></header>
 <div id="updbar" role="status" aria-live="polite" hidden></div>
 <main id="view"></main>
 <div id="timer" hidden></div>
@@ -1215,7 +1178,7 @@ const TEMPLATES=(()=>{
   const I=(exId,sets,repMin,repMax,rir,rest)=>({exId,sets,repMin,repMax,rir,rest});
   const D=(name,items)=>({name,items}),R=()=>({name:'Rest',items:[],rest:true});
   return [
-    {key:'full3',name:'Full body, 3 days',who:'New to lifting, or short on days. A lighter start: add a set once it feels easy',meta:'3 days a week',days:[
+    {key:'full3',name:'Full body, 3 days',who:'New to lifting, or short on days. A lighter start: most muscles get 6 to 9 hard sets a week, below the 10-set mark on purpose. Add a set to an exercise once it feels easy',meta:'3 days a week',days:[
       D('Full body A',[I('backSquat',3,6,10,2,150),I('bench',3,6,10,2,150),I('latPulldown',3,8,12,2,120),I('dbLateral',3,10,20,1,60),I('seatedCurl',3,10,15,1,75),I('inclineCurl',2,10,15,1,60),I('cableCrunch',2,10,15,1,60)]),R(),
       D('Full body B',[I('rdl',3,6,10,2,150),I('incDb',3,8,12,2,120),I('cableRow',3,8,12,2,120),I('legPress',3,10,15,2,120),I('cableLateral',3,10,20,1,60),I('pressdown',3,10,15,1,60),I('standCalf',3,10,15,1,60)]),R(),
       D('Full body C',[I('hackSquat',3,8,12,1,150),I('machPress',3,8,12,1,120),I('pullup',3,6,10,2,150),I('lyingCurl',3,10,15,1,75),I('reversePecDeck',3,12,20,1,60),I('hammer',2,10,15,1,60),I('seatedCalf',3,10,15,1,60)]),R(),R()]},
@@ -1231,7 +1194,7 @@ const TEMPLATES=(()=>{
       D('Push B',[I('incBench',3,6,10,2,150),I('machShoulder',3,8,12,1,120),I('pecDeck',3,10,15,0,75),I('dbLateral',4,12,20,0,60),I('pressdown',3,10,15,1,60)]),
       D('Pull B',[I('latPulldown',4,8,12,1,120),I('machRow',3,8,12,1,120),I('reversePecDeck',3,12,20,0,60),I('bayesianCurl',3,10,15,0,60),I('reverseCurl',2,10,15,1,60)]),
       D('Legs B',[I('hackSquat',3,8,12,1,150),I('hipThrust',3,8,12,1,120),I('lyingCurl',3,10,15,1,75),I('bss',2,8,12,1,90),I('seatedCalf',4,10,15,1,60),I('hangingLegRaise',3,10,15,1,60)]),R()]},
-    {key:'split5',name:'Body-part split, 5 days',who:'The classic gym split, one or two muscles a day',meta:'5 days a week',days:[
+    {key:'split5',name:'Body-part split, 5 days',who:'The classic gym split, one or two muscles a day. Arms day adds a short second leg session so legs still reach 10 sets a week',meta:'5 days a week',days:[
       D('Chest',[I('bench',3,6,10,2,150),I('incDb',3,8,12,1,120),I('cableFly',3,10,15,1,75),I('dips',2,8,12,1,120),I('cableCrunch',3,10,15,1,60)]),
       D('Back',[I('pullup',4,6,10,1,150),I('bbRow',3,6,10,2,150),I('cableRow',3,8,12,1,120),I('latPulldown',3,8,12,1,120),I('reversePecDeck',3,12,20,0,60)]),
       D('Legs',[I('backSquat',3,6,10,2,180),I('rdl',3,6,10,2,150),I('legPress',3,10,15,1,120),I('legExt',3,10,15,1,75),I('seatedCurl',4,10,15,1,75),I('hipThrust',3,8,12,1,120),I('standCalf',4,10,15,1,60)]),
@@ -1266,17 +1229,9 @@ function freshState(){
 const ENV=window.IRONLOG_ENV==='preview'?'preview':'live';
 const KEY=ENV==='preview'?'ironlog-preview.v1':'ironlog.v1';
 if(ENV==='preview')document.documentElement.dataset.env='preview';
-/* Whether this device had a log before this page first ran. Read before any
-   save, for the new-icon note (r25): only an existing install still has the
-   old icon on its home screen. */
-const HAD_LOG=(()=>{try{return localStorage.getItem(KEY)!=null;}catch(e){return false;}})();
 /* Shown in Settings, in diagnostics and in backups, so a bug report can be
    matched to the exact build. */
-const APP_VERSION='2026.10.01-r25';
-/* The logo (r25): an upright dumbbell that is also the I of Ironlog. Same
-   numbers as scripts/icons.py, which draws the app icons. */
-const MARK_SVG='<svg class="mark" viewBox="-242 -378 484 756" aria-hidden="true" focusable="false"><rect class="mk-h" x="-30" y="-300" width="60" height="600" rx="14"/><rect class="mk-h" x="-80" y="-192" width="160" height="32" rx="12"/><rect class="mk-h" x="-80" y="160" width="160" height="32" rx="12"/><rect class="mk-p" x="-240" y="-376" width="480" height="92" rx="30"/><rect class="mk-p" x="-190" y="-270" width="380" height="66" rx="26"/><rect class="mk-p" x="-190" y="204" width="380" height="66" rx="26"/><rect class="mk-p" x="-240" y="284" width="480" height="92" rx="30"/></svg>';
-const LOCKUP=`<span class="vh">Ironlog</span>${MARK_SVG}<span class="rn" aria-hidden="true">ron</span><span aria-hidden="true">log</span>`;
+const APP_VERSION='2026.09.30-r24';
 /* Diagnostics log: the last 60 errors, kept in this browser only. Errors that
    used to be swallowed silently land here, and Settings can copy them. */
 const LOGK=KEY+'.log';
@@ -1452,10 +1407,6 @@ function normalize(s){
   // records keep their fingerprints and sync does not see them as edited.
   if(!['blue','volt','ember'].includes(out.settings.accent))delete out.settings.accent;
   if(out.settings.rirAsk!==true)delete out.settings.rirAsk;
-  // r25: suggested loads show grey until typed; 'fill' puts them in the rows
-  // as before. Unset means grey (V's choice), so older saves change nothing
-  // stored.
-  if(out.settings.loadFill!=='fill')delete out.settings.loadFill;
   {const n=typeof out.settings.userName==='string'?out.settings.userName.replace(/\s+/g,' ').trim().slice(0,40):'';if(n)out.settings.userName=n;else delete out.settings.userName;}
   out.settings.homeFolded=Array.isArray(out.settings.homeFolded)?out.settings.homeFolded.filter(k=>['map','body','week','tiles','coach','injuries'].includes(k)):[];
   // Section order per tab (drag the ⠿ in a section header) and the folded
@@ -2160,28 +2111,19 @@ function cloudStop(){
   cloud.meta={};cloud.editAt={};cloud.last=null;cloud.retry=0;saveMeta();setCloud('local');
 }
 function acctRerender(){if((ui.tab==='settings'||ui.tab==='today')&&!ui.modal)rerenderKeepScroll();else{const el=document.getElementById('syncInfo');if(el)el.innerHTML=syncInfo();}}
-/* ---------- problem reports (PENDING 58, reworked in r25) ----------
-   Settings > Help and an exercise's ⋯ menu open one sheet. Report a problem
-   comes first; Ask a question and Suggest something are the same sheet with
-   another kind (stored as bug, question, idea). One text box, an optional
-   screenshot, and what a report needs to be acted on without asking the
-   person anything technical: build, device, screen size, which screen they
-   came from, whether a session was open, sync status and the last 10 logged
-   errors. Never the workouts. Replies go to the account's email.
-   Signed in only (V's choice, r25), to keep spam out, with limits the
-   database enforces too: 10 to 1,000 characters, one image, 5 reports a
-   day per account. Signed out, the sheet asks to sign in, and can still copy
-   the details for a message. Without a report service at all (the plain
-   source file) it copies the report as text. */
+/* ---------- feedback (PENDING 58) ----------
+   Settings > Feedback and an exercise's ⋯ menu open one sheet: a kind (bug,
+   idea, question), what happened, an optional screenshot picked from the
+   phone, and an optional reply address. The app attaches what a report needs
+   to be acted on without asking the person anything technical: build,
+   device, screen size, which screen they came from, whether a session was
+   open, sync status and the last 10 logged errors. Never the workouts.
+   It is stored by scripts/cloud-supabase.js (window.ironlogFeedback) in a
+   table anyone can add to and only the app owner can read. Without that
+   (the plain source file) the report is shown as text to copy instead. */
 const FB=()=>window.ironlogFeedback&&typeof window.ironlogFeedback.send==='function'?window.ironlogFeedback:null;
-const FB_CATS=[['bug','Problem'],['question','Question'],['idea','Suggestion']];
-const FB_TITLE={bug:'Report a problem',question:'Ask a question',idea:'Suggest something'};
-const FB_ASK={bug:'What went wrong?',question:'Your question',idea:'Your suggestion'};
-const FB_HINT={bug:'What you tapped, what you expected, what happened',question:'',idea:''};
-const FB_MIN=10,FB_MAX=1000,FB_DAY=5,FB_IMG_MB=10;
-const FB_SENT=KEY+'.fbSent';
-// Reports sent from this device in the last 24 hours (the database keeps the real count).
-function fbRecent(){try{const a=JSON.parse(localStorage.getItem(FB_SENT)||'[]');const cut=Date.now()-864e5;return Array.isArray(a)?a.filter(t=>+t>cut):[];}catch(e){return [];}}
+const FB_CATS=[['bug','Bug'],['idea','Idea'],['question','Question']];
+const FB_ASK={bug:'What happened?',idea:'What would help?',question:'Your question'};
 async function fbCheckReader(){
   const F=FB();const was=!!acct.reader;
   try{acct.reader=!!(F&&acct.user&&typeof F.isReader==='function'&&await F.isReader());}catch(e){acct.reader=false;}
@@ -2199,23 +2141,16 @@ function fbContext(m){
 }
 const FB_WHAT='Attached by the app: the build, your device and browser, screen size, which screen you came from, whether a session was open, sync status and the last 10 errors it logged. Never your workouts. It goes to the app owner.';
 function fbSheet(m){
-  const head=t=>`<div class="sheet-h"><h3 id="fbH">${t}</h3><button class="ib" aria-label="Close" data-act="mClose">✕</button></div>`;
-  if(m.sent)return `<div class="sheet" role="dialog" aria-modal="true" aria-labelledby="fbH">${head(m.copied?'Copied':'Sent')}<p style="margin:0">${m.copied?'Paste it in a message to the app owner.':acct.user?`Thanks. Any reply goes to ${esc(acct.user.email)}.`:'Thanks.'}</p><button type="button" class="btn primary block" style="margin-top:14px" data-act="mClose">Done</button></div>`;
-  const F=FB();const cat=FB_TITLE[m.cat]?m.cat:'bug';
-  const kinds=`<div class="fbkind" role="group" aria-label="Kind">${FB_CATS.map(([k,l])=>`<button type="button" class="${cat===k?'on':''}" data-act="fbCat" data-v="${k}" aria-pressed="${cat===k}">${l}</button>`).join('')}</div>`;
-  // Signed out where reports exist: sign in first (the copy stays for a message).
-  if(F&&!acct.user)return `<div class="sheet" role="dialog" aria-modal="true" aria-labelledby="fbH">${head(FB_TITLE[cat])}
-    <p style="margin:0 0 12px">Sign in to send a report. It keeps the inbox free of spam, and lets us reply.</p>
-    <div class="stack"><button type="button" class="btn primary block" data-act="acctOpen" data-mode="signin">Sign in</button><button type="button" class="btn block" data-act="acctOpen" data-mode="signup">Create account</button></div>
-    <p class="small muted" style="margin:12px 0 0">No account? <button type="button" class="linkbtn" data-act="fbCopy">Copy the details</button> and send them in a message.</p></div>`;
-  const n=String(m.msg||'').length;
-  const shot=m.shot?`<div class="fbshot"><img src="${m.shot}" alt="Screenshot to send"><button type="button" class="btn sm" data-act="fbShotDel">Remove</button></div>`
-    :`<label class="btn sm fbpick">Add a screenshot<input type="file" accept="image/png,image/jpeg,image/heic,image/heif,image/webp" id="fbShot" hidden></label>`;
-  return `<div class="sheet" role="dialog" aria-modal="true" aria-labelledby="fbH">${head(FB_TITLE[cat])}<div class="stack">
-  ${kinds}
-  <label class="field">${FB_ASK[cat]}<textarea data-fbind="msg" maxlength="${FB_MAX}" rows="5" placeholder="${esc(FB_HINT[cat])}">${esc(m.msg||'')}</textarea><span class="fbcount small muted" id="fbCount" aria-live="polite">${n} / ${FB_MAX}</span></label>
-  <div><p class="small muted" style="margin:0 0 6px">Screenshot, optional. One image, up to ${FB_IMG_MB} MB.</p><div class="row">${shot}</div></div>
-  <p class="small muted" style="margin:0">${acct.user?`Replies go to ${esc(acct.user.email)}. `:''}Device details are added, never your workouts. ${tipi(FB_WHAT,'What is attached')}</p>
+  if(m.sent)return `<div class="sheet" role="dialog" aria-modal="true" aria-labelledby="fbH"><div class="sheet-h"><h3 id="fbH">Thanks</h3><button class="ib" aria-label="Close" data-act="mClose">✕</button></div><p style="margin:0">${m.copied?'Copied. Paste it in a message to the app owner.':'Sent to the app owner.'}</p><button type="button" class="btn primary block" style="margin-top:14px" data-act="mClose">Done</button></div>`;
+  const F=FB();
+  const chips=FB_CATS.map(([k,l])=>`<button type="button" class="chip ${m.cat===k?'on':''}" data-act="fbCat" data-v="${k}" aria-pressed="${m.cat===k}">${l}</button>`).join('');
+  const shot=m.shot?`<div class="fbshot"><img src="${m.shot}" alt="Screenshot to send"><button type="button" class="btn sm" data-act="fbShotDel">Remove</button></div>`:`<label class="btn sm fbpick">Add a screenshot<input type="file" accept="image/*" id="fbShot" hidden></label>`;
+  return `<div class="sheet" role="dialog" aria-modal="true" aria-labelledby="fbH"><div class="sheet-h"><h3 id="fbH">Send feedback</h3><button class="ib" aria-label="Close" data-act="mClose">✕</button></div><div class="stack">
+  <div class="chips" role="group" aria-label="Kind">${chips}</div>
+  <label class="field">${FB_ASK[m.cat]||FB_ASK.bug}<textarea data-fbind="msg" maxlength="4000" rows="5">${esc(m.msg||'')}</textarea></label>
+  <div class="row">${shot}</div>
+  <label class="field">Email for a reply (optional)<input type="email" data-fbind="reply" value="${esc(m.reply||'')}" autocomplete="email" autocapitalize="off" spellcheck="false" inputmode="email"></label>
+  <p class="small muted" style="margin:0">Device and recent errors are attached. ${tipi(FB_WHAT,'What is attached')}</p>
   ${m.err?`<p class="small" role="alert" style="color:var(--red);margin:0">${esc(m.err)}</p>`:''}
   <button type="button" class="btn primary block" data-act="fbSend" ${m.busy?'disabled':''}>${m.busy?'Sending':F?'Send':'Copy report'}</button></div></div>`;
 }
@@ -2350,7 +2285,7 @@ function acctSheet(m){
   const T={signin:'Sign in',signup:'Create account',forgot:'Reset password',newpw:'New password',sent:m.title||'Check your email',wait:'Check your email',where:m.title||'Email confirmed'};
   let b='';
   if(m.mode==='signin')b=`${email}${f('Password','pw','password','current-password','enterkeyhint="go"')}${err}${go('Sign in')}<div class="row spread">${link('forgot','Forgot password?')}${link('signup','Create an account')}</div>`;
-  else if(m.mode==='signup')b=`${email}${f('Password (8 or more characters)','pw','password','new-password','minlength="8" enterkeyhint="go"')}${err}${go('Create account')}<p class="small muted" style="margin:0">We email you a link to confirm the address.</p><div class="row">${link('signin','I have an account')}</div>`;
+  else if(m.mode==='signup')b=`${email}${f('Password (8 or more characters)','pw','password','new-password','minlength="8" enterkeyhint="go"')}${err}${go('Create account')}<p class="small muted" style="margin:0">We email you a link to confirm the address. Open it, then sign in here.</p><div class="row">${link('signin','I have an account')}</div>`;
   else if(m.mode==='forgot')b=`${email}${err}${go('Email me a reset link')}<p class="small muted" style="margin:0">The link opens in your browser. Set the new password there, then sign in here.</p><div class="row">${link('signin','Back to sign in')}</div>`;
   else if(m.mode==='newpw')b=`${f('New password (8 or more characters)','pw','password','new-password','minlength="8" enterkeyhint="go"')}${err}${go('Save new password')}`;
   else if(m.mode==='wait')b=`<p style="margin:0">We sent a confirmation link to <b>${esc(m.email||'')}</b>. Tap it, then come back here. Ironlog signs you in by itself.</p><p class="small muted waitline" style="margin:0" aria-live="polite">${m.busy?'Checking':'Waiting for the confirmation'}</p>${err}<button type="button" class="btn primary block" data-act="acctWaitNow" ${m.busy?'disabled':''}>I have confirmed</button><div class="row">${link('signup','Use a different email')}</div>`;
@@ -2363,11 +2298,11 @@ function acctSheet(m){
    at all. This must change when cloud sync for the standalone app arrives. */
 function privacyLine(){
   const inClaude=!!(window.claude&&typeof window.claude.use==='function');
-  if(!inClaude&&AUTH()&&acct.user)return `<p class="small muted" id="privacy" style="margin:8px 0 0"><b>Privacy:</b> no ads, no tracking. Your log syncs to your Ironlog account. Only you and the app's owner can see it. Reports you send go to the app owner. ${tipi('It is stored in a Supabase database. Database rules let each account read and write only its own data. The person who runs that database, the app owner, can see stored data, as with any app without end-to-end encryption. Backup files go only where you save them.','About privacy')}</p>`;
-  if(!inClaude&&AUTH())return `<p class="small muted" id="privacy" style="margin:8px 0 0"><b>Privacy:</b> no ads, no tracking. Your log stays on this device and is sent nowhere unless you sign in to sync. Reports you send go to the app owner. ${tipi('Opening or updating the app downloads it from GitHub Pages, which, like any website host, sees your IP address; after that it works offline. With an account, your log is also stored in a Supabase database, readable by your account and by the app owner. Deleting the app or this site\'s data deletes the copy on this device, so keep a backup file or an account.','About privacy')}</p>`;
+  if(!inClaude&&AUTH()&&acct.user)return `<p class="small muted" id="privacy" style="margin:8px 0 0"><b>Privacy:</b> no ads, no tracking. Your log syncs to your Ironlog account. Only you and the app's owner can see it. Feedback you send goes to the app owner. ${tipi('It is stored in a Supabase database. Database rules let each account read and write only its own data. The person who runs that database, the app owner, can see stored data, as with any app without end-to-end encryption. Backup files go only where you save them.','About privacy')}</p>`;
+  if(!inClaude&&AUTH())return `<p class="small muted" id="privacy" style="margin:8px 0 0"><b>Privacy:</b> no ads, no tracking. Your log stays on this device and is sent nowhere unless you sign in to sync. Feedback you send goes to the app owner. ${tipi('Opening or updating the app downloads it from GitHub Pages, which, like any website host, sees your IP address; after that it works offline. With an account, your log is also stored in a Supabase database, readable by your account and by the app owner. Deleting the app or this site\'s data deletes the copy on this device, so keep a backup file or an account.','About privacy')}</p>`;
   return inClaude
     ?`<p class="small muted" id="privacy" style="margin:8px 0 0"><b>Privacy:</b> no ads, no tracking. Your log is stored with your Claude account. ${tipi('Claude features (debrief, Ask Claude, swaps, reading typed sets) send the part of your log they need to Claude, and only when you tap them. Export and CSV files go only where you save them.','About privacy')}</p>`
-    :`<p class="small muted" id="privacy" style="margin:8px 0 0"><b>Privacy:</b> no account, no ads, no tracking. Your log stays on this device and is sent nowhere. Reports you send go to the app owner. ${tipi('Ironlog has no server. Opening or updating the app downloads it from GitHub Pages, which, like any website host, sees your IP address; after that it works offline. Backup files go only where you save them. Deleting the app or this site\'s data deletes your log, so keep a backup file.','About privacy')}</p>`;
+    :`<p class="small muted" id="privacy" style="margin:8px 0 0"><b>Privacy:</b> no account, no ads, no tracking. Your log stays on this device and is sent nowhere. Feedback you send goes to the app owner. ${tipi('Ironlog has no server. Opening or updating the app downloads it from GitHub Pages, which, like any website host, sees your IP address; after that it works offline. Backup files go only where you save them. Deleting the app or this site\'s data deletes your log, so keep a backup file.','About privacy')}</p>`;
 }
 function syncInfo(){
   if(!cloud.on)return isStandalone()
@@ -3168,10 +3103,9 @@ function plateText(kg,mode){
 /* Which load to show: the set just edited, else the next set not yet done,
    else the heaviest set in the block. */
 function plateLine(b,si){
-  // Grey loads count: the plates are for the load the row is going to be.
-  let at=si!=null&&b.sets[si]?si:-1;
-  if(at<0)at=b.sets.findIndex((x,i)=>!x.done&&!x.warm&&+effW(b,i)>0);
-  const kg=at>=0?+effW(b,at)||0:Math.max(0,...b.sets.map((x,i)=>x.warm?0:+effW(b,i)||0));
+  let st=si!=null?b.sets[si]:null;
+  if(!st)st=b.sets.find(x=>!x.done&&!x.warm&&+x.w>0);
+  const kg=st?+st.w||0:Math.max(0,...b.sets.filter(x=>!x.warm).map(x=>+x.w||0));
   const ex=EX(b.exId);const pm=platesMode(ex);
   // Logged per side: the helper works from the total that makes.
   if(loadMode(ex)==='side')return plateText(kg*2+(pm==='bar'?barKg():0),pm).replace(/^Per side at [^:]+:/,'Plates a side:');
@@ -3277,34 +3211,6 @@ function refreshGrey(bi){
   const b=state.draft&&state.draft.ex[bi];if(!b)return;
   b.sets.forEach((x,si)=>{if(+x.r>0)return;const el=document.querySelector(`.sg input[data-f="r"][data-b="${bi}"][data-s="${si}"]`);if(!el)return;const g=greyR(b,si);const v=g==null?'':String(g);if(el.placeholder!==v)el.placeholder=v;});
 }
-/* Loads (r25). Filled-in loads made every row look already decided, and a
-   row the lifter had not touched could not be told from one they had. So by
-   default a working set's load stays empty and shows, in grey, the load of
-   the working set above it (typed, or taken when that set was ticked), else
-   the app's suggestion. Ticking the set, auto-mark and quick entry take the
-   grey load; typing replaces it and is never overwritten. Settings > Logging
-   > "Fill in suggested loads" (settings.loadFill 'fill') puts them in the
-   rows as before. Warm-up and drop rows get their loads when added. */
-const fillLoads=()=>state.settings.loadFill==='fill';
-function greyW(b,si){
-  const s=b&&b.sets[si];if(!s||s.warm||s.drop)return null;
-  for(let i=si-1;i>=0;i--){const x=b.sets[i];if(!x.warm&&!x.drop&&x.w!=null)return x.w;}
-  return b.sw==null?null:b.sw;
-}
-// What a row's load is or will be: typed, else its grey load.
-function effW(b,si){const s=b&&b.sets[si];if(!s)return null;return s.w!=null?s.w:greyW(b,si);}
-/* A set being ticked takes its grey load, so a saved set never has an empty
-   load that would be stored as 0. */
-function settleLoad(b,si){
-  const s=b&&b.sets[si];if(!s||s.w!=null)return;const g=greyW(b,si);if(g==null)return;
-  s.w=g;const bi=state.draft?state.draft.ex.indexOf(b):-1;
-  const el=bi>=0?document.querySelector(`.sg input[data-f="w"][data-b="${bi}"][data-s="${si}"]`):null;if(el)el.value=loadIn(EX(b.exId),g);
-}
-/* A typed load changes the grey loads of the empty rows under it. */
-function refreshGreyW(bi){
-  const b=state.draft&&state.draft.ex[bi];if(!b)return;const ex=EX(b.exId);
-  b.sets.forEach((x,si)=>{if(x.w!=null)return;const el=document.querySelector(`.sg input[data-f="w"][data-b="${bi}"][data-s="${si}"]`);if(!el)return;const g=greyW(b,si);const v=g==null?(ex.bw?'0':''):String(loadIn(ex,g));if(el.placeholder!==v)el.placeholder=v;});
-}
 // Keyed by session too, so a block opened in one session is not open in the next.
 const blkKey=(bi,b)=>((state.draft&&state.draft.id)||'')+':'+bi+':'+b.exId;
 function blockDone(b){const w=b.sets.filter(x=>!x.warm);return w.length>0&&w.every(x=>x.done);}
@@ -3358,7 +3264,7 @@ function openMain(){
   const el=fixed?kids.find(e=>e.dataset.mkey===fixed):kids[0];
   if(el&&el.tagName==='DETAILS'&&el.dataset.sk&&!Object.prototype.hasOwnProperty.call(ui.folds,el.dataset.sk)&&!el.open){el.dataset.auto='1';el.open=true;}
 }
-function pageHead(kick,title,meta,actions){return `<div class="ph"><div>${kick?`<p class="kick">${kick}</p>`:''}<h2>${esc(title)}</h2>${meta?`<p class="meta">${meta}</p>`:''}</div>${actions?`<div class="ph-a">${actions}</div>`:''}</div>`;}
+function pageHead(kick,title,meta,actions){return `<div class="ph"><div><p class="kick">${kick}</p><h2>${esc(title)}</h2>${meta?`<p class="meta">${meta}</p>`:''}</div>${actions?`<div class="ph-a">${actions}</div>`:''}</div>`;}
 
 /* ---------- UI state ---------- */
 const HIST_PAGE=25;
@@ -3535,7 +3441,6 @@ function timerResume(){
 let lastAuto=null;
 function setDone(bi,si,val){
   const b=state.draft.ex[bi];const s=b&&b.sets[si];if(!s)return;
-  if(val)settleLoad(b,si);
   s.done=val;
   const btn=document.querySelector(`[data-act="sDone"][data-b="${bi}"][data-s="${si}"]`);
   if(btn){btn.classList.toggle('on',val);btn.setAttribute('aria-pressed',String(val));const row=btn.closest('.sg');if(row)row.classList.toggle('done',val);}
@@ -3681,13 +3586,13 @@ function viewToday(){
   const eyebrow=weekly?(di===wd?'Today':`Viewing ${DAYS[di]}`):`${dayLabel(R,di)} of ${R.days.length}${di===cs.next?' · next up':''}`;
   let note='';
   if(cs&&ui.todayDay==null){
-    if(cs.lastDate===today())note=`${dayLabel(R,cs.last)} is logged for today. This is the next day.`;
+    if(cs.lastDate===today())note=`You already logged ${dayLabel(R,cs.last)} today. This is what comes next.`;
     else if(cs.restToday)note=`<b>Scheduled rest today</b> (${dayLabel(R,cs.restIdx)} of your cycle). ${esc(R.days[cs.next].name)} is ready whenever you want it.`;
   }
   const playable=!day.rest&&day.items.length>0;
   const deload=isDeloadWeek();
   const sel=`<label class="inline-sel small">Change day<select data-bind="todayDay">${R.days.map((d,i)=>`<option value="${i}" ${i===di?'selected':''}>${dayLabel(R,i)}: ${esc(d.name)}${d.rest?' (rest)':''}${mark(i)}</option>`).join('')}</select></label>`;
-  let h=welcomeCard()+acctBar()+installBar()+iconBar()+`<section class="hero" data-day="${di}"><div class="hero-top"><div class="hero-t">${state.settings.userName?`<p class="hello">${esc(greeting())}, ${esc(state.settings.userName)}</p>`:''}<p class="eyebrow">${esc(new Date().toLocaleDateString(undefined,{weekday:'long',month:'short',day:'numeric'}))} · ${esc(eyebrow)}${deload?' · deload week':''}</p><h2>${esc(day.name)}</h2>
+  let h=welcomeCard()+acctBar()+installBar()+`<section class="hero" data-day="${di}"><div class="hero-top"><div class="hero-t">${state.settings.userName?`<p class="hello">${esc(greeting())}, ${esc(state.settings.userName)}</p>`:''}<p class="eyebrow">${esc(new Date().toLocaleDateString(undefined,{weekday:'long',month:'short',day:'numeric'}))} · ${esc(eyebrow)}${deload?' · deload week':''}</p><h2>${esc(day.name)}</h2>
   <p class="muted small" style="margin:0" data-tip="${esc('Routine: '+R.name)}">${playable?`${day.items.length} exercises · ${deload?day.items.reduce((a,it)=>a+Math.max(1,Math.ceil(it.sets/2)),0)+' sets (deload)':daySets(day)+' sets'} · ${minTxt(dayMinutes(day,deload))}`:(day.rest?'Rest day':'No exercises planned')}</p></div>${heroRing(weekStats())}</div>
   ${note?`<p class="hero-note small">${note}</p>`:''}`;
   /* Four ways to start besides the plan as written, each saying on its face
@@ -3717,7 +3622,7 @@ function viewToday(){
   const c=coach();
   const startIdx=playable?di:(cs?cs.next:di);
   const toneWord={red:'Act now',yellow:'One change',green:'On track',blue:'Note'}[c.tone]||'Note';
-  h+=sec({sk:'today:coach',key:'coach',title:'Coach',sub:`<span class="pill ${c.tone}">${toneWord}</span>`,body:`<p style="margin:0">${esc(c.text)}${c.why?' '+tipi(c.why,'Why'):''}</p>${coachButton(c,startIdx)}`});
+  h+=sec({sk:'today:coach',key:'coach',title:'Coach',sub:`<span class="pill ${c.tone}">${toneWord}</span>`,body:`<p style="margin:0">${esc(c.text)}</p>${coachButton(c,startIdx)}`});
   h+=injuryCard();
   h+=bodyMapCard();
   if(playable){
@@ -3767,31 +3672,6 @@ function installKind(){
   return 'menu';
 }
 window.ironlogInstallReady=()=>{if(ui.tab==='today'||ui.tab==='settings')rerenderKeepScroll();};
-/* The new icon (r25). iPhone keeps a home-screen icon exactly as it was when
-   added and never refreshes it, so an app installed before r25 shows the old
-   barbell until it is removed and added again, and removing it also removes
-   the log kept on the phone. So an existing iPhone install is told once, with
-   the safe order of steps; a new install already has the new icon, and
-   Android refreshes it by itself. */
-const ICON_NOTE=KEY+'.icon25';
-function iconNoteDue(){
-  try{if(localStorage.getItem(ICON_NOTE))return false;}catch(e){return false;}
-  const ios=/^ios/.test(installKind());
-  if(!HAD_LOG||!isStandalone()||!ios){try{localStorage.setItem(ICON_NOTE,'1');}catch(e){/* shown again next time: harmless */}return false;}
-  return true;
-}
-function iconBar(){
-  if(!window.IRONLOG_APP||!iconNoteDue())return '';
-  return `<div class="acctbar" id="iconBar"><span class="small"><b>New app icon.</b><span class="ab-more"> Your home screen keeps the old one until Ironlog is added again.</span></span><button class="btn sm" data-act="iconHow">How</button><button class="ib" aria-label="Not now" data-act="iconLater">✕</button></div>`;
-}
-function iconSheet(){
-  const safe=!!acct.user&&cloud.on;
-  return `<div class="sheet" role="dialog" aria-modal="true" aria-labelledby="icH"><div class="sheet-h"><h3 id="icH">Get the new icon</h3><button class="ib" aria-label="Close" data-act="mClose">✕</button></div>
-  ${safe?'<p class="small" style="margin:0 0 10px">Your log is in your account, so nothing is lost.</p>'
-    :`<p class="small callout yellow" style="margin:0 0 10px"><b>Removing Ironlog from the home screen also removes the log on this phone.</b> Sign in first so it is kept in your account, or save a backup.</p><div class="row" style="margin-bottom:10px">${AUTH()?'<button class="btn sm primary" data-act="acctOpen" data-mode="signin">Sign in</button>':''}<button class="btn sm" data-act="export">Save a backup</button></div>`}
-  <ol class="steps"><li>Press and hold Ironlog on your home screen and remove it.</li><li>Open ${esc(location.host+location.pathname.replace(/index\.html$/,''))} in Safari, tap Share, then Add to Home Screen.</li><li>Open the new icon${safe?' and sign in':''}.</li></ol>
-  <button class="btn block" style="margin-top:12px" data-act="iconLater">Done</button></div>`;
-}
 function installBar(){
   if(!canInstallHere())return '';
   try{if(localStorage.getItem(INSTALL_LATER))return '';}catch(e){/* storage blocked: show it */}
@@ -3850,10 +3730,10 @@ function obAcctOffered(){
 }
 function obView(){
   // Still finding out whether this device is signed in, or pulling its log: show nothing that could flash away.
-  if(!cloudChecked||(AUTH()&&!window.claude&&!acct.checked)||(cloud.on&&!cloud.lastPull))return `<div class="ob"><div class="ob-splash"><p class="ob-logo">${LOCKUP}</p></div></div>`;
+  if(!cloudChecked||(AUTH()&&!window.claude&&!acct.checked)||(cloud.on&&!cloud.lastPull))return `<div class="ob"><div class="ob-splash"><p class="ob-logo">Iron<span>log</span></p></div></div>`;
   const acctStep=!!AUTH()&&!window.claude;const dots=n=>acctStep?`<div class="ob-dots" aria-hidden="true"><i class="${n===1?'on':''}"></i><i class="${n===2?'on':''}"></i></div>`:'';
   if(obAcctOffered())return `<div class="ob" id="obPage" data-step="acct">
-  <div class="ob-top"><h1 class="ob-logo">${LOCKUP}</h1><p class="ob-tag">Your lifts, and what to beat next time.</p></div>
+  <div class="ob-top"><h1 class="ob-logo">Iron<span>log</span></h1><p class="ob-tag">Your lifts, and what to beat next time.</p></div>
   <div class="ob-card"><h2>Save your log</h2><p>Free, and on every phone you use.</p>
   <button class="btn primary block" data-act="acctOpen" data-mode="signup">Create account</button>
   <button class="btn block" data-act="acctOpen" data-mode="signin">I have an account</button></div>
@@ -3861,7 +3741,6 @@ function obView(){
   const imp=`<button class="ob-opt" data-act="impOpen"><b>Import my workouts</b><span>Notes, a spreadsheet, Strong, Hevy, a backup</span></button>`;
   return `<div class="ob welcome" id="obPage" data-step="start">
   ${acctStep&&!acct.user?'<button class="linkbtn ob-back" data-act="obAcctBack">‹ Account</button>':''}
-  <p class="ob-logo sm">${LOCKUP}</p>
   <h2 class="ob-h">Set up</h2>
   <label class="field">Your name <span class="muted">(optional)</span><input type="text" data-bind="userName" maxlength="40" autocomplete="given-name" value="${esc(state.settings.userName||'')}" placeholder="For the greeting on Today"></label>
   <div><p class="small muted" style="margin:0 0 6px;font-weight:600">Units</p><div class="ob-units" role="group" aria-label="Units">${[['lb','lb and inches'],['kg','kg and cm']].map(([k,l])=>`<button class="chip ${U()===k?'on':''}" data-act="obUnit" data-v="${k}" aria-pressed="${U()===k}">${l}</button>`).join('')}</div></div>
@@ -3937,9 +3816,9 @@ function stalledIds(){return Object.entries(IDX().exStats).filter(([,x])=>x.stal
 function coach(){
   const I=IDX();const R=activeRoutine();
   if(!state.sessions.length)return {tone:'blue',text:'Log your first session. Trends and advice appear after a few sessions of each exercise.',act:null};
-  if(isDeloadWeek())return {tone:'blue',text:`Deload week. It ends Sunday.`,why:'Half the sets, about 90% loads, 3 or more reps in reserve. Your targets pick up where they were.',act:null};
+  if(isDeloadWeek())return {tone:'blue',text:`Deload week: half the sets, about 90% loads, 3 or more reps in reserve. It ends Sunday and your targets pick up where they were.`,act:null};
   const stalled=stalledIds();
-  if(stalled.length>=3)return {tone:'red',text:`${stalled.length} lifts stalled at once: ${stalled.slice(0,3).map(exName).join(', ')}${stalled.length>3?' and more':''}. A deload week may help.`,why:'Several lifts flat together often points to fatigue. Check sleep, food and stress. A deload week is half the sets at about 90% loads.',act:{label:'Start a deload week',deload:true}};
+  if(stalled.length>=3)return {tone:'red',text:`${stalled.length} lifts have stopped moving at the same time (${stalled.slice(0,3).map(exName).join(', ')}${stalled.length>3?' and more':''}). Several lifts flat together often points to fatigue: check sleep, food and stress, and consider a deload week (half the sets, about 90% loads).`,act:{label:'Start a deload week',deload:true}};
   const inj=injuredSet();
   const avg=actualAvg4();const bands=state.settings.bands;
   if(avg){
@@ -3956,7 +3835,7 @@ function coach(){
       return {tone:'yellow',text:`${ML[u.m]} is getting ${r1(u.got)} hard sets a week against a target of ${u.lo} to ${u.hi}. ${how}${under.length>1?` ${under.length-1} other muscle${under.length>2?'s are':' is'} also below target.`:''}`,act:{label:`See ${ML[u.m]}`,sec:'volume',m:u.m}};
     }
   }
-  if(stalled.length){const id=stalled[0];return {tone:'yellow',text:`${exName(id)} has stalled. Try another rep range or a close variation for a few weeks.`,why:'Flat or down over its last 6 sessions (or 3 weeks), leaving out deload, lighter and trimmed sessions.',act:{label:'See the lift',sec:'exercise',ex:id}};}
+  if(stalled.length){const id=stalled[0];return {tone:'yellow',text:`${exName(id)} has trended flat or down over its last few sessions. Change the rep range or swap to a close variation for a few weeks.`,act:{label:'See the lift',sec:'exercise',ex:id}};}
   // Missing RIR is not coached: it is optional by design and blanks are read as your usual RIR.
   // Scores are sorted high to low, so the steepest fall is the last one.
   const lag=I.scores.filter(x=>x.score<=-GROW_PCT);
@@ -4767,7 +4646,7 @@ function newBlock(exId,plan,opts){
   const sg=suggest(exId,plan,opts);
   // sw is the load the app suggested, kept so a later refresh can tell a row
   // still on the suggestion from one the lifter typed (refreshBlock).
-  return {exId,plan:{...plan},note:'',lastNote:lastNoteOf(exId,opts&&opts.before),inj:sg.inj||null,hint:sg.text,last:sg.last,target:sg.target,tgt:sg.tgt,easier:sg.easier||null,lastR:sg.lastR,sw:sg.w==null?null:sg.w,sets:Array.from({length:+plan.sets||3},()=>({w:fillLoads()?sg.w:null,r:null,rir:null,warm:false,drop:false,done:false}))};
+  return {exId,plan:{...plan},note:'',lastNote:lastNoteOf(exId,opts&&opts.before),inj:sg.inj||null,hint:sg.text,last:sg.last,target:sg.target,tgt:sg.tgt,easier:sg.easier||null,lastR:sg.lastR,sw:sg.w==null?null:sg.w,sets:Array.from({length:+plan.sets||3},()=>({w:sg.w,r:null,rir:null,warm:false,drop:false,done:false}))};
 }
 const DEFAULT_PLAN={sets:3,repMin:8,repMax:12,rir:1,rest:90,inc:5*LB};
 /* Round a load to something you can actually put on a bar or pick off a rack:
@@ -4850,7 +4729,7 @@ function viewLogger(){
       const pr=s.done?livePR(b.exId,s,d.date):null;
       const wn=b.sets.slice(0,si+1).filter(x=>!x.warm&&!x.drop).length;
       h+=`<div class="sg${nr?' norir':''} ${s.done?'done':''}${pr?' pr':''}"${pr?` data-pr="${pr}"`:''}><span class="n${s.drop?' drop':s.warm?' warm':''}">${s.drop?'↓':s.warm?'W':wn}</span>
-        <input type="text" inputmode="decimal" enterkeyhint="next" aria-label="${esc(ex.name)}, set ${si+1} load" data-f="w" data-b="${bi}" data-s="${si}" value="${loadIn(ex,s.w)}" placeholder="${(()=>{const g=s.w==null?greyW(b,si):null;return g!=null?loadIn(ex,g):ex.bw?'0':'';})()}">
+        <input type="text" inputmode="decimal" enterkeyhint="next" aria-label="${esc(ex.name)}, set ${si+1} load" data-f="w" data-b="${bi}" data-s="${si}" value="${loadIn(ex,s.w)}" placeholder="${ex.bw?'0':''}">
         <input type="text" inputmode="numeric" enterkeyhint="next" aria-label="${esc(ex.name)}, set ${si+1} ${ex.timed?'seconds':'reps'}${ex.perSide?' per side':''}" data-f="r" data-b="${bi}" data-s="${si}" value="${s.r==null?'':s.r}" placeholder="${ph}">
         ${nr?'':rirSelect(s.rir,bi,si,p.rir)}
         <button class="wbtn ${s.warm?'on':s.drop?'drop':''}" aria-label="Set ${si+1} type: ${s.warm?'warm-up':s.drop?'drop set':'working set'}. Tap to change" data-act="sWarm" data-b="${bi}" data-s="${si}">${s.drop?'D':s.warm?'W':'–'}</button>
@@ -5017,7 +4896,7 @@ function viewDash(){
   const rc=I.rirCov;const covPct=rc.total&&state.settings.rirMode!=='off'?Math.round(rc.logged/rc.total*100):null;
   // Only said when it matters: under 70% of recent sets carry an RIR.
   const cov=covPct==null||covPct>=70?'':`<p class="small muted hastip" style="margin:0 0 12px" data-tip="A blank RIR is read as your usual RIR on that lift once you have rated 3 of its sets in 12 weeks, else the set counts as hard. The lighter shading shows those sets.">RIR on ${covPct}% of recent sets. The lighter part of each bar is assumed.</p>`;
-  let h=pageHead('','Stats',`${state.sessions.length} session${state.sessions.length===1?'':'s'} logged${state.sessions.length?`, since ${fmtDate(sortedSessions()[0].date)}`:''}`,helpBtn('stats'))+`${helpText('stats','Everything here is calculated from your logged sets: performance trends, not direct measurements of muscle size. Tap a section title to open or fold it. Each visit starts with only the top section open. Each section has its own ? for what the numbers mean.')}
+  let h=pageHead('Your log, measured','Stats',`${state.sessions.length} session${state.sessions.length===1?'':'s'} logged${state.sessions.length?`, since ${fmtDate(sortedSessions()[0].date)}`:''}`,helpBtn('stats'))+`${helpText('stats','Everything here is calculated from your logged sets: performance trends, not direct measurements of muscle size. Tap a section title to open or fold it. Each visit starts with only the top section open. Each section has its own ? for what the numbers mean.')}
   <nav class="jump" aria-label="Stats sections">${orderKeys(state.settings.secOrder.dash||[],DSEC_KEYS).filter(k=>!state.settings.hidden.includes('dash:'+k)).map(k=>DSECS.find(x=>x[0]===k)).map(([k,l])=>`<button class="chip" data-act="dashJump" data-sec="${k}">${l}</button>`).join('')}</nav>`;
   if(!state.sessions.length){
     h+=`<div class="card"><p style="margin:0"><b>No sessions yet.</b> Planned volume works now; trends start after a few sessions. ${tipi('Trends, stall detection and rankings need a few sessions of each exercise. To preview the full Stats page, load demo data in Settings.','About Stats')}</p></div>`;
@@ -5093,9 +4972,7 @@ function viewDash(){
   let heat=`<div class="card">${rangeChips('heat',hN,12)}<div class="heat-h">${DAYS.map(d=>`<span>${d[0]}</span>`).join('')}</div><div class="heat">`;
   const t=today();
   if(!hWin.length)heat+='</div><p class="small muted" style="margin:6px 0 0">Your first logged session starts this grid.</p><div>';
-  // r25: each past day is a button, so a square opens that date (calDay).
-  for(const w of hWin)for(let i=0;i<7;i++){const d=addDays(w.wk,i);const c=`${sessDates.has(d)?'on':''} ${d>t?'fut':''} ${d===t?'today':''}`;const tip=`${fmtDateLong(d)}${sessDates.has(d)?': lifted':''}`;
-    heat+=d>t?`<div class="${c}" data-tip="${tip}"></div>`:`<button type="button" class="${c}" data-act="calDay" data-date="${d}" data-tip="${tip}" aria-label="${tip}. Open"></button>`;}
+  for(const w of hWin)for(let i=0;i<7;i++){const d=addDays(w.wk,i);heat+=`<div class="${sessDates.has(d)?'on':''} ${d>t?'fut':''} ${d===t?'today':''}" data-tip="${fmtDateLong(d)}${sessDates.has(d)?': lifted':''}"></div>`;}
   heat+='</div></div>';
 
   // ranking (folded inside Muscles)
@@ -5463,7 +5340,7 @@ function viewHistory(){
   const ss=[...state.sessions].sort((a,b)=>a.date<b.date?1:a.date>b.date?-1:0);
   const I=IDX();
   const real=ss.filter(x=>!x.demo).length;
-  let h=pageHead('','History',`${ss.length} session${ss.length===1?'':'s'}${ss.length&&real!==ss.length?` (${ss.length-real} demo)`:''}`,'<button class="btn sm" data-act="calOpen">Calendar</button><button class="btn sm" data-act="pastOpen">Log a past workout</button>');
+  let h=pageHead('Every session, newest first','History',`${ss.length} session${ss.length===1?'':'s'}${ss.length&&real!==ss.length?` (${ss.length-real} demo)`:''}`,'<button class="btn sm" data-act="pastOpen">Log a past workout</button>');
   const cs=[...state.cardio].sort((a,b)=>a.date<b.date?1:a.date>b.date?-1:0);
   if(cs.length)h+=sec({sk:'history:cardio',key:'cardio',title:'Cardio and mobility',sub:`${cs.length} entr${cs.length===1?'y':'ies'}`,body:`<ul class="clist">${cs.slice(0,40).map(c=>`<li><span><b>${esc(CARDIOL[c.kind])}</b> <span class="small muted">${fmtDate(c.date)} · ${c.min} min${c.hr?` · ${c.hr} bpm`:''}${c.when!=='solo'?' · '+CWHENL[c.when].toLowerCase():''}${c.note?' · '+esc(c.note):''}</span></span><button class="ib sm" data-act="cardioDel" data-id="${c.id}" aria-label="Delete ${fmtDate(c.date)} cardio">✕</button></li>`).join('')}</ul>${cs.length>40?`<p class="small muted">${cs.length-40} older entries are in the CSV export.</p>`:''}`});
   const tr=state.trash||[];
@@ -5515,8 +5392,7 @@ function viewSettings(){
   // Each group folds (for this visit) and moves (order is saved).
   const SUB={general:`${s.unit==='kg'?'kg, cm':'lb, in'} · ${s.theme==='system'?'device theme':s.theme}`,timer:`${s.timerMode==='off'?'timer off':s.timerMode+' timer'}${s.timeBudget?` · ${s.timeBudget} min budget`:''}`,rir:{on:'on',cal:'corrected',off:'off'}[s.rirMode],layout:s.hidden.length?`${s.hidden.length} hidden`:'everything shown',prio:s.priorities.length?s.priorities.map(m=>ML[m]).join(', '):'none',bands:'',data:cloud.on?(cloud.status==='synced'?'synced':'syncing'):'this device only',demo:hasDemo?'loaded':'off',reset:'',diag:`build ${APP_VERSION}`};
   const G=(k,title,help,id)=>`<details class="sec" ${id?`id="${id}"`:''} data-sk="settings:${k}" data-mkey="${k}" ${isOpen('settings:'+k,k==='general')?'open':''}><summary>${sgrip(title)}<span class="sec-t">${esc(title)}</span><span class="sec-s">${esc(SUB[k]||'')}</span>${help?helpBtn(help):''}<span class="chev" aria-hidden="true"></span></summary><div class="sec-b">`;
-  // The build number lives in Diagnostics; only the preview says what it is up top.
-  return `${pageHead(ENV==='preview'?'Ironlog Preview '+APP_VERSION:'','Settings',cloud.on?(window.claude?'Saved to your Claude account and this device':'Synced to your account and saved on this device'):'Saved on this device','<button class="btn sm" data-act="fbOpen" data-cat="bug">Report a problem</button>')}
+  return `${pageHead('Ironlog '+(ENV==='preview'?'Preview ':'')+APP_VERSION,'Settings',cloud.on?(window.claude?'Saved to your Claude account and this device':'Synced to your account and saved on this device'):'Saved on this device')}
   ${G('general','General')}<div class="card stack"><div class="grid2"><label class="field">Units<select data-bind="unit"><option value="lb" ${s.unit==='lb'?'selected':''}>lb and inches</option><option value="kg" ${s.unit==='kg'?'selected':''}>kg and cm</option></select></label>
   <label class="field">Theme<select data-bind="theme"><option value="system" ${s.theme==='system'?'selected':''}>Match device</option><option value="dark" ${s.theme==='dark'?'selected':''}>Dark</option><option value="light" ${s.theme==='light'?'selected':''}>Light</option></select></label></div>
   <label class="field">Your name (optional)<input type="text" data-bind="userName" value="${esc(s.userName||'')}" maxlength="40" autocomplete="given-name" placeholder="Shown on Today"></label>
@@ -5532,7 +5408,6 @@ function viewSettings(){
   <label class="check-inline"><input type="checkbox" data-bind="timerSound" ${s.timerSound?'checked':''} ${s.timerMode==='off'?'disabled':''}>Sound and vibration when rest ends</label>
   <label class="check-inline"><input type="checkbox" data-bind="timerCompact" ${s.timerCompact?'checked':''} ${s.timerMode==='off'?'disabled':''}><span class="hastip" data-tip="A small pill in the corner instead of a bar across the screen.">Compact timer</span></label>
   <label class="check-inline"><input type="checkbox" data-bind="autoDone" ${s.autoDone?'checked':''}><span class="hastip" data-tip="A mistyped rep count is then saved without a tap to confirm, so check the row. Tapping the checkmark still undoes it.">Auto-mark a set done after its reps</span></label>
-  <label class="check-inline"><input type="checkbox" data-bind="loadFill" ${s.loadFill==='fill'?'checked':''}><span class="hastip" data-tip="Off: a set's load shows in grey until you type one, and ticking the set takes it. On: the suggested load is typed into every row for you. Either way, a load you type is never changed.">Fill in suggested loads</span></label>
   <label class="check-inline"><input type="checkbox" data-bind="wakeLock" ${s.wakeLock?'checked':''}><span class="hastip" data-tip="A locked phone pauses this page, so the rest alert cannot sound until you unlock. Keeping the screen on avoids that, at some battery cost.">Keep the screen on during a session</span></label>
   <label class="field"><span class="hastip" data-tip="Planned days whose time estimate runs over it are flagged. Rest per exercise is set in Program; 0 s means no timer.">Lifting time budget (minutes)</span><input type="text" inputmode="numeric" data-bind="timeBudget" value="${s.timeBudget==null?'':s.timeBudget}" placeholder="e.g. 70"></label></div></div></details>
   ${G('rir','Effort (RIR)')}<div class="card stack">${rirSettings()}</div></div></details>
@@ -5555,7 +5430,7 @@ function viewSettings(){
   ${G('demo','Demo data','demo')}${helpText('demo','8 weeks of generated sessions to preview Today and Stats. Everything demo is tagged and removed in one tap; your real logs are untouched.')}
   <div class="card row"><button class="btn" data-act="demoLoad">Load demo data</button><button class="btn" data-act="demoClear" ${hasDemo?'':'disabled'}>Clear demo data</button></div></div></details>
   ${G('reset','Reset')}<div class="card"><button class="btn danger" data-act="resetAll">Erase everything</button></div></div></details>
-  ${G('feedback','Help')}<div class="card stack"><button class="btn primary block" data-act="fbOpen" data-cat="bug">Report a problem</button><div class="row"><button class="btn sm" data-act="fbOpen" data-cat="question">Ask a question</button><button class="btn sm" data-act="fbOpen" data-cat="idea">Suggest something</button>${acct.reader&&FB()?'<button class="btn sm" data-act="fbInbox">Inbox</button>':''}</div></div></div></details>
+  ${G('feedback','Feedback')}<div class="card stack"><p class="small muted" style="margin:0">A bug, an idea or a question, straight to the app owner. ${tipi(FB_WHAT,'What is attached')}</p><div class="row"><button class="btn primary" data-act="fbOpen">Send feedback</button>${acct.reader&&FB()?'<button class="btn" data-act="fbInbox">Inbox</button>':''}</div></div></div></details>
   ${G('diag','Diagnostics')}<div class="card stack"><p class="small muted" style="margin:0">Build ${APP_VERSION} · cloud ${cloud.on?esc(cloud.status):'off'} · ${logBuf.length} logged error${logBuf.length===1?'':'s'}</p>
   ${logBuf.length?`<ul class="clist">${logBuf.slice(-5).reverse().map(x=>`<li><span class="small"><b>${esc(x.a)}</b> ${esc(x.m)}</span><span class="small muted">${esc(x.t.slice(5,16).replace('T',' '))}</span></li>`).join('')}</ul>`:''}
   <div class="row"><button class="btn sm" data-act="diagCopy">Copy diagnostics</button><button class="btn sm" data-act="diagClear" ${logBuf.length?'':'disabled'}>Clear log</button></div></div></div></details>`;
@@ -5563,7 +5438,7 @@ function viewSettings(){
 
 function rirSettings(){
   const s=state.settings;const c=calStats();
-  const sum=!c.n?'No calibration sets yet. Start one from a machine or cable exercise\'s ⋯ menu.'
+  const sum=!c.n?'No calibration sets yet: an exercise\'s ⋯ menu in a session, on a machine or cable lift.'
     :!c.recent?`${c.n} calibration set${c.n===1?'':'s'}, none in the last ${CAL_WEEKS} weeks.`
     :`${c.recent} recent calibration set${c.recent===1?'':'s'}: median miss ${c.raw>0?'+':''}${r1(c.raw)} reps (${c.raw>0?'you stop with more left than you call':c.raw<0?'closer to failure than you call':'accurate'}). Correction applied: ${c.bias>0?'+':''}${c.bias}.`;
   return `<label class="field">Reps in reserve<select data-bind="rirMode">
@@ -5608,8 +5483,6 @@ function renderModalBody(){
   let h='';
   if(m.kind==='account'){h=acctSheet(m);}
   else if(m.kind==='install'){h=installSheet(m);}
-  else if(m.kind==='icon'){h=iconSheet(m);}
-  else if(m.kind==='cal'){h=calSheet(m);}
   else if(m.kind==='past'){h=pastSheet(m);}
   else if(m.kind==='feedback'){h=fbSheet(m);}
   else if(m.kind==='fbInbox'){h=fbInboxSheet(m);}
@@ -5646,7 +5519,7 @@ function renderModalBody(){
     const nx=d.ex[m.b+1];const linked=!!(nx&&b.plan.ss&&nx.plan.ss===b.plan.ss);
     const op=(o,l,dis,cls)=>`<button class="btn block ${cls||''}" style="margin-top:6px" data-act="bMenuDo" data-op="${o}" data-b="${m.b}" ${dis?'disabled':''}>${l}</button>`;
     h=`<div class="sheet" role="dialog" aria-modal="true"><div class="sheet-h"><h3>${esc(exName(b.exId))}</h3><button class="ib" aria-label="Close" data-act="mClose">✕</button></div>
-    ${op('wAdd','Add a warm-up set')}${op('dropAdd','Add a drop set (about 75% load)')}${op('bQuick','Type or dictate sets')}${op('bNote',b.note?'Edit note':'Add note')}${op('bSwap','Swap exercise')}${aiOn()?op('bAiSwap','Ask Claude for a swap'):''}${op('bInc',`Load step: ${fmtW(incOf(EX(b.exId),b.plan))} ${U()}`)}${op('bMax',`Heaviest available: ${EX(b.exId).maxLoad!=null?fmtW(EX(b.exId).maxLoad)+' '+U():'no limit'}`)}${rirShow(EX(b.exId))?op('bCal','Calibration set (RIR check)'):''}${nx?op('bSs',linked?'Unlink superset':`Superset with ${esc(exName(nx.exId))}`):''}${op('bUp','Move up',m.b===0)}${op('bDown','Move down',!nx)}${op('fbOpen','Report a problem')}${op('bDel','Remove from session',false,'danger')}</div>`;
+    ${op('wAdd','Add a warm-up set')}${op('dropAdd','Add a drop set (about 75% load)')}${op('bQuick','Type or dictate sets')}${op('bNote',b.note?'Edit note':'Add note')}${op('bSwap','Swap exercise')}${aiOn()?op('bAiSwap','Ask Claude for a swap'):''}${op('bInc',`Load step: ${fmtW(incOf(EX(b.exId),b.plan))} ${U()}`)}${op('bMax',`Heaviest available: ${EX(b.exId).maxLoad!=null?fmtW(EX(b.exId).maxLoad)+' '+U():'no limit'}`)}${rirShow(EX(b.exId))?op('bCal','Calibration set (RIR check)'):''}${nx?op('bSs',linked?'Unlink superset':`Superset with ${esc(exName(nx.exId))}`):''}${op('bUp','Move up',m.b===0)}${op('bDown','Move down',!nx)}${op('fbOpen','Send feedback')}${op('bDel','Remove from session',false,'danger')}</div>`;
   }else if(m.kind==='injury'){
     h=`<div class="sheet" role="dialog" aria-modal="true"><div class="sheet-h"><h3>Flag an injury</h3><button class="ib" aria-label="Close" data-act="mClose">✕</button></div>
     <p class="small muted hastip" data-tip="Every exercise that loads this muscle, directly or as a helper, is marked in your sessions: its target pauses, loads cap at last time, and it is left out of below-target advice until cleared.">Training aid, not medical advice: sharp, worsening or lasting pain needs a clinician.</p>
@@ -6351,33 +6224,6 @@ function draftEntered(d){
   const n=(d.notes||'').trim();if(!n)return false;
   return typeof d.note0==='string'?n!==d.note0.trim():true;
 }
-/* The month calendar (r25): any date one tap away. A day with a session
-   opens it in History; an empty past day logs a workout for it (as in the
-   week bar); today opens Today. Opened from History, a Consistency square's
-   month, or by pulling the week bar down (or tapping the handle under it). */
-const MONTHS=['January','February','March','April','May','June','July','August','September','October','November','December'];
-function calBounds(){
-  const t=today().slice(0,7);const f=firstDate([...state.sessions,...state.cardio]);
-  return {min:f&&f.slice(0,7)<t?f.slice(0,7):t,max:t};
-}
-function calSheet(m){
-  const [y,mo]=m.ym.split('-').map(Number);const dim=new Date(y,mo,0).getDate();const lead=(new Date(y,mo-1,1).getDay()+6)%7;
-  const t=today();const bd={};for(const x of state.sessions)(bd[x.date]=bd[x.date]||[]).push(x);
-  const cd={};for(const c of state.cardio)cd[c.date]=(cd[c.date]||0)+c.min;
-  const {min,max}=calBounds();
-  let g=DAYS.map(d=>`<span class="wd">${d.slice(0,2)}</span>`).join('')+'<span></span>'.repeat(lead);let n=0;
-  for(let i=1;i<=dim;i++){
-    const d=`${m.ym}-${String(i).padStart(2,'0')}`;const ss=bd[d]||[];const c=cd[d]||0;if(ss.length)n+=ss.length;
-    const cls=['cd',ss.length?'on':'',!ss.length&&c?'cardio':'',d===t?'today':'',d>t?'fut':''].filter(Boolean).join(' ');
-    const what=ss.length?ss.map(x=>x.dayName||'Session').join(', '):c?`cardio ${c} min`:d>t?'':'nothing logged';
-    const inner=`<span class="n">${i}</span><span class="x">${ss.length>1?'×'+ss.length:''}</span>`;
-    g+=d>t?`<span class="${cls}" aria-hidden="true">${inner}</span>`
-      :`<button type="button" class="${cls}" data-act="calDay" data-date="${d}" aria-label="${esc(fmtDateLong(d)+': '+what)}"${what&&what!=='nothing logged'?` data-tip="${esc(what)}"`:''}>${inner}</button>`;
-  }
-  return `<div class="sheet" role="dialog" aria-modal="true" aria-labelledby="calH"><div class="cal-h"><button class="ib" data-act="calMonth" data-v="-1" aria-label="Previous month" ${m.ym<=min?'disabled':''}>‹</button><h3 id="calH">${MONTHS[mo-1]} ${y}</h3><button class="ib" data-act="calMonth" data-v="1" aria-label="Next month" ${m.ym>=max?'disabled':''}>›</button><button class="ib" aria-label="Close" data-act="mClose">✕</button></div>
-  <div class="cal-g">${g}</div>
-  <div class="row spread" style="margin-top:10px"><p class="small muted" style="margin:0">${n?`${n} session${n===1?'':'s'}`:'No sessions'}${m.ym===max?' so far':''}</p>${m.ym!==max?'<button class="btn sm" data-act="calMonth" data-v="now">This month</button>':''}</div></div>`;
-}
 function pastSheet(m){
   const R=activeRoutine();const due=pastDue(R,m.date);
   const on=state.sessions.filter(x=>x.date===m.date).map(x=>x.dayName||'Session');
@@ -6409,21 +6255,6 @@ const ACT={
   },
   appUpdateLater(){upd.later=true;updRender();},
   async acctRetry(){await cloudInit();acctRerender();if(!cloud.on)toast('Still not syncing. Check your connection, or sign out and in again.');},
-  iconHow(){openModal({kind:'icon'});},
-  calOpen(t){const ym=t&&t.dataset&&/^\d{4}-\d{2}$/.test(t.dataset.ym||'')?t.dataset.ym:today().slice(0,7);if(ui.modal)closeModal();openModal({kind:'cal',ym});},
-  calMonth(t){const m=ui.modal;if(!m||m.kind!=='cal')return;const {min,max}=calBounds();
-    if(t.dataset.v==='now'){m.ym=max;renderModal();return;}
-    const [y,mo]=m.ym.split('-').map(Number);const d=new Date(y,mo-1+(+t.dataset.v||0),1);const ym=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
-    if(ym<min||ym>max)return;m.ym=ym;renderModal();},
-  calDay(t){
-    const d=t.dataset.date;if(!isDate(d)||d>today())return;
-    if(ui.modal)closeModal();
-    const ss=state.sessions.filter(x=>x.date===d);
-    if(ss.length){ACT.wkOpen({dataset:{id:ss.sort((a,b)=>a.id<b.id?-1:1)[0].id}});return;}
-    if(d===today()){ACT.wkGo({dataset:{date:d}});return;}
-    ACT.pastOpen({dataset:{date:d}});
-  },
-  iconLater(){try{localStorage.setItem(ICON_NOTE,'1');}catch(e){log('storage',e);}if(ui.modal&&ui.modal.kind==='icon')closeModal();rerenderKeepScroll();},
   install(){
     const how=installKind();
     if(how==='prompt'){
@@ -6434,8 +6265,8 @@ const ACT={
     }
     openModal({kind:'install',how});
   },
-  installLater(){try{localStorage.setItem(INSTALL_LATER,'1');}catch(e){log('storage',e);}rerenderKeepScroll();toast('Hidden. Settings > Your data has it.');},
-  acctLater(){try{localStorage.setItem(ACCT_LATER,'1');}catch(e){log('storage',e);}rerenderKeepScroll();toast('Hidden. Settings > Your data has it.');},
+  installLater(){try{localStorage.setItem(INSTALL_LATER,'1');}catch(e){log('storage',e);}rerenderKeepScroll();toast('Hidden. Settings > Your data has it any time.');},
+  acctLater(){try{localStorage.setItem(ACCT_LATER,'1');}catch(e){log('storage',e);}rerenderKeepScroll();toast('Hidden. Settings > Your data has it any time.');},
   acctOpen(t){openModal({kind:'account',mode:t.dataset.mode==='signup'?'signup':'signin',email:'',pw:''});},
   acctMode(t){const m=ui.modal;if(!m||m.kind!=='account')return;if(m.mode==='wait')waitStop();m.mode=t.dataset.mode;m.err='';m.pw='';renderModal();},
   acctWaitNow(){waitTry(true);},
@@ -6608,7 +6439,7 @@ const ACT={
       if(same)state.activeRoutineId=same.id;
       else{const starter=routineSig(defaultRoutine());state.routines=state.routines.filter(x=>routineSig(x)!==starter||state.sessions.some(q=>q.routineId===x.id));state.routines.push(r);state.activeRoutineId=r.id;}
       state.settings.onboarded=true;ui.todayDay=null;ui.tab='today';commit();window.scrollTo(0,0);render();
-      toast(`${r.name} is ready`);return;
+      toast(`${r.name} is ready. Start a session when you are at the gym.`);return;
     }
     if(same){ui.bRoutine=same.id;render();toast('You already have this routine unchanged. Opened it instead.');return;}
     state.routines.push(r);ui.bRoutine=r.id;commit();render();toast(`${r.name} added. Tap Make active to use it.`);
@@ -6642,36 +6473,27 @@ const ACT={
   fbOpen(t){
     const d=state.draft;const bi=t&&t.dataset&&t.dataset.b!=null?+t.dataset.b:null;const b=bi!=null&&d?d.ex[bi]:null;
     const from=ui.tab==='settings'?(ui.prevTab||'settings'):ui.tab;
-    const cat=t&&t.dataset&&FB_TITLE[t.dataset.cat]?t.dataset.cat:'bug';
-    openModal({kind:'feedback',cat,msg:'',shot:null,from:ui.tab==='today'&&d?'session':from,ex:b?exName(b.exId):null});
-  },
-  // Signed out: the report as text for a message, without sending anything.
-  async fbCopy(){
-    const m=ui.modal;if(!m||m.kind!=='feedback')return;
-    const txt=`Ironlog: ${FB_TITLE[m.cat]||FB_TITLE.bug}\n\n(Write it here)\n\n${JSON.stringify(fbContext(m),null,1)}`;
-    let ok=false;try{if(navigator.clipboard){await navigator.clipboard.writeText(txt);ok=true;}}catch(e){ok=false;}
-    if(!ok){closeModal();openModal({kind:'text',title:'Report details',help:'Copy this into a message to the app owner, with what happened.',text:txt,readonly:true});return;}
-    m.sent=true;m.copied=true;renderModal();
+    openModal({kind:'feedback',cat:'bug',msg:'',reply:acct.user&&acct.user.email||'',shot:null,from:ui.tab==='today'&&d?'session':from,ex:b?exName(b.exId):null});
   },
   fbCat(t){const m=ui.modal;if(!m||m.kind!=='feedback')return;for(const el of document.querySelectorAll('#modal [data-fbind]'))m[el.dataset.fbind]=el.value;m.cat=t.dataset.v;renderModal();},
   fbShotDel(){const m=ui.modal;if(!m||m.kind!=='feedback')return;m.shot=null;renderModal();},
   async fbSend(){
     const m=ui.modal;if(!m||m.kind!=='feedback'||m.busy)return;
     for(const el of document.querySelectorAll('#modal [data-fbind]'))m[el.dataset.fbind]=el.value;
-    const msg=String(m.msg||'').trim().slice(0,FB_MAX);const reply=acct.user&&acct.user.email||'';
-    if(msg.length<FB_MIN){m.err=`A few more words, please (${FB_MIN} characters or more).`;renderModal();return;}
-    const F=FB();
-    if(F&&fbRecent().length>=FB_DAY){m.err=`You have sent ${FB_DAY} reports today. Try again tomorrow.`;renderModal();return;}
+    const msg=String(m.msg||'').trim().slice(0,4000),reply=String(m.reply||'').trim().slice(0,200);
+    if(msg.length<3){m.err='Write a few words first.';renderModal();return;}
+    if(reply&&!EMAIL_RE.test(reply)){m.err='That reply address does not look right.';renderModal();return;}
     const fb={category:FB_CATS.some(([k])=>k===m.cat)?m.cat:'bug',message:msg,reply_to:reply||null,screenshot:m.shot||null,context:fbContext(m)};
+    const F=FB();
     if(!F){
       // No feedback service here: the report as text, to paste into a message.
-      const txt=`Ironlog: ${FB_TITLE[fb.category]}\n\n${msg}\n\n${JSON.stringify(fb.context,null,1)}`;
+      const txt=`Ironlog feedback (${fb.category})\n\n${msg}${reply?`\n\nReply to: ${reply}`:''}\n\n${JSON.stringify(fb.context,null,1)}`;
       let ok=false;try{if(navigator.clipboard){await navigator.clipboard.writeText(txt);ok=true;}}catch(e){ok=false;}
       if(!ok){closeModal();openModal({kind:'text',title:'Feedback',help:'Copy this and send it to the app owner.',text:txt,readonly:true});return;}
       m.sent=true;m.copied=true;m.dirty=false;renderModal();return;
     }
     m.busy=true;m.err='';renderModal();
-    try{await F.send(fb);try{localStorage.setItem(FB_SENT,JSON.stringify([...fbRecent(),Date.now()]));}catch(e2){/* the database still counts */}if(ui.modal===m){m.sent=true;m.dirty=false;}}
+    try{await F.send(fb);if(ui.modal===m){m.sent=true;m.dirty=false;}}
     catch(e){log('feedback',e);if(ui.modal===m)m.err=(e&&e.message)||'Could not send. Try again.';}
     finally{if(ui.modal===m){m.busy=false;renderModal();}}
   },
@@ -6786,10 +6608,10 @@ const ACT={
     if(linkToggle(items,f.i,x=>x)){commit();rerenderKeepScroll();}},
   dropAdd(t){
     const b=state.draft.ex[+t.dataset.b];
-    // The load the last working set was, or will be (a grey load counts).
-    let base=0;for(let i=b.sets.length-1;i>=0;i--){const s=b.sets[i];if(s.warm||s.drop)continue;const w=+effW(b,i)||0;if(w>0){base=w;break;}}
+    const work=[...b.sets].reverse().find(s=>!s.warm&&+s.w>0);
+    const base=work?+work.w:0;
     b.sets.push({w:base>0?roundLoad(base*0.75):null,r:null,rir:null,warm:false,drop:true,done:false});
-    saveNow();rerenderKeepScroll();toast('Drop set added');
+    saveNow();rerenderKeepScroll();toast('Drop set added: half a set of volume, never a PR.');
   },
   // Once the rest is over, +15 counts from now (not from the old end, which
   // left it at 0:00) and the alert is armed again.
@@ -6852,26 +6674,24 @@ const ACT={
   goBackup(){ui.tab='settings';ui.folds['settings:data']=true;window.scrollTo(0,0);render();const el=document.getElementById('dataSec');if(el)el.scrollIntoView({block:'start'});},
   // The new working set copies the last working set's load, not a drop set's
   // (75%) or a warm-up's.
-  sAdd(t){const b=state.draft.ex[+t.dataset.b];let li=-1;for(let i=b.sets.length-1;i>=0;i--)if(!b.sets[i].drop&&!b.sets[i].warm){li=i;break;}if(li<0)li=b.sets.length-1;
-    // Grey by default: the new row shows the load above it. Filled in, it copies that load (typed or grey).
-    b.sets.push({w:fillLoads()&&li>=0?effW(b,li):null,r:null,rir:null,warm:false,drop:false,done:false});saveNow();rerenderKeepScroll();},
+  sAdd(t){const b=state.draft.ex[+t.dataset.b];const last=[...b.sets].reverse().find(x=>!x.drop&&!x.warm)||b.sets[b.sets.length-1];b.sets.push({w:last?last.w:null,r:null,rir:null,warm:false,drop:false,done:false});saveNow();rerenderKeepScroll();},
   /* Warm-ups were missing entirely, which is also why the planned time estimate
      was optimistic. New warm-ups go in at the top, already flagged, so they
      stay out of every analytic, and are seeded from the working load. */
   wAdd(t){
     const b=state.draft.ex[+t.dataset.b];
-    let base=0;for(let i=0;i<b.sets.length;i++){const s=b.sets[i];if(s.warm||s.drop)continue;const w=+effW(b,i)||0;if(w>0){base=w;break;}}
-    if(!base)base=Math.max(0,...b.sets.map((s,i)=>+effW(b,i)||0));
+    const work=b.sets.find(s=>!s.warm&&+s.w>0);
+    const base=work?+work.w:Math.max(0,...b.sets.map(s=>+s.w||0));
     const n=b.sets.filter(s=>s.warm).length;
     const frac=[0.4,0.6,0.75,0.85][Math.min(n,3)];
     b.sets.unshift({w:base>0?roundLoad(base*frac):null,r:null,rir:null,warm:true,drop:false,done:false});
-    saveNow();rerenderKeepScroll();toast('Warm-up set added');
+    saveNow();rerenderKeepScroll();toast('Warm-up set added. It stays out of your volume.');
   },
   bQuick(t){openModal({kind:'quick',b:+t.dataset.b,text:''});},
   qFill(){
     const m=ui.modal;if(!m||m.kind!=='quick')return;const d=state.draft;const b=d&&d.ex[m.b];if(!b)return;
     const txt=(($('#qTxt')||{}).value||'').trim();m.text=txt;if(!txt){m.err='Type at least one set.';renderModal();return;}
-    const ex=EX(b.exId);const fi=b.sets.findIndex(x=>!x.done&&!x.warm);const fw=fi>=0?effW(b,fi):null;const defW=fw!=null?fw:null;
+    const ex=EX(b.exId);const first=b.sets.find(x=>!x.done&&!x.warm);const defW=first&&first.w!=null?first.w:null;
     const got=parseSets(txt,ex,defW);
     const finish=list=>{const n=fillSets(m.b,list);closeModal();rerenderKeepScroll();toast(`${n} set${n===1?'':'s'} filled and marked done`);};
     if(got){finish(got);return;}
@@ -7029,7 +6849,7 @@ const ACT={
       confirmBox('Some sets are not marked done',
         `${total} set${total>1?'s have':' has'} reps entered but no checkmark, so ${total>1?'they':'it'} will not be saved: ${list}.`,
         `Mark ${total>1?'them':'it'} done and save`,
-        ()=>{const dd=state.draft;if(!dd)return;for(const b of dd.ex)b.sets.forEach((s,si)=>{if(!s.done&&!s.warm&&+s.r>0){settleLoad(b,si);s.done=true;}});saveNow();ACT.finishNow();},
+        ()=>{const dd=state.draft;if(!dd)return;for(const b of dd.ex)for(const s of b.sets)if(!s.done&&!s.warm&&+s.r>0)s.done=true;saveNow();ACT.finishNow();},
         false,
         {label:'Save without them',fn:()=>ACT.finishNow()});
       return;
@@ -7183,9 +7003,7 @@ const ACT={
       const tgt=inner||el;if(tgt.scrollIntoView)tgt.scrollIntoView({block:'start'});}}catch(e){/* scroll is best effort */}}
   },
   wkOpen(t){
-    const id=t.dataset.id;ui.tab='history';ui.histEx='';ui.histOpen=id;
-    // An older session may be past the first page of History: load enough rows to reach it.
-    const at=[...state.sessions].sort((a,b)=>a.date<b.date?1:a.date>b.date?-1:0).findIndex(x=>x.id===id);ui.histLimit=Math.max(HIST_PAGE,at+1);
+    const id=t.dataset.id;ui.tab='history';ui.histEx='';ui.histLimit=HIST_PAGE;ui.histOpen=id;
     window.scrollTo(0,0);render();
     try{const el=document.querySelector(`[data-act="histToggle"][data-id="${id}"]`);if(el&&el.scrollIntoView)el.scrollIntoView({block:'start'});}catch(e){/* scroll is best effort */}
   },
@@ -7287,29 +7105,6 @@ document.addEventListener('focusout',()=>tipHide());
 window.addEventListener('scroll',()=>{if(TIP.el)tipHide();},{passive:true});
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&TIP.el)tipHide();});
 
-/* Pull the week bar down to open the month calendar (r25). The gesture only
-   counts once the finger has moved clearly downward (more than 10 px, and
-   mostly down), so a tap still opens a day and a hold still shows its tip.
-   Released past 36 px it opens the calendar; either way the click that the
-   release would send to a day is swallowed. */
-const PULL={id:null,x:0,y:0,on:false};
-function pullReset(){PULL.id=null;PULL.on=false;const h=document.querySelector('header.top');if(h)h.classList.remove('pulling');}
-document.addEventListener('pointerdown',e=>{
-  const h=e.target.closest&&e.target.closest('header.top');if(!h||e.button>0||document.body.classList.contains('modal-open'))return;
-  PULL.id=e.pointerId;PULL.x=e.clientX;PULL.y=e.clientY;PULL.on=false;
-});
-document.addEventListener('pointermove',e=>{
-  if(PULL.id==null||e.pointerId!==PULL.id)return;const dy=e.clientY-PULL.y,dx=Math.abs(e.clientX-PULL.x);
-  if(!PULL.on&&dy>10&&dy>dx*1.5){PULL.on=true;clearTimeout(TIP.hold);TIP.hold=null;const h=document.querySelector('header.top');if(h)h.classList.add('pulling');}
-  else if(!PULL.on&&(dx>14||dy<-14)){PULL.id=null;}
-});
-document.addEventListener('pointerup',e=>{
-  if(PULL.id==null||e.pointerId!==PULL.id)return;const on=PULL.on,dy=e.clientY-PULL.y;pullReset();
-  if(!on)return;TIP.swallow=true;setTimeout(()=>{TIP.swallow=false;},450);
-  if(dy>=36)ACT.calOpen();
-});
-document.addEventListener('pointercancel',e=>{if(e.pointerId===PULL.id)pullReset();});
-
 /* ---------- events ---------- */
 /* The sign-in sheet is a real form so the phone offers to save and fill the
    password; it never navigates. Enter submits it through its button. */
@@ -7345,7 +7140,7 @@ document.addEventListener('input',e=>{
     else if(t.dataset.f==='r'){const n=numIn(v);s.r=n==null?null:Math.min(Math.max(Math.round(n),0),1000);refreshGrey(+t.dataset.b);}
     else{const n=numIn(v);s.rir=n==null?null:Math.min(Math.max(n,0),10);if(t.tagName==='SELECT')t.classList.toggle('unset',v==='');}
     if(t.dataset.f!=='rir')updateProgress(+t.dataset.b);
-    if(t.dataset.f==='w'){updatePlates(+t.dataset.b,+t.dataset.s);refreshGreyW(+t.dataset.b);}
+    if(t.dataset.f==='w')updatePlates(+t.dataset.b,+t.dataset.s);
     saveSoon();return;}
   if(t.dataset.it){const f=findItem(t.dataset.uid);if(!f)return;const n=numIn(t.value);if(n==null)return;
     const k=t.dataset.it;const cl=(x,lo,hi)=>Math.min(Math.max(x,lo),hi);
@@ -7354,7 +7149,7 @@ document.addEventListener('input',e=>{
     saveSoon();invalidate();return;}
   if(t.dataset.band){const n=numIn(t.value);if(n==null)return;state.settings.bands[t.dataset.band][+t.dataset.bi]=Math.min(Math.max(Math.round(n*2)/2,0),100);saveSoon();return;}
   if(t.dataset.dayname!=null){curRoutineB().days[+t.dataset.dayname].name=t.value;saveSoon();return;}
-  if(t.dataset.fbind&&ui.modal&&ui.modal.kind==='feedback'){ui.modal[t.dataset.fbind]=t.value;ui.modal.dirty=true;const c=document.getElementById('fbCount');if(c&&t.dataset.fbind==='msg')c.textContent=`${t.value.length} / ${FB_MAX}`;return;}
+  if(t.dataset.fbind&&ui.modal&&ui.modal.kind==='feedback'){ui.modal[t.dataset.fbind]=t.value;return;}
   if(t.dataset.abind&&ui.modal&&ui.modal.kind==='account'){ui.modal[t.dataset.abind]=t.value;if(ui.modal.err){ui.modal.err='';}return;}
   if(t.dataset.ebind&&ui.modal&&ui.modal.kind==='exEdit'){const k=t.dataset.ebind;if(t.type==='checkbox')return;ui.modal.e[k]=t.value;return;}
   if(t.dataset.mbind&&ui.modal&&ui.modal.kind==='picker'){ui.modal[t.dataset.mbind]=t.value;const pl=$('#pickList');if(pl){pl.innerHTML=pickerBody(ui.modal);pl.scrollTop=0;}return;}
@@ -7368,10 +7163,7 @@ document.addEventListener('input',e=>{
 document.addEventListener('change',e=>{
   const t=e.target;
   if(ui.modal&&FORM_SHEETS.has(ui.modal.kind)&&t&&t.closest&&t.closest('#modal'))ui.modal.dirty=true;
-  if(t.id==='fbShot'&&t.files&&t.files[0]&&ui.modal&&ui.modal.kind==='feedback'){const m=ui.modal;const f0=t.files[0];
-    if(f0.size>FB_IMG_MB*1048576){toast(`That image is over ${FB_IMG_MB} MB. Try a screenshot instead.`);t.value='';return;}
-    if(f0.type&&!/^image\//.test(f0.type)){toast('Only an image can be attached.');t.value='';return;}
-    fbShrink(f0).then(d=>{if(ui.modal!==m)return;if(!d){toast('That picture is too large');return;}m.shot=d;m.dirty=true;renderModal();},e=>{log('feedback',e);toast('Could not read that image. Try a screenshot (PNG or JPG).');});t.value='';return;}
+  if(t.id==='fbShot'&&t.files&&t.files[0]&&ui.modal&&ui.modal.kind==='feedback'){const m=ui.modal;fbShrink(t.files[0]).then(d=>{if(ui.modal!==m)return;if(!d){toast('That picture is too large');return;}m.shot=d;m.dirty=true;renderModal();},e=>{log('feedback',e);toast('Could not read that picture');});t.value='';return;}
   if(t.id==='impFile'&&t.files&&t.files[0]){const f=t.files[0];t.value='';impStart({file:f});return;}
   if(t.id==='importFile'&&t.files&&t.files[0]){const fr=new FileReader();fr.onload=()=>importData(String(fr.result));fr.onerror=()=>toast('Could not read that file');fr.readAsText(t.files[0]);t.value='';return;}
   if(t.dataset.it){commit();rerenderKeepScroll();return;}
@@ -7399,7 +7191,7 @@ document.addEventListener('change',e=>{
     else if(s.done)refreshPR(bi,si,false);
     saveSoon();return;}
   if(t.dataset.f){
-    if(t.dataset.f==='w'&&state.draft){const s=draftSet(t);if(!s)return;if(s.done)refreshPR(+t.dataset.b,+t.dataset.s,false);mixCheck(+t.dataset.b,+t.dataset.s);if(fillLoads())carryLoad(+t.dataset.b,+t.dataset.s);}
+    if(t.dataset.f==='w'&&state.draft){const s=draftSet(t);if(!s)return;if(s.done)refreshPR(+t.dataset.b,+t.dataset.s,false);mixCheck(+t.dataset.b,+t.dataset.s);carryLoad(+t.dataset.b,+t.dataset.s);}
     if(t.tagName==='SELECT'&&state.draft){
       const s=draftSet(t);if(!s)return;const n=numIn(t.value);
       s.rir=n==null?null:Math.min(Math.max(n,0),10);
@@ -7441,7 +7233,6 @@ document.addEventListener('change',e=>{
     case 'timerSound':state.settings.timerSound=t.checked;if(t.checked)primeAudio();commit();break;
     case 'timerCompact':state.settings.timerCompact=t.checked;commit();if(!$('#timer').hidden)tick();break;
     case 'autoDone':state.settings.autoDone=t.checked;commit();rerenderKeepScroll();break;
-    case 'loadFill':if(t.checked)state.settings.loadFill='fill';else delete state.settings.loadFill;commit();rerenderKeepScroll();break;
     case 'rirAsk':if(t.checked)state.settings.rirAsk=true;else delete state.settings.rirAsk;commit();rerenderKeepScroll();break;
     case 'wakeLock':state.settings.wakeLock=t.checked;commit();if(t.checked&&state.draft)wakeOn();else if(!t.checked)wakeOff();break;
     case 'timeBudget':{const n=numIn(t.value);state.settings.timeBudget=n==null||n<10?null:Math.min(Math.round(n),300);commit();break;}
@@ -7754,7 +7545,7 @@ function swapPrompt(b,reason){
 }
 
 window.__onLib=(which)=>{if((which==='chart'&&ui.tab==='dash')||(which==='sortable'&&ui.tab==='program'))rerenderKeepScroll();};
-window.__ironlog={get state(){return state;},set state(v){state=v;},ENV,KEY,greyW,effW,e1inv,rtfAt,rtfOf,rtfBand,calStats,rirEff,isHard,setCredit,tonnage,loadMode,loadWords,loadNote,progStep,jumpCap,setSecs,setupSecs,recovery,rolling7,rankDays,rankExercises,isCompound,patternOf,noE1,whtrLine,exHeadline,remainMin,shortPlan,weekPlan,cycleProjection,lastLighterWeek,regionBalance,parseHeight,mixCheck,swapCands,eqPlan,exportCSV,importData,chunksOf,assemble,sessionMuscles,TRACK_ONLY,cloud,Hx,mergeChunk,baseOf,sync:()=>cq(cloudPull),TEMPLATES,lastRFor,impDate,impRows,impNorm,impMatch,impFromText,impFromTable,impHeader,impBuild,impStart,impXlsx,parseSets,undoStack,undoRestore,undoForget,allTimeBests,bestsBoard,obActive,fmtW,rirUsual,rirEst,routineFromTemplate,plannedSets,map3d:()=>({state:B3.state,fail:B3.fail,meshes:B3.meshes.length,yaw:B3.yaw,glow:Object.keys(B3.mats).filter(m=>B3.mats[m].emissiveIntensity>0),canvas:!!document.querySelector('#bm3d canvas'),colors:Object.fromEntries(Object.entries(B3.mats).map(([m,mt])=>[m,'#'+mt.color.getHexString()])),pick:(x,y)=>map3dPick(x,y),want:map3dColors()}),cloudState:()=>({on:cloud.on,status:cloud.status,err:cloud.err,uid:cloud.uid,acct:cloud.acct}),acctUser:()=>acct.user,acctWaiting:()=>!!acctWait.pw,flush:()=>cq(cloudFlush),backupDue,routineUpdates,planFor,platesMode,plateText,chunksOf,IDX,suggest,e1,render,ACT,ui,makeDemo,invalidate,normalize,snapshot,saveNow,timer,weekStats,weekStart,today,EX,blockProgress,dayMinutes,weekStreak,coach,tonnageNow,livePR,exProjection,movers,stalledIds,muscleStatus,actualAvg4,plannedPerWeek,parseSets,aiSetsValid,fillSets,newBlock,lastNoteOf,sizeRows,sessionMuscleSets,sessionCapNote,routineClutter,aiDigest,debriefPrompt,reviewPrompt,swapPrompt,AI,sameRR};
+window.__ironlog={get state(){return state;},set state(v){state=v;},ENV,KEY,e1inv,rtfAt,rtfOf,rtfBand,calStats,rirEff,isHard,setCredit,tonnage,loadMode,loadWords,loadNote,progStep,jumpCap,setSecs,setupSecs,recovery,rolling7,rankDays,rankExercises,isCompound,patternOf,noE1,whtrLine,exHeadline,remainMin,shortPlan,weekPlan,cycleProjection,lastLighterWeek,regionBalance,parseHeight,mixCheck,swapCands,eqPlan,exportCSV,importData,chunksOf,assemble,sessionMuscles,TRACK_ONLY,cloud,Hx,mergeChunk,baseOf,sync:()=>cq(cloudPull),TEMPLATES,lastRFor,impDate,impRows,impNorm,impMatch,impFromText,impFromTable,impHeader,impBuild,impStart,impXlsx,parseSets,undoStack,undoRestore,undoForget,allTimeBests,bestsBoard,obActive,fmtW,rirUsual,rirEst,routineFromTemplate,plannedSets,map3d:()=>({state:B3.state,fail:B3.fail,meshes:B3.meshes.length,yaw:B3.yaw,glow:Object.keys(B3.mats).filter(m=>B3.mats[m].emissiveIntensity>0),canvas:!!document.querySelector('#bm3d canvas'),colors:Object.fromEntries(Object.entries(B3.mats).map(([m,mt])=>[m,'#'+mt.color.getHexString()])),pick:(x,y)=>map3dPick(x,y),want:map3dColors()}),cloudState:()=>({on:cloud.on,status:cloud.status,err:cloud.err,uid:cloud.uid,acct:cloud.acct}),acctUser:()=>acct.user,acctWaiting:()=>!!acctWait.pw,flush:()=>cq(cloudFlush),backupDue,routineUpdates,planFor,platesMode,plateText,chunksOf,IDX,suggest,e1,render,ACT,ui,makeDemo,invalidate,normalize,snapshot,saveNow,timer,weekStats,weekStart,today,EX,blockProgress,dayMinutes,weekStreak,coach,tonnageNow,livePR,exProjection,movers,stalledIds,muscleStatus,actualAvg4,plannedPerWeek,parseSets,aiSetsValid,fillSets,newBlock,lastNoteOf,sizeRows,sessionMuscleSets,sessionCapNote,routineClutter,aiDigest,debriefPrompt,reviewPrompt,swapPrompt,AI,sameRR};
 render();
 wakeOn();
 timerResume();
