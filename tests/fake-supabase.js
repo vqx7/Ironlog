@@ -18,6 +18,9 @@ function start(root) {
   const tokens = new Map();     // access token -> {uid, exp}
   const refresh = new Map();    // refresh token -> uid
   const rows = new Map();       // `${uid} ${path}` -> {user_id, path, data, updated_at}
+  const rowsLive = rows;
+  const rowsPreview = new Map(); // the same for public.docs_preview (the preview build, r24)
+  let pvOn = true;              // false: docs_preview is not created yet
   const feedback = [];          // rows of public.feedback
   const readers = new Set();    // user ids in public.feedback_readers
   let fbOn = true;              // false: the feedback tables are not created yet
@@ -135,8 +138,10 @@ function start(root) {
         if (req.method === 'GET') return send(res, 200, c && readers.has(c.id) ? feedback.slice().reverse() : []);
         return send(res, 405, { message: 'method' });
       }
-      // ---- Data API: table docs ----
-      if (p === '/rest/v1/docs') {
+      // ---- Data API: tables docs and docs_preview ----
+      if (p === '/rest/v1/docs' || p === '/rest/v1/docs_preview') {
+        const rows = p === '/rest/v1/docs' ? rowsLive : rowsPreview;
+        if (rows === rowsPreview && !pvOn) return send(res, 404, { code: 'PGRST205', message: "Could not find the table 'public.docs_preview' in the schema cache" });
         const c = caller(req);
         if (c && c.expired) return send(res, 401, { code: 'PGRST303', message: 'JWT expired' });
         if (!c) return send(res, 401, { code: '42501', message: 'permission denied for table docs' });
@@ -178,7 +183,9 @@ function start(root) {
   });
   return new Promise(r => server.listen(0, '127.0.0.1', () => {
     const base = `http://127.0.0.1:${server.address().port}`;
-    r({ base, users, rows, log,
+    r({ base, users, rows, rowsPreview, log,
+      previewTable(v) { pvOn = !!v; },
+      addUser(email, password) { const nu = { id: crypto.randomUUID(), email, password, confirmed: true, created: new Date().toISOString() }; users.set(email, nu); return nu; },
       confirm(email) { const x = users.get(email); if (x) x.confirmed = true; },
       expireTokens() { for (const v of tokens.values()) v.exp = now() - 10; },
       setTokenLife(s) { tokenLife = s; },

@@ -1,9 +1,11 @@
 # Item 22: every suite runs on every pull request and every push to main, in
 # a real Chromium, on both builds (npm test). A push to main (a merged pull
 # request) then publishes dist/ to the gh-pages branch, which GitHub Pages
-# serves, but only if every suite passed. A pull request is only tested, so
-# its check shows green or red before it is merged, and nothing it contains
-# reaches the live app until then.
+# serves, but only if every suite passed. A pull request is tested, and if
+# every suite passes its build is published to preview/
+# (vqx7.github.io/Ironlog/preview/), a separate app with its own storage and
+# sync table, so it can be tried on a phone before the merge. Nothing a pull
+# request contains reaches the live app until then.
 name: Test and publish
 on:
   pull_request:
@@ -38,16 +40,45 @@ jobs:
           path: screenshots/
           if-no-files-found: ignore
           retention-days: 7
-      - name: Publish dist/ to gh-pages
+      # The live app and the preview share the gh-pages branch, and either can
+      # publish while the other is running, so each push starts from the
+      # latest branch and tries again if it lost the race. The live publish
+      # leaves preview/ alone, and the preview publish touches only preview/.
+      - name: Publish dist/ to gh-pages (live)
         if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git fetch --depth 1 origin gh-pages
-          git worktree add --detach ../pages origin/gh-pages
-          rsync -a --delete --exclude .git dist/ ../pages/
-          cd ../pages
-          git add -A
-          if git diff --cached --quiet; then echo "Nothing changed"; exit 0; fi
-          git commit -m "Publish ${GITHUB_SHA::7}"
-          git push origin HEAD:gh-pages
+          for try in 1 2 3; do
+            git fetch --depth 1 origin gh-pages
+            rm -rf ../pages; git worktree prune
+            git worktree add --detach ../pages origin/gh-pages
+            rsync -a --delete --exclude .git --exclude preview/ dist/ ../pages/
+            cd ../pages
+            git add -A
+            if git diff --cached --quiet; then echo "Nothing changed"; exit 0; fi
+            git commit -q -m "Publish ${GITHUB_SHA::7}"
+            if git push origin HEAD:gh-pages; then exit 0; fi
+            cd "$GITHUB_WORKSPACE"; sleep 5
+          done
+          exit 1
+      - name: Publish the pull request to preview/
+        if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+        run: |
+          node scripts/build.js --preview
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          for try in 1 2 3; do
+            git fetch --depth 1 origin gh-pages
+            rm -rf ../pages; git worktree prune
+            git worktree add --detach ../pages origin/gh-pages
+            mkdir -p ../pages/preview
+            rsync -a --delete dist-preview/ ../pages/preview/
+            cd ../pages
+            git add -A
+            if git diff --cached --quiet; then echo "Nothing changed"; exit 0; fi
+            git commit -q -m "Preview of #${{ github.event.pull_request.number }} (${GITHUB_SHA::7})"
+            if git push origin HEAD:gh-pages; then echo "Preview: https://vqx7.github.io/Ironlog/preview/" >> "$GITHUB_STEP_SUMMARY"; exit 0; fi
+            cd "$GITHUB_WORKSPACE"; sleep 5
+          done
+          exit 1

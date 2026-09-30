@@ -2,7 +2,7 @@
 const {open}=require('./h');const {chromium}=require('playwright');
 const fails=[];const ok=(c,m,x)=>{if(!c){fails.push(m);console.log('FAIL',m,JSON.stringify(x));}else console.log('ok  ',m,x!==undefined?JSON.stringify(x).slice(0,200):'');};
 (async()=>{const browser=await chromium.launch();
-for(const [file,label] of [['baselines/r22.html','r22 (current live)'],['baselines/r21.html','r21'],['baselines/r20.html','r20'],['baselines/r19.html','r19'],['baselines/r18.html','r18'],['baselines/r17.html','r17'],['baselines/r16.html','r16'],['baselines/r15.html','r15'],['baselines/r14.html','r14'],['baselines/r13.html','r13'],['baselines/r12.html','r12'],['baselines/r11.html','r11']]){
+for(const [file,label] of [['baselines/r23.html','r23 (current live)'],['baselines/r22.html','r22'],['baselines/r21.html','r21'],['baselines/r20.html','r20'],['baselines/r19.html','r19'],['baselines/r18.html','r18'],['baselines/r17.html','r17'],['baselines/r16.html','r16'],['baselines/r15.html','r15'],['baselines/r14.html','r14'],['baselines/r13.html','r13'],['baselines/r12.html','r12'],['baselines/r11.html','r11']]){
   const P=await open(file,{browser,clock:'2026-09-26T10:00:00'});
   await P.page.evaluate(()=>{const L=window.__ironlog;const s=L.state;s.settings.onboarded=true;s.settings.priorities=['chest','biceps'];s.settings.heightCm=178;s.settings.bands.biceps=[12,22];
     s.exercises.push({id:'c_x',name:'My Curl',primary:'biceps',secondary:['forearms'],equip:'dumbbell',bw:false,custom:true,archived:false,note:'x'});

@@ -134,6 +134,36 @@ Steps 2 to 5 turn each report into a GitHub issue, which is what lets Claude pic
 
    To check: send a report from the app. Within a few seconds an issue labelled `feedback` appears in `ironlog-feedback`, with any screenshot saved under `shots/`, and the report's row gets its `issue_url`. If nothing appears, Edge Functions > feedback-to-issue > Logs says why (a 401 means the header and the secret differ).
 
+## Part 5: the preview build's table (added in r24, about 2 minutes)
+
+The preview build (vqx7.github.io/Ironlog/preview/) uses the same project and the same accounts, so you sign in with your usual email and password. It syncs to its own table, so nothing tried in a preview reaches your real log. Until this step is done, the preview works on the phone only and Your data says "Preview sync is not set up yet".
+
+1. Supabase > SQL Editor > New query. Paste this and Run:
+
+```sql
+-- The preview build's copy of public.docs: same shape, same rule.
+create table public.docs_preview (
+  user_id uuid not null default auth.uid() references auth.users(id) on delete cascade,
+  path text not null,
+  data jsonb not null,
+  updated_at timestamptz not null default now(),
+  primary key (user_id, path)
+);
+alter table public.docs_preview enable row level security;
+create policy "own rows only" on public.docs_preview
+  for all to authenticated
+  using ((select auth.uid()) = user_id)
+  with check ((select auth.uid()) = user_id);
+grant select, insert, update, delete on public.docs_preview to authenticated;
+revoke all on public.docs_preview from anon;
+```
+
+   To check: sign in on the preview, log a set, then Table Editor > docs_preview shows your rows, and docs is unchanged.
+
+2. Optional: Authentication > URL Configuration > Redirect URLs, add `https://vqx7.github.io/Ironlog/preview/`. Only needed to create a new account or reset a password from inside the preview; signing in to an existing account works without it.
+
+The preview has no Delete my account (it would delete your real account). Deleting an account deletes its preview rows too (`on delete cascade`). To clear preview data only: Table Editor > docs_preview, delete your rows.
+
 ## Who can see the data
 
 - Other users: never. The rule in step 6 is enforced by the database for every request.

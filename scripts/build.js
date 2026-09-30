@@ -7,13 +7,24 @@
 // and icons so it installs to the home screen, and a service worker that
 // keeps every file available offline.
 //
-// Usage: node scripts/build.js   (writes dist/, prints the file list)
+// Usage: node scripts/build.js             (writes dist/, prints the file list)
+//        node scripts/build.js --preview   (writes dist-preview/, the preview build)
+//
+// The preview build (r24) is the same app, published to /preview/ under the
+// live app on the same site. The site is one origin, so the two share this
+// browser's storage and caches; the preview therefore gets its own storage
+// keys (IRONLOG_ENV, read by index.html and cloud.js), its own cache names,
+// its own name and icons, and a service worker scoped to /preview/ only.
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
 
 const ROOT = path.join(__dirname, '..');
-const DIST = path.join(ROOT, 'dist');
+const PREVIEW = process.argv.includes('--preview');
+const DIST = path.join(ROOT, PREVIEW ? 'dist-preview' : 'dist');
+// Cache names: the live worker deletes every old cache starting "ironlog-",
+// so the preview's caches must never start with it.
+const CACHE_PREFIX = PREVIEW ? 'ilpreview-' : 'ironlog-';
 const NM = path.join(ROOT, 'node_modules');
 const src = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
 
@@ -64,7 +75,10 @@ fs.writeFileSync(path.join(DIST, 'fonts/fonts.css'), css);
 
 // Icons, made by scripts/icons.py into assets/.
 const ICONS = ['icon-192.png', 'icon-512.png', 'icon-maskable-512.png', 'apple-touch-icon.png', 'favicon-64.png'];
-for (const f of ICONS) fs.copyFileSync(path.join(ROOT, 'assets', f), path.join(DIST, 'icons', f));
+const ICON_DIR = path.join(ROOT, 'assets', PREVIEW ? 'preview' : '');
+for (const f of ICONS) fs.copyFileSync(path.join(ICON_DIR, f), path.join(DIST, 'icons', f));
+const NAME = PREVIEW ? 'Ironlog Preview' : 'Ironlog';
+const SHORT = PREVIEW ? 'Preview' : 'Ironlog';
 
 let html = src;
 // Fonts from this site instead of Google.
@@ -81,7 +95,7 @@ html = replaceOnce(html, "const THREE_URLS=['https://cdn.jsdelivr.net/npm/three@
 // itself. The browser's install offer (Android and desktop Chrome) can fire
 // before the app's own script runs, so it is caught here, first thing, and
 // kept until the lifter taps Install.
-const head = `<script>window.IRONLOG_APP=true;window.__installEvt=null;
+const head = `<script>window.IRONLOG_APP=true;${PREVIEW ? "window.IRONLOG_ENV='preview';" : ''}window.__installEvt=null;
 window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();window.__installEvt=e;if(window.ironlogInstallReady)window.ironlogInstallReady();});
 window.addEventListener('appinstalled',()=>{window.__installEvt=null;if(window.ironlogInstallReady)window.ironlogInstallReady();});</script>
 <meta name="theme-color" content="#08090b">
@@ -89,13 +103,13 @@ window.addEventListener('appinstalled',()=>{window.__installEvt=null;if(window.i
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="Ironlog">
+<meta name="apple-mobile-web-app-title" content="${SHORT}">
 <meta name="description" content="Log lifting sessions, track progress and plan training. Works offline.">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" type="image/png" href="icons/favicon-64.png">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 `;
-html = replaceOnce(html, '<title>Ironlog</title>\n', '<title>Ironlog</title>\n' + head, 'title');
+html = replaceOnce(html, '<title>Ironlog</title>\n', `<title>${NAME}</title>\n` + head, 'title');
 // The cloud script runs before the app's own script, so cloudProvider() finds
 // window.ironlogCloud on its first check.
 if (cloudCfg) html = replaceOnce(html, '</head>', `<script>window.IRONLOG_SUPABASE=${JSON.stringify({ url: cloudCfg.url, key: cloudCfg.key })};</script>
@@ -132,7 +146,7 @@ html = replaceOnce(html, '</body>', boot + '</body>', 'closing body tag');
 fs.writeFileSync(path.join(DIST, 'index.html'), html);
 
 const manifest = {
-  name: 'Ironlog', short_name: 'Ironlog', description: 'Log lifting sessions, track progress and plan training. Works offline.',
+  name: NAME, short_name: SHORT, description: 'Log lifting sessions, track progress and plan training. Works offline.',
   id: './', start_url: './', scope: './', display: 'standalone', orientation: 'portrait',
   background_color: '#08090b', theme_color: '#08090b', categories: ['health', 'fitness', 'sports'],
   icons: [
@@ -150,7 +164,7 @@ const files = ['./', 'index.html', 'manifest.webmanifest', 'fonts/fonts.css',
   'vendor/chart.umd.js', 'vendor/Sortable.min.js', 'vendor/three.module.min.js', ...(cloudCfg ? ['vendor/supabase.js', 'cloud.js'] : []), ...ICONS.map(f => 'icons/' + f)];
 const h = crypto.createHash('sha256');
 for (const f of files) if (f !== './') h.update(fs.readFileSync(path.join(DIST, f)));
-const cacheName = `ironlog-${version}-${h.digest('hex').slice(0, 10)}`;
+const cacheName = `${CACHE_PREFIX}${version}-${h.digest('hex').slice(0, 10)}`;
 const sw = `/* Ironlog service worker. Generated by scripts/build.js; do not edit. */
 const CACHE=${JSON.stringify(cacheName)};
 const FILES=${JSON.stringify(files)};
@@ -162,15 +176,19 @@ const FILES=${JSON.stringify(files)};
    the previous index.html under the new version's name. */
 self.addEventListener('install',e=>{e.waitUntil(caches.open(CACHE).then(c=>c.addAll(FILES.map(f=>new Request(f,{cache:'reload'})))));});
 self.addEventListener('message',e=>{if(e.data==='skipWaiting')self.skipWaiting();});
-self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k.startsWith('ironlog-')&&k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim()));});
+self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k.startsWith(${JSON.stringify(CACHE_PREFIX)})&&k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim()));});
 /* Same-site files come from this version's cache, so the app opens instantly
    and offline, and the page always matches the files cached with it. A new
    version arrives only as a new worker with its own cache (the name carries a
    hash of every file), never by rewriting this one. Other sites (the CDN
-   fallbacks) go to the network untouched. */
+   fallbacks) go to the network untouched, and so does the preview build under
+   preview/: it has its own worker, which the preview page can only install
+   if this one lets the page load. */
+const OWN=new URL('./',self.registration.scope).pathname;
 self.addEventListener('fetch',e=>{
   const r=e.request;if(r.method!=='GET')return;
   const u=new URL(r.url);if(u.origin!==location.origin)return;
+  ${PREVIEW ? '' : "if(u.pathname.startsWith(OWN+'preview/'))return;"}
   if(r.mode==='navigate'){
     e.respondWith(caches.open(CACHE).then(async c=>(await c.match('index.html'))||fetch(r).catch(()=>new Response('Offline',{status:503}))));
     return;
@@ -180,9 +198,9 @@ self.addEventListener('fetch',e=>{
 `;
 fs.writeFileSync(path.join(DIST, 'sw.js'), sw);
 fs.writeFileSync(path.join(DIST, '.nojekyll'), '');
-fs.writeFileSync(path.join(DIST, '404.html'), '<!doctype html><meta charset="utf-8"><meta http-equiv="refresh" content="0; url=./"><title>Ironlog</title>');
+fs.writeFileSync(path.join(DIST, '404.html'), `<!doctype html><meta charset="utf-8"><meta http-equiv="refresh" content="0; url=./"><title>${NAME}</title>`);
 
-console.log(`built dist/ for ${version} (${cacheName})`);
+console.log(`built ${path.basename(DIST)}/ for ${version} (${cacheName})`);
 for (const f of ['index.html', 'sw.js', 'manifest.webmanifest', ...files.filter(f => f !== './' && f !== 'index.html' && f !== 'manifest.webmanifest')]) {
   console.log('  ' + f.padEnd(52) + fs.statSync(path.join(DIST, f)).size.toLocaleString() + ' B');
 }
