@@ -3,6 +3,7 @@
 A lifting log for the phone: plan a routine, log sets at the gym, and see progress, weak points and trends. It works offline and installs to the home screen.
 
 - **Standalone app:** built into `dist/` and served by GitHub Pages from the `gh-pages` branch. Data stays on the phone, so export a backup weekly from Settings > Your data.
+- **Preview:** every pull request that passes the tests is also published to https://vqx7.github.io/Ironlog/preview/, a separate app with its own storage and sync table, to try on a phone before merging.
 - **Claude artifact:** the same `index.html`, published in Claude, with cloud sync to your Claude account.
 
 ## Develop

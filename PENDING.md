@@ -1,11 +1,22 @@
-# Everything still open (as of r23, 2026-09-28)
+# Everything still open (as of r24, 2026-09-30)
 
 This is the tracking list. Items are built only when V says go. Owner items need V; the rest is build work. Nothing is done unless it says so. Numbers are kept stable; finished items move to Done at the bottom.
 
-## Built in r23, awaiting V's approval (pull request from branch r23)
-52 (logo out of the header), 65 (import from notes, spreadsheets, Strong, Hevy), 45 (assisted pull-up and dip), 32 and 33. What each does is under Done > r23 below. Nothing is live until V merges the pull request; the merge then tests and publishes by itself (item 22).
+## Built in r24, awaiting V's approval (pull request from branch r24)
+69 (a swap undid Short on time) and 70 (the preview environment). What each does is under Done > r24 below. Nothing is live until V merges the pull request; the merge then tests and publishes by itself (item 22). r24 goes first because the live app's offline worker is what blocks a preview; from r25 on, every pull request can be tried at vqx7.github.io/Ironlog/preview/ before it is merged.
 
-Open count after r23: 27 (3 critical, 3 owner, 3 verification, 18 build or decision items).
+After r24 merges, once: open vqx7.github.io/Ironlog/ in Safari (not the home-screen app) and tap Reload when "New version ready" shows. Until that Safari copy updates, its old worker would open the live app at the preview link.
+
+## Asked for on 2026-09-30, next build (r25), to try in the preview first
+71. Suggested loads show grey until typed, like reps: the checkmark and auto-mark accept them. A setting switches back to filled-in loads. Nothing typed is ever overwritten (V chose grey as the default).
+72. The logo: a dumbbell stood upright so it also reads as the "I" of Ironlog, amber on dark instead of volt green, in every icon, the favicon, the loading screen and the first-run page. iPhone never refreshes a home-screen icon: a one-time note says how to get the new one (remove and re-add), and that removing the app deletes the log on the phone unless signed in. Android updates it by itself.
+73. Report a problem as the main action, with Question and Suggestion secondary; more professional wording; signed in only (V's choice), at most 5 a day per account (enforced by the database too), clear text and screenshot limits, everything but the description marked optional.
+74. A month calendar to jump to any date: from History, from a tap on a Consistency square, and by pulling the week bar down (a small handle under it opens the same calendar with a tap). Taps and holds on the week bar's days stay as they are; the pull only starts on a clear downward move.
+75. Copy pass: explanations that read as filler move into info tips or a long press.
+76. Design pass: a more deliberate look of its own, without breaking what works.
+77. Check the new-user, sign-in, sign-out and install flows (Android installs from the button; iPhone gets the Add to Home Screen steps) and send V screenshots at iPhone size.
+
+Open count after r24: 35 (3 critical, 4 owner, 3 verification, 25 build or decision items).
 
 ## Critical, still open
 58. Part 2 needs V: SUPABASE.md, Part 4, steps 1 to 5 (the tables, a private `ironlog-feedback` repository, a GitHub token for it, the function and its webhook), then FEEDBACK.md, "What V does" steps 2 and 3 (protect `main`; choose a scheduled Claude task or Claude's GitHub Action to pick up tickets). Until step 1, Send feedback says it is not set up yet and keeps the text.
@@ -13,6 +24,7 @@ Open count after r23: 27 (3 critical, 3 owner, 3 verification, 18 build or decis
 63. Check on the iPhone itself (r22 is live: the first-run pages on a fresh install, a PR set's toast and pulse, Undo in Settings after closing the app; after r23 merges: the week bar without the logo, an import from Notes or a spreadsheet file, an assisted pull-up session): the Add to Home Screen guide on iOS 26 Safari (Share is behind ⋯ in the compact bar; checked against MacRumors and a Glide bug report, not on a device), the app signing itself in after the confirmation link (Safari to the home-screen app and back), a past workout from the week bar, the light Today card, and a screenshot picked in Send feedback.
 
 ## Owner items (V)
+78. SUPABASE.md, Part 5 (about 2 minutes, one SQL paste): the preview's own sync table. Until then the preview keeps its log on the phone only.
 1. Delete the `r14-review`, `r15-design`, `r17-accounts`, `r20-design` `r21` and `r22` branches on GitHub (and `r23` once merged) (`r20-design` is fully merged into `main`) (the first two hold the old commit with the personal Gmail address; `main` and `gh-pages` are clean). Parked by V on 2026-09-27; come back to it.
 2. GitHub Settings > Emails: tick "Keep my email addresses private" and "Block command line pushes that expose my email". Optionally ask GitHub Support to purge cached views of the old commit. Parked with item 1.
 6. Supabase Part 2 (`SUPABASE.md`): a domain and the Resend email sender, needed before friends sign up. Until then confirmation and reset emails reach only the Supabase account's own email address, at most 2 an hour.
@@ -51,7 +63,10 @@ Open count after r23: 27 (3 critical, 3 owner, 3 verification, 18 build or decis
 46. Native app wrapper (Capacitor), only if needed: rest timer alerts through a locked screen, Apple Health, a real App Store install. Costs $99 a year for Apple and needs a Mac.
 
 ## Done
-- r23 (built 2026-09-28, awaiting approval):
+- r24 (built 2026-09-30, awaiting approval):
+  - 69 (V's report 2026-09-30): a swap rebuilt the exercise from the routine's planned set count, so after Short on time (or a lighter day, + Set, − Set) the new exercise came back with the full sets, and it lost the trimmed mark, so trimmed work counted in trends. Now a swap keeps the sets the exercise has right now and the mark, through a second swap, Undo, a reload and Finish. Found in the same audit: changing a session's date replaced a load typed on the first set with the app's suggestion; it now replaces only rows still on the suggestion. An r23 session left open carries on after the update. Suite `tests/r24.js`.
+  - 70 (V's request 2026-09-30): the preview environment. Every pull request that passes the tests is published to vqx7.github.io/Ironlog/preview/ as its own app ("Ironlog Preview", striped icon and edge), installable next to the live one. It keeps its own log, undo history, sign-in and offline copy, signs in with the same account and syncs to its own table (Part 5), so nothing tried there touches the real log; it has no Delete my account. The live app's worker now lets the preview load (the old one would have opened the live app instead, and each would have deleted the other's offline copy). Merging still is the only way to the live app. Suite `tests/preview.js`.
+- r23 (approved by V and published 2026-09-28):
   - 52 (V's request 2026-09-28): the Ironlog wordmark is out of the header (kept for screen readers); the week bar has the whole row, so from 375 px each day is at least 44 px wide as well as tall.
   - 65 (V's request, widened to "any other raw data type"): Import workouts (first-run Set up page, Settings > Your data, History) reads a note pasted from Notes or typed by hand ("Bench 60x8, 60x8" or "3x10 @ 60" under a date line), a spreadsheet (.csv, .tsv, .xlsx, or cells pasted from Excel, Numbers or Google Sheets, with a column picker when the headers are unclear), Strong and Hevy exports, and an Ironlog CSV. A preview shows sessions, sets, dates and units first, asks about any exercise it is unsure of (pick one or create it), lists anything it could not read, and skips rest timers, cardio rows, timed sets and sets already in the log. A lift given only as "3x10" with no load anywhere is not guessed: the preview names it and asks for the load ("3x10 @ 60"); under a loaded line it is 3 sets at that load. A load with its reps on the next line ("Bench press 185" then "10/10/10") reads as reps, not a date. The import has Undo. Restoring a backup is a separate button that says it replaces everything.
   - 45: Assisted Pull-up and Assisted Dip in the library, and an "Assisted (machine help)" switch on any bodyweight exercise. The field takes the help (55 means 55 lb of help), the label reads BW−55, progress takes help off, a deload adds help, and tonnage counts bodyweight minus help.

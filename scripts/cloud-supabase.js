@@ -18,6 +18,14 @@
 (function () {
   const CFG = window.IRONLOG_SUPABASE;
   if (!CFG || !CFG.url || !CFG.key || !window.supabase || typeof window.supabase.createClient !== 'function') return;
+  /* The preview build (r24) shares the live app's site, accounts and project,
+     so the same email and password work in both. It keeps its own sign-in
+     slot in storage (signing out of one leaves the other signed in), syncs
+     to its own table (public.docs_preview, SUPABASE.md Part 5), so nothing
+     tried in the preview reaches the real log, and offers no Delete my
+     account, which would delete the real account. */
+  const PREVIEW = window.IRONLOG_ENV === 'preview';
+  const DOCS = PREVIEW ? 'docs_preview' : 'docs';
 
   /* Links in emails (confirm, reset) come back with the result in the address
      fragment. Read it before the client consumes and clears it. */
@@ -41,7 +49,7 @@
      need a secret kept by the browser that asked for the email, and the link
      usually opens in a different one. */
   const sb = window.supabase.createClient(CFG.url, CFG.key, {
-    auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true, flowType: 'implicit', storageKey: 'ironlog.auth' }
+    auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true, flowType: 'implicit', storageKey: PREVIEW ? 'ironlog-preview.auth' : 'ironlog.auth' }
   });
   const site = () => location.origin + location.pathname;
 
@@ -51,6 +59,9 @@
     const code = String((e && (e.code || e.error_code)) || '');
     const status = +(e && e.status) || 0;
     let text = msg || 'Something went wrong. Try again.';
+    // A setup step still to do, shown in Your data like a table without
+    // permissions ('denied'), while sync keeps retrying.
+    if (PREVIEW && /docs_preview/.test(msg) && /PGRST205|42P01|does not exist|schema cache/i.test(msg + code)) return Object.assign(new Error('Preview sync is not set up yet (SUPABASE.md, Part 5). The preview keeps its log on this phone meanwhile.'), { code: 'denied' });
     if (/invalid login credentials|invalid_credentials/i.test(msg + code)) text = 'Wrong email or password.';
     else if (/email not confirmed|email_not_confirmed/i.test(msg + code)) text = 'Confirm your email first: open the link we sent, then sign in here.';
     else if (/already registered|user_already_exists/i.test(msg + code)) text = 'An account with this email already exists. Sign in instead.';
@@ -133,6 +144,8 @@
     /* cb(event, user): SIGNED_IN, SIGNED_OUT, PASSWORD_RECOVERY, TOKEN_REFRESHED, USER_UPDATED. */
     onChange(cb) { sb.auth.onAuthStateChange((ev, s) => { try { cb(ev, who(s)); } catch (e) { /* the app logs its own errors */ } }); }
   };
+  // The app shows Delete my account only when this function exists.
+  if (PREVIEW) delete window.ironlogAuth.deleteAccount;
 
   const last = p => p.slice(p.lastIndexOf('/') + 1);
   const likeEsc = s => s.replace(/[\\%_]/g, m => '\\' + m);
@@ -153,13 +166,13 @@
     doc(path) {
       return {
         async get() {
-          const { data, error } = await authed(() => sb.from('docs').select('data').eq('path', path).maybeSingle());
+          const { data, error } = await authed(() => sb.from(DOCS).select('data').eq('path', path).maybeSingle());
           if (error) throw friendly(error);
           return { id: last(path), exists: !!data, data: () => (data ? data.data : undefined) };
         },
         async set(obj) {
           const user_id = await uid();
-          const { error } = await authed(() => sb.from('docs').upsert({ user_id, path, data: obj, updated_at: new Date().toISOString() }, { onConflict: 'user_id,path' }));
+          const { error } = await authed(() => sb.from(DOCS).upsert({ user_id, path, data: obj, updated_at: new Date().toISOString() }, { onConflict: 'user_id,path' }));
           if (error) throw friendly(error);
         }
       };
@@ -167,7 +180,7 @@
     collection(path) {
       return {
         async get() {
-          const { data, error } = await authed(() => sb.from('docs').select('path,data').like('path', likeEsc(path) + '/%'));
+          const { data, error } = await authed(() => sb.from(DOCS).select('path,data').like('path', likeEsc(path) + '/%'));
           if (error) throw friendly(error);
           // Direct children only, like a document store's collection listing.
           const docs = (data || []).filter(r => r.path.indexOf('/', path.length + 1) < 0)
