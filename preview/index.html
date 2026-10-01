@@ -231,10 +231,10 @@ main{max-width:760px;margin:0 auto;padding:6px 16px 150px}
 .tabs button[aria-current="page"] svg{stroke:var(--volt-line);stroke-width:2.1}
 .tabs button[aria-current="page"]::before{content:"";position:absolute;top:5px;left:50%;width:44px;height:30px;margin-left:-22px;border-radius:999px;background:color-mix(in srgb,var(--volt) 14%,transparent);z-index:-1}
 .tabs button{isolation:isolate}
-/* The preview build (r24) wears a striped edge above the tabs and under the
-   status bar, so it is never mistaken for the live app. */
-html[data-env="preview"] .tabs{border-top:3px solid transparent;border-image:repeating-linear-gradient(135deg,#f5a524 0 10px,#15161a 10px 20px) 3}
-html[data-env="preview"] body::before{content:"";position:fixed;top:0;left:0;right:0;height:env(safe-area-inset-top,0px);z-index:60;pointer-events:none;background:repeating-linear-gradient(135deg,#f5a524 0 10px,#15161a 10px 20px)}
+/* The preview build is marked with a labelled amber tag on the tab bar
+   (r25). The striped edges of r24 read as stray dotted lines, not as a label. */
+html[data-env="preview"] .tabs{border-top:2px solid #f5a524}
+html[data-env="preview"] .tabs::before{content:"PREVIEW";position:absolute;top:-12px;left:50%;transform:translateX(-50%);z-index:2;font:800 10px/1 var(--font);letter-spacing:.14em;padding:5px 10px;border-radius:999px;background:#f5a524;color:#15161a;pointer-events:none}
 /* A session in progress: the Today tab reads Session and carries a dot, so it
    can be found again from any tab. */
 .tabs button.live::after{content:"";position:absolute;top:7px;left:50%;margin-left:9px;width:8px;height:8px;border-radius:50%;background:var(--volt);box-shadow:0 0 0 2px var(--bg),0 0 0 3px var(--volt-line)}
@@ -3199,6 +3199,11 @@ function plateLine(b,si){
    edits them; that memory is in-page only, so after a reload they are plain
    typed rows. */
 const carried=new WeakSet();
+/* A row that holds nothing of the lifter's: not ticked, no reps, no RIR, and
+   a load that is empty or only the app's (the suggestion, or carried down).
+   Everything that removes or rebuilds rows (− Set, Short on time, a swap)
+   takes only these, so typed work is never dropped as a side effect (r25). */
+function rowBlank(b,x){return !x.done&&x.r==null&&x.rir==null&&(x.w==null||(b&&x.w===b.sw)||carried.has(x));}
 function carryLoad(bi,si){
   const b=state.draft&&state.draft.ex[bi];const s=b&&b.sets[si];if(!s||s.warm||s.drop||s.w==null)return;
   for(let j=si+1;j<b.sets.length;j++){const x=b.sets[j];if(x.warm||x.drop||x.done||!(x.w==null||carried.has(x)))continue;
@@ -3321,6 +3326,16 @@ function refreshGreyW(bi){
 }
 // Keyed by session too, so a block opened in one session is not open in the next.
 const blkKey=(bi,b)=>((state.draft&&state.draft.id)||'')+':'+bi+':'+b.exId;
+/* An exercise opened again after it folded stays open when exercises around
+   it move (r25): the block itself is remembered as well as its place. */
+const blkOpenObj=new WeakSet();
+const blkIsOpen=(bi,b)=>ui.blkOpen.has(blkKey(bi,b))||blkOpenObj.has(b);
+// Runs a change to the session's exercise order and carries each block's open state to its new place.
+function keepOpen(fn){
+  const d=state.draft;if(!d)return fn();const was=new Set(d.ex.filter((b,i)=>blkIsOpen(i,b)));const r=fn();
+  const dd=state.draft;if(dd)dd.ex.forEach((b,i)=>{const k=blkKey(i,b);if(was.has(b)){ui.blkOpen.add(k);blkOpenObj.add(b);}else ui.blkOpen.delete(k);});
+  return r;
+}
 function blockDone(b){const w=b.sets.filter(x=>!x.warm);return w.length>0&&w.every(x=>x.done);}
 function sessProgress(d){let n=0,k=0;for(const b of d.ex)for(const x of b.sets)if(!x.warm){n++;if(x.done)k++;}return {n,k,pct:n?k/n*100:0};}
 function updateSessBar(){const d=state.draft;const el=document.getElementById('sessBar');if(!d||!el)return;const p=sessProgress(d);el.style.width=p.pct+'%';const t=document.getElementById('sessOf');if(t)t.textContent=`${p.k} of ${p.n}`;}
@@ -3328,7 +3343,7 @@ let foldT=null;
 function autoFold(bi){
   foldT=null;const d=state.draft;
   if(!d||d.editingId||ui.modal||ui.tab!=='today')return;
-  const b=d.ex[bi];if(!b||!blockDone(b)||ui.blkOpen.has(blkKey(bi,b)))return;
+  const b=d.ex[bi];if(!b||!blockDone(b)||blkIsOpen(bi,b))return;
   if(document.querySelector(`.rirstrip[data-b="${bi}"]`))return;
   let nx=d.ex.findIndex((x,i)=>i>bi&&!blockDone(x));if(nx<0)nx=d.ex.findIndex(x=>!blockDone(x));
   const a0=nx>=0?document.getElementById('blk-'+nx):null;const top0=a0?a0.getBoundingClientRect().top:null;
@@ -4019,11 +4034,11 @@ function exHeadline(exId){
   if(st.best!=null)parts.push(`Best estimate ${ex.bw?'≈':''}${fmtW(st.best)} ${U()}${loadNote(ex)}${bw&&!ex.bw&&loadMode(ex)==='total'?`, ${(st.best/bw).toFixed(2)}× bodyweight`:''}.`);
   if(st.capped)parts.push('At the heaviest load available, so progress is counted in reps and harder reps.');
   const sg=v=>(v>=0?'+':'')+r1(v)+'%';
-  if(st.stalled)parts.push(`Stalled: the trend over at least 3 weeks is flat or down${st.pct!=null?` (${sg(st.pct)} over 6 weeks)`:''}. Change the rep range or the variation.`);
+  if(st.stalled)parts.push(`Stalled${st.pct!=null?` (${sg(st.pct)} over 6 weeks)`:''}. Try another rep range or variation.`);
   else if(st.pct==null)parts.push('Needs 3 sessions within 6 weeks for a trend.');
   else if(st.moving)parts.push(`Up ${r1(st.pct)}% over 6 weeks, about ${r1(st.slope)}% a week.`);
   else if(st.falling)parts.push(`Down ${r1(Math.abs(st.pct))}% over 6 weeks. Look at recovery before adding work.`);
-  else parts.push(`No clear change over 6 weeks (${sg(st.pct)}); day-to-day swings of 2 to 8% are normal.`);
+  else parts.push(`Flat over 6 weeks (${sg(st.pct)}).`);
   const pj=exProjection(exId);if(pj)parts.push(`If that holds, about ${fmtW(pj.value)} ${U()} in 4 weeks (${fmtW(pj.lo)} to ${fmtW(pj.hi)}).`);
   return `<p class="headline">${esc(parts.join(' '))}</p>`;
 }
@@ -4378,7 +4393,8 @@ function remainMin(d){
 function shortPlan(d,mins){
   const pri=new Set(state.settings.priorities);const lag=new Set(IDX().scores.filter(x=>x.label==='lagging').map(x=>x.m));
   let cN=0;
-  const bl=d.ex.map((b,bi)=>{const ex=EX(b.exId);const undone=b.sets.filter(x=>!x.done&&!x.warm).length;const done=b.sets.filter(x=>x.done&&!x.warm).length;const started=b.sets.some(x=>x.done);
+  // Typed but not ticked counts as done here: trimming takes only blank rows (rowBlank).
+  const bl=d.ex.map((b,bi)=>{const ex=EX(b.exId);const undone=b.sets.filter(x=>!x.warm&&rowBlank(b,x)).length;const done=b.sets.filter(x=>!x.warm&&!rowBlank(b,x)).length;const started=b.sets.some(x=>!rowBlank(b,x));
     const su=setupSecs(ex,cN);if(isCompound(ex))cN++;
     // Main (compound) lifts rank above isolation work, as the Short on time
     // help promises; priority and lagging muscles above both.
@@ -4846,7 +4862,7 @@ function viewLogger(){
   const letters=ssLetters(d.ex.map(b=>b.plan));
   d.ex.forEach((b,bi)=>{
     const ex=EX(b.exId);const p=b.plan;const ss=p.ss?letters[p.ss]:null;const nr=!rirShow(ex);
-    if(!d.editingId&&blockDone(b)&&!ui.blkOpen.has(blkKey(bi,b))){
+    if(!d.editingId&&blockDone(b)&&!blkIsOpen(bi,b)){
       const ws=b.sets.filter(x=>!x.warm);const prs=ws.filter(x=>livePR(b.exId,x,d.date)).length;
       h+=`<section class="block folded" id="blk-${bi}"><button class="bfold" data-act="bOpen" data-b="${bi}" aria-expanded="false" aria-label="${esc(ex.name)}, done. Open to edit"><span class="bf-ck" aria-hidden="true">✓</span><span class="bf-t"><b>${esc(ex.name)}</b><span>${esc(ws.map(x=>setShort(ex,x.w,x.r)).join(', '))}</span></span>${prs?`<span class="bf-pr">PR</span>`:''}<span class="chev" aria-hidden="true"></span></button></section>`;
       return;
@@ -5278,7 +5294,7 @@ function bwRateText(){
   const r=bwRate();const g=state.settings.bwGoalPct;
   if(!r)return '<p class="small muted" style="margin-top:6px">Log bodyweight for at least two weeks to see your weekly rate of change.</p>';
   const sign=v=>(v>=0?'+':'')+r1(v);
-  let t=`<b>${sign(r.pct)}% per week</b> over the last ${r.days} days, from 7-day averages.`;
+  let t=`<b>${sign(r.pct)}% per week</b> over the last ${r.days} days. ${tipi('From 7-day averages, so a single heavy or light day does not swing it.','How this is worked out')}`;
   if(g!=null){const d=r.pct-g;t+=` Goal ${sign(g)}%: `+(Math.abs(d)<=0.15?'on track.':d>0?`running ${r1(d)} points above it.`:`running ${r1(-d)} points below it.`);}
   return `<p class="small" style="margin-top:6px;${g!=null&&Math.abs(r.pct-g)>0.15?'color:var(--yellow)':''}">${t}</p>`;
 }
@@ -5763,10 +5779,10 @@ function renderModalBody(){
     if(!best)lead='<p class="small">Your active routine has no training days with exercises. Start a freestyle session and use Pick for me inside it.</p>';
     else if(best.ready<0.5)lead=`<p class="callout yellow" style="margin:0">Everything your routine has left leans on muscles still recovering from the last few days. A rest day, or easy cardio and mobility, is the better call. If you train anyway, the first option is the least fatigued.</p>`;
     else if(best.plan)lead='<p class="small" style="margin:0">Stick with the plan: it is also the best fit for today.</p>';
-    else if(plan)lead=`<p class="small" style="margin:0">${esc(best.day.name)} fits today better than ${esc(plan.day.name)}, which is next in your plan. ${plan.ready<1?`${esc(plan.day.name)} leans on muscles that may still be recovering.`:'It trains what is furthest behind this week.'} Starting it moves your cycle on from there, the same as choosing it under Change day.</p>`;
+    else if(plan)lead=`<p class="small" style="margin:0">${esc(best.day.name)} fits today better than ${esc(plan.day.name)}, next in your plan: ${plan.ready<1?`${esc(plan.day.name)} leans on muscles that may still be recovering.`:'it trains what is furthest behind this week.'} ${tipi('Starting it moves your cycle on from there, the same as choosing it under Change day.','About the cycle')}</p>`;
     const sameDay=state.sessions.some(x=>x.date===today());
     h=`<div class="sheet" role="dialog" aria-modal="true"><div class="sheet-h"><h3>Pick for me</h3><button class="ib" aria-label="Close" data-act="mClose">✕</button></div>
-    ${lead}${sameDay?'<p class="small muted" style="margin:8px 0 0">You already logged a session today; the numbers below include it.</p>':''}${rk.deload?'<p class="small muted" style="margin:8px 0 0">Deload week: counted at half the sets.</p>':''}
+    ${lead}${sameDay?'<p class="small muted" style="margin:8px 0 0">Includes the session you logged today.</p>':''}${rk.deload?'<p class="small muted" style="margin:8px 0 0">Deload week: counted at half the sets.</p>':''}
     ${top.map((x,k)=>`<div class="pcard${k===0?' best':''}"><div class="row spread"><b>${esc(dayLabel(rk.R,x.i))}: ${esc(x.day.name)}</b>${k===0?'<span class="tag green">Best fit</span>':''}</div>
       <ul>${dayReasons(x,rk.r7).map(r=>`<li>${esc(r)}</li>`).join('')}</ul>
       <div class="row" style="margin-top:8px"><button class="btn sm ${k===0?'primary':''}" data-act="startSession" data-day="${x.i}">Start</button>${!rk.deload&&x.ready<0.85?`<button class="btn sm" data-act="startSession" data-day="${x.i}" data-light="1">Start lighter</button>`:''}<button class="btn sm" data-act="pickView" data-day="${x.i}">Preview</button></div></div>`).join('')}
@@ -5823,7 +5839,8 @@ function applyPick(m,id){
      stays trimmed, so its replacement is kept out of trends too. */
   if(m.mode==='swapBlock'){const b=d.ex[m.b];if(!b){rerenderKeepScroll();return;}
     const orig=JSON.parse(JSON.stringify(b));const bi=m.b,did=d.id;
-    const done=b.sets.filter(x=>x.done);const left=b.sets.filter(x=>!x.done&&!x.warm&&!x.drop).length;
+    // Sets ticked or typed stay with the exercise they were done on (r25: typed, not ticked, used to vanish).
+    const done=b.sets.filter(x=>!rowBlank(b,x));const left=b.sets.filter(x=>!x.warm&&!x.drop&&rowBlank(b,x)).length;
     const rows=b.sets.filter(x=>!x.warm&&!x.drop).length;
     const nb=newBlock(id,{...b.plan,sets:done.length?Math.max(1,left):Math.max(1,rows||+b.plan.sets||1)},{deload:!!d.deload,before:d.date});nb.swappedFrom=b.swappedFrom||b.exId;if(nb.swappedFrom===id)nb.swappedFrom=null;
     if(b.cut)nb.cut=true;
@@ -5831,10 +5848,10 @@ function applyPick(m,id){
       const at=dd.ex.findIndex(x=>x===nb);if(at<0||nb.sets.some(x=>x.done))return false;
       if(done.length){dd.ex.splice(at,1);const i=dd.ex.findIndex(x=>x===b);if(i>=0)dd.ex[i]=orig;else return false;}else dd.ex[at]=orig;
       return true;});
-    if(done.length){b.sets=done;b.plan={...b.plan,sets:done.filter(x=>!x.warm&&!x.drop).length||1};d.ex.splice(bi+1,0,nb);}
+    if(done.length){b.sets=done;b.plan={...b.plan,sets:done.filter(x=>!x.warm&&!x.drop).length||1};keepOpen(()=>d.ex.splice(bi+1,0,nb));}
     else d.ex[bi]=nb;
     fixSupersets(d.ex.map(x=>x.plan));saveNow();rerenderKeepScroll();
-    toast(done.length?`${EX(id).name} added for the sets left. Logged sets stay with ${EX(orig.exId).name}.`:`Swapped to ${EX(id).name}`,true);return;}
+    toast(done.length?`${EX(id).name} added for the sets left. Your sets so far stay with ${EX(orig.exId).name}.`:`Swapped to ${EX(id).name}`,true);return;}
   rerenderKeepScroll();
 }
 function afterAdd(bi){
@@ -6355,12 +6372,13 @@ function pastDraft(date,di){
   const note=deload?'Deload: half sets, about 90% loads, 3+ RIR.':'';
   return {id:uid(),startedAt:null,date,dayIdx:di,dayId:day.id,dayName:day.name+(deload?' (deload)':''),routineId:R.id,deload,light:false,past:true,cardio:[],notes:note,note0:note,editingId:null,ex:items.map(it=>newBlock(it.exId,it,{deload,before:date}))};
 }
-/* Anything the lifter put into a session: a ticked set, typed reps, cardio
-   minutes, a note on an exercise, or session notes other than the text the
+/* Anything the lifter put into a session: a ticked set, typed reps or a
+   typed load, an RIR, cardio minutes, a note on an exercise, or session notes other than the text the
    app wrote itself. The grey numbers and prefilled loads are the app's. */
 function draftEntered(d){
   if(!d)return false;
-  if(d.ex.some(b=>(b.note&&b.note.trim())||b.sets.some(x=>x.done||+x.r>0)))return true;
+  // A typed load counts too (r25): with grey loads, a load in the row is the lifter's.
+  if(d.ex.some(b=>(b.note&&b.note.trim())||b.sets.some(x=>x.done||+x.r>0||!rowBlank(b,x))))return true;
   if((d.cardio||[]).some(c=>c.min>0))return true;
   const n=(d.notes||'').trim();if(!n)return false;
   return typeof d.note0==='string'?n!==d.note0.trim():true;
@@ -6534,15 +6552,23 @@ const ACT={
   shortApply(){
     const m=ui.modal;const d=state.draft;if(!m||!d||!m.mins){closeModal();return;}
     const pl=shortPlan(d,m.mins);m.applied=true;if(!pl.changes.length){closeModal();return;}
-    snapshot();const drop=new Set();
+    const drop=new Set();const removed=new Map(),wasCut=new Map(),order=d.ex.slice(),did=d.id;
+    /* Undo puts back exactly what the trim took (r25): the blank rows, at the
+       end of their exercise, the skipped exercises in their places, and the
+       trimmed mark as it was. Sets logged since stay. The merge Undo used
+       before brought back skipped exercises but not removed rows. */
+    snapshot(()=>{const dd=state.draft;if(!dd||dd.id!==did)return false;
+      for(const [b,rows] of removed)if(dd.ex.includes(b))b.sets.push(...rows);
+      for(const [b,c] of wasCut)if(dd.ex.includes(b)){if(c)b.cut=true;else delete b.cut;}
+      order.forEach((b,i)=>{if(drop.has(i)&&!dd.ex.includes(b))dd.ex.splice(Math.min(i,dd.ex.length),0,b);});
+      fixSupersets(dd.ex.map(b=>b.plan));return true;});
     for(const x of pl.bl){
       if(x.keep===x.undone)continue;const b=d.ex[x.bi];
       if(x.keep===0&&!x.started){drop.add(x.bi);continue;}
-      // Remove the empty sets at the end first, then any other undone ones.
-      let n=x.undone-x.keep;
-      for(let i=b.sets.length-1;i>=0&&n>0;i--){const s=b.sets[i];if(!s.done&&!s.warm&&s.r==null){b.sets.splice(i,1);n--;}}
-      for(let i=b.sets.length-1;i>=0&&n>0;i--){const s=b.sets[i];if(!s.done&&!s.warm){b.sets.splice(i,1);n--;}}
-      b.cut=true;
+      // Only blank rows go, from the end; typed and ticked sets always stay.
+      let n=x.undone-x.keep;const gone=[];
+      for(let i=b.sets.length-1;i>=0&&n>0;i--){const s=b.sets[i];if(!s.warm&&rowBlank(b,s)){gone.unshift(...b.sets.splice(i,1));n--;}}
+      removed.set(b,gone);wasCut.set(b,!!b.cut);b.cut=true;
     }
     d.ex=d.ex.filter((b,bi)=>!drop.has(bi));
     fixSupersets(d.ex.map(b=>b.plan));
@@ -6752,12 +6778,15 @@ const ACT={
     state.cardio.push(cleanCardio({id:uid(),date:isDate(date)?date:today(),kind:$('#cKind').value,min,hr:numIn($('#cHr').value),when:'solo',note:($('#cNote').value||'').trim()}));
     closeModal();commit();rerenderKeepScroll();toast('Cardio logged');
   },
-  cardioDel(t){const c=state.cardio.find(x=>x.id===t.dataset.id);if(!c)return;toTrash('cardio',c);state.cardio=state.cardio.filter(x=>x.id!==c.id);commit();rerenderKeepScroll();toast('Cardio entry moved to Recently deleted');},
+  cardioDel(t){const c=state.cardio.find(x=>x.id===t.dataset.id);if(!c)return;const id=c.id;
+    confirmBox('Delete cardio entry?',`${CARDIOL[c.kind]||'Cardio'}, ${fmtDate(c.date)}, ${c.min} min. It stays under Recently deleted for ${TRASH_DAYS} days.`,'Delete',()=>{const c2=state.cardio.find(x=>x.id===id);if(!c2)return;toTrash('cardio',c2);state.cardio=state.cardio.filter(x=>x.id!==id);commit();rerenderKeepScroll();toast('Cardio entry moved to Recently deleted');},true);},
   cDraftAdd(t){const d=state.draft;(d.cardio||(d.cardio=[])).push(cleanCardio({id:uid(),kind:'walk',when:t.dataset.when},true));saveNow();rerenderKeepScroll();},
   /* A filled cardio entry goes with an Undo, like a set with reps; an empty one goes quietly. */
   cDraftDel(t){const d=state.draft;const list=d&&d.cardio;const i=+t.dataset.c;const c=list&&list[i];if(!c)return;
-    if(+c.min>0||+c.hr>0||(c.note||'').trim()){const did=d.id;snapshot(()=>{const dd=state.draft;if(!dd||dd.id!==did)return false;(dd.cardio||(dd.cardio=[])).splice(Math.min(i,dd.cardio.length),0,c);return true;});
-      list.splice(i,1);saveNow();rerenderKeepScroll();toast(`${CARDIOL[c.kind]||'Entry'} removed`,true);return;}
+    if(+c.min>0||+c.hr>0||(c.note||'').trim()){const did=d.id;
+      confirmBox(`Remove ${(CARDIOL[c.kind]||'entry').toLowerCase()}?`,`${c.min?c.min+' min':'An entry with your notes'}. Undo is offered right after.`,'Remove',()=>{const dd=state.draft;const l2=dd&&dd.id===did?dd.cardio:null;const j=l2?l2.indexOf(c):-1;if(j<0){toast('That entry changed. Nothing was removed.');rerenderKeepScroll();return;}
+        snapshot(()=>{const d3=state.draft;if(!d3||d3.id!==did)return false;(d3.cardio||(d3.cardio=[])).splice(Math.min(j,d3.cardio.length),0,c);return true;});
+        l2.splice(j,1);saveNow();rerenderKeepScroll();toast(`${CARDIOL[c.kind]||'Entry'} removed`,true);},true);return;}
     list.splice(i,1);saveNow();rerenderKeepScroll();},
   restore(t){
     const x=state.trash.find(y=>y.id===t.dataset.id&&y.kind===t.dataset.k);if(!x)return;
@@ -6790,9 +6819,12 @@ const ACT={
     // The fold waits for the effort of the last set, then goes.
     if(!d.editingId&&blockDone(b)){clearTimeout(foldT);foldT=setTimeout(()=>autoFold(bi),900);}
     saveSoon();},
-  bOpen(t){const bi=+t.dataset.b;const b=state.draft&&state.draft.ex[bi];if(!b)return;ui.blkOpen.add(blkKey(bi,b));rerenderKeepScroll();
+  bOpen(t){const bi=+t.dataset.b;const b=state.draft&&state.draft.ex[bi];if(!b)return;ui.blkOpen.add(blkKey(bi,b));blkOpenObj.add(b);rerenderKeepScroll();
     const el=document.getElementById('blk-'+bi);if(el)try{el.scrollIntoView({block:'nearest'});}catch(e){/* scroll is best effort */}},
-  bFold(t){const bi=+t.dataset.b;const b=state.draft&&state.draft.ex[bi];if(!b)return;ui.blkOpen.delete(blkKey(bi,b));rerenderKeepScroll();},
+  bFold(t){const bi=+t.dataset.b;const b=state.draft&&state.draft.ex[bi];if(!b)return;
+    // Every place this exercise was opened at, so a move and a fold leave nothing behind.
+    const pre=((state.draft&&state.draft.id)||'')+':';for(const k of [...ui.blkOpen])if(k.startsWith(pre)&&k.endsWith(':'+b.exId))ui.blkOpen.delete(k);
+    blkOpenObj.delete(b);rerenderKeepScroll();},
   bMenuDo(t){const op=t.dataset.op;closeModal();
     if(op==='bSs'){const bi=+t.dataset.b;if(linkToggle(state.draft.ex,bi,x=>x.plan)){saveNow();rerenderKeepScroll();}return;}
     const f=ACT[op];if(f)f(t);},
@@ -6923,24 +6955,39 @@ const ACT={
   },
   /* Removes the last set not yet done. A logged set is only removed when
      every set is done, and then with Undo, since it holds real numbers. */
-  sDel(t){const b=state.draft.ex[+t.dataset.b];if(!b||!b.sets.length)return;
-    let i=-1;for(let k=b.sets.length-1;k>=0;k--)if(!b.sets[k].done){i=k;break;}
-    if(i>=0){
-      /* A row with reps typed in is work in progress: it goes with an Undo,
-         like a logged set. A row with nothing typed (its load is only the
-         suggestion) goes quietly. */
-      const x=b.sets[i];
-      if(+x.r>0){const did=state.draft.id;snapshot(()=>{const dd=state.draft;if(!dd||dd.id!==did||!dd.ex.includes(b))return false;b.sets.splice(Math.min(i,b.sets.length),0,x);return true;});
-        b.sets.splice(i,1);saveNow();rerenderKeepScroll();toast('Set removed',true);return;}
-      b.sets.splice(i,1);saveNow();rerenderKeepScroll();return;}
-    const gone=b.sets[b.sets.length-1],at=b.sets.length-1,did=state.draft.id;
-    snapshot(()=>{const dd=state.draft;if(!dd||dd.id!==did||!dd.ex.includes(b))return false;b.sets.splice(Math.min(at,b.sets.length),0,gone);return true;});
-    b.sets.pop();saveNow();rerenderKeepScroll();toast('Logged set removed',true);},
-  bUp(t){move(state.draft.ex,+t.dataset.b,+t.dataset.b-1);saveNow();rerenderKeepScroll();},
-  bDown(t){move(state.draft.ex,+t.dataset.b,+t.dataset.b+1);saveNow();rerenderKeepScroll();},
+  /* − Set (r25 guardrail). It takes the last row that holds nothing of the
+     lifter's (no tick, no reps, no RIR, and a load that is only the app's
+     suggestion), quietly. When every row holds something, it no longer
+     removes the last one on a single tap: it asks first, naming the set, and
+     Undo still follows. A logged set used to go with only a toast. */
+  sDel(t){const d=state.draft;const bi=+t.dataset.b;const b=d&&d.ex[bi];if(!b||!b.sets.length)return;
+    const blank=x=>rowBlank(b,x);
+    let i=-1;for(let k=b.sets.length-1;k>=0;k--)if(blank(b.sets[k])){i=k;break;}
+    if(i>=0){b.sets.splice(i,1);saveNow();rerenderKeepScroll();return;}
+    // Every row holds something: the last row not ticked goes first, a logged set only after.
+    for(let k=b.sets.length-1;k>=0;k--)if(!b.sets[k].done){i=k;break;}
+    if(i<0)i=b.sets.length-1;
+    const x=b.sets[i],ex=EX(b.exId),did=d.id,exId=b.exId,n=b.sets.slice(0,i+1).filter(y=>!y.warm&&!y.drop).length;
+    const what=`${x.warm?'Warm-up':x.drop?'Drop set':'Set '+n}`;
+    const val=+x.r>0?setShort(ex,x.w==null?0:x.w,x.r):x.w!=null?loadLabel(ex,x.w)+(ex.bw?'':' '+U()):'';
+    confirmBox(`Remove ${what.toLowerCase()}?`,`${ex.name}${val?`: ${val}`:''}, ${x.done?'logged':'typed, not ticked'}. Undo is offered right after.`,'Remove set',()=>{
+      // Found again when confirmed: a cloud refresh may have replaced the session while the dialog was open.
+      const dd=state.draft;const bb=dd&&dd.id===did?dd.ex[bi]:null;const xx=bb&&bb.exId===exId?bb.sets[i]:null;
+      if(!xx||xx.done!==x.done||xx.r!==x.r||xx.w!==x.w){toast('That set changed. Nothing was removed.');rerenderKeepScroll();return;}
+      snapshot(()=>{const d3=state.draft;if(!d3||d3.id!==did||!d3.ex.includes(bb))return false;bb.sets.splice(Math.min(i,bb.sets.length),0,xx);return true;});
+      bb.sets.splice(i,1);saveNow();rerenderKeepScroll();toast(xx.done?'Logged set removed':'Set removed',true);},true);
+  },
+  bUp(t){keepOpen(()=>move(state.draft.ex,+t.dataset.b,+t.dataset.b-1));saveNow();rerenderKeepScroll();},
+  bDown(t){keepOpen(()=>move(state.draft.ex,+t.dataset.b,+t.dataset.b+1));saveNow();rerenderKeepScroll();},
+  /* Removing an exercise (r25 guardrail): one with logged or typed sets asks
+     first, naming how many; an untouched one goes with an Undo as before. */
   bDel(t){const d=state.draft;const bi=+t.dataset.b;const blk=d.ex[bi];if(!blk)return;const did=d.id;
-    snapshot(()=>{const dd=state.draft;if(!dd||dd.id!==did)return false;dd.ex.splice(Math.min(bi,dd.ex.length),0,blk);fixSupersets(dd.ex.map(x=>x.plan));return true;});
-    d.ex.splice(bi,1);saveNow();rerenderKeepScroll();toast('Exercise removed',true);},
+    const go=()=>{const dd=state.draft;if(!dd||dd.id!==did||dd.ex[bi]!==blk){if(ui.modal)closeModal();toast('That exercise changed. Nothing was removed.');rerenderKeepScroll();return;}
+      snapshot(()=>{const d3=state.draft;if(!d3||d3.id!==did)return false;d3.ex.splice(Math.min(bi,d3.ex.length),0,blk);fixSupersets(d3.ex.map(x=>x.plan));return true;});
+      keepOpen(()=>dd.ex.splice(bi,1));saveNow();rerenderKeepScroll();toast('Exercise removed',true);};
+    const logged=blk.sets.filter(x=>x.done).length,typed=blk.sets.filter(x=>!x.done&&(+x.r>0||x.rir!=null)).length;
+    if(logged||typed){if(ui.modal)closeModal();confirmBox(`Remove ${EX(blk.exId).name}?`,`${logged?`${logged} logged set${logged===1?'':'s'}`:''}${logged&&typed?' and ':''}${typed?`${typed} typed set${typed===1?'':'s'}`:''} go with it. Undo is offered right after.`,'Remove exercise',go,true);return;}
+    go();},
   bSwap(t){openModal({kind:'picker',mode:'swapBlock',b:+t.dataset.b,title:'Swap exercise',q:'',m:EX(state.draft.ex[+t.dataset.b].exId).primary});},
   pickSession(){openModal({kind:'picker',mode:'addBlock',title:'Add exercise to session',q:'',m:''});},
   pickDay(t){openModal({kind:'picker',mode:'addDay',day:+t.dataset.day,title:`Add to ${dayLabel(curRoutineB(),+t.dataset.day)}`,q:'',m:''});},
@@ -7104,9 +7151,11 @@ const ACT={
     confirmBox('Discard this session?',d.editingId?'Your edits will be lost. The saved session stays as it was.':'Sets and cardio logged in this session will not be saved.','Discard',out,true);
   },
   addBW(){const v=numIn($('#bwVal').value);const de=$('#bwDate');const date=(de&&de.value)||today();if(v==null||v<=0){toast('Enter a bodyweight');return;}{const kg=fromD(v);if(kg<BW_MIN_KG||kg>BW_MAX_KG){toast(`Bodyweight must be between ${fmtW(BW_MIN_KG)} and ${fmtW(BW_MAX_KG)} ${U()}`);return;}}state.bodyweights=state.bodyweights.filter(b=>b.date!==date);state.bodyweights.push({id:uid(),date,kg:fromD(v)});commit();rerenderKeepScroll();toast('Bodyweight logged');},
-  delBW(t){snapshot();state.bodyweights=state.bodyweights.filter(b=>b.id!==t.dataset.id);commit();rerenderKeepScroll();toast('Entry deleted',true);},
+  delBW(t){const id=t.dataset.id;const x=state.bodyweights.find(b=>b.id===id);if(!x)return;
+    confirmBox('Delete weigh-in?',`${fmtDate(x.date)}: ${fmtW(x.kg)} ${U()}. Undo is offered right after.`,'Delete',()=>{snapshot();state.bodyweights=state.bodyweights.filter(b=>b.id!==id);commit();rerenderKeepScroll();toast('Entry deleted',true);},true);},
   addMeas(){const m={id:uid(),date:today()};let any=false;for(const [k,lab] of MEAS){const v=numIn($('#ms_'+k).value);if(v!=null&&v>0){const cm=lenFrom(v);if(!(cm<=MEAS_MAX_CM)){toast(`${lab} looks too large. Check the number.`);return;}m[k]=cm;any=true;}}if(!any){toast('Enter at least one measurement');return;}state.measurements=state.measurements.filter(x=>x.date!==m.date);state.measurements.push(m);commit();rerenderKeepScroll();toast('Measurements saved');},
-  delMeas(t){snapshot();state.measurements=state.measurements.filter(m=>m.id!==t.dataset.id);commit();rerenderKeepScroll();toast('Entry deleted',true);},
+  delMeas(t){const id=t.dataset.id;const x=state.measurements.find(m=>m.id===id);if(!x)return;
+    confirmBox('Delete measurements?',`The tape entry from ${fmtDate(x.date)}. Undo is offered right after.`,'Delete',()=>{snapshot();state.measurements=state.measurements.filter(m=>m.id!==id);commit();rerenderKeepScroll();toast('Entry deleted',true);},true);},
   toggleItem(t){ui.openItem=ui.openItem===t.dataset.uid?null:t.dataset.uid;rerenderKeepScroll();},
   iUp(t){const R=curRoutineB();move(R.days[+t.dataset.day].items,+t.dataset.i,+t.dataset.i-1);commit();rerenderKeepScroll();},
   iDown(t){const R=curRoutineB();move(R.days[+t.dataset.day].items,+t.dataset.i,+t.dataset.i+1);commit();rerenderKeepScroll();},
