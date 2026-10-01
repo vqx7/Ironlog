@@ -40,9 +40,12 @@ const fails = []; const ok = (c, m) => { if (!c) { fails.push(m); console.log('F
     document.querySelector('[data-act="sDel"][data-b="0"]').click(); const b2 = L.state.draft.ex[0]; return { n, n2: b2.sets.length, doneBefore, doneAfter: b2.sets.filter(s => s.done).length }; });
   ok(r1.n2 === r1.n - 1 && r1.doneAfter === r1.doneBefore, '− Set removed a set that was not done (' + JSON.stringify(r1) + ')');
   const r2 = await ev(() => { const L = window.__ironlog; const b = L.state.draft.ex[0]; L.ui.blkOpen.add(L.state.draft.id + ':0:' + b.exId); b.sets.forEach(s => { s.w = 50; s.r = 8; s.done = true; }); L.saveNow(); L.render();
-    const n = b.sets.length; document.querySelector('[data-act="sDel"][data-b="0"]').click(); const n2 = L.state.draft.ex[0].sets.length;
-    const undo = !!document.querySelector('#toast [data-act="undo"]'); L.ACT.undo(); return { n, n2, undo, n3: L.state.draft.ex[0].sets.length }; });
-  ok(r2.n2 === r2.n - 1 && r2.undo && r2.n3 === r2.n, 'removing a logged set offers Undo, and Undo brings it back (' + JSON.stringify(r2) + ')');
+    const n = b.sets.length; document.querySelector('[data-act="sDel"][data-b="0"]').click();
+    // r25: a logged set is never removed on one tap; − Set asks first.
+    const asked = L.ui.modal && L.ui.modal.kind === 'confirm' && /Remove set/.test(document.getElementById('modal').innerText) && /logged/.test(document.getElementById('modal').innerText); const n1 = L.state.draft.ex[0].sets.length;
+    document.querySelector('#modal [data-act="mOk"]').click(); const n2 = L.state.draft.ex[0].sets.length;
+    const undo = !!document.querySelector('#toast [data-act="undo"]'); L.ACT.undo(); return { n, asked, n1, n2, undo, n3: L.state.draft.ex[0].sets.length }; });
+  ok(r2.asked && r2.n1 === r2.n && r2.n2 === r2.n - 1 && r2.undo && r2.n3 === r2.n, 'removing a logged set asks first, then offers Undo, and Undo brings it back (' + JSON.stringify(r2) + ')');
 
   // 4. + Set after a drop set takes the working load: grey by default (r25), filled in with "Fill in suggested loads".
   const r3 = await ev(() => { const L = window.__ironlog; const b = L.state.draft.ex[0]; b.sets.push({ w: 37.5, r: 10, rir: 0, warm: false, drop: true, done: true }); L.render();

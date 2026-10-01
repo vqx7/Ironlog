@@ -43,12 +43,25 @@ const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log
   await A.page.fill(`[data-f="r"][data-b="0"][data-s="${lastIdx}"]`, '9'); await A.page.dispatchEvent(`[data-f="r"][data-b="0"][data-s="${lastIdx}"]`, 'change'); await A.page.waitForTimeout(100);
   const minus = () => ev(() => document.querySelector('[data-act="sDel"][data-b="0"]').click());
   await minus(); await A.page.waitForTimeout(150);
-  ok((await ev(() => window.__ironlog.state.draft.ex[0].sets.length)) === n - 1 && /Set removed/.test(await ev(() => document.getElementById('toast').innerText)) && !!(await ev(() => document.querySelector('#toast button'))), 'a row with reps typed: removed with an Undo');
-  await ev(() => document.querySelector('#toast button').click()); await A.page.waitForTimeout(150);
-  ok(await ev(([n, i]) => { const s = window.__ironlog.state.draft.ex[0].sets; return s.length === n && +s[i].r === 9; }, [n, lastIdx]), 'Undo brings the row back with its reps');
-  await A.page.fill(`[data-f="r"][data-b="0"][data-s="${lastIdx}"]`, ''); await A.page.dispatchEvent(`[data-f="r"][data-b="0"][data-s="${lastIdx}"]`, 'input'); await A.page.dispatchEvent(`[data-f="r"][data-b="0"][data-s="${lastIdx}"]`, 'change'); await A.page.waitForTimeout(80);
+  // r25: − Set takes an empty row first, so the typed set stays.
+  ok(await ev(([n]) => { const s = window.__ironlog.state.draft.ex[0].sets; return s.length === n - 1 && +s[n - 2].r === 9 && !window.__ironlog.ui.modal; }, [n]), 'a row with reps typed is kept: − Set takes an empty row above it, without asking');
+  // Fill every row: now − Set asks, names the set, and Cancel keeps it.
+  await ev(() => { const L = window.__ironlog; L.state.draft.ex[0].sets.forEach(x => { x.r = x.r || 8; x.w = x.w == null ? 50 : x.w; }); L.saveNow(); L.render(); });
+  const n0 = await ev(() => window.__ironlog.state.draft.ex[0].sets.length);
   await minus(); await A.page.waitForTimeout(150);
-  ok((await ev(() => window.__ironlog.state.draft.ex[0].sets.length)) === n - 1, 'an empty row (only the suggested load) is removed straight away');
+  const ask = await ev(() => { const m = window.__ironlog.ui.modal; return m && m.kind === 'confirm' ? document.getElementById('modal').innerText : ''; });
+  ok(new RegExp('Remove set ' + n0 + '\\?').test(ask) && /typed, not ticked/.test(ask), 'with every row filled, − Set asks first and names the set', ask);
+  await ev(() => document.querySelector('#modal [data-act="mClose"]').click()); await A.page.waitForTimeout(100);
+  ok((await ev(() => window.__ironlog.state.draft.ex[0].sets.length)) === n0, 'Cancel keeps the set');
+  await minus(); await A.page.waitForTimeout(150); await ev(() => document.querySelector('#modal [data-act="mOk"]').click()); await A.page.waitForTimeout(150);
+  ok((await ev(() => window.__ironlog.state.draft.ex[0].sets.length)) === n0 - 1 && /Set removed/.test(await ev(() => document.getElementById('toast').innerText)) && !!(await ev(() => document.querySelector('#toast button'))), 'confirmed: removed, with an Undo');
+  await ev(() => document.querySelector('#toast button').click()); await A.page.waitForTimeout(150);
+  ok(await ev(([n]) => { const s = window.__ironlog.state.draft.ex[0].sets; return s.length === n && +s[n - 1].r > 0; }, [n0]), 'Undo brings the row back with its reps');
+  // Back to untouched rows; a row added and taken away again goes quietly.
+  await ev(() => { const L = window.__ironlog; L.state.draft.ex[0].sets.forEach(x => { x.r = null; x.w = null; x.rir = null; x.done = false; }); L.saveNow(); L.render(); });
+  const n5 = await ev(() => { window.__ironlog.ACT.sAdd({ dataset: { b: '0' } }); return window.__ironlog.state.draft.ex[0].sets.length; });
+  await minus(); await A.page.waitForTimeout(150);
+  ok((await ev(() => window.__ironlog.state.draft.ex[0].sets.length)) === n5 - 1 && !(await ev(() => window.__ironlog.ui.modal)), 'an empty row (only the grey suggestion) is removed straight away');
 
   // ---- Prefilled fields are still there: loads from the target, reps shown grey from last time.
   const pre = await ev(() => { const b = window.__ironlog.state.draft.ex[0]; const w = document.querySelector('[data-f="w"][data-b="0"][data-s="1"]'); const r = document.querySelector('[data-f="r"][data-b="0"][data-s="1"]'); return { w: w.value, rph: r.placeholder, rv: r.value, last: b.lastR }; });
@@ -112,7 +125,9 @@ const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log
   await ev(() => document.querySelector('[data-act="cDraftDel"][data-c="1"]').click()); await A.page.waitForTimeout(120);
   ok(await ev(() => window.__ironlog.state.draft.cardio.length === 1 && !document.querySelector('#toast button')), 'an empty cardio entry is removed without a prompt');
   await ev(() => document.querySelector('[data-act="cDraftDel"][data-c="0"]').click()); await A.page.waitForTimeout(120);
-  ok(await ev(() => window.__ironlog.state.draft.cardio.length === 0 && /removed/.test(document.getElementById('toast').innerText) && !!document.querySelector('#toast button')), 'a filled cardio entry is removed with an Undo');
+  ok(await ev(() => window.__ironlog.state.draft.cardio.length === 1 && window.__ironlog.ui.modal && window.__ironlog.ui.modal.kind === 'confirm' && /12 min/.test(document.getElementById('modal').innerText)), 'a filled cardio entry asks first (r25)');
+  await ev(() => document.querySelector('#modal [data-act="mOk"]').click()); await A.page.waitForTimeout(120);
+  ok(await ev(() => window.__ironlog.state.draft.cardio.length === 0 && /removed/.test(document.getElementById('toast').innerText) && !!document.querySelector('#toast button')), 'confirmed, it is removed with an Undo');
   await ev(() => document.querySelector('#toast button').click()); await A.page.waitForTimeout(150);
   ok(await ev(() => { const c = window.__ironlog.state.draft.cardio; return c.length === 1 && c[0].min === 12; }), 'Undo brings the cardio entry back with its minutes');
   await ev(() => { window.__ironlog.state.draft.cardio = []; window.__ironlog.render(); });

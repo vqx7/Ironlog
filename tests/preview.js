@@ -72,7 +72,7 @@ fs.cpSync(path.join(ROOT, 'dist-preview'), path.join(tmp, 'preview'), { recursiv
   ok(await ev(() => !window.__ironlog.acctUser()), 'the preview is not signed in by the live app\'s sign-in');
   await page.waitForFunction(() => navigator.serviceWorker.controller && /\/preview\/sw\.js$/.test(navigator.serviceWorker.controller.scriptURL), null, { timeout: 15000 }).catch(() => {});
   ok(await ev(() => !!navigator.serviceWorker.controller && /\/preview\/sw\.js$/.test(navigator.serviceWorker.controller.scriptURL)), 'the preview runs under its own worker');
-  ok(await ev(() => { const s = getComputedStyle(document.querySelector('.tabs')); return parseFloat(s.borderTopWidth) >= 3; }), 'the preview shows its striped edge above the tabs');
+  ok(await ev(() => { const t = document.querySelector('.tabs'); return parseFloat(getComputedStyle(t).borderTopWidth) >= 2 && /PREVIEW/.test(getComputedStyle(t, '::before').content); }), 'the preview carries a PREVIEW tag on the tab bar');
   await seed('pv-1');
   const kick = await ev(() => { const L = window.__ironlog; L.ui.tab = 'settings'; L.render(); const k = document.querySelector('#view .ph .kick'); return k ? k.textContent : ''; });
   ok(/^Ironlog Preview \d/.test(kick), 'Settings names the preview build (' + kick + ')');

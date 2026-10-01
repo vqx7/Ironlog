@@ -206,6 +206,57 @@ const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log
   ok(!C.errors.length, 'no page errors in the calendar (' + C.errors.join(' | ') + ')');
   await C.ctx.close();
 
+  // ---- 14. Guardrails and continuity (V's report, 2026-09-30).
+  const G = await open('index.html', { browser, touch: true, w: 390, h: 844, clock: '2026-09-20T10:00:00' });
+  const gev = (f, a) => G.page.evaluate(f, a);
+  const gstart = () => gev(() => { const L = window.__ironlog; L.state.draft = null; L.state.settings.onboarded = true; if (!L.state.sessions.length) L.makeDemo(); L.ui.tab = 'today'; L.ui.todayDay = 0; L.ui.modal = null; document.getElementById('modal').hidden = true; L.render(); localStorage.setItem('ironlog.v1.tipWake', '1'); L.ACT.startSession({ dataset: { day: '0' } }); });
+  const modal = () => gev(() => { const m = window.__ironlog.ui.modal; return m ? { kind: m.kind, t: document.getElementById('modal').innerText } : null; });
+  // Short on time never drops typed sets, and Undo puts back exactly what it took.
+  await gstart();
+  const t1 = await gev(() => { const L = window.__ironlog; const d = L.state.draft; d.ex[2].sets[0].r = 7; d.ex[2].sets[0].w = 40; const before = d.ex.map(b => b.sets.length).join(); L.ACT.shortOpen(); L.ui.modal.mins = 15; L.ACT.shortApply(); const dd = L.state.draft; const b2 = dd.ex.find(b => b.sets.some(x => x.r === 7)); return { before, mid: dd.ex.map(b => b.sets.length).join(), kept: !!b2 }; });
+  ok(t1.kept, 'Short on time keeps an exercise with a set typed but not ticked, and keeps that set', t1);
+  const t1b = await gev(() => { const L = window.__ironlog; const d = L.state.draft; const id = d.ex[0].exId; d.ex[0].sets[0].r = 8; d.ex[0].sets[0].w = 60; d.ex[0].sets[0].done = true; L.saveNow(); L.ACT.undo(); const b = L.state.draft.ex.find(x => x.exId === id); return { after: L.state.draft.ex.map(b => b.sets.length).join(), logged: !!b && b.sets[0].done }; });
+  ok(t1b.after === t1.before && t1b.logged, 'Undo after Short on time restores every row and exercise it took, and keeps a set logged since', [t1.before, t1b.after]);
+  // A swap keeps typed, unticked sets on the exercise they were typed on.
+  await gstart();
+  await gev(() => { const L = window.__ironlog; L.state.draft.ex[0].sets[0].r = 9; L.state.draft.ex[0].sets[0].w = 33; L.render(); L.ACT.bSwap({ dataset: { b: '0' } }); }); await G.page.waitForTimeout(80);
+  await gev(() => { const inS = new Set(window.__ironlog.state.draft.ex.map(b => b.exId)); [...document.querySelectorAll('#pickList .pick[data-ex]')].find(p => !inS.has(p.dataset.ex)).click(); }); await G.page.waitForTimeout(150);
+  const t2 = await gev(() => { const d = window.__ironlog.state.draft; return { a: d.ex[0].sets.map(x => [x.w, x.r]), b: d.ex[1].sets.length }; });
+  ok(t2.a.length === 1 && t2.a[0][1] === 9 && t2.b >= 1, 'a swap keeps a typed set on the old exercise; the new one takes the rest', t2);
+  // An exercise opened again stays open when the one above it moves.
+  const t3 = await gev(async () => { const L = window.__ironlog; const d = L.state.draft; const b = d.ex[2]; b.sets.forEach(x => { x.w = 50; x.r = 8; x.done = true; }); L.render(); L.ACT.bOpen({ dataset: { b: '2' } }); L.ACT.bUp({ dataset: { b: '1' } }); await new Promise(r => setTimeout(r, 40)); return !document.getElementById('blk-2').classList.contains('folded') && L.state.draft.ex[2] === b; });
+  ok(t3, 'an exercise opened again stays open when another exercise moves past it');
+  // Discard asks when only a load was typed.
+  await gstart();
+  await gev(() => { const L = window.__ironlog; L.state.draft.ex[0].sets[0].w = 99; L.saveNow(); L.render(); document.querySelector('[data-act="discard"]').click(); });
+  ok((await modal() || {}).kind === 'confirm' && await gev(() => !!window.__ironlog.state.draft), 'Discard asks when a load was typed, even with no reps');
+  await gev(() => window.__ironlog.ACT.mClose());
+  // Removing an exercise with logged sets asks first.
+  await gev(() => { const L = window.__ironlog; const b = L.state.draft.ex[1]; b.sets[0].w = 40; b.sets[0].r = 10; b.sets[0].done = true; L.render(); L.ACT.bDel({ dataset: { b: '1' } }); });
+  let m14 = await modal();
+  ok(m14 && m14.kind === 'confirm' && /1 logged set/.test(m14.t) && await gev(() => window.__ironlog.state.draft.ex[1].sets[0].done), 'removing an exercise with a logged set asks first, and says what goes', m14);
+  await gev(() => window.__ironlog.ACT.mClose());
+  const n14 = await gev(() => window.__ironlog.state.draft.ex.length);
+  await gev(() => { const L = window.__ironlog; L.ACT.bDel({ dataset: { b: String(L.state.draft.ex.length - 1) } }); });
+  ok(!(await modal()) && await gev(() => window.__ironlog.state.draft.ex.length) === n14 - 1, 'an untouched exercise goes straight away, with Undo');
+  // History, Body: entries ask before they go.
+  await gev(() => { const L = window.__ironlog; L.state.draft = null; L.state.cardio.push({ id: 'cx1', date: '2026-09-19', kind: 'walk', when: 'solo', min: 25, hr: null, note: '' }); L.invalidate(); L.saveNow(); L.ui.tab = 'history'; L.render(); document.querySelectorAll('#view details').forEach(d => d.open = true); });
+  await gev(() => document.querySelector('[data-act="cardioDel"][data-id="cx1"]').click());
+  m14 = await modal();
+  ok(m14 && m14.kind === 'confirm' && /25 min/.test(m14.t) && await gev(() => window.__ironlog.state.cardio.some(c => c.id === 'cx1')), 'deleting a cardio entry in History asks first', m14);
+  await gev(() => document.querySelector('#modal [data-act="mOk"]').click());
+  ok(await gev(() => !window.__ironlog.state.cardio.some(c => c.id === 'cx1') && window.__ironlog.state.trash.some(t => t.kind === 'cardio')), 'confirmed, it goes to Recently deleted');
+  const bwId = await gev(() => { const L = window.__ironlog; const b = L.state.bodyweights[L.state.bodyweights.length - 1]; L.ACT.delBW({ dataset: { id: b.id } }); return b.id; });
+  m14 = await modal();
+  ok(m14 && m14.kind === 'confirm' && /weigh-in/i.test(m14.t) && await gev((id) => window.__ironlog.state.bodyweights.some(b => b.id === id), bwId), 'deleting a weigh-in asks first', m14);
+  await gev(() => window.__ironlog.ACT.mClose());
+  const mId = await gev(() => { const L = window.__ironlog; const x = L.state.measurements[0]; if (!x) return null; L.ACT.delMeas({ dataset: { id: x.id } }); return x.id; });
+  m14 = await modal();
+  ok(mId && m14 && m14.kind === 'confirm' && await gev((id) => window.__ironlog.state.measurements.some(x => x.id === id), mId), 'deleting a tape entry asks first', m14);
+  await gev(() => window.__ironlog.ACT.mClose());
+  ok(!G.errors.length, 'no page errors in the guardrail checks (' + G.errors.join(' | ') + ')');
+  await G.ctx.close();
+
   ok(!errors.length, 'no page errors (' + errors.join(' | ') + ')');
   await browser.close();
   console.log(fails.length ? `${fails.length} FAILED` : 'ALL PASS');

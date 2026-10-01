@@ -15,7 +15,7 @@ npm test          # every suite, on the source and on the standalone build
 npm run build     # dist/ only
 ```
 
-`CLAUDE.md` has the code map, the rules for changes, and the evidence behind the math. `PENDING.md` lists the open work. Changes go through a pull request: `.github/workflows/publish.yml` runs every suite on it, and merging into `main` tests again and publishes the standalone app. `FEEDBACK.md` covers in-app feedback and the ticket loop.
+`OWNER.md` lists every step the owner does by hand, with the code to paste. `CLAUDE.md` has the code map, the rules for changes, and the evidence behind the math. `PENDING.md` lists the open work. Changes go through a pull request: `.github/workflows/publish.yml` runs every suite on it, and merging into `main` tests again and publishes the standalone app. `FEEDBACK.md` covers in-app feedback and the ticket loop.
 
 ## Moving from the Claude artifact to the app
 
