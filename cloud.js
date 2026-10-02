@@ -194,11 +194,18 @@
      accounts listed in feedback_readers (the app owner) can read them. The
      table rules in SUPABASE.md, Part 4, enforce both. */
   window.ironlogFeedback = {
+    /* Signed in only since r25 (V's choice, to keep spam out): the table
+       takes reports from signed-in accounts only, at most 5 a day each
+       (SUPABASE.md, Part 4). */
     async send(fb) {
+      const s = await session().catch(() => null);
+      if (!s) throw Object.assign(new Error('Sign in to send a report.'), { code: 'signin' });
       const row = { category: fb.category, message: fb.message, reply_to: fb.reply_to || null, screenshot: fb.screenshot || null, context: fb.context || {} };
       const { error } = await sb.from('feedback').insert(row);
       if (error) {
-        if (/relation .*feedback.* does not exist|PGRST205|42P01/i.test(String(error.code || '') + String(error.message || ''))) throw Object.assign(new Error('Feedback is not set up yet (SUPABASE.md, Part 4).'), { code: 'not_set_up' });
+        const t = String(error.code || '') + ' ' + String(error.message || '');
+        if (/relation .*feedback.* does not exist|PGRST205|42P01/i.test(t)) throw Object.assign(new Error('Reports are not set up yet (SUPABASE.md, Part 4). Your text is kept.'), { code: 'not_set_up' });
+        if (/feedback_rate_limited/i.test(t)) throw Object.assign(new Error('You have sent 5 reports today. Try again tomorrow.'), { code: 'limit' });
         throw friendly(error);
       }
     },
