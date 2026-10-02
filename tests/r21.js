@@ -208,11 +208,14 @@ const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log
   ok(await nev(() => !/Drag ⠿ to reorder days/.test(document.getElementById('view').innerText) && !/drag into a day/.test(document.getElementById('view').innerText)), 'Plan: drag hints moved into tips');
   ok(await nev(() => !document.querySelector('#wkbar .w.add') && [...document.querySelectorAll('#wkbar .w')].every(w => w.tagName === 'BUTTON')), 'a brand-new week bar shows no + marks, but every day is still a button');
 
-  // ---- 58 (reworked in r25): Settings > Help, Report a problem first.
-  await nev(() => { const L = window.__ironlog; L.ui.tab = 'history'; L.render(); L.ui.tab = 'settings'; L.ui.folds['settings:feedback'] = true; L.render(); });
-  ok(await nev(() => { const b = [...document.querySelectorAll('[data-mkey="feedback"] [data-act="fbOpen"]')]; return b.length === 3 && b[0].textContent === 'Report a problem' && b[0].classList.contains('primary') && !document.querySelector('[data-act="fbInbox"]'); }), 'Settings > Help: Report a problem first, then Ask a question and Suggest something (no inbox without an owner account)');
-  ok(await nev(() => { const b = document.querySelector('#view .ph [data-act="fbOpen"]'); return !!b && b.textContent === 'Report a problem'; }), 'Report a problem is also at the top of Settings');
-  await N.page.click('[data-mkey="feedback"] [data-act="fbOpen"][data-cat="bug"]'); await N.page.waitForTimeout(80);
+  // ---- 58 (reworked in r25, moved to the menu in r27): Report a problem is in
+  // the menu at the top right of every tab; Settings no longer repeats it.
+  await nev(() => { const L = window.__ironlog; L.ui.tab = 'settings'; L.render(); });
+  ok(await nev(() => !document.querySelector('#view [data-act="fbOpen"]') && !document.querySelector('[data-mkey="feedback"]')), 'Settings has no Help section and no Report a problem button of its own');
+  await nev(() => { const L = window.__ironlog; L.ui.tab = 'history'; L.render(); });
+  await N.page.click('#saveState'); await N.page.waitForTimeout(80);
+  ok(await nev(() => { const r = [...document.querySelectorAll('#modal .mnu')].map(b => b.textContent.replace('›', '').trim()); return r[0] === 'Report a problem' && r.includes('Guide') && !document.querySelector('#modal [data-act="fbInbox"]'); }), 'the menu: Report a problem first, the Guide, no inbox without an owner account');
+  await N.page.click('#modal .mnu[data-act="fbOpen"]'); await N.page.waitForTimeout(80);
   const hasSvc = await nev(() => !!window.ironlogFeedback);
   if (hasSvc) {
     // The standalone build, signed out: reports need an account (V's choice, r25).

@@ -10,7 +10,8 @@
 //   - otherwise: same load, beat the rep total;
 //   - a trimmed exercise (Short on time) and a deload week never set the next
 //     target, but "Last" shows them, labelled, and grey reps follow a trimmed
-//     session (same loads) but not a deload (lighter loads);
+//     session (same loads) but not a deload (lighter loads); when the target is a
+//     new load, grey reps are the bottom of the range (r27);
 //   - a deload week: half the sets, lighter loads on a real step;
 //   - two sessions in a row below the range at the same load: the load drops,
 //     on a real step, and never below zero.
@@ -97,9 +98,17 @@ const PLAN = [
         ok(new RegExp('^Last \\([A-Z][a-z]{2} \\d+' + lbl + '\\)').test(s.last), T + W + e.id + ' Last is the most recent session' + (lbl ? ' (' + lbl.slice(2) + ')' : ''), s.last);
         if (!step.deload) ok(!!s.basis === (recent.kind !== 'full'), T + W + e.id + (recent.kind !== 'full' ? ' target says it comes from the last full session' : ' target comes from Last itself'), s.basis);
         // Grey reps: the reps of Last, except after a deload, the last full session's.
+        // When the target is a new load (r27), last time's reps were at the old load,
+        // so every row shows the bottom of the range instead.
+        const newLoad = !step.deload && exp !== h.filter(x => x.kind === 'full').slice(-1)[0].load;
         const repsFrom = recent.kind === 'deload' ? h.filter(x => x.kind === 'full').slice(-1)[0] : recent;
-        const rph = s.rows.slice(0, repsFrom.reps.length).map(r => +r.rph);
-        ok(JSON.stringify(rph) === JSON.stringify(repsFrom.reps.slice(0, s.rows.length)), T + W + e.id + ' grey reps are ' + repsFrom.reps.join(',') + ' (' + (recent.kind === 'deload' ? 'last full session' : 'Last') + ')', rph);
+        if (newLoad) {
+          const rph = s.rows.map(r => +r.rph);
+          ok(rph.every(v => v === e.min), T + W + e.id + ' grey reps are ' + e.min + ' on every set (a new load, so not last time\'s reps)', rph);
+        } else {
+          const rph = s.rows.slice(0, repsFrom.reps.length).map(r => +r.rph);
+          ok(JSON.stringify(rph) === JSON.stringify(repsFrom.reps.slice(0, s.rows.length)), T + W + e.id + ' grey reps are ' + repsFrom.reps.join(',') + ' (' + (recent.kind === 'deload' ? 'last full session' : 'Last') + ')', rph);
+        }
       }
       // Short on time this week: trim first, then log what is left.
       let cut = {};
