@@ -2,17 +2,11 @@
 
 Everything that needs you, in one place, with the exact code to paste. Claude keeps this file current: an item moves to Done only when you confirm it, or when Claude can check it from here (and says how it checked). Build work and decisions are tracked in `PENDING.md`; this file is only what you do by hand.
 
-Last updated: r27 in progress, 2026-10-02.
+Last updated: r27 live, 2026-10-02.
 
 ## Now, in this order
 
-1. The domain and email steps, C1 to C4 below (you are on these).
-2. C5, the switch, once you tell Claude the domain name.
-3. A5: try r27 on the preview, then say go.
-
-### A5. Try r27 on the preview, then say go
-Status: to do once Claude says the preview is up.
-Open the Preview icon (or the preview link in Safari), wait for "New version ready" and tap Reload. The menu shows build r27. Try: the round button at the top right (account, Report a problem, Guide); the Guide's How targets are set; an i beside a setting; folding and moving sections.
+Nothing is waiting on you for r27. When you have a minute: Forgot password with your own email in the app, and check the email comes from Ironlog (no-reply@mail.ironapp.org). That is the last proof the sender works before friends sign up.
 
 ## When you want problem reports to reach you (item 58, about 20 minutes)
 
@@ -221,10 +215,10 @@ Status: your decision. Say which in chat and Claude sets it up.
 Today, confirmation and reset emails reach only your own Supabase account's email, 2 an hour. Friends need your own sender, which needs a domain. The app moves to the same domain (decided 2026-10-02).
 
 ### C1. Decide the domain (items 6 and 23)
-Status: decided to move the app to its own domain; you pick the name at Cloudflare. If the app's address ever changes, each phone starts with an empty local log at the new address. Signed-in people get theirs back by signing in; people without an account would need a backup file. So this happens before friends install.
+Status: done. ironapp.org, bought 2026-10-02. If the app's address ever changes, each phone starts with an empty local log at the new address. Signed-in people get theirs back by signing in; people without an account would need a backup file. So this happens before friends install.
 
 ### C2. Buy the domain and point it at the app
-Status: to do.
+Status: done (checked by Claude 2026-10-02: GitHub's domain file names ironapp.org and the site answers over https).
 1. dash.cloudflare.com > sign up > **Domain Registration** > **Register Domains** > search > buy (about $10 a year for a .com). Tell Claude the name.
 2. Cloudflare > your domain > **DNS** > **Records**. Delete any records Cloudflare made for `@` or `www`. Add these, each with Proxy status **DNS only** (grey cloud; GitHub cannot issue the https certificate through Cloudflare's proxy):
    - Type `A`, Name `@`, one record each for `185.199.108.153`, `185.199.109.153`, `185.199.110.153`, `185.199.111.153`
@@ -233,24 +227,24 @@ Status: to do.
 3. Verify it with GitHub, so no one else can claim it there: github.com > your picture > **Settings** > **Pages** > **Add a domain** > your domain. GitHub shows a TXT record; add it in Cloudflare (DNS only), then **Verify** in GitHub.
 
 ### C3. Email sender (Resend, free: 100 emails a day)
-Status: to do after C2.
-resend.com > sign up > **Domains** > **Add Domain** > `mail.YOURDOMAIN` (Resend recommends a subdomain, so email reputation stays apart from the site). Resend lists DNS records made for your domain; add each one in Cloudflare exactly as shown, DNS only. Also add a TXT record yourself:
+Status: done, as you reported (2026-10-02).
+resend.com > sign up > **Domains** > **Add Domain** > `mail.ironapp.org` (Resend recommends a subdomain, so email reputation stays apart from the site). Resend lists DNS records made for your domain; add each one in Cloudflare exactly as shown, DNS only. Also add a TXT record yourself:
 - Name: `_dmarc`  Value: `v=DMARC1; p=none;`
-Wait until Resend shows **Verified**. Then **API Keys** > **Create API key**, permission **Sending access**, domain `mail.YOURDOMAIN`. Copy it; it is a secret and goes only into C4.
+Wait until Resend shows **Verified**. Then **API Keys** > **Create API key**, permission **Sending access**, domain `mail.ironapp.org`. Copy it; it is a secret and goes only into C4.
 
 ### C4. Connect Supabase to the sender
-Status: to do after C3.
+Status: done, as you reported (2026-10-02). Claude cannot reach Supabase's settings from here; the Forgot password test under Now is the proof.
 Supabase > **Authentication** > **Emails** > **SMTP Settings** > enable custom SMTP:
-- Sender email `no-reply@mail.YOURDOMAIN`  Sender name `Ironlog`
+- Sender email `no-reply@mail.ironapp.org`  Sender name `Ironlog`
 - Host `smtp.resend.com`  Port `465`  Username `resend`  Password: the Resend API key
 - **Save**. Then Authentication > **Rate Limits**: emails `30` an hour. **Save**.
 - Test: Forgot password with your own email. The email comes from Ironlog.
 
 ### C5. Switch the app to the domain
-Status: after C2, once Claude confirms (Claude sends this step with your domain filled in).
+Status: done. Step 1 checked by Claude (2026-10-02); steps 2 and 3 as you reported, app reinstalled from ironapp.org.
 1. GitHub > vqx7/Ironlog > **Settings** > **Pages** > **Custom domain**: your domain > **Save**. Wait for the DNS check to pass, then tick **Enforce HTTPS** (the certificate can take up to an hour). The old vqx7.github.io/Ironlog link then forwards to the domain.
-2. Supabase > **Authentication** > **URL Configuration**: Site URL `https://YOURDOMAIN/`. Under Redirect URLs add `https://YOURDOMAIN/` and `https://YOURDOMAIN/preview/`. Keep the old vqx7.github.io entries until every phone has moved.
-3. Your phone: open `https://YOURDOMAIN` in Safari, sign in, check your log is there, **Add to Home Screen**. Then remove the old Ironlog and Preview icons (signed in, nothing is lost).
+2. Supabase > **Authentication** > **URL Configuration**: Site URL `https://ironapp.org/`. Under Redirect URLs add `https://ironapp.org/` and `https://ironapp.org/preview/`. Keep the old vqx7.github.io entries until every phone has moved.
+3. Your phone: open `https://ironapp.org` in Safari, sign in, check your log is there, **Add to Home Screen**. Then remove the old Ironlog and Preview icons (signed in, nothing is lost).
 
 ## Security and privacy
 
@@ -279,3 +273,5 @@ Status: to do whenever you are at the gym; tell Claude what you see.
 - Security Advisor run by you (2026-10-01): two warnings, handled in D4.
 - D4: ping's search_path fixed and minimum password length 8 (you, 2026-10-02). The Leaked Password Protection warning stays on the free plan; the app checks itself.
 - A4: r26 tried on the preview and approved; r26 live (2026-10-02, merged by Claude at your go-ahead).
+- A5: r27 tried on the preview and approved; r27 live at https://ironapp.org (2026-10-02, merged by Claude at your go-ahead).
+- C1 to C5: domain ironapp.org, Resend sender on mail.ironapp.org, Supabase connected, app switched and reinstalled (2026-10-02).

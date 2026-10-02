@@ -1,23 +1,15 @@
-# Everything still open (as of r27 in preview, 2026-10-02)
+# Everything still open (as of r27 live, 2026-10-02)
 
 This is the tracking list. Items are built only when V says go. Owner items need V; the rest is build work. Nothing is done unless it says so. Numbers are kept stable; finished items move to Done at the bottom.
 
-## Live: r26 (published 2026-10-02). In preview: r27
-r27 is pull request #8, on the preview until V says go. What it changes is under "Built in r27, waiting for V's go" below.
-
-## Built in r27, waiting for V's go (V's requests of 2026-10-02)
-92. Report a problem and Sign in / Sign out one tap away: the round button at the top right of every tab is now a menu (account, sync state, Report a problem, Guide, Your data and backups). V chose this placement.
-93. Settings no longer repeats Report a problem or Help.
-94. Explanations: a Guide in the menu (Today, Logging, How targets are set, Volume and Stats, Plan and your own exercises, Sections, Your data), states the rules the numbers follow. Hidden press-and-hold explanations on setting labels became visible i buttons; dotted text shows its explanation on a tap; the RIR setting says what RIR is on screen (V's example). The estimate line in the workout preview reads "Est. 1RM 86.7 → 88.8 → 86.9 lb · flat" instead of ending in a stray arrow.
-95. Sections: every section on every tab checked to fold from its title, keep that across a re-render, move by a finger drag or the arrow keys, and keep its order after a reload (tests/r27.js).
-96. The numbers follow what you customise. An independent audit (a separate agent that had not seen the work) found 16 places where a custom routine, exercise or setting was ignored; 15 are fixed, each with a test (tests/custom.js): per-day rep ranges, grey reps after a new load, deload, warm-up and drop loads on the exercise's own step and not under the bar, the kg default step, changes reaching the session in progress, swaps getting a fitting plan, stalls expiring, a Movement (compound or isolation) choice for your own exercises, a range moved down, a 0 target, planned hard sets and the deload-week target, streaks after a routine switch, a load step of 0, Pick for me in a deload, warm-up order. The 16th is item 98. A second independent review of the finished r27 found more, all fixed with tests: a target taken from a months-old session when a lift returned to an old range, the bar floor wrongly applied to EZ-bar and fixed-bar curls and to per-side numbers, the exercise editor showing 2.3 kg, controls losing their spoken names next to an i, several Guide statements that did not match the app, and the 11-set flag overstating its source.
-97. Ready for the domain: the publish workflow keeps GitHub's domain file (pull request #7, merged 2026-10-02), and the install steps show the address the app is on.
+## Live: r27 (published 2026-10-02 at https://ironapp.org). Nothing in preview
+V said go on 2026-10-02 after trying it. Claude made the merge commit of pull request #8 (the merged tree is identical to the one tested on the preview); the suites ran again on `main` and published it. The preview at https://ironapp.org/preview/ still holds r27 until the next pull request.
 
 ## Next
-91. Domain and email (OWNER.md C1 to C5, V doing now), another full run, then sharing with friends on Android and iPhone.
+91. Domain and email: the app is on https://ironapp.org (GitHub's domain file is on gh-pages; Claude fetched the site over https). V reports the remaining domain steps done and the app reinstalled from the new address (2026-10-02). Left before friends: one Forgot password test that the email arrives from Ironlog (OWNER.md C4), then sharing with friends on Android and iPhone.
 98. From the audit, low: plate lists are fixed (no 1.25 lb or 0.5 kg change plates) and there is one bar weight for every barbell lift (no trap or EZ bar). Decide if wanted.
 
-Open count: 33 numbered items: 6 built in r27 and waiting for V's go (92 to 97), 2 next (91, 98), 3 critical (58, 61, 63), 3 verification (7, 8, 10), 2 owner only (6, 84), 17 later build or decision items. Owner steps, with the code, are in OWNER.md.
+Open count: 27 numbered items: 2 next (91, 98), 3 critical (58, 61, 63), 3 verification (7, 8, 10), 2 owner only (6, 84), 17 later build or decision items. Owner steps, with the code, are in OWNER.md.
 
 ## Critical, still open
 58. Part 2 needs V: SUPABASE.md, Part 4, steps 1 to 5 (the tables, a private `ironlog-feedback` repository, a GitHub token for it, the function and its webhook), then FEEDBACK.md, "What V does" steps 2 and 3 (protect `main`; choose a scheduled Claude task or Claude's GitHub Action to pick up tickets). Until step 1, Send feedback says it is not set up yet and keeps the text.
@@ -26,7 +18,6 @@ Open count: 33 numbered items: 6 built in r27 and waiting for V's go (92 to 97),
 
 ## Owner items (V)
 Every step V does by hand, with the exact code to paste, is in `OWNER.md`. Kept in step with this list:
-- r27's go = OWNER.md A5 (try it on the preview).
 - 58 (Part 2 of it) = OWNER.md B1 to B7 (problem reports reaching V; B6 protects `main`).
 - 6 = OWNER.md C1 to C5 (domain, email sender, the switch); 23 is decided: the app moves to the domain.
 - 84: four older merge commits carry V's Gmail address. V chose not to rewrite history (2026-10-01). Kept open as "not now"; the fix, if ever wanted, is a rewrite of `main` and a force push.
@@ -63,6 +54,13 @@ Every step V does by hand, with the exact code to paste, is in `OWNER.md`. Kept 
 46. Native app wrapper (Capacitor), only if needed: rest timer alerts through a locked screen, Apple Health, a real App Store install. Costs $99 a year for Apple and needs a Mac.
 
 ## Done
+- r27 (approved by V and published 2026-10-02 at https://ironapp.org; merged by Claude at V's go-ahead). V's requests of 2026-10-02:
+  92. Report a problem and Sign in / Sign out one tap away: the round button at the top right of every tab is now a menu (account, sync state, Report a problem, Guide, Your data and backups). V chose this placement.
+  93. Settings no longer repeats Report a problem or Help.
+  94. Explanations: a Guide in the menu (Today, Logging, How targets are set, Volume and Stats, Plan and your own exercises, Sections, Your data), states the rules the numbers follow. Hidden press-and-hold explanations on setting labels became visible i buttons; dotted text shows its explanation on a tap; the RIR setting says what RIR is on screen (V's example). The estimate line in the workout preview reads "Est. 1RM 86.7 → 88.8 → 86.9 lb · flat" instead of ending in a stray arrow.
+  95. Sections: every section on every tab checked to fold from its title, keep that across a re-render, move by a finger drag or the arrow keys, and keep its order after a reload (tests/r27.js).
+  96. The numbers follow what you customise. An independent audit (a separate agent that had not seen the work) found 16 places where a custom routine, exercise or setting was ignored; 15 are fixed, each with a test (tests/custom.js): per-day rep ranges, grey reps after a new load, deload, warm-up and drop loads on the exercise's own step and not under the bar, the kg default step, changes reaching the session in progress, swaps getting a fitting plan, stalls expiring, a Movement (compound or isolation) choice for your own exercises, a range moved down, a 0 target, planned hard sets and the deload-week target, streaks after a routine switch, a load step of 0, Pick for me in a deload, warm-up order. The 16th is item 98. A second independent review of the finished r27 found more, all fixed with tests: a target taken from a months-old session when a lift returned to an old range, the bar floor wrongly applied to EZ-bar and fixed-bar curls and to per-side numbers, the exercise editor showing 2.3 kg, controls losing their spoken names next to an i, several Guide statements that did not match the app, and the 11-set flag overstating its source.
+  97. Ready for the domain: the publish workflow keeps GitHub's domain file (pull request #7, merged 2026-10-02), and the install steps show the address the app is on.
 - r26 (approved by V and published 2026-10-02; merged by Claude at V's go-ahead). V's requests of 2026-10-01:
   83. Decided by V: a trimmed session is still the most recent session. "Last" now shows it, labelled (trimmed, lighter or deload), and the grey reps follow it (except after a deload, whose reps were cut on purpose). It still does not set the next target: the target comes from the last full session, and when that is an earlier one, a tip on the target names its date. Proven over 9 weeks in `tests/progress.js`; the rule is in CLAUDE.md.
   85. Supabase Security Advisor, 2 warnings (V's report): "Function Search Path Mutable" on `public.ping` is fixed by one line of SQL (OWNER.md D4); `feedback_limit` gets the same fix in SUPABASE.md before it is ever created. "Leaked Password Protection" is a Supabase Pro feature ($25 a month), so on the free plan the warning stays and the app checks new passwords against known breaches itself (first 5 characters of the hash only; never blocks when the check cannot be reached). Suite `tests/breach.js`.
