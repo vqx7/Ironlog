@@ -2,16 +2,12 @@
 
 Everything that needs you, in one place, with the exact code to paste. Claude keeps this file current: an item moves to Done only when you confirm it, or when Claude can check it from here (and says how it checked). Build work and decisions are tracked in `PENDING.md`; this file is only what you do by hand.
 
-Last updated: r25, 2026-10-01.
+Last updated: r25 published, 2026-10-01.
 
 ## Now, in this order
 
-### A1. Update Safari's copy of the live app (r24, one time, 1 minute)
-Status: to do.
-Open https://vqx7.github.io/Ironlog/ in **Safari** (not the home-screen app). When "New version ready" shows, tap **Reload**. Why: Safari keeps its own copy of the app, and the old copy opens the live app at the preview link instead of the preview.
-
 ### A2. The preview's sync table in Supabase (r24, 2 minutes)
-Status: to do. Without it the preview still works, but its log stays on the phone.
+Status: not confirmed. Claude cannot reach Supabase from the build machine to check. If you ran it, tell Claude and this moves to Done. Without it the preview still works, but its log stays on the phone.
 Supabase > your `ironlog` project > **SQL Editor** > **New query**. Paste all of this, tap **Run**:
 
 ```sql
@@ -34,12 +30,15 @@ revoke all on public.docs_preview from anon;
 
 Check: it says "Success. No rows returned". Then sign in on the preview, log a set, and Supabase > **Table Editor** > `docs_preview` shows your rows.
 
-### A3. Try r25 on the preview, then merge it (pull request #5)
+### A3. Update your phone to r25 (live since 2026-10-01, 2 minutes)
 Status: to do.
-1. Safari > https://vqx7.github.io/Ironlog/preview/ > Share > **Add to Home Screen** (it is named "Preview", with a striped icon and a PREVIEW tag on the tab bar). Sign in with your usual email and password.
-2. Try: grey loads, − Set on a filled set (it asks first), Short on time then a swap, the calendar (History > Calendar, a Consistency square, pulling the week bar down), Report a problem.
-3. If it is right: GitHub > vqx7/Ironlog > Pull requests > #5 > **Merge pull request**. The live app updates itself after the tests pass again; open it and tap **Reload** when "New version ready" shows.
-4. Your live app will then show a one-time note about the new icon. iPhone never refreshes a home-screen icon, so: make sure you are signed in (Settings > Your data shows "Synced"), then remove Ironlog from the home screen and add it again from Safari. Removing it deletes the log on the phone, which is why being signed in comes first.
+1. Open Ironlog from your home screen. Within a few seconds "New version ready" shows; tap **Reload**. If it does not show, close the app fully (swipe it away) and open it again. Settings then shows build 2026.10.01-r25 under Diagnostics.
+2. The new icon: Today shows a one-time "New app icon" note. iPhone never refreshes an icon it has already added, so:
+   - First make sure Settings > Your data says **Synced**. Removing the app removes the log stored on the phone, and that check is what keeps it safe in your account.
+   - Press and hold Ironlog on the home screen > **Remove App**, then confirm (iPhone may word it Delete Bookmark or Delete App; any of them).
+   - Safari > https://vqx7.github.io/Ironlog/ > Share > **Add to Home Screen**.
+   - Open the new icon and sign in. Your log comes back from your account.
+3. Your settings carry over, including Auto-mark. Loads now show grey until you type or tick; Settings > Rest timer and logging > "Fill in suggested loads" turns that off.
 
 ## When you want problem reports to reach you (item 58, about 20 minutes)
 
@@ -226,7 +225,7 @@ Supabase > **Integrations** > **Database Webhooks** (enable it if asked) > **Cre
 Check: Report a problem from the app. Within seconds an issue labelled `feedback` appears in `ironlog-feedback`. If not: Edge Functions > `feedback-to-issue` > **Logs** says why (401 means the header and the secret differ).
 
 ### B6. Protect main, so a pull request is the only way into the live app
-Status: to do.
+Status: to do, after D2. Once main is protected, merges happen only on GitHub's website, which stamps your account email; D2 makes that your private noreply address.
 GitHub > vqx7/Ironlog > **Settings** > **Rules** > **Rulesets** > **New ruleset** > **New branch ruleset**.
 - Name `main`. Enforcement status: **Active**.
 - Target branches: **Add target** > **Include default branch**.
@@ -267,11 +266,15 @@ Supabase > **Authentication** > **Emails** > **SMTP Settings** > **Enable custom
 
 ### D1. Delete old branches on GitHub (item 1)
 Status: to do (you parked it on 2026-09-27).
-GitHub > vqx7/Ironlog > **Branches** (or https://github.com/vqx7/Ironlog/branches) > the trash icon next to each of: `r14-review`, `r15-design`, `r17-accounts`, `r20-design`, `r21`, `r22`, `r23`, `r24`. After #5 is merged, also `r25`. Keep `main` and `gh-pages`. `r14-review` and `r15-design` hold an old commit with your personal Gmail address; `main` and `gh-pages` do not.
+GitHub > vqx7/Ironlog > **Branches** (or https://github.com/vqx7/Ironlog/branches) > the trash icon next to each of: `r14-review`, `r15-design`, `r17-accounts`, `r20-design`, `r21`, `r22`, `r23`, `r24`, `r25`. Keep `main` and `gh-pages`. Keep `main` and `gh-pages`. `r14-review` and `r15-design` hold an old commit with your personal Gmail address. Deleting branches is permanent but loses nothing you use: everything in them is in `main` or was replaced.
 
-### D2. Keep your email out of commits (item 2)
-Status: to do.
-GitHub > your photo > **Settings** > **Emails**: tick **Keep my email addresses private** and **Block command line pushes that expose my email**. Optional: ask GitHub Support to purge cached views of the old commit after D1.
+### D2. Keep your email out of commits (item 2), do this first
+Status: to do. Most important item in this section.
+Why now: every pull request you merge on GitHub's website stamps your account email on the merge commit, and the repository is public. Pull requests #1 to #4 did: `vaqarsyed.4r@gmail.com` is on those four merge commits on `main`. (Claude merged r25 itself, with its noreply address, so r25 added none.)
+GitHub > your photo > **Settings** > **Emails**:
+1. Tick **Keep my email addresses private**. GitHub then uses an address like `12345678+vqx7@users.noreply.github.com` for anything you do on the website.
+2. Tick **Block command line pushes that expose my email**.
+This stops new ones. It does not change the four old commits; removing those is decision 84 in PENDING.md (a history rewrite; Claude does it if you say so).
 
 ### D3. Who can see what (no action, for reference)
 Your log: only your account, and you as the Supabase project owner (Table Editor shows every row, friends' included). The app says so in Settings > Your data. Reports: only accounts listed in `feedback_readers`. Optional end-to-end encryption is item 15 in PENDING.md.
@@ -289,4 +292,5 @@ Status: to do whenever you are at the gym; tell Claude what you see.
 - Supabase Part 1 (project, `docs` table, keys) and your account, with real sync confirmed (2026-09-27).
 - Delete my account function and keep-alive `ping()` deployed; checked from the build machine: the function answers 405 "Use POST", `ping()` returns "ok" (2026-09-27).
 - Claude artifact retired; log moved into the installed app (2026-09-27).
-- Merged r21, r22, r23 and r24 (r24 on 2026-09-30).
+- Merged r21, r22, r23 and r24 (r24 on 2026-09-30). r25 merged by Claude at your go-ahead (2026-10-01).
+- A1: Safari's copy updated; you opened r25 on the preview (2026-09-30).
