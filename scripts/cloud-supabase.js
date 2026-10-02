@@ -88,11 +88,34 @@
     return data ? data.session : null;
   }
 
+  /* Breached passwords (r26). Supabase's own check (leaked password
+     protection) is only on its paid plans, so the app asks Have I Been Pwned
+     itself when a password is set: the first 5 characters of the password's
+     SHA-1 hash go out, the matching hash endings come back, and the match is
+     made on the phone (k-anonymity), so neither the password nor its full
+     hash leaves the phone. Padding hides how many endings matched. Offline or
+     slow (3 s), the check is skipped rather than blocking a sign-up. */
+  async function breached(password) {
+    try {
+      if (!(window.crypto && crypto.subtle && window.fetch)) return 0;
+      const buf = await crypto.subtle.digest('SHA-1', new TextEncoder().encode(password));
+      const hex = [...new Uint8Array(buf)].map(b => b.toString(16).padStart(2, '0')).join('').toUpperCase();
+      const ctl = new AbortController(); const t = setTimeout(() => ctl.abort(), 3000);
+      const res = await fetch('https://api.pwnedpasswords.com/range/' + hex.slice(0, 5), { headers: { 'Add-Padding': 'true' }, signal: ctl.signal, cache: 'no-store' });
+      clearTimeout(t); if (!res.ok) return 0;
+      const tail = hex.slice(5);
+      for (const line of (await res.text()).split('\n')) { const [h, n] = line.trim().split(':'); if (h === tail) return +n || 0; }
+      return 0;
+    } catch (e) { return 0; }
+  }
+  const BREACHED = 'This password has appeared in a data breach, so it is easy to guess. Choose a different one.';
+
   window.ironlogAuth = {
     landing,
     async user() { try { return who(await session()); } catch (e) { return null; } },
     /* Returns {confirm: true} when an email must be confirmed first. */
     async signUp(email, password) {
+      if (await breached(password) > 0) throw Object.assign(new Error(BREACHED), { code: 'breached' });
       const { data, error } = await sb.auth.signUp({ email, password, options: { emailRedirectTo: site() } });
       if (error) throw friendly(error);
       // An address that is already registered gets a stand-in user with no
@@ -117,6 +140,7 @@
       if (error) throw friendly(error);
     },
     async updatePassword(password) {
+      if (await breached(password) > 0) throw Object.assign(new Error(BREACHED), { code: 'breached' });
       const { error } = await sb.auth.updateUser({ password });
       if (error) throw friendly(error);
     },

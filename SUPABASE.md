@@ -73,7 +73,7 @@ Until this is done, Delete my account says it is not set up yet and deletes noth
 
 ```sql
 -- A harmless call that touches the database and returns "ok". Reads nothing.
-create or replace function public.ping() returns text language sql stable as $$ select 'ok' $$;
+create or replace function public.ping() returns text language sql stable set search_path = '' as $$ select 'ok' $$;
 grant execute on function public.ping() to anon;
 ```
 
@@ -105,7 +105,7 @@ create policy "signed-in people can add" on public.feedback
   for insert to authenticated
   with check (user_id = (select auth.uid()));
 -- At most 5 reports a day per account, whatever the app does.
-create function public.feedback_limit() returns trigger language plpgsql security definer set search_path = public as $$
+create function public.feedback_limit() returns trigger language plpgsql security definer set search_path = '' as $$
 begin
   if (select count(*) from public.feedback where user_id = new.user_id and created_at > now() - interval '24 hours') >= 5 then
     raise exception 'feedback_rate_limited' using errcode = 'P0001';
@@ -113,6 +113,8 @@ begin
   return new;
 end $$;
 create trigger feedback_limit before insert on public.feedback for each row execute function public.feedback_limit();
+-- Only the trigger runs it; nobody can call it through the API.
+revoke all on function public.feedback_limit() from public, anon, authenticated;
 -- Who may read reports: you. The app shows an Inbox button to these accounts only.
 create table public.feedback_readers (user_id uuid primary key references auth.users(id) on delete cascade);
 alter table public.feedback_readers enable row level security;
@@ -141,7 +143,7 @@ alter table public.feedback add constraint feedback_message_check check (char_le
 drop policy if exists "anyone can add" on public.feedback;
 create policy "signed-in people can add" on public.feedback for insert to authenticated with check (user_id = (select auth.uid()));
 revoke insert on public.feedback from anon;
-create or replace function public.feedback_limit() returns trigger language plpgsql security definer set search_path = public as $$
+create or replace function public.feedback_limit() returns trigger language plpgsql security definer set search_path = '' as $$
 begin
   if (select count(*) from public.feedback where user_id = new.user_id and created_at > now() - interval '24 hours') >= 5 then
     raise exception 'feedback_rate_limited' using errcode = 'P0001';
@@ -149,6 +151,8 @@ begin
   return new;
 end $$;
 create trigger feedback_limit before insert on public.feedback for each row execute function public.feedback_limit();
+-- Only the trigger runs it; nobody can call it through the API.
+revoke all on function public.feedback_limit() from public, anon, authenticated;
 ```
 
 Steps 2 to 5 turn each report into a GitHub issue, which is what lets Claude pick it up (`FEEDBACK.md`). They can wait.
@@ -162,6 +166,20 @@ Steps 2 to 5 turn each report into a GitHub issue, which is what lets Claude pic
 5. **The trigger.** Database > Webhooks > Create a new hook. Name `feedback-to-issue`, table `feedback`, events **Insert** only, type **Supabase Edge Functions**, function `feedback-to-issue`, method POST. Under HTTP Headers add `x-webhook-secret` with the same random string. Create.
 
    To check: send a report from the app. Within a few seconds an issue labelled `feedback` appears in `ironlog-feedback`, with any screenshot saved under `shots/`, and the report's row gets its `issue_url`. If nothing appears, Edge Functions > feedback-to-issue > Logs says why (a 401 means the header and the secret differ).
+
+## Security Advisor (r26)
+
+Supabase > **Advisors** > **Security Advisor** checks the project. Two warnings came up on 2026-10-01:
+
+1. **Function Search Path Mutable** on `public.ping`. A function without a fixed search path could be steered by objects someone creates in another schema. Fix, in SQL Editor > New query, then Run:
+
+```sql
+alter function public.ping() set search_path = '';
+```
+
+   Then Advisors > Security Advisor > **Refresh**: the warning is gone. The keep-alive still works (`select public.ping();` returns `ok`). The report-limit function in Part 4 is created with a fixed search path already.
+
+2. **Leaked Password Protection Disabled.** Supabase's own check against breached passwords is only on its paid plans (Pro, $25 a month). On the free plan the warning stays. The app does the same check itself since r26: when a password is set, it asks Have I Been Pwned with the first 5 characters of the password's SHA-1 hash, compares the answers on the phone, and refuses a breached password. Also set the server's own minimum to match the app: Authentication > Sign In / Providers > **Email** > Minimum password length `8` > Save.
 
 ## Part 5: the preview build's table (added in r24, about 2 minutes)
 

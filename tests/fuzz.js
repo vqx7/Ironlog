@@ -4,6 +4,11 @@ const {open}=require('./h');
 const r=await page.evaluate(()=>{
   const L=window.__ironlog;let seed=7;const rnd=()=>{seed=(seed*16807)%2147483647;return seed/2147483647;};
   const ids=L.state.exercises.map(e=>e.id);const bad=[];
+  // A stray quote in a template (r26 had one in This week's bar) leaves the
+  // page readable but turns words into attribute names. Every attribute
+  // outside SVG must be a data-, aria- or known HTML one.
+  const STD=new Set('accept autocomplete checked class disabled enterkeyhint height hidden id inputmode max maxlength min step open placeholder role selected style tabindex title type value width for name href target rel src alt readonly multiple pattern autofocus capture download draggable lang dir spellcheck autocapitalize autocorrect rows cols label'.split(' '));
+  const attrs=(where)=>{for(const e of document.querySelectorAll('body *')){if(e.closest('svg'))continue;for(const a of e.attributes)if(!/^(data|aria)-[a-z0-9-]+$/.test(a.name)&&!STD.has(a.name)){bad.push('odd attribute "'+a.name+'" on '+e.tagName+' in '+where);return;}}};
   for(let round=0;round<25;round++){
     const ss=[];const n=5+Math.floor(rnd()*40);
     for(let i=0;i<n;i++){const d=new Date(2026,8,26-Math.floor(rnd()*200));const date=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
@@ -15,8 +20,9 @@ const r=await page.evaluate(()=>{
       for(const x of I.sessVol)if(!isFinite(x.vol)||x.vol<0)bad.push('vol '+x.vol);
       for(const wk in I.weekHard)if(!isFinite(I.weekHard[wk]))bad.push('wh');
       L.rankDays();L.coach();
-      for(const t of ['today','program','dash','history','settings']){L.ui.tab=t;L.ui.volMode=['planned','week','avg','trend','region','load'][round%6];L.render();document.querySelectorAll('details').forEach(d=>d.open=true);if(document.body.innerText.includes('Something broke'))bad.push('crash '+t+' round '+round);if(/NaN|undefined|Infinity/.test(document.getElementById('view').innerText))bad.push('bad text '+t+' round '+round+': '+(document.getElementById('view').innerText.match(/.{0,40}(NaN|undefined|Infinity).{0,40}/)||[''])[0]);}
-      L.ui.tab='today';L.state.draft=null;L.render();const b=document.querySelector('.hero [data-act="startSession"]');if(b){b.click();if(/NaN|undefined|Infinity/.test(document.getElementById('view').innerText))bad.push('logger text round '+round);L.rankExercises(L.state.draft);}
+      L.ui.wkView=round%2?'month':'week';
+      for(const t of ['today','program','dash','history','settings']){L.ui.tab=t;L.ui.volMode=['planned','week','avg','trend','region','load'][round%6];L.render();document.querySelectorAll('details').forEach(d=>d.open=true);if(document.body.innerText.includes('Something broke'))bad.push('crash '+t+' round '+round);attrs(t+' round '+round);if(/NaN|undefined|Infinity/.test(document.getElementById('view').innerText))bad.push('bad text '+t+' round '+round+': '+(document.getElementById('view').innerText.match(/.{0,40}(NaN|undefined|Infinity).{0,40}/)||[''])[0]);}
+      L.ui.tab='today';L.state.draft=null;L.render();const b=document.querySelector('.hero [data-act="startSession"]');if(b){b.click();attrs('logger round '+round);if(/NaN|undefined|Infinity/.test(document.getElementById('view').innerText))bad.push('logger text round '+round);L.rankExercises(L.state.draft);}
       L.state.draft=null;
     }catch(e){bad.push('throw '+round+' '+e.message);}
   }

@@ -1,15 +1,23 @@
-# Everything still open (as of r25, 2026-10-01)
+# Everything still open (as of r26 in preview, 2026-10-01)
 
 This is the tracking list. Items are built only when V says go. Owner items need V; the rest is build work. Nothing is done unless it says so. Numbers are kept stable; finished items move to Done at the bottom.
 
-## Live: r25 (published 2026-10-01)
-Merged at V's go-ahead on 2026-10-01 (Claude made the merge commit; see 84). What it changed is under Done > r25.
+## Live: r25 (published 2026-10-01). In preview: r26
+r26 is pull request #6, on https://vqx7.github.io/Ironlog/preview/ until V says go. What it changes is under "Built in r26, waiting for V's go" below.
 
-## New on 2026-10-01
-83. Decision for V: after Short on time, a trimmed exercise does not set the next target, the same as a lighter or deload day (a rule since r14), so its next "Last time" shows the last full session, which can be a week or two back even though you did the lift today. Options: keep it; or show the real last session in "Last" and the grey reps while the target still comes from the last full session. Nothing changes until V decides.
-84. Decision for V: four merge commits on `main` (pull requests #1 to #4, merged on GitHub's website) carry the personal Gmail address, which is public. OWNER.md D2 stops new ones. Removing the four needs a rewrite of `main`'s history and a force push: possible, but it changes every commit id after the first merge and GitHub may keep cached views. Claude recommends D2 now, and the rewrite only if V wants the address gone from the repository entirely. Until D2, Claude makes merge commits itself with its noreply address.
+## Built in r26, waiting for V's go (V's requests of 2026-10-01)
+83. Decided by V: a trimmed session is still the most recent session. "Last" now shows it, labelled (trimmed, lighter or deload), and the grey reps follow it (except after a deload, whose reps were cut on purpose). It still does not set the next target: the target comes from the last full session, and when that is an earlier one, a tip on the target names its date. Proven over 9 weeks in `tests/progress.js`; the rule is in CLAUDE.md.
+85. Supabase Security Advisor, 2 warnings (V's report): "Function Search Path Mutable" on `public.ping` is fixed by one line of SQL (OWNER.md D4); `feedback_limit` gets the same fix in SUPABASE.md before it is ever created. "Leaked Password Protection" is a Supabase Pro feature ($25 a month), so on the free plan the warning stays and the app checks new passwords against known breaches itself (first 5 characters of the hash only; never blocks when the check cannot be reached). Suite `tests/breach.js`.
+86. The pull down on the header opened the month from the bottom, which made no sense: the pull and the handle are gone and the header is back to its r24 height. The month is now a Week/Month switch inside This week on Today (remembered on the phone), plus History > Calendar and the Consistency squares as before.
+87. The grey or filled-in choice is easy to find: the first session after the update shows a short card at the top (Keep grey, Fill them in), which also converts the session in progress; Settings changes the same thing.
+88. Progressive overload checked end to end: nine weekly sessions on five kinds of lift, grey and filled-in, against an independent copy of the rules (`tests/progress.js`, 662 checks): one step up when every set hits the top of the range, same load otherwise, deload on a real lighter step, a step down after two sessions below the range, assisted lifts lose help, nothing reads NaN.
+89. A further copy pass (moderate, as agreed): Today's "logged for today" note, Pick for me's reasons, Short on time's question, the load card, the lighter-week line and the backup reminder.
 
-Open count: 30 (3 critical, 4 owner, 3 verification, 20 build or decision items). Owner steps, with the code, are in OWNER.md.
+## Next round (V's plan, 2026-10-01)
+90. V names a default view (which tab or section opens first, or which sections show by default); then a further pass on redundancy and wording. V will specify.
+91. Then domain and email (OWNER.md C1 to C4), another full run, and sharing with friends on Android and iPhone.
+
+Open count: 34 numbered items: 6 built in r26 and waiting for V's go (83, 85 to 89), 2 next round (90, 91), 3 critical (58, 61, 63), 3 verification (7, 8, 10), 2 owner only (6, 84), 18 later build or decision items. Owner steps, with the code, are in OWNER.md (D4 and A4 first).
 
 ## Critical, still open
 58. Part 2 needs V: SUPABASE.md, Part 4, steps 1 to 5 (the tables, a private `ironlog-feedback` repository, a GitHub token for it, the function and its webhook), then FEEDBACK.md, "What V does" steps 2 and 3 (protect `main`; choose a scheduled Claude task or Claude's GitHub Action to pick up tickets). Until step 1, Send feedback says it is not set up yet and keeps the text.
@@ -17,11 +25,12 @@ Open count: 30 (3 critical, 4 owner, 3 verification, 20 build or decision items)
 63. Check on the iPhone itself (r22 is live: the first-run pages on a fresh install, a PR set's toast and pulse, Undo in Settings after closing the app; after r23 merges: the week bar without the logo, an import from Notes or a spreadsheet file, an assisted pull-up session): the Add to Home Screen guide on iOS 26 Safari (Share is behind ⋯ in the compact bar; checked against MacRumors and a Glide bug report, not on a device), the app signing itself in after the confirmation link (Safari to the home-screen app and back), a past workout from the week bar, the light Today card, and a screenshot picked in Send feedback.
 
 ## Owner items (V)
-Every step V does by hand, with the exact code to paste, is in `OWNER.md` (A1 to D3). Kept in step with this list:
-- 78 = OWNER.md A2 (preview table, not yet confirmed). A1 and A3 are done.
-- 58 (Part 2 of it) = OWNER.md B1 to B7.
+Every step V does by hand, with the exact code to paste, is in `OWNER.md`. Kept in step with this list:
+- 85 = OWNER.md D4 (ping SQL, password length 8; the leaked-password warning stays on the free plan).
+- r26's go = OWNER.md A4 (try it on the preview).
+- 58 (Part 2 of it) = OWNER.md B1 to B7 (problem reports reaching V; B6 protects `main`).
 - 6 = OWNER.md C1 to C4 (domain and email sender); 23 is decided in C1.
-- 1 = OWNER.md D1 (old branches). 2 = OWNER.md D2 (email privacy on GitHub); 84 is its follow-up.
+- 84: four older merge commits carry V's Gmail address. V chose not to rewrite history (2026-10-01). Kept open as "not now"; the fix, if ever wanted, is a rewrite of `main` and a force push.
 - 7 and 63 = OWNER.md "Checks on your phone".
 
 ## Verification
@@ -58,6 +67,7 @@ Every step V does by hand, with the exact code to paste, is in `OWNER.md` (A1 to
 46. Native app wrapper (Capacitor), only if needed: rest timer alerts through a locked screen, Apple Health, a real App Store install. Costs $99 a year for Apple and needs a Mac.
 
 ## Done
+- Owner items confirmed by V on 2026-10-01: 78 (preview table, OWNER.md A2), 1 (old branches, D1), 2 (GitHub email private, D2), the Security Advisor run (its two findings are 85), the r25 phone checks (sign-in, password reset, history, the new icon).
 - r25 (approved by V and published 2026-10-01). V's requests, as asked:
   ## Asked for on 2026-09-30, second round (built in r25, see Done)
   79. Guardrails: nothing logged or typed goes on a single tap. − Set takes an empty row first and asks before a filled one; removing an exercise with logged or typed sets asks; cardio entries (History and in a session), weigh-ins and tape entries ask. Undo still follows each.

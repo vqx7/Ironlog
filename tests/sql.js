@@ -49,6 +49,27 @@ const V = '11111111-1111-1111-1111-111111111111', F = '22222222-2222-2222-2222-2
   await as(db, V);
   ok((await db.query(`select count(*)::int n from public.feedback`)).rows[0].n === 6, 'the owner (in feedback_readers) reads every report');
 }
+{ // r26: the Security Advisor fixes. A ping made the old way gets a fixed search path from the fix block, and still answers anon.
+  const db = new PGlite(); await db.exec(stub);
+  await db.exec(`create or replace function public.ping() returns text language sql stable as $$ select 'ok' $$; grant execute on function public.ping() to anon;`);
+  const cfg = async (fn) => (await db.query(`select coalesce(array_to_string(proconfig, ','), '') c from pg_proc where proname = '${fn}'`)).rows[0].c;
+  ok(!/search_path/.test(await cfg('ping')), 'before the fix: ping has no fixed search path (what the advisor flags)');
+  await run(db, pick("alter function public.ping() set search_path = '';"), 'the advisor fix for ping runs');
+  ok(/search_path=""/.test(await cfg('ping')), 'after the fix: ping has a fixed, empty search path', await cfg('ping'));
+  await as(db, null);
+  ok((await db.query(`select public.ping() as p`)).rows[0].p === 'ok', 'signed out (the keep-alive): ping still answers ok');
+  await db.exec('reset role');
+  // The current Part 1 ping is created fixed already.
+  await run(db, pick('create or replace function public.ping()'), 'the keep-alive block runs over an existing ping');
+  ok(/search_path=""/.test(await cfg('ping')), 'the keep-alive block makes ping with a fixed search path');
+  // The report-limit function: fixed search path, not callable by anyone, and the trigger still works.
+  await db.exec(pick('create table public.feedback (').replace('YOUR IRONLOG ACCOUNT EMAIL', 'v@example.com'));
+  ok(/search_path=""/.test(await cfg('feedback_limit')), 'the report-limit function has a fixed search path');
+  await as(db, V);
+  ok(/permission denied/i.test(await tryq(db, `select public.feedback_limit()`)), 'nobody can call the report-limit function directly');
+  let n = 0; for (let i = 0; i < 6; i++) if (await tryq(db, `insert into public.feedback(category,message) values ('bug','report number ${i} here')`) === 'ok') n++;
+  ok(n === 5, 'and the trigger still stops the sixth report (' + n + ' of 6 went in)');
+}
 { // The upgrade path from the pre-r25 table.
   const db = new PGlite(); await db.exec(stub);
   await db.exec(`create table public.feedback (id bigint generated always as identity primary key, created_at timestamptz not null default now(), user_id uuid default auth.uid() references auth.users(id) on delete set null, category text not null check (category in ('bug','idea','question')), message text not null check (char_length(message) between 1 and 4000), reply_to text, screenshot text, context jsonb not null default '{}'::jsonb, issue_url text);

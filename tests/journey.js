@@ -5,8 +5,8 @@
 // type and tick sets, Short on time, two kinds of swap, + Set and − Set,
 // move an exercise, reload mid-session, Finish, then the saved session in
 // History and the calendar, an edit of it, and the next session reading it.
-// Last, a session left open by the live build before r25 (baselines/r24.html)
-// carries on in this one.
+// Last, sessions left open by the live builds before r25 (baselines/r24.html)
+// and before r26 (baselines/r25.html), each carrying on in this one.
 const { open } = require('./h');
 const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log('FAIL', m, x !== undefined ? JSON.stringify(x) : ''); } else console.log('ok  ', m); };
 (async () => {
@@ -128,15 +128,15 @@ const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log
     ok(ed.n === n0 + 1 && ed.r === 9 && JSON.stringify(ed.w) === JSON.stringify(saved.ex[0].sets.map(x => x.w)), T + 'editing the saved session changes the rep and nothing else', ed);
     await closeModal();
 
-    // 13. The next session reads this one. By design (since r14), an exercise
-    // trimmed by Short on time does not set the next target, like a lighter or
-    // deload day, so it reads the last full session instead; every other
-    // exercise reads today's.
+    // 13. The next session reads this one (r26 rule). "Last" is always the
+    // most recent session, labelled when it was trimmed; the target of a
+    // trimmed exercise still comes from its last full session, and says so.
     const nx = await ev((sid) => { const L = window.__ironlog; const s = L.state.sessions.find(x => x.id === sid);
-      return s.ex.map(b => { const nb = L.newBlock(b.exId, { sets: 3, repMin: 6, repMax: 10, rir: 1, rest: 120, inc: 2.27 }, {}); return { id: b.exId, cut: !!b.cut, last: nb.last, today: /\(Sep 20\)/.test(nb.last) }; }); }, saved.id);
-    ok(nx.filter(x => x.cut).every(x => !x.today), T + 'a trimmed exercise does not set the next target (reads the last full session)', nx.filter(x => x.cut));
-    ok(nx.filter(x => !x.cut).every(x => x.today), T + 'every exercise not trimmed reads today\'s session as last time', nx.filter(x => !x.cut));
-    ok(nx.some(x => !x.cut), T + '(at least one exercise was not trimmed, so the check above means something)');
+      return s.ex.map(b => { const nb = L.newBlock(b.exId, { sets: 3, repMin: 6, repMax: 10, rir: 1, rest: 120, inc: 2.27 }, {}); return { id: b.exId, cut: !!b.cut, last: nb.last, basis: nb.basis || null, lastR: nb.lastR, saved: b.sets.filter(x => !x.warm && !x.drop).map(x => x.r) }; }); }, saved.id);
+    ok(nx.filter(x => x.cut).every(x => /^Last \(Sep 20, trimmed\)/.test(x.last) && x.basis && x.basis < '2026-09-20'), T + 'a trimmed exercise shows today as Last (labelled trimmed), and its target comes from an earlier full session', nx.filter(x => x.cut).map(x => [x.last, x.basis]));
+    ok(nx.filter(x => !x.cut).every(x => /^Last \(Sep 20\):/.test(x.last) && !x.basis), T + 'an exercise not trimmed shows today as Last, with the target from today', nx.filter(x => !x.cut).map(x => [x.last, x.basis]));
+    ok(nx.every(x => JSON.stringify(x.lastR) === JSON.stringify(x.saved)), T + 'grey reps next time are the reps logged today, set by set', nx.map(x => [x.lastR, x.saved]));
+    ok(nx.some(x => !x.cut) && nx.some(x => x.cut), T + '(both kinds were present, so the checks above mean something)');
 
     ok(!errors.length, T + 'no page errors (' + errors.join(' | ') + ')');
     await browser.close();
@@ -160,6 +160,26 @@ const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log
   const s2 = await ev2(() => { const L = window.__ironlog; return L.state.sessions[L.state.sessions.length - 1]; });
   ok(s2 && s2.date === '2026-09-20' && s2.ex[0].sets[0].w === 50 && s2.ex[0].sets[0].r === 8 && s2.ex.some(b => b.sets.some(x => x.r === 10)), 'r24 session: Finish saves the logged set and offers to keep the typed one', s2 && s2.ex.slice(0, 2));
   ok(!N.errors.length, 'r24 session: no page errors (' + N.errors.join(' | ') + ')');
+
+  // ---- A session left open by r25, the live build before r26, with grey loads
+  // (stored empty, the suggestion kept apart), carries on here: the same rows,
+  // the grey numbers still showing, and Finish writes each logged set's load.
+  const O5 = await open('baselines/r25.html', { browser, touch: true, clock: '2026-09-20T10:00:00' });
+  await O5.page.evaluate(() => { const L = window.__ironlog; L.state.settings.onboarded = true; L.makeDemo(); L.ui.tab = 'today'; L.ui.todayDay = 0; L.render(); });
+  await O5.page.click('.hero [data-act="startSession"]:not([data-light])'); await O5.page.waitForTimeout(150);
+  const old5 = await O5.page.evaluate(() => { const L = window.__ironlog; const d = L.state.draft; d.ex[0].sets[0].r = 8; document.querySelector('.sg [data-act="sDone"][data-b="0"][data-s="0"]').click(); d.ex[1].sets[0].r = 10; L.ACT.shortOpen(); L.ui.modal.mins = 30; L.ACT.shortApply(); L.saveNow(); return JSON.parse(localStorage.getItem('ironlog.v1')); }).catch(e => ({ err: String(e) }));
+  await O5.ctx.close();
+  ok(old5 && old5.draft && old5.draft.ex[1].sets[0].w == null && old5.draft.ex[1].sw != null, 'r25 session set up with a grey load stored empty', old5 && (old5.err || old5.draft && old5.draft.ex[1].sets[0]));
+  const N5 = await open('index.html', { browser, touch: true, state: old5, clock: '2026-09-20T10:00:00' });
+  const ev5 = (f, a) => N5.page.evaluate(f, a);
+  const nd5 = await ev5(() => JSON.parse(JSON.stringify(window.__ironlog.state.draft)));
+  ok(nd5 && JSON.stringify(nd5.ex.map(b => [b.sw, b.sets.map(x => [x.w, x.r, !!x.done])])) === JSON.stringify(old5.draft.ex.map(b => [b.sw, b.sets.map(x => [x.w, x.r, !!x.done])])), 'r25 session in progress: every set, load, tick and suggestion is the same after the update');
+  ok(await ev5(() => { const f = document.querySelector('.sg input[data-f="w"][data-b="1"][data-s="0"]') || document.querySelector('.sg input[data-f="w"][data-b="1"]'); return !!f && f.value === '' && f.placeholder !== ''; }), 'r25 session: an empty load still shows its grey number');
+  await ev5(() => window.__ironlog.ACT.finish()); await N5.page.waitForTimeout(150);
+  for (let k = 0; k < 4; k++) { if (!(await ev5(() => { const m = window.__ironlog.ui.modal; return m && m.kind === 'confirm'; }))) break; await ev5(() => document.querySelector('#modal [data-act="mOk"]').click()); await N5.page.waitForTimeout(150); }
+  const s5 = await ev5(() => { const L = window.__ironlog; return L.state.sessions[L.state.sessions.length - 1]; });
+  ok(s5 && s5.date === '2026-09-20' && s5.ex.every(b => b.sets.every(x => x.w != null)) && s5.ex[0].sets[0].r === 8 && s5.ex[0].sets[0].w === old5.draft.ex[0].sets[0].w, 'r25 session: Finish saves with every load written, none empty', s5 && s5.ex.slice(0, 2));
+  ok(!N5.errors.length, 'r25 session: no page errors (' + N5.errors.join(' | ') + ')');
   await browser.close();
 
   console.log(fails.length ? `${fails.length} FAILED` : 'ALL PASS');
