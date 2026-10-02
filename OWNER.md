@@ -2,43 +2,25 @@
 
 Everything that needs you, in one place, with the exact code to paste. Claude keeps this file current: an item moves to Done only when you confirm it, or when Claude can check it from here (and says how it checked). Build work and decisions are tracked in `PENDING.md`; this file is only what you do by hand.
 
-Last updated: r25 published, 2026-10-01.
+Last updated: r26 in progress, 2026-10-01.
 
 ## Now, in this order
 
-### A2. The preview's sync table in Supabase (r24, 2 minutes)
-Status: not confirmed. Claude cannot reach Supabase from the build machine to check. If you ran it, tell Claude and this moves to Done. Without it the preview still works, but its log stays on the phone.
-Supabase > your `ironlog` project > **SQL Editor** > **New query**. Paste all of this, tap **Run**:
+### D4. Supabase Security Advisor fixes (r26, 2 minutes)
+Status: to do.
+1. **ping:** Supabase > **SQL Editor** > **New query**, paste, **Run**:
 
 ```sql
--- The preview build's copy of public.docs: same shape, same rule.
-create table public.docs_preview (
-  user_id uuid not null default auth.uid() references auth.users(id) on delete cascade,
-  path text not null,
-  data jsonb not null,
-  updated_at timestamptz not null default now(),
-  primary key (user_id, path)
-);
-alter table public.docs_preview enable row level security;
-create policy "own rows only" on public.docs_preview
-  for all to authenticated
-  using ((select auth.uid()) = user_id)
-  with check ((select auth.uid()) = user_id);
-grant select, insert, update, delete on public.docs_preview to authenticated;
-revoke all on public.docs_preview from anon;
+alter function public.ping() set search_path = '';
 ```
 
-Check: it says "Success. No rows returned". Then sign in on the preview, log a set, and Supabase > **Table Editor** > `docs_preview` shows your rows.
+   Then **Advisors** > **Security Advisor** > **Refresh**: the "Function Search Path Mutable" warning on `public.ping` is gone.
+2. **Password length:** **Authentication** > **Sign In / Providers** > **Email** > Minimum password length `8` > **Save**. This matches what the app already asks for.
+3. **Leaked Password Protection:** nothing to do on the free plan; it needs Supabase Pro ($25 a month), so this one warning stays. The app checks new passwords against known breaches itself since r26.
 
-### A3. Update your phone to r25 (live since 2026-10-01, 2 minutes)
-Status: to do.
-1. Open Ironlog from your home screen. Within a few seconds "New version ready" shows; tap **Reload**. If it does not show, close the app fully (swipe it away) and open it again. Settings then shows build 2026.10.01-r25 under Diagnostics.
-2. The new icon: Today shows a one-time "New app icon" note. iPhone never refreshes an icon it has already added, so:
-   - First make sure Settings > Your data says **Synced**. Removing the app removes the log stored on the phone, and that check is what keeps it safe in your account.
-   - Press and hold Ironlog on the home screen > **Remove App**, then confirm (iPhone may word it Delete Bookmark or Delete App; any of them).
-   - Safari > https://vqx7.github.io/Ironlog/ > Share > **Add to Home Screen**.
-   - Open the new icon and sign in. Your log comes back from your account.
-3. Your settings carry over, including Auto-mark. Loads now show grey until you type or tick; Settings > Rest timer and logging > "Fill in suggested loads" turns that off.
+### A4. Try r26 on the preview, then say go
+Status: to do once Claude says the preview is up.
+Open the Preview icon (or https://vqx7.github.io/Ironlog/preview/ in Safari), wait for "New version ready" and tap Reload. Settings shows build r26. Try: This week > Month on Today; a trimmed exercise's "Last" next time; the grey or filled-in choice at the top of a session.
 
 ## When you want problem reports to reach you (item 58, about 20 minutes)
 
@@ -66,7 +48,7 @@ create policy "signed-in people can add" on public.feedback
   for insert to authenticated
   with check (user_id = (select auth.uid()));
 -- At most 5 reports a day per account, whatever the app does.
-create function public.feedback_limit() returns trigger language plpgsql security definer set search_path = public as $$
+create function public.feedback_limit() returns trigger language plpgsql security definer set search_path = '' as $$
 begin
   if (select count(*) from public.feedback where user_id = new.user_id and created_at > now() - interval '24 hours') >= 5 then
     raise exception 'feedback_rate_limited' using errcode = 'P0001';
@@ -74,6 +56,8 @@ begin
   return new;
 end $$;
 create trigger feedback_limit before insert on public.feedback for each row execute function public.feedback_limit();
+-- Only the trigger runs it; nobody can call it through the API.
+revoke all on function public.feedback_limit() from public, anon, authenticated;
 -- Who may read reports: you. The app shows an Inbox button to these accounts only.
 create table public.feedback_readers (user_id uuid primary key references auth.users(id) on delete cascade);
 alter table public.feedback_readers enable row level security;
@@ -100,7 +84,7 @@ alter table public.feedback add constraint feedback_message_check check (char_le
 drop policy if exists "anyone can add" on public.feedback;
 create policy "signed-in people can add" on public.feedback for insert to authenticated with check (user_id = (select auth.uid()));
 revoke insert on public.feedback from anon;
-create or replace function public.feedback_limit() returns trigger language plpgsql security definer set search_path = public as $$
+create or replace function public.feedback_limit() returns trigger language plpgsql security definer set search_path = '' as $$
 begin
   if (select count(*) from public.feedback where user_id = new.user_id and created_at > now() - interval '24 hours') >= 5 then
     raise exception 'feedback_rate_limited' using errcode = 'P0001';
@@ -108,6 +92,8 @@ begin
   return new;
 end $$;
 create trigger feedback_limit before insert on public.feedback for each row execute function public.feedback_limit();
+-- Only the trigger runs it; nobody can call it through the API.
+revoke all on function public.feedback_limit() from public, anon, authenticated;
 ```
 
 ### B2. A private repository for the tickets
@@ -225,7 +211,7 @@ Supabase > **Integrations** > **Database Webhooks** (enable it if asked) > **Cre
 Check: Report a problem from the app. Within seconds an issue labelled `feedback` appears in `ironlog-feedback`. If not: Edge Functions > `feedback-to-issue` > **Logs** says why (401 means the header and the secret differ).
 
 ### B6. Protect main, so a pull request is the only way into the live app
-Status: to do, after D2. Once main is protected, merges happen only on GitHub's website, which stamps your account email; D2 makes that your private noreply address.
+Status: to do whenever you like (D2 is done, so merges on the website use your private address). Once it is on, Claude opens pull requests and you merge them on the website.
 GitHub > vqx7/Ironlog > **Settings** > **Rules** > **Rulesets** > **New ruleset** > **New branch ruleset**.
 - Name `main`. Enforcement status: **Active**.
 - Target branches: **Add target** > **Include default branch**.
@@ -264,18 +250,6 @@ Supabase > **Authentication** > **Emails** > **SMTP Settings** > **Enable custom
 
 ## Security and privacy
 
-### D1. Delete old branches on GitHub (item 1)
-Status: to do (you parked it on 2026-09-27).
-GitHub > vqx7/Ironlog > **Branches** (or https://github.com/vqx7/Ironlog/branches) > the trash icon next to each of: `r14-review`, `r15-design`, `r17-accounts`, `r20-design`, `r21`, `r22`, `r23`, `r24`, `r25`. Keep `main` and `gh-pages`. Keep `main` and `gh-pages`. `r14-review` and `r15-design` hold an old commit with your personal Gmail address. Deleting branches is permanent but loses nothing you use: everything in them is in `main` or was replaced.
-
-### D2. Keep your email out of commits (item 2), do this first
-Status: to do. Most important item in this section.
-Why now: every pull request you merge on GitHub's website stamps your account email on the merge commit, and the repository is public. Pull requests #1 to #4 did: `vaqarsyed.4r@gmail.com` is on those four merge commits on `main`. (Claude merged r25 itself, with its noreply address, so r25 added none.)
-GitHub > your photo > **Settings** > **Emails**:
-1. Tick **Keep my email addresses private**. GitHub then uses an address like `12345678+vqx7@users.noreply.github.com` for anything you do on the website.
-2. Tick **Block command line pushes that expose my email**.
-This stops new ones. It does not change the four old commits; removing those is decision 84 in PENDING.md (a history rewrite; Claude does it if you say so).
-
 ### D3. Who can see what (no action, for reference)
 Your log: only your account, and you as the Supabase project owner (Table Editor shows every row, friends' included). The app says so in Settings > Your data. Reports: only accounts listed in `feedback_readers`. Optional end-to-end encryption is item 15 in PENDING.md.
 
@@ -294,3 +268,8 @@ Status: to do whenever you are at the gym; tell Claude what you see.
 - Claude artifact retired; log moved into the installed app (2026-09-27).
 - Merged r21, r22, r23 and r24 (r24 on 2026-09-30). r25 merged by Claude at your go-ahead (2026-10-01).
 - A1: Safari's copy updated; you opened r25 on the preview (2026-09-30).
+- A2: the preview's sync table (`docs_preview`), run by you (confirmed 2026-10-01).
+- A3: phone updated to r25, new icon in place, sign-in, password reset and history checked by you (2026-10-01).
+- D1: old branches deleted on GitHub; only `main` and `gh-pages` remain (checked by Claude, 2026-10-01).
+- D2: GitHub email kept private, command line pushes that expose it blocked (you, 2026-10-01). The four older merge commits still carry the Gmail address; you chose to leave them (PENDING 84, kept open as "not now").
+- Security Advisor run by you (2026-10-01): two warnings, handled in D4.

@@ -175,36 +175,71 @@ const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log
   await cev((d) => document.querySelector(`.heat button[data-date="${d}"]`).click(), sq.d);
   await C.page.waitForTimeout(120);
   ok(await cev((d) => { const L = window.__ironlog; const s = L.state.sessions.find(x => x.id === L.ui.histOpen); return L.ui.tab === 'history' && s && s.date === d; }, sq.d), 'a lifted square in Consistency opens that session', sq);
-  // The week bar: a clear pull down opens the calendar, and the day under the finger does not fire.
-  await cev(() => { const L = window.__ironlog; L.ui.tab = 'today'; L.render(); window.scrollTo(0, 0); });
-  const pull = (dy, hold) => cev(async ([dy, hold]) => { const btn = document.querySelectorAll('#wkbar .w')[1]; const r = btn.getBoundingClientRect(); const x = r.x + r.width / 2, y = r.y + r.height / 2;
+  // r26: no pull-down and no handle; the week bar is as it was, and This week on Today has Week and Month.
+  await cev(() => { const L = window.__ironlog; L.ui.tab = 'today'; L.state.settings.homeFolded = []; L.render(); window.scrollTo(0, 0); });
+  ok(await cev(() => !document.querySelector('.wkpull') && getComputedStyle(document.querySelector('header.top')).touchAction !== 'none'), 'the week bar has no handle, and dragging on it scrolls as before');
+  // A drag down on the week bar does nothing special: the day under the finger opens as a tap would, and no calendar appears from it.
+  const drag = await cev(async () => { const btn = document.querySelectorAll('#wkbar .w')[1]; const r = btn.getBoundingClientRect(); const x = r.x + r.width / 2, y = r.y + r.height / 2;
     const o = (yy) => ({ bubbles: true, cancelable: true, pointerType: 'touch', clientX: x, clientY: yy, pointerId: 11, isPrimary: true, button: 0 });
-    btn.dispatchEvent(new PointerEvent('pointerdown', o(y))); if (hold) await new Promise(r => setTimeout(r, hold));
-    for (let k = 1; k <= 5; k++) { document.dispatchEvent(new PointerEvent('pointermove', o(y + dy * k / 5))); await new Promise(r => setTimeout(r, 16)); }
-    btn.dispatchEvent(new PointerEvent('pointerup', o(y + dy))); btn.click(); await new Promise(r => setTimeout(r, 120));
-    const L = window.__ironlog; return { modal: L.ui.modal && L.ui.modal.kind, tab: L.ui.tab }; }, [dy, hold || 0]);
-  const p1 = await pull(60);
-  ok(p1.modal === 'cal' && p1.tab === 'today', 'pulling the week bar down opens the calendar; the day under the finger is not opened', p1);
-  await cev(() => window.__ironlog.ACT.mClose());
-  const p2 = await pull(4);
-  ok(p2.modal !== 'cal' && (p2.tab === 'history' || p2.modal === 'past' || p2.tab === 'today'), 'a tap that barely moves still opens the day', p2);
+    btn.dispatchEvent(new PointerEvent('pointerdown', o(y))); for (let k = 1; k <= 5; k++) { document.dispatchEvent(new PointerEvent('pointermove', o(y + 12 * k))); await new Promise(r => setTimeout(r, 16)); }
+    btn.dispatchEvent(new PointerEvent('pointerup', o(y + 60))); await new Promise(r => setTimeout(r, 120)); const L = window.__ironlog; return { modal: L.ui.modal && L.ui.modal.kind }; });
+  ok(drag.modal !== 'cal', 'a pull on the week bar no longer opens a calendar', drag);
   await cev(() => { const L = window.__ironlog; L.ACT.mClose(); L.ui.tab = 'today'; L.render(); });
-  const p3 = await pull(20);
-  ok(p3.modal !== 'cal', 'a short pull (under 36 px) does not open the calendar', p3);
-  await cev(() => { const L = window.__ironlog; L.ACT.mClose(); L.ui.tab = 'today'; L.render(); });
-  // The handle opens it with a tap; the header is laid out for it at 320 px too.
-  await C.page.click('header .wkpull'); await C.page.waitForTimeout(100);
-  ok(await cev(() => window.__ironlog.ui.modal && window.__ironlog.ui.modal.kind === 'cal'), 'a tap on the handle under the week bar opens the calendar');
-  await cev(() => window.__ironlog.ACT.mClose());
+  const wk = await cev(() => { const v = document.querySelector('.wkview'); return v ? [...v.querySelectorAll('button')].map(b => b.textContent + (b.classList.contains('on') ? '*' : '')) : null; });
+  ok(wk && wk.join() === 'Week*,Month', 'This week on Today offers Week and Month, Week first', wk);
+  await C.page.click('.wkview [data-v="month"]'); await C.page.waitForTimeout(100);
+  const mo = await cev(() => { const c = document.querySelector('.cal-inline'); return c ? { title: c.querySelector('.cal-h h4').textContent, days: c.querySelectorAll('button.cd').length, on: c.querySelectorAll('.cd.on').length, modal: !!window.__ironlog.ui.modal } : null; });
+  ok(mo && mo.title === 'September 2026' && mo.days === 30 && mo.on > 0 && !mo.modal, 'Month shows the month right there on Today, lifted days marked, no sheet', mo);
+  await C.page.click('.cal-inline [data-act="calMonth"][data-v="-1"]'); await C.page.waitForTimeout(80);
+  ok(await cev(() => document.querySelector('.cal-inline .cal-h h4').textContent === 'August 2026' && !!document.querySelector('.cal-inline [data-v="now"]')), 'it steps back a month, with a way back to this month');
+  const ad = await cev(() => { const b = document.querySelector('.cal-inline button.cd.on'); return b && b.dataset.date; });
+  await C.page.click(`.cal-inline [data-act="calDay"][data-date="${ad}"]`); await C.page.waitForTimeout(150);
+  ok(await cev((d) => { const L = window.__ironlog; const s = L.state.sessions.find(x => x.id === L.ui.histOpen); return L.ui.tab === 'history' && s && s.date === d; }, ad), 'a lifted day in the month opens that session in History', ad);
+  await cev(() => { const L = window.__ironlog; L.ui.tab = 'today'; L.render(); });
+  ok(await cev(() => !!document.querySelector('.cal-inline')), 'Month stays chosen when you come back to Today');
+  await C.page.reload(); await C.page.waitForFunction(() => window.__libs && window.__libs.chart); await C.page.waitForTimeout(150);
+  ok(await cev(() => { const L = window.__ironlog; L.ui.tab = 'today'; L.render(); return !!document.querySelector('.cal-inline'); }), 'and after the app is reopened');
+  await C.page.click('.wkview [data-v="week"]'); await C.page.waitForTimeout(80);
+  ok(await cev(() => !document.querySelector('.cal-inline') && !!document.querySelector('#wkSets')), 'Week brings back the week as it was');
   for (const w of [320, 375, 390]) {
     await C.page.setViewportSize({ width: w, height: 700 });
-    const hd = await cev(() => { const ds = [...document.querySelectorAll('#wkbar .w')].map(e => e.getBoundingClientRect()); const h = document.querySelector('.wkpull').getBoundingClientRect(); return { minW: Math.min(...ds.map(r => r.width)), bottom: Math.max(...ds.map(r => r.bottom)), hTop: h.top, sw: document.documentElement.scrollWidth }; });
-    ok((w < 375 || hd.minW >= 44) && hd.hTop >= hd.bottom - 0.5 && hd.sw <= w, `${w} px: the handle sits under the days, days keep their width, no sideways scroll`, hd);
+    await cev(() => { const L = window.__ironlog; L.ui.wkView = 'month'; L.render(); });
+    const hd = await cev(() => { const ds = [...document.querySelectorAll('#wkbar .w')].map(e => e.getBoundingClientRect()); const top = document.querySelector('header.top').getBoundingClientRect(); const cds = [...document.querySelectorAll('.cal-inline button.cd')].map(b => b.getBoundingClientRect().height); return { minW: Math.min(...ds.map(r => r.width)), head: Math.round(top.height), cd: Math.min(...cds), sw: document.documentElement.scrollWidth }; });
+    ok((w < 375 || hd.minW >= 44) && hd.head <= 53 && hd.cd >= 44 && hd.sw <= w, `${w} px: header back to its old height, days 44 px wide, month days 44 px tall, no sideways scroll`, hd);
   }
+  await cev(() => { const L = window.__ironlog; L.ui.wkView = 'week'; L.render(); });
   await cev(() => { window.__ironlog.ACT.calOpen(); }); await C.page.waitForTimeout(80);
   ok(await cev(() => document.documentElement.scrollWidth <= 390 && [...document.querySelectorAll('#modal button.cd')].every(b => b.getBoundingClientRect().height >= 44)), 'calendar days are 44 px tall and fit at 320 px');
   ok(!C.errors.length, 'no page errors in the calendar (' + C.errors.join(' | ') + ')');
   await C.ctx.close();
+
+  // ---- 13b. Grey or filled loads, asked once in a session (r26).
+  {
+    const Q = await open('index.html', { browser, touch: true, w: 390, h: 844, clock: '2026-09-20T10:00:00' });
+    const qev = (f, a) => Q.page.evaluate(f, a);
+    await qev(() => { const L = window.__ironlog; L.state.settings.onboarded = true; L.makeDemo(); L.ui.tab = 'today'; L.ui.todayDay = 0; L.render(); localStorage.setItem('ironlog.v1.tipWake', '1'); });
+    await Q.page.click('.hero [data-act="startSession"]:not([data-light])'); await Q.page.waitForTimeout(150);
+    const c1 = await qev(() => { const c = document.getElementById('loadAsk'); return c ? c.innerText : null; });
+    ok(c1 && /Suggested loads show in grey/.test(c1) && /Keep grey/.test(c1) && /Fill them in/.test(c1), 'the first session asks once: grey or filled in', c1);
+    // A load typed on set 1 shows in grey below; choosing Fill puts that load in the rows, and the suggestion elsewhere; typed rows stay.
+    await Q.page.fill('.sg input[data-f="w"][data-b="0"][data-s="0"]', '77'); await Q.page.dispatchEvent('.sg input[data-f="w"][data-b="0"][data-s="0"]', 'input'); await Q.page.dispatchEvent('.sg input[data-f="w"][data-b="0"][data-s="0"]', 'change');
+    await Q.page.click('#loadAsk [data-v="fill"]'); await Q.page.waitForTimeout(120);
+    const f1 = await qev(() => { const L = window.__ironlog; const d = L.state.draft; return { fill: L.state.settings.loadFill, b0: d.ex[0].sets.map(x => L.fmtW(x.w)), b1: d.ex[1].sets.map(x => x.w), sw1: d.ex[1].sw, card: !!document.getElementById('loadAsk') }; });
+    ok(f1.fill === 'fill' && f1.b0.every(v => v === '77') && f1.b1.every(w => w === f1.sw1) && !f1.card, 'Fill them in: rows take the load shown in grey, the card goes', f1);
+    // Correcting set 1 now moves the rows it filled.
+    await Q.page.fill('.sg input[data-f="w"][data-b="0"][data-s="0"]', '80'); await Q.page.dispatchEvent('.sg input[data-f="w"][data-b="0"][data-s="0"]', 'input'); await Q.page.dispatchEvent('.sg input[data-f="w"][data-b="0"][data-s="0"]', 'change'); await Q.page.waitForTimeout(80);
+    ok(await qev(() => { const L = window.__ironlog; return L.state.draft.ex[0].sets.every(x => L.fmtW(x.w) === '80'); }), 'a correction on set 1 moves the rows filled from it');
+    // Back to grey from Settings: rows still on a suggestion empty again, the typed set 1 stays.
+    await qev(() => { const L = window.__ironlog; L.ui.tab = 'settings'; L.render(); document.querySelectorAll('#view details').forEach(d => d.open = true); document.querySelector('input[data-bind="loadFill"]').click(); });
+    await Q.page.waitForTimeout(120);
+    const g1 = await qev(() => { const L = window.__ironlog; const d = L.state.draft; return { fill: L.state.settings.loadFill, b0: d.ex[0].sets.map(x => x.w == null ? null : L.fmtW(x.w)), b1: d.ex[1].sets.map(x => x.w) }; });
+    ok(g1.fill === undefined && g1.b0[0] === '80' && g1.b0.slice(1).every(v => v === null) && g1.b1.every(w => w === null), 'switching back to grey in Settings empties the suggested rows and keeps the typed one', g1);
+    await qev(() => { const L = window.__ironlog; L.state.draft = null; L.ui.tab = 'today'; L.render(); });
+    await Q.page.click('.hero [data-act="startSession"]:not([data-light])'); await Q.page.waitForTimeout(150);
+    ok(await qev(() => !document.getElementById('loadAsk')), 'asked once: the next session does not ask again');
+    ok(!Q.errors.length, 'no page errors in the load choice (' + Q.errors.join(' | ') + ')');
+    await Q.ctx.close();
+  }
 
   // ---- 14. Guardrails and continuity (V's report, 2026-09-30).
   const G = await open('index.html', { browser, touch: true, w: 390, h: 844, clock: '2026-09-20T10:00:00' });

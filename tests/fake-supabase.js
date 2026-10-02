@@ -197,4 +197,10 @@ function start(root) {
       close: () => new Promise(q => server.close(q)) });
   }));
 }
-module.exports = { start };
+// Since r26 sign-up and a new password are checked against Have I Been
+// Pwned. Suites that sign up answer it here with "not found", so they never
+// depend on the real service or on the network the tests run on.
+function quietHibp(ctx) {
+  return ctx.route('https://api.pwnedpasswords.com/**', r => r.fulfill({ status: 200, contentType: 'text/plain', headers: { 'Access-Control-Allow-Origin': '*' }, body: 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA:0' }));
+}
+module.exports = { start, quietHibp };
