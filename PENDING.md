@@ -7,9 +7,10 @@ V said go on 2026-10-02 after trying it. Claude made the merge commit of pull re
 
 ## Next
 91. Domain and email: the app is on https://ironapp.org (GitHub's domain file is on gh-pages; Claude fetched the site over https). V reports the remaining domain steps done and the app reinstalled from the new address (2026-10-02). Left before friends: one Forgot password test that the email arrives from Ironlog (OWNER.md C4), then sharing with friends on Android and iPhone.
+99. Wording and redundancy pass, screen by screen (the second half of V's item 90, left open when the default view was settled): cut fragments, repeated lines and filler on every tab and sheet so screens show the number and the action. V gives his own notes first.
 98. From the audit, low: plate lists are fixed (no 1.25 lb or 0.5 kg change plates) and there is one bar weight for every barbell lift (no trap or EZ bar). Decide if wanted.
 
-Open count: 27 numbered items: 2 next (91, 98), 3 critical (58, 61, 63), 3 verification (7, 8, 10), 2 owner only (6, 84), 17 later build or decision items. Owner steps, with the code, are in OWNER.md.
+Open count: 28 numbered items: 3 next (91, 98, 99), 3 critical (58, 61, 63), 3 verification (7, 8, 10), 2 owner only (6, 84), 17 later build or decision items. Owner steps, with the code, are in OWNER.md.
 
 ## Critical, still open
 58. Part 2 needs V: SUPABASE.md, Part 4, steps 1 to 5 (the tables, a private `ironlog-feedback` repository, a GitHub token for it, the function and its webhook), then FEEDBACK.md, "What V does" steps 2 and 3 (protect `main`; choose a scheduled Claude task or Claude's GitHub Action to pick up tickets). Until step 1, Send feedback says it is not set up yet and keeps the text.
