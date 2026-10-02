@@ -44,6 +44,9 @@ jobs:
       # publish while the other is running, so each push starts from the
       # latest branch and tries again if it lost the race. The live publish
       # leaves preview/ alone, and the preview publish touches only preview/.
+      # CNAME is the file GitHub writes to gh-pages when a custom domain is set
+      # in Settings > Pages; deleting it would take the domain off the site.
+      # .nojekyll is GitHub's too, if it is ever added.
       - name: Publish dist/ to gh-pages (live)
         if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
         run: |
@@ -53,7 +56,7 @@ jobs:
             git fetch --depth 1 origin gh-pages
             rm -rf ../pages; git worktree prune
             git worktree add --detach ../pages origin/gh-pages
-            rsync -a --delete --exclude .git --exclude preview/ dist/ ../pages/
+            rsync -a --delete --exclude .git --exclude preview/ --exclude CNAME --exclude .nojekyll dist/ ../pages/
             cd ../pages
             git add -A
             if git diff --cached --quiet; then echo "Nothing changed"; exit 0; fi
