@@ -161,25 +161,26 @@ const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log
   ok(s2 && s2.date === '2026-09-20' && s2.ex[0].sets[0].w === 50 && s2.ex[0].sets[0].r === 8 && s2.ex.some(b => b.sets.some(x => x.r === 10)), 'r24 session: Finish saves the logged set and offers to keep the typed one', s2 && s2.ex.slice(0, 2));
   ok(!N.errors.length, 'r24 session: no page errors (' + N.errors.join(' | ') + ')');
 
-  // ---- A session left open by r25, the live build before r26, with grey loads
-  // (stored empty, the suggestion kept apart), carries on here: the same rows,
-  // the grey numbers still showing, and Finish writes each logged set's load.
-  const O5 = await open('baselines/r25.html', { browser, touch: true, clock: '2026-09-20T10:00:00' });
-  await O5.page.evaluate(() => { const L = window.__ironlog; L.state.settings.onboarded = true; L.makeDemo(); L.ui.tab = 'today'; L.ui.todayDay = 0; L.render(); });
-  await O5.page.click('.hero [data-act="startSession"]:not([data-light])'); await O5.page.waitForTimeout(150);
-  const old5 = await O5.page.evaluate(() => { const L = window.__ironlog; const d = L.state.draft; d.ex[0].sets[0].r = 8; document.querySelector('.sg [data-act="sDone"][data-b="0"][data-s="0"]').click(); d.ex[1].sets[0].r = 10; L.ACT.shortOpen(); L.ui.modal.mins = 30; L.ACT.shortApply(); L.saveNow(); return JSON.parse(localStorage.getItem('ironlog.v1')); }).catch(e => ({ err: String(e) }));
-  await O5.ctx.close();
-  ok(old5 && old5.draft && old5.draft.ex[1].sets[0].w == null && old5.draft.ex[1].sw != null, 'r25 session set up with a grey load stored empty', old5 && (old5.err || old5.draft && old5.draft.ex[1].sets[0]));
-  const N5 = await open('index.html', { browser, touch: true, state: old5, clock: '2026-09-20T10:00:00' });
-  const ev5 = (f, a) => N5.page.evaluate(f, a);
-  const nd5 = await ev5(() => JSON.parse(JSON.stringify(window.__ironlog.state.draft)));
-  ok(nd5 && JSON.stringify(nd5.ex.map(b => [b.sw, b.sets.map(x => [x.w, x.r, !!x.done])])) === JSON.stringify(old5.draft.ex.map(b => [b.sw, b.sets.map(x => [x.w, x.r, !!x.done])])), 'r25 session in progress: every set, load, tick and suggestion is the same after the update');
-  ok(await ev5(() => { const f = document.querySelector('.sg input[data-f="w"][data-b="1"][data-s="0"]') || document.querySelector('.sg input[data-f="w"][data-b="1"]'); return !!f && f.value === '' && f.placeholder !== ''; }), 'r25 session: an empty load still shows its grey number');
-  await ev5(() => window.__ironlog.ACT.finish()); await N5.page.waitForTimeout(150);
-  for (let k = 0; k < 4; k++) { if (!(await ev5(() => { const m = window.__ironlog.ui.modal; return m && m.kind === 'confirm'; }))) break; await ev5(() => document.querySelector('#modal [data-act="mOk"]').click()); await N5.page.waitForTimeout(150); }
-  const s5 = await ev5(() => { const L = window.__ironlog; return L.state.sessions[L.state.sessions.length - 1]; });
-  ok(s5 && s5.date === '2026-09-20' && s5.ex.every(b => b.sets.every(x => x.w != null)) && s5.ex[0].sets[0].r === 8 && s5.ex[0].sets[0].w === old5.draft.ex[0].sets[0].w, 'r25 session: Finish saves with every load written, none empty', s5 && s5.ex.slice(0, 2));
-  ok(!N5.errors.length, 'r25 session: no page errors (' + N5.errors.join(' | ') + ')');
+  // ---- Sessions left open by r25 and r26 (grey loads; r26 adds the target's
+  // source date) carry on here the same way.
+  for (const BV of ['r25', 'r26']) {
+    const O5 = await open(`baselines/${BV}.html`, { browser, touch: true, clock: '2026-09-20T10:00:00' });
+    await O5.page.evaluate(() => { const L = window.__ironlog; L.state.settings.onboarded = true; L.makeDemo(); L.ui.tab = 'today'; L.ui.todayDay = 0; L.render(); });
+    await O5.page.click('.hero [data-act="startSession"]:not([data-light])'); await O5.page.waitForTimeout(150);
+    const old5 = await O5.page.evaluate(() => { const L = window.__ironlog; const d = L.state.draft; d.ex[0].sets[0].r = 8; document.querySelector('.sg [data-act="sDone"][data-b="0"][data-s="0"]').click(); d.ex[1].sets[0].r = 10; L.ACT.shortOpen(); L.ui.modal.mins = 30; L.ACT.shortApply(); L.saveNow(); return JSON.parse(localStorage.getItem('ironlog.v1')); }).catch(e => ({ err: String(e) }));
+    await O5.ctx.close();
+    ok(old5 && old5.draft && old5.draft.ex[1].sets[0].w == null && old5.draft.ex[1].sw != null, BV + ' session set up with a grey load stored empty', old5 && (old5.err || old5.draft && old5.draft.ex[1].sets[0]));
+    const N5 = await open('index.html', { browser, touch: true, state: old5, clock: '2026-09-20T10:00:00' });
+    const ev5 = (f, a) => N5.page.evaluate(f, a);
+    const nd5 = await ev5(() => JSON.parse(JSON.stringify(window.__ironlog.state.draft)));
+    ok(nd5 && JSON.stringify(nd5.ex.map(b => [b.sw, b.sets.map(x => [x.w, x.r, !!x.done])])) === JSON.stringify(old5.draft.ex.map(b => [b.sw, b.sets.map(x => [x.w, x.r, !!x.done])])), BV + ' session in progress: every set, load, tick and suggestion is the same after the update');
+    ok(await ev5(() => { const f = document.querySelector('.sg input[data-f="w"][data-b="1"][data-s="0"]') || document.querySelector('.sg input[data-f="w"][data-b="1"]'); return !!f && f.value === '' && f.placeholder !== ''; }), BV + ' session: an empty load still shows its grey number');
+    await ev5(() => window.__ironlog.ACT.finish()); await N5.page.waitForTimeout(150);
+    for (let k = 0; k < 4; k++) { if (!(await ev5(() => { const m = window.__ironlog.ui.modal; return m && m.kind === 'confirm'; }))) break; await ev5(() => document.querySelector('#modal [data-act="mOk"]').click()); await N5.page.waitForTimeout(150); }
+    const s5 = await ev5(() => { const L = window.__ironlog; return L.state.sessions[L.state.sessions.length - 1]; });
+    ok(s5 && s5.date === '2026-09-20' && s5.ex.every(b => b.sets.every(x => x.w != null)) && s5.ex[0].sets[0].r === 8 && s5.ex[0].sets[0].w === old5.draft.ex[0].sets[0].w, BV + ' session: Finish saves with every load written, none empty', s5 && s5.ex.slice(0, 2));
+    ok(!N5.errors.length, BV + ' session: no page errors (' + N5.errors.join(' | ') + ')');
+  }
   await browser.close();
 
   console.log(fails.length ? `${fails.length} FAILED` : 'ALL PASS');

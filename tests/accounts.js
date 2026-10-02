@@ -356,8 +356,11 @@ fs.cpSync(DIST, tmp, { recursive: true });
 
   // ---- 13b. Problem reports (PENDING 58; signed in only since r25): only the owner reads.
   const openFb = async (D, cat) => {
-    await D.ev(() => { const L = window.__ironlog; L.ACT.mClose(); L.ui.tab = 'settings'; L.ui.folds['settings:feedback'] = true; L.render(); });
-    await D.page.click(`[data-mkey="feedback"] [data-act="fbOpen"][data-cat="${cat || 'bug'}"]`); await wait(80);
+    // Since r27 from the menu at the top right; the kind is picked in the sheet.
+    await D.ev(() => { const L = window.__ironlog; L.ACT.mClose(); L.ui.tab = 'settings'; L.render(); });
+    await D.page.click('#saveState'); await wait(60);
+    await D.page.click('#modal .mnu[data-act="fbOpen"]'); await wait(80);
+    if (cat && cat !== 'bug' && await D.ev(() => !!document.querySelector('#modal [data-act="fbCat"]'))) { await D.page.click(`#modal [data-act="fbCat"][data-v="${cat}"]`); await wait(60); }
   };
   const sendFb = async (D, text, cat) => {
     await openFb(D, cat);
@@ -410,9 +413,9 @@ fs.cpSync(DIST, tmp, { recursive: true });
   // The owner reads them in the app.
   fake.addReader('auto@example.com');
   await R2.page.reload(); await R2.page.waitForFunction(() => window.__ironlog, null, { timeout: 15000 }); await wait(1200);
-  await R2.ev(() => { const L = window.__ironlog; L.ui.tab = 'settings'; L.ui.folds['settings:feedback'] = true; L.render(); });
-  ok(await R2.ev(() => !!document.querySelector('[data-act="fbInbox"]')), 'the owner\'s account shows Inbox');
-  await R2.page.click('[data-act="fbInbox"]'); await R2.page.waitForFunction(() => { const m = window.__ironlog.ui.modal; return m && m.kind === 'fbInbox' && m.items; }, null, { timeout: 10000 });
+  await R2.page.click('#saveState'); await wait(60);
+  ok(await R2.ev(() => !!document.querySelector('#modal [data-act="fbInbox"]')), 'the owner\'s account shows Reports inbox in the menu');
+  await R2.page.click('#modal [data-act="fbInbox"]'); await R2.page.waitForFunction(() => { const m = window.__ironlog.ui.modal; return m && m.kind === 'fbInbox' && m.items; }, null, { timeout: 10000 });
   const inbox = await R2.ev(() => document.getElementById('modal').innerText);
   ok(/Fifth report here/.test(inbox) && /Tables not there yet/.test(inbox) && inbox.indexOf('Fifth report') < inbox.indexOf('Tables not'), 'the inbox lists every report, newest first', inbox.slice(0, 200));
   ok(await R2.ev(() => !!document.querySelector('#modal .fbthumb')), 'with the screenshot');

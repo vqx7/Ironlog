@@ -8,7 +8,7 @@ What V does in the Supabase dashboard, once. The app code (sign-in screen, sync 
 2. **Project.** New project. Name `ironlog`. Region: West US (North California). Generate a database password and save it in your password manager (the app never uses it). Plan: Free. Wait about 2 minutes while it starts.
 3. **Keys.** Project Settings > API Keys. Copy the **Project URL** and the **publishable key** (older projects call it `anon`). Both are safe to put in the app: they identify the project, and the table rules below decide what each signed-in person can read. Never copy the **secret key** (older name `service_role`) anywhere.
 4. **Email sign-in.** Authentication > Sign In / Providers > Email: enabled (the default). Leave "Confirm email" on.
-5. **Links in emails.** Authentication > URL Configuration. Site URL: `https://vqx7.github.io/Ironlog/`. Add the same address under Redirect URLs. Confirmation and password-reset emails send people back here.
+5. **Links in emails.** Authentication > URL Configuration. Site URL: `https://vqx7.github.io/Ironlog/`. Add the same address under Redirect URLs. Once the app moves to its own domain (`OWNER.md` C5), the Site URL becomes `https://YOURDOMAIN/`, and `https://YOURDOMAIN/` and `https://YOURDOMAIN/preview/` are added under Redirect URLs. Confirmation and password-reset emails send people back here.
 6. **The table and its privacy rule.** SQL Editor > New query, paste this, Run:
 
 ```sql
