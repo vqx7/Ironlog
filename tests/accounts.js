@@ -10,7 +10,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const { chromium } = require('playwright');
-const { start } = require('./fake-supabase');
+const { start, quietHibp } = require('./fake-supabase');
 const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log('FAIL', m, x !== undefined ? JSON.stringify(x) : ''); } else console.log('ok  ', m); };
 const wait = ms => new Promise(r => setTimeout(r, ms));
 execFileSync('node', [path.join(__dirname, '..', 'scripts', 'build.js')], { stdio: 'ignore' });
@@ -31,6 +31,7 @@ fs.cpSync(DIST, tmp, { recursive: true });
   const devices = [];
   async function device(url, sw, fresh) {
     const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true, serviceWorkers: sw ? 'allow' : 'block' });
+    await quietHibp(ctx);
     const page = await ctx.newPage();
     const errors = [];
     page.on('pageerror', e => errors.push(e.message));

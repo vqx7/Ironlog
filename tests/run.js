@@ -11,7 +11,10 @@ function run(s,env,tag){
   let out='';try{out=execFileSync('node',[`tests/${s}.js`],{encoding:'utf8',timeout:600000,env:{...process.env,...env}});}catch(e){out=(e.stdout||'')+(e.stderr||'');}
   const pass=/ALL PASS|fuzz clean/.test(out)&&!/^FAIL/m.test(out);
   console.log(`${pass?'PASS':'FAIL'}  ${s}${tag}`);
-  if(!pass){bad++;console.log(out.split('\n').filter(l=>/FAIL|Error|error/.test(l)).slice(0,15).join('\n'));}
+  if(!pass){bad++;const lines=out.split('\n').filter(l=>/FAIL|Error|error/.test(l)).slice(0,15);console.log(lines.join('\n'));
+    // On GitHub the job log sits behind a sign-in, but annotations can be read
+    // through the API, so each failing line is also written as one.
+    if(process.env.GITHUB_ACTIONS)for(const l of (lines.length?lines:[out.slice(-300)]))console.log(`::error title=${s}${tag}::${l.replace(/%/g,'%25').replace(/\r/g,'').replace(/\n/g,'%0A').slice(0,400)}`);}
 }
 for(const s of suites)run(s,{},'');
 for(const s of distSuites)run(s,{IRONLOG_FILE:'dist/index.html'},' (standalone build)');
