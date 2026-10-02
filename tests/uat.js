@@ -31,6 +31,8 @@ const fails = []; const ok = (c, m) => { if (!c) { fails.push(m); console.log('F
   await ev(() => { const L = window.__ironlog; const b = L.state.draft.ex[3]; b.sets.forEach(s => { s.w = 50; s.r = 8; s.done = true; }); L.ui.blkOpen.add(L.state.draft.id + ':3:' + b.exId); L.saveNow(); L.render(); });
   const n3 = await ev(() => window.__ironlog.state.draft.ex[3].sets.length);
   await ev(() => document.querySelector('[data-act="sDel"][data-b="3"]').click());
+  // r25: a logged set is removed only after the confirm.
+  await ev(() => document.querySelector('#modal [data-act="mOk"]').click());
   await tick(1, 1);
   await ev(() => window.__ironlog.ACT.undo());
   ok(await ev(n => window.__ironlog.state.draft.ex[3].sets.length === n && window.__ironlog.state.draft.ex[1].sets[1].done, n3), 'Undo restores a removed logged set after another set was logged');

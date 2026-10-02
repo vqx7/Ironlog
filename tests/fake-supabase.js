@@ -129,8 +129,10 @@ function start(root) {
         if (req.method === 'POST') {
           const b = json(); const arr = Array.isArray(b) ? b : [b];
           for (const r of arr) {
-            if (r.user_id && (!c || r.user_id !== c.id)) return send(res, 403, { code: '42501', message: 'new row violates row-level security policy for table "feedback"' });
-            if (!['bug', 'idea', 'question'].includes(r.category) || !r.message || String(r.message).length > 4000) return send(res, 400, { code: '23514', message: 'new row violates check constraint' });
+            // Since r25: signed-in accounts only, 10 to 1,000 characters, 5 a day each (SUPABASE.md, Part 4).
+            if (!c || (r.user_id && r.user_id !== c.id)) return send(res, 401, { code: '42501', message: 'new row violates row-level security policy for table "feedback"' });
+            if (!['bug', 'idea', 'question'].includes(r.category) || !r.message || String(r.message).length < 10 || String(r.message).length > 1000) return send(res, 400, { code: '23514', message: 'new row violates check constraint' });
+            if (feedback.filter(f => f.user_id === c.id && Date.now() - Date.parse(f.created_at) < 864e5).length >= 5) return send(res, 400, { code: 'P0001', message: 'feedback_rate_limited' });
             feedback.push({ id: feedback.length + 1, created_at: new Date().toISOString(), user_id: c ? c.id : null, category: r.category, message: r.message, reply_to: r.reply_to || null, screenshot: r.screenshot || null, context: r.context || {}, issue_url: null });
           }
           return send(res, 201);

@@ -208,36 +208,43 @@ const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log
   ok(await nev(() => !/Drag ⠿ to reorder days/.test(document.getElementById('view').innerText) && !/drag into a day/.test(document.getElementById('view').innerText)), 'Plan: drag hints moved into tips');
   ok(await nev(() => !document.querySelector('#wkbar .w.add') && [...document.querySelectorAll('#wkbar .w')].every(w => w.tagName === 'BUTTON')), 'a brand-new week bar shows no + marks, but every day is still a button');
 
-  // ---- 58, in the source file: the feedback sheet (no service here, so it copies the report).
+  // ---- 58 (reworked in r25): Settings > Help, Report a problem first.
   await nev(() => { const L = window.__ironlog; L.ui.tab = 'history'; L.render(); L.ui.tab = 'settings'; L.ui.folds['settings:feedback'] = true; L.render(); });
-  ok(await nev(() => !!document.querySelector('[data-mkey="feedback"] [data-act="fbOpen"]') && !document.querySelector('[data-act="fbInbox"]')), 'Settings > Feedback offers Send feedback (no inbox without an owner account)');
-  await N.page.click('[data-mkey="feedback"] [data-act="fbOpen"]'); await N.page.waitForTimeout(80);
-  const fb0 = await nev(() => { const m = window.__ironlog.ui.modal; return { kind: m.kind, from: m.from, cats: [...document.querySelectorAll('#modal [data-act="fbCat"]')].map(b => b.textContent), btn: document.querySelector('#modal [data-act="fbSend"]').textContent, tip: document.querySelector('#modal .tipi').dataset.tip }; });
-  ok(fb0.kind === 'feedback' && fb0.from === 'history' && fb0.cats.join() === 'Bug,Idea,Question', 'the sheet: bug, idea or question, and it knows the screen you came from', fb0);
-  ok(/Never your workouts/.test(fb0.tip) && /app owner/.test(fb0.tip), 'it says what is attached, and that it goes to the app owner');
-  await N.page.fill('#modal [data-fbind="msg"]', 'ok'); await N.page.click('#modal [data-act="fbSend"]'); await N.page.waitForTimeout(60);
-  ok(/few words/.test(await nev(() => window.__ironlog.ui.modal.err || '')), 'an empty report is refused');
-  await N.page.fill('#modal [data-fbind="msg"]', 'The chart on Stats is blank'); await N.page.click('#modal [data-act="fbCat"][data-v="idea"]'); await N.page.waitForTimeout(40);
-  ok(await nev(() => document.querySelector('#modal [data-fbind="msg"]').value === 'The chart on Stats is blank' && /What would help/.test(document.getElementById('modal').innerText)), 'switching the kind keeps the text and changes the question');
-  await N.page.fill('#modal [data-fbind="reply"]', 'not-an-email'); await N.page.click('#modal [data-act="fbSend"]'); await N.page.waitForTimeout(60);
-  ok(/does not look right/.test(await nev(() => window.__ironlog.ui.modal.err || '')), 'a bad reply address is caught');
-  await N.page.fill('#modal [data-fbind="reply"]', '');
-  // A picked screenshot is shrunk to a JPEG.
-  const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAIAAAD91JpzAAAAFklEQVR4nGP4z8DAwMDAxMDAwMDAAAANHQEDasKb6QAAAABJRU5ErkJggg==', 'base64');
-  await N.page.setInputFiles('#fbShot', { name: 'shot.png', mimeType: 'image/png', buffer: png }); await N.page.waitForTimeout(300);
-  ok(await nev(() => /^data:image\/jpeg;base64,/.test(window.__ironlog.ui.modal.shot || '') && !!document.querySelector('#modal .fbshot img')), 'a screenshot from the phone is attached as a small JPEG, with a preview and Remove');
-  await N.page.click('#modal [data-act="fbSend"]'); await N.page.waitForTimeout(200);
-  const fb1 = await nev(() => { const m = window.__ironlog.ui.modal; return { kind: m && m.kind, sent: m && m.sent, text: m && m.text }; });
-  if (await nev(() => !!window.ironlogFeedback)) {
-    // The standalone build has the service, but this harness blocks the network: the text stays, with a message.
-    const off = await nev(() => { const m = window.__ironlog.ui.modal; return { kind: m.kind, sent: !!m.sent, err: m.err || '', msg: document.querySelector('#modal [data-fbind="msg"]').value }; });
-    ok(off.kind === 'feedback' && !off.sent && off.err && off.msg === 'The chart on Stats is blank', 'no connection: the report stays in the sheet with a message', off);
-  } else ok((fb1.kind === 'feedback' && fb1.sent) || (fb1.kind === 'text' && /Ironlog feedback \(idea\)/.test(fb1.text) && /"build"/.test(fb1.text) && /"errors"/.test(fb1.text)), 'without the service: the report is copied, or shown to copy, with the build and recent errors', fb1);
+  ok(await nev(() => { const b = [...document.querySelectorAll('[data-mkey="feedback"] [data-act="fbOpen"]')]; return b.length === 3 && b[0].textContent === 'Report a problem' && b[0].classList.contains('primary') && !document.querySelector('[data-act="fbInbox"]'); }), 'Settings > Help: Report a problem first, then Ask a question and Suggest something (no inbox without an owner account)');
+  ok(await nev(() => { const b = document.querySelector('#view .ph [data-act="fbOpen"]'); return !!b && b.textContent === 'Report a problem'; }), 'Report a problem is also at the top of Settings');
+  await N.page.click('[data-mkey="feedback"] [data-act="fbOpen"][data-cat="bug"]'); await N.page.waitForTimeout(80);
+  const hasSvc = await nev(() => !!window.ironlogFeedback);
+  if (hasSvc) {
+    // The standalone build, signed out: reports need an account (V's choice, r25).
+    const so = await nev(() => { const m = document.getElementById('modal'); return { t: m.innerText, signin: !!m.querySelector('[data-act="acctOpen"][data-mode="signin"]'), copy: !!m.querySelector('[data-act="fbCopy"]'), box: !!m.querySelector('[data-fbind="msg"]') }; });
+    ok(/Report a problem/.test(so.t) && /Sign in to send a report/.test(so.t) && so.signin && so.copy && !so.box, 'signed out: asks to sign in, with Copy the details for a message', so);
+  } else {
+    const fb0 = await nev(() => { const m = window.__ironlog.ui.modal; return { kind: m.kind, from: m.from, title: document.getElementById('fbH').textContent, cats: [...document.querySelectorAll('#modal [data-act="fbCat"]')].map(b => b.textContent), btn: document.querySelector('#modal [data-act="fbSend"]').textContent, tip: document.querySelector('#modal .tipi').dataset.tip, count: document.getElementById('fbCount').textContent }; });
+    ok(fb0.kind === 'feedback' && fb0.from === 'history' && fb0.title === 'Report a problem' && fb0.cats.join() === 'Problem,Question,Suggestion' && fb0.count === '0 / 1000', 'the sheet: Report a problem, Problem first, a character count, and the screen you came from', fb0);
+    ok(/Never your workouts/.test(fb0.tip) && /app owner/.test(fb0.tip), 'it says what is attached, and that it goes to the app owner');
+    await N.page.fill('#modal [data-fbind="msg"]', 'too short'); await N.page.click('#modal [data-act="fbSend"]'); await N.page.waitForTimeout(60);
+    ok(/10 characters or more/.test(await nev(() => window.__ironlog.ui.modal.err || '')), 'a report under 10 characters is refused');
+    ok(await nev(() => +document.querySelector('#modal [data-fbind="msg"]').getAttribute('maxlength') === 1000), 'the text stops at 1,000 characters');
+    await N.page.fill('#modal [data-fbind="msg"]', 'The chart on Stats is blank'); await N.page.click('#modal [data-act="fbCat"][data-v="idea"]'); await N.page.waitForTimeout(40);
+    ok(await nev(() => document.querySelector('#modal [data-fbind="msg"]').value === 'The chart on Stats is blank' && /Suggest something/.test(document.getElementById('fbH').textContent) && /Your suggestion/.test(document.getElementById('modal').innerText) && document.getElementById('fbCount').textContent === '27 / 1000'), 'switching the kind keeps the text and changes the title and question');
+    ok(await nev(() => !document.querySelector('#modal [data-fbind="reply"]')), 'no reply address to type: replies go to the account email');
+    // A picked screenshot is shrunk to a JPEG; a file over 10 MB or not an image is refused.
+    const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAIAAAD91JpzAAAAFklEQVR4nGP4z8DAwMDAxMDAwMDAAAANHQEDasKb6QAAAABJRU5ErkJggg==', 'base64');
+    await N.page.setInputFiles('#fbShot', { name: 'notes.pdf', mimeType: 'application/pdf', buffer: Buffer.from('%PDF-1.4') }); await N.page.waitForTimeout(150);
+    ok(await nev(() => !window.__ironlog.ui.modal.shot && /Only an image/.test(document.getElementById('toast').innerText)), 'a file that is not an image is refused, with a message');
+    await N.page.setInputFiles('#fbShot', { name: 'big.png', mimeType: 'image/png', buffer: Buffer.alloc(11 * 1048576) }); await N.page.waitForTimeout(200);
+    ok(await nev(() => !window.__ironlog.ui.modal.shot && /over 10 MB/.test(document.getElementById('toast').innerText)), 'an image over 10 MB is refused, with a message');
+    await N.page.setInputFiles('#fbShot', { name: 'shot.png', mimeType: 'image/png', buffer: png }); await N.page.waitForTimeout(300);
+    ok(await nev(() => /^data:image\/jpeg;base64,/.test(window.__ironlog.ui.modal.shot || '') && !!document.querySelector('#modal .fbshot img')), 'a screenshot from the phone is attached as a small JPEG, with a preview and Remove');
+    await N.page.click('#modal [data-act="fbSend"]'); await N.page.waitForTimeout(200);
+    const fb1 = await nev(() => { const m = window.__ironlog.ui.modal; return { kind: m && m.kind, sent: m && m.sent, text: m && m.text }; });
+    ok((fb1.kind === 'feedback' && fb1.sent) || (fb1.kind === 'text' && /Ironlog: Suggest something/.test(fb1.text) && /"build"/.test(fb1.text) && /"errors"/.test(fb1.text)), 'without the service: the report is copied, or shown to copy, with the build and recent errors', fb1);
+  }
   await nev(() => window.__ironlog.ACT.mClose());
   // From an exercise's ⋯ menu the exercise is attached.
   await nev(() => { const L = window.__ironlog; L.ui.tab = 'today'; L.render(); L.ACT.startSession({ dataset: { day: '0' } }); });
   await nev(() => document.querySelector('[data-act="bMenu"][data-b="0"]').click()); await N.page.waitForTimeout(60);
-  ok(await nev(() => !!document.querySelector('#modal [data-op="fbOpen"]')), 'an exercise\'s ⋯ menu has Send feedback');
+  ok(await nev(() => { const b = document.querySelector('#modal [data-op="fbOpen"]'); return !!b && /Report a problem/.test(b.textContent); }), 'an exercise\'s ⋯ menu has Report a problem');
   await N.page.click('#modal [data-op="fbOpen"]'); await N.page.waitForTimeout(80);
   const fb2 = await nev(() => { const L = window.__ironlog; const m = L.ui.modal; return { kind: m.kind, ex: m.ex, from: m.from, want: L.EX(L.state.draft.ex[0].exId).name }; });
   ok(fb2.kind === 'feedback' && fb2.ex === fb2.want && fb2.from === 'session', 'from a session: the exercise and "session" are attached', fb2);

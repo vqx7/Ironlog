@@ -1,22 +1,15 @@
-# Everything still open (as of r24, 2026-09-30)
+# Everything still open (as of r25, 2026-10-01)
 
 This is the tracking list. Items are built only when V says go. Owner items need V; the rest is build work. Nothing is done unless it says so. Numbers are kept stable; finished items move to Done at the bottom.
 
-## Built in r24, awaiting V's approval (pull request from branch r24)
-69 (a swap undid Short on time) and 70 (the preview environment). What each does is under Done > r24 below. Nothing is live until V merges the pull request; the merge then tests and publishes by itself (item 22). r24 goes first because the live app's offline worker is what blocks a preview; from r25 on, every pull request can be tried at vqx7.github.io/Ironlog/preview/ before it is merged.
+## Live: r25 (published 2026-10-01)
+Merged at V's go-ahead on 2026-10-01 (Claude made the merge commit; see 84). What it changed is under Done > r25.
 
-After r24 merges, once: open vqx7.github.io/Ironlog/ in Safari (not the home-screen app) and tap Reload when "New version ready" shows. Until that Safari copy updates, its old worker would open the live app at the preview link.
+## New on 2026-10-01
+83. Decision for V: after Short on time, a trimmed exercise does not set the next target, the same as a lighter or deload day (a rule since r14), so its next "Last time" shows the last full session, which can be a week or two back even though you did the lift today. Options: keep it; or show the real last session in "Last" and the grey reps while the target still comes from the last full session. Nothing changes until V decides.
+84. Decision for V: four merge commits on `main` (pull requests #1 to #4, merged on GitHub's website) carry the personal Gmail address, which is public. OWNER.md D2 stops new ones. Removing the four needs a rewrite of `main`'s history and a force push: possible, but it changes every commit id after the first merge and GitHub may keep cached views. Claude recommends D2 now, and the rewrite only if V wants the address gone from the repository entirely. Until D2, Claude makes merge commits itself with its noreply address.
 
-## Asked for on 2026-09-30, next build (r25), to try in the preview first
-71. Suggested loads show grey until typed, like reps: the checkmark and auto-mark accept them. A setting switches back to filled-in loads. Nothing typed is ever overwritten (V chose grey as the default).
-72. The logo: a dumbbell stood upright so it also reads as the "I" of Ironlog, amber on dark instead of volt green, in every icon, the favicon, the loading screen and the first-run page. iPhone never refreshes a home-screen icon: a one-time note says how to get the new one (remove and re-add), and that removing the app deletes the log on the phone unless signed in. Android updates it by itself.
-73. Report a problem as the main action, with Question and Suggestion secondary; more professional wording; signed in only (V's choice), at most 5 a day per account (enforced by the database too), clear text and screenshot limits, everything but the description marked optional.
-74. A month calendar to jump to any date: from History, from a tap on a Consistency square, and by pulling the week bar down (a small handle under it opens the same calendar with a tap). Taps and holds on the week bar's days stay as they are; the pull only starts on a clear downward move.
-75. Copy pass: explanations that read as filler move into info tips or a long press.
-76. Design pass: a more deliberate look of its own, without breaking what works.
-77. Check the new-user, sign-in, sign-out and install flows (Android installs from the button; iPhone gets the Add to Home Screen steps) and send V screenshots at iPhone size.
-
-Open count after r24: 35 (3 critical, 4 owner, 3 verification, 25 build or decision items).
+Open count: 30 (3 critical, 4 owner, 3 verification, 20 build or decision items). Owner steps, with the code, are in OWNER.md.
 
 ## Critical, still open
 58. Part 2 needs V: SUPABASE.md, Part 4, steps 1 to 5 (the tables, a private `ironlog-feedback` repository, a GitHub token for it, the function and its webhook), then FEEDBACK.md, "What V does" steps 2 and 3 (protect `main`; choose a scheduled Claude task or Claude's GitHub Action to pick up tickets). Until step 1, Send feedback says it is not set up yet and keeps the text.
@@ -24,10 +17,12 @@ Open count after r24: 35 (3 critical, 4 owner, 3 verification, 25 build or decis
 63. Check on the iPhone itself (r22 is live: the first-run pages on a fresh install, a PR set's toast and pulse, Undo in Settings after closing the app; after r23 merges: the week bar without the logo, an import from Notes or a spreadsheet file, an assisted pull-up session): the Add to Home Screen guide on iOS 26 Safari (Share is behind ⋯ in the compact bar; checked against MacRumors and a Glide bug report, not on a device), the app signing itself in after the confirmation link (Safari to the home-screen app and back), a past workout from the week bar, the light Today card, and a screenshot picked in Send feedback.
 
 ## Owner items (V)
-78. SUPABASE.md, Part 5 (about 2 minutes, one SQL paste): the preview's own sync table. Until then the preview keeps its log on the phone only.
-1. Delete the `r14-review`, `r15-design`, `r17-accounts`, `r20-design` `r21` and `r22` branches on GitHub (and `r23` once merged) (`r20-design` is fully merged into `main`) (the first two hold the old commit with the personal Gmail address; `main` and `gh-pages` are clean). Parked by V on 2026-09-27; come back to it.
-2. GitHub Settings > Emails: tick "Keep my email addresses private" and "Block command line pushes that expose my email". Optionally ask GitHub Support to purge cached views of the old commit. Parked with item 1.
-6. Supabase Part 2 (`SUPABASE.md`): a domain and the Resend email sender, needed before friends sign up. Until then confirmation and reset emails reach only the Supabase account's own email address, at most 2 an hour.
+Every step V does by hand, with the exact code to paste, is in `OWNER.md` (A1 to D3). Kept in step with this list:
+- 78 = OWNER.md A2 (preview table, not yet confirmed). A1 and A3 are done.
+- 58 (Part 2 of it) = OWNER.md B1 to B7.
+- 6 = OWNER.md C1 to C4 (domain and email sender); 23 is decided in C1.
+- 1 = OWNER.md D1 (old branches). 2 = OWNER.md D2 (email privacy on GitHub); 84 is its follow-up.
+- 7 and 63 = OWNER.md "Checks on your phone".
 
 ## Verification
 7. Still unchecked on the real phone: rest timer across a screen lock, the share sheet to Files for backups, the notch in the home-screen app, and the "New version ready" bar. New in r20, tested in Chromium but not yet in iPhone Safari: auto-mark when the keyboard's Done is tapped on a grey reps field, the 3D body's drag and tap, and the Install guide.
@@ -63,7 +58,31 @@ Open count after r24: 35 (3 critical, 4 owner, 3 verification, 25 build or decis
 46. Native app wrapper (Capacitor), only if needed: rest timer alerts through a locked screen, Apple Health, a real App Store install. Costs $99 a year for Apple and needs a Mac.
 
 ## Done
-- r24 (built 2026-09-30, awaiting approval):
+- r25 (approved by V and published 2026-10-01). V's requests, as asked:
+  ## Asked for on 2026-09-30, second round (built in r25, see Done)
+  79. Guardrails: nothing logged or typed goes on a single tap. − Set takes an empty row first and asks before a filled one; removing an exercise with logged or typed sets asks; cardio entries (History and in a session), weigh-ins and tape entries ask. Undo still follows each.
+  80. Continuity audit, beyond the swap: found and fixed (a) Short on time removed sets that were typed but not ticked, and whole exercises holding them; (b) a swap dropped typed, unticked sets; (c) Undo after Short on time did not put back the removed rows; (d) an exercise opened again folded when another exercise moved, was removed or a swap inserted one; (e) Discard did not ask when only a load was typed. Each has a test in `tests/r25.js` (section 14). Checked and fine: lighter and deload counts, date changes, units, settings changed mid-session, reload, cloud refresh (existing suites).
+  81. The preview's yellow striped edges read as stray dotted lines: replaced by a labelled PREVIEW tag on the tab bar.
+  82. Second copy pass (75): Pick for me's lead and cycle note, a lift's headline, the bodyweight trend line.
+
+  ## Asked for on 2026-09-30 (built in r25, see Done)
+  71. Suggested loads show grey until typed, like reps: the checkmark and auto-mark accept them. A setting switches back to filled-in loads. Nothing typed is ever overwritten (V chose grey as the default).
+  72. The logo: a dumbbell stood upright so it also reads as the "I" of Ironlog, amber on dark instead of volt green, in every icon, the favicon, the loading screen and the first-run page. iPhone never refreshes a home-screen icon: a one-time note says how to get the new one (remove and re-add), and that removing the app deletes the log on the phone unless signed in. Android updates it by itself.
+  73. Report a problem as the main action, with Question and Suggestion secondary; more professional wording; signed in only (V's choice), at most 5 a day per account (enforced by the database too), clear text and screenshot limits, everything but the description marked optional.
+  74. A month calendar to jump to any date: from History, from a tap on a Consistency square, and by pulling the week bar down (a small handle under it opens the same calendar with a tap). Taps and holds on the week bar's days stay as they are; the pull only starts on a clear downward move.
+  75. Copy pass: explanations that read as filler move into info tips or a long press.
+  76. Design pass: a more deliberate look of its own, without breaking what works.
+  77. Check the new-user, sign-in, sign-out and install flows (Android installs from the button; iPhone gets the Add to Home Screen steps) and send V screenshots at iPhone size.
+  What was built:
+  - 71: loads grey until typed; the checkmark, auto-mark, quick entry and Finish take them; a load typed on a set moves the grey loads under it; nothing typed is ever overwritten. Settings > Rest timer and logging > "Fill in suggested loads" brings back filled rows.
+  - 72: the logo. An upright amber dumbbell that doubles as the I of Ironlog, in every icon, the favicon, the loading screen and the first-run pages (where it is the I of the wordmark). An iPhone that installed Ironlog before r25 gets a one-time note on Today: iPhone keeps a home-screen icon as it was, so the new one needs a remove and re-add, and removing the app removes the log on the phone unless signed in (the note says so, with Sign in and Save a backup first). New installs and Android need nothing.
+  - 73: Report a problem (Settings > Help, the top of Settings, an exercise's ⋯ menu), with Ask a question and Suggest something as the other two kinds. Signed in only; 10 to 1,000 characters with a counter; one optional image up to 10 MB; 5 a day per account, enforced by the database too (SUPABASE.md Part 4 updated; run it when setting up reports, or the upgrade block if Part 4 was already done). Replies go to the account's email. Signed out, it asks to sign in or copies the details for a message.
+  - 74: the month calendar: History > Calendar, a tap on a Consistency square, a pull down on the week bar, or a tap on the handle under it. A lifted day opens its session in History (also ones far back), an empty past day opens Log a past workout, today opens Today, days ahead do nothing.
+  - 75: copy trimmed: coach messages keep the finding and the action, the reasons moved into an info tip; shorter toasts; no filler lines above Stats and History; the build number moved off the top of Settings (it is in Diagnostics); routine descriptions shortened.
+  - 76: the design pass kept the type and layout that work and added the brand: the amber mark, the wordmark lockup, the handle under the week bar, a segmented Problem/Question/Suggestion control.
+  - 79 to 82: see the second round above. Known limit: the exact Undo of Short on time lasts until the app is closed; after a relaunch, Undo there falls back to the merge, which brings back skipped exercises but not removed blank rows.
+  - 77: new-user, sign-in, sign-out (keep or remove) and install checked end to end on the built app at iPhone size: iPhone gets Add to Home Screen with the picture and two steps; Android Chrome's Install button opens the browser's own install prompt. Screenshots sent to V. Fixes from it: the sign-up note no longer says to come back and sign in (the app does it), the routine toast is short.
+- r24 (approved by V and published 2026-09-30):
   - 69 (V's report 2026-09-30): a swap rebuilt the exercise from the routine's planned set count, so after Short on time (or a lighter day, + Set, − Set) the new exercise came back with the full sets, and it lost the trimmed mark, so trimmed work counted in trends. Now a swap keeps the sets the exercise has right now and the mark, through a second swap, Undo, a reload and Finish. Found in the same audit: changing a session's date replaced a load typed on the first set with the app's suggestion; it now replaces only rows still on the suggestion. An r23 session left open carries on after the update. Suite `tests/r24.js`.
   - 70 (V's request 2026-09-30): the preview environment. Every pull request that passes the tests is published to vqx7.github.io/Ironlog/preview/ as its own app ("Ironlog Preview", striped icon and edge), installable next to the live one. It keeps its own log, undo history, sign-in and offline copy, signs in with the same account and syncs to its own table (Part 5), so nothing tried there touches the real log; it has no Delete my account. The live app's worker now lets the preview load (the old one would have opened the live app instead, and each would have deleted the other's offline copy). Merging still is the only way to the live app. Suite `tests/preview.js`.
 - r23 (approved by V and published 2026-09-28):

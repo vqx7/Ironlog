@@ -1,6 +1,6 @@
 {
   "name": "ironlog",
-  "version": "2026.9.30-r24",
+  "version": "2026.10.1-r25",
   "private": true,
   "description": "Ironlog workout tracker: single-file web app plus its test suites",
   "scripts": {
@@ -15,6 +15,7 @@
     "chart.js": "4.4.1",
     "playwright": "^1.56.0",
     "sortablejs": "1.15.2",
-    "three": "0.159.0"
+    "three": "0.159.0",
+    "@electric-sql/pglite": "0.5.8"
   }
 }

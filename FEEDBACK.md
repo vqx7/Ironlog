@@ -3,7 +3,7 @@
 How a report from a friend becomes a fix on their phone, with V's approval as the only way anything ships.
 
 ```
-Send feedback (app)  ->  feedback table (Supabase)  ->  issue in vqx7/ironlog-feedback (private)
+Report a problem (app)  ->  feedback table (Supabase)  ->  issue in vqx7/ironlog-feedback (private)
       ->  Claude, on a schedule: reproduce, fix on a branch, run every suite, open a pull request
       ->  the pull request's check runs every suite again (.github/workflows/publish.yml)
       ->  V merges it on the phone  ->  the same workflow tests main and publishes dist/ to gh-pages
@@ -12,8 +12,8 @@ Send feedback (app)  ->  feedback table (Supabase)  ->  issue in vqx7/ironlog-fe
 
 ## What is built (r21)
 
-- **In the app:** Settings > Feedback and Send feedback in an exercise's ⋯ menu. Bug, idea or question; the text; an optional screenshot picked from the phone (shrunk to a JPEG of at most 1280 px); an optional reply address, filled in when signed in. The app attaches the build, device and browser, screen size, the screen the person came from, whether a session was open (and which exercise, from the ⋯ menu), sync status and the last 10 logged errors. Never workouts. Works signed in or out. Signed in with an account listed in `feedback_readers`, Settings > Feedback also shows **Inbox**, the reports newest first.
-- **Storage:** `public.feedback`, insert-only for everyone, readable only by `feedback_readers` (SUPABASE.md, Part 4, step 1).
+- **In the app (r25):** Settings > Help (Report a problem first, then Ask a question and Suggest something), Report a problem at the top of Settings and in an exercise's ⋯ menu. One sheet: the kind (Problem, Question, Suggestion; stored as bug, question, idea), 10 to 1,000 characters of text with a counter, one optional screenshot (an image up to 10 MB, shrunk to a JPEG of at most 1280 px). Signed in only: replies go to the account's email, and a signed-out person is asked to sign in (or can copy the details into a message). The app attaches the build, device and browser, screen size, the screen the person came from, whether a session was open (and which exercise, from the ⋯ menu), sync status and the last 10 logged errors. Never workouts. At most 5 reports a day per account, counted by the app and enforced by the database. Signed in with an account listed in `feedback_readers`, Settings > Help also shows **Inbox**, the reports newest first.
+- **Storage:** `public.feedback`, insert-only for signed-in accounts (5 a day each), readable only by `feedback_readers` (SUPABASE.md, Part 4, step 1).
 - **Issues:** `supabase/functions/feedback-to-issue` makes one issue per report in the private `ironlog-feedback` repository, labelled `feedback` and the kind, with the screenshot saved in that repository (SUPABASE.md, Part 4, steps 2 to 5). Mentions in the text are broken so nobody is pinged.
 - **Tests and publishing:** `.github/workflows/publish.yml` (PENDING 22) runs `npm test` on every pull request and every push to `main`, and publishes `dist/` to `gh-pages` only after a push to `main` passes.
 

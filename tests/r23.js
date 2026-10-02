@@ -242,8 +242,9 @@ function xlsx(rows) {
     ok(sg.w === -55 && /take 5 lb of help off/.test(sg.t) && /BW−60×12/.test(sg.t), 'every set at the top of the range: 5 lb less help next time, written as BW−60', sg);
     ok(sg.dw === -75, 'deload: 90% of 120 lb lifted is 108, so 72 lb of help, rounded up to 75', sg.dw);
     await ev(() => { const L = window.__ironlog; L.state.draft = { id: 'd1', startedAt: Date.now(), date: '2026-09-28', dayIdx: 0, dayId: null, dayName: 'Free', routineId: '', free: true, deload: false, light: false, cardio: [], notes: '', editingId: null, ex: [L.newBlock('assistPullup', { sets: 3, repMin: 8, repMax: 12, rir: 1, rest: 90, inc: 5 * 0.45359237 })] }; L.ui.tab = 'today'; L.render(); });
-    const row = await ev(() => ({ v: document.querySelector('.sg input[data-f="w"][data-b="0"][data-s="0"]').value, head: document.getElementById('blk-0').innerText }));
-    ok(row.v === '55' && /HELP LB/i.test(row.head) && /machine help/.test(row.head), 'in a session: the load field shows the help (55), headed Help lb', row);
+    const row = await ev(() => { const f = document.querySelector('.sg input[data-f="w"][data-b="0"][data-s="0"]'); return { v: f.value, ph: f.placeholder, head: document.getElementById('blk-0').innerText }; });
+    // Grey until typed since r25: the suggested help shows as the field's grey number.
+    ok(row.v === '' && row.ph === '55' && /HELP LB/i.test(row.head) && /machine help/.test(row.head), 'in a session: the load field shows the help (55) in grey, headed Help lb', row);
     await A.page.fill('.sg input[data-f="w"][data-b="0"][data-s="0"]', '50'); await A.page.dispatchEvent('.sg input[data-f="w"][data-b="0"][data-s="0"]', 'input');
     ok(await ev(LB => Math.round(window.__ironlog.state.draft.ex[0].sets[0].w / LB) === -50, LB), 'typing 50 stores bodyweight minus 50');
     // Typing -20 means 20 of help; Type or dictate sets reads numbers as help too.
