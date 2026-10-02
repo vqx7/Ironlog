@@ -67,7 +67,7 @@ window.addEventListener('appinstalled',()=>{window.__installEvt=null;if(window.i
   --font:'Hanken Grotesk',system-ui,-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;
   --display:'Big Shoulders Display','Arial Narrow','Roboto Condensed','Helvetica Neue',system-ui,sans-serif;
   --r-lg:22px; --r-md:14px; --r-sm:12px;
-  --head-h:64px;
+  --head-h:52px;
   color-scheme:light;
   box-sizing:border-box;
   padding-top:env(safe-area-inset-top,0px);
@@ -144,19 +144,9 @@ b{font-weight:650}
    used to sit only on Today. */
 .top{position:sticky;top:env(safe-area-inset-top,0px);z-index:20;background:var(--glass);-webkit-backdrop-filter:saturate(170%) blur(18px);backdrop-filter:saturate(170%) blur(18px);display:flex;align-items:center;gap:8px;height:var(--head-h);padding:0 12px;border-bottom:1px solid var(--line-soft)}
 .vh{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
-/* r25: the week row, then a handle under it. Pulling the bar down (or a tap
-   on the handle) opens the month calendar. The header takes no page scroll,
-   so a pull is never mistaken for one; taps and holds on the days are
-   unchanged, because a pull only starts on a clear downward move. */
-.top{display:grid;grid-template-columns:minmax(0,1fr) auto;grid-template-rows:minmax(0,1fr) 14px;column-gap:8px;align-items:center;touch-action:none}
-.top .wkbar{grid-row:1;grid-column:1}.top .ssb{grid-row:1;grid-column:2}
-.wkpull{grid-row:2;grid-column:1/-1;align-self:stretch;-webkit-appearance:none;appearance:none;border:0;background:none;padding:0;margin:0;display:flex;justify-content:center;align-items:flex-start;cursor:pointer;-webkit-tap-highlight-color:transparent}
-.wkpull i{display:block;width:34px;height:4px;border-radius:2px;background:var(--line);transition:width .15s ease,background .15s ease}
-.top.pulling .wkpull i,.wkpull:focus-visible i{width:54px;background:var(--volt)}
-@media (prefers-reduced-motion:reduce){.wkpull i{transition:none}}
 /* The month calendar sheet. */
 .cal-h{display:flex;align-items:center;gap:6px}
-.cal-h h3{flex:1;text-align:center;margin:0;font:800 24px/1 var(--display);letter-spacing:.03em;text-transform:uppercase}
+.cal-h h3,.cal-h h4{flex:1;text-align:center;margin:0;font:800 24px/1 var(--display);letter-spacing:.03em;text-transform:uppercase}
 .cal-g{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px;margin-top:10px}
 .cal-g .wd{font:650 10.5px var(--font);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);text-align:center;padding:2px 0 4px}
 .cal-g .cd{-webkit-appearance:none;appearance:none;border:0;min-height:44px;border-radius:12px;background:transparent;color:var(--ink);font:700 16px/1 var(--font);font-variant-numeric:tabular-nums;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;cursor:pointer;padding:0}
@@ -167,6 +157,11 @@ b{font-weight:650}
 .cal-g .cd.fut{cursor:default;color:var(--muted)}.cal-g .cd.fut .n{background:transparent}
 .cal-g .cd .x{font:700 9px/1 var(--font);color:var(--muted);height:9px}
 .cal-g .cd:active:not(.fut) .n{transform:scale(.92)}
+/* This week, Week or Month (r26): the month sits inline on Today. */
+.wkview{display:grid;grid-template-columns:1fr 1fr;gap:4px;padding:4px;border-radius:14px;background:var(--field);margin:0 0 10px}
+.wkview button{min-height:40px;border:0;border-radius:10px;background:none;color:var(--muted);font:650 14px var(--font);cursor:pointer}
+.wkview button.on{background:var(--card,var(--surface));color:var(--ink);box-shadow:0 1px 3px rgba(0,0,0,.18)}
+.cal-inline .cal-h h4{font-size:20px}
 /* The wordmark left the header in r23 (V's request): it took 68 px of the
    row and squeezed the week to 32 px a day. The name stays for screen
    readers, on the setup pages and at the top of Settings. The days touch, so
@@ -207,7 +202,7 @@ b{font-weight:650}
 .ssb.warn{color:var(--yellow);border-color:var(--yellow);background:var(--yellow-bg)}
 .ssb.bad{color:var(--red);border-color:var(--red);background:var(--red-bg)}
 @media (min-width:620px){
-  :root{--head-h:74px}
+  :root{--head-h:62px}
   .wkbar{gap:5px}
   .wkbar .w .nm{display:block}
   .ssb{width:auto;border-radius:999px;padding:0 10px}
@@ -794,7 +789,7 @@ details.more>summary .small{display:block;font-weight:400}
 <script src="cloud.js"></script>
 </head>
 <body>
-<header class="top"><h1 class="vh">Ironlog</h1><nav class="wkbar" id="wkbar" aria-label="This week"></nav><button type="button" class="ssb" id="saveState" data-act="goBackup"></button><button type="button" class="wkpull" data-act="calOpen" aria-label="Open the calendar"><i aria-hidden="true"></i></button></header>
+<header class="top"><h1 class="vh">Ironlog</h1><nav class="wkbar" id="wkbar" aria-label="This week"></nav><button type="button" class="ssb" id="saveState" data-act="goBackup"></button></header>
 <div id="updbar" role="status" aria-live="polite" hidden></div>
 <main id="view"></main>
 <div id="timer" hidden></div>
@@ -1286,7 +1281,7 @@ if(ENV==='preview')document.documentElement.dataset.env='preview';
 const HAD_LOG=(()=>{try{return localStorage.getItem(KEY)!=null;}catch(e){return false;}})();
 /* Shown in Settings, in diagnostics and in backups, so a bug report can be
    matched to the exact build. */
-const APP_VERSION='2026.10.01-r25';
+const APP_VERSION='2026.10.02-r26';
 /* The logo (r25): an upright dumbbell that is also the I of Ironlog. Same
    numbers as scripts/icons.py, which draws the app icons. */
 const MARK_SVG='<svg class="mark" viewBox="-242 -378 484 756" aria-hidden="true" focusable="false"><rect class="mk-h" x="-30" y="-300" width="60" height="600" rx="14"/><rect class="mk-h" x="-80" y="-192" width="160" height="32" rx="12"/><rect class="mk-h" x="-80" y="160" width="160" height="32" rx="12"/><rect class="mk-p" x="-240" y="-376" width="480" height="92" rx="30"/><rect class="mk-p" x="-190" y="-270" width="380" height="66" rx="26"/><rect class="mk-p" x="-190" y="204" width="380" height="66" rx="26"/><rect class="mk-p" x="-240" y="284" width="480" height="92" rx="30"/></svg>';
@@ -1294,6 +1289,10 @@ const LOCKUP=`<span class="vh">Ironlog</span>${MARK_SVG}<span class="rn" aria-hi
 /* Diagnostics log: the last 60 errors, kept in this browser only. Errors that
    used to be swallowed silently land here, and Settings can copy them. */
 const LOGK=KEY+'.log';
+// Week or Month in This week on Today (r26), per device.
+const WKVIEW_KEY=KEY+'.wkView';
+// The one-time choice between grey and filled-in loads (r26), per device.
+const LOADASK_KEY=KEY+'.loadAsk';
 const logBuf=(()=>{try{const a=JSON.parse(localStorage.getItem(LOGK)||'[]');return Array.isArray(a)?a:[];}catch(e){return [];}})();
 function log(area,err){
   try{
@@ -1683,6 +1682,8 @@ function normalize(s){
         lastR:Array.isArray(b.lastR)?b.lastR.slice(0,30).map(v=>{const n=numOr(v,NaN);return isNum(n)&&n>=0?Math.min(n,1000):null;}):[],
         swappedFrom:typeof b.swappedFrom==='string'?fixId(b.swappedFrom):null,
         cut:b.cut===true?true:undefined,
+        // The date the target came from, when "Last" is a newer trimmed, lighter or deload session (r26).
+        basis:isDate(b.basis)?b.basis:undefined,
         // The suggested load the rows started from (r24); absent in older drafts.
         sw:b.sw===null?null:b.sw===undefined||!isNum(+b.sw)?undefined:clampN(b.sw,-300,20000*LB,0),
         // Editing a saved session keeps the rep range it was logged under.
@@ -2377,8 +2378,8 @@ function acctSheet(m){
    at all. This must change when cloud sync for the standalone app arrives. */
 function privacyLine(){
   const inClaude=!!(window.claude&&typeof window.claude.use==='function');
-  if(!inClaude&&AUTH()&&acct.user)return `<p class="small muted" id="privacy" style="margin:8px 0 0"><b>Privacy:</b> no ads, no tracking. Your log syncs to your Ironlog account. Only you and the app's owner can see it. Reports you send go to the app owner. ${tipi('It is stored in a Supabase database. Database rules let each account read and write only its own data. The person who runs that database, the app owner, can see stored data, as with any app without end-to-end encryption. Backup files go only where you save them.','About privacy')}</p>`;
-  if(!inClaude&&AUTH())return `<p class="small muted" id="privacy" style="margin:8px 0 0"><b>Privacy:</b> no ads, no tracking. Your log stays on this device and is sent nowhere unless you sign in to sync. Reports you send go to the app owner. ${tipi('Opening or updating the app downloads it from GitHub Pages, which, like any website host, sees your IP address; after that it works offline. With an account, your log is also stored in a Supabase database, readable by your account and by the app owner. Deleting the app or this site\'s data deletes the copy on this device, so keep a backup file or an account.','About privacy')}</p>`;
+  if(!inClaude&&AUTH()&&acct.user)return `<p class="small muted" id="privacy" style="margin:8px 0 0"><b>Privacy:</b> no ads, no tracking. Your log syncs to your Ironlog account. Only you and the app's owner can see it. Reports you send go to the app owner. ${tipi('It is stored in a Supabase database. Database rules let each account read and write only its own data. The person who runs that database, the app owner, can see stored data, as with any app without end-to-end encryption. A new password is checked against known breaches with only the first 5 characters of its hash; the password never leaves the phone. Backup files go only where you save them.','About privacy')}</p>`;
+  if(!inClaude&&AUTH())return `<p class="small muted" id="privacy" style="margin:8px 0 0"><b>Privacy:</b> no ads, no tracking. Your log stays on this device and is sent nowhere unless you sign in to sync. Reports you send go to the app owner. ${tipi('Opening or updating the app downloads it from GitHub Pages, which, like any website host, sees your IP address; after that it works offline. With an account, your log is also stored in a Supabase database, readable by your account and by the app owner. A new password is checked against known breaches with only the first 5 characters of its hash. Deleting the app or this site\'s data deletes the copy on this device, so keep a backup file or an account.','About privacy')}</p>`;
   return inClaude
     ?`<p class="small muted" id="privacy" style="margin:8px 0 0"><b>Privacy:</b> no ads, no tracking. Your log is stored with your Claude account. ${tipi('Claude features (debrief, Ask Claude, swaps, reading typed sets) send the part of your log they need to Claude, and only when you tap them. Export and CSV files go only where you save them.','About privacy')}</p>`
     :`<p class="small muted" id="privacy" style="margin:8px 0 0"><b>Privacy:</b> no account, no ads, no tracking. Your log stays on this device and is sent nowhere. Reports you send go to the app owner. ${tipi('Ironlog has no server. Opening or updating the app downloads it from GitHub Pages, which, like any website host, sees your IP address; after that it works offline. Backup files go only where you save them. Deleting the app or this site\'s data deletes your log, so keep a backup file.','About privacy')}</p>`;
@@ -2988,6 +2989,22 @@ function regionBalance(sets){
   });
 }
 
+/* "Last" is the most recent session of a lift, whatever kind (r26, V's
+   rule): a trimmed, lighter or deload session is what you did last, so it is
+   what you look back at, labelled for what it was. Targets still come from
+   the last full session (base), so trimmed, lighter and deload work never
+   sets one. Grey reps and Copy last follow "Last" when its loads are the ones
+   you lift (trimmed and lighter sessions keep the loads); after a deload they
+   come from the last full session, since deload reps were at lighter loads.
+   basis is the date the target came from, when it is not the session in
+   "Last", so the logger can say so. */
+function lastOf(all,base,fmt){
+  const rec=all&&all.length?all[all.length-1]:base;
+  const kind=rec.cut?'trimmed':rec.light?'lighter':rec.deload?'deload':'';
+  const line=`Last (${fmtDate(rec.date)}${kind?', '+kind:''}): ${rec.pts.map(fmt).join(', ')}.`;
+  const repsFrom=rec!==base&&rec.deload?base:rec;
+  return {line,lastR:repsFrom.pts.map(p=>p.r),basis:rec!==base?base.date:null};
+}
 /* ---------- progression suggestion ---------- */
 /* Double progression. Returns text (the full sentence, used on the Today
    preview), plus last/target (the same thing split into two lines for the
@@ -3005,7 +3022,7 @@ function suggest(exId,plan,opts){
   // full session sets the target. If there is nothing else, use them.
   const full=all?all.filter(x=>!x.deload&&!x.light&&!x.cut):[];
   const exps=all&&all.length?(full.length?full:all):all;
-  if(ex.timed)return suggestTimed(ex,plan,exps,opts,injM);
+  if(ex.timed)return suggestTimed(ex,plan,exps,opts,injM,all);
   if(!exps||!exps.length){
     if(injM)return {w:ex.bw?0:null,text:`Injury flagged (${ML[injM]}). Start light, keep 3 or more reps in reserve, and stop on pain.`,lastR:[],last:'',target:'',tgt:null,inj:injM};
     return {w:ex.bw?0:null,text:`No history yet. Pick a load you can take to ${plan.repMin}-${plan.repMax} reps at ${plan.rir} RIR.`,lastR:[],last:'',target:'',tgt:null};
@@ -3018,19 +3035,18 @@ function suggest(exId,plan,opts){
   // Only the sets at the top load decide progression. Ramp-up sets at lighter
   // loads used to block every load increase unless they also reached repMax.
   const topPts=ws.filter(p=>Math.abs(p.w-top)<1e-6);
-  const summary=ws.map(p=>`${loadLabel(ex,p.w)}×${p.r}`).join(', ');
-  const lastR=ws.map(p=>p.r);
-  const lastS=`Last (${fmtDate(last.date)}): ${summary}.`;
+  const L0=lastOf(all,last,p=>`${loadLabel(ex,p.w)}×${p.r}`);
+  const lastR=L0.lastR,lastS=L0.line,basis=L0.basis;
   const lbl=w=>`${loadLabel(ex,w)}${ex.bw?'':' '+U()}${loadNote(ex)}`;
   const prevBest=stx.best==null?null:stx.best;
   /* Injured area: no target to chase, load capped at last time, and a reminder
      to stop short. Deload: 90% of the last top load (rounded to a plate),
      half the sets (done by the caller), 3 or more in reserve. Neither sets a
      target, so nothing in this session reads as "beaten" or "missed". */
-  if(injM)return {w:top,text:`${lastS} Injury flagged (${ML[injM]}): stay at or below ${lbl(top)}, keep 3 or more reps in reserve, stop on pain.`,lastR,last:lastS,target:'',tgt:null,easier:null,inj:injM};
+  if(injM)return {w:top,text:`${lastS} Injury flagged (${ML[injM]}): stay at or below ${lbl(top)}, keep 3 or more reps in reserve, stop on pain.`,lastR,basis,last:lastS,target:'',tgt:null,easier:null,inj:injM};
   if(opts.deload){const bl=bwLoad(ex,T);
     // Assisted: 90% of the lifted load means more help, rounded up to the machine's step so it never lands back on the full load.
-    const hs=step>0?toD(step):U()==='lb'?5:2.5;const dw=ex.assist?-fromD(Math.ceil(toD(bl>0?bl-(top+bl)*0.9:-top*1.1)/hs-1e-9)*hs):ex.bw?((top+bl)*0.9-bl>0?roundLoad((top+bl)*0.9-bl,true):0):roundLoad(top*0.9,true);return {w:top>0||ex.assist?dw:top,text:`${lastS} Deload: about ${lbl(top>0||ex.assist?dw:top)} for ${plan.repMin}-${plan.repMax} with 3 or more reps in reserve. Half the usual sets.`,lastR,last:lastS,target:'',tgt:null,easier:null};}
+    const hs=step>0?toD(step):U()==='lb'?5:2.5;const dw=ex.assist?-fromD(Math.ceil(toD(bl>0?bl-(top+bl)*0.9:-top*1.1)/hs-1e-9)*hs):ex.bw?((top+bl)*0.9-bl>0?roundLoad((top+bl)*0.9-bl,true):0):roundLoad(top*0.9,true);return {w:top>0||ex.assist?dw:top,text:`${lastS} Deload: about ${lbl(top>0||ex.assist?dw:top)} for ${plan.repMin}-${plan.repMax} with 3 or more reps in reserve. Half the usual sets.`,lastR,basis,last:lastS,target:'',tgt:null,easier:null};}
   /* Recalibrate when every top set was logged with RIR at least 2 above the
      target. It uses the same e1() estimate as everything else,
      and the new load is what leaves the middle of the rep range at the target
@@ -3046,7 +3062,7 @@ function suggest(exId,plan,opts){
       const k=Math.floor((want-top)/step+1e-6);
       if(k>=1){
         const nw=ex.assist&&top<0?Math.min(0,top+k*step):capW(top+k*step);const rr=r1(topPts.reduce((a,p)=>a+p.rir,0)/topPts.length);
-        return {w:nw,text:`${lastS} RIR ${rr} at ${lbl(top)} against a target of ${tgtRir}, so that load was light. Try ${lbl(nw)} for ${plan.repMin}-${plan.repMax} reps.`,lastR,
+        return {w:nw,text:`${lastS} RIR ${rr} at ${lbl(top)} against a target of ${tgtRir}, so that load was light. Try ${lbl(nw)} for ${plan.repMin}-${plan.repMax} reps.`,lastR,basis,
           last:lastS,target:`${lbl(nw)} for ${plan.repMin}+ reps in every set`,tgt:{kind:'load',w:nw,repMin:+plan.repMin,prevBest},easier:null};
       }
     }
@@ -3073,7 +3089,7 @@ function suggest(exId,plan,opts){
         const nw=top-k*step;
         if(k>=1&&(nw>0||(ex.bw&&(nw>=0||ex.assist)))){
           const bestR=Math.max(...topPts.map(p=>p.r));
-          return {w:nw,text:`${lastS} Top sets at ${lbl(top)} stopped at ${bestR} reps, below your ${plan.repMin}-${plan.repMax} range. Drop to ${lbl(nw)} and build back up.`,lastR,
+          return {w:nw,text:`${lastS} Top sets at ${lbl(top)} stopped at ${bestR} reps, below your ${plan.repMin}-${plan.repMax} range. Drop to ${lbl(nw)} and build back up.`,lastR,basis,
             last:lastS,target:`${lbl(nw)} for ${plan.repMin}+ reps in every set`,tgt:{kind:'load',w:nw,repMin:+plan.repMin,prevBest},easier:null,down:true};
         }
       }
@@ -3089,27 +3105,27 @@ function suggest(exId,plan,opts){
     const maxed=topPts.every(p=>p.r>=ext);
     const tip=maxed?` Every set reached ${ext}+ at the heaviest load available, so make each rep harder instead: lower for 3 to 4 seconds and pause at the stretch, go one arm or one leg at a time, or finish with a drop set. Add a note when you change it so the numbers stay comparable.`
       :` That is the heaviest load available, so keep adding reps past ${plan.repMax}.`;
-    return {w:top,text:`${lastS} Beat ${total} reps ${over} at ${lbl(top)}.${tip}`,lastR,
+    return {w:top,text:`${lastS} Beat ${total} reps ${over} at ${lbl(top)}.${tip}`,lastR,basis,
       last:lastS,target:`${total+1}+ reps ${over} at ${lbl(top)}, the heaviest available`,tgt:{kind:'reps',w:top,total,n:nT,rs:topPts.map(p=>p.r),prevBest},
       easier:maxed?`Past ${ext} reps at the heaviest load: slow the lowering to 3 to 4 seconds with a pause at the stretch, go one side at a time, or add a drop set.`:null,capped:true};
   }
   if(topPts.every(p=>p.r>=plan.repMax)){
     const nw=capW(top+progStep(ex,plan,top+bwLoad(ex,T)));
-    if(ex.assist){const aw=top<0?Math.min(0,nw):nw;return {w:aw,text:`${lastS} Every set at ${lbl(top)} hit ${plan.repMax}: ${aw===0?'try it without help':`take ${fmtW(aw-top)} ${U()} of help off`} and aim for ${plan.repMin}+ reps.`,lastR,
+    if(ex.assist){const aw=top<0?Math.min(0,nw):nw;return {w:aw,text:`${lastS} Every set at ${lbl(top)} hit ${plan.repMax}: ${aw===0?'try it without help':`take ${fmtW(aw-top)} ${U()} of help off`} and aim for ${plan.repMin}+ reps.`,lastR,basis,
       last:lastS,target:`${lbl(aw)} for ${plan.repMin}+ reps in every set`,tgt:{kind:'load',w:aw,repMin:+plan.repMin,prevBest},easier:null};}
-    return {w:nw,text:`${lastS} Every set at ${lbl(top)} hit ${plan.repMax}: add ${fmtW(nw-top)} ${U()}${cap!=null&&nw>=cap-1e-6?', which is the heaviest available,':''} and aim for ${plan.repMin}+ reps.`,lastR,
+    return {w:nw,text:`${lastS} Every set at ${lbl(top)} hit ${plan.repMax}: add ${fmtW(nw-top)} ${U()}${cap!=null&&nw>=cap-1e-6?', which is the heaviest available,':''} and aim for ${plan.repMin}+ reps.`,lastR,basis,
       last:lastS,target:`${lbl(nw)} for ${plan.repMin}+ reps in every set`,tgt:{kind:'load',w:nw,repMin:+plan.repMin,prevBest},easier:null};
   }
   /* The rep target covers the same number of sets as last time, so an extra
      set can never count as progress on its own. */
   const total=topPts.reduce((a,p)=>a+p.r,0);const nT=topPts.length;
   const over=nT===1?'in one set':`over your first ${nT} sets`;
-  return {w:top,text:`${lastS} Beat ${total} reps ${over} at ${lbl(top)}. When every set at that load reaches ${plan.repMax}, ${ex.assist?'take some help off':'add load'}.`,lastR,
+  return {w:top,text:`${lastS} Beat ${total} reps ${over} at ${lbl(top)}. When every set at that load reaches ${plan.repMax}, ${ex.assist?'take some help off':'add load'}.`,lastR,basis,
     last:lastS,target:`${total+1}+ reps ${over} at ${lbl(top)}`,tgt:{kind:'reps',w:top,total,n:nT,rs:topPts.map(p=>p.r),prevBest},easier:stx.easier?easierText(ex,stx.easier):null};
 }
 /* Timed holds: double progression on seconds. Beat the total time at the same
    load; when every hold reaches the top of the range, add the load step. */
-function suggestTimed(ex,plan,exps,opts,injM){
+function suggestTimed(ex,plan,exps,opts,injM,all){
   opts=opts||{};
   const side=ex.perSide?' per side':'';
   if(!exps||!exps.length){
@@ -3119,19 +3135,19 @@ function suggestTimed(ex,plan,exps,opts,injM){
   const last=exps[exps.length-1],ws=last.pts;
   const top=Math.max(...ws.map(p=>p.w));const topPts=ws.filter(p=>Math.abs(p.w-top)<1e-6);
   const lbl=w=>`${loadLabel(ex,w)}${ex.bw?'':' '+U()}${loadNote(ex)}`;
-  const lastS=`Last (${fmtDate(last.date)}): ${ws.map(p=>`${loadLabel(ex,p.w)} for ${p.r}s`).join(', ')}.`;
-  const lastR=ws.map(p=>p.r);
-  if(injM)return {w:top,text:`${lastS} Injury flagged (${ML[injM]}): stay at or below ${lbl(top)}, keep it easy, and stop on pain.`,lastR,last:lastS,target:'',tgt:null,easier:null,inj:injM};
-  if(opts.deload)return {w:top,text:`${lastS} Deload: same load, hold about two thirds as long, and stop well before shaking.`,lastR,last:lastS,target:'',tgt:null,easier:null};
+  const L0=lastOf(all,last,p=>`${loadLabel(ex,p.w)} for ${p.r}s`);
+  const lastR=L0.lastR,lastS=L0.line,basis=L0.basis;
+  if(injM)return {w:top,text:`${lastS} Injury flagged (${ML[injM]}): stay at or below ${lbl(top)}, keep it easy, and stop on pain.`,lastR,basis,last:lastS,target:'',tgt:null,easier:null,inj:injM};
+  if(opts.deload)return {w:top,text:`${lastS} Deload: same load, hold about two thirds as long, and stop well before shaking.`,lastR,basis,last:lastS,target:'',tgt:null,easier:null};
   const step=incOf(ex,plan);const cap=ex.maxLoad!=null?ex.maxLoad:null;
   if(step>0&&topPts.every(p=>p.r>=plan.repMax)&&!(cap!=null&&top>=cap-1e-6)){
     const nw=cap!=null?Math.min(top+step,cap):top+step;
-    return {w:nw,text:`${lastS} Every hold at ${lbl(top)} reached ${plan.repMax}s: add ${fmtW(nw-top)} ${U()}${ex.bw?' (a plate or a vest)':''} and aim for ${plan.repMin}s+.`,lastR,
+    return {w:nw,text:`${lastS} Every hold at ${lbl(top)} reached ${plan.repMax}s: add ${fmtW(nw-top)} ${U()}${ex.bw?' (a plate or a vest)':''} and aim for ${plan.repMin}s+.`,lastR,basis,
       last:lastS,target:`${lbl(nw)} for ${plan.repMin}s+ in every set`,tgt:{kind:'load',w:nw,repMin:+plan.repMin,prevBest:null},easier:null};
   }
   const total=topPts.reduce((a,p)=>a+p.r,0);const nT=topPts.length;
   const over=nT===1?'in one hold':`over your first ${nT} holds`;
-  return {w:top,text:`${lastS} Beat ${total}s ${over} at ${lbl(top)}. When every hold reaches ${plan.repMax}s, add load.`,lastR,
+  return {w:top,text:`${lastS} Beat ${total}s ${over} at ${lbl(top)}. When every hold reaches ${plan.repMax}s, add load.`,lastR,basis,
     last:lastS,target:`${total+1}s+ ${over} at ${lbl(top)}`,tgt:{kind:'reps',w:top,total,n:nT,rs:topPts.map(p=>p.r),prevBest:null},easier:null};
 }
 /* Default plan for an exercise that is not in the routine yet. Timed holds
@@ -3710,7 +3726,7 @@ function viewToday(){
   const eyebrow=weekly?(di===wd?'Today':`Viewing ${DAYS[di]}`):`${dayLabel(R,di)} of ${R.days.length}${di===cs.next?' · next up':''}`;
   let note='';
   if(cs&&ui.todayDay==null){
-    if(cs.lastDate===today())note=`${dayLabel(R,cs.last)} is logged for today. This is the next day.`;
+    if(cs.lastDate===today())note=`${dayLabel(R,cs.last)} done today.`;
     else if(cs.restToday)note=`<b>Scheduled rest today</b> (${dayLabel(R,cs.restIdx)} of your cycle). ${esc(R.days[cs.next].name)} is ready whenever you want it.`;
   }
   const playable=!day.rest&&day.items.length>0;
@@ -4475,7 +4491,7 @@ function recovery(m,at){
   return {r:worst.r,days:recent.days,sets:recent.sets,need:worst.need};
 }
 function agoTxt(k){return k===0?'today':k===1?'yesterday':`${k} days ago`;}
-function lastHitTxt(m){const rc=recovery(m);return rc.days==null?'not trained hard in the last 3 weeks':`last trained hard ${agoTxt(rc.days)} (${r1(rc.sets)} sets)`;}
+function lastHitTxt(m){const rc=recovery(m);return rc.days==null?'not trained hard in 3 weeks':`last hard ${agoTxt(rc.days)}`;}
 /* Hard sets per muscle a routine day plans, direct only (for the headline
    muscles) and direct plus half for secondaries (for the scoring). */
 function dayDirect(day){const out={};for(const it of day.items){const ex=EX(it.exId);out[ex.primary]=(out[ex.primary]||0)+(+it.sets||0);}return out;}
@@ -4513,8 +4529,8 @@ function dayReasons(x,r7){
   for(const m of main){
     if(inj.has(m)){out.push(`Loads ${ML[m]}, which you flagged as injured.`);continue;}
     const rc=recovery(m);const [lo,hi]=bands[m];
-    const tired=rc.r<1?` Likely still recovering: it usually needs about ${rc.need} day${rc.need===1?'':'s'}.`:'';
-    out.push(`${ML[m]}: ${r1(r7[m])} of ${lo}-${hi} hard sets in the last 7 days, ${lastHitTxt(m)}.${tired}`);
+    const tired=rc.r<1?` Likely still recovering (about ${rc.need} day${rc.need===1?'':'s'}).`:'';
+    out.push(`${ML[m]}: ${r1(r7[m])} of ${lo}-${hi} hard sets in 7 days, ${lastHitTxt(m)}.${tired}`);
   }
   if(x.since!=null&&x.since>=8)out.push(`Last done ${x.since} days ago.`);
   else if(x.since==null)out.push('Not logged yet.');
@@ -4743,7 +4759,11 @@ function weekBody(w){
      say so: the denominator is every set the routine plans, the numerator is
      only the sets that counted as hard. You cannot reach 100% on a week where
      you left RIR at 4 or above. The day-by-day week is the bar at the top. */
-  return `${w.weekly?'':cycleStrip(w.R)}
+  if(ui.wkView===undefined){try{ui.wkView=localStorage.getItem(WKVIEW_KEY)==='month'?'month':'week';}catch(e){ui.wkView='week';}}
+  const month=ui.wkView==='month';
+  const tog=`<div class="wkview" role="group" aria-label="Show"><button type="button" data-act="wkView" data-v="week" aria-pressed="${!month}"${month?'':' class="on"'}>Week</button><button type="button" data-act="wkView" data-v="month" aria-pressed="${month}"${month?' class="on"':''}>Month</button></div>`;
+  if(month)return tog+`<div class="cal-inline">${calBody(ui.calYm&&ui.calYm<=today().slice(0,7)?ui.calYm:today().slice(0,7),true)}</div>`;
+  return `${tog}${w.weekly?'':cycleStrip(w.R)}
   <div class="band" data-tip="${w.got} hard sets logged of ${w.tgt} planned"><div class="fill prog" style="width:${w.pct}%"></div></div>
   ${w.cardioMin?`<p class="small" style="margin:5px 0 0">Cardio and mobility: ${w.cardioMin} min in ${w.cardioN} entr${w.cardioN===1?'y':'ies'}</p>`:''}
   <div class="hrow" style="margin:5px 0 0"><p class="small muted" style="margin:0" id="wkSets">${w.got} hard sets logged of ${w.tgt} planned${w.tgt>0?` (${Math.round(w.pct)}%)`:''}.</p>${helpBtn('wk')}</div>
@@ -4797,7 +4817,7 @@ function newBlock(exId,plan,opts){
   const sg=suggest(exId,plan,opts);
   // sw is the load the app suggested, kept so a later refresh can tell a row
   // still on the suggestion from one the lifter typed (refreshBlock).
-  return {exId,plan:{...plan},note:'',lastNote:lastNoteOf(exId,opts&&opts.before),inj:sg.inj||null,hint:sg.text,last:sg.last,target:sg.target,tgt:sg.tgt,easier:sg.easier||null,lastR:sg.lastR,sw:sg.w==null?null:sg.w,sets:Array.from({length:+plan.sets||3},()=>({w:fillLoads()?sg.w:null,r:null,rir:null,warm:false,drop:false,done:false}))};
+  return {exId,plan:{...plan},note:'',lastNote:lastNoteOf(exId,opts&&opts.before),inj:sg.inj||null,hint:sg.text,last:sg.last,target:sg.target,tgt:sg.tgt,easier:sg.easier||null,lastR:sg.lastR,basis:sg.basis||undefined,sw:sg.w==null?null:sg.w,sets:Array.from({length:+plan.sets||3},()=>({w:fillLoads()?sg.w:null,r:null,rir:null,warm:false,drop:false,done:false}))};
 }
 const DEFAULT_PLAN={sets:3,repMin:8,repMax:12,rir:1,rest:90,inc:5*LB};
 /* Round a load to something you can actually put on a bar or pick off a rack:
@@ -4856,7 +4876,7 @@ function viewLogger(){
   <div class="row lh-row"><input type="date" data-bind="draftDate" value="${d.date}" max="${today()}" aria-label="Session date" data-tip="Change to log a past session">${left>0?'<button class="btn sm" data-act="shortOpen">Short on time</button>':''}</div></div></div>
   ${helpText('log',(state.settings.rirMode==='off'?'RIR is switched off in Settings, so every working set counts as hard. ':'RIR is reps left in the tank: 3 or less counts the set as hard for weekly volume, 4 or more stays in history only. RIR is optional: a blank is read as your usual RIR on that lift, or as hard until you have rated a few of its sets. ')+'W marks a warm-up (kept, never analysed); tap it again for D, a drop set (counts as work and volume, never as a PR or target). To add a new warm-up or drop set row, use the ⋯ menu on the exercise. In a superset the rest timer starts after the last exercise of the pair. Timed holds log seconds in the Sec column. The date can be changed to log a past session.'+(d.past?' Quick entry: no rest timer, and a set counts as done once its reps are typed.':state.settings.autoDone?' Auto-mark is on: sets tick themselves when you leave the reps field.':''))}
   ${d.free?`<label class="field" style="margin-top:8px">Name<input type="text" data-bind="draftName" maxlength="40" value="${esc(d.dayName)}"></label><p class="small muted" style="margin:4px 0 0">Not tied to a routine day, so your cycle stays put.</p>`:''}
-  ${d.past?'':checkinCard(d)}`;
+  ${d.past?'':checkinCard(d)}${loadAskCard(d)}`;
   if(!d.ex.length)h+=`<div class="card"><p class="small" style="margin:0">No exercises yet. Tap + Add exercise below${d.editingId?'':', or Pick for me for a suggestion based on your last 7 days,'} and log as you go.</p></div>`;
   const calIdx=d.editingId?-1:calDueIdx(d);
   const letters=ssLetters(d.ex.map(b=>b.plan));
@@ -4870,7 +4890,7 @@ function viewLogger(){
     const partner=ss?d.ex.filter(x=>x!==b&&x.plan.ss===p.ss).map(x=>exName(x.exId)).join(' + '):'';
     h+=`<section class="block${ss?' ss':''}" id="blk-${bi}"><div class="bh"><div><h3>${esc(ex.name)}${ex.note?` ${tipi(ex.note,'About '+ex.name)}`:''}</h3><p class="small muted">${esc(ML[ex.primary])} · ${b.sets.filter(x=>!x.warm&&!x.drop).length||p.sets}×${p.repMin}-${p.repMax}${ex.timed?'s':''}${ex.perSide?'/side':''}${nr?'':` @${p.rir} RIR`} · ${p.rest}s${ss?` · <span class="tag blue">Superset ${ss}</span>`:''}${b.inj?` · <span class="tag red">Injury: ${ML[b.inj]}</span>`:''}</p>${lmChips(ex)}</div>
       <div class="bh-acts">${!d.editingId&&blockDone(b)?`<button class="ib" aria-label="Fold ${esc(ex.name)}" data-act="bFold" data-b="${bi}">▴</button>`:''}<button class="ib" aria-label="Exercise options" data-act="bMenu" data-b="${bi}">⋯</button></div></div>
-      ${b.target?`<p class="hint"><b>Today: ${esc(targetText(b))}</b><span class="tp muted" style="display:block">${esc(b.last)}</span>${b.easier?`<span class="tp ez">${esc(b.easier)}</span>`:''}${progressLine(b,bi)}</p>`:`<p class="hint">${esc(b.hint||'')}</p>`}${bi===calIdx?`<p class="small caldue">Due for an RIR check: take one set here to failure. <button class="linkbtn" data-act="bCal" data-b="${bi}">Calibration set</button> <button class="linkbtn" data-act="calSnooze">Not now</button></p>`:''}
+      ${b.target?`<p class="hint"><b>Today: ${esc(targetText(b))}</b>${b.basis?` ${tipi(`Target from your last full session, ${fmtDate(b.basis)}. Trimmed, lighter and deload sessions don't set targets.`,'Where this target comes from')}`:''}<span class="tp muted" style="display:block">${esc(b.last)}</span>${b.easier?`<span class="tp ez">${esc(b.easier)}</span>`:''}${progressLine(b,bi)}</p>`:`<p class="hint">${esc(b.hint||'')}</p>`}${bi===calIdx?`<p class="small caldue">Due for an RIR check: take one set here to failure. <button class="linkbtn" data-act="bCal" data-b="${bi}">Calibration set</button> <button class="linkbtn" data-act="calSnooze">Not now</button></p>`:''}
       ${ss&&partner?`<p class="small muted" style="margin:2px 0 0">Superset with ${esc(partner)}; rest after the pair.</p>`:''}
       ${b.lastNote&&!b.note?`<p class="small lnote">Your note, ${esc(fmtDate(b.lastNote.date))}: ${esc(b.lastNote.text)} <button class="linkbtn" data-act="noteReuse" data-b="${bi}">Use again</button></p>`:''}
       ${b.note?`<p class="small bnote" id="bn-${bi}">${esc(b.note)}</p>`:`<p class="small bnote" id="bn-${bi}" hidden></p>`}
@@ -4899,6 +4919,18 @@ function viewLogger(){
   return h;
 }
 
+/* Grey or filled-in loads (r26): asked once, in the first session after the
+   change, so the choice is found where it matters instead of in Settings.
+   Either answer is remembered on this device; Settings > Rest timer and
+   logging changes it later. */
+function loadAskCard(d){
+  if(d.editingId||!d.ex.length)return '';
+  try{if(localStorage.getItem(LOADASK_KEY))return '';}catch(e){return '';}
+  const fill=state.settings.loadFill==='fill';
+  return `<div class="card loadask" id="loadAsk"><p class="small" style="margin:0 0 8px"><b>${fill?'Suggested loads are filled in.':'Suggested loads show in grey.'}</b> ${fill?'Type over any of them.':'Tick a set to log it, or type your own.'} ${tipi('Change it any time in Settings > Rest timer and logging.','Where to change this')}</p>
+  <div class="row"><button class="btn sm${fill?'':' primary'}" data-act="loadAsk" data-v="grey">${fill?'Show them in grey':'Keep grey'}</button><button class="btn sm${fill?' primary':''}" data-act="loadAsk" data-v="fill">${fill?'Keep filled in':'Fill them in'}</button></div>
+  </div>`;
+}
 /* The first machine, cable or Smith exercise in a session is offered a
    calibration set when none was done in the last 3 weeks, RIR is on, and
    you have at least 3 real sessions. Not now waits another 3 weeks. */
@@ -5093,7 +5125,7 @@ function viewDash(){
     if(stalled.length>=3)stl+=`<p class="small hastip" style="color:var(--red);margin-top:8px" data-tip="Several lifts flat together often points to fatigue. Check sleep, food and stress; Deload week is under More options on Today (half the sets, about 90% loads, kept out of your trends).">${stalled.length} stalled at once: likely fatigue</p>`;
   }else stl+='<p class="muted">No stalls detected.</p>';
   const lw=lastLighterWeek();
-  if(lw)stl+=`<p class="small muted" style="margin-top:8px">${lw.weeks==null?`No lighter week in the last 12 (usual ${lw.norm} hard sets a week).`:`Last lighter week: ${lw.weeks} week${lw.weeks===1?'':'s'} ago (${lw.sets>0?`${lw.sets} hard sets against your usual ${lw.norm}`:'a week off'}).`}</p>`;
+  if(lw)stl+=`<p class="small muted" style="margin-top:8px">${lw.weeks==null?`No lighter week in the last 12. ${tipi(`Your usual week is ${lw.norm} hard sets. A lighter week is one well under that.`,'Lighter week')}`:`Last lighter week: ${lw.weeks} week${lw.weeks===1?'':'s'} ago (${lw.sets>0?`${lw.sets} hard sets against your usual ${lw.norm}`:'a week off'}).`}</p>`;
 
   // exercise trend
   const withData=Object.keys(I.byEx).filter(id=>I.byEx[id].length).sort((a,b)=>exName(a).localeCompare(exName(b)));
@@ -5575,7 +5607,7 @@ function viewSettings(){
   ${(()=>{const ap=acctPanel();return `${ap}<div class="panel" id="syncInfo"${ap?' style="margin-top:8px"':''}>${syncInfo()}</div>`;})()}
   ${canInstallHere()?`<div class="panel row spread" id="installPanel" style="margin-top:8px"><p class="small" style="margin:0;flex:1 1 180px"><b>Install the app.</b> Full screen, offline, one tap from your home screen.</p><button class="btn sm primary" data-act="install">${/^ios/.test(installKind())?'Add to Home Screen':'Install'}</button></div>`:''}
   ${privacyLine()}
-  ${backupDue()?`<p class="callout yellow" style="margin:10px 0 0"><b>Backup due.</b> ${s.lastExport?`Last backup file ${fmtDate(s.lastExport)}.`:'No backup file yet.'} ${cloud.on?'Export one below; the cloud copy mirrors deletions, so it is not a backup.':'Export one below; this device holds the only copy.'}</p>`:''}
+  ${backupDue()?`<p class="callout yellow" style="margin:10px 0 0"><b>Backup due.</b> ${s.lastExport?`Last backup file ${fmtDate(s.lastExport)}.`:'No backup file yet.'} ${cloud.on?'Export one below; the cloud copy mirrors deletions, so it is not a backup.':'This device holds the only copy.'}</p>`:''}
   ${storageOk?'':'<p class="small" style="color:var(--red)">This browser is blocking local storage, so this device keeps nothing between reloads without cloud sync.</p>'}
   <div class="card stack"><div class="row"><button class="btn primary" data-act="export" data-tip="The backup: restores everything, on any device.">Export backup (.json)</button><button class="btn" data-act="showBackup" data-tip="The same backup as text, to copy somewhere safe.">Show backup text</button><button class="btn" data-act="exportCsv" data-tip="One row per set for spreadsheets. Not a backup: it cannot be imported.">Export sets (.csv)</button></div>
   <button class="btn" data-act="impOpen" data-tip="Adds sessions from notes, a spreadsheet, Strong or Hevy. You check everything before it is saved.">Import workouts</button>
@@ -5762,7 +5794,7 @@ function renderModalBody(){
       :pl.changes.length?`<ul class="short-list">${pl.changes.map(c=>`<li>${esc(c)}</li>`).join('')}</ul><p class="small muted" style="margin:6px 0 0">About ${pl.est} min after the change.${pl.over?' Still over, because exercises you have started are kept.':''} Done sets are never touched.</p>`
       :`<p class="small">Everything left fits in ${m.mins} minutes as planned.</p>`;
     h=`<div class="sheet" role="dialog" aria-modal="true"><div class="sheet-h"><h3>Short on time</h3><button class="ib" aria-label="Close" data-act="mClose">✕</button></div>
-    ${left?`<p class="small muted" style="margin:0 0 8px">About ${left} min of lifting left as planned. How long do you have?</p>
+    ${left?`<p class="small muted" style="margin:0 0 8px">How long do you have? Planned: about ${left} min.</p>
     <div class="chips">${[15,20,30,45,60,75].map(v=>`<button class="chip ${m.mins===v?'on':''}" data-act="shortPick" data-v="${v}" aria-pressed="${m.mins===v}">${v} min</button>`).join('')}</div>`:''}
     ${body}
     <div class="row" style="margin-top:12px">${pl&&pl.changes.length?'<button class="btn primary" data-act="shortApply">Trim the session</button>':''}<button class="btn" data-act="mClose">${pl&&pl.changes.length?'Cancel':'Close'}</button></div>
@@ -6383,33 +6415,39 @@ function draftEntered(d){
   const n=(d.notes||'').trim();if(!n)return false;
   return typeof d.note0==='string'?n!==d.note0.trim():true;
 }
-/* The month calendar (r25): any date one tap away. A day with a session
-   opens it in History; an empty past day logs a workout for it (as in the
-   week bar); today opens Today. Opened from History, a Consistency square's
-   month, or by pulling the week bar down (or tapping the handle under it). */
+/* The month calendar: any date one tap away. A day with a session opens it
+   in History; an empty past day logs a workout for it (as in the week bar);
+   today opens Today. It sits inline in This week on Today (Week or Month,
+   r26), and opens as a sheet from History's Calendar button and a
+   Consistency square. The pull-down on the week bar (r25) is gone: the
+   calendar rose from the bottom of the screen while the finger pulled down
+   from the top. */
 const MONTHS=['January','February','March','April','May','June','July','August','September','October','November','December'];
 function calBounds(){
   const t=today().slice(0,7);const f=firstDate([...state.sessions,...state.cardio]);
   return {min:f&&f.slice(0,7)<t?f.slice(0,7):t,max:t};
 }
-function calSheet(m){
-  const [y,mo]=m.ym.split('-').map(Number);const dim=new Date(y,mo,0).getDate();const lead=(new Date(y,mo-1,1).getDay()+6)%7;
+// The month header and grid, for the sheet (inline false) and This week (inline true).
+function calBody(ym,inline){
+  const [y,mo]=ym.split('-').map(Number);const dim=new Date(y,mo,0).getDate();const lead=(new Date(y,mo-1,1).getDay()+6)%7;
   const t=today();const bd={};for(const x of state.sessions)(bd[x.date]=bd[x.date]||[]).push(x);
   const cd={};for(const c of state.cardio)cd[c.date]=(cd[c.date]||0)+c.min;
   const {min,max}=calBounds();
   let g=DAYS.map(d=>`<span class="wd">${d.slice(0,2)}</span>`).join('')+'<span></span>'.repeat(lead);let n=0;
   for(let i=1;i<=dim;i++){
-    const d=`${m.ym}-${String(i).padStart(2,'0')}`;const ss=bd[d]||[];const c=cd[d]||0;if(ss.length)n+=ss.length;
+    const d=`${ym}-${String(i).padStart(2,'0')}`;const ss=bd[d]||[];const c=cd[d]||0;if(ss.length)n+=ss.length;
     const cls=['cd',ss.length?'on':'',!ss.length&&c?'cardio':'',d===t?'today':'',d>t?'fut':''].filter(Boolean).join(' ');
     const what=ss.length?ss.map(x=>x.dayName||'Session').join(', '):c?`cardio ${c} min`:d>t?'':'nothing logged';
     const inner=`<span class="n">${i}</span><span class="x">${ss.length>1?'×'+ss.length:''}</span>`;
     g+=d>t?`<span class="${cls}" aria-hidden="true">${inner}</span>`
       :`<button type="button" class="${cls}" data-act="calDay" data-date="${d}" aria-label="${esc(fmtDateLong(d)+': '+what)}"${what&&what!=='nothing logged'?` data-tip="${esc(what)}"`:''}>${inner}</button>`;
   }
-  return `<div class="sheet" role="dialog" aria-modal="true" aria-labelledby="calH"><div class="cal-h"><button class="ib" data-act="calMonth" data-v="-1" aria-label="Previous month" ${m.ym<=min?'disabled':''}>‹</button><h3 id="calH">${MONTHS[mo-1]} ${y}</h3><button class="ib" data-act="calMonth" data-v="1" aria-label="Next month" ${m.ym>=max?'disabled':''}>›</button><button class="ib" aria-label="Close" data-act="mClose">✕</button></div>
+  const nav=v=>`data-act="calMonth" data-v="${v}"${inline?' data-inline="1"':''}`;
+  return `<div class="cal-h"><button class="ib" ${nav(-1)} aria-label="Previous month" ${ym<=min?'disabled':''}>‹</button><${inline?'h4':'h3'} id="calH${inline?'i':''}">${MONTHS[mo-1]} ${y}</${inline?'h4':'h3'}><button class="ib" ${nav(1)} aria-label="Next month" ${ym>=max?'disabled':''}>›</button>${inline?'':'<button class="ib" aria-label="Close" data-act="mClose">✕</button>'}</div>
   <div class="cal-g">${g}</div>
-  <div class="row spread" style="margin-top:10px"><p class="small muted" style="margin:0">${n?`${n} session${n===1?'':'s'}`:'No sessions'}${m.ym===max?' so far':''}</p>${m.ym!==max?'<button class="btn sm" data-act="calMonth" data-v="now">This month</button>':''}</div></div>`;
+  <div class="row spread" style="margin-top:10px"><p class="small muted" style="margin:0">${n?`${n} session${n===1?'':'s'}`:'No sessions'}${ym===max?' so far':''}</p>${ym!==max?`<button class="btn sm" ${nav('now')}>This month</button>`:''}</div>`;
 }
+function calSheet(m){return `<div class="sheet" role="dialog" aria-modal="true" aria-labelledby="calH">${calBody(m.ym,false)}</div>`;}
 function pastSheet(m){
   const R=activeRoutine();const due=pastDue(R,m.date);
   const on=state.sessions.filter(x=>x.date===m.date).map(x=>x.dayName||'Session');
@@ -6430,7 +6468,7 @@ function pastSheet(m){
 function refreshBlock(b){
   const d=state.draft;if(!d||!b)return;const old=b.sets.find(x=>!x.done&&!x.warm);const oldW=b.sw!==undefined?b.sw:old?old.w:null;
   const sg=suggest(b.exId,b.plan,{deload:!!d.deload,before:d.date});
-  Object.assign(b,{inj:sg.inj||null,hint:sg.text,last:sg.last,target:sg.target,tgt:sg.tgt,easier:sg.easier||null,lastR:sg.lastR,lastNote:lastNoteOf(b.exId,d.date),sw:sg.w==null?null:sg.w});
+  Object.assign(b,{inj:sg.inj||null,hint:sg.text,last:sg.last,target:sg.target,tgt:sg.tgt,easier:sg.easier||null,lastR:sg.lastR,basis:sg.basis||undefined,lastNote:lastNoteOf(b.exId,d.date),sw:sg.w==null?null:sg.w});
   for(const x of b.sets)if(!x.done&&!x.warm&&!x.drop&&x.r==null&&x.w===oldW&&!carried.has(x))x.w=sg.w;
 }
 const ACT={
@@ -6442,11 +6480,29 @@ const ACT={
   appUpdateLater(){upd.later=true;updRender();},
   async acctRetry(){await cloudInit();acctRerender();if(!cloud.on)toast('Still not syncing. Check your connection, or sign out and in again.');},
   iconHow(){openModal({kind:'icon'});},
+  /* The choice applies to the session in progress too: rows still on the
+     suggestion switch between grey and filled, typed loads stay as typed. */
+  loadAsk(t){
+    const fill=t.dataset.v==='fill';if(fill)state.settings.loadFill='fill';else delete state.settings.loadFill;
+    try{localStorage.setItem(LOADASK_KEY,'1');}catch(e){/* asked again next session */}
+    const d=state.draft;
+    // Filled in, a row takes what it showed in grey (a load typed above it, else the suggestion), and follows a correction above like carried rows do.
+    if(d)for(const b of d.ex)b.sets.forEach((x,i)=>{if(x.done||x.warm||x.drop||x.r!=null||x.rir!=null)return;
+      if(fill&&x.w==null){const g=greyW(b,i);if(g!=null){x.w=g;if(g!==b.sw)carried.add(x);}}
+      else if(!fill&&(x.w===b.sw||carried.has(x))){x.w=null;carried.delete(x);}});
+    commit();rerenderKeepScroll();toast(fill?'Loads filled in':'Loads in grey');
+  },
   calOpen(t){const ym=t&&t.dataset&&/^\d{4}-\d{2}$/.test(t.dataset.ym||'')?t.dataset.ym:today().slice(0,7);if(ui.modal)closeModal();openModal({kind:'cal',ym});},
-  calMonth(t){const m=ui.modal;if(!m||m.kind!=='cal')return;const {min,max}=calBounds();
-    if(t.dataset.v==='now'){m.ym=max;renderModal();return;}
-    const [y,mo]=m.ym.split('-').map(Number);const d=new Date(y,mo-1+(+t.dataset.v||0),1);const ym=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
-    if(ym<min||ym>max)return;m.ym=ym;renderModal();},
+  calMonth(t){
+    const inline=t.dataset.inline==='1';const m=ui.modal;
+    if(!inline&&(!m||m.kind!=='cal'))return;
+    const cur=inline?(ui.calYm||today().slice(0,7)):m.ym;const {min,max}=calBounds();let ym;
+    if(t.dataset.v==='now')ym=max;
+    else{const [y,mo]=cur.split('-').map(Number);const d=new Date(y,mo-1+(+t.dataset.v||0),1);ym=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;}
+    if(ym<min||ym>max)return;
+    if(inline){ui.calYm=ym;rerenderKeepScroll();}else{m.ym=ym;renderModal();}},
+  // This week on Today: the week, or the month (remembered on this device).
+  wkView(t){const v=t.dataset.v==='month'?'month':'week';ui.wkView=v;if(v==='month')ui.calYm=today().slice(0,7);try{localStorage.setItem(WKVIEW_KEY,v);}catch(e){/* this visit only */}rerenderKeepScroll();},
   calDay(t){
     const d=t.dataset.date;if(!isDate(d)||d>today())return;
     if(ui.modal)closeModal();
@@ -7350,29 +7406,6 @@ document.addEventListener('focusout',()=>tipHide());
 window.addEventListener('scroll',()=>{if(TIP.el)tipHide();},{passive:true});
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&TIP.el)tipHide();});
 
-/* Pull the week bar down to open the month calendar (r25). The gesture only
-   counts once the finger has moved clearly downward (more than 10 px, and
-   mostly down), so a tap still opens a day and a hold still shows its tip.
-   Released past 36 px it opens the calendar; either way the click that the
-   release would send to a day is swallowed. */
-const PULL={id:null,x:0,y:0,on:false};
-function pullReset(){PULL.id=null;PULL.on=false;const h=document.querySelector('header.top');if(h)h.classList.remove('pulling');}
-document.addEventListener('pointerdown',e=>{
-  const h=e.target.closest&&e.target.closest('header.top');if(!h||e.button>0||document.body.classList.contains('modal-open'))return;
-  PULL.id=e.pointerId;PULL.x=e.clientX;PULL.y=e.clientY;PULL.on=false;
-});
-document.addEventListener('pointermove',e=>{
-  if(PULL.id==null||e.pointerId!==PULL.id)return;const dy=e.clientY-PULL.y,dx=Math.abs(e.clientX-PULL.x);
-  if(!PULL.on&&dy>10&&dy>dx*1.5){PULL.on=true;clearTimeout(TIP.hold);TIP.hold=null;const h=document.querySelector('header.top');if(h)h.classList.add('pulling');}
-  else if(!PULL.on&&(dx>14||dy<-14)){PULL.id=null;}
-});
-document.addEventListener('pointerup',e=>{
-  if(PULL.id==null||e.pointerId!==PULL.id)return;const on=PULL.on,dy=e.clientY-PULL.y;pullReset();
-  if(!on)return;TIP.swallow=true;setTimeout(()=>{TIP.swallow=false;},450);
-  if(dy>=36)ACT.calOpen();
-});
-document.addEventListener('pointercancel',e=>{if(e.pointerId===PULL.id)pullReset();});
-
 /* ---------- events ---------- */
 /* The sign-in sheet is a real form so the phone offers to save and fill the
    password; it never navigates. Enter submits it through its button. */
@@ -7504,7 +7537,7 @@ document.addEventListener('change',e=>{
     case 'timerSound':state.settings.timerSound=t.checked;if(t.checked)primeAudio();commit();break;
     case 'timerCompact':state.settings.timerCompact=t.checked;commit();if(!$('#timer').hidden)tick();break;
     case 'autoDone':state.settings.autoDone=t.checked;commit();rerenderKeepScroll();break;
-    case 'loadFill':if(t.checked)state.settings.loadFill='fill';else delete state.settings.loadFill;commit();rerenderKeepScroll();break;
+    case 'loadFill':ACT.loadAsk({dataset:{v:t.checked?'fill':'grey'}});break;
     case 'rirAsk':if(t.checked)state.settings.rirAsk=true;else delete state.settings.rirAsk;commit();rerenderKeepScroll();break;
     case 'wakeLock':state.settings.wakeLock=t.checked;commit();if(t.checked&&state.draft)wakeOn();else if(!t.checked)wakeOff();break;
     case 'timeBudget':{const n=numIn(t.value);state.settings.timeBudget=n==null||n<10?null:Math.min(Math.round(n),300);commit();break;}
