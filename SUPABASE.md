@@ -96,7 +96,7 @@ create table public.feedback (
   category text not null check (category in ('bug', 'idea', 'question')),
   message text not null check (char_length(message) between 10 and 1000),
   reply_to text check (reply_to is null or char_length(reply_to) <= 200),
-  screenshot text check (screenshot is null or (screenshot like 'data:image/jpeg;base64,%' and char_length(screenshot) <= 1500000)),
+  screenshot text check (screenshot is null or (screenshot ~ '^data:image/jpeg;base64,[A-Za-z0-9+/]+={0,2}$' and char_length(screenshot) <= 1500000)),
   context jsonb not null default '{}'::jsonb check (pg_column_size(context) <= 20000),
   issue_url text
 );
@@ -107,6 +107,10 @@ create policy "signed-in people can add" on public.feedback
 -- At most 5 reports a day per account, whatever the app does.
 create function public.feedback_limit() returns trigger language plpgsql security definer set search_path = '' as $$
 begin
+  -- The time and the ticket link are the server's, never the sender's: a back-dated
+  -- report would slip past the daily limit, and a made-up link would show in your Inbox.
+  new.created_at := now();
+  new.issue_url := null;
   if (select count(*) from public.feedback where user_id = new.user_id and created_at > now() - interval '24 hours') >= 5 then
     raise exception 'feedback_rate_limited' using errcode = 'P0001';
   end if;
@@ -145,14 +149,39 @@ create policy "signed-in people can add" on public.feedback for insert to authen
 revoke insert on public.feedback from anon;
 create or replace function public.feedback_limit() returns trigger language plpgsql security definer set search_path = '' as $$
 begin
+  -- The time and the ticket link are the server's, never the sender's: a back-dated
+  -- report would slip past the daily limit, and a made-up link would show in your Inbox.
+  new.created_at := now();
+  new.issue_url := null;
   if (select count(*) from public.feedback where user_id = new.user_id and created_at > now() - interval '24 hours') >= 5 then
     raise exception 'feedback_rate_limited' using errcode = 'P0001';
   end if;
   return new;
 end $$;
 create trigger feedback_limit before insert on public.feedback for each row execute function public.feedback_limit();
+alter table public.feedback drop constraint if exists feedback_screenshot_check;
+alter table public.feedback add constraint feedback_screenshot_check check (screenshot is null or (screenshot ~ '^data:image/jpeg;base64,[A-Za-z0-9+/]+={0,2}$' and char_length(screenshot) <= 1500000)) not valid;
 -- Only the trigger runs it; nobody can call it through the API.
 revoke all on function public.feedback_limit() from public, anon, authenticated;
+```
+
+   **Already ran this step between r25 and r28?** Run this as well (r29): it stops back-dated reports and anything but a plain picture in the screenshot field.
+
+```sql
+create or replace function public.feedback_limit() returns trigger language plpgsql security definer set search_path = '' as $$
+begin
+  -- The time and the ticket link are the server's, never the sender's: a back-dated
+  -- report would slip past the daily limit, and a made-up link would show in your Inbox.
+  new.created_at := now();
+  new.issue_url := null;
+  if (select count(*) from public.feedback where user_id = new.user_id and created_at > now() - interval '24 hours') >= 5 then
+    raise exception 'feedback_rate_limited' using errcode = 'P0001';
+  end if;
+  return new;
+end $$;
+revoke all on function public.feedback_limit() from public, anon, authenticated;
+alter table public.feedback drop constraint if exists feedback_screenshot_check;
+alter table public.feedback add constraint feedback_screenshot_check check (screenshot is null or (screenshot ~ '^data:image/jpeg;base64,[A-Za-z0-9+/]+={0,2}$' and char_length(screenshot) <= 1500000)) not valid;
 ```
 
 Steps 2 to 5 turn each report into a GitHub issue, which is what lets Claude pick it up (`FEEDBACK.md`). They can wait.

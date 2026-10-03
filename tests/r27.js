@@ -30,7 +30,7 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
     await ev(() => { const L = window.__ironlog; L.ui.tab = 'history'; L.render(); });
     await page.click('#saveState'); await wait(80);
     const menu = await ev(() => { const m = document.getElementById('modal'); return { kind: window.__ironlog.ui.modal && window.__ironlog.ui.modal.kind, rows: [...m.querySelectorAll('.mnu')].map(b => ({ t: b.textContent.replace('›', '').trim(), h: b.getBoundingClientRect().height })), acct: m.querySelector('#menuAcct').innerText, build: /Build \d{4}\.\d{2}\.\d{2}-r\d+/.test(m.innerText) }; });
-    ok(menu.kind === 'menu' && JSON.stringify(menu.rows.map(r => r.t)) === JSON.stringify(['Report a problem', 'Guide', 'Show, hide or reorder sections', 'Your data and backups']) && menu.rows.every(r => r.h >= 48) && menu.build, 'the menu: Report a problem, Guide, Show, hide or reorder sections (r28), Your data and backups (48 px rows), and the build', menu);
+    ok(menu.kind === 'menu' && JSON.stringify(menu.rows.map(r => r.t)) === JSON.stringify(['Report a problem', 'Guide', 'Show, hide, or reorder sections', 'Your data and backups']) && menu.rows.every(r => r.h >= 48) && menu.build, 'the menu: Report a problem, Guide, Show, hide, or reorder sections (r28), Your data and backups (48 px rows), and the build', menu);
     ok(/Saved/.test(menu.acct) && !/Sign in/.test(menu.acct), 'without accounts (the source file) it says where the log is saved, and offers no sign-in', menu.acct);
     // The close button, and the phone's Back, close it.
     await page.click('#modal [data-act="mClose"]'); await wait(60);
@@ -53,7 +53,7 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
     ok(g.kind === 'guide' && g.topics.join('|') === 'Today|Logging a session|How targets are set|Volume and Stats|Plan and your own exercises|Sections|Your data' && g.open === 0, 'the Guide has seven topics, all folded', g.topics);
     await page.click('#modal .gsec[data-g="rules"]>summary'); await wait(60);
     const rules = await ev(() => document.querySelector('#modal .gsec[data-g="rules"]').innerText);
-    ok(/last full session/.test(rules) && /trimmed, lighter or deload/.test(rules) && /2\.5%/.test(rules) && /never under the empty bar/.test(rules) && /heavy day and a light day/.test(rules), 'How targets are set states the rules: last full session, Last labelled, step sizes, deload floor, per-day ranges', rules.slice(0, 120));
+    ok(/last full session/.test(rules) && /trimmed, lighter, or deload/.test(rules) && /2\.5%/.test(rules) && /never under the empty bar/.test(rules) && /heavy day and a light day/.test(rules), 'How targets are set states the rules: last full session, Last labelled, step sizes, deload floor, per-day ranges', rules.slice(0, 120));
     ok(!/[—]/.test(g.text) && !/!/.test(g.text.replace(/!=/g, '')), 'the Guide has no em dashes or exclamation marks');
     await ev(() => window.__ironlog.ACT.mClose());
 

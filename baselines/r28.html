@@ -380,21 +380,6 @@ ul.items:empty::before{content:"Drop or add exercises here";display:block;paddin
 .ib:disabled{opacity:.35;cursor:default}
 .sgrip{width:22px;height:32px;display:inline-flex;align-items:center;justify-content:center;cursor:grab;color:var(--muted);font-size:15px;touch-action:none;flex:none;user-select:none;-webkit-user-select:none;border-radius:6px;margin-left:-6px;opacity:.4}
 .sgrip:focus-visible{outline:2px solid var(--ink);outline-offset:1px}
-.bgrip{width:26px;min-height:44px;display:inline-flex;align-items:center;justify-content:center;cursor:grab;color:var(--muted);font-size:16px;touch-action:none;flex:none;user-select:none;-webkit-user-select:none;border-radius:6px;margin:-6px 0 0 -8px;opacity:.55}
-.bgrip:focus-visible{outline:2px solid var(--ink);outline-offset:1px}
-/* The handle looks narrow so the exercise name keeps its room, but a finger
-   gets 44 px: the invisible margin around it belongs to the handle. */
-.bgrip{position:relative}.bgrip::before{content:'';position:absolute;top:0;bottom:0;left:-9px;right:-9px}
-.bh-m{flex:1 1 auto;min-width:0}
-.block.folded{display:flex;align-items:center}
-.block.folded .bgrip{margin:0 -10px 0 6px}.block.folded .bgrip::before{left:-6px;right:-12px}
-/* During a drag every exercise is one line, so the list fits on the screen;
-   the copy under the finger too (Sortable sizes it from the open block). */
-body.blkdrag #view section.block:not(.folded),body.blkdrag .sortable-fallback{padding:4px 12px 4px 16px;margin:6px 0;height:auto!important}
-body.blkdrag #view section.block:not(.folded)>:not(.bh),body.blkdrag .sortable-fallback>:not(.bh),body.blkdrag .block .bh>:not(.bgrip):not(.bh-m),body.blkdrag .block .bh-m>:not(h3){display:none}
-body.blkdrag .block .bh{align-items:center}body.blkdrag .block .bgrip{margin:0 0 0 -8px}
-body.blkdrag .block .bh h3{font-size:17px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;overflow-wrap:normal}
-.block.folded .bfold{min-width:0;flex:1 1 auto;width:auto}
 .dgrip{width:26px;height:40px;display:inline-flex;align-items:center;justify-content:center;cursor:grab;color:var(--muted);font-size:19px;touch-action:none;flex:none;user-select:none;-webkit-user-select:none;margin-left:-4px}
 .dfold{background:transparent!important;border:0!important}
 .dfold::before{content:"";display:inline-block;width:8px;height:8px;border-right:2px solid var(--ink);border-bottom:2px solid var(--ink);transform:translateY(-2px) rotate(45deg)}
@@ -888,13 +873,6 @@ function updRender(){
   if(show&&!el.firstChild)el.innerHTML='<span class="ut">New version ready</span><button type="button" class="btn sm primary" data-act="appUpdate">Reload</button><button type="button" class="btn sm" data-act="appUpdateLater">Later</button>';
 }
 window.ironlogUpdateReady=()=>{upd.ready=true;updRender();};
-/* A list in a sentence (V, r29): "a and b", "a, b, and c", with the
-   serial comma; max shows that many and then "and N more". */
-function andList(a,max){
-  a=(a||[]).filter(x=>x!=null&&x!=='');
-  if(max&&a.length>max){const rest=a.length-max;a=[...a.slice(0,max),`${rest} more`];}
-  return a.length<3?a.join(' and '):a.slice(0,-1).join(', ')+', and '+a[a.length-1];
-}
 const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const uid=()=>Math.random().toString(36).slice(2,9)+Date.now().toString(36).slice(-4);
 const LB=0.45359237, IN=2.54;
@@ -996,12 +974,10 @@ const MUSCLES=[['chest','Chest'],['serratus','Serratus'],['lats','Lats'],['upper
 const MK=MUSCLES.map(m=>m[0]);
 const ML=Object.fromEntries(MUSCLES);
 const NEW_MUSCLES_V5=['serratus','rotatorCuff'];
-/* Tracked only: sets are counted and shown, but these never read as under
-   or over target, never drive advice, and are drawn in neutral grey. Their
-   bands have no dose-response data behind them. Neck and tibialis joined in
-   r29 (V): no ready-made routine trains them directly, and as targets they
-   made every routine read as short. A convention, said so in the Guide. */
-const TRACK_ONLY=new Set(['serratus','rotatorCuff','neck','tibialis']);
+/* Tracked only: sets are counted and shown, but these two never read as
+   under or over target, never drive advice, and are drawn in neutral grey.
+   Their bands have no dose-response data behind them. */
+const TRACK_ONLY=new Set(['serratus','rotatorCuff']);
 const BANDS={chest:[10,20],serratus:[2,8],lats:[10,20],upperBack:[10,20],traps:[6,16],lowerBack:[3,10],frontDelts:[4,12],sideDelts:[10,20],rearDelts:[8,16],rotatorCuff:[2,8],biceps:[10,20],triceps:[10,20],forearms:[4,12],abs:[6,16],obliques:[3,10],neck:[2,10],quads:[10,20],hamstrings:[10,20],glutes:[8,16],adductors:[4,12],abductors:[4,12],calves:[8,16],tibialis:[2,8]};
 const EQUIP=[['barbell','Barbell'],['dumbbell','Dumbbell'],['cable','Cable'],['machine','Machine'],['smith','Smith machine'],['landmine','Landmine'],['bodyweight','Bodyweight'],['other','Other']];
 // Twenty-three spokes is unreadable on a phone, so the balance radar groups
@@ -1348,7 +1324,7 @@ if(ENV==='preview')document.documentElement.dataset.env='preview';
 const HAD_LOG=(()=>{try{return localStorage.getItem(KEY)!=null;}catch(e){return false;}})();
 /* Shown in Settings, in diagnostics and in backups, so a bug report can be
    matched to the exact build. */
-const APP_VERSION='2026.10.03-r29';
+const APP_VERSION='2026.10.02-r28';
 /* The logo (r25): an upright dumbbell that is also the I of Ironlog. Same
    numbers as scripts/icons.py, which draws the app icons. */
 const MARK_SVG='<svg class="mark" viewBox="-242 -378 484 756" aria-hidden="true" focusable="false"><rect class="mk-h" x="-30" y="-300" width="60" height="600" rx="14"/><rect class="mk-h" x="-80" y="-192" width="160" height="32" rx="12"/><rect class="mk-h" x="-80" y="160" width="160" height="32" rx="12"/><rect class="mk-p" x="-240" y="-376" width="480" height="92" rx="30"/><rect class="mk-p" x="-190" y="-270" width="380" height="66" rx="26"/><rect class="mk-p" x="-190" y="204" width="380" height="66" rx="26"/><rect class="mk-p" x="-240" y="284" width="480" height="92" rx="30"/></svg>';
@@ -1760,7 +1736,7 @@ function normalize(s){
         lastR:Array.isArray(b.lastR)?b.lastR.slice(0,30).map(v=>{const n=numOr(v,NaN);return isNum(n)&&n>=0?Math.min(n,1000):null;}):[],
         swappedFrom:typeof b.swappedFrom==='string'?fixId(b.swappedFrom):null,
         cut:b.cut===true?true:undefined,
-        // The date the target came from, when "Last" is a newer trimmed, lighter, or deload session (r26).
+        // The date the target came from, when "Last" is a newer trimmed, lighter or deload session (r26).
         basis:isDate(b.basis)?b.basis:undefined,
         // The suggested load the rows started from (r24); absent in older drafts.
         sw:b.sw===null?null:b.sw===undefined||!isNum(+b.sw)?undefined:clampN(b.sw,-300,20000*LB,0),
@@ -2299,7 +2275,7 @@ function fbContext(m){
     counts:{sessions:state.sessions.filter(x=>!x.demo).length,routines:state.routines.length},
     errors:logBuf.slice(-10)};
 }
-const FB_WHAT='Attached by the app: the build, your device and browser, screen size, which screen you came from, whether a session was open, sync status, and the last 10 errors it logged. Never your workouts. It goes to the app owner.';
+const FB_WHAT='Attached by the app: the build, your device and browser, screen size, which screen you came from, whether a session was open, sync status and the last 10 errors it logged. Never your workouts. It goes to the app owner.';
 /* The Guide (r27): how Ironlog works and the rules behind its numbers, in
    one place, opened from the menu. Screens keep the number and the action;
    the reasoning lives here, so it is findable on a phone where nothing can
@@ -2316,11 +2292,11 @@ function guideSheet(m){
     :'<p><b>Report a problem</b> is in the menu at the top right and in Settings, Help. Here it copies the details for a message instead of sending them, and never includes your workouts.</p>';
   const T=[
   ['today','Today',`<p><b>The card at the top</b> is the next day of your routine. Start begins it; Change day picks another.</p>
-   <p><b>Lighter day</b>: every exercise, half the sets (rounded up), and the same loads and targets. For a day you are run down. It does not count against your trends.</p>
-   <p><b>Short on time</b>: give your minutes. Sets come off down to 2 per exercise, then exercises not started drop out. Priority and lagging muscles, exercises you have started, and at least one exercise per muscle are kept longest. Done sets are never touched. Trimmed work does not count against trends. Undo puts it back.</p>
-   <p><b>Pick for me</b> ranks your routine's days by what each muscle got in the last 7 days against your targets, how recently it was trained hard, injuries, and your cycle. Starting one moves your cycle on from there.</p>
+   <p><b>Lighter day</b>: every exercise, half the sets (rounded up), the same loads and targets. For a day you are run down. It does not count against your trends.</p>
+   <p><b>Short on time</b>: give your minutes. Sets come off down to 2 per exercise, then exercises not started drop out. Priority and lagging muscles, exercises you have started and at least one exercise per muscle are kept longest. Done sets are never touched. Trimmed work does not count against trends. Undo puts it back.</p>
+   <p><b>Pick for me</b> ranks your routine's days by what each muscle got in the last 7 days against your targets, how recently it was trained hard, injuries and your cycle. Starting one moves your cycle on from there.</p>
    <p><b>Freestyle</b>: any exercises, not tied to a routine day, so your cycle stays put.</p>
-   <p><b>More options</b>: Deload week, Limited equipment (each exercise your gym cannot do swapped for the closest match), injuries, and cardio.</p>
+   <p><b>More options</b>: Deload week, Limited equipment (each exercise your gym cannot do swapped for the closest match), injuries and cardio.</p>
    <p><b>This week</b> counts hard sets logged against hard sets planned; Month shows the calendar instead, and the title becomes This month. The bar at the top of every tab is this week: filled is a day you lifted, a coloured outline is cardio only, a grey ring is a workout planned ahead, and with fixed weekdays a red ring is one missed. Tap an empty past day to log a workout for it.</p>`],
   ['log','Logging a session',`<p><b>Grey numbers are suggestions.</b> Tick a set to log it as shown, or type over the load or reps first. Nothing you type is ever changed by the app.</p>
    <p><b>Grey reps</b> are last time's reps for that set. When today's target is a new load, last time's reps were at the old load, so they are the reps of the set above instead, or the bottom of the range.</p>
@@ -2329,7 +2305,6 @@ function guideSheet(m){
    <p><b>RIR</b>, reps in reserve: how many more reps you could have done. Tap a set's RIR box for 0 to 5. ${off?'RIR is off in Settings, so every working set counts as hard.':'It is optional: a blank reads as your usual RIR on that lift once you have rated 3 of its sets in 12 weeks, and until then as hard.'}</p>
    <p><b>W and D</b>: a warm-up (kept, never analysed) and a drop set (counts as work and volume, never as a PR or target). Add either from the exercise's ⋯ menu.</p>
    <p><b>+ Set and − Set</b>: − Set takes an empty row first and asks before a filled one. Removing anything you entered asks first, and Undo follows.</p>
-   <p><b>Order</b>: drag an exercise by its ⠿ to move it, or use the arrow keys on the ⠿, or Move up and Move down in its ⋯ menu. A superset split by a move becomes two single exercises.</p>
    <p><b>Swap</b>: sets you did stay with the old exercise; the new one takes the sets left, with its own rep range and rest when it has them in your routine.</p>
    <p><b>Finish</b> saves the ticked sets and asks about any with reps but no tick. <b>Discard</b> asks only when something was entered.</p>
    <p><b>A past workout</b>: tap an empty past day in the bar, or History, Log a past workout. Targets and PRs read as of that date.</p>`],
@@ -2341,12 +2316,12 @@ function guideSheet(m){
    <p><b>Too easy</b> (every top set logged 2 or more RIR above the target): the same estimate sets a heavier load, at most 10% more (15% on isolation lifts under ${kg?'20 kg':'about 45 lb'}).</p>
    <p><b>At the heaviest load available</b> (set on the exercise), or with a load step of 0: more reps, then harder reps.</p>
    <p><b>Assisted machines</b>: less help is progress. <b>Timed holds</b>: add seconds, then load.</p>
-   <p><b>Last</b> is the most recent session of the lift in that day's rep range (the most recent of all when the range is new), labelled trimmed, lighter, or deload when it was. Those sessions count as what you did, but they never set a target: the next target comes from the last full session, and the i beside the target names its date.</p>
+   <p><b>Last</b> is the most recent session of the lift in that day's rep range (the most recent of all when the range is new), labelled trimmed, lighter or deload when it was. Those sessions count as what you did, but they never set a target: the next target comes from the last full session, and the i beside the target names its date.</p>
    <p><b>Deload week</b>: half the sets (rounded up), about 90% of the load in whole steps down (never under the empty bar on a full-bar lift), 3 or more reps in reserve. It stays out of trends.</p>
    <p><b>An injury</b> flagged on a muscle pauses targets for exercises that load it and caps their load at last time.</p>
-   <p><b>Changes apply at once</b>: a new load step, rep range, or heaviest load reaches the exercises in your session that you have not started yet.</p>`],
+   <p><b>Changes apply at once</b>: a new load step, rep range or heaviest load reaches the exercises in your session that you have not started yet.</p>`],
   ['stats','Volume and Stats',`<p><b>A hard set</b> is a working set at RIR 3 or less${off?' (with RIR off, every working set)':''}. Helper muscles count half a set (Pelland 2025).</p>
-   <p><b>Weekly targets</b> are per muscle in Settings, Weekly set targets. 10 to 20 hard sets a week for major muscles is typical, not a ceiling. Serratus, rotator cuff, neck, and tibialis are tracked only: counted and shown, with no target, since no study sets a dose for them and most routines leave them to indirect work. A target starting at 0 is met with no sets.</p>
+   <p><b>Weekly targets</b> are per muscle in Settings, Weekly set targets. 10 to 20 hard sets a week for major muscles is typical, not a ceiling. Serratus and rotator cuff are tracked only. A target starting at 0 is met with no sets.</p>
    <p><b>Planned sets</b> count the same way: a set planned at RIR 4 or more is not a planned hard set, and in a deload week the target is halved.</p>
    <p><b>More than ${SESSION_CAP} sets</b> for one muscle in one workout is flagged. That line is a convention from one study not yet peer reviewed (Remmert 2025), which found no extra growth past it.</p>
    <p><b>Estimated 1RM</b>: Brzycki up to 10 reps to failure, Epley at 11 to 12; none above 12 reps or above RIR 4. It varies 2 to 8% day to day.</p>
@@ -2354,15 +2329,15 @@ function guideSheet(m){
    <p><b>Moving</b>: up 3% or more with a trend clearly above zero. <b>Stalled</b>: flat or falling over the last 6 sessions in the current range, or 3 weeks if that covers more (at least 4 sessions), and only while you still train the lift.</p>
    <p><b>Consistency</b>: weeks with at least as many sessions as the routine you trained that week plans.</p>
    <p><b>Bodyweight</b> trends use 7-day averages. <b>Waist to height</b>: under 0.5 healthy, 0.5 to 0.59 increased, 0.6 or more high (NICE 2022).</p>`],
-  ['plan','Plan and your own exercises',`<p>A routine has days, and each exercise has sets, a rep range, a target RIR, rest, and a load step. A <b>numbered cycle</b> runs Day 1, 2, 3 in order, so a missed day waits; <b>fixed weekdays</b> pin each day to a weekday.</p>
-   <p><b>Your own exercise</b>: Plan, Exercise library, New exercise, or + New exercise when adding one. Set the primary and helper muscles, the equipment, what the number you type means (per dumbbell, total, per side, or stack), bodyweight or assisted, one side at a time, timed, Movement (compound or isolation), the load step, and the heaviest load available. Every number above uses them.</p>
+  ['plan','Plan and your own exercises',`<p>A routine has days, and each exercise has sets, a rep range, a target RIR, rest and a load step. A <b>numbered cycle</b> runs Day 1, 2, 3 in order, so a missed day waits; <b>fixed weekdays</b> pin each day to a weekday.</p>
+   <p><b>Your own exercise</b>: Plan, Exercise library, New exercise, or + New exercise when adding one. Set the primary and helper muscles, the equipment, what the number you type means (per dumbbell, total, per side or stack), bodyweight or assisted, one side at a time, timed, Movement (compound or isolation), the load step and the heaviest load available. Every number above uses them.</p>
    <p>Drag ⠿ to reorder exercises or move them between days, and to reorder days.</p>`],
   ['sections','Sections',`<p>Tap a section's title to fold or open it. Drag its ⠿ to move it; the order is kept. Each time the app opens, every section starts folded, except Sessions on History.</p>
-   <p><b>More sections</b>: when a tab has sections hidden, its bottom lists them; tap one to add it. The menu at the top right has Show, hide, or reorder sections. Settings, Layout shows or hides any section (nothing stops being tracked), and Default layout goes back to how a new install starts.</p>
-   <p><b>Your settings</b>: Settings has the rest timer, auto-mark, RIR, units, theme and accent, weekly set targets, and priority muscles.</p>`],
+   <p><b>More sections</b>: when a tab has sections hidden, its bottom lists them; tap one to add it. The menu at the top right has Show, hide or reorder sections. Settings, Layout shows or hides any section (nothing stops being tracked), and Default layout goes back to how a new install starts.</p>
+   <p><b>Your settings</b>: Settings has the rest timer, auto-mark, RIR, units, theme and accent, weekly set targets and priority muscles.</p>`],
   ['data','Your data',`${where}
-   <p><b>Deleted</b> sessions, cardio, and routines wait in History, Recently deleted: the ${TRASH_MAX} most recent, for ${TRASH_DAYS} days. Undo in Settings covers deletes, resets, and imports from the last 7 days.</p>
-   <p><b>Import workouts</b> reads notes, a spreadsheet, Strong, or Hevy; you check everything before it is saved.</p>
+   <p><b>Deleted</b> sessions, cardio and routines wait in History, Recently deleted: the ${TRASH_MAX} most recent, for ${TRASH_DAYS} days. Undo in Settings covers deletes, resets and imports from the last 7 days.</p>
+   <p><b>Import workouts</b> reads notes, a spreadsheet, Strong or Hevy; you check everything before it is saved.</p>
    ${window.IRONLOG_APP?'<p><b>Updates</b>: when "New version ready" shows, tap Reload.</p>':''}
    ${report}`]];
   const open=m.open||'';
@@ -2385,7 +2360,7 @@ function menuSheet(){
   const item=(act,label,extra)=>`<button type="button" class="mnu" data-act="${act}"${extra||''}><span>${label}</span><span aria-hidden="true">›</span></button>`;
   return `<div class="sheet" role="dialog" aria-modal="true" aria-labelledby="menuH"><div class="sheet-h"><h3 id="menuH">${ENV==='preview'?'Ironlog Preview':'Ironlog'}</h3><button class="ib" aria-label="Close" data-act="mClose">✕</button></div>
   <div class="panel" id="menuAcct">${acc}</div>${due}
-  <div class="mnus">${item('fbOpen','Report a problem',' data-cat="bug"')}${acct.reader&&FB()?item('fbInbox','Reports inbox'):''}${item('guideOpen','Guide')}${item('goLayout','Show, hide, or reorder sections')}${item('goBackup','Your data and backups')}</div>
+  <div class="mnus">${item('fbOpen','Report a problem',' data-cat="bug"')}${acct.reader&&FB()?item('fbInbox','Reports inbox'):''}${item('guideOpen','Guide')}${item('goLayout','Show, hide or reorder sections')}${item('goBackup','Your data and backups')}</div>
   <p class="small muted" style="margin:12px 0 0">Build ${esc(APP_VERSION)}</p></div>`;
 }
 function fbSheet(m){
@@ -2410,14 +2385,9 @@ function fbSheet(m){
   <button type="button" class="btn primary block" data-act="fbSend" ${m.busy?'disabled':''}>${m.busy?'Sending':F?'Send':'Copy report'}</button></div></div>`;
 }
 /* The owner's inbox: the reports, newest first, read-only. */
-/* A report's screenshot is written by whoever sent it, through the API as
-   well as the app, so the Inbox shows it only when it is a plain base64 JPEG
-   from start to end. Checking only the start let a quote end the src and add
-   script to the owner's page (found in the r29 review). */
-const FB_SHOT_RE=/^data:image\/jpeg;base64,[A-Za-z0-9+/]+={0,2}$/;
 function fbInboxSheet(m){
   const it=m.items;
-  const body=m.err?`<p class="small" role="alert" style="color:var(--red)">${esc(m.err)}</p>`:!it?'<p class="muted">Loading</p>':!it.length?'<p class="muted">No feedback yet.</p>':`<ul class="clist fbinbox">${it.map(x=>`<li><div style="min-width:0;flex:1"><p class="small" style="margin:0"><span class="tag ${x.category==='bug'?'red':x.category==='idea'?'green':'blue'}">${esc(x.category)}</span> <span class="muted">${esc(String(x.created_at||'').slice(0,16).replace('T',' '))}${x.reply_to?` · ${esc(x.reply_to)}`:''}</span></p><p style="margin:4px 0 0;white-space:pre-wrap;overflow-wrap:anywhere">${esc(x.message)}</p>${x.screenshot&&FB_SHOT_RE.test(x.screenshot)?`<img class="fbthumb" src="${esc(x.screenshot)}" alt="Screenshot">`:''}${x.issue_url&&/^https:\/\/github\.com\//.test(x.issue_url)?`<p class="small" style="margin:4px 0 0"><a href="${esc(x.issue_url)}" target="_blank" rel="noopener">GitHub issue</a></p>`:''}<details class="small muted"><summary>Attached by the app</summary><pre class="fbctx">${esc(JSON.stringify(x.context||{},null,1))}</pre></details></div></li>`).join('')}</ul>`;
+  const body=m.err?`<p class="small" role="alert" style="color:var(--red)">${esc(m.err)}</p>`:!it?'<p class="muted">Loading</p>':!it.length?'<p class="muted">No feedback yet.</p>':`<ul class="clist fbinbox">${it.map(x=>`<li><div style="min-width:0;flex:1"><p class="small" style="margin:0"><span class="tag ${x.category==='bug'?'red':x.category==='idea'?'green':'blue'}">${esc(x.category)}</span> <span class="muted">${esc(String(x.created_at||'').slice(0,16).replace('T',' '))}${x.reply_to?` · ${esc(x.reply_to)}`:''}</span></p><p style="margin:4px 0 0;white-space:pre-wrap;overflow-wrap:anywhere">${esc(x.message)}</p>${x.screenshot&&/^data:image\/jpeg;base64,/.test(x.screenshot)?`<img class="fbthumb" src="${x.screenshot}" alt="Screenshot">`:''}${x.issue_url&&/^https:\/\/github\.com\//.test(x.issue_url)?`<p class="small" style="margin:4px 0 0"><a href="${esc(x.issue_url)}" target="_blank" rel="noopener">GitHub issue</a></p>`:''}<details class="small muted"><summary>Attached by the app</summary><pre class="fbctx">${esc(JSON.stringify(x.context||{},null,1))}</pre></details></div></li>`).join('')}</ul>`;
   return `<div class="sheet fixed" role="dialog" aria-modal="true" aria-labelledby="fbiH"><div class="sheet-h"><h3 id="fbiH">Feedback inbox</h3><button class="ib" aria-label="Close" data-act="mClose">✕</button></div><div class="sheet-scroll">${body}</div></div>`;
 }
 /* A picked photo, shrunk to 1280 px on its long side as JPEG, so a report
@@ -3054,34 +3024,16 @@ function lastLighterWeek(){
   for(let k=0;k<vals.length;k++)if(vals[k]<=norm*0.65)return {weeks:k+1,sets:r1(vals[k]),norm:r1(norm)};
   return {weeks:null,norm:r1(norm)};
 }
-/* First run only (r29, V: "targets that can actually be met"): when a new
-   person picks a ready-made routine and the weekly targets are still the
-   defaults, each muscle's minimum comes down to what the routine plans
-   (whole sets), so following it is on target. The maximums and the
-   evidence-based defaults stay as they are for everyone else; Settings,
-   Weekly set targets raises them as sets are added. Returns whether anything
-   changed. */
-function fitTargets(R){
-  if(!R)return false;const b=state.settings.bands;
-  if(MK.some(m=>!b[m]||b[m][0]!==BANDS[m][0]||b[m][1]!==BANDS[m][1]))return false;
-  const plan=plannedSets(R);let changed=false;
-  for(const m of MK){if(TRACK_ONLY.has(m))continue;const lo=Math.min(b[m][0],Math.floor(plan[m]||0));if(lo!==b[m][0]){b[m]=[lo,b[m][1]];changed=true;}}
-  return changed;
-}
 function plannedSets(routine){
   const out={};
   const f=weekFactor(routine);
   for(const d of routine.days){if(d.rest)continue;for(const it of d.items){if(!planHard(it))continue;const ex=EX(it.exId);out[ex.primary]=(out[ex.primary]||0)+it.sets*f;for(const m of ex.secondary)out[m]=(out[m]||0)+0.5*it.sets*f;}}
   return out;
 }
-/* The week the log started in counts only if it started on that week's
-   first day (r29): someone who began on a Saturday with one session read as
-   "19 flagged" and a "1-week average" the following Monday. */
-function firstFullWeek(){const f=firstDate(state.sessions);if(!f)return null;const w=weekStart(f);return f>w?addDays(w,7):w;}
 function actualAvg4(){
-  const I=IDX();const cur=weekStart(today());let weeks=0;const tot={},con={};const ff=firstFullWeek();
+  const I=IDX();const cur=weekStart(today());let weeks=0;const tot={},con={};
   for(let k=1;k<=4;k++){
-    const wk=addDays(cur,-7*k);const ws=I.weekSets[wk];if(!ws||(ff&&wk<ff))continue;
+    const wk=addDays(cur,-7*k);const ws=I.weekSets[wk];if(!ws)continue;
     weeks++;
     for(const m in ws)tot[m]=(tot[m]||0)+ws[m];
     const wc=I.weekConf[wk]||{};
@@ -3141,7 +3093,7 @@ function sessionCapNote(day){
   const over=Object.entries(ms).filter(([,v])=>v>SESSION_CAP).sort((a,b)=>b[1]-a[1]);
   if(!over.length)return '';
   const list=over.map(([m,v])=>`${ML[m]} ${r1(v)}`);
-  const who=andList(list);
+  const who=list.length===1?list[0]:list.slice(0,-1).join(', ')+' and '+list[list.length-1];
   return `<p class="small" style="margin:4px 12px 0"><span class="flag hastip" data-tip="More than ${SESSION_CAP} sets for one muscle in one workout. That line is a convention from one study not yet peer reviewed (Remmert 2025), which found no extra growth past it. Consider moving some to another day. Helper-muscle sets count as half.">Heavy for one workout: ${who} sets</span></p>`;
 }
 function daySets(day){return day.items.reduce((a,it)=>a+ +it.sets,0);}
@@ -3166,7 +3118,7 @@ function sizeRows(){
 }
 function sizeBody(){
   const rows=sizeRows();const ML2=Object.fromEntries(MEAS);
-  if(!rows.length)return '<p class="muted">Log tape measurements at least 3 weeks apart on the Today tab, under Body, then Tape measurements. Arm, chest, thigh, and calf are read against the hard sets their muscles got in between.</p>';
+  if(!rows.length)return '<p class="muted">Log tape measurements at least 3 weeks apart on the Today tab, under Body, then Tape measurements. Arm, chest, thigh and calf are read against the hard sets their muscles got in between.</p>';
   const ms=[...state.measurements].sort((a,b)=>a.date<b.date?-1:1);
   const ctx=r=>{const w=ms.filter(m=>m.waist>0&&m.date>=r.from&&m.date<=r.to);const wd=w.length>=2?w[w.length-1].waist-w[0].waist:null;
     const b0=bwAt(r.from),b1=bwAt(r.to);const bd=b0!=null&&b1!=null&&state.bodyweights.length>=2?b1-b0:null;
@@ -3175,17 +3127,15 @@ function sizeBody(){
   // Under about 1 cm on a limb or the neck (1.5 cm on the chest) is within
   // what a tape repeats to (typical minimum detectable change 5 to 15 mm).
   const mdc=k=>k==='chest'?1.5:1;
-  return rows.map(r=>`<div style="padding:6px 0;border-bottom:1px solid var(--line)"><div class="row spread"><b>${esc(ML2[r.k])}</b><span class="num">${Math.abs(r.d)<mdc(r.k)?'<span class="tag">within tape error</span> ':''}${sgn(r.d)} ${LU()}</span></div><p class="small muted" style="margin:2px 0 0">${fmtDate(r.from)} to ${fmtDate(r.to)}, ${r.weeks?`${r1(r.sets)} hard sets a week for ${andList(r.mus.map(m=>ML[m]))}`:'no logged training in between'}.${ctx(r)}</p></div>`).join('')
-    +'<p class="small muted hastip" style="margin-top:8px" data-tip="Same spot, same time of day, before training, relaxed or flexed the same way each time. Under about 1 cm on arms, thighs, calves, and neck (1.5 cm on the chest) is within what a tape repeats to.">How to measure</p>';
+  return rows.map(r=>`<div style="padding:6px 0;border-bottom:1px solid var(--line)"><div class="row spread"><b>${esc(ML2[r.k])}</b><span class="num">${Math.abs(r.d)<mdc(r.k)?'<span class="tag">within tape error</span> ':''}${sgn(r.d)} ${LU()}</span></div><p class="small muted" style="margin:2px 0 0">${fmtDate(r.from)} to ${fmtDate(r.to)}, ${r.weeks?`${r1(r.sets)} hard sets a week for ${r.mus.map(m=>ML[m]).join(' and ')}`:'no logged training in between'}.${ctx(r)}</p></div>`).join('')
+    +'<p class="small muted hastip" style="margin-top:8px" data-tip="Same spot, same time of day, before training, relaxed or flexed the same way each time. Under about 1 cm on arms, thighs, calves and neck (1.5 cm on the chest) is within what a tape repeats to.">How to measure</p>';
 }
 /* Region balance: hard sets in a region against the midpoint of that region's
    combined target band. 100 means you are sitting in the middle of your own
    targets. This is relative to the bands you set, not an absolute standard. */
 function regionBalance(sets){
   const bands=state.settings.bands;
-  // Tracked-only muscles have no target, so they count toward neither side (r29).
-  return REGIONS.map(([label,all])=>{
-    const ms=all.filter(m=>!TRACK_ONLY.has(m));
+  return REGIONS.map(([label,ms])=>{
     const got=ms.reduce((a,m)=>a+(sets[m]||0),0);
     const mid=ms.reduce((a,m)=>a+(bands[m][0]+bands[m][1])/2,0);
     const lo=ms.reduce((a,m)=>a+bands[m][0],0);
@@ -3195,7 +3145,7 @@ function regionBalance(sets){
 }
 
 /* "Last" is the most recent session of a lift, whatever kind (r26, V's
-   rule): a trimmed, lighter, or deload session is what you did last, so it is
+   rule): a trimmed, lighter or deload session is what you did last, so it is
    what you look back at, labelled for what it was. Targets still come from
    the last full session (base), so trimmed, lighter and deload work never
    sets one. Grey reps and Copy last follow "Last" when its loads are the ones
@@ -3646,11 +3596,8 @@ function blockDone(b){const w=b.sets.filter(x=>!x.warm);return w.length>0&&w.eve
 function sessProgress(d){let n=0,k=0;for(const b of d.ex)for(const x of b.sets)if(!x.warm){n++;if(x.done)k++;}return {n,k,pct:n?k/n*100:0};}
 function updateSessBar(){const d=state.draft;const el=document.getElementById('sessBar');if(!d||!el)return;const p=sessProgress(d);el.style.width=p.pct+'%';const t=document.getElementById('sessOf');if(t)t.textContent=`${p.k} of ${p.n}`;}
 let foldT=null;
-// True while an exercise is being dragged in a session (r29): renders and
-// automatic folds wait, so the drag is not torn out from under the finger.
-let blockDrag=false;
 function autoFold(bi){
-  foldT=null;if(blockDrag)return;const d=state.draft;
+  foldT=null;const d=state.draft;
   if(!d||d.editingId||ui.modal||ui.tab!=='today')return;
   const b=d.ex[bi];if(!b||!blockDone(b)||blkIsOpen(bi,b))return;
   if(document.querySelector(`.rirstrip[data-b="${bi}"]`))return;
@@ -3740,14 +3687,8 @@ function mergeDraft(base,cur,pre){
     const bh=b?canon(b):null,ch=c?canon(c):null,ph=pv?canon(pv):null;
     if(ch===bh)return pv;if(ph===bh)return c;return c;};
   const out=[];
-  // An action that left the exercises' order alone (a Settings change, a
-  // layout reset) must not undo a reorder made after it, so the order now is
-  // kept (r29: dragging exercises made that common). An action that changed
-  // the order or the list puts back the order from before it.
-  const ord=l=>l.map(x=>x[0]).join('|');
-  const keep=ord(keyed(base.ex))===ord(P);
   // Keep the order of the version before the action, then anything added since.
-  for(const [k] of keep?C:P){const v=pick(k);if(v)out.push(v);}
+  for(const [k] of P){const v=pick(k);if(v)out.push(v);}
   for(const [k,c] of C){if(!P.some(x=>x[0]===k)){const v=pick(k);if(v&&!out.includes(v))out.push(v);}}
   const res={...cur,ex:out};
   for(const f of ['notes','dayName','deload','light','limited','cardio','chk']){if(canon(cur[f])===canon(base[f]))res[f]=pre[f];}
@@ -3951,11 +3892,7 @@ document.addEventListener('visibilitychange',()=>{if(document.visibilityState===
 
 /* ---------- render ---------- */
 const charts=[];let sortables=[];
-function killDynamic(){
-  // A re-render in the middle of a drag (a cloud refresh) would leave Sortable's
-  // floating copy of the block on the page; it goes with the old list.
-  blockDrag=false;if(document.body.classList.contains('blkdrag')){document.body.classList.remove('blkdrag');const v=document.getElementById('view');if(v)v.style.paddingBottom='';}if(typeof edgeScroll!=='undefined')edgeScroll.stop();document.querySelectorAll('.sortable-fallback,.sortable-ghost').forEach(e=>{if(!e.closest('#view'))e.remove();});
-  while(charts.length){try{charts.pop().destroy();}catch(e){/* chart already gone */}}sortables.forEach(s=>{try{s.destroy();}catch(e){/* list already gone */}});sortables=[];}
+function killDynamic(){while(charts.length){try{charts.pop().destroy();}catch(e){/* chart already gone */}}sortables.forEach(s=>{try{s.destroy();}catch(e){/* list already gone */}});sortables=[];}
 const ACCENTS=[['blue','Blue'],['volt','Volt'],['ember','Ember']];
 function applyTheme(){const t=state.settings.theme;if(t==='system')delete document.documentElement.dataset.theme;else document.documentElement.dataset.theme=t;
   document.documentElement.dataset.accent=state.settings.accent||'blue';
@@ -3993,7 +3930,6 @@ function renderInner(){
   rebuilding=true;try{$('#view').innerHTML=v();}finally{rebuilding=false;}
   applySecOrder();applyHidden();openMain();
   if(!(ui.tab==='today'&&state.draft)&&!(ui.tab==='program'&&ui.planView==='library'))mountSecSortable();
-  if(ui.tab==='today'&&state.draft)mountBlockSortable();
   if(ui.tab==='program'&&ui.planView!=='library')mountSortable();
   if(ui.tab==='dash')mountCharts();
   if(ui.tab==='today'&&!state.draft)mount3D();
@@ -4054,7 +3990,7 @@ function viewToday(){
      sets, same loads); Short on time is for a clock that allows less (full
      effort on what matters most, the rest trimmed to your minutes). */
   const alt=(act,title,what,extra)=>`<button class="btn sm" data-act="${act}" data-tip="${esc(what)}"${extra||''}>${title}</button>`;
-  const alts=`<div class="hero-alt" style="margin-top:8px">${deload||!playable?'':alt('startSession','Lighter day','Every exercise, half the sets, same loads. For a day you are run down or sore.',` data-day="${di}" data-light="1"`)}${playable?alt('startShort','Short on time','Tell it your minutes; the most important work stays at full effort and the rest is trimmed.',` data-day="${di}"`):''}${alt('pickToday','Pick for me','Ranks your days for today by the last 7 days, recovery, and injuries, then says why.')}${alt('startFree','Freestyle','Log anything. Your cycle stays where it is.')}</div>`;
+  const alts=`<div class="hero-alt" style="margin-top:8px">${deload||!playable?'':alt('startSession','Lighter day','Every exercise, half the sets, same loads. For a day you are run down or sore.',` data-day="${di}" data-light="1"`)}${playable?alt('startShort','Short on time','Tell it your minutes; the most important work stays at full effort and the rest is trimmed.',` data-day="${di}"`):''}${alt('pickToday','Pick for me','Ranks your days for today from the last 7 days, recovery and injuries, and says why.')}${alt('startFree','Freestyle','Log anything. Your cycle stays where it is.')}</div>`;
   if(playable)h+=`<button class="btn primary block big" data-act="startSession" data-day="${di}">${deload?'Start deload session':'Start session'}</button>
   ${alts}
   <div class="row" style="margin-top:8px">${sel}</div>`;
@@ -4064,7 +4000,7 @@ function viewToday(){
   // Deload, equipment, injury and cardio are occasional, so they sit behind
   // More. An active deload still shows in the eyebrow and on its button.
   h+=`<div class="row" style="margin-top:8px"><button class="btn sm" data-act="heroMore" aria-expanded="${!!ui.heroMore}">${ui.heroMore?'Fewer options':'More options'}</button>${deload&&!ui.heroMore?'<span class="tag blue">Deload week on</span>':''}<span style="margin-left:auto"></span>${helpBtn('starts')}</div>
-  ${helpText('starts','<b>Lighter day</b>: every exercise on the day, half the sets (rounded up), and the same loads and targets. For a day you are run down or sore, or slept badly. It does not count against your trends. <b>Short on time</b>: tell it your minutes; it keeps priority and lagging muscles and your main lifts at full effort and trims the rest. <b>Pick for me</b>: ranks your routine\'s days for today from what each muscle got in the last 7 days, how recently it was trained hard, injuries, and where you are in the cycle, then says why. <b>Freestyle</b>: log anything; your cycle stays put. <b>Deload week</b> (More options): a whole week of half sets at about 90% loads. <b>Limited equipment</b> (More options): today\'s workout with each exercise your gym cannot do swapped for the closest match it can.')}`;
+  ${helpText('starts','<b>Lighter day</b>: every exercise on the day, half the sets (rounded up), the same loads and targets. For a day you are run down, sore or slept badly. It does not count against your trends. <b>Short on time</b>: tell it your minutes; it keeps priority and lagging muscles and your main lifts at full effort and trims the rest. <b>Pick for me</b>: ranks your routine\'s days for today from what each muscle got in the last 7 days, how recently it was trained hard, injuries and where you are in the cycle, and says why. <b>Freestyle</b>: log anything; your cycle stays put. <b>Deload week</b> (More options): a whole week of half sets at about 90% loads. <b>Limited equipment</b> (More options): today\'s workout with each exercise your gym cannot do swapped for the closest match it can.')}`;
   if(ui.heroMore)h+=`<div class="row" style="margin-top:8px"><button class="btn sm ${deload?'noted':''}" data-act="deloadToggle" aria-pressed="${deload}">${deload?'Deload week: on':'Deload week'}</button>${playable?`<button class="btn sm" data-act="eqOpen" data-day="${di}">Limited equipment</button>`:''}<button class="btn sm" data-act="injAdd">Flag an injury</button><button class="btn sm" data-act="cardioNew">Log cardio</button></div>`;
   h+='</section>';
   // Every section below the Start card can be dragged into any order by its
@@ -4090,7 +4026,7 @@ function viewToday(){
       const short=none?'':sg.target?`Today: ${sg.target}`:sg.inj?'Injury flagged: start light, stop on pain.':(sg.last&&String(sg.text).startsWith(sg.last)?String(sg.text).slice(sg.last.length).trim():String(sg.text||''));
       pv+=`<div class="pvi"${k?' style="border-top:1px solid var(--line-soft);padding-top:10px;margin-top:10px"':''}><div class="row spread"><span><b>${esc(ex.name)}</b> <span class="muted small">${it.sets} × ${it.repMin}-${it.repMax}${ex.timed?'s':''}${ex.perSide?' per side':''}${rirShow(ex)?`, ${it.rir} RIR`:''}</span>${it.ss?` <span class="tag blue">Superset ${letters[it.ss]}</span>`:''}${sg.inj?` <span class="tag red">Injury: ${ML[sg.inj]}</span>`:''}</span>${liftTags(it.exId)}</div>${liftTrend(it.exId)}${short?`<p class="small muted hastip" style="margin-bottom:0" data-tip="${esc(sg.text)}">${esc(short)}</p>`:''}</div>`;});
     if(fresh)pv=`<p class="small muted" style="margin:0 0 10px">${fresh===day.items.length?'First time':`${fresh} new`}: pick loads you can take into each rep range. ${tipi('No history yet, so there is no target. Pick a load you can take into the rep range at the RIR shown. Targets appear from the next session.','About first sessions')}</p>`+pv;
-    h+=sec({sk:'today:session',key:'session',title:'Workout preview',sub:flagged?`<span class="pill yellow">${flagged} stalled</span>`:`${day.items.length} exercises`,body:pv});
+    h+=sec({sk:'today:session',key:'session',title:'Workout preview',sub:`${day.items.length} exercises${flagged?`, ${flagged} stalled`:''}`,body:pv});
   }
   h+=bodyCard()+moreLine('today');
   return h;
@@ -4220,7 +4156,6 @@ function obView(){
   <div class="ob-card"><h2>Save your log</h2><p>Free, and on every phone you use.</p>
   <button class="btn primary block" data-act="acctOpen" data-mode="signup">Create account</button>
   <button class="btn block" data-act="acctOpen" data-mode="signin">I have an account</button></div>
-  ${ENV==='preview'?'<button class="btn block" data-act="previewCopy" style="margin-top:10px">Copy my log from Ironlog</button>':''}
   <button class="linkbtn ob-skip" data-act="obAcctLater">Not now</button>${dots(1)}</div>`;
   const imp=`<button class="ob-opt" data-act="impOpen"><b>Import my workouts</b><span>Notes, a spreadsheet, Strong, Hevy, a backup</span></button>`;
   return `<div class="ob welcome" id="obPage" data-step="start">
@@ -4234,7 +4169,7 @@ function obView(){
   <button class="ob-opt primary" data-act="obSample"><b>Pick a ready-made routine</b><span>Six plans, 3 to 6 days a week</span></button>
   <button class="ob-opt" data-act="obFree"><b>Log a workout now</b><span>Add exercises as you go</span></button>
   <button class="ob-opt" data-act="obOwn"><b>Build my own routine</b><span>Your days, your exercises</span></button>
-  ${imp}${ENV==='preview'?'<button class="ob-opt" data-act="previewCopy"><b>Copy my log from Ironlog</b><span>Try this build on your real log; Ironlog is not changed</span></button>':''}</div>
+  ${imp}</div>
   <button class="linkbtn ob-skip" data-act="demoLoad">Look around with sample data first</button>${dots(2)}</div>`;
 }
 /* First run with no sessions: three ways in. Shown only after the cloud check,
@@ -4320,7 +4255,7 @@ function coach(){
   if(!state.sessions.length)return {tone:'blue',text:'Log your first session. Trends and advice appear after a few sessions of each exercise.',act:null};
   if(isDeloadWeek())return {tone:'blue',text:`Deload week. It ends Sunday.`,why:'Half the sets, about 90% loads, 3 or more reps in reserve. Your targets pick up where they were.',act:null};
   const stalled=stalledIds();
-  if(stalled.length>=3)return {tone:'red',text:`${stalled.length} lifts stalled at once: ${andList(stalled.map(exName),3)}. A deload week may help.`,why:'Several lifts flat together often points to fatigue. Check sleep, food, and stress. A deload week is half the sets at about 90% loads.',act:{label:'Start a deload week',deload:true}};
+  if(stalled.length>=3)return {tone:'red',text:`${stalled.length} lifts stalled at once: ${stalled.slice(0,3).map(exName).join(', ')}${stalled.length>3?' and more':''}. A deload week may help.`,why:'Several lifts flat together often points to fatigue. Check sleep, food and stress. A deload week is half the sets at about 90% loads.',act:{label:'Start a deload week',deload:true}};
   const inj=injuredSet();
   const avg=actualAvg4();const bands=state.settings.bands;
   if(avg){
@@ -4334,17 +4269,15 @@ function coach(){
       const u=under[0];const gap=Math.max(1,Math.ceil(u.lo-u.got));
       let exId=null;for(const d of R.days)for(const it of d.items)if(!exId&&EX(it.exId).primary===u.m)exId=it.exId;
       const how=exId?`Add ${gap} set${gap>1?'s':''} a week to ${exName(exId)}.`:'Nothing in your routine trains it directly, so add one exercise for it.';
-      return {tone:'yellow',text:`${ML[u.m]} is getting ${r1(u.got)} hard set${r1(u.got)===1?'':'s'} a week against a target of ${u.lo} to ${u.hi}. ${how}${under.length>1?` ${under.length-1} other muscle${under.length>2?'s are':' is'} also below target.`:''}`,act:{label:`See ${ML[u.m]}`,sec:'volume',m:u.m}};
+      return {tone:'yellow',text:`${ML[u.m]} is getting ${r1(u.got)} hard sets a week against a target of ${u.lo} to ${u.hi}. ${how}${under.length>1?` ${under.length-1} other muscle${under.length>2?'s are':' is'} also below target.`:''}`,act:{label:`See ${ML[u.m]}`,sec:'volume',m:u.m}};
     }
   }
-  if(stalled.length){const id=stalled[0];return {tone:'yellow',text:`${exName(id)} has stalled. Try another rep range or a close variation for a few weeks.`,why:'Flat or down over its last 6 sessions (or 3 weeks), leaving out deload, lighter, and trimmed sessions.',act:{label:'See the lift',sec:'exercise',ex:id}};}
+  if(stalled.length){const id=stalled[0];return {tone:'yellow',text:`${exName(id)} has stalled. Try another rep range or a close variation for a few weeks.`,why:'Flat or down over its last 6 sessions (or 3 weeks), leaving out deload, lighter and trimmed sessions.',act:{label:'See the lift',sec:'exercise',ex:id}};}
   // Missing RIR is not coached: it is optional by design and blanks are read as your usual RIR.
   // Scores are sorted high to low, so the steepest fall is the last one.
   const lag=I.scores.filter(x=>x.score<=-GROW_PCT);
   if(lag.length){const x=lag[lag.length-1];return {tone:'yellow',text:`${ML[x.m]} strength is down ${r1(Math.abs(x.score))}% over 6 weeks. Check sleep and recovery before adding sets.`,act:{label:`See ${ML[x.m]}`,sec:'rank',m:x.m}};}
-  // Someone back from a break (nothing since before the last 4 weeks) has
-  // history but no recent weeks; "first full week" was wrong for them.
-  if(!avg)return {tone:'green',text:state.sessions.some(x=>x.date<addDays(weekStart(today()),-28))&&!state.sessions.some(x=>x.date>=addDays(weekStart(today()),-28))?'Nothing logged in the last 4 weeks. Volume advice comes back after a full week of training.':'Volume advice appears here after your first full week.',act:null};
+  if(!avg)return {tone:'green',text:'Volume advice appears here after your first full week.',act:null};
   return {tone:'green',text:'On track. Every muscle is at or above its target and nothing has stalled. Keep going as planned.',act:null};
 }
 function coachButton(c,di){
@@ -4398,10 +4331,8 @@ function exHeadline(exId){
 }
 function muscleHeadline(m){
   const I=IDX();const avg=actualAvg4();const [lo,hi]=state.settings.bands[m];const sc=I.scores.find(x=>x.m===m);const parts=[];
-  // Tracked-only muscles have no target to be above or below (r29).
-  const tr=TRACK_ONLY.has(m);
-  if(avg){const v=avg[m]||0;parts.push(tr?`${r1(v)} hard sets a week over your last ${avg._weeks} full week${avg._weeks>1?'s':''}. Tracked only: no target.`:`${r1(v)} hard sets a week over your last ${avg._weeks} full week${avg._weeks>1?'s':''}, ${v<lo?`${r1(lo-v)} below`:v>hi?`${r1(v-hi)} above`:'inside'} your ${lo} to ${hi} target.`);}
-  else parts.push(tr?'Tracked only: counted and shown, with no target.':`Target ${lo} to ${hi} hard sets a week. Finish a full week to compare against it.`);
+  if(avg){const v=avg[m]||0;parts.push(`${r1(v)} hard sets a week over your last ${avg._weeks} full week${avg._weeks>1?'s':''}, ${v<lo?`${r1(lo-v)} below`:v>hi?`${r1(v-hi)} above`:'inside'} your ${lo} to ${hi} target.`);}
+  else parts.push(`Target ${lo} to ${hi} hard sets a week. Finish a full week to compare against it.`);
   if(sc)parts.push(`${Math.abs(sc.score)<GROW_PCT?'No clear strength change over 6 weeks':`Strength trend ${sc.score>=0?'+':''}${r1(sc.score)}% over 6 weeks`}${sc.indirect?', read from exercises that train it indirectly':''}${sc.label==='lagging'?', flagged as lagging':''}.`);
   return `<p class="headline"><b>${esc(ML[m])}.</b> ${esc(parts.join(' '))}</p>`;
 }
@@ -4425,7 +4356,7 @@ function dashSummary(){
   const avg=actualAvg4();const b=state.settings.bands;
   const inj=injuredSet();
   const under=avg?MK.filter(m=>!inj.has(m)&&!TRACK_ONLY.has(m)&&(avg[m]||0)<b[m][0]):null,over=avg?MK.filter(m=>!TRACK_ONLY.has(m)&&(avg[m]||0)>b[m][1]):null;
-  const c=coach();const list=(a,n)=>andList(a,n);
+  const c=coach();const list=(a,n)=>a.slice(0,n).join(', ')+(a.length>n?` and ${a.length-n} more`:'');
   const row=(tone,label,text,attrs)=>`<button class="srow" ${attrs}><i class="dot ${tone}"></i><span class="sl">${label}</span><span class="st">${text}</span><span class="chev2" aria-hidden="true">›</span></button>`;
   let h='<div class="card summary" id="dashSummary">';
   h+=row(mv.length?'green':'','Moving',mv.length?mv.map(x=>`${esc(exName(x.id))} +${r1(x.pct)}%`).join(', ')+' over 6 weeks':'Nothing measurably rising yet. A trend needs 3 sessions of a lift within 6 weeks.',`data-act="goDash" data-sec="exercise"${mv.length?` data-ex="${mv[0].id}"`:''}`);
@@ -4465,7 +4396,7 @@ function mapView(){
    muscle shapes sit almost flush on it, like an anatomy figure. */
 const B3_PARTS=[
   // neutral body
-  {g:'l',prof:[[0,.84],[.115,.85],[.134,.88],[.14,.93],[.126,1],[.116,1.07],[.124,1.15],[.15,1.24],[.17,1.32],[.178,1.4],[.152,1.46],[.085,1.505],[0,1.52]],p:[0,0,0],kz:.6,one:1},
+  {g:'l',prof:[[0,.84],[.13,.85],[.155,.88],[.165,.93],[.145,1],[.142,1.08],[.152,1.18],[.168,1.28],[.176,1.35],[.172,1.42],[.14,1.47],[.08,1.51],[0,1.52]],p:[0,0,0],kz:.62,one:1},
   {g:'c',d:[.046,.1],p:[0,1.55,-.005],one:1},
   {g:'s',p:[0,1.695,.005],k:[.086,.108,.098],one:1},
   {g:'s',p:[.19,1.43,0],k:[.06,.06,.06]},
@@ -4483,21 +4414,21 @@ const B3_PARTS=[
   {m:'frontDelts',g:'s',p:[.19,1.42,.034],k:[.05,.07,.046]},
   {m:'sideDelts',g:'s',p:[.214,1.425,0],k:[.046,.075,.05]},
   {m:'rearDelts',g:'s',p:[.19,1.42,-.035],k:[.05,.07,.046]},
-  {m:'rotatorCuff',g:'s',p:[.1,1.35,-.08],k:[.036,.03,.02]},
-  {m:'chest',g:'s',p:[.072,1.335,.08],k:[.08,.064,.032],r:[0,0,-.08]},
-  {m:'serratus',g:'s',p:[.132,1.24,.046],k:[.026,.05,.03]},
-  {m:'upperBack',g:'s',p:[0,1.3,-.074],k:[.092,.075,.032],one:1},
-  {m:'lats',g:'s',p:[.108,1.2,-.048],k:[.058,.125,.04],r:[0,0,-.2]},
-  {m:'lowerBack',g:'s',p:[.034,1.03,-.06],k:[.03,.08,.026]},
-  {m:'abs',g:'s',p:[0,1.12,.058],k:[.05,.15,.024],one:1},
-  {m:'obliques',g:'s',p:[.096,1.08,.04],k:[.032,.08,.04]},
+  {m:'rotatorCuff',g:'s',p:[.1,1.35,-.086],k:[.045,.04,.026]},
+  {m:'chest',g:'s',p:[.074,1.34,.084],k:[.085,.07,.04],r:[0,0,-.08]},
+  {m:'serratus',g:'s',p:[.14,1.24,.05],k:[.03,.055,.035]},
+  {m:'upperBack',g:'s',p:[0,1.29,-.078],k:[.1,.08,.04],one:1},
+  {m:'lats',g:'s',p:[.112,1.19,-.05],k:[.068,.13,.05],r:[0,0,-.16]},
+  {m:'lowerBack',g:'s',p:[.036,1.02,-.068],k:[.035,.085,.03]},
+  {m:'abs',g:'s',p:[0,1.1,.07],k:[.07,.14,.036],one:1},
+  {m:'obliques',g:'s',p:[.112,1.07,.044],k:[.045,.09,.05]},
   {m:'biceps',g:'s',p:[.221,1.28,.03],k:[.036,.1,.035],r:[0,0,.112]},
   {m:'triceps',g:'s',p:[.223,1.29,-.03],k:[.04,.11,.038],r:[0,0,.112]},
   {m:'forearms',g:'l',prof:[[0,0],[.027,.01],[.031,.08],[.041,.2],[.039,.25],[0,.26]],p:[.262,.87,.006],r:[0,0,.1]},
-  {m:'glutes',g:'s',p:[.066,.9,-.056],k:[.064,.068,.042]},
-  {m:'abductors',g:'s',p:[.126,.95,-.016],k:[.032,.055,.038]},
-  {m:'quads',g:'s',p:[.096,.705,.034],k:[.058,.17,.044]},
-  {m:'hamstrings',g:'s',p:[.094,.68,-.032],k:[.054,.15,.044]},
+  {m:'glutes',g:'s',p:[.07,.92,-.068],k:[.08,.08,.06]},
+  {m:'abductors',g:'s',p:[.142,.95,-.018],k:[.04,.06,.045]},
+  {m:'quads',g:'s',p:[.096,.68,.034],k:[.066,.17,.055]},
+  {m:'hamstrings',g:'s',p:[.094,.68,-.034],k:[.06,.16,.05]},
   {m:'adductors',g:'s',p:[.05,.72,.002],k:[.03,.13,.045]},
   {m:'calves',g:'s',p:[.096,.32,-.024],k:[.042,.1,.04]},
   {m:'tibialis',g:'s',p:[.1,.29,.028],k:[.022,.1,.022]}
@@ -4594,10 +4525,7 @@ function mount3D(){
     const st=m==='_base'?null:B3.status&&B3.status[m];
     mt.color.set(m==='_base'?col.base:st?col[st.st]||col.none:col.none);
     mt.emissive=mt.emissive||new T.Color(0,0,0);
-    // White lifts a tapped muscle on the dark theme; on the light one it washed
-    // it out to pale, so there the muscle glows in its own colour (r29).
-    const lightUI=(document.documentElement.dataset.theme||(matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light'))!=='dark';
-    if(m===B3.sel){if(lightUI)mt.emissive.copy(mt.color);else mt.emissive.set('#ffffff');}else mt.emissive.set('#000000');mt.emissiveIntensity=m===B3.sel?(lightUI?.45:.28):0;
+    mt.emissive.set(m===B3.sel?'#ffffff':'#000000');mt.emissiveIntensity=m===B3.sel?.28:0;
   }
   map3dDraw();
 }
@@ -4618,7 +4546,7 @@ function bmShape(x){
 function muscleStatus(src){
   const b=state.settings.bands;const out={};
   // A muscle whose target starts at 0 is on target with no sets (r27: it read as below, against the Coach).
-  for(const m of MK){const v=src?(src[m]||0):0;const [lo,hi]=b[m];out[m]={v,lo,hi,st:TRACK_ONLY.has(m)?'track':v<=0&&lo>0?'none':v<lo?'under':v>hi?'over':'in'};}
+  for(const m of MK){const v=src?(src[m]||0):0;const [lo,hi]=b[m];out[m]={v,lo,hi,st:v<=0&&(lo>0||TRACK_ONLY.has(m))?'none':TRACK_ONLY.has(m)?'track':v<lo?'under':v>hi?'over':'in'};}
   return out;
 }
 function bodyMapCard(){
@@ -4645,7 +4573,7 @@ function bodyMapCard(){
   const stage=v3?`<div class="bm3d" id="bm3d"><div class="bm3d-stage" role="img" aria-label="3D body, shaded by hard sets a week. Drag sideways to turn it, tap a muscle for its numbers. The same numbers are in the flat view."></div><p class="bm3d-msg small muted" hidden></p><div class="seg bm3d-turn" role="group" aria-label="Turn the body"><button class="chip" data-act="map3dTurn" data-v="0">Front</button><button class="chip" data-act="map3dTurn" data-v="1">Side</button><button class="chip" data-act="map3dTurn" data-v="2">Back</button></div></div>`:`<div class="bm-wrap">${fig('f','Front')}${fig('b','Back')}</div>`;
   return sec({sk:'today:map',key:'map',title:'Muscle map',sub:msub,body:`<div class="row spread"><div class="seg" role="group" aria-label="View"><button class="chip ${v3?'':'on'}" data-act="mapView" data-v="flat" aria-pressed="${!v3}">Flat</button><button class="chip ${v3?'on':''}" data-act="mapView" data-v="3d" aria-pressed="${v3}">3D</button></div><div class="seg" role="group" aria-label="Time range">${avg?`<button class="chip ${src==='avg'?'on':''}" data-act="mapSrc" data-v="avg" aria-pressed="${src==='avg'}">4-week avg</button>`:''}<button class="chip ${src==='week'?'on':''}" data-act="mapSrc" data-v="week" aria-pressed="${src==='week'}">This week</button></div></div>
   ${stage}
-  <div class="bm-legend small"><span><i class="st-under"></i>Below target ${counts.under}</span><span><i class="st-in"></i>On target ${counts.in}</span><span><i class="st-over"></i>Above ${counts.over}</span><span><i class="st-none"></i>None ${counts.none}</span>${counts.track?`<span class="hastip" data-tip="Serratus, rotator cuff, neck, and tibialis: sets are counted, but no study sets a weekly dose, so they are never called under or over."><i class="st-track"></i>Tracked only ${counts.track}</span>`:''}</div>
+  <div class="bm-legend small"><span><i class="st-under"></i>Below target ${counts.under}</span><span><i class="st-in"></i>On target ${counts.in}</span><span><i class="st-over"></i>Above ${counts.over}</span><span><i class="st-none"></i>None ${counts.none}</span>${counts.track?`<span class="hastip" data-tip="Serratus and rotator cuff: sets are counted, but no study sets a weekly dose, so they are never called under or over."><i class="st-track"></i>Tracked only ${counts.track}</span>`:''}</div>
   ${detail}`});
 }
 /* Session length measured from Start to Finish. Sessions logged for a past date,
@@ -4856,7 +4784,7 @@ function rankDays(){
       const w=w0*f;const rc=recovery(m);
       if(inj.has(m)){injS+=w;continue;}
       const def=TRACK_ONLY.has(m)?0:Math.max(0,bands[m][0]-r7[m]);fill+=Math.min(w,def)*(pri.has(m)||lag.has(m)?1.5:1);
-      fat+=w*(1-rc.r);if(!TRACK_ONLY.has(m))over+=Math.max(0,r7[m]+w-bands[m][1]);
+      fat+=w*(1-rc.r);over+=Math.max(0,r7[m]+w-bands[m][1]);
     }
     for(const [m,w] of Object.entries(dir)){if(inj.has(m))continue;wR+=w*recovery(m).r;wT+=w;}
     const since=lastDone[day.id]?daysBetween(lastDone[day.id],t):null;
@@ -4904,8 +4832,7 @@ function rankExercises(d){
     const m=e.primary;const [lo,hi]=bands[m];const def=TRACK_ONLY.has(m)?0:Math.max(0,lo-r7[m]);const inSess=sess[m]||0;
     let s=Math.min(def,6)*0.6;
     // At target already: optional, and better where the week has room left.
-    // Tracked-only muscles have no target, so no "already at target" penalty either (r29).
-    if(def<=0&&!TRACK_ONLY.has(m))s-=r7[m]>=hi?3:1-Math.min(hi-r7[m],4)*0.15;
+    if(def<=0)s-=r7[m]>=hi?3:1-Math.min(hi-r7[m],4)*0.15;
     if(inSess>=SESSION_CAP)s-=6;else if(inSess>=7)s-=1.5;
     // The session itself is not fatigue to recover from; earlier days are.
     s-=(1-rec[m].r)*3;
@@ -4915,7 +4842,7 @@ function rankExercises(d){
     if(same.length)s+=same.some(x=>(pe&&patternOf(x)===pe)||x.equip===e.equip)?-0.8:0.3;
     // Helper muscles count a little, capped, so a lift is not picked just for
     // touching many muscles; tired or maxed helpers still count against it.
-    {let sb=0;for(const m2 of e.secondary){const d2=TRACK_ONLY.has(m2)?0:Math.max(0,bands[m2][0]-r7[m2]);sb+=Math.min(d2,3)*0.15;s-=(1-rec[m2].r)*0.5;if((sess[m2]||0)>=SESSION_CAP)s-=0.5;}s+=Math.min(sb,0.6);}
+    {let sb=0;for(const m2 of e.secondary){const d2=Math.max(0,bands[m2][0]-r7[m2]);sb+=Math.min(d2,3)*0.15;s-=(1-rec[m2].r)*0.5;if((sess[m2]||0)>=SESSION_CAP)s-=0.5;}s+=Math.min(sb,0.6);}
     const st=I.exStats[e.id];const n=(I.byEx[e.id]||[]).length;
     if(n){s+=0.8;if(st&&st.moving&&!st.stalled)s+=0.4;if(st&&st.stalled)s-=0.8;}else{if(e.rare)s-=0.4;if(!inR.has(e.id))s-=0.3;}
     if(inR.has(e.id))s+=0.5;
@@ -4933,9 +4860,9 @@ function rankExercises(d){
 }
 function exReasons(x){
   const [lo,hi]=state.settings.bands[x.m];const out=[];
-  out.push(TRACK_ONLY.has(x.m)?`${ML[x.m]}: ${r1(x.r7)} hard sets in the last 7 days, counting this session (tracked only, no target).`:`${ML[x.m]}: ${r1(x.r7)} of ${lo}-${hi} hard sets in the last 7 days, counting this session${x.def>0?`, ${r1(x.def)} short of target`:', at or above target'}.`);
+  out.push(`${ML[x.m]}: ${r1(x.r7)} of ${lo}-${hi} hard sets in the last 7 days, counting this session${x.def>0?`, ${r1(x.def)} short of target`:', at or above target'}.`);
   out.push(x.rec.days==null?'Not trained hard in the last 3 weeks.':x.rec.r<1?`Last trained hard ${agoTxt(x.rec.days)} (${r1(x.rec.sets)} sets), so it may still be recovering.`:`Last trained hard ${agoTxt(x.rec.days)}, recovered.`);
-  if(x.inSess>0)out.push(`${r1(x.inSess)} set${r1(x.inSess)===1?'':'s'} for it already in this session${x.inSess>=SESSION_CAP?`, past the ${SESSION_CAP}-set line for one workout`:''}.`);
+  if(x.inSess>0)out.push(`${r1(x.inSess)} sets for it already in this session${x.inSess>=SESSION_CAP?`, past the ${SESSION_CAP}-set line for one workout`:''}.`);
   if(x.n){const p=x.st&&x.st.pct!=null?`, ${x.st.pct>=0?'+':''}${r1(x.st.pct)}% over 6 weeks`:'';out.push(`You have logged it ${x.n} time${x.n===1?'':'s'}${p}${x.st&&x.st.stalled?', stalled lately':''}.`);}
   else out.push('New to you: the first session sets its baseline.');
   if(LONG_IDS.has(x.e.id))out.push(LONG_TRIAL.has(x.e.id)?'Trains a two-joint muscle at a long length, which beat the shorter-length version in trials.':'Puts a two-joint muscle at a long length (a mechanical case, not trial-tested).');
@@ -5116,7 +5043,7 @@ function weekBody(w){
   ${w.cardioMin?`<p class="small" style="margin:5px 0 0">Cardio and mobility: ${w.cardioMin} min in ${w.cardioN} entr${w.cardioN===1?'y':'ies'}</p>`:''}
   <div class="hrow" style="margin:5px 0 0"><p class="small muted" style="margin:0" id="wkSets">${w.got} hard sets logged of ${w.tgt} planned${w.tgt>0?` (${Math.round(w.pct)}%)`:''}.</p>${helpBtn('wk')}</div>
   ${liftedLine()}
-  ${helpText('wk',`Each set counts once; a set at RIR 4 or more is not hard and does not count. The bar at the top of every tab is this calendar week: filled is a day you lifted, a coloured outline is cardio only, a grey ring is a workout planned ahead${w.weekly?', a red ring is a planned workout that was missed':''}. Tap a filled day to open it in History; tap today or a day ahead to see its workout here; tap an empty past day (marked +) to log a workout for it.${w.weekly?'':' The row above the bar is your cycle: green is done this round, outlined is next.'}`)}`;
+  ${helpText('wk',`Each set counts once; a set at RIR 4 or more is not hard and does not count. The bar at the top of every tab is this calendar week: filled is a day you lifted, a coloured outline is cardio only, a grey ring is a workout planned ahead${w.weekly?', a red ring is a planned workout that was missed':''}. Tap a filled day to open it in History, today or a day ahead to see its workout here, or an empty past day (marked +) to log a workout for it.${w.weekly?'':' The row above the bar is your cycle: green is done this round, outlined is next.'}`)}`;
 }
 function weekCard(){
   const w=weekStats();const body=weekBody(w);
@@ -5155,7 +5082,7 @@ function bodyCard(){
   const sub=last?`${fmtW(last.kg)} ${U()}${r?` · ${pc(r.pct)}/wk`:''}`:'Not logged yet';
   const chg=bws.length>1?last.kg-bws[1].kg:null;
   return sec({sk:'today:body',key:'body',title:'Body',sub:esc(sub),body:`${last?`<div class="body-sum"><div><div class="v">${fmtW(last.kg)}<span class="small"> ${U()}</span></div><div class="l">Latest, ${fmtDate(last.date)}${chg!=null?`, ${chg>=0?'+':'−'}${fmtW(Math.abs(chg))} vs previous`:''}</div></div>${r?`<div><div class="v">${pc(r.pct)}</div><div class="l">per week, from 7-day averages</div></div>`:''}</div>`:''}
-  <div class="bw-entry"><label class="field">Date<input type="date" id="bwDate" value="${today()}" max="${today()}"></label><label class="field">Weight (${U()})<input type="text" inputmode="decimal" id="bwVal" placeholder="${last?fmtW(last.kg):''}" enterkeyhint="done"></label><button class="btn primary" data-act="addBW" data-tip="Also used for pull-ups, dips, and other bodyweight lifts.">${loggedToday?'Update':'Log'}</button></div>
+  <div class="bw-entry"><label class="field">Date<input type="date" id="bwDate" value="${today()}" max="${today()}"></label><label class="field">Weight (${U()})<input type="text" inputmode="decimal" id="bwVal" placeholder="${last?fmtW(last.kg):''}" enterkeyhint="done"></label><button class="btn primary" data-act="addBW" data-tip="Also used for pull-ups, dips and other bodyweight lifts.">${loggedToday?'Update':'Log'}</button></div>
   ${bws.length?`<ul class="bw-list" aria-label="Recent bodyweights">${bws.slice(0,5).map(b=>`<li><span class="d">${fmtDate(b.date)}</span><span class="num">${fmtW(b.kg)} ${U()}</span><button class="ib sm" data-act="delBW" data-id="${b.id}" aria-label="Delete ${fmtDate(b.date)} entry">✕</button></li>`).join('')}</ul>${bws.length>5?`<p class="small muted" style="margin:4px 0 0">${bws.length-5} older on Stats.</p>`:''}`:''}
   ${subsec('today:tape',`Tape measurements (${LU()})`,`<div class="grid2" style="align-items:end">${heightField()}<span></span></div>
     <div class="grid3" style="margin-top:10px">${MEAS.map(([k,l])=>`<label class="field">${l}<input type="text" inputmode="decimal" id="ms_${k}"></label>`).join('')}</div>
@@ -5231,7 +5158,7 @@ function viewLogger(){
   const left=d.editingId||d.free||d.past?0:remainMin(d);
   let h=`<div class="ph"><div style="min-width:0;flex:1 1 auto"><p class="kick">${d.editingId?'Editing a saved session':d.past?'Past workout':'Session in progress'}</p><div class="hrow"><h2 style="overflow-wrap:anywhere;min-width:0">${esc(d.dayName)}</h2>${helpBtn('log')}<button class="btn sm danger" style="margin-left:auto;flex:none" data-act="discard">${d.editingId?'Cancel edit':'Discard'}</button></div><p class="meta"><span id="doneCount">${doneN}</span> <span id="doneWord">${doneN===1?'set':'sets'}</span> done${d.past?`, for ${esc(fmtDateLong(d.date))}`:''}${d.startedAt&&!d.past?`, started ${new Date(d.startedAt).toLocaleTimeString([],{hour:'numeric',minute:'2-digit'})}`:''}${left>0?`, about ${left} min left`:''}</p>${(()=>{const sp=sessProgress(d);return sp.n?`<div class="sprog" aria-hidden="true"><div class="band"><div class="fill prog" id="sessBar" style="width:${sp.pct}%"></div></div><span id="sessOf">${sp.k} of ${sp.n}</span></div>`:'';})()}
   <div class="row lh-row"><input type="date" data-bind="draftDate" value="${d.date}" max="${today()}" aria-label="Session date" data-tip="Change to log a past session">${left>0?'<button class="btn sm" data-act="shortOpen">Short on time</button>':''}</div></div></div>
-  ${helpText('log',(state.settings.rirMode==='off'?'RIR is switched off in Settings, so every working set counts as hard. ':'RIR is reps left in the tank: 3 or less counts the set as hard for weekly volume, 4 or more stays in history only. RIR is optional: a blank is read as your usual RIR on that lift, or as hard until you have rated a few of its sets. ')+'W marks a warm-up (kept, never analysed); tap it again for D, a drop set (counts as work and volume, never as a PR or target). To add a new warm-up or drop set row, use the ⋯ menu on the exercise. Drag an exercise by its ⠿ to change the order. In a superset the rest timer starts after the last exercise of the pair. Timed holds log seconds in the Sec column. The date can be changed to log a past session.'+(d.past?' Quick entry: no rest timer, and a set counts as done once its reps are typed.':state.settings.autoDone?' Auto-mark is on: sets tick themselves when you leave the reps field.':''))}
+  ${helpText('log',(state.settings.rirMode==='off'?'RIR is switched off in Settings, so every working set counts as hard. ':'RIR is reps left in the tank: 3 or less counts the set as hard for weekly volume, 4 or more stays in history only. RIR is optional: a blank is read as your usual RIR on that lift, or as hard until you have rated a few of its sets. ')+'W marks a warm-up (kept, never analysed); tap it again for D, a drop set (counts as work and volume, never as a PR or target). To add a new warm-up or drop set row, use the ⋯ menu on the exercise. In a superset the rest timer starts after the last exercise of the pair. Timed holds log seconds in the Sec column. The date can be changed to log a past session.'+(d.past?' Quick entry: no rest timer, and a set counts as done once its reps are typed.':state.settings.autoDone?' Auto-mark is on: sets tick themselves when you leave the reps field.':''))}
   ${d.free?`<label class="field" style="margin-top:8px">Name<input type="text" data-bind="draftName" maxlength="40" value="${esc(d.dayName)}"></label><p class="small muted" style="margin:4px 0 0">Not tied to a routine day, so your cycle stays put.</p>`:''}
   ${d.past?'':checkinCard(d)}${loadAskCard(d)}`;
   if(!d.ex.length)h+=`<div class="card"><p class="small" style="margin:0">No exercises yet. Tap + Add exercise below${d.editingId?'':', or Pick for me for a suggestion based on your last 7 days,'} and log as you go.</p></div>`;
@@ -5241,13 +5168,13 @@ function viewLogger(){
     const ex=EX(b.exId);const p=b.plan;const ss=p.ss?letters[p.ss]:null;const nr=!rirShow(ex);
     if(!d.editingId&&blockDone(b)&&!blkIsOpen(bi,b)){
       const ws=b.sets.filter(x=>!x.warm);const prs=ws.filter(x=>livePR(b.exId,x,d.date)).length;
-      h+=`<section class="block folded" id="blk-${bi}" data-bi="${bi}">${bgrip(bi,ex.name)}<button class="bfold" data-act="bOpen" data-b="${bi}" aria-expanded="false" aria-label="${esc(ex.name)}, done. Open to edit"><span class="bf-ck" aria-hidden="true">✓</span><span class="bf-t"><b>${esc(ex.name)}</b><span>${esc(ws.map(x=>setShort(ex,x.w,x.r)).join(', '))}</span></span>${prs?`<span class="bf-pr">PR</span>`:''}<span class="chev" aria-hidden="true"></span></button></section>`;
+      h+=`<section class="block folded" id="blk-${bi}"><button class="bfold" data-act="bOpen" data-b="${bi}" aria-expanded="false" aria-label="${esc(ex.name)}, done. Open to edit"><span class="bf-ck" aria-hidden="true">✓</span><span class="bf-t"><b>${esc(ex.name)}</b><span>${esc(ws.map(x=>setShort(ex,x.w,x.r)).join(', '))}</span></span>${prs?`<span class="bf-pr">PR</span>`:''}<span class="chev" aria-hidden="true"></span></button></section>`;
       return;
     }
     const partner=ss?d.ex.filter(x=>x!==b&&x.plan.ss===p.ss).map(x=>exName(x.exId)).join(' + '):'';
-    h+=`<section class="block${ss?' ss':''}" id="blk-${bi}" data-bi="${bi}"><div class="bh">${bgrip(bi,ex.name)}<div class="bh-m"><h3 ${ex.note?`aria-labelledby="bhn-${bi}"`:''}><span id="bhn-${bi}">${esc(ex.name)}</span>${ex.note?` ${tipi(ex.note,'About '+ex.name)}`:''}</h3><p class="small muted">${esc(ML[ex.primary])} · ${b.sets.filter(x=>!x.warm&&!x.drop).length||p.sets}×${p.repMin}-${p.repMax}${ex.timed?'s':''}${ex.perSide?'/side':''}${nr?'':` @${p.rir} RIR`} · ${p.rest}s${ss?` · <span class="tag blue">Superset ${ss}</span>`:''}${b.inj?` · <span class="tag red">Injury: ${ML[b.inj]}</span>`:''}</p>${lmChips(ex)}</div>
+    h+=`<section class="block${ss?' ss':''}" id="blk-${bi}"><div class="bh"><div><h3 ${ex.note?`aria-labelledby="bhn-${bi}"`:''}><span id="bhn-${bi}">${esc(ex.name)}</span>${ex.note?` ${tipi(ex.note,'About '+ex.name)}`:''}</h3><p class="small muted">${esc(ML[ex.primary])} · ${b.sets.filter(x=>!x.warm&&!x.drop).length||p.sets}×${p.repMin}-${p.repMax}${ex.timed?'s':''}${ex.perSide?'/side':''}${nr?'':` @${p.rir} RIR`} · ${p.rest}s${ss?` · <span class="tag blue">Superset ${ss}</span>`:''}${b.inj?` · <span class="tag red">Injury: ${ML[b.inj]}</span>`:''}</p>${lmChips(ex)}</div>
       <div class="bh-acts">${!d.editingId&&blockDone(b)?`<button class="ib" aria-label="Fold ${esc(ex.name)}" data-act="bFold" data-b="${bi}">▴</button>`:''}<button class="ib" aria-label="Exercise options" data-act="bMenu" data-b="${bi}">⋯</button></div></div>
-      ${b.target?`<p class="hint"><b>Today: ${esc(targetText(b))}</b>${b.basis?` ${tipi(`Target from your last full session, ${fmtDate(b.basis)}. Trimmed, lighter, and deload sessions don't set targets.`,'Where this target comes from')}`:''}<span class="tp muted" style="display:block">${esc(b.last)}</span>${b.easier?`<span class="tp ez">${esc(b.easier)}</span>`:''}${progressLine(b,bi)}</p>`:`<p class="hint">${esc(b.hint||'')}</p>`}${bi===calIdx?`<p class="small caldue">Due for an RIR check: take one set here to failure. <button class="linkbtn" data-act="bCal" data-b="${bi}">Calibration set</button> <button class="linkbtn" data-act="calSnooze">Not now</button></p>`:''}
+      ${b.target?`<p class="hint"><b>Today: ${esc(targetText(b))}</b>${b.basis?` ${tipi(`Target from your last full session, ${fmtDate(b.basis)}. Trimmed, lighter and deload sessions don't set targets.`,'Where this target comes from')}`:''}<span class="tp muted" style="display:block">${esc(b.last)}</span>${b.easier?`<span class="tp ez">${esc(b.easier)}</span>`:''}${progressLine(b,bi)}</p>`:`<p class="hint">${esc(b.hint||'')}</p>`}${bi===calIdx?`<p class="small caldue">Due for an RIR check: take one set here to failure. <button class="linkbtn" data-act="bCal" data-b="${bi}">Calibration set</button> <button class="linkbtn" data-act="calSnooze">Not now</button></p>`:''}
       ${ss&&partner?`<p class="small muted" style="margin:2px 0 0">Superset with ${esc(partner)}; rest after the pair.</p>`:''}
       ${b.lastNote&&!b.note?`<p class="small lnote">Your note, ${esc(fmtDate(b.lastNote.date))}: ${esc(b.lastNote.text)} <button class="linkbtn" data-act="noteReuse" data-b="${bi}">Use again</button></p>`:''}
       ${b.note?`<p class="small bnote" id="bn-${bi}">${esc(b.note)}</p>`:`<p class="small bnote" id="bn-${bi}" hidden></p>`}
@@ -5307,7 +5234,7 @@ function viewProgram(){
   if(ui.bTarget>=R.days.length)ui.bTarget=0;
   const totSets=R.days.reduce((a,d)=>a+(d.rest?0:daySets(d)),0);const weekly=R.schedule==='weekly';
   let h=pageHead(isActive?'Active routine':'Not active',`Plan`,(trainDaysOf(R)?`<b>${esc(R.name)}</b> · ${trainDaysOf(R)} training days${weekly?' a week':` in a ${R.days.length}-day cycle`} · ${weekly?totSets:Math.round(totSets*weekFactor(R))} planned sets a week`:`<b>${esc(R.name)}</b> · ${weekly?'fixed weekdays':`${R.days.length}-day cycle`} · no exercises yet`),helpBtn('plan'))
-  +helpText('plan','Drag the ⠿ handle to reorder or move exercises between days; the arrows and "Move to" do the same. Tap an exercise to edit sets, reps, RIR, rest, and load increment, or to superset it with the next exercise. The library button manages every exercise, including your own. In a numbered cycle, drag a day by the ⠿ beside its number to reorder days (or focus the ⠿ and use the arrow keys); they renumber from their new position. On every tab, the ⠿ beside a section title moves that section, and the order is remembered.');
+  +helpText('plan','Drag the ⠿ handle to reorder or move exercises between days; the arrows and "Move to" do the same. Tap an exercise to edit sets, reps, RIR, rest and load increment, or to superset it with the next exercise. The library button manages every exercise, including your own. In a numbered cycle, drag a day by the ⠿ beside its number to reorder days (or focus the ⠿ and use the arrow keys); they renumber from their new position. On every tab, the ⠿ beside a section title moves that section, and the order is remembered.');
   /* The library is one of the app's best parts (V, r28), so it gets a full
      width button of its own instead of a small one beside the ?. */
   h+=`<button type="button" class="libbtn" data-act="planLib"><span class="lb-i" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3" y="10" width="3" height="4" rx="1"/><rect x="6" y="7" width="3" height="10" rx="1.2"/><rect x="15" y="7" width="3" height="10" rx="1.2"/><rect x="18" y="10" width="3" height="4" rx="1"/><rect x="9" y="11" width="6" height="2"/></svg></span><span class="lb-t"><b>Exercise library</b><span>${state.exercises.filter(e=>!e.archived).length} exercises with their muscles, and your own</span></span><span class="lb-c" aria-hidden="true">›</span></button>`;
@@ -5346,7 +5273,7 @@ function viewProgram(){
   if(!weekly)db+=`<div class="row" style="margin-top:10px"><button class="btn sm" data-act="dAdd" ${R.days.length>=MAX_DAYS?'disabled':''}>+ Training day</button><button class="btn sm" data-act="dAddRest" ${R.days.length>=MAX_DAYS?'disabled':''}>+ Rest day</button></div>`;
   h+=sec({sk:'program:days',key:'days',title:'Days',sub:`${R.days.length} day${R.days.length===1?'':'s'}, ${totSets} sets`,body:db});
   const pv=plannedSets(R);const bands=state.settings.bands;const pUnder=MK.filter(m=>!TRACK_ONLY.has(m)&&(pv[m]||0)<bands[m][0]).length;
-  h+=sec({sk:'program:pvol',key:'pvol',title:'Weekly volume',sub:pUnder?`<span class="pill yellow">${pUnder} under target</span>`:'<span class="pill green">all on target</span>',help:'pvol',helpBody:`Hard sets per muscle this routine plans for a week${weekly?'':`, scaled from a ${R.days.length}-day cycle to 7 days`}. Direct work counts 1 set, secondary involvement counts 0.5. The shaded zone is your weekly target (editable in Settings).`,body:volumeRows(pv)});
+  h+=sec({sk:'program:pvol',key:'pvol',title:'Weekly volume',sub:pUnder?`<span class="pill yellow">${pUnder} under target</span>`:'<span class="pill green">all on target</span>',help:'pvol',helpBody:`Hard sets per muscle this routine plans for a week${weekly?'':`, scaled from a ${R.days.length}-day cycle to 7 days`}. Direct work counts 1 set, secondary involvement counts 0.5. The shaded zone is your target band (editable in Settings).`,body:volumeRows(pv)});
   h+=moreLine('program');
   return h;
 }
@@ -5389,7 +5316,7 @@ function volumeRows(sets,conf){
     const plate=tr?'none':v<lo?'yellow':v>hi?'blue':'green';
     const c=hasConf?Math.min(conf[m]||0,v):0;
     const tip=` data-tip="${esc(ML[m])}: ${r1(v)} hard sets${hasConf?`, ${r1(c)} with RIR logged, ${r1(v-c)} assumed`:''}. ${tr?'Tracked only: no study sets a weekly dose for it.':`Target ${lo} to ${hi}; the upper number is typical, not a ceiling.`}"`;
-    return `<div class="mrow"><span class="plate ${plate}"></span><span>${ML[m]}</span><div class="band"${tip}>${tr?'':`<div class="zone" style="left:${lo/maxScale*100}%;width:${(hi-lo)/maxScale*100}%"></div>`}<div class="fill ${cls}${hasConf?' ghost':''}" style="width:${Math.min(100,v/maxScale*100)}%"></div>${hasConf&&c>0?`<div class="fill conf" style="width:${Math.min(100,c/maxScale*100)}%"></div>`:''}</div><span class="r num">${r1(v)}<span class="muted small">${tr?' tracked':` /${lo}-${hi}`}</span></span></div>`;
+    return `<div class="mrow"><span class="plate ${plate}"></span><span>${ML[m]}</span><div class="band"${tip}><div class="zone" style="left:${lo/maxScale*100}%;width:${(hi-lo)/maxScale*100}%"></div><div class="fill ${cls}${hasConf?' ghost':''}" style="width:${Math.min(100,v/maxScale*100)}%"></div>${hasConf&&c>0?`<div class="fill conf" style="width:${Math.min(100,c/maxScale*100)}%"></div>`:''}</div><span class="r num">${r1(v)}<span class="muted small"> /${lo}-${hi}</span></span></div>`;
   }).join('');
 }
 
@@ -5422,7 +5349,7 @@ function viewDash(){
   const sessDates=new Set(state.sessions.map(s=>s.date));
   /* Only weeks since your first session count. Before that there was nothing
      to adhere to, and counting those weeks read 0% on day one. */
-  const firstWk=firstFullWeek();
+  const firstWk=state.sessions.length?weekStart(sortedSessions()[0].date):null;
   let done4=0,wks4=0,need4=0;
   for(let k=1;k<=4;k++){
     const ws=addDays(cur,-7*k);if(!firstWk||ws<firstWk)break;let n=0;wks4++;
@@ -5444,7 +5371,7 @@ function viewDash(){
   let h=pageHead('','Stats',`${state.sessions.length} session${state.sessions.length===1?'':'s'} logged${state.sessions.length?`, since ${fmtDate(sortedSessions()[0].date)}`:''}`,helpBtn('stats'))+`${helpText('stats','Everything here is calculated from your logged sets: performance trends, not direct measurements of muscle size. Tap a section title to open or fold it. Inside each section, How this works says what its numbers mean.')}
   <nav class="jump" aria-label="Stats sections">${orderKeys(state.settings.secOrder.dash||[],DSEC_KEYS).filter(k=>!state.settings.hidden.includes('dash:'+k)).map(k=>DSECS.find(x=>x[0]===k)).map(([k,l])=>`<button class="chip" data-act="dashJump" data-sec="${k}">${l}</button>`).join('')}</nav>`;
   if(!state.sessions.length){
-    h+=`<div class="card"><p style="margin:0"><b>No sessions yet.</b> Planned volume works now; trends start after a few sessions. ${tipi('Trends, stall detection, and rankings need a few sessions of each exercise. To preview the full Stats page, load demo data in Settings.','About Stats')}</p></div>`;
+    h+=`<div class="card"><p style="margin:0"><b>No sessions yet.</b> Planned volume works now; trends start after a few sessions. ${tipi('Trends, stall detection and rankings need a few sessions of each exercise. To preview the full Stats page, load demo data in Settings.','About Stats')}</p></div>`;
   }
   h+=`<div class="kpis"><div class="kpi"><div class="v">${adher==null?'n/a':adher+'%'}</div><div class="l">${!planned?'Adherence: no planned days':adher==null?'Adherence: appears after your first full week':`Adherence, previous ${wks4} full week${wks4===1?'':'s'} (${r1(done4)}/${r1(need4)})`}</div></div>
   <div class="kpi"><div class="v">${wkHard}</div><div class="l">Hard sets this week, of ${weekStats().tgt} planned</div></div>
@@ -5458,7 +5385,7 @@ function viewDash(){
   h+=dsec('volume','Volume','Hard sets per muscle. Direct work counts 1, secondary counts 0.5. A set counts as hard when you logged RIR 3 or less. A blank RIR is read as your usual RIR on that lift once you have rated 3 of its sets in the last 12 weeks, and until then counts as hard, because most working sets are. Blank sets are shaded lighter so you can see how much of the bar is measured and how much is assumed. Amber is under your weekly target, green is inside it, blue is over. Load is total weight × reps per week, comparable week to week but not session to session.',
     `${cov}
   <div class="chips">${[['region','By region'],['planned','Planned'],['week','This week'],['avg','Recent average'],['trend','Weekly trend'],['load','Load']].map(([k,l])=>`<button class="chip ${ui.volMode===k?'on':''}" data-act="volMode" data-v="${k}">${l}</button>`).join('')}</div>
-  ${ui.volMode==='region'?regionBody():ui.volMode==='trend'?trendBody():ui.volMode==='load'?`<div class="card">${volHeadline()}${state.sessions.length?`${rangeChips('vol',weeksSpan(firstDate(state.sessions)),8)}<div class="chartbox"><canvas id="chVol"></canvas></div>${chartFallback()}`:'<p class="small muted">Log a session to start this chart.</p>'}</div>`:`<div class="card">${ui.volMode==='planned'?volumeRows(plan):ui.volMode==='week'?(MK.some(m=>(thisWeek[m]||0)>0)?volumeRows(thisWeek,state.settings.rirMode==='off'?null:thisWeekConf):'<p class="muted" style="margin:0">Nothing logged this week yet.</p>'):(avg?`<p class="small muted" style="margin:0 0 6px">Averaged over the ${avg._weeks} week${avg._weeks===1?'':'s'} with training in the last 4. Weeks with no sessions are excluded rather than counted as zero.</p>${volumeRows(avg,state.settings.rirMode==='off'?null:avg._conf)}`:'<p class="muted">No sessions in the previous 4 full weeks.</p>')}</div>`}`,`${wkHard} hard sets this week`);
+  ${ui.volMode==='region'?regionBody():ui.volMode==='trend'?trendBody():ui.volMode==='load'?`<div class="card">${volHeadline()}${state.sessions.length?`${rangeChips('vol',weeksSpan(firstDate(state.sessions)),8)}<div class="chartbox"><canvas id="chVol"></canvas></div>${chartFallback()}`:'<p class="small muted">Log a session to start this chart.</p>'}</div>`:`<div class="card">${ui.volMode==='planned'?volumeRows(plan):ui.volMode==='week'?volumeRows(thisWeek,state.settings.rirMode==='off'?null:thisWeekConf):(avg?`<p class="small muted" style="margin:0 0 6px">Averaged over the ${avg._weeks} week${avg._weeks===1?'':'s'} with training in the last 4. Weeks with no sessions are excluded rather than counted as zero.</p>${volumeRows(avg,state.settings.rirMode==='off'?null:avg._conf)}`:'<p class="muted">No sessions in the previous 4 full weeks.</p>')}</div>`}`,`${wkHard} hard sets this week`);
 
   // muscles: weak points, then return on volume folded beneath
   const inj=injuredSet();
@@ -5469,24 +5396,27 @@ function viewDash(){
   // Counting it twice also pushed it up a sort that ranks by flag count.
   // A shortfall in the plan alone is not a weak point (r28): a new person
   // who picked a ready-made routine saw "18 flagged" in amber before
-  // logging a set. Plan's Weekly volume shows the plan against the targets.
+  // logging a set. It is listed quietly under the flags instead, and Plan's
+  // Weekly volume shows by how much.
+  const planLow=[];
   for(const m of MK){
     if(inj.has(m))continue;
     if(TRACK_ONLY.has(m))continue;
     const uPlan=(plan[m]||0)<bands[m][0],uAct=!!avg&&(avg[m]||0)<bands[m][0];
     if(uPlan&&uAct)add(m,'Below target, logged and planned','yellow');
     else if(uAct)add(m,'Below target, logged','yellow');
+    else if(uPlan)planLow.push(m);
   }
   for(const m of state.settings.priorities)add(m,'Your priority','blue');
   const wp=Object.entries(reasons).sort((a,b)=>b[1].length-a[1].length);
   const weakBody=`<div class="card">${wp.length?wp.map(([m,rs])=>{const [lo,hi]=bands[m];const bits=[`this week ${r1(thisWeek[m]||0)} of ${lo}-${hi} hard sets`];if(avg)bits.push(`recent average ${r1(avg[m]||0)}`);if((plan[m]||0)<lo)bits.push(`routine plans ${r1(plan[m]||0)}`);
-      return `<div style="padding:6px 0;border-bottom:1px solid var(--line)"><div class="row spread"><b>${ML[m]}</b><div class="chips">${rs.map(([t,c])=>`<span class="tag ${c}">${t}</span>`).join('')}</div></div><p class="small muted" style="margin:2px 0 0">${bits.join(', ')}</p></div>`;}).join(''):`<p class="muted" style="margin:0">${state.sessions.length?'Nothing flagged.':'Flags start once you have logged a few sessions.'}</p>`}</div>`;
+      return `<div style="padding:6px 0;border-bottom:1px solid var(--line)"><div class="row spread"><b>${ML[m]}</b><div class="chips">${rs.map(([t,c])=>`<span class="tag ${c}">${t}</span>`).join('')}</div></div><p class="small muted" style="margin:2px 0 0">${bits.join(', ')}</p></div>`;}).join(''):`<p class="muted" style="margin:0">${state.sessions.length?'Nothing flagged.':'Flags start once you have logged a few sessions.'}</p>`}${planLow.length?`<p class="small muted" style="margin:10px 0 0">Your routine plans fewer hard sets a week than your target for ${planLow.map(m=>ML[m]).join(', ')}. ${tipi('Targets are per muscle in Settings, Weekly set targets. Plan, Weekly volume shows each muscle against its target.','About the plan')}</p>`:''}</div>`;
 
   // stalls (folded inside Lifts, after Recent PRs and All-time bests since r28)
   let stl='';
   if(stalled.length){
     stl+=stalled.map(([id,s])=>`<div class="row spread" style="padding:6px 0;border-bottom:1px solid var(--line)"><span><span class="plate yellow" style="height:14px;vertical-align:-2px"></span> ${esc(exName(id))}</span><span class="muted small">last ${fmtDate(s.last.date)}</span></div>`).join('');
-    if(stalled.length>=3)stl+=`<p class="small hastip" style="color:var(--red);margin-top:8px" data-tip="Several lifts flat together often points to fatigue. Check sleep, food, and stress; Deload week is under More options on Today (half the sets, about 90% loads, kept out of your trends).">${stalled.length} stalled at once: likely fatigue</p>`;
+    if(stalled.length>=3)stl+=`<p class="small hastip" style="color:var(--red);margin-top:8px" data-tip="Several lifts flat together often points to fatigue. Check sleep, food and stress; Deload week is under More options on Today (half the sets, about 90% loads, kept out of your trends).">${stalled.length} stalled at once: likely fatigue</p>`;
   }else stl+='<p class="muted">No stalls detected.</p>';
   const lw=lastLighterWeek();
   if(lw)stl+=`<p class="small muted" style="margin-top:8px">${lw.weeks==null?`No lighter week in the last 12. ${tipi(`Your usual week is ${lw.norm} hard sets. A lighter week is one well under that.`,'Lighter week')}`:`Last lighter week: ${lw.weeks} week${lw.weeks===1?'':'s'} ago (${lw.sets>0?`${lw.sets} hard sets against your usual ${lw.norm}`:'a week off'}).`}</p>`;
@@ -5511,7 +5441,7 @@ function viewDash(){
   exh+='</div>';
   const bestsBody=bestsBoard();
   const prBody=I.prs.length?I.prs.slice(0,15).map(p=>{const ex=EX(p.exId);return `<div class="row spread" style="padding:6px 0;border-bottom:1px solid var(--line)"><span>${esc(ex.name)} <span class="tag ${p.type==='e1RM'?'green':'blue'}">${ex.timed&&p.type==='Rep PR'?'Time PR':p.type}</span></span><span class="num">${p.type==='e1RM'?fmtW(p.value)+' '+U():setShort(ex,p.w,p.r)} <span class="muted small">${fmtDate(p.date)}</span></span></div>`;}).join(''):'<p class="muted">No PRs yet. Your first session of an exercise sets the baseline.</p>';
-  h+=dsec('exercise','Lifts',`Estimated 1RM uses reps to failure, which is reps plus RIR: Brzycki up to 10, Epley at 11 and 12, none above 12 or for a set called above RIR 4. A blank RIR reads as your usual RIR on that lift once you have rated 3 of its sets in 12 weeks; until then it counts as 0, so the estimate errs low. Numbers stay in the frame you log in, per dumbbell or per side where that applies. Bodyweight lifts add the share of your bodyweight they move: all of it for pull-ups and dips, 64% for push-ups. Lifts that turn about one joint (leg raises, crunches, Nordics) get no estimate; their progress is reps and load. Moving or falling means past 3% over 6 weeks with a clear trend, since estimates swing 2 to 8% day to day. A PR is a new best estimate within its range of reps to failure (1 to 5, 6 to 10, 11 to 12), or a rep PR: more reps at a load than any earlier set. Stalled: flat or falling over your last 6 sessions, or 3 weeks if that covers more (at least 4 sessions), not counting deload, lighter, and trimmed sessions.`,
+  h+=dsec('exercise','Lifts',`Estimated 1RM uses reps to failure, which is reps plus RIR: Brzycki up to 10, Epley at 11 and 12, none above 12 or for a set called above RIR 4. A blank RIR reads as your usual RIR on that lift once you have rated 3 of its sets in 12 weeks; until then it counts as 0, so the estimate errs low. Numbers stay in the frame you log in, per dumbbell or per side where that applies. Bodyweight lifts add the share of your bodyweight they move: all of it for pull-ups and dips, 64% for push-ups. Lifts that turn about one joint (leg raises, crunches, Nordics) get no estimate; their progress is reps and load. Moving or falling means past 3% over 6 weeks with a clear trend, since estimates swing 2 to 8% day to day. A PR is a new best estimate within its band of reps to failure (1 to 5, 6 to 10, 11 to 12), or a rep PR: more reps at a load than any earlier set. Stalled: flat or falling over your last 6 sessions, or 3 weeks if that covers more (at least 4 sessions), not counting deload, lighter and trimmed sessions.`,
     exh+sub('prs','Recent PRs',prBody,`${pr14} in 14 days`)+sub('bests','All-time bests',bestsBody.html,bestsBody.n?`${bestsBody.n} lift${bestsBody.n===1?'':'s'}`:'none yet')+sub('stalls','Stalls',stl,stalled.length?`<span class="pill ${stalled.length>=3?'red':'yellow'}">${stalled.length} stalled</span>`:'none'),`${Object.keys(I.byEx).length} lift${Object.keys(I.byEx).length===1?'':'s'} tracked`);
 
   // consistency heat map
@@ -5540,7 +5470,7 @@ function viewDash(){
     if(missing.length)rank+=`<p class="small muted" style="margin-top:8px">Not enough data yet: ${missing.map(m=>ML[m]).join(', ')}.</p>`;
   }else rank+='<p class="muted">Not enough data yet. Log at least 3 sessions of an exercise within 6 weeks.</p>';
   rank+='</div>';
-  h+=dsec('weak','Muscles','Weak points: muscles flagged because the trend is falling, or flat while others move, or the hard sets you logged are below your target, or you named it a priority, or you flagged an injury. A muscle is never flagged for what the routine plans, only for what you log. A muscle whose strength is rising is never flagged. Strength return on volume: the median change in estimated 1RM across a muscle\'s main exercises over 6 weeks, in the current rep range, next to the hard sets a week that produced it. This measures strength, not size: early gains are largely neural, and high-rep estimates are noisy. Size check reads your tape measurements, which are the closer signal for size.',
+  h+=dsec('weak','Muscles','Weak points: muscles flagged because the trend is falling, or flat while others move, or the hard sets you logged are below your target, or you named it a priority, or you flagged an injury. A muscle the routine plans below target is listed under the flags, not flagged. A muscle whose strength is rising is never flagged. Strength return on volume: the median change in estimated 1RM across a muscle\'s main exercises over 6 weeks, in the current rep range, next to the hard sets a week that produced it. This measures strength, not size: early gains are largely neural, and high-rep estimates are noisy. Size check reads your tape measurements, which are the closer signal for size.',
     weakBody+sub('rank','Strength return on volume',rank)+sub('size','Size check',sizeBody()),wp.length?`<span class="pill yellow">${wp.length} flagged</span>`:state.sessions.length?'<span class="pill green">none flagged</span>':'after a few sessions');
 
   {let cw='';const rows=[];const cf=firstDate(state.cardio);const cn=Math.min(8,weeksSpan(cf));
@@ -5604,36 +5534,26 @@ function dayAxis(base,win){
   const span=win.max-win.min;const step=Math.max(7,Math.ceil(span/6/7)*7);
   return {type:'linear',min:win.min,max:win.max,ticks:{stepSize:step,includeBounds:false,maxRotation:0,autoSkip:false,callback:v=>fmtDate(addDays(base,Math.round(v)))}};
 }
-/* Volume section, "By region" mode: the balance radar and its table, the
-   first view of Volume since r28 (V). It reads what you logged and nothing
-   else (V, r29: in r28 it read the routine's plan until a full week was
-   logged, which made every new person look behind): your recent average,
-   else this week so far, else your last trained weeks however long ago, so
-   the chart is always drawn from real sets (V, r29: a blank card read as the
-   chart being gone). With no sessions at all it still draws, empty, with the
-   target ring. The chart and the table use this one source. */
+/* Volume section, "By region" mode: the balance radar and its table. The
+   first view of Volume since r28 (V): one picture of where the training goes.
+   It reads your recent average once a full week is logged, else the
+   routine's plan and says so, so a new log shows a real shape instead of a
+   flat zero or a half-done week. The chart and the table use this one source. */
 function regionSrc(){
   const avg=actualAvg4();if(avg)return {src:avg,label:`your ${avg._weeks}-week average`};
-  const I=IDX(),cur=weekStart(today());
-  const wk=I.weekSets[cur]||{};
-  if(MK.some(m=>(wk[m]||0)>0))return {src:wk,label:'this week so far',week:true};
-  const has=w=>{const x=I.weekSets[w];return !!x&&MK.some(m=>(x[m]||0)>0);};
-  const ff=firstFullWeek();const all=Object.keys(I.weekSets).filter(w=>w<cur&&has(w)).sort();
-  const full=all.filter(w=>!ff||w>=ff);const wks=(full.length?full:all).slice(-4);
-  if(wks.length){const out={};for(const w of wks)for(const m in I.weekSets[w])out[m]=(out[m]||0)+I.weekSets[w][m]/wks.length;
-    const end=addDays(wks[wks.length-1],6);
-    return {src:out,label:`your last ${wks.length===1?'trained week':wks.length+' trained weeks'}, to ${fmtDate(end)}`,old:true,end};}
-  return {src:{},label:'',empty:true};
+  /* Until a full week has been logged there is no average, and a week in
+     progress read as every region short (a review of r28): the plan shows
+     instead, and This week, among the chips above, shows the week so far. */
+  return {src:plannedSets(activeRoutine()),label:state.sessions.length?"your routine's plan, until you have a full week logged":"your routine's plan, until you log a full week",plan:true};
 }
 function regionBody(){
-  const rs=regionSrc();
-  if(rs.empty)return `<div class="card"><p class="headline">Nothing logged yet.</p><p class="small muted" style="margin:0 0 4px">Each region fills in with your own hard sets as you log them. The dashed ring is your weekly target.</p>${ENV==='preview'?`<p class="small" style="margin:6px 0">This preview keeps its own log, apart from Ironlog. ${previewCopyBtn('sm primary')}</p>`:''}<div class="chartbox tall"><canvas id="chRadar"></canvas></div>${chartFallback()}</div>`;
-  const balSrc=rs.src;const balLabel=rs.label;
+  const rs=regionSrc();const balSrc=rs.src;const balLabel=rs.label;
   const regs=regionBalance(balSrc);
   const low=regs.filter(x=>x.got<x.lo).map(x=>x.label);const high=regs.filter(x=>x.got>x.hi).map(x=>x.label);
-  const note=(rs.old?`Nothing logged in the last 4 weeks, so this shows ${esc(balLabel)}. `:'')+(!low.length&&!high.length?'Every region is inside its target.':[low.length?`Below target${rs.week?' so far':''}: ${andList(low)}.`:'',high.length?`Above target: ${andList(high)}.`:''].filter(Boolean).join(' ')+(rs.week&&low.length?' The week is still going, so this fills in as you train.':''));
+  const lowT=rs.plan?'Planned below target':'Below target',highT=rs.plan?'Planned above target':'Above target';
+  const note=!low.length&&!high.length?`${rs.plan?'The plan puts every region':'Every region is'} inside its target.`:[low.length?`${lowT}: ${low.join(', ')}.`:'',high.length?`${highT}: ${high.join(', ')}.`:''].filter(Boolean).join(' ');
   const rk=[...regs].sort((a,b)=>b.pct-a.pct);
-  const rh=rk.length&&rk[0].pct>0?`<p class="headline">Most trained: ${rk[0].label} at ${Math.round(rk[0].pct)}% of target. Least: ${rk[rk.length-1].label} at ${Math.round(rk[rk.length-1].pct)}%.</p>`:'<p class="headline">No volume in this range yet.</p>';
+  const rh=rk.length&&rk[0].pct>0?`<p class="headline">${rs.plan?'Most planned':'Most trained'}: ${rk[0].label} at ${Math.round(rk[0].pct)}% of target. Least: ${rk[rk.length-1].label} at ${Math.round(rk[rk.length-1].pct)}%.</p>`:'<p class="headline">No volume in this range yet.</p>';
   return `<div class="card">${rh}<p class="small muted" style="margin:0 0 4px">Hard sets per region as a percentage of the middle of your weekly targets, using ${esc(balLabel)}. The dashed ring is 100%.</p><div class="chartbox tall"><canvas id="chRadar"></canvas></div>${chartFallback()}
   <table class="t" style="margin-top:8px"><tr><th>Region</th><th class="r">Sets</th><th class="r">Target</th><th class="r">Of target</th></tr>
   ${regs.map(rg=>{const c=rg.got<rg.lo?'yellow':rg.got>rg.hi?'blue':'green';return `<tr><td><span class="plate ${c}" style="height:12px;vertical-align:-1px"></span> ${rg.label}</td><td class="r num">${r1(rg.got)}</td><td class="r muted small">${r1(rg.lo)}-${r1(rg.hi)}</td><td class="r num">${Math.round(rg.pct)}%</td></tr>`;}).join('')}</table>
@@ -5829,17 +5749,16 @@ function mountCharts(){
   mkChart('chMuscle',{type:'bar',data:{labels,datasets:[
     {label:state.settings.rirMode==='off'?'Hard sets':'RIR logged',data:confV,backgroundColor:blue,yAxisID:'y'},
     {label:'Assumed hard',data:assumV,backgroundColor:blue+'55',yAxisID:'y'},
-    // No target lines for a tracked-only muscle (r29).
-    ...(TRACK_ONLY.has(ui.dashMuscle)?[]:[{type:'line',label:'_bandLo',data:labels.map(()=>lo),borderColor:green+'aa',borderWidth:1,borderDash:[3,3],pointRadius:0,yAxisID:'y1',fill:false},
-    {type:'line',label:`Target ${lo} to ${hi}`,data:labels.map(()=>hi),borderColor:green+'aa',borderWidth:1,borderDash:[3,3],backgroundColor:green+'22',pointRadius:0,yAxisID:'y1',fill:'-1'}])
+    {type:'line',label:'_bandLo',data:labels.map(()=>lo),borderColor:green+'aa',borderWidth:1,borderDash:[3,3],pointRadius:0,yAxisID:'y1',fill:false},
+    {type:'line',label:`Target ${lo} to ${hi}`,data:labels.map(()=>hi),borderColor:green+'aa',borderWidth:1,borderDash:[3,3],backgroundColor:green+'22',pointRadius:0,yAxisID:'y1',fill:'-1'}
   ]},options:mOpts});
   }}
   // balance radar, built from the same source the table on screen uses
-  const rsrc=regionSrc();const bal=rsrc.src;
+  const bal=regionSrc().src;
   const regs=regionBalance(bal);
   const rMax=Math.max(150,Math.ceil(Math.max(...regs.map(x=>x.pct))/50)*50);
   mkChart('chRadar',{type:'radar',data:{labels:regs.map(x=>x.label),datasets:[
-    {label:'Your volume',data:regs.map(x=>Math.round(x.pct)),borderColor:blue,backgroundColor:blue+'33',pointBackgroundColor:blue,pointRadius:3,borderWidth:2},
+    {label:regionSrc().plan?'Planned volume':'Your volume',data:regs.map(x=>Math.round(x.pct)),borderColor:blue,backgroundColor:blue+'33',pointBackgroundColor:blue,pointRadius:3,borderWidth:2},
     {label:'Target (100%)',data:regs.map(()=>100),borderColor:green,borderDash:[5,4],pointRadius:0,borderWidth:2,fill:false}
   ]},options:radarOpts(rMax)});
 
@@ -5918,7 +5837,7 @@ function viewHistory(){
   if(cs.length)h+=sec({sk:'history:cardio',key:'cardio',title:'Cardio and mobility',sub:`${cs.length} entr${cs.length===1?'y':'ies'}`,body:`<ul class="clist">${cs.slice(0,40).map(c=>`<li><span><b>${esc(CARDIOL[c.kind])}</b> <span class="small muted">${fmtDate(c.date)} · ${c.min} min${c.hr?` · ${c.hr} bpm`:''}${c.when!=='solo'?' · '+CWHENL[c.when].toLowerCase():''}${c.note?' · '+esc(c.note):''}</span></span><button class="ib sm" data-act="cardioDel" data-id="${c.id}" aria-label="Delete ${fmtDate(c.date)} cardio">✕</button></li>`).join('')}</ul>${cs.length>40?`<p class="small muted">${cs.length-40} older entries are in the CSV export.</p>`:''}`});
   const tr=state.trash||[];
   if(tr.length)h+=sec({sk:'history:trash',key:'trash',title:'Recently deleted',sub:`<span class="hastip" data-tip="${esc(`The ${TRASH_MAX} most recent deletions, each kept ${TRASH_DAYS} days`)}">${tr.length}</span>`,body:`<ul class="clist">${tr.map(x=>{const nm=x.kind==='session'?`${x.data.dayName||'Session'}, ${fmtDate(x.data.date)}`:x.kind==='cardio'?`${CARDIOL[x.data.kind]||'Cardio'}, ${fmtDate(x.data.date)}`:`Routine: ${x.data.name||'Routine'}`;return `<li><span>${esc(nm)} <span class="small muted">deleted ${fmtDate(x.date)}</span></span><button class="btn sm" data-act="restore" data-id="${x.id}" data-k="${x.kind}">Restore</button></li>`;}).join('')}</ul>`});
-  const impLine='<p class="small" style="margin:14px 0 0"><button class="linkbtn" style="min-height:44px" data-act="impOpen" data-tip="From notes, a spreadsheet, Strong, or Hevy. You check it before anything is saved.">Import workouts</button></p>';
+  const impLine='<p class="small" style="margin:14px 0 0"><button class="linkbtn" style="min-height:44px" data-act="impOpen" data-tip="From notes, a spreadsheet, Strong or Hevy. You check it before anything is saved.">Import workouts</button></p>';
   if(!ss.length)return h+'<div class="card"><p style="margin:0">No sessions yet. Start one on Today, or log one you did without the app with Log a past workout.</p></div>'+impLine+moreLine('history');
   const withData=Object.keys(I.byEx).sort((a,b)=>exName(a).localeCompare(exName(b)));
   if(ui.histEx&&!I.byEx[ui.histEx])ui.histEx='';
@@ -5990,20 +5909,19 @@ function viewSettings(){
   ${G('layout','Layout')}<div class="card stack">${layoutSettings()}</div></div></details>
   ${G('prio','Priority muscles','prio')}${helpText('prio','Shown in Weak points so they stay on your radar.')}
   <div class="card chips">${MUSCLES.map(([k,l])=>`<button class="chip ${s.priorities.includes(k)?'on':''}" data-act="prio" data-m="${k}">${l}</button>`).join('')}</div></div></details>
-  ${G('bands','Weekly set targets','bands')}${helpText('bands','Fractional hard sets per week: direct work 1, helper muscles 0.5 (Pelland 2025). 10 to 20 for major muscles fits the dose-response data; the upper number is typical, not a ceiling, and more still helps a little at more cost. Smaller muscles are set lower because compound lifts hit them indirectly, and their numbers are convention: no study has tested a dose for them. Serratus, rotator cuff, neck, and tibialis are tracked only. Raise one or two muscles for a specialisation block.')}
+  ${G('bands','Weekly set targets','bands')}${helpText('bands','Fractional hard sets per week: direct work 1, helper muscles 0.5 (Pelland 2025). 10 to 20 for major muscles fits the dose-response data; the upper number is typical, not a ceiling, and more still helps a little at more cost. Smaller muscles are set lower because compound lifts hit them indirectly, and their numbers are convention: no study has tested a dose for them. Serratus and rotator cuff are tracked only. Raise one or two muscles for a specialisation block.')}
   <div class="card"><table class="t"><tr><th>Muscle</th><th class="r">Min</th><th class="r">Max</th></tr>${MUSCLES.map(([k,l])=>`<tr><td>${l}</td><td class="r"><input style="width:70px" type="text" inputmode="numeric" aria-label="${l} minimum hard sets a week" data-band="${k}" data-bi="0" value="${s.bands[k][0]}"></td><td class="r"><input style="width:70px" type="text" inputmode="numeric" aria-label="${l} maximum hard sets a week" data-band="${k}" data-bi="1" value="${s.bands[k][1]}"></td></tr>`).join('')}</table></div></div></details>
   ${G('data','Your data','','dataSec')}
   ${(()=>{const ap=acctPanel();return `${ap}<div class="panel" id="syncInfo"${ap?' style="margin-top:8px"':''}>${syncInfo()}</div>`;})()}
   ${canInstallHere()?`<div class="panel row spread" id="installPanel" style="margin-top:8px"><p class="small" style="margin:0;flex:1 1 180px"><b>Install the app.</b> Full screen, offline, one tap from your home screen.</p><button class="btn sm primary" data-act="install">${/^ios/.test(installKind())?'Add to Home Screen':'Install'}</button></div>`:''}
-  ${ENV==='preview'?`<div class="panel row spread" style="margin-top:8px"><p class="small" style="margin:0;flex:1 1 180px"><b>This preview keeps its own log.</b> Copy your real one in to try this build on it. Ironlog is not changed.</p>${previewCopyBtn('sm primary')}</div>`:''}
   ${privacyLine()}
   ${backupDue()?`<p class="callout yellow" style="margin:10px 0 0"><b>Backup due.</b> ${s.lastExport?`Last backup file ${fmtDate(s.lastExport)}.`:'No backup file yet.'} ${cloud.on?'Export one below; the cloud copy mirrors deletions, so it is not a backup.':'This device holds the only copy.'}</p>`:''}
   ${storageOk?'':'<p class="small" style="color:var(--red)">This browser is blocking local storage, so this device keeps nothing between reloads without cloud sync.</p>'}
   <div class="card stack"><div class="row"><button class="btn primary" data-act="export" data-tip="The backup: restores everything, on any device.">Export backup (.json)</button><button class="btn" data-act="showBackup" data-tip="The same backup as text, to copy somewhere safe.">Show backup text</button><button class="btn" data-act="exportCsv" data-tip="One row per set for spreadsheets. Not a backup: it cannot be imported.">Export sets (.csv)</button></div>
-  <button class="btn" data-act="impOpen" data-tip="Adds sessions from notes, a spreadsheet, Strong, or Hevy. You check everything before it is saved.">Import workouts</button>
+  <button class="btn" data-act="impOpen" data-tip="Adds sessions from notes, a spreadsheet, Strong or Hevy. You check everything before it is saved.">Import workouts</button>
   <label class="field">Restore a backup file (replaces everything)<input type="file" accept=".json,application/json" id="importFile"></label>
   <button class="btn" data-act="pasteImport">Paste backup text instead</button>
-  <div class="row"><button class="btn" data-act="undo" ${undoStack.length?'':'disabled'} data-tip="Deletes, resets, and imports from the last 7 days, kept after the app is closed. Edits are not undoable. Deleted sessions, cardio, and routines also wait in History for ${TRASH_DAYS} days.">Undo last delete or reset${undoStack.length?` (${undoStack.length} available)`:''}</button></div></div></div></details>
+  <div class="row"><button class="btn" data-act="undo" ${undoStack.length?'':'disabled'} data-tip="Deletes, resets and imports from the last 7 days, kept after the app is closed. Edits are not undoable. Deleted sessions, cardio and routines also wait in History for ${TRASH_DAYS} days.">Undo last delete or reset${undoStack.length?` (${undoStack.length} available)`:''}</button></div></div></div></details>
   ${G('help','Help')}<div class="card stack"><div class="row"><button class="btn" data-act="guideOpen">Guide</button><button class="btn" data-act="fbOpen" data-cat="bug">Report a problem</button><button class="btn" data-act="fbOpen" data-cat="question">Ask a question</button><button class="btn" data-act="fbOpen" data-cat="idea">Suggest something</button>${acct.reader&&FB()?'<button class="btn" data-act="fbInbox">Reports inbox</button>':''}</div><p class="small muted" style="margin:0">Also in the menu at the top right of every tab.</p></div></div></details>
   ${G('demo','Demo data','demo')}${helpText('demo','8 weeks of generated sessions to preview Today and Stats. Everything demo is tagged and removed in one tap; your real logs are untouched.')}
   <div class="card row"><button class="btn" data-act="demoLoad">Load demo data</button><button class="btn" data-act="demoClear" ${hasDemo?'':'disabled'}>Clear demo data</button></div></div></details>
@@ -6026,7 +5944,7 @@ function rirSettings(){
     <option value="cal" ${s.rirMode==='cal'?'selected':''}>On, corrected by my calibration sets</option>
     <option value="off" ${s.rirMode==='off'?'selected':''}>Off: don't ask, count every working set as hard</option></select></label>
   ${s.rirMode==='off'?'':`<label class="check-inline"><input type="checkbox" data-bind="rirAsk" ${s.rirAsk===true?'checked':''}><span class="hastip" data-tip="Off: tap a set's RIR box when you want to rate it. On: the 0 to 5 picker opens by itself after each set you tick.">Open the RIR picker after each set</span></label>
-  <p class="small muted hastip" style="margin:4px 0 0" data-tip="A blank RIR is read as your usual RIR on that lift: the middle value of the sets of it you rated in the last 12 weeks, once there are 3. That is a convention, so rating a set only sometimes cannot make it look stronger or weaker. Until there are 3, a blank set counts as hard and as 0 reps left for 1RM estimates, which errs low and never inflates a PR. Recovery, calibration, and the light-load check use only the RIR you entered.">Skipping RIR on some sets is fine.</p>`}
+  <p class="small muted hastip" style="margin:4px 0 0" data-tip="A blank RIR is read as your usual RIR on that lift: the middle value of the sets of it you rated in the last 12 weeks, once there are 3. That is a convention, so rating a set only sometimes cannot make it look stronger or weaker. Until there are 3, a blank set counts as hard and as 0 reps left for 1RM estimates, which errs low and never inflates a PR. Recovery, calibration and the light-load check use only the RIR you entered.">Skipping RIR on some sets is fine.</p>`}
   ${s.rirMode==='cal'&&c.recent<2?'<p class="small" style="margin:0"><b>Needs 2 calibration sets from the last 12 weeks before any correction applies.</b></p>':''}
   <p class="small hastip" style="margin:4px 0 0" data-tip="Off hides the RIR picker: every working set counts as hard and estimates use reps alone. Corrected shifts RIR you called at 4 or less by your typical error, shrunk toward zero while you have few calibration sets and capped at 2 reps; compound and isolation lifts use their own sets once each has 2. A set called at 0 is shifted too: unless a rep actually failed, 0 is still a call, and people under-call reps left by about 1 on average, only slightly less near failure (Halperin 2022). Your log never changes, so switching is reversible.">${esc(sum)}</p>`;
 }
@@ -6034,7 +5952,7 @@ function layoutSettings(){
   const h=state.settings.hidden;
   const dflt=DEFAULT_HIDDEN.length===h.length&&DEFAULT_HIDDEN.every(k=>h.includes(k));
   return `<p class="small muted" style="margin:0">Tap to show or hide. Nothing stops being tracked, and a hidden section comes back where it was. ${tipi('Each time Ironlog opens, every section starts folded except Sessions on History. Drag a section by its ⠿ to move it; each tab keeps its order.','About layout')}</p>
-  <div class="row"><button class="btn sm ${dflt?'noted':''}" data-act="layoutDefault" aria-pressed="${dflt}" data-tip="The layout a new install starts with: At a glance, Coach, and Body hidden on Today, Schedule and Weekly volume hidden on Plan, and the default order.">Default layout</button><button class="btn sm" data-act="layoutAll" ${h.length?'':'disabled'}>Show everything</button><button class="btn sm" data-act="layoutReset" data-tip="Puts the sections on every tab back in their default order. Shown or hidden stays as it is.">Reset section order</button></div>
+  <div class="row"><button class="btn sm ${dflt?'noted':''}" data-act="layoutDefault" aria-pressed="${dflt}" data-tip="The layout a new install starts with: At a glance, Coach and Body hidden on Today, Schedule and Weekly volume hidden on Plan, and the default order.">Default layout</button><button class="btn sm" data-act="layoutAll" ${h.length?'':'disabled'}>Show everything</button><button class="btn sm" data-act="layoutReset" data-tip="Puts the sections on every tab back in their default order. Shown or hidden stays as it is.">Reset section order</button></div>
   ${HIDE_TABS.map(([t,l])=>`<div class="hide-grp"><p class="small"><b>${l}</b></p><div class="chips">${HIDEABLE.filter(x=>x[0]===t).map(([,k,lab])=>{const on=!h.includes(t+':'+k);return `<button class="chip ${on?'on':''}" data-act="hideToggle" data-k="${t}:${k}" aria-pressed="${on}">${esc(lab)}</button>`;}).join('')}</div></div>`).join('')}`;
 }
 /* ---------- modal rendering ---------- */
@@ -6084,7 +6002,7 @@ function renderModalBody(){
     <label class="field">Name<input type="text" data-ebind="name" value="${esc(e.name)}"></label>
     <div class="grid2"><label class="field">Primary muscle<select data-ebind="primary">${e.primary?'':'<option value="" selected disabled>Pick one</option>'}${MUSCLES.map(([k,l])=>`<option value="${k}" ${e.primary===k?'selected':''}>${l}</option>`).join('')}</select></label>
     <label class="field">Equipment<select data-ebind="equip">${EQUIP.map(([k,l])=>`<option value="${k}" ${e.equip===k?'selected':''}>${l}</option>`).join('')}</select></label></div>
-    <label class="field"><span>Movement</span> ${tipi('Compound: a press, row, pull-up, squat, or hinge. Isolation: one joint, like a curl or a raise. It sets the size of load increases (about 2.5% of the load on compound lifts, 5% on isolation), the setup time in estimates, which RIR calibration group the lift joins, and what Short on time keeps.','About movement')}<select data-ebind="kind"><option value="" ${e.kind?'':'selected'}>Automatic (${autoCompound({...e,kind:undefined})?'compound':'isolation'})</option><option value="compound" ${e.kind==='compound'?'selected':''}>Compound</option><option value="iso" ${e.kind==='iso'?'selected':''}>Isolation</option></select></label>
+    <label class="field"><span>Movement</span> ${tipi('Compound: a press, row, pull-up, squat or hinge. Isolation: one joint, like a curl or a raise. It sets the size of load increases (about 2.5% of the load on compound lifts, 5% on isolation), the setup time in estimates, which RIR calibration group the lift joins, and what Short on time keeps.','About movement')}<select data-ebind="kind"><option value="" ${e.kind?'':'selected'}>Automatic (${autoCompound({...e,kind:undefined})?'compound':'isolation'})</option><option value="compound" ${e.kind==='compound'?'selected':''}>Compound</option><option value="iso" ${e.kind==='iso'?'selected':''}>Isolation</option></select></label>
     ${e.bw?'':(()=>{const def=loadWords({...e,load:undefined});const has=!m.isNew&&state.sessions.some(s=>s.ex.some(b=>b.exId===e.id));
       return `<label class="field"><span class="hastip" data-tip="${esc('What the number you type means. Estimates and targets stay in this frame; weight lifted counts both dumbbells or both sides.'+(has?' Changing it does not convert sets already logged.':''))}">Weight is entered as</span><select data-ebind="load"><option value="auto" ${!e.load?'selected':''}>Default for this equipment: ${esc(def)}</option>${LOAD_MODES.map(([k,l])=>`<option value="${k}" ${e.load===k?'selected':''}>${l}</option>`).join('')}</select></label>`;})()}
     <div><p class="small muted">Helper muscles (count as half a set)</p><div class="chips">${MUSCLES.filter(([k])=>k!==e.primary).map(([k,l])=>`<button class="chip ${e.secondary.includes(k)?'on':''}" data-act="secToggle" data-m="${k}">${l}</button>`).join('')}</div></div>
@@ -6108,7 +6026,7 @@ function renderModalBody(){
     ${op('wAdd','Add a warm-up set')}${op('dropAdd','Add a drop set (about 75% load)')}${op('bQuick','Type or dictate sets')}${op('bNote',b.note?'Edit note':'Add note')}${op('bSwap','Swap exercise')}${aiOn()?op('bAiSwap','Ask Claude for a swap'):''}${op('bInc',`Load step: ${fmtW(incOf(EX(b.exId),b.plan))} ${U()}`)}${op('bMax',`Heaviest available: ${EX(b.exId).maxLoad!=null?fmtW(EX(b.exId).maxLoad)+' '+U():'no limit'}`)}${rirShow(EX(b.exId))?op('bCal','Calibration set (RIR check)'):''}${nx?op('bSs',linked?'Unlink superset':`Superset with ${esc(exName(nx.exId))}`):''}${op('bUp','Move up',m.b===0)}${op('bDown','Move down',!nx)}${op('fbOpen','Report a problem')}${op('bDel','Remove from session',false,'danger')}</div>`;
   }else if(m.kind==='injury'){
     h=`<div class="sheet" role="dialog" aria-modal="true"><div class="sheet-h"><h3>Flag an injury</h3><button class="ib" aria-label="Close" data-act="mClose">✕</button></div>
-    <p class="small muted hastip" data-tip="Every exercise that loads this muscle, directly or as a helper, is marked in your sessions: its target pauses, loads cap at last time, and it is left out of below-target advice until cleared.">Training aid, not medical advice: sharp, worsening, or lasting pain needs a clinician.</p>
+    <p class="small muted hastip" data-tip="Every exercise that loads this muscle, directly or as a helper, is marked in your sessions: its target pauses, loads cap at last time, and it is left out of below-target advice until cleared.">Training aid, not medical advice: sharp, worsening or lasting pain needs a clinician.</p>
     <div class="stack"><label class="field">Area<select id="injM">${MUSCLES.map(([k,l])=>`<option value="${k}">${l}</option>`).join('')}</select></label>
     <label class="field">Note (optional)<input type="text" id="injNote" placeholder="e.g. left elbow, pressing only"></label>
     <div class="row"><button class="btn primary" data-act="injSave">Flag it</button><button class="btn" data-act="mClose">Cancel</button></div></div></div>`;
@@ -6120,7 +6038,7 @@ function renderModalBody(){
   }else if(m.kind==='imp'){h=impSheet(m);
   }else if(m.kind==='templates'){
     h=`<div class="sheet" role="dialog" aria-modal="true"><div class="sheet-h"><h3>Pick a routine</h3><button class="ib" aria-label="Close" data-act="mClose">✕</button></div>
-    <p class="small muted" style="margin:0 0 8px">A starting point with sets, reps, and rest worked out. Change anything later in Plan.</p>
+    <p class="small muted" style="margin:0 0 8px">A starting point with sets, reps and rest worked out. Change anything later in Plan.</p>
     <div class="tpl-list">${TEMPLATES.map(t=>{
       // Minutes come from the same time model as Plan, so the list and the plan agree.
       // A range (r28): an average read as a promise, and Today then showed a longer first day.
@@ -6154,7 +6072,7 @@ function renderModalBody(){
     <div class="row" style="margin-top:10px"><button class="btn primary" data-act="qFill" ${m.busy?'disabled':''}>Fill sets</button>${m.busy?'<button class="btn" data-act="aiStop">Stop</button>':''}<button class="btn" data-act="mClose">Cancel</button></div></div>`;
   }else if(m.kind==='ai'){
     h=`<div class="sheet" role="dialog" aria-modal="true"><div class="sheet-h"><h3>${esc(m.title)}</h3><button class="ib" aria-label="Close" data-act="mClose">✕</button></div>
-    ${m.ask?`<p class="small muted">Claude reads your routine, weekly volume, trends, body data, and recent sessions, then answers. Uses your Claude plan.</p><textarea id="aiQ" style="min-height:70px" placeholder="Why has my incline bench stalled? Is my Arms day too long?">${esc(m.q||'')}</textarea><div class="row" style="margin-top:8px"><button class="btn primary" data-act="aiAsk" ${m.busy?'disabled':''}>Ask Claude</button></div>`:''}
+    ${m.ask?`<p class="small muted">Claude reads your routine, weekly volume, trends, body data and recent sessions, then answers. Uses your Claude plan.</p><textarea id="aiQ" style="min-height:70px" placeholder="Why has my incline bench stalled? Is my Arms day too long?">${esc(m.q||'')}</textarea><div class="row" style="margin-top:8px"><button class="btn primary" data-act="aiAsk" ${m.busy?'disabled':''}>Ask Claude</button></div>`:''}
     <div id="aiOut" class="aiout" aria-live="polite">${esc(m.out||(m.busy?'Thinking...':''))}</div>
     ${m.err?`<p class="small" style="color:var(--red);margin:8px 0 0">${esc(m.err)}</p>`:''}
     <div class="row" style="margin-top:10px">${m.busy?'<button class="btn" data-act="aiStop">Stop</button>':''}<button class="btn" data-act="mClose">Close</button></div>
@@ -6216,7 +6134,7 @@ function renderModalBody(){
     ${top.map((x,k)=>`<div class="pcard${k===0?' best':''}"><div class="row spread"><b>${esc(dayLabel(rk.R,x.i))}: ${esc(x.day.name)}</b>${k===0?'<span class="tag green">Best fit</span>':''}</div>
       <ul>${dayReasons(x,rk.r7).map(r=>`<li>${esc(r)}</li>`).join('')}</ul>
       <div class="row" style="margin-top:8px"><button class="btn sm ${k===0?'primary':''}" data-act="startSession" data-day="${x.i}">Start</button>${!rk.deload&&x.ready<0.85?`<button class="btn sm" data-act="startSession" data-day="${x.i}" data-light="1">Start lighter</button>`:''}<button class="btn sm" data-act="pickView" data-day="${x.i}">Preview</button></div></div>`).join('')}
-    <p class="small muted hastip" style="margin:10px 0 0" data-tip="Ranked by what each muscle got in the last 7 days against your targets, how recently it was trained hard (about 1 to 3 days, more after failure sets, new lifts, or heavy hinges), injuries, and your cycle order. A ranking, not a rule: how you feel wins.">How this is ranked</p></div>`;
+    <p class="small muted hastip" style="margin:10px 0 0" data-tip="Ranked by what each muscle got in the last 7 days against your targets, how recently it was trained hard (about 1 to 3 days, more after failure sets, new lifts or heavy hinges), injuries and your cycle order. A ranking, not a rule: how you feel wins.">How this is ranked</p></div>`;
   }else if(m.kind==='pickEx'){
     const d=state.draft;if(!d){ui.modal=null;el.hidden=true;return;}
     const picks=rankExercises(d);
@@ -6236,7 +6154,7 @@ function renderModalBody(){
     <div class="chips">${EQUIP.map(([k,l])=>`<button class="chip ${eq.has(k)?'on':''}" data-act="eqToggle" data-k="${k}" aria-pressed="${eq.has(k)}">${l}</button>`).join('')}</div>
     ${sw.length?`<ul class="eqsw">${sw.map(x=>`<li>${esc(exName(x.from))} → ${x.to?`<b>${esc(exName(x.to))}</b>`:'<span class="muted">no match with this equipment, left out</span>'}</li>`).join('')}</ul>`:'<p class="small" style="margin:10px 0 0">Everything in this workout fits the equipment on.</p>'}
     <div class="row" style="margin-top:12px"><button class="btn primary" data-act="eqStart" ${pl.some(x=>x.to)?'':'disabled'}>Start ${esc(day.name)}</button><button class="btn" data-act="mClose">Cancel</button></div>
-    <p class="small muted" style="margin:8px 0 0">Sets, reps, and rest as planned; swaps are for this session only.</p></div>`;
+    <p class="small muted" style="margin:8px 0 0">Sets, reps and rest as planned; swaps are for this session only.</p></div>`;
   }else if(m.kind==='text'){
     h=`<div class="sheet" role="dialog" aria-modal="true"><div class="sheet-h"><h3>${esc(m.title)}</h3><button class="ib" aria-label="Close" data-act="mClose">✕</button></div>
     <p class="small muted">${esc(m.help)}</p><textarea id="mText" aria-label="${esc(m.title||'Text')}" style="min-height:220px;font-size:13px" ${m.readonly?'readonly':''}>${esc(m.text||'')}</textarea>
@@ -6684,13 +6602,13 @@ function impBuild(m){
 }
 function impSheet(m){
   const H=(t)=>`<div class="sheet fixed" role="dialog" aria-modal="true" aria-labelledby="impH"><div class="sheet-h"><h3 id="impH">${t}</h3><button class="ib" aria-label="Close" data-act="mClose">✕</button></div><div class="sheet-scroll">`;
-  if(m.step==='input')return H('Import workouts')+`<p class="small muted" style="margin:0 0 8px">Notes, a spreadsheet, Strong, or Hevy. Nothing is saved until you check it.</p>
+  if(m.step==='input')return H('Import workouts')+`<p class="small muted" style="margin:0 0 8px">Notes, a spreadsheet, Strong or Hevy. Nothing is saved until you check it.</p>
     <label class="btn primary block" style="position:relative">Choose a file<input type="file" id="impFile" accept=".csv,.tsv,.txt,.xlsx,.json,text/csv,text/plain,application/json" style="position:absolute;width:1px;height:1px;opacity:0"></label>
     <p class="small muted" style="margin:10px 0 4px">or paste it</p>
     <textarea id="impText" aria-label="Paste your log" style="min-height:160px;font-size:14px" placeholder="Sep 20&#10;Bench press 185x8, 185x7, 185x6&#10;Lat pulldown 3x10 @ 120">${esc(m.text||'')}</textarea>
     ${m.err?`<p class="small" style="color:var(--red);margin:8px 0 0">${esc(m.err)}</p>`:''}
     <button class="btn block" style="margin-top:10px" data-act="impRead">Read it</button>
-    <p class="small muted hastip" style="margin:10px 0 0" data-tip="Notes: a date on its own line, then one exercise per line with its sets (185x8, 185x7, or 3x10 @ 120). A spreadsheet: a file, or copy the cells and paste them, with columns such as date, exercise, weight, and reps. Strong: Settings, Export data. Hevy: Settings, Export and import data, Export workouts. Handwritten: photograph the page, open it in Photos, press and hold the writing, tap Copy, and paste it here. An Ironlog backup file restores your whole log instead.">What can I import?</p></div></div>`;
+    <p class="small muted hastip" style="margin:10px 0 0" data-tip="Notes: a date on its own line, then one exercise per line with its sets (185x8, 185x7 or 3x10 @ 120). A spreadsheet: a file, or copy the cells and paste them, with columns such as date, exercise, weight and reps. Strong: Settings, Export data. Hevy: Settings, Export and import data, Export workouts. Handwritten: photograph the page, open it in Photos, press and hold the writing, tap Copy, and paste it here. An Ironlog backup file restores your whole log instead.">What can I import?</p></div></div>`;
   const r=m.res;
   if(r.needMap){const head=m.tab.rows[0];const opt=(f,label,need)=>`<label class="field">${label}${need?'':' <span class="muted">(optional)</span>'}<select data-mapf="${f}"><option value="">None</option>${head.map((h,i)=>`<option value="${i}" ${m.tab.map[f]===i?'selected':''}>${esc(String(h||'Column '+(i+1)).slice(0,30))}</option>`).join('')}</select></label>`;
     return H('Which column is which?')+`<p class="small muted" style="margin:0 0 8px">The first row is read as column names.</p>${opt('date','Date',1)}${opt('ex','Exercise',1)}${opt('w','Weight, none if bodyweight only')}${opt('r','Reps',1)}${opt('sets','Sets')}${opt('rir','RIR')}${opt('name','Workout name')}
@@ -6710,32 +6628,14 @@ function impSheet(m){
   ${unsure.length?`<p class="small" style="margin:12px 0 4px;font-weight:650">Check these exercises</p>${unsure.map(row).join('')}`:''}
   ${sure.length?`<details class="subsec" style="margin-top:8px"><summary>${sure.length} matched</summary>${sure.map(row).join('')}</details>`:''}
   ${r.unreadN||r.unread&&r.unread.length?`<details class="subsec" style="margin-top:8px"><summary>${r.unreadN||r.unread.length} line${(r.unreadN||r.unread.length)===1?'':'s'} not understood</summary><ul class="small" style="margin:6px 0 0;padding-left:18px">${r.unread.map(l=>`<li>${esc(l)}</li>`).join('')}</ul></details>`:''}
-  ${r.skipped?`<p class="small muted" style="margin:6px 0 0">${r.skipped} row${r.skipped===1?'':'s'} without an exercise, date, or reps were skipped.</p>`:''}${r.cardio?`<p class="small muted" style="margin:6px 0 0">${r.cardio} cardio row${r.cardio===1?'':'s'} left out.</p>`:''}
-  ${b.bad.length?`<p class="small" style="margin:6px 0 0;color:var(--yellow)">Not imported, no weight given: ${esc(andList(b.bad,8))}. Write the load in, like 3x10 @ 60, and read it again.</p>`:''}
+  ${r.skipped?`<p class="small muted" style="margin:6px 0 0">${r.skipped} row${r.skipped===1?'':'s'} without an exercise, date or reps were skipped.</p>`:''}${r.cardio?`<p class="small muted" style="margin:6px 0 0">${r.cardio} cardio row${r.cardio===1?'':'s'} left out.</p>`:''}
+  ${b.bad.length?`<p class="small" style="margin:6px 0 0;color:var(--yellow)">Not imported, no weight given: ${esc(b.bad.slice(0,8).join(', '))}${b.bad.length>8?' and '+(b.bad.length-8)+' more':''}. Write the load in, like 3x10 @ 60, and read it again.</p>`:''}
   ${b.timedOff?`<p class="small" style="margin:6px 0 0;color:var(--yellow)">${b.timedOff} timed set${b.timedOff===1?' was':'s were'} left out: the exercise chosen counts reps. Pick a timed one to keep them.</p>`:''}
   ${r.cut?`<p class="small" style="margin:6px 0 0;color:var(--yellow)">Only the first ${IMP_MAX_ROWS.toLocaleString()} rows were read. Split the file to import the rest.</p>`:''}
   ${b.sessions.length?`<details class="subsec" style="margin-top:8px" id="impRead"><summary>What was read</summary>${b.sessions.slice(0,40).map(x=>`<p class="small" style="margin:8px 0 2px;font-weight:650">${fmtDate(x.date)}${x.dayName&&x.dayName!=='Imported'?' · '+esc(x.dayName):''}</p>${x.ex.map(e=>{const exo=EX(e.exId).id===e.exId&&!EX(e.exId).archived?EX(e.exId):(b.newEx.find(n=>n.id===e.exId)||EX(e.exId));return `<p class="small muted" style="margin:0">${esc(exo.name)}: ${e.sets.map(q=>(q.warm?'W ':q.drop?'D ':'')+setShort(exo,q.w,q.r)).join(', ')}</p>`;}).join('')}`).join('')}${b.sessions.length>40?`<p class="small muted">and ${b.sessions.length-40} more</p>`:''}</details>`:''}
   <button class="btn primary block" style="margin-top:12px" data-act="impGo" ${b.sessions.length?'':'disabled'}>Import ${b.sessions.length} session${b.sessions.length===1?'':'s'}</button>
   <button class="btn block" style="margin-top:6px" data-act="impBack">Back</button></div></div>`;
 }
-/* The preview only (r29, V): the preview keeps its own log so nothing tried
-   there reaches the real one, which left its Stats empty. This copies the
-   real log in, read-only: the live app's copy on this phone when there is one
-   (Android, or both opened in the same browser tab), else the account's cloud
-   copy (an iPhone keeps each home-screen app's storage apart). The one with
-   more sessions wins. The live app and its table are never written. */
-async function liveLogFetch(){
-  let local=null;
-  try{const raw=localStorage.getItem('ironlog.v1');if(raw)local=normalize(JSON.parse(raw));}catch(e){local=null;}
-  let remote=null,err=null;
-  if(typeof window.ironlogLiveDocs==='function'&&acct.user){
-    try{const parts={};for(const d of await window.ironlogLiveDocs()){if(!isChunkId(d.id)||!d.data||typeof d.data.json!=='string')continue;try{parts[d.id]=JSON.parse(d.data.json);}catch(e){/* an unreadable chunk is skipped */}}
-      if(Object.keys(parts).length)remote=assemble(parts);}catch(e){err=e;}
-  }
-  const best=[local,remote].filter(Boolean).sort((a,b)=>realCount(b)-realCount(a))[0]||null;
-  return {st:best&&realCount(best)?best:null,err};
-}
-function previewCopyBtn(cls){return ENV==='preview'?`<button class="btn ${cls||''}" data-act="previewCopy">Copy my log from Ironlog</button>`:'';}
 function importData(text){
   let obj;try{obj=JSON.parse(text);}catch(e){toast('That is not valid backup text');return;}
   const s=obj&&obj.state?obj.state:obj;
@@ -6898,7 +6798,7 @@ function pastSheet(m){
   <label class="field">Date<input type="date" data-pbind="date" value="${m.date}" max="${today()}"></label>
   ${on.length?`<p class="small muted" style="margin:6px 0 0">Already logged that day: ${esc(on.join(', '))}.</p>`:''}
   <div class="stack" style="margin-top:12px">${opts.map(btn).join('')}<button class="btn block pastday" data-act="pastGo" data-day="free"><span>Freestyle</span><small>any exercises</small></button></div>
-  <p class="small muted" style="margin:10px 0 0">Quick entry: type each set. ${tipi('No rest timer or clock. A set counts as done once its reps are typed. Last time, targets, and PRs are read as of that date.','About quick entry')}</p></div>`;
+  <p class="small muted" style="margin:10px 0 0">Quick entry: type each set. ${tipi('No rest timer or clock. A set counts as done once its reps are typed. Last time, targets and PRs are read as of that date.','About quick entry')}</p></div>`;
 }
 /* Re-run the suggestion for one block, for example after its heaviest
    available load changes. Only untouched sets take the new load. A row is
@@ -7141,7 +7041,7 @@ const ACT={
   impRead(){const el=$('#impText');const text=el?el.value:'';if(ui.modal)ui.modal.text=text;impStart({text});},
   impUnit(t){const m=ui.modal;if(!m||m.kind!=='imp'||!['lb','kg'].includes(t.dataset.v))return;m.unit=t.dataset.v;renderModal();},
   impBack(){openModal({kind:'imp',step:'input',text:'',err:''});},
-  impMapDone(){const m=ui.modal;if(!m||!m.tab)return;const mp=m.tab.map;if(mp.date==null||mp.ex==null||mp.r==null){toast('Choose the date, exercise, and reps columns');return;}openPreview(impFromTable(m.tab.rows,mp),m.tab);},
+  impMapDone(){const m=ui.modal;if(!m||!m.tab)return;const mp=m.tab.map;if(mp.date==null||mp.ex==null||mp.r==null){toast('Choose the date, exercise and reps columns');return;}openPreview(impFromTable(m.tab.rows,mp),m.tab);},
   impGo(){
     const m=ui.modal;if(!m||m.kind!=='imp'||m.step!=='preview')return;const b=impBuild(m);if(!b.sessions.length)return;
     snapshot();state=normalize({...state,exercises:state.exercises.concat(b.newEx),sessions:state.sessions.concat(b.sessions),settings:{...state.settings,onboarded:true}});invalidate();
@@ -7149,18 +7049,6 @@ const ACT={
     toast(`Imported ${b.sessions.length} session${b.sessions.length===1?'':'s'}${b.newEx.length?`, ${b.newEx.length} new exercise${b.newEx.length===1?'':'s'}`:''}`,true);
   },
   bestsAll(){ui.bestsAll=true;rerenderKeepScroll();},
-  async previewCopy(){
-    if(ENV!=='preview')return;
-    toast('Looking for your Ironlog log');
-    const {st,err}=await liveLogFetch();
-    if(!st){
-      if(!acct.user&&AUTH()){confirmBox('Sign in first','This preview keeps its own log. To copy your real one in, sign in here with your Ironlog account. Ironlog itself is not changed.','Sign in',()=>ACT.acctOpen({dataset:{mode:'signin'}}));return;}
-      toast(err?`Could not read your Ironlog log: ${err.message}`:'No Ironlog log found for this account or on this phone.',null,6000);return;}
-    const n=realCount(st);st.draft=null;
-    const go=()=>{snapshot();state=st;commit();closeModal();ui.tab='today';render();toast(`Copied ${n} session${n===1?'':'s'} from Ironlog. Ironlog is unchanged.`,true);};
-    if(realCount(state)||state.draft)confirmBox('Replace the preview log?',`Your Ironlog log has ${n} session${n===1?'':'s'}. The copy replaces everything in this preview; Ironlog itself is not changed. You can step this back with Undo.`,'Copy my log',go);
-    else go();
-  },
   obSample(){openModal({kind:'templates',from:'welcome'});},
   obAcctLater(){try{localStorage.setItem(OB_ACCT,'later');}catch(e){/* per device only */}window.scrollTo(0,0);render();},
   obAcctBack(){try{localStorage.removeItem(OB_ACCT);}catch(e){/* nothing to clear */}window.scrollTo(0,0);render();},
@@ -7175,9 +7063,8 @@ const ACT={
       // kept beside it. A routine with sessions logged against it always stays.
       if(same)state.activeRoutineId=same.id;
       else{const starter=routineSig(defaultRoutine());state.routines=state.routines.filter(x=>routineSig(x)!==starter||state.sessions.some(q=>q.routineId===x.id));state.routines.push(r);state.activeRoutineId=r.id;}
-      const fit=fitTargets(state.routines.find(x=>x.id===state.activeRoutineId));
       state.settings.onboarded=true;ui.todayDay=null;ui.tab='today';commit();window.scrollTo(0,0);render();
-      toast(fit?`${r.name} is ready. Weekly targets match it; raise them in Settings as you add sets.`:`${r.name} is ready`,null,fit?6000:0);return;
+      toast(`${r.name} is ready`);return;
     }
     if(same){ui.bRoutine=same.id;render();toast('You already have this routine unchanged. Opened it instead.');return;}
     state.routines.push(r);ui.bRoutine=r.id;commit();render();toast(`${r.name} added. Tap Make active to use it.`);
@@ -7513,8 +7400,8 @@ const ACT={
       snapshot(()=>{const d3=state.draft;if(!d3||d3.id!==did||!d3.ex.includes(bb))return false;bb.sets.splice(Math.min(i,bb.sets.length),0,xx);return true;});
       bb.sets.splice(i,1);saveNow();rerenderKeepScroll();toast(xx.done?'Logged set removed':'Set removed',true);},true);
   },
-  bUp(t){if(moveBlock(+t.dataset.b,+t.dataset.b-1))rerenderKeepScroll();},
-  bDown(t){if(moveBlock(+t.dataset.b,+t.dataset.b+1))rerenderKeepScroll();},
+  bUp(t){keepOpen(()=>move(state.draft.ex,+t.dataset.b,+t.dataset.b-1));saveNow();rerenderKeepScroll();},
+  bDown(t){keepOpen(()=>move(state.draft.ex,+t.dataset.b,+t.dataset.b+1));saveNow();rerenderKeepScroll();},
   /* Removing an exercise (r25 guardrail): one with logged or typed sets asks
      first, naming how many; an untouched one goes with an Undo as before. */
   bDel(t){const d=state.draft;const bi=+t.dataset.b;const blk=d.ex[bi];if(!blk)return;const did=d.id;
@@ -7834,7 +7721,7 @@ const ACT={
   demoLoad(){confirmBox('Load demo data?','Adds 8 weeks of generated sessions tagged as demo, based on your active routine. Your own logs are not changed.','Load demo data',()=>{demoKeep();makeDemo();ui.tab='dash';window.scrollTo(0,0);render();toast('Demo data loaded');});},
   demoStart(){state.sessions=state.sessions.filter(s=>!s.demo);state.bodyweights=state.bodyweights.filter(b=>!b.demo);state.measurements=state.measurements.filter(m=>!m.demo);demoRestore();commit();ui.tab='today';ui.folds={};window.scrollTo(0,0);render();},
   demoClear(){snapshot();state.sessions=state.sessions.filter(s=>!s.demo);state.bodyweights=state.bodyweights.filter(b=>!b.demo);state.measurements=state.measurements.filter(m=>!m.demo);demoRestore();commit();render();toast('Demo data cleared',true);},
-  resetAll(){confirmBox('Erase everything?',`All routines, sessions, custom exercises, and body data will be deleted${cloud.on?' on this device and in your cloud copy':' on this device'}. Export a backup first if you might want it.`,'Erase everything',()=>{snapshot();state=normalize(null);commit();ui.tab='today';render();toast('Everything erased',true);},true);}
+  resetAll(){confirmBox('Erase everything?',`All routines, sessions, custom exercises and body data will be deleted${cloud.on?' on this device and in your cloud copy':' on this device'}. Export a backup first if you might want it.`,'Erase everything',()=>{snapshot();state=normalize(null);commit();ui.tab='today';render();toast('Everything erased',true);},true);}
 };
 
 /* A load far from last time's (under 60% or over 140% of it) is the usual
@@ -8111,7 +7998,7 @@ document.addEventListener('focusout',e=>{
   // Where the lifter went: the newly focused element, or on an iPhone (where
   // buttons never take focus) whatever was just touched.
   const d=lastDown;const dest=to||(Date.now()-d.t<700&&d.el!==t?d.el:null);
-  if(dest&&dest.closest&&!dest.closest('.sg input[data-f]')&&dest.closest('button,a,select,label,input,textarea,summary,[data-act],[role="button"]'))return;
+  if(dest&&dest.closest&&!dest.closest('.sg input[data-f]')&&dest.closest('button,a,select,label,input,textarea,summary,[data-act]'))return;
   setTimeout(()=>{if(document.visibilityState!=='visible'||!document.hasFocus())return;acceptGrey(bi,si);},0);
 });
 
@@ -8126,66 +8013,6 @@ document.addEventListener('focusout',e=>{
 /* After a list of sets in History: what the load and reps mean, when it is
    not a plain total. */
 function histUnits(ex){const bits=[];const n=loadNote(ex).trim();if(n)bits.push(n);if(ex.perSide)bits.push(ex.timed?'seconds per side':'reps per side');return bits.length?` <span class="muted">(${bits.join(', ')})</span>`:'';}
-/* A session's exercises move by dragging this handle too (V, r29), alongside
-   the ⋯ menu's Move up and Move down, which do the same thing (bUp, bDown). */
-function bgrip(bi,name){return `<span class="bgrip" role="button" tabindex="0" data-b="${bi}" aria-label="Move ${esc(name)}: drag, or use the arrow keys" title="Drag to move">⠿</span>`;}
-/* One way to move an exercise in a session: the drag, the arrow keys on its
-   handle and the ⋯ menu's Move up and Move down all come here. A superset
-   split by the move is undone (its members are no longer next to each
-   other, so the rest timer would never start), and timers that point at a
-   block by its position are dropped, since the position changed (r29). */
-function moveBlock(a,b){
-  const d=state.draft;if(!d||b<0||b>=d.ex.length||a===b)return false;
-  clearTimeout(foldT);foldT=null;lastAuto=null;
-  keepOpen(()=>{move(d.ex,a,b);fixSupersets(d.ex.map(x=>x.plan).filter(Boolean));});
-  saveNow();return true;
-}
-/* While an exercise is dragged, a finger near the top or bottom of the space
-   between the header and the tab bar (or the rest timer) scrolls the page,
-   faster the closer it is. Sortable's own scrolling did not run for a touch
-   drag on the window. Sortable re-reads the target every 50 ms on its own, so
-   a finger held still keeps moving the exercise as the page scrolls.
-   A var, so killDynamic (which can run before this line on the first render)
-   reads it as undefined instead of throwing. */
-var edgeScroll=(()=>{let y=null,raf=0;
-  const mv=e=>{const t=e.touches?e.touches[0]:e;if(t)y=t.clientY;};
-  // Both bars are position:fixed, whose offsetParent is always null, so
-  // getClientRects is what tells a shown bar from a hidden one.
-  const zone=()=>{const h=document.querySelector('header.top');const top=h?h.getBoundingClientRect().bottom:0;let bot=window.innerHeight;
-    for(const el of [document.getElementById('tabs'),document.getElementById('timer')]){if(el&&!el.hidden&&el.getClientRects().length){const r=el.getBoundingClientRect();if(r.height)bot=Math.min(bot,r.top);}}return [top,bot];};
-  const step=()=>{raf=0;if(!blockDrag)return;if(y!=null){const [top,bot]=zone();const edge=56;let v=0;
-      if(y<top+edge)v=-Math.ceil((top+edge-y)/edge*14);else if(y>bot-edge)v=Math.ceil((y-(bot-edge))/edge*14);
-      if(v)window.scrollBy(0,Math.max(-20,Math.min(20,v)));}
-    raf=requestAnimationFrame(step);};
-  return {start(){y=null;document.addEventListener('touchmove',mv,{passive:true});document.addEventListener('pointermove',mv,{passive:true});if(!raf)raf=requestAnimationFrame(step);},
-    stop(){document.removeEventListener('touchmove',mv);document.removeEventListener('pointermove',mv);if(raf)cancelAnimationFrame(raf);raf=0;y=null;}};})();
-/* The exercises open again at the drop. The scroll is moved with them, so
-   the one just dropped stays where the finger left it instead of the page
-   going back to a position measured on the one-line list (r29 review). */
-function dragOpenUp(it){
-  const t0=it&&it.isConnected?it.getBoundingClientRect().top:null;
-  document.body.classList.remove('blkdrag');const v=$('#view');if(v)v.style.paddingBottom='';
-  if(t0!=null){const t1=it.getBoundingClientRect().top;if(t1!==t0)window.scrollBy(0,t1-t0);}
-}
-function mountBlockSortable(){
-  if(!window.Sortable||!state.draft)return;const v=$('#view');if(!v||v.querySelectorAll('section.block').length<2)return;
-  sortables.push(window.Sortable.create(v,{group:{name:'blocks',pull:false,put:false},handle:'.bgrip',draggable:'section.block',animation:150,fallbackOnBody:true,
-    // A field still focused when the drag starts would get its focus back by
-    // position after the move, on whichever exercise landed there.
-    onStart:e=>{blockDrag=true;clearTimeout(foldT);foldT=null;const f=document.activeElement;if(f&&f.matches&&f.matches('#view input,#view textarea')){try{f.blur();}catch(x){/* focus is best effort */}}
-      // An open exercise is taller than the screen, so the next one started
-      // off-screen and a drag could only move one place (r29 review). While
-      // dragging, every exercise shows only its title line; the page is
-      // scrolled so the one held stays under the finger.
-      // When the shorter page cannot scroll that far, room is added below the
-      // list for the drag, or the held one would leave the finger.
-      const it=e.item,t0=it.getBoundingClientRect().top;document.body.classList.add('blkdrag');
-      const want=window.scrollY+it.getBoundingClientRect().top-t0,se=document.scrollingElement,room=want-(se.scrollHeight-window.innerHeight);
-      if(room>0){const v=$('#view');if(v)v.style.paddingBottom=Math.ceil(room)+'px';}
-      window.scrollTo(0,want);edgeScroll.start();},
-    onEnd:e=>{blockDrag=false;edgeScroll.stop();dragOpenUp(e.item);const a=e.oldDraggableIndex,b=e.newDraggableIndex;if(a==null||b==null||a===b||!state.draft){rerenderKeepScroll();return;}
-      moveBlock(a,b);rerenderKeepScroll();toast(`Moved to position ${b+1}`);}}));
-}
 function sgrip(label){return `<span class="sgrip" role="button" tabindex="0" aria-label="Move ${esc(label)}: drag, or use the arrow keys" title="Drag to move">⠿</span>`;}
 function keyedKids(){const v=$('#view');return v?[...v.children].filter(e=>e.dataset&&e.dataset.mkey):[];}
 function orderKeys(saved,present){
@@ -8212,7 +8039,7 @@ function moreLine(tab){
   const list=HIDEABLE.filter(([t,k])=>t===tab&&h.includes(t+':'+k)&&(!MORE_LIVE[t+':'+k]||MORE_LIVE[t+':'+k]()));
   // Nothing to add: nothing shown. Layout stays one tap away in the menu.
   if(!list.length)return '';
-  return `<div class="moreline" id="moreLine"><p class="small muted ml-h">Add to this tab</p><div class="chips">${list.map(([t,k,l])=>`<button type="button" class="chip add" data-act="secShow" data-k="${t}:${k}">+ ${esc(l)}</button>`).join('')}</div><button type="button" class="linkbtn ml-c" data-act="goLayout">Show, hide, or reorder sections</button></div>`;
+  return `<div class="moreline" id="moreLine"><p class="small muted ml-h">Add to this tab</p><div class="chips">${list.map(([t,k,l])=>`<button type="button" class="chip add" data-act="secShow" data-k="${t}:${k}">+ ${esc(l)}</button>`).join('')}</div><button type="button" class="linkbtn ml-c" data-act="goLayout">Show, hide or reorder sections</button></div>`;
 }
 /* Sections hidden in Settings > Layout are taken out after rendering. Their
    saved position is kept, so showing one again puts it back where it was. */
@@ -8241,7 +8068,7 @@ function moveSecKey(g,dir){
   toast(`Moved ${dir<0?'up':'down'}`);
 }
 // A tap on the handle must never fold the section or fire a button under it.
-document.addEventListener('click',e=>{if(e.target&&e.target.closest&&e.target.closest('.sgrip,.bgrip')){e.preventDefault();e.stopPropagation();}},true);
+document.addEventListener('click',e=>{if(e.target&&e.target.closest&&e.target.closest('.sgrip')){e.preventDefault();e.stopPropagation();}},true);
 document.addEventListener('keydown',e=>{
   const dg=e.target&&e.target.closest&&e.target.closest('.dgrip');
   if(dg&&(e.key==='ArrowUp'||e.key==='ArrowDown')){
@@ -8250,11 +8077,6 @@ document.addEventListener('keydown',e=>{
     move(R.days,i,j);ui.todayDay=null;ui.bTarget=0;commit();rerenderKeepScroll();
     const n=document.querySelector(`.dgrip[data-di="${j}"]`);if(n)n.focus();
     toast(`${R.days[j].name||'Day'} is now ${dayLabel(R,j)}`);return;
-  }
-  const bg=e.target&&e.target.closest&&e.target.closest('.bgrip');
-  if(bg&&(e.key==='ArrowUp'||e.key==='ArrowDown')&&state.draft){
-    e.preventDefault();const i=+bg.dataset.b;const j=i+(e.key==='ArrowUp'?-1:1);if(j<0||j>=state.draft.ex.length)return;
-    moveBlock(i,j);rerenderKeepScroll();const n=document.querySelector(`.bgrip[data-b="${j}"]`);if(n)n.focus();toast(`Moved to position ${j+1}`);return;
   }
   const g=e.target&&e.target.closest&&e.target.closest('.sgrip');if(!g)return;
   if(e.key==='ArrowUp'||e.key==='ArrowDown'){e.preventDefault();moveSecKey(g,e.key==='ArrowUp'?-1:1);}
@@ -8341,7 +8163,7 @@ function aiDigest(maxBytes){
   L.push(`Active routine "${R.name}", ${R.schedule==='weekly'?'fixed weekdays':`${R.days.length}-day cycle`}:`);
   R.days.forEach((d,i)=>L.push(`- ${dayLabel(R,i)} ${d.name}${d.rest?': rest':': '+d.items.map(it=>`${exName(it.exId)} ${it.sets}x${it.repMin}-${it.repMax} @${it.rir} RIR, ${it.rest}s rest`).join('; ')}`));
   const avg=actualAvg4();
-  if(avg)L.push(`Hard sets per week, average over the last ${avg._weeks} trained week(s), direct 1 and secondary 0.5, with target band: ${MK.filter(m=>(avg[m]||0)>0||(!TRACK_ONLY.has(m)&&bands[m][0]>0)).map(m=>`${ML[m]} ${r1(avg[m]||0)} (${TRACK_ONLY.has(m)?'tracked only, no target':`${bands[m][0]}-${bands[m][1]}`})`).join(', ')}.`);
+  if(avg)L.push(`Hard sets per week, average over the last ${avg._weeks} trained week(s), direct 1 and secondary 0.5, with target band: ${MK.filter(m=>(avg[m]||0)>0||bands[m][0]>0).map(m=>`${ML[m]} ${r1(avg[m]||0)} (${bands[m][0]}-${bands[m][1]})`).join(', ')}.`);
   else L.push('No complete training week in the last 4 weeks yet, so weekly volume is not established.');
   if(I.scores.length)L.push(`Strength trend (median e1RM change over 6 weeks, current rep range): ${I.scores.map(s=>`${ML[s.m]} ${s.score>=0?'+':''}${r1(s.score)}%`).join(', ')}.`);
   const st=stalledIds();if(st.length)L.push(`Stalled (3 exposures without a PR): ${st.map(exName).join(', ')}.`);
@@ -8432,7 +8254,7 @@ function swapPrompt(b,reason){
 }
 
 window.__onLib=(which)=>{if((which==='chart'&&ui.tab==='dash')||(which==='sortable'&&ui.tab==='program'))rerenderKeepScroll();};
-window.__ironlog={get state(){return state;},set state(v){state=v;},ENV,KEY,andList,liveLogFetch,regionSrc,fitTargets,firstFullWeek,moveBlock,BANDS,installSheet,siteHost,greyW,effW,greyR,lighterLoad,incOf,swapPlan,planSetsPerWeek,weekNeed,stepRead,e1inv,rtfAt,rtfOf,rtfBand,calStats,rirEff,isHard,setCredit,tonnage,loadMode,loadWords,loadNote,progStep,jumpCap,setSecs,setupSecs,recovery,rolling7,rankDays,rankExercises,isCompound,patternOf,noE1,whtrLine,exHeadline,remainMin,shortPlan,weekPlan,cycleProjection,lastLighterWeek,regionBalance,parseHeight,mixCheck,swapCands,eqPlan,exportCSV,importData,chunksOf,assemble,sessionMuscles,TRACK_ONLY,cloud,Hx,mergeChunk,baseOf,sync:()=>cq(cloudPull),TEMPLATES,lastRFor,impDate,impRows,impNorm,impMatch,impFromText,impFromTable,impHeader,impBuild,impStart,impXlsx,parseSets,undoStack,undoRestore,undoForget,allTimeBests,bestsBoard,obActive,fmtW,rirUsual,rirEst,routineFromTemplate,plannedSets,map3d:()=>({state:B3.state,fail:B3.fail,meshes:B3.meshes.length,yaw:B3.yaw,glow:Object.keys(B3.mats).filter(m=>B3.mats[m].emissiveIntensity>0),canvas:!!document.querySelector('#bm3d canvas'),colors:Object.fromEntries(Object.entries(B3.mats).map(([m,mt])=>[m,'#'+mt.color.getHexString()])),pick:(x,y)=>map3dPick(x,y),want:map3dColors()}),cloudState:()=>({on:cloud.on,status:cloud.status,err:cloud.err,uid:cloud.uid,acct:cloud.acct}),acctUser:()=>acct.user,acctWaiting:()=>!!acctWait.pw,flush:()=>cq(cloudFlush),backupDue,routineUpdates,planFor,platesMode,plateText,chunksOf,IDX,suggest,e1,render,ACT,ui,makeDemo,invalidate,normalize,snapshot,saveNow,timer,weekStats,weekStart,today,EX,blockProgress,dayMinutes,weekStreak,coach,tonnageNow,livePR,exProjection,movers,stalledIds,muscleStatus,actualAvg4,plannedPerWeek,parseSets,aiSetsValid,fillSets,newBlock,lastNoteOf,sizeRows,sessionMuscleSets,sessionCapNote,routineClutter,aiDigest,debriefPrompt,reviewPrompt,swapPrompt,AI,sameRR};
+window.__ironlog={get state(){return state;},set state(v){state=v;},ENV,KEY,installSheet,siteHost,greyW,effW,greyR,lighterLoad,incOf,swapPlan,planSetsPerWeek,weekNeed,stepRead,e1inv,rtfAt,rtfOf,rtfBand,calStats,rirEff,isHard,setCredit,tonnage,loadMode,loadWords,loadNote,progStep,jumpCap,setSecs,setupSecs,recovery,rolling7,rankDays,rankExercises,isCompound,patternOf,noE1,whtrLine,exHeadline,remainMin,shortPlan,weekPlan,cycleProjection,lastLighterWeek,regionBalance,parseHeight,mixCheck,swapCands,eqPlan,exportCSV,importData,chunksOf,assemble,sessionMuscles,TRACK_ONLY,cloud,Hx,mergeChunk,baseOf,sync:()=>cq(cloudPull),TEMPLATES,lastRFor,impDate,impRows,impNorm,impMatch,impFromText,impFromTable,impHeader,impBuild,impStart,impXlsx,parseSets,undoStack,undoRestore,undoForget,allTimeBests,bestsBoard,obActive,fmtW,rirUsual,rirEst,routineFromTemplate,plannedSets,map3d:()=>({state:B3.state,fail:B3.fail,meshes:B3.meshes.length,yaw:B3.yaw,glow:Object.keys(B3.mats).filter(m=>B3.mats[m].emissiveIntensity>0),canvas:!!document.querySelector('#bm3d canvas'),colors:Object.fromEntries(Object.entries(B3.mats).map(([m,mt])=>[m,'#'+mt.color.getHexString()])),pick:(x,y)=>map3dPick(x,y),want:map3dColors()}),cloudState:()=>({on:cloud.on,status:cloud.status,err:cloud.err,uid:cloud.uid,acct:cloud.acct}),acctUser:()=>acct.user,acctWaiting:()=>!!acctWait.pw,flush:()=>cq(cloudFlush),backupDue,routineUpdates,planFor,platesMode,plateText,chunksOf,IDX,suggest,e1,render,ACT,ui,makeDemo,invalidate,normalize,snapshot,saveNow,timer,weekStats,weekStart,today,EX,blockProgress,dayMinutes,weekStreak,coach,tonnageNow,livePR,exProjection,movers,stalledIds,muscleStatus,actualAvg4,plannedPerWeek,parseSets,aiSetsValid,fillSets,newBlock,lastNoteOf,sizeRows,sessionMuscleSets,sessionCapNote,routineClutter,aiDigest,debriefPrompt,reviewPrompt,swapPrompt,AI,sameRR};
 render();
 wakeOn();
 timerResume();
