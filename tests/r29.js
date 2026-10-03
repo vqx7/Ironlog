@@ -73,7 +73,8 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
     const n0 = await ev(() => window.__ironlog.state.draft.ex[0].sets.length);
     for (let i = 0; i < n0; i++) { const sel = `[data-act="sDone"][data-b="0"][data-s="${i}"]`; if (await page.$(sel)) { await page.tap(sel); await wait(100); } }
     await wait(2600);
-    const grips = await ev(() => { const bs = [...document.querySelectorAll('#view section.block')]; return { blocks: bs.length, grips: bs.filter(b => b.querySelector(':scope .bgrip')).length, folded: !!document.querySelector('#view section.block.folded .bgrip'), h: Math.round(document.querySelector('.bgrip').getBoundingClientRect().height), label: document.querySelector('.bgrip').getAttribute('aria-label') }; });
+    const grips = await ev(() => { const bs = [...document.querySelectorAll('#view section.block')]; return { blocks: bs.length, grips: bs.filter(b => b.querySelector(':scope .bgrip')).length, folded: !!document.querySelector('#view section.block.folded .bgrip'), h: Math.round(document.querySelector('.bgrip').getBoundingClientRect().height), label: document.querySelector('.bgrip').getAttribute('aria-label'), touch: [...document.querySelectorAll('#view .bgrip')].map(gr => { gr.scrollIntoView({ block: 'center' }); const g = gr.getBoundingClientRect(); let n = 0; for (let dx = -40; dx <= 40; dx++) if (document.elementFromPoint(g.left + g.width / 2 + dx, g.top + g.height / 2) === gr) n++; return n; }) }; });
+    ok(grips.touch.every(n => n >= 44), 'every handle takes a touch 44 px wide', grips.touch);
     ok(grips.blocks > 2 && grips.grips === grips.blocks && grips.folded && grips.h >= 44 && /^Move .+: drag, or use the arrow keys$/.test(grips.label), 'every exercise in a session has a 44 px handle, a finished (folded) one too', grips);
     const ids = () => ev(() => window.__ironlog.state.draft.ex.map(b => b.exId));
     const before = await ids();
@@ -108,6 +109,94 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
     const moved = await ev(() => { const d = window.__ironlog.state.draft; const b = d.ex[1]; return { id: b.exId, r: b.sets[0].r }; });
     ok(moved.id === typed && +moved.r === 11, 'reps typed on an exercise move with it', moved);
     ok(!P.errors.length, 'no page errors (session order)', P.errors);
+    await P.browser.close();
+  }
+
+  // ---- The independent reviews' findings on session order (r29).
+  {
+    const P = await open('index.html', { touch: true, w: 390, h: 844, clock: '2026-09-24T18:00:00' });
+    const { page } = P; const ev = (f, a) => page.evaluate(f, a);
+    await ev(() => { const L = window.__ironlog; L.state.settings.onboarded = true; L.state.settings.autoDone = true; L.makeDemo(); localStorage.setItem('ironlog.v1.loadAsk', '1'); localStorage.setItem('ironlog.v1.tipWake', '1'); L.ui.tab = 'today'; L.ui.todayDay = 0; L.render(); });
+    await page.click('.hero [data-act="startSession"]:not([data-light])'); await wait(200);
+    // An empty reps field focused, then the handle tapped: leaving for the
+    // handle is not "done with this set", so nothing is ticked.
+    await page.locator('[data-f="r"][data-b="1"][data-s="0"]').scrollIntoViewIfNeeded();
+    await page.focus('[data-f="r"][data-b="1"][data-s="0"]'); await wait(50);
+    await page.tap('.bgrip[data-b="1"]'); await wait(300);
+    const t1 = await ev(() => { const s = window.__ironlog.state.draft.ex[1].sets[0]; return { done: !!s.done, r: s.r }; });
+    ok(!t1.done && (t1.r === '' || t1.r == null), 'tapping a handle while an empty reps field is focused ticks nothing', t1);
+    // A move that splits a superset clears the pair, so the rest timer is not left waiting for a partner.
+    const ss = await ev(() => { const L = window.__ironlog; const d = L.state.draft; d.ex[1].plan.ss = 'P1'; d.ex[2].plan.ss = 'P1'; const a = d.ex[1].exId, b = d.ex[2].exId; L.moveBlock(2, d.ex.length - 1); return { n: d.ex.length, tags: d.ex.filter(x => x.exId === a || x.exId === b).map(x => x.plan.ss || null) }; });
+    ok(ss.n >= 4 && ss.tags.every(x => x == null), 'a move that splits a superset clears both tags', ss);
+    const ss2 = await ev(() => { const L = window.__ironlog; const d = L.state.draft; d.ex[0].plan.ss = 'P2'; d.ex[1].plan.ss = 'P2'; const ids = [d.ex[0].exId, d.ex[1].exId]; L.moveBlock(d.ex.length - 1, 2); return d.ex.filter(x => ids.includes(x.exId)).map(x => x.plan.ss); });
+    ok(ss2.every(x => x === 'P2'), 'a move elsewhere leaves an intact superset alone', ss2);
+    // 320 px: a finished (folded) exercise with its handle fits the screen.
+    for (let i = 0; i < 8; i++) { const sel = `[data-act="sDone"][data-b="0"][data-s="${i}"]`; if (await page.$(sel)) { await page.tap(sel); await wait(80); } }
+    await wait(2600);
+    await page.setViewportSize({ width: 320, height: 700 }); await ev(() => window.__ironlog.render()); await wait(200);
+    const w320 = await ev(() => { const f = document.querySelector('#view section.block.folded'); const r = f && f.getBoundingClientRect(); const gr = f && f.querySelector('.bgrip'); const g = gr && gr.getBoundingClientRect(); const cy = g && g.top + g.height / 2, cx = g && g.left + g.width / 2; let hit = 0; if (g) for (let dx = -40; dx <= 40; dx++) if (document.elementFromPoint(cx + dx, cy) === gr) hit++; return { folded: !!f, sw: document.documentElement.scrollWidth, right: r && Math.round(r.right), grip: hit, h: g && Math.round(g.height) }; });
+    ok(w320.folded && w320.sw <= 320 && w320.right <= 320 && w320.grip >= 44 && w320.h >= 44, 'at 320 px a folded exercise and its 44 px handle (touch area) fit, no sideways scroll', w320);
+    ok(!P.errors.length, 'no page errors (review fixes, session)', P.errors);
+    await P.browser.close();
+  }
+
+  // ---- The reviews' findings on the numbers: first week, first-run targets, tracked-only everywhere.
+  {
+    const P = await open('index.html', { clock: '2026-10-07T12:00:00' });
+    const { page } = P; const ev = (f, a) => page.evaluate(f, a);
+    // A log that began on a Saturday: that week is not averaged as a full one.
+    const fw = await ev(() => {
+      const L = window.__ironlog; const R = L.state.routines[0]; const d = R.days.find(x => !x.rest);
+      const mk = (id, date) => ({ id, date, dayIdx: 0, dayId: d.id, dayName: d.name, routineId: R.id, notes: '', ex: d.items.slice(0, 3).map(it => ({ exId: it.exId, sets: [{ w: 100, r: 8, rir: 2 }, { w: 100, r: 8, rir: 2 }] })) });
+      L.state.settings.onboarded = true; L.state.sessions = [mk('a', '2026-09-26'), mk('b', '2026-09-30')]; L.state = L.normalize(L.state); L.invalidate();
+      const one = { ff: L.firstFullWeek(), wk2: L.weekStart('2026-09-30'), weeks: L.actualAvg4()._weeks };
+      L.state.sessions = [mk('c', L.weekStart('2026-09-26')), mk('b', '2026-09-30')]; L.state = L.normalize(L.state); L.invalidate();
+      return { one, two: { ff: L.firstFullWeek(), wk1: L.weekStart('2026-09-26'), weeks: L.actualAvg4()._weeks } };
+    });
+    ok(fw.one.ff === fw.one.wk2 && fw.one.weeks === 1, 'a log started mid-week averages from the first full week only', fw.one);
+    ok(fw.two.ff === fw.two.wk1 && fw.two.weeks === 2, 'a log started on the first day of a week counts that week', fw.two);
+    // Tracked-only muscles in the volume rows and the weekly trend: no target shown.
+    const tr = await ev(() => {
+      const L = window.__ironlog; L.state.sessions = []; L.makeDemo(); L.invalidate();
+      L.ui.tab = 'dash'; L.ui.folds['dash:volume'] = true; L.ui.volMode = 'avg'; L.render();
+      const rows = [...document.querySelectorAll('#view [data-mkey="volume"] .mrow')];
+      const row = n => rows.find(r => r.children[1] && r.children[1].textContent === n);
+      const neck = row('Neck'), chest = row('Chest');
+      L.ui.volMode = 'trend'; L.ui.dashMuscle = 'neck'; L.render();
+      const ch = window.Chart && window.Chart.getChart(document.getElementById('chMuscle'));
+      const neckLines = ch ? ch.data.datasets.filter(x => /_band/.test(x.label)).length : -1;
+      L.ui.dashMuscle = 'chest'; L.render();
+      const ch2 = window.Chart && window.Chart.getChart(document.getElementById('chMuscle'));
+      const chestLines = ch2 ? ch2.data.datasets.filter(x => /_band/.test(x.label)).length : -1;
+      return { neckTxt: neck && neck.textContent, neckZone: neck && !!neck.querySelector('.zone'), chestTxt: chest && chest.textContent, chestZone: chest && !!chest.querySelector('.zone'), neckLines, chestLines };
+    });
+    ok(/tracked/.test(tr.neckTxt) && !tr.neckZone && /\/\d+-\d+/.test(tr.chestTxt) && tr.chestZone, 'volume rows: a tracked-only muscle shows "tracked" and no target zone; others keep theirs', tr);
+    ok(tr.neckLines === 0 && tr.chestLines > 0, 'the weekly trend draws target lines only for muscles with a target', tr);
+    // Pick for me never chases a tracked-only muscle's "deficit".
+    const px = await ev(() => { const L = window.__ironlog; const s = L.state.settings; const keep = s.bands.neck; s.bands.neck = [30, 40]; L.invalidate(); const R = L.state.routines.find(r => r.id === L.state.activeRoutineId); const d = R.days.find(x => !x.rest); const a = L.rankExercises({ ex: [], date: L.today(), dayId: d.id }).map(x => x.m); s.bands.neck = keep; L.invalidate(); return a; });
+    ok(Array.isArray(px) && !px.includes('neck'), 'Pick for me does not chase a tracked-only muscle even with a high target', px);
+    ok(!P.errors.length, 'no page errors (review fixes, numbers)', P.errors);
+    await P.browser.close();
+  }
+
+  // ---- First run: picking a ready-made routine fits the weekly targets to it.
+  {
+    const P = await open('index.html', { w: 390, h: 844, clock: '2026-10-02T12:00:00' });
+    const { page } = P; const ev = (f, a) => page.evaluate(f, a);
+    await ev(() => window.__ironlog.ACT.obSample()); await wait(150);
+    await page.click('#modal [data-act="tplPick"][data-k="full3"]'); await wait(200);
+    const fit = await ev(() => {
+      const L = window.__ironlog; const R = L.state.routines.find(r => r.id === L.state.activeRoutineId); const plan = L.plannedSets(R); const b = L.state.settings.bands;
+      const bad = Object.keys(L.BANDS).filter(m => { const want = L.TRACK_ONLY.has(m) ? L.BANDS[m][0] : Math.min(L.BANDS[m][0], Math.floor(plan[m] || 0)); return b[m][0] !== want || b[m][1] !== L.BANDS[m][1]; });
+      const short = Object.keys(L.BANDS).filter(m => !L.TRACK_ONLY.has(m) && (plan[m] || 0) < b[m][0]);
+      return { bad, short, toast: document.getElementById('toast') ? document.getElementById('toast').textContent : '' };
+    });
+    ok(!fit.bad.length && !fit.short.length, 'each weekly minimum comes down to what the routine plans, so following it is on target; maximums unchanged', fit);
+    ok(/Weekly targets match it/.test(fit.toast), 'and the toast says so', fit.toast);
+    // Targets someone already set are never touched.
+    const kept = await ev(() => { const L = window.__ironlog; const s = L.state.settings; s.bands = JSON.parse(JSON.stringify(L.BANDS)); s.bands.chest = [12, 22]; const before = JSON.stringify(s.bands); const R = L.routineFromTemplate('ppl6') || L.state.routines[0]; const ch = L.fitTargets(R); return { ch, same: JSON.stringify(s.bands) === before }; });
+    ok(kept.ch === false && kept.same, 'targets changed by the lifter are left as they are', kept);
+    ok(!P.errors.length, 'no page errors (first-run targets)', P.errors);
     await P.browser.close();
   }
 

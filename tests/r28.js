@@ -49,7 +49,7 @@ const TABS = ['today', 'program', 'dash', 'history', 'settings'];
     await ev(() => { const L = window.__ironlog; L.state.injuries = []; L.state.settings.hidden = L.state.settings.hidden.filter(k => k !== 'today:injuries'); L.render(); });
     // The link goes to Settings > Layout, open.
     await page.locator('#moreLine [data-act="goLayout"]').click(); await wait(150);
-    ok(await ev(() => window.__ironlog.ui.tab === 'settings' && document.querySelector('#view > [data-mkey="layout"]').open), 'Show, hide or reorder sections opens Settings with Layout open');
+    ok(await ev(() => window.__ironlog.ui.tab === 'settings' && document.querySelector('#view > [data-mkey="layout"]').open), 'Show, hide, or reorder sections opens Settings with Layout open');
     // Layout: Default layout is pressed only on the default; it puts it back with Undo.
     const lay = await ev(() => { const b = document.querySelector('[data-act="layoutDefault"]'); return { pressed: b.getAttribute('aria-pressed'), simple: !!document.querySelector('[data-act="layoutSimple"]') }; });
     ok(lay.pressed === 'false' && !lay.simple, 'Default layout is not pressed once Coach was added, and Simple view is gone', lay);
@@ -65,7 +65,7 @@ const TABS = ['today', 'program', 'dash', 'history', 'settings'];
     ok(btn.ring && btn.ring !== 'none' && !/rgba\(0, 0, 0, 0\)/.test(btn.bg) && btn.bg.replace(/\s/g, '') !== btn.surface.trim(), 'the menu button is tinted with the accent and ringed', btn);
     await page.click('#saveState'); await wait(80);
     const rows = await ev(() => [...document.querySelectorAll('#modal .mnu')].map(b => b.textContent.replace('›', '').trim()));
-    ok(JSON.stringify(rows) === JSON.stringify(['Report a problem', 'Guide', 'Show, hide or reorder sections', 'Your data and backups']), 'the menu has Show, hide or reorder sections', rows);
+    ok(JSON.stringify(rows) === JSON.stringify(['Report a problem', 'Guide', 'Show, hide, or reorder sections', 'Your data and backups']), 'the menu has Show, hide, or reorder sections', rows);
     await page.click('#modal [data-act="mClose"]'); await wait(60);
     // Settings > Help.
     await ev(() => { const L = window.__ironlog; L.ui.tab = 'settings'; L.render(); });
@@ -254,7 +254,7 @@ const TABS = ['today', 'program', 'dash', 'history', 'settings'];
     // Workout preview: good news is not "flagged"; only stalls are counted.
     await ev(() => { const L = window.__ironlog; L.makeDemo(); L.invalidate(); L.ui.tab = 'today'; L.render(); });
     const pv = await ev(() => { const d = document.querySelector('#view > [data-mkey="session"]'); return d ? d.querySelector('.sec-s').innerText : null; });
-    ok(pv && !/flagged/.test(pv) && /^\d+ exercises(, \d+ stalled)?$/.test(pv), 'Workout preview counts stalls only, never "flagged"', pv);
+    ok(pv && !/flagged/.test(pv) && /^(\d+ exercises|\d+ stalled)$/.test(pv), 'Workout preview counts stalls only, never "flagged"', pv);
     // + Workout preview is not offered on a rest day, where it cannot show.
     const rest = await ev(() => { const L = window.__ironlog; const R = L.state.routines[0]; const ri = R.days.findIndex(d => d.rest); L.state.settings.hidden = [...new Set([...L.state.settings.hidden, 'today:session'])]; L.ui.todayDay = ri; L.render(); const a = [...document.querySelectorAll('#moreLine [data-act="secShow"]')].map(b => b.dataset.k); L.ui.todayDay = R.days.findIndex(d => !d.rest && d.items.length); L.render(); const b = [...document.querySelectorAll('#moreLine [data-act="secShow"]')].map(b => b.dataset.k); L.state.settings.hidden = L.state.settings.hidden.filter(k => k !== 'today:session'); L.ui.todayDay = null; L.render(); return { ri, rest: a, train: b }; });
     ok(rest.ri >= 0 && !rest.rest.includes('today:session') && rest.train.includes('today:session'), '+ Workout preview is offered on a training day, not on a rest day', rest);
