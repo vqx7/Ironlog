@@ -244,6 +244,19 @@
       return data || [];
     }
   };
+  /* The preview only (r29): read, never write, this account's rows of the live
+     app's table, for "Copy my log from Ironlog". On an iPhone the preview and
+     the live app keep separate storage on the phone, so the account's cloud
+     copy is the one place the preview can find the real log. Row level
+     security limits the read to the signed-in account's own rows. */
+  if (PREVIEW) window.ironlogLiveDocs = async () => {
+    const s = await session().catch(() => null);
+    if (!s) throw Object.assign(new Error('Sign in with your Ironlog account first.'), { code: 'signin' });
+    const base = `data/users/${s.user.id}`;
+    const { data, error } = await authed(() => sb.from('docs').select('path,data').like('path', likeEsc(base) + '/%'));
+    if (error) throw friendly(error);
+    return (data || []).filter(r => r.path.indexOf('/', base.length + 1) < 0).map(r => ({ id: last(r.path), data: r.data }));
+  };
   window.ironlogCloud = async () => {
     if (hold) return null;
     const s = await session().catch(() => null);

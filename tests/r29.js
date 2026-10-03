@@ -18,13 +18,19 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
     // A new person with a ready-made routine and nothing logged.
     await ev(() => { const L = window.__ironlog; const r = L.routineFromTemplate('full3'); L.state.routines = [r]; L.state.activeRoutineId = r.id; L.state.settings.onboarded = true; L.invalidate(); });
     const a = await vol();
-    ok(!a.canvas && /Nothing logged yet/.test(a.text) && !/plan/i.test(a.text.replace(/Planned/g, '')) && !/Planned (below|above)/.test(a.text), 'nothing logged: the radar says so, with no chart and no mention of the plan', a.text.slice(0, 200));
+    ok(a.canvas && a.data && a.data.every(x => x === 0) && /Nothing logged yet/.test(a.text) && !/plan/i.test(a.text.replace(/Planned/g, '')) && !/Planned (below|above)/.test(a.text), 'nothing logged: the radar still draws, empty against the target ring, says so, and never shows the plan', { t: a.text.slice(0, 200), data: a.data });
     ok(!/Your routine plans fewer/.test(a.weak), 'Muscles has no note about the plan', a.weak.slice(0, 160));
     // One session this week: the chart reads it, labelled as the week so far.
     await ev(() => { const L = window.__ironlog; const R = L.state.routines[0]; const d = R.days.find(x => !x.rest); L.state.sessions.push({ id: 's1', date: '2026-10-01', dayIdx: 0, dayId: d.id, dayName: d.name, routineId: R.id, notes: '', ex: d.items.slice(0, 3).map(it => ({ exId: it.exId, sets: [{ w: 100, r: 8, rir: 2 }, { w: 100, r: 8, rir: 2 }] })) }); L.state = L.normalize(L.state); L.invalidate(); });
     const b = await vol();
     ok(b.canvas && /this week so far/.test(b.text) && b.label === 'Your volume' && b.data.some(x => x > 0) && /Most trained/.test(b.text), 'one session this week: the radar reads it, labelled as this week so far', b.text.slice(0, 220));
     ok(!/Planned (below|above)|routine's plan/.test(b.text), 'and the plan is not on it', b.text.slice(0, 220));
+    // Only older training (nothing in the last 4 weeks or this week): the last trained weeks, dated.
+    const old = await ev(() => { const L = window.__ironlog; const R = L.state.routines[0]; const d = R.days.find(x => !x.rest); L.state.sessions = ['2026-07-06', '2026-07-08', '2026-07-14', '2026-07-21'].map((date, i) => ({ id: 'o' + i, date, dayIdx: 0, dayId: d.id, dayName: d.name, routineId: R.id, notes: '', ex: d.items.slice(0, 3).map(it => ({ exId: it.exId, sets: [{ w: 100, r: 8, rir: 2 }, { w: 100, r: 8, rir: 2 }] })) })); L.state = L.normalize(L.state); L.invalidate(); const rs = L.regionSrc(); return { label: rs.label, old: rs.old }; });
+    const o = await vol();
+    ok(old.old && /your last 3 trained weeks, to Jul 26/.test(old.label) && o.canvas && o.data.some(x => x > 0) && /Nothing logged in the last 4 weeks, so this shows your last 3 trained weeks/.test(o.text), 'nothing in the last 4 weeks: the radar draws from your last trained weeks, dated, and says so', { old, t: o.text.slice(0, 260) });
+    const cb = await ev(() => { const L = window.__ironlog; return L.coach().text; });
+    ok(/Nothing logged in the last 4 weeks/.test(cb), 'back from a break, the coach says nothing was logged lately, not "after your first full week"', cb);
     // Weeks of data: the average.
     await ev(() => { const L = window.__ironlog; L.state.sessions = []; L.makeDemo(); L.invalidate(); });
     const c = await vol();
