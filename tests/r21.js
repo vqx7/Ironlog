@@ -11,7 +11,8 @@ const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log
   const A = await open('index.html', { touch: true, w: 390, h: 844, clock: '2026-09-24T18:00:00' });
   const { page } = A;
   const ev = (f, a) => page.evaluate(f, a);
-  await ev(() => { const L = window.__ironlog; L.state.settings.onboarded = true; L.makeDemo(); L.ui.tab = 'today'; L.render(); localStorage.setItem('ironlog.v1.tipWake', '1'); });
+  // Auto-mark off, as before r28 made it on for new installs: the checks below are about quick entry ticking without it.
+  await ev(() => { const L = window.__ironlog; L.state.settings.onboarded = true; L.state.settings.autoDone = false; L.makeDemo(); L.ui.tab = 'today'; L.render(); localStorage.setItem('ironlog.v1.tipWake', '1'); });
   await page.waitForTimeout(100);
 
   // ---- 54: every day in the week bar is a button, and an empty past day logs.
@@ -208,10 +209,11 @@ const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log
   ok(await nev(() => !/Drag ⠿ to reorder days/.test(document.getElementById('view').innerText) && !/drag into a day/.test(document.getElementById('view').innerText)), 'Plan: drag hints moved into tips');
   ok(await nev(() => !document.querySelector('#wkbar .w.add') && [...document.querySelectorAll('#wkbar .w')].every(w => w.tagName === 'BUTTON')), 'a brand-new week bar shows no + marks, but every day is still a button');
 
-  // ---- 58 (reworked in r25, moved to the menu in r27): Report a problem is in
-  // the menu at the top right of every tab; Settings no longer repeats it.
+  // ---- 58 (reworked in r25, moved to the menu in r27, back in Settings too in
+  // r28 at V's request): Report a problem is in the menu at the top right of
+  // every tab and in Settings, Help, near the bottom.
   await nev(() => { const L = window.__ironlog; L.ui.tab = 'settings'; L.render(); });
-  ok(await nev(() => !document.querySelector('#view [data-act="fbOpen"]') && !document.querySelector('[data-mkey="feedback"]')), 'Settings has no Help section and no Report a problem button of its own');
+  ok(await nev(() => !!document.querySelector('#view > [data-mkey="help"] [data-act="fbOpen"][data-cat="bug"]') && !document.querySelector('[data-mkey="feedback"]')), 'Settings, Help has Report a problem');
   await nev(() => { const L = window.__ironlog; L.ui.tab = 'history'; L.render(); });
   await N.page.click('#saveState'); await N.page.waitForTimeout(80);
   ok(await nev(() => { const r = [...document.querySelectorAll('#modal .mnu')].map(b => b.textContent.replace('›', '').trim()); return r[0] === 'Report a problem' && r.includes('Guide') && !document.querySelector('#modal [data-act="fbInbox"]'); }), 'the menu: Report a problem first, the Guide, no inbox without an owner account');

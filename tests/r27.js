@@ -17,7 +17,8 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
     const P = await open('index.html', { touch: true, clock: '2026-09-30T17:30:00' });
     const { page } = P; const ev = (f, a) => page.evaluate(f, a);
     await page.setViewportSize({ width: 390, height: 844 });
-    await ev(() => { const L = window.__ironlog; L.state.settings.onboarded = true; L.makeDemo(); localStorage.setItem('ironlog.v1.installLater', '1'); localStorage.setItem('ironlog.v1.loadAsk', '1'); L.ui.tab = 'today'; L.render(); });
+    // Every section shown, as in r27 (a new install hides a few since r28; tests/r28.js covers that).
+    await ev(() => { const L = window.__ironlog; L.state.settings.onboarded = true; L.state.settings.hidden = []; L.makeDemo(); localStorage.setItem('ironlog.v1.installLater', '1'); localStorage.setItem('ironlog.v1.loadAsk', '1'); L.ui.tab = 'today'; L.render(); });
     await wait(80);
 
     // The button on every tab.
@@ -29,7 +30,7 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
     await ev(() => { const L = window.__ironlog; L.ui.tab = 'history'; L.render(); });
     await page.click('#saveState'); await wait(80);
     const menu = await ev(() => { const m = document.getElementById('modal'); return { kind: window.__ironlog.ui.modal && window.__ironlog.ui.modal.kind, rows: [...m.querySelectorAll('.mnu')].map(b => ({ t: b.textContent.replace('›', '').trim(), h: b.getBoundingClientRect().height })), acct: m.querySelector('#menuAcct').innerText, build: /Build \d{4}\.\d{2}\.\d{2}-r\d+/.test(m.innerText) }; });
-    ok(menu.kind === 'menu' && JSON.stringify(menu.rows.map(r => r.t)) === JSON.stringify(['Report a problem', 'Guide', 'Your data and backups']) && menu.rows.every(r => r.h >= 48) && menu.build, 'the menu: Report a problem, Guide, Your data and backups (48 px rows), and the build', menu);
+    ok(menu.kind === 'menu' && JSON.stringify(menu.rows.map(r => r.t)) === JSON.stringify(['Report a problem', 'Guide', 'Show, hide or reorder sections', 'Your data and backups']) && menu.rows.every(r => r.h >= 48) && menu.build, 'the menu: Report a problem, Guide, Show, hide or reorder sections (r28), Your data and backups (48 px rows), and the build', menu);
     ok(/Saved/.test(menu.acct) && !/Sign in/.test(menu.acct), 'without accounts (the source file) it says where the log is saved, and offers no sign-in', menu.acct);
     // The close button, and the phone's Back, close it.
     await page.click('#modal [data-act="mClose"]'); await wait(60);
@@ -44,7 +45,8 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
     await page.click('#saveState'); await wait(60); await page.click('#modal .mnu[data-act="goBackup"]'); await wait(120);
     ok(await ev(() => { const L = window.__ironlog; const d = document.getElementById('dataSec'); return !L.ui.modal && L.ui.tab === 'settings' && !!d && d.open; }), 'Your data and backups closes the menu and opens Settings, Your data');
     // Settings has no Help section or Report a problem of its own.
-    ok(await ev(() => !document.querySelector('[data-mkey="feedback"]') && !document.querySelector('#view [data-act="fbOpen"]')), 'Settings no longer repeats Report a problem or Help');
+    // r27 took Help out of Settings; r28 put it back near the bottom at V's request (tests/r28.js checks its buttons).
+    ok(await ev(() => !document.querySelector('[data-mkey="feedback"]') && document.querySelectorAll('#view [data-act="fbOpen"]').length === document.querySelectorAll('#view > [data-mkey="help"] [data-act="fbOpen"]').length), 'Settings has no old feedback section; its report buttons are all in Help');
     // The Guide.
     await page.click('#saveState'); await wait(60); await page.click('#modal .mnu[data-act="guideOpen"]'); await wait(80);
     const g = await ev(() => { const m = document.getElementById('modal'); return { kind: window.__ironlog.ui.modal.kind, topics: [...m.querySelectorAll('.gsec>summary')].map(s => s.textContent), open: m.querySelectorAll('.gsec[open]').length, text: m.innerText }; });

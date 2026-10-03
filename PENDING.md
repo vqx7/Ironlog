@@ -1,16 +1,31 @@
-# Everything still open (as of r27 live, 2026-10-02)
+# Everything still open (as of r28 in preview, 2026-10-02)
 
 This is the tracking list. Items are built only when V says go. Owner items need V; the rest is build work. Nothing is done unless it says so. Numbers are kept stable; finished items move to Done at the bottom.
 
-## Live: r27 (published 2026-10-02 at https://ironapp.org). Nothing in preview
-V said go on 2026-10-02 after trying it. Claude made the merge commit of pull request #8 (the merged tree is identical to the one tested on the preview); the suites ran again on `main` and published it. The preview at https://ironapp.org/preview/ still holds r27 until the next pull request.
+## Live: r27 (published 2026-10-02 at https://ironapp.org). In preview: r28
+r28 is pull request #9, on https://ironapp.org/preview/ until V says go. What it changes is under "Built in r28, waiting for V's go" below.
+
+## Built in r28, waiting for V's go (V's requests of 2026-10-02)
+100. The layout a new person starts with, from V's screenshots: every section folded on every tab (Sessions on History excepted, since it is that tab's content); Today shows Workout preview, Muscle map, This week; Plan shows Routine, Add exercises, Days; Stats leads with Lifts. At a glance, Coach and Body on Today and Schedule and Weekly volume on Plan start hidden. Auto-mark starts on. Existing logs, V's included, keep their own layout and settings: the defaults only seed a new install.
+101. Finding the rest without reading first: a tab with hidden sections ends with "Add to this tab" (+ At a glance, + Coach, + Body; one tap shows and opens it) and a link to Settings, Layout; the menu has Show, hide or reorder sections; Settings, Layout has Default layout and Show everything (Simple view is gone, it was a second default). The Guide says all of this.
+102. The menu button is tinted with the accent and ringed, so it stands out from the week bar (kept at 34 px so the days stay 44 px wide on a 375 px phone).
+103. Settings has Help again, near the bottom: Guide, Report a problem, Ask a question, Suggest something (and the Reports inbox for the owner). Still in the menu too.
+104. Stats: the ? left the section headers, where it sat beside the fold arrow; How this works is the first line inside each section. Folds inside a section sit on their own surface, so it is clear they belong to it (they do not move on their own). Inside Lifts: Recent PRs, All-time bests, then Stalls. Volume opens on By region, the radar; with nothing logged yet it reads the routine's plan and says so, instead of a flat zero.
+105. Accuracy: the Lifts explanation said a blank RIR counts as 0. Since r20 it reads as your usual RIR once 3 sets of the lift are rated (0 only until then). Fixed, and the Guide's stall rule now matches the code (6 sessions or 3 weeks, at least 4 sessions).
+106. Plan: the Exercise library is a full-width button with its count; the ? sits at the top right on its own. The library's back button said Program; it says Plan.
+107. Today: This week reads This month in Month view (an earlier month by name, with its session count). The date line on the Start card is short enough for one line.
+108. Bug: content scrolled up showed through behind the clock (V's screenshots). A solid strip now covers the status bar area.
+109. Demo data looked at before setting up: whatever was changed while looking around goes back to the new-install defaults when the demo is cleared. Someone with a log of their own who loads the demo from Settings keeps their changes.
+110. V's report that dragging stopped working after showing or hiding sections: not reproduced. Sections shown or hidden in Settings, Layout or from the new line, then dragged by finger on Today, Stats and Settings, all moved and kept their order after a reload. It is now a test (tests/r28.js). If it happens again, the exact steps (which section, which tab, open or folded) will pin it down.
+111. Caught by the tests before release: putting the default order into a new install changed the order of keys in the synced settings, which would have made an r27 phone and an r28 phone rewrite each other's settings on every sync. Fixed (the key is added where older builds add it).
 
 ## Next
 91. Domain and email: the app is on https://ironapp.org (GitHub's domain file is on gh-pages; Claude fetched the site over https). V reports the remaining domain steps done and the app reinstalled from the new address (2026-10-02). Left before friends: one Forgot password test that the email arrives from Ironlog (OWNER.md C4), then sharing with friends on Android and iPhone.
 99. Wording and redundancy pass, screen by screen (the second half of V's item 90, left open when the default view was settled): cut fragments, repeated lines and filler on every tab and sheet so screens show the number and the action. V gives his own notes first.
+112. Found while checking r28: a new person who picks a ready-made routine sees Muscles "6 flagged" on day one, because Upper / lower plans fewer hard sets than the default weekly targets for six muscles (Core is at 26% of target). Accurate, but it reads as the app faulting its own routine. Options: raise the ready-made routines to meet the default targets, or word the flag as "under target in the plan" until the first session. V decides.
 98. From the audit, low: plate lists are fixed (no 1.25 lb or 0.5 kg change plates) and there is one bar weight for every barbell lift (no trap or EZ bar). Decide if wanted.
 
-Open count: 28 numbered items: 3 next (91, 98, 99), 3 critical (58, 61, 63), 3 verification (7, 8, 10), 2 owner only (6, 84), 17 later build or decision items. Owner steps, with the code, are in OWNER.md.
+Open count: 41 numbered items: 12 built in r28 and waiting for V's go (100 to 111), 4 next (91, 98, 99, 112), 3 critical (58, 61, 63), 3 verification (7, 8, 10), 2 owner only (6, 84), 17 later build or decision items. Owner steps, with the code, are in OWNER.md.
 
 ## Critical, still open
 58. Part 2 needs V: SUPABASE.md, Part 4, steps 1 to 5 (the tables, a private `ironlog-feedback` repository, a GitHub token for it, the function and its webhook), then FEEDBACK.md, "What V does" steps 2 and 3 (protect `main`; choose a scheduled Claude task or Claude's GitHub Action to pick up tickets). Until step 1, Send feedback says it is not set up yet and keeps the text.
@@ -19,6 +34,7 @@ Open count: 28 numbered items: 3 next (91, 98, 99), 3 critical (58, 61, 63), 3 v
 
 ## Owner items (V)
 Every step V does by hand, with the exact code to paste, is in `OWNER.md`. Kept in step with this list:
+- r28's go = OWNER.md A6 (try it on the preview).
 - 58 (Part 2 of it) = OWNER.md B1 to B7 (problem reports reaching V; B6 protects `main`).
 - 6 = OWNER.md C1 to C5 (domain, email sender, the switch); 23 is decided: the app moves to the domain.
 - 84: four older merge commits carry V's Gmail address. V chose not to rewrite history (2026-10-01). Kept open as "not now"; the fix, if ever wanted, is a rewrite of `main` and a force push.

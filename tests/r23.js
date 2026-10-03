@@ -271,7 +271,8 @@ function xlsx(rows) {
   // ---- Today: This week owns this week, At a glance the longer view (item 32).
   {
     const A = await page({ clock: '2026-09-24T18:00:00' }); const ev = (f, a) => A.page.evaluate(f, a);
-    const t = await ev(() => { const L = window.__ironlog; L.makeDemo(); L.ui.tab = 'today'; L.render(); document.querySelectorAll('#view details').forEach(d => { d.open = true; });
+    // At a glance is hidden on a new install since r28; this check shows every section.
+    const t = await ev(() => { const L = window.__ironlog; L.makeDemo(); L.state.settings.hidden = []; L.ui.tab = 'today'; L.render(); document.querySelectorAll('#view details').forEach(d => { d.open = true; });
       const wk = document.querySelector('[data-mkey="week"]'), gl = document.querySelector('[data-mkey="tiles"]');
       return { sub: wk.querySelector('.sec-s').textContent, week: wk.innerText.replace(/\s+/g, ' '), tiles: gl.querySelectorAll('.tile').length, glance: gl.innerText.replace(/\s+/g, ' '), prTile: gl.querySelector('[data-sec="bests"]') ? 1 : 0 }; });
     ok(/sessions$/.test(t.sub) && !/sets/.test(t.sub), 'This week header: sessions only (the sets are in the card once)', t.sub);

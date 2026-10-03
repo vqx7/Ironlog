@@ -21,7 +21,7 @@ const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log
     const sig = d => d.ex.map(b => ({ id: b.exId, cut: !!b.cut, sets: b.sets.map(x => [x.w, x.r, !!x.done, !!x.warm, !!x.drop]) }));
     const closeModal = () => ev(() => { const L = window.__ironlog; if (L.ui.modal) L.ACT.mClose(); });
 
-    await ev((mode) => { const L = window.__ironlog; L.state.settings.onboarded = true; L.makeDemo(); if (mode === 'fill') { L.state.settings.loadFill = 'fill'; L.state.settings.autoDone = true; } L.saveNow(); L.ui.tab = 'today'; L.ui.todayDay = 0; L.render(); localStorage.setItem('ironlog.v1.tipWake', '1'); }, mode);
+    await ev((mode) => { const L = window.__ironlog; L.state.settings.onboarded = true; L.makeDemo(); if (mode === 'fill') { L.state.settings.loadFill = 'fill'; L.state.settings.autoDone = true; } else L.state.settings.autoDone = false; L.saveNow(); L.ui.tab = 'today'; L.ui.todayDay = 0; L.render(); localStorage.setItem('ironlog.v1.tipWake', '1'); }, mode);
     await page.click('.hero [data-act="startSession"]:not([data-light])'); await page.waitForTimeout(150);
     const ex0 = await ev(() => window.__ironlog.state.draft.ex[0].exId);
     const kg = await ev(() => window.__ironlog.state.settings.unit === 'lb' ? 100 * 0.45359237 : 100);
@@ -161,9 +161,9 @@ const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log
   ok(s2 && s2.date === '2026-09-20' && s2.ex[0].sets[0].w === 50 && s2.ex[0].sets[0].r === 8 && s2.ex.some(b => b.sets.some(x => x.r === 10)), 'r24 session: Finish saves the logged set and offers to keep the typed one', s2 && s2.ex.slice(0, 2));
   ok(!N.errors.length, 'r24 session: no page errors (' + N.errors.join(' | ') + ')');
 
-  // ---- Sessions left open by r25 and r26 (grey loads; r26 adds the target's
-  // source date) carry on here the same way.
-  for (const BV of ['r25', 'r26']) {
+  // ---- Sessions left open by r25, r26 and r27 (grey loads; r26 adds the
+  // target's source date) carry on here the same way.
+  for (const BV of ['r25', 'r26', 'r27']) {
     const O5 = await open(`baselines/${BV}.html`, { browser, touch: true, clock: '2026-09-20T10:00:00' });
     await O5.page.evaluate(() => { const L = window.__ironlog; L.state.settings.onboarded = true; L.makeDemo(); L.ui.tab = 'today'; L.ui.todayDay = 0; L.render(); });
     await O5.page.click('.hero [data-act="startSession"]:not([data-light])'); await O5.page.waitForTimeout(150);

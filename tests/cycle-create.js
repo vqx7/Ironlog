@@ -19,6 +19,8 @@ ok(await ev(()=>window.__ironlog.state.draft.ex.length===1),'added in freestyle'
 await ev(()=>{window.__ironlog.state.draft=null;window.__ironlog.render();});
 // program: add to day via create
 await page.click('#tabs button[data-tab="program"]');await page.waitForTimeout(80);
+// Days starts folded (r28): open it from its title, as a person would.
+await page.click('#view > [data-mkey="days"] > summary .sec-t');await page.waitForTimeout(80);
 // Program shows one day at a time: open Day 2 first.
 await ev(()=>document.querySelector('[data-act="pickDay"][data-day="1"]').closest('.day').querySelector('[data-act="dFold"]').click());await page.waitForTimeout(80);
 ok(await ev(()=>document.querySelectorAll('.day .dbody:not([hidden])').length===1),'one day open at a time');

@@ -8,7 +8,8 @@ const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log
   // ---- Accent.
   const A = await open('index.html', { touch: true, w: 390, h: 844, clock: '2026-09-24T18:00:00' });
   let ev = (f, a) => A.page.evaluate(f, a);
-  await ev(() => { const L = window.__ironlog; L.state.settings.onboarded = true; L.makeDemo(); L.ui.tab = 'today'; L.render(); });
+  // This suite turns auto-mark on and off itself; it starts off, as before r28 made on the new-install default (tests/r28.js).
+  await ev(() => { const L = window.__ironlog; L.state.settings.onboarded = true; L.state.settings.autoDone = false; L.makeDemo(); L.ui.tab = 'today'; L.render(); });
   const acc = () => ev(() => ({ a: document.documentElement.dataset.accent, v: getComputedStyle(document.documentElement).getPropertyValue('--volt').trim().toLowerCase(), btn: getComputedStyle(document.querySelector('.hero .btn.primary')).backgroundColor }));
   let x = await acc();
   ok(x.a === 'blue' && x.v === '#2a63f5' && x.btn === 'rgb(42, 99, 245)', 'blue is the default accent, on the Start button too', x);
