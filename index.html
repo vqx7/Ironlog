@@ -3966,7 +3966,9 @@ function viewToday(){
   if(ui.todayDay!=null&&ui.todayDay>=R.days.length)ui.todayDay=null;
   const di=ui.todayDay==null?(weekly?wd:cs.next):ui.todayDay;const day=R.days[di];
   const mark=i=>weekly?(i===wd?' (today)':''):(i===cs.next?' (next up)':i===cs.last?' (last logged)':'');
-  const eyebrow=weekly?(di===wd?'Today':`Viewing ${DAYS[di]}`):`${dayLabel(R,di)} of ${R.days.length}${di===cs.next?' · next up':''}`;
+  // "Next up" is said once, in Change day below (r28): on the card it made the
+  // date line wrap and leave "UP" on a line of its own on a phone.
+  const eyebrow=weekly?(di===wd?'Today':`Viewing ${DAYS[di]}`):`${dayLabel(R,di)} of ${R.days.length}`;
   let note='';
   if(cs&&ui.todayDay==null){
     if(cs.lastDate===today())note=`${dayLabel(R,cs.last)} done today.`;
