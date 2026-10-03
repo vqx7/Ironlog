@@ -103,7 +103,8 @@ await ctx.close();
 for(const w of [320,375,390,430,768]){
   const {page,errors,ctx}=await open('index.html',{browser,w,h:800,dark:w===375,clock:'2026-09-26T10:00:00'});
   const ev=(f,a)=>page.evaluate(f,a);
-  await ev(()=>{const L=window.__ironlog;L.state.settings.onboarded=true;L.makeDemo();L.render();});
+  // Every section shown (a new install hides a few since r28), so each is checked for overflow.
+  await ev(()=>{const L=window.__ironlog;L.state.settings.onboarded=true;L.state.settings.hidden=[];L.makeDemo();L.render();});
   for(const t of ['today','program','dash','history','settings']){
     await ev(t=>{const L=window.__ironlog;L.ui.tab=t;L.render();document.querySelectorAll('details').forEach(d=>d.open=true);},t);await page.waitForTimeout(60);
     const o=await ev(()=>({sw:document.documentElement.scrollWidth,iw:window.innerWidth,hb:document.querySelector('.top').getBoundingClientRect().height,cells:[...document.querySelectorAll('#wkbar .w')].map(c=>c.getBoundingClientRect()).every(r=>r.width>=18),ss:document.querySelector('#saveState').getBoundingClientRect().right<=window.innerWidth}));

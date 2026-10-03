@@ -93,7 +93,7 @@ const TABS = ['today', 'program', 'dash', 'history', 'settings'];
     ok(ht.open && ht.shown && /usual RIR/.test(ht.text) && !/a blank RIR counts as 0, so it errs low\)/.test(ht.text), 'How this works shows the explanation, and it says a blank RIR reads as your usual RIR', ht.text.slice(0, 160));
     // Volume opens on the balance chart, from the plan while nothing is logged.
     await page.locator('#view > [data-mkey="volume"] > summary').click(); await wait(300);
-    const vol = await ev(() => { const d = document.querySelector('#view > [data-mkey="volume"]'); const chips = [...d.querySelectorAll('[data-act="volMode"]')]; const ch = window.Chart && window.Chart.getChart(document.getElementById('chRadar')); return { first: chips[0].dataset.v, on: chips.find(c => c.classList.contains('on')).dataset.v, canvas: !!d.querySelector('#chRadar'), plan: /routine's plan \(nothing logged yet\)/.test(d.innerText), head: (d.querySelector('.headline') || {}).innerText, label: ch && ch.data.datasets[0].label, nonzero: ch && ch.data.datasets[0].data.some(v => v > 0) }; });
+    const vol = await ev(() => { const d = document.querySelector('#view > [data-mkey="volume"]'); const chips = [...d.querySelectorAll('[data-act="volMode"]')]; const ch = window.Chart && window.Chart.getChart(document.getElementById('chRadar')); return { first: chips[0].dataset.v, on: chips.find(c => c.classList.contains('on')).dataset.v, canvas: !!d.querySelector('#chRadar'), plan: /routine's plan, until you log a full week/.test(d.innerText), head: (d.querySelector('.headline') || {}).innerText, label: ch && ch.data.datasets[0].label, nonzero: ch && ch.data.datasets[0].data.some(v => v > 0) }; });
     ok(vol.first === 'region' && vol.on === 'region' && vol.canvas && vol.plan && /^Most planned/.test(vol.head) && vol.label === 'Planned volume' && vol.nonzero, 'Volume opens on By region: the radar of the routine\'s plan, labelled as the plan, before anything is logged', vol);
     // After a logged session the same view reads what was done.
     await ev(() => { const L = window.__ironlog; L.makeDemo(); L.invalidate(); L.ui.folds['dash:volume'] = true; L.render(); }); await wait(300);
@@ -219,6 +219,96 @@ const TABS = ['today', 'program', 'dash', 'history', 'settings'];
     const g0 = await order(); await drag('timer', g0[0]);
     ok((await order())[0] === 'timer', 'Settings: Rest timer hidden and shown, then dragged to the top', await order());
     ok(!P.errors.length, 'no page errors (drag)', P.errors);
+    await P.browser.close();
+  }
+
+  // ---- From the independent reviews of r28.
+  {
+    const P = await open('index.html', { touch: true, clock: '2026-10-02T12:00:00' });
+    const { page } = P; const ev = (f, a) => page.evaluate(f, a);
+    // Muscles before any session: no flags for a plan that is lighter than the targets, a quiet note instead.
+    for (const key of ['full3', 'db3', 'ul4']) {
+      const m = await ev(k => { const L = window.__ironlog; const r = L.routineFromTemplate(k); L.state.routines = [r]; L.state.activeRoutineId = r.id; L.state.settings.onboarded = true; L.invalidate(); L.ui.tab = 'dash'; L.ui.folds['dash:weak'] = true; L.ui.folds['dash:volume'] = true; L.render();
+        const d = document.querySelector('#view > [data-mkey="weak"]'); const v = document.querySelector('#view > [data-mkey="volume"]');
+        return { sub: d.querySelector('.sec-s').innerText, tags: d.querySelectorAll(':scope > .sec-b > .card .tag').length, note: /Your routine plans fewer hard sets a week than your target/.test(d.innerText), flags: /Flags start once you have logged a few sessions/.test(d.innerText), vnote: (v.querySelector('.card > p.small.muted:last-child') || {}).innerText || '', band: /band/i.test(v.innerText + d.innerText) }; }, key);
+      ok(m.sub === 'after a few sessions' && m.tags === 0 && m.flags && !m.band && /^(Planned below target|The plan puts every region)/.test(m.vnote), `${key}, before any session: Muscles says "after a few sessions", no flags, Volume speaks of the plan, no "band" jargon`, m);
+    }
+    // One session logged this week: still no average, so the radar keeps reading the plan, labelled.
+    await ev(() => { const L = window.__ironlog; const R = L.state.routines[0]; L.state.sessions.push({ id: 's1', date: '2026-10-01', dayIdx: 0, dayId: R.days[0].id, dayName: R.days[0].name, routineId: R.id, notes: '', ex: [{ exId: R.days[0].items[0].exId, sets: [{ w: 100, r: 8, rir: 2 }] }] }); L.state = L.normalize(L.state); L.invalidate(); L.render(); });
+    const r1 = await ev(() => { const v = document.querySelector('#view > [data-mkey="volume"]'); const d = document.querySelector('#view > [data-mkey="weak"]'); return { plan: /routine's plan, until you have a full week logged/.test(v.innerText), sub: d.querySelector('.sec-s').innerText, lifts: document.querySelector('#view > [data-mkey="exercise"] .sec-s').innerText }; });
+    ok(r1.plan && r1.lifts === '1 lift tracked', 'after one session the radar still reads the plan until a full week is logged, and Lifts says 1 lift', r1);
+
+    // Auto-mark on (new installs): type the reps, pick RIR, tap the checkmark: the set stays ticked; a second tap unticks it.
+    await ev(() => { const L = window.__ironlog; L.state.sessions = []; L.state.settings.autoDone = true; localStorage.setItem('ironlog.v1.loadAsk', '1'); L.state = L.normalize(L.state); L.invalidate(); L.ui.tab = 'today'; L.ui.todayDay = null; L.render(); });
+    await page.click('.hero [data-act="startSession"]:not([data-light])'); await wait(100);
+    await page.fill('[data-f="w"][data-b="0"][data-s="0"]', '100'); await page.fill('[data-f="r"][data-b="0"][data-s="0"]', '8');
+    await page.tap('.rirb[data-b="0"][data-s="0"]'); await wait(1000); await page.tap('.rirstrip [data-v="2"]'); await wait(400);
+    await page.tap('[data-act="sDone"][data-b="0"][data-s="0"]'); await wait(150);
+    const am = await ev(() => { const x = window.__ironlog.state.draft.ex[0].sets[0]; return { done: x.done, r: x.r, rir: x.rir }; });
+    ok(am.done === true && +am.r === 8 && am.rir === 2, 'auto-mark: reps, then RIR, then the checkmark leaves the set ticked', am);
+    await page.tap('[data-act="sDone"][data-b="0"][data-s="0"]'); await wait(150);
+    ok(await ev(() => window.__ironlog.state.draft.ex[0].sets[0].done === false), 'and a second tap unticks it');
+    await ev(() => { const L = window.__ironlog; L.state.draft = null; L.render(); });
+
+    // Workout preview: good news is not "flagged"; only stalls are counted.
+    await ev(() => { const L = window.__ironlog; L.makeDemo(); L.invalidate(); L.ui.tab = 'today'; L.render(); });
+    const pv = await ev(() => { const d = document.querySelector('#view > [data-mkey="session"]'); return d ? d.querySelector('.sec-s').innerText : null; });
+    ok(pv && !/flagged/.test(pv) && /^\d+ exercises(, \d+ stalled)?$/.test(pv), 'Workout preview counts stalls only, never "flagged"', pv);
+    // + Workout preview is not offered on a rest day, where it cannot show.
+    const rest = await ev(() => { const L = window.__ironlog; const R = L.state.routines[0]; const ri = R.days.findIndex(d => d.rest); L.state.settings.hidden = [...new Set([...L.state.settings.hidden, 'today:session'])]; L.ui.todayDay = ri; L.render(); const a = [...document.querySelectorAll('#moreLine [data-act="secShow"]')].map(b => b.dataset.k); L.ui.todayDay = R.days.findIndex(d => !d.rest && d.items.length); L.render(); const b = [...document.querySelectorAll('#moreLine [data-act="secShow"]')].map(b => b.dataset.k); L.state.settings.hidden = L.state.settings.hidden.filter(k => k !== 'today:session'); L.ui.todayDay = null; L.render(); return { ri, rest: a, train: b }; });
+    ok(rest.ri >= 0 && !rest.rest.includes('today:session') && rest.train.includes('today:session'), '+ Workout preview is offered on a training day, not on a rest day', rest);
+    // Lifts opens on the lift logged most often.
+    const top = await ev(() => { const L = window.__ironlog; L.ui.dashEx = null; L.ui.tab = 'dash'; L.render(); const I = L.IDX(); const most = Object.keys(I.byEx).sort((a, b) => I.byEx[b].length - I.byEx[a].length)[0]; return { open: L.ui.dashEx, n: I.byEx[L.ui.dashEx].length, most: I.byEx[most].length }; });
+    ok(top.n === top.most, 'Stats, Lifts opens on the lift logged most often', top);
+
+    // Reset section order lives in Layout and offers Undo.
+    await ev(() => { const L = window.__ironlog; L.state.settings.secOrder.today = ['week', 'map', 'session']; L.ui.tab = 'settings'; L.ui.folds['settings:layout'] = true; L.ui.folds['settings:general'] = true; L.render(); });
+    const loc = await ev(() => ({ inLayout: !!document.querySelector('#view > [data-mkey="layout"] [data-act="layoutReset"]'), inGeneral: !!document.querySelector('#view > [data-mkey="general"] [data-act="layoutReset"]') }));
+    await page.click('#view > [data-mkey="layout"] [data-act="layoutReset"]'); await wait(120);
+    const ru = await ev(() => ({ order: window.__ironlog.state.settings.secOrder.today.join(), undo: !!document.querySelector('#toast [data-act="undo"]') }));
+    await page.click('#toast [data-act="undo"]'); await wait(150);
+    const back = await ev(() => window.__ironlog.state.settings.secOrder.today.join());
+    ok(loc.inLayout && !loc.inGeneral && ru.order.startsWith('session,map,week') && ru.undo && back === 'week,map,session', 'Reset section order is in Layout, resets to the defaults, and Undo brings the old order back', { loc, ru, back });
+
+    // Plan: a lone ? stays at the top right, on the title's row.
+    const q = await ev(() => { const L = window.__ironlog; L.ui.tab = 'program'; L.render(); const hb = document.querySelector('#view .ph .hb').getBoundingClientRect(); const h2 = document.querySelector('#view .ph h2').getBoundingClientRect(); return { hbTop: hb.top, h2Bottom: h2.bottom, right: document.documentElement.clientWidth - hb.right }; });
+    ok(q.hbTop < q.h2Bottom && q.right < 40, 'Plan: the ? sits at the top right, not on a row of its own', q);
+    // The routine picker gives each routine's session length as a range, matching Today's day.
+    await ev(() => window.__ironlog.ACT.rTemplate()); await wait(80);
+    const pick = await ev(() => ({ m: [...document.querySelectorAll('#modal .tpl-m')].map(e => e.innerText), jargon: /10-set|11 sets/.test(document.getElementById('modal').innerText) }));
+    ok(pick.m.length >= 5 && pick.m.every(t => /(\d+ to \d+ min|about \d+ min)/.test(t)) && !pick.jargon, 'the routine picker shows minutes as a range, without set-count jargon', pick.m.slice(0, 2));
+    await ev(() => window.__ironlog.ACT.mClose());
+
+    // Light theme: the menu icon and the bottom link are readable in every accent.
+    const lum = c => { const v = c.match(/\d+(\.\d+)?/g).slice(0, 3).map(Number).map(x => { x /= 255; return x <= 0.03928 ? x / 12.92 : Math.pow((x + 0.055) / 1.055, 2.4); }); return 0.2126 * v[0] + 0.7152 * v[1] + 0.0722 * v[2]; };
+    const ratio = (a, b) => { const [x, y] = [lum(a), lum(b)].sort((p, q) => q - p); return (x + 0.05) / (y + 0.05); };
+    const bad = [];
+    for (const theme of ['light', 'dark']) for (const acc of ['blue', 'volt', 'ember']) {
+      const c = await ev(([t, a]) => { const L = window.__ironlog; L.state.settings.theme = t; L.state.settings.accent = a; L.state.settings.hidden = ['today:tiles']; L.ui.tab = 'today'; L.render(); const m = document.getElementById('saveState'); const link = document.querySelector('#moreLine .ml-c'); return { icon: getComputedStyle(m).color, iconBg: getComputedStyle(m).backgroundColor, link: getComputedStyle(link).color, bg: getComputedStyle(document.body).backgroundColor }; }, [theme, acc]);
+      const ri = ratio(c.icon, c.iconBg), rl = ratio(c.link, c.bg);
+      if (ri < 3 || rl < 4.5) bad.push(`${theme}/${acc}: icon ${ri.toFixed(2)} link ${rl.toFixed(2)}`);
+    }
+    ok(!bad.length, 'the menu icon (3:1) and the bottom link (4.5:1) are readable in light and dark, every accent', bad);
+    ok(!P.errors.length, 'no page errors (review fixes)', P.errors);
+    await P.browser.close();
+  }
+
+  // ---- Demo settings are put back only on a genuine first run.
+  {
+    const P = await open('index.html', { clock: '2026-10-02T12:00:00' });
+    const { page } = P; const ev = (f, a) => page.evaluate(f, a);
+    await page.locator('[data-act="demoLoad"]').first().click(); await wait(60); await page.locator('#modal [data-act="mOk"]').click(); await wait(200);
+    // Start for real while the demo is still in: a routine picked and a session logged, then settings changed.
+    await ev(() => { const L = window.__ironlog; L.state.settings.onboarded = true; L.state.sessions.push({ id: 'real1', date: '2026-10-01', dayName: 'Mine', ex: [] }); L.state = L.normalize(L.state); L.state.settings.unit = 'kg'; L.state.settings.priorities = ['chest']; L.state.settings.userName = 'Sam'; L.saveNow(); L.ACT.demoClear(); });
+    const a = await ev(() => { const s = window.__ironlog.state.settings; return { unit: s.unit, pri: s.priorities.join(), name: s.userName, key: localStorage.getItem('ironlog.v1.demoSettings') }; });
+    ok(a.unit === 'kg' && a.pri === 'chest' && a.name === 'Sam' && a.key === null, 'once a person has started for real, clearing the demo keeps their settings and drops the old snapshot', a);
+    // Erase everything, then a new first-run demo: the snapshot is the new first run's, not the old one.
+    await ev(() => { const L = window.__ironlog; L.state = L.normalize(null); L.saveNow(); localStorage.setItem('ironlog.v1.demoSettings', JSON.stringify({ unit: 'kg', theme: 'light', hidden: [] })); L.render(); });
+    await ev(() => { const L = window.__ironlog; L.state.settings.userName = 'New'; L.saveNow(); L.ACT.demoLoad(); }); await wait(60); await page.locator('#modal [data-act="mOk"]').click(); await wait(200);
+    await ev(() => { const L = window.__ironlog; L.ui.tab = 'today'; L.render(); }); await page.locator('[data-act="demoStart"]').click(); await wait(150);
+    const b = await ev(() => { const s = window.__ironlog.state.settings; return { unit: s.unit, theme: s.theme, name: s.userName, hidden: s.hidden.length }; });
+    ok(b.unit === 'lb' && b.theme === 'dark' && b.name === 'New' && b.hidden === 5, 'a stale snapshot never comes back: the demo puts back the settings from when it was loaded', b);
+    ok(!P.errors.length, 'no page errors (demo guard)', P.errors);
     await P.browser.close();
   }
 
