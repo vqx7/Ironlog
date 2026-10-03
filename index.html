@@ -5389,18 +5389,23 @@ function viewDash(){
   for(const s of I.scores)if(s.label==='lagging'&&!inj.has(s.m))add(s.m,s.indirect?'Lagging strength (indirect)':'Lagging strength','red');
   // Plan and actual being under band is one fact about one muscle, not two.
   // Counting it twice also pushed it up a sort that ranks by flag count.
+  // A shortfall in the plan alone is not a weak point (r28): a new person
+  // who picked a ready-made routine saw "18 flagged" in amber before
+  // logging a set. It is listed quietly under the flags instead, and Plan's
+  // Weekly volume shows by how much.
+  const planLow=[];
   for(const m of MK){
     if(inj.has(m))continue;
     if(TRACK_ONLY.has(m))continue;
     const uPlan=(plan[m]||0)<bands[m][0],uAct=!!avg&&(avg[m]||0)<bands[m][0];
-    if(uPlan&&uAct)add(m,'Under band (plan and actual)','yellow');
-    else if(uPlan)add(m,'Under band (plan)','yellow');
-    else if(uAct)add(m,'Under band (actual)','yellow');
+    if(uPlan&&uAct)add(m,'Below target, logged and planned','yellow');
+    else if(uAct)add(m,'Below target, logged','yellow');
+    else if(uPlan)planLow.push(m);
   }
   for(const m of state.settings.priorities)add(m,'Your priority','blue');
   const wp=Object.entries(reasons).sort((a,b)=>b[1].length-a[1].length);
   const weakBody=`<div class="card">${wp.length?wp.map(([m,rs])=>{const [lo,hi]=bands[m];const bits=[`this week ${r1(thisWeek[m]||0)} of ${lo}-${hi} hard sets`];if(avg)bits.push(`recent average ${r1(avg[m]||0)}`);if((plan[m]||0)<lo)bits.push(`routine plans ${r1(plan[m]||0)}`);
-      return `<div style="padding:6px 0;border-bottom:1px solid var(--line)"><div class="row spread"><b>${ML[m]}</b><div class="chips">${rs.map(([t,c])=>`<span class="tag ${c}">${t}</span>`).join('')}</div></div><p class="small muted" style="margin:2px 0 0">${bits.join(', ')}</p></div>`;}).join(''):'<p class="muted">Nothing flagged.</p>'}</div>`;
+      return `<div style="padding:6px 0;border-bottom:1px solid var(--line)"><div class="row spread"><b>${ML[m]}</b><div class="chips">${rs.map(([t,c])=>`<span class="tag ${c}">${t}</span>`).join('')}</div></div><p class="small muted" style="margin:2px 0 0">${bits.join(', ')}</p></div>`;}).join(''):`<p class="muted" style="margin:0">${state.sessions.length?'Nothing flagged.':'Flags start once you have logged a few sessions.'}</p>`}${planLow.length?`<p class="small muted" style="margin:10px 0 0">Your routine plans fewer hard sets a week than your target for ${planLow.map(m=>ML[m]).join(', ')}. ${tipi('Targets are per muscle in Settings, Weekly set targets. Plan, Weekly volume shows each muscle against its target.','About the plan')}</p>`:''}</div>`;
 
   // stalls (folded inside Lifts, after Recent PRs and All-time bests since r28)
   let stl='';
@@ -5459,8 +5464,8 @@ function viewDash(){
     if(missing.length)rank+=`<p class="small muted" style="margin-top:8px">Not enough data yet: ${missing.map(m=>ML[m]).join(', ')}.</p>`;
   }else rank+='<p class="muted">Not enough data yet. Log at least 3 sessions of an exercise within 6 weeks.</p>';
   rank+='</div>';
-  h+=dsec('weak','Muscles','Weak points: muscles flagged because the trend is falling, or flat while others move, or volume is below your band, or you named it a priority, or you flagged an injury. A muscle whose strength is rising is never flagged. Strength return on volume: the median change in estimated 1RM across a muscle\'s main exercises over 6 weeks, in the current rep range, next to the hard sets a week that produced it. This measures strength, not size: early gains are largely neural, and high-rep estimates are noisy. Size check reads your tape measurements, which are the closer signal for size.',
-    weakBody+sub('rank','Strength return on volume',rank)+sub('size','Size check',sizeBody()),wp.length?`<span class="pill yellow">${wp.length} flagged</span>`:'<span class="pill green">none flagged</span>');
+  h+=dsec('weak','Muscles','Weak points: muscles flagged because the trend is falling, or flat while others move, or the hard sets you logged are below your target, or you named it a priority, or you flagged an injury. A muscle the routine plans below target is listed under the flags, not flagged. A muscle whose strength is rising is never flagged. Strength return on volume: the median change in estimated 1RM across a muscle\'s main exercises over 6 weeks, in the current rep range, next to the hard sets a week that produced it. This measures strength, not size: early gains are largely neural, and high-rep estimates are noisy. Size check reads your tape measurements, which are the closer signal for size.',
+    weakBody+sub('rank','Strength return on volume',rank)+sub('size','Size check',sizeBody()),wp.length?`<span class="pill yellow">${wp.length} flagged</span>`:state.sessions.length?'<span class="pill green">none flagged</span>':'after a few sessions');
 
   {let cw='';const rows=[];const cf=firstDate(state.cardio);const cn=Math.min(8,weeksSpan(cf));
    // From your first cardio week only: no rows of zero before it.
