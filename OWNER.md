@@ -2,16 +2,13 @@
 
 Everything that needs you, in one place, with the exact code to paste. Claude keeps this file current: an item moves to Done only when you confirm it, or when Claude can check it from here (and says how it checked). Build work and decisions are tracked in `PENDING.md`; this file is only what you do by hand.
 
-Last updated: r28 in preview, 2026-10-02.
+Last updated: r28 live, 2026-10-02.
 
 ## Now, in this order
 
-1. A6: try r28 on the preview, then say go.
+1. Your phone: open Ironlog; when "New version ready" shows, tap Reload. The menu shows build r28.
 2. When you have a minute: Forgot password with your own email in the app, and check the email comes from Ironlog (no-reply@mail.ironapp.org). That is the last proof the sender works before friends sign up.
-
-### A6. Try r28 on the preview, then say go
-Status: to do once Claude says the preview is up.
-Open https://ironapp.org/preview/ in Safari (or the Preview icon), wait for "New version ready" and tap Reload. The menu shows build r28. Your preview log keeps its own layout, so to see what a new person sees: Settings, Layout, Default layout (Undo puts yours back). Try: the bottom of Today and Plan; the menu button; Stats, Lifts and Volume opened; Settings, Help; This week switched to Month; Plan's Exercise library.
+3. Two decisions in PENDING.md: 114 (the starter routine for someone who skips picking one) and 115 (default targets for neck, tibialis and other small muscles).
 
 ## When you want problem reports to reach you (item 58, about 20 minutes)
 
@@ -279,4 +276,5 @@ Status: to do whenever you are at the gym; tell Claude what you see.
 - D4: ping's search_path fixed and minimum password length 8 (you, 2026-10-02). The Leaked Password Protection warning stays on the free plan; the app checks itself.
 - A4: r26 tried on the preview and approved; r26 live (2026-10-02, merged by Claude at your go-ahead).
 - A5: r27 tried on the preview and approved; r27 live at https://ironapp.org (2026-10-02, merged by Claude at your go-ahead).
+- A6: r28 tried on the preview and approved; r28 live at https://ironapp.org (2026-10-02, merged by Claude at your go-ahead).
 - C1 to C5: domain ironapp.org, Resend sender on mail.ironapp.org, Supabase connected, app switched and reinstalled (2026-10-02).
