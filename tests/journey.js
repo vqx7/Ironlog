@@ -163,7 +163,7 @@ const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log
 
   // ---- Sessions left open by r25, r26 and r27 (grey loads; r26 adds the
   // target's source date) carry on here the same way.
-  for (const BV of ['r25', 'r26', 'r27']) {
+  for (const BV of ['r25', 'r26', 'r27', 'r28']) {
     const O5 = await open(`baselines/${BV}.html`, { browser, touch: true, clock: '2026-09-20T10:00:00' });
     await O5.page.evaluate(() => { const L = window.__ironlog; L.state.settings.onboarded = true; L.makeDemo(); L.ui.tab = 'today'; L.ui.todayDay = 0; L.render(); });
     await O5.page.click('.hero [data-act="startSession"]:not([data-light])'); await O5.page.waitForTimeout(150);

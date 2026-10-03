@@ -1,19 +1,26 @@
-# Everything still open (as of r28 live, 2026-10-02)
+# Everything still open (as of r29 in preview, 2026-10-03)
 
 This is the tracking list. Items are built only when V says go. Owner items need V; the rest is build work. Nothing is done unless it says so. Numbers are kept stable; finished items move to Done at the bottom.
 
-## Live: r28 (published 2026-10-02 at https://ironapp.org). Nothing in preview
-V said go on 2026-10-02 after a first look at the preview and two independent reviews (one of the code, one using the app as a new and as an upgrading person); their findings were fixed with tests (items 112, 113) or are listed below (114 to 116). Claude made the merge commit of pull request #9 (identical to the tree tested on GitHub); the suites ran again on `main` and published it.
+## Live: r28 (published 2026-10-02 at https://ironapp.org). In preview: r29
+r29 is pull request #10, on https://ironapp.org/preview/ until V says go.
+
+## Built in r29, waiting for V's go (V's requests of 2026-10-02, evening)
+117. Volume, By region: reads only what you logged (your average, else this week so far, with a line that the week is still going), never the routine's plan; with nothing logged it says so. Muscles no longer has a note about the plan. (r28 had shown the plan until a full week was logged, which made every new person look behind.)
+118. Neck and tibialis are tracked only, like serratus and rotator cuff: counted and shown, no target, never flagged, and left out of their region's target on the radar. No ready-made routine trains them, so as targets they made every routine read as short. A convention, stated in the Guide and in Weekly set targets. (Was decision 115.)
+119. The serial (Oxford) comma in every list in a sentence on screen, in tips and in the Guide, and in lists the app builds (`andList`).
+120. A slimmer, athletic 3D body: the torso tapers from the chest to a narrower waist, with flatter muscle shapes; every muscle still shaded and tappable.
+121. During a session, each exercise has a ⠿ handle: drag it to reorder, or use the arrow keys on it; the ⋯ menu's Move up and Move down still work. Done exercises stay done and folded, typed sets move with their exercise.
+122. OWNER.md D5: a security checklist for every account (email, GitHub, Supabase, Cloudflare, Resend, Claude's GitHub access).
 
 ## Next
 91. Domain and email: the app is on https://ironapp.org (GitHub's domain file is on gh-pages; Claude fetched the site over https). V reports the remaining domain steps done and the app reinstalled from the new address (2026-10-02). Left before friends: one Forgot password test that the email arrives from Ironlog (OWNER.md C4), then sharing with friends on Android and iPhone.
 99. Wording and redundancy pass, screen by screen (the second half of V's item 90, left open when the default view was settled): cut fragments, repeated lines and filler on every tab and sheet so screens show the number and the action. V gives his own notes first.
 114. Decide (from the r28 review): a new person who taps Log a workout now or Import, instead of picking a routine, stays on the starter routine, which is the experienced six-day "One muscle a day" one, so Today shows Chest, Day 1 of 7, 20 sets. Recommendation: make Upper / lower, 4 days the starter for new installs (yours is unaffected). Not changed in r28 because many tests are built on the starter's days.
-115. Decide (from the r28 review): the default weekly targets include Neck (2 to 10), Tibialis (2 to 8), Abductors, Obliques, Traps and Forearms, which no ready-made routine programs, so every routine shows them in the plan note. Options: make those muscles track-only like Serratus and Rotator cuff, or give them 0 as the default minimum. A change to the numbers needs your say (CLAUDE.md rule 3).
 116. Seen in the review, kept for now: a set ticked with no load typed saves as 0 after Finish asks; the Muscle map on Today counts the week so far, so it reads below target early in a week.
 98. From the audit, low: plate lists are fixed (no 1.25 lb or 0.5 kg change plates) and there is one bar weight for every barbell lift (no trap or EZ bar). Decide if wanted.
 
-Open count: 31 numbered items: 6 next (91, 98, 99, 114, 115, 116), 3 critical (58, 61, 63), 3 verification (7, 8, 10), 2 owner only (6, 84), 17 later build or decision items. Owner steps, with the code, are in OWNER.md.
+Open count: 36 numbered items: 6 built in r29 and waiting for V's go (117 to 122), 5 next (91, 98, 99, 114, 116), 3 critical (58, 61, 63), 3 verification (7, 8, 10), 2 owner only (6, 84), 17 later build or decision items. Owner steps, with the code, are in OWNER.md.
 
 ## Critical, still open
 58. Part 2 needs V: SUPABASE.md, Part 4, steps 1 to 5 (the tables, a private `ironlog-feedback` repository, a GitHub token for it, the function and its webhook), then FEEDBACK.md, "What V does" steps 2 and 3 (protect `main`; choose a scheduled Claude task or Claude's GitHub Action to pick up tickets). Until step 1, Send feedback says it is not set up yet and keeps the text.
@@ -25,6 +32,8 @@ Every step V does by hand, with the exact code to paste, is in `OWNER.md`. Kept 
 - 58 (Part 2 of it) = OWNER.md B1 to B7 (problem reports reaching V; B6 protects `main`).
 - 6 = OWNER.md C1 to C5 (domain, email sender, the switch); 23 is decided: the app moves to the domain.
 - 84: four older merge commits carry V's Gmail address. V chose not to rewrite history (2026-10-01). Kept open as "not now"; the fix, if ever wanted, is a rewrite of `main` and a force push.
+- r29's go = OWNER.md A7.
+- 122 = OWNER.md D5 (account security).
 - 7 and 63 = OWNER.md "Checks on your phone".
 
 ## Verification

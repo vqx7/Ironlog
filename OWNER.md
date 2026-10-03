@@ -2,13 +2,15 @@
 
 Everything that needs you, in one place, with the exact code to paste. Claude keeps this file current: an item moves to Done only when you confirm it, or when Claude can check it from here (and says how it checked). Build work and decisions are tracked in `PENDING.md`; this file is only what you do by hand.
 
-Last updated: r28 live, 2026-10-02.
+Last updated: r29 in preview, 2026-10-03.
 
 ## Now, in this order
 
-1. Your phone: open Ironlog; when "New version ready" shows, tap Reload. The menu shows build r28.
-2. When you have a minute: Forgot password with your own email in the app, and check the email comes from Ironlog (no-reply@mail.ironapp.org). That is the last proof the sender works before friends sign up.
-3. Two decisions in PENDING.md: 114 (the starter routine for someone who skips picking one) and 115 (default targets for neck, tibialis and other small muscles).
+0. A7: try r29 on the preview (https://ironapp.org/preview/, Reload when asked; the menu shows build r29), then say go. Look at Stats > Volume, the 3D body on Today, and drag an exercise by its ⠿ during a session.
+1. Problem reports reaching you: B1 to B5 below (B1 alone already stores reports safely).
+2. D5: lock down every account (two-step verification everywhere, secret scanning, DNSSEC).
+3. When you have a minute: Forgot password with your own email in the app, and check the email comes from Ironlog (no-reply@mail.ironapp.org). That is the last proof the sender works before friends sign up.
+4. One decision in PENDING.md: 114 (the starter routine for someone who skips picking one).
 
 ## When you want problem reports to reach you (item 58, about 20 minutes)
 
@@ -252,6 +254,19 @@ Status: done. Step 1 checked by Claude (2026-10-02); steps 2 and 3 as you report
 
 ### D3. Who can see what (no action, for reference)
 Your log: only your account, and you as the Supabase project owner (Table Editor shows every row, friends' included). The app says so in Settings > Your data. Reports: only accounts listed in `feedback_readers`. Optional end-to-end encryption is item 15 in PENDING.md.
+
+### D5. Lock down every account (about 30 minutes, once)
+Status: to do. Each step is free and none of them stops Claude from building and publishing.
+1. **Your email** (the one every reset link goes to): turn on two-step verification with an authenticator app or a passkey. Everything else can be reset from this inbox, so it comes first.
+2. **GitHub:** your photo > Settings > Password and authentication > enable two-factor authentication (authenticator app or passkey). Save the recovery codes in your password manager.
+3. **GitHub, the Ironlog repository:** Settings > Advanced Security (or Code security) > turn on **Dependabot alerts**, **Secret Protection** and **Push protection**. They warn you if a key is ever committed by mistake. The repository stays public: free GitHub Pages needs that, and nothing secret is in it (the Supabase keys in it are the public ones; row level security protects the data).
+4. **GitHub, B6:** protect main (steps above). After that nothing reaches the live app without passing every test.
+5. **GitHub, what Claude can reach:** your photo > Settings > Applications > Installed GitHub Apps > the Claude app > Configure > Repository access: **Only select repositories**, with `Ironlog` (and `ironlog-feedback` only if you want Claude to read tickets later). You can revoke it here at any time.
+6. **Supabase:** your account (top right) > Account preferences > Security > enable multi-factor authentication. Then Authentication > Sign In / Providers > Email: keep **Confirm email** on. Then Advisors > Security Advisor > Refresh: only the Leaked Password Protection warning should remain (Pro plan; the app checks passwords itself).
+7. **Cloudflare:** My Profile > Authentication > enable two-factor. Then your domain > DNS > Settings > **Enable DNSSEC** (one tap on a Cloudflare-registered domain). Domain Registration > Manage > check **Registrar lock** is on.
+8. **Resend:** Settings > Account > enable two-factor. The API key you made is sending-only for `mail.ironapp.org`; leave it that way.
+9. **Claude:** your Claude account signs in through your email (or Google), so steps 1 and, if used, your Google account's two-step verification protect it.
+10. **Never paste** the Supabase secret key, a GitHub token or the Resend key into a chat, the app or the repository. They belong only in the dashboards named in B4 and C4.
 
 ## Checks on your phone (items 7 and 63)
 Status: to do whenever you are at the gym; tell Claude what you see.
