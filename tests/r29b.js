@@ -275,6 +275,119 @@ const sess = (id, date, exId, sets) => ({ id, date, dayIdx: 0, dayId: null, dayN
     await P.browser.close();
   }
 
+  // ---- The independent review's fixes, each checked.
+  {
+    const P = await open('index.html', { touch: true, clock: '2026-10-03T11:30:00' });
+    const { page } = P; const ev = (f, a) => page.evaluate(f, a);
+    // 1. The rest bar keeps its length across a reload.
+    await ev(() => { const L = window.__ironlog; L.state.settings.onboarded = true; L.ui.tab = 'today'; L.render(); document.querySelector('.hero [data-act="startSession"]').click(); });
+    await wait(200);
+    await ev(() => { const L = window.__ironlog; L.timer.end = 0; L.ACT.tAdd(); L.ACT.tAdd(); L.ACT.tAdd(); L.ACT.tAdd(); });
+    await wait(200);
+    await ev(() => { const t = window.__ironlog.timer; t.end = Date.now() + 15000; t.total = 60; window.__ironlog.saveNow(); localStorage.setItem(window.__ironlog.KEY + '.timer', String(t.end)); localStorage.setItem(window.__ironlog.KEY + '.timerLen', '60'); });
+    await page.reload(); await page.waitForFunction(() => window.__ironlog && window.__libs && window.__libs.chart);
+    await wait(500);
+    const tp = await ev(() => { const t = document.getElementById('timer'); return { hidden: t.hidden, tp: +t.style.getPropertyValue('--tp') }; });
+    ok(!tp.hidden && tp.tp > 0.15 && tp.tp < 0.35, '1. after a reload with 15 s of a 60 s rest left, the bar shows about a quarter, not full', tp);
+    // 12. An assisted set with less help than ever is a weight PR live, with no bodyweight logged.
+    const ap = await ev(() => { const L = window.__ironlog; L.state.bodyweights = []; L.state.draft = null;
+      const S = (id, d, w) => ({ id, date: d, dayIdx: 0, dayId: null, dayName: 'A', routineId: '', free: true, notes: '', ex: [{ exId: 'assistPullup', sets: [{ w, r: 8, rir: 2, warm: false }] }] });
+      L.state.sessions = [S('a', '2026-09-20', -40 * 0.45359237), S('b', '2026-09-27', -40 * 0.45359237)]; L.invalidate();
+      const live = L.livePR('assistPullup', { w: -35 * 0.45359237, r: 8, rir: 2, done: true }, '2026-10-03');
+      L.state.sessions.push(S('c', '2026-10-01', -35 * 0.45359237)); L.invalidate();
+      const saved = L.IDX().prs.filter(p => p.exId === 'assistPullup' && p.date === '2026-10-01').map(p => p.type);
+      return { live, saved }; });
+    ok(ap.live === 'Weight PR' && ap.saved.join() === 'Weight PR', '12. less help on an assisted lift is a weight PR live and saved, with no bodyweight logged', ap);
+    // 6. A weighted pull-up's first added load reads in bodyweight terms, never "0 lb".
+    const bw = await ev(() => { const L = window.__ironlog; L.state.bodyweights = [{ id: 'bw', date: '2026-09-01', kg: 80 }];
+      const S = (id, d, w) => ({ id, date: d, dayIdx: 0, dayId: null, dayName: 'A', routineId: '', free: true, notes: '', ex: [{ exId: 'pullup', sets: [{ w, r: 8, rir: 2, warm: false }] }] });
+      L.state.sessions = [S('a', '2026-09-20', 0), S('b', '2026-09-27', 0)]; L.invalidate();
+      L.state.settings.onboarded = true; L.ACT.startFree(); L.ACT.mClose(); const d = L.state.draft; d.ex = [L.newBlock('pullup', { sets: 1, repMin: 6, repMax: 10, rir: 2, rest: 0 })]; d.ex[0].sets[0].w = 5 * 0.45359237; d.ex[0].sets[0].r = 6; d.ex[0].sets[0].rir = 2; L.render(); return true; });
+    await page.click('[data-act="sDone"][data-b="0"][data-s="0"]'); await wait(150);
+    const bt = await ev(() => document.getElementById('toast').innerText);
+    ok(/^Weight PR: Pull-up/.test(bt) && /heaviest before BW\b/.test(bt) && !/before 0/.test(bt), '6. a weighted pull-up past bodyweight says heaviest before BW, never 0 lb', bt);
+    // 5. The chart tooltip names a weight PR that did not raise the estimate.
+    const tt = await ev(() => { const L = window.__ironlog; L.state.draft = null;
+      const S = (id, d, w, r) => ({ id, date: d, dayIdx: 0, dayId: null, dayName: 'A', routineId: '', free: true, notes: '', ex: [{ exId: 'bench', sets: [{ w, r, rir: 0, warm: false }] }] });
+      // 100x10 sets the estimate; 102.5x3 is heavier but a lower estimate in its own band... (band 1-5 has no earlier set, so it is a best there). Use 101x5 after 100x6 in the same band.
+      L.state.sessions = [S('a', '2026-09-13', 100, 6), S('b', '2026-09-20', 100, 6), S('c', '2026-09-27', 100.5, 4)]; L.invalidate();
+      const p = L.IDX().prs.find(x => x.date === '2026-09-27');
+      L.ui.tab = 'dash'; L.ui.dashEx = 'bench'; L.ui.folds['dash:exercise'] = true; L.render();
+      const ch = window.Chart.getChart(document.getElementById('chEx')); const i = ch.data.datasets[0].data.length - 1;
+      const lab = ch.options.plugins.tooltip.callbacks.afterLabel({ datasetIndex: 0, dataIndex: i });
+      return { type: p && p.type, value: p && p.value, lab }; });
+    ok(tt.type === 'Weight PR' && tt.value == null && tt.lab === 'Weight PR: more weight than ever before', '5. a weight PR that did not raise the estimate is named so on the chart', tt);
+    // 9. The radar draws at most 200%; the tooltip and the table keep the real share.
+    const rc = await ev(() => { const L = window.__ironlog; const b = L.state.settings.bands; b.abs = [1, 26]; b.obliques = [1, 10];
+      const out = []; for (let k = 1; k <= 4; k++) { const d = new Date(2026, 9, 3 - 7 * k - 4).toISOString().slice(0, 10); out.push({ id: 'r' + k, date: d, dayIdx: 0, dayId: null, dayName: 'A', routineId: '', free: true, notes: '', ex: [{ exId: 'cableCrunch', sets: Array.from({ length: 10 }, () => ({ w: 50, r: 12, rir: 2, warm: false })) }] }); }
+      L.state.sessions = out; L.invalidate(); L.ui.tab = 'dash'; L.ui.volMode = 'region'; L.ui.folds['dash:volume'] = true; L.render();
+      const ch = window.Chart.getChart(document.getElementById('chRadar')); const i = ch.data.labels.indexOf('Core'); const ds = ch.data.datasets[0];
+      const tip = ch.options.plugins.tooltip.callbacks.label({ dataset: ds, dataIndex: i, formattedValue: String(ds.data[i]) });
+      const row = [...document.querySelectorAll('#view [data-mkey="volume"] tr')].find(r => /Core/.test(r.innerText)).innerText;
+      return { plotted: ds.data[i], max: ch.options.scales.r.max, tip, row: row.replace(/\s+/g, ' ') }; });
+    ok(rc.plotted === 200 && rc.max === 200 && /: 500%$/.test(rc.tip) && /500%/.test(rc.row), '9. a region far past a small minimum is drawn at 200% while the tooltip and table say 500%', rc);
+    // 13. On an average, a muscle with a minimum and no sets is amber on the map and counted below in the legend and the summary alike.
+    const mp = await ev(() => { const L = window.__ironlog; L.state.settings.bands = JSON.parse(JSON.stringify(L.BANDS));
+      const out = []; for (let k = 1; k <= 4; k++) { const d = new Date(2026, 9, 3 - 7 * k - 4).toISOString().slice(0, 10); out.push({ id: 'm' + k, date: d, dayIdx: 0, dayId: null, dayName: 'A', routineId: '', free: true, notes: '', ex: [{ exId: 'bench', sets: Array.from({ length: 12 }, () => ({ w: 80, r: 8, rir: 2, warm: false })) }] }); }
+      L.state.sessions = out; L.invalidate(); L.ui.tab = 'today'; L.ui.mapSrc = 'avg'; L.ui.folds['today:map'] = true; L.render();
+      const card = document.querySelector('#view > [data-mkey="map"]'); const leg = card.querySelector('.bm-legend').innerText.replace(/\s+/g, ' ');
+      const lats = [...card.querySelector('.mm[data-m="lats"]').classList].find(c => c.startsWith('st-')); const sub = card.querySelector('.sec-s').innerText;
+      const n = +(leg.match(/Below target (\d+)/) || [])[1]; const m = +(sub.match(/(\d+) below/) || [])[1];
+      return { leg, lats, sub, n, m }; });
+    ok(mp.lats === 'st-under' && mp.n > 0 && mp.n === mp.m && /on average/.test(mp.sub), '13. untrained lats on an average are amber, and the legend and the summary count the same below', mp);
+    // 4. Volume rows: no sets is none whatever the target, on the week; amber on an average with a minimum.
+    const vr = await ev(() => { const L = window.__ironlog; L.ui.tab = 'dash'; L.ui.folds['dash:volume'] = true;
+      L.ui.volMode = 'avg'; L.render(); const row = n => { const r = [...document.querySelectorAll('#view [data-mkey="volume"] .mrow')].find(x => x.innerText.startsWith(n)); return r ? r.querySelector('.plate').className : null; };
+      const avgLats = row('Lats');
+      L.state.sessions.push({ id: 'thisweek', date: '2026-09-29', dayIdx: 0, dayId: null, dayName: 'A', routineId: '', free: true, notes: '', ex: [{ exId: 'bench', sets: [{ w: 80, r: 8, rir: 2, warm: false }] }] }); L.invalidate();
+      L.ui.volMode = 'week'; L.render(); const wkLats = row('Lats');
+      L.state.settings.bands.traps = [0, 16]; L.ui.volMode = 'avg'; L.render(); const avgTraps = row('Traps');
+      return { avgLats, wkLats, avgTraps }; });
+    ok(/yellow/.test(vr.avgLats) && /none/.test(vr.wkLats) && /none/.test(vr.avgTraps), '4. volume rows: untrained with a minimum is amber on the average, grey this week, and grey with a minimum of 0', vr);
+    // 11. Choosing Barbell as the plate helper shows Bar for this lift at once.
+    const ed = await ev(async () => { const L = window.__ironlog; L.ACT.exEdit({ dataset: { ex: 'cableRow' } }); document.querySelectorAll('#modal details').forEach(d => d.open = true);
+      const before = !!document.querySelector('[data-ebind="barRaw"]'); const sel = document.querySelector('[data-ebind="plates"]'); sel.value = 'bar'; sel.dispatchEvent(new Event('change', { bubbles: true }));
+      await new Promise(r => setTimeout(r, 50)); document.querySelectorAll('#modal details').forEach(d => d.open = true); const after = !!document.querySelector('[data-ebind="barRaw"]');
+      sel.value; const s2 = document.querySelector('[data-ebind="plates"]'); s2.value = 'auto'; s2.dispatchEvent(new Event('change', { bubbles: true })); await new Promise(r => setTimeout(r, 50));
+      return { before, after, gone: !document.querySelector('[data-ebind="barRaw"]'), plates: L.ui.modal.e.plates }; });
+    ok(!ed.before && ed.after && ed.gone && ed.plates === undefined, '11. the editor shows Bar for this lift as soon as Barbell is chosen, and hides it again on Automatic', ed);
+    await ev(() => window.__ironlog.ACT.mClose());
+    // 7. A stall on a lift with no estimate (high reps) can make its muscle lagging.
+    const lg = await ev(() => { const L = window.__ironlog;
+      const days = [-41, -35, -28, -21, -14, -7, -1].map(k => new Date(2026, 9, 3 + k).toISOString().slice(0, 10));
+      const S = (id, d, ex, w, r) => ({ id, date: d, dayIdx: 0, dayId: null, dayName: 'A', routineId: '', free: true, notes: '', ex: [{ exId: ex, sets: [{ w, r, rir: 1, warm: false }] }] });
+      // Abs: cable crunch creeping up (not stalled, not moving), hanging leg raise (no estimate) stuck at 12.
+      L.state.sessions = days.flatMap((d, i) => [S('c' + i, d, 'bench', 80 + i * 2.5, 8), S('l' + i, d, 'latPulldown', 60 + i * 2.5, 10), S('q' + i, d, 'hackSquat', 100 + i * 2.5, 8), S('k' + i, d, 'cableCrunch', 50 + i * 0.2, 10), S('h' + i, d, 'hangingLegRaise', 0, 12)]);
+      L.invalidate(); const I = L.IDX(); return { hlr: I.exStats.hangingLegRaise.stalled, crunch: I.exStats.cableCrunch.stalled, abs: (I.scores.find(s => s.m === 'abs') || {}).label }; });
+    ok(lg.hlr && !lg.crunch && lg.abs === 'lagging', '7. a stall on a lift with no estimate (hanging leg raise) counts toward its muscle', lg);
+    // 14. Log a workout now on the starter says the targets changed.
+    ok(!P.errors.length, 'no page errors (review fixes)', P.errors);
+    await P.browser.close();
+  }
+  {
+    const P = await open('index.html', { touch: true, clock: '2026-10-03T11:30:00', realStarter: true });
+    const { page } = P; const ev = (f, a) => page.evaluate(f, a);
+    await ev(() => window.__ironlog.ACT.obFree()); await wait(150);
+    const t = await ev(() => document.getElementById('toast').innerText);
+    ok(/Upper \/ lower, 4 days, and weekly targets match it/.test(t), '14. Log a workout now on the starter says the routine and that targets match it', t);
+    await P.browser.close();
+  }
+  // 2 and 3. The demo across 21 dates on the six-day routine (where the reviewer found a stall), lb and kg: no stall, nothing under its bar.
+  {
+    const bad = [];
+    for (const unit of ['lb', 'kg']) for (let d = 0; d < 21; d++) {
+      const day = new Date(Date.UTC(2026, 9, 1 + d)).toISOString().slice(0, 10);
+      const P = await open('index.html', { clock: day + 'T11:30:00', realStarter: true });
+      const r = await P.page.evaluate((unit) => { const L = window.__ironlog; const out = []; L.state.settings.unit = unit; const r = L.routineFromTemplate('onemuscle'); L.state.routines = [r]; L.state.activeRoutineId = r.id; L.makeDemo(); L.invalidate();
+        const st = L.stalledIds(); if (st.length) out.push('stalled ' + st.join('/'));
+        const seen = new Set(); for (const s of L.state.sessions) for (const b of s.ex) { if (seen.has(b.exId)) continue; seen.add(b.exId); const e = L.state.exercises.find(x => x.id === b.exId); if (e.equip === 'barbell' && !e.bw && /below the/.test(L.plateText(b.sets[0].w, 'bar', e))) out.push(b.exId + ' under the bar'); }
+        return out; }, unit);
+      if (r.length) bad.push(unit + ' ' + day + ' ' + r.join(', '));
+      await P.browser.close();
+    }
+    ok(!bad.length, '2 and 3. the six-day demo has no stall and no load under its bar, on any of 21 dates, lb and kg', bad.slice(0, 5));
+  }
+
   // ---- The Content Security Policy in the installed build.
   {
     const ROOT = path.join(__dirname, '..'); const DIST = path.join(ROOT, 'dist');
@@ -289,6 +402,9 @@ const sess = (id, date, exId, sets) => ({ id, date, dayIdx: 0, dayId: null, dayN
     ok(html.indexOf('Content-Security-Policy') < html.indexOf('<script'), 'the policy comes before the first script, so it covers every one');
     const prev = (() => { execFileSync('node', [path.join(ROOT, 'scripts', 'build.js'), '--preview'], { stdio: 'ignore' }); return fs.readFileSync(path.join(ROOT, 'dist-preview', 'index.html'), 'utf8'); })();
     ok(/Content-Security-Policy/.test(prev), 'the preview build has it too');
+    // The look-ahead scanner can read the app's script as markup now and then;
+    // an image tag written in it was fetched as "${m.shot}" (a stray 404).
+    ok(!/<(img|source|video|audio|iframe)\b/i.test(fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8').split('<script>')[1] || ''), 'no media tag written literally in the app\'s script (\\x3cimg instead), so nothing is fetched from a template');
     const TYPES = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.woff2': 'font/woff2', '.png': 'image/png', '.webmanifest': 'application/manifest+json' };
     const server = http.createServer((req, res) => { let p = decodeURIComponent(req.url.split('?')[0]); if (p.endsWith('/')) p += 'index.html'; const f = path.join(DIST, p.replace(/^\/ironlog\//, '/')); if (!f.startsWith(DIST) || !fs.existsSync(f)) { res.writeHead(404); res.end('nf'); return; } res.writeHead(200, { 'Content-Type': TYPES[path.extname(f)] || 'application/octet-stream' }); fs.createReadStream(f).pipe(res); });
     await new Promise(r => server.listen(0, '127.0.0.1', r));
