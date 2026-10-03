@@ -4234,6 +4234,7 @@ function obView(){
   <div class="ob-card"><h2>Save your log</h2><p>Free, and on every phone you use.</p>
   <button class="btn primary block" data-act="acctOpen" data-mode="signup">Create account</button>
   <button class="btn block" data-act="acctOpen" data-mode="signin">I have an account</button></div>
+  ${ENV==='preview'?'<button class="btn block" data-act="previewCopy" style="margin-top:10px">Copy my log from Ironlog</button>':''}
   <button class="linkbtn ob-skip" data-act="obAcctLater">Not now</button>${dots(1)}</div>`;
   const imp=`<button class="ob-opt" data-act="impOpen"><b>Import my workouts</b><span>Notes, a spreadsheet, Strong, Hevy, a backup</span></button>`;
   return `<div class="ob welcome" id="obPage" data-step="start">
@@ -4247,7 +4248,7 @@ function obView(){
   <button class="ob-opt primary" data-act="obSample"><b>Pick a ready-made routine</b><span>Six plans, 3 to 6 days a week</span></button>
   <button class="ob-opt" data-act="obFree"><b>Log a workout now</b><span>Add exercises as you go</span></button>
   <button class="ob-opt" data-act="obOwn"><b>Build my own routine</b><span>Your days, your exercises</span></button>
-  ${imp}</div>
+  ${imp}${ENV==='preview'?'<button class="ob-opt" data-act="previewCopy"><b>Copy my log from Ironlog</b><span>Try this build on your real log; Ironlog is not changed</span></button>':''}</div>
   <button class="linkbtn ob-skip" data-act="demoLoad">Look around with sample data first</button>${dots(2)}</div>`;
 }
 /* First run with no sessions: three ways in. Shown only after the cloud check,
@@ -4355,7 +4356,9 @@ function coach(){
   // Scores are sorted high to low, so the steepest fall is the last one.
   const lag=I.scores.filter(x=>x.score<=-GROW_PCT);
   if(lag.length){const x=lag[lag.length-1];return {tone:'yellow',text:`${ML[x.m]} strength is down ${r1(Math.abs(x.score))}% over 6 weeks. Check sleep and recovery before adding sets.`,act:{label:`See ${ML[x.m]}`,sec:'rank',m:x.m}};}
-  if(!avg)return {tone:'green',text:'Volume advice appears here after your first full week.',act:null};
+  // Someone back from a break (nothing since before the last 4 weeks) has
+  // history but no recent weeks; "first full week" was wrong for them.
+  if(!avg)return {tone:'green',text:state.sessions.some(x=>x.date<addDays(weekStart(today()),-28))&&!state.sessions.some(x=>x.date>=addDays(weekStart(today()),-28))?'Nothing logged in the last 4 weeks. Volume advice comes back after a full week of training.':'Volume advice appears here after your first full week.',act:null};
   return {tone:'green',text:'On track. Every muscle is at or above its target and nothing has stalled. Keep going as planned.',act:null};
 }
 function coachButton(c,di){
@@ -5619,21 +5622,30 @@ function dayAxis(base,win){
    first view of Volume since r28 (V). It reads what you logged and nothing
    else (V, r29: in r28 it read the routine's plan until a full week was
    logged, which made every new person look behind): your recent average,
-   else this week so far, else nothing yet. The chart and the table use this
-   one source. */
+   else this week so far, else your last trained weeks however long ago, so
+   the chart is always drawn from real sets (V, r29: a blank card read as the
+   chart being gone). With no sessions at all it still draws, empty, with the
+   target ring. The chart and the table use this one source. */
 function regionSrc(){
   const avg=actualAvg4();if(avg)return {src:avg,label:`your ${avg._weeks}-week average`};
-  const wk=IDX().weekSets[weekStart(today())]||{};
+  const I=IDX(),cur=weekStart(today());
+  const wk=I.weekSets[cur]||{};
   if(MK.some(m=>(wk[m]||0)>0))return {src:wk,label:'this week so far',week:true};
+  const has=w=>{const x=I.weekSets[w];return !!x&&MK.some(m=>(x[m]||0)>0);};
+  const ff=firstFullWeek();const all=Object.keys(I.weekSets).filter(w=>w<cur&&has(w)).sort();
+  const full=all.filter(w=>!ff||w>=ff);const wks=(full.length?full:all).slice(-4);
+  if(wks.length){const out={};for(const w of wks)for(const m in I.weekSets[w])out[m]=(out[m]||0)+I.weekSets[w][m]/wks.length;
+    const end=addDays(wks[wks.length-1],6);
+    return {src:out,label:`your last ${wks.length===1?'trained week':wks.length+' trained weeks'}, to ${fmtDate(end)}`,old:true,end};}
   return {src:{},label:'',empty:true};
 }
 function regionBody(){
   const rs=regionSrc();
-  if(rs.empty)return state.sessions.length?`<div class="card"><p class="headline">No hard sets in the last 4 weeks.</p><p class="small muted" style="margin:0">This fills in from your hard sets, region by region, as you log them.</p></div>`:`<div class="card"><p class="headline">Nothing logged yet.</p><p class="small muted" style="margin:0">Log a session and this fills in with your own hard sets, region by region, against your weekly targets.</p></div>`;
+  if(rs.empty)return `<div class="card"><p class="headline">Nothing logged yet.</p><p class="small muted" style="margin:0 0 4px">Each region fills in with your own hard sets as you log them. The dashed ring is your weekly target.</p>${ENV==='preview'?`<p class="small" style="margin:6px 0">This preview keeps its own log, apart from Ironlog. ${previewCopyBtn('sm primary')}</p>`:''}<div class="chartbox tall"><canvas id="chRadar"></canvas></div>${chartFallback()}</div>`;
   const balSrc=rs.src;const balLabel=rs.label;
   const regs=regionBalance(balSrc);
   const low=regs.filter(x=>x.got<x.lo).map(x=>x.label);const high=regs.filter(x=>x.got>x.hi).map(x=>x.label);
-  const note=!low.length&&!high.length?'Every region is inside its target.':[low.length?`Below target${rs.week?' so far':''}: ${andList(low)}.`:'',high.length?`Above target: ${andList(high)}.`:''].filter(Boolean).join(' ')+(rs.week&&low.length?' The week is still going, so this fills in as you train.':'');
+  const note=(rs.old?`Nothing logged in the last 4 weeks, so this shows ${esc(balLabel)}. `:'')+(!low.length&&!high.length?'Every region is inside its target.':[low.length?`Below target${rs.week?' so far':''}: ${andList(low)}.`:'',high.length?`Above target: ${andList(high)}.`:''].filter(Boolean).join(' ')+(rs.week&&low.length?' The week is still going, so this fills in as you train.':''));
   const rk=[...regs].sort((a,b)=>b.pct-a.pct);
   const rh=rk.length&&rk[0].pct>0?`<p class="headline">Most trained: ${rk[0].label} at ${Math.round(rk[0].pct)}% of target. Least: ${rk[rk.length-1].label} at ${Math.round(rk[rk.length-1].pct)}%.</p>`:'<p class="headline">No volume in this range yet.</p>';
   return `<div class="card">${rh}<p class="small muted" style="margin:0 0 4px">Hard sets per region as a percentage of the middle of your weekly targets, using ${esc(balLabel)}. The dashed ring is 100%.</p><div class="chartbox tall"><canvas id="chRadar"></canvas></div>${chartFallback()}
@@ -5997,6 +6009,7 @@ function viewSettings(){
   ${G('data','Your data','','dataSec')}
   ${(()=>{const ap=acctPanel();return `${ap}<div class="panel" id="syncInfo"${ap?' style="margin-top:8px"':''}>${syncInfo()}</div>`;})()}
   ${canInstallHere()?`<div class="panel row spread" id="installPanel" style="margin-top:8px"><p class="small" style="margin:0;flex:1 1 180px"><b>Install the app.</b> Full screen, offline, one tap from your home screen.</p><button class="btn sm primary" data-act="install">${/^ios/.test(installKind())?'Add to Home Screen':'Install'}</button></div>`:''}
+  ${ENV==='preview'?`<div class="panel row spread" style="margin-top:8px"><p class="small" style="margin:0;flex:1 1 180px"><b>This preview keeps its own log.</b> Copy your real one in to try this build on it. Ironlog is not changed.</p>${previewCopyBtn('sm primary')}</div>`:''}
   ${privacyLine()}
   ${backupDue()?`<p class="callout yellow" style="margin:10px 0 0"><b>Backup due.</b> ${s.lastExport?`Last backup file ${fmtDate(s.lastExport)}.`:'No backup file yet.'} ${cloud.on?'Export one below; the cloud copy mirrors deletions, so it is not a backup.':'This device holds the only copy.'}</p>`:''}
   ${storageOk?'':'<p class="small" style="color:var(--red)">This browser is blocking local storage, so this device keeps nothing between reloads without cloud sync.</p>'}
@@ -6719,6 +6732,24 @@ function impSheet(m){
   <button class="btn primary block" style="margin-top:12px" data-act="impGo" ${b.sessions.length?'':'disabled'}>Import ${b.sessions.length} session${b.sessions.length===1?'':'s'}</button>
   <button class="btn block" style="margin-top:6px" data-act="impBack">Back</button></div></div>`;
 }
+/* The preview only (r29, V): the preview keeps its own log so nothing tried
+   there reaches the real one, which left its Stats empty. This copies the
+   real log in, read-only: the live app's copy on this phone when there is one
+   (Android, or both opened in the same browser tab), else the account's cloud
+   copy (an iPhone keeps each home-screen app's storage apart). The one with
+   more sessions wins. The live app and its table are never written. */
+async function liveLogFetch(){
+  let local=null;
+  try{const raw=localStorage.getItem('ironlog.v1');if(raw)local=normalize(JSON.parse(raw));}catch(e){local=null;}
+  let remote=null,err=null;
+  if(typeof window.ironlogLiveDocs==='function'&&acct.user){
+    try{const parts={};for(const d of await window.ironlogLiveDocs()){if(!isChunkId(d.id)||!d.data||typeof d.data.json!=='string')continue;try{parts[d.id]=JSON.parse(d.data.json);}catch(e){/* an unreadable chunk is skipped */}}
+      if(Object.keys(parts).length)remote=assemble(parts);}catch(e){err=e;}
+  }
+  const best=[local,remote].filter(Boolean).sort((a,b)=>realCount(b)-realCount(a))[0]||null;
+  return {st:best&&realCount(best)?best:null,err};
+}
+function previewCopyBtn(cls){return ENV==='preview'?`<button class="btn ${cls||''}" data-act="previewCopy">Copy my log from Ironlog</button>`:'';}
 function importData(text){
   let obj;try{obj=JSON.parse(text);}catch(e){toast('That is not valid backup text');return;}
   const s=obj&&obj.state?obj.state:obj;
@@ -7132,6 +7163,18 @@ const ACT={
     toast(`Imported ${b.sessions.length} session${b.sessions.length===1?'':'s'}${b.newEx.length?`, ${b.newEx.length} new exercise${b.newEx.length===1?'':'s'}`:''}`,true);
   },
   bestsAll(){ui.bestsAll=true;rerenderKeepScroll();},
+  async previewCopy(){
+    if(ENV!=='preview')return;
+    toast('Looking for your Ironlog log');
+    const {st,err}=await liveLogFetch();
+    if(!st){
+      if(!acct.user&&AUTH()){confirmBox('Sign in first','This preview keeps its own log. To copy your real one in, sign in here with your Ironlog account. Ironlog itself is not changed.','Sign in',()=>ACT.acctOpen({dataset:{mode:'signin'}}));return;}
+      toast(err?`Could not read your Ironlog log: ${err.message}`:'No Ironlog log found for this account or on this phone.',null,6000);return;}
+    const n=realCount(st);st.draft=null;
+    const go=()=>{snapshot();state=st;commit();closeModal();ui.tab='today';render();toast(`Copied ${n} session${n===1?'':'s'} from Ironlog. Ironlog is unchanged.`,true);};
+    if(realCount(state)||state.draft)confirmBox('Replace the preview log?',`Your Ironlog log has ${n} session${n===1?'':'s'}. The copy replaces everything in this preview; Ironlog itself is not changed. You can step this back with Undo.`,'Copy my log',go);
+    else go();
+  },
   obSample(){openModal({kind:'templates',from:'welcome'});},
   obAcctLater(){try{localStorage.setItem(OB_ACCT,'later');}catch(e){/* per device only */}window.scrollTo(0,0);render();},
   obAcctBack(){try{localStorage.removeItem(OB_ACCT);}catch(e){/* nothing to clear */}window.scrollTo(0,0);render();},
@@ -8403,7 +8446,7 @@ function swapPrompt(b,reason){
 }
 
 window.__onLib=(which)=>{if((which==='chart'&&ui.tab==='dash')||(which==='sortable'&&ui.tab==='program'))rerenderKeepScroll();};
-window.__ironlog={get state(){return state;},set state(v){state=v;},ENV,KEY,andList,fitTargets,firstFullWeek,moveBlock,BANDS,installSheet,siteHost,greyW,effW,greyR,lighterLoad,incOf,swapPlan,planSetsPerWeek,weekNeed,stepRead,e1inv,rtfAt,rtfOf,rtfBand,calStats,rirEff,isHard,setCredit,tonnage,loadMode,loadWords,loadNote,progStep,jumpCap,setSecs,setupSecs,recovery,rolling7,rankDays,rankExercises,isCompound,patternOf,noE1,whtrLine,exHeadline,remainMin,shortPlan,weekPlan,cycleProjection,lastLighterWeek,regionBalance,parseHeight,mixCheck,swapCands,eqPlan,exportCSV,importData,chunksOf,assemble,sessionMuscles,TRACK_ONLY,cloud,Hx,mergeChunk,baseOf,sync:()=>cq(cloudPull),TEMPLATES,lastRFor,impDate,impRows,impNorm,impMatch,impFromText,impFromTable,impHeader,impBuild,impStart,impXlsx,parseSets,undoStack,undoRestore,undoForget,allTimeBests,bestsBoard,obActive,fmtW,rirUsual,rirEst,routineFromTemplate,plannedSets,map3d:()=>({state:B3.state,fail:B3.fail,meshes:B3.meshes.length,yaw:B3.yaw,glow:Object.keys(B3.mats).filter(m=>B3.mats[m].emissiveIntensity>0),canvas:!!document.querySelector('#bm3d canvas'),colors:Object.fromEntries(Object.entries(B3.mats).map(([m,mt])=>[m,'#'+mt.color.getHexString()])),pick:(x,y)=>map3dPick(x,y),want:map3dColors()}),cloudState:()=>({on:cloud.on,status:cloud.status,err:cloud.err,uid:cloud.uid,acct:cloud.acct}),acctUser:()=>acct.user,acctWaiting:()=>!!acctWait.pw,flush:()=>cq(cloudFlush),backupDue,routineUpdates,planFor,platesMode,plateText,chunksOf,IDX,suggest,e1,render,ACT,ui,makeDemo,invalidate,normalize,snapshot,saveNow,timer,weekStats,weekStart,today,EX,blockProgress,dayMinutes,weekStreak,coach,tonnageNow,livePR,exProjection,movers,stalledIds,muscleStatus,actualAvg4,plannedPerWeek,parseSets,aiSetsValid,fillSets,newBlock,lastNoteOf,sizeRows,sessionMuscleSets,sessionCapNote,routineClutter,aiDigest,debriefPrompt,reviewPrompt,swapPrompt,AI,sameRR};
+window.__ironlog={get state(){return state;},set state(v){state=v;},ENV,KEY,andList,liveLogFetch,regionSrc,fitTargets,firstFullWeek,moveBlock,BANDS,installSheet,siteHost,greyW,effW,greyR,lighterLoad,incOf,swapPlan,planSetsPerWeek,weekNeed,stepRead,e1inv,rtfAt,rtfOf,rtfBand,calStats,rirEff,isHard,setCredit,tonnage,loadMode,loadWords,loadNote,progStep,jumpCap,setSecs,setupSecs,recovery,rolling7,rankDays,rankExercises,isCompound,patternOf,noE1,whtrLine,exHeadline,remainMin,shortPlan,weekPlan,cycleProjection,lastLighterWeek,regionBalance,parseHeight,mixCheck,swapCands,eqPlan,exportCSV,importData,chunksOf,assemble,sessionMuscles,TRACK_ONLY,cloud,Hx,mergeChunk,baseOf,sync:()=>cq(cloudPull),TEMPLATES,lastRFor,impDate,impRows,impNorm,impMatch,impFromText,impFromTable,impHeader,impBuild,impStart,impXlsx,parseSets,undoStack,undoRestore,undoForget,allTimeBests,bestsBoard,obActive,fmtW,rirUsual,rirEst,routineFromTemplate,plannedSets,map3d:()=>({state:B3.state,fail:B3.fail,meshes:B3.meshes.length,yaw:B3.yaw,glow:Object.keys(B3.mats).filter(m=>B3.mats[m].emissiveIntensity>0),canvas:!!document.querySelector('#bm3d canvas'),colors:Object.fromEntries(Object.entries(B3.mats).map(([m,mt])=>[m,'#'+mt.color.getHexString()])),pick:(x,y)=>map3dPick(x,y),want:map3dColors()}),cloudState:()=>({on:cloud.on,status:cloud.status,err:cloud.err,uid:cloud.uid,acct:cloud.acct}),acctUser:()=>acct.user,acctWaiting:()=>!!acctWait.pw,flush:()=>cq(cloudFlush),backupDue,routineUpdates,planFor,platesMode,plateText,chunksOf,IDX,suggest,e1,render,ACT,ui,makeDemo,invalidate,normalize,snapshot,saveNow,timer,weekStats,weekStart,today,EX,blockProgress,dayMinutes,weekStreak,coach,tonnageNow,livePR,exProjection,movers,stalledIds,muscleStatus,actualAvg4,plannedPerWeek,parseSets,aiSetsValid,fillSets,newBlock,lastNoteOf,sizeRows,sessionMuscleSets,sessionCapNote,routineClutter,aiDigest,debriefPrompt,reviewPrompt,swapPrompt,AI,sameRR};
 render();
 wakeOn();
 timerResume();
