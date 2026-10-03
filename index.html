@@ -388,6 +388,12 @@ ul.items:empty::before{content:"Drop or add exercises here";display:block;paddin
 .bh-m{flex:1 1 auto;min-width:0}
 .block.folded{display:flex;align-items:center}
 .block.folded .bgrip{margin:0 -10px 0 6px}.block.folded .bgrip::before{left:-6px;right:-12px}
+/* During a drag every exercise is one line, so the list fits on the screen;
+   the copy under the finger too (Sortable sizes it from the open block). */
+body.blkdrag #view section.block:not(.folded),body.blkdrag .sortable-fallback{padding:4px 12px 4px 16px;margin:6px 0;height:auto!important}
+body.blkdrag #view section.block:not(.folded)>:not(.bh),body.blkdrag .sortable-fallback>:not(.bh),body.blkdrag .block .bh>:not(.bgrip):not(.bh-m),body.blkdrag .block .bh-m>:not(h3){display:none}
+body.blkdrag .block .bh{align-items:center}body.blkdrag .block .bgrip{margin:0 0 0 -8px}
+body.blkdrag .block .bh h3{font-size:17px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;overflow-wrap:normal}
 .block.folded .bfold{min-width:0;flex:1 1 auto;width:auto}
 .dgrip{width:26px;height:40px;display:inline-flex;align-items:center;justify-content:center;cursor:grab;color:var(--muted);font-size:19px;touch-action:none;flex:none;user-select:none;-webkit-user-select:none;margin-left:-4px}
 .dfold{background:transparent!important;border:0!important}
@@ -2404,9 +2410,14 @@ function fbSheet(m){
   <button type="button" class="btn primary block" data-act="fbSend" ${m.busy?'disabled':''}>${m.busy?'Sending':F?'Send':'Copy report'}</button></div></div>`;
 }
 /* The owner's inbox: the reports, newest first, read-only. */
+/* A report's screenshot is written by whoever sent it, through the API as
+   well as the app, so the Inbox shows it only when it is a plain base64 JPEG
+   from start to end. Checking only the start let a quote end the src and add
+   script to the owner's page (found in the r29 review). */
+const FB_SHOT_RE=/^data:image\/jpeg;base64,[A-Za-z0-9+/]+={0,2}$/;
 function fbInboxSheet(m){
   const it=m.items;
-  const body=m.err?`<p class="small" role="alert" style="color:var(--red)">${esc(m.err)}</p>`:!it?'<p class="muted">Loading</p>':!it.length?'<p class="muted">No feedback yet.</p>':`<ul class="clist fbinbox">${it.map(x=>`<li><div style="min-width:0;flex:1"><p class="small" style="margin:0"><span class="tag ${x.category==='bug'?'red':x.category==='idea'?'green':'blue'}">${esc(x.category)}</span> <span class="muted">${esc(String(x.created_at||'').slice(0,16).replace('T',' '))}${x.reply_to?` · ${esc(x.reply_to)}`:''}</span></p><p style="margin:4px 0 0;white-space:pre-wrap;overflow-wrap:anywhere">${esc(x.message)}</p>${x.screenshot&&/^data:image\/jpeg;base64,/.test(x.screenshot)?`<img class="fbthumb" src="${x.screenshot}" alt="Screenshot">`:''}${x.issue_url&&/^https:\/\/github\.com\//.test(x.issue_url)?`<p class="small" style="margin:4px 0 0"><a href="${esc(x.issue_url)}" target="_blank" rel="noopener">GitHub issue</a></p>`:''}<details class="small muted"><summary>Attached by the app</summary><pre class="fbctx">${esc(JSON.stringify(x.context||{},null,1))}</pre></details></div></li>`).join('')}</ul>`;
+  const body=m.err?`<p class="small" role="alert" style="color:var(--red)">${esc(m.err)}</p>`:!it?'<p class="muted">Loading</p>':!it.length?'<p class="muted">No feedback yet.</p>':`<ul class="clist fbinbox">${it.map(x=>`<li><div style="min-width:0;flex:1"><p class="small" style="margin:0"><span class="tag ${x.category==='bug'?'red':x.category==='idea'?'green':'blue'}">${esc(x.category)}</span> <span class="muted">${esc(String(x.created_at||'').slice(0,16).replace('T',' '))}${x.reply_to?` · ${esc(x.reply_to)}`:''}</span></p><p style="margin:4px 0 0;white-space:pre-wrap;overflow-wrap:anywhere">${esc(x.message)}</p>${x.screenshot&&FB_SHOT_RE.test(x.screenshot)?`<img class="fbthumb" src="${esc(x.screenshot)}" alt="Screenshot">`:''}${x.issue_url&&/^https:\/\/github\.com\//.test(x.issue_url)?`<p class="small" style="margin:4px 0 0"><a href="${esc(x.issue_url)}" target="_blank" rel="noopener">GitHub issue</a></p>`:''}<details class="small muted"><summary>Attached by the app</summary><pre class="fbctx">${esc(JSON.stringify(x.context||{},null,1))}</pre></details></div></li>`).join('')}</ul>`;
   return `<div class="sheet fixed" role="dialog" aria-modal="true" aria-labelledby="fbiH"><div class="sheet-h"><h3 id="fbiH">Feedback inbox</h3><button class="ib" aria-label="Close" data-act="mClose">✕</button></div><div class="sheet-scroll">${body}</div></div>`;
 }
 /* A picked photo, shrunk to 1280 px on its long side as JPEG, so a report
@@ -3729,8 +3740,14 @@ function mergeDraft(base,cur,pre){
     const bh=b?canon(b):null,ch=c?canon(c):null,ph=pv?canon(pv):null;
     if(ch===bh)return pv;if(ph===bh)return c;return c;};
   const out=[];
+  // An action that left the exercises' order alone (a Settings change, a
+  // layout reset) must not undo a reorder made after it, so the order now is
+  // kept (r29: dragging exercises made that common). An action that changed
+  // the order or the list puts back the order from before it.
+  const ord=l=>l.map(x=>x[0]).join('|');
+  const keep=ord(keyed(base.ex))===ord(P);
   // Keep the order of the version before the action, then anything added since.
-  for(const [k] of P){const v=pick(k);if(v)out.push(v);}
+  for(const [k] of keep?C:P){const v=pick(k);if(v)out.push(v);}
   for(const [k,c] of C){if(!P.some(x=>x[0]===k)){const v=pick(k);if(v&&!out.includes(v))out.push(v);}}
   const res={...cur,ex:out};
   for(const f of ['notes','dayName','deload','light','limited','cardio','chk']){if(canon(cur[f])===canon(base[f]))res[f]=pre[f];}
@@ -3937,7 +3954,7 @@ const charts=[];let sortables=[];
 function killDynamic(){
   // A re-render in the middle of a drag (a cloud refresh) would leave Sortable's
   // floating copy of the block on the page; it goes with the old list.
-  blockDrag=false;document.querySelectorAll('.sortable-fallback,.sortable-ghost').forEach(e=>{if(!e.closest('#view'))e.remove();});
+  blockDrag=false;if(document.body.classList.contains('blkdrag')){document.body.classList.remove('blkdrag');const v=document.getElementById('view');if(v)v.style.paddingBottom='';}if(typeof edgeScroll!=='undefined')edgeScroll.stop();document.querySelectorAll('.sortable-fallback,.sortable-ghost').forEach(e=>{if(!e.closest('#view'))e.remove();});
   while(charts.length){try{charts.pop().destroy();}catch(e){/* chart already gone */}}sortables.forEach(s=>{try{s.destroy();}catch(e){/* list already gone */}});sortables=[];}
 const ACCENTS=[['blue','Blue'],['volt','Volt'],['ember','Ember']];
 function applyTheme(){const t=state.settings.theme;if(t==='system')delete document.documentElement.dataset.theme;else document.documentElement.dataset.theme=t;
@@ -6054,7 +6071,7 @@ function renderModalBody(){
     <label class="field">Name<input type="text" data-ebind="name" value="${esc(e.name)}"></label>
     <div class="grid2"><label class="field">Primary muscle<select data-ebind="primary">${e.primary?'':'<option value="" selected disabled>Pick one</option>'}${MUSCLES.map(([k,l])=>`<option value="${k}" ${e.primary===k?'selected':''}>${l}</option>`).join('')}</select></label>
     <label class="field">Equipment<select data-ebind="equip">${EQUIP.map(([k,l])=>`<option value="${k}" ${e.equip===k?'selected':''}>${l}</option>`).join('')}</select></label></div>
-    <label class="field"><span>Movement</span> ${tipi('Compound: a press, row, pull-up, squat or hinge. Isolation: one joint, like a curl or a raise. It sets the size of load increases (about 2.5% of the load on compound lifts, 5% on isolation), the setup time in estimates, which RIR calibration group the lift joins, and what Short on time keeps.','About movement')}<select data-ebind="kind"><option value="" ${e.kind?'':'selected'}>Automatic (${autoCompound({...e,kind:undefined})?'compound':'isolation'})</option><option value="compound" ${e.kind==='compound'?'selected':''}>Compound</option><option value="iso" ${e.kind==='iso'?'selected':''}>Isolation</option></select></label>
+    <label class="field"><span>Movement</span> ${tipi('Compound: a press, row, pull-up, squat, or hinge. Isolation: one joint, like a curl or a raise. It sets the size of load increases (about 2.5% of the load on compound lifts, 5% on isolation), the setup time in estimates, which RIR calibration group the lift joins, and what Short on time keeps.','About movement')}<select data-ebind="kind"><option value="" ${e.kind?'':'selected'}>Automatic (${autoCompound({...e,kind:undefined})?'compound':'isolation'})</option><option value="compound" ${e.kind==='compound'?'selected':''}>Compound</option><option value="iso" ${e.kind==='iso'?'selected':''}>Isolation</option></select></label>
     ${e.bw?'':(()=>{const def=loadWords({...e,load:undefined});const has=!m.isNew&&state.sessions.some(s=>s.ex.some(b=>b.exId===e.id));
       return `<label class="field"><span class="hastip" data-tip="${esc('What the number you type means. Estimates and targets stay in this frame; weight lifted counts both dumbbells or both sides.'+(has?' Changing it does not convert sets already logged.':''))}">Weight is entered as</span><select data-ebind="load"><option value="auto" ${!e.load?'selected':''}>Default for this equipment: ${esc(def)}</option>${LOAD_MODES.map(([k,l])=>`<option value="${k}" ${e.load===k?'selected':''}>${l}</option>`).join('')}</select></label>`;})()}
     <div><p class="small muted">Helper muscles (count as half a set)</p><div class="chips">${MUSCLES.filter(([k])=>k!==e.primary).map(([k,l])=>`<button class="chip ${e.secondary.includes(k)?'on':''}" data-act="secToggle" data-m="${k}">${l}</button>`).join('')}</div></div>
@@ -8080,13 +8097,50 @@ function moveBlock(a,b){
   keepOpen(()=>{move(d.ex,a,b);fixSupersets(d.ex.map(x=>x.plan).filter(Boolean));});
   saveNow();return true;
 }
+/* While an exercise is dragged, a finger near the top or bottom of the space
+   between the header and the tab bar (or the rest timer) scrolls the page,
+   faster the closer it is. Sortable's own scrolling did not run for a touch
+   drag on the window. Sortable re-reads the target every 50 ms on its own, so
+   a finger held still keeps moving the exercise as the page scrolls.
+   A var, so killDynamic (which can run before this line on the first render)
+   reads it as undefined instead of throwing. */
+var edgeScroll=(()=>{let y=null,raf=0;
+  const mv=e=>{const t=e.touches?e.touches[0]:e;if(t)y=t.clientY;};
+  // Both bars are position:fixed, whose offsetParent is always null, so
+  // getClientRects is what tells a shown bar from a hidden one.
+  const zone=()=>{const h=document.querySelector('header.top');const top=h?h.getBoundingClientRect().bottom:0;let bot=window.innerHeight;
+    for(const el of [document.getElementById('tabs'),document.getElementById('timer')]){if(el&&!el.hidden&&el.getClientRects().length){const r=el.getBoundingClientRect();if(r.height)bot=Math.min(bot,r.top);}}return [top,bot];};
+  const step=()=>{raf=0;if(!blockDrag)return;if(y!=null){const [top,bot]=zone();const edge=56;let v=0;
+      if(y<top+edge)v=-Math.ceil((top+edge-y)/edge*14);else if(y>bot-edge)v=Math.ceil((y-(bot-edge))/edge*14);
+      if(v)window.scrollBy(0,Math.max(-20,Math.min(20,v)));}
+    raf=requestAnimationFrame(step);};
+  return {start(){y=null;document.addEventListener('touchmove',mv,{passive:true});document.addEventListener('pointermove',mv,{passive:true});if(!raf)raf=requestAnimationFrame(step);},
+    stop(){document.removeEventListener('touchmove',mv);document.removeEventListener('pointermove',mv);if(raf)cancelAnimationFrame(raf);raf=0;y=null;}};})();
+/* The exercises open again at the drop. The scroll is moved with them, so
+   the one just dropped stays where the finger left it instead of the page
+   going back to a position measured on the one-line list (r29 review). */
+function dragOpenUp(it){
+  const t0=it&&it.isConnected?it.getBoundingClientRect().top:null;
+  document.body.classList.remove('blkdrag');const v=$('#view');if(v)v.style.paddingBottom='';
+  if(t0!=null){const t1=it.getBoundingClientRect().top;if(t1!==t0)window.scrollBy(0,t1-t0);}
+}
 function mountBlockSortable(){
   if(!window.Sortable||!state.draft)return;const v=$('#view');if(!v||v.querySelectorAll('section.block').length<2)return;
   sortables.push(window.Sortable.create(v,{group:{name:'blocks',pull:false,put:false},handle:'.bgrip',draggable:'section.block',animation:150,fallbackOnBody:true,
     // A field still focused when the drag starts would get its focus back by
     // position after the move, on whichever exercise landed there.
-    onStart:()=>{blockDrag=true;clearTimeout(foldT);foldT=null;const f=document.activeElement;if(f&&f.matches&&f.matches('#view input,#view textarea')){try{f.blur();}catch(e){/* focus is best effort */}}},
-    onEnd:e=>{blockDrag=false;const a=e.oldDraggableIndex,b=e.newDraggableIndex;if(a==null||b==null||a===b||!state.draft){rerenderKeepScroll();return;}
+    onStart:e=>{blockDrag=true;clearTimeout(foldT);foldT=null;const f=document.activeElement;if(f&&f.matches&&f.matches('#view input,#view textarea')){try{f.blur();}catch(x){/* focus is best effort */}}
+      // An open exercise is taller than the screen, so the next one started
+      // off-screen and a drag could only move one place (r29 review). While
+      // dragging, every exercise shows only its title line; the page is
+      // scrolled so the one held stays under the finger.
+      // When the shorter page cannot scroll that far, room is added below the
+      // list for the drag, or the held one would leave the finger.
+      const it=e.item,t0=it.getBoundingClientRect().top;document.body.classList.add('blkdrag');
+      const want=window.scrollY+it.getBoundingClientRect().top-t0,se=document.scrollingElement,room=want-(se.scrollHeight-window.innerHeight);
+      if(room>0){const v=$('#view');if(v)v.style.paddingBottom=Math.ceil(room)+'px';}
+      window.scrollTo(0,want);edgeScroll.start();},
+    onEnd:e=>{blockDrag=false;edgeScroll.stop();dragOpenUp(e.item);const a=e.oldDraggableIndex,b=e.newDraggableIndex;if(a==null||b==null||a===b||!state.draft){rerenderKeepScroll();return;}
       moveBlock(a,b);rerenderKeepScroll();toast(`Moved to position ${b+1}`);}}));
 }
 function sgrip(label){return `<span class="sgrip" role="button" tabindex="0" aria-label="Move ${esc(label)}: drag, or use the arrow keys" title="Drag to move">⠿</span>`;}

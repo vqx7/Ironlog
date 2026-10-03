@@ -60,6 +60,10 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
       return [...out];
     });
     ok(!hits.length, 'no list of three or more without the serial comma, on any tab, tip or the Guide', hits);
+    // The sheets and tips not open above (the exercise editor, pickers): the source itself, outside code comments.
+    const src = require('fs').readFileSync(require('path').join(__dirname, '..', 'index.html'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').split('\n').filter(l => !/^\s*\/\//.test(l)).join('\n');
+    const srcHits = [...src.matchAll(/\b[A-Za-z]+(?:-[a-z]+)?, [a-z]+(?:-[a-z]+)?, [a-z]+(?:-[a-z]+)? (?:and|or) [a-z]+/g)].map(m => m[0]).filter(x => !/theme and accent/.test(x)); // one item ("theme and accent") in a longer list that ends ", and priority muscles"
+    ok(!srcHits.length, 'no list of three or more one-word items without the serial comma in the source outside comments', srcHits);
     ok(!P.errors.length, 'no page errors (comma)', P.errors);
     await P.browser.close();
   }
@@ -81,9 +85,12 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
     const cdp = await page.context().newCDPSession(page);
     const tp = (type, x, y) => cdp.send('Input.dispatchTouchEvent', { type, touchPoints: type === 'touchEnd' ? [] : [{ x, y }] });
     await page.locator('.bgrip[data-b="2"]').scrollIntoViewIfNeeded();
-    const gb = await page.locator('.bgrip[data-b="2"]').boundingBox(); const tb = await page.locator('section.block[data-bi="1"]').boundingBox();
-    const x0 = gb.x + gb.width / 2, y0 = gb.y + gb.height / 2, y1 = tb.y + 5;
+    const gb = await page.locator('.bgrip[data-b="2"]').boundingBox();
+    const x0 = gb.x + gb.width / 2, y0 = gb.y + gb.height / 2;
     await tp('touchStart', x0, y0); await wait(50);
+    await tp('touchMove', x0, y0 + 3); await wait(150);
+    // Where the exercise above is once the list has gone to one line each, as a finger aims at what it sees.
+    const y1 = await ev(() => Math.round(document.querySelector('#view section.block[data-bi="1"]').getBoundingClientRect().top + 5));
     for (let k = 1; k <= 20; k++) { await tp('touchMove', x0, y0 + (y1 - y0) * k / 20); await wait(25); }
     await wait(200); await tp('touchEnd', x0, y1); await wait(400);
     const after = await ids();
@@ -130,6 +137,9 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
     ok(ss.n >= 4 && ss.tags.every(x => x == null), 'a move that splits a superset clears both tags', ss);
     const ss2 = await ev(() => { const L = window.__ironlog; const d = L.state.draft; d.ex[0].plan.ss = 'P2'; d.ex[1].plan.ss = 'P2'; const ids = [d.ex[0].exId, d.ex[1].exId]; L.moveBlock(d.ex.length - 1, 2); return d.ex.filter(x => ids.includes(x.exId)).map(x => x.plan.ss); });
     ok(ss2.every(x => x === 'P2'), 'a move elsewhere leaves an intact superset alone', ss2);
+    // Undo of an earlier action that did not touch the order keeps a reorder made after it, and the sets.
+    const un = await ev(async () => { const L = window.__ironlog; const d = L.state.draft; d.ex[0].sets[0].done = true; d.ex[0].sets[0].r = 8; L.saveNow(); const first = d.ex[0].exId; L.state.settings.hidden = ['today:map']; L.saveNow(); L.ACT.layoutDefault(); await new Promise(r => setTimeout(r, 50)); L.moveBlock(0, 2); const moved = L.state.draft.ex.map(b => b.exId).join(); await L.ACT.undo(); await new Promise(r => setTimeout(r, 100)); const b = L.state.draft.ex.find(x => x.exId === first); return { kept: L.state.draft.ex.map(b => b.exId).join() === moved, done: !!b.sets[0].done && +b.sets[0].r === 8, undone: L.state.settings.hidden.join() === 'today:map' }; });
+    ok(un.kept && un.done && un.undone, 'Undo of an earlier Settings change undoes it, and keeps the session order and the sets', un);
     // 320 px: a finished (folded) exercise with its handle fits the screen.
     for (let i = 0; i < 8; i++) { const sel = `[data-act="sDone"][data-b="0"][data-s="${i}"]`; if (await page.$(sel)) { await page.tap(sel); await wait(80); } }
     await wait(2600);
@@ -137,6 +147,74 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
     const w320 = await ev(() => { const f = document.querySelector('#view section.block.folded'); const r = f && f.getBoundingClientRect(); const gr = f && f.querySelector('.bgrip'); const g = gr && gr.getBoundingClientRect(); const cy = g && g.top + g.height / 2, cx = g && g.left + g.width / 2; let hit = 0; if (g) for (let dx = -40; dx <= 40; dx++) if (document.elementFromPoint(cx + dx, cy) === gr) hit++; return { folded: !!f, sw: document.documentElement.scrollWidth, right: r && Math.round(r.right), grip: hit, h: g && Math.round(g.height) }; });
     ok(w320.folded && w320.sw <= 320 && w320.right <= 320 && w320.grip >= 44 && w320.h >= 44, 'at 320 px a folded exercise and its 44 px handle (touch area) fit, no sideways scroll', w320);
     ok(!P.errors.length, 'no page errors (review fixes, session)', P.errors);
+    await P.browser.close();
+  }
+
+  // ---- A long drag: open exercises are taller than the screen, so during a
+  // drag each shows one line, and the page scrolls at the top and bottom edges.
+  {
+    const P = await open('index.html', { touch: true, w: 390, h: 700, clock: '2026-09-24T18:00:00' });
+    const { page } = P; const ev = (f, a) => page.evaluate(f, a);
+    await ev(() => { const L = window.__ironlog; L.state.settings.onboarded = true; L.makeDemo(); localStorage.setItem('ironlog.v1.loadAsk', '1'); localStorage.setItem('ironlog.v1.tipWake', '1'); L.ui.tab = 'today'; L.ui.todayDay = 0; L.render(); });
+    await page.click('.hero [data-act="startSession"]:not([data-light])'); await wait(300);
+    const cdp = await page.context().newCDPSession(page);
+    const tp = (type, x, y) => cdp.send('Input.dispatchTouchEvent', { type, touchPoints: type === 'touchEnd' ? [] : [{ x, y }] });
+    const ids = () => ev(() => window.__ironlog.state.draft.ex.map(b => b.exId));
+    await page.locator('.bgrip[data-b="0"]').scrollIntoViewIfNeeded();
+    const tall = await ev(() => Math.round(document.querySelectorAll('#view section.block')[1].getBoundingClientRect().top - window.innerHeight));
+    // Down: the first exercise past the second, which starts off-screen.
+    await page.locator('.bgrip[data-b="0"]').scrollIntoViewIfNeeded();
+    let gb = await page.locator('.bgrip[data-b="0"]').boundingBox(); let x0 = gb.x + gb.width / 2, y0 = gb.y + gb.height / 2;
+    const a0 = await ids();
+    await tp('touchStart', x0, y0); await wait(60);
+    for (let k = 1; k <= 15; k++) { await tp('touchMove', x0, y0 + (560 - y0) * k / 15); await wait(30); }
+    const mid = await ev(() => ({ cls: document.body.classList.contains('blkdrag'), gap: (() => { const bs = [...document.querySelectorAll('#view section.block')].filter(b => !b.classList.contains('sortable-chosen')); return Math.round(bs[1].getBoundingClientRect().top - bs[0].getBoundingClientRect().top); })() }));
+    await tp('touchEnd', x0, 560); await wait(400);
+    const a1 = await ids();
+    ok(tall > 0 && mid.cls && mid.gap < 70 && a1.indexOf(a0[0]) >= 2, 'a long drag down: each exercise shows one line while dragging, so the first moves past ones that started off-screen', { belowScreen: tall, mid, to: a1.indexOf(a0[0]) });
+    ok(!(await ev(() => document.body.classList.contains('blkdrag'))) && (await ev(() => !!document.querySelector('#view section.block:not(.folded) .sg'))), 'after the drop every exercise opens again', null);
+    // Up, from the bottom of the list to the top: the page scrolls at the edge.
+    const last = a1.length - 1;
+    await page.locator(`.bgrip[data-b="${last}"]`).scrollIntoViewIfNeeded();
+    gb = await page.locator(`.bgrip[data-b="${last}"]`).boundingBox(); x0 = gb.x + gb.width / 2; y0 = gb.y + gb.height / 2;
+    const sy0 = await ev(() => window.scrollY);
+    await tp('touchStart', x0, y0); await wait(60);
+    for (let k = 1; k <= 10; k++) { await tp('touchMove', x0, y0 + (75 - y0) * k / 10); await wait(30); }
+    for (let k = 0; k < 50; k++) { await tp('touchMove', x0, 75 + (k % 2)); await wait(40); }
+    const sy1 = await ev(() => window.scrollY);
+    await tp('touchEnd', x0, 75); await wait(400);
+    const a2 = await ids();
+    ok(sy0 > 200 && sy1 < sy0 - 200 && a2[0] === a1[last], 'held at the top edge, the page scrolls and the last exercise reaches the top', { sy0, sy1, to: a2.indexOf(a1[last]) });
+    // A drop keeps the page where it was: the exercise moved is on screen afterwards.
+    await ev(() => { window.scrollTo(0, 0); });
+    await page.locator('.bgrip[data-b="3"]').scrollIntoViewIfNeeded(); await ev(() => window.scrollBy(0, 200)); await wait(100);
+    gb = await page.locator('.bgrip[data-b="3"]').boundingBox(); x0 = gb.x + gb.width / 2; y0 = gb.y + gb.height / 2;
+    const b0 = await ids(); const sy2 = await ev(() => window.scrollY);
+    await tp('touchStart', x0, y0); await wait(60); await tp('touchMove', x0, y0 + 2); await wait(150); await tp('touchEnd', x0, y0 + 2); await wait(400);
+    const jit = await ev((id) => { const i = window.__ironlog.state.draft.ex.findIndex(b => b.exId === id); const r = document.querySelector(`#view section.block[data-bi="${i}"] .bgrip`).getBoundingClientRect(); return { i, top: Math.round(r.top), sy: window.scrollY }; }, b0[3]);
+    ok(jit.i === 3 && Math.abs(jit.top - Math.round(gb.y)) < 30 && jit.sy > 0, 'a 2 px wiggle on a handle leaves the exercise in place and the page where it was', { jit, before: Math.round(gb.y), sy2 });
+    await tp('touchStart', x0, y0); await wait(60); await tp('touchMove', x0, y0 + 3); await wait(150);
+    const y4 = await ev(() => { const bs = [...document.querySelectorAll('#view section.block')].filter(b => !b.classList.contains('sortable-chosen')); return Math.round(bs[4].getBoundingClientRect().top + 30); });
+    for (let k = 1; k <= 10; k++) { await tp('touchMove', x0, y0 + (y4 - y0) * k / 10); await wait(30); }
+    await tp('touchEnd', x0, y4); await wait(400);
+    const drop = await ev((id) => { const i = window.__ironlog.state.draft.ex.findIndex(b => b.exId === id); const r = document.querySelector(`#view section.block[data-bi="${i}"]`).getBoundingClientRect(); return { i, top: Math.round(r.top), bottom: Math.round(r.bottom), vh: window.innerHeight }; }, b0[3]);
+    ok(drop.i >= 4 && drop.top < drop.vh && drop.bottom > 52, 'after a drop the exercise moved is on screen, not back at the top of the session', drop);
+    // The bottom edge sits above the rest timer when it shows.
+    await ev(() => { window.scrollTo(0, 0); });
+    const tk = await ev(() => { const s = document.querySelector('[data-act="sDone"][data-b="1"][data-s="0"]'); s.scrollIntoView({ block: 'center' }); return true; });
+    await page.tap('[data-act="sDone"][data-b="1"][data-s="0"]'); await wait(300);
+    const tm = await ev(() => { const t = document.getElementById('timer'); return t && !t.hidden ? Math.round(t.getBoundingClientRect().top) : null; });
+    await ev(() => { window.scrollTo(0, 0); }); await wait(100);
+    gb = await page.locator('.bgrip[data-b="0"]').boundingBox(); x0 = gb.x + gb.width / 2; y0 = gb.y + gb.height / 2;
+    const sy5 = await ev(() => window.scrollY);
+    await tp('touchStart', x0, y0); await wait(60);
+    for (let k = 1; k <= 10; k++) { await tp('touchMove', x0, y0 + (tm - 20 - y0) * k / 10); await wait(30); }
+    for (let k = 0; k < 40; k++) { await tp('touchMove', x0, tm - 20 + (k % 2)); await wait(40); }
+    const sy6 = await ev(() => window.scrollY);
+    await tp('touchEnd', x0, tm - 20); await wait(400);
+    ok(tk && tm && sy6 > sy5 + 100, 'with the rest timer showing, a finger just above it scrolls the page down', { timerTop: tm, sy5, sy6 });
+    ok(!(await ev(() => document.body.classList.contains('blkdrag') || !!document.getElementById('view').style.paddingBottom)), 'nothing from the drag is left on the page', null);
+    ok(!P.errors.length, 'no page errors (long drag)', P.errors);
     await P.browser.close();
   }
 

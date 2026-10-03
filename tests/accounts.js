@@ -420,6 +420,16 @@ fs.cpSync(DIST, tmp, { recursive: true });
   ok(/Fifth report here/.test(inbox) && /Tables not there yet/.test(inbox) && inbox.indexOf('Fifth report') < inbox.indexOf('Tables not'), 'the inbox lists every report, newest first', inbox.slice(0, 200));
   ok(await R2.ev(() => !!document.querySelector('#modal .fbthumb')), 'with the screenshot');
   await R2.ev(() => window.__ironlog.ACT.mClose());
+  // A report written straight to the API with a screenshot that is not a
+  // picture (a quote that would end the src and add a handler) shows as text
+  // only, and nothing in it runs on the owner's page (r29 review).
+  const ownerId = fake.feedback[0].user_id;
+  fake.feedback.push({ id: fake.feedback.length + 1, created_at: new Date().toISOString(), user_id: ownerId, category: 'bug', message: 'Hostile row with a bad screenshot', reply_to: null, screenshot: 'data:image/jpeg;base64,AAAA" onerror="window.__pwned=1" x="', context: {}, issue_url: 'https://evil.example/' });
+  await R2.page.click('#saveState'); await wait(60);
+  await R2.page.click('#modal [data-act="fbInbox"]'); await R2.page.waitForFunction(() => { const m = window.__ironlog.ui.modal; return m && m.kind === 'fbInbox' && m.items && m.items.length >= 6; }, null, { timeout: 10000 }); await wait(300);
+  const hostile = await R2.ev(() => ({ pwned: !!window.__pwned, handlers: document.querySelectorAll('#modal [onerror]').length, shown: /Hostile row/.test(document.getElementById('modal').innerText), thumbs: document.querySelectorAll('#modal .fbthumb').length, evil: !!document.querySelector('#modal a[href*="evil"]') }));
+  ok(!hostile.pwned && hostile.handlers === 0 && hostile.shown && hostile.thumbs === 1 && !hostile.evil, 'a report whose screenshot is not a plain JPEG shows as text, with no picture, no link and nothing run', hostile);
+  await R2.ev(() => window.__ironlog.ACT.mClose());
 
   // ---- 14. Layout: the sheet and panel fit a small phone.
   await G.page.setViewportSize({ width: 320, height: 640 });
