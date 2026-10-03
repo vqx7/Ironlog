@@ -20,7 +20,8 @@ for(const [t,v] of Object.entries(sizes)){const d=Math.round((1-v.new/v.old)*100
 {
 const {page,errors,ctx}=await open('index.html',{browser,touch:true,clock:'2026-09-26T10:00:00'});
 const ev=(f,a)=>page.evaluate(f,a);
-await ev(()=>{const L=window.__ironlog;L.state.settings.onboarded=true;L.makeDemo();L.render();});
+// Auto-mark off: this suite ticks every set by hand (auto-mark is on for new installs since r28; essentials and journey cover it).
+await ev(()=>{const L=window.__ironlog;L.state.settings.onboarded=true;L.state.settings.autoDone=false;L.makeDemo();L.render();});
 const startDay=async name=>{await ev(n=>{const L=window.__ironlog;L.state.draft=null;const R=L.state.routines[0];L.ui.todayDay=R.days.findIndex(d=>d.name===n);L.ui.tab='today';L.render();},name);await page.click('.hero [data-act="startSession"]:not([data-light])');};
 const labels=async()=>ev(()=>[...document.querySelectorAll('section.block')].map(b=>({n:b.querySelector('h3').childNodes[0].textContent.trim(),head:b.querySelector('.sg.head span:nth-child(2)').innerText,chips:[...b.querySelectorAll('.lm')].map(x=>x.innerText)})));
 await startDay('Arms');let lb=await labels();console.log(lb.map(x=>`${x.n}: [${x.head}] ${x.chips.join(' | ')}`).join('\n'));

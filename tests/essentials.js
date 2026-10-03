@@ -8,7 +8,8 @@ const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log
   // ---- Accent.
   const A = await open('index.html', { touch: true, w: 390, h: 844, clock: '2026-09-24T18:00:00' });
   let ev = (f, a) => A.page.evaluate(f, a);
-  await ev(() => { const L = window.__ironlog; L.state.settings.onboarded = true; L.makeDemo(); L.ui.tab = 'today'; L.render(); });
+  // This suite turns auto-mark on and off itself; it starts off, as before r28 made on the new-install default (tests/r28.js).
+  await ev(() => { const L = window.__ironlog; L.state.settings.onboarded = true; L.state.settings.autoDone = false; L.makeDemo(); L.ui.tab = 'today'; L.render(); });
   const acc = () => ev(() => ({ a: document.documentElement.dataset.accent, v: getComputedStyle(document.documentElement).getPropertyValue('--volt').trim().toLowerCase(), btn: getComputedStyle(document.querySelector('.hero .btn.primary')).backgroundColor }));
   let x = await acc();
   ok(x.a === 'blue' && x.v === '#2a63f5' && x.btn === 'rgb(42, 99, 245)', 'blue is the default accent, on the Start button too', x);
@@ -144,7 +145,7 @@ const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log
   if (await ev(() => (document.getElementById('obPage') || {}).dataset.step === 'acct')) { await F.page.click('#obPage [data-act="obAcctLater"]'); await F.page.waitForTimeout(200); }
   await F.page.click('.welcome [data-act="obSample"]'); await F.page.waitForTimeout(200);
   const list = await ev(() => [...document.querySelectorAll('#modal .tpl')].map(b => b.innerText.replace(/\s+/g, ' ')));
-  ok(list.length === 6 && /Full body, 3 days/.test(list[0]) && list.every(t => /about \d+ min/.test(t)), 'first run: six ready-made routines, each with days and minutes', list.map(t => t.slice(0, 60)));
+  ok(list.length === 6 && /Full body, 3 days/.test(list[0]) && list.every(t => /(about \d+ min|\d+ to \d+ min)/.test(t)), 'first run: six ready-made routines, each with days and minutes (a range since r28)', list.map(t => t.slice(0, 60)));
   await F.page.click('#modal [data-act="tplPick"][data-k="ul4"]'); await F.page.waitForTimeout(250);
   const r = await ev(() => { const s = window.__ironlog.state; const R = s.routines.find(x => x.id === s.activeRoutineId); return { name: R.name, n: s.routines.length, days: R.days.map(d => d.name), onb: s.settings.onboarded, tab: window.__ironlog.ui.tab, hero: (document.querySelector('.hero h2') || {}).textContent }; });
   ok(r.name === 'Upper / lower, 4 days' && r.n === 1 && r.onb && r.tab === 'today' && /UPPER A/i.test(r.hero), 'picking one makes it the only, active routine and Today is ready', r);
@@ -163,7 +164,8 @@ const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log
   ok(chk.filter(c => !['full3', 'db3'].includes(c.k)).every(c => !c.low.length), 'upper/lower, PPL, split and high volume meet the default weekly targets', chk);
   const capHit = await ev(() => { const L = window.__ironlog; const out = []; for (const t of L.TEMPLATES) { const r = L.routineFromTemplate(t.key); for (const d of r.days) { if (d.rest) continue; const ms = L.sessionMuscleSets(d); const o = Object.entries(ms).filter(([, v]) => v > 11); if (o.length) out.push(t.key + ' ' + d.name); } } return out; });
   ok(capHit.every(x => x.startsWith('onemuscle ')), 'no ready-made day passes 11 sets for one muscle, apart from the high-volume one, which says so', capHit);
-  ok(await ev(() => /pass 11 sets/.test(window.__ironlog.TEMPLATES.find(t => t.key === 'onemuscle').who)), 'the high-volume template says it passes the per-session flag');
+  // r28: said in plain words instead of the 11-set figure.
+  ok(await ev(() => /many sets for one muscle/.test(window.__ironlog.TEMPLATES.find(t => t.key === 'onemuscle').who)), 'the high-volume template warns of long sessions with many sets for one muscle');
   // A new routine has no history: with "Fill in suggested loads" on, the load typed on set 1 fills the empty rows below.
   await ev(() => { const L = window.__ironlog; L.state.settings.loadFill = 'fill'; L.ui.tab = 'today'; L.render(); localStorage.setItem('ironlog.v1.tipWake', '1'); window.scrollTo(0, 0); });
   await F.page.click('.hero [data-act="startSession"]:not([data-light])'); await F.page.waitForTimeout(200);

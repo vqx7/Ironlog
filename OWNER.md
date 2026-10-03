@@ -2,11 +2,16 @@
 
 Everything that needs you, in one place, with the exact code to paste. Claude keeps this file current: an item moves to Done only when you confirm it, or when Claude can check it from here (and says how it checked). Build work and decisions are tracked in `PENDING.md`; this file is only what you do by hand.
 
-Last updated: r27 live, 2026-10-02.
+Last updated: r28 in preview, 2026-10-02.
 
 ## Now, in this order
 
-Nothing is waiting on you for r27. When you have a minute: Forgot password with your own email in the app, and check the email comes from Ironlog (no-reply@mail.ironapp.org). That is the last proof the sender works before friends sign up.
+1. A6: try r28 on the preview, then say go.
+2. When you have a minute: Forgot password with your own email in the app, and check the email comes from Ironlog (no-reply@mail.ironapp.org). That is the last proof the sender works before friends sign up.
+
+### A6. Try r28 on the preview, then say go
+Status: to do once Claude says the preview is up.
+Open https://ironapp.org/preview/ in Safari (or the Preview icon), wait for "New version ready" and tap Reload. The menu shows build r28. Your preview log keeps its own layout, so to see what a new person sees: Settings, Layout, Default layout (Undo puts yours back). Try: the bottom of Today and Plan; the menu button; Stats, Lifts and Volume opened; Settings, Help; This week switched to Month; Plan's Exercise library.
 
 ## When you want problem reports to reach you (item 58, about 20 minutes)
 

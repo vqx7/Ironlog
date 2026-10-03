@@ -184,7 +184,8 @@ const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log
     btn.dispatchEvent(new PointerEvent('pointerdown', o(y))); for (let k = 1; k <= 5; k++) { document.dispatchEvent(new PointerEvent('pointermove', o(y + 12 * k))); await new Promise(r => setTimeout(r, 16)); }
     btn.dispatchEvent(new PointerEvent('pointerup', o(y + 60))); await new Promise(r => setTimeout(r, 120)); const L = window.__ironlog; return { modal: L.ui.modal && L.ui.modal.kind }; });
   ok(drag.modal !== 'cal', 'a pull on the week bar no longer opens a calendar', drag);
-  await cev(() => { const L = window.__ironlog; L.ACT.mClose(); L.ui.tab = 'today'; L.render(); });
+  // This week starts folded (r28): open it.
+  await cev(() => { const L = window.__ironlog; L.ACT.mClose(); L.ui.tab = 'today'; L.ui.folds['today:week'] = true; L.render(); });
   const wk = await cev(() => { const v = document.querySelector('.wkview'); return v ? [...v.querySelectorAll('button')].map(b => b.textContent + (b.classList.contains('on') ? '*' : '')) : null; });
   ok(wk && wk.join() === 'Week*,Month', 'This week on Today offers Week and Month, Week first', wk);
   await C.page.click('.wkview [data-v="month"]'); await C.page.waitForTimeout(100);
@@ -199,6 +200,8 @@ const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log
   ok(await cev(() => !!document.querySelector('.cal-inline')), 'Month stays chosen when you come back to Today');
   await C.page.reload(); await C.page.waitForFunction(() => window.__libs && window.__libs.chart); await C.page.waitForTimeout(150);
   ok(await cev(() => { const L = window.__ironlog; L.ui.tab = 'today'; L.render(); return !!document.querySelector('.cal-inline'); }), 'and after the app is reopened');
+  // Reopened, This week starts folded again (r28): open it.
+  await cev(() => { const L = window.__ironlog; L.ui.folds['today:week'] = true; L.render(); });
   await C.page.click('.wkview [data-v="week"]'); await C.page.waitForTimeout(80);
   ok(await cev(() => !document.querySelector('.cal-inline') && !!document.querySelector('#wkSets')), 'Week brings back the week as it was');
   for (const w of [320, 375, 390]) {

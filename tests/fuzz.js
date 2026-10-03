@@ -2,7 +2,9 @@
 const {open}=require('./h');
 (async()=>{const {browser,page,errors}=await open('index.html',{clock:'2026-09-26T10:00:00'});
 const r=await page.evaluate(()=>{
-  const L=window.__ironlog;let seed=7;const rnd=()=>{seed=(seed*16807)%2147483647;return seed/2147483647;};
+  const L=window.__ironlog;
+  // Every section shown (a new install hides a few since r28), so every screen is checked.
+  L.state.settings.hidden=[];let seed=7;const rnd=()=>{seed=(seed*16807)%2147483647;return seed/2147483647;};
   const ids=L.state.exercises.map(e=>e.id);const bad=[];
   // A stray quote in a template (r26 had one in This week's bar) leaves the
   // page readable but turns words into attribute names. Every attribute
