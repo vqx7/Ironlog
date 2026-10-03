@@ -22,7 +22,7 @@ fs.cpSync(path.join(ROOT, 'dist-preview'), path.join(tmp, 'preview'), { recursiv
 (async () => {
   const fake = await start(tmp);
   for (const f of ['index.html', 'preview/index.html']) {
-    const p = path.join(tmp, f); fs.writeFileSync(p, fs.readFileSync(p, 'utf8').replace(/"url":"https:\/\/[a-z0-9]+\.supabase\.co"/, `"url":"${fake.base}"`));
+    const p = path.join(tmp, f); fs.writeFileSync(p, require('./h').cspFix(fs.readFileSync(p, 'utf8').replace(/"url":"https:\/\/[a-z0-9]+\.supabase\.co"/, `"url":"${fake.base}"`), fake.base));
   }
   const LIVE = fake.base + '/ironlog/', PV = LIVE + 'preview/';
   fake.addUser('v@example.com', 'pass word 1');

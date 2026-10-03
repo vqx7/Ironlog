@@ -155,7 +155,7 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
     fs.cpSync(path.join(__dirname, '..', 'dist'), tmp, { recursive: true });
     const fake = await start(tmp);
     const ip = path.join(tmp, 'index.html');
-    fs.writeFileSync(ip, fs.readFileSync(ip, 'utf8').replace(/"url":"https:\/\/[a-z0-9]+\.supabase\.co"/, `"url":"${fake.base}"`));
+    fs.writeFileSync(ip, require('./h').cspFix(fs.readFileSync(ip, 'utf8').replace(/"url":"https:\/\/[a-z0-9]+\.supabase\.co"/, `"url":"${fake.base}"`), fake.base));
     const browser = await chromium.launch();
     const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true, serviceWorkers: 'block' });
     await quietHibp(ctx);

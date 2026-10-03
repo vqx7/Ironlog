@@ -19,7 +19,7 @@ const BAD = 'password1234';
 (async () => {
   const fake = await start(tmp);
   const ip = path.join(tmp, 'index.html');
-  fs.writeFileSync(ip, fs.readFileSync(ip, 'utf8').replace(/"url":"https:\/\/[a-z0-9]+\.supabase\.co"/, `"url":"${fake.base}"`));
+  fs.writeFileSync(ip, require('./h').cspFix(fs.readFileSync(ip, 'utf8').replace(/"url":"https:\/\/[a-z0-9]+\.supabase\.co"/, `"url":"${fake.base}"`), fake.base));
   const browser = await chromium.launch();
   const asked = []; let hibpDown = false;
   async function device() {

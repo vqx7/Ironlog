@@ -21,7 +21,7 @@ fs.cpSync(DIST, V1, { recursive: true }); fs.cpSync(DIST, V2, { recursive: true 
 const v1 = (fs.readFileSync(path.join(V1, 'index.html'), 'utf8').match(/const APP_VERSION='([^']+)'/) || [])[1];
 const v2 = v1 + '-next';
 for (const f of ['index.html', 'sw.js']) {
-  const p = path.join(V2, f); fs.writeFileSync(p, fs.readFileSync(p, 'utf8').split(v1).join(v2));
+  const p = path.join(V2, f); fs.writeFileSync(p, f.endsWith('.html') ? require('./h').cspFix(fs.readFileSync(p, 'utf8').split(v1).join(v2)) : fs.readFileSync(p, 'utf8').split(v1).join(v2));
 }
 let root = V1;
 const TYPES = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.woff2': 'font/woff2', '.png': 'image/png', '.webmanifest': 'application/manifest+json' };

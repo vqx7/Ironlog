@@ -6,11 +6,11 @@ Last updated: r29 in preview, 2026-10-03.
 
 ## Now, in this order
 
-0. A7: try r29 on the preview (https://ironapp.org/preview/, Reload when asked; the menu shows build r29), then say go. The preview keeps its own log: first tap Copy my log from Ironlog (Settings > Your data; sign in to the preview with your Ironlog account first), so Stats shows your real numbers. Ironlog itself is not changed. Look at Stats > Volume, the 3D body on Today, and drag an exercise by its ⠿ during a session.
+0. A7: try r29 on the preview (https://ironapp.org/preview/, Reload when asked; the menu shows build r29), then say go. The preview keeps its own log: first tap Copy my log from Ironlog (Settings > Your data; sign in to the preview with your Ironlog account first), so Stats shows your real numbers. Ironlog itself is not changed. Look at Stats > Volume and Muscles, the Muscle map on Today, the rest timer, and drag an exercise by its ⠿ during a session. To see what a new person sees: Settings > Your data > Erase everything in the preview only (it erases the preview's log, never Ironlog's), then pick a routine or Look around with sample data. Steps 1 to 3 below can be done at the same time; none of them touch the app's code.
 1. Problem reports reaching you: B1 to B5 below (B1 alone already stores reports safely). The B1 code changed on 2026-10-03 (r29 audit); paste the version below, not an older copy.
 2. D5: lock down every account (two-step verification everywhere, secret scanning, DNSSEC).
 3. When you have a minute: Forgot password with your own email in the app, and check the email comes from Ironlog (no-reply@mail.ironapp.org). That is the last proof the sender works before friends sign up.
-4. One decision in PENDING.md: 114 (the starter routine for someone who skips picking one).
+4. After r29 is live, if you want it: decision 129 (make the repository private). Not before: switching mid-release risks the preview and publish setup.
 
 ## When you want problem reports to reach you (item 58, about 20 minutes)
 

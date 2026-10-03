@@ -99,7 +99,7 @@ const TABS = ['today', 'program', 'dash', 'history', 'settings'];
     // After a logged session the same view reads what was done.
     await ev(() => { const L = window.__ironlog; L.makeDemo(); L.invalidate(); L.ui.folds['dash:volume'] = true; L.render(); }); await wait(300);
     const vol2 = await ev(() => { const d = document.querySelector('#view > [data-mkey="volume"]'); const ch = window.Chart && window.Chart.getChart(document.getElementById('chRadar')); return { plan: /routine's plan/.test(d.innerText), head: (d.querySelector('.headline') || {}).innerText, label: ch && ch.data.datasets[0].label }; });
-    ok(!vol2.plan && /^Most trained/.test(vol2.head) && vol2.label === 'Your volume', 'with sessions logged it reads them instead', vol2);
+    ok(!vol2.plan && /regions on target|^Every region|^This week so far/.test(vol2.head) && vol2.label === 'Your volume', 'with sessions logged it reads them instead', vol2);
 
     // This week becomes This month in Month view, and back.
     await ev(() => { const L = window.__ironlog; L.ui.tab = 'today'; L.render(); L.ACT.wkView({ dataset: { v: 'month' } }); });

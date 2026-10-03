@@ -25,7 +25,7 @@ fs.cpSync(DIST, tmp, { recursive: true });
   const html = fs.readFileSync(ip, 'utf8');
   ok(/window\.IRONLOG_SUPABASE=\{"url":"https:\/\/[a-z0-9]+\.supabase\.co","key":"sb_publishable_/.test(html), 'the build carries the project URL and the publishable key');
   ok(!/service_role|sb_secret_/.test(html + fs.readFileSync(path.join(tmp, 'cloud.js'), 'utf8')), 'no secret key anywhere in the build');
-  fs.writeFileSync(ip, html.replace(/"url":"https:\/\/[a-z0-9]+\.supabase\.co"/, `"url":"${fake.base}"`));
+  fs.writeFileSync(ip, require('./h').cspFix(html.replace(/"url":"https:\/\/[a-z0-9]+\.supabase\.co"/, `"url":"${fake.base}"`), fake.base));
   const APP = fake.base + '/ironlog/';
   const browser = await chromium.launch();
   const devices = [];
