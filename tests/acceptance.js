@@ -62,6 +62,10 @@ await page.waitForTimeout(200);
 const pr=await ev(()=>!!document.querySelector('.sg.pr'));ok(pr,'a heavier set shows a live PR badge');
 ok(await ev(()=>!document.getElementById('timer').hidden),'rest timer started on done');
 await ev(()=>window.__ironlog.ACT.finish());await page.waitForTimeout(200);
+// r30: finishing with sets left asks first ("2 of 4 sets not done"); Finish now goes on.
+const left=await ev(()=>{const m=window.__ironlog.ui.modal;return m&&m.kind==='confirm'?m.title:null;});
+ok(/sets not done/.test(left||''),'finishing with sets left asks first',left);
+await page.click('#modal [data-act="mOk"]');await page.waitForTimeout(250);
 const rc=await ev(()=>{const m=window.__ironlog.ui.modal;return m&&(m.kind==='recap'?m.lines:m.title);});
 ok(Array.isArray(rc)&&rc.some(l=>/2 working sets, 2 counted as hard/.test(l)),'recap counts the sets',rc);
 await ev(()=>window.__ironlog.ACT.mClose&&window.__ironlog.ACT.mClose());
