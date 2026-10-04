@@ -45,6 +45,13 @@ function strongCsv() {
 }
 
 (async () => {
+  // ---- Nothing in the page names the GitHub account (r30: a fallback address did).
+  {
+    const fs = require('fs'); const path = require('path'); const f = process.env.IRONLOG_FILE || 'index.html';
+    const dir = path.dirname(path.resolve(f)); const files = [f, ...['cloud.js', 'sw.js', 'manifest.webmanifest'].map(n => path.join(dir, n)).filter(n => fs.existsSync(n))];
+    const hit = files.filter(n => /vqx7/i.test(fs.readFileSync(n, 'utf8')));
+    ok(!hit.length, 'the shipped page and its files never name the GitHub account', hit);
+  }
   // ---- The imported lifter.
   {
     const P = await open('index.html', { touch: true, clock: '2026-10-04T10:00:00' });

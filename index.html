@@ -4411,7 +4411,7 @@ const INSTALL_LATER=KEY+'.installLater';
 function canInstallHere(){return !!window.IRONLOG_APP&&!isStandalone()&&!(window.claude&&typeof window.claude.use==='function');}
 /* Where this copy of the app lives, for the install pictures and steps, so
    they stay right when the app moves to its own domain (r27). */
-function siteHost(){return location.host&&/^https?:$/.test(location.protocol)?location.host:'vqx7.github.io';}
+function siteHost(){return location.host&&/^https?:$/.test(location.protocol)?location.host:'ironapp.org';}
 function siteDir(){const p=location.pathname.replace(/[^/]*$/,'').replace(/\/$/,'');return /^https?:$/.test(location.protocol)?p:'/Ironlog';}
 function installKind(){
   const ua=navigator.userAgent||'';
