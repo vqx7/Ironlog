@@ -1,11 +1,13 @@
-# Everything still open (as of r29 in preview, 2026-10-03)
+# Everything still open (as of r29.3 live and r29.4 in review, 2026-10-03)
 
 This is the tracking list. Items are built only when V says go. Owner items need V; the rest is build work. Nothing is done unless it says so. Numbers are kept stable; finished items move to Done at the bottom.
 
-## Live: r28 (published 2026-10-02 at https://ironapp.org). In preview: r29
-r29 is pull request #10, on https://ironapp.org/preview/ until V says go.
+## Live: r29.3 (published 2026-10-03 at https://ironapp.org, pull request #10). In review: r29.4
 
-## Built in r29, waiting for V's go (V's requests of 2026-10-02 evening and 2026-10-03)
+## r29.4 (V, 2026-10-03, "stupidly obvious subtext or cringy taglines are taking away from the product")
+143. The first-run account page loses the tagline under the wordmark ("Your lifts, and what to beat next time.") and the line under Save your log ("Free, and on every phone you use."). Spacing kept so the card does not crowd the wordmark. Copy only: no stored data, settings, or behaviour change. Part of item 99's wording pass.
+
+## Built in r29, live since 2026-10-03 as r29.3 (V's requests of 2026-10-02 evening and 2026-10-03); move to Done once V has used it
 117. Volume, By region: reads only what you logged (your average, else this week so far, with a line that the week is still going), never the routine's plan; with nothing logged it says so. Muscles no longer has a note about the plan. (r28 had shown the plan until a full week was logged, which made every new person look behind.)
 118. Neck and tibialis are tracked only, like serratus and rotator cuff: counted and shown, no target, never flagged, and left out of their region's target on the radar. No ready-made routine trains them, so as targets they made every routine read as short. A convention, stated in the Guide and in Weekly set targets. (Was decision 115.)
 119. The serial (Oxford) comma in every list in a sentence on screen, in tips and in the Guide, and in lists the app builds (`andList`).
@@ -36,7 +38,7 @@ r29 is pull request #10, on https://ironapp.org/preview/ until V says go.
 99. Wording and redundancy pass, screen by screen (the second half of V's item 90): cut fragments, repeated lines and filler on every tab and sheet so screens show the number and the action. The new-person screens were done in r29 (140); the rest waits on V's own notes.
 141. Later (V, 2026-10-03): a female body for the muscle map, flat and 3D, chosen in Settings. Redraw the flat (2D) body at the same time: V finds it ugly. This is what item 49's optional sex field would be for; nothing else would read it.
 
-Open count: 52 numbered items: 23 built in r29 and waiting for V's go (117 to 127, 130 to 140, 142), 4 next (91, 99, 129, 141), 3 critical (58, 61, 63), 3 verification (7, 8, 10), 2 owner only (6, 84), 17 later build or decision items. Items 98, 114, 116 and 128 are built in r29 (138, 131, 137 and 133, 139) and move to Done when it is published. Owner steps, with the code, are in OWNER.md.
+Open count: 53 numbered items: 1 in r29.4 (143), 23 built in r29 and live, not yet moved to Done (117 to 127, 130 to 140, 142), 4 next (91, 99, 129, 141), 3 critical (58, 61, 63), 3 verification (7, 8, 10), 2 owner only (6, 84), 17 later build or decision items. Items 98, 114, 116 and 128 are built in r29 (138, 131, 137 and 133, 139) and move to Done when it is published. Owner steps, with the code, are in OWNER.md.
 
 ## Critical, still open
 58. Part 2 needs V: SUPABASE.md, Part 4, steps 1 to 5 (the tables, a private `ironlog-feedback` repository, a GitHub token for it, the function and its webhook), then FEEDBACK.md, "What V does" steps 2 and 3 (protect `main`; choose a scheduled Claude task or Claude's GitHub Action to pick up tickets). Until step 1, Send feedback says it is not set up yet and keeps the text.
