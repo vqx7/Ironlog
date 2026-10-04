@@ -267,6 +267,27 @@ function strongCsv() {
     await P.browser.close();
   }
 
+  // ---- From the second pass over the review: first-session guidance, a misread import line, the rest-day card.
+  {
+    const P = await open('index.html', { touch: true, clock: '2026-10-04T10:00:00' });
+    const { page } = P; const ev = (f, a) => page.evaluate(f, a);
+    const fs = await ev(() => { const L = window.__ironlog; L.state.settings.onboarded = true; L.state.sessions = []; L.invalidate(); return { sq: L.suggest('backSquat', { sets: 3, repMin: 6, repMax: 10, rir: 2, rest: 150, inc: 2.27 }, {}).text, curl: L.suggest('dbCurl', { sets: 2, repMin: 10, repMax: 15, rir: 2, rest: 60, inc: 2.27 }, {}).text }; });
+    ok(/start light, a load you could lift about 15 times/.test(fs.sq) && /stopping with about 2 still in you/.test(fs.sq) && !/Warm up/.test(fs.sq + fs.curl), 'a first session says, in one line per exercise, how to pick a load', fs);
+    const pv = await ev(() => { const L = window.__ironlog; L.ui.tab = 'today'; L.ui.folds['today:session'] = true; L.render(); const e = document.querySelector('[data-mkey="session"]'); return e ? e.innerText : ''; });
+    ok(/Warm up on the first big lift/.test(pv), 'and the workout preview says once to warm up on the first big lift', pv.slice(0, 200));
+    await ev(() => window.__ironlog.impStart({ text: 'Sep 30\nBench press 185x8, 185x8\nLateral raise 1.5x40' })); await wait(300);
+    const odd = await ev(() => { const e = document.getElementById('impOdd'); return e ? e.innerText : null; });
+    ok(odd && /Check these/.test(odd) && /x 40/.test(odd) && !/Bench/.test(odd), 'import: a line that reads as 1.5 lb for 40 reps is flagged to check, a normal one is not', odd);
+    await ev(() => window.__ironlog.ACT.mClose());
+    // The rest day: the card is the next training day and says so.
+    const rest = await ev(() => { const L = window.__ironlog; const R = L.state.routines.find(r => r.id === L.state.activeRoutineId); const ri = R.days.findIndex(d => d.rest); const prev = ri - 1;
+      L.state.sessions = [{ id: 'r1', date: '2026-10-03', dayIdx: prev, dayId: R.days[prev].id, dayName: R.days[prev].name, routineId: R.id, free: false, notes: '', ex: [{ exId: R.days[prev].items[0].exId, sets: [{ w: 20, r: 10, rir: 1, warm: false }] }] }];
+      L.invalidate(); L.ui.todayDay = null; L.ui.tab = 'today'; L.render(); const h = document.querySelector('.hero'); return h ? h.innerText.replace(/\s+/g, ' ') : null; });
+    ok(rest && /Scheduled rest today/.test(rest) && /Next: Day 1 of/i.test(rest), 'on a rest day the card says Next: Day 1 beside Scheduled rest today, never just Day 1', rest);
+    ok(!P.errors.length, 'no page errors (second pass)', P.errors);
+    await P.browser.close();
+  }
+
   // ---- An untouched edit of a saved session closes without asking.
   {
     const P = await open('index.html', { touch: true, clock: '2026-10-04T10:00:00' });

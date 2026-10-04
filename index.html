@@ -1410,6 +1410,10 @@ const TEMPLATES=(()=>{
    split. Saves that already have routines keep theirs. */
 // The suites built on the routine installs started with before r29 run with
 // IRONLOG_STARTER set to it (tests/h.js); nothing else sets it.
+/* "Eight plans, 2 to 6 days a week", counted from the list (r30: the line
+   said six after two were added). Every other day counts as about 3.5. */
+function tplCountLine(){const T=TEMPLATES.filter(t=>!t.hidden);const n=T.map(t=>{const r=routineFromTemplate(t.key);return r.days.filter(d=>!d.rest).length*7/r.days.length;});
+  const W=['No','One','Two','Three','Four','Five','Six','Seven','Eight','Nine','Ten','Eleven','Twelve'];return `${W[T.length]||T.length} plans, ${Math.floor(Math.min(...n))} to ${Math.round(Math.max(...n))} days a week`;}
 function starterRoutine(){const k=window.IRONLOG_STARTER;return routineFromTemplate(k&&TEMPLATES.some(t=>t.key===k)?k:'ul4');}
 /* An untouched starter, the current one or the one installs began with
    before r29, is replaced when a ready-made routine is picked on a first run. */
@@ -3509,7 +3513,12 @@ function suggest(exId,plan,opts){
   if(ex.timed)return suggestTimed(ex,plan,exps,opts,injM,seen);
   if(!exps||!exps.length){
     if(injM)return {w:ex.bw?0:null,text:`Injury flagged (${injLabel(injM)}). Start light, keep 3 or more reps in reserve, and stop on pain.`,lastR:[],last:'',target:'',tgt:null,inj:injM};
-    return {w:ex.bw?0:null,text:`No history yet. Pick a load you can take to ${plan.repMin}-${plan.repMax} reps at ${plan.rir} RIR.`,lastR:[],last:'',target:'',tgt:null};
+    /* A first session (r30, from the review: "pick a load you can take to
+       6-10 at 2 RIR" is no help to a beginner). Start light, in words a new
+       lifter can act on. The next session's load comes from this one. */
+    const rr=+plan.rir||0;
+    // One line per exercise; the warm-up is said once, in the workout preview.
+    return {w:ex.bw?0:null,text:`First time: start light, a load you could lift about ${+plan.repMax+5} times. Do ${plan.repMin} to ${plan.repMax} reps, ${rr>=1?`stopping with about ${rr} still in you`:'to the last rep you can do well'}.`,lastR:[],last:'',target:'',tgt:null};
   }
   const last=exps[exps.length-1],ws=last.pts;const stx=all.length<every.length?statsUpTo(exId,all):(IDX().exStats[exId]||{});
   const top=Math.max(...ws.map(p=>p.w));
@@ -4383,7 +4392,7 @@ function viewToday(){
       const none=!sg.last&&!sg.inj&&!sg.target;if(none)fresh++;
       const short=none?'':sg.target?`Today: ${sg.target}`:sg.inj?'Injury flagged: start light, stop on pain.':(sg.last&&String(sg.text).startsWith(sg.last)?String(sg.text).slice(sg.last.length).trim():String(sg.text||''));
       pv+=`<div class="pvi"${k?' style="border-top:1px solid var(--line-soft);padding-top:10px;margin-top:10px"':''}><div class="row spread"><span><b>${esc(ex.name)}</b> <span class="muted small">${it.sets} × ${it.repMin}-${it.repMax}${ex.timed?'s':''}${ex.perSide?' per side':''}${rirShow(ex)?`, ${it.rir} RIR`:''}</span>${it.ss?` <span class="tag blue">Superset ${letters[it.ss]}</span>`:''}${sg.inj?` <span class="tag red">Injury: ${injLabel(sg.inj)}</span>`:''}</span>${liftTags(it.exId)}</div>${liftTrend(it.exId)}${short?`<p class="small muted hastip" style="margin-bottom:0" data-tip="${esc(sg.text)}">${esc(short)}</p>`:''}</div>`;});
-    if(fresh)pv=`<p class="small muted" style="margin:0 0 10px">${fresh===day.items.length?'First time':`${fresh} new`}: pick loads you can take into each rep range. ${tipi('No history yet, so there is no target. Pick a load you can take into the rep range at the RIR shown. Targets appear from the next session.','About first sessions')}</p>`+pv;
+    if(fresh)pv=`<p class="small muted" style="margin:0 0 10px">${fresh===day.items.length?'First time':`${fresh} new`}: start lighter than you think and stop while the reps still move well. Warm up on the first big lift. ${tipi('No history yet, so there is no target. Pick a load you could lift about 5 more times than the top of the rep range, and stop with the reps in reserve shown (the reps start to slow). On a barbell or other big lift, do 1 or 2 lighter sets of 5 first. Targets appear from the next session.','About first sessions')}</p>`+pv;
     h+=sec({sk:'today:session',key:'session',title:'Workout preview',sub:flagged?`<span class="pill yellow">${flagged} stalled</span>`:`${day.items.length} exercises`,body:pv});
   }
   h+=bodyCard()+moreLine('today');
@@ -4525,7 +4534,7 @@ function obView(){
   <div><p class="small muted" style="margin:0 0 6px;font-weight:600">Units</p><div class="ob-units" role="group" aria-label="Units">${[['lb','lb and inches'],['kg','kg and cm']].map(([k,l])=>`<button class="chip ${U()===k?'on':''}" data-act="obUnit" data-v="${k}" aria-pressed="${U()===k}">${l}</button>`).join('')}</div></div>
   <h3 style="font:700 20px var(--display);margin:6px 0 0">How do you want to start?</h3>
   <div class="ob-opts">
-  <button class="ob-opt primary" data-act="obSample"><b>Pick a ready-made routine</b><span>Six plans, 3 to 6 days a week</span></button>
+  <button class="ob-opt primary" data-act="obSample"><b>Pick a ready-made routine</b><span>${tplCountLine()}</span></button>
   <button class="ob-opt" data-act="obFree"><b>Log a workout now</b><span>Add exercises as you go</span></button>
   <button class="ob-opt" data-act="obOwn"><b>Build my own routine</b><span>Your days, your exercises</span></button>
   ${imp}${ENV==='preview'?'<button class="ob-opt" data-act="previewCopy"><b>Copy my log from Ironlog</b><span>Try this build on your real log; Ironlog is not changed</span></button>':''}</div>
@@ -5491,8 +5500,7 @@ function liftedLine(){
   /* No percentage against last week (r30): weight lifted falls when loads
      go up and reps come down, so as a headline it read progress as decline
      ("−5%" on a week of PRs). The number stays; the detail is in Stats. */
-  const d='';
-  return `<button class="linkbtn wklift" data-act="goDash" data-sec="svol" style="margin:6px 0 0;text-decoration:none;text-align:left"><b>${tn.now?fmtBig(tn.now):0} ${U()}</b> lifted${d}</button>`;
+  return `<button class="linkbtn wklift" data-act="goDash" data-sec="svol" style="margin:6px 0 0;text-decoration:none;text-align:left"><b>${tn.now?fmtBig(tn.now):0} ${U()}</b> lifted</button>`;
 }
 function weekBody(w){
   /* The two numbers are counted differently on purpose and the label has to
@@ -7115,7 +7123,7 @@ function openPreview(res,tab){
 }
 /* Sessions as they would be saved, and which are already in the log. */
 function impBuild(m){
-  const conv=m.unit==='kg'?(v=>v):(v=>v*LB);const newEx=Object.create(null);const out=[];const bad=[];let timedOff=0;
+  const conv=m.unit==='kg'?(v=>v):(v=>v*LB);const newEx=Object.create(null);const out=[];const bad=[];const odd=[];let timedOff=0;
   const allTimed=n=>m.res.sessions.every(x=>x.items.every(i=>i.name!==n||(i.sets&&i.sets.length&&i.sets.every(q=>q.timed))));
   for(const n in m.pick)if(m.pick[n]==='new'){const g=m.guess[n];const e={id:'c_'+uid(),name:n.slice(0,60),primary:g.primary,secondary:[],equip:g.equip,bw:g.equip==='bodyweight'||!!g.assist,rare:false,note:'',custom:true,archived:false};if(g.assist)e.assist=true;if(!m.res.text&&allTimed(n))e.timed=true;newEx[n]=e;}
   for(const x of m.res.sessions){const date=x.date||m.date;const ex=[];
@@ -7126,6 +7134,10 @@ function impBuild(m){
       if(!sets||!sets.length){if(!bad.includes(it.name))bad.push(it.name);continue;}
       // Assisted: files write the help as a plus or a minus number; it is help either way. Other lifts never go below 0.
       for(const q of sets){if(exo.assist)q.w=-Math.abs(q.w);else if(q.w<0)q.w=0;}
+      /* Reads that are probably wrong (r30, from the review: a misread line
+         went in without a word): a weighted lift under 5 lb (2.3 kg) or a set
+         past 30 reps. Shown in the preview to check; nothing is changed. */
+      if(!exo.bw&&!exo.timed)for(const q of sets)if((q.w>0&&q.w<2.3)||q.r>30){odd.push(`${exo.name} ${fmtW(q.w)} ${U()} x ${q.r}${x.date?`, ${fmtDate(x.date)}`:''}`);break;}
       // A lift's sets across rows of the same exercise stay together.
       const prev=ex.find(b=>b.exId===exo.id);if(prev)prev.sets.push(...sets);else ex.push({exId:exo.id,note:it.note||'',rr:null,sets});}
     if(ex.length)out.push({id:uid(),date,dayIdx:0,dayId:null,dayName:(x.name||'').slice(0,60)||'Imported',routineId:'',free:true,ex,notes:'',durMin:null,deload:false,light:false});}
@@ -7140,7 +7152,7 @@ function impBuild(m){
   for(const c of m.res.cardioRows||[]){const min=Math.round(c.secs/60);if(!(min>0)){cardioNoTime++;continue;}
     if(state.cardio.some(x=>x.date===c.date&&x.kind===c.kind&&x.min===min)){dup++;continue;}
     cardio.push(cleanCardio({id:uid(),date:c.date,kind:c.kind,min,hr:null,when:'solo',note:'',dist:c.dist>0?(m.unit==='kg'?c.dist:c.dist*KM_MI):null}));}
-  return {sessions:fresh,cardio,cardioNoTime,dup,bad,timedOff,newEx:Object.values(newEx).filter(e=>fresh.some(ss=>ss.ex.some(b=>b.exId===e.id)))};
+  return {sessions:fresh,cardio,cardioNoTime,dup,bad,odd,timedOff,newEx:Object.values(newEx).filter(e=>fresh.some(ss=>ss.ex.some(b=>b.exId===e.id)))};
 }
 function impSheet(m){
   const H=(t)=>`<div class="sheet fixed" role="dialog" aria-modal="true" aria-labelledby="impH"><div class="sheet-h"><h3 id="impH">${t}</h3><button class="ib" aria-label="Close" data-act="mClose">✕</button></div><div class="sheet-scroll">`;
@@ -7172,6 +7184,7 @@ function impSheet(m){
   ${r.unreadN||r.unread&&r.unread.length?`<details class="subsec" style="margin-top:8px"><summary>${r.unreadN||r.unread.length} line${(r.unreadN||r.unread.length)===1?'':'s'} not understood</summary><ul class="small" style="margin:6px 0 0;padding-left:18px">${r.unread.map(l=>`<li>${esc(l)}</li>`).join('')}</ul></details>`:''}
   ${r.skipped?`<p class="small muted" style="margin:6px 0 0">${r.skipped} row${r.skipped===1?'':'s'} without an exercise, date, or reps were skipped.</p>`:''}${b.cardio.length?`<p class="small" style="margin:6px 0 0">Cardio: ${b.cardio.length} entr${b.cardio.length===1?'y':'ies'} (${esc(andList(b.cardio.slice(0,3).map(c=>`${CARDIOL[c.kind].toLowerCase()} ${fmtDate(c.date)}, ${c.min} min${c.dist?`, ${distShow(c.dist)} ${m.unit==='kg'?'km':'mi'}`:''}`),3))}${b.cardio.length>3?', and more':''}). Distances are read in ${m.unit==='kg'?'km':'miles'}, with the unit above.</p>`:''}${b.cardioNoTime?`<p class="small muted" style="margin:6px 0 0">${b.cardioNoTime} cardio entr${b.cardioNoTime===1?'y':'ies'} without a time left out: minutes are needed.</p>`:''}
   ${b.bad.length?`<p class="small" style="margin:6px 0 0;color:var(--yellow)">Not imported, no weight given: ${esc(andList(b.bad,8))}. Write the load in, like 3x10 @ 60, and read it again.</p>`:''}
+  ${b.odd.length?`<p class="small" id="impOdd" style="margin:6px 0 0;color:var(--yellow)">Check these, they look misread: ${esc(andList(b.odd,4))}. Fix the line and read it again if they are wrong.</p>`:''}
   ${b.timedOff?`<p class="small" style="margin:6px 0 0;color:var(--yellow)">${b.timedOff} timed set${b.timedOff===1?' was':'s were'} left out: the exercise chosen counts reps. Pick a timed one to keep them.</p>`:''}
   ${r.cut?`<p class="small" style="margin:6px 0 0;color:var(--yellow)">Only the first ${IMP_MAX_ROWS.toLocaleString()} rows were read. Split the file to import the rest.</p>`:''}
   ${b.sessions.length?`<details class="subsec" style="margin-top:8px" id="impRead"><summary>What was read</summary>${b.sessions.slice(0,40).map(x=>`<p class="small" style="margin:8px 0 2px;font-weight:650">${fmtDate(x.date)}${x.dayName&&x.dayName!=='Imported'?' · '+esc(x.dayName):''}</p>${x.ex.map(e=>{const exo=EX(e.exId).id===e.exId&&!EX(e.exId).archived?EX(e.exId):(b.newEx.find(n=>n.id===e.exId)||EX(e.exId));return `<p class="small muted" style="margin:0">${esc(exo.name)}: ${e.sets.map(q=>(q.warm?'W ':q.drop?'D ':'')+setShort(exo,q.w,q.r)).join(', ')}</p>`;}).join('')}`).join('')}${b.sessions.length>40?`<p class="small muted">and ${b.sessions.length-40} more</p>`:''}</details>`:''}
