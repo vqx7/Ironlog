@@ -18,7 +18,7 @@ Until step B1, Report a problem says reports are not set up yet and keeps the te
 
 ### B1. The report tables and their limits
 Status: to do.
-Supabase > **SQL Editor** > **New query**. Replace `YOUR IRONLOG ACCOUNT EMAIL` on the last line with the email you sign in to Ironlog with (type it only here, never in the repo). Run:
+Supabase > **SQL Editor** > **New query**. Replace `YOUR IRONLOG ACCOUNT EMAIL` on the last line with the email of your Ironlog account: the one shown at the top of the menu (top right) in the app when you are signed in. Not the ironapp.org mail address, unless that is what you signed up with. Type it only here, never in the repo. If you got it wrong, nothing breaks: run the last line again with the right email. Run:
 
 ```sql
 -- One row per report. Signed-in people may add one; nobody but the readers below may read.
