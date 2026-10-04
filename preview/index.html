@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-N/mTXwFTBFccXJeXguQVUbWrTDOjfgCNUlJicBwRfWY=' 'sha256-tuSgXs5JTxAxl+0h6Mmbx/BgvpNDfjiq2RiZRPGtwkc=' 'sha256-YHdgjdaHPObo0ajgr78/3fg0b/g2KACx2Yivxr2AJEo=' 'sha256-CDjwmMkCSMuxSNM7Z2Kfm166JUVgXFyO0rTqpQ6y8zc=' 'sha256-J4UrXwIeplIJZfkgJq3M75mmvlwXBomq0l+LhSwoEfI='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https://fqvupierxrvpoidtwlon.supabase.co wss://fqvupierxrvpoidtwlon.supabase.co https://api.pwnedpasswords.com; worker-src 'self'; manifest-src 'self'; media-src 'self'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-N/mTXwFTBFccXJeXguQVUbWrTDOjfgCNUlJicBwRfWY=' 'sha256-tuSgXs5JTxAxl+0h6Mmbx/BgvpNDfjiq2RiZRPGtwkc=' 'sha256-YHdgjdaHPObo0ajgr78/3fg0b/g2KACx2Yivxr2AJEo=' 'sha256-u4aC9Ov3kf+IO/s9SMRd3QebIb6PRVU4k2xWwpBytBc=' 'sha256-J4UrXwIeplIJZfkgJq3M75mmvlwXBomq0l+LhSwoEfI='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https://fqvupierxrvpoidtwlon.supabase.co wss://fqvupierxrvpoidtwlon.supabase.co https://api.pwnedpasswords.com; worker-src 'self'; manifest-src 'self'; media-src 'self'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Ironlog Preview</title>
 <script>window.IRONLOG_APP=true;window.IRONLOG_ENV='preview';window.__installEvt=null;
@@ -369,6 +369,7 @@ label.field>input,label.field>select,label.field>textarea{margin-top:4px;color:v
 .tag{display:inline-block;font-size:11.5px;font-weight:650;letter-spacing:.02em;padding:3px 9px;border-radius:999px;background:var(--surface-2);color:var(--muted);white-space:nowrap;vertical-align:1px}
 .tag.rare,.tag.yellow{background:var(--yellow-bg);color:var(--yellow)}
 .tag.green{background:var(--green-bg);color:var(--green)}
+.tag.common{background:transparent;color:var(--ink);box-shadow:inset 0 0 0 1px var(--line)}
 .tag.red{background:var(--red-bg);color:var(--red)}
 .tag.blue{background:var(--blue-bg);color:var(--blue)}
 .chips{display:flex;flex-wrap:wrap;gap:6px}
@@ -1271,6 +1272,18 @@ const LIB=[
 ['wallSit','Wall Sit','quads','','bodyweight','brt','Timed hold with thighs parallel: log seconds.'],
 ['farmerHold','Farmer Carry or Hold','forearms','traps upperBack','dumbbell','rt','Timed: log seconds and the load in each hand.'],
 ];
+/* The staples (V, 2026-10-04: marking the common lifts helps more than
+   marking only the less common ones). A judgment, not a measurement: lifts
+   found in most gyms and most mainstream programs. Shown as a Common tag, put
+   first in the exercise picker, and a filter in the library. Nothing stored:
+   it follows the library id, and an exercise someone marks as less common is
+   not called common. */
+const COMMON=new Set(['bench','incBench','dbBench','incDb','machPress','pecDeck','cableFly','dips','pushup','pullup','chinup','assistPullup','latPulldown','cableRow','bbRow','dbRow','machRow','ohp','seatedDbPress','machShoulder','dbLateral','cableLateral','facePull','reversePecDeck','bbCurl','dbCurl','hammer','preacher','pressdown','ropePressdown','skull','ohCableExt','backSquat','hackSquat','legPress','legExt','lyingCurl','seatedCurl','rdl','deadlift','hipThrust','bss','walkingLunge','goblet','standCalf','seatedCalf','cableCrunch','hangingLegRaise','plank','crunch','dbShrug','adductor','abductor']);
+const isCommon=e=>!!e&&!e.custom&&!e.rare&&COMMON.has(e.id);
+const RIR_TGT_TIP='Target RIR is 1 unless you change it, a convention: muscle growth improves as sets end closer to failure (Robinson 2024), but going all the way to failure grew muscle no more than stopping 1 to 2 reps short (Refalo 2024) and costs more fatigue. Some lifts in the ready-made routines use 0 or 2.';
+const COMMON_TIP='Common: staples found in most gyms and most programs. A judgment, not a measurement. Less common: useful lifts many gyms or programs skip.';
+// skip: the filter in use, so a list filtered to Common does not say Common on every row.
+const exTags=(e,skip)=>`${isCommon(e)&&skip!=='common'?'<span class="tag common">Common</span>':''}${e.rare&&skip!=='rare'?'<span class="tag rare">Less common</span>':''}`;
 function libExercises(){
   return LIB.map(([id,name,primary,sec,equip,flags,note])=>{const o={id,name,primary,secondary:sec?sec.split(' '):[],equip,bw:flags.includes('b'),rare:flags.includes('r'),perSide:flags.includes('s'),note,custom:false,archived:false};if(flags.includes('t'))o.timed=true;if(flags.includes('a'))o.assist=true;return o;});
 }
@@ -1385,7 +1398,7 @@ if(ENV==='preview')document.documentElement.dataset.env='preview';
 const HAD_LOG=(()=>{try{return localStorage.getItem(KEY)!=null;}catch(e){return false;}})();
 /* Shown in Settings, in diagnostics and in backups, so a bug report can be
    matched to the exact build. */
-const APP_VERSION='2026.10.03-r29.4';
+const APP_VERSION='2026.10.04-r29.5';
 /* The logo (r25): an upright dumbbell that is also the I of Ironlog. Same
    numbers as scripts/icons.py, which draws the app icons. */
 const MARK_SVG='<svg class="mark" viewBox="-242 -378 484 756" aria-hidden="true" focusable="false"><rect class="mk-h" x="-30" y="-300" width="60" height="600" rx="14"/><rect class="mk-h" x="-80" y="-192" width="160" height="32" rx="12"/><rect class="mk-h" x="-80" y="160" width="160" height="32" rx="12"/><rect class="mk-p" x="-240" y="-376" width="480" height="92" rx="30"/><rect class="mk-p" x="-190" y="-270" width="380" height="66" rx="26"/><rect class="mk-p" x="-190" y="204" width="380" height="66" rx="26"/><rect class="mk-p" x="-240" y="284" width="480" height="92" rx="30"/></svg>';
@@ -2396,7 +2409,7 @@ function guideSheet(m){
    <p><b>Moving</b>: up 3% or more with a trend clearly above zero. <b>Stalled</b>: flat or falling over the last 6 sessions in the current range, or 3 weeks if that covers more (at least 4 sessions), and only while you still train the lift.</p>
    <p><b>Consistency</b>: weeks with at least as many sessions as the routine you trained that week plans.</p>
    <p><b>Bodyweight</b> trends use 7-day averages. <b>Waist to height</b>: under 0.5 healthy, 0.5 to 0.59 increased, 0.6 or more high (NICE 2022).</p>`],
-  ['plan','Plan and your own exercises',`<p>A routine has days, and each exercise has sets, a rep range, a target RIR, rest, and a load step. A <b>numbered cycle</b> runs Day 1, 2, 3 in order, so a missed day waits; <b>fixed weekdays</b> pin each day to a weekday.</p>
+  ['plan','Plan and your own exercises',`<p>A routine has days, and each exercise has sets, a rep range, a target RIR, rest, and a load step. The <b>target RIR</b> is 1 unless you change it, a convention: muscle growth improves as sets end closer to failure (Robinson 2024), but going all the way to failure grew muscle no more than stopping 1 to 2 reps short (Refalo 2024) and costs more fatigue. Some lifts in the ready-made routines use 0 or 2. A <b>numbered cycle</b> runs Day 1, 2, 3 in order, so a missed day waits; <b>fixed weekdays</b> pin each day to a weekday.</p>
    <p><b>Your own exercise</b>: Plan, Exercise library, New exercise, or + New exercise when adding one. Set the primary and helper muscles, the equipment, what the number you type means (per dumbbell, total, per side, or stack), bodyweight or assisted, one side at a time, timed, Movement (compound or isolation), the load step, and the heaviest load available. Every number above uses them.</p>
    <p>Drag ⠿ to reorder exercises or move them between days, and to reorder days.</p>`],
   ['sections','Sections',`<p>Tap a section's title to fold or open it. Drag its ⠿ to move it; the order is kept. Each time the app opens, every section starts folded, except Sessions on History.</p>
@@ -2606,7 +2619,7 @@ function privacyLine(){
   if(!inClaude&&AUTH()&&acct.user)return `<p class="small muted" id="privacy" style="margin:8px 0 0"><b>Privacy:</b> no ads, no tracking. Your log syncs to your Ironlog account. Only you and the app's owner can see it. Reports you send go to the app owner. ${tipi('It is stored in a Supabase database. Database rules let each account read and write only its own data. The person who runs that database, the app owner, can see stored data, as with any app without end-to-end encryption. A new password is checked against known breaches with only the first 5 characters of its hash; the password never leaves the phone. Backup files go only where you save them.','About privacy')}</p>`;
   if(!inClaude&&AUTH())return `<p class="small muted" id="privacy" style="margin:8px 0 0"><b>Privacy:</b> no ads, no tracking. Your log stays on this device and is sent nowhere unless you sign in to sync. Reports you send go to the app owner. ${tipi('Opening or updating the app downloads it from GitHub Pages, which, like any website host, sees your IP address; after that it works offline. With an account, your log is also stored in a Supabase database, readable by your account and by the app owner. A new password is checked against known breaches with only the first 5 characters of its hash. Deleting the app or this site\'s data deletes the copy on this device, so keep a backup file or an account.','About privacy')}</p>`;
   return inClaude
-    ?`<p class="small muted" id="privacy" style="margin:8px 0 0"><b>Privacy:</b> no ads, no tracking. Your log is stored with your Claude account. ${tipi('Claude features (debrief, Ask Claude, swaps, reading typed sets) send the part of your log they need to Claude, and only when you tap them. Export and CSV files go only where you save them.','About privacy')}</p>`
+    ?`<p class="small muted" id="privacy" style="margin:8px 0 0"><b>Privacy:</b> no ads, no tracking. Your log is stored with your Claude account. ${tipi('Export and CSV files go only where you save them.','About privacy')}</p>`
     :`<p class="small muted" id="privacy" style="margin:8px 0 0"><b>Privacy:</b> no account, no ads, no tracking. Your log stays on this device and is sent nowhere. Reports you send go to the app owner. ${tipi('Ironlog has no server. Opening or updating the app downloads it from GitHub Pages, which, like any website host, sees your IP address; after that it works offline. Backup files go only where you save them. Deleting the app or this site\'s data deletes your log, so keep a backup file.','About privacy')}</p>`;
 }
 function syncInfo(){
@@ -3779,7 +3792,7 @@ function pageHead(kick,title,meta,actions){const q=!!actions&&actions.lastIndexO
 
 /* ---------- UI state ---------- */
 const HIST_PAGE=25;
-const ui={blkOpen:new Set(),tab:'today',todayDay:null,mapSel:null,mapSrc:null,prevOpen:false,help:new Set(),planView:'routine',histEx:'',histLimit:HIST_PAGE,wkOpen:false,libQ:'',libM:'',libE:'',libRare:false,bRoutine:null,bLibOpen:false,bLibQ:'',bLibM:'',bTarget:0,openItem:null,dashEx:null,dashMuscle:'chest',volMode:'region',histOpen:null,modal:null,folds:{},rng:{},eqLast:null};
+const ui={blkOpen:new Set(),tab:'today',todayDay:null,mapSel:null,mapSrc:null,prevOpen:false,help:new Set(),planView:'routine',histEx:'',histLimit:HIST_PAGE,wkOpen:false,libQ:'',libM:'',libE:'',libKind:'',bRoutine:null,bLibOpen:false,bLibQ:'',bLibM:'',bTarget:0,openItem:null,dashEx:null,dashMuscle:'chest',volMode:'region',histOpen:null,modal:null,folds:{},rng:{},eqLast:null};
 
 /* ---------- toast / modal ---------- */
 /* Undo used to be one snapshot that the toast timer nulled out after six
@@ -5080,15 +5093,15 @@ function pickerUsed(m){
   if(m.mode==='swapItem'){const f=findItem(m.uid);return {set:new Set(f?f.r.days[f.di].items.map(i=>i.exId):[]),label:'In this day'};}
   return {set:new Set(),label:''};
 }
-function pickRow(e,used){
-  return `<button class="pick" data-act="pickDo" data-ex="${e.id}"><span style="min-width:0"><b>${esc(e.name)}</b><br><span class="small muted">${esc(ML[e.primary])}, ${esc(EQL[e.equip]||e.equip)}</span></span><span class="tags">${used.set.has(e.id)?`<span class="tag blue">${used.label}</span>`:''}${e.rare?'<span class="tag rare">Less common</span>':''}</span></button>`;
+function pickRow(e,used,grouped){
+  return `<button class="pick" data-act="pickDo" data-ex="${e.id}"><span style="min-width:0"><b>${esc(e.name)}</b><br><span class="small muted">${esc(ML[e.primary])}, ${esc(EQL[e.equip]||e.equip)}</span></span><span class="tags">${used.set.has(e.id)?`<span class="tag blue">${used.label}</span>`:''}${grouped?(e.rare?'<span class="tag rare">Less common</span>':''):exTags(e)}</span></button>`;
 }
 function pickerBody(m){
   const used=pickerUsed(m);const row=e=>pickRow(e,used);const grp=t=>`<p class="pick-grp">${esc(t)}</p>`;
   const q=(m.q||'').trim();let h='';
   const swapId=m.mode==='swapBlock'&&state.draft&&state.draft.ex[m.b]?state.draft.ex[m.b].exId:m.mode==='swapItem'?((findItem(m.uid)||{}).it||{}).exId:null;
   if(q||m.m){
-    const list=libFiltered(m.q,m.m,'',false);
+    const list=commonFirst(libFiltered(m.q,m.m,'',false));
     if(!q&&swapId&&m.m===EX(swapId).primary){
       const best=swapCands(swapId,null,used.set).slice(0,3).map(x=>x.e);
       if(best.length)h+=grp('Closest matches')+best.map(row).join('')+grp(`All ${ML[m.m]}`);
@@ -5105,7 +5118,10 @@ function pickerBody(m){
   }
   const rec=recentExIds(8).map(EX);
   if(rec.length)h+=grp('Recent')+rec.map(row).join('');
-  return h+grp(`All exercises (${all.length})`)+all.map(row).join('');
+  const com=all.filter(isCommon),rest=all.filter(e=>!isCommon(e));
+  // Under the Common heading a Common tag on every row would only repeat it.
+  const rowG=e=>pickRow(e,used,true);
+  return h+(com.length?grp(`Common (${com.length})`)+com.map(rowG).join(''):'')+grp(com.length?`All other exercises (${rest.length})`:`All exercises (${all.length})`)+rest.map(row).join('');
 }
 /* Week at a glance, in the bar at the top of every tab. Each cell is a day of
    this calendar week: filled green when you lifted, a green outline for
@@ -5468,7 +5484,7 @@ function itemHTML(R,di,it,ii){
     <label class="field">Sets<input type="text" inputmode="numeric" data-it="sets" data-uid="${it.uid}" value="${it.sets}"></label>
     <label class="field">${ex.timed?'Min seconds':'Rep min'}<input type="text" inputmode="numeric" data-it="repMin" data-uid="${it.uid}" value="${it.repMin}"></label>
     <label class="field">${ex.timed?'Max seconds':'Rep max'}<input type="text" inputmode="numeric" data-it="repMax" data-uid="${it.uid}" value="${it.repMax}"></label>
-    <label class="field">Target RIR<input type="text" inputmode="decimal" data-it="rir" data-uid="${it.uid}" value="${it.rir}"></label>
+    <label class="field"><span class="hastip" data-tip="${esc(RIR_TGT_TIP)}">Target RIR</span><input type="text" inputmode="decimal" data-it="rir" data-uid="${it.uid}" value="${it.rir}"></label>
     <label class="field">Rest (s)<input type="text" inputmode="numeric" data-it="rest" data-uid="${it.uid}" value="${it.rest}"></label>
     <label class="field">Load step (${U()})<input type="text" inputmode="decimal" data-it="inc" data-uid="${it.uid}" value="${fmtW(incOf(ex,it))}" data-tip="Applies to this exercise on every day and routine"></label></div>
     <div class="row" style="margin-top:8px"><label class="field" style="flex:1">Move to<select data-moveto="${it.uid}" data-day="${di}">${R.days.map((d,i)=>`<option value="${i}" ${i===di?'selected':''}>${dayLabel(R,i)}: ${esc(d.name)}</option>`).join('')}</select></label>
@@ -5476,10 +5492,11 @@ function itemHTML(R,di,it,ii){
     ${nx?`<div class="row" style="margin-top:8px"><button class="btn sm ${linked?'noted':''}" data-act="ssToggle" data-uid="${it.uid}">${linked?'Unlink superset':'Superset with next'}</button>${linked?`<span class="small muted">Paired with ${esc(exName(nx.exId))}: alternate sets, rest once after the pair.</span>`:''}</div>`:''}
     ${ex.note?`<p class="small muted">${esc(ex.note)}</p>`:''}</div>`:''}</li>`;
 }
-function bLibItems(){return libFiltered(ui.bLibQ,ui.bLibM,'',false).map(e=>`<li class="it" data-ex="${e.id}"><div class="ir"><span class="grip" aria-hidden="true">⠿</span><div class="imain"><b>${esc(e.name)}</b><span>${esc(ML[e.primary])}, ${esc(EQL[e.equip]||e.equip)}${e.rare?', less common':''}</span></div><button class="ib" aria-label="Add ${esc(e.name)}" data-act="libAdd" data-ex="${e.id}">+</button></div></li>`).join('');}
-function libFiltered(q,m,e,rare){
+function bLibItems(){return commonFirst(libFiltered(ui.bLibQ,ui.bLibM,'',false)).map(e=>`<li class="it" data-ex="${e.id}"><div class="ir"><span class="grip" aria-hidden="true">⠿</span><div class="imain"><b>${esc(e.name)}</b><span>${esc(ML[e.primary])}, ${esc(EQL[e.equip]||e.equip)}${isCommon(e)?', common':e.rare?', less common':''}</span></div><button class="ib" aria-label="Add ${esc(e.name)}" data-act="libAdd" data-ex="${e.id}">+</button></div></li>`).join('');}
+const commonFirst=list=>[...list.filter(isCommon),...list.filter(e=>!isCommon(e))];
+function libFiltered(q,m,e,kind){
   q=(q||'').toLowerCase().trim();
-  return state.exercises.filter(x=>!x.archived&&(!q||x.name.toLowerCase().includes(q))&&(!m||x.primary===m||x.secondary.includes(m))&&(!e||x.equip===e)&&(!rare||x.rare)).sort((a,b)=>a.name.localeCompare(b.name));
+  return state.exercises.filter(x=>!x.archived&&(!q||x.name.toLowerCase().includes(q))&&(!m||x.primary===m||x.secondary.includes(m))&&(!e||x.equip===e)&&(!kind||(kind==='rare'?x.rare:isCommon(x)))).sort((a,b)=>a.name.localeCompare(b.name));
 }
 /* soFar: this week while it is still going, so short of the minimum is
    under way (pale green), not amber (r29). */
@@ -5506,14 +5523,14 @@ function viewLibrary(){
   <div class="card stack"><input type="search" placeholder="Search exercises" aria-label="Search exercises" data-bind="libQ" value="${esc(ui.libQ)}">
   <div class="grid2"><select data-bind="libM" aria-label="Filter by muscle"><option value="">All muscles</option>${MUSCLES.map(([k,l])=>`<option value="${k}" ${ui.libM===k?'selected':''}>${l}</option>`).join('')}</select>
   <select data-bind="libE" aria-label="Filter by equipment"><option value="">All equipment</option>${EQUIP.map(([k,l])=>`<option value="${k}" ${ui.libE===k?'selected':''}>${l}</option>`).join('')}</select></div>
-  <label class="check-inline"><input type="checkbox" data-bind="libRare" ${ui.libRare?'checked':''}>Less common and overlooked only</label></div>
+  <div class="row" style="gap:6px;align-items:center"><div class="chips" role="group" aria-label="Show">${[['','All'],['common','Common'],['rare','Less common']].map(([k,l])=>`<button class="chip ${ui.libKind===k?'on':''}" data-act="libKind" data-v="${k}" aria-pressed="${ui.libKind===k}">${l}</button>`).join('')}</div>${tipi(COMMON_TIP,'About Common and Less common')}</div></div>
   <div id="libList">${libCards()}</div>`;
 }
 function libCards(){
-  const list=libFiltered(ui.libQ,ui.libM,ui.libE,ui.libRare);
+  const list=libFiltered(ui.libQ,ui.libM,ui.libE,ui.libKind);
   if(!list.length)return '<div class="card"><p style="margin:0">No exercises match. Clear the filters or create a new exercise.</p></div>';
   return `<div class="card">${list.map(e=>`<div class="hitem"><div class="row spread" style="align-items:flex-start;flex-wrap:nowrap"><div style="min-width:0"><b>${esc(e.name)}</b>${e.note?` ${tipi(e.note,'About '+e.name)}`:''}<p class="small muted" style="margin:2px 0 0">${esc(ML[e.primary])}${e.secondary.length?', plus '+e.secondary.map(m=>ML[m]).join(', '):''}</p></div><div class="row" style="flex:none;gap:4px"><button class="btn sm" data-act="exEdit" data-ex="${e.id}">Edit</button><button class="ib sm" data-act="exDel" data-ex="${e.id}" aria-label="Delete ${esc(e.name)}">✕</button></div></div>
-    <p class="small" style="margin:6px 0 0;display:flex;flex-wrap:wrap;gap:4px"><span class="tag">${esc(EQL[e.equip]||e.equip)}</span>${e.rare?'<span class="tag rare">Less common</span>':''}${e.custom?'<span class="tag blue">Custom</span>':''}${e.bw?'<span class="tag">Bodyweight + load</span>':''}<span class="tag">${esc(loadWords(e))}</span>${e.perSide?'<span class="tag">Reps per side</span>':''}${e.timed?'<span class="tag">Timed</span>':''}${e.maxLoad!=null?`<span class="tag">Max ${fmtW(e.maxLoad)} ${U()}</span>`:''}</p></div>`).join('')}</div>`;
+    <p class="small" style="margin:6px 0 0;display:flex;flex-wrap:wrap;gap:4px">${exTags(e,ui.libKind)}<span class="tag">${esc(EQL[e.equip]||e.equip)}</span>${e.custom?'<span class="tag blue">Custom</span>':''}${e.bw?'<span class="tag">Bodyweight + load</span>':''}<span class="tag">${esc(loadWords(e))}</span>${e.perSide?'<span class="tag">Reps per side</span>':''}${e.timed?'<span class="tag">Timed</span>':''}${e.maxLoad!=null?`<span class="tag">Max ${fmtW(e.maxLoad)} ${U()}</span>`:''}</p></div>`).join('')}</div>`;
 }
 
 /* ---------- DASHBOARD ---------- */
@@ -5557,7 +5574,7 @@ function viewDash(){
   <div class="kpi"><div class="v">${wkHard}</div><div class="l">Hard sets this week, of ${weekStats().tgt} planned</div></div>
   <div class="kpi"><div class="v" style="color:${stalled.length>=3?'var(--red)':'inherit'}">${stalled.length}</div><div class="l">Stalled exercises</div></div>${extraKpis()}</div>`;
   if(state.sessions.length)h+=dashSummary();
-  if(aiOn()&&state.sessions.some(x=>!x.demo))h+=`<div class="card row spread"><span class="small">Ask Claude a question about your own log: a stall, a split, a weak point.</span><button class="btn sm primary" data-act="aiReview">Ask Claude</button></div>`;
+
 
   const avg=actualAvg4();const plan=plannedSets(R);const bands=state.settings.bands;
 
@@ -6226,7 +6243,7 @@ function renderModalBody(){
     const nx=d.ex[m.b+1];const linked=!!(nx&&b.plan.ss&&nx.plan.ss===b.plan.ss);
     const op=(o,l,dis,cls)=>`<button class="btn block ${cls||''}" style="margin-top:6px" data-act="bMenuDo" data-op="${o}" data-b="${m.b}" ${dis?'disabled':''}>${l}</button>`;
     h=`<div class="sheet" role="dialog" aria-modal="true"><div class="sheet-h"><h3>${esc(exName(b.exId))}</h3><button class="ib" aria-label="Close" data-act="mClose">✕</button></div>
-    ${op('wAdd','Add a warm-up set')}${op('dropAdd','Add a drop set (about 75% load)')}${op('bQuick','Type or dictate sets')}${op('bNote',b.note?'Edit note':'Add note')}${op('bSwap','Swap exercise')}${aiOn()?op('bAiSwap','Ask Claude for a swap'):''}${op('bInc',`Load step: ${fmtW(incOf(EX(b.exId),b.plan))} ${U()}`)}${op('bMax',`Heaviest available: ${EX(b.exId).maxLoad!=null?fmtW(EX(b.exId).maxLoad)+' '+U():'no limit'}`)}${rirShow(EX(b.exId))?op('bCal','Calibration set (RIR check)'):''}${nx?op('bSs',linked?'Unlink superset':`Superset with ${esc(exName(nx.exId))}`):''}${op('bUp','Move up',m.b===0)}${op('bDown','Move down',!nx)}${op('fbOpen','Report a problem')}${op('bDel','Remove from session',false,'danger')}</div>`;
+    ${op('wAdd','Add a warm-up set')}${op('dropAdd','Add a drop set (about 75% load)')}${op('bQuick','Type or dictate sets')}${op('bNote',b.note?'Edit note':'Add note')}${op('bSwap','Swap exercise')}${''}${op('bInc',`Load step: ${fmtW(incOf(EX(b.exId),b.plan))} ${U()}`)}${op('bMax',`Heaviest available: ${EX(b.exId).maxLoad!=null?fmtW(EX(b.exId).maxLoad)+' '+U():'no limit'}`)}${rirShow(EX(b.exId))?op('bCal','Calibration set (RIR check)'):''}${nx?op('bSs',linked?'Unlink superset':`Superset with ${esc(exName(nx.exId))}`):''}${op('bUp','Move up',m.b===0)}${op('bDown','Move down',!nx)}${op('fbOpen','Report a problem')}${op('bDel','Remove from session',false,'danger')}</div>`;
   }else if(m.kind==='injury'){
     h=`<div class="sheet" role="dialog" aria-modal="true"><div class="sheet-h"><h3>Flag an injury</h3><button class="ib" aria-label="Close" data-act="mClose">✕</button></div>
     <p class="small muted hastip" data-tip="Every exercise that loads this muscle, directly or as a helper, is marked in your sessions: its target pauses, loads cap at last time, and it is left out of below-target advice until cleared.">Training aid, not medical advice: sharp, worsening, or lasting pain needs a clinician.</p>
@@ -6235,7 +6252,7 @@ function renderModalBody(){
     <div class="row"><button class="btn primary" data-act="injSave">Flag it</button><button class="btn" data-act="mClose">Cancel</button></div></div></div>`;
   }else if(m.kind==='recap'){
     const u=m.upd;
-    h=`<div class="sheet" role="dialog" aria-modal="true"><div class="sheet-h"><h3>${esc(m.title)}</h3><button class="ib" aria-label="Close" data-act="mClose">✕</button></div>${m.prs&&m.prs.length?`<div class="prblk" id="recapPR"><h4>${m.prs.length===1?'New PR':`${m.prs.length} new PRs`}</h4><ul>${m.prs.map(p=>`<li><b>${esc(p.name)}</b>: ${esc(p.what)}${p.was?` <span class="was">(${esc(p.was)})</span>`:''}</li>`).join('')}</ul></div>`:''}<ul class="recap">${m.lines.map(l=>`<li>${esc(l)}</li>`).join('')}</ul>${m.note?`<p class="small muted">${esc(m.note)}</p>`:''}${aiOn()&&m.sid?`<button class="btn block" style="margin-bottom:8px" data-act="aiDebrief" data-sid="${esc(m.sid)}">Debrief with Claude</button>`:''}
+    h=`<div class="sheet" role="dialog" aria-modal="true"><div class="sheet-h"><h3>${esc(m.title)}</h3><button class="ib" aria-label="Close" data-act="mClose">✕</button></div>${m.prs&&m.prs.length?`<div class="prblk" id="recapPR"><h4>${m.prs.length===1?'New PR':`${m.prs.length} new PRs`}</h4><ul>${m.prs.map(p=>`<li><b>${esc(p.name)}</b>: ${esc(p.what)}${p.was?` <span class="was">(${esc(p.was)})</span>`:''}</li>`).join('')}</ul></div>`:''}<ul class="recap">${m.lines.map(l=>`<li>${esc(l)}</li>`).join('')}</ul>${m.note?`<p class="small muted">${esc(m.note)}</p>`:''}${''}
     ${u?`<div class="hint"><b>Update ${esc(u.dayName)} in your routine?</b><br>${esc(u.text)}. Next time this day starts with the change.</div><button class="btn block" data-act="applyUpd">Update ${esc(u.dayName)}</button>`:''}
     <button class="btn primary block" style="margin-top:10px" data-act="mClose">${u?'Not now':'Done'}</button></div>`;
   }else if(m.kind==='imp'){h=impSheet(m);
@@ -6271,22 +6288,8 @@ function renderModalBody(){
     ${ex.timed?'<p class="small muted" style="margin:0">Timed hold: the number after x is seconds, for example <b>25x45, 40</b> or <b>bw x 60, 50</b>.</p>':''}
     <p class="small muted">Loads in ${U()}${loadNote(ex)}${ex.bw?', added to bodyweight (bw or bw+25)':''}. <b>235x5, 5, 4 rir 1</b> or <b>185x8@2 205x6@1</b>. <span class="hastip" data-tip="Type or use the keyboard's dictation mic. rir at the end applies to every set; @ gives RIR per set. A bare number repeats the last load. Sets fill from the first one not done and are marked done.${aiOn()?' Anything this cannot read is passed to Claude.':''}">More</span></p>
     <input type="text" id="qTxt" autocomplete="off" autocapitalize="off" spellcheck="false" value="${esc(m.text||'')}" placeholder="${ex.bw?'bw x 10, 8, 7':'225x5, 5, 4 rir 1'}">
-    ${m.err?`<p class="small" style="color:var(--red);margin:8px 0 0">${esc(m.err)}</p>`:''}${m.busy?'<p class="small muted" style="margin:8px 0 0">Reading with Claude...</p>':''}
+    ${m.err?`<p class="small" style="color:var(--red);margin:8px 0 0">${esc(m.err)}</p>`:''}${''}
     <div class="row" style="margin-top:10px"><button class="btn primary" data-act="qFill" ${m.busy?'disabled':''}>Fill sets</button>${m.busy?'<button class="btn" data-act="aiStop">Stop</button>':''}<button class="btn" data-act="mClose">Cancel</button></div></div>`;
-  }else if(m.kind==='ai'){
-    h=`<div class="sheet" role="dialog" aria-modal="true"><div class="sheet-h"><h3>${esc(m.title)}</h3><button class="ib" aria-label="Close" data-act="mClose">✕</button></div>
-    ${m.ask?`<p class="small muted">Claude reads your routine, weekly volume, trends, body data, and recent sessions, then answers. Uses your Claude plan.</p><textarea id="aiQ" style="min-height:70px" placeholder="Why has my incline bench stalled? Is my Arms day too long?">${esc(m.q||'')}</textarea><div class="row" style="margin-top:8px"><button class="btn primary" data-act="aiAsk" ${m.busy?'disabled':''}>Ask Claude</button></div>`:''}
-    <div id="aiOut" class="aiout" aria-live="polite">${esc(m.out||(m.busy?'Thinking...':''))}</div>
-    ${m.err?`<p class="small" style="color:var(--red);margin:8px 0 0">${esc(m.err)}</p>`:''}
-    <div class="row" style="margin-top:10px">${m.busy?'<button class="btn" data-act="aiStop">Stop</button>':''}<button class="btn" data-act="mClose">Close</button></div>
-    <p class="small muted" style="margin:8px 0 0">Advice from Claude, not a clinician. It sees only what is logged here.</p></div>`;
-  }else if(m.kind==='aiSwap'){
-    const d=state.draft;const b=d&&d.ex[m.b];if(!b){ui.modal=null;el.hidden=true;return;}
-    h=`<div class="sheet" role="dialog" aria-modal="true"><div class="sheet-h"><h3>Swap ${esc(exName(b.exId))}</h3><button class="ib" aria-label="Close" data-act="mClose">✕</button></div>
-    <label class="field">Why swap (optional)<input type="text" id="aiWhy" value="${esc(m.why||'')}" placeholder="machine taken, shoulder feels off, short on time"></label>
-    <div class="row" style="margin-top:8px"><button class="btn primary" data-act="aiSwapAsk" ${m.busy?'disabled':''}>${m.picks?'Ask again':'Suggest swaps'}</button>${m.busy?'<button class="btn" data-act="aiStop">Stop</button>':''}</div>
-    ${m.busy?'<p class="small muted">Thinking...</p>':''}${m.err?`<p class="small" style="color:var(--red)">${esc(m.err)}</p>`:''}
-    <div style="margin-top:8px">${(m.picks||[]).map(p=>`<button class="pick" data-act="pickDo" data-ex="${esc(p.id)}"><span><b>${esc(exName(p.id))}</b><br><span class="small muted">${esc(p.why||'')}</span></span></button>`).join('')}</div></div>`;
   }else if(m.kind==='max'){
     const e=EX(m.exId);
     h=`<div class="sheet" role="dialog" aria-modal="true"><div class="sheet-h"><h3>Heaviest available: ${esc(e.name)}</h3><button class="ib" aria-label="Close" data-act="mClose">✕</button></div>
@@ -7627,30 +7630,8 @@ const ACT={
     const got=parseSets(txt,ex,defW);
     const finish=list=>{const n=fillSets(m.b,list);closeModal();rerenderKeepScroll();toast(`${n} set${n===1?'':'s'} filled and marked done`);};
     if(got){finish(got);return;}
-    if(!aiOn()){m.err='Could not read that. Try the pattern 225x5, 5, 4 rir 1.';renderModal();return;}
-    const ctl=new AbortController();AI.ctl=ctl;m.busy=true;m.err='';renderModal();
-    AI.fn.json(`Convert this gym log for the exercise "${ex.name}" into sets. Loads are in ${U()}.${ex.bw?' This is a bodyweight exercise: the load is weight added to bodyweight, and "bodyweight" or "bw" alone means 0.':''} When a set has no load, it uses the previous set's load; if no load is given anywhere, use null. RIR means reps in reserve; use null when it is not stated for a set, and apply a value stated for "all" or "each" to every set. Reply with only a JSON array, one object per set in order, like [{"w":225,"r":5,"rir":1}].\n\nLog: ${txt}`,{signal:ctl.signal,modelTier:'quick'})
-      .then(a=>{if(ui.modal!==m)return;const v=aiSetsValid(a);if(!v){m.err='Claude could not turn that into sets. Try the pattern 225x5, 5, 4 rir 1.';return;}
-        if(v.some(x=>!x.w)&&!ex.bw&&defW!=null)v.forEach(x=>{if(!x.w)x.w=defW;});finish(v);})
-      .catch(e=>{if(ui.modal!==m)return;m.err=aiErr(e)||'';})
-      .finally(()=>{if(AI.ctl===ctl)AI.ctl=null;if(ui.modal===m){m.busy=false;renderModal();}});
-  },
+m.err='Could not read that. Try the pattern 225x5, 5, 4 rir 1.';renderModal();  },
   aiStop(){if(AI.ctl){try{AI.ctl.abort();}catch(e){/* already finished */}}},
-  aiDebrief(t){const sid=t.dataset.sid;const pr=debriefPrompt(sid);if(!pr){toast('That session is no longer saved');return;}const m={kind:'ai',title:'Session debrief'};openModal(m);aiRun(m,pr,'default');},
-  aiReview(){openModal({kind:'ai',title:'Ask Claude about your training',ask:true,q:''});},
-  aiAsk(){const m=ui.modal;if(!m||m.kind!=='ai')return;const q=(($('#aiQ')||{}).value||'').trim();m.q=q;if(!q){m.err='Type a question first.';renderModal();return;}if(!state.sessions.some(x=>!x.demo)){m.err='Log a session first so there is something to review.';renderModal();return;}aiRun(m,reviewPrompt(q),'default');},
-  bAiSwap(t){openModal({kind:'aiSwap',mode:'swapBlock',b:+t.dataset.b,why:'',picks:null});},
-  aiSwapAsk(){
-    const m=ui.modal;if(!m||m.kind!=='aiSwap'||!aiOn())return;const b=state.draft&&state.draft.ex[m.b];if(!b)return;
-    m.why=(($('#aiWhy')||{}).value||'').trim();const pr=swapPrompt(b,m.why);if(!pr){m.err='No other exercise in your library trains this muscle.';renderModal();return;}
-    const ctl=new AbortController();AI.ctl=ctl;m.busy=true;m.err='';renderModal();
-    AI.fn.json(pr.text,{signal:ctl.signal,modelTier:'default'})
-      .then(r=>{if(ui.modal!==m)return;const ok=new Set(pr.cands.map(e=>e.id));const seen=new Set();
-        const picks=(r&&Array.isArray(r.picks)?r.picks:[]).filter(p=>p&&typeof p.id==='string'&&ok.has(p.id)&&!seen.has(p.id)&&seen.add(p.id)).slice(0,3).map(p=>({id:p.id,why:typeof p.why==='string'?p.why.slice(0,200):''}));
-        if(!picks.length)m.err='No usable suggestions came back. Try again or use Swap exercise.';m.picks=picks;})
-      .catch(e=>{if(ui.modal!==m)return;m.err=aiErr(e);})
-      .finally(()=>{if(AI.ctl===ctl)AI.ctl=null;if(ui.modal===m){m.busy=false;renderModal();}});
-  },
   heroMore(){ui.heroMore=!ui.heroMore;rerenderKeepScroll();},
   noteReuse(t){const b=state.draft&&state.draft.ex[+t.dataset.b];if(!b||!b.lastNote)return;b.note=b.lastNote.text;saveNow();rerenderKeepScroll();toast('Note carried into this session');},
   bNote(t){const bi=+t.dataset.b;openModal({kind:'note',bi,title:`Note: ${exName(state.draft.ex[bi].exId)}`,text:state.draft.ex[bi].note||''});},
@@ -7938,6 +7919,7 @@ const ACT={
       commit();rerenderKeepScroll();toast('Exercise deleted',true);
     },true);
   },
+  libKind(t){const v=t.dataset.v||'';if(!['','common','rare'].includes(v))return;ui.libKind=v;rerenderKeepScroll();},
   volMode(t){const v=t.dataset.v;if(!VOL_MODES.some(x=>x[0]===v))return;ui.volMode=v;rerenderKeepScroll();},
   chartRange(t){ui.rng=ui.rng||{};ui.rng[t.dataset.id]=t.dataset.v;rerenderKeepScroll();},
   histMore(){ui.histLimit+=HIST_PAGE;rerenderKeepScroll();},
@@ -8213,7 +8195,6 @@ document.addEventListener('change',e=>{
     case 'bLibM':ui.bLibM=t.value;rerenderKeepScroll();break;
     case 'bTarget':ui.bTarget=+t.value;ui.dayFocus=undefined;rerenderKeepScroll();break;
     case 'libM':case 'libE':ui[b]=t.value;rerenderKeepScroll();break;
-    case 'libRare':ui.libRare=t.checked;rerenderKeepScroll();break;
     case 'dashMuscle':ui.dashMuscle=t.value;rerenderKeepScroll();break;
     case 'dashEx':ui.dashEx=t.value;rerenderKeepScroll();break;
     case 'unit':state.settings.unit=t.value;commit();render();break;
@@ -8478,68 +8459,8 @@ function mountSortable(){
     }}));
 }
 
-/* ---------- Claude features (sample capability) ----------
-   Everything here runs on the viewer's own Claude plan and only on a tap.
-   The page works fully without it: when the viewer cannot use Claude, the
-   buttons are hidden. The set parser below needs no Claude at all; Claude is
-   asked only when the parser cannot read what was typed. */
-const AI={fn:null,ready:false,off:false,ctl:null};
-async function aiInit(){
-  try{
-    if(!window.claude||typeof window.claude.use!=='function')return;
-    const f=await window.claude.use('sample');
-    if(typeof f==='function'){AI.fn=f;AI.ready=true;if(ui.modal)renderModal();else if(ui.tab==='dash'||state.draft)rerenderKeepScroll();}
-  }catch(e){log('ai',e);}
-}
-const aiOn=()=>AI.ready&&!AI.off;
-function aiErr(e){
-  const c=e&&e.code;
-  if(['not_granted','sampling_disabled','not_declared','capability_disabled','capability_removed','tools_unavailable','images_unavailable'].includes(c)){AI.off=true;return 'Claude is not available in this view.';}
-  if(c==='cancelled')return '';
-  if(c==='rate_limited')return 'Claude is busy or your usage limit was reached. Try again later.';
-  if(c==='session_expired')return 'Sign in to Claude again, then try again.';
-  if(c==='prompt_too_large')return 'That is too much history to send at once. Ask about something narrower.';
-  if(c==='refused')return 'Claude declined this request. Rephrase it and try again.';
-  if(c==='invalid_json')return 'The reply could not be read. Try again.';
-  if(c==='empty_completion')return 'Claude returned nothing. Try again with a shorter request.';
-  return 'The connection to Claude failed. Try again.';
-}
-const setTxt=(ex,s)=>`${s.warm?'warm-up ':''}${s.drop?'drop ':''}${loadLabel(ex,+s.w||0)}${ex.bw?'':' '+U()} ${ex.timed?`held ${s.r} s`:`x ${s.r}`}${!ex.timed&&s.rir!=null&&s.rir!==''?` @ RIR ${s.rir}`:''}${s.cal?` (calibration set: predicted ${s.cal.pred} left at rep ${s.cal.at})`:''}`;
-function sessTxt(ss){
-  const tag=ss.deload?' (deload)':ss.light?' (lighter)':'';
-  const body=ss.ex.map(b=>{const ex=EX(b.exId);return `  ${ex.name} (load ${loadWords(ex)}${ex.perSide?', reps per side':''})${b.rr?` [planned ${b.rr[0]}-${b.rr[1]} reps]`:''}: ${b.sets.map(s=>setTxt(ex,s)).join(', ')}${b.note?` (note: ${b.note})`:''}`;}).join('\n');
-  const ck=ss.chk?`, check-in ${CHK_Q.filter(([k])=>ss.chk[k]).map(([k,l,n])=>`${l.toLowerCase()} ${chkWord(n[ss.chk[k]-1])}`).join(', ')}`:'';
-  return `${ss.date} ${ss.dayName.replace(/ \((lighter|deload)\)$/,'')}${tag}${ss.free?' (freestyle)':''}${ss.durMin?`, ${ss.durMin} min`:''}${ck}\n${body}${ss.notes?`\n  Session note: ${ss.notes}`:''}`;
-}
-/* A plain-text picture of the training: routine, weekly volume against the
-   bands, strength trends, stalls, body data, then sessions newest first,
-   trimmed from the oldest end to stay well under the 64 KB input cap. */
-function aiDigest(maxBytes){
-  const I=IDX();const R=activeRoutine();const bands=state.settings.bands;const L=[];
-  if(state.settings.heightCm)L.push(`Height: ${heightTxt(state.settings.heightCm)}.`);
-  L.push(`Units: ${U()}. For bodyweight exercises the load shown is added weight (BW = bodyweight only). RIR = reps in reserve. Warm-up sets are excluded from analysis. Timed holds are logged in seconds.`);
-  if(state.settings.rirMode==='off')L.push('RIR tracking is switched off in this app: every working set counts as hard and estimates use reps alone.');
-  else if(state.settings.rirMode==='cal'){const c=calStats();if(c.recent>=2&&c.bias)L.push(`RIR correction is on: logged RIR is shifted by ${c.bias>0?'+':''}${c.bias} (median calibration error) before analysis.`);}
-  {const c=calStats();if(c.n)L.push(`Calibration sets: ${c.n}; median error ${c.bias>0?'+':''}${c.bias} reps (positive means the lifter stops with more reps left than they call).`);}
-  L.push(`Active routine "${R.name}", ${R.schedule==='weekly'?'fixed weekdays':`${R.days.length}-day cycle`}:`);
-  R.days.forEach((d,i)=>L.push(`- ${dayLabel(R,i)} ${d.name}${d.rest?': rest':': '+d.items.map(it=>`${exName(it.exId)} ${it.sets}x${it.repMin}-${it.repMax} @${it.rir} RIR, ${it.rest}s rest`).join('; ')}`));
-  const avg=actualAvg4();
-  if(avg)L.push(`Hard sets per week, average over the last ${avg._weeks} trained week(s), direct 1 and secondary 0.5, with target band: ${MK.filter(m=>(avg[m]||0)>0||(!TRACK_ONLY.has(m)&&bands[m][0]>0)).map(m=>`${ML[m]} ${r1(avg[m]||0)} (${TRACK_ONLY.has(m)?'tracked only, no target':`${bands[m][0]}-${bands[m][1]}`})`).join(', ')}.`);
-  else L.push('No complete training week in the last 4 weeks yet, so weekly volume is not established.');
-  if(I.scores.length)L.push(`Strength trend (median e1RM change over 6 weeks, current rep range): ${I.scores.map(s=>`${ML[s.m]} ${s.score>=0?'+':''}${r1(s.score)}%`).join(', ')}.`);
-  const st=stalledIds();if(st.length)L.push(`Stalled (3 exposures without a PR): ${st.map(exName).join(', ')}.`);
-  const inj=state.injuries||[];if(inj.length)L.push(`Injury flags: ${inj.map(x=>ML[x.m]+(x.note?` (${x.note})`:'')).join(', ')}.`);
-  if(isDeloadWeek())L.push('This week is a deload week.');
-  const bws=[...state.bodyweights].sort((a,b)=>a.date<b.date?-1:1).slice(-6);
-  if(bws.length)L.push(`Bodyweight: ${bws.map(b=>`${b.date} ${fmtW(b.kg)} ${U()}`).join(', ')}.`);
-  const ms=[...state.measurements].sort((a,b)=>a.date<b.date?-1:1).slice(-4);
-  if(ms.length)L.push(`Tape (${LU()}): ${ms.map(m=>`${m.date} `+MEAS.filter(([k])=>m[k]>0).map(([k,l])=>`${l} ${lenD(m[k])}`).join(', ')).join('; ')}.`);
-  const head=L.join('\n');
-  const ss=sortedSessions().filter(x=>!x.demo).reverse();
-  const out=[];let size=head.length+200;
-  for(const x of ss){const t=sessTxt(x);if(size+t.length>maxBytes)break;out.push(t);size+=t.length+1;}
-  return `${head}\n\nSessions, newest first (${out.length} of ${ss.length}):\n${out.join('\n')||'none'}`;
-}
+
+const AI={fn:null,ready:false,off:true,ctl:null};function aiInit(){}const aiOn=()=>false;
 
 /* Typed or dictated sets. Examples it reads:
    "235x5, 5, 4 rir 1"   three sets at 235, RIR 1 on each
@@ -8567,16 +8488,6 @@ function parseSets(text,ex,defW,conv){
   }
   return out.length&&out.length<=20?out:null;
 }
-function aiSetsValid(a){
-  if(!Array.isArray(a)||!a.length||a.length>20)return null;
-  const out=[];let w=null;
-  for(const x of a){if(!x||typeof x!=='object')return null;
-    if(x.w!=null){if(!(isFinite(+x.w)&&+x.w>=0&&+x.w<=3000))return null;w=fromD(+x.w);}
-    const r=Math.round(+x.r);if(!(r>=1&&r<=100))return null;
-    const rir=x.rir==null||x.rir===''?null:+x.rir;if(rir!=null&&!(rir>=0&&rir<=10))return null;
-    out.push({w:w==null?0:w,r,rir});}
-  return out;
-}
 function fillSets(bi,list){
   const d=state.draft;const b=d&&d.ex[bi];if(!b)return 0;
   // On an assisted lift the numbers typed or said are the machine's help.
@@ -8588,34 +8499,9 @@ function fillSets(bi,list){
   }
   saveNow();return list.length;
 }
-function aiRun(m,input,tier,onDone){
-  if(!aiOn())return;
-  const ctl=new AbortController();AI.ctl=ctl;m.busy=true;m.err='';m.out='';renderModal();
-  AI.fn(input,{signal:ctl.signal,modelTier:tier||'default',onText:({text})=>{m.out=text;const o=document.getElementById('aiOut');if(o)o.textContent=text;}})
-    .then(r=>{if(ui.modal!==m)return;m.out=r.text;m.done=true;onDone&&onDone(r);})
-    .catch(e=>{if(ui.modal!==m)return;m.out=e&&typeof e.text==='string'?e.text:'';m.err=aiErr(e);})
-    .finally(()=>{if(AI.ctl===ctl)AI.ctl=null;if(ui.modal!==m)return;m.busy=false;renderModal();});
-}
-const AI_STYLE='Write plain text only: no markdown, no headings, no bullet symbols, no bold. Short paragraphs. Be direct and specific, give numbers where they help, and never invent data that is not in what follows. If the data is too thin to support a conclusion, say so in one sentence.';
-function debriefPrompt(sid){
-  const ss=state.sessions.find(x=>x.id===sid);if(!ss)return null;
-  const prev=ss.ex.map(b=>{const ex=EX(b.exId);const p=sortedSessions().filter(x=>x.date<ss.date||(x.date===ss.date&&x.id!==ss.id)).reverse().find(x=>x.ex.some(y=>y.exId===b.exId));
-    if(!p)return `  ${ex.name}: first logged session.`;const pb=p.ex.find(y=>y.exId===b.exId);return `  ${ex.name}, ${p.date}: ${pb.sets.map(s=>setTxt(ex,s)).join(', ')}`;}).join('\n');
-  return `You are an experienced strength and hypertrophy coach reviewing one training session for your client. ${AI_STYLE} Keep it under 170 words. Cover: what went well, the single most useful change for next time with specific loads or reps, and anything in the numbers that looks like fatigue, poor warm-up practice or a logging mistake.\n\nSESSION JUST LOGGED\n${sessTxt(ss)}\n\nPREVIOUS TIME FOR EACH EXERCISE\n${prev}\n\nCONTEXT\n${aiDigest(24000)}`;
-}
-function reviewPrompt(q){
-  return `You are an experienced strength and hypertrophy coach with your client's complete training log in front of you. ${AI_STYLE} Keep it under 280 words. Answer this question from the client: "${q}"\n\nTRAINING LOG\n${aiDigest(52000)}`;
-}
-function swapPrompt(b,reason){
-  const ex=EX(b.exId);const mus=new Set([ex.primary,...ex.secondary]);
-  const cands=state.exercises.filter(e=>!e.archived&&e.id!==ex.id&&(e.primary===ex.primary||mus.has(e.primary))).sort((a,c)=>(c.primary===ex.primary)-(a.primary===ex.primary)).slice(0,70);
-  if(!cands.length)return null;
-  const inDay=new Set(state.draft.ex.map(x=>x.exId));
-  return {cands,text:`A lifter needs to swap one exercise during a session. Pick up to 3 replacements from the list, best first, that train the same main muscle through a similar range and are practical right now. Avoid exercises already in today's session unless nothing else fits. ${reason?`Reason for the swap: "${reason}".`:'No reason given.'}\n\nExercise to replace: ${ex.name} (main: ${ML[ex.primary]}${ex.secondary.length?`, also ${ex.secondary.map(m=>ML[m]).join(', ')}`:''}; ${EQL[ex.equip]||ex.equip}). Planned ${b.plan.sets}x${b.plan.repMin}-${b.plan.repMax}.\nAlready in today's session: ${[...inDay].map(exName).join(', ')}.\nInjury flags: ${(state.injuries||[]).map(x=>ML[x.m]).join(', ')||'none'}.\n\nCandidates (id | name | main muscle | equipment):\n${cands.map(e=>`${e.id} | ${e.name} | ${ML[e.primary]} | ${EQL[e.equip]||e.equip}`).join('\n')}\n\nReply with only JSON: {"picks":[{"id":"<id from the list>","why":"<one short sentence>"}]}`};
-}
 
 window.__onLib=(which)=>{if((which==='chart'&&ui.tab==='dash')||(which==='sortable'&&ui.tab==='program'))rerenderKeepScroll();};
-window.__ironlog={get state(){return state;},set state(v){state=v;},ENV,KEY,andList,belowMin,aboveMax,starterRoutine,starterSigs,plateList,exBarKg,VOL_MODES,liveLogFetch,regionSrc,fitTargets,firstFullWeek,moveBlock,BANDS,installSheet,siteHost,greyW,effW,greyR,lighterLoad,incOf,swapPlan,planSetsPerWeek,weekNeed,stepRead,e1inv,rtfAt,rtfOf,rtfBand,calStats,rirEff,isHard,setCredit,tonnage,loadMode,loadWords,loadNote,progStep,jumpCap,setSecs,setupSecs,recovery,rolling7,rankDays,rankExercises,isCompound,patternOf,noE1,whtrLine,exHeadline,remainMin,shortPlan,weekPlan,cycleProjection,lastLighterWeek,regionBalance,parseHeight,mixCheck,swapCands,eqPlan,exportCSV,importData,chunksOf,assemble,sessionMuscles,TRACK_ONLY,cloud,Hx,mergeChunk,baseOf,sync:()=>cq(cloudPull),TEMPLATES,lastRFor,impDate,impRows,impNorm,impMatch,impFromText,impFromTable,impHeader,impBuild,impStart,impXlsx,parseSets,undoStack,undoRestore,undoForget,allTimeBests,bestsBoard,obActive,fmtW,rirUsual,rirEst,routineFromTemplate,plannedSets,map3d:()=>({state:B3.state,fail:B3.fail,meshes:B3.meshes.length,yaw:B3.yaw,glow:Object.keys(B3.mats).filter(m=>B3.mats[m].emissiveIntensity>0),canvas:!!document.querySelector('#bm3d canvas'),colors:Object.fromEntries(Object.entries(B3.mats).map(([m,mt])=>[m,'#'+mt.color.getHexString()])),pick:(x,y)=>map3dPick(x,y),want:map3dColors()}),cloudState:()=>({on:cloud.on,status:cloud.status,err:cloud.err,uid:cloud.uid,acct:cloud.acct}),acctUser:()=>acct.user,acctWaiting:()=>!!acctWait.pw,flush:()=>cq(cloudFlush),backupDue,routineUpdates,planFor,platesMode,plateText,chunksOf,IDX,suggest,e1,render,ACT,ui,makeDemo,invalidate,normalize,snapshot,saveNow,timer,weekStats,weekStart,today,EX,blockProgress,dayMinutes,weekStreak,coach,tonnageNow,livePR,exProjection,movers,stalledIds,muscleStatus,actualAvg4,plannedPerWeek,parseSets,aiSetsValid,fillSets,newBlock,lastNoteOf,sizeRows,sessionMuscleSets,sessionCapNote,routineClutter,aiDigest,debriefPrompt,reviewPrompt,swapPrompt,AI,sameRR};
+window.__ironlog={get state(){return state;},set state(v){state=v;},ENV,KEY,COMMON,isCommon,andList,belowMin,aboveMax,starterRoutine,starterSigs,plateList,exBarKg,VOL_MODES,liveLogFetch,regionSrc,fitTargets,firstFullWeek,moveBlock,BANDS,installSheet,siteHost,greyW,effW,greyR,lighterLoad,incOf,swapPlan,planSetsPerWeek,weekNeed,stepRead,e1inv,rtfAt,rtfOf,rtfBand,calStats,rirEff,isHard,setCredit,tonnage,loadMode,loadWords,loadNote,progStep,jumpCap,setSecs,setupSecs,recovery,rolling7,rankDays,rankExercises,isCompound,patternOf,noE1,whtrLine,exHeadline,remainMin,shortPlan,weekPlan,cycleProjection,lastLighterWeek,regionBalance,parseHeight,mixCheck,swapCands,eqPlan,exportCSV,importData,chunksOf,assemble,sessionMuscles,TRACK_ONLY,cloud,Hx,mergeChunk,baseOf,sync:()=>cq(cloudPull),TEMPLATES,lastRFor,impDate,impRows,impNorm,impMatch,impFromText,impFromTable,impHeader,impBuild,impStart,impXlsx,parseSets,undoStack,undoRestore,undoForget,allTimeBests,bestsBoard,obActive,fmtW,rirUsual,rirEst,routineFromTemplate,plannedSets,map3d:()=>({state:B3.state,fail:B3.fail,meshes:B3.meshes.length,yaw:B3.yaw,glow:Object.keys(B3.mats).filter(m=>B3.mats[m].emissiveIntensity>0),canvas:!!document.querySelector('#bm3d canvas'),colors:Object.fromEntries(Object.entries(B3.mats).map(([m,mt])=>[m,'#'+mt.color.getHexString()])),pick:(x,y)=>map3dPick(x,y),want:map3dColors()}),cloudState:()=>({on:cloud.on,status:cloud.status,err:cloud.err,uid:cloud.uid,acct:cloud.acct}),acctUser:()=>acct.user,acctWaiting:()=>!!acctWait.pw,flush:()=>cq(cloudFlush),backupDue,routineUpdates,planFor,platesMode,plateText,chunksOf,IDX,suggest,e1,render,ACT,ui,makeDemo,invalidate,normalize,snapshot,saveNow,timer,weekStats,weekStart,today,EX,blockProgress,dayMinutes,weekStreak,coach,tonnageNow,livePR,exProjection,movers,stalledIds,muscleStatus,actualAvg4,plannedPerWeek,parseSets,fillSets,newBlock,lastNoteOf,sizeRows,sessionMuscleSets,sessionCapNote,routineClutter,sameRR};
 render();
 wakeOn();
 timerResume();
