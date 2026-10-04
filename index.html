@@ -1373,8 +1373,8 @@ const TEMPLATES=(()=>{
       D('Back',[I('pullup',4,6,10,1,150),I('bbRow',3,6,10,2,150),I('cableRow',3,8,12,1,120),I('latPulldown',3,8,12,1,120),I('reversePecDeck',3,12,20,0,60)]),
       D('Legs',[I('backSquat',3,6,10,2,180),I('rdl',3,6,10,2,150),I('legPress',3,10,15,1,120),I('legExt',3,10,15,1,75),I('seatedCurl',4,10,15,1,75),I('hipThrust',3,8,12,1,120),I('standCalf',4,10,15,1,60)]),
       // Lateral raises split over two days (r30): nine sets in one session added little past the first five or six.
-      D('Shoulders',[I('ohp',3,6,10,2,150),I('cableLateral',4,10,20,1,60),I('facePull',3,12,20,1,60),I('dbShrug',3,10,15,1,60),I('seatedCalf',4,10,15,1,60),I('hangingLegRaise',3,10,15,1,60)]),
-      D('Arms and legs',[I('inclineCurl',4,8,12,1,75),I('ohCableExt',4,8,12,1,75),I('hammer',3,10,12,1,60),I('pressdown',3,10,15,1,60),I('dbLateral',3,12,20,1,60),I('bss',3,8,12,1,90),I('lyingCurl',3,10,15,1,75)]),R(),R()]},
+      D('Shoulders',[I('ohp',3,6,10,2,150),I('cableLateral',5,10,20,1,60),I('facePull',3,12,20,1,60),I('dbShrug',3,10,15,1,60),I('seatedCalf',4,10,15,1,60),I('hangingLegRaise',3,10,15,1,60)]),
+      D('Arms and legs',[I('inclineCurl',4,8,12,1,75),I('ohCableExt',4,8,12,1,75),I('hammer',3,10,12,1,60),I('pressdown',3,10,15,1,60),I('dbLateral',4,12,20,1,60),I('bss',3,8,12,1,90),I('lyingCurl',3,10,15,1,75)]),R(),R()]},
     /* Strength (r30, from the review: nothing for someone after a stronger
        squat, bench and deadlift). The classic five sets of five, alternating
        two days: when all five sets reach 5, the load goes up a step; two
@@ -1394,10 +1394,10 @@ const TEMPLATES=(()=>{
        Installs before r30 keep their copy; Plan changes it. */
     {key:'onemuscle',name:'One muscle a day, high volume',who:'Experienced, six days a week. Long sessions with many sets for one muscle, up to 11',meta:'6 days a week',days:[
       D('Chest',[I('incBench',4,6,10,1,180),I('bench',3,6,10,1,180),I('lowHighFly',2,10,15,1,90),I('pecDeck',2,12,15,0,75),I('cableCrunch',3,10,15,1,60)]),
-      D('Back',[I('pullup',4,6,10,1,150),I('landmineRow',3,8,12,1,120),I('cableRow',3,8,12,1,120),I('dbPullover',3,10,15,1,90),I('kelsoShrug',3,10,15,1,90),I('rackPull',3,5,8,2,180)]),
+      D('Back',[I('pullup',4,6,10,1,150),I('landmineRow',3,8,12,1,120),I('cableRow',2,8,12,1,120),I('dbPullover',3,10,15,1,90),I('kelsoShrug',2,10,15,1,90),I('rackPull',2,5,8,2,180)]),
       D('Legs A: quads',[I('hackSquat',4,6,12,1,180),I('legPress',3,10,15,1,150),I('legExt',2,10,15,0,90),I('bss',2,8,12,1,120),I('adductor',3,10,15,1,75),I('standCalf',4,8,12,1,60),I('tibRaise',2,15,25,1,45)]),
-      D('Shoulders',[I('seatedDbPress',3,6,10,1,150),I('cableLateral',4,10,20,1,60),I('leanAwayLat',3,10,15,1,60),I('reversePecDeck',4,12,20,1,60),I('facePull',2,12,20,1,60),I('dbShrug',3,8,12,1,75),I('hangingLegRaise',3,10,15,1,60)]),
-      D('Legs B: posterior',[I('sldl',4,6,10,2,180),I('seatedCurl',4,8,12,1,90),I('nordic',2,3,8,1,120),I('hyperext',3,10,15,1,75),I('abductor',4,12,20,1,60),I('seatedCalf',4,10,15,0,60),I('abWheel',3,8,15,1,60)]),
+      D('Shoulders',[I('seatedDbPress',3,6,10,1,150),I('cableLateral',5,10,20,1,60),I('leanAwayLat',4,10,15,1,60),I('reversePecDeck',4,12,20,1,60),I('facePull',2,12,20,1,60),I('dbShrug',3,8,12,1,75),I('hangingLegRaise',3,10,15,1,60)]),
+      D('Legs B: posterior',[I('sldl',4,6,10,2,180),I('seatedCurl',3,8,12,1,90),I('nordic',2,3,8,1,120),I('hyperext',3,10,15,1,75),I('abductor',4,12,20,1,60),I('seatedCalf',4,10,15,0,60),I('abWheel',3,8,15,1,60)]),
       D('Arms',[I('ohCableExt',4,8,12,1,75),I('jmPress',3,6,10,1,120),I('pressdown',3,10,15,0,60),I('inclineCurl',4,8,12,1,75),I('bayesianCurl',3,10,15,1,60),I('preacher',3,8,12,0,60),I('wristCurl',2,12,20,1,45),I('revWristCurl',2,12,20,1,45),I('woodchop',3,10,15,1,45)]),
       R()]},
     // The routine installs started with before r29, kept for the suites written on it (tests/h.js) and to recognise it; never offered.
@@ -2462,7 +2462,7 @@ function guideSheet(m){
    <p><b>Planned sets</b> count the same way: a set planned at RIR 4 or more is not a planned hard set, and in a deload week the target is halved.</p>
    <p><b>More than ${SESSION_CAP} sets</b> for one muscle in one workout is flagged. That line is a convention from one study not yet peer reviewed (Remmert 2025), which found no extra growth past it.</p>
    <p><b>Three different numbers.</b> The <b>suggested</b> load and reps (grey in a session) are today's target, from your last full session by the rules above. The <b>estimated 1RM</b> (best estimate) is what one all-out rep would be. It comes from a set's load and reps to failure: Brzycki up to 10 reps, Epley at 11 to 12, and no estimate above 12 reps or above RIR 4. It is a gauge of strength that varies 2 to 8% day to day, never a load to try. It is shown for compound lifts only; isolation lifts show their best set.</p>
-   <p><b>Trends</b> read each session's strongest set the same way, up to 20 reps to failure (so high-rep work has a trend too, never shown as a 1RM). RIR is used in a trend only when it is rated on 80% or more of the lift's sets; otherwise loads and reps alone, so tapping RIR on some days and not others cannot bend it. The 6 weeks are counted back from the lift's own last session. A trend shows the range its 80% interval allows (likely +4 to +11%) and how many sessions it rests on. <b>Weight lifted</b> is load times reps; it falls when the load goes up and reps come down, so it is shown as a number, not as progress.</p>
+   <p><b>Trends</b> read each session's strongest set the same way, up to 20 reps to failure (so high-rep work has a trend too, never shown as a 1RM). RIR is used in a trend only when it is rated on 80% or more of the lift's sets; otherwise loads and reps alone, so tapping RIR on some days and not others cannot bend it. The 6 weeks are counted back from the lift's own last session. A trend shows how many sessions it rests on and its weekly rate with the range an 80% interval allows (about +1.5% a week, likely +1.2% to +1.8%). <b>Weight lifted</b> is load times reps; it falls when the load goes up and reps come down, so it is shown as a number, not as progress.</p>
    <p><b>PRs</b>: a <b>weight PR</b> is more weight than any earlier set of the lift (less help on an assisted one); a <b>best estimate</b> beats your earlier best in the same band of reps to failure (1 to 5, 6 to 10, 11 to 12); a <b>rep PR</b> is more reps at a load than ever before, counted only when the set is at least 90% as strong as your strongest before it (a convention: 40 x 10 after 95 x 5 is not a PR). A set that is more than one shows the first of these.</p>
    <p><b>Moving</b>: up 3% or more with a trend clearly above zero. <b>Stalled</b>: flat or falling over the last 6 sessions in the current range, or 3 weeks if that covers more (at least 4 sessions), with no PR in the last 3 of them and the load no heavier than at the start of that stretch, and only while you still train the lift. Adding load and dropping reps for a while, as double progression does, is not a stall. A deload is not suggested within 4 weeks of a lighter week.</p>
    <p><b>Consistency</b>: weeks with at least as many sessions as the routine you trained that week plans.</p>
@@ -3181,9 +3181,12 @@ function IDX(){
       if(f){slope=f.b*7/f.my*100;slopeSe=f.se!=null?f.se*7/f.my*100:null;
         const tq=t90(f.n-2);const lo=slopeSe!=null?slope-tq*slopeSe:slope,hi=slopeSe!=null?slope+tq*slopeSe:slope;
         moving=pct>=GROW_PCT&&lo>0;falling=pct<=-GROW_PCT&&hi<0;
-        // The change the 80% interval allows over the stretch measured (r30):
-        // "likely +6 to +12%" rather than a single number stated as fact.
-        const wk=daysBetween(w[0].date,w[w.length-1].date)/7;if(wk>0&&slopeSe!=null){pLo=lo*wk;pHi=hi*wk;}}
+        // The weekly rate the 80% interval allows (r30): "about 1.5% a week,
+        // likely 1.2 to 1.8" rather than one number stated as fact. It is
+        // given on the weekly rate the line measures; a range on the 6-week
+        // change beside an endpoint percentage could leave that percentage
+        // outside its own range.
+        if(slopeSe!=null){pLo=lo;pHi=hi;}}
     }
     /* RIR drift: the same load and at least the same reps across the last three
        exposures while logged RIR climbed by a full rep or more. e1RM cannot see
@@ -3306,9 +3309,10 @@ function fitTargets(R){
    No colour and no flag anywhere else: the targets stay the lifter's. */
 function planEvidenceNote(pv){
   const b=state.settings.bands;
-  const low=MK.filter(m=>!TRACK_ONLY.has(m)&&BANDS[m][0]>0&&b[m][0]<BANDS[m][0]&&belowMin(pv[m]||0,BANDS[m][0]));
+  // Major muscles only (a default minimum of 8 or more): the usual range is about them; smaller ones have lower, softer defaults.
+  const low=MK.filter(m=>!TRACK_ONLY.has(m)&&BANDS[m][0]>=8&&b[m][0]<BANDS[m][0]&&belowMin(pv[m]||0,BANDS[m][0]));
   if(!low.length)return '';
-  return `<p class="small muted" id="planUsual" style="margin:8px 0 0">Under the usual range for this plan: ${esc(andList(low.map(m=>`${ML[m]} ${r1(pv[m]||0)} of ${BANDS[m][0]}`),6))}. ${tipi('The usual weekly range is 10 to 20 hard sets for most major muscles (typical in studies, not a ceiling); smaller muscles have lower ones. Your targets were set to this plan when you picked it, so Stats measures you against the plan. Fewer sets still build muscle, more slowly; add a set at a time when it feels easy.','About the usual range')}</p>`;
+  return `<p class="small muted" id="planUsual" style="margin:8px 0 0">Under the usual range in this plan: ${esc(andList(low.map(m=>`${ML[m]} ${r1(pv[m]||0)} of ${BANDS[m][0]}`),12))}. ${tipi('The usual weekly range is 10 to 20 hard sets for most major muscles (typical in studies, not a ceiling); smaller muscles have lower ones. Your targets were set to this plan when you picked it, so Stats measures you against the plan. Fewer sets still build muscle, more slowly; add a set at a time when it feels easy.','About the usual range')}</p>`;
 }
 /* How to do it (r30, from the review: no exercise videos). A search on
    YouTube for the exercise's name, opened in the browser: no list of videos
@@ -4695,13 +4699,13 @@ function exHeadline(exId){
   if(st.capped)parts.push('At the heaviest load available, so progress is counted in reps and harder reps.');
   const sg=v=>(v>=0?'+':'')+r1(v)+'%';
   // The range the trend allows and how many sessions it rests on (r30).
-  const rng=st.pLo!=null?`likely ${sg(st.pLo)} to ${sg(st.pHi)}, `:'';const ns=`${st.wN} session${st.wN===1?'':'s'}`;
+  const rate=st.pLo!=null?`, about ${sg(st.slope)} a week (likely ${sg(st.pLo)} to ${sg(st.pHi)})`:st.slope!=null?`, about ${sg(st.slope)} a week`:'';const ns=`${st.wN} session${st.wN===1?'':'s'}`;
   const how=st.useAdj?'':' Read from loads and reps; RIR is left out of the trend until it is rated on most sets.';
   if(st.stalled)parts.push(`Stalled${st.pct!=null?` (${sg(st.pct)} over 6 weeks)`:''}: flat for 3 weeks or more, with no PR in the last 3 sessions and no heavier load. Try another rep range or variation.`);
   else if(st.pct==null)parts.push('Needs 3 sessions within 6 weeks for a trend.');
-  else if(st.moving)parts.push(`Up ${r1(st.pct)}% over 6 weeks (${rng}${ns}), about ${r1(st.slope)}% a week.${how}`);
-  else if(st.falling)parts.push(`Down ${r1(Math.abs(st.pct))}% over 6 weeks (${rng}${ns}). Look at recovery before adding work.${how}`);
-  else parts.push(`No clear change yet: ${sg(st.pct)} over ${ns}${st.pLo!=null?`, ${sg(st.pLo)} to ${sg(st.pHi)} is still possible`:''}. Day to day swings of 2 to 8% hide small changes.${how}`);
+  else if(st.moving)parts.push(`Up ${r1(st.pct)}% over 6 weeks (${ns})${rate}.${how}`);
+  else if(st.falling)parts.push(`Down ${r1(Math.abs(st.pct))}% over 6 weeks (${ns})${rate}. Look at recovery before adding work.${how}`);
+  else parts.push(`No clear change yet: ${sg(st.pct)} over ${ns}${st.pLo!=null?`, a weekly rate anywhere from ${sg(st.pLo)} to ${sg(st.pHi)}`:''}. Day to day swings of 2 to 8% hide small changes.${how}`);
   const pj=exProjection(exId);if(pj&&isCompound(ex))parts.push(`If that holds, about ${fmtW(pj.value)} ${U()} in 4 weeks (${fmtW(pj.lo)} to ${fmtW(pj.hi)}).`);
   return `<p class="headline">${esc(parts.join(' '))}</p>`;
 }
@@ -9034,7 +9038,7 @@ function swapPrompt(b,reason){
 }
 /*}ai=*/
 window.__onLib=(which)=>{if((which==='chart'&&ui.tab==='dash')||(which==='sortable'&&ui.tab==='program'))rerenderKeepScroll();};
-window.__ironlog={get state(){return state;},set state(v){state=v;},ENV,KEY,COMMON,isCommon,andList,belowMin,aboveMax,starterRoutine,starterSigs,plateList,exBarKg,VOL_MODES,liveLogFetch,regionSrc,fitTargets,firstFullWeek,moveBlock,BANDS,installSheet,siteHost,greyW,effW,greyR,lighterLoad,incOf,swapPlan,planSetsPerWeek,weekNeed,stepRead,e1inv,rtfAt,rtfOf,rtfBand,calStats,rirEff,isHard,setCredit,tonnage,loadMode,loadWords,loadNote,progStep,jumpCap,setSecs,setupSecs,recovery,rolling7,rankDays,rankExercises,isCompound,patternOf,noE1,whtrLine,exHeadline,remainMin,shortPlan,weekPlan,cycleProjection,lastLighterWeek,regionBalance,parseHeight,mixCheck,swapCands,eqPlan,exportCSV,importData,chunksOf,assemble,sessionMuscles,TRACK_ONLY,cloud,Hx,mergeChunk,baseOf,sync:()=>cq(cloudPull),TEMPLATES,lastRFor,impDate,impRows,impNorm,impMatch,impFromText,impFromTable,impHeader,impBuild,impStart,impXlsx,parseSets,undoStack,undoRestore,undoForget,allTimeBests,bestsBoard,obActive,fmtW,rirUsual,rirEst,routineFromTemplate,plannedSets,map3d:()=>({state:B3.state,fail:B3.fail,meshes:B3.meshes.length,yaw:B3.yaw,glow:Object.keys(B3.mats).filter(m=>B3.mats[m].emissiveIntensity>0),canvas:!!document.querySelector('#bm3d canvas'),colors:Object.fromEntries(Object.entries(B3.mats).map(([m,mt])=>[m,'#'+mt.color.getHexString()])),pick:(x,y)=>map3dPick(x,y),want:map3dColors()}),cloudState:()=>({on:cloud.on,status:cloud.status,err:cloud.err,uid:cloud.uid,acct:cloud.acct}),acctUser:()=>acct.user,acctWaiting:()=>!!acctWait.pw,flush:()=>cq(cloudFlush),backupDue,routineUpdates,planFor,platesMode,plateText,chunksOf,IDX,suggest,e1,render,ACT,ui,makeDemo,invalidate,normalize,snapshot,saveNow,timer,weekStats,weekStart,today,EX,blockProgress,dayMinutes,weekStreak,coach,tonnageNow,livePR,exProjection,movers,stalledIds,muscleStatus,actualAvg4,plannedPerWeek,parseSets,/*ai{*/aiSetsValid,fillSets,/*}ai=fillSets,*/newBlock,lastNoteOf,sizeRows,sessionMuscleSets,sessionCapNote,routineClutter,impTextSets,liftTrend,sessionLength,prBeat,exInjury,exJoints,openModal,EQUIP,HARD_EX,recentLighter,planEvidenceNote,howToUrl,editFp,/*ai{*/aiDigest,debriefPrompt,reviewPrompt,swapPrompt,AI,/*}ai=*/sameRR};
+window.__ironlog={get state(){return state;},set state(v){state=v;},ENV,KEY,COMMON,isCommon,andList,belowMin,aboveMax,starterRoutine,starterSigs,plateList,exBarKg,VOL_MODES,liveLogFetch,regionSrc,fitTargets,firstFullWeek,moveBlock,BANDS,installSheet,siteHost,greyW,effW,greyR,lighterLoad,incOf,swapPlan,planSetsPerWeek,weekNeed,stepRead,e1inv,rtfAt,rtfOf,rtfBand,calStats,rirEff,isHard,setCredit,tonnage,loadMode,loadWords,loadNote,progStep,jumpCap,setSecs,setupSecs,recovery,rolling7,rankDays,rankExercises,isCompound,patternOf,noE1,whtrLine,exHeadline,remainMin,shortPlan,weekPlan,cycleProjection,lastLighterWeek,regionBalance,parseHeight,mixCheck,swapCands,eqPlan,exportCSV,importData,chunksOf,assemble,sessionMuscles,TRACK_ONLY,cloud,Hx,mergeChunk,baseOf,sync:()=>cq(cloudPull),TEMPLATES,lastRFor,impDate,impRows,impNorm,impMatch,impFromText,impFromTable,impHeader,impBuild,impStart,impXlsx,parseSets,undoStack,undoRestore,undoForget,allTimeBests,bestsBoard,obActive,fmtW,rirUsual,rirEst,routineFromTemplate,plannedSets,map3d:()=>({state:B3.state,fail:B3.fail,meshes:B3.meshes.length,yaw:B3.yaw,glow:Object.keys(B3.mats).filter(m=>B3.mats[m].emissiveIntensity>0),canvas:!!document.querySelector('#bm3d canvas'),colors:Object.fromEntries(Object.entries(B3.mats).map(([m,mt])=>[m,'#'+mt.color.getHexString()])),pick:(x,y)=>map3dPick(x,y),want:map3dColors()}),cloudState:()=>({on:cloud.on,status:cloud.status,err:cloud.err,uid:cloud.uid,acct:cloud.acct}),acctUser:()=>acct.user,acctWaiting:()=>!!acctWait.pw,flush:()=>cq(cloudFlush),backupDue,routineUpdates,planFor,platesMode,plateText,chunksOf,IDX,suggest,e1,render,ACT,ui,makeDemo,invalidate,normalize,snapshot,saveNow,timer,weekStats,weekStart,today,EX,blockProgress,dayMinutes,weekStreak,coach,tonnageNow,livePR,exProjection,movers,stalledIds,muscleStatus,actualAvg4,plannedPerWeek,parseSets,/*ai{*/aiSetsValid,fillSets,/*}ai=fillSets,*/newBlock,lastNoteOf,sizeRows,sessionMuscleSets,sessionCapNote,routineClutter,rowBlank,impTextSets,liftTrend,sessionLength,prBeat,exInjury,exJoints,openModal,EQUIP,HARD_EX,recentLighter,planEvidenceNote,howToUrl,editFp,/*ai{*/aiDigest,debriefPrompt,reviewPrompt,swapPrompt,AI,/*}ai=*/sameRR};
 render();
 wakeOn();
 timerResume();

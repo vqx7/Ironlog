@@ -173,9 +173,10 @@ const ids = list => (list || []).map(x => x.id).sort().join();
   {
     const P = await open('index.html', { browser, touch: true, clock: '2026-09-27T18:00:00' });
     const ev = (f, a) => P.page.evaluate(f, a);
-    await ev(() => { const L = window.__ironlog; L.state.settings.onboarded = true; L.makeDemo(); L.ui.tab = 'today'; L.render(); localStorage.setItem('ironlog.v1.tipWake', '1'); });
+    await ev(() => { const L = window.__ironlog; L.state.settings.onboarded = true; L.makeDemo(); /* r30: history here, not sample data */ for (const k of ['sessions', 'bodyweights', 'measurements']) for (const x of (L.state[k] || [])) delete x.demo; L.invalidate && L.invalidate(); L.ui.tab = 'today'; L.render(); localStorage.setItem('ironlog.v1.tipWake', '1'); });
     await P.page.click('.hero [data-act="startSession"]:not([data-light])'); await wait(200);
-    const g = await ev(() => window.__ironlog.state.draft.ex[0].lastR[0]);
+    // At last time's load (r30: the demo can end with a load increase due, and a heavier set is a weight PR, not the rep PR checked here).
+    const g = await ev(() => { const L = window.__ironlog; const b = L.state.draft.ex[0]; const ex = L.IDX().byEx[b.exId]; const last = ex[ex.length - 1]; b.sets[0].w = last.pts[0].w; L.render(); return last.pts[0].r; });
     await P.page.fill('[data-f="r"][data-b="0"][data-s="0"]', String(g + 3)); await P.page.dispatchEvent('[data-f="r"][data-b="0"][data-s="0"]', 'change');
     await P.page.click('[data-act="sDone"][data-b="0"][data-s="0"]'); await wait(250);
     const t = await ev(() => ({ text: document.getElementById('toast').innerText, pr: document.getElementById('toast').classList.contains('pr'), flash: !!document.querySelector('.sg.prflash[data-pr]') }));

@@ -7,7 +7,7 @@ const fails = []; const ok = (c, m) => { if (!c) { fails.push(m); console.log('F
   const { browser, page, errors } = await open('index.html', { touch: true, w: 390, h: 844, clock: '2026-09-20T10:00:00' });
   const ev = (f, a) => page.evaluate(f, a);
   ok(await ev(() => window.__ironlog.state.settings.theme === 'dark' && document.documentElement.dataset.theme === 'dark'), 'a new install starts in the dark theme');
-  await ev(() => { const L = window.__ironlog; L.state.settings.onboarded = true; L.makeDemo(); L.ui.tab = 'today'; L.render(); localStorage.setItem('ironlog.v1.tipWake', '1'); });
+  await ev(() => { const L = window.__ironlog; L.state.settings.onboarded = true; L.makeDemo(); for (const k of ['sessions', 'bodyweights', 'measurements']) for (const x of L.state[k]) delete x.demo; L.invalidate(); L.ui.tab = 'today'; L.render(); localStorage.setItem('ironlog.v1.tipWake', '1'); });
 
   // Week ring matches This week.
   const ring = await ev(() => { const L = window.__ironlog; const w = L.weekStats(); const r = document.querySelector('.hero .ring'); return { lbl: r && r.getAttribute('aria-label'), pct: r && r.querySelector('.rv').textContent, got: w.got, tgt: w.tgt }; });
@@ -18,10 +18,11 @@ const fails = []; const ok = (c, m) => { if (!c) { fails.push(m); console.log('F
   // Logger.
   await ev(() => window.scrollTo(0, 0));
   await page.click('.hero [data-act="startSession"]:not([data-light])'); await page.waitForTimeout(150);
-  const n0 = await ev(() => { const b = window.__ironlog.state.draft.ex[0]; return { n: b.sets.length, lastR: b.lastR.slice() }; });
+  const n0 = await ev(() => { const b = window.__ironlog.state.draft.ex[0]; return { n: b.sets.length, lastR: b.lastR.slice(), grey: window.__ironlog.greyR(b, 0), load: !!(b.tgt && b.tgt.kind === 'load') }; });
   await page.click('[data-act="sDone"][data-b="0"][data-s="0"]'); await page.waitForTimeout(120);
   const one = await ev(() => { const s = window.__ironlog.state.draft.ex[0].sets[0]; const inp = document.querySelector('.sg input[data-f="r"][data-b="0"][data-s="0"]'); return { r: s.r, done: s.done, shown: inp.value, strip: !!document.querySelector('.rirstrip[data-b="0"][data-s="0"]') }; });
-  ok(one.done && one.r === n0.lastR[0] && one.shown === String(n0.lastR[0]), 'done on empty reps logs last time\'s reps (' + one.r + ')');
+  // The grey number: last time's reps, or the bottom of the range when a new load is due (r27).
+  ok(one.done && one.r === n0.grey && one.shown === String(n0.grey) && (n0.load || n0.grey === n0.lastR[0]), 'done on empty reps logs the grey number, last time\'s reps unless a new load is due (' + one.r + ')', n0);
   ok(!one.strip, 'by default the RIR strip does not open by itself after a set');
   await page.click('.rirb[data-b="0"][data-s="0"]'); await page.waitForTimeout(80);
   ok(await ev(() => !!document.querySelector('.rirstrip[data-b="0"][data-s="0"]')), 'tapping the set\'s RIR box opens the strip');

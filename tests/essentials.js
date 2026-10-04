@@ -65,15 +65,17 @@ const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log
   ok((await ev(() => window.__ironlog.state.draft.ex[0].sets.length)) === n5 - 1 && !(await ev(() => window.__ironlog.ui.modal)), 'an empty row (only the grey suggestion) is removed straight away');
 
   // ---- Prefilled fields are still there: loads from the target, reps shown grey from last time.
-  const pre = await ev(() => { const b = window.__ironlog.state.draft.ex[0]; const w = document.querySelector('[data-f="w"][data-b="0"][data-s="1"]'); const r = document.querySelector('[data-f="r"][data-b="0"][data-s="1"]'); return { w: w.value, rph: r.placeholder, rv: r.value, last: b.lastR }; });
+  const pre = await ev(() => { const b = window.__ironlog.state.draft.ex[0]; const w = document.querySelector('[data-f="w"][data-b="0"][data-s="1"]'); const r = document.querySelector('[data-f="r"][data-b="0"][data-s="1"]'); return { w: w.value, rph: r.placeholder, rv: r.value, last: b.lastR, load: !!(b.tgt && b.tgt.kind === 'load'), repMin: +b.plan.repMin }; });
   const preW = await ev(() => document.querySelector('[data-f="w"][data-b="0"][data-s="1"]').placeholder);
-  ok(pre.w === '' && +preW > 0 && pre.rv === '' && +pre.rph === pre.last[1], 'loads show the target in grey (r25 default); reps show last time\'s number in grey', { ...pre, preW });
+  // Grey reps: last time's, or the bottom of the range when a new load is due (r27; the r30 demo can end on one).
+  const greyExp = pre.load ? pre.repMin : pre.last[1];
+  ok(pre.w === '' && +preW > 0 && pre.rv === '' && +pre.rph === greyExp, 'loads show the target in grey (r25 default); reps show last time\'s number in grey, or the range\'s bottom after a new load', { ...pre, preW });
 
   // ---- Auto-mark: Next on an empty reps field takes the grey number and marks the set done.
   await ev(() => { window.__ironlog.state.settings.autoDone = true; });
   await A.page.focus('[data-f="r"][data-b="0"][data-s="1"]'); await A.page.keyboard.press('Enter'); await A.page.waitForTimeout(200);
   const ad = await ev(() => { const s = window.__ironlog.state.draft.ex[0].sets[1]; return { done: s.done, r: s.r }; });
-  ok(ad.done && ad.r === pre.last[1], 'auto-mark on: Next on the grey reps logs them and ticks the set', ad);
+  ok(ad.done && ad.r === greyExp, 'auto-mark on: Next on the grey reps logs them and ticks the set', ad);
   await ev(() => { window.__ironlog.state.settings.autoDone = false; });
   await A.page.focus('[data-f="r"][data-b="0"][data-s="2"]'); await A.page.keyboard.press('Enter'); await A.page.waitForTimeout(200);
   ok(!(await ev(() => window.__ironlog.state.draft.ex[0].sets[2].done)), 'auto-mark off: Next only moves on');

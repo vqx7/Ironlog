@@ -1,15 +1,33 @@
-# Everything still open (as of r29.4 live and r29.5 in preview, 2026-10-04)
+# Everything still open (as of r29.5 live and r30 in preview, 2026-10-04)
 
 This is the tracking list. Items are built only when V says go. Owner items need V; the rest is build work. Nothing is done unless it says so. Numbers are kept stable; finished items move to Done at the bottom.
 
-## Live: r29.4 (published 2026-10-03 at https://ironapp.org, pull request #11). In preview: r29.5
+## Live: r29.5 (published 2026-10-04 at https://ironapp.org, pull request #12). In preview: r30
 
-## r30, in progress (V's go, 2026-10-04): the independent review (Ironlog_feedback.docx)
+## r30, built, waiting for V's go (V asked 2026-10-04): the independent review (Ironlog_feedback.docx)
 V's decisions for r30 (2026-10-04):
 - Weekly targets: keep the r29 fit to the chosen routine (never back to "below target everywhere"); Plan > Weekly volume adds one quiet line naming muscles the plan puts under the usual 10 sets; the first-run toast says the targets match the plan, not that everything is on target.
 - Progressive overload must be applied visibly in the suggested loads and reps over time, overridable per exercise in the Plan editor; nothing called stalled or behind for not moving fast every session or week.
 - Demo: keep it progressing and on track, add one marked deload week and one missed day. No stalls.
 - Repository privacy (item 129): decide later; r30 changes nothing about hosting.
+
+What r30 changes (each with a test in tests/r30.js, reproduced the way the reviewer met it):
+148. Training blocks: a session nobody marked as a deload (an import, say) is read from its numbers as lighter (load 10%+ under its last three and strength reading 7%+ under), and a week where most lifts read lighter is a lighter week. They stay in history and charts and are left out of trends, stalls, targets and the weekly volume average, like a marked deload. Three lighter sessions in a row count as a new level instead.
+149. Trends that do not mislead: RIR is used in a lift's trend only when it is rated on 80% or more of its sets (else loads and reps alone, the same way every session), so patchy RPE cannot turn 245 to 270 into a stall; trends read up to 20 reps (leg press for 15 has one); each lift's 6 weeks end at its own last session; a trend shows how many sessions it rests on and its weekly rate with a likely range; a muscle with nothing outside the noise reads unclear, never +0%, and gets no "try 2 more sets"; "needs 3 sessions" is said only when true.
+150. Stalls only when real (V: "not stalled or behind if not moving at a crazy pace"): flat 3 weeks or more, and no PR in the last 3 sessions, and the load no heavier than at the start. No deload suggested within 4 weeks of a lighter week. A rising muscle is progressing whatever its rank.
+151. Numbers fixed: weight lifted is a number, never "-5% vs last week"; a rep PR counts at 90% or more of the strongest set before it (no "40 x 10 after 95 x 5", no 54 PRs in 14 days); all-time bests carry their own dates; the PR toast names the rep band its estimate beat; a 1RM only on compound lifts (isolation lifts show their best set); "301 → 300.7 · up" reads flat; a stalled lift never also says PR last time; a rest day says the card is the next day; a weigh-in today never changes past weight lifted; no session-length average from one session.
+152. Progressive overload you can set: Plan's exercise editor has Load jump % (blank: 2.5% compound, 5% isolation; 0: one step every time). A history in another rep range (an import at 5 x 5 under a 3 x 6-10 plan) starts from the estimate for the new range, and rep targets count the plan's sets.
+153. Lighter day is lighter: half the sets, about 90% loads, 3+ RIR, nothing to beat. The check-in now acts: two or more low answers offer Make it lighter and Short on time.
+154. Finish: asks when sets are left; an exercise stopped with under half its sets done is saved as trimmed (it never sets the next target); the recap counts targets only for exercises started and planned minutes after any trimming.
+155. Demo data never mixes with a real log: saving a real session removes it and the recap says so. The demo has one marked deload week and one missed day (V's choice), still nothing stalled or below target.
+156. Import: "OHP 3x8 40" is 3 sets of 8 at 40; Strong treadmill and other cardio rows become cardio entries with time and distance; "Triceps Pushdown (Cable - Straight Bar)" and rope variants match. Cardio has a distance field (km, or miles when logging in lb).
+157. Plan editor: a rep minimum typed above the maximum raises it (never "12-10").
+158. Swaps: Nordic curls, pull-ups, chin-ups, dips, and other hard bodyweight lifts are not picked for someone who has not done them; when one is the only match it gets 3 to 6 reps at 2 RIR and a note. The Limited equipment chips no longer move under the finger.
+159. Injuries by joint: knee, hip, shoulder, elbow, wrist, each marking the exercises that load it.
+160. Small: Enter fills Type sets; the kg example is in kg; cancelling an untouched edit closes without "Discard this session?".
+161. Routines: the beginner full body is 5 exercises a day on machines and dumbbells at 3 RIR (about 45 minutes, with start-light guidance); new Full body, 2 days and Strength, 5 x 5; the 5-day split's lateral raises spread over two days; the high-volume template at most 11 sets per muscle per session, without the neck circuit. Your own routines are unchanged (item 39 still yours to decide). New lifts: sumo deadlift, pause squat, paused bench, floor press, power clean, kettlebell swing.
+162. Weekly targets (V's choice): kept fitted to the routine; Plan, Weekly volume adds one quiet line naming muscles that plan puts under the usual range; the toast says minimums were set to the plan. Nothing new on Stats or Today.
+163. How-to videos: an exercise's menu and editor open a YouTube search for it (only the name leaves the app, and only when tapped).
 
 ## r29.5 (live since 2026-10-04), was waiting for V's go (V, 2026-10-04)
 144. Common lifts marked, not only the less common ones ("marking most common is more helpful"): 53 staples found in most gyms and programs carry a Common tag in the library, the exercise picker, and Plan's Add exercises list; they come first in the picker (Common, then All other exercises; with a muscle chosen or a search, common matches first) and in Plan's list; the library filters All, Common, and Less common, with an i saying Common is a judgment, not a measurement. Nothing is stored: it follows the library id, and a staple the lifter marks as less common reads Less common only.
@@ -42,13 +60,21 @@ V's decisions for r30 (2026-10-04):
 140. Item 99, the new-person screens only: the repeated Rest day label on rest days in Plan, Stats' "Planned volume works now" line, and Body's three empty lines are gone. The full screen-by-screen pass still waits on V's notes.
 130. V, 2026-10-03: the radar showed no chart in the preview. The preview keeps its own log (so testing cannot touch the real one), it had nothing recent, and r29 drew no chart without data. Now the chart always draws (empty against the target ring, or from your last trained weeks after a break, dated), and the preview has Copy my log from Ironlog (Settings > Your data, the first-run pages, the empty radar): it reads your real log from the phone or, on an iPhone, from your account's cloud copy, and never writes to Ironlog. The coach no longer says "after your first full week" to someone back from a break.
 
+## Later (from the review; too large for r30 or needing V)
+164. Percentage, AMRAP and top-set-plus-back-off progression (5/3/1, GZCLP, %1RM): a new progression type in the engine, the reviewer's biggest gap for powerlifters. Candidate for r31.
+165. Hands-free voice entry (Web Speech API): Safari's speech recognition is unreliable inside a home-screen app and sends audio to Apple; the keyboard's dictation already works with Type sets. Revisit when tested on V's iPhone.
+166. Volume A/B experiments per muscle (4-week blocks with a read-out): needs the training blocks of r30 in use for a while first.
+167. Read-only share link for a coach: a Supabase function and a token table, plus a privacy decision (item 15) before anyone else's data is shared.
+168. Starting-load estimates for a first session (bodyweight, experience): needs item 49's optional profile fields.
+169. Apple Watch and Apple Health: no web API; needs the native wrapper (item 46: $99 a year and a Mac). Social feed: not planned.
+
 ## Next
 129. Decide: make the Ironlog repository private. It hides the code and its history (including the four early merge commits with your Gmail address, item 84). Free GitHub Pages needs a public repository, so it takes GitHub Pro ($4 a month, nothing else changes, Claude keeps access) or moving the site to Cloudflare Pages (free, deploys from a private repository, but the publish and preview setup has to be rebuilt and tested). Nothing secret is in the repository today; this is about privacy, not a leak.
 91. Domain and email: the app is on https://ironapp.org (GitHub's domain file is on gh-pages; Claude fetched the site over https). V reports the remaining domain steps done and the app reinstalled from the new address (2026-10-02). The Forgot password email arrives from Ironlog (V, 2026-10-04). Left before friends: item 15's decision, then sharing with friends on Android and iPhone.
 99. Wording and redundancy pass, screen by screen (the second half of V's item 90): cut fragments, repeated lines and filler on every tab and sheet so screens show the number and the action. The new-person screens were done in r29 (140); the rest waits on V's own notes.
 141. Later (V, 2026-10-03): a female body for the muscle map, flat and 3D, chosen in Settings. Redraw the flat (2D) body at the same time: V finds it ugly. This is what item 49's optional sex field would be for; nothing else would read it.
 
-Open count: 56 numbered items: 4 in r29.5 (144 to 147), 23 built in r29 and live, not yet moved to Done (117 to 127, 130 to 140, 142), 4 next (91, 99, 129, 141), 3 critical (58, 61, 63), 3 verification (7, 8, 10), 2 owner only (6, 84), 17 later build or decision items. Items 98, 114, 116 and 128 are built in r29 (138, 131, 137 and 133, 139) and move to Done when it is published. Owner steps, with the code, are in OWNER.md.
+Open count: 78 numbered items: 16 in r30 (148 to 163), 6 later from the review (164 to 169), 4 in r29.5 (144 to 147), 23 built in r29 and live, not yet moved to Done (117 to 127, 130 to 140, 142), 4 next (91, 99, 129, 141), 3 critical (58, 61, 63), 3 verification (7, 8, 10), 2 owner only (6, 84), 17 later build or decision items. Items 98, 114, 116 and 128 are built in r29 (138, 131, 137 and 133, 139) and move to Done when it is published. Owner steps, with the code, are in OWNER.md.
 
 ## Critical, still open
 58. B1 to B4 done (V, 2026-10-04); left: B5, B6 and B7. Part 2 needs V: SUPABASE.md, Part 4, steps 1 to 5 (the tables, a private `ironlog-feedback` repository, a GitHub token for it, the function and its webhook), then FEEDBACK.md, "What V does" steps 2 and 3 (protect `main`; choose a scheduled Claude task or Claude's GitHub Action to pick up tickets). Until step 1, Send feedback says it is not set up yet and keeps the text.

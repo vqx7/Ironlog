@@ -230,7 +230,7 @@ function strongCsv() {
     // First-run pick of the beginner plan: Plan says where it is under the usual range.
     await ev(() => { const L = window.__ironlog; const r = L.routineFromTemplate('full3'); L.state.routines = [r]; L.state.activeRoutineId = r.id; L.fitTargets(r); L.state.settings.onboarded = true; L.state.settings.hidden = []; L.ui.tab = 'program'; L.ui.folds['program:pvol'] = true; L.render(); });
     const note = await ev(() => { const n = document.getElementById('planUsual'); return n ? n.innerText : null; });
-    ok(note && /Under the usual range for this plan: .*of 10/.test(note), 'Plan, Weekly volume names muscles the fitted plan puts under the usual range', note);
+    ok(note && /Under the usual range in this plan: .*of 10/.test(note), 'Plan, Weekly volume names muscles the fitted plan puts under the usual range', note);
     const st = await ev(() => { const L = window.__ironlog; L.ui.tab = 'dash'; L.render(); return document.getElementById('view').innerText; });
     ok(!/Under the usual range/.test(st), 'and nowhere else: Stats stays measured against the plan', null);
     // kg example, Enter in Type sets, how-to link, the equipment sheet.

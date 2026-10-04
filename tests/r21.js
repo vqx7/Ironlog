@@ -13,11 +13,11 @@ const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log
   const { page } = A;
   const ev = (f, a) => page.evaluate(f, a);
   // Auto-mark off, as before r28 made it on for new installs: the checks below are about quick entry ticking without it.
-  await ev(() => { const L = window.__ironlog; L.state.settings.onboarded = true; L.state.settings.autoDone = false; L.makeDemo();
+  await ev(() => { const L = window.__ironlog; L.state.settings.onboarded = true; L.state.settings.autoDone = false; L.makeDemo(); /* r30: history here, not sample data */ for (const k of ['sessions', 'bodyweights', 'measurements']) for (const x of (L.state[k] || [])) delete x.demo; L.invalidate && L.invalidate();
     L.state.sessions = L.state.sessions.filter(x => x.date !== '2026-09-21');
     const w = L.state.sessions.find(x => x.date === '2026-09-23');
     if (w && !L.state.sessions.some(x => x.date === '2026-09-24')) { const R = L.state.routines.find(r => r.id === w.routineId); const di = (w.dayIdx + 1) % R.days.length; const d = R.days[di];
-      L.state.sessions.push({ id: 'thu24', date: '2026-09-24', dayIdx: di, dayId: d.id, dayName: d.name, routineId: R.id, ex: d.items.map(it => ({ exId: it.exId, sets: [{ w: 20, r: it.repMin, rir: 1, warm: false }] })), notes: '', demo: true }); }
+      L.state.sessions.push({ id: 'thu24', date: '2026-09-24', dayIdx: di, dayId: d.id, dayName: d.name, routineId: R.id, ex: d.items.map(it => ({ exId: it.exId, sets: [{ w: 20, r: it.repMin, rir: 1, warm: false }] })), notes: '', demo: false }); }
     L.invalidate(); L.ui.tab = 'today'; L.render(); localStorage.setItem('ironlog.v1.tipWake', '1'); });
   await page.waitForTimeout(100);
 

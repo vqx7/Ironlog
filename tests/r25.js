@@ -9,7 +9,7 @@ const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log
 (async () => {
   const { browser, page, errors } = await open('index.html', { touch: true, w: 390, h: 844, clock: '2026-09-20T10:00:00' });
   const ev = (f, a) => page.evaluate(f, a);
-  const fresh = async () => { await ev(() => { const L = window.__ironlog; L.state.draft = null; L.state.settings.onboarded = true; if (!L.state.sessions.length) L.makeDemo(); L.state.settings.autoDone = false; L.ui.tab = 'today'; L.ui.todayDay = 0; L.ui.modal = null; document.getElementById('modal').hidden = true; L.render(); localStorage.setItem('ironlog.v1.tipWake', '1'); window.scrollTo(0, 0); }); };
+  const fresh = async () => { await ev(() => { const L = window.__ironlog; L.state.draft = null; L.state.settings.onboarded = true; if (!L.state.sessions.length) L.makeDemo(); /* r30: history here, not sample data */ for (const k of ['sessions', 'bodyweights', 'measurements']) for (const x of (L.state[k] || [])) delete x.demo; L.invalidate && L.invalidate(); L.state.settings.autoDone = false; L.ui.tab = 'today'; L.ui.todayDay = 0; L.ui.modal = null; document.getElementById('modal').hidden = true; L.render(); localStorage.setItem('ironlog.v1.tipWake', '1'); window.scrollTo(0, 0); }); };
   const start = async () => { await fresh(); await page.click('.hero [data-act="startSession"]:not([data-light])'); await page.waitForTimeout(120); };
   const W = (b, s) => `.sg input[data-f="w"][data-b="${b}"][data-s="${s}"]`, R = (b, s) => `.sg input[data-f="r"][data-b="${b}"][data-s="${s}"]`;
   const field = (sel) => ev(s => { const e = document.querySelector(s); return e ? { v: e.value, ph: e.placeholder } : null; }, sel);
@@ -111,7 +111,7 @@ const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log
 
   // ---- 11. A session left open by r24 (loads filled in) carries on unchanged.
   const O = await open('baselines/r23.html', { browser, touch: true, clock: '2026-09-20T10:00:00' });
-  await O.page.evaluate(() => { const L = window.__ironlog; L.state.settings.onboarded = true; L.makeDemo(); L.ui.tab = 'today'; L.ui.todayDay = 0; L.render(); });
+  await O.page.evaluate(() => { const L = window.__ironlog; L.state.settings.onboarded = true; L.makeDemo(); /* r30: history here, not sample data */ for (const k of ['sessions', 'bodyweights', 'measurements']) for (const x of (L.state[k] || [])) delete x.demo; L.invalidate && L.invalidate(); L.ui.tab = 'today'; L.ui.todayDay = 0; L.render(); });
   await O.page.click('.hero [data-act="startSession"]:not([data-light])'); await O.page.waitForTimeout(120);
   const old = await O.page.evaluate(() => { window.__ironlog.saveNow(); return JSON.parse(localStorage.getItem('ironlog.v1')); });
   await O.ctx.close();
@@ -134,7 +134,7 @@ const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log
   ok(await I1.page.evaluate(() => !document.getElementById('iconBar') && !!localStorage.getItem('ironlog.v1.icon25')), 'Done hides the note for good');
   await I1.ctx.close();
   const I2 = await open('index.html', { browser, touch: true, setup: asApp(IPHONE) });
-  await I2.page.evaluate(() => { const L = window.__ironlog; L.state.settings.onboarded = true; L.makeDemo(); L.ui.tab = 'today'; L.render(); });
+  await I2.page.evaluate(() => { const L = window.__ironlog; L.state.settings.onboarded = true; L.makeDemo(); /* r30: history here, not sample data */ for (const k of ['sessions', 'bodyweights', 'measurements']) for (const x of (L.state[k] || [])) delete x.demo; L.invalidate && L.invalidate(); L.ui.tab = 'today'; L.render(); });
   ok(await I2.page.evaluate(() => !document.getElementById('iconBar')), 'a new install (no log before) already has the new icon: no note');
   await I2.ctx.close();
   const I3 = await open('index.html', { browser, touch: true, state: seeded, setup: asApp('Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0 Mobile Safari/537.36') });
@@ -146,7 +146,7 @@ const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log
   await fresh();
   const C = await open('index.html', { browser, touch: true, w: 390, h: 844, clock: '2026-09-30T18:00:00' });
   const cev = (f, a) => C.page.evaluate(f, a);
-  await cev(() => { const L = window.__ironlog; L.state.settings.onboarded = true; L.makeDemo(); L.ui.tab = 'history'; L.render(); localStorage.setItem('ironlog.v1.tipWake', '1'); });
+  await cev(() => { const L = window.__ironlog; L.state.settings.onboarded = true; L.makeDemo(); /* r30: history here, not sample data */ for (const k of ['sessions', 'bodyweights', 'measurements']) for (const x of (L.state[k] || [])) delete x.demo; L.invalidate && L.invalidate(); L.ui.tab = 'history'; L.render(); localStorage.setItem('ironlog.v1.tipWake', '1'); });
   const cal = () => cev(() => { const m = window.__ironlog.ui.modal; return m && m.kind === 'cal' ? { ym: m.ym, title: document.getElementById('calH').textContent, on: document.querySelectorAll('#modal .cd.on').length, fut: document.querySelectorAll('#modal span.cd.fut').length, futBtn: document.querySelectorAll('#modal button.cd.fut').length } : null; });
   await C.page.click('#view .ph [data-act="calOpen"]'); await C.page.waitForTimeout(100);
   let c1 = await cal();
@@ -220,7 +220,7 @@ const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log
   {
     const Q = await open('index.html', { browser, touch: true, w: 390, h: 844, clock: '2026-09-20T10:00:00' });
     const qev = (f, a) => Q.page.evaluate(f, a);
-    await qev(() => { const L = window.__ironlog; L.state.settings.onboarded = true; L.makeDemo(); L.ui.tab = 'today'; L.ui.todayDay = 0; L.render(); localStorage.setItem('ironlog.v1.tipWake', '1'); });
+    await qev(() => { const L = window.__ironlog; L.state.settings.onboarded = true; L.makeDemo(); /* r30: history here, not sample data */ for (const k of ['sessions', 'bodyweights', 'measurements']) for (const x of (L.state[k] || [])) delete x.demo; L.invalidate && L.invalidate(); L.ui.tab = 'today'; L.ui.todayDay = 0; L.render(); localStorage.setItem('ironlog.v1.tipWake', '1'); });
     await Q.page.click('.hero [data-act="startSession"]:not([data-light])'); await Q.page.waitForTimeout(150);
     const c1 = await qev(() => { const c = document.getElementById('loadAsk'); return c ? c.innerText : null; });
     ok(c1 && /Suggested loads show in grey/.test(c1) && /Keep grey/.test(c1) && /Fill them in/.test(c1), 'the first session asks once: grey or filled in', c1);
@@ -247,7 +247,7 @@ const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log
   // ---- 14. Guardrails and continuity (V's report, 2026-09-30).
   const G = await open('index.html', { browser, touch: true, w: 390, h: 844, clock: '2026-09-20T10:00:00' });
   const gev = (f, a) => G.page.evaluate(f, a);
-  const gstart = () => gev(() => { const L = window.__ironlog; L.state.draft = null; L.state.settings.onboarded = true; if (!L.state.sessions.length) L.makeDemo(); L.ui.tab = 'today'; L.ui.todayDay = 0; L.ui.modal = null; document.getElementById('modal').hidden = true; L.render(); localStorage.setItem('ironlog.v1.tipWake', '1'); L.ACT.startSession({ dataset: { day: '0' } }); });
+  const gstart = () => gev(() => { const L = window.__ironlog; L.state.draft = null; L.state.settings.onboarded = true; if (!L.state.sessions.length) L.makeDemo(); /* r30: history here, not sample data */ for (const k of ['sessions', 'bodyweights', 'measurements']) for (const x of (L.state[k] || [])) delete x.demo; L.invalidate && L.invalidate(); L.ui.tab = 'today'; L.ui.todayDay = 0; L.ui.modal = null; document.getElementById('modal').hidden = true; L.render(); localStorage.setItem('ironlog.v1.tipWake', '1'); L.ACT.startSession({ dataset: { day: '0' } }); });
   const modal = () => gev(() => { const m = window.__ironlog.ui.modal; return m ? { kind: m.kind, t: document.getElementById('modal').innerText } : null; });
   // Short on time never drops typed sets, and Undo puts back exactly what it took.
   await gstart();
