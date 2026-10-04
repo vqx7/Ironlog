@@ -2,22 +2,26 @@
 
 Everything that needs you, in one place, with the exact code to paste. Claude keeps this file current: an item moves to Done only when you confirm it, or when Claude can check it from here (and says how it checked). Build work and decisions are tracked in `PENDING.md`; this file is only what you do by hand.
 
-Last updated: r29 in preview, 2026-10-03.
+Last updated: r29.4 live, r29.5 in preview, 2026-10-04.
 
 ## Now, in this order
 
-0. A7: try r29 on the preview (https://ironapp.org/preview/, Reload when asked; the menu shows build r29), then say go. The preview keeps its own log: first tap Copy my log from Ironlog (Settings > Your data; sign in to the preview with your Ironlog account first), so Stats shows your real numbers. Ironlog itself is not changed. Look at Stats > Volume and Muscles, the Muscle map on Today, the rest timer, and drag an exercise by its ⠿ during a session. To see what a new person sees: Settings > Your data > Erase everything in the preview only (it erases the preview's log, never Ironlog's), then pick a routine or Look around with sample data. Steps 1 to 3 below can be done at the same time; none of them touch the app's code.
-1. Problem reports reaching you: B1 to B5 below (B1 alone already stores reports safely). The B1 code changed on 2026-10-03 (r29 audit); paste the version below, not an older copy.
-2. D5: lock down every account (two-step verification everywhere, secret scanning, DNSSEC).
-3. When you have a minute: Forgot password with your own email in the app, and check the email comes from Ironlog (no-reply@mail.ironapp.org). That is the last proof the sender works before friends sign up.
-4. After r29 is live, if you want it: decision 129 (make the repository private). Not before: switching mid-release risks the preview and publish setup.
+1. B5, the trigger, then its check: Report a problem from the app and an issue appears in `ironlog-feedback` (steps below).
+2. B6: protect `main` (steps below). Until it is on, nothing stops a change reaching the live app without a pull request.
+3. A8: try r29.5 on the preview (https://ironapp.org/preview/, Reload when asked; Settings shows Ironlog Preview 2026.10.04-r29.5), then say go. What to look at: Plan > Exercise library (All, Common, Less common), + Add exercise in a session (Common first), and the i beside Target RIR when you open an exercise in Plan.
+4. B7: choose who picks up the tickets.
+5. D6: delete six old branches and stop them piling up (2 minutes, below).
+6. D5: lock down every account (two-step verification everywhere, push protection, DNSSEC, Claude's GitHub access limited to Ironlog).
+7. Before friends sign up, decide item 15 in PENDING.md: optional encryption. Today you can read every account's log in Supabase's Table Editor, and the app's privacy line says so. With encryption on, nobody but the owner of a log can read it, and a forgotten passphrase loses that cloud copy for good. You chose to launch without it (2026-09-27); this is the last point to change that before other people's logs are in it.
+8. After that, if you want it: decision 129 (make the repository private). Note that it hides the repository, not the app: every website's code is downloaded to the phone that opens it, so anyone can read the app's code at ironapp.org either way. No secret key is in it (checked 2026-10-04).
+9. At the gym: Checks on your phone (below).
 
 ## When you want problem reports to reach you (item 58, about 20 minutes)
 
 Until step B1, Report a problem says reports are not set up yet and keeps the text.
 
 ### B1. The report tables and their limits
-Status: to do.
+Status: done, as you reported (2026-10-04).
 Supabase > **SQL Editor** > **New query**. Replace `YOUR IRONLOG ACCOUNT EMAIL` on the last line with the email of your Ironlog account: the one shown at the top of the menu (top right) in the app when you are signed in. Not the ironapp.org mail address, unless that is what you signed up with. Type it only here, never in the repo. If you got it wrong, nothing breaks: run the last line again with the right email. Run:
 
 ```sql
@@ -116,11 +120,11 @@ alter table public.feedback add constraint feedback_screenshot_check check (scre
 ```
 
 ### B2. A private repository for the tickets
-Status: to do.
+Status: done, as you reported (2026-10-04).
 GitHub > **+** > **New repository**. Name `ironlog-feedback`. Select **Private**. Tick **Add a README**. **Create repository**. Private because reports quote what people wrote and may show their screen.
 
 ### B3. A token that can only write tickets
-Status: to do.
+Status: done, as you reported (2026-10-04). Tell Claude the token's expiry date for the reminder below.
 GitHub > your photo > **Settings** > **Developer settings** > **Personal access tokens** > **Fine-grained tokens** > **Generate new token**.
 - Name: `ironlog-feedback`. Expiration: 1 year. Claude adds a reminder to this file to renew it before then.
 - Repository access: **Only select repositories** > `ironlog-feedback`.
@@ -128,7 +132,7 @@ GitHub > your photo > **Settings** > **Developer settings** > **Personal access 
 - **Generate token**, copy it. It is shown once. It goes only into Supabase in B4.
 
 ### B4. The function that turns a report into a GitHub issue
-Status: to do.
+Status: done, as you reported (2026-10-04).
 Supabase > **Edge Functions** > **Deploy a new function** > **Via editor**. Name it exactly `feedback-to-issue`. Delete the sample code, paste all of this:
 
 ````ts
@@ -230,7 +234,7 @@ Supabase > **Integrations** > **Database Webhooks** (enable it if asked) > **Cre
 Check: Report a problem from the app. Within seconds an issue labelled `feedback` appears in `ironlog-feedback`. If not: Edge Functions > `feedback-to-issue` > **Logs** says why (401 means the header and the secret differ).
 
 ### B6. Protect main, so a pull request is the only way into the live app
-Status: to do whenever you like (D2 is done, so merges on the website use your private address). Once it is on, Claude opens pull requests and you merge them on the website.
+Status: to do, right after B5 (D2 is done, so merges on the website use your private address). Once it is on, Claude opens pull requests and you merge them on the website.
 GitHub > vqx7/Ironlog > **Settings** > **Rules** > **Rulesets** > **New ruleset** > **New branch ruleset**.
 - Name `main`. Enforcement status: **Active**.
 - Target branches: **Add target** > **Include default branch**.
@@ -266,7 +270,7 @@ resend.com > sign up > **Domains** > **Add Domain** > `mail.ironapp.org` (Resend
 Wait until Resend shows **Verified**. Then **API Keys** > **Create API key**, permission **Sending access**, domain `mail.ironapp.org`. Copy it; it is a secret and goes only into C4.
 
 ### C4. Connect Supabase to the sender
-Status: done, as you reported (2026-10-02). Claude cannot reach Supabase's settings from here; the Forgot password test under Now is the proof.
+Status: done, and the Forgot password email arrives from Ironlog (you, 2026-10-04).
 Supabase > **Authentication** > **Emails** > **SMTP Settings** > enable custom SMTP:
 - Sender email `no-reply@mail.ironapp.org`  Sender name `Ironlog`
 - Host `smtp.resend.com`  Port `465`  Username `resend`  Password: the Resend API key
@@ -297,6 +301,12 @@ Status: to do. Each step is free and none of them stops Claude from building and
 9. **Claude:** your Claude account signs in through your email (or Google), so steps 1 and, if used, your Google account's two-step verification protect it.
 10. **Never paste** the Supabase secret key, a GitHub token or the Resend key into a chat, the app or the repository. They belong only in the dashboards named in B4 and C4.
 
+### D6. Old branches
+Status: to do. Claude's GitHub access cannot delete branches.
+Every one of these is already in `main`, so nothing is lost.
+1. github.com/vqx7/Ironlog/branches > tap the trash icon on `keep-domain`, `r26`, `r27`, `r28`, `r29` and `r29.4`. Keep `main` and `gh-pages`, and the branch of any pull request still open.
+2. So it does not happen again: Settings > General > Pull Requests > tick **Automatically delete head branches**. Each branch then goes when its pull request is merged.
+
 ## Checks on your phone (items 7 and 63)
 Status: to do whenever you are at the gym; tell Claude what you see.
 - Rest timer across a screen lock; the share sheet to Files for a backup; the notch in the home-screen app; "New version ready" then Reload.
@@ -321,4 +331,7 @@ Status: to do whenever you are at the gym; tell Claude what you see.
 - A4: r26 tried on the preview and approved; r26 live (2026-10-02, merged by Claude at your go-ahead).
 - A5: r27 tried on the preview and approved; r27 live at https://ironapp.org (2026-10-02, merged by Claude at your go-ahead).
 - A6: r28 tried on the preview and approved; r28 live at https://ironapp.org (2026-10-02, merged by Claude at your go-ahead).
+- A7: r29 tried on the preview and approved; live as r29.3 (2026-10-03). r29.4, the first-run taglines removed, went live the same day at your request without a preview check.
+- B1 to B4 (you, by 2026-10-04).
+- Forgot password email from Ironlog <no-reply@mail.ironapp.org> (you, 2026-10-04).
 - C1 to C5: domain ironapp.org, Resend sender on mail.ironapp.org, Supabase connected, app switched and reinstalled (2026-10-02).
