@@ -467,7 +467,7 @@ body.obmode .tabs,body.obmode header.top{display:none}
 body.obmode .ob{padding-top:calc(env(safe-area-inset-top,0px) + 10px)}
 .ob-card .btn:not(.primary){background:transparent;box-shadow:inset 0 0 0 1px var(--line)}
 body.obmode main,body.obmode #view{padding-bottom:24px}
-.ob-top{padding:18px 2px 4px}
+.ob-top{padding:18px 2px 20px}
 .ob-logo{font:800 44px/1 var(--display);letter-spacing:.06em;text-transform:uppercase;display:flex;align-items:flex-end;gap:0;margin:0}
 .ob-logo span{color:var(--muted);font-weight:600}
 .ob-logo .rn{color:var(--ink);font-weight:800}
@@ -476,10 +476,8 @@ body.obmode main,body.obmode #view{padding-bottom:24px}
 .ob-splash .ob-logo{font-size:52px}
 .ob-logo.sm{font-size:26px;margin:6px 0 0}
 .mark .mk-p{fill:var(--brand)}.mark .mk-h{fill:var(--brand-bar)}
-.ob-tag{margin:10px 0 0;color:var(--muted);font-size:16px;line-height:1.4}
 .ob-card{background:var(--surface);border:1px solid var(--card-b);border-radius:var(--r-lg);padding:18px}
-.ob-card h2{font:700 26px/1.1 var(--display);letter-spacing:.01em;margin:0 0 6px}
-.ob-card p{margin:0 0 14px;color:var(--muted);font-size:15px;line-height:1.4}
+.ob-card h2{font:700 26px/1.1 var(--display);letter-spacing:.01em;margin:0 0 14px}
 .ob-card .btn+.btn{margin-top:8px}
 .ob-skip{align-self:center;min-height:44px;color:var(--muted)}
 .ob-dots{display:flex;justify-content:center;gap:6px;margin-top:auto;padding-top:6px}
@@ -1372,7 +1370,7 @@ if(ENV==='preview')document.documentElement.dataset.env='preview';
 const HAD_LOG=(()=>{try{return localStorage.getItem(KEY)!=null;}catch(e){return false;}})();
 /* Shown in Settings, in diagnostics and in backups, so a bug report can be
    matched to the exact build. */
-const APP_VERSION='2026.10.03-r29.3';
+const APP_VERSION='2026.10.03-r29.4';
 /* The logo (r25): an upright dumbbell that is also the I of Ironlog. Same
    numbers as scripts/icons.py, which draws the app icons. */
 const MARK_SVG='<svg class="mark" viewBox="-242 -378 484 756" aria-hidden="true" focusable="false"><rect class="mk-h" x="-30" y="-300" width="60" height="600" rx="14"/><rect class="mk-h" x="-80" y="-192" width="160" height="32" rx="12"/><rect class="mk-h" x="-80" y="160" width="160" height="32" rx="12"/><rect class="mk-p" x="-240" y="-376" width="480" height="92" rx="30"/><rect class="mk-p" x="-190" y="-270" width="380" height="66" rx="26"/><rect class="mk-p" x="-190" y="204" width="380" height="66" rx="26"/><rect class="mk-p" x="-240" y="284" width="480" height="92" rx="30"/></svg>';
@@ -4280,8 +4278,8 @@ function obView(){
   if(!cloudChecked||(AUTH()&&!window.claude&&!acct.checked)||(cloud.on&&!cloud.lastPull))return `<div class="ob"><div class="ob-splash"><p class="ob-logo">${LOCKUP}</p></div></div>`;
   const acctStep=!!AUTH()&&!window.claude;const dots=n=>acctStep?`<div class="ob-dots" aria-hidden="true"><i class="${n===1?'on':''}"></i><i class="${n===2?'on':''}"></i></div>`:'';
   if(obAcctOffered())return `<div class="ob" id="obPage" data-step="acct">
-  <div class="ob-top"><h1 class="ob-logo">${LOCKUP}</h1><p class="ob-tag">Your lifts, and what to beat next time.</p></div>
-  <div class="ob-card"><h2>Save your log</h2><p>Free, and on every phone you use.</p>
+  <div class="ob-top"><h1 class="ob-logo">${LOCKUP}</h1></div>
+  <div class="ob-card"><h2>Save your log</h2>
   <button class="btn primary block" data-act="acctOpen" data-mode="signup">Create account</button>
   <button class="btn block" data-act="acctOpen" data-mode="signin">I have an account</button></div>
   ${ENV==='preview'?'<button class="btn block" data-act="previewCopy" style="margin-top:10px">Copy my log from Ironlog</button>':''}
