@@ -5612,7 +5612,17 @@ function rirStripHTML(bi,si,cur){
   const opts=RIR_OPTS.slice();if(cur!==''&&!opts.includes(cur)){opts.push(cur);opts.sort((a,b)=>a-b);}
   return `<div class="rirstrip" role="group" aria-label="Reps in reserve for set ${si+1}" data-b="${bi}" data-s="${si}"><span class="rs-l">RIR</span>${opts.map(o=>`<button type="button" data-act="rirPick" data-b="${bi}" data-s="${si}" data-v="${o}" aria-pressed="${cur===o}"${cur===o?' class="on"':''}>${o}</button>`).join('')}<button type="button" class="rs-x" data-act="rirPick" data-b="${bi}" data-s="${si}" data-v="" aria-label="Clear RIR">✕</button></div>`;
 }
-function rirClose(){const el=document.querySelector('.rirstrip');if(!el)return;const b=document.querySelector(`.rirb[data-b="${el.dataset.b}"][data-s="${el.dataset.s}"]`);if(b)b.setAttribute('aria-expanded','false');el.remove();}
+function rirClose(){const el=document.querySelector('.rirstrip');if(!el)return;const b=document.querySelector(`.rirb[data-b="${el.dataset.b}"][data-s="${el.dataset.s}"]`);if(b)b.setAttribute('aria-expanded','false');el.remove();autoPending();}
+/* Typed reps, then a tap on the same row's RIR box (r30): auto-mark waits
+   until the RIR strip closes, picked or not. Ticking at once started the
+   rest timer, whose bar rose under the finger near the bottom of the
+   screen, so the tap landed on the timer and the strip never opened. */
+let pendAuto=null;
+function autoPending(){
+  const p=pendAuto;pendAuto=null;if(!p||!state.draft||!state.settings.autoDone)return;
+  const s=state.draft.ex[p.b]&&state.draft.ex[p.b].sets[p.s];if(!s||s.done||!(+s.r>0))return;
+  lastAuto={b:p.b,s:p.s,t:Date.now()};setDone(p.b,p.s,true);
+}
 function rirShowStrip(bi,si){
   rirClose();const btn=document.querySelector(`.rirb[data-b="${bi}"][data-s="${si}"]`);const s=state.draft&&state.draft.ex[bi]&&state.draft.ex[bi].sets[si];
   if(!btn||!s)return;const row=btn.closest('.sg');if(!row)return;
@@ -8611,7 +8621,11 @@ document.addEventListener('change',e=>{
     if(rebuilding){if(s.done&&!(+s.r>0))queueMicrotask(()=>{const b2=state.draft&&state.draft.ex[bi];const s2=b2&&b2.sets[si];if(s2&&s2.done&&!(+s2.r>0))setDone(bi,si,false);});return;}
     // A set with no reps cannot be a done set: finishing would save it as 0 reps.
     if(s.done&&!(+s.r>0))setDone(bi,si,false);
-    else if((state.settings.autoDone||state.draft.past)&&!s.done&&+s.r>0){lastAuto={b:bi,s:si,t:Date.now()};setDone(bi,si,true);}
+    else if((state.settings.autoDone||state.draft.past)&&!s.done&&+s.r>0){
+      const toRir=!state.draft.past&&lastDown.el&&Date.now()-lastDown.t<700&&lastDown.el.closest&&lastDown.el.closest(`.rirb[data-b="${bi}"][data-s="${si}"]`);
+      // Heading for this row's RIR box: tick when its strip closes (or after 2 s if it never opened).
+      if(toRir){pendAuto={b:bi,s:si};setTimeout(()=>{if(pendAuto&&pendAuto.b===bi&&pendAuto.s===si&&!document.querySelector('.rirstrip'))autoPending();},2000);}
+      else{lastAuto={b:bi,s:si,t:Date.now()};setDone(bi,si,true);}}
     else if(s.done)refreshPR(bi,si,false);
     saveSoon();return;}
   if(t.dataset.f){

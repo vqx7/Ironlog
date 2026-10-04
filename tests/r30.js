@@ -288,6 +288,22 @@ function strongCsv() {
     await P.browser.close();
   }
 
+  // ---- Auto-mark, typed reps, then the RIR box near the bottom of the screen: the strip opens, picking ticks the set.
+  {
+    const P = await open('index.html', { clock: '2026-09-26T10:00:00' });
+    const { page } = P; const ev = (f, a) => page.evaluate(f, a);
+    await ev(() => { const L = window.__ironlog; L.state.settings.onboarded = true; L.state.settings.autoDone = true; L.render(); });
+    await page.click('.hero [data-act="startSession"]:not([data-light])'); await wait(150);
+    await page.fill('[data-f="w"][data-b="0"][data-s="0"]', '185'); await page.fill('[data-f="r"][data-b="0"][data-s="0"]', '8');
+    await page.click('.rirb[data-b="0"][data-s="0"]'); await wait(200);
+    const a = await ev(() => ({ strip: !!document.querySelector('.rirstrip[data-b="0"][data-s="0"]'), done: window.__ironlog.state.draft.ex[0].sets[0].done }));
+    await page.click('.rirstrip [data-v="2"]'); await wait(200);
+    const b = await ev(() => { const s = window.__ironlog.state.draft.ex[0].sets[0]; return { done: s.done, rir: s.rir, r: s.r }; });
+    ok(a.strip && !a.done && b.done && b.rir === 2 && b.r === 8, 'auto-mark: reps typed, then the RIR box opens its strip (the timer bar no longer rises under the tap), and picking ticks the set', { a, b });
+    ok(!P.errors.length, 'no page errors (RIR after reps)', P.errors);
+    await P.browser.close();
+  }
+
   // ---- An untouched edit of a saved session closes without asking.
   {
     const P = await open('index.html', { touch: true, clock: '2026-10-04T10:00:00' });
