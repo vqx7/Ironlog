@@ -91,6 +91,21 @@ must(!/fonts\.googleapis/.test(html), 'Google Fonts link still present');
 html = replaceOnce(html, "loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.2/Sortable.min.js',", "loadScript(['vendor/Sortable.min.js','https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.2/Sortable.min.js',", 'Sortable loader');
 html = replaceOnce(html, "loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js',", "loadScript(['vendor/chart.umd.js','https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js',", 'Chart.js loader');
 html = replaceOnce(html, "const THREE_URLS=['https://cdn.jsdelivr.net/npm/three@0.159.0/build/three.module.min.js',", "const THREE_URLS=['./vendor/three.module.min.js','https://cdn.jsdelivr.net/npm/three@0.159.0/build/three.module.min.js',", 'three.js loader');
+// Claude features (V, 2026-10-04). Debriefs, Ask Claude, suggested swaps and
+// Claude reading typed sets work only when the page runs inside Claude, so the
+// installed app never used them, yet every phone downloaded their prompts.
+// The source marks each such block /*ai{*/ ... /*}ai*/, or /*}ai=code*/ when
+// something must stand in its place, and this build leaves them out. The
+// source keeps them for the Claude artifact.
+{
+  const re = /\/\*ai\{\*\/[\s\S]*?\/\*\}ai(?:=([\s\S]*?))?\*\//g;
+  const n = (html.match(re) || []).length;
+  must(n >= 13, `expected the marked Claude blocks, found ${n}`);
+  html = html.replace(re, (m, sub) => sub || '');
+  must(!/\/\*ai\{|\/\*\}ai/.test(html), 'an unmatched Claude block marker');
+  for (const w of ['AI_STYLE', 'aiDigest', 'debriefPrompt', 'Ask Claude', 'Debrief with Claude', 'Reading with Claude', 'You are an experienced', 'window.claude.use(\'sample\')'])
+    must(!html.includes(w), `Claude feature text still in the build: ${w}`);
+}
 // Install metadata.
 // IRONLOG_APP marks the installable build, so the app can offer to install
 // itself. The browser's install offer (Android and desktop Chrome) can fire
