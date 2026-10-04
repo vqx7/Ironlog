@@ -48,6 +48,31 @@ const V = '11111111-1111-1111-1111-111111111111', F = '22222222-2222-2222-2222-2
   ok((await db.query(`select count(*)::int n from public.feedback`)).rows[0].n === 0, 'a non-reader reads no reports');
   await as(db, V);
   ok((await db.query(`select count(*)::int n from public.feedback`)).rows[0].n === 6, 'the owner (in feedback_readers) reads every report');
+  // r29 review: what a sender cannot set. A back-dated report still counts
+  // today, a made-up ticket link is dropped, and the screenshot must be a
+  // plain base64 JPEG from start to end.
+  await db.exec('reset role'); await db.exec(`delete from public.feedback`);
+  await as(db, F);
+  let back = 0; for (let i = 0; i < 6; i++) if (await tryq(db, `insert into public.feedback(category,message,created_at) values ('bug','back-dated report ${i}','2001-01-01')`) === 'ok') back++;
+  ok(back === 5, 'back-dated reports still count toward today: the sixth is refused (' + back + ' of 6 went in)');
+  await as(db, V);
+  ok(await tryq(db, `insert into public.feedback(category,message,issue_url,screenshot) values ('bug','with a made-up link','https://github.com/x/y','data:image/jpeg;base64,/9j/4AAQSkZJRg==')`) === 'ok', 'a report with a plain JPEG screenshot is accepted');
+  ok(/check/i.test(await tryq(db, `insert into public.feedback(category,message,screenshot) values ('bug','hostile screenshot here','data:image/jpeg;base64,AAAA" onerror="x')`)), 'a screenshot with anything but base64 after the prefix is refused');
+  const row = (await db.query(`select issue_url, created_at > now() - interval '1 minute' as fresh from public.feedback where message = 'with a made-up link'`)).rows[0];
+  ok(row && row.issue_url === null && row.fresh === true, 'the ticket link and the time are the server\'s, not the sender\'s');
+}
+{ // r29: the block for a table made by step 1 between r25 and r28.
+  const db = new PGlite(); await db.exec(stub);
+  const r25 = pick('create table public.feedback (').replace('YOUR IRONLOG ACCOUNT EMAIL', 'v@example.com').replace("screenshot ~ '^data:image/jpeg;base64,[A-Za-z0-9+/]+={0,2}$'", "screenshot like 'data:image/jpeg;base64,%'").replace(/  -- The time and the ticket link[\s\S]*?new\.issue_url := null;\n/, '');
+  await db.exec(r25);
+  await as(db, V);
+  ok(await tryq(db, `insert into public.feedback(category,message,screenshot) values ('bug','old rules let this in','data:image/jpeg;base64,AAAA" onerror="x')`) === 'ok', 'before: the r25 rules let a hostile screenshot in (what the fix is for)');
+  await db.exec('reset role');
+  await run(db, pick("new.issue_url := null;\n  if (select count(*) from public.feedback where user_id = new.user_id and created_at > now() - interval '24 hours') >= 5 then\n    raise exception 'feedback_rate_limited' using errcode = 'P0001';\n  end if;\n  return new;\nend $$;\nrevoke"), 'the r29 block runs on a table made between r25 and r28');
+  await as(db, V);
+  ok(/check/i.test(await tryq(db, `insert into public.feedback(category,message,screenshot) values ('bug','new rules stop this','data:image/jpeg;base64,AAAA" onerror="x')`)), 'after: a hostile screenshot is refused');
+  let back = 0; for (let i = 0; i < 6; i++) if (await tryq(db, `insert into public.feedback(category,message,created_at) values ('bug','back-dated report ${i}','2001-01-01')`) === 'ok') back++;
+  ok(back === 4, 'after: back-dated reports count toward today (' + back + ' more went in beside the one from before)');
 }
 { // r26: the Security Advisor fixes. A ping made the old way gets a fixed search path from the fix block, and still answers anon.
   const db = new PGlite(); await db.exec(stub);

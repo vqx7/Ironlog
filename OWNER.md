@@ -2,13 +2,15 @@
 
 Everything that needs you, in one place, with the exact code to paste. Claude keeps this file current: an item moves to Done only when you confirm it, or when Claude can check it from here (and says how it checked). Build work and decisions are tracked in `PENDING.md`; this file is only what you do by hand.
 
-Last updated: r28 live, 2026-10-02.
+Last updated: r29 in preview, 2026-10-03.
 
 ## Now, in this order
 
-1. Your phone: open Ironlog; when "New version ready" shows, tap Reload. The menu shows build r28.
-2. When you have a minute: Forgot password with your own email in the app, and check the email comes from Ironlog (no-reply@mail.ironapp.org). That is the last proof the sender works before friends sign up.
-3. Two decisions in PENDING.md: 114 (the starter routine for someone who skips picking one) and 115 (default targets for neck, tibialis and other small muscles).
+0. A7: try r29 on the preview (https://ironapp.org/preview/, Reload when asked; the menu shows build r29), then say go. The preview keeps its own log: first tap Copy my log from Ironlog (Settings > Your data; sign in to the preview with your Ironlog account first), so Stats shows your real numbers. Ironlog itself is not changed. Look at Stats > Volume and Muscles, the Muscle map on Today, the rest timer, and drag an exercise by its ⠿ during a session. To see what a new person sees: Settings > Your data > Erase everything in the preview only (it erases the preview's log, never Ironlog's), then pick a routine or Look around with sample data. Steps 1 to 3 below can be done at the same time; none of them touch the app's code.
+1. Problem reports reaching you: B1 to B5 below (B1 alone already stores reports safely). The B1 code changed on 2026-10-03 (r29 audit); paste the version below, not an older copy.
+2. D5: lock down every account (two-step verification everywhere, secret scanning, DNSSEC).
+3. When you have a minute: Forgot password with your own email in the app, and check the email comes from Ironlog (no-reply@mail.ironapp.org). That is the last proof the sender works before friends sign up.
+4. After r29 is live, if you want it: decision 129 (make the repository private). Not before: switching mid-release risks the preview and publish setup.
 
 ## When you want problem reports to reach you (item 58, about 20 minutes)
 
@@ -16,7 +18,7 @@ Until step B1, Report a problem says reports are not set up yet and keeps the te
 
 ### B1. The report tables and their limits
 Status: to do.
-Supabase > **SQL Editor** > **New query**. Replace `YOUR IRONLOG ACCOUNT EMAIL` on the last line with the email you sign in to Ironlog with (type it only here, never in the repo). Run:
+Supabase > **SQL Editor** > **New query**. Replace `YOUR IRONLOG ACCOUNT EMAIL` on the last line with the email of your Ironlog account: the one shown at the top of the menu (top right) in the app when you are signed in. Not the ironapp.org mail address, unless that is what you signed up with. Type it only here, never in the repo. If you got it wrong, nothing breaks: run the last line again with the right email. Run:
 
 ```sql
 -- One row per report. Signed-in people may add one; nobody but the readers below may read.
@@ -27,7 +29,7 @@ create table public.feedback (
   category text not null check (category in ('bug', 'idea', 'question')),
   message text not null check (char_length(message) between 10 and 1000),
   reply_to text check (reply_to is null or char_length(reply_to) <= 200),
-  screenshot text check (screenshot is null or (screenshot like 'data:image/jpeg;base64,%' and char_length(screenshot) <= 1500000)),
+  screenshot text check (screenshot is null or (screenshot ~ '^data:image/jpeg;base64,[A-Za-z0-9+/]+={0,2}$' and char_length(screenshot) <= 1500000)),
   context jsonb not null default '{}'::jsonb check (pg_column_size(context) <= 20000),
   issue_url text
 );
@@ -38,6 +40,10 @@ create policy "signed-in people can add" on public.feedback
 -- At most 5 reports a day per account, whatever the app does.
 create function public.feedback_limit() returns trigger language plpgsql security definer set search_path = '' as $$
 begin
+  -- The time and the ticket link are the server's, never the sender's: a back-dated
+  -- report would slip past the daily limit, and a made-up link would show in your Inbox.
+  new.created_at := now();
+  new.issue_url := null;
   if (select count(*) from public.feedback where user_id = new.user_id and created_at > now() - interval '24 hours') >= 5 then
     raise exception 'feedback_rate_limited' using errcode = 'P0001';
   end if;
@@ -74,14 +80,39 @@ create policy "signed-in people can add" on public.feedback for insert to authen
 revoke insert on public.feedback from anon;
 create or replace function public.feedback_limit() returns trigger language plpgsql security definer set search_path = '' as $$
 begin
+  -- The time and the ticket link are the server's, never the sender's: a back-dated
+  -- report would slip past the daily limit, and a made-up link would show in your Inbox.
+  new.created_at := now();
+  new.issue_url := null;
   if (select count(*) from public.feedback where user_id = new.user_id and created_at > now() - interval '24 hours') >= 5 then
     raise exception 'feedback_rate_limited' using errcode = 'P0001';
   end if;
   return new;
 end $$;
 create trigger feedback_limit before insert on public.feedback for each row execute function public.feedback_limit();
+alter table public.feedback drop constraint if exists feedback_screenshot_check;
+alter table public.feedback add constraint feedback_screenshot_check check (screenshot is null or (screenshot ~ '^data:image/jpeg;base64,[A-Za-z0-9+/]+={0,2}$' and char_length(screenshot) <= 1500000)) not valid;
 -- Only the trigger runs it; nobody can call it through the API.
 revoke all on function public.feedback_limit() from public, anon, authenticated;
+```
+
+**Already ran this step between r25 and r28?** Run this as well (r29): it stops back-dated reports and anything but a plain picture in the screenshot field.
+
+```sql
+create or replace function public.feedback_limit() returns trigger language plpgsql security definer set search_path = '' as $$
+begin
+  -- The time and the ticket link are the server's, never the sender's: a back-dated
+  -- report would slip past the daily limit, and a made-up link would show in your Inbox.
+  new.created_at := now();
+  new.issue_url := null;
+  if (select count(*) from public.feedback where user_id = new.user_id and created_at > now() - interval '24 hours') >= 5 then
+    raise exception 'feedback_rate_limited' using errcode = 'P0001';
+  end if;
+  return new;
+end $$;
+revoke all on function public.feedback_limit() from public, anon, authenticated;
+alter table public.feedback drop constraint if exists feedback_screenshot_check;
+alter table public.feedback add constraint feedback_screenshot_check check (screenshot is null or (screenshot ~ '^data:image/jpeg;base64,[A-Za-z0-9+/]+={0,2}$' and char_length(screenshot) <= 1500000)) not valid;
 ```
 
 ### B2. A private repository for the tickets
@@ -252,6 +283,19 @@ Status: done. Step 1 checked by Claude (2026-10-02); steps 2 and 3 as you report
 
 ### D3. Who can see what (no action, for reference)
 Your log: only your account, and you as the Supabase project owner (Table Editor shows every row, friends' included). The app says so in Settings > Your data. Reports: only accounts listed in `feedback_readers`. Optional end-to-end encryption is item 15 in PENDING.md.
+
+### D5. Lock down every account (about 30 minutes, once)
+Status: to do. Each step is free and none of them stops Claude from building and publishing.
+1. **Your email** (the one every reset link goes to): turn on two-step verification with an authenticator app or a passkey. Everything else can be reset from this inbox, so it comes first.
+2. **GitHub:** your photo > Settings > Password and authentication > enable two-factor authentication (authenticator app or passkey). Save the recovery codes in your password manager.
+3. **GitHub, the Ironlog repository:** Settings > Advanced Security (or Code security) > turn on **Dependabot alerts**, **Secret Protection** and **Push protection**. They warn you if a key is ever committed by mistake. The repository stays public for now: free GitHub Pages needs that, and nothing secret is in it (the Supabase keys in it are the public ones; row level security protects the data). Making it private is decision 129 in PENDING.md.
+4. **GitHub, B6:** protect main (steps above). After that nothing reaches the live app without passing every test.
+5. **GitHub, what Claude can reach:** your photo > Settings > Applications > Installed GitHub Apps > the Claude app > Configure > Repository access: **Only select repositories**, with `Ironlog` (and `ironlog-feedback` only if you want Claude to read tickets later). You can revoke it here at any time.
+6. **Supabase:** your account (top right) > Account preferences > Security > enable multi-factor authentication. Then Authentication > Sign In / Providers > Email: keep **Confirm email** on. Then Advisors > Security Advisor > Refresh: only the Leaked Password Protection warning should remain (Pro plan; the app checks passwords itself).
+7. **Cloudflare:** My Profile > Authentication > enable two-factor. Then your domain > DNS > Settings > **Enable DNSSEC** (one tap on a Cloudflare-registered domain). Domain Registration > Manage > check **Registrar lock** is on.
+8. **Resend:** Settings > Account > enable two-factor. The API key you made is sending-only for `mail.ironapp.org`; leave it that way.
+9. **Claude:** your Claude account signs in through your email (or Google), so steps 1 and, if used, your Google account's two-step verification protect it.
+10. **Never paste** the Supabase secret key, a GitHub token or the Resend key into a chat, the app or the repository. They belong only in the dashboards named in B4 and C4.
 
 ## Checks on your phone (items 7 and 63)
 Status: to do whenever you are at the gym; tell Claude what you see.

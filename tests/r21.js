@@ -6,13 +6,19 @@
 const { open } = require('./h');
 const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log('FAIL', m, x !== undefined ? JSON.stringify(x) : ''); } else console.log('ok  ', m); };
 (async () => {
-  // Thursday 24 September 2026. The demo logs Tue 22, Wed 23 and Thu 24, so
-  // Monday 21 is an empty past day this week.
+  // Thursday 24 September 2026. Sessions on Tue 22, Wed 23 and Thu 24, and
+  // Monday 21 an empty past day this week. Since r29 the demo does every
+  // planned session and leaves today open, so the week is set here.
   const A = await open('index.html', { touch: true, w: 390, h: 844, clock: '2026-09-24T18:00:00' });
   const { page } = A;
   const ev = (f, a) => page.evaluate(f, a);
   // Auto-mark off, as before r28 made it on for new installs: the checks below are about quick entry ticking without it.
-  await ev(() => { const L = window.__ironlog; L.state.settings.onboarded = true; L.state.settings.autoDone = false; L.makeDemo(); L.ui.tab = 'today'; L.render(); localStorage.setItem('ironlog.v1.tipWake', '1'); });
+  await ev(() => { const L = window.__ironlog; L.state.settings.onboarded = true; L.state.settings.autoDone = false; L.makeDemo();
+    L.state.sessions = L.state.sessions.filter(x => x.date !== '2026-09-21');
+    const w = L.state.sessions.find(x => x.date === '2026-09-23');
+    if (w && !L.state.sessions.some(x => x.date === '2026-09-24')) { const R = L.state.routines.find(r => r.id === w.routineId); const di = (w.dayIdx + 1) % R.days.length; const d = R.days[di];
+      L.state.sessions.push({ id: 'thu24', date: '2026-09-24', dayIdx: di, dayId: d.id, dayName: d.name, routineId: R.id, ex: d.items.map(it => ({ exId: it.exId, sets: [{ w: 20, r: it.repMin, rir: 1, warm: false }] })), notes: '', demo: true }); }
+    L.invalidate(); L.ui.tab = 'today'; L.render(); localStorage.setItem('ironlog.v1.tipWake', '1'); });
   await page.waitForTimeout(100);
 
   // ---- 54: every day in the week bar is a button, and an empty past day logs.

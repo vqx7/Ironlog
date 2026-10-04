@@ -18,7 +18,7 @@ const IPHONE_CHROME = 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) Ap
 (async () => {
   const fake = await start(tmp);
   const html = fs.readFileSync(path.join(tmp, 'index.html'), 'utf8');
-  fs.writeFileSync(path.join(tmp, 'index.html'), html.replace(/"url":"https:\/\/[a-z0-9]+\.supabase\.co"/, `"url":"${fake.base}"`));
+  fs.writeFileSync(path.join(tmp, 'index.html'), require('./h').cspFix(html.replace(/"url":"https:\/\/[a-z0-9]+\.supabase\.co"/, `"url":"${fake.base}"`), fake.base));
   const APP = fake.base + '/ironlog/';
   const browser = await chromium.launch();
   const all = [];

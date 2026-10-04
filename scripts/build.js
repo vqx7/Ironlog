@@ -19,6 +19,7 @@ const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
 
+
 const ROOT = path.join(__dirname, '..');
 const PREVIEW = process.argv.includes('--preview');
 const DIST = path.join(ROOT, PREVIEW ? 'dist-preview' : 'dist');
@@ -143,6 +144,37 @@ try{if(navigator.storage&&navigator.storage.persist)navigator.storage.persisted(
 </script>
 `;
 html = replaceOnce(html, '</body>', boot + '</body>', 'closing body tag');
+/* Content Security Policy (r29, item 128): defense in depth. If a bug ever
+   let someone else's text run as script (as the reports inbox could have
+   before the r29 audit), the page still could not load script from anywhere
+   but this site, or send data anywhere but this site, the Supabase project,
+   and Have I Been Pwned's range API. Each inline script is allowed by its
+   hash, computed last so it matches what ships. Styles stay 'unsafe-inline':
+   the app sets style attributes throughout, and CSS cannot send data out
+   without an allowed address. The CDN fallbacks in the loaders are left out
+   on purpose: this build ships its own copies. A meta tag cannot set
+   frame-ancestors; GitHub Pages sends no such header, which is acceptable for
+   an app with no actions a framing page could trick a tap into. */
+
+const hashes = [...html.matchAll(/<script>([\s\S]*?)<\/script>/g)].map(m => `'sha256-${crypto.createHash('sha256').update(m[1], 'utf8').digest('base64')}'`);
+must(hashes.length >= 3, 'expected the head, app and boot inline scripts');
+const sbHost = cloudCfg ? cloudCfg.url.replace(/^https:\/\//, '') : null;
+const csp = [
+  "default-src 'self'",
+  `script-src 'self' ${hashes.join(' ')}`,
+  "style-src 'self' 'unsafe-inline'",
+  "img-src 'self' data: blob:",
+  "font-src 'self'",
+  `connect-src 'self'${sbHost ? ` https://${sbHost} wss://${sbHost}` : ''} https://api.pwnedpasswords.com`,
+  "worker-src 'self'",
+  "manifest-src 'self'",
+  "media-src 'self'",
+  "object-src 'none'",
+  "frame-src 'none'",
+  "base-uri 'none'",
+  "form-action 'none'"
+].join('; ');
+html = replaceOnce(html, '<meta charset="utf-8">\n', `<meta charset="utf-8">\n<meta http-equiv="Content-Security-Policy" content="${csp}">\n`, 'charset meta');
 fs.writeFileSync(path.join(DIST, 'index.html'), html);
 
 const manifest = {

@@ -6,9 +6,13 @@ const visText=async(page)=>page.evaluate(()=>{let n=0;const w=document.createTre
 (async()=>{const browser=await chromium.launch();
 // ---- text volume: old build vs new, same data, same open sections
 const sizes={};
+// The same log in both: r12's demo, carried into the current build (since
+// r29 the two builds' demos differ, so each making its own compared two logs).
+let demoState=null;
 for(const [file,tag] of [['baselines/r12.html','old'],['index.html','new']]){
-  const P=await open(file,{browser,clock:'2026-09-26T10:00:00'});
-  await P.page.evaluate(()=>{const L=window.__ironlog;L.state.settings.onboarded=true;L.makeDemo();L.render();});
+  const P=await open(file,{browser,clock:'2026-09-26T10:00:00',state:tag==='new'?demoState:undefined});
+  if(tag==='old')demoState=await P.page.evaluate(()=>{const L=window.__ironlog;L.state.settings.onboarded=true;L.makeDemo();L.render();return JSON.parse(JSON.stringify(L.state));});
+  else await P.page.evaluate(()=>{const L=window.__ironlog;L.state.settings.onboarded=true;L.render();});
   for(const t of ['today','program','dash','history','settings','logger']){
     await P.page.evaluate(t=>{const L=window.__ironlog;if(t==='logger'){L.ui.tab='today';L.render();document.querySelector('.hero [data-act="startSession"]').click();}else{L.state.draft=null;L.ui.tab=t;L.render();}document.querySelectorAll('details').forEach(d=>d.open=true);},t);
     (sizes[t]=sizes[t]||{})[tag]=await visText(P.page);

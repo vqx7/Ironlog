@@ -245,9 +245,10 @@ const near = (a, b, e) => a != null && b != null && Math.abs(a - b) < (e || 1e-6
     window.__reset('lb', [window.__sess('2026-10-01', 'bench', 135 * LB, [8, 8, 8], { rr: [6, 10] })], null, s => { for (const k in s.settings.bands) s.settings.bands[k] = [0, 20]; });
     const st = A.muscleStatus({ chest: 3 });
     A.ui.tab = 'today'; A.render();
-    return { lats: st.lats.st, chest: st.chest.st, serratus: st.serratus.st };
+    return { lats: st.lats.st, chest: st.chest.st, serratus: st.serratus.st, latsLow: A.belowMin(0, st.lats.lo) };
   }, [LB]);
-  ok(r10.lats === 'in' && r10.chest === 'in', '10. with every target at 0-20, a muscle with no sets is on target, not below', r10);
+  // Since r29 no sets reads as none (grey), never green before a set (V); still never below.
+  ok(r10.lats === 'none' && !r10.latsLow && r10.chest === 'in', '10. with every target at 0-20, a muscle with no sets is not below (none, not green); one with sets is on target', r10);
 
   // ---- 11. Planned hard sets.
   const r11 = await ev(([LB]) => {

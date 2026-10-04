@@ -49,7 +49,7 @@ const TABS = ['today', 'program', 'dash', 'history', 'settings'];
     await ev(() => { const L = window.__ironlog; L.state.injuries = []; L.state.settings.hidden = L.state.settings.hidden.filter(k => k !== 'today:injuries'); L.render(); });
     // The link goes to Settings > Layout, open.
     await page.locator('#moreLine [data-act="goLayout"]').click(); await wait(150);
-    ok(await ev(() => window.__ironlog.ui.tab === 'settings' && document.querySelector('#view > [data-mkey="layout"]').open), 'Show, hide or reorder sections opens Settings with Layout open');
+    ok(await ev(() => window.__ironlog.ui.tab === 'settings' && document.querySelector('#view > [data-mkey="layout"]').open), 'Show, hide, or reorder sections opens Settings with Layout open');
     // Layout: Default layout is pressed only on the default; it puts it back with Undo.
     const lay = await ev(() => { const b = document.querySelector('[data-act="layoutDefault"]'); return { pressed: b.getAttribute('aria-pressed'), simple: !!document.querySelector('[data-act="layoutSimple"]') }; });
     ok(lay.pressed === 'false' && !lay.simple, 'Default layout is not pressed once Coach was added, and Simple view is gone', lay);
@@ -65,7 +65,7 @@ const TABS = ['today', 'program', 'dash', 'history', 'settings'];
     ok(btn.ring && btn.ring !== 'none' && !/rgba\(0, 0, 0, 0\)/.test(btn.bg) && btn.bg.replace(/\s/g, '') !== btn.surface.trim(), 'the menu button is tinted with the accent and ringed', btn);
     await page.click('#saveState'); await wait(80);
     const rows = await ev(() => [...document.querySelectorAll('#modal .mnu')].map(b => b.textContent.replace('›', '').trim()));
-    ok(JSON.stringify(rows) === JSON.stringify(['Report a problem', 'Guide', 'Show, hide or reorder sections', 'Your data and backups']), 'the menu has Show, hide or reorder sections', rows);
+    ok(JSON.stringify(rows) === JSON.stringify(['Report a problem', 'Guide', 'Show, hide, or reorder sections', 'Your data and backups']), 'the menu has Show, hide, or reorder sections', rows);
     await page.click('#modal [data-act="mClose"]'); await wait(60);
     // Settings > Help.
     await ev(() => { const L = window.__ironlog; L.ui.tab = 'settings'; L.render(); });
@@ -93,12 +93,13 @@ const TABS = ['today', 'program', 'dash', 'history', 'settings'];
     ok(ht.open && ht.shown && /usual RIR/.test(ht.text) && !/a blank RIR counts as 0, so it errs low\)/.test(ht.text), 'How this works shows the explanation, and it says a blank RIR reads as your usual RIR', ht.text.slice(0, 160));
     // Volume opens on the balance chart, from the plan while nothing is logged.
     await page.locator('#view > [data-mkey="volume"] > summary').click(); await wait(300);
-    const vol = await ev(() => { const d = document.querySelector('#view > [data-mkey="volume"]'); const chips = [...d.querySelectorAll('[data-act="volMode"]')]; const ch = window.Chart && window.Chart.getChart(document.getElementById('chRadar')); return { first: chips[0].dataset.v, on: chips.find(c => c.classList.contains('on')).dataset.v, canvas: !!d.querySelector('#chRadar'), plan: /routine's plan, until you log a full week/.test(d.innerText), head: (d.querySelector('.headline') || {}).innerText, label: ch && ch.data.datasets[0].label, nonzero: ch && ch.data.datasets[0].data.some(v => v > 0) }; });
-    ok(vol.first === 'region' && vol.on === 'region' && vol.canvas && vol.plan && /^Most planned/.test(vol.head) && vol.label === 'Planned volume' && vol.nonzero, 'Volume opens on By region: the radar of the routine\'s plan, labelled as the plan, before anything is logged', vol);
+    const vol = await ev(() => { const d = document.querySelector('#view > [data-mkey="volume"]'); const chips = [...d.querySelectorAll('[data-act="volMode"]')]; const ch = window.Chart && window.Chart.getChart(document.getElementById('chRadar')); return { first: chips[0].dataset.v, on: chips.find(c => c.classList.contains('on')).dataset.v, canvas: !!d.querySelector('#chRadar'), empty: /Nothing logged yet/.test(d.innerText) && /fills in with your own hard sets/.test(d.innerText), plan: /routine's plan|Planned (below|above)/.test(d.innerText), head: (d.querySelector('.headline') || {}).innerText, label: ch && ch.data.datasets[0].label, nonzero: ch && ch.data.datasets[0].data.some(v => v > 0) }; });
+    // r29 (V): the radar reads only what was logged; before anything is logged it says so instead of showing the plan.
+    ok(vol.first === 'region' && vol.on === 'region' && vol.canvas && !vol.nonzero && vol.empty && !vol.plan, 'Volume opens on By region; with nothing logged the chart still draws, empty, says so, and never shows the plan (r29), before anything is logged', vol);
     // After a logged session the same view reads what was done.
     await ev(() => { const L = window.__ironlog; L.makeDemo(); L.invalidate(); L.ui.folds['dash:volume'] = true; L.render(); }); await wait(300);
     const vol2 = await ev(() => { const d = document.querySelector('#view > [data-mkey="volume"]'); const ch = window.Chart && window.Chart.getChart(document.getElementById('chRadar')); return { plan: /routine's plan/.test(d.innerText), head: (d.querySelector('.headline') || {}).innerText, label: ch && ch.data.datasets[0].label }; });
-    ok(!vol2.plan && /^Most trained/.test(vol2.head) && vol2.label === 'Your volume', 'with sessions logged it reads them instead', vol2);
+    ok(!vol2.plan && /regions on target|^Every region|^This week so far/.test(vol2.head) && vol2.label === 'Your volume', 'with sessions logged it reads them instead', vol2);
 
     // This week becomes This month in Month view, and back.
     await ev(() => { const L = window.__ironlog; L.ui.tab = 'today'; L.render(); L.ACT.wkView({ dataset: { v: 'month' } }); });
@@ -230,13 +231,13 @@ const TABS = ['today', 'program', 'dash', 'history', 'settings'];
     for (const key of ['full3', 'db3', 'ul4']) {
       const m = await ev(k => { const L = window.__ironlog; const r = L.routineFromTemplate(k); L.state.routines = [r]; L.state.activeRoutineId = r.id; L.state.settings.onboarded = true; L.invalidate(); L.ui.tab = 'dash'; L.ui.folds['dash:weak'] = true; L.ui.folds['dash:volume'] = true; L.render();
         const d = document.querySelector('#view > [data-mkey="weak"]'); const v = document.querySelector('#view > [data-mkey="volume"]');
-        return { sub: d.querySelector('.sec-s').innerText, tags: d.querySelectorAll(':scope > .sec-b > .card .tag').length, note: /Your routine plans fewer hard sets a week than your target/.test(d.innerText), flags: /Flags start once you have logged a few sessions/.test(d.innerText), vnote: (v.querySelector('.card > p.small.muted:last-child') || {}).innerText || '', band: /band/i.test(v.innerText + d.innerText) }; }, key);
-      ok(m.sub === 'after a few sessions' && m.tags === 0 && m.flags && !m.band && /^(Planned below target|The plan puts every region)/.test(m.vnote), `${key}, before any session: Muscles says "after a few sessions", no flags, Volume speaks of the plan, no "band" jargon`, m);
+        return { sub: d.querySelector('.sec-s').innerText, tags: d.querySelectorAll(':scope > .sec-b > .card .tag').length, note: /Your routine plans fewer hard sets/.test(d.innerText), vempty: /Nothing logged yet/.test(v.innerText), flags: /Flags start once you have logged a few sessions/.test(d.innerText), vnote: (v.querySelector('.card > p.small.muted:last-child') || {}).innerText || '', band: /band/i.test(v.innerText + d.innerText) }; }, key);
+      ok(m.sub === 'after a few sessions' && m.tags === 0 && m.flags && !m.note && !m.band && m.vempty, `${key}, before any session: Muscles says "after a few sessions", no flags and no plan note (r29), Volume says nothing is logged yet, no "band" jargon`, m);
     }
     // One session logged this week: still no average, so the radar keeps reading the plan, labelled.
     await ev(() => { const L = window.__ironlog; const R = L.state.routines[0]; L.state.sessions.push({ id: 's1', date: '2026-10-01', dayIdx: 0, dayId: R.days[0].id, dayName: R.days[0].name, routineId: R.id, notes: '', ex: [{ exId: R.days[0].items[0].exId, sets: [{ w: 100, r: 8, rir: 2 }] }] }); L.state = L.normalize(L.state); L.invalidate(); L.render(); });
-    const r1 = await ev(() => { const v = document.querySelector('#view > [data-mkey="volume"]'); const d = document.querySelector('#view > [data-mkey="weak"]'); return { plan: /routine's plan, until you have a full week logged/.test(v.innerText), sub: d.querySelector('.sec-s').innerText, lifts: document.querySelector('#view > [data-mkey="exercise"] .sec-s').innerText }; });
-    ok(r1.plan && r1.lifts === '1 lift tracked', 'after one session the radar still reads the plan until a full week is logged, and Lifts says 1 lift', r1);
+    const r1 = await ev(() => { const v = document.querySelector('#view > [data-mkey="volume"]'); const d = document.querySelector('#view > [data-mkey="weak"]'); return { plan: /this week so far/.test(v.innerText) && !!v.querySelector('#chRadar') && /The week is still going/.test(v.innerText), sub: d.querySelector('.sec-s').innerText, lifts: document.querySelector('#view > [data-mkey="exercise"] .sec-s').innerText }; });
+    ok(r1.plan && r1.lifts === '1 lift tracked', 'after one session the radar reads this week so far and says the week is still going (r29), and Lifts says 1 lift', r1);
 
     // Auto-mark on (new installs): type the reps, pick RIR, tap the checkmark: the set stays ticked; a second tap unticks it.
     await ev(() => { const L = window.__ironlog; L.state.sessions = []; L.state.settings.autoDone = true; localStorage.setItem('ironlog.v1.loadAsk', '1'); L.state = L.normalize(L.state); L.invalidate(); L.ui.tab = 'today'; L.ui.todayDay = null; L.render(); });
@@ -253,7 +254,7 @@ const TABS = ['today', 'program', 'dash', 'history', 'settings'];
     // Workout preview: good news is not "flagged"; only stalls are counted.
     await ev(() => { const L = window.__ironlog; L.makeDemo(); L.invalidate(); L.ui.tab = 'today'; L.render(); });
     const pv = await ev(() => { const d = document.querySelector('#view > [data-mkey="session"]'); return d ? d.querySelector('.sec-s').innerText : null; });
-    ok(pv && !/flagged/.test(pv) && /^\d+ exercises(, \d+ stalled)?$/.test(pv), 'Workout preview counts stalls only, never "flagged"', pv);
+    ok(pv && !/flagged/.test(pv) && /^(\d+ exercises|\d+ stalled)$/.test(pv), 'Workout preview counts stalls only, never "flagged"', pv);
     // + Workout preview is not offered on a rest day, where it cannot show.
     const rest = await ev(() => { const L = window.__ironlog; const R = L.state.routines[0]; const ri = R.days.findIndex(d => d.rest); L.state.settings.hidden = [...new Set([...L.state.settings.hidden, 'today:session'])]; L.ui.todayDay = ri; L.render(); const a = [...document.querySelectorAll('#moreLine [data-act="secShow"]')].map(b => b.dataset.k); L.ui.todayDay = R.days.findIndex(d => !d.rest && d.items.length); L.render(); const b = [...document.querySelectorAll('#moreLine [data-act="secShow"]')].map(b => b.dataset.k); L.state.settings.hidden = L.state.settings.hidden.filter(k => k !== 'today:session'); L.ui.todayDay = null; L.render(); return { ri, rest: a, train: b }; });
     ok(rest.ri >= 0 && !rest.rest.includes('today:session') && rest.train.includes('today:session'), '+ Workout preview is offered on a training day, not on a rest day', rest);

@@ -30,7 +30,7 @@ const res=await page.evaluate(()=>{
   // ---- PR bands
   I=reset([S(addDays(T,-20),'bench',[[100,5,0]]),S(addDays(T,-13),'bench',[[80,12,0]]),S(addDays(T,-6),'bench',[[102,5,0]])]);
   const pr=I.prs.filter(p=>p.exId==='bench').map(p=>p.type+'@'+p.date);
-  ok(I.byEx.bench[1].progress&&I.prs.some(p=>p.date===addDays(T,-13)&&p.type==='Rep PR')&&I.prs.some(p=>p.date===addDays(T,-6)&&p.type==='e1RM'),'12-rep set is a rep PR, not a new-best PR; 102×5 is a best within its band',pr);
+  ok(I.byEx.bench[1].progress&&I.prs.some(p=>p.date===addDays(T,-13)&&p.type==='Rep PR')&&I.prs.some(p=>p.date===addDays(T,-6)&&p.type==='Weight PR'&&p.value!=null&&p.prev!=null),'12-rep set is a rep PR, not a new-best PR; 102×5 is heavier than ever, so a weight PR that also notes its best within its band (r29)',pr);
   // ---- drop sets count half, warm-ups nothing
   I=reset([S(T,'bench',[[100,8,1],[75,6,0,{drop:true}],[40,10,null,{warm:true}]])]);
   const wk=Object.keys(I.weekHard)[0];ok(I.weekHard[wk]===1.5,'week hard sets: 1 + half a drop, warm-up ignored',I.weekHard[wk]);

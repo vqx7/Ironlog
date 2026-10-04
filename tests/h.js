@@ -14,6 +14,9 @@ async function open(file, opts = {}) {
   if (file === 'index.html' && process.env.IRONLOG_FILE) file = process.env.IRONLOG_FILE;
   const browser = opts.browser || await chromium.launch();
   const ctx = await browser.newContext({ viewport: { width: opts.w || 390, height: opts.h || 844 }, deviceScaleFactor: opts.dpr || 1, hasTouch: !!opts.touch, isMobile: !!opts.touch, colorScheme: opts.dark ? 'dark' : 'light' });
+  // Most suites were written on the six-day routine installs started with
+  // before r29; they keep it. opts.realStarter runs a new install as shipped.
+  if (!opts.realStarter) await ctx.addInitScript(`window.IRONLOG_STARTER='onemuscle';`);
   if (opts.clock) await ctx.addInitScript(`(()=>{const T=${JSON.stringify(opts.clock)};const R=Date;const off=new R(T).getTime()-R.now();class D extends R{constructor(...a){if(a.length)super(...a);else super(R.now()+off);}static now(){return R.now()+off;}}window.Date=D;})()`);
   if (opts.state && !opts.stateOnce) await ctx.addInitScript(`localStorage.setItem('ironlog.v1', ${JSON.stringify(JSON.stringify(opts.state))});`);
   const page = await ctx.newPage();
@@ -38,4 +41,15 @@ async function open(file, opts = {}) {
   await page.evaluate(() => document.fonts.ready);
   return { browser, ctx, page, errors };
 }
-module.exports = { open };
+/* The installed build carries a Content Security Policy that allows each
+   inline script by its hash and network calls only to the Supabase project
+   (r29). A suite that points a copy of the build at the stand-in Supabase, or
+   edits an inline script (a version number), runs this on the edited page so
+   the policy matches it, the way scripts/build.js makes it match what ships. */
+function cspFix(html, fakeBase) {
+  const crypto = require('crypto');
+  if (fakeBase) html = html.replace(/https:\/\/[a-z0-9]+\.supabase\.co wss:\/\/[a-z0-9]+\.supabase\.co/, `${fakeBase} ${fakeBase.replace(/^http/, 'ws')}`);
+  const hashes = [...html.matchAll(/<script>([\s\S]*?)<\/script>/g)].map(m => `'sha256-${crypto.createHash('sha256').update(m[1], 'utf8').digest('base64')}'`);
+  return html.replace(/script-src 'self'( 'sha256-[^']+')+/, `script-src 'self' ${hashes.join(' ')}`);
+}
+module.exports = { open, cspFix };

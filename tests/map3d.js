@@ -23,9 +23,11 @@ const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log
   const groups = ['neck', 'traps', 'frontDelts', 'sideDelts', 'rearDelts', 'rotatorCuff', 'chest', 'serratus', 'upperBack', 'lats', 'lowerBack', 'abs', 'obliques', 'biceps', 'triceps', 'forearms', 'glutes', 'abductors', 'quads', 'hamstrings', 'adductors', 'calves', 'tibialis'];
   ok(groups.every(g => mism.colors[g]), 'all 23 muscle groups have a region', groups.filter(g => !mism.colors[g]));
   const hex = c => c.trim().toLowerCase();
-  const onTarget = groups.filter(g => !['serratus', 'rotatorCuff'].includes(g));
+  // Tracked only, no target: serratus and rotator cuff, and neck and tibialis since r29.
+  const TRACK = ['serratus', 'rotatorCuff', 'neck', 'tibialis'];
+  const onTarget = groups.filter(g => !TRACK.includes(g));
   ok(onTarget.every(g => mism.colors[g] === hex(mism.want.in)), 'demo data (all on target): every region is the on-target green', onTarget.filter(g => mism.colors[g] !== hex(mism.want.in)).map(g => g + ' ' + mism.colors[g]));
-  ok(['serratus', 'rotatorCuff'].every(g => mism.colors[g] === hex(mism.want.track).replace(/^#?/, '#')), 'serratus and rotator cuff show as tracked only');
+  ok(TRACK.every(g => mism.colors[g] === hex(mism.want.track).replace(/^#?/, '#')), 'serratus, rotator cuff, neck, and tibialis show as tracked only');
   // A change in the numbers shows at once: chest target raised above what was done.
   await ev(() => { const L = window.__ironlog; L.state.settings.bands.chest = [60, 80]; L.invalidate(); L.render(); });
   await page.waitForTimeout(200);
