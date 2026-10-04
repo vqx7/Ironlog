@@ -4,7 +4,14 @@ This is the tracking list. Items are built only when V says go. Owner items need
 
 ## Live: r29.4 (published 2026-10-03 at https://ironapp.org, pull request #11). In preview: r29.5
 
-## r29.5, waiting for V's go (V, 2026-10-04)
+## r30, in progress (V's go, 2026-10-04): the independent review (Ironlog_feedback.docx)
+V's decisions for r30 (2026-10-04):
+- Weekly targets: keep the r29 fit to the chosen routine (never back to "below target everywhere"); Plan > Weekly volume adds one quiet line naming muscles the plan puts under the usual 10 sets; the first-run toast says the targets match the plan, not that everything is on target.
+- Progressive overload must be applied visibly in the suggested loads and reps over time, overridable per exercise in the Plan editor; nothing called stalled or behind for not moving fast every session or week.
+- Demo: keep it progressing and on track, add one marked deload week and one missed day. No stalls.
+- Repository privacy (item 129): decide later; r30 changes nothing about hosting.
+
+## r29.5 (live since 2026-10-04), was waiting for V's go (V, 2026-10-04)
 144. Common lifts marked, not only the less common ones ("marking most common is more helpful"): 53 staples found in most gyms and programs carry a Common tag in the library, the exercise picker, and Plan's Add exercises list; they come first in the picker (Common, then All other exercises; with a muscle chosen or a search, common matches first) and in Plan's list; the library filters All, Common, and Less common, with an i saying Common is a judgment, not a measurement. Nothing is stored: it follows the library id, and a staple the lifter marks as less common reads Less common only.
 145. Why the target RIR is 1 (a friend's question): an i beside Target RIR in the Plan editor and a line in the Guide (Plan topic) say it is a convention: growth improves as sets end closer to failure (Robinson 2024), but failure grew muscle no more than stopping 1 to 2 reps short (Refalo 2024) and costs more fatigue. Some ready-made lifts use 0 or 2. No number changed.
 146. The installed app leaves out the Claude-only features (debrief, Ask Claude, suggested swaps, Claude reading typed sets), which only ever worked inside the Claude artifact, so their prompts no longer ship to every phone (a friend read them in the page source). The source marks each block and `scripts/build.js` drops them; the source keeps them for the artifact. Type or dictate sets still works and states the pattern when it cannot read the text. What still mentions Claude in the installed app: the storage path and privacy wording for the artifact, which never runs there.
