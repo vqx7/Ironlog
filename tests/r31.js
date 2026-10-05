@@ -327,6 +327,20 @@ function strongCsv(weeks, name) {
     await P.browser.close();
   }
 
+  // ---- r31.1: a quiet notice on what the suggestions are, on the first-run page, in Settings and the Guide.
+  {
+    const P = await open('index.html', { clock: '2026-10-05T07:00:00', realStarter: true, w: 320, h: 700 });
+    const ev = (f, a) => P.page.evaluate(f, a);
+    const a = await ev(() => { const L = window.__ironlog; try { localStorage.setItem('ironlog.v1.obAcct', 'later'); } catch (e) { /* none */ } L.render(); const o = document.getElementById('obSafety'); return { ob: o ? o.innerText : '', over: document.documentElement.scrollWidth > window.innerWidth }; });
+    const b = await ev(() => { const L = window.__ironlog; L.state.settings.onboarded = true; L.state.sessions = []; L.ui.tab = 'settings'; L.ui.folds['settings:data'] = true; L.render(); const s = document.getElementById('safety');
+      L.ACT.guideOpen && L.ACT.guideOpen({ dataset: {} }); const g = document.getElementById('modal') ? document.getElementById('modal').innerText : '';
+      return { set: s ? s.innerText : '', tip: L.SAFETY_TXT, guide: /estimates from your log, not medical or coaching advice/i.test(g) || /estimates from your log, not medical or coaching advice/.test(document.body.innerHTML) }; });
+    ok(/not medical or coaching advice/.test(a.ob), 'first-run page: a quiet line says suggestions are estimates, not medical or coaching advice', a.ob);
+    ok(/not medical or coaching advice/.test(b.set) && /stop on pain/i.test(b.set), 'Settings, Your data: what suggestions are, beside the privacy line', b.set);
+    ok(/doctor/.test(b.tip) && /own risk/.test(b.tip) && !/\u2014/.test(b.tip), 'its i says: estimates that can be wrong, technique and safety bars, stop on pain, a doctor before starting, at your own risk (no em dash)', b.tip);
+    ok(!a.over, 'no sideways scroll at 320 px with the notice');
+    await P.browser.close();
+  }
   console.log(fails.length ? `\n${fails.length} FAILED` : '\nALL PASS');
   process.exit(fails.length ? 1 : 0);
 })().catch(e => { console.error(e); process.exit(1); });
