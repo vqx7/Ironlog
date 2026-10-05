@@ -3052,7 +3052,15 @@ function IDX(){
       run=[];prev.push(x);
     }
   }
-  for(const id of Object.keys(byEx))for(const x of byEx[id]){if(x.deload||x.light||x.cut||x.auto||x.keep)continue;const o=wkAuto[weekStart(x.date)];if(o&&o.l>=2&&o.l*2>=o.n)x.auto=true;}
+  /* In a lighter week, a lift that was also lighter, by less than the
+     thresholds above, is read as lighter too (a deload of 8%, say). A lift
+     done at its usual load that week is not (r30 audit: a pushdown at its
+     normal 50 x 12 was labelled lighter because the rest of the week was). */
+  for(const id of Object.keys(byEx)){const prev=[];for(const x of byEx[id]){if(x.deload||x.light||x.cut)continue;if(x.auto||x.keep){if(x.keep)prev.push(x);continue;}
+    const o=wkAuto[weekStart(x.date)];const ref=prev.filter(q=>sameRR(q.rr,x.rr)).slice(-3);
+    if(o&&o.l>=2&&o.l*2>=o.n&&ref.length){const mL=Math.max(...ref.map(q=>q.topL)),mT=Math.max(...ref.map(q=>q.tRaw==null?-Infinity:q.tRaw));
+      if(x.topL<mL-1e-6||(x.tRaw!=null&&isFinite(mT)&&x.tRaw<mT*0.97)){x.auto=true;continue;}}
+    prev.push(x);}}
   /* Lighter weeks (r30): every session in the week tagged deload or lighter,
      or the week read as lighter above. Weekly volume averages skip them: a
      deload halves the sets on purpose, and averaging it in read as "below
@@ -3288,7 +3296,11 @@ function lastLighterWeek(){
   const trained=vals.filter(v=>v>0);
   if(trained.length<4)return null;
   const norm=median(trained);
-  for(let k=0;k<vals.length;k++)if(vals[k]<=norm*0.65)return {weeks:k+1,sets:r1(vals[k]),norm:r1(norm)};
+  /* A week of lighter loads counts too (r30 audit): a deload marked, or read
+     from the loads (I.lightWk), keeps the sets and drops the weight, so by
+     sets alone this said "No lighter week" about a week the trends had just
+     set aside as one. */
+  for(let k=0;k<vals.length;k++){const wk=addDays(cur,-7*(k+1));if(vals[k]<=norm*0.65)return {weeks:k+1,sets:r1(vals[k]),norm:r1(norm)};if(I.lightWk[wk])return {weeks:k+1,sets:r1(vals[k]),norm:r1(norm),loads:true};}
   return {weeks:null,norm:r1(norm)};
 }
 /* First run only (r29, V: "targets that can actually be met"): when a new
@@ -4708,13 +4720,14 @@ function exHeadline(exId){
   if(st.capped)parts.push('At the heaviest load available, so progress is counted in reps and harder reps.');
   const sg=v=>(v>=0?'+':'')+r1(v)+'%';
   // The range the trend allows and how many sessions it rests on (r30).
-  const rate=st.pLo!=null?`, about ${sg(st.slope)} a week (likely ${sg(st.pLo)} to ${sg(st.pHi)})`:st.slope!=null?`, about ${sg(st.slope)} a week`:'';const ns=`${st.wN} session${st.wN===1?'':'s'}`;
+  // A range only when it says something: perfectly steady numbers give one of zero width.
+  const rate=st.pLo!=null&&st.pHi-st.pLo>=0.1?`, about ${sg(st.slope)} a week (likely ${sg(st.pLo)} to ${sg(st.pHi)})`:st.slope!=null?`, about ${sg(st.slope)} a week`:'';const ns=`${st.wN} session${st.wN===1?'':'s'}`;
   const how=st.useAdj?'':' Read from loads and reps; RIR is left out of the trend until it is rated on most sets.';
   if(st.stalled)parts.push(`Stalled${st.pct!=null?` (${sg(st.pct)} over 6 weeks)`:''}: flat for 3 weeks or more, with no PR in the last 3 sessions and no heavier load. Try another rep range or variation.`);
   else if(st.pct==null)parts.push('Needs 3 sessions within 6 weeks for a trend.');
   else if(st.moving)parts.push(`Up ${r1(st.pct)}% over 6 weeks (${ns})${rate}.${how}`);
   else if(st.falling)parts.push(`Down ${r1(Math.abs(st.pct))}% over 6 weeks (${ns})${rate}. Look at recovery before adding work.${how}`);
-  else parts.push(`No clear change yet: ${sg(st.pct)} over ${ns}${st.pLo!=null?`, a weekly rate anywhere from ${sg(st.pLo)} to ${sg(st.pHi)}`:''}. Day to day swings of 2 to 8% hide small changes.${how}`);
+  else parts.push(`No clear change yet: ${sg(st.pct)} over ${ns}${st.pLo!=null&&st.pHi-st.pLo>=0.1?`, a weekly rate anywhere from ${sg(st.pLo)} to ${sg(st.pHi)}`:''}. Day to day swings of 2 to 8% hide small changes.${how}`);
   const pj=exProjection(exId);if(pj&&isCompound(ex))parts.push(`If that holds, about ${fmtW(pj.value)} ${U()} in 4 weeks (${fmtW(pj.lo)} to ${fmtW(pj.hi)}).`);
   return `<p class="headline">${esc(parts.join(' '))}</p>`;
 }
@@ -4755,7 +4768,7 @@ function extraKpis(){
 }
 /* Four lines, each landing on the section that holds the detail. */
 function dashSummary(){
-  const mv=movers().slice(0,2);const stalled=stalledIds();
+  const mvAll=movers(),mv=mvAll.slice(0,2);const stalled=stalledIds();
   const avg=actualAvg4();const b=state.settings.bands;
   const inj=injuredSet();
   const under=avg?MK.filter(m=>!inj.has(m)&&!TRACK_ONLY.has(m)&&belowMin(avg[m],b[m][0])):null,over=avg?MK.filter(m=>!TRACK_ONLY.has(m)&&aboveMax(avg[m],b[m][1])):null;
@@ -4765,7 +4778,7 @@ function dashSummary(){
   /* The reason given is the true one (r30): with enough sessions the changes
      are inside day-to-day noise; "needs 3 sessions" was said to someone with 6. */
   const nTr=Object.values(IDX().exStats).filter(x=>x.pct!=null&&x.fresh).length;
-  h+=row(mv.length?'green':'','Moving',mv.length?mv.map(x=>`${esc(exName(x.id))} +${r1(x.pct)}%`).join(', ')+' over 6 weeks':nTr?`No lift clearly rising yet: ${nTr} with a trend, each within day-to-day noise.`:'A trend needs 3 sessions of a lift within 6 weeks.',`data-act="goDash" data-sec="exercise"${mv.length?` data-ex="${mv[0].id}"`:''}`);
+  h+=row(mv.length?'green':'','Moving',mv.length?mv.map(x=>`${esc(exName(x.id))} +${r1(x.pct)}%`).join(', ')+(mvAll.length>2?`, and ${mvAll.length-2} more`:'')+' over 6 weeks':nTr?`No lift clearly rising yet: ${nTr} with a trend, each within day-to-day noise.`:'A trend needs 3 sessions of a lift within 6 weeks.',`data-act="goDash" data-sec="exercise"${mv.length?` data-ex="${mv[0].id}"`:''}`);
   h+=row(stalled.length?(stalled.length>=3?'red':'yellow'):'green','Stuck',stalled.length?esc(list(stalled.map(exName),3)):'Nothing stalled','data-act="goDash" data-sec="stalls"');
   const vt=under==null?'Finish a full week for a volume read.':(under.length?`Below target: ${list(under.map(m=>ML[m]),3)}.`:'Every muscle at or above target.')+(over&&over.length?` Above: ${list(over.map(m=>ML[m]),2)}.`:'');
   h+=row(under==null?'':under.length?'yellow':'green','Volume',vt,'data-act="goDash" data-sec="volume"');
@@ -5919,7 +5932,7 @@ function viewDash(){
     if(stalled.length>=3)stl+=`<p class="small hastip" style="color:var(--red);margin-top:8px" data-tip="Several lifts flat together often points to fatigue. Check sleep, food, and stress; Deload week is under More options on Today (half the sets, about 90% loads, kept out of your trends).">${stalled.length} stalled at once: likely fatigue</p>`;
   }else stl+='<p class="muted">No stalls detected.</p>';
   const lw=lastLighterWeek();
-  if(lw)stl+=`<p class="small muted" style="margin-top:8px">${lw.weeks==null?`No lighter week in the last 12. ${tipi(`Your usual week is ${lw.norm} hard sets. A lighter week is one well under that.`,'Lighter week')}`:`Last lighter week: ${lw.weeks} week${lw.weeks===1?'':'s'} ago (${lw.sets>0?`${lw.sets} hard sets against your usual ${lw.norm}`:'a week off'}).`}</p>`;
+  if(lw)stl+=`<p class="small muted" style="margin-top:8px">${lw.weeks==null?`No lighter week in the last 12. ${tipi(`Your usual week is ${lw.norm} hard sets. A lighter week is one well under that.`,'Lighter week')}`:`Last lighter week: ${lw.weeks} week${lw.weeks===1?'':'s'} ago (${lw.loads?'lighter loads':lw.sets>0?`${lw.sets} hard sets against your usual ${lw.norm}`:'a week off'}).`}</p>`;
 
   // exercise trend
   const withData=Object.keys(I.byEx).filter(id=>I.byEx[id].length).sort((a,b)=>exName(a).localeCompare(exName(b)));
