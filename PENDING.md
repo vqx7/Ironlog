@@ -1,8 +1,22 @@
-# Everything still open (as of r30 live, 2026-10-04)
+# Everything still open (as of r31, 2026-10-05)
 
 This is the tracking list. Items are built only when V says go. Owner items need V; the rest is build work. Nothing is done unless it says so. Numbers are kept stable; finished items move to Done at the bottom.
 
 ## Live: r30 (published 2026-10-04 at https://ironapp.org, pull request #13, at V's go)
+
+## r31 (2026-10-05, V: "go for it"): the second independent review, each finding fixed with the reviewer's own inputs as a test (tests/r31.js)
+175. A top single before back-off sets (405 x 1, then 335 x 5 x 5) no longer becomes the working set: targets, grey reps and trends build on the working load (the heaviest done for 2 or more sets); the single still counts for bests and PRs. Squat now asks 340, bench stays at 230 to beat the reps.
+176. An unmarked deload on a lift trained 3 times a week is read as lighter: a new level needs lighter sessions in a row for 2 weeks or more, not three sessions.
+177. Make it lighter changes only the exercises not started; work already done at full effort still sets next time's target and counts in trends. No "take a set to failure" after two low check-in answers, a lighter day or a deload.
+178. Load-finding in higher rep ranges: for picking a load only, sets past 12 reps to failure are read with Epley up to 30, and the first 3 sessions of a lift can move its load up to 25% (a convention). Leg press 3 x 25 at 90 lb now asks 110, 3 x 12 at RIR 5 asks 100.
+179. A first-run import (Strong, Hevy, a sheet) makes its routine from the file: the workouts' names are the days, in the order they came round, with rest days for how often they trained, the lifts done on each day, the usual sets and a range around the usual reps; the sessions join their days; weekly minimums fit it; a note says so (Undo). When names cannot tell days apart (Morning Workout), the routine picker opens and says why. No more 69% adherence or "add sets to Lat Pulldown" against a routine never picked.
+180. Double progression at the top of the range is progress: trends read the average of the working sets, not the best one set, and more reps at the same load over no more sets is not a stall.
+181. A trend needs 3 sessions spread over 2 weeks or more, and says the weeks it covers ("over 3 weeks"), never a fixed "over 6 weeks".
+182. A set ticked with no load is asked about as a missing load, never as a ramp-up set.
+183. The first-time line asks for one load: "a load you think you could lift about 15 times, erring light; 8 to 12 reps with about 3 still in you" (the two now agree); bodyweight and assisted lifts get their own wording.
+184. Weekly averages say when weeks were missed ("the 1 week you trained of the last 4"), and with 2 or more of 4 missed the coach says that first.
+185. Only main lifts (compound, with an estimate) count toward "lifts stalled at once, a deload week may help"; planks, curls and leg raises are listed as stalled but not counted.
+186. Polish: "5×5" and "Do 5 reps" (never "5×5-5" or "5 to 5"); "1 rep"; the routine note no longer covers Discard after Start session; the grey-loads card only when something is grey; the region table shows each region's minimum (not "14-66"); an import repeated with the other unit skipped as duplicates; one shared test for lighter sessions (it was written out in six places); the coach names a lift you do.
 
 ## r30, live since 2026-10-04 (V's go): the independent review (Ironlog_feedback.docx); move to Done once V has used it
 V's decisions for r30 (2026-10-04):
@@ -64,7 +78,7 @@ What r30 changes (each with a test in tests/r30.js, reproduced the way the revie
 130. V, 2026-10-03: the radar showed no chart in the preview. The preview keeps its own log (so testing cannot touch the real one), it had nothing recent, and r29 drew no chart without data. Now the chart always draws (empty against the target ring, or from your last trained weeks after a break, dated), and the preview has Copy my log from Ironlog (Settings > Your data, the first-run pages, the empty radar): it reads your real log from the phone or, on an iPhone, from your account's cloud copy, and never writes to Ironlog. The coach no longer says "after your first full week" to someone back from a break.
 
 ## Later (from the review; too large for r30 or needing V)
-164. Percentage, AMRAP and top-set-plus-back-off progression (5/3/1, GZCLP, %1RM): a new progression type in the engine, the reviewer's biggest gap for powerlifters. Candidate for r31. This is Ironlog's answer to Liftosaur's scripting: a choice of progression types per exercise (double progression as now, straight linear, percentage waves of a training max, top set plus back-offs, AMRAP), not a programming language, which few lifters write.
+164. Percentage, AMRAP and top-set-plus-back-off progression (5/3/1, GZCLP, %1RM): a new progression type in the engine, the reviewer's biggest gap for powerlifters. Since r31 a top single before back-offs no longer gives wrong targets (item 175); a progression type of its own is still to build. This is Ironlog's answer to Liftosaur's scripting: a choice of progression types per exercise (double progression as now, straight linear, percentage waves of a training max, top set plus back-offs, AMRAP), not a programming language, which few lifters write.
 165. Hands-free voice entry (Web Speech API): Safari's speech recognition is unreliable inside a home-screen app and sends audio to Apple; the keyboard's dictation already works with Type sets. Revisit when tested on V's iPhone.
 166. Volume A/B experiments per muscle (4-week blocks with a read-out): needs the training blocks of r30 in use for a while first.
 167. Read-only share link for a coach: a Supabase function and a token table, plus a privacy decision (item 15) before anyone else's data is shared.
