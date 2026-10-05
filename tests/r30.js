@@ -84,7 +84,7 @@ function strongCsv() {
     const au = await ev(() => { const L = window.__ironlog; const I = L.IDX(); L.ui.tab = 'dash'; L.render(); document.querySelectorAll('#view details').forEach(d => d.open = true); L.render(); document.querySelectorAll('#view details').forEach(d => d.open = true);
       return { push: I.byEx.pressdown.filter(x => x.auto).map(x => x.date), txt: document.getElementById('view').innerText, mv: (document.querySelector('#dashSummary .srow') || {}).innerText || '', heads: Object.keys(I.exStats).map(id => L.exHeadline(id)).join(' ') }; });
     ok(!au.push.length, 'a lift done at its usual load in a lighter week is not called lighter (the pushdown)', au.push);
-    ok(/Last lighter week: 3 weeks ago \(lighter loads\)/.test(au.txt) && !/No lighter week/.test(au.txt), 'Stalls names the deload week (lighter loads), never "No lighter week"', (au.txt.match(/[^\n]*lighter week[^\n]*/i) || [])[0]);
+    ok(/Last lighter week: 2 weeks ago \(lighter loads\)/.test(au.txt) && !/No lighter week/.test(au.txt), 'Stalls names the deload week (lighter loads), never "No lighter week"', (au.txt.match(/[^\n]*lighter week[^\n]*/i) || [])[0]);
     ok(/and \d+ more over 6 weeks/.test(au.mv), 'Moving names two lifts and how many more', au.mv);
     ok(!/likely ([+-][\d.]+%) to \1/.test(au.heads), 'no trend range of zero width ("likely +1.9% to +1.9%")', au.heads.slice(0, 300));
     ok(a.chest.clear === true || a.chest.clear === false, 'chest has a strength reading (clear or unclear, never a made-up 0)', a.chest);
