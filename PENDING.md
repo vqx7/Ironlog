@@ -1,10 +1,10 @@
-# Everything still open (as of r29.5 live and r30 in preview, 2026-10-04)
+# Everything still open (as of r30 live, 2026-10-04)
 
 This is the tracking list. Items are built only when V says go. Owner items need V; the rest is build work. Nothing is done unless it says so. Numbers are kept stable; finished items move to Done at the bottom.
 
-## Live: r29.5 (published 2026-10-04 at https://ironapp.org, pull request #12). In preview: r30
+## Live: r30 (published 2026-10-04 at https://ironapp.org, pull request #13, at V's go)
 
-## r30, built, waiting for V's go (V asked 2026-10-04): the independent review (Ironlog_feedback.docx)
+## r30, live since 2026-10-04 (V's go): the independent review (Ironlog_feedback.docx); move to Done once V has used it
 V's decisions for r30 (2026-10-04):
 - Weekly targets: keep the r29 fit to the chosen routine (never back to "below target everywhere"); Plan > Weekly volume adds one quiet line naming muscles the plan puts under the usual 10 sets; the first-run toast says the targets match the plan, not that everything is on target.
 - Progressive overload must be applied visibly in the suggested loads and reps over time, overridable per exercise in the Plan editor; nothing called stalled or behind for not moving fast every session or week.

@@ -2,13 +2,13 @@
 
 Everything that needs you, in one place, with the exact code to paste. Claude keeps this file current: an item moves to Done only when you confirm it, or when Claude can check it from here (and says how it checked). Build work and decisions are tracked in `PENDING.md`; this file is only what you do by hand.
 
-Last updated: r29.5 live, r30 in preview, 2026-10-04.
+Last updated: r30 live, 2026-10-04.
 
 ## Now, in this order
 
 1. B5, the trigger, then its check: Report a problem from the app and an issue appears in `ironlog-feedback` (steps below).
 2. B6: protect `main` (steps below). Until it is on, nothing stops a change reaching the live app without a pull request.
-3. A9: try r30 on the preview (https://ironapp.org/preview/, Reload when asked; Settings shows Ironlog Preview 2026.10.04-r30), then say go. First Settings > Your data > Copy my log from Ironlog. What to look at: Stats > Lifts (trends with a likely range, a 1RM only on compound lifts, All-time bests with their own dates), Stats > Muscles (unclear instead of +0%), Today > Lighter day (lighter loads, nothing to beat), the check-in with two low answers (Make it lighter), Finish with a set left (it asks), More options > Flag an injury (Knee, Hip, Shoulder, Elbow, Wrist), an exercise's ⋯ menu (How-to videos), and Plan > an exercise (Load jump %). Your routine and log are not changed by r30.
+3. A9 (r30 published at your go, 2026-10-04): on your phone, tap Reload when "New version ready" shows; the menu shows build 2026.10.04-r30. Update every phone you use before setting a load jump, a cardio distance, or a joint injury: a phone still on r29.5 drops those when it syncs. Then look around: First Settings > Your data > Copy my log from Ironlog. What to look at: Stats > Lifts (trends with a likely range, a 1RM only on compound lifts, All-time bests with their own dates), Stats > Muscles (unclear instead of +0%), Today > Lighter day (lighter loads, nothing to beat), the check-in with two low answers (Make it lighter), Finish with a set left (it asks), More options > Flag an injury (Knee, Hip, Shoulder, Elbow, Wrist), an exercise's ⋯ menu (How-to videos), and Plan > an exercise (Load jump %). Your routine and log are not changed by r30.
 4. B7: choose who picks up the tickets.
 5. D6: delete six old branches and stop them piling up (2 minutes, below).
 6. D5: lock down every account (two-step verification everywhere, push protection, DNSSEC, Claude's GitHub access limited to Ironlog).
