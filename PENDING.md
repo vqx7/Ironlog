@@ -2,9 +2,9 @@
 
 This is the tracking list. Items are built only when V says go. Owner items need V; the rest is build work. Nothing is done unless it says so. Numbers are kept stable; finished items move to Done at the bottom.
 
-## Live: r30 (published 2026-10-04 at https://ironapp.org, pull request #13, at V's go)
+## Live: r31 (published 2026-10-05 at https://ironapp.org, pull request #15, merged by V). r31.1 is pull request #16, waiting for V's merge.
 
-## r31 (2026-10-05, V: "go for it"): the second independent review, each finding fixed with the reviewer's own inputs as a test (tests/r31.js)
+## r31 (live since 2026-10-05) and r31.1 (pull request #16): the second independent review, each finding fixed with the reviewer's own inputs as a test (tests/r31.js)
 175. A top single before back-off sets (405 x 1, then 335 x 5 x 5) no longer becomes the working set: targets, grey reps and trends build on the working load (the load done for the most sets, among loads at 60% or more of the heaviest total moved, so +25 back-offs on a 180 lb pull-up count against +50); grey reps are last time's reps at that load only (a reverse pyramid 225 x 7, 205 x 8, 185 x 10 no longer asks 225 x 10); a top single, a pair of singles or triples, or one heavy top set before back-offs (365 x 4 then 335 x 5 x 5) still counts for bests and PRs and is never prescribed for every set. Squat now asks 340, bench stays at 230 to beat the reps.
 176. An unmarked deload on a lift trained 3 times a week is read as lighter: a new level needs lighter sessions in a row for 2 weeks or more, not three sessions.
 177. Make it lighter changes only the exercises not started; work already done at full effort still sets next time's target and counts in trends. No "take a set to failure" after two low check-in answers, a lighter day or a deload.

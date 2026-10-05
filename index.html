@@ -2438,7 +2438,7 @@ function guideSheet(m){
    <p><b>More options</b>: Deload week, Limited equipment (each exercise your gym cannot do swapped for the closest match), injuries, and cardio.</p>
    <p><b>This week</b> counts hard sets logged against hard sets planned; Month shows the calendar instead, and the title becomes This month. The bar at the top of every tab is this week: filled is a day you lifted, a coloured outline is cardio only, a grey ring is a workout planned ahead, and with fixed weekdays a red ring is one missed. Tap an empty past day to log a workout for it.</p>`],
   ['log','Logging a session',`<p><b>Grey numbers are suggestions.</b> Tick a set to log it as shown, or type over the load or reps first. Nothing you type is ever changed by the app.</p>
-   <p><b>Grey reps</b> are last time's reps for that set. When today's target is a new load, last time's reps were at the old load, so they are the reps of the set above instead, or the bottom of the range.</p>
+   <p><b>Grey reps</b> are last time's reps for that set, at today's load. When today's target is a new load, last time's reps were at the old load, so they are the reps of the set above instead, or the bottom of the range.</p>
    <p><b>Grey loads</b> are the set above, or today's suggested load. To have loads typed in for you: Settings, Rest timer and logging, Fill in suggested loads.</p>
    <p><b>Auto-mark</b> (Settings): a set ticks itself when you leave its reps field.</p>
    <p><b>RIR</b>, reps in reserve: how many more reps you could have done. Tap a set's RIR box for 0 to 5. ${off?'RIR is off in Settings, so every working set counts as hard.':'It is optional: a blank reads as your usual RIR on that lift once you have rated 3 of its sets in 12 weeks, and until then as hard.'}</p>
@@ -2450,11 +2450,11 @@ function guideSheet(m){
    <p><b>A past workout</b>: tap an empty past day in the bar, or History, Log a past workout. Targets and PRs read as of that date.</p>`],
   ['rules','How targets are set',`<p class="muted">These are estimates from your log, not medical or coaching advice. Adjust them to how you feel on the day, and stop on pain.</p>
    <p>Each exercise progresses from its <b>last full session in the rep range you plan for it that day</b>, so the same lift on a heavy day and a light day progresses on each separately. A range not used within 6 weeks of your latest session of the lift starts from that latest session instead.</p>
-   <p><b>The working load</b> is the heaviest load you did for 2 or more sets. A heavy single or double before your back-off sets is a top set: it counts for bests and PRs, but targets, grey reps, and trends build on the working sets.</p>
-   <p><b>Every set at the top of the range</b>: add load, in whole steps of the exercise's load step, about 2.5% of the load on compound lifts and 5% on isolation lifts, at least one step. Plan, Load jump % sets a different share for one exercise (0: one step every time).</p>
+   <p><b>The working load</b> is the load you did the most sets with (the heavier on a tie), leaving out loads under 60% of your heaviest. A heavy top set, or two, before your back-off sets counts for bests and PRs, while targets, grey reps, and trends build on the back-off sets.</p>
+   <p><b>Every set at the top of the range</b>: add load, in whole steps of the exercise's load step, about 2.5% of the load on compound lifts and 5% on isolation lifts, at least one step. Plan, Load jump % sets a different share for one exercise (0: one step every time). When one step is large for the load (5 lb on a 35 lb dumbbell), the target at the new load is the reps your estimate says it allows, and you build back up from there.</p>
    <p><b>Otherwise</b>: the same load; beat last time's total reps over the same number of sets.</p>
    <p><b>Well past the range</b> (every set 2 or more reps over the top, as after moving the range down): the load your estimated 1RM gives for the middle of the range, at most 10% more (15% on isolation lifts under ${kg?'20 kg':'about 45 lb'}), in whole steps.</p>
-   <p><b>Below the range</b> (every set 2 or more reps short, or short two sessions running at the same load, or the first time in a range you have not trained, as after an import): down to what your estimate says fits the range, in whole steps. The rep target counts as many sets as the plan has.</p>
+   <p><b>Below the range</b> (every set 2 or more reps short, or short two sessions running at the same load, or the first time in a range you have not trained, as after an import): down to what your estimate says fits the range, in whole steps. Not just after one step up while you are 3 or fewer reps short, and not while your reps at that load are rising. The rep target counts as many sets as the plan has.</p>
    <p><b>Too easy</b> (every top set logged 2 or more RIR above the target): the same estimate sets a heavier load, at most 10% more (15% on isolation lifts under ${kg?'20 kg':'about 45 lb'}).</p>
    <p><b>The first 3 sessions</b> of a lift find its load: there the most these two can add is 25%, so a cautious first guess is put right in a session or two. For picking a load only, sets past 12 reps to failure are read with Epley up to 30, so a set of 25 still moves the load the right amount (never shown as a 1RM). A convention.</p>
    <p><b>At the heaviest load available</b> (set on the exercise), or with a load step of 0: more reps, then harder reps.</p>
@@ -2487,7 +2487,7 @@ function guideSheet(m){
    <p><b>Your settings</b>: Settings has the rest timer, auto-mark, RIR, units, theme and accent, weekly set targets, and priority muscles.</p>`],
   ['data','Your data',`${where}
    <p><b>Deleted</b> sessions, cardio, and routines wait in History, Recently deleted: the ${TRASH_MAX} most recent, for ${TRASH_DAYS} days. Undo in Settings covers deletes, resets, and imports from the last 7 days.</p>
-   <p><b>Import workouts</b> reads notes, a spreadsheet, Strong, or Hevy; you check everything before it is saved.</p>
+   <p><b>Import workouts</b> reads notes, a spreadsheet, Strong, or Hevy; you check everything before it is saved. On a first run, the import also makes your routine. Its days come from the workouts' names (or from the lifts in them when the names are all alike) and keep each day's latest sets and rep range. Your weekly targets then fit that routine.</p>
    ${window.IRONLOG_APP?'<p><b>Updates</b>: when "New version ready" shows, tap Reload.</p>':''}
    ${report}`]];
   const open=m.open||'';
@@ -5285,7 +5285,7 @@ function readyCard(d,low){
   // Already made lighter: say so instead of offering it again.
   if(low>=2&&!open&&d.ex.some(b=>b.light))return `<p class="callout" style="margin:8px 0 0" id="readyCard">Made lighter: the exercises not started are half the sets at about 90% loads.</p>`;
   if(low<2)return `<p class="callout" style="margin:8px 0 0" id="readyCard">One low answer: keep the loads and leave a rep more in reserve than planned if it feels heavy.</p>`;
-  return `<div class="callout yellow" style="margin:8px 0 0" id="readyCard"><p style="margin:0">Low readiness today. A lighter session (half the sets, about 90% loads, nothing to beat) or a shorter one fits it better than pushing.</p><div class="row" style="margin-top:8px">${open?'<button class="btn sm" data-act="makeLight">Make it lighter</button>':''}${left>0?'<button class="btn sm" data-act="shortOpen">Short on time</button>':''}</div></div>`;
+  return `<div class="callout yellow" style="margin:8px 0 0" id="readyCard"><p style="margin:0">Low readiness today. A lighter session or a shorter one fits it better than pushing. Make it lighter changes only the exercises not started: half the sets, about 90% loads, nothing to beat.</p><div class="row" style="margin-top:8px">${open?'<button class="btn sm" data-act="makeLight">Make it lighter</button>':''}${left>0?'<button class="btn sm" data-act="shortOpen">Short on time</button>':''}</div></div>`;
 }
 /* ---------- SHORT ON TIME ----------
    Minutes of lifting left in the session, counted like the plan estimate:
