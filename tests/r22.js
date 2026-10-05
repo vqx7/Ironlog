@@ -173,9 +173,10 @@ const ids = list => (list || []).map(x => x.id).sort().join();
   {
     const P = await open('index.html', { browser, touch: true, clock: '2026-09-27T18:00:00' });
     const ev = (f, a) => P.page.evaluate(f, a);
-    await ev(() => { const L = window.__ironlog; L.state.settings.onboarded = true; L.makeDemo(); L.ui.tab = 'today'; L.render(); localStorage.setItem('ironlog.v1.tipWake', '1'); });
+    await ev(() => { const L = window.__ironlog; L.state.settings.onboarded = true; L.makeDemo(); /* r30: history here, not sample data */ for (const k of ['sessions', 'bodyweights', 'measurements']) for (const x of (L.state[k] || [])) delete x.demo; L.invalidate && L.invalidate(); L.ui.tab = 'today'; L.render(); localStorage.setItem('ironlog.v1.tipWake', '1'); });
     await P.page.click('.hero [data-act="startSession"]:not([data-light])'); await wait(200);
-    const g = await ev(() => window.__ironlog.state.draft.ex[0].lastR[0]);
+    // At last time's load (r30: the demo can end with a load increase due, and a heavier set is a weight PR, not the rep PR checked here).
+    const g = await ev(() => { const L = window.__ironlog; const b = L.state.draft.ex[0]; const ex = L.IDX().byEx[b.exId]; const last = ex[ex.length - 1]; b.sets[0].w = last.pts[0].w; L.render(); return last.pts[0].r; });
     await P.page.fill('[data-f="r"][data-b="0"][data-s="0"]', String(g + 3)); await P.page.dispatchEvent('[data-f="r"][data-b="0"][data-s="0"]', 'change');
     await P.page.click('[data-act="sDone"][data-b="0"][data-s="0"]'); await wait(250);
     const t = await ev(() => ({ text: document.getElementById('toast').innerText, pr: document.getElementById('toast').classList.contains('pr'), flash: !!document.querySelector('.sg.prflash[data-pr]') }));
@@ -184,18 +185,19 @@ const ids = list => (list || []).map(x => x.id).sort().join();
     await P.page.fill('[data-f="r"][data-b="0"][data-s="1"]', '1'); await P.page.dispatchEvent('[data-f="r"][data-b="0"][data-s="1"]', 'change');
     await P.page.click('[data-act="sDone"][data-b="0"][data-s="1"]'); await wait(250);
     ok(await ev(() => !document.querySelector('[data-act="sDone"][data-b="0"][data-s="1"]').closest('.sg').classList.contains('prflash')), 'an ordinary set: no pulse');
-    await ev(() => { window.__ironlog.state.draft._rampAsked = true; }); await P.page.click('[data-act="finish"]'); await wait(400);
+    await ev(() => { window.__ironlog.state.draft._rampAsked = true; window.__ironlog.state.draft._leftAsked = true; }); await P.page.click('[data-act="finish"]'); await wait(400);
     const rc = await ev(() => { const b = document.getElementById('recapPR'); return b ? b.innerText.replace(/\s+/g, ' ') : null; });
     ok(rc && /New PR/i.test(rc) && new RegExp(`×${g + 3}.*was ${g} reps`).test(rc), 'the recap opens with a gold PR block and what it beat', rc);
     await P.page.click('#modal [data-act="mClose"]'); await wait(150);
     await ev(() => { const L = window.__ironlog; L.ui.tab = 'dash'; L.render(); document.querySelectorAll('#view details').forEach(d => { d.open = true; }); });
     const bd = await ev(() => { const L = window.__ironlog; const id = L.state.sessions[L.state.sessions.length - 1].ex[0].exId; const rows = [...document.querySelectorAll('#sub-bests .bx')]; const mine = rows.find(r => r.dataset.ex === id); const b = L.allTimeBests(id);
-      return { n: rows.length, lifts: Object.keys(L.IDX().byEx).length, first: rows[0] && rows[0].dataset.ex === id, rec: mine && mine.innerText.replace(/\s+/g, ' '), front: b.front.map(f => [f.p.w, f.p.r]) }; });
+      return { n: rows.length, lifts: Object.keys(L.IDX().byEx).length, first: rows[0] && rows[0].dataset.ex === id, rec: mine && mine.innerText.replace(/\s+/g, ' '), front: b.front.map(f => [f.p.w, f.p.r]), comp: L.isCompound(L.EX(id)) }; });
     ok(bd.n === Math.min(6, bd.lifts) && bd.first, 'the board shows the six lifts with the newest records, the newest first', bd);
     await ev(() => document.querySelector('#sub-bests [data-act="bestsAll"]').click()); await wait(200);
     ok(await ev(n => document.querySelectorAll('#sub-bests .bx').length === n && !document.querySelector('#sub-bests [data-act="bestsAll"]'), bd.lifts), 'Show all lists every lift');
     ok(bd.front.every((f, i, a) => i === 0 || (f[0] < a[i - 1][0] && f[1] > a[i - 1][1])), 'rep records: heavier loads first, and each lighter load has more reps (no dominated rows)', bd.front);
-    ok(/best est/.test(bd.rec) && /heaviest/.test(bd.rec) && /first done/i.test(bd.rec), 'each lift shows its best estimate, heaviest set and dated rep records', bd.rec);
+    // r30: a best estimate (1RM) only for compound lifts; every best carries its own date.
+    ok((bd.comp ? /best est [^·]*, [A-Z][a-z]{2} \d/.test(bd.rec) : !/best est/.test(bd.rec)) && /heaviest [^·]*, [A-Z][a-z]{2} \d/.test(bd.rec) && /first done/i.test(bd.rec), 'each lift shows its heaviest set with its own date, a best estimate on compound lifts only, and dated rep records', bd.rec);
     ok(!P.errors.length, 'no console errors (PRs)', P.errors);
     await P.ctx.close();
   }

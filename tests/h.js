@@ -16,7 +16,7 @@ async function open(file, opts = {}) {
   const ctx = await browser.newContext({ viewport: { width: opts.w || 390, height: opts.h || 844 }, deviceScaleFactor: opts.dpr || 1, hasTouch: !!opts.touch, isMobile: !!opts.touch, colorScheme: opts.dark ? 'dark' : 'light' });
   // Most suites were written on the six-day routine installs started with
   // before r29; they keep it. opts.realStarter runs a new install as shipped.
-  if (!opts.realStarter) await ctx.addInitScript(`window.IRONLOG_STARTER='onemuscle';`);
+  if (!opts.realStarter) await ctx.addInitScript(`window.IRONLOG_STARTER='legacy';`);
   if (opts.clock) await ctx.addInitScript(`(()=>{const T=${JSON.stringify(opts.clock)};const R=Date;const off=new R(T).getTime()-R.now();class D extends R{constructor(...a){if(a.length)super(...a);else super(R.now()+off);}static now(){return R.now()+off;}}window.Date=D;})()`);
   if (opts.state && !opts.stateOnce) await ctx.addInitScript(`localStorage.setItem('ironlog.v1', ${JSON.stringify(JSON.stringify(opts.state))});`);
   const page = await ctx.newPage();

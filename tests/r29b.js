@@ -42,7 +42,7 @@ const sess = (id, date, exId, sets) => ({ id, date, dayIdx: 0, dayId: null, dayN
     await page.click('[data-act="tplPick"][data-k="full3"]'); await wait(200);
     const a = await ev(() => window.__ironlog.state.routines.map(r => r.name));
     ok(a.length === 1 && a[0] === 'Full body, 3 days', 'picking Full body replaces the untouched starter', a);
-    await ev(() => { const L = window.__ironlog; const old = L.routineFromTemplate('onemuscle'); L.state.routines = [old]; L.state.activeRoutineId = old.id; L.state.settings.onboarded = false; L.render(); L.ACT.obSample(); });
+    await ev(() => { const L = window.__ironlog; const old = L.routineFromTemplate('legacy'); L.state.routines = [old]; L.state.activeRoutineId = old.id; L.state.settings.onboarded = false; L.render(); L.ACT.obSample(); });
     await page.click('[data-act="tplPick"][data-k="ppl6"]'); await wait(200);
     const b = await ev(() => window.__ironlog.state.routines.map(r => r.name));
     ok(b.length === 1 && b[0] === 'Push / pull / legs, 6 days', 'the pre-r29 six-day starter, untouched, is replaced as well', b);
@@ -100,7 +100,7 @@ const sess = (id, date, exId, sets) => ({ id, date, dayIdx: 0, dayId: null, dayN
       return { head: vol.querySelector('.headline').innerText, chips: [...vol.querySelectorAll('[data-act="volMode"]')].map(b => b.dataset.v), ring: ch.data.datasets[1].label, chestRow: chest ? chest.innerText.replace(/\s+/g, ' ') : null, tags: [...w.querySelectorAll('.tag')].map(t => t.innerText) }; });
     ok(/\d of 8 regions on target\. Furthest short: /.test(v.head), 'the radar headline counts regions on target and names the furthest short in sets', v.head);
     ok(v.ring === 'Minimum (100%)' && !v.chips.includes('planned'), 'the ring is the minimum, and Stats has no Planned chip (the plan is on Plan)', v);
-    ok(v.chestRow && /Below target/.test(v.chestRow) && /Chest Below target 8 hard sets a week on average, target 10-20, this week 0 so far/.test(v.chestRow), 'Muscles leads with the average the flag is judged on, then this week', v.chestRow);
+    ok(v.chestRow && /Below target/.test(v.chestRow) && /Chest (Lagging strength )?Below target 8 hard sets a week on average, target 10-20, this week 0 so far/.test(v.chestRow), 'Muscles leads with the average the flag is judged on, then this week', v.chestRow);
     ok(!v.tags.some(t => /logged and planned|Below target, logged/.test(t)), 'one Below target tag, without logged or planned', v.tags);
     // An old ui.volMode of planned cannot come back through the chip action.
     const vm = await ev(() => { const L = window.__ironlog; L.ACT.volMode({ dataset: { v: 'planned' } }); return L.ui.volMode; });
@@ -127,13 +127,15 @@ const sess = (id, date, exId, sets) => ({ id, date, dayIdx: 0, dayId: null, dayN
       return { scores: Object.fromEntries(I.scores.map(s => [s.m, s.label])), stalled: L.stalledIds() };
     });
     ok(r.stalled.includes('hackSquat') && r.scores.quads === 'lagging', 'flat with a stalled lift: lagging', r);
-    ok(r.scores.calves !== 'lagging' && r.scores.chest !== 'lagging' && r.scores.lats !== 'lagging', 'rising or flat without a stall is never lagging, whatever its rank', r.scores);
+    ok(r.scores.chest !== 'lagging' && r.scores.lats !== 'lagging', 'rising is never lagging, whatever its rank', r.scores);
+    // r30: a trend is read up to 20 reps, so calves at 100 x 16 unchanged for six weeks is a stall, and lagging.
+    ok(r.stalled.includes('standCalf') && r.scores.calves === 'lagging', 'high-rep work unchanged for six weeks now reads as stalled (trend up to 20 reps)', r);
     await P.browser.close();
   }
 
   // ---- Demo data: a lifter who follows the routine.
   {
-    for (const k of ['ul4', 'full3', 'ppl6', 'split5', 'db3', 'onemuscle']) {
+    for (const k of ['ul4', 'full3', 'full2', 'ppl6', 'split5', 'str5', 'db3', 'onemuscle']) {
       const P = await open('index.html', { touch: true, clock: '2026-10-03T11:30:00', realStarter: true });
       const { page } = P; const ev = (f, a) => page.evaluate(f, a);
       await ev((k) => { const L = window.__ironlog; const r = L.routineFromTemplate(k); L.state.routines = [r]; L.state.activeRoutineId = r.id; L.ACT.demoLoad(); }, k);
@@ -141,7 +143,7 @@ const sess = (id, date, exId, sets) => ({ id, date, dayIdx: 0, dayId: null, dayN
       const d = await ev(() => { const L = window.__ironlog; const I = L.IDX(); const reg = L.regionBalance(L.actualAvg4());
         const mus = L.muscleStatus(L.actualAvg4()); const t = new Date(2026, 9, 3).toISOString().slice(0, 10);
         return { n: L.state.sessions.length, today: L.state.sessions.some(s => s.date === '2026-10-03'), stalled: L.stalledIds(), lag: I.scores.filter(s => s.label === 'lagging').map(s => s.m), low: reg.filter(x => x.low).map(x => x.label), under: Object.entries(mus).filter(([m, x]) => x.st === 'under').map(([m]) => m), coach: L.coach().text, prs: I.prs.length, moving: Object.values(I.exStats).filter(s => s.moving).length, falling: Object.values(I.exStats).filter(s => s.falling).length }; });
-      ok(d.n > 20 && !d.today && !d.stalled.length && !d.lag.length && !d.low.length && !d.under.length && /^On track/.test(d.coach) && d.prs > 20 && d.moving >= 3 && !d.falling, `${k}: the demo has every session done, today open, lifts moving, nothing stalled, lagging, or below target, and the coach says on track`, d);
+      ok(d.n > (k === 'full2' ? 12 : 20) && !d.today && !d.stalled.length && !d.lag.length && !d.low.length && !d.under.length && /^On track/.test(d.coach) && d.prs > 20 && d.moving >= 3 && !d.falling, `${k}: the demo has every session done, today open, lifts moving, nothing stalled, lagging, or below target, and the coach says on track`, d);
       // Clearing it on a first run puts the default targets back.
       const back = await ev(() => { const L = window.__ironlog; L.ACT.demoClear(); return JSON.stringify(L.state.settings.bands) === JSON.stringify(L.BANDS); });
       ok(back, `${k}: clearing the demo on a first run puts the default targets back`);
@@ -176,7 +178,7 @@ const sess = (id, date, exId, sets) => ({ id, date, dayIdx: 0, dayId: null, dayN
       await ev(() => { const L = window.__ironlog; const b = L.state.draft.ex[0]; b.sets[0].w = 105; b.sets[0].r = 8; b.sets[0].rir = 2; L.render(); });
       await page.click('[data-act="sDone"][data-b="0"][data-s="0"]'); await wait(150);
       const t = await ev(() => document.getElementById('toast').innerText);
-      ok(/^Weight PR: Barbell Bench Press, .*heaviest before .*new best estimate/.test(t), 'the toast says Weight PR, what it beat, and the new best estimate', t);
+      ok(/^Weight PR: Barbell Bench Press, .*heaviest before .*best estimate for sets of \d+ to \d+ reps now/.test(t), 'the toast says Weight PR, what it beat, and the new best estimate with its rep band (r30)', t);
     } else ok(false, 'could not build a session block for the toast check');
     ok(!P.errors.length, 'no page errors (PRs)', P.errors);
     await P.browser.close();

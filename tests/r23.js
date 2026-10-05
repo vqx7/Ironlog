@@ -276,7 +276,7 @@ function xlsx(rows) {
       const wk = document.querySelector('[data-mkey="week"]'), gl = document.querySelector('[data-mkey="tiles"]');
       return { sub: wk.querySelector('.sec-s').textContent, week: wk.innerText.replace(/\s+/g, ' '), tiles: gl.querySelectorAll('.tile').length, glance: gl.innerText.replace(/\s+/g, ' '), prTile: gl.querySelector('[data-sec="bests"]') ? 1 : 0 }; });
     ok(/sessions$/.test(t.sub) && !/sets/.test(t.sub), 'This week header: sessions only (the sets are in the card once)', t.sub);
-    ok(/hard sets logged of \d+ planned/.test(t.week) && /lifted/.test(t.week) && /vs last week/.test(t.week), 'This week: hard sets against planned, and weight lifted against last week', t.week);
+    ok(/hard sets logged of \d+ planned/.test(t.week) && /lifted/.test(t.week) && !/vs last week|%\s*$/.test(t.week.split('lifted')[1] || ''), 'This week: hard sets against planned, and weight lifted with no percent against last week (r30: heavier loads for fewer reps read as decline)', t.week);
     ok(t.tiles === 2 && !/lifted this week/.test(t.glance) && t.prTile, 'At a glance: the streak and PRs; weight lifted moved out', t);
     await A.page.click('[data-mkey="tiles"] [data-sec="bests"]'); await wait(300);
     ok(await ev(() => window.__ironlog.ui.tab === 'dash' && document.getElementById('sub-bests') && document.getElementById('sub-bests').open), 'the PR tile opens All-time bests');

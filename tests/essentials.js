@@ -65,15 +65,17 @@ const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log
   ok((await ev(() => window.__ironlog.state.draft.ex[0].sets.length)) === n5 - 1 && !(await ev(() => window.__ironlog.ui.modal)), 'an empty row (only the grey suggestion) is removed straight away');
 
   // ---- Prefilled fields are still there: loads from the target, reps shown grey from last time.
-  const pre = await ev(() => { const b = window.__ironlog.state.draft.ex[0]; const w = document.querySelector('[data-f="w"][data-b="0"][data-s="1"]'); const r = document.querySelector('[data-f="r"][data-b="0"][data-s="1"]'); return { w: w.value, rph: r.placeholder, rv: r.value, last: b.lastR }; });
+  const pre = await ev(() => { const b = window.__ironlog.state.draft.ex[0]; const w = document.querySelector('[data-f="w"][data-b="0"][data-s="1"]'); const r = document.querySelector('[data-f="r"][data-b="0"][data-s="1"]'); return { w: w.value, rph: r.placeholder, rv: r.value, last: b.lastR, load: !!(b.tgt && b.tgt.kind === 'load'), repMin: +b.plan.repMin }; });
   const preW = await ev(() => document.querySelector('[data-f="w"][data-b="0"][data-s="1"]').placeholder);
-  ok(pre.w === '' && +preW > 0 && pre.rv === '' && +pre.rph === pre.last[1], 'loads show the target in grey (r25 default); reps show last time\'s number in grey', { ...pre, preW });
+  // Grey reps: last time's, or the bottom of the range when a new load is due (r27; the r30 demo can end on one).
+  const greyExp = pre.load ? pre.repMin : pre.last[1];
+  ok(pre.w === '' && +preW > 0 && pre.rv === '' && +pre.rph === greyExp, 'loads show the target in grey (r25 default); reps show last time\'s number in grey, or the range\'s bottom after a new load', { ...pre, preW });
 
   // ---- Auto-mark: Next on an empty reps field takes the grey number and marks the set done.
   await ev(() => { window.__ironlog.state.settings.autoDone = true; });
   await A.page.focus('[data-f="r"][data-b="0"][data-s="1"]'); await A.page.keyboard.press('Enter'); await A.page.waitForTimeout(200);
   const ad = await ev(() => { const s = window.__ironlog.state.draft.ex[0].sets[1]; return { done: s.done, r: s.r }; });
-  ok(ad.done && ad.r === pre.last[1], 'auto-mark on: Next on the grey reps logs them and ticks the set', ad);
+  ok(ad.done && ad.r === greyExp, 'auto-mark on: Next on the grey reps logs them and ticks the set', ad);
   await ev(() => { window.__ironlog.state.settings.autoDone = false; });
   await A.page.focus('[data-f="r"][data-b="0"][data-s="2"]'); await A.page.keyboard.press('Enter'); await A.page.waitForTimeout(200);
   ok(!(await ev(() => window.__ironlog.state.draft.ex[0].sets[2].done)), 'auto-mark off: Next only moves on');
@@ -145,7 +147,7 @@ const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log
   if (await ev(() => (document.getElementById('obPage') || {}).dataset.step === 'acct')) { await F.page.click('#obPage [data-act="obAcctLater"]'); await F.page.waitForTimeout(200); }
   await F.page.click('.welcome [data-act="obSample"]'); await F.page.waitForTimeout(200);
   const list = await ev(() => [...document.querySelectorAll('#modal .tpl')].map(b => b.innerText.replace(/\s+/g, ' ')));
-  ok(list.length === 6 && /Full body, 3 days/.test(list[0]) && list.every(t => /(about \d+ min|\d+ to \d+ min)/.test(t)), 'first run: six ready-made routines, each with days and minutes (a range since r28)', list.map(t => t.slice(0, 60)));
+  ok(list.length === 8 && /Full body, 3 days/.test(list[0]) && list.some(t => /Full body, 2 days/.test(t)) && list.some(t => /Strength, 5 x 5/.test(t)) && list.every(t => /(about \d+ min|\d+ to \d+ min)/.test(t)), 'first run: eight ready-made routines (r30 adds 2 days and 5 x 5), each with days and minutes (a range since r28)', list.map(t => t.slice(0, 60)));
   await F.page.click('#modal [data-act="tplPick"][data-k="ul4"]'); await F.page.waitForTimeout(250);
   const r = await ev(() => { const s = window.__ironlog.state; const R = s.routines.find(x => x.id === s.activeRoutineId); return { name: R.name, n: s.routines.length, days: R.days.map(d => d.name), onb: s.settings.onboarded, tab: window.__ironlog.ui.tab, hero: (document.querySelector('.hero h2') || {}).textContent }; });
   ok(r.name === 'Upper / lower, 4 days' && r.n === 1 && r.onb && r.tab === 'today' && /UPPER A/i.test(r.hero), 'picking one makes it the only, active routine and Today is ready', r);
@@ -159,11 +161,11 @@ const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log
   ok(await ev(() => window.__ironlog.state.routines.length === 2) && /already have this routine/.test(await ev(() => document.getElementById('toast').innerText)), 'the same template twice opens the existing one instead');
   // Every template uses only library exercises and, apart from the two lighter ones, meets the default weekly targets.
   const chk = await ev(() => { const L = window.__ironlog; const ids = new Set(L.state.exercises.map(e => e.id)); const b = L.state.settings.bands; const minor = ['serratus', 'rotatorCuff', 'neck', 'tibialis', 'forearms', 'abductors', 'adductors', 'obliques', 'lowerBack', 'traps'];
-    return L.TEMPLATES.map(t => { const r = L.routineFromTemplate(t.key); const miss = []; for (const d of r.days) for (const it of d.items) if (!ids.has(it.exId)) miss.push(it.exId); const ps = L.plannedSets(r); const low = Object.keys(ps).filter(m => !minor.includes(m) && ps[m] < b[m][0]); return { k: t.key, miss, low }; }); });
+    return L.TEMPLATES.filter(t => !t.hidden).map(t => { const r = L.routineFromTemplate(t.key); const miss = []; for (const d of r.days) for (const it of d.items) if (!ids.has(it.exId)) miss.push(it.exId); const ps = L.plannedSets(r); const low = Object.keys(ps).filter(m => !minor.includes(m) && ps[m] < b[m][0]); return { k: t.key, miss, low }; }); });
   ok(chk.every(c => !c.miss.length), 'every template exercise exists in the library', chk.filter(c => c.miss.length));
-  ok(chk.filter(c => !['full3', 'db3'].includes(c.k)).every(c => !c.low.length), 'upper/lower, PPL, split and high volume meet the default weekly targets', chk);
-  const capHit = await ev(() => { const L = window.__ironlog; const out = []; for (const t of L.TEMPLATES) { const r = L.routineFromTemplate(t.key); for (const d of r.days) { if (d.rest) continue; const ms = L.sessionMuscleSets(d); const o = Object.entries(ms).filter(([, v]) => v > 11); if (o.length) out.push(t.key + ' ' + d.name); } } return out; });
-  ok(capHit.every(x => x.startsWith('onemuscle ')), 'no ready-made day passes 11 sets for one muscle, apart from the high-volume one, which says so', capHit);
+  ok(chk.filter(c => !['full3', 'full2', 'str5', 'db3'].includes(c.k)).every(c => !c.low.length), 'upper/lower, PPL, split and high volume meet the default weekly targets (the beginner, 2-day, strength and dumbbell ones are lighter by design)', chk);
+  const capHit = await ev(() => { const L = window.__ironlog; const out = []; for (const t of L.TEMPLATES.filter(t => !t.hidden)) { const r = L.routineFromTemplate(t.key); for (const d of r.days) { if (d.rest) continue; const ms = L.sessionMuscleSets(d); const o = Object.entries(ms).filter(([, v]) => v > 11); if (o.length) out.push(t.key + ' ' + d.name); } } return out; });
+  ok(!capHit.length, 'no ready-made day passes 11 sets for one muscle, the high-volume one included since r30', capHit);
   // r28: said in plain words instead of the 11-set figure.
   ok(await ev(() => /many sets for one muscle/.test(window.__ironlog.TEMPLATES.find(t => t.key === 'onemuscle').who)), 'the high-volume template warns of long sessions with many sets for one muscle');
   // A new routine has no history: with "Fill in suggested loads" on, the load typed on set 1 fills the empty rows below.

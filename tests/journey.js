@@ -21,7 +21,7 @@ const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log
     const sig = d => d.ex.map(b => ({ id: b.exId, cut: !!b.cut, sets: b.sets.map(x => [x.w, x.r, !!x.done, !!x.warm, !!x.drop]) }));
     const closeModal = () => ev(() => { const L = window.__ironlog; if (L.ui.modal) L.ACT.mClose(); });
 
-    await ev((mode) => { const L = window.__ironlog; L.state.settings.onboarded = true; L.makeDemo(); if (mode === 'fill') { L.state.settings.loadFill = 'fill'; L.state.settings.autoDone = true; } else L.state.settings.autoDone = false; L.saveNow(); L.ui.tab = 'today'; L.ui.todayDay = 0; L.render(); localStorage.setItem('ironlog.v1.tipWake', '1'); }, mode);
+    await ev((mode) => { const L = window.__ironlog; L.state.settings.onboarded = true; L.makeDemo(); /* r30: history here, not sample data */ for (const k of ['sessions', 'bodyweights', 'measurements']) for (const x of L.state[k]) delete x.demo; L.invalidate && L.invalidate(); if (mode === 'fill') { L.state.settings.loadFill = 'fill'; L.state.settings.autoDone = true; } else L.state.settings.autoDone = false; L.saveNow(); L.ui.tab = 'today'; L.ui.todayDay = 0; L.render(); localStorage.setItem('ironlog.v1.tipWake', '1'); }, mode);
     await page.click('.hero [data-act="startSession"]:not([data-light])'); await page.waitForTimeout(150);
     const ex0 = await ev(() => window.__ironlog.state.draft.ex[0].exId);
     const kg = await ev(() => window.__ironlog.state.settings.unit === 'lb' ? 100 * 0.45359237 : 100);
@@ -92,6 +92,10 @@ const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log
     await type(W(ai, 0), '40'); await type(R(ai, 0), '12');
     if (mode === 'grey') await page.click(`[data-act="sDone"][data-b="${ai}"][data-s="0"]`); else await blur();
     await page.waitForTimeout(120);
+    // A second set (r30): an exercise stopped with under half its sets done is saved as trimmed, which is not what this step checks.
+    await type(W(ai, 1), '40'); await type(R(ai, 1), '11');
+    if (mode === 'grey') await page.click(`[data-act="sDone"][data-b="${ai}"][data-s="1"]`); else await blur();
+    await page.waitForTimeout(120);
     ok(await ev((i) => { const b = window.__ironlog.state.draft.ex[i]; return b.sets[0].done && b.sets[0].r === 12 && !b.cut; }, ai), T + 'an exercise added after the trim is logged and not marked trimmed');
 
     // 9. Reload mid-session: everything as it was.
@@ -101,7 +105,8 @@ const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log
     ok(JSON.stringify(pre) === JSON.stringify(post), T + 'a reload mid-session keeps every exercise, set, load, tick and trimmed mark', { pre: pre.slice(0, 2), post: post.slice(0, 2) });
 
     // 10. Finish. Typed, unticked sets are offered and kept; nothing is saved at load 0 that had a load.
-    const exp = await ev(() => { const L = window.__ironlog; const d = L.state.draft; return d.ex.map(b => ({ id: b.exId, n: b.sets.filter(x => x.done || (!x.warm && +x.r > 0)).length, w: b.sets.map((x, i) => (x.done || +x.r > 0) ? L.effW(b, i) : null).filter(v => v != null), cut: !!b.cut })).filter(x => x.n); });
+    // r30: an exercise stopped with fewer than half its sets done is saved as trimmed too.
+    const exp = await ev(() => { const L = window.__ironlog; const d = L.state.draft; return d.ex.map(b => { const n = b.sets.filter(x => x.done || (!x.warm && +x.r > 0)).length; const left = b.sets.filter(x => !x.warm && !x.done && !(+x.r > 0) && L.rowBlank(b, x)).length; return { id: b.exId, n, w: b.sets.map((x, i) => (x.done || +x.r > 0) ? L.effW(b, i) : null).filter(v => v != null), cut: !!b.cut || (n > 0 && left > 0 && n < Math.ceil((n + left) / 2)) }; }).filter(x => x.n); });
     const n0 = await ev(() => window.__ironlog.state.sessions.length);
     await ev(() => window.__ironlog.ACT.finish()); await page.waitForTimeout(150);
     for (let k = 0; k < 4; k++) { const m = await ev(() => { const m = window.__ironlog.ui.modal; return m && m.kind === 'confirm' ? document.getElementById('modal').innerText : null; }); if (!m) break; await ev(() => document.querySelector('#modal [data-act="mOk"]').click()); await page.waitForTimeout(150); }
@@ -146,7 +151,7 @@ const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log
   const { chromium } = require('playwright');
   const browser = await chromium.launch();
   const O = await open('baselines/r24.html', { browser, touch: true, clock: '2026-09-20T10:00:00' });
-  await O.page.evaluate(() => { const L = window.__ironlog; L.state.settings.onboarded = true; L.makeDemo(); L.ui.tab = 'today'; L.ui.todayDay = 0; L.render(); });
+  await O.page.evaluate(() => { const L = window.__ironlog; L.state.settings.onboarded = true; L.makeDemo(); /* r30: history here, not sample data */ for (const k of ['sessions', 'bodyweights', 'measurements']) for (const x of L.state[k]) delete x.demo; L.invalidate && L.invalidate(); L.ui.tab = 'today'; L.ui.todayDay = 0; L.render(); });
   await O.page.click('.hero [data-act="startSession"]:not([data-light])'); await O.page.waitForTimeout(150);
   const old = await O.page.evaluate(() => { const L = window.__ironlog; const d = L.state.draft; d.ex[0].sets[0].w = 50; d.ex[0].sets[0].r = 8; d.ex[0].sets[0].done = true; d.ex[1].sets[0].r = 10; L.ACT.shortOpen(); L.ui.modal.mins = 30; L.ACT.shortApply(); L.saveNow(); return JSON.parse(localStorage.getItem('ironlog.v1')); });
   await O.ctx.close();
@@ -165,7 +170,7 @@ const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log
   // target's source date) carry on here the same way.
   for (const BV of ['r25', 'r26', 'r27', 'r28']) {
     const O5 = await open(`baselines/${BV}.html`, { browser, touch: true, clock: '2026-09-20T10:00:00' });
-    await O5.page.evaluate(() => { const L = window.__ironlog; L.state.settings.onboarded = true; L.makeDemo(); L.ui.tab = 'today'; L.ui.todayDay = 0; L.render(); });
+    await O5.page.evaluate(() => { const L = window.__ironlog; L.state.settings.onboarded = true; L.makeDemo(); /* r30: history here, not sample data */ for (const k of ['sessions', 'bodyweights', 'measurements']) for (const x of L.state[k]) delete x.demo; L.invalidate && L.invalidate(); L.ui.tab = 'today'; L.ui.todayDay = 0; L.render(); });
     await O5.page.click('.hero [data-act="startSession"]:not([data-light])'); await O5.page.waitForTimeout(150);
     const old5 = await O5.page.evaluate(() => { const L = window.__ironlog; const d = L.state.draft; d.ex[0].sets[0].r = 8; document.querySelector('.sg [data-act="sDone"][data-b="0"][data-s="0"]').click(); d.ex[1].sets[0].r = 10; L.ACT.shortOpen(); L.ui.modal.mins = 30; L.ACT.shortApply(); L.saveNow(); return JSON.parse(localStorage.getItem('ironlog.v1')); }).catch(e => ({ err: String(e) }));
     await O5.ctx.close();
