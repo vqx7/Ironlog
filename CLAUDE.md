@@ -1,6 +1,6 @@
 # Ironlog
 
-A personal hypertrophy and strength tracker for one lifter. It is used on a phone at the gym. It ships two ways from one source file: as a Claude artifact (a hosted single-page app with cloud sync) and as a standalone installable web app (dist/, hosted on GitHub Pages, offline, data on the phone). Since r24 every pull request is also published as a separate preview app at /preview/ (dist-preview/), to try on a phone before merging. Build r30.1, state schema v5.
+A personal hypertrophy and strength tracker for one lifter. It is used on a phone at the gym. It ships two ways from one source file: as a Claude artifact (a hosted single-page app with cloud sync) and as a standalone installable web app (dist/, hosted on GitHub Pages, offline, data on the phone). Since r24 every pull request is also published as a separate preview app at /preview/ (dist-preview/), to try on a phone before merging. Build r30.2, state schema v5.
 
 ## What is in this repo
 
