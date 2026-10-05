@@ -181,8 +181,8 @@ function strongCsv() {
     const ci = await ev(() => { const L = window.__ironlog; const d = L.state.draft; d.chk = { sleep: 1, energy: 1, joints: 1 }; L.render(); const c = document.getElementById('readyCard'); return { has: !!c, light: !!(c && c.querySelector('[data-act="makeLight"]')), short: !!(c && c.querySelector('[data-act="shortOpen"]')), sets: d.ex.map(b => b.sets.filter(x => !x.warm).length) }; });
     ok(ci.has && ci.light && ci.short, 'a poor check-in offers Make it lighter and Short on time', ci);
     await page.click('#readyCard [data-act="makeLight"]'); await wait(200);
-    const ml = await ev(() => { const d = window.__ironlog.state.draft; return { light: d.light, sets: d.ex.map(b => b.sets.filter(x => !x.warm).length), tgt: d.ex.map(b => b.tgt) }; });
-    ok(ml.light && ml.sets.every((n, i) => n === Math.max(1, Math.ceil(ci.sets[i] / 2))) && ml.tgt.every(t => t == null), 'Make it lighter: half the sets on every exercise not started, no targets to beat', { ci: ci.sets, ml });
+    const ml = await ev(() => { const d = window.__ironlog.state.draft; return { light: d.ex.every(b => b.light) && !d.light, sets: d.ex.map(b => b.sets.filter(x => !x.warm).length), tgt: d.ex.map(b => b.tgt) }; });
+    ok(ml.light && ml.sets.every((n, i) => n === Math.max(1, Math.ceil(ci.sets[i] / 2))) && ml.tgt.every(t => t == null), 'Make it lighter: half the sets on every exercise not started, no targets to beat (r31: the exercises, not the session, are marked)', { ci: ci.sets, ml });
 
     // Finish with sets left asks first; the recap counts only exercises started.
     const fin = await ev(() => { const L = window.__ironlog; const d = L.state.draft; const b = d.ex[0]; b.sets[0].w = b.sets[0].w || 60; b.sets[0].r = 8; b.sets[0].done = true; d._rampAsked = true; L.ACT.finish(); const m = L.ui.modal; return m && m.kind === 'confirm' ? m.title : null; });
@@ -293,7 +293,7 @@ function strongCsv() {
     const P = await open('index.html', { touch: true, clock: '2026-10-04T10:00:00' });
     const { page } = P; const ev = (f, a) => page.evaluate(f, a);
     const fs = await ev(() => { const L = window.__ironlog; L.state.settings.onboarded = true; L.state.sessions = []; L.invalidate(); return { sq: L.suggest('backSquat', { sets: 3, repMin: 6, repMax: 10, rir: 2, rest: 150, inc: 2.27 }, {}).text, curl: L.suggest('dbCurl', { sets: 2, repMin: 10, repMax: 15, rir: 2, rest: 60, inc: 2.27 }, {}).text }; });
-    ok(/start light, a load you could lift about 15 times/.test(fs.sq) && /stopping with about 2 still in you/.test(fs.sq) && !/Warm up/.test(fs.sq + fs.curl), 'a first session says, in one line per exercise, how to pick a load', fs);
+    ok(/a load you think you could lift about 12 times, erring light/.test(fs.sq) && /6 to 10 reps, stopping with about 2 still in you/.test(fs.sq) && !/Warm up/.test(fs.sq + fs.curl), 'a first session says, in one line per exercise, how to pick a load', fs);
     const pv = await ev(() => { const L = window.__ironlog; L.ui.tab = 'today'; L.ui.folds['today:session'] = true; L.render(); const e = document.querySelector('[data-mkey="session"]'); return e ? e.innerText : ''; });
     ok(/Warm up on the first big lift/.test(pv), 'and the workout preview says once to warm up on the first big lift', pv.slice(0, 200));
     await ev(() => window.__ironlog.impStart({ text: 'Sep 30\nBench press 185x8, 185x8\nLateral raise 1.5x40' })); await wait(300);
