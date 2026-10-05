@@ -290,6 +290,7 @@ function strongCsv(weeks, name) {
       st.sessions = [ses('2026-09-29', [['bench', [[185, 8], [185, 8], [185, 8]]]]), ses('2026-09-01', [['bench', [[185, 8]]]])];
       L.state = L.normalize(st); L.invalidate();
       const avg = L.actualAvg4(); out.avg = { weeks: avg && avg._weeks, missed: avg && avg._missed, coach: L.coach().text, txt: avg && L.avgWeeksTxt(avg) };
+      out.lib = ['t bar row', 'tbar', 'T-bar'].map(q => L.libFiltered(q, '', '', '').map(e => e.name)); out.libDb = L.libFiltered('db curl', '', '', '').map(e => e.name);
       out.span = [L.repSpan(5, 5, '-'), L.repSpan(8, 12, '-'), L.rangeWords({ repMin: 5, repMax: 5 })];
       return out;
     }, LB);
@@ -303,6 +304,7 @@ function strongCsv(weeks, name) {
     ok(/Slowly up/.test(r.slow) && !/No clear change/.test(r.slow), 'a small steady rise reads "slowly up", not "no clear change" beside a range above zero', r.slow);
     ok(r.avg.weeks === 1 && r.avg.missed === 3 && /trained in 1 of the last 4 weeks/.test(r.avg.coach), 'one week trained of four: the coach says so before any set count', r.avg);
     ok(/1 week you trained of the last 4/.test(r.avg.txt), 'the average says which weeks it covers', r.avg.txt);
+    ok(r.lib.every(n => n.includes('Landmine T-Bar Row')) && r.libDb.includes('DB Curl'), 'library search ignores hyphens and spaces: "t bar row", "tbar", and "T-bar" find Landmine T-Bar Row; "db curl" finds DB Curl', r.lib);
     ok(r.span[0] === '5' && r.span[1] === '8-12' && r.span[2] === 'target of 5', 'one-number ranges read as one number', r.span);
     ok(P.errors.length === 0, 'no page errors (numbers)', P.errors);
     await P.browser.close();
@@ -325,6 +327,27 @@ function strongCsv(weeks, name) {
     await P.browser.close();
   }
 
+  // ---- r31.1: a quiet notice on what the suggestions are, on the first-run page, in Settings and the Guide.
+  {
+    const P = await open('index.html', { clock: '2026-10-05T07:00:00', realStarter: true, w: 320, h: 700 });
+    const ev = (f, a) => P.page.evaluate(f, a);
+    const a = await ev(() => { const L = window.__ironlog; try { localStorage.setItem('ironlog.v1.obAcct', 'later'); } catch (e) { /* none */ } L.render(); const o = document.getElementById('obSafety'); return { ob: o ? o.innerText : '', over: document.documentElement.scrollWidth > window.innerWidth }; });
+    const b = await ev(() => { const L = window.__ironlog; L.state.settings.onboarded = true; L.state.sessions = []; L.ui.tab = 'settings'; L.ui.folds['settings:data'] = true; L.render(); const s = document.getElementById('safety');
+      L.ACT.guideOpen && L.ACT.guideOpen({ dataset: {} }); const g = document.getElementById('modal') ? document.getElementById('modal').innerText : '';
+      return { set: s ? s.innerText : '', tip: L.SAFETY_TXT, guide: /estimates from your log, not medical or coaching advice/i.test(g) || /estimates from your log, not medical or coaching advice/.test(document.body.innerHTML) }; });
+    ok(/Suggestions are estimates, not advice/.test(a.ob), 'first-run page: one short line says suggestions are estimates, not advice (the full notice on a tap)', a.ob);
+    ok(/not medical or coaching advice/.test(b.set) && /stop on pain/i.test(b.set), 'Settings, Your data: what suggestions are, beside the privacy line', b.set);
+    ok(/doctor/.test(b.tip) && /own risk/.test(b.tip) && !/\u2014/.test(b.tip), 'its i says: estimates that can be wrong, technique and safety bars, stop on pain, a doctor before starting, at your own risk (no em dash)', b.tip);
+    ok(!a.over, 'no sideways scroll at 320 px with the notice');
+    await P.browser.close();
+  }
+  // ---- Explanations follow the rules: none of the wording from before r31 is left in a tip, an i, the Guide, or the coach.
+  {
+    const src = require('fs').readFileSync(process.env.IRONLOG_FILE || 'index.html', 'utf8');
+    const stale = ['5 more times than the top', 'one more rep than last time', 'heaviest load you did for 2 or more sets', 'Three lighter sessions in a row', 'Three in a row is a new level', 'RIR at the top load', 'over 6 weeks (${ns})', 'Needs 3 sessions within 6 weeks for a trend', 'each session\'s strongest set'];
+    const left = stale.filter(t => src.includes(t));
+    ok(left.length === 0, 'no explanation still describes a rule from before r31', left);
+  }
   console.log(fails.length ? `\n${fails.length} FAILED` : '\nALL PASS');
   process.exit(fails.length ? 1 : 0);
 })().catch(e => { console.error(e); process.exit(1); });

@@ -103,8 +103,14 @@ const PLAN = [
         const newLoad = !step.deload && exp !== h.filter(x => x.kind === 'full').slice(-1)[0].load;
         const repsFrom = recent.kind === 'deload' ? h.filter(x => x.kind === 'full').slice(-1)[0] : recent;
         if (newLoad) {
+          // r31.1: after a step that is large for the load, the aim is what the estimate allows at 1 RIR
+          // (Epley past 10 reps to failure, Brzycki up to 10, blank RIR read as 0 here), when under the range.
+          const L0 = h.filter(x => x.kind === 'full').slice(-1)[0]; const bw = e.kind === 'bw' ? 180 : 0;
+          const rt = Math.max(...L0.reps); const from = L0.load + bw, to = exp + bw;
+          const e1 = rt <= 10 ? from * 36 / (37 - rt) : from * (1 + rt / 30); const rtf = 37 - 36 * to / e1;
+          const aim = Math.min(e.min, Math.max(1, Math.floor((rtf <= 10 ? rtf : 30 * (e1 / to - 1)) - 1 + 1e-9)));
           const rph = s.rows.map(r => +r.rph);
-          ok(rph.every(v => v === e.min), T + W + e.id + ' grey reps are ' + e.min + ' on every set (a new load, so not last time\'s reps)', rph);
+          ok(rph.every(v => v === aim), T + W + e.id + ' grey reps are ' + aim + ' on every set (a new load, so not last time\'s reps' + (aim < e.min ? '; a large step, so what the estimate allows' : '') + ')', rph);
         } else {
           const rph = s.rows.slice(0, repsFrom.reps.length).map(r => +r.rph);
           ok(JSON.stringify(rph) === JSON.stringify(repsFrom.reps.slice(0, s.rows.length)), T + W + e.id + ' grey reps are ' + repsFrom.reps.join(',') + ' (' + (recent.kind === 'deload' ? 'last full session' : 'Last') + ')', rph);
