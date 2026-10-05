@@ -85,6 +85,16 @@ function strongCsv(weeks, name) {
     ok(JSON.stringify(r.sq.lastR) === '[5,5,5,5,5]', 'grey reps follow the five working sets, not the single', r.sq.lastR);
     ok(r.be.w === 230 && !/225/.test(r.be.text), 'bench 275 x 1 then 230 x 5,5,5,4,4: same 230 lb, beat the reps (not 225)', r.be);
     ok(r.prs.some(p => p[0] === 'backSquat') && r.sqBest >= 405, 'the single still counts for bests and PRs', r);
+    // Re-review: the heavy set done twice (two singles, two triples) is still a top set (rv/pl/p3.js).
+    const r2 = await P.page.evaluate(LB => {
+      const L = window.__ironlog; const st = L.state; const R = st.routines[0];
+      const mk = (date, sets) => ({ id: 'q' + date, date, dayIdx: 0, dayId: R.days[0].id, routineId: R.id, dayName: 'Strength A', ex: [{ exId: 'backSquat', rr: [5, 5], note: '', sets: sets.map(([w, r, rir]) => ({ w: w * LB, r, rir: rir == null ? null : rir, warm: false, drop: false })) }] });
+      const plan = { sets: 5, repMin: 5, repMax: 5, rir: 2, rest: 180, inc: 5 * LB }; const five = w => Array(5).fill([w, 5]);
+      const run = sets => { st.sessions = [mk('2026-09-25', five(330)), mk('2026-09-30', sets)]; L.state = L.normalize(st); L.invalidate(); const g = L.suggest('backSquat', plan); return { w: Math.round(g.w / LB), text: g.text }; };
+      return { A: run([[405, 1, 1], [405, 1, 1], ...five(335)]), B: run([[255, 3], [255, 3], ...five(225)]) };
+    }, LB);
+    ok(r2.A.w === 340 && !/Drop|below/.test(r2.A.text), 'two singles at 405 then 335 x 5 x 5: still 340, never "drop to 345"', r2.A);
+    ok(r2.B.w === 230 && !/Drop|below/.test(r2.B.text), 'two triples at 255 then 225 x 5 x 5: 230 for 5s, never "drop to 230"', r2.B);
     // ---- 7. Three sessions in nine days are not a trend.
     ok(r.sqTrend.pct == null && /spread over 2 weeks/.test(r.bench), 'three sessions over 9 days give no trend, and the lift says what a trend needs', { t: r.sqTrend, h: r.bench });
     ok(!/over 6 weeks/.test(r.bench), 'no "over 6 weeks" for data that spans 9 days', r.bench);
@@ -124,15 +134,18 @@ function strongCsv(weeks, name) {
       const tr = R.days.filter(d => !d.rest);
       const linked = st.sessions.filter(s => s.routineId === R.id).length;
       const sq = tr.map(d => d.items.find(i => i.exId === 'backSquat'));
+      const bi = tr.map(d => d.items.find(i => i.exId === 'bench')).find(Boolean); const bench = bi && [bi.sets, bi.repMin, bi.repMax];
       L.ui.tab = 'dash'; L.render(); const dash = document.getElementById('view').innerText.replace(/\s+/g, ' ');
       L.ui.tab = 'today'; L.render(); const hero = (document.querySelector('.hero') || {}).innerText || '';
-      return { routines: st.routines.map(r => r.name), name: R.name, days: R.days.map(d => d.rest ? 'Rest' : d.name), items: tr.map(d => d.items.map(i => i.exId)), sq: sq.map(i => i && [i.sets, i.repMin, i.repMax]),
+      return { bench, routines: st.routines.map(r => r.name), name: R.name, days: R.days.map(d => d.rest ? 'Rest' : d.name), items: tr.map(d => d.items.map(i => i.exId)), sq: sq.map(i => i && [i.sets, i.repMin, i.repMax]),
         linked, n: st.sessions.length, coach: L.coach().text, dash, hero: hero.replace(/\s+/g, ' '), toast: document.getElementById('toast').innerText, tab: L.ui.tab };
     });
     ok(a.name === 'From your log' && a.routines.length === 1, 'the starter nobody picked is replaced by a routine made from the import', a.routines);
     ok(a.days.filter(d => d !== 'Rest').sort().join() === 'Workout A,Workout B' && a.days.length === 5, 'its days are the file\'s workouts, with rest days for 3 a week (a 5-day cycle of 2 workouts)', a.days);
     ok(a.items.every(l => l.includes('backSquat')) && a.items.some(l => l.includes('bench')) && a.items.some(l => l.includes('deadlift')) && !a.items.flat().includes('latPulldown'), 'each day keeps the lifts done on it, nothing never done', a.items);
     ok(a.sq.every(i => i && i[0] === 5 && i[1] === 3 && i[2] === 5), 'squat: 5 sets in a range around the usual 5 reps', a.sq);
+    ok(JSON.stringify(a.bench) === '[3,8,10]', 'bench moved from 5 x 5 to 3 sets of 8 to 10 three weeks ago: the routine has the program now (3 x 8-10)', a.bench);
+    ok(/\(\d+\/\d+\)/.test((a.dash.match(/Adherence[^)]*\)/) || [''])[0]), 'adherence counts are whole numbers', (a.dash.match(/Adherence[^)]*\)/) || [''])[0]);
     ok(a.linked === a.n, 'every imported session joins its day, so the cycle, streak and adherence read them', { linked: a.linked, n: a.n });
     ok(!/Lat Pulldown/.test(a.coach) && !/Lat Pulldown/.test(a.dash), 'the coach never asks for sets on a lift never done', a.coach);
     ok(!/Adherence[^%]*69%|\(11\/16\)/.test(a.dash), 'adherence is not measured against a routine never picked', (a.dash.match(/Adherence[^)]*\)/) || [''])[0]);
@@ -141,14 +154,34 @@ function strongCsv(weeks, name) {
     ok(P.errors.length === 0, 'no page errors (import)', P.errors);
     await P.browser.close();
   }
-  // ---- 5b. Names that cannot tell days apart (Strong's "Morning Workout"): the picker opens.
+  // ---- 5b. Strong's default names ("Morning Workout"), after Log a workout now: days by their lifts, targets fitted.
   {
     const P = await open('index.html', { touch: true, clock: '2026-09-28T07:00:00', realStarter: true });
     const { page } = P; const ev = (f, a) => page.evaluate(f, a);
+    // Log a workout now first: targets fitted to the starter (rv/st/r31c.js).
+    await ev(() => { const L = window.__ironlog; L.fitTargets(L.state.routines[0]); L.saveNow(); });
     await ev(csv => window.__ironlog.impStart({ text: csv }), strongCsv(8, () => 'Morning Workout')); await wait(300);
     await ev(() => window.__ironlog.ACT.impGo()); await wait(300);
+    const a = await ev(() => {
+      const L = window.__ironlog; const st = L.state; const R = st.routines.find(r => r.id === st.activeRoutineId); const tr = R.days.filter(d => !d.rest);
+      const plan = L.plannedSets(R); const b = st.settings.bands;
+      const over = Object.keys(plan).filter(m => !L.TRACK_ONLY.has(m) && b[m] && b[m][0] > Math.floor(plan[m] || 0) + 1e-9);
+      return { name: R.name, days: tr.map(d => d.name), items: tr.map(d => d.items.map(i => i.exId)), linked: st.sessions.filter(s => s.routineId === R.id).length, n: st.sessions.length, over, modal: L.ui.modal && L.ui.modal.kind, coach: L.coach().text };
+    });
+    ok(a.name === 'From your log' && a.days.join() === 'Day A,Day B' && !a.modal, 'generic workout names: the days are found from the lifts in them (Day A, Day B)', a);
+    ok(a.items.some(l => l.includes('bench') && !l.includes('deadlift')) && a.items.some(l => l.includes('deadlift') && !l.includes('bench')), 'each day has its own lifts', a.items);
+    ok(a.linked === a.n, 'every session joins its day by its lifts', { linked: a.linked, n: a.n });
+    ok(a.over.length === 0, 'targets set by Log a workout now are fitted again to the routine from the import', a.over);
+    await P.browser.close();
+  }
+  // ---- 5c. Nothing repeats (three different sessions, no names): the picker opens and says why.
+  {
+    const P = await open('index.html', { touch: true, clock: '2026-09-28T07:00:00', realStarter: true });
+    const { page } = P; const ev = (f, a) => page.evaluate(f, a);
+    await ev(t => window.__ironlog.impStart({ text: t }), 'Sep 1\nBench press 185x8, 185x8\n\nSep 3\nSquat 225x5, 225x5\n\nSep 5\nDeadlift 315x5'); await wait(300);
+    await ev(() => window.__ironlog.ACT.impGo()); await wait(300);
     const a = await ev(() => { const L = window.__ironlog; const m = L.ui.modal; return { kind: m && m.kind, imported: m && m.imported, t: document.getElementById('modal').innerText, n: L.state.sessions.length }; });
-    ok(a.kind === 'templates' && a.imported && /pick the routine you follow/.test(a.t) && a.n > 0, 'with generic names the routine picker opens and says why', a);
+    ok(a.kind === 'templates' && a.imported && /pick the routine you follow/.test(a.t) && a.n === 3, 'when no day repeats the routine picker opens and says why', a);
     await page.click('#modal [data-act="tplPick"][data-k="full3"]'); await wait(200);
     const b = await ev(() => { const L = window.__ironlog; return { name: L.state.routines.find(r => r.id === L.state.activeRoutineId).name, n: L.state.routines.length }; });
     ok(b.n === 1 && /Full body/.test(b.name), 'the pick replaces the starter', b);
@@ -222,6 +255,12 @@ function strongCsv(weeks, name) {
       const I = L.IDX(); out.bench = { stalled: I.exStats.bench.stalled, pct: I.exStats.bench.pct, tv: I.byEx.bench.map(x => Math.round(x.tv / LB)) };
       out.fat = L.fatigueStalls(['plank', 'hangingLegRaise', 'dbCurl', 'bench', 'backSquat']);
       out.coach = L.coach();
+      // Re-review: a perfectly flat isolation lift is stalled (rounding never hides it), and a small steady rise reads as slow.
+      const days = []; for (let i = 0; i < 16; i++) days.push(new Date(Date.UTC(2026, 7, 10 + Math.floor(i / 2) * 7 + (i % 2) * 3)).toISOString().slice(0, 10));
+      st.sessions = days.map(d => ses(d, [['dbCurl', [[35, 10], [35, 9]], [8, 12]], ['dbLateral', [[20, 12], [20, 11], [20, 10]], [10, 15]]]));
+      L.state = L.normalize(st); L.invalidate(); out.flat = L.stalledIds();
+      st.sessions = [0, 1, 2, 3, 4, 5].map(i => ses(['2026-08-24', '2026-08-31', '2026-09-07', '2026-09-14', '2026-09-21', '2026-09-28'][i], [['bench', [[100 + 0.25 * i, 8], [100 + 0.25 * i, 8], [100 + 0.25 * i, 8]], [6, 10]]]));
+      L.state = L.normalize(st); L.invalidate(); out.slow = L.exHeadline('bench');
       // 10. One week trained out of the last four.
       st.sessions = [ses('2026-09-29', [['bench', [[185, 8], [185, 8], [185, 8]]]]), ses('2026-09-01', [['bench', [[185, 8]]]])];
       L.state = L.normalize(st); L.invalidate();
@@ -235,6 +274,8 @@ function strongCsv(weeks, name) {
     ok(r.bench.tv[5] > r.bench.tv[0], 'its trend reading rises with the back-set reps', r.bench.tv);
     ok(JSON.stringify(r.fat) === JSON.stringify(['bench', 'backSquat']), 'planks, leg raises and curls never count toward "lifts stalled at once"', r.fat);
     ok(r.coach.tone !== 'red', 'no red deload call from accessory stalls', r.coach);
+    ok(r.flat.includes('dbCurl') && r.flat.includes('dbLateral'), 'curls and lateral raises identical for 8 weeks are stalled', r.flat);
+    ok(/Slowly up/.test(r.slow) && !/No clear change/.test(r.slow), 'a small steady rise reads "slowly up", not "no clear change" beside a range above zero', r.slow);
     ok(r.avg.weeks === 1 && r.avg.missed === 3 && /trained in 1 of the last 4 weeks/.test(r.avg.coach), 'one week trained of four: the coach says so before any set count', r.avg);
     ok(/1 week you trained of the last 4/.test(r.avg.txt), 'the average says which weeks it covers', r.avg.txt);
     ok(r.span[0] === '5' && r.span[1] === '8-12' && r.span[2] === 'target of 5', 'one-number ranges read as one number', r.span);

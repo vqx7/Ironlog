@@ -2954,19 +2954,21 @@ function rtfAt(est,load){if(!(est>0&&load>0))return null;const b=37-36*load/est;
 const rtfBand=rtf=>rtf<=5?1:rtf<=10?2:3;
 // The bands in words, counted as reps to failure (reps plus RIR).
 const BAND_WORDS={1:'sets of 1 to 5 reps',2:'sets of 6 to 10 reps',3:'sets of 11 to 12 reps'};
-/* The working load of one session of a lift (r31): the heaviest load done
-   for 2 or more sets; with none, the heaviest done for at least repMin - 1
-   reps (when the plan's range is known); else the heaviest. A heavy single
-   or double before back-off sets is a top set: it counts for bests and PRs,
-   but the next target, the grey reps and the trend build on the working
-   sets (the review saw 405 x 1 then 335 x 5 x 5 read as "below your range,
-   drop to 345"). Assisted lifts store less help as a higher number, so the
-   heaviest is still the hardest. */
+/* The working load of one session of a lift (r31): the heaviest load with a
+   set at or near the plan's range (repMin - 1 reps or more); with none, or
+   with no range on record, the load done for the most sets (the heavier on
+   a tie). A heavy single, double or triple before back-off sets, once or
+   twice, is a top set: it counts for bests and PRs, but the next target,
+   the grey reps and the trend build on the working sets (the review saw
+   405 x 1 then 335 x 5 x 5 read as "below your range, drop to 345", and
+   then the same with the single done twice). Assisted lifts store less help
+   as a higher number, so the heaviest is still the hardest. */
 function workLoad(pts,repMin){
-  if(!pts.length)return 0;const k=w=>Math.round(w*1000);const n=new Map();for(const p of pts)n.set(k(p.w),(n.get(k(p.w))||0)+1);
-  let w=null;for(const p of pts)if(n.get(k(p.w))>=2&&(w==null||p.w>w))w=p.w;if(w!=null)return w;
+  if(!pts.length)return 0;let w=null;
   if(repMin>0){for(const p of pts)if(p.r>=repMin-1&&(w==null||p.w>w))w=p.w;if(w!=null)return w;}
-  return Math.max(...pts.map(p=>p.w));
+  const k=v=>Math.round(v*1000);const n=new Map();for(const p of pts)n.set(k(p.w),(n.get(k(p.w))||0)+1);
+  let best=-1;for(const p of pts){const c=n.get(k(p.w));if(c>best||(c===best&&p.w>w)){best=c;w=p.w;}}
+  return w;
 }
 const atLoad=(pts,w)=>pts.filter(p=>Math.abs(p.w-w)<1e-6);
 // A rep range in words and labels: "5" when both ends are the same (r31: "5-5", "5×5-5").
@@ -3211,7 +3213,10 @@ function IDX(){
              is at the top of the range, and that is not a stall. */
           const z=l[l.length-1],a0=l[0];
           const moved=l.slice(-3).some(x=>x.progress)||z.topL>a0.topL+1e-6||z.topW>a0.topW+1e-6||(Math.abs(z.topW-a0.topW)<1e-6&&z.topN<=a0.topN&&z.topReps>a0.topReps);
-          stalled=!!f&&f.b<=0&&!moved;}}
+          /* Flat is under 0.1% a week (r31): averaging working sets leaves
+             rounding dust, and identical sessions came out at +1e-32 a
+             week, so a perfectly flat lift was not called stalled. */
+          stalled=!!f&&f.my>0&&f.b*7/f.my*100<0.1&&!moved;}}
       else if(withE1.length<2)stalled=inRange.length>=4&&inRange.slice(-3).every(x=>!x.progress);
     }
     const w=inRange.filter(x=>x.date>=exWin&&x.tv!=null);
@@ -3356,10 +3361,17 @@ function lastLighterWeek(){
    changed. */
 function fitTargets(R){
   if(!R)return false;const b=state.settings.bands;
-  if(MK.some(m=>!b[m]||b[m][0]!==BANDS[m][0]||b[m][1]!==BANDS[m][1]))return false;
-  const plan=plannedSets(R);let changed=false;
-  for(const m of MK){if(TRACK_ONLY.has(m))continue;const lo=Math.min(b[m][0],Math.floor(plan[m]||0));if(lo!==b[m][0]){b[m]=[lo,b[m][1]];changed=true;}}
-  return changed;
+  /* Still the defaults, or the defaults fitted to the starter routine (r31:
+     Log a workout now fits them to the starter, and an import or a pick
+     after that left targets measured against a routine no longer used). */
+  const same=x=>MK.every(m=>b[m]&&b[m][0]===x[m][0]&&b[m][1]===x[m][1]);
+  const fitOf=r=>{const p=plannedSets(r);const o={};for(const m of MK)o[m]=TRACK_ONLY.has(m)?BANDS[m]:[Math.min(BANDS[m][0],Math.floor(p[m]||0)),BANDS[m][1]];return o;};
+  if(!same(BANDS)&&![starterRoutine(),defaultRoutine()].some(r=>same(fitOf(r))))return false;
+  const was=JSON.stringify(MK.map(m=>b[m]));
+  for(const m of MK)b[m]=[BANDS[m][0],BANDS[m][1]];
+  const plan=plannedSets(R);
+  for(const m of MK){if(TRACK_ONLY.has(m))continue;const lo=Math.min(b[m][0],Math.floor(plan[m]||0));if(lo!==b[m][0])b[m]=[lo,b[m][1]];}
+  return JSON.stringify(MK.map(m=>b[m]))!==was;
 }
 /* Plan against the usual ranges (r30, V's choice). Picking a routine on a
    first run brings the weekly minimums down to what it plans, so following
@@ -4826,6 +4838,9 @@ function exHeadline(exId){
   else if(st.pct==null)parts.push('Needs 3 sessions spread over 2 weeks or more, within 6 weeks, for a trend.');
   else if(st.moving)parts.push(`Up ${r1(st.pct)}% ${ow} (${ns})${rate}.${how}`);
   else if(st.falling)parts.push(`Down ${r1(Math.abs(st.pct))}% ${ow} (${ns})${rate}. Look at recovery before adding work.${how}`);
+  /* A small change the interval still puts on one side of zero is said as
+     slow, not as "no clear change" next to a range that excludes 0 (r31). */
+  else if(st.pLo!=null&&(st.pLo>0||st.pHi<0))parts.push(`Slowly ${st.pLo>0?'up':'down'}: ${sg(st.pct)} ${ow} (${ns})${rate}, under the 3% that counts as ${st.pLo>0?'moving':'falling'}.${how}`);
   else parts.push(`No clear change yet: ${sg(st.pct)} over ${ns}${st.pLo!=null&&st.pHi-st.pLo>=0.1?`, a weekly rate anywhere from ${sg(st.pLo)} to ${sg(st.pHi)}`:''}. Day to day swings of 2 to 8% hide small changes.${how}`);
   const pj=exProjection(exId);if(pj&&isCompound(ex))parts.push(`If that holds, about ${fmtW(pj.value)} ${U()} in 4 weeks (${fmtW(pj.lo)} to ${fmtW(pj.hi)}).`);
   return `<p class="headline">${esc(parts.join(' '))}</p>`;
@@ -4880,7 +4895,7 @@ function dashSummary(){
   /* The reason given is the true one (r30): with enough sessions the changes
      are inside day-to-day noise; "needs 3 sessions" was said to someone with 6. */
   const nTr=Object.values(IDX().exStats).filter(x=>x.pct!=null&&x.fresh).length;
-  h+=row(mv.length?'green':'','Moving',mv.length?mv.map(x=>`${esc(exName(x.id))} +${r1(x.pct)}%`).join(', ')+(mvAll.length>2?`, and ${mvAll.length-2} more`:'')+' over 6 weeks':nTr?`No lift clearly rising yet: ${nTr} with a trend, each within day-to-day noise.`:'A trend needs 3 sessions of a lift within 6 weeks.',`data-act="goDash" data-sec="exercise"${mv.length?` data-ex="${mv[0].id}"`:''}`);
+  h+=row(mv.length?'green':'','Moving',mv.length?mv.map(x=>`${esc(exName(x.id))} +${r1(x.pct)}%`).join(', ')+(mvAll.length>2?`, and ${mvAll.length-2} more`:'')+' over 6 weeks':nTr?`No lift clearly rising yet: ${nTr} with a trend, each within day-to-day noise.`:'A trend needs 3 sessions of a lift over 2 weeks or more, within 6 weeks.',`data-act="goDash" data-sec="exercise"${mv.length?` data-ex="${mv[0].id}"`:''}`);
   h+=row(stalled.length?(fatigueStalls(stalled).length>=3?'red':'yellow'):'green','Stuck',stalled.length?esc(list(stalled.map(exName),3)):'Nothing stalled','data-act="goDash" data-sec="stalls"');
   const vt=under==null?'Finish a full week for a volume read.':(under.length?`Below target: ${list(under.map(m=>ML[m]),3)}.`:'Every muscle at or above target.')+(over&&over.length?` Above: ${list(over.map(m=>ML[m]),2)}.`:'');
   h+=row(under==null?'':under.length?'yellow':'green','Volume',vt,'data-act="goDash" data-sec="volume"');
@@ -5998,7 +6013,7 @@ function viewDash(){
   if(!state.sessions.length){
     h+=`<div class="card"><p style="margin:0"><b>No sessions yet.</b> Trends start after a few sessions. ${tipi('Trends, stall detection, and rankings need a few sessions of each exercise. To preview the full Stats page, load demo data in Settings.','About Stats')}</p></div>`;
   }
-  h+=`<div class="kpis"><div class="kpi"><div class="v">${adher==null?'n/a':adher+'%'}</div><div class="l">${!planned?'Adherence: no planned days':adher==null?'Adherence: appears after your first full week':`Adherence, previous ${wks4} full week${wks4===1?'':'s'} (${r1(done4)}/${r1(need4)})`}</div></div>
+  h+=`<div class="kpis"><div class="kpi"><div class="v">${adher==null?'n/a':adher+'%'}</div><div class="l">${!planned?'Adherence: no planned days':adher==null?'Adherence: appears after your first full week':`Adherence, previous ${wks4} full week${wks4===1?'':'s'} (${Math.round(done4)}/${Math.round(need4)})`}</div></div>
   <div class="kpi"><div class="v">${wkHard}</div><div class="l">Hard sets this week, of ${weekStats().tgt} planned</div></div>
   <div class="kpi"><div class="v" style="color:${fatigueStalls(stalled.map(([id])=>id)).length>=3?'var(--red)':'inherit'}">${stalled.length}</div><div class="l">Stalled exercises</div></div>${extraKpis()}</div>`;
   if(state.sessions.length)h+=dashSummary();
@@ -6073,7 +6088,7 @@ function viewDash(){
   exh+='</div>';
   const bestsBody=bestsBoard();
   const prBody=I.prs.length?I.prs.slice(0,15).map(p=>{const ex=EX(p.exId);const iso=p.type==='e1RM'&&!isCompound(ex);const ps=iso?prSet(p.exId,p.date):null;return `<div class="row spread" style="padding:6px 0;border-bottom:1px solid var(--line)"><span>${esc(ex.name)} <span class="tag ${p.type==='Rep PR'?'blue':'green'}">${ex.timed&&p.type==='Rep PR'?'Time PR':p.type==='e1RM'?(iso?'PR':'Best estimate'):p.type}</span></span><span class="num">${p.type==='e1RM'?(iso?(ps?setShort(ex,ps.w,ps.r):''):fmtW(p.value)+' '+U()):setShort(ex,p.w,p.r)} <span class="muted small">${fmtDate(p.date)}</span></span></div>`;}).join(''):'<p class="muted">No PRs yet. Your first session of an exercise sets the baseline.</p>';
-  h+=dsec('exercise','Lifts',`Estimated 1RM uses reps to failure, which is reps plus RIR: Brzycki up to 10, Epley at 11 and 12, none above 12 or for a set called above RIR 4. A blank RIR reads as your usual RIR on that lift once you have rated 3 of its sets in 12 weeks; until then it counts as 0, so the estimate errs low. Numbers stay in the frame you log in, per dumbbell or per side where that applies. Bodyweight lifts add the share of your bodyweight they move: all of it for pull-ups and dips, 64% for push-ups. Lifts that turn about one joint (leg raises, crunches, Nordics) get no estimate; their progress is reps and load. Moving or falling means past 3% over 6 weeks with a clear trend, since estimates swing 2 to 8% day to day. A PR is a weight PR (more weight than any earlier set), a new best estimate within its range of reps to failure (1 to 5, 6 to 10, 11 to 12), or a rep PR (more reps at a load than any earlier set); a set that is more than one shows the first. Stalled: flat or falling over your last 6 sessions, or 3 weeks if that covers more (at least 4 sessions), not counting deload, lighter, and trimmed sessions.`,
+  h+=dsec('exercise','Lifts',`Estimated 1RM uses reps to failure, which is reps plus RIR: Brzycki up to 10, Epley at 11 and 12, none above 12 or for a set called above RIR 4. A blank RIR reads as your usual RIR on that lift once you have rated 3 of its sets in 12 weeks; until then it counts as 0, so the estimate errs low. Numbers stay in the frame you log in, per dumbbell or per side where that applies. Bodyweight lifts add the share of your bodyweight they move: all of it for pull-ups and dips, 64% for push-ups. Lifts that turn about one joint (leg raises, crunches, Nordics) get no estimate; their progress is reps and load. Trends read the average of each session's working sets (a heavy single before back-off sets counts for bests, not trends) and need 3 sessions over 2 weeks or more within 6 weeks. Moving or falling means past 3% with a clear trend, since estimates swing 2 to 8% day to day. A PR is a weight PR (more weight than any earlier set), a new best estimate within its range of reps to failure (1 to 5, 6 to 10, 11 to 12), or a rep PR (more reps at a load than any earlier set); a set that is more than one shows the first. Stalled: flat or falling over your last 6 sessions, or 3 weeks if that covers more (at least 4 sessions), with no PR in the last 3, no heavier load, and no more reps at the same load, not counting deload, lighter, and trimmed sessions.`,
     exh+sub('prs','Recent PRs',prBody,`${pr14} in 14 days`)+sub('bests','All-time bests',bestsBody.html,bestsBody.n?`${bestsBody.n} lift${bestsBody.n===1?'':'s'}`:'none yet')+sub('stalls','Stalls',stl,stalled.length?`<span class="pill ${fatigueStalls(stalled.map(([id])=>id)).length>=3?'red':'yellow'}">${stalled.length} stalled</span>`:'none'),`${Object.keys(I.byEx).length} lift${Object.keys(I.byEx).length===1?'':'s'} tracked`);
 
   // consistency heat map
@@ -6103,7 +6118,7 @@ function viewDash(){
       return `<div style="padding:6px 0;border-bottom:1px solid var(--line)"><div class="mrow" style="border:0;padding:0"><span class="plate ${c}"></span><span>${ML[s.m]}${s.indirect?' <span class="tag" data-tip="No direct exercise for this muscle. Trend inferred from lifts where it assists.">indirect</span>':''}</span><div class="band"><div class="fill ${s.score>=0?'in':'down'}" style="width:${s.clear?Math.abs(s.score)/maxAbs*100:0}%"></div></div><span class="r num">${s.clear?`${s.score>=0?'+':''}${r1(s.score)}%`:'unclear'}</span></div><p class="small muted" style="margin:2px 0 0">${r1(sets)} sets a week · ${read}</p></div>`;}).join('');
     const missing=MK.filter(m=>!I.scores.find(s=>s.m===m));
     if(missing.length)rank+=`<p class="small muted" style="margin-top:8px">Not enough data yet: ${missing.map(m=>ML[m]).join(', ')}.</p>`;
-  }else rank+='<p class="muted">Not enough data yet. Log at least 3 sessions of an exercise within 6 weeks.</p>';
+  }else rank+='<p class="muted">Not enough data yet. Log at least 3 sessions of an exercise over 2 weeks or more, within 6 weeks.</p>';
   rank+='</div>';
   h+=dsec('weak','Muscles','Weak points: muscles flagged because the trend is falling, or flat with one of its lifts stalled, or the hard sets you logged average below your target, or you named it a priority, or you flagged an injury. A muscle is never flagged for what the routine plans, only for what you log. A muscle whose strength is rising is never flagged. Strength return on volume: the median change in estimated 1RM across a muscle\'s main exercises over 6 weeks, in the current rep range, next to the hard sets a week that produced it. This measures strength, not size: early gains are largely neural, and high-rep estimates are noisy. Size check reads your tape measurements, which are the closer signal for size.',
     weakBody+sub('rank','Strength return on volume',rank)+sub('size','Size check',sizeBody()),wp.length?`<span class="pill yellow">${wp.length} flagged</span>`:state.sessions.length?'<span class="pill green">none flagged</span>':'after a few sessions');
@@ -7308,45 +7323,66 @@ function impBuild(m){
    Strong or Hevy history has a routine already; measuring them against the
    starter they never picked read as 69% adherence, 15 muscles below target
    and "add sets to Lat Pulldown" for someone who had never done one. The
-   workouts' own names make the days (the most recent 8 weeks), in the order
-   they last came round, with rest days so the cycle runs about as many days
-   a week as they trained. Each day keeps the lifts done in at least half of
-   its sessions, in their usual order, with the usual number of working sets
-   and a rep range around the usual reps (a convention: the nearest of the
-   common ranges). Returns null when the names cannot tell the days apart
-   (Strong's "Morning Workout", say); the routine picker opens instead. */
+   days are the workouts' own names (the most recent 8 weeks), or, when the
+   names cannot tell them apart (Strong calls every untitled workout
+   "Morning Workout"), the sessions grouped by the lifts in them (Day A, B).
+   Days come in the order they last came round, with rest days so the cycle
+   runs about as many days a week as they trained. What each day holds comes
+   from its latest 3 full sessions, so a program changed a few weeks ago is
+   the program now (the review saw a bench moved from 5 x 5 to 3 x 8-10
+   brought back as 3 x 3-5): the lifts done in at least half of them, in the
+   latest order, and each lift's working sets, a rep range around its reps
+   (the nearest common range, a convention) and its RIR from its latest full
+   session there. Deload and lighter sessions are left out of that. Returns
+   null when nothing repeats; the routine picker opens instead. */
 const GENERIC_WORKOUT=/^\s*((early|late)\s+)?(morning|afternoon|evening|night|midday|lunch|weekend)?\s*(workout|session|training|lifting|lift|gym)?\s*$|^imported$/i;
 function routineFromLog(sessions){
   const all=sessions.filter(x=>!x.demo&&x.ex&&x.ex.length);if(!all.length)return null;
-  const newest=all.reduce((m,x)=>x.date>m?x.date:m,all[0].date);const rec=all.filter(x=>x.date>=addDays(newest,-55)).sort((a,b)=>a.date<b.date?-1:a.date>b.date?1:0);
+  const byDate=(a,b)=>a.date<b.date?-1:a.date>b.date?1:0;
+  const newest=all.reduce((m,x)=>x.date>m?x.date:m,all[0].date);const rec=all.filter(x=>x.date>=addDays(newest,-55)).sort(byDate);
+  // A session is off (a deload, a lighter day) when it was tagged, or when most of its lifts read lighter.
+  const I=IDX();const tot={},off={};for(const id in I.byEx)for(const x of I.byEx[id]){tot[x.sid]=(tot[x.sid]||0)+1;if(offSession(x))off[x.sid]=(off[x.sid]||0)+1;}
+  const offS=x=>x.deload||x.light||(tot[x.id]>0&&(off[x.id]||0)*2>=tot[x.id]);
+  const lifts=x=>new Set(x.ex.filter(b=>b.sets.some(q=>!q.warm)).map(b=>b.exId));
+  const jac=(a,b)=>{let n=0;for(const v of a)if(b.has(v))n++;const u=a.size+b.size-n;return u?n/u:0;};
   const nm=x=>String(x.dayName||'').trim();
-  if(rec.some(x=>GENERIC_WORKOUT.test(nm(x))))return null;
-  const by=new Map();for(const x of rec){const k=nm(x).toLowerCase();if(!by.has(k))by.set(k,{name:nm(x),list:[]});by.get(k).list.push(x);}
-  const groups=[...by.values()].filter(g=>g.list.length>=2);
-  // Every recent session belongs to a day seen at least twice, and no more than 7 days.
-  if(!groups.length||groups.length>7||groups.reduce((a,g)=>a+g.list.length,0)<rec.length*0.8)return null;
-  groups.sort((a,b)=>a.list[a.list.length-1].date<b.list[b.list.length-1].date?-1:1);
+  const named=!rec.some(x=>GENERIC_WORKOUT.test(nm(x)));
+  let groups=[],pop;
+  if(named){pop=rec;const by=new Map();for(const x of rec){const k=nm(x).slice(0,40).toLowerCase();if(!by.has(k)){by.set(k,{name:nm(x).slice(0,40),list:[]});groups.push(by.get(k));}by.get(k).list.push(x);}}
+  else{pop=rec.filter(x=>!offS(x));
+    for(const x of pop){const L=lifts(x);let g=null,bj=0;for(const q of groups){const j=jac(L,q.ids);if(j>=0.5&&j>bj){g=q;bj=j;}}
+      if(!g){g={list:[],ids:L};groups.push(g);}g.list.push(x);g.ids=L;}}
+  groups=groups.filter(g=>g.list.length>=2);
+  if(!groups.length||groups.length>7||groups.reduce((a,g)=>a+g.list.length,0)<pop.length*0.8)return null;
+  groups.sort((a,b)=>byDate(a.list[a.list.length-1],b.list[b.list.length-1]));
+  if(!named)groups.forEach((g,i)=>{g.name='Day '+String.fromCharCode(65+i);});
   const med=a=>median(a.filter(v=>v!=null&&isFinite(v)));
   const band=r=>r<=3?[1,3]:r<=5?[3,5]:r<=8?[6,8]:r<=10?[8,10]:r<=12?[10,12]:r<=15?[12,15]:[15,20];
+  const work=b=>b.sets.filter(q=>!q.warm&&!q.drop);
   const days=groups.map(g=>{
-    const cnt=new Map(),pos=new Map();
-    for(const x of g.list)x.ex.forEach((b,i)=>{if(!b.sets.some(q=>!q.warm))return;if(!cnt.has(b.exId)){cnt.set(b.exId,0);pos.set(b.exId,[]);}cnt.set(b.exId,cnt.get(b.exId)+1);pos.get(b.exId).push(i/Math.max(1,x.ex.length-1));});
-    const ids=[...cnt.keys()].filter(id=>cnt.get(id)>=g.list.length/2&&state.exercises.some(e=>e.id===id)).sort((a,b)=>med(pos.get(a))-med(pos.get(b)));
+    const full=g.list.filter(x=>!offS(x));const recent=(full.length?full:g.list).slice(-3);const latest=recent[recent.length-1];
+    const cnt=new Map();for(const x of recent)for(const id of lifts(x))cnt.set(id,(cnt.get(id)||0)+1);
+    const order=id=>{for(let k=recent.length-1;k>=0;k--){const i=recent[k].ex.findIndex(b=>b.exId===id);if(i>=0)return k===recent.length-1?i:100+i;}return 999;};
+    const ids=[...cnt.keys()].filter(id=>cnt.get(id)*2>=recent.length&&state.exercises.some(e=>e.id===id&&!e.archived)).sort((a,b)=>order(a)-order(b));
     const items=ids.map(id=>{const ex=EX(id);const it=newItem(id);
-      const bl=g.list.map(x=>x.ex.find(b=>b.exId===id)).filter(Boolean);
-      const work=b=>b.sets.filter(q=>!q.warm&&!q.drop);
-      it.sets=Math.min(10,Math.max(1,Math.round(med(bl.map(b=>work(b).length))||it.sets)));
-      if(!ex.timed){const r=med(bl.map(b=>med(work(b).map(q=>+q.r))));if(r>0){[it.repMin,it.repMax]=band(r);}}
-      const q=med(bl.flatMap(b=>work(b).map(x=>x.rir==null?null:+x.rir)));if(q!=null)it.rir=Math.min(4,Math.max(0,Math.round(q)));
+      let b=null;for(let k=recent.length-1;k>=0&&!b;k--)b=recent[k].ex.find(q=>q.exId===id&&work(q).length)||null;
+      if(!b)return it;const ws=work(b);
+      it.sets=Math.min(10,Math.max(1,ws.length));
+      if(!ex.timed){const r=med(ws.map(q=>+q.r));if(r>0)[it.repMin,it.repMax]=band(r);}
+      const q=med(ws.map(x=>x.rir==null?null:+x.rir));if(q!=null)it.rir=Math.min(4,Math.max(0,Math.round(q)));
       return it;});
-    return {id:uid(),name:g.name.slice(0,40),rest:false,items};
-  }).filter(d=>d.items.length);
+    return {g,day:{id:uid(),name:g.name,rest:false,items},ids:lifts(latest)};
+  }).filter(d=>d.day.items.length);
   if(!days.length)return null;
   const span=Math.max(7,daysBetween(rec[0].date,newest)+1);const perWeek=Math.min(7,Math.max(1,Math.round(rec.length/(span/7))));
-  const L=Math.min(14,Math.max(days.length,Math.round(7*days.length/perWeek)));let rest=L-days.length;
-  // Rest days spread after the training days, one after each while they last.
-  const cyc=[];days.forEach((d,i)=>{cyc.push(d);const left=days.length-i-1;const k=left?Math.floor(rest/(left+1)):rest;for(let j=0;j<k;j++)cyc.push({id:uid(),name:'Rest',rest:true,items:[]});rest-=k;});
-  return {routine:{id:uid(),name:'From your log',schedule:'cycle',days:cyc},perWeek};
+  const K=days.length;const L=Math.min(14,Math.max(K,Math.round(7*K/perWeek)));let rest=L-K;
+  // Rest days spread after the training days.
+  const cyc=[];days.forEach((d,i)=>{cyc.push(d.day);const left=K-i-1;const k=left?Math.floor(rest/(left+1)):rest;for(let j=0;j<k;j++)cyc.push({id:uid(),name:'Rest',rest:true,items:[]});rest-=k;});
+  /* Which day a session was: by name, or by the lifts in it (most in
+     common, at least half), for sessions older than the 8 weeks too. */
+  const dayFor=x=>{if(named){const k=nm(x).slice(0,40).toLowerCase();const d=days.find(q=>q.g.name.toLowerCase()===k);return d?d.day:null;}
+    const L=lifts(x);let best=null,bj=0;for(const d of days){const j=jac(L,d.ids);if(j>=0.5&&j>bj){best=d.day;bj=j;}}return best;};
+  return {routine:{id:uid(),name:'From your log',schedule:'cycle',days:cyc},perWeek,dayFor};
 }
 function impSheet(m){
   const H=(t)=>`<div class="sheet fixed" role="dialog" aria-modal="true" aria-labelledby="impH"><div class="sheet-h"><h3 id="impH">${t}</h3><button class="ib" aria-label="Close" data-act="mClose">✕</button></div><div class="sheet-scroll">`;
@@ -7908,9 +7944,8 @@ const ACT={
     const inf=first&&b.sessions.length?routineFromLog(state.sessions):null;
     if(inf){
       const R=inf.routine;const starter=starterSigs();state.routines=state.routines.filter(x=>!starter.includes(routineSig(x))||state.sessions.some(q=>q.routineId===x.id));state.routines.push(R);state.activeRoutineId=R.id;
-      // Imported sessions join the day of the same name, so the cycle, the streak and adherence read them.
-      const dayOf=new Map(R.days.filter(d=>!d.rest).map(d=>[d.name.toLowerCase(),d]));
-      for(const x of state.sessions){if(x.demo)continue;const d=dayOf.get(String(x.dayName||'').trim().slice(0,40).toLowerCase());if(!d)continue;x.routineId=R.id;x.dayId=d.id;x.dayIdx=R.days.indexOf(d);x.free=undefined;}
+      // Imported sessions join their day (by name, or by their lifts), so the cycle, the streak and adherence read them.
+      for(const x of state.sessions){if(x.demo)continue;const d=inf.dayFor(x);if(!d)continue;x.routineId=R.id;x.dayId=d.id;x.dayIdx=R.days.indexOf(d);x.free=undefined;}
       fitTargets(R);invalidate();
       commit();closeModal();ui.tab='today';ui.todayDay=null;window.scrollTo(0,0);render();
       toast(`${msg}. Your routine is made from them: ${andList(R.days.filter(d=>!d.rest).map(d=>d.name),4)}, about ${inf.perWeek} day${inf.perWeek===1?'':'s'} a week. Change it in Plan.`,true,9000);

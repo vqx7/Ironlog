@@ -231,13 +231,18 @@ const near = (a, b, e) => a != null && b != null && Math.abs(a - b) < (e || 1e-6
   const r9 = await ev(([LB]) => {
     const A = window.__ironlog;
     window.__reset('lb', [window.__sess('2026-09-28', 'bench', 135 * LB, [12, 12, 12], { rr: [10, 12], rir: 0 })]);
-    const sg = A.suggest('bench', { sets: 3, repMin: 4, repMax: 6, rir: 1, rest: 180, inc: 5 * LB });
-    return { w: sg.w / LB, kind: sg.tgt && sg.tgt.kind, text: sg.text, e1: A.e1(135 * LB, 12, 0) / LB, inv: A.e1inv(A.e1(135 * LB, 12, 0), 6) / LB };
+    const plan = { sets: 3, repMin: 4, repMax: 6, rir: 1, rest: 180, inc: 5 * LB };
+    const early = A.suggest('bench', plan);
+    // Past a lift's first 3 sessions the 10% cap applies (r31: up to 25% while its load is being found).
+    window.__reset('lb', ['2026-09-07', '2026-09-14', '2026-09-21', '2026-09-28'].map(d => window.__sess(d, 'bench', 135 * LB, [12, 12, 12], { rr: [10, 12], rir: 0 })));
+    const sg = A.suggest('bench', plan);
+    return { w: sg.w / LB, ew: early.w / LB, kind: sg.tgt && sg.tgt.kind, text: sg.text, e1: A.e1(135 * LB, 12, 0) / LB, inv: A.e1inv(A.e1(135 * LB, 12, 0), 6) / LB };
   }, [LB]);
+  ok(near(r9.ew, 160), '9. the same after one session only: 160 lb, the estimate in whole steps (inside the 25% cap of a first session)', r9);
   // Independent: Epley at 12 reps to failure, 135 x (1 + 12/30) = 189; for 6 reps
   // to failure (middle of 4-6 is 5, plus 1 RIR) Brzycki gives 189 x 31/36 = 162.75;
   // capped at 10% over 135 = 148.5; whole 5 lb steps from 135: 145.
-  ok(near(r9.e1, 189, 0.01) && near(r9.w, 145) && r9.kind === 'load', '9. 3 x 12 at 135 to failure, then a 4-6 plan: 145 lb (10% cap, whole steps), not one step to 140', r9);
+  ok(near(r9.e1, 189, 0.01) && near(r9.w, 145) && r9.kind === 'load', '9. 3 x 12 at 135 to failure for 4 sessions, then a 4-6 plan: 145 lb (10% cap, whole steps), not one step to 140', r9);
 
   // ---- 10. A target that starts at 0.
   const r10 = await ev(([LB]) => {
