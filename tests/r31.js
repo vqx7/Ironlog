@@ -290,6 +290,7 @@ function strongCsv(weeks, name) {
       st.sessions = [ses('2026-09-29', [['bench', [[185, 8], [185, 8], [185, 8]]]]), ses('2026-09-01', [['bench', [[185, 8]]]])];
       L.state = L.normalize(st); L.invalidate();
       const avg = L.actualAvg4(); out.avg = { weeks: avg && avg._weeks, missed: avg && avg._missed, coach: L.coach().text, txt: avg && L.avgWeeksTxt(avg) };
+      out.lib = ['t bar row', 'tbar', 'T-bar'].map(q => L.libFiltered(q, '', '', '').map(e => e.name)); out.libDb = L.libFiltered('db curl', '', '', '').map(e => e.name);
       out.span = [L.repSpan(5, 5, '-'), L.repSpan(8, 12, '-'), L.rangeWords({ repMin: 5, repMax: 5 })];
       return out;
     }, LB);
@@ -303,6 +304,7 @@ function strongCsv(weeks, name) {
     ok(/Slowly up/.test(r.slow) && !/No clear change/.test(r.slow), 'a small steady rise reads "slowly up", not "no clear change" beside a range above zero', r.slow);
     ok(r.avg.weeks === 1 && r.avg.missed === 3 && /trained in 1 of the last 4 weeks/.test(r.avg.coach), 'one week trained of four: the coach says so before any set count', r.avg);
     ok(/1 week you trained of the last 4/.test(r.avg.txt), 'the average says which weeks it covers', r.avg.txt);
+    ok(r.lib.every(n => n.includes('Landmine T-Bar Row')) && r.libDb.includes('DB Curl'), 'library search ignores hyphens and spaces: "t bar row", "tbar", and "T-bar" find Landmine T-Bar Row; "db curl" finds DB Curl', r.lib);
     ok(r.span[0] === '5' && r.span[1] === '8-12' && r.span[2] === 'target of 5', 'one-number ranges read as one number', r.span);
     ok(P.errors.length === 0, 'no page errors (numbers)', P.errors);
     await P.browser.close();
