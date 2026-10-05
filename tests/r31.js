@@ -341,6 +341,13 @@ function strongCsv(weeks, name) {
     ok(!a.over, 'no sideways scroll at 320 px with the notice');
     await P.browser.close();
   }
+  // ---- Explanations follow the rules: none of the wording from before r31 is left in a tip, an i, the Guide, or the coach.
+  {
+    const src = require('fs').readFileSync(process.env.IRONLOG_FILE || 'index.html', 'utf8');
+    const stale = ['5 more times than the top', 'one more rep than last time', 'heaviest load you did for 2 or more sets', 'Three lighter sessions in a row', 'Three in a row is a new level', 'RIR at the top load', 'over 6 weeks (${ns})', 'Needs 3 sessions within 6 weeks for a trend', 'each session\'s strongest set'];
+    const left = stale.filter(t => src.includes(t));
+    ok(left.length === 0, 'no explanation still describes a rule from before r31', left);
+  }
   console.log(fails.length ? `\n${fails.length} FAILED` : '\nALL PASS');
   process.exit(fails.length ? 1 : 0);
 })().catch(e => { console.error(e); process.exit(1); });
