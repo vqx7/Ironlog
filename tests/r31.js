@@ -91,8 +91,18 @@ function strongCsv(weeks, name) {
       const mk = (date, sets) => ({ id: 'q' + date, date, dayIdx: 0, dayId: R.days[0].id, routineId: R.id, dayName: 'Strength A', ex: [{ exId: 'backSquat', rr: [5, 5], note: '', sets: sets.map(([w, r, rir]) => ({ w: w * LB, r, rir: rir == null ? null : rir, warm: false, drop: false })) }] });
       const plan = { sets: 5, repMin: 5, repMax: 5, rir: 2, rest: 180, inc: 5 * LB }; const five = w => Array(5).fill([w, 5]);
       const run = sets => { st.sessions = [mk('2026-09-25', five(330)), mk('2026-09-30', sets)]; L.state = L.normalize(st); L.invalidate(); const g = L.suggest('backSquat', plan); return { w: Math.round(g.w / LB), text: g.text }; };
-      return { A: run([[405, 1, 1], [405, 1, 1], ...five(335)]), B: run([[255, 3], [255, 3], ...five(225)]) };
+      const out = { A: run([[405, 1, 1], [405, 1, 1], ...five(335)]), B: run([[255, 3], [255, 3], ...five(225)]), C: run([[365, 4, 2], ...five(335)]) };
+      // A 3-5 plan (what an import gives a 5 x 5 squat): 385 x 2, then 335 x 5 x 5 (rv/pl/p6.js).
+      st.sessions = [mk('2026-09-25', five(330)), mk('2026-09-30', [[385, 2], ...five(335)])]; L.state = L.normalize(st); L.invalidate();
+      const d = L.suggest('backSquat', { ...plan, repMin: 3, repMax: 5 }); out.D = { w: Math.round(d.w / LB), text: d.text, lastR: d.lastR };
+      // Unmarked warm-ups done twice at a light load, then one working set (a deadlift): the working set is the work.
+      st.sessions = [mk('2026-09-30', [[135, 5], [135, 5], [225, 3], [345, 5]])]; L.state = L.normalize(st); L.invalidate();
+      const e = L.suggest('backSquat', { sets: 1, repMin: 3, repMax: 5, rir: 2, rest: 180, inc: 5 * LB }); out.E = Math.round(e.w / LB);
+      return out;
     }, LB);
+    ok(r2.C.w === 340 && !/365/.test(r2.C.text.replace(/^Last[^.]*\./, '')), 'one top set of 365 x 4 then 335 x 5 x 5: 340 for the back-offs, never five sets at 365 (rv/pl/p5.js)', r2.C);
+    ok(r2.D.w === 340 && !/385/.test(r2.D.text.replace(/^Last[^.]*\./, '')), '385 x 2 then 335 x 5 x 5 on a 3-5 plan: 340, never "beat 2 reps at 385"', r2.D);
+    ok(r2.E === 350, 'two unmarked warm-ups at 135 then 345 x 5: the target builds on 345', r2.E);
     ok(r2.A.w === 340 && !/Drop|below/.test(r2.A.text), 'two singles at 405 then 335 x 5 x 5: still 340, never "drop to 345"', r2.A);
     ok(r2.B.w === 230 && !/Drop|below/.test(r2.B.text), 'two triples at 255 then 225 x 5 x 5: 230 for 5s, never "drop to 230"', r2.B);
     // ---- 7. Three sessions in nine days are not a trend.
@@ -137,13 +147,15 @@ function strongCsv(weeks, name) {
       const bi = tr.map(d => d.items.find(i => i.exId === 'bench')).find(Boolean); const bench = bi && [bi.sets, bi.repMin, bi.repMax];
       L.ui.tab = 'dash'; L.render(); const dash = document.getElementById('view').innerText.replace(/\s+/g, ' ');
       L.ui.tab = 'today'; L.render(); const hero = (document.querySelector('.hero') || {}).innerText || '';
-      return { bench, routines: st.routines.map(r => r.name), name: R.name, days: R.days.map(d => d.rest ? 'Rest' : d.name), items: tr.map(d => d.items.map(i => i.exId)), sq: sq.map(i => i && [i.sets, i.repMin, i.repMax]),
+      return { sqRir: sq.map(i => i && i.rir), bench, routines: st.routines.map(r => r.name), name: R.name, days: R.days.map(d => d.rest ? 'Rest' : d.name), items: tr.map(d => d.items.map(i => i.exId)), sq: sq.map(i => i && [i.sets, i.repMin, i.repMax]),
         linked, n: st.sessions.length, coach: L.coach().text, dash, hero: hero.replace(/\s+/g, ' '), toast: document.getElementById('toast').innerText, tab: L.ui.tab };
     });
     ok(a.name === 'From your log' && a.routines.length === 1, 'the starter nobody picked is replaced by a routine made from the import', a.routines);
     ok(a.days.filter(d => d !== 'Rest').sort().join() === 'Workout A,Workout B' && a.days.length === 5, 'its days are the file\'s workouts, with rest days for 3 a week (a 5-day cycle of 2 workouts)', a.days);
     ok(a.items.every(l => l.includes('backSquat')) && a.items.some(l => l.includes('bench')) && a.items.some(l => l.includes('deadlift')) && !a.items.flat().includes('latPulldown'), 'each day keeps the lifts done on it, nothing never done', a.items);
     ok(a.sq.every(i => i && i[0] === 5 && i[1] === 3 && i[2] === 5), 'squat: 5 sets in a range around the usual 5 reps', a.sq);
+    ok(a.sqRir.every(q => q >= 1), 'one failure set in the file does not make the plan go to failure (squat RIR stays at the default)', a.sqRir);
+    ok(!/below target|is getting/.test(a.coach), 'the coach does not call the importer below a target fitted from their own log', a.coach);
     ok(JSON.stringify(a.bench) === '[3,8,10]', 'bench moved from 5 x 5 to 3 sets of 8 to 10 three weeks ago: the routine has the program now (3 x 8-10)', a.bench);
     ok(/\(\d+\/\d+\)/.test((a.dash.match(/Adherence[^)]*\)/) || [''])[0]), 'adherence counts are whole numbers', (a.dash.match(/Adherence[^)]*\)/) || [''])[0]);
     ok(a.linked === a.n, 'every imported session joins its day, so the cycle, streak and adherence read them', { linked: a.linked, n: a.n });

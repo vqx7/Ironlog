@@ -2954,20 +2954,22 @@ function rtfAt(est,load){if(!(est>0&&load>0))return null;const b=37-36*load/est;
 const rtfBand=rtf=>rtf<=5?1:rtf<=10?2:3;
 // The bands in words, counted as reps to failure (reps plus RIR).
 const BAND_WORDS={1:'sets of 1 to 5 reps',2:'sets of 6 to 10 reps',3:'sets of 11 to 12 reps'};
-/* The working load of one session of a lift (r31): the heaviest load with a
-   set at or near the plan's range (repMin - 1 reps or more); with none, or
-   with no range on record, the load done for the most sets (the heavier on
-   a tie). A heavy single, double or triple before back-off sets, once or
-   twice, is a top set: it counts for bests and PRs, but the next target,
-   the grey reps and the trend build on the working sets (the review saw
-   405 x 1 then 335 x 5 x 5 read as "below your range, drop to 345", and
-   then the same with the single done twice). Assisted lifts store less help
-   as a higher number, so the heaviest is still the hardest. */
+/* The working load of one session of a lift (r31): the load done for the
+   most sets, the heavier on a tie, among loads at 60% or more of the
+   session's heaviest (unmarked warm-ups sit lower). A heavy top set, or a
+   pair of them, before back-off sets is a top set: it counts for bests and
+   PRs, while the next target, the grey reps and the trend build on the
+   back-off sets the session was made of. The review tried each rule in
+   turn: "heaviest done twice" read two singles at 405 before 335 x 5 x 5 as
+   the work, and "heaviest near the range" read one 365 x 4 before 335 x 5 x 5
+   as five sets due at 365. Straight sets, ramps to a load, and pyramids
+   (one set at each load, so the heaviest) read as before. repMin is kept
+   for callers; the rule does not need it. Assisted lifts store less help as
+   a higher number, so the heaviest is still the hardest. */
 function workLoad(pts,repMin){
-  if(!pts.length)return 0;let w=null;
-  if(repMin>0){for(const p of pts)if(p.r>=repMin-1&&(w==null||p.w>w))w=p.w;if(w!=null)return w;}
-  const k=v=>Math.round(v*1000);const n=new Map();for(const p of pts)n.set(k(p.w),(n.get(k(p.w))||0)+1);
-  let best=-1;for(const p of pts){const c=n.get(k(p.w));if(c>best||(c===best&&p.w>w)){best=c;w=p.w;}}
+  if(!pts.length)return 0;const top=Math.max(...pts.map(p=>p.w));const floor=top>0?top*0.6:-Infinity;
+  const k=v=>Math.round(v*1000);const n=new Map();for(const p of pts)if(p.w>=floor-1e-9)n.set(k(p.w),(n.get(k(p.w))||0)+1);
+  let w=top,best=-1;for(const p of pts){if(p.w<floor-1e-9)continue;const c=n.get(k(p.w));if(c>best||(c===best&&p.w>w)){best=c;w=p.w;}}
   return w;
 }
 const atLoad=(pts,w)=>pts.filter(p=>Math.abs(p.w-w)<1e-6);
@@ -3359,7 +3361,7 @@ function lastLighterWeek(){
    evidence-based defaults stay as they are for everyone else; Settings,
    Weekly set targets raises them as sets are added. Returns whether anything
    changed. */
-function fitTargets(R){
+function fitTargets(R,actual){
   if(!R)return false;const b=state.settings.bands;
   /* Still the defaults, or the defaults fitted to the starter routine (r31:
      Log a workout now fits them to the starter, and an import or a pick
@@ -3370,7 +3372,13 @@ function fitTargets(R){
   const was=JSON.stringify(MK.map(m=>b[m]));
   for(const m of MK)b[m]=[BANDS[m][0],BANDS[m][1]];
   const plan=plannedSets(R);
-  for(const m of MK){if(TRACK_ONLY.has(m))continue;const lo=Math.min(b[m][0],Math.floor(plan[m]||0));if(lo!==b[m][0])b[m]=[lo,b[m][1]];}
+  /* actual (a routine made from an import, r31): no minimum above what the
+     log itself averaged on a muscle the routine trains. A cycle's planned
+     sets a week and the weeks as trained never match exactly (2 days
+     alternating, 3 sessions a week, plans 2.8), and the review saw "Abs
+     below target, add a set to Plank" measured against the lifter's own
+     program. */
+  for(const m of MK){if(TRACK_ONLY.has(m))continue;let lo=Math.min(b[m][0],Math.floor(plan[m]||0));if(actual&&(plan[m]||0)>0)lo=Math.min(lo,Math.floor(actual[m]||0));if(lo!==b[m][0])b[m]=[lo,b[m][1]];}
   return JSON.stringify(MK.map(m=>b[m]))!==was;
 }
 /* Plan against the usual ranges (r30, V's choice). Picking a routine on a
@@ -7369,7 +7377,8 @@ function routineFromLog(sessions){
       if(!b)return it;const ws=work(b);
       it.sets=Math.min(10,Math.max(1,ws.length));
       if(!ex.timed){const r=med(ws.map(q=>+q.r));if(r>0)[it.repMin,it.repMax]=band(r);}
-      const q=med(ws.map(x=>x.rir==null?null:+x.rir));if(q!=null)it.rir=Math.min(4,Math.max(0,Math.round(q)));
+      // RIR only when most of the sets were rated: one failure set in a file (Strong's F) is not a plan to fail every set.
+      const rt=ws.filter(x=>x.rir!=null);const q=rt.length*2>ws.length?med(rt.map(x=>+x.rir)):null;if(q!=null)it.rir=Math.min(4,Math.max(0,Math.round(q)));
       return it;});
     return {g,day:{id:uid(),name:g.name,rest:false,items},ids:lifts(latest)};
   }).filter(d=>d.day.items.length);
@@ -7946,7 +7955,7 @@ const ACT={
       const R=inf.routine;const starter=starterSigs();state.routines=state.routines.filter(x=>!starter.includes(routineSig(x))||state.sessions.some(q=>q.routineId===x.id));state.routines.push(R);state.activeRoutineId=R.id;
       // Imported sessions join their day (by name, or by their lifts), so the cycle, the streak and adherence read them.
       for(const x of state.sessions){if(x.demo)continue;const d=inf.dayFor(x);if(!d)continue;x.routineId=R.id;x.dayId=d.id;x.dayIdx=R.days.indexOf(d);x.free=undefined;}
-      fitTargets(R);invalidate();
+      invalidate();fitTargets(R,actualAvg4());invalidate();
       commit();closeModal();ui.tab='today';ui.todayDay=null;window.scrollTo(0,0);render();
       toast(`${msg}. Your routine is made from them: ${andList(R.days.filter(d=>!d.rest).map(d=>d.name),4)}, about ${inf.perWeek} day${inf.perWeek===1?'':'s'} a week. Change it in Plan.`,true,9000);
       return;
