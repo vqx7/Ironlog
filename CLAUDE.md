@@ -1,6 +1,6 @@
 # Ironlog
 
-A personal hypertrophy and strength tracker for one lifter. It is used on a phone at the gym. It ships two ways from one source file: as a Claude artifact (a hosted single-page app with cloud sync) and as a standalone installable web app (dist/, hosted on GitHub Pages, offline, data on the phone). Since r24 every pull request is also published as a separate preview app at /preview/ (dist-preview/), to try on a phone before merging. Build r30, state schema v5.
+A personal hypertrophy and strength tracker for one lifter. It is used on a phone at the gym. It ships two ways from one source file: as a Claude artifact (a hosted single-page app with cloud sync) and as a standalone installable web app (dist/, hosted on GitHub Pages, offline, data on the phone). Since r24 every pull request is also published as a separate preview app at /preview/ (dist-preview/), to try on a phone before merging. Build r30.1, state schema v5.
 
 ## What is in this repo
 
@@ -9,7 +9,7 @@ A personal hypertrophy and strength tracker for one lifter. It is used on a phon
 - `scripts/build.js`: writes the standalone app to `dist/` (fonts and libraries copied in, manifest, icons, service worker); `--preview` writes the preview build to `dist-preview/`. `scripts/icons.py` draws the icons into `assets/`, and the preview's (the same mark over a striped band) into `assets/preview/`.
 - `supabase/functions/delete-account/index.ts`: the server function behind Delete my account (pasted into the Supabase dashboard). `supabase/functions/feedback-to-issue/index.ts`: turns each feedback report into an issue in the private tickets repository (`FEEDBACK.md`). `.github/workflows/keepalive.yml`: a daily ping so the free project never pauses. `.github/workflows/publish.yml`: `npm test` on every pull request and push to `main`; a passing push to `main` publishes `dist/` to `gh-pages`.
 - `scripts/cloud-supabase.js` and `supabase.config.json`: accounts and cloud sync for the standalone app. The build copies the script into dist/ as `cloud.js` with the supabase-js bundle, and injects the project URL and publishable key (both public; row level security protects the data). The secret key never goes in this repo. `SUPABASE.md` is the dashboard setup.
-- `baselines/r11.html` to `r29.html`, and `r29-5.html` (r29.5): previous published builds. `tests/migration.js` saves data with them and loads it into the current build. Never delete them. When you publish a new build, add the build it replaces here.
+- `baselines/r11.html` to `r29.html`, and `r29-5.html` (r29.5) and `r30.html`: previous published builds. `tests/migration.js` saves data with them and loads it into the current build. Never delete them. When you publish a new build, add the build it replaces here.
 
 ## Commands
 
@@ -27,7 +27,7 @@ Run a single suite with `node tests/<name>.js`. Each suite prints `ok`/`FAIL` li
 | unit-math | 1RM formulas, inverses, rep bands, hard sets, drop credit, load modes, tonnage, load steps, time model |
 | unit-analytics | stalls (all frequencies), moving/falling with the t interval, projection, PR bands, calibration shrink/cap/expiry and rounding, recovery tiers across doses, WHtR, lighter week, coach, deload rounding, blank RIR read as the lift's usual RIR |
 | dataflow | draft survives reload, save, backup round trip, CSV, delete/restore, two devices syncing through a mock cloud |
-| migration | saves from r11 to r29.5 (`baselines/r29-5.html`) load with every session, set, setting, custom exercise and injury intact; saved former bests are dropped |
+| migration | saves from r11 to r30 (`baselines/r30.html`) load with every session, set, setting, custom exercise and injury intact; saved former bests are dropped |
 | acceptance | load labels, mix-up warning, hover/hold tips, text volume vs r12, full logged session, kg, RIR off, per-side plates |
 | flows | picker, create-from-picker, Pick for me, Discard, Limited equipment, first run with demo data |
 | charts-layout | week bar, charts anchored at first data, range chips, height field, no horizontal overflow at 320–768 px in light and dark |
