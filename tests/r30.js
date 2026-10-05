@@ -87,6 +87,15 @@ function strongCsv() {
     ok(/Last lighter week: 2 weeks ago \(lighter loads\)/.test(au.txt) && !/No lighter week/.test(au.txt), 'Stalls names the deload week (lighter loads), never "No lighter week"', (au.txt.match(/[^\n]*lighter week[^\n]*/i) || [])[0]);
     ok(/and \d+ more over 6 weeks/.test(au.mv), 'Moving names two lifts and how many more', au.mv);
     ok(!/likely ([+-][\d.]+%) to \1/.test(au.heads), 'no trend range of zero width ("likely +1.9% to +1.9%")', au.heads.slice(0, 300));
+    // One rule across the Lifts section: 1RM figures only for a compound lift with sets of 12 or fewer.
+    const ls = await ev(async () => { const L = window.__ironlog; const out = {};
+      for (const id of ['pressdown', 'legPress', 'bench', 'backSquat']) { L.ui.dashEx = id; L.ui.tab = 'dash'; L.ui.folds['dash:exercise'] = true; L.render(); await new Promise(r => setTimeout(r, 150));
+        const sec = document.querySelector('#view > [data-mkey="exercise"]'); const ch = window.Chart.getChart(document.getElementById('chEx'));
+        out[id] = { tileV: sec.querySelector('.kpi .v').innerText, top: ch ? String(Math.max(...ch.data.datasets[0].data.map(p => p.y))) : null, tile: sec.querySelector('.kpi .l').innerText, th: [...sec.querySelectorAll('table.t th')].map(t => t.innerText).join('|'), chart: ch ? ch.data.datasets[0].label : null, tags: [...sec.querySelectorAll('table.t .tag')].map(t => t.innerText) }; }
+      out.squat = out.backSquat; L.ui.tab = 'dash'; L.render(); return { out, prTxt: document.getElementById('view').innerText }; });
+    ok(/Best set/.test(ls.out.pressdown.tile) && !/e1RM/i.test(ls.out.pressdown.th) && /Top set load/.test(ls.out.pressdown.chart || ''), 'an isolation lift: best set, no e1RM column, a top-set-load chart', ls.out.pressdown);
+    ok(/Best set/.test(ls.out.legPress.tile) && /Top set load/.test(ls.out.legPress.chart || ''), 'leg press for 15 reps (no 1RM past 12): best set and a chart of its top-set load, not "n/a" and no chart', ls.out.legPress);
+    ok(/Best e1RM/.test(ls.out.bench.tile) && /e1rm/i.test(ls.out.bench.th) && /Best e1RM/.test(ls.out.bench.chart || '') && ls.out.squat.top === ls.out.squat.tileV && ls.out.bench.tags.includes('lighter'), 'a compound lift keeps its 1RM figures, the deload session is tagged lighter in the table, and the chart\'s highest point is the tile\'s best estimate', { bench: ls.out.bench, squat: ls.out.squat });
     ok(a.chest.clear === true || a.chest.clear === false, 'chest has a strength reading (clear or unclear, never a made-up 0)', a.chest);
 
     // Muscle trends: unclear instead of 0%. Chest from one bench press going
@@ -210,6 +219,11 @@ function strongCsv() {
     // Joints can be flagged.
     const jt = await ev(() => { const L = window.__ironlog; L.state.injuries = [{ id: 'j1', m: 'j_knee', note: '', date: '2026-10-04' }]; L.invalidate(); const s = L.suggest('legPress', { sets: 3, repMin: 10, repMax: 15, rir: 1, rest: 90, inc: 2.27 }, {}); const n = L.normalize(JSON.parse(JSON.stringify(L.state))); return { lp: L.exInjury(L.EX('legPress')), bench: L.exInjury(L.EX('bench')), curl: L.exInjury(L.EX('dbCurl')), text: s.text, kept: n.injuries.map(x => x.m) }; });
     ok(jt.lp === 'j_knee' && jt.bench === null && jt.curl === null && /Knee/.test(jt.text) && jt.kept[0] === 'j_knee', 'a knee flag marks the leg press (not bench or curls), says Knee, and survives a reload', jt);
+    // Pick for me steers away from a day that loads the flagged knee.
+    const pk = await ev(() => { const L = window.__ironlog; const R = L.state.routines.find(r => r.id === L.state.activeRoutineId); const legs = R.days.findIndex(d => /Legs A/.test(d.name));
+      const rk = L.rankDays(); const row = rk.rows.find(r => r.i === legs); L.state.injuries = []; L.invalidate(); const rk2 = L.rankDays(); const row2 = rk2.rows.find(r => r.i === legs);
+      return { inj: row && row.injS, clean: row2 && row2.injS, joints: row && row.joints, why: row ? L.dayReasons(row, rk.r7).join(' ') : '' }; });
+    ok(pk.inj > pk.clean && pk.joints.includes('j_knee') && /Loads your knee, which you flagged/.test(pk.why), 'Pick for me counts a flagged knee against leg day and says why', pk);
     await ev(() => { window.__ironlog.state.injuries = []; window.__ironlog.invalidate(); });
 
     // Swaps: a much harder bodyweight lift is not the pick for a lifter who does not do it.
