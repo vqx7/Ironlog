@@ -1603,6 +1603,8 @@ function cleanSess(ss,si){
       rr:Array.isArray(b.rr)&&b.rr.length===2&&b.rr.every(v=>Number.isFinite(+v)&&+v>0)?[Math.round(+b.rr[0]),Math.round(+b.rr[1])]:null,
       // Sets trimmed by Short on time: kept out of trends like a lighter session.
       cut:b.cut===true?true:undefined,
+      // One exercise made lighter mid-session (r31, Make it lighter): out of trends and targets, the rest of the session counts.
+      light:b.light===true?true:undefined,
       sets:b.sets.filter(x=>x&&typeof x==='object').map(x=>({
         // Below 0 only for assisted sets (bodyweight minus the machine's help).
         w:clampN(x.w,-300,20000*LB,0),
@@ -1872,6 +1874,7 @@ function normalize(s){
         lastR:Array.isArray(b.lastR)?b.lastR.slice(0,30).map(v=>{const n=numOr(v,NaN);return isNum(n)&&n>=0?Math.min(n,1000):null;}):[],
         swappedFrom:typeof b.swappedFrom==='string'?fixId(b.swappedFrom):null,
         cut:b.cut===true?true:undefined,
+        light:b.light===true?true:undefined,
         // The date the target came from, when "Last" is a newer trimmed, lighter, or deload session (r26).
         basis:isDate(b.basis)?b.basis:undefined,
         // The suggested load the rows started from (r24); absent in older drafts.
@@ -2947,6 +2950,21 @@ function rtfAt(est,load){if(!(est>0&&load>0))return null;const b=37-36*load/est;
 const rtfBand=rtf=>rtf<=5?1:rtf<=10?2:3;
 // The bands in words, counted as reps to failure (reps plus RIR).
 const BAND_WORDS={1:'sets of 1 to 5 reps',2:'sets of 6 to 10 reps',3:'sets of 11 to 12 reps'};
+/* The working load of one session of a lift (r31): the heaviest load done
+   for 2 or more sets; with none, the heaviest done for at least repMin - 1
+   reps (when the plan's range is known); else the heaviest. A heavy single
+   or double before back-off sets is a top set: it counts for bests and PRs,
+   but the next target, the grey reps and the trend build on the working
+   sets (the review saw 405 x 1 then 335 x 5 x 5 read as "below your range,
+   drop to 345"). Assisted lifts store less help as a higher number, so the
+   heaviest is still the hardest. */
+function workLoad(pts,repMin){
+  if(!pts.length)return 0;const k=w=>Math.round(w*1000);const n=new Map();for(const p of pts)n.set(k(p.w),(n.get(k(p.w))||0)+1);
+  let w=null;for(const p of pts)if(n.get(k(p.w))>=2&&(w==null||p.w>w))w=p.w;if(w!=null)return w;
+  if(repMin>0){for(const p of pts)if(p.r>=repMin-1&&(w==null||p.w>w))w=p.w;if(w!=null)return w;}
+  return Math.max(...pts.map(p=>p.w));
+}
+const atLoad=(pts,w)=>pts.filter(p=>Math.abs(p.w-w)<1e-6);
 function median(a){if(!a.length)return null;const s=[...a].sort((x,y)=>x-y);const m=s.length>>1;return s.length%2?s[m]:(s[m-1]+s[m])/2;}
 function sortedSessions(){return [...state.sessions].sort((a,b)=>a.date<b.date?-1:a.date>b.date?1:0);}
 function IDX(){
@@ -2995,8 +3013,9 @@ function IDX(){
       const main=work.filter(s=>!s.drop);const ptsSrc=main.length?main:work;
       const pts=ptsSrc.map(s=>({load:loadOf(ex,s,ss.date),r:+s.r,w:+s.w||0,rir:rirEff(s,ex),rq:rirEst(s,ex)}));
       // Mean logged RIR on the sets at this session's top load, or null if none was logged.
-      const topW=Math.max(...pts.map(p=>p.w));const tr=pts.filter(p=>Math.abs(p.w-topW)<1e-6&&p.rir!=null);
-      const atTop=pts.filter(p=>Math.abs(p.w-topW)<1e-6);
+      // The working load (r31): a heavy top single is not where reps are built.
+      const topW=workLoad(pts,b.rr?b.rr[0]:0);const tr=pts.filter(p=>Math.abs(p.w-topW)<1e-6&&p.rir!=null);
+      const atTop=atLoad(pts,topW);
       const topRir=tr.length?tr.reduce((a,p)=>a+p.rir,0)/tr.length:null;const topReps=atTop.reduce((a,p)=>a+p.r,0);
       // Reps lost from the first to the last set at the top load, in set order.
       const drop=atTop.length>=2?atTop[0].r-atTop[atTop.length-1].r:null;
@@ -3008,11 +3027,17 @@ function IDX(){
          a lift's trend uses is decided per lift once its sessions are known
          (trendUse): RIR rated on most sets, or reps alone. Both reach 20 reps
          to failure (trendE), so a leg press done for 15 still has a trend. */
+      /* r31: the reading is the average over the working sets, not the best
+         one set. With the best set alone, a lifter on double progression who
+         had set 1 at the top of the range and kept adding reps to sets 2 to
+         4 read as flat, then stalled (the review: bench 36 to 39 total reps
+         at 185, called stalled). A top single is left out, as above. */
       let tAdj=null,tRaw=null,topL=0,rated=0;
-      if(!noE1(ex))for(const p of pts){const a=trendE(p.load,p.r,p.rq),r0=trendE(p.load,p.r,0);if(a!=null&&(tAdj==null||a>tAdj))tAdj=a;if(r0!=null&&(tRaw==null||r0>tRaw))tRaw=r0;}
+      if(!noE1(ex)){const avg=f=>{const v=atTop.map(f).filter(x=>x!=null);return v.length?v.reduce((a,b)=>a+b,0)/v.length:null;};
+        tAdj=avg(p=>trendE(p.load,p.r,p.rq));tRaw=avg(p=>trendE(p.load,p.r,0));}
       for(const p of pts){if(p.load>topL)topL=p.load;if(p.rir!=null)rated++;}
       const v=noE1(ex)?0:work.reduce((a,s)=>a+tonnage(ex,s,ss.date),0);vol+=v;
-      (byEx[b.exId]||(byEx[b.exId]=[])).push({date:ss.date,sid:ss.id,pts,best,bb,vol:v,n:work.length,topW,topRir,topReps,drop,deload:!!ss.deload,light:!!ss.light,rr:b.rr||null,topN:atTop.length,cut:!!b.cut,tAdj,tRaw,topL,rated});
+      (byEx[b.exId]||(byEx[b.exId]=[])).push({date:ss.date,sid:ss.id,pts,best,bb,vol:v,n:work.length,topW,topRir,topReps,drop,deload:!!ss.deload,light:!!ss.light||!!b.light,rr:b.rr||null,topN:atTop.length,cut:!!b.cut,tAdj,tRaw,topL,rated});
     }
     sessVol.push({date:ss.date,vol,id:ss.id,day:ss.dayName});
   }
@@ -3042,10 +3067,13 @@ function IDX(){
         const mL=Math.max(...ref.map(q=>q.topL)),mT=Math.max(...ref.map(q=>q.tRaw==null?-Infinity:q.tRaw));
         if(mL>0&&x.topL<=mL*0.9+1e-9&&(x.tRaw==null||!isFinite(mT)||x.tRaw<=mT*0.93+1e-9)){
           x.auto=true;o.l++;run.push(x);
-          /* Three lighter sessions in a row is a new level (a layoff, an
-             injury, a new technique), not a deload: they count again, and
-             what follows is compared with them. */
-          if(run.length>=3){for(const q of run){q.auto=false;q.keep=true;wkAuto[weekStart(q.date)].l--;}prev.length=0;prev.push(...run);run=[];}
+          /* Lighter sessions in a row for two weeks or more is a new level
+             (a layoff, an injury, a new technique), not a deload: they count
+             again, and what follows is compared with them. Counting sessions
+             alone (three in a row) read a deload week on a lift trained three
+             times a week as a new level, then as a 16% fall and a stall
+             (r31, from the review). */
+          if(run.length>=3&&daysBetween(run[0].date,run[run.length-1].date)>=14){for(const q of run){q.auto=false;q.keep=true;wkAuto[weekStart(q.date)].l--;}prev.length=0;prev.push(...run);run=[];}
           continue;
         }
       }
@@ -3123,7 +3151,7 @@ function IDX(){
     /* Lighter sessions (half the sets, about 90% loads since r30) are left out for the same
        reason: fewer sets always look like less, and a session run short on
        purpose is not evidence of a stall. */
-    const real=exps.filter(x=>!x.deload&&!x.light&&!x.cut&&!x.auto);
+    const real=exps.filter(x=>!offSession(x));
     // The trend and stall read only the current rep range. Changing the range
     // restarts the baseline instead of drawing one line across two scales.
     const curRR=real.length?real[real.length-1].rr:null;
@@ -3484,13 +3512,19 @@ function regionBalance(sets){
    come from the last full session, since deload reps were at lighter loads.
    basis is the date the target came from, when it is not the session in
    "Last", so the logger can say so. */
-function lastOf(all,base,fmt){
+function lastOf(all,base,fmt,repMin){
   const rec=all&&all.length?all[all.length-1]:base;
   const kind=rec.cut?'trimmed':rec.light||rec.auto?'lighter':rec.deload?'deload':'';
   const line=`Last (${fmtDate(rec.date)}${kind?', '+kind:''}): ${rec.pts.map(fmt).join(', ')}.`;
   const repsFrom=rec!==base&&(rec.deload||rec.light||rec.auto)?base:rec;
-  return {line,lastR:repsFrom.pts.map(p=>p.r),basis:rec!==base?base.date:null};
+  // Grey reps follow the working sets: a top single before them is not a row to repeat (r31).
+  const wl=workLoad(repsFrom.pts,repMin||0);const wp=repsFrom.pts.filter(p=>p.w<=wl+1e-6);
+  return {line,lastR:(wp.length?wp:repsFrom.pts).map(p=>p.r),basis:rec!==base?base.date:null};
 }
+/* One test for a session that is lighter or shorter on purpose, or read as
+   lighter: it never sets a target, a trend or a stall (r31: written out by
+   hand in six places, which could drift). */
+const offSession=x=>!!x&&(x.deload||x.light||x.cut||x.auto);
 /* ---------- progression suggestion ---------- */
 /* Double progression. Returns text (the full sentence, used on the Today
    preview), plus last/target (the same thing split into two lines for the
@@ -3506,7 +3540,7 @@ function suggest(exId,plan,opts){
   const every=IDX().byEx[exId];const all=every?every.filter(x=>x.date<=T):every;const ex=EX(exId);const injM=exInjury(ex);
   // Deload and lighter sessions are short or light on purpose, so the last
   // full session sets the target. If there is nothing else, use them.
-  const full=all?all.filter(x=>!x.deload&&!x.light&&!x.cut&&!x.auto):[];
+  const full=all?all.filter(x=>!offSession(x)):[];
   /* The same lift can sit on two days with different rep ranges (heavy 4-6,
      light 10-12). Each day progresses from its own sessions in its own range
      (r27). That holds while the range is in use: the newest session in it
@@ -3533,14 +3567,14 @@ function suggest(exId,plan,opts){
     return {w:ex.bw?0:null,text:`First time: start light, a load you could lift about ${+plan.repMax+5} times. Do ${plan.repMin} to ${plan.repMax} reps, ${rr>=1?`stopping with about ${rr} still in you`:'to the last rep you can do well'}.`,lastR:[],last:'',target:'',tgt:null};
   }
   const last=exps[exps.length-1],ws=last.pts;const stx=all.length<every.length?statsUpTo(exId,all):(IDX().exStats[exId]||{});
-  const top=Math.max(...ws.map(p=>p.w));
+  const top=workLoad(ws,+plan.repMin);
   const step=incOf(ex,plan);
   // Heaviest available load (top of the stack or rack), if set.
   const cap=ex.maxLoad!=null?ex.maxLoad:null;const atCap=cap!=null&&top>=cap-1e-6;const capW=w=>cap!=null?Math.min(w,cap):w;
   // Only the sets at the top load decide progression. Ramp-up sets at lighter
   // loads used to block every load increase unless they also reached repMax.
   const topPts=ws.filter(p=>Math.abs(p.w-top)<1e-6);
-  const L0=lastOf(seen,last,p=>`${loadLabel(ex,p.w)}×${p.r}`);
+  const L0=lastOf(seen,last,p=>`${loadLabel(ex,p.w)}×${p.r}`,+plan.repMin);
   const lastR=L0.lastR,lastS=L0.line,basis=L0.basis;
   const lbl=w=>`${loadLabel(ex,w)}${ex.bw?'':' '+U()}${loadNote(ex)}`;
   const prevBest=stx.best==null?null:stx.best;
@@ -3562,11 +3596,15 @@ function suggest(exId,plan,opts){
      offsets stay on real pin positions, and never jumps more than 10% (see
      jumpCap). A set called past 4 RIR is read as 4 here only, which errs low. */
   const tgtRir=+plan.rir||0;
+  /* The first 3 sessions of a lift find its load (a convention, r31): the
+     cap on a jump is 25% there, so a first guess well under what the lifter
+     can do is corrected in a session or two, not a step at a time. */
+  const early=exps.length<=3;
   if(step>0&&!atCap&&!noE1(ex)&&topPts.length&&topPts.every(p=>p.rir!=null&&p.rir>=tgtRir+2&&p.r>=plan.repMin)){
-    let est=null;for(const p of topPts){const v=e1(p.load,p.r,Math.min(p.rir,E1_MAX_RIR));if(v!=null&&(est==null||v>est))est=v;}
+    let est=null;for(const p of topPts){const v=fitE(p.load,p.r,Math.min(p.rir,E1_MAX_RIR));if(v!=null&&(est==null||v>est))est=v;}
     const bwNow=bwLoad(ex,T);const topLoad=top+bwNow;
     if(est!=null&&topLoad>0){
-      const want=Math.min(e1inv(est,Math.round((+plan.repMin+ +plan.repMax)/2)+Math.min(tgtRir,E1_MAX_RIR)),topLoad*jumpCap(ex,topLoad))-bwNow;
+      const want=Math.min(e1inv(est,Math.round((+plan.repMin+ +plan.repMax)/2)+Math.min(tgtRir,E1_MAX_RIR)),topLoad*jumpCap(ex,topLoad,early))-bwNow;
       const k=Math.floor((want-top)/step+1e-6);
       if(k>=1){
         const nw=ex.assist&&top<0?Math.min(0,top+k*step):capW(top+k*step);const rr=r1(topPts.reduce((a,p)=>a+p.rir,0)/topPts.length);
@@ -3583,10 +3621,10 @@ function suggest(exId,plan,opts){
      and in whole steps (r27). Above 12 reps there is no estimate, so the usual
      one step applies. */
   if(step>0&&!atCap&&!noE1(ex)&&topPts.length&&topPts.every(p=>p.r>=+plan.repMax+2)){
-    let est=null;for(const p of topPts){const v=e1(p.load,p.r,p.rq);if(v!=null&&(est==null||v>est))est=v;}
+    let est=null;for(const p of topPts){const v=fitE(p.load,p.r,p.rq);if(v!=null&&(est==null||v>est))est=v;}
     const bwNow=bwLoad(ex,T);const topLoad=top+bwNow;
     if(est!=null&&topLoad>0){
-      const want=Math.min(e1inv(est,Math.round((+plan.repMin+ +plan.repMax)/2)+Math.min(tgtRir,E1_MAX_RIR)),topLoad*jumpCap(ex,topLoad))-bwNow;
+      const want=Math.min(e1inv(est,Math.round((+plan.repMin+ +plan.repMax)/2)+Math.min(tgtRir,E1_MAX_RIR)),topLoad*jumpCap(ex,topLoad,early))-bwNow;
       const k=Math.floor((want-top)/step+1e-6);const one=progStep(ex,plan,topLoad);
       if(k>=1&&k*step>one+1e-6){
         const nw=ex.assist&&top<0?Math.min(0,top+k*step):capW(top+k*step);const minR=Math.min(...topPts.map(p=>p.r));
@@ -3714,7 +3752,13 @@ function progStep(ex,plan,loadKg){const inc=incOf(ex,plan);if(!(inc>0))return in
 /* Most a single session's easy RIR may raise the load: 10%, or 15% on an
    isolation lift under 20 kg, where one plate or dumbbell step is a large
    fraction. One rep of RIR error is normal, so bigger jumps overshoot. */
-function jumpCap(ex,loadKg){return !isCompound(ex)&&loadKg<20?1.15:1.10;}
+function jumpCap(ex,loadKg,early){return early?1.25:!isCompound(ex)&&loadKg<20?1.15:1.10;}
+/* For picking a load only, never shown (r31): the estimate up to 12 reps to
+   failure, then Epley to 30. With the 12-rep limit, a set of 25 or a set of
+   12 with 5 in reserve had no estimate, so a beginner who started light got
+   one 5 lb step a session for months. Past 12 it is rough, which is why the
+   jump stays capped. */
+function fitE(load,r,rir){const v=e1(load,r,rir);if(v!=null)return v;if(!(load>0&&r>0))return null;const q=rir==null||rir===''?0:Math.min(Math.max(+rir,0),E1_MAX_RIR);const t=+r+q;return t<=30?load*(1+t/30):null;}
 /* An exercise added mid-session borrows its settings from wherever it already
    sits in the active routine instead of a generic 3 x 8-12. */
 function planFor(exId,R,dayId){
@@ -5100,7 +5144,7 @@ const chkWord=n=>n==='OK'?'OK':n.toLowerCase();
 const CHK_Q=[['sleep','Sleep',['Poor','OK','Good']],['energy','Energy',['Low','OK','High']],['joints','Aches',['Sore','A little','None']]];
 function readiness(){
   const I=IDX();const bySid={};
-  for(const id in I.byEx)I.byEx[id].forEach((x,i)=>{if(i===0||x.deload||x.light||x.cut||x.auto)return;const o=bySid[x.sid]||(bySid[x.sid]={n:0,p:0});o.n++;if(x.progress)o.p++;});
+  for(const id in I.byEx)I.byEx[id].forEach((x,i)=>{if(i===0||offSession(x))return;const o=bySid[x.sid]||(bySid[x.sid]={n:0,p:0});o.n++;if(x.progress)o.p++;});
   const sess=state.sessions.filter(s=>!s.demo&&s.chk&&bySid[s.id]);
   const rows=CHK_Q.map(([k,l,names])=>({k,l,groups:[3,2,1].map(v=>{const g=sess.filter(s=>s.chk[k]===v);const n=g.reduce((a,s)=>a+bySid[s.id].n,0),p=g.reduce((a,s)=>a+bySid[s.id].p,0);return {v,name:names[v-1],sessions:g.length,rate:n?p/n*100:null};})}));
   return {n:sess.length,rows};
@@ -5125,7 +5169,9 @@ function checkinCard(d){
    offered first; one: a note to keep a rep more in reserve. */
 function readyCard(d,low){
   if(!low||d.light||d.deload||d.editingId||d.past)return '';
-  const open=d.ex.some(b=>!b.sets.some(x=>!x.warm&&!rowBlank(b,x)));const left=remainMin(d);
+  const open=d.ex.some(b=>!b.light&&!b.sets.some(x=>!x.warm&&!rowBlank(b,x)));const left=remainMin(d);
+  // Already made lighter: say so instead of offering it again.
+  if(low>=2&&!open&&d.ex.some(b=>b.light))return `<p class="callout" style="margin:8px 0 0" id="readyCard">Made lighter: the exercises not started are half the sets at about 90% loads.</p>`;
   if(low<2)return `<p class="callout" style="margin:8px 0 0" id="readyCard">One low answer: keep the loads and leave a rep more in reserve than planned if it feels heavy.</p>`;
   return `<div class="callout yellow" style="margin:8px 0 0" id="readyCard"><p style="margin:0">Low readiness today. A lighter session (half the sets, about 90% loads, nothing to beat) or a shorter one fits it better than pushing.</p><div class="row" style="margin-top:8px">${open?'<button class="btn sm" data-act="makeLight">Make it lighter</button>':''}${left>0?'<button class="btn sm" data-act="shortOpen">Short on time</button>':''}</div></div>`;
 }
@@ -5567,7 +5613,7 @@ function liftTrend(exId){
      flat, so "301 → 300.7 · up" cannot happen. Isolation lifts show their top
      sets, not a 1RM. */
   const ex=EX(exId);const st=IDX().exStats[exId];
-  const exps=(IDX().byEx[exId]||[]).filter(x=>x.tv!=null&&!x.deload&&!x.light&&!x.cut&&!x.auto).slice(-3);
+  const exps=(IDX().byEx[exId]||[]).filter(x=>x.tv!=null&&!offSession(x)).slice(-3);
   if(exps.length<2)return '';
   const a=exps[0].tv,b=exps[exps.length-1].tv;const dir=Math.abs(b-a)<a*0.01?'flat':b>a?'up':'down';
   if(isCompound(ex)&&exps.every(x=>x.best!=null)){
@@ -5739,7 +5785,9 @@ function calDueIdx(d){
   if(state.settings.calSnooze&&state.settings.calSnooze>cut)return -1;
   const c=calStats();if(c.lastDate&&c.lastDate>cut)return -1;
   if(d.ex.some(b=>b.sets.some(x=>x.cal)))return -1;
-  return d.ex.findIndex(b=>{const ex=EX(b.exId);return !ex.timed&&['machine','cable','smith'].includes(ex.equip)&&!b.inj;});
+  // Not on a day meant to be easy (r31): a deload, a lighter day, or two or more low check-in answers.
+  if(d.deload||d.light||d.past||(d.chk&&['sleep','energy','joints'].filter(k=>d.chk[k]===1).length>=2))return -1;
+  return d.ex.findIndex(b=>{const ex=EX(b.exId);return !ex.timed&&['machine','cable','smith'].includes(ex.equip)&&!b.inj&&!b.light;});
 }
 /* ---------- PROGRAM ---------- */
 function viewProgram(){
@@ -7499,7 +7547,7 @@ function syncDraftPlan(f){
 }
 function refreshBlock(b){
   const d=state.draft;if(!d||!b)return;const old=b.sets.find(x=>!x.done&&!x.warm);const oldW=b.sw!==undefined?b.sw:old?old.w:null;
-  const sg=suggest(b.exId,b.plan,{deload:!!d.deload,light:!!d.light,before:d.date});
+  const sg=suggest(b.exId,b.plan,{deload:!!d.deload,light:!!d.light||!!b.light,before:d.date});
   Object.assign(b,{inj:sg.inj||null,hint:sg.text,last:sg.last,target:sg.target,tgt:sg.tgt,easier:sg.easier||null,lastR:sg.lastR,basis:sg.basis||undefined,lastNote:lastNoteOf(b.exId,d.date),sw:sg.w==null?null:sg.w});
   for(const x of b.sets)if(!x.done&&!x.warm&&!x.drop&&x.r==null&&x.w===oldW&&!carried.has(x))x.w=sg.w;
 }
@@ -7677,13 +7725,18 @@ const ACT={
      lighter day's (half their sets, about 90% loads, 3+ RIR, no target);
      anything already logged or typed stays exactly as it is. Undo puts it
      back. */
+  /* r31: only the exercises not started become lighter (b.light); the
+     session itself is not marked, so work already done at full effort still
+     sets next time's target and counts in trends (the review: a bench done
+     4 x 10 before the tap was then ignored, and next week asked for it again). */
   makeLight(){
-    const d=state.draft;if(!d||d.light||d.deload)return;snapshot();
-    d.light=true;if(!/ \(lighter\)$/.test(d.dayName||''))d.dayName=(d.dayName||'Session')+' (lighter)';
-    if((d.notes||'')===(d.note0||''))d.notes=d.note0='Lighter session: half sets, about 90% loads, 3+ RIR.';
+    const d=state.draft;if(!d||d.light||d.deload)return;
+    const todo=d.ex.filter(b=>!b.light&&!b.sets.some(x=>!x.warm&&!rowBlank(b,x)));if(!todo.length){toast('Every exercise is started, so nothing changed');return;}
+    snapshot();
+    if((d.notes||'')===(d.note0||''))d.notes=d.note0='Made lighter after the check-in: exercises not started, half sets at about 90% loads.';
     let n=0;
-    for(const b of d.ex){
-      if(b.sets.some(x=>!x.warm&&!rowBlank(b,x)))continue;
+    for(const b of todo){
+      b.light=true;
       const work=b.sets.filter(x=>!x.warm);const keep=Math.max(1,Math.ceil(work.length/2));let cut=work.length-keep;
       for(let i=b.sets.length-1;i>=0&&cut>0;i--)if(!b.sets[i].warm){b.sets.splice(i,1);cut--;}
       refreshBlock(b);n++;
@@ -8256,7 +8309,7 @@ const ACT={
        more counts as a full session, so someone who often does 3 of 4 still
        has trends. A past workout or an edit keeps what it had. */
     const unfinished=b=>{if(d.editingId||d.past)return false;const dn=b.sets.filter(x=>x.done&&!x.warm).length;const left=b.sets.filter(x=>!x.warm&&!x.done&&rowBlank(b,x)).length;return dn>0&&left>0&&dn<Math.ceil((dn+left)/2);};
-    const ex=d.ex.map(b=>({exId:b.exId,note:b.note||'',rr:b.keepRR!==undefined?b.keepRR:(b.plan&&+b.plan.repMin>0&&+b.plan.repMax>0?[+b.plan.repMin,+b.plan.repMax]:null),cut:b.cut||unfinished(b)?true:undefined,sets:b.sets.filter(s=>s.done).map(s=>({w:s.w==null?0:s.w,r:+s.r,rir:s.rir==null||s.rir===''?null:+s.rir,warm:!!s.warm,drop:!!s.drop&&!s.warm,cal:s.cal&&!s.warm?s.cal:undefined}))})).filter(b=>b.sets.length);
+    const ex=d.ex.map(b=>({exId:b.exId,note:b.note||'',rr:b.keepRR!==undefined?b.keepRR:(b.plan&&+b.plan.repMin>0&&+b.plan.repMax>0?[+b.plan.repMin,+b.plan.repMax]:null),cut:b.cut||unfinished(b)?true:undefined,light:b.light?true:undefined,sets:b.sets.filter(s=>s.done).map(s=>({w:s.w==null?0:s.w,r:+s.r,rir:s.rir==null||s.rir===''?null:+s.rir,warm:!!s.warm,drop:!!s.drop&&!s.warm,cal:s.cal&&!s.warm?s.cal:undefined}))})).filter(b=>b.sets.length);
     const cardio=(d.cardio||[]).filter(c=>c.min>0).map(c=>cleanCardio({...c,date:d.date}));
     if(!ex.length){
       if(cardio.length&&!d.editingId){state.cardio.push(...cardio);state.draft=null;commit();stopTimer();wakeOff();ui.todayDay=null;window.scrollTo(0,0);render();toast('Cardio saved. No lifting session was recorded.');return;}
