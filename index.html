@@ -2967,10 +2967,14 @@ const BAND_WORDS={1:'sets of 1 to 5 reps',2:'sets of 6 to 10 reps',3:'sets of 11
    for callers; the rule does not need it. Assisted lifts store less help as
    a higher number, so the heaviest is still the hardest. */
 function workLoad(pts,repMin){
-  if(!pts.length)return 0;const top=Math.max(...pts.map(p=>p.w));const floor=top>0?top*0.6:-Infinity;
-  const k=v=>Math.round(v*1000);const n=new Map();for(const p of pts)if(p.w>=floor-1e-9)n.set(k(p.w),(n.get(k(p.w))||0)+1);
-  let w=top,best=-1;for(const p of pts){if(p.w<floor-1e-9)continue;const c=n.get(k(p.w));if(c>best||(c===best&&p.w>w)){best=c;w=p.w;}}
-  return w;
+  if(!pts.length)return 0;
+  /* The 60% is of the total moved (load, which adds the bodyweight share on
+     a pull-up or dip), not of the number typed: +25 on a 180 lb pull-up is
+     89% of +50, not half (the review saw +50 prescribed for every set). */
+  const T=p=>p.load!=null?p.load:p.w;const top=Math.max(...pts.map(T));const floor=top>0?top*0.6:-Infinity;
+  const ok=p=>T(p)>=floor-1e-9;const k=v=>Math.round(v*1000);const n=new Map();for(const p of pts)if(ok(p))n.set(k(p.w),(n.get(k(p.w))||0)+1);
+  let w=null,best=-1;for(const p of pts){if(!ok(p))continue;const c=n.get(k(p.w));if(c>best||(c===best&&p.w>w)){best=c;w=p.w;}}
+  return w==null?Math.max(...pts.map(p=>p.w)):w;
 }
 const atLoad=(pts,w)=>pts.filter(p=>Math.abs(p.w-w)<1e-6);
 // A rep range in words and labels: "5" when both ends are the same (r31: "5-5", "5×5-5").
@@ -3559,8 +3563,12 @@ function lastOf(all,base,fmt,repMin){
   const kind=rec.cut?'trimmed':rec.light||rec.auto?'lighter':rec.deload?'deload':'';
   const line=`Last (${fmtDate(rec.date)}${kind?', '+kind:''}): ${rec.pts.map(fmt).join(', ')}.`;
   const repsFrom=rec!==base&&(rec.deload||rec.light||rec.auto)?base:rec;
-  // Grey reps follow the working sets: a top single before them is not a row to repeat (r31).
-  const wl=workLoad(repsFrom.pts,repMin||0);const wp=repsFrom.pts.filter(p=>p.w<=wl+1e-6);
+  /* Grey reps are last time's reps at the working load only (r31): a top
+     single before them is not a row to repeat, and in a pyramid the reps
+     done at a lighter load are not reps due at this one (225 x 7, 205 x 8,
+     185 x 10 asked 225 x 10). Rows past them take the set above, or the
+     bottom of the range (greyR). */
+  const wl=workLoad(repsFrom.pts,repMin||0);const wp=atLoad(repsFrom.pts,wl);
   return {line,lastR:(wp.length?wp:repsFrom.pts).map(p=>p.r),basis:rec!==base?base.date:null};
 }
 /* One test for a session that is lighter or shorter on purpose (tagged), or

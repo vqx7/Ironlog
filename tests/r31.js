@@ -98,8 +98,21 @@ function strongCsv(weeks, name) {
       // Unmarked warm-ups done twice at a light load, then one working set (a deadlift): the working set is the work.
       st.sessions = [mk('2026-09-30', [[135, 5], [135, 5], [225, 3], [345, 5]])]; L.state = L.normalize(st); L.invalidate();
       const e = L.suggest('backSquat', { sets: 1, repMin: 3, repMax: 5, rir: 2, rest: 180, inc: 5 * LB }); out.E = Math.round(e.w / LB);
+      // Fourth pass: weighted pull-ups with lighter back-offs, at 180 lb bodyweight (rv/fmt/cases1.js).
+      st.bodyweights = [{ id: 'bw1', date: '2026-09-01', kg: 180 * LB }];
+      const pu = (date, sets) => ({ id: 'p' + date, date, dayIdx: 0, dayId: R.days[0].id, routineId: R.id, dayName: 'Strength A', ex: [{ exId: 'pullup', rr: [5, 8], note: '', sets: sets.map(([w, r]) => ({ w: w * LB, r, rir: null, warm: false, drop: false })) }] });
+      st.sessions = [pu('2026-09-14', [[45, 5], [25, 8], [25, 8], [25, 8]]), pu('2026-09-21', [[45, 5], [25, 8], [25, 8], [25, 8]]), pu('2026-09-28', [[50, 5], [25, 8], [25, 8], [25, 8]])];
+      L.state = L.normalize(st); L.invalidate();
+      const pp = { sets: 4, repMin: 5, repMax: 8, rir: 1, rest: 180, inc: 5 * LB }; const g = L.suggest('pullup', pp); out.PU = { w: Math.round(g.w / LB), text: g.text };
+      // A reverse pyramid: grey reps never ask, at the top load, for reps done at a lighter one.
+      st.sessions = [{ id: 'rp', date: '2026-09-28', dayIdx: 0, dayId: R.days[0].id, routineId: R.id, dayName: 'Strength A', ex: [{ exId: 'bench', rr: [6, 10], note: '', sets: [[225, 7], [205, 8], [185, 10]].map(([w, r]) => ({ w: w * LB, r, rir: null, warm: false, drop: false })) }] }];
+      L.state = L.normalize(st); L.invalidate();
+      const blk = L.newBlock('bench', { sets: 3, repMin: 6, repMax: 10, rir: 1, rest: 120, inc: 5 * LB }, {});
+      out.RP = { w: Math.round(blk.sw / LB), grey: blk.sets.filter(x => !x.warm).map((x, i) => L.greyR(blk, blk.sets.indexOf(x))) };
       return out;
     }, LB);
+    ok(r2.PU.w === 25 || r2.PU.w === 30, 'weighted pull-up +50 x 5 then +25 x 8 x 3 at 180 lb bodyweight: the back-offs at +25 are the work, never +50 for every set', r2.PU);
+    ok(r2.RP.grey[0] === 7 && r2.RP.grey.slice(1).every(v => v <= 7), 'reverse pyramid 225 x 7, 205 x 8, 185 x 10: grey reps at 225 never ask for 8 or 10', r2.RP);
     ok(r2.C.w === 340 && !/365/.test(r2.C.text.replace(/^Last[^.]*\./, '')), 'one top set of 365 x 4 then 335 x 5 x 5: 340 for the back-offs, never five sets at 365 (rv/pl/p5.js)', r2.C);
     ok(r2.D.w === 340 && !/385/.test(r2.D.text.replace(/^Last[^.]*\./, '')), '385 x 2 then 335 x 5 x 5 on a 3-5 plan: 340, never "beat 2 reps at 385"', r2.D);
     ok(r2.E === 350, 'two unmarked warm-ups at 135 then 345 x 5: the target builds on 345', r2.E);
