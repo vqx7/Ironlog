@@ -6322,11 +6322,10 @@ function mountCharts(){
     const exps=I.byEx[ui.dashEx].filter(x=>e1Mode?x.best!=null:x.topW!=null);
     // Real dates on the x axis, counted in days from the first session.
     const base=exps[0].date;const xs=exps.map(x=>daysBetween(base,x.date));const lastX=xs[xs.length-1];
-    /* The line is what the trend is read from (r30): with RIR rated on most
-       sets, the estimate as logged; otherwise loads and reps alone, so RIR
-       tapped on some days and not others does not zigzag it. */
-    const adj=!!(I.exStats[ui.dashEx]&&I.exStats[ui.dashEx].useAdj);
-    const vals=exps.map(x=>r1(toD(e1Mode?(adj||x.tv==null?x.best:x.tv):x.topW)));const isPR=exps.map(x=>!!x.progress);
+    /* The line plots the same estimate as the tile, the table and All-time
+       bests, so their numbers agree; the headline says when the trend itself
+       is read from loads and reps alone. */
+    const vals=exps.map(x=>r1(toD(e1Mode?x.best:x.topW)));const isPR=exps.map(x=>!!x.progress);
     // A rep PR can land below an earlier best estimate, which read as a mistake
     // when every PR looked the same. New-best sessions are filled, rep PRs hollow.
     const prType=exps.map(x=>{if(!x.progress)return null;const p=I.prs.find(q=>q.exId===ui.dashEx&&q.date===x.date);return p?(p.type==='Weight PR'&&p.value!=null?'WeightE1':p.type):'Rep PR';});
@@ -6334,7 +6333,7 @@ function mountCharts(){
     const pj=e1Mode?exProjection(ui.dashEx):null;
     // Monotone interpolation: a smoothed curve must never draw a value above or
     // below what was actually logged between two sessions.
-    const ds=[{label:e1Mode?(adj?`Best e1RM (${U()})`:`Estimate from loads and reps (${U()})`):`Top set load (${U()}${loadNote(exE)})`,data:vals.map((v,i)=>({x:xs[i],y:v})),borderColor:blue,backgroundColor:blue+'1f',fill:'start',cubicInterpolationMode:'monotone',yAxisID:'y',
+    const ds=[{label:e1Mode?`Best e1RM (${U()})`:`Top set load (${U()}${loadNote(exE)})`,data:vals.map((v,i)=>({x:xs[i],y:v})),borderColor:blue,backgroundColor:blue+'1f',fill:'start',cubicInterpolationMode:'monotone',yAxisID:'y',
       pointRadius:isPR.map(x=>x?5.5:2.5),pointStyle:isPR.map(x=>x?'rectRot':'circle'),pointBorderWidth:isPR.map(x=>x?2:1),
       pointBackgroundColor:prType.map(t=>t==='e1RM'||t==='WeightE1'?green:t?surf:blue),pointBorderColor:isPR.map(x=>x?green:blue)}];
     let pjIdx=-1;

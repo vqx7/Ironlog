@@ -91,11 +91,11 @@ function strongCsv() {
     const ls = await ev(async () => { const L = window.__ironlog; const out = {};
       for (const id of ['pressdown', 'legPress', 'bench', 'backSquat']) { L.ui.dashEx = id; L.ui.tab = 'dash'; L.ui.folds['dash:exercise'] = true; L.render(); await new Promise(r => setTimeout(r, 150));
         const sec = document.querySelector('#view > [data-mkey="exercise"]'); const ch = window.Chart.getChart(document.getElementById('chEx'));
-        out[id] = { tile: sec.querySelector('.kpi .l').innerText, th: [...sec.querySelectorAll('table.t th')].map(t => t.innerText).join('|'), chart: ch ? ch.data.datasets[0].label : null, tags: [...sec.querySelectorAll('table.t .tag')].map(t => t.innerText) }; }
+        out[id] = { tileV: sec.querySelector('.kpi .v').innerText, top: ch ? String(Math.max(...ch.data.datasets[0].data.map(p => p.y))) : null, tile: sec.querySelector('.kpi .l').innerText, th: [...sec.querySelectorAll('table.t th')].map(t => t.innerText).join('|'), chart: ch ? ch.data.datasets[0].label : null, tags: [...sec.querySelectorAll('table.t .tag')].map(t => t.innerText) }; }
       out.squat = out.backSquat; L.ui.tab = 'dash'; L.render(); return { out, prTxt: document.getElementById('view').innerText }; });
     ok(/Best set/.test(ls.out.pressdown.tile) && !/e1RM/i.test(ls.out.pressdown.th) && /Top set load/.test(ls.out.pressdown.chart || ''), 'an isolation lift: best set, no e1RM column, a top-set-load chart', ls.out.pressdown);
     ok(/Best set/.test(ls.out.legPress.tile) && /Top set load/.test(ls.out.legPress.chart || ''), 'leg press for 15 reps (no 1RM past 12): best set and a chart of its top-set load, not "n/a" and no chart', ls.out.legPress);
-    ok(/Best e1RM/.test(ls.out.bench.tile) && /e1rm/i.test(ls.out.bench.th) && /Best e1RM/.test(ls.out.bench.chart || '') && /Estimate from loads and reps/.test(ls.out.squat.chart || '') && ls.out.bench.tags.includes('lighter'), 'a compound lift keeps its 1RM figures, the deload session is tagged lighter in the table, and a lift with patchy RIR is charted from loads and reps like its trend', ls.out.bench);
+    ok(/Best e1RM/.test(ls.out.bench.tile) && /e1rm/i.test(ls.out.bench.th) && /Best e1RM/.test(ls.out.bench.chart || '') && ls.out.squat.top === ls.out.squat.tileV && ls.out.bench.tags.includes('lighter'), 'a compound lift keeps its 1RM figures, the deload session is tagged lighter in the table, and the chart\'s highest point is the tile\'s best estimate', { bench: ls.out.bench, squat: ls.out.squat });
     ok(a.chest.clear === true || a.chest.clear === false, 'chest has a strength reading (clear or unclear, never a made-up 0)', a.chest);
 
     // Muscle trends: unclear instead of 0%. Chest from one bench press going
