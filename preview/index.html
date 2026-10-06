@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-N/mTXwFTBFccXJeXguQVUbWrTDOjfgCNUlJicBwRfWY=' 'sha256-tuSgXs5JTxAxl+0h6Mmbx/BgvpNDfjiq2RiZRPGtwkc=' 'sha256-YHdgjdaHPObo0ajgr78/3fg0b/g2KACx2Yivxr2AJEo=' 'sha256-tyGbiM1XBq1RZrIXZrBBSFFtSDaW2kftE7jIJikdcmk=' 'sha256-J4UrXwIeplIJZfkgJq3M75mmvlwXBomq0l+LhSwoEfI='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https://fqvupierxrvpoidtwlon.supabase.co wss://fqvupierxrvpoidtwlon.supabase.co https://api.pwnedpasswords.com; worker-src 'self'; manifest-src 'self'; media-src 'self'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-N/mTXwFTBFccXJeXguQVUbWrTDOjfgCNUlJicBwRfWY=' 'sha256-tuSgXs5JTxAxl+0h6Mmbx/BgvpNDfjiq2RiZRPGtwkc=' 'sha256-YHdgjdaHPObo0ajgr78/3fg0b/g2KACx2Yivxr2AJEo=' 'sha256-g7R4omyYGomlmCfMw/yJR33a5qkRRNS2AFHhJjZtfwM=' 'sha256-J4UrXwIeplIJZfkgJq3M75mmvlwXBomq0l+LhSwoEfI='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https://fqvupierxrvpoidtwlon.supabase.co wss://fqvupierxrvpoidtwlon.supabase.co https://api.pwnedpasswords.com; worker-src 'self'; manifest-src 'self'; media-src 'self'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Ironlog Preview</title>
 <script>window.IRONLOG_APP=true;window.IRONLOG_ENV='preview';window.__installEvt=null;
@@ -2698,7 +2698,7 @@ function acctSheet(m){
   const T={signin:'Sign in',signup:'Create account',forgot:'Reset password',newpw:'New password',sent:m.title||'Check your email',wait:'Check your email',where:m.title||'Email confirmed'};
   let b='';
   if(m.mode==='signin')b=`${email}${f('Password','pw','password','current-password','enterkeyhint="go"')}${err}${go('Sign in')}<div class="row spread">${link('forgot','Forgot password?')}${link('signup','Create an account')}</div>`;
-  else if(m.mode==='signup')b=`${email}${f('Password (8 or more characters)','pw','password','new-password','minlength="8" enterkeyhint="go"')}${err}${go('Create account')}<p class="small muted" style="margin:0">We email you a link to confirm the address. Your email is used only to sign in and reset your password; you and the app's owner can see your log, and it is never shared or sold.</p><div class="row">${link('signin','I have an account')}</div>`;
+  else if(m.mode==='signup')b=`${email}${f('Password (8 or more characters)','pw','password','new-password','minlength="8" enterkeyhint="go"')}${err}${go('Create account')}<p class="small muted" style="margin:0">We email you a link to confirm the address. Your email is only for signing in and never shared.</p><div class="row">${link('signin','I have an account')}</div>`;
   else if(m.mode==='forgot')b=`${email}${err}${go('Email me a reset link')}<p class="small muted" style="margin:0">The link opens in your browser. Set the new password there, then sign in here.</p><div class="row">${link('signin','Back to sign in')}</div>`;
   else if(m.mode==='newpw')b=`${f('New password (8 or more characters)','pw','password','new-password','minlength="8" enterkeyhint="go"')}${err}${go('Save new password')}`;
   else if(m.mode==='wait')b=`<p style="margin:0">We sent a confirmation link to <b>${esc(m.email||'')}</b>. Tap it, then come back here. Ironlog signs you in by itself.</p><p class="small muted waitline" style="margin:0" aria-live="polite">${m.busy?'Checking':'Waiting for the confirmation'}</p>${err}<button type="button" class="btn primary block" data-act="acctWaitNow" ${m.busy?'disabled':''}>I have confirmed</button><div class="row">${link('signup','Use a different email')}</div>`;
@@ -4697,12 +4697,12 @@ function obAcctOffered(){
   if(!AUTH()||window.claude||acct.user)return false;
   try{return localStorage.getItem(OB_ACCT)!=='later';}catch(e){return true;}
 }
-/* Three things, side by side, a few words each (V, r31.2): logging, the
-   progression, and that routines and exercises are the lifter's own. */
+/* Three things, side by side, a few words each (V, r31.3): logging each
+   session, building the plan, and seeing progress. */
 const OB_FEATS=[
-  ['<circle cx="12" cy="12" r="9"/><path d="M8 12.5l2.6 2.6L16.2 9.4"/>','Log in one tap'],
-  ['<path d="M4 17l6-6 4 4 6-7"/><path d="M15 8h5v5"/>','Weights that progress'],
-  ['<path d="M4 7h9M17 7h3M4 17h3M11 17h9"/><circle cx="15" cy="7" r="2"/><circle cx="9" cy="17" r="2"/>','Built your way']];
+  ['<circle cx="12" cy="12" r="9"/><path d="M8 12.5l2.6 2.6L16.2 9.4"/>','Log sets with a tap'],
+  ['<path d="M4 7h9M17 7h3M4 17h3M11 17h9"/><circle cx="15" cy="7" r="2"/><circle cx="9" cy="17" r="2"/>','Build your plan'],
+  ['<path d="M4 17l6-6 4 4 6-7"/><path d="M15 8h5v5"/>','See your progress']];
 function obView(){
   // Still finding out whether this device is signed in, or pulling its log: show nothing that could flash away.
   if(!cloudChecked||(AUTH()&&!window.claude&&!acct.checked)||(cloud.on&&!cloud.lastPull))return `<div class="ob"><div class="ob-splash"><p class="ob-logo">${LOCKUP}</p></div></div>`;
@@ -4715,7 +4715,7 @@ function obView(){
   <div class="ob-top"><h1 class="ob-logo">${LOCKUP}</h1></div>
   <ul class="ob-feats" aria-label="What Ironlog does">${OB_FEATS.map(([ic,t])=>`<li><span class="fi" aria-hidden="true"><svg viewBox="0 0 24 24">${ic}</svg></span><b>${t}</b></li>`).join('')}</ul>
   <div class="ob-card"><h2>Save your log</h2>
-  <p class="ob-why">Optional. An account keeps your log if you lose or change phones, and syncs it across your devices.</p>
+  <p class="ob-why">Back up your log and use it on any device</p>
   <button class="btn primary block" data-act="acctOpen" data-mode="signup">Create account</button>
   <button class="btn block" data-act="acctOpen" data-mode="signin">I have an account</button></div>
   ${ENV==='preview'?'<button class="btn block" data-act="previewCopy">Copy my log from Ironlog</button>':''}
