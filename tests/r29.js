@@ -34,7 +34,7 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
     // Weeks of data: the average.
     await ev(() => { const L = window.__ironlog; L.state.sessions = []; L.makeDemo(); L.invalidate(); });
     const c = await vol();
-    ok(c.canvas && /week average/.test(c.text) && !/so far/.test(c.text), 'with full weeks logged it reads your average', c.text.slice(0, 200));
+    ok(c.canvas && /week average|weeks you trained of the last \d+, a lighter week left out/.test(c.text) && !/so far/.test(c.text), 'with full weeks logged it reads your average', c.text.slice(0, 200));
     // Neck and tibialis: tracked only, never flagged, no target in their region.
     const t = await ev(() => { const L = window.__ironlog; const reg = L.regionBalance({ abs: 6, obliques: 3, neck: 50, calves: 8, tibialis: 40 }); const core = reg.find(x => x.label === 'Core'), calves = reg.find(x => x.label === 'Calves'); const b = L.state.settings.bands; L.ui.tab = 'dash'; L.ui.folds['dash:weak'] = true; L.render(); const w = document.querySelector('#view > [data-mkey="weak"]').innerText; return { track: ['neck', 'tibialis', 'serratus', 'rotatorCuff'].every(m => L.TRACK_ONLY.has(m)), coreLo: core.lo, coreGot: core.got, want: b.abs[0] + b.obliques[0], calvesLo: calves.lo, calvesWant: b.calves[0], calvesGot: calves.got, flagged: /\bNeck\b|\bTibialis\b/.test(w) }; });
     ok(t.track && t.coreLo === t.want && t.coreGot === 9 && t.calvesLo === t.calvesWant && t.calvesGot === 8 && !t.flagged, 'neck and tibialis are tracked only: never flagged, and left out of their region on both sides', t);

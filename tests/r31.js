@@ -368,8 +368,32 @@ function strongCsv(weeks, name) {
     await P.page.click('[data-act="regionWk"][data-v="4"]'); await wait(150);
     await ev(() => { const L = window.__ironlog; const s = L.state.sessions; s.splice(0, s.length - 1); s[0].date = '2026-10-05'; L.invalidate(); L.render(); });
     const n0 = await read();
-    ok(/this week so far/.test(n0.text) && /No full week is logged yet/.test(n0.text), 'no full week yet: this week so far, and it says why', n0.text.slice(0, 300));
+    ok(/this week so far/.test(n0.text) && /No full week is logged yet/.test(n0.text) && n0.chips.length === 0, 'no full week yet: this week so far, it says why, and the week chips (which would change nothing) are hidden', n0);
+    // The reviewer's case: 10 weekly sessions, a deload week and a missed week inside the 4-week window.
+    await seed(10);
+    await ev(() => { const L = window.__ironlog; const s = L.state.sessions; const wk = d => L.weekStart(d);
+      const dl = s.find(x => wk(x.date) === '2026-09-14'); dl.deload = true; dl.ex[0].sets = dl.ex[0].sets.slice(0, 2);
+      L.state.sessions = s.filter(x => wk(x.date) !== '2026-09-07'); L.invalidate(); L.saveNow(); L.render(); });
+    await P.page.click('[data-act="regionWk"][data-v="4"]'); await wait(150);
+    const dm = await read();
+    ok(!/full weeks? logged so far/.test(dm.text) && /the 3 weeks you trained of the last 5, a lighter week left out/.test(dm.text), 'a deload and a missed week in the window: it says the weeks trained and the lighter week left out, never "logged so far"', dm.text.slice(0, 400));
     ok(P.errors.length === 0, 'no page errors (region weeks)', P.errors);
+    await P.browser.close();
+  }
+  // ---- r31.2: the spreadsheet export reads back with workout names and deload marks.
+  {
+    const P = await open('index.html', { clock: '2026-10-06T12:00:00', realStarter: true });
+    const ev = (f, a) => P.page.evaluate(f, a);
+    const csv = await ev(LB => { const L = window.__ironlog; const st = L.state; st.settings.onboarded = true;
+      const mk = (id, date, name, deload, w) => ({ id, date, dayIdx: 0, dayId: null, routineId: '', free: true, dayName: name, deload, ex: [{ exId: 'bench', rr: [6, 10], note: '', sets: [0, 1, 2].map(() => ({ w: w * LB, r: 8, rir: 1, warm: false, drop: false })) }, { exId: 'backSquat', rr: [5, 8], note: '', sets: [0, 1].map(() => ({ w: 225 * LB, r: 5, rir: null, warm: false, drop: false })) }] });
+      st.sessions = [mk('a', '2026-09-14', 'Push day', false, 185), mk('b', '2026-09-17', 'Leg day', false, 185), mk('c', '2026-09-21', 'Push day', true, 165)];
+      L.state = L.normalize(st); L.invalidate(); L.saveNow(); }, 0.45359237);
+    const [dl] = await Promise.all([P.page.waitForEvent('download'), ev(() => window.__ironlog.exportCSV())]);
+    const text = require('fs').readFileSync(await dl.path(), 'utf8');
+    await ev(t => { const L = window.__ironlog; L.state.sessions = []; L.invalidate(); L.impStart({ text: t }); }, text);
+    await wait(300);
+    const r = await ev(() => { const L = window.__ironlog; const m = L.ui.modal; if (!m || !m.res) return null; const b = L.impBuild(m); return b.sessions.map(x => [x.date, x.dayName, x.deload, x.ex.map(e => e.exId + ':' + e.sets.length).join(',')]); });
+    ok(Array.isArray(r) && r.length === 3 && r.map(x => x[1]).join() === 'Push day,Leg day,Push day' && r.map(x => x[2]).join() === 'false,false,true' && r.every(x => /bench:3/.test(x[3]) && /backSquat:2/.test(x[3])), 'Export sets (.csv) imports back with its workout names, deload marks, lifts, and sets', r);
     await P.browser.close();
   }
   // ---- Explanations follow the rules: none of the wording from before r31 is left in a tip, an i, the Guide, or the coach.

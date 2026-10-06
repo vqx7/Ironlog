@@ -3434,7 +3434,11 @@ function plannedSets(routine){
 function firstFullWeek(){const f=firstDate(state.sessions);if(!f)return null;const w=weekStart(f);return f>w?addDays(w,7):w;}
 /* The weeks an average covers, in words: "your last 4 full weeks", or
    "the 1 week you trained of the last 4" when weeks were missed (r31). */
-function avgWeeksTxt(avg){const w=avg._weeks,m=avg._missed||0;return m?`the ${w} week${w===1?'':'s'} you trained of the last ${Math.min(avg._n||4,w+m)}`:`your last ${w} full week${w===1?'':'s'}`;}
+/* r31.2: says the span the weeks really came from, and a lighter week left
+   out (the review saw "3 full weeks logged so far" for a deload and a
+   missed week inside the window of a 9-week log). */
+function avgWeeksTxt(avg){const w=avg._weeks,m=avg._missed||0,l=avg._light||0;if(!m&&!l)return `your last ${w} full week${w===1?'':'s'}`;
+  return `the ${w} week${w===1?'':'s'} you trained of the last ${avg._span||Math.min(avg._n||4,w+m)}${l?`, ${l===1?'a lighter week':l+' lighter weeks'} left out`:''}`;}
 /* The 4-week average every flag, the coach and Muscles read. The radar on
    Stats can choose 2 or 8 weeks instead (avgWeeks, r31.2); nothing else does,
    so a flag never changes with that choice. */
@@ -3448,9 +3452,9 @@ function avgWeeks(n,lightToo){
      skipped without a replacement, so the average is per week trained; they
      are counted in _missed (r31) and said wherever the average is, so one
      week trained out of four never reads as on track without saying so. */
-  let extra=0,missed=0;
+  let extra=0,missed=0,span=0,ffHit=false;
   for(let k=1;k<=Math.min(2*n,n+extra);k++){
-    const wk=addDays(cur,-7*k);if(ff&&wk<ff)continue;const ws=I.weekSets[wk];if(!ws){if(k<=n)missed++;continue;}
+    const wk=addDays(cur,-7*k);if(ff&&wk<ff){ffHit=true;continue;}span=k;const ws=I.weekSets[wk];if(!ws){if(k<=n)missed++;continue;}
     if(I.lightWk[wk]&&!lightToo){extra++;continue;}
     weeks++;
     for(const m in ws)tot[m]=(tot[m]||0)+ws[m];
@@ -3469,6 +3473,9 @@ function avgWeeks(n,lightToo){
   Object.defineProperty(out,'_weeks',{value:weeks,enumerable:false});
   Object.defineProperty(out,'_missed',{value:missed,enumerable:false});
   Object.defineProperty(out,'_n',{value:n,enumerable:false});
+  Object.defineProperty(out,'_span',{value:span,enumerable:false});
+  Object.defineProperty(out,'_light',{value:lightToo?0:extra,enumerable:false});
+  Object.defineProperty(out,'_ff',{value:ffHit,enumerable:false});
   Object.defineProperty(out,'_conf',{value:conf,enumerable:false});
   return out;
 }
@@ -6273,7 +6280,7 @@ function regionWk(){let v=ui.regionWk!=null?ui.regionWk:null;if(v==null)try{v=lo
 function regionSrc(){
   const n=regionWk();
   const avg=avgWeeks(n);
-  if(avg)return {src:avg,n,label:avg._missed?`your average over ${avgWeeksTxt(avg)}`:avg._weeks<n?`your ${avg._weeks} full week${avg._weeks===1?'':'s'} logged so far`:`your ${n}-week average`};
+  if(avg)return {src:avg,n,label:avg._missed||avg._light?`your average over ${avgWeeksTxt(avg)}`:avg._weeks<n&&avg._ff?`your ${avg._weeks} full week${avg._weeks===1?'':'s'} logged so far`:`your ${avg._weeks}-week average`};
   const I=IDX(),cur=weekStart(today());
   const wk=I.weekSets[cur]||{};
   if(MK.some(m=>(wk[m]||0)>0))return {src:wk,n,label:'this week so far',week:true,noFull:true};
@@ -6300,7 +6307,7 @@ function regionBody(){
     :`<p class="headline">${on} of ${regs.length} regions on target. Furthest short: ${worst.label}, ${r1(worst.got)} of ${r1(worst.lo)} sets.</p>`;
   const note=(rs.old?`Nothing logged in the last ${rs.n||4} weeks, so this shows ${esc(balLabel)}. `:'')+(rs.noFull?'No full week is logged yet, so this is this week so far. ':'')+[low.length?`${rs.week?'Short of the minimum so far':'Below target'}: ${andList(low.map(x=>x.label))}.`:'',high.length?`Above target: ${andList(high.map(x=>x.label))}.`:''].filter(Boolean).join(' ')+(rs.week&&low.length?' The week is still going, so this fills in as you train.':'');
   const chips=`<div class="wkpick"><span class="small muted" id="wkpickL">Average of the last</span><div class="chips" role="group" aria-labelledby="wkpickL">${REGION_WKS.map(([k,l])=>`<button class="chip ${rs.n===k?'on':''}" data-act="regionWk" data-v="${k}" aria-pressed="${rs.n===k}">${l}</button>`).join('')}</div></div>`;
-  return `<div class="card">${chips}${rh}<p class="small muted" style="margin:0 0 4px">Hard sets per region against the minimum of your weekly targets, using ${esc(balLabel)}. On or past the dashed ring is on target.</p><div class="chartbox tall"><canvas id="chRadar"></canvas></div>${chartFallback()}
+  return `<div class="card">${rs.week?'':chips}${rh}<p class="small muted" style="margin:0 0 4px">Hard sets per region against the minimum of your weekly targets, using ${esc(balLabel)}. On or past the dashed ring is on target.</p><div class="chartbox tall"><canvas id="chRadar"></canvas></div>${chartFallback()}
   <table class="t" style="margin-top:8px"><tr><th>Region</th><th class="r">Sets</th><th class="r">Minimum</th><th class="r">Of minimum</th></tr>
   ${regs.map(rg=>{const c=rg.low?(rs.week?'part':'yellow'):rg.high?'blue':'green';return `<tr><td><span class="plate ${c}" style="height:12px;vertical-align:-1px"></span> ${rg.label}</td><td class="r num">${r1(rg.got)}</td><td class="r muted small">${r1(rg.lo)}</td><td class="r num">${rg.lo>0?Math.round(rg.pct)+'%':'<span class="muted small">no minimum</span>'}</td></tr>`;}).join('')}</table>
   ${note?`<p class="small muted" style="margin-top:6px">${note}</p>`:''}</div>`;
@@ -7201,11 +7208,15 @@ function impGuess(name){
    takes Date, and a total-load column never passes for the weight. */
 const IMP_COLS={date:[/^date$/,/^(workout date|start_?time|date ?time|when)$/,/^day$/],name:[/^(workout name|workout|title|session|routine)$/],ex:[/^(exercise( name)?|exercise_title|movement|lift)$/,/^name$/],
   w:[/^(weight|load)$/,/^load_(lb|kg)$/,/^(weight|load)[ _]?\(?(kgs?|lbs?|pounds?|kilos?)\)?$/,/^(kgs?|lbs?)$/,/^(?!total).*\b(weight|load)\b.*$/],r:[/^(reps?|repetitions|rep count)$/],sets:[/^sets$/],rir:[/^rir$/],rpe:[/^rpe$/],
-  type:[/^(set order|set_type|set type|type)$/],warm:[/^(warm ?up|warmup)$/],drop:[/^(drop ?set|dropset)$/],secs:[/^(seconds|duration_seconds|time \(s\)|secs)$/],note:[/^(notes?|exercise_notes|exercise_note|comment)$/],unit:[/^(weight unit|unit|units)$/],dist:[/^(distance|distance_km|distance_miles)$/]};
+  type:[/^(set order|set_type|set type|type)$/],warm:[/^(warm ?up|warmup)$/],drop:[/^(drop ?set|dropset)$/],secs:[/^(seconds|duration_seconds|time \(s\)|secs)$/],note:[/^(notes?|exercise_notes|exercise_note|comment)$/],unit:[/^(weight unit|unit|units)$/],deload:[/^deload$/],dist:[/^(distance|distance_km|distance_miles)$/]};
 function impHeader(row){const map={};const k=row.map(h=>String(h||'').trim().toLowerCase().replace(/\s+/g,' '));
   for(const f in IMP_COLS)for(const re of IMP_COLS[f]){const i=k.findIndex((h,j)=>re.test(h)&&!Object.values(map).includes(j));if(i>=0){map[f]=i;break;}}
   // Ironlog's own CSV names the load load_lb or load_kg (and total_load_* for both sides, which is not it).
   if(map.w==null){const i=k.findIndex(h=>/^load_(lb|kg)$/.test(h));if(i>=0)map.w=i;}
+  /* Ironlog's own CSV (r31.2): its day column is the workout's name, and
+     its unit column says reps or seconds, not lb or kg. In other sheets a
+     Day column can be a date or a weekday, so this is only for ours. */
+  if(k.some(h=>/^load_(lb|kg)$/.test(h))&&k.includes('exercise_note')){const d=k.indexOf('day');if(map.name==null&&d>=0&&d!==map.date)map.name=d;if(map.unit!=null&&k[map.unit]==='unit')delete map.unit;}
   return map;}
 function impUnitOf(headers,map){const h=map.w!=null?String(headers[map.w]).toLowerCase():'';return /kg|kilo/.test(h)?'kg':/lb|pound/.test(h)?'lb':null;}
 /* Table rows to sessions: grouped by date and workout name, exercises in
@@ -7244,11 +7255,11 @@ function impFromTable(rows,map){
     const code=numTypes?ty:'';
     if(ty==='f'||ty==='failure'||code==='4')rir=0;
     const set={w,r:reps>0?Math.round(reps):Math.round(secs),rir:rir!=null&&rir>=0&&rir<=10?rir:null,warm:ty==='w'||ty==='warmup'||ty==='warm-up'||code==='2'||yes(cell('warm')),drop:ty==='d'||ty==='dropset'||ty==='drop'||code==='3'||yes(cell('drop')),timed:!(reps>0),u:rowUnit(r)};
-    const k=date+'|'+name;if(!S.has(k))S.set(k,{date,name,items:new Map(),note:''});const ss=S.get(k);
+    const k=date+'|'+name;if(!S.has(k))S.set(k,{date,name,items:new Map(),note:''});const ss=S.get(k);if(/^(yes|true|1|y)$/i.test(String(cell('deload')||'').trim()))ss.deload=true;
     if(!ss.items.has(ex))ss.items.set(ex,{name:ex,sets:[],note:cell('note')});
     const n=Math.min(Math.max(Math.round(num(cell('sets'))||1),1),20);for(let j=0;j<n;j++)ss.items.get(ex).sets.push({...set});
   }
-  return {sessions:[...S.values()].map(x=>({date:x.date,name:x.name,items:[...x.items.values()]})),unit,skipped,cardio,cardioRows:[...C.values()],unread:bad,cut:rows.length>IMP_MAX_ROWS};
+  return {sessions:[...S.values()].map(x=>({date:x.date,name:x.name,items:[...x.items.values()],deload:x.deload||undefined})),unit,skipped,cardio,cardioRows:[...C.values()],unread:bad,cut:rows.length>IMP_MAX_ROWS};
 }
 /* Free text: a date line starts a day; each other line is an exercise name
    followed by its sets, or sets alone continuing the exercise above, or a
@@ -7383,7 +7394,7 @@ function impBuild(m){
       if(!exo.bw&&!exo.timed)for(const q of sets)if((q.w>0&&q.w<2.3)||q.r>30){odd.push(`${exo.name} ${fmtW(q.w)} ${U()} x ${q.r}${x.date?`, ${fmtDate(x.date)}`:''}`);break;}
       // A lift's sets across rows of the same exercise stay together.
       const prev=ex.find(b=>b.exId===exo.id);if(prev)prev.sets.push(...sets);else ex.push({exId:exo.id,note:it.note||'',rr:null,sets});}
-    if(ex.length)out.push({id:uid(),date,dayIdx:0,dayId:null,dayName:(x.name||'').slice(0,60)||'Imported',routineId:'',free:true,ex,notes:'',durMin:null,deload:false,light:false});}
+    if(ex.length)out.push({id:uid(),date,dayIdx:0,dayId:null,dayName:(x.name||'').slice(0,60)||'Imported',routineId:'',free:true,ex,notes:'',durMin:null,deload:!!x.deload,light:false});}
   /* Date, lifts and reps, not loads (r31): the same file imported again with
      the other unit choice converted every load differently and added every
      session a second time. */
