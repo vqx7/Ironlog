@@ -341,6 +341,37 @@ function strongCsv(weeks, name) {
     ok(!a.over, 'no sideways scroll at 320 px with the notice');
     await P.browser.close();
   }
+  // ---- r31.2: the By region radar averages a chosen number of weeks (V: one week says little about balance).
+  {
+    const P = await open('index.html', { clock: '2026-10-06T12:00:00', realStarter: true });
+    const ev = (f, a) => P.page.evaluate(f, a);
+    const seed = weeks => ev(([LB, weeks]) => { const L = window.__ironlog; const st = L.state; st.settings.onboarded = true; const R = st.routines[0];
+      // One bench session a week, 3 sets in the oldest weeks and 6 in the newest two, so the window changes the average.
+      st.sessions = Array.from({ length: weeks }, (_, i) => { const d = new Date(Date.UTC(2026, 9, 1 - 7 * (weeks - 1 - i))).toISOString().slice(0, 10); const n = i >= weeks - 2 ? 6 : 3;
+        return { id: 'rw' + i, date: d, dayIdx: 0, dayId: R.days[0].id, routineId: R.id, dayName: 'Upper A', ex: [{ exId: 'bench', rr: [6, 10], note: '', sets: Array.from({ length: n }, () => ({ w: 135 * LB, r: 8, rir: 1, warm: false, drop: false })) }] }; });
+      L.state = L.normalize(st); L.invalidate(); L.saveNow(); L.ui.tab = 'dash'; L.ui.volMode = 'region'; L.ui.folds['dash:volume'] = true; L.render(); }, [LB, weeks]);
+    const read = () => ev(() => { const L = window.__ironlog; const sec = document.querySelector('#view [data-mkey="volume"]') || document.body; const on = sec.querySelector('[data-act="regionWk"].on');
+      const chest = [...sec.querySelectorAll('table.t tr')].find(tr => /Chest/.test(tr.innerText)); return { chips: [...sec.querySelectorAll('[data-act="regionWk"]')].map(b => b.innerText), on: on ? on.innerText : null, text: sec.innerText.replace(/\s+/g, ' '), chest: chest ? +chest.children[1].innerText : null, coach: L.coach().text }; });
+    await seed(6);
+    const a4 = await read();
+    ok(a4.chips.join() === '2 wk,4 wk,8 wk' && a4.on === '4 wk' && /Average of the last/.test(a4.text) && /your 4-week average/.test(a4.text), 'By region averages the last 2, 4, or 8 full weeks, and opens on 4', a4);
+    await P.page.click('[data-act="regionWk"][data-v="2"]'); await wait(150);
+    const a2 = await read();
+    ok(a2.on === '2 wk' && /your 2-week average/.test(a2.text) && a2.chest > a4.chest, '2 weeks averages the last two full weeks (more chest sets here than the 4-week average)', { a4: a4.chest, a2: a2.chest });
+    ok(a2.coach === a4.coach, 'the choice changes the radar only, never the coach or the flags', { a4: a4.coach, a2: a2.coach });
+    await P.page.click('[data-act="regionWk"][data-v="8"]'); await wait(150);
+    const a8 = await read();
+    // The log began on a Thursday, so its first week is not a full week (r29): 5 full weeks.
+    ok(a8.on === '8 wk' && /your 5 full weeks logged so far/.test(a8.text), '8 weeks with 5 full weeks logged says it uses the 5 there are', a8.text.slice(0, 300));
+    await P.page.reload(); await P.page.waitForFunction(() => window.__ironlog); await ev(() => { const L = window.__ironlog; L.ui.tab = 'dash'; L.ui.volMode = 'region'; L.ui.folds['dash:volume'] = true; L.render(); });
+    ok((await read()).on === '8 wk', 'the choice is kept on this phone after a reload');
+    await P.page.click('[data-act="regionWk"][data-v="4"]'); await wait(150);
+    await ev(() => { const L = window.__ironlog; const s = L.state.sessions; s.splice(0, s.length - 1); s[0].date = '2026-10-05'; L.invalidate(); L.render(); });
+    const n0 = await read();
+    ok(/this week so far/.test(n0.text) && /No full week is logged yet/.test(n0.text), 'no full week yet: this week so far, and it says why', n0.text.slice(0, 300));
+    ok(P.errors.length === 0, 'no page errors (region weeks)', P.errors);
+    await P.browser.close();
+  }
   // ---- Explanations follow the rules: none of the wording from before r31 is left in a tip, an i, the Guide, or the coach.
   {
     const src = require('fs').readFileSync(process.env.IRONLOG_FILE || 'index.html', 'utf8');

@@ -481,15 +481,6 @@ body.obmode main,body.obmode #view{padding-bottom:24px}
 .ob-card h2{font:700 26px/1.1 var(--display);letter-spacing:.01em;margin:0 0 14px}
 .ob-card .btn+.btn{margin-top:8px}
 .ob-skip{align-self:center;min-height:44px;color:var(--muted)}
-.ob[data-step="acct"] .ob-top{padding-bottom:10px}
-.ob-feats{list-style:none;margin:0;padding:0 2px;display:flex;flex-direction:column;gap:14px}
-.ob-feats li{display:flex;gap:12px;align-items:flex-start}
-.ob-feats .fi{flex:none;width:36px;height:36px;border-radius:10px;background:var(--volt-soft);color:var(--volt-line);display:grid;place-items:center}
-.ob-feats svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
-.ob-feats b{display:block;font-size:15.5px;font-weight:700;line-height:1.25}
-.ob-feats li span:not(.fi){display:block;font-size:13.5px;color:var(--muted);line-height:1.35;margin-top:1px}
-.ob-why{font-size:13.5px;color:var(--muted);line-height:1.4;margin:-6px 0 14px}
-.ob-later{min-height:48px;background:transparent;box-shadow:inset 0 0 0 1px var(--line);color:var(--ink)}
 .ob-dots{display:flex;justify-content:center;gap:6px;margin-top:auto;padding-top:6px}
 .ob-dots i{width:7px;height:7px;border-radius:50%;background:var(--line)}
 .ob-dots i.on{background:var(--volt)}
@@ -561,8 +552,6 @@ body.obmode main,body.obmode #view{padding-bottom:24px}
 .chartbox{position:relative;height:220px;margin-top:10px}
 .chips.rng{justify-content:flex-end;margin:8px 0 0;gap:4px}
 .chips.rng .chip{min-height:30px;padding:0 11px;font-size:13px}
-.wkpick{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:0 0 10px;flex-wrap:wrap}
-.wkpick .chips{gap:4px}.wkpick .chip{min-height:44px;padding:0 13px;font-size:13.5px}
 .chartbox.tall{height:320px}
 .heat{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-top:8px}
 .heat>*{aspect-ratio:1;border-radius:50%;background:var(--surface-2)}
@@ -1457,7 +1446,7 @@ if(ENV==='preview')document.documentElement.dataset.env='preview';
 const HAD_LOG=(()=>{try{return localStorage.getItem(KEY)!=null;}catch(e){return false;}})();
 /* Shown in Settings, in diagnostics and in backups, so a bug report can be
    matched to the exact build. */
-const APP_VERSION='2026.10.06-r31.2';
+const APP_VERSION='2026.10.05-r31.1';
 /* The logo (r25): an upright dumbbell that is also the I of Ironlog. Same
    numbers as scripts/icons.py, which draws the app icons. */
 const MARK_SVG='<svg class="mark" viewBox="-242 -378 484 756" aria-hidden="true" focusable="false"><rect class="mk-h" x="-30" y="-300" width="60" height="600" rx="14"/><rect class="mk-h" x="-80" y="-192" width="160" height="32" rx="12"/><rect class="mk-h" x="-80" y="160" width="160" height="32" rx="12"/><rect class="mk-p" x="-240" y="-376" width="480" height="92" rx="30"/><rect class="mk-p" x="-190" y="-270" width="380" height="66" rx="26"/><rect class="mk-p" x="-190" y="204" width="380" height="66" rx="26"/><rect class="mk-p" x="-240" y="284" width="480" height="92" rx="30"/></svg>';
@@ -2478,7 +2467,7 @@ function guideSheet(m){
    <p><b>An injury</b> flagged on a muscle or a joint (knee, hip, shoulder, elbow, wrist) pauses targets for exercises that load it and caps their load at last time.</p>
    <p><b>Changes apply at once</b>: a new load step, rep range, or heaviest load reaches the exercises in your session that you have not started yet.</p>`],
   ['stats','Volume and Stats',`<p><b>A hard set</b> is a working set at RIR 3 or less${off?' (with RIR off, every working set)':''}. Helper muscles count half a set (Pelland 2025).</p>
-   <p><b>Weekly targets</b> are per muscle in Settings, Weekly set targets. 10 to 20 hard sets a week for major muscles is typical, not a ceiling. Serratus, rotator cuff, neck, and tibialis are tracked only: counted and shown, with no target, since no study sets a dose for them and most routines leave them to indirect work. A target starting at 0 is met with no sets. A muscle is below target when its weekly average, to one decimal as shown, is under the minimum. The radar on Stats measures each region against its minimum, so on or past the ring is on target. It averages your last 4 full weeks; the chips above it switch to 2 or 8 weeks, for the radar only. During the week, short of the minimum shows as under way, not below.</p>
+   <p><b>Weekly targets</b> are per muscle in Settings, Weekly set targets. 10 to 20 hard sets a week for major muscles is typical, not a ceiling. Serratus, rotator cuff, neck, and tibialis are tracked only: counted and shown, with no target, since no study sets a dose for them and most routines leave them to indirect work. A target starting at 0 is met with no sets. A muscle is below target when its weekly average, to one decimal as shown, is under the minimum. The radar on Stats measures each region against its minimum, so on or past the ring is on target. During the week, short of the minimum shows as under way, not below.</p>
    <p><b>Lagging strength</b> is a muscle whose lifts are falling, or flat with one of them stalled (a convention). A muscle whose lifts are all within day-to-day noise reads <b>unclear</b>, never 0%.</p>
    <p><b>Your target and the usual range</b>: picking a ready-made routine sets your minimums to what it plans, so Stats measures you against your plan. Plan, Weekly volume names the muscles that plan puts under the usual range.</p>
    <p><b>Planned sets</b> count the same way: a set planned at RIR 4 or more is not a planned hard set, and in a deload week the target is halved.</p>
@@ -3434,23 +3423,19 @@ function plannedSets(routine){
 function firstFullWeek(){const f=firstDate(state.sessions);if(!f)return null;const w=weekStart(f);return f>w?addDays(w,7):w;}
 /* The weeks an average covers, in words: "your last 4 full weeks", or
    "the 1 week you trained of the last 4" when weeks were missed (r31). */
-function avgWeeksTxt(avg){const w=avg._weeks,m=avg._missed||0;return m?`the ${w} week${w===1?'':'s'} you trained of the last ${Math.min(avg._n||4,w+m)}`:`your last ${w} full week${w===1?'':'s'}`;}
-/* The 4-week average every flag, the coach and Muscles read. The radar on
-   Stats can choose 2 or 8 weeks instead (avgWeeks, r31.2); nothing else does,
-   so a flag never changes with that choice. */
-function actualAvg4(lightToo){return avgWeeks(4,lightToo);}
-function avgWeeks(n,lightToo){
+function avgWeeksTxt(avg){const w=avg._weeks,m=avg._missed||0;return m?`the ${w} week${w===1?'':'s'} you trained of the last ${Math.min(4,w+m)}`:`your last ${w} full week${w===1?'':'s'}`;}
+function actualAvg4(lightToo){
   const I=IDX();const cur=weekStart(today());let weeks=0;const tot={},con={};const ff=firstFullWeek();
-  /* The last n weeks, but a lighter week among them is skipped and the
-     week before them takes its place (r30), up to twice as far back: a
+  /* The last 4 weeks, as before, but a lighter week among them is skipped
+     and the week before the 4 takes its place (r30), up to 8 weeks back: a
      deload halves the sets on purpose, and averaging it in read as below
      target for a month after every deload. Weeks with no training are
      skipped without a replacement, so the average is per week trained; they
      are counted in _missed (r31) and said wherever the average is, so one
      week trained out of four never reads as on track without saying so. */
   let extra=0,missed=0;
-  for(let k=1;k<=Math.min(2*n,n+extra);k++){
-    const wk=addDays(cur,-7*k);if(ff&&wk<ff)continue;const ws=I.weekSets[wk];if(!ws){if(k<=n)missed++;continue;}
+  for(let k=1;k<=Math.min(8,4+extra);k++){
+    const wk=addDays(cur,-7*k);if(ff&&wk<ff)continue;const ws=I.weekSets[wk];if(!ws){if(k<=4)missed++;continue;}
     if(I.lightWk[wk]&&!lightToo){extra++;continue;}
     weeks++;
     for(const m in ws)tot[m]=(tot[m]||0)+ws[m];
@@ -3458,7 +3443,7 @@ function avgWeeks(n,lightToo){
     for(const m in wc)con[m]=(con[m]||0)+wc[m];
   }
   // Only lighter weeks in reach: those, rather than nothing.
-  if(!weeks&&extra&&!lightToo)return avgWeeks(n,true);
+  if(!weeks&&extra&&!lightToo)return actualAvg4(true);
   if(!weeks)return null;
   // average over the weeks that actually have training, not a flat 4.
   // dividing by 4 when only 2 weeks were logged halved every muscle and
@@ -3468,7 +3453,6 @@ function avgWeeks(n,lightToo){
   for(const m in con)conf[m]=con[m]/weeks;
   Object.defineProperty(out,'_weeks',{value:weeks,enumerable:false});
   Object.defineProperty(out,'_missed',{value:missed,enumerable:false});
-  Object.defineProperty(out,'_n',{value:n,enumerable:false});
   Object.defineProperty(out,'_conf',{value:conf,enumerable:false});
   return out;
 }
@@ -4676,27 +4660,17 @@ function obAcctOffered(){
   if(!AUTH()||window.claude||acct.user)return false;
   try{return localStorage.getItem(OB_ACCT)!=='later';}catch(e){return true;}
 }
-const OB_FEATS=[
-  ['<circle cx="12" cy="12" r="9"/><path d="M8 12.5l2.6 2.6L16.2 9.4"/>','Log a set in one tap','Your last numbers are filled in, ready to tick.'],
-  ['<path d="M4 17l6-6 4 4 6-7"/><path d="M15 8h5v5"/>','Know what to lift next','Weights and reps that progress from your own log.'],
-  ['<path d="M5 20v-8M12 20V5M19 20v-5"/>','See what is working','Strength trends, PRs, and sets for each muscle.']];
 function obView(){
   // Still finding out whether this device is signed in, or pulling its log: show nothing that could flash away.
   if(!cloudChecked||(AUTH()&&!window.claude&&!acct.checked)||(cloud.on&&!cloud.lastPull))return `<div class="ob"><div class="ob-splash"><p class="ob-logo">${LOCKUP}</p></div></div>`;
   const acctStep=!!AUTH()&&!window.claude;const dots=n=>acctStep?`<div class="ob-dots" aria-hidden="true"><i class="${n===1?'on':''}"></i><i class="${n===2?'on':''}"></i></div>`:'';
-  /* The first page (r31.2, V): what the app does, in three lines, before
-     anything is asked; then the account, said to be optional and what it is
-     for, with Not now as a real button. A page that opened on an account
-     request alone lost a friend at the first screen. */
   if(obAcctOffered())return `<div class="ob" id="obPage" data-step="acct">
   <div class="ob-top"><h1 class="ob-logo">${LOCKUP}</h1></div>
-  <ul class="ob-feats" aria-label="What Ironlog does">${OB_FEATS.map(([ic,t,d])=>`<li><span class="fi" aria-hidden="true"><svg viewBox="0 0 24 24">${ic}</svg></span><div><b>${t}</b><span>${d}</span></div></li>`).join('')}</ul>
   <div class="ob-card"><h2>Save your log</h2>
-  <p class="ob-why">Optional. An account keeps your log if you lose or change phones, and syncs it across your devices.</p>
   <button class="btn primary block" data-act="acctOpen" data-mode="signup">Create account</button>
   <button class="btn block" data-act="acctOpen" data-mode="signin">I have an account</button></div>
-  ${ENV==='preview'?'<button class="btn block" data-act="previewCopy">Copy my log from Ironlog</button>':''}
-  <button class="btn block ob-later" data-act="obAcctLater">Not now</button>${dots(1)}</div>`;
+  ${ENV==='preview'?'<button class="btn block" data-act="previewCopy" style="margin-top:10px">Copy my log from Ironlog</button>':''}
+  <button class="linkbtn ob-skip" data-act="obAcctLater">Not now</button>${dots(1)}</div>`;
   const imp=`<button class="ob-opt" data-act="impOpen"><b>Import my workouts</b><span>Notes, a spreadsheet, Strong, Hevy, a backup</span></button>`;
   return `<div class="ob welcome" id="obPage" data-step="start">
   ${acctStep&&!acct.user?'<button class="linkbtn ob-back" data-act="obAcctBack">‹ Account</button>':''}
@@ -6093,7 +6067,7 @@ function viewDash(){
   const avg=actualAvg4();const plan=plannedSets(R);const bands=state.settings.bands;
 
   // volume: five ways to read the same hard-set counts, plus tonnage
-  h+=dsec('volume','Volume','Hard sets per muscle. Direct work counts 1, secondary counts 0.5. A set counts as hard when you logged RIR 3 or less. A blank RIR is read as your usual RIR on that lift once you have rated 3 of its sets in the last 12 weeks, and until then counts as hard, because most working sets are. Blank sets are shaded lighter so you can see how much of the bar is measured and how much is assumed. Amber is under your weekly target, green is inside it, blue is over. In This week, pale green is short of the minimum while the week is still going. Below and above are judged at the one decimal shown. By region measures each region against its minimum, so 100% is on target; it averages your last 4 full weeks unless you pick 2 or 8 above the chart (the radar only: flags and the coach always use 4). Load is total weight × reps per week, comparable week to week but not session to session.',
+  h+=dsec('volume','Volume','Hard sets per muscle. Direct work counts 1, secondary counts 0.5. A set counts as hard when you logged RIR 3 or less. A blank RIR is read as your usual RIR on that lift once you have rated 3 of its sets in the last 12 weeks, and until then counts as hard, because most working sets are. Blank sets are shaded lighter so you can see how much of the bar is measured and how much is assumed. Amber is under your weekly target, green is inside it, blue is over. In This week, pale green is short of the minimum while the week is still going. Below and above are judged at the one decimal shown. By region measures each region against its minimum, so 100% is on target. Load is total weight × reps per week, comparable week to week but not session to session.',
     `${cov}
   <div class="chips">${VOL_MODES.map(([k,l])=>`<button class="chip ${ui.volMode===k?'on':''}" data-act="volMode" data-v="${k}">${l}</button>`).join('')}</div>
   ${ui.volMode==='region'?regionBody():ui.volMode==='trend'?trendBody():ui.volMode==='load'?`<div class="card">${volHeadline()}${state.sessions.length?`${rangeChips('vol',weeksSpan(firstDate(state.sessions)),8)}<div class="chartbox"><canvas id="chVol"></canvas></div>${chartFallback()}`:'<p class="small muted">Log a session to start this chart.</p>'}</div>`:`<div class="card">${ui.volMode==='week'?(MK.some(m=>(thisWeek[m]||0)>0)?volumeRows(thisWeek,state.settings.rirMode==='off'?null:thisWeekConf,true):'<p class="muted" style="margin:0">Nothing logged this week yet.</p>'):(avg?`<p class="small muted" style="margin:0 0 6px">Averaged over the ${avg._weeks} week${avg._weeks===1?'':'s'} with training in the last 4. Weeks with no sessions are excluded rather than counted as zero.</p>${volumeRows(avg,state.settings.rirMode==='off'?null:avg._conf)}`:'<p class="muted">No sessions in the previous 4 full weeks.</p>')}</div>`}`,`${wkHard} hard sets this week`);
@@ -6263,26 +6237,17 @@ function dayAxis(base,win){
    the chart is always drawn from real sets (V, r29: a blank card read as the
    chart being gone). With no sessions at all it still draws, empty, with the
    target ring. The chart and the table use this one source. */
-/* The weeks the radar averages (r31.2, V: one week says little about
-   balance): the last 2, 4 or 8 full weeks, 4 unless changed, kept per
-   device. Fewer full weeks logged than chosen: those, said so; none yet:
-   this week so far, said so. This week on its own is Volume's This week. */
-const REGION_WKS=[[2,'2 wk'],[4,'4 wk'],[8,'8 wk']];
-const REGION_KEY=KEY+'.regionWk';
-function regionWk(){let v=ui.regionWk!=null?ui.regionWk:null;if(v==null)try{v=localStorage.getItem(REGION_KEY);}catch(e){/* private mode: the default */}const n=v==null?4:+v;return REGION_WKS.some(x=>x[0]===n)?n:4;}
 function regionSrc(){
-  const n=regionWk();
-  const avg=avgWeeks(n);
-  if(avg)return {src:avg,n,label:avg._missed?`your average over ${avgWeeksTxt(avg)}`:avg._weeks<n?`your ${avg._weeks} full week${avg._weeks===1?'':'s'} logged so far`:`your ${n}-week average`};
+  const avg=actualAvg4();if(avg)return {src:avg,label:avg._missed?`your average over ${avgWeeksTxt(avg)}`:`your ${avg._weeks}-week average`};
   const I=IDX(),cur=weekStart(today());
   const wk=I.weekSets[cur]||{};
-  if(MK.some(m=>(wk[m]||0)>0))return {src:wk,n,label:'this week so far',week:true,noFull:true};
+  if(MK.some(m=>(wk[m]||0)>0))return {src:wk,label:'this week so far',week:true};
   const has=w=>{const x=I.weekSets[w];return !!x&&MK.some(m=>(x[m]||0)>0);};
   const ff=firstFullWeek();const all=Object.keys(I.weekSets).filter(w=>w<cur&&has(w)).sort();
-  const full=all.filter(w=>!ff||w>=ff);const wks=(full.length?full:all).slice(-n);
+  const full=all.filter(w=>!ff||w>=ff);const wks=(full.length?full:all).slice(-4);
   if(wks.length){const out={};for(const w of wks)for(const m in I.weekSets[w])out[m]=(out[m]||0)+I.weekSets[w][m]/wks.length;
     const end=addDays(wks[wks.length-1],6);
-    return {src:out,n,label:`your last ${wks.length===1?'trained week':wks.length+' trained weeks'}, to ${fmtDate(end)}`,old:true,end};}
+    return {src:out,label:`your last ${wks.length===1?'trained week':wks.length+' trained weeks'}, to ${fmtDate(end)}`,old:true,end};}
   return {src:{},label:'',empty:true};
 }
 function regionBody(){
@@ -6298,9 +6263,8 @@ function regionBody(){
   const rh=rs.week?`<p class="headline">${on?`This week so far: ${on} of ${regs.length} regions at their minimum.`:`This week so far: ${tot} hard sets. Each region fills in as you train.`}</p>`
     :!low.length?`<p class="headline">Every region at or above its minimum${high.length?'':', inside its target'}.</p>`
     :`<p class="headline">${on} of ${regs.length} regions on target. Furthest short: ${worst.label}, ${r1(worst.got)} of ${r1(worst.lo)} sets.</p>`;
-  const note=(rs.old?`Nothing logged in the last ${rs.n||4} weeks, so this shows ${esc(balLabel)}. `:'')+(rs.noFull?'No full week is logged yet, so this is this week so far. ':'')+[low.length?`${rs.week?'Short of the minimum so far':'Below target'}: ${andList(low.map(x=>x.label))}.`:'',high.length?`Above target: ${andList(high.map(x=>x.label))}.`:''].filter(Boolean).join(' ')+(rs.week&&low.length?' The week is still going, so this fills in as you train.':'');
-  const chips=`<div class="wkpick"><span class="small muted" id="wkpickL">Average of the last</span><div class="chips" role="group" aria-labelledby="wkpickL">${REGION_WKS.map(([k,l])=>`<button class="chip ${rs.n===k?'on':''}" data-act="regionWk" data-v="${k}" aria-pressed="${rs.n===k}">${l}</button>`).join('')}</div></div>`;
-  return `<div class="card">${chips}${rh}<p class="small muted" style="margin:0 0 4px">Hard sets per region against the minimum of your weekly targets, using ${esc(balLabel)}. On or past the dashed ring is on target.</p><div class="chartbox tall"><canvas id="chRadar"></canvas></div>${chartFallback()}
+  const note=(rs.old?`Nothing logged in the last 4 weeks, so this shows ${esc(balLabel)}. `:'')+[low.length?`${rs.week?'Short of the minimum so far':'Below target'}: ${andList(low.map(x=>x.label))}.`:'',high.length?`Above target: ${andList(high.map(x=>x.label))}.`:''].filter(Boolean).join(' ')+(rs.week&&low.length?' The week is still going, so this fills in as you train.':'');
+  return `<div class="card">${rh}<p class="small muted" style="margin:0 0 4px">Hard sets per region against the minimum of your weekly targets, using ${esc(balLabel)}. On or past the dashed ring is on target.</p><div class="chartbox tall"><canvas id="chRadar"></canvas></div>${chartFallback()}
   <table class="t" style="margin-top:8px"><tr><th>Region</th><th class="r">Sets</th><th class="r">Minimum</th><th class="r">Of minimum</th></tr>
   ${regs.map(rg=>{const c=rg.low?(rs.week?'part':'yellow'):rg.high?'blue':'green';return `<tr><td><span class="plate ${c}" style="height:12px;vertical-align:-1px"></span> ${rg.label}</td><td class="r num">${r1(rg.got)}</td><td class="r muted small">${r1(rg.lo)}</td><td class="r num">${rg.lo>0?Math.round(rg.pct)+'%':'<span class="muted small">no minimum</span>'}</td></tr>`;}).join('')}</table>
   ${note?`<p class="small muted" style="margin-top:6px">${note}</p>`:''}</div>`;
@@ -6679,7 +6643,7 @@ function viewSettings(){
   ${privacyLine()}${safetyLine()}
   ${backupDue()?`<p class="callout yellow" style="margin:10px 0 0"><b>Backup due.</b> ${s.lastExport?`Last backup file ${fmtDate(s.lastExport)}.`:'No backup file yet.'} ${cloud.on?'Export one below; the cloud copy mirrors deletions, so it is not a backup.':'This device holds the only copy.'}</p>`:''}
   ${storageOk?'':'<p class="small" style="color:var(--red)">This browser is blocking local storage, so this device keeps nothing between reloads without cloud sync.</p>'}
-  <div class="card stack"><div class="row"><button class="btn primary" data-act="export" data-tip="The backup: restores everything, on any device.">Export backup (.json)</button><button class="btn" data-act="showBackup" data-tip="The same backup as text, to copy somewhere safe.">Show backup text</button><button class="btn" data-act="exportCsv" data-tip="One row per set for spreadsheets. Import workouts reads it back, but it is not a full backup: routines and settings are not in it.">Export sets (.csv)</button></div>
+  <div class="card stack"><div class="row"><button class="btn primary" data-act="export" data-tip="The backup: restores everything, on any device.">Export backup (.json)</button><button class="btn" data-act="showBackup" data-tip="The same backup as text, to copy somewhere safe.">Show backup text</button><button class="btn" data-act="exportCsv" data-tip="One row per set for spreadsheets. Not a backup: it cannot be imported.">Export sets (.csv)</button></div>
   <button class="btn" data-act="impOpen" data-tip="Adds sessions from notes, a spreadsheet, Strong, or Hevy. You check everything before it is saved.">Import workouts</button>
   <label class="field">Restore a backup file (replaces everything)<input type="file" accept=".json,application/json" id="importFile"></label>
   <button class="btn" data-act="pasteImport">Paste backup text instead</button>
@@ -8695,7 +8659,6 @@ const ACT={
     },true);
   },
   libKind(t){const v=t.dataset.v||'';if(!['','common','rare'].includes(v))return;ui.libKind=v;rerenderKeepScroll();},
-  regionWk(t){const v=+t.dataset.v;if(!REGION_WKS.some(x=>x[0]===v))return;try{localStorage.setItem(REGION_KEY,String(v));}catch(e){/* kept for this visit only */}ui.regionWk=v;rerenderKeepScroll();},
   volMode(t){const v=t.dataset.v;if(!VOL_MODES.some(x=>x[0]===v))return;ui.volMode=v;rerenderKeepScroll();},
   chartRange(t){ui.rng=ui.rng||{};ui.rng[t.dataset.id]=t.dataset.v;rerenderKeepScroll();},
   histMore(){ui.histLimit+=HIST_PAGE;rerenderKeepScroll();},
@@ -9391,7 +9354,7 @@ function swapPrompt(b,reason){
 }
 /*}ai=*/
 window.__onLib=(which)=>{if((which==='chart'&&ui.tab==='dash')||(which==='sortable'&&ui.tab==='program'))rerenderKeepScroll();};
-window.__ironlog={get state(){return state;},set state(v){state=v;},ENV,KEY,COMMON,isCommon,andList,belowMin,aboveMax,starterRoutine,starterSigs,plateList,exBarKg,VOL_MODES,liveLogFetch,regionSrc,fitTargets,firstFullWeek,moveBlock,BANDS,installSheet,siteHost,greyW,effW,greyR,lighterLoad,incOf,swapPlan,planSetsPerWeek,weekNeed,stepRead,e1inv,rtfAt,rtfOf,rtfBand,calStats,rirEff,isHard,setCredit,tonnage,loadMode,loadWords,loadNote,progStep,jumpCap,setSecs,setupSecs,recovery,rolling7,rankDays,rankExercises,isCompound,patternOf,noE1,whtrLine,exHeadline,remainMin,shortPlan,weekPlan,cycleProjection,lastLighterWeek,regionBalance,parseHeight,mixCheck,swapCands,eqPlan,exportCSV,importData,chunksOf,assemble,sessionMuscles,TRACK_ONLY,cloud,Hx,mergeChunk,baseOf,sync:()=>cq(cloudPull),TEMPLATES,lastRFor,impDate,impRows,impNorm,impMatch,impFromText,impFromTable,impHeader,impBuild,impStart,impXlsx,parseSets,undoStack,undoRestore,undoForget,allTimeBests,bestsBoard,obActive,fmtW,rirUsual,rirEst,routineFromTemplate,plannedSets,map3d:()=>({state:B3.state,fail:B3.fail,meshes:B3.meshes.length,yaw:B3.yaw,glow:Object.keys(B3.mats).filter(m=>B3.mats[m].emissiveIntensity>0),canvas:!!document.querySelector('#bm3d canvas'),colors:Object.fromEntries(Object.entries(B3.mats).map(([m,mt])=>[m,'#'+mt.color.getHexString()])),pick:(x,y)=>map3dPick(x,y),want:map3dColors()}),cloudState:()=>({on:cloud.on,status:cloud.status,err:cloud.err,uid:cloud.uid,acct:cloud.acct}),acctUser:()=>acct.user,acctWaiting:()=>!!acctWait.pw,flush:()=>cq(cloudFlush),backupDue,routineUpdates,planFor,platesMode,plateText,chunksOf,IDX,suggest,e1,render,ACT,ui,makeDemo,invalidate,normalize,snapshot,saveNow,timer,weekStats,weekStart,today,EX,blockProgress,dayMinutes,weekStreak,coach,tonnageNow,livePR,exProjection,movers,stalledIds,muscleStatus,actualAvg4,plannedPerWeek,parseSets,/*ai{*/aiSetsValid,fillSets,/*}ai=fillSets,*/newBlock,lastNoteOf,sizeRows,sessionMuscleSets,sessionCapNote,routineClutter,rowBlank,dayReasons,impTextSets,liftTrend,sessionLength,prBeat,exInjury,exJoints,openModal,EQUIP,HARD_EX,recentLighter,planEvidenceNote,howToUrl,editFp,toast,avgWeeks,regionWk,REGION_WKS,SAFETY_TXT,libFiltered,nameMatch,workLoad,fitE,offSession,tagged,fatigueStalls,avgWeeksTxt,routineFromLog,repSpan,rangeWords,calDueIdx,readyCard,loadAskCard,/*ai{*/aiDigest,debriefPrompt,reviewPrompt,swapPrompt,AI,/*}ai=*/sameRR};
+window.__ironlog={get state(){return state;},set state(v){state=v;},ENV,KEY,COMMON,isCommon,andList,belowMin,aboveMax,starterRoutine,starterSigs,plateList,exBarKg,VOL_MODES,liveLogFetch,regionSrc,fitTargets,firstFullWeek,moveBlock,BANDS,installSheet,siteHost,greyW,effW,greyR,lighterLoad,incOf,swapPlan,planSetsPerWeek,weekNeed,stepRead,e1inv,rtfAt,rtfOf,rtfBand,calStats,rirEff,isHard,setCredit,tonnage,loadMode,loadWords,loadNote,progStep,jumpCap,setSecs,setupSecs,recovery,rolling7,rankDays,rankExercises,isCompound,patternOf,noE1,whtrLine,exHeadline,remainMin,shortPlan,weekPlan,cycleProjection,lastLighterWeek,regionBalance,parseHeight,mixCheck,swapCands,eqPlan,exportCSV,importData,chunksOf,assemble,sessionMuscles,TRACK_ONLY,cloud,Hx,mergeChunk,baseOf,sync:()=>cq(cloudPull),TEMPLATES,lastRFor,impDate,impRows,impNorm,impMatch,impFromText,impFromTable,impHeader,impBuild,impStart,impXlsx,parseSets,undoStack,undoRestore,undoForget,allTimeBests,bestsBoard,obActive,fmtW,rirUsual,rirEst,routineFromTemplate,plannedSets,map3d:()=>({state:B3.state,fail:B3.fail,meshes:B3.meshes.length,yaw:B3.yaw,glow:Object.keys(B3.mats).filter(m=>B3.mats[m].emissiveIntensity>0),canvas:!!document.querySelector('#bm3d canvas'),colors:Object.fromEntries(Object.entries(B3.mats).map(([m,mt])=>[m,'#'+mt.color.getHexString()])),pick:(x,y)=>map3dPick(x,y),want:map3dColors()}),cloudState:()=>({on:cloud.on,status:cloud.status,err:cloud.err,uid:cloud.uid,acct:cloud.acct}),acctUser:()=>acct.user,acctWaiting:()=>!!acctWait.pw,flush:()=>cq(cloudFlush),backupDue,routineUpdates,planFor,platesMode,plateText,chunksOf,IDX,suggest,e1,render,ACT,ui,makeDemo,invalidate,normalize,snapshot,saveNow,timer,weekStats,weekStart,today,EX,blockProgress,dayMinutes,weekStreak,coach,tonnageNow,livePR,exProjection,movers,stalledIds,muscleStatus,actualAvg4,plannedPerWeek,parseSets,/*ai{*/aiSetsValid,fillSets,/*}ai=fillSets,*/newBlock,lastNoteOf,sizeRows,sessionMuscleSets,sessionCapNote,routineClutter,rowBlank,dayReasons,impTextSets,liftTrend,sessionLength,prBeat,exInjury,exJoints,openModal,EQUIP,HARD_EX,recentLighter,planEvidenceNote,howToUrl,editFp,toast,SAFETY_TXT,libFiltered,nameMatch,workLoad,fitE,offSession,tagged,fatigueStalls,avgWeeksTxt,routineFromLog,repSpan,rangeWords,calDueIdx,readyCard,loadAskCard,/*ai{*/aiDigest,debriefPrompt,reviewPrompt,swapPrompt,AI,/*}ai=*/sameRR};
 render();
 wakeOn();
 timerResume();
