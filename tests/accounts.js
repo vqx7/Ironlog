@@ -59,25 +59,27 @@ fs.cpSync(DIST, tmp, { recursive: true });
   const rowsOf = email => { const u = fake.users.get(email); return u ? [...fake.rows.values()].filter(r => r.user_id === u.id) : []; };
   const sessIn = rows => { const out = []; for (const r of rows) if (/\/s-\d/.test(r.path)) { try { for (const s of JSON.parse(r.data.json).sessions || []) out.push(s.id); } catch (e) { /* not a session chunk */ } } return out.sort(); };
 
-  // ---- 0. First run (r22): its own pages. Page 1 is the account; Not now leads to Set up.
+  // ---- 0. First run (r22): its own pages. Page 1 is the account; Continue without an account leads to Set up.
   const W = await device(null, false, true); await wait(600);
   const pg = D => D.ev(() => { const p = document.getElementById('obPage'); return p ? p.dataset.step : null; });
   ok((await pg(W)) === 'acct', 'first run opens on the account page, not Today');
   ok(await W.ev(() => { const c = document.querySelector('#obPage [data-act="acctOpen"][data-mode="signup"]'), s = document.querySelector('#obPage [data-act="acctOpen"][data-mode="signin"]'); return !!c && !!s && c.classList.contains('primary') && c.getBoundingClientRect().height >= 44 && s.getBoundingClientRect().height >= 44; }), 'Create account is the main button, with I have an account under it');
-  // r31.2 (V, 2026-10-06): the first page says what the app does in three lines with an icon each, then the account,
-  // said to be optional and what it is for, with Not now as a full button. No tagline under the wordmark (r29.4 still holds).
+  // r31.2 (V, 2026-10-06): the first page shows three things the app does side by side, an icon and a few words each,
+  // then the account, said to be optional and what it is for, and Continue without an account as a plain link, not a
+  // button like the others. No tagline under the wordmark (r29.4 still holds).
   const obCopy = await W.ev(() => { const t = document.querySelector('#obPage .ob-top'), c = document.querySelector('#obPage .ob-card'), f = [...document.querySelectorAll('#obPage .ob-feats li')], n = document.querySelector('#obPage [data-act="obAcctLater"]');
-    return { top: t ? [...t.children].map(e => e.tagName).join(',') : null, feats: f.map(li => li.innerText.replace(/\s+/g, ' ').trim()), icons: f.every(li => !!li.querySelector('svg')), ps: c ? [...c.querySelectorAll('p')].map(p => p.innerText) : [], h: c && c.querySelector('h2') ? c.querySelector('h2').textContent : null,
-      notNow: n ? { btn: n.classList.contains('btn'), h: Math.round(n.getBoundingClientRect().height), w: Math.round(n.getBoundingClientRect().width), text: n.innerText.trim() } : null, fits: document.documentElement.scrollHeight <= window.innerHeight + 2 }; });
-  ok(obCopy.top === 'H1' && obCopy.feats.length === 3 && obCopy.icons && /Log a set in one tap/.test(obCopy.feats[0]) && /Know what to lift next/.test(obCopy.feats[1]) && /See what is working/.test(obCopy.feats[2]), 'the first page shows the wordmark, then three things the app does, each with an icon', obCopy);
+    const tops = f.map(li => Math.round(li.getBoundingClientRect().top));
+    return { top: t ? [...t.children].map(e => e.tagName).join(',') : null, feats: f.map(li => li.innerText.replace(/\s+/g, ' ').trim()), icons: f.every(li => !!li.querySelector('svg')), oneRow: tops.length === 3 && new Set(tops).size === 1, ps: c ? [...c.querySelectorAll('p')].map(p => p.innerText) : [], h: c && c.querySelector('h2') ? c.querySelector('h2').textContent : null,
+      notNow: n ? { btn: n.classList.contains('btn'), link: n.classList.contains('linkbtn'), h: Math.round(n.getBoundingClientRect().height), text: n.innerText.trim() } : null, fits: document.documentElement.scrollHeight <= window.innerHeight + 2 }; });
+  ok(obCopy.top === 'H1' && obCopy.feats.join('|') === 'Log in one tap|Weights that progress|Built your way' && obCopy.icons && obCopy.oneRow, 'the first page shows the wordmark, then three things the app does side by side, each an icon and a few words', obCopy);
   ok(obCopy.h === 'Save your log' && obCopy.ps.length === 1 && /^Optional\./.test(obCopy.ps[0]) && /lose or change phones/.test(obCopy.ps[0]) && /syncs/.test(obCopy.ps[0]), 'Save your log says the account is optional and what it is for', obCopy.ps);
-  ok(obCopy.notNow && obCopy.notNow.btn && obCopy.notNow.h >= 44 && obCopy.notNow.w >= 300 && obCopy.notNow.text === 'Not now', 'Not now is a full-width button, not a faint link', obCopy.notNow);
+  ok(obCopy.notNow && !obCopy.notNow.btn && obCopy.notNow.link && obCopy.notNow.h >= 44 && obCopy.notNow.text === 'Continue without an account', 'Continue without an account is a plain link, worded for what it does, not a third button', obCopy.notNow);
   ok(obCopy.fits, 'the whole first page fits a 390 x 844 screen without scrolling');
   ok(await W.ev(() => getComputedStyle(document.querySelector('.tabs')).display === 'none' && getComputedStyle(document.querySelector('header.top')).display === 'none' && !document.getElementById('acctBar') && !document.querySelector('.hero')), 'the setup pages stand alone: no tabs, header, second prompt or session card');
   await W.page.click('#obPage [data-act="obAcctLater"]'); await wait(150);
-  ok((await pg(W)) === 'start' && await W.ev(() => !!document.querySelector('#obPage [data-bind="userName"]') && document.querySelectorAll('#obPage [data-act="obUnit"]').length === 2 && ['obSample', 'obFree', 'obOwn'].every(a => document.querySelector(`#obPage [data-act="${a}"]`)) && !!document.querySelector('#obPage [data-act="impOpen"]')), 'Not now: Set up asks an optional name and the units, then how to start (routine, log now, build, import)');
+  ok((await pg(W)) === 'start' && await W.ev(() => !!document.querySelector('#obPage [data-bind="userName"]') && document.querySelectorAll('#obPage [data-act="obUnit"]').length === 2 && ['obSample', 'obFree', 'obOwn'].every(a => document.querySelector(`#obPage [data-act="${a}"]`)) && !!document.querySelector('#obPage [data-act="impOpen"]')), 'Continue without an account: Set up asks an optional name and the units, then how to start (routine, log now, build, import)');
   await W.page.reload(); await W.page.waitForFunction(() => window.__ironlog && document.getElementById('obPage') && document.getElementById('obPage').dataset.step !== undefined, null, { timeout: 15000 }); await wait(600);
-  ok((await pg(W)) === 'start', 'Not now is remembered on this device after a relaunch');
+  ok((await pg(W)) === 'start', 'Continue without an account is remembered on this device after a relaunch');
   await W.page.click('#obPage [data-act="obAcctBack"]'); await wait(150);
   ok((await pg(W)) === 'acct', '‹ Account goes back to the account page');
   // A new person signs up from page 1: once the email is confirmed, Set up follows by itself.
