@@ -200,6 +200,13 @@ const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log
   const N = await open('index.html', { touch: true, w: 390, h: 844, clock: '2026-09-24T18:00:00' });
   const nev = (f, a) => N.page.evaluate(f, a);
   // r22: the first run is its own Set up page. Item 62 still holds there: short lines, no paragraphs.
+  // r31.2: where accounts exist (the build) the first page comes before it: three short lines on what the
+  // app does and one sentence on the account (V asked for both), still well under a paragraph each.
+  if (await nev(() => { const p = document.getElementById('obPage'); return p && p.dataset.step === 'acct'; })) {
+    const first = await nev(() => [...document.querySelectorAll('#obPage *')].filter(e => e.children.length === 0 && e.textContent.trim()).map(e => e.textContent.trim()));
+    ok(first.every(t => t.length <= 110) && first.join(' ').length < 420, 'first page: short lines, one sentence at most each (' + first.join(' ').length + ' characters)', first.filter(t => t.length > 110));
+    await nev(() => document.querySelector('#obPage [data-act="obAcctLater"]').click()); await new Promise(r => setTimeout(r, 200));
+  }
   const lines = await nev(() => [...document.querySelectorAll('#obPage *')].filter(e => e.children.length === 0 && e.textContent.trim()).map(e => e.textContent.trim()));
   ok(lines.length && lines.every(t => t.length <= 45) && lines.join(' ').length < 400, 'Set up page: every line is short, no paragraphs (' + lines.join(' ').length + ' characters)', lines.filter(t => t.length > 45));
   await nev(() => { const L = window.__ironlog; L.state.settings.onboarded = true; L.ui.tab = 'today'; L.render(); document.querySelectorAll('#view details.sec').forEach(d => d.open = true); });
