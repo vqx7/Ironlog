@@ -2,7 +2,7 @@
 
 This is the tracking list. Items are built only when V says go. Owner items need V; the rest is build work. Nothing is done unless it says so. Numbers are kept stable; finished items move to Done at the bottom.
 
-## Live: r31.1 (published 2026-10-05 at https://ironapp.org, pull request #16, merged by V). r31.2 is the next pull request.
+## Live: r31.2 (published 2026-10-06, pull request #17, merged by V). r31.3 is the next pull request: the first page's three tiles side by side, Continue without an account, and the email's use stated.
 
 ## r31 (live since 2026-10-05) and r31.1 (pull request #16): the second independent review, each finding fixed with the reviewer's own inputs as a test (tests/r31.js)
 175. A top single before back-off sets (405 x 1, then 335 x 5 x 5) no longer becomes the working set: targets, grey reps and trends build on the working load (the load done for the most sets, among loads at 60% or more of the heaviest total moved, so +25 back-offs on a 180 lb pull-up count against +50); grey reps are last time's reps at that load only (a reverse pyramid 225 x 7, 205 x 8, 185 x 10 no longer asks 225 x 10); a top single, a pair of singles or triples, or one heavy top set before back-offs (365 x 4 then 335 x 5 x 5) still counts for bests and PRs and is never prescribed for every set. Squat now asks 340, bench stays at 230 to beat the reps.
