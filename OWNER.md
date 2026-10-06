@@ -8,7 +8,7 @@ Last updated: r31.2 live, r31.3 waiting for your merge, 2026-10-06.
 
 1. B5, the trigger, then its check: Report a problem from the app and an issue appears in `ironlog-feedback` (steps below).
 2. B6: protect `main` (steps below). Until it is on, nothing stops a change reaching the live app without a pull request.
-3. A12 (r31.3): merge its pull request when ready; the menu then shows build 2026.10.06-r31.3. What changed: the first page's three tiles side by side (Log in one tap, Weights that progress, Built your way), Continue without an account as a plain link, and the email's use stated at sign-up, in the privacy tips and the Guide.
+3. A12 (r31.3): merge its pull request when ready; the menu then shows build 2026.10.06-r31.3. What changed: the first page's three tiles side by side (Log sets with a tap, Build your plan, See your progress), Continue without an account as a plain link, and the email's use stated at sign-up, in the privacy tips and the Guide.
    A11 (r31.2): done 2026-10-06.
    A10 (r31.1): done 2026-10-05.
    A9 (r30, 2026-10-04): done when r31 went live.
