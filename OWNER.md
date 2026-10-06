@@ -8,7 +8,7 @@ Last updated: r31.1 live, r31.2 waiting for your merge, 2026-10-06.
 
 1. B5, the trigger, then its check: Report a problem from the app and an issue appears in `ironlog-feedback` (steps below).
 2. B6: protect `main` (steps below). Until it is on, nothing stops a change reaching the live app without a pull request.
-3. A11 (r31.2): merge its pull request on GitHub when ready. After it publishes, tap Reload when "New version ready" shows; the menu shows build 2026.10.06-r31.2. What changed: the first page for new people (what the app does, the account said to be optional, Not now as a button), the By region radar's 2, 4, or 8 weeks, and the spreadsheet export tip. Your log is not changed.
+3. A11 (r31.2): merge its pull request on GitHub when ready. After it publishes, tap Reload when "New version ready" shows; the menu shows build 2026.10.06-r31.2. What changed: the first page for new people (three things the app does side by side, the account said to be optional, Continue without an account as a plain link), the By region radar's 2, 4, or 8 weeks, and the spreadsheet export tip. Your log is not changed.
    A10 (r31.1): done 2026-10-05.
    A9 (r30, 2026-10-04): done when r31 went live.
 4. B7: choose who picks up the tickets.
