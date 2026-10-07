@@ -4851,9 +4851,11 @@ function welcomeCard(){
    out of "below target" reads until the flag is cleared. */
 /* "about 82 min", flagged when it runs past the lifting budget in Settings. */
 /* Rounded to 5 minutes, as in the routine picker (r32, from the third review:
-   the picker said 55 to 75 min and Today "about 77 min" for the same day).
+   the picker said 55 to 75 min and Today "about 77 min" for the same day),
+   and so is the time left in a session; under 10 minutes, to the minute.
    The budget is compared before rounding. */
-function minTxt(m){const b=state.settings.timeBudget;const r=Math.max(5,Math.round(m/5)*5);return b&&m>b?`<span class="overb">about ${r} min, over your ${b} min budget</span>`:`about ${r} min`;}
+const min5=m=>m>=10?Math.round(m/5)*5:Math.max(1,Math.round(m));
+function minTxt(m){const b=state.settings.timeBudget;const r=min5(m);return b&&m>b?`<span class="overb">about ${r} min, over your ${b} min budget</span>`:`about ${r} min`;}
 function injuryCard(){
   const inj=state.injuries||[];if(!inj.length)return '';
   return sec({sk:'today:injuries',key:'injuries',title:'Injuries',sub:`<span class="pill red">${inj.length} flagged</span>`,body:`<ul class="inj-list" style="list-style:none;margin:0;padding:0">${inj.map(x=>`<li><span><b>${injLabel(x.m)}</b> <span class="muted small">since ${fmtDate(x.date)}${x.note?' · '+esc(x.note):''}</span></span><button class="btn sm" data-act="injClear" data-id="${x.id}">Cleared</button></li>`).join('')}</ul>
@@ -6027,7 +6029,7 @@ function cardioDraftCard(d){
 function viewLogger(){
   // Warm-ups are not counted, the same as the progress bar under it.
   const d=state.draft;const doneN=d.ex.reduce((a,b)=>a+b.sets.filter(s=>s.done&&!s.warm).length,0);
-  const left=d.editingId||d.free||d.past?0:remainMin(d);
+  const left=d.editingId||d.free||d.past?0:min5(remainMin(d));
   let h=`<div class="ph"><div style="min-width:0;flex:1 1 auto"><p class="kick">${d.editingId?'Editing a saved session':d.past?'Past workout':'Session in progress'}</p><div class="hrow"><h2 style="overflow-wrap:anywhere;min-width:0">${esc(d.dayName)}</h2>${helpBtn('log')}<button class="btn sm danger" style="margin-left:auto;flex:none" data-act="discard">${d.editingId?'Cancel edit':'Discard'}</button></div><p class="meta"><span id="doneCount">${doneN}</span> <span id="doneWord">${doneN===1?'set':'sets'}</span> done${d.past?`, for ${esc(fmtDateLong(d.date))}`:''}${d.startedAt&&!d.past?`, started ${new Date(d.startedAt).toLocaleTimeString([],{hour:'numeric',minute:'2-digit'})}`:''}${left>0?`, about ${left} min left`:''}</p>${(()=>{const sp=sessProgress(d);return sp.n?`<div class="sprog" aria-hidden="true"><div class="band"><div class="fill prog" id="sessBar" style="width:${sp.pct}%"></div></div><span id="sessOf">${sp.k} of ${sp.n}</span></div>`:'';})()}
   <div class="row lh-row"><input type="date" data-bind="draftDate" value="${d.date}" max="${today()}" aria-label="Session date" data-tip="Change to log a past session">${left>0?'<button class="btn sm" data-act="shortOpen">Short on time</button>':''}</div></div></div>
   ${helpText('log',(state.settings.rirMode==='off'?'RIR is switched off in Settings, so every working set counts as hard. ':'RIR is reps left in the tank: 3 or less counts the set as hard for weekly volume, 4 or more stays in history only. RIR is optional: a blank is read as your usual RIR on that lift, or as hard until you have rated a few of its sets. ')+'W marks a warm-up (kept, never analysed); tap it again for D, a drop set (counts as work and volume, never as a PR or target). To add a new warm-up or drop set row, use the ⋯ menu on the exercise. Drag an exercise by its ⠿ to change the order. In a superset the rest timer starts after the last exercise of the pair. Timed holds log seconds in the Sec column. The date can be changed to log a past session.'+(d.past?' Quick entry: no rest timer, and a set counts as done once its reps are typed.':state.settings.autoDone?' Auto-mark is on: sets tick themselves when you leave the reps field.':''))}
@@ -6085,7 +6087,7 @@ function viewLogger(){
    like a weigh-in on Today; Not now is kept per device. */
 const BWASK_KEY=KEY+'.bwAsk';
 function bwAskCard(d){
-  if(d.editingId||state.bodyweights.some(x=>!x.demo)||!d.ex.some(b=>EX(b.exId).bw))return '';
+  if(d.editingId||d.past||state.bodyweights.length||!d.ex.some(b=>EX(b.exId).bw))return '';
   try{if(localStorage.getItem(BWASK_KEY))return '';}catch(e){return '';}
   return `<div class="card" id="bwAsk"><p class="small" style="margin:0 0 8px"><b>Your bodyweight</b> counts in bodyweight lifts, for weight lifted and estimates. ${tipi('Logged as a weigh-in for today. Add more on Today, under Body.','About bodyweight')}</p>
   <div class="row"><label class="field" style="flex:1;margin:0"><span class="vh">Bodyweight (${U()})</span><input type="text" inputmode="decimal" id="bwVal" placeholder="Weight (${U()})" aria-label="Bodyweight (${U()})"></label><button class="btn sm primary" data-act="addBW">Save</button><button class="btn sm" data-act="bwAskNo">Not now</button></div></div>`;
@@ -7064,7 +7066,7 @@ function renderModalBody(){
       :pl.changes.length?`<ul class="short-list">${pl.changes.map(c=>`<li>${esc(c)}</li>`).join('')}</ul><p class="small muted" style="margin:6px 0 0">About ${pl.est} min after the change.${pl.over?' Still over, because exercises you have started are kept.':''} Done sets are never touched.</p>`
       :`<p class="small">Everything left fits in ${m.mins} minutes as planned.</p>`;
     h=`<div class="sheet" role="dialog" aria-modal="true"><div class="sheet-h"><h3>Short on time</h3><button class="ib" aria-label="Close" data-act="mClose">✕</button></div>
-    ${left?`<p class="small muted" style="margin:0 0 8px">How long do you have? Planned: about ${left} min.</p>
+    ${left?`<p class="small muted" style="margin:0 0 8px">How long do you have? Planned: about ${min5(left)} min.</p>
     <div class="chips">${[15,20,30,45,60,75].map(v=>`<button class="chip ${m.mins===v?'on':''}" data-act="shortPick" data-v="${v}" aria-pressed="${m.mins===v}">${v} min</button>`).join('')}</div>`:''}
     ${body}
     <div class="row" style="margin-top:12px">${pl&&pl.changes.length?'<button class="btn primary" data-act="shortApply">Trim the session</button>':''}<button class="btn" data-act="mClose">${pl&&pl.changes.length?'Cancel':'Close'}</button></div>
@@ -8144,7 +8146,7 @@ const ACT={
     d.ex=d.ex.filter((b,bi)=>!drop.has(bi));
     fixSupersets(d.ex.map(b=>b.plan));
     closeModal();saveNow();rerenderKeepScroll();
-    toast(`Trimmed to about ${pl.est} min`,true);
+    toast(`Trimmed to about ${min5(pl.est)} min`,true);
   },
   chk(t){
     const d=state.draft;if(!d)return;const k=t.dataset.k,v=+t.dataset.v;
