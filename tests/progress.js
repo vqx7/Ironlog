@@ -6,7 +6,8 @@
 // reopened a week later. The next session's loads, targets, "Last" line and
 // grey reps are checked against an independent copy of the rules:
 //   - every top set at the top of the rep range: load goes up one step
-//     (5 lb here; on assisted lifts, 5 lb less help);
+//     (5 lb here; on assisted lifts, 5 lb less help), unless that step is large
+//     for the load: then more reps at the same load first (r32);
 //   - otherwise: same load, beat the rep total;
 //   - a trimmed exercise (Short on time) and a deload week never set the next
 //     target, but "Last" shows them, labelled, and grey reps follow a trimmed
@@ -48,10 +49,25 @@ const PLAN = [
     let state = null; const allErrors = [];
     // The independent model: per lift, the sessions logged, newest last.
     const hist = Object.fromEntries(EXS.map(e => [e.id, [{ load: e.start, reps: [8, 8, 8].map(r => Math.min(r, e.max)), kind: 'full', date: '2026-08-31' }]]));
+    // r32: before a step that is large for the load, more reps at this load first: the reps
+    // that make the new load reachable for the bottom of the range at 1 RIR (Brzycki up to 10
+    // reps to failure, Epley past it), when that is at most a quarter of the top of the range
+    // (at least 2) past it; else the step, with the aim below.
+    const est = (load, rt) => rt <= 10 ? load * 36 / (37 - rt) : load * (1 + rt / 30);
+    const rtfAt = (E, load) => { const b = 37 - 36 * load / E; return b <= 10 ? b : 30 * (E / load - 1); };
     const expectNext = (e) => {
       const full = hist[e.id].filter(h => h.kind === 'full'); const L = full[full.length - 1];
-      if (L.reps.every(r => r >= e.max)) return e.kind === 'assist' ? Math.min(0, L.load + 5) : L.load + 5;
-      return L.load;
+      if (!L.reps.every(r => r >= e.max)) return L.load;
+      if (e.kind === 'assist') return Math.min(0, L.load + 5);
+      const bw = e.kind === 'bw' ? 180 : 0; const from = L.load + bw, to = L.load + 5 + bw;
+      // At the planned 1 RIR (blank RIR reads as 0 for the estimate here); only a step costing
+      // 1.5 reps or more counts as large. Build to at most a quarter of the top of the range past it.
+      const E = est(from, Math.max(...L.reps)); const aim = Math.floor(rtfAt(E, to) - 1 + 1e-9); const cost = rtfAt(E, from) - rtfAt(E, to);
+      if (aim < e.min && from > 0 && cost >= 1.5) {
+        const ext2 = e.max + Math.max(2, Math.round(e.max * 0.25)); const Z = Math.min(ext2, Math.ceil(rtfAt(est(to, e.min + 1), from) - 1 - 1e-9));
+        if (Z > Math.min(...L.reps)) return L.load;
+      }
+      return L.load + 5;
     };
     for (let wk = 0; wk <= PLAN.length; wk++) {
       const date = new Date(Date.UTC(2026, 8, 7 + 7 * wk)).toISOString().slice(0, 10);
@@ -103,17 +119,25 @@ const PLAN = [
         const newLoad = !step.deload && exp !== h.filter(x => x.kind === 'full').slice(-1)[0].load;
         const repsFrom = recent.kind === 'deload' ? h.filter(x => x.kind === 'full').slice(-1)[0] : recent;
         if (newLoad) {
-          // r31.1: after a step that is large for the load, the aim is what the estimate allows at 1 RIR
-          // (Epley past 10 reps to failure, Brzycki up to 10, blank RIR read as 0 here), when under the range.
+          // r31.1, r32: after a step that is large for the load, the aim is what the estimate allows at 1 RIR
+          // (Epley past 10 reps to failure, Brzycki up to 10, blank RIR read as 0 here).
           const L0 = h.filter(x => x.kind === 'full').slice(-1)[0]; const bw = e.kind === 'bw' ? 180 : 0;
           const rt = Math.max(...L0.reps); const from = L0.load + bw, to = exp + bw;
           const e1 = rt <= 10 ? from * 36 / (37 - rt) : from * (1 + rt / 30); const rtf = 37 - 36 * to / e1;
-          const aim = Math.min(e.min, Math.max(1, Math.floor((rtf <= 10 ? rtf : 30 * (e1 / to - 1)) - 1 + 1e-9)));
+          const f = rtf <= 10 ? rtf : 30 * (e1 / to - 1); const big = rt - f >= 1.5;
+          const aim = big ? Math.min(e.min, Math.max(1, Math.floor(f - 1 + 1e-9))) : e.min;
           const rph = s.rows.map(r => +r.rph);
           ok(rph.every(v => v === aim), T + W + e.id + ' grey reps are ' + aim + ' on every set (a new load, so not last time\'s reps' + (aim < e.min ? '; a large step, so what the estimate allows' : '') + ')', rph);
+        } else if (step.deload) {
+          // r32: a deload's grey reps are the bottom of the range (about 90% of the load, 3 or more in reserve).
+          const rph = s.rows.map(r => +r.rph);
+          ok(rph.every(v => v === e.min), T + W + e.id + ' grey reps are the bottom of the range, ' + e.min, rph);
         } else {
-          const rph = s.rows.slice(0, repsFrom.reps.length).map(r => +r.rph);
-          ok(JSON.stringify(rph) === JSON.stringify(repsFrom.reps.slice(0, s.rows.length)), T + W + e.id + ' grey reps are ' + repsFrom.reps.join(',') + ' (' + (recent.kind === 'deload' ? 'last full session' : 'Last') + ')', rph);
+          // r32: while half or more of the sets reached the bottom of the range, a set under it reads as the bottom.
+          const okN = repsFrom.reps.filter(r => r >= e.min).length * 2 >= repsFrom.reps.length;
+          const want = repsFrom.reps.map(r => okN ? Math.max(r, e.min) : r);
+          const rph = s.rows.slice(0, want.length).map(r => +r.rph);
+          ok(JSON.stringify(rph) === JSON.stringify(want.slice(0, s.rows.length)), T + W + e.id + ' grey reps are ' + want.join(',') + ' (' + (recent.kind === 'deload' ? 'last full session' : 'Last') + ')', rph);
         }
       }
       // Short on time this week: trim first, then log what is left.

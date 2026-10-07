@@ -1299,7 +1299,7 @@ const LIB=[
    not called common. */
 const COMMON=new Set(['bench','incBench','dbBench','incDb','machPress','pecDeck','cableFly','dips','pushup','pullup','chinup','assistPullup','latPulldown','cableRow','bbRow','dbRow','machRow','ohp','seatedDbPress','machShoulder','dbLateral','cableLateral','facePull','reversePecDeck','bbCurl','dbCurl','hammer','preacher','pressdown','ropePressdown','skull','ohCableExt','backSquat','hackSquat','legPress','legExt','lyingCurl','seatedCurl','rdl','deadlift','hipThrust','bss','walkingLunge','goblet','standCalf','seatedCalf','cableCrunch','hangingLegRaise','plank','crunch','dbShrug','adductor','abductor']);
 const isCommon=e=>!!e&&!e.custom&&!e.rare&&COMMON.has(e.id);
-const JUMP_TIP='When every set reaches the top of the rep range, the load goes up by about this share, in whole load steps and at least one step. Blank: 2.5% on compound lifts, 5% on isolation lifts, a convention. 0: one step every time. Until then the target is to beat last time\'s total reps at the same load. When the step is large for the load, a few more reps come first, so the new load starts inside the range.';
+const JUMP_TIP='When every set reaches the top of the rep range, the load goes up by about this share, in whole load steps and at least one step. Blank: 2.5% on compound lifts, 5% on isolation lifts, a convention. 0: one step every time. Until then the target is to beat last time\'s total reps at the same load. After a step that is large for the load, the first target is the reps your estimate allows there.';
 const RIR_TGT_TIP='Target RIR is 1 unless you change it, a convention: muscle growth improves as sets end closer to failure (Robinson 2024), but going all the way to failure grew muscle no more than stopping 1 to 2 reps short (Refalo 2024) and costs more fatigue. Some lifts in the ready-made routines use 0 or 2.';
 const COMMON_TIP='Common: staples found in most gyms and most programs. A judgment, not a measurement. Less common: useful lifts many gyms or programs skip.';
 // skip: the filter in use, so a list filtered to Common does not say Common on every row.
@@ -2448,7 +2448,7 @@ function guideSheet(m){
    <p><b>More options</b>: Deload week, Limited equipment (each exercise your gym cannot do swapped for the closest match), injuries, and cardio.</p>
    <p><b>This week</b> counts hard sets logged against hard sets planned; Month shows the calendar instead, and the title becomes This month. The bar at the top of every tab is this week: filled is a day you lifted, a coloured outline is cardio only, a grey ring is a workout planned ahead, and with fixed weekdays a red ring is one missed. Tap an empty past day to log a workout for it.</p>`],
   ['log','Logging a session',`<p><b>Grey numbers are suggestions.</b> Tick a set to log it as shown, or type over the load or reps first. Nothing you type is ever changed by the app.</p>
-   <p><b>Grey reps</b> are last time's reps for that set, at today's load, and never under the bottom of the range while most sets reached it. When today's target is a new load, last time's reps were at the old load, so they are the reps of the set above instead, or the bottom of the range. On a lighter day or in a deload, they are the bottom of the range.</p>
+   <p><b>Grey reps</b> are last time's reps for that set, at today's load. When today's target is a new load, last time's reps were at the old load, so they are the reps of the set above instead, or the bottom of the range.</p>
    <p><b>Grey loads</b> are the set above, or today's suggested load. To have loads typed in for you: Settings, Rest timer and logging, Fill in suggested loads.</p>
    <p><b>Auto-mark</b> (Settings): a set ticks itself when you leave its reps field.</p>
    <p><b>RIR</b>, reps in reserve: how many more reps you could have done. Tap a set's RIR box for 0 to 5. ${off?'RIR is off in Settings, so every working set counts as hard.':'It is optional: a blank reads as your usual RIR on that lift once you have rated 3 of its sets in 12 weeks, and until then as hard.'}</p>
@@ -2461,9 +2461,8 @@ function guideSheet(m){
   ['rules','How targets are set',`<p class="muted">These are estimates from your log, not medical or coaching advice. Adjust them to how you feel on the day, and stop on pain.</p>
    <p>Each exercise progresses from its <b>last full session in the rep range you plan for it that day</b>, so the same lift on a heavy day and a light day progresses on each separately. A range not used within 6 weeks of your latest session of the lift starts from that latest session instead.</p>
    <p><b>The working load</b> is the load you did the most sets with (the heavier on a tie), leaving out loads under 60% of your heaviest. A heavy top set, or two, before your back-off sets counts for bests and PRs, while targets, grey reps, and trends build on the back-off sets.</p>
-   <p><b>Every set at the top of the range</b>: add load, in whole steps of the exercise's load step, about 2.5% of the load on compound lifts and 5% on isolation lifts, at least one step. Plan, Load jump % sets a different share for one exercise (0: one step every time). When one step is large for the load (it costs 1.5 reps or more, as 5 lb on a 35 lb dumbbell does), you first build a few reps past the top at this load, up to a quarter of the top of the range more, until your estimate says the new load allows the bottom of the range; then the load goes up. If that would take more than a quarter, the load goes up and the target there is the reps your estimate allows.</p>
-   <p><b>Dumbbells and kettlebells</b> step by what your rack has: with no load step set on the exercise, the step fits every load you logged on it (12, 14, and 16 kg is a rack in 2 kg steps; 12.5 and 15, one in 2.5).</p>
-   <p><b>Otherwise</b>: the same load; beat last time's total reps over the same number of sets. While half or more of the sets reached the bottom of the range, a set under it counts as the bottom of the range, so one bad set does not set the next target.</p>
+   <p><b>Every set at the top of the range</b>: add load, in whole steps of the exercise's load step, about 2.5% of the load on compound lifts and 5% on isolation lifts, at least one step. Plan, Load jump % sets a different share for one exercise (0: one step every time). When one step is large for the load (5 lb on a 35 lb dumbbell), the target at the new load is the reps your estimate says it allows, and you build back up from there.</p>
+   <p><b>Otherwise</b>: the same load; beat last time's total reps over the same number of sets.</p>
    <p><b>Well past the range</b> (every set 2 or more reps over the top, as after moving the range down): the load your estimated 1RM gives for the middle of the range, at most 10% more (15% on isolation lifts under ${kg?'20 kg':'about 45 lb'}), in whole steps.</p>
    <p><b>Below the range</b> (every set 2 or more reps short, or short two sessions running at the same load, or the first time in a range you have not trained, as after an import): down to what your estimate says fits the range, in whole steps. Not just after one step up while you are 3 or fewer reps short, and not while your reps at that load are rising. The rep target counts as many sets as the plan has.</p>
    <p><b>Too easy</b> (every top set logged 2 or more RIR above the target): the same estimate sets a heavier load, at most 10% more (15% on isolation lifts under ${kg?'20 kg':'about 45 lb'}).</p>
@@ -2471,7 +2470,7 @@ function guideSheet(m){
    <p><b>At the heaviest load available</b> (set on the exercise), or with a load step of 0: more reps, then harder reps.</p>
    <p><b>Assisted machines</b>: less help is progress. <b>Timed holds</b>: add seconds, then load.</p>
    <p><b>Last</b> is the most recent session of the lift in that day's rep range (the most recent of all when the range is new), labelled trimmed, lighter, or deload when it was. Those sessions count as what you did, but they never set a target: the next target comes from the last full session, and the i beside the target names its date.</p>
-   <p><b>Deload week</b>: half the sets (rounded up), about 90% of the load the normal day would ask for (or of last time's, if lower), in whole steps down (never under the empty bar on a full-bar lift), the bottom of the range, 3 or more reps in reserve. It stays out of trends, and out of the weekly volume average. A <b>lighter day</b> is the same for one day.</p>
+   <p><b>Deload week</b>: half the sets (rounded up), about 90% of the load in whole steps down (never under the empty bar on a full-bar lift), 3 or more reps in reserve. It stays out of trends, and out of the weekly volume average. A <b>lighter day</b> is the same for one day.</p>
    <p><b>Lighter sessions nobody marked</b> (an imported deload, say) are read from the numbers: a lift's heaviest load at least 10% under its previous three sessions and its strength reading at least 7% under. A week where most lifts read lighter is a lighter week. They are kept in history and treated like a deload. Lighter sessions in a row for 2 weeks or more are a new level, not a deload, and count again. A convention.</p>
    <p><b>An exercise stopped early</b>, with fewer than half its sets done, is saved as trimmed. Finish asks first when sets are left.</p>
    <p><b>Make it lighter</b>, after a low check-in, changes only the exercises not started yet. What you already did at full effort still sets next time's target.</p>
@@ -3599,23 +3598,13 @@ function lastOf(all,base,fmt,repMin){
      185 x 10 asked 225 x 10). Rows past them take the set above, or the
      bottom of the range (greyR). */
   const wl=workLoad(repsFrom.pts,repMin||0);const wp=atLoad(repsFrom.pts,wl);
-  /* One bad set is not next time's plan (r32, from the third review: squat
-     140 x 3, 6, 6 on 6-10 greyed (3)(6)(6), and one tap logged 140 x 3
-     again). While at least half the sets reached the bottom of the range, a
-     set under it shows the bottom of the range instead. */
-  const fl=repFloor(wp.length?wp:repsFrom.pts,repMin);
-  return {line,lastR:(wp.length?wp:repsFrom.pts).map(p=>fl(p.r)),basis:rec!==base?base.date:null};
+  return {line,lastR:(wp.length?wp:repsFrom.pts).map(p=>p.r),basis:rec!==base?base.date:null};
 }
 /* One test for a session that is lighter or shorter on purpose (tagged), or
    also read as lighter from its loads (offSession): neither sets a target, a
    trend or a stall (r31: written out by hand in six places, which could
    drift). IDX uses tagged() while it is still deciding which are read as
    lighter. */
-/* The floor for reps that set targets and grey reps (r32): with half or more
-   of the working sets at the bottom of the range or above, a set under it is
-   read at the bottom of the range. With most of them under it, the load was
-   too heavy, and the drop below the range handles that. */
-function repFloor(pts,repMin){const m=+repMin||0;const ok=m>0&&pts.length&&pts.filter(p=>p.r>=m).length*2>=pts.length;return r=>ok?Math.max(r,m):r;}
 const tagged=x=>!!x&&!!(x.deload||x.light||x.cut);
 const offSession=x=>tagged(x)||!!(x&&x.auto);
 /* ---------- progression suggestion ---------- */
@@ -3624,32 +3613,7 @@ const offSession=x=>tagged(x)||!!(x&&x.auto);
    logger) and tgt, a small object the logger uses to score the session live:
    {kind:'reps', w, total} means beat `total` reps at load w;
    {kind:'load', w, repMin} means hit repMin+ reps in every set at the new load w. */
-/* A lighter day or a deload is worked out from the normal day's
-   prescription (r32, from the third review): 90% of the load the normal day
-   would ask for (or of last time's working load, if lower), in whole steps,
-   with grey reps at the bottom of the range.
-   It used to take 90% of last time's top load and keep last time's reps, so
-   after 140 x 4, 3, 3 (normal day: drop to 122.5) the lighter day asked about
-   125, and after 100 x 15 one tap logged 90 x 15 on a "3 or more in reserve"
-   day. Injury, a first session and timed holds keep their own lines. */
 function suggest(exId,plan,opts){
-  opts=opts||{};const ex=EX(exId);
-  if(!(opts.deload||opts.light)||ex.timed)return suggestCore(exId,plan,opts);
-  const base=suggestCore(exId,plan,{...opts,deload:false,light:false});
-  if(base.inj||!base.last||base.w==null)return base;
-  const T=opts.before&&isDate(opts.before)?opts.before:today();
-  // Never above last time's working load either: after 25 lb x 12 the normal day may ask 30, and a deload at 25 is not lighter.
-  const word=opts.deload?'Deload':'Lighter day';const step=incOf(ex,plan);const w0=base.top!=null?Math.min(base.w,base.top):base.w;const bl=bwLoad(ex,T);
-  const lbl=w=>`${loadLabel(ex,w)}${ex.bw?'':' '+U()}${loadNote(ex)}`;
-  // Assisted: 90% of the lifted load means more help, rounded up to the machine's step so it never lands back on the full load.
-  const hs=step>0?toD(step):U()==='lb'?5:2.5;
-  const dw=ex.assist?-fromD(Math.ceil(toD(bl>0?bl-(w0+bl)*0.9:-w0*1.1)/hs-1e-9)*hs):ex.bw?((w0+bl)*0.9-bl>0?lighterLoad(ex,plan,w0,(w0+bl)*0.9-bl):0):lighterLoad(ex,plan,w0,w0*0.9);
-  const w=w0>0||ex.assist?dw:w0;
-  // Grey reps at the bottom of the range: at about 90% of the load that is 3 or more in reserve for anyone in the range last time.
-  const n=Math.max(1,(base.lastR||[]).length||+plan.sets||1);
-  return {w,text:`${base.last} ${word}: about ${lbl(w)} for ${repSpan(plan.repMin,plan.repMax,'-')} with 3 or more reps in reserve. Half the usual sets, nothing to beat.`,lastR:Array(n).fill(+plan.repMin),basis:base.basis,last:base.last,target:'',tgt:null,easier:null};
-}
-function suggestCore(exId,plan,opts){
   opts=opts||{};
   /* opts.before: the date of a past session being logged. Only what was
      logged up to that date counts, so a workout entered after later ones
@@ -3706,12 +3670,16 @@ function suggestCore(exId,plan,opts){
   const lbl=w=>`${loadLabel(ex,w)}${ex.bw?'':' '+U()}${loadNote(ex)}`;
   const prevBest=stx.best==null?null:stx.best;
   /* Injured area: no target to chase, load capped at last time, and a reminder
-     to stop short. No target is set, so nothing in this session reads as
-     "beaten" or "missed". */
-  if(injM)return {top,w:top,text:`${lastS} Injury flagged (${injLabel(injM)}): stay at or below ${lbl(top)}, keep 3 or more reps in reserve, stop on pain.`,lastR,basis,last:lastS,target:'',tgt:null,easier:null,inj:injM};
-  /* A lighter day (r30) is a one-day deload: lighter loads, 3 or more in
-     reserve, half the sets, no target. suggest() works it out from this
-     function's normal prescription (r32). */
+     to stop short. Deload: 90% of the last top load (rounded to a plate),
+     half the sets (done by the caller), 3 or more in reserve. Neither sets a
+     target, so nothing in this session reads as "beaten" or "missed". */
+  if(injM)return {w:top,text:`${lastS} Injury flagged (${injLabel(injM)}): stay at or below ${lbl(top)}, keep 3 or more reps in reserve, stop on pain.`,lastR,basis,last:lastS,target:'',tgt:null,easier:null,inj:injM};
+  /* A lighter day (r30) is a one-day deload: the same lighter loads and
+     reserve, half the sets, no target. It used to keep the full loads and
+     set a target to beat, so it was only shorter, not lighter. */
+  if(opts.deload||opts.light){const bl=bwLoad(ex,T);const word=opts.deload?'Deload':'Lighter day';
+    // Assisted: 90% of the lifted load means more help, rounded up to the machine's step so it never lands back on the full load.
+    const hs=step>0?toD(step):U()==='lb'?5:2.5;const dw=ex.assist?-fromD(Math.ceil(toD(bl>0?bl-(top+bl)*0.9:-top*1.1)/hs-1e-9)*hs):ex.bw?((top+bl)*0.9-bl>0?lighterLoad(ex,plan,top,(top+bl)*0.9-bl):0):lighterLoad(ex,plan,top,top*0.9);return {w:top>0||ex.assist?dw:top,text:`${lastS} ${word}: about ${lbl(top>0||ex.assist?dw:top)} for ${repSpan(plan.repMin,plan.repMax,'-')} with 3 or more reps in reserve. Half the usual sets, nothing to beat.`,lastR,basis,last:lastS,target:'',tgt:null,easier:null};}
   /* Recalibrate when every top set was logged with RIR at least 2 above the
      target. It uses the same e1() estimate as everything else,
      and the new load is what leaves the middle of the rep range at the target
@@ -3731,7 +3699,7 @@ function suggestCore(exId,plan,opts){
       const k=Math.floor((want-top)/step+1e-6);
       if(k>=1){
         const nw=ex.assist&&top<0?Math.min(0,top+k*step):capW(top+k*step);const rr=r1(topPts.reduce((a,p)=>a+p.rir,0)/topPts.length);
-        return {top,w:nw,text:`${lastS} RIR ${rr} at ${lbl(top)} against a target of ${tgtRir}, so that load was light. Try ${lbl(nw)} for ${repSpan(plan.repMin,plan.repMax,'-')} reps.`,lastR,basis,
+        return {w:nw,text:`${lastS} RIR ${rr} at ${lbl(top)} against a target of ${tgtRir}, so that load was light. Try ${lbl(nw)} for ${repSpan(plan.repMin,plan.repMax,'-')} reps.`,lastR,basis,
           last:lastS,target:`${lbl(nw)} for ${plan.repMin}+ reps in every set`,tgt:{kind:'load',w:nw,repMin:+plan.repMin,prevBest},easier:null};
       }
     }
@@ -3751,7 +3719,7 @@ function suggestCore(exId,plan,opts){
       const k=Math.floor((want-top)/step+1e-6);const one=progStep(ex,plan,topLoad);
       if(k>=1&&k*step>one+1e-6){
         const nw=ex.assist&&top<0?Math.min(0,top+k*step):capW(top+k*step);const minR=Math.min(...topPts.map(p=>p.r));
-        return {top,w:nw,text:`${lastS} Every set at ${lbl(top)} reached ${minR}+ reps, well past your ${rangeWords(plan)}. Try ${lbl(nw)} for ${repSpan(plan.repMin,plan.repMax,'-')} reps.`,lastR,basis,
+        return {w:nw,text:`${lastS} Every set at ${lbl(top)} reached ${minR}+ reps, well past your ${rangeWords(plan)}. Try ${lbl(nw)} for ${repSpan(plan.repMin,plan.repMax,'-')} reps.`,lastR,basis,
           last:lastS,target:`${lbl(nw)} for ${plan.repMin}+ reps in every set`,tgt:{kind:'load',w:nw,repMin:+plan.repMin,prevBest},easier:null};
       }
     }
@@ -3790,7 +3758,7 @@ function suggestCore(exId,plan,opts){
         const nw=top-k*step;
         if(k>=1&&(nw>0||(ex.bw&&(nw>=0||ex.assist)))){
           const bestR=Math.max(...topPts.map(p=>p.r));
-          return {top,w:nw,text:`${lastS} Top sets at ${lbl(top)} stopped at ${bestR} rep${bestR===1?'':'s'}, below your ${rangeWords(plan)}. Drop to ${lbl(nw)} and build back up.`,lastR,basis,
+          return {w:nw,text:`${lastS} Top sets at ${lbl(top)} stopped at ${bestR} rep${bestR===1?'':'s'}, below your ${rangeWords(plan)}. Drop to ${lbl(nw)} and build back up.`,lastR,basis,
             last:lastS,target:`${lbl(nw)} for ${plan.repMin}+ reps in every set`,tgt:{kind:'load',w:nw,repMin:+plan.repMin,prevBest},easier:null,down:true};
         }
       }
@@ -3802,8 +3770,7 @@ function suggestCore(exId,plan,opts){
      fixed dumbbell, say), so it reads the same way instead of "add 0 lb" (r27). */
   /* The rep target counts as many sets as the plan has (r30): five sets of
      history under a three-set plan read "26+ reps over your first 5 sets". */
-  const fl=repFloor(topPts,plan.repMin);
-  const tp=topPts.slice(0,Math.max(1,+plan.sets||topPts.length)).map(p=>({...p,r:fl(p.r)}));
+  const tp=topPts.slice(0,Math.max(1,+plan.sets||topPts.length));
   if(atCap||!(step>0)){
     const where=atCap?'the heaviest load available':'a fixed load (load step 0)';
     const below=topPts.every(p=>p.r<+plan.repMin);
@@ -3813,13 +3780,13 @@ function suggestCore(exId,plan,opts){
     const maxed=topPts.every(p=>p.r>=ext);
     const tip=maxed?` Every set reached ${ext}+ at ${where}, so make each rep harder instead: lower for 3 to 4 seconds and pause at the stretch, go one arm or one leg at a time, or finish with a drop set. Add a note when you change it so the numbers stay comparable.`
       :below?` That is ${where}, so build the reps up to ${plan.repMin} or more.`:` That is ${where}, so keep adding reps past ${plan.repMax}.`;
-    return {top,w:top,text:`${lastS} Beat ${total} reps ${over} at ${lbl(top)}.${tip}`,lastR,basis,
+    return {w:top,text:`${lastS} Beat ${total} reps ${over} at ${lbl(top)}.${tip}`,lastR,basis,
       last:lastS,target:`${total+1}+ reps ${over} at ${lbl(top)}${atCap?', the heaviest available':''}`,tgt:{kind:'reps',w:top,total,n:nT,rs:tp.map(p=>p.r),prevBest},
       easier:maxed?`Past ${ext} reps at ${atCap?'the heaviest load':'this load'}: slow the lowering to 3 to 4 seconds with a pause at the stretch, go one side at a time, or add a drop set.`:null,capped:atCap};
   }
   if(topPts.every(p=>p.r>=plan.repMax)){
     const nw=capW(top+progStep(ex,plan,top+bwLoad(ex,T)));
-    if(ex.assist){const aw=top<0?Math.min(0,nw):nw;return {top,w:aw,text:`${lastS} Every set at ${lbl(top)} hit ${plan.repMax}: ${aw===0?'try it without help':`take ${fmtW(aw-top)} ${U()} of help off`} and aim for ${plan.repMin}+ reps.`,lastR,basis,
+    if(ex.assist){const aw=top<0?Math.min(0,nw):nw;return {w:aw,text:`${lastS} Every set at ${lbl(top)} hit ${plan.repMax}: ${aw===0?'try it without help':`take ${fmtW(aw-top)} ${U()} of help off`} and aim for ${plan.repMin}+ reps.`,lastR,basis,
       last:lastS,target:`${lbl(aw)} for ${plan.repMin}+ reps in every set`,tgt:{kind:'load',w:aw,repMin:+plan.repMin,prevBest},easier:null};}
     /* A step that is large for the load (5 lb on a 35 lb dumbbell is 14%)
        costs more reps than the range has room for (r31, found by a
@@ -3827,42 +3794,18 @@ function suggestCore(exId,plan,opts){
        was all there was). The target at the new load is then what the
        estimate says that load allows at the planned RIR, said as such, and
        the reps build back up from there. */
-    let aim=+plan.repMin;const q=Math.min(tgtRir,E1_MAX_RIR);const bwT=bwLoad(ex,T);
+    let aim=+plan.repMin;
     if(!noE1(ex)){let est=null;for(const p of topPts){const v=fitE(p.load,p.r,p.rq);if(v!=null&&(est==null||v>est))est=v;}
-      /* Only a step that costs 1.5 reps or more is large for the load (about
-         5% or more, r32): a 5 lb step on a 5 x 5 at 225 costs under one, and
-         a fixed-rep plan goes up and repeats the reps, the drop below the
-         range catching a miss. Read against the planned RIR alone, a 5 x 5
-         at 335 with no RIR rated (read as 0) made 5 lb (1.5%) look like two
-         reps. */
-      const f=est?rtfAt(est,nw+bwT):null;const cost=f!=null?rtfAt(est,top+bwT)-f:0;if(f!=null&&cost>=1.5){const can=Math.floor(f-q+1e-9);if(can<aim)aim=Math.max(1,can);}}
+      const f=est?rtfAt(est,nw+bwLoad(ex,T)):null;if(f!=null){const can=Math.floor(f-Math.min(tgtRir,E1_MAX_RIR)+1e-9);if(can<aim)aim=Math.max(1,can);}}
     const big=aim<+plan.repMin;
-    /* Before such a step, a few more reps at this load first (r32, from the
-       third review: a cable fly asked "20 kg for 9+" on a 10-15 plan, the
-       app aiming under its own range). The reps to build to are those that
-       make the new load reachable for the bottom of the range at the planned
-       RIR, by the same estimate, and at most a quarter of the top of the
-       range past it (at least 2). Once there, the step is taken, with the
-       lower aim if the estimate still says so (a plan of curls for 5 on 5 lb
-       dumbbell steps asked "aim for 1+" without this cap). */
-    if(big&&nw+bwT>0&&top+bwT>0){
-      const rn=+plan.repMin+q;const need=rn<=10?(nw+bwT)*36/(37-rn):(nw+bwT)*(1+rn/30);
-      const ext2=+plan.repMax+Math.max(2,Math.round(+plan.repMax*0.25));const Z=Math.min(ext2,Math.ceil(rtfAt(need,top+bwT)-q-1e-9));
-      const minR=Math.min(...topPts.map(p=>p.r));
-      if(Z>minR){
-        const total=tp.reduce((a,p)=>a+p.r,0);const nT=tp.length;const over=nT===1?'in one set':`over your first ${nT} sets`;
-        return {top,w:top,text:`${lastS} Every set at ${lbl(top)} hit ${plan.repMax}. The next step, ${fmtW(nw-top)} ${U()}, is large for this load, so build every set to ${Z} here first; then the new load starts inside your range.`,lastR,basis,
-          last:lastS,target:`${total+1}+ reps ${over} at ${lbl(top)}, building to ${Z} each`,tgt:{kind:'reps',w:top,total,n:nT,rs:tp.map(p=>p.r),prevBest},easier:null,buildTo:Z};
-      }
-    }
-    return {top,w:nw,text:`${lastS} Every set at ${lbl(top)} hit ${plan.repMax}: add ${fmtW(nw-top)} ${U()}${cap!=null&&nw>=cap-1e-6?', which is the heaviest available,':''} and aim for ${aim}+ reps${big?`, then build back to ${plan.repMax}. That step is large for this load, so fewer reps than the range is expected at first`:''}.`,lastR,basis,
+    return {w:nw,text:`${lastS} Every set at ${lbl(top)} hit ${plan.repMax}: add ${fmtW(nw-top)} ${U()}${cap!=null&&nw>=cap-1e-6?', which is the heaviest available,':''} and aim for ${aim}+ reps${big?`, then build back to ${plan.repMax}. That step is large for this load, so fewer reps than the range is expected at first`:''}.`,lastR,basis,
       last:lastS,target:`${lbl(nw)} for ${aim}+ reps in every set`,tgt:{kind:'load',w:nw,repMin:aim,prevBest},easier:null};
   }
   /* The rep target covers the same number of sets as last time, so an extra
      set can never count as progress on its own. */
   const total=tp.reduce((a,p)=>a+p.r,0);const nT=tp.length;
   const over=nT===1?'in one set':`over your first ${nT} sets`;
-  return {top,w:top,text:`${lastS} Beat ${total} reps ${over} at ${lbl(top)}. When every set at that load reaches ${plan.repMax}, ${ex.assist?'take some help off':'add load'}.`,lastR,basis,
+  return {w:top,text:`${lastS} Beat ${total} reps ${over} at ${lbl(top)}. When every set at that load reaches ${plan.repMax}, ${ex.assist?'take some help off':'add load'}.`,lastR,basis,
     last:lastS,target:`${total+1}+ reps ${over} at ${lbl(top)}`,tgt:{kind:'reps',w:top,total,n:nT,rs:tp.map(p=>p.r),prevBest},easier:stx.easier?easierText(ex,stx.easier):null};
 }
 /* Timed holds: double progression on seconds. Beat the total time at the same
@@ -3904,27 +3847,7 @@ function defPlan(exId){const ex=EX(exId);return ex.timed?{...DEFAULT_PLAN,repMin
 const STEP_LB=5*LB;
 function unitStep(){return U()==='kg'?2.5:STEP_LB;}
 function stepRead(v){return Math.abs(v-STEP_LB)<1e-6||Math.abs(v-2.5)<1e-6?unitStep():v;}
-function incOf(ex,plan){
-  const v=stepRead(ex&&ex.inc!=null?ex.inc:(plan&&isNum(+plan.inc)?+plan.inc:STEP_LB));
-  if(ex&&ex.inc==null&&rackKind(ex)&&Math.abs(v-unitStep())<1e-6){const g=rackStep(ex);if(g)return g;}
-  return v;
-}
-/* Dumbbells and kettlebells come in fixed weights (r32, from the third
-   review: 12 kg dumbbells went to 14.5, which no rack has). With no step set
-   on the exercise, the step is the largest common rack spacing that every
-   load logged on it fits: 12, 14 and 16 kg is a rack in 2 kg steps, 12.5 and
-   15 one in 2.5. Loads that fit both (10, 20) keep the default. Steps are
-   read in the unit on screen, since that is what the rack is labelled in. */
-const RACK={dumbbell:{kg:[2.5,2,1,0.5],lb:[5,2.5,1]},kettlebell:{kg:[4,2,1],lb:[5,2.5]}};
-// The library files kettlebell lifts under Other equipment, so they are found by name.
-function rackKind(ex){return ex.equip==='dumbbell'?'dumbbell':ex.equip==='kettlebell'||/kettlebell/i.test(ex.name||'')?'kettlebell':null;}
-function rackStep(ex){
-  const I=IDX();I._rack=I._rack||{};const key=U()+ex.id;if(I._rack[key]!==undefined)return I._rack[key];
-  const xs=(I.byEx[ex.id]||[]).slice(-12);const ws=[];for(const x of xs)for(const p of x.pts)if(p.w>0)ws.push(toD(p.w));
-  const fits=g=>ws.every(w=>Math.abs(w/g-Math.round(w/g))<0.01);
-  const g=ws.length?RACK[rackKind(ex)][U()].find(fits):null;
-  return I._rack[key]=g?fromD(g):null;
-}
+function incOf(ex,plan){return stepRead(ex&&ex.inc!=null?ex.inc:(plan&&isNum(+plan.inc)?+plan.inc:STEP_LB));}
 /* When every set reaches the top of the range, the load goes up by whole
    multiples of the smallest step you can add, sized to about 2.5% of the
    load on compound lifts and 5% on isolation lifts. A fixed 5 lb was 20% on a

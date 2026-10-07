@@ -6,7 +6,8 @@
 // flat for one lift), with day-to-day noise. Every session they lift the
 // load the screen shows, do as many reps as that strength allows while
 // leaving the plan's reps in reserve (fatigue costs reps on later sets, and
-// they stop at the top of the range, as people following an app do), and
+// they stop at the top of the range, as people following an app do, or at
+// the reps the target says to build to before a large step, r32), and
 // rate RIR honestly. The first session has no suggestion, so they pick a
 // cautious guess (75% of what they could use), the way the first-time line
 // asks. Week 9 is a deload week.
@@ -79,7 +80,9 @@ const r5 = v => Math.round(v / 5) * 5;
           if (!(w > 0)) { w = r5(0.75 * id0); await P.page.fill(wsel, String(w)); await P.page.dispatchEvent(wsel, 'input'); await P.page.dispatchEvent(wsel, 'change'); }
           // Reps this set allows, leaving the planned reserve; each set costs about 0.7 of a rep.
           const k = sets.length; const can = Math.floor(epleyRtf(e1, w) - 0.7 * k);
-          const reps = Math.max(1, Math.min(Lf.max, can - Lf.rir));
+          // r32: when the target says to build past the top before a large step, they do.
+          const bt = /building to (\d+) each/.exec(p.tgt); const cap = bt ? Math.max(Lf.max, +bt[1]) : Lf.max;
+          const reps = Math.max(1, Math.min(cap, can - Lf.rir));
           const rir = Math.max(0, Math.min(5, can - reps));
           const rsel = `.sg input[data-f="r"][data-b="${p.bi}"][data-s="${si}"]`;
           await P.page.fill(rsel, String(reps)); await P.page.dispatchEvent(rsel, 'input'); await P.page.dispatchEvent(rsel, 'change');
