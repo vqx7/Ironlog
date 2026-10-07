@@ -3674,7 +3674,11 @@ const offSession=x=>tagged(x)||!!(x&&x.auto);
    a stack with odd pins keeps its whole steps. */
 function snapUnit(ex,plan,res,down){
   if(!res||res.w==null||res.top==null||ex.timed)return res;const st=toD(incOf(ex,plan));if(!(st>0))return res;
-  const off=v=>Math.abs(toD(v)/st-Math.round(toD(v)/st))>0.02;if(!off(res.top)||!off(res.w))return res;
+  /* Off the step and not a number anyone types (220.462 from 100 kg): a
+     custom step (185 lb on a 10 lb step) or microplates (101.25) are left as
+     they are. */
+  const off=v=>Math.abs(toD(v)/st-Math.round(toD(v)/st))>0.02;const typed=v=>Math.abs(toD(v)/0.05-Math.round(toD(v)/0.05))<0.1;
+  if(!off(res.top)||!off(res.w)||typed(res.top))return res;
   const nw=fromD((down?Math.floor(toD(res.w)/st+1e-9):Math.round(toD(res.w)/st))*st);if(Math.abs(nw-res.w)<1e-9)return res;
   const a=loadLabel(ex,res.w),b=loadLabel(ex,nw);const fix=t=>t?t.split(a).join(b):t;
   const out={...res,w:nw,target:fix(res.target)};

@@ -100,7 +100,7 @@ const sess = (id, date, exId, sets) => ({ id, date, dayIdx: 0, dayId: null, dayN
       return { head: vol.querySelector('.headline').innerText, chips: [...vol.querySelectorAll('[data-act="volMode"]')].map(b => b.dataset.v), ring: ch.data.datasets[1].label, chestRow: chest ? chest.innerText.replace(/\s+/g, ' ') : null, tags: [...w.querySelectorAll('.tag')].map(t => t.innerText) }; });
     ok(/\d of 8 regions on target\. Furthest short: /.test(v.head), 'the radar headline counts regions on target and names the furthest short in sets', v.head);
     ok(v.ring === 'Minimum (100%)' && !v.chips.includes('planned'), 'the ring is the minimum, and Stats has no Planned chip (the plan is on Plan)', v);
-    ok(v.chestRow && /Below target/.test(v.chestRow) && /Chest (Lagging strength )?Below target 8 hard sets a week on average, target 10-20, this week 0 so far/.test(v.chestRow), 'Muscles leads with the average the flag is judged on, then this week', v.chestRow);
+    ok(v.chestRow && /Below target/.test(v.chestRow) && /Chest (Lagging strength |A lift stalled )?Below target 8 hard sets a week on average, target 10-20, this week 0 so far/.test(v.chestRow), 'Muscles leads with the average the flag is judged on, then this week', v.chestRow);
     ok(!v.tags.some(t => /logged and planned|Below target, logged/.test(t)), 'one Below target tag, without logged or planned', v.tags);
     // An old ui.volMode of planned cannot come back through the chip action.
     const vm = await ev(() => { const L = window.__ironlog; L.ACT.volMode({ dataset: { v: 'planned' } }); return L.ui.volMode; });
