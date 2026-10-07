@@ -482,13 +482,14 @@ body.obmode main,body.obmode #view{padding-bottom:24px}
 .ob-card .btn+.btn{margin-top:8px}
 .ob-skip{align-self:center;min-height:44px;color:var(--muted)}
 .ob[data-step="acct"] .ob-top{padding-bottom:10px}
-.ob-feats{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
-.ob-feats li{display:flex;flex-direction:column;align-items:center;gap:8px;text-align:center;padding:12px 4px;border-radius:var(--r-md);background:var(--surface);border:1px solid var(--card-b)}
-.ob-feats .fi{width:40px;height:40px;border-radius:12px;background:var(--volt-soft);color:var(--volt-line);display:grid;place-items:center}
-.ob-feats svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
-.ob-feats b{font-size:13.5px;font-weight:700;line-height:1.25}
+.ob-feats{list-style:none;margin:0;padding:0 2px;display:flex;flex-direction:column;gap:14px}
+.ob-feats li{display:flex;gap:12px;align-items:flex-start}
+.ob-feats .fi{flex:none;width:36px;height:36px;border-radius:10px;background:var(--volt-soft);color:var(--volt-line);display:grid;place-items:center}
+.ob-feats svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.ob-feats b{display:block;font-size:15.5px;font-weight:700;line-height:1.25}
+.ob-feats li span:not(.fi){display:block;font-size:13.5px;color:var(--muted);line-height:1.35;margin-top:1px}
 .ob-why{font-size:13.5px;color:var(--muted);line-height:1.4;margin:-6px 0 14px}
-.ob-later{align-self:center;min-height:44px;padding:0 12px;color:var(--ink);font-weight:600;text-decoration:underline;text-underline-offset:3px;text-decoration-color:var(--muted)}
+.ob-later{min-height:48px;background:transparent;box-shadow:inset 0 0 0 1px var(--line);color:var(--ink)}
 .ob-dots{display:flex;justify-content:center;gap:6px;margin-top:auto;padding-top:6px}
 .ob-dots i{width:7px;height:7px;border-radius:50%;background:var(--line)}
 .ob-dots i.on{background:var(--volt)}
@@ -1456,7 +1457,7 @@ if(ENV==='preview')document.documentElement.dataset.env='preview';
 const HAD_LOG=(()=>{try{return localStorage.getItem(KEY)!=null;}catch(e){return false;}})();
 /* Shown in Settings, in diagnostics and in backups, so a bug report can be
    matched to the exact build. */
-const APP_VERSION='2026.10.06-r31.3';
+const APP_VERSION='2026.10.06-r31.2';
 /* The logo (r25): an upright dumbbell that is also the I of Ironlog. Same
    numbers as scripts/icons.py, which draws the app icons. */
 const MARK_SVG='<svg class="mark" viewBox="-242 -378 484 756" aria-hidden="true" focusable="false"><rect class="mk-h" x="-30" y="-300" width="60" height="600" rx="14"/><rect class="mk-h" x="-80" y="-192" width="160" height="32" rx="12"/><rect class="mk-h" x="-80" y="160" width="160" height="32" rx="12"/><rect class="mk-p" x="-240" y="-376" width="480" height="92" rx="30"/><rect class="mk-p" x="-190" y="-270" width="380" height="66" rx="26"/><rect class="mk-p" x="-190" y="204" width="380" height="66" rx="26"/><rect class="mk-p" x="-240" y="284" width="480" height="92" rx="30"/></svg>';
@@ -2435,7 +2436,7 @@ function guideSheet(m){
   const inClaude=!!(window.claude&&typeof window.claude.use==='function');const accts=!inClaude&&!!AUTH();
   const where=inClaude?`<p><b>Your log</b> is saved with your Claude account and in this browser.</p>`
     :accts?`<p><b>Without an account</b> your log is on this phone only: deleting the app deletes it. Export a backup in Settings, Your data, and keep it in Files.</p>
-   <p><b>With an account</b> it syncs, and signing in on any device brings it back. Only you and the app owner can see it. Your email is used only to sign in and reset your password; nothing is shared or sold. Continue without an account on the first page keeps everything on the phone, and the account can be added any time from the menu.</p>`
+   <p><b>With an account</b> it syncs, and signing in on any device brings it back. Only you and the app owner can see it.</p>`
     :`<p><b>Your log</b> is saved in this browser only: clearing its data deletes it. Export a backup in Settings, Your data.</p>`;
   const report=FB()?'<p><b>Report a problem</b> is in the menu at the top right and in Settings, Help. It needs an account, and never includes your workouts.</p>'
     :'<p><b>Report a problem</b> is in the menu at the top right and in Settings, Help. Here it copies the details for a message instead of sending them, and never includes your workouts.</p>';
@@ -2683,7 +2684,7 @@ function acctSheet(m){
   const T={signin:'Sign in',signup:'Create account',forgot:'Reset password',newpw:'New password',sent:m.title||'Check your email',wait:'Check your email',where:m.title||'Email confirmed'};
   let b='';
   if(m.mode==='signin')b=`${email}${f('Password','pw','password','current-password','enterkeyhint="go"')}${err}${go('Sign in')}<div class="row spread">${link('forgot','Forgot password?')}${link('signup','Create an account')}</div>`;
-  else if(m.mode==='signup')b=`${email}${f('Password (8 or more characters)','pw','password','new-password','minlength="8" enterkeyhint="go"')}${err}${go('Create account')}<p class="small muted" style="margin:0">We email you a link to confirm the address. Your email is only for signing in and never shared.</p><div class="row">${link('signin','I have an account')}</div>`;
+  else if(m.mode==='signup')b=`${email}${f('Password (8 or more characters)','pw','password','new-password','minlength="8" enterkeyhint="go"')}${err}${go('Create account')}<p class="small muted" style="margin:0">We email you a link to confirm the address.</p><div class="row">${link('signin','I have an account')}</div>`;
   else if(m.mode==='forgot')b=`${email}${err}${go('Email me a reset link')}<p class="small muted" style="margin:0">The link opens in your browser. Set the new password there, then sign in here.</p><div class="row">${link('signin','Back to sign in')}</div>`;
   else if(m.mode==='newpw')b=`${f('New password (8 or more characters)','pw','password','new-password','minlength="8" enterkeyhint="go"')}${err}${go('Save new password')}`;
   else if(m.mode==='wait')b=`<p style="margin:0">We sent a confirmation link to <b>${esc(m.email||'')}</b>. Tap it, then come back here. Ironlog signs you in by itself.</p><p class="small muted waitline" style="margin:0" aria-live="polite">${m.busy?'Checking':'Waiting for the confirmation'}</p>${err}<button type="button" class="btn primary block" data-act="acctWaitNow" ${m.busy?'disabled':''}>I have confirmed</button><div class="row">${link('signup','Use a different email')}</div>`;
@@ -2702,8 +2703,8 @@ const SAFETY_TXT='Ironlog works out suggested loads and reps from your own log w
 function safetyLine(){return `<p class="small muted" id="safety" style="margin:8px 0 0"><b>Suggestions:</b> estimates from your log, not medical or coaching advice. Train within your limits and stop on pain. ${tipi(SAFETY_TXT,'About suggestions')}</p>`;}
 function privacyLine(){
   const inClaude=!!(window.claude&&typeof window.claude.use==='function');
-  if(!inClaude&&AUTH()&&acct.user)return `<p class="small muted" id="privacy" style="margin:8px 0 0"><b>Privacy:</b> no ads, no tracking. Your log syncs to your Ironlog account. Only you and the app's owner can see it. Reports you send go to the app owner. ${tipi('It is stored in a Supabase database. Database rules let each account read and write only its own data. The person who runs that database, the app owner, can see stored data and your email address, as with any app without end-to-end encryption. Your email is used only to sign in and reset your password, and nothing is shared or sold. A new password is checked against known breaches with only the first 5 characters of its hash; the password never leaves the phone. Backup files go only where you save them.','About privacy')}</p>`;
-  if(!inClaude&&AUTH())return `<p class="small muted" id="privacy" style="margin:8px 0 0"><b>Privacy:</b> no ads, no tracking. Your log stays on this device and is sent nowhere unless you sign in to sync. Reports you send go to the app owner. ${tipi('Opening or updating the app downloads it from GitHub Pages, which, like any website host, sees your IP address; after that it works offline. With an account, your log and email are stored in a Supabase database, readable by your account and by the app owner; the email is used only to sign in and reset your password. A new password is checked against known breaches with only the first 5 characters of its hash. Deleting the app or this site\'s data deletes the copy on this device, so keep a backup file or an account.','About privacy')}</p>`;
+  if(!inClaude&&AUTH()&&acct.user)return `<p class="small muted" id="privacy" style="margin:8px 0 0"><b>Privacy:</b> no ads, no tracking. Your log syncs to your Ironlog account. Only you and the app's owner can see it. Reports you send go to the app owner. ${tipi('It is stored in a Supabase database. Database rules let each account read and write only its own data. The person who runs that database, the app owner, can see stored data, as with any app without end-to-end encryption. A new password is checked against known breaches with only the first 5 characters of its hash; the password never leaves the phone. Backup files go only where you save them.','About privacy')}</p>`;
+  if(!inClaude&&AUTH())return `<p class="small muted" id="privacy" style="margin:8px 0 0"><b>Privacy:</b> no ads, no tracking. Your log stays on this device and is sent nowhere unless you sign in to sync. Reports you send go to the app owner. ${tipi('Opening or updating the app downloads it from GitHub Pages, which, like any website host, sees your IP address; after that it works offline. With an account, your log is also stored in a Supabase database, readable by your account and by the app owner. A new password is checked against known breaches with only the first 5 characters of its hash. Deleting the app or this site\'s data deletes the copy on this device, so keep a backup file or an account.','About privacy')}</p>`;
   return inClaude
     ?`<p class="small muted" id="privacy" style="margin:8px 0 0"><b>Privacy:</b> no ads, no tracking. Your log is stored with your Claude account. ${/*ai{*/tipi('Claude features (debrief, Ask Claude, swaps, reading typed sets) send the part of your log they need to Claude, and only when you tap them. Export and CSV files go only where you save them.','About privacy')/*}ai=tipi('Export and CSV files go only where you save them.','About privacy')*/}</p>`
     :`<p class="small muted" id="privacy" style="margin:8px 0 0"><b>Privacy:</b> no account, no ads, no tracking. Your log stays on this device and is sent nowhere. Reports you send go to the app owner. ${tipi('Ironlog has no server. Opening or updating the app downloads it from GitHub Pages, which, like any website host, sees your IP address; after that it works offline. Backup files go only where you save them. Deleting the app or this site\'s data deletes your log, so keep a backup file.','About privacy')}</p>`;
@@ -4682,29 +4683,27 @@ function obAcctOffered(){
   if(!AUTH()||window.claude||acct.user)return false;
   try{return localStorage.getItem(OB_ACCT)!=='later';}catch(e){return true;}
 }
-/* Three things, side by side, a few words each (V, r31.3): logging each
-   session, building the plan, and seeing progress. */
 const OB_FEATS=[
-  ['<circle cx="12" cy="12" r="9"/><path d="M8 12.5l2.6 2.6L16.2 9.4"/>','Log sets with a tap'],
-  ['<path d="M4 7h9M17 7h3M4 17h3M11 17h9"/><circle cx="15" cy="7" r="2"/><circle cx="9" cy="17" r="2"/>','Build your plan'],
-  ['<path d="M4 17l6-6 4 4 6-7"/><path d="M15 8h5v5"/>','See your progress']];
+  ['<circle cx="12" cy="12" r="9"/><path d="M8 12.5l2.6 2.6L16.2 9.4"/>','Log a set in one tap','Your last numbers are filled in, ready to tick.'],
+  ['<path d="M4 17l6-6 4 4 6-7"/><path d="M15 8h5v5"/>','Know what to lift next','Weights and reps that progress from your own log.'],
+  ['<path d="M5 20v-8M12 20V5M19 20v-5"/>','See what is working','Strength trends, PRs, and sets for each muscle.']];
 function obView(){
   // Still finding out whether this device is signed in, or pulling its log: show nothing that could flash away.
   if(!cloudChecked||(AUTH()&&!window.claude&&!acct.checked)||(cloud.on&&!cloud.lastPull))return `<div class="ob"><div class="ob-splash"><p class="ob-logo">${LOCKUP}</p></div></div>`;
   const acctStep=!!AUTH()&&!window.claude;const dots=n=>acctStep?`<div class="ob-dots" aria-hidden="true"><i class="${n===1?'on':''}"></i><i class="${n===2?'on':''}"></i></div>`:'';
   /* The first page (r31.2, V): what the app does, in three lines, before
      anything is asked; then the account, said to be optional and what it is
-     for, and Continue without an account as a plain, clearly worded link. A page that opened on an account
+     for, with Not now as a real button. A page that opened on an account
      request alone lost a friend at the first screen. */
   if(obAcctOffered())return `<div class="ob" id="obPage" data-step="acct">
   <div class="ob-top"><h1 class="ob-logo">${LOCKUP}</h1></div>
-  <ul class="ob-feats" aria-label="What Ironlog does">${OB_FEATS.map(([ic,t])=>`<li><span class="fi" aria-hidden="true"><svg viewBox="0 0 24 24">${ic}</svg></span><b>${t}</b></li>`).join('')}</ul>
+  <ul class="ob-feats" aria-label="What Ironlog does">${OB_FEATS.map(([ic,t,d])=>`<li><span class="fi" aria-hidden="true"><svg viewBox="0 0 24 24">${ic}</svg></span><div><b>${t}</b><span>${d}</span></div></li>`).join('')}</ul>
   <div class="ob-card"><h2>Save your log</h2>
-  <p class="ob-why">Back up your log and use it on any device</p>
+  <p class="ob-why">Optional. An account keeps your log if you lose or change phones, and syncs it across your devices.</p>
   <button class="btn primary block" data-act="acctOpen" data-mode="signup">Create account</button>
   <button class="btn block" data-act="acctOpen" data-mode="signin">I have an account</button></div>
   ${ENV==='preview'?'<button class="btn block" data-act="previewCopy">Copy my log from Ironlog</button>':''}
-  <button class="linkbtn ob-later" data-act="obAcctLater">Continue without an account</button>${dots(1)}</div>`;
+  <button class="btn block ob-later" data-act="obAcctLater">Not now</button>${dots(1)}</div>`;
   const imp=`<button class="ob-opt" data-act="impOpen"><b>Import my workouts</b><span>Notes, a spreadsheet, Strong, Hevy, a backup</span></button>`;
   return `<div class="ob welcome" id="obPage" data-step="start">
   ${acctStep&&!acct.user?'<button class="linkbtn ob-back" data-act="obAcctBack">‹ Account</button>':''}
