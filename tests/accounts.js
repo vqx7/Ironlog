@@ -94,6 +94,18 @@ fs.cpSync(DIST, tmp, { recursive: true });
   await W.page.click('#obPage [data-act="obSample"]'); await wait(150);
   await W.page.click('#modal [data-act="tplPick"][data-k="ul4"]'); await wait(300);
   ok(await W.ev(() => { const L = window.__ironlog; return !document.getElementById('obPage') && L.state.settings.onboarded && L.state.settings.userName === 'Sam' && L.state.settings.unit === 'kg' && L.ui.tab === 'today' && !!document.querySelector('.hero') && getComputedStyle(document.querySelector('.tabs')).display !== 'none'; }), 'name, kg and a routine picked: Today opens with the tabs back');
+  // r32: after Continue without an account, the first Today does not ask again; the line comes back after a session.
+  {
+    const W4 = await device(null, false, true); await wait(600);
+    await W4.page.click('#obPage [data-act="obAcctLater"]'); await wait(150);
+    await W4.page.click('#obPage [data-act="obSample"]'); await wait(150);
+    await W4.page.click('#modal [data-act="tplPick"][data-k="ul4"]'); await wait(300);
+    const first = await W4.ev(() => ({ today: !!document.querySelector('.hero'), bar: !!document.getElementById('acctBar') }));
+    ok(first.today && !first.bar, 'r32: right after Continue without an account, Today does not offer the account again', first);
+    const after = await W4.ev(() => { const L = window.__ironlog; L.state.sessions.push({ id: 'w4', date: L.today(), dayIdx: 0, dayId: null, dayName: 'A', routineId: '', notes: '', ex: [{ exId: 'bench', sets: [{ w: 60, r: 8, rir: null, warm: false, drop: false }] }] }); L.invalidate(); L.saveNow(); L.render(); return !!document.getElementById('acctBar'); });
+    ok(after, 'r32: once a session is saved, the slim account line is back');
+    await W4.ctx.close();
+  }
   // An existing account signed in on page 1 brings its log: straight to Today, no setup.
   const W3 = await device(null, false, true); await wait(600);
   await W3.page.click('#obPage [data-act="acctOpen"][data-mode="signin"]'); await wait(100);

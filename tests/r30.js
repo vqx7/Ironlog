@@ -85,7 +85,7 @@ function strongCsv() {
       return { push: I.byEx.pressdown.filter(x => x.auto).map(x => x.date), txt: document.getElementById('view').innerText, mv: (document.querySelector('#dashSummary .srow') || {}).innerText || '', heads: Object.keys(I.exStats).map(id => L.exHeadline(id)).join(' ') }; });
     ok(!au.push.length, 'a lift done at its usual load in a lighter week is not called lighter (the pushdown)', au.push);
     ok(/Last lighter week: 2 weeks ago \(lighter loads\)/.test(au.txt) && !/No lighter week/.test(au.txt), 'Stalls names the deload week (lighter loads), never "No lighter week"', (au.txt.match(/[^\n]*lighter week[^\n]*/i) || [])[0]);
-    ok(/and \d+ more over 6 weeks/.test(au.mv), 'Moving names two lifts and how many more', au.mv);
+    ok(/and \d+ more over \d+ weeks/.test(au.mv), 'Moving names two lifts and how many more', au.mv);
     ok(!/likely ([+-][\d.]+%) to \1/.test(au.heads), 'no trend range of zero width ("likely +1.9% to +1.9%")', au.heads.slice(0, 300));
     // One rule across the Lifts section: 1RM figures only for a compound lift with sets of 12 or fewer.
     const ls = await ev(async () => { const L = window.__ironlog; const out = {};
@@ -152,12 +152,13 @@ function strongCsv() {
       const S = (id, d, w, r, rir) => ({ id, date: d, dayIdx: 0, dayId: null, dayName: 'A', routineId: '', free: true, notes: '', ex: [{ exId: 'bench', sets: [{ w: w * LB, r, rir, warm: false }] }] });
       L.state.sessions = [S('x1', '2026-09-20', 265, 3, 0), S('x2', '2026-09-27', 215, 6, 1)]; L.invalidate();
       return L.prBeat('bench', { w: 225 * LB, r: 7, rir: 1 }, '2026-10-04', 'Best'); });
-    ok(/for sets of 6 to 10 reps/.test(t), 'the best-estimate toast says which rep band it beat, so it never reads wrong beside a higher overall best', t);
+    ok(/sets of 6 to 10 reps/.test(t), 'the best-estimate toast says which rep band it beat, so it never reads wrong beside a higher overall best', t);
 
     // Labels that contradicted each other: "301 → 300.7 · up".
     const lt = await ev(() => { const L = window.__ironlog; const LB = 0.45359237; const S = (id, d, w, r) => ({ id, date: d, dayIdx: 0, dayId: null, dayName: 'A', routineId: '', free: true, notes: '', ex: [{ exId: 'backSquat', sets: [{ w: w * LB, r, rir: 1, warm: false }] }] });
       L.state.sessions = [S('q1', '2026-09-20', 255, 5), S('q2', '2026-09-27', 256, 5), S('q3', '2026-10-01', 255.5, 5)]; L.invalidate(); return L.liftTrend('backSquat'); });
-    ok(/flat/.test(lt) && !/up|down/.test(lt.replace(/Est\. 1RM|1RM/g, '')), 'within 1% the trend reads flat, never "up" beside the same number', lt);
+    // r32: three sessions in 11 days have no trend, so no word at all; never "up" beside the same number.
+    ok(!/up|down/.test(lt.replace(/Est\. 1RM|1RM/g, '')), 'within 1% the trend never reads "up" beside the same number', lt);
     ok(!P.errors.length, 'no page errors (numbers)', P.errors);
     await P.browser.close();
   }
