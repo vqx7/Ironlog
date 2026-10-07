@@ -631,7 +631,7 @@ table.t td.r,table.t th.r{text-align:right}
 .hero .tag.blue{background:color-mix(in srgb,var(--on-hero) 16%,transparent);color:var(--on-hero)}
 .btn.big{font:800 23px var(--display);letter-spacing:.07em;text-transform:uppercase;min-height:58px;margin-top:16px;border-radius:999px}
 .inline-sel{display:flex;align-items:center;gap:8px;color:inherit;margin:0;white-space:nowrap;min-width:0;font-size:13px;opacity:.9}
-.inline-sel select{max-width:200px;min-width:0;flex:1 1 auto;padding:6px 8px;font-size:13px;min-height:36px}
+.inline-sel select{max-width:200px;min-width:0;flex:1 1 auto;padding:6px 8px;font-size:13px;min-height:36px;text-overflow:ellipsis}
 .hero .inline-sel{flex:1 1 auto}
 .hero .inline-sel select{max-width:none;background:color-mix(in srgb,var(--on-hero) 10%,transparent);color:var(--on-hero);border-color:color-mix(in srgb,var(--on-hero) 25%,transparent)}
 .hero .inline-sel select option{color:initial}
@@ -2449,7 +2449,7 @@ function guideSheet(m){
    <p><b>More options</b>: Deload week, Limited equipment (each exercise your gym cannot do swapped for the closest match), injuries, and cardio.</p>
    <p><b>This week</b> counts hard sets logged against hard sets planned; Month shows the calendar instead, and the title becomes This month. The bar at the top of every tab is this week: filled is a day you lifted, a coloured outline is cardio only, a grey ring is a workout planned ahead, and with fixed weekdays a red ring is one missed. Tap an empty past day to log a workout for it.</p>`],
   ['log','Logging a session',`<p><b>Grey numbers are suggestions.</b> Tick a set to log it as shown, or type over the load or reps first. Nothing you type is ever changed by the app.</p>
-   <p><b>Grey reps</b> are last time's reps for that set, at today's load, and never under the bottom of the range while most sets reached it. When today's target is a new load, last time's reps were at the old load, so they are the reps of the set above instead, or the bottom of the range. On a lighter day or in a deload, they are the bottom of the range.</p>
+   <p><b>Grey reps</b> are last time's reps for that set, at today's load, and one set under the bottom of the range among the others shows the bottom of the range. When today's target is a new load, last time's reps were at the old load, so they are the reps of the set above instead, or the bottom of the range. On a lighter day or in a deload, they are the bottom of the range.</p>
    <p><b>Grey loads</b> are the set above, or today's suggested load. To have loads typed in for you: Settings, Rest timer and logging, Fill in suggested loads.</p>
    <p><b>Auto-mark</b> (Settings): a set ticks itself when you leave its reps field.</p>
    <p><b>RIR</b>, reps in reserve: how many more reps you could have done. Tap a set's RIR box for 0 to 5. ${off?'RIR is off in Settings, so every working set counts as hard.':'It is optional: a blank reads as your usual RIR on that lift once you have rated 3 of its sets in 12 weeks, and until then as hard.'}</p>
@@ -2463,11 +2463,11 @@ function guideSheet(m){
   ['rules','How targets are set',`<p class="muted">These are estimates from your log, not medical or coaching advice. Adjust them to how you feel on the day, and stop on pain.</p>
    <p>Each exercise progresses from its <b>last full session in the rep range you plan for it that day</b>, so the same lift on a heavy day and a light day progresses on each separately. A range not used within 6 weeks of your latest session of the lift starts from that latest session instead.</p>
    <p><b>The working load</b> is the load you did the most sets with (the heavier on a tie), leaving out loads under 60% of your heaviest. A heavy top set, or two, before your back-off sets counts for bests and PRs, while targets, grey reps, and trends build on the back-off sets.</p>
-   <p><b>Every set at the top of the range</b>: add load, in whole steps of the exercise's load step, about 2.5% of the load on compound lifts and 5% on isolation lifts, at least one step. Plan, Load jump % sets a different share for one exercise (0: one step every time). When one step is large for the load (it costs 1.5 reps or more, as 5 lb on a 35 lb dumbbell does), you first build a few reps past the top at this load, up to a quarter of the top of the range more, until your estimate says the new load allows the bottom of the range; then the load goes up. Past a quarter, the load goes up anyway, with the reps your estimate allows there as the target.</p>
+   <p><b>Every set at the top of the range</b>: add load, in whole steps of the exercise's load step, about 2.5% of the load on compound lifts and 5% on isolation lifts, at least one step. Plan, Load jump % sets a different share for one exercise (0: one step every time). When one step is large for the load (it costs 1.5 reps or more, as 5 lb on a 35 lb dumbbell does), on a range 3 or more reps wide, you first build a few reps past the top at this load, up to a quarter of the top of the range more, until your estimate says the new load allows the bottom of the range; then the load goes up. Past a quarter, the load goes up anyway, with the reps your estimate allows there as the target. A fixed-rep plan (5 x 5, 3 x 3-5) goes up a step every time all its sets are done.</p>
    <p><b>Dumbbells and kettlebells</b> step by what your rack has: with no load step set on the exercise, the step fits every load you logged on it (12, 14, and 16 kg is a rack in 2 kg steps; 12.5 and 15, one in 2.5).</p>
-   <p><b>Otherwise</b>: the same load; beat last time's total reps over the same number of sets. While half or more of the sets reached the bottom of the range, a set under it counts as the bottom of the range, so one bad set does not set the next target.</p>
+   <p><b>Otherwise</b>: the same load; beat last time's total reps over the same number of sets. One set under the range among the others counts as the bottom of the range, so one bad set does not set the next target. A bad day, every set under the range at a load you did in it the time before, asks for the bottom of the range in every set again.</p>
    <p><b>Well past the range</b> (every set 2 or more reps over the top, as after moving the range down): the load your estimated 1RM gives for the middle of the range, at most 10% more (15% on isolation lifts under ${kg?'20 kg':'about 45 lb'}), in whole steps.</p>
-   <p><b>Below the range</b> (every set 2 or more reps short, or short two sessions running at the same load, or the first time in a range you have not trained, as after an import): down to what your estimate says fits the range, in whole steps. Not just after one step up while you are 3 or fewer reps short, and not while your reps at that load are rising. The rep target counts as many sets as the plan has.</p>
+   <p><b>Below the range</b> (every set 2 or more reps short, or short two sessions running at the same load, or four running even with the reps creeping up, or the first time in a range you have not trained, as after an import): down to what your estimate says fits the range, in whole steps. Not just after one step up while you are 3 or fewer reps short, and not while your reps at that load are rising. The rep target counts as many sets as the plan has.</p>
    <p><b>Too easy</b> (every top set logged 2 or more RIR above the target): the same estimate sets a heavier load, at most 10% more (15% on isolation lifts under ${kg?'20 kg':'about 45 lb'}).</p>
    <p><b>The first 3 sessions</b> of a lift find its load: there the most these two can add is 25%, so a cautious first guess is put right in a session or two. For picking a load only, sets past 12 reps to failure are read with Epley up to 30, so a set of 25 still moves the load the right amount (never shown as a 1RM). A convention.</p>
    <p><b>At the heaviest load available</b> (set on the exercise), or with a load step of 0: more reps, then harder reps.</p>
@@ -2481,14 +2481,14 @@ function guideSheet(m){
    <p><b>Changes apply at once</b>: a new load step, rep range, or heaviest load reaches the exercises in your session that you have not started yet.</p>`],
   ['stats','Volume and Stats',`<p><b>A hard set</b> is a working set at RIR 3 or less${off?' (with RIR off, every working set)':''}. Helper muscles count half a set (Pelland 2025).</p>
    <p><b>Weekly targets</b> are per muscle in Settings, Weekly set targets. 10 to 20 hard sets a week for major muscles is typical, not a ceiling. Serratus, rotator cuff, neck, and tibialis are tracked only: counted and shown, with no target, since no study sets a dose for them and most routines leave them to indirect work. A target starting at 0 is met with no sets. A muscle is below target when its weekly average, to one decimal as shown, is under the minimum. The radar on Stats measures each region against its minimum, so on or past the ring is on target. It averages your last 4 full weeks; the chips above it switch to 2 or 8 weeks, for the radar only. During the week, short of the minimum shows as under way, not below.</p>
-   <p><b>Lagging strength</b> is a muscle whose lifts are falling, or flat with one of them stalled (a convention). A muscle whose lifts are all within day-to-day noise reads <b>unclear</b>, never 0%.</p>
+   <p><b>Lagging strength</b> is a muscle whose lifts are falling, or flat with one of them stalled (a convention); with no clear trend, a stalled lift reads <b>A lift stalled</b>. A muscle whose lifts are all within day-to-day noise reads <b>unclear</b>, never 0%.</p>
    <p><b>Your target and the usual range</b>: picking a ready-made routine sets your minimums to what it plans, so Stats measures you against your plan. Plan, Weekly volume names the muscles that plan puts under the usual range.</p>
    <p><b>Planned sets</b> count the same way: a set planned at RIR 4 or more is not a planned hard set, and in a deload week the target is halved.</p>
    <p><b>More than ${SESSION_CAP} sets</b> for one muscle in one workout is flagged. That line is a convention from one study not yet peer reviewed (Remmert 2025), which found no extra growth past it.</p>
    <p><b>Three different numbers.</b> The <b>suggested</b> load and reps (grey in a session) are today's target, from your last full session by the rules above. The <b>estimated 1RM</b> (best estimate) is what one all-out rep would be. It comes from a set's load and reps to failure: Brzycki up to 10 reps, Epley at 11 to 12, and no estimate above 12 reps or above RIR 4. It is a gauge of strength that varies 2 to 8% day to day, never a load to try. It is shown for compound lifts only; isolation lifts show their best set.</p>
    <p><b>Trends</b> read each session's working sets the same way, averaged, up to 20 reps to failure (so high-rep work has a trend too, never shown as a 1RM). RIR is used in a trend only when it is rated on 80% or more of the lift's sets; otherwise loads and reps alone, so tapping RIR on some days and not others cannot bend it. The 6 weeks are counted back from the lift's own last session, and a trend needs 3 sessions spread over 2 weeks or more; it says how many weeks it covers. A muscle's trend counts a lift once it has 4 sessions over 3 weeks or more, and says the weeks too. A trend shows how many sessions it rests on and its weekly rate with the range an 80% interval allows (about +1.5% a week, likely +1.2% to +1.8%). <b>Weight lifted</b> is load times reps; it falls when the load goes up and reps come down, so it is shown as a number, not as progress.</p>
    <p><b>PRs</b>: a <b>weight PR</b> is more weight than any earlier set of the lift (less help on an assisted one); a <b>best estimate</b> beats your earlier best in the same band of reps to failure (1 to 5, 6 to 10, 11 to 12); a <b>rep PR</b> is more reps at a load than ever before, counted only when the set is at least 90% as strong as your strongest before it (a convention: 40 x 10 after 95 x 5 is not a PR). A set that is more than one shows the first of these. Only a PR with a new best estimate is announced and counted (on a lift with no estimate, any of them); a heavier set or more reps without one is kept in the list and named in the recap as heaviest yet. Counting them all made each load step a PR.</p>
-   <p><b>Moving</b>: up 3% or more with a trend clearly above zero. <b>Stalled</b>: flat or falling (not clearly rising) over the last 6 sessions in the current range, or 3 weeks if that covers more (at least 4 sessions), with no PR in the last 3 of them, the load no heavier than at the start of that stretch, and no more reps at that load than any session before it in the stretch, and only while you still train the lift. Adding load and dropping reps for a while, or adding reps to later sets, as double progression does, is not a stall. A deload is suggested when 3 or more main lifts (compound lifts with an estimate) stall together, and not within 4 weeks of a lighter week; isolation and core lifts are listed but not counted for it.</p>
+   <p><b>Moving</b>: up 3% or more with a trend clearly above zero. <b>Stalled</b>: flat or falling over the last 6 sessions (by the middle of the changes between every pair of them, so one good or bad day does not decide it) in the current range, or 3 weeks if that covers more (at least 4 sessions), with no PR in the last 3 of them, the load no heavier than at the start of that stretch, and no more reps at that load than any session before it in the stretch, and only while you still train the lift. Adding load and dropping reps for a while, or adding reps to later sets, as double progression does, is not a stall. A deload is suggested when 3 or more main lifts (compound lifts with an estimate) stall together, and not within 4 weeks of a lighter week; isolation and core lifts are listed but not counted for it.</p>
    <p><b>Weekly averages</b> are over the weeks you trained of the last 4 (a lighter week is swapped for an earlier one). A week with no training is left out rather than counted as zero, and when 2 or more of the 4 were missed the Coach says so first.</p>
    <p><b>Consistency</b>: weeks with at least as many sessions as the routine you trained that week plans.</p>
    <p><b>Bodyweight</b> trends use 7-day averages. <b>Waist to height</b>: under 0.5 healthy, 0.5 to 0.59 increased, 0.6 or more high (NICE 2022).</p>`],
@@ -3183,9 +3183,11 @@ function IDX(){
          rep PR floor, so 100 x 9 after 100 x 8 counts though it moved into a
          new band of reps. */
       const big=e1PR||noE1(ex)||!!ex.timed||x.pts.some(q=>sc(q)>topSc+1e-9);
-      if(wPR)prs.push({date:x.date,exId:id,type:'Weight PR',w:wPR.w,r:wPR.r,prevW:prevMaxW,value:e1PR?x.best:null,prev:e1PR?pb:null,big});
+      // A deload or lighter day is lighter on purpose: its sets are never PRs (r32, second check: 90 x 12 on a Lighter day listed as one).
+      const offPR=x.deload||x.light;
+      if(!offPR){if(wPR)prs.push({date:x.date,exId:id,type:'Weight PR',w:wPR.w,r:wPR.r,prevW:prevMaxW,value:e1PR?x.best:null,prev:e1PR?pb:null,big});
       else if(e1PR)prs.push({date:x.date,exId:id,type:'e1RM',value:x.best,prev:pb,big});
-      else if(repPR)prs.push({date:x.date,exId:id,type:'Rep PR',w:repPR.w,r:repPR.r,prevR:front.filter(q=>q.load>=repPR.load-1e-6).reduce((a,q)=>Math.max(a,q.r),0),big});
+      else if(repPR)prs.push({date:x.date,exId:id,type:'Rep PR',w:repPR.w,r:repPR.r,prevR:front.filter(q=>q.load>=repPR.load-1e-6).reduce((a,q)=>Math.max(a,q.r),0),big});}
       for(const p of x.pts)if(p.r>0)prevMaxW=Math.max(prevMaxW,p.w);
       for(const p of x.pts)topSc=Math.max(topSc,sc(p));
       for(const p of x.pts)addFront(p);
@@ -3245,7 +3247,7 @@ function IDX(){
         const lastE=wE[wE.length-1].date;let i0=wE.length-1;
         while(i0>0&&(wE.length-i0<6||daysBetween(wE[i0].date,lastE)<21))i0--;
         const l=wE.slice(i0);
-        if(daysBetween(l[0].date,lastE)>=21){const f=slopeOf(l);
+        if(daysBetween(l[0].date,lastE)>=21){
           /* More reps at the same working load over no more sets is progress
              too (r31): double progression adds reps to sets 2 to 4 once set 1
              is at the top of the range, and that is not a stall. Since r32
@@ -3257,13 +3259,15 @@ function IDX(){
           const moved=l.slice(-3).some(x=>x.progress)||z.topL>a0.topL+1e-6||z.topW>a0.topW+1e-6||(same.length>0&&z.topReps>Math.max(...same.map(x=>x.topReps)));
           /* Flat is under 0.1% a week (r31): averaging working sets leaves
              rounding dust, and identical sessions came out at +1e-32 a
-             week, so a perfectly flat lift was not called stalled. Since r32
-             a slope whose 80% interval reaches zero is flat too: the press
-             above came out slightly up from its last two sessions. Real
-             progress shows up in the checks above (a PR, more load, more
-             reps), which keep such a lift out of the stalls. */
-          const sl=f&&f.my>0?f.b*7/f.my*100:null;const lo=sl!=null&&f.se!=null?sl-t90(f.n-2)*f.se*7/f.my*100:sl;
-          stalled=sl!=null&&(sl<0.1||lo<=0)&&!moved;}}
+             week, so a perfectly flat lift was not called stalled. */
+          /* Since r32 the line is the median of the slopes between every
+             pair of sessions (Theil and Sen), so one good or bad day does
+             not set it: a squat at 20, 20, 30, 22, 24, 24 working reps read
+             stalled from its one good day, and a press alternating 6s and
+             5s read up from its last two. */
+          const sen=(()=>{const a=[];for(let i=0;i<l.length;i++)for(let j=i+1;j<l.length;j++){const dd=daysBetween(l[i].date,l[j].date);if(dd>0)a.push((l[j].tv-l[i].tv)/dd);}return a.length?median(a):null;})();
+          const my=l.reduce((a,x)=>a+x.tv,0)/l.length;
+          stalled=sen!=null&&my>0&&sen*7/my*100<0.1&&!moved;}}
       else if(withE1.length<2)stalled=inRange.length>=4&&inRange.slice(-3).every(x=>!x.progress);
     }
     const w=inRange.filter(x=>x.date>=exWin&&x.tv!=null);
@@ -3631,8 +3635,8 @@ function lastOf(all,base,fmt,repMin){
   const wl=workLoad(repsFrom.pts,repMin||0);const wp=atLoad(repsFrom.pts,wl);
   /* One bad set is not next time's plan (r32, from the third review: squat
      140 x 3, 6, 6 on 6-10 greyed (3)(6)(6), and one tap logged 140 x 3
-     again). While at least half the sets reached the bottom of the range, a
-     set under it shows the bottom of the range instead. */
+     again). With one set under the range among the rest, that set shows the
+     bottom of the range instead. */
   const fl=repFloor(wp.length?wp:repsFrom.pts,repMin);
   return {line,lastR:(wp.length?wp:repsFrom.pts).map(p=>fl(p.r)),basis:rec!==base?base.date:null};
 }
@@ -3641,11 +3645,11 @@ function lastOf(all,base,fmt,repMin){
    trend or a stall (r31: written out by hand in six places, which could
    drift). IDX uses tagged() while it is still deciding which are read as
    lighter. */
-/* The floor for reps that set targets and grey reps (r32): with half or more
-   of the working sets at the bottom of the range or above, a set under it is
-   read at the bottom of the range. With most of them under it, the load was
-   too heavy, and the drop below the range handles that. */
-function repFloor(pts,repMin){const m=+repMin||0;const ok=m>0&&pts.length&&pts.filter(p=>p.r>=m).length*2>=pts.length;return r=>ok?Math.max(r,m):r;}
+/* The floor for reps that set targets and grey reps (r32): one set under
+   the range among two or more is read at the bottom of the range. With more
+   of them under it, the load was heavy that day or too heavy, and the drop
+   below the range (or the way back to it) handles that. */
+function repFloor(pts,repMin){const m=+repMin||0;const ok=m>0&&pts.length>=2&&pts.filter(p=>p.r<m).length===1;return r=>ok?Math.max(r,m):r;}
 const tagged=x=>!!x&&!!(x.deload||x.light||x.cut);
 const offSession=x=>tagged(x)||!!(x&&x.auto);
 /* ---------- progression suggestion ---------- */
@@ -3662,9 +3666,25 @@ const offSession=x=>tagged(x)||!!(x&&x.auto);
    after 140 x 4, 3, 3 (normal day: drop to 122.5) the lighter day asked about
    125, and after 100 x 15 one tap logged 90 x 15 on a "3 or more in reserve"
    day. Injury, a first session and timed holds keep their own lines. */
+/* Loads logged in the other unit (r32, second check: after kg to lb,
+   100 kg read 220.5 lb and the next was "225.5", 16 kg dumbbells "35.3 per
+   dumbbell"): when the last working load is off the step in the unit on
+   screen, the suggestion is put on the nearest step (down for a lighter
+   day), and the words follow. Loads already on the step are untouched, so
+   a stack with odd pins keeps its whole steps. */
+function snapUnit(ex,plan,res,down){
+  if(!res||res.w==null||res.top==null||ex.timed)return res;const st=toD(incOf(ex,plan));if(!(st>0))return res;
+  const off=v=>Math.abs(toD(v)/st-Math.round(toD(v)/st))>0.02;if(!off(res.top)||!off(res.w))return res;
+  const nw=fromD((down?Math.floor(toD(res.w)/st+1e-9):Math.round(toD(res.w)/st))*st);if(Math.abs(nw-res.w)<1e-9)return res;
+  const a=loadLabel(ex,res.w),b=loadLabel(ex,nw);const fix=t=>t?t.split(a).join(b):t;
+  const out={...res,w:nw,target:fix(res.target)};
+  out.text=res.last&&res.text.startsWith(res.last)?res.last+fix(res.text.slice(res.last.length)):fix(res.text);
+  if(res.tgt&&res.tgt.w!=null)out.tgt={...res.tgt,w:nw};
+  return out;
+}
 function suggest(exId,plan,opts){
   opts=opts||{};const ex=EX(exId);
-  if(!(opts.deload||opts.light)||ex.timed)return suggestCore(exId,plan,opts);
+  if(!(opts.deload||opts.light)||ex.timed)return snapUnit(ex,plan,suggestCore(exId,plan,opts));
   const base=suggestCore(exId,plan,{...opts,deload:false,light:false});
   if(base.inj||!base.last||base.w==null)return base;
   const T=opts.before&&isDate(opts.before)?opts.before:today();
@@ -3677,7 +3697,7 @@ function suggest(exId,plan,opts){
   const w=w0>0||ex.assist?dw:w0;
   // Grey reps at the bottom of the range: at about 90% of the load that is 3 or more in reserve for anyone in the range last time.
   const n=Math.max(1,(base.lastR||[]).length||+plan.sets||1);
-  return {w,text:`${base.last} ${word}: about ${lbl(w)} for ${repSpan(plan.repMin,plan.repMax,'-')} with 3 or more reps in reserve. Half the usual sets, nothing to beat.`,lastR:Array(n).fill(+plan.repMin),basis:base.basis,last:base.last,target:'',tgt:null,easier:null};
+  return snapUnit(ex,plan,{top:base.top,w,text:`${base.last} ${word}: about ${lbl(w)} for ${repSpan(plan.repMin,plan.repMax,'-')} with 3 or more reps in reserve. Half the usual sets, nothing to beat.`,lastR:Array(n).fill(+plan.repMin),basis:base.basis,last:base.last,target:'',tgt:null,easier:null},true);
 }
 function suggestCore(exId,plan,opts){
   opts=opts||{};
@@ -3812,7 +3832,11 @@ function suggestCore(exId,plan,opts){
        asked for 122.5 x 16 reps over 3 sets, under the plan's minimum. The
        first session in a new range sets its load from the estimate at once,
        as a range moved down does. */
-    if((gap>=2&&!(justUp&&gap<=3))||repeat||!inRR){
+    /* Four sessions in a row under the range at one load drop it, rising or
+       not (r32, second check: 5, 5, 4, 4 then 5, 5, 5, 4 then 5, 5, 5, 5
+       kept the load for weeks, each "rising"). */
+    let shortRun=0;for(let k=exps.length-1;k>=0;k--){const x=exps[k];if(Math.abs(x.topW-top)>1e-6)break;const at=atLoad(x.pts,x.topW);if(!at.length||!at.every(p=>p.r<+plan.repMin))break;shortRun++;}
+    if((gap>=2&&!(justUp&&gap<=3))||repeat||!inRR||shortRun>=4){
       let est=null;for(const p of topPts){const v=e1(p.load,p.r,p.rq);if(v!=null&&(est==null||v>est))est=v;}
       const bwNow=bwLoad(ex,T);
       if(est!=null){
@@ -3862,6 +3886,12 @@ function suggestCore(exId,plan,opts){
        was all there was). The target at the new load is then what the
        estimate says that load allows at the planned RIR, said as such, and
        the reps build back up from there. */
+    /* A range under 3 reps wide (5 x 5, 3 x 3-5) is a fixed-rep plan: the
+       load goes up a step and the reps are repeated, as those programs say,
+       whatever the step costs (r32, second check: 5 x 5 at 50 kg asked for
+       reps past 5 instead of 52.5). A miss is caught by the drop below the
+       range. */
+    const wide=+plan.repMax-+plan.repMin>=3;
     let aim=+plan.repMin;const q=Math.min(tgtRir,E1_MAX_RIR);const bwT=bwLoad(ex,T);
     if(!noE1(ex)){let est=null;for(const p of topPts){const v=fitE(p.load,p.r,p.rq);if(v!=null&&(est==null||v>est))est=v;}
       /* Only a step that costs 1.5 reps or more is large for the load (about
@@ -3870,7 +3900,7 @@ function suggestCore(exId,plan,opts){
          range catching a miss. Read against the planned RIR alone, a 5 x 5
          at 335 with no RIR rated (read as 0) made 5 lb (1.5%) look like two
          reps. */
-      const f=est?rtfAt(est,nw+bwT):null;const cost=f!=null?rtfAt(est,top+bwT)-f:0;if(f!=null&&cost>=1.5){const can=Math.floor(f-q+1e-9);if(can<aim)aim=Math.max(1,can);}}
+      const f=est?rtfAt(est,nw+bwT):null;const cost=f!=null?rtfAt(est,top+bwT)-f:0;if(f!=null&&cost>=1.5&&wide){const can=Math.floor(f-q+1e-9);if(can<aim)aim=Math.max(1,can);}}
     const big=aim<+plan.repMin;
     /* Before such a step, a few more reps at this load first (r32, from the
        third review: a cable fly asked "20 kg for 9+" on a 10-15 plan, the
@@ -3893,11 +3923,22 @@ function suggestCore(exId,plan,opts){
     return {top,w:nw,text:`${lastS} Every set at ${lbl(top)} hit ${plan.repMax}: add ${fmtW(nw-top)} ${U()}${cap!=null&&nw>=cap-1e-6?', which is the heaviest available,':''} and aim for ${aim}+ reps${big?`, then build back to ${plan.repMax}. That step is large for this load, so fewer reps than the range is expected at first`:''}.`,lastR,basis,
       last:lastS,target:`${lbl(nw)} for ${aim}+ reps in every set`,tgt:{kind:'load',w:nw,repMin:aim,prevBest},easier:null};
   }
+  /* A bad day at a load already done in the range (r32, second check: 7,
+     7, 6, 6 then 5, 5, 4, 4 asked "19+ reps" and greyed 5, 5, 4, 4): every set
+     under the range, the session before at this load in it. The target is
+     the bottom of the range in every set again, not one rep more than the
+     bad day. */
+  {const prv=exps.length>=2?exps[exps.length-2]:null;const pAt=prv&&Math.abs(prv.topW-top)<1e-6?atLoad(prv.pts,top):[];
+    if(topPts.length&&topPts.every(p=>p.r<+plan.repMin)&&pAt.length&&pAt.every(p=>p.r>=+plan.repMin))
+      return {top,w:top,text:`${lastS} Every set fell under ${plan.repMin} at ${lbl(top)}, where you did ${plan.repMin}+ the time before. Stay at ${lbl(top)} and get back to ${plan.repMin}+ in every set.`,lastR,basis,
+        last:lastS,target:`${lbl(top)} for ${plan.repMin}+ reps in every set`,tgt:{kind:'load',w:top,repMin:+plan.repMin,prevBest},easier:null};}
   /* The rep target covers the same number of sets as last time, so an extra
-     set can never count as progress on its own. */
+     set can never count as progress on its own. A set under the range that
+     counts as the bottom of it (repFloor) is said. */
   const total=tp.reduce((a,p)=>a+p.r,0);const nT=tp.length;
   const over=nT===1?'in one set':`over your first ${nT} sets`;
-  return {top,w:top,text:`${lastS} Beat ${total} reps ${over} at ${lbl(top)}. When every set at that load reaches ${plan.repMax}, ${ex.assist?'take some help off':'add load'}.`,lastR,basis,
+  const floored=tp.some((p,i)=>topPts[i]&&topPts[i].r<p.r)?` (a set under ${plan.repMin} counts as ${plan.repMin})`:'';
+  return {top,w:top,text:`${lastS} Beat ${total} reps ${over} at ${lbl(top)}${floored}. When every set at that load reaches ${plan.repMax}, ${ex.assist?'take some help off':'add load'}.`,lastR,basis,
     last:lastS,target:`${total+1}+ reps ${over} at ${lbl(top)}`,tgt:{kind:'reps',w:top,total,n:nT,rs:tp.map(p=>p.r),prevBest},easier:stx.easier?easierText(ex,stx.easier):null};
 }
 /* Timed holds: double progression on seconds. Beat the total time at the same
@@ -4464,8 +4505,19 @@ function timerResume(){
 /* One place that marks a set done or not done, so the checkmark and auto-done
    paths cannot drift apart. The rest timer starts here only in Auto mode. */
 let lastAuto=null;
+/* Reps far past anything logged on the lift and its range (a typo: 105 for
+   10) are asked about before they count (r32, second check: 100 x 105 was
+   saved with a gold "Rep PR" and next time asked to beat 124 reps). */
+let oddOk=null;
+function oddReps(b,s){
+  const r=+s.r;if(!(r>30))return false;let best=0;for(const x of IDX().byEx[b.exId]||[])for(const p of x.pts)best=Math.max(best,p.r);
+  return r>2*Math.max(+b.plan.repMax||0,best);
+}
 function setDone(bi,si,val){
   const b=state.draft.ex[bi];const s=b&&b.sets[si];if(!s)return;
+  if(val&&oddReps(b,s)&&oddOk!==`${bi}:${si}:${s.r}`){const ex=EX(b.exId);
+    confirmBox(`${setShort(ex,effW(b,si),s.r)}${ex.bw?'':' '+U()}?`,`${s.r} reps is far past your ${rangeWords(b.plan)} and anything logged on this exercise. Log it as typed, or go back and fix it.`,'Log it',()=>{oddOk=`${bi}:${si}:${s.r}`;setDone(bi,si,true);saveNow();rerenderKeepScroll();});
+    return;}
   if(val)settleLoad(b,si);
   s.done=val;
   const btn=document.querySelector(`[data-act="sDone"][data-b="${bi}"][data-s="${si}"]`);
@@ -4615,7 +4667,8 @@ function viewToday(){
   const weekly=R.schedule==='weekly';const cs=weekly?null:cycleState(R);
   if(ui.todayDay!=null&&ui.todayDay>=R.days.length)ui.todayDay=null;
   const di=ui.todayDay==null?(weekly?wd:cs.next):ui.todayDay;const day=R.days[di];
-  const mark=i=>weekly?(i===wd?' (today)':''):(i===cs.next?' (next up)':i===cs.last?' (last logged)':'');
+  // Short marks, so the chosen day fits a 320 px phone (r32, second check: cut at "(next").
+  const mark=i=>weekly?(i===wd?' · today':''):(i===cs.next?' · next':i===cs.last?' · last done':'');
   // "Next up" is said once, in Change day below (r28): on the card it made the
   // date line wrap and leave "UP" on a line of its own on a phone.
   // On a scheduled rest day the card shows the next training day, and says so (r30: "Day 1 of 7" beside "rest today, Day 7").
@@ -5039,7 +5092,7 @@ function exHeadline(exId){
   const ow=`over ${st.spanW||6} weeks`;
   // At the top of the range, the advice is load, as on the Coach (r32).
   const atTopR=(()=>{const lw=st.last?atLoad(st.last.pts,st.last.topW):[];return lw.length&&lw.every(q=>q.r>=+planFor(exId).repMax);})();
-  if(st.stalled)parts.push(`Stalled${st.pct!=null?` (${sg(st.pct)} ${ow})`:''}: flat for 3 weeks or more, with no PR in the last 3 sessions, no heavier load, and no more reps at the same load. ${atTopR?'Every set is at the top of the range, so it is due a step up: its target in the session says what to do next.':'Try another rep range or variation.'}`);
+  if(st.stalled)parts.push(`Stalled: flat for 3 weeks or more, with no PR in the last 3 sessions, no heavier load, and no more reps at the same load. ${atTopR?'Every set is at the top of the range, so it is due a step up: its target in the session says what to do next.':'Try another rep range or variation.'}`);
   else if(st.pct==null)parts.push('Needs 3 sessions spread over 2 weeks or more, within 6 weeks, for a trend.');
   else if(st.moving)parts.push(`Up ${r1(st.pct)}% ${ow} (${ns})${rate}.${how}`);
   else if(st.falling)parts.push(`Down ${r1(Math.abs(st.pct))}% ${ow} (${ns})${rate}. Look at recovery before adding work.${how}`);
@@ -5417,7 +5470,12 @@ function livePR(exId,s,date){
 function refreshPR(bi,si,announce){
   const d=state.draft;if(!d)return;const b=d.ex[bi];const s=b&&b.sets[si];if(!s)return;
   const btn=document.querySelector(`[data-act="sDone"][data-b="${bi}"][data-s="${si}"]`);const row=btn&&btn.closest('.sg');if(!row)return;
-  const was=row.classList.contains('pr');const pr=s.done?livePR(b.exId,s,d.date):null;
+  const was=row.classList.contains('pr');let pr=s.done&&!d.light&&!d.deload&&!b.light?livePR(b.exId,s,d.date):null;
+  /* Not a PR when an earlier set in this session was as strong (r32, second
+     check: 100 x 10, then 100 x 9 announced as a new best). Lighter and
+     deload work is never one. */
+  if(pr){const ex=EX(b.exId);const scq=x=>{const l=loadOf(ex,x,d.date);return e1(l,+x.r,rirEst(x,ex))||l*(1+(+x.r)/30);};const me=scq(s);
+    if(b.sets.some((x,i)=>i<si&&x.done&&!x.warm&&!x.drop&&+x.r>0&&scq(x)>=me-1e-9))pr=null;}
   row.classList.toggle('pr',!!pr);
   if(pr)row.setAttribute('data-pr',pr);else row.removeAttribute('data-pr');
   if(announce&&pr&&!was){
@@ -5438,7 +5496,7 @@ function prBeat(exId,s,date,pr){
      reps (its band), so the toast names the band (r30): "new best estimate
      279" read as wrong beside an overall best of 301 from heavier sets. */
   const bandW=BAND_WORDS[rtfBand(rtfOf(+s.r,q))]||'';
-  if(pr==='Best')return bd!=null&&v!=null?(isCompound(ex)?` (${fmtW(v)} for ${bandW}, was ${fmtW(bd)})`:` (your best for ${bandW})`):'';
+  if(pr==='Best')return bd!=null&&v!=null?(isCompound(ex)?` (estimated 1RM ${fmtW(v)} ${U()}, best from ${bandW}; was ${fmtW(bd)})`:` (your best for ${bandW})`):'';
   if(pr==='Weight PR'){let mw=-Infinity;for(const x of exps)for(const p of x.pts)if(p.r>0)mw=Math.max(mw,p.w);
     const was=ex.assist?`less help than ever`:`heaviest before ${ex.bw?loadLabel(ex,mw):fmtW(mw)+' '+U()}`;
     return ` (${was}${isCompound(ex)&&bd!=null&&v!=null&&v>bd+1e-6?`; best estimate for ${bandW} now ${fmtW(v)}`:''})`;}
@@ -5928,14 +5986,14 @@ function liftTrend(exId){
   /* The word follows the lift's trend when it has one (r32, from the third
      review: a press flat for 7 weeks read "67.5 → 69.7 → 69.7 · up" from its
      last three sessions). */
-  const a=exps[0].tv,b=exps[exps.length-1].tv;const d3=Math.abs(b-a)<a*0.01?'flat':b>a?'up':'down';
-  const dir=st&&st.pct!=null?(st.moving?'up':st.falling?'down':st.pLo!=null&&st.pLo>0?'slowly up':st.pHi!=null&&st.pHi<0?'slowly down':`no clear change over ${st.spanW||2} weeks`):d3;
+  // With no trend yet (under 3 sessions over 2 weeks), no word at all (r32, second check: "· up" from three sessions in a week).
+  const dir=st&&st.pct!=null?(st.moving?'up':st.falling?'down':st.pLo!=null&&st.pLo>0?'slowly up':st.pHi!=null&&st.pHi<0?'slowly down':`no clear change over ${st.spanW||2} weeks`):'';
   if(isCompound(ex)&&exps.every(x=>x.best!=null)){
-    const v=exps.map(x=>fmtW(x.best));const d2=st&&st.pct!=null?dir:v[0]===v[v.length-1]?'flat':dir;
-    return `<p class="small muted" style="margin:2px 0">Est. 1RM <span class="trend">${v.join(' → ')} ${U()}</span> · ${d2}${st&&!st.useAdj?' '+tipi('Read from loads and reps alone: RIR is rated on too few of its sets to compare sessions fairly.','About this trend'):''}</p>`;
+    const v=exps.map(x=>fmtW(x.best));const d2=dir;
+    return `<p class="small muted" style="margin:2px 0">Est. 1RM <span class="trend">${v.join(' → ')} ${U()}</span>${d2?' · '+d2:''}${st&&!st.useAdj?' '+tipi('Read from loads and reps alone: RIR is rated on too few of its sets to compare sessions fairly.','About this trend'):''}</p>`;
   }
   const top=x=>{let q=null;for(const p of x.pts){const v=trendE(p.load,p.r,0)||0;if(!q||v>q.v)q={v,p};}return setShort(ex,q.p.w,q.p.r);};
-  return `<p class="small muted" style="margin:2px 0">Top sets <span class="trend">${exps.map(top).join(' → ')}</span> · ${dir}</p>`;
+  return `<p class="small muted" style="margin:2px 0">Top sets <span class="trend">${exps.map(top).join(' → ')}</span>${dir?' · '+dir:''}</p>`;
 }
 function bodyCard(){
   const bws=[...state.bodyweights].sort((a,b)=>a.date<b.date?1:-1);
@@ -6289,7 +6347,8 @@ function viewDash(){
   const inj=injuredSet();
   const reasons={};const add=(m,t,c)=>{(reasons[m]||(reasons[m]=[])).push([t,c]);};
   for(const m of inj)add(m,'Injured, targets paused','red');
-  for(const s of I.scores)if(s.label==='lagging'&&!inj.has(s.m))add(s.m,s.indirect?'Lagging strength (indirect)':'Lagging strength','red');
+  // A falling trend is lagging strength; a stalled lift with no clear trend says just that (r32: "Lagging strength" beside "unclear").
+  for(const s of I.scores)if(s.label==='lagging'&&!inj.has(s.m))add(s.m,s.clear?(s.indirect?'Lagging strength (indirect)':'Lagging strength'):'A lift stalled','red');
   // Plan and actual being under band is one fact about one muscle, not two.
   // Counting it twice also pushed it up a sort that ranks by flag count.
   // A shortfall in the plan alone is not a weak point (r28): a new person
@@ -6345,7 +6404,9 @@ function viewDash(){
   }else exh+='<p class="muted">Log a session to see exercise trends.</p>';
   exh+='</div>';
   const bestsBody=bestsBoard();
-  const prBody=I.prs.length?I.prs.slice(0,15).map(p=>{const ex=EX(p.exId);const iso=p.type==='e1RM'&&!isCompound(ex);const ps=iso?prSet(p.exId,p.date):null;return `<div class="row spread" style="padding:6px 0;border-bottom:1px solid var(--line)"><span>${esc(ex.name)} <span class="tag ${p.type==='Rep PR'?'blue':'green'}">${ex.timed&&p.type==='Rep PR'?'Time PR':p.type==='e1RM'?(iso?'PR':'Best estimate'):p.type}</span></span><span class="num">${p.type==='e1RM'?(iso?(ps?setShort(ex,ps.w,ps.r):''):fmtW(p.value)+' '+U()):setShort(ex,p.w,p.r)} <span class="muted small">${fmtDate(p.date)}</span></span></div>`;}).join(''):'<p class="muted">No PRs yet. Your first session of an exercise sets the baseline.</p>';
+  // Counted PRs only (r32), the same ones as the count beside the title.
+  const bigPR=I.prs.filter(p=>p.big);
+  const prBody=bigPR.length?bigPR.slice(0,15).map(p=>{const ex=EX(p.exId);const iso=p.type==='e1RM'&&!isCompound(ex);const ps=iso?prSet(p.exId,p.date):null;return `<div class="row spread" style="padding:6px 0;border-bottom:1px solid var(--line)"><span>${esc(ex.name)} <span class="tag ${p.type==='Rep PR'?'blue':'green'}">${ex.timed&&p.type==='Rep PR'?'Time PR':p.type==='e1RM'?(iso?'PR':'Best estimate'):p.type}</span></span><span class="num">${p.type==='e1RM'?(iso?(ps?setShort(ex,ps.w,ps.r):''):fmtW(p.value)+' '+U()):setShort(ex,p.w,p.r)} <span class="muted small">${fmtDate(p.date)}</span></span></div>`;}).join(''):'<p class="muted">No PRs yet. Your first session of an exercise sets the baseline.</p>';
   h+=dsec('exercise','Lifts',`Estimated 1RM uses reps to failure, which is reps plus RIR: Brzycki up to 10, Epley at 11 and 12, none above 12 or for a set called above RIR 4. A blank RIR reads as your usual RIR on that lift once you have rated 3 of its sets in 12 weeks; until then it counts as 0, so the estimate errs low. Numbers stay in the frame you log in, per dumbbell or per side where that applies. Bodyweight lifts add the share of your bodyweight they move: all of it for pull-ups and dips, 64% for push-ups. Lifts that turn about one joint (leg raises, crunches, Nordics) get no estimate; their progress is reps and load. Trends read the average of each session's working sets and need 3 sessions over 2 weeks or more within 6 weeks. A heavy single before back-off sets counts toward bests only. Moving or falling means past 3% with a clear trend, since estimates swing 2 to 8% day to day. A PR is a weight PR (more weight than any earlier set), a new best estimate within its range of reps to failure (1 to 5, 6 to 10, 11 to 12), or a rep PR (more reps at a load than any earlier set); a set that is more than one shows the first. Stalled: flat or falling over your last 6 sessions, or 3 weeks if that covers more (at least 4 sessions), with no PR in the last 3, no heavier load, and no more reps at the same load, not counting deload, lighter, and trimmed sessions.`,
     exh+sub('prs','Recent PRs',prBody,`${pr14} in 14 days`)+sub('bests','All-time bests',bestsBody.html,bestsBody.n?`${bestsBody.n} lift${bestsBody.n===1?'':'s'}`:'none yet')+sub('stalls','Stalls',stl,stalled.length?`<span class="pill ${fatigueStalls(stalled.map(([id])=>id)).length>=3?'red':'yellow'}">${stalled.length} stalled</span>`:'none'),`${Object.keys(I.byEx).length} lift${Object.keys(I.byEx).length===1?'':'s'} tracked`);
 
@@ -7063,7 +7124,7 @@ function renderModalBody(){
     const left=remainMin(d);const pl=m.mins?shortPlan(d,m.mins):null;
     const body=!left?'<p class="small">Nothing is left to trim: every planned set is done.</p>'
       :!pl?''
-      :pl.changes.length?`<ul class="short-list">${pl.changes.map(c=>`<li>${esc(c)}</li>`).join('')}</ul><p class="small muted" style="margin:6px 0 0">About ${pl.est} min after the change.${pl.over?' Still over, because exercises you have started are kept.':''} Done sets are never touched.</p>`
+      :pl.changes.length?`<ul class="short-list">${pl.changes.map(c=>`<li>${esc(c)}</li>`).join('')}</ul><p class="small muted" style="margin:6px 0 0">About ${min5(pl.est)} min after the change.${pl.over?' Still over, because exercises you have started are kept.':''} Done sets are never touched.</p>`
       :`<p class="small">Everything left fits in ${m.mins} minutes as planned.</p>`;
     h=`<div class="sheet" role="dialog" aria-modal="true"><div class="sheet-h"><h3>Short on time</h3><button class="ib" aria-label="Close" data-act="mClose">✕</button></div>
     ${left?`<p class="small muted" style="margin:0 0 8px">How long do you have? Planned: about ${min5(left)} min.</p>
@@ -7358,7 +7419,7 @@ async function impXlsx(buf){
 const IMP_SYN=[[/\bdumb ?bells?\b|\bdbs?\b/g,'db'],[/\bbar ?bells?\b|\bbb\b/g,'bb'],[/\bpull[ -]?downs?\b/g,'pulldown'],[/\bpull[ -]?ups?\b/g,'pullup'],[/\bchin[ -]?ups?\b|\bchins\b/g,'chinup'],[/\bpush[ -]?ups?\b/g,'pushup'],[/\bsit[ -]?ups?\b/g,'situp'],[/\b(push|press)[ -]?downs?\b/g,'pushdown'],[/\bdead[ -]?lifts?\b/g,'deadlift'],[/\bromanian deadlift\b|\brdls?\b/g,'rdl'],[/\bover ?head press\b|\bohp\b/g,'ohp'],[/\bskull ?crushers?\b/g,'skullcrusher'],[/\btriceps?\b/g,'tricep'],[/\bbiceps?\b/g,'bicep'],[/\bext\b|\bextensions?\b/g,'extension'],[/\braises?\b/g,'raise'],[/\bflyes?\b|\bflies\b|\bflys?\b/g,'fly'],[/\bmachine\b/g,'machine'],[/\bsmith machine\b/g,'smith'],[/\bcurls\b/g,'curl'],[/\brows\b/g,'row'],[/\bsquats\b/g,'squat'],[/\blunges\b/g,'lunge'],[/\bdips\b/g,'dip'],[/\bshrugs\b/g,'shrug'],[/\bpresses\b/g,'press'],[/\bcrunches\b/g,'crunch'],[/\bcalves\b|\bcalfs\b/g,'calf'],[/\bhamstrings?\b/g,'ham'],[/\bdeg(rees?)?\b|°/g,''],[/\bpaused\b/g,'pause'],[/\bkettle ?bells?\b|\bkb\b/g,'kettlebell']];
 function impNorm(name){let s=String(name||'').toLowerCase().replace(/[()\[\],.&/+_-]/g,' ').replace(/\s+/g,' ').trim();for(const [re,v] of IMP_SYN)s=s.replace(re,v);return s.split(' ').filter(w=>w&&!['the','a','with','of','and','on','exercise'].includes(w));}
 /* Bare everyday names mean the classic lift. */
-const IMP_ALIAS={'calf raise':'standCalf','standing calf raise':'standCalf','seated calf raise':'seatedCalf','db shoulder press':'seatedDbPress','shoulder press db':'seatedDbPress','overhead press':'ohp','skullcrusher':'skull','assisted pullup':'assistPullup','assisted chinup':'assistPullup','chinup assisted':'assistPullup','assisted dip':'assistDip','tricep dip assisted':'assistDip','pullup assisted':'assistPullup','assisted dip':'assistDip','dip assisted':'assistDip','squat':'backSquat','bb squat':'backSquat','back squat':'backSquat','bench':'bench','bench press':'bench','bb bench':'bench','flat bench':'bench','deadlift':'deadlift','ohp':'ohp','shoulder press':'ohp','military press':'ohp','pullup':'pullup','chinup':'chinup','row':'bbRow','bb row':'bbRow','bent over row':'bbRow','leg press':'legPress','lat pulldown':'latPulldown','pulldown':'latPulldown','dip':'dips','rdl':'rdl','hip thrust':'hipThrust','pushdown':'pressdown','tricep pushdown':'pressdown','tricep pushdown straight bar':'pressdown','pushdown straight bar':'pressdown','tricep pushdown rope':'ropePressdown','pushdown rope':'ropePressdown','rope pushdown':'ropePressdown','pushup':'pushup','curl':'dbCurl','db curl':'dbCurl','bicep curl':'dbCurl','bb curl':'bbCurl'};
+const IMP_ALIAS={'calf raise':'standCalf','standing calf raise':'standCalf','seated calf raise':'seatedCalf','db shoulder press':'seatedDbPress','shoulder press db':'seatedDbPress','overhead press':'ohp','skullcrusher':'skull','assisted pullup':'assistPullup','assisted chinup':'assistPullup','chinup assisted':'assistPullup','assisted dip':'assistDip','tricep dip assisted':'assistDip','pullup assisted':'assistPullup','assisted dip':'assistDip','dip assisted':'assistDip','squat':'backSquat','bb squat':'backSquat','back squat':'backSquat','bench':'bench','bench press':'bench','bb bench':'bench','flat bench':'bench','deadlift':'deadlift','ohp':'ohp','shoulder press':'ohp','military press':'ohp','pullup':'pullup','chinup':'chinup','row':'bbRow','bb row':'bbRow','bent over row':'bbRow','leg press':'legPress','lat pulldown':'latPulldown','pulldown':'latPulldown','dip':'dips','rdl':'rdl','hip thrust':'hipThrust','pushdown':'pressdown','tricep pushdown':'pressdown','tricep pushdown straight bar':'pressdown','pushdown straight bar':'pressdown','tricep pushdown rope':'ropePressdown','pushdown rope':'ropePressdown','rope pushdown':'ropePressdown','pushup':'pushup','curl':'dbCurl','db curl':'dbCurl','bicep curl':'dbCurl','bb curl':'bbCurl','lat raise':'dbLateral','lateral raise':'dbLateral','lateral':'dbLateral','side raise':'dbLateral','lateral raise db':'dbLateral','db lateral raise':'dbLateral'};
 function impMatch(name){
   const a=new Set(impNorm(name));if(!a.size)return [];
   const out=[];const EQW={db:'dumbbell',bb:'barbell',cable:'cable',machine:'machine',smith:'smith'};
@@ -7456,8 +7517,12 @@ function impSetsText(t){
   /* Notation lifters write (r32, from the third review): RPE ("180x5
      @RPE8", "rpe 8.5", "@8 rpe") becomes RIR, 10 minus RPE, for the line's
      sets; "+10" before sets is load added to bodyweight ("Chins +10 3x8");
-     "BW" before sets is bodyweight ("Pull-ups BW 3x10"). A bare "@8" stays
-     RIR, as in Type or dictate sets. */
+     "BW" before sets is bodyweight ("Pull-ups BW 3x10"). */
+  /* A bare "@8" after sets on a line that already has a load ("Bench 100
+     3x8 @9", "140x5x5 @8") is RPE as lifters write it, not a load of 9
+     (r32, second check: that line saved nine sets at 100 and two at 9). Only
+     6 to 10; "@2" stays RIR. */
+  if(/(^|\s)\d{2,}(\.\d+)?\s*(x|×|\*|\s\d)/.test(s))s=s.replace(/@\s*((?:6|7|8|9)(?:\.5)?|10)(?![\d.x×*])/g,(m,v)=>` rpe ${v} `);
   {let rpe=null;s=s.replace(/@?\s*\brpe\s*(\d+(?:\.\d+)?)|@\s*(\d+(?:\.\d+)?)\s*rpe\b/g,(m,a,b)=>{const v=+(a||b);if(v>=5&&v<=10)rpe=v;return ' ';});
     if(rpe!=null)s=s.trim()+' rir '+(10-rpe)+' ';}
   s=s.replace(/(^|\s)(?:bw\s*)?\+\s*(\d+(?:\.\d+)?)\s+(\d{1,2})\s*[x×*]\s*(\d{1,3})(?=\s|,|$)/g,(m,p,w,a,r)=>+a<=10?p+Array(+a).fill(`bw+${w}x${r}`).join(' '):m);

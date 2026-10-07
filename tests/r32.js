@@ -175,7 +175,7 @@ const seed = (L, unit, exId, list, rr) => {
       const nl = g.unit === 'lb' ? n.w / LB : n.w;
       if (g.mode && n.w != null && g.w > 0 && g.id !== 'assistPullup' && nl > g.w + 1e-6) bad.push(['lighter day above last time', g, n]);
       if (g.mode && n.lastR && n.lastR.some(v => v !== g.lo)) bad.push(['lighter grey reps not the bottom of the range', g, n]);
-      const halfOk = g.reps.filter(r => r >= g.lo).length * 2 >= g.reps.length;
+      const halfOk = g.reps.length >= 2 && g.reps.filter(r => r < g.lo).length === 1; // one set under the range (repFloor)
       if (!g.mode && halfOk && n.kind === 'reps' && n.lastR && n.lastR.some(v => v < g.lo)) bad.push(['grey reps under the range', g, n]);
       if (!g.mode && n.kind === 'load' && n.aim != null && n.aim < 2) bad.push(['aim for 1+ reps', g, n]);
       if (DB.has(g.id) && n.w != null) { const v = g.unit === 'lb' ? n.w / LB : n.w; const gr = g.unit === 'lb' ? 5 : 2.5; if (Math.abs(v / gr - Math.round(v / gr)) > 1e-3 && Math.abs(v / 2 - Math.round(v / 2)) > 1e-3) bad.push(['dumbbell off the rack', g, n]); }
@@ -361,6 +361,82 @@ const seed = (L, unit, exId, list, rr) => {
     await P.page.fill('#bwVal', '82'); await P.page.click('#bwAsk [data-act="addBW"]'); await new Promise(r => setTimeout(r, 150));
     const b = await ev(() => ({ card: !!document.getElementById('bwAsk'), bw: window.__ironlog.state.bodyweights.map(x => [x.date, x.kg]) }));
     ok(!b.card && b.bw.length === 1 && b.bw[0][0] === '2026-10-06' && Math.abs(b.bw[0][1] - 82) < 1e-6, '208: Save logs it as today\'s weigh-in and the question goes', b);
+    await P.ctx.close();
+  }
+
+  // ---------- Part 4: the second check of r32 (a fresh reviewer on this build) ----------
+  {
+    const P = await open(FILE, { browser, clock: '2026-10-06T10:00:00' });
+    const r = await P.page.evaluate(([seedS]) => {
+      const seed = eval(seedS); const L = window.__ironlog; const out = {};
+      // W1: 5 x 5 at beginner loads goes up a step.
+      seed(L, 'kg', 'ohp', [['2026-10-03', [[50, 5], [50, 5], [50, 5], [50, 5], [50, 5]]]], [5, 5]);
+      const a = L.suggest('ohp', { sets: 5, repMin: 5, repMax: 5, rir: 2, inc: 2.5 }, {}); out.w1 = { w: a.w, aim: a.tgt && a.tgt.repMin, text: a.text };
+      seed(L, 'lb', 'deadlift', [['2026-10-03', [[95, 5]]]], [5, 5]);
+      const b = L.suggest('deadlift', { sets: 1, repMin: 5, repMax: 5, rir: 2, inc: 5 * 0.45359237 }, {}); out.w1b = { w: Math.round(b.w / 0.45359237 * 100) / 100, text: b.text };
+      // W2: one good day does not make a lift stalled.
+      L.state.settings.unit = 'kg';
+      const sq = [[6, 5, 5, 4], [6, 5, 5, 4], [8, 8, 7, 7], [6, 6, 5, 5], [7, 6, 6, 5], [7, 6, 6, 5]];
+      seed(L, 'kg', 'backSquat', sq.map((rs, i) => [new Date(Date.UTC(2026, 7, 25 + i * 7)).toISOString().slice(0, 10), rs.map(r => [140, r, 2])]), [5, 8]);
+      out.w2 = { stalled: L.IDX().exStats.backSquat.stalled, head: L.exHeadline ? L.exHeadline('backSquat') : '' };
+      // W6: a bad day at a load done in the range asks for the range again.
+      seed(L, 'kg', 'bench', [['2026-09-26', [[100, 7, 2], [100, 7, 2], [100, 6, 2], [100, 6, 2]]], ['2026-10-03', [[100, 5, 2], [100, 5, 2], [100, 4, 2], [100, 4, 2]]]], [6, 10]);
+      const c = L.suggest('bench', { sets: 4, repMin: 6, repMax: 10, rir: 2, inc: 2.5 }, {}); out.w6 = { w: c.w, kind: c.tgt && c.tgt.kind, aim: c.tgt && c.tgt.repMin, target: c.target };
+      // Four sessions in a row under the range at one load drop it.
+      seed(L, 'kg', 'bench', [['2026-09-12', [[100, 5], [100, 5], [100, 4]]], ['2026-09-19', [[100, 5], [100, 5], [100, 5]]], ['2026-09-26', [[100, 5], [100, 5], [100, 5]]], ['2026-10-03', [[100, 5], [100, 5], [100, 5]]]].map(([d, st]) => [d, st.map(([w, r]) => [w, r + 0, 2])]).map(([d, st], i) => [d, i === 3 ? st.map(x => [x[0], 5, 2]) : st]), [6, 10]);
+      const e = L.suggest('bench', { sets: 3, repMin: 6, repMax: 10, rir: 2, inc: 2.5 }, {}); out.run = { w: e.w, text: e.text };
+      // A floored set is said: 7, 7, 7, 3 on 6-10.
+      seed(L, 'kg', 'bench', [['2026-10-03', [[100, 7, 2], [100, 7, 2], [100, 7, 2], [100, 3, 2]]]], [6, 10]);
+      out.fl = L.suggest('bench', { sets: 4, repMin: 6, repMax: 10, rir: 2, inc: 2.5 }, {}).text;
+      // W7: no trend word with no trend.
+      seed(L, 'kg', 'cableFly', [['2026-09-30', [[20, 13]]], ['2026-10-02', [[20, 13]]], ['2026-10-04', [[20, 13]]]], [10, 15]);
+      out.w7 = L.liftTrend('cableFly');
+      // W8: kg log, lb on screen: suggestions on 5 lb steps.
+      seed(L, 'kg', 'bench', [['2026-10-03', [[100, 10, 1], [100, 10, 1], [100, 10, 1]]]], [6, 10]);
+      L.state.settings.unit = 'lb'; L.invalidate();
+      const f = L.suggest('bench', { sets: 3, repMin: 6, repMax: 10, rir: 1, inc: 5 * 0.45359237 }, {}); out.w8 = { w: f.w / 0.45359237, text: f.text };
+      const g = L.suggest('bench', { sets: 3, repMin: 6, repMax: 10, rir: 1, inc: 5 * 0.45359237 }, { light: true }); out.w8l = g.w / 0.45359237;
+      L.state.settings.unit = 'kg'; L.invalidate();
+      // W4: a Lighter day's sets are never PRs.
+      seed(L, 'kg', 'bench', [['2026-09-26', [[100, 8, 1]]]], [6, 10]);
+      L.state.sessions.push({ id: 'lt', date: '2026-10-03', dayIdx: 0, dayId: null, dayName: 'A (lighter)', routineId: '', notes: '', light: true, ex: [{ exId: 'bench', rr: [6, 10], sets: [{ w: 90, r: 12, rir: 3, warm: false, drop: false }] }] }); L.invalidate();
+      out.w4 = L.IDX().prs.filter(x => x.date === '2026-10-03').length;
+      return out;
+    }, [seed.toString()]);
+    ok(r.w1.w === 52.5 && r.w1.aim === 5, 'W1: 5 x 5 at 50 kg goes to 52.5 for 5s, never "building to 7"', r.w1);
+    ok(Math.abs(r.w1b.w - 100) < 1e-6 && !/building to/.test(r.w1b.text), 'W1: a 1 x 5 deadlift at 95 lb goes to 100', r.w1b);
+    ok(r.w2.stalled === false, 'W2: squat 20, 20, 30, 22, 24, 24 working reps at 140 is not stalled by its one good day', r.w2);
+    ok(r.w6.w === 100 && r.w6.kind === 'load' && r.w6.aim === 6 && /6\+ reps in every set/.test(r.w6.target), 'W6: 7, 7, 6, 6 then 5, 5, 4, 4: stay at 100 and get back to 6+ in every set, not "19+ reps"', r.w6);
+    ok(r.run.w < 100 && /Drop to/.test(r.run.text), 'W6: four sessions in a row under the range at one load drop it', r.run);
+    ok(/a set under 6 counts as 6/.test(r.fl), 'W6: a target with one set read at the bottom of the range says so', r.fl);
+    ok(!/·/.test(r.w7), 'W7: three sessions in 4 days get no trend word', r.w7);
+    ok(Math.abs(r.w8.w / 5 - Math.round(r.w8.w / 5)) < 1e-6 && Math.abs(r.w8l / 5 - Math.round(r.w8l / 5)) < 1e-6 && !/225\.5|220\.5 lb for/.test(r.w8.text.split('.').slice(1).join('.')), 'W8: after kg to lb, the next load and the lighter day are on 5 lb steps', r);
+    ok(r.w4 === 0, 'W4: a Lighter day\'s 90 x 12 is not a PR', r.w4);
+    await P.ctx.close();
+  }
+  {
+    // W3, L1, L2 through the session screen.
+    const P = await open(FILE, { browser, clock: '2026-10-06T10:00:00' });
+    const ev = (f, a) => P.page.evaluate(f, a);
+    await ev(([seedS]) => { const seed = eval(seedS); const L = window.__ironlog;
+      seed(L, 'kg', 'bench', [['2026-09-26', [[100, 8, 1], [100, 8, 1], [100, 7, 1]]]], [6, 10]);
+      L.state.bodyweights = [{ id: 'bw', date: '2026-09-01', kg: 80 }]; L.state.settings.autoDone = false;
+      const R = L.state.routines[0]; R.days[0].items = [{ uid: 'b', exId: 'bench', sets: 3, repMin: 6, repMax: 10, rir: 1, rest: 0, inc: 2.5, ss: null }];
+      L.saveNow(); L.ui.tab = 'today'; L.ui.todayDay = 0; L.render(); L.ACT.startSession({ dataset: { day: '0' } }); }, [seed.toString()]);
+    await new Promise(r => setTimeout(r, 200));
+    const tick = async (si, w, r) => { await P.page.fill(`.sg input[data-f="w"][data-b="0"][data-s="${si}"]`, String(w)); await P.page.dispatchEvent(`.sg input[data-f="w"][data-b="0"][data-s="${si}"]`, 'change');
+      await P.page.fill(`.sg input[data-f="r"][data-b="0"][data-s="${si}"]`, String(r)); await P.page.dispatchEvent(`.sg input[data-f="r"][data-b="0"][data-s="${si}"]`, 'change');
+      await ev(() => { const t = document.getElementById('toast'); if (t) { t.hidden = true; t.textContent = ''; } });
+      await P.page.click(`[data-act="sDone"][data-b="0"][data-s="${si}"]`); await new Promise(r => setTimeout(r, 200));
+      return ev(() => { const t = document.getElementById('toast'); return t && !t.hidden ? t.innerText : ''; }); };
+    // 100 x 9 at RIR 1 is 10 reps to failure, the same band as last time's 100 x 8: a new best estimate. Then 100 x 8 is weaker.
+    const t1 = await tick(0, 100, 9), t2 = await tick(1, 100, 8);
+    ok(/New best estimate/.test(t1) && /estimated 1RM [\d.]+ kg/.test(t1), 'L2: the PR toast says "estimated 1RM … kg"', t1);
+    ok(!/PR|best/i.test(t2), 'W3: 100 x 8 after 100 x 9 in the same session is not announced', t2);
+    await P.page.fill('.sg input[data-f="r"][data-b="0"][data-s="2"]', '105'); await P.page.dispatchEvent('.sg input[data-f="r"][data-b="0"][data-s="2"]', 'change');
+    await P.page.click('[data-act="sDone"][data-b="0"][data-s="2"]'); await new Promise(r => setTimeout(r, 200));
+    const q = await ev(() => { const L = window.__ironlog; return { modal: L.ui.modal && L.ui.modal.kind, title: L.ui.modal && L.ui.modal.title, done: L.state.draft.ex[0].sets[2].done }; });
+    ok(q.modal === 'confirm' && /105/.test(q.title) && !q.done, 'L1: 105 reps on a 6-10 bench asks before it counts', q);
     await P.ctx.close();
   }
   await browser.close();

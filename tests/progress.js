@@ -133,8 +133,8 @@ const PLAN = [
           const rph = s.rows.map(r => +r.rph);
           ok(rph.every(v => v === e.min), T + W + e.id + ' grey reps are the bottom of the range, ' + e.min, rph);
         } else {
-          // r32: while half or more of the sets reached the bottom of the range, a set under it reads as the bottom.
-          const okN = repsFrom.reps.filter(r => r >= e.min).length * 2 >= repsFrom.reps.length;
+          // r32: one set under the range among the others reads as the bottom of the range.
+          const okN = repsFrom.reps.length >= 2 && repsFrom.reps.filter(r => r < e.min).length === 1;
           const want = repsFrom.reps.map(r => okN ? Math.max(r, e.min) : r);
           const rph = s.rows.slice(0, want.length).map(r => +r.rph);
           ok(JSON.stringify(rph) === JSON.stringify(want.slice(0, s.rows.length)), T + W + e.id + ' grey reps are ' + want.join(',') + ' (' + (recent.kind === 'deload' ? 'last full session' : 'Last') + ')', rph);
