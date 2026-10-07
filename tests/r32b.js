@@ -110,6 +110,10 @@ const mk = (id, d, exId, sets, rr, extra) => ({ id, date: d, dayIdx: 0, dayId: n
       s.settings.unit = 'lb'; const LB = 0.45359237;
       s.sessions = [mk('l', '2026-10-01', 'dbCurl', [[35 * LB, 10, 1], [35 * LB, 10, 1]], [8, 12])]; L.invalidate(); o.lb = g('hammer', { ...P8, inc: 5 * LB }); o.lbD = o.lb.w / LB;
       s.settings.unit = 'kg';
+      // A Lighter day or a deload on a never-logged variation: 90% of the start, never the full start (r32 rule 193).
+      s.sessions = [mk('a2', '2026-10-01', 'dbCurl', [[16, 10, 1], [16, 10, 1], [16, 9, 1]], [8, 12])]; L.invalidate();
+      const lt = L.suggest('hammer', P8, { light: true }), de = L.suggest('hammer', P8, { deload: true });
+      o.light = { w: lt.w, t: lt.text, r: lt.lastR }; o.deload = { w: de.w, t: de.text };
       return o;
     }, [mk.toString()]);
     ok(r.hammer.w === 14 && r.hammer.kin === 'dbCurl' && /from your DB Curl \(16×10, Oct 1\)/.test(r.hammer.t), 'a hammer curl after DB curl 16 x 10 starts at 14 kg, worked out by hand, and says where it came from', r.hammer);
@@ -123,6 +127,7 @@ const mk = (id, d, exId, sets, rr, extra) => ({ id, date: d, dayIdx: 0, dayId: n
     ok(r.self.kin === null && !/First time/.test(r.self.t), 'the DB curl itself still reads its own history', r.self);
     ok(r.old.w == null && !r.old.kin, 'a related lift last trained over 120 days ago is not used', r.old);
     ok(r.dl.w === 14 && r.dl.kin === 'dbCurl' && /Sep 24/.test(r.dl.t), 'a deload session is skipped: the start comes from the full session before it', r.dl);
+    ok(r.light.w === 12 && r.deload.w === 12 && /Lighter day\. About 12 kg per dumbbell for 8-12 with 3 or more reps in reserve, from your DB Curl/.test(r.light.t) && r.light.r.every(v => v === 8), 'on a Lighter day or a deload, a hammer curl after DB curls starts at 12 kg (90% of 14, down a step) for 8 with 3 or more in reserve', { l: r.light, d: r.deload });
     ok(Math.abs(r.lbD - 30) < 1e-6, 'in lb on a 5 lb rack, DB curl 35 x 10 gives a hammer curl of 30 lb', r.lb);
 
     // Through the screen: a session with DB curls, swapped for hammer curls; the grey load is 14.

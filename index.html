@@ -2786,8 +2786,8 @@ function loadLabel(ex,kg){if(ex.bw){return kg>0?`BW+${fmtW(kg)}`:kg<0?`BW−${fm
 const loadIn=(ex,w)=>w==null?'':fmtW(ex&&ex.assist?-w:w);
 
 /* ---------- analytics ---------- */
-let _idx=null,_cal=null;
-function invalidate(){_idx=null;EXMAP=null;_cal=null;_rirUse=null;}
+let _idx=null,_cal=null,_bwRef;
+function invalidate(){_idx=null;EXMAP=null;_cal=null;_rirUse=null;_bwRef=undefined;}
 function bwKnownAt(date){let best=null;for(const b of state.bodyweights)if(b.date<=date&&(!best||b.date>=best.date))best=b;return best?best.kg:null;}
 function bwAt(date){
   let best=null,earliest=null;
@@ -2883,7 +2883,8 @@ function loadOf(ex,s,date){return bwLoad(ex,date)+(+s.w||0);}
    the bests board dated a record to the heaviest day, not the first. A PR on
    these lifts is now more reps or more added load than before, as lifters
    count them. Estimates, trends and charts still use each day's bodyweight. */
-function prLoad(ex,s,date){return ex&&ex.bw?(bwAt('9999-12-31')||0)*bwShare(ex)+(+s.w||0):loadOf(ex,s,date);}
+const bwRef=()=>_bwRef!==undefined?_bwRef:(_bwRef=bwAt('9999-12-31')||0);
+function prLoad(ex,s,date){return ex&&ex.bw?bwRef()*bwShare(ex)+(+s.w||0):loadOf(ex,s,date);}
 /* ---------- what the load number means ----------
    Every set stores the number you typed, as you typed it. What it means is a
    property of the exercise, shown on the exercise and above the load column:
@@ -3702,6 +3703,9 @@ function suggest(exId,plan,opts){
   opts=opts||{};const ex=EX(exId);
   if(!(opts.deload||opts.light)||ex.timed)return snapUnit(ex,plan,suggestCore(exId,plan,opts));
   const base=suggestCore(exId,plan,{...opts,deload:false,light:false});
+  /* A close variation's first session on a Lighter day or deload (r32.1): 90% of the start, like any lighter day. */
+  if(base.kin&&base.w>0){const ks=rackKind(ex)&&rackKind(EX(base.kin))?rackStep(EX(base.kin)):null;const lw=ks?fromD(Math.floor(toD(base.w*0.9)/toD(ks)+1e-9)*toD(ks)):lighterLoad(ex,plan,base.w,base.w*0.9);
+    return {...base,w:lw,lastR:Array(Math.max(1,+plan.sets||1)).fill(+plan.repMin),text:`First time, ${opts.deload?'deload':'Lighter day'}. About ${loadLabel(ex,lw)} ${U()}${loadNote(ex)} for ${repSpan(plan.repMin,plan.repMax,'-')} with 3 or more reps in reserve, from your ${EX(base.kin).name}. Half the usual sets, nothing to beat.`};}
   if(base.inj||!base.last||base.w==null)return base;
   const T=opts.before&&isDate(opts.before)?opts.before:today();
   // Never above last time's working load either: after 25 lb x 12 the normal day may ask 30, and a deload at 25 is not lighter.

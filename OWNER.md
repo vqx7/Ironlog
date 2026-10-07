@@ -2,13 +2,15 @@
 
 Everything that needs you, in one place, with the exact code to paste. Claude keeps this file current: an item moves to Done only when you confirm it, or when Claude can check it from here (and says how it checked). Build work and decisions are tracked in `PENDING.md`; this file is only what you do by hand.
 
-Last updated: r31.2 live, r31.3 waiting for your merge, 2026-10-06.
+Last updated: r32 live, r32.1 in preview, 2026-10-07.
 
 ## Now, in this order
 
 1. B5, the trigger, then its check: Report a problem from the app and an issue appears in `ironlog-feedback` (steps below).
 2. B6: protect `main` (steps below). Until it is on, nothing stops a change reaching the live app without a pull request.
-3. A12 (r31.3): merge its pull request when ready; the menu then shows build 2026.10.06-r31.3. What changed: the first page's three tiles side by side (Log sets with a tap, Build your plan, See your progress), Continue without an account as a plain link, and the email's use stated at sign-up, in the privacy tips and the Guide.
+3. A14 (r32.1): try it on the preview (https://ironapp.org/preview/, Reload when asked; Settings shows Ironlog Preview 2026.10.07-r32.1), then merge its pull request. First Settings > Your data > Copy my log from Ironlog. What to look at: Stats > Lifts > All-time bests and Recent PRs on pull-ups or any bodyweight lift (no PRs from a heavier weigh-in, records dated when first done), and in a session, swap an exercise for a close variation you have never logged (DB curl to hammer curl): it starts from the related lift instead of "First time: pick a load". Your log is not changed.
+   A13 (r32): done 2026-10-07 (pull request #19, merged by you; live build 2026.10.07-r32).
+   A12 (r31.3): done 2026-10-06.
    A11 (r31.2): done 2026-10-06.
    A10 (r31.1): done 2026-10-05.
    A9 (r30, 2026-10-04): done when r31 went live.
@@ -307,8 +309,8 @@ Status: to do. Each step is free and none of them stops Claude from building and
 ### D6. Old branches
 Status: to do. Claude's GitHub access cannot delete branches.
 Every one of these is already in `main`, so nothing is lost.
-1. github.com/vqx7/Ironlog/branches > tap the trash icon on `keep-domain`, `r26`, `r27`, `r28`, `r29` and `r29.4`. Keep `main` and `gh-pages`, and the branch of any pull request still open.
-2. So it does not happen again: Settings > General > Pull Requests > tick **Automatically delete head branches**. Each branch then goes when its pull request is merged.
+1. github.com/vqx7/Ironlog/branches > tap the trash icon on `keep-domain`, `r26`, `r27`, `r28`, `r29`, `r29.4`, `r29.5`, `r30`, `r30.1`, `r31`, `r31.1`, `r31.2`, `r31.3` and `r32` (checked by Claude 2026-10-07: all merged into `main`). Keep `main` and `gh-pages`, and `r32.1` until its pull request is merged.
+2. So it does not happen again: Settings > General > Pull Requests > tick **Automatically delete head branches**. Each branch then goes when its pull request is merged. (Still off as of 2026-10-07.)
 
 ## Checks on your phone (items 7 and 63)
 Status: to do whenever you are at the gym; tell Claude what you see.
