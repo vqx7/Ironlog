@@ -162,7 +162,8 @@ const sess = (id, date, exId, sets) => ({ id, date, dayIdx: 0, dayId: null, dayN
       const live = (w, r, rir) => L.livePR('bench', { w, r, rir, done: true, warm: false }, '2026-10-03');
       return { heavier: live(102.5, 8, 2), heavierFewer: live(102.5, 3, 2), moreReps: live(100, 9, 2), same: live(100, 8, 2), lighterMore: live(90, 12, 2) };
     });
-    ok(r.heavier === 'Weight PR' && r.heavierFewer === 'Weight PR', 'a set heavier than any before is a weight PR, even with fewer reps', r);
+    // r32: a heavier set is announced only when it is stronger than ever; 102.5 x 3 after 100 x 8 is not.
+    ok(r.heavier === 'Weight PR' && r.heavierFewer === null, 'a set heavier than any before is a weight PR when it is also the strongest; heavier with far fewer reps is not announced', r);
     ok(r.moreReps !== 'Weight PR' && r.moreReps && r.same === null, 'the same weight with more reps is not a weight PR; the same set again is no PR', r);
     // The PR list: a heavier set that also beat the estimate is one weight PR that notes it.
     const f = await ev(() => { const L = window.__ironlog; L.state.sessions.push({ id: 'c', date: '2026-10-01', dayIdx: 0, dayId: null, dayName: 'A', routineId: '', free: true, notes: '', ex: [{ exId: 'bench', sets: [{ w: 105, r: 8, rir: 2, warm: false }] }] }); L.invalidate();
@@ -304,7 +305,7 @@ const sess = (id, date, exId, sets) => ({ id, date, dayIdx: 0, dayId: null, dayN
     const bw = await ev(() => { const L = window.__ironlog; L.state.bodyweights = [{ id: 'bw', date: '2026-09-01', kg: 80 }];
       const S = (id, d, w) => ({ id, date: d, dayIdx: 0, dayId: null, dayName: 'A', routineId: '', free: true, notes: '', ex: [{ exId: 'pullup', sets: [{ w, r: 8, rir: 2, warm: false }] }] });
       L.state.sessions = [S('a', '2026-09-20', 0), S('b', '2026-09-27', 0)]; L.invalidate();
-      L.state.settings.onboarded = true; L.ACT.startFree(); L.ACT.mClose(); const d = L.state.draft; d.ex = [L.newBlock('pullup', { sets: 1, repMin: 6, repMax: 10, rir: 2, rest: 0 })]; d.ex[0].sets[0].w = 5 * 0.45359237; d.ex[0].sets[0].r = 6; d.ex[0].sets[0].rir = 2; L.render(); return true; });
+      L.state.settings.onboarded = true; L.ACT.startFree(); L.ACT.mClose(); const d = L.state.draft; d.ex = [L.newBlock('pullup', { sets: 1, repMin: 6, repMax: 10, rir: 2, rest: 0 })]; d.ex[0].sets[0].w = 5 * 0.45359237; d.ex[0].sets[0].r = 8; d.ex[0].sets[0].rir = 2; L.render(); return true; });
     await page.click('[data-act="sDone"][data-b="0"][data-s="0"]'); await wait(150);
     const bt = await ev(() => document.getElementById('toast').innerText);
     ok(/^Weight PR: Pull-up/.test(bt) && /heaviest before BW\b/.test(bt) && !/before 0/.test(bt), '6. a weighted pull-up past bodyweight says heaviest before BW, never 0 lb', bt);

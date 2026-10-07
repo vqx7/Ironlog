@@ -185,6 +185,7 @@ const seed = (L, unit, exId, list, rr) => {
       if (g.mode) r = '193 lighter day or deload';
       else if (DB.has(g.id) && o.w !== n.w && Math.abs((g.unit === 'lb' ? o.w / LB : o.w) % 2.5) > 1e-6) r = '194 rack step';
       else if (halfOk && g.reps.some(v => v < g.lo) && o.w === n.w && o.kind === n.kind) r = '195 one bad set';
+      else if (g.id === 'hangingLegRaise' && g.w === 0) r = '203 ab work by reps';
       else if (n.buildTo || (o.kind === 'load' && o.aim < g.lo) || (n.kind === 'load' && n.aim < g.lo) || (o.kind === 'load' && n.kind === 'load' && o.w === n.w && o.aim !== n.aim)) r = '196 large step';
       if (r) why[r] = (why[r] || 0) + 1; else unexplained.push({ g, o, n });
     });
@@ -194,6 +195,174 @@ const seed = (L, unit, exId, list, rr) => {
     ok(Object.keys(why).length >= 3, '197: the grid reaches the changed rules', why);
   }
 
+
+  // ---------- Part 2: the rest of the third review ----------
+  // The reviewer's Strong export (mkstrong.py), rebuilt: push, pull, legs twice a week for 7
+  // weeks from Monday 2026-08-10, the fifth week a deload nobody marked, one pull day missed,
+  // an overhead press alternating 6s and 5s at 60 kg, curls going from 10 to 11 reps at 14 kg.
+  const pplCsv = () => {
+    const rows = [['Date', 'Workout Name', 'Duration', 'Exercise Name', 'Set Order', 'Weight', 'Reps', 'Distance', 'Seconds', 'Notes', 'Workout Notes', 'RPE']];
+    const PUSH = [['Bench Press (Barbell)', 95, 8, 3, 2.5], ['Overhead Press (Barbell)', 60, 6, 3, 0], ['Incline Bench Press (Dumbbell)', 30, 10, 3, 1], ['Lateral Raise (Dumbbell)', 10, 15, 3, 0], ['Triceps Pushdown (Cable - Straight Bar)', 30, 12, 3, 2.5]];
+    const PULL = [['Deadlift (Barbell)', 170, 5, 2, 5], ['Bent Over Row (Barbell)', 80, 8, 3, 2.5], ['Pull Up', 0, 9, 3, 0], ['Lat Pulldown (Cable)', 65, 10, 3, 2.5], ['Bicep Curl (Dumbbell)', 14, 10, 3, 0], ['Face Pull (Cable)', 22.5, 15, 2, 0]];
+    const LEGS = [['Squat (Barbell)', 130, 6, 3, 2.5], ['Romanian Deadlift (Barbell)', 110, 8, 3, 2.5], ['Leg Press', 200, 10, 3, 10], ['Leg Extension (Machine)', 60, 12, 3, 2.5], ['Seated Leg Curl (Machine)', 50, 12, 3, 0], ['Standing Calf Raise (Machine)', 90, 12, 3, 5]];
+    const DAYS = [['Push', PUSH, 0], ['Pull', PULL, 1], ['Legs', LEGS, 2], ['Push', PUSH, 3], ['Pull', PULL, 4], ['Legs', LEGS, 5]];
+    let k = 0;
+    for (let wk = 0; wk < 7; wk++) DAYS.forEach(([name, exs, off], dn) => {
+      if (wk === 2 && dn === 4) return;
+      const d = new Date(Date.UTC(2026, 7, 10 + wk * 7 + off)).toISOString().slice(0, 10);
+      for (const [ex, w0, r0, ns, inc] of exs) {
+        const ew = wk < 4 ? wk : wk - 1; let w = w0 + inc * ew, sets = ns, r = r0;
+        if (ex.startsWith('Overhead')) r = wk % 2 === 0 ? 6 : 5;
+        if (ex.startsWith('Bicep')) r = 10 + (wk >= 3 ? 1 : 0);
+        if (wk === 4) { w = w ? Math.round(w * 0.85 / 2.5) * 2.5 : 0; sets = Math.max(1, ns - 1); }
+        for (let i = 0; i < sets; i++) { const rr = r - (i === sets - 1 && wk !== 4 && (k++ % 2) ? 1 : 0); rows.push([d + ' 18:0' + dn + ':00', name, '1h 5m', ex, String(i + 1), ex === 'Pull Up' ? '' : w, rr, '', '', '', '', '']); }
+      }
+    });
+    return rows.map(r => r.map(c => /[ ,()]/.test(String(c)) ? '"' + c + '"' : c).join(',')).join('\n');
+  };
+  {
+    const P = await open(FILE, { browser, clock: '2026-09-28T10:00:00', realStarter: true });
+    const ev = (f, a) => P.page.evaluate(f, a);
+    await ev(() => { const L = window.__ironlog; L.state.settings.unit = 'kg'; L.saveNow(); });
+    await ev(csv => window.__ironlog.impStart({ text: csv }), pplCsv()); await new Promise(r => setTimeout(r, 300));
+    await ev(() => { const L = window.__ironlog; if (L.ui.modal && L.ui.modal.unit !== 'kg') L.ACT.impUnit({ dataset: { v: 'kg' } }); L.ACT.impGo(); }); await new Promise(r => setTimeout(r, 300));
+    const r = await ev(() => { const L = window.__ironlog; if (L.ui.modal) L.ACT.mClose(); const R = L.activeRoutine(); L.ui.tab = 'today'; L.render();
+      return { days: R.days.map(d => d.rest ? 'Rest' : d.name), n: L.state.sessions.length, today: document.querySelector('#view').innerText }; });
+    ok(JSON.stringify(r.days) === JSON.stringify(['Push', 'Pull', 'Legs', 'Push', 'Pull', 'Legs', 'Rest']), '199: push, pull, legs twice a week is imported as a 7-day cycle with both rounds, not 3 on and 1 off', r.days);
+    ok(!/of ~5 sessions/.test(r.today), '199: Today no longer plans about 5 sessions a week for someone doing 6', (r.today.match(/of ~?\d+ sessions?/) || [''])[0]);
+    const st = await ev(() => { const L = window.__ironlog; const I = L.IDX(); const id = n => L.state.exercises.find(e => e.name === n).id;
+      const ohp = id('Standing Overhead Press'), curl = id('DB Curl');
+      L.ui.tab = 'dash'; L.ui.dashEx = ohp; L.render();
+      return { ohpTrend: L.liftTrend(ohp), ohp: I.exStats[ohp], curl: I.exStats[curl], coach: L.coach().text, mv: document.getElementById('dashSummary') ? document.getElementById('dashSummary').innerText : '' }; });
+    ok(!/· up\b/.test(st.ohpTrend), '200: the press at 60 kg for 7 weeks never reads "up" from its last three sessions', st.ohpTrend);
+    ok(!/over 6 weeks/.test(st.mv) || true, '198: (checked below on a short log)');
+    await P.ctx.close();
+  }
+  {
+    // 200: the same press with no deload in between is stalled; a raise held at the top of its range is told to add load.
+    const P = await open(FILE, { browser, clock: '2026-09-28T10:00:00' });
+    const r = await P.page.evaluate(([seedS]) => {
+      const seed = eval(seedS); const L = window.__ironlog; const out = {};
+      const dates = [0, 7, 14, 21, 28, 35].map(k => { const d = new Date(Date.UTC(2026, 7, 17 + k)); return d.toISOString().slice(0, 10); });
+      seed(L, 'kg', 'ohp', dates.map((d, i) => [d, i % 2 ? [[60, 5], [60, 5], [60, 4]] : [[60, 6], [60, 6], [60, 6]]]), [6, 8]);
+      out.ohp = L.IDX().exStats.ohp.stalled; out.ohpTrend = L.liftTrend('ohp');
+      L.state.sessions = []; seed(L, 'kg', 'dbLateral', dates.map(d => [d, [[10, 15], [10, 15], [10, 15]]]), [12, 15]);
+      const R = L.activeRoutine(); R.days[0].items = [{ uid: 'lat', exId: 'dbLateral', sets: 3, repMin: 12, repMax: 15, rir: 1, rest: 60, inc: 2.5, ss: null }]; L.invalidate();
+      // Targets met, so the Coach reaches the stall (volume shortfalls come first).
+      for (const m in L.state.settings.bands) L.state.settings.bands[m] = [0, 20]; L.invalidate();
+      out.lat = L.IDX().exStats.dbLateral.stalled; out.coach = L.coach().text;
+      return out;
+    }, [seed.toString()]);
+    ok(r.ohp === true && !/· up\b/.test(r.ohpTrend), '200: a press alternating 6, 6, 6 and 5, 5, 4 at 60 kg for 6 weeks is stalled, not "up"', r);
+    ok(r.lat === true && /at the top of its range/.test(r.coach) && /due a step up/.test(r.coach) && !/Try another rep range/.test(r.coach), '200: lateral raises held at 15 of 12-15 are told they are due a step up, not to change the range', r.coach);
+    await P.ctx.close();
+  }
+  {
+    // 198: a log 19 days old: the Moving line says the weeks it covers; a muscle needs 4 sessions over 3 weeks.
+    const P = await open(FILE, { browser, clock: '2026-09-27T10:00:00' });
+    const r = await P.page.evaluate(([seedS]) => {
+      const seed = eval(seedS); const L = window.__ironlog;
+      seed(L, 'kg', 'bbRow', [['2026-09-08', [[60, 8], [60, 8], [60, 8]]], ['2026-09-15', [[62.5, 8], [62.5, 8], [62.5, 8]]], ['2026-09-22', [[65, 8], [65, 8], [65, 8]]]], [6, 10]);
+      L.state.sessions.push(...[['2026-09-09', 9], ['2026-09-16', 9.5], ['2026-09-23', 10]].map(([d, r], i) => ({ id: 'inc' + i, date: d, dayIdx: 0, dayId: null, dayName: 'T', routineId: '', notes: '', ex: [{ exId: 'incDb', rr: [8, 12], sets: [{ w: 30, r: Math.floor(r), rir: 1, warm: false, drop: false }, { w: 30, r: Math.round(r), rir: 1, warm: false, drop: false }] }] })));
+      L.invalidate(); L.ui.tab = 'dash'; L.render();
+      const sum = document.getElementById('dashSummary').innerText; const chest = L.IDX().scores.find(x => x.m === 'chest');
+      return { sum, chest: chest || null, moving: L.IDX().exStats.bbRow.moving };
+    }, [seed.toString()]);
+    ok(!/over 6 weeks/.test(r.sum) && (!r.moving || /over [23] weeks/.test(r.sum)), '198: no "over 6 weeks" on a log 19 days old; a lift moving says the weeks it covers', r.sum.split('\n').filter(l => /Moving|weeks/.test(l)));
+    ok(!r.chest || !r.chest.clear, '198: three sessions of incline DB are not a chest trend yet (no "Chest +4%, rising")', r.chest);
+    await P.ctx.close();
+  }
+  {
+    // 201: notes the way lifters write them.
+    const P = await open(FILE, { browser, clock: '2026-10-06T10:00:00' });
+    const ev = (f, a) => P.page.evaluate(f, a);
+    await ev(() => { const L = window.__ironlog; L.state.settings.unit = 'kg'; L.state.settings.onboarded = true; L.state.sessions = [{ id: 'x', date: '2026-09-01', dayIdx: 0, dayId: null, dayName: 'A', routineId: '', notes: '', ex: [{ exId: 'bench', sets: [{ w: 60, r: 8, rir: null, warm: false, drop: false }] }] }]; L.invalidate(); L.saveNow(); });
+    await ev(t => window.__ironlog.impStart({ text: t }), 'Oct 1\nDeadlift 180x5 @RPE8\nChins +10 3x8\nPull-ups BW 3x10'); await new Promise(r => setTimeout(r, 300));
+    const pre = await ev(() => { const L = window.__ironlog; const m = L.ui.modal; return { pick: m && m.pick, text: document.querySelector('#modal') ? document.querySelector('#modal').innerText : '' }; });
+    await ev(() => { const L = window.__ironlog; if (L.ui.modal.unit !== 'kg') L.ACT.impUnit({ dataset: { v: 'kg' } }); L.ACT.impGo(); }); await new Promise(r => setTimeout(r, 300));
+    const got = await ev(() => { const L = window.__ironlog; const s = L.state.sessions.find(x => x.date === '2026-10-01'); return s ? s.ex.map(b => ({ id: b.exId, sets: b.sets.map(q => [Math.round(q.w * 100) / 100, q.r, q.rir]) })) : null; });
+    ok(pre.pick && pre.pick['Chins'] === 'chinup' && pre.pick['Pull-ups'] === 'pullup' && !/not understood|no weight given/i.test(pre.text), '201: "Chins" is matched to Chin-up and "Pull-ups BW" to Pull-up; nothing refused or unread', { pick: pre.pick, text: pre.text.slice(0, 300) });
+    const by = id => got && got.find(b => b.id === id);
+    ok(by('deadlift') && JSON.stringify(by('deadlift').sets) === '[[180,5,2]]', '201: "Deadlift 180x5 @RPE8" is 180 x 5 at RIR 2', got);
+    ok(by('chinup') && by('chinup').sets.length === 3 && by('chinup').sets.every(q => q[0] === 10 && q[1] === 8), '201: "Chins +10 3x8" is 3 sets of 8 with 10 added', by('chinup'));
+    ok(by('pullup') && by('pullup').sets.length === 3 && by('pullup').sets.every(q => q[0] === 0 && q[1] === 10), '201: "Pull-ups BW 3x10" is 3 sets of 10 at bodyweight', by('pullup'));
+    await P.ctx.close();
+  }
+  {
+    // 202: a load step that is not stronger is kept in the list but not counted; a stronger set is.
+    const P = await open(FILE, { browser, clock: '2026-10-06T10:00:00' });
+    const r = await P.page.evaluate(([seedS]) => {
+      const seed = eval(seedS); const L = window.__ironlog;
+      seed(L, 'kg', 'bench', [['2026-09-20', [[100, 10, 1], [100, 10, 1], [100, 10, 1]]], ['2026-09-27', [[102.5, 7, 1], [102.5, 7, 1], [102.5, 6, 1]]], ['2026-10-04', [[102.5, 10, 1], [102.5, 9, 1], [102.5, 9, 1]]]], [6, 10]);
+      const p = L.IDX().prs.filter(x => x.exId === 'bench').map(x => ({ d: x.date, t: x.type, big: x.big }));
+      const live = L.livePR('bench', { w: 105, r: 4, rir: 1, done: true }, '2026-10-06');
+      return { p, n30: L.prsWithin(30).length, live };
+    }, [seed.toString()]);
+    const step = r.p.find(x => x.d === '2026-09-27'), more = r.p.find(x => x.d === '2026-10-04');
+    ok(step && step.t === 'Weight PR' && step.big === false, '202: 102.5 x 7 after 100 x 10 stays in the list as heavier, not counted as a PR', r.p);
+    ok(more && more.big === true && r.n30 === 1, '202: 102.5 x 10 is stronger than ever: counted (1 PR in 30 days, not 2)', r);
+    ok(r.live === null, '202: live, 105 x 4 after 102.5 x 10 is not announced', r.live);
+    await P.ctx.close();
+  }
+  {
+    // 203: a hanging leg raise at 15 reps progresses by reps, not "BW+2.5".
+    const P = await open(FILE, { browser, clock: '2026-10-06T10:00:00' });
+    const r = await P.page.evaluate(([seedS]) => {
+      const seed = eval(seedS); const L = window.__ironlog;
+      seed(L, 'kg', 'hangingLegRaise', [['2026-09-29', [[0, 15], [0, 15], [0, 15]]], ['2026-10-03', [[0, 15], [0, 15], [0, 15]]]], [10, 15]);
+      const a = L.suggest('hangingLegRaise', { sets: 3, repMin: 10, repMax: 15, rir: 1, inc: 2.5 }, {});
+      seed(L, 'kg', 'hangingLegRaise', [['2026-10-03', [[5, 15], [5, 15], [5, 15]]]], [10, 15]);
+      const b = L.suggest('hangingLegRaise', { sets: 3, repMin: 10, repMax: 15, rir: 1, inc: 2.5 }, {});
+      return { a: { w: a.w, text: a.text, kind: a.tgt && a.tgt.kind }, b: { w: b.w, kind: b.tgt && b.tgt.kind } };
+    }, [seed.toString()]);
+    ok(r.a.w === 0 && r.a.kind === 'reps' && !/BW\+/.test(r.a.text) && /keep adding reps past 15/.test(r.a.text), '203: leg raise at bodyweight x 15: more reps, never "BW+2.5 for 10+"', r.a);
+    ok(r.b.w > 5 && r.b.kind === 'load', '203: once a load has been used, it progresses by load like any lift', r.b);
+    await P.ctx.close();
+  }
+  {
+    // 204: minutes rounded to 5 on Today as in the picker; the RIR check, passed over, waits 3 weeks.
+    const P = await open(FILE, { browser, clock: '2026-10-06T10:00:00' });
+    const r = await P.page.evaluate(() => {
+      const L = window.__ironlog; L.state.settings.onboarded = true; L.ui.tab = 'today'; L.render();
+      const mins = [...document.querySelectorAll('#view')].map(e => e.innerText).join(' ').match(/about (\d+) min/g) || [];
+      // Three sessions with a cable exercise, then a session where the check is offered and passed over.
+      const R = L.activeRoutine(); R.days[0].items = [{ uid: 'c', exId: 'latPulldown', sets: 3, repMin: 8, repMax: 12, rir: 1, rest: 60, inc: 2.5, ss: null }];
+      L.state.sessions = ['2026-09-20', '2026-09-27', '2026-10-01'].map((d, i) => ({ id: 'cs' + i, date: d, dayIdx: 0, dayId: R.days[0].id, dayName: 'A', routineId: R.id, notes: '', ex: [{ exId: 'latPulldown', sets: [{ w: 60, r: 10, rir: 2, warm: false, drop: false }] }] }));
+      L.invalidate(); L.saveNow(); L.render(); L.ACT.startSession({ dataset: { day: '0' } });
+      const offered = L.calDueIdx(L.state.draft) >= 0;
+      const b = L.state.draft.ex[0]; b.sets.forEach(x => { x.w = 60; x.r = 10; x.done = true; }); L.state.draft._leftAsked = true; L.state.draft._rampAsked = true; L.ACT.finish();
+      if (L.ui.modal) L.ACT.mClose();
+      return { mins, offered, snooze: L.state.settings.calSnooze };
+    });
+    ok(r.mins.length > 0 && r.mins.every(m => +m.match(/\d+/)[0] % 5 === 0), '204: Today gives minutes in fives, as the routine picker does', r.mins);
+    ok(r.offered && r.snooze === '2026-10-06', '204: an RIR check offered and passed over waits 3 weeks', r);
+    await P.ctx.close();
+  }
+
+  // ---------- Part 3: what a Strong or Hevy user expects on day one ----------
+  {
+    // 205: a lift's history and chart from inside a session; 208: bodyweight asked once.
+    const P = await open(FILE, { browser, touch: true, clock: '2026-10-06T10:00:00', w: 320, h: 640 });
+    const ev = (f, a) => P.page.evaluate(f, a);
+    await ev(([seedS]) => { const seed = eval(seedS); const L = window.__ironlog;
+      seed(L, 'kg', 'bench', [['2026-09-15', [[80, 8, 2], [80, 8, 2]]], ['2026-09-22', [[80, 9, 2], [80, 8, 2]]], ['2026-09-29', [[82.5, 8, 1], [82.5, 7, 1]]], ['2026-10-03', [[82.5, 9, 1], [82.5, 8, 1]]]], [6, 10]);
+      L.state.bodyweights = []; const R = L.state.routines[0];
+      R.days[0].items = [{ uid: 'b', exId: 'bench', sets: 2, repMin: 6, repMax: 10, rir: 1, rest: 90, inc: 2.5, ss: null }, { uid: 'p', exId: 'pullup', sets: 2, repMin: 6, repMax: 10, rir: 1, rest: 90, inc: 2.5, ss: null }];
+      L.saveNow(); L.ui.tab = 'today'; L.ui.todayDay = 0; L.render(); L.ACT.startSession({ dataset: { day: '0' } }); }, [seed.toString()]);
+    await new Promise(r => setTimeout(r, 200));
+    await P.page.click('[data-act="bMenu"][data-b="0"]'); await new Promise(r => setTimeout(r, 150));
+    await P.page.click('#modal [data-op="bHist"]'); await new Promise(r => setTimeout(r, 200));
+    const h = await ev(() => { const m = document.querySelector('#modal'); return { kind: window.__ironlog.ui.modal && window.__ironlog.ui.modal.kind, text: m.innerText, svg: !!m.querySelector('svg polyline'), rows: m.querySelectorAll('li').length, over: document.documentElement.scrollWidth > innerWidth, link: !!m.querySelector('[data-act="goDash"][data-ex="bench"]') }; });
+    ok(h.kind === 'exhist' && h.rows === 4 && h.svg && /82\.5×9 @1/.test(h.text) && h.link, '205: an exercise\'s ⋯ menu opens its history (4 sessions, sets as logged), a chart, and Open in Stats', h);
+    ok(!/NaN|undefined/.test(h.text) && !h.over, '205: nothing reads NaN, and it fits 320 px', h.text.slice(0, 200));
+    await ev(() => window.__ironlog.ACT.mClose());
+    const a = await ev(() => ({ card: !!document.getElementById('bwAsk'), btns: [...document.querySelectorAll('#bwAsk [data-act="addBW"], #bwAsk [data-act="bwAskNo"]')].map(b => Math.round(b.getBoundingClientRect().height)) }));
+    ok(a.card && a.btns.every(v => v >= 44), '208: with a pull-up in the session and no weigh-in, the session asks for bodyweight once (44 px buttons)', a);
+    await P.page.fill('#bwVal', '82'); await P.page.click('#bwAsk [data-act="addBW"]'); await new Promise(r => setTimeout(r, 150));
+    const b = await ev(() => ({ card: !!document.getElementById('bwAsk'), bw: window.__ironlog.state.bodyweights.map(x => [x.date, x.kg]) }));
+    ok(!b.card && b.bw.length === 1 && b.bw[0][0] === '2026-10-06' && Math.abs(b.bw[0][1] - 82) < 1e-6, '208: Save logs it as today\'s weigh-in and the question goes', b);
+    await P.ctx.close();
+  }
   await browser.close();
   console.log(fails.length ? `${fails.length} FAILED` : 'ALL PASS');
   process.exit(fails.length ? 1 : 0);

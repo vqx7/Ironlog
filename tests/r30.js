@@ -85,7 +85,7 @@ function strongCsv() {
       return { push: I.byEx.pressdown.filter(x => x.auto).map(x => x.date), txt: document.getElementById('view').innerText, mv: (document.querySelector('#dashSummary .srow') || {}).innerText || '', heads: Object.keys(I.exStats).map(id => L.exHeadline(id)).join(' ') }; });
     ok(!au.push.length, 'a lift done at its usual load in a lighter week is not called lighter (the pushdown)', au.push);
     ok(/Last lighter week: 2 weeks ago \(lighter loads\)/.test(au.txt) && !/No lighter week/.test(au.txt), 'Stalls names the deload week (lighter loads), never "No lighter week"', (au.txt.match(/[^\n]*lighter week[^\n]*/i) || [])[0]);
-    ok(/and \d+ more over 6 weeks/.test(au.mv), 'Moving names two lifts and how many more', au.mv);
+    ok(/and \d+ more over \d+ weeks/.test(au.mv), 'Moving names two lifts and how many more', au.mv);
     ok(!/likely ([+-][\d.]+%) to \1/.test(au.heads), 'no trend range of zero width ("likely +1.9% to +1.9%")', au.heads.slice(0, 300));
     // One rule across the Lifts section: 1RM figures only for a compound lift with sets of 12 or fewer.
     const ls = await ev(async () => { const L = window.__ironlog; const out = {};
