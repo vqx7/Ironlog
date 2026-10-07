@@ -1457,7 +1457,7 @@ if(ENV==='preview')document.documentElement.dataset.env='preview';
 const HAD_LOG=(()=>{try{return localStorage.getItem(KEY)!=null;}catch(e){return false;}})();
 /* Shown in Settings, in diagnostics and in backups, so a bug report can be
    matched to the exact build. */
-const APP_VERSION='2026.10.07-r32.1';
+const APP_VERSION='2026.10.07-r32';
 /* The logo (r25): an upright dumbbell that is also the I of Ironlog. Same
    numbers as scripts/icons.py, which draws the app icons. */
 const MARK_SVG='<svg class="mark" viewBox="-242 -378 484 756" aria-hidden="true" focusable="false"><rect class="mk-h" x="-30" y="-300" width="60" height="600" rx="14"/><rect class="mk-h" x="-80" y="-192" width="160" height="32" rx="12"/><rect class="mk-h" x="-80" y="160" width="160" height="32" rx="12"/><rect class="mk-p" x="-240" y="-376" width="480" height="92" rx="30"/><rect class="mk-p" x="-190" y="-270" width="380" height="66" rx="26"/><rect class="mk-p" x="-190" y="204" width="380" height="66" rx="26"/><rect class="mk-p" x="-240" y="284" width="480" height="92" rx="30"/></svg>';
@@ -2470,7 +2470,6 @@ function guideSheet(m){
    <p><b>Below the range</b> (every set 2 or more reps short, or short two sessions running at the same load, or four running even with the reps creeping up, or the first time in a range you have not trained, as after an import): down to what your estimate says fits the range, in whole steps. Not just after one step up while you are 3 or fewer reps short, and not while your reps at that load are rising. The rep target counts as many sets as the plan has.</p>
    <p><b>Too easy</b> (every top set logged 2 or more RIR above the target): the same estimate sets a heavier load, at most 10% more (15% on isolation lifts under ${kg?'20 kg':'about 45 lb'}).</p>
    <p><b>The first 3 sessions</b> of a lift find its load: there the most these two can add is 25%, so a cautious first guess is put right in a session or two. For picking a load only, sets past 12 reps to failure are read with Epley up to 30, so a set of 25 still moves the load the right amount (never shown as a 1RM). A convention.</p>
-   <p><b>The first session of a close variation</b> (a hammer curl after DB curls, a front squat after back squats) starts from the related lift's last full session in the last 120 days, when both use the same equipment, load, main muscle, and movement, with both arms or both legs at once. About 90% of its estimate (80% on a compound lift), for the middle of the range with one more rep in reserve, rounded down. Machines and cables start fresh, since two machines' numbers do not compare.</p>
    <p><b>At the heaviest load available</b> (set on the exercise), or with a load step of 0: more reps, then harder reps.</p>
    <p><b>Assisted machines</b>: less help is progress. <b>Timed holds</b>: add seconds, then load. <b>Ab work on bodyweight</b> (a hanging leg raise, say) never done with added load: more reps, then harder reps, not added load.</p>
    <p><b>Last</b> is the most recent session of the lift in that day's rep range (the most recent of all when the range is new), labelled trimmed, lighter, or deload when it was. Those sessions count as what you did, but they never set a target: the next target comes from the last full session, and the i beside the target names its date.</p>
@@ -2488,7 +2487,7 @@ function guideSheet(m){
    <p><b>More than ${SESSION_CAP} sets</b> for one muscle in one workout is flagged. That line is a convention from one study not yet peer reviewed (Remmert 2025), which found no extra growth past it.</p>
    <p><b>Three different numbers.</b> The <b>suggested</b> load and reps (grey in a session) are today's target, from your last full session by the rules above. The <b>estimated 1RM</b> (best estimate) is what one all-out rep would be. It comes from a set's load and reps to failure: Brzycki up to 10 reps, Epley at 11 to 12, and no estimate above 12 reps or above RIR 4. It is a gauge of strength that varies 2 to 8% day to day, never a load to try. It is shown for compound lifts only; isolation lifts show their best set.</p>
    <p><b>Trends</b> read each session's working sets the same way, averaged, up to 20 reps to failure (so high-rep work has a trend too, never shown as a 1RM). RIR is used in a trend only when it is rated on 80% or more of the lift's sets; otherwise loads and reps alone, so tapping RIR on some days and not others cannot bend it. The 6 weeks are counted back from the lift's own last session, and a trend needs 3 sessions spread over 2 weeks or more; it says how many weeks it covers. A muscle's trend counts a lift once it has 4 sessions over 3 weeks or more, and says the weeks too. A trend shows how many sessions it rests on and its weekly rate with the range an 80% interval allows (about +1.5% a week, likely +1.2% to +1.8%). <b>Weight lifted</b> is load times reps; it falls when the load goes up and reps come down, so it is shown as a number, not as progress.</p>
-   <p><b>PRs</b>: a <b>weight PR</b> is more weight than any earlier set of the lift (less help on an assisted one); a <b>best estimate</b> beats your earlier best in the same band of reps to failure (1 to 5, 6 to 10, 11 to 12); a <b>rep PR</b> is more reps at a load than ever before, counted only when the set is at least 90% as strong as your strongest before it (a convention: 40 x 10 after 95 x 5 is not a PR). A set that is more than one shows the first of these. Only a PR with a new best estimate is announced and counted (on a lift with no estimate, any of them); a heavier set or more reps without one is kept in the list and named in the recap as heaviest yet. Counting them all made each load step a PR. On a bodyweight lift, PRs are judged at your latest weigh-in for every session, so a PR is more reps or more added load, never a heavier day on the scale.</p>
+   <p><b>PRs</b>: a <b>weight PR</b> is more weight than any earlier set of the lift (less help on an assisted one); a <b>best estimate</b> beats your earlier best in the same band of reps to failure (1 to 5, 6 to 10, 11 to 12); a <b>rep PR</b> is more reps at a load than ever before, counted only when the set is at least 90% as strong as your strongest before it (a convention: 40 x 10 after 95 x 5 is not a PR). A set that is more than one shows the first of these. Only a PR with a new best estimate is announced and counted (on a lift with no estimate, any of them); a heavier set or more reps without one is kept in the list and named in the recap as heaviest yet. Counting them all made each load step a PR.</p>
    <p><b>Moving</b>: up 3% or more with a trend clearly above zero. <b>Stalled</b>: flat or falling over the last 6 sessions (by the middle of the changes between every pair of them, so one good or bad day does not decide it) in the current range, or 3 weeks if that covers more (at least 4 sessions), with no PR in the last 3 of them, the load no heavier than at the start of that stretch, and no more reps at that load than any session before it in the stretch, and only while you still train the lift. Adding load and dropping reps for a while, or adding reps to later sets, as double progression does, is not a stall. A deload is suggested when 3 or more main lifts (compound lifts with an estimate) stall together, and not within 4 weeks of a lighter week; isolation and core lifts are listed but not counted for it.</p>
    <p><b>Weekly averages</b> are over the weeks you trained of the last 4 (a lighter week is swapped for an earlier one). A week with no training is left out rather than counted as zero, and when 2 or more of the 4 were missed the Coach says so first.</p>
    <p><b>Consistency</b>: weeks with at least as many sessions as the routine you trained that week plans.</p>
@@ -2876,14 +2875,6 @@ const BWF={assistPullup:1,assistDip:1,pullup:1,chinup:1,dips:1,triDips:1,pushup:
 function bwShare(ex){return ex&&ex.bwf!=null?ex.bwf:(ex&&BWF[ex.id]!=null?BWF[ex.id]:1);}
 function bwLoad(ex,date){return ex&&ex.bw?(bwAt(date)||0)*bwShare(ex):0;}
 function loadOf(ex,s,date){return bwLoad(ex,date)+(+s.w||0);}
-/* PRs on a bodyweight lift are judged at one bodyweight (r32.1): the latest
-   weigh-in, the same for every session. Each set's load includes the
-   bodyweight of its day, so a weigh-in 0.4 kg up made the same 8 pull-ups or
-   12 leg raises a new PR every week (8 identical weeks, 10 PRs counted), and
-   the bests board dated a record to the heaviest day, not the first. A PR on
-   these lifts is now more reps or more added load than before, as lifters
-   count them. Estimates, trends and charts still use each day's bodyweight. */
-function prLoad(ex,s,date){return ex&&ex.bw?(bwAt('9999-12-31')||0)*bwShare(ex)+(+s.w||0):loadOf(ex,s,date);}
 /* ---------- what the load number means ----------
    Every set stores the number you typed, as you typed it. What it means is a
    property of the exercise, shown on the exercise and above the load column:
@@ -3055,7 +3046,7 @@ function IDX(){
          PRs, or next session's target. If a block is nothing but drop sets,
          use them rather than have no exposure at all. */
       const main=work.filter(s=>!s.drop);const ptsSrc=main.length?main:work;
-      const pts=ptsSrc.map(s=>({load:loadOf(ex,s,ss.date),pl:prLoad(ex,s,ss.date),r:+s.r,w:+s.w||0,rir:rirEff(s,ex),rq:rirEst(s,ex)}));
+      const pts=ptsSrc.map(s=>({load:loadOf(ex,s,ss.date),r:+s.r,w:+s.w||0,rir:rirEff(s,ex),rq:rirEst(s,ex)}));
       // Mean logged RIR on the sets at this session's top load, or null if none was logged.
       // The working load (r31): a heavy top single is not where reps are built.
       const topW=workLoad(pts,b.rr?b.rr[0]:0);const tr=pts.filter(p=>Math.abs(p.w-topW)<1e-6&&p.rir!=null);
@@ -3066,8 +3057,6 @@ function IDX(){
       // Timed holds and joint-rotation bodyweight lifts have no 1RM, and
       // seconds times load is not tonnage. bb: rep band of the best set.
       let best=null,bb=null;if(!noE1(ex))for(const p of pts){const v=e1(p.load,p.r,p.rq);if(v!=null&&(best==null||v>best)){best=v;bb=rtfBand(rtfOf(p.r,p.rq));}}
-      // The same at the PR load (prLoad): identical to best except on a bodyweight lift.
-      let pb=best,pbb=bb;if(ex.bw){pb=null;pbb=null;if(!noE1(ex))for(const p of pts){const v=e1(p.pl,p.r,p.rq);if(v!=null&&(pb==null||v>pb)){pb=v;pbb=rtfBand(rtfOf(p.r,p.rq));}}}
       /* r30: the trend reads its own value per session, two ways. tAdj uses
          RIR as read everywhere else; tRaw ignores RIR (reps alone). Which one
          a lift's trend uses is decided per lift once its sessions are known
@@ -3083,7 +3072,7 @@ function IDX(){
         tAdj=avg(p=>trendE(p.load,p.r,p.rq));tRaw=avg(p=>trendE(p.load,p.r,0));}
       for(const p of pts){if(p.load>topL)topL=p.load;if(p.rir!=null)rated++;}
       const v=noE1(ex)?0:work.reduce((a,s)=>a+tonnage(ex,s,ss.date),0);vol+=v;
-      (byEx[b.exId]||(byEx[b.exId]=[])).push({date:ss.date,sid:ss.id,pts,best,bb,pb,pbb,vol:v,n:work.length,topW,topRir,topReps,drop,deload:!!ss.deload,light:!!ss.light||!!b.light,rr:b.rr||null,topN:atTop.length,cut:!!b.cut,tAdj,tRaw,topL,rated});
+      (byEx[b.exId]||(byEx[b.exId]=[])).push({date:ss.date,sid:ss.id,pts,best,bb,vol:v,n:work.length,topW,topRir,topReps,drop,deload:!!ss.deload,light:!!ss.light||!!b.light,rr:b.rr||null,topN:atTop.length,cut:!!b.cut,tAdj,tRaw,topL,rated});
     }
     sessVol.push({date:ss.date,vol,id:ss.id,day:ss.dayName});
   }
@@ -3156,25 +3145,25 @@ function IDX(){
        from the set itself, so a set that overshoots its planned range is
        judged where it landed. Rep PRs compare actual load and reps, which mean
        the same in any range, so they stay global. */
-    const bestIn=(i)=>{let m=null;for(let k=0;k<i;k++){const q=exps[k];if(q.pb!=null&&q.pbb===exps[i].pbb)m=m==null?q.pb:Math.max(m,q.pb);}return m;};
-    const dominated=p=>front.some(q=>q.pl>=p.pl-1e-6&&q.r>=p.r);
+    const bestIn=(i)=>{let m=null;for(let k=0;k<i;k++){const q=exps[k];if(q.best!=null&&q.bb===exps[i].bb)m=m==null?q.best:Math.max(m,q.best);}return m;};
+    const dominated=p=>front.some(q=>q.load>=p.load-1e-6&&q.r>=p.r);
     const addFront=p=>{
       if(dominated(p))return;
-      for(let k=front.length-1;k>=0;k--)if(p.pl>=front[k].pl-1e-6&&p.r>=front[k].r)front.splice(k,1);
+      for(let k=front.length-1;k>=0;k--)if(p.load>=front[k].load-1e-6&&p.r>=front[k].r)front.splice(k,1);
       front.push(p);
     };
     exps.forEach((x,i)=>{
       let repPR=null;
       // Every set in this exposure is judged against the frontier as it stood
       // before the exposure, so sets within one session cannot cancel each other.
-      const sc=q=>e1(q.pl,q.r,q.rq)||q.pl*(1+q.r/30);
+      const sc=q=>e1(q.load,q.r,q.rq)||q.load*(1+q.r/30);
       /* r30: a rep PR counts only when the set is at least 90% of the
          strongest set logged before (by the same estimate), a convention.
          Any new load and rep pairing used to count, so 40 kg x 10 after
          95 kg x 5 was a PR and the demo showed 54 PRs in 14 days. */
       const floor=front.reduce((a,q)=>Math.max(a,sc(q)),0)*REP_PR_SHARE;
       if(i>0){for(const p of x.pts){if(!dominated(p)&&sc(p)>=floor-1e-9&&(!repPR||sc(p)>sc(repPR)))repPR=p;}}
-      const pb=bestIn(i);const e1PR=i>0&&x.pb!=null&&pb!=null&&x.pb>pb+1e-6;
+      const pb=bestIn(i);const e1PR=i>0&&x.best!=null&&pb!=null&&x.best>pb+1e-6;
       /* A weight PR (r29): more weight than any earlier working set of the
          lift, as logged (added load on a bodyweight lift, less help on an
          assisted one). It is also a rep PR by definition, so it used to show
@@ -3196,9 +3185,9 @@ function IDX(){
       const big=e1PR||noE1(ex)||!!ex.timed||x.pts.some(q=>sc(q)>topSc+1e-9);
       // A deload or lighter day is lighter on purpose: its sets are never PRs (r32, second check: 90 x 12 on a Lighter day listed as one).
       const offPR=x.deload||x.light;
-      if(!offPR){if(wPR)prs.push({date:x.date,exId:id,type:'Weight PR',w:wPR.w,r:wPR.r,prevW:prevMaxW,value:e1PR?x.pb:null,prev:e1PR?pb:null,big});
-      else if(e1PR)prs.push({date:x.date,exId:id,type:'e1RM',value:x.pb,prev:pb,big});
-      else if(repPR)prs.push({date:x.date,exId:id,type:'Rep PR',w:repPR.w,r:repPR.r,prevR:front.filter(q=>q.pl>=repPR.pl-1e-6).reduce((a,q)=>Math.max(a,q.r),0),big});}
+      if(!offPR){if(wPR)prs.push({date:x.date,exId:id,type:'Weight PR',w:wPR.w,r:wPR.r,prevW:prevMaxW,value:e1PR?x.best:null,prev:e1PR?pb:null,big});
+      else if(e1PR)prs.push({date:x.date,exId:id,type:'e1RM',value:x.best,prev:pb,big});
+      else if(repPR)prs.push({date:x.date,exId:id,type:'Rep PR',w:repPR.w,r:repPR.r,prevR:front.filter(q=>q.load>=repPR.load-1e-6).reduce((a,q)=>Math.max(a,q.r),0),big});}
       for(const p of x.pts)if(p.r>0)prevMaxW=Math.max(prevMaxW,p.w);
       for(const p of x.pts)topSc=Math.max(topSc,sc(p));
       for(const p of x.pts)addFront(p);
@@ -3333,8 +3322,7 @@ function IDX(){
     }
     // best: the top e1RM in the current rep range, which is what targets and
     // the live PR badge compare against. bestAll ignores rep range.
-    let bestCur=null;const byBand={};for(const x of exps){if(x.best==null)continue;if(sameRR(x.rr,curRR))bestCur=bestCur==null?x.best:Math.max(bestCur,x.best);}
-    for(const x of exps)if(x.pb!=null)byBand[x.pbb]=Math.max(byBand[x.pbb]||0,x.pb);
+    let bestCur=null;const byBand={};for(const x of exps){if(x.best==null)continue;if(sameRR(x.rr,curRR))bestCur=bestCur==null?x.best:Math.max(bestCur,x.best);byBand[x.bb]=Math.max(byBand[x.bb]||0,x.best);}
     // fresh: trained in the last 42 days, so its trend still says something about the muscle now.
     const fresh=!!lastReal&&lastReal.date>=addDays(today(),-42);
     exStats[id]={n:exps.length,stalled,pct,slope,slopeSe,moving,falling,pLo,pHi,spanW,useAdj,fresh,byBand,wN:w.length,wSpan:w.length?daysBetween(w[0].date,w[w.length-1].date):0,last:real.length?real[real.length-1]:exps[exps.length-1],best:bestCur,bestAll:maxBest,rr:curRR,easier,fade,capped};
@@ -3754,8 +3742,6 @@ function suggestCore(exId,plan,opts){
        Erring light is fine: the next session's load is worked out from this
        one, by up to 25% in the first sessions (jumpCap). */
     const can=+plan.repMax+Math.round(rr);const reps=`${repSpan(plan.repMin,plan.repMax)} rep${+plan.repMax===1?'':'s'}`;const stop=rr>=1?`stopping with about ${rr} still in you`:'to the last rep you can do well';
-    const kin=!ex.bw?kinStart(ex,plan,T):null;
-    if(kin)return {w:kin.w,text:`First time. About ${loadLabel(ex,kin.w)} ${U()}${loadNote(ex)} for ${reps}, from your ${kin.ex.name} (${kin.set}, ${fmtDate(kin.date)}), ${stop}. If the first set is off, change the load.`,lastR:[],last:'',target:'',tgt:null,kin:kin.ex.id};
     const text=ex.assist?`First time: set the help so you could do about ${can} reps. Do ${reps}, ${stop}. Next time the help is set from this.`
       :ex.bw?`First time: your bodyweight only. Do ${reps}, ${stop}. If ${plan.repMin} is out of reach, use an easier version; if it is easy past ${plan.repMax}, the next target says so.`
       :`First time: pick a load you think you could lift about ${can} times, erring light. Do ${reps}, ${stop}. Next time's load is worked out from this.`;
@@ -3961,39 +3947,6 @@ function suggestCore(exId,plan,opts){
 }
 /* Timed holds: double progression on seconds. Beat the total time at the same
    load; when every hold reaches the top of the range, add the load step. */
-/* A first session of a close variation (r32.1, from r32's second check: a
-   swap from DB curl to hammer curl started from nothing). A lift with no
-   history borrows a start from a related lift trained in the last 120 days:
-   same equipment, load meaning (per dumbbell, total, stack), one side or two,
-   main muscle and movement, neither on bodyweight, timed or without an
-   estimate. Machines and cables are left out: two machines' numbers do not
-   compare. The newest such lift's last full session gives an estimate from
-   its working sets; the start is 90% of it (80% on a compound lift, where
-   variations differ more: a front squat is well under a back squat), for the
-   middle of the range with one more rep in reserve than planned, rounded
-   down to the step (the related lift's rack for dumbbells). Conventions,
-   meant to err light; the next session works out from what was done. */
-// One leg or arm at a time, by name: a lunge is not a squat at 90% of its load.
-const KIN_UNI=/lunge|split squat|step-up|single[- ]|one[- ]arm|1-arm|pistol|bulgarian|cossack|unilateral/i;
-function kinOf(ex,T){
-  if(!ex||ex.bw||ex.assist||ex.timed||noE1(ex)||!['barbell','dumbbell','kettlebell','landmine','other'].includes(ex.equip))return null;
-  const pat=patternOf(ex);if(!pat)return null;const I=IDX();let best=null;const from=addDays(T,-120);
-  for(const id of Object.keys(I.byEx)){if(id===ex.id)continue;const e=EX(id);
-    if(!e||e.archived||e.bw||e.assist||e.timed||noE1(e)||e.equip!==ex.equip||loadMode(e)!==loadMode(ex)||!!e.perSide!==!!ex.perSide||KIN_UNI.test(e.name)!==KIN_UNI.test(ex.name)||e.primary!==ex.primary||patternOf(e)!==pat)continue;
-    const xs=I.byEx[id].filter(x=>x.date<=T&&!offSession(x)&&!x.cut);const x=xs[xs.length-1];if(!x||x.date<from)continue;
-    if(!best||x.date>best.x.date)best={ex:e,x};}
-  return best;
-}
-function kinStart(ex,plan,T){
-  const k=kinOf(ex,T);if(!k)return null;const x=k.x;const wl=workLoad(x.pts,+plan.repMin||0);const at=atLoad(x.pts,wl);
-  let est=null,set=null;for(const p of at){const v=fitE(p.load,p.r,p.rq);if(v!=null&&(est==null||v>est)){est=v;set=p;}}
-  if(est==null)return null;
-  const mid=Math.round((+plan.repMin+ +plan.repMax)/2);const q=Math.min((+plan.rir||0)+1,E1_MAX_RIR);
-  const want=e1inv(est*(isCompound(ex)?0.8:0.9),mid+q);
-  const rs=rackKind(ex)&&rackKind(k.ex)?rackStep(k.ex):null;const st=toD(rs||incOf(ex,plan));if(!(st>0))return null;
-  const w=fromD(Math.floor(toD(want)/st+1e-9)*st);if(!(w>0))return null;
-  return {ex:k.ex,date:x.date,w,set:`${loadLabel(k.ex,set.w)}×${set.r}`};
-}
 function suggestTimed(ex,plan,exps,opts,injM,all){
   opts=opts||{};
   const side=ex.perSide?' per side':'';
@@ -5121,7 +5074,7 @@ function exProjection(exId){
 function exHeadline(exId){
   const I=IDX();const st=I.exStats[exId];if(!st)return '';const ex=EX(exId);
   if(ex.timed){
-    let best=null;for(const x of I.byEx[exId]||[])for(const p of x.pts)if(!best||p.pl>best.pl+1e-6||(Math.abs(p.pl-best.pl)<1e-6&&p.r>best.r))best=p;
+    let best=null;for(const x of I.byEx[exId]||[])for(const p of x.pts)if(!best||p.load>best.load+1e-6||(Math.abs(p.load-best.load)<1e-6&&p.r>best.r))best=p;
     return `<p class="headline">${esc(`Timed hold.${best?` Best: ${setShort(ex,best.w,best.r)}.`:''} ${st.stalled?'No longer hold or more load in the last 3 sessions. Try a harder variation or add load.':'Progress shows as longer holds or more load.'}`)}</p>`;
   }
   if(noE1(ex)){
@@ -5487,8 +5440,7 @@ function sessionLength(){
    read, since that is about the lift now. */
 function statsUpTo(exId,exps){
   const now=IDX().exStats[exId]||{};let best=null,bestAll=null;const byBand={};
-  for(const x of exps){if(x.best==null)continue;if(sameRR(x.rr,now.rr))best=best==null?x.best:Math.max(best,x.best);bestAll=bestAll==null?x.best:Math.max(bestAll,x.best);}
-  for(const x of exps)if(x.pb!=null)byBand[x.pbb]=Math.max(byBand[x.pbb]||0,x.pb);
+  for(const x of exps){if(x.best==null)continue;if(sameRR(x.rr,now.rr))best=best==null?x.best:Math.max(best,x.best);bestAll=bestAll==null?x.best:Math.max(bestAll,x.best);byBand[x.bb]=Math.max(byBand[x.bb]||0,x.best);}
   return {best,bestAll,byBand,rr:now.rr,easier:null};
 }
 /* A set is a PR live if its estimate beats your best, or no earlier set matched
@@ -5499,13 +5451,13 @@ function livePR(exId,s,date){
   if(!s||s.warm||s.drop||!(+s.r>0))return null;
   const I=IDX();const every=I.byEx[exId];if(!every||!every.length)return null;
   const exps=date?every.filter(x=>x.date<=date):every;if(!exps.length)return null;
-  const ex=EX(exId);const load=prLoad(ex,s,date);
+  const ex=EX(exId);const load=loadOf(ex,s,date);
   const st=exps.length<every.length?statsUpTo(exId,exps):I.exStats[exId];const q0=rirEst(s,ex);const v=noE1(ex)?null:e1(load,+s.r,q0);
   /* Announced only when stronger than ever (r32, as the list's big): by the
      same score as the rep PR floor, against every earlier set. A lift with
      no estimate (timed, joint rotation) or no load known keeps every kind. */
   const scq=(l,r,q)=>e1(l,r,q)||l*(1+r/30);let top=0,dom=false;
-  for(const x of exps)for(const q of x.pts){if(q.pl>=load-1e-6&&q.r>=+s.r)dom=true;top=Math.max(top,scq(q.pl,q.r,q.rq));}
+  for(const x of exps)for(const q of x.pts){if(q.load>=load-1e-6&&q.r>=+s.r)dom=true;top=Math.max(top,scq(q.load,q.r,q.rq));}
   const judge=!noE1(ex)&&!ex.timed&&load>0;const stronger=!judge||scq(load,+s.r,q0)>top+1e-9;
   // More weight than any earlier working set comes first (r29), as in the PR
   // list, and before the load check: an assisted set with no bodyweight
@@ -5526,7 +5478,7 @@ function refreshPR(bi,si,announce){
   /* Not a PR when an earlier set in this session was as strong (r32, second
      check: 100 x 10, then 100 x 9 announced as a new best). Lighter and
      deload work is never one. */
-  if(pr){const ex=EX(b.exId);const scq=x=>{const l=prLoad(ex,x,d.date);return e1(l,+x.r,rirEst(x,ex))||l*(1+(+x.r)/30);};const me=scq(s);
+  if(pr){const ex=EX(b.exId);const scq=x=>{const l=loadOf(ex,x,d.date);return e1(l,+x.r,rirEst(x,ex))||l*(1+(+x.r)/30);};const me=scq(s);
     if(b.sets.some((x,i)=>i<si&&x.done&&!x.warm&&!x.drop&&+x.r>0&&scq(x)>=me-1e-9))pr=null;}
   row.classList.toggle('pr',!!pr);
   if(pr)row.setAttribute('data-pr',pr);else row.removeAttribute('data-pr');
@@ -5542,7 +5494,7 @@ function refreshPR(bi,si,announce){
    the set's band, or the most reps done at this load or heavier. */
 function prBeat(exId,s,date,pr){
   const I=IDX();const every=I.byEx[exId];if(!every)return '';
-  const exps=date?every.filter(x=>x.date<=date):every;const ex=EX(exId);const load=prLoad(ex,s,date);
+  const exps=date?every.filter(x=>x.date<=date):every;const ex=EX(exId);const load=loadOf(ex,s,date);
   const st=exps.length<every.length?statsUpTo(exId,exps):I.exStats[exId];const q=rirEst(s,ex);const bd=st&&st.byBand&&st.byBand[rtfBand(rtfOf(+s.r,q))];const v=noE1(ex)?null:e1(load,+s.r,q);
   /* The estimate a set beats is the best from sets of a similar number of
      reps (its band), so the toast names the band (r30): "new best estimate
@@ -5552,7 +5504,7 @@ function prBeat(exId,s,date,pr){
   if(pr==='Weight PR'){let mw=-Infinity;for(const x of exps)for(const p of x.pts)if(p.r>0)mw=Math.max(mw,p.w);
     const was=ex.assist?`less help than ever`:`heaviest before ${ex.bw?loadLabel(ex,mw):fmtW(mw)+' '+U()}`;
     return ` (${was}${isCompound(ex)&&bd!=null&&v!=null&&v>bd+1e-6?`; best estimate for ${bandW} now ${fmtW(v)}`:''})`;}
-  let m=0;for(const x of exps)for(const p of x.pts)if(p.pl>=load-1e-6)m=Math.max(m,p.r);
+  let m=0;for(const x of exps)for(const p of x.pts)if(p.load>=load-1e-6)m=Math.max(m,p.r);
   return m?` (was ${m} ${ex.timed?'s':'reps'})`:' (heaviest yet)';
 }
 /* ---------- READINESS ----------
@@ -6629,17 +6581,16 @@ function allTimeBests(id){
     for(const p of x.pts){
       const v=noE1(ex)?null:e1(p.load,p.r,p.rq);
       if(v!=null&&(!est||v>est.v+1e-6))est={v,p,date:x.date};
-      // Heaviest and rep records at the PR load (prLoad, r32.1): on a bodyweight lift, by added load and reps, dated when first done.
-      if(!heavy||p.pl>heavy.p.pl+1e-6||(Math.abs(p.pl-heavy.p.pl)<1e-6&&p.r>heavy.p.r))heavy={p,date:x.date};
-      if(!front.some(q=>q.p.pl>=p.pl-1e-6&&q.p.r>=p.r))fresh.push(p);
+      if(!heavy||p.load>heavy.p.load+1e-6||(Math.abs(p.load-heavy.p.load)<1e-6&&p.r>heavy.p.r))heavy={p,date:x.date};
+      if(!front.some(q=>q.p.load>=p.load-1e-6&&q.p.r>=p.r))fresh.push(p);
     }
     for(const p of fresh){
-      if(front.some(q=>q.p.pl>=p.pl-1e-6&&q.p.r>=p.r))continue;
-      for(let k=front.length-1;k>=0;k--)if(p.pl>=front[k].p.pl-1e-6&&p.r>=front[k].p.r)front.splice(k,1);
+      if(front.some(q=>q.p.load>=p.load-1e-6&&q.p.r>=p.r))continue;
+      for(let k=front.length-1;k>=0;k--)if(p.load>=front[k].p.load-1e-6&&p.r>=front[k].p.r)front.splice(k,1);
       front.push({p,date:x.date});
     }
   }
-  front.sort((a,b)=>b.p.pl-a.p.pl);
+  front.sort((a,b)=>b.p.load-a.p.load);
   const last=[est&&est.date,heavy&&heavy.date,...front.map(f=>f.date)].filter(Boolean).sort().pop();
   return {ex,est,heavy,front,last};
 }
