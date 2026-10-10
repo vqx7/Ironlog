@@ -53,6 +53,27 @@ async function engineRun(page, cases, gym) {
     await A.ctx.close().catch(() => {}); await B.ctx.close().catch(() => {});
   }
 
+  // ---------- Part 1a2: the first page's styles touch nothing else ----------
+  // r33's first draft named the tour's pictures .tv, a class the rest timer and At a glance already use: the
+  // timer grew to 150 px and covered Finish (tests/r22.js caught it). Measured against r32.1 on the same screens.
+  {
+    const measure = async file => {
+      const P = await open(file, { browser, touch: true, clock: '2026-09-27T18:00:00' });
+      const r = await P.page.evaluate(async () => {
+        const L = window.__ironlog; L.state.settings.onboarded = true; L.makeDemo(); for (const x of L.state.sessions) delete x.demo;
+        L.state.settings.hidden = []; L.invalidate(); L.saveNow(); L.ui.tab = 'today'; L.render();
+        document.querySelectorAll('#view details').forEach(d => { d.open = true; });
+        const tile = document.querySelector('.tile .tv'); const tileBox = tile ? [Math.round(tile.getBoundingClientRect().height), getComputedStyle(tile).fontSize, getComputedStyle(tile).backgroundColor] : null;
+        L.ACT.startSession({ dataset: { day: '0' } }); L.ACT.tStart({ dataset: { b: '0' } }); await new Promise(r => setTimeout(r, 200));
+        const t = document.getElementById('timer'), v = t.querySelector('.tv');
+        return { timer: Math.round(t.getBoundingClientRect().height), value: v ? [Math.round(v.getBoundingClientRect().height), getComputedStyle(v).fontSize, getComputedStyle(v).backgroundColor, getComputedStyle(v).padding] : null, tile: tileBox };
+      });
+      await P.ctx.close(); return r;
+    };
+    const now = await measure(FILE), was = await measure('baselines/r32-1.html');
+    ok(JSON.stringify(now) === JSON.stringify(was) && now.value && now.tile, 'the rest timer and the At a glance numbers are the same size and look as in r32.1', { now, was });
+  }
+
   // ---------- Part 1b: Your gym in the numbers ----------
   {
     const P = await open(FILE, { browser, clock: '2026-10-09T12:00:00' });
@@ -295,7 +316,7 @@ async function engineRun(page, cases, gym) {
     const tour = await W.ev(() => {
       const sl = [...document.querySelectorAll('#obTrack .ob-slide')]; const vw = innerWidth;
       const r = sl.map(e => e.getBoundingClientRect());
-      return { titles: sl.map(e => e.querySelector('h2').textContent), lines: sl.map(e => e.querySelector('p').textContent), pics: sl.every(e => e.querySelector('.tv[aria-hidden="true"]')), pips: [...document.querySelectorAll('.ob-pips button')].map(b => b.getAttribute('aria-current')), first: r[0].left >= 0 && r[0].right <= vw, peek: r[1].left < vw && r[1].left > vw - 60, role: document.querySelector('.ob-tour').getAttribute('aria-roledescription'), label: sl[0].getAttribute('aria-label'), fits: document.documentElement.scrollHeight <= innerHeight + 2, wide: document.documentElement.scrollWidth <= vw, h44: [...document.querySelectorAll('.ob-pips button')].every(b => b.getBoundingClientRect().height >= 30) };
+      return { titles: sl.map(e => e.querySelector('h2').textContent), lines: sl.map(e => e.querySelector('p').textContent), pics: sl.every(e => e.querySelector('.obv[aria-hidden="true"]')), pips: [...document.querySelectorAll('.ob-pips button')].map(b => b.getAttribute('aria-current')), first: r[0].left >= 0 && r[0].right <= vw, peek: r[1].left < vw && r[1].left > vw - 60, role: document.querySelector('.ob-tour').getAttribute('aria-roledescription'), label: sl[0].getAttribute('aria-label'), fits: document.documentElement.scrollHeight <= innerHeight + 2, wide: document.documentElement.scrollWidth <= vw, h44: [...document.querySelectorAll('.ob-pips button')].every(b => b.getBoundingClientRect().height >= 30) };
     });
     ok(tour.titles.join('|') === 'Log a set in one tap|Pick a plan or build one|Track every lift|Every session, by day|Volume by muscle' && tour.pics, 'the first page tours five things: logging, the plan, progress, history, and volume by muscle, each with a picture of that screen', tour.titles);
     ok(tour.lines.every(l => l.length <= 80 && !/—|!/.test(l)) && /from 174 exercises/.test(tour.lines[1]), 'one plain line each, no exclamation marks or em dashes, the exercise count read from the library', tour.lines);

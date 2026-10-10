@@ -203,7 +203,11 @@ const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log
   // r31.2: where accounts exist (the build) the first page comes before it: three short lines on what the
   // app does and one sentence on the account (V asked for both), still well under a paragraph each.
   if (await nev(() => { const p = document.getElementById('obPage'); return p && p.dataset.step === 'acct'; })) {
-    const first = await nev(() => [...document.querySelectorAll('#obPage *')].filter(e => e.children.length === 0 && e.textContent.trim()).map(e => e.textContent.trim()));
+    // r33: the first page's tour holds five slides and a small picture of each screen. What a person reads is what
+    // is on the screen, outside those pictures (aria-hidden, sample numbers); the other slides are a swipe away.
+    // Each slide's own lines are checked in tests/r33.js.
+    await N.page.waitForTimeout(400);
+    const first = await nev(() => [...document.querySelectorAll('#obPage *')].filter(e => e.children.length === 0 && e.textContent.trim() && !e.closest('[aria-hidden="true"]') && (r => r.right > 0 && r.left < innerWidth && r.bottom > 0 && r.top < innerHeight)(e.getBoundingClientRect())).map(e => e.textContent.trim()));
     ok(first.every(t => t.length <= 110) && first.join(' ').length < 420, 'first page: short lines, one sentence at most each (' + first.join(' ').length + ' characters)', first.filter(t => t.length > 110));
     await nev(() => document.querySelector('#obPage [data-act="obAcctLater"]').click()); await new Promise(r => setTimeout(r, 200));
   }
