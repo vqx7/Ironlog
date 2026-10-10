@@ -21,9 +21,9 @@ const LB = 0.45359237;
     const setup = (o) => ev(o => {
       const L = window.__ironlog; const LB = 0.45359237; const s = L.state;
       s.settings.onboarded = true; s.settings.unit = o.kg ? 'kg' : 'lb'; s.settings.autoDone = false; delete s.settings.autoAdj; delete s.settings.gym; s.injuries = [];
-      if (o.gym) s.settings.gym = o.gym; if (o.off) s.settings.autoAdj = false;
+      if (o.gym) s.settings.gym = o.gym; if (o.off) s.settings.autoAdj = false; if (o.fill) s.settings.loadFill = 'fill'; else delete s.settings.loadFill;
       const u = v => o.kg ? v : v * LB;
-      s.sessions = [{ id: 'h1', date: '2026-10-03', dayIdx: 0, dayId: null, dayName: 'T', routineId: '', notes: '', ex: [{ exId: o.ex, rr: [o.lo, o.hi], sets: [0, 1, 2].map(() => ({ w: u(o.w), r: o.r0 || o.lo + 1, rir: 1, done: true })) }] }];
+      s.sessions = [{ id: 'h1', date: '2026-10-03', dayIdx: 0, dayId: null, dayName: 'T', routineId: '', notes: '', ex: [{ exId: o.ex, rr: [o.lo, o.hi], sets: [0, 1, 2].map(i => ({ w: u(o.w), r: o.reps ? o.reps[i] : o.r0 || o.lo + 1, rir: 1, done: true })) }] }];
       s.draft = null; L.state = L.normalize(s); L.invalidate();
       L.ACT.startFree(); if (L.ui.modal) L.ACT.mClose();
       const d = L.state.draft; const plan = { sets: o.sets || 3, repMin: o.lo, repMax: o.hi, rir: o.rir == null ? 1 : o.rir, rest: 90, inc: o.kg ? 2.5 : 5 * LB };
@@ -69,11 +69,26 @@ const LB = 0.45359237;
     r = await read();
     ok(!r.adj, 'after Keep, that exercise is not adjusted again this session', r.adj);
 
+    // With "Fill in suggested loads" on, the rows hold the numbers: they change, and Keep puts them back.
+    await setup({ ex: 'bench', w: 185, lo: 6, hi: 10, r0: 8, fill: true });
+    const filled = await ev(() => window.__ironlog.state.draft.ex[0].sets.map(x => x.w == null ? null : Math.round(x.w / 0.45359237)));
+    await tick(0, 10, 4);
+    r = await read();
+    ok(filled.join() === '185,185,185' && r.w.join() === '185,200,200' && r.ph[1] === '200', 'with suggested loads filled in, the rows still on 185 become 200', { filled, w: r.w });
+    await ev(() => document.querySelector('#adj-0 [data-act="adjKeep"]').click()); await wait(80);
+    r = await read();
+    ok(r.w.join() === '185,185,185' && r.ph[2] === '185', 'and Keep puts them back on 185', r.w);
     // Down: 185 x 4 on 6 to 10 (2 short), effort not rated.
     await setup({ ex: 'bench', w: 185, lo: 6, hi: 10, r0: 8 });
     await tick(0, 4, null);
     r = await read();
     ok(r.adj && !r.adj.up && r.adj.w < 185 && r.adj.w % 5 === 0 && /down because set 1 stopped at 4, under your 6/.test(r.line), 'two or more reps under the range moves the next sets down, in whole steps, and says why', r);
+    // Building reps up from under the range (last time 185 x 5, 4, 4 on 6 to 10, so the target is more reps at 185):
+    // 4 on set 1, one under last time, is not 2 under what was expected, so nothing moves.
+    await setup({ ex: 'bench', w: 185, lo: 6, hi: 10, reps: [5, 4, 4] });
+    await tick(0, 4, null);
+    r = await read();
+    ok(!r.adj, 'a lift building reps up from under the range is left alone: 4 reps where last time was 4 does not move the next sets down', r);
     // Normal fatigue: one rep short of the range changes nothing; neither does a set in the range.
     await setup({ ex: 'bench', w: 185, lo: 6, hi: 10, r0: 8 });
     await tick(0, 8, 1); await tick(1, 6, 0); await tick(2, 5, 0);

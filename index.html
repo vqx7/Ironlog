@@ -4381,7 +4381,10 @@ const carried=new WeakSet();
    a load that is empty or only the app's (the suggestion, or carried down).
    Everything that removes or rebuilds rows (− Set, Short on time, a swap)
    takes only these, so typed work is never dropped as a side effect (r25). */
-function rowBlank(b,x){return !x.done&&x.r==null&&x.rir==null&&(x.w==null||(b&&x.w===b.sw)||carried.has(x));}
+function rowBlank(b,x){return !x.done&&x.r==null&&x.rir==null&&appLoad(b,x);}
+/* A row's load is the app's, not the lifter's: empty (grey), the suggestion,
+   carried down from a typed load above, or put there by the adjustment (r34). */
+function appLoad(b,x){return x.w==null||(b&&x.w===b.sw)||carried.has(x)||!!(b&&b.adj&&Math.abs(x.w-b.adj.w)<1e-9);}
 function carryLoad(bi,si){
   const b=state.draft&&state.draft.ex[bi];const s=b&&b.sets[si];if(!s||s.warm||s.drop||s.w==null)return;
   for(let j=si+1;j<b.sets.length;j++){const x=b.sets[j];if(x.warm||x.drop||x.done||!(x.w==null||carried.has(x)))continue;
@@ -4502,8 +4505,11 @@ function greyW(b,si){
    that are still the app's (nothing typed) take a new load:
    - lighter than planned: 2 or more reps in reserve over the target with the
      reps in the range, or 3 or more reps past the top of the range;
-   - heavier than planned: 2 or more reps under the bottom of the range, not
-     stopped early (no reserve over the target).
+   - heavier than planned: 2 or more reps under both the bottom of the range
+     and what this session expected of the set (last time's reps at this
+     load, or the target's minimum after a new load), not stopped early (no
+     reserve over the target). A lift building reps up from under the range
+     (a large step, r31) is expected there and is left alone.
    The new load is what the set's own estimate says allows the middle of the
    range (up) or the bottom of it (down) at the target RIR with one rep more
    in reserve for fatigue, at most 10% up (15% on light isolation lifts,
@@ -4519,14 +4525,15 @@ function heavierLoad(ex,plan,from,to){
 }
 function adjOn(){return state.settings.autoAdj!==false;}
 function assessSet(bi,si){
-  const d=state.draft;const b=d&&d.ex[bi];const s=b&&b.sets[si];if(!s)return false;const had=JSON.stringify(b.adj||null);
+  const d=state.draft;const b=d&&d.ex[bi];const s=b&&b.sets[si];if(!s)return false;const had=JSON.stringify(b.adj||null);const prev=b.adj?{...b.adj}:null;
   if(b.adj&&b.adj.at>=si)delete b.adj;
-  const ex=EX(b.exId);const p=b.plan||{};const rest=b.sets.some((x,i)=>i>si&&!x.done&&!x.warm&&!x.drop&&x.w==null);
+  const ex=EX(b.exId);const p=b.plan||{};const rest=b.sets.some((x,i)=>i>si&&!x.done&&!x.warm&&!x.drop&&appLoad(b,x));
   const off=!adjOn()||b.adjOff||!s.done||s.warm||s.drop||!(+s.r>0)||s.w==null||!rest||d.past||d.editingId||d.deload||d.light||b.light||ex.timed||ex.assist||noE1(ex)||exInjury(ex)||!(+p.repMin>0)||!(incOf(ex,p,s.w)>0);
   if(!off){
     const tgt=+p.rir||0,lo=+p.repMin,hi=+p.repMax,r=+s.r;const q=s.rir==null||s.rir===''?null:+s.rir;
     const bw=bwLoad(ex,d.date||today()),Lt=s.w+bw;
-    const light=(q!=null&&q>=tgt+2&&r>=lo)||r>=hi+3,heavy=r<=lo-2&&(q==null||q<=tgt);
+    const expR=b.tgt&&b.tgt.kind==='load'&&+b.tgt.repMin>0?+b.tgt.repMin:(lastRFor(b,si)!=null?+lastRFor(b,si):lo);
+    const light=(q!=null&&q>=tgt+2&&r>=lo)||r>=hi+3,heavy=r<=Math.min(lo,expR)-2&&(q==null||q<=tgt);
     if(Lt>0&&(light||heavy)){
       const est=fitE(Lt,r,q==null?0:Math.min(q,E1_MAX_RIR));
       if(est){
@@ -4542,7 +4549,16 @@ function assessSet(bi,si){
       }
     }
   }
+  adjRows(b,prev,b.adj||null);
   return JSON.stringify(b.adj||null)!==had;
+}
+/* With "Fill in suggested loads" on, the rows hold the app's numbers rather
+   than grey ones: those still on the old load (not done, not typed) take the
+   new one, and go back when the adjustment is undone, Kept, or replaced. */
+function adjRows(b,prev,next){
+  const rows=(at,f)=>b.sets.forEach((x,i)=>{if(i>at&&!x.done&&!x.warm&&!x.drop&&x.w!=null)f(x);});
+  if(prev&&(!next||next.at!==prev.at||next.w!==prev.w))rows(prev.at,x=>{if(Math.abs(x.w-prev.w)<1e-9)x.w=prev.from;});
+  if(next)rows(next.at,x=>{if(Math.abs(x.w-next.from)<1e-9&&(x.w===b.sw||carried.has(x)))x.w=next.w;});
 }
 // Effort as the lifter reads it: RIR, or RPE when effort is entered as RPE.
 function effShowRir(v){return rirScale()==='rpe'?`RPE ${effShow(v)}`:`${effShow(v)}`;}
@@ -4553,7 +4569,8 @@ function adjLine(b,bi){
 }
 // After a set is ticked, unticked or changed: re-judge it, and redraw only this exercise's grey numbers and line.
 function afterSet(bi,si){
-  if(!assessSet(bi,si))return;const b=state.draft.ex[bi];
+  if(!assessSet(bi,si))return;const b=state.draft.ex[bi];const ex=EX(b.exId);
+  b.sets.forEach((x,i)=>{if(i>si&&!x.done&&x.w!=null){const el=document.querySelector(`.sg input[data-f="w"][data-b="${bi}"][data-s="${i}"]`);if(el&&document.activeElement!==el)el.value=loadIn(ex,x.w);}});
   refreshGreyW(bi);refreshGrey(bi);
   const old=document.getElementById('adj-'+bi);const html=adjLine(b,bi);
   if(old){if(html)old.outerHTML=html;else old.remove();}
@@ -7433,7 +7450,7 @@ function viewSettings(){
   <label class="check-inline"><input type="checkbox" data-bind="autoDone" ${s.autoDone?'checked':''}><span class="hastip" data-tip="A mistyped rep count is then saved without a tap to confirm, so check the row. A tap on the checkmark right after only confirms it; tap again to undo.">Auto-mark a set done after its reps</span></label>
   <label class="check-inline"><input type="checkbox" data-bind="loadFill" ${s.loadFill==='fill'?'checked':''}><span class="hastip" data-tip="Off: a set's load shows in grey until you type one, and ticking the set takes it. On: the suggested load is typed into every row for you. Either way, a load you type is never changed.">Fill in suggested loads</span></label>
   <label class="field"><span class="hastip" data-tip="Blank: Today opens on an empty session, and you add exercises as you go; your plan's day is still one tap away. Each exercise still gets its suggested weight from your history.">Today starts with</span><select data-bind="todayStart"><option value="plan" ${state.settings.todayStart!=='free'?'selected':''}>My plan's day</option><option value="free" ${state.settings.todayStart==='free'?'selected':''}>A blank session (freestyle)</option></select></label>
-  <label class="check-inline"><input type="checkbox" data-bind="autoAdj" ${adjOn()?'checked':''}><span class="hastip" data-tip="After a set that was clearly easier or harder than planned, the sets after it that you have not typed a load for move up or down, with the reason and Keep. Two reps or more in reserve over your target, or three past the top of the range, moves up; two or more under the range moves down. A rep or two lost per set is normal and changes nothing.">Adjust the next sets from the last one</span></label>
+  <label class="check-inline"><input type="checkbox" data-bind="autoAdj" ${adjOn()?'checked':''}><span class="hastip" data-tip="After a set that was clearly easier or harder than planned, the sets after it that you have not typed a load for move up or down. A line says why, with Keep to undo it. Two reps or more in reserve over your target, or three past the top of the range, moves up; two or more under the range moves down. A rep or two lost per set is normal and changes nothing.">Adjust the next sets from the last one</span></label>
   <label class="check-inline"><input type="checkbox" data-bind="wakeLock" ${s.wakeLock?'checked':''}><span class="hastip" data-tip="A locked phone pauses this page, so the rest alert cannot sound until you unlock. Keeping the screen on avoids that, at some battery cost.">Keep the screen on during a session</span></label>
   <label class="field"><span class="hastip" data-tip="Planned days whose time estimate runs over it are flagged. Rest per exercise is set in Plan; 0 s means no timer.">Lifting time budget (minutes)</span><input type="text" inputmode="numeric" data-bind="timeBudget" value="${s.timeBudget==null?'':s.timeBudget}" placeholder="e.g. 70"></label></div></div></details>
   ${G('rir','Effort (RIR)')}<div class="card stack">${rirSettings()}</div></div></details>
@@ -9134,7 +9151,8 @@ const ACT={
   /* These two used to call rerenderKeepScroll(), which rebuilt every set row in
      the session on a single tap. On a long day that is well over a hundred
      elements per checkmark. Patch the one row instead. */
-  adjKeep(t){const bi=+t.dataset.b;const b=state.draft&&state.draft.ex[bi];if(!b||!b.adj)return;delete b.adj;b.adjOff=true;
+  adjKeep(t){const bi=+t.dataset.b;const b=state.draft&&state.draft.ex[bi];if(!b||!b.adj)return;const prev=b.adj;delete b.adj;b.adjOff=true;adjRows(b,prev,null);
+    const ex=EX(b.exId);b.sets.forEach((x,i)=>{if(i>prev.at&&!x.done&&x.w!=null){const el=document.querySelector(`.sg input[data-f="w"][data-b="${bi}"][data-s="${i}"]`);if(el)el.value=loadIn(ex,x.w);}});
     refreshGreyW(bi);refreshGrey(bi);const el=document.getElementById('adj-'+bi);if(el)el.remove();saveNow();},
   sDone(t){
     const bi=+t.dataset.b,si=+t.dataset.s;const s=draftSet(t);if(!s)return;
@@ -10275,7 +10293,7 @@ function swapPrompt(b,reason){
 }
 /*}ai=*/
 window.__onLib=(which)=>{if((which==='chart'&&ui.tab==='dash')||(which==='sortable'&&ui.tab==='program'))rerenderKeepScroll();};
-window.__ironlog={get state(){return state;},set state(v){state=v;},ENV,KEY,COMMON,COMMON_TIP,isCommon,bwEvery,isRestWeek,sessCmp,avgWeeks,weekStreak,coach,noLog,afterSet,adjOn,bwAt,newBlock,cycleState,sortedSessions,addDays,gymRack,gymClean,dbListOf,capOf,refreshEx,effShow,rirScale,setStr,libExercises,obGate,obTour,andList,belowMin,aboveMax,starterRoutine,starterSigs,plateList,exBarKg,VOL_MODES,liveLogFetch,regionSrc,fitTargets,firstFullWeek,moveBlock,BANDS,installSheet,siteHost,greyW,effW,greyR,lighterLoad,incOf,swapPlan,planSetsPerWeek,weekNeed,stepRead,e1inv,rtfAt,rtfOf,rtfBand,calStats,rirEff,isHard,setCredit,tonnage,loadMode,loadWords,loadNote,progStep,jumpCap,setSecs,setupSecs,recovery,rolling7,rankDays,rankExercises,isCompound,patternOf,noE1,whtrLine,exHeadline,remainMin,shortPlan,weekPlan,cycleProjection,lastLighterWeek,regionBalance,parseHeight,mixCheck,swapCands,eqPlan,exportCSV,importData,chunksOf,assemble,sessionMuscles,TRACK_ONLY,cloud,Hx,mergeChunk,baseOf,sync:()=>cq(cloudPull),TEMPLATES,lastRFor,impDate,impRows,impNorm,impMatch,impFromText,impFromTable,impHeader,impBuild,impStart,impXlsx,parseSets,undoStack,undoRestore,undoForget,allTimeBests,bestsBoard,obActive,fmtW,rirUsual,rirEst,routineFromTemplate,plannedSets,map3d:()=>({state:B3.state,fail:B3.fail,meshes:B3.meshes.length,yaw:B3.yaw,glow:Object.keys(B3.mats).filter(m=>B3.mats[m].emissiveIntensity>0),canvas:!!document.querySelector('#bm3d canvas'),colors:Object.fromEntries(Object.entries(B3.mats).map(([m,mt])=>[m,'#'+mt.color.getHexString()])),pick:(x,y)=>map3dPick(x,y),want:map3dColors()}),cloudState:()=>({on:cloud.on,status:cloud.status,err:cloud.err,uid:cloud.uid,acct:cloud.acct}),acctUser:()=>acct.user,acctWaiting:()=>!!acctWait.pw,flush:()=>cq(cloudFlush),backupDue,routineUpdates,planFor,platesMode,plateText,chunksOf,IDX,suggest,e1,render,ACT,ui,makeDemo,invalidate,normalize,snapshot,saveNow,timer,weekStats,weekStart,today,EX,blockProgress,dayMinutes,weekStreak,coach,tonnageNow,livePR,exProjection,movers,stalledIds,muscleStatus,actualAvg4,plannedPerWeek,parseSets,/*ai{*/aiSetsValid,fillSets,/*}ai=fillSets,*/newBlock,lastNoteOf,sizeRows,sessionMuscleSets,sessionCapNote,routineClutter,rowBlank,dayReasons,impTextSets,liftTrend,prsWithin,activeRoutine,rackStep,repFloor,sessionLength,prBeat,exInjury,exJoints,openModal,EQUIP,HARD_EX,recentLighter,planEvidenceNote,howToUrl,editFp,toast,avgWeeks,regionWk,REGION_WKS,SAFETY_TXT,libFiltered,nameMatch,workLoad,fitE,offSession,tagged,fatigueStalls,avgWeeksTxt,routineFromLog,repSpan,rangeWords,calDueIdx,readyCard,loadAskCard,/*ai{*/aiDigest,debriefPrompt,reviewPrompt,swapPrompt,AI,/*}ai=*/sameRR};
+window.__ironlog={get state(){return state;},set state(v){state=v;},ENV,KEY,COMMON,COMMON_TIP,isCommon,bwEvery,isRestWeek,sessCmp,avgWeeks,weekStreak,coach,noLog,afterSet,adjOn,bwAt,newBlock,cycleState,sortedSessions,addDays,loadIn,gymRack,gymClean,dbListOf,capOf,refreshEx,effShow,rirScale,setStr,libExercises,obGate,obTour,andList,belowMin,aboveMax,starterRoutine,starterSigs,plateList,exBarKg,VOL_MODES,liveLogFetch,regionSrc,fitTargets,firstFullWeek,moveBlock,BANDS,installSheet,siteHost,greyW,effW,greyR,lighterLoad,incOf,swapPlan,planSetsPerWeek,weekNeed,stepRead,e1inv,rtfAt,rtfOf,rtfBand,calStats,rirEff,isHard,setCredit,tonnage,loadMode,loadWords,loadNote,progStep,jumpCap,setSecs,setupSecs,recovery,rolling7,rankDays,rankExercises,isCompound,patternOf,noE1,whtrLine,exHeadline,remainMin,shortPlan,weekPlan,cycleProjection,lastLighterWeek,regionBalance,parseHeight,mixCheck,swapCands,eqPlan,exportCSV,importData,chunksOf,assemble,sessionMuscles,TRACK_ONLY,cloud,Hx,mergeChunk,baseOf,sync:()=>cq(cloudPull),TEMPLATES,lastRFor,impDate,impRows,impNorm,impMatch,impFromText,impFromTable,impHeader,impBuild,impStart,impXlsx,parseSets,undoStack,undoRestore,undoForget,allTimeBests,bestsBoard,obActive,fmtW,rirUsual,rirEst,routineFromTemplate,plannedSets,map3d:()=>({state:B3.state,fail:B3.fail,meshes:B3.meshes.length,yaw:B3.yaw,glow:Object.keys(B3.mats).filter(m=>B3.mats[m].emissiveIntensity>0),canvas:!!document.querySelector('#bm3d canvas'),colors:Object.fromEntries(Object.entries(B3.mats).map(([m,mt])=>[m,'#'+mt.color.getHexString()])),pick:(x,y)=>map3dPick(x,y),want:map3dColors()}),cloudState:()=>({on:cloud.on,status:cloud.status,err:cloud.err,uid:cloud.uid,acct:cloud.acct}),acctUser:()=>acct.user,acctWaiting:()=>!!acctWait.pw,flush:()=>cq(cloudFlush),backupDue,routineUpdates,planFor,platesMode,plateText,chunksOf,IDX,suggest,e1,render,ACT,ui,makeDemo,invalidate,normalize,snapshot,saveNow,timer,weekStats,weekStart,today,EX,blockProgress,dayMinutes,weekStreak,coach,tonnageNow,livePR,exProjection,movers,stalledIds,muscleStatus,actualAvg4,plannedPerWeek,parseSets,/*ai{*/aiSetsValid,fillSets,/*}ai=fillSets,*/newBlock,lastNoteOf,sizeRows,sessionMuscleSets,sessionCapNote,routineClutter,rowBlank,dayReasons,impTextSets,liftTrend,prsWithin,activeRoutine,rackStep,repFloor,sessionLength,prBeat,exInjury,exJoints,openModal,EQUIP,HARD_EX,recentLighter,planEvidenceNote,howToUrl,editFp,toast,avgWeeks,regionWk,REGION_WKS,SAFETY_TXT,libFiltered,nameMatch,workLoad,fitE,offSession,tagged,fatigueStalls,avgWeeksTxt,routineFromLog,repSpan,rangeWords,calDueIdx,readyCard,loadAskCard,/*ai{*/aiDigest,debriefPrompt,reviewPrompt,swapPrompt,AI,/*}ai=*/sameRR};
 render();
 wakeOn();
 timerResume();
