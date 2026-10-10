@@ -58,6 +58,31 @@ const LB = 0.45359237;
     await ev(async () => { document.querySelector('[data-act="sDone"][data-b="0"][data-s="0"]').click(); await new Promise(r => setTimeout(r, 100)); });
     r = await read();
     ok(!r.adj, 'unticking the set the adjustment came from removes it', r.adj);
+    // The usual order on a phone with auto-mark on: reps typed tick the set,
+    // then the effort is picked on the strip. The pick is what adjusts.
+    await setup({ ex: 'bench', w: 185, lo: 6, hi: 10, r0: 8 });
+    await ev(async () => {
+      const L = window.__ironlog; L.state.settings.autoDone = true; L.render();
+      const inp = document.querySelector('[data-f="r"][data-b="0"][data-s="0"]'); inp.focus(); inp.value = '10';
+      inp.dispatchEvent(new Event('input', { bubbles: true })); inp.dispatchEvent(new Event('change', { bubbles: true })); inp.blur();
+      await new Promise(r => setTimeout(r, 150));
+    });
+    r = await read();
+    const auto = await ev(() => window.__ironlog.state.draft.ex[0].sets[0].done);
+    ok(auto && !r.adj, 'auto-mark ticks 185 x 10 with no effort rated: 10 is the top of the range, not past it, so nothing moves yet', { auto, adj: r.adj });
+    await ev(async () => {
+      document.querySelector('.rirb[data-b="0"][data-s="0"]').click(); await new Promise(r => setTimeout(r, 120));
+      document.querySelector('[data-act="rirPick"][data-b="0"][data-s="0"][data-v="4"]').click(); await new Promise(r => setTimeout(r, 150));
+    });
+    r = await read();
+    ok(r.adj && r.adj.up && r.adj.w === 200 && r.ph[1] === '200' && /Next sets: 200 lb/.test(r.line), 'then 4 picked on the strip moves the next sets to 200 with the line', r);
+    await ev(async () => {
+      document.querySelector('.rirb[data-b="0"][data-s="0"]').click(); await new Promise(r => setTimeout(r, 120));
+      document.querySelector('[data-act="rirPick"][data-b="0"][data-s="0"][data-v="1"]').click(); await new Promise(r => setTimeout(r, 150));
+    });
+    r = await read();
+    ok(!r.adj && r.ph[1] === '185' && !r.line, 'changing the pick to 1 (as planned) takes it back to 185 and the line goes', r);
+    await ev(() => { window.__ironlog.state.settings.autoDone = false; });
 
     // Keep: back to 185 for the rest of the session.
     await setup({ ex: 'bench', w: 185, lo: 6, hi: 10, r0: 8 });
