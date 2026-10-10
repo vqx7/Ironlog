@@ -64,14 +64,13 @@ fs.cpSync(DIST, tmp, { recursive: true });
   const pg = D => D.ev(() => { const p = document.getElementById('obPage'); return p ? p.dataset.step : null; });
   ok((await pg(W)) === 'acct', 'first run opens on the account page, not Today');
   ok(await W.ev(() => { const c = document.querySelector('#obPage [data-act="acctOpen"][data-mode="signup"]'), s = document.querySelector('#obPage [data-act="acctOpen"][data-mode="signin"]'); return !!c && !!s && c.classList.contains('primary') && c.getBoundingClientRect().height >= 44 && s.getBoundingClientRect().height >= 44; }), 'Create account is the main button, with I have an account under it');
-  // r31.2 (V, 2026-10-06): the first page shows three things the app does side by side, an icon and a few words each,
-  // then the account with one short line on what it is for, and Continue without an account as a plain link, not a
+  // r31.2 (V, 2026-10-06), r33: the first page shows what the app does (since r33 a swipeable tour, tested in
+  // tests/r33.js), then the account with one short line on what it is for, and Continue without an account as a plain link, not a
   // button like the others. No tagline under the wordmark (r29.4 still holds).
-  const obCopy = await W.ev(() => { const t = document.querySelector('#obPage .ob-top'), c = document.querySelector('#obPage .ob-card'), f = [...document.querySelectorAll('#obPage .ob-feats li')], n = document.querySelector('#obPage [data-act="obAcctLater"]');
-    const tops = f.map(li => Math.round(li.getBoundingClientRect().top));
-    return { top: t ? [...t.children].map(e => e.tagName).join(',') : null, feats: f.map(li => li.innerText.replace(/\s+/g, ' ').trim()), icons: f.every(li => !!li.querySelector('svg')), oneRow: tops.length === 3 && new Set(tops).size === 1, ps: c ? [...c.querySelectorAll('p')].map(p => p.innerText) : [], h: c && c.querySelector('h2') ? c.querySelector('h2').textContent : null,
+  const obCopy = await W.ev(() => { const t = document.querySelector('#obPage .ob-top'), c = document.querySelector('#obPage .ob-card'), f = [...document.querySelectorAll('#obPage .ob-slide')], n = document.querySelector('#obPage [data-act="obAcctLater"]');
+    return { top: t ? [...t.children].map(e => e.tagName).join(',') : null, feats: f.map(li => li.querySelector('h2').innerText.trim()), shown: f.every(li => !!li.querySelector('.tv')), ps: c ? [...c.querySelectorAll('p')].map(p => p.innerText) : [], h: c && c.querySelector('h2') ? c.querySelector('h2').textContent : null,
       notNow: n ? { btn: n.classList.contains('btn'), link: n.classList.contains('linkbtn'), h: Math.round(n.getBoundingClientRect().height), text: n.innerText.trim() } : null, fits: document.documentElement.scrollHeight <= window.innerHeight + 2 }; });
-  ok(obCopy.top === 'H1' && obCopy.feats.join('|') === 'Log sets with a tap|Build your plan|See your progress' && obCopy.icons && obCopy.oneRow, 'the first page shows the wordmark, then three things the app does side by side, each an icon and a few words', obCopy);
+  ok(obCopy.top === 'H1' && obCopy.feats.length === 5 && obCopy.shown, 'the first page shows the wordmark, then the tour of what the app does, each slide with its picture', obCopy);
   ok(obCopy.h === 'Save your log' && obCopy.ps.length === 1 && obCopy.ps[0] === 'Back up your log and use it on any device', 'Save your log says in one short line what the account is for', obCopy.ps);
   ok(obCopy.notNow && !obCopy.notNow.btn && obCopy.notNow.link && obCopy.notNow.h >= 44 && obCopy.notNow.text === 'Continue without an account', 'Continue without an account is a plain link, worded for what it does, not a third button', obCopy.notNow);
   ok(obCopy.fits, 'the whole first page fits a 390 x 844 screen without scrolling');
@@ -210,18 +209,27 @@ fs.cpSync(DIST, tmp, { recursive: true });
   }, [fake.base, 'x']);
   ok(cross.length > 0 && cross.every(p => p.includes(fake.users.get('friend@example.com').id)), 'a signed-in person can list only their own documents');
 
-  // ---- 7. Sign out: keep a copy, or remove it from the phone.
+  // ---- 7. Sign out (r33, V): like any app with an account. Sign out removes the phone's copy (it is in the
+  // account); keeping a copy is the quiet second choice. Either way the app opens on the first page.
   await openData(B);
   await B.page.click('#acctPanel [data-act="acctSignOut"]'); await wait(100);
-  ok(/Keep a copy on this phone/.test(await text(B, '#modal')), 'sign-out asks whether to keep a copy on the phone');
-  await B.page.click('#modal [data-act="mOk"]'); await wait(800);
+  const so = await B.ev(() => { const m = document.getElementById('modal'); const ok = m.querySelector('[data-act="mOk"]'), alt = m.querySelector('[data-act="mAlt"]'); return { t: m.innerText.replace(/\s+/g, ' '), ok: ok && ok.innerText.trim(), okPrimary: ok && ok.classList.contains('primary'), alt: alt && alt.innerText.trim(), altLink: alt && alt.classList.contains('linkbtn') && !alt.classList.contains('btn'), altH: alt && Math.round(alt.getBoundingClientRect().height) }; });
+  ok(so.ok === 'Sign out' && so.okPrimary && /saved in your account/.test(so.t) && !/shared/i.test(so.t), 'Sign out is the main button and says the log is in the account, with no shared-phone talk', so);
+  ok(so.alt === 'Sign out, keep a copy on this phone' && so.altLink && so.altH >= 44, 'keeping a copy on the phone is the quiet second choice, a 44 px link', so);
+  await B.page.click('#modal [data-act="mAlt"]'); await wait(800);
   ok(!(await B.ev(() => window.__ironlog.cloudState().on)) && (await B.ev(() => window.__ironlog.state.sessions.map(s => s.id).join())) === 'sB1', 'keep: signed out, the log stays on the phone');
+  ok((await pg(B)) === 'acct' && await B.ev(() => document.body.classList.contains('obmode')), 'keep: the app opens on the first page');
+  await B.page.reload(); await B.page.waitForFunction(() => window.__ironlog); await B.page.waitForFunction(() => document.getElementById('obPage') || document.querySelector('.tabs:not([hidden])') && !document.body.classList.contains('obmode'), null, { timeout: 8000 }).catch(() => {}); await wait(300);
+  ok((await pg(B)) === 'acct', 'keep: still the first page after the app is reopened', await B.ev(() => ({ ob: document.body.classList.contains('obmode'), flag: localStorage.getItem('ironlog.v1.signedOut'), html: document.getElementById('view').innerHTML.slice(0, 200) })));
+  await B.page.click('#obPage [data-act="obAcctLater"]'); await wait(200);
+  ok((await pg(B)) === null && await B.ev(() => window.__ironlog.ui.tab === 'today' && !document.body.classList.contains('obmode')), 'keep: Continue without an account opens the log kept on the phone');
+  await openData(B);
   ok(/Create account/.test(await text(B, '#acctPanel')), 'keep: Your data offers sign-in again');
   await logOn(B, 'sB-local', 90); await wait(1500);
   ok(!sessIn(rowsOf('v@example.com')).includes('sB-local'), 'after signing out, nothing more is sent');
   await openData(C);
   await C.page.click('#acctPanel [data-act="acctSignOut"]'); await wait(100);
-  await C.page.click('#modal [data-act="mAlt"]'); await wait(1000);
+  await C.page.click('#modal [data-act="mOk"]'); await wait(1000);
   ok((await C.ev(() => window.__ironlog.state.sessions.length)) === 0 && !(await C.ev(() => window.__ironlog.cloudState().on)), 'remove: signed out and the log is gone from the phone');
   ok(sessIn(rowsOf('friend@example.com')).join() === 'sC1', 'remove: the account still holds the log');
   // A removed phone is a fresh start: the setup pages, account first. Signing back in there brings the log back.
