@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-N/mTXwFTBFccXJeXguQVUbWrTDOjfgCNUlJicBwRfWY=' 'sha256-tuSgXs5JTxAxl+0h6Mmbx/BgvpNDfjiq2RiZRPGtwkc=' 'sha256-YHdgjdaHPObo0ajgr78/3fg0b/g2KACx2Yivxr2AJEo=' 'sha256-/TEYjkqITQkmNhOltot45xqkzHZeszOfQ5RH7Rz5l1Q=' 'sha256-J4UrXwIeplIJZfkgJq3M75mmvlwXBomq0l+LhSwoEfI='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https://fqvupierxrvpoidtwlon.supabase.co wss://fqvupierxrvpoidtwlon.supabase.co https://api.pwnedpasswords.com; worker-src 'self'; manifest-src 'self'; media-src 'self'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-N/mTXwFTBFccXJeXguQVUbWrTDOjfgCNUlJicBwRfWY=' 'sha256-tuSgXs5JTxAxl+0h6Mmbx/BgvpNDfjiq2RiZRPGtwkc=' 'sha256-YHdgjdaHPObo0ajgr78/3fg0b/g2KACx2Yivxr2AJEo=' 'sha256-7iS75zIvso8YoGGFHB34ZOApSncZZqMp0dN88QFL3fE=' 'sha256-J4UrXwIeplIJZfkgJq3M75mmvlwXBomq0l+LhSwoEfI='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https://fqvupierxrvpoidtwlon.supabase.co wss://fqvupierxrvpoidtwlon.supabase.co https://api.pwnedpasswords.com; worker-src 'self'; manifest-src 'self'; media-src 'self'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Ironlog Preview</title>
 <script>window.IRONLOG_APP=true;window.IRONLOG_ENV='preview';window.__installEvt=null;
@@ -2894,6 +2894,10 @@ const toD=kg=>kg==null?null:(U()==='lb'?kg/LB:kg);
 const fromD=v=>v==null?null:(U()==='lb'?v*LB:v);
 const r1=n=>Math.round(n*10)/10;
 const fmtW=kg=>kg==null||isNaN(kg)?'':String(r1(toD(kg)));
+/* Estimates (1RM, projections) are good to a few percent at best, so they
+   show whole pounds or half kilos (r34): 293.8 next to 294 and 301 read as
+   precision the numbers do not have. Loads keep their decimals. */
+const fmtE=kg=>{if(kg==null||isNaN(kg))return '';const v=toD(kg);return String(U()==='lb'?Math.round(v):Math.round(v*2)/2);};
 const lenD=cm=>cm==null?'':String(r1(U()==='lb'?cm/IN:cm));
 const lenFrom=v=>U()==='lb'?v*IN:v;
 function numIn(v){if(v===''||v==null)return null;const n=parseFloat(String(v).replace(',','.'));return isNaN(n)?null:n;}
@@ -3742,7 +3746,14 @@ function sizeBody(){
   // Under about 1 cm on a limb or the neck (1.5 cm on the chest) is within
   // what a tape repeats to (typical minimum detectable change 5 to 15 mm).
   const mdc=k=>k==='chest'?1.5:1;
-  return rows.map(r=>`<div style="padding:6px 0;border-bottom:1px solid var(--line)"><div class="row spread"><b>${esc(ML2[r.k])}</b><span class="num">${Math.abs(r.d)<mdc(r.k)?'<span class="tag">within tape error</span> ':''}${sgn(r.d)} ${LU()}</span></div><p class="small muted" style="margin:2px 0 0">${fmtDate(r.from)} to ${fmtDate(r.to)}, ${r.weeks?`${r1(r.sets)} hard sets a week for ${andList(r.mus.map(m=>ML[m]))}`:'no logged training in between'}.${ctx(r)}</p></div>`).join('')
+  /* Rows measured on the same days share their stretch, waist, and
+     bodyweight, so those are said once above them (r34, V: the same sentence
+     under every row). */
+  const span=r=>`${fmtDate(r.from)} to ${fmtDate(r.to)}`;
+  const one=rows.every(r=>span(r)===span(rows[0])&&ctx(r)===ctx(rows[0]));
+  const c0=ctx(rows[0]);const top=one?`<p class="small muted" style="margin:0 0 4px">${span(rows[0])}${c0?c0.replace(/^ Same stretch: /,': '):'.'}</p>`:'';
+  const what=r=>r.weeks?`${r1(r.sets)} hard sets a week for ${andList(r.mus.map(m=>ML[m]))}`:'no logged training in between';
+  return top+rows.map(r=>`<div style="padding:6px 0;border-bottom:1px solid var(--line)"><div class="row spread"><b>${esc(ML2[r.k])}</b><span class="num">${Math.abs(r.d)<mdc(r.k)?'<span class="tag">within tape error</span> ':''}${sgn(r.d)} ${LU()}</span></div><p class="small muted" style="margin:2px 0 0">${one?'':`${span(r)}, `}${what(r)}.${one?'':ctx(r)}</p></div>`).join('')
     +'<p class="small muted hastip" style="margin-top:8px" data-tip="Same spot, same time of day, before training, relaxed or flexed the same way each time. Under about 1 cm on arms, thighs, calves, and neck (1.5 cm on the chest) is within what a tape repeats to.">How to measure</p>';
 }
 /* Region balance: hard sets in a region against that region's combined
@@ -5473,7 +5484,7 @@ function fatigueStalls(ids){return ids.filter(id=>{const e=EX(id);return e&&!e.t
    branch states the number it is based on, so the advice can be checked. */
 function coach(){
   const I=IDX();const R=activeRoutine();
-  if(!state.sessions.length)return {tone:'blue',text:'Log your first session. Trends and advice appear after a few sessions of each exercise.',act:null};
+  if(!state.sessions.length)return {tone:'blue',text:'Log your first session. Advice starts after a few sessions.',act:null};
   if(isRestWeek(weekStart(today())))return {tone:'blue',text:'Rest week. Nothing to hit this week.',why:'It does not count as missed: your averages, streak, and adherence skip it, and your targets pick up where they were.',act:null};
   if(isDeloadWeek())return {tone:'blue',text:`Deload week. It ends Sunday.`,why:'Half the sets, about 90% loads, 3 or more reps in reserve. Your targets pick up where they were.',act:null};
   const stalled=stalledIds();
@@ -5488,7 +5499,7 @@ function coach(){
   /* Two or more of the last 4 weeks with no training (r31): the averages are
      per week trained, so they can look fine while most weeks are missed.
      Turning up comes before any set count. */
-  if(avg&&avg._missed>=2){const w=avg._weeks,n=Math.min(4,w+avg._missed);return {tone:'yellow',text:`You trained in ${w} of the last ${n} weeks. The set counts here are per week you trained, so getting the weeks in matters more than adding sets.`,why:'Weeks with no training are left out of the weekly averages rather than counted as zero, so a short break does not read as below target everywhere.',act:null};}
+  if(avg&&avg._missed>=2){const w=avg._weeks,n=Math.min(4,w+avg._missed);return {tone:'yellow',text:`You trained in ${w} of the last ${n} weeks. Getting the weeks in matters more than adding sets.`,why:'Set counts are per week you trained: weeks with no training are left out of the averages rather than counted as zero, so a short break does not read as below target everywhere.',act:null};}
   if(avg){
     const lagSet=new Set(I.scores.filter(x=>x.label==='lagging').map(x=>x.m));
     /* Largest shortfall in sets first. Sorting by the fraction of target put
@@ -5506,15 +5517,15 @@ function coach(){
       const inR=[];for(const d of R.days)for(const it of d.items)if(forM(it.exId)&&!inR.includes(it.exId))inR.push(it.exId);
       const logged=Object.keys(I.byEx).filter(id=>forM(id)&&state.exercises.some(e=>e.id===id&&!e.archived)).sort((x,y)=>I.byEx[y][I.byEx[y].length-1].date.localeCompare(I.byEx[x][I.byEx[x].length-1].date));
       const exId=inR.find(done)||logged[0]||inR[0]||null;
-      const how=exId?`Add ${gap} set${gap>1?'s':''} a week to ${exName(exId)}.`:'Nothing in your routine trains it directly, so add one exercise for it.';
-      return {tone:'yellow',text:`${ML[u.m]} is getting ${r1(u.got)} hard set${r1(u.got)===1?'':'s'} a week against a target of ${u.lo} to ${u.hi}. ${how}${under.length>1?` ${under.length-1} other muscle${under.length>2?'s are':' is'} also below target.`:''}`,act:{label:`See ${ML[u.m]}`,sec:'volume',m:u.m}};
+      const how=exId?`Add ${gap} set${gap>1?'s':''} a week to ${exName(exId)}.`:'Add an exercise for it.';
+      return {tone:'yellow',text:`${ML[u.m]}: ${r1(u.got)} hard set${r1(u.got)===1?'':'s'} a week, target ${u.lo}-${u.hi}. ${how}${under.length>1?` ${under.length-1} more below target.`:''}`,why:`Your average of hard sets per week over your recent full weeks. The largest shortfall comes first, and priority muscles before the rest.${exId?'':' Nothing in your routine trains it directly.'}`,act:{label:`See ${ML[u.m]}`,sec:'volume',m:u.m}};
     }
   }
   /* A lift stuck at the top of its range has not run out of progress; the
      load has not gone up (r32, from the third review: lateral raises at 15
      of 12-15 for weeks were told to change the range). */
   if(stalled.length){const id=stalled[0];const st=I.exStats[id];const p=planFor(id);const lw=st&&st.last?atLoad(st.last.pts,st.last.topW):[];
-    if(lw.length&&lw.every(q=>q.r>=+p.repMax))return {tone:'yellow',text:`${exName(id)} has been at the top of its range at ${loadLabel(EX(id),st.last.topW)}${EX(id).bw?'':' '+U()} for 3 weeks or more, so it is due a step up, not a new range. Its target in the session says what to do next.`,why:'Every set reached the top of the range. The next step is more load, or, when one step is large for the load, a few more reps first.',act:{label:'See the lift',sec:'exercise',ex:id}};
+    if(lw.length&&lw.every(q=>q.r>=+p.repMax))return {tone:'yellow',text:`${exName(id)} has been at the top of its range at ${loadLabel(EX(id),st.last.topW)}${EX(id).bw?'':' '+U()} for 3 weeks: it is due a step up, not a new range. The session's target says how.`,why:'Every set reached the top of the range. The next step is more load, or, when one step is large for the load, a few more reps first.',act:{label:'See the lift',sec:'exercise',ex:id}};
     return {tone:'yellow',text:`${exName(id)} has stalled. Try another rep range or a close variation for a few weeks.`,why:'Flat or down over its last 6 sessions (or 3 weeks), with no PR in the last 3, no heavier load, and no more reps at the same load, leaving out deload, lighter, and trimmed sessions.',act:{label:'See the lift',sec:'exercise',ex:id}};}
   // Missing RIR is not coached: it is optional by design and blanks are read as your usual RIR.
   // Scores are sorted high to low, so the steepest fall is the last one.
@@ -5523,7 +5534,7 @@ function coach(){
   // Someone back from a break (nothing since before the last 4 weeks) has
   // history but no recent weeks; "first full week" was wrong for them.
   if(!avg)return {tone:'green',text:state.sessions.some(x=>x.date<addDays(weekStart(today()),-28))&&!state.sessions.some(x=>x.date>=addDays(weekStart(today()),-28))?'Nothing logged in the last 4 weeks. Volume advice comes back after a full week of training.':'Volume advice appears here after your first full week.',act:null};
-  return {tone:'green',text:'On track. Every muscle is at or above its target and nothing has stalled. Keep going as planned.',act:null};
+  return {tone:'green',text:'On track. Every muscle at target, nothing stalled.',act:null};
 }
 function coachButton(c,di){
   if(!c.act)return '';
@@ -5553,40 +5564,44 @@ function exProjection(exId){
   return {value:at(st.slope),lo:at(st.slope-tq*se),hi:at(st.slope+tq*se),weeks:4};
 }
 function exHeadline(exId){
+  /* One line with the verdict and what to do; the numbers behind it (rates,
+     ranges, sessions, how it was read) sit behind an i (r34, V: no walls of
+     text). The tiles under it already show the best, the change and the rate. */
   const I=IDX();const st=I.exStats[exId];if(!st)return '';const ex=EX(exId);
+  const line=(t,tip)=>`<p class="headline">${esc(t)}${tip?' '+tipi(tip,'About this'):''}</p>`;
   if(ex.timed){
     let best=null;for(const x of I.byEx[exId]||[])for(const p of x.pts)if(!best||p.pl>best.pl+1e-6||(Math.abs(p.pl-best.pl)<1e-6&&p.r>best.r))best=p;
-    return `<p class="headline">${esc(`Timed hold.${best?` Best: ${setShort(ex,best.w,best.r)}.`:''} ${st.stalled?'No longer hold or more load in the last 3 sessions. Try a harder variation or add load.':'Progress shows as longer holds or more load.'}`)}</p>`;
+    return line(`${best?`Best hold ${setShort(ex,best.w,best.r)}. `:''}${st.stalled?'No longer hold or more load in 3 sessions: try a harder variation or add load.':'Progress is longer holds or more load.'}`);
   }
   if(noE1(ex)){
     let best=null;for(const x of I.byEx[exId]||[])for(const p of x.pts)if(!best||p.w>best.w+1e-6||(Math.abs(p.w-best.w)<1e-6&&p.r>best.r))best=p;
-    return `<p class="headline">${esc(`Progress here is reps and added load; no 1RM is estimated for a lift that turns about a joint.${best?` Best set: ${setShort(ex,best.w,best.r)}.`:''}${st.stalled?' No rep or load PR in the last 3 sessions.':''}`)}</p>`;
+    return line(`${best?`Best set ${setShort(ex,best.w,best.r)}. `:''}${st.stalled?'No rep or load PR in the last 3 sessions.':'Progress is reps and added load.'}`,'No 1RM is estimated for a lift that turns about a joint.');
   }
-  const bw=state.bodyweights.length?bwAt(today()):null;const parts=[];
-  /* A 1RM is stated for compound lifts only (r30): a "42 lb 1RM" on a
-     lateral raise means nothing anyone would lift. Isolation lifts show their
-     best set; the trend below covers both. */
-  if(st.best!=null&&isCompound(ex))parts.push(`Best estimate ${ex.bw?'≈':''}${fmtW(st.best)} ${U()}${loadNote(ex)}${bw&&!ex.bw&&loadMode(ex)==='total'?`, ${(st.best/bw).toFixed(2)}× bodyweight`:''}.`);
-  else{const bs=bestSet(exId);if(bs)parts.push(`Best set ${setShort(ex,bs.w,bs.r)}.`);}
-  if(st.capped)parts.push('At the heaviest load available, so progress is counted in reps and harder reps.');
+  const bw=state.bodyweights.length?bwAt(today()):null;const parts=[];const more=[];
   const sg=v=>(v>=0?'+':'')+r1(v)+'%';
-  // The range the trend allows and how many sessions it rests on (r30).
+  const ns=`${st.wN} session${st.wN===1?'':'s'}`;const ow=`over ${st.spanW||6} weeks`;
   // A range only when it says something: perfectly steady numbers give one of zero width.
-  const rate=st.pLo!=null&&st.pHi-st.pLo>=0.1?`, about ${sg(st.slope)} a week (likely ${sg(st.pLo)} to ${sg(st.pHi)})`:st.slope!=null?`, about ${sg(st.slope)} a week`:'';const ns=`${st.wN} session${st.wN===1?'':'s'}`;
-  const how=st.useAdj?'':' Read from loads and reps; RIR is left out of the trend until it is rated on most sets.';
-  const ow=`over ${st.spanW||6} weeks`;
-  // At the top of the range, the advice is load, as on the Coach (r32).
+  if(st.slope!=null)more.push(st.pLo!=null&&st.pHi-st.pLo>=0.1?`About ${sg(st.slope)} a week (likely ${sg(st.pLo)} to ${sg(st.pHi)}), from ${ns}.`:`About ${sg(st.slope)} a week, from ${ns}.`);
+  if(!st.useAdj)more.push('Read from loads and reps; RIR is left out of the trend until it is rated on most sets.');
   const atTopR=(()=>{const lw=st.last?atLoad(st.last.pts,st.last.topW):[];return lw.length&&lw.every(q=>q.r>=+planFor(exId).repMax);})();
-  if(st.stalled)parts.push(`Stalled: flat for 3 weeks or more, with no PR in the last 3 sessions, no heavier load, and no more reps at the same load. ${atTopR?'Every set is at the top of the range, so it is due a step up: its target in the session says what to do next.':'Try another rep range or variation.'}`);
-  else if(st.pct==null)parts.push('Needs 3 sessions spread over 2 weeks or more, within 6 weeks, for a trend.');
-  else if(st.moving)parts.push(`Up ${r1(st.pct)}% ${ow} (${ns})${rate}.${how}`);
-  else if(st.falling)parts.push(`Down ${r1(Math.abs(st.pct))}% ${ow} (${ns})${rate}. Look at recovery before adding work.${how}`);
+  if(st.stalled){
+    // At the top of the range, the advice is load, as on the Coach (r32).
+    parts.push(atTopR?'Stalled at the top of the range: due a step up. The session\'s target says how.':'Stalled for 3 weeks. Try another rep range or a variation.');
+    more.push('Stalled: flat for 3 weeks or more, with no PR in the last 3 sessions, no heavier load, and no more reps at the same load.');
+  }else if(st.pct==null)parts.push('A trend needs 3 sessions spread over 2 weeks.');
+  else if(st.moving)parts.push(`Up ${r1(st.pct)}% ${ow}.`);
+  else if(st.falling)parts.push(`Down ${r1(Math.abs(st.pct))}% ${ow}. Look at recovery before adding work.`);
   /* A small change the interval still puts on one side of zero is said as
      slow, not as "no clear change" next to a range that excludes 0 (r31). */
-  else if(st.pLo!=null&&(st.pLo>0||st.pHi<0))parts.push(`Slowly ${st.pLo>0?'up':'down'}: ${sg(st.pct)} ${ow} (${ns})${rate}, under the 3% that counts as ${st.pLo>0?'moving':'falling'}.${how}`);
-  else parts.push(`No clear change yet: ${sg(st.pct)} over ${ns}${st.pLo!=null&&st.pHi-st.pLo>=0.1?`, a weekly rate anywhere from ${sg(st.pLo)} to ${sg(st.pHi)}`:''}. Day to day swings of 2 to 8% hide small changes.${how}`);
-  const pj=exProjection(exId);if(pj&&isCompound(ex))parts.push(`If that holds, about ${fmtW(pj.value)} ${U()} in 4 weeks (${fmtW(pj.lo)} to ${fmtW(pj.hi)}).`);
-  return `<p class="headline">${esc(parts.join(' '))}</p>`;
+  else if(st.pLo!=null&&(st.pLo>0||st.pHi<0)){parts.push(`Slowly ${st.pLo>0?'up':'down'}: ${sg(st.pct)} ${ow}.`);more.push(`Under the 3% that counts as ${st.pLo>0?'moving':'falling'}.`);}
+  else{parts.push(`No clear change yet (${sg(st.pct)}).`);more.push('Day to day swings of 2 to 8% hide small changes.');}
+  if(st.capped)parts.push('At the heaviest load available: progress counts in reps.');
+  /* A 1RM is stated for compound lifts only (r30): a "42 lb 1RM" on a
+     lateral raise means nothing anyone would lift. */
+  if(st.best!=null&&isCompound(ex)&&bw&&!ex.bw&&loadMode(ex)==='total')parts.push(`${(st.best/bw).toFixed(2)}× bodyweight.`);
+  const pj=exProjection(exId);if(pj&&isCompound(ex)){parts.push(`About ${fmtE(pj.value)} ${U()} in 4 weeks if it holds.`);more.push(`Likely ${fmtE(pj.lo)} to ${fmtE(pj.hi)} ${U()} in 4 weeks.`);}
+  if(!(st.best!=null&&isCompound(ex))){const bs=bestSet(exId);if(bs)parts.unshift(`Best set ${setShort(ex,bs.w,bs.r)}.`);}
+  return line(parts.join(' '),more.join(' '));
 }
 /* An isolation lift's best-estimate PR is shown as the set that set it, not
    as a 1RM (r30): the strongest set of that lift in that session. */
@@ -5608,7 +5623,7 @@ function exHistSheet(exId){
     chart=`<figure class="exh-chart" style="margin:4px 0 0"><svg viewBox="0 0 ${W} ${H}" width="100%" height="${H}" role="img" aria-label="Strength reading over the last ${pts.length} full sessions"><polyline fill="none" stroke="var(--volt)" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round" points="${xy.map(p=>p.map(n=>n.toFixed(1)).join(',')).join(' ')}"/>${xy.map(p=>`<circle cx="${p[0].toFixed(1)}" cy="${p[1].toFixed(1)}" r="3" fill="var(--volt)"/>`).join('')}</svg>
       <figcaption class="small muted row spread"><span>${fmtDate(pts[0].date)}</span><span class="hastip" data-tip="Each full session's working sets read as one number from loads, reps, and RIR when it is rated on most sets. It shows direction only and is not a 1RM. Lighter, deload, and trimmed sessions are left out.">Strength reading</span><span>${fmtDate(pts[pts.length-1].date)}</span></figcaption></figure>`;}
   const bs=bestSet(exId);
-  const best=st.best!=null&&isCompound(ex)?`Best estimate ${fmtW(st.best)} ${U()}${loadNote(ex)}`:bs?`Best set ${setShort(ex,bs.w,bs.r)}${ex.bw?'':' '+U()}`:'';
+  const best=st.best!=null&&isCompound(ex)?`Best estimate ${fmtE(st.best)} ${U()}${loadNote(ex)}`:bs?`Best set ${setShort(ex,bs.w,bs.r)}${ex.bw?'':' '+U()}`:'';
   // The sets as logged (warm-ups and drops marked, RIR as typed), from the saved session.
   const setsOf=x=>{const ss=state.sessions.find(q=>q.id===x.sid);const bl=ss&&ss.ex.find(q=>q.exId===exId);return bl?bl.sets.map(q=>setStr(ex,q)).join(', '):x.pts.map(q=>setShort(ex,q.w,q.r)).join(', ');};
   const rows=all.slice(-10).reverse().map(x=>{const kind=x.cut?'trimmed':x.light||x.auto?'lighter':x.deload?'deload':'';
@@ -5983,10 +5998,10 @@ function prBeat(exId,s,date,pr){
      reps (its band), so the toast names the band (r30): "new best estimate
      279" read as wrong beside an overall best of 301 from heavier sets. */
   const bandW=BAND_WORDS[rtfBand(rtfOf(+s.r,q))]||'';
-  if(pr==='Best')return bd!=null&&v!=null?(isCompound(ex)?` (estimated 1RM ${fmtW(v)} ${U()}, best from ${bandW}; was ${fmtW(bd)})`:` (your best for ${bandW})`):'';
+  if(pr==='Best')return bd!=null&&v!=null?(isCompound(ex)?` (estimated 1RM ${fmtE(v)} ${U()}, best from ${bandW}; was ${fmtE(bd)})`:` (your best for ${bandW})`):'';
   if(pr==='Weight PR'){let mw=-Infinity;for(const x of exps)for(const p of x.pts)if(p.r>0)mw=Math.max(mw,p.w);
     const was=ex.assist?`less help than ever`:`heaviest before ${ex.bw?loadLabel(ex,mw):fmtW(mw)+' '+U()}`;
-    return ` (${was}${isCompound(ex)&&bd!=null&&v!=null&&v>bd+1e-6?`; best estimate for ${bandW} now ${fmtW(v)}`:''})`;}
+    return ` (${was}${isCompound(ex)&&bd!=null&&v!=null&&v>bd+1e-6?`; best estimate for ${bandW} now ${fmtE(v)}`:''})`;}
   let m=0;for(const x of exps)for(const p of x.pts)if(p.pl>=load-1e-6)m=Math.max(m,p.r);
   return m?` (was ${m} ${ex.timed?'s':'reps'})`:' (heaviest yet)';
 }
@@ -6484,7 +6499,7 @@ function liftTrend(exId){
   // With no trend yet (under 3 sessions over 2 weeks), no word at all (r32, second check: "· up" from three sessions in a week).
   const dir=st&&st.pct!=null?(st.moving?'up':st.falling?'down':st.pLo!=null&&st.pLo>0?'slowly up':st.pHi!=null&&st.pHi<0?'slowly down':`no clear change over ${st.spanW||2} weeks`):'';
   if(isCompound(ex)&&exps.every(x=>x.best!=null)){
-    const v=exps.map(x=>fmtW(x.best));const d2=dir;
+    const v=exps.map(x=>fmtE(x.best));const d2=dir;
     return `<p class="small muted" style="margin:2px 0">Est. 1RM <span class="trend">${v.join(' → ')} ${U()}</span>${d2?' · '+d2:''}${st&&!st.useAdj?' '+tipi('Read from loads and reps alone: RIR is rated on too few of its sets to compare sessions fairly.','About this trend'):''}</p>`;
   }
   const top=x=>{let q=null;for(const p of x.pts){const v=trendE(p.load,p.r,0)||0;if(!q||v>q.v)q={v,p};}return setShort(ex,q.p.w,q.p.r);};
@@ -6897,8 +6912,9 @@ function viewDash(){
       /* The number a flag is judged on comes first (r29): the line led with
          this week, so "this week 10.5 of 10-20" sat beside Below target,
          which comes from the average. */
-      const bits=avg?[`${r1(avg[m]||0)} hard sets a week on average, target ${lo}-${hi}`,`this week ${r1(thisWeek[m]||0)} so far`]:[`this week ${r1(thisWeek[m]||0)} of ${lo}-${hi} hard sets`];if(belowMin(plan[m],lo))bits.push(`your routine plans ${r1(plan[m]||0)}`);
-      return `<div style="padding:6px 0;border-bottom:1px solid var(--line)"><div class="row spread"><b>${ML[m]}</b><div class="chips">${rs.map(([t,c])=>`<span class="tag ${c}">${t}</span>`).join('')}</div></div><p class="small muted" style="margin:2px 0 0">${bits.join(', ')}</p></div>`;}).join(''):`<p class="muted" style="margin:0">${state.sessions.length?'Nothing flagged.':'Flags start once you have logged a few sessions.'}</p>`}</div>`;
+      const hs=v=>`${r1(v)} hard set${r1(v)===1?'':'s'}`;
+      const bits=avg?[`${hs(avg[m]||0)} a week on average, target ${lo}-${hi}`,`this week ${r1(thisWeek[m]||0)}`]:[`this week ${hs(thisWeek[m]||0)} of ${lo}-${hi}`];if(belowMin(plan[m],lo))bits.push(`your routine plans ${r1(plan[m]||0)}`);
+      return `<div style="padding:6px 0;border-bottom:1px solid var(--line)"><div class="row spread"><b>${ML[m]}</b><div class="chips">${rs.map(([t,c])=>`<span class="tag ${c}">${t}</span>`).join('')}</div></div><p class="small muted" style="margin:2px 0 0">${bits.join(' · ')}</p></div>`;}).join(''):`<p class="muted" style="margin:0">${state.sessions.length?'Nothing flagged.':'Flags start once you have logged a few sessions.'}</p>`}</div>`;
 
   // stalls (folded inside Lifts, after Recent PRs and All-time bests since r28)
   let stl='';
@@ -6924,20 +6940,20 @@ function viewDash(){
     const e1Mode=isCompound(ex)&&exps.some(x=>x.best!=null);const bs=e1Mode?null:bestSet(ui.dashEx);
     const tagOf=x=>x.deload?'deload':x.light||x.auto?'lighter':x.cut?'trimmed':'';
     exh+=`<select data-bind="dashEx" aria-label="Exercise">${withData.map(id=>`<option value="${id}" ${id===ui.dashEx?'selected':''}>${esc(exName(id))}</option>`).join('')}</select>
-    <div style="margin-top:8px">${exHeadline(ui.dashEx)}</div>${noE1(ex)?`<div class="kpis" style="margin-top:8px"><div class="kpi"><div class="v">${st.n}</div><div class="l">Sessions logged</div></div><div class="kpi"><div class="v">${st.stalled?'Yes':'No'}</div><div class="l">Stalled</div></div></div>`:''}<div class="kpis" style="margin-top:8px${noE1(ex)?';display:none':''}">${e1Mode?`<div class="kpi"><div class="v">${st.best?(ex.bw?'≈':'')+fmtW(st.best):'n/a'}</div><div class="l">Best e1RM (${U()}${loadNote(ex)})</div></div>`:`<div class="kpi"><div class="v">${bs?esc(setShort(ex,bs.w,bs.r)):'n/a'}</div><div class="l">Best set${loadNote(ex)}</div></div>`}<div class="kpi"><div class="v">${st.pct==null?'n/a':(st.pct>=0?'+':'')+r1(st.pct)+'%'}</div><div class="l">Change over ${st.spanW||6} weeks</div></div><div class="kpi"><div class="v">${st.slope==null?'n/a':(st.slope>=0?'+':'')+r1(st.slope)+'%'}</div><div class="l">Fitted trend per week</div></div><div class="kpi"><div class="v">${st.n}</div><div class="l">Sessions logged</div></div></div>
+    <div style="margin-top:8px">${exHeadline(ui.dashEx)}</div>${noE1(ex)?`<div class="kpis" style="margin-top:8px"><div class="kpi"><div class="v">${st.n}</div><div class="l">Sessions logged</div></div><div class="kpi"><div class="v">${st.stalled?'Yes':'No'}</div><div class="l">Stalled</div></div></div>`:''}<div class="kpis" style="margin-top:8px${noE1(ex)?';display:none':''}">${e1Mode?`<div class="kpi"><div class="v">${st.best?(ex.bw?'≈':'')+fmtE(st.best):'n/a'}</div><div class="l">Best e1RM (${U()}${loadNote(ex)})</div></div>`:`<div class="kpi"><div class="v">${bs?esc(setShort(ex,bs.w,bs.r)):'n/a'}</div><div class="l">Best set${loadNote(ex)}</div></div>`}<div class="kpi"><div class="v">${st.pct==null?'n/a':(st.pct>=0?'+':'')+r1(st.pct)+'%'}</div><div class="l">Change over ${st.spanW||6} weeks</div></div><div class="kpi"><div class="v">${st.slope==null?'n/a':(st.slope>=0?'+':'')+r1(st.slope)+'%'}</div><div class="l">Fitted trend per week</div></div><div class="kpi"><div class="v">${st.n}</div><div class="l">Sessions logged</div></div></div>
     ${st.pct!=null&&st.slope!=null&&(st.pct>0)!==(st.slope>0)&&Math.abs(st.pct)>0.5&&Math.abs(st.slope)>0.1?`<p class="small muted hastip" style="margin-top:6px" data-tip="The change compares the endpoints; the trend fits a line through every session. When they split, trust the trend: one unusual session is pulling an endpoint.">Change and trend disagree</p>`:''}
     ${noE1(ex)?'':`${rangeChips('ex',weeksSpan(exps[0].date),8,'all')}<div class="chartbox"><canvas id="chEx"></canvas></div>${chartFallback()}
     <p class="small muted hastip" style="margin:4px 0 0" data-tip="Filled diamond: a new best estimate (a weight PR that also set one is filled too). Hollow diamond: a rep PR or a weight PR that did not raise the estimate, which can sit below an earlier best. The dashed line to the right appears only when the trend is clearly up, with a range, 4 weeks out. The thin dotted line is your RIR at the working load.">Reading the chart</p>`}
     ${st.easier?`<p class="small" style="color:var(--blue);margin-top:6px"><b>${esc(easierText(ex,st.easier))}</b></p>`:''}
     ${st.fade?`<p class="small" style="color:var(--yellow);margin-top:6px"><b>Set-to-set drop-off is widening at ${esc(loadLabel(ex,st.fade.w))}${ex.bw?'':' '+U()}: ${st.fade.from} → ${st.fade.to} reps lost from first set to last across your last three sessions.</b> That usually means fatigue or shorter rest rather than lost strength.</p>`:''}
     ${ex.bw&&!state.bodyweights.length?'<p class="small" style="color:var(--yellow)">Log your bodyweight on the Today tab so this bodyweight exercise can be trended.</p>':bwBackfillNote(ui.dashEx)}
-    <div class="scroll-x"><table class="t" style="margin-top:8px"><tr><th>Date</th><th>Sets</th>${e1Mode?'<th class="r">e1RM</th>':''}</tr>${exps.slice(-8).reverse().map(x=>`<tr><td>${fmtDate(x.date)}${x.progress?' <span class="tag green">PR</span>':''}${tagOf(x)?` <span class="tag">${tagOf(x)}</span>`:''}</td><td>${x.pts.map(p=>setShort(ex,p.w,p.r)).join(', ')}</td>${e1Mode?`<td class="r num">${x.best?(ex.bw?'≈':'')+fmtW(x.best):''}</td>`:''}</tr>`).join('')}</table></div>`;
+    <div class="scroll-x"><table class="t" style="margin-top:8px"><tr><th>Date</th><th>Sets</th>${e1Mode?'<th class="r">e1RM</th>':''}</tr>${exps.slice(-8).reverse().map(x=>`<tr><td>${fmtDate(x.date)}${x.progress?' <span class="tag green">PR</span>':''}${tagOf(x)?` <span class="tag">${tagOf(x)}</span>`:''}</td><td>${x.pts.map(p=>setShort(ex,p.w,p.r)).join(', ')}</td>${e1Mode?`<td class="r num">${x.best?(ex.bw?'≈':'')+fmtE(x.best):''}</td>`:''}</tr>`).join('')}</table></div>`;
   }else exh+='<p class="muted">Log a session to see exercise trends.</p>';
   exh+='</div>';
   const bestsBody=bestsBoard();
   // Counted PRs only (r32), the same ones as the count beside the title.
   const bigPR=I.prs.filter(p=>p.big);
-  const prBody=bigPR.length?bigPR.slice(0,15).map(p=>{const ex=EX(p.exId);const iso=p.type==='e1RM'&&!isCompound(ex);const ps=iso?prSet(p.exId,p.date):null;return `<div class="row spread" style="padding:6px 0;border-bottom:1px solid var(--line)"><span>${esc(ex.name)} <span class="tag ${p.type==='Rep PR'?'blue':'green'}">${ex.timed&&p.type==='Rep PR'?'Time PR':p.type==='e1RM'?(iso?'PR':'Best estimate'):p.type}</span></span><span class="num">${p.type==='e1RM'?(iso?(ps?setShort(ex,ps.w,ps.r):''):fmtW(p.value)+' '+U()):setShort(ex,p.w,p.r)} <span class="muted small">${fmtDate(p.date)}</span></span></div>`;}).join(''):'<p class="muted">No PRs yet. Your first session of an exercise sets the baseline.</p>';
+  const prBody=bigPR.length?bigPR.slice(0,15).map(p=>{const ex=EX(p.exId);const iso=p.type==='e1RM'&&!isCompound(ex);const ps=iso?prSet(p.exId,p.date):null;return `<div class="row spread" style="padding:6px 0;border-bottom:1px solid var(--line)"><span>${esc(ex.name)} <span class="tag ${p.type==='Rep PR'?'blue':'green'}">${ex.timed&&p.type==='Rep PR'?'Time PR':p.type==='e1RM'?(iso?'PR':'Best estimate'):p.type}</span></span><span class="num">${p.type==='e1RM'?(iso?(ps?setShort(ex,ps.w,ps.r):''):fmtE(p.value)+' '+U()):setShort(ex,p.w,p.r)} <span class="muted small">${fmtDate(p.date)}</span></span></div>`;}).join(''):'<p class="muted">No PRs yet. Your first session of an exercise sets the baseline.</p>';
   h+=dsec('exercise','Lifts',`Estimated 1RM uses reps to failure, which is reps plus RIR: Brzycki up to 10, Epley at 11 and 12, none above 12 or for a set called above RIR 4. A blank RIR reads as your usual RIR on that lift once you have rated 3 of its sets in 12 weeks; until then it counts as 0, so the estimate errs low. Numbers stay in the frame you log in, per dumbbell or per side where that applies. Bodyweight lifts add the share of your bodyweight they move: all of it for pull-ups and dips, 64% for push-ups. Lifts that turn about one joint (leg raises, crunches, Nordics) get no estimate; their progress is reps and load. Trends read the average of each session's working sets and need 3 sessions over 2 weeks or more within 6 weeks. A heavy single before back-off sets counts toward bests only. Moving or falling means past 3% with a clear trend, since estimates swing 2 to 8% day to day. A PR is a weight PR (more weight than any earlier set), a new best estimate within its range of reps to failure (1 to 5, 6 to 10, 11 to 12), or a rep PR (more reps at a load than any earlier set); a set that is more than one shows the first. Stalled: flat or falling over your last 6 sessions, or 3 weeks if that covers more (at least 4 sessions), with no PR in the last 3, no heavier load, and no more reps at the same load, not counting deload, lighter, and trimmed sessions.`,
     exh+sub('prs','Recent PRs',prBody,noLog()?'none yet':`${pr14} in 14 days`)+sub('bests','All-time bests',bestsBody.html,bestsBody.n?`${bestsBody.n} lift${bestsBody.n===1?'':'s'}`:'none yet')+sub('stalls','Stalls',stl,stalled.length?`<span class="pill ${fatigueStalls(stalled.map(([id])=>id)).length>=3?'red':'yellow'}">${stalled.length} stalled</span>`:'none'),noLog()?'Nothing logged yet':`${Object.keys(I.byEx).length} lift${Object.keys(I.byEx).length===1?'':'s'} tracked`);
 
@@ -6962,10 +6978,13 @@ function viewDash(){
       /* Advice only where the trend is clear (r30). "Flat: try 2 more sets"
          was given to every muscle whose lifts were inside the noise, a causal
          call from no signal; a stalled lift is the one flat case stated. */
-      const read=!s.clear?(s.stall?'A lift has stalled: see Stalls under Lifts.':'Too early to tell: keep logging.'):s.score>=GROW_PCT?(sets<lo?'Rising on low volume: leave it.':'Rising: hold this volume.')
+      /* Rising at its volume needs nothing done, so it says nothing (r34, V:
+         "Rising: hold this volume" on every row read as filler). */
+      const read=!s.clear?(s.stall?'A lift has stalled: see Stalls under Lifts.':'Too early to tell: keep logging.'):s.score>=GROW_PCT?(sets<lo?'Rising on low volume: leave it.':'')
         :s.score<=-GROW_PCT?'Falling: check recovery first.'
         :(sets>=hi?'Flat at high volume: change exercises or effort, not sets.':'Flat: try 2 more sets a week for 3 weeks.');
-      return `<div style="padding:6px 0;border-bottom:1px solid var(--line)"><div class="mrow" style="border:0;padding:0"><span class="plate ${c}"></span><span>${ML[s.m]}${s.indirect?' <span class="tag" data-tip="No direct exercise for this muscle. Trend inferred from lifts where it assists.">indirect</span>':''}</span><div class="band"><div class="fill ${s.score>=0?'in':'down'}" style="width:${s.clear?Math.abs(s.score)/maxAbs*100:0}%"></div></div><span class="r num">${s.clear?`${s.score>=0?'+':''}${r1(s.score)}%`:'unclear'}</span></div><p class="small muted" style="margin:2px 0 0">${r1(sets)} sets a week · ${read}</p></div>`;}).join('');
+      return `<div style="padding:6px 0;border-bottom:1px solid var(--line)"><div class="mrow" style="border:0;padding:0"><span class="plate ${c}"></span><span>${ML[s.m]}${s.indirect?' <span class="tag" data-tip="No direct exercise for this muscle. Trend inferred from lifts where it assists.">indirect</span>':''}</span><div class="band"><div class="fill ${s.score>=0?'in':'down'}" style="width:${s.clear?Math.abs(s.score)/maxAbs*100:0}%"></div></div><span class="r num">${s.clear?`${s.score>=0?'+':''}${r1(s.score)}%`:'unclear'}</span></div><p class="small muted" style="margin:2px 0 0">${r1(sets)} sets a week${read?` · ${read}`:''}</p></div>`;}).join('');
+    if(I.scores.some(s=>s.clear&&s.score>=GROW_PCT&&(src[s.m]||0)>=bands[s.m][0]))rank+=`<p class="small muted" style="margin-top:8px">Rising at its volume: keep the sets as they are.</p>`;
     const missing=MK.filter(m=>!I.scores.find(s=>s.m===m));
     if(missing.length)rank+=`<p class="small muted" style="margin-top:8px">Not enough data yet: ${missing.map(m=>ML[m]).join(', ')}.</p>`;
   }else rank+='<p class="muted">Not enough data yet. Log at least 3 sessions of an exercise over 2 weeks or more, within 6 weeks.</p>';
@@ -7077,9 +7096,9 @@ function regionBody(){
   const rh=rs.week?`<p class="headline">${on?`This week so far: ${on} of ${regs.length} regions at their minimum.`:`This week so far: ${tot} hard sets. Each region fills in as you train.`}</p>`
     :!low.length?`<p class="headline">Every region at or above its minimum${high.length?'':', inside its target'}.</p>`
     :`<p class="headline">${on} of ${regs.length} regions on target. Furthest short: ${worst.label}, ${r1(worst.got)} of ${r1(worst.lo)} sets.</p>`;
-  const note=(rs.old?`Nothing logged in the last ${rs.n||4} weeks, so this shows ${esc(balLabel)}. `:'')+(rs.noFull?'No full week is logged yet, so this is this week so far. ':'')+[low.length?`${rs.week?'Short of the minimum so far':'Below target'}: ${andList(low.map(x=>x.label))}.`:'',high.length?`Above target: ${andList(high.map(x=>x.label))}.`:''].filter(Boolean).join(' ')+(rs.week&&low.length?' The week is still going, so this fills in as you train.':'');
+  const note=(rs.old?`Nothing logged in the last ${rs.n||4} weeks, so this shows ${esc(balLabel)}. `:'')+(rs.noFull?'No full week is logged yet, so this is this week so far. ':'')+(rs.week&&low.length?'The week is still going, so this fills in as you train.':'');
   const chips=`<div class="wkpick"><span class="small muted" id="wkpickL">Average of the last</span><div class="chips" role="group" aria-labelledby="wkpickL">${REGION_WKS.map(([k,l])=>`<button class="chip ${rs.n===k?'on':''}" data-act="regionWk" data-v="${k}" aria-pressed="${rs.n===k}">${l}</button>`).join('')}</div></div>`;
-  return `<div class="card">${rs.week?'':chips}${rh}<p class="small muted" style="margin:0 0 4px">Hard sets per region against the minimum of your weekly targets, using ${esc(balLabel)}. On or past the dashed ring is on target.</p><div class="chartbox tall"><canvas id="chRadar"></canvas></div>${chartFallback()}
+  return `<div class="card">${rs.week?'':chips}${rh}<p class="small muted" style="margin:0 0 4px">Using ${esc(balLabel)}. ${tipi('Hard sets per region against the minimum of your weekly targets. On or past the dashed ring is on target.','Reading the chart')}</p><div class="chartbox tall"><canvas id="chRadar"></canvas></div>${chartFallback()}
   <table class="t" style="margin-top:8px"><tr><th>Region</th><th class="r">Sets</th><th class="r">Minimum</th><th class="r">Of minimum</th></tr>
   ${regs.map(rg=>{const c=rg.low?(rs.week?'part':'yellow'):rg.high?'blue':'green';return `<tr><td><span class="plate ${c}" style="height:12px;vertical-align:-1px"></span> ${rg.label}</td><td class="r num">${r1(rg.got)}</td><td class="r muted small">${r1(rg.lo)}</td><td class="r num">${rg.lo>0?Math.round(rg.pct)+'%':'<span class="muted small">no minimum</span>'}</td></tr>`;}).join('')}</table>
   ${note?`<p class="small muted" style="margin-top:6px">${note}</p>`:''}</div>`;
@@ -7134,9 +7153,9 @@ function bestsBoard(){
        record of any kind, read as the date of the heaviest set. A 1RM is shown
        for compound lifts only. */
     const showEst=r.est&&isCompound(ex);
-    const top=[showEst?`best est ${fmtW(r.est.v)}${u(ex)}${loadNote(ex)}, ${fmtDate(r.est.date)}`:'',r.heavy?`heaviest ${setShort(ex,r.heavy.p.w,r.heavy.p.r)}${loadNote(ex)}, ${fmtDate(r.heavy.date)}`:''].filter(Boolean).join(' · ');
+    const top=[showEst?`best est ${fmtE(r.est.v)}${u(ex)}${loadNote(ex)}, ${fmtDate(r.est.date)}`:'',r.heavy?`heaviest ${setShort(ex,r.heavy.p.w,r.heavy.p.r)}${loadNote(ex)}, ${fmtDate(r.heavy.date)}`:''].filter(Boolean).join(' · ');
     return `<details class="bx" data-ex="${ex.id}"><summary><span class="bn">${esc(ex.name)}</span><span class="bs">${top}</span></summary>
-    ${showEst?`<p class="small" style="margin:0 0 6px">Best estimate <b>${fmtW(r.est.v)}${u(ex)}</b> from ${setShort(ex,r.est.p.w,r.est.p.r)}, ${fmtDate(r.est.date)}</p>`:''}
+    ${showEst?`<p class="small" style="margin:0 0 6px">Best estimate <b>${fmtE(r.est.v)}${u(ex)}</b> from ${setShort(ex,r.est.p.w,r.est.p.r)}, ${fmtDate(r.est.date)}</p>`:''}
     <table class="t"><tr><th>${esc(ex.assist?'Load':loadHead(ex))}</th><th class="r">${ex.timed?'Seconds':'Reps'}</th><th class="r">First done</th></tr>${r.front.map(f=>`<tr><td class="num">${esc(loadLabel(ex,f.p.w))}</td><td class="r num">${f.p.r}</td><td class="r">${fmtDate(f.date)}</td></tr>`).join('')}</table></details>`;}).join('')}</div>${rows.length>shown.length?`<button class="btn sm" style="margin-top:8px" data-act="bestsAll">Show all ${rows.length} lifts</button>`:''}<p class="small muted hastip" style="margin:8px 0 0" data-tip="For each load, the most reps you have done, where no heavier set did as many. Beating a line at 90% or more of your strongest set is a rep PR. The best estimate (compound lifts) is the highest estimated 1RM from any set, in the frame you log in. Warm-ups and drop sets are left out.">How to read this</p>`};
 }
 function sub(key,title,body,subTxt){return subsec('dash:sub:'+key,title,body,subTxt).replace('<details class="subsec"',`<details class="subsec" id="sub-${key}"`);}
@@ -7306,7 +7325,7 @@ function mountCharts(){
     /* The line plots the same estimate as the tile, the table and All-time
        bests, so their numbers agree; the headline says when the trend itself
        is read from loads and reps alone. */
-    const vals=exps.map(x=>r1(toD(e1Mode?x.best:x.topW)));const isPR=exps.map(x=>!!x.progress);
+    const vals=exps.map(x=>e1Mode?+fmtE(x.best):r1(toD(x.topW)));const isPR=exps.map(x=>!!x.progress);
     // A rep PR can land below an earlier best estimate, which read as a mistake
     // when every PR looked the same. New-best sessions are filled, rep PRs hollow.
     const prType=exps.map(x=>{if(!x.progress)return null;const p=I.prs.find(q=>q.exId===ui.dashEx&&q.date===x.date);return p?(p.type==='Weight PR'&&p.value!=null?'WeightE1':p.type):'Rep PR';});
@@ -7508,14 +7527,14 @@ function viewSettings(){
   <label class="field">Restore a backup file (replaces everything)<input type="file" accept=".json,application/json" id="importFile"></label>
   <button class="btn" data-act="pasteImport">Paste backup text instead</button>
   <div class="row"><button class="btn" data-act="undo" ${undoStack.length?'':'disabled'} data-tip="Deletes, resets, and imports from the last 7 days, kept after the app is closed. Edits are not undoable. Deleted sessions, cardio, and routines also wait in History for ${TRASH_DAYS} days.">Undo last delete or reset${undoStack.length?` (${undoStack.length} available)`:''}</button></div></div></div></details>
-  ${G('help','Help')}<div class="card stack"><div class="row"><button class="btn" data-act="guideOpen">Guide</button><button class="btn" data-act="fbOpen" data-cat="bug">Report a problem</button><button class="btn" data-act="fbOpen" data-cat="question">Ask a question</button><button class="btn" data-act="fbOpen" data-cat="idea">Suggest something</button>${acct.reader&&FB()?'<button class="btn" data-act="fbInbox">Reports inbox</button>':''}</div><p class="small muted" style="margin:0">Also in the menu at the top right of every tab.</p></div></div></details>
+  ${G('help','Help')}<div class="card stack"><div class="row"><button class="btn" data-act="guideOpen">Guide</button><button class="btn" data-act="fbOpen" data-cat="bug">Report a problem</button><button class="btn" data-act="fbOpen" data-cat="question">Ask a question</button><button class="btn" data-act="fbOpen" data-cat="idea">Suggest something</button>${acct.reader&&FB()?'<button class="btn" data-act="fbInbox">Reports inbox</button>':''}</div></div></div></details>
   ${G('demo','Demo data','demo')}${helpText('demo','8 weeks of generated sessions to preview Today and Stats. Everything demo is tagged and removed in one tap; your real logs are untouched.')}
   <div class="card row"><button class="btn" data-act="demoLoad">Load demo data</button><button class="btn" data-act="demoClear" ${hasDemo?'':'disabled'}>Clear demo data</button></div></div></details>
   ${G('reset','Reset')}<div class="card"><button class="btn danger" data-act="resetAll">Erase everything</button></div></div></details>
   
   ${G('diag','Diagnostics')}<div class="card stack"><p class="small muted" style="margin:0">Build ${APP_VERSION} · cloud ${cloud.on?esc(cloud.status):'off'} · ${logBuf.length} logged error${logBuf.length===1?'':'s'}</p>
   ${logBuf.length?`<ul class="clist">${logBuf.slice(-5).reverse().map(x=>`<li><span class="small"><b>${esc(x.a)}</b> ${esc(x.m)}</span><span class="small muted">${esc(x.t.slice(5,16).replace('T',' '))}</span></li>`).join('')}</ul>`:''}
-  <div class="row"><button class="btn sm" data-act="diagCopy">Copy diagnostics</button><button class="btn sm" data-act="diagClear" ${logBuf.length?'':'disabled'}>Clear log</button></div></div></div></details>${moreLine('settings')}`;
+  <div class="row"><button class="btn sm" data-act="diagCopy">Copy diagnostics</button><button class="btn sm" data-act="diagClear" ${logBuf.length?'':'disabled'}>Clear log</button></div>${window.IRONLOG_APP?'<p class="small" style="margin:8px 0 0"><a href="LICENSES.txt" target="_blank" rel="noopener">Open-source licenses</a></p>':''}</div></div></details>${moreLine('settings')}`;
 }
 
 function rirSettings(){
@@ -7524,7 +7543,7 @@ function rirSettings(){
     :!c.recent?`${c.n} calibration set${c.n===1?'':'s'}, none in the last ${CAL_WEEKS} weeks.`
     :`${c.recent} recent calibration set${c.recent===1?'':'s'}: median miss ${c.raw>0?'+':''}${r1(c.raw)} reps (${c.raw>0?'you stop with more left than you call':c.raw<0?'closer to failure than you call':'accurate'}). Correction applied: ${c.bias>0?'+':''}${c.bias}.`;
   // What RIR is stays on screen here (V, r27): this is where it is decided whether to use it.
-  return `<p class="small" style="margin:0"><b>RIR, reps in reserve:</b> how many more reps you could have done when you stopped a set. 0 means none left; 2 means two more. Sets at RIR 3 or less count as hard sets.</p>
+  return `<p class="small" style="margin:0"><b>RIR, reps in reserve:</b> reps you could still have done. RIR 3 or less is a hard set.</p>
   <label class="field">Reps in reserve<select data-bind="rirMode">
     <option value="on" ${s.rirMode==='on'?'selected':''}>On: log RIR and use it as logged</option>
     <option value="cal" ${s.rirMode==='cal'?'selected':''}>On, corrected by my calibration sets</option>
@@ -7541,7 +7560,7 @@ function rirSettings(){
 function layoutSettings(){
   const h=state.settings.hidden;
   const dflt=DEFAULT_HIDDEN.length===h.length&&DEFAULT_HIDDEN.every(k=>h.includes(k));
-  return `<p class="small muted" style="margin:0">Tap to show or hide. Nothing stops being tracked, and a hidden section comes back where it was. ${tipi('Each time Ironlog opens, every section starts folded except Sessions on History. Drag a section by its ⠿ to move it; each tab keeps its order.','About layout')}</p>
+  return `<p class="small muted" style="margin:0">Tap to show or hide. ${tipi('Hiding a section stops nothing being tracked, and it comes back where it was. Each time Ironlog opens, every section starts folded except Sessions on History. Drag a section by its ⠿ to move it; each tab keeps its order.','About layout')}</p>
   <div class="row"><button class="btn sm ${dflt?'noted':''}" data-act="layoutDefault" aria-pressed="${dflt}" data-tip="The layout a new install starts with: At a glance, Coach, and Body hidden on Today, Schedule and Weekly volume hidden on Plan, and the default order.">Default layout</button><button class="btn sm" data-act="layoutAll" ${h.length?'':'disabled'}>Show everything</button><button class="btn sm" data-act="layoutReset" data-tip="Puts the sections on every tab back in their default order. Shown or hidden stays as it is.">Reset section order</button></div>
   ${HIDE_TABS.map(([t,l])=>`<div class="hide-grp"><p class="small"><b>${l}</b></p><div class="chips">${HIDEABLE.filter(x=>x[0]===t).map(([,k,lab])=>{const on=!h.includes(t+':'+k);return `<button class="chip ${on?'on':''}" data-act="hideToggle" data-k="${t}:${k}" aria-pressed="${on}">${esc(lab)}</button>`;}).join('')}</div></div>`).join('')}`;
 }
@@ -9483,7 +9502,7 @@ m.err=`Could not read that. Try the pattern 225x5, 5, 4 ${rirScale()==='rpe'?'rp
       if(targets)lines.push(`${beaten} of ${targets} exercise target${targets===1?'':'s'} beaten`);
       if(heavier.length)lines.push(`Heaviest yet: ${andList(heavier,4)}`);
       // The PR moment in the recap (item 28): its own gold block, each with what it beat.
-      const prList=prs.map(pr=>{const e=EX(pr.exId);if(pr.type==='Weight PR')return {name:e.name,what:`Weight PR, ${setShort(e,pr.w,pr.r)}${pr.value!=null&&isCompound(e)?`, best estimate ${fmtW(pr.value)} ${U()}${loadNote(e)}`:''}`,was:e.assist?'less help than ever':isFinite(pr.prevW)?`heaviest before ${e.bw?loadLabel(e,pr.prevW):fmtW(pr.prevW)+' '+U()}`:''};const ps=pr.type==='e1RM'&&!isCompound(e)?prSet(pr.exId,pr.date):null;if(ps)return {name:e.name,what:`PR, ${setShort(e,ps.w,ps.r)}`,was:'your best for that number of reps'};return pr.type==='e1RM'?{name:e.name,what:`Best estimate ${fmtW(pr.value)} ${U()}${loadNote(e)}`,was:pr.prev!=null?`was ${fmtW(pr.prev)}`:''}:{name:e.name,what:`${e.timed?'Time':'Rep'} PR, ${setShort(e,pr.w,pr.r)}`,was:pr.prevR?`was ${pr.prevR} ${e.timed?'s':'reps'} at this load or heavier`:'heaviest yet'};});
+      const prList=prs.map(pr=>{const e=EX(pr.exId);if(pr.type==='Weight PR')return {name:e.name,what:`Weight PR, ${setShort(e,pr.w,pr.r)}${pr.value!=null&&isCompound(e)?`, best estimate ${fmtE(pr.value)} ${U()}${loadNote(e)}`:''}`,was:e.assist?'less help than ever':isFinite(pr.prevW)?`heaviest before ${e.bw?loadLabel(e,pr.prevW):fmtW(pr.prevW)+' '+U()}`:''};const ps=pr.type==='e1RM'&&!isCompound(e)?prSet(pr.exId,pr.date):null;if(ps)return {name:e.name,what:`PR, ${setShort(e,ps.w,ps.r)}`,was:'your best for that number of reps'};return pr.type==='e1RM'?{name:e.name,what:`Best estimate ${fmtE(pr.value)} ${U()}${loadNote(e)}`,was:pr.prev!=null?`was ${fmtE(pr.prev)}`:''}:{name:e.name,what:`${e.timed?'Time':'Rep'} PR, ${setShort(e,pr.w,pr.r)}`,was:pr.prevR?`was ${pr.prevR} ${e.timed?'s':'reps'} at this load or heavier`:'heaviest yet'};});
       if(cardio.length)lines.push(`Cardio and mobility: ${cardio.reduce((a,c)=>a+c.min,0)} min`);
       if(demoGone)lines.push('Demo data removed, so your stats show only your own sessions');
       openModal({kind:'recap',title:'Session saved',lines,prs:prList,note:prs.length?'':(state.sessions.filter(x=>!x.demo).length<=1?'Your first session: these are your starting numbers.':'No PRs this time.'),upd,sid:sess.id});
