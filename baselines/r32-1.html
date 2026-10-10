@@ -435,7 +435,6 @@ body.blkdrag .block .bh h3{font-size:17px;white-space:nowrap;overflow:hidden;tex
 .aiout{white-space:pre-wrap;margin-top:10px;min-height:1.4em;line-height:1.55}
 .lnote{margin:6px 0 0;padding:6px 9px;border:1px dashed var(--line);border-radius:var(--r-sm);color:var(--muted)}
 .linkbtn{background:none;border:0;padding:4px 2px;margin:0;color:var(--ink);font:inherit;font-weight:650;text-decoration:underline;text-underline-offset:2px;cursor:pointer}
-.linkbtn.alt-quiet{display:block;margin:12px auto 0;min-height:44px;padding:0 12px;color:var(--muted);font-weight:600;text-decoration-color:var(--line)}
 .flag{color:var(--yellow);font-weight:650}
 .tp{display:block;margin-top:3px;color:var(--muted)}
 .tp:empty{display:none}
@@ -484,77 +483,16 @@ body.obmode main,body.obmode #view{padding-bottom:24px}
 .ob-card .btn+.btn{margin-top:8px}
 .ob-skip{align-self:center;min-height:44px;color:var(--muted)}
 .ob[data-step="acct"] .ob-top{padding-bottom:10px}
+.ob-feats{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.ob-feats li{display:flex;flex-direction:column;align-items:center;gap:8px;text-align:center;padding:12px 4px;border-radius:var(--r-md);background:var(--surface);border:1px solid var(--card-b)}
+.ob-feats .fi{width:40px;height:40px;border-radius:12px;background:var(--volt-soft);color:var(--volt-line);display:grid;place-items:center}
+.ob-feats svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.ob-feats b{font-size:13.5px;font-weight:700;line-height:1.25}
 .ob-why{font-size:13.5px;color:var(--muted);line-height:1.4;margin:-6px 0 14px}
-/* The first page's tour (r33, V): what the app does, one feature per
-   slide, each shown as a small piece of the screen it describes. Swipe,
-   or tap a pip; it moves on by itself until touched. Base styles are the
-   finished picture, so with reduced motion nothing is missing. */
-.ob-tour{margin:0 -16px}
-.ob-track{display:flex;gap:10px;overflow-x:auto;overscroll-behavior-x:contain;scroll-snap-type:x mandatory;scroll-padding-inline:16px;padding:0 16px;scrollbar-width:none;-webkit-overflow-scrolling:touch}
-.ob-track::-webkit-scrollbar{display:none}
-.ob-slide{flex:0 0 calc(100% - 44px);max-width:440px;scroll-snap-align:start;scroll-snap-stop:always;background:var(--surface);border:1px solid var(--card-b);border-radius:var(--r-lg);padding:14px 14px 16px;display:flex;flex-direction:column}
-.ob-slide:last-child{margin-right:16px;scroll-snap-align:end}
-.ob-slide h2{font:700 24px/1.05 var(--display);letter-spacing:.01em;margin:14px 2px 0}
-.ob-slide p{font-size:14px;line-height:1.4;color:var(--muted);margin:6px 2px 0}
-.ob-pips{display:flex;justify-content:center;gap:0;margin:-1px 0 -7px}
-/* 44 px targets; the negative margins keep the row as tight as the dots. */
-.ob-pips button{width:44px;height:44px;border:0;background:none;padding:0;display:grid;place-items:center;cursor:pointer}
-.ob-pips button::before{content:"";width:7px;height:7px;border-radius:4px;background:var(--line);transition:width .25s,background .25s}
-.ob-pips button[aria-current="true"]::before{width:20px;background:var(--volt)}
-.ob-pips button:focus-visible{outline:2px solid var(--ink);outline-offset:-4px;border-radius:8px}
-.obv{min-height:150px;border-radius:var(--r-md);background:var(--bg);padding:12px;overflow:hidden;position:relative;font-size:13px;color:var(--ink)}
-.obv b{font-weight:700}
-.obv .mu{color:var(--muted)}
-/* Log */
-.obv-row{display:grid;grid-template-columns:18px 1fr 1fr 30px;align-items:center;gap:8px;height:30px;margin-top:5px}
-.obv-row span{background:var(--field);border:1px solid var(--field-b);border-radius:8px;height:26px;display:grid;place-items:center;font-variant-numeric:tabular-nums;font-weight:600}
-.obv-row span.g{color:var(--muted);font-weight:500}
-/* The third set ticks itself in the picture: its grey numbers turn into logged ones. */
-.obv-row span.g.fill{color:var(--ink);font-weight:600}
-.obv-row i{width:26px;height:26px;border-radius:50%;border:2px solid var(--line);display:grid;place-items:center}
-.obv-row i.on{background:var(--volt);border-color:var(--volt)}
-.obv-row i.on::after{content:"";width:9px;height:5px;border:2px solid var(--on-volt);border-top:0;border-right:0;transform:translateY(-1px) rotate(-45deg)}
-.ob-slide.on .obv-row i.tick{animation:tvTick .45s 1s both}
-.ob-slide.on .obv-row i.tick::after{animation:tvShow .2s 1.15s both}
-@keyframes tvShow{from{opacity:0}}
-.ob-slide.on .obv-row span.fill{animation:tvFill .3s .8s both}
-@keyframes tvTick{0%{background:transparent;border-color:var(--line)}60%{transform:scale(1.18)}100%{transform:none}}
-@keyframes tvFill{from{color:var(--muted);font-weight:500}}
-/* Plan */
-.obv-week{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
-.obv-week div{text-align:center;font-size:11px;color:var(--muted);line-height:1.2}
-.obv-week div b{display:block;height:20px;border-radius:8px;margin:0 0 3px;background:var(--surface-3)}
-.obv-week div.t b{background:var(--volt-soft);box-shadow:inset 0 0 0 1.5px var(--volt-line)}
-.obv-week div.t{color:var(--ink);font-weight:600}
-.obv-plan{margin-top:8px;display:flex;flex-direction:column;gap:4px}
-.obv-plan div{display:flex;justify-content:space-between;background:var(--surface);border-radius:8px;padding:4px 9px;line-height:1.35}
-.ob-slide.on .obv-plan div{animation:tvIn .35s both}
-.ob-slide.on .obv-plan div:nth-child(2){animation-delay:.12s}.ob-slide.on .obv-plan div:nth-child(3){animation-delay:.24s}
-@keyframes tvIn{from{opacity:0;transform:translateY(6px)}}
-/* Progress and volume */
-.obv svg{display:block;width:100%;overflow:visible}
-.obv .ln{fill:none;stroke:var(--volt-line);stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round}
-.obv .pt{fill:var(--surface);stroke:var(--volt-line);stroke-width:2}
-.obv .pr{fill:var(--gold);stroke:none}
-.obv .gl{stroke:var(--line);stroke-width:1}
-.obv .tg{fill:none;stroke:var(--muted);stroke-width:1.2;stroke-dasharray:3 3}
-.obv .ar{fill:var(--volt-soft);stroke:var(--volt-line);stroke-width:2;stroke-linejoin:round}
-.obv .lb{font-size:10px;font-weight:600;fill:var(--muted)}
-.obv-chip{position:absolute;right:12px;top:10px;background:var(--gold);color:var(--on-gold);font-weight:700;font-size:11px;border-radius:6px;padding:2px 6px}
-.ob-slide.on .obv .ln{stroke-dasharray:400;animation:tvDraw 1.1s .2s both}
-.ob-slide.on .obv .pr,.ob-slide.on .obv-chip{animation:tvPop .35s 1.25s both}
-.ob-slide.on .obv .ar{transform-origin:50% 50%;animation:tvGrow .7s .2s both}
-@keyframes tvDraw{from{stroke-dashoffset:400}to{stroke-dashoffset:0}}
-@keyframes tvPop{from{opacity:0;transform:scale(.6)}}
-@keyframes tvGrow{from{transform:scale(.2);opacity:0}}
-/* History */
-.obv-cal{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-top:6px}
-.obv-cal i{height:17px;border-radius:5px;background:var(--surface-3)}
-.obv-cal i.d{background:var(--volt)}
-.obv-cal i.n{background:transparent;box-shadow:inset 0 0 0 1.5px var(--volt-line)}
-.obv-cal i.x{visibility:hidden}
-.ob-slide.on .obv-cal i.d{animation:tvIn .3s both;animation-delay:calc(var(--k) * 30ms)}
 .ob-later{align-self:center;min-height:44px;padding:0 12px;color:var(--ink);font-weight:600;text-decoration:underline;text-underline-offset:3px;text-decoration-color:var(--muted)}
+.ob-dots{display:flex;justify-content:center;gap:6px;margin-top:auto;padding-top:6px}
+.ob-dots i{width:7px;height:7px;border-radius:50%;background:var(--line)}
+.ob-dots i.on{background:var(--volt)}
 .ob-back{align-self:flex-start;min-height:44px;color:var(--muted);text-decoration:none}
 .ob-h{font:700 30px/1.05 var(--display);letter-spacing:.01em;margin:4px 0 0}
 .ob-units{display:flex;gap:6px}
@@ -708,16 +646,6 @@ table.t td.r,table.t th.r{text-align:right}
 .rirstrip button{flex:1 1 0;min-width:0;height:44px;border-radius:50%;border:0;background:var(--surface);color:var(--ink);font:750 17px var(--font);font-variant-numeric:tabular-nums;cursor:pointer;padding:0}
 .rirstrip button.on{background:var(--volt);color:var(--on-volt);border-color:transparent}
 .rirstrip .rs-x{flex:0 0 40px;font:700 14px var(--font);color:var(--muted)}
-/* Wider than the block's padding by 10 px a side, so each button is 40 px or more at 320 px. */
-.rirstrip.two{border-radius:18px;flex-wrap:wrap;margin:6px -10px 2px;padding:6px 6px 8px;row-gap:4px}
-.rirstrip.two .rs-l{flex:1 1 auto;padding-left:4px}
-.rirstrip.two .rs-x{flex:0 0 44px;height:44px}
-/* Twelve columns: a whole number spans two, a half starts one column in. */
-.rirstrip .rs-g{order:3;flex:1 1 100%;display:grid;grid-template-columns:repeat(12,minmax(0,1fr));column-gap:4px;row-gap:6px}
-.rirstrip .rs-g button{grid-column:span 2;border-radius:12px;width:auto;min-width:0}
-.rirstrip .rs-g button:nth-child(7){grid-column:2 / span 2}
-.rirstrip .rs-g button:nth-child(n+7){font-size:15px;background:transparent;box-shadow:inset 0 0 0 1px var(--line)}
-.rirstrip .rs-g button.on{background:var(--volt);box-shadow:none}
 @media (prefers-reduced-motion:reduce){.rirstrip{animation:none}}
 .hweek{display:flex;justify-content:space-between;align-items:baseline;gap:10px;margin:16px 0 2px;padding:0 0 6px;border-bottom:2px solid var(--volt-line)}
 .hweek:first-child{margin-top:4px}
@@ -1364,19 +1292,19 @@ const LIB=[
 ['wallSit','Wall Sit','quads','','bodyweight','brt','Timed hold with thighs parallel: log seconds.'],
 ['farmerHold','Farmer Carry or Hold','forearms','traps upperBack','dumbbell','rt','Timed: log seconds and the load in each hand.'],
 ];
-/* Most common (r33, V: 53 marked Common was too many to help). The lifts
-   in the top 25 of logged sets, overall or for men or women, in StrengthLog's
-   data from over 700,000 users (2025): measured, not picked. Shown as a Most
-   common tag, first in the exercise picker, and a filter in the library.
-   Nothing stored: it follows the library id, and an exercise someone marks
-   as less common is not called most common. */
-const COMMON=new Set(['bench','backSquat','deadlift','latPulldown','ohp','bbRow','dbLateral','legExt','legPress','bbCurl','pressdown','incDb','dbCurl','pullup','cableRow','ropePressdown','lyingCurl','dbRow','seatedDbPress','rdl','seatedCurl','hammer','cableFly','dbBench','facePull','cgBench','hipThrust','bss','sldl','abductor']);
+/* The staples (V, 2026-10-04: marking the common lifts helps more than
+   marking only the less common ones). A judgment, not a measurement: lifts
+   found in most gyms and most mainstream programs. Shown as a Common tag, put
+   first in the exercise picker, and a filter in the library. Nothing stored:
+   it follows the library id, and an exercise someone marks as less common is
+   not called common. */
+const COMMON=new Set(['bench','incBench','dbBench','incDb','machPress','pecDeck','cableFly','dips','pushup','pullup','chinup','assistPullup','latPulldown','cableRow','bbRow','dbRow','machRow','ohp','seatedDbPress','machShoulder','dbLateral','cableLateral','facePull','reversePecDeck','bbCurl','dbCurl','hammer','preacher','pressdown','ropePressdown','skull','ohCableExt','backSquat','hackSquat','legPress','legExt','lyingCurl','seatedCurl','rdl','deadlift','hipThrust','bss','walkingLunge','goblet','standCalf','seatedCalf','cableCrunch','hangingLegRaise','plank','crunch','dbShrug','adductor','abductor']);
 const isCommon=e=>!!e&&!e.custom&&!e.rare&&COMMON.has(e.id);
 const JUMP_TIP='When every set reaches the top of the rep range, the load goes up by about this share, in whole load steps and at least one step. Blank: 2.5% on compound lifts, 5% on isolation lifts, a convention. 0: one step every time. Until then the target is to beat last time\'s total reps at the same load. When the step is large for the load, a few more reps come first, so the new load starts inside the range.';
 const RIR_TGT_TIP='Target RIR is 1 unless you change it, a convention: muscle growth improves as sets end closer to failure (Robinson 2024), but going all the way to failure grew muscle no more than stopping 1 to 2 reps short (Refalo 2024) and costs more fatigue. Some lifts in the ready-made routines use 0 or 2.';
-const COMMON_TIP='Most common: the lifts in the top 25 by sets logged, overall, for men, or for women, among over 700,000 StrengthLog users (2025). Less common: useful lifts many gyms or programs skip, a judgment.';
-// skip: the filter in use, so a list filtered to Most common does not say it on every row.
-const exTags=(e,skip)=>`${isCommon(e)&&skip!=='common'?'<span class="tag common">Most common</span>':''}${e.rare&&skip!=='rare'?'<span class="tag rare">Less common</span>':''}`;
+const COMMON_TIP='Common: staples found in most gyms and most programs. A judgment, not a measurement. Less common: useful lifts many gyms or programs skip.';
+// skip: the filter in use, so a list filtered to Common does not say Common on every row.
+const exTags=(e,skip)=>`${isCommon(e)&&skip!=='common'?'<span class="tag common">Common</span>':''}${e.rare&&skip!=='rare'?'<span class="tag rare">Less common</span>':''}`;
 function libExercises(){
   return LIB.map(([id,name,primary,sec,equip,flags,note])=>{const o={id,name,primary,secondary:sec?sec.split(' '):[],equip,bw:flags.includes('b'),rare:flags.includes('r'),perSide:flags.includes('s'),note,custom:false,archived:false};if(flags.includes('t'))o.timed=true;if(flags.includes('a'))o.assist=true;return o;});
 }
@@ -1529,7 +1457,7 @@ if(ENV==='preview')document.documentElement.dataset.env='preview';
 const HAD_LOG=(()=>{try{return localStorage.getItem(KEY)!=null;}catch(e){return false;}})();
 /* Shown in Settings, in diagnostics and in backups, so a bug report can be
    matched to the exact build. */
-const APP_VERSION='2026.10.09-r33';
+const APP_VERSION='2026.10.07-r32.1';
 /* The logo (r25): an upright dumbbell that is also the I of Ironlog. Same
    numbers as scripts/icons.py, which draws the app icons. */
 const MARK_SVG='<svg class="mark" viewBox="-242 -378 484 756" aria-hidden="true" focusable="false"><rect class="mk-h" x="-30" y="-300" width="60" height="600" rx="14"/><rect class="mk-h" x="-80" y="-192" width="160" height="32" rx="12"/><rect class="mk-h" x="-80" y="160" width="160" height="32" rx="12"/><rect class="mk-p" x="-240" y="-376" width="480" height="92" rx="30"/><rect class="mk-p" x="-190" y="-270" width="380" height="66" rx="26"/><rect class="mk-p" x="-190" y="204" width="380" height="66" rx="26"/><rect class="mk-p" x="-240" y="284" width="480" height="92" rx="30"/></svg>';
@@ -1728,8 +1656,6 @@ function normalize(s){
   // records keep their fingerprints and sync does not see them as edited.
   if(!['blue','volt','ember'].includes(out.settings.accent))delete out.settings.accent;
   if(out.settings.rirAsk!==true)delete out.settings.rirAsk;
-  // r33 (item 206): effort in half points or RPE; absent is whole RIR, so older saves hash as before.
-  if(out.settings.rirScale!=='half'&&out.settings.rirScale!=='rpe')delete out.settings.rirScale;
   // r25: suggested loads show grey until typed; 'fill' puts them in the rows
   // as before. Unset means grey (V's choice), so older saves change nothing
   // stored.
@@ -1749,8 +1675,6 @@ function normalize(s){
   out.settings.wakeLock=out.settings.wakeLock===true;
   // Small change plates (r29, item 98): absent unless on, so saves without it hash as before.
   if(out.settings.smallPlates!==true)delete out.settings.smallPlates;
-  // Your gym (r33, item 207): absent unless set; rebuilt in one key order so a save hashes the same every time.
-  {const g=gymClean(out.settings.gym);if(g)out.settings.gym=g;else delete out.settings.gym;}
   // RIR: on (as logged), cal (on, shifted by your calibration sets), off.
   out.settings.rirMode=['on','off','cal'].includes(out.settings.rirMode)?out.settings.rirMode:'on';
   out.settings.hidden=Array.isArray(out.settings.hidden)?[...new Set(out.settings.hidden.filter(k=>typeof k==='string'&&HIDEABLE_KEYS.has(k)))]:[];
@@ -2228,10 +2152,7 @@ function mergeChunk(id,base,local,remote,remoteWins,stat){
     for(const k of CORE_ARR)out[k]=merge3List(ba?ba[k]||{}:null,local[k],remote[k],remoteWins,stat);
     for(const k of CORE_FIELDS){const v=merge3Val(base?bf[k]:'?',local[k],remote[k],remoteWins,stat);if(v===undefined)delete out[k];else out[k]=v;}
     const ls=local.settings||{},rs=remote.settings||{};out.settings={};
-    /* A setting absent from the base was absent, not unknown (r33): a key one
-       side added (Your gym, an accent) or brought back by Undo is a change on
-       that side, not a conflict the other side's absence could win. */
-    for(const k of new Set([...Object.keys(ls),...Object.keys(rs)])){const v=merge3Val(base?(k in bs?bs[k]:Hx(undefined)):'?',ls[k],rs[k],remoteWins,stat);if(v!==undefined)out.settings[k]=v;}
+    for(const k of new Set([...Object.keys(ls),...Object.keys(rs)])){const v=merge3Val(base?bs[k]:'?',ls[k],rs[k],remoteWins,stat);if(v!==undefined)out.settings[k]=v;}
     return out;
   }
   if(id==='draft'){
@@ -2451,8 +2372,7 @@ async function cloudInit(){
   finally{
     cloudStarting=false;
     cloudChecked=true;
-    // The first page waits for this check (a splash until then): after a sign-out too (r33).
-    if(ui.tab==='today'&&!ui.modal&&(obGate()||(!state.settings.onboarded&&!state.draft&&!state.sessions.some(s=>!s.demo))))rerenderKeepScroll();
+    if(!state.settings.onboarded&&ui.tab==='today'&&!state.draft&&!ui.modal&&!state.sessions.some(s=>!s.demo))rerenderKeepScroll();
   }
 }
 /* ---------- account (standalone app) ----------
@@ -2532,7 +2452,7 @@ function guideSheet(m){
    <p><b>Grey reps</b> are last time's reps for that set, at today's load, and one set under the bottom of the range among the others shows the bottom of the range. When today's target is a new load, last time's reps were at the old load, so they are the reps of the set above instead, or the bottom of the range. On a lighter day or in a deload, they are the bottom of the range.</p>
    <p><b>Grey loads</b> are the set above, or today's suggested load. To have loads typed in for you: Settings, Rest timer and logging, Fill in suggested loads.</p>
    <p><b>Auto-mark</b> (Settings): a set ticks itself when you leave its reps field.</p>
-   <p><b>RIR</b>, reps in reserve: how many more reps you could have done. Tap a set's RIR box for 0 to 5 (Settings can switch it to half reps or RPE; RPE 8 is RIR 2). ${off?'RIR is off in Settings, so every working set counts as hard.':'It is optional: a blank reads as your usual RIR on that lift once you have rated 3 of its sets in 12 weeks, and until then as hard.'}</p>
+   <p><b>RIR</b>, reps in reserve: how many more reps you could have done. Tap a set's RIR box for 0 to 5. ${off?'RIR is off in Settings, so every working set counts as hard.':'It is optional: a blank reads as your usual RIR on that lift once you have rated 3 of its sets in 12 weeks, and until then as hard.'}</p>
    <p><b>RIR check</b>: once you have 3 sessions, one machine or cable exercise may ask for one set to failure, to see how far your RIR calls are off. Not now, or finishing without it, waits 3 weeks.</p>
    <p><b>W and D</b>: a warm-up (kept, never analysed) and a drop set (counts as work and volume, never as a PR or target). Add either from the exercise's ⋯ menu.</p>
    <p><b>+ Set and − Set</b>: − Set takes an empty row first and asks before a filled one. Removing anything you entered asks first, and Undo follows.</p>
@@ -2687,7 +2607,7 @@ async function waitTry(manual){
   const sheet=()=>{const m=ui.modal;return m&&m.kind==='account'&&m.mode==='wait'?m:null;};
   if(manual&&sheet()){m0.busy=true;m0.err='';renderModal();}
   try{
-    acct.user=await A.signIn(acctWait.email,acctWait.pw);waitStop();obOutClear();
+    acct.user=await A.signIn(acctWait.email,acctWait.pw);waitStop();
     try{localStorage.removeItem(ACCT_LATER);}catch(e){/* nothing to clear */}
     if(sheet())closeModal();
     toast('Email confirmed. Signed in and syncing.');await cloudInit();acctRerender();
@@ -2945,7 +2865,7 @@ const isHard=(s,ex)=>{if(!isWork(s))return false;const q=rirEst(s,ex);return q==
 const setCredit=s=>s.drop?0.5:1;
 /* One set as text, for history, tables and the coach: 225×5, or 45 s for a timed hold. */
 function setShort(ex,w,r){return ex.timed?`${loadLabel(ex,+w||0)} for ${r}s`:`${loadLabel(ex,+w||0)}×${r}`;}
-function setStr(ex,x){return `${x.warm?'(W) ':x.drop?'(D) ':''}${setShort(ex,x.w,x.r)}${!ex.timed&&x.rir!=null&&x.rir!==''?(rirScale()==='rpe'?' @RPE '+effShow(x.rir):' @'+effShow(x.rir)):''}${x.cal?' (RIR check)':''}`;}
+function setStr(ex,x){return `${x.warm?'(W) ':x.drop?'(D) ':''}${setShort(ex,x.w,x.r)}${!ex.timed&&x.rir!=null&&x.rir!==''?' @'+x.rir:''}${x.cal?' (RIR check)':''}`;}
 /* Share of bodyweight an exercise actually moves. Only push-ups are measured
    (force plates, Ebben 2011: 64% on the floor, about 70% feet on a 30 cm
    box). A deficit adds depth, not load, so it stays at 64%. Pull-ups and dips
@@ -3300,8 +3220,7 @@ function IDX(){
        then to harder reps (tempo, pauses, one side), which the load-based PR
        tests cannot see. Such a lift is marked capped rather than stalled. */
     const exI=EX(id);const lastReal=real.length?real[real.length-1]:null;
-    // r33: the top of the rack in Your gym is a cap too (review: a lift at the heaviest dumbbell read as stalled).
-    const plC=planFor(id);const capL=lastReal?capOf(exI,plC,lastReal.topW):null;const capped=!!lastReal&&atCapOf(exI,plC,lastReal.topW,capL);
+    const capped=exI.maxLoad!=null&&!!lastReal&&lastReal.topW>=exI.maxLoad-1e-6;
     /* RIR in the trend only where it is logged consistently (r30): on at
        least 80% of the lift's working sets in its last 8 sessions in range, a
        convention. Rated on some sets and blank on others, a 255 x 5 called
@@ -3767,21 +3686,25 @@ const offSession=x=>tagged(x)||!!(x&&x.auto);
    day), and the words follow. Loads already on the step are untouched, so
    a stack with odd pins keeps its whole steps. */
 function snapUnit(ex,plan,res,down){
-  if(!res||res.w==null||res.top==null||ex.timed)return res;if(gymRack(ex,plan))return rackSnap(ex,plan,res);const st=toD(incOf(ex,plan));if(!(st>0))return res;
+  if(!res||res.w==null||res.top==null||ex.timed)return res;const st=toD(incOf(ex,plan));if(!(st>0))return res;
   /* Off the step and not a number anyone types (220.462 from 100 kg): a
      custom step (185 lb on a 10 lb step) or microplates (101.25) are left as
      they are. */
   const off=v=>Math.abs(toD(v)/st-Math.round(toD(v)/st))>0.02;const typed=v=>Math.abs(toD(v)/0.05-Math.round(toD(v)/0.05))<0.1;
   if(!off(res.top)||!off(res.w)||typed(res.top))return res;
   const nw=fromD((down?Math.floor(toD(res.w)/st+1e-9):Math.round(toD(res.w)/st))*st);if(Math.abs(nw-res.w)<1e-9)return res;
-  return swapW(ex,res,nw);
+  const a=loadLabel(ex,res.w),b=loadLabel(ex,nw);const fix=t=>t?t.split(a).join(b):t;
+  const out={...res,w:nw,target:fix(res.target)};
+  out.text=res.last&&res.text.startsWith(res.last)?res.last+fix(res.text.slice(res.last.length)):fix(res.text);
+  if(res.tgt&&res.tgt.w!=null)out.tgt={...res.tgt,w:nw};
+  return out;
 }
 function suggest(exId,plan,opts){
   opts=opts||{};const ex=EX(exId);
   if(!(opts.deload||opts.light)||ex.timed)return snapUnit(ex,plan,suggestCore(exId,plan,opts));
   const base=suggestCore(exId,plan,{...opts,deload:false,light:false});
   /* A close variation's first session on a Lighter day or deload (r32.1): 90% of the start, like any lighter day. */
-  if(base.kin&&base.w>0){const ks=!gymRack(ex,plan)&&rackKind(ex)&&rackKind(EX(base.kin))?rackStep(EX(base.kin)):null;const lw=ks?fromD(Math.floor(toD(base.w*0.9)/toD(ks)+1e-9)*toD(ks)):lighterLoad(ex,plan,base.w,base.w*0.9);
+  if(base.kin&&base.w>0){const ks=rackKind(ex)&&rackKind(EX(base.kin))?rackStep(EX(base.kin)):null;const lw=ks?fromD(Math.floor(toD(base.w*0.9)/toD(ks)+1e-9)*toD(ks)):lighterLoad(ex,plan,base.w,base.w*0.9);
     return {...base,w:lw,lastR:Array(Math.max(1,+plan.sets||1)).fill(+plan.repMin),text:`First time, ${opts.deload?'deload':'Lighter day'}. About ${loadLabel(ex,lw)} ${U()}${loadNote(ex)} for ${repSpan(plan.repMin,plan.repMax,'-')} with 3 or more reps in reserve, from your ${EX(base.kin).name}. Half the usual sets, nothing to beat.`};}
   if(base.inj||!base.last||base.w==null)return base;
   const T=opts.before&&isDate(opts.before)?opts.before:today();
@@ -3844,14 +3767,14 @@ function suggestCore(exId,plan,opts){
   }
   const last=exps[exps.length-1],ws=last.pts;const stx=all.length<every.length?statsUpTo(exId,all):(IDX().exStats[exId]||{});
   const top=workLoad(ws,+plan.repMin);
-  const step=incOf(ex,plan,top);
+  const step=incOf(ex,plan);
   /* Ab work on bodyweight with no load ever added (a hanging leg raise, a
      crunch) progresses by reps, then harder reps (r32, from the third
      review: a leg raise at 15 reps was told "BW+2.5 for 10+"). Once a load
      has been logged, it progresses like any loaded lift. */
   const noAdd=!!ex.bw&&!ex.assist&&['abs','obliques'].includes(ex.primary)&&!all.some(x=>x.pts.some(p=>p.w>1e-6));
   // Heaviest available load (top of the stack or rack), if set.
-  const cap=capOf(ex,plan,top);const atCap=atCapOf(ex,plan,top,cap);const capW=w=>cap!=null?Math.min(w,cap):w;
+  const cap=ex.maxLoad!=null?ex.maxLoad:null;const atCap=cap!=null&&top>=cap-1e-6;const capW=w=>cap!=null?Math.min(w,cap):w;
   // Only the sets at the top load decide progression. Ramp-up sets at lighter
   // loads used to block every load increase unless they also reached repMax.
   const topPts=ws.filter(p=>Math.abs(p.w-top)<1e-6);
@@ -3902,7 +3825,7 @@ function suggestCore(exId,plan,opts){
     const bwNow=bwLoad(ex,T);const topLoad=top+bwNow;
     if(est!=null&&topLoad>0){
       const want=Math.min(e1inv(est,Math.round((+plan.repMin+ +plan.repMax)/2)+Math.min(tgtRir,E1_MAX_RIR)),topLoad*jumpCap(ex,topLoad,early))-bwNow;
-      const k=Math.floor((want-top)/step+1e-6);const one=progStep(ex,plan,topLoad,top);
+      const k=Math.floor((want-top)/step+1e-6);const one=progStep(ex,plan,topLoad);
       if(k>=1&&k*step>one+1e-6){
         const nw=ex.assist&&top<0?Math.min(0,top+k*step):capW(top+k*step);const minR=Math.min(...topPts.map(p=>p.r));
         return {top,w:nw,text:`${lastS} Every set at ${lbl(top)} reached ${minR}+ reps, well past your ${rangeWords(plan)}. Try ${lbl(nw)} for ${repSpan(plan.repMin,plan.repMax,'-')} reps.`,lastR,basis,
@@ -3976,7 +3899,7 @@ function suggestCore(exId,plan,opts){
       easier:maxed?`Past ${ext} reps at ${atCap?'the heaviest load':'this load'}: slow the lowering to 3 to 4 seconds with a pause at the stretch, go one side at a time, or add a drop set.`:null,capped:atCap};
   }
   if(topPts.every(p=>p.r>=plan.repMax)){
-    const nw=capW(top+progStep(ex,plan,top+bwLoad(ex,T),top));
+    const nw=capW(top+progStep(ex,plan,top+bwLoad(ex,T)));
     if(ex.assist){const aw=top<0?Math.min(0,nw):nw;return {top,w:aw,text:`${lastS} Every set at ${lbl(top)} hit ${plan.repMax}: ${aw===0?'try it without help':`take ${fmtW(aw-top)} ${U()} of help off`} and aim for ${plan.repMin}+ reps.`,lastR,basis,
       last:lastS,target:`${lbl(aw)} for ${plan.repMin}+ reps in every set`,tgt:{kind:'load',w:aw,repMin:+plan.repMin,prevBest},easier:null};}
     /* A step that is large for the load (5 lb on a 35 lb dumbbell is 14%)
@@ -4071,10 +3994,8 @@ function kinStart(ex,plan,T){
   if(est==null)return null;
   const mid=Math.round((+plan.repMin+ +plan.repMax)/2);const q=Math.min((+plan.rir||0)+1,E1_MAX_RIR);
   const want=e1inv(est*(isCompound(ex)?0.8:0.9),mid+q);
-  const L=gymRack(ex,plan);let w;
-  if(L){const c=L.filter(x=>x<=want+1e-6);if(!c.length)return null;w=c[c.length-1];}
-  else{const rs=rackKind(ex)&&rackKind(k.ex)?rackStep(k.ex):null;const st=toD(rs||incOf(ex,plan));if(!(st>0))return null;
-  w=fromD(Math.floor(toD(want)/st+1e-9)*st);}if(!(w>0))return null;
+  const rs=rackKind(ex)&&rackKind(k.ex)?rackStep(k.ex):null;const st=toD(rs||incOf(ex,plan));if(!(st>0))return null;
+  const w=fromD(Math.floor(toD(want)/st+1e-9)*st);if(!(w>0))return null;
   return {ex:k.ex,date:x.date,w,set:`${loadLabel(k.ex,set.w)}×${set.r}`};
 }
 function suggestTimed(ex,plan,exps,opts,injM,all){
@@ -4091,8 +4012,8 @@ function suggestTimed(ex,plan,exps,opts,injM,all){
   const lastR=L0.lastR,lastS=L0.line,basis=L0.basis;
   if(injM)return {w:top,text:`${lastS} Injury flagged (${injLabel(injM)}): stay at or below ${lbl(top)}, keep it easy, and stop on pain.`,lastR,basis,last:lastS,target:'',tgt:null,easier:null,inj:injM};
   if(opts.deload||opts.light)return {w:top,text:`${lastS} ${opts.deload?'Deload':'Lighter day'}: same load, hold about two thirds as long, and stop well before shaking.`,lastR,basis,last:lastS,target:'',tgt:null,easier:null};
-  const step=incOf(ex,plan,top);const cap=capOf(ex,plan,top);
-  if(step>0&&topPts.every(p=>p.r>=plan.repMax)&&!atCapOf(ex,plan,top,cap)){
+  const step=incOf(ex,plan);const cap=ex.maxLoad!=null?ex.maxLoad:null;
+  if(step>0&&topPts.every(p=>p.r>=plan.repMax)&&!(cap!=null&&top>=cap-1e-6)){
     const nw=cap!=null?Math.min(top+step,cap):top+step;
     return {w:nw,text:`${lastS} Every hold at ${lbl(top)} reached ${plan.repMax}s: add ${fmtW(nw-top)} ${U()}${ex.bw?' (a plate or a vest)':''} and aim for ${plan.repMin}s+.`,lastR,basis,
       last:lastS,target:`${lbl(nw)} for ${plan.repMin}s+ in every set`,tgt:{kind:'load',w:nw,repMin:+plan.repMin,prevBest:null},easier:null};
@@ -4114,106 +4035,10 @@ function defPlan(exId){const ex=EX(exId);return ex.timed?{...DEFAULT_PLAN,repMin
 const STEP_LB=5*LB;
 function unitStep(){return U()==='kg'?2.5:STEP_LB;}
 function stepRead(v){return Math.abs(v-STEP_LB)<1e-6||Math.abs(v-2.5)<1e-6?unitStep():v;}
-/* `at`: the load the step is taken from. Only a rack from Your gym needs it
-   (r33): its spacing can change along the rack (2.5 lb steps to 25, then 5). */
-function incOf(ex,plan,at){
+function incOf(ex,plan){
   const v=stepRead(ex&&ex.inc!=null?ex.inc:(plan&&isNum(+plan.inc)?+plan.inc:STEP_LB));
-  if(ex&&ex.inc==null&&Math.abs(v-unitStep())<1e-6){
-    const L=gymRack(ex,plan);if(L)return rackGap(L,at);
-    if(rackKind(ex)){const g=rackStep(ex);if(g)return g;}
-    const gs=gymStep(ex);if(gs)return gs;
-  }
+  if(ex&&ex.inc==null&&rackKind(ex)&&Math.abs(v-unitStep())<1e-6){const g=rackStep(ex);if(g)return g;}
   return v;
-}
-/* ---------- Your gym (r33, item 207) ----------
-   What the gym has: its dumbbells and kettlebells, the plates on hand, and
-   the step of its cable and machine stacks. Kept in the unit the gym is
-   labelled in (a rack in lb stays in lb after a switch to kg). Nothing set
-   means nothing changes: every default below is the step used before.
-   Precedence: a step set on the exercise or in the plan, then Your gym, then
-   the rack read from logged loads (r32), then 5 lb or 2.5 kg. */
-// Function declarations, not constants: normalize() runs on the first load, before the constants below exist.
-function gymPlates(u){return u==='kg'?[25,20,15,10,5,2.5,1.25]:[45,35,25,10,5,2.5];}
-/* Every field checked; anything out of range is dropped, never guessed. */
-function gymClean(g){
-  if(!g||typeof g!=='object'||(g.u!=='lb'&&g.u!=='kg'))return null;const out={u:g.u};const n=v=>{const x=+v;return isFinite(x)?Math.round(x*1000)/1000:NaN;};
-  const d=g.db;if(d&&typeof d==='object'){const lo=n(d.lo),hi=n(d.hi),st=n(d.st),fine=n(d.fine),fineTo=n(d.fineTo);
-    if(lo>0&&hi>=lo&&hi<=500&&st>0&&st<=50){const db={lo,hi,st};if(fine>0&&fine<st&&fineTo>lo){db.fine=fine;db.fineTo=Math.min(fineTo,hi);}if(dbListOf(db))out.db=db;}}
-  if(Array.isArray(g.kb)){const kb=[...new Set(g.kb.map(n).filter(x=>x>0&&x<=300))].sort((a,b)=>a-b).slice(0,40);if(kb.length)out.kb=kb;}
-  if(Array.isArray(g.plates)){const all=gymPlates(g.u);const pl=all.filter(x=>g.plates.map(n).includes(x));if(pl.length)out.plates=pl;}
-  {const st=n(g.stack);if(st>0&&st<=100)out.stack=st;}
-  return Object.keys(out).length>1?out:null;
-}
-function gymOf(){const g=state.settings.gym;return g&&typeof g==='object'?g:null;}
-const gymK=(g,v)=>g.u==='kg'?v:v*LB;
-function r3(v){return Math.round(v*1000)/1000;}
-/* Dumbbells as typed in Settings: from, to, a step, and optionally a
-   smaller step up to some weight (5 to 25 by 2.5, then 5s to 120). */
-// More than 300 weights is a typo (0.5 to 200 by 0.5), refused rather than cut short.
-function dbListOf(d){
-  if(!d||!(d.lo>0)||!(d.hi>=d.lo)||!(d.st>0))return null;const out=[];let v=d.lo;
-  while(v<=d.hi+1e-6){if(out.length>=300)return null;out.push(r3(v));v=r3(v+(d.fine>0&&d.fineTo>0&&v<d.fineTo-1e-6?d.fine:d.st));}
-  return out;
-}
-/* The loads this lift can be done at, in kg, lightest first, or null: only
-   dumbbell and kettlebell lifts, with no step of their own, logged as the
-   weight of one bell (per dumbbell, or one dumbbell held). */
-function gymRack(ex,plan){
-  const g=gymOf();if(!g||!ex||ex.bw||ex.assist||ex.timed||ex.inc!=null)return null;
-  if(plan&&isNum(+plan.inc)&&Math.abs(stepRead(+plan.inc)-unitStep())>1e-6)return null;
-  const k=rackKind(ex);if(!k)return null;
-  const m=loadMode(ex);if(!(m==='each'||(m==='total'&&(ex.load==null||ONE_DB.has(ex.id)))))return null;
-  const L=k==='dumbbell'?dbListOf(g.db):Array.isArray(g.kb)&&g.kb.length?g.kb:null;
-  return L&&L.length?L.map(v=>gymK(g,v)):null;
-}
-/* A load typed as shown on screen is within half the last shown digit of
-   the bell it means: an 8 kg dumbbell is shown as 17.6 lb, which is 7.983 kg
-   (review of r33). Rack comparisons use this, so a bell typed as shown is
-   that bell, never "0.02 kg under the next one". */
-function rackTol(){return U()==='lb'?0.05*LB:0.05;}
-// The step up from `at` on the rack; with no load to step from, its most common spacing.
-function rackGap(L,at){
-  if(L.length<2)return L[0]||0;
-  if(at!=null){const nx=L.find(x=>x>at+rackTol());if(nx!=null)return nx-at;return L[L.length-1]-L[L.length-2];}
-  const gs=L.slice(1).map((x,i)=>r3(x-L[i]));const c={};let best=gs[0];for(const v of gs){c[v]=(c[v]||0)+1;if(c[v]>c[best])best=v;}return best;
-}
-/* Gym-wide steps for other lifts: two of the smallest plate on hand for a
-   bar or a two-sleeve machine logged as the total (leg press, hack squat),
-   one for a landmine's single sleeve or a lift logged per side, a stack its
-   own step. */
-function gymStep(ex){
-  const g=gymOf();if(!g||!ex||ex.bw||ex.timed)return null;
-  const pm=platesMode(ex),m=loadMode(ex);
-  if(Array.isArray(g.plates)&&g.plates.length&&pm!=='none'){const mn=Math.min(...g.plates);return gymK(g,m==='side'||pm==='sleeve'?mn:2*mn);}
-  if(m==='stack'&&g.stack>0)return gymK(g,g.stack);
-  return null;
-}
-/* The heaviest available: the exercise's own, else the top of the rack. A
-   lift logged above the top of the rack is on bells the rack does not list
-   (another gym, a rack set wrong), so the rack is no cap for it (review). */
-function capOf(ex,plan,top){const L=gymRack(ex,plan);let r=L?L[L.length-1]:null;if(r!=null&&top!=null&&top>r+rackTol())r=null;return ex.maxLoad!=null?(r!=null?Math.min(ex.maxLoad,r):ex.maxLoad):r;}
-// At the cap: within the rack's tolerance when the cap is the rack's.
-function atCapOf(ex,plan,top,cap){return cap!=null&&top>=cap-(gymRack(ex,plan)&&(ex.maxLoad==null||cap<ex.maxLoad-1e-6)?rackTol():1e-6);}
-/* A suggestion that is not on the rack moves onto it: up, to the heaviest
-   rack weight not past it that is still above last time; down, to the
-   heaviest not past it. A load equal to last time's is left, since it was
-   lifted. Engine steps are taken from the rack already, so this is the net
-   for multi-step jumps on a rack whose spacing changes. */
-function rackSnap(ex,plan,res){
-  const L=gymRack(ex,plan);if(!L||!res||res.w==null||ex.timed)return res;
-  const w=res.w,top=res.top,tl=rackTol();if(L.some(x=>Math.abs(x-w)<1e-6)||(top!=null&&Math.abs(w-top)<1e-6))return res;
-  const dn=L.filter(x=>x<=w+tl);let nw;
-  if(top!=null&&w>top){const c=dn.filter(x=>x>top+tl);nw=c.length?c[c.length-1]:L.find(x=>x>top+tl);}
-  else nw=dn.length?dn[dn.length-1]:L[0];
-  return nw==null||Math.abs(nw-w)<1e-9?res:swapW(ex,res,nw);
-}
-// Puts a new load into a suggestion, its words included.
-function swapW(ex,res,nw){
-  const a=loadLabel(ex,res.w),b=loadLabel(ex,nw);const fix=t=>t?t.split(a).join(b):t;
-  const out={...res,w:nw,target:fix(res.target)};
-  out.text=res.last&&res.text.startsWith(res.last)?res.last+fix(res.text.slice(res.last.length)):fix(res.text);
-  if(res.tgt&&res.tgt.w!=null)out.tgt={...res.tgt,w:nw};
-  return out;
 }
 /* Dumbbells and kettlebells come in fixed weights (r32, from the third
    review: 12 kg dumbbells went to 14.5, which no rack has). With no step set
@@ -4240,11 +4065,7 @@ function rackStep(ex){
    rounded down to whole load steps and never less than one step; 0 means
    always one step. Unset, it is the 2.5% or 5% above. */
 function jumpPct(ex,plan){return plan&&plan.jump!=null&&isNum(+plan.jump)?Math.max(0,+plan.jump)/100:isCompound(ex)?0.025:0.05;}
-function progStep(ex,plan,loadKg,at){
-  const L=at!=null?gymRack(ex,plan):null;
-  /* On a rack: the heaviest rack weight within the jump, at least the next one up. */
-  if(L){const up=L.filter(x=>x>at+rackTol());if(!up.length)return rackGap(L,at);const want=at+jumpPct(ex,plan)*Math.max(0,loadKg);let nw=up[0];for(const x of up)if(x<=want+1e-6)nw=x;return nw-at;}
-  const inc=incOf(ex,plan,at);if(!(inc>0))return inc;const pct=jumpPct(ex,plan);return inc*Math.max(1,Math.floor(pct*Math.max(0,loadKg)/inc+1e-9));}
+function progStep(ex,plan,loadKg){const inc=incOf(ex,plan);if(!(inc>0))return inc;const pct=jumpPct(ex,plan);return inc*Math.max(1,Math.floor(pct*Math.max(0,loadKg)/inc+1e-9));}
 /* Most a single session's easy RIR may raise the load: 10%, or 15% on an
    isolation lift under 20 kg, where one plate or dumbbell step is a large
    fraction. One rep of RIR error is normal, so bigger jumps overshoot. */
@@ -4284,7 +4105,7 @@ function easierText(ex,e){return `Getting easier at ${loadLabel(ex,e.w)}${ex.bw?
 const PLATES_LB=[45,35,25,10,5,2.5],PLATES_KG=[25,20,15,10,5,2.5,1.25];
 /* Small change plates (r29, item 98) add 1.25 lb or 0.5 kg, for gyms that
    have them; the load step is still set per exercise. */
-function plateList(){const g=gymOf();const own=g&&g.u===U()&&Array.isArray(g.plates)&&g.plates.length?g.plates.slice().sort((a,b)=>b-a):null;const b=own||(U()==='lb'?PLATES_LB:PLATES_KG);return state.settings.smallPlates?[...b,U()==='lb'?1.25:0.5]:b;}
+function plateList(){const b=U()==='lb'?PLATES_LB:PLATES_KG;return state.settings.smallPlates?[...b,U()==='lb'?1.25:0.5]:b;}
 /* The bar an exercise is loaded on: its own (a trap bar, an EZ bar) when set
    in the exercise editor, else the bar in Settings. */
 function exBarKg(ex){return ex&&ex.barKg>0?ex.barKg:barKg();}
@@ -4298,10 +4119,7 @@ function barKg(){const b=state.settings.barKg;return b!=null?b:(U()==='lb'?45*LB
    down to 5 lb or 2.5 kg as before. May return `from` when nothing lighter
    exists (the bar itself). */
 function lighterLoad(ex,plan,from,to){
-  // On a rack from Your gym: the heaviest bell not past `to` and under `from`, else the lightest under `from`.
-  const L=gymRack(ex,plan);
-  if(L){const tl=rackTol();const lo=L.filter(x=>x<from-tl);if(!lo.length)return Math.max(0,from);const c=lo.filter(x=>x<=to+tl);return c.length?c[c.length-1]:lo[0];}
-  const step=incOf(ex,plan,from);let w;
+  const step=incOf(ex,plan);let w;
   if(step>0){const k=Math.max(1,Math.ceil((from-to)/step-1e-6));w=from-k*step;}
   else w=roundLoad(to,true);
   /* The bar floor is for lifts on the full bar (bench, squat, rows), typed as
@@ -4823,7 +4641,6 @@ document.addEventListener('visibilitychange',()=>{if(document.visibilityState===
 /* ---------- render ---------- */
 const charts=[];let sortables=[];
 function killDynamic(){
-  if(typeof obTourStop==='function')obTourStop();
   // A re-render in the middle of a drag (a cloud refresh) would leave Sortable's
   // floating copy of the block on the page; it goes with the old list.
   blockDrag=false;if(document.body.classList.contains('blkdrag')){document.body.classList.remove('blkdrag');const v=document.getElementById('view');if(v)v.style.paddingBottom='';}if(typeof edgeScroll!=='undefined')edgeScroll.stop();document.querySelectorAll('.sortable-fallback,.sortable-ghost').forEach(e=>{if(!e.closest('#view'))e.remove();});
@@ -4869,7 +4686,6 @@ function renderInner(){
   if(ui.tab==='program'&&ui.planView!=='library')mountSortable();
   if(ui.tab==='dash')mountCharts();
   if(ui.tab==='today'&&!state.draft)mount3D();
-  if(obActive())mountObTour();
   if(ui.modal)renderModal();
 }
 /* Re-rendering replaces #view wholesale, which used to blow away whatever the
@@ -5085,115 +4901,34 @@ function installSheet(m){
    data or a session in progress ends it, and so does a sign-in that brings a
    log with it. Whether the account page was passed is kept per device. */
 const OB_ACCT=KEY+'.obAcct';
-/* Signing out goes back to the first page (r33, V: "sign out should go to
-   the main page"), with or without a copy of the log kept on the phone.
-   Continue without an account then opens that copy, and signing in brings
-   the account's log. Kept per device; a sign-in clears it. */
-const OB_OUT=KEY+'.signedOut';
-/* The flag is cleared by a sign-in the lifter makes here (obOutClear), not
-   by any signed-in moment: a confirmation link opened in this browser signs
-   it in only until it is told where Ironlog is used (review of r33). A
-   session in progress always shows, signed out or not (review: signing out
-   mid-session with a copy kept hid the tabs around it). */
-function obGate(){
-  if(!AUTH()||window.claude||acct.user)return false;
-  try{return localStorage.getItem(OB_OUT)==='1';}catch(e){return false;}
-}
-function obOutClear(){try{localStorage.removeItem(OB_OUT);}catch(e){/* per device only */}}
-function obActive(){return !state.draft&&(obGate()||(!state.settings.onboarded&&!state.sessions.length));}
+function obActive(){return !state.settings.onboarded&&!state.draft&&!state.sessions.length;}
 function obAcctOffered(){
   if(!AUTH()||window.claude||acct.user)return false;
   try{return localStorage.getItem(OB_ACCT)!=='later';}catch(e){return true;}
 }
-/* The first page's tour (r33, V: the tiles read as an About box; make it
-   informational and swipeable: logging each session, the plan, progress,
-   history, and the picture by muscle). Each slide shows a small piece of
-   the screen it describes, with sample numbers in the unit chosen. */
-const obTour={i:0,auto:null,user:false,t:null};
-function obTourSlides(){
-  const kg=U()==='kg';const u=U();const w=kg?[30,32.5]:[65,70];
-  const f=v=>fmtW(fromD(v));
-  const log=`<div class="obv" aria-hidden="true"><div class="row spread" style="margin-bottom:2px"><b>Incline DB Press</b><span class="mu">Last ${f(w[0])} × 10, 10, 10</span></div>
-    <div class="obv-row"><b class="mu">1</b><span>${f(w[1])}</span><span>10</span><i class="on"></i></div>
-    <div class="obv-row"><b class="mu">2</b><span>${f(w[1])}</span><span>9</span><i class="on"></i></div>
-    <div class="obv-row"><b class="mu">3</b><span class="g fill">${f(w[1])}</span><span class="g fill">9</span><i class="on tick"></i></div></div>`;
-  const days=[['M','Upper',1],['T','Lower',1],['W','Rest',0],['T','Upper',1],['F','Lower',1],['S','Rest',0],['S','Rest',0]];
-  const plan=`<div class="obv" aria-hidden="true"><div class="obv-week">${days.map(([d,n,t])=>`<div class="${t?'t':''}"><b></b>${d}</div>`).join('')}</div>
-    <div class="obv-plan"><div><b>Bench Press</b><span class="mu">3 × 6-10</span></div><div><b>Chest-Supported Row</b><span class="mu">3 × 8-12</span></div><div><b>Lateral Raise</b><span class="mu">3 × 12-15</span></div></div></div>`;
-  const ys=[92,84,86,74,70,62,56,44,40,28];const pts=ys.map((y,i)=>[8+i*30,y]);
-  const e1=kg?[102,110]:[225,242];
-  const prog=`<div class="obv" aria-hidden="true"><b>Bench Press</b> <span class="mu">est. 1RM ${e1[0]} to ${e1[1]} ${u}</span><span class="obv-chip">PR</span>
-    <svg viewBox="0 0 290 104" style="margin-top:8px">${[30,62,94].map(y=>`<line class="gl" x1="0" x2="290" y1="${y}" y2="${y}"/>`).join('')}
-    <polyline class="ln" points="${pts.map(p=>p.join(',')).join(' ')}"/>${pts.slice(0,-1).map(([x,y])=>`<circle class="pt" cx="${x}" cy="${y}" r="3.2"/>`).join('')}<circle class="pr" cx="${pts[9][0]}" cy="${pts[9][1]}" r="5.5"/></svg></div>`;
-  /* October 2026 as the app draws it: Monday first, the 1st a Thursday, an
-     upper/lower week (Monday, Tuesday, Thursday, Friday) up to today, the 27th. */
-  const on=new Set([1,2,5,6,8,9,12,13,15,16,19,20,22,23,26]);let k=0;
-  const cal=`<div class="obv" aria-hidden="true"><div class="row spread"><b>October</b><span class="mu">15 sessions</span></div><div class="obv-cal">${Array.from({length:35},(_,i)=>{const d=i-2;if(d<1||d>31)return '<i class="x"></i>';if(d===27)return '<i class="n"></i>';return on.has(d)?`<i class="d" style="--k:${k++}"></i>`:d>27?'<i style="opacity:.45"></i>':'<i></i>';}).join('')}</div></div>`;
-  // Six regions against their targets, as on Stats > Volume.
-  const R=[['Chest',.92],['Back',1.05],['Shoulders',.7],['Arms',.85],['Legs',1],['Core',.55]];const cx=145,cy=70,rr=52;
-  const at=(i,v)=>{const a=-Math.PI/2+i*Math.PI/3;return [cx+Math.cos(a)*rr*v,cy+Math.sin(a)*rr*v].map(n=>Math.round(n*10)/10);};
-  const ring=R.map((_,i)=>at(i,1).join(',')).join(' ');
-  const vol=`<div class="obv" aria-hidden="true" style="padding:6px 12px"><svg viewBox="0 0 290 140">${R.map((_,i)=>{const [x,y]=at(i,1);return `<line class="gl" x1="${cx}" y1="${cy}" x2="${x}" y2="${y}"/>`;}).join('')}
-    <polygon class="tg" points="${ring}"/><polygon class="ar" points="${R.map(([,v],i)=>at(i,v).join(',')).join(' ')}"/>
-    ${R.map(([n],i)=>{const [x,y]=at(i,1.24);return `<text class="lb" x="${x}" y="${y+3}" text-anchor="${Math.abs(x-cx)<4?'middle':x>cx?'start':'end'}">${n}</text>`;}).join('')}</svg></div>`;
-  return [
-    [log,'Log a set in one tap','Loads and reps come from last session. Tap to log, change what differs.'],
-    [plan,'Pick a plan or build one',`Ready-made routines or your own days, from ${LIB.length} exercises.`],
-    [prog,'Track every lift','Strength trends, PRs, and stalls, worked out from your sets.'],
-    [cal,'Every session, by day','Your history on a calendar. Open any day to see or edit it.'],
-    [vol,'Volume by muscle','Weekly sets for each muscle group against its target.']];
-}
-function obTourHTML(){
-  const sl=obTourSlides();const n=sl.length;const i=Math.min(obTour.i,n-1);
-  return `<section class="ob-tour" aria-roledescription="carousel" aria-label="What Ironlog does">
-  <div class="ob-track" id="obTrack">${sl.map(([v,t,l],k)=>`<article class="ob-slide${k===i?' on':''}" role="group" aria-roledescription="slide" aria-label="${k+1} of ${n}: ${esc(t)}" data-i="${k}">${v}<h2>${esc(t)}</h2><p>${esc(l)}</p></article>`).join('')}</div>
-  <div class="ob-pips" role="group" aria-label="Slides">${sl.map(([,t],k)=>`<button type="button" data-act="obTourPick" data-i="${k}" aria-label="Show ${esc(t)}"${k===i?' aria-current="true"':''}></button>`).join('')}</div></section>`;
-}
-function obTourStop(){clearInterval(obTour.auto);obTour.auto=null;}
-function obTourSet(i){
-  const tr=document.getElementById('obTrack');if(!tr)return;obTour.i=i;
-  tr.querySelectorAll('.ob-slide').forEach(el=>el.classList.toggle('on',+el.dataset.i===i));
-  document.querySelectorAll('.ob-pips button').forEach(b=>{if(+b.dataset.i===i)b.setAttribute('aria-current','true');else b.removeAttribute('aria-current');});
-}
-function obTourGo(i,smooth){
-  const tr=document.getElementById('obTrack');if(!tr)return;const el=tr.children[i];if(!el)return;
-  tr.scrollTo({left:el.offsetLeft-tr.firstElementChild.offsetLeft,behavior:smooth?'smooth':'auto'});obTourSet(i);
-}
-function mountObTour(){
-  obTourStop();const tr=document.getElementById('obTrack');if(!tr)return;
-  if(obTour.i)obTourGo(obTour.i,false);
-  tr.addEventListener('scroll',()=>{clearTimeout(obTour.t);obTour.t=setTimeout(()=>{
-    const kids=[...tr.children];const x=tr.scrollLeft;let best=0;
-    kids.forEach((el,k)=>{if(Math.abs(el.offsetLeft-kids[0].offsetLeft-x)<Math.abs(kids[best].offsetLeft-kids[0].offsetLeft-x))best=k;});
-    if(best!==obTour.i)obTourSet(best);},90);},{passive:true});
-  // Any touch, key or focus inside stops it moving on its own, for good.
-  const mine=()=>{obTour.user=true;obTourStop();};
-  for(const ev of ['pointerdown','touchstart','keydown','focusin','wheel'])tr.parentNode.addEventListener(ev,mine,{passive:true});
-  let reduce=false;try{reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;}catch(e){/* animate */}
-  // Test browsers run it only when asked, so screenshots and suites stay still.
-  if(reduce||obTour.user||(navigator.webdriver&&!window.IRONLOG_TOUR_AUTO))return;
-  obTour.auto=setInterval(()=>{
-    if(!document.getElementById('obTrack')){obTourStop();return;}
-    if(document.hidden)return;
-    const n=document.getElementById('obTrack').children.length;obTourGo((obTour.i+1)%n,true);},5500);
-}
+/* Three things, side by side, a few words each (V, r31.3): logging each
+   session, building the plan, and seeing progress. */
+const OB_FEATS=[
+  ['<circle cx="12" cy="12" r="9"/><path d="M8 12.5l2.6 2.6L16.2 9.4"/>','Log sets with a tap'],
+  ['<path d="M4 7h9M17 7h3M4 17h3M11 17h9"/><circle cx="15" cy="7" r="2"/><circle cx="9" cy="17" r="2"/>','Build your plan'],
+  ['<path d="M4 17l6-6 4 4 6-7"/><path d="M15 8h5v5"/>','See your progress']];
 function obView(){
   // Still finding out whether this device is signed in, or pulling its log: show nothing that could flash away.
   if(!cloudChecked||(AUTH()&&!window.claude&&!acct.checked)||(cloud.on&&!cloud.lastPull))return `<div class="ob"><div class="ob-splash"><p class="ob-logo">${LOCKUP}</p></div></div>`;
-  const acctStep=!!AUTH()&&!window.claude;
+  const acctStep=!!AUTH()&&!window.claude;const dots=n=>acctStep?`<div class="ob-dots" aria-hidden="true"><i class="${n===1?'on':''}"></i><i class="${n===2?'on':''}"></i></div>`:'';
   /* The first page (r31.2, V): what the app does, in three lines, before
      anything is asked; then the account, said to be optional and what it is
      for, and Continue without an account as a plain, clearly worded link. A page that opened on an account
      request alone lost a friend at the first screen. */
   if(obAcctOffered())return `<div class="ob" id="obPage" data-step="acct">
   <div class="ob-top"><h1 class="ob-logo">${LOCKUP}</h1></div>
-  ${obTourHTML()}
+  <ul class="ob-feats" aria-label="What Ironlog does">${OB_FEATS.map(([ic,t])=>`<li><span class="fi" aria-hidden="true"><svg viewBox="0 0 24 24">${ic}</svg></span><b>${t}</b></li>`).join('')}</ul>
   <div class="ob-card"><h2>Save your log</h2>
   <p class="ob-why">Back up your log and use it on any device</p>
   <button class="btn primary block" data-act="acctOpen" data-mode="signup">Create account</button>
   <button class="btn block" data-act="acctOpen" data-mode="signin">I have an account</button></div>
   ${ENV==='preview'?'<button class="btn block" data-act="previewCopy">Copy my log from Ironlog</button>':''}
-  <button class="linkbtn ob-later" data-act="obAcctLater">Continue without an account</button></div>`;
+  <button class="linkbtn ob-later" data-act="obAcctLater">Continue without an account</button>${dots(1)}</div>`;
   const imp=`<button class="ob-opt" data-act="impOpen"><b>Import my workouts</b><span>Notes, a spreadsheet, Strong, Hevy, a backup</span></button>`;
   return `<div class="ob welcome" id="obPage" data-step="start">
   ${acctStep&&!acct.user?'<button class="linkbtn ob-back" data-act="obAcctBack">‹ Account</button>':''}
@@ -5208,7 +4943,7 @@ function obView(){
   <button class="ob-opt" data-act="obOwn"><b>Build my own routine</b><span>Your days, your exercises</span></button>
   ${imp}${ENV==='preview'?'<button class="ob-opt" data-act="previewCopy"><b>Copy my log from Ironlog</b><span>Try this build on your real log; Ironlog is not changed</span></button>':''}</div>
   <button class="linkbtn ob-skip" data-act="demoLoad">Look around with sample data first</button>
-  <p class="small muted" id="obSafety" style="margin:10px 0 0;text-align:center"><span class="hastip" data-tip="${esc(SAFETY_TXT)}">Suggestions are estimates, not advice.</span></p></div>`;
+  <p class="small muted" id="obSafety" style="margin:10px 0 0;text-align:center"><span class="hastip" data-tip="${esc(SAFETY_TXT)}">Suggestions are estimates, not advice.</span></p>${dots(2)}</div>`;
 }
 /* First run with no sessions: three ways in. Shown only after the cloud check,
    so a device about to load your data never flashes it. */
@@ -6156,9 +5891,9 @@ function pickerBody(m){
   const rec=recentExIds(8).map(EX);
   if(rec.length)h+=grp('Recent')+rec.map(row).join('');
   const com=all.filter(isCommon),rest=all.filter(e=>!isCommon(e));
-  // Under the Most common heading the tag on every row would only repeat it.
+  // Under the Common heading a Common tag on every row would only repeat it.
   const rowG=e=>pickRow(e,used,true);
-  return h+(com.length?grp(`Most common (${com.length})`)+com.map(rowG).join(''):'')+grp(com.length?`All other exercises (${rest.length})`:`All exercises (${all.length})`)+rest.map(row).join('');
+  return h+(com.length?grp(`Common (${com.length})`)+com.map(rowG).join(''):'')+grp(com.length?`All other exercises (${rest.length})`:`All exercises (${all.length})`)+rest.map(row).join('');
 }
 /* Week at a glance, in the bar at the top of every tab. Each cell is a day of
    this calendar week: filled green when you lifted, a green outline for
@@ -6364,32 +6099,13 @@ function roundLoad(kg,down){
    opens the strip under that set, and ticking a set done with no RIR yet
    opens it by itself, so logging effort is one tap. */
 const RIR_OPTS=['0','1','2','3','4','5'];
-/* Effort in half points or as RPE (r33, item 206): a setting for how effort
-   is entered and shown. What is stored is always RIR (RPE 8 is RIR 2, RPE
-   8.5 is RIR 1.5), so every estimate, hard-set count and target reads it
-   unchanged, and switching back and forth loses nothing. Unset is whole RIR. */
-const rirScale=()=>state.settings.rirScale==='half'||state.settings.rirScale==='rpe'?state.settings.rirScale:'whole';
-const effWord=()=>rirScale()==='rpe'?'RPE':'RIR';
-function effShow(v){if(v==null||v==='')return '';const n=+v;if(!isFinite(n))return '';return rirScale()==='rpe'?String(Math.round((10-n)*10)/10):String(Math.round(n*10)/10);}
-function effOpts(){const sc=rirScale();return sc==='whole'?RIR_OPTS.slice():['0','0.5','1','1.5','2','2.5','3','3.5','4','4.5','5'];}
-const effAria=si=>rirScale()==='rpe'?`RPE for set ${si+1}`:`Reps in reserve for set ${si+1}`;
 function rirSelect(val,bi,si,target){
-  const cur=effShow(val);
-  return `<button type="button" class="rirb${cur===''?' unset':''}" data-act="rirOpen" data-f="rir" data-b="${bi}" data-s="${si}" aria-haspopup="true" aria-expanded="false" aria-label="${effAria(si)}: ${cur===''?'not set':cur}">${cur===''?(target!=null?'–':effWord()):esc(cur)}</button>`;
+  const cur=val==null||val===''?'':String(val);
+  return `<button type="button" class="rirb${cur===''?' unset':''}" data-act="rirOpen" data-f="rir" data-b="${bi}" data-s="${si}" aria-haspopup="true" aria-expanded="false" aria-label="Reps in reserve for set ${si+1}: ${cur===''?'not set':cur}">${cur===''?(target!=null?'–':'RIR'):esc(cur)}</button>`;
 }
-/* Whole RIR is one row of 0 to 5. Half points and RPE are a grid under the
-   label: whole numbers on top, each half between the two it sits between,
-   every button 44 px tall and at least 40 px wide at 320 px. The buttons
-   carry RIR; RPE only changes what they say. */
 function rirStripHTML(bi,si,cur){
-  const sc=rirScale();const two=sc!=='whole';
-  // A stored value off the grid (0.25 from an import) shows in the set's box; the grid keeps its 11 places.
-  const opts=effOpts();if(!two&&cur!==''&&!opts.includes(cur)){opts.push(cur);opts.sort((a,b)=>a-b);}
-  const btn=o=>`<button type="button" data-act="rirPick" data-b="${bi}" data-s="${si}" data-v="${o}" aria-pressed="${cur===o}"${cur===o?' class="on"':''}>${sc==='rpe'?effShow(o):o}</button>`;
-  // RPE reads up from 5 to 10, as RPE charts do; RIR from 0 up.
-  const ord=sc==='rpe'?opts.slice().reverse():opts;
-  const body=two?`<div class="rs-g">${ord.filter(o=>Number.isInteger(+o)).map(btn).join('')}${ord.filter(o=>!Number.isInteger(+o)).map(btn).join('')}</div>`:opts.map(btn).join('');
-  return `<div class="rirstrip${two?' two':''}" role="group" aria-label="${effAria(si)}" data-b="${bi}" data-s="${si}"><span class="rs-l">${effWord()}</span>${body}<button type="button" class="rs-x" data-act="rirPick" data-b="${bi}" data-s="${si}" data-v="" aria-label="Clear ${effWord()}">✕</button></div>`;
+  const opts=RIR_OPTS.slice();if(cur!==''&&!opts.includes(cur)){opts.push(cur);opts.sort((a,b)=>a-b);}
+  return `<div class="rirstrip" role="group" aria-label="Reps in reserve for set ${si+1}" data-b="${bi}" data-s="${si}"><span class="rs-l">RIR</span>${opts.map(o=>`<button type="button" data-act="rirPick" data-b="${bi}" data-s="${si}" data-v="${o}" aria-pressed="${cur===o}"${cur===o?' class="on"':''}>${o}</button>`).join('')}<button type="button" class="rs-x" data-act="rirPick" data-b="${bi}" data-s="${si}" data-v="" aria-label="Clear RIR">✕</button></div>`;
 }
 function rirClose(){const el=document.querySelector('.rirstrip');if(!el)return;const b=document.querySelector(`.rirb[data-b="${el.dataset.b}"][data-s="${el.dataset.s}"]`);if(b)b.setAttribute('aria-expanded','false');el.remove();autoPending();}
 /* Typed reps, then a tap on the same row's RIR box (r30): auto-mark waits
@@ -6450,7 +6166,7 @@ function viewLogger(){
       ${ss&&partner?`<p class="small muted" style="margin:2px 0 0">Superset with ${esc(partner)}; rest after the pair.</p>`:''}
       ${b.lastNote&&!b.note?`<p class="small lnote">Your note, ${esc(fmtDate(b.lastNote.date))}: ${esc(b.lastNote.text)} <button class="linkbtn" data-act="noteReuse" data-b="${bi}">Use again</button></p>`:''}
       ${b.note?`<p class="small bnote" id="bn-${bi}">${esc(b.note)}</p>`:`<p class="small bnote" id="bn-${bi}" hidden></p>`}
-      <div class="sg head${nr?' norir':''}"><span>#</span><span data-tip="${esc('Load: '+loadWords(ex))}">${loadHead(ex)}</span><span>${ex.timed?(ex.perSide?'Sec/side':'Sec'):ex.perSide?'Reps/side':'Reps'}</span>${nr?'':`<span>${effWord()}</span>`}<span>W/D</span><span>Done</span></div>`;
+      <div class="sg head${nr?' norir':''}"><span>#</span><span data-tip="${esc('Load: '+loadWords(ex))}">${loadHead(ex)}</span><span>${ex.timed?(ex.perSide?'Sec/side':'Sec'):ex.perSide?'Reps/side':'Reps'}</span>${nr?'':'<span>RIR</span>'}<span>W/D</span><span>Done</span></div>`;
     b.sets.forEach((s,si)=>{
       const g=greyR(b,si);const ph=g==null?'':g;
       const pr=s.done?livePR(b.exId,s,d.date):null;
@@ -6622,7 +6338,7 @@ function viewLibrary(){
   <div class="card stack"><input type="search" placeholder="Search exercises" aria-label="Search exercises" data-bind="libQ" value="${esc(ui.libQ)}">
   <div class="grid2"><select data-bind="libM" aria-label="Filter by muscle"><option value="">All muscles</option>${MUSCLES.map(([k,l])=>`<option value="${k}" ${ui.libM===k?'selected':''}>${l}</option>`).join('')}</select>
   <select data-bind="libE" aria-label="Filter by equipment"><option value="">All equipment</option>${EQUIP.map(([k,l])=>`<option value="${k}" ${ui.libE===k?'selected':''}>${l}</option>`).join('')}</select></div>
-  <div class="row" style="gap:6px;align-items:center"><div class="chips" role="group" aria-label="Show">${[['','All'],['common','Most common'],['rare','Less common']].map(([k,l])=>`<button class="chip ${ui.libKind===k?'on':''}" data-act="libKind" data-v="${k}" aria-pressed="${ui.libKind===k}">${l}</button>`).join('')}</div>${tipi(COMMON_TIP,'About Most common and Less common')}</div></div>
+  <div class="row" style="gap:6px;align-items:center"><div class="chips" role="group" aria-label="Show">${[['','All'],['common','Common'],['rare','Less common']].map(([k,l])=>`<button class="chip ${ui.libKind===k?'on':''}" data-act="libKind" data-v="${k}" aria-pressed="${ui.libKind===k}">${l}</button>`).join('')}</div>${tipi(COMMON_TIP,'About Common and Less common')}</div></div>
   <div id="libList">${libCards()}</div>`;
 }
 function libCards(){
@@ -7229,52 +6945,10 @@ function viewHistory(){
 }
 
 /* ---------- SETTINGS ---------- */
-/* Your gym (r33, item 207). Dumbbell fields are kept as typed (ui.gymDb)
-   until From, To, and Step make a rack, so a half-filled form is never
-   thrown away or saved. */
-function gymSub(){const g=gymOf();if(!g)return 'usual steps';const L=dbListOf(g.db);const parts=[];if(L)parts.push(`dumbbells ${fmtG(L[0])} to ${fmtG(L[L.length-1])} ${g.u}`);if(g.kb)parts.push(`${g.kb.length} kettlebell${g.kb.length===1?'':'s'}`);if(g.plates)parts.push('plates');if(g.stack)parts.push(`stacks by ${fmtG(g.stack)}`);return parts.join(', ')||'usual steps';}
-const fmtG=v=>String(Math.round(v*1000)/1000);
-function gymSettings(){
-  const g=gymOf();const u=gymUnit();const d=ui.gymDb||(g&&g.db)||{};const v=k=>d[k]==null||!isFinite(d[k])?'':fmtG(d[k]);
-  const lb=u==='lb';const L=dbListOf(g&&g.db);const plates=gymPlates(u);const on=g&&g.plates?g.plates:plates;
-  const listTxt=a=>a.length>9?`${a.slice(0,5).map(fmtG).join(', ')} … ${a.slice(-2).map(fmtG).join(', ')}`:a.map(fmtG).join(', ');
-  const half=ui.gymDb&&!dbListOf(ui.gymDb);const pair=ui.gymDb&&!half&&(ui.gymDb.fine==null)!==(ui.gymDb.fineTo==null);
-  return `${helpText('gym','What your gym has, so suggested loads are ones you can pick up. Blank keeps the usual steps (5 lb or 2.5 kg, and dumbbells read from what you log). A step set on an exercise or in your plan still wins for that lift.')}
-  <div><p class="small muted" style="margin:0 0 6px;font-weight:600"><span class="hastip" data-tip="Type the weights as they are labelled in your gym. Suggestions show in the app's unit and land on these weights.">Labelled in</span></p><div class="ob-units" role="group" aria-label="Your gym's weights are labelled in">${['lb','kg'].map(k=>`<button class="chip ${u===k?'on':''}" data-act="gymUnit" data-v="${k}" aria-pressed="${u===k}">${k}</button>`).join('')}</div></div>
-  ${u!==U()?`<p class="small" style="margin:0">Suggestions show in ${U()}, on the ${u} weights below.</p>`:''}
-  <label class="field"><span class="hastip" data-tip="Used by the plates-per-side line in the logger.">Bar weight (${U()})</span><input type="text" inputmode="decimal" data-bind="barKg" value="${fmtW(barKg())}"></label>
-  <div><p class="small muted" style="margin:0 0 6px;font-weight:600"><span class="hastip" data-tip="A barbell or a plate-loaded machine steps by two of the smallest plate you have, one a side; a landmine by one. Tap a plate your gym does not have.">Plates on hand (${u})</span></p>
-  <div class="chips" role="group" aria-label="Plates on hand">${plates.map(p=>`<button class="chip ${on.includes(p)?'on':''}" data-act="gymPlate" data-v="${p}" aria-pressed="${on.includes(p)}">${fmtG(p)}</button>`).join('')}</div></div>
-  <label class="check-inline"><input type="checkbox" data-bind="smallPlates" ${state.settings.smallPlates?'checked':''}><span class="hastip" data-tip="Adds them to the plates-per-side line. A lift's own bar, such as a trap or EZ bar, is set in its exercise editor.">Small plates (${U()==='kg'?'0.5 kg':'1.25 lb'})</span></label>
-  <div><p class="small muted" style="margin:0 0 6px;font-weight:600">Dumbbells (${u})</p>
-  <div class="grid3"><label class="field">From<input type="text" inputmode="decimal" data-gym="db.lo" value="${v('lo')}" placeholder="${lb?5:2}"></label><label class="field">To<input type="text" inputmode="decimal" data-gym="db.hi" value="${v('hi')}" placeholder="${lb?120:50}"></label><label class="field">Step<input type="text" inputmode="decimal" data-gym="db.st" value="${v('st')}" placeholder="${lb?5:2}"></label></div>
-  <div class="grid2" style="margin-top:6px;align-items:end"><label class="field"><span class="hastip" data-tip="Many racks go up in smaller steps at the light end, such as 2.5 lb up to 25, or 1 kg up to 10. Leave blank if yours does not.">Lighter end steps by</span><input type="text" inputmode="decimal" data-gym="db.fine" value="${v('fine')}" placeholder="${lb?2.5:1}"></label><label class="field">Up to<input type="text" inputmode="decimal" data-gym="db.fineTo" value="${v('fineTo')}" placeholder="${lb?25:10}"></label></div>
-  <p class="small ${half?'':'muted'}" id="gymDbList" style="margin:6px 0 0">${half?'Add From, To, and Step to use these.':L?`${L.length} pairs: ${listTxt(L)} ${u}${pair?'. Add both smaller-step fields to use them.':''}`:'Not set: dumbbell steps are read from what you log.'}</p></div>
-  <label class="field"><span class="hastip" data-tip="The weights you have, any order, separated by commas.">Kettlebells (${u})</span><input type="text" inputmode="decimal" data-gym="kb" value="${g&&g.kb?g.kb.map(fmtG).join(', '):''}" placeholder="${lb?'18, 26, 35, 44, 53':'8, 12, 16, 20, 24'}"></label>
-  <label class="field"><span class="hastip" data-tip="The usual step between pins on your cable and machine stacks. A machine that differs gets its own step in its exercise.">Cable and machine stacks step by (${u})</span><input type="text" inputmode="decimal" data-gym="stack" value="${g&&g.stack?fmtG(g.stack):''}" placeholder="${lb?5:2.5}"></label>
-  ${g?'<button class="btn sm" data-act="gymClear">Clear my gym</button>':''}`;
-}
-// The unit the gym's weights are labelled in: chosen in Your gym (ui.gymU until anything is saved), else the app's.
-function gymUnit(){const g=gymOf();return g?g.u:ui.gymU||U();}
-function gymNext(){const g=gymOf();return g?JSON.parse(JSON.stringify(g)):{u:gymUnit()};}
-// A session in progress takes the new loads on exercises with nothing ticked yet; typed loads are never touched.
-function gymRefresh(){invalidate();if(state.draft)for(const id of new Set(state.draft.ex.map(b=>b.exId)))refreshEx(id);}
-function gymSave(g){const c=gymClean(g);if(JSON.stringify(c||null)===JSON.stringify(gymOf()||null)){rerenderKeepScroll();return;}snapshot();if(c)state.settings.gym=c;else delete state.settings.gym;gymRefresh();commit();rerenderKeepScroll();}
-function gymInput(t){
-  const k=t.dataset.gym,v=t.value.trim();const g=gymNext();
-  if(k==='kb'){g.kb=v?v.split(/[;,\s]+/).map(numIn).filter(x=>x!=null):[];gymSave(g);return;}
-  if(k==='stack'){g.stack=numIn(v);gymSave(g);return;}
-  const f=k.slice(3);const d={...(ui.gymDb||g.db||{})};const n=numIn(v);if(n==null)delete d[f];else d[f]=n;
-  if(!Object.keys(d).length){ui.gymDb=null;delete g.db;gymSave(g);return;}
-  // A rack: saved. The smaller step needs both its fields; until then the rack is used without it and the typed one stays on screen.
-  if(dbListOf(d)){g.db=d;ui.gymDb=(d.fine==null)!==(d.fineTo==null)?d:null;gymSave(g);return;}
-  // Not a rack yet: keep what was typed on screen only, and take the old rack out of use.
-  ui.gymDb=d;if(g.db){delete g.db;gymSave(g);}else rerenderKeepScroll();
-}
 function viewSettings(){
   const s=state.settings;const hasDemo=state.sessions.some(x=>x.demo)||state.bodyweights.some(x=>x.demo);
   // Each group folds (for this visit) and moves (order is saved).
-  const SUB={help:'Guide, report a problem',gym:gymSub(),general:`${s.unit==='kg'?'kg, cm':'lb, in'} · ${s.theme==='system'?'device theme':s.theme}`,timer:`${s.timerMode==='off'?'timer off':s.timerMode+' timer'}${s.timeBudget?` · ${s.timeBudget} min budget`:''}`,rir:{on:'on',cal:'corrected',off:'off'}[s.rirMode],layout:s.hidden.length?`${s.hidden.length} hidden`:'everything shown',prio:s.priorities.length?s.priorities.map(m=>ML[m]).join(', '):'none',bands:'',data:cloud.on?(cloud.status==='synced'?'synced':'syncing'):'this device only',demo:hasDemo?'loaded':'off',reset:'',diag:`build ${APP_VERSION}`};
+  const SUB={help:'Guide, report a problem',general:`${s.unit==='kg'?'kg, cm':'lb, in'} · ${s.theme==='system'?'device theme':s.theme}`,timer:`${s.timerMode==='off'?'timer off':s.timerMode+' timer'}${s.timeBudget?` · ${s.timeBudget} min budget`:''}`,rir:{on:'on',cal:'corrected',off:'off'}[s.rirMode],layout:s.hidden.length?`${s.hidden.length} hidden`:'everything shown',prio:s.priorities.length?s.priorities.map(m=>ML[m]).join(', '):'none',bands:'',data:cloud.on?(cloud.status==='synced'?'synced':'syncing'):'this device only',demo:hasDemo?'loaded':'off',reset:'',diag:`build ${APP_VERSION}`};
   const G=(k,title,help,id)=>`<details class="sec" ${id?`id="${id}"`:''} data-sk="settings:${k}" data-mkey="${k}" ${isOpen('settings:'+k,false)?'open':''}><summary>${sgrip(title)}<span class="sec-t">${esc(title)}</span><span class="sec-s">${esc(SUB[k]||'')}</span><span class="chev" aria-hidden="true"></span></summary><div class="sec-b">${help?helpLink(help):''}`;
   // The build number lives in Diagnostics; only the preview says what it is up top.
   return `${pageHead(ENV==='preview'?'Ironlog Preview '+APP_VERSION:'','Settings',cloud.on?(window.claude?'Saved to your Claude account and this device':'Synced to your account and saved on this device'):'Saved on this device')}
@@ -7282,9 +6956,10 @@ function viewSettings(){
   <label class="field">Theme<select data-bind="theme"><option value="system" ${s.theme==='system'?'selected':''}>Match device</option><option value="dark" ${s.theme==='dark'?'selected':''}>Dark</option><option value="light" ${s.theme==='light'?'selected':''}>Light</option></select></label></div>
   <label class="field">Your name (optional)<input type="text" data-bind="userName" value="${esc(s.userName||'')}" maxlength="40" autocomplete="given-name" placeholder="Shown on Today"></label>
   <div><p class="small muted" style="margin:0 0 6px;font-weight:600">Accent colour</p><div class="chips" role="group" aria-label="Accent colour">${ACCENTS.map(([k,l])=>`<button class="chip acc ${(s.accent||'blue')===k?'on':''}" data-act="accent" data-v="${k}" aria-pressed="${(s.accent||'blue')===k}"><i class="sw sw-${k}" aria-hidden="true"></i>${l}</button>`).join('')}</div></div>
-  <div class="grid2"><label class="field"><span class="hastip" data-tip="Compared with your 7-day-average bodyweight trend on Stats. Leave blank to track without a target.">Bodyweight goal (%/wk)</span><input type="text" inputmode="decimal" data-bind="bwGoalPct" value="${s.bwGoalPct==null?'':s.bwGoalPct}" placeholder="e.g. 0.3 or -0.5"></label></div>
+  <div class="grid2"><label class="field"><span class="hastip" data-tip="Used by the plates-per-side line in the logger.">Bar weight (${U()})</span><input type="text" inputmode="decimal" data-bind="barKg" value="${fmtW(barKg())}"></label>
+  <label class="field"><span class="hastip" data-tip="Compared with your 7-day-average bodyweight trend on Stats. Leave blank to track without a target.">Bodyweight goal (%/wk)</span><input type="text" inputmode="decimal" data-bind="bwGoalPct" value="${s.bwGoalPct==null?'':s.bwGoalPct}" placeholder="e.g. 0.3 or -0.5"></label></div>
+  <label class="check-inline"><input type="checkbox" data-bind="smallPlates" ${s.smallPlates?'checked':''}><span class="hastip" data-tip="Adds them to the plates-per-side line. A lift's own bar, such as a trap or EZ bar, is set in its exercise editor.">Small plates (${s.unit==='kg'?'0.5 kg':'1.25 lb'})</span></label>
 </div></div></details>
-  ${G('gym','Your gym','gym')}<div class="card stack">${gymSettings()}</div></div></details>
   ${G('timer','Rest timer and logging')}
   <div class="card stack"><label class="field">Rest timer<select data-bind="timerMode">
     <option value="auto" ${s.timerMode==='auto'?'selected':''}>Auto: starts when a set is marked done</option>
@@ -7335,11 +7010,7 @@ function rirSettings(){
     <option value="on" ${s.rirMode==='on'?'selected':''}>On: log RIR and use it as logged</option>
     <option value="cal" ${s.rirMode==='cal'?'selected':''}>On, corrected by my calibration sets</option>
     <option value="off" ${s.rirMode==='off'?'selected':''}>Off: don't ask, count every working set as hard</option></select></label>
-  ${s.rirMode==='off'?'':`<label class="field"><span class="hastip" data-tip="How you enter and read effort. Stored as RIR either way (RPE 8 is RIR 2, RPE 8.5 is RIR 1.5), so switching changes nothing logged.">Enter effort as</span><select data-bind="rirScale">
-    <option value="whole" ${rirScale()==='whole'?'selected':''}>RIR, whole reps (0 to 5)</option>
-    <option value="half" ${rirScale()==='half'?'selected':''}>RIR, half reps (0, 0.5, 1 … 5)</option>
-    <option value="rpe" ${rirScale()==='rpe'?'selected':''}>RPE (5 to 10, in halves)</option></select></label>`}
-  ${s.rirMode==='off'?'':`<label class="check-inline"><input type="checkbox" data-bind="rirAsk" ${s.rirAsk===true?'checked':''}><span class="hastip" data-tip="Off: tap a set's RIR box when you want to rate it. On: the picker opens by itself after each set you tick.">Open the ${effWord()} picker after each set</span></label>
+  ${s.rirMode==='off'?'':`<label class="check-inline"><input type="checkbox" data-bind="rirAsk" ${s.rirAsk===true?'checked':''}><span class="hastip" data-tip="Off: tap a set's RIR box when you want to rate it. On: the 0 to 5 picker opens by itself after each set you tick.">Open the RIR picker after each set</span></label>
   <p class="small muted hastip" style="margin:4px 0 0" data-tip="A blank RIR is read as your usual RIR on that lift: the middle value of the sets of it you rated in the last 12 weeks, once there are 3. That is a convention, so rating a set only sometimes cannot make it look stronger or weaker. Until there are 3, a blank set counts as hard and as 0 reps left for 1RM estimates, which errs low and never inflates a PR. Recovery, calibration, and the light-load check use only the RIR you entered.">Skipping RIR on some sets is fine.</p>`}
   ${s.rirMode==='cal'&&c.recent<2?'<p class="small" style="margin:0"><b>Needs 2 calibration sets from the last 12 weeks before any correction applies.</b></p>':''}
   <p class="small hastip" style="margin:4px 0 0" data-tip="Off hides the RIR picker: every working set counts as hard and estimates use reps alone. Corrected shifts RIR you called at 4 or less by your typical error, shrunk toward zero while you have few calibration sets and capped at 2 reps; compound and isolation lifts use their own sets once each has 2. A set called at 0 is shifted too: unless a rep actually failed, 0 is still a call, and people under-call reps left by about 1 on average, only slightly less near failure (Halperin 2022). Your log never changes, so switching is reversible.">${esc(sum)}</p>`;
@@ -7386,7 +7057,7 @@ function renderModalBody(){
   else if(m.kind==='feedback'){h=fbSheet(m);}
   else if(m.kind==='fbInbox'){h=fbInboxSheet(m);}
   else if(m.kind==='confirm'){
-    h=`<div class="sheet" role="dialog" aria-modal="true"><div class="sheet-h"><h3>${esc(m.title)}</h3></div><p>${esc(m.body)}</p><div class="row" style="margin-top:12px"><button class="btn ${m.danger?'danger':'primary'}" data-act="mOk">${esc(m.okLabel)}</button>${m.alt&&!m.alt.quiet?`<button class="btn" data-act="mAlt">${esc(m.alt.label)}</button>`:''}<button class="btn" data-act="mClose">Cancel</button></div>${m.alt&&m.alt.quiet?`<button class="linkbtn alt-quiet" data-act="mAlt">${esc(m.alt.label)}</button>`:''}</div>`;
+    h=`<div class="sheet" role="dialog" aria-modal="true"><div class="sheet-h"><h3>${esc(m.title)}</h3></div><p>${esc(m.body)}</p><div class="row" style="margin-top:12px"><button class="btn ${m.danger?'danger':'primary'}" data-act="mOk">${esc(m.okLabel)}</button>${m.alt?`<button class="btn" data-act="mAlt">${esc(m.alt.label)}</button>`:''}<button class="btn" data-act="mClose">Cancel</button></div></div>`;
   }else if(m.kind==='picker'){
     h=`<div class="sheet fixed" role="dialog" aria-modal="true"><div class="sheet-h"><h3>${esc(m.title)}</h3><button class="ib" aria-label="Close" data-act="mClose">✕</button></div>
     <div class="grid2"><input type="search" placeholder="Search" data-mbind="q" value="${esc(m.q)}" id="pickQ" enterkeyhint="search" autocomplete="off"><select data-mbind="m" aria-label="Muscle"><option value="">All muscles</option>${MUSCLES.map(([k,l])=>`<option value="${k}" ${m.m===k?'selected':''}>${l}</option>`).join('')}</select></div>
@@ -7454,7 +7125,6 @@ function renderModalBody(){
     h=`<div class="sheet" role="dialog" aria-modal="true"><div class="sheet-h"><h3>Load step: ${esc(e.name)}</h3><button class="ib" aria-label="Close" data-act="mClose">✕</button></div>
     <label class="field">Step (${U()})<input type="text" inputmode="decimal" id="incVal" value="${fmtW(incOf(e,m.plan))}"></label>
     <p class="small muted">The smallest jump the machine or dumbbells allow. Earned increases are whole multiples of it.</p>
-    ${e.inc==null&&gymRack(e,m.plan)?`<p class="small" style="margin:0">Following the ${rackKind(e)==='dumbbell'?'dumbbells':'kettlebells'} in Settings > Your gym. A step saved here replaces them for this lift.</p>`:''}
     <div class="row" style="margin-top:10px"><button class="btn primary" data-act="incSave">Save</button><button class="btn" data-act="mClose">Cancel</button></div></div>`;
   }else if(m.kind==='cardio'){
     h=`<div class="sheet" role="dialog" aria-modal="true"><div class="sheet-h"><h3>Log cardio or mobility</h3><button class="ib" aria-label="Close" data-act="mClose">✕</button></div>
@@ -7467,11 +7137,10 @@ function renderModalBody(){
   }else if(m.kind==='quick'){
     const d=state.draft;const b=d&&d.ex[m.b];if(!b){ui.modal=null;el.hidden=true;return;}const ex=EX(b.exId);
     // Examples in the unit in use (r30: the kg example still said 235x5).
-    // RPE when effort is entered as RPE (r33): the examples and @ follow it.
-    const kg=U()==='kg';const rp=rirScale()==='rpe';const tail=rp?'rpe 9':'rir 1';const eg1=kg?`100x5, 5, 4 ${tail}`:`235x5, 5, 4 ${tail}`,eg2=rp?(kg?'80x8@8 90x6@9':'185x8@8 205x6@9'):(kg?'80x8@2 90x6@1':'185x8@2 205x6@1'),ph=kg?`100x5, 5, 4 ${tail}`:`225x5, 5, 4 ${tail}`;
+    const kg=U()==='kg';const eg1=kg?'100x5, 5, 4 rir 1':'235x5, 5, 4 rir 1',eg2=kg?'80x8@2 90x6@1':'185x8@2 205x6@1',ph=kg?'100x5, 5, 4 rir 1':'225x5, 5, 4 rir 1';
     h=`<div class="sheet" role="dialog" aria-modal="true"><div class="sheet-h"><h3>${esc(ex.name)}: type sets</h3><button class="ib" aria-label="Close" data-act="mClose">✕</button></div>
     ${ex.timed?'<p class="small muted" style="margin:0">Timed hold: the number after x is seconds, for example <b>25x45, 40</b> or <b>bw x 60, 50</b>.</p>':''}
-    <p class="small muted">Loads in ${U()}${loadNote(ex)}${ex.bw?', added to bodyweight (bw or bw+25)':''}. <b>${eg1}</b> or <b>${eg2}</b>. <span class="hastip" data-tip="Type or use the keyboard's dictation mic. ${rp?'rpe':'rir'} at the end applies to every set; @ gives ${effWord()} per set. A bare number repeats the last load. Sets fill from the first one not done and are marked done.${aiOn()?' Anything this cannot read is passed to Claude.':''}">More</span></p>
+    <p class="small muted">Loads in ${U()}${loadNote(ex)}${ex.bw?', added to bodyweight (bw or bw+25)':''}. <b>${eg1}</b> or <b>${eg2}</b>. <span class="hastip" data-tip="Type or use the keyboard's dictation mic. rir at the end applies to every set; @ gives RIR per set. A bare number repeats the last load. Sets fill from the first one not done and are marked done.${aiOn()?' Anything this cannot read is passed to Claude.':''}">More</span></p>
     <input type="text" id="qTxt" autocomplete="off" autocapitalize="off" spellcheck="false" value="${esc(m.text||'')}" placeholder="${ex.bw?'bw x 10, 8, 7':ph}" enterkeyhint="done">
     ${m.err?`<p class="small" style="color:var(--red);margin:8px 0 0">${esc(m.err)}</p>`:''}${/*ai{*/m.busy?'<p class="small muted" style="margin:8px 0 0">Reading with Claude...</p>':''/*}ai=''*/}
     <div class="row" style="margin-top:10px"><button class="btn primary" data-act="qFill" ${m.busy?'disabled':''}>Fill sets</button>${m.busy?'<button class="btn" data-act="aiStop">Stop</button>':''}<button class="btn" data-act="mClose">Cancel</button></div></div>`;
@@ -8521,12 +8190,12 @@ const ACT={
     const done=next=>{if(ui.modal!==m)return;if(next){ui.modal={kind:'account',...next};renderModal();}else closeModal();};
     try{
       if(m.mode==='signin'){
-        acct.user=await A.signIn(email,pw);obOutClear();try{localStorage.removeItem(ACCT_LATER);}catch(e){/* nothing to clear */}done(null);
+        acct.user=await A.signIn(email,pw);try{localStorage.removeItem(ACCT_LATER);}catch(e){/* nothing to clear */}done(null);
         toast('Signed in. Syncing your log.');await cloudInit();acctRerender();
       }else if(m.mode==='signup'){
         const r=await A.signUp(email,pw);
         if(r.confirm){done({mode:'wait',email});waitStart(email,pw);}
-        else{acct.user=r.user;obOutClear();done(null);toast('Account created. Syncing your log.');await cloudInit();acctRerender();}
+        else{acct.user=r.user;done(null);toast('Account created. Syncing your log.');await cloudInit();acctRerender();}
       }else if(m.mode==='forgot'){
         await A.resetPassword(email);
         done({mode:'sent',title:'Check your email',msg:`If there is an account for ${email}, a reset link is on its way. It opens in your browser: set the new password there, then sign in here.`});
@@ -8550,29 +8219,18 @@ const ACT={
       acct.user=null;cloudStop();rerenderKeepScroll();toast('Account deleted. Your log is still on this phone.');
     },true);
   },
-  /* Sign out works like any app with an account (r33, V): the log lives in
-     the account and comes back on sign-in, so the phone's copy goes with the
-     sign-out. Keeping a copy on the phone is offered, quietly, second. Either
-     way the app opens on the first page. Nothing is removed until every
-     change has reached the account. */
   acctSignOut(){
     const A=AUTH();if(!A)return;
     const out=async remove=>{
       // Send anything not yet synced first, so signing out never loses work.
       if(cloud.on){try{clearTimeout(cloud.t);await withTimeout(cq(cloudFlush),15000);}catch(e){log('auth',e);}}
-      if(remove&&!(cloud.on&&cloud.status==='synced')){
-        confirmBox('Not in your account yet','Some changes have not reached your account. Connect to the internet and sign out again, or sign out and keep them on this phone.','Keep on this phone and sign out',()=>out(false));return;}
+      if(remove&&!(cloud.on&&cloud.status==='synced')){toast('Not synced yet, so nothing was removed. Connect and try again.');return;}
       try{await A.signOut();}catch(e){log('auth',e);toast(e.message||'Could not sign out');return;}
       acct.user=null;cloudStop();
-      /* A session in progress kept on the phone carries on where it was, and
-         the app stays as it is after it: sending someone mid-workout to the
-         first page would read as the session lost. */
-      const mid=!remove&&!!state.draft;
-      if(!mid)try{localStorage.setItem(OB_OUT,'1');localStorage.removeItem(OB_ACCT);}catch(e){/* per device only */}
-      if(remove){undoForget();state=normalize(null);saveNow();invalidate();}
-      if(!mid){ui.tab='today';window.scrollTo(0,0);}render();toast(remove?'Signed out':'Signed out. A copy stays on this phone.');
+      if(remove){undoForget();state=normalize(null);saveNow();invalidate();ui.tab='today';render();toast('Signed out. Your log was removed from this phone and is safe in your account.');}
+      else{rerenderKeepScroll();toast('Signed out. Your log stays on this phone.');}
     };
-    confirmBox('Sign out?','Your log is saved in your account. Sign in on any phone to pick it up again.','Sign out',()=>out(true),false,{label:'Sign out, keep a copy on this phone',fn:()=>out(false),quiet:true});
+    confirmBox('Sign out?','Your log is saved in your account. Keep a copy on this phone too? Removing it suits a shared phone.','Sign out, keep copy',()=>out(false),false,{label:'Sign out and remove',fn:()=>out(true)});
   },
   startFree(){
     if(state.draft){ui.tab='today';render();return;}
@@ -8728,17 +8386,7 @@ const ACT={
     else go();
   },
   obSample(){openModal({kind:'templates',from:'welcome'});},
-  gymUnit(t){
-    const v=t.dataset.v==='kg'?'kg':'lb';if(v===gymUnit())return;
-    const go=()=>{ui.gymDb=null;ui.gymU=v;if(gymOf()){snapshot();delete state.settings.gym;gymRefresh();commit();}rerenderKeepScroll();};
-    // Weights typed in one unit mean nothing in the other, so they are cleared, with Undo, rather than converted to odd numbers.
-    if(gymOf()||ui.gymDb)confirmBox(`Switch to ${v}?`,`The weights typed here are in ${gymUnit()} and are cleared. Type them again in ${v}.`,`Switch to ${v}`,()=>{go();toast(`Your gym in ${v}`,true);});else go();},
-  gymPlate(t){const g=gymNext();const all=gymPlates(g.u);const v=+t.dataset.v;let on=Array.isArray(g.plates)?g.plates.slice():all.slice();
-    on=on.includes(v)?on.filter(x=>x!==v):[...on,v];if(!on.length){toast('Keep at least one plate');return;}
-    if(on.length===all.length)delete g.plates;else g.plates=all.filter(x=>on.includes(x));gymSave(g);},
-  gymClear(){ui.gymDb=null;snapshot();delete state.settings.gym;gymRefresh();commit();rerenderKeepScroll();toast('Your gym cleared: the usual steps apply',true);},
-  obTourPick(t){obTour.user=true;obTourStop();obTourGo(+t.dataset.i,true);},
-  obAcctLater(){try{localStorage.setItem(OB_ACCT,'later');}catch(e){/* per device only */}obOutClear();window.scrollTo(0,0);render();},
+  obAcctLater(){try{localStorage.setItem(OB_ACCT,'later');}catch(e){/* per device only */}window.scrollTo(0,0);render();},
   obAcctBack(){try{localStorage.removeItem(OB_ACCT);}catch(e){/* nothing to clear */}window.scrollTo(0,0);render();},
   obUnit(t){const v=t.dataset.v;if(v!=='lb'&&v!=='kg')return;state.settings.unit=v;commit();render();},
   tplPick(t){
@@ -8877,9 +8525,6 @@ const ACT={
   incSave(){
     const m=ui.modal;const n=numIn(($('#incVal')||{}).value);if(n==null||n<=0){toast('Enter a step above 0');return;}
     const e=state.exercises.find(x=>x.id===m.exId);if(!e){closeModal();return;}
-    // Saved without typing, a lift with no step of its own keeps following its default (Your gym's rack, say) (r33).
-    // A number typed is saved, even the one shown (review: typing 5 on a 5 and 2.5 rack did nothing); so is any other number.
-    if(e.inc==null&&!m.typed&&String(numIn(fmtW(incOf(e,m.plan))))===String(n)){closeModal();return;}
     e.inc=fromD(Math.min(n,U()==='lb'?1100:500));closeModal();commit();refreshEx(e.id);saveNow();rerenderKeepScroll();toast(`Load step for ${e.name}: ${fmtW(e.inc)} ${U()}`);
   },
   cardioNew(){openModal({kind:'cardio'});},
@@ -8924,7 +8569,7 @@ const ACT={
     const bi=+t.dataset.b,si=+t.dataset.s;const d=state.draft;const b=d&&d.ex[bi];const s=b&&b.sets[si];if(!s)return;
     const n=numIn(t.dataset.v);s.rir=n==null?null:Math.min(Math.max(n,0),10);
     const btn=document.querySelector(`.rirb[data-b="${bi}"][data-s="${si}"]`);
-    if(btn){const cur=effShow(s.rir);btn.textContent=cur===''?(b.plan&&b.plan.rir!=null?'–':effWord()):cur;btn.classList.toggle('unset',cur==='');btn.setAttribute('aria-label',`${effAria(si)}: ${cur===''?'not set':cur}`);}
+    if(btn){const cur=s.rir==null?'':String(s.rir);btn.textContent=cur===''?(b.plan&&b.plan.rir!=null?'–':'RIR'):cur;btn.classList.toggle('unset',cur==='');btn.setAttribute('aria-label',`Reps in reserve for set ${si+1}: ${cur===''?'not set':cur}`);}
     rirClose();if(btn)try{btn.focus({preventScroll:true});}catch(e){/* focus is best effort */}
     if(s.done)refreshPR(bi,si,false);updateProgress(bi);
     // The fold waits for the effort of the last set, then goes.
@@ -9037,17 +8682,17 @@ const ACT={
     const m=ui.modal;if(!m||m.kind!=='quick')return;const d=state.draft;const b=d&&d.ex[m.b];if(!b)return;
     const txt=(($('#qTxt')||{}).value||'').trim();m.text=txt;if(!txt){m.err='Type at least one set.';renderModal();return;}
     const ex=EX(b.exId);const fi=b.sets.findIndex(x=>!x.done&&!x.warm);const fw=fi>=0?effW(b,fi):null;const defW=fw!=null?fw:null;
-    const got=parseSets(txt,ex,defW,null,rirScale()==='rpe');
+    const got=parseSets(txt,ex,defW);
     const finish=list=>{const n=fillSets(m.b,list);closeModal();rerenderKeepScroll();toast(`${n} set${n===1?'':'s'} filled and marked done`);};
     if(got){finish(got);return;}
-/*ai{*/    if(!aiOn()){m.err=`Could not read that. Try the pattern 225x5, 5, 4 ${rirScale()==='rpe'?'rpe 9':'rir 1'}.`;renderModal();return;}
+/*ai{*/    if(!aiOn()){m.err='Could not read that. Try the pattern 225x5, 5, 4 rir 1.';renderModal();return;}
     const ctl=new AbortController();AI.ctl=ctl;m.busy=true;m.err='';renderModal();
-    AI.fn.json(`Convert this gym log for the exercise "${ex.name}" into sets. Loads are in ${U()}.${ex.bw?' This is a bodyweight exercise: the load is weight added to bodyweight, and "bodyweight" or "bw" alone means 0.':''} When a set has no load, it uses the previous set's load; if no load is given anywhere, use null. ${rirScale()==='rpe'?'Effort is written as RPE (10 means no reps left): convert each to rir = 10 minus the RPE. ':''}RIR means reps in reserve; use null when it is not stated for a set, and apply a value stated for "all" or "each" to every set. Reply with only a JSON array, one object per set in order, like [{"w":225,"r":5,"rir":1}].\n\nLog: ${txt}`,{signal:ctl.signal,modelTier:'quick'})
+    AI.fn.json(`Convert this gym log for the exercise "${ex.name}" into sets. Loads are in ${U()}.${ex.bw?' This is a bodyweight exercise: the load is weight added to bodyweight, and "bodyweight" or "bw" alone means 0.':''} When a set has no load, it uses the previous set's load; if no load is given anywhere, use null. RIR means reps in reserve; use null when it is not stated for a set, and apply a value stated for "all" or "each" to every set. Reply with only a JSON array, one object per set in order, like [{"w":225,"r":5,"rir":1}].\n\nLog: ${txt}`,{signal:ctl.signal,modelTier:'quick'})
       .then(a=>{if(ui.modal!==m)return;const v=aiSetsValid(a);if(!v){m.err='Claude could not turn that into sets. Try the pattern 225x5, 5, 4 rir 1.';return;}
         if(v.some(x=>!x.w)&&!ex.bw&&defW!=null)v.forEach(x=>{if(!x.w)x.w=defW;});finish(v);})
       .catch(e=>{if(ui.modal!==m)return;m.err=aiErr(e)||'';})
       .finally(()=>{if(AI.ctl===ctl)AI.ctl=null;if(ui.modal===m){m.busy=false;renderModal();}});
-/*}ai=m.err=`Could not read that. Try the pattern 225x5, 5, 4 ${rirScale()==='rpe'?'rpe 9':'rir 1'}.`;renderModal();*/  },
+/*}ai=m.err='Could not read that. Try the pattern 225x5, 5, 4 rir 1.';renderModal();*/  },
   aiStop(){if(AI.ctl){try{AI.ctl.abort();}catch(e){/* already finished */}}},
 /*ai{*/  aiDebrief(t){const sid=t.dataset.sid;const pr=debriefPrompt(sid);if(!pr){toast('That session is no longer saved');return;}const m={kind:'ai',title:'Session debrief'};openModal(m);aiRun(m,pr,'default');},
   aiReview(){openModal({kind:'ai',title:'Ask Claude about your training',ask:true,q:''});},
@@ -9574,7 +9219,6 @@ document.addEventListener('keydown',e=>{
 document.addEventListener('input',e=>{
   const t=e.target;
   if(ui.modal&&FORM_SHEETS.has(ui.modal.kind)&&t&&t.closest&&t.closest('#modal'))ui.modal.dirty=true;
-  if(t.id==='incVal'&&ui.modal&&ui.modal.kind==='inc')ui.modal.typed=true;
   if(t.dataset.cf&&state.draft&&state.draft.cardio){const c=state.draft.cardio[+t.dataset.c];if(!c)return;const k=t.dataset.cf;
     if(k==='min'){const n=numIn(t.value);c.min=n==null||n<=0?null:Math.min(Math.round(n),600);}
     else if(k==='hr'){const n=numIn(t.value);c.hr=n!=null&&n>=30&&n<=230?Math.round(n):null;}
@@ -9628,7 +9272,6 @@ document.addEventListener('change',e=>{
        it, so typing 12 then 15 into a 6 to 10 range gives 12 to 15. */
     if(f&&(t.dataset.it==='repMin'||t.dataset.it==='repMax')&&+f.it.repMin>+f.it.repMax){if(t.dataset.it==='repMin')f.it.repMax=f.it.repMin;else f.it.repMin=f.it.repMax;toast(`Range set to ${repSpan(f.it.repMin,f.it.repMax,'-')}`);}
     if(f&&t.dataset.it!=='sets'){invalidate();syncDraftPlan(f);if(t.dataset.it==='inc')refreshEx(f.it.exId);}commit();rerenderKeepScroll();return;}
-  if(t.dataset.gym){gymInput(t);return;}
   if(t.dataset.band){const k=t.dataset.band;const b=state.settings.bands[k];if(b[0]>b[1])b.reverse();commit();rerenderKeepScroll();return;}
   if(t.dataset.dayname!=null){commit();rerenderKeepScroll();return;}
   if(t.dataset.dayrest!=null){const R=curRoutineB();const d=R.days[+t.dataset.dayrest];if(!d)return;snapshot();d.rest=t.checked;commit();rerenderKeepScroll();toast(t.checked?`${d.name||'Day'} is now a rest day. Its exercises are kept.`:`${d.name||'Day'} is a training day again`,true);return;}
@@ -9699,7 +9342,6 @@ document.addEventListener('change',e=>{
     case 'timerCompact':state.settings.timerCompact=t.checked;commit();if(!$('#timer').hidden)tick();break;
     case 'autoDone':state.settings.autoDone=t.checked;commit();rerenderKeepScroll();break;
     case 'loadFill':ACT.loadAsk({dataset:{v:t.checked?'fill':'grey'}});break;
-    case 'rirScale':if(t.value==='half'||t.value==='rpe')state.settings.rirScale=t.value;else delete state.settings.rirScale;commit();rerenderKeepScroll();break;
     case 'rirAsk':if(t.checked)state.settings.rirAsk=true;else delete state.settings.rirAsk;commit();rerenderKeepScroll();break;
     case 'smallPlates':if(t.checked)state.settings.smallPlates=true;else delete state.settings.smallPlates;commit();break;
     case 'wakeLock':state.settings.wakeLock=t.checked;commit();if(t.checked&&state.draft)wakeOn();else if(!t.checked)wakeOff();break;
@@ -10027,13 +9669,10 @@ const AI={fn:null,ready:false,off:true,ctl:null};function aiInit(){}const aiOn=(
    "bw x 10, bw+25 x 6"   bodyweight exercises, added load after the plus
    A bare number after the first set repeats the last load. Anything it
    cannot read returns null, and Claude is asked instead. */
-/* rpe: effort is entered as RPE (Settings, r33), so @8 is RPE 8, saved as
-   RIR 2. "rpe 8" at the end is RPE in either mode, as "rir 2" is RIR. */
-function parseSets(text,ex,defW,conv,rpe){
+function parseSets(text,ex,defW,conv){
   conv=conv||fromD;
-  const fromRpe=v=>v>=1&&v<=10?Math.round((10-v)*10)/10:NaN;
   let s=String(text||'').toLowerCase().replace(/[×*]/g,'x').replace(/\bfor\b/g,'x').replace(/\bat\b/g,'@').replace(/\breps?\b/g,'').replace(/\blbs?\b|\bkgs?\b/g,'');
-  let allRir=null;const m=s.match(/\b(rir|rpe)\s*(\d+(?:\.\d+)?)\s*$/);if(m){allRir=m[1]==='rpe'?fromRpe(+m[2]):+m[2];if(!isFinite(allRir))return null;s=s.slice(0,m.index);}
+  let allRir=null;const m=s.match(/\brir\s*(\d+(?:\.\d+)?)\s*$/);if(m){allRir=+m[1];s=s.slice(0,m.index);}
   s=s.replace(/\s*x\s*/g,'x').replace(/\s*@\s*/g,'@').replace(/\s*\+\s*/g,'+').trim();
   if(!s)return null;
   const toks=s.split(/[\s,;/]+/).filter(Boolean);
@@ -10043,7 +9682,7 @@ function parseSets(text,ex,defW,conv,rpe){
     const g=t.match(re);if(!g)return null;
     if(g[1])w=g[2]?conv(+g[2]):0;else if(g[3]!=null)w=conv(+g[3]);
     const r=+g[4];if(!(r>=1&&r<=100))return null;
-    const rir=g[5]!=null?(rpe?fromRpe(+g[5]):+g[5]):allRir;if(rir!=null&&!(rir>=0&&rir<=10))return null;
+    const rir=g[5]!=null?+g[5]:allRir;if(rir!=null&&!(rir>=0&&rir<=10))return null;
     if(w==null&&!ex.bw)return null;
     out.push({w:w==null?0:w,r,rir});
   }
@@ -10097,7 +9736,7 @@ function swapPrompt(b,reason){
 }
 /*}ai=*/
 window.__onLib=(which)=>{if((which==='chart'&&ui.tab==='dash')||(which==='sortable'&&ui.tab==='program'))rerenderKeepScroll();};
-window.__ironlog={get state(){return state;},set state(v){state=v;},ENV,KEY,COMMON,COMMON_TIP,isCommon,gymRack,gymClean,dbListOf,capOf,refreshEx,effShow,rirScale,setStr,libExercises,obGate,obTour,andList,belowMin,aboveMax,starterRoutine,starterSigs,plateList,exBarKg,VOL_MODES,liveLogFetch,regionSrc,fitTargets,firstFullWeek,moveBlock,BANDS,installSheet,siteHost,greyW,effW,greyR,lighterLoad,incOf,swapPlan,planSetsPerWeek,weekNeed,stepRead,e1inv,rtfAt,rtfOf,rtfBand,calStats,rirEff,isHard,setCredit,tonnage,loadMode,loadWords,loadNote,progStep,jumpCap,setSecs,setupSecs,recovery,rolling7,rankDays,rankExercises,isCompound,patternOf,noE1,whtrLine,exHeadline,remainMin,shortPlan,weekPlan,cycleProjection,lastLighterWeek,regionBalance,parseHeight,mixCheck,swapCands,eqPlan,exportCSV,importData,chunksOf,assemble,sessionMuscles,TRACK_ONLY,cloud,Hx,mergeChunk,baseOf,sync:()=>cq(cloudPull),TEMPLATES,lastRFor,impDate,impRows,impNorm,impMatch,impFromText,impFromTable,impHeader,impBuild,impStart,impXlsx,parseSets,undoStack,undoRestore,undoForget,allTimeBests,bestsBoard,obActive,fmtW,rirUsual,rirEst,routineFromTemplate,plannedSets,map3d:()=>({state:B3.state,fail:B3.fail,meshes:B3.meshes.length,yaw:B3.yaw,glow:Object.keys(B3.mats).filter(m=>B3.mats[m].emissiveIntensity>0),canvas:!!document.querySelector('#bm3d canvas'),colors:Object.fromEntries(Object.entries(B3.mats).map(([m,mt])=>[m,'#'+mt.color.getHexString()])),pick:(x,y)=>map3dPick(x,y),want:map3dColors()}),cloudState:()=>({on:cloud.on,status:cloud.status,err:cloud.err,uid:cloud.uid,acct:cloud.acct}),acctUser:()=>acct.user,acctWaiting:()=>!!acctWait.pw,flush:()=>cq(cloudFlush),backupDue,routineUpdates,planFor,platesMode,plateText,chunksOf,IDX,suggest,e1,render,ACT,ui,makeDemo,invalidate,normalize,snapshot,saveNow,timer,weekStats,weekStart,today,EX,blockProgress,dayMinutes,weekStreak,coach,tonnageNow,livePR,exProjection,movers,stalledIds,muscleStatus,actualAvg4,plannedPerWeek,parseSets,/*ai{*/aiSetsValid,fillSets,/*}ai=fillSets,*/newBlock,lastNoteOf,sizeRows,sessionMuscleSets,sessionCapNote,routineClutter,rowBlank,dayReasons,impTextSets,liftTrend,prsWithin,activeRoutine,rackStep,repFloor,sessionLength,prBeat,exInjury,exJoints,openModal,EQUIP,HARD_EX,recentLighter,planEvidenceNote,howToUrl,editFp,toast,avgWeeks,regionWk,REGION_WKS,SAFETY_TXT,libFiltered,nameMatch,workLoad,fitE,offSession,tagged,fatigueStalls,avgWeeksTxt,routineFromLog,repSpan,rangeWords,calDueIdx,readyCard,loadAskCard,/*ai{*/aiDigest,debriefPrompt,reviewPrompt,swapPrompt,AI,/*}ai=*/sameRR};
+window.__ironlog={get state(){return state;},set state(v){state=v;},ENV,KEY,COMMON,isCommon,andList,belowMin,aboveMax,starterRoutine,starterSigs,plateList,exBarKg,VOL_MODES,liveLogFetch,regionSrc,fitTargets,firstFullWeek,moveBlock,BANDS,installSheet,siteHost,greyW,effW,greyR,lighterLoad,incOf,swapPlan,planSetsPerWeek,weekNeed,stepRead,e1inv,rtfAt,rtfOf,rtfBand,calStats,rirEff,isHard,setCredit,tonnage,loadMode,loadWords,loadNote,progStep,jumpCap,setSecs,setupSecs,recovery,rolling7,rankDays,rankExercises,isCompound,patternOf,noE1,whtrLine,exHeadline,remainMin,shortPlan,weekPlan,cycleProjection,lastLighterWeek,regionBalance,parseHeight,mixCheck,swapCands,eqPlan,exportCSV,importData,chunksOf,assemble,sessionMuscles,TRACK_ONLY,cloud,Hx,mergeChunk,baseOf,sync:()=>cq(cloudPull),TEMPLATES,lastRFor,impDate,impRows,impNorm,impMatch,impFromText,impFromTable,impHeader,impBuild,impStart,impXlsx,parseSets,undoStack,undoRestore,undoForget,allTimeBests,bestsBoard,obActive,fmtW,rirUsual,rirEst,routineFromTemplate,plannedSets,map3d:()=>({state:B3.state,fail:B3.fail,meshes:B3.meshes.length,yaw:B3.yaw,glow:Object.keys(B3.mats).filter(m=>B3.mats[m].emissiveIntensity>0),canvas:!!document.querySelector('#bm3d canvas'),colors:Object.fromEntries(Object.entries(B3.mats).map(([m,mt])=>[m,'#'+mt.color.getHexString()])),pick:(x,y)=>map3dPick(x,y),want:map3dColors()}),cloudState:()=>({on:cloud.on,status:cloud.status,err:cloud.err,uid:cloud.uid,acct:cloud.acct}),acctUser:()=>acct.user,acctWaiting:()=>!!acctWait.pw,flush:()=>cq(cloudFlush),backupDue,routineUpdates,planFor,platesMode,plateText,chunksOf,IDX,suggest,e1,render,ACT,ui,makeDemo,invalidate,normalize,snapshot,saveNow,timer,weekStats,weekStart,today,EX,blockProgress,dayMinutes,weekStreak,coach,tonnageNow,livePR,exProjection,movers,stalledIds,muscleStatus,actualAvg4,plannedPerWeek,parseSets,/*ai{*/aiSetsValid,fillSets,/*}ai=fillSets,*/newBlock,lastNoteOf,sizeRows,sessionMuscleSets,sessionCapNote,routineClutter,rowBlank,dayReasons,impTextSets,liftTrend,prsWithin,activeRoutine,rackStep,repFloor,sessionLength,prBeat,exInjury,exJoints,openModal,EQUIP,HARD_EX,recentLighter,planEvidenceNote,howToUrl,editFp,toast,avgWeeks,regionWk,REGION_WKS,SAFETY_TXT,libFiltered,nameMatch,workLoad,fitE,offSession,tagged,fatigueStalls,avgWeeksTxt,routineFromLog,repSpan,rangeWords,calDueIdx,readyCard,loadAskCard,/*ai{*/aiDigest,debriefPrompt,reviewPrompt,swapPrompt,AI,/*}ai=*/sameRR};
 render();
 wakeOn();
 timerResume();
