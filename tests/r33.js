@@ -333,6 +333,7 @@ async function engineRun(page, cases, gym) {
       const wk = ['2026-08-28', '2026-09-04', '2026-09-11', '2026-09-18', '2026-09-25', '2026-10-02', '2026-10-08'];
       set('lb', wk.map((d, i) => mk('s' + i, d, 'incDb', [[55 * LB, 10, 1], [55 * LB, 10, 1], [55 * LB, 9, 1]], [8, 10])), { u: 'lb', db: { lo: 5, hi: 55, st: 5 } });
       let st = L.IDX().exStats.incDb; o.rackTop = { capped: st.capped, stalled: st.stalled };
+      { const R0 = L.state.routines[0]; const it = R0.days.find(d => !d.rest).items; it.push({ uid: 'capx', exId: 'incDb', sets: 3, repMin: 8, repMax: 10, rir: 1, rest: 90, inc: 1 * LB }); L.invalidate(); o.planCap = L.IDX().exStats.incDb.capped; it.pop(); L.invalidate(); }
       set('lb', wk.map((d, i) => mk('s' + i, d, 'incDb', [[55 * LB, 10, 1], [55 * LB, 10, 1], [55 * LB, 9, 1]], [8, 10])), null);
       st = L.IDX().exStats.incDb; o.noRack = { capped: st.capped, stalled: st.stalled };
       // 6. Logged above the top of the rack: not "the heaviest available".
@@ -350,6 +351,7 @@ async function engineRun(page, cases, gym) {
     ok(R.top[0] === 54.4 && R.top[2] === true && /heaviest load available/.test(R.top[1]) && !/add 0/.test(R.top[1]), 'the top of a 120 lb rack typed as 54.4 kg is the heaviest available: more reps', R.top);
     ok(R.legPress === 305 && R.landmine === 72.5, 'with no 35s on hand a leg press steps by two 2.5s (300 to 305), a landmine by one (70 to 72.5)', [R.legPress, R.landmine]);
     ok(R.rackTop.capped === true && R.rackTop.stalled === false && R.noRack.capped === false, 'six weeks at the top of the rack read capped, not stalled; with no rack set it is as before', R);
+    ok(R.planCap === false && R.rackTop.capped === true, 'a lift whose plan sets its own step is not on the rack, so the rack top does not cap it', R.planCap);
     ok(R.above[0] === 115 && /add 5 lb/.test(R.above[1]) && !/heaviest/.test(R.above[1] + R.above[2]), 'a load logged above the top of the rack is not called the heaviest available: it steps on by the rack\'s spacing, 110 to 115', R.above);
     ok(R.rpe.at.join() === '2' && R.rpe.tail.join() === '2,2' && R.rpe.tailWhole.join() === '2,2' && R.rpe.rirMode.join() === '2' && R.rpe.half.join() === '1.5', 'typed sets in RPE mode: @8 is RPE 8 (RIR 2), "rpe 8" at the end works in either mode, @8.5 is RIR 1.5', R.rpe);
     ok(R.big[0] === null && R.big[1] === 'null', 'a rack of more than 300 weights is refused, not cut short', R.big);
@@ -398,6 +400,13 @@ async function engineRun(page, cases, gym) {
       const sr = st.getBoundingClientRect(); const x = st.querySelector('.rs-x').getBoundingClientRect();
       return { n: bs.length, minW: Math.round(Math.min(...bs.map(r => r.width))), minH: Math.round(Math.min(...bs.map(r => r.height))), inside: bs.every(r => r.left >= sr.left - 1 && r.right <= sr.right + 1) && sr.right <= innerWidth, between: bs[6].left > bs[0].left && bs[6].right < bs[1].right + 30, xW: Math.round(x.width), vw: innerWidth };
     });
+    const odd = await ev(async () => {
+      const L = window.__ironlog; document.querySelector('.rirstrip [data-act="rirPick"][data-v=""]') && document.querySelector('.rirstrip .rs-x').getAttribute('aria-label');
+      const lab = document.querySelector('.rirstrip .rs-x').getAttribute('aria-label');
+      L.state.draft.ex[0].sets[1].rir = 0.25; L.render(); document.querySelector('.rirb[data-b="0"][data-s="1"]').click(); await new Promise(r => setTimeout(r, 80));
+      return { lab, n: document.querySelectorAll('.rirstrip .rs-g [data-act="rirPick"]').length, box: document.querySelector('.rirb[data-b="0"][data-s="1"]').textContent };
+    });
+    ok(odd.lab === 'Clear RPE' && odd.n === 11 && odd.box === '9.8', 'the clear button says RPE in RPE mode; a stored value off the grid shows in its box and the grid keeps its 11 places', odd);
     ok(grid.n === 11 && grid.minW >= 40 && grid.minH >= 44 && grid.inside && grid.between && grid.xW >= 44, 'RPE and half points at 320 px: 11 buttons at least 40 px wide and 44 tall, halves between the whole numbers, inside the screen', grid);
     ok(!P.errors.length, 'the review fixes: no page errors', P.errors);
     await P.ctx.close().catch(() => {});

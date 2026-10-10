@@ -3301,7 +3301,7 @@ function IDX(){
        tests cannot see. Such a lift is marked capped rather than stalled. */
     const exI=EX(id);const lastReal=real.length?real[real.length-1]:null;
     // r33: the top of the rack in Your gym is a cap too (review: a lift at the heaviest dumbbell read as stalled).
-    const capL=lastReal?capOf(exI,null,lastReal.topW):null;const capped=!!lastReal&&atCapOf(exI,null,lastReal.topW,capL);
+    const plC=planFor(id);const capL=lastReal?capOf(exI,plC,lastReal.topW):null;const capped=!!lastReal&&atCapOf(exI,plC,lastReal.topW,capL);
     /* RIR in the trend only where it is logged consistently (r30): on at
        least 80% of the lift's working sets in its last 8 sessions in range, a
        convention. Rated on some sets and blank on others, a 255 x 5 called
@@ -6382,13 +6382,14 @@ function rirSelect(val,bi,si,target){
    every button 44 px tall and at least 40 px wide at 320 px. The buttons
    carry RIR; RPE only changes what they say. */
 function rirStripHTML(bi,si,cur){
-  const opts=effOpts();if(cur!==''&&!opts.includes(cur)){opts.push(cur);opts.sort((a,b)=>a-b);}
   const sc=rirScale();const two=sc!=='whole';
+  // A stored value off the grid (0.25 from an import) shows in the set's box; the grid keeps its 11 places.
+  const opts=effOpts();if(!two&&cur!==''&&!opts.includes(cur)){opts.push(cur);opts.sort((a,b)=>a-b);}
   const btn=o=>`<button type="button" data-act="rirPick" data-b="${bi}" data-s="${si}" data-v="${o}" aria-pressed="${cur===o}"${cur===o?' class="on"':''}>${sc==='rpe'?effShow(o):o}</button>`;
   // RPE reads up from 5 to 10, as RPE charts do; RIR from 0 up.
   const ord=sc==='rpe'?opts.slice().reverse():opts;
   const body=two?`<div class="rs-g">${ord.filter(o=>Number.isInteger(+o)).map(btn).join('')}${ord.filter(o=>!Number.isInteger(+o)).map(btn).join('')}</div>`:opts.map(btn).join('');
-  return `<div class="rirstrip${two?' two':''}" role="group" aria-label="${effAria(si)}" data-b="${bi}" data-s="${si}"><span class="rs-l">${effWord()}</span>${body}<button type="button" class="rs-x" data-act="rirPick" data-b="${bi}" data-s="${si}" data-v="" aria-label="Clear RIR">✕</button></div>`;
+  return `<div class="rirstrip${two?' two':''}" role="group" aria-label="${effAria(si)}" data-b="${bi}" data-s="${si}"><span class="rs-l">${effWord()}</span>${body}<button type="button" class="rs-x" data-act="rirPick" data-b="${bi}" data-s="${si}" data-v="" aria-label="Clear ${effWord()}">✕</button></div>`;
 }
 function rirClose(){const el=document.querySelector('.rirstrip');if(!el)return;const b=document.querySelector(`.rirb[data-b="${el.dataset.b}"][data-s="${el.dataset.s}"]`);if(b)b.setAttribute('aria-expanded','false');el.remove();autoPending();}
 /* Typed reps, then a tap on the same row's RIR box (r30): auto-mark waits
@@ -8877,8 +8878,8 @@ const ACT={
     const m=ui.modal;const n=numIn(($('#incVal')||{}).value);if(n==null||n<=0){toast('Enter a step above 0');return;}
     const e=state.exercises.find(x=>x.id===m.exId);if(!e){closeModal();return;}
     // Saved without typing, a lift with no step of its own keeps following its default (Your gym's rack, say) (r33).
-    // A number typed is saved, even the one shown (review: typing 5 on a 5 and 2.5 rack did nothing).
-    if(e.inc==null&&!m.typed){closeModal();return;}
+    // A number typed is saved, even the one shown (review: typing 5 on a 5 and 2.5 rack did nothing); so is any other number.
+    if(e.inc==null&&!m.typed&&String(numIn(fmtW(incOf(e,m.plan))))===String(n)){closeModal();return;}
     e.inc=fromD(Math.min(n,U()==='lb'?1100:500));closeModal();commit();refreshEx(e.id);saveNow();rerenderKeepScroll();toast(`Load step for ${e.name}: ${fmtW(e.inc)} ${U()}`);
   },
   cardioNew(){openModal({kind:'cardio'});},
@@ -9041,7 +9042,7 @@ const ACT={
     if(got){finish(got);return;}
 /*ai{*/    if(!aiOn()){m.err=`Could not read that. Try the pattern 225x5, 5, 4 ${rirScale()==='rpe'?'rpe 9':'rir 1'}.`;renderModal();return;}
     const ctl=new AbortController();AI.ctl=ctl;m.busy=true;m.err='';renderModal();
-    AI.fn.json(`Convert this gym log for the exercise "${ex.name}" into sets. Loads are in ${U()}.${ex.bw?' This is a bodyweight exercise: the load is weight added to bodyweight, and "bodyweight" or "bw" alone means 0.':''} When a set has no load, it uses the previous set's load; if no load is given anywhere, use null. RIR means reps in reserve; use null when it is not stated for a set, and apply a value stated for "all" or "each" to every set. Reply with only a JSON array, one object per set in order, like [{"w":225,"r":5,"rir":1}].\n\nLog: ${txt}`,{signal:ctl.signal,modelTier:'quick'})
+    AI.fn.json(`Convert this gym log for the exercise "${ex.name}" into sets. Loads are in ${U()}.${ex.bw?' This is a bodyweight exercise: the load is weight added to bodyweight, and "bodyweight" or "bw" alone means 0.':''} When a set has no load, it uses the previous set's load; if no load is given anywhere, use null. ${rirScale()==='rpe'?'Effort is written as RPE (10 means no reps left): convert each to rir = 10 minus the RPE. ':''}RIR means reps in reserve; use null when it is not stated for a set, and apply a value stated for "all" or "each" to every set. Reply with only a JSON array, one object per set in order, like [{"w":225,"r":5,"rir":1}].\n\nLog: ${txt}`,{signal:ctl.signal,modelTier:'quick'})
       .then(a=>{if(ui.modal!==m)return;const v=aiSetsValid(a);if(!v){m.err='Claude could not turn that into sets. Try the pattern 225x5, 5, 4 rir 1.';return;}
         if(v.some(x=>!x.w)&&!ex.bw&&defW!=null)v.forEach(x=>{if(!x.w)x.w=defW;});finish(v);})
       .catch(e=>{if(ui.modal!==m)return;m.err=aiErr(e)||'';})
