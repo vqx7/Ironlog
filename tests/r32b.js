@@ -52,7 +52,7 @@ const mk = (id, d, exId, sets, rr, extra) => ({ id, date: d, dayIdx: 0, dayId: n
       // A loaded lift is judged as before.
       L.state.sessions = [mk('b1', '2026-09-30', 'bench', [[100, 8, 1], [100, 8, 1]], [6, 10]), mk('b2', '2026-10-07', 'bench', [[100, 9, 1], [100, 8, 1]], [6, 10])]; L.invalidate();
       out.bench = L.IDX().prs.map(p => [p.date, p.type, p.big]);
-      out.guide = (() => { L.ACT.guideOpen({ dataset: {} }); const t = document.body.innerText; L.state.modal = null; return /PRs are judged at your latest weigh-in/.test(document.documentElement.innerHTML); })();
+      out.guide = (() => { L.ACT.guideOpen({ dataset: {} }); const t = document.body.innerText; L.state.modal = null; return /On a bodyweight lift, PRs, estimates, trends, and charts are all read at your latest weigh-in/.test(document.documentElement.innerHTML); })();
       return out;
     }, [DATES, BW, seedBW.toString(), mk.toString()]);
     ok(r.prs.length === 0 && r.n30 === 0, 'eight identical weeks with weigh-ins going up: no PRs listed or counted (r32 had 10)', r);
@@ -67,7 +67,7 @@ const mk = (id, d, exId, sets, rr, extra) => ({ id, date: d, dayIdx: 0, dayId: n
     ok(g.filter(p => p[1] === 'pullup').length === 2 && g.filter(p => p[1] === 'hangingLegRaise').length === 1, 'and nothing else: one PR per real change, none from the scale', g);
     ok(JSON.stringify(r.fall) === JSON.stringify(g), 'with weigh-ins going down instead, the same PRs, no more and none lost', { fall: r.fall, grow: g });
     ok(r.bench.length === 1 && r.bench[0][0] === '2026-10-07' && r.bench[0][2], 'a loaded lift is judged as before: bench 100 x 9 after 100 x 8 is a counted PR', r.bench);
-    ok(r.guide, 'the Guide says bodyweight PRs are judged at the latest weigh-in');
+    ok(r.guide, 'the Guide says bodyweight PRs (and, since r34, estimates, trends, and charts) are read at the latest weigh-in');
 
     // Through the screen: a session on the heavier day, tick 8 then 9 pull-ups.
     const ui = await P.page.evaluate(([D, B, seedS]) => {

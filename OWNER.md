@@ -2,13 +2,15 @@
 
 Everything that needs you, in one place, with the exact code to paste. Claude keeps this file current: an item moves to Done only when you confirm it, or when Claude can check it from here (and says how it checked). Build work and decisions are tracked in `PENDING.md`; this file is only what you do by hand.
 
-Last updated: r32 live, r32.1 in preview, 2026-10-07.
+Last updated: r32.1 live, r33 and r34 in preview, 2026-10-10.
 
 ## Now, in this order
 
 1. B5, the trigger, then its check: Report a problem from the app and an issue appears in `ironlog-feedback` (steps below).
 2. B6: protect `main` (steps below). Until it is on, nothing stops a change reaching the live app without a pull request.
-3. A14 (r32.1): try it on the preview (https://ironapp.org/preview/, Reload when asked; Settings shows Ironlog Preview 2026.10.07-r32.1), then merge its pull request. First Settings > Your data > Copy my log from Ironlog. What to look at: Stats > Lifts > All-time bests and Recent PRs on pull-ups or any bodyweight lift (no PRs from a heavier weigh-in, records dated when first done), and in a session, swap an exercise for a close variation you have never logged (DB curl to hammer curl): it starts from the related lift instead of "First time: pick a load". Your log is not changed.
+3. A16 (r34, includes r33): try it on the preview (https://ironapp.org/preview/, Reload when asked; Settings shows Ironlog Preview 2026.10.10-r34), then merge pull request for r34; that also brings r33, so pull request #21 can be closed without merging. First Settings > Your data > Copy my log from Ironlog. Look at: in a session, a first set much easier or harder than planned (the line under it, and Keep); the first page's tour; Settings > Rest timer and logging > Today starts with a blank session (Today, This week, the streak); Today > More options > Rest week; + Drop after a set; Settings > General > Weigh-in reminder; Stats on a pull-up or push-up (no change from the scale alone). And from r33: Sign out; Plan > Exercise library > Most common; Settings > Effort (RIR) > half reps or RPE; Settings > Your gym with your dumbbells, then a dumbbell session.
+   After r34 is live: open Ironlog on every phone you use and tap Reload when it says New version ready. A phone still on r32.1 can drop a setting another phone added (Your gym, the effort setting) when both change settings before it updates.
+   A14 (r32.1): done 2026-10-09 (pull request #20, merged by you; live build 2026.10.07-r32.1, checked by Claude on the gh-pages branch).
    A13 (r32): done 2026-10-07 (pull request #19, merged by you; live build 2026.10.07-r32).
    A12 (r31.3): done 2026-10-06.
    A11 (r31.2): done 2026-10-06.
@@ -309,8 +311,8 @@ Status: to do. Each step is free and none of them stops Claude from building and
 ### D6. Old branches
 Status: to do. Claude's GitHub access cannot delete branches.
 Every one of these is already in `main`, so nothing is lost.
-1. github.com/vqx7/Ironlog/branches > tap the trash icon on `keep-domain`, `r26`, `r27`, `r28`, `r29`, `r29.4`, `r29.5`, `r30`, `r30.1`, `r31`, `r31.1`, `r31.2`, `r31.3` and `r32` (checked by Claude 2026-10-07: all merged into `main`). Keep `main` and `gh-pages`, and `r32.1` until its pull request is merged.
-2. So it does not happen again: Settings > General > Pull Requests > tick **Automatically delete head branches**. Each branch then goes when its pull request is merged. (Still off as of 2026-10-07.)
+1. github.com/vqx7/Ironlog/branches > tap the trash icon on `keep-domain`, `r26`, `r27`, `r28`, `r29`, `r29.4`, `r29.5`, `r30`, `r30.1`, `r31`, `r31.1`, `r31.2`, `r31.3`, `r32` and `r32.1` (checked by Claude 2026-10-10: all merged into `main`). Keep `main` and `gh-pages`, and `r33` until its pull request is merged.
+2. So it does not happen again: Settings > General > Pull Requests > tick **Automatically delete head branches**. Each branch then goes when its pull request is merged. (Still off as of 2026-10-10, checked by Claude.)
 
 ## Checks on your phone (items 7 and 63)
 Status: to do whenever you are at the gym; tell Claude what you see.

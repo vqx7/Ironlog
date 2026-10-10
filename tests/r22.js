@@ -181,7 +181,10 @@ const ids = list => (list || []).map(x => x.id).sort().join();
     await P.page.click('[data-act="sDone"][data-b="0"][data-s="0"]'); await wait(250);
     const t = await ev(() => ({ text: document.getElementById('toast').innerText, pr: document.getElementById('toast').classList.contains('pr'), flash: !!document.querySelector('.sg.prflash[data-pr]') }));
     ok(t.pr && t.flash && new RegExp(`Rep PR: .*×${g + 3} \\(was ${g} reps\\)`).test(t.text), 'a PR set: gold toast saying what it beat, and a pulse on the row', t);
-    // An ordinary set does not celebrate.
+    // An ordinary set does not celebrate. Set 1 went 3 reps past last time, so since r34 the sets after it are
+    // adjusted up; the load is typed as last time's here, so this stays an ordinary set at a load already lifted.
+    await P.page.fill('[data-f="w"][data-b="0"][data-s="1"]', await ev(() => String(window.__ironlog.loadIn(window.__ironlog.EX(window.__ironlog.state.draft.ex[0].exId), window.__ironlog.state.draft.ex[0].sets[0].w))));
+    await P.page.dispatchEvent('[data-f="w"][data-b="0"][data-s="1"]', 'change');
     await P.page.fill('[data-f="r"][data-b="0"][data-s="1"]', '1'); await P.page.dispatchEvent('[data-f="r"][data-b="0"][data-s="1"]', 'change');
     await P.page.click('[data-act="sDone"][data-b="0"][data-s="1"]'); await wait(250);
     ok(await ev(() => !document.querySelector('[data-act="sDone"][data-b="0"][data-s="1"]').closest('.sg').classList.contains('prflash')), 'an ordinary set: no pulse');
