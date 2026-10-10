@@ -40,6 +40,10 @@ const server = http.createServer((req, res) => {
   ok(man.apple && /^(#08090b|rgb\(8, 9, 11\))$/.test(man.theme), 'iOS home-screen icon and theme colour set (' + man.theme + ')');
   const lightTheme = await page.evaluate(() => { const L = window.__ironlog; L.state.settings.theme = 'light'; L.render(); const v = document.querySelector('meta[name=theme-color]').content; L.state.settings.theme = 'dark'; L.render(); return v; });
   ok(/^rgb\(242, 243, 245\)$/.test(lightTheme), 'the status bar colour follows the light theme (' + lightTheme + ')');
+  // The libraries' and fonts' licenses travel with the copies this build serves (r34).
+  const lic = await page.evaluate(async () => { const r = await fetch('LICENSES.txt'); const t = r.ok ? await r.text() : ''; const L = window.__ironlog; const ob = L.state.settings.onboarded; L.state.settings.onboarded = true; L.ui.tab = 'settings'; L.render(); document.querySelectorAll('#view details').forEach(d => d.open = true); const a = [...document.querySelectorAll('#view a')].find(x => /Open-source licenses/.test(x.textContent)); const link = a ? a.getAttribute('href') : null; L.state.settings.onboarded = ob; return { ok: r.ok, t, link }; });
+  ok(lic.ok && ['Chart.js', 'SortableJS', 'three.js', 'Big Shoulders Display', 'Hanken Grotesk', 'Permission is hereby granted', 'SIL Open Font License'].every(k => lic.t.includes(k)) && lic.link === 'LICENSES.txt', 'LICENSES.txt is served with the MIT and OFL texts, linked from Settings > Diagnostics', { ok: lic.ok, n: lic.t.length, link: lic.link });
+  await page.evaluate(() => { const L = window.__ironlog; L.ui.tab = 'today'; L.render(); });
   // Service worker.
   await page.waitForFunction(() => navigator.serviceWorker && navigator.serviceWorker.controller || false, null, { timeout: 15000 }).catch(() => {});
   if (!(await page.evaluate(() => !!navigator.serviceWorker.controller))) { await page.reload(); await page.waitForFunction(() => !!navigator.serviceWorker.controller, null, { timeout: 15000 }).catch(() => {}); }

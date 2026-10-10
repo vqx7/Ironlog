@@ -388,6 +388,104 @@ const LB = 0.45359237;
     await P.ctx.close();
   }
 
+  // ---------- 5. Supersets, end to end ----------
+  {
+    const P = await open(FILE, { browser, touch: true, clock: '2026-10-10T12:00:00' });
+    const ev = (f, a) => P.page.evaluate(f, a);
+    const r = await ev(async () => {
+      const L = window.__ironlog; const LB = 0.45359237; const s = L.state; const wait = ms => new Promise(r => setTimeout(r, ms));
+      s.settings.onboarded = true; s.settings.unit = 'lb'; s.settings.autoDone = false; s.settings.timerMode = 'auto'; s.injuries = [];
+      const set3 = (w, r) => [0, 1, 2].map(() => ({ w: w * LB, r, rir: 1, done: true }));
+      s.sessions = [{ id: 'h1', date: '2026-10-03', dayIdx: 0, dayId: null, dayName: 'T', routineId: '', notes: '', ex: [{ exId: 'bench', rr: [6, 10], sets: set3(185, 8) }, { exId: 'bbRow', rr: [6, 10], sets: set3(155, 8) }, { exId: 'dbCurl', rr: [10, 15], sets: set3(30, 12) }] }];
+      s.draft = null; L.state = L.normalize(s); L.invalidate();
+      L.ACT.startFree(); if (L.ui.modal) L.ACT.mClose();
+      const d = L.state.draft;
+      for (const [id, lo, hi] of [['bench', 6, 10], ['bbRow', 6, 10], ['dbCurl', 10, 15]]) d.ex.push(L.newBlock(id, { sets: 3, repMin: lo, repMax: hi, rir: 1, rest: 120, inc: 5 * LB }, {}));
+      L.saveNow(); L.ui.tab = 'today'; L.render();
+      // Two taps: the exercise's ⋯, then Superset with the next one.
+      L.ACT.bMenu({ dataset: { b: '0' } }); await wait(60);
+      const op = [...document.querySelectorAll('#modal [data-act="bMenuDo"]')].find(b => /^Superset with Barbell Row/.test(b.innerText));
+      const offered = !!op; if (op) op.click(); await wait(80);
+      const tags = L.state.draft.ex.map(b => b.plan.ss || null);
+      const line = (document.getElementById('blk-0') || {}).innerText || '';
+      // Minutes: no rest between partners.
+      const mins = L.dayMinutes({ items: L.state.draft.ex.map(b => ({ exId: b.exId, ...b.plan })) });
+      const minsApart = L.dayMinutes({ items: L.state.draft.ex.map(b => ({ exId: b.exId, ...b.plan, ss: null })) });
+      const tick = async (bi, si, reps) => { const i = document.querySelector(`[data-f="r"][data-b="${bi}"][data-s="${si}"]`); i.value = String(reps); i.dispatchEvent(new Event('input', { bubbles: true })); i.dispatchEvent(new Event('change', { bubbles: true })); L.state.draft.ex[bi].sets[si].rir = 1; document.querySelector(`[data-act="sDone"][data-b="${bi}"][data-s="${si}"]`).click(); await wait(100); };
+      const timerOn = () => !document.getElementById('timer').hidden;
+      await tick(0, 0, 8); const afterFirst = timerOn();
+      await tick(1, 0, 8); const afterPair = timerOn();
+      L.ACT.tStop(); await wait(40);
+      // A set far easier than planned in a superset still moves its own next sets.
+      const i2 = document.querySelector('[data-f="r"][data-b="0"][data-s="1"]'); i2.value = '10'; i2.dispatchEvent(new Event('input', { bubbles: true })); i2.dispatchEvent(new Event('change', { bubbles: true }));
+      L.state.draft.ex[0].sets[1].rir = 4; document.querySelector('[data-act="sDone"][data-b="0"][data-s="1"]').click(); await wait(100);
+      const adj = L.state.draft.ex[0].adj ? Math.round(L.state.draft.ex[0].adj.w / LB) : null; const rowAdj = L.state.draft.ex[1].adj;
+      // Unlinking from the same menu.
+      L.ACT.bMenu({ dataset: { b: '0' } }); await wait(60);
+      const un = [...document.querySelectorAll('#modal [data-act="bMenuDo"]')].find(b => /^Unlink superset/.test(b.innerText)); const unOffered = !!un;
+      if (L.ui.modal) L.ACT.mClose();
+      // Through a reload the pair is still a superset.
+      L.saveNow();
+      return { offered, tags, line, mins, minsApart, afterFirst, afterPair, adj, rowAdj, unOffered };
+    });
+    ok(r.offered && r.tags[0] && r.tags[0] === r.tags[1] && !r.tags[2], 'a superset in two taps: the exercise\'s ⋯, then Superset with Barbell Row; only the pair is linked', r);
+    ok(/Superset with Barbell Row; rest after the pair\./.test(r.line), 'the exercise says who it is paired with and when to rest', r.line.slice(0, 200));
+    ok(r.mins < r.minsApart, 'session minutes leave out the rest between partners', { mins: r.mins, apart: r.minsApart });
+    ok(!r.afterFirst && r.afterPair, 'no rest after the first exercise of the pair; the rest timer starts after its partner', r);
+    ok(r.adj === 200 && !r.rowAdj, 'adjusting works inside a superset, on that exercise alone (bench to 200, the row untouched)', { adj: r.adj, row: r.rowAdj });
+    ok(r.unOffered, 'the same menu offers Unlink superset', r);
+    await P.page.reload(); await P.page.waitForFunction(() => window.__ironlog);
+    const kept = await ev(() => window.__ironlog.state.draft.ex.map(b => b.plan.ss || null));
+    ok(kept[0] && kept[0] === kept[1] && !kept[2], 'the superset is kept through a reload', kept);
+    // Plan: Superset with next on a routine day.
+    const plan = await ev(() => {
+      const L = window.__ironlog; L.state.draft = null; L.saveNow(); L.ui.tab = 'program'; L.render();
+      const R = L.activeRoutine(); const day = R.days.find(d => d.items.length >= 2 && !d.items[0].ss && !d.items[1].ss); const it = day.items[0];
+      document.querySelectorAll('#view details').forEach(x => x.open = true);
+      const open = document.querySelector(`[data-act="toggleItem"][data-uid="${it.uid}"]`); if (open) open.click();
+      const b = document.querySelector(`[data-act="ssToggle"][data-uid="${it.uid}"]`); const label = b ? b.textContent.trim() : ''; if (b) b.click();
+      const R2 = L.activeRoutine(); const d2 = R2.days.find(d => d.id === day.id);
+      return { label, linked: !!d2.items[0].ss && d2.items[0].ss === d2.items[1].ss, third: d2.items[2] ? d2.items[2].ss || null : null };
+    });
+    ok(plan.label === 'Superset with next' && plan.linked && !plan.third, 'Plan: an exercise\'s Superset with next links it to the one below', plan);
+    ok(!P.errors.length, 'supersets: no page errors', P.errors);
+    await P.ctx.close();
+  }
+
+  // ---------- 6. Less text: the number and the action on screen, the reasons behind an i ----------
+  {
+    const P = await open(FILE, { browser, touch: true, realStarter: true, clock: '2026-10-10T12:00:00' });
+    const ev = (f, a) => P.page.evaluate(f, a);
+    const t = await ev(async () => {
+      const L = window.__ironlog; const s = L.state; s.settings.onboarded = true; s.settings.unit = 'lb'; s.settings.hidden = [];
+      L.state = L.normalize(s); L.invalidate(); L.makeDemo(); L.invalidate();
+      L.ui.tab = 'dash'; L.render(); document.querySelectorAll('#view details').forEach(d => d.open = true);
+      await new Promise(r => setTimeout(r, 300));
+      const view = document.getElementById('view');
+      const txt = view.innerText;
+      const head = (view.querySelector('.headline') || {}).innerText || '';
+      const headTip = !!view.querySelector('.headline .tipi');
+      const radar = [...view.querySelectorAll('p.small.muted')].map(p => p.innerText).find(x => /^Using /.test(x)) || '';
+      const radarTip = [...view.querySelectorAll('.tipi')].some(b => /dashed ring/.test(b.dataset.tip));
+      const et = [...view.querySelectorAll('table.t')].find(tb => [...tb.querySelectorAll('th')].some(th => /e1RM/i.test(th.innerText)));
+      const e1 = et ? [...et.querySelectorAll('tr')].slice(1).map(tr => tr.lastElementChild.innerText.trim()) : [];
+      L.ui.tab = 'settings'; L.render(); document.querySelectorAll('#view details').forEach(d => d.open = true);
+      const set = document.getElementById('view').innerText;
+      const co = L.coach();
+      return { txt, head, headTip, radar, radarTip, e1, set, co };
+    });
+    ok(!/\b1 hard sets\b/.test(t.txt) && !/hard sets a week on average, target [\d-]+, this week [\d.]+ so far/.test(t.txt), 'Muscles reads as one short line per muscle ("1 hard set", no "so far" clause)', t.txt.match(/.{0,40}a week on average.{0,60}/));
+    ok(!/Rising: hold this volume\./.test(t.txt) && (t.txt.match(/keep the sets as they are/g) || []).length <= 1, 'strength return on volume says "keep the sets" once, not on every rising row', (t.txt.match(/Rising[^\n]*/g) || []).slice(0, 3));
+    ok((t.txt.match(/Same stretch:/g) || []).length <= 1, 'size check states the stretch, waist, and bodyweight once above the rows', (t.txt.match(/Same stretch:/g) || []).length);
+    ok(/^Using /.test(t.radar) && t.radarTip && !/Hard sets per region against/.test(t.txt), 'the radar says which weeks it uses; how to read it is behind an i', t.radar);
+    ok(t.head.length < 140 && t.headTip && !/likely/.test(t.head), 'a lift\'s headline is one short line, with the rate and ranges behind an i', t.head);
+    ok(t.e1.length > 0 && t.e1.every(x => /^\d+$/.test(x)), 'estimates show whole pounds (no "293.8" next to "294")', t.e1.slice(0, 8));
+    ok(/RIR, reps in reserve: reps you could still have done\. RIR 3 or less is a hard set\./.test(t.set) && !/Also in the menu at the top right/.test(t.set) && !/Nothing stops being tracked/.test(t.set), 'Settings: RIR said in one line; the Layout and Help filler gone', t.set.match(/RIR, reps in reserve[^\n]*/));
+    ok(t.co.text.length <= 120 && !/ against a target of /.test(t.co.text), 'the coach is one short line with its reason behind Why', t.co.text);
+    ok(!P.errors.length, 'less text: no page errors', P.errors);
+    await P.ctx.close();
+  }
+
   console.log(fails.length ? `${fails.length} FAILED` : 'ALL PASS');
   await browser.close().catch(() => {});
   process.exit(fails.length ? 1 : 0);
