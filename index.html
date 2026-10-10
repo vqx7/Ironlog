@@ -4575,7 +4575,7 @@ function assessSet(bi,si){
         if(nw!=null){
           const f=rtfAt(est,nw+bw);const er=f==null?lo:Math.max(lo,Math.min(hi,Math.floor(f-Math.min(tgt,E1_MAX_RIR)-1+1e-9)));
           const n=b.sets.slice(0,si+1).filter(x=>!x.warm&&!x.drop).length;
-          const why=light?(q!=null&&q>=tgt+2?`set ${n} had ${effShowRir(q)} in reserve, against a target of ${effShowRir(tgt)}`:`set ${n} went ${r} reps, past your ${hi}`):`set ${n} stopped at ${r}, under your ${lo}`;
+          const why=light?(q!=null&&q>=tgt+2?(rirScale()==='rpe'?`set ${n} was RPE ${effShow(q)}, against a target of RPE ${effShow(tgt)}`:`set ${n} had ${effShow(q)} in reserve, against a target of ${effShow(tgt)}`):`set ${n} went ${r} reps, past your ${hi}`):`set ${n} stopped at ${r}, under your ${lo}`;
           b.adj={at:si,w:nw,from:s.w,r:er,up:!!light,why};
         }
       }
@@ -4593,7 +4593,6 @@ function adjRows(b,prev,next){
   if(next)rows(next.at,x=>{if(Math.abs(x.w-next.from)<1e-9&&(x.w===b.sw||carried.has(x)))x.w=next.w;});
 }
 // Effort as the lifter reads it: RIR, or RPE when effort is entered as RPE.
-function effShowRir(v){return rirScale()==='rpe'?`RPE ${effShow(v)}`:`${effShow(v)}`;}
 function adjLine(b,bi){
   const a=b.adj;if(!a||!b.sets.some((x,i)=>i>a.at&&!x.done&&!x.warm&&!x.drop))return '';const ex=EX(b.exId);
   const lb=w=>`${loadLabel(ex,w)}${ex.bw?'':' '+U()}${loadNote(ex)}`;

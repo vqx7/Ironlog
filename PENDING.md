@@ -21,6 +21,7 @@ This is the tracking list. Items are built only when V says go. Owner items need
 
 ## r34.1 (V, 2026-10-10 afternoon, after using r34 live)
 234. Built: the Today card says "Day 2", not "Day 2 of 7".
+236. Built: with effort in RPE, the adjustment line said "set 1 had RPE 6 in reserve"; it now says "set 1 was RPE 6, against a target of RPE 9" (found while checking r34 for V).
 235. Built: Recently deleted can be cleared. Each item has a delete-for-good ✕ (Undo in the toast and in Settings), and Delete all for good asks first. A ready-made routine removed unchanged (it is in New from a template) is never kept there, and ones earlier builds left (V: "the same templates in Recently deleted", for every user who tapped the Plan clean-up) are cleared on start and after a cloud pull. A routine the lifter changed still waits there 30 days. The delete messages say which.
 
 ## r33, built 2026-10-09 and 10 (V: "go ahead with those", with V's feedback from using it), live with r34 since 2026-10-10; tests/r33.js
@@ -167,7 +168,7 @@ What r30 changes (each with a test in tests/r30.js, reproduced the way the revie
 99. Wording and redundancy pass, screen by screen (the second half of V's item 90): cut fragments, repeated lines and filler on every tab and sheet so screens show the number and the action. The new-person screens were done in r29 (140); the tabs in r34 (231); the sheets and the Guide wait on V's own notes.
 141. Later (V, 2026-10-03): a female body for the muscle map, flat and 3D, chosen in Settings. Redraw the flat (2D) body at the same time: V finds it ugly. This is what item 49's optional sex field would be for; nothing else would read it.
 
-Open count: 107 numbered items: 2 in r34.1 (234, 235), 13 in r34 (221 to 233), 9 in r33 (206, 207, 214 to 220), 3 in r32.1 (211 to 213), 17 in r30 (148 to 163, 170), 8 later (164 to 169, 171, 172), 4 in r29.5 (144 to 147), 23 built in r29 and live, not yet moved to Done (117 to 127, 130 to 140, 142), 4 next (91, 99, 129, 141), 3 critical (58, 61, 63), 3 verification (7, 8, 10), 2 owner only (6, 84), 17 later build or decision items. Items 98, 114, 116 and 128 are built in r29 (138, 131, 137 and 133, 139) and move to Done when it is published. Owner steps, with the code, are in OWNER.md.
+Open count: 107 numbered items: 3 in r34.1 (234 to 236), 13 in r34 (221 to 233), 9 in r33 (206, 207, 214 to 220), 3 in r32.1 (211 to 213), 17 in r30 (148 to 163, 170), 8 later (164 to 169, 171, 172), 4 in r29.5 (144 to 147), 23 built in r29 and live, not yet moved to Done (117 to 127, 130 to 140, 142), 4 next (91, 99, 129, 141), 3 critical (58, 61, 63), 3 verification (7, 8, 10), 2 owner only (6, 84), 17 later build or decision items. Items 98, 114, 116 and 128 are built in r29 (138, 131, 137 and 133, 139) and move to Done when it is published. Owner steps, with the code, are in OWNER.md.
 
 ## Critical, still open
 58. B1 to B4 done (V, 2026-10-04); left: B5, B6 and B7. Part 2 needs V: SUPABASE.md, Part 4, steps 1 to 5 (the tables, a private `ironlog-feedback` repository, a GitHub token for it, the function and its webhook), then FEEDBACK.md, "What V does" steps 2 and 3 (protect `main`; choose a scheduled Claude task or Claude's GitHub Action to pick up tickets). Until step 1, Send feedback says it is not set up yet and keeps the text.

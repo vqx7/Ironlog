@@ -83,6 +83,13 @@ const LB = 0.45359237;
     r = await read();
     ok(!r.adj && r.ph[1] === '185' && !r.line, 'changing the pick to 1 (as planned) takes it back to 185 and the line goes', r);
     await ev(() => { window.__ironlog.state.settings.autoDone = false; });
+    // In RPE the reason is said in RPE (r34.1: it read "had RPE 6 in reserve").
+    await ev(() => { window.__ironlog.state.settings.rirScale = 'rpe'; });
+    await setup({ ex: 'bench', w: 185, lo: 6, hi: 10, r0: 8 });
+    await tick(0, 10, 4);
+    r = await read();
+    ok(/Next sets: 200 lb, up because set 1 was RPE 6, against a target of RPE 9\./.test(r.line) && !/in reserve/.test(r.line), 'with effort in RPE, the line says "set 1 was RPE 6, against a target of RPE 9"', r.line);
+    await ev(() => { delete window.__ironlog.state.settings.rirScale; });
 
     // Keep: back to 185 for the rest of the session.
     await setup({ ex: 'bench', w: 185, lo: 6, hi: 10, r0: 8 });
