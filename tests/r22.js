@@ -224,7 +224,8 @@ const ids = list => (list || []).map(x => x.id).sort().join();
     let sv = await saved(); let R = sv.routines.find(r => r.id === sv.activeRoutineId);
     ok(R.days.length === d0.n - 1 && !R.days.some(d => d.id === d0.id), 'Remove day, confirmed after a refresh: removed and saved', { was: d0.n, now: R.days.length });
     // Delete a routine.
-    const rid = await ev(() => { const L = window.__ironlog; const r = L.state.routines.find(x => x.id !== L.state.activeRoutineId); L.ui.bRoutine = r.id; L.render(); return r.id; });
+    // A routine of the lifter's own (renamed): a ready-made one left unchanged is not kept in Recently deleted since r34.1.
+    const rid = await ev(() => { const L = window.__ironlog; const r = L.state.routines.find(x => x.id !== L.state.activeRoutineId); r.name = r.name + ' (mine)'; L.saveNow(); L.ui.bRoutine = r.id; L.render(); return r.id; });
     await ev(() => window.__ironlog.ACT.rDel()); await wait(100);
     await ev(() => window.__refresh()); await okBtn();
     sv = await saved();

@@ -305,7 +305,7 @@ function strongCsv() {
     const rest = await ev(() => { const L = window.__ironlog; const R = L.state.routines.find(r => r.id === L.state.activeRoutineId); const ri = R.days.findIndex(d => d.rest); const prev = ri - 1;
       L.state.sessions = [{ id: 'r1', date: '2026-10-03', dayIdx: prev, dayId: R.days[prev].id, dayName: R.days[prev].name, routineId: R.id, free: false, notes: '', ex: [{ exId: R.days[prev].items[0].exId, sets: [{ w: 20, r: 10, rir: 1, warm: false }] }] }];
       L.invalidate(); L.ui.todayDay = null; L.ui.tab = 'today'; L.render(); const h = document.querySelector('.hero'); return h ? h.innerText.replace(/\s+/g, ' ') : null; });
-    ok(rest && /Scheduled rest today/.test(rest) && /Next: Day 1 of/i.test(rest), 'on a rest day the card says Next: Day 1 beside Scheduled rest today, never just Day 1', rest);
+    ok(rest && /Scheduled rest today/.test(rest) && /Next: Day 1\b/i.test(rest) && !/Day 1 of/i.test(rest), 'on a rest day the card says Next: Day 1 beside Scheduled rest today, never just Day 1 (and not Day 1 of 7, r34.1)', rest);
     ok(!P.errors.length, 'no page errors (second pass)', P.errors);
     await P.browser.close();
   }
