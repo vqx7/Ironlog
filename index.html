@@ -704,8 +704,9 @@ table.t td.r,table.t th.r{text-align:right}
 .rirstrip button.on{background:var(--volt);color:var(--on-volt);border-color:transparent}
 .rirstrip .rs-x{flex:0 0 40px;font:700 14px var(--font);color:var(--muted)}
 /* The next sets adjusted from the last one (r34): one line under the rows, with Keep. */
-.adjline{margin:8px 0 0;padding:8px 10px;border-radius:var(--r-sm);background:var(--volt-soft);color:var(--ink);line-height:1.4}
-.adjline .linkbtn{min-height:44px;padding:0 4px}
+.adjline{display:flex;align-items:center;gap:8px;margin:8px 0 0;padding:6px 6px 6px 12px;border-radius:var(--r-sm);background:var(--volt-soft);color:var(--ink);line-height:1.35}
+.adjline span{flex:1 1 auto;min-width:0}
+.adjline .linkbtn{flex:none;min-height:44px;padding:0 8px;white-space:nowrap}
 /* Wider than the block's padding by 10 px a side, so each button is 40 px or more at 320 px. */
 .rirstrip.two{border-radius:18px;flex-wrap:wrap;margin:6px -10px 2px;padding:6px 6px 8px;row-gap:4px}
 .rirstrip.two .rs-l{flex:1 1 auto;padding-left:4px}
@@ -4582,7 +4583,7 @@ function effShowRir(v){return rirScale()==='rpe'?`RPE ${effShow(v)}`:`${effShow(
 function adjLine(b,bi){
   const a=b.adj;if(!a||!b.sets.some((x,i)=>i>a.at&&!x.done&&!x.warm&&!x.drop))return '';const ex=EX(b.exId);
   const lb=w=>`${loadLabel(ex,w)}${ex.bw?'':' '+U()}${loadNote(ex)}`;
-  return `<p class="adjline small" id="adj-${bi}"><b>Next sets: ${esc(lb(a.w))}</b>, ${a.up?'up':'down'} because ${esc(a.why)}. <button class="linkbtn" data-act="adjKeep" data-b="${bi}">Keep ${esc(lb(a.from))}</button></p>`;
+  return `<p class="adjline small" id="adj-${bi}"><span><b>Next sets: ${esc(lb(a.w))}</b>, ${a.up?'up':'down'} because ${esc(a.why)}.</span><button class="linkbtn" data-act="adjKeep" data-b="${bi}">Keep ${esc(lb(a.from))}</button></p>`;
 }
 // After a set is ticked, unticked or changed: re-judge it, and redraw only this exercise's grey numbers and line.
 function afterSet(bi,si){
@@ -5053,7 +5054,7 @@ function viewToday(){
   const hello=state.settings.userName?`<p class="hello">${esc(greeting())}, ${esc(state.settings.userName)}</p>`:'';
   if(free){
     let h=welcomeCard()+acctBar()+installBar()+iconBar()+`<section class="hero" data-day="free"><div class="hero-top"><div class="hero-t">${hello}<p class="eyebrow">${esc(new Date().toLocaleDateString(undefined,{weekday:'short',month:'short',day:'numeric'}))} · Freestyle${deload?' · deload week':''}</p><h2>Blank session</h2>
-    <p class="muted small" style="margin:0">${noLog()?'Add exercises as you go.':(()=>{const w=weekStats();return `${w.doneDays} session${w.doneDays===1?'':'s'}, ${r1(w.got)} hard sets this week`;})()}</p></div></div>
+    <p class="muted small" style="margin:0">${noLog()?'Add exercises as you go.':(()=>{const w=weekStats();return w.doneDays?`${w.doneDays} session${w.doneDays===1?'':'s'}, ${r1(w.got)} hard sets this week`:'Nothing yet this week.';})()}</p></div></div>
     <button class="btn primary block big" data-act="startFree">Start session</button>
     <div class="hero-alt" style="margin-top:8px">${playable?`<button class="btn sm" data-act="startSession" data-day="${di}">Plan: ${esc(day.name)}</button>`:''}<button class="btn sm" data-act="pickToday" data-tip="Ranks your days for today by the last 7 days, recovery, and injuries, then says why.">Pick for me</button></div>
     <div class="row" style="margin-top:8px">${sel}</div></section>`;
@@ -6426,7 +6427,7 @@ function weekBody(w){
   ${w.cardioMin?`<p class="small" style="margin:5px 0 0">Cardio and mobility: ${w.cardioMin} min in ${w.cardioN} entr${w.cardioN===1?'y':'ies'}</p>`:''}${liftedLine()}
   ${helpText('wk','Each set counts once; a set at RIR 4 or more is not hard and does not count. Muscle targets are on the Muscle map and in Stats.')}`;
   return `${tog}${w.weekly?'':cycleStrip(w.R)}
-  <div class="band" data-tip=""${noLog()?`${w.tgt} hard sets planned`:`${w.got} hard sets logged of ${w.tgt} planned`}"><div class="fill prog" style="width:${w.pct}%"></div></div>
+  <div class="band" data-tip="${noLog()?`${w.tgt} hard sets planned`:`${w.got} hard sets logged of ${w.tgt} planned`}"><div class="fill prog" style="width:${w.pct}%"></div></div>
   ${w.cardioMin?`<p class="small" style="margin:5px 0 0">Cardio and mobility: ${w.cardioMin} min in ${w.cardioN} entr${w.cardioN===1?'y':'ies'}</p>`:''}
   <div class="hrow" style="margin:5px 0 0"><p class="small muted" style="margin:0" id="wkSets">${noLog()?`${w.tgt} hard sets planned this week.`:`${w.got} hard sets logged of ${w.tgt} planned${w.tgt>0?` (${Math.round(w.pct)}%)`:''}.`}</p>${helpBtn('wk')}</div>
   ${liftedLine()}
