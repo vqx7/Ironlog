@@ -435,17 +435,18 @@ async function engineRun(page, cases, gym) {
     const tour = await W.ev(() => {
       const sl = [...document.querySelectorAll('#obTrack .ob-slide')]; const vw = innerWidth;
       const r = sl.map(e => e.getBoundingClientRect());
-      return { titles: sl.map(e => e.querySelector('h2').textContent), lines: sl.map(e => e.querySelector('p').textContent), pics: sl.every(e => e.querySelector('.obv[aria-hidden="true"]')), pips: [...document.querySelectorAll('.ob-pips button')].map(b => b.getAttribute('aria-current')), first: r[0].left >= 0 && r[0].right <= vw, peek: r[1].left < vw && r[1].left > vw - 60, role: document.querySelector('.ob-tour').getAttribute('aria-roledescription'), label: sl[0].getAttribute('aria-label'), fits: document.documentElement.scrollHeight <= innerHeight + 2, wide: document.documentElement.scrollWidth <= vw, h44: [...document.querySelectorAll('.ob-pips button')].every(b => { const r = b.getBoundingClientRect(); return r.height >= 44 && r.width >= 44; }),
-        log: sl[0].querySelector('.obv').innerText.replace(/\s+/g, ' '), cal: [...sl[3].querySelectorAll('.obv-cal i')].findIndex(i => !i.classList.contains('x')), calN: sl[3].querySelectorAll('.obv-cal i.d').length };
+      return { titles: sl.map(e => e.querySelector('h2').textContent), lines: sl.map(e => e.querySelectorAll('p').length), pics: sl.every(e => e.querySelector('.obv[aria-hidden="true"]')), pips: [...document.querySelectorAll('.ob-pips button')].map(b => b.getAttribute('aria-current')), first: r[0].left >= 0 && r[0].right <= vw, peek: r[1].left < vw && r[1].left > vw - 60, role: document.querySelector('.ob-tour').getAttribute('aria-roledescription'), label: sl[0].getAttribute('aria-label'), fits: document.documentElement.scrollHeight <= innerHeight + 2, wide: document.documentElement.scrollWidth <= vw, h44: [...document.querySelectorAll('.ob-pips button')].every(b => { const r = b.getBoundingClientRect(); return r.height >= 44 && r.width >= 44; }),
+        log: sl[0].querySelector('.obv').innerText.replace(/\s+/g, ' ') };
     });
-    ok(tour.titles.join('|') === 'Log a set in one tap|Pick a plan or build one|Track every lift|Every session, by day|Volume by muscle' && tour.pics, 'the first page tours five things: logging, the plan, progress, history, and volume by muscle, each with a picture of that screen', tour.titles);
-    ok(tour.lines.every(l => l.length <= 80 && !/—|!/.test(l)) && /from 174 exercises/.test(tour.lines[1]), 'one plain line each, no exclamation marks or em dashes, the exercise count read from the library', tour.lines);
+    // r34 (V): the titles name what the app does for a lifter, with no line under each.
+    ok(tour.titles.join('|') === 'Log a set in one tap|Next weights, worked out|Adjusts as you lift|Your plan, or freestyle|See every lift progress' && tour.pics, 'the first page tours five things: logging, progressive overload, adjusting as you lift, a plan or freestyle, and progress, each with a picture of that screen', tour.titles);
+    ok(tour.lines.every(n => n === 0), 'no line of text under the titles', tour.lines);
     ok(tour.first && tour.peek, 'the first slide shows whole, with the next one peeking in from the edge so it reads as swipeable', tour);
     ok(tour.pips.join() === 'true,,,,' && tour.role === 'carousel' && tour.label === '1 of 5: Log a set in one tap', 'five pips with the first current; a labelled carousel for screen readers', tour);
     ok(tour.fits && tour.wide, 'the whole first page fits 390 x 844 without scrolling, and nothing spills sideways', tour);
     ok(tour.h44, 'the pips are 44 px targets', tour);
     ok(/Last 65 × 10, 10, 10/.test(tour.log) && /70/.test(tour.log), 'the log picture follows the app: every set at the top of the range last time, so the load goes up', tour.log);
-    ok(tour.cal === 3 && tour.calN === 15, 'the October picture starts on a Thursday, as October 2026 does, on a Monday-first week', [tour.cal, tour.calN]);
+    // The calendar slide left the tour in r34 (V: tighter, the three promises); History keeps the calendar.
     // A swipe moves the pips.
     await W.ev(() => { const t = document.getElementById('obTrack'); t.scrollTo({ left: t.children[2].offsetLeft - t.children[0].offsetLeft }); }); await wait(400);
     let st = await W.ev(() => ({ pip: [...document.querySelectorAll('.ob-pips button')].findIndex(b => b.getAttribute('aria-current') === 'true'), on: [...document.querySelectorAll('.ob-slide')].findIndex(e => e.classList.contains('on')) }));
@@ -459,7 +460,7 @@ async function engineRun(page, cases, gym) {
     ok(!W.errors.length, 'first page: no page errors', W.errors);
     // In kg, the pictures are in kg.
     await W.ev(() => { const L = window.__ironlog; L.state.settings.unit = 'kg'; L.render(); });
-    ok(/est\. 1RM 102 to 110 kg/.test(await W.ev(() => document.querySelectorAll('.ob-slide')[2].innerText)), 'the pictures follow the unit');
+    ok(/est\. 1RM 102 to 110 kg/.test(await W.ev(() => document.querySelectorAll('.ob-slide')[4].innerText)), 'the pictures follow the unit');
     // It moves on by itself until touched, and not at all with reduced motion.
     const A = await device({ auto: true });
     await wait(6200);
