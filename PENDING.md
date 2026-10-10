@@ -1,8 +1,8 @@
-# Everything still open (as of r34 live, with r33, 2026-10-10)
+# Everything still open (as of r34.1 live, 2026-10-10)
 
 This is the tracking list. Items are built only when V says go. Owner items need V; the rest is build work. Nothing is done unless it says so. Numbers are kept stable; finished items move to Done at the bottom.
 
-## Live: r34 with r33 (published 2026-10-10, pull request #22, merged by Claude at V's word; #21 merged with it; build 2026.10.10-r34, checked on gh-pages and at ironapp.org)
+## Live: r34.1 (published 2026-10-10, pull request #23, merged by Claude at V's word; r34 and r33 before it the same day, #22 and #21; build 2026.10.10-r34.1)
 
 ## r34, built 2026-10-10 on top of r33 (V's questions and answers of 2026-10-10), live since 2026-10-10; tests/r34.js
 221. Built (V: "adjust sets and weights in real time"; best practice, on by default): after a ticked working set that was clearly off, the next sets whose load is still the app's (grey, or filled in by "Fill in suggested loads") move. Up: 2 or more reps in reserve over the target with the reps in range, or 3 or more past the top. Down: 2 or more under both the range and what the session expected of that set, not stopped early. The new load is what that set's estimate allows mid-range (up, at most 10%) or at the bottom (down) at the target RIR plus one for fatigue, in the lift's steps or on the rack. A line says why, with Keep. Off for warm-ups, drops, timed, assisted, fixed loads, injuries, lighter days, deloads, past workouts, edits, and in Settings. The Guide states the rule. tests/realism.js's 16-week lifter rates effort per set and triggers it 44 times (grey) and 50 (filled) with every progression check holding; tests/progress.js checks the cross-week rules with it off.
@@ -19,7 +19,7 @@ This is the tracking list. Items are built only when V says go. Owner items need
 232. Supersets checked end to end (V asked whether they are easy and in the math): two taps (the exercise's ⋯, Superset with the next one) in a session, Superset with next in Plan, the pair named on the exercise with when to rest, no rest timer between partners, session minutes without that rest, adjusting per exercise inside a pair, Unlink in the same menu, kept through a reload. No new button: two taps is how Strong and Hevy do it, and V asked "if it's already easy do we need it?". Tested in tests/r34.js (section 5); before, only splitting a pair by a move was tested.
 233. Built: the installed app serves its own copies of Chart.js, SortableJS, three.js, supabase-js (with its bundled packages), and two fonts, whose MIT and SIL Open Font licenses ask for their notice with every copy. The build writes LICENSES.txt with each license in full (and fails if one is missing); Settings > Diagnostics links it in the installed app. Checked by tests/pwa.js.
 
-## r34.1 (V, 2026-10-10 afternoon, after using r34 live)
+## r34.1 (V, 2026-10-10 afternoon, after using r34 live), live since 2026-10-10
 237. To watch (from GitHub's notes on the r34.1 checks): ubuntu-latest moves to Ubuntu 26 from 2026-10-19, and actions/checkout, setup-node and upload-artifact v4 run on Node 24 instead of 20. Either can break the test and publish workflow (Playwright's system packages, for one). Check the first run after 2026-10-19; pin `runs-on: ubuntu-24.04` if it fails.
 234. Built: the Today card says "Day 2", not "Day 2 of 7".
 236. Built: with effort in RPE, the adjustment line said "set 1 had RPE 6 in reserve"; it now says "set 1 was RPE 6, against a target of RPE 9" (found while checking r34 for V).
