@@ -1540,7 +1540,7 @@ if(ENV==='preview')document.documentElement.dataset.env='preview';
 const HAD_LOG=(()=>{try{return localStorage.getItem(KEY)!=null;}catch(e){return false;}})();
 /* Shown in Settings, in diagnostics and in backups, so a bug report can be
    matched to the exact build. */
-const APP_VERSION='2026.10.10-r34';
+const APP_VERSION='2026.10.10-r34.1';
 /* The logo (r25): an upright dumbbell that is also the I of Ironlog. Same
    numbers as scripts/icons.py, which draws the app icons. */
 const MARK_SVG='<svg class="mark" viewBox="-242 -378 484 756" aria-hidden="true" focusable="false"><rect class="mk-h" x="-30" y="-300" width="60" height="600" rx="14"/><rect class="mk-h" x="-80" y="-192" width="160" height="32" rx="12"/><rect class="mk-h" x="-80" y="160" width="160" height="32" rx="12"/><rect class="mk-p" x="-240" y="-376" width="480" height="92" rx="30"/><rect class="mk-p" x="-190" y="-270" width="380" height="66" rx="26"/><rect class="mk-p" x="-190" y="204" width="380" height="66" rx="26"/><rect class="mk-p" x="-240" y="284" width="480" height="92" rx="30"/></svg>';
@@ -2433,6 +2433,9 @@ async function cloudPull(){
       // the agreed hash, so the flush below writes the normalized form back.
       cloud.meta[id]={h:remote[id].h,at:remote[id].at,b:baseOf(id,remote[id].data)};}
     saveMeta();resyncLocalH();
+    // Ready-made routines from earlier builds' Recently deleted leave here too,
+    // and the cleared list goes back to the cloud (r34.1).
+    {const n0=(state.trash||[]).length;state.trash=(state.trash||[]).filter(t=>!(t.kind==='routine'&&plainTemplate(t.data)));if(state.trash.length!==n0)saveNow();}
     if(!ui.modal)rerenderKeepScroll();else render();
     if(merged)toast('Merged this device with your cloud copy',true);
     conflictNote(stat);
@@ -2610,7 +2613,7 @@ function guideSheet(m){
    <p><b>More sections</b>: when a tab has sections hidden, its bottom lists them; tap one to add it. The menu at the top right has Show, hide, or reorder sections. Settings, Layout shows or hides any section (nothing stops being tracked), and Default layout goes back to how a new install starts.</p>
    <p><b>Your settings</b>: Settings has the rest timer, auto-mark, RIR, units, theme and accent, weekly set targets, and priority muscles.</p>`],
   ['data','Your data',`${where}
-   <p><b>Deleted</b> sessions, cardio, and routines wait in History, Recently deleted: the ${TRASH_MAX} most recent, for ${TRASH_DAYS} days. Undo in Settings covers deletes, resets, and imports from the last 7 days.</p>
+   <p><b>Deleted</b> sessions, cardio, and routines wait in History, Recently deleted: the ${TRASH_MAX} most recent, for ${TRASH_DAYS} days, or until you delete them for good there. A ready-made routine removed unchanged is not kept, since New from a template adds it again. Undo in Settings covers deletes, resets, and imports from the last 7 days.</p>
    <p><b>Import workouts</b> reads notes, a spreadsheet, Strong, or Hevy; you check everything before it is saved. On a first run, the import also makes your routine. Its days come from the workouts' names (or from the lifts in them when the names are all alike) and keep each day's latest sets and rep range. Your weekly targets then fit that routine.</p>
    ${window.IRONLOG_APP?'<p><b>Updates</b>: when "New version ready" shows, tap Reload.</p>':''}
    ${report}`]];
@@ -5049,7 +5052,7 @@ function viewToday(){
   // "Next up" is said once, in Change day below (r28): on the card it made the
   // date line wrap and leave "UP" on a line of its own on a phone.
   // On a scheduled rest day the card shows the next training day, and says so (r30: "Day 1 of 7" beside "rest today, Day 7").
-  const eyebrow=weekly?(di===wd?'Today':`Viewing ${DAYS[di]}`):`${cs&&cs.restToday&&ui.todayDay==null?'Next: ':''}${dayLabel(R,di)} of ${R.days.length}`;
+  const eyebrow=weekly?(di===wd?'Today':`Viewing ${DAYS[di]}`):`${cs&&cs.restToday&&ui.todayDay==null?'Next: ':''}${dayLabel(R,di)}`;
   let note='';
   if(cs&&ui.todayDay==null){
     if(cs.lastDate===today())note=`${dayLabel(R,cs.last)} done today.`;
@@ -7380,7 +7383,7 @@ function viewHistory(){
   const cs=[...state.cardio].sort((a,b)=>a.date<b.date?1:a.date>b.date?-1:0);
   if(cs.length)h+=sec({sk:'history:cardio',key:'cardio',title:'Cardio and mobility',sub:`${cs.length} entr${cs.length===1?'y':'ies'}`,body:`<ul class="clist">${cs.slice(0,40).map(c=>`<li><span><b>${esc(CARDIOL[c.kind])}</b> <span class="small muted">${fmtDate(c.date)} · ${c.min} min${c.dist?` · ${distShow(c.dist)} ${distU()}`:''}${c.hr?` · ${c.hr} bpm`:''}${c.when!=='solo'?' · '+CWHENL[c.when].toLowerCase():''}${c.note?' · '+esc(c.note):''}</span></span><button class="ib sm" data-act="cardioDel" data-id="${c.id}" aria-label="Delete ${fmtDate(c.date)} cardio">✕</button></li>`).join('')}</ul>${cs.length>40?`<p class="small muted">${cs.length-40} older entries are in the CSV export.</p>`:''}`});
   const tr=state.trash||[];
-  if(tr.length)h+=sec({sk:'history:trash',key:'trash',title:'Recently deleted',sub:`<span class="hastip" data-tip="${esc(`The ${TRASH_MAX} most recent deletions, each kept ${TRASH_DAYS} days`)}">${tr.length}</span>`,body:`<ul class="clist">${tr.map(x=>{const nm=x.kind==='session'?`${x.data.dayName||'Session'}, ${fmtDate(x.data.date)}`:x.kind==='cardio'?`${CARDIOL[x.data.kind]||'Cardio'}, ${fmtDate(x.data.date)}`:`Routine: ${x.data.name||'Routine'}`;return `<li><span>${esc(nm)} <span class="small muted">deleted ${fmtDate(x.date)}</span></span><button class="btn sm" data-act="restore" data-id="${x.id}" data-k="${x.kind}">Restore</button></li>`;}).join('')}</ul>`});
+  if(tr.length)h+=sec({sk:'history:trash',key:'trash',title:'Recently deleted',sub:`<span class="hastip" data-tip="${esc(`The ${TRASH_MAX} most recent deletions, each kept ${TRASH_DAYS} days`)}">${tr.length}</span>`,body:`<ul class="clist">${tr.map(x=>{const nm=x.kind==='session'?`${x.data.dayName||'Session'}, ${fmtDate(x.data.date)}`:x.kind==='cardio'?`${CARDIOL[x.data.kind]||'Cardio'}, ${fmtDate(x.data.date)}`:`Routine: ${x.data.name||'Routine'}`;return `<li><span>${esc(nm)} <span class="small muted">deleted ${fmtDate(x.date)}</span></span><span class="row" style="gap:6px;flex:none"><button class="btn sm" data-act="restore" data-id="${x.id}" data-k="${x.kind}">Restore</button><button class="ib sm" data-act="trashDel" data-id="${x.id}" data-k="${x.kind}" aria-label="Delete ${esc(nm)} for good">✕</button></span></li>`;}).join('')}</ul><p class="small" style="margin:10px 0 0"><button class="linkbtn" style="min-height:44px" data-act="trashEmpty">Delete all for good</button></p>`});
   const impLine='<p class="small" style="margin:14px 0 0"><button class="linkbtn" style="min-height:44px" data-act="impOpen" data-tip="From notes, a spreadsheet, Strong, or Hevy. You check it before anything is saved.">Import workouts</button></p>';
   if(!ss.length)return h+'<div class="card"><p style="margin:0">No sessions yet. Start one on Today, or log one you did without the app with Log a past workout.</p></div>'+impLine+moreLine('history');
   const withData=Object.keys(I.byEx).sort((a,b)=>exName(a).localeCompare(exName(b)));
@@ -7875,7 +7878,16 @@ function routineUpdates(d){
   const bits=[...swap.map(x=>`${exName(x.from)} → ${exName(x.to)}`),...add.map(x=>`add ${exName(x.exId)}`)];
   return {rid:R.id,dayId:day.id,dayName:day.name,add,swap,text:bits.join(', ')};
 }
+/* A ready-made routine removed exactly as shipped can be added again from
+   New from a template, so it is not kept in Recently deleted (r34.1, V: the
+   same templates sat there for every new user with no way to clear them). */
+function tplSigs(){if(!tplSigs.c)tplSigs.c=new Set([...TEMPLATES.map(t=>routineFromTemplate(t.key)),starterRoutine(),defaultRoutine()].filter(Boolean).map(routineSig));return tplSigs.c;}
+function plainTemplate(r){try{return !!r&&tplSigs().has(routineSig(r));}catch(e){return false;}}
+/* Clears what earlier builds put there. Runs once at start, after every
+   definition it reads exists. */
+function trashTidy(){const tr=state.trash||[];const keep=tr.filter(t=>!(t.kind==='routine'&&plainTemplate(t.data)));if(keep.length!==tr.length){state.trash=keep;commit();}}
 function toTrash(kind,data){
+  if(kind==='routine'&&plainTemplate(data))return;
   state.trash=[{id:data.id,kind,date:today(),data:JSON.parse(JSON.stringify(data))},...(state.trash||[]).filter(t=>!(t.id===data.id&&t.kind===kind))].slice(0,TRASH_MAX);
   while(state.trash.length>1&&JSON.stringify(state.trash).length>TRASH_BYTES)state.trash.pop();
 }
@@ -9118,6 +9130,10 @@ const ACT={
         snapshot(()=>{const d3=state.draft;if(!d3||d3.id!==did)return false;(d3.cardio||(d3.cardio=[])).splice(Math.min(j,d3.cardio.length),0,c);return true;});
         l2.splice(j,1);saveNow();rerenderKeepScroll();toast(`${CARDIOL[c.kind]||'Entry'} removed`,true);},true);return;}
     list.splice(i,1);saveNow();rerenderKeepScroll();},
+  /* Recently deleted is already deleted, so one item goes on a tap with Undo;
+     all of them ask first (r34.1, V: no way to clear it). */
+  trashDel(t){const x=(state.trash||[]).find(y=>y.id===t.dataset.id&&y.kind===t.dataset.k);if(!x)return;snapshot();state.trash=state.trash.filter(y=>y!==x);commit();rerenderKeepScroll();toast('Deleted for good',true);},
+  trashEmpty(){const n=(state.trash||[]).length;if(!n)return;confirmBox(`Delete ${n} item${n>1?'s':''} for good?`,'They leave Recently deleted. Undo in Settings can still bring them back for 7 days.','Delete all',()=>{snapshot();state.trash=[];commit();render();toast('Recently deleted cleared',true);},true);},
   restore(t){
     const x=state.trash.find(y=>y.id===t.dataset.id&&y.kind===t.dataset.k);if(!x)return;
     state.trash=state.trash.filter(y=>y!==x);
@@ -9565,14 +9581,14 @@ const ACT={
   rActive(){state.activeRoutineId=ui.bRoutine;ui.todayDay=null;commit();render();toast('Active routine changed');},
   rNew(){openModal({kind:'routineNew'});},
   rNewSave(){const nm=(($('#rNewName')||{}).value||'').trim();if(!nm){toast('Give the routine a name');return;}if(nameTaken(nm)){toast('A routine already has that name. Pick another.');return;}closeModal();ACT.rNewDo(nm);},
-  rClean(){const c=routineClutter();if(!c.length)return;confirmBox(`Remove ${c.length} routine${c.length>1?'s':''}?`,`${c.map(r=>r.name).join(', ')}. They stay under Recently deleted in History for ${TRASH_DAYS} days.`,'Remove',()=>{const cc=routineClutter();if(!cc.length)return;snapshot();const ids=new Set(cc.map(r=>r.id));for(const r of cc)toTrash('routine',r);state.routines=state.routines.filter(r=>!ids.has(r.id));if(!state.routines.find(r=>r.id===ui.bRoutine))ui.bRoutine=state.activeRoutineId;commit();render();toast(`${cc.length} routine${cc.length>1?'s':''} removed`,true);},true);},
+  rClean(){const c=routineClutter();if(!c.length)return;confirmBox(`Remove ${c.length} routine${c.length>1?'s':''}?`,`${c.map(r=>r.name).join(', ')}. ${c.every(plainTemplate)?'Ready-made ones can be added again from New from a template.':`Any you changed stay under Recently deleted in History for ${TRASH_DAYS} days.`}`,'Remove',()=>{const cc=routineClutter();if(!cc.length)return;snapshot();const ids=new Set(cc.map(r=>r.id));for(const r of cc)toTrash('routine',r);state.routines=state.routines.filter(r=>!ids.has(r.id));if(!state.routines.find(r=>r.id===ui.bRoutine))ui.bRoutine=state.activeRoutineId;commit();render();toast(`${cc.length} routine${cc.length>1?'s':''} removed`,true);},true);},
   rNewDo(nm){
     // An existing empty routine is reused rather than stacking another blank one.
     const blank=state.routines.find(r=>routineEmpty(r)&&r.id!==state.activeRoutineId);
     if(blank){blank.name=nm||blank.name;ui.bRoutine=blank.id;commit();render();toast('Reused your empty routine');return;}const r={id:uid(),name:nm||'New routine',schedule:'cycle',days:[1,2,3].map(()=>({id:uid(),name:'Training day',rest:false,items:[]}))};state.routines.push(r);ui.bRoutine=r.id;commit();render();},
   rTemplate(){openModal({kind:'templates',from:'plan'});},
   rDup(){const src=curRoutineB();const r=JSON.parse(JSON.stringify(src));r.id=uid();r.name=src.name+' (copy)';r.days.forEach(d=>{d.id=uid();d.items.forEach(it=>it.uid=uid());});state.routines.push(r);ui.bRoutine=r.id;commit();render();},
-  rDel(){const R=curRoutineB();if(state.routines.length<2)return;confirmBox('Delete routine?',`"${R.name}" will be removed. Logged sessions are kept, and the routine stays under Recently deleted in History for ${TRASH_DAYS} days.`,'Delete routine',()=>{const Rn=state.routines.find(r=>r.id===R.id);if(!Rn||state.routines.length<2){rerenderKeepScroll();return;}snapshot();toTrash('routine',Rn);state.routines=state.routines.filter(r=>r.id!==R.id);if(state.activeRoutineId===R.id)state.activeRoutineId=state.routines[0].id;ui.bRoutine=state.activeRoutineId;commit();render();toast('Routine deleted',true);},true);},
+  rDel(){const R=curRoutineB();if(state.routines.length<2)return;confirmBox('Delete routine?',`"${R.name}" will be removed. Logged sessions are kept${plainTemplate(R)?'; it can be added again from New from a template.':`, and the routine stays under Recently deleted in History for ${TRASH_DAYS} days.`}`,'Delete routine',()=>{const Rn=state.routines.find(r=>r.id===R.id);if(!Rn||state.routines.length<2){rerenderKeepScroll();return;}snapshot();toTrash('routine',Rn);state.routines=state.routines.filter(r=>r.id!==R.id);if(state.activeRoutineId===R.id)state.activeRoutineId=state.routines[0].id;ui.bRoutine=state.activeRoutineId;commit();render();toast('Routine deleted',true);},true);},
   exNew(){openModal({kind:'exEdit',isNew:true,e:{id:'c_'+uid(),name:'',primary:'chest',secondary:[],equip:'cable',bw:false,rare:false,note:'',custom:true,archived:false}});},
   exNewFromPicker(){const back=ui.modal;if(!back||back.kind!=='picker')return;openModal({kind:'exEdit',isNew:true,back,e:{id:'c_'+uid(),name:(back.q||'').trim(),primary:back.m||'',secondary:[],equip:'cable',bw:false,rare:false,note:'',custom:true,archived:false,incRaw:''}});},
   exBack(){const m=ui.modal;if(m&&m.back)openModal(m.back);else closeModal();},
@@ -10334,7 +10350,8 @@ function swapPrompt(b,reason){
 }
 /*}ai=*/
 window.__onLib=(which)=>{if((which==='chart'&&ui.tab==='dash')||(which==='sortable'&&ui.tab==='program'))rerenderKeepScroll();};
-window.__ironlog={get state(){return state;},set state(v){state=v;},ENV,KEY,COMMON,COMMON_TIP,isCommon,bwEvery,isRestWeek,sessCmp,avgWeeks,weekStreak,coach,noLog,afterSet,adjOn,bwAt,newBlock,cycleState,sortedSessions,addDays,loadIn,gymRack,gymClean,dbListOf,capOf,refreshEx,effShow,rirScale,setStr,libExercises,obGate,obTour,andList,belowMin,aboveMax,starterRoutine,starterSigs,plateList,exBarKg,VOL_MODES,liveLogFetch,regionSrc,fitTargets,firstFullWeek,moveBlock,BANDS,installSheet,siteHost,greyW,effW,greyR,lighterLoad,incOf,swapPlan,planSetsPerWeek,weekNeed,stepRead,e1inv,rtfAt,rtfOf,rtfBand,calStats,rirEff,isHard,setCredit,tonnage,loadMode,loadWords,loadNote,progStep,jumpCap,setSecs,setupSecs,recovery,rolling7,rankDays,rankExercises,isCompound,patternOf,noE1,whtrLine,exHeadline,remainMin,shortPlan,weekPlan,cycleProjection,lastLighterWeek,regionBalance,parseHeight,mixCheck,swapCands,eqPlan,exportCSV,importData,chunksOf,assemble,sessionMuscles,TRACK_ONLY,cloud,Hx,mergeChunk,baseOf,sync:()=>cq(cloudPull),TEMPLATES,lastRFor,impDate,impRows,impNorm,impMatch,impFromText,impFromTable,impHeader,impBuild,impStart,impXlsx,parseSets,undoStack,undoRestore,undoForget,allTimeBests,bestsBoard,obActive,fmtW,rirUsual,rirEst,routineFromTemplate,plannedSets,map3d:()=>({state:B3.state,fail:B3.fail,meshes:B3.meshes.length,yaw:B3.yaw,glow:Object.keys(B3.mats).filter(m=>B3.mats[m].emissiveIntensity>0),canvas:!!document.querySelector('#bm3d canvas'),colors:Object.fromEntries(Object.entries(B3.mats).map(([m,mt])=>[m,'#'+mt.color.getHexString()])),pick:(x,y)=>map3dPick(x,y),want:map3dColors()}),cloudState:()=>({on:cloud.on,status:cloud.status,err:cloud.err,uid:cloud.uid,acct:cloud.acct}),acctUser:()=>acct.user,acctWaiting:()=>!!acctWait.pw,flush:()=>cq(cloudFlush),backupDue,routineUpdates,planFor,platesMode,plateText,chunksOf,IDX,suggest,e1,render,ACT,ui,makeDemo,invalidate,normalize,snapshot,saveNow,timer,weekStats,weekStart,today,EX,blockProgress,dayMinutes,weekStreak,coach,tonnageNow,livePR,exProjection,movers,stalledIds,muscleStatus,actualAvg4,plannedPerWeek,parseSets,/*ai{*/aiSetsValid,fillSets,/*}ai=fillSets,*/newBlock,lastNoteOf,sizeRows,sessionMuscleSets,sessionCapNote,routineClutter,rowBlank,dayReasons,impTextSets,liftTrend,prsWithin,activeRoutine,rackStep,repFloor,sessionLength,prBeat,exInjury,exJoints,openModal,EQUIP,HARD_EX,recentLighter,planEvidenceNote,howToUrl,editFp,toast,avgWeeks,regionWk,REGION_WKS,SAFETY_TXT,libFiltered,nameMatch,workLoad,fitE,offSession,tagged,fatigueStalls,avgWeeksTxt,routineFromLog,repSpan,rangeWords,calDueIdx,readyCard,loadAskCard,/*ai{*/aiDigest,debriefPrompt,reviewPrompt,swapPrompt,AI,/*}ai=*/sameRR};
+trashTidy();
+window.__ironlog={get state(){return state;},set state(v){state=v;},plainTemplate,trashTidy,ENV,KEY,COMMON,COMMON_TIP,isCommon,bwEvery,isRestWeek,sessCmp,avgWeeks,weekStreak,coach,noLog,afterSet,adjOn,bwAt,newBlock,cycleState,sortedSessions,addDays,loadIn,gymRack,gymClean,dbListOf,capOf,refreshEx,effShow,rirScale,setStr,libExercises,obGate,obTour,andList,belowMin,aboveMax,starterRoutine,starterSigs,plateList,exBarKg,VOL_MODES,liveLogFetch,regionSrc,fitTargets,firstFullWeek,moveBlock,BANDS,installSheet,siteHost,greyW,effW,greyR,lighterLoad,incOf,swapPlan,planSetsPerWeek,weekNeed,stepRead,e1inv,rtfAt,rtfOf,rtfBand,calStats,rirEff,isHard,setCredit,tonnage,loadMode,loadWords,loadNote,progStep,jumpCap,setSecs,setupSecs,recovery,rolling7,rankDays,rankExercises,isCompound,patternOf,noE1,whtrLine,exHeadline,remainMin,shortPlan,weekPlan,cycleProjection,lastLighterWeek,regionBalance,parseHeight,mixCheck,swapCands,eqPlan,exportCSV,importData,chunksOf,assemble,sessionMuscles,TRACK_ONLY,cloud,Hx,mergeChunk,baseOf,sync:()=>cq(cloudPull),TEMPLATES,lastRFor,impDate,impRows,impNorm,impMatch,impFromText,impFromTable,impHeader,impBuild,impStart,impXlsx,parseSets,undoStack,undoRestore,undoForget,allTimeBests,bestsBoard,obActive,fmtW,rirUsual,rirEst,routineFromTemplate,plannedSets,map3d:()=>({state:B3.state,fail:B3.fail,meshes:B3.meshes.length,yaw:B3.yaw,glow:Object.keys(B3.mats).filter(m=>B3.mats[m].emissiveIntensity>0),canvas:!!document.querySelector('#bm3d canvas'),colors:Object.fromEntries(Object.entries(B3.mats).map(([m,mt])=>[m,'#'+mt.color.getHexString()])),pick:(x,y)=>map3dPick(x,y),want:map3dColors()}),cloudState:()=>({on:cloud.on,status:cloud.status,err:cloud.err,uid:cloud.uid,acct:cloud.acct}),acctUser:()=>acct.user,acctWaiting:()=>!!acctWait.pw,flush:()=>cq(cloudFlush),backupDue,routineUpdates,planFor,platesMode,plateText,chunksOf,IDX,suggest,e1,render,ACT,ui,makeDemo,invalidate,normalize,snapshot,saveNow,timer,weekStats,weekStart,today,EX,blockProgress,dayMinutes,weekStreak,coach,tonnageNow,livePR,exProjection,movers,stalledIds,muscleStatus,actualAvg4,plannedPerWeek,parseSets,/*ai{*/aiSetsValid,fillSets,/*}ai=fillSets,*/newBlock,lastNoteOf,sizeRows,sessionMuscleSets,sessionCapNote,routineClutter,rowBlank,dayReasons,impTextSets,liftTrend,prsWithin,activeRoutine,rackStep,repFloor,sessionLength,prBeat,exInjury,exJoints,openModal,EQUIP,HARD_EX,recentLighter,planEvidenceNote,howToUrl,editFp,toast,avgWeeks,regionWk,REGION_WKS,SAFETY_TXT,libFiltered,nameMatch,workLoad,fitE,offSession,tagged,fatigueStalls,avgWeeksTxt,routineFromLog,repSpan,rangeWords,calDueIdx,readyCard,loadAskCard,/*ai{*/aiDigest,debriefPrompt,reviewPrompt,swapPrompt,AI,/*}ai=*/sameRR};
 render();
 wakeOn();
 timerResume();

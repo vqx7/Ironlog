@@ -486,6 +486,58 @@ const LB = 0.45359237;
     await P.ctx.close();
   }
 
+  // ---------- 7. r34.1: "Day 2", and Recently deleted that can be cleared ----------
+  {
+    const R0 = await (async () => {
+      const P0 = await open(FILE, { browser, realStarter: true, clock: '2026-10-10T12:00:00' });
+      const t = await P0.page.evaluate(() => { const L = window.__ironlog; const r = L.routineFromTemplate('ppl6'); return r || L.routineFromTemplate(L.TEMPLATES[0].key); });
+      await P0.ctx.close(); return t;
+    })();
+    // An older save with ready-made routines in Recently deleted, as earlier builds left them, and one changed routine.
+    const changed = JSON.parse(JSON.stringify(R0)); changed.id = 'chg1'; changed.name = 'My PPL';
+    const st = await (async () => {
+      const P0 = await open(FILE, { browser, clock: '2026-10-10T12:00:00' });
+      const s = await P0.page.evaluate(([r, c]) => { const L = window.__ironlog; const s = L.state; s.settings.onboarded = true; s.trash = [{ id: r.id, kind: 'routine', date: '2026-10-01', data: r }, { id: c.id, kind: 'routine', date: '2026-10-02', data: c }]; return JSON.parse(JSON.stringify(s)); }, [R0, changed]);
+      await P0.ctx.close(); return s;
+    })();
+    const P = await open(FILE, { browser, touch: true, clock: '2026-10-10T12:00:00', state: st, stateOnce: false });
+    const ev = (f, a) => P.page.evaluate(f, a);
+    const boot = await ev(() => window.__ironlog.state.trash.map(t => t.data.name));
+    ok(boot.length === 1 && boot[0] === 'My PPL', 'on start, ready-made routines left unchanged in Recently deleted are cleared; a changed one stays', boot);
+    const r = await ev(async () => {
+      const L = window.__ironlog; const wait = ms => new Promise(r => setTimeout(r, ms));
+      // Day 1, not Day 1 of 7.
+      L.ui.tab = 'today'; L.render(); const eyebrow = (document.querySelector('.hero .kick, .hero .eyebrow, .hero p') || {}).innerText || document.querySelector('.hero').innerText.split('\n')[0];
+      // Deleting a ready-made routine unchanged keeps nothing in the trash; a changed one is kept.
+      const tpl = L.routineFromTemplate(L.TEMPLATES.find(t => t.key !== 'legacy').key); L.state.routines.push(tpl); L.state.routines.push({ ...JSON.parse(JSON.stringify(tpl)), id: 'mine2', name: 'Mine' }); L.state = L.normalize(L.state); L.saveNow();
+      const plainYes = L.plainTemplate(tpl), plainNo = L.plainTemplate(L.state.routines.find(x => x.id === 'mine2'));
+      L.ui.tab = 'program'; L.ui.bRoutine = tpl.id; L.render(); L.ACT.rDel(); await wait(40); const msg1 = (document.querySelector('#modal') || {}).innerText || ''; document.querySelector('#modal [data-act="mOk"]').click(); await wait(60);
+      L.ui.bRoutine = 'mine2'; L.render(); L.ACT.rDel(); await wait(40); const msg2 = (document.querySelector('#modal') || {}).innerText || ''; document.querySelector('#modal [data-act="mOk"]').click(); await wait(60);
+      const afterDel = L.state.trash.map(t => t.data.name);
+      // Delete one for good from History, with Undo.
+      L.ui.tab = 'history'; L.render(); document.querySelectorAll('#view details').forEach(d => d.open = true);
+      const xs = document.querySelectorAll('[data-act="trashDel"]').length; const all = !!document.querySelector('[data-act="trashEmpty"]');
+      document.querySelector('[data-act="trashDel"]').click(); await wait(60);
+      const afterOne = L.state.trash.length; const undoBtn = document.querySelector('#toast [data-act="undo"]'); if (undoBtn) undoBtn.click(); await wait(80);
+      const afterUndo = L.state.trash.length;
+      // Delete all asks first, then clears.
+      L.render(); document.querySelectorAll('#view details').forEach(d => d.open = true);
+      document.querySelector('[data-act="trashEmpty"]').click(); await wait(40); const asked = L.ui.modal && L.ui.modal.kind === 'confirm';
+      document.querySelector('#modal [data-act="mOk"]').click(); await wait(60);
+      const emptied = L.state.trash.length; const section = !!document.querySelector('[data-sk="history:trash"]');
+      return { eyebrow, plainYes, plainNo, msg1, msg2, afterDel, xs, all, afterOne, afterUndo, asked, emptied, section };
+    });
+    ok(/Day \d/i.test(r.eyebrow) && !/ of \d/i.test(r.eyebrow), 'the Today card says "Day 1", not "Day 1 of 7"', r.eyebrow);
+    ok(r.plainYes && !r.plainNo, 'a ready-made routine is told apart from one renamed or changed', r);
+    ok(/New from a template/.test(r.msg1) && /Recently deleted/.test(r.msg2), 'deleting says the truth: a ready-made one can be added again; a changed one waits in Recently deleted', { m1: r.msg1.slice(0, 160), m2: r.msg2.slice(0, 160) });
+    ok(r.afterDel.length === 2 && r.afterDel[0] === 'Mine' && r.afterDel[1] === 'My PPL', 'only the changed routine goes to Recently deleted', r.afterDel);
+    ok(r.xs === 2 && r.all, 'each item has a delete-for-good ✕, and there is Delete all for good', r);
+    ok(r.afterOne === 1 && r.afterUndo === 2, 'one item deleted for good, and Undo brings it back', r);
+    ok(r.asked && r.emptied === 0 && !r.section, 'Delete all for good asks first, then the section goes', r);
+    ok(!P.errors.length, 'Recently deleted: no page errors', P.errors);
+    await P.ctx.close();
+  }
+
   console.log(fails.length ? `${fails.length} FAILED` : 'ALL PASS');
   await browser.close().catch(() => {});
   process.exit(fails.length ? 1 : 0);
