@@ -28,6 +28,7 @@
 const { open } = require('./h');
 const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log('FAIL', m, x !== undefined ? JSON.stringify(x) : ''); } else console.log('ok  ', m); };
 const LB = 0.45359237;
+const adjSeen = {};
 // e1: true one-rep max in lb at week 0; g: weekly gain; per dumbbell for curls.
 const LIFTS = [
   { id: 'bench', sets: 3, min: 6, max: 10, rir: 1, e1: 225, g: 0.006 },
@@ -86,7 +87,10 @@ const r5 = v => Math.round(v / 5) * 5;
           const rir = Math.max(0, Math.min(5, can - reps));
           const rsel = `.sg input[data-f="r"][data-b="${p.bi}"][data-s="${si}"]`;
           await P.page.fill(rsel, String(reps)); await P.page.dispatchEvent(rsel, 'input'); await P.page.dispatchEvent(rsel, 'change');
+          // r34: effort rated as each set is done, as a lifter does, so the next sets can adjust from it.
+          await ev(([bi, si, rir]) => { window.__ironlog.state.draft.ex[bi].sets[si].rir = rir; }, [p.bi, si, rir]);
           await P.page.click(`[data-act="sDone"][data-b="${p.bi}"][data-s="${si}"]`);
+          if (await ev(bi => !!document.getElementById('adj-' + bi), p.bi)) adjSeen[mode] = (adjSeen[mode] || 0) + 1;
           sets.push({ si, w, reps, rir });
         }
         await ev(([bi, sets]) => { const b = window.__ironlog.state.draft.ex[bi]; for (const s of sets) b.sets[s.si].rir = s.rir; }, [p.bi, sets]);
@@ -140,6 +144,7 @@ const r5 = v => Math.round(v / 5) * 5;
     }
     ok(!st.dashBad, T + 'Stats shows no NaN, undefined, or Infinity');
     ok(errors.length === 0, T + 'no page errors or NaN on Today', errors);
+    ok((adjSeen[mode] || 0) > 0, T + 'the next sets were adjusted during the 16 weeks (' + (adjSeen[mode] || 0) + ' times), and every check above still holds', adjSeen);
   }
   console.log(fails.length ? `\n${fails.length} FAILED` : '\nALL PASS');
   process.exit(fails.length ? 1 : 0);

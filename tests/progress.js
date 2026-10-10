@@ -80,6 +80,10 @@ const PLAN = [
           const R = s.routines[0]; R.days[0].items = EXS.map((e, i) => ({ uid: 'u' + i, exId: e.id, sets: e.sets, repMin: e.min, repMax: e.max, rir: 1, rest: 0, inc: 5 * LB, ss: null }));
           s.bodyweights.push({ id: 'bw1', date: '2026-08-30', kg: 180 * LB });
           s.sessions.push({ id: 'seed', date: '2026-08-31', dayIdx: 0, dayId: R.days[0].id, dayName: R.days[0].name, routineId: R.id, notes: '', ex: EXS.map(e => ({ exId: e.id, sets: [8, 8, 8].map(r => ({ w: e.start * LB, r: Math.min(r, e.max), rir: null, warm: false, drop: false })) })) });
+          // This suite checks the session-to-session rules against its own copy of them, so the in-session
+          // adjustment (r34) is off here: it is tested in tests/r34.js, and with it on, tests/realism.js's
+          // 16-week lifter checks that it keeps progression on track.
+          s.settings.autoAdj = false;
           L.invalidate(); L.saveNow(); localStorage.setItem('ironlog.v1.tipWake', '1'); localStorage.setItem('ironlog.v1.loadAsk', '1'); }, [EXS, mode, LB]);
         state = await ev(() => JSON.parse(localStorage.getItem('ironlog.v1')));
         await P.ctx.close(); continue;

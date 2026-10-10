@@ -64,7 +64,7 @@ const sess = (id, date, exId, sets) => ({ id, date, dayIdx: 0, dayId: null, dayN
         const zeroMin = Object.entries(L.state.settings.bands).filter(([m, b]) => b[0] === 0 && !L.TRACK_ONLY.has(m)).map(([m]) => m);
         return { green: cls.filter(c => c === 'st-in' || c === 'st-over').length, amber: cls.filter(c => c === 'st-under').length, legend: card.querySelector('.bm-legend').innerText.replace(/\s+/g, ' '), sub: card.querySelector('.sec-s') ? card.querySelector('.sec-s').innerText : '', zeroMin };
       }, k);
-      ok(r.green === 0 && r.amber === 0 && /Not yet \d+/.test(r.legend) && /On target 0/.test(r.legend), `${k}: before any set the map has no green and no amber, everything Not yet${r.zeroMin.length ? ' (with ' + r.zeroMin.length + ' minimums at 0)' : ''}`, r);
+      ok(r.green === 0 && r.amber === 0 && /Not yet –/.test(r.legend) && /On target –/.test(r.legend) && !/\d/.test(r.legend), `${k}: before any set the map has no green and no amber, everything Not yet, counts shown as a dash before anything is logged (r34)${r.zeroMin.length ? ' (with ' + r.zeroMin.length + ' minimums at 0)' : ''}`, r);
     }
     // muscleStatus: a minimum of 0 with no sets is none, not on target, and never low.
     const ms = await ev(() => { const L = window.__ironlog; const b = L.state.settings.bands; const k = Object.keys(b).find(m => !L.TRACK_ONLY.has(m)); const keep = b[k]; b[k] = [0, 10]; const a = L.muscleStatus({})[k]; const c = L.muscleStatus({ [k]: 1 })[k]; b[k] = keep; return { a: a.st, c: c.st }; });
@@ -100,7 +100,7 @@ const sess = (id, date, exId, sets) => ({ id, date, dayIdx: 0, dayId: null, dayN
       return { head: vol.querySelector('.headline').innerText, chips: [...vol.querySelectorAll('[data-act="volMode"]')].map(b => b.dataset.v), ring: ch.data.datasets[1].label, chestRow: chest ? chest.innerText.replace(/\s+/g, ' ') : null, tags: [...w.querySelectorAll('.tag')].map(t => t.innerText) }; });
     ok(/\d of 8 regions on target\. Furthest short: /.test(v.head), 'the radar headline counts regions on target and names the furthest short in sets', v.head);
     ok(v.ring === 'Minimum (100%)' && !v.chips.includes('planned'), 'the ring is the minimum, and Stats has no Planned chip (the plan is on Plan)', v);
-    ok(v.chestRow && /Below target/.test(v.chestRow) && /Chest (Lagging strength |A lift stalled )?Below target 8 hard sets a week on average, target 10-20, this week 0 so far/.test(v.chestRow), 'Muscles leads with the average the flag is judged on, then this week', v.chestRow);
+    ok(v.chestRow && /Below target/.test(v.chestRow) && /Chest (Lagging strength |A lift stalled )?Below target 8 hard sets a week on average, target 10-20 · this week 0/.test(v.chestRow), 'Muscles leads with the average the flag is judged on, then this week', v.chestRow);
     ok(!v.tags.some(t => /logged and planned|Below target, logged/.test(t)), 'one Below target tag, without logged or planned', v.tags);
     // An old ui.volMode of planned cannot come back through the chip action.
     const vm = await ev(() => { const L = window.__ironlog; L.ACT.volMode({ dataset: { v: 'planned' } }); return L.ui.volMode; });

@@ -22,7 +22,7 @@ await page.click('[data-act="pickSession"]');
 await page.waitForTimeout(100);
 const p1=await ev(()=>{const sh=document.querySelector('.sheet.fixed');const ae=document.activeElement;return {fixed:!!sh,h:sh&&sh.getBoundingClientRect().height,groups:[...document.querySelectorAll('.pick-grp')].map(x=>x.innerText),focusIsInput:ae&&ae.tagName==='INPUT',bodyLock:document.body.classList.contains('modal-open')};});
 ok(p1.fixed,'picker sheet is fixed height');ok(!p1.focusIsInput,'no keyboard autofocus on touch');ok(p1.bodyLock,'body scroll locked');
-ok(p1.groups.some(g=>/Recent/i.test(g))&&p1.groups.some(g=>/^Common \(\d+\)/i.test(g))&&p1.groups.some(g=>/All other exercises/i.test(g)),'picker groups: '+p1.groups.join(', '));
+ok(p1.groups.some(g=>/Recent/i.test(g))&&p1.groups.some(g=>/^Most common \(\d+\)/i.test(g))&&p1.groups.some(g=>/All other exercises/i.test(g)),'picker groups: '+p1.groups.join(', '));
 await page.fill('#pickQ','curl');await page.waitForTimeout(50);
 const p2=await ev(()=>({h:document.querySelector('.sheet.fixed').getBoundingClientRect().height,n:document.querySelectorAll('#pickList .pick').length,names:[...document.querySelectorAll('#pickList .pick b')].map(b=>b.innerText)}));
 ok(Math.abs(p2.h-p1.h)<1,'sheet height stable while filtering ('+p1.h+' vs '+p2.h+')');

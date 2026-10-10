@@ -17,16 +17,16 @@ const DIST = !!process.env.IRONLOG_FILE;
   await ev(() => { const L = window.__ironlog; L.state.settings.onboarded = true; L.saveNow(); L.render(); });
 
   // ---- Common lifts.
-  const lib = await ev(() => { const L = window.__ironlog; L.ui.tab = 'program'; L.ui.planView = 'library'; L.render(); return { chips: [...document.querySelectorAll('[data-act="libKind"]')].map(b => b.innerText.trim()), on: (document.querySelector('[data-act="libKind"].on') || {}).innerText, i: !!document.querySelector('.chips + .tipi, [aria-label="About Common and Less common"]') }; });
-  ok(lib.chips.join(',') === 'All,Common,Less common' && lib.on === 'All' && lib.i, 'the library filters All, Common, and Less common, with an i that says what Common means', lib);
+  const lib = await ev(() => { const L = window.__ironlog; L.ui.tab = 'program'; L.ui.planView = 'library'; L.render(); return { chips: [...document.querySelectorAll('[data-act="libKind"]')].map(b => b.innerText.trim()), on: (document.querySelector('[data-act="libKind"].on') || {}).innerText, i: !!document.querySelector('.chips + .tipi, [aria-label="About Most common and Less common"]') }; });
+  ok(lib.chips.join(',') === 'All,Most common,Less common' && lib.on === 'All' && lib.i, 'the library filters All, Most common, and Less common, with an i that says what each means', lib);
   const tagOf = name => ev(n => { const it = [...document.querySelectorAll('#libList .hitem')].find(h => h.querySelector('b').innerText === n); return it ? [...it.querySelectorAll('.tag')].map(t => t.innerText) : null; }, name);
-  ok((await tagOf('Barbell Bench Press'))[0] === 'Common', 'a staple (Barbell Bench Press) is tagged Common, first', await tagOf('Barbell Bench Press'));
-  ok((await tagOf('Meadows Row')).includes('Less common') && !(await tagOf('Meadows Row')).includes('Common'), 'a less common lift keeps its Less common tag and is not Common');
-  const neither = await tagOf('Close-Grip Bench Press');
-  ok(!neither.includes('Common') && !neither.includes('Less common'), 'a lift in neither group carries neither tag', neither);
+  ok((await tagOf('Barbell Bench Press'))[0] === 'Most common', 'a most-logged lift (Barbell Bench Press) is tagged Most common, first', await tagOf('Barbell Bench Press'));
+  ok((await tagOf('Meadows Row')).includes('Less common') && !(await tagOf('Meadows Row')).includes('Most common'), 'a less common lift keeps its Less common tag and is not Most common');
+  const neither = await tagOf('Front Squat');
+  ok(!neither.includes('Most common') && !neither.includes('Less common'), 'a lift in neither group carries neither tag', neither);
   await page.click('[data-act="libKind"][data-v="common"]'); await wait(100);
-  const onlyC = await ev(() => ({ n: document.querySelectorAll('#libList .hitem').length, allC: [...document.querySelectorAll('#libList .hitem')].every(h => { const L = window.__ironlog; const e = L.state.exercises.find(x => x.name === h.querySelector('b').innerText); return L.isCommon(e) && ![...h.querySelectorAll('.tag')].some(t => t.innerText === 'Common'); }), on: document.querySelector('[data-act="libKind"].on').innerText, pressed: document.querySelector('[data-act="libKind"][data-v="common"]').getAttribute('aria-pressed') }));
-  ok(onlyC.n >= 40 && onlyC.n <= 60 && onlyC.allC && onlyC.on === 'Common' && onlyC.pressed === 'true', 'Common shows only the staples, without a Common tag repeating the filter on every row', onlyC);
+  const onlyC = await ev(() => ({ n: document.querySelectorAll('#libList .hitem').length, allC: [...document.querySelectorAll('#libList .hitem')].every(h => { const L = window.__ironlog; const e = L.state.exercises.find(x => x.name === h.querySelector('b').innerText); return L.isCommon(e) && ![...h.querySelectorAll('.tag')].some(t => t.innerText === 'Most common'); }), on: document.querySelector('[data-act="libKind"].on').innerText, pressed: document.querySelector('[data-act="libKind"][data-v="common"]').getAttribute('aria-pressed') }));
+  ok(onlyC.n === 30 && onlyC.allC && onlyC.on === 'Most common' && onlyC.pressed === 'true', 'Most common shows only the 30 most-logged lifts (r33: 53 was too many to help), without the tag repeating the filter on every row', onlyC);
   await page.click('[data-act="libKind"][data-v="rare"]'); await wait(100);
   const onlyR = await ev(() => ({ n: document.querySelectorAll('#libList .hitem').length, allR: [...document.querySelectorAll('#libList .hitem')].every(h => { const L = window.__ironlog; const e = L.state.exercises.find(x => x.name === h.querySelector('b').innerText); return e.rare && ![...h.querySelectorAll('.tag')].some(t => t.innerText === 'Less common'); }) }));
   ok(onlyR.n > 10 && onlyR.allR, 'Less common still filters as before', onlyR);
@@ -34,7 +34,7 @@ const DIST = !!process.env.IRONLOG_FILE;
   ok(chipH >= 40, 'filter chips are full-size chips', chipH);
   // Someone who marks a staple as less common does not see it called common.
   const mark = await ev(() => { const L = window.__ironlog; const e = L.state.exercises.find(x => x.id === 'bench'); e.rare = true; L.saveNow(); L.ui.libKind = ''; L.render(); const it = [...document.querySelectorAll('#libList .hitem')].find(h => h.querySelector('b').innerText === 'Barbell Bench Press'); const t = [...it.querySelectorAll('.tag')].map(x => x.innerText); e.rare = false; L.saveNow(); return t; });
-  ok(mark.includes('Less common') && !mark.includes('Common'), 'a staple marked less common by the lifter reads Less common only', mark);
+  ok(mark.includes('Less common') && !mark.includes('Most common'), 'a most-logged lift marked less common by the lifter reads Less common only', mark);
   // Nothing is stored for it.
   ok(await ev(() => !JSON.stringify(window.__ironlog.state).includes('"common"')), 'nothing about Common is saved in the log');
 
@@ -44,15 +44,15 @@ const DIST = !!process.env.IRONLOG_FILE;
   await wait(200);
   await ev(() => { const L = window.__ironlog; if (L.ui.modal) L.ACT.mClose(); L.ACT.pickSession(); });
   await wait(150);
-  const pk = await ev(() => { const g = [...document.querySelectorAll('.pick-grp')].map(x => x.innerText); const all = [...document.querySelectorAll('#pickList > *')]; const iC = all.findIndex(x => x.classList.contains('pick-grp') && /^Common/i.test(x.innerText)); const iO = all.findIndex(x => x.classList.contains('pick-grp') && /^All other exercises/i.test(x.innerText)); const L = window.__ironlog; const C = id => L.isCommon(L.EX(id)); const between = all.slice(iC + 1, iO).filter(x => x.classList.contains('pick')); const after = all.slice(iO + 1).filter(x => x.classList.contains('pick')); return { g, n: between.length, allC: between.every(x => C(x.dataset.ex)), after: after.some(x => C(x.dataset.ex)), repeat: between.some(x => [...x.querySelectorAll('.tag')].some(t => t.innerText === 'Common')) }; });
-  ok(pk.g.some(x => /^Common \(\d+\)$/i.test(x)) && pk.g.some(x => /^All other exercises \(\d+\)$/i.test(x)) && pk.n >= 40 && pk.allC && !pk.after && !pk.repeat, 'the picker lists Common lifts first, then all the others, with no repeats and no Common tag repeating the heading', pk);
+  const pk = await ev(() => { const g = [...document.querySelectorAll('.pick-grp')].map(x => x.innerText); const all = [...document.querySelectorAll('#pickList > *')]; const iC = all.findIndex(x => x.classList.contains('pick-grp') && /^Most common/i.test(x.innerText)); const iO = all.findIndex(x => x.classList.contains('pick-grp') && /^All other exercises/i.test(x.innerText)); const L = window.__ironlog; const C = id => L.isCommon(L.EX(id)); const between = all.slice(iC + 1, iO).filter(x => x.classList.contains('pick')); const after = all.slice(iO + 1).filter(x => x.classList.contains('pick')); return { g, n: between.length, allC: between.every(x => C(x.dataset.ex)), after: after.some(x => C(x.dataset.ex)), repeat: between.some(x => [...x.querySelectorAll('.tag')].some(t => t.innerText === 'Most common')) }; });
+  ok(pk.g.some(x => /^Most common \(30\)$/i.test(x)) && pk.g.some(x => /^All other exercises \(\d+\)$/i.test(x)) && pk.n === 30 && pk.allC && !pk.after && !pk.repeat, 'the picker lists the Most common lifts first, then all the others, with no repeats and no tag repeating the heading', pk);
   // A muscle filter puts the common lifts for that muscle first.
   await page.selectOption('[data-mbind="m"]', 'chest'); await wait(100);
-  const chest = await ev(() => [...document.querySelectorAll('#pickList .pick')].filter(x => x.querySelector('b')).map(x => ({ n: x.querySelector('b').innerText, c: [...x.querySelectorAll('.tag')].some(t => t.innerText === 'Common') })));
+  const chest = await ev(() => [...document.querySelectorAll('#pickList .pick')].filter(x => x.querySelector('b')).map(x => ({ n: x.querySelector('b').innerText, c: [...x.querySelectorAll('.tag')].some(t => t.innerText === 'Most common') })));
   const firstNon = chest.findIndex(x => !x.c), lastC = chest.map(x => x.c).lastIndexOf(true);
   ok(chest.length > 5 && firstNon > 0 && lastC < firstNon, 'with a muscle chosen, its common lifts come first', chest.slice(0, 12));
   await page.selectOption('[data-mbind="m"]', ''); await page.fill('#pickQ', 'curl'); await wait(100);
-  const curl = await ev(() => [...document.querySelectorAll('#pickList .pick')].filter(x => x.querySelector('b')).map(x => ({ n: x.querySelector('b').innerText, c: [...x.querySelectorAll('.tag')].some(t => t.innerText === 'Common') })));
+  const curl = await ev(() => [...document.querySelectorAll('#pickList .pick')].filter(x => x.querySelector('b')).map(x => ({ n: x.querySelector('b').innerText, c: [...x.querySelectorAll('.tag')].some(t => t.innerText === 'Most common') })));
   const fn = curl.findIndex(x => !x.c);
   ok(curl.length > 4 && fn > 0 && curl.slice(fn).every(x => !x.c), 'a search lists the common matches first', curl.map(x => x.n + (x.c ? '*' : '')));
   await ev(() => window.__ironlog.ACT.mClose());

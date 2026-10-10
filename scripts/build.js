@@ -244,6 +244,27 @@ self.addEventListener('fetch',e=>{
 });
 `;
 fs.writeFileSync(path.join(DIST, 'sw.js'), sw);
+// The libraries and fonts copied above are MIT and SIL Open Font License
+// works, and both licenses ask for their notice to travel with every copy.
+// The artifact loads them from their CDNs, which carry the notices; this
+// build serves its own copies, so their license texts are served beside them.
+{
+  const LIC = [
+    ['Chart.js 4.4.1', 'chart.js/LICENSE.md'],
+    ['SortableJS 1.15.2', 'sortablejs/LICENSE'],
+    ['three.js 0.159', 'three/LICENSE'],
+    ...(cloudCfg ? [['supabase-js', '@supabase/supabase-js/LICENSE'], ['@supabase/auth-js', '@supabase/auth-js/LICENSE'], ['@supabase/functions-js', '@supabase/functions-js/LICENSE'], ['@supabase/postgrest-js', '@supabase/postgrest-js/LICENSE'], ['@supabase/realtime-js', '@supabase/realtime-js/LICENSE'], ['@supabase/storage-js', '@supabase/storage-js/LICENSE'], ['@supabase/phoenix', '@supabase/phoenix/LICENSE.md'], ['iceberg-js', 'iceberg-js/LICENSE']] : []),
+    ['Big Shoulders Display (font)', '@fontsource/big-shoulders-display/LICENSE'],
+    ['Hanken Grotesk (font)', '@fontsource/hanken-grotesk/LICENSE'],
+  ];
+  let txt = `${NAME} uses these open-source works, each under its own license, reproduced in full below.\n`;
+  for (const [name, rel] of LIC) {
+    const f = path.join(NM, rel);
+    must(fs.existsSync(f), `license file missing: ${rel}`);
+    txt += `\n\n==== ${name} ====\n\n${fs.readFileSync(f, 'utf8').trim()}\n`;
+  }
+  fs.writeFileSync(path.join(DIST, 'LICENSES.txt'), txt);
+}
 fs.writeFileSync(path.join(DIST, '.nojekyll'), '');
 fs.writeFileSync(path.join(DIST, '404.html'), `<!doctype html><meta charset="utf-8"><meta http-equiv="refresh" content="0; url=./"><title>${NAME}</title>`);
 

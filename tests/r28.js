@@ -114,7 +114,7 @@ const TABS = ['today', 'program', 'dash', 'history', 'settings'];
     // Plan: the Exercise library button, and back to Plan.
     await ev(() => { const L = window.__ironlog; L.ui.tab = 'program'; L.render(); });
     const lb = await ev(() => { const b = document.querySelector('#view .libbtn'); const r = b.getBoundingClientRect(); const hb = document.querySelector('#view .ph .hb').getBoundingClientRect(); return { w: r.width, h: r.height, vw: document.documentElement.clientWidth, text: b.innerText, gap: r.top - hb.bottom }; });
-    ok(lb.w >= lb.vw - 40 && lb.h >= 56 && /Exercise library/.test(lb.text) && /\d+ exercises/.test(lb.text), 'Plan: the Exercise library is a full-width button with its count', lb);
+    ok(lb.w >= lb.vw - 40 && lb.h >= 56 && /Exercise library/.test(lb.text) && !/\d+ exercises/.test(lb.text), 'Plan: the Exercise library is a full-width button, its title only (r34, V: no line under it)', lb);
     await page.locator('#view .libbtn').click(); await wait(80);
     ok(await ev(() => window.__ironlog.ui.planView === 'library' && /← Plan/.test(document.querySelector('[data-act="planBack"]').textContent)), 'it opens the library, whose back button says Plan');
     await ev(() => { const L = window.__ironlog; L.ui.planView = 'routine'; L.render(); });
