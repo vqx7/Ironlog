@@ -172,6 +172,9 @@ async function engineRun(page, cases, gym) {
     await ev(() => { const L = window.__ironlog; L.state.settings.unit = 'lb'; delete L.state.settings.gym; L.saveNow(); L.ui.tab = 'settings'; L.ui.folds['settings:gym'] = true; L.render(); document.querySelectorAll('#view details[data-sk="settings:gym"]').forEach(d => { d.open = true; }); });
     const typeIn = async (sel, v) => { await P.page.fill(sel, v); await P.page.dispatchEvent(sel, 'change'); await wait(80); await ev(() => document.querySelectorAll('#view details[data-sk="settings:gym"]').forEach(d => { d.open = true; })); };
     ok(await ev(() => /usual steps/.test(document.querySelector('[data-sk="settings:gym"] .sec-s').textContent) && !!document.querySelector('[data-bind="barKg"]') && !!document.querySelector('[data-bind="smallPlates"]')), 'Your gym starts on the usual steps, with the bar weight and small plates moved into it');
+    const help = await ev(() => { const b = document.querySelector('[data-sk="settings:gym"] .sec-b [data-act="help"]'); if (!b) return null; b.click(); const h = document.getElementById('help-gym'); return h && !h.hidden ? h.textContent : null; });
+    ok(help && /What your gym has/.test(help), 'Your gym has its How this works line', help);
+    await ev(() => document.querySelectorAll('#view details[data-sk="settings:gym"]').forEach(d => { d.open = true; }));
     await typeIn('[data-gym="db.lo"]', '5');
     const half = await ev(() => ({ g: window.__ironlog.state.settings.gym || null, lo: document.querySelector('[data-gym="db.lo"]').value, msg: document.getElementById('gymDbList').textContent }));
     ok(half.g === null && half.lo === '5' && /Add From, To, and Step/.test(half.msg), 'a half-filled rack is kept on screen, not saved, and says what is missing', half);
