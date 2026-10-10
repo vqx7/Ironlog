@@ -156,15 +156,17 @@ async function engineRun(page, cases, gym) {
         for (const o of [{}, { light: true }, { deload: true }]) {
           const x = L.suggest(exId, plan, o); n++;
           if (x.w == null) continue;
-          const onR = R.some(v => Math.abs(v - x.w) < 1e-6), same = Math.abs(x.w - w * LB) < 1e-6;
-          if (!onR && !same) bad.push([exId, w, o, x.w / LB, x.text]);
+          // Logged above the top of the rack, the lifter has heavier bells than the rack lists: whole steps of its last gap.
+          const top = R[R.length - 1], gap = top - R[R.length - 2], k = (x.w - w * LB) / gap;
+          const onR = R.some(v => Math.abs(v - x.w) < 1e-6), same = Math.abs(x.w - w * LB) < 1e-6, above = w * LB > top + 1e-3 && Math.abs(k - Math.round(k)) < 1e-6;
+          if (!onR && !same && !above) bad.push([exId, w, o, x.w / LB, x.text]);
           if ((o.light || o.deload) && x.w > w * LB + 1e-6) bad.push(['heavier', exId, w, o, x.w / LB]);
           if (!/^[^]*$/.test(x.text) || /NaN|undefined|Infinity/.test(x.text + x.target)) bad.push(['text', x.text]);
         }
       }
       delete L.state.settings.gym; return { n, bad: bad.slice(0, 5), nb: bad.length };
     });
-    ok(prop.n === 1200 && prop.nb === 0, `400 random dumbbell histories, ${prop.n} suggestions: every load is a dumbbell on the rack or last time's, lighter days never heavier, no NaN`, prop);
+    ok(prop.n === 1200 && prop.nb === 0, `400 random dumbbell histories, ${prop.n} suggestions: every load is a dumbbell on the rack or last time's (above the rack top, whole steps of its spacing), lighter days never heavier, no NaN`, prop);
 
     // Settings > Your gym, as typed.
     await ev(() => { const L = window.__ironlog; L.state.settings.unit = 'lb'; delete L.state.settings.gym; L.saveNow(); L.ui.tab = 'settings'; L.ui.folds['settings:gym'] = true; L.render(); document.querySelectorAll('#view details[data-sk="settings:gym"]').forEach(d => { d.open = true; }); });
@@ -228,13 +230,13 @@ async function engineRun(page, cases, gym) {
     const P = await open(FILE, { browser, clock: '2026-10-09T12:00:00', w: 320 });
     const ev = (f, a) => P.page.evaluate(f, a);
     await ev(() => { const L = window.__ironlog; L.state.settings.onboarded = true; L.state.sessions = []; L.saveNow(); L.ACT.startFree(); L.ACT.mClose(); const d = L.state.draft; d.ex.push({ exId: 'bench', plan: { sets: 3, repMin: 6, repMax: 10, rir: 1, rest: 90, inc: 5 * 0.45359237 }, sets: [0, 1, 2].map(() => ({ w: 60, r: null, rir: null, warm: false, drop: false, done: false })), note: '', sw: null }); L.saveNow(); L.render(); });
-    const strip = async () => { await ev(() => document.querySelector('.rirb[data-b="0"][data-s="0"]').click()); await wait(60); return ev(() => { const s = document.querySelector('.rirstrip'); return s ? { label: s.querySelector('.rs-l').textContent, rows: s.querySelectorAll('.rs-r').length, vals: [...s.querySelectorAll('[data-act="rirPick"]:not(.rs-x)')].map(b => b.textContent + '=' + b.dataset.v), h: Math.min(...[...s.querySelectorAll('[data-act="rirPick"]')].map(b => b.getBoundingClientRect().height)), fit: s.getBoundingClientRect().right <= window.innerWidth } : null; }); };
+    const strip = async () => { await ev(() => document.querySelector('.rirb[data-b="0"][data-s="0"]').click()); await wait(60); return ev(() => { const s = document.querySelector('.rirstrip'); return s ? { label: s.querySelector('.rs-l').textContent, rows: s.querySelectorAll('.rs-g').length, vals: [...s.querySelectorAll('[data-act="rirPick"]:not(.rs-x)')].map(b => b.textContent + '=' + b.dataset.v), h: Math.min(...[...s.querySelectorAll('[data-act="rirPick"]')].map(b => b.getBoundingClientRect().height)), fit: s.getBoundingClientRect().right <= window.innerWidth } : null; }); };
     let s0 = await strip();
     ok(s0 && s0.label === 'RIR' && s0.rows === 0 && s0.vals.slice(0, 6).join() === '0=0,1=1,2=2,3=3,4=4,5=5' && await ev(() => window.__ironlog.state.settings.rirScale === undefined), 'by default effort is whole RIR, 0 to 5 in one row, and nothing new is saved', s0);
     await ev(() => document.querySelector('.rirb[data-b="0"][data-s="0"]').click());
     await ev(() => { const L = window.__ironlog; L.state.settings.rirScale = 'half'; L.render(); });
     s0 = await strip();
-    ok(s0.rows === 2 && s0.vals.filter(v => !/x/.test(v)).length >= 11 && s0.h >= 44 && s0.fit, 'half reps: two rows, whole numbers over the halves, 44 px tall, inside a 320 px screen', s0);
+    ok(s0.rows === 1 && s0.vals.slice(0, 11).join() === '0=0,1=1,2=2,3=3,4=4,5=5,0.5=0.5,1.5=1.5,2.5=2.5,3.5=3.5,4.5=4.5' && s0.h >= 44 && s0.fit, 'half reps: one grid, whole numbers over the halves, 44 px tall, inside a 320 px screen', s0);
     await ev(() => document.querySelector('.rirstrip [data-v="2.5"]').click()); await wait(60);
     ok(await ev(() => window.__ironlog.state.draft.ex[0].sets[0].rir === 2.5 && document.querySelector('.rirb[data-b="0"][data-s="0"]').textContent === '2.5'), 'a half point is stored as picked and shown in the box');
     await ev(() => { const L = window.__ironlog; L.state.settings.rirScale = 'rpe'; L.render(); });
@@ -293,6 +295,111 @@ async function engineRun(page, cases, gym) {
     await P.ctx.close().catch(() => {});
   }
 
+  // ---------- Part 1e: the independent review of r33 (2026-10-10), each finding with its reproduction ----------
+  {
+    const P = await open(FILE, { browser, clock: '2026-10-09T12:00:00', w: 320 });
+    const ev = (f, a) => P.page.evaluate(f, a);
+    const R = await ev(() => {
+      const L = window.__ironlog; const LB = 0.45359237; const o = {};
+      const mk = (id, d, exId, sets, rr) => ({ id, date: d, dayIdx: 0, dayId: null, dayName: 'T', routineId: '', notes: '', ex: [{ exId, rr, sets: sets.map(([w, r, rir]) => ({ w, r, rir, done: true })) }] });
+      const set = (unit, sessions, gym) => { L.state.settings.onboarded = true; L.state.settings.unit = unit; L.state.draft = null; L.state.sessions = sessions; if (gym) L.state.settings.gym = gym; else delete L.state.settings.gym; L.state = L.normalize(L.state); L.invalidate(); };
+      const P = (a, b) => ({ sets: 3, repMin: a, repMax: b, rir: 1, rest: 90, inc: 5 * LB });
+      // 1. A rack in the other unit, each bell typed back as shown (one decimal): the next is always the next bell.
+      const shown = v => Math.round(v * 10) / 10;
+      const cross = [['lb', { u: 'kg', db: { lo: 2, hi: 50, st: 2 } }, 1 / LB], ['kg', { u: 'lb', db: { lo: 5, hi: 120, st: 5, fine: 2.5, fineTo: 25 } }, 1]];
+      o.cross = [];
+      for (const [unit, gym, toShown] of cross) {
+        set(unit, [], gym); const Lr = L.gymRack(L.EX('incDb'), P(8, 10));
+        for (let i = 0; i < Lr.length - 1; i++) {
+          const typed = shown(Lr[i] * toShown) / toShown; // kg stored from the number on screen
+          set(unit, [mk('a', '2026-10-02', 'incDb', [[typed, 10, 1], [typed, 10, 1], [typed, 10, 1]], [8, 10])], gym);
+          const x = L.suggest('incDb', P(8, 10), {});
+          const onR = Lr.some(v => Math.abs(v - x.w) < 1e-6);
+          if (!(x.w > typed + 1e-3) || !onR || /add 0 /.test(x.text) || Math.abs(x.w - Lr[i + 1]) > 1e-6) o.cross.push([unit, Lr[i], typed, x.w, x.text]);
+        }
+      }
+      // The top of the rack typed as shown is the heaviest available: more reps, not "add 0".
+      set('kg', [mk('a', '2026-10-02', 'incDb', [[54.4, 10, 1], [54.4, 10, 1], [54.4, 10, 1]], [8, 10])], cross[1][1]);
+      let x = L.suggest('incDb', P(8, 10), {}); o.top = [x.w, x.text, x.capped];
+      // 2. A two-sleeve plate machine with no 35s on hand: two 2.5s a step, 300 to 305.
+      set('lb', [mk('a', '2026-10-02', 'legPress', [[300 * LB, 15, 1], [300 * LB, 15, 1], [300 * LB, 15, 1]], [10, 15])], { u: 'lb', plates: [45, 25, 10, 5, 2.5] });
+      x = L.suggest('legPress', P(10, 15), {}); o.legPress = Math.round(x.w / LB * 100) / 100;
+      set('lb', [mk('a', '2026-10-02', 'landmineRow', [[70 * LB, 12, 1], [70 * LB, 12, 1], [70 * LB, 12, 1]], [8, 12])], { u: 'lb', plates: [45, 25, 10, 5, 2.5] });
+      x = L.suggest('landmineRow', P(8, 12), {}); o.landmine = Math.round(x.w / LB * 100) / 100;
+      // 5. A lift at the top of the rack for six weeks is capped, not stalled.
+      const wk = ['2026-08-28', '2026-09-04', '2026-09-11', '2026-09-18', '2026-09-25', '2026-10-02', '2026-10-08'];
+      set('lb', wk.map((d, i) => mk('s' + i, d, 'incDb', [[55 * LB, 10, 1], [55 * LB, 10, 1], [55 * LB, 9, 1]], [8, 10])), { u: 'lb', db: { lo: 5, hi: 55, st: 5 } });
+      let st = L.IDX().exStats.incDb; o.rackTop = { capped: st.capped, stalled: st.stalled };
+      set('lb', wk.map((d, i) => mk('s' + i, d, 'incDb', [[55 * LB, 10, 1], [55 * LB, 10, 1], [55 * LB, 9, 1]], [8, 10])), null);
+      st = L.IDX().exStats.incDb; o.noRack = { capped: st.capped, stalled: st.stalled };
+      // 6. Logged above the top of the rack: not "the heaviest available".
+      set('lb', [mk('a', '2026-10-02', 'incDb', [[110 * LB, 10, 1], [110 * LB, 10, 1], [110 * LB, 10, 1]], [8, 10])], { u: 'lb', db: { lo: 5, hi: 100, st: 5 } });
+      x = L.suggest('incDb', P(8, 10), {}); o.above = [Math.round(x.w / LB * 100) / 100, x.text, x.target];
+      // 4. RPE in typed sets.
+      const ps = (t, rpe) => (L.parseSets(t, L.EX('bench'), 60, null, rpe) || []).map(q => q.rir);
+      o.rpe = { at: ps('185x8@8', true), tail: ps('185x8, 8 rpe 8', true), tailWhole: ps('185x8, 8 rpe 8', false), rirMode: ps('185x8@2', false), half: ps('185x8@8.5', true) };
+      // 13. A rack of more than 300 weights is refused, not cut short.
+      o.big = [L.dbListOf({ lo: 0.5, hi: 200, st: 0.5 }), JSON.stringify(L.gymClean({ u: 'kg', db: { lo: 0.5, hi: 200, st: 0.5 } }))];
+      o.tip = L.COMMON_TIP;
+      return o;
+    });
+    ok(!R.cross.length, 'a rack in the other unit, every bell typed back as shown: the next suggestion is the next bell, never "add 0"', R.cross.slice(0, 3));
+    ok(R.top[0] === 54.4 && R.top[2] === true && /heaviest load available/.test(R.top[1]) && !/add 0/.test(R.top[1]), 'the top of a 120 lb rack typed as 54.4 kg is the heaviest available: more reps', R.top);
+    ok(R.legPress === 305 && R.landmine === 72.5, 'with no 35s on hand a leg press steps by two 2.5s (300 to 305), a landmine by one (70 to 72.5)', [R.legPress, R.landmine]);
+    ok(R.rackTop.capped === true && R.rackTop.stalled === false && R.noRack.capped === false, 'six weeks at the top of the rack read capped, not stalled; with no rack set it is as before', R);
+    ok(R.above[0] === 115 && /add 5 lb/.test(R.above[1]) && !/heaviest/.test(R.above[1] + R.above[2]), 'a load logged above the top of the rack is not called the heaviest available: it steps on by the rack\'s spacing, 110 to 115', R.above);
+    ok(R.rpe.at.join() === '2' && R.rpe.tail.join() === '2,2' && R.rpe.tailWhole.join() === '2,2' && R.rpe.rirMode.join() === '2' && R.rpe.half.join() === '1.5', 'typed sets in RPE mode: @8 is RPE 8 (RIR 2), "rpe 8" at the end works in either mode, @8.5 is RIR 1.5', R.rpe);
+    ok(R.big[0] === null && R.big[1] === 'null', 'a rack of more than 300 weights is refused, not cut short', R.big);
+    ok(/top 25 by sets logged, overall, for men, or for women/.test(R.tip), 'the Most common tip says what the list is', R.tip);
+
+    // 4 on screen: Type sets in RPE mode.
+    const q = await ev(() => {
+      const L = window.__ironlog; L.state.settings.rirScale = 'rpe'; L.state.settings.unit = 'lb'; delete L.state.settings.gym; L.state.sessions = []; L.ACT.startFree(); L.ACT.mClose();
+      L.state.draft.ex.push({ exId: 'bench', plan: { sets: 3, repMin: 6, repMax: 10, rir: 1, rest: 90, inc: 5 * 0.45359237 }, sets: [0, 1].map(() => ({ w: null, r: null, rir: null, warm: false, drop: false, done: false })), note: '', sw: null });
+      L.render(); L.ACT.bQuick({ dataset: { b: '0' } }); const t = document.getElementById('modal').innerText; document.getElementById('qTxt').value = '185x8@8, 7@9.5'; L.ACT.qFill();
+      return { t, rir: L.state.draft.ex[0].sets.map(x => x.rir) };
+    });
+    ok(/185x8@8/.test(q.t) && q.rir.join() === '2,0.5', 'Type sets in RPE mode shows RPE examples and saves @8 as RIR 2, @9.5 as RIR 0.5', q);
+
+    // 7. The step sheet saves a typed number, even the one it showed.
+    const inc = await ev(() => {
+      const L = window.__ironlog; delete L.state.settings.rirScale; L.state.settings.gym = { u: 'lb', db: { lo: 5, hi: 100, st: 5, fine: 2.5, fineTo: 25 } }; L.state = L.normalize(L.state); L.invalidate(); delete L.EX('dbLateral').inc;
+      L.openModal({ kind: 'inc', exId: 'dbLateral', plan: { inc: 5 * 0.45359237 } });
+      const f = document.getElementById('incVal'); const shown = f.value; f.value = shown; f.dispatchEvent(new Event('input', { bubbles: true })); L.ACT.incSave();
+      return { shown, inc: L.EX('dbLateral').inc };
+    });
+    ok(inc.shown === '5' && Math.abs(inc.inc / 0.45359237 - 5) < 1e-6, 'typing the step the sheet showed (5 on a 5 and 2.5 rack) saves it', inc);
+    await ev(() => { delete window.__ironlog.EX('dbLateral').inc; });
+
+    // 8. The gym's own unit.
+    await ev(() => { const L = window.__ironlog; L.state.draft = null; delete L.state.settings.gym; L.state.settings.unit = 'kg'; L.saveNow(); L.ui.tab = 'settings'; L.ui.folds['settings:gym'] = true; L.render(); document.querySelectorAll('#view details[data-sk="settings:gym"]').forEach(d => { d.open = true; }); });
+    await ev(() => document.querySelector('[data-act="gymUnit"][data-v="lb"]').click()); await wait(80);
+    const typeIn = async (sel, v) => { await P.page.fill(sel, v); await P.page.dispatchEvent(sel, 'change'); await wait(80); await ev(() => document.querySelectorAll('#view details[data-sk="settings:gym"]').forEach(d => { d.open = true; })); };
+    await typeIn('[data-gym="db.lo"]', '5'); await typeIn('[data-gym="db.hi"]', '100'); await typeIn('[data-gym="db.st"]', '5');
+    let gu = await ev(() => ({ g: window.__ironlog.state.settings.gym, note: document.getElementById('view').innerText.includes('Suggestions show in kg, on the lb weights below'), pressed: document.querySelector('[data-act="gymUnit"][data-v="lb"]').getAttribute('aria-pressed') }));
+    ok(gu.g && gu.g.u === 'lb' && gu.g.db.hi === 100 && gu.note && gu.pressed === 'true', 'with the app in kg, Your gym can be set in lb, as the dumbbells are labelled, and says so', gu);
+    await ev(() => document.querySelector('[data-act="gymUnit"][data-v="kg"]').click()); await wait(80);
+    const ask = await ev(() => document.getElementById('modal').innerText);
+    await ev(() => document.querySelector('#modal [data-act="mOk"]').click()); await wait(120);
+    gu = await ev(() => ({ g: window.__ironlog.state.settings.gym || null, pressed: document.querySelector('[data-act="gymUnit"][data-v="kg"]').getAttribute('aria-pressed') }));
+    ok(/cleared/.test(ask) && gu.g === null && gu.pressed === 'true', 'switching the unit asks, then clears the weights typed in the other unit', { ask, gu });
+    await ev(() => window.__ironlog.ACT.undo()); await wait(300);
+    ok(await ev(() => (window.__ironlog.state.settings.gym || {}).u === 'lb'), 'and Undo brings the lb rack back');
+
+    // 9. The half and RPE grid at 320 px.
+    const grid = await ev(async () => {
+      const L = window.__ironlog; L.state.settings.rirScale = 'rpe'; L.ACT.startFree(); L.ACT.mClose();
+      L.state.draft.ex.push({ exId: 'bench', plan: { sets: 3, repMin: 6, repMax: 10, rir: 1, rest: 90, inc: 2.5 }, sets: [0, 1, 2].map(() => ({ w: 60, r: null, rir: null, warm: false, drop: false, done: false })), note: '', sw: null });
+      L.ui.tab = 'today'; L.render(); document.querySelector('.rirb[data-b="0"][data-s="0"]').click(); await new Promise(r => setTimeout(r, 80));
+      const st = document.querySelector('.rirstrip'); const bs = [...st.querySelectorAll('.rs-g [data-act="rirPick"]')].map(b => b.getBoundingClientRect());
+      const sr = st.getBoundingClientRect(); const x = st.querySelector('.rs-x').getBoundingClientRect();
+      return { n: bs.length, minW: Math.round(Math.min(...bs.map(r => r.width))), minH: Math.round(Math.min(...bs.map(r => r.height))), inside: bs.every(r => r.left >= sr.left - 1 && r.right <= sr.right + 1) && sr.right <= innerWidth, between: bs[6].left > bs[0].left && bs[6].right < bs[1].right + 30, xW: Math.round(x.width), vw: innerWidth };
+    });
+    ok(grid.n === 11 && grid.minW >= 40 && grid.minH >= 44 && grid.inside && grid.between && grid.xW >= 44, 'RPE and half points at 320 px: 11 buttons at least 40 px wide and 44 tall, halves between the whole numbers, inside the screen', grid);
+    ok(!P.errors.length, 'the review fixes: no page errors', P.errors);
+    await P.ctx.close().catch(() => {});
+  }
+
   // ---------- Part 2 (once): the built app's first page and sign-out ----------
   if (!process.env.IRONLOG_FILE) {
     const { start, quietHibp } = require('./fake-supabase');
@@ -316,13 +423,17 @@ async function engineRun(page, cases, gym) {
     const tour = await W.ev(() => {
       const sl = [...document.querySelectorAll('#obTrack .ob-slide')]; const vw = innerWidth;
       const r = sl.map(e => e.getBoundingClientRect());
-      return { titles: sl.map(e => e.querySelector('h2').textContent), lines: sl.map(e => e.querySelector('p').textContent), pics: sl.every(e => e.querySelector('.obv[aria-hidden="true"]')), pips: [...document.querySelectorAll('.ob-pips button')].map(b => b.getAttribute('aria-current')), first: r[0].left >= 0 && r[0].right <= vw, peek: r[1].left < vw && r[1].left > vw - 60, role: document.querySelector('.ob-tour').getAttribute('aria-roledescription'), label: sl[0].getAttribute('aria-label'), fits: document.documentElement.scrollHeight <= innerHeight + 2, wide: document.documentElement.scrollWidth <= vw, h44: [...document.querySelectorAll('.ob-pips button')].every(b => b.getBoundingClientRect().height >= 30) };
+      return { titles: sl.map(e => e.querySelector('h2').textContent), lines: sl.map(e => e.querySelector('p').textContent), pics: sl.every(e => e.querySelector('.obv[aria-hidden="true"]')), pips: [...document.querySelectorAll('.ob-pips button')].map(b => b.getAttribute('aria-current')), first: r[0].left >= 0 && r[0].right <= vw, peek: r[1].left < vw && r[1].left > vw - 60, role: document.querySelector('.ob-tour').getAttribute('aria-roledescription'), label: sl[0].getAttribute('aria-label'), fits: document.documentElement.scrollHeight <= innerHeight + 2, wide: document.documentElement.scrollWidth <= vw, h44: [...document.querySelectorAll('.ob-pips button')].every(b => { const r = b.getBoundingClientRect(); return r.height >= 44 && r.width >= 44; }),
+        log: sl[0].querySelector('.obv').innerText.replace(/\s+/g, ' '), cal: [...sl[3].querySelectorAll('.obv-cal i')].findIndex(i => !i.classList.contains('x')), calN: sl[3].querySelectorAll('.obv-cal i.d').length };
     });
     ok(tour.titles.join('|') === 'Log a set in one tap|Pick a plan or build one|Track every lift|Every session, by day|Volume by muscle' && tour.pics, 'the first page tours five things: logging, the plan, progress, history, and volume by muscle, each with a picture of that screen', tour.titles);
     ok(tour.lines.every(l => l.length <= 80 && !/—|!/.test(l)) && /from 174 exercises/.test(tour.lines[1]), 'one plain line each, no exclamation marks or em dashes, the exercise count read from the library', tour.lines);
     ok(tour.first && tour.peek, 'the first slide shows whole, with the next one peeking in from the edge so it reads as swipeable', tour);
     ok(tour.pips.join() === 'true,,,,' && tour.role === 'carousel' && tour.label === '1 of 5: Log a set in one tap', 'five pips with the first current; a labelled carousel for screen readers', tour);
     ok(tour.fits && tour.wide, 'the whole first page fits 390 x 844 without scrolling, and nothing spills sideways', tour);
+    ok(tour.h44, 'the pips are 44 px targets', tour);
+    ok(/Last 65 × 10, 10, 10/.test(tour.log) && /70/.test(tour.log), 'the log picture follows the app: every set at the top of the range last time, so the load goes up', tour.log);
+    ok(tour.cal === 3 && tour.calN === 15, 'the October picture starts on a Thursday, as October 2026 does, on a Monday-first week', [tour.cal, tour.calN]);
     // A swipe moves the pips.
     await W.ev(() => { const t = document.getElementById('obTrack'); t.scrollTo({ left: t.children[2].offsetLeft - t.children[0].offsetLeft }); }); await wait(400);
     let st = await W.ev(() => ({ pip: [...document.querySelectorAll('.ob-pips button')].findIndex(b => b.getAttribute('aria-current') === 'true'), on: [...document.querySelectorAll('.ob-slide')].findIndex(e => e.classList.contains('on')) }));
@@ -374,6 +485,33 @@ async function engineRun(page, cases, gym) {
       const kept = await S.ev(() => ({ on: !!window.__ironlog.acctUser(), n: window.__ironlog.state.sessions.map(s => s.id).join(), step: (document.getElementById('obPage') || {}).dataset && document.getElementById('obPage').dataset.step }));
       ok(!kept.on && kept.n === 'so-1,so-2' && kept.step === 'acct', 'keeping them signs out with the whole log on the phone and opens the first page', kept);
       fake.setDeny(false);
+      // 3. Signing out with a session in progress and a copy kept: the session carries on, tabs and all.
+      await S.page.click('#obPage [data-act="acctOpen"][data-mode="signin"]'); await wait(100);
+      await S.page.fill('#modal [data-abind="email"]', 'so@example.com'); await S.page.fill('#modal [data-abind="pw"]', 'a good pass 9');
+      await S.page.click('#modal [data-act="acctSubmit"]');
+      await S.page.waitForFunction(() => { const L = window.__ironlog; return L.acctUser() && L.cloudState().on && L.cloudState().status === 'synced'; }, null, { timeout: 20000 }).catch(() => {});
+      await S.ev(() => { const L = window.__ironlog; if (L.ui.modal) L.ACT.mClose(); L.ACT.startFree(); if (L.ui.modal) L.ACT.mClose(); L.ui.tab = 'settings'; L.ui.folds['settings:data'] = true; L.render(); document.querySelectorAll('#view details').forEach(d => { d.open = true; }); });
+      await wait(1200);
+      await S.page.click('#acctPanel [data-act="acctSignOut"]'); await wait(100);
+      await S.page.click('#modal [data-act="mAlt"]'); await wait(1500);
+      const mid = await S.ev(() => ({ out: !window.__ironlog.acctUser(), draft: !!window.__ironlog.state.draft, ob: document.body.classList.contains('obmode'), tabs: getComputedStyle(document.querySelector('.tabs')).display !== 'none', flag: localStorage.getItem('ironlog.v1.signedOut') }));
+      ok(mid.out && mid.draft && !mid.ob && mid.tabs && mid.flag === null, 'signed out mid-session with a copy kept: the session and the tabs stay, and it does not end on the first page', mid);
+      await S.ctx.close();
+    }
+    // 15. A confirmation link opened in a browser that had signed out: answering "the home-screen app" leaves it on the first page.
+    {
+      const sess = await (await fetch(fake.base + '/auth/v1/token?grant_type=password', { method: 'POST', headers: { apikey: 'x', 'Content-Type': 'application/json' }, body: JSON.stringify({ email: 'so@example.com', password: 'a good pass 9' }) })).json();
+      if (sess.access_token) {
+        const D = await device();
+        await D.ev(() => { localStorage.setItem('ironlog.v1.signedOut', '1'); localStorage.setItem('ironlog.v1.installLater', '1'); });
+        await D.page.goto(APP + 'index.html#access_token=' + sess.access_token + '&expires_at=' + sess.expires_at + '&expires_in=3600&refresh_token=' + sess.refresh_token + '&token_type=bearer&type=signup');
+        await D.page.waitForFunction(() => window.__ironlog && window.__ironlog.ui.modal && window.__ironlog.ui.modal.mode === 'where', null, { timeout: 15000 }).catch(() => {});
+        await D.page.click('#modal [data-act="acctWhere"][data-v="app"]').catch(() => {}); await wait(800);
+        await D.ev(() => { const L = window.__ironlog; if (L.ui.modal) L.ACT.mClose(); L.render(); }); await wait(200);
+        const w = await D.ev(() => ({ out: !window.__ironlog.acctUser(), flag: localStorage.getItem('ironlog.v1.signedOut'), step: (document.getElementById('obPage') || { dataset: {} }).dataset.step }));
+        ok(w.out && w.flag === '1' && w.step === 'acct', 'a confirmation link in a signed-out browser, answered "the home-screen app": still signed out, still on the first page', w);
+        await D.ctx.close();
+      } else ok(false, 'the stand-in server gave a session for the confirmation-link check', sess);
     }
     await fake.close();
   }
