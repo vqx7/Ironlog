@@ -238,6 +238,7 @@ const LB = 0.45359237;
       L.invalidate(); const I = L.IDX(); const o = {};
       o.at = [L.bwAt('2026-08-10'), L.bwAt('2026-09-20'), L.bwAt('2026-07-01')];
       const pts = I.byEx.pullup.map(x => x.pts[0].load); o.loads = pts.map(v => Math.round(v * 10) / 10);
+      o.vol = I.sessVol.filter(x => x.id === 'p1' || x.id === 'p2').map(x => Math.round(x.vol));
       o.pr = I.prs.filter(x => x.exId === 'pullup' && x.big).length;
       const P6 = { sets: 3, repMin: 6, repMax: 10, rir: 1, rest: 90, inc: 2.5 };
       o.sg = ['pullup', 'chinup', 'dips', 'pushup'].map(id => { const x = L.suggest(id, P6, {}); return [id, x.w, /NaN|undefined/.test(x.text)]; });
@@ -245,7 +246,16 @@ const LB = 0.45359237;
       return o;
     });
     ok(bwl.at.join() === '80,84,80', 'each session uses the weigh-in on or before its date, and one before the first weigh-in uses the first', bwl.at);
-    ok(bwl.loads[0] < bwl.loads[1], 'the same pull-ups weigh more after a heavier weigh-in (estimates and weight lifted)', bwl.loads);
+    ok(bwl.loads[0] === bwl.loads[1], 'the same pull-ups read the same before and after a heavier weigh-in: estimates are at the latest weigh-in', bwl.loads);
+    ok(bwl.vol[0] < bwl.vol[1], 'weight lifted uses each day\'s weigh-in: the work actually done', bwl.vol);
+    // The case a reviewer's lifter met: push-ups unchanged for weeks while the scale went down 8 kg.
+    const pu = await ev(() => {
+      const L = window.__ironlog; const s = L.state; s.settings.unit = 'kg';
+      s.bodyweights = [{ id: 'q1', date: '2026-08-20', kg: 88 }, { id: 'q2', date: '2026-09-10', kg: 84 }, { id: 'q3', date: '2026-09-30', kg: 80 }];
+      const d0 = Date.parse('2026-08-24T12:00:00'); s.sessions = Array.from({ length: 14 }, (_, i) => ({ id: 'pu' + i, date: new Date(d0 + i * 3.5 * 864e5).toISOString().slice(0, 10), dayIdx: 0, dayId: null, dayName: 'T', routineId: '', notes: '', ex: [{ exId: 'pushup', rr: [15, 20], sets: [0, 1, 2].map(() => ({ w: 0, r: 18, rir: 2, done: true })) }] }));
+      L.invalidate(); const st = L.IDX().exStats.pushup; return { falling: st.falling, moving: st.moving, pct: st.pct, stalled: st.stalled, coach: L.coach().text };
+    });
+    ok(!pu.falling && !/recovery/i.test(pu.coach), 'unchanged push-ups while the scale goes down 8 kg are not read as strength falling, and the coach does not blame recovery', pu);
     ok(bwl.pr === 0, 'the same 8 pull-ups after a heavier weigh-in are not a PR (judged at the latest weigh-in; the first session is the baseline)', bwl.pr);
     ok(bwl.sg.every(([, w, bad]) => w != null && !bad) && bwl.lifted, 'pull-ups, chin-ups, dips, and push-ups all get a suggestion with no gaps, and count in weight lifted', bwl.sg);
     ok(!P.errors.length, 'weigh-ins: no page errors', P.errors);
@@ -266,7 +276,19 @@ const LB = 0.45359237;
     ok(fr.set === 'free' && fr.h2 === 'Blank session' && fr.start && /^Plan: /.test(fr.plan) && !fr.preview, 'Today starts with a blank session: Start session is freestyle, the plan\'s day is one tap away, no plan preview', fr);
     const fs = await ev(() => { const L = window.__ironlog; document.querySelector('.hero [data-act="startFree"]').click(); if (L.ui.modal) L.ACT.mClose(); const d = L.state.draft; d.ex.push(L.newBlock('bench', { sets: 3, repMin: 8, repMax: 12, rir: 1, rest: 90, inc: 2.5 })); return { free: d.free, sw: d.ex[0].sw, target: d.ex[0].target }; });
     ok(fs.free === true && fs.sw === 62.5 && /62\.5/.test(fs.target), 'a freestyle session still suggests from history: 60 x 12 at the top of 8 to 12 goes to 62.5', fs);
-    await ev(() => { const L = window.__ironlog; L.state.draft = null; L.saveNow(); delete L.state.settings.todayStart; L.render(); });
+    // In freestyle the week is measured against the lifter's own training, not an unused plan's days.
+    const fm = await ev(() => {
+      const L = window.__ironlog; L.state.draft = null; const s = L.state;
+      const mk = (id, date) => ({ id, date, dayIdx: 0, dayId: null, dayName: 'Freestyle', routineId: '', free: true, notes: '', ex: [{ exId: 'bench', rr: [8, 12], sets: [0, 1, 2].map(() => ({ w: 60, r: 10, rir: 1, done: true })) }] });
+      // Three weeks of 2 sessions each, and this week 3 sessions on 2 days (a two-a-day).
+      s.sessions = [mk('a', '2026-09-15'), mk('b', '2026-09-17'), mk('c', '2026-09-22'), mk('d', '2026-09-24'), mk('e', '2026-09-29'), mk('f', '2026-10-01'), mk('g', '2026-10-06'), mk('h', '2026-10-08'), mk('i', '2026-10-08')];
+      L.invalidate(); L.ui.tab = 'today'; L.ui.hidden; s.settings.hidden = []; L.render(); document.querySelectorAll('#view details').forEach(d => { d.open = true; });
+      const wk = document.querySelector('[data-mkey="week"] .sec-s').textContent; const st = L.weekStreak(); const sub = document.querySelector('.hero .muted.small').textContent;
+      L.ui.tab = 'dash'; L.render(); const adh = [...document.querySelectorAll('.kpi .l')].map(x => x.textContent).find(t => /Adherence/.test(t));
+      return { wk, streak: st.weeks, need: st.need, sub, adh };
+    });
+    ok(fm.wk === '3 sessions' && fm.streak === 4 && fm.need === 1 && /3 sessions, 9 hard sets this week/.test(fm.sub) && /freestyle, no plan to follow/.test(fm.adh), 'freestyle: This week counts sessions (a two-a-day counts twice), the streak is weeks trained in a row, adherence has no plan', fm);
+    await ev(() => { const L = window.__ironlog; L.state.draft = null; L.saveNow(); delete L.state.settings.todayStart; L.ui.tab = 'today'; L.render(); });
     ok(await ev(() => document.querySelector('.hero h2').textContent !== 'Blank session'), 'back on My plan\'s day, Today shows the plan as before');
     // Two-a-days.
     const two = await ev(() => {

@@ -1065,6 +1065,12 @@ function isDeloadWeek(){return !!state.deloadWeek&&state.deloadWeek===weekStart(
    the weekly average reaches past it (like a lighter week), the streak and
    adherence skip it, and the coach reads it as recovery. Kept in settings,
    so it syncs, as week-start dates. */
+/* Freestyle mode (r34): Today starts blank, so no routine is being
+   followed. The week is then measured against the lifter's own training,
+   not a plan's days: the streak counts weeks trained in a row, This week says
+   sessions and hard sets without "of planned", and adherence has no plan to
+   measure. Muscle targets, suggestions and trends are the same either way. */
+function freeMode(){return state.settings.todayStart==='free';}
 function isRestWeek(ws){const r=state.settings.restWeeks;return Array.isArray(r)&&r.includes(ws);}
 function injuredSet(){return new Set((state.injuries||[]).map(x=>x.m));}
 /* Joints (r30, from the review: only muscles could be flagged, so a sore
@@ -2591,7 +2597,7 @@ function guideSheet(m){
    <p><b>More than ${SESSION_CAP} sets</b> for one muscle in one workout is flagged. That line is a convention from one study not yet peer reviewed (Remmert 2025), which found no extra growth past it.</p>
    <p><b>Three different numbers.</b> The <b>suggested</b> load and reps (grey in a session) are today's target, from your last full session by the rules above. The <b>estimated 1RM</b> (best estimate) is what one all-out rep would be. It comes from a set's load and reps to failure: Brzycki up to 10 reps, Epley at 11 to 12, and no estimate above 12 reps or above RIR 4. It is a gauge of strength that varies 2 to 8% day to day, never a load to try. It is shown for compound lifts only; isolation lifts show their best set.</p>
    <p><b>Trends</b> read each session's working sets the same way, averaged, up to 20 reps to failure (so high-rep work has a trend too, never shown as a 1RM). RIR is used in a trend only when it is rated on 80% or more of the lift's sets; otherwise loads and reps alone, so tapping RIR on some days and not others cannot bend it. The 6 weeks are counted back from the lift's own last session, and a trend needs 3 sessions spread over 2 weeks or more; it says how many weeks it covers. A muscle's trend counts a lift once it has 4 sessions over 3 weeks or more, and says the weeks too. A trend shows how many sessions it rests on and its weekly rate with the range an 80% interval allows (about +1.5% a week, likely +1.2% to +1.8%). <b>Weight lifted</b> is load times reps; it falls when the load goes up and reps come down, so it is shown as a number, not as progress.</p>
-   <p><b>PRs</b>: a <b>weight PR</b> is more weight than any earlier set of the lift (less help on an assisted one); a <b>best estimate</b> beats your earlier best in the same band of reps to failure (1 to 5, 6 to 10, 11 to 12); a <b>rep PR</b> is more reps at a load than ever before, counted only when the set is at least 90% as strong as your strongest before it (a convention: 40 x 10 after 95 x 5 is not a PR). A set that is more than one shows the first of these. Only a PR with a new best estimate is announced and counted (on a lift with no estimate, any of them); a heavier set or more reps without one is kept in the list and named in the recap as heaviest yet. Counting them all made each load step a PR. On a bodyweight lift, PRs are judged at your latest weigh-in for every session, so a PR is more reps or more added load, never a heavier day on the scale.</p>
+   <p><b>PRs</b>: a <b>weight PR</b> is more weight than any earlier set of the lift (less help on an assisted one); a <b>best estimate</b> beats your earlier best in the same band of reps to failure (1 to 5, 6 to 10, 11 to 12); a <b>rep PR</b> is more reps at a load than ever before, counted only when the set is at least 90% as strong as your strongest before it (a convention: 40 x 10 after 95 x 5 is not a PR). A set that is more than one shows the first of these. Only a PR with a new best estimate is announced and counted (on a lift with no estimate, any of them); a heavier set or more reps without one is kept in the list and named in the recap as heaviest yet. Counting them all made each load step a PR. On a bodyweight lift, PRs, estimates, trends, and charts are all read at your latest weigh-in for every session, so progress is more reps or more added load, never a change on the scale. Weight lifted uses each day's weigh-in, the work actually done.</p>
    <p><b>Moving</b>: up 3% or more with a trend clearly above zero. <b>Stalled</b>: flat or falling over the last 6 sessions (by the middle of the changes between every pair of them, so one good or bad day does not decide it) in the current range, or 3 weeks if that covers more (at least 4 sessions), with no PR in the last 3 of them, the load no heavier than at the start of that stretch, and no more reps at that load than any session before it in the stretch, and only while you still train the lift. Adding load and dropping reps for a while, or adding reps to later sets, as double progression does, is not a stall. A deload is suggested when 3 or more main lifts (compound lifts with an estimate) stall together, and not within 4 weeks of a lighter week; isolation and core lifts are listed but not counted for it.</p>
    <p><b>Weekly averages</b> are over the weeks you trained of the last 4 (a lighter week is swapped for an earlier one). A week with no training is left out rather than counted as zero, and when 2 or more of the 4 were missed the Coach says so first.</p>
    <p><b>Consistency</b>: weeks with at least as many sessions as the routine you trained that week plans.</p>
@@ -2985,8 +2991,12 @@ function loadOf(ex,s,date){return bwLoad(ex,date)+(+s.w||0);}
    12 leg raises a new PR every week (8 identical weeks, 10 PRs counted), and
    the bests board dated a record to the heaviest day, not the first. A PR on
    these lifts is now more reps or more added load than before, as lifters
-   count them. Estimates, trends and charts still use each day's bodyweight. */
+   count them. Since r34 estimates, trends, charts and the load engine are
+   read at the latest weigh-in too (see IDX's pts); weight lifted keeps each
+   day's. */
 const bwRef=()=>_bwRef!==undefined?_bwRef:(_bwRef=bwAt('9999-12-31')||0);
+// The bodyweight part of a bodyweight lift's load at the latest weigh-in: what the engine and every reading use (r34).
+const bwRefLoad=ex=>ex&&ex.bw?bwRef()*bwShare(ex):0;
 function prLoad(ex,s,date){return ex&&ex.bw?bwRef()*bwShare(ex)+(+s.w||0):loadOf(ex,s,date);}
 /* ---------- what the load number means ----------
    Every set stores the number you typed, as you typed it. What it means is a
@@ -3159,7 +3169,14 @@ function IDX(){
          PRs, or next session's target. If a block is nothing but drop sets,
          use them rather than have no exposure at all. */
       const main=work.filter(s=>!s.drop);const ptsSrc=main.length?main:work;
-      const pts=ptsSrc.map(s=>({load:loadOf(ex,s,ss.date),pl:prLoad(ex,s,ss.date),r:+s.r,w:+s.w||0,rir:rirEff(s,ex),rq:rirEst(s,ex)}));
+      /* On a bodyweight lift every reading is at the latest weigh-in (r34,
+         V: the right bodyweight pulled through everywhere): estimates, trends,
+         charts, stalls, the lighter-week check and the load engine, as PRs
+         already were (r32.1, prLoad). Read at each day's weigh-in, 8 kg lost
+         on the scale read as unchanged push-ups being 10% weaker, with
+         "look at recovery". Weight lifted (tonnage) keeps each day's weigh-in:
+         that is the work actually done. */
+      const pts=ptsSrc.map(s=>{const pl=prLoad(ex,s,ss.date);return {load:ex.bw?pl:loadOf(ex,s,ss.date),pl,r:+s.r,w:+s.w||0,rir:rirEff(s,ex),rq:rirEst(s,ex)};});
       // Mean logged RIR on the sets at this session's top load, or null if none was logged.
       // The working load (r31): a heavy top single is not where reps are built.
       const topW=workLoad(pts,b.rr?b.rr[0]:0);const tr=pts.filter(p=>Math.abs(p.w-topW)<1e-6&&p.rir!=null);
@@ -3811,7 +3828,7 @@ function suggest(exId,plan,opts){
   if(base.inj||!base.last||base.w==null)return base;
   const T=opts.before&&isDate(opts.before)?opts.before:today();
   // Never above last time's working load either: after 25 lb x 12 the normal day may ask 30, and a deload at 25 is not lighter.
-  const word=opts.deload?'Deload':'Lighter day';const step=incOf(ex,plan);const w0=base.top!=null?Math.min(base.w,base.top):base.w;const bl=bwLoad(ex,T);
+  const word=opts.deload?'Deload':'Lighter day';const step=incOf(ex,plan);const w0=base.top!=null?Math.min(base.w,base.top):base.w;const bl=bwRefLoad(ex);
   const lbl=w=>`${loadLabel(ex,w)}${ex.bw?'':' '+U()}${loadNote(ex)}`;
   // Assisted: 90% of the lifted load means more help, rounded up to the machine's step so it never lands back on the full load.
   const hs=step>0?toD(step):U()==='lb'?5:2.5;
@@ -3904,7 +3921,7 @@ function suggestCore(exId,plan,opts){
   const early=exps.length<=3;
   if(step>0&&!atCap&&!noAdd&&!noE1(ex)&&topPts.length&&topPts.every(p=>p.rir!=null&&p.rir>=tgtRir+2&&p.r>=plan.repMin)){
     let est=null;for(const p of topPts){const v=fitE(p.load,p.r,Math.min(p.rir,E1_MAX_RIR));if(v!=null&&(est==null||v>est))est=v;}
-    const bwNow=bwLoad(ex,T);const topLoad=top+bwNow;
+    const bwNow=bwRefLoad(ex);const topLoad=top+bwNow;
     if(est!=null&&topLoad>0){
       const want=Math.min(e1inv(est,Math.round((+plan.repMin+ +plan.repMax)/2)+Math.min(tgtRir,E1_MAX_RIR)),topLoad*jumpCap(ex,topLoad,early))-bwNow;
       const k=Math.floor((want-top)/step+1e-6);
@@ -3924,7 +3941,7 @@ function suggestCore(exId,plan,opts){
      one step applies. */
   if(step>0&&!atCap&&!noAdd&&!noE1(ex)&&topPts.length&&topPts.every(p=>p.r>=+plan.repMax+2)){
     let est=null;for(const p of topPts){const v=fitE(p.load,p.r,p.rq);if(v!=null&&(est==null||v>est))est=v;}
-    const bwNow=bwLoad(ex,T);const topLoad=top+bwNow;
+    const bwNow=bwRefLoad(ex);const topLoad=top+bwNow;
     if(est!=null&&topLoad>0){
       const want=Math.min(e1inv(est,Math.round((+plan.repMin+ +plan.repMax)/2)+Math.min(tgtRir,E1_MAX_RIR)),topLoad*jumpCap(ex,topLoad,early))-bwNow;
       const k=Math.floor((want-top)/step+1e-6);const one=progStep(ex,plan,topLoad,top);
@@ -3962,7 +3979,7 @@ function suggestCore(exId,plan,opts){
     let shortRun=0;for(let k=exps.length-1;k>=0;k--){const x=exps[k];if(Math.abs(x.topW-top)>1e-6)break;const at=atLoad(x.pts,x.topW);if(!at.length||!at.every(p=>p.r<+plan.repMin))break;shortRun++;}
     if((gap>=2&&!(justUp&&gap<=3))||repeat||!inRR||shortRun>=4){
       let est=null;for(const p of topPts){const v=e1(p.load,p.r,p.rq);if(v!=null&&(est==null||v>est))est=v;}
-      const bwNow=bwLoad(ex,T);
+      const bwNow=bwRefLoad(ex);
       if(est!=null){
         const want=e1inv(est,+plan.repMin+Math.min(tgtRir,E1_MAX_RIR))-bwNow;
         /* Whole steps down to the estimated load. None needed means the
@@ -4001,7 +4018,7 @@ function suggestCore(exId,plan,opts){
       easier:maxed?`Past ${ext} reps at ${atCap?'the heaviest load':'this load'}: slow the lowering to 3 to 4 seconds with a pause at the stretch, go one side at a time, or add a drop set.`:null,capped:atCap};
   }
   if(topPts.every(p=>p.r>=plan.repMax)){
-    const nw=capW(top+progStep(ex,plan,top+bwLoad(ex,T),top));
+    const nw=capW(top+progStep(ex,plan,top+bwRefLoad(ex),top));
     if(ex.assist){const aw=top<0?Math.min(0,nw):nw;return {top,w:aw,text:`${lastS} Every set at ${lbl(top)} hit ${plan.repMax}: ${aw===0?'try it without help':`take ${fmtW(aw-top)} ${U()} of help off`} and aim for ${plan.repMin}+ reps.`,lastR,basis,
       last:lastS,target:`${lbl(aw)} for ${plan.repMin}+ reps in every set`,tgt:{kind:'load',w:aw,repMin:+plan.repMin,prevBest},easier:null};}
     /* A step that is large for the load (5 lb on a 35 lb dumbbell is 14%)
@@ -4016,7 +4033,7 @@ function suggestCore(exId,plan,opts){
        reps past 5 instead of 52.5). A miss is caught by the drop below the
        range. */
     const wide=+plan.repMax-+plan.repMin>=3;
-    let aim=+plan.repMin;const q=Math.min(tgtRir,E1_MAX_RIR);const bwT=bwLoad(ex,T);
+    let aim=+plan.repMin;const q=Math.min(tgtRir,E1_MAX_RIR);const bwT=bwRefLoad(ex);
     if(!noE1(ex)){let est=null;for(const p of topPts){const v=fitE(p.load,p.r,p.rq);if(v!=null&&(est==null||v>est))est=v;}
       /* Only a step that costs 1.5 reps or more is large for the load (about
          5% or more, r32): a 5 lb step on a 5 x 5 at 225 costs under one, and
@@ -4418,7 +4435,7 @@ function targetText(b){
 }
 function blockProgress(b){
   const t0=b.tgt;if(!t0)return null;const t=effTarget(b);
-  const ex=EX(b.exId);const bw=bwLoad(ex,state.draft?state.draft.date:today());
+  const ex=EX(b.exId);const bw=bwRefLoad(ex);
   const done=b.sets.filter(s=>s.done&&!s.warm&&!s.drop&&+s.r>0);
   if(!done.length)return {text:'',beat:false};
   const at=done.filter(s=>Math.abs((+s.w||0)-t.w)<1e-6);
@@ -4531,7 +4548,7 @@ function assessSet(bi,si){
   const off=!adjOn()||b.adjOff||!s.done||s.warm||s.drop||!(+s.r>0)||s.w==null||!rest||d.past||d.editingId||d.deload||d.light||b.light||ex.timed||ex.assist||noE1(ex)||exInjury(ex)||!(+p.repMin>0)||!(incOf(ex,p,s.w)>0);
   if(!off){
     const tgt=+p.rir||0,lo=+p.repMin,hi=+p.repMax,r=+s.r;const q=s.rir==null||s.rir===''?null:+s.rir;
-    const bw=bwLoad(ex,d.date||today()),Lt=s.w+bw;
+    const bw=bwRefLoad(ex),Lt=s.w+bw;
     const expR=b.tgt&&b.tgt.kind==='load'&&+b.tgt.repMin>0?+b.tgt.repMin:(lastRFor(b,si)!=null?+lastRFor(b,si):lo);
     const light=(q!=null&&q>=tgt+2&&r>=lo)||r>=hi+3,heavy=r<=Math.min(lo,expR)-2&&(q==null||q<=tgt);
     if(Lt>0&&(light||heavy)){
@@ -5036,7 +5053,7 @@ function viewToday(){
   const hello=state.settings.userName?`<p class="hello">${esc(greeting())}, ${esc(state.settings.userName)}</p>`:'';
   if(free){
     let h=welcomeCard()+acctBar()+installBar()+iconBar()+`<section class="hero" data-day="free"><div class="hero-top"><div class="hero-t">${hello}<p class="eyebrow">${esc(new Date().toLocaleDateString(undefined,{weekday:'short',month:'short',day:'numeric'}))} · Freestyle${deload?' · deload week':''}</p><h2>Blank session</h2>
-    <p class="muted small" style="margin:0">Add exercises as you go.</p></div>${heroRing(weekStats())}</div>
+    <p class="muted small" style="margin:0">${noLog()?'Add exercises as you go.':(()=>{const w=weekStats();return `${w.doneDays} session${w.doneDays===1?'':'s'}, ${r1(w.got)} hard sets this week`;})()}</p></div></div>
     <button class="btn primary block big" data-act="startFree">Start session</button>
     <div class="hero-alt" style="margin-top:8px">${playable?`<button class="btn sm" data-act="startSession" data-day="${di}">Plan: ${esc(day.name)}</button>`:''}<button class="btn sm" data-act="pickToday" data-tip="Ranks your days for today by the last 7 days, recovery, and injuries, then says why.">Pick for me</button></div>
     <div class="row" style="margin-top:8px">${sel}</div></section>`;
@@ -5369,7 +5386,8 @@ function injuryCard(){
 const fmtBig=kg=>Math.round(toD(kg)).toLocaleString();
 // Tile subtitles only: 295,403 becomes 295k so it fits a small phone.
 const fmtK=kg=>{const v=Math.round(toD(kg));return v>=10000?Math.round(v/1000)+'k':v.toLocaleString();};
-function weekSessions(ws){const end=addDays(ws,6);const set=new Set();for(const x of state.sessions)if(x.date>=ws&&x.date<=end)set.add(x.date);return set.size;}
+// Sessions in the week, not days (r34): two plan days done on one day are two of the week's sessions.
+function weekSessions(ws){const end=addDays(ws,6);let n=0;for(const x of state.sessions)if(x.date>=ws&&x.date<=end)n++;return n;}
 /* Planned hard sets (r27). A planned set counts only if its target RIR
    would make it hard (3 or less, or every set when RIR is off), the same test
    as a logged set; a plan at RIR 4 used to set a weekly target that logging
@@ -5391,9 +5409,9 @@ function weekRoutine(ws){
     I.weekRid={};for(const w in by){let id=null;for(const k in by[w])if(id==null||by[w][k]>by[w][id])id=k;I.weekRid[w]=id;}}
   const id=I.weekRid[ws];return (id&&state.routines.find(r=>r.id===id))||activeRoutine();
 }
-function weekNeed(ws){return Math.max(1,plannedPerWeek(weekRoutine(ws)));}
+function weekNeed(ws){return freeMode()?1:Math.max(1,plannedPerWeek(weekRoutine(ws)));}
 function weekStreak(){
-  const R=activeRoutine();const need=Math.max(1,plannedPerWeek(R));
+  const R=activeRoutine();const need=freeMode()?1:Math.max(1,plannedPerWeek(R));
   const cur=weekStart(today());const thisWeek=weekSessions(cur);
   if(!state.sessions.length)return {weeks:0,best:0,need,thisWeek:0};
   const first=weekStart(sortedSessions()[0].date);
@@ -5501,7 +5519,7 @@ function homeTiles(){
   const sk=weekStreak();const pr=prsWithin(30);
   const last=pr[0];const ago=last?daysBetween(last.date,today()):null;
   return `<div class="tiles">
-  <button class="tile" data-act="goDash" data-sec="consistency" aria-label="${noLog()?'No streak yet':sk.weeks+' week streak'}. Open consistency"><div class="tv">${nz(sk.weeks)}</div><div class="tl">week streak</div><div class="ts">${sk.thisWeek>=sk.need?'This week done':`Weeks with ${sk.need}+ sessions`}${sk.best>sk.weeks?` · best ${sk.best}`:''}</div></button>
+  <button class="tile" data-act="goDash" data-sec="consistency" aria-label="${noLog()?'No streak yet':sk.weeks+' week streak'}. Open consistency"><div class="tv">${nz(sk.weeks)}</div><div class="tl">week streak</div><div class="ts">${freeMode()?'Weeks trained in a row':sk.thisWeek>=sk.need?'This week done':`Weeks with ${sk.need}+ sessions`}${sk.best>sk.weeks?` · best ${sk.best}`:''}</div></button>
   <button class="tile" data-act="goDash" data-sec="bests" aria-label="${noLog()?'No PRs yet':pr.length+' PRs in the last 30 days'}. Open all-time bests"><div class="tv">${nz(pr.length)}</div><div class="tl">PRs, last 30 days</div><div class="ts">${last?`Latest: ${esc(exName(last.exId))}, ${ago===0?'today':ago===1?'yesterday':ago+' days ago'}`:'None yet'}</div></button>
   </div>`;
 }
@@ -6365,8 +6383,7 @@ function weekStats(){
   const cur=weekStart(today());const weekly=R.schedule==='weekly';
   let cardioMin=0,cardioN=0;
   for(const c of state.cardio)if(c.date>=cur&&c.date<=addDays(cur,6)){cardioMin+=c.min;cardioN++;}
-  const days=new Set();for(const x of state.sessions)if(x.date>=cur&&x.date<=addDays(cur,6))days.add(x.date);
-  const doneDays=days.size;
+  const doneDays=weekSessions(cur);
   const planDays=weekly?trainDaysOf(R):Math.round(trainDaysOf(R)*weekFactor(R));
   /* Sets are counted once each here, the same way the Plan tab counts them.
      Per-muscle volume (direct 1, secondary half) stays in the muscle views,
@@ -6405,8 +6422,11 @@ function weekBody(w){
   const month=ui.wkView==='month';
   const tog=`<div class="wkview" role="group" aria-label="Show"><button type="button" data-act="wkView" data-v="week" aria-pressed="${!month}"${month?'':' class="on"'}>Week</button><button type="button" data-act="wkView" data-v="month" aria-pressed="${month}"${month?' class="on"':''}>Month</button></div>`;
   if(month)return tog+`<div class="cal-inline">${calBody(ui.calYm&&ui.calYm<=today().slice(0,7)?ui.calYm:today().slice(0,7),true)}</div>`;
+  if(freeMode())return `${tog}<div class="hrow" style="margin:5px 0 0"><p class="small muted" style="margin:0" id="wkSets">${noLog()?'Nothing logged yet.':`${r1(w.got)} hard sets this week.`}</p>${helpBtn('wk')}</div>
+  ${w.cardioMin?`<p class="small" style="margin:5px 0 0">Cardio and mobility: ${w.cardioMin} min in ${w.cardioN} entr${w.cardioN===1?'y':'ies'}</p>`:''}${liftedLine()}
+  ${helpText('wk','Each set counts once; a set at RIR 4 or more is not hard and does not count. Muscle targets are on the Muscle map and in Stats.')}`;
   return `${tog}${w.weekly?'':cycleStrip(w.R)}
-  <div class="band" data-tip="${noLog()?`${w.tgt} hard sets planned`:`${w.got} hard sets logged of ${w.tgt} planned`}"><div class="fill prog" style="width:${w.pct}%"></div></div>
+  <div class="band" data-tip=""${noLog()?`${w.tgt} hard sets planned`:`${w.got} hard sets logged of ${w.tgt} planned`}"><div class="fill prog" style="width:${w.pct}%"></div></div>
   ${w.cardioMin?`<p class="small" style="margin:5px 0 0">Cardio and mobility: ${w.cardioMin} min in ${w.cardioN} entr${w.cardioN===1?'y':'ies'}</p>`:''}
   <div class="hrow" style="margin:5px 0 0"><p class="small muted" style="margin:0" id="wkSets">${noLog()?`${w.tgt} hard sets planned this week.`:`${w.got} hard sets logged of ${w.tgt} planned${w.tgt>0?` (${Math.round(w.pct)}%)`:''}.`}</p>${helpBtn('wk')}</div>
   ${liftedLine()}
@@ -6422,6 +6442,7 @@ function weekCard(){
     const title=ym===cur?'This month':new Date(ym+'-15T12:00:00').toLocaleDateString(undefined,{month:'long',year:'numeric'});
     return sec({sk:'today:week',key:'week',title,sub:`${n} session${n===1?'':'s'}`,body});
   }
+  if(freeMode())return sec({sk:'today:week',key:'week',title:'This week',sub:noLog()?'Nothing logged yet':`${w.doneDays} session${w.doneDays===1?'':'s'}`,body});
   return sec({sk:'today:week',key:'week',title:'This week',sub:noLog()?`${w.weekly||weekFactor(w.R)===1?'':'~'}${w.planDays} sessions planned`:`${w.doneDays} of ${w.weekly||weekFactor(w.R)===1?'':'~'}${w.planDays} sessions`,body});
 }
 /* Quick answers before a session starts: is this lift moving, and what to do. */
@@ -6794,7 +6815,7 @@ function viewDash(){
      capped at its own planned days, so training seven days against a six-day
      routine no longer reports 117%. The window is the four completed weeks
      before this one, which the label now says out loud. */
-  const planned=trainDaysOf(R)*weekFactor(R);
+  const planned=freeMode()?0:trainDaysOf(R)*weekFactor(R);
   const cur=weekStart(today());
   const sessDates=new Set(state.sessions.map(s=>s.date));
   /* Only weeks since your first session count. Before that there was nothing
@@ -6823,8 +6844,8 @@ function viewDash(){
   if(!state.sessions.length){
     h+=`<div class="card"><p style="margin:0"><b>No sessions yet.</b> Trends start after a few sessions. ${tipi('Trends, stall detection, and rankings need a few sessions of each exercise. To preview the full Stats page, load demo data in Settings.','About Stats')}</p></div>`;
   }
-  h+=`<div class="kpis"><div class="kpi"><div class="v">${adher==null?NIL:adher+'%'}</div><div class="l">${!planned?'Adherence: no planned days':adher==null?'Adherence: appears after your first full week':`Adherence, previous ${wks4} full week${wks4===1?'':'s'} (${Math.round(done4)}/${Math.round(need4)})`}</div></div>
-  <div class="kpi"><div class="v">${nz(wkHard)}</div><div class="l">Hard sets this week, of ${weekStats().tgt} planned</div></div>
+  h+=`<div class="kpis"><div class="kpi"><div class="v">${adher==null?NIL:adher+'%'}</div><div class="l">${freeMode()?'Adherence: freestyle, no plan to follow':!planned?'Adherence: no planned days':adher==null?'Adherence: appears after your first full week':`Adherence, previous ${wks4} full week${wks4===1?'':'s'} (${Math.round(done4)}/${Math.round(need4)})`}</div></div>
+  <div class="kpi"><div class="v">${nz(wkHard)}</div><div class="l">${freeMode()?'Hard sets this week':`Hard sets this week, of ${weekStats().tgt} planned`}</div></div>
   <div class="kpi"><div class="v" style="color:${fatigueStalls(stalled.map(([id])=>id)).length>=3?'var(--red)':'inherit'}">${nz(stalled.length)}</div><div class="l">Stalled exercises</div></div>${extraKpis()}</div>`;
   if(state.sessions.length)h+=dashSummary();
 /*ai{*/  if(aiOn()&&state.sessions.some(x=>!x.demo))h+=`<div class="card row spread"><span class="small">Ask Claude a question about your own log: a stall, a split, a weak point.</span><button class="btn sm primary" data-act="aiReview">Ask Claude</button></div>`;/*}ai=*/
