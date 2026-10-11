@@ -174,7 +174,8 @@ function strongCsv(weeks, name) {
     ok(a.linked === a.n, 'every imported session joins its day, so the cycle, streak and adherence read them', { linked: a.linked, n: a.n });
     ok(!/Lat Pulldown/.test(a.coach) && !/Lat Pulldown/.test(a.dash), 'the coach never asks for sets on a lift never done', a.coach);
     ok(!/Adherence[^%]*69%|\(11\/16\)/.test(a.dash), 'adherence is not measured against a routine never picked', (a.dash.match(/Adherence[^)]*\)/) || [''])[0]);
-    ok(/Workout [AB]/.test(a.hero) && !/Upper A/.test(a.hero), 'Today offers the next workout from the file', a.hero.slice(0, 160));
+    // r35: the day list left the card, so only the title (shown in capitals) names the day.
+    ok(/Workout [AB]/i.test(a.hero) && !/Upper A/i.test(a.hero), 'Today offers the next workout from the file', a.hero.slice(0, 160));
     ok(/routine is made from them/.test(a.toast) && /Workout A/.test(a.toast), 'a note says the routine was made from the import and where to change it', a.toast);
     ok(P.errors.length === 0, 'no page errors (import)', P.errors);
     await P.browser.close();
