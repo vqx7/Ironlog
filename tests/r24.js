@@ -8,7 +8,8 @@ const fails = []; const ok = (c, m) => { if (!c) { fails.push(m); console.log('F
   const { browser, page, errors } = await open('index.html', { touch: true, w: 390, h: 844, clock: '2026-09-20T10:00:00' });
   const ev = (f, a) => page.evaluate(f, a);
   const fresh = async () => { await ev(() => { const L = window.__ironlog; L.state.draft = null; L.state.settings.onboarded = true; if (!L.state.sessions.length) L.makeDemo(); /* r30: history here, not sample data */ for (const k of ['sessions', 'bodyweights', 'measurements']) for (const x of (L.state[k] || [])) delete x.demo; L.invalidate && L.invalidate(); L.state.deloadWeek = null; L.ui.tab = 'today'; L.ui.todayDay = 0; L.ui.modal = null; document.getElementById('modal').hidden = true; L.render(); localStorage.setItem('ironlog.v1.tipWake', '1'); window.scrollTo(0, 0); }); };
-  const start = async (light) => { await fresh(); await page.click(`.hero [data-act="startSession"]${light ? '[data-light="1"]' : ':not([data-light])'}`); await page.waitForTimeout(120); };
+  // r35: a lighter day starts from the card's Change sheet.
+  const start = async (light) => { await fresh(); if (light) { await page.click('.hero [data-act="startAltOpen"]'); await page.waitForTimeout(80); await page.click('#modal [data-go="startSession"][data-light="1"]'); } else await page.click('.hero [data-act="startSession"]:not([data-light])'); await page.waitForTimeout(120); };
   const work = (bi) => ev(b => { const x = window.__ironlog.state.draft.ex[b]; return x ? x.sets.filter(s => !s.warm && !s.drop).length : -1; }, bi);
   // Swap block bi through the real picker, to the first exercise it lists that is not already in the session.
   const swap = async (bi) => {

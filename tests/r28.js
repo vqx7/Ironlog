@@ -30,7 +30,7 @@ const TABS = ['today', 'program', 'dash', 'history', 'settings'];
     ok(st.program.keys.join() === 'routine,library,days', 'Plan shows Routine, Add exercises, Days', st.program);
     ok(st.dash.keys.join() === 'exercise,volume,weak,consistency,body', 'Stats leads with Lifts, then Volume, Muscles, Consistency, Body', st.dash);
     ok(['today', 'program', 'dash', 'settings'].every(t => st[t].open.length === 0), 'Today, Plan, Stats and Settings open with every section folded', TABS.map(t => [t, st[t].open]));
-    ok(st.settings.keys.includes('help') && st.settings.keys.indexOf('help') > st.settings.keys.indexOf('data') && st.settings.keys.indexOf('help') < st.settings.keys.indexOf('reset'), 'Settings has Help near the bottom, after Your data', st.settings.keys);
+    ok(st.settings.keys.includes('help') && st.settings.keys.indexOf('help') > st.settings.keys.indexOf('data') && st.settings.keys.indexOf('help') < st.settings.keys.indexOf('more'), 'Settings has Help near the bottom, after Your data', st.settings.keys);
     ok(TABS.every(t => st[t].hb === 0), 'no ? in any section header on any tab', TABS.map(t => st[t].hb));
     ok(st.today.line && st.program.line && !st.dash.line && !st.history.line && !st.settings.line, 'Today and Plan end with what they can also show; tabs with nothing hidden end without it', TABS.map(t => [t, st[t].line]));
     // Today's Start card fits its date line on one line at 390 px.

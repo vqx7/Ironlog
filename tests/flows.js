@@ -7,8 +7,11 @@ const ev=(f,a)=>page.evaluate(f,a);
 await ev(()=>{const L=window.__ironlog;L.state.settings.onboarded=true;L.makeDemo();L.ui.tab='today';L.render();});
 await page.waitForTimeout(100);
 // hero
-const hero=await ev(()=>[...document.querySelectorAll('.hero-alt .btn')].map(b=>b.innerText.replace(/\n/g,' | ')));
-ok(hero.length===4,'hero has 4 start variants: '+hero.join(' ; '));
+// r35: one Start on the card; the 4 other ways to start are in Change, with the plan's days.
+await page.click('.hero [data-act="startAltOpen"]');await page.waitForTimeout(80);
+const hero=await ev(()=>({opts:[...document.querySelectorAll('#modal .ob-opt')].map(b=>b.innerText.replace(/\n/g,' | ')),days:document.querySelectorAll('#modal [data-act="dayPick"]').length,card:document.querySelectorAll('.hero .btn').length}));
+ok(hero.opts.length===4&&hero.days>=3,'Change has 4 ways to start and the plan\'s days: '+hero.opts.join(' ; '));
+await ev(()=>window.__ironlog.ACT.mClose());await page.waitForTimeout(60);
 // start session
 await page.click('.hero [data-act="startSession"]:not([data-light])');
 await page.waitForTimeout(100);
@@ -74,7 +77,8 @@ await page.click('.ph [data-act="discard"]');await page.waitForTimeout(50);await
 ok(await ev(()=>window.__ironlog.state.draft===null),'discard from top works');
 ok(await ev(()=>document.querySelector('#tabs button[data-tab="today"]').innerText.trim().toLowerCase()==='today'),'tab back to Today');
 // pick for me: day
-await page.click('.hero [data-act="pickToday"]');await page.waitForTimeout(80);
+await page.click('.hero [data-act="startAltOpen"]');await page.waitForTimeout(80);
+await page.click('#modal [data-go="pickToday"]');await page.waitForTimeout(80);
 const pd=await ev(()=>({cards:[...document.querySelectorAll('.pcard')].map(c=>c.innerText.replace(/\n/g,' / ').slice(0,200)),lead:document.querySelector('.sheet p').innerText}));
 ok(pd.cards.length>=1,'pick day cards');console.log(pd.lead);pd.cards.forEach(c=>console.log('  ',c));
 const di=await ev(()=>+document.querySelector('.pcard [data-act="startSession"]').dataset.day);

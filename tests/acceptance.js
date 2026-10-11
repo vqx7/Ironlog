@@ -88,8 +88,9 @@ await ctx.close();
 const {page,errors,ctx}=await open('index.html',{browser,w:1100,h:900,clock:'2026-09-26T10:00:00'});
 const ev=(f,a)=>page.evaluate(f,a);
 await ev(()=>{const L=window.__ironlog;L.state.settings.onboarded=true;L.state.exercises.find(e=>e.id==='hackSquat').load='side';L.invalidate();const R=L.state.routines[0];L.ui.todayDay=2;L.render();});
-await page.hover('.hero [data-act="pickToday"]');await page.waitForTimeout(500);
-ok(await ev(()=>!document.getElementById('tip').hidden&&/Ranks your days/.test(document.getElementById('tip').innerText)),'hover shows the tip on desktop');
+// r35: the card's start choices moved into Change; the routine line on the card keeps its tip.
+await page.hover('.hero p.muted[data-tip]');await page.waitForTimeout(500);
+ok(await ev(()=>!document.getElementById('tip').hidden&&/Routine:/.test(document.getElementById('tip').innerText)),'hover shows the tip on desktop');
 await page.mouse.move(1,1);await page.waitForTimeout(100);ok(await ev(()=>document.getElementById('tip').hidden),'tip hides when the pointer leaves');
 await page.click('.hero [data-act="startSession"]:not([data-light])');
 const hs=await ev(()=>{const i=window.__ironlog.state.draft.ex.findIndex(b=>b.exId==='hackSquat');const inp=document.querySelector(`[data-f="w"][data-b="${i}"][data-s="0"]`);return {i,head:document.querySelectorAll('.sg.head')[i].children[1].innerText};});

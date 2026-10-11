@@ -605,6 +605,7 @@ body.obmode main,body.obmode #view{padding-bottom:24px}
 .fbctx{white-space:pre-wrap;overflow-wrap:anywhere;font-size:11px;margin:4px 0 0}
 .btn.pastday{display:flex;justify-content:space-between;align-items:center;gap:10px;text-align:left;min-height:48px}
 .btn.pastday small{font-weight:500;opacity:.75;white-space:nowrap}
+.btn.pastday.on{box-shadow:inset 0 0 0 2px var(--volt-line)}
 .short-list{list-style:none;margin:10px 0 0;padding:0}
 .short-list li{padding:6px 0;border-bottom:1px solid var(--line-soft);font-size:15px}
 .short-list li:last-child{border-bottom:0}
@@ -1211,7 +1212,7 @@ const HIDEABLE=[
   ['program','library','Add exercises'],['program','schedule','Schedule'],['program','pvol','Weekly volume'],
   ['dash','volume','Volume'],['dash','exercise','Lifts'],['dash','weak','Muscles'],['dash','consistency','Consistency'],['dash','body','Body'],
   ['history','cardio','Cardio and mobility'],['history','trash','Recently deleted'],
-  ['settings','timer','Rest timer and logging'],['settings','rir','Effort (RIR)'],['settings','prio','Priority muscles'],['settings','bands','Weekly set targets'],['settings','demo','Demo data'],['settings','reset','Reset'],['settings','diag','Diagnostics']
+  ['settings','timer','Rest timer and logging'],['settings','rir','Effort (RIR)'],['settings','prio','Priority muscles'],['settings','bands','Weekly set targets'],['settings','more','More']
 ];
 const HIDEABLE_KEYS=new Set(HIDEABLE.map(([t,k])=>t+':'+k));
 const HIDE_TABS=[['today','Today'],['program','Plan'],['dash','Stats'],['history','History'],['settings','Settings']];
@@ -1575,7 +1576,7 @@ if(ENV==='preview')document.documentElement.dataset.env='preview';
 const HAD_LOG=(()=>{try{return localStorage.getItem(KEY)!=null;}catch(e){return false;}})();
 /* Shown in Settings, in diagnostics and in backups, so a bug report can be
    matched to the exact build. */
-const APP_VERSION='2026.10.11-r34.2';
+const APP_VERSION='2026.10.11-r35';
 /* The logo (r25): an upright dumbbell that is also the I of Ironlog. Same
    numbers as scripts/icons.py, which draws the app icons. */
 const MARK_SVG='<svg class="mark" viewBox="-242 -378 484 756" aria-hidden="true" focusable="false"><rect class="mk-h" x="-30" y="-300" width="60" height="600" rx="14"/><rect class="mk-h" x="-80" y="-192" width="160" height="32" rx="12"/><rect class="mk-h" x="-80" y="160" width="160" height="32" rx="12"/><rect class="mk-p" x="-240" y="-376" width="480" height="92" rx="30"/><rect class="mk-p" x="-190" y="-270" width="380" height="66" rx="26"/><rect class="mk-p" x="-190" y="204" width="380" height="66" rx="26"/><rect class="mk-p" x="-240" y="284" width="480" height="92" rx="30"/></svg>';
@@ -2598,11 +2599,11 @@ function guideSheet(m){
   const report=FB()?'<p><b>Report a problem</b> is in the menu at the top right and in Settings, Help. It needs an account, and never includes your workouts.</p>'
     :'<p><b>Report a problem</b> is in the menu at the top right and in Settings, Help. Here it copies the details for a message instead of sending them, and never includes your workouts.</p>';
   const T=[
-  ['today','Today',`<p><b>The card at the top</b> is the next day of your routine. Start begins it; Change day picks another. With Settings, Rest timer and logging, <b>Today starts with</b> a blank session, the card starts an empty session instead, the plan's day one tap away; your week is then measured by sessions and hard sets, not a plan.</p>
+  ['today','Today',`<p><b>The card at the top</b> is the next day of your routine. Start begins it; <b>Change</b> has everything else: a lighter day, short on time, a blank session, Pick for me, and another day of your plan. With Settings, Rest timer and logging, <b>Today starts with</b> a blank session, the card starts an empty session instead, the plan's day in Change; your week is then measured by sessions and hard sets, not a plan.</p>
    <p><b>Lighter day</b>: every exercise, half the sets (rounded up), about 90% of the loads, 3 or more reps in reserve, and nothing to beat. For a day you are run down. It does not count against your trends or set your next targets.</p>
    <p><b>Short on time</b>: give your minutes. Sets come off down to 2 per exercise, then exercises not started drop out. Priority and lagging muscles, exercises you have started, and at least one exercise per muscle are kept longest. Done sets are never touched. Trimmed work does not count against trends. Undo puts it back.</p>
    <p><b>Pick for me</b> ranks your routine's days by what each muscle got in the last 7 days against your targets, how recently it was trained hard, injuries, and your cycle. Starting one moves your cycle on from there.</p>
-   <p><b>Freestyle</b>: any exercises, not tied to a routine day, so your cycle stays put.</p>
+   <p><b>Blank session</b>: any exercises, not tied to a routine day, so your cycle stays put.</p>
    <p><b>More options</b>: Deload week, Limited equipment (each exercise your gym cannot do swapped for the closest match), Rest week (a week off on purpose: averages, the streak, and adherence skip it), Flag an injury, and Log cardio.</p>
    <p><b>Two sessions in a day</b> are kept in the order you started them; the next targets come from the later one, and a calendar day with two asks which to open.</p>
    <p><b>Weigh-in</b>: a card asks for your bodyweight every 2 weeks once you have weighed in or log bodyweight lifts (Settings, General, Weigh-in reminder: every week, 2 weeks, month, or off). Pull-ups, dips, and push-ups are read at your latest weigh-in.</p>
@@ -2614,8 +2615,8 @@ function guideSheet(m){
    <p><b>RIR</b>, reps in reserve: how many more reps you could have done. Tap a set's RIR box for 0 to 5 (Settings can switch it to half reps or RPE; RPE 8 is RIR 2). ${off?'RIR is off in Settings, so every working set counts as hard.':'It is optional: a blank reads as your usual RIR on that lift once you have rated 3 of its sets in 12 weeks, and until then as hard.'}</p>
    <p><b>RIR check</b>: once you have 3 sessions, one machine or cable exercise may ask for one set to failure, to see how far your RIR calls are off. Not now, or finishing without it, waits 3 weeks.</p>
    <p><b>W and D</b>: a warm-up (kept, never analysed) and a drop set (counts half a set of volume, never as a PR or target). <b>+ Drop</b> beside + Set adds one at about 75% once a set is done; warm-ups are in the exercise's ⋯ menu.</p>
-   <p><b>Supersets</b>: an exercise's ⋯ menu, Superset with the next one (for this session), or Plan's Superset with next (kept). The rest timer waits until the partners are done, and session minutes leave out the rest between them.</p>
-   <p><b>The next sets adjust</b> after a set that was clearly off plan, on the sets whose load is still the app's (never one you typed). Up: 2 or more reps in reserve over your target with the reps in your range, or 3 or more reps past the top. Down: 2 or more reps under both the range and what today asked for, without reserve to spare. The new load is what that set says you can do in the middle of the range (up) or at its bottom (down), with one more rep in reserve, in real steps, at most 10% up (15% on light isolation lifts), and at least one step when a set was rated 5 or more in reserve. A blank effort reads as your usual. Keep stays on your load. Not on a lighter day, a deload, a past workout, an injured area, an assisted lift, or a bodyweight lift never done with added load. Settings, Rest timer and logging turns it off.</p>
+   <p><b>Supersets</b>: an exercise's ⋯ menu, Superset with the next one (Finish then offers to keep it in your plan), or Plan's Superset with next. The rest timer waits until the partners are done, and session minutes leave out the rest between them.</p>
+   <p><b>The next sets adjust</b> after a set that was clearly off plan, on the sets whose load is still the app's (never one you typed). Up: 2 or more reps in reserve over your target with the reps in your range, or 3 or more reps past the top. Down: 2 or more reps under both the range and what today asked for, without reserve to spare. The new load is what that set says you can do in the middle of the range (up) or at its bottom (down), with one more rep in reserve, in real steps, at most 10% up (15% on light isolation lifts), and at least one step when a set was rated 5 or more in reserve. When no heavier load fits, the same load for more reps. A blank effort reads as your usual. Keep stays on your load. Not on a lighter day, a deload, a past workout, an injured area, an assisted lift, or a bodyweight lift never done with added load. Settings, Rest timer and logging turns it off.</p>
    <p><b>+ Set and − Set</b>: − Set takes an empty row first and asks before a filled one. Removing anything you entered asks first, and Undo follows.</p>
    <p><b>Order</b>: drag an exercise by its ⠿ to move it, or use the arrow keys on the ⠿, or Move up and Move down in its ⋯ menu. A superset split by a move becomes two single exercises.</p>
    <p><b>Swap</b>: sets you did stay with the old exercise; the new one takes the sets left, with its own rep range and rest when it has them in your routine.</p>
@@ -4741,6 +4742,14 @@ function assessSet(bi,si){
           const n=b.sets.slice(0,si+1).filter(x=>!x.warm&&!x.drop).length;
           const why=light?(q!=null&&q>=tgt+2?(rirScale()==='rpe'?`set ${n} was RPE ${effShow(q)}, against a target of RPE ${effShow(tgt)}`:`set ${n} had ${effShow(q)} in reserve, against a target of ${effShow(tgt)}`):`set ${n} went ${r} reps, past your ${hi}`):`set ${n} stopped at ${r}, under your ${rangeWords(p)}`;
           b.adj={at:si,w:nw,from:s.w,r:er,up:!!light,why};adjSrc.set(b,s);
+        }else if(light&&q!=null&&q>=tgt+2&&r<hi){
+          /* No heavier load fits (the next step is more than the estimate
+             allows): the same load for more reps, so a set this easy is not
+             met with silence (r35, V). Reps the estimate gives at the target
+             effort, up to the top of the range. */
+          const f=rtfAt(est,Lt);const er=f==null?null:Math.min(hi,Math.floor(f-Math.min(tgt,E1_MAX_RIR)+1e-9));
+          const n=b.sets.slice(0,si+1).filter(x=>!x.warm&&!x.drop).length;
+          if(er!=null&&er>r){b.adj={at:si,w:s.w,from:s.w,r:er,up:true,why:rirScale()==='rpe'?`set ${n} was RPE ${effShow(q)}, against a target of RPE ${effShow(tgt)}`:`set ${n} had ${effShow(q)} in reserve, against a target of ${effShow(tgt)}`};adjSrc.set(b,s);}
         }
       }
     }
@@ -4760,6 +4769,8 @@ function adjRows(b,prev,next){
 function adjLine(b,bi){
   const a=b.adj;if(!a||!b.sets.some((x,i)=>i>a.at&&!x.done&&!x.warm&&!x.drop))return '';const ex=EX(b.exId);
   const lb=w=>`${loadLabel(ex,w)}${ex.bw?'':' '+U()}${loadNote(ex)}`;
+  // Same load, more reps: said as reps (r35).
+  if(Math.abs(a.w-a.from)<1e-9)return `<p class="adjline small" id="adj-${bi}"><span><b>Next sets: ${a.r} reps at ${esc(lb(a.w))}</b>, because ${esc(a.why)}.</span><button class="linkbtn" data-act="adjKeep" data-b="${bi}">Keep as it was</button></p>`;
   return `<p class="adjline small" id="adj-${bi}"><span><b>Next sets: ${esc(lb(a.w))}</b>, ${a.up?'up':'down'} because ${esc(a.why)}.</span><button class="linkbtn" data-act="adjKeep" data-b="${bi}">Keep ${esc(lb(a.from))}</button></p>`;
 }
 // After a set is ticked, unticked or changed: re-judge it, and redraw only this exercise's grey numbers and line.
@@ -5220,8 +5231,6 @@ function viewToday(){
   const weekly=R.schedule==='weekly';const cs=weekly?null:cycleState(R);
   if(ui.todayDay!=null&&ui.todayDay>=R.days.length)ui.todayDay=null;
   const di=ui.todayDay==null?(weekly?wd:cs.next):ui.todayDay;const day=R.days[di];
-  // Short marks, so the chosen day fits a 320 px phone (r32, second check: cut at "(next").
-  const mark=i=>weekly?(i===wd?' · today':''):(i===cs.next?' · next':i===cs.last?' · last done':'');
   // "Next up" is said once, in Change day below (r28): on the card it made the
   // date line wrap and leave "UP" on a line of its own on a phone.
   // On a scheduled rest day the card shows the next training day, and says so (r30: "Day 1 of 7" beside "rest today, Day 7").
@@ -5233,7 +5242,6 @@ function viewToday(){
   }
   const playable=!day.rest&&day.items.length>0;
   const deload=isDeloadWeek();
-  const sel=`<label class="inline-sel small">Change day<select data-bind="todayDay">${R.days.map((d,i)=>`<option value="${i}" ${i===di?'selected':''}>${dayLabel(R,i)}: ${esc(d.name)}${d.rest&&!/\brest\b/i.test(d.name)?' (rest)':''}${mark(i)}</option>`).join('')}</select></label>`;
   /* Freestyle by default (r34, V): for a lifter who never follows a plan,
      Today opens on a blank session (Settings > Rest timer and logging). The
      plan's day stays one tap away, and Change day shows it as before. */
@@ -5243,9 +5251,7 @@ function viewToday(){
     let h=welcomeCard()+acctBar()+installBar()+iconBar()+`<section class="hero" data-day="free"><div class="hero-top"><div class="hero-t">${hello}<p class="eyebrow">${esc(new Date().toLocaleDateString(undefined,{weekday:'short',month:'short',day:'numeric'}))} · Freestyle${deload?' · deload week':''}</p><h2>Blank session</h2>
     <p class="muted small" style="margin:0">${noLog()?'Add exercises as you go.':(()=>{const w=weekStats();return w.doneDays?`${w.doneDays} session${w.doneDays===1?'':'s'}, ${r1(w.got)} hard sets this week`:'Nothing yet this week.';})()}</p></div></div>
     <button class="btn primary block big" data-act="startFree">Start session</button>
-    <div class="hero-alt" style="margin-top:8px">${playable?`<button class="btn sm" data-act="startSession" data-day="${di}">Plan: ${esc(day.name)}</button>`:''}<button class="btn sm" data-act="pickToday" data-tip="Ranks your days for today by the last 7 days, recovery, and injuries, then says why.">Pick for me</button></div>
-    <div class="row" style="margin-top:8px">${sel}</div>
-    <div class="row" style="margin-top:8px">${moreBtn(deload)}</div>${moreRow(deload,false,di)}</section>`;
+    <div class="row" style="margin-top:8px">${changeBtn(di,true)}${moreBtn(deload)}</div>${moreRow(deload,false,di)}</section>`;
     return h+bwDueCard()+todayRest({playable:false,di,cs,day,deload});
   }
   let h=welcomeCard()+acctBar()+installBar()+iconBar()+`<section class="hero" data-day="${di}"><div class="hero-top"><div class="hero-t">${state.settings.userName?`<p class="hello">${esc(greeting())}, ${esc(state.settings.userName)}</p>`:''}<p class="eyebrow">${esc(new Date().toLocaleDateString(undefined,{weekday:'short',month:'short',day:'numeric'}))} · ${esc(eyebrow)}${deload?' · deload week':isRestWeek(weekStart(today()))?' · rest week':''}</p><h2>${esc(day.name)}</h2>
@@ -5256,21 +5262,36 @@ function viewToday(){
      Lighter is for a body that needs less today (every exercise, half the
      sets, about 90% loads); Short on time is for a clock that allows less (full
      effort on what matters most, the rest trimmed to your minutes). */
-  const alt=(act,title,what,extra)=>`<button class="btn sm" data-act="${act}" data-tip="${esc(what)}"${extra||''}>${title}</button>`;
-  const alts=`<div class="hero-alt" style="margin-top:8px">${deload||!playable?'':alt('startSession','Lighter day','Every exercise, half the sets, about 90% loads, nothing to beat. For a day you are run down or sore.',` data-day="${di}" data-light="1"`)}${playable?alt('startShort','Short on time','Tell it your minutes; the most important work stays at full effort and the rest is trimmed.',` data-day="${di}"`):''}${alt('pickToday','Pick for me','Ranks your days for today by the last 7 days, recovery, and injuries, then says why.')}${alt('startFree','Freestyle','Log anything. Your cycle stays where it is.')}</div>`;
-  if(playable)h+=`<button class="btn primary block big" data-act="startSession" data-day="${di}">${deload?'Start deload session':'Start session'}</button>
-  ${alts}
-  <div class="row" style="margin-top:8px">${sel}</div>`;
-  else h+=`<p class="small" style="margin:10px 0 0">${day.rest?'Rest day.':'Nothing planned for this day.'}</p>
-  ${alts}
-  <div class="row spread" style="margin-top:8px"><span></span>${sel}</div>`;
+  /* One way to start (r35, V): Start, and Change for everything else (a
+     lighter day, short on time, a blank session, Pick for me, another day of
+     the plan), so the card is not five buttons and a list deep. */
+  if(playable)h+=`<button class="btn primary block big" data-act="startSession" data-day="${di}">${deload?'Start deload session':'Start session'}</button>`;
+  else h+=`<p class="small" style="margin:10px 0 0">${day.rest?'Rest day.':'Nothing planned for this day.'}</p>`;
   // Deload, equipment, injury and cardio are occasional, so they sit behind
   // More. An active deload still shows in the eyebrow and on its button.
-  h+=`<div class="row" style="margin-top:8px">${moreBtn(deload)}<span style="margin-left:auto"></span>${helpBtn('starts')}</div>
-  ${helpText('starts','<b>Lighter day</b>: every exercise on the day, half the sets (rounded up), about 90% of the loads, 3 or more reps in reserve, and no target to beat: a one-day deload. For a day you are run down or sore, or slept badly. It does not count against your trends. <b>Short on time</b>: tell it your minutes; it keeps priority and lagging muscles and your main lifts at full effort and trims the rest. <b>Pick for me</b>: ranks your routine\'s days for today from what each muscle got in the last 7 days, how recently it was trained hard, injuries, and where you are in the cycle, then says why. <b>Freestyle</b>: log anything; your cycle stays put. <b>Deload week</b> (More options): a whole week of half sets at about 90% loads. <b>Limited equipment</b> (More options): today\'s workout with each exercise your gym cannot do swapped for the closest match it can.')}`;
+  h+=`<div class="row" style="margin-top:8px">${changeBtn(di,false)}${moreBtn(deload)}<span style="margin-left:auto"></span>${helpBtn('starts')}</div>
+  ${helpText('starts','In <b>Change</b>: <b>Lighter day</b>: every exercise on the day, half the sets (rounded up), about 90% of the loads, 3 or more reps in reserve, and no target to beat: a one-day deload. For a day you are run down or sore, or slept badly. It does not count against your trends. <b>Short on time</b>: tell it your minutes; it keeps priority and lagging muscles and your main lifts at full effort and trims the rest. <b>Pick for me</b>: ranks your routine\'s days for today from what each muscle got in the last 7 days, how recently it was trained hard, injuries, and where you are in the cycle, then says why. <b>Blank session</b>: log anything; your cycle stays put. <b>Deload week</b> (More options): a whole week of half sets at about 90% loads. <b>Limited equipment</b> (More options): today\'s workout with each exercise your gym cannot do swapped for the closest match it can.')}`;
   h+=moreRow(deload,playable,di);
   h+='</section>';
   return h+bwDueCard()+todayRest({playable,di,cs,day,deload});
+}
+/* Change, on either card: one sheet with every other way to start. */
+function changeBtn(di,free){return `<button class="btn sm" data-act="startAltOpen" data-day="${di}"${free?' data-free="1"':''}>Change</button>`;}
+function startAltSheet(m){
+  const R=activeRoutine();const di=Math.min(+m.di||0,R.days.length-1);const day=R.days[di];
+  const playable=!!day&&!day.rest&&day.items.length>0;const deload=isDeloadWeek();
+  const weekly=R.schedule==='weekly';const wd=(new Date().getDay()+6)%7;const cs=weekly?null:cycleState(R);
+  const mark=i=>weekly?(i===wd?' · today':''):(i===cs.next?' · next':i===cs.last?' · last done':'');
+  const opt=(go,title,what,extra)=>`<button class="ob-opt" data-act="altGo" data-go="${go}"${extra||''}><b>${title}</b><span>${what}</span></button>`;
+  const opts=[];
+  if(m.free&&playable)opts.push(opt('startSession',`Plan: ${esc(day.name)}`,`${day.items.length} exercises from your plan`,` data-day="${di}"`));
+  if(!m.free&&playable&&!deload)opts.push(opt('startSession','Lighter day','Every exercise, half the sets, about 90% loads',` data-day="${di}" data-light="1"`));
+  if(!m.free&&playable)opts.push(opt('startShort','Short on time','Your minutes; the main work stays at full effort',` data-day="${di}"`));
+  if(!m.free)opts.push(opt('startFree','Blank session','Add exercises as you go; your plan stays where it is'));
+  opts.push(opt('pickToday','Pick for me','The day that fits today best, and why'));
+  const days=R.days.map((d,i)=>`<button type="button" class="btn block pastday${i===di&&!m.free?' on':''}" data-act="dayPick" data-i="${i}" aria-current="${i===di&&!m.free}"><span>${esc(dayLabel(R,i))}: ${esc(d.name)}</span><small>${d.rest?'Rest day':`${d.items.length} exercises`}${mark(i)}</small></button>`).join('');
+  return `<div class="sheet" role="dialog" aria-modal="true" aria-labelledby="saH"><div class="sheet-h"><h3 id="saH">Start something else</h3><button class="ib" aria-label="Close" data-act="mClose">✕</button></div>
+  <div class="ob-opts">${opts.join('')}</div><p class="small muted" style="margin:14px 0 6px">Another day</p><div class="stack">${days}</div></div>`;
 }
 /* More options on either card (r34.2, from the review: the blank-session
    card had none, so a freestyler could not mark a rest week, a deload, an
@@ -6818,7 +6839,7 @@ function viewLogger(){
   <div class="row lh-row"><input type="date" data-bind="draftDate" value="${d.date}" max="${today()}" aria-label="Session date" data-tip="Change to log a past session">${left>0?'<button class="btn sm" data-act="shortOpen">Short on time</button>':''}</div></div></div>
   ${helpText('log',(state.settings.rirMode==='off'?'RIR is switched off in Settings, so every working set counts as hard. ':'RIR is reps left in the tank: 3 or less counts the set as hard for weekly volume, 4 or more stays in history only. RIR is optional: a blank is read as your usual RIR on that lift, or as hard until you have rated a few of its sets. ')+'W marks a warm-up (kept, never analysed); tap it again for D, a drop set (counts as work and volume, never as a PR or target). To add a new warm-up or drop set row, use the ⋯ menu on the exercise. Drag an exercise by its ⠿ to change the order. In a superset the rest timer starts after the last exercise of the pair. Timed holds log seconds in the Sec column. The date can be changed to log a past session.'+(d.past?' Quick entry: no rest timer, and a set counts as done once its reps are typed.':state.settings.autoDone?' Auto-mark is on: sets tick themselves when you leave the reps field.':''))}
   ${d.free?`<label class="field" style="margin-top:8px">Name<input type="text" data-bind="draftName" maxlength="40" value="${esc(d.dayName)}"></label><p class="small muted" style="margin:4px 0 0">Not tied to a routine day, so your cycle stays put.</p>`:''}
-  ${d.past?'':checkinCard(d)}${loadAskCard(d)}${bwAskCard(d)}`;
+  ${d.past?'':checkinCard(d)}${bwAskCard(d)}`;
   if(!d.ex.length)h+=`<div class="card"><p class="small" style="margin:0">No exercises yet. Tap + Add exercise below${d.editingId?'':', or Pick for me for a suggestion based on your last 7 days,'} and log as you go.</p></div>`;
   const calIdx=d.editingId?-1:calDueIdx(d);
   const letters=ssLetters(d.ex.map(b=>b.plan));
@@ -6897,15 +6918,9 @@ function bwAskCard(d){
   return `<div class="card" id="bwAsk"><p class="small" style="margin:0 0 8px"><b>Your bodyweight</b> counts in bodyweight lifts, for weight lifted and estimates. ${tipi('Logged as a weigh-in for today. Add more on Today, under Body.','About bodyweight')}</p>
   <div class="row"><label class="field" style="flex:1;margin:0"><span class="vh">Bodyweight (${U()})</span><input type="text" inputmode="decimal" id="bwVal" placeholder="Weight (${U()})" aria-label="Bodyweight (${U()})"></label><button class="btn sm primary" data-act="addBW">Save</button><button class="btn sm" data-act="bwAskNo">Not now</button></div></div>`;
 }
-function loadAskCard(d){
-  // Only when there is a suggested load to show (r31): a first session has none.
-  if(d.editingId||!d.ex.some(b=>b.sw!=null&&!EX(b.exId).bw))return '';
-  try{if(localStorage.getItem(LOADASK_KEY))return '';}catch(e){return '';}
-  const fill=state.settings.loadFill==='fill';
-  return `<div class="card loadask" id="loadAsk"><p class="small" style="margin:0 0 8px"><b>${fill?'Suggested loads are filled in.':'Suggested loads show in grey.'}</b> ${fill?'Type over any of them.':'Tick a set to log it, or type your own.'} ${tipi('Change it any time in Settings > Rest timer and logging.','Where to change this')}</p>
-  <div class="row"><button class="btn sm${fill?'':' primary'}" data-act="loadAsk" data-v="grey">${fill?'Show them in grey':'Keep grey'}</button><button class="btn sm${fill?' primary':''}" data-act="loadAsk" data-v="fill">${fill?'Keep filled in':'Fill them in'}</button></div>
-  </div>`;
-}
+/* The first session no longer asks grey or filled in (r35, V: two systems for
+   one thing, and a card asking which). Loads are grey; Settings > Rest timer
+   and logging > Fill in suggested loads still fills them for anyone who wants. */
 /* The first machine, cable or Smith exercise in a session is offered a
    calibration set when none was done in the last 3 weeks, RIR is on, and
    you have at least 3 real sessions. Not now waits another 3 weeks. */
@@ -7143,7 +7158,7 @@ function viewDash(){
     const e1Mode=isCompound(ex)&&exps.some(x=>x.best!=null);const bs=e1Mode?null:bestSet(ui.dashEx);
     const tagOf=x=>x.deload?'deload':x.light||x.auto?'lighter':x.cut?'trimmed':'';
     exh+=`<select data-bind="dashEx" aria-label="Exercise">${withData.map(id=>`<option value="${id}" ${id===ui.dashEx?'selected':''}>${esc(exName(id))}</option>`).join('')}</select>
-    <div style="margin-top:8px">${exHeadline(ui.dashEx)}</div>${noE1(ex)?`<div class="kpis" style="margin-top:8px"><div class="kpi"><div class="v">${st.n}</div><div class="l">Sessions logged</div></div><div class="kpi"><div class="v">${st.stalled?'Yes':'No'}</div><div class="l">Stalled</div></div></div>`:''}<div class="kpis" style="margin-top:8px${noE1(ex)?';display:none':''}">${e1Mode?`<div class="kpi"><div class="v">${st.best?(ex.bw?'≈':'')+fmtE(st.best):'n/a'}</div><div class="l">Best e1RM (${U()}${loadNote(ex)})</div></div>`:`<div class="kpi"><div class="v">${bs?esc(setShort(ex,bs.w,bs.r)):'n/a'}</div><div class="l">Best set${loadNote(ex)}</div></div>`}<div class="kpi"><div class="v">${st.pct==null?'n/a':(st.pct>=0?'+':'')+r1(st.pct)+'%'}</div><div class="l">Change over ${st.spanW||6} weeks</div></div><div class="kpi"><div class="v">${st.slope==null?'n/a':(st.slope>=0?'+':'')+r1(st.slope)+'%'}</div><div class="l">Fitted trend per week</div></div><div class="kpi"><div class="v">${st.n}</div><div class="l">Sessions logged</div></div></div>
+    <div style="margin-top:8px">${exHeadline(ui.dashEx)}</div>${noE1(ex)?`<div class="kpis" style="margin-top:8px"><div class="kpi"><div class="v">${st.n}</div><div class="l">Sessions logged</div></div><div class="kpi"><div class="v">${st.stalled?'Yes':'No'}</div><div class="l">Stalled</div></div></div>`:''}<div class="kpis" style="margin-top:8px${noE1(ex)?';display:none':''}">${e1Mode?`<div class="kpi"><div class="v">${st.best?(ex.bw?'≈':'')+fmtE(st.best):'n/a'}</div><div class="l">Best e1RM (${U()}${loadNote(ex)})</div></div>`:`<div class="kpi"><div class="v">${bs?esc(setShort(ex,bs.w,bs.r)):'n/a'}</div><div class="l">Best set${loadNote(ex)}</div></div>`}<div class="kpi"><div class="v">${st.pct==null||!st.fresh?NIL:(st.pct>=0?'+':'')+r1(st.pct)+'%'}</div><div class="l">${st.pct==null||!st.fresh?'Change':`Change over ${st.spanW||6} weeks`}</div></div><div class="kpi"><div class="v">${st.n}</div><div class="l">Sessions logged</div></div></div>
     ${st.pct!=null&&st.slope!=null&&(st.pct>0)!==(st.slope>0)&&Math.abs(st.pct)>0.5&&Math.abs(st.slope)>0.1?`<p class="small muted hastip" style="margin-top:6px" data-tip="The change compares the endpoints; the trend fits a line through every session. When they split, trust the trend: one unusual session is pulling an endpoint.">Change and trend disagree</p>`:''}
     ${noE1(ex)?'':`${rangeChips('ex',weeksSpan(exps[0].date),8,'all')}<div class="chartbox"><canvas id="chEx"></canvas></div>${chartFallback()}
     <p class="small muted hastip" style="margin:4px 0 0" data-tip="Filled diamond: a new best estimate (a weight PR that also set one is filled too). Hollow diamond: a rep PR or a weight PR that did not raise the estimate, which can sit below an earlier best. The dashed line to the right appears only when the trend is clearly up, with a range, 4 weeks out. The thin dotted line is your RIR at the working load.">Reading the chart</p>`}
@@ -7704,7 +7719,7 @@ function gymInput(t){
 function viewSettings(){
   const s=state.settings;const hasDemo=state.sessions.some(x=>x.demo)||state.bodyweights.some(x=>x.demo);
   // Each group folds (for this visit) and moves (order is saved).
-  const SUB={help:'Guide, report a problem',gym:gymSub(),general:`${s.unit==='kg'?'kg, cm':'lb, in'} · ${s.theme==='system'?'device theme':s.theme}`,timer:`${s.timerMode==='off'?'timer off':s.timerMode+' timer'}${s.timeBudget?` · ${s.timeBudget} min budget`:''}`,rir:{on:'on',cal:'corrected',off:'off'}[s.rirMode],layout:s.hidden.length?`${s.hidden.length} hidden`:'everything shown',prio:s.priorities.length?s.priorities.map(m=>ML[m]).join(', '):'none',bands:'',data:cloud.on?(cloud.status==='synced'?'synced':'syncing'):'this device only',demo:hasDemo?'loaded':'off',reset:'',diag:`build ${APP_VERSION}`};
+  const SUB={help:'Guide, report a problem',gym:gymSub(),general:`${s.unit==='kg'?'kg, cm':'lb, in'} · ${s.theme==='system'?'device theme':s.theme}`,timer:`${s.timerMode==='off'?'timer off':s.timerMode+' timer'}${s.timeBudget?` · ${s.timeBudget} min budget`:''}`,rir:{on:'on',cal:'corrected',off:'off'}[s.rirMode],layout:s.hidden.length?`${s.hidden.length} hidden`:'everything shown',prio:s.priorities.length?s.priorities.map(m=>ML[m]).join(', '):'none',bands:'',data:cloud.on?(cloud.status==='synced'?'synced':'syncing'):'this device only',more:hasDemo?'demo data loaded':'demo data, diagnostics, erase'};
   const G=(k,title,help,id)=>`<details class="sec" ${id?`id="${id}"`:''} data-sk="settings:${k}" data-mkey="${k}" ${isOpen('settings:'+k,false)?'open':''}><summary>${sgrip(title)}<span class="sec-t">${esc(title)}</span><span class="sec-s">${esc(SUB[k]||'')}</span><span class="chev" aria-hidden="true"></span></summary><div class="sec-b">${help?helpLink(help):''}`;
   // The build number lives in Diagnostics; only the preview says what it is up top.
   return `${pageHead(ENV==='preview'?'Ironlog Preview '+APP_VERSION:'','Settings',cloud.on?(window.claude?'Saved to your Claude account and this device':'Synced to your account and saved on this device'):'Saved on this device')}
@@ -7748,13 +7763,14 @@ function viewSettings(){
   <button class="btn" data-act="pasteImport">Paste backup text instead</button>
   <div class="row"><button class="btn" data-act="undo" ${undoStack.length?'':'disabled'} data-tip="Deletes, resets, and imports from the last 7 days, kept after the app is closed. Edits are not undoable. Deleted sessions, cardio, and routines also wait in History for ${TRASH_DAYS} days.">Undo last delete or reset${undoStack.length?` (${undoStack.length} available)`:''}</button></div></div></div></details>
   ${G('help','Help')}<div class="card stack"><div class="row"><button class="btn" data-act="guideOpen">Guide</button><button class="btn" data-act="fbOpen" data-cat="bug">Report a problem</button><button class="btn" data-act="fbOpen" data-cat="question">Ask a question</button><button class="btn" data-act="fbOpen" data-cat="idea">Suggest something</button>${acct.reader&&FB()?'<button class="btn" data-act="fbInbox">Reports inbox</button>':''}</div></div></div></details>
-  ${G('demo','Demo data','demo')}${helpText('demo','8 weeks of generated sessions to preview Today and Stats. Everything demo is tagged and removed in one tap; your real logs are untouched.')}
-  <div class="card row"><button class="btn" data-act="demoLoad">Load demo data</button><button class="btn" data-act="demoClear" ${hasDemo?'':'disabled'}>Clear demo data</button></div></div></details>
-  ${G('reset','Reset')}<div class="card"><button class="btn danger" data-act="resetAll">Erase everything</button></div></div></details>
-  
-  ${G('diag','Diagnostics')}<div class="card stack"><p class="small muted" style="margin:0">Build ${APP_VERSION} · cloud ${cloud.on?esc(cloud.status):'off'} · ${logBuf.length} logged error${logBuf.length===1?'':'s'}</p>
+  ${/* Demo data, Diagnostics and Erase everything (r35, V): one group at the bottom, not three in front of everyday settings. */''}
+  ${G('more','More')}<div class="card stack">
+  <div><p class="small" style="margin:0 0 6px"><b>Demo data</b> ${tipi('8 weeks of generated sessions to preview Today and Stats. Everything demo is tagged and removed in one tap; your real logs are untouched.','About demo data')}</p>
+  <div class="row"><button class="btn" data-act="demoLoad">Load demo data</button><button class="btn" data-act="demoClear" ${hasDemo?'':'disabled'}>Clear demo data</button></div></div>
+  <div><p class="small" style="margin:0 0 6px"><b>Diagnostics</b> <span class="muted">Build ${APP_VERSION} · cloud ${cloud.on?esc(cloud.status):'off'} · ${logBuf.length} logged error${logBuf.length===1?'':'s'}</span></p>
   ${logBuf.length?`<ul class="clist">${logBuf.slice(-5).reverse().map(x=>`<li><span class="small"><b>${esc(x.a)}</b> ${esc(x.m)}</span><span class="small muted">${esc(x.t.slice(5,16).replace('T',' '))}</span></li>`).join('')}</ul>`:''}
-  <div class="row"><button class="btn sm" data-act="diagCopy">Copy diagnostics</button><button class="btn sm" data-act="diagClear" ${logBuf.length?'':'disabled'}>Clear log</button></div>${window.IRONLOG_APP?'<p class="small" style="margin:8px 0 0"><a href="LICENSES.txt" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;min-height:44px">Open-source licenses</a></p>':''}</div></div></details>${moreLine('settings')}`;
+  <div class="row"><button class="btn sm" data-act="diagCopy">Copy diagnostics</button><button class="btn sm" data-act="diagClear" ${logBuf.length?'':'disabled'}>Clear log</button></div>${window.IRONLOG_APP?'<p class="small" style="margin:8px 0 0"><a href="LICENSES.txt" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;min-height:44px">Open-source licenses</a></p>':''}</div>
+  <div><button class="btn danger" data-act="resetAll">Erase everything</button></div></div></div></details>${moreLine('settings')}`;
 }
 
 function rirSettings(){
@@ -7968,6 +7984,8 @@ function renderModalBody(){
     <p class="small muted">Saved with this session and shown next time: a cue, a niggle, which machine.</p>
     <textarea id="mNote" aria-label="Note" style="min-height:110px">${esc(m.text||'')}</textarea>
     <div class="row" style="margin-top:10px"><button class="btn primary" data-act="noteSave">Save note</button><button class="btn" data-act="mClose">Cancel</button></div></div>`;
+  }else if(m.kind==='startAlt'){
+    h=startAltSheet(m);
   }else if(m.kind==='pickToday'){
     const rk=rankDays();const top=rk.rows.slice(0,3);
     const plan=rk.rows.find(x=>x.plan);const best=top[0];
@@ -8157,9 +8175,18 @@ function routineUpdates(d){
     if(b.swappedFrom&&have.has(b.swappedFrom))swap.push({from:b.swappedFrom,to:b.exId});
     else{const {ss:_s,...p}=b.plan;add.push({exId:b.exId,plan:{...p,sets:Math.max(1,+p.sets||3)}});}
   }
-  if(!add.length&&!swap.length)return null;
-  const bits=[...swap.map(x=>`${exName(x.from)} → ${exName(x.to)}`),...add.map(x=>`add ${exName(x.exId)}`)];
-  return {rid:R.id,dayId:day.id,dayName:day.name,add,swap,text:bits.join(', ')};
+  /* A superset made in the session (r35, V, as Strong and Hevy ask): pairs
+     of exercises done linked that the day has, or will have after the
+     change, but not linked there. */
+  const after=new Set([...day.items.map(i=>i.exId).map(id=>{const sw=swap.find(x=>x.from===id);return sw?sw.to:id;}),...add.map(x=>x.exId)]);
+  const ss=[];const groups=new Map();
+  for(const b of d.ex){const g=b.plan&&b.plan.ss;if(!g||!b.sets.some(x=>x.done&&!x.warm))continue;(groups.get(g)||groups.set(g,[]).get(g)).push(b.exId);}
+  for(const ids of groups.values()){const u=[...new Set(ids)].filter(id=>after.has(id));if(u.length<2)continue;
+    const its=u.map(id=>day.items.find(i=>i.exId===id));
+    if(its.every(Boolean)&&its[0].ss&&its.every(i=>i.ss===its[0].ss))continue;ss.push(u);}
+  if(!add.length&&!swap.length&&!ss.length)return null;
+  const bits=[...swap.map(x=>`${exName(x.from)} → ${exName(x.to)}`),...add.map(x=>`add ${exName(x.exId)}`),...ss.map(u=>`superset ${andList(u.map(exName))}`)];
+  return {rid:R.id,dayId:day.id,dayName:day.name,add,swap,ss,text:bits.join(', ')};
 }
 /* A ready-made routine removed exactly as shipped can be added again from
    New from a template, so it is not kept in Recently deleted (r34.1, V: the
@@ -9391,6 +9418,11 @@ const ACT={
     snapshot();
     for(const x of u.swap){const it=day.items.find(i=>i.exId===x.from);if(it)it.exId=x.to;}
     for(const x of u.add)if(!day.items.some(i=>i.exId===x.exId))day.items.push({...x.plan,uid:uid(),exId:x.exId,ss:null});
+    // Each superset kept: its exercises side by side, in the order done, under one link.
+    for(const ids of u.ss||[]){const its=ids.map(id=>day.items.find(i=>i.exId===id)).filter(Boolean);if(its.length<2)continue;
+      const at=Math.min(...its.map(i=>day.items.indexOf(i)));day.items=day.items.filter(i=>!its.includes(i));day.items.splice(at,0,...its);
+      const g=uid();for(const i of its)i.ss=g;}
+    fixSupersets(day.items);
     if(day.rest&&day.items.length)day.rest=false;
     commit();render();toast(`${day.name} updated`,true);
   },
@@ -9468,7 +9500,7 @@ const ACT={
   bMenuDo(t){const op=t.dataset.op;closeModal();
     if(op==='bSs'){const bi=+t.dataset.b;if(linkToggle(state.draft.ex,bi,x=>x.plan)){saveNow();rerenderKeepScroll();
       // A superset made here is this session's; Plan keeps one (r34.2, from the review: it was gone next time without a word).
-      const b=state.draft.ex[bi];if(b&&b.plan.ss)toast('Superset for this session. Link them in Plan to keep it.');}return;}
+      const b=state.draft.ex[bi];if(b&&b.plan.ss)toast(state.draft.dayId?'Superset. Finish offers to keep it in your plan.':'Superset for this session.');}return;}
     const f=ACT[op];if(f)f(t);},
   ssToggle(t){const f=findItem(t.dataset.uid);if(!f)return;const items=f.r.days[f.di].items;
     if(linkToggle(items,f.i,x=>x)){commit();rerenderKeepScroll();}},
@@ -9600,6 +9632,11 @@ const ACT={
       .finally(()=>{if(AI.ctl===ctl)AI.ctl=null;if(ui.modal===m){m.busy=false;renderModal();}});
   },
 /*}ai=*/  heroMore(){ui.heroMore=!ui.heroMore;rerenderKeepScroll();},
+  startAltOpen(t){openModal({kind:'startAlt',di:+t.dataset.day,free:t.dataset.free==='1'});},
+  // A choice in Change: the sheet closes first, then the start it names runs as the card's button did.
+  altGo(t){const go=t.dataset.go;closeModal();if(ACT[go])ACT[go](t);},
+  // Another day of the plan on the card (the old Change day list); in a blank-session Today it shows that day's card.
+  dayPick(t){const i=+t.dataset.i;closeModal();ui.todayDay=i;window.scrollTo(0,0);render();},
   noteReuse(t){const b=state.draft&&state.draft.ex[+t.dataset.b];if(!b||!b.lastNote)return;b.note=b.lastNote.text;saveNow();rerenderKeepScroll();toast('Note carried into this session');},
   bNote(t){const bi=+t.dataset.b;openModal({kind:'note',bi,title:`Note: ${exName(state.draft.ex[bi].exId)}`,text:state.draft.ex[bi].note||''});},
   noteSave(){
@@ -10651,7 +10688,7 @@ function swapPrompt(b,reason){
 /*}ai=*/
 window.__onLib=(which)=>{if((which==='chart'&&ui.tab==='dash')||(which==='sortable'&&ui.tab==='program'))rerenderKeepScroll();};
 trashTidy();
-window.__ironlog={get state(){return state;},set state(v){state=v;},plainTemplate,trashTidy,ENV,KEY,COMMON,COMMON_TIP,isCommon,bwEvery,isRestWeek,sessCmp,avgWeeks,weekStreak,coach,noLog,afterSet,adjOn,bwAt,newBlock,cycleState,sortedSessions,addDays,loadIn,gymRack,gymClean,dbListOf,capOf,refreshEx,effShow,rirScale,setStr,libExercises,obGate,obTour,andList,belowMin,aboveMax,starterRoutine,starterSigs,plateList,exBarKg,VOL_MODES,liveLogFetch,regionSrc,fitTargets,firstFullWeek,moveBlock,BANDS,installSheet,siteHost,greyW,effW,greyR,lighterLoad,incOf,swapPlan,planSetsPerWeek,weekNeed,stepRead,e1inv,rtfAt,rtfOf,rtfBand,calStats,rirEff,isHard,setCredit,tonnage,loadMode,loadWords,loadNote,progStep,jumpCap,setSecs,setupSecs,recovery,rolling7,rankDays,rankExercises,isCompound,patternOf,noE1,whtrLine,exHeadline,remainMin,shortPlan,weekPlan,cycleProjection,lastLighterWeek,regionBalance,parseHeight,mixCheck,swapCands,eqPlan,exportCSV,importData,chunksOf,assemble,sessionMuscles,TRACK_ONLY,cloud,Hx,mergeChunk,baseOf,sync:()=>cq(cloudPull),TEMPLATES,lastRFor,impDate,impRows,impNorm,impMatch,impFromText,impFromTable,impHeader,impBuild,impStart,impXlsx,parseSets,undoStack,undoRestore,undoForget,allTimeBests,bestsBoard,obActive,fmtW,rirUsual,rirEst,routineFromTemplate,plannedSets,map3d:()=>({state:B3.state,fail:B3.fail,meshes:B3.meshes.length,yaw:B3.yaw,glow:Object.keys(B3.mats).filter(m=>B3.mats[m].emissiveIntensity>0),canvas:!!document.querySelector('#bm3d canvas'),colors:Object.fromEntries(Object.entries(B3.mats).map(([m,mt])=>[m,'#'+mt.color.getHexString()])),pick:(x,y)=>map3dPick(x,y),want:map3dColors()}),cloudState:()=>({on:cloud.on,status:cloud.status,err:cloud.err,uid:cloud.uid,acct:cloud.acct}),acctUser:()=>acct.user,acctWaiting:()=>!!acctWait.pw,flush:()=>cq(cloudFlush),backupDue,routineUpdates,planFor,platesMode,plateText,chunksOf,IDX,suggest,e1,render,ACT,ui,makeDemo,invalidate,normalize,snapshot,saveNow,timer,weekStats,weekStart,today,EX,blockProgress,dayMinutes,weekStreak,coach,tonnageNow,livePR,exProjection,movers,stalledIds,muscleStatus,actualAvg4,plannedPerWeek,parseSets,/*ai{*/aiSetsValid,fillSets,/*}ai=fillSets,*/newBlock,lastNoteOf,sizeRows,sessionMuscleSets,sessionCapNote,routineClutter,rowBlank,dayReasons,impTextSets,liftTrend,prsWithin,activeRoutine,rackStep,repFloor,sessionLength,prBeat,exInjury,exJoints,openModal,EQUIP,HARD_EX,recentLighter,planEvidenceNote,howToUrl,editFp,toast,avgWeeks,regionWk,REGION_WKS,SAFETY_TXT,libFiltered,nameMatch,workLoad,fitE,offSession,tagged,fatigueStalls,avgWeeksTxt,routineFromLog,repSpan,rangeWords,calDueIdx,readyCard,loadAskCard,/*ai{*/aiDigest,debriefPrompt,reviewPrompt,swapPrompt,AI,/*}ai=*/sameRR,hintOnce,overSets,rackTol,daysOff,BACK_DAYS,prName,sessTm,effTgt,bwDueCard,bwNoLoad,applyPick,joinAdjacent,sameExOnce};
+window.__ironlog={get state(){return state;},set state(v){state=v;},plainTemplate,trashTidy,ENV,KEY,COMMON,COMMON_TIP,isCommon,bwEvery,isRestWeek,sessCmp,avgWeeks,weekStreak,coach,noLog,afterSet,adjOn,bwAt,newBlock,cycleState,sortedSessions,addDays,loadIn,gymRack,gymClean,dbListOf,capOf,refreshEx,effShow,rirScale,setStr,libExercises,obGate,obTour,andList,belowMin,aboveMax,starterRoutine,starterSigs,plateList,exBarKg,VOL_MODES,liveLogFetch,regionSrc,fitTargets,firstFullWeek,moveBlock,BANDS,installSheet,siteHost,greyW,effW,greyR,lighterLoad,incOf,swapPlan,planSetsPerWeek,weekNeed,stepRead,e1inv,rtfAt,rtfOf,rtfBand,calStats,rirEff,isHard,setCredit,tonnage,loadMode,loadWords,loadNote,progStep,jumpCap,setSecs,setupSecs,recovery,rolling7,rankDays,rankExercises,isCompound,patternOf,noE1,whtrLine,exHeadline,remainMin,shortPlan,weekPlan,cycleProjection,lastLighterWeek,regionBalance,parseHeight,mixCheck,swapCands,eqPlan,exportCSV,importData,chunksOf,assemble,sessionMuscles,TRACK_ONLY,cloud,Hx,mergeChunk,baseOf,sync:()=>cq(cloudPull),TEMPLATES,lastRFor,impDate,impRows,impNorm,impMatch,impFromText,impFromTable,impHeader,impBuild,impStart,impXlsx,parseSets,undoStack,undoRestore,undoForget,allTimeBests,bestsBoard,obActive,fmtW,rirUsual,rirEst,routineFromTemplate,plannedSets,map3d:()=>({state:B3.state,fail:B3.fail,meshes:B3.meshes.length,yaw:B3.yaw,glow:Object.keys(B3.mats).filter(m=>B3.mats[m].emissiveIntensity>0),canvas:!!document.querySelector('#bm3d canvas'),colors:Object.fromEntries(Object.entries(B3.mats).map(([m,mt])=>[m,'#'+mt.color.getHexString()])),pick:(x,y)=>map3dPick(x,y),want:map3dColors()}),cloudState:()=>({on:cloud.on,status:cloud.status,err:cloud.err,uid:cloud.uid,acct:cloud.acct}),acctUser:()=>acct.user,acctWaiting:()=>!!acctWait.pw,flush:()=>cq(cloudFlush),backupDue,routineUpdates,planFor,platesMode,plateText,chunksOf,IDX,suggest,e1,render,ACT,ui,makeDemo,invalidate,normalize,snapshot,saveNow,timer,weekStats,weekStart,today,EX,blockProgress,dayMinutes,weekStreak,coach,tonnageNow,livePR,exProjection,movers,stalledIds,muscleStatus,actualAvg4,plannedPerWeek,parseSets,/*ai{*/aiSetsValid,fillSets,/*}ai=fillSets,*/newBlock,lastNoteOf,sizeRows,sessionMuscleSets,sessionCapNote,routineClutter,rowBlank,dayReasons,impTextSets,liftTrend,prsWithin,activeRoutine,rackStep,repFloor,sessionLength,prBeat,exInjury,exJoints,openModal,EQUIP,HARD_EX,recentLighter,planEvidenceNote,howToUrl,editFp,toast,avgWeeks,regionWk,REGION_WKS,SAFETY_TXT,libFiltered,nameMatch,workLoad,fitE,offSession,tagged,fatigueStalls,avgWeeksTxt,routineFromLog,repSpan,rangeWords,calDueIdx,readyCard,/*ai{*/aiDigest,debriefPrompt,reviewPrompt,swapPrompt,AI,/*}ai=*/sameRR,hintOnce,overSets,rackTol,daysOff,BACK_DAYS,prName,sessTm,effTgt,bwDueCard,bwNoLoad,applyPick,joinAdjacent,sameExOnce};
 render();
 wakeOn();
 timerResume();

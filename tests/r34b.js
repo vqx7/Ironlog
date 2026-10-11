@@ -216,13 +216,13 @@ const ODD = /shared (phone|device|computer)|someone else|another person|other pe
       const q = s => document.querySelector(s);
       const g = q('#view .sgrip'); g.scrollIntoView({ block: 'center' }); const gr = g.getBoundingClientRect(); const cx = gr.left + gr.width / 2, cy = gr.top + gr.height / 2;
       const hit = (x, y) => { const e = document.elementFromPoint(x, y); return !!(e && e.closest('.sgrip') === g); };
-      const sel = q('[data-bind="todayDay"]'); const wv = [...document.querySelectorAll('.wkview button')];
+      const sel = q('.hero [data-act="startAltOpen"]'); const wv = [...document.querySelectorAll('.wkview button')];
       const del = q('[data-act="delMeas"]'); const date = q('#bwDate');
       const lb = document.createElement('button'); lb.className = 'linkbtn tall'; lb.textContent = 'Not now'; document.body.appendChild(lb); const lh = lb.getBoundingClientRect().height; lb.remove();
       return { grip: [hit(cx - 20, cy), hit(cx + 19, cy), hit(cx, cy - 20), hit(cx, cy + 20)], sel: sel ? sel.getBoundingClientRect().height : null, wv: wv.map(b => b.getBoundingClientRect().height), del: del ? { r: del.getBoundingClientRect().right, vw: innerWidth } : null, date: date ? date.getBoundingClientRect().width : null, lh };
     });
     ok(tt.grip.every(Boolean), 'a section\'s ⠿ handle answers a touch 20 px either side and above and below its centre (44 px)' + T, tt.grip);
-    ok(tt.sel == null || tt.sel >= 44, 'Change day is 44 px tall' + T, tt.sel);
+    ok(tt.sel >= 44, 'Change on the Today card is 44 px tall' + T, tt.sel);
     ok(tt.wv.length === 0 || tt.wv.every(h => h >= 44), 'Week and Month are 44 px tall' + T, tt.wv);
     ok(tt.del && tt.del.r <= tt.del.vw, 'the tape row\'s delete button stays on screen at 320 px' + T, tt.del);
     ok(tt.date >= 150, 'the body date field is wide enough for the year at 320 px (its own row)' + T, tt.date);
@@ -461,11 +461,11 @@ const ODD = /shared (phone|device|computer)|someone else|another person|other pe
     // A16: wording found repeated or odd.
     const a16 = await ev(() => {
       const L = window.__ironlog; const s = L.state; s.settings.todayStart = undefined; delete s.settings.todayStart; s.draft = null; L.ui.tab = 'today'; L.render();
-      const sel = document.querySelector('[data-bind="todayDay"]'); const opts = sel ? [...sel.options].map(o => o.text) : [];
+      L.ACT.startAltOpen({ dataset: { day: '0' } }); const opts = [...document.querySelectorAll('#modal [data-act="dayPick"]')].map(o => o.innerText.replace(/\s+/g, ' ')); L.ACT.mClose();
       s.trash = [{ id: 't1', kind: 'cardio', date: '2026-10-10', data: { id: 'c1', date: '2026-10-09', kind: 'run', min: 20 } }]; L.state = L.normalize(s); L.ACT.trashEmpty(); const m = L.ui.modal; const title = m ? m.title : ''; const body = m ? m.body : ''; L.ACT.mClose();
       return { opts, title, body };
     });
-    ok(!a16.opts.some(o => /Rest \(rest\)/i.test(o)), 'A16: Change day never says "Rest (rest)"', a16.opts);
+    ok(a16.opts.length > 0 && !a16.opts.some(o => /Rest \(rest\)/i.test(o)), 'A16: the days in Change never say "Rest (rest)"', a16.opts);
     ok(a16.title && !/for good/.test(a16.title) && /7 days/.test(a16.body), 'A16: emptying Recently deleted does not say "for good" beside Undo for 7 days', a16);
     ok(!P.errors.length, 'the review\'s session steps: no page errors', P.errors);
     await P.ctx.close().catch(() => {});
