@@ -2664,7 +2664,7 @@ function guideSheet(m){
    <p><b>Your settings</b>: Settings has the rest timer, auto-mark, RIR, units, theme and accent, weekly set targets, and priority muscles.</p>`],
   ['data','Your data',`${where}
    <p><b>Deleted</b> sessions, cardio, and routines wait in History, Recently deleted: the ${TRASH_MAX} most recent, for ${TRASH_DAYS} days, or until you delete them for good there. A ready-made routine removed unchanged is not kept, since New from a template adds it again. Undo in Settings covers deletes, resets, and imports from the last 7 days.</p>
-   <p><b>Import workouts</b> reads notes, a spreadsheet, Strong, or Hevy; you check everything before it is saved. On a first run, the import also makes your routine. Its days come from the workouts' names (or from the lifts in them when the names are all alike) and keep each day's latest sets and rep range. Your weekly targets then fit that routine.</p>
+   <p><b>Import workouts</b> reads notes, a spreadsheet, or an export from another app; you check everything before it is saved. On a first run, the import also makes your routine. Its days come from the workouts' names (or from the lifts in them when the names are all alike) and keep each day's latest sets and rep range. Your weekly targets then fit that routine.</p>
    ${window.IRONLOG_APP?'<p><b>Updates</b>: when "New version ready" shows, tap Reload.</p>':''}
    ${report}`]];
   const open=m.open||'';
@@ -3217,7 +3217,7 @@ function IDX(){
     const wc=weekConf[wk]||(weekConf[wk]={});
     const dm=dayMus[ss.date]||(dayMus[ss.date]={});
     const dx=dayMeta[ss.date]||(dayMeta[ss.date]={});
-    for(const b of ss.ex){
+    for(const b of sameExOnce(ss.ex)){
       const ex=EX(b.exId);const novel=!seenEx.has(b.exId);
       const mus=[[ex.primary,1],...ex.secondary.map(m=>[m,0.5])];
       for(const s of b.sets){
@@ -5532,14 +5532,14 @@ function obView(){
   <p class="ob-why">Back up your log and use it on any device</p>
   <button class="btn primary block" data-act="acctOpen" data-mode="signup">Create account</button>
   <button class="btn block" data-act="acctOpen" data-mode="signin">I have an account</button></div>
-  ${ENV==='preview'?'<button class="btn block" data-act="previewCopy">Copy my log from Ironlog</button>':''}
+  ${ENV==='preview'?'<button class="btn block" data-act="previewCopy">Copy my log in</button>':''}
   <button class="linkbtn ob-later" data-act="obAcctLater">Continue without an account</button></div>`;
-  const imp=`<button class="ob-opt" data-act="impOpen"><b>Import my workouts</b><span>Notes, a spreadsheet, Strong, Hevy, a backup</span></button>`;
+  const imp=`<button class="ob-opt" data-act="impOpen"><b>Import my workouts</b><span>Notes, a spreadsheet, another app, a backup</span></button>`;
   return `<div class="ob welcome" id="obPage" data-step="start">
   ${acctStep&&!acct.user?'<button class="linkbtn ob-back" data-act="obAcctBack">‹ Account</button>':''}
   <p class="ob-logo sm">${LOCKUP}</p>
   <h2 class="ob-h">Set up</h2>
-  <label class="field">Your name <span class="muted">(optional)</span><input type="text" data-bind="userName" maxlength="40" autocomplete="given-name" value="${esc(state.settings.userName||'')}" placeholder="For the greeting on Today"></label>
+  <label class="field">Name <span class="muted">(optional)</span><input type="text" data-bind="userName" maxlength="40" autocomplete="given-name" value="${esc(state.settings.userName||'')}"></label>
   <div><p class="small muted" style="margin:0 0 6px;font-weight:600">Units</p><div class="ob-units" role="group" aria-label="Units">${[['lb','lb and inches'],['kg','kg and cm']].map(([k,l])=>`<button class="chip ${U()===k?'on':''}" data-act="obUnit" data-v="${k}" aria-pressed="${U()===k}">${l}</button>`).join('')}</div></div>
   <label class="field">Bodyweight <span class="muted">(optional)</span><input type="text" inputmode="decimal" id="obBw" value="${(()=>{const b=state.bodyweights.find(x=>x.date===today());return b?fmtW(b.kg):'';})()}" placeholder="${U()}, for pull-ups, dips, and push-ups" enterkeyhint="done"></label>
   <h3 style="font:700 20px var(--display);margin:6px 0 0">How do you want to start?</h3>
@@ -5547,7 +5547,7 @@ function obView(){
   <button class="ob-opt primary" data-act="obSample"><b>Pick a ready-made routine</b><span>${tplCountLine()}</span></button>
   <button class="ob-opt" data-act="obFree"><b>Log a workout now</b><span>Add exercises as you go</span></button>
   <button class="ob-opt" data-act="obOwn"><b>Build my own routine</b><span>Your days, your exercises</span></button>
-  ${imp}${ENV==='preview'?'<button class="ob-opt" data-act="previewCopy"><b>Copy my log from Ironlog</b><span>Try this build on your real log; Ironlog is not changed</span></button>':''}</div>
+  ${imp}${ENV==='preview'?'<button class="ob-opt" data-act="previewCopy"><b>Copy my log in</b><span>Try this test version on your own log</span></button>':''}</div>
   <button class="linkbtn ob-skip" data-act="demoLoad">Look around with sample data first</button>
   <p class="small muted" id="obSafety" style="margin:10px 0 0;text-align:center"><span class="hastip" data-tip="${esc(SAFETY_TXT)}">Suggestions are estimates, not advice.</span></p></div>`;
 }
@@ -7289,7 +7289,7 @@ function regionSrc(){
 }
 function regionBody(){
   const rs=regionSrc();
-  if(rs.empty)return `<div class="card"><p class="headline">Nothing logged yet.</p><p class="small muted" style="margin:0 0 4px">Each region fills in with your own hard sets as you log them. The dashed ring is your weekly minimum.</p>${ENV==='preview'?`<p class="small" style="margin:6px 0">This preview keeps its own log, apart from Ironlog. ${previewCopyBtn('sm primary')}</p>`:''}<div class="chartbox tall"><canvas id="chRadar"></canvas></div>${chartFallback()}</div>`;
+  if(rs.empty)return `<div class="card"><p class="headline">Nothing logged yet.</p><p class="small muted" style="margin:0 0 4px">Each region fills in with your own hard sets as you log them. The dashed ring is your weekly minimum.</p>${ENV==='preview'?`<p class="small" style="margin:6px 0">This test version keeps a separate log. ${previewCopyBtn('sm primary')}</p>`:''}<div class="chartbox tall"><canvas id="chRadar"></canvas></div>${chartFallback()}</div>`;
   const balLabel=rs.label;
   const regs=regionBalance(rs.src);
   const low=regs.filter(x=>x.low),high=regs.filter(x=>x.high);
@@ -7605,7 +7605,7 @@ function viewHistory(){
   if(cs.length)h+=sec({sk:'history:cardio',key:'cardio',title:'Cardio and mobility',sub:`${cs.length} entr${cs.length===1?'y':'ies'}`,body:`<ul class="clist">${cs.slice(0,40).map(c=>`<li><span><b>${esc(CARDIOL[c.kind])}</b> <span class="small muted">${fmtDate(c.date)} · ${c.min} min${c.dist?` · ${distShow(c.dist)} ${distU()}`:''}${c.hr?` · ${c.hr} bpm`:''}${c.when!=='solo'?' · '+CWHENL[c.when].toLowerCase():''}${c.note?' · '+esc(c.note):''}</span></span><button class="ib sm" data-act="cardioDel" data-id="${c.id}" aria-label="Delete ${fmtDate(c.date)} cardio">✕</button></li>`).join('')}</ul>${cs.length>40?`<p class="small muted">${cs.length-40} older entries are in the CSV export.</p>`:''}`});
   const tr=state.trash||[];
   if(tr.length)h+=sec({sk:'history:trash',key:'trash',title:'Recently deleted',sub:`<span class="hastip" data-tip="${esc(`The ${TRASH_MAX} most recent deletions, each kept ${TRASH_DAYS} days`)}">${tr.length}</span>`,body:`<ul class="clist">${tr.map(x=>{const nm=x.kind==='session'?`${x.data.dayName||'Session'}, ${fmtDate(x.data.date)}`:x.kind==='cardio'?`${CARDIOL[x.data.kind]||'Cardio'}, ${fmtDate(x.data.date)}`:`Routine: ${x.data.name||'Routine'}`;return `<li><span>${esc(nm)} <span class="small muted">deleted ${fmtDate(x.date)}</span></span><span class="row" style="gap:6px;flex:none"><button class="btn sm" data-act="restore" data-id="${x.id}" data-k="${x.kind}">Restore</button><button class="ib sm" data-act="trashDel" data-id="${x.id}" data-k="${x.kind}" aria-label="Delete ${esc(nm)} for good">✕</button></span></li>`;}).join('')}</ul><p class="small" style="margin:10px 0 0"><button class="linkbtn" style="min-height:44px" data-act="trashEmpty">Delete all for good</button></p>`});
-  const impLine='<p class="small" style="margin:14px 0 0"><button class="linkbtn" style="min-height:44px" data-act="impOpen" data-tip="From notes, a spreadsheet, Strong, or Hevy. You check it before anything is saved.">Import workouts</button></p>';
+  const impLine='<p class="small" style="margin:14px 0 0"><button class="linkbtn" style="min-height:44px" data-act="impOpen" data-tip="From notes, a spreadsheet, or an export from another app. You check it before anything is saved.">Import workouts</button></p>';
   if(!ss.length)return h+'<div class="card"><p style="margin:0">No sessions yet. Start one on Today, or log one you did without the app with Log a past workout.</p></div>'+impLine+moreLine('history');
   const withData=Object.keys(I.byEx).sort((a,b)=>exName(a).localeCompare(exName(b)));
   if(ui.histEx&&!I.byEx[ui.histEx])ui.histEx='';
@@ -7710,7 +7710,7 @@ function viewSettings(){
   return `${pageHead(ENV==='preview'?'Ironlog Preview '+APP_VERSION:'','Settings',cloud.on?(window.claude?'Saved to your Claude account and this device':'Synced to your account and saved on this device'):'Saved on this device')}
   ${G('general','General')}<div class="card stack"><div class="grid2"><label class="field">Units<select data-bind="unit"><option value="lb" ${s.unit==='lb'?'selected':''}>lb and inches</option><option value="kg" ${s.unit==='kg'?'selected':''}>kg and cm</option></select></label>
   <label class="field">Theme<select data-bind="theme"><option value="system" ${s.theme==='system'?'selected':''}>Match device</option><option value="dark" ${s.theme==='dark'?'selected':''}>Dark</option><option value="light" ${s.theme==='light'?'selected':''}>Light</option></select></label></div>
-  <label class="field">Your name (optional)<input type="text" data-bind="userName" value="${esc(s.userName||'')}" maxlength="40" autocomplete="given-name" placeholder="Shown on Today"></label>
+  <label class="field">Name (optional)<input type="text" data-bind="userName" value="${esc(s.userName||'')}" maxlength="40" autocomplete="given-name"></label>
   <div><p class="small muted" style="margin:0 0 6px;font-weight:600">Accent colour</p><div class="chips" role="group" aria-label="Accent colour">${ACCENTS.map(([k,l])=>`<button class="chip acc ${(s.accent||'blue')===k?'on':''}" data-act="accent" data-v="${k}" aria-pressed="${(s.accent||'blue')===k}"><i class="sw sw-${k}" aria-hidden="true"></i>${l}</button>`).join('')}</div></div>
   <div class="grid2 one-narrow"><label class="field"><span class="hastip" data-tip="Compared with your 7-day-average bodyweight trend on Stats. Leave blank to track without a target.">Bodyweight goal (%/wk)</span><input type="text" inputmode="decimal" data-bind="bwGoalPct" value="${s.bwGoalPct==null?'':s.bwGoalPct}" placeholder="e.g. 0.3 or -0.5"></label>
   <label class="field"><span class="hastip" data-tip="A card on Today asks for your bodyweight when the last weigh-in is this old. Pull-ups, dips, and other bodyweight lifts use your latest weigh-in.">Weigh-in reminder</span><select data-bind="bwEvery">${BW_EVERY.map(([v,l])=>`<option value="${v}" ${bwEvery()===v?'selected':''}>${l}</option>`).join('')}</select></label></div>
@@ -7738,12 +7738,12 @@ function viewSettings(){
   ${G('data','Your data','','dataSec')}
   ${(()=>{const ap=acctPanel();const one=ap&&!acct.user;return `${ap}${one?'':`<div class="panel" id="syncInfo"${ap?' style="margin-top:8px"':''}>${syncInfo()}</div>`}`;})()}
   ${canInstallHere()?`<div class="panel row spread" id="installPanel" style="margin-top:8px"><p class="small" style="margin:0;flex:1 1 180px"><b>Install the app.</b> Full screen, offline, one tap from your home screen.</p><button class="btn sm primary" data-act="install">${/^ios/.test(installKind())?'Add to Home Screen':'Install'}</button></div>`:''}
-  ${ENV==='preview'?`<div class="panel row spread" style="margin-top:8px"><p class="small" style="margin:0;flex:1 1 180px"><b>This preview keeps its own log.</b> Copy your real one in to try this build on it. Ironlog is not changed.</p>${previewCopyBtn('sm primary')}</div>`:''}
+  ${ENV==='preview'?`<div class="panel row spread" style="margin-top:8px"><p class="small" style="margin:0;flex:1 1 180px"><b>Test version.</b> It keeps a separate log. Copy yours in to try it; your log in Ironlog stays as it is.</p>${previewCopyBtn('sm primary')}</div>`:''}
   ${privacyLine()}${safetyLine()}
   ${backupDue()?`<p class="callout yellow" style="margin:10px 0 0"><b>Backup due.</b> ${s.lastExport?`Last backup file ${fmtDate(s.lastExport)}.`:'No backup file yet.'} ${cloud.on?'Your account has not synced this week. Export one below.':''}</p>`:''}
   ${storageOk?'':'<p class="small" style="color:var(--red)">This browser is blocking local storage, so this device keeps nothing between reloads without cloud sync.</p>'}
   <div class="card stack"><div class="row"><button class="btn primary" data-act="export" data-tip="The backup: restores everything, on any device.">Export backup (.json)</button><button class="btn" data-act="showBackup" data-tip="The same backup as text, to copy somewhere safe.">Show backup text</button><button class="btn" data-act="exportCsv" data-tip="One row per set for spreadsheets. Import workouts reads it back, but it is not a full backup: routines and settings are not in it.">Export sets (.csv)</button></div>
-  <button class="btn" data-act="impOpen" data-tip="Adds sessions from notes, a spreadsheet, Strong, or Hevy. You check everything before it is saved.">Import workouts</button>
+  <button class="btn" data-act="impOpen" data-tip="Adds sessions from notes, a spreadsheet, or an export from another app. You check everything before it is saved.">Import workouts</button>
   <label class="field">Restore a backup file (replaces everything)<input type="file" accept=".json,application/json" id="importFile"></label>
   <button class="btn" data-act="pasteImport">Paste backup text instead</button>
   <div class="row"><button class="btn" data-act="undo" ${undoStack.length?'':'disabled'} data-tip="Deletes, resets, and imports from the last 7 days, kept after the app is closed. Edits are not undoable. Deleted sessions, cardio, and routines also wait in History for ${TRASH_DAYS} days.">Undo last delete or reset${undoStack.length?` (${undoStack.length} available)`:''}</button></div></div></div></details>
@@ -8019,6 +8019,39 @@ function renderModalBody(){
     if(hd&&!sh.hasAttribute('aria-label'))sh.setAttribute('aria-label',hd.textContent||'Dialog');
   }
 }
+/* The same exercise twice in one session (r34.2, V): sets done on one lift
+   are one exposure of it, whatever order they were logged in. Blocks side by
+   side are joined into one (live when a swap or an add lands next to the
+   same exercise, and at Finish); apart (2nd and 4th), they stay where they
+   were done, and the numbers read them together (sameExOnce in IDX). A
+   lighter block and a normal one are different work and never join. */
+function joinable(a,b){return !!a&&!!b&&a.exId===b.exId&&!a.light===!b.light;}
+/* Rows of a block made for the same exercise, appended to the one already
+   there: the working rows still to do, and the plan's count with them. */
+function joinRows(into,from){
+  const rows=from.sets.filter(x=>!x.warm&&!x.drop&&!x.done);
+  into.sets.push(...rows);into.plan={...into.plan,sets:into.sets.filter(x=>!x.warm&&!x.drop).length};
+  return rows;
+}
+/* Saved exercises side by side on the same lift become one, sets in order. */
+function joinAdjacent(ex){
+  const out=[];
+  for(const b of ex){const a=out[out.length-1];
+    if(a&&a.exId===b.exId&&!a.light===!b.light){a.sets=[...a.sets,...b.sets];if(b.note&&b.note.trim())a.note=[a.note,b.note].filter(x=>x&&x.trim()).join(' ');if(!a.rr&&b.rr)a.rr=b.rr;a.cut=a.cut&&b.cut?true:undefined;continue;}
+    out.push({...b,sets:[...b.sets]});}
+  return out;
+}
+/* For the numbers, every block of one lift in a session reads as one: one
+   exposure for targets, trends, stalls and PRs (two blocks used to count as
+   two sessions on one day, and could each set a PR). */
+function sameExOnce(ex){
+  const by=new Map();const out=[];
+  for(const b of ex){const k=b.exId+(b.light?'|l':'');const a=by.get(k);
+    if(!a){const c={...b,sets:[...b.sets]};by.set(k,c);out.push(c);continue;}
+    const wa=a.sets.filter(isWork).length,wb=b.sets.filter(isWork).length;
+    a.sets.push(...b.sets);if(wb>wa&&b.rr)a.rr=b.rr;else if(!a.rr&&b.rr)a.rr=b.rr;a.cut=!!(a.cut&&b.cut);}
+  return out;
+}
 /* One place that applies a choice from the exercise picker, or an exercise
    just created from it, for every mode the picker opens in. Adding to a
    session scrolls to the new exercise and marks it, instead of leaving it
@@ -8029,7 +8062,12 @@ function applyPick(m,id){
   if(m.mode==='swapItem'){const f=findItem(m.uid);if(f){const q=swapPlan(f.it,f.it.exId,id,f.r,f.r.days[f.di].id);Object.assign(f.it,{repMin:q.repMin,repMax:q.repMax,rir:q.rir,rest:q.rest,inc:q.inc});if(q.jump!=null)f.it.jump=q.jump;else delete f.it.jump;f.it.exId=id;commit();}closeModal();rerenderKeepScroll();return;}
   const d=state.draft;closeModal();if(!d){rerenderKeepScroll();return;}
   const half=p=>(d.deload||d.light)?{...p,sets:Math.max(1,Math.ceil(p.sets/2))}:p;
-  if(m.mode==='addBlock'){d.ex.push(newBlock(id,half(planFor(id,null,d.dayId)),{deload:!!d.deload,light:!!d.light,before:d.date}));saveNow();afterAdd(d.ex.length-1);return;}
+  if(m.mode==='addBlock'){const nb=newBlock(id,half(planFor(id,null,d.dayId)),{deload:!!d.deload,light:!!d.light,before:d.date});
+    const li=d.ex.length-1;const last=d.ex[li];
+    if(joinable(last,nb)){const before=JSON.parse(JSON.stringify(last.sets)),plan={...last.plan},did=d.id;const added=joinRows(last,nb);
+      snapshot(()=>{const dd=state.draft;if(!dd||dd.id!==did)return false;const y=dd.ex.find(x=>x===last);if(!y||added.some(x=>x.done))return false;y.sets=y.sets.filter(x=>!added.includes(x));y.plan=plan;return y.sets.length===before.length;});
+      saveNow();afterAdd(li);toast(`${EX(id).name}: ${added.length} more set${added.length===1?'':'s'}, with the ones above`,true);return;}
+    d.ex.push(nb);saveNow();afterAdd(d.ex.length-1);return;}
   /* Swapping used to replace the whole block, so sets already logged on the
      old exercise vanished. Now logged sets stay with the exercise they were
      done on, and the new one takes over the sets still to do. The count comes
@@ -8043,6 +8081,19 @@ function applyPick(m,id){
     const rows=b.sets.filter(x=>!x.warm&&!x.drop).length;
     const nb=newBlock(id,{...swapPlan(b.plan,b.exId,id,null,d.dayId),sets:done.length?Math.max(1,left):Math.max(1,rows||+b.plan.sets||1)},{deload:!!d.deload,light:!!d.light,before:d.date});nb.swappedFrom=b.swappedFrom||b.exId;if(nb.swappedFrom===id)nb.swappedFrom=null;
     if(b.cut)nb.cut=true;
+    /* Swapped to the exercise just after it (or just before it, when nothing
+       stays behind): the sets go to that one, so the lift is one exercise. */
+    const ni=done.length?(joinable(d.ex[bi+1],nb)?bi+1:-1):joinable(d.ex[bi-1],nb)?bi-1:joinable(d.ex[bi+1],nb)?bi+1:-1;
+    if(ni>=0){const y=d.ex[ni];const plan={...y.plan};
+      const added=joinRows(y,nb);
+      snapshot(()=>{const dd=state.draft;if(!dd||dd.id!==did)return false;const yy=dd.ex.find(x=>x===y);if(!yy||added.some(x=>x.done))return false;
+        yy.sets=yy.sets.filter(x=>!added.includes(x));yy.plan=plan;
+        if(done.length){const i=dd.ex.findIndex(x=>x===b);if(i<0)return false;dd.ex[i]=orig;}else dd.ex.splice(dd.ex.indexOf(yy)+(ni<bi?1:0),0,orig);
+        return true;});
+      if(done.length){b.sets=done;b.plan={...b.plan,sets:done.filter(x=>!x.warm&&!x.drop).length||1};}
+      else keepOpen(()=>d.ex.splice(bi,1));
+      fixSupersets(d.ex.map(x=>x.plan));saveNow();rerenderKeepScroll();
+      toast(done.length?`${EX(id).name}: the sets left join the ones below. Your sets so far stay with ${EX(orig.exId).name}.`:`Swapped to ${EX(id).name}: its sets are together now`,true);return;}
     snapshot(()=>{const dd=state.draft;if(!dd||dd.id!==did)return false;
       const at=dd.ex.findIndex(x=>x===nb);if(at<0||nb.sets.some(x=>x.done))return false;
       if(done.length){dd.ex.splice(at,1);const i=dd.ex.findIndex(x=>x===b);if(i>=0)dd.ex[i]=orig;else return false;}else dd.ex[at]=orig;
@@ -8586,13 +8637,13 @@ function routineFromLog(sessions){
 }
 function impSheet(m){
   const H=(t)=>`<div class="sheet fixed" role="dialog" aria-modal="true" aria-labelledby="impH"><div class="sheet-h"><h3 id="impH">${t}</h3><button class="ib" aria-label="Close" data-act="mClose">✕</button></div><div class="sheet-scroll">`;
-  if(m.step==='input')return H('Import workouts')+`<p class="small muted" style="margin:0 0 8px">Notes, a spreadsheet, Strong, or Hevy. Nothing is saved until you check it.</p>
+  if(m.step==='input')return H('Import workouts')+`<p class="small muted" style="margin:0 0 8px">Notes, a spreadsheet, or an export from another app. Nothing is saved until you check it.</p>
     <label class="btn primary block" style="position:relative">Choose a file<input type="file" id="impFile" accept=".csv,.tsv,.txt,.xlsx,.json,text/csv,text/plain,application/json" style="position:absolute;width:1px;height:1px;opacity:0"></label>
     <p class="small muted" style="margin:10px 0 4px">or paste it</p>
     <textarea id="impText" aria-label="Paste your log" style="min-height:160px;font-size:14px" placeholder="Sep 20&#10;Bench press 185x8, 185x7, 185x6&#10;Lat pulldown 3x10 @ 120">${esc(m.text||'')}</textarea>
     ${m.err?`<p class="small" style="color:var(--red);margin:8px 0 0">${esc(m.err)}</p>`:''}
     <button class="btn block" style="margin-top:10px" data-act="impRead">Read it</button>
-    <p class="small muted hastip" style="margin:10px 0 0" data-tip="Notes: a date on its own line, then one exercise per line with its sets (185x8, 185x7, or 3x10 @ 120). A spreadsheet: a file, or copy the cells and paste them, with columns such as date, exercise, weight, and reps. Strong: Settings, Export data. Hevy: Settings, Export and import data, Export workouts. Handwritten: photograph the page, open it in Photos, press and hold the writing, tap Copy, and paste it here. An Ironlog backup file restores your whole log instead.">What can I import?</p></div></div>`;
+    <p class="small muted hastip" style="margin:10px 0 0" data-tip="Notes: a date on its own line, then one exercise per line with its sets (185x8, 185x7, or 3x10 @ 120). A spreadsheet: a file, or copy the cells and paste them, with columns such as date, exercise, weight, and reps. Another app: export your workouts as a CSV file from its settings, then choose that file here. Handwritten: photograph the page, open it in Photos, press and hold the writing, tap Copy, and paste it here. An Ironlog backup file restores your whole log instead.">What can I import?</p></div></div>`;
   const r=m.res;
   if(r.needMap){const head=m.tab.rows[0];const opt=(f,label,need)=>`<label class="field">${label}${need?'':' <span class="muted">(optional)</span>'}<select data-mapf="${f}"><option value="">None</option>${head.map((h,i)=>`<option value="${i}" ${m.tab.map[f]===i?'selected':''}>${esc(String(h||'Column '+(i+1)).slice(0,30))}</option>`).join('')}</select></label>`;
     return H('Which column is which?')+`<p class="small muted" style="margin:0 0 8px">The first row is read as column names.</p>${opt('date','Date',1)}${opt('ex','Exercise',1)}${opt('w','Weight, none if bodyweight only')}${opt('r','Reps',1)}${opt('sets','Sets')}${opt('rir','RIR')}${opt('name','Workout name')}
@@ -8638,7 +8689,7 @@ async function liveLogFetch(){
   const best=[local,remote].filter(Boolean).sort((a,b)=>realCount(b)-realCount(a))[0]||null;
   return {st:best&&realCount(best)?best:null,err};
 }
-function previewCopyBtn(cls){return ENV==='preview'?`<button class="btn ${cls||''}" data-act="previewCopy">Copy my log from Ironlog</button>`:'';}
+function previewCopyBtn(cls){return ENV==='preview'?`<button class="btn ${cls||''}" data-act="previewCopy">Copy my log in</button>`:'';}
 function importData(text){
   let obj;try{obj=JSON.parse(text);}catch(e){toast('That is not valid backup text');return;}
   const s=obj&&obj.state?obj.state:obj;
@@ -9177,11 +9228,11 @@ const ACT={
     toast('Looking for your Ironlog log');
     const {st,err}=await liveLogFetch();
     if(!st){
-      if(!acct.user&&AUTH()){confirmBox('Sign in first','This preview keeps its own log. To copy your real one in, sign in here with your Ironlog account. Ironlog itself is not changed.','Sign in',()=>ACT.acctOpen({dataset:{mode:'signin'}}));return;}
+      if(!acct.user&&AUTH()){confirmBox('Sign in first','This test version keeps a separate log. Sign in with your Ironlog account to copy your log in. Your log in Ironlog stays as it is.','Sign in',()=>ACT.acctOpen({dataset:{mode:'signin'}}));return;}
       toast(err?`Could not read your Ironlog log: ${err.message}`:'No Ironlog log found for this account or on this phone.',null,6000);return;}
     const n=realCount(st);st.draft=null;
     const go=()=>{snapshot();state=st;commit();closeModal();ui.tab='today';render();toast(`Copied ${n} session${n===1?'':'s'} from Ironlog. Ironlog is unchanged.`,true);};
-    if(realCount(state)||state.draft)confirmBox('Replace the preview log?',`Your Ironlog log has ${n} session${n===1?'':'s'}. The copy replaces everything in this preview; Ironlog itself is not changed. You can step this back with Undo.`,'Copy my log',go);
+    if(realCount(state)||state.draft)confirmBox('Replace the preview log?',`Your Ironlog log has ${n} session${n===1?'':'s'}. Copying replaces everything in this test version; your log in Ironlog stays as it is. Undo can step this back.`,'Copy my log',go);
     else go();
   },
   obSample(){openModal({kind:'templates',from:'welcome'});},
@@ -9729,6 +9780,8 @@ const ACT={
        has trends. A past workout or an edit keeps what it had. */
     const unfinished=b=>{if(d.editingId||d.past)return false;const dn=b.sets.filter(x=>x.done&&!x.warm).length;const left=b.sets.filter(x=>!x.warm&&!x.done&&rowBlank(b,x)).length;return dn>0&&left>0&&dn<Math.ceil((dn+left)/2);};
     const ex=d.ex.map(b=>({exId:b.exId,note:b.note||'',rr:b.keepRR!==undefined?b.keepRR:(b.plan&&+b.plan.repMin>0&&+b.plan.repMax>0?[+b.plan.repMin,+b.plan.repMax]:null),cut:b.cut||unfinished(b)?true:undefined,light:b.light?true:undefined,sets:b.sets.filter(s=>s.done).map(s=>({w:s.w==null?0:s.w,r:+s.r,rir:s.rir==null||s.rir===''?null:+s.rir,warm:!!s.warm,drop:!!s.drop&&!s.warm,cal:s.cal&&!s.warm?s.cal:undefined}))})).filter(b=>b.sets.length);
+    // Side by side, the same lift is saved as one exercise (r34.2, V); apart, each stays where it was done.
+    const exJ=joinAdjacent(ex);ex.length=0;ex.push(...exJ);
     const cardio=(d.cardio||[]).filter(c=>c.min>0).map(c=>cleanCardio({...c,date:d.date}));
     if(!ex.length){
       if(cardio.length&&!d.editingId){state.cardio.push(...cardio);state.draft=null;commit();stopTimer();wakeOff();ui.todayDay=null;window.scrollTo(0,0);render();toast('Cardio saved. No lifting session was recorded.');return;}
@@ -10598,7 +10651,7 @@ function swapPrompt(b,reason){
 /*}ai=*/
 window.__onLib=(which)=>{if((which==='chart'&&ui.tab==='dash')||(which==='sortable'&&ui.tab==='program'))rerenderKeepScroll();};
 trashTidy();
-window.__ironlog={get state(){return state;},set state(v){state=v;},plainTemplate,trashTidy,ENV,KEY,COMMON,COMMON_TIP,isCommon,bwEvery,isRestWeek,sessCmp,avgWeeks,weekStreak,coach,noLog,afterSet,adjOn,bwAt,newBlock,cycleState,sortedSessions,addDays,loadIn,gymRack,gymClean,dbListOf,capOf,refreshEx,effShow,rirScale,setStr,libExercises,obGate,obTour,andList,belowMin,aboveMax,starterRoutine,starterSigs,plateList,exBarKg,VOL_MODES,liveLogFetch,regionSrc,fitTargets,firstFullWeek,moveBlock,BANDS,installSheet,siteHost,greyW,effW,greyR,lighterLoad,incOf,swapPlan,planSetsPerWeek,weekNeed,stepRead,e1inv,rtfAt,rtfOf,rtfBand,calStats,rirEff,isHard,setCredit,tonnage,loadMode,loadWords,loadNote,progStep,jumpCap,setSecs,setupSecs,recovery,rolling7,rankDays,rankExercises,isCompound,patternOf,noE1,whtrLine,exHeadline,remainMin,shortPlan,weekPlan,cycleProjection,lastLighterWeek,regionBalance,parseHeight,mixCheck,swapCands,eqPlan,exportCSV,importData,chunksOf,assemble,sessionMuscles,TRACK_ONLY,cloud,Hx,mergeChunk,baseOf,sync:()=>cq(cloudPull),TEMPLATES,lastRFor,impDate,impRows,impNorm,impMatch,impFromText,impFromTable,impHeader,impBuild,impStart,impXlsx,parseSets,undoStack,undoRestore,undoForget,allTimeBests,bestsBoard,obActive,fmtW,rirUsual,rirEst,routineFromTemplate,plannedSets,map3d:()=>({state:B3.state,fail:B3.fail,meshes:B3.meshes.length,yaw:B3.yaw,glow:Object.keys(B3.mats).filter(m=>B3.mats[m].emissiveIntensity>0),canvas:!!document.querySelector('#bm3d canvas'),colors:Object.fromEntries(Object.entries(B3.mats).map(([m,mt])=>[m,'#'+mt.color.getHexString()])),pick:(x,y)=>map3dPick(x,y),want:map3dColors()}),cloudState:()=>({on:cloud.on,status:cloud.status,err:cloud.err,uid:cloud.uid,acct:cloud.acct}),acctUser:()=>acct.user,acctWaiting:()=>!!acctWait.pw,flush:()=>cq(cloudFlush),backupDue,routineUpdates,planFor,platesMode,plateText,chunksOf,IDX,suggest,e1,render,ACT,ui,makeDemo,invalidate,normalize,snapshot,saveNow,timer,weekStats,weekStart,today,EX,blockProgress,dayMinutes,weekStreak,coach,tonnageNow,livePR,exProjection,movers,stalledIds,muscleStatus,actualAvg4,plannedPerWeek,parseSets,/*ai{*/aiSetsValid,fillSets,/*}ai=fillSets,*/newBlock,lastNoteOf,sizeRows,sessionMuscleSets,sessionCapNote,routineClutter,rowBlank,dayReasons,impTextSets,liftTrend,prsWithin,activeRoutine,rackStep,repFloor,sessionLength,prBeat,exInjury,exJoints,openModal,EQUIP,HARD_EX,recentLighter,planEvidenceNote,howToUrl,editFp,toast,avgWeeks,regionWk,REGION_WKS,SAFETY_TXT,libFiltered,nameMatch,workLoad,fitE,offSession,tagged,fatigueStalls,avgWeeksTxt,routineFromLog,repSpan,rangeWords,calDueIdx,readyCard,loadAskCard,/*ai{*/aiDigest,debriefPrompt,reviewPrompt,swapPrompt,AI,/*}ai=*/sameRR,hintOnce,overSets,rackTol,daysOff,BACK_DAYS,prName,sessTm,effTgt,bwDueCard,bwNoLoad};
+window.__ironlog={get state(){return state;},set state(v){state=v;},plainTemplate,trashTidy,ENV,KEY,COMMON,COMMON_TIP,isCommon,bwEvery,isRestWeek,sessCmp,avgWeeks,weekStreak,coach,noLog,afterSet,adjOn,bwAt,newBlock,cycleState,sortedSessions,addDays,loadIn,gymRack,gymClean,dbListOf,capOf,refreshEx,effShow,rirScale,setStr,libExercises,obGate,obTour,andList,belowMin,aboveMax,starterRoutine,starterSigs,plateList,exBarKg,VOL_MODES,liveLogFetch,regionSrc,fitTargets,firstFullWeek,moveBlock,BANDS,installSheet,siteHost,greyW,effW,greyR,lighterLoad,incOf,swapPlan,planSetsPerWeek,weekNeed,stepRead,e1inv,rtfAt,rtfOf,rtfBand,calStats,rirEff,isHard,setCredit,tonnage,loadMode,loadWords,loadNote,progStep,jumpCap,setSecs,setupSecs,recovery,rolling7,rankDays,rankExercises,isCompound,patternOf,noE1,whtrLine,exHeadline,remainMin,shortPlan,weekPlan,cycleProjection,lastLighterWeek,regionBalance,parseHeight,mixCheck,swapCands,eqPlan,exportCSV,importData,chunksOf,assemble,sessionMuscles,TRACK_ONLY,cloud,Hx,mergeChunk,baseOf,sync:()=>cq(cloudPull),TEMPLATES,lastRFor,impDate,impRows,impNorm,impMatch,impFromText,impFromTable,impHeader,impBuild,impStart,impXlsx,parseSets,undoStack,undoRestore,undoForget,allTimeBests,bestsBoard,obActive,fmtW,rirUsual,rirEst,routineFromTemplate,plannedSets,map3d:()=>({state:B3.state,fail:B3.fail,meshes:B3.meshes.length,yaw:B3.yaw,glow:Object.keys(B3.mats).filter(m=>B3.mats[m].emissiveIntensity>0),canvas:!!document.querySelector('#bm3d canvas'),colors:Object.fromEntries(Object.entries(B3.mats).map(([m,mt])=>[m,'#'+mt.color.getHexString()])),pick:(x,y)=>map3dPick(x,y),want:map3dColors()}),cloudState:()=>({on:cloud.on,status:cloud.status,err:cloud.err,uid:cloud.uid,acct:cloud.acct}),acctUser:()=>acct.user,acctWaiting:()=>!!acctWait.pw,flush:()=>cq(cloudFlush),backupDue,routineUpdates,planFor,platesMode,plateText,chunksOf,IDX,suggest,e1,render,ACT,ui,makeDemo,invalidate,normalize,snapshot,saveNow,timer,weekStats,weekStart,today,EX,blockProgress,dayMinutes,weekStreak,coach,tonnageNow,livePR,exProjection,movers,stalledIds,muscleStatus,actualAvg4,plannedPerWeek,parseSets,/*ai{*/aiSetsValid,fillSets,/*}ai=fillSets,*/newBlock,lastNoteOf,sizeRows,sessionMuscleSets,sessionCapNote,routineClutter,rowBlank,dayReasons,impTextSets,liftTrend,prsWithin,activeRoutine,rackStep,repFloor,sessionLength,prBeat,exInjury,exJoints,openModal,EQUIP,HARD_EX,recentLighter,planEvidenceNote,howToUrl,editFp,toast,avgWeeks,regionWk,REGION_WKS,SAFETY_TXT,libFiltered,nameMatch,workLoad,fitE,offSession,tagged,fatigueStalls,avgWeeksTxt,routineFromLog,repSpan,rangeWords,calDueIdx,readyCard,loadAskCard,/*ai{*/aiDigest,debriefPrompt,reviewPrompt,swapPrompt,AI,/*}ai=*/sameRR,hintOnce,overSets,rackTol,daysOff,BACK_DAYS,prName,sessTm,effTgt,bwDueCard,bwNoLoad,applyPick,joinAdjacent,sameExOnce};
 render();
 wakeOn();
 timerResume();

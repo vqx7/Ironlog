@@ -359,6 +359,57 @@ const ODD = /shared (phone|device|computer)|someone else|another person|other pe
       return { tone: c.tone, text: c.text, zeroRise: /0 (hard )?sets a week[^\n]*Rising|Rising[^\n]*0 (hard )?sets a week/.test(t), onTrack: /^On track/m.test(t) };
     });
     ok(st.tone !== 'green' && /last 4 weeks/.test(st.text) && !st.zeroRise, 'A2: after 6 weeks off the coach says so (not green "On track") and no muscle reads rising on 0 sets', st);
+    // V (2026-10-11): the same lift twice in a session. Side by side it is one exercise; apart (2nd and 4th) each stays, and the numbers read it once.
+    const three = (o) => ev(o => {
+      const L = window.__ironlog; const LB = 0.45359237; const s = L.state; s.settings.unit = 'lb'; delete s.settings.todayStart; s.sessions = []; s.draft = null; L.state = L.normalize(s); L.invalidate();
+      L.ACT.startFree(); if (L.ui.modal) L.ACT.mClose(); const d = L.state.draft;
+      for (const id of o.ids) d.ex.push(L.newBlock(id, { sets: 3, repMin: 8, repMax: 12, rir: 1, rest: 90, inc: 5 * LB }, {}));
+      if (o.doneFirst != null) { const b = d.ex[o.doneFirst]; b.sets[0].w = 100 * LB; b.sets[0].r = 10; b.sets[0].done = true; }
+      L.saveNow(); L.ui.tab = 'today'; L.render(); return d.ex.map(b => b.exId).join();
+    }, o);
+    const shape = () => ev(() => window.__ironlog.state.draft.ex.map(b => `${b.exId}:${b.sets.filter(x => !x.warm && !x.drop).length}${b.sets.some(x => x.done) ? '*' : ''}`).join(' '));
+    const pick = (mode, b, id) => ev(([mode, b, id]) => { const L = window.__ironlog; L.applyPick({ mode, b }, id); }, [mode, b, id]);
+    // Swap a fresh exercise to the one right after it: one exercise of 6 sets.
+    await three({ ids: ['bench', 'latPulldown', 'dbCurl'] });
+    await pick('swapBlock', 0, 'latPulldown');
+    const j1 = await shape();
+    ok(j1 === 'latPulldown:6 dbCurl:3', 'a swap to the exercise just after it joins them: one Lat Pulldown of 6 sets', j1);
+    await ev(() => window.__ironlog.ACT.undo());
+    const j1u = await shape();
+    ok(j1u === 'bench:3 latPulldown:3 dbCurl:3', 'Undo puts the swapped exercise back as it was', j1u);
+    // With a set done on it, that set stays; the sets left join the same lift just below.
+    await three({ ids: ['bench', 'latPulldown', 'dbCurl'], doneFirst: 0 });
+    await pick('swapBlock', 0, 'latPulldown');
+    const j2 = await shape();
+    ok(j2 === 'bench:1* latPulldown:5 dbCurl:3', 'with one bench set done, the 2 sets left join Lat Pulldown below (5); the done set stays on bench', j2);
+    // Apart (2nd and 4th): each stays where it is.
+    await three({ ids: ['bench', 'latPulldown', 'dbCurl', 'squat'] });
+    await pick('swapBlock', 3, 'latPulldown');
+    const j3 = await shape();
+    ok(j3 === 'bench:3 latPulldown:3 dbCurl:3 latPulldown:3', 'a swap to a lift two places away keeps both where they are', j3);
+    // Adding the lift that is already last joins it.
+    await three({ ids: ['bench', 'dbCurl'] });
+    await pick('addBlock', 0, 'dbCurl');
+    const j4 = await shape();
+    ok(j4 === 'bench:3 dbCurl:6', 'adding the exercise that is already last adds its sets to it', j4);
+    // Finish: two of one lift side by side (moved there) are saved as one exercise.
+    const j5 = await ev(async () => {
+      const L = window.__ironlog; const LB = 0.45359237; const s = L.state; s.sessions = []; s.draft = null; L.state = L.normalize(s); L.invalidate(); L.ACT.startFree(); if (L.ui.modal) L.ACT.mClose(); const d = L.state.draft;
+      for (const id of ['dbCurl', 'bench', 'dbCurl']) { const b = L.newBlock(id, { sets: 2, repMin: 8, repMax: 12, rir: 1, rest: 90, inc: 5 * LB }, {}); b.sets.forEach(x => { x.w = (id === 'bench' ? 135 : 25) * LB; x.r = 10; x.rir = 1; x.done = true; }); d.ex.push(b); }
+      L.moveBlock(1, 2); L.saveNow(); L.ACT.finish(); await new Promise(r => setTimeout(r, 150)); if (L.ui.modal && L.ui.modal.kind !== 'recap') L.ACT.mOk && L.ACT.mOk(); await new Promise(r => setTimeout(r, 150));
+      const ss = L.state.sessions[0]; return ss ? ss.ex.map(b => `${b.exId}:${b.sets.length}`).join(' ') : 'none';
+    });
+    ok(j5 === 'dbCurl:4 bench:2', 'Finish saves the same lift side by side as one exercise (4 curl sets), in the order done', j5);
+    // The numbers: a saved session with curls 2nd and 4th is one exposure, with one PR at most.
+    const j6 = await ev(() => {
+      const L = window.__ironlog; const LB = 0.45359237; const s = L.state;
+      const blk = (exId, w, r) => ({ exId, rr: [8, 12], sets: [0, 1].map(() => ({ w: w * LB, r, rir: 1, done: true })) });
+      s.sessions = [{ id: 'e0', date: '2026-10-01', dayIdx: 0, dayId: null, dayName: 'T', routineId: '', notes: '', ex: [blk('dbCurl', 20, 10)] }, { id: 'e1', date: '2026-10-08', dayIdx: 0, dayId: null, dayName: 'T', routineId: '', notes: '', ex: [blk('bench', 135, 10), blk('dbCurl', 25, 10), blk('squat', 185, 8), blk('dbCurl', 25, 11)] }];
+      s.draft = null; L.state = L.normalize(s); L.invalidate(); const I = L.IDX();
+      return { exp: (I.byEx.dbCurl || []).filter(x => x.date === '2026-10-08').length, n: I.byEx.dbCurl.find(x => x.date === '2026-10-08').n, prs: I.prs.filter(p => p.exId === 'dbCurl' && p.date === '2026-10-08').length, kept: s.sessions[1].ex.length };
+    });
+    ok(j6.exp === 1 && j6.n === 4 && j6.prs <= 1 && j6.kept === 4, 'curls 2nd and 4th in one session: kept as logged, read as one exposure of 4 sets with at most one PR', j6);
+
     // C-F14: a best inside one band of reps is not announced as the lift's best estimate.
     const cf14 = await ev(() => {
       const L = window.__ironlog; const s = L.state; s.settings.unit = 'kg';
@@ -437,13 +488,19 @@ const ODD = /shared (phone|device|computer)|someone else|another person|other pe
     for (const tab of ['today', 'program', 'dash', 'history', 'settings']) {
       seen += await ev(t => { const L = window.__ironlog; L.ui.tab = t; L.render(); document.querySelectorAll('#view details').forEach(d => d.open = true); return document.getElementById('view').innerText + ' ' + [...document.querySelectorAll('[data-tip]')].map(e => e.getAttribute('data-tip')).join(' '); }, tab);
     }
-    for (const act of ['menuOpen', 'guideOpen']) {
+    for (const act of ['menuOpen', 'guideOpen', 'impOpen']) {
       seen += await ev(async a => { const L = window.__ironlog; L.ACT[a]({ dataset: {} }); await new Promise(r => setTimeout(r, 60)); document.querySelectorAll('.sheet details').forEach(d => d.open = true); const m = document.querySelector('.sheet'); const t = m ? m.innerText + ' ' + [...m.querySelectorAll('[data-tip]')].map(e => e.getAttribute('data-tip')).join(' ') : ''; if (L.ui.modal) L.ACT.mClose(); return t; }, act);
     }
     ok(seen.length > 5000, 'the scan read the tabs, the menu, and the Guide', seen.length);
     const bad = (seen.match(new RegExp('.{0,40}(' + ODD.source + ').{0,40}', 'gi')) || []);
     ok(!bad.length, 'on screen and in tips: no talk of shared phones, someone else, or another person', bad.slice(0, 5));
     ok(!/\u2014/.test(seen), 'on screen and in tips: no em dashes', (seen.match(/.{0,30}\u2014.{0,30}/g) || []).slice(0, 5));
+    // V (2026-10-11): no other app named on screen, and the name field is just "Name".
+    ok(!/\b(Strong|Hevy)\b/.test(seen), 'no other workout app named on any tab, tip, the menu, the Guide, or the import sheet', (seen.match(/.{0,40}\b(Strong|Hevy)\b.{0,40}/g) || []).slice(0, 5));
+    const F = await open(FILE, { browser, realStarter: true, clock: '2026-10-11T12:00:00' });
+    const first = await F.page.evaluate(() => { const v = document.getElementById('view'); return { t: v.innerText + ' ' + [...v.querySelectorAll('[data-tip],[placeholder]')].map(e => (e.getAttribute('data-tip') || '') + ' ' + (e.getAttribute('placeholder') || '')).join(' '), name: (([...v.querySelectorAll('label.field')].find(l => l.querySelector('[data-bind="userName"]')) || {}).innerText || '').trim() }; });
+    ok(/^Name/.test(first.name) && !/greeting|Shown on Today/i.test(first.t) && !/\b(Strong|Hevy)\b/.test(first.t), 'the first-run page: "Name (optional)" with no greeting line, and no other app named', first.name);
+    await F.ctx.close().catch(() => {});
     ok(!P.errors.length, 'copy scan: no page errors', P.errors);
     await P.ctx.close().catch(() => {});
   }
