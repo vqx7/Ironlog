@@ -489,6 +489,15 @@ async function engineRun(page, cases, gym) {
     if (signedIn) {
       await S.ev(() => { const L = window.__ironlog; if (L.ui.modal) L.ACT.mClose(); L.state.settings.onboarded = true; const R = L.state.routines[0]; L.state.sessions.push({ id: 'so-1', date: '2026-10-08', dayIdx: 0, dayId: R.days[0].id, dayName: 'Day', routineId: R.id, notes: '', ex: [{ exId: 'bench', sets: [{ w: 60, r: 8, rir: 1, done: true }] }] }); L.saveNow(); L.render(); });
       await wait(1500);
+      // r34.2 (A4): offline with a change not yet sent, Sign out says so at once, not "saved in your account" and a 15 s wait.
+      await S.ctx.setOffline(true);
+      await S.ev(() => { const L = window.__ironlog; L.state.sessions.push({ id: 'so-off', date: '2026-10-08', dayIdx: 0, dayId: L.state.routines[0].days[0].id, dayName: 'Day', routineId: L.state.routines[0].id, notes: '', ex: [{ exId: 'bench', sets: [{ w: 61, r: 8, rir: 1, done: true }] }] }); L.saveNow(); L.ui.tab = 'settings'; L.ui.folds['settings:data'] = true; L.render(); });
+      await wait(600);
+      const t0 = Date.now(); await S.page.click('#acctPanel [data-act="acctSignOut"]'); await wait(150);
+      const off = await S.ev(() => ({ t: (document.getElementById('modal') || {}).innerText || '', on: !!window.__ironlog.acctUser() }));
+      ok(/Not in your account yet/.test(off.t) && !/saved in your account/i.test(off.t) && off.on && Date.now() - t0 < 2000, 'offline with a change not sent: Sign out says "Not in your account yet" at once', off);
+      await S.ev(() => { const L = window.__ironlog; if (L.ui.modal) L.ACT.mClose(); L.state.sessions = L.state.sessions.filter(x => x.id !== 'so-off'); L.saveNow(); });
+      await S.ctx.setOffline(false); await wait(2500);
       fake.setDeny(true);
       await S.ev(() => { const L = window.__ironlog; L.state.sessions.push({ id: 'so-2', date: '2026-10-09', dayIdx: 0, dayId: L.state.routines[0].days[0].id, dayName: 'Day', routineId: L.state.routines[0].id, notes: '', ex: [{ exId: 'bench', sets: [{ w: 62.5, r: 8, rir: 1, done: true }] }] }); L.saveNow(); L.ui.tab = 'settings'; L.ui.folds['settings:data'] = true; L.render(); document.querySelectorAll('#view details').forEach(d => { d.open = true; }); });
       await wait(800);

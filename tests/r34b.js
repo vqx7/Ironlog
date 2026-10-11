@@ -75,7 +75,7 @@ const ODD = /shared (phone|device|computer)|someone else|another person|other pe
     const pr = await ev(() => { const L = window.__ironlog; return { big: L.prsWithin(30).filter(p => p.date === '2026-10-08').map(p => p.type), names: [L.prName({ value: 30, prevAll: 31, bb: 2 }), L.prName({ value: 32, prevAll: 31, bb: 2 }), L.prName({ value: 30, prevAll: null, bb: 1 })] }; });
     // 80 x 10 is about 107 by the estimate; 75 x 15 about 112: weaker, so nothing to announce.
     ok(pr.big.length === 0, '80 x 10 after 75 x 15 (weaker by the estimate) is not a PR in Recent PRs', pr.big);
-    ok(pr.names[0] === 'Best for 6 to 10 reps' && pr.names[1] === 'Best estimate' && pr.names[2] === 'Best estimate', 'a best only for its reps is "Best for 6 to 10 reps"; "Best estimate" only when it beats every earlier estimate', pr.names);
+    ok(pr.names[0] === 'Best for 6 to 10 reps to failure' && pr.names[1] === 'Best estimate' && pr.names[2] === 'Best estimate', 'a best only for its reps is "Best for 6 to 10 reps"; "Best estimate" only when it beats every earlier estimate', pr.names);
 
     // 1h. A heavier load with the reps in range is never read as down.
     await seed({ ss: [['2026-09-13', 'latPulldown', [[90, 14, 1], [90, 14, 1], [90, 13, 1]], [8, 15]], ['2026-09-20', 'latPulldown', [[90, 15, 1], [90, 14, 1], [90, 14, 1]], [8, 15]], ['2026-09-27', 'latPulldown', [[95, 11, 1], [95, 10, 1], [95, 10, 1]], [8, 15]], ['2026-10-04', 'latPulldown', [[95, 11, 1], [95, 10, 1], [95, 10, 1]], [8, 15]], ['2026-10-10', 'latPulldown', [[95, 12, 1], [95, 11, 1], [95, 10, 1]], [8, 15]]] });
@@ -234,6 +234,189 @@ const ODD = /shared (phone|device|computer)|someone else|another person|other pe
     const wide = await ev(() => document.documentElement.scrollWidth <= innerWidth);
     ok(wide, 'no sideways scroll on Settings at 320 px' + T);
     ok(!P.errors.length, 'session screen: no page errors' + T, P.errors);
+    await P.ctx.close().catch(() => {});
+  }
+
+  // ---------- 2b. The session, the rest of the review's steps, through the screen ----------
+  {
+    const P = await open(FILE, { browser, touch: true, clock: '2026-10-11T12:00:00' });
+    const ev = (f, a) => P.page.evaluate(f, a);
+    // One exercise in a blank session, with the given earlier sessions (sets in the unit shown).
+    const setup = (o) => ev(o => {
+      const L = window.__ironlog; const LB = 0.45359237; const s = L.state; const u = v => o.kg ? v : v * LB;
+      s.settings.onboarded = true; s.settings.unit = o.kg ? 'kg' : 'lb'; s.settings.autoDone = !!o.auto; s.settings.timerMode = 'auto'; delete s.settings.rirScale; delete s.settings.gym; delete s.settings.autoAdj; delete s.settings.todayStart;
+      if (o.fill) s.settings.loadFill = 'fill'; else delete s.settings.loadFill;
+      s.injuries = []; s.bodyweights = [];
+      s.sessions = (o.ss || []).map(([id, date, exId, sets, rr, t]) => ({ id, date, t: t || undefined, dayIdx: 0, dayId: null, dayName: 'T', routineId: '', notes: '', ex: [{ exId, rr, sets: sets.map(([w, r, rir]) => ({ w: u(w), r, rir, done: true })) }] }));
+      s.draft = null; L.state = L.normalize(s); L.invalidate();
+      L.ACT.startFree(); if (L.ui.modal) L.ACT.mClose();
+      const d = L.state.draft; d.ex.push(L.newBlock(o.ex, { sets: o.sets || 3, repMin: o.lo, repMax: o.hi, rir: o.rir == null ? 1 : o.rir, rest: 90, inc: o.kg ? 2.5 : 5 * LB }, {}));
+      L.saveNow(); L.ui.tab = 'today'; L.render(); const b = d.ex[0]; return b.sw == null ? null : Math.round((o.kg ? b.sw : b.sw / LB) * 100) / 100;
+    }, o);
+    const typeIn = (f, si, v, bi) => ev(([f, si, v, bi]) => { const i = document.querySelector(`[data-f="${f}"][data-b="${bi || 0}"][data-s="${si}"]`); i.value = String(v); i.dispatchEvent(new Event('input', { bubbles: true })); i.dispatchEvent(new Event('change', { bubbles: true })); }, [f, si, v, bi]);
+    const click = (sel) => ev(async sel => { const e = document.querySelector(sel); if (!e) return false; e.click(); await new Promise(r => setTimeout(r, 150)); return true; }, sel);
+    const tick = async (si, reps, rir) => { await typeIn('r', si, reps); await ev(([si, rir]) => { window.__ironlog.state.draft.ex[0].sets[si].rir = rir; }, [si, rir]); await click(`[data-act="sDone"][data-b="0"][data-s="${si}"]`); };
+    const rows = (kg) => ev(kg => { const L = window.__ironlog; const b = L.state.draft.ex[0]; const k = v => v == null || v === '' ? null : Math.round((kg ? +v : +v / 0.45359237) * 100) / 100; return { w: b.sets.map(x => k(x.w)), shown: [...document.querySelectorAll('[data-f="w"][data-b="0"]')].map(i => i.value || i.placeholder), adj: b.adj ? { at: b.adj.at, w: k(b.adj.w) } : null, line: (document.getElementById('adj-0') || {}).innerText || '' }; }, kg);
+
+    // B-F5: "Fill in suggested loads" with auto-mark on (the default): reps typed, then the RIR box, then 4. The adjustment holds, and holds when re-rated 5.
+    const bench4 = [['h1', '2026-10-04', 'bench', [[180, 10, 2], [180, 9, 2], [180, 9, 2], [180, 8, 2]], [6, 10]]];
+    await setup({ ss: bench4, ex: 'bench', lo: 6, hi: 10, rir: 2, sets: 4, fill: true, auto: true });
+    await typeIn('r', 0, 10);
+    await click('.rirb[data-b="0"][data-s="0"]');
+    await click('.rirstrip [data-act="rirPick"][data-v="4"]');
+    let r = await rows();
+    ok(r.adj && r.adj.w > 180 && r.w.slice(1).every(w => w === r.adj.w) && /Next sets/.test(r.line), 'B-F5: fill mode and auto-mark on, 180 x 10 rated 4 against 2: the filled rows move up and the line shows', r);
+    const up1 = r.adj && r.adj.w;
+    await click('.rirb[data-b="0"][data-s="0"]');
+    await click('.rirstrip [data-act="rirPick"][data-v="5"]');
+    r = await rows();
+    ok(r.adj && r.adj.w >= up1 && r.w.slice(1).every(w => w === r.adj.w), 'B-F5: re-rated 5, the adjustment holds (it was undone back to 180 before)', r);
+
+    // B-F7: a warm-up added after an adjustment keeps it on its own set; that set made a warm-up drops it.
+    await setup({ ss: bench4, ex: 'bench', lo: 6, hi: 10, rir: 2, sets: 4 });
+    await tick(0, 10, 4);
+    const before = await rows();
+    await ev(() => window.__ironlog.ACT.wAdd({ dataset: { b: '0' } }));
+    await ev(async () => { window.__ironlog.render(); await new Promise(r => setTimeout(r, 100)); });
+    r = await rows();
+    const srcAt = await ev(() => window.__ironlog.state.draft.ex[0].sets.findIndex(x => x.done && !x.warm));
+    ok(before.adj && r.adj && r.adj.at === srcAt && srcAt === 1 && r.shown.slice(2).every(v => +v === before.adj.w), 'B-F7: a warm-up inserted above keeps the adjustment on set 1 (now row 2), the rows below still at ' + (before.adj && before.adj.w), { before, r, srcAt });
+    await click(`[data-act="sWarm"][data-b="0"][data-s="${srcAt}"]`);
+    r = await rows();
+    ok(!r.adj && !r.line, 'B-F7: the adjusted-from set marked W drops the adjustment and its line', r);
+
+    // B-F9: a blank effort reads as the lift's usual effort (2 here), not as failure: 180 x 4 goes to 160, not 150.
+    const usual2 = [1, 2, 3, 4].map(i => ['u' + i, `2026-09-${String(6 + i * 7).padStart(2, '0')}`, 'bench', [[180, 9, 2], [180, 9, 2], [180, 8, 2], [180, 8, 2]], [6, 10]]);
+    await setup({ ss: usual2, ex: 'bench', lo: 6, hi: 10, rir: 2, sets: 4 });
+    await tick(0, 4, null);
+    r = await rows();
+    // e1(180, 4, 2) = 180 x 36 / 31 = 209.0; e1inv(209.0, 6 + 2 + 1) = 162.6, down to 160.
+    ok(r.adj && r.adj.w === 160, 'B-F9: 180 x 4 with effort blank (usual 2): next sets 160, as if rated 2 (not 150, as if all-out)', r);
+    ok(/under your 6-10 range/.test(r.line), 'B-F16: the down line says "under your 6-10 range", not "under your 6"', r.line);
+
+    // B-F4: the line goes once no set is left under it.
+    await setup({ ss: bench4, ex: 'bench', lo: 6, hi: 10, rir: 2, sets: 2 });
+    await tick(0, 10, 4);
+    const l1 = (await rows()).line;
+    await tick(1, 9, 2);
+    r = await rows();
+    ok(/Next sets/.test(l1) && !r.line, 'B-F4: after the last set the "Next sets" line is gone', { l1, r });
+
+    // B-F3 and C-F6: a set the app moved up from is a working set at Finish, never a "ramp-up".
+    await setup({ kg: true, ss: [['r1', '2026-10-04', 'dbRow', [[28, 10, 1], [28, 10, 1], [28, 10, 1]], [8, 12]]], ex: 'dbRow', lo: 8, hi: 12, rir: 1, sets: 3 });
+    await tick(0, 12, 5);
+    const ad = await rows(true);
+    await tick(1, 10, 1); await tick(2, 9, 1);
+    await ev(() => window.__ironlog.ACT.finish());
+    const fin = await ev(() => { const m = window.__ironlog.ui.modal; return m ? { kind: m.kind, title: m.title || '' } : null; });
+    ok(ad.adj && ad.adj.w > 28 && !(fin && /ramp-up/i.test(fin.title)), 'C-F6: 28 x 12 at 5 in reserve moved the next sets up; Finish does not call it a ramp-up set', { ad, fin });
+    await ev(() => { const L = window.__ironlog; if (L.ui.modal) L.ACT.mClose(); });
+
+    // C-F1: the evening session of a two-a-day does not repeat the morning's Weight PR.
+    const am = new Date(2026, 9, 11, 7, 0).getTime();
+    await setup({ kg: true, ss: [['p0', '2026-10-01', 'dbCurl', [[12, 8, 1], [12, 8, 1], [12, 8, 1]], [8, 12]], ['am', '2026-10-11', 'dbCurl', [[14, 7, 1], [14, 7, 1], [14, 6, 1]], [8, 12], am]], ex: 'dbCurl', lo: 8, hi: 12, rir: 1, sets: 3 });
+    for (const si of [0, 1, 2]) { await typeIn('w', si, 14); }
+    await ev(() => { const e = document.getElementById('toast'); if (e) e.innerText = ''; });
+    await tick(0, 7, 1);
+    const toastTxt = await ev(() => (document.getElementById('toast') || {}).innerText || '');
+    await tick(1, 7, 1); await tick(2, 6, 1);
+    await ev(() => window.__ironlog.ACT.finish());
+    await wait(200);
+    const rec = await ev(() => { const L = window.__ironlog; const m = L.ui.modal; const sheet = document.querySelector('.sheet'); return { kind: m && m.kind, pr: !!document.getElementById('recapPR'), text: sheet ? sheet.innerText : '', prs: L.IDX().prs.filter(p => p.date === '2026-10-11' && p.exId === 'dbCurl').map(p => ({ type: p.type, sid: p.sid })) }; });
+    ok(!/PR/.test(toastTxt), 'C-F1: 14 kg in the evening, after 14 kg that morning: no live PR toast', toastTxt);
+    ok(rec.kind === 'recap' && !rec.pr && rec.prs.length === 1 && rec.prs[0].sid === 'am', 'C-F1: the evening recap has no PR; the one Weight PR of the day stays the morning session\'s', rec);
+    await ev(() => { const L = window.__ironlog; if (L.ui.modal) L.ACT.mClose(); });
+
+    // B-F13: an RIR strip open on the next exercise survives the fold of the one just finished.
+    await setup({ ss: bench4, ex: 'bench', lo: 6, hi: 10, rir: 2, sets: 1 });
+    await ev(() => { const L = window.__ironlog; const d = L.state.draft; d.ex.push(L.newBlock('latPulldown', { sets: 3, repMin: 8, repMax: 12, rir: 1, rest: 90, inc: 5 * 0.45359237 }, {})); L.saveNow(); L.render(); });
+    await tick(0, 9, 2);
+    await click('.rirb[data-b="1"][data-s="0"]');
+    await wait(2600);
+    const strip = await ev(() => { const s = document.querySelector('.rirstrip'); return s ? s.dataset.b : null; });
+    ok(strip === '1', 'B-F13: the strip opened on the next exercise is still open after the first one folds', strip);
+
+    // C-F11: after switching kg to lb mid-session, the target and Last line are in lb.
+    await setup({ kg: true, ss: [['k1', '2026-10-04', 'bench', [[60, 9, 1], [60, 8, 1], [60, 8, 1]], [6, 10]]], ex: 'bench', lo: 6, hi: 10, rir: 1, sets: 3 });
+    const kgTxt = await ev(() => document.querySelector('#blk-0 .hint').innerText);
+    await ev(() => { const L = window.__ironlog; L.ui.tab = 'settings'; L.render(); const s = document.querySelector('[data-bind="unit"]'); s.value = 'lb'; s.dispatchEvent(new Event('change', { bubbles: true })); L.ui.tab = 'today'; L.render(); });
+    const lbTxt = await ev(() => document.querySelector('#blk-0 .hint').innerText);
+    ok(/kg/.test(kgTxt) && /lb/.test(lbTxt) && !/\bkg\b/.test(lbTxt), 'C-F11: the target and Last line follow a switch from kg to lb mid-session', { kgTxt, lbTxt });
+
+    // C-F2: Today in freestyle mode has More options, with Rest week.
+    await ev(() => { const L = window.__ironlog; const s = L.state; s.draft = null; s.settings.unit = 'lb'; s.settings.todayStart = 'free'; L.state = L.normalize(s); L.invalidate(); L.ui.heroMore = false; L.ui.tab = 'today'; L.render(); });
+    const more1 = await click('[data-act="heroMore"]');
+    const more = await ev(() => ({ rest: !!document.querySelector('[data-act="restWkOpen"]'), cardio: /cardio/i.test(document.querySelector('#view').innerText) }));
+    ok(more1 && more.rest, 'C-F2: a blank-session Today has More options, with Rest week', more);
+
+    // A2 and B-F14: after 6 weeks off, the coach is not "On track", and no muscle reads "rising" on 0 sets.
+    const st = await ev(() => {
+      const L = window.__ironlog; const LB = 0.45359237; const s = L.state; s.settings.todayStart = undefined; delete s.settings.todayStart;
+      const mk = (i, date) => ({ id: 'b' + i, date, dayIdx: 0, dayId: null, dayName: 'T', routineId: '', notes: '', ex: [{ exId: 'squat', rr: [6, 10], sets: [0, 1, 2].map(() => ({ w: (200 + i * 5) * LB, r: 8, rir: 1, done: true })) }, { exId: 'bench', rr: [6, 10], sets: [0, 1, 2].map(() => ({ w: (150 + i * 5) * LB, r: 8, rir: 1, done: true })) }] });
+      s.sessions = [0, 1, 2, 3, 4, 5].map(i => mk(i, L.addDays('2026-08-03', i * 7))); s.draft = null; L.state = L.normalize(s); L.invalidate();
+      const c = L.coach(); L.ui.tab = 'dash'; L.render(); document.querySelectorAll('#view details').forEach(d => d.open = true);
+      const t = document.getElementById('view').innerText;
+      return { tone: c.tone, text: c.text, zeroRise: /0 (hard )?sets a week[^\n]*Rising|Rising[^\n]*0 (hard )?sets a week/.test(t), onTrack: /^On track/m.test(t) };
+    });
+    ok(st.tone !== 'green' && /last 4 weeks/.test(st.text) && !st.zeroRise, 'A2: after 6 weeks off the coach says so (not green "On track") and no muscle reads rising on 0 sets', st);
+    // C-F14: a best inside one band of reps is not announced as the lift's best estimate.
+    const cf14 = await ev(() => {
+      const L = window.__ironlog; const s = L.state; s.settings.unit = 'kg';
+      const mk = (id, date, sets) => ({ id, date, dayIdx: 0, dayId: null, dayName: 'T', routineId: '', notes: '', ex: [{ exId: 'bss', rr: [6, 12], sets: sets.map(([w, r, rir]) => ({ w, r, rir, done: true })) }] });
+      s.sessions = [mk('a', '2026-08-12', [[22, 10, 1]]), mk('b', '2026-09-02', [[22, 14, 4], [24, 6, 1]]), mk('c', '2026-09-09', [[24, 7, 1], [24, 6, 1]])]; s.draft = null; L.state = L.normalize(s); L.invalidate();
+      return L.IDX().prs.filter(p => p.date === '2026-09-09' && p.type === 'e1RM').map(p => L.prName(p));
+    });
+    // Aug 12: 22 x 10 @1 is 11 to failure, Epley 30.07 kg. Sep 9: 24 x 7 @1 is 8 to failure, Brzycki 29.79 kg: under it.
+    ok(cf14.every(n => n !== 'Best estimate'), 'C-F14: 24 x 7 (29.8 kg estimated) after 22 x 10 (30.1) is never called "Best estimate"', cf14);
+
+    // C-F17: Save on the weigh-in card with the field empty takes the grey number, as every grey number does.
+    const cf17 = await ev(async () => {
+      const L = window.__ironlog; const s = L.state; s.settings.unit = 'lb'; s.draft = null; delete s.settings.todayStart; delete s.settings.bwEvery;
+      s.bodyweights = [{ id: 'w0', date: '2026-09-20', kg: 174 * 0.45359237 }];
+      s.sessions = [{ id: 'p1', date: '2026-10-05', dayIdx: 0, dayId: null, dayName: 'T', routineId: '', notes: '', ex: [{ exId: 'pushup', rr: [10, 20], sets: [{ w: 0, r: 15, rir: 1, done: true }] }] }];
+      L.state = L.normalize(s); L.invalidate(); L.ui.tab = 'today'; L.render();
+      const card = document.getElementById('bwDue'); if (!card) return { card: false };
+      card.querySelector('[data-act="addBW"]').click(); await new Promise(r => setTimeout(r, 100));
+      return { card: true, today: L.state.bodyweights.filter(b => b.date === '2026-10-11').map(b => Math.round(b.kg / 0.45359237 * 10) / 10) };
+    });
+    ok(cf17.card && cf17.today.length === 1 && cf17.today[0] === 174, 'C-F17: the weigh-in card\'s Save with the field empty logs the grey 174 lb', cf17);
+
+    // A3: the bodyweight rate says the dates it covers, not "the last 42 days".
+    const a3 = await ev(() => {
+      const L = window.__ironlog; const s = L.state; s.bodyweights = []; for (let i = 0; i < 40; i += 2) s.bodyweights.push({ id: 'bw' + i, date: L.addDays('2026-07-04', i), kg: (180 + i * 0.05) * 0.45359237 });
+      L.state = L.normalize(s); L.invalidate(); L.ui.tab = 'dash'; L.render(); document.querySelectorAll('#view details').forEach(d => d.open = true);
+      const m = document.getElementById('view').innerText.match(/[+-]?[\d.]+% per week[^\n]*/); return m ? m[0] : '';
+    });
+    ok(/per week, \w{3} \d+ to \w{3} \d+/.test(a3) && !/last \d+ days/.test(a3), 'A3: the bodyweight rate names its dates ("+0.1% per week, Jul 4 to ...")', a3);
+
+    // A9: Volume says one count this week, regions at their minimum, not a second "hard sets" total.
+    const a9 = await ev(() => {
+      const L = window.__ironlog; const LB = 0.45359237; const s = L.state;
+      s.sessions = [{ id: 'v1', date: '2026-10-06', dayIdx: 0, dayId: null, dayName: 'T', routineId: '', notes: '', ex: [{ exId: 'bench', rr: [6, 10], sets: [0, 1, 2].map(() => ({ w: 150 * LB, r: 8, rir: 1, done: true })) }, { exId: 'squat', rr: [6, 10], sets: [0, 1, 2].map(() => ({ w: 200 * LB, r: 8, rir: 1, done: true })) }] }];
+      L.state = L.normalize(s); L.invalidate(); L.ui.tab = 'dash'; L.render(); document.querySelectorAll('#view details').forEach(d => d.open = true);
+      const v = document.querySelector('#view [data-mkey="volume"]'); return v ? v.innerText : '';
+    });
+    ok(/This week so far: \d+ of \d+ regions at their minimum/.test(a9) && !/This week so far: [\d.]+ hard sets/.test(a9), 'A9: Volume\'s headline counts regions at their minimum, not a second hard-set total', a9.slice(0, 200));
+
+    // A14: the muscle map says "1 hard set" and gives no target to a tracked-only muscle.
+    const a14 = await ev(() => { const L = window.__ironlog; L.ui.tab = 'today'; L.render(); document.querySelectorAll('#view details').forEach(d => d.open = true); const tips = [...document.querySelectorAll('#view [data-tip], #view [aria-label]')].map(e => (e.getAttribute('data-tip') || '') + ' ' + (e.getAttribute('aria-label') || '')).join('\n'); return { plural1: /\b1 hard sets\b/.test(tips), neck: (tips.match(/Neck:[^\n]*/) || [''])[0] }; });
+    ok(!a14.plural1 && (!a14.neck || (/tracked only/.test(a14.neck) && !/target/.test(a14.neck))), 'A14: "1 hard set", and Neck tracked only with no target', a14);
+
+    // A10, B-F10, C-F16: the Guide covers what r33 and r34 added and states the adjustment as the code does.
+    const guide = await ev(async () => { const L = window.__ironlog; L.ACT.guideOpen({ dataset: {} }); await new Promise(r => setTimeout(r, 80)); document.querySelectorAll('.sheet details').forEach(d => d.open = true); const t = document.querySelector('.sheet').innerText; L.ACT.mClose(); return t; });
+    const need = ['Rest week', '+ Drop', 'Your gym', 'Today starts with', 'Two sessions in a day', 'Back after more than 4 weeks', 'best for its reps', '15%'];
+    ok(need.every(w => guide.includes(w)), 'the Guide covers rest weeks, + Drop, Your gym, the blank-session start, two-a-days, coming back after a break, PR names, and the 15% cap on light isolation lifts', need.filter(w => !guide.includes(w)));
+
+    // A16: wording found repeated or odd.
+    const a16 = await ev(() => {
+      const L = window.__ironlog; const s = L.state; s.settings.todayStart = undefined; delete s.settings.todayStart; s.draft = null; L.ui.tab = 'today'; L.render();
+      const sel = document.querySelector('[data-bind="todayDay"]'); const opts = sel ? [...sel.options].map(o => o.text) : [];
+      s.trash = [{ id: 't1', kind: 'cardio', date: '2026-10-10', data: { id: 'c1', date: '2026-10-09', kind: 'run', min: 20 } }]; L.state = L.normalize(s); L.ACT.trashEmpty(); const m = L.ui.modal; const title = m ? m.title : ''; const body = m ? m.body : ''; L.ACT.mClose();
+      return { opts, title, body };
+    });
+    ok(!a16.opts.some(o => /Rest \(rest\)/i.test(o)), 'A16: Change day never says "Rest (rest)"', a16.opts);
+    ok(a16.title && !/for good/.test(a16.title) && /7 days/.test(a16.body), 'A16: emptying Recently deleted does not say "for good" beside Undo for 7 days', a16);
+    ok(!P.errors.length, 'the review\'s session steps: no page errors', P.errors);
     await P.ctx.close().catch(() => {});
   }
 

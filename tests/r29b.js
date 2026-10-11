@@ -181,7 +181,7 @@ const sess = (id, date, exId, sets) => ({ id, date, dayIdx: 0, dayId: null, dayN
       await ev(() => { const L = window.__ironlog; const b = L.state.draft.ex[0]; b.sets[0].w = 105; b.sets[0].r = 8; b.sets[0].rir = 2; L.render(); });
       await page.click('[data-act="sDone"][data-b="0"][data-s="0"]'); await wait(150);
       const t = await ev(() => document.getElementById('toast').innerText);
-      ok(/^Weight PR: Barbell Bench Press, .*heaviest before .*best estimate for sets of \d+ to \d+ reps now/.test(t), 'the toast says Weight PR, what it beat, and the new best estimate with its rep band (r30)', t);
+      ok(/^Weight PR: Barbell Bench Press, .*heaviest before .*best estimate for \d+ to \d+ reps to failure now/.test(t), 'the toast says Weight PR, what it beat, and the new best estimate with its rep band (r30)', t);
     } else ok(false, 'could not build a session block for the toast check');
     ok(!P.errors.length, 'no page errors (PRs)', P.errors);
     await P.browser.close();

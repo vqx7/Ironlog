@@ -2355,6 +2355,14 @@ async function takeLease(){
     return !(res&&res.acquired===false);
   }catch(e){log('sync-lease',e);return true;}
 }
+/* Whether this device holds a change the account does not have yet, by the
+   same test a sync uses, without sending anything: the status still reads
+   synced for the second or so before the next sync starts (r34.2). */
+function hasUnsent(){
+  if(!cloud.on)return false;if(cloud.status!=='synced')return true;
+  try{const ch=chunksOf(state);for(const id of new Set([...Object.keys(ch),...Object.keys(cloud.meta)])){if(!isChunkId(id))continue;const data=ch[id]||emptyChunk(id);if(!data)continue;const m=cloud.meta[id];if(!m||m.h!==hashStr(JSON.stringify(data)))return true;}}catch(e){log('sync-unsent',e);return true;}
+  return false;
+}
 function cloudSoon(){if(!cloud.on)return;cloud.dirtyAt=Date.now();clearTimeout(cloud.t);cloud.t=setTimeout(()=>cq(cloudFlush),1200);}
 async function cloudFlush(){
   if(!cloud.on)return;
@@ -3150,12 +3158,14 @@ function rtfAt(est,load){if(!(est>0&&load>0))return null;const b=37-36*load/est;
    not interchangeable, so a best is judged within its own band. */
 const rtfBand=rtf=>rtf<=5?1:rtf<=10?2:3;
 // The bands in words, counted as reps to failure (reps plus RIR).
-const BAND_WORDS={1:'sets of 1 to 5 reps',2:'sets of 6 to 10 reps',3:'sets of 11 to 12 reps'};
+/* Bands count reps to failure (reps plus reps in reserve), so they say so (r34.2, from the review:
+   "sets of 11 to 12 reps" named the band of a set of 8 at 3 in reserve). */
+const BAND_WORDS={1:'1 to 5 reps to failure',2:'6 to 10 reps to failure',3:'11 to 12 reps to failure'};
 /* What an estimate PR is called (r34.2, from the review: a best for 6 to 8
    reps was shown as "Best estimate 30 kg (was 29)" beside an all-time best
    estimate of 30 kg from a set of 11): Best estimate only when it beats every
    earlier set's estimate, else the best for its band of reps. */
-const BAND_SHORT={1:'1 to 5 reps',2:'6 to 10 reps',3:'11 to 12 reps'};
+const BAND_SHORT={1:'1 to 5 reps to failure',2:'6 to 10 reps to failure',3:'11 to 12 reps to failure'};
 function prOverall(p){return p.prevAll==null||(p.value!=null&&p.value>p.prevAll+1e-6);}
 function prName(p){return prOverall(p)?'Best estimate':`Best for ${BAND_SHORT[p.bb]||'its reps'}`;}
 /* The working load of one session of a lift (r31): the load done for the
@@ -9018,7 +9028,7 @@ const ACT={
       if(!mid){ui.tab='today';window.scrollTo(0,0);}render();toast(remove?'Signed out':'Signed out. A copy stays on this phone.');
     };
     // With changes not yet in the account, say so first rather than "saved in your account" (r34.2).
-    if(cloud.on&&cloud.status!=='synced'&&navigator.onLine===false){confirmBox('Not in your account yet','Some changes have not reached your account. Connect to the internet and sign out again, or sign out and keep them on this phone.','Keep on this phone and sign out',()=>out(false));return;}
+    if(navigator.onLine===false&&hasUnsent()){confirmBox('Not in your account yet','Some changes have not reached your account. Connect to the internet and sign out again, or sign out and keep them on this phone.','Keep on this phone and sign out',()=>out(false));return;}
     confirmBox('Sign out?','Your log is saved in your account. Sign in on any phone to pick it up again.','Sign out',()=>out(true),false,{label:'Sign out, keep a copy on this phone',fn:()=>out(false),quiet:true});
   },
   startFree(){
