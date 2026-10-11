@@ -96,7 +96,9 @@ function start(root) {
         }
         if (g === 'refresh_token') {
           const id = refresh.get(b.refresh_token); if (!id) return authErr(res, 400, 'refresh_token_not_found', 'Invalid Refresh Token: Refresh Token Not Found');
-          refresh.delete(b.refresh_token); return send(res, 200, session(byId(id)));
+          // A deleted user's refresh token is refused, as the real server does, rather than crashing the stand-in (r34.2, found by the review).
+          refresh.delete(b.refresh_token); const u = byId(id); if (!u) return authErr(res, 400, 'user_not_found', 'User from sub claim in JWT does not exist');
+          return send(res, 200, session(u));
         }
         return authErr(res, 400, 'unsupported_grant_type', 'unsupported grant');
       }

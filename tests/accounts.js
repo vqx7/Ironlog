@@ -126,9 +126,10 @@ fs.cpSync(DIST, tmp, { recursive: true });
   await A.page.reload(); await A.page.waitForFunction(() => window.__ironlog, null, { timeout: 15000 }); await wait(800);
   ok(!(await A.ev(() => document.getElementById('acctBar'))), 'and it stays hidden after a relaunch');
   await openData(A);
-  ok(await A.ev(() => { const p = document.getElementById('acctPanel'), i = document.getElementById('syncInfo'); return !!p && !!i && (p.compareDocumentPosition(i) & 4) > 0; }), 'Your data: the account panel is at the top');
+  // r34.2: signed out, the account panel is the one line on where the log is (no second storage line).
+  ok(await A.ev(() => { const p = document.getElementById('acctPanel'), i = document.getElementById('syncInfo'), d = document.getElementById('dataSec'); return !!p && !i && d.querySelector('.panel') === p && /Saved on this (phone|device) only/.test(p.innerText); }), 'Your data: the account panel is at the top, and says once where the log is');
   ok(/Create account/.test(await text(A, '#acctPanel')) && /Sign in/.test(await text(A, '#acctPanel')), 'signed out: Your data offers Create account and Sign in');
-  ok(/stays on this device and is sent nowhere unless you sign in/.test(await text(A, '#privacy')), 'signed out: the privacy line says nothing leaves the phone');
+  ok(/nothing sent without an account/.test(await text(A, '#privacy')), 'signed out: the privacy line says nothing leaves the phone');
   ok(!(await A.ev(() => window.__ironlog.cloudState().on)) && fake.log.filter(l => l.startsWith('GET /rest') || l.startsWith('POST /rest')).length === 0, 'signed out: no requests to the database');
 
   // ---- 2. Create an account.
@@ -356,7 +357,7 @@ fs.cpSync(DIST, tmp, { recursive: true });
   await logOn(A, 'sA-denied', 140); await A.ev(() => window.__ironlog.flush()); await wait(800);
   await openData(A);
   const st = await A.ev(() => window.__ironlog.cloudState());
-  ok(st.on && /table permissions need fixing/.test(st.err || '') && ((await text(A, '#syncInfo')).match(/table permissions need fixing/g) || []).length === 1, 'refused by the database: says the table permissions need fixing and keeps retrying', st);
+  ok(st.on && /could not be reached just now/.test(st.err || '') && ((await text(A, '#syncInfo')).match(/could not be reached just now/g) || []).length === 1, 'refused by the database: says the table permissions need fixing and keeps retrying', st);
   fake.setDeny(false);
   await A.ev(() => window.__ironlog.flush()); await wait(800);
   ok(sessIn(rowsOf('v@example.com')).includes('sA-denied') && (await A.ev(() => window.__ironlog.cloudState().status)) === 'synced', 'once fixed, sync catches up');
@@ -375,7 +376,7 @@ fs.cpSync(DIST, tmp, { recursive: true });
   await K.page.click('#acctPanel [data-act="acctDelete"]'); await wait(100);
   ok(/deleted for good/.test(await text(K, '#modal')), 'Delete asks first and says it is permanent');
   await K.page.click('#modal [data-act="mOk"]'); await wait(1200);
-  ok(/not set up yet/.test(await K.ev(() => document.getElementById('toast').innerText)) && fake.users.has('leaver@example.com'), 'before the function is deployed: a clear message, nothing deleted');
+  ok(/Deleting an account is not available yet/.test(await K.ev(() => document.getElementById('toast').innerText)) && !/SUPABASE/.test(await K.ev(() => document.getElementById('toast').innerText)) && fake.users.has('leaver@example.com'), 'before the function is deployed: a clear message, nothing deleted');
   fake.deployDelete(true);
   await openData(K);
   await K.page.click('#acctPanel [data-act="acctDelete"]'); await wait(100);

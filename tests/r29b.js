@@ -25,11 +25,13 @@ const sess = (id, date, exId, sets) => ({ id, date, dayIdx: 0, dayId: null, dayN
     const { page } = P; const ev = (f, a) => page.evaluate(f, a);
     const st = await ev(() => { const L = window.__ironlog; const R = L.state.routines.find(r => r.id === L.state.activeRoutineId); return { n: L.state.routines.length, name: R.name, days: R.days.map(d => d.rest ? 'Rest' : d.name), sig: L.starterSigs().length }; });
     ok(st.n === 1 && st.name === 'Upper / lower, 4 days' && st.days.join(',') === 'Upper A,Lower A,Rest,Upper B,Lower B,Rest,Rest', 'a new install starts on Upper / lower, 4 days', st);
-    // Log a workout now keeps it, with targets fitted to it.
+    // Log a workout now keeps the starter as the plan one tap away, and since r34.2 makes Today a blank session,
+    // with the default targets: the lifter chose no plan, so neither the streak nor the targets follow one (review, F15).
+    const b0 = await ev(() => JSON.stringify(window.__ironlog.state.settings.bands));
     await ev(() => window.__ironlog.ACT.obFree());
     await wait(200);
-    const lf = await ev(() => { const L = window.__ironlog; const R = L.state.routines.find(r => r.id === L.state.activeRoutineId); const plan = L.plannedSets(R); const b = L.state.settings.bands; return { name: R.name, draft: !!L.state.draft, short: Object.keys(b).filter(m => !L.TRACK_ONLY.has(m) && Math.floor(plan[m] || 0) < b[m][0]) }; });
-    ok(lf.name === 'Upper / lower, 4 days' && lf.draft && !lf.short.length, 'Log a workout now keeps the starter, and its targets fit it as a pick would', lf);
+    const lf = await ev(() => { const L = window.__ironlog; const R = L.state.routines.find(r => r.id === L.state.activeRoutineId); return { name: R.name, draft: !!L.state.draft, free: L.state.settings.todayStart, bands: JSON.stringify(L.state.settings.bands) }; });
+    ok(lf.name === 'Upper / lower, 4 days' && lf.draft && lf.free === 'free' && lf.bands === b0, 'Log a workout now keeps the starter as the plan, makes Today a blank session, and leaves the default targets', lf);
     ok(!P.errors.length, 'no page errors (starter)', P.errors);
     await P.browser.close();
   }
@@ -142,8 +144,8 @@ const sess = (id, date, exId, sets) => ({ id, date, dayIdx: 0, dayId: null, dayN
       await page.click('[data-act="mOk"]'); await wait(200);
       const d = await ev(() => { const L = window.__ironlog; const I = L.IDX(); const reg = L.regionBalance(L.actualAvg4());
         const mus = L.muscleStatus(L.actualAvg4()); const t = new Date(2026, 9, 3).toISOString().slice(0, 10);
-        return { n: L.state.sessions.length, today: L.state.sessions.some(s => s.date === '2026-10-03'), stalled: L.stalledIds(), lag: I.scores.filter(s => s.label === 'lagging').map(s => s.m), low: reg.filter(x => x.low).map(x => x.label), under: Object.entries(mus).filter(([m, x]) => x.st === 'under').map(([m]) => m), coach: L.coach().text, prs: I.prs.length, moving: Object.values(I.exStats).filter(s => s.moving).length, falling: Object.values(I.exStats).filter(s => s.falling).length }; });
-      ok(d.n > (k === 'full2' ? 12 : 20) && !d.today && !d.stalled.length && !d.lag.length && !d.low.length && !d.under.length && /^On track/.test(d.coach) && d.prs > 20 && d.moving >= 3 && !d.falling, `${k}: the demo has every session done, today open, lifts moving, nothing stalled, lagging, or below target, and the coach says on track`, d);
+        return { n: L.state.sessions.length, today: L.state.sessions.some(s => s.date === '2026-10-03'), stalled: L.stalledIds(), lag: I.scores.filter(s => s.label === 'lagging').map(s => s.m), low: reg.filter(x => x.low).map(x => x.label), under: Object.entries(mus).filter(([m, x]) => x.st === 'under').map(([m]) => m), coach: L.coach().text, tone: L.coach().tone, prs: I.prs.length, moving: Object.values(I.exStats).filter(s => s.moving).length, falling: Object.values(I.exStats).filter(s => s.falling).length }; });
+      ok(d.n > (k === 'full2' ? 12 : 20) && !d.today && !d.stalled.length && !d.lag.length && !d.low.length && !d.under.length && /^Every muscle at target, nothing stalled/.test(d.coach) && d.tone === "green" && d.prs > 20 && d.moving >= 3 && !d.falling, `${k}: the demo has every session done, today open, lifts moving, nothing stalled, lagging, or below target, and the coach says on track`, d);
       // Clearing it on a first run puts the default targets back.
       const back = await ev(() => { const L = window.__ironlog; L.ACT.demoClear(); return JSON.stringify(L.state.settings.bands) === JSON.stringify(L.BANDS); });
       ok(back, `${k}: clearing the demo on a first run puts the default targets back`);
@@ -371,8 +373,8 @@ const sess = (id, date, exId, sets) => ({ id, date, dayIdx: 0, dayId: null, dayN
     const P = await open('index.html', { touch: true, clock: '2026-10-03T11:30:00', realStarter: true });
     const { page } = P; const ev = (f, a) => page.evaluate(f, a);
     await ev(() => window.__ironlog.ACT.obFree()); await wait(150);
-    const t = await ev(() => document.getElementById('toast').innerText);
-    ok(/Upper \/ lower, 4 days, and weekly targets match it/.test(t), '14. Log a workout now on the starter says the routine and that targets match it', t);
+    const t = await ev(() => { const el = document.getElementById('toast'); return el.hidden ? '' : el.innerText; });
+    ok(!/Your routine is/.test(t), '14, since r34.2: Log a workout now puts no routine note over the exercise picker (the lifter chose no plan)', t);
     await P.browser.close();
   }
   // 2 and 3. The demo across 21 dates on the six-day routine (where the reviewer found a stall), lb and kg: no stall, nothing under its bar.

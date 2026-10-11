@@ -24,7 +24,7 @@ const EXS = [
   { id: 'bench', sets: 3, min: 6, max: 10, start: 135, kind: 'w' },
   { id: 'dbCurl', sets: 3, min: 8, max: 12, start: 30, kind: 'w' },
   { id: 'latPulldown', sets: 3, min: 8, max: 12, start: 120, kind: 'w' },
-  { id: 'pullup', sets: 3, min: 6, max: 10, start: 0, kind: 'bw' },
+  { id: 'pullup', sets: 3, min: 6, max: 10, start: 10, kind: 'bw' }, // already done with added load: a pull-up never loaded progresses by reps since r34.2
   { id: 'assistPullup', sets: 3, min: 6, max: 10, start: -50, kind: 'assist' }
 ];
 // Reps typed each week, per exercise (one number for every set, or a list).
