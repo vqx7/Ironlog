@@ -104,7 +104,7 @@ const seed = (L, unit, exId, list, rr) => {
       return { ph, target: b.target, logged: L.state.draft.ex[0].sets[0].r };
     }, [seed.toString()]);
     ok(JSON.stringify(r.ph) === '["6","6","6"]', '195: squat 140 x 3, 6, 6 on 6-10: grey reps (6)(6)(6), not (3)(6)(6)', r.ph);
-    ok(/^19\+ reps over your first 3 sets at 140/.test(r.target), '195: the target is 19+ reps over 3 sets, not 16+', r.target);
+    ok(/^19\+ reps over (your first )?3 sets at 140/.test(r.target), '195: the target is 19+ reps over 3 sets, not 16+', r.target);
     ok(r.logged === 6, '195: ticking set 1 untyped logs 6, not 3', r.logged);
     // Most sets under the range is a load that was too heavy: grey reps stay as done.
     const r2 = await P.page.evaluate(([seedS]) => {
@@ -186,6 +186,8 @@ const seed = (L, unit, exId, list, rr) => {
       else if (DB.has(g.id) && o.w !== n.w && Math.abs((g.unit === 'lb' ? o.w / LB : o.w) % 2.5) > 1e-6) r = '194 rack step';
       else if (halfOk && g.reps.some(v => v < g.lo) && o.w === n.w && o.kind === n.kind) r = '195 one bad set';
       else if (g.id === 'hangingLegRaise' && g.w === 0) r = '203 ab work by reps';
+      // r34.2: every bodyweight lift never done with added load progresses by reps, never an invented load.
+      else if (g.id === 'pullup' && g.w === 0 && !g.mode && n.w === 0 && (n.kind === 'reps' || n.kind === null)) r = 'r34.2 bodyweight never loaded, by reps';
       else if (n.buildTo || (o.kind === 'load' && o.aim < g.lo) || (n.kind === 'load' && n.aim < g.lo) || (o.kind === 'load' && n.kind === 'load' && o.w === n.w && o.aim !== n.aim)) r = '196 large step';
       if (r) why[r] = (why[r] || 0) + 1; else unexplained.push({ g, o, n });
     });

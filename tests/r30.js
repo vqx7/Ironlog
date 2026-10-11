@@ -152,7 +152,7 @@ function strongCsv() {
       const S = (id, d, w, r, rir) => ({ id, date: d, dayIdx: 0, dayId: null, dayName: 'A', routineId: '', free: true, notes: '', ex: [{ exId: 'bench', sets: [{ w: w * LB, r, rir, warm: false }] }] });
       L.state.sessions = [S('x1', '2026-09-20', 265, 3, 0), S('x2', '2026-09-27', 215, 6, 1)]; L.invalidate();
       return L.prBeat('bench', { w: 225 * LB, r: 7, rir: 1 }, '2026-10-04', 'Best'); });
-    ok(/sets of 6 to 10 reps/.test(t), 'the best-estimate toast says which rep band it beat, so it never reads wrong beside a higher overall best', t);
+    ok(/6 to 10 reps to failure/.test(t), 'the best-estimate toast says which rep band it beat, so it never reads wrong beside a higher overall best', t);
 
     // Labels that contradicted each other: "301 → 300.7 · up".
     const lt = await ev(() => { const L = window.__ironlog; const LB = 0.45359237; const S = (id, d, w, r) => ({ id, date: d, dayIdx: 0, dayId: null, dayName: 'A', routineId: '', free: true, notes: '', ex: [{ exId: 'backSquat', sets: [{ w: w * LB, r, rir: 1, warm: false }] }] });

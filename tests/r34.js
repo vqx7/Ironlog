@@ -245,10 +245,12 @@ const LB = 0.45359237;
       L.state.settings.bwEvery = 7; L.state.bodyweights = [{ id: 'b1', date: '2026-10-02', kg: 80 }]; L.render(); o.every7 = card();
       L.state.settings.bwEvery = 0; L.render(); o.off = card();
       delete L.state.settings.bwEvery; L.state.bodyweights = []; L.render(); o.none = card();
+      // r34.2: never weighed in asks only a lifter whose log has bodyweight lifts, where it changes the numbers.
+      L.state.sessions[0].ex.push({ exId: 'pushup', rr: [10, 20], sets: [{ w: 0, r: 15, rir: 1, done: true }] }); L.invalidate(); L.render(); o.noneBw = card();
       return o;
     });
     ok(!due.d10 && due.d14 && /Weigh-in due\. Last 176\.4 lb, 14 days ago\./.test(due.text), 'every 2 weeks by default: nothing at 10 days, the card at 14, with the last weigh-in', due);
-    ok(!due.every30 && due.every7 && !due.off && due.none, 'every month, every week, off, and no weigh-in at all after a session', due);
+    ok(!due.every30 && due.every7 && !due.off && !due.none && due.noneBw, 'every month, every week, off; never weighed in, the card only once bodyweight lifts are logged (r34.2)', due);
     await ev(() => { const L = window.__ironlog; L.state.bodyweights = [{ id: 'b1', date: '2026-09-20', kg: 80 }]; L.render(); });
     await P.page.fill('#bwDueVal', '178'); await P.page.click('#bwDue [data-act="addBW"]'); await wait(100);
     const saved = await ev(() => ({ n: window.__ironlog.state.bodyweights.length, last: window.__ironlog.state.bodyweights.find(b => b.date === '2026-10-10'), card: !!document.getElementById('bwDue') }));

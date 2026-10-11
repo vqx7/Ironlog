@@ -44,8 +44,10 @@ async function engineRun(page, cases, gym) {
     const A = await open(FILE, { browser, clock: '2026-10-09T12:00:00' });
     const B = await open('baselines/r32-1.html', { browser, clock: '2026-10-09T12:00:00' });
     const a = await engineRun(A.page, CASES), b = await engineRun(B.page, CASES);
-    const diff = a.map((x, i) => JSON.stringify(x) === JSON.stringify(b[i]) ? null : [x, b[i]]).filter(Boolean);
-    ok(a.length === CASES.length * 3 && !diff.length, `with no gym set, all ${a.length} suggestions (normal, lighter day, deload) match r32.1 word for word`, diff.slice(0, 3));
+    // r34.2 says "over 3 sets" where r32.1 said "over your first 3 sets" with 3 planned (only a 4th set makes it "your first"); every case plans 3, so the two read alike.
+    const same = x => JSON.stringify(x).replace(/over your first (\d+) (sets|holds)/g, 'over $1 $2');
+    const diff = a.map((x, i) => same(x) === same(b[i]) ? null : [x, b[i]]).filter(Boolean);
+    ok(a.length === CASES.length * 3 && !diff.length, `with no gym set, all ${a.length} suggestions (normal, lighter day, deload) match r32.1 word for word (but for "your first", r34.2)`, diff.slice(0, 3));
     // An older build keeps Your gym when it loads and saves a log (its settings spread unknown keys).
     const gym = { u: 'lb', db: { lo: 5, hi: 100, st: 5, fine: 2.5, fineTo: 25 }, kb: [18, 26, 35], plates: [45, 25, 10, 5], stack: 10 };
     const kept = await B.page.evaluate(g => { const L = window.__ironlog; const s = JSON.parse(JSON.stringify(L.state)); s.settings.gym = g; s.settings.rirScale = 'rpe'; const n = L.normalize(s); return { gym: n.settings.gym, sc: n.settings.rirScale }; }, gym);
@@ -487,6 +489,15 @@ async function engineRun(page, cases, gym) {
     if (signedIn) {
       await S.ev(() => { const L = window.__ironlog; if (L.ui.modal) L.ACT.mClose(); L.state.settings.onboarded = true; const R = L.state.routines[0]; L.state.sessions.push({ id: 'so-1', date: '2026-10-08', dayIdx: 0, dayId: R.days[0].id, dayName: 'Day', routineId: R.id, notes: '', ex: [{ exId: 'bench', sets: [{ w: 60, r: 8, rir: 1, done: true }] }] }); L.saveNow(); L.render(); });
       await wait(1500);
+      // r34.2 (A4): offline with a change not yet sent, Sign out says so at once, not "saved in your account" and a 15 s wait.
+      await S.ctx.setOffline(true);
+      await S.ev(() => { const L = window.__ironlog; L.state.sessions.push({ id: 'so-off', date: '2026-10-08', dayIdx: 0, dayId: L.state.routines[0].days[0].id, dayName: 'Day', routineId: L.state.routines[0].id, notes: '', ex: [{ exId: 'bench', sets: [{ w: 61, r: 8, rir: 1, done: true }] }] }); L.saveNow(); L.ui.tab = 'settings'; L.ui.folds['settings:data'] = true; L.render(); });
+      await wait(600);
+      const t0 = Date.now(); await S.page.click('#acctPanel [data-act="acctSignOut"]'); await wait(150);
+      const off = await S.ev(() => ({ t: (document.getElementById('modal') || {}).innerText || '', on: !!window.__ironlog.acctUser() }));
+      ok(/Not in your account yet/.test(off.t) && !/saved in your account/i.test(off.t) && off.on && Date.now() - t0 < 2000, 'offline with a change not sent: Sign out says "Not in your account yet" at once', off);
+      await S.ev(() => { const L = window.__ironlog; if (L.ui.modal) L.ACT.mClose(); L.state.sessions = L.state.sessions.filter(x => x.id !== 'so-off'); L.saveNow(); });
+      await S.ctx.setOffline(false); await wait(2500);
       fake.setDeny(true);
       await S.ev(() => { const L = window.__ironlog; L.state.sessions.push({ id: 'so-2', date: '2026-10-09', dayIdx: 0, dayId: L.state.routines[0].days[0].id, dayName: 'Day', routineId: L.state.routines[0].id, notes: '', ex: [{ exId: 'bench', sets: [{ w: 62.5, r: 8, rir: 1, done: true }] }] }); L.saveNow(); L.ui.tab = 'settings'; L.ui.folds['settings:data'] = true; L.render(); document.querySelectorAll('#view details').forEach(d => { d.open = true; }); });
       await wait(800);

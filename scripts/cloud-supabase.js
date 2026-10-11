@@ -61,14 +61,14 @@
     let text = msg || 'Something went wrong. Try again.';
     // A setup step still to do, shown in Your data like a table without
     // permissions ('denied'), while sync keeps retrying.
-    if (PREVIEW && /docs_preview/.test(msg) && /PGRST205|42P01|does not exist|schema cache/i.test(msg + code)) return Object.assign(new Error('Preview sync is not set up yet (SUPABASE.md, Part 5). The preview keeps its log on this phone meanwhile.'), { code: 'denied' });
+    if (PREVIEW && /docs_preview/.test(msg) && /PGRST205|42P01|does not exist|schema cache/i.test(msg + code)) return Object.assign(new Error('Preview sync is not set up yet. The preview keeps its log on this phone meanwhile.'), { code: 'denied' });
     if (/invalid login credentials|invalid_credentials/i.test(msg + code)) text = 'Wrong email or password.';
     else if (/email not confirmed|email_not_confirmed/i.test(msg + code)) text = 'Confirm your email first: open the link we sent, then sign in here.';
     else if (/already registered|user_already_exists/i.test(msg + code)) text = 'An account with this email already exists. Sign in instead.';
     else if (/rate limit|over_email_send_rate_limit|too many/i.test(msg + code) || status === 429) text = 'Too many emails in the last hour. Try again later.';
     else if (/weak_password|password should/i.test(msg + code)) text = msg || 'Choose a longer password.';
     else if (/same_password|should be different/i.test(msg + code)) text = 'Choose a password different from the old one.';
-    else if (/send a request to the edge function/i.test(msg)) text = 'Could not reach the delete function. Check it is deployed with Verify JWT off (SUPABASE.md), and that you have signal.';
+    else if (/send a request to the edge function/i.test(msg)) text = 'Could not delete the account just now. Check you have signal and try again; if it keeps failing, report a problem.';
     else if (/failed to fetch|network|load failed|fetch/i.test(msg) || e instanceof TypeError) text = 'No connection. Try again when you have signal.';
     const out = new Error(text);
     // 401/403 from the database means the sign-in is no longer valid: sync
@@ -77,7 +77,7 @@
     // a sign-out: say so and keep retrying. 401/403 otherwise, or an expired
     // or rejected token, means this sign-in is no longer valid and sync
     // switches itself off (cloudFail treats 'revoked' that way).
-    if (code === '42501' || /permission denied/i.test(msg)) { out.message = 'The cloud database refused access. Its table permissions need fixing (SUPABASE.md, step 6).'; out.code = 'denied'; return out; }
+    if (code === '42501' || /permission denied/i.test(msg)) { out.message = 'Your account could not be reached just now. Your log is safe on this phone; it syncs once this is fixed. Report a problem if it keeps happening.'; out.code = 'denied'; return out; }
     out.code = status === 401 || status === 403 || /jwt|PGRST30[0-3]/i.test(code + msg) ? 'revoked' : (code || 'error');
     return out;
   }
@@ -153,7 +153,7 @@
       const { data, error } = await sb.functions.invoke('delete-account', { method: 'POST' });
       if (error) {
         const status = error.context && error.context.status;
-        if (status === 404) throw Object.assign(new Error('Account deletion is not set up yet (SUPABASE.md, Delete my account).'), { code: 'not_deployed' });
+        if (status === 404) throw Object.assign(new Error('Deleting an account is not available yet. Report a problem and the owner will delete it for you.'), { code: 'not_deployed' });
         if (status === 401) throw Object.assign(new Error('Your sign-in has expired. Sign out, sign in again, then delete.'), { code: 'revoked' });
         throw friendly(error);
       }
@@ -228,7 +228,7 @@
       const { error } = await sb.from('feedback').insert(row);
       if (error) {
         const t = String(error.code || '') + ' ' + String(error.message || '');
-        if (/relation .*feedback.* does not exist|PGRST205|42P01/i.test(t)) throw Object.assign(new Error('Reports are not set up yet (SUPABASE.md, Part 4). Your text is kept.'), { code: 'not_set_up' });
+        if (/relation .*feedback.* does not exist|PGRST205|42P01/i.test(t)) throw Object.assign(new Error('Reports are not set up yet. Your text is kept.'), { code: 'not_set_up' });
         if (/feedback_rate_limited/i.test(t)) throw Object.assign(new Error('You have sent 5 reports today. Try again tomorrow.'), { code: 'limit' });
         throw friendly(error);
       }
