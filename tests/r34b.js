@@ -498,6 +498,8 @@ const ODD = /shared (phone|device|computer)|someone else|another person|other pe
     // V (2026-10-11): no other app named on screen, and the name field is just "Name".
     ok(!/\b(Strong|Hevy)\b/.test(seen), 'no other workout app named on any tab, tip, the menu, the Guide, or the import sheet', (seen.match(/.{0,40}\b(Strong|Hevy)\b.{0,40}/g) || []).slice(0, 5));
     const F = await open(FILE, { browser, realStarter: true, clock: '2026-10-11T12:00:00' });
+    // On the build the account page comes first; Continue without an account leads to Set up.
+    await F.page.evaluate(async () => { const l = document.querySelector('#obPage[data-step="acct"] .ob-later'); if (l) { l.click(); await new Promise(r => setTimeout(r, 200)); } });
     const first = await F.page.evaluate(() => { const v = document.getElementById('view'); return { t: v.innerText + ' ' + [...v.querySelectorAll('[data-tip],[placeholder]')].map(e => (e.getAttribute('data-tip') || '') + ' ' + (e.getAttribute('placeholder') || '')).join(' '), name: (([...v.querySelectorAll('label.field')].find(l => l.querySelector('[data-bind="userName"]')) || {}).innerText || '').trim() }; });
     ok(/^Name/.test(first.name) && !/greeting|Shown on Today/i.test(first.t) && !/\b(Strong|Hevy)\b/.test(first.t), 'the first-run page: "Name (optional)" with no greeting line, and no other app named', first.name);
     await F.ctx.close().catch(() => {});
