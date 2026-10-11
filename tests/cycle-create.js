@@ -10,7 +10,8 @@ await ev(()=>{const L=window.__ironlog;const R=L.state.routines[0];L.state.setti
 const wk2=await ev(()=>[...document.querySelectorAll('#wkbar .w')].map(c=>c.className+'|'+c.getAttribute('aria-label')));
 ok(/on/.test(wk2[5])&&/Back, planned/.test(wk2[6]),'after logging, tomorrow is next day: '+wk2[6]);
 // freestyle + pick for me with almost no history
-await page.click('.hero [data-act="startFree"]');await page.waitForTimeout(80);
+await page.click('.hero [data-act="startAltOpen"]');await page.waitForTimeout(80);
+await page.click('#modal [data-go="startFree"]');await page.waitForTimeout(80);
 await page.click('#modal [data-act="pickEx"]');await page.waitForTimeout(80);
 const p=await ev(()=>[...document.querySelectorAll('.pcard')].map(c=>c.innerText.split('\n').slice(0,3).join(' / ')));
 console.log(p);ok(p.length===3,'freestyle picks 3');

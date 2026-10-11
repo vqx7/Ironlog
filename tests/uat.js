@@ -77,7 +77,9 @@ const fails = []; const ok = (c, m) => { if (!c) { fails.push(m); console.log('F
 
   // Short on time from Today, cancelled: no session left behind.
   await fresh();
-  await page.click('.hero [data-act="startShort"]'); await page.waitForTimeout(100);
+  // r35: Short on time is in the card's Change sheet.
+  await page.click('.hero [data-act="startAltOpen"]'); await page.waitForTimeout(80);
+  await page.click('#modal [data-go="startShort"]'); await page.waitForTimeout(100);
   ok(await ev(() => !!window.__ironlog.state.draft && window.__ironlog.ui.modal.kind === 'short'), 'Short on time opens its sheet');
   await ev(() => document.querySelector('#modal [data-act="mClose"]').click()); await page.waitForTimeout(80);
   ok(await ev(() => !window.__ironlog.state.draft), 'closing the Short on time sheet leaves no session');

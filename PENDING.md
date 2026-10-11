@@ -1,10 +1,18 @@
-# Everything still open (as of r34.1 live, r34.2 waiting for V's word, 2026-10-11)
+# Everything still open (as of r34.2 live, r35 in progress, 2026-10-11)
 
 This is the tracking list. Items are built only when V says go. Owner items need V; the rest is build work. Nothing is done unless it says so. Numbers are kept stable; finished items move to Done at the bottom.
 
-## Live: r34.1 (published 2026-10-10, pull request #23, merged by Claude at V's word; r34 and r33 before it the same day, #22 and #21; build 2026.10.10-r34.1)
+## Live: r34.2 (published 2026-10-11, pull request #24, merged by V; build 2026.10.11-r34.2)
 
-## r34.2, built 2026-10-11 (the independent review of r34.1, item 230), pull request waiting for V's word to publish; tests/r34b.js
+## r35 (V, 2026-10-11: "Do 1 and 2", each released on its own; this is 1), tests/r35.js
+248. Built: one change number on a lift (Stats > Lifts kept "Change over N weeks", the headline's number; the fitted rate per week stays behind the headline's i).
+249. Built: one way to start. The Today card is Start, then Change and More options; Change holds Lighter day, Short on time, Blank session, Pick for me, and the plan's days (the old Change day list).
+250. Built: no card asks grey or filled in; loads are grey, and Settings > Rest timer and logging > Fill in suggested loads stays for anyone who wants it (removing the mode itself would have dropped a tested path someone may use).
+251. Built: Settings ends with one More group (Demo data, Diagnostics, Erase everything) instead of three groups.
+252. Built: an easy set (2 or more over the target reserve) with no heavier load that fits gets the same load for more reps ("Next sets: 12 reps at 20 lb"), with Keep as it was. Item 245 (b).
+253. Built: a superset made in a session is offered at Finish ("Update Upper A?"), and Update puts the pair side by side and linked in the plan. Item 245 (d).
+
+## r34.2, live since 2026-10-11 (pull request #24, merged by V); tests/r34b.js
 238. Done (item 230): three independent reviewers worked through r34.1 on 2026-10-11 as a new user (first page, layout at 320 to 430 px, wording), a plan follower in lb (9 weeks, supersets, drops, deload, rest week, RPE), and a freestyler in kg plus a calisthenics lifter (6 to 8 weeks, two-a-days, a dumbbell rack). 55 findings (1 critical, 4 high). Each is fixed at its cause in r34.2 with a test, except the four in 245.
 239. Built, the numbers: a lift more than 4 weeks off comes back at about 90% of its last working load with 2 or more in reserve and its usual sets ("Back after 5 weeks"), then picks up from there (a convention: strength holds for about 4 weeks off, Bosquet 2013); its trend says when it was last done instead of up or down, with no projection and no "PR last time"; no RIR check on it. Bodyweight lifts never done with added load (push-ups, pull-ups) progress by reps, never to BW+10, and are never moved to a load mid-session. Every set at 5 or more in reserve steps up at least once. A dumbbell typed in the other unit is that bell (35 lb is the 16 kg dumbbell). The plates line and the bar follow the gym's unit (one 20 kg plate a side, not lb plates). A heavier load with the reps still in range never reads as down. A weaker set at a heavier load is no PR; a best for its reps is named "Best for 6 to 10 reps", not "Best estimate". Two sessions on one day keep their own PRs. Weight lifted counts leg raises, Nordics and sissy squats at their bodyweight share. Rest weeks are said as rest weeks; weeks off are not "a lighter week". A blank effort mid-session reads as the lift's usual effort.
 240. Built, the session: the adjustment line goes when its set is removed, unticked or turned into a warm-up; Fill in suggested loads keeps adjusted rows; a ramp-up set the app suggested is never offered as a warm-up at Finish; a superset rests once the partners are through; minutes left follow each tick and go at the last set; an open RIR strip is never closed by the auto-fold; the first-time paragraph is said once, a short line on later exercises; the low check-in is one line with the reason behind an i; RPE mode shows "@RPE 9" on every header and in Plan; after a unit change the targets and Last line read in the new unit; the heavier-than-target line shows whole pounds, and the set on an isolation lift.

@@ -222,13 +222,14 @@ const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log
     const qev = (f, a) => Q.page.evaluate(f, a);
     await qev(() => { const L = window.__ironlog; L.state.settings.onboarded = true; L.makeDemo(); /* r30: history here, not sample data */ for (const k of ['sessions', 'bodyweights', 'measurements']) for (const x of (L.state[k] || [])) delete x.demo; L.invalidate && L.invalidate(); L.ui.tab = 'today'; L.ui.todayDay = 0; L.render(); localStorage.setItem('ironlog.v1.tipWake', '1'); });
     await Q.page.click('.hero [data-act="startSession"]:not([data-light])'); await Q.page.waitForTimeout(150);
-    const c1 = await qev(() => { const c = document.getElementById('loadAsk'); return c ? c.innerText : null; });
-    ok(c1 && /Suggested loads show in grey/.test(c1) && /Keep grey/.test(c1) && /Fill them in/.test(c1), 'the first session asks once: grey or filled in', c1);
+    // r35 (V): no card asks grey or filled in; Settings has the one switch.
+    ok(await qev(() => !document.getElementById('loadAsk')), 'the first session does not ask grey or filled in');
     // A load typed on set 1 shows in grey below; choosing Fill puts that load in the rows, and the suggestion elsewhere; typed rows stay.
     await Q.page.fill('.sg input[data-f="w"][data-b="0"][data-s="0"]', '77'); await Q.page.dispatchEvent('.sg input[data-f="w"][data-b="0"][data-s="0"]', 'input'); await Q.page.dispatchEvent('.sg input[data-f="w"][data-b="0"][data-s="0"]', 'change');
-    await Q.page.click('#loadAsk [data-v="fill"]'); await Q.page.waitForTimeout(120);
+    await qev(() => { const L = window.__ironlog; L.ui.tab = 'settings'; L.render(); document.querySelectorAll('#view details').forEach(d => d.open = true); document.querySelector('input[data-bind="loadFill"]').click(); L.ui.tab = 'today'; L.render(); });
+    await Q.page.waitForTimeout(120);
     const f1 = await qev(() => { const L = window.__ironlog; const d = L.state.draft; return { fill: L.state.settings.loadFill, b0: d.ex[0].sets.map(x => L.fmtW(x.w)), b1: d.ex[1].sets.map(x => x.w), sw1: d.ex[1].sw, card: !!document.getElementById('loadAsk') }; });
-    ok(f1.fill === 'fill' && f1.b0.every(v => v === '77') && f1.b1.every(w => w === f1.sw1) && !f1.card, 'Fill them in: rows take the load shown in grey, the card goes', f1);
+    ok(f1.fill === 'fill' && f1.b0.every(v => v === '77') && f1.b1.every(w => w === f1.sw1) && !f1.card, 'Fill in suggested loads (Settings): rows take the load shown in grey', f1);
     // Correcting set 1 now moves the rows it filled.
     await Q.page.fill('.sg input[data-f="w"][data-b="0"][data-s="0"]', '80'); await Q.page.dispatchEvent('.sg input[data-f="w"][data-b="0"][data-s="0"]', 'input'); await Q.page.dispatchEvent('.sg input[data-f="w"][data-b="0"][data-s="0"]', 'change'); await Q.page.waitForTimeout(80);
     ok(await qev(() => { const L = window.__ironlog; return L.state.draft.ex[0].sets.every(x => L.fmtW(x.w) === '80'); }), 'a correction on set 1 moves the rows filled from it');
@@ -237,9 +238,6 @@ const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log
     await Q.page.waitForTimeout(120);
     const g1 = await qev(() => { const L = window.__ironlog; const d = L.state.draft; return { fill: L.state.settings.loadFill, b0: d.ex[0].sets.map(x => x.w == null ? null : L.fmtW(x.w)), b1: d.ex[1].sets.map(x => x.w) }; });
     ok(g1.fill === undefined && g1.b0[0] === '80' && g1.b0.slice(1).every(v => v === null) && g1.b1.every(w => w === null), 'switching back to grey in Settings empties the suggested rows and keeps the typed one', g1);
-    await qev(() => { const L = window.__ironlog; L.state.draft = null; L.ui.tab = 'today'; L.render(); });
-    await Q.page.click('.hero [data-act="startSession"]:not([data-light])'); await Q.page.waitForTimeout(150);
-    ok(await qev(() => !document.getElementById('loadAsk')), 'asked once: the next session does not ask again');
     ok(!Q.errors.length, 'no page errors in the load choice (' + Q.errors.join(' | ') + ')');
     await Q.ctx.close();
   }

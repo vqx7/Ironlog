@@ -113,7 +113,8 @@ const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log
 
   // A lighter day (with the note the app wrote) is still blank; cardio minutes are not.
   await ev(() => { const L = window.__ironlog; L.ui.tab = 'today'; L.render(); window.scrollTo(0, 0); });
-  await page.click('.hero [data-act="startSession"][data-light="1"]'); await page.waitForTimeout(120);
+  await page.click('.hero [data-act="startAltOpen"]'); await page.waitForTimeout(80);
+  await page.click('#modal [data-go="startSession"][data-light="1"]'); await page.waitForTimeout(120);
   await page.click('.ph [data-act="discard"]'); await page.waitForTimeout(80);
   ok(await ev(() => window.__ironlog.state.draft === null), 'the app\'s own note on a lighter day does not count as entered');
   await page.click('.hero [data-act="startSession"]:not([data-light])'); await page.waitForTimeout(120);
