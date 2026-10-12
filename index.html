@@ -5860,14 +5860,14 @@ function homeTiles(){
   <button class="tile" data-act="goDash" data-sec="bests" aria-label="${noLog()?'No PRs yet':pr.length+' PRs in the last 30 days'}. Open all-time bests"><div class="tv">${nz(pr.length)}</div><div class="tl">PRs, last 30 days</div><div class="ts">${last?`Latest: ${esc(exName(last.exId))}, ${ago===0?'today':ago===1?'yesterday':ago+' days ago'}`:'None yet'}</div></button>
   </div>`;
 }
-/* A lift's change said in what was lifted, from the two sessions its trend
-   compares (trendEnds), so the words and the percentage behind the i always
-   agree in direction. A compound barbell or machine lift says it as a load (lb or kg)
-   of estimated strength; anything else (isolation, bodyweight, one side, a
-   dumbbell each) shows its top set at each end, since an estimate there is
-   not a number anyone lifts (r30). */
 // An estimate is said as a load only where it is a load someone could put on the bar or stack.
 function estInLoad(ex){return isCompound(ex)&&!ex.bw&&!noE1(ex)&&loadMode(ex)==='total';}
+/* A lift's change said in what was lifted, from the two sessions its trend
+   compares (trendEnds), so the words and the percentage behind the i always
+   agree in direction. Where estInLoad, it is a load (lb or kg) of estimated
+   strength; anything else (isolation, bodyweight, one side, a dumbbell each)
+   shows its top set at each end, since an estimate there is not a number
+   anyone lifts (r30). */
 function liftChange(exId,dir,ow){
   const I=IDX();const ex=EX(exId);const w=trendW(trendScope(I.byEx[exId]||[],I.anchor));
   if(w.length<3)return `${dir} ${ow}`;
@@ -7225,7 +7225,8 @@ function libCards(){
 /* What to do next on this lift, the same target its next session shows
    (r41, V: guide how to progress rather than predict where it lands). */
 function nextLine(exId){
-  const ex=EX(exId);if(ex.archived||!state.exercises.some(e=>e.id===exId))return '';
+  // EX() reads a deleted exercise as archived, so this covers both.
+  if(EX(exId).archived)return '';
   const sg=suggest(exId,planFor(exId),{deload:isDeloadWeek()});
   return sg&&sg.target?`<p class="small" id="nextLine" style="margin:6px 0 0"><b>Next session</b>: ${esc(sg.target)}</p>`:'';
 }

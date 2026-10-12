@@ -129,7 +129,8 @@ function libCards(){
 /* What to do next on this lift, the same target its next session shows
    (r41, V: guide how to progress rather than predict where it lands). */
 function nextLine(exId){
-  const ex=EX(exId);if(ex.archived||!state.exercises.some(e=>e.id===exId))return '';
+  // EX() reads a deleted exercise as archived, so this covers both.
+  if(EX(exId).archived)return '';
   const sg=suggest(exId,planFor(exId),{deload:isDeloadWeek()});
   return sg&&sg.target?`<p class="small" id="nextLine" style="margin:6px 0 0"><b>Next session</b>: ${esc(sg.target)}</p>`:'';
 }
