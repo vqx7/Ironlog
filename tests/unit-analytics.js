@@ -22,11 +22,7 @@ const res=await page.evaluate(()=>{
   ok(I.exStats.bench.moving&&I.exStats.bench.pct>=3,'steady +1.2%/wk: moving',I.exStats.bench.pct);
   I=reset([0,7,14,21,28,35].map((k,i)=>S(addDays(T,-35+k),'bench',[[100+i*0.3,8,2]])));
   ok(!I.exStats.bench.moving,'+0.3%/wk (1.5% total): not moving',I.exStats.bench.pct);
-  const pj=L.exProjection('bench');ok(pj===null,'no projection when not moving');
-  I=reset([0,7,14,21,28,35].map((k,i)=>S(addDays(T,-35+k),'bench',[[100+i*1.2,8,2]])));
-  const pj2=L.exProjection('bench');ok(pj2&&pj2.lo<=pj2.value&&pj2.value<=pj2.hi,'projection has a range',pj2);
-  I=reset([0,10,20,30].map((k,i)=>S(addDays(T,-30+k),'bench',[[100+i*2,8,2]])));
-  ok(L.exProjection('bench')===null,'only 4 sessions: no projection');
+  // The 4-week projection was removed in r41 (V: guide, do not predict); tests/r41.js checks nothing projects.
   // ---- PR bands
   I=reset([S(addDays(T,-20),'bench',[[100,5,0]]),S(addDays(T,-13),'bench',[[80,12,0]]),S(addDays(T,-6),'bench',[[102,5,0]])]);
   const pr=I.prs.filter(p=>p.exId==='bench').map(p=>p.type+'@'+p.date);

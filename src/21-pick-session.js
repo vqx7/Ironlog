@@ -409,17 +409,18 @@ function liftTrend(exId){
     const v=exps.map(x=>fmtE(x.best));const d2=dir;
     return `<p class="small muted" style="margin:2px 0">Est. 1RM <span class="trend">${v.join(' → ')} ${U()}</span>${d2?' · '+d2:''}${st&&!st.useAdj?' '+tipi('Read from loads and reps alone: RIR is rated on too few of its sets to compare sessions fairly.','About this trend'):''}</p>`;
   }
-  const top=x=>{let q=null;for(const p of x.pts){const v=trendE(p.load,p.r,0)||0;if(!q||v>q.v)q={v,p};}return setShort(ex,q.p.w,q.p.r);};
-  return `<p class="small muted" style="margin:2px 0">Top sets <span class="trend">${exps.map(top).join(' → ')}</span>${dir?' · '+dir:''}</p>`;
+  return `<p class="small muted" style="margin:2px 0">Top sets <span class="trend">${exps.map(x=>topSetOf(ex,x)).join(' → ')}</span>${dir?' · '+dir:''}</p>`;
 }
+// A session's strongest set, as typed (the one the trend reading scores highest).
+function topSetOf(ex,x){let q=null;for(const p of x.pts){const v=trendE(p.load,p.r,0)||0;if(!q||v>q.v)q={v,p};}return setShort(ex,q.p.w,q.p.r);}
 function bodyCard(){
   const bws=[...state.bodyweights].sort((a,b)=>a.date<b.date?1:-1);
   const ms=[...state.measurements].sort((a,b)=>a.date<b.date?1:-1).slice(0,3);
   const last=bws[0];const r=bwRate();const loggedToday=last&&last.date===today();
-  const pc=v=>Math.abs(v)<0.05?'Flat':(v>0?'+':'−')+Math.abs(v).toFixed(1)+'%';
-  const sub=last?`${fmtW(last.kg)} ${U()}${r?` · ${pc(r.pct)}/wk`:''}`:'Not logged yet';
-  const chg=bws.length>1?last.kg-bws[1].kg:null;
-  return sec({sk:'today:body',key:'body',title:'Body',sub:esc(sub),body:`${last?`<div class="body-sum"><div><div class="v">${fmtW(last.kg)}<span class="small"> ${U()}</span></div><div class="l">Latest, ${fmtDate(last.date)}${chg!=null?`, ${chg>=0?'+':'−'}${fmtW(Math.abs(chg))} vs previous`:''}</div></div>${r?`<div><div class="v">${pc(r.pct)}</div><div class="l">per week, from 7-day averages</div></div>`:''}</div>`:''}
+  const sub=last?`${fmtW(last.kg)} ${U()}${r?` · ${bwWeekTxt(r)}`:''}`:'Not logged yet';
+  // "−0 vs previous" read as a loss; a change that rounds to nothing says so (r41).
+  const chg=bws.length>1?last.kg-bws[1].kg:null;const chgTxt=chg==null?'':+fmtW(Math.abs(chg))===0?', same as previous':`, ${chg>0?'+':'−'}${fmtW(Math.abs(chg))} vs previous`;
+  return sec({sk:'today:body',key:'body',title:'Body',sub:esc(sub),body:`${last?`<div class="body-sum"><div><div class="v">${fmtW(last.kg)}<span class="small"> ${U()}</span></div><div class="l">Latest, ${fmtDate(last.date)}${chgTxt}</div></div>${r?`<div><div class="v">${esc(bwWeekTxt(r).replace(' a week',''))}</div><div class="l">a week, from 7-day averages</div></div>`:''}</div>`:''}
   <div class="bw-entry"><label class="field">Date<input type="date" id="bwDate" value="${today()}" max="${today()}"></label><label class="field">Weight (${U()})<input type="text" inputmode="decimal" id="bwVal" placeholder="${last?fmtW(last.kg):''}" enterkeyhint="done"></label><button class="btn primary" data-act="addBW" data-tip="Also used for pull-ups, dips, and other bodyweight lifts.">${loggedToday?'Update':'Log'}</button></div>
   ${bws.length?`<ul class="bw-list" aria-label="Recent bodyweights">${bws.slice(0,5).map(b=>`<li><span class="d">${fmtDate(b.date)}</span><span class="num">${fmtW(b.kg)} ${U()}</span><button class="ib sm" data-act="delBW" data-id="${b.id}" aria-label="Delete ${fmtDate(b.date)} entry">✕</button></li>`).join('')}</ul>${bws.length>5?`<p class="small muted" style="margin:4px 0 0">${bws.length-5} older on Stats.</p>`:''}`:''}
   ${subsec('today:tape',`Tape measurements (${LU()})`,`<div class="grid2" style="align-items:end">${heightField()}<span></span></div>

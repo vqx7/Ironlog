@@ -1,10 +1,18 @@
-# Everything still open (as of r39 live, 2026-10-11)
+# Everything still open (as of r40 live, 2026-10-12)
 
 This is the tracking list. Items are built only when V says go. Owner items need V; the rest is build work. Nothing is done unless it says so. Numbers are kept stable; finished items move to Done at the bottom.
 
-## Live: r39 (published 2026-10-11, pull request #29; r38, r37, r36 and r35 before it the same day, #28, #27, #26 and #25; all merged by Claude at V's word "Deploy straight to live once fine and validated"; build 2026.10.11-r39)
+## Live: r40 (pull request #30, merged by V; r39, r38, r37, r36 and r35 before it, #29 to #25; build 2026.10.11-r40)
 
-## r40 (V, 2026-10-11: "others next on list"; item 41), tests/r40.js
+## r41 (V, 2026-10-12: "Are +% practically helpful? What true redundancies can be removed? ... Clean sweep, no downgrade"; the guidance half of the r41 plan), tests/r41.js
+266. Built: a lift's change in what was lifted. A barbell or machine lift says it in pounds (or kg) of estimated strength ("Up about 19 lb over 4 weeks"); an isolation, bodyweight, one-side or dumbbell-each lift shows its top set at each end ("Up over 4 weeks: 35×11 to 35×14"), since an estimate there is not a load anyone lifts. The percentage change and the weekly rate are behind the i. Both come from the same two sessions (`trendEnds`), so they always agree in direction.
+267. Built (V: guide, do not predict): the 4-week projection is gone from the headline, its i and the chart; a goal shows no weeks to reach it. Instead Stats > Lifts says Next session, the target that lift's next session will show, and a goal on a barbell or machine lift says about how much load is left.
+268. Built (redundancy): Stats drops the Stalled exercises tile (the Stuck line says it) and the Weight lifted tile (Today's This week has it), and the Change line when the coach's change is the volume shortfall the Volume line already names (that line then carries the coach's words). A lift's Change tile repeated its headline and is gone. The workout preview shows each lift's target without the trend history under it (that is on Stats). Settings' Help has one feedback button: the sheet already asks Problem, Question or Suggestion.
+269. Built (clutter): Muscles' Strength return on volume lists only the muscles to act on, with rising, flat, falling or unclear in words, and puts every muscle rising at its target in one line; a muscle's strength trend reads in words everywhere. Readiness and performance appears once a check-in has been answered.
+270. Built (language): the bodyweight rate is in lb or kg a week ("+0.7 lb a week"), with the percentage beside it only when the bodyweight goal is set in percent; an unchanged weigh-in says "same as previous" instead of "−0 vs previous". The Moving line names the lifts without percentages.
+271. Next (r42, the profile half of the r41 plan, as its own release): a short profile (goal: strength, size or both; experience; days and minutes; up to two focus muscles, item 43; a strength-focus Pick for me, item 44) that sets rep ranges, effort, weekly targets and what Pick for me favours.
+
+## r40, live (pull request #30) (V, 2026-10-11: "others next on list"; item 41), tests/r40.js
 261. Built (item 41, as PROMPT.md asks): Settings, Count RIR 4 to 5 as half a set, off by default. On, a working set at RIR 4 or 5 counts half toward the weekly hard sets, the targets they are read against, This week, the recap, and the plan's weekly sets (planned RIR 4 or 5 the same way). Estimates, PRs, recovery, Pick for me and the per-workout flag still count hard sets only. Hidden with RIR off, where every working set counts already. A convention, in a tip and the Guide.
 262. Built (V: names or the body, not both): the exercise editor names the muscles with its pickers and keeps the body figure behind Show on body (Hide body to close), instead of always showing both.
 263. Built (V): when a lift's change and its weekly rate point different ways, the reason is in the headline's i (the change compares the ends, the rate fits every session, the rate is the better guide), with nothing extra on screen.
