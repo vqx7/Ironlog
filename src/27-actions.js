@@ -557,6 +557,14 @@ const ACT={
     if(day.rest&&day.items.length)day.rest=false;
     commit();render();toast(`${day.name} updated`,true);
   },
+  goalOpen(t){openModal({kind:'goal',exId:t.dataset.ex});},
+  goalSave(){const m=ui.modal;const e=state.exercises.find(x=>x.id===m.exId);if(!e){closeModal();return;}
+    const w=numIn(($('#goalW')||{}).value),r=Math.round(numIn(($('#goalR')||{}).value));
+    if(!(r>=1&&r<=30)){toast('Reps from 1 to 30');return;}
+    if(w==null&&!e.bw){toast('Enter a load');return;}
+    if(w!=null&&w<0){toast('Enter a load of 0 or more');return;}
+    snapshot();e.goal={w:fromD(w||0),r};closeModal();commit();rerenderKeepScroll();toast(`Goal set: ${goalWords(e,e.goal)}`,true);},
+  goalClear(){const m=ui.modal;const e=state.exercises.find(x=>x.id===m.exId);if(!e){closeModal();return;}snapshot();delete e.goal;closeModal();commit();rerenderKeepScroll();toast('Goal removed',true);},
   bInc(t){const b=state.draft.ex[+t.dataset.b];openModal({kind:'inc',exId:b.exId,plan:b.plan});},
   incSave(){
     const m=ui.modal;const n=numIn(($('#incVal')||{}).value);if(n==null||n<=0){toast('Enter a step above 0');return;}

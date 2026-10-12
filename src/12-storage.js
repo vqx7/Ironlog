@@ -14,7 +14,7 @@ if(ENV==='preview')document.documentElement.dataset.env='preview';
 const HAD_LOG=(()=>{try{return localStorage.getItem(KEY)!=null;}catch(e){return false;}})();
 /* Shown in Settings, in diagnostics and in backups, so a bug report can be
    matched to the exact build. */
-const APP_VERSION='2026.10.11-r37';
+const APP_VERSION='2026.10.11-r38';
 /* The logo (r25): an upright dumbbell that is also the I of Ironlog. Same
    numbers as scripts/icons.py, which draws the app icons. */
 const MARK_SVG='<svg class="mark" viewBox="-242 -378 484 756" aria-hidden="true" focusable="false"><rect class="mk-h" x="-30" y="-300" width="60" height="600" rx="14"/><rect class="mk-h" x="-80" y="-192" width="160" height="32" rx="12"/><rect class="mk-h" x="-80" y="160" width="160" height="32" rx="12"/><rect class="mk-p" x="-240" y="-376" width="480" height="92" rx="30"/><rect class="mk-p" x="-190" y="-270" width="380" height="66" rx="26"/><rect class="mk-p" x="-190" y="204" width="380" height="66" rx="26"/><rect class="mk-p" x="-240" y="284" width="480" height="92" rx="30"/></svg>';
@@ -305,7 +305,9 @@ function normalize(s){
     bwf:(()=>{const f=numOr(e.bwf,NaN);return isNum(f)&&f>0&&f<=1.5?Math.round(f*100)/100:undefined;})(),
     maxLoad:(()=>{const ml=numOr(e.maxLoad,NaN);return isNum(ml)&&ml>0?Math.min(ml,20000*LB):undefined;})(),
     // This lift's own bar (r29, item 98): a trap or EZ bar instead of the bar in Settings. Absent when unset.
-    barKg:(()=>{const b=numOr(e.barKg,NaN);return isNum(b)&&b>0?Math.min(b,50):undefined;})()
+    barKg:(()=>{const b=numOr(e.barKg,NaN);return isNum(b)&&b>0?Math.min(b,50):undefined;})(),
+    // A lift goal (r38, item 188): a load (added load on a bodyweight lift) for a number of reps. Absent when unset.
+    goal:(()=>{const g=e.goal;if(!g||typeof g!=='object')return undefined;const w=numOr(g.w,NaN),r=Math.round(numOr(g.r,NaN));return isNum(w)&&w>=0&&w<=20000*LB&&r>=1&&r<=30&&!e.timed&&!e.assist?{w,r}:undefined;})()
   }));
   const have=new Set(out.exercises.map(e=>e.id));
   const gone=new Set(out.settings.removedLib);

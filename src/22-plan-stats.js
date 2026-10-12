@@ -118,6 +118,34 @@ function libCards(){
     <p class="small" style="margin:6px 0 0;display:flex;flex-wrap:wrap;gap:4px">${exTags(e,ui.libKind)}<span class="tag">${esc(EQL[e.equip]||e.equip)}</span>${e.custom?'<span class="tag blue">Custom</span>':''}${e.bw?'<span class="tag">Bodyweight + load</span>':''}<span class="tag">${esc(loadWords(e))}</span>${e.perSide?'<span class="tag">Reps per side</span>':''}${e.timed?'<span class="tag">Timed</span>':''}${e.maxLoad!=null?`<span class="tag">Max ${fmtW(e.maxLoad)} ${U()}</span>`:''}</p></div>`).join('')}</div>`;
 }
 
+/* ---------- LIFT GOALS (r38, item 188) ----------
+   A goal is a load for a number of reps (225 x 5), as lifters say it. Where it
+   stands: reached when a working set matched it (that load or more, those reps
+   or more); otherwise the best estimate from the last 12 weeks against what the
+   goal takes done to failure, by the same estimate the targets use (fitE), so
+   a goal at any reps compares with sets at any reps. A date to reach it only
+   when the lift is clearly rising and trained lately, from its weekly rate. */
+function goalOk(ex){return !!ex&&!ex.timed&&!ex.assist;}
+function goalState(exId){
+  const ex=EX(exId);const g=ex&&ex.goal;if(!g||!goalOk(ex))return null;
+  const I=IDX();const exps=I.byEx[exId]||[];const bw=bwRefLoad(ex);
+  let hit=null;for(const x of exps){if(x.pts.some(p=>p.w>=g.w-1e-6&&p.r>=g.r)){hit=x.date;break;}}
+  const need=fitE(g.w+bw,g.r,0);const from=addDays(today(),-84);
+  let cur=null;for(const x of exps){if(x.date<from||x.deload||x.light)continue;for(const p of x.pts){const v=fitE(p.load,p.r,p.rq);if(v!=null&&(cur==null||v>cur))cur=v;}}
+  const pct=need&&cur?Math.min(100,cur/need*100):null;
+  const st=I.exStats[exId]||{};let weeks=null;
+  if(!hit&&pct!=null&&pct<100&&st.moving&&st.fresh&&st.slope>0){const w=Math.log(need/cur)/Math.log(1+st.slope/100);if(isFinite(w)&&w>0&&w<=52)weeks=Math.max(1,Math.round(w));}
+  return {g,hit,pct,weeks,cur,need};
+}
+function goalWords(ex,g){return `${loadLabel(ex,g.w)}${ex.bw?'':' '+U()}${loadNote(ex)} × ${g.r}`;}
+function goalLine(exId){
+  const ex=EX(exId);if(!goalOk(ex))return '';
+  if(!ex.goal)return `<p class="small" style="margin:6px 0 0"><button class="linkbtn tall" data-act="goalOpen" data-ex="${esc(exId)}">Set a goal</button></p>`;
+  const s=goalState(exId);const gw=goalWords(ex,ex.goal);
+  const what=s.hit?`reached ${fmtDate(s.hit)}`:s.pct==null?'no sets in the last 12 weeks':s.pct>=100?'within reach':`${Math.floor(s.pct)}% there${s.weeks?`, about ${s.weeks} week${s.weeks===1?'':'s'} if the trend holds`:''}`;
+  const tip=s.hit?'Reached: a working set at that load or more, for those reps or more.':s.pct!=null&&s.pct>=100?`Your best estimate from the last 12 weeks says ${gw} done to failure is in you now. It counts as reached once a working set matches it.`:`Your best estimate from the last 12 weeks against what ${gw} takes done to failure.${s.weeks?' The weeks are from your weekly rate, and only while the lift is clearly rising.':''}`;
+  return `<p class="small" id="goalLine" style="margin:6px 0 0"><b>Goal ${esc(gw)}</b>: ${esc(what)} ${tipi(tip,'About this goal')} <button class="linkbtn tall" data-act="goalOpen" data-ex="${esc(exId)}">Change</button></p>`;
+}
 /* ---------- DASHBOARD ---------- */
 function viewDash(){
   const I=IDX();const R=activeRoutine();
@@ -220,8 +248,7 @@ function viewDash(){
     const e1Mode=isCompound(ex)&&exps.some(x=>x.best!=null);const bs=e1Mode?null:bestSet(ui.dashEx);
     const tagOf=x=>x.deload?'deload':x.light||x.auto?'lighter':x.cut?'trimmed':'';
     exh+=`<select data-bind="dashEx" aria-label="Exercise">${withData.map(id=>`<option value="${id}" ${id===ui.dashEx?'selected':''}>${esc(exName(id))}</option>`).join('')}</select>
-    <div style="margin-top:8px">${exHeadline(ui.dashEx)}</div>${noE1(ex)?`<div class="kpis" style="margin-top:8px"><div class="kpi"><div class="v">${st.n}</div><div class="l">Sessions logged</div></div><div class="kpi"><div class="v">${st.stalled?'Yes':'No'}</div><div class="l">Stalled</div></div></div>`:''}<div class="kpis" style="margin-top:8px${noE1(ex)?';display:none':''}">${e1Mode?`<div class="kpi"><div class="v">${st.best?(ex.bw?'≈':'')+fmtE(st.best):'n/a'}</div><div class="l">Best e1RM (${U()}${loadNote(ex)})</div></div>`:`<div class="kpi"><div class="v">${bs?esc(setShort(ex,bs.w,bs.r)):'n/a'}</div><div class="l">Best set${loadNote(ex)}</div></div>`}<div class="kpi"><div class="v">${st.pct==null||!st.fresh?NIL:(st.pct>=0?'+':'')+r1(st.pct)+'%'}</div><div class="l">${st.pct==null||!st.fresh?'Change':`Change over ${st.spanW||6} weeks`}</div></div><div class="kpi"><div class="v">${st.n}</div><div class="l">Sessions logged</div></div></div>
-    ${st.pct!=null&&st.slope!=null&&(st.pct>0)!==(st.slope>0)&&Math.abs(st.pct)>0.5&&Math.abs(st.slope)>0.1?`<p class="small muted hastip" style="margin-top:6px" data-tip="The change compares the endpoints; the trend fits a line through every session. When they split, trust the trend: one unusual session is pulling an endpoint.">Change and trend disagree</p>`:''}
+    <div style="margin-top:8px">${exHeadline(ui.dashEx)}</div>${goalLine(ui.dashEx)}${noE1(ex)?`<div class="kpis" style="margin-top:8px"><div class="kpi"><div class="v">${st.n}</div><div class="l">Sessions logged</div></div><div class="kpi"><div class="v">${st.stalled?'Yes':'No'}</div><div class="l">Stalled</div></div></div>`:''}<div class="kpis" style="margin-top:8px${noE1(ex)?';display:none':''}">${e1Mode?`<div class="kpi"><div class="v">${st.best?(ex.bw?'≈':'')+fmtE(st.best):'n/a'}</div><div class="l">Best e1RM (${U()}${loadNote(ex)})</div></div>`:`<div class="kpi"><div class="v">${bs?esc(setShort(ex,bs.w,bs.r)):'n/a'}</div><div class="l">Best set${loadNote(ex)}</div></div>`}<div class="kpi"><div class="v">${st.pct==null||!st.fresh?NIL:(st.pct>=0?'+':'')+r1(st.pct)+'%'}</div><div class="l">${st.pct==null||!st.fresh?'Change':`Change over ${st.spanW||6} weeks`}</div></div><div class="kpi"><div class="v">${st.n}</div><div class="l">Sessions logged</div></div></div>
     ${noE1(ex)?'':`${rangeChips('ex',weeksSpan(exps[0].date),8,'all')}<div class="chartbox"><canvas id="chEx"></canvas></div>${chartFallback()}
     <p class="small muted hastip" style="margin:4px 0 0" data-tip="Filled diamond: a new best estimate (a weight PR that also set one is filled too). Hollow diamond: a rep PR or a weight PR that did not raise the estimate, which can sit below an earlier best. The dashed line to the right appears only when the trend is clearly up, with a range, 4 weeks out. The thin dotted line is your RIR at the working load.">Reading the chart</p>`}
     ${st.easier?`<p class="small" style="color:var(--blue);margin-top:6px"><b>${esc(easierText(ex,st.easier))}</b></p>`:''}
