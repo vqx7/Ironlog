@@ -1,14 +1,14 @@
-# Everything still open (as of r35 live, r36 in progress, 2026-10-11)
+# Everything still open (as of r36 live, 2026-10-11)
 
 This is the tracking list. Items are built only when V says go. Owner items need V; the rest is build work. Nothing is done unless it says so. Numbers are kept stable; finished items move to Done at the bottom.
 
-## Live: r35 (published 2026-10-11, pull request #25, merged by Claude at V's word "Deploy straight to live once fine and validated"; build 2026.10.11-r35)
+## Live: r36 (published 2026-10-11, pull request #26; r35 before it the same day, #25; both merged by Claude at V's word "Deploy straight to live once fine and validated"; build 2026.10.11-r36)
 
-## r36 (V, 2026-10-11: item 2, the code optimization, on its own), tests/r36.js
+## r36, live since 2026-10-11 (V: item 2, the code optimization, on its own), tests/r36.js
 254. Built (item 209, first half): the source is `src/`, 24 parts cut at the code's own section headers; `npm run join` writes `index.html` from them, byte for byte what it was (tests/r36.js checks it on every run).
 255. Built (item 209, second half): `IDX()` (420 lines) is six named steps and `suggestCore()` (250 lines) seven named cases plus the first-session one; the code moved unchanged. Proof: 2,000 seeded random histories give identical numbers in r35 and r36 (every exposure, trend, stall, PR, weekly count, muscle score, every suggestion in four forms, the coach, averages, region balance, streak), with every case reached; plus the full suite.
 
-## r35, live since 2026-10-11 (pull request #25, merged by Claude at V's word), tests/r35.js
+## r35, live 2026-10-11 (pull request #25, merged by Claude at V's word), tests/r35.js
 248. Built: one change number on a lift (Stats > Lifts kept "Change over N weeks", the headline's number; the fitted rate per week stays behind the headline's i).
 249. Built: one way to start. The Today card is Start, then Change and More options; Change holds Lighter day, Short on time, Blank session, Pick for me, and the plan's days (the old Change day list).
 250. Built: no card asks grey or filled in; loads are grey, and Settings > Rest timer and logging > Fill in suggested loads stays for anyone who wants it (removing the mode itself would have dropped a tested path someone may use).

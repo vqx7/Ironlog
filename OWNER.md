@@ -2,13 +2,13 @@
 
 Everything that needs you, in one place, with the exact code to paste. Claude keeps this file current: an item moves to Done only when you confirm it, or when Claude can check it from here (and says how it checked). Build work and decisions are tracked in `PENDING.md`; this file is only what you do by hand.
 
-Last updated: r34.2 live, r35 on its way, 2026-10-11.
+Last updated: r36 live, 2026-10-11.
 
 ## Now, in this order
 
 1. B5, the trigger, then its check: Report a problem from the app and an issue appears in `ironlog-feedback` (steps below).
 2. B6: protect `main` (steps below). Until it is on, nothing stops a change reaching the live app without a pull request.
-3. A19 (r35 and r36): you said to publish each straight to live once validated (2026-10-11). Reload on your phone when "New version ready" shows.
+3. A19 (r35 and r36): done 2026-10-11, both live (pull requests #25 and #26, merged by Claude at your word). Reload on your phone when "New version ready" shows.
    A18 (r34.2): done 2026-10-11 (pull request #24, merged by you).
    A17 (r34.1): done 2026-10-10 (pull request #23, merged by Claude at your word; Day 2, Recently deleted can be cleared, the RPE line). Reload on your phone.
    A16 (r34, includes r33): done 2026-10-10 (pull request #22, merged by Claude at your word "go ahead and merge"; #21 shows as merged with it; live build 2026.10.10-r34, checked by Claude on the gh-pages branch and at https://ironapp.org/LICENSES.txt). Now: open Ironlog on your phone and tap Reload when it says New version ready. Then look at: in a session, a first set much easier or harder than planned (the line under it, and Keep); Settings > Rest timer and logging > Today starts with a blank session; Today > More options > Rest week; + Drop after a set; Settings > General > Weigh-in reminder; Stats on a pull-up or push-up; Sign out; Plan > Exercise library > Most common; Settings > Effort (RIR); Settings > Your gym.
@@ -314,7 +314,7 @@ Status: to do. Each step is free and none of them stops Claude from building and
 ### D6. Old branches
 Status: to do. Claude's GitHub access cannot delete branches.
 Every one of these is already in `main`, so nothing is lost.
-1. github.com/vqx7/Ironlog/branches > tap the trash icon on `keep-domain`, `r26`, `r27`, `r28`, `r29`, `r29.4`, `r29.5`, `r30`, `r30.1`, `r31`, `r31.1`, `r31.3`, `r32`, `r32.1`, `r33`, `r34` and `r34.1`, and `r34.2` once it is merged (checked by Claude 2026-10-10 with git: each one is already inside `main`, so nothing is lost). `r31.2` holds one commit that is not in `main`, a first-page layout that r31.3 replaced the same day and that is live in its newer form; delete it too unless you want that old version kept. Keep `main` and `gh-pages`. Claude tried to delete them on 2026-10-10 and this session is not allowed to delete branches.
+1. github.com/vqx7/Ironlog/branches > tap the trash icon on `keep-domain`, `r26`, `r27`, `r28`, `r29`, `r29.4`, `r29.5`, `r30`, `r30.1`, `r31`, `r31.1`, `r31.3`, `r32`, `r32.1`, `r33`, `r34`, `r34.1`, `r34.2`, `r35` and `r36` (checked by Claude 2026-10-10 with git: each one is already inside `main`, so nothing is lost). `r31.2` holds one commit that is not in `main`, a first-page layout that r31.3 replaced the same day and that is live in its newer form; delete it too unless you want that old version kept. Keep `main` and `gh-pages`. Claude tried to delete them on 2026-10-10 and this session is not allowed to delete branches.
 2. So it does not happen again: Settings > General > Pull Requests > tick **Automatically delete head branches**. Each branch then goes when its pull request is merged. (Still off as of 2026-10-10, checked by Claude.)
 
 ## Checks on your phone (items 7 and 63)
