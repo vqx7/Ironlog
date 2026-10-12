@@ -129,20 +129,22 @@ function goalOk(ex){return !!ex&&!ex.timed&&!ex.assist;}
 function goalState(exId){
   const ex=EX(exId);const g=ex&&ex.goal;if(!g||!goalOk(ex))return null;
   const I=IDX();const exps=I.byEx[exId]||[];const bw=bwRefLoad(ex);
+  // With no weigh-in a bodyweight lift has no load to compare: say so rather than a number read from the added load alone (the review of r40).
+  const noBw=!!ex.bw&&!(bwRef()>0);
   let hit=null;for(const x of exps){if(x.pts.some(p=>p.w>=g.w-1e-6&&p.r>=g.r)){hit=x.date;break;}}
   const need=fitE(g.w+bw,g.r,0);const from=addDays(today(),-84);
   let cur=null;for(const x of exps){if(x.date<from||x.deload||x.light)continue;for(const p of x.pts){const v=fitE(p.load,p.r,p.rq);if(v!=null&&(cur==null||v>cur))cur=v;}}
-  const pct=need&&cur?Math.min(100,cur/need*100):null;
+  const pct=!noBw&&need&&cur?Math.min(100,cur/need*100):null;
   const st=I.exStats[exId]||{};let weeks=null;
   if(!hit&&pct!=null&&pct<100&&st.moving&&st.fresh&&st.slope>0){const w=Math.log(need/cur)/Math.log(1+st.slope/100);if(isFinite(w)&&w>0&&w<=52)weeks=Math.max(1,Math.round(w));}
-  return {g,hit,pct,weeks,cur,need};
+  return {g,hit,pct,weeks,cur,need,noBw};
 }
 function goalWords(ex,g){return `${loadLabel(ex,g.w)}${ex.bw?'':' '+U()}${loadNote(ex)} × ${g.r}`;}
 function goalLine(exId){
   const ex=EX(exId);if(!goalOk(ex))return '';
   if(!ex.goal)return `<p class="small" style="margin:6px 0 0"><button class="linkbtn tall" data-act="goalOpen" data-ex="${esc(exId)}">Set a goal</button></p>`;
   const s=goalState(exId);const gw=goalWords(ex,ex.goal);
-  const what=s.hit?`reached ${fmtDate(s.hit)}`:s.pct==null?'no sets in the last 12 weeks':s.pct>=100?'within reach':`${Math.floor(s.pct)}% there${s.weeks?`, about ${s.weeks} week${s.weeks===1?'':'s'} if the trend holds`:''}`;
+  const what=s.hit?`reached ${fmtDate(s.hit)}`:s.noBw?'add a weigh-in to see how close':s.pct==null?'no sets in the last 12 weeks':s.pct>=100?'within reach':`${Math.floor(s.pct)}% there${s.weeks?`, about ${s.weeks} week${s.weeks===1?'':'s'} if the trend holds`:''}`;
   const tip=s.hit?'Reached: a working set at that load or more, for those reps or more.':s.pct!=null&&s.pct>=100?`Your best estimate from the last 12 weeks says ${gw} done to failure is in you now. It counts as reached once a working set matches it.`:`Your best estimate from the last 12 weeks against what ${gw} takes done to failure.${s.weeks?' The weeks are from your weekly rate, and only while the lift is clearly rising.':''}`;
   return `<p class="small" id="goalLine" style="margin:6px 0 0"><b>Goal ${esc(gw)}</b>: ${esc(what)} ${tipi(tip,'About this goal')} <button class="linkbtn tall" data-act="goalOpen" data-ex="${esc(exId)}">Change</button></p>`;
 }

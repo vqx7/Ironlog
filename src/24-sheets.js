@@ -109,7 +109,7 @@ function renderModalBody(){
     <p class="small muted">Three empty training days. It is not active until you tap Make active.</p>
     <div class="row" style="margin-top:10px"><button class="btn primary" data-act="rNewSave">Create</button><button class="btn" data-act="mClose">Cancel</button></div></div>`;
   }else if(m.kind==='exMus'){
-    const e=EX(m.exId);const v3=mapView()==='3d';const pm=exMusParts(e);B3.ex={main:pm.main,help:pm.help};
+    const e=EX(m.exId);const v3=mapView()==='3d';const pm=exMusParts(e);B3.ex={main:pm.main,help:pm.help};if(B3.yawKeep==null)B3.yawKeep=B3.yaw;
     h=`<div class="sheet exmus" role="dialog" aria-modal="true" aria-labelledby="exMusH"><div class="sheet-h"><h3 id="exMusH">Muscles: ${esc(e.name)}</h3><button class="ib" aria-label="Close" data-act="mClose">✕</button></div>
     ${exMusWords(e)}
     <div class="seg" role="group" aria-label="View" style="margin-top:8px"><button class="chip ${v3?'':'on'}" data-act="mapView" data-v="flat" aria-pressed="${!v3}">Flat</button><button class="chip ${v3?'on':''}" data-act="mapView" data-v="3d" aria-pressed="${v3}">3D</button></div>

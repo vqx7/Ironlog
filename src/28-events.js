@@ -215,7 +215,7 @@ document.addEventListener('change',e=>{
     case 'loadFill':ACT.loadAsk({dataset:{v:t.checked?'fill':'grey'}});break;
     case 'rirScale':if(t.value==='half'||t.value==='rpe')state.settings.rirScale=t.value;else delete state.settings.rirScale;commit();rerenderKeepScroll();break;
     case 'rirAsk':if(t.checked)state.settings.rirAsk=true;else delete state.settings.rirAsk;commit();rerenderKeepScroll();break;
-    case 'rirHalf':snapshot();if(t.checked)state.settings.rirHalf=true;else delete state.settings.rirHalf;invalidate();commit();rerenderKeepScroll();toast(t.checked?'RIR 4 to 5 now counts as half a set':'Only RIR 3 or less counts',true);break;
+    case 'rirHalf':snapshot();if(t.checked)state.settings.rirHalf=true;else delete state.settings.rirHalf;invalidate();commit();rerenderKeepScroll();toast(t.checked?`${halfLbl()} now counts as half a set`:`Only ${effWord()} ${effShow(3)} ${rirScale()==='rpe'?'or more':'or less'} counts`,true);break;
     case 'smallPlates':if(t.checked)state.settings.smallPlates=true;else delete state.settings.smallPlates;commit();break;
     case 'bwEvery':{const v=+t.value;if(v===14||![0,7,30].includes(v))delete state.settings.bwEvery;else state.settings.bwEvery=v;commit();rerenderKeepScroll();break;}
     case 'todayStart':if(t.value==='free')state.settings.todayStart='free';else delete state.settings.todayStart;commit();rerenderKeepScroll();break;

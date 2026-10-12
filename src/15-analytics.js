@@ -104,14 +104,19 @@ const rirEst=(s,ex)=>{const q=rirEff(s,ex);return q!=null?q:ex?rirUsual(ex.id):n
 const isHard=(s,ex)=>{if(!isWork(s))return false;const q=rirEst(s,ex);return q==null||q<=3;};
 const setCredit=s=>s.drop?0.5:1;
 /* Count RIR 4 to 5 as half a set (r40, item 41; a setting, off by default).
+   Any working set past RIR 3 counts half: calls top out at 5, but Corrected
+   RIR can read a call of 4 as 5.5 or 6, and that set is no less hard than a
+   call of 5 (the independent review of r40).
    Growth rises as sets end closer to failure (Robinson 2024), so sets a long
    way short still do something; half is a convention, not a measured dose.
    It moves the weekly hard sets, the bands they are read against and the
    plan's weekly sets, and nothing else: estimates, PRs, recovery and the
    per-session flag keep counting hard sets only. With RIR off every working
    set is hard already, so the setting has nothing to do. */
+// The range in the lifter's own effort scale: a half-rep scale allows 3.5, RPE reads 5 to 6.5.
+const halfLbl=()=>{const k=rirScale();return k==='rpe'?'RPE 5 to 6.5':k==='half'?'RIR 3.5 to 5':'RIR 4 to 5';};
 const rirHalfOn=()=>state.settings.rirHalf===true&&state.settings.rirMode!=='off';
-function hardCredit(s,ex){if(isHard(s,ex))return setCredit(s);if(!rirHalfOn()||!isWork(s))return 0;const q=rirEst(s,ex);return q!=null&&q>3&&q<=5?setCredit(s)*0.5:0;}
+function hardCredit(s,ex){if(isHard(s,ex))return setCredit(s);if(!rirHalfOn()||!isWork(s))return 0;const q=rirEst(s,ex);return q!=null&&q>3?setCredit(s)*0.5:0;}
 /* One set as text, for history, tables and the coach: 225×5, or 45 s for a timed hold. */
 function setShort(ex,w,r){return ex.timed?`${loadLabel(ex,+w||0)} for ${r}s`:`${loadLabel(ex,+w||0)}×${r}`;}
 function setStr(ex,x){return `${x.warm?'(W) ':x.drop?'(D) ':''}${setShort(ex,x.w,x.r)}${!ex.timed&&x.rir!=null&&x.rir!==''?(rirScale()==='rpe'?' @RPE '+effShow(x.rir):' @'+effShow(x.rir)):''}${x.cal?' (RIR check)':''}`;}
@@ -297,7 +302,8 @@ function IDX(){
    muscle, and each lift's exposure (its working sets read as loads, the
    working load, the best estimate, the trend readings, weight lifted). */
 function idxSessions(sessions){
-  // weekSets counts every hard set. weekConf counts only those whose RIR was
+  // weekSets counts every hard set (and, with rirHalf on, half of each set
+  // past RIR 3: hardCredit, r40). weekConf counts only those whose RIR was
   // actually logged. A set with a blank RIR still counts as hard, because
   // most working sets are, but guessing a value would be inventing data -- so
   // the two are tracked apart and the dashboard shows how much of your volume

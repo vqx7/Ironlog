@@ -18,7 +18,7 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
     const { page } = P; const ev = (f, a) => page.evaluate(f, a);
     await page.setViewportSize({ width: 390, height: 844 });
     // Every section shown, as in r27 (a new install hides a few since r28; tests/r28.js covers that).
-    await ev(() => { const L = window.__ironlog; L.state.settings.onboarded = true; L.state.settings.hidden = []; L.makeDemo(); localStorage.setItem('ironlog.v1.installLater', '1'); localStorage.setItem('ironlog.v1.loadAsk', '1'); L.ui.tab = 'today'; L.render(); });
+    await ev(() => { const L = window.__ironlog; L.state.settings.onboarded = true; L.state.settings.hidden = []; L.makeDemo(); localStorage.setItem('ironlog.v1.installLater', '1'); L.ui.tab = 'today'; L.render(); });
     await wait(80);
 
     // The button on every tab.

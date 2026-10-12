@@ -1009,7 +1009,7 @@ const ACT={
       const work=ex.reduce((a,b)=>a+b.sets.filter(isWork).length,0),hard=r1(ex.reduce((a,b)=>{const e=EX(b.exId);return a+b.sets.reduce((c,q)=>c+hardCredit(q,e),0);},0));
       ui.todayDay=null;window.scrollTo(0,0);render();
       if(editing){toast('Session updated');return;}
-      const lines=[`${work} working set${work===1?'':'s'}, ${hard} counted as hard`];
+      const lines=[`${work} working set${work===1?'':'s'}, ${hard} ${rirHalfOn()?'counted toward the week':'counted as hard'}`];
       // A session dated in the past says where it went, since it is not at the top of History.
       if(sess.date!==today())lines.unshift(`Saved under ${fmtDateLong(sess.date)}`);
       if(durMin){const pm=pmDraft;lines.push(`${durMin} minutes${pm&&!sess.free?`, planned about ${pm}`:''}`);}
@@ -1070,7 +1070,7 @@ const ACT={
   exNew(){openModal({kind:'exEdit',isNew:true,e:{id:'c_'+uid(),name:'',primary:'chest',secondary:[],equip:'cable',bw:false,rare:false,note:'',custom:true,archived:false}});},
   exNewFromPicker(){const back=ui.modal;if(!back||back.kind!=='picker')return;openModal({kind:'exEdit',isNew:true,back,e:{id:'c_'+uid(),name:(back.q||'').trim(),primary:back.m||'',secondary:[],equip:'cable',bw:false,rare:false,note:'',custom:true,archived:false,incRaw:''}});},
   exBack(){const m=ui.modal;if(m&&m.back)openModal(m.back);else closeModal();},
-  exEdit(t){const e=JSON.parse(JSON.stringify(EX(t.dataset.ex)));e.incRaw=e.inc!=null?fmtW(stepRead(e.inc)):'';e.bwfRaw=String(Math.round(bwShare(e)*100));e.maxRaw=e.maxLoad!=null?fmtW(e.maxLoad):'';e.barRaw=e.barKg!=null?fmtW(e.barKg):'';
+  exEdit(t){ui.exBody=false;const e=JSON.parse(JSON.stringify(EX(t.dataset.ex)));e.incRaw=e.inc!=null?fmtW(stepRead(e.inc)):'';e.bwfRaw=String(Math.round(bwShare(e)*100));e.maxRaw=e.maxLoad!=null?fmtW(e.maxLoad):'';e.barRaw=e.barKg!=null?fmtW(e.barKg):'';
     openModal({kind:'exEdit',isNew:false,e});},
   secToggle(t){const e=ui.modal.e;const k=t.dataset.m;e.secondary=e.secondary.includes(k)?e.secondary.filter(x=>x!==k):[...e.secondary,k];renderModal();},
   exSave(){

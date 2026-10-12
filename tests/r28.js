@@ -240,7 +240,7 @@ const TABS = ['today', 'program', 'dash', 'history', 'settings'];
     ok(r1.plan && r1.lifts === '1 lift tracked', 'after one session the radar reads this week so far and says the week is still going (r29), and Lifts says 1 lift', r1);
 
     // Auto-mark on (new installs): type the reps, pick RIR, tap the checkmark: the set stays ticked; a second tap unticks it.
-    await ev(() => { const L = window.__ironlog; L.state.sessions = []; L.state.settings.autoDone = true; localStorage.setItem('ironlog.v1.loadAsk', '1'); L.state = L.normalize(L.state); L.invalidate(); L.ui.tab = 'today'; L.ui.todayDay = null; L.render(); });
+    await ev(() => { const L = window.__ironlog; L.state.sessions = []; L.state.settings.autoDone = true; L.state = L.normalize(L.state); L.invalidate(); L.ui.tab = 'today'; L.ui.todayDay = null; L.render(); });
     await page.click('.hero [data-act="startSession"]:not([data-light])'); await wait(100);
     await page.fill('[data-f="w"][data-b="0"][data-s="0"]', '100'); await page.fill('[data-f="r"][data-b="0"][data-s="0"]', '8');
     await page.tap('.rirb[data-b="0"][data-s="0"]'); await wait(1000); await page.tap('.rirstrip [data-v="2"]'); await wait(400);

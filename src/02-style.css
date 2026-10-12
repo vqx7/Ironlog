@@ -583,7 +583,6 @@ body.obmode main,body.obmode #view{padding-bottom:24px}
 .imp-n{font-weight:650;overflow-wrap:anywhere}
 .ob-splash{min-height:60vh;display:flex;align-items:center;justify-content:center}
 .welcome h3{margin-bottom:10px;font:700 24px/1.15 var(--font);letter-spacing:-.015em}
-/* The account offer on the welcome card: an accent edge so it reads as the first step. */
 /* Log a past workout: one row per routine day, name left, detail right. */
 .fbshot{display:flex;align-items:center;gap:10px}
 /* Report kind: one segmented control, the problem first. */

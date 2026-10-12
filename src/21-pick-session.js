@@ -324,7 +324,8 @@ function weekStats(){
      Per-muscle volume (direct 1, secondary half) stays in the muscle views,
      where the split matters; summed across muscles it double-counts. The
      numerator is hard sets only, so a set left at RIR 4 or more does not
-     count toward the week. */
+     count toward the week, unless Count RIR 4 to 5 as half a set is on
+     (r40, hardCredit). */
   let got=0;for(const x of state.sessions)if(x.date>=cur&&x.date<=addDays(cur,6))for(const b of x.ex){const e=EX(b.exId);for(const q of b.sets)got+=hardCredit(q,e);}
   const tgt=planSetsPerWeek(R,isDeloadWeek());
   return {R,weekly,planDays,doneDays,got,tgt,pct:tgt>0?Math.min(100,got/tgt*100):0,cardioMin,cardioN};

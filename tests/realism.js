@@ -60,7 +60,7 @@ const r5 = v => Math.round(v / 5) * 5;
         await ev(([LIFTS, mode, LB]) => { const L = window.__ironlog; const s = L.state; s.settings.onboarded = true; s.settings.unit = 'lb'; s.settings.autoDone = false;
           if (mode === 'fill') s.settings.loadFill = 'fill';
           const R = s.routines[0]; R.days[0].items = LIFTS.map((e, i) => ({ uid: 'u' + i, exId: e.id, sets: e.sets, repMin: e.min, repMax: e.max, rir: e.rir, rest: 0, inc: 5 * LB, ss: null }));
-          L.invalidate(); L.saveNow(); localStorage.setItem('ironlog.v1.tipWake', '1'); localStorage.setItem('ironlog.v1.loadAsk', '1'); }, [LIFTS, mode, LB]);
+          L.invalidate(); L.saveNow(); localStorage.setItem('ironlog.v1.tipWake', '1'); }, [LIFTS, mode, LB]);
         state = await ev(() => JSON.parse(localStorage.getItem('ironlog.v1')));
         await P.ctx.close(); continue;
       }

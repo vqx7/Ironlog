@@ -63,6 +63,22 @@ const FILE = 'index.html';
     // Weekly schedule assumed: 3 hard + 4 x 0.5 = 5; off: 3. A deload halves each item: ceil(4/2)=2 x 0.5 + ceil(3/2)=2 = 3.
     ok(plan.off === 3 && plan.on === 5 && plan.deload === 3, 'planned: 3 sets at RIR 1 and 4 at RIR 4 are 5 a week on, 3 off, 3 in a deload week' + T, plan);
 
+    // ---------- 4b. The label in the lifter's own effort scale ----------
+    const lbl = await ev(() => { const L = window.__ironlog; const o = {}; for (const k of ['half', 'rpe', undefined]) { if (k) L.state.settings.rirScale = k; else delete L.state.settings.rirScale; L.ui.tab = 'settings'; L.render(); document.querySelectorAll('#view details').forEach(d => d.open = true); o[k || 'whole'] = document.querySelector('input[data-bind="rirHalf"]').closest('label').innerText.trim().replace(/\s*i$/, ''); } return o; });
+    ok(lbl.whole === 'Count RIR 4 to 5 as half a set' && lbl.half === 'Count RIR 3.5 to 5 as half a set' && lbl.rpe === 'Count RPE 5 to 6.5 as half a set', 'the setting reads in the effort scale in use (RIR, half reps, RPE)' + T, lbl);
+
+    // ---------- 4c. Corrected RIR can read a call of 4 as 6: still half a set ----------
+    const cal = await ev(() => {
+      const L = window.__ironlog; const LB = 0.45359237; const s = L.state; const keep = s.sessions.slice();
+      // Eight calibration sets each 3 reps past the call: the correction is +2, the cap.
+      for (let i = 0; i < 8; i++) s.sessions.push({ id: 'c' + i, date: L.addDays('2026-08-10', i * 3), dayIdx: 0, dayId: null, dayName: 'T', routineId: '', notes: '', ex: [{ exId: 'bench', rr: [6, 10], sets: [{ w: 135 * LB, r: 12, rir: 0, done: true, cal: { at: 8, pred: 1 } }] }] });
+      s.settings.rirMode = 'cal'; L.invalidate(); const I = L.IDX(); const wk = L.weekStart('2026-10-08');
+      const out = { bias: L.calStats().cls.c.bias, chest: (I.weekSets[wk] || {}).chest };
+      delete s.settings.rirMode; s.sessions = keep; L.invalidate(); return out;
+    });
+    // Called 2 reads 4, called 4 reads 6, called 5 is not corrected: all six past RIR 3, so 6 x 0.5 = 3.
+    ok(cal.bias === 2 && cal.chest === 3, 'with Corrected RIR (+2), calls of 2, 4, and 5 all read past 3 and count half: 3 sets' + T, cal);
+
     // ---------- 5. RIR off: nothing to do ----------
     const rOff = await ev(() => { const L = window.__ironlog; L.state.settings.rirMode = 'off'; L.invalidate(); L.render(); const I = L.IDX(); const v = (I.weekSets[L.weekStart('2026-10-08')] || {}).chest; const shown = !!document.querySelector('input[data-bind="rirHalf"]'); delete L.state.settings.rirMode; L.invalidate(); L.render(); return { v, shown }; });
     ok(rOff.v === 6 && !rOff.shown, 'with RIR off every working set counts (6), and the setting is hidden' + T, rOff);
@@ -88,13 +104,13 @@ const FILE = 'index.html';
       s.sessions = keep; L.invalidate();
       return { pct: st.pct, slope: st.slope, tip, screen: /different ways|disagree/.test(screen) };
     });
-    ok(dis.pct < 0 && dis.slope > 0.1 && /compares your first and last sessions; the weekly rate fits a line through all of them/.test(dis.tip) && !dis.screen, 'the change down and the rate up: the reason is in the headline\'s i, nothing extra on screen' + T, dis);
+    ok(dis.pct < 0 && dis.slope > 0.1 && /compares the better of your first two sessions with the better of your last two; the weekly rate fits a line through all of them/.test(dis.tip) && !dis.screen, 'the change down and the rate up: the reason is in the headline\'s i, nothing extra on screen' + T, dis);
     const agree = await ev(() => { const L = window.__ironlog; L.invalidate(); return /different ways/.test(L.exHeadline('bench')); });
     ok(!agree, 'when they agree, the i says nothing about it' + T);
 
     // ---------- 8. The Guide, 320 px ----------
     const guide = await ev(() => { const L = window.__ironlog; L.openModal({ kind: 'guide' }); const t = document.getElementById('modal').textContent; L.ACT.mClose(); return t; });
-    ok(/Count RIR 4 to 5 as half a set on, a working set at RIR 4 or 5 counts half/.test(guide), 'the Guide says what it does' + T);
+    ok(/Count RIR 4 to 5 as half a set on, a working set past RIR 3 counts half/.test(guide), 'the Guide says what it does' + T);
     await P.page.setViewportSize({ width: 320, height: 640 });
     ok(await ev(() => { const L = window.__ironlog; L.ui.tab = 'settings'; L.render(); document.querySelectorAll('#view details').forEach(d => d.open = true); return document.documentElement.scrollWidth <= innerWidth; }), 'Settings fits 320 px' + T);
 

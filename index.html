@@ -593,7 +593,6 @@ body.obmode main,body.obmode #view{padding-bottom:24px}
 .imp-n{font-weight:650;overflow-wrap:anywhere}
 .ob-splash{min-height:60vh;display:flex;align-items:center;justify-content:center}
 .welcome h3{margin-bottom:10px;font:700 24px/1.15 var(--font);letter-spacing:-.015em}
-/* The account offer on the welcome card: an accent edge so it reads as the first step. */
 /* Log a past workout: one row per routine day, name left, detail right. */
 .fbshot{display:flex;align-items:center;gap:10px}
 /* Report kind: one segmented control, the problem first. */
@@ -1585,7 +1584,6 @@ const LOCKUP=`<span class="vh">Ironlog</span>${MARK_SVG}<span class="rn" aria-hi
 const LOGK=KEY+'.log';
 // Week or Month in This week on Today (r26), per device.
 const WKVIEW_KEY=KEY+'.wkView';
-// The one-time choice between grey and filled-in loads (r26), per device.
 const logBuf=(()=>{try{const a=JSON.parse(localStorage.getItem(LOGK)||'[]');return Array.isArray(a)?a:[];}catch(e){return [];}})();
 function log(area,err){
   try{
@@ -2647,7 +2645,7 @@ function guideSheet(m){
    <p><b>Make it lighter</b>, after a low check-in, changes only the exercises not started yet. What you already did at full effort still sets next time's target.</p>
    <p><b>An injury</b> flagged on a muscle or a joint (knee, hip, shoulder, elbow, wrist) pauses targets for exercises that load it and caps their load at last time.</p>
    <p><b>Changes apply at once</b>: a new load step, rep range, or heaviest load reaches the exercises in your session that you have not started yet.</p>`],
-  ['stats','Volume and Stats',`<p><b>A hard set</b> is a working set at RIR 3 or less${off?' (with RIR off, every working set)':''}. Helper muscles count half a set (Pelland 2025). With Settings, Count RIR 4 to 5 as half a set on, a working set at RIR 4 or 5 counts half toward your weekly sets and targets, planned ones too (a convention); estimates, PRs, recovery, and the per-workout flag still count hard sets only.</p>
+  ['stats','Volume and Stats',`<p><b>A hard set</b> is a working set at RIR 3 or less${off?' (with RIR off, every working set)':''}. Helper muscles count half a set (Pelland 2025). With Settings, Count ${halfLbl()} as half a set on, a working set past RIR 3 counts half toward your weekly sets and targets, planned ones too (a convention); estimates, PRs, recovery, and the per-workout flag still count hard sets only.</p>
    <p><b>Weekly targets</b> are per muscle in Settings, Weekly set targets. 10 to 20 hard sets a week for major muscles is typical, not a ceiling. Serratus, rotator cuff, neck, and tibialis are tracked only: counted and shown, with no target, since no study sets a dose for them and most routines leave them to indirect work. A target starting at 0 is met with no sets. A muscle is below target when its weekly average, to one decimal as shown, is under the minimum. The radar on Stats measures each region against its minimum, so on or past the ring is on target. It averages your last 4 full weeks; the chips above it switch to 2 or 8 weeks, for the radar only. During the week, short of the minimum shows as under way, not below.</p>
    <p><b>Lagging strength</b> is a muscle whose lifts are falling, or flat with one of them stalled (a convention); with no clear trend, a stalled lift reads <b>A lift stalled</b>. A muscle whose lifts are all within day-to-day noise reads <b>unclear</b>, never 0%.</p>
    <p><b>Your target and the usual range</b>: picking a ready-made routine sets your minimums to what it plans, so Stats measures you against your plan. Plan, Weekly volume names the muscles that plan puts under the usual range.</p>
@@ -3040,14 +3038,19 @@ const rirEst=(s,ex)=>{const q=rirEff(s,ex);return q!=null?q:ex?rirUsual(ex.id):n
 const isHard=(s,ex)=>{if(!isWork(s))return false;const q=rirEst(s,ex);return q==null||q<=3;};
 const setCredit=s=>s.drop?0.5:1;
 /* Count RIR 4 to 5 as half a set (r40, item 41; a setting, off by default).
+   Any working set past RIR 3 counts half: calls top out at 5, but Corrected
+   RIR can read a call of 4 as 5.5 or 6, and that set is no less hard than a
+   call of 5 (the independent review of r40).
    Growth rises as sets end closer to failure (Robinson 2024), so sets a long
    way short still do something; half is a convention, not a measured dose.
    It moves the weekly hard sets, the bands they are read against and the
    plan's weekly sets, and nothing else: estimates, PRs, recovery and the
    per-session flag keep counting hard sets only. With RIR off every working
    set is hard already, so the setting has nothing to do. */
+// The range in the lifter's own effort scale: a half-rep scale allows 3.5, RPE reads 5 to 6.5.
+const halfLbl=()=>{const k=rirScale();return k==='rpe'?'RPE 5 to 6.5':k==='half'?'RIR 3.5 to 5':'RIR 4 to 5';};
 const rirHalfOn=()=>state.settings.rirHalf===true&&state.settings.rirMode!=='off';
-function hardCredit(s,ex){if(isHard(s,ex))return setCredit(s);if(!rirHalfOn()||!isWork(s))return 0;const q=rirEst(s,ex);return q!=null&&q>3&&q<=5?setCredit(s)*0.5:0;}
+function hardCredit(s,ex){if(isHard(s,ex))return setCredit(s);if(!rirHalfOn()||!isWork(s))return 0;const q=rirEst(s,ex);return q!=null&&q>3?setCredit(s)*0.5:0;}
 /* One set as text, for history, tables and the coach: 225×5, or 45 s for a timed hold. */
 function setShort(ex,w,r){return ex.timed?`${loadLabel(ex,+w||0)} for ${r}s`:`${loadLabel(ex,+w||0)}×${r}`;}
 function setStr(ex,x){return `${x.warm?'(W) ':x.drop?'(D) ':''}${setShort(ex,x.w,x.r)}${!ex.timed&&x.rir!=null&&x.rir!==''?(rirScale()==='rpe'?' @RPE '+effShow(x.rir):' @'+effShow(x.rir)):''}${x.cal?' (RIR check)':''}`;}
@@ -3233,7 +3236,8 @@ function IDX(){
    muscle, and each lift's exposure (its working sets read as loads, the
    working load, the best estimate, the trend readings, weight lifted). */
 function idxSessions(sessions){
-  // weekSets counts every hard set. weekConf counts only those whose RIR was
+  // weekSets counts every hard set (and, with rirHalf on, half of each set
+  // past RIR 3: hardCredit, r40). weekConf counts only those whose RIR was
   // actually logged. A set with a blank RIR still counts as hard, because
   // most working sets are, but guessing a value would be inventing data -- so
   // the two are tracked apart and the dashboard shows how much of your volume
@@ -5096,7 +5100,8 @@ function closeModal(){
   if(was&&was.kind==='short'&&was.temp&&!was.applied&&state.draft&&state.draft.id===was.temp&&!state.draft.ex.some(b=>b.sets.some(x=>x.done))){
     state.draft=null;stopTimer();wakeOff();saveNow();setTimeout(render,0);}$('#modal').hidden=true;$('#modal').innerHTML='';document.body.classList.remove('modal-open');renderModal.last=null;
   // The 3D body goes back to Today's map, coloured by the week again.
-  if(was&&was.kind==='exMus'){B3.ex=null;if(document.getElementById('bm3d'))mount3D();}
+  // Turned in the sheet, the body goes back to Today facing the way it was.
+  if(was&&was.kind==='exMus'){B3.ex=null;if(B3.yawKeep!=null){B3.yaw=B3.yawKeep;B3.yawKeep=null;}if(document.getElementById('bm3d'))mount3D();}
   const r=modalReturn;modalReturn=null;
   if(r&&document.contains(r)&&typeof r.focus==='function')try{r.focus({preventScroll:true});}catch(e){/* focus is best effort */}
 }
@@ -5877,7 +5882,7 @@ function exHeadline(exId){
   /* The change compares the ends; the rate fits every session. When they point
      different ways the reason sits behind the i, not as a line on screen (r40,
      V: the old note "Change and trend disagree" was confusing on its own). */
-  if(st.pct!=null&&st.slope!=null&&(st.pct>0)!==(st.slope>0)&&Math.abs(st.pct)>0.5&&Math.abs(st.slope)>0.1)more.push(`The change (${sg(st.pct)}) compares your first and last sessions; the weekly rate fits a line through all of them. They point different ways when one unusual session sits at an end, so the rate is the better guide.`);
+  if(st.pct!=null&&st.slope!=null&&(st.pct>0)!==(st.slope>0)&&Math.abs(st.pct)>0.5&&Math.abs(st.slope)>0.1)more.push(`The change (${sg(st.pct)}) compares ${st.wN>=4?'the better of your first two sessions with the better of your last two':'your first and last sessions'}; the weekly rate fits a line through all of them. They point different ways when one unusual session sits at an end, so the rate is the better guide.`);
   const atTopR=(()=>{const lw=st.last?atLoad(st.last.pts,st.last.topW):[];return lw.length&&lw.every(q=>q.r>=+planFor(exId).repMax);})();
   if(st.stalled){
     // At the top of the range, the advice is load, as on the Coach (r32).
@@ -5888,7 +5893,7 @@ function exHeadline(exId){
   else if(st.falling)parts.push(`Down ${r1(Math.abs(st.pct))}% ${ow}. Look at recovery before adding work.`);
   /* A small change the interval still puts on one side of zero is said as
      slow, not as "no clear change" next to a range that excludes 0 (r31). */
-  else if(st.pLo!=null&&(st.pLo>0||st.pHi<0)){parts.push(`Slowly ${st.pLo>0?'up':'down'}: ${sg(st.pct)} ${ow}.`);more.push(`Under the 3% that counts as ${st.pLo>0?'moving':'falling'}.`);}
+  else if(st.pLo!=null&&(st.pLo>0||st.pHi<0)){parts.push((st.pct>0)===(st.pLo>0)?`Slowly ${st.pLo>0?'up':'down'}: ${sg(st.pct)} ${ow}.`:`Slowly ${st.pLo>0?'up':'down'} ${ow}.`);more.push(`Under the 3% that counts as ${st.pLo>0?'moving':'falling'}.`);}
   else if(st.loadUp){parts.push('Heavier load, reps still in your range.');more.push('At different reps the 1RM formulas disagree by more than this change, so a dip in the estimate is not read as a fall.');}
   else{parts.push(`No clear change yet (${sg(st.pct)}).`);more.push('Day to day swings of 2 to 8% hide small changes.');}
   if(st.capped)parts.push('At the heaviest load available: progress counts in reps.');
@@ -6002,7 +6007,7 @@ const BM_BASE='<circle cx="60" cy="16" r="11"/><rect x="38" y="35" width="44" he
    the new card instead of building a new one. */
 const MAPVIEW_KEY=KEY+'.mapView';
 const THREE_URLS=['https://cdn.jsdelivr.net/npm/three@0.159.0/build/three.module.min.js','https://unpkg.com/three@0.159.0/build/three.module.min.js'];
-const B3={state:'idle',wait:[],r:null,scene:null,cam:null,root:null,meshes:[],mats:{},yaw:0.35,anim:0,status:null,sel:null,fail:'',viewMem:null,drag:null,ex:null};
+const B3={state:'idle',wait:[],r:null,scene:null,cam:null,root:null,meshes:[],mats:{},yaw:0.35,anim:0,status:null,sel:null,fail:'',viewMem:null,drag:null,ex:null,yawKeep:null};
 function mapView(){
   if(B3.viewMem)return B3.viewMem;
   try{B3.viewMem=localStorage.getItem(MAPVIEW_KEY)==='3d'?'3d':'flat';}catch(e){B3.viewMem='flat';}
@@ -6748,7 +6753,8 @@ function weekStats(){
      Per-muscle volume (direct 1, secondary half) stays in the muscle views,
      where the split matters; summed across muscles it double-counts. The
      numerator is hard sets only, so a set left at RIR 4 or more does not
-     count toward the week. */
+     count toward the week, unless Count RIR 4 to 5 as half a set is on
+     (r40, hardCredit). */
   let got=0;for(const x of state.sessions)if(x.date>=cur&&x.date<=addDays(cur,6))for(const b of x.ex){const e=EX(b.exId);for(const q of b.sets)got+=hardCredit(q,e);}
   const tgt=planSetsPerWeek(R,isDeloadWeek());
   return {R,weekly,planDays,doneDays,got,tgt,pct:tgt>0?Math.min(100,got/tgt*100):0,cardioMin,cardioN};
@@ -7189,20 +7195,22 @@ function goalOk(ex){return !!ex&&!ex.timed&&!ex.assist;}
 function goalState(exId){
   const ex=EX(exId);const g=ex&&ex.goal;if(!g||!goalOk(ex))return null;
   const I=IDX();const exps=I.byEx[exId]||[];const bw=bwRefLoad(ex);
+  // With no weigh-in a bodyweight lift has no load to compare: say so rather than a number read from the added load alone (the review of r40).
+  const noBw=!!ex.bw&&!(bwRef()>0);
   let hit=null;for(const x of exps){if(x.pts.some(p=>p.w>=g.w-1e-6&&p.r>=g.r)){hit=x.date;break;}}
   const need=fitE(g.w+bw,g.r,0);const from=addDays(today(),-84);
   let cur=null;for(const x of exps){if(x.date<from||x.deload||x.light)continue;for(const p of x.pts){const v=fitE(p.load,p.r,p.rq);if(v!=null&&(cur==null||v>cur))cur=v;}}
-  const pct=need&&cur?Math.min(100,cur/need*100):null;
+  const pct=!noBw&&need&&cur?Math.min(100,cur/need*100):null;
   const st=I.exStats[exId]||{};let weeks=null;
   if(!hit&&pct!=null&&pct<100&&st.moving&&st.fresh&&st.slope>0){const w=Math.log(need/cur)/Math.log(1+st.slope/100);if(isFinite(w)&&w>0&&w<=52)weeks=Math.max(1,Math.round(w));}
-  return {g,hit,pct,weeks,cur,need};
+  return {g,hit,pct,weeks,cur,need,noBw};
 }
 function goalWords(ex,g){return `${loadLabel(ex,g.w)}${ex.bw?'':' '+U()}${loadNote(ex)} × ${g.r}`;}
 function goalLine(exId){
   const ex=EX(exId);if(!goalOk(ex))return '';
   if(!ex.goal)return `<p class="small" style="margin:6px 0 0"><button class="linkbtn tall" data-act="goalOpen" data-ex="${esc(exId)}">Set a goal</button></p>`;
   const s=goalState(exId);const gw=goalWords(ex,ex.goal);
-  const what=s.hit?`reached ${fmtDate(s.hit)}`:s.pct==null?'no sets in the last 12 weeks':s.pct>=100?'within reach':`${Math.floor(s.pct)}% there${s.weeks?`, about ${s.weeks} week${s.weeks===1?'':'s'} if the trend holds`:''}`;
+  const what=s.hit?`reached ${fmtDate(s.hit)}`:s.noBw?'add a weigh-in to see how close':s.pct==null?'no sets in the last 12 weeks':s.pct>=100?'within reach':`${Math.floor(s.pct)}% there${s.weeks?`, about ${s.weeks} week${s.weeks===1?'':'s'} if the trend holds`:''}`;
   const tip=s.hit?'Reached: a working set at that load or more, for those reps or more.':s.pct!=null&&s.pct>=100?`Your best estimate from the last 12 weeks says ${gw} done to failure is in you now. It counts as reached once a working set matches it.`:`Your best estimate from the last 12 weeks against what ${gw} takes done to failure.${s.weeks?' The weeks are from your weekly rate, and only while the lift is clearly rising.':''}`;
   return `<p class="small" id="goalLine" style="margin:6px 0 0"><b>Goal ${esc(gw)}</b>: ${esc(what)} ${tipi(tip,'About this goal')} <button class="linkbtn tall" data-act="goalOpen" data-ex="${esc(exId)}">Change</button></p>`;
 }
@@ -7938,7 +7946,7 @@ function rirSettings(){
     <option value="half" ${rirScale()==='half'?'selected':''}>RIR, half reps (0, 0.5, 1 … 5)</option>
     <option value="rpe" ${rirScale()==='rpe'?'selected':''}>RPE (5 to 10, in halves)</option></select></label>`}
   ${s.rirMode==='off'?'':`<label class="check-inline"><input type="checkbox" data-bind="rirAsk" ${s.rirAsk===true?'checked':''}><span class="hastip" data-tip="Off: tap a set's RIR box when you want to rate it. On: the picker opens by itself after each set you tick.">Open the ${effWord()} picker after each set</span></label>
-  <label class="check-inline"><input type="checkbox" data-bind="rirHalf" ${s.rirHalf===true?'checked':''}><span class="hastip" data-tip="Off: a set counts toward your weekly sets at RIR 3 or less. On: a set at RIR 4 or 5 counts as half a set too, in your weekly sets, targets, and the plan's weekly sets. Growth rises as sets end closer to failure (Robinson 2024), so sets further away still do something; half is a convention. Estimates, PRs, and recovery are unchanged.">Count RIR 4 to 5 as half a set</span></label>
+  <label class="check-inline"><input type="checkbox" data-bind="rirHalf" ${s.rirHalf===true?'checked':''}><span class="hastip" data-tip="Off: a set counts toward your weekly sets at RIR 3 or less. On: a set past RIR 3 counts as half a set too, in your weekly sets, targets, and the plan's weekly sets. Growth rises as sets end closer to failure (Robinson 2024), so sets further away still do something; half is a convention. Estimates, PRs, and recovery are unchanged.">Count ${halfLbl()} as half a set</span></label>
   <p class="small muted hastip" style="margin:4px 0 0" data-tip="A blank RIR is read as your usual RIR on that lift: the middle value of the sets of it you rated in the last 12 weeks, once there are 3. That is a convention, so rating a set only sometimes cannot make it look stronger or weaker. Until there are 3, a blank set counts as hard and as 0 reps left for 1RM estimates, which errs low and never inflates a PR. Recovery, calibration, and the light-load check use only the RIR you entered.">Skipping RIR on some sets is fine.</p>`}
   ${s.rirMode==='cal'&&c.recent<2?'<p class="small" style="margin:0"><b>Needs 2 calibration sets from the last 12 weeks before any correction applies.</b></p>':''}
   <p class="small hastip" style="margin:4px 0 0" data-tip="Off hides the RIR picker: every working set counts as hard and estimates use reps alone. Corrected shifts RIR you called at 4 or less by your typical error, shrunk toward zero while you have few calibration sets and capped at 2 reps; compound and isolation lifts use their own sets once each has 2. A set called at 0 is shifted too: unless a rep actually failed, 0 is still a call, and people under-call reps left by about 1 on average, only slightly less near failure (Halperin 2022). Your log never changes, so switching is reversible.">${esc(sum)}</p>`;
@@ -8061,7 +8069,7 @@ function renderModalBody(){
     <p class="small muted">Three empty training days. It is not active until you tap Make active.</p>
     <div class="row" style="margin-top:10px"><button class="btn primary" data-act="rNewSave">Create</button><button class="btn" data-act="mClose">Cancel</button></div></div>`;
   }else if(m.kind==='exMus'){
-    const e=EX(m.exId);const v3=mapView()==='3d';const pm=exMusParts(e);B3.ex={main:pm.main,help:pm.help};
+    const e=EX(m.exId);const v3=mapView()==='3d';const pm=exMusParts(e);B3.ex={main:pm.main,help:pm.help};if(B3.yawKeep==null)B3.yawKeep=B3.yaw;
     h=`<div class="sheet exmus" role="dialog" aria-modal="true" aria-labelledby="exMusH"><div class="sheet-h"><h3 id="exMusH">Muscles: ${esc(e.name)}</h3><button class="ib" aria-label="Close" data-act="mClose">✕</button></div>
     ${exMusWords(e)}
     <div class="seg" role="group" aria-label="View" style="margin-top:8px"><button class="chip ${v3?'':'on'}" data-act="mapView" data-v="flat" aria-pressed="${!v3}">Flat</button><button class="chip ${v3?'on':''}" data-act="mapView" data-v="3d" aria-pressed="${v3}">3D</button></div>
@@ -10043,7 +10051,7 @@ const ACT={
       const work=ex.reduce((a,b)=>a+b.sets.filter(isWork).length,0),hard=r1(ex.reduce((a,b)=>{const e=EX(b.exId);return a+b.sets.reduce((c,q)=>c+hardCredit(q,e),0);},0));
       ui.todayDay=null;window.scrollTo(0,0);render();
       if(editing){toast('Session updated');return;}
-      const lines=[`${work} working set${work===1?'':'s'}, ${hard} counted as hard`];
+      const lines=[`${work} working set${work===1?'':'s'}, ${hard} ${rirHalfOn()?'counted toward the week':'counted as hard'}`];
       // A session dated in the past says where it went, since it is not at the top of History.
       if(sess.date!==today())lines.unshift(`Saved under ${fmtDateLong(sess.date)}`);
       if(durMin){const pm=pmDraft;lines.push(`${durMin} minutes${pm&&!sess.free?`, planned about ${pm}`:''}`);}
@@ -10104,7 +10112,7 @@ const ACT={
   exNew(){openModal({kind:'exEdit',isNew:true,e:{id:'c_'+uid(),name:'',primary:'chest',secondary:[],equip:'cable',bw:false,rare:false,note:'',custom:true,archived:false}});},
   exNewFromPicker(){const back=ui.modal;if(!back||back.kind!=='picker')return;openModal({kind:'exEdit',isNew:true,back,e:{id:'c_'+uid(),name:(back.q||'').trim(),primary:back.m||'',secondary:[],equip:'cable',bw:false,rare:false,note:'',custom:true,archived:false,incRaw:''}});},
   exBack(){const m=ui.modal;if(m&&m.back)openModal(m.back);else closeModal();},
-  exEdit(t){const e=JSON.parse(JSON.stringify(EX(t.dataset.ex)));e.incRaw=e.inc!=null?fmtW(stepRead(e.inc)):'';e.bwfRaw=String(Math.round(bwShare(e)*100));e.maxRaw=e.maxLoad!=null?fmtW(e.maxLoad):'';e.barRaw=e.barKg!=null?fmtW(e.barKg):'';
+  exEdit(t){ui.exBody=false;const e=JSON.parse(JSON.stringify(EX(t.dataset.ex)));e.incRaw=e.inc!=null?fmtW(stepRead(e.inc)):'';e.bwfRaw=String(Math.round(bwShare(e)*100));e.maxRaw=e.maxLoad!=null?fmtW(e.maxLoad):'';e.barRaw=e.barKg!=null?fmtW(e.barKg):'';
     openModal({kind:'exEdit',isNew:false,e});},
   secToggle(t){const e=ui.modal.e;const k=t.dataset.m;e.secondary=e.secondary.includes(k)?e.secondary.filter(x=>x!==k):[...e.secondary,k];renderModal();},
   exSave(){
@@ -10463,7 +10471,7 @@ document.addEventListener('change',e=>{
     case 'loadFill':ACT.loadAsk({dataset:{v:t.checked?'fill':'grey'}});break;
     case 'rirScale':if(t.value==='half'||t.value==='rpe')state.settings.rirScale=t.value;else delete state.settings.rirScale;commit();rerenderKeepScroll();break;
     case 'rirAsk':if(t.checked)state.settings.rirAsk=true;else delete state.settings.rirAsk;commit();rerenderKeepScroll();break;
-    case 'rirHalf':snapshot();if(t.checked)state.settings.rirHalf=true;else delete state.settings.rirHalf;invalidate();commit();rerenderKeepScroll();toast(t.checked?'RIR 4 to 5 now counts as half a set':'Only RIR 3 or less counts',true);break;
+    case 'rirHalf':snapshot();if(t.checked)state.settings.rirHalf=true;else delete state.settings.rirHalf;invalidate();commit();rerenderKeepScroll();toast(t.checked?`${halfLbl()} now counts as half a set`:`Only ${effWord()} ${effShow(3)} ${rirScale()==='rpe'?'or more':'or less'} counts`,true);break;
     case 'smallPlates':if(t.checked)state.settings.smallPlates=true;else delete state.settings.smallPlates;commit();break;
     case 'bwEvery':{const v=+t.value;if(v===14||![0,7,30].includes(v))delete state.settings.bwEvery;else state.settings.bwEvery=v;commit();rerenderKeepScroll();break;}
     case 'todayStart':if(t.value==='free')state.settings.todayStart='free';else delete state.settings.todayStart;commit();rerenderKeepScroll();break;

@@ -557,7 +557,7 @@ function exHeadline(exId){
   /* The change compares the ends; the rate fits every session. When they point
      different ways the reason sits behind the i, not as a line on screen (r40,
      V: the old note "Change and trend disagree" was confusing on its own). */
-  if(st.pct!=null&&st.slope!=null&&(st.pct>0)!==(st.slope>0)&&Math.abs(st.pct)>0.5&&Math.abs(st.slope)>0.1)more.push(`The change (${sg(st.pct)}) compares your first and last sessions; the weekly rate fits a line through all of them. They point different ways when one unusual session sits at an end, so the rate is the better guide.`);
+  if(st.pct!=null&&st.slope!=null&&(st.pct>0)!==(st.slope>0)&&Math.abs(st.pct)>0.5&&Math.abs(st.slope)>0.1)more.push(`The change (${sg(st.pct)}) compares ${st.wN>=4?'the better of your first two sessions with the better of your last two':'your first and last sessions'}; the weekly rate fits a line through all of them. They point different ways when one unusual session sits at an end, so the rate is the better guide.`);
   const atTopR=(()=>{const lw=st.last?atLoad(st.last.pts,st.last.topW):[];return lw.length&&lw.every(q=>q.r>=+planFor(exId).repMax);})();
   if(st.stalled){
     // At the top of the range, the advice is load, as on the Coach (r32).
@@ -568,7 +568,7 @@ function exHeadline(exId){
   else if(st.falling)parts.push(`Down ${r1(Math.abs(st.pct))}% ${ow}. Look at recovery before adding work.`);
   /* A small change the interval still puts on one side of zero is said as
      slow, not as "no clear change" next to a range that excludes 0 (r31). */
-  else if(st.pLo!=null&&(st.pLo>0||st.pHi<0)){parts.push(`Slowly ${st.pLo>0?'up':'down'}: ${sg(st.pct)} ${ow}.`);more.push(`Under the 3% that counts as ${st.pLo>0?'moving':'falling'}.`);}
+  else if(st.pLo!=null&&(st.pLo>0||st.pHi<0)){parts.push((st.pct>0)===(st.pLo>0)?`Slowly ${st.pLo>0?'up':'down'}: ${sg(st.pct)} ${ow}.`:`Slowly ${st.pLo>0?'up':'down'} ${ow}.`);more.push(`Under the 3% that counts as ${st.pLo>0?'moving':'falling'}.`);}
   else if(st.loadUp){parts.push('Heavier load, reps still in your range.');more.push('At different reps the 1RM formulas disagree by more than this change, so a dip in the estimate is not read as a fall.');}
   else{parts.push(`No clear change yet (${sg(st.pct)}).`);more.push('Day to day swings of 2 to 8% hide small changes.');}
   if(st.capped)parts.push('At the heaviest load available: progress counts in reps.');

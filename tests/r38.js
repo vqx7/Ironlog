@@ -124,6 +124,10 @@ const brz = (load, rtf) => load * 36 / (37 - rtf);
     ok(bw.bwl > 0 && Math.abs(bw.gs.need - bwNeed) < 1e-6 && Math.abs(bw.gs.cur - bwCur) < 1e-6 && bw.line.includes(Math.floor(bwCur / bwNeed * 100) + '% there'), 'its estimate and need include the bodyweight at the latest weigh-in' + T, { gs: bw.gs, bwNeed, bwCur });
     ok(bw.bare.g && bw.bare.g.w === 0 && bw.bare.g.r === 12 && /^Goal BW × 12/.test(bw.bare.line), 'an empty added load on a bodyweight lift is BW alone: Goal BW × 12' + T, bw.bare);
 
+    // With no weigh-in the bodyweight lift has nothing to compare against: it says so, not a number from the added load alone.
+    const nobw = await ev(() => { const L = window.__ironlog; const keep = L.state.bodyweights; L.state.bodyweights = []; L.invalidate(); L.render(); document.querySelectorAll('#view details').forEach(d => d.open = true); const o = { line: document.getElementById('goalLine').innerText.replace(/\s+/g, ' ').trim(), pct: L.goalState('pullup').pct }; L.state.bodyweights = keep; L.invalidate(); L.render(); return o; });
+    ok(/^Goal BW × 12: add a weigh-in to see how close/.test(nobw.line) && nobw.pct === null, 'no weigh-in: the bodyweight goal asks for one instead of a number' + T, nobw);
+
     // ---------- 7. Not offered on timed holds or assisted lifts ----------
     const none = await ev(() => { const L = window.__ironlog; return { plank: L.goalLine('plank'), assist: L.goalLine('assistPullup'), plankState: L.goalState('plank') }; });
     ok(none.plank === '' && none.assist === '' && none.plankState === null, 'no goal on a timed hold or an assisted lift' + T, none);

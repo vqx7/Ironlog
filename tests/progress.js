@@ -84,7 +84,7 @@ const PLAN = [
           // adjustment (r34) is off here: it is tested in tests/r34.js, and with it on, tests/realism.js's
           // 16-week lifter checks that it keeps progression on track.
           s.settings.autoAdj = false;
-          L.invalidate(); L.saveNow(); localStorage.setItem('ironlog.v1.tipWake', '1'); localStorage.setItem('ironlog.v1.loadAsk', '1'); }, [EXS, mode, LB]);
+          L.invalidate(); L.saveNow(); localStorage.setItem('ironlog.v1.tipWake', '1'); }, [EXS, mode, LB]);
         state = await ev(() => JSON.parse(localStorage.getItem('ironlog.v1')));
         await P.ctx.close(); continue;
       }

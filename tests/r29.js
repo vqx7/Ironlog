@@ -78,7 +78,7 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
   {
     const P = await open('index.html', { touch: true, w: 390, h: 844, clock: '2026-09-24T18:00:00' });
     const { page } = P; const ev = (f, a) => page.evaluate(f, a);
-    await ev(() => { const L = window.__ironlog; L.state.settings.onboarded = true; L.makeDemo(); localStorage.setItem('ironlog.v1.loadAsk', '1'); localStorage.setItem('ironlog.v1.tipWake', '1'); L.ui.tab = 'today'; L.ui.todayDay = 0; L.render(); });
+    await ev(() => { const L = window.__ironlog; L.state.settings.onboarded = true; L.makeDemo(); localStorage.setItem('ironlog.v1.tipWake', '1'); L.ui.tab = 'today'; L.ui.todayDay = 0; L.render(); });
     await page.click('.hero [data-act="startSession"]:not([data-light])'); await wait(200);
     const n0 = await ev(() => window.__ironlog.state.draft.ex[0].sets.length);
     for (let i = 0; i < n0; i++) { const sel = `[data-act="sDone"][data-b="0"][data-s="${i}"]`; if (await page.$(sel)) { await page.tap(sel); await wait(100); } }
@@ -129,7 +129,7 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
   {
     const P = await open('index.html', { touch: true, w: 390, h: 844, clock: '2026-09-24T18:00:00' });
     const { page } = P; const ev = (f, a) => page.evaluate(f, a);
-    await ev(() => { const L = window.__ironlog; L.state.settings.onboarded = true; L.state.settings.autoDone = true; L.makeDemo(); localStorage.setItem('ironlog.v1.loadAsk', '1'); localStorage.setItem('ironlog.v1.tipWake', '1'); L.ui.tab = 'today'; L.ui.todayDay = 0; L.render(); });
+    await ev(() => { const L = window.__ironlog; L.state.settings.onboarded = true; L.state.settings.autoDone = true; L.makeDemo(); localStorage.setItem('ironlog.v1.tipWake', '1'); L.ui.tab = 'today'; L.ui.todayDay = 0; L.render(); });
     await page.click('.hero [data-act="startSession"]:not([data-light])'); await wait(200);
     // An empty reps field focused, then the handle tapped: leaving for the
     // handle is not "done with this set", so nothing is ticked.
@@ -161,7 +161,7 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
   {
     const P = await open('index.html', { touch: true, w: 390, h: 700, clock: '2026-09-24T18:00:00' });
     const { page } = P; const ev = (f, a) => page.evaluate(f, a);
-    await ev(() => { const L = window.__ironlog; L.state.settings.onboarded = true; L.makeDemo(); localStorage.setItem('ironlog.v1.loadAsk', '1'); localStorage.setItem('ironlog.v1.tipWake', '1'); L.ui.tab = 'today'; L.ui.todayDay = 0; L.render(); });
+    await ev(() => { const L = window.__ironlog; L.state.settings.onboarded = true; L.makeDemo(); localStorage.setItem('ironlog.v1.tipWake', '1'); L.ui.tab = 'today'; L.ui.todayDay = 0; L.render(); });
     await page.click('.hero [data-act="startSession"]:not([data-light])'); await wait(300);
     const cdp = await page.context().newCDPSession(page);
     const tp = (type, x, y) => cdp.send('Input.dispatchTouchEvent', { type, touchPoints: type === 'touchEnd' ? [] : [{ x, y }] });
