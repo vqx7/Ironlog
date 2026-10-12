@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-S8FAbJynVyMJIEwZhds89JF25agb/leVUlpcisPzucM=' 'sha256-tuSgXs5JTxAxl+0h6Mmbx/BgvpNDfjiq2RiZRPGtwkc=' 'sha256-YHdgjdaHPObo0ajgr78/3fg0b/g2KACx2Yivxr2AJEo=' 'sha256-gJjS3YZkHhZM1ZhH1a4/HCAcc4fhN3nZ+FjQlLGqrls=' 'sha256-J4UrXwIeplIJZfkgJq3M75mmvlwXBomq0l+LhSwoEfI='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https://fqvupierxrvpoidtwlon.supabase.co wss://fqvupierxrvpoidtwlon.supabase.co https://api.pwnedpasswords.com; worker-src 'self'; manifest-src 'self'; media-src 'self'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-S8FAbJynVyMJIEwZhds89JF25agb/leVUlpcisPzucM=' 'sha256-tuSgXs5JTxAxl+0h6Mmbx/BgvpNDfjiq2RiZRPGtwkc=' 'sha256-YHdgjdaHPObo0ajgr78/3fg0b/g2KACx2Yivxr2AJEo=' 'sha256-k+JtSo1JCzZfdptzK+xRnlpYzb4yCjJNoYqFO7gE+0c=' 'sha256-J4UrXwIeplIJZfkgJq3M75mmvlwXBomq0l+LhSwoEfI='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https://fqvupierxrvpoidtwlon.supabase.co wss://fqvupierxrvpoidtwlon.supabase.co https://api.pwnedpasswords.com; worker-src 'self'; manifest-src 'self'; media-src 'self'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Ironlog</title>
 <script>window.IRONLOG_APP=true;window.__installEvt=null;
@@ -116,17 +116,21 @@ window.addEventListener('appinstalled',()=>{window.__installEvt=null;if(window.i
 }
 /* Accent colour, chosen in Settings > General. The tokens keep the name
    --volt (the original accent) and mean "the accent": go, done, progress.
-   Blue is the default. With the blue accent, the blue status colour (above
+   Ember is the default since r37 (V); Blue, Volt and Pink are the others. With the blue accent, the blue status colour (above
    target, information, supersets) turns violet, so "done" and "above target"
    never look alike. Every pair is checked for 4.5:1 in tests/design.js. */
 :root[data-accent="blue"]{--volt:#2a63f5;--on-volt:#ffffff;--volt-line:#1f4fd1;--volt-soft:#e2ebff;--blue:#6d28d9;--blue-bg:#efe9ff}
 :root[data-accent="ember"]{--volt:#ff6a2b;--on-volt:#0b0c0e;--volt-line:#c2410c;--volt-soft:#ffe6db}
+/* Pink (r37, V): dark text on the fill, as Ember, since white on pink is under 4.5:1. */
+:root[data-accent="pink"]{--volt:#ec4899;--on-volt:#0b0c0e;--volt-line:#be185d;--volt-soft:#fde2ef}
 @media (prefers-color-scheme:dark){
   :root[data-accent="blue"]:not([data-theme="light"]){--volt:#2a63f5;--on-volt:#ffffff;--volt-line:#6f9bff;--volt-soft:#0f1d40;--blue:#b69cff;--blue-bg:#221a3d}
   :root[data-accent="ember"]:not([data-theme="light"]){--volt:#ff6a2b;--on-volt:#0b0c0e;--volt-line:#ff7a3d;--volt-soft:#2f1609}
+  :root[data-accent="pink"]:not([data-theme="light"]){--volt:#ec4899;--on-volt:#0b0c0e;--volt-line:#f472b6;--volt-soft:#3a0f25}
 }
 :root[data-accent="blue"][data-theme="dark"]{--volt:#2a63f5;--on-volt:#ffffff;--volt-line:#6f9bff;--volt-soft:#0f1d40;--blue:#b69cff;--blue-bg:#221a3d}
 :root[data-accent="ember"][data-theme="dark"]{--volt:#ff6a2b;--on-volt:#0b0c0e;--volt-line:#ff7a3d;--volt-soft:#2f1609}
+:root[data-accent="pink"][data-theme="dark"]{--volt:#ec4899;--on-volt:#0b0c0e;--volt-line:#f472b6;--volt-soft:#3a0f25}
 *,*::before,*::after{box-sizing:inherit}
 [hidden]{display:none!important}
 /* Content inside <details> is rendered through the browser's own shadow slot,
@@ -846,7 +850,7 @@ table.t .stick-r{position:sticky;right:0;background:var(--bg);padding-left:6px}
 .ico{width:20px;height:20px;vertical-align:-4px;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round;display:inline-block;margin:0 1px}
 .chip.acc{display:inline-flex;align-items:center;gap:8px}
 .sw{display:inline-block;width:14px;height:14px;border-radius:50%;box-shadow:inset 0 0 0 1px rgba(0,0,0,.15)}
-.sw-blue{background:#2a63f5}.sw-volt{background:#d4ff3f}.sw-ember{background:#ff6a2b}
+.sw-blue{background:#2a63f5}.sw-volt{background:#d4ff3f}.sw-ember{background:#ff6a2b}.sw-pink{background:#ec4899}
 .bm3d{margin-top:10px}
 .bm3d-stage{position:relative;border-radius:var(--r-lg);background:radial-gradient(60% 55% at 50% 42%,var(--surface) 0%,transparent 75%);min-height:220px;overflow:hidden}
 .bm3d-canvas{display:block;touch-action:pan-y;cursor:grab;-webkit-tap-highlight-color:transparent}
@@ -1591,7 +1595,7 @@ if(ENV==='preview')document.documentElement.dataset.env='preview';
 const HAD_LOG=(()=>{try{return localStorage.getItem(KEY)!=null;}catch(e){return false;}})();
 /* Shown in Settings, in diagnostics and in backups, so a bug report can be
    matched to the exact build. */
-const APP_VERSION='2026.10.11-r36';
+const APP_VERSION='2026.10.11-r37';
 /* The logo (r25): an upright dumbbell that is also the I of Ironlog. Same
    numbers as scripts/icons.py, which draws the app icons. */
 const MARK_SVG='<svg class="mark" viewBox="-242 -378 484 756" aria-hidden="true" focusable="false"><rect class="mk-h" x="-30" y="-300" width="60" height="600" rx="14"/><rect class="mk-h" x="-80" y="-192" width="160" height="32" rx="12"/><rect class="mk-h" x="-80" y="160" width="160" height="32" rx="12"/><rect class="mk-p" x="-240" y="-376" width="480" height="92" rx="30"/><rect class="mk-p" x="-190" y="-270" width="380" height="66" rx="26"/><rect class="mk-p" x="-190" y="204" width="380" height="66" rx="26"/><rect class="mk-p" x="-240" y="284" width="480" height="92" rx="30"/></svg>';
@@ -1795,7 +1799,7 @@ function normalize(s){
   out.settings.autoDone=out.settings.autoDone===true;
   // Optional settings added in r20 stay undefined unless set, so older
   // records keep their fingerprints and sync does not see them as edited.
-  if(!['blue','volt','ember'].includes(out.settings.accent))delete out.settings.accent;
+  if(!['blue','volt','ember','pink'].includes(out.settings.accent))delete out.settings.accent;
   if(out.settings.rirAsk!==true)delete out.settings.rirAsk;
   // r34: adjusting the next sets is on unless turned off; only false is stored, so older saves hash as before.
   if(out.settings.autoAdj!==false)delete out.settings.autoAdj;
@@ -2592,7 +2596,7 @@ function fbContext(m){
   const d=state.draft;
   return {build:APP_VERSION,env:ENV,at:new Date().toISOString(),device:String(navigator.userAgent||'').slice(0,300),
     screen:`${window.innerWidth}x${window.innerHeight} @${window.devicePixelRatio||1}x`,installed:isStandalone(),
-    theme:state.settings.theme,accent:state.settings.accent||'blue',unit:U(),from:m.from||ui.tab,exercise:m.ex||undefined,
+    theme:state.settings.theme,accent:state.settings.accent||ACCENT0,unit:U(),from:m.from||ui.tab,exercise:m.ex||undefined,
     session:d?{past:!!d.past,free:!!d.free,editing:!!d.editingId,exercises:d.ex.length}:null,
     signedIn:!!acct.user,sync:cloud.on?cloud.status:'off',
     counts:{sessions:state.sessions.filter(x=>!x.demo).length,routines:state.routines.length},
@@ -5244,9 +5248,10 @@ function killDynamic(){
   // floating copy of the block on the page; it goes with the old list.
   blockDrag=false;if(document.body.classList.contains('blkdrag')){document.body.classList.remove('blkdrag');const v=document.getElementById('view');if(v)v.style.paddingBottom='';}if(typeof edgeScroll!=='undefined')edgeScroll.stop();document.querySelectorAll('.sortable-fallback,.sortable-ghost').forEach(e=>{if(!e.closest('#view'))e.remove();});
   while(charts.length){try{charts.pop().destroy();}catch(e){/* chart already gone */}}sortables.forEach(s=>{try{s.destroy();}catch(e){/* list already gone */}});sortables=[];}
-const ACCENTS=[['blue','Blue'],['volt','Volt'],['ember','Ember']];
+/* Ember is the default since r37 (V: "default to the orange ember one for now"): no accent stored reads as Ember. */
+const ACCENTS=[['ember','Ember'],['blue','Blue'],['volt','Volt'],['pink','Pink']];const ACCENT0='ember';
 function applyTheme(){const t=state.settings.theme;if(t==='system')delete document.documentElement.dataset.theme;else document.documentElement.dataset.theme=t;
-  document.documentElement.dataset.accent=state.settings.accent||'blue';
+  document.documentElement.dataset.accent=state.settings.accent||ACCENT0;
   // The installed app's status bar takes this colour, so it follows the theme.
   const m=document.querySelector('meta[name="theme-color"]');if(m)try{m.setAttribute('content',getComputedStyle(document.body).backgroundColor||'#08090b');}catch(e){/* cosmetic */}}
 /* A code bug inside a view used to leave a blank screen. Now the error is
@@ -5623,11 +5628,12 @@ function mountObTour(){
   let reduce=false;try{reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;}catch(e){/* animate */}
   // Test browsers run it only when asked, so screenshots and suites stay still.
   if(reduce||obTour.user||(navigator.webdriver&&!window.IRONLOG_TOUR_AUTO))return;
+  // Every 4 seconds (r37, V): a slide is a title and a small picture, read in about 2; at 5.5 a pass took 22 seconds.
   obTour.auto=setInterval(()=>{
     if(!document.getElementById('obTrack')){obTourStop();return;}
     if(document.hidden)return;
     // One pass through, then it stays on the last slide (r34, V: less moving while reading the page).
-    const n=document.getElementById('obTrack').children.length;if(obTour.i>=n-1){obTour.user=true;obTourStop();return;}obTourGo(obTour.i+1,true);},5500);
+    const n=document.getElementById('obTrack').children.length;if(obTour.i>=n-1){obTour.user=true;obTourStop();return;}obTourGo(obTour.i+1,true);},4000);
 }
 function obView(){
   // Still finding out whether this device is signed in, or pulling its log: show nothing that could flash away.
@@ -7817,7 +7823,7 @@ function viewSettings(){
   ${G('general','General')}<div class="card stack"><div class="grid2"><label class="field">Units<select data-bind="unit"><option value="lb" ${s.unit==='lb'?'selected':''}>lb and inches</option><option value="kg" ${s.unit==='kg'?'selected':''}>kg and cm</option></select></label>
   <label class="field">Theme<select data-bind="theme"><option value="system" ${s.theme==='system'?'selected':''}>Match device</option><option value="dark" ${s.theme==='dark'?'selected':''}>Dark</option><option value="light" ${s.theme==='light'?'selected':''}>Light</option></select></label></div>
   <label class="field">Name (optional)<input type="text" data-bind="userName" value="${esc(s.userName||'')}" maxlength="40" autocomplete="given-name"></label>
-  <div><p class="small muted" style="margin:0 0 6px;font-weight:600">Accent colour</p><div class="chips" role="group" aria-label="Accent colour">${ACCENTS.map(([k,l])=>`<button class="chip acc ${(s.accent||'blue')===k?'on':''}" data-act="accent" data-v="${k}" aria-pressed="${(s.accent||'blue')===k}"><i class="sw sw-${k}" aria-hidden="true"></i>${l}</button>`).join('')}</div></div>
+  <div><p class="small muted" style="margin:0 0 6px;font-weight:600">Accent colour</p><div class="chips" role="group" aria-label="Accent colour">${ACCENTS.map(([k,l])=>`<button class="chip acc ${(s.accent||ACCENT0)===k?'on':''}" data-act="accent" data-v="${k}" aria-pressed="${(s.accent||ACCENT0)===k}"><i class="sw sw-${k}" aria-hidden="true"></i>${l}</button>`).join('')}</div></div>
   <div class="grid2 one-narrow"><label class="field"><span class="hastip" data-tip="Compared with your 7-day-average bodyweight trend on Stats. Leave blank to track without a target.">Bodyweight goal (%/wk)</span><input type="text" inputmode="decimal" data-bind="bwGoalPct" value="${s.bwGoalPct==null?'':s.bwGoalPct}" placeholder="e.g. 0.3 or -0.5"></label>
   <label class="field"><span class="hastip" data-tip="A card on Today asks for your bodyweight when the last weigh-in is this old. Pull-ups, dips, and other bodyweight lifts use your latest weigh-in.">Weigh-in reminder</span><select data-bind="bwEvery">${BW_EVERY.map(([v,l])=>`<option value="${v}" ${bwEvery()===v?'selected':''}>${l}</option>`).join('')}</select></label></div>
 </div></div></details>
@@ -10037,7 +10043,7 @@ m.err=`Could not read that. Try the pattern 225x5, 5, 4 ${rirScale()==='rpe'?'rp
   chartRange(t){ui.rng=ui.rng||{};ui.rng[t.dataset.id]=t.dataset.v;rerenderKeepScroll();},
   histMore(){ui.histLimit+=HIST_PAGE;rerenderKeepScroll();},
   mapSel(t){const m=t.getAttribute('data-m');ui.mapSel=ui.mapSel===m?null:m;rerenderKeepScroll();},
-  accent(t){const v=t.getAttribute('data-v');if(!ACCENTS.some(([k])=>k===v))return;if(v==='blue')delete state.settings.accent;else state.settings.accent=v;commit();rerenderKeepScroll();},
+  accent(t){const v=t.getAttribute('data-v');if(!ACCENTS.some(([k])=>k===v))return;if(v===ACCENT0)delete state.settings.accent;else state.settings.accent=v;commit();rerenderKeepScroll();},
   mapSrc(t){ui.mapSrc=t.getAttribute('data-v');rerenderKeepScroll();},
   mapView(t){try{localStorage.setItem(MAPVIEW_KEY,t.getAttribute('data-v')==='3d'?'3d':'flat');}catch(e){/* remembered for this visit only */}B3.viewMem=t.getAttribute('data-v')==='3d'?'3d':'flat';rerenderKeepScroll();},
   map3dTurn(t){map3dTurnTo([0,Math.PI/2,Math.PI][+t.getAttribute('data-v')]||0);},
