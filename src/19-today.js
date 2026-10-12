@@ -500,7 +500,7 @@ function coach(){
   // Missing RIR is not coached: it is optional by design and blanks are read as your usual RIR.
   // Scores are sorted high to low, so the steepest fall is the last one.
   const lag=I.scores.filter(x=>x.clear&&x.score<=-GROW_PCT);
-  if(lag.length){const x=lag[lag.length-1];return {tone:'yellow',text:`${ML[x.m]} strength is down ${r1(Math.abs(x.score))}% over ${x.wk||6} weeks. Check sleep and recovery before adding sets.`,act:{label:`See ${ML[x.m]}`,sec:'rank',m:x.m}};}
+  if(lag.length){const x=lag[lag.length-1];return {tone:'yellow',text:`${ML[x.m]} strength is falling over ${x.wk||6} weeks. Check sleep and recovery before adding sets.`,act:{label:`See ${ML[x.m]}`,sec:'rank',m:x.m}};}
   // Someone back from a break (nothing since before the last 4 weeks) has
   // history but no recent weeks; "first full week" was wrong for them.
   if(!avg)return {tone:'blue',text:state.sessions.some(x=>x.date<addDays(weekStart(today()),-28))&&!state.sessions.some(x=>x.date>=addDays(weekStart(today()),-28))?'Nothing logged in the last 4 weeks. Volume advice comes back after a full week of training.':'Volume advice appears here after your first full week.',act:null};
@@ -520,24 +520,29 @@ function homeTiles(){
   <button class="tile" data-act="goDash" data-sec="bests" aria-label="${noLog()?'No PRs yet':pr.length+' PRs in the last 30 days'}. Open all-time bests"><div class="tv">${nz(pr.length)}</div><div class="tl">PRs, last 30 days</div><div class="ts">${last?`Latest: ${esc(exName(last.exId))}, ${ago===0?'today':ago===1?'yesterday':ago+' days ago'}`:'None yet'}</div></button>
   </div>`;
 }
-// An estimate is said as a load only where it is a load someone could put on the bar or stack.
+// An estimate is said as a load only where it is a load someone could put on the bar (a 1RM is shown for these lifts).
 function estInLoad(ex){return isCompound(ex)&&!ex.bw&&!noE1(ex)&&loadMode(ex)==='total';}
 /* A lift's change said in what was lifted, from the two sessions its trend
-   compares (trendEnds), so the words and the percentage behind the i always
-   agree in direction. Where estInLoad, it is a load (lb or kg) of estimated
-   strength; anything else (isolation, bodyweight, one side, a dumbbell each)
-   shows its top set at each end, since an estimate there is not a number
-   anyone lifts (r30). */
+   compares (trendEnds). On an estInLoad lift whose two sessions both have a
+   1RM estimate it is the change in that estimate, the number its chart and
+   table show; otherwise the top set at each end. A number is shown only when
+   it points the same way as the word: the word follows the trend, which
+   averages every working set, while one top set or one best estimate can go
+   the other way (review of r41: "Up over 4 weeks: 35×13 to 35×12"). Sets past
+   12 reps to failure have no 1RM estimate (Epley reads them only for
+   direction), so such a lift shows its top sets (review of r41: a leg press
+   at 16 reps read "up about 47 lb" for 30 lb more on the sled). */
 function liftChange(exId,dir,ow){
   const I=IDX();const ex=EX(exId);const w=trendW(trendScope(I.byEx[exId]||[],I.anchor));
   if(w.length<3)return `${dir} ${ow}`;
-  const {first,last}=trendEnds(w);
-  if(estInLoad(ex)){
-    const d=fmtE(Math.abs(last.tv-first.tv));
-    return +d>0?`${dir} about ${d} ${U()} ${ow}`:`${dir} ${ow}`;
+  const {first,last}=trendEnds(w);const up=/up/i.test(dir);
+  const agrees=d=>up?d>0:d<0;
+  if(estInLoad(ex)&&first.best!=null&&last.best!=null){
+    const d=last.best-first.best;const t=fmtE(Math.abs(d));
+    return agrees(d)&&+t>0?`Est. 1RM ${dir.toLowerCase()} about ${t} ${U()} ${ow}`:`${dir} ${ow}`;
   }
-  const a=topSetOf(ex,first),b=topSetOf(ex,last);
-  return a===b?`${dir} ${ow}`:`${dir} ${ow}: ${a} to ${b}`;
+  const a=topSetPt(ex,first),b=topSetPt(ex,last);
+  return agrees(b.v-a.v)&&a.txt!==b.txt?`${dir} ${ow}: ${a.txt} to ${b.txt}`:`${dir} ${ow}`;
 }
 function exHeadline(exId){
   /* One line with the verdict and what to do; the numbers behind it (rates,
@@ -675,7 +680,8 @@ function dashSummary(){
   h+=row(stalled.length?(fatigueStalls(stalled).length>=3?'red':'yellow'):'green','Stuck',stalled.length?esc(list(stalled.map(exName),3)):'Nothing stalled','data-act="goDash" data-sec="stalls"');
   // When the coach's one change is the volume shortfall, the Volume line says it with the action and Change is not repeated (r41).
   const cm=c.act&&c.act.sec==='volume'?c.act.m:null;const same=!!(cm&&under&&under.includes(cm));
-  const vt=same?c.text:under==null?'Finish a full week for a volume read.':(under.length?`Below target: ${list(under.map(m=>ML[m]),3)}.`:'Every muscle at or above target.')+(over&&over.length?` Above: ${list(over.map(m=>ML[m]),2)}.`:'');
+  const above=over&&over.length?` Above: ${list(over.map(m=>ML[m]),2)}.`:'';
+  const vt=(same?c.text:under==null?'Finish a full week for a volume read.':under.length?`Below target: ${list(under.map(m=>ML[m]),3)}.`:'Every muscle at or above target.')+above;
   h+=row(under==null?'':under.length?'yellow':'green','Volume',esc(vt),'data-act="goDash" data-sec="volume"');
   if(!same)h+=`<div class="srow static"><i class="dot ${c.tone}"></i><span class="sl">Change</span><span class="st">${esc(c.text)}</span></div>`;
   return h+'</div>';

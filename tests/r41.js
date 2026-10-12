@@ -44,7 +44,7 @@ const brz = (load, rtf) => load * 36 / (37 - rtf);
     const b = await lift('bench');
     // The trend's ends are the better of the first two and of the last two sessions: 185 and 200 x 8 at 1 in reserve.
     const gain = Math.round(brz(200, 9) - brz(185, 9));
-    ok(b.head.startsWith(`Up about ${gain} lb over 4 weeks.`), `bench: "Up about ${gain} lb over 4 weeks" (Brzycki at 9 to failure, 185 to 200)`, b.head);
+    ok(b.head.startsWith(`Est. 1RM up about ${gain} lb over 4 weeks.`), `bench: "Est. 1RM up about ${gain} lb over 4 weeks" (Brzycki at 9 to failure, 185 to 200)`, b.head);
     ok(!/%/.test(b.head) && /Change \+8\.1% over 4 weeks\./.test(b.tip) && /About \+[\d.]+% a week/.test(b.tip), 'no percentage on the line; the change (+8.1%) and the weekly rate are behind the i', { head: b.head, tip: b.tip });
     ok(!/in 4 weeks|if it holds/.test(b.head + b.tip), 'no 4-week projection on the headline or its i');
     ok(b.charts && b.charts.length >= 1 && !b.charts.some(l => /trend holds/i.test(l)), 'the chart has no projected line', b.charts);
@@ -61,6 +61,42 @@ const brz = (load, rtf) => load * 36 / (37 - rtf);
     const p = await lift('pullup');
     ok(/^(Up|Slowly up) over 4 weeks: BW\+10×8 to BW\+25×8\./.test(p.head) && !/about \d+ lb/.test(p.head), 'pull-ups: top sets with the added load, not pounds of bodyweight', p.head);
 
+    // ---------- 3b. Numbers only when they agree with the word; pounds only from a 1RM estimate ----------
+    const odd = await ev(() => {
+      const L = window.__ironlog; const LB = 0.45359237; const s = L.state; const keep = s.sessions;
+      // Fly reps falling across sets early on, even later: the trend rises while the best single set goes 14 to 12.
+      const fly = [[14, 9, 8], [13, 10, 9], [12, 11, 10], [12, 12, 12], [12, 12, 12]];
+      s.sessions = fly.map((rs, i) => ({ id: 'o' + i, date: L.addDays('2026-09-10', i * 7), dayIdx: 0, dayId: null, dayName: 'T', routineId: '', notes: '', ex: [
+        { exId: 'cableFly', rr: [10, 15], sets: rs.map(r => ({ w: 35 * LB, r, rir: 1, done: true })) },
+        // Leg press at 16 reps, 1 in reserve: past 12 to failure, so no 1RM estimate.
+        { exId: 'legPress', rr: [15, 20], sets: [0, 1, 2].map(() => ({ w: (300 + i * 10) * LB, r: 16, rir: 1, done: true })) }] }));
+      L.invalidate(); const head = id => { L.ui.tab = 'dash'; L.ui.dashEx = id; L.render(); return document.querySelector('#view [data-mkey="exercise"] .headline').innerText.replace(/\s*i$/, '').trim(); };
+      const o = { fly: head('cableFly'), lp: head('legPress'), flySt: L.IDX().exStats.cableFly.moving, lpBest: L.IDX().exStats.legPress.best };
+      s.sessions = keep; L.invalidate(); return o;
+    });
+    ok(odd.flySt && /Up over 4 weeks\./.test(odd.fly) && !/35×1\d to 35×1\d/.test(odd.fly), 'a fly whose best set fell while the trend rose says "Up" with no pair of sets that reads down', odd.fly);
+    ok(odd.lpBest == null && /: 310×16 to 340×16\./.test(odd.lp) && !/about \d+ lb/.test(odd.lp), 'a leg press at 16 reps shows its top sets (310 to 340), not pounds of a 1RM it does not have', odd.lp);
+
+    // ---------- 3c. Next session follows the day due when one lift sits on two days ----------
+    const two = await ev(async () => {
+      const L = window.__ironlog; const LB = 0.45359237; const s = L.state; const keepS = s.sessions; const keepR = JSON.parse(JSON.stringify(s.routines));
+      const R = L.activeRoutine(); const tr = R.days.map((d, i) => i).filter(i => !R.days[i].rest && R.days[i].items.length); const d1 = R.days[tr[0]], d2 = R.days[tr[1]];
+      d1.items[0] = { ...d1.items[0], exId: 'bench', repMin: 3, repMax: 5, sets: 3 }; d2.items[0] = { ...d2.items[0], exId: 'bench', repMin: 8, repMax: 12, sets: 3 };
+      const ss = [];
+      for (let i = 0; i < 4; i++) {
+        ss.push({ id: 'h' + i, date: L.addDays('2026-09-14', i * 7), dayIdx: tr[0], dayId: d1.id, dayName: d1.name, routineId: R.id, notes: '', ex: [{ exId: 'bench', rr: [3, 5], sets: [0, 1, 2].map(() => ({ w: (225 + i * 5) * LB, r: 5, rir: 1, done: true })) }] });
+        if (i < 3) ss.push({ id: 'l' + i, date: L.addDays('2026-09-16', i * 7), dayIdx: tr[1], dayId: d2.id, dayName: d2.name, routineId: R.id, notes: '', ex: [{ exId: 'bench', rr: [8, 12], sets: [0, 1, 2].map(() => ({ w: (175 + i * 5) * LB, r: 12, rir: 1, done: true })) }] });
+      }
+      s.sessions = ss; s.draft = null; L.invalidate();
+      L.ui.tab = 'dash'; L.ui.dashEx = 'bench'; L.render(); const next = (document.getElementById('nextLine') || {}).innerText;
+      // What the session itself shows: start the day due on Today and read the bench block's target.
+      L.ui.tab = 'today'; L.ui.todayDay = null; L.render(); document.querySelector('.hero [data-act="startSession"]').click();
+      const b = L.state.draft.ex.find(x => x.exId === 'bench'); const due = L.state.draft.dayName; const tgt = b ? b.target : null;
+      L.state.draft = null; s.sessions = keepS; s.routines = keepR; L.invalidate(); L.render();
+      return { next, tgt, due, heavy: d1.name, light: d2.name };
+    });
+    ok(two.due === two.light && two.tgt && two.next === `Next session: ${two.tgt}` && /8\+|for 8/.test(two.tgt), 'bench on a 3-5 day and an 8-12 day, the 8-12 day due: Next session is the target that session shows (' + two.tgt + ')', two);
+
     // ---------- 4. The workout preview: the target only ----------
     const pv = await ev(() => { const L = window.__ironlog; const R = L.activeRoutine(); const d = R.days.find(x => !x.rest && x.items.length); d.items[0].exId = 'bench'; L.ui.tab = 'today'; L.ui.todayDay = R.days.indexOf(d); L.render(); document.querySelectorAll('#view details').forEach(x => x.open = true); const sec = document.querySelector('#view [data-mkey="session"]'); return sec ? sec.innerText : ''; });
     ok(/Today: .*200 lb/.test(pv) && !/Est\. 1RM|Top sets/.test(pv), 'the workout preview shows each target, not the trend history', pv.slice(0, 200));
@@ -70,8 +106,9 @@ const brz = (load, rtf) => load * 36 / (37 - rtf);
       const line = id => { L.ui.tab = 'dash'; L.ui.dashEx = id; L.render(); document.querySelectorAll('#view details').forEach(d => d.open = true); return document.getElementById('goalLine').innerText.replace(/\s+/g, ' ').trim(); };
       const o = { bench: line('bench'), fly: line('cableFly'), gs: L.goalState('bench') }; return o; });
     // 245 x 5 to failure needs Brzycki 245 x 36/32; the best estimate is 200 x 8 at 1 in reserve.
-    const need = brz(245, 5), cur = brz(200, 9);
-    ok(g.bench === `Goal 245 lb × 5: ${Math.floor(cur / need * 100)}% there, about ${Math.round(need - cur)} lb to go i Change` && g.gs.weeks === undefined, `bench goal: ${Math.floor(cur / need * 100)}% there, about ${Math.round(need - cur)} lb to go, no weeks`, g.bench);
+    // The gap is load for 5 reps: 245 less what 257.1 (Brzycki) allows for 5 reps to failure, 257.1 x 32/36 = 228.6, so 16 lb; not the 19 between the two estimates.
+    const need = brz(245, 5), cur = brz(200, 9), gap = Math.round(245 - cur * 32 / 36);
+    ok(g.bench === `Goal 245 lb × 5: ${Math.floor(cur / need * 100)}% there, about ${gap} lb to go i Change` && g.gs.weeks === undefined, `bench goal: ${Math.floor(cur / need * 100)}% there, about ${gap} lb to go (load for 5 reps), no weeks`, g.bench);
     ok(/^Goal 50 lb × 12: \d+% there i Change$/.test(g.fly), 'an isolation goal shows how close, with no pounds of estimate', g.fly);
 
     // ---------- 6. Stats: no tile or line repeating another ----------
@@ -85,13 +122,25 @@ const brz = (load, rtf) => load * 36 / (37 - rtf);
     const mv = sum.rows.find(r => /Moving/i.test(r.l));
     ok(mv && /Barbell Bench Press|Cable Fly|Pull-up/.test(mv.t) && !/%/.test(mv.t) && /over \d weeks/.test(mv.t), 'Moving names the lifts, with no percentages', mv);
     const vol = sum.rows.find(r => /Volume/i.test(r.l)); const chg = sum.rows.find(r => /Change/i.test(r.l));
-    if (sum.coach.act && sum.coach.act.sec === 'volume') ok(vol && vol.t === sum.coach.text && !chg, 'the coach\'s change is the volume shortfall: said once, on the Volume line', sum.rows);
-    else ok(chg && chg.t === sum.coach.text, 'the coach\'s change is not about volume: it keeps its own line', sum.rows);
+    ok(sum.coach.act && sum.coach.act.sec === 'volume' && vol && vol.t.startsWith(sum.coach.text) && !chg, 'the coach\'s change is the volume shortfall: said once, on the Volume line', sum.rows);
+    // Chest over a low band while the coach's change is another muscle's shortfall: Above is still said.
+    const over = await ev(() => { const L = window.__ironlog; const b = L.state.settings.bands; const keep = JSON.parse(JSON.stringify(b)); b.chest = [1, 2]; L.invalidate(); L.ui.tab = 'dash'; L.render();
+      const t = [...document.querySelectorAll('#dashSummary .srow')].map(r => r.innerText.replace(/\s+/g, ' ')).join(' | ');
+      // Every minimum at 0: no shortfall, so the coach's change is something else and keeps its own line.
+      for (const m in b) b[m] = [0, b[m][1]]; L.invalidate(); L.render(); const c = L.coach();
+      const rows = [...document.querySelectorAll('#dashSummary .srow')].map(r => ({ l: r.querySelector('.sl').textContent, t: r.querySelector('.st').textContent }));
+      L.state.settings.bands = keep; L.invalidate(); return { t, c, rows }; });
+    ok(/Volume .*Above: Chest\./i.test(over.t), 'a muscle above its target is still named when the Volume line carries the coach\'s words', over.t);
+    const ch2 = over.rows.find(r => /Change/i.test(r.l));
+    ok(!(over.c.act && over.c.act.sec === 'volume') && ch2 && ch2.t === over.c.text, 'no shortfall: the coach\'s change keeps its own Change line (' + over.c.text + ')', over.rows);
 
     // ---------- 7. Muscles: rising at target in one line; words, not percentages ----------
     const mu = await ev(() => { const L = window.__ironlog; L.ui.tab = 'dash'; L.render(); document.querySelectorAll('#view details').forEach(d => d.open = true); const sub = [...document.querySelectorAll('#view .subsec')].find(x => /Strength return on volume/.test(x.innerText)); return sub ? sub.innerText : ''; });
     ok(mu && !/[+-]\d+(\.\d)?%/.test(mu), 'Strength return on volume shows no percentages', mu.slice(0, 300));
-    ok(/Rising at their volume: .*\. Keep the sets as they are\.|rising|flat|falling|unclear/.test(mu), 'muscles rising at target share one line; others say rising, flat, falling, or unclear', mu.slice(0, 300));
+    ok(/\n(rising|flat|falling|unclear)\n/.test(mu), 'a muscle to act on says rising, flat, falling, or unclear', mu.slice(0, 300));
+    // Chest's minimum at 3: rising at its volume, so it joins the one line and has no row of its own.
+    const mu2 = await ev(() => { const L = window.__ironlog; const b = L.state.settings.bands; const keep = b.chest.slice(); b.chest = [3, 30]; L.invalidate(); L.ui.tab = 'dash'; L.render(); document.querySelectorAll('#view details').forEach(d => d.open = true); const sub = [...document.querySelectorAll('#view .subsec')].find(x => /Strength return on volume/.test(x.innerText)); b.chest = keep; L.invalidate(); return sub ? sub.innerText : ''; });
+    ok(/Rising at (its|their) volume: [^\n]*Chest[^\n]*\. Keep the sets as they are\./.test(mu2) && !/\nChest\n/.test(mu2), 'a muscle rising at its target joins the one line instead of a row', mu2.slice(0, 400));
     const mt = await ev(() => { const L = window.__ironlog; const sc = L.IDX().scores[0]; return sc ? L.musTrend(sc) : ''; });
     ok(mt && !/%/.test(mt), 'a muscle\'s strength trend in words: ' + mt, mt);
 

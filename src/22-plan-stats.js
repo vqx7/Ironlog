@@ -131,8 +131,18 @@ function libCards(){
 function nextLine(exId){
   // EX() reads a deleted exercise as archived, so this covers both.
   if(EX(exId).archived)return '';
-  const sg=suggest(exId,planFor(exId),{deload:isDeloadWeek()});
+  // The plan of the next day due that has this lift: one lift on a heavy and a light day has two targets (review of r41).
+  const R=activeRoutine();const d=nextDayWith(exId,R);
+  const sg=suggest(exId,d?planFor(exId,R,d.id):planFor(exId,R),{deload:isDeloadWeek()});
   return sg&&sg.target?`<p class="small" id="nextLine" style="margin:6px 0 0"><b>Next session</b>: ${esc(sg.target)}</p>`:'';
+}
+// The next training day due (today's weekday on a weekly plan, else the cycle's next day) that has the lift, or null.
+function nextDayWith(exId,R){
+  const n=R.days.length;if(!n)return null;
+  // The same day Today's card starts from.
+  const start=R.schedule==='weekly'?(new Date().getDay()+6)%7:cycleState(R).next;
+  for(let k=0;k<n;k++){const d=R.days[(start+k)%n];if(d&&!d.rest&&d.items.some(it=>it.exId===exId))return d;}
+  return null;
 }
 function goalOk(ex){return !!ex&&!ex.timed&&!ex.assist;}
 function goalState(exId){
@@ -146,12 +156,17 @@ function goalState(exId){
   const pct=!noBw&&need&&cur?Math.min(100,cur/need*100):null;
   return {g,hit,pct,cur,need,noBw};
 }
+/* The load still to add for the goal's reps: the goal's load less what the
+   best estimate says is possible for those reps now (e1inv, the inverse of
+   the estimate). The gap between the two estimates themselves overstated it
+   by up to two thirds (review of r41: 35 lb shown for a 26 lb gap). */
+function goalGap(s){return s.g.w-e1inv(s.cur,s.g.r);}
 function goalWords(ex,g){return `${loadLabel(ex,g.w)}${ex.bw?'':' '+U()}${loadNote(ex)} × ${g.r}`;}
 function goalLine(exId){
   const ex=EX(exId);if(!goalOk(ex))return '';
   if(!ex.goal)return `<p class="small" style="margin:6px 0 0"><button class="linkbtn tall" data-act="goalOpen" data-ex="${esc(exId)}">Set a goal</button></p>`;
   const s=goalState(exId);const gw=goalWords(ex,ex.goal);
-  const what=s.hit?`reached ${fmtDate(s.hit)}`:s.noBw?'add a weigh-in to see how close':s.pct==null?'no sets in the last 12 weeks':s.pct>=100?'within reach':`${Math.floor(s.pct)}% there${estInLoad(ex)&&+fmtE(s.need-s.cur)>0?`, about ${fmtE(s.need-s.cur)} ${U()} to go`:''}`;
+  const what=s.hit?`reached ${fmtDate(s.hit)}`:s.noBw?'add a weigh-in to see how close':s.pct==null?'no sets in the last 12 weeks':s.pct>=100?'within reach':`${Math.floor(s.pct)}% there${estInLoad(ex)&&+fmtE(goalGap(s))>0?`, about ${fmtE(goalGap(s))} ${U()} to go`:''}`;
   const tip=s.hit?'Reached: a working set at that load or more, for those reps or more.':s.pct!=null&&s.pct>=100?`Your best estimate from the last 12 weeks says ${gw} done to failure is in you now. It counts as reached once a working set matches it.`:`Your best estimate from the last 12 weeks against what ${gw} takes done to failure. Your session targets are the steps toward it.`;
   return `<p class="small" id="goalLine" style="margin:6px 0 0"><b>Goal ${esc(gw)}</b>: ${esc(what)} ${tipi(tip,'About this goal')} <button class="linkbtn tall" data-act="goalOpen" data-ex="${esc(exId)}">Change</button></p>`;
 }
@@ -306,7 +321,7 @@ ${extraKpis()}</div>`;
         :s.score<=-GROW_PCT?'Falling: check recovery first.'
         :(sets>=hi?'Flat at high volume: change exercises or effort, not sets.':'Flat: try 2 more sets a week for 3 weeks.');
       return `<div style="padding:6px 0;border-bottom:1px solid var(--line)"><div class="mrow" style="border:0;padding:0"><span class="plate ${c}"></span><span>${ML[s.m]}${s.indirect?' <span class="tag" data-tip="No direct exercise for this muscle. Trend inferred from lifts where it assists.">indirect</span>':''}</span><div class="band"><div class="fill ${s.score>=0?'in':'down'}" style="width:${s.clear?Math.abs(s.score)/maxAbs*100:0}%"></div></div><span class="r small">${!s.clear?'unclear':s.score>=GROW_PCT?'rising':s.score<=-GROW_PCT?'falling':'flat'}</span></div><p class="small muted" style="margin:2px 0 0">${r1(sets)} sets a week${read?` · ${read}`:''}</p></div>`;}).join('');
-    if(fine.length)rank+=`<p class="small muted" style="margin-top:8px">Rising at their volume: ${esc(andList(fine.map(s=>ML[s.m]),4))}. Keep the sets as they are.</p>`;
+    if(fine.length)rank+=`<p class="small muted" style="margin-top:8px">Rising at ${fine.length===1?'its':'their'} volume: ${esc(andList(fine.map(s=>ML[s.m]),4))}. Keep the sets as they are.</p>`;
     const missing=MK.filter(m=>!I.scores.find(s=>s.m===m));
     if(missing.length)rank+=`<p class="small muted" style="margin-top:8px">Not enough data yet: ${missing.map(m=>ML[m]).join(', ')}.</p>`;
   }else rank+='<p class="muted">Not enough data yet. Log at least 3 sessions of an exercise over 2 weeks or more, within 6 weeks.</p>';

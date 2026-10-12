@@ -29,7 +29,7 @@ const FILE = 'index.html';
     // Since r41 the change is said once, on the headline in loads, with the percentage behind its i; no tile repeats it.
     const tipOf = await ev(() => { const h = document.querySelector('#view [data-mkey="exercise"] .headline [data-tip]'); return h ? h.dataset.tip : ''; });
     ok(!lift.labels.some(l => /Change|trend|Fitted/i.test(l)), 'Stats > Lifts: no change tile and no "fitted trend" tile beside the headline' + T, lift.labels);
-    ok(/^Up about \d+ lb over \d weeks/.test(lift.head.split('\n').find(l => /^Up /.test(l)) || '') && tipOf.includes(`Change +${Math.round(lift.pct * 10) / 10}%`), 'one change number: the headline in pounds, the same change as a percentage behind its i (' + Math.round(lift.pct * 10) / 10 + '%)' + T, { head: lift.head.slice(0, 300), tipOf });
+    ok(/^Est\. 1RM up about \d+ lb over \d weeks/.test(lift.head.split('\n').find(l => /^Est\. 1RM /.test(l)) || '') && tipOf.includes(`Change +${Math.round(lift.pct * 10) / 10}%`), 'one change number: the headline in pounds, the same change as a percentage behind its i (' + Math.round(lift.pct * 10) / 10 + '%)' + T, { head: lift.head.slice(0, 300), tipOf });
 
     // ---------- 2. One way to start ----------
     const card = await ev(() => {

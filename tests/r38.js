@@ -61,7 +61,8 @@ const brz = (load, rtf) => load * 36 / (37 - rtf);
     v = await lifts('bench');
     const st = await ev(() => { const L = window.__ironlog; return { gs: L.goalState('bench'), slope: L.IDX().exStats.bench.slope, moving: L.IDX().exStats.bench.moving }; });
     // Since r41 a goal has no weeks to reach it (V: guide, do not predict); on a barbell lift it says the load left.
-    const left = Math.round((need - cur) / LB);
+    // The load still to add for 5 reps: 245 less what the estimate allows for 5 (Brzycki, 257.1 x 32/36 = 228.6).
+    const left = Math.round(245 - (cur / LB) * 32 / 36);
     ok(Math.abs(st.gs.cur - cur) < 1e-6 && Math.abs(st.gs.need - need) < 1e-6, 'the estimate and the goal\'s need match Brzycki (' + (cur / LB).toFixed(1) + ' of ' + (need / LB).toFixed(1) + ' lb)' + T, st.gs);
     ok(st.moving && st.gs.weeks === undefined, 'a rising lift still gets no weeks to its goal' + T, st.gs);
     ok(!/disagree/.test(await ev(() => document.querySelector('#view [data-mkey="exercise"]').textContent)), 'no "Change and trend disagree" note under the tiles (one change number since r35)' + T);
