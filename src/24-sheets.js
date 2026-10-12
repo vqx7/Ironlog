@@ -12,6 +12,7 @@ function renderModal(){
   const ss=fk&&typeof ae.selectionStart==='number'?ae.selectionStart:null,se=fk&&typeof ae.selectionEnd==='number'?ae.selectionEnd:null;
   renderModalBody();
   if(el.hidden||!ui.modal){document.body.classList.remove('modal-open');renderModal.last=null;return;}
+  if(document.getElementById('bm3dx'))mount3D();
   document.body.classList.add('modal-open');renderModal.last=ui.modal;
   if(!same)return;
   const sh=el.querySelector('.sheet'),inn=el.querySelector('.sheet-scroll');
@@ -59,6 +60,7 @@ function renderModalBody(){
     ${e.bw?'':(()=>{const def=loadWords({...e,load:undefined});const has=!m.isNew&&state.sessions.some(s=>s.ex.some(b=>b.exId===e.id));
       return `<label class="field"><span class="hastip" data-tip="${esc('What the number you type means. Estimates and targets stay in this frame; weight lifted counts both dumbbells or both sides.'+(has?' Changing it does not convert sets already logged.':''))}">Weight is entered as</span><select data-ebind="load"><option value="auto" ${!e.load?'selected':''}>Default for this equipment: ${esc(def)}</option>${LOAD_MODES.map(([k,l])=>`<option value="${k}" ${e.load===k?'selected':''}>${l}</option>`).join('')}</select></label>`;})()}
     <div><p class="small muted">Helper muscles (count as half a set)</p><div class="chips">${MUSCLES.filter(([k])=>k!==e.primary).map(([k,l])=>`<button class="chip ${e.secondary.includes(k)?'on':''}" data-act="secToggle" data-m="${k}">${l}</button>`).join('')}</div></div>
+    ${MK.includes(e.primary)?`<div class="exbody">${exBodyFlat(e,true)}${exMusLegend(e)}</div>`:''}
     <label class="check-inline"><input type="checkbox" data-ebind="bw" ${e.bw?'checked':''}><span class="hastip" data-tip="Log only what you add (0 for bodyweight). Your logged bodyweight is added for estimates and weight lifted.">Bodyweight exercise</span></label>
     ${e.bw?`<label class="check-inline"><input type="checkbox" data-ebind="assist" ${e.assist?'checked':''}><span class="hastip" data-tip="For an assisted machine: you type the help it gives, and less help is progress.">Assisted (a machine takes weight off)</span></label>`:''}
     ${e.bw?`<label class="field"><span class="hastip" data-tip="Measured only for push-ups (64%, force plates). Pull-ups and dips count all of it; the rest are segment-mass estimates.">Share of bodyweight moved (%)</span><input type="text" inputmode="numeric" data-ebind="bwfRaw" value="${esc(e.bwfRaw||'')}"></label>`:''}
@@ -79,7 +81,7 @@ function renderModalBody(){
     const nx=d.ex[m.b+1];const linked=!!(nx&&b.plan.ss&&nx.plan.ss===b.plan.ss);
     const op=(o,l,dis,cls)=>`<button class="btn block ${cls||''}" style="margin-top:6px" data-act="bMenuDo" data-op="${o}" data-b="${m.b}" ${dis?'disabled':''}>${l}</button>`;
     h=`<div class="sheet" role="dialog" aria-modal="true"><div class="sheet-h"><h3>${esc(exName(b.exId))}</h3><button class="ib" aria-label="Close" data-act="mClose">✕</button></div>
-    ${op('bHist','History and chart')}${op('wAdd','Add a warm-up set')}${op('dropAdd','Add a drop set (about 75% load)')}${op('bQuick','Type or dictate sets')}${op('bNote',b.note?'Edit note':'Add note')}${op('bSwap','Swap exercise')}${howToLink(EX(b.exId))}${/*ai{*/aiOn()?op('bAiSwap','Ask Claude for a swap'):''/*}ai=''*/}${op('bInc',`Load step: ${fmtW(incOf(EX(b.exId),b.plan))} ${U()}`)}${op('bMax',`Heaviest available: ${EX(b.exId).maxLoad!=null?fmtW(EX(b.exId).maxLoad)+' '+U():'no limit'}`)}${rirShow(EX(b.exId))?op('bCal','Calibration set (RIR check)'):''}${nx?op('bSs',linked?'Unlink superset':`Superset with ${esc(exName(nx.exId))}`):''}${op('bUp','Move up',m.b===0)}${op('bDown','Move down',!nx)}${op('fbOpen','Report a problem')}${op('bDel','Remove from session',false,'danger')}</div>`;
+    ${op('bHist','History and chart')}${op('bMus','Muscles worked')}${op('wAdd','Add a warm-up set')}${op('dropAdd','Add a drop set (about 75% load)')}${op('bQuick','Type or dictate sets')}${op('bNote',b.note?'Edit note':'Add note')}${op('bSwap','Swap exercise')}${howToLink(EX(b.exId))}${/*ai{*/aiOn()?op('bAiSwap','Ask Claude for a swap'):''/*}ai=''*/}${op('bInc',`Load step: ${fmtW(incOf(EX(b.exId),b.plan))} ${U()}`)}${op('bMax',`Heaviest available: ${EX(b.exId).maxLoad!=null?fmtW(EX(b.exId).maxLoad)+' '+U():'no limit'}`)}${rirShow(EX(b.exId))?op('bCal','Calibration set (RIR check)'):''}${nx?op('bSs',linked?'Unlink superset':`Superset with ${esc(exName(nx.exId))}`):''}${op('bUp','Move up',m.b===0)}${op('bDown','Move down',!nx)}${op('fbOpen','Report a problem')}${op('bDel','Remove from session',false,'danger')}</div>`;
   }else if(m.kind==='injury'){
     h=`<div class="sheet" role="dialog" aria-modal="true"><div class="sheet-h"><h3>Flag an injury</h3><button class="ib" aria-label="Close" data-act="mClose">✕</button></div>
     <p class="small muted hastip" data-tip="Every exercise that loads this muscle (directly or as a helper) or this joint is marked in your sessions: its target pauses, loads cap at last time, and it is left out of below-target advice until cleared.">Training aid, not medical advice: sharp, worsening, or lasting pain needs a clinician.</p>
@@ -106,6 +108,13 @@ function renderModalBody(){
     <label class="field">Name<input type="text" id="rNewName" placeholder="e.g. Upper focus, 6 days"></label>
     <p class="small muted">Three empty training days. It is not active until you tap Make active.</p>
     <div class="row" style="margin-top:10px"><button class="btn primary" data-act="rNewSave">Create</button><button class="btn" data-act="mClose">Cancel</button></div></div>`;
+  }else if(m.kind==='exMus'){
+    const e=EX(m.exId);const v3=mapView()==='3d';const pm=exMusParts(e);B3.ex={main:pm.main,help:pm.help};
+    h=`<div class="sheet exmus" role="dialog" aria-modal="true" aria-labelledby="exMusH"><div class="sheet-h"><h3 id="exMusH">Muscles: ${esc(e.name)}</h3><button class="ib" aria-label="Close" data-act="mClose">✕</button></div>
+    ${exMusWords(e)}
+    <div class="seg" role="group" aria-label="View" style="margin-top:8px"><button class="chip ${v3?'':'on'}" data-act="mapView" data-v="flat" aria-pressed="${!v3}">Flat</button><button class="chip ${v3?'on':''}" data-act="mapView" data-v="3d" aria-pressed="${v3}">3D</button></div>
+    ${v3?`<div class="bm3d" id="bm3dx"><div class="bm3d-stage" role="img" aria-label="${esc(`3D body with ${ML[pm.main]||pm.main} lit${pm.help.length?', helpers lighter':''}. Drag sideways to turn it.`)}"></div><p class="bm3d-msg small muted" hidden></p><div class="seg bm3d-turn" role="group" aria-label="Turn the body"><button class="chip" data-act="map3dTurn" data-v="0">Front</button><button class="chip" data-act="map3dTurn" data-v="1">Side</button><button class="chip" data-act="map3dTurn" data-v="2">Back</button></div></div>`:exBodyFlat(e)}
+    ${exMusLegend(e)}</div>`;
   }else if(m.kind==='goal'){
     const e=EX(m.exId);const g=e.goal;
     h=`<div class="sheet" role="dialog" aria-modal="true" aria-labelledby="goalH"><div class="sheet-h"><h3 id="goalH">Goal: ${esc(e.name)}</h3><button class="ib" aria-label="Close" data-act="mClose">✕</button></div>

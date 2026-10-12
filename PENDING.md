@@ -1,14 +1,17 @@
-# Everything still open (as of r37 live, 2026-10-11)
+# Everything still open (as of r38 live, 2026-10-11)
 
 This is the tracking list. Items are built only when V says go. Owner items need V; the rest is build work. Nothing is done unless it says so. Numbers are kept stable; finished items move to Done at the bottom.
 
-## Live: r37 (published 2026-10-11, pull request #27; r36 and r35 before it the same day, #26 and #25; all merged by Claude at V's word "Deploy straight to live once fine and validated"; build 2026.10.11-r37)
+## Live: r38 (published 2026-10-11, pull request #28; r37, r36 and r35 before it the same day, #27, #26 and #25; all merged by Claude at V's word "Deploy straight to live once fine and validated"; build 2026.10.11-r38)
 
-## r38 (V, 2026-10-11: "proceed with this change and others next on list"; the lift goals listed under Priority 5 as 188), tests/r38.js
+## r39 (V, 2026-10-11: "others next on list"; item 172, first half), tests/r39.js
+260. Built: an exercise's muscles lit on the body. A session exercise's ⋯ menu has Muscles worked: a sheet saying the main muscle and the helpers, with the flat figures (main in the accent, helpers lighter) or, when 3D is chosen, the same 3D body as Today's map, lit the same way, turning with Front, Side and Back and a drag; a tap names the muscle. The exercise editor shows the flat figures as the muscles are picked. Animated movement per exercise (172's second half) still needs a licensed animation library or hand-made animations.
+
+## r38, live since 2026-10-11 (pull request #28) (V, 2026-10-11: "proceed with this change and others next on list"; the lift goals listed under Priority 5 as 188), tests/r38.js
 258. Built: lift goals. On Stats > Lifts, Set a goal takes a load and reps (245 x 5; on a bodyweight lift the added load, empty for BW alone), stored on the exercise as `goal` {w, r} (absent when unset, so synced records hash as before). The line reads "Goal 245 lb × 5: 93% there, about 3 weeks if the trend holds", "within reach" when the best estimate already covers it, or "reached Oct 9" once a working set matched it. How close: the best estimate of the last 12 weeks (deload and lighter sessions left out) against what the goal takes done to failure, both by `fitE`, so a goal at any reps compares with sets at any reps. The weeks only while the lift is clearly rising (moving), trained lately, and within a year, from its weekly rate. Not on timed holds or assisted lifts. Change, Remove goal with Undo, the Guide's Volume and Stats topic. No new number: the estimate is the one the targets use. A phone still on r37 drops a goal it syncs; update every device.
 259. Built: the "Change and trend disagree" note under a lift's tiles is gone. Since r35 the lift shows one change number with the fitted rate behind the headline's i, so a note about a second number had nothing on screen to point at.
 
-## r37, live since 2026-10-11 (pull request #27), tests/essentials.js, design.js, r28.js, r29b.js, r33.js
+## r37, live 2026-10-11 (pull request #27), tests/essentials.js, design.js, r28.js, r29b.js, r33.js
 256. Built: the first page's tour moves on every 4 seconds instead of 5.5 (`mountObTour`). Each slide is a title and a small picture, read in about 2 seconds; 5.5 was a judgment call with no source, and a full pass took 22 seconds. At 4 it is 16. tests/r33.js checks slide 2 shows by 4.6 s.
 257. Built (V): a Pink accent beside Ember, Blue and Volt (dark text on the fill, as Ember; every key colour pair 4.5:1 in light and dark, tests/design.js, the rest timer and menu icon checks too), and Ember is now the default: nothing stored reads as Ember, and choosing Blue stores it. A phone that had never picked an accent changes from Blue to Ember.
 
@@ -192,7 +195,7 @@ What r30 changes (each with a test in tests/r30.js, reproduced the way the revie
 167. Read-only share link for a coach: a Supabase function and a token table, plus a privacy decision (item 15) before anyone else's data is shared.
 168. Starting-load estimates for a first session (bodyweight, experience): needs item 49's optional profile fields.
 171. In-app exercise videos (V, 2026-10-04): a chosen video per lift, played inside the app (YouTube's privacy-enhanced embed, loaded only on a tap; the Content Security Policy then allows that one frame source). Start with the 53 Common lifts; V or a coach friend picks the channels, since Claude choosing videos risks poor form demos.
-172. 3D in the app (V, 2026-10-04): first, an exercise's muscles lit on the existing 3D body (cheap, all in the app). Animated 3D movement for each exercise needs a licensed animation library (paid) or hand-made animations; not something to build from scratch.
+172. 3D in the app (V, 2026-10-04): first, an exercise's muscles lit on the existing 3D body (built in r39, item 260). Animated 3D movement for each exercise needs a licensed animation library (paid) or hand-made animations; not something to build from scratch.
 169. Apple Watch and Apple Health: no web API; needs the native wrapper (item 46: $99 a year and a Mac). Social feed: not planned.
 
 ## Next

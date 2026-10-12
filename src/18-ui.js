@@ -164,6 +164,8 @@ function closeModal(){
   }
   if(was&&was.kind==='short'&&was.temp&&!was.applied&&state.draft&&state.draft.id===was.temp&&!state.draft.ex.some(b=>b.sets.some(x=>x.done))){
     state.draft=null;stopTimer();wakeOff();saveNow();setTimeout(render,0);}$('#modal').hidden=true;$('#modal').innerHTML='';document.body.classList.remove('modal-open');renderModal.last=null;
+  // The 3D body goes back to Today's map, coloured by the week again.
+  if(was&&was.kind==='exMus'){B3.ex=null;if(document.getElementById('bm3d'))mount3D();}
   const r=modalReturn;modalReturn=null;
   if(r&&document.contains(r)&&typeof r.focus==='function')try{r.focus({preventScroll:true});}catch(e){/* focus is best effort */}
 }
