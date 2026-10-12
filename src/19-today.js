@@ -554,6 +554,10 @@ function exHeadline(exId){
   // A range only when it says something: perfectly steady numbers give one of zero width.
   if(st.slope!=null)more.push(st.pLo!=null&&st.pHi-st.pLo>=0.1?`About ${sg(st.slope)} a week (likely ${sg(st.pLo)} to ${sg(st.pHi)}), from ${ns}.`:`About ${sg(st.slope)} a week, from ${ns}.`);
   if(!st.useAdj)more.push('Read from loads and reps; RIR is left out of the trend until it is rated on most sets.');
+  /* The change compares the ends; the rate fits every session. When they point
+     different ways the reason sits behind the i, not as a line on screen (r40,
+     V: the old note "Change and trend disagree" was confusing on its own). */
+  if(st.pct!=null&&st.slope!=null&&(st.pct>0)!==(st.slope>0)&&Math.abs(st.pct)>0.5&&Math.abs(st.slope)>0.1)more.push(`The change (${sg(st.pct)}) compares your first and last sessions; the weekly rate fits a line through all of them. They point different ways when one unusual session sits at an end, so the rate is the better guide.`);
   const atTopR=(()=>{const lw=st.last?atLoad(st.last.pts,st.last.topW):[];return lw.length&&lw.every(q=>q.r>=+planFor(exId).repMax);})();
   if(st.stalled){
     // At the top of the range, the advice is load, as on the Coach (r32).

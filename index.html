@@ -594,7 +594,6 @@ body.obmode main,body.obmode #view{padding-bottom:24px}
 .ob-splash{min-height:60vh;display:flex;align-items:center;justify-content:center}
 .welcome h3{margin-bottom:10px;font:700 24px/1.15 var(--font);letter-spacing:-.015em}
 /* The account offer on the welcome card: an accent edge so it reads as the first step. */
-.welcome .acct-offer{box-shadow:inset 3px 0 0 var(--volt)}
 /* Log a past workout: one row per routine day, name left, detail right. */
 .fbshot{display:flex;align-items:center;gap:10px}
 /* Report kind: one segmented control, the problem first. */
@@ -719,11 +718,6 @@ table.t .stick-r{position:sticky;right:0;background:var(--bg);padding-left:6px}
 .hero .btn.noted{box-shadow:inset 0 0 0 1px var(--on-hero)}
 .hero .tag.blue{background:color-mix(in srgb,var(--on-hero) 16%,transparent);color:var(--on-hero)}
 .btn.big{font:800 23px var(--display);letter-spacing:.07em;text-transform:uppercase;min-height:58px;margin-top:16px;border-radius:999px}
-.inline-sel{display:flex;align-items:center;gap:8px;color:inherit;margin:0;white-space:nowrap;min-width:0;font-size:13px;opacity:.9}
-.inline-sel select{max-width:200px;min-width:0;flex:1 1 auto;padding:6px 8px;font-size:13px;min-height:44px;text-overflow:ellipsis}
-.hero .inline-sel{flex:1 1 auto}
-.hero .inline-sel select{max-width:none;background:color-mix(in srgb,var(--on-hero) 10%,transparent);color:var(--on-hero);border-color:color-mix(in srgb,var(--on-hero) 25%,transparent)}
-.hero .inline-sel select option{color:initial}
 /* Start variants: a two-line button each, so what it does is on the button. */
 .rirb{height:44px;min-width:0;width:100%;border-radius:var(--r-sm);border:1px solid var(--field-b);background:var(--surface-2);color:var(--ink);font:700 16px var(--font);font-variant-numeric:tabular-nums;cursor:pointer;padding:0}
 .rirb.unset{color:var(--muted);font-weight:600}
@@ -782,16 +776,12 @@ table.t .stick-r{position:sticky;right:0;background:var(--bg);padding-left:6px}
 .ring .rv{position:relative;font:800 25px/1 var(--display);font-variant-numeric:tabular-nums}
 .ring .rv small{font-size:12px;margin-left:1px}
 .ring .rl{position:relative;font:600 9.5px/1.2 var(--font);letter-spacing:.1em;text-transform:uppercase;opacity:.7}
-.hero-alt{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}
-.hero-alt .btn{min-width:0;min-height:44px;padding:0 10px;line-height:1.15;text-align:center}
-.hero-alt .btn:last-child:nth-child(odd){grid-column:1/-1}
 .hero .hb{border-color:color-mix(in srgb,var(--on-hero) 35%,transparent);color:var(--on-hero)}
 .hero .hb[aria-expanded="true"]{background:var(--on-hero);color:var(--hero)}
 .hero .ht{background:color-mix(in srgb,var(--on-hero) 12%,transparent);color:var(--on-hero)}
 .hero .ht b{font-weight:700}
 .tiles{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1px;background:var(--line-soft);border:1px solid var(--card-b);border-radius:var(--r-lg);overflow:hidden}
 .tile.wide{grid-column:1/-1;min-height:0}
-.tu{font:600 15px var(--font);color:var(--muted)}
 @media (min-width:620px){.tiles{grid-template-columns:repeat(4,minmax(0,1fr))}.tile.wide{grid-column:auto}}
 .tile{-webkit-appearance:none;appearance:none;font:inherit;color:var(--ink);text-align:left;background:var(--surface);border:0;border-radius:0;padding:14px 16px;display:flex;flex-direction:column;gap:3px;cursor:pointer;min-height:108px;min-width:0}
 .tile:active{background:var(--surface-2)}
@@ -866,7 +856,6 @@ table.t .stick-r{position:sticky;right:0;background:var(--bg);padding-left:6px}
 .dot{width:8px;height:8px;border-radius:50%;margin-top:6px;display:inline-block;background:var(--line)}
 .dot.green{background:var(--green)}.dot.yellow{background:var(--yellow)}.dot.red{background:var(--red)}.dot.blue{background:var(--blue)}
 .recap{margin:0;padding-left:18px}.recap li{padding:3px 0}
-.linkish{background:none;border:0;padding:0;font:inherit;color:var(--red);font-weight:650;text-decoration:underline;cursor:pointer}
 
 /* ---------- history list ---------- */
 .hitem{border-bottom:1px solid var(--line-soft);padding:10px 0}
@@ -933,7 +922,6 @@ details.more>summary .small{display:block;font-weight:400}
 .acctbar+.acctbar{margin-top:-6px}
 /* On a phone each line keeps its bold half and its button (item 62). */
 @media (max-width:429px){.acctbar .ab-more{display:none}}
-.welcome .acct-offer .btn:not(.primary){background:var(--surface);box-shadow:inset 0 0 0 1px var(--line)}
 .acctbar{display:flex;align-items:center;gap:8px;margin:0 0 12px;padding:6px 6px 6px 16px;border:1px solid var(--card-b);border-radius:999px;background:var(--surface)}
 .acctbar>span{flex:1 1 auto;min-width:0}
 .acctbar .btn,.acctbar .ib{flex:none;white-space:nowrap}
@@ -1598,7 +1586,6 @@ const LOGK=KEY+'.log';
 // Week or Month in This week on Today (r26), per device.
 const WKVIEW_KEY=KEY+'.wkView';
 // The one-time choice between grey and filled-in loads (r26), per device.
-const LOADASK_KEY=KEY+'.loadAsk';
 const logBuf=(()=>{try{const a=JSON.parse(localStorage.getItem(LOGK)||'[]');return Array.isArray(a)?a:[];}catch(e){return [];}})();
 function log(area,err){
   try{
@@ -5887,6 +5874,10 @@ function exHeadline(exId){
   // A range only when it says something: perfectly steady numbers give one of zero width.
   if(st.slope!=null)more.push(st.pLo!=null&&st.pHi-st.pLo>=0.1?`About ${sg(st.slope)} a week (likely ${sg(st.pLo)} to ${sg(st.pHi)}), from ${ns}.`:`About ${sg(st.slope)} a week, from ${ns}.`);
   if(!st.useAdj)more.push('Read from loads and reps; RIR is left out of the trend until it is rated on most sets.');
+  /* The change compares the ends; the rate fits every session. When they point
+     different ways the reason sits behind the i, not as a line on screen (r40,
+     V: the old note "Change and trend disagree" was confusing on its own). */
+  if(st.pct!=null&&st.slope!=null&&(st.pct>0)!==(st.slope>0)&&Math.abs(st.pct)>0.5&&Math.abs(st.slope)>0.1)more.push(`The change (${sg(st.pct)}) compares your first and last sessions; the weekly rate fits a line through all of them. They point different ways when one unusual session sits at an end, so the rate is the better guide.`);
   const atTopR=(()=>{const lw=st.last?atLoad(st.last.pts,st.last.topW):[];return lw.length&&lw.every(q=>q.r>=+planFor(exId).repMax);})();
   if(st.stalled){
     // At the top of the range, the advice is load, as on the Coach (r32).
@@ -7018,10 +7009,6 @@ function viewLogger(){
   return h;
 }
 
-/* Grey or filled-in loads (r26): asked once, in the first session after the
-   change, so the choice is found where it matters instead of in Settings.
-   Either answer is remembered on this device; Settings > Rest timer and
-   logging changes it later. */
 /* Bodyweight, asked once in the first session with a bodyweight lift when
    none is logged (r32, from the third review: pull-ups and leg raises added
    nothing to weight lifted, and had no estimate, with no weigh-in). Saved
@@ -8025,7 +8012,7 @@ function renderModalBody(){
     ${e.bw?'':(()=>{const def=loadWords({...e,load:undefined});const has=!m.isNew&&state.sessions.some(s=>s.ex.some(b=>b.exId===e.id));
       return `<label class="field"><span class="hastip" data-tip="${esc('What the number you type means. Estimates and targets stay in this frame; weight lifted counts both dumbbells or both sides.'+(has?' Changing it does not convert sets already logged.':''))}">Weight is entered as</span><select data-ebind="load"><option value="auto" ${!e.load?'selected':''}>Default for this equipment: ${esc(def)}</option>${LOAD_MODES.map(([k,l])=>`<option value="${k}" ${e.load===k?'selected':''}>${l}</option>`).join('')}</select></label>`;})()}
     <div><p class="small muted">Helper muscles (count as half a set)</p><div class="chips">${MUSCLES.filter(([k])=>k!==e.primary).map(([k,l])=>`<button class="chip ${e.secondary.includes(k)?'on':''}" data-act="secToggle" data-m="${k}">${l}</button>`).join('')}</div></div>
-    ${MK.includes(e.primary)?`<div class="exbody">${exBodyFlat(e,true)}${exMusLegend(e)}</div>`:''}
+    ${MK.includes(e.primary)?`<div class="exbody"><button type="button" class="linkbtn tall" data-act="exBodyTog" aria-expanded="${!!ui.exBody}">${ui.exBody?'Hide body':'Show on body'}</button>${ui.exBody?exBodyFlat(e,true)+exMusLegend(e):''}</div>`:''}
     <label class="check-inline"><input type="checkbox" data-ebind="bw" ${e.bw?'checked':''}><span class="hastip" data-tip="Log only what you add (0 for bodyweight). Your logged bodyweight is added for estimates and weight lifted.">Bodyweight exercise</span></label>
     ${e.bw?`<label class="check-inline"><input type="checkbox" data-ebind="assist" ${e.assist?'checked':''}><span class="hastip" data-tip="For an assisted machine: you type the help it gives, and less help is progress.">Assisted (a machine takes weight off)</span></label>`:''}
     ${e.bw?`<label class="field"><span class="hastip" data-tip="Measured only for push-ups (64%, force plates). Pull-ups and dips count all of it; the rest are segment-mass estimates.">Share of bodyweight moved (%)</span><input type="text" inputmode="numeric" data-ebind="bwfRaw" value="${esc(e.bwfRaw||'')}"></label>`:''}
@@ -9162,7 +9149,6 @@ const ACT={
      suggestion switch between grey and filled, typed loads stay as typed. */
   loadAsk(t){
     const fill=t.dataset.v==='fill';if(fill)state.settings.loadFill='fill';else delete state.settings.loadFill;
-    try{localStorage.setItem(LOADASK_KEY,'1');}catch(e){/* asked again next session */}
     const d=state.draft;
     // Filled in, a row takes what it showed in grey (a load typed above it, else the suggestion), and follows a correction above like carried rows do.
     if(d)for(const b of d.ex)b.sets.forEach((x,i)=>{if(x.done||x.warm||x.drop||x.r!=null||x.rir!=null)return;
@@ -9786,6 +9772,8 @@ const ACT={
   },
   bQuick(t){openModal({kind:'quick',b:+t.dataset.b,text:''});},
   bHist(t){const b=state.draft&&state.draft.ex[+t.dataset.b];if(b)openModal({kind:'exhist',exId:b.exId});},
+  // The editor's muscle pickers already name the muscles; the figure is there on request (r40, V: not both at once).
+  exBodyTog(){ui.exBody=!ui.exBody;renderModal();},
   bMus(t){const b=state.draft&&state.draft.ex[+t.dataset.b];if(b)openModal({kind:'exMus',exId:b.exId});},
   qFill(){
     const m=ui.modal;if(!m||m.kind!=='quick')return;const d=state.draft;const b=d&&d.ex[m.b];if(!b)return;

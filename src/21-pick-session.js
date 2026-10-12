@@ -585,10 +585,6 @@ function viewLogger(){
   return h;
 }
 
-/* Grey or filled-in loads (r26): asked once, in the first session after the
-   change, so the choice is found where it matters instead of in Settings.
-   Either answer is remembered on this device; Settings > Rest timer and
-   logging changes it later. */
 /* Bodyweight, asked once in the first session with a bodyweight lift when
    none is logged (r32, from the third review: pull-ups and leg raises added
    nothing to weight lifted, and had no estimate, with no weigh-in). Saved

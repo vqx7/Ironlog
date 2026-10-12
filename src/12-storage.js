@@ -25,7 +25,6 @@ const LOGK=KEY+'.log';
 // Week or Month in This week on Today (r26), per device.
 const WKVIEW_KEY=KEY+'.wkView';
 // The one-time choice between grey and filled-in loads (r26), per device.
-const LOADASK_KEY=KEY+'.loadAsk';
 const logBuf=(()=>{try{const a=JSON.parse(localStorage.getItem(LOGK)||'[]');return Array.isArray(a)?a:[];}catch(e){return [];}})();
 function log(area,err){
   try{

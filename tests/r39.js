@@ -98,14 +98,21 @@ const near = (a, b) => a.every((x, i) => Math.abs(x - b[i]) <= 2);
     await wait(80);
     const ed = await ev(async () => {
       const m = document.getElementById('modal'); const o = {};
+      // The figure waits behind Show on body (r40, V: names or the body, not both at once).
+      const tog = () => m.querySelector('[data-act="exBodyTog"]');
+      o.closed = { figs: m.querySelectorAll('.exbody .mx').length, label: tog().textContent, exp: tog().getAttribute('aria-expanded'), h: tog().getBoundingClientRect().height };
+      tog().click(); await new Promise(r => setTimeout(r, 60));
+      o.openLabel = tog().textContent;
       const groups = () => ({ main: [...m.querySelectorAll('.exbody .mx.ex-main')].length, help: [...m.querySelectorAll('.exbody .mx.ex-help')].length });
       o.a = groups(); o.legend = [...m.querySelectorAll('.exbody .bm-legend span')].map(s => s.innerText.trim());
       const chip = [...m.querySelectorAll('[data-act="secToggle"]')].find(b => !b.classList.contains('on') && b.dataset.m === 'abs'); chip.click(); await new Promise(r => setTimeout(r, 60));
       o.b = groups();
       const sel = m.querySelector('[data-ebind="primary"]'); sel.value = 'lats'; sel.dispatchEvent(new Event('change', { bubbles: true })); await new Promise(r => setTimeout(r, 60));
-      o.c = groups(); o.wide = document.documentElement.scrollWidth <= innerWidth; window.__ironlog.ACT.mClose();
+      o.c = groups(); tog().click(); await new Promise(r => setTimeout(r, 60)); o.shut = m.querySelectorAll('.exbody .mx').length; o.wide = document.documentElement.scrollWidth <= innerWidth; window.__ironlog.ACT.mClose();
       return o;
     });
+    ok(ed.closed.figs === 0 && ed.closed.label === 'Show on body' && ed.closed.exp === 'false' && ed.closed.h >= 44, 'the editor names the muscles and keeps the body behind Show on body (44 px)' + T, ed.closed);
+    ok(ed.openLabel === 'Hide body' && ed.shut === 0, 'Show on body opens it, Hide body closes it' + T, { open: ed.openLabel, shut: ed.shut });
     ok(ed.a.main >= 1 && ed.a.help >= 1 && ed.legend.join('|') === 'Main|Helper', 'the editor shows the bench\'s muscles on the flat body' + T, ed);
     ok(ed.b.help > ed.a.help && ed.c.main >= 1, 'a helper picked, or a new main muscle, shows at once' + T, ed);
 

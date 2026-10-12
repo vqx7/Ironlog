@@ -115,7 +115,6 @@ const ACT={
      suggestion switch between grey and filled, typed loads stay as typed. */
   loadAsk(t){
     const fill=t.dataset.v==='fill';if(fill)state.settings.loadFill='fill';else delete state.settings.loadFill;
-    try{localStorage.setItem(LOADASK_KEY,'1');}catch(e){/* asked again next session */}
     const d=state.draft;
     // Filled in, a row takes what it showed in grey (a load typed above it, else the suggestion), and follows a correction above like carried rows do.
     if(d)for(const b of d.ex)b.sets.forEach((x,i)=>{if(x.done||x.warm||x.drop||x.r!=null||x.rir!=null)return;
@@ -739,6 +738,8 @@ const ACT={
   },
   bQuick(t){openModal({kind:'quick',b:+t.dataset.b,text:''});},
   bHist(t){const b=state.draft&&state.draft.ex[+t.dataset.b];if(b)openModal({kind:'exhist',exId:b.exId});},
+  // The editor's muscle pickers already name the muscles; the figure is there on request (r40, V: not both at once).
+  exBodyTog(){ui.exBody=!ui.exBody;renderModal();},
   bMus(t){const b=state.draft&&state.draft.ex[+t.dataset.b];if(b)openModal({kind:'exMus',exId:b.exId});},
   qFill(){
     const m=ui.modal;if(!m||m.kind!=='quick')return;const d=state.draft;const b=d&&d.ex[m.b];if(!b)return;

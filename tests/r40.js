@@ -76,7 +76,23 @@ const FILE = 'index.html';
     const norm = await ev(() => { const L = window.__ironlog; const s = JSON.parse(JSON.stringify(L.state)); s.settings.rirHalf = 'yes'; const a = L.normalize(s).settings.rirHalf; s.settings.rirHalf = true; const b = L.normalize(s).settings.rirHalf; delete s.settings.rirHalf; const c = 'rirHalf' in L.normalize(s).settings; return { a, b, c }; });
     ok(norm.a === undefined && norm.b === true && norm.c === false, 'only true is kept; absent otherwise' + T, norm);
 
-    // ---------- 7. The Guide, 320 px ----------
+    // ---------- 7. Change and rate pointing different ways: said behind the i, not on screen ----------
+    const dis = await ev(() => {
+      const L = window.__ironlog; const LB = 0.45359237; const s = L.state; const keep = s.sessions;
+      // 200 lb, then 184 (8% down, not a lighter session), then climbing 3 a week to 196: the ends say down 2%, the line says up.
+      s.sessions = [200, 184, 187, 190, 193, 196].map((w, i) => ({ id: 'd' + i, date: L.addDays('2026-08-30', i * 7), dayIdx: 0, dayId: null, dayName: 'T', routineId: '', notes: '', ex: [{ exId: 'bench', rr: [6, 10], sets: [0, 1, 2].map(() => ({ w: w * LB, r: 8, rir: 1, done: true })) }] }));
+      L.invalidate(); const st = L.IDX().exStats.bench; const h = L.exHeadline('bench');
+      const tip = (h.match(/data-tip="([^"]*)"/) || [])[1] || '';
+      L.ui.tab = 'dash'; L.ui.dashEx = 'bench'; L.render(); document.querySelectorAll('#view details').forEach(d => d.open = true);
+      const screen = document.querySelector('#view [data-mkey="exercise"]').innerText;
+      s.sessions = keep; L.invalidate();
+      return { pct: st.pct, slope: st.slope, tip, screen: /different ways|disagree/.test(screen) };
+    });
+    ok(dis.pct < 0 && dis.slope > 0.1 && /compares your first and last sessions; the weekly rate fits a line through all of them/.test(dis.tip) && !dis.screen, 'the change down and the rate up: the reason is in the headline\'s i, nothing extra on screen' + T, dis);
+    const agree = await ev(() => { const L = window.__ironlog; L.invalidate(); return /different ways/.test(L.exHeadline('bench')); });
+    ok(!agree, 'when they agree, the i says nothing about it' + T);
+
+    // ---------- 8. The Guide, 320 px ----------
     const guide = await ev(() => { const L = window.__ironlog; L.openModal({ kind: 'guide' }); const t = document.getElementById('modal').textContent; L.ACT.mClose(); return t; });
     ok(/Count RIR 4 to 5 as half a set on, a working set at RIR 4 or 5 counts half/.test(guide), 'the Guide says what it does' + T);
     await P.page.setViewportSize({ width: 320, height: 640 });
