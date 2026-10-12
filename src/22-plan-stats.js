@@ -136,11 +136,15 @@ function nextLine(exId){
   const sg=suggest(exId,d?planFor(exId,R,d.id):planFor(exId,R),{deload:isDeloadWeek()});
   return sg&&sg.target?`<p class="small" id="nextLine" style="margin:6px 0 0"><b>Next session</b>: ${esc(sg.target)}</p>`:'';
 }
-// The next training day due (today's weekday on a weekly plan, else the cycle's next day) that has the lift, or null.
+/* The next training day due that has the lift, or null: on a weekly plan
+   today's weekday, or tomorrow's once today's day is logged (review of r41:
+   a Monday heavy day done still showed Monday's target over Thursday's);
+   on a cycle the cycle's next day, which already counts what is logged. */
 function nextDayWith(exId,R){
   const n=R.days.length;if(!n)return null;
-  // The same day Today's card starts from.
-  const start=R.schedule==='weekly'?(new Date().getDay()+6)%7:cycleState(R).next;
+  let start;
+  if(R.schedule==='weekly'){const wd=(new Date().getDay()+6)%7;start=state.sessions.some(x=>x.date===today()&&x.routineId===R.id&&sessDayIdx(R,x)===wd)?(wd+1)%n:wd;}
+  else start=cycleState(R).next;
   for(let k=0;k<n;k++){const d=R.days[(start+k)%n];if(d&&!d.rest&&d.items.some(it=>it.exId===exId))return d;}
   return null;
 }

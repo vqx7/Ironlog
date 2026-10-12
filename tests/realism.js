@@ -136,7 +136,7 @@ const r5 = v => Math.round(v / 5) * 5;
         const gainTrue = Math.pow(1 + Lf.g, WEEKS - 1) - 1; const gainApp = work[work.length - 1].w / work[3].w - 1;
         ok(gainApp > 0 && gainApp >= gainTrue * (WEEKS - 4) / (WEEKS - 1) - 0.06, T + Lf.id + ': the load grows with the lifter (' + (gainApp * 100).toFixed(1) + '% from week 4, true gain ' + (gainTrue * 100).toFixed(1) + '% over 16 weeks)', { gainApp, gainTrue });
         ok(!s.stalled, T + Lf.id + ': not called stalled', s.head);
-        ok(/^.*(Up |Slowly up|No clear change)/.test(s.head) && !/Down|Stalled/.test(s.head), T + Lf.id + ': Stats reads it as rising (or not yet clear), never down', s.head);
+        ok(/\b(up|no clear change)\b/i.test(s.head) && !/\bdown\b|Stalled/i.test(s.head), T + Lf.id + ': Stats reads it as rising (or not yet clear), never down', s.head);
         ok(s.prs >= 2, T + Lf.id + ': PRs are logged as it grows', s.prs);
       } else {
         ok(!s.moving, T + Lf.id + ' (flat): never called moving', s.head);

@@ -97,6 +97,31 @@ const brz = (load, rtf) => load * 36 / (37 - rtf);
     });
     ok(two.due === two.light && two.tgt && two.next === `Next session: ${two.tgt}` && /8\+|for 8/.test(two.tgt), 'bench on a 3-5 day and an 8-12 day, the 8-12 day due: Next session is the target that session shows (' + two.tgt + ')', two);
 
+    // ---------- 3d. A weekly plan: once today's day is logged, the next day with the lift ----------
+    const wk = await ev(() => {
+      const L = window.__ironlog; const LB = 0.45359237; const s = L.state; const keepS = s.sessions; const keepR = JSON.parse(JSON.stringify(s.routines));
+      // The clock is Sunday, Oct 11 (index 6). Bench is heavy (3-5) on Sunday and light (8-12) on Wednesday (index 2).
+      const R = L.activeRoutine(); R.schedule = 'weekly'; while (R.days.length < 7) R.days.push({ ...JSON.parse(JSON.stringify(R.days[0])), id: 'pad' + R.days.length, items: [], rest: true });
+      R.days = R.days.slice(0, 7); R.days.forEach(d => { d.items = d.items.filter(it => it.exId !== 'bench'); });
+      const tpl = keepR.find(r => r.id === R.id).days.find(d => d.items.length).items[0];
+      const sun = R.days[6], wed = R.days[2]; sun.rest = false; wed.rest = false;
+      sun.items = [{ ...tpl, uid: 'uS', exId: 'bench', repMin: 3, repMax: 5, sets: 3 }]; wed.items = [{ ...tpl, uid: 'uW', exId: 'bench', repMin: 8, repMax: 12, sets: 3 }];
+      const ss = [];
+      for (let i = 0; i < 3; i++) {
+        ss.push({ id: 'ws' + i, date: L.addDays('2026-09-20', i * 7), dayIdx: 6, dayId: sun.id, dayName: sun.name, routineId: R.id, notes: '', ex: [{ exId: 'bench', rr: [3, 5], sets: [0, 1, 2].map(() => ({ w: (225 + i * 5) * LB, r: 5, rir: 1, done: true })) }] });
+        ss.push({ id: 'ww' + i, date: L.addDays('2026-09-23', i * 7), dayIdx: 2, dayId: wed.id, dayName: wed.name, routineId: R.id, notes: '', ex: [{ exId: 'bench', rr: [8, 12], sets: [0, 1, 2].map(() => ({ w: (175 + i * 5) * LB, r: 12, rir: 1, done: true })) }] });
+      }
+      s.sessions = ss; s.draft = null; L.invalidate();
+      const read = () => { L.invalidate(); L.ui.tab = 'dash'; L.ui.dashEx = 'bench'; L.render(); return (document.getElementById('nextLine') || {}).innerText; };
+      const tgt = d => 'Next session: ' + L.suggest('bench', L.planFor('bench', R, d.id)).target;
+      const before = read(), heavy = tgt(sun);
+      s.sessions.push({ id: 'today', date: '2026-10-11', dayIdx: 6, dayId: sun.id, dayName: sun.name, routineId: R.id, notes: '', ex: [{ exId: 'bench', rr: [3, 5], sets: [0, 1, 2].map(() => ({ w: 240 * LB, r: 5, rir: 1, done: true })) }] });
+      const after = read(), light = tgt(wed);
+      s.sessions = keepS; s.routines = keepR; L.invalidate(); L.render();
+      return { before, heavy, after, light };
+    });
+    ok(wk.heavy !== wk.light && wk.before === wk.heavy && wk.after === wk.light, 'weekly plan: Sunday\'s heavy target until Sunday is logged, then Wednesday\'s light one', wk);
+
     // ---------- 4. The workout preview: the target only ----------
     const pv = await ev(() => { const L = window.__ironlog; const R = L.activeRoutine(); const d = R.days.find(x => !x.rest && x.items.length); d.items[0].exId = 'bench'; L.ui.tab = 'today'; L.ui.todayDay = R.days.indexOf(d); L.render(); document.querySelectorAll('#view details').forEach(x => x.open = true); const sec = document.querySelector('#view [data-mkey="session"]'); return sec ? sec.innerText : ''; });
     ok(/Today: .*200 lb/.test(pv) && !/Est\. 1RM|Top sets/.test(pv), 'the workout preview shows each target, not the trend history', pv.slice(0, 200));
