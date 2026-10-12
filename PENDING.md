@@ -4,6 +4,9 @@ This is the tracking list. Items are built only when V says go. Owner items need
 
 ## Live: r36 (published 2026-10-11, pull request #26; r35 before it the same day, #25; both merged by Claude at V's word "Deploy straight to live once fine and validated"; build 2026.10.11-r36)
 
+## Backlog: small changes (V, 2026-10-11)
+256. To build: the first page's tour moves on every 4 seconds instead of 5.5 (`mountObTour`). Each slide is a title and a small picture, read in about 2 seconds; 5.5 was a judgment call with no source, and a full pass took 22 seconds. At 4 it is 16. Update tests/r33.js where it waits on the tour.
+
 ## r36, live since 2026-10-11 (V: item 2, the code optimization, on its own), tests/r36.js
 254. Built (item 209, first half): the source is `src/`, 24 parts cut at the code's own section headers; `npm run join` writes `index.html` from them, byte for byte what it was (tests/r36.js checks it on every run).
 255. Built (item 209, second half): `IDX()` (420 lines) is six named steps and `suggestCore()` (250 lines) seven named cases plus the first-session one; the code moved unchanged. Proof: 2,000 seeded random histories give identical numbers in r35 and r36 (every exposure, trend, stall, PR, weekly count, muscle score, every suggestion in four forms, the coach, averages, region balance, streak), with every case reached; plus the full suite.
