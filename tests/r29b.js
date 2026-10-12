@@ -191,7 +191,7 @@ const sess = (id, date, exId, sets) => ({ id, date, dayIdx: 0, dayId: null, dayN
   {
     const lum = c => { const v = c.map(x => x <= 0.03928 ? x / 12.92 : ((x + 0.055) / 1.055) ** 2.4); return 0.2126 * v[0] + 0.7152 * v[1] + 0.0722 * v[2]; };
     const parse = s => { let m = s.match(/color\(srgb ([\d.]+) ([\d.]+) ([\d.]+)/); if (m) return m.slice(1, 4).map(Number); m = s.match(/rgba?\((\d+), (\d+), (\d+)/); return m ? m.slice(1, 4).map(x => x / 255) : null; };
-    for (const [acc, dark] of [['blue', true], ['volt', true], ['ember', true], ['blue', false]]) {
+    for (const [acc, dark] of [['blue', true], ['volt', true], ['ember', true], ['pink', true], ['pink', false], ['blue', false]]) {
       const P = await open('index.html', { touch: true, dark, clock: '2026-10-03T11:30:00' });
       const { page } = P; const ev = (f, a) => page.evaluate(f, a);
       await ev(([acc, dark]) => { const L = window.__ironlog; L.state.settings.onboarded = true; L.state.settings.accent = acc; L.state.settings.theme = dark ? 'dark' : 'light'; L.render(); L.timer && 0; }, [acc, dark]);

@@ -94,17 +94,21 @@
 }
 /* Accent colour, chosen in Settings > General. The tokens keep the name
    --volt (the original accent) and mean "the accent": go, done, progress.
-   Blue is the default. With the blue accent, the blue status colour (above
+   Ember is the default since r37 (V); Blue, Volt and Pink are the others. With the blue accent, the blue status colour (above
    target, information, supersets) turns violet, so "done" and "above target"
    never look alike. Every pair is checked for 4.5:1 in tests/design.js. */
 :root[data-accent="blue"]{--volt:#2a63f5;--on-volt:#ffffff;--volt-line:#1f4fd1;--volt-soft:#e2ebff;--blue:#6d28d9;--blue-bg:#efe9ff}
 :root[data-accent="ember"]{--volt:#ff6a2b;--on-volt:#0b0c0e;--volt-line:#c2410c;--volt-soft:#ffe6db}
+/* Pink (r37, V): dark text on the fill, as Ember, since white on pink is under 4.5:1. */
+:root[data-accent="pink"]{--volt:#ec4899;--on-volt:#0b0c0e;--volt-line:#be185d;--volt-soft:#fde2ef}
 @media (prefers-color-scheme:dark){
   :root[data-accent="blue"]:not([data-theme="light"]){--volt:#2a63f5;--on-volt:#ffffff;--volt-line:#6f9bff;--volt-soft:#0f1d40;--blue:#b69cff;--blue-bg:#221a3d}
   :root[data-accent="ember"]:not([data-theme="light"]){--volt:#ff6a2b;--on-volt:#0b0c0e;--volt-line:#ff7a3d;--volt-soft:#2f1609}
+  :root[data-accent="pink"]:not([data-theme="light"]){--volt:#ec4899;--on-volt:#0b0c0e;--volt-line:#f472b6;--volt-soft:#3a0f25}
 }
 :root[data-accent="blue"][data-theme="dark"]{--volt:#2a63f5;--on-volt:#ffffff;--volt-line:#6f9bff;--volt-soft:#0f1d40;--blue:#b69cff;--blue-bg:#221a3d}
 :root[data-accent="ember"][data-theme="dark"]{--volt:#ff6a2b;--on-volt:#0b0c0e;--volt-line:#ff7a3d;--volt-soft:#2f1609}
+:root[data-accent="pink"][data-theme="dark"]{--volt:#ec4899;--on-volt:#0b0c0e;--volt-line:#f472b6;--volt-soft:#3a0f25}
 *,*::before,*::after{box-sizing:inherit}
 [hidden]{display:none!important}
 /* Content inside <details> is rendered through the browser's own shadow slot,
@@ -824,7 +828,7 @@ table.t .stick-r{position:sticky;right:0;background:var(--bg);padding-left:6px}
 .ico{width:20px;height:20px;vertical-align:-4px;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round;display:inline-block;margin:0 1px}
 .chip.acc{display:inline-flex;align-items:center;gap:8px}
 .sw{display:inline-block;width:14px;height:14px;border-radius:50%;box-shadow:inset 0 0 0 1px rgba(0,0,0,.15)}
-.sw-blue{background:#2a63f5}.sw-volt{background:#d4ff3f}.sw-ember{background:#ff6a2b}
+.sw-blue{background:#2a63f5}.sw-volt{background:#d4ff3f}.sw-ember{background:#ff6a2b}.sw-pink{background:#ec4899}
 .bm3d{margin-top:10px}
 .bm3d-stage{position:relative;border-radius:var(--r-lg);background:radial-gradient(60% 55% at 50% 42%,var(--surface) 0%,transparent 75%);min-height:220px;overflow:hidden}
 .bm3d-canvas{display:block;touch-action:pan-y;cursor:grab;-webkit-tap-highlight-color:transparent}

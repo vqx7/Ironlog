@@ -42,7 +42,7 @@ function fbContext(m){
   const d=state.draft;
   return {build:APP_VERSION,env:ENV,at:new Date().toISOString(),device:String(navigator.userAgent||'').slice(0,300),
     screen:`${window.innerWidth}x${window.innerHeight} @${window.devicePixelRatio||1}x`,installed:isStandalone(),
-    theme:state.settings.theme,accent:state.settings.accent||'blue',unit:U(),from:m.from||ui.tab,exercise:m.ex||undefined,
+    theme:state.settings.theme,accent:state.settings.accent||ACCENT0,unit:U(),from:m.from||ui.tab,exercise:m.ex||undefined,
     session:d?{past:!!d.past,free:!!d.free,editing:!!d.editingId,exercises:d.ex.length}:null,
     signedIn:!!acct.user,sync:cloud.on?cloud.status:'off',
     counts:{sessions:state.sessions.filter(x=>!x.demo).length,routines:state.routines.length},

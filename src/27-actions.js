@@ -1113,7 +1113,7 @@ const ACT={
   chartRange(t){ui.rng=ui.rng||{};ui.rng[t.dataset.id]=t.dataset.v;rerenderKeepScroll();},
   histMore(){ui.histLimit+=HIST_PAGE;rerenderKeepScroll();},
   mapSel(t){const m=t.getAttribute('data-m');ui.mapSel=ui.mapSel===m?null:m;rerenderKeepScroll();},
-  accent(t){const v=t.getAttribute('data-v');if(!ACCENTS.some(([k])=>k===v))return;if(v==='blue')delete state.settings.accent;else state.settings.accent=v;commit();rerenderKeepScroll();},
+  accent(t){const v=t.getAttribute('data-v');if(!ACCENTS.some(([k])=>k===v))return;if(v===ACCENT0)delete state.settings.accent;else state.settings.accent=v;commit();rerenderKeepScroll();},
   mapSrc(t){ui.mapSrc=t.getAttribute('data-v');rerenderKeepScroll();},
   mapView(t){try{localStorage.setItem(MAPVIEW_KEY,t.getAttribute('data-v')==='3d'?'3d':'flat');}catch(e){/* remembered for this visit only */}B3.viewMem=t.getAttribute('data-v')==='3d'?'3d':'flat';rerenderKeepScroll();},
   map3dTurn(t){map3dTurnTo([0,Math.PI/2,Math.PI][+t.getAttribute('data-v')]||0);},

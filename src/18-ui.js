@@ -314,9 +314,10 @@ function killDynamic(){
   // floating copy of the block on the page; it goes with the old list.
   blockDrag=false;if(document.body.classList.contains('blkdrag')){document.body.classList.remove('blkdrag');const v=document.getElementById('view');if(v)v.style.paddingBottom='';}if(typeof edgeScroll!=='undefined')edgeScroll.stop();document.querySelectorAll('.sortable-fallback,.sortable-ghost').forEach(e=>{if(!e.closest('#view'))e.remove();});
   while(charts.length){try{charts.pop().destroy();}catch(e){/* chart already gone */}}sortables.forEach(s=>{try{s.destroy();}catch(e){/* list already gone */}});sortables=[];}
-const ACCENTS=[['blue','Blue'],['volt','Volt'],['ember','Ember']];
+/* Ember is the default since r37 (V: "default to the orange ember one for now"): no accent stored reads as Ember. */
+const ACCENTS=[['ember','Ember'],['blue','Blue'],['volt','Volt'],['pink','Pink']];const ACCENT0='ember';
 function applyTheme(){const t=state.settings.theme;if(t==='system')delete document.documentElement.dataset.theme;else document.documentElement.dataset.theme=t;
-  document.documentElement.dataset.accent=state.settings.accent||'blue';
+  document.documentElement.dataset.accent=state.settings.accent||ACCENT0;
   // The installed app's status bar takes this colour, so it follows the theme.
   const m=document.querySelector('meta[name="theme-color"]');if(m)try{m.setAttribute('content',getComputedStyle(document.body).backgroundColor||'#08090b');}catch(e){/* cosmetic */}}
 /* A code bug inside a view used to leave a blank screen. Now the error is

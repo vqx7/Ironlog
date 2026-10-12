@@ -307,11 +307,12 @@ function mountObTour(){
   let reduce=false;try{reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;}catch(e){/* animate */}
   // Test browsers run it only when asked, so screenshots and suites stay still.
   if(reduce||obTour.user||(navigator.webdriver&&!window.IRONLOG_TOUR_AUTO))return;
+  // Every 4 seconds (r37, V): a slide is a title and a small picture, read in about 2; at 5.5 a pass took 22 seconds.
   obTour.auto=setInterval(()=>{
     if(!document.getElementById('obTrack')){obTourStop();return;}
     if(document.hidden)return;
     // One pass through, then it stays on the last slide (r34, V: less moving while reading the page).
-    const n=document.getElementById('obTrack').children.length;if(obTour.i>=n-1){obTour.user=true;obTourStop();return;}obTourGo(obTour.i+1,true);},5500);
+    const n=document.getElementById('obTrack').children.length;if(obTour.i>=n-1){obTour.user=true;obTourStop();return;}obTourGo(obTour.i+1,true);},4000);
 }
 function obView(){
   // Still finding out whether this device is signed in, or pulling its log: show nothing that could flash away.

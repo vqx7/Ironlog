@@ -4,8 +4,9 @@ This is the tracking list. Items are built only when V says go. Owner items need
 
 ## Live: r36 (published 2026-10-11, pull request #26; r35 before it the same day, #25; both merged by Claude at V's word "Deploy straight to live once fine and validated"; build 2026.10.11-r36)
 
-## Backlog: small changes (V, 2026-10-11)
-256. To build: the first page's tour moves on every 4 seconds instead of 5.5 (`mountObTour`). Each slide is a title and a small picture, read in about 2 seconds; 5.5 was a judgment call with no source, and a full pass took 22 seconds. At 4 it is 16. Update tests/r33.js where it waits on the tour.
+## r37 (V, 2026-10-11), tests/essentials.js, design.js, r28.js, r29b.js, r33.js
+256. Built: the first page's tour moves on every 4 seconds instead of 5.5 (`mountObTour`). Each slide is a title and a small picture, read in about 2 seconds; 5.5 was a judgment call with no source, and a full pass took 22 seconds. At 4 it is 16. tests/r33.js checks slide 2 shows by 4.6 s.
+257. Built (V): a Pink accent beside Ember, Blue and Volt (dark text on the fill, as Ember; every key colour pair 4.5:1 in light and dark, tests/design.js, the rest timer and menu icon checks too), and Ember is now the default: nothing stored reads as Ember, and choosing Blue stores it. A phone that had never picked an accent changes from Blue to Ember.
 
 ## r36, live since 2026-10-11 (V: item 2, the code optimization, on its own), tests/r36.js
 254. Built (item 209, first half): the source is `src/`, 24 parts cut at the code's own section headers; `npm run join` writes `index.html` from them, byte for byte what it was (tests/r36.js checks it on every run).
