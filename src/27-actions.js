@@ -739,6 +739,7 @@ const ACT={
   },
   bQuick(t){openModal({kind:'quick',b:+t.dataset.b,text:''});},
   bHist(t){const b=state.draft&&state.draft.ex[+t.dataset.b];if(b)openModal({kind:'exhist',exId:b.exId});},
+  bMus(t){const b=state.draft&&state.draft.ex[+t.dataset.b];if(b)openModal({kind:'exMus',exId:b.exId});},
   qFill(){
     const m=ui.modal;if(!m||m.kind!=='quick')return;const d=state.draft;const b=d&&d.ex[m.b];if(!b)return;
     const txt=(($('#qTxt')||{}).value||'').trim();m.text=txt;if(!txt){m.err='Type at least one set.';renderModal();return;}

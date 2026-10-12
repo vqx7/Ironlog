@@ -803,6 +803,13 @@ table.t .stick-r{position:sticky;right:0;background:var(--bg);padding-left:6px}
 .mm.st-over *{fill:var(--blue)}
 .mm.st-track *{fill:var(--muted)}
 .mm.sel *{stroke:var(--ink);stroke-width:1.8}
+.mx *{fill:var(--surface-3);stroke:var(--bg);stroke-width:.8}
+.mx.ex-main *{fill:var(--volt)}
+.mx.ex-help *{fill:var(--volt);fill-opacity:.45}
+.bm-legend i.ex-main{background:var(--volt)}.bm-legend i.ex-help{background:var(--volt);opacity:.45}
+.bm-small{max-width:220px;margin:0 auto}
+.exbody{margin-top:2px}
+.exmus .chip{min-height:44px}
 .mm:focus-visible *{stroke:var(--ink);stroke-width:2.2}
 .bm-legend{display:flex;flex-wrap:wrap;gap:4px 12px;margin-top:8px;color:var(--muted)}
 .bm-legend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:5px;vertical-align:-1px}

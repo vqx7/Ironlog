@@ -14,7 +14,7 @@ const BM_BASE='<circle cx="60" cy="16" r="11"/><rect x="38" y="35" width="44" he
    the new card instead of building a new one. */
 const MAPVIEW_KEY=KEY+'.mapView';
 const THREE_URLS=['https://cdn.jsdelivr.net/npm/three@0.159.0/build/three.module.min.js','https://unpkg.com/three@0.159.0/build/three.module.min.js'];
-const B3={state:'idle',wait:[],r:null,scene:null,cam:null,root:null,meshes:[],mats:{},yaw:0.35,anim:0,status:null,sel:null,fail:'',viewMem:null,drag:null};
+const B3={state:'idle',wait:[],r:null,scene:null,cam:null,root:null,meshes:[],mats:{},yaw:0.35,anim:0,status:null,sel:null,fail:'',viewMem:null,drag:null,ex:null};
 function mapView(){
   if(B3.viewMem)return B3.viewMem;
   try{B3.viewMem=localStorage.getItem(MAPVIEW_KEY)==='3d'?'3d':'flat';}catch(e){B3.viewMem='flat';}
@@ -72,8 +72,23 @@ const B3_PARTS=[
 function map3dColors(){
   const cs=getComputedStyle(document.documentElement);const v=n=>cs.getPropertyValue(n).trim();
   const dark=(document.documentElement.dataset.theme||(matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light'))==='dark';
-  return {base:dark?'#3b4048':'#d5d9de',none:dark?'#5d646d':'#a9b0b8',track:v('--muted'),under:v('--yellow'),part:v('--part'),in:v('--green'),over:v('--blue')};
+  return {base:dark?'#3b4048':'#d5d9de',none:dark?'#5d646d':'#a9b0b8',track:v('--muted'),under:v('--yellow'),part:v('--part'),in:v('--green'),over:v('--blue'),ex:v('--volt')};
 }
+/* An exercise's muscles on the body (r39, item 172): the same flat figures and
+   the same 3D body, lit by what the exercise trains instead of by the week's
+   sets. The main muscle in the accent, helpers lighter (they count half a
+   set), the rest left neutral. One renderer serves both: while the sheet with
+   #bm3dx is open the canvas sits there, and Today's map takes it back when the
+   sheet closes. */
+function b3Host(){return document.getElementById('bm3dx')||document.getElementById('bm3d');}
+function exMusParts(e){const help=(e.secondary||[]).filter(k=>k!==e.primary);return {main:e.primary,help};}
+function exBodyFlat(e,small){
+  const {main,help}=exMusParts(e);
+  const fig=(view,label)=>`<figure class="bm"><svg viewBox="0 0 120 210" aria-hidden="true"><g class="bm-base">${BM_BASE}</g>${Object.entries(BM[view]).map(([k,sh])=>`<g class="mx ${k===main?'ex-main':help.includes(k)?'ex-help':''}">${sh.map(bmShape).join('')}</g>`).join('')}</svg><figcaption>${label}</figcaption></figure>`;
+  return `<div class="bm-wrap${small?' bm-small':''}">${fig('f','Front')}${fig('b','Back')}</div>`;
+}
+function exMusWords(e){const {main,help}=exMusParts(e);return `<p class="small" style="margin:0"><b>Main</b>: ${esc(ML[main]||main)}${help.length?`. <b>Helpers</b>: ${esc(andList(help.map(k=>ML[k]||k)))} ${tipi('A helper muscle counts half a set toward its weekly total (Pelland 2025).','About helper muscles')}`:''}</p>`;}
+function exMusLegend(e){return `<div class="bm-legend small"><span><i class="ex-main"></i>Main</span>${exMusParts(e).help.length?'<span><i class="ex-help"></i>Helper</span>':''}</div>`;}
 function map3dLoad(cb){
   if(B3.state==='ready'||B3.state==='fail'){cb();return;}
   B3.wait.push(cb);if(B3.state==='loading')return;
@@ -128,7 +143,10 @@ function map3dPick(cx,cy){
   const hit=ray.intersectObjects(B3.root.children,false).find(h=>h.object.userData.m);
   return hit?hit.object.userData.m:null;
 }
-function map3dTap(cx,cy){const m=map3dPick(cx,cy);if(!m)return;ui.mapSel=ui.mapSel===m?null:m;rerenderKeepScroll();}
+function map3dTap(cx,cy){const m=map3dPick(cx,cy);if(!m)return;
+  // On an exercise's body a tap names the muscle; the week's numbers are on Today.
+  const hb=b3Host();if(hb&&hb.id==='bm3dx'&&B3.ex){toast(`${ML[m]||m}${m===B3.ex.main?': main':B3.ex.help.includes(m)?': helper':''}`);return;}
+  ui.mapSel=ui.mapSel===m?null:m;rerenderKeepScroll();}
 function map3dTurnTo(to){
   if(!B3.r)return;cancelAnimationFrame(B3.anim);
   // The shorter way round.
@@ -140,7 +158,7 @@ function map3dTurnTo(to){
   B3.anim=requestAnimationFrame(step);
 }
 function map3dDraw(){
-  const host=document.querySelector('#bm3d .bm3d-stage');if(!B3.r||!host)return;
+  const hb=b3Host();const host=hb&&hb.querySelector('.bm3d-stage');if(!B3.r||!host)return;
   const w=Math.max(200,host.clientWidth||320),h=Math.round(Math.min(440,w*1.12));
   const c=B3.r.domElement;
   if(c.parentNode!==host)host.appendChild(c);
@@ -148,19 +166,25 @@ function map3dDraw(){
   B3.root.rotation.y=B3.yaw;B3.r.render(B3.scene,B3.cam);
 }
 function mount3D(){
-  const host=document.getElementById('bm3d');if(!host)return;
+  const host=b3Host();if(!host)return;const exm=host.id==='bm3dx'&&B3.ex;
   const msg=host.querySelector('.bm3d-msg');
   if(B3.state!=='ready'){
     if(B3.state==='fail'){msg.hidden=false;msg.textContent=B3.fail;host.querySelector('.bm3d-turn').hidden=true;return;}
     msg.hidden=false;msg.textContent='Loading the 3D body';
-    map3dLoad(()=>{if(document.getElementById('bm3d'))mount3D();});return;
+    map3dLoad(()=>{if(b3Host())mount3D();});return;
   }
   msg.hidden=true;
   const col=map3dColors();const T=window.THREE;
   for(const [m,mt] of Object.entries(B3.mats)){
+    mt.emissive=mt.emissive||new T.Color(0,0,0);
+    if(exm){
+      // Helpers halfway between the accent and the body, so they read as the same
+      // colour, lighter, on both themes.
+      if(m===B3.ex.main)mt.color.set(col.ex);else if(B3.ex.help.includes(m))mt.color.set(col.ex).lerp(new T.Color(col.base),.5);else mt.color.set(m==='_base'?col.base:col.none);
+      mt.emissive.set('#000000');mt.emissiveIntensity=0;continue;
+    }
     const st=m==='_base'?null:B3.status&&B3.status[m];
     mt.color.set(m==='_base'?col.base:st?col[st.st]||col.none:col.none);
-    mt.emissive=mt.emissive||new T.Color(0,0,0);
     // White lifts a tapped muscle on the dark theme; on the light one it washed
     // it out to pale, so there the muscle glows in its own colour (r29).
     const lightUI=(document.documentElement.dataset.theme||(matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light'))!=='dark';
