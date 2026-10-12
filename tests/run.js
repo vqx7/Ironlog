@@ -8,10 +8,14 @@ const suites=['unit-math','unit-analytics','dataflow','migration','acceptance','
 const distSuites=['dataflow','acceptance','flows','gym-ux','design','uat','essentials','comeback-removed','r21','r24','r25','journey','progress','custom','r29c','r30','r31','r32','r32b','r33','r34','r34b','r35','r38'];
 let bad=0;
 function run(s,env,tag){
-  let out='';try{out=execFileSync('node',[`tests/${s}.js`],{encoding:'utf8',timeout:600000,env:{...process.env,...env}});}catch(e){out=(e.stdout||'')+(e.stderr||'');}
+  // 15 minutes a suite, and a suite stopped for time or by a signal now says
+  // so. Before, it failed with nothing but its ok lines: r33 on the r37 publish
+  // run (a runner half again slower than the pull request's), most likely the
+  // old 10-minute limit.
+  let out='';try{out=execFileSync('node',[`tests/${s}.js`],{encoding:'utf8',timeout:900000,env:{...process.env,...env}});}catch(e){out=(e.stdout||'')+(e.stderr||'');if(e.code==='ETIMEDOUT')out+='\nFAIL stopped after 15 minutes';else if(e.signal)out+=`\nFAIL stopped by ${e.signal}`;}
   const pass=/ALL PASS|fuzz clean/.test(out)&&!/^FAIL/m.test(out);
   console.log(`${pass?'PASS':'FAIL'}  ${s}${tag}`);
-  if(!pass){bad++;const lines=out.split('\n').filter(l=>/FAIL|Error|error/.test(l)).slice(0,15);console.log(lines.join('\n'));
+  if(!pass){bad++;const lines=out.split('\n').filter(l=>!/^ok /.test(l)&&/FAIL|Error|error/.test(l)).slice(0,15);console.log(lines.join('\n'));
     // On GitHub the job log sits behind a sign-in, but annotations can be read
     // through the API, so each failing line is also written as one.
     if(process.env.GITHUB_ACTIONS)for(const l of (lines.length?lines:[out.slice(-300)]))console.log(`::error title=${s}${tag}::${l.replace(/%/g,'%25').replace(/\r/g,'').replace(/\n/g,'%0A').slice(0,400)}`);}
