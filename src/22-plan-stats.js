@@ -123,27 +123,55 @@ function libCards(){
    stands: reached when a working set matched it (that load or more, those reps
    or more); otherwise the best estimate from the last 12 weeks against what the
    goal takes done to failure, by the same estimate the targets use (fitE), so
-   a goal at any reps compares with sets at any reps. A date to reach it only
-   when the lift is clearly rising and trained lately, from its weekly rate. */
+   a goal at any reps compares with sets at any reps. No date to reach it
+   (r41, V: guide, do not predict); on a lift whose estimate is a load
+   anyone lifts, the gap is said as a load as well. */
+/* What to do next on this lift, the same target its next session shows
+   (r41, V: guide how to progress rather than predict where it lands). */
+function nextLine(exId){
+  // EX() reads a deleted exercise as archived, so this covers both.
+  if(EX(exId).archived)return '';
+  // The plan of the next day due that has this lift: one lift on a heavy and a light day has two targets (review of r41).
+  const R=activeRoutine();const d=nextDayWith(exId,R);
+  const sg=suggest(exId,d?planFor(exId,R,d.id):planFor(exId,R),{deload:isDeloadWeek()});
+  return sg&&sg.target?`<p class="small" id="nextLine" style="margin:6px 0 0"><b>Next session</b>: ${esc(sg.target)}</p>`:'';
+}
+/* The next training day due that has the lift, or null: on a weekly plan
+   today's weekday, or tomorrow's once today's day is logged (review of r41:
+   a Monday heavy day done still showed Monday's target over Thursday's);
+   on a cycle the cycle's next day, which already counts what is logged. */
+function nextDayWith(exId,R){
+  const n=R.days.length;if(!n)return null;
+  let start;
+  if(R.schedule==='weekly'){const wd=(new Date().getDay()+6)%7;start=state.sessions.some(x=>x.date===today()&&x.routineId===R.id&&sessDayIdx(R,x)===wd)?(wd+1)%n:wd;}
+  else start=cycleState(R).next;
+  for(let k=0;k<n;k++){const d=R.days[(start+k)%n];if(d&&!d.rest&&d.items.some(it=>it.exId===exId))return d;}
+  return null;
+}
 function goalOk(ex){return !!ex&&!ex.timed&&!ex.assist;}
 function goalState(exId){
   const ex=EX(exId);const g=ex&&ex.goal;if(!g||!goalOk(ex))return null;
   const I=IDX();const exps=I.byEx[exId]||[];const bw=bwRefLoad(ex);
+  // With no weigh-in a bodyweight lift has no load to compare: say so rather than a number read from the added load alone (the review of r40).
+  const noBw=!!ex.bw&&!(bwRef()>0);
   let hit=null;for(const x of exps){if(x.pts.some(p=>p.w>=g.w-1e-6&&p.r>=g.r)){hit=x.date;break;}}
   const need=fitE(g.w+bw,g.r,0);const from=addDays(today(),-84);
   let cur=null;for(const x of exps){if(x.date<from||x.deload||x.light)continue;for(const p of x.pts){const v=fitE(p.load,p.r,p.rq);if(v!=null&&(cur==null||v>cur))cur=v;}}
-  const pct=need&&cur?Math.min(100,cur/need*100):null;
-  const st=I.exStats[exId]||{};let weeks=null;
-  if(!hit&&pct!=null&&pct<100&&st.moving&&st.fresh&&st.slope>0){const w=Math.log(need/cur)/Math.log(1+st.slope/100);if(isFinite(w)&&w>0&&w<=52)weeks=Math.max(1,Math.round(w));}
-  return {g,hit,pct,weeks,cur,need};
+  const pct=!noBw&&need&&cur?Math.min(100,cur/need*100):null;
+  return {g,hit,pct,cur,need,noBw};
 }
+/* The load still to add for the goal's reps: the goal's load less what the
+   best estimate says is possible for those reps now (e1inv, the inverse of
+   the estimate). The gap between the two estimates themselves overstated it
+   by up to two thirds (review of r41: 35 lb shown for a 26 lb gap). */
+function goalGap(s){return s.g.w-e1inv(s.cur,s.g.r);}
 function goalWords(ex,g){return `${loadLabel(ex,g.w)}${ex.bw?'':' '+U()}${loadNote(ex)} × ${g.r}`;}
 function goalLine(exId){
   const ex=EX(exId);if(!goalOk(ex))return '';
   if(!ex.goal)return `<p class="small" style="margin:6px 0 0"><button class="linkbtn tall" data-act="goalOpen" data-ex="${esc(exId)}">Set a goal</button></p>`;
   const s=goalState(exId);const gw=goalWords(ex,ex.goal);
-  const what=s.hit?`reached ${fmtDate(s.hit)}`:s.pct==null?'no sets in the last 12 weeks':s.pct>=100?'within reach':`${Math.floor(s.pct)}% there${s.weeks?`, about ${s.weeks} week${s.weeks===1?'':'s'} if the trend holds`:''}`;
-  const tip=s.hit?'Reached: a working set at that load or more, for those reps or more.':s.pct!=null&&s.pct>=100?`Your best estimate from the last 12 weeks says ${gw} done to failure is in you now. It counts as reached once a working set matches it.`:`Your best estimate from the last 12 weeks against what ${gw} takes done to failure.${s.weeks?' The weeks are from your weekly rate, and only while the lift is clearly rising.':''}`;
+  const what=s.hit?`reached ${fmtDate(s.hit)}`:s.noBw?'add a weigh-in to see how close':s.pct==null?'no sets in the last 12 weeks':s.pct>=100?'within reach':`${Math.floor(s.pct)}% there${estInLoad(ex)&&+fmtE(goalGap(s))>0?`, about ${fmtE(goalGap(s))} ${U()} to go`:''}`;
+  const tip=s.hit?'Reached: a working set at that load or more, for those reps or more.':s.pct!=null&&s.pct>=100?`Your best estimate from the last 12 weeks says ${gw} done to failure is in you now. It counts as reached once a working set matches it.`:`Your best estimate from the last 12 weeks against what ${gw} takes done to failure. Your session targets are the steps toward it.`;
   return `<p class="small" id="goalLine" style="margin:6px 0 0"><b>Goal ${esc(gw)}</b>: ${esc(what)} ${tipi(tip,'About this goal')} <button class="linkbtn tall" data-act="goalOpen" data-ex="${esc(exId)}">Change</button></p>`;
 }
 /* ---------- DASHBOARD ---------- */
@@ -185,7 +213,7 @@ function viewDash(){
   }
   h+=`<div class="kpis"><div class="kpi"><div class="v">${adher==null?NIL:adher+'%'}</div><div class="l">${freeMode()?'Adherence: freestyle, no plan to follow':!planned?'Adherence: no planned days':adher==null?'Adherence: appears after your first full week':`Adherence, previous ${wks4} full week${wks4===1?'':'s'} (${Math.round(done4)}/${Math.round(need4)})`}</div></div>
   <div class="kpi"><div class="v">${nz(wkHard)}</div><div class="l">${freeMode()?'Hard sets this week':`Hard sets this week, of ${weekStats().tgt} planned`}</div></div>
-  <div class="kpi"><div class="v" style="color:${fatigueStalls(stalled.map(([id])=>id)).length>=3?'var(--red)':'inherit'}">${nz(stalled.length)}</div><div class="l">Stalled exercises</div></div>${extraKpis()}</div>`;
+${extraKpis()}</div>`;
   if(state.sessions.length)h+=dashSummary();
 /*ai{*/  if(aiOn()&&state.sessions.some(x=>!x.demo))h+=`<div class="card row spread"><span class="small">Ask Claude a question about your own log: a stall, a split, a weak point.</span><button class="btn sm primary" data-act="aiReview">Ask Claude</button></div>`;/*}ai=*/
 
@@ -248,9 +276,9 @@ function viewDash(){
     const e1Mode=isCompound(ex)&&exps.some(x=>x.best!=null);const bs=e1Mode?null:bestSet(ui.dashEx);
     const tagOf=x=>x.deload?'deload':x.light||x.auto?'lighter':x.cut?'trimmed':'';
     exh+=`<select data-bind="dashEx" aria-label="Exercise">${withData.map(id=>`<option value="${id}" ${id===ui.dashEx?'selected':''}>${esc(exName(id))}</option>`).join('')}</select>
-    <div style="margin-top:8px">${exHeadline(ui.dashEx)}</div>${goalLine(ui.dashEx)}${noE1(ex)?`<div class="kpis" style="margin-top:8px"><div class="kpi"><div class="v">${st.n}</div><div class="l">Sessions logged</div></div><div class="kpi"><div class="v">${st.stalled?'Yes':'No'}</div><div class="l">Stalled</div></div></div>`:''}<div class="kpis" style="margin-top:8px${noE1(ex)?';display:none':''}">${e1Mode?`<div class="kpi"><div class="v">${st.best?(ex.bw?'≈':'')+fmtE(st.best):'n/a'}</div><div class="l">Best e1RM (${U()}${loadNote(ex)})</div></div>`:`<div class="kpi"><div class="v">${bs?esc(setShort(ex,bs.w,bs.r)):'n/a'}</div><div class="l">Best set${loadNote(ex)}</div></div>`}<div class="kpi"><div class="v">${st.pct==null||!st.fresh?NIL:(st.pct>=0?'+':'')+r1(st.pct)+'%'}</div><div class="l">${st.pct==null||!st.fresh?'Change':`Change over ${st.spanW||6} weeks`}</div></div><div class="kpi"><div class="v">${st.n}</div><div class="l">Sessions logged</div></div></div>
+    <div style="margin-top:8px">${exHeadline(ui.dashEx)}</div>${nextLine(ui.dashEx)}${goalLine(ui.dashEx)}${noE1(ex)?`<div class="kpis" style="margin-top:8px"><div class="kpi"><div class="v">${st.n}</div><div class="l">Sessions logged</div></div><div class="kpi"><div class="v">${st.stalled?'Yes':'No'}</div><div class="l">Stalled</div></div></div>`:''}<div class="kpis" style="margin-top:8px${noE1(ex)?';display:none':''}">${e1Mode?`<div class="kpi"><div class="v">${st.best?(ex.bw?'≈':'')+fmtE(st.best):'n/a'}</div><div class="l">Best e1RM (${U()}${loadNote(ex)})</div></div>`:`<div class="kpi"><div class="v">${bs?esc(setShort(ex,bs.w,bs.r)):'n/a'}</div><div class="l">Best set${loadNote(ex)}</div></div>`}<div class="kpi"><div class="v">${st.n}</div><div class="l">Sessions logged</div></div></div>
     ${noE1(ex)?'':`${rangeChips('ex',weeksSpan(exps[0].date),8,'all')}<div class="chartbox"><canvas id="chEx"></canvas></div>${chartFallback()}
-    <p class="small muted hastip" style="margin:4px 0 0" data-tip="Filled diamond: a new best estimate (a weight PR that also set one is filled too). Hollow diamond: a rep PR or a weight PR that did not raise the estimate, which can sit below an earlier best. The dashed line to the right appears only when the trend is clearly up, with a range, 4 weeks out. The thin dotted line is your RIR at the working load.">Reading the chart</p>`}
+    <p class="small muted hastip" style="margin:4px 0 0" data-tip="Filled diamond: a new best estimate (a weight PR that also set one is filled too). Hollow diamond: a rep PR or a weight PR that did not raise the estimate, which can sit below an earlier best. The thin dotted line is your RIR at the working load.">Reading the chart</p>`}
     ${st.easier?`<p class="small" style="color:var(--blue);margin-top:6px"><b>${esc(easierText(ex,st.easier))}</b></p>`:''}
     ${st.fade?`<p class="small" style="color:var(--yellow);margin-top:6px"><b>Set-to-set drop-off is widening at ${esc(loadLabel(ex,st.fade.w))}${ex.bw?'':' '+U()}: ${st.fade.from} → ${st.fade.to} reps lost from first set to last across your last three sessions.</b> That usually means fatigue or shorter rest rather than lost strength.</p>`:''}
     ${ex.bw&&!state.bodyweights.length?'<p class="small" style="color:var(--yellow)">Log your bodyweight on the Today tab so this bodyweight exercise can be trended.</p>':bwBackfillNote(ui.dashEx)}
@@ -281,7 +309,12 @@ function viewDash(){
     const maxAbs=Math.max(1,...I.scores.filter(s=>s.clear).map(s=>Math.abs(s.score)));
     const src=avg||thisWeek;
     // A muscle with no sets lately has an old trend, not a return on volume (r34.2: "Quads +7.6% · 0 sets a week" after a break).
-    rank+=I.scores.filter(s=>(src[s.m]||0)>0).map(s=>{const c=s.label==='progressing'?'green':s.label==='lagging'?'red':'none';
+    const trained=I.scores.filter(s=>(src[s.m]||0)>0);
+    /* Rising at or above its target needs nothing done, so those muscles share
+       one line and each row left is one to act on (r41, V: clutter; it was
+       16 rows of "+8%" with nothing to do). */
+    const fine=trained.filter(s=>s.clear&&s.score>=GROW_PCT&&(src[s.m]||0)>=bands[s.m][0]);
+    rank+=trained.filter(s=>!fine.includes(s)).map(s=>{const c=s.label==='progressing'?'green':s.label==='lagging'?'red':'none';
       const sets=src[s.m]||0;const [lo,hi]=bands[s.m];
       /* Advice only where the trend is clear (r30). "Flat: try 2 more sets"
          was given to every muscle whose lifts were inside the noise, a causal
@@ -291,8 +324,8 @@ function viewDash(){
       const read=!s.clear?(s.stall?'A lift has stalled: see Stalls under Lifts.':'Too early to tell: keep logging.'):s.score>=GROW_PCT?(sets<lo?'Rising, on fewer sets than your target.':'')
         :s.score<=-GROW_PCT?'Falling: check recovery first.'
         :(sets>=hi?'Flat at high volume: change exercises or effort, not sets.':'Flat: try 2 more sets a week for 3 weeks.');
-      return `<div style="padding:6px 0;border-bottom:1px solid var(--line)"><div class="mrow" style="border:0;padding:0"><span class="plate ${c}"></span><span>${ML[s.m]}${s.indirect?' <span class="tag" data-tip="No direct exercise for this muscle. Trend inferred from lifts where it assists.">indirect</span>':''}</span><div class="band"><div class="fill ${s.score>=0?'in':'down'}" style="width:${s.clear?Math.abs(s.score)/maxAbs*100:0}%"></div></div><span class="r num">${s.clear?`${s.score>=0?'+':''}${r1(s.score)}%`:'unclear'}</span></div><p class="small muted" style="margin:2px 0 0">${r1(sets)} sets a week${read?` · ${read}`:''}</p></div>`;}).join('');
-    if(I.scores.some(s=>s.clear&&s.score>=GROW_PCT&&(src[s.m]||0)>=bands[s.m][0]))rank+=`<p class="small muted" style="margin-top:8px">Rising at its volume: keep the sets as they are.</p>`;
+      return `<div style="padding:6px 0;border-bottom:1px solid var(--line)"><div class="mrow" style="border:0;padding:0"><span class="plate ${c}"></span><span>${ML[s.m]}${s.indirect?' <span class="tag" data-tip="No direct exercise for this muscle. Trend inferred from lifts where it assists.">indirect</span>':''}</span><div class="band"><div class="fill ${s.score>=0?'in':'down'}" style="width:${s.clear?Math.abs(s.score)/maxAbs*100:0}%"></div></div><span class="r small">${!s.clear?'unclear':s.score>=GROW_PCT?'rising':s.score<=-GROW_PCT?'falling':'flat'}</span></div><p class="small muted" style="margin:2px 0 0">${r1(sets)} sets a week${read?` · ${read}`:''}</p></div>`;}).join('');
+    if(fine.length)rank+=`<p class="small muted" style="margin-top:8px">Rising at ${fine.length===1?'its':'their'} volume: ${esc(andList(fine.map(s=>ML[s.m]),4))}. Keep the sets as they are.</p>`;
     const missing=MK.filter(m=>!I.scores.find(s=>s.m===m));
     if(missing.length)rank+=`<p class="small muted" style="margin-top:8px">Not enough data yet: ${missing.map(m=>ML[m]).join(', ')}.</p>`;
   }else rank+='<p class="muted">Not enough data yet. Log at least 3 sessions of an exercise over 2 weeks or more, within 6 weeks.</p>';
@@ -305,7 +338,8 @@ function viewDash(){
    for(let k=cn-1;k>=0;k--){const ws=addDays(cur,-7*k),we=addDays(ws,6);const es=state.cardio.filter(c=>c.date>=ws&&c.date<=we);rows.push({ws,min:es.reduce((a,c)=>a+c.min,0),n:es.length});}
    if(state.cardio.length){const mx=Math.max(1,...rows.map(r=>r.min));cw=`<div class="card"><b>Cardio and mobility, minutes per week</b>${rows.map(r=>`<div class="mrow"><span></span><span>${k0(r.ws)}</span><div class="band"><div class="fill in" style="width:${r.min/mx*100}%"></div></div><span class="r num">${r.min}<span class="muted small"> min</span></span></div>`).join('')}</div>`;}
    heat+=cw;}
-  heat+=sub('ready','Readiness and performance',readinessBody());
+  // Only once a check-in has been answered: for anyone who skips it, the fold only said it needs 6 (r41).
+  if(readiness().n)heat+=sub('ready','Readiness and performance',readinessBody());
   {const sk=weekStreak();h+=dsec('consistency','Consistency','12 weeks from your first logged session; once you have more, the latest 12, with All for the rest. Faded squares are days still ahead. Filled squares are days with a logged lifting session. The streak counts weeks that hit the sessions your routine plans. Cardio minutes are shown under the grid and never count as lifting sessions.',heat,noLog()?'Nothing logged yet':`${sk.weeks}-week streak${adher!=null?` · ${adher}% adherence`:''}`);}
 
   // body: chart, entry, tape, muscle map
@@ -349,11 +383,10 @@ function rangeChips(id,n,base,def){
 /* Linear date axis: day numbers from a base date, labelled as dates. The
    window follows the same rule as the weekly one, and minSpan days of room
    stay ahead of the first point until the data fills them. */
-function dayWindow(base,lastDay,id,minSpan,def,extraRight,baseWeeks){
+function dayWindow(base,lastDay,id,minSpan,def){
   const todayN=daysBetween(base,today());let right=Math.max(lastDay,todayN);
-  const w=rangeWeeks(rangeKey(id,def),baseWeeks||8);
+  const w=rangeWeeks(rangeKey(id,def),8);
   let left=w===Infinity?0:Math.max(0,right-w*7+1);
-  if(extraRight!=null)right=Math.max(right,extraRight);
   if(right-left<minSpan)right=left+minSpan;
   return {min:left,max:right};
 }
@@ -484,14 +517,18 @@ function bwRate(){
   const first=bw.find(x=>daysBetween(x.date,last.date)<=42&&daysBetween(x.date,last.date)>=14);
   if(!first)return null;
   const days=daysBetween(first.date,last.date);const a=avgAt(first.date),b=avgAt(last.date);
-  return {pct:(b/a-1)*100/days*7,days,from:first.date,to:last.date};
+  return {pct:(b/a-1)*100/days*7,wk:(b-a)/days*7,days,from:first.date,to:last.date};
 }
+/* The weekly rate in the lifter's unit (r41): "+0.4 lb a week" is what a
+   scale shows; the percentage stays beside it only where a goal is set in
+   percent. Under 0.05 of a unit a week reads flat. */
+function bwWeekTxt(r){const v=toD(r.wk);return Math.abs(v)<0.05?'Flat':`${v>0?'+':'−'}${Math.abs(v).toFixed(1)} ${U()} a week`;}
 function bwRateText(){
   const r=bwRate();const g=state.settings.bwGoalPct;
   if(!r)return '<p class="small muted" style="margin-top:6px">Log bodyweight for at least two weeks to see your weekly rate of change.</p>';
   const sign=v=>(v>=0?'+':'')+r1(v);
   // The dates it covers, not "the last N days", which read as up to today (r34.2: said 43 days after the last weigh-in).
-  let t=`<b>${sign(r.pct)}% per week</b>, ${fmtDate(r.from)} to ${fmtDate(r.to)}. ${tipi('From 7-day averages, so a single heavy or light day does not swing it.','How this is worked out')}`;
+  let t=`<b>${bwWeekTxt(r)}</b>${g!=null?` (${sign(r.pct)}%)`:''}, ${fmtDate(r.from)} to ${fmtDate(r.to)}. ${tipi(`From 7-day averages, so a single heavy or light day does not swing it. ${sign(r.pct)}% of your bodyweight a week.`,'How this is worked out')}`;
   if(g!=null){const d=r.pct-g;t+=` Goal ${sign(g)}%: `+(Math.abs(d)<=0.15?'on track.':d>0?`running ${r1(d)} points above it.`:`running ${r1(-d)} points below it.`);}
   return `<p class="small" style="margin-top:6px;${g!=null&&Math.abs(r.pct-g)>0.15?'color:var(--yellow)':''}">${t}</p>`;
 }
@@ -639,24 +676,17 @@ function mountCharts(){
     // when every PR looked the same. New-best sessions are filled, rep PRs hollow.
     const prType=exps.map(x=>{if(!x.progress)return null;const p=I.prs.find(q=>q.exId===ui.dashEx&&q.date===x.date);return p?(p.type==='Weight PR'&&p.value!=null?'WeightE1':p.type):'Rep PR';});
     const surf=cssv('--surface');
-    const pj=e1Mode?exProjection(ui.dashEx):null;
     // Monotone interpolation: a smoothed curve must never draw a value above or
     // below what was actually logged between two sessions.
     const ds=[{label:e1Mode?`Best e1RM (${U()})`:`Top set load (${U()}${loadNote(exE)})`,data:vals.map((v,i)=>({x:xs[i],y:v})),borderColor:blue,backgroundColor:blue+'1f',fill:'start',cubicInterpolationMode:'monotone',yAxisID:'y',
       pointRadius:isPR.map(x=>x?5.5:2.5),pointStyle:isPR.map(x=>x?'rectRot':'circle'),pointBorderWidth:isPR.map(x=>x?2:1),
       pointBackgroundColor:prType.map(t=>t==='e1RM'||t==='WeightE1'?green:t?surf:blue),pointBorderColor:isPR.map(x=>x?green:blue)}];
-    let pjIdx=-1;
-    if(pj){
-      pjIdx=ds.length;
-      ds.push({label:'If the trend holds',data:[{x:lastX,y:vals[vals.length-1]},{x:lastX+28,y:r1(toD(pj.value))}],borderColor:blue,borderDash:[4,4],borderWidth:2,
-        pointRadius:[0,3.5],pointBackgroundColor:cssv('--surface'),pointBorderColor:blue,fill:false,yAxisID:'y'});
-    }
     const eo=baseOpts();
-    const win=dayWindow(base,lastX,'ex',42,'all',pj?lastX+28:null);
+    const win=dayWindow(base,lastX,'ex',42,'all');
     eo.scales.x={...eo.scales.x,...dayAxis(base,win),ticks:{...eo.scales.x.ticks,...dayAxis(base,win).ticks}};
     eo.interaction={mode:'nearest',axis:'x',intersect:false};
-    eo.plugins.tooltip={filter:it=>!(it.datasetIndex===pjIdx&&it.dataIndex===0),callbacks:{
-      title:its=>its.length?(its[0].datasetIndex===pjIdx?`In 4 weeks, around ${fmtDate(addDays(base,Math.round(its[0].parsed.x)))}`:fmtDateLong(addDays(base,Math.round(its[0].parsed.x)))):'',
+    eo.plugins.tooltip={callbacks:{
+      title:its=>its.length?fmtDateLong(addDays(base,Math.round(its[0].parsed.x))):'',
       afterLabel:it=>it.datasetIndex===0&&prType[it.dataIndex]?({e1RM:e1Mode?'New best estimate':'PR',WeightE1:e1Mode?'Weight PR and a new best estimate':'Weight PR: more weight than ever before','Weight PR':'Weight PR: more weight than ever before'}[prType[it.dataIndex]]||'Rep PR: more reps at a load than ever before'):''}};
     if(exps.some(x=>x.topRir!=null)){
       ds.push({label:'RIR at top load',data:exps.map((x,i)=>({x:xs[i],y:x.topRir==null?null:r1(x.topRir)})),borderColor:yellow,backgroundColor:yellow,borderDash:[2,3],borderWidth:1.5,pointRadius:2,spanGaps:true,fill:false,yAxisID:'y1'});

@@ -14,7 +14,7 @@ const BM_BASE='<circle cx="60" cy="16" r="11"/><rect x="38" y="35" width="44" he
    the new card instead of building a new one. */
 const MAPVIEW_KEY=KEY+'.mapView';
 const THREE_URLS=['https://cdn.jsdelivr.net/npm/three@0.159.0/build/three.module.min.js','https://unpkg.com/three@0.159.0/build/three.module.min.js'];
-const B3={state:'idle',wait:[],r:null,scene:null,cam:null,root:null,meshes:[],mats:{},yaw:0.35,anim:0,status:null,sel:null,fail:'',viewMem:null,drag:null,ex:null};
+const B3={state:'idle',wait:[],r:null,scene:null,cam:null,root:null,meshes:[],mats:{},yaw:0.35,anim:0,status:null,sel:null,fail:'',viewMem:null,drag:null,ex:null,yawKeep:null};
 function mapView(){
   if(B3.viewMem)return B3.viewMem;
   try{B3.viewMem=localStorage.getItem(MAPVIEW_KEY)==='3d'?'3d':'flat';}catch(e){B3.viewMem='flat';}

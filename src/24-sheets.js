@@ -60,7 +60,7 @@ function renderModalBody(){
     ${e.bw?'':(()=>{const def=loadWords({...e,load:undefined});const has=!m.isNew&&state.sessions.some(s=>s.ex.some(b=>b.exId===e.id));
       return `<label class="field"><span class="hastip" data-tip="${esc('What the number you type means. Estimates and targets stay in this frame; weight lifted counts both dumbbells or both sides.'+(has?' Changing it does not convert sets already logged.':''))}">Weight is entered as</span><select data-ebind="load"><option value="auto" ${!e.load?'selected':''}>Default for this equipment: ${esc(def)}</option>${LOAD_MODES.map(([k,l])=>`<option value="${k}" ${e.load===k?'selected':''}>${l}</option>`).join('')}</select></label>`;})()}
     <div><p class="small muted">Helper muscles (count as half a set)</p><div class="chips">${MUSCLES.filter(([k])=>k!==e.primary).map(([k,l])=>`<button class="chip ${e.secondary.includes(k)?'on':''}" data-act="secToggle" data-m="${k}">${l}</button>`).join('')}</div></div>
-    ${MK.includes(e.primary)?`<div class="exbody">${exBodyFlat(e,true)}${exMusLegend(e)}</div>`:''}
+    ${MK.includes(e.primary)?`<div class="exbody"><button type="button" class="linkbtn tall" data-act="exBodyTog" aria-expanded="${!!ui.exBody}">${ui.exBody?'Hide body':'Show on body'}</button>${ui.exBody?exBodyFlat(e,true)+exMusLegend(e):''}</div>`:''}
     <label class="check-inline"><input type="checkbox" data-ebind="bw" ${e.bw?'checked':''}><span class="hastip" data-tip="Log only what you add (0 for bodyweight). Your logged bodyweight is added for estimates and weight lifted.">Bodyweight exercise</span></label>
     ${e.bw?`<label class="check-inline"><input type="checkbox" data-ebind="assist" ${e.assist?'checked':''}><span class="hastip" data-tip="For an assisted machine: you type the help it gives, and less help is progress.">Assisted (a machine takes weight off)</span></label>`:''}
     ${e.bw?`<label class="field"><span class="hastip" data-tip="Measured only for push-ups (64%, force plates). Pull-ups and dips count all of it; the rest are segment-mass estimates.">Share of bodyweight moved (%)</span><input type="text" inputmode="numeric" data-ebind="bwfRaw" value="${esc(e.bwfRaw||'')}"></label>`:''}
@@ -109,7 +109,7 @@ function renderModalBody(){
     <p class="small muted">Three empty training days. It is not active until you tap Make active.</p>
     <div class="row" style="margin-top:10px"><button class="btn primary" data-act="rNewSave">Create</button><button class="btn" data-act="mClose">Cancel</button></div></div>`;
   }else if(m.kind==='exMus'){
-    const e=EX(m.exId);const v3=mapView()==='3d';const pm=exMusParts(e);B3.ex={main:pm.main,help:pm.help};
+    const e=EX(m.exId);const v3=mapView()==='3d';const pm=exMusParts(e);B3.ex={main:pm.main,help:pm.help};if(B3.yawKeep==null)B3.yawKeep=B3.yaw;
     h=`<div class="sheet exmus" role="dialog" aria-modal="true" aria-labelledby="exMusH"><div class="sheet-h"><h3 id="exMusH">Muscles: ${esc(e.name)}</h3><button class="ib" aria-label="Close" data-act="mClose">✕</button></div>
     ${exMusWords(e)}
     <div class="seg" role="group" aria-label="View" style="margin-top:8px"><button class="chip ${v3?'':'on'}" data-act="mapView" data-v="flat" aria-pressed="${!v3}">Flat</button><button class="chip ${v3?'on':''}" data-act="mapView" data-v="3d" aria-pressed="${v3}">3D</button></div>

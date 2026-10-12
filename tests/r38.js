@@ -60,17 +60,17 @@ const brz = (load, rtf) => load * 36 / (37 - rtf);
     const pct = Math.floor(cur / need * 100);
     v = await lifts('bench');
     const st = await ev(() => { const L = window.__ironlog; return { gs: L.goalState('bench'), slope: L.IDX().exStats.bench.slope, moving: L.IDX().exStats.bench.moving }; });
-    // The weekly rate: e1 rises 5 lb x 36/28 a week on a mean of 190 x 36/28, about 2.63% a week.
-    const slopeHere = 5 / 190 * 100;
-    const weeks = Math.max(1, Math.round(Math.log(need / cur) / Math.log(1 + st.slope / 100)));
+    // Since r41 a goal has no weeks to reach it (V: guide, do not predict); on a barbell lift it says the load left.
+    // The load still to add for 5 reps: 245 less what the estimate allows for 5 (Brzycki, 257.1 x 32/36 = 228.6).
+    const left = Math.round(245 - (cur / LB) * 32 / 36);
     ok(Math.abs(st.gs.cur - cur) < 1e-6 && Math.abs(st.gs.need - need) < 1e-6, 'the estimate and the goal\'s need match Brzycki (' + (cur / LB).toFixed(1) + ' of ' + (need / LB).toFixed(1) + ' lb)' + T, st.gs);
-    ok(st.moving && Math.abs(st.slope - slopeHere) < 0.05 && weeks === 3, 'rising about 2.63% a week, so about 3 weeks' + T, { slope: st.slope, weeks });
+    ok(st.moving && st.gs.weeks === undefined, 'a rising lift still gets no weeks to its goal' + T, st.gs);
     ok(!/disagree/.test(await ev(() => document.querySelector('#view [data-mkey="exercise"]').textContent)), 'no "Change and trend disagree" note under the tiles (one change number since r35)' + T);
-    ok(v.line === `Goal 245 lb × 5: ${pct}% there, about ${weeks} weeks if the trend holds i Change`, 'the line: Goal 245 lb × 5: ' + pct + '% there, about 3 weeks' + T, v.line);
+    ok(v.line === `Goal 245 lb × 5: ${pct}% there, about ${left} lb to go i Change`, 'the line: Goal 245 lb × 5: ' + pct + '% there, about ' + left + ' lb to go' + T, v.line);
 
     // A lift not clearly rising gets no weeks: the same load every week.
     const flat = await ev(() => { const L = window.__ironlog; const LB = 0.45359237; const s = L.state; s.sessions.forEach(x => x.ex[0].sets.forEach(q => { q.w = 200 * LB; })); L.invalidate(); L.render(); document.querySelectorAll('#view details').forEach(d => d.open = true); const g = document.getElementById('goalLine'); return { line: g.innerText.replace(/\s+/g, ' ').trim(), weeks: L.goalState('bench').weeks, moving: L.IDX().exStats.bench.moving }; });
-    ok(!flat.moving && flat.weeks === null && flat.line === `Goal 245 lb × 5: ${pct}% there i Change`, 'a flat lift: how close, with no weeks' + T, flat);
+    ok(!flat.moving && flat.weeks === undefined && flat.line === `Goal 245 lb × 5: ${pct}% there, about ${left} lb to go i Change`, 'a flat lift reads the same way: how close and the load left' + T, flat);
     await seed(); await ev(() => { const L = window.__ironlog; L.state.exercises.find(e => e.id === 'bench').goal = { w: 245 * 0.45359237, r: 5 }; L.invalidate(); });
 
     // Within reach: the estimate already covers the goal, but no set matched it.
@@ -123,6 +123,10 @@ const brz = (load, rtf) => load * 36 / (37 - rtf);
     ok(bw.label === 'Added load (lb)' && /^Goal BW\+45 × 5: \d+% there/.test(bw.line), 'a bodyweight lift takes the added load: Goal BW+45 × 5' + T, bw);
     ok(bw.bwl > 0 && Math.abs(bw.gs.need - bwNeed) < 1e-6 && Math.abs(bw.gs.cur - bwCur) < 1e-6 && bw.line.includes(Math.floor(bwCur / bwNeed * 100) + '% there'), 'its estimate and need include the bodyweight at the latest weigh-in' + T, { gs: bw.gs, bwNeed, bwCur });
     ok(bw.bare.g && bw.bare.g.w === 0 && bw.bare.g.r === 12 && /^Goal BW × 12/.test(bw.bare.line), 'an empty added load on a bodyweight lift is BW alone: Goal BW × 12' + T, bw.bare);
+
+    // With no weigh-in the bodyweight lift has nothing to compare against: it says so, not a number from the added load alone.
+    const nobw = await ev(() => { const L = window.__ironlog; const keep = L.state.bodyweights; L.state.bodyweights = []; L.invalidate(); L.render(); document.querySelectorAll('#view details').forEach(d => d.open = true); const o = { line: document.getElementById('goalLine').innerText.replace(/\s+/g, ' ').trim(), pct: L.goalState('pullup').pct }; L.state.bodyweights = keep; L.invalidate(); L.render(); return o; });
+    ok(/^Goal BW × 12: add a weigh-in to see how close/.test(nobw.line) && nobw.pct === null, 'no weigh-in: the bodyweight goal asks for one instead of a number' + T, nobw);
 
     // ---------- 7. Not offered on timed holds or assisted lifts ----------
     const none = await ev(() => { const L = window.__ironlog; return { plank: L.goalLine('plank'), assist: L.goalLine('assistPullup'), plankState: L.goalState('plank') }; });

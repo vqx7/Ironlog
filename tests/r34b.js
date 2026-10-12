@@ -84,7 +84,7 @@ const ODD = /shared (phone|device|computer)|someone else|another person|other pe
 
     // 1i. A lift weeks off has no trend direction, no projection, and says when it was last done.
     await seed({ ss: [['2026-07-23', 'bench', [[175, 8, 1], [175, 8, 1], [175, 7, 1]], [6, 10]], ['2026-07-30', 'bench', [[180, 8, 1], [180, 8, 1], [180, 7, 1]], [6, 10]], ['2026-08-06', 'bench', [[185, 8, 1], [185, 8, 1], [185, 7, 1]], [6, 10]], ['2026-08-13', 'bench', [[190, 8, 1], [190, 8, 1], [190, 8, 1]], [6, 10]]] });
-    const fr = await ev(() => { const L = window.__ironlog; const st = L.IDX().exStats.bench; const t = L.liftTrend('bench'); const d = document.createElement('div'); d.innerHTML = t || ''; const h = L.exHeadline('bench'); const hd = document.createElement('div'); hd.innerHTML = typeof h === 'string' ? h : ''; return { fresh: st.fresh, trend: d.innerText || d.textContent, proj: L.exProjection('bench'), head: hd.textContent || '' }; });
+    const fr = await ev(() => { const L = window.__ironlog; const st = L.IDX().exStats.bench; const t = L.liftTrend('bench'); const d = document.createElement('div'); d.innerHTML = t || ''; const h = L.exHeadline('bench'); const hd = document.createElement('div'); hd.innerHTML = typeof h === 'string' ? h : ''; return { fresh: st.fresh, trend: d.innerText || d.textContent, proj: /in 4 weeks|if it holds/.test(hd.innerText || hd.textContent) ? 'projected' : null, head: hd.textContent || '' }; });
     ok(fr.fresh === false && !/\bup\b|slowly|\bdown\b/.test(fr.trend) && fr.proj == null && /Last done .*\d+ weeks ago/.test(fr.head), 'bench last done 8 weeks ago: no up or down, no projection, "Last done ..., 8 weeks ago"', fr);
 
     // 1j. Two empty weeks just gone are a break, not a lighter week.
@@ -436,9 +436,9 @@ const ODD = /shared (phone|device|computer)|someone else|another person|other pe
     const a3 = await ev(() => {
       const L = window.__ironlog; const s = L.state; s.bodyweights = []; for (let i = 0; i < 40; i += 2) s.bodyweights.push({ id: 'bw' + i, date: L.addDays('2026-07-04', i), kg: (180 + i * 0.05) * 0.45359237 });
       L.state = L.normalize(s); L.invalidate(); L.ui.tab = 'dash'; L.render(); document.querySelectorAll('#view details').forEach(d => d.open = true);
-      const m = document.getElementById('view').innerText.match(/[+-]?[\d.]+% per week[^\n]*/); return m ? m[0] : '';
+      const m = document.getElementById('view').innerText.match(/(?:[+−-][\d.]+ (?:lb|kg) a week|Flat)[^\n]*/); return m ? m[0] : '';
     });
-    ok(/per week, \w{3} \d+ to \w{3} \d+/.test(a3) && !/last \d+ days/.test(a3), 'A3: the bodyweight rate names its dates ("+0.1% per week, Jul 4 to ...")', a3);
+    ok(/(?:a week|Flat), \w{3} \d+ to \w{3} \d+/.test(a3) && !/last \d+ days/.test(a3), 'A3: the bodyweight rate names its dates ("+0.1% per week, Jul 4 to ...")', a3);
 
     // A9: Volume says one count this week, regions at their minimum, not a second "hard sets" total.
     const a9 = await ev(() => {

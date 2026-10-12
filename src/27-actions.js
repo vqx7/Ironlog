@@ -115,7 +115,6 @@ const ACT={
      suggestion switch between grey and filled, typed loads stay as typed. */
   loadAsk(t){
     const fill=t.dataset.v==='fill';if(fill)state.settings.loadFill='fill';else delete state.settings.loadFill;
-    try{localStorage.setItem(LOADASK_KEY,'1');}catch(e){/* asked again next session */}
     const d=state.draft;
     // Filled in, a row takes what it showed in grey (a load typed above it, else the suggestion), and follows a correction above like carried rows do.
     if(d)for(const b of d.ex)b.sets.forEach((x,i)=>{if(x.done||x.warm||x.drop||x.r!=null||x.rir!=null)return;
@@ -739,6 +738,8 @@ const ACT={
   },
   bQuick(t){openModal({kind:'quick',b:+t.dataset.b,text:''});},
   bHist(t){const b=state.draft&&state.draft.ex[+t.dataset.b];if(b)openModal({kind:'exhist',exId:b.exId});},
+  // The editor's muscle pickers already name the muscles; the figure is there on request (r40, V: not both at once).
+  exBodyTog(){ui.exBody=!ui.exBody;renderModal();},
   bMus(t){const b=state.draft&&state.draft.ex[+t.dataset.b];if(b)openModal({kind:'exMus',exId:b.exId});},
   qFill(){
     const m=ui.modal;if(!m||m.kind!=='quick')return;const d=state.draft;const b=d&&d.ex[m.b];if(!b)return;
@@ -1005,10 +1006,10 @@ const ACT={
       const prAll=IDX().prs.filter(p=>(p.sid?p.sid===sess.id:p.date===sess.date)&&ex.some(b=>b.exId===p.exId));const prs=prAll.filter(p=>p.big);
       // Heavier than ever without a new best estimate: said once, quietly, not counted as a PR (r32).
       const heavier=prAll.filter(p=>!p.big&&p.type==='Weight PR').map(p=>{const e=EX(p.exId);return `${e.name} ${setShort(e,p.w,p.r)}`;});
-      const work=ex.reduce((a,b)=>a+b.sets.filter(isWork).length,0),hard=r1(ex.reduce((a,b)=>{const e=EX(b.exId);return a+b.sets.filter(q=>isHard(q,e)).reduce((c,q)=>c+setCredit(q),0);},0));
+      const work=ex.reduce((a,b)=>a+b.sets.filter(isWork).length,0),hard=r1(ex.reduce((a,b)=>{const e=EX(b.exId);return a+b.sets.reduce((c,q)=>c+hardCredit(q,e),0);},0));
       ui.todayDay=null;window.scrollTo(0,0);render();
       if(editing){toast('Session updated');return;}
-      const lines=[`${work} working set${work===1?'':'s'}, ${hard} counted as hard`];
+      const lines=[`${work} working set${work===1?'':'s'}, ${hard} ${rirHalfOn()?'counted toward the week':'counted as hard'}`];
       // A session dated in the past says where it went, since it is not at the top of History.
       if(sess.date!==today())lines.unshift(`Saved under ${fmtDateLong(sess.date)}`);
       if(durMin){const pm=pmDraft;lines.push(`${durMin} minutes${pm&&!sess.free?`, planned about ${pm}`:''}`);}
@@ -1069,7 +1070,7 @@ const ACT={
   exNew(){openModal({kind:'exEdit',isNew:true,e:{id:'c_'+uid(),name:'',primary:'chest',secondary:[],equip:'cable',bw:false,rare:false,note:'',custom:true,archived:false}});},
   exNewFromPicker(){const back=ui.modal;if(!back||back.kind!=='picker')return;openModal({kind:'exEdit',isNew:true,back,e:{id:'c_'+uid(),name:(back.q||'').trim(),primary:back.m||'',secondary:[],equip:'cable',bw:false,rare:false,note:'',custom:true,archived:false,incRaw:''}});},
   exBack(){const m=ui.modal;if(m&&m.back)openModal(m.back);else closeModal();},
-  exEdit(t){const e=JSON.parse(JSON.stringify(EX(t.dataset.ex)));e.incRaw=e.inc!=null?fmtW(stepRead(e.inc)):'';e.bwfRaw=String(Math.round(bwShare(e)*100));e.maxRaw=e.maxLoad!=null?fmtW(e.maxLoad):'';e.barRaw=e.barKg!=null?fmtW(e.barKg):'';
+  exEdit(t){ui.exBody=false;const e=JSON.parse(JSON.stringify(EX(t.dataset.ex)));e.incRaw=e.inc!=null?fmtW(stepRead(e.inc)):'';e.bwfRaw=String(Math.round(bwShare(e)*100));e.maxRaw=e.maxLoad!=null?fmtW(e.maxLoad):'';e.barRaw=e.barKg!=null?fmtW(e.barKg):'';
     openModal({kind:'exEdit',isNew:false,e});},
   secToggle(t){const e=ui.modal.e;const k=t.dataset.m;e.secondary=e.secondary.includes(k)?e.secondary.filter(x=>x!==k):[...e.secondary,k];renderModal();},
   exSave(){

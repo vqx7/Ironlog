@@ -87,9 +87,12 @@ const near = (a, b) => a.every((x, i) => Math.abs(x - b[i]) <= 2);
     ok(back.canvas && back.chest === hx(back.want.in) && back.quads === hx(back.want.in), 'closed, Today\'s 3D map has the body back, coloured by the week again' + T, back);
     // Over Today: the sheet borrows the body and gives it back.
     await ev(() => window.__ironlog.openModal({ kind: 'exMus', exId: 'backSquat' })); await wait(200);
-    const over = await ev(() => { const x = window.__ironlog.map3d(); return { inSheet: !!document.querySelector('#bm3dx canvas'), inToday: !!document.querySelector('#bm3d canvas'), quads: x.colors.quads, want: x.want }; });
+    const over = await ev(() => { const x = window.__ironlog.map3d(); return { yaw: x.yaw, inSheet: !!document.querySelector('#bm3dx canvas'), inToday: !!document.querySelector('#bm3d canvas'), quads: x.colors.quads, want: x.want }; });
     ok(over.inSheet && !over.inToday && near(rgbOf(over.quads), rgbOf(over.want.ex)), 'opened over Today, the sheet shows the back squat\'s quads lit' + T, over);
+    const yawBefore = over.yaw;
+    await ev(() => document.querySelector('#modal [data-act="map3dTurn"][data-v="2"]').click()); await wait(700);
     await ev(() => window.__ironlog.ACT.mClose()); await wait(200);
+    ok(Math.abs((await ev(() => window.__ironlog.map3d().yaw)) - yawBefore) < 1e-6, 'turned in the sheet, Today\'s body faces the way it did before' + T);
     const after = await ev(() => { const x = window.__ironlog.map3d(); return { inToday: !!document.querySelector('#bm3d canvas'), quads: x.colors.quads, want: x.want, ex: window.__ironlog.map3d && true }; });
     ok(after.inToday && after.quads === hx(after.want.in), 'and gives it back to Today when closed' + T, after);
 
@@ -98,16 +101,25 @@ const near = (a, b) => a.every((x, i) => Math.abs(x - b[i]) <= 2);
     await wait(80);
     const ed = await ev(async () => {
       const m = document.getElementById('modal'); const o = {};
+      // The figure waits behind Show on body (r40, V: names or the body, not both at once).
+      const tog = () => m.querySelector('[data-act="exBodyTog"]');
+      o.closed = { figs: m.querySelectorAll('.exbody .mx').length, label: tog().textContent, exp: tog().getAttribute('aria-expanded'), h: tog().getBoundingClientRect().height };
+      tog().click(); await new Promise(r => setTimeout(r, 60));
+      o.openLabel = tog().textContent;
       const groups = () => ({ main: [...m.querySelectorAll('.exbody .mx.ex-main')].length, help: [...m.querySelectorAll('.exbody .mx.ex-help')].length });
       o.a = groups(); o.legend = [...m.querySelectorAll('.exbody .bm-legend span')].map(s => s.innerText.trim());
       const chip = [...m.querySelectorAll('[data-act="secToggle"]')].find(b => !b.classList.contains('on') && b.dataset.m === 'abs'); chip.click(); await new Promise(r => setTimeout(r, 60));
       o.b = groups();
       const sel = m.querySelector('[data-ebind="primary"]'); sel.value = 'lats'; sel.dispatchEvent(new Event('change', { bubbles: true })); await new Promise(r => setTimeout(r, 60));
-      o.c = groups(); o.wide = document.documentElement.scrollWidth <= innerWidth; window.__ironlog.ACT.mClose();
+      o.c = groups(); tog().click(); await new Promise(r => setTimeout(r, 60)); o.shut = m.querySelectorAll('.exbody .mx').length; o.wide = document.documentElement.scrollWidth <= innerWidth; window.__ironlog.ACT.mClose();
       return o;
     });
+    ok(ed.closed.figs === 0 && ed.closed.label === 'Show on body' && ed.closed.exp === 'false' && ed.closed.h >= 44, 'the editor names the muscles and keeps the body behind Show on body (44 px)' + T, ed.closed);
+    ok(ed.openLabel === 'Hide body' && ed.shut === 0, 'Show on body opens it, Hide body closes it' + T, { open: ed.openLabel, shut: ed.shut });
     ok(ed.a.main >= 1 && ed.a.help >= 1 && ed.legend.join('|') === 'Main|Helper', 'the editor shows the bench\'s muscles on the flat body' + T, ed);
     ok(ed.b.help > ed.a.help && ed.c.main >= 1, 'a helper picked, or a new main muscle, shows at once' + T, ed);
+    const again = await ev(async () => { const L = window.__ironlog; document.querySelector('[data-act="exEdit"][data-ex="bench"]').click(); await new Promise(r => setTimeout(r, 60)); const o = document.querySelectorAll('#modal .exbody .mx').length; L.ACT.mClose(); return o; });
+    ok(again === 0, 'the next editor opens with the body hidden again' + T, again);
 
     // ---------- 5. 320 px ----------
     await page.setViewportSize({ width: 320, height: 640 });

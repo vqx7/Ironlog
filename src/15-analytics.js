@@ -5,7 +5,7 @@ const toD=kg=>kg==null?null:(U()==='lb'?kg/LB:kg);
 const fromD=v=>v==null?null:(U()==='lb'?v*LB:v);
 const r1=n=>Math.round(n*10)/10;
 const fmtW=kg=>kg==null||isNaN(kg)?'':String(r1(toD(kg)));
-/* Estimates (1RM, projections) are good to a few percent at best, so they
+/* Estimates (1RM, PR toasts, the bests board) are good to a few percent at best, so they
    show whole pounds or half kilos (r34): 293.8 next to 294 and 301 read as
    precision the numbers do not have. Loads keep their decimals. */
 const fmtE=kg=>{if(kg==null||isNaN(kg))return '';const v=toD(kg);return String(U()==='lb'?Math.round(v):Math.round(v*2)/2);};
@@ -103,6 +103,20 @@ const rirEst=(s,ex)=>{const q=rirEff(s,ex);return q!=null?q:ex?rirUsual(ex.id):n
    set with three drops is not four sets of work. */
 const isHard=(s,ex)=>{if(!isWork(s))return false;const q=rirEst(s,ex);return q==null||q<=3;};
 const setCredit=s=>s.drop?0.5:1;
+/* Count RIR 4 to 5 as half a set (r40, item 41; a setting, off by default).
+   Any working set past RIR 3 counts half: calls top out at 5, but Corrected
+   RIR can read a call of 4 as 5.5 or 6, and that set is no less hard than a
+   call of 5 (the independent review of r40).
+   Growth rises as sets end closer to failure (Robinson 2024), so sets a long
+   way short still do something; half is a convention, not a measured dose.
+   It moves the weekly hard sets, the bands they are read against and the
+   plan's weekly sets, and nothing else: estimates, PRs, recovery and the
+   per-session flag keep counting hard sets only. With RIR off every working
+   set is hard already, so the setting has nothing to do. */
+// The range in the lifter's own effort scale: a half-rep scale allows 3.5, RPE reads 5 to 6.5.
+const halfLbl=()=>{const k=rirScale();return k==='rpe'?'RPE 5 to 6.5':k==='half'?'RIR 3.5 to 5':'RIR 4 to 5';};
+const rirHalfOn=()=>state.settings.rirHalf===true&&state.settings.rirMode!=='off';
+function hardCredit(s,ex){if(isHard(s,ex))return setCredit(s);if(!rirHalfOn()||!isWork(s))return 0;const q=rirEst(s,ex);return q!=null&&q>3?setCredit(s)*0.5:0;}
 /* One set as text, for history, tables and the coach: 225×5, or 45 s for a timed hold. */
 function setShort(ex,w,r){return ex.timed?`${loadLabel(ex,+w||0)} for ${r}s`:`${loadLabel(ex,+w||0)}×${r}`;}
 function setStr(ex,x){return `${x.warm?'(W) ':x.drop?'(D) ':''}${setShort(ex,x.w,x.r)}${!ex.timed&&x.rir!=null&&x.rir!==''?(rirScale()==='rpe'?' @RPE '+effShow(x.rir):' @'+effShow(x.rir)):''}${x.cal?' (RIR check)':''}`;}
@@ -288,7 +302,8 @@ function IDX(){
    muscle, and each lift's exposure (its working sets read as loads, the
    working load, the best estimate, the trend readings, weight lifted). */
 function idxSessions(sessions){
-  // weekSets counts every hard set. weekConf counts only those whose RIR was
+  // weekSets counts every hard set (and, with rirHalf on, half of each set
+  // past RIR 3: hardCredit, r40). weekConf counts only those whose RIR was
   // actually logged. A set with a blank RIR still counts as hard, because
   // most working sets are, but guessing a value would be inventing data -- so
   // the two are tracked apart and the dashboard shows how much of your volume
@@ -313,11 +328,14 @@ function idxSessions(sessions){
         if(!isWork(s))continue;
         const logged=state.settings.rirMode==='off'||!(s.rir==null||s.rir==='');
         if(ss.date>=recentFrom){rirTotal++;if(logged)rirLogged++;}
-        if(!isHard(s,ex))continue;
-        const cr=setCredit(s);const q=rirEff(s,ex);weekHard[wk]=(weekHard[wk]||0)+cr;
+        const hard=isHard(s,ex);const cr=hard?setCredit(s):hardCredit(s,ex);if(!cr)continue;
+        const q=rirEff(s,ex);weekHard[wk]=(weekHard[wk]||0)+cr;
         for(const [m,f] of mus){
-          ws[m]=(ws[m]||0)+f*cr;dm[m]=(dm[m]||0)+f*cr;
+          ws[m]=(ws[m]||0)+f*cr;
           if(logged)wc[m]=(wc[m]||0)+f*cr;
+          // A half set from RIR 4 to 5 counts toward the week only; recovery and Pick for me read hard sets.
+          if(!hard)continue;
+          dm[m]=(dm[m]||0)+f*cr;
           const o=dx[m]||(dx[m]={fail:0,easy:0,hard:0,slow:false,novel:false});
           o.hard++;if(q===0)o.fail++;if(q!=null&&q>=3)o.easy++;if(SLOW_RECOVERY.has(ex.id))o.slow=true;if(novel)o.novel=true;
         }
@@ -508,6 +526,35 @@ function idxPRs(id,exps,prs){
   });
   return maxBest;
 }
+/* The sessions a lift's trend reads, shared by the trend itself and by the
+   screens that say its change in loads (r41), so the two cannot disagree.
+   Full sessions only; the current rep range only, since changing the range
+   restarts the baseline instead of drawing one line across two scales; and
+   the 6 weeks up to the lift's own last session (r30: it ended at the newest
+   session of any kind, so logging an upper day moved a split squat's trend
+   from +14% to +9% without a new split squat set). */
+function trendScope(exps,anchor){
+  const real=exps.filter(x=>!offSession(x));
+  const curRR=real.length?real[real.length-1].rr:null;
+  const inRange=real.filter(x=>sameRR(x.rr,curRR));
+  const lastReal=real.length?real[real.length-1]:null;
+  const exWin=addDays(lastReal?lastReal.date:anchor,-42);
+  return {real,curRR,inRange,lastReal,exWin};
+}
+/* The sessions in that scope with a trend reading. Separate from trendScope
+   because idxLift sets each session's reading (tv) only after deciding
+   whether RIR enters the trend, which needs the scope first. */
+function trendW(sc){return sc.inRange.filter(x=>x.date>=sc.exWin&&x.tv!=null);}
+/* Both ends of the trend are the better of two sessions, to damp a single
+   fluky one. With exactly three, best-of-two at each end counts the middle
+   one twice (100, 120, 110 came out as 0% instead of +10%), so three use
+   single ends. It returns the sessions, not only their readings, so a screen
+   can show what was lifted. The first of equal readings wins, as before. */
+function trendEnds(w){
+  const k=w.length>=4?2:1;
+  const best=a=>a.reduce((m,x)=>x.tv>m.tv?x:m);
+  return {first:best(w.slice(0,k)),last:best(w.slice(w.length-k))};
+}
 /* Step 5: one lift's trend, stall, signals and bests. */
 function idxLift(id,exps,maxBest,anchor,winStart){
   /* A deload session is lighter by design. It is charted and counted in
@@ -516,15 +563,11 @@ function idxLift(id,exps,maxBest,anchor,winStart){
   /* Lighter sessions (half the sets, about 90% loads since r30) are left out for the same
      reason: fewer sets always look like less, and a session run short on
      purpose is not evidence of a stall. */
-  const real=exps.filter(x=>!offSession(x));
-  // The trend and stall read only the current rep range. Changing the range
-  // restarts the baseline instead of drawing one line across two scales.
-  const curRR=real.length?real[real.length-1].rr:null;
-  const inRange=real.filter(x=>sameRR(x.rr,curRR));
+  const sc=trendScope(exps,anchor);const {real,curRR,inRange,lastReal,exWin}=sc;
   /* At the heaviest load the machine or rack has, progress moves to reps and
      then to harder reps (tempo, pauses, one side), which the load-based PR
      tests cannot see. Such a lift is marked capped rather than stalled. */
-  const exI=EX(id);const lastReal=real.length?real[real.length-1]:null;
+  const exI=EX(id);
   // r33: the top of the rack in Your gym is a cap too (review: a lift at the heaviest dumbbell read as stalled).
   const plC=planFor(id);const capL=lastReal?capOf(exI,plC,lastReal.topW):null;const capped=!!lastReal&&atCapOf(exI,plC,lastReal.topW,capL);
   /* RIR in the trend only where it is logged consistently (r30): on at
@@ -550,10 +593,6 @@ function idxLift(id,exps,maxBest,anchor,winStart){
     const se=n>2?Math.sqrt(rss/(n-2)/sxx):null;return {b,se,my,n};};
   const withE1=inRange.filter(x=>x.tv!=null);
   let stalled=false;
-  /* Each lift's 6-week window ends at its own last session (r30). It ended
-     at the newest session of any kind, so logging an upper day moved a
-     split squat's trend from +14% to +9% without a new split squat set. */
-  const lastD=lastReal?lastReal.date:anchor;const exWin=addDays(lastD,-42);
   /* Only a lift still being trained can be stalled: one not done in the
      last 42 days (counted from today and from the last session), or deleted
      or archived, used to stay stalled forever and kept the Coach calling
@@ -588,7 +627,7 @@ function idxLift(id,exps,maxBest,anchor,winStart){
         stalled=sen!=null&&my>0&&sen*7/my*100<0.1&&!moved;}}
     else if(withE1.length<2)stalled=inRange.length>=4&&inRange.slice(-3).every(x=>!x.progress);
   }
-  const w=inRange.filter(x=>x.date>=exWin&&x.tv!=null);
+  const w=trendW(sc);
   let pct=null,slope=null,slopeSe=null,moving=false,falling=false,pLo=null,pHi=null,spanW=null,loadUp=false;
   /* A trend needs 3 sessions spread over 2 weeks or more (r31): three
      sessions in nine days read as "+6.6% a week" from what was mostly one
@@ -596,15 +635,8 @@ function idxLift(id,exps,maxBest,anchor,winStart){
   const spanD=w.length?daysBetween(w[0].date,w[w.length-1].date):0;
   if(w.length>=3&&spanD>=14){
     spanW=Math.max(2,Math.round(spanD/7));
-    // Both endpoints use best-of-two to damp a single fluky session. With
-    // exactly three exposures, though, best-of-two at each end counts the
-    // middle one twice: 100, 120, 110 came out as 0% change instead of +10%.
-    // Three is the stated minimum for this number, so fall back to single
-    // endpoints there and use best-of-two only once there is room for it.
-    const k=w.length>=4?2:1;
-    const hi=a=>a.reduce((m,x)=>Math.max(m,x.tv),-Infinity);
-    const first=hi(w.slice(0,k)),last=hi(w.slice(w.length-k));
-    pct=(last/first-1)*100;
+    const ends=trendEnds(w);
+    pct=(ends.last.tv/ends.first.tv-1)*100;
     // Slope in % of the mean per week, with its standard error. Moving or
     // falling needs 3% or more and the slope's 80% interval clear of zero.
     const f=slopeOf(w);
@@ -789,7 +821,7 @@ function howToLink(e){return e&&e.name?`<a class="btn block" style="margin-top:6
 function plannedSets(routine){
   const out={};
   const f=weekFactor(routine);
-  for(const d of routine.days){if(d.rest)continue;for(const it of d.items){if(!planHard(it))continue;const ex=EX(it.exId);out[ex.primary]=(out[ex.primary]||0)+it.sets*f;for(const m of ex.secondary)out[m]=(out[m]||0)+0.5*it.sets*f;}}
+  for(const d of routine.days){if(d.rest)continue;for(const it of d.items){const pc=planCredit(it);if(!pc)continue;const ex=EX(it.exId);out[ex.primary]=(out[ex.primary]||0)+it.sets*f*pc;for(const m of ex.secondary)out[m]=(out[m]||0)+0.5*it.sets*f*pc;}}
   return out;
 }
 /* The week the log started in counts only if it started on that week's

@@ -26,9 +26,10 @@ const FILE = 'index.html';
       const sec = document.querySelector('#view [data-mkey="exercise"]'); const labels = [...sec.querySelectorAll('.kpi .l')].map(x => x.textContent); const tile = [...sec.querySelectorAll('.kpi')].find(k => /^Change/.test(k.querySelector('.l').textContent));
       return { labels, v: tile ? tile.querySelector('.v').textContent : null, pct: L.IDX().exStats.bench.pct, head: sec.innerText };
     });
-    ok(lift.labels.filter(l => /Change|trend/i.test(l)).length === 1 && !lift.labels.some(l => /Fitted/.test(l)), 'Stats > Lifts: one change tile, no second "fitted trend" number' + T, lift.labels);
-    const shown = lift.v && parseFloat(lift.v);
-    ok(shown != null && Math.abs(shown - Math.round(lift.pct * 10) / 10) < 0.05 && lift.head.includes(`${Math.round(lift.pct * 10) / 10}%`), 'the tile and the headline say the same change (' + lift.v + ')' + T, { v: lift.v, pct: lift.pct });
+    // Since r41 the change is said once, on the headline in loads, with the percentage behind its i; no tile repeats it.
+    const tipOf = await ev(() => { const h = document.querySelector('#view [data-mkey="exercise"] .headline [data-tip]'); return h ? h.dataset.tip : ''; });
+    ok(!lift.labels.some(l => /Change|trend|Fitted/i.test(l)), 'Stats > Lifts: no change tile and no "fitted trend" tile beside the headline' + T, lift.labels);
+    ok(/^Est\. 1RM up about \d+ lb over \d weeks/.test(lift.head.split('\n').find(l => /^Est\. 1RM /.test(l)) || '') && tipOf.includes(`Change +${Math.round(lift.pct * 10) / 10}%`), 'one change number: the headline in pounds, the same change as a percentage behind its i (' + Math.round(lift.pct * 10) / 10 + '%)' + T, { head: lift.head.slice(0, 300), tipOf });
 
     // ---------- 2. One way to start ----------
     const card = await ev(() => {

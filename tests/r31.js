@@ -302,7 +302,7 @@ function strongCsv(weeks, name) {
     ok(JSON.stringify(r.fat) === JSON.stringify(['bench', 'backSquat']), 'planks, leg raises and curls never count toward "lifts stalled at once"', r.fat);
     ok(r.coach.tone !== 'red', 'no red deload call from accessory stalls', r.coach);
     ok(r.flat.includes('dbCurl') && r.flat.includes('dbLateral'), 'curls and lateral raises identical for 8 weeks are stalled', r.flat);
-    ok(/Slowly up/.test(r.slow) && !/No clear change/.test(r.slow), 'a small steady rise reads "slowly up", not "no clear change" beside a range above zero', r.slow);
+    ok(/slowly up/i.test(r.slow) && !/No clear change/.test(r.slow), 'a small steady rise reads "slowly up", not "no clear change" beside a range above zero', r.slow);
     ok(r.avg.weeks === 1 && r.avg.missed === 3 && /trained in 1 of the last 4 weeks/.test(r.avg.coach), 'one week trained of four: the coach says so before any set count', r.avg);
     ok(/1 week you trained of the last 4/.test(r.avg.txt), 'the average says which weeks it covers', r.avg.txt);
     ok(r.lib.every(n => n.includes('Landmine T-Bar Row')) && r.libDb.includes('DB Curl'), 'library search ignores hyphens and spaces: "t bar row", "tbar", and "T-bar" find Landmine T-Bar Row; "db curl" finds DB Curl', r.lib);

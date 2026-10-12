@@ -60,7 +60,7 @@ const r5 = v => Math.round(v / 5) * 5;
         await ev(([LIFTS, mode, LB]) => { const L = window.__ironlog; const s = L.state; s.settings.onboarded = true; s.settings.unit = 'lb'; s.settings.autoDone = false;
           if (mode === 'fill') s.settings.loadFill = 'fill';
           const R = s.routines[0]; R.days[0].items = LIFTS.map((e, i) => ({ uid: 'u' + i, exId: e.id, sets: e.sets, repMin: e.min, repMax: e.max, rir: e.rir, rest: 0, inc: 5 * LB, ss: null }));
-          L.invalidate(); L.saveNow(); localStorage.setItem('ironlog.v1.tipWake', '1'); localStorage.setItem('ironlog.v1.loadAsk', '1'); }, [LIFTS, mode, LB]);
+          L.invalidate(); L.saveNow(); localStorage.setItem('ironlog.v1.tipWake', '1'); }, [LIFTS, mode, LB]);
         state = await ev(() => JSON.parse(localStorage.getItem('ironlog.v1')));
         await P.ctx.close(); continue;
       }
@@ -136,7 +136,7 @@ const r5 = v => Math.round(v / 5) * 5;
         const gainTrue = Math.pow(1 + Lf.g, WEEKS - 1) - 1; const gainApp = work[work.length - 1].w / work[3].w - 1;
         ok(gainApp > 0 && gainApp >= gainTrue * (WEEKS - 4) / (WEEKS - 1) - 0.06, T + Lf.id + ': the load grows with the lifter (' + (gainApp * 100).toFixed(1) + '% from week 4, true gain ' + (gainTrue * 100).toFixed(1) + '% over 16 weeks)', { gainApp, gainTrue });
         ok(!s.stalled, T + Lf.id + ': not called stalled', s.head);
-        ok(/^.*(Up |Slowly up|No clear change)/.test(s.head) && !/Down|Stalled/.test(s.head), T + Lf.id + ': Stats reads it as rising (or not yet clear), never down', s.head);
+        ok(/\b(up|no clear change)\b/i.test(s.head) && !/\bdown\b|Stalled/i.test(s.head), T + Lf.id + ': Stats reads it as rising (or not yet clear), never down', s.head);
         ok(s.prs >= 2, T + Lf.id + ': PRs are logged as it grows', s.prs);
       } else {
         ok(!s.moving, T + Lf.id + ' (flat): never called moving', s.head);

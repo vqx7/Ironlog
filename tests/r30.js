@@ -75,7 +75,7 @@ function strongCsv() {
     ok(['bench', 'deadlift', 'bbRow', 'backSquat', 'legPress'].every(id => a.auto[id].length === 1 && a.auto[id][0].startsWith('2026-09-1')), 'the unmarked deload week is read as lighter on every lift that had it', a.auto);
     ok(a.light.includes('2026-09-14'), 'and the whole week is a lighter week', a.light);
     ok(a.bench.moving && a.dl.moving && a.row.moving, 'bench, deadlift and row (up 8 to 13%) read as moving, not "nothing measurably rising"', a);
-    ok(/moving/i.test(a.moveRow) && /\+\d/.test(a.moveRow) && !/needs 3 sessions/.test(a.moveRow), 'the summary names what is moving and never says "needs 3 sessions" to someone with five', a.moveRow);
+    ok(/moving/i.test(a.moveRow) && /[A-Z][a-z]+ [A-Za-z]/.test(a.moveRow.replace(/^MOVING\s*/i, '')) && !/%/.test(a.moveRow) && !/needs 3 sessions/.test(a.moveRow), 'the summary names what is moving and never says "needs 3 sessions" to someone with five', a.moveRow);
     ok(!a.squat.stalled && a.squat.pct > 0 && !a.squat.useAdj, 'squat 245 to 270 with RPE on a few sets only: read from loads and reps, rising, not stalled', a.squat);
     ok(a.press.pct != null && a.press.pct > 0, 'leg press done for 15 reps has a trend', a.press);
     ok(a.ohp.stalled, 'the press that really stalls is still stalled', a.ohp);
@@ -85,7 +85,7 @@ function strongCsv() {
       return { push: I.byEx.pressdown.filter(x => x.auto).map(x => x.date), txt: document.getElementById('view').innerText, mv: (document.querySelector('#dashSummary .srow') || {}).innerText || '', heads: Object.keys(I.exStats).map(id => L.exHeadline(id)).join(' ') }; });
     ok(!au.push.length, 'a lift done at its usual load in a lighter week is not called lighter (the pushdown)', au.push);
     ok(/Last lighter week: 2 weeks ago \(lighter loads\)/.test(au.txt) && !/No lighter week/.test(au.txt), 'Stalls names the deload week (lighter loads), never "No lighter week"', (au.txt.match(/[^\n]*lighter week[^\n]*/i) || [])[0]);
-    ok(/and \d+ more over \d+ weeks/.test(au.mv), 'Moving names two lifts and how many more', au.mv);
+    ok(/, and \d+ more, over \d+ weeks/.test(au.mv), 'Moving names two lifts and how many more', au.mv);
     ok(!/likely ([+-][\d.]+%) to \1/.test(au.heads), 'no trend range of zero width ("likely +1.9% to +1.9%")', au.heads.slice(0, 300));
     // One rule across the Lifts section: 1RM figures only for a compound lift with sets of 12 or fewer.
     const ls = await ev(async () => { const L = window.__ironlog; const out = {};

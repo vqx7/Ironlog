@@ -31,7 +31,7 @@ const near = (a, b, e) => a != null && b != null && Math.abs(a - b) < (e || 1e-6
       const A = window.__ironlog; const s = A.normalize(null); s.settings.onboarded = true; s.settings.unit = unit || 'lb'; s.sessions = sessions || [];
       if (exMod) for (const e of s.exercises) if (exMod[e.id]) Object.assign(e, exMod[e.id]);
       if (extra) extra(s);
-      A.state = A.normalize(s); A.invalidate(); try { localStorage.setItem('ironlog.v1.loadAsk', '1'); } catch (e) { /* no storage */ }
+      A.state = A.normalize(s); A.invalidate();
     };
     window.__sess = (date, exId, wKg, reps, o) => ({ id: 's' + date + exId + Math.random().toString(36).slice(2, 6), date, dayName: 'x', routineId: (o && o.rid) || '', dayId: (o && o.did) || '', deload: !!(o && o.deload), ex: [{ exId, rr: (o && o.rr) || null, cut: o && o.cut ? true : undefined, sets: reps.map(r => ({ w: wKg, r, rir: o && o.rir != null ? o.rir : 1, warm: false, drop: false })) }] });
   });

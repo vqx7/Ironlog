@@ -324,8 +324,9 @@ function weekStats(){
      Per-muscle volume (direct 1, secondary half) stays in the muscle views,
      where the split matters; summed across muscles it double-counts. The
      numerator is hard sets only, so a set left at RIR 4 or more does not
-     count toward the week. */
-  let got=0;for(const x of state.sessions)if(x.date>=cur&&x.date<=addDays(cur,6))for(const b of x.ex){const e=EX(b.exId);for(const q of b.sets)if(isHard(q,e))got+=setCredit(q);}
+     count toward the week, unless Count RIR 4 to 5 as half a set is on
+     (r40, hardCredit). */
+  let got=0;for(const x of state.sessions)if(x.date>=cur&&x.date<=addDays(cur,6))for(const b of x.ex){const e=EX(b.exId);for(const q of b.sets)got+=hardCredit(q,e);}
   const tgt=planSetsPerWeek(R,isDeloadWeek());
   return {R,weekly,planDays,doneDays,got,tgt,pct:tgt>0?Math.min(100,got/tgt*100):0,cardioMin,cardioN};
 }
@@ -408,17 +409,19 @@ function liftTrend(exId){
     const v=exps.map(x=>fmtE(x.best));const d2=dir;
     return `<p class="small muted" style="margin:2px 0">Est. 1RM <span class="trend">${v.join(' → ')} ${U()}</span>${d2?' · '+d2:''}${st&&!st.useAdj?' '+tipi('Read from loads and reps alone: RIR is rated on too few of its sets to compare sessions fairly.','About this trend'):''}</p>`;
   }
-  const top=x=>{let q=null;for(const p of x.pts){const v=trendE(p.load,p.r,0)||0;if(!q||v>q.v)q={v,p};}return setShort(ex,q.p.w,q.p.r);};
-  return `<p class="small muted" style="margin:2px 0">Top sets <span class="trend">${exps.map(top).join(' → ')}</span>${dir?' · '+dir:''}</p>`;
+  return `<p class="small muted" style="margin:2px 0">Top sets <span class="trend">${exps.map(x=>topSetOf(ex,x)).join(' → ')}</span>${dir?' · '+dir:''}</p>`;
 }
+// A session's strongest set by reps alone (v, its score) and as typed (txt).
+function topSetPt(ex,x){let q=null;for(const p of x.pts){const v=trendE(p.load,p.r,0)||0;if(!q||v>q.v)q={v,p};}return {v:q.v,txt:setShort(ex,q.p.w,q.p.r)};}
+function topSetOf(ex,x){return topSetPt(ex,x).txt;}
 function bodyCard(){
   const bws=[...state.bodyweights].sort((a,b)=>a.date<b.date?1:-1);
   const ms=[...state.measurements].sort((a,b)=>a.date<b.date?1:-1).slice(0,3);
   const last=bws[0];const r=bwRate();const loggedToday=last&&last.date===today();
-  const pc=v=>Math.abs(v)<0.05?'Flat':(v>0?'+':'−')+Math.abs(v).toFixed(1)+'%';
-  const sub=last?`${fmtW(last.kg)} ${U()}${r?` · ${pc(r.pct)}/wk`:''}`:'Not logged yet';
-  const chg=bws.length>1?last.kg-bws[1].kg:null;
-  return sec({sk:'today:body',key:'body',title:'Body',sub:esc(sub),body:`${last?`<div class="body-sum"><div><div class="v">${fmtW(last.kg)}<span class="small"> ${U()}</span></div><div class="l">Latest, ${fmtDate(last.date)}${chg!=null?`, ${chg>=0?'+':'−'}${fmtW(Math.abs(chg))} vs previous`:''}</div></div>${r?`<div><div class="v">${pc(r.pct)}</div><div class="l">per week, from 7-day averages</div></div>`:''}</div>`:''}
+  const sub=last?`${fmtW(last.kg)} ${U()}${r?` · ${bwWeekTxt(r)}`:''}`:'Not logged yet';
+  // "−0 vs previous" read as a loss; a change that rounds to nothing says so (r41).
+  const chg=bws.length>1?last.kg-bws[1].kg:null;const chgTxt=chg==null?'':+fmtW(Math.abs(chg))===0?', same as previous':`, ${chg>0?'+':'−'}${fmtW(Math.abs(chg))} vs previous`;
+  return sec({sk:'today:body',key:'body',title:'Body',sub:esc(sub),body:`${last?`<div class="body-sum"><div><div class="v">${fmtW(last.kg)}<span class="small"> ${U()}</span></div><div class="l">Latest, ${fmtDate(last.date)}${chgTxt}</div></div>${r?`<div><div class="v">${esc(bwWeekTxt(r).replace(' a week',''))}</div><div class="l">weekly change, from 7-day averages</div></div>`:''}</div>`:''}
   <div class="bw-entry"><label class="field">Date<input type="date" id="bwDate" value="${today()}" max="${today()}"></label><label class="field">Weight (${U()})<input type="text" inputmode="decimal" id="bwVal" placeholder="${last?fmtW(last.kg):''}" enterkeyhint="done"></label><button class="btn primary" data-act="addBW" data-tip="Also used for pull-ups, dips, and other bodyweight lifts.">${loggedToday?'Update':'Log'}</button></div>
   ${bws.length?`<ul class="bw-list" aria-label="Recent bodyweights">${bws.slice(0,5).map(b=>`<li><span class="d">${fmtDate(b.date)}</span><span class="num">${fmtW(b.kg)} ${U()}</span><button class="ib sm" data-act="delBW" data-id="${b.id}" aria-label="Delete ${fmtDate(b.date)} entry">✕</button></li>`).join('')}</ul>${bws.length>5?`<p class="small muted" style="margin:4px 0 0">${bws.length-5} older on Stats.</p>`:''}`:''}
   ${subsec('today:tape',`Tape measurements (${LU()})`,`<div class="grid2" style="align-items:end">${heightField()}<span></span></div>
@@ -585,10 +588,6 @@ function viewLogger(){
   return h;
 }
 
-/* Grey or filled-in loads (r26): asked once, in the first session after the
-   change, so the choice is found where it matters instead of in Settings.
-   Either answer is remembered on this device; Settings > Rest timer and
-   logging changes it later. */
 /* Bodyweight, asked once in the first session with a bodyweight lift when
    none is logged (r32, from the third review: pull-ups and leg raises added
    nothing to weight lifted, and had no estimate, with no weigh-in). Saved
