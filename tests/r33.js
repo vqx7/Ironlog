@@ -464,12 +464,13 @@ async function engineRun(page, cases, gym) {
     await W.ev(() => { const L = window.__ironlog; L.state.settings.unit = 'kg'; L.render(); });
     ok(/est\. 1RM 102 to 110 kg/.test(await W.ev(() => document.querySelectorAll('.ob-slide')[4].innerText)), 'the pictures follow the unit');
     // It moves on by itself until touched, and not at all with reduced motion.
+    // r37: every 4 seconds, so slide 2 is showing by 4.6 s (at 5.5 it was not yet).
     const A = await device({ auto: true });
-    await wait(6200);
+    await wait(4600);
     const a1 = await A.ev(() => window.__ironlog.obTour.i);
     await A.page.dispatchEvent('#obTrack', 'pointerdown'); const a2 = await A.ev(() => window.__ironlog.obTour.i); await wait(6200);
     const a3 = await A.ev(() => window.__ironlog.obTour.i);
-    ok(a1 === 1 && a3 === a2, 'it moves to the next slide on its own, and stops for good once touched', [a1, a2, a3]);
+    ok(a1 === 1 && a3 === a2, 'it moves to the next slide on its own within 4.6 s (every 4 s), and stops for good once touched', [a1, a2, a3]);
     const M = await device({ auto: true, reduce: true }); await wait(6200);
     ok(await M.ev(() => window.__ironlog.obTour.i === 0 && !window.__ironlog.obTour.auto), 'with reduced motion it never moves on its own');
     const N = await device({ w: 320 });

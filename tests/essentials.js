@@ -12,17 +12,19 @@ const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log
   await ev(() => { const L = window.__ironlog; L.state.settings.onboarded = true; L.state.settings.autoDone = false; L.makeDemo(); L.ui.tab = 'today'; L.render(); });
   const acc = () => ev(() => ({ a: document.documentElement.dataset.accent, v: getComputedStyle(document.documentElement).getPropertyValue('--volt').trim().toLowerCase(), btn: getComputedStyle(document.querySelector('.hero .btn.primary')).backgroundColor }));
   let x = await acc();
-  ok(x.a === 'blue' && x.v === '#2a63f5' && x.btn === 'rgb(42, 99, 245)', 'blue is the default accent, on the Start button too', x);
+  ok(x.a === 'ember' && x.v === '#ff6a2b' && x.btn === 'rgb(255, 106, 43)', 'Ember is the default accent since r37, on the Start button too', x);
   await ev(() => { const L = window.__ironlog; L.ui.tab = 'settings'; L.ui.folds['settings:general'] = true; L.render(); });
-  ok(await ev(() => document.querySelectorAll('[data-act="accent"]').length === 3 && document.querySelector('[data-act="accent"][data-v="blue"]').classList.contains('on')), 'Settings > General offers Blue, Volt and Ember, Blue selected');
-  await A.page.click('[data-act="accent"][data-v="ember"]'); await A.page.waitForTimeout(100);
-  x = await acc().catch(() => ({}));
-  ok((await ev(() => document.documentElement.dataset.accent)) === 'ember' && (await ev(() => getComputedStyle(document.documentElement).getPropertyValue('--volt').trim().toLowerCase())) === '#ff6a2b', 'picking Ember switches the accent at once');
+  ok(await ev(() => [...document.querySelectorAll('[data-act="accent"]')].map(b => b.dataset.v).join() === 'ember,blue,volt,pink' && document.querySelector('[data-act="accent"][data-v="ember"]').classList.contains('on')), 'Settings > General offers Ember, Blue, Volt and Pink, Ember selected');
+  await A.page.click('[data-act="accent"][data-v="pink"]'); await A.page.waitForTimeout(100);
+  ok(await ev(() => document.documentElement.dataset.accent === 'pink' && getComputedStyle(document.documentElement).getPropertyValue('--volt').trim().toLowerCase() === '#ec4899' && window.__ironlog.state.settings.accent === 'pink'), 'Pink switches the accent and is kept (r37)');
   await A.page.reload(); await A.page.waitForFunction(() => window.__ironlog);
-  ok((await ev(() => document.documentElement.dataset.accent)) === 'ember' && (await ev(() => window.__ironlog.state.settings.accent)) === 'ember', 'the choice is kept (and synced with the rest of Settings)');
+  ok((await ev(() => document.documentElement.dataset.accent)) === 'pink' && (await ev(() => window.__ironlog.state.settings.accent)) === 'pink', 'the choice is kept (and synced with the rest of Settings)');
+  await ev(() => { const L = window.__ironlog; L.ui.tab = 'settings'; L.ui.folds['settings:general'] = true; L.render(); });
+  await A.page.click('[data-act="accent"][data-v="ember"]'); await A.page.waitForTimeout(100);
+  ok((await ev(() => document.documentElement.dataset.accent)) === 'ember' && (await ev(() => getComputedStyle(document.documentElement).getPropertyValue('--volt').trim().toLowerCase())) === '#ff6a2b' && (await ev(() => window.__ironlog.state.settings.accent)) === undefined, 'back to Ember switches at once and stores nothing extra (the default)');
   await ev(() => { const L = window.__ironlog; L.ui.tab = 'settings'; L.ui.folds['settings:general'] = true; L.render(); });
   await A.page.click('[data-act="accent"][data-v="blue"]'); await A.page.waitForTimeout(100);
-  ok(await ev(() => window.__ironlog.state.settings.accent === undefined && document.documentElement.dataset.accent === 'blue'), 'back to Blue stores nothing extra (the default)');
+  ok(await ev(() => window.__ironlog.state.settings.accent === 'blue' && document.documentElement.dataset.accent === 'blue'), 'Blue is stored as chosen (Ember is the default since r37)');
   // Blue accent: "above target" turns violet so it never looks like "done".
   ok(await ev(() => getComputedStyle(document.documentElement).getPropertyValue('--blue').trim().toLowerCase() === '#b69cff'), 'with blue, the above-target colour is violet');
 

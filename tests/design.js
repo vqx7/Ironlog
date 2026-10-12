@@ -82,7 +82,7 @@ const fails = []; const ok = (c, m) => { if (!c) { fails.push(m); console.log('F
     const probe = document.createElement('div'); document.body.appendChild(probe);
     const col = v => { probe.style.color = `var(${v})`; return getComputedStyle(probe).color; };
     const out = {};
-    for (const ac of ['blue', 'volt', 'ember']) for (const th of ['dark', 'light']) {
+    for (const ac of ['blue', 'volt', 'ember', 'pink']) for (const th of ['dark', 'light']) {
       document.documentElement.dataset.theme = th; document.documentElement.dataset.accent = ac;
       const pairs = [['--ink', '--bg'], ['--ink', '--surface'], ['--muted', '--surface'], ['--muted', '--bg'], ['--on-volt', '--volt'], ['--green', '--green-bg'], ['--yellow', '--yellow-bg'], ['--red', '--red-bg'], ['--blue', '--blue-bg'], ['--on-gold', '--gold'], ['--on-hero', '--hero'], ['--volt-line', '--bg'], ['--volt-line', '--surface']];
       out[ac + ' ' + th] = pairs.map(([a, b]) => [a + ' on ' + b, Math.round(ratio(col(a), col(b)) * 100) / 100]);
