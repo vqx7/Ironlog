@@ -37,9 +37,9 @@ const server = http.createServer((req, res) => {
     return { j, icons, apple: !!document.querySelector('link[rel=apple-touch-icon]'), theme: document.querySelector('meta[name=theme-color]').content }; });
   ok(man.j.display === 'standalone' && man.j.start_url === './' && man.j.scope === './' && man.j.name === 'Ironlog', 'manifest: standalone, relative start and scope');
   ok(man.icons.length === 3 && man.icons.every(i => i.ok && i.sizes === `${i.w}x${i.h}`) && man.icons.some(i => i.purpose === 'maskable') && man.icons.some(i => i.w >= 512), 'manifest icons exist and match their sizes, with a maskable one');
-  ok(man.apple && /^(#08090b|rgb\(8, 9, 11\))$/.test(man.theme), 'iOS home-screen icon and theme colour set (' + man.theme + ')');
+  ok(man.apple && /^(#121110|rgb\(18, 17, 16\))$/.test(man.theme), 'iOS home-screen icon and theme colour set (' + man.theme + ')');
   const lightTheme = await page.evaluate(() => { const L = window.__ironlog; L.state.settings.theme = 'light'; L.render(); const v = document.querySelector('meta[name=theme-color]').content; L.state.settings.theme = 'dark'; L.render(); return v; });
-  ok(/^rgb\(242, 243, 245\)$/.test(lightTheme), 'the status bar colour follows the light theme (' + lightTheme + ')');
+  ok(/^rgb\(246, 244, 240\)$/.test(lightTheme), 'the status bar colour follows the light theme (' + lightTheme + ')');
   // The libraries' and fonts' licenses travel with the copies this build serves (r34).
   const lic = await page.evaluate(async () => { const r = await fetch('LICENSES.txt'); const t = r.ok ? await r.text() : ''; const L = window.__ironlog; const ob = L.state.settings.onboarded; L.state.settings.onboarded = true; L.ui.tab = 'settings'; L.render(); document.querySelectorAll('#view details').forEach(d => d.open = true); const a = [...document.querySelectorAll('#view a')].find(x => /Open-source licenses/.test(x.textContent)); const link = a ? a.getAttribute('href') : null; L.state.settings.onboarded = ob; return { ok: r.ok, t, link }; });
   ok(lic.ok && ['Chart.js', 'SortableJS', 'three.js', 'Big Shoulders Display', 'Hanken Grotesk', 'Permission is hereby granted', 'SIL Open Font License'].every(k => lic.t.includes(k)) && lic.link === 'LICENSES.txt', 'LICENSES.txt is served with the MIT and OFL texts, linked from Settings > Diagnostics', { ok: lic.ok, n: lic.t.length, link: lic.link });

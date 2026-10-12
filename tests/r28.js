@@ -36,7 +36,7 @@ const TABS = ['today', 'program', 'dash', 'history', 'settings'];
     // Today's Start card fits its date line on one line at 390 px.
     await ev(() => { const L = window.__ironlog; L.ui.tab = 'today'; L.render(); });
     const eb = await ev(() => { const e = document.querySelector('.hero .eyebrow'); const lh = parseFloat(getComputedStyle(e).lineHeight) || 16; return { t: e.innerText, lines: Math.round(e.getBoundingClientRect().height / lh) }; });
-    ok(eb.lines === 1 && /^FRI, OCT 2/i.test(eb.t), 'the Start card date line is short and on one line at 390 px', eb);
+    ok(eb.lines === 1 && /^Fri Oct 2 · /.test(eb.t), 'the Start card date line is short and on one line at 390 px', eb);
 
     // The bottom line on Today: the hidden sections, one tap each.
     const line = await ev(() => [...document.querySelectorAll('#moreLine [data-act="secShow"]')].map(b => b.dataset.k + '=' + b.textContent.trim()));
@@ -280,7 +280,7 @@ const TABS = ['today', 'program', 'dash', 'history', 'settings'];
     // The routine picker gives each routine's session length as a range, matching Today's day.
     await ev(() => window.__ironlog.ACT.rTemplate()); await wait(80);
     const pick = await ev(() => ({ m: [...document.querySelectorAll('#modal .tpl-m')].map(e => e.innerText), jargon: /10-set|11 sets/.test(document.getElementById('modal').innerText) }));
-    ok(pick.m.length >= 5 && pick.m.every(t => /(\d+ to \d+ min|about \d+ min)/.test(t)) && !pick.jargon, 'the routine picker shows minutes as a range, without set-count jargon', pick.m.slice(0, 2));
+    ok(pick.m.length >= 5 && pick.m.every(t => /(\d+ to \d+ min|~\d+ min)/.test(t)) && !pick.jargon, 'the routine picker shows minutes as a range, without set-count jargon', pick.m.slice(0, 2));
     await ev(() => window.__ironlog.ACT.mClose());
 
     // Light theme: the menu icon and the bottom link are readable in every accent.

@@ -322,7 +322,7 @@ const ACCENTS=[['ember','Ember'],['blue','Blue'],['volt','Volt'],['pink','Pink']
 function applyTheme(){const t=state.settings.theme;if(t==='system')delete document.documentElement.dataset.theme;else document.documentElement.dataset.theme=t;
   document.documentElement.dataset.accent=state.settings.accent||ACCENT0;
   // The installed app's status bar takes this colour, so it follows the theme.
-  const m=document.querySelector('meta[name="theme-color"]');if(m)try{m.setAttribute('content',getComputedStyle(document.body).backgroundColor||'#08090b');}catch(e){/* cosmetic */}}
+  const m=document.querySelector('meta[name="theme-color"]');if(m)try{m.setAttribute('content',getComputedStyle(document.body).backgroundColor||'#121110');}catch(e){/* cosmetic */}}
 /* A code bug inside a view used to leave a blank screen. Now the error is
    logged and a recovery screen offers your data and a way back. */
 /* True while #view is being replaced. Replacing it removes a focused field,

@@ -12,9 +12,9 @@ const fails = []; const ok = (c, m) => { if (!c) { fails.push(m); console.log('F
 
   // Time estimate: the session starts at the plan's estimate.
   await fresh();
-  const plan = await ev(() => { const m = document.querySelector('.hero .muted').textContent.match(/about (\d+) min/); return m && +m[1]; });
+  const plan = await ev(() => { const m = document.querySelector('.hero .muted').textContent.match(/~(\d+) min/); return m && +m[1]; });
   await start();
-  const left = await ev(() => { const m = document.querySelector('.ph .meta').textContent.match(/about (\d+) min left/); return m && +m[1]; });
+  const left = await ev(() => { const m = document.querySelector('.ph .meta').textContent.match(/~(\d+) min left/); return m && +m[1]; });
   ok(plan && plan === left, `plan and session agree on time (${plan} vs ${left})`);
 
   // Remove an exercise, log a set elsewhere, Undo: the exercise comes back.

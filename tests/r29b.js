@@ -337,9 +337,11 @@ const sess = (id, date, exId, sets) => ({ id, date, dayIdx: 0, dayId: null, dayN
       L.state.sessions = out; L.invalidate(); L.ui.tab = 'today'; L.ui.mapSrc = 'avg'; L.ui.folds['today:map'] = true; L.render();
       const card = document.querySelector('#view > [data-mkey="map"]'); const leg = card.querySelector('.bm-legend').innerText.replace(/\s+/g, ' ');
       const lats = [...card.querySelector('.mm[data-m="lats"]').classList].find(c => c.startsWith('st-')); const sub = card.querySelector('.sec-s').innerText;
-      const n = +(leg.match(/Below target (\d+)/) || [])[1]; const m = +(sub.match(/(\d+) below/) || [])[1];
-      return { leg, lats, sub, n, m }; });
-    ok(mp.lats === 'st-under' && mp.n > 0 && mp.n === mp.m && /on average/.test(mp.sub), '13. untrained lats on an average are amber, and the legend and the summary count the same below', mp);
+      const g = k => +(leg.match(new RegExp(k + ' (\\d+)')) || [])[1]; const n = g('Below target') + g('None'); const on = g('On target') + g('Above');
+      // r42: the summary is "X of Y on target", so the legend must give the same X and the rest as Y - X.
+      const sm = sub.match(/^(\d+) of (\d+) on target/) || []; const m = +sm[2] - +sm[1];
+      return { leg, lats, sub, n, m, on, x: +sm[1] }; });
+    ok(mp.lats === 'st-under' && mp.n > 0 && mp.n === mp.m && mp.on === mp.x && !/so far/.test(mp.sub), '13. untrained lats on an average are amber, and the legend and the summary count the same on target and below', mp);
     // 4. Volume rows: no sets is none whatever the target, on the week; amber on an average with a minimum.
     const vr = await ev(() => { const L = window.__ironlog; L.ui.tab = 'dash'; L.ui.folds['dash:volume'] = true;
       L.ui.volMode = 'avg'; L.render(); const row = n => { const r = [...document.querySelectorAll('#view [data-mkey="volume"] .mrow')].find(x => x.innerText.startsWith(n)); return r ? r.querySelector('.plate').className : null; };

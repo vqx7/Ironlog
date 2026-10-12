@@ -114,7 +114,7 @@ html = replaceOnce(html, "const THREE_URLS=['https://cdn.jsdelivr.net/npm/three@
 const head = `<script>window.IRONLOG_APP=true;${PREVIEW ? "window.IRONLOG_ENV='preview';" : ''}window.__installEvt=null;
 window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();window.__installEvt=e;if(window.ironlogInstallReady)window.ironlogInstallReady();});
 window.addEventListener('appinstalled',()=>{window.__installEvt=null;if(window.ironlogInstallReady)window.ironlogInstallReady();});</script>
-<meta name="theme-color" content="#08090b">
+<meta name="theme-color" content="#121110">
 <meta name="color-scheme" content="dark light">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
@@ -195,7 +195,7 @@ fs.writeFileSync(path.join(DIST, 'index.html'), html);
 const manifest = {
   name: NAME, short_name: SHORT, description: 'Log lifting sessions, track progress and plan training. Works offline.',
   id: './', start_url: './', scope: './', display: 'standalone', orientation: 'portrait',
-  background_color: '#08090b', theme_color: '#08090b', categories: ['health', 'fitness', 'sports'],
+  background_color: '#121110', theme_color: '#121110', categories: ['health', 'fitness', 'sports'],
   icons: [
     { src: 'icons/icon-192.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
     { src: 'icons/icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'any' },
