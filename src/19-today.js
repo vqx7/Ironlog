@@ -388,7 +388,9 @@ function weekSessions(ws){const end=addDays(ws,6);let n=0;for(const x of state.s
    it could never meet. In a deload week each exercise is half its sets,
    rounded up, as the sessions are. */
 function planHard(it){return state.settings.rirMode==='off'||!(+it.rir>3);}
-function planSetsPerWeek(R,deload){const n=R.days.reduce((a,d)=>a+(d.rest?0:d.items.reduce((x,it)=>x+(planHard(it)?(deload?Math.max(1,Math.ceil(+it.sets/2)):+it.sets):0),0)),0);return R.schedule==='weekly'?n:Math.round(n*weekFactor(R));}
+// A planned set at RIR 4 to 5 counts half with the setting on (r40), as logged ones do.
+function planCredit(it){return planHard(it)?1:rirHalfOn()&&+it.rir<=5?0.5:0;}
+function planSetsPerWeek(R,deload){const n=R.days.reduce((a,d)=>a+(d.rest?0:d.items.reduce((x,it)=>x+planCredit(it)*(deload?Math.max(1,Math.ceil(+it.sets/2)):+it.sets),0)),0);return R.schedule==='weekly'?n:Math.round(n*weekFactor(R));}
 function plannedPerWeek(R){return R.schedule==='weekly'?trainDaysOf(R):Math.round(trainDaysOf(R)*weekFactor(R));}
 /* Consecutive weeks in which you trained at least as many days as the routine
    plans. The current week joins the streak once it is met, and does not break

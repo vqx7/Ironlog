@@ -1587,7 +1587,7 @@ if(ENV==='preview')document.documentElement.dataset.env='preview';
 const HAD_LOG=(()=>{try{return localStorage.getItem(KEY)!=null;}catch(e){return false;}})();
 /* Shown in Settings, in diagnostics and in backups, so a bug report can be
    matched to the exact build. */
-const APP_VERSION='2026.10.11-r39';
+const APP_VERSION='2026.10.11-r40';
 /* The logo (r25): an upright dumbbell that is also the I of Ironlog. Same
    numbers as scripts/icons.py, which draws the app icons. */
 const MARK_SVG='<svg class="mark" viewBox="-242 -378 484 756" aria-hidden="true" focusable="false"><rect class="mk-h" x="-30" y="-300" width="60" height="600" rx="14"/><rect class="mk-h" x="-80" y="-192" width="160" height="32" rx="12"/><rect class="mk-h" x="-80" y="160" width="160" height="32" rx="12"/><rect class="mk-p" x="-240" y="-376" width="480" height="92" rx="30"/><rect class="mk-p" x="-190" y="-270" width="380" height="66" rx="26"/><rect class="mk-p" x="-190" y="204" width="380" height="66" rx="26"/><rect class="mk-p" x="-240" y="284" width="480" height="92" rx="30"/></svg>';
@@ -1793,6 +1793,8 @@ function normalize(s){
   // records keep their fingerprints and sync does not see them as edited.
   if(!['blue','volt','ember','pink'].includes(out.settings.accent))delete out.settings.accent;
   if(out.settings.rirAsk!==true)delete out.settings.rirAsk;
+  // Count RIR 4 to 5 as half a set (r40): absent unless on.
+  if(out.settings.rirHalf!==true)delete out.settings.rirHalf;
   // r34: adjusting the next sets is on unless turned off; only false is stored, so older saves hash as before.
   if(out.settings.autoAdj!==false)delete out.settings.autoAdj;
   // r34: weigh-in reminder in days (0 off); absent is every 14 days.
@@ -2658,7 +2660,7 @@ function guideSheet(m){
    <p><b>Make it lighter</b>, after a low check-in, changes only the exercises not started yet. What you already did at full effort still sets next time's target.</p>
    <p><b>An injury</b> flagged on a muscle or a joint (knee, hip, shoulder, elbow, wrist) pauses targets for exercises that load it and caps their load at last time.</p>
    <p><b>Changes apply at once</b>: a new load step, rep range, or heaviest load reaches the exercises in your session that you have not started yet.</p>`],
-  ['stats','Volume and Stats',`<p><b>A hard set</b> is a working set at RIR 3 or less${off?' (with RIR off, every working set)':''}. Helper muscles count half a set (Pelland 2025).</p>
+  ['stats','Volume and Stats',`<p><b>A hard set</b> is a working set at RIR 3 or less${off?' (with RIR off, every working set)':''}. Helper muscles count half a set (Pelland 2025). With Settings, Count RIR 4 to 5 as half a set on, a working set at RIR 4 or 5 counts half toward your weekly sets and targets, planned ones too (a convention); estimates, PRs, recovery, and the per-workout flag still count hard sets only.</p>
    <p><b>Weekly targets</b> are per muscle in Settings, Weekly set targets. 10 to 20 hard sets a week for major muscles is typical, not a ceiling. Serratus, rotator cuff, neck, and tibialis are tracked only: counted and shown, with no target, since no study sets a dose for them and most routines leave them to indirect work. A target starting at 0 is met with no sets. A muscle is below target when its weekly average, to one decimal as shown, is under the minimum. The radar on Stats measures each region against its minimum, so on or past the ring is on target. It averages your last 4 full weeks; the chips above it switch to 2 or 8 weeks, for the radar only. During the week, short of the minimum shows as under way, not below.</p>
    <p><b>Lagging strength</b> is a muscle whose lifts are falling, or flat with one of them stalled (a convention); with no clear trend, a stalled lift reads <b>A lift stalled</b>. A muscle whose lifts are all within day-to-day noise reads <b>unclear</b>, never 0%.</p>
    <p><b>Your target and the usual range</b>: picking a ready-made routine sets your minimums to what it plans, so Stats measures you against your plan. Plan, Weekly volume names the muscles that plan puts under the usual range.</p>
@@ -3050,6 +3052,15 @@ const rirEst=(s,ex)=>{const q=rirEff(s,ex);return q!=null?q:ex?rirUsual(ex.id):n
    set with three drops is not four sets of work. */
 const isHard=(s,ex)=>{if(!isWork(s))return false;const q=rirEst(s,ex);return q==null||q<=3;};
 const setCredit=s=>s.drop?0.5:1;
+/* Count RIR 4 to 5 as half a set (r40, item 41; a setting, off by default).
+   Growth rises as sets end closer to failure (Robinson 2024), so sets a long
+   way short still do something; half is a convention, not a measured dose.
+   It moves the weekly hard sets, the bands they are read against and the
+   plan's weekly sets, and nothing else: estimates, PRs, recovery and the
+   per-session flag keep counting hard sets only. With RIR off every working
+   set is hard already, so the setting has nothing to do. */
+const rirHalfOn=()=>state.settings.rirHalf===true&&state.settings.rirMode!=='off';
+function hardCredit(s,ex){if(isHard(s,ex))return setCredit(s);if(!rirHalfOn()||!isWork(s))return 0;const q=rirEst(s,ex);return q!=null&&q>3&&q<=5?setCredit(s)*0.5:0;}
 /* One set as text, for history, tables and the coach: 225×5, or 45 s for a timed hold. */
 function setShort(ex,w,r){return ex.timed?`${loadLabel(ex,+w||0)} for ${r}s`:`${loadLabel(ex,+w||0)}×${r}`;}
 function setStr(ex,x){return `${x.warm?'(W) ':x.drop?'(D) ':''}${setShort(ex,x.w,x.r)}${!ex.timed&&x.rir!=null&&x.rir!==''?(rirScale()==='rpe'?' @RPE '+effShow(x.rir):' @'+effShow(x.rir)):''}${x.cal?' (RIR check)':''}`;}
@@ -3260,11 +3271,14 @@ function idxSessions(sessions){
         if(!isWork(s))continue;
         const logged=state.settings.rirMode==='off'||!(s.rir==null||s.rir==='');
         if(ss.date>=recentFrom){rirTotal++;if(logged)rirLogged++;}
-        if(!isHard(s,ex))continue;
-        const cr=setCredit(s);const q=rirEff(s,ex);weekHard[wk]=(weekHard[wk]||0)+cr;
+        const hard=isHard(s,ex);const cr=hard?setCredit(s):hardCredit(s,ex);if(!cr)continue;
+        const q=rirEff(s,ex);weekHard[wk]=(weekHard[wk]||0)+cr;
         for(const [m,f] of mus){
-          ws[m]=(ws[m]||0)+f*cr;dm[m]=(dm[m]||0)+f*cr;
+          ws[m]=(ws[m]||0)+f*cr;
           if(logged)wc[m]=(wc[m]||0)+f*cr;
+          // A half set from RIR 4 to 5 counts toward the week only; recovery and Pick for me read hard sets.
+          if(!hard)continue;
+          dm[m]=(dm[m]||0)+f*cr;
           const o=dx[m]||(dx[m]={fail:0,easy:0,hard:0,slow:false,novel:false});
           o.hard++;if(q===0)o.fail++;if(q!=null&&q>=3)o.easy++;if(SLOW_RECOVERY.has(ex.id))o.slow=true;if(novel)o.novel=true;
         }
@@ -3736,7 +3750,7 @@ function howToLink(e){return e&&e.name?`<a class="btn block" style="margin-top:6
 function plannedSets(routine){
   const out={};
   const f=weekFactor(routine);
-  for(const d of routine.days){if(d.rest)continue;for(const it of d.items){if(!planHard(it))continue;const ex=EX(it.exId);out[ex.primary]=(out[ex.primary]||0)+it.sets*f;for(const m of ex.secondary)out[m]=(out[m]||0)+0.5*it.sets*f;}}
+  for(const d of routine.days){if(d.rest)continue;for(const it of d.items){const pc=planCredit(it);if(!pc)continue;const ex=EX(it.exId);out[ex.primary]=(out[ex.primary]||0)+it.sets*f*pc;for(const m of ex.secondary)out[m]=(out[m]||0)+0.5*it.sets*f*pc;}}
   return out;
 }
 /* The week the log started in counts only if it started on that week's
@@ -5707,7 +5721,9 @@ function weekSessions(ws){const end=addDays(ws,6);let n=0;for(const x of state.s
    it could never meet. In a deload week each exercise is half its sets,
    rounded up, as the sessions are. */
 function planHard(it){return state.settings.rirMode==='off'||!(+it.rir>3);}
-function planSetsPerWeek(R,deload){const n=R.days.reduce((a,d)=>a+(d.rest?0:d.items.reduce((x,it)=>x+(planHard(it)?(deload?Math.max(1,Math.ceil(+it.sets/2)):+it.sets):0),0)),0);return R.schedule==='weekly'?n:Math.round(n*weekFactor(R));}
+// A planned set at RIR 4 to 5 counts half with the setting on (r40), as logged ones do.
+function planCredit(it){return planHard(it)?1:rirHalfOn()&&+it.rir<=5?0.5:0;}
+function planSetsPerWeek(R,deload){const n=R.days.reduce((a,d)=>a+(d.rest?0:d.items.reduce((x,it)=>x+planCredit(it)*(deload?Math.max(1,Math.ceil(+it.sets/2)):+it.sets),0)),0);return R.schedule==='weekly'?n:Math.round(n*weekFactor(R));}
 function plannedPerWeek(R){return R.schedule==='weekly'?trainDaysOf(R):Math.round(trainDaysOf(R)*weekFactor(R));}
 /* Consecutive weeks in which you trained at least as many days as the routine
    plans. The current week joins the streak once it is met, and does not break
@@ -6742,7 +6758,7 @@ function weekStats(){
      where the split matters; summed across muscles it double-counts. The
      numerator is hard sets only, so a set left at RIR 4 or more does not
      count toward the week. */
-  let got=0;for(const x of state.sessions)if(x.date>=cur&&x.date<=addDays(cur,6))for(const b of x.ex){const e=EX(b.exId);for(const q of b.sets)if(isHard(q,e))got+=setCredit(q);}
+  let got=0;for(const x of state.sessions)if(x.date>=cur&&x.date<=addDays(cur,6))for(const b of x.ex){const e=EX(b.exId);for(const q of b.sets)got+=hardCredit(q,e);}
   const tgt=planSetsPerWeek(R,isDeloadWeek());
   return {R,weekly,planDays,doneDays,got,tgt,pct:tgt>0?Math.min(100,got/tgt*100):0,cardioMin,cardioN};
 }
@@ -7935,6 +7951,7 @@ function rirSettings(){
     <option value="half" ${rirScale()==='half'?'selected':''}>RIR, half reps (0, 0.5, 1 … 5)</option>
     <option value="rpe" ${rirScale()==='rpe'?'selected':''}>RPE (5 to 10, in halves)</option></select></label>`}
   ${s.rirMode==='off'?'':`<label class="check-inline"><input type="checkbox" data-bind="rirAsk" ${s.rirAsk===true?'checked':''}><span class="hastip" data-tip="Off: tap a set's RIR box when you want to rate it. On: the picker opens by itself after each set you tick.">Open the ${effWord()} picker after each set</span></label>
+  <label class="check-inline"><input type="checkbox" data-bind="rirHalf" ${s.rirHalf===true?'checked':''}><span class="hastip" data-tip="Off: a set counts toward your weekly sets at RIR 3 or less. On: a set at RIR 4 or 5 counts as half a set too, in your weekly sets, targets, and the plan's weekly sets. Growth rises as sets end closer to failure (Robinson 2024), so sets further away still do something; half is a convention. Estimates, PRs, and recovery are unchanged.">Count RIR 4 to 5 as half a set</span></label>
   <p class="small muted hastip" style="margin:4px 0 0" data-tip="A blank RIR is read as your usual RIR on that lift: the middle value of the sets of it you rated in the last 12 weeks, once there are 3. That is a convention, so rating a set only sometimes cannot make it look stronger or weaker. Until there are 3, a blank set counts as hard and as 0 reps left for 1RM estimates, which errs low and never inflates a PR. Recovery, calibration, and the light-load check use only the RIR you entered.">Skipping RIR on some sets is fine.</p>`}
   ${s.rirMode==='cal'&&c.recent<2?'<p class="small" style="margin:0"><b>Needs 2 calibration sets from the last 12 weeks before any correction applies.</b></p>':''}
   <p class="small hastip" style="margin:4px 0 0" data-tip="Off hides the RIR picker: every working set counts as hard and estimates use reps alone. Corrected shifts RIR you called at 4 or less by your typical error, shrunk toward zero while you have few calibration sets and capped at 2 reps; compound and isolation lifts use their own sets once each has 2. A set called at 0 is shifted too: unless a rep actually failed, 0 is still a call, and people under-call reps left by about 1 on average, only slightly less near failure (Halperin 2022). Your log never changes, so switching is reversible.">${esc(sum)}</p>`;
@@ -10035,7 +10052,7 @@ const ACT={
       const prAll=IDX().prs.filter(p=>(p.sid?p.sid===sess.id:p.date===sess.date)&&ex.some(b=>b.exId===p.exId));const prs=prAll.filter(p=>p.big);
       // Heavier than ever without a new best estimate: said once, quietly, not counted as a PR (r32).
       const heavier=prAll.filter(p=>!p.big&&p.type==='Weight PR').map(p=>{const e=EX(p.exId);return `${e.name} ${setShort(e,p.w,p.r)}`;});
-      const work=ex.reduce((a,b)=>a+b.sets.filter(isWork).length,0),hard=r1(ex.reduce((a,b)=>{const e=EX(b.exId);return a+b.sets.filter(q=>isHard(q,e)).reduce((c,q)=>c+setCredit(q),0);},0));
+      const work=ex.reduce((a,b)=>a+b.sets.filter(isWork).length,0),hard=r1(ex.reduce((a,b)=>{const e=EX(b.exId);return a+b.sets.reduce((c,q)=>c+hardCredit(q,e),0);},0));
       ui.todayDay=null;window.scrollTo(0,0);render();
       if(editing){toast('Session updated');return;}
       const lines=[`${work} working set${work===1?'':'s'}, ${hard} counted as hard`];
@@ -10458,6 +10475,7 @@ document.addEventListener('change',e=>{
     case 'loadFill':ACT.loadAsk({dataset:{v:t.checked?'fill':'grey'}});break;
     case 'rirScale':if(t.value==='half'||t.value==='rpe')state.settings.rirScale=t.value;else delete state.settings.rirScale;commit();rerenderKeepScroll();break;
     case 'rirAsk':if(t.checked)state.settings.rirAsk=true;else delete state.settings.rirAsk;commit();rerenderKeepScroll();break;
+    case 'rirHalf':snapshot();if(t.checked)state.settings.rirHalf=true;else delete state.settings.rirHalf;invalidate();commit();rerenderKeepScroll();toast(t.checked?'RIR 4 to 5 now counts as half a set':'Only RIR 3 or less counts',true);break;
     case 'smallPlates':if(t.checked)state.settings.smallPlates=true;else delete state.settings.smallPlates;commit();break;
     case 'bwEvery':{const v=+t.value;if(v===14||![0,7,30].includes(v))delete state.settings.bwEvery;else state.settings.bwEvery=v;commit();rerenderKeepScroll();break;}
     case 'todayStart':if(t.value==='free')state.settings.todayStart='free';else delete state.settings.todayStart;commit();rerenderKeepScroll();break;

@@ -1,13 +1,16 @@
-# Everything still open (as of r38 live, 2026-10-11)
+# Everything still open (as of r39 live, 2026-10-11)
 
 This is the tracking list. Items are built only when V says go. Owner items need V; the rest is build work. Nothing is done unless it says so. Numbers are kept stable; finished items move to Done at the bottom.
 
-## Live: r38 (published 2026-10-11, pull request #28; r37, r36 and r35 before it the same day, #27, #26 and #25; all merged by Claude at V's word "Deploy straight to live once fine and validated"; build 2026.10.11-r38)
+## Live: r39 (published 2026-10-11, pull request #29; r38, r37, r36 and r35 before it the same day, #28, #27, #26 and #25; all merged by Claude at V's word "Deploy straight to live once fine and validated"; build 2026.10.11-r39)
 
-## r39 (V, 2026-10-11: "others next on list"; item 172, first half), tests/r39.js
+## r40 (V, 2026-10-11: "others next on list"; item 41), tests/r40.js
+261. Built (item 41, as PROMPT.md asks): Settings, Count RIR 4 to 5 as half a set, off by default. On, a working set at RIR 4 or 5 counts half toward the weekly hard sets, the targets they are read against, This week, the recap, and the plan's weekly sets (planned RIR 4 or 5 the same way). Estimates, PRs, recovery, Pick for me and the per-workout flag still count hard sets only. Hidden with RIR off, where every working set counts already. A convention, in a tip and the Guide.
+
+## r39, live since 2026-10-11 (pull request #29) (V, 2026-10-11: "others next on list"; item 172, first half), tests/r39.js
 260. Built: an exercise's muscles lit on the body. A session exercise's ⋯ menu has Muscles worked: a sheet saying the main muscle and the helpers, with the flat figures (main in the accent, helpers lighter) or, when 3D is chosen, the same 3D body as Today's map, lit the same way, turning with Front, Side and Back and a drag; a tap names the muscle. The exercise editor shows the flat figures as the muscles are picked. Animated movement per exercise (172's second half) still needs a licensed animation library or hand-made animations.
 
-## r38, live since 2026-10-11 (pull request #28) (V, 2026-10-11: "proceed with this change and others next on list"; the lift goals listed under Priority 5 as 188), tests/r38.js
+## r38, live 2026-10-11 (pull request #28) (V, 2026-10-11: "proceed with this change and others next on list"; the lift goals listed under Priority 5 as 188), tests/r38.js
 258. Built: lift goals. On Stats > Lifts, Set a goal takes a load and reps (245 x 5; on a bodyweight lift the added load, empty for BW alone), stored on the exercise as `goal` {w, r} (absent when unset, so synced records hash as before). The line reads "Goal 245 lb × 5: 93% there, about 3 weeks if the trend holds", "within reach" when the best estimate already covers it, or "reached Oct 9" once a working set matched it. How close: the best estimate of the last 12 weeks (deload and lighter sessions left out) against what the goal takes done to failure, both by `fitE`, so a goal at any reps compares with sets at any reps. The weeks only while the lift is clearly rising (moving), trained lately, and within a year, from its weekly rate. Not on timed holds or assisted lifts. Change, Remove goal with Undo, the Guide's Volume and Stats topic. No new number: the estimate is the one the targets use. A phone still on r37 drops a goal it syncs; update every device.
 259. Built: the "Change and trend disagree" note under a lift's tiles is gone. Since r35 the lift shows one change number with the fitted rate behind the headline's i, so a note about a second number had nothing on screen to point at.
 
@@ -244,7 +247,7 @@ Every step V does by hand, with the exact code to paste, is in `OWNER.md`. Kept 
 
 ## Optional features (see PROMPT.md)
 40. Tape measurement error from your own repeat measurements (TEM, 2.77 x TEM threshold).
-41. Setting: count RIR 4-5 as half a set (off by default).
+41. Setting: count RIR 4-5 as half a set (off by default). Built in r40, item 261.
 42. RIR calibration split by rep band once there is enough data.
 43. Specialisation: Focus on up to 2 muscles.
 44. Pick for me "Strength focus".

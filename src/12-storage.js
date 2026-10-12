@@ -14,7 +14,7 @@ if(ENV==='preview')document.documentElement.dataset.env='preview';
 const HAD_LOG=(()=>{try{return localStorage.getItem(KEY)!=null;}catch(e){return false;}})();
 /* Shown in Settings, in diagnostics and in backups, so a bug report can be
    matched to the exact build. */
-const APP_VERSION='2026.10.11-r39';
+const APP_VERSION='2026.10.11-r40';
 /* The logo (r25): an upright dumbbell that is also the I of Ironlog. Same
    numbers as scripts/icons.py, which draws the app icons. */
 const MARK_SVG='<svg class="mark" viewBox="-242 -378 484 756" aria-hidden="true" focusable="false"><rect class="mk-h" x="-30" y="-300" width="60" height="600" rx="14"/><rect class="mk-h" x="-80" y="-192" width="160" height="32" rx="12"/><rect class="mk-h" x="-80" y="160" width="160" height="32" rx="12"/><rect class="mk-p" x="-240" y="-376" width="480" height="92" rx="30"/><rect class="mk-p" x="-190" y="-270" width="380" height="66" rx="26"/><rect class="mk-p" x="-190" y="204" width="380" height="66" rx="26"/><rect class="mk-p" x="-240" y="284" width="480" height="92" rx="30"/></svg>';
@@ -220,6 +220,8 @@ function normalize(s){
   // records keep their fingerprints and sync does not see them as edited.
   if(!['blue','volt','ember','pink'].includes(out.settings.accent))delete out.settings.accent;
   if(out.settings.rirAsk!==true)delete out.settings.rirAsk;
+  // Count RIR 4 to 5 as half a set (r40): absent unless on.
+  if(out.settings.rirHalf!==true)delete out.settings.rirHalf;
   // r34: adjusting the next sets is on unless turned off; only false is stored, so older saves hash as before.
   if(out.settings.autoAdj!==false)delete out.settings.autoAdj;
   // r34: weigh-in reminder in days (0 off); absent is every 14 days.

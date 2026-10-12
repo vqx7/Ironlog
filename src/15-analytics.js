@@ -103,6 +103,15 @@ const rirEst=(s,ex)=>{const q=rirEff(s,ex);return q!=null?q:ex?rirUsual(ex.id):n
    set with three drops is not four sets of work. */
 const isHard=(s,ex)=>{if(!isWork(s))return false;const q=rirEst(s,ex);return q==null||q<=3;};
 const setCredit=s=>s.drop?0.5:1;
+/* Count RIR 4 to 5 as half a set (r40, item 41; a setting, off by default).
+   Growth rises as sets end closer to failure (Robinson 2024), so sets a long
+   way short still do something; half is a convention, not a measured dose.
+   It moves the weekly hard sets, the bands they are read against and the
+   plan's weekly sets, and nothing else: estimates, PRs, recovery and the
+   per-session flag keep counting hard sets only. With RIR off every working
+   set is hard already, so the setting has nothing to do. */
+const rirHalfOn=()=>state.settings.rirHalf===true&&state.settings.rirMode!=='off';
+function hardCredit(s,ex){if(isHard(s,ex))return setCredit(s);if(!rirHalfOn()||!isWork(s))return 0;const q=rirEst(s,ex);return q!=null&&q>3&&q<=5?setCredit(s)*0.5:0;}
 /* One set as text, for history, tables and the coach: 225×5, or 45 s for a timed hold. */
 function setShort(ex,w,r){return ex.timed?`${loadLabel(ex,+w||0)} for ${r}s`:`${loadLabel(ex,+w||0)}×${r}`;}
 function setStr(ex,x){return `${x.warm?'(W) ':x.drop?'(D) ':''}${setShort(ex,x.w,x.r)}${!ex.timed&&x.rir!=null&&x.rir!==''?(rirScale()==='rpe'?' @RPE '+effShow(x.rir):' @'+effShow(x.rir)):''}${x.cal?' (RIR check)':''}`;}
@@ -313,11 +322,14 @@ function idxSessions(sessions){
         if(!isWork(s))continue;
         const logged=state.settings.rirMode==='off'||!(s.rir==null||s.rir==='');
         if(ss.date>=recentFrom){rirTotal++;if(logged)rirLogged++;}
-        if(!isHard(s,ex))continue;
-        const cr=setCredit(s);const q=rirEff(s,ex);weekHard[wk]=(weekHard[wk]||0)+cr;
+        const hard=isHard(s,ex);const cr=hard?setCredit(s):hardCredit(s,ex);if(!cr)continue;
+        const q=rirEff(s,ex);weekHard[wk]=(weekHard[wk]||0)+cr;
         for(const [m,f] of mus){
-          ws[m]=(ws[m]||0)+f*cr;dm[m]=(dm[m]||0)+f*cr;
+          ws[m]=(ws[m]||0)+f*cr;
           if(logged)wc[m]=(wc[m]||0)+f*cr;
+          // A half set from RIR 4 to 5 counts toward the week only; recovery and Pick for me read hard sets.
+          if(!hard)continue;
+          dm[m]=(dm[m]||0)+f*cr;
           const o=dx[m]||(dx[m]={fail:0,easy:0,hard:0,slow:false,novel:false});
           o.hard++;if(q===0)o.fail++;if(q!=null&&q>=3)o.easy++;if(SLOW_RECOVERY.has(ex.id))o.slow=true;if(novel)o.novel=true;
         }
@@ -789,7 +801,7 @@ function howToLink(e){return e&&e.name?`<a class="btn block" style="margin-top:6
 function plannedSets(routine){
   const out={};
   const f=weekFactor(routine);
-  for(const d of routine.days){if(d.rest)continue;for(const it of d.items){if(!planHard(it))continue;const ex=EX(it.exId);out[ex.primary]=(out[ex.primary]||0)+it.sets*f;for(const m of ex.secondary)out[m]=(out[m]||0)+0.5*it.sets*f;}}
+  for(const d of routine.days){if(d.rest)continue;for(const it of d.items){const pc=planCredit(it);if(!pc)continue;const ex=EX(it.exId);out[ex.primary]=(out[ex.primary]||0)+it.sets*f*pc;for(const m of ex.secondary)out[m]=(out[m]||0)+0.5*it.sets*f*pc;}}
   return out;
 }
 /* The week the log started in counts only if it started on that week's
