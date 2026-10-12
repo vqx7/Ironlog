@@ -962,6 +962,83 @@ input.need{box-shadow:0 0 0 2px var(--yellow)}
 .inj-list li{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:6px 0;border-bottom:1px solid var(--line-soft);font-size:15px}
 .inj-list li:last-child{border-bottom:0}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+/* ============================================================
+   r42 look (V, 2026-10-12): less of the generated-app look, with
+   every flow, class and colour meaning left as it was. What read as
+   generated was the defaults stacked together: a glowing gradient
+   card, a glowing pill button, all-caps condensed titles, letter-
+   spaced micro labels, frosted glass, dashed pill chips and a pill
+   behind the active tab. This block overrides only those, so it can
+   be read on its own and removed in one cut.
+   - Flat surfaces: no radial glows, coloured shadows or blur.
+   - Smaller radii (12, 10, 8) and rounded rectangles for buttons;
+     pills stay only where a floating control needs one.
+   - Titles in the body face, sentence case, tight tracking. The
+     condensed face stays for big numbers only (scoreboard numerals:
+     the ring, tiles, KPIs, the rest timer), where it reads as a
+     choice rather than a theme.
+   - Labels in sentence case at a readable size, not spaced caps.
+   ============================================================ */
+/* Specific enough to win over the theme blocks, which set these too. */
+html:root[data-theme],html:root:not([data-theme]){--r-lg:12px;--r-md:10px;--r-sm:8px;--shadow:none;--glass:var(--bg);--hero-bg:none;--hero-shadow:inset 0 0 0 1px var(--line)}
+/* The rest timer keeps a two-stop background (tests/r29b.js reads its
+   stops for contrast) but both stops are one colour, so it is flat. */
+html:root[data-theme],html:root:not([data-theme]){--dock-bg:linear-gradient(var(--dock),var(--dock))}
+.top,.tabs,.jump,#updbar{-webkit-backdrop-filter:none;backdrop-filter:none}
+#modal{-webkit-backdrop-filter:none;backdrop-filter:none;background:rgba(6,7,9,.6)}
+
+/* Type: one family for words, the condensed face for big numbers. */
+h1,h2,h3{font-family:var(--font);font-weight:700;letter-spacing:-.02em;line-height:1.1}
+h2{text-transform:none}
+.ph h2{font-size:32px;letter-spacing:-.03em}
+.hero h2{font-size:40px;font-weight:700;line-height:1.02;letter-spacing:-.035em;margin:4px 0 8px}
+.bh h3{font:650 19px/1.2 var(--font);text-transform:none;letter-spacing:-.01em}
+.bf-t b{font:650 16px/1.2 var(--font);text-transform:none;letter-spacing:-.01em}
+.dh .dlabel{font:700 17px var(--font);text-transform:none;letter-spacing:-.01em}
+.hw-t{font:700 16px/1.2 var(--font);text-transform:none;letter-spacing:-.01em}
+.cal-h h3,.cal-h h4{font:700 19px/1.1 var(--font);text-transform:none;letter-spacing:-.01em}
+.cal-inline .cal-h h4{font-size:17px}
+.prblk h4{font:700 19px/1.1 var(--font);text-transform:none;letter-spacing:-.01em}
+.ob-card h2,.ob-h{letter-spacing:-.025em}
+.ob-slide h2{letter-spacing:-.02em}
+
+/* Labels: sentence case, no tracking. */
+.eyebrow,.ph .kick{font:600 13px var(--font);letter-spacing:0;text-transform:none}
+.ring .rl,.srow .sl,.pick-grp,.sg.head,table.t th,.bm figcaption,.cal-g .wd,.wkbar .w .wd,.wk .d .wd,.rirstrip .rs-l{letter-spacing:0;text-transform:none}
+.srow .sl{font-size:12.5px}
+.sg.head,.pick-grp{font-size:12.5px}
+.ring .rl{font-size:10.5px;opacity:.75}
+.tabs button{letter-spacing:0;text-transform:none;font-size:11.5px}
+.bf-pr,.sg.pr::after{letter-spacing:.02em}
+
+/* The Today card: flat, a hairline, a smaller radius. */
+.hero{border-radius:14px}
+.hero .btn.primary{box-shadow:none}
+.btn.big{font:700 17px var(--font);letter-spacing:-.005em;text-transform:none;min-height:54px;border-radius:var(--r-md)}
+.ring .rp{filter:none}
+.ring .rt{stroke:color-mix(in srgb,var(--on-hero) 12%,transparent)}
+
+/* Buttons and chips: rounded rectangles. */
+.btn.primary,.block .btn.primary,.card .btn.primary,.sheet .btn.primary,.panel .btn.primary{border-radius:var(--r-md)}
+.chip{border-radius:var(--r-sm)}
+.tag,.pill,.lm{border-radius:6px}
+.cyc .c{border-radius:6px}
+.acctbar{border-radius:var(--r-md)}
+.wkview,.fbkind{border-radius:var(--r-md)}
+.wkview button,.fbkind button{border-radius:var(--r-sm)}
+.wkview button.on,.fbkind button.on{box-shadow:inset 0 0 0 1px var(--line)}
+.rirstrip{border-radius:var(--r-md)}
+.rirstrip button{border-radius:var(--r-sm)}
+/* "+ At a glance" and the like: plain outlined chips, not dashed pills in the accent. */
+.moreline .chip.add{border:1px solid var(--line);color:var(--ink-2);background:transparent}
+
+/* The active tab: a short bar on top and the accent icon, no pill behind it. */
+.tabs button[aria-current="page"]::before{top:0;width:24px;height:2px;margin-left:-12px;border-radius:0;background:var(--volt-line)}
+
+/* The compact rest timer keeps its shape but loses the glow. */
+#timer.compact{box-shadow:0 0 0 1px var(--line)}
+#tip{box-shadow:none}
+.bm3d-stage{background:transparent}
 </style>
 </head>
 <body>
@@ -1574,7 +1651,7 @@ if(ENV==='preview')document.documentElement.dataset.env='preview';
 const HAD_LOG=(()=>{try{return localStorage.getItem(KEY)!=null;}catch(e){return false;}})();
 /* Shown in Settings, in diagnostics and in backups, so a bug report can be
    matched to the exact build. */
-const APP_VERSION='2026.10.12-r41';
+const APP_VERSION='2026.10.12-r42';
 /* The logo (r25): an upright dumbbell that is also the I of Ironlog. Same
    numbers as scripts/icons.py, which draws the app icons. */
 const MARK_SVG='<svg class="mark" viewBox="-242 -378 484 756" aria-hidden="true" focusable="false"><rect class="mk-h" x="-30" y="-300" width="60" height="600" rx="14"/><rect class="mk-h" x="-80" y="-192" width="160" height="32" rx="12"/><rect class="mk-h" x="-80" y="160" width="160" height="32" rx="12"/><rect class="mk-p" x="-240" y="-376" width="480" height="92" rx="30"/><rect class="mk-p" x="-190" y="-270" width="380" height="66" rx="26"/><rect class="mk-p" x="-190" y="204" width="380" height="66" rx="26"/><rect class="mk-p" x="-240" y="284" width="480" height="92" rx="30"/></svg>';
