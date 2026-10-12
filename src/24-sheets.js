@@ -106,6 +106,12 @@ function renderModalBody(){
     <label class="field">Name<input type="text" id="rNewName" placeholder="e.g. Upper focus, 6 days"></label>
     <p class="small muted">Three empty training days. It is not active until you tap Make active.</p>
     <div class="row" style="margin-top:10px"><button class="btn primary" data-act="rNewSave">Create</button><button class="btn" data-act="mClose">Cancel</button></div></div>`;
+  }else if(m.kind==='goal'){
+    const e=EX(m.exId);const g=e.goal;
+    h=`<div class="sheet" role="dialog" aria-modal="true" aria-labelledby="goalH"><div class="sheet-h"><h3 id="goalH">Goal: ${esc(e.name)}</h3><button class="ib" aria-label="Close" data-act="mClose">✕</button></div>
+    <div class="grid2"><label class="field">${e.bw?`Added load (${U()})`:`Load (${U()}${loadNote(e)})`}<input type="text" inputmode="decimal" id="goalW" value="${g?fmtW(g.w):''}" placeholder="${e.bw?'0':''}"></label>
+    <label class="field">Reps<input type="text" inputmode="numeric" id="goalR" value="${g?g.r:''}"></label></div>
+    <div class="row" style="margin-top:12px"><button class="btn primary" data-act="goalSave">Save</button>${g?'<button class="btn danger" data-act="goalClear">Remove goal</button>':''}<button class="btn" data-act="mClose">Cancel</button></div></div>`;
   }else if(m.kind==='inc'){
     const e=EX(m.exId);
     h=`<div class="sheet" role="dialog" aria-modal="true"><div class="sheet-h"><h3>Load step: ${esc(e.name)}</h3><button class="ib" aria-label="Close" data-act="mClose">✕</button></div>
