@@ -12,7 +12,7 @@ const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log
 const CLOCK = '2026-10-13T10:00:00';
 const wait = ms => new Promise(r => setTimeout(r, ms));
 // Each payload names itself, so a hit says which one got through.
-const P = ['<img src=x id=pwn1 onerror=__xss=1>', '"><svg id=pwn2 onload=window.__xss=2>', "'><a id=pwn3 href=javascript:window.__xss=3>x</a>", '</textarea><script id=pwn4>window.__xss=4</script>', '${window.__xss=5}'];
+const P = ['<img src=x id=pwn1 onerror=__xss=1>', '<b class=pwnb>b</b>', '"><svg id=pwn2 onload=window.__xss=2>', "'><a id=pwn3 href=javascript:window.__xss=3>x</a>", '</textarea><script id=pwn4>window.__xss=4</script>', '${window.__xss=5}'];
 const ALL = P.join(' ');
 
 (async () => {
@@ -43,19 +43,33 @@ const ALL = P.join(' ');
       const out = [];
       if (window.__xss !== undefined) out.push(`${w}: payload ${window.__xss} ran`);
       for (const id of ['pwn1', 'pwn2', 'pwn3', 'pwn4']) if (document.getElementById(id)) out.push(`${w}: element ${id}`);
+      if (document.querySelector('.pwnb')) out.push(`${w}: element from <b class=pwnb>`);
       for (const el of document.querySelectorAll('*')) {
-        for (const a of el.attributes) if (/^on/i.test(a.name)) out.push(`${w}: ${el.tagName.toLowerCase()} ${a.name}`);
-        if (el.tagName === 'A' && el.hasAttribute('href')) { const h = el.getAttribute('href'); if (!/^(https:|mailto:|#|LICENSES\.txt$|\.\/|\/)/i.test(h) && h !== '') out.push(`${w}: link ${h.slice(0, 60)}`); }
+        for (const a of el.attributes) {
+          if (/^on/i.test(a.name)) out.push(`${w}: ${el.tagName.toLowerCase()} ${a.name}`);
+          // Any URL-bearing attribute, on any element (an svg <a> too), never javascript: (the r44 review).
+          if (/^(href|src|action|formaction|xlink:href|data|srcdoc)$/i.test(a.name) && /^\s*javascript:/i.test(a.value)) out.push(`${w}: ${a.name} ${a.value.slice(0, 40)}`);
+          if (/^srcdoc$/i.test(a.name)) out.push(`${w}: srcdoc`);
+        }
+        if (el.tagName.toLowerCase() === 'a' && el.hasAttribute('href')) { const h = el.getAttribute('href'); if (!/^(https:|mailto:|#|LICENSES\.txt$|\.\/|\/)/i.test(h) && h !== '') out.push(`${w}: link ${h.slice(0, 60)}`); }
         if (el.tagName === 'SCRIPT' && el.closest('#view,#modal,#toast')) out.push(`${w}: script in the page`);
       }
+      // Anything added or changed since the last scan, caught as it happened (a timer, a chart mounted later).
+      for (const x of (window.__mut || []).splice(0)) out.push(`${w}: ${x}`);
       return out;
     }, where);
+    // A watcher for the whole run: any element or attribute from a payload, whenever it appears.
+    await ev(() => { window.__mut = []; new MutationObserver(ms => { for (const m of ms) { const els = m.type === 'attributes' ? [m.target] : [...m.addedNodes].filter(n => n.nodeType === 1).flatMap(n => [n, ...n.querySelectorAll('*')]);
+      for (const el of els) { if (/^pwn/.test(el.id || '') || (el.classList && el.classList.contains('pwnb'))) window.__mut.push(`added ${el.tagName.toLowerCase()} ${el.id || el.className}`); for (const a of el.attributes || []) if (/^on/i.test(a.name)) window.__mut.push(`added ${a.name}`); } } }).observe(document.documentElement, { subtree: true, childList: true, attributes: true }); });
     const bad = [];
     // The detector itself works: a planted element, attribute and link are each caught.
     await ev(() => document.getElementById('view').insertAdjacentHTML('beforeend', '<span id="pwn1" onclick="1"></span><a id="plant" href="javascript:void 0">x</a>'));
     const caught = await scan('planted');
     await ev(() => { document.getElementById('pwn1').remove(); document.getElementById('plant').remove(); });
-    ok(caught.some(x => /element pwn1/.test(x)) && caught.some(x => /onclick/.test(x)) && caught.some(x => /link javascript/.test(x)), 'the scan catches a planted element, event attribute and javascript link', caught);
+    await ev(() => document.getElementById('view').insertAdjacentHTML('beforeend', '<b class="pwnb">b</b><svg id="plant2"><a href="javascript:void 0"><text>x</text></a></svg>'));
+    const caught2 = await scan('planted again');
+    await ev(() => { document.querySelector('.pwnb').remove(); document.getElementById('plant2').remove(); window.__mut.length = 0; });
+    ok(caught.some(x => /element pwn1/.test(x)) && caught.some(x => /onclick/.test(x)) && caught.some(x => /link javascript/.test(x)) && caught.some(x => /added span pwn1/.test(x)) && caught2.some(x => /pwnb/.test(x)) && caught2.some(x => /href javascript/.test(x)), 'the scan catches a planted element, event attribute, javascript link, an element with no id, an svg link, and the watcher sees them added', [caught, caught2]);
     const notOpen = [];
     const openAll = () => ev(() => { document.querySelectorAll('details').forEach(d => d.open = true); });
     // Every tab with every section open.
@@ -73,19 +87,39 @@ const ALL = P.join(' ');
       ['goal', () => { window.__ironlog.openModal({ kind: 'goal', exId: 'bench' }); }],
       ['routine picker', () => { window.__ironlog.openModal({ kind: 'templates', from: 'plan' }); }],
       ['injury', () => { window.__ironlog.openModal({ kind: 'injury' }); }],
-      ['change day', () => { window.__ironlog.ACT.startAltOpen({ dataset: {} }); }]
+      ['change day', () => { window.__ironlog.ACT.startAltOpen({ dataset: {} }); }],
+      ['change day, blank-session mode', () => { const L = window.__ironlog; L.state.settings.todayStart = 'free'; L.ACT.startAltOpen({ dataset: { free: '1' } }); }],
+      ['calendar', () => { window.__ironlog.ACT.calOpen({ dataset: {} }); }],
+      ['past workout', () => { const L = window.__ironlog; L.ACT.pastOpen({ dataset: { date: L.addDays(L.today(), -1) } }); }],
+      ['limited equipment', () => { const L = window.__ironlog; const R = L.activeRoutine(); L.ACT.eqOpen({ dataset: { day: String(R.days.findIndex(d => !d.rest)) } }); }],
+      ['delete routine', () => { const L = window.__ironlog; L.state.routines.push(L.routineFromTemplate('ul4')); L.ui.bRoutine = L.state.activeRoutineId; L.ui.tab = 'program'; L.render(); L.ACT.rDel(); }]
     ];
     for (const [name, f] of sheets) {
       await ev(f); await wait(80); if (await ev(() => document.getElementById('modal').hidden)) notOpen.push(name); bad.push(...await scan(name)); await ev(() => { if (window.__ironlog.ui.modal) window.__ironlog.ACT.mClose(); });
     }
+    await ev(() => { const L = window.__ironlog; delete L.state.settings.todayStart; L.state.routines = L.state.routines.filter(r => r.id === L.state.activeRoutineId || L.state.sessions.some(s => s.routineId === r.id)); });
+    // Plan with the custom exercise open, the library, and Add exercises, with the payload typed into each search.
+    await ev(() => { const L = window.__ironlog; L.ui.tab = 'program'; L.ui.planView = 'routine'; const R = L.activeRoutine(); const it = R.days.flatMap(d => d.items).find(i => i.exId === 'xsx'); L.ui.openItem = it && it.uid; L.ui.folds['program:library'] = true; L.ui.folds['program:days'] = true; L.render(); });
+    await openAll(); await wait(60); bad.push(...await scan('plan, item open'));
+    for (const sel of ['[data-bind="bLibQ"]']) if (await B.page.$(sel)) { await B.page.fill(sel, P[0]); await wait(80); bad.push(...await scan('plan, add exercises search')); await B.page.fill(sel, P[2].slice(0, 30)); await wait(80); bad.push(...await scan('plan, add exercises search 2')); } else notOpen.push('add exercises search');
+    await ev(() => { const L = window.__ironlog; L.ui.planView = 'library'; L.render(); }); await openAll();
+    if (await B.page.$('[data-bind="libQ"]')) { await B.page.fill('[data-bind="libQ"]', P[1]); await wait(80); bad.push(...await scan('exercise library search')); } else notOpen.push('library search');
+    await ev(() => { const L = window.__ironlog; L.ui.planView = 'routine'; L.ui.libQ = ''; L.ui.bLibQ = ''; L.render(); });
     // The session in progress, its exercise menu, and Pick for me.
     await ev(p => { const L = window.__ironlog; L.ui.tab = 'today'; L.render(); const R = L.activeRoutine(); const day = R.days.find(d => d.items.some(i => i.exId === 'xsx'));
       L.state.draft = { id: 'dx', date: L.today(), dayIdx: R.days.indexOf(day), dayId: day.id, dayName: day.name, routineId: R.id, notes: p.join(' '), startedAt: Date.now(), ex: day.items.slice(0, 3).map(i => ({ ...L.newBlock(i.exId, { ...i }, {}), note: p.join(' ') })), cardio: [] };
       L.saveNow(); L.render(); }, P);
     await openAll(); await wait(60); bad.push(...await scan('session'));
-    for (const [name, f] of [['exercise menu', () => window.__ironlog.ACT.bMenu({ dataset: { b: '0' } })], ['muscles worked', () => window.__ironlog.ACT.bMus({ dataset: { b: '0' } })], ['pick for me', () => window.__ironlog.ACT.pickEx()]]) {
+    for (const [name, f] of [['exercise menu', () => window.__ironlog.ACT.bMenu({ dataset: { b: '0' } })], ['muscles worked', () => window.__ironlog.ACT.bMus({ dataset: { b: '0' } })], ['pick for me', () => window.__ironlog.ACT.pickEx()], ['exercise note', () => window.__ironlog.ACT.bNote({ dataset: { b: '0' } })], ['swap', () => window.__ironlog.ACT.bSwap({ dataset: { b: '0' } })], ['load step', () => window.__ironlog.ACT.bInc({ dataset: { b: '0' } })], ['add exercise', () => window.__ironlog.ACT.pickSession()]]) {
       await ev(f); await wait(80); if (await ev(() => document.getElementById('modal').hidden)) notOpen.push(name); bad.push(...await scan(name)); await ev(() => { if (window.__ironlog.ui.modal) window.__ironlog.ACT.mClose(); });
     }
+    // The picker's search with the payload typed (its list redraws on every key).
+    await ev(() => window.__ironlog.ACT.pickSession()); await wait(80);
+    if (await B.page.$('#pickQ')) { await B.page.fill('#pickQ', P[3]); await wait(100); bad.push(...await scan('picker search')); await B.page.fill('#pickQ', P[0]); await wait(100); bad.push(...await scan('picker search 2')); } else notOpen.push('picker search');
+    await ev(() => { if (window.__ironlog.ui.modal) window.__ironlog.ACT.mClose(); });
+    // The recap after Finish, with the session's notes and names in it.
+    await ev(() => { const L = window.__ironlog; const d = L.state.draft; d.ex.forEach(b => b.sets.forEach(s => { s.r = 8; s.done = true; })); L.saveNow(); L.ACT.finishNow(); }); await wait(150);
+    if (await ev(() => document.getElementById('modal').hidden)) notOpen.push('recap'); bad.push(...await scan('recap')); await ev(() => { if (window.__ironlog.ui.modal) window.__ironlog.ACT.mClose(); });
     // An import of pasted notes whose exercise names are payloads: the preview lists names it does not know.
     await ev(p => window.__ironlog.impStart({ text: `2026-10-01\n${p[0]} 3x10 @ 60\n${p[1]}\n${p[2]} 5x5 100` }), P); await wait(200);
     if (await ev(() => !/pwn/.test(document.getElementById('modal').innerText))) notOpen.push('import preview');

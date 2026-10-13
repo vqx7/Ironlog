@@ -328,6 +328,16 @@ const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
         L.state.sessions.push({ id: 'pk', date: L.addDays(T, -40), notes: '', free: true, ex: [{ exId: 'plank', sets: [{ w: 0, r: 45 }, { w: 0, r: 50 }] }] });
         L.state.sessions.push({ id: 'pb', date: L.addDays(T, -60), notes: '', free: true, ex: [{ exId: 'hammer', sets: [{ w: 15, r: 10 }, { w: 15, r: 9 }] }] }); L.invalidate();
         o.t = L.suggest('plank', { sets: 2, repMin: 30, repMax: 60, rir: 1, rest: 60 }, {}).prev; o.b = L.suggest('hammer', { sets: 2, repMin: 8, repMax: 12, rir: 1, rest: 60, inc: 2.26796185 }, {}).prev; o.bBack = L.suggest('hammer', { sets: 2, repMin: 8, repMax: 12, rir: 1, rest: 60, inc: 2.26796185 }, {}).back; return o; });
+      // From the review: a top single and a pyramid. The column shows the sets at the working load, the ones the grey reps repeat, row for row.
+      const al = await ge(() => { const L = window.__ironlog; const T = L.today(); const kg = x => x; const mk = (id, ex, sets) => ({ id, date: L.addDays(T, -3), notes: '', free: true, ex: [{ exId: ex, rr: [6, 10], sets: sets.map(([w, r]) => ({ w, r, rir: 2 })) }] });
+        L.state.sessions = L.state.sessions.filter(x => !x.ex.some(e => e.exId === 'bench' || e.exId === 'backSquat'));
+        L.state.sessions.push(mk('ts', 'bench', [[100, 1], [90, 8], [90, 8], [90, 7]]), mk('py', 'backSquat', [[100, 10], [110, 8], [120, 6]])); L.invalidate();
+        const plan = { sets: 3, repMin: 6, repMax: 10, rir: 1, rest: 120, inc: 2.26796185 };
+        const one = L.newBlock('bench', plan, {}), py = L.newBlock('backSquat', plan, {});
+        const lbl = w => L.fmtW(w);
+        return { one: { prev: one.prev, off: one.prevOff, lastR: one.lastR, want: [90, 90, 90].map((w, i) => `${lbl(w)}×${[8, 8, 7][i]}`) }, py: { prev: py.prev, off: py.prevOff, lastR: py.lastR, want: [`${lbl(120)}×6`] } }; });
+      ok(same(al.one.prev, al.one.want) && al.one.off === true && same(al.one.lastR, [8, 8, 7]), 'after a top single, the column shows the three working sets beside the rows that repeat them (8, 8, 7), and the line above keeps the single', al.one);
+      ok(same(al.py.prev, al.py.want) && al.py.off === true && same(al.py.lastR, [6]), 'after a pyramid, the column shows the set at the working load, the one the grey reps repeat', al.py);
       ok(['n', 'l', 'd'].every(k => Array.isArray(paths[k]) && paths[k].length) && same(paths.n, paths.l) && same(paths.n, paths.d) && same(paths.t, ['BW for 45s', 'BW for 50s']) && paths.bBack > 0 && Array.isArray(paths.b) && paths.b.length === 2, 'a normal day, a lighter day, a deload, a hold and a lift back after weeks off all carry last time\'s sets', paths);
     }
     ok(!G.errors.length, `${tag}: no page errors`, G.errors);

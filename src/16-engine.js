@@ -62,8 +62,8 @@ function suggest(exId,plan,opts){
   const w=w0>0||ex.assist?dw:w0;
   // Grey reps at the bottom of the range: at about 90% of the load that is 3 or more in reserve for anyone in the range last time.
   const n=Math.max(1,(base.lastR||[]).length||+plan.sets||1);
-  if(back)return snapUnit(ex,plan,{top:base.top,prev:base.prev,w,text:`${base.last} ${word}: about ${lbl(w)} for ${repSpan(plan.repMin,plan.repMax,'-')} with 2 or more reps in reserve. Next time picks up from here.`,lastR:Array(n).fill(+plan.repMin),basis:base.basis,last:base.last,target:'',tgt:null,easier:null,back:Math.round(off/7)},true);
-  return snapUnit(ex,plan,{top:base.top,prev:base.prev,w,text:`${base.last} ${word}: about ${lbl(w)} for ${repSpan(plan.repMin,plan.repMax,'-')} with 3 or more reps in reserve. Half the usual sets, nothing to beat.`,lastR:Array(n).fill(+plan.repMin),basis:base.basis,last:base.last,target:'',tgt:null,easier:null},true);
+  if(back)return snapUnit(ex,plan,{top:base.top,prev:base.prev,prevOff:base.prevOff,w,text:`${base.last} ${word}: about ${lbl(w)} for ${repSpan(plan.repMin,plan.repMax,'-')} with 2 or more reps in reserve. Next time picks up from here.`,lastR:Array(n).fill(+plan.repMin),basis:base.basis,last:base.last,target:'',tgt:null,easier:null,back:Math.round(off/7)},true);
+  return snapUnit(ex,plan,{top:base.top,prev:base.prev,prevOff:base.prevOff,w,text:`${base.last} ${word}: about ${lbl(w)} for ${repSpan(plan.repMin,plan.repMax,'-')} with 3 or more reps in reserve. Half the usual sets, nothing to beat.`,lastR:Array(n).fill(+plan.repMin),basis:base.basis,last:base.last,target:'',tgt:null,easier:null},true);
 }
 /* The load engine's prescription for one lift (r36: the 250-line function cut
    into its cases, each below and tried in order, with no change to what comes
@@ -119,7 +119,7 @@ function suggestCore(exId,plan,opts){
   /* Injured area: no target to chase, load capped at last time, and a reminder
      to stop short. No target is set, so nothing in this session reads as
      "beaten" or "missed". */
-  if(injM)return {top,prev:L0.prev,w:top,text:`${lastS} Injury flagged (${injLabel(injM)}): stay at or below ${lbl(top)}, keep 3 or more reps in reserve, stop on pain.`,lastR,basis,last:lastS,target:'',tgt:null,easier:null,inj:injM};
+  if(injM)return {top,prev:L0.prev,prevOff:L0.prevOff,w:top,text:`${lastS} Injury flagged (${injLabel(injM)}): stay at or below ${lbl(top)}, keep 3 or more reps in reserve, stop on pain.`,lastR,basis,last:lastS,target:'',tgt:null,easier:null,inj:injM};
   /* A lighter day (r30) is a one-day deload: lighter loads, 3 or more in
      reserve, half the sets, no target. suggest() works it out from this
      function's normal prescription (r32). */
@@ -139,7 +139,7 @@ function suggestCore(exId,plan,opts){
   const C={ex,exId,plan,opts,T,all,every,exps,seen,inRR,injM,last,ws,stx,top,step,noAdd,abW,cap,atCap,capW,topPts,lastR,lastS,basis,lbl,prevBest,tgtRir,early,fl,tp};
   // The sets of the session shown as Last, for the Last column in the session (r44): each case's result carries them.
   const res=sgEasy(C)||sgPastRange(C)||sgBelowRange(C)||sgNoStep(C)||sgTopOfRange(C)||sgBadDay(C)||sgReps(C);
-  return res&&res.last?{...res,prev:L0.prev}:res;
+  return res&&res.last?{...res,prev:L0.prev,prevOff:L0.prevOff}:res;
 }
 /* No history yet: an injury note, a start from a close variation, or the first-time line. */
 function sgFirst(ex,plan,T,injM){
@@ -412,17 +412,17 @@ function suggestTimed(ex,plan,exps,opts,injM,all){
   const lbl=w=>`${loadLabel(ex,w)}${ex.bw?'':' '+U()}${loadNote(ex)}`;
   const L0=lastOf(all,last,p=>`${loadLabel(ex,p.w)} for ${p.r}s`);
   const lastR=L0.lastR,lastS=L0.line,basis=L0.basis;
-  if(injM)return {prev:L0.prev,w:top,text:`${lastS} Injury flagged (${injLabel(injM)}): stay at or below ${lbl(top)}, keep it easy, and stop on pain.`,lastR,basis,last:lastS,target:'',tgt:null,easier:null,inj:injM};
-  if(opts.deload||opts.light)return {prev:L0.prev,w:top,text:`${lastS} ${opts.deload?'Deload':'Lighter day'}: same load, hold about two thirds as long, and stop well before shaking.`,lastR,basis,last:lastS,target:'',tgt:null,easier:null};
+  if(injM)return {prev:L0.prev,prevOff:L0.prevOff,w:top,text:`${lastS} Injury flagged (${injLabel(injM)}): stay at or below ${lbl(top)}, keep it easy, and stop on pain.`,lastR,basis,last:lastS,target:'',tgt:null,easier:null,inj:injM};
+  if(opts.deload||opts.light)return {prev:L0.prev,prevOff:L0.prevOff,w:top,text:`${lastS} ${opts.deload?'Deload':'Lighter day'}: same load, hold about two thirds as long, and stop well before shaking.`,lastR,basis,last:lastS,target:'',tgt:null,easier:null};
   const step=incOf(ex,plan,top);const cap=capOf(ex,plan,top);
   if(step>0&&topPts.every(p=>p.r>=plan.repMax)&&!atCapOf(ex,plan,top,cap)){
     const nw=cap!=null?Math.min(top+step,cap):top+step;
-    return {prev:L0.prev,w:nw,text:`${lastS} Every hold at ${lbl(top)} reached ${plan.repMax}s: add ${fmtW(nw-top)} ${U()}${ex.bw?' (a plate or a vest)':''} and aim for ${plan.repMin}s+.`,lastR,basis,
+    return {prev:L0.prev,prevOff:L0.prevOff,w:nw,text:`${lastS} Every hold at ${lbl(top)} reached ${plan.repMax}s: add ${fmtW(nw-top)} ${U()}${ex.bw?' (a plate or a vest)':''} and aim for ${plan.repMin}s+.`,lastR,basis,
       last:lastS,target:`${lbl(nw)} for ${plan.repMin}s+ in every set`,tgt:{kind:'load',w:nw,repMin:+plan.repMin,prevBest:null},easier:null};
   }
   const total=topPts.reduce((a,p)=>a+p.r,0);const nT=topPts.length;
   const over=overSets(nT,plan,'hold');
-  return {prev:L0.prev,w:top,text:`${lastS} Beat ${total}s ${over} at ${lbl(top)}. When every hold reaches ${plan.repMax}s, add load.`,lastR,basis,
+  return {prev:L0.prev,prevOff:L0.prevOff,w:top,text:`${lastS} Beat ${total}s ${over} at ${lbl(top)}. When every hold reaches ${plan.repMax}s, add load.`,lastR,basis,
     last:lastS,target:`${total+1}s+ ${over} at ${lbl(top)}`,tgt:{kind:'reps',w:top,total,n:nT,rs:topPts.map(p=>p.r),prevBest:null},easier:null};
 }
 /* Default plan for an exercise that is not in the routine yet. Timed holds

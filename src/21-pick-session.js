@@ -446,16 +446,18 @@ function newBlock(exId,plan,opts){
   const sg=suggest(exId,plan,opts);
   // sw is the load the app suggested, kept so a later refresh can tell a row
   // still on the suggestion from one the lifter typed (refreshBlock).
-  return {exId,plan:{...plan},note:'',lastNote:lastNoteOf(exId,opts&&opts.before),inj:sg.inj||null,hint:sg.text,last:sg.last,prev:sg.prev||undefined,target:sg.target,tgt:sg.tgt,easier:sg.easier||null,lastR:sg.lastR,basis:sg.basis||undefined,sw:sg.w==null?null:sg.w,sets:Array.from({length:+plan.sets||3},()=>({w:fillLoads()?sg.w:null,r:null,rir:null,warm:false,drop:false,done:false}))};
+  return {exId,plan:{...plan},note:'',lastNote:lastNoteOf(exId,opts&&opts.before),inj:sg.inj||null,hint:sg.text,last:sg.last,prev:sg.prev||undefined,prevOff:sg.prevOff||undefined,target:sg.target,tgt:sg.tgt,easier:sg.easier||null,lastR:sg.lastR,basis:sg.basis||undefined,sw:sg.w==null?null:sg.w,sets:Array.from({length:+plan.sets||3},()=>({w:fillLoads()?sg.w:null,r:null,rir:null,warm:false,drop:false,done:false}))};
 }
 const DEFAULT_PLAN={sets:3,repMin:8,repMax:12,rir:1,rest:90,inc:5*LB};
 /* The Last column (r44, V: "what I did last time next to what I'm about to
-   do"). b.prev is the sets of the session the Last line names, as shown
-   there; row n of the working sets sits beside set n of last time. The line
-   above the sets then names only the session ("Last (Oct 10, trimmed)"); a
+   do"). b.prev is the sets at the working load of the session the Last line
+   names, the same sets the grey reps repeat; row n of the working sets sits
+   beside set n of them. The line above the sets then names only the session
+   ("Last (Oct 10, trimmed)"), unless a top single or a pyramid's other
+   loads were left out of the column (b.prevOff): then it keeps every set. A
    block from before r44 has no prev and keeps the whole line. */
 function lastCell(b,i){return Array.isArray(b.prev)&&i>=0&&i<b.prev.length?b.prev[i]:'';}
-function lastHead(b){const t=b.last||'';if(!Array.isArray(b.prev)||!b.prev.length)return t;const k=t.indexOf('):');return k>0?t.slice(0,k+1):t;}
+function lastHead(b){const t=b.last||'';if(!Array.isArray(b.prev)||!b.prev.length||b.prevOff)return t;const k=t.indexOf('):');return k>0?t.slice(0,k+1):t;}
 /* ---------- PROFILE (r44, item 271, with 43 and 44) ----------
    An optional short profile: goal, experience, days a week and up to two
    focus muscles. V's answers (2026-10-13): it sets defaults and new plan

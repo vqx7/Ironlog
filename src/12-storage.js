@@ -498,6 +498,7 @@ function normalize(s){
         last:typeof b.last==='string'?b.last:'',
         // Last time's sets as shown in the Last column (r44): short strings, absent in older drafts.
         prev:Array.isArray(b.prev)?b.prev.filter(x=>typeof x==='string').slice(0,30).map(x=>x.slice(0,40)):undefined,
+        prevOff:b.prevOff===true?true:undefined,
         target:typeof b.target==='string'?b.target:'',
         easier:typeof b.easier==='string'?b.easier:null,
         tgt:cleanTgt(b.tgt),

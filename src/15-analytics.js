@@ -1079,8 +1079,13 @@ function lastOf(all,base,fmt,repMin){
      again). With one set under the range among the rest, that set shows the
      bottom of the range instead. */
   const fl=repFloor(wp.length?wp:repsFrom.pts,repMin);
-  // prev: that session's sets as shown, one per row, for the Last column beside the sets (r44).
-  return {line,prev:rec.pts.map(fmt).slice(0,30),lastR:(wp.length?wp:repsFrom.pts).map(p=>fl(p.r)),basis:rec!==base?base.date:null};
+  /* prev: that session's sets at its working load, one per row, for the Last
+     column beside the sets (r44). The same rule as the grey reps, so row n of
+     Last is the set row n repeats: a top single or a pyramid's other loads
+     would push every set down a row (the r44 review). prevOff says some sets
+     are left out, so the line above the sets keeps listing them. */
+  const rl=workLoad(rec.pts,repMin||0);const rp=atLoad(rec.pts,rl);const shown=rp.length?rp:rec.pts;
+  return {line,prev:shown.map(fmt).slice(0,30),prevOff:shown.length<rec.pts.length||undefined,lastR:(wp.length?wp:repsFrom.pts).map(p=>fl(p.r)),basis:rec!==base?base.date:null};
 }
 /* One test for a session that is lighter or shorter on purpose (tagged), or
    also read as lighter from its loads (offSession): neither sets a target, a

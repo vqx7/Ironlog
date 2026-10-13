@@ -92,7 +92,7 @@ function gymNext(){const g=gymOf();return g?JSON.parse(JSON.stringify(g)):{u:gym
 function unitWords(){
   const d=state.draft;if(!d)return;invalidate();
   for(const b of d.ex){if(d.deload||d.light||b.light||b.inj)continue;const sg=suggestCore(b.exId,b.plan,{before:d.date});
-    if(b.sw!=null&&sg.w!=null&&Math.abs(sg.w-b.sw)>1e-6)continue;Object.assign(b,{hint:sg.text,last:sg.last,prev:sg.prev||undefined,target:sg.target,easier:sg.easier||null});}
+    if(b.sw!=null&&sg.w!=null&&Math.abs(sg.w-b.sw)>1e-6)continue;Object.assign(b,{hint:sg.text,last:sg.last,prev:sg.prev||undefined,prevOff:sg.prevOff||undefined,target:sg.target,easier:sg.easier||null});}
   saveNow();
 }
 function gymRefresh(){invalidate();if(state.draft)for(const id of new Set(state.draft.ex.map(b=>b.exId)))refreshEx(id);}
