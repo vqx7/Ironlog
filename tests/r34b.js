@@ -186,7 +186,7 @@ const ODD = /shared (phone|device|computer)|someone else|another person|other pe
     const l0 = await ev(() => (document.getElementById('sessLeft') || {}).textContent);
     await tick(0, 0, 10, 1); await tick(0, 1, 10, 1);
     const l1 = await ev(() => (document.getElementById('sessLeft') || {}).textContent);
-    ok(/about \d+ min left/.test(l0 || '') && l1 === '', 'the header\'s minutes left: shown with sets to do, gone once every set is ticked' + T, { l0, l1 });
+    ok(/~\d+ min left/.test(l0 || '') && l1 === '', 'the header\'s minutes left: shown with sets to do, gone once every set is ticked' + T, { l0, l1 });
 
     // 2g. A superset rests only while a later partner has a set to do.
     await start({ ss1: true, ex: [['bench', { sets: 3 }], ['latPulldown', { sets: 1 }]] });

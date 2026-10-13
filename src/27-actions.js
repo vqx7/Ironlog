@@ -275,7 +275,7 @@ const ACT={
     d.ex=d.ex.filter((b,bi)=>!drop.has(bi));
     fixSupersets(d.ex.map(b=>b.plan));
     closeModal();saveNow();rerenderKeepScroll();
-    toast(`Trimmed to about ${min5(pl.est)} min`,true);
+    toast(`Trimmed to ${estMin(min5(pl.est))}`,true);
   },
   chk(t){
     const d=state.draft;if(!d)return;const k=t.dataset.k,v=+t.dataset.v;
@@ -1012,7 +1012,7 @@ const ACT={
       const lines=[`${work} working set${work===1?'':'s'}, ${hard} ${rirHalfOn()?'counted toward the week':'counted as hard'}`];
       // A session dated in the past says where it went, since it is not at the top of History.
       if(sess.date!==today())lines.unshift(`Saved under ${fmtDateLong(sess.date)}`);
-      if(durMin){const pm=pmDraft;lines.push(`${durMin} minutes${pm&&!sess.free?`, planned about ${pm}`:''}`);}
+      if(durMin){const pm=pmDraft;lines.push(`${durMin} minutes${pm&&!sess.free?`, planned ${estMin(pm)}`:''}`);}
       if(targets)lines.push(`${beaten} of ${targets} exercise target${targets===1?'':'s'} beaten`);
       if(heavier.length)lines.push(`Heaviest yet: ${andList(heavier,4)}`);
       // The PR moment in the recap (item 28): its own gold block, each with what it beat.

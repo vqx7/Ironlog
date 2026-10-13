@@ -101,7 +101,7 @@ function renderModalBody(){
     <div class="tpl-list">${TEMPLATES.filter(t=>!t.hidden).map(t=>{
       // Minutes come from the same time model as Plan, so the list and the plan agree.
       // A range (r28): an average read as a promise, and Today then showed a longer first day.
-      const r=routineFromTemplate(t.key);const tr=r.days.filter(d=>!d.rest);const mins=tr.map(d=>Math.round(dayMinutes(d)/5)*5);const lo=Math.min(...mins),hi=Math.max(...mins);const min=lo===hi?`about ${lo} min`:`${lo} to ${hi} min`;
+      const r=routineFromTemplate(t.key);const tr=r.days.filter(d=>!d.rest);const mins=tr.map(d=>Math.round(dayMinutes(d)/5)*5);const lo=Math.min(...mins),hi=Math.max(...mins);const min=lo===hi?estMin(lo):`${lo} to ${hi} min`;
       return `<button class="tpl" data-act="tplPick" data-k="${t.key}"><span class="tpl-t">${esc(t.name)}</span><span class="tpl-w">${esc(t.who)}</span><span class="tpl-m">${esc(t.meta)} · ${min} · ${tr.map(d=>esc(d.name)).join(', ')}</span></button>`;}).join('')}</div></div>`;
   }else if(m.kind==='routineNew'){
     h=`<div class="sheet" role="dialog" aria-modal="true"><div class="sheet-h"><h3>New routine</h3><button class="ib" aria-label="Close" data-act="mClose">✕</button></div>
@@ -184,10 +184,10 @@ function renderModalBody(){
     const left=remainMin(d);const pl=m.mins?shortPlan(d,m.mins):null;
     const body=!left?'<p class="small">Nothing is left to trim: every planned set is done.</p>'
       :!pl?''
-      :pl.changes.length?`<ul class="short-list">${pl.changes.map(c=>`<li>${esc(c)}</li>`).join('')}</ul><p class="small muted" style="margin:6px 0 0">About ${min5(pl.est)} min after the change.${pl.over?' Still over, because exercises you have started are kept.':''} Done sets are never touched.</p>`
+      :pl.changes.length?`<ul class="short-list">${pl.changes.map(c=>`<li>${esc(c)}</li>`).join('')}</ul><p class="small muted" style="margin:6px 0 0">${estMin(min5(pl.est))} after the change.${pl.over?' Still over, because exercises you have started are kept.':''} Done sets are never touched.</p>`
       :`<p class="small">Everything left fits in ${m.mins} minutes as planned.</p>`;
     h=`<div class="sheet" role="dialog" aria-modal="true"><div class="sheet-h"><h3>Short on time</h3><button class="ib" aria-label="Close" data-act="mClose">✕</button></div>
-    ${left?`<p class="small muted" style="margin:0 0 8px">How long do you have? Planned: about ${min5(left)} min.</p>
+    ${left?`<p class="small muted" style="margin:0 0 8px">How long do you have? Planned: ${estMin(min5(left))}.</p>
     <div class="chips">${[15,20,30,45,60,75].map(v=>`<button class="chip ${m.mins===v?'on':''}" data-act="shortPick" data-v="${v}" aria-pressed="${m.mins===v}">${v} min</button>`).join('')}</div>`:''}
     ${body}
     <div class="row" style="margin-top:12px">${pl&&pl.changes.length?'<button class="btn primary" data-act="shortApply">Trim the session</button>':''}<button class="btn" data-act="mClose">${pl&&pl.changes.length?'Cancel':'Close'}</button></div>
@@ -221,7 +221,7 @@ function renderModalBody(){
     h=`<div class="sheet" role="dialog" aria-modal="true"><div class="sheet-h"><h3>Pick for me</h3><button class="ib" aria-label="Close" data-act="mClose">✕</button></div>
     <p class="small muted hastip" style="margin:0" data-tip="From this session so far, your last 7 days against your targets, recovery, injuries, and your trends.">What to add next.</p>
     ${allMet?'<p class="callout green" style="margin:8px 0 0">Every muscle is at or above target for the last 7 days. Anything more is optional.</p>':''}
-    ${picks.length?picks.map((x,k)=>{const p=x.plan;const ex=x.e;const mins=Math.round((p.sets*(setSecs(ex,p)+(+p.rest||0))+setupSecs(ex,2))/60);return `<div class="pcard${k===0?' best':''}"><div class="row spread" style="flex-wrap:nowrap;align-items:flex-start"><span style="min-width:0"><b>${esc(ex.name)}</b><br><span class="small muted">${p.sets} × ${repSpan(p.repMin,p.repMax,'-')}${ex.timed?'s':''}${ex.perSide?' per side':''} · about ${mins} min</span></span>${k===0?'<span class="tag green">Best fit</span>':''}</div>
+    ${picks.length?picks.map((x,k)=>{const p=x.plan;const ex=x.e;const mins=Math.round((p.sets*(setSecs(ex,p)+(+p.rest||0))+setupSecs(ex,2))/60);return `<div class="pcard${k===0?' best':''}"><div class="row spread" style="flex-wrap:nowrap;align-items:flex-start"><span style="min-width:0"><b>${esc(ex.name)}</b><br><span class="small muted">${p.sets} × ${repSpan(p.repMin,p.repMax,'-')}${ex.timed?'s':''}${ex.perSide?' per side':''} · ${estMin(mins)}</span></span>${k===0?'<span class="tag green">Best fit</span>':''}</div>
       <ul>${exReasons(x).map(r=>`<li>${esc(r)}</li>`).join('')}</ul>
       <div class="row" style="margin-top:8px"><button class="btn sm ${k===0?'primary':''}" data-act="pickExAdd" data-ex="${ex.id}" data-sets="${p.sets}">Add to session</button></div></div>`;}).join(''):'<p class="small">Nothing in your library fits: every exercise is already in this session or loads an injury.</p>'}
     <div class="row" style="margin-top:10px"><button class="btn sm" data-act="pickSession">Browse all exercises</button></div></div>`;
