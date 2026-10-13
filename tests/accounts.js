@@ -142,7 +142,7 @@ fs.cpSync(DIST, tmp, { recursive: true });
   ok(/email address/.test((await sheet(A)).err), 'a bad email is refused');
   await fill(A, 'signup', 'V@Example.com ', 'correct horse 1');
   let sh = await sheet(A);
-  ok(sh && sh.mode === 'wait' && /confirmation link to v@example\.com/.test(sh.text) && /signs you in by itself/.test(sh.text), 'sign-up asks to confirm the email, and says the app signs in by itself', sh);
+  ok(sh && sh.mode === 'wait' && /confirmation email to v@example\.com/.test(sh.text) && /signs you in by itself/.test(sh.text), 'sign-up asks to confirm the email, and says the app signs in by itself', sh);
   ok(fake.users.has('v@example.com') && !fake.users.get('v@example.com').confirmed, 'the account exists, unconfirmed (email stored lowercase)');
   // Item 61a: "I have confirmed" before the link was opened says so, and nothing is signed in.
   await A.page.click('#modal [data-act="acctWaitNow"]'); await A.page.waitForFunction(() => { const m = window.__ironlog.ui.modal; return m && !m.busy && m.err; }, null, { timeout: 10000 });

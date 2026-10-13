@@ -119,13 +119,16 @@ const PW = 'correct horse 45';
   const { open } = require('./h');
   const G = await open('index.html', { browser, clock: '2026-10-13T10:00:00' });
   const dup = await G.page.evaluate(() => { const L = window.__ironlog; L.state.settings.onboarded = true; L.makeDemo(); L.saveNow(); L.render(); document.querySelector('[data-act="startSession"]').click();
-    const d = L.state.draft; const b0 = d.ex.find(b => b.prev && b.prev.length); const i0 = d.ex.indexOf(b0);
+    const d = L.state.draft; // A lift whose target is more reps, so its grey reps are last time's (after a new load they are the range's bottom anyway).
+    const b0 = d.ex.find(b => b.prev && b.prev.length && b.tgt && b.tgt.kind === 'reps' && !b.prevOff); const i0 = d.ex.indexOf(b0);
     d.ex.push({ ...JSON.parse(JSON.stringify(b0)) }); const j = d.ex.length - 1; d.ex.splice(j - 1, 0, d.ex.splice(j, 1)[0]); L.saveNow(); L.render();
     const later = d.ex.map((b, i) => ({ b, i })).filter(x => x.b.exId === b0.exId).pop().i;
     const cells = i => [...document.querySelectorAll(`#blk-${i} .sg:not(.head) .ls`)].map(c => c.textContent);
     const hint = i => (document.querySelector(`#blk-${i} .hint .tp`) || {}).textContent;
-    return { i0, later, first: cells(i0), second: cells(later), h0: hint(i0), h1: hint(later), last: b0.last, prev: b0.prev }; });
+    const ph = i => [...document.querySelectorAll(`#blk-${i} .sg:not(.head) input[data-f="r"]`)].map(x => x.placeholder);
+    return { i0, later, first: cells(i0), second: cells(later), h0: hint(i0), h1: hint(later), last: b0.last, prev: b0.prev, ph0: ph(i0), ph1: ph(later), lastR: b0.lastR, repMin: d.ex[later].plan.repMin, copy: !!document.querySelector(`#blk-${later} [data-act="fillLast"]`) }; });
   ok(dup.later > dup.i0 + 1 && dup.first[0] === dup.prev[0] && dup.second.every(c => c === '–') && dup.h1 === dup.last && dup.h0 !== dup.last, 'the first block shows last time beside its rows; the later one shows dashes and the whole Last line', dup);
+  ok(dup.ph0[0] === String(dup.lastR[0]) && dup.ph1[0] === String(dup.repMin) && !dup.copy, 'its grey reps do not repeat the first block\'s either: the bottom of the range, and no Copy last', dup);
   await G.ctx.close();
 
   await browser.close(); await fake.close(); fs.rmSync(tmp, { recursive: true, force: true });

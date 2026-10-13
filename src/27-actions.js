@@ -167,6 +167,8 @@ const ACT={
   async acctCode(){
     const m=ui.modal,A=AUTH();if(!m||m.kind!=='account'||m.busy||!A||!A.verifyCode)return;
     for(const el of document.querySelectorAll('#modal [data-abind]'))m[el.dataset.abind]=el.value;
+    // A poll already signing in (the app just came back to the front): let it finish first, and stop if it signed in (r45 review).
+    if(acctWait.busy){m.busy=true;renderModal();for(let i=0;i<50&&acctWait.busy;i++)await new Promise(r=>setTimeout(r,100));m.busy=false;if(acct.user||ui.modal!==m)return;}
     const email=String(m.email||acctWait.email||'').trim().toLowerCase();const pw=acctWait.pw||String(m.pw||'');
     if(!EMAIL_RE.test(email)){m.err='Enter your email address.';renderModal();return;}
     clearTimeout(acctWait.timer);acctWait.timer=null;acctWait.busy=true;acctWait.coding=true;m.busy=true;m.err='';renderModal();
