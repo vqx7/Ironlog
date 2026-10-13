@@ -982,7 +982,12 @@ const ACT={
          check counts sessions. */
       if(!d.editingId&&calDueIdx(d)>=0&&!d.ex.some(b=>b.sets.some(x=>x.cal&&x.done)))state.settings.calSnooze=today();
       const upd=d.editingId?null:routineUpdates(d);
-      if(d.editingId){const i=state.sessions.findIndex(s=>s.id===d.editingId);if(i>=0){sess.demo=state.sessions[i].demo;state.sessions[i]=sess;}else state.sessions.push(sess);}
+      /* An edit rebuilds the session from the screen, so fields a newer build
+         stored on it, or on an exercise still in its place, are carried over
+         (r43, as normalize keeps them), each exercise matched by its lift in
+         order, so one moved during the edit keeps them; sets are what the edit changes. */
+      if(d.editingId){const i=state.sessions.findIndex(s=>s.id===d.editingId);if(i>=0){const o=state.sessions[i];sess.demo=o.demo;
+        keepExtra(o,sess);const used=new Set();sess.ex.forEach(b=>{const ob=o.ex.find(x=>x.exId===b.exId&&!used.has(x));if(ob){used.add(ob);keepExtra(ob,b);}});state.sessions[i]=sess;}else state.sessions.push(sess);}
       else state.sessions.push(sess);
       /* A real session saved while demo data is loaded (r30): the demo goes,
          so stats never mix generated sessions with yours (the review saw 33
