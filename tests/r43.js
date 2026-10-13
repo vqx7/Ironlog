@@ -100,6 +100,10 @@ const PATHS = (s, k) => {
   ok(hos.polluted === undefined && hos.proto, 'a "__proto__" field reaches no prototype', hos);
   ok(hos.keys.join() === 'one,pwn', 'only plain names are kept, within the size cap (a 3,000-character field and the field past the cap left out)', hos.keys);
   ok(!hos.shown && pwn === undefined, 'a kept field is never put on screen or run', [hos.shown, pwn]);
+  // Many small fields (the r43 review: 2,000 keys of 39-letter names passed a cap that counted values only).
+  const many = await ev(() => { const L = window.__ironlog; const b = { id: 'bwX', date: '2026-10-01', kg: 80 }; for (let i = 0; i < 2000; i++) b['k' + String(i).padStart(38, '0')] = 0;
+    const n = L.normalize({ ...JSON.parse(JSON.stringify(L.state)), bodyweights: [b] }); const o = n.bodyweights.find(x => x.id === 'bwX'); return { extra: Object.keys(o).length - 4, len: JSON.stringify(o).length, max: L.EXTRA_MAX }; });
+  ok(many.extra === 20 && many.len < many.max + 200, 'at most 20 unknown fields and 2,000 characters, names included, per record', many);
   await P.ctx.close();
 
   // ---------- 2. Through the cloud: a newer phone's fields survive this build's edits ----------
@@ -128,6 +132,29 @@ const PATHS = (s, k) => {
   ok(onA.r === 9 && onA.s === 'session' && onA.b === 'block', 'a session edited from History keeps its own and its exercise\'s newer fields (its sets are what the edit rewrites)', onA);
   ok(!A.errors.length && !B.errors.length, 'no console errors on either phone', [...A.errors, ...B.errors]);
   await A.ctx.close(); await B.ctx.close();
+
+  // A simulated next build that adds a field in the middle of the exercise record (the r43 review:
+  // this build put it last, the next one put it back, and each pull rewrote the core document).
+  {
+    const fs = require('fs'), os = require('os'), path = require('path');
+    const src = fs.readFileSync('index.html', 'utf8'); const anchor = 'id:fixId(e.id),name:e.name,';
+    ok(src.split(anchor).length === 2, 'the simulated next build finds the exercise record to change');
+    const next = path.join(os.tmpdir(), 'ironlog-next-r43test.html');
+    fs.writeFileSync(next, src.replace(anchor, anchor + "zz:typeof e.zz==='string'?e.zz:undefined,"));
+    store.clear(); const writes = {}; const set0 = store.set.bind(store); store.set = (k, v) => { const id = k.split('/').pop(); writes[id] = (writes[id] || 0) + 1; return set0(k, v); };
+    const X = await open('index.html', { browser, clock: CLOCK, setup: cloudSetup });
+    const N = await open(next, { browser, clock: CLOCK, setup: cloudSetup });
+    await wait(800);
+    await N.page.evaluate(() => { const L = window.__ironlog; L.state.settings.onboarded = true; L.state.exercises.find(x => x.id === 'bench').zz = 'hello'; L.invalidate(); });
+    await N.page.evaluate(() => window.__ironlog.flush()); await wait(400);
+    await X.page.evaluate(() => window.__ironlog.sync()); await wait(600);
+    const w0 = writes.core || 0; const seen = [];
+    for (let i = 0; i < 4; i++) { await N.page.evaluate(() => window.__ironlog.sync()); await wait(500); await X.page.evaluate(() => window.__ironlog.sync()); await wait(500); seen.push(writes.core || 0); }
+    const zz = await X.page.evaluate(() => window.__ironlog.state.exercises.find(x => x.id === 'bench').zz);
+    ok(seen[3] === seen[0] && seen[0] - w0 <= 1 && zz === 'hello', 'with a next build that orders the new field differently, the core document settles (no rewrite on every pull) and the field stays', { w0, seen, zz });
+    ok(!X.errors.length && !N.errors.length, 'no console errors with the next build', [...X.errors, ...N.errors]);
+    await X.ctx.close(); await N.ctx.close(); store.set = set0; fs.unlinkSync(next);
+  }
 
   // ---------- 3. The app itself never writes a field it does not know ----------
   const U = await open('index.html', { browser, clock: CLOCK, touch: true });
@@ -186,6 +213,20 @@ const PATHS = (s, k) => {
     // Only the newest 8.
     r = await setup([...Array.from({ length: 8 }, (_, i) => [`2026-09-${String(10 + i * 2).padStart(2, '0')}`, 2]), ...Array.from({ length: 8 }, (_, i) => [`2026-10-${String(1 + i).padStart(2, '0')}`, 1.25])]);
     ok(Math.abs(await paceNow() - median(r.out.slice(-8).map(x => x.dur / x.m))) < 1e-9, 'the newest 8 timed sessions set the pace' + T, await paceNow());
+    // Supersets in the plan: partners rest once in the model the pace is read against, as in every
+    // estimate (the r43 review: a lifter who supersets read 30% fast). Sessions that took exactly the
+    // day's own estimate give a pace of 1.
+    const ssr = await q(() => { const L = window.__ironlog; const s = L.state; s.sessions = []; const R = s.routines[0]; const di = R.days.findIndex(d => d.items.length >= 4); const day = R.days[di];
+      day.items.forEach((it, i) => { it.ss = i % 2 === 0 && day.items[i + 1] ? 'S' + i : (i % 2 ? 'S' + (i - 1) : null); }); L.invalidate();
+      const est = L.dayMinutes(day, false, true);
+      ['2026-10-01', '2026-10-05', '2026-10-08'].forEach((date, i) => s.sessions.push({ id: 'q' + i, date, dayIdx: di, dayId: day.id, dayName: day.name, routineId: R.id, notes: '', durMin: est,
+        ex: day.items.map(it => ({ exId: it.exId, rr: [it.repMin, it.repMax], sets: Array.from({ length: it.sets }, () => ({ w: 40, r: it.repMin, rir: 2 })) })) }));
+      L.invalidate(); const out = { est, model: L.sessModelMin(s.sessions[0]), pace: L.pace() }; day.items.forEach(it => { it.ss = null; }); L.invalidate(); return out; });
+    ok(ssr.model === ssr.est && Math.abs(ssr.pace - 1) < 0.03, 'supersets: a session as long as its estimate reads as pace 1' + T, ssr);
+    // Cardio before or after lifting is in the session's time but not in the model.
+    const cr = await setup([['2026-10-01', 1], ['2026-10-05', 1], ['2026-10-08', 1]]);
+    const pc = await q(list => { const L = window.__ironlog; const s = L.state; s.cardio = []; list.forEach((x, i) => { const ss = s.sessions[i]; ss.durMin += 15; s.cardio.push({ id: 'cc' + i, date: x.date, kind: 'bike', min: 15, hr: null, when: 'pre', note: '', demo: false }); }); L.invalidate(); const p = L.pace(); s.cardio = []; L.invalidate(); return p; }, cr.out);
+    ok(Math.abs(pc - median(cr.out.map(x => x.dur / x.m))) < 1e-9, 'cardio done before lifting is taken off the session\'s time' + T, [pc, cr.out]);
 
     // In a session: minutes left and Short on time use the same pace.
     r = await setup([['2026-09-27', 1.5], ['2026-10-01', 1.5], ['2026-10-05', 1.5]]);

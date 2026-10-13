@@ -113,25 +113,33 @@ const safeKey=k=>typeof k==='string'&&!/["'<>&`]/.test(k);
    is rebuilt from the fields this build knows, so a phone on an older build
    used to drop anything newer whenever it loaded or synced the log: an r37
    phone wiped a lift goal set on r38. A field this build does not know is now
-   copied after the ones it does, untouched and never read. Only plain JSON
-   data passes, under a name that cannot reach Object's prototype, and at most
-   EXTRA_MAX characters of it per record, so a hostile backup or cloud row can
-   neither run anything nor grow the log without bound. `known` names fields
-   this build writes only when valid (a load jump, a distance): an invalid one
-   is dropped, not kept as if it were new. A record with nothing unknown comes
-   out exactly as before, so its fingerprint and the sync are unchanged. */
-const EXTRA_MAX=2000;
+   kept, untouched and never read. Only plain JSON data passes, under a name
+   that cannot reach Object's prototype, at most EXTRA_KEYS fields and
+   EXTRA_MAX characters of them (names included) per record, so a hostile
+   backup or cloud row can neither run anything nor grow the log past what a
+   sync document holds. `known` names fields this build writes only when valid
+   (a load jump, a distance): an invalid one is dropped, not kept as if new.
+   With anything kept, the record takes the key order it came in: sync
+   documents are compared as written, key order included, so a newer build
+   that puts its field mid-record and this one that put it last would rewrite
+   each other's copy on every pull (found by the r43 review, the same loop as
+   r21 and r28's settings). A record with nothing unknown comes out exactly as
+   before, so its fingerprint and the sync are unchanged. */
+const EXTRA_MAX=2000,EXTRA_KEYS=20;
 const okExtraKey=k=>/^[A-Za-z][\w]{0,39}$/.test(k)&&!(k in Object.prototype);
 function keepExtra(src,out,known){
   if(!src||typeof src!=='object'||Array.isArray(src))return out;
-  let room=EXTRA_MAX;
+  let room=EXTRA_MAX,n=0;
   for(const k of Object.keys(src)){
+    if(n>=EXTRA_KEYS)break;
     if(k in out||(known&&known.has(k))||!okExtraKey(k))continue;
     const v=src[k];if(v===undefined||typeof v==='function')continue;
     let j;try{j=JSON.stringify(v);}catch(e){continue;}
-    if(j===undefined||j.length>room)continue;
-    room-=j.length;out[k]=JSON.parse(j);keepExtra.n++;
+    const cost=j===undefined?0:k.length+j.length+4;
+    if(j===undefined||cost>room)continue;
+    room-=cost;n++;out[k]=JSON.parse(j);keepExtra.n++;
   }
+  if(n){const own=k=>Object.prototype.hasOwnProperty.call(out,k);const ks=Object.keys(src).filter(own);for(const k of [...ks,...Object.keys(out).filter(k=>!ks.includes(k))]){const v=out[k];delete out[k];out[k]=v;}}
   return out;
 }
 keepExtra.n=0;

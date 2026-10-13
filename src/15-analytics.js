@@ -918,17 +918,24 @@ function dayMinutes(day,half,raw){
 const PACE_N=8,PACE_DAYS=84,PACE_MIN=3,PACE_LO=1/3,PACE_HI=3;
 function sessModelMin(ss){
   const R=state.routines.find(r=>r.id===ss.routineId)||activeRoutine();
+  // Superset links come from the day's plan, so partners rest once, as every
+  // estimate counts them (the r43 review: without it a lifter who supersets
+  // read about 30% faster than the model and every estimate came out short).
+  const day=ss.dayId?R.days.find(d=>d.id===ss.dayId):null;const link=id=>{const it=day&&day.items.find(i=>i.exId===id);return it&&it.ss||null;};
   const items=ss.ex.map(b=>{const p=planFor(b.exId,R,ss.dayId);const rr=Array.isArray(b.rr)?b.rr:[p.repMin,p.repMax];
-    return {...p,exId:b.exId,ss:null,repMin:rr[0],repMax:rr[1],rest:+p.rest||0,sets:b.sets.filter(x=>!x.warm).length};}).filter(it=>it.sets>0);
+    return {...p,exId:b.exId,ss:link(b.exId),repMin:rr[0],repMax:rr[1],rest:+p.rest||0,sets:b.sets.filter(x=>!x.warm).length};}).filter(it=>it.sets>0);
   return items.length?dayMinutes({items},false,true):0;
 }
 function paceRatios(){
-  const from=addDays(today(),-PACE_DAYS);const out=[];
+  const from=addDays(today(),-PACE_DAYS);const out=[];const sameDay={};for(const x of state.sessions)sameDay[x.date]=(sameDay[x.date]||0)+1;
   for(const ss of sortedSessions().slice().reverse()){
     if(out.length>=PACE_N||ss.date<from)break;
     if(ss.demo||!(ss.durMin>=1))continue;
     const m=sessModelMin(ss);if(m<1)continue;
-    const r=ss.durMin/m;if(r>=PACE_LO&&r<=PACE_HI)out.push(r);
+    // Cardio done before or after lifting is timed with the session but is not
+    // in the model (the r43 review); taken off when the day had one session.
+    const cm=sameDay[ss.date]===1?state.cardio.filter(c=>c.date===ss.date&&(c.when==='pre'||c.when==='post')).reduce((a,c)=>a+(+c.min||0),0):0;
+    const r=(ss.durMin-cm)/m;if(r>=PACE_LO&&r<=PACE_HI)out.push(r);
   }
   return out;
 }
