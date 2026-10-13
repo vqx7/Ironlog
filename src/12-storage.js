@@ -14,7 +14,7 @@ if(ENV==='preview')document.documentElement.dataset.env='preview';
 const HAD_LOG=(()=>{try{return localStorage.getItem(KEY)!=null;}catch(e){return false;}})();
 /* Shown in Settings, in diagnostics and in backups, so a bug report can be
    matched to the exact build. */
-const APP_VERSION='2026.10.12-r42';
+const APP_VERSION='2026.10.13-r43';
 /* The logo (r25): an upright dumbbell that is also the I of Ironlog. Same
    numbers as scripts/icons.py, which draws the app icons. */
 const MARK_SVG='<svg class="mark" viewBox="-242 -378 484 756" aria-hidden="true" focusable="false"><rect class="mk-h" x="-30" y="-300" width="60" height="600" rx="14"/><rect class="mk-h" x="-80" y="-192" width="160" height="32" rx="12"/><rect class="mk-h" x="-80" y="160" width="160" height="32" rx="12"/><rect class="mk-p" x="-240" y="-376" width="480" height="92" rx="30"/><rect class="mk-p" x="-190" y="-270" width="380" height="66" rx="26"/><rect class="mk-p" x="-190" y="204" width="380" height="66" rx="26"/><rect class="mk-p" x="-240" y="284" width="480" height="92" rx="30"/></svg>';
@@ -109,6 +109,33 @@ function did(tag,obj,i){let j='';try{j=JSON.stringify(obj);}catch(e){j=String(i)
 const okId=v=>typeof v==='string'&&/^[\w.:-]{1,100}$/.test(v)&&!(v in Object.prototype);
 function fixId(v){return okId(v)?v:'x'+hashStr(String(v));}
 const safeKey=k=>typeof k==='string'&&!/["'<>&`]/.test(k);
+/* Fields a newer build adds to a record, kept as they came (r43). Every record
+   is rebuilt from the fields this build knows, so a phone on an older build
+   used to drop anything newer whenever it loaded or synced the log: an r37
+   phone wiped a lift goal set on r38. A field this build does not know is now
+   copied after the ones it does, untouched and never read. Only plain JSON
+   data passes, under a name that cannot reach Object's prototype, and at most
+   EXTRA_MAX characters of it per record, so a hostile backup or cloud row can
+   neither run anything nor grow the log without bound. `known` names fields
+   this build writes only when valid (a load jump, a distance): an invalid one
+   is dropped, not kept as if it were new. A record with nothing unknown comes
+   out exactly as before, so its fingerprint and the sync are unchanged. */
+const EXTRA_MAX=2000;
+const okExtraKey=k=>/^[A-Za-z][\w]{0,39}$/.test(k)&&!(k in Object.prototype);
+function keepExtra(src,out,known){
+  if(!src||typeof src!=='object'||Array.isArray(src))return out;
+  let room=EXTRA_MAX;
+  for(const k of Object.keys(src)){
+    if(k in out||(known&&known.has(k))||!okExtraKey(k))continue;
+    const v=src[k];if(v===undefined||typeof v==='function')continue;
+    let j;try{j=JSON.stringify(v);}catch(e){continue;}
+    if(j===undefined||j.length>room)continue;
+    room-=j.length;out[k]=JSON.parse(j);keepExtra.n++;
+  }
+  return out;
+}
+keepExtra.n=0;
+const KNOWN_ITEM=new Set(['jump']),KNOWN_CARDIO=new Set(['dist']),KNOWN_MEAS=new Set(MEAS.map(x=>x[0]));
 /* A calibration set: the rep you would normally have stopped at, and the reps
    you thought were left there. The set itself is logged to failure. */
 function cleanCal(c){
@@ -131,10 +158,10 @@ const distShow=km=>Math.round((U()==='kg'?km:km/KM_MI)*100)/100;
 const distIn=v=>{const n=numIn(v);return n!=null&&n>0?Math.min(Math.round((U()==='kg'?n:n*KM_MI)*1000)/1000,1000):null;};
 function cleanCardio(c,draft,i){
   const m=numOr(c.min,NaN),hr=numOr(c.hr,NaN),dk=numOr(c.dist,NaN);
-  return {id:typeof c.id==='string'?fixId(c.id):did('c',c,i),date:isDate(c.date)?c.date:today(),kind:CARDIOL[c.kind]?c.kind:'other',
+  return keepExtra(c,{id:typeof c.id==='string'?fixId(c.id):did('c',c,i),date:isDate(c.date)?c.date:today(),kind:CARDIOL[c.kind]?c.kind:'other',
     min:isNum(m)&&m>0?Math.min(Math.round(m),600):(draft?null:1),hr:isNum(hr)&&hr>=30&&hr<=230?Math.round(hr):null,
     when:CWHENL[c.when]?c.when:'solo',note:typeof c.note==='string'?c.note.slice(0,200):'',demo:!!c.demo,
-    ...(isNum(dk)&&dk>0?{dist:Math.min(Math.round(dk*1000)/1000,1000)}:{})};
+    ...(isNum(dk)&&dk>0?{dist:Math.min(Math.round(dk*1000)/1000,1000)}:{})},KNOWN_CARDIO);
 }
 /* The load or reps target set when the session started. Only its numbers are
    read, so only numbers survive. */
@@ -149,7 +176,7 @@ function cleanTgt(t){
    Recently deleted, so a copy there can be compared with a live one. */
 const okSess=ss=>!!ss&&typeof ss==='object'&&isDate(ss.date)&&Array.isArray(ss.ex);
 function cleanSess(ss,si){
-  return ({
+  return keepExtra(ss,{
     id:typeof ss.id==='string'?fixId(ss.id):did('s',ss,si),date:ss.date,
     dayIdx:clampN(ss.dayIdx,0,MAX_DAYS-1,0),
     dayId:typeof ss.dayId==='string'?fixId(ss.dayId):null,
@@ -162,7 +189,7 @@ function cleanSess(ss,si){
     // Freestyle: not tied to a routine day. Check-in: the three pre-session taps.
     free:ss.free===true?true:undefined,
     chk:cleanChk(ss.chk)||undefined,
-    ex:ss.ex.filter(b=>b&&typeof b.exId==='string'&&Array.isArray(b.sets)).map(b=>({
+    ex:ss.ex.filter(b=>b&&typeof b.exId==='string'&&Array.isArray(b.sets)).map(b=>keepExtra(b,{
       exId:fixId(b.exId),
       note:typeof b.note==='string'?b.note:'',
       // Planned rep range at the time, [min,max]. Older sessions have none.
@@ -171,7 +198,7 @@ function cleanSess(ss,si){
       cut:b.cut===true?true:undefined,
       // One exercise made lighter mid-session (r31, Make it lighter): out of trends and targets, the rest of the session counts.
       light:b.light===true?true:undefined,
-      sets:b.sets.filter(x=>x&&typeof x==='object').map(x=>({
+      sets:b.sets.filter(x=>x&&typeof x==='object').map(x=>keepExtra(x,{
         // Below 0 only for assisted sets (bodyweight minus the machine's help).
         w:clampN(x.w,-300,20000*LB,0),
         r:Math.round(clampN(x.r,0,1000,0)),
@@ -282,7 +309,7 @@ function normalize(s){
 
   for(const k of ['exercises','routines','sessions','bodyweights','measurements','cardio','trash'])if(!Array.isArray(out[k]))out[k]=[];
 
-  out.exercises=out.exercises.filter(e=>e&&typeof e==='object'&&typeof e.id==='string'&&typeof e.name==='string').map(e=>({
+  out.exercises=out.exercises.filter(e=>e&&typeof e==='object'&&typeof e.id==='string'&&typeof e.name==='string').map(e=>keepExtra(e,{
     id:fixId(e.id),name:e.name,
     primary:MK.includes(e.primary)?e.primary:'chest',
     secondary:Array.isArray(e.secondary)?e.secondary.filter(m=>MK.includes(m)&&m!==e.primary):[],
@@ -351,7 +378,7 @@ function normalize(s){
         continue;
       }
       const dbase=typeof d.id==='string'?fixId(d.id):rid+'-d'+i;
-      const items=(Array.isArray(d.items)?d.items:[]).filter(it=>it&&typeof it.exId==='string').map((it,ii)=>({
+      const items=(Array.isArray(d.items)?d.items:[]).filter(it=>it&&typeof it.exId==='string').map((it,ii)=>keepExtra(it,{
         uid:typeof it.uid==='string'?fixId(it.uid):dbase+'-i'+ii,exId:fixId(it.exId),
         sets:clampN(it.sets,1,30,3),
         repMin:clampN(it.repMin,1,600,8),
@@ -362,12 +389,12 @@ function normalize(s){
         ss:typeof it.ss==='string'&&it.ss?fixId(it.ss):null,
         // r30: the load jump in percent, absent unless set (so older items keep their hash).
         ...(it.jump!=null&&it.jump!==''&&isNum(+it.jump)?{jump:Math.min(Math.max(+it.jump,0),20)}:{})
-      })).map(it=>(it.repMax<it.repMin?{...it,repMax:it.repMin}:it));
+      },KNOWN_ITEM)).map(it=>(it.repMax<it.repMin?{...it,repMax:it.repMin}:it));
       fixSupersets(items);
       let id=dbase;if(seen.has(id))id=id+'-'+i;seen.add(id);
-      days.push({id,name:typeof d.name==='string'?d.name:(schedule==='weekly'?DAYS[i]:`Day ${i+1}`),rest:!!d.rest,items});
+      days.push(keepExtra(d,{id,name:typeof d.name==='string'?d.name:(schedule==='weekly'?DAYS[i]:`Day ${i+1}`),rest:!!d.rest,items}));
     }
-    return {id:rid,name:typeof r.name==='string'?r.name:'Routine',schedule,days};
+    return keepExtra(r,{id:rid,name:typeof r.name==='string'?r.name:'Routine',schedule,days});
   });
 
   const cutoff=addDays(today(),-TRASH_DAYS);
@@ -408,14 +435,14 @@ function normalize(s){
 
   const bBefore=out.bodyweights.length;
   out.bodyweights=out.bodyweights.filter(b=>b&&isDate(b.date)&&isNum(numOr(b.kg,NaN))&&numOr(b.kg,0)>0)
-    .map((b,bi)=>({id:typeof b.id==='string'?fixId(b.id):did('b',b,bi),date:b.date,kg:Math.min(numOr(b.kg,0),BW_MAX_KG),demo:!!b.demo}));
+    .map((b,bi)=>keepExtra(b,{id:typeof b.id==='string'?fixId(b.id):did('b',b,bi),date:b.date,kg:Math.min(numOr(b.kg,0),BW_MAX_KG),demo:!!b.demo}));
   drop(bBefore-out.bodyweights.length);
 
   const mBefore=out.measurements.length;
   out.measurements=out.measurements.filter(m=>m&&isDate(m.date)).map((m,mi)=>{
     const o={id:typeof m.id==='string'?fixId(m.id):did('m',m,mi),date:m.date,demo:!!m.demo};
     for(const [k] of MEAS){const v=numOr(m[k],NaN);if(isNum(v)&&v>0)o[k]=Math.min(v,MEAS_MAX_CM);}
-    return o;
+    return keepExtra(m,o,KNOWN_MEAS);
   });
   drop(mBefore-out.measurements.length);
 
@@ -451,7 +478,7 @@ function normalize(s){
         rir:clampN(pl.rir,0,10,1),rest:clampN(pl.rest,0,1800,90),inc:clampN(pl.inc,0,500,5*LB),ss:typeof pl.ss==='string'&&pl.ss?fixId(pl.ss):null,
         ...(pl.jump!=null&&pl.jump!==''&&isNum(+pl.jump)?{jump:Math.min(Math.max(+pl.jump,0),20)}:{})};
       if(plan.repMax<plan.repMin)plan.repMax=plan.repMin;
-      return {exId:fixId(b.exId),plan,
+      return keepExtra(b,{exId:fixId(b.exId),plan,
         note:typeof b.note==='string'?b.note:'',
         inj:typeof b.inj==='string'&&(MK.includes(b.inj)||JK.includes(b.inj))?b.inj:null,
         hint:typeof b.hint==='string'?b.hint:'',
@@ -474,18 +501,18 @@ function normalize(s){
         // Editing a saved session keeps the rep range it was logged under.
         keepRR:b.keepRR===undefined?undefined:(Array.isArray(b.keepRR)&&b.keepRR.length===2?b.keepRR.map(v=>Math.round(+v)||1):null),
         lastNote:b.lastNote&&typeof b.lastNote==='object'&&typeof b.lastNote.text==='string'&&isDate(b.lastNote.date)?{date:b.lastNote.date,text:b.lastNote.text}:null,
-        sets:b.sets.filter(x=>x&&typeof x==='object').map(x=>({
+        sets:b.sets.filter(x=>x&&typeof x==='object').map(x=>keepExtra(x,{
           w:x.w==null?null:clampN(x.w,-300,20000*LB,0),
           r:x.r==null||x.r===''?null:Math.round(clampN(x.r,0,1000,0)),
           rir:x.rir==null||x.rir===''?null:clampN(x.rir,0,10,null),
           warm:!!x.warm,drop:!!x.drop&&!x.warm,done:!!x.done,
           cal:x.warm?undefined:(cleanCal(x.cal)||undefined)
-        }))};
+        }))});
     });
   }
 
   out.deloadWeek=isDate(out.deloadWeek)?out.deloadWeek:null;
-  out.injuries=(Array.isArray(out.injuries)?out.injuries:[]).filter(x=>x&&(MK.includes(x.m)||JK.includes(x.m))).map((x,xi)=>({id:typeof x.id==='string'?fixId(x.id):did('j',x,xi),m:x.m,note:typeof x.note==='string'?x.note:'',date:isDate(x.date)?x.date:today()}));
+  out.injuries=(Array.isArray(out.injuries)?out.injuries:[]).filter(x=>x&&(MK.includes(x.m)||JK.includes(x.m))).map((x,xi)=>keepExtra(x,{id:typeof x.id==='string'?fixId(x.id):did('j',x,xi),m:x.m,note:typeof x.note==='string'?x.note:'',date:isDate(x.date)?x.date:today()}));
   /* Former bests belonged to the Comeback tracker, removed at the owner's
      request in r19 together with any that were saved. Older saves, backups
      and cloud copies still carry them, so they are dropped here on every

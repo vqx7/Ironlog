@@ -396,7 +396,7 @@ function remainMin(d){
   // No rest is taken after the very last set, the same as the plan's estimate.
   let s=0,cN=0,lastRest=0;
   d.ex.forEach((b,bi)=>{const ex=EX(b.exId);const su=setupSecs(ex,cN);if(isCompound(ex))cN++;const n=b.sets.filter(x=>!x.done&&!x.warm).length;if(!n)return;const r=blockRest(d,bi);s+=n*(setSecs(ex,b.plan)+r)+(b.sets.some(x=>x.done)?0:su);lastRest=r;});
-  return Math.round(Math.max(0,s-lastRest)/60);
+  return Math.round(Math.max(0,s-lastRest)*pace()/60);
 }
 /* The whole session's planned minutes as it stands, with every set it has
    now (r30): after Short on time the recap compared the time taken with the
@@ -421,7 +421,8 @@ function shortPlan(d,mins){
     // Main (compound) lifts rank above isolation work, as the Short on time
     // help promises; priority and lagging muscles above both.
     return {bi,ex,undone,done,started,keep:undone,rest:blockRest(d,bi),per:setSecs(ex,b.plan),su,score:(pri.has(ex.primary)?4:0)+(lag.has(ex.primary)?2:0)+(isCompound(ex)?1:0)-bi*0.01};});
-  const cost=()=>bl.reduce((a,x)=>a+(x.keep?x.keep*(x.per+x.rest)+(x.started?0:x.su):0),0)/60;
+  const pc=pace();
+  const cost=()=>bl.reduce((a,x)=>a+(x.keep?x.keep*(x.per+x.rest)+(x.started?0:x.su):0),0)*pc/60;
   const byLow=arr=>arr.slice().sort((a,b)=>a.score-b.score);
   let guard=0;
   while(cost()>mins&&guard++<500){const c=byLow(bl.filter(x=>x.keep>0&&x.done+x.keep>2));if(!c.length)break;c[0].keep--;}

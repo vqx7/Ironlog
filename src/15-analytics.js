@@ -26,8 +26,8 @@ function loadLabel(ex,kg){if(ex.bw){return kg>0?`BW+${fmtW(kg)}`:kg<0?`BW−${fm
 const loadIn=(ex,w)=>w==null?'':fmtW(ex&&ex.assist?-w:w);
 
 /* ---------- analytics ---------- */
-let _idx=null,_cal=null,_bwRef;
-function invalidate(){_idx=null;EXMAP=null;_cal=null;_rirUse=null;_bwRef=undefined;}
+let _idx=null,_cal=null,_bwRef,_pace=null;
+function invalidate(){_idx=null;EXMAP=null;_cal=null;_rirUse=null;_bwRef=undefined;_pace=null;}
 function bwKnownAt(date){let best=null;for(const b of state.bodyweights)if(b.date<=date&&(!best||b.date>=best.date))best=b;return best?best.kg:null;}
 function bwAt(date){
   let best=null,earliest=null;
@@ -880,7 +880,7 @@ function avgWeeks(n,lightToo){
   Object.defineProperty(out,'_conf',{value:conf,enumerable:false});
   return out;
 }
-/* Time estimate, labelled "about" wherever it shows. Per set: 40 s up to 12
+/* Time estimate, worded by estMin ("~75 min") wherever it shows. Per set: 40 s up to 12
    reps and 3 s for each rep past that (middle of the planned range), twice
    that plus 15 s to switch for a lift done one side at a time, the hold plus
    20 s for a timed hold; then its rest (none between superset partners).
@@ -894,14 +894,49 @@ function setSecs(ex,p){
   return t;
 }
 function setupSecs(ex,compoundsBefore){return isCompound(ex)?(compoundsBefore<2?300:180):60;}
-/* half: a lighter or deload session, which runs half the sets (rounded up). */
-function dayMinutes(day,half){
+/* half: a lighter or deload session, which runs half the sets (rounded up).
+   raw: the model alone, without your pace (pace() compares with it). */
+function dayMinutes(day,half,raw){
   if(!day.items.length)return 0;
   let s=0,cN=0;
   day.items.forEach((it,i)=>{const ex=EX(it.exId);const nx=day.items[i+1];const rest=(it.ss&&nx&&nx.ss===it.ss)?0:+it.rest;const n=half?Math.max(1,Math.ceil(it.sets/2)):+it.sets;
     s+=n*(setSecs(ex,it)+rest)+setupSecs(ex,cN);if(isCompound(ex))cN++;});
   const lastRest=+day.items[day.items.length-1].rest||0;
-  return Math.round(Math.max(0,s-lastRest)/60);
+  return Math.round(Math.max(0,s-lastRest)*(raw?1:pace())/60);
+}
+/* Your own pace (r43, V): how long your sessions take against the time model,
+   so every estimate (Today, Plan, a session's minutes left, Short on time,
+   Pick for me, the recap) follows what your sessions actually take. Each
+   timed session in the last PACE_DAYS days is compared with the model for
+   the sets it logged (its own rep ranges, the plan's rest), newest first, up
+   to PACE_N of them; the median ratio is the pace, so one long or short day
+   does not move it. A session at under a third or over three times its model
+   is a clock left running or stopped early and is left out. Fewer than
+   PACE_MIN usable sessions: the model as is (1). Conventions, not measured
+   numbers: the model itself is one. Past workouts and imports have no time,
+   so they never count. */
+const PACE_N=8,PACE_DAYS=84,PACE_MIN=3,PACE_LO=1/3,PACE_HI=3;
+function sessModelMin(ss){
+  const R=state.routines.find(r=>r.id===ss.routineId)||activeRoutine();
+  const items=ss.ex.map(b=>{const p=planFor(b.exId,R,ss.dayId);const rr=Array.isArray(b.rr)?b.rr:[p.repMin,p.repMax];
+    return {...p,exId:b.exId,ss:null,repMin:rr[0],repMax:rr[1],rest:+p.rest||0,sets:b.sets.filter(x=>!x.warm).length};}).filter(it=>it.sets>0);
+  return items.length?dayMinutes({items},false,true):0;
+}
+function paceRatios(){
+  const from=addDays(today(),-PACE_DAYS);const out=[];
+  for(const ss of sortedSessions().slice().reverse()){
+    if(out.length>=PACE_N||ss.date<from)break;
+    if(ss.demo||!(ss.durMin>=1))continue;
+    const m=sessModelMin(ss);if(m<1)continue;
+    const r=ss.durMin/m;if(r>=PACE_LO&&r<=PACE_HI)out.push(r);
+  }
+  return out;
+}
+function pace(){
+  if(_pace!=null)return _pace;
+  const r=paceRatios().sort((a,b)=>a-b);
+  if(r.length<PACE_MIN)return _pace=1;
+  const k=r.length>>1;return _pace=r.length%2?r[k]:(r[k-1]+r[k])/2;
 }
 /* Per-session volume per muscle, counted the same way as weekly volume
    (direct 1, secondary 0.5). Weekly bands cannot see a once-a-week split

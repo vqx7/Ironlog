@@ -660,10 +660,11 @@ function volHeadline(){
   return `<p class="headline">${tn.now?`${fmtBig(tn.now)} ${U()} lifted this week so far`:'Nothing lifted yet this week'}${cmp}. Last week finished at ${fmtBig(tn.prevFull)} ${U()}. ${tipi('Weight lifted is load times reps. It drops when the load goes up and reps come down, which is progress, so it is not a measure of progress on its own.','About weight lifted')}</p>`;
 }
 /* Weight lifted this week is on Today's This week, and stalls are the Stuck
-   line below, so neither repeats here as a tile (r41). */
+   line below, so neither repeats here as a tile (r41). Once estimates follow
+   your own pace (r43) the planned figure is your average again, so it goes. */
 function extraKpis(){
   let h='';const sd=sessionLength();
-  if(sd)h+=`<div class="kpi"><div class="v">${sd.avg}<span class="small"> min</span></div><div class="l">Average session, last 4 weeks (${sd.n} timed)${sd.plan?`, planned ${estMin(sd.plan)}`:''}</div></div>`;
+  if(sd)h+=`<div class="kpi"><div class="v">${sd.avg}<span class="small"> min</span></div><div class="l">Average session, last 4 weeks (${sd.n} timed)${sd.plan&&pace()===1?`, planned ${estMin(sd.plan)}`:''}</div></div>`;
   return h;
 }
 /* Up to four lines, each landing on the section that holds the detail. */
