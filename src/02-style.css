@@ -437,21 +437,23 @@ body.blkdrag .block .bh h3{font-size:17px;white-space:nowrap;overflow:hidden;tex
 .tp.beat{color:var(--green);font-weight:650}
 .tp.ez{color:var(--blue)}
 .trend{font-weight:650;font-variant-numeric:tabular-nums;white-space:nowrap}
-.sg{position:relative;display:grid;grid-template-columns:24px minmax(0,1.3fr) minmax(0,1fr) minmax(0,.8fr) 40px 44px;gap:6px;align-items:center;margin-top:6px}
+/* r44: a Last column (last time's set) beside the load, and the warm-up and
+   drop marking on the set number instead of its own column, so the inputs
+   keep the width they had at 320 px. */
+.sg{position:relative;display:grid;grid-template-columns:24px 42px minmax(0,1.3fr) minmax(0,1fr) minmax(0,.8fr) 44px;gap:6px;align-items:center;margin-top:6px}
 .sg.head{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:650;margin-top:12px}
 .sg .n{font:700 15px var(--font);font-variant-numeric:tabular-nums;color:var(--muted);text-align:center}
+button.n{min-height:44px;padding:0;border:0;background:none;cursor:pointer}
+.sg .ls{font:600 12px/1.15 var(--font);font-variant-numeric:tabular-nums;color:var(--muted);text-align:center;overflow-wrap:anywhere}
 @media (max-width:360px){.sg input::placeholder{font-size:13px;letter-spacing:-.02em}}
 .sg input{text-align:center;padding:6px 4px;font-variant-numeric:tabular-nums;font-weight:600}
 .sg select{text-align:center;padding:6px 2px;min-height:44px}
 .sg select.unset{color:var(--muted)}
 .sg.done input,.sg.done select{border-color:color-mix(in srgb,var(--volt-line) 55%,transparent);background:var(--volt-soft)}
-.sg.norir{grid-template-columns:24px minmax(0,1.3fr) minmax(0,1fr) 40px 44px}
+.sg.norir{grid-template-columns:24px 42px minmax(0,1.3fr) minmax(0,1fr) 44px}
 .sg .n.drop{color:var(--blue)}
 .sg .n.warm{color:var(--yellow);font-size:15px}
-.wbtn,.cbtn{height:44px;border-radius:var(--r-sm);border:1px solid var(--field-b);background:var(--surface-2);cursor:pointer;font-weight:700;color:var(--muted)}
-.wbtn.on{background:var(--yellow);color:var(--on-accent);border-color:transparent}
-.wbtn.drop{background:var(--blue);color:var(--on-accent);border-color:transparent}
-.cbtn{font-size:17px;border-radius:50%;width:44px}
+.cbtn{height:44px;width:44px;border-radius:50%;border:1px solid var(--field-b);background:var(--surface-2);cursor:pointer;font-weight:700;font-size:17px;color:var(--muted)}
 .cbtn.on{background:var(--volt);color:var(--on-volt);border-color:transparent}
 .sg.pr::after{content:attr(data-pr);position:absolute;right:0;top:-9px;background:var(--gold);color:var(--on-gold);font:700 10px/1 var(--font);letter-spacing:.06em;text-transform:uppercase;padding:3px 6px;border-radius:6px;pointer-events:none}
 .ci-row{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:8px;flex-wrap:wrap}
@@ -880,8 +882,8 @@ button[data-tip],.lm[data-tip]{-webkit-user-select:none;user-select:none}
 .hastip{text-decoration:underline dotted;text-underline-offset:3px;text-decoration-color:var(--muted);cursor:help}
 /* Small controls keep their look but get a touch area of at least 44 px from
    an invisible pseudo-element, so a thumb at the gym does not miss them. */
-.tipi,.hb,.ssb,.ib.sm,.ir .ib,.chip,.wkbar .w{position:relative}
-.tipi::before,.hb::before,.ssb::before,.ib.sm::before,.ir .ib::before,.chip::before,.wkbar .w::before{content:"";position:absolute;left:50%;top:50%;width:max(100%,44px);height:max(100%,44px);transform:translate(-50%,-50%)}
+.tipi,.hb,.ssb,.ib.sm,.ir .ib,.chip,.wkbar .w,button.n{position:relative}
+.tipi::before,.hb::before,.ssb::before,.ib.sm::before,.ir .ib::before,.chip::before,.wkbar .w::before,button.n::before{content:"";position:absolute;left:50%;top:50%;width:max(100%,44px);height:max(100%,44px);transform:translate(-50%,-50%)}
 /* Week days sit 3 px apart, so theirs only grows in height; wider would reach
    into the neighbouring day. */
 .wkbar .w::before{width:100%}

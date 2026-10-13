@@ -288,6 +288,52 @@ const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
     await B.ctx.close();
   }
 
+  // ---------- 8c. The Last column: last time's set beside this time's (V, 2026-10-13) ----------
+  for (const [w, dark] of [[390, false], [320, true]]) {
+    const tag = `${w} px${dark ? ' dark' : ''}`;
+    const G = await open('index.html', { browser, clock: CLOCK, w, h: 900, dark });
+    const ge = (f, a) => G.page.evaluate(f, a);
+    await ge(() => { const L = window.__ironlog; L.state.settings.onboarded = true; L.makeDemo(); L.saveNow(); L.render(); });
+    await G.page.click('[data-act="startSession"]'); await wait(300);
+    const lc = await ge(() => { const L = window.__ironlog; const d = L.state.draft; return d.ex.map((b, bi) => {
+      const rows = [...document.querySelectorAll(`.sg:not(.head) [data-act="sWarm"][data-b="${bi}"]`)].map(n => n.closest('.sg'));
+      const cells = rows.map(r => r.querySelector('.ls').textContent);
+      const list = (b.last.match(/\): (.*)\.$/) || [, ''])[1].split(', ').filter(Boolean);
+      return { id: b.exId, cells, list, n: b.sets.filter(x => !x.warm && !x.drop).length, hint: (document.querySelector(`#blk-${bi} .hint .tp`) || {}).textContent || '', last: b.last };
+    }); });
+    const want = lc.filter(x => x.list.length).map(x => ({ id: x.id, ok: x.cells.every((c, i) => c === (x.list[i] || '–')), hint: x.hint === x.last.slice(0, x.last.indexOf('):') + 1) }));
+    ok(want.length >= 3 && want.every(x => x.ok && x.hint), `${tag}: each row's Last cell is set n of the session named Last, in order (a dash past it), and the line above names only the session`, [lc[0], want.filter(x => !x.ok || !x.hint)]);
+    const lay = await ge(() => { const row = document.querySelector('.sg:not(.head)'); const c = [...row.children].map(x => x.getBoundingClientRect()); const n = row.querySelector('button.n').getBoundingClientRect();
+      return { over: document.documentElement.scrollWidth > innerWidth, load: Math.round(c[2].width), reps: Math.round(c[3].width), nh: Math.round(n.height), head: [...document.querySelector('.sg.head').children].map(x => x.textContent).join('|') }; });
+    const minLoad = w === 320 ? 47 : 76, minReps = w === 320 ? 36 : 58;
+    ok(!lay.over && lay.load >= minLoad && lay.reps >= minReps && lay.nh >= 44 && /^#\|Last\|/.test(lay.head) && !/W\/D/.test(lay.head), `${tag}: no sideways scroll, the load and reps fields within 1 px of r43's width, the set number a 44 px button, no W/D column`, lay);
+    // The set number marks a warm-up and a drop, as the W/D button did; the Last cell is blank on them.
+    await G.page.click('[data-act="sWarm"][data-b="0"][data-s="0"]');
+    const wm = await ge(() => ({ warm: window.__ironlog.state.draft.ex[0].sets[0].warm, t: document.querySelector('[data-act="sWarm"][data-b="0"][data-s="0"]').textContent, c: document.querySelector('[data-act="sWarm"][data-b="0"][data-s="0"]').closest('.sg').querySelector('.ls').textContent }));
+    ok(wm.warm === true && wm.t === 'W' && wm.c === '–', `${tag}: a tap on the set number makes it a warm-up (W), with no Last set beside it`, wm);
+    await G.page.click('[data-act="sWarm"][data-b="0"][data-s="0"]'); await G.page.click('[data-act="sWarm"][data-b="0"][data-s="0"]');
+    ok(await ge(() => { const s = window.__ironlog.state.draft.ex[0].sets[0]; return !s.warm && !s.drop; }), `${tag}: tapping on goes through the same cycle back to a working set`);
+    if (w === 390) {
+      // A draft from before r44 (no prev) keeps its whole Last line; Finish saves no copy of the column.
+      const old = await ge(() => { const L = window.__ironlog; const d = L.state.draft; const bi = d.ex.findIndex(b => b.last && b.prev && b.prev.length); delete d.ex[bi].prev; L.saveNow(); L.render();
+        return { bi, hint: document.querySelector(`#blk-${bi} .hint .tp`) && document.querySelector(`#blk-${bi} .hint .tp`).textContent, last: d.ex[bi].last, cell: document.querySelector(`#blk-${bi} .sg:not(.head) .ls`).textContent }; });
+      ok(old.bi >= 0 && old.last && old.hint === old.last && old.cell === '–', 'a draft from before r44 keeps its whole Last line and shows dashes in the column', old);
+      const pv = await ge(() => { const L = window.__ironlog; const s = JSON.parse(JSON.stringify(L.state)); s.draft.ex[0].prev = ['185×8', 5, 'x'.repeat(60), null, ...Array(40).fill('1×1')]; const n = L.normalize(s).draft.ex[0].prev; s.draft.ex[0].prev = 'no'; return { n, bad: L.normalize(s).draft.ex[0].prev }; });
+      ok(pv.n.length === 30 && pv.n[0] === '185×8' && pv.n[1].length === 40 && pv.bad === undefined, 'a stored Last column keeps strings only, 40 characters each, 30 at most; anything else is dropped', pv);
+      const fin = await ge(() => { const L = window.__ironlog; const d = L.state.draft; d.ex[0].sets.forEach(s => { s.r = 8; s.done = true; }); L.saveNow(); L.ACT.finishNow(); L.ACT.mClose && L.ACT.mClose(); const ss = L.state.sessions[L.state.sessions.length - 1]; return JSON.stringify(ss).includes('"prev"'); });
+      ok(fin === false, 'Finish saves no Last column data with the session');
+      // Every path out of the engine carries the sets: a normal day, a lighter day, a deload, back after a break, and a timed hold.
+      const paths = await ge(() => { const L = window.__ironlog; const T = L.today(); const R = L.activeRoutine(); const it = R.days.flatMap(d => d.items).find(i => !L.EX(i.exId).timed && (L.IDX().byEx[i.exId] || []).length);
+        const o = { n: L.suggest(it.exId, it, {}).prev, l: L.suggest(it.exId, it, { light: true }).prev, d: L.suggest(it.exId, it, { deload: true }).prev };
+        L.state.sessions.push({ id: 'pk', date: L.addDays(T, -40), notes: '', free: true, ex: [{ exId: 'plank', sets: [{ w: 0, r: 45 }, { w: 0, r: 50 }] }] });
+        L.state.sessions.push({ id: 'pb', date: L.addDays(T, -60), notes: '', free: true, ex: [{ exId: 'hammer', sets: [{ w: 15, r: 10 }, { w: 15, r: 9 }] }] }); L.invalidate();
+        o.t = L.suggest('plank', { sets: 2, repMin: 30, repMax: 60, rir: 1, rest: 60 }, {}).prev; o.b = L.suggest('hammer', { sets: 2, repMin: 8, repMax: 12, rir: 1, rest: 60, inc: 2.26796185 }, {}).prev; o.bBack = L.suggest('hammer', { sets: 2, repMin: 8, repMax: 12, rir: 1, rest: 60, inc: 2.26796185 }, {}).back; return o; });
+      ok(['n', 'l', 'd'].every(k => Array.isArray(paths[k]) && paths[k].length) && same(paths.n, paths.l) && same(paths.n, paths.d) && same(paths.t, ['BW for 45s', 'BW for 50s']) && paths.bBack > 0 && Array.isArray(paths.b) && paths.b.length === 2, 'a normal day, a lighter day, a deload, a hold and a lift back after weeks off all carry last time\'s sets', paths);
+    }
+    ok(!G.errors.length, `${tag}: no page errors`, G.errors);
+    await G.ctx.close();
+  }
+
   // ---------- 9. On a first run: in the routine picker, folded and optional; Set up stays as short as before ----------
   for (const [w, dark] of [[390, false], [320, false], [320, true]]) {
     const tag = `${w} px${dark ? ' dark' : ''}`;

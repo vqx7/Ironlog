@@ -1079,7 +1079,8 @@ function lastOf(all,base,fmt,repMin){
      again). With one set under the range among the rest, that set shows the
      bottom of the range instead. */
   const fl=repFloor(wp.length?wp:repsFrom.pts,repMin);
-  return {line,lastR:(wp.length?wp:repsFrom.pts).map(p=>fl(p.r)),basis:rec!==base?base.date:null};
+  // prev: that session's sets as shown, one per row, for the Last column beside the sets (r44).
+  return {line,prev:rec.pts.map(fmt).slice(0,30),lastR:(wp.length?wp:repsFrom.pts).map(p=>fl(p.r)),basis:rec!==base?base.date:null};
 }
 /* One test for a session that is lighter or shorter on purpose (tagged), or
    also read as lighter from its loads (offSession): neither sets a target, a

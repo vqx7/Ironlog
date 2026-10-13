@@ -446,9 +446,16 @@ function newBlock(exId,plan,opts){
   const sg=suggest(exId,plan,opts);
   // sw is the load the app suggested, kept so a later refresh can tell a row
   // still on the suggestion from one the lifter typed (refreshBlock).
-  return {exId,plan:{...plan},note:'',lastNote:lastNoteOf(exId,opts&&opts.before),inj:sg.inj||null,hint:sg.text,last:sg.last,target:sg.target,tgt:sg.tgt,easier:sg.easier||null,lastR:sg.lastR,basis:sg.basis||undefined,sw:sg.w==null?null:sg.w,sets:Array.from({length:+plan.sets||3},()=>({w:fillLoads()?sg.w:null,r:null,rir:null,warm:false,drop:false,done:false}))};
+  return {exId,plan:{...plan},note:'',lastNote:lastNoteOf(exId,opts&&opts.before),inj:sg.inj||null,hint:sg.text,last:sg.last,prev:sg.prev||undefined,target:sg.target,tgt:sg.tgt,easier:sg.easier||null,lastR:sg.lastR,basis:sg.basis||undefined,sw:sg.w==null?null:sg.w,sets:Array.from({length:+plan.sets||3},()=>({w:fillLoads()?sg.w:null,r:null,rir:null,warm:false,drop:false,done:false}))};
 }
 const DEFAULT_PLAN={sets:3,repMin:8,repMax:12,rir:1,rest:90,inc:5*LB};
+/* The Last column (r44, V: "what I did last time next to what I'm about to
+   do"). b.prev is the sets of the session the Last line names, as shown
+   there; row n of the working sets sits beside set n of last time. The line
+   above the sets then names only the session ("Last (Oct 10, trimmed)"); a
+   block from before r44 has no prev and keeps the whole line. */
+function lastCell(b,i){return Array.isArray(b.prev)&&i>=0&&i<b.prev.length?b.prev[i]:'';}
+function lastHead(b){const t=b.last||'';if(!Array.isArray(b.prev)||!b.prev.length)return t;const k=t.indexOf('):');return k>0?t.slice(0,k+1):t;}
 /* ---------- PROFILE (r44, item 271, with 43 and 44) ----------
    An optional short profile: goal, experience, days a week and up to two
    focus muscles. V's answers (2026-10-13): it sets defaults and new plan
@@ -668,20 +675,21 @@ function viewLogger(){
     const partner=ss?d.ex.filter(x=>x!==b&&x.plan.ss===p.ss).map(x=>exName(x.exId)).join(' + '):'';
     h+=`<section class="block${ss?' ss':''}" id="blk-${bi}" data-bi="${bi}"><div class="bh">${bgrip(bi,ex.name)}<div class="bh-m"><h3 ${ex.note?`aria-labelledby="bhn-${bi}"`:''}><span id="bhn-${bi}">${esc(ex.name)}</span>${ex.note?` ${tipi(ex.note,'About '+ex.name)}`:''}</h3><p class="small muted">${esc(ML[ex.primary])} · ${b.sets.filter(x=>!x.warm&&!x.drop).length||p.sets}×${repSpan(p.repMin,p.repMax,'-')}${ex.timed?'s':''}${ex.perSide?'/side':''}${nr?'':` @${effTgt(p.rir)}`} · ${p.rest}s${ss?` · <span class="tag blue">Superset ${ss}</span>`:''}${b.inj?` · <span class="tag red">Injury: ${injLabel(b.inj)}</span>`:''}</p>${lmChips(ex)}</div>
       <div class="bh-acts">${!d.editingId&&blockDone(b)?`<button class="ib" aria-label="Fold ${esc(ex.name)}" data-act="bFold" data-b="${bi}">▴</button>`:''}<button class="ib" aria-label="Exercise options" data-act="bMenu" data-b="${bi}">⋯</button></div></div>
-      ${b.target?`<p class="hint"><b>Today: ${esc(targetText(b))}</b>${b.basis?` ${tipi(`Target from your last full session, ${fmtDate(b.basis)}. Trimmed, lighter, and deload sessions don't set targets.`,'Where this target comes from')}`:''}<span class="tp muted" style="display:block">${esc(b.last)}</span>${b.easier?`<span class="tp ez">${esc(b.easier)}</span>`:''}${progressLine(b,bi)}</p>`:`<p class="hint">${esc(hintOnce(b.hint||'',hintSeen))}</p>`}${bi===calIdx?`<p class="small caldue">Due for an RIR check: take one set here to failure. <button class="linkbtn tall" data-act="bCal" data-b="${bi}">Calibration set</button> <button class="linkbtn tall" data-act="calSnooze">Not now</button></p>`:''}
+      ${b.target?`<p class="hint"><b>Today: ${esc(targetText(b))}</b>${b.basis?` ${tipi(`Target from your last full session, ${fmtDate(b.basis)}. Trimmed, lighter, and deload sessions don't set targets.`,'Where this target comes from')}`:''}<span class="tp muted" style="display:block">${esc(lastHead(b))}</span>${b.easier?`<span class="tp ez">${esc(b.easier)}</span>`:''}${progressLine(b,bi)}</p>`:`<p class="hint">${esc(hintOnce(b.hint||'',hintSeen))}</p>`}${bi===calIdx?`<p class="small caldue">Due for an RIR check: take one set here to failure. <button class="linkbtn tall" data-act="bCal" data-b="${bi}">Calibration set</button> <button class="linkbtn tall" data-act="calSnooze">Not now</button></p>`:''}
       ${ss&&partner?`<p class="small muted" style="margin:2px 0 0">Superset with ${esc(partner)}; rest after the pair.</p>`:''}
       ${b.lastNote&&!b.note?`<p class="small lnote">Your note, ${esc(fmtDate(b.lastNote.date))}: ${esc(b.lastNote.text)} <button class="linkbtn" data-act="noteReuse" data-b="${bi}">Use again</button></p>`:''}
       ${b.note?`<p class="small bnote" id="bn-${bi}">${esc(b.note)}</p>`:`<p class="small bnote" id="bn-${bi}" hidden></p>`}
-      <div class="sg head${nr?' norir':''}"><span>#</span><span data-tip="${esc('Load: '+loadWords(ex))}">${loadHead(ex)}</span><span>${ex.timed?(ex.perSide?'Sec/side':'Sec'):ex.perSide?'Reps/side':'Reps'}</span>${nr?'':`<span>${effWord()}</span>`}<span>W/D</span><span>Done</span></div>`;
+      <div class="sg head${nr?' norir':''}"><span data-tip="Tap a set's number to mark it a warm-up or a drop set.">#</span><span class="lsh">Last</span><span class="lh" data-tip="${esc('Load: '+loadWords(ex))}">${loadHead(ex)}</span><span>${ex.timed?(ex.perSide?'Sec/side':'Sec'):ex.perSide?'Reps/side':'Reps'}</span>${nr?'':`<span>${effWord()}</span>`}<span>Done</span></div>`;
     b.sets.forEach((s,si)=>{
       const g=greyR(b,si);const ph=g==null?'':g;
       const pr=s.done?livePR(b.exId,s,d.date):null;
       const wn=b.sets.slice(0,si+1).filter(x=>!x.warm&&!x.drop).length;
-      h+=`<div class="sg${nr?' norir':''} ${s.done?'done':''}${pr?' pr':''}"${pr?` data-pr="${pr}"`:''}><span class="n${s.drop?' drop':s.warm?' warm':''}">${s.drop?'↓':s.warm?'W':wn}</span>
+      // Last time's set for this row, beside this time's (r44, V): working sets only, by their order.
+      const lt=s.warm||s.drop?'':lastCell(b,wn-1);
+      h+=`<div class="sg${nr?' norir':''} ${s.done?'done':''}${pr?' pr':''}"${pr?` data-pr="${pr}"`:''}><button class="n wbtn${s.drop?' drop':s.warm?' warm':''}" aria-label="Set ${si+1} type: ${s.warm?'warm-up':s.drop?'drop set':'working set'}. Tap to change" data-act="sWarm" data-b="${bi}" data-s="${si}">${s.drop?'↓':s.warm?'W':wn}</button><span class="ls" aria-label="${lt?esc('Last time '+lt):'No set last time'}">${lt?esc(lt).replace('×','<wbr>×'):'–'}</span>
         <input type="text" inputmode="decimal" enterkeyhint="next" aria-label="${esc(ex.name)}, set ${si+1} load" data-f="w" data-b="${bi}" data-s="${si}" value="${loadIn(ex,s.w)}" placeholder="${(()=>{const g=s.w==null?greyW(b,si):null;return g!=null?loadIn(ex,g):ex.bw?'0':'';})()}">
         <input type="text" inputmode="numeric" enterkeyhint="next" aria-label="${esc(ex.name)}, set ${si+1} ${ex.timed?'seconds':'reps'}${ex.perSide?' per side':''}" data-f="r" data-b="${bi}" data-s="${si}" value="${s.r==null?'':s.r}" placeholder="${ph}">
         ${nr?'':rirSelect(s.rir,bi,si,p.rir)}
-        <button class="wbtn ${s.warm?'on':s.drop?'drop':''}" aria-label="Set ${si+1} type: ${s.warm?'warm-up':s.drop?'drop set':'working set'}. Tap to change" data-act="sWarm" data-b="${bi}" data-s="${si}">${s.drop?'D':s.warm?'W':'–'}</button>
         <button class="cbtn ${s.done?'on':''}" aria-label="Set ${si+1} done" aria-pressed="${s.done?'true':'false'}" data-act="sDone" data-b="${bi}" data-s="${si}">✓</button></div>`;
     });
     h+=adjLine(b,bi);

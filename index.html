@@ -447,21 +447,23 @@ body.blkdrag .block .bh h3{font-size:17px;white-space:nowrap;overflow:hidden;tex
 .tp.beat{color:var(--green);font-weight:650}
 .tp.ez{color:var(--blue)}
 .trend{font-weight:650;font-variant-numeric:tabular-nums;white-space:nowrap}
-.sg{position:relative;display:grid;grid-template-columns:24px minmax(0,1.3fr) minmax(0,1fr) minmax(0,.8fr) 40px 44px;gap:6px;align-items:center;margin-top:6px}
+/* r44: a Last column (last time's set) beside the load, and the warm-up and
+   drop marking on the set number instead of its own column, so the inputs
+   keep the width they had at 320 px. */
+.sg{position:relative;display:grid;grid-template-columns:24px 42px minmax(0,1.3fr) minmax(0,1fr) minmax(0,.8fr) 44px;gap:6px;align-items:center;margin-top:6px}
 .sg.head{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:650;margin-top:12px}
 .sg .n{font:700 15px var(--font);font-variant-numeric:tabular-nums;color:var(--muted);text-align:center}
+button.n{min-height:44px;padding:0;border:0;background:none;cursor:pointer}
+.sg .ls{font:600 12px/1.15 var(--font);font-variant-numeric:tabular-nums;color:var(--muted);text-align:center;overflow-wrap:anywhere}
 @media (max-width:360px){.sg input::placeholder{font-size:13px;letter-spacing:-.02em}}
 .sg input{text-align:center;padding:6px 4px;font-variant-numeric:tabular-nums;font-weight:600}
 .sg select{text-align:center;padding:6px 2px;min-height:44px}
 .sg select.unset{color:var(--muted)}
 .sg.done input,.sg.done select{border-color:color-mix(in srgb,var(--volt-line) 55%,transparent);background:var(--volt-soft)}
-.sg.norir{grid-template-columns:24px minmax(0,1.3fr) minmax(0,1fr) 40px 44px}
+.sg.norir{grid-template-columns:24px 42px minmax(0,1.3fr) minmax(0,1fr) 44px}
 .sg .n.drop{color:var(--blue)}
 .sg .n.warm{color:var(--yellow);font-size:15px}
-.wbtn,.cbtn{height:44px;border-radius:var(--r-sm);border:1px solid var(--field-b);background:var(--surface-2);cursor:pointer;font-weight:700;color:var(--muted)}
-.wbtn.on{background:var(--yellow);color:var(--on-accent);border-color:transparent}
-.wbtn.drop{background:var(--blue);color:var(--on-accent);border-color:transparent}
-.cbtn{font-size:17px;border-radius:50%;width:44px}
+.cbtn{height:44px;width:44px;border-radius:50%;border:1px solid var(--field-b);background:var(--surface-2);cursor:pointer;font-weight:700;font-size:17px;color:var(--muted)}
 .cbtn.on{background:var(--volt);color:var(--on-volt);border-color:transparent}
 .sg.pr::after{content:attr(data-pr);position:absolute;right:0;top:-9px;background:var(--gold);color:var(--on-gold);font:700 10px/1 var(--font);letter-spacing:.06em;text-transform:uppercase;padding:3px 6px;border-radius:6px;pointer-events:none}
 .ci-row{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:8px;flex-wrap:wrap}
@@ -890,8 +892,8 @@ button[data-tip],.lm[data-tip]{-webkit-user-select:none;user-select:none}
 .hastip{text-decoration:underline dotted;text-underline-offset:3px;text-decoration-color:var(--muted);cursor:help}
 /* Small controls keep their look but get a touch area of at least 44 px from
    an invisible pseudo-element, so a thumb at the gym does not miss them. */
-.tipi,.hb,.ssb,.ib.sm,.ir .ib,.chip,.wkbar .w{position:relative}
-.tipi::before,.hb::before,.ssb::before,.ib.sm::before,.ir .ib::before,.chip::before,.wkbar .w::before{content:"";position:absolute;left:50%;top:50%;width:max(100%,44px);height:max(100%,44px);transform:translate(-50%,-50%)}
+.tipi,.hb,.ssb,.ib.sm,.ir .ib,.chip,.wkbar .w,button.n{position:relative}
+.tipi::before,.hb::before,.ssb::before,.ib.sm::before,.ir .ib::before,.chip::before,.wkbar .w::before,button.n::before{content:"";position:absolute;left:50%;top:50%;width:max(100%,44px);height:max(100%,44px);transform:translate(-50%,-50%)}
 /* Week days sit 3 px apart, so theirs only grows in height; wider would reach
    into the neighbouring day. */
 .wkbar .w::before{width:100%}
@@ -2067,6 +2069,8 @@ function normalize(s){
         inj:typeof b.inj==='string'&&(MK.includes(b.inj)||JK.includes(b.inj))?b.inj:null,
         hint:typeof b.hint==='string'?b.hint:'',
         last:typeof b.last==='string'?b.last:'',
+        // Last time's sets as shown in the Last column (r44): short strings, absent in older drafts.
+        prev:Array.isArray(b.prev)?b.prev.filter(x=>typeof x==='string').slice(0,30).map(x=>x.slice(0,40)):undefined,
         target:typeof b.target==='string'?b.target:'',
         easier:typeof b.easier==='string'?b.easier:null,
         tgt:cleanTgt(b.tgt),
@@ -2666,7 +2670,7 @@ function guideSheet(m){
    <p><b>Auto-mark</b> (Settings): a set ticks itself when you leave its reps field.</p>
    <p><b>RIR</b>, reps in reserve: how many more reps you could have done. Tap a set's RIR box for 0 to 5 (Settings can switch it to half reps or RPE; RPE 8 is RIR 2). ${off?'RIR is off in Settings, so every working set counts as hard.':'It is optional: a blank reads as your usual RIR on that lift once you have rated 3 of its sets in 12 weeks, and until then as hard.'}</p>
    <p><b>RIR check</b>: once you have 3 sessions, one machine or cable exercise may ask for one set to failure, to see how far your RIR calls are off. Not now, or finishing without it, waits 3 weeks.</p>
-   <p><b>W and D</b>: a warm-up (kept, never analysed) and a drop set (counts half a set of volume, never as a PR or target). <b>+ Drop</b> beside + Set adds one at about 75% once a set is done; warm-ups are in the exercise's ⋯ menu.</p>
+   <p><b>Last</b>, beside each set, is what you did on that set last time, from the session named above the sets. <b>W and D</b>: tap a set's number once for a warm-up (kept, never analysed), twice for a drop set (counts half a set of volume, never as a PR or target). <b>+ Drop</b> beside + Set adds one at about 75% once a set is done; warm-ups are in the exercise's ⋯ menu.</p>
    <p><b>Supersets</b>: an exercise's ⋯ menu, Superset with the next one (Finish then offers to keep it in your plan), or Plan's Superset with next. The rest timer waits until the partners are done, and session minutes leave out the rest between them.</p>
    <p><b>The next sets adjust</b> after a set that was clearly off plan, on the sets whose load is still the app's (never one you typed). Up: 2 or more reps in reserve over your target with the reps in your range, or 3 or more reps past the top. Down: 2 or more reps under both the range and what today asked for, without reserve to spare. The new load is what that set says you can do in the middle of the range (up) or at its bottom (down), with one more rep in reserve, in real steps, at most 10% up (15% on light isolation lifts), and at least one step when a set was rated 5 or more in reserve. When no heavier load fits, the same load for more reps. A blank effort reads as your usual. Keep stays on your load. Not on a lighter day, a deload, a past workout, an injured area, an assisted lift, or a bodyweight lift never done with added load. Settings, Rest timer and logging turns it off.</p>
    <p><b>+ Set and − Set</b>: − Set takes an empty row first and asks before a filled one. Removing anything you entered asks first, and Undo follows.</p>
@@ -4067,7 +4071,8 @@ function lastOf(all,base,fmt,repMin){
      again). With one set under the range among the rest, that set shows the
      bottom of the range instead. */
   const fl=repFloor(wp.length?wp:repsFrom.pts,repMin);
-  return {line,lastR:(wp.length?wp:repsFrom.pts).map(p=>fl(p.r)),basis:rec!==base?base.date:null};
+  // prev: that session's sets as shown, one per row, for the Last column beside the sets (r44).
+  return {line,prev:rec.pts.map(fmt).slice(0,30),lastR:(wp.length?wp:repsFrom.pts).map(p=>fl(p.r)),basis:rec!==base?base.date:null};
 }
 /* One test for a session that is lighter or shorter on purpose (tagged), or
    also read as lighter from its loads (offSession): neither sets a target, a
@@ -4145,8 +4150,8 @@ function suggest(exId,plan,opts){
   const w=w0>0||ex.assist?dw:w0;
   // Grey reps at the bottom of the range: at about 90% of the load that is 3 or more in reserve for anyone in the range last time.
   const n=Math.max(1,(base.lastR||[]).length||+plan.sets||1);
-  if(back)return snapUnit(ex,plan,{top:base.top,w,text:`${base.last} ${word}: about ${lbl(w)} for ${repSpan(plan.repMin,plan.repMax,'-')} with 2 or more reps in reserve. Next time picks up from here.`,lastR:Array(n).fill(+plan.repMin),basis:base.basis,last:base.last,target:'',tgt:null,easier:null,back:Math.round(off/7)},true);
-  return snapUnit(ex,plan,{top:base.top,w,text:`${base.last} ${word}: about ${lbl(w)} for ${repSpan(plan.repMin,plan.repMax,'-')} with 3 or more reps in reserve. Half the usual sets, nothing to beat.`,lastR:Array(n).fill(+plan.repMin),basis:base.basis,last:base.last,target:'',tgt:null,easier:null},true);
+  if(back)return snapUnit(ex,plan,{top:base.top,prev:base.prev,w,text:`${base.last} ${word}: about ${lbl(w)} for ${repSpan(plan.repMin,plan.repMax,'-')} with 2 or more reps in reserve. Next time picks up from here.`,lastR:Array(n).fill(+plan.repMin),basis:base.basis,last:base.last,target:'',tgt:null,easier:null,back:Math.round(off/7)},true);
+  return snapUnit(ex,plan,{top:base.top,prev:base.prev,w,text:`${base.last} ${word}: about ${lbl(w)} for ${repSpan(plan.repMin,plan.repMax,'-')} with 3 or more reps in reserve. Half the usual sets, nothing to beat.`,lastR:Array(n).fill(+plan.repMin),basis:base.basis,last:base.last,target:'',tgt:null,easier:null},true);
 }
 /* The load engine's prescription for one lift (r36: the 250-line function cut
    into its cases, each below and tried in order, with no change to what comes
@@ -4202,7 +4207,7 @@ function suggestCore(exId,plan,opts){
   /* Injured area: no target to chase, load capped at last time, and a reminder
      to stop short. No target is set, so nothing in this session reads as
      "beaten" or "missed". */
-  if(injM)return {top,w:top,text:`${lastS} Injury flagged (${injLabel(injM)}): stay at or below ${lbl(top)}, keep 3 or more reps in reserve, stop on pain.`,lastR,basis,last:lastS,target:'',tgt:null,easier:null,inj:injM};
+  if(injM)return {top,prev:L0.prev,w:top,text:`${lastS} Injury flagged (${injLabel(injM)}): stay at or below ${lbl(top)}, keep 3 or more reps in reserve, stop on pain.`,lastR,basis,last:lastS,target:'',tgt:null,easier:null,inj:injM};
   /* A lighter day (r30) is a one-day deload: lighter loads, 3 or more in
      reserve, half the sets, no target. suggest() works it out from this
      function's normal prescription (r32). */
@@ -4220,7 +4225,9 @@ function suggestCore(exId,plan,opts){
   const fl=repFloor(topPts,plan.repMin);
   const tp=topPts.slice(0,Math.max(1,+plan.sets||topPts.length)).map(p=>({...p,r:fl(p.r)}));
   const C={ex,exId,plan,opts,T,all,every,exps,seen,inRR,injM,last,ws,stx,top,step,noAdd,abW,cap,atCap,capW,topPts,lastR,lastS,basis,lbl,prevBest,tgtRir,early,fl,tp};
-  return sgEasy(C)||sgPastRange(C)||sgBelowRange(C)||sgNoStep(C)||sgTopOfRange(C)||sgBadDay(C)||sgReps(C);
+  // The sets of the session shown as Last, for the Last column in the session (r44): each case's result carries them.
+  const res=sgEasy(C)||sgPastRange(C)||sgBelowRange(C)||sgNoStep(C)||sgTopOfRange(C)||sgBadDay(C)||sgReps(C);
+  return res&&res.last?{...res,prev:L0.prev}:res;
 }
 /* No history yet: an injury note, a start from a close variation, or the first-time line. */
 function sgFirst(ex,plan,T,injM){
@@ -4493,17 +4500,17 @@ function suggestTimed(ex,plan,exps,opts,injM,all){
   const lbl=w=>`${loadLabel(ex,w)}${ex.bw?'':' '+U()}${loadNote(ex)}`;
   const L0=lastOf(all,last,p=>`${loadLabel(ex,p.w)} for ${p.r}s`);
   const lastR=L0.lastR,lastS=L0.line,basis=L0.basis;
-  if(injM)return {w:top,text:`${lastS} Injury flagged (${injLabel(injM)}): stay at or below ${lbl(top)}, keep it easy, and stop on pain.`,lastR,basis,last:lastS,target:'',tgt:null,easier:null,inj:injM};
-  if(opts.deload||opts.light)return {w:top,text:`${lastS} ${opts.deload?'Deload':'Lighter day'}: same load, hold about two thirds as long, and stop well before shaking.`,lastR,basis,last:lastS,target:'',tgt:null,easier:null};
+  if(injM)return {prev:L0.prev,w:top,text:`${lastS} Injury flagged (${injLabel(injM)}): stay at or below ${lbl(top)}, keep it easy, and stop on pain.`,lastR,basis,last:lastS,target:'',tgt:null,easier:null,inj:injM};
+  if(opts.deload||opts.light)return {prev:L0.prev,w:top,text:`${lastS} ${opts.deload?'Deload':'Lighter day'}: same load, hold about two thirds as long, and stop well before shaking.`,lastR,basis,last:lastS,target:'',tgt:null,easier:null};
   const step=incOf(ex,plan,top);const cap=capOf(ex,plan,top);
   if(step>0&&topPts.every(p=>p.r>=plan.repMax)&&!atCapOf(ex,plan,top,cap)){
     const nw=cap!=null?Math.min(top+step,cap):top+step;
-    return {w:nw,text:`${lastS} Every hold at ${lbl(top)} reached ${plan.repMax}s: add ${fmtW(nw-top)} ${U()}${ex.bw?' (a plate or a vest)':''} and aim for ${plan.repMin}s+.`,lastR,basis,
+    return {prev:L0.prev,w:nw,text:`${lastS} Every hold at ${lbl(top)} reached ${plan.repMax}s: add ${fmtW(nw-top)} ${U()}${ex.bw?' (a plate or a vest)':''} and aim for ${plan.repMin}s+.`,lastR,basis,
       last:lastS,target:`${lbl(nw)} for ${plan.repMin}s+ in every set`,tgt:{kind:'load',w:nw,repMin:+plan.repMin,prevBest:null},easier:null};
   }
   const total=topPts.reduce((a,p)=>a+p.r,0);const nT=topPts.length;
   const over=overSets(nT,plan,'hold');
-  return {w:top,text:`${lastS} Beat ${total}s ${over} at ${lbl(top)}. When every hold reaches ${plan.repMax}s, add load.`,lastR,basis,
+  return {prev:L0.prev,w:top,text:`${lastS} Beat ${total}s ${over} at ${lbl(top)}. When every hold reaches ${plan.repMax}s, add load.`,lastR,basis,
     last:lastS,target:`${total+1}s+ ${over} at ${lbl(top)}`,tgt:{kind:'reps',w:top,total,n:nT,rs:topPts.map(p=>p.r),prevBest:null},easier:null};
 }
 /* Default plan for an exercise that is not in the routine yet. Timed holds
@@ -7044,9 +7051,16 @@ function newBlock(exId,plan,opts){
   const sg=suggest(exId,plan,opts);
   // sw is the load the app suggested, kept so a later refresh can tell a row
   // still on the suggestion from one the lifter typed (refreshBlock).
-  return {exId,plan:{...plan},note:'',lastNote:lastNoteOf(exId,opts&&opts.before),inj:sg.inj||null,hint:sg.text,last:sg.last,target:sg.target,tgt:sg.tgt,easier:sg.easier||null,lastR:sg.lastR,basis:sg.basis||undefined,sw:sg.w==null?null:sg.w,sets:Array.from({length:+plan.sets||3},()=>({w:fillLoads()?sg.w:null,r:null,rir:null,warm:false,drop:false,done:false}))};
+  return {exId,plan:{...plan},note:'',lastNote:lastNoteOf(exId,opts&&opts.before),inj:sg.inj||null,hint:sg.text,last:sg.last,prev:sg.prev||undefined,target:sg.target,tgt:sg.tgt,easier:sg.easier||null,lastR:sg.lastR,basis:sg.basis||undefined,sw:sg.w==null?null:sg.w,sets:Array.from({length:+plan.sets||3},()=>({w:fillLoads()?sg.w:null,r:null,rir:null,warm:false,drop:false,done:false}))};
 }
 const DEFAULT_PLAN={sets:3,repMin:8,repMax:12,rir:1,rest:90,inc:5*LB};
+/* The Last column (r44, V: "what I did last time next to what I'm about to
+   do"). b.prev is the sets of the session the Last line names, as shown
+   there; row n of the working sets sits beside set n of last time. The line
+   above the sets then names only the session ("Last (Oct 10, trimmed)"); a
+   block from before r44 has no prev and keeps the whole line. */
+function lastCell(b,i){return Array.isArray(b.prev)&&i>=0&&i<b.prev.length?b.prev[i]:'';}
+function lastHead(b){const t=b.last||'';if(!Array.isArray(b.prev)||!b.prev.length)return t;const k=t.indexOf('):');return k>0?t.slice(0,k+1):t;}
 /* ---------- PROFILE (r44, item 271, with 43 and 44) ----------
    An optional short profile: goal, experience, days a week and up to two
    focus muscles. V's answers (2026-10-13): it sets defaults and new plan
@@ -7266,20 +7280,21 @@ function viewLogger(){
     const partner=ss?d.ex.filter(x=>x!==b&&x.plan.ss===p.ss).map(x=>exName(x.exId)).join(' + '):'';
     h+=`<section class="block${ss?' ss':''}" id="blk-${bi}" data-bi="${bi}"><div class="bh">${bgrip(bi,ex.name)}<div class="bh-m"><h3 ${ex.note?`aria-labelledby="bhn-${bi}"`:''}><span id="bhn-${bi}">${esc(ex.name)}</span>${ex.note?` ${tipi(ex.note,'About '+ex.name)}`:''}</h3><p class="small muted">${esc(ML[ex.primary])} · ${b.sets.filter(x=>!x.warm&&!x.drop).length||p.sets}×${repSpan(p.repMin,p.repMax,'-')}${ex.timed?'s':''}${ex.perSide?'/side':''}${nr?'':` @${effTgt(p.rir)}`} · ${p.rest}s${ss?` · <span class="tag blue">Superset ${ss}</span>`:''}${b.inj?` · <span class="tag red">Injury: ${injLabel(b.inj)}</span>`:''}</p>${lmChips(ex)}</div>
       <div class="bh-acts">${!d.editingId&&blockDone(b)?`<button class="ib" aria-label="Fold ${esc(ex.name)}" data-act="bFold" data-b="${bi}">▴</button>`:''}<button class="ib" aria-label="Exercise options" data-act="bMenu" data-b="${bi}">⋯</button></div></div>
-      ${b.target?`<p class="hint"><b>Today: ${esc(targetText(b))}</b>${b.basis?` ${tipi(`Target from your last full session, ${fmtDate(b.basis)}. Trimmed, lighter, and deload sessions don't set targets.`,'Where this target comes from')}`:''}<span class="tp muted" style="display:block">${esc(b.last)}</span>${b.easier?`<span class="tp ez">${esc(b.easier)}</span>`:''}${progressLine(b,bi)}</p>`:`<p class="hint">${esc(hintOnce(b.hint||'',hintSeen))}</p>`}${bi===calIdx?`<p class="small caldue">Due for an RIR check: take one set here to failure. <button class="linkbtn tall" data-act="bCal" data-b="${bi}">Calibration set</button> <button class="linkbtn tall" data-act="calSnooze">Not now</button></p>`:''}
+      ${b.target?`<p class="hint"><b>Today: ${esc(targetText(b))}</b>${b.basis?` ${tipi(`Target from your last full session, ${fmtDate(b.basis)}. Trimmed, lighter, and deload sessions don't set targets.`,'Where this target comes from')}`:''}<span class="tp muted" style="display:block">${esc(lastHead(b))}</span>${b.easier?`<span class="tp ez">${esc(b.easier)}</span>`:''}${progressLine(b,bi)}</p>`:`<p class="hint">${esc(hintOnce(b.hint||'',hintSeen))}</p>`}${bi===calIdx?`<p class="small caldue">Due for an RIR check: take one set here to failure. <button class="linkbtn tall" data-act="bCal" data-b="${bi}">Calibration set</button> <button class="linkbtn tall" data-act="calSnooze">Not now</button></p>`:''}
       ${ss&&partner?`<p class="small muted" style="margin:2px 0 0">Superset with ${esc(partner)}; rest after the pair.</p>`:''}
       ${b.lastNote&&!b.note?`<p class="small lnote">Your note, ${esc(fmtDate(b.lastNote.date))}: ${esc(b.lastNote.text)} <button class="linkbtn" data-act="noteReuse" data-b="${bi}">Use again</button></p>`:''}
       ${b.note?`<p class="small bnote" id="bn-${bi}">${esc(b.note)}</p>`:`<p class="small bnote" id="bn-${bi}" hidden></p>`}
-      <div class="sg head${nr?' norir':''}"><span>#</span><span data-tip="${esc('Load: '+loadWords(ex))}">${loadHead(ex)}</span><span>${ex.timed?(ex.perSide?'Sec/side':'Sec'):ex.perSide?'Reps/side':'Reps'}</span>${nr?'':`<span>${effWord()}</span>`}<span>W/D</span><span>Done</span></div>`;
+      <div class="sg head${nr?' norir':''}"><span data-tip="Tap a set's number to mark it a warm-up or a drop set.">#</span><span class="lsh">Last</span><span class="lh" data-tip="${esc('Load: '+loadWords(ex))}">${loadHead(ex)}</span><span>${ex.timed?(ex.perSide?'Sec/side':'Sec'):ex.perSide?'Reps/side':'Reps'}</span>${nr?'':`<span>${effWord()}</span>`}<span>Done</span></div>`;
     b.sets.forEach((s,si)=>{
       const g=greyR(b,si);const ph=g==null?'':g;
       const pr=s.done?livePR(b.exId,s,d.date):null;
       const wn=b.sets.slice(0,si+1).filter(x=>!x.warm&&!x.drop).length;
-      h+=`<div class="sg${nr?' norir':''} ${s.done?'done':''}${pr?' pr':''}"${pr?` data-pr="${pr}"`:''}><span class="n${s.drop?' drop':s.warm?' warm':''}">${s.drop?'↓':s.warm?'W':wn}</span>
+      // Last time's set for this row, beside this time's (r44, V): working sets only, by their order.
+      const lt=s.warm||s.drop?'':lastCell(b,wn-1);
+      h+=`<div class="sg${nr?' norir':''} ${s.done?'done':''}${pr?' pr':''}"${pr?` data-pr="${pr}"`:''}><button class="n wbtn${s.drop?' drop':s.warm?' warm':''}" aria-label="Set ${si+1} type: ${s.warm?'warm-up':s.drop?'drop set':'working set'}. Tap to change" data-act="sWarm" data-b="${bi}" data-s="${si}">${s.drop?'↓':s.warm?'W':wn}</button><span class="ls" aria-label="${lt?esc('Last time '+lt):'No set last time'}">${lt?esc(lt).replace('×','<wbr>×'):'–'}</span>
         <input type="text" inputmode="decimal" enterkeyhint="next" aria-label="${esc(ex.name)}, set ${si+1} load" data-f="w" data-b="${bi}" data-s="${si}" value="${loadIn(ex,s.w)}" placeholder="${(()=>{const g=s.w==null?greyW(b,si):null;return g!=null?loadIn(ex,g):ex.bw?'0':'';})()}">
         <input type="text" inputmode="numeric" enterkeyhint="next" aria-label="${esc(ex.name)}, set ${si+1} ${ex.timed?'seconds':'reps'}${ex.perSide?' per side':''}" data-f="r" data-b="${bi}" data-s="${si}" value="${s.r==null?'':s.r}" placeholder="${ph}">
         ${nr?'':rirSelect(s.rir,bi,si,p.rir)}
-        <button class="wbtn ${s.warm?'on':s.drop?'drop':''}" aria-label="Set ${si+1} type: ${s.warm?'warm-up':s.drop?'drop set':'working set'}. Tap to change" data-act="sWarm" data-b="${bi}" data-s="${si}">${s.drop?'D':s.warm?'W':'–'}</button>
         <button class="cbtn ${s.done?'on':''}" aria-label="Set ${si+1} done" aria-pressed="${s.done?'true':'false'}" data-act="sDone" data-b="${bi}" data-s="${si}">✓</button></div>`;
     });
     h+=adjLine(b,bi);
@@ -8166,7 +8181,7 @@ function gymNext(){const g=gymOf();return g?JSON.parse(JSON.stringify(g)):{u:gym
 function unitWords(){
   const d=state.draft;if(!d)return;invalidate();
   for(const b of d.ex){if(d.deload||d.light||b.light||b.inj)continue;const sg=suggestCore(b.exId,b.plan,{before:d.date});
-    if(b.sw!=null&&sg.w!=null&&Math.abs(sg.w-b.sw)>1e-6)continue;Object.assign(b,{hint:sg.text,last:sg.last,target:sg.target,easier:sg.easier||null});}
+    if(b.sw!=null&&sg.w!=null&&Math.abs(sg.w-b.sw)>1e-6)continue;Object.assign(b,{hint:sg.text,last:sg.last,prev:sg.prev||undefined,target:sg.target,easier:sg.easier||null});}
   saveNow();
 }
 function gymRefresh(){invalidate();if(state.draft)for(const id of new Set(state.draft.ex.map(b=>b.exId)))refreshEx(id);}
@@ -9475,7 +9490,7 @@ function syncDraftPlan(f){
 function refreshBlock(b){
   const d=state.draft;if(!d||!b)return;const old=b.sets.find(x=>!x.done&&!x.warm);const oldW=b.sw!==undefined?b.sw:old?old.w:null;
   const sg=suggest(b.exId,b.plan,{deload:!!d.deload,light:!!d.light||!!b.light,before:d.date});
-  Object.assign(b,{inj:sg.inj||null,hint:sg.text,last:sg.last,target:sg.target,tgt:sg.tgt,easier:sg.easier||null,lastR:sg.lastR,basis:sg.basis||undefined,lastNote:lastNoteOf(b.exId,d.date),sw:sg.w==null?null:sg.w});
+  Object.assign(b,{inj:sg.inj||null,hint:sg.text,last:sg.last,prev:sg.prev||undefined,target:sg.target,tgt:sg.tgt,easier:sg.easier||null,lastR:sg.lastR,basis:sg.basis||undefined,lastNote:lastNoteOf(b.exId,d.date),sw:sg.w==null?null:sg.w});
   for(const x of b.sets)if(!x.done&&!x.warm&&!x.drop&&x.r==null&&x.w===oldW&&!carried.has(x))x.w=sg.w;
 }
 const ACT={
@@ -10117,8 +10132,6 @@ const ACT={
     const s=draftSet(t);const bi=+t.dataset.b,si=+t.dataset.s;if(!s)return;
     if(!s.warm&&!s.drop)s.warm=true;else if(s.warm){s.warm=false;s.drop=true;}else s.drop=false;
     adjSync(state.draft.ex[bi]);
-    t.classList.toggle('on',s.warm);t.classList.toggle('drop',!!s.drop);t.textContent=s.drop?'D':s.warm?'W':'–';
-    t.setAttribute('aria-label',`Set ${si+1} type: ${s.warm?'warm-up':s.drop?'drop set':'working set'}. Tap to change`);
     // Numbers, placeholders and the progress bar all depend on which rows are
     // working sets, so redraw the block rather than patch one row.
     refreshPR(bi,si,false);updateProgress(bi);updateSessBar();saveNow();rerenderKeepScroll();

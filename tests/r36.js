@@ -70,9 +70,11 @@ const digest = h => {
   if (h.rirScale) s.settings.rirScale = h.rirScale; else delete s.settings.rirScale; s.settings.restWeeks = h.restWeeks;
   s.sessions = JSON.parse(JSON.stringify(h.sessions)); s.bodyweights = h.bws; s.draft = null; s.injuries = [];
   L.state = L.normalize(s); L.invalidate();
+  // prev (r44) is new and display-only, the sets the Last column shows (from the same session as Last); every other field of a suggestion must match.
+  const noPrev = r => { if (!r || typeof r !== 'object') return r; const { prev, ...o } = r; return o; };
   const clean = v => JSON.stringify(v, (k, x) => typeof x === 'function' ? undefined : x instanceof Set ? [...x].sort() : x instanceof Map ? [...x.entries()] : (typeof x === 'number' && !isFinite(x)) ? String(x) : x);
   const out = { idx: clean(L.IDX()), sug: [] };
-  for (const { exId, plan } of h.plans) for (const o of [{}, { light: true }, { deload: true }, h.past ? { before: h.past } : null]) if (o) { try { out.sug.push(clean(L.suggest(exId, plan, o))); } catch (e) { out.sug.push('ERR ' + e.message); } }
+  for (const { exId, plan } of h.plans) for (const o of [{}, { light: true }, { deload: true }, h.past ? { before: h.past } : null]) if (o) { try { out.sug.push(clean(noPrev(L.suggest(exId, plan, o)))); } catch (e) { out.sug.push('ERR ' + e.message); } }
   try { out.coach = clean(L.coach()); } catch (e) { out.coach = 'ERR ' + e.message; }
   try { out.avg = clean(L.avgWeeks(4)); out.avg8 = clean(L.avgWeeks(8, true)); } catch (e) { out.avg = 'ERR ' + e.message; }
   try { out.reg = clean(L.regionBalance(L.regionSrc().src || {})); } catch (e) { out.reg = 'ERR ' + e.message; }

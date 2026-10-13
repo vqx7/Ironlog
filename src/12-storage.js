@@ -496,6 +496,8 @@ function normalize(s){
         inj:typeof b.inj==='string'&&(MK.includes(b.inj)||JK.includes(b.inj))?b.inj:null,
         hint:typeof b.hint==='string'?b.hint:'',
         last:typeof b.last==='string'?b.last:'',
+        // Last time's sets as shown in the Last column (r44): short strings, absent in older drafts.
+        prev:Array.isArray(b.prev)?b.prev.filter(x=>typeof x==='string').slice(0,30).map(x=>x.slice(0,40)):undefined,
         target:typeof b.target==='string'?b.target:'',
         easier:typeof b.easier==='string'?b.easier:null,
         tgt:cleanTgt(b.tgt),

@@ -97,7 +97,7 @@ function syncDraftPlan(f){
 function refreshBlock(b){
   const d=state.draft;if(!d||!b)return;const old=b.sets.find(x=>!x.done&&!x.warm);const oldW=b.sw!==undefined?b.sw:old?old.w:null;
   const sg=suggest(b.exId,b.plan,{deload:!!d.deload,light:!!d.light||!!b.light,before:d.date});
-  Object.assign(b,{inj:sg.inj||null,hint:sg.text,last:sg.last,target:sg.target,tgt:sg.tgt,easier:sg.easier||null,lastR:sg.lastR,basis:sg.basis||undefined,lastNote:lastNoteOf(b.exId,d.date),sw:sg.w==null?null:sg.w});
+  Object.assign(b,{inj:sg.inj||null,hint:sg.text,last:sg.last,prev:sg.prev||undefined,target:sg.target,tgt:sg.tgt,easier:sg.easier||null,lastR:sg.lastR,basis:sg.basis||undefined,lastNote:lastNoteOf(b.exId,d.date),sw:sg.w==null?null:sg.w});
   for(const x of b.sets)if(!x.done&&!x.warm&&!x.drop&&x.r==null&&x.w===oldW&&!carried.has(x))x.w=sg.w;
 }
 const ACT={
@@ -739,8 +739,6 @@ const ACT={
     const s=draftSet(t);const bi=+t.dataset.b,si=+t.dataset.s;if(!s)return;
     if(!s.warm&&!s.drop)s.warm=true;else if(s.warm){s.warm=false;s.drop=true;}else s.drop=false;
     adjSync(state.draft.ex[bi]);
-    t.classList.toggle('on',s.warm);t.classList.toggle('drop',!!s.drop);t.textContent=s.drop?'D':s.warm?'W':'–';
-    t.setAttribute('aria-label',`Set ${si+1} type: ${s.warm?'warm-up':s.drop?'drop set':'working set'}. Tap to change`);
     // Numbers, placeholders and the progress bar all depend on which rows are
     // working sets, so redraw the block rather than patch one row.
     refreshPR(bi,si,false);updateProgress(bi);updateSessBar();saveNow();rerenderKeepScroll();

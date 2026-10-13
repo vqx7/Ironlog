@@ -27,7 +27,7 @@ const ev=(f,a)=>page.evaluate(f,a);
 // Auto-mark off: this suite ticks every set by hand (auto-mark is on for new installs since r28; essentials and journey cover it).
 await ev(()=>{const L=window.__ironlog;L.state.settings.onboarded=true;L.state.settings.autoDone=false;L.makeDemo();/* r30: used here as history, so marked as the lifter's own (a real session would otherwise clear demo data) */for(const k of ['sessions','bodyweights','measurements'])for(const x of L.state[k])delete x.demo;L.render();});
 const startDay=async name=>{await ev(n=>{const L=window.__ironlog;L.state.draft=null;const R=L.state.routines[0];L.ui.todayDay=R.days.findIndex(d=>d.name===n);L.ui.tab='today';L.render();},name);await page.click('.hero [data-act="startSession"]:not([data-light])');};
-const labels=async()=>ev(()=>[...document.querySelectorAll('section.block')].map(b=>({n:b.querySelector('h3').childNodes[0].textContent.trim(),head:b.querySelector('.sg.head span:nth-child(2)').innerText,chips:[...b.querySelectorAll('.lm')].map(x=>x.innerText)})));
+const labels=async()=>ev(()=>[...document.querySelectorAll('section.block')].map(b=>({n:b.querySelector('h3').childNodes[0].textContent.trim(),head:b.querySelector('.sg.head .lh').innerText,chips:[...b.querySelectorAll('.lm')].map(x=>x.innerText)})));
 await startDay('Arms');let lb=await labels();console.log(lb.map(x=>`${x.n}: [${x.head}] ${x.chips.join(' | ')}`).join('\n'));
 const f=n=>lb.find(x=>x.n.toUpperCase()===n.toUpperCase());
 ok(/each/i.test(f('Incline DB Curl').head)&&f('Incline DB Curl').chips[0]==='per dumbbell','DB curl: "LB each" column and per-dumbbell chip');
@@ -75,7 +75,7 @@ const hs=await ev(()=>document.querySelector('.hitem.open .panel').innerText);ok
 // kg switch: loads display converted
 await ev(()=>{const L=window.__ironlog;L.state.settings.unit='kg';L.ui.tab='today';L.render();});
 await page.click('.hero [data-act="startSession"]:not([data-light])');
-const kg=await ev(()=>({v:document.querySelector('[data-f="w"][data-b="0"][data-s="0"]').value,head:document.querySelector('.sg.head span:nth-child(2)').innerText}));
+const kg=await ev(()=>({v:document.querySelector('[data-f="w"][data-b="0"][data-s="0"]').value,head:document.querySelector('.sg.head .lh').innerText}));
 ok(/KG/i.test(kg.head),'kg mode labels the load column',kg);
 // RIR off hides the picker
 await ev(()=>{const L=window.__ironlog;L.state.settings.rirMode='off';L.render();});
@@ -93,7 +93,7 @@ await page.hover('.hero p.muted[data-tip]');await page.waitForTimeout(500);
 ok(await ev(()=>!document.getElementById('tip').hidden&&/Routine:/.test(document.getElementById('tip').innerText)),'hover shows the tip on desktop');
 await page.mouse.move(1,1);await page.waitForTimeout(100);ok(await ev(()=>document.getElementById('tip').hidden),'tip hides when the pointer leaves');
 await page.click('.hero [data-act="startSession"]:not([data-light])');
-const hs=await ev(()=>{const i=window.__ironlog.state.draft.ex.findIndex(b=>b.exId==='hackSquat');const inp=document.querySelector(`[data-f="w"][data-b="${i}"][data-s="0"]`);return {i,head:document.querySelectorAll('.sg.head')[i].children[1].innerText};});
+const hs=await ev(()=>{const i=window.__ironlog.state.draft.ex.findIndex(b=>b.exId==='hackSquat');const inp=document.querySelector(`[data-f="w"][data-b="${i}"][data-s="0"]`);return {i,head:document.querySelectorAll('.sg.head')[i].querySelector('.lh').innerText};});
 await page.fill(`[data-f="w"][data-b="${hs.i}"][data-s="0"]`,'90');await page.waitForTimeout(100);
 const pl=await ev(i=>document.getElementById('pl-'+i).innerText,hs.i);
 ok(/side/i.test(hs.head)&&/45, 45/.test(pl),'hack squat logged per side: plate line shows 45, 45 a side',{head:hs.head,pl});
