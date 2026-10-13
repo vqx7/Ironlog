@@ -5,7 +5,6 @@
 // password, sign-in merging the phone's existing log, a second device, a
 // second person, sign-out (keep or remove), emailed links opened in a
 // browser (confirm and password reset), an expired token, and the privacy line.
-const { execFileSync } = require('child_process');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
@@ -13,7 +12,7 @@ const { chromium } = require('playwright');
 const { start, quietHibp } = require('./fake-supabase');
 const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log('FAIL', m, x !== undefined ? JSON.stringify(x) : ''); } else console.log('ok  ', m); };
 const wait = ms => new Promise(r => setTimeout(r, ms));
-execFileSync('node', [path.join(__dirname, '..', 'scripts', 'build.js')], { stdio: 'ignore' });
+require('./h').build();
 const DIST = path.join(__dirname, '..', 'dist');
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'ironlog-acct-'));
 fs.cpSync(DIST, tmp, { recursive: true });

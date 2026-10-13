@@ -8,7 +8,6 @@
 // small plates and a lift's own bar, the Content Security Policy in the
 // installed build, and one Rest day label on a rest day.
 const { open } = require('./h');
-const { execFileSync } = require('child_process');
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
@@ -398,7 +397,7 @@ const sess = (id, date, exId, sets) => ({ id, date, dayIdx: 0, dayId: null, dayN
   // ---- The Content Security Policy in the installed build.
   {
     const ROOT = path.join(__dirname, '..'); const DIST = path.join(ROOT, 'dist');
-    execFileSync('node', [path.join(ROOT, 'scripts', 'build.js')], { stdio: 'ignore' });
+    require('./h').build();
     const html = fs.readFileSync(path.join(DIST, 'index.html'), 'utf8');
     const meta = (html.match(/<meta http-equiv="Content-Security-Policy" content="([^"]+)">/) || [])[1] || '';
     const crypto = require('crypto');
@@ -407,7 +406,7 @@ const sess = (id, date, exId, sets) => ({ id, date, dayIdx: 0, dayId: null, dayN
     ok(/script-src 'self' 'sha256-/.test(meta) && !/unsafe-inline[^;]*;\s*style/.test(meta.split('style-src')[0]) && !/unsafe-eval/.test(meta) && /object-src 'none'/.test(meta) && /base-uri 'none'/.test(meta) && !/cdnjs|jsdelivr|unpkg/.test(meta), 'scripts only from this site and those hashes: no unsafe-inline or eval for scripts, no CDNs, no plugins, no base tag', meta.slice(0, 160));
     ok(/connect-src 'self' https:\/\/[a-z0-9]+\.supabase\.co wss:\/\/[a-z0-9]+\.supabase\.co https:\/\/api\.pwnedpasswords\.com;/.test(meta), 'data can go only to this site, the Supabase project, and the breach check', meta.match(/connect-src[^;]+/));
     ok(html.indexOf('Content-Security-Policy') < html.indexOf('<script'), 'the policy comes before the first script, so it covers every one');
-    const prev = (() => { execFileSync('node', [path.join(ROOT, 'scripts', 'build.js'), '--preview'], { stdio: 'ignore' }); return fs.readFileSync(path.join(ROOT, 'dist-preview', 'index.html'), 'utf8'); })();
+    const prev = (() => { require('./h').build(true); return fs.readFileSync(path.join(ROOT, 'dist-preview', 'index.html'), 'utf8'); })();
     ok(/Content-Security-Policy/.test(prev), 'the preview build has it too');
     // The look-ahead scanner can read the app's script as markup now and then;
     // an image tag written in it was fetched as "${m.shot}" (a stray 404).

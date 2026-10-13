@@ -24,6 +24,13 @@ const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log
   ok(orphans.length === 0, 'every file in tests/ is a suite run.js runs or a helper a suite requires', orphans);
   const missing = [...listed].filter(n => !files.includes(n));
   ok(missing.length === 0, 'every suite run.js names exists', missing);
+  // r44: the suite table moved to tests/SUITES.md; it keeps a row for every suite.
+  const md = fs.readFileSync(path.join(__dirname, 'SUITES.md'), 'utf8'); const rows = new Set([...md.matchAll(/^\| ([\w-]+) \|/gm)].map(m => m[1]));
+  const noRow = [...listed].filter(n => !rows.has(n));
+  ok(noRow.length === 0, 'every suite has a row in tests/SUITES.md', noRow);
+  // r44: suites run side by side, so none runs scripts/build.js itself (it deletes dist/ first); h.js build() does, only when a suite runs alone.
+  const direct = files.filter(f => f !== 'h' && f !== 'run' && /scripts', 'build\.js'|build\.js'\]/.test(fs.readFileSync(path.join(__dirname, f + '.js'), 'utf8')));
+  ok(direct.length === 0, 'no suite runs the build itself; they call build() from tests/h.js', direct);
 }
 
 // 2. Duplicated selectors, per block.

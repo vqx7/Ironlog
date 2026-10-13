@@ -5,7 +5,6 @@
 // runs once, on the built app with the stand-in Supabase.
 const { open, cspFix } = require('./h');
 const fs = require('fs'); const path = require('path'); const os = require('os');
-const { execFileSync } = require('child_process');
 const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log('FAIL', m, x !== undefined ? JSON.stringify(x) : ''); } else console.log('ok  ', m); };
 const wait = ms => new Promise(r => setTimeout(r, ms));
 const FILE = 'index.html';
@@ -510,7 +509,7 @@ const ODD = /shared (phone|device|computer)|someone else|another person|other pe
   // ---------- 4. The built app's first page fits short phones (once) ----------
   if (!process.env.IRONLOG_FILE) {
     const { start, quietHibp } = require('./fake-supabase');
-    execFileSync('node', [path.join(__dirname, '..', 'scripts', 'build.js')], { stdio: 'ignore' });
+    require('./h').build();
     const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'ironlog-r34b-'));
     fs.cpSync(path.join(__dirname, '..', 'dist'), tmp, { recursive: true });
     const fake = await start(tmp);

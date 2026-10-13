@@ -3,14 +3,13 @@
 // other sites, the manifest and icons are valid, the service worker takes
 // control, and after going offline the app still opens, logs a set and keeps
 // it across a reload.
-const { execFileSync } = require('child_process');
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
 const { chromium } = require('playwright');
 const fails = []; const ok = (c, m) => { if (!c) { fails.push(m); console.log('FAIL', m); } else console.log('ok  ', m); };
 const DIST = path.join(__dirname, '..', 'dist');
-execFileSync('node', [path.join(__dirname, '..', 'scripts', 'build.js')], { stdio: 'ignore' });
+require('./h').build();
 const TYPES = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.woff2': 'font/woff2', '.png': 'image/png', '.webmanifest': 'application/manifest+json' };
 const server = http.createServer((req, res) => {
   let p = decodeURIComponent(req.url.split('?')[0]); if (p.endsWith('/')) p += 'index.html';
