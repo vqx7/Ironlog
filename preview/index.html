@@ -2,13 +2,13 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-N/mTXwFTBFccXJeXguQVUbWrTDOjfgCNUlJicBwRfWY=' 'sha256-tuSgXs5JTxAxl+0h6Mmbx/BgvpNDfjiq2RiZRPGtwkc=' 'sha256-YHdgjdaHPObo0ajgr78/3fg0b/g2KACx2Yivxr2AJEo=' 'sha256-FhOFXf+UiWrK8KQkdeCaclNV1bfTEFTB63WcSBpQM0I=' 'sha256-J4UrXwIeplIJZfkgJq3M75mmvlwXBomq0l+LhSwoEfI='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https://fqvupierxrvpoidtwlon.supabase.co wss://fqvupierxrvpoidtwlon.supabase.co https://api.pwnedpasswords.com; worker-src 'self'; manifest-src 'self'; media-src 'self'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-N/mTXwFTBFccXJeXguQVUbWrTDOjfgCNUlJicBwRfWY=' 'sha256-tuSgXs5JTxAxl+0h6Mmbx/BgvpNDfjiq2RiZRPGtwkc=' 'sha256-YHdgjdaHPObo0ajgr78/3fg0b/g2KACx2Yivxr2AJEo=' 'sha256-1nz4oLGM6X3pOvvgjwodIKx6eyzRV8nZRLjqB6E0zus=' 'sha256-J4UrXwIeplIJZfkgJq3M75mmvlwXBomq0l+LhSwoEfI='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https://fqvupierxrvpoidtwlon.supabase.co wss://fqvupierxrvpoidtwlon.supabase.co https://api.pwnedpasswords.com; worker-src 'self'; manifest-src 'self'; media-src 'self'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Ironlog Preview</title>
 <script>window.IRONLOG_APP=true;window.IRONLOG_ENV='preview';window.__installEvt=null;
 window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();window.__installEvt=e;if(window.ironlogInstallReady)window.ironlogInstallReady();});
 window.addEventListener('appinstalled',()=>{window.__installEvt=null;if(window.ironlogInstallReady)window.ironlogInstallReady();});</script>
-<meta name="theme-color" content="#08090b">
+<meta name="theme-color" content="#121110">
 <meta name="color-scheme" content="dark light">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
@@ -975,82 +975,147 @@ input.need{box-shadow:0 0 0 2px var(--yellow)}
 .inj-list li:last-child{border-bottom:0}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
 /* ============================================================
-   r42 look (V, 2026-10-12): less of the generated-app look, with
-   every flow, class and colour meaning left as it was. What read as
-   generated was the defaults stacked together: a glowing gradient
-   card, a glowing pill button, all-caps condensed titles, letter-
-   spaced micro labels, frosted glass, dashed pill chips and a pill
-   behind the active tab. This block overrides only those, so it can
-   be read on its own and removed in one cut.
-   - Flat surfaces: no radial glows, coloured shadows or blur.
-   - Smaller radii (12, 10, 8) and rounded rectangles for buttons;
-     pills stay only where a floating control needs one.
-   - Titles in the body face, sentence case, tight tracking. The
-     condensed face stays for big numbers only (scoreboard numerals:
-     the ring, tiles, KPIs, the rest timer), where it reads as a
-     choice rather than a theme.
-   - Labels in sentence case at a readable size, not spaced caps.
+   r42 look (V, 2026-10-12). What read as generated was the
+   composition, not one detail: every screen a big title, a grey
+   meta line and a row of grey filled buttons; one accent on
+   everything; a glowing card; boxes inside boxes; frosted bars;
+   default near-black. This block changes how things look and sit
+   on the page. Every control, action and flow is the same element
+   doing the same thing, and every touch target keeps its size.
+   - Palette: warm graphite and chalk instead of blue-black and
+     white, so it reads as a choice, not a default.
+   - The accent means go and done only: Start, a ticked set, the
+     week ring, the rest timer, the trained days. Links, the active
+     tab and the library button are ink.
+   - Today has no card: the date, the day's name large, the plan in
+     one line, Start, and Change and More options as text buttons.
+   - Exercises in a session and the Stats summaries are rows on the
+     page divided by hairlines, not cards.
+   - Secondary buttons are outlined, not filled grey tiles.
+   - Words in the body face in sentence case; the condensed face is
+     kept for big numbers (ring, tiles, timer).
+   The theme selectors below are specific enough to beat the theme
+   blocks at the top of this file, which set the same tokens.
    ============================================================ */
-/* Specific enough to win over the theme blocks, which set these too. */
-html:root[data-theme],html:root:not([data-theme]){--r-lg:12px;--r-md:10px;--r-sm:8px;--shadow:none;--glass:var(--bg);--hero-bg:none;--hero-shadow:inset 0 0 0 1px var(--line)}
-/* The rest timer keeps a two-stop background (tests/r29b.js reads its
-   stops for contrast) but both stops are one colour, so it is flat. */
-html:root[data-theme],html:root:not([data-theme]){--dock-bg:linear-gradient(var(--dock),var(--dock))}
+html:root[data-theme],html:root:not([data-theme]){--r-lg:12px;--r-md:10px;--r-sm:8px;--shadow:none;--glass:var(--bg);--hero-bg:none;--hero-shadow:none;--dock-bg:linear-gradient(var(--dock),var(--dock))}
+html:root[data-theme="dark"]{
+  --bg:#121110;--surface:#1a1917;--surface-2:#23211f;--surface-3:#2d2a27;
+  --ink:#f1ede6;--ink-2:#d9d4cb;--muted:#9b958b;--line:#2b2926;--line-soft:#211f1d;
+  --btn:transparent;--btn-b:#3a3733;--field:#1f1d1b;--field-b:transparent;--card-b:#2b2926;
+  --hero:#121110;--on-hero:#f1ede6;--hero-2:#1a1917}
+@media (prefers-color-scheme:dark){html:root:not([data-theme]){
+  --bg:#121110;--surface:#1a1917;--surface-2:#23211f;--surface-3:#2d2a27;
+  --ink:#f1ede6;--ink-2:#d9d4cb;--muted:#9b958b;--line:#2b2926;--line-soft:#211f1d;
+  --btn:transparent;--btn-b:#3a3733;--field:#1f1d1b;--field-b:transparent;--card-b:#2b2926;
+  --hero:#121110;--on-hero:#f1ede6;--hero-2:#1a1917}}
+html:root[data-theme="light"]{
+  --bg:#f6f4f0;--surface:#fcfbf8;--surface-2:#ebe8e1;--surface-3:#dfdbd2;
+  --ink:#1b1a17;--ink-2:#34322d;--muted:#67625a;--line:#dcd8cf;--line-soft:#e8e4dc;
+  --btn:transparent;--btn-b:#cfcac0;--field:#fcfbf8;--field-b:#d6d1c7;--card-b:#e3dfd6;
+  --hero:#f6f4f0;--on-hero:#1b1a17;--hero-2:#ebe8e1}
+@media (prefers-color-scheme:light){html:root:not([data-theme]){
+  --bg:#f6f4f0;--surface:#fcfbf8;--surface-2:#ebe8e1;--surface-3:#dfdbd2;
+  --ink:#1b1a17;--ink-2:#34322d;--muted:#67625a;--line:#dcd8cf;--line-soft:#e8e4dc;
+  --btn:transparent;--btn-b:#cfcac0;--field:#fcfbf8;--field-b:#d6d1c7;--card-b:#e3dfd6;
+  --hero:#f6f4f0;--on-hero:#1b1a17;--hero-2:#ebe8e1}}
 .top,.tabs,.jump,#updbar{-webkit-backdrop-filter:none;backdrop-filter:none}
-#modal{-webkit-backdrop-filter:none;backdrop-filter:none;background:rgba(6,7,9,.6)}
+#modal{-webkit-backdrop-filter:none;backdrop-filter:none;background:rgba(10,9,8,.6)}
+#tip{box-shadow:none}
+.bm3d-stage{background:transparent}
 
-/* Type: one family for words, the condensed face for big numbers. */
+/* Type. */
 h1,h2,h3{font-family:var(--font);font-weight:700;letter-spacing:-.02em;line-height:1.1}
 h2{text-transform:none}
-.ph h2{font-size:32px;letter-spacing:-.03em}
-.hero h2{font-size:40px;font-weight:700;line-height:1.02;letter-spacing:-.035em;margin:4px 0 8px}
-.bh h3{font:650 19px/1.2 var(--font);text-transform:none;letter-spacing:-.01em}
+.ph{margin:20px 0 12px}
+.ph h2{font-size:30px;letter-spacing:-.03em;line-height:1.05}
+.bh h3{font:650 18px/1.25 var(--font);text-transform:none;letter-spacing:-.01em}
 .bf-t b{font:650 16px/1.2 var(--font);text-transform:none;letter-spacing:-.01em}
 .dh .dlabel{font:700 17px var(--font);text-transform:none;letter-spacing:-.01em}
-.hw-t{font:700 16px/1.2 var(--font);text-transform:none;letter-spacing:-.01em}
+.hw-t{font:700 15px/1.2 var(--font);text-transform:none;letter-spacing:-.01em}
 .cal-h h3,.cal-h h4{font:700 19px/1.1 var(--font);text-transform:none;letter-spacing:-.01em}
 .cal-inline .cal-h h4{font-size:17px}
 .prblk h4{font:700 19px/1.1 var(--font);text-transform:none;letter-spacing:-.01em}
 .ob-card h2,.ob-h{letter-spacing:-.025em}
 .ob-slide h2{letter-spacing:-.02em}
-
-/* Labels: sentence case, no tracking. */
-.eyebrow,.ph .kick{font:600 13px var(--font);letter-spacing:0;text-transform:none}
+.sec-t{font-size:18px;font-weight:650;letter-spacing:-.015em}
+.sec>summary{min-height:60px}
+.eyebrow,.ph .kick{font:500 14px var(--font);letter-spacing:0;text-transform:none;color:var(--muted)}
 .ring .rl,.srow .sl,.pick-grp,.sg.head,table.t th,.bm figcaption,.cal-g .wd,.wkbar .w .wd,.wk .d .wd,.rirstrip .rs-l{letter-spacing:0;text-transform:none}
-.srow .sl{font-size:12.5px}
+.srow .sl{font-size:13px;color:var(--ink-2)}
 .sg.head,.pick-grp{font-size:12.5px}
 .ring .rl{font-size:10.5px;opacity:.75}
-.tabs button{letter-spacing:0;text-transform:none;font-size:11.5px}
+.tabs button{letter-spacing:0;text-transform:none;font-size:11.5px;font-weight:550}
 .bf-pr,.sg.pr::after{letter-spacing:.02em}
 
-/* The Today card: flat, a hairline, a smaller radius. */
-.hero{border-radius:14px}
+/* Today: no card. */
+.hero{background:none;box-shadow:none;border:0;border-radius:0;padding:6px 0 4px;margin:16px 0 8px}
+.hero .eyebrow{opacity:1;color:var(--muted)}
+.hero h2{font-size:46px;font-weight:700;line-height:1;letter-spacing:-.045em;margin:6px 0 8px}
+.hero .muted{opacity:1;color:var(--muted)}
 .hero .btn.primary{box-shadow:none}
-.btn.big{font:700 17px var(--font);letter-spacing:-.005em;text-transform:none;min-height:54px;border-radius:var(--r-md)}
+.btn.big{font:650 17px var(--font);letter-spacing:-.005em;text-transform:none;min-height:54px;margin-top:20px;border-radius:var(--r-md)}
+.hero .btn:not(.primary){background:none;border:0;padding:0 14px 0 0;color:var(--ink);font-weight:600;text-decoration:underline;text-decoration-color:var(--btn-b);text-decoration-thickness:1.5px;text-underline-offset:5px}
+.hero .hb{border-color:var(--line)}
+.hero-note{background:none;padding:0;border-radius:0}
 .ring .rp{filter:none}
-.ring .rt{stroke:color-mix(in srgb,var(--on-hero) 12%,transparent)}
+.ring .rt{stroke:var(--line)}
 
-/* Buttons and chips: rounded rectangles. */
-.btn.primary,.block .btn.primary,.card .btn.primary,.sheet .btn.primary,.panel .btn.primary{border-radius:var(--r-md)}
-.chip{border-radius:var(--r-sm)}
+/* Buttons: outlined, not filled tiles. The accent stays on the primary one. */
+.btn{background:transparent;border:1px solid var(--btn-b)}
+.block .btn,.card .btn,.sheet .btn,.panel .btn{background:transparent;border:1px solid var(--btn-b)}
+.btn.primary,.block .btn.primary,.card .btn.primary,.sheet .btn.primary,.panel .btn.primary{border-radius:var(--r-md);border-color:transparent}
+.ib{background:transparent;border:0}
+.chip{border-radius:var(--r-sm);background:transparent;border:1px solid var(--btn-b)}
+.chip.on{border-color:transparent}
 .tag,.pill,.lm{border-radius:6px}
 .cyc .c{border-radius:6px}
-.acctbar{border-radius:var(--r-md)}
+.acctbar{border-radius:var(--r-md);background:transparent;border-color:var(--line)}
 .wkview,.fbkind{border-radius:var(--r-md)}
 .wkview button,.fbkind button{border-radius:var(--r-sm)}
-.wkview button.on,.fbkind button.on{box-shadow:inset 0 0 0 1px var(--line)}
+.wkview button.on,.fbkind button.on{box-shadow:inset 0 0 0 1px var(--btn-b)}
 .rirstrip{border-radius:var(--r-md)}
 .rirstrip button{border-radius:var(--r-sm)}
-/* "+ At a glance" and the like: plain outlined chips, not dashed pills in the accent. */
-.moreline .chip.add{border:1px solid var(--line);color:var(--ink-2);background:transparent}
 
-/* The active tab: a short bar on top and the accent icon, no pill behind it. */
-.tabs button[aria-current="page"]::before{top:0;width:24px;height:2px;margin-left:-12px;border-radius:0;background:var(--volt-line)}
+/* Links and section chrome: ink, quieter. */
+.moreline .chip.add{border:0;background:none;color:var(--muted);padding:0 14px 0 0;min-height:44px;font-weight:600}
+.moreline .ml-c{color:var(--ink-2);text-decoration-color:var(--btn-b)}
+.sgrip{opacity:.28}
+.hb{border-width:1px}
 
-/* The compact rest timer keeps its shape but loses the glow. */
+/* The library button: a plain row, ink. */
+.libbtn{background:transparent;box-shadow:inset 0 0 0 1px var(--btn-b);border-radius:var(--r-md)}
+.libbtn .lb-i{background:var(--surface-2);color:var(--ink);border-radius:var(--r-sm)}
+.libbtn .lb-c{color:var(--muted)}
+
+/* The active tab: ink, with a short bar on top. */
+.tabs{background:var(--bg)}
+.tabs button[aria-current="page"] svg{stroke:var(--ink)}
+.tabs button[aria-current="page"]::before{top:0;width:24px;height:2px;margin-left:-12px;border-radius:0;background:var(--ink)}
+
+/* Session: each exercise is a stretch of the page under a hairline. */
+.block{background:none;border:0;border-top:1px solid var(--line);border-radius:0;box-shadow:none;padding:18px 0 16px;margin:0}
+.block.folded{padding:0}
+.block.ss{box-shadow:inset 2px 0 0 var(--blue);padding-left:12px}
+.block.ss+.block.ss{margin-top:0}
+/* With no card padding the handle's -8 px pull took its 44 px touch past the
+   screen edge (tests/r29.js); it sits 4 px further in. */
+.block:not(.folded) .bgrip{margin-left:-4px}
+.hint{background:none;padding:0;border-radius:0;margin:10px 0 4px}
+.block .ht,.card .ht,.sheet .ht{background:var(--surface-2)}
+.sg input,.sg select,.rirb{background:var(--field);border-color:var(--field-b)}
+
+/* Stats and other summaries: rows on the page, no box. */
+.card{box-shadow:none}
+/* The summary rule higher up uses !important, so this does too. */
+.card.summary{background:none!important;border:0!important;border-top:1px solid var(--line)!important;border-radius:0!important;padding:0!important}
+.card.summary .srow{padding-left:0;padding-right:0}
+.kpis{background:none;border:0;border-radius:0;gap:0;border-bottom:1px solid var(--line)}
+.kpi{background:none;padding:12px 0 14px}
+.kpi+.kpi{padding-left:16px;border-left:1px solid var(--line)}
+.hweek{border-bottom:1px solid var(--line)}
+
+/* The compact rest timer keeps its shape, without the glow. */
 #timer.compact{box-shadow:0 0 0 1px var(--line)}
-#tip{box-shadow:none}
-.bm3d-stage{background:transparent}
 </style>
 <script>window.IRONLOG_SUPABASE={"url":"https://fqvupierxrvpoidtwlon.supabase.co","key":"sb_publishable_XbUAlSYE8AzrnYqk-0dTmQ_sG-e6J9i"};</script>
 <script src="vendor/supabase.js"></script>
@@ -5018,7 +5083,7 @@ function blockDone(b){const w=b.sets.filter(x=>!x.warm);return w.length>0&&w.eve
 function sessProgress(d){let n=0,k=0;for(const b of d.ex)for(const x of b.sets)if(!x.warm){n++;if(x.done)k++;}return {n,k,pct:n?k/n*100:0};}
 function updateSessBar(){const d=state.draft;
   // Minutes left follow each tick, not just the next redraw (r34.2: "about 75 min left" with every set done).
-  const lf=document.getElementById('sessLeft');if(d&&lf){const left=leftMin(d);lf.textContent=left>0?`, about ${left} min left`:'';}
+  const lf=document.getElementById('sessLeft');if(d&&lf){const left=leftMin(d);lf.textContent=left>0?`, ~${left} min left`:'';}
   const el=document.getElementById('sessBar');if(!d||!el)return;const p=sessProgress(d);el.style.width=p.pct+'%';const t=document.getElementById('sessOf');if(t)t.textContent=`${p.k} of ${p.n}`;}
 let foldT=null;
 // True while an exercise is being dragged in a session (r29): renders and
@@ -5364,7 +5429,7 @@ const ACCENTS=[['ember','Ember'],['blue','Blue'],['volt','Volt'],['pink','Pink']
 function applyTheme(){const t=state.settings.theme;if(t==='system')delete document.documentElement.dataset.theme;else document.documentElement.dataset.theme=t;
   document.documentElement.dataset.accent=state.settings.accent||ACCENT0;
   // The installed app's status bar takes this colour, so it follows the theme.
-  const m=document.querySelector('meta[name="theme-color"]');if(m)try{m.setAttribute('content',getComputedStyle(document.body).backgroundColor||'#08090b');}catch(e){/* cosmetic */}}
+  const m=document.querySelector('meta[name="theme-color"]');if(m)try{m.setAttribute('content',getComputedStyle(document.body).backgroundColor||'#121110');}catch(e){/* cosmetic */}}
 /* A code bug inside a view used to leave a blank screen. Now the error is
    logged and a recovery screen offers your data and a way back. */
 /* True while #view is being replaced. Replacing it removes a focused field,
@@ -5455,13 +5520,13 @@ function viewToday(){
   const free=state.settings.todayStart==='free'&&ui.todayDay==null;
   const hello=state.settings.userName?`<p class="hello">${esc(greeting())}, ${esc(state.settings.userName)}</p>`:'';
   if(free){
-    let h=welcomeCard()+acctBar()+installBar()+iconBar()+`<section class="hero" data-day="free"><div class="hero-top"><div class="hero-t">${hello}<p class="eyebrow">${esc(new Date().toLocaleDateString(undefined,{weekday:'short',month:'short',day:'numeric'}))} · Freestyle${deload?' · deload week':''}</p><h2>Blank session</h2>
+    let h=welcomeCard()+acctBar()+installBar()+iconBar()+`<section class="hero" data-day="free"><div class="hero-top"><div class="hero-t">${hello}<p class="eyebrow">${esc(todayEye())} · Freestyle${deload?' · deload week':''}</p><h2>Blank session</h2>
     <p class="muted small" style="margin:0">${noLog()?'Add exercises as you go.':(()=>{const w=weekStats();return w.doneDays?`${w.doneDays} session${w.doneDays===1?'':'s'}, ${r1(w.got)} hard sets this week`:'Nothing yet this week.';})()}</p></div></div>
     <button class="btn primary block big" data-act="startFree">Start session</button>
     <div class="row" style="margin-top:8px">${changeBtn(di,true)}${moreBtn(deload)}</div>${moreRow(deload,false,di)}</section>`;
     return h+bwDueCard()+todayRest({playable:false,di,cs,day,deload});
   }
-  let h=welcomeCard()+acctBar()+installBar()+iconBar()+`<section class="hero" data-day="${di}"><div class="hero-top"><div class="hero-t">${state.settings.userName?`<p class="hello">${esc(greeting())}, ${esc(state.settings.userName)}</p>`:''}<p class="eyebrow">${esc(new Date().toLocaleDateString(undefined,{weekday:'short',month:'short',day:'numeric'}))} · ${esc(eyebrow)}${deload?' · deload week':isRestWeek(weekStart(today()))?' · rest week':''}</p><h2>${esc(day.name)}</h2>
+  let h=welcomeCard()+acctBar()+installBar()+iconBar()+`<section class="hero" data-day="${di}"><div class="hero-top"><div class="hero-t">${state.settings.userName?`<p class="hello">${esc(greeting())}, ${esc(state.settings.userName)}</p>`:''}<p class="eyebrow">${esc(todayEye())} · ${esc(eyebrow)}${deload?' · deload week':isRestWeek(weekStart(today()))?' · rest week':''}</p><h2>${esc(day.name)}</h2>
   <p class="muted small" style="margin:0" data-tip="${esc('Routine: '+R.name)}">${playable?`${day.items.length} exercises · ${deload?day.items.reduce((a,it)=>a+Math.max(1,Math.ceil(it.sets/2)),0)+' sets (deload)':daySets(day)+' sets'} · ${minTxt(dayMinutes(day,deload))}`:(day.rest?'Rest day':'No exercises planned')}</p></div>${heroRing(weekStats())}</div>
   ${note?`<p class="hero-note small">${note}</p>`:''}`;
   /* Four ways to start besides the plan as written, each saying on its face
@@ -5793,13 +5858,16 @@ function welcomeCard(){
 /* Injuries: one line per flagged muscle. Exercises that load it are marked in
    every session, their progression target is paused, and the muscle is left
    out of "below target" reads until the flag is cleared. */
-/* "about 82 min", flagged when it runs past the lifting budget in Settings. */
+/* Today's date without the comma (V, r42): "Mon Oct 12". Built from two
+   parts so every locale keeps its own day and month words. */
+function todayEye(){const d=new Date();return d.toLocaleDateString(undefined,{weekday:'short'})+' '+d.toLocaleDateString(undefined,{month:'short',day:'numeric'});}
+/* "~82 min", flagged when it runs past the lifting budget in Settings. */
 /* Rounded to 5 minutes, as in the routine picker (r32, from the third review:
    the picker said 55 to 75 min and Today "about 77 min" for the same day),
    and so is the time left in a session; under 10 minutes, to the minute.
    The budget is compared before rounding. */
 const min5=m=>m>=10?Math.round(m/5)*5:Math.max(1,Math.round(m));
-function minTxt(m){const b=state.settings.timeBudget;const r=min5(m);return b&&m>b?`<span class="overb">about ${r} min, over your ${b} min budget</span>`:`about ${r} min`;}
+function minTxt(m){const b=state.settings.timeBudget;const r=min5(m);return b&&m>b?`<span class="overb">~${r} min, over your ${b} min budget</span>`:`~${r} min`;}
 function injuryCard(){
   const inj=state.injuries||[];if(!inj.length)return '';
   return sec({sk:'today:injuries',key:'injuries',title:'Injuries',sub:`<span class="pill red">${inj.length} flagged</span>`,body:`<ul class="inj-list" style="list-style:none;margin:0;padding:0">${inj.map(x=>`<li><span><b>${injLabel(x.m)}</b> <span class="muted small">since ${fmtDate(x.date)}${x.note?' · '+esc(x.note):''}</span></span><button class="btn sm" data-act="injClear" data-id="${x.id}">Cleared</button></li>`).join('')}</ul>
@@ -6087,7 +6155,7 @@ function volHeadline(){
    line below, so neither repeats here as a tile (r41). */
 function extraKpis(){
   let h='';const sd=sessionLength();
-  if(sd)h+=`<div class="kpi"><div class="v">${sd.avg}<span class="small"> min</span></div><div class="l">Average session, last 4 weeks (${sd.n} timed)${sd.plan?`, planned about ${sd.plan}`:''}</div></div>`;
+  if(sd)h+=`<div class="kpi"><div class="v">${sd.avg}<span class="small"> min</span></div><div class="l">Average session, last 4 weeks (${sd.n} timed)${sd.plan?`, planned ~${sd.plan} min`:''}</div></div>`;
   return h;
 }
 /* Up to four lines, each landing on the section that holds the detail. */
@@ -6365,7 +6433,9 @@ function bodyMapCard(){
     const low=MK.filter(m=>!TRACK_ONLY.has(m)&&lowSt(st[m]));
     detail=`<p class="small muted" style="margin:6px 0 0">Tap a muscle ${tipi(`${mapView()==='3d'?'Drag sideways to turn it. ':''}Tap a muscle for its numbers.${src==='week'?' This is the week so far, so most muscles read low early in the week.':''}`,'About the map')}</p>${low.length&&src==='avg'?`<div class="row" style="margin-top:6px;gap:4px"><span class="small muted">Below target:</span>${low.slice(0,8).map(m=>`<button class="chip" data-act="mapSel" data-m="${m}">${ML[m]}</button>`).join('')}</div>`:''}`;
   }
-  const msub=(()=>{if(!avg){if(!state.sessions.length)return 'none logged yet';const n=MK.filter(m=>st[m].st==='in'||st[m].st==='over').length;return `this week so far, ${n} at target`;}const sa=muscleStatus(avg);const inA=MK.filter(m=>sa[m].st==='in'||sa[m].st==='over').length;const lowA=MK.filter(m=>!TRACK_ONLY.has(m)&&lowSt(sa[m])).length;return lowA?`${inA} at target, ${lowA} below on average`:`${inA} at target on average`;})();
+  /* The summary is a count out of the muscles with a target (V, r42): "15 of 19 on target". Tracked-only muscles have no target, so they are in neither number. */
+  const N=MK.filter(m=>!TRACK_ONLY.has(m)).length;
+  const msub=(()=>{if(!avg){if(!state.sessions.length)return 'none logged yet';const n=MK.filter(m=>!TRACK_ONLY.has(m)&&(st[m].st==='in'||st[m].st==='over')).length;return `${n} of ${N} on target so far`;}const sa=muscleStatus(avg);const inA=MK.filter(m=>!TRACK_ONLY.has(m)&&(sa[m].st==='in'||sa[m].st==='over')).length;return `${inA} of ${N} on target`;})();
   const v3=mapView()==='3d';
   B3.status=st;B3.sel=sel;
   const stage=v3?`<div class="bm3d" id="bm3d"><div class="bm3d-stage" role="img" aria-label="3D body, shaded by hard sets a week. Drag sideways to turn it, tap a muscle for its numbers. The same numbers are in the flat view."></div><p class="bm3d-msg small muted" hidden></p><div class="seg bm3d-turn" role="group" aria-label="Turn the body"><button class="chip" data-act="map3dTurn" data-v="0">Front</button><button class="chip" data-act="map3dTurn" data-v="1">Side</button><button class="chip" data-act="map3dTurn" data-v="2">Back</button></div></div>`:`<div class="bm-wrap">${fig('f','Front')}${fig('b','Back')}</div>`;
@@ -7096,7 +7166,7 @@ function viewLogger(){
   // Warm-ups are not counted, the same as the progress bar under it.
   const d=state.draft;const hintSeen=new Set();const doneN=d.ex.reduce((a,b)=>a+b.sets.filter(s=>s.done&&!s.warm).length,0);
   const left=leftMin(d);
-  let h=`<div class="ph"><div style="min-width:0;flex:1 1 auto"><p class="kick">${d.editingId?'Editing a saved session':d.past?'Past workout':'Session in progress'}</p><div class="hrow"><h2 style="overflow-wrap:anywhere;min-width:0">${esc(d.dayName)}</h2>${helpBtn('log')}<button class="btn sm danger" style="margin-left:auto;flex:none" data-act="discard">${d.editingId?'Cancel edit':'Discard'}</button></div><p class="meta"><span id="doneCount">${doneN}</span> <span id="doneWord">${doneN===1?'set':'sets'}</span> done${d.past?`, for ${esc(fmtDateLong(d.date))}`:''}${d.startedAt&&!d.past?`, started ${new Date(d.startedAt).toLocaleTimeString([],{hour:'numeric',minute:'2-digit'})}`:''}<span id="sessLeft">${left>0?`, about ${left} min left`:''}</span></p>${(()=>{const sp=sessProgress(d);return sp.n?`<div class="sprog" aria-hidden="true"><div class="band"><div class="fill prog" id="sessBar" style="width:${sp.pct}%"></div></div><span id="sessOf">${sp.k} of ${sp.n}</span></div>`:'';})()}
+  let h=`<div class="ph"><div style="min-width:0;flex:1 1 auto"><p class="kick">${d.editingId?'Editing a saved session':d.past?'Past workout':'Session in progress'}</p><div class="hrow"><h2 style="overflow-wrap:anywhere;min-width:0">${esc(d.dayName)}</h2>${helpBtn('log')}<button class="btn sm danger" style="margin-left:auto;flex:none" data-act="discard">${d.editingId?'Cancel edit':'Discard'}</button></div><p class="meta"><span id="doneCount">${doneN}</span> <span id="doneWord">${doneN===1?'set':'sets'}</span> done${d.past?`, for ${esc(fmtDateLong(d.date))}`:''}${d.startedAt&&!d.past?`, started ${new Date(d.startedAt).toLocaleTimeString([],{hour:'numeric',minute:'2-digit'})}`:''}<span id="sessLeft">${left>0?`, ~${left} min left`:''}</span></p>${(()=>{const sp=sessProgress(d);return sp.n?`<div class="sprog" aria-hidden="true"><div class="band"><div class="fill prog" id="sessBar" style="width:${sp.pct}%"></div></div><span id="sessOf">${sp.k} of ${sp.n}</span></div>`:'';})()}
   <div class="row lh-row"><input type="date" data-bind="draftDate" value="${d.date}" max="${today()}" aria-label="Session date" data-tip="Change to log a past session">${left>0?'<button class="btn sm" data-act="shortOpen">Short on time</button>':''}</div></div></div>
   ${helpText('log',(state.settings.rirMode==='off'?'RIR is switched off in Settings, so every working set counts as hard. ':'RIR is reps left in the tank: 3 or less counts the set as hard for weekly volume, 4 or more stays in history only. RIR is optional: a blank is read as your usual RIR on that lift, or as hard until you have rated a few of its sets. ')+'W marks a warm-up (kept, never analysed); tap it again for D, a drop set (counts as work and volume, never as a PR or target). To add a new warm-up or drop set row, use the ⋯ menu on the exercise. Drag an exercise by its ⠿ to change the order. In a superset the rest timer starts after the last exercise of the pair. Timed holds log seconds in the Sec column. The date can be changed to log a past session.'+(d.past?' Quick entry: no rest timer, and a set counts as done once its reps are typed.':state.settings.autoDone?' Auto-mark is on: sets tick themselves when you leave the reps field.':''))}
   ${d.free?`<label class="field" style="margin-top:8px">Name<input type="text" data-bind="draftName" maxlength="40" value="${esc(d.dayName)}"></label><p class="small muted" style="margin:4px 0 0">Not tied to a routine day, so your cycle stays put.</p>`:''}
@@ -8218,7 +8288,7 @@ function renderModalBody(){
     <div class="tpl-list">${TEMPLATES.filter(t=>!t.hidden).map(t=>{
       // Minutes come from the same time model as Plan, so the list and the plan agree.
       // A range (r28): an average read as a promise, and Today then showed a longer first day.
-      const r=routineFromTemplate(t.key);const tr=r.days.filter(d=>!d.rest);const mins=tr.map(d=>Math.round(dayMinutes(d)/5)*5);const lo=Math.min(...mins),hi=Math.max(...mins);const min=lo===hi?`about ${lo} min`:`${lo} to ${hi} min`;
+      const r=routineFromTemplate(t.key);const tr=r.days.filter(d=>!d.rest);const mins=tr.map(d=>Math.round(dayMinutes(d)/5)*5);const lo=Math.min(...mins),hi=Math.max(...mins);const min=lo===hi?`~${lo} min`:`${lo} to ${hi} min`;
       return `<button class="tpl" data-act="tplPick" data-k="${t.key}"><span class="tpl-t">${esc(t.name)}</span><span class="tpl-w">${esc(t.who)}</span><span class="tpl-m">${esc(t.meta)} · ${min} · ${tr.map(d=>esc(d.name)).join(', ')}</span></button>`;}).join('')}</div></div>`;
   }else if(m.kind==='routineNew'){
     h=`<div class="sheet" role="dialog" aria-modal="true"><div class="sheet-h"><h3>New routine</h3><button class="ib" aria-label="Close" data-act="mClose">✕</button></div>
@@ -8290,7 +8360,7 @@ function renderModalBody(){
       :pl.changes.length?`<ul class="short-list">${pl.changes.map(c=>`<li>${esc(c)}</li>`).join('')}</ul><p class="small muted" style="margin:6px 0 0">About ${min5(pl.est)} min after the change.${pl.over?' Still over, because exercises you have started are kept.':''} Done sets are never touched.</p>`
       :`<p class="small">Everything left fits in ${m.mins} minutes as planned.</p>`;
     h=`<div class="sheet" role="dialog" aria-modal="true"><div class="sheet-h"><h3>Short on time</h3><button class="ib" aria-label="Close" data-act="mClose">✕</button></div>
-    ${left?`<p class="small muted" style="margin:0 0 8px">How long do you have? Planned: about ${min5(left)} min.</p>
+    ${left?`<p class="small muted" style="margin:0 0 8px">How long do you have? Planned: ~${min5(left)} min.</p>
     <div class="chips">${[15,20,30,45,60,75].map(v=>`<button class="chip ${m.mins===v?'on':''}" data-act="shortPick" data-v="${v}" aria-pressed="${m.mins===v}">${v} min</button>`).join('')}</div>`:''}
     ${body}
     <div class="row" style="margin-top:12px">${pl&&pl.changes.length?'<button class="btn primary" data-act="shortApply">Trim the session</button>':''}<button class="btn" data-act="mClose">${pl&&pl.changes.length?'Cancel':'Close'}</button></div>
@@ -8324,7 +8394,7 @@ function renderModalBody(){
     h=`<div class="sheet" role="dialog" aria-modal="true"><div class="sheet-h"><h3>Pick for me</h3><button class="ib" aria-label="Close" data-act="mClose">✕</button></div>
     <p class="small muted hastip" style="margin:0" data-tip="From this session so far, your last 7 days against your targets, recovery, injuries, and your trends.">What to add next.</p>
     ${allMet?'<p class="callout green" style="margin:8px 0 0">Every muscle is at or above target for the last 7 days. Anything more is optional.</p>':''}
-    ${picks.length?picks.map((x,k)=>{const p=x.plan;const ex=x.e;const mins=Math.round((p.sets*(setSecs(ex,p)+(+p.rest||0))+setupSecs(ex,2))/60);return `<div class="pcard${k===0?' best':''}"><div class="row spread" style="flex-wrap:nowrap;align-items:flex-start"><span style="min-width:0"><b>${esc(ex.name)}</b><br><span class="small muted">${p.sets} × ${repSpan(p.repMin,p.repMax,'-')}${ex.timed?'s':''}${ex.perSide?' per side':''} · about ${mins} min</span></span>${k===0?'<span class="tag green">Best fit</span>':''}</div>
+    ${picks.length?picks.map((x,k)=>{const p=x.plan;const ex=x.e;const mins=Math.round((p.sets*(setSecs(ex,p)+(+p.rest||0))+setupSecs(ex,2))/60);return `<div class="pcard${k===0?' best':''}"><div class="row spread" style="flex-wrap:nowrap;align-items:flex-start"><span style="min-width:0"><b>${esc(ex.name)}</b><br><span class="small muted">${p.sets} × ${repSpan(p.repMin,p.repMax,'-')}${ex.timed?'s':''}${ex.perSide?' per side':''} · ~${mins} min</span></span>${k===0?'<span class="tag green">Best fit</span>':''}</div>
       <ul>${exReasons(x).map(r=>`<li>${esc(r)}</li>`).join('')}</ul>
       <div class="row" style="margin-top:8px"><button class="btn sm ${k===0?'primary':''}" data-act="pickExAdd" data-ex="${ex.id}" data-sets="${p.sets}">Add to session</button></div></div>`;}).join(''):'<p class="small">Nothing in your library fits: every exercise is already in this session or loads an injury.</p>'}
     <div class="row" style="margin-top:10px"><button class="btn sm" data-act="pickSession">Browse all exercises</button></div></div>`;
@@ -9460,7 +9530,7 @@ const ACT={
     d.ex=d.ex.filter((b,bi)=>!drop.has(bi));
     fixSupersets(d.ex.map(b=>b.plan));
     closeModal();saveNow();rerenderKeepScroll();
-    toast(`Trimmed to about ${min5(pl.est)} min`,true);
+    toast(`Trimmed to ~${min5(pl.est)} min`,true);
   },
   chk(t){
     const d=state.draft;if(!d)return;const k=t.dataset.k,v=+t.dataset.v;
@@ -10175,7 +10245,7 @@ m.err=`Could not read that. Try the pattern 225x5, 5, 4 ${rirScale()==='rpe'?'rp
       const lines=[`${work} working set${work===1?'':'s'}, ${hard} ${rirHalfOn()?'counted toward the week':'counted as hard'}`];
       // A session dated in the past says where it went, since it is not at the top of History.
       if(sess.date!==today())lines.unshift(`Saved under ${fmtDateLong(sess.date)}`);
-      if(durMin){const pm=pmDraft;lines.push(`${durMin} minutes${pm&&!sess.free?`, planned about ${pm}`:''}`);}
+      if(durMin){const pm=pmDraft;lines.push(`${durMin} minutes${pm&&!sess.free?`, planned ~${pm}`:''}`);}
       if(targets)lines.push(`${beaten} of ${targets} exercise target${targets===1?'':'s'} beaten`);
       if(heavier.length)lines.push(`Heaviest yet: ${andList(heavier,4)}`);
       // The PR moment in the recap (item 28): its own gold block, each with what it beat.
