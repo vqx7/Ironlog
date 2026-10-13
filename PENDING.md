@@ -17,6 +17,7 @@ This is the tracking list. Items are built only when V says go. Owner items need
 273. Built in r42 (V, 2026-10-12, copy only, pull request r42-copy): Today's date has no comma ("Mon Oct 12").
 274. Built in r42 (V): the Muscle map's summary is a count out of the muscles with a target ("15 of 19 on target", "8 of 19 on target so far" for this week) instead of "15 at target, 4 below on average".
 275. Built in r42 (V): workout minutes read "~75 min" (Today, the routine picker, Pick for me, Short on time, the recap, Stats' session length) and "~70 min left" in a session, instead of "about".
+277. Built in r42 (V: "clean up and optimize", "don't hardcode"): every estimated duration is worded by one function, `estMin`, at all 10 places (the first r42 build had typed it by hand and missed Short on time's "About N min after the change"); the two one-off debug scripts left in tests/ are gone; the 8 CSS selectors defined twice are merged (every computed style on every tab, a session and a sheet, both themes, 390 and 320 px, reduced motion on and off, compared before and after: 0 differences in 20.7 million values); tests/hygiene.js fails on any of the three coming back.
 276. Not shipping (V, 2026-10-12: "looks worse"): the r42 restyle in pull request #32 (palette, Today without a card, unboxed rows, outlined buttons). Kept as a draft for reference only; the copy in 273 to 275 ships without it.
 
 ## r40, live (pull request #30) (V, 2026-10-11: "others next on list"; item 41), tests/r40.js

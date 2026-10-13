@@ -183,7 +183,7 @@ body::before{content:"";position:fixed;left:0;right:0;top:0;height:env(safe-area
 .wkbar div.w{cursor:default}
 /* Every day is a button, so each disc answers a press. An empty past day
    carries a small + : tapping it logs a workout for that date. */
-.wkbar .w .dn{transition:transform .12s ease}
+.wkbar .w .dn{display:flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:50%;font:750 14px/1 var(--font);color:var(--ink);font-variant-numeric:tabular-nums;background:var(--surface-2);transition:transform .12s ease}
 .wkbar .w:active .dn{transform:scale(.9)}
 .wkbar .w.add .dn{position:relative}
 .wkbar .w.add .dn::after{content:"+";position:absolute;right:-3px;bottom:-3px;width:13px;height:13px;border-radius:50%;background:var(--surface);color:var(--muted);box-shadow:0 0 0 1px var(--line);font:800 11px/13px var(--font);text-align:center}
@@ -192,7 +192,6 @@ body::before{content:"";position:fixed;left:0;right:0;top:0;height:env(safe-area
 /* Each day is a small disc, like an activity ring: filled in the accent when
    trained, a grey ring when planned (red when a fixed weekday was missed), a
    ring around today. */
-.wkbar .w .dn{display:flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:50%;font:750 14px/1 var(--font);color:var(--ink);font-variant-numeric:tabular-nums;background:var(--surface-2)}
 .wkbar .w .nm{display:none;font-size:10px;line-height:1.25;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding:0 3px}
 .wkbar .w.on .dn{background:var(--volt);color:var(--on-volt)}
 .wkbar .w.plan .dn{background:transparent;box-shadow:inset 0 0 0 1.5px var(--muted)}
@@ -236,12 +235,11 @@ main{max-width:760px;margin:0 auto;padding:6px 16px 150px}
 
 /* ---------- bottom tabs ---------- */
 .tabs{position:fixed;left:0;right:0;bottom:0;z-index:30;background:var(--glass);-webkit-backdrop-filter:saturate(170%) blur(18px);backdrop-filter:saturate(170%) blur(18px);border-top:1px solid var(--line-soft);display:grid;grid-template-columns:repeat(5,minmax(0,1fr));padding-bottom:env(safe-area-inset-bottom,0px)}
-.tabs button{position:relative;background:none;border:0;min-height:58px;min-width:0;padding:7px 1px 6px;font:600 11px var(--font);letter-spacing:.04em;text-transform:uppercase;color:var(--muted);cursor:pointer;white-space:nowrap;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px}
+.tabs button{position:relative;background:none;border:0;min-height:58px;min-width:0;padding:7px 1px 6px;font:600 11px var(--font);letter-spacing:.04em;text-transform:uppercase;color:var(--muted);cursor:pointer;white-space:nowrap;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;isolation:isolate}
 .tabs button svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
 .tabs button[aria-current="page"]{color:var(--ink)}
 .tabs button[aria-current="page"] svg{stroke:var(--volt-line);stroke-width:2.1}
 .tabs button[aria-current="page"]::before{content:"";position:absolute;top:5px;left:50%;width:44px;height:30px;margin-left:-22px;border-radius:999px;background:color-mix(in srgb,var(--volt) 14%,transparent);z-index:-1}
-.tabs button{isolation:isolate}
 /* The preview build is marked with a labelled amber tag on the tab bar
    (r25). The striped edges of r24 read as stray dotted lines, not as a label. */
 html[data-env="preview"] .tabs{border-top:2px solid #f5a524}
@@ -359,7 +357,6 @@ label.field>input,label.field>select,label.field>textarea{margin-top:4px;color:v
 .grid3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
 .check-inline{display:flex;align-items:flex-start;gap:10px;font-size:15px;line-height:1.35}
 .check-inline input{width:20px;height:20px;flex:none;margin:0;accent-color:var(--ink)}
-.dmeta .check-inline{min-height:44px;align-items:center;cursor:pointer}
 
 .tag{display:inline-block;font-size:11.5px;font-weight:650;letter-spacing:.02em;padding:3px 9px;border-radius:999px;background:var(--surface-2);color:var(--muted);white-space:nowrap;vertical-align:1px}
 .tag.rare,.tag.yellow{background:var(--yellow-bg);color:var(--yellow)}
@@ -383,7 +380,7 @@ label.field>input,label.field>select,label.field>textarea{margin-top:4px;color:v
 .dh input[type=text]{font-weight:600;min-height:40px;background:var(--surface-2);border-color:transparent}
 .dmeta{padding:0 12px 4px;font-size:13.5px;color:var(--muted)}
 .dmeta.row{flex-wrap:nowrap;gap:8px}
-.dmeta .check-inline{flex:none;color:var(--ink);font-size:14px;align-items:center}
+.dmeta .check-inline{flex:none;color:var(--ink);font-size:14px;align-items:center;min-height:44px;cursor:pointer}
 ul.items,ul.lib{list-style:none;margin:0;padding:2px 10px 6px}
 ul.items:empty{min-height:54px;margin:6px 12px;border:2px dashed var(--line);border-radius:var(--r-sm)}
 ul.items:empty::before{content:"Drop or add exercises here";display:block;padding:14px;color:var(--muted);font-size:14px;text-align:center}
@@ -392,17 +389,17 @@ ul.items:empty::before{content:"Drop or add exercises here";display:block;paddin
 .ir{display:flex;align-items:center;gap:6px}
 .ir .ib{width:40px;height:40px;background:transparent}
 .ib:disabled{opacity:.35;cursor:default}
-.sgrip{width:22px;height:32px;display:inline-flex;align-items:center;justify-content:center;cursor:grab;color:var(--muted);font-size:15px;touch-action:none;flex:none;user-select:none;-webkit-user-select:none;border-radius:6px;margin-left:-6px;opacity:.4}
+.sgrip{width:22px;height:32px;display:inline-flex;align-items:center;justify-content:center;cursor:grab;color:var(--muted);font-size:15px;touch-action:none;flex:none;user-select:none;-webkit-user-select:none;border-radius:6px;margin-left:-6px;opacity:.4;position:relative}
 .sgrip:focus-visible{outline:2px solid var(--ink);outline-offset:1px}
 /* The handle looks 22 px wide; the touch area is 44 x 44, reaching into the gap before the title. */
-.sgrip{position:relative}.sgrip::before{content:'';position:absolute;top:-6px;bottom:-6px;left:-12px;right:-10px}
-.bgrip{width:26px;min-height:44px;display:inline-flex;align-items:center;justify-content:center;cursor:grab;color:var(--muted);font-size:16px;touch-action:none;flex:none;user-select:none;-webkit-user-select:none;border-radius:6px;margin:-6px 0 0 -8px;opacity:.55}
+.sgrip::before{content:'';position:absolute;top:-6px;bottom:-6px;left:-12px;right:-10px}
+.bgrip{width:26px;min-height:44px;display:inline-flex;align-items:center;justify-content:center;cursor:grab;color:var(--muted);font-size:16px;touch-action:none;flex:none;user-select:none;-webkit-user-select:none;border-radius:6px;margin:-6px 0 0 -8px;opacity:.55;position:relative}
 .bgrip:focus-visible{outline:2px solid var(--ink);outline-offset:1px}
 /* The handle looks narrow so the exercise name keeps its room, but a finger
    gets 44 px: the invisible margin around it belongs to the handle. */
-.bgrip{position:relative}.bgrip::before{content:'';position:absolute;top:0;bottom:0;left:-9px;right:-9px}
+.bgrip::before{content:'';position:absolute;top:0;bottom:0;left:-9px;right:-9px}
 .bh-m{flex:1 1 auto;min-width:0}
-.block.folded{display:flex;align-items:center}
+.block.folded{display:flex;align-items:center;padding:0;overflow:hidden}
 .block.folded .bgrip{margin:0 -10px 0 6px}.block.folded .bgrip::before{left:-6px;right:-12px}
 /* During a drag every exercise is one line, so the list fits on the screen;
    the copy under the finger too (Sortable sizes it from the open block). */
@@ -464,8 +461,7 @@ body.blkdrag .block .bh h3{font-size:17px;white-space:nowrap;overflow:hidden;tex
 .wbtn,.cbtn{height:44px;border-radius:var(--r-sm);border:1px solid var(--field-b);background:var(--surface-2);cursor:pointer;font-weight:700;color:var(--muted)}
 .wbtn.on{background:var(--yellow);color:var(--on-accent);border-color:transparent}
 .wbtn.drop{background:var(--blue);color:var(--on-accent);border-color:transparent}
-.cbtn{font-size:17px}
-.cbtn{border-radius:50%;width:44px}
+.cbtn{font-size:17px;border-radius:50%;width:44px}
 .cbtn.on{background:var(--volt);color:var(--on-volt);border-color:transparent}
 .sg.pr::after{content:attr(data-pr);position:absolute;right:0;top:-9px;background:var(--gold);color:var(--on-gold);font:700 10px/1 var(--font);letter-spacing:.06em;text-transform:uppercase;padding:3px 6px;border-radius:6px;pointer-events:none}
 .ci-row{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:8px;flex-wrap:wrap}
@@ -693,10 +689,9 @@ table.t .stick-r{position:sticky;right:0;background:var(--bg);padding-left:6px}
 .wk .d.today{box-shadow:0 0 0 2px var(--ink)}
 .wk .d.fut{opacity:.75}
 .wk .d.cardio{border-color:var(--volt-line);color:var(--ink)}
-.cyc{display:flex;gap:4px;overflow-x:auto;padding:2px 0 10px;scrollbar-width:none;-webkit-overflow-scrolling:touch}
-.cyc::-webkit-scrollbar{display:none}
 /* A soft fade at the right edge shows the row scrolls. */
-.cyc{-webkit-mask-image:linear-gradient(90deg,#000 86%,transparent);mask-image:linear-gradient(90deg,#000 86%,transparent);padding-right:24px}
+.cyc{display:flex;gap:4px;overflow-x:auto;padding:2px 24px 10px 0;scrollbar-width:none;-webkit-overflow-scrolling:touch;-webkit-mask-image:linear-gradient(90deg,#000 86%,transparent);mask-image:linear-gradient(90deg,#000 86%,transparent)}
+.cyc::-webkit-scrollbar{display:none}
 .cyc .c{flex:0 0 auto;border:1px solid var(--line);border-radius:999px;padding:4px 10px;font-size:12px;white-space:nowrap;color:var(--muted);background:transparent}
 .cyc .c b{margin-right:5px;font:750 12.5px var(--font)}
 .cyc .c.done{background:var(--volt);color:var(--on-volt);border-color:transparent}
@@ -758,7 +753,6 @@ table.t .stick-r{position:sticky;right:0;background:var(--bg);padding-left:6px}
 .sprog{display:flex;align-items:center;gap:10px;margin:8px 0 2px}
 .sprog .band{flex:1 1 auto;margin:0}
 .sprog span{font:700 13px var(--font);font-variant-numeric:tabular-nums;color:var(--muted);white-space:nowrap}
-.block.folded{padding:0;overflow:hidden}
 .bfold{display:flex;align-items:center;gap:12px;width:100%;min-height:60px;padding:10px 14px;background:none;border:0;color:var(--ink);text-align:left;cursor:pointer;font:inherit}
 .bf-ck{flex:none;width:30px;height:30px;border-radius:50%;background:var(--volt);color:var(--on-volt);display:inline-flex;align-items:center;justify-content:center;font-weight:800;font-size:15px}
 .bf-t{min-width:0;flex:1 1 auto;display:flex;flex-direction:column;gap:2px}
@@ -4926,7 +4920,7 @@ function blockDone(b){const w=b.sets.filter(x=>!x.warm);return w.length>0&&w.eve
 function sessProgress(d){let n=0,k=0;for(const b of d.ex)for(const x of b.sets)if(!x.warm){n++;if(x.done)k++;}return {n,k,pct:n?k/n*100:0};}
 function updateSessBar(){const d=state.draft;
   // Minutes left follow each tick, not just the next redraw (r34.2: "about 75 min left" with every set done).
-  const lf=document.getElementById('sessLeft');if(d&&lf){const left=leftMin(d);lf.textContent=left>0?`, ~${left} min left`:'';}
+  const lf=document.getElementById('sessLeft');if(d&&lf){const left=leftMin(d);lf.textContent=left>0?`, ${estMin(left)} left`:'';}
   const el=document.getElementById('sessBar');if(!d||!el)return;const p=sessProgress(d);el.style.width=p.pct+'%';const t=document.getElementById('sessOf');if(t)t.textContent=`${p.k} of ${p.n}`;}
 let foldT=null;
 // True while an exercise is being dragged in a session (r29): renders and
@@ -5710,7 +5704,12 @@ function todayEye(){const d=new Date();return d.toLocaleDateString(undefined,{we
    and so is the time left in a session; under 10 minutes, to the minute.
    The budget is compared before rounding. */
 const min5=m=>m>=10?Math.round(m/5)*5:Math.max(1,Math.round(m));
-function minTxt(m){const b=state.settings.timeBudget;const r=min5(m);return b&&m>b?`<span class="overb">~${r} min, over your ${b} min budget</span>`:`~${r} min`;}
+/* Every estimated duration on screen is written here and nowhere else (V,
+   r42: "~75 min", never "about"). Callers round first, as each did before;
+   this only words the number. tests/hygiene.js fails on the wording typed
+   anywhere else in the source. */
+const estMin=n=>`~${n} min`;
+function minTxt(m){const b=state.settings.timeBudget;const r=min5(m);return b&&m>b?`<span class="overb">${estMin(r)}, over your ${b} min budget</span>`:estMin(r);}
 function injuryCard(){
   const inj=state.injuries||[];if(!inj.length)return '';
   return sec({sk:'today:injuries',key:'injuries',title:'Injuries',sub:`<span class="pill red">${inj.length} flagged</span>`,body:`<ul class="inj-list" style="list-style:none;margin:0;padding:0">${inj.map(x=>`<li><span><b>${injLabel(x.m)}</b> <span class="muted small">since ${fmtDate(x.date)}${x.note?' · '+esc(x.note):''}</span></span><button class="btn sm" data-act="injClear" data-id="${x.id}">Cleared</button></li>`).join('')}</ul>
@@ -5998,7 +5997,7 @@ function volHeadline(){
    line below, so neither repeats here as a tile (r41). */
 function extraKpis(){
   let h='';const sd=sessionLength();
-  if(sd)h+=`<div class="kpi"><div class="v">${sd.avg}<span class="small"> min</span></div><div class="l">Average session, last 4 weeks (${sd.n} timed)${sd.plan?`, planned ~${sd.plan} min`:''}</div></div>`;
+  if(sd)h+=`<div class="kpi"><div class="v">${sd.avg}<span class="small"> min</span></div><div class="l">Average session, last 4 weeks (${sd.n} timed)${sd.plan?`, planned ${estMin(sd.plan)}`:''}</div></div>`;
   return h;
 }
 /* Up to four lines, each landing on the section that holds the detail. */
@@ -7009,7 +7008,7 @@ function viewLogger(){
   // Warm-ups are not counted, the same as the progress bar under it.
   const d=state.draft;const hintSeen=new Set();const doneN=d.ex.reduce((a,b)=>a+b.sets.filter(s=>s.done&&!s.warm).length,0);
   const left=leftMin(d);
-  let h=`<div class="ph"><div style="min-width:0;flex:1 1 auto"><p class="kick">${d.editingId?'Editing a saved session':d.past?'Past workout':'Session in progress'}</p><div class="hrow"><h2 style="overflow-wrap:anywhere;min-width:0">${esc(d.dayName)}</h2>${helpBtn('log')}<button class="btn sm danger" style="margin-left:auto;flex:none" data-act="discard">${d.editingId?'Cancel edit':'Discard'}</button></div><p class="meta"><span id="doneCount">${doneN}</span> <span id="doneWord">${doneN===1?'set':'sets'}</span> done${d.past?`, for ${esc(fmtDateLong(d.date))}`:''}${d.startedAt&&!d.past?`, started ${new Date(d.startedAt).toLocaleTimeString([],{hour:'numeric',minute:'2-digit'})}`:''}<span id="sessLeft">${left>0?`, ~${left} min left`:''}</span></p>${(()=>{const sp=sessProgress(d);return sp.n?`<div class="sprog" aria-hidden="true"><div class="band"><div class="fill prog" id="sessBar" style="width:${sp.pct}%"></div></div><span id="sessOf">${sp.k} of ${sp.n}</span></div>`:'';})()}
+  let h=`<div class="ph"><div style="min-width:0;flex:1 1 auto"><p class="kick">${d.editingId?'Editing a saved session':d.past?'Past workout':'Session in progress'}</p><div class="hrow"><h2 style="overflow-wrap:anywhere;min-width:0">${esc(d.dayName)}</h2>${helpBtn('log')}<button class="btn sm danger" style="margin-left:auto;flex:none" data-act="discard">${d.editingId?'Cancel edit':'Discard'}</button></div><p class="meta"><span id="doneCount">${doneN}</span> <span id="doneWord">${doneN===1?'set':'sets'}</span> done${d.past?`, for ${esc(fmtDateLong(d.date))}`:''}${d.startedAt&&!d.past?`, started ${new Date(d.startedAt).toLocaleTimeString([],{hour:'numeric',minute:'2-digit'})}`:''}<span id="sessLeft">${left>0?`, ${estMin(left)} left`:''}</span></p>${(()=>{const sp=sessProgress(d);return sp.n?`<div class="sprog" aria-hidden="true"><div class="band"><div class="fill prog" id="sessBar" style="width:${sp.pct}%"></div></div><span id="sessOf">${sp.k} of ${sp.n}</span></div>`:'';})()}
   <div class="row lh-row"><input type="date" data-bind="draftDate" value="${d.date}" max="${today()}" aria-label="Session date" data-tip="Change to log a past session">${left>0?'<button class="btn sm" data-act="shortOpen">Short on time</button>':''}</div></div></div>
   ${helpText('log',(state.settings.rirMode==='off'?'RIR is switched off in Settings, so every working set counts as hard. ':'RIR is reps left in the tank: 3 or less counts the set as hard for weekly volume, 4 or more stays in history only. RIR is optional: a blank is read as your usual RIR on that lift, or as hard until you have rated a few of its sets. ')+'W marks a warm-up (kept, never analysed); tap it again for D, a drop set (counts as work and volume, never as a PR or target). To add a new warm-up or drop set row, use the ⋯ menu on the exercise. Drag an exercise by its ⠿ to change the order. In a superset the rest timer starts after the last exercise of the pair. Timed holds log seconds in the Sec column. The date can be changed to log a past session.'+(d.past?' Quick entry: no rest timer, and a set counts as done once its reps are typed.':state.settings.autoDone?' Auto-mark is on: sets tick themselves when you leave the reps field.':''))}
   ${d.free?`<label class="field" style="margin-top:8px">Name<input type="text" data-bind="draftName" maxlength="40" value="${esc(d.dayName)}"></label><p class="small muted" style="margin:4px 0 0">Not tied to a routine day, so your cycle stays put.</p>`:''}
@@ -8131,7 +8130,7 @@ function renderModalBody(){
     <div class="tpl-list">${TEMPLATES.filter(t=>!t.hidden).map(t=>{
       // Minutes come from the same time model as Plan, so the list and the plan agree.
       // A range (r28): an average read as a promise, and Today then showed a longer first day.
-      const r=routineFromTemplate(t.key);const tr=r.days.filter(d=>!d.rest);const mins=tr.map(d=>Math.round(dayMinutes(d)/5)*5);const lo=Math.min(...mins),hi=Math.max(...mins);const min=lo===hi?`~${lo} min`:`${lo} to ${hi} min`;
+      const r=routineFromTemplate(t.key);const tr=r.days.filter(d=>!d.rest);const mins=tr.map(d=>Math.round(dayMinutes(d)/5)*5);const lo=Math.min(...mins),hi=Math.max(...mins);const min=lo===hi?estMin(lo):`${lo} to ${hi} min`;
       return `<button class="tpl" data-act="tplPick" data-k="${t.key}"><span class="tpl-t">${esc(t.name)}</span><span class="tpl-w">${esc(t.who)}</span><span class="tpl-m">${esc(t.meta)} · ${min} · ${tr.map(d=>esc(d.name)).join(', ')}</span></button>`;}).join('')}</div></div>`;
   }else if(m.kind==='routineNew'){
     h=`<div class="sheet" role="dialog" aria-modal="true"><div class="sheet-h"><h3>New routine</h3><button class="ib" aria-label="Close" data-act="mClose">✕</button></div>
@@ -8214,10 +8213,10 @@ function renderModalBody(){
     const left=remainMin(d);const pl=m.mins?shortPlan(d,m.mins):null;
     const body=!left?'<p class="small">Nothing is left to trim: every planned set is done.</p>'
       :!pl?''
-      :pl.changes.length?`<ul class="short-list">${pl.changes.map(c=>`<li>${esc(c)}</li>`).join('')}</ul><p class="small muted" style="margin:6px 0 0">About ${min5(pl.est)} min after the change.${pl.over?' Still over, because exercises you have started are kept.':''} Done sets are never touched.</p>`
+      :pl.changes.length?`<ul class="short-list">${pl.changes.map(c=>`<li>${esc(c)}</li>`).join('')}</ul><p class="small muted" style="margin:6px 0 0">${estMin(min5(pl.est))} after the change.${pl.over?' Still over, because exercises you have started are kept.':''} Done sets are never touched.</p>`
       :`<p class="small">Everything left fits in ${m.mins} minutes as planned.</p>`;
     h=`<div class="sheet" role="dialog" aria-modal="true"><div class="sheet-h"><h3>Short on time</h3><button class="ib" aria-label="Close" data-act="mClose">✕</button></div>
-    ${left?`<p class="small muted" style="margin:0 0 8px">How long do you have? Planned: ~${min5(left)} min.</p>
+    ${left?`<p class="small muted" style="margin:0 0 8px">How long do you have? Planned: ${estMin(min5(left))}.</p>
     <div class="chips">${[15,20,30,45,60,75].map(v=>`<button class="chip ${m.mins===v?'on':''}" data-act="shortPick" data-v="${v}" aria-pressed="${m.mins===v}">${v} min</button>`).join('')}</div>`:''}
     ${body}
     <div class="row" style="margin-top:12px">${pl&&pl.changes.length?'<button class="btn primary" data-act="shortApply">Trim the session</button>':''}<button class="btn" data-act="mClose">${pl&&pl.changes.length?'Cancel':'Close'}</button></div>
@@ -8251,7 +8250,7 @@ function renderModalBody(){
     h=`<div class="sheet" role="dialog" aria-modal="true"><div class="sheet-h"><h3>Pick for me</h3><button class="ib" aria-label="Close" data-act="mClose">✕</button></div>
     <p class="small muted hastip" style="margin:0" data-tip="From this session so far, your last 7 days against your targets, recovery, injuries, and your trends.">What to add next.</p>
     ${allMet?'<p class="callout green" style="margin:8px 0 0">Every muscle is at or above target for the last 7 days. Anything more is optional.</p>':''}
-    ${picks.length?picks.map((x,k)=>{const p=x.plan;const ex=x.e;const mins=Math.round((p.sets*(setSecs(ex,p)+(+p.rest||0))+setupSecs(ex,2))/60);return `<div class="pcard${k===0?' best':''}"><div class="row spread" style="flex-wrap:nowrap;align-items:flex-start"><span style="min-width:0"><b>${esc(ex.name)}</b><br><span class="small muted">${p.sets} × ${repSpan(p.repMin,p.repMax,'-')}${ex.timed?'s':''}${ex.perSide?' per side':''} · ~${mins} min</span></span>${k===0?'<span class="tag green">Best fit</span>':''}</div>
+    ${picks.length?picks.map((x,k)=>{const p=x.plan;const ex=x.e;const mins=Math.round((p.sets*(setSecs(ex,p)+(+p.rest||0))+setupSecs(ex,2))/60);return `<div class="pcard${k===0?' best':''}"><div class="row spread" style="flex-wrap:nowrap;align-items:flex-start"><span style="min-width:0"><b>${esc(ex.name)}</b><br><span class="small muted">${p.sets} × ${repSpan(p.repMin,p.repMax,'-')}${ex.timed?'s':''}${ex.perSide?' per side':''} · ${estMin(mins)}</span></span>${k===0?'<span class="tag green">Best fit</span>':''}</div>
       <ul>${exReasons(x).map(r=>`<li>${esc(r)}</li>`).join('')}</ul>
       <div class="row" style="margin-top:8px"><button class="btn sm ${k===0?'primary':''}" data-act="pickExAdd" data-ex="${ex.id}" data-sets="${p.sets}">Add to session</button></div></div>`;}).join(''):'<p class="small">Nothing in your library fits: every exercise is already in this session or loads an injury.</p>'}
     <div class="row" style="margin-top:10px"><button class="btn sm" data-act="pickSession">Browse all exercises</button></div></div>`;
@@ -9387,7 +9386,7 @@ const ACT={
     d.ex=d.ex.filter((b,bi)=>!drop.has(bi));
     fixSupersets(d.ex.map(b=>b.plan));
     closeModal();saveNow();rerenderKeepScroll();
-    toast(`Trimmed to ~${min5(pl.est)} min`,true);
+    toast(`Trimmed to ${estMin(min5(pl.est))}`,true);
   },
   chk(t){
     const d=state.draft;if(!d)return;const k=t.dataset.k,v=+t.dataset.v;
@@ -10124,7 +10123,7 @@ const ACT={
       const lines=[`${work} working set${work===1?'':'s'}, ${hard} ${rirHalfOn()?'counted toward the week':'counted as hard'}`];
       // A session dated in the past says where it went, since it is not at the top of History.
       if(sess.date!==today())lines.unshift(`Saved under ${fmtDateLong(sess.date)}`);
-      if(durMin){const pm=pmDraft;lines.push(`${durMin} minutes${pm&&!sess.free?`, planned ~${pm}`:''}`);}
+      if(durMin){const pm=pmDraft;lines.push(`${durMin} minutes${pm&&!sess.free?`, planned ${estMin(pm)}`:''}`);}
       if(targets)lines.push(`${beaten} of ${targets} exercise target${targets===1?'':'s'} beaten`);
       if(heavier.length)lines.push(`Heaviest yet: ${andList(heavier,4)}`);
       // The PR moment in the recap (item 28): its own gold block, each with what it beat.

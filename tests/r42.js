@@ -10,7 +10,7 @@ const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log
       const T = ` (${theme}, ${w} px)`;
       const { browser, page, errors } = await open('index.html', { touch: true, w, h: 844, clock: '2026-10-12T10:00:00', realStarter: true });
       const ev = (f, a) => page.evaluate(f, a);
-      await ev(t => { const L = window.__ironlog; L.state.settings.onboarded = true; L.state.settings.theme = t; L.makeDemo(); for (const k of ['sessions', 'bodyweights', 'measurements']) for (const x of L.state[k]) delete x.demo; L.invalidate(); L.ui.tab = 'today'; L.render(); }, theme);
+      await ev(t => { const L = window.__ironlog; L.state.settings.onboarded = true; L.state.settings.theme = t; L.makeDemo(); for (const k of ['sessions', 'bodyweights', 'measurements']) for (const x of L.state[k]) delete x.demo; L.invalidate(); L.ui.tab = 'today'; L.render(); localStorage.setItem('ironlog.v1.tipWake', '1'); }, theme);
       await page.waitForTimeout(200);
       const c = await ev(() => {
         const L = window.__ironlog;
@@ -37,6 +37,14 @@ const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log
       await page.click('[data-act="sDone"][data-b="0"][data-s="0"]'); await page.waitForTimeout(150);
       const m1 = await ev(() => document.querySelector('.ph .meta').textContent);
       ok(/~\d+ min left/.test(m1) && !/about/.test(m1), 'and after a set is ticked' + T, m1);
+      // Short on time: the planned line, the estimate after trimming, and the toast.
+      await ev(() => window.__ironlog.ACT.shortOpen()); await page.waitForTimeout(150);
+      await page.click('[data-act="shortPick"][data-v="20"]'); await page.waitForTimeout(150);
+      const sh = await ev(() => document.querySelector('#modal .sheet').innerText);
+      ok(/Planned: ~\d+ min\./.test(sh) && /~\d+ min after the change\./.test(sh) && !/about/i.test(sh), 'Short on time says ~N min, planned and after the change' + T, sh.slice(0, 300));
+      await ev(() => window.__ironlog.ACT.shortApply()); await page.waitForTimeout(100);
+      const tt = await ev(() => document.getElementById('toast').textContent);
+      ok(/^Trimmed to ~\d+ min/.test(tt), 'its toast says Trimmed to ~N min' + T, tt);
       ok(!errors.length, 'no console errors' + T, errors);
       await browser.close();
     }

@@ -141,7 +141,7 @@ function blockDone(b){const w=b.sets.filter(x=>!x.warm);return w.length>0&&w.eve
 function sessProgress(d){let n=0,k=0;for(const b of d.ex)for(const x of b.sets)if(!x.warm){n++;if(x.done)k++;}return {n,k,pct:n?k/n*100:0};}
 function updateSessBar(){const d=state.draft;
   // Minutes left follow each tick, not just the next redraw (r34.2: "about 75 min left" with every set done).
-  const lf=document.getElementById('sessLeft');if(d&&lf){const left=leftMin(d);lf.textContent=left>0?`, ~${left} min left`:'';}
+  const lf=document.getElementById('sessLeft');if(d&&lf){const left=leftMin(d);lf.textContent=left>0?`, ${estMin(left)} left`:'';}
   const el=document.getElementById('sessBar');if(!d||!el)return;const p=sessProgress(d);el.style.width=p.pct+'%';const t=document.getElementById('sessOf');if(t)t.textContent=`${p.k} of ${p.n}`;}
 let foldT=null;
 // True while an exercise is being dragged in a session (r29): renders and

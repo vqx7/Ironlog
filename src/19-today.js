@@ -370,7 +370,12 @@ function todayEye(){const d=new Date();return d.toLocaleDateString(undefined,{we
    and so is the time left in a session; under 10 minutes, to the minute.
    The budget is compared before rounding. */
 const min5=m=>m>=10?Math.round(m/5)*5:Math.max(1,Math.round(m));
-function minTxt(m){const b=state.settings.timeBudget;const r=min5(m);return b&&m>b?`<span class="overb">~${r} min, over your ${b} min budget</span>`:`~${r} min`;}
+/* Every estimated duration on screen is written here and nowhere else (V,
+   r42: "~75 min", never "about"). Callers round first, as each did before;
+   this only words the number. tests/hygiene.js fails on the wording typed
+   anywhere else in the source. */
+const estMin=n=>`~${n} min`;
+function minTxt(m){const b=state.settings.timeBudget;const r=min5(m);return b&&m>b?`<span class="overb">${estMin(r)}, over your ${b} min budget</span>`:estMin(r);}
 function injuryCard(){
   const inj=state.injuries||[];if(!inj.length)return '';
   return sec({sk:'today:injuries',key:'injuries',title:'Injuries',sub:`<span class="pill red">${inj.length} flagged</span>`,body:`<ul class="inj-list" style="list-style:none;margin:0;padding:0">${inj.map(x=>`<li><span><b>${injLabel(x.m)}</b> <span class="muted small">since ${fmtDate(x.date)}${x.note?' · '+esc(x.note):''}</span></span><button class="btn sm" data-act="injClear" data-id="${x.id}">Cleared</button></li>`).join('')}</ul>
@@ -658,7 +663,7 @@ function volHeadline(){
    line below, so neither repeats here as a tile (r41). */
 function extraKpis(){
   let h='';const sd=sessionLength();
-  if(sd)h+=`<div class="kpi"><div class="v">${sd.avg}<span class="small"> min</span></div><div class="l">Average session, last 4 weeks (${sd.n} timed)${sd.plan?`, planned ~${sd.plan} min`:''}</div></div>`;
+  if(sd)h+=`<div class="kpi"><div class="v">${sd.avg}<span class="small"> min</span></div><div class="l">Average session, last 4 weeks (${sd.n} timed)${sd.plan?`, planned ${estMin(sd.plan)}`:''}</div></div>`;
   return h;
 }
 /* Up to four lines, each landing on the section that holds the detail. */

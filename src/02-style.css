@@ -173,7 +173,7 @@ body::before{content:"";position:fixed;left:0;right:0;top:0;height:env(safe-area
 .wkbar div.w{cursor:default}
 /* Every day is a button, so each disc answers a press. An empty past day
    carries a small + : tapping it logs a workout for that date. */
-.wkbar .w .dn{transition:transform .12s ease}
+.wkbar .w .dn{display:flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:50%;font:750 14px/1 var(--font);color:var(--ink);font-variant-numeric:tabular-nums;background:var(--surface-2);transition:transform .12s ease}
 .wkbar .w:active .dn{transform:scale(.9)}
 .wkbar .w.add .dn{position:relative}
 .wkbar .w.add .dn::after{content:"+";position:absolute;right:-3px;bottom:-3px;width:13px;height:13px;border-radius:50%;background:var(--surface);color:var(--muted);box-shadow:0 0 0 1px var(--line);font:800 11px/13px var(--font);text-align:center}
@@ -182,7 +182,6 @@ body::before{content:"";position:fixed;left:0;right:0;top:0;height:env(safe-area
 /* Each day is a small disc, like an activity ring: filled in the accent when
    trained, a grey ring when planned (red when a fixed weekday was missed), a
    ring around today. */
-.wkbar .w .dn{display:flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:50%;font:750 14px/1 var(--font);color:var(--ink);font-variant-numeric:tabular-nums;background:var(--surface-2)}
 .wkbar .w .nm{display:none;font-size:10px;line-height:1.25;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding:0 3px}
 .wkbar .w.on .dn{background:var(--volt);color:var(--on-volt)}
 .wkbar .w.plan .dn{background:transparent;box-shadow:inset 0 0 0 1.5px var(--muted)}
@@ -226,12 +225,11 @@ main{max-width:760px;margin:0 auto;padding:6px 16px 150px}
 
 /* ---------- bottom tabs ---------- */
 .tabs{position:fixed;left:0;right:0;bottom:0;z-index:30;background:var(--glass);-webkit-backdrop-filter:saturate(170%) blur(18px);backdrop-filter:saturate(170%) blur(18px);border-top:1px solid var(--line-soft);display:grid;grid-template-columns:repeat(5,minmax(0,1fr));padding-bottom:env(safe-area-inset-bottom,0px)}
-.tabs button{position:relative;background:none;border:0;min-height:58px;min-width:0;padding:7px 1px 6px;font:600 11px var(--font);letter-spacing:.04em;text-transform:uppercase;color:var(--muted);cursor:pointer;white-space:nowrap;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px}
+.tabs button{position:relative;background:none;border:0;min-height:58px;min-width:0;padding:7px 1px 6px;font:600 11px var(--font);letter-spacing:.04em;text-transform:uppercase;color:var(--muted);cursor:pointer;white-space:nowrap;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;isolation:isolate}
 .tabs button svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
 .tabs button[aria-current="page"]{color:var(--ink)}
 .tabs button[aria-current="page"] svg{stroke:var(--volt-line);stroke-width:2.1}
 .tabs button[aria-current="page"]::before{content:"";position:absolute;top:5px;left:50%;width:44px;height:30px;margin-left:-22px;border-radius:999px;background:color-mix(in srgb,var(--volt) 14%,transparent);z-index:-1}
-.tabs button{isolation:isolate}
 /* The preview build is marked with a labelled amber tag on the tab bar
    (r25). The striped edges of r24 read as stray dotted lines, not as a label. */
 html[data-env="preview"] .tabs{border-top:2px solid #f5a524}
@@ -349,7 +347,6 @@ label.field>input,label.field>select,label.field>textarea{margin-top:4px;color:v
 .grid3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
 .check-inline{display:flex;align-items:flex-start;gap:10px;font-size:15px;line-height:1.35}
 .check-inline input{width:20px;height:20px;flex:none;margin:0;accent-color:var(--ink)}
-.dmeta .check-inline{min-height:44px;align-items:center;cursor:pointer}
 
 .tag{display:inline-block;font-size:11.5px;font-weight:650;letter-spacing:.02em;padding:3px 9px;border-radius:999px;background:var(--surface-2);color:var(--muted);white-space:nowrap;vertical-align:1px}
 .tag.rare,.tag.yellow{background:var(--yellow-bg);color:var(--yellow)}
@@ -373,7 +370,7 @@ label.field>input,label.field>select,label.field>textarea{margin-top:4px;color:v
 .dh input[type=text]{font-weight:600;min-height:40px;background:var(--surface-2);border-color:transparent}
 .dmeta{padding:0 12px 4px;font-size:13.5px;color:var(--muted)}
 .dmeta.row{flex-wrap:nowrap;gap:8px}
-.dmeta .check-inline{flex:none;color:var(--ink);font-size:14px;align-items:center}
+.dmeta .check-inline{flex:none;color:var(--ink);font-size:14px;align-items:center;min-height:44px;cursor:pointer}
 ul.items,ul.lib{list-style:none;margin:0;padding:2px 10px 6px}
 ul.items:empty{min-height:54px;margin:6px 12px;border:2px dashed var(--line);border-radius:var(--r-sm)}
 ul.items:empty::before{content:"Drop or add exercises here";display:block;padding:14px;color:var(--muted);font-size:14px;text-align:center}
@@ -382,17 +379,17 @@ ul.items:empty::before{content:"Drop or add exercises here";display:block;paddin
 .ir{display:flex;align-items:center;gap:6px}
 .ir .ib{width:40px;height:40px;background:transparent}
 .ib:disabled{opacity:.35;cursor:default}
-.sgrip{width:22px;height:32px;display:inline-flex;align-items:center;justify-content:center;cursor:grab;color:var(--muted);font-size:15px;touch-action:none;flex:none;user-select:none;-webkit-user-select:none;border-radius:6px;margin-left:-6px;opacity:.4}
+.sgrip{width:22px;height:32px;display:inline-flex;align-items:center;justify-content:center;cursor:grab;color:var(--muted);font-size:15px;touch-action:none;flex:none;user-select:none;-webkit-user-select:none;border-radius:6px;margin-left:-6px;opacity:.4;position:relative}
 .sgrip:focus-visible{outline:2px solid var(--ink);outline-offset:1px}
 /* The handle looks 22 px wide; the touch area is 44 x 44, reaching into the gap before the title. */
-.sgrip{position:relative}.sgrip::before{content:'';position:absolute;top:-6px;bottom:-6px;left:-12px;right:-10px}
-.bgrip{width:26px;min-height:44px;display:inline-flex;align-items:center;justify-content:center;cursor:grab;color:var(--muted);font-size:16px;touch-action:none;flex:none;user-select:none;-webkit-user-select:none;border-radius:6px;margin:-6px 0 0 -8px;opacity:.55}
+.sgrip::before{content:'';position:absolute;top:-6px;bottom:-6px;left:-12px;right:-10px}
+.bgrip{width:26px;min-height:44px;display:inline-flex;align-items:center;justify-content:center;cursor:grab;color:var(--muted);font-size:16px;touch-action:none;flex:none;user-select:none;-webkit-user-select:none;border-radius:6px;margin:-6px 0 0 -8px;opacity:.55;position:relative}
 .bgrip:focus-visible{outline:2px solid var(--ink);outline-offset:1px}
 /* The handle looks narrow so the exercise name keeps its room, but a finger
    gets 44 px: the invisible margin around it belongs to the handle. */
-.bgrip{position:relative}.bgrip::before{content:'';position:absolute;top:0;bottom:0;left:-9px;right:-9px}
+.bgrip::before{content:'';position:absolute;top:0;bottom:0;left:-9px;right:-9px}
 .bh-m{flex:1 1 auto;min-width:0}
-.block.folded{display:flex;align-items:center}
+.block.folded{display:flex;align-items:center;padding:0;overflow:hidden}
 .block.folded .bgrip{margin:0 -10px 0 6px}.block.folded .bgrip::before{left:-6px;right:-12px}
 /* During a drag every exercise is one line, so the list fits on the screen;
    the copy under the finger too (Sortable sizes it from the open block). */
@@ -454,8 +451,7 @@ body.blkdrag .block .bh h3{font-size:17px;white-space:nowrap;overflow:hidden;tex
 .wbtn,.cbtn{height:44px;border-radius:var(--r-sm);border:1px solid var(--field-b);background:var(--surface-2);cursor:pointer;font-weight:700;color:var(--muted)}
 .wbtn.on{background:var(--yellow);color:var(--on-accent);border-color:transparent}
 .wbtn.drop{background:var(--blue);color:var(--on-accent);border-color:transparent}
-.cbtn{font-size:17px}
-.cbtn{border-radius:50%;width:44px}
+.cbtn{font-size:17px;border-radius:50%;width:44px}
 .cbtn.on{background:var(--volt);color:var(--on-volt);border-color:transparent}
 .sg.pr::after{content:attr(data-pr);position:absolute;right:0;top:-9px;background:var(--gold);color:var(--on-gold);font:700 10px/1 var(--font);letter-spacing:.06em;text-transform:uppercase;padding:3px 6px;border-radius:6px;pointer-events:none}
 .ci-row{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:8px;flex-wrap:wrap}
@@ -683,10 +679,9 @@ table.t .stick-r{position:sticky;right:0;background:var(--bg);padding-left:6px}
 .wk .d.today{box-shadow:0 0 0 2px var(--ink)}
 .wk .d.fut{opacity:.75}
 .wk .d.cardio{border-color:var(--volt-line);color:var(--ink)}
-.cyc{display:flex;gap:4px;overflow-x:auto;padding:2px 0 10px;scrollbar-width:none;-webkit-overflow-scrolling:touch}
-.cyc::-webkit-scrollbar{display:none}
 /* A soft fade at the right edge shows the row scrolls. */
-.cyc{-webkit-mask-image:linear-gradient(90deg,#000 86%,transparent);mask-image:linear-gradient(90deg,#000 86%,transparent);padding-right:24px}
+.cyc{display:flex;gap:4px;overflow-x:auto;padding:2px 24px 10px 0;scrollbar-width:none;-webkit-overflow-scrolling:touch;-webkit-mask-image:linear-gradient(90deg,#000 86%,transparent);mask-image:linear-gradient(90deg,#000 86%,transparent)}
+.cyc::-webkit-scrollbar{display:none}
 .cyc .c{flex:0 0 auto;border:1px solid var(--line);border-radius:999px;padding:4px 10px;font-size:12px;white-space:nowrap;color:var(--muted);background:transparent}
 .cyc .c b{margin-right:5px;font:750 12.5px var(--font)}
 .cyc .c.done{background:var(--volt);color:var(--on-volt);border-color:transparent}
@@ -748,7 +743,6 @@ table.t .stick-r{position:sticky;right:0;background:var(--bg);padding-left:6px}
 .sprog{display:flex;align-items:center;gap:10px;margin:8px 0 2px}
 .sprog .band{flex:1 1 auto;margin:0}
 .sprog span{font:700 13px var(--font);font-variant-numeric:tabular-nums;color:var(--muted);white-space:nowrap}
-.block.folded{padding:0;overflow:hidden}
 .bfold{display:flex;align-items:center;gap:12px;width:100%;min-height:60px;padding:10px 14px;background:none;border:0;color:var(--ink);text-align:left;cursor:pointer;font:inherit}
 .bf-ck{flex:none;width:30px;height:30px;border-radius:50%;background:var(--volt);color:var(--on-volt);display:inline-flex;align-items:center;justify-content:center;font-weight:800;font-size:15px}
 .bf-t{min-width:0;flex:1 1 auto;display:flex;flex-direction:column;gap:2px}
