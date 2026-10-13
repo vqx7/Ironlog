@@ -2,13 +2,13 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-N/mTXwFTBFccXJeXguQVUbWrTDOjfgCNUlJicBwRfWY=' 'sha256-tuSgXs5JTxAxl+0h6Mmbx/BgvpNDfjiq2RiZRPGtwkc=' 'sha256-YHdgjdaHPObo0ajgr78/3fg0b/g2KACx2Yivxr2AJEo=' 'sha256-1nz4oLGM6X3pOvvgjwodIKx6eyzRV8nZRLjqB6E0zus=' 'sha256-J4UrXwIeplIJZfkgJq3M75mmvlwXBomq0l+LhSwoEfI='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https://fqvupierxrvpoidtwlon.supabase.co wss://fqvupierxrvpoidtwlon.supabase.co https://api.pwnedpasswords.com; worker-src 'self'; manifest-src 'self'; media-src 'self'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-N/mTXwFTBFccXJeXguQVUbWrTDOjfgCNUlJicBwRfWY=' 'sha256-tuSgXs5JTxAxl+0h6Mmbx/BgvpNDfjiq2RiZRPGtwkc=' 'sha256-YHdgjdaHPObo0ajgr78/3fg0b/g2KACx2Yivxr2AJEo=' 'sha256-6aVQ9pQahnYHwqSf1ehAISgJF44YlPkqF28pQxBCUVk=' 'sha256-J4UrXwIeplIJZfkgJq3M75mmvlwXBomq0l+LhSwoEfI='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https://fqvupierxrvpoidtwlon.supabase.co wss://fqvupierxrvpoidtwlon.supabase.co https://api.pwnedpasswords.com; worker-src 'self'; manifest-src 'self'; media-src 'self'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Ironlog Preview</title>
 <script>window.IRONLOG_APP=true;window.IRONLOG_ENV='preview';window.__installEvt=null;
 window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();window.__installEvt=e;if(window.ironlogInstallReady)window.ironlogInstallReady();});
 window.addEventListener('appinstalled',()=>{window.__installEvt=null;if(window.ironlogInstallReady)window.ironlogInstallReady();});</script>
-<meta name="theme-color" content="#121110">
+<meta name="theme-color" content="#08090b">
 <meta name="color-scheme" content="dark light">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
@@ -974,148 +974,6 @@ input.need{box-shadow:0 0 0 2px var(--yellow)}
 .inj-list li{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:6px 0;border-bottom:1px solid var(--line-soft);font-size:15px}
 .inj-list li:last-child{border-bottom:0}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
-/* ============================================================
-   r42 look (V, 2026-10-12). What read as generated was the
-   composition, not one detail: every screen a big title, a grey
-   meta line and a row of grey filled buttons; one accent on
-   everything; a glowing card; boxes inside boxes; frosted bars;
-   default near-black. This block changes how things look and sit
-   on the page. Every control, action and flow is the same element
-   doing the same thing, and every touch target keeps its size.
-   - Palette: warm graphite and chalk instead of blue-black and
-     white, so it reads as a choice, not a default.
-   - The accent means go and done only: Start, a ticked set, the
-     week ring, the rest timer, the trained days. Links, the active
-     tab and the library button are ink.
-   - Today has no card: the date, the day's name large, the plan in
-     one line, Start, and Change and More options as text buttons.
-   - Exercises in a session and the Stats summaries are rows on the
-     page divided by hairlines, not cards.
-   - Secondary buttons are outlined, not filled grey tiles.
-   - Words in the body face in sentence case; the condensed face is
-     kept for big numbers (ring, tiles, timer).
-   The theme selectors below are specific enough to beat the theme
-   blocks at the top of this file, which set the same tokens.
-   ============================================================ */
-html:root[data-theme],html:root:not([data-theme]){--r-lg:12px;--r-md:10px;--r-sm:8px;--shadow:none;--glass:var(--bg);--hero-bg:none;--hero-shadow:none;--dock-bg:linear-gradient(var(--dock),var(--dock))}
-html:root[data-theme="dark"]{
-  --bg:#121110;--surface:#1a1917;--surface-2:#23211f;--surface-3:#2d2a27;
-  --ink:#f1ede6;--ink-2:#d9d4cb;--muted:#9b958b;--line:#2b2926;--line-soft:#211f1d;
-  --btn:transparent;--btn-b:#3a3733;--field:#1f1d1b;--field-b:transparent;--card-b:#2b2926;
-  --hero:#121110;--on-hero:#f1ede6;--hero-2:#1a1917}
-@media (prefers-color-scheme:dark){html:root:not([data-theme]){
-  --bg:#121110;--surface:#1a1917;--surface-2:#23211f;--surface-3:#2d2a27;
-  --ink:#f1ede6;--ink-2:#d9d4cb;--muted:#9b958b;--line:#2b2926;--line-soft:#211f1d;
-  --btn:transparent;--btn-b:#3a3733;--field:#1f1d1b;--field-b:transparent;--card-b:#2b2926;
-  --hero:#121110;--on-hero:#f1ede6;--hero-2:#1a1917}}
-html:root[data-theme="light"]{
-  --bg:#f6f4f0;--surface:#fcfbf8;--surface-2:#ebe8e1;--surface-3:#dfdbd2;
-  --ink:#1b1a17;--ink-2:#34322d;--muted:#67625a;--line:#dcd8cf;--line-soft:#e8e4dc;
-  --btn:transparent;--btn-b:#cfcac0;--field:#fcfbf8;--field-b:#d6d1c7;--card-b:#e3dfd6;
-  --hero:#f6f4f0;--on-hero:#1b1a17;--hero-2:#ebe8e1}
-@media (prefers-color-scheme:light){html:root:not([data-theme]){
-  --bg:#f6f4f0;--surface:#fcfbf8;--surface-2:#ebe8e1;--surface-3:#dfdbd2;
-  --ink:#1b1a17;--ink-2:#34322d;--muted:#67625a;--line:#dcd8cf;--line-soft:#e8e4dc;
-  --btn:transparent;--btn-b:#cfcac0;--field:#fcfbf8;--field-b:#d6d1c7;--card-b:#e3dfd6;
-  --hero:#f6f4f0;--on-hero:#1b1a17;--hero-2:#ebe8e1}}
-.top,.tabs,.jump,#updbar{-webkit-backdrop-filter:none;backdrop-filter:none}
-#modal{-webkit-backdrop-filter:none;backdrop-filter:none;background:rgba(10,9,8,.6)}
-#tip{box-shadow:none}
-.bm3d-stage{background:transparent}
-
-/* Type. */
-h1,h2,h3{font-family:var(--font);font-weight:700;letter-spacing:-.02em;line-height:1.1}
-h2{text-transform:none}
-.ph{margin:20px 0 12px}
-.ph h2{font-size:30px;letter-spacing:-.03em;line-height:1.05}
-.bh h3{font:650 18px/1.25 var(--font);text-transform:none;letter-spacing:-.01em}
-.bf-t b{font:650 16px/1.2 var(--font);text-transform:none;letter-spacing:-.01em}
-.dh .dlabel{font:700 17px var(--font);text-transform:none;letter-spacing:-.01em}
-.hw-t{font:700 15px/1.2 var(--font);text-transform:none;letter-spacing:-.01em}
-.cal-h h3,.cal-h h4{font:700 19px/1.1 var(--font);text-transform:none;letter-spacing:-.01em}
-.cal-inline .cal-h h4{font-size:17px}
-.prblk h4{font:700 19px/1.1 var(--font);text-transform:none;letter-spacing:-.01em}
-.ob-card h2,.ob-h{letter-spacing:-.025em}
-.ob-slide h2{letter-spacing:-.02em}
-.sec-t{font-size:18px;font-weight:650;letter-spacing:-.015em}
-.sec>summary{min-height:60px}
-.eyebrow,.ph .kick{font:500 14px var(--font);letter-spacing:0;text-transform:none;color:var(--muted)}
-.ring .rl,.srow .sl,.pick-grp,.sg.head,table.t th,.bm figcaption,.cal-g .wd,.wkbar .w .wd,.wk .d .wd,.rirstrip .rs-l{letter-spacing:0;text-transform:none}
-.srow .sl{font-size:13px;color:var(--ink-2)}
-.sg.head,.pick-grp{font-size:12.5px}
-.ring .rl{font-size:10.5px;opacity:.75}
-.tabs button{letter-spacing:0;text-transform:none;font-size:11.5px;font-weight:550}
-.bf-pr,.sg.pr::after{letter-spacing:.02em}
-
-/* Today: no card. */
-.hero{background:none;box-shadow:none;border:0;border-radius:0;padding:6px 0 4px;margin:16px 0 8px}
-.hero .eyebrow{opacity:1;color:var(--muted)}
-.hero h2{font-size:46px;font-weight:700;line-height:1;letter-spacing:-.045em;margin:6px 0 8px}
-.hero .muted{opacity:1;color:var(--muted)}
-.hero .btn.primary{box-shadow:none}
-.btn.big{font:650 17px var(--font);letter-spacing:-.005em;text-transform:none;min-height:54px;margin-top:20px;border-radius:var(--r-md)}
-.hero .btn:not(.primary){background:none;border:0;padding:0 14px 0 0;color:var(--ink);font-weight:600;text-decoration:underline;text-decoration-color:var(--btn-b);text-decoration-thickness:1.5px;text-underline-offset:5px}
-.hero .hb{border-color:var(--line)}
-.hero-note{background:none;padding:0;border-radius:0}
-.ring .rp{filter:none}
-.ring .rt{stroke:var(--line)}
-
-/* Buttons: outlined, not filled tiles. The accent stays on the primary one. */
-.btn{background:transparent;border:1px solid var(--btn-b)}
-.block .btn,.card .btn,.sheet .btn,.panel .btn{background:transparent;border:1px solid var(--btn-b)}
-.btn.primary,.block .btn.primary,.card .btn.primary,.sheet .btn.primary,.panel .btn.primary{border-radius:var(--r-md);border-color:transparent}
-.ib{background:transparent;border:0}
-.chip{border-radius:var(--r-sm);background:transparent;border:1px solid var(--btn-b)}
-.chip.on{border-color:transparent}
-.tag,.pill,.lm{border-radius:6px}
-.cyc .c{border-radius:6px}
-.acctbar{border-radius:var(--r-md);background:transparent;border-color:var(--line)}
-.wkview,.fbkind{border-radius:var(--r-md)}
-.wkview button,.fbkind button{border-radius:var(--r-sm)}
-.wkview button.on,.fbkind button.on{box-shadow:inset 0 0 0 1px var(--btn-b)}
-.rirstrip{border-radius:var(--r-md)}
-.rirstrip button{border-radius:var(--r-sm)}
-
-/* Links and section chrome: ink, quieter. */
-.moreline .chip.add{border:0;background:none;color:var(--muted);padding:0 14px 0 0;min-height:44px;font-weight:600}
-.moreline .ml-c{color:var(--ink-2);text-decoration-color:var(--btn-b)}
-.sgrip{opacity:.28}
-.hb{border-width:1px}
-
-/* The library button: a plain row, ink. */
-.libbtn{background:transparent;box-shadow:inset 0 0 0 1px var(--btn-b);border-radius:var(--r-md)}
-.libbtn .lb-i{background:var(--surface-2);color:var(--ink);border-radius:var(--r-sm)}
-.libbtn .lb-c{color:var(--muted)}
-
-/* The active tab: ink, with a short bar on top. */
-.tabs{background:var(--bg)}
-.tabs button[aria-current="page"] svg{stroke:var(--ink)}
-.tabs button[aria-current="page"]::before{top:0;width:24px;height:2px;margin-left:-12px;border-radius:0;background:var(--ink)}
-
-/* Session: each exercise is a stretch of the page under a hairline. */
-.block{background:none;border:0;border-top:1px solid var(--line);border-radius:0;box-shadow:none;padding:18px 0 16px;margin:0}
-.block.folded{padding:0}
-.block.ss{box-shadow:inset 2px 0 0 var(--blue);padding-left:12px}
-.block.ss+.block.ss{margin-top:0}
-/* With no card padding the handle's -8 px pull took its 44 px touch past the
-   screen edge (tests/r29.js); it sits 4 px further in. */
-.block:not(.folded) .bgrip{margin-left:-4px}
-.hint{background:none;padding:0;border-radius:0;margin:10px 0 4px}
-.block .ht,.card .ht,.sheet .ht{background:var(--surface-2)}
-.sg input,.sg select,.rirb{background:var(--field);border-color:var(--field-b)}
-
-/* Stats and other summaries: rows on the page, no box. */
-.card{box-shadow:none}
-/* The summary rule higher up uses !important, so this does too. */
-.card.summary{background:none!important;border:0!important;border-top:1px solid var(--line)!important;border-radius:0!important;padding:0!important}
-.card.summary .srow{padding-left:0;padding-right:0}
-.kpis{background:none;border:0;border-radius:0;gap:0;border-bottom:1px solid var(--line)}
-.kpi{background:none;padding:12px 0 14px}
-.kpi+.kpi{padding-left:16px;border-left:1px solid var(--line)}
-.hweek{border-bottom:1px solid var(--line)}
-
-/* The compact rest timer keeps its shape, without the glow. */
-#timer.compact{box-shadow:0 0 0 1px var(--line)}
 </style>
 <script>window.IRONLOG_SUPABASE={"url":"https://fqvupierxrvpoidtwlon.supabase.co","key":"sb_publishable_XbUAlSYE8AzrnYqk-0dTmQ_sG-e6J9i"};</script>
 <script src="vendor/supabase.js"></script>
@@ -5429,7 +5287,7 @@ const ACCENTS=[['ember','Ember'],['blue','Blue'],['volt','Volt'],['pink','Pink']
 function applyTheme(){const t=state.settings.theme;if(t==='system')delete document.documentElement.dataset.theme;else document.documentElement.dataset.theme=t;
   document.documentElement.dataset.accent=state.settings.accent||ACCENT0;
   // The installed app's status bar takes this colour, so it follows the theme.
-  const m=document.querySelector('meta[name="theme-color"]');if(m)try{m.setAttribute('content',getComputedStyle(document.body).backgroundColor||'#121110');}catch(e){/* cosmetic */}}
+  const m=document.querySelector('meta[name="theme-color"]');if(m)try{m.setAttribute('content',getComputedStyle(document.body).backgroundColor||'#08090b');}catch(e){/* cosmetic */}}
 /* A code bug inside a view used to leave a blank screen. Now the error is
    logged and a recovery screen offers your data and a way back. */
 /* True while #view is being replaced. Replacing it removes a focused field,
