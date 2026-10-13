@@ -23,13 +23,13 @@ function viewToday(){
   const free=state.settings.todayStart==='free'&&ui.todayDay==null;
   const hello=state.settings.userName?`<p class="hello">${esc(greeting())}, ${esc(state.settings.userName)}</p>`:'';
   if(free){
-    let h=welcomeCard()+acctBar()+installBar()+iconBar()+`<section class="hero" data-day="free"><div class="hero-top"><div class="hero-t">${hello}<p class="eyebrow">${esc(new Date().toLocaleDateString(undefined,{weekday:'short',month:'short',day:'numeric'}))} · Freestyle${deload?' · deload week':''}</p><h2>Blank session</h2>
+    let h=welcomeCard()+acctBar()+installBar()+iconBar()+`<section class="hero" data-day="free"><div class="hero-top"><div class="hero-t">${hello}<p class="eyebrow">${esc(todayEye())} · Freestyle${deload?' · deload week':''}</p><h2>Blank session</h2>
     <p class="muted small" style="margin:0">${noLog()?'Add exercises as you go.':(()=>{const w=weekStats();return w.doneDays?`${w.doneDays} session${w.doneDays===1?'':'s'}, ${r1(w.got)} hard sets this week`:'Nothing yet this week.';})()}</p></div></div>
     <button class="btn primary block big" data-act="startFree">Start session</button>
     <div class="row" style="margin-top:8px">${changeBtn(di,true)}${moreBtn(deload)}</div>${moreRow(deload,false,di)}</section>`;
     return h+bwDueCard()+todayRest({playable:false,di,cs,day,deload});
   }
-  let h=welcomeCard()+acctBar()+installBar()+iconBar()+`<section class="hero" data-day="${di}"><div class="hero-top"><div class="hero-t">${state.settings.userName?`<p class="hello">${esc(greeting())}, ${esc(state.settings.userName)}</p>`:''}<p class="eyebrow">${esc(new Date().toLocaleDateString(undefined,{weekday:'short',month:'short',day:'numeric'}))} · ${esc(eyebrow)}${deload?' · deload week':isRestWeek(weekStart(today()))?' · rest week':''}</p><h2>${esc(day.name)}</h2>
+  let h=welcomeCard()+acctBar()+installBar()+iconBar()+`<section class="hero" data-day="${di}"><div class="hero-top"><div class="hero-t">${state.settings.userName?`<p class="hello">${esc(greeting())}, ${esc(state.settings.userName)}</p>`:''}<p class="eyebrow">${esc(todayEye())} · ${esc(eyebrow)}${deload?' · deload week':isRestWeek(weekStart(today()))?' · rest week':''}</p><h2>${esc(day.name)}</h2>
   <p class="muted small" style="margin:0" data-tip="${esc('Routine: '+R.name)}">${playable?`${day.items.length} exercises · ${deload?day.items.reduce((a,it)=>a+Math.max(1,Math.ceil(it.sets/2)),0)+' sets (deload)':daySets(day)+' sets'} · ${minTxt(dayMinutes(day,deload))}`:(day.rest?'Rest day':'No exercises planned')}</p></div>${heroRing(weekStats())}</div>
   ${note?`<p class="hero-note small">${note}</p>`:''}`;
   /* Four ways to start besides the plan as written, each saying on its face
@@ -361,13 +361,16 @@ function welcomeCard(){
 /* Injuries: one line per flagged muscle. Exercises that load it are marked in
    every session, their progression target is paused, and the muscle is left
    out of "below target" reads until the flag is cleared. */
-/* "about 82 min", flagged when it runs past the lifting budget in Settings. */
+/* Today's date without the comma (V, r42): "Mon Oct 12". Built from two
+   parts so every locale keeps its own day and month words. */
+function todayEye(){const d=new Date();return d.toLocaleDateString(undefined,{weekday:'short'})+' '+d.toLocaleDateString(undefined,{month:'short',day:'numeric'});}
+/* "~82 min", flagged when it runs past the lifting budget in Settings. */
 /* Rounded to 5 minutes, as in the routine picker (r32, from the third review:
    the picker said 55 to 75 min and Today "about 77 min" for the same day),
    and so is the time left in a session; under 10 minutes, to the minute.
    The budget is compared before rounding. */
 const min5=m=>m>=10?Math.round(m/5)*5:Math.max(1,Math.round(m));
-function minTxt(m){const b=state.settings.timeBudget;const r=min5(m);return b&&m>b?`<span class="overb">about ${r} min, over your ${b} min budget</span>`:`about ${r} min`;}
+function minTxt(m){const b=state.settings.timeBudget;const r=min5(m);return b&&m>b?`<span class="overb">~${r} min, over your ${b} min budget</span>`:`~${r} min`;}
 function injuryCard(){
   const inj=state.injuries||[];if(!inj.length)return '';
   return sec({sk:'today:injuries',key:'injuries',title:'Injuries',sub:`<span class="pill red">${inj.length} flagged</span>`,body:`<ul class="inj-list" style="list-style:none;margin:0;padding:0">${inj.map(x=>`<li><span><b>${injLabel(x.m)}</b> <span class="muted small">since ${fmtDate(x.date)}${x.note?' · '+esc(x.note):''}</span></span><button class="btn sm" data-act="injClear" data-id="${x.id}">Cleared</button></li>`).join('')}</ul>
@@ -655,7 +658,7 @@ function volHeadline(){
    line below, so neither repeats here as a tile (r41). */
 function extraKpis(){
   let h='';const sd=sessionLength();
-  if(sd)h+=`<div class="kpi"><div class="v">${sd.avg}<span class="small"> min</span></div><div class="l">Average session, last 4 weeks (${sd.n} timed)${sd.plan?`, planned about ${sd.plan}`:''}</div></div>`;
+  if(sd)h+=`<div class="kpi"><div class="v">${sd.avg}<span class="small"> min</span></div><div class="l">Average session, last 4 weeks (${sd.n} timed)${sd.plan?`, planned ~${sd.plan} min`:''}</div></div>`;
   return h;
 }
 /* Up to four lines, each landing on the section that holds the detail. */

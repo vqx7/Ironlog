@@ -326,7 +326,7 @@ const seed = (L, unit, exId, list, rr) => {
     const P = await open(FILE, { browser, clock: '2026-10-06T10:00:00' });
     const r = await P.page.evaluate(() => {
       const L = window.__ironlog; L.state.settings.onboarded = true; L.ui.tab = 'today'; L.render();
-      const mins = [...document.querySelectorAll('#view')].map(e => e.innerText).join(' ').match(/about (\d+) min/g) || [];
+      const mins = [...document.querySelectorAll('#view')].map(e => e.innerText).join(' ').match(/~(\d+) min/g) || [];
       // Three sessions with a cable exercise, then a session where the check is offered and passed over.
       const R = L.activeRoutine(); R.days[0].items = [{ uid: 'c', exId: 'latPulldown', sets: 3, repMin: 8, repMax: 12, rir: 1, rest: 60, inc: 2.5, ss: null }];
       L.state.sessions = ['2026-09-20', '2026-09-27', '2026-10-01'].map((d, i) => ({ id: 'cs' + i, date: d, dayIdx: 0, dayId: R.days[0].id, dayName: 'A', routineId: R.id, notes: '', ex: [{ exId: 'latPulldown', sets: [{ w: 60, r: 10, rir: 2, warm: false, drop: false }] }] }));
