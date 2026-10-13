@@ -19,10 +19,7 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 jobs:
   test:
-    # Pinned (r43, item 237): ubuntu-latest becomes Ubuntu 26 from 2026-10-19,
-    # and Playwright's system packages may not install there yet. Move to the
-    # new image on purpose, in its own pull request, with a full run.
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4

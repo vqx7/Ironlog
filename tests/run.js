@@ -9,11 +9,13 @@ const suites=['unit-math','unit-analytics','dataflow','migration','acceptance','
 const distSuites=['dataflow','acceptance','flows','gym-ux','design','uat','essentials','comeback-removed','r21','r24','r25','journey','progress','custom','r29c','r30','r31','r32','r32b','r33','r34','r34b','r35','r38','r40','r41','r42','r43'];
 let bad=0;
 function run(s,env,tag){
-  // 15 minutes a suite, and a suite stopped for time or by a signal now says
-  // so. Before, it failed with nothing but its ok lines: r33 on the r37 publish
-  // run (a runner half again slower than the pull request's), most likely the
-  // old 10-minute limit.
-  let out='';try{out=execFileSync('node',[`tests/${s}.js`],{encoding:'utf8',timeout:900000,env:{...process.env,...env}});}catch(e){out=(e.stdout||'')+(e.stderr||'');if(e.code==='ETIMEDOUT')out+='\nFAIL stopped after 15 minutes';else if(e.signal)out+=`\nFAIL stopped by ${e.signal}`;}
+  // 15 minutes a suite, and a suite stopped for time or by a signal says so.
+  // Before, it failed with nothing but its ok lines: r33 on the r37 publish run
+  // (a runner half again slower than the pull request's), most likely the old
+  // 10-minute limit. Since r43 a stopped suite also names the last check it
+  // passed: r33 stopped on GitHub twice and nowhere else, and the annotation,
+  // the only part of the log readable without a sign-in, could not say where.
+  let out='';try{out=execFileSync('node',[`tests/${s}.js`],{encoding:'utf8',timeout:900000,env:{...process.env,...env}});}catch(e){out=(e.stdout||'')+(e.stderr||'');if(e.code==='ETIMEDOUT'){const last=out.trim().split('\n').filter(l=>/^ok /.test(l)).slice(-1)[0]||'(no check passed)';out+=`\nFAIL stopped after 15 minutes; the last check that passed: ${last.replace(/^ok +/,'').slice(0,200)}`;}else if(e.signal)out+=`\nFAIL stopped by ${e.signal}`;}
   const pass=/ALL PASS|fuzz clean/.test(out)&&!/^FAIL/m.test(out);
   console.log(`${pass?'PASS':'FAIL'}  ${s}${tag}`);
   if(!pass){bad++;const lines=out.split('\n').filter(l=>!/^ok /.test(l)&&/FAIL|Error|error/.test(l)).slice(0,15);console.log(lines.join('\n'));
