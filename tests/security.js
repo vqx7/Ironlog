@@ -63,13 +63,13 @@ const ALL = P.join(' ');
       for (const el of els) { if (/^pwn/.test(el.id || '') || (el.classList && el.classList.contains('pwnb'))) window.__mut.push(`added ${el.tagName.toLowerCase()} ${el.id || el.className}`); for (const a of el.attributes || []) if (/^on/i.test(a.name)) window.__mut.push(`added ${a.name}`); } } }).observe(document.documentElement, { subtree: true, childList: true, attributes: true }); });
     const bad = [];
     // The detector itself works: a planted element, attribute and link are each caught.
-    await ev(() => document.getElementById('view').insertAdjacentHTML('beforeend', '<span id="pwn1" onclick="1"></span><a id="plant" href="javascript:void 0">x</a>'));
+    await ev(() => document.getElementById('view').insertAdjacentHTML('beforeend', '<span id="pwn1" onpwn="1"></span><a id="plant" href="javascript:void 0">x</a>'));
     const caught = await scan('planted');
     await ev(() => { document.getElementById('pwn1').remove(); document.getElementById('plant').remove(); });
     await ev(() => document.getElementById('view').insertAdjacentHTML('beforeend', '<b class="pwnb">b</b><svg id="plant2"><a href="javascript:void 0"><text>x</text></a></svg>'));
     const caught2 = await scan('planted again');
     await ev(() => { document.querySelector('.pwnb').remove(); document.getElementById('plant2').remove(); window.__mut.length = 0; });
-    ok(caught.some(x => /element pwn1/.test(x)) && caught.some(x => /onclick/.test(x)) && caught.some(x => /link javascript/.test(x)) && caught.some(x => /added span pwn1/.test(x)) && caught2.some(x => /pwnb/.test(x)) && caught2.some(x => /href javascript/.test(x)), 'the scan catches a planted element, event attribute, javascript link, an element with no id, an svg link, and the watcher sees them added', [caught, caught2]);
+    ok(caught.some(x => /element pwn1/.test(x)) && caught.some(x => /onpwn/.test(x)) && caught.some(x => /link javascript/.test(x)) && caught.some(x => /added span pwn1/.test(x)) && caught2.some(x => /pwnb/.test(x)) && caught2.some(x => /href javascript/.test(x)), 'the scan catches a planted element, event attribute, javascript link, an element with no id, an svg link, and the watcher sees them added', [caught, caught2]);
     const notOpen = [];
     const openAll = () => ev(() => { document.querySelectorAll('details').forEach(d => d.open = true); });
     // Every tab with every section open.
@@ -129,7 +129,10 @@ const ALL = P.join(' ');
     ok(!bad.length, `${process.env.IRONLOG_FILE ? 'standalone build' : 'source file'}: on every tab, sheet, the session and an import, typed text never runs, never becomes an element or an event attribute, and no link leads off https`, bad.slice(0, 12));
     const shown = await ev(() => document.getElementById('view').innerText.includes('<img src=x id=pwn1'));
     ok(shown, 'the text shows as typed, as text');
-    ok(!B.errors.filter(e => !/net::|Failed to load/.test(e)).length, 'no page errors', B.errors);
+    // The planted attribute is onpwn, an event no browser fires, so the plant itself never runs into the build's policy.
+    // A policy error is printed without the policy's long list of hashes, so the annotation shows where it came from.
+    const errs = B.errors.filter(e => !/net::|Failed to load/.test(e)).map(e => e.replace(/'script-src[^"]*?'(?= |\.|$)/, "'script-src ...'").slice(0, 300));
+    ok(!errs.length, 'no page errors', errs);
     await B.ctx.close();
   }
   await browser.close();
