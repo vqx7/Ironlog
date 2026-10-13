@@ -288,6 +288,9 @@ function normalize(s){
   {const g=gymClean(out.settings.gym);if(g)out.settings.gym=g;else delete out.settings.gym;}
   // The profile (r44, item 271): absent unless set, rebuilt in one key order.
   {const p=profClean(out.settings.profile);if(p)out.settings.profile=p;else delete out.settings.profile;}
+  // The floors a first-run routine pick set (r44): absent unless set, whole sets 0 to 100, in muscle order.
+  {const f=out.settings.bandsFit;const o={};if(f&&typeof f==='object'&&!Array.isArray(f))for(const m of MK){const v=f[m];if(!TRACK_ONLY.has(m)&&Number.isInteger(v)&&v>=0&&v<=100)o[m]=v;}
+   if(Object.keys(o).length)out.settings.bandsFit=o;else delete out.settings.bandsFit;}
   // RIR: on (as logged), cal (on, shifted by your calibration sets), off.
   out.settings.rirMode=['on','off','cal'].includes(out.settings.rirMode)?out.settings.rirMode:'on';
   out.settings.hidden=Array.isArray(out.settings.hidden)?[...new Set(out.settings.hidden.filter(k=>typeof k==='string'&&HIDEABLE_KEYS.has(k)))]:[];

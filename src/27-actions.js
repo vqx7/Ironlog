@@ -422,8 +422,18 @@ const ACT={
     if(k==='focus')moved=profMoveBands(old,np||{});
     commit();rerenderKeepScroll();
     const n=Object.keys(moved).length;
-    if(n)toast(`Weekly targets moved for ${n} muscle${n===1?'':'s'}. Ones you typed stay.`,true);
+    // A focus whose own target was typed does nothing to it; say so rather than nothing (the r44 review).
+    const kept=k==='focus'&&np&&(np.focus||[]).includes(v)&&!moved[v];
+    if(kept)toast(`Your ${ML[v]} target is one you set, so it stays. Default targets in Weekly set targets puts the app's back.`,n>0,8000);
+    else if(n)toast(`Weekly targets moved for ${n} muscle${n===1?'':'s'}. Ones you typed stay.`,true);
   },
+  // Weekly set targets back to the defaults (r44), with Your training's focus; typed ones and a first-run fit go.
+  bandsDefault(){
+    const b=state.settings.bands;const fit=state.settings.bandsFit?{...state.settings.bandsFit}:null;const moved={};
+    for(const m of MK){const d=defBand(m);if(b[m][0]!==d[0]||b[m][1]!==d[1])moved[m]=[b[m].slice(),d.slice()];}
+    // Undo puts back the floors and each target that still reads the default it was set to (the r44 review: the merge kept the floors and lost the targets).
+    snapshot(()=>{if(fit)state.settings.bandsFit=fit;else delete state.settings.bandsFit;for(const m in moved)if(b[m][0]===moved[m][1][0]&&b[m][1]===moved[m][1][1])b[m]=moved[m][0].slice();return true;});
+    for(const m in moved)b[m]=moved[m][1].slice();delete state.settings.bandsFit;commit();rerenderKeepScroll();toast('Weekly set targets back to the defaults',true);},
   // The fold in the first-run routine picker (r44): its own state, so a re-render keeps it open.
   obProfTog(){ui.obProf=!ui.obProf;rerenderKeepScroll();},
   profApply(){

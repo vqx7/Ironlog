@@ -98,7 +98,7 @@ const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
   await ev(() => window.__ironlog.ACT.undo()); await wait(100);
   const un = await ev(() => ({ f: (window.__ironlog.state.settings.profile || {}).focus, q: window.__ironlog.state.settings.bands.quads }));
   ok(same(un.f, ['quads']) && same(un.q, [13, 26]), 'Undo brings the last focus and its target back', un);
-  await ev(() => { const L = window.__ironlog; L.state.settings.profile = { days: 4 }; for (const m in L.BANDS) L.state.settings.bands[m] = L.BANDS[m].slice(); L.saveNow(); L.render(); });
+  await ev(() => { const L = window.__ironlog; L.state.settings.profile = { days: 4 }; for (const m in L.BANDS) L.state.settings.bands[m] = L.BANDS[m].slice(); delete L.state.settings.bandsFit; L.saveNow(); L.render(); });
   // From the r44 review: a target typed back to the plain default while a focus is on was typed, and stays.
   await P.page.click('[data-mkey="profile"] [data-act="profSet"][data-k="focus"][data-v="chest"]');
   await ev(() => { const L = window.__ironlog; L.state.settings.bands.lats = [10, 20]; L.saveNow(); });
@@ -116,14 +116,14 @@ const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
   await ev(() => window.__ironlog.ACT.undo()); await wait(100);
   b = await bands();
   ok(!(await ev(() => (window.__ironlog.state.settings.profile || {}).focus)) && same(b.chest, [10, 20]) && same(b.hamstrings, [10, 20]) && same(b.biceps, [12, 18]), 'a second Undo takes the first focus off with its targets');
-  await ev(() => { const L = window.__ironlog; L.state.settings.profile = { days: 4 }; for (const m in L.BANDS) L.state.settings.bands[m] = L.BANDS[m].slice(); L.saveNow(); });
+  await ev(() => { const L = window.__ironlog; L.state.settings.profile = { days: 4 }; for (const m in L.BANDS) L.state.settings.bands[m] = L.BANDS[m].slice(); delete L.state.settings.bandsFit; L.saveNow(); });
   // Targets fitted to the routine on a first run stay fitted through a focus on and off.
   const rt = await ev(() => { const L = window.__ironlog; const R = L.routineFromTemplate('full3'); L.state.routines.push(R); const was = L.state.activeRoutineId; L.state.activeRoutineId = R.id; L.fitTargets(R);
     const fit = JSON.parse(JSON.stringify(L.state.settings.bands)); const plan = L.plannedSets(R);
     const p1 = { ...L.state.settings.profile, focus: ['biceps'] }; L.profMoveBands(L.state.settings.profile, p1); L.state.settings.profile = p1; const on = JSON.parse(JSON.stringify(L.state.settings.bands));
     const note = L.planEvidenceNote(plan);
     const p0 = { days: 4 }; L.profMoveBands(p1, p0); L.state.settings.profile = p0; const off = JSON.parse(JSON.stringify(L.state.settings.bands));
-    L.state.routines.pop(); L.state.activeRoutineId = was; for (const m in L.BANDS) L.state.settings.bands[m] = L.BANDS[m].slice(); L.saveNow(); return { fit, on, off, plan, note }; });
+    L.state.routines.pop(); L.state.activeRoutineId = was; for (const m in L.BANDS) L.state.settings.bands[m] = L.BANDS[m].slice(); delete L.state.settings.bandsFit; L.saveNow(); return { fit, on, off, plan, note }; });
   // A fitted routine: every target of the app's is fitted to the plan, as a first-run pick with the focus would make it.
   const onWant = {}; for (const m in BANDS) { const d = focusBand(m, ['biceps']); onWant[m] = TRACK.has(m) || m === 'biceps' ? d : [Math.min(d[0], Math.floor(rt.plan[m] || 0)), d[1]]; }
   // Plan's note names only muscles whose target was brought down to the plan, not ones a focus put at maintenance.
@@ -132,29 +132,77 @@ const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
   ok(noteWant.every(m => noteGot.includes(m === 'upperBack' ? 'Upper back' : m.charAt(0).toUpperCase() + m.slice(1, 4))) && (noteGot.match(/ of /g) || []).length === noteWant.length, 'Plan\'s usual-range note lists only targets brought down to the plan, not a focus\'s maintenance', [noteWant, noteGot]);
   // With a target typed while the focus is on, the others still come back fitted (the r44 review).
   const rt2 = await ev(() => { const L = window.__ironlog; const R = L.routineFromTemplate('full3'); L.state.routines.push(R); const was = L.state.activeRoutineId; L.state.activeRoutineId = R.id;
-    for (const m in L.BANDS) L.state.settings.bands[m] = L.BANDS[m].slice(); L.fitTargets(R); const fit = JSON.parse(JSON.stringify(L.state.settings.bands));
+    for (const m in L.BANDS) L.state.settings.bands[m] = L.BANDS[m].slice(); delete L.state.settings.bandsFit; L.fitTargets(R); const fit = JSON.parse(JSON.stringify(L.state.settings.bands));
     const p0 = { days: 4 }, p1 = { days: 4, focus: ['chest'] }; L.profMoveBands(p0, p1); L.state.settings.bands.biceps = [12, 20]; L.profMoveBands(p1, p0); const off = JSON.parse(JSON.stringify(L.state.settings.bands));
-    L.state.routines.pop(); L.state.activeRoutineId = was; for (const m in L.BANDS) L.state.settings.bands[m] = L.BANDS[m].slice(); L.saveNow(); return { fit, off }; });
+    L.state.routines.pop(); L.state.activeRoutineId = was; for (const m in L.BANDS) L.state.settings.bands[m] = L.BANDS[m].slice(); delete L.state.settings.bandsFit; L.saveNow(); return { fit, off }; });
   ok(!diff(rt2.off, { ...rt2.fit, biceps: [12, 20] }).length, 'a target typed while the focus is on stays, and the others still come back to their fitted numbers', diff(rt2.off, { ...rt2.fit, biceps: [12, 20] }));
   ok(same(rt.off, rt.fit) && !diff(rt.on, onWant).length, 'targets fitted to the routine stay fitted with a focus on and come back exactly when it is off', diff(rt.on, onWant));
 
   // One typed target that happens to equal the plan does not fit the others (the r44 review).
   const co = await ev(() => { const L = window.__ironlog; const R = L.routineFromTemplate('ul4'); L.state.routines.push(R); const was = L.state.activeRoutineId; L.state.activeRoutineId = R.id;
-    for (const m in L.BANDS) L.state.settings.bands[m] = L.BANDS[m].slice(); const plan = L.plannedSets(R); const m0 = Object.keys(L.BANDS).find(m => !L.TRACK_ONLY.has(m) && Math.floor(plan[m] || 0) < L.BANDS[m][0]);
+    for (const m in L.BANDS) L.state.settings.bands[m] = L.BANDS[m].slice(); delete L.state.settings.bandsFit; const plan = L.plannedSets(R); const m0 = Object.keys(L.BANDS).find(m => !L.TRACK_ONLY.has(m) && Math.floor(plan[m] || 0) < L.BANDS[m][0]);
     L.state.settings.bands[m0] = [Math.floor(plan[m0] || 0), L.BANDS[m0][1]];
     const p0 = { days: 4 }, p1 = { days: 4, focus: ['chest'] }; L.profMoveBands(p0, p1); const on = JSON.parse(JSON.stringify(L.state.settings.bands)); L.profMoveBands(p1, p0); const off = JSON.parse(JSON.stringify(L.state.settings.bands));
-    L.state.routines.pop(); L.state.activeRoutineId = was; const typed = [Math.floor(plan[m0] || 0), L.BANDS[m0][1]]; for (const m in L.BANDS) L.state.settings.bands[m] = L.BANDS[m].slice(); L.saveNow(); return { m0, typed, on, off }; });
+    L.state.routines.pop(); L.state.activeRoutineId = was; const typed = [Math.floor(plan[m0] || 0), L.BANDS[m0][1]]; for (const m in L.BANDS) L.state.settings.bands[m] = L.BANDS[m].slice(); delete L.state.settings.bandsFit; L.saveNow(); return { m0, typed, on, off }; });
   const coWant = want([], { [co.m0]: co.typed }), coOn = want(['chest'], { [co.m0]: co.typed });
   ok(!diff(co.on, coOn).length && !diff(co.off, coWant).length, `a typed ${co.m0} target equal to the plan leaves the others unfitted, and chest goes to 13 to 26`, [diff(co.on, coOn), diff(co.off, coWant)]);
 
+  // Typed back to the app's own number, a target is the app's again (no list of typed targets to get stuck in).
+  await ev(() => { const L = window.__ironlog; L.state.settings.profile = { days: 4 }; for (const m in L.BANDS) L.state.settings.bands[m] = L.BANDS[m].slice(); delete L.state.settings.bandsFit; L.saveNow(); L.render(); });
+  await P.page.click('[data-mkey="profile"] [data-act="profSet"][data-k="focus"][data-v="chest"]');
+  await ev(() => { const L = window.__ironlog; L.state.settings.bands.lats = [7, 20]; L.saveNow(); L.state.settings.bands.lats = [4, 20]; L.saveNow(); });
+  await P.page.click('[data-mkey="profile"] [data-act="profSet"][data-k="focus"][data-v="chest"]');
+  ok(same((await bands()).lats, [10, 20]), 'a target typed back to the app\'s number moves with the focus again', (await bands()).lats);
+  // Targets fitted before r44 recorded the floors count as typed and stay (the safe side), and Default targets brings everything back.
+  const old = await ev(() => { const L = window.__ironlog; const R = L.routineFromTemplate('full3'); L.state.routines.push(R); const was = L.state.activeRoutineId; L.state.activeRoutineId = R.id;
+    for (const m in L.BANDS) L.state.settings.bands[m] = L.BANDS[m].slice(); delete L.state.settings.bandsFit; L.fitTargets(R); const fit = JSON.parse(JSON.stringify(L.state.settings.bands)); const rec = JSON.parse(JSON.stringify(L.state.settings.bandsFit)); delete L.state.settings.bandsFit;
+    const p1 = { days: 4, focus: ['chest'] }; L.profMoveBands({ days: 4 }, p1); L.state.settings.profile = p1; const on = JSON.parse(JSON.stringify(L.state.settings.bands));
+    L.ui.tab = 'settings'; L.ui.folds['settings:bands'] = true; L.render(); return { was, rid: R.id, fit, rec, on }; });
+  const keptOld = Object.keys(BANDS).filter(m => !TRACK.has(m) && !same(old.fit[m], BANDS[m]));
+  ok(keptOld.length > 3 && keptOld.every(m => same(old.on[m], old.fit[m])) && Object.keys(old.rec).length === keptOld.length && keptOld.every(m => old.rec[m] === old.fit[m][0]), 'fitTargets records each floor it set; without that record, fitted targets count as typed and stay', keptOld);
+  await P.page.click('[data-act="bandsDefault"]'); await wait(80);
+  const dt = await ev(() => ({ b: JSON.parse(JSON.stringify(window.__ironlog.state.settings.bands)), fit: window.__ironlog.state.settings.bandsFit, t: document.getElementById('toast').innerText, dis: document.querySelector('[data-act="bandsDefault"]').disabled }));
+  ok(!diff(dt.b, want(['chest'])).length && dt.fit === undefined && /Undo/.test(dt.t) && dt.dis, 'Default targets: every target back to the defaults with the focus, the fit cleared, Undo offered, then the button off', diff(dt.b, want(['chest'])));
+  await ev(() => window.__ironlog.ACT.undo()); await wait(80);
+  ok(same(await bands(), old.on), 'Undo of Default targets puts them back exactly');
+  await ev(k => { const L = window.__ironlog; L.state.routines = L.state.routines.filter(r => r.id !== k.rid); L.state.activeRoutineId = k.was; L.state.settings.profile = { days: 4 }; for (const m in L.BANDS) L.state.settings.bands[m] = L.BANDS[m].slice(); delete L.state.settings.bandsFit; L.saveNow(); }, old);
+  const nf = await ev(() => { const L = window.__ironlog; const s = JSON.parse(JSON.stringify(L.state)); const f = x => L.normalize({ ...s, settings: { ...s.settings, bandsFit: x } }).settings.bandsFit;
+    return [f({ lats: 6, chest: 9.5, neck: 2, nope: 1, quads: -1, calves: 0 }), f([]), f({}), f('x')]; });
+  ok(same(nf, [{ lats: 6, calves: 0 }, undefined, undefined, undefined]), 'the recorded floors keep only whole sets on muscles with a target, in muscle order; nothing valid stores no key', nf);
+
+  // From the review of the recorded floors:
+  // a focus whose own target was typed says so instead of nothing.
+  await ev(() => { const L = window.__ironlog; L.state.settings.profile = { days: 4 }; for (const m in L.BANDS) L.state.settings.bands[m] = L.BANDS[m].slice(); delete L.state.settings.bandsFit; L.state.settings.bands.chest = [6, 20]; L.saveNow(); L.ui.tab = 'settings'; L.render(); });
+  await P.page.click('[data-mkey="profile"] [data-act="profSet"][data-k="focus"][data-v="chest"]');
+  const kt = await ev(() => ({ c: window.__ironlog.state.settings.bands.chest, t: document.getElementById('toast').innerText }));
+  ok(same(kt.c, [6, 20]) && /Your Chest target is one you set, so it stays\. Default targets in Weekly set targets puts the app's back\./.test(kt.t) && /Undo/.test(kt.t), 'a focus on a typed target leaves it and says why, with Undo for the rest', kt);
+  // Undo of Default targets is exact with a target typed in between.
+  const ud = await ev(() => { const L = window.__ironlog; L.state.settings.profile = { days: 4 }; for (const m in L.BANDS) L.state.settings.bands[m] = L.BANDS[m].slice(); delete L.state.settings.bandsFit;
+    const R = L.routineFromTemplate('full3'); L.state.routines.push(R); const was = L.state.activeRoutineId; L.state.activeRoutineId = R.id; L.fitTargets(R);
+    const b0 = JSON.parse(JSON.stringify(L.state.settings.bands)), f0 = JSON.parse(JSON.stringify(L.state.settings.bandsFit)); L.saveNow(); L.ui.tab = 'settings'; L.ui.folds['settings:bands'] = true; L.render(); return { was, rid: R.id, b0, f0 }; });
+  await P.page.click('[data-act="bandsDefault"]'); await wait(80);
+  await P.page.fill('[data-band="biceps"][data-bi="0"]', '12'); await P.page.locator('[data-band="biceps"][data-bi="0"]').blur(); await wait(80);
+  await ev(() => window.__ironlog.ACT.undo()); await wait(80);
+  const ua = await ev(() => ({ b: JSON.parse(JSON.stringify(window.__ironlog.state.settings.bands)), f: window.__ironlog.state.settings.bandsFit }));
+  ok(!diff(ua.b, { ...ud.b0, biceps: [12, 20] }).length && same(ua.f, ud.f0), 'Undo of Default targets puts back the fitted targets and their floors, and keeps one typed since', diff(ua.b, { ...ud.b0, biceps: [12, 20] }));
+  // r29's guard holds: a second fit to another routine is refused, never raising a minimum.
+  const g = await ev(() => { const L = window.__ironlog; const before = JSON.parse(JSON.stringify(L.state.settings.bands)); const r = L.fitTargets(L.routineFromTemplate('ppl6')); return { r, same: JSON.stringify(before) === JSON.stringify(L.state.settings.bands) }; });
+  ok(g.r === false && g.same, 'fitting again to another routine is refused, as in r29', g);
+  // A focus muscle's floor is recorded at the fit, so taking the focus off brings it to the plan.
+  const ff = await ev(k => { const L = window.__ironlog; for (const m in L.BANDS) L.state.settings.bands[m] = L.BANDS[m].slice(); delete L.state.settings.bandsFit; L.state.settings.profile = { focus: ['chest'] };
+    L.profMoveBands({}, L.state.settings.profile); const R = L.state.routines.find(r => r.id === k.rid); L.fitTargets(R); const on = L.state.settings.bands.chest.slice(); const plan = Math.floor(L.plannedSets(R).chest || 0);
+    L.profMoveBands(L.state.settings.profile, {}); delete L.state.settings.profile; const off = L.state.settings.bands.chest.slice();
+    L.state.routines = L.state.routines.filter(r => r.id !== k.rid); L.state.activeRoutineId = k.was; L.state.settings.profile = { days: 4 }; for (const m in L.BANDS) L.state.settings.bands[m] = L.BANDS[m].slice(); delete L.state.settings.bandsFit; L.saveNow(); return { on, off, plan }; }, ud);
+  ok(ff.plan < 10 && same(ff.on, [13, 26]) && same(ff.off, [ff.plan, 20]), 'a focus muscle keeps 13 to 26 at the fit, and goes to the plan when the focus comes off', ff);
+
   // A first-run pick fits the focus targets to the routine, as it fits the defaults (r29).
-  const ft = await ev(() => { const L = window.__ironlog; L.state.settings.profile = { focus: ['chest'] }; for (const m in L.BANDS) L.state.settings.bands[m] = L.BANDS[m].slice();
+  const ft = await ev(() => { const L = window.__ironlog; L.state.settings.profile = { focus: ['chest'] }; for (const m in L.BANDS) L.state.settings.bands[m] = L.BANDS[m].slice(); delete L.state.settings.bandsFit;
     L.profMoveBands({}, L.state.settings.profile); const R = L.routineFromTemplate('full3'); const plan = L.plannedSets(R); const changed = L.fitTargets(R);
     const out = { changed, b: JSON.parse(JSON.stringify(L.state.settings.bands)), plan };
     L.state.settings.bands.chest = [11, 22]; out.typed = L.fitTargets(R); return out; });
   const fitWant = {}; for (const m in BANDS) { const d = focusBand(m, ['chest']); fitWant[m] = TRACK.has(m) || m === 'chest' ? d : [Math.min(d[0], Math.floor(ft.plan[m] || 0)), d[1]]; }
   ok(ft.changed && !diff(ft.b, fitWant).length && ft.typed === false, 'a first-run routine pick fits the targets to its plan, the focus muscle kept at its raised target; a typed one stops it, as before', diff(ft.b, fitWant));
-  await ev(() => { const L = window.__ironlog; L.state.settings.profile = { days: 4 }; for (const m in L.BANDS) L.state.settings.bands[m] = L.BANDS[m].slice(); L.saveNow(); });
+  await ev(() => { const L = window.__ironlog; L.state.settings.profile = { days: 4 }; for (const m in L.BANDS) L.state.settings.bands[m] = L.BANDS[m].slice(); delete L.state.settings.bandsFit; L.saveNow(); });
 
   // ---------- 5. Apply: the routine in use changes only here ----------
   const before = await ev(() => JSON.parse(JSON.stringify(window.__ironlog.activeRoutine())));
@@ -225,6 +273,20 @@ const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
   ok(/Schoenfeld 2016/.test(cp.tips) && /Spiering 2021/.test(cp.tips) && /convention/.test(cp.tips), 'the tips in Your training name the sources and the conventions', cp.tips.length);
   ok(!P.errors.length, 'no page errors', P.errors);
   await P.ctx.close();
+
+  // ---------- 8b. Targets fitted before r44: their floors recorded once at start, only when every target matches ----------
+  const Q = await open('index.html', { browser, clock: CLOCK });
+  const fitted = await Q.page.evaluate(() => { const L = window.__ironlog; const s = L.normalize(JSON.parse(JSON.stringify(L.state))); delete s.settings.profile; delete s.settings.bandsFit; s.draft = null;
+    const R = L.routineFromTemplate('full3'); s.routines.push(R); s.activeRoutineId = R.id; const p = L.plannedSets(R); const fit = {};
+    for (const m in L.BANDS) { const lo = L.TRACK_ONLY.has(m) ? L.BANDS[m][0] : Math.min(L.BANDS[m][0], Math.floor(p[m] || 0)); s.settings.bands[m] = [lo, L.BANDS[m][1]]; if (lo < L.BANDS[m][0]) fit[m] = lo; }
+    const typed = JSON.parse(JSON.stringify(s)); typed.settings.bands.biceps = [12, 20]; return { s, typed, fit }; });
+  await Q.ctx.close();
+  for (const [st, wantFit, name] of [[fitted.s, fitted.fit, 'a save fitted to its routine gets its floors recorded at start'], [fitted.typed, undefined, 'one typed target and nothing is recorded']]) {
+    const B = await open('index.html', { browser, clock: CLOCK, state: st });
+    const got = await B.page.evaluate(() => { const r = JSON.parse(localStorage.getItem('ironlog.v1')); return { mem: window.__ironlog.state.settings.bandsFit, saved: r.settings.bandsFit }; });
+    ok(same(got.mem, wantFit) && same(got.saved, wantFit), name, got);
+    await B.ctx.close();
+  }
 
   // ---------- 9. On a first run: in the routine picker, folded and optional; Set up stays as short as before ----------
   for (const [w, dark] of [[390, false], [320, false], [320, true]]) {

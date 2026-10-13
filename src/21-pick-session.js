@@ -504,36 +504,24 @@ function defBand(m,p){
   if(f.includes(m))return [Math.round(b[0]*FOCUS_UP),Math.round(b[1]*FOCUS_UP)];
   return [Math.ceil(b[0]*MAINT_SHARE),b[1]];
 }
-/* The app's own target for a muscle under the old profile, which a profile
-   change may move: its default, or that default brought down to the routine
-   in use on a first run (fitTargets). Anything else was typed, including a
-   target typed back to the plain default while a focus was on (the r44
-   review). Returns 'def', 'fit' or null. */
-function bandKind(m,b,oldP){
-  const d=defBand(m,oldP);if(b[0]===d[0]&&b[1]===d[1])return 'def';if(((oldP||{}).focus||[]).includes(m))return null;
-  const R=activeRoutine();if(!R)return null;const p=Math.floor(plannedSets(R)[m]||0);
-  return b[1]===d[1]&&b[0]<d[0]&&b[0]===Math.min(d[0],p)?'fit':null;
+/* The app's own target for a muscle (r44): the profile's default, brought
+   down to the floor a first-run routine pick recorded (settings.bandsFit),
+   except on a focus muscle, whose raised target is the point. A target that
+   reads anything else was typed and never moves; typed back to this number,
+   it is the app's again. Nothing is guessed: the floors are the one fact
+   that cannot be worked out later, so fitTargets stores them (the r44
+   review found four bugs in inferring them). */
+function appBand(m,p){
+  p=p||prof();const d=defBand(m,p);const f=(state.settings.bandsFit||{})[m];
+  return f==null||TRACK_ONLY.has(m)||(p.focus||[]).includes(m)?d:[Math.min(d[0],f),d[1]];
 }
 /* Moves the app's own targets from the old profile's to the new one's.
-   Targets fitted to the routine in use stay fitted: when every target reads
-   as the default or fitted and at least one as fitted (the test fitTargets
-   uses), all are fitted to the new defaults, as a first-run pick does, so a
-   focus on and off comes back to the same numbers (the r44 review: a
-   fitted 6 read as the focus's maintenance 4, then went back to 10; and one
-   typed target that happened to equal the plan must not fit the rest). A
-   focus muscle is never brought down to the plan: raising it is the point.
-   Returns {muscle: [from, to]} for what moved, as copies. */
-function profFit(m,p,plan){const d=defBand(m,p);return (p.focus||[]).includes(m)?d:[Math.min(d[0],Math.floor(plan[m]||0)),d[1]];}
+   Returns {muscle: [from, to]} for what moved, as copies, since Weekly set
+   targets edits the arrays in place. */
 function profMoveBands(oldP,newP){
-  const b=state.settings.bands;const moved={};const K={};
-  for(const m of MK)if(!TRACK_ONLY.has(m))K[m]=bandKind(m,b[m],oldP);
-  // Fitted only when every target of the app's own is exactly what fitting to this routine gives, as in fitTargets; typed ones are left out of the test.
-  const R=activeRoutine();const P=R?plannedSets(R):{};
-  const fitted=Object.values(K).includes('fit')&&Object.keys(K).filter(m=>K[m]).every(m=>{const f=profFit(m,oldP,P);return b[m][0]===f[0]&&b[m][1]===f[1];});const plan=fitted?P:{};
-  // Not fitted: a target that only looks fitted was typed, and stays.
-  for(const m in K){if(!K[m]||(!fitted&&K[m]!=='def'))continue;
-    const to=fitted?profFit(m,newP,plan):defBand(m,newP);
-    if(b[m][0]===to[0]&&b[m][1]===to[1])continue;moved[m]=[b[m].slice(),to.slice()];b[m]=to.slice();}
+  const b=state.settings.bands;const moved={};
+  for(const m of MK){if(TRACK_ONLY.has(m))continue;const o=appBand(m,oldP);if(b[m][0]!==o[0]||b[m][1]!==o[1])continue;
+    const to=appBand(m,newP);if(b[m][0]===to[0]&&b[m][1]===to[1])continue;moved[m]=[b[m].slice(),to.slice()];b[m]=to.slice();}
   return moved;
 }
 /* Apply (V's answer 1): the profile's rules on the routine in use, only the
