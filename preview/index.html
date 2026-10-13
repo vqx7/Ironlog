@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-N/mTXwFTBFccXJeXguQVUbWrTDOjfgCNUlJicBwRfWY=' 'sha256-tuSgXs5JTxAxl+0h6Mmbx/BgvpNDfjiq2RiZRPGtwkc=' 'sha256-YHdgjdaHPObo0ajgr78/3fg0b/g2KACx2Yivxr2AJEo=' 'sha256-i/FTsGwqq1LMNj4eQIPLLZhlxstRJmeA0xnSUIqU9Kc=' 'sha256-J4UrXwIeplIJZfkgJq3M75mmvlwXBomq0l+LhSwoEfI='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https://fqvupierxrvpoidtwlon.supabase.co wss://fqvupierxrvpoidtwlon.supabase.co https://api.pwnedpasswords.com; worker-src 'self'; manifest-src 'self'; media-src 'self'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-N/mTXwFTBFccXJeXguQVUbWrTDOjfgCNUlJicBwRfWY=' 'sha256-tuSgXs5JTxAxl+0h6Mmbx/BgvpNDfjiq2RiZRPGtwkc=' 'sha256-YHdgjdaHPObo0ajgr78/3fg0b/g2KACx2Yivxr2AJEo=' 'sha256-pedody9EEjNUcX3bl58dQt/Hc8sLlc6I9rs4elkEFwg=' 'sha256-J4UrXwIeplIJZfkgJq3M75mmvlwXBomq0l+LhSwoEfI='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https://fqvupierxrvpoidtwlon.supabase.co wss://fqvupierxrvpoidtwlon.supabase.co https://api.pwnedpasswords.com; worker-src 'self'; manifest-src 'self'; media-src 'self'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Ironlog Preview</title>
 <script>window.IRONLOG_APP=true;window.IRONLOG_ENV='preview';window.__installEvt=null;
@@ -588,6 +588,11 @@ body.obmode main,body.obmode #view{padding-bottom:24px}
 .ob-back{align-self:flex-start;min-height:44px;color:var(--muted);text-decoration:none}
 .ob-h{font:700 30px/1.05 var(--display);letter-spacing:.01em;margin:4px 0 0}
 .ob-units{display:flex;gap:6px}
+/* Your training in the first-run routine picker (r44): one folded line until opened. */
+.ob-prof-h{width:100%;min-height:44px;display:flex;align-items:center;gap:6px;font:inherit;font-weight:600;color:var(--ink);background:none;border:0;padding:0;cursor:pointer;text-align:left}
+.ob-prof-h::after{content:"";width:7px;height:7px;border-right:2px solid currentColor;border-bottom:2px solid currentColor;transform:rotate(45deg);margin-left:auto;opacity:.6}
+.ob-prof-h[aria-expanded="true"]::after{transform:rotate(-135deg)}
+.ob-prof .stack{padding:2px 0 6px}
 .ob-units .chip{min-height:44px;flex:1;justify-content:center}
 .ob-opts{display:flex;flex-direction:column;gap:8px}
 .ob-opt{display:flex;flex-direction:column;align-items:flex-start;gap:2px;width:100%;min-height:60px;padding:12px 16px;border-radius:var(--r-md);border:1px solid var(--btn-b);background:var(--btn);color:var(--ink);text-align:left;font:inherit;cursor:pointer}
@@ -1168,6 +1173,18 @@ const NEW_MUSCLES_V5=['serratus','rotatorCuff'];
    made every routine read as short. A convention, said so in the Guide. */
 const TRACK_ONLY=new Set(['serratus','rotatorCuff','neck','tibialis']);
 const BANDS={chest:[10,20],serratus:[2,8],lats:[10,20],upperBack:[10,20],traps:[6,16],lowerBack:[3,10],frontDelts:[4,12],sideDelts:[10,20],rearDelts:[8,16],rotatorCuff:[2,8],biceps:[10,20],triceps:[10,20],forearms:[4,12],abs:[6,16],obliques:[3,10],neck:[2,10],quads:[10,20],hamstrings:[10,20],glutes:[8,16],adductors:[4,12],abductors:[4,12],calves:[8,16],tibialis:[2,8]};
+/* The profile (r44): its choices, read by normalize while the save loads. */
+const PROF_GOALS=[['size','Size'],['strength','Strength'],['both','Both']];
+const PROF_EXP=[['new','Under 1'],['mid','1 to 3'],['adv','Over 3']];
+const PROF_DAYS=[2,3,4,5,6];
+const FOCUS_MAX=2;
+/* Focus muscles (item 43): weekly targets about 30% higher, the other major
+   muscles at maintenance, a third of the usual minimum. More weekly sets
+   grow a muscle more (Pelland 2025, the dose-response meta-regression the
+   targets rest on); 30% is a convention, not a measured dose. Size and
+   strength were kept for months on a third of the volume when load stayed
+   up (Bickel 2011; Spiering 2021 review). */
+const FOCUS_UP=1.3,MAINT_SHARE=1/3;
 const EQUIP=[['barbell','Barbell'],['dumbbell','Dumbbell'],['cable','Cable'],['machine','Machine'],['smith','Smith machine'],['landmine','Landmine'],['bodyweight','Bodyweight'],['other','Other']];
 // Twenty-three spokes is unreadable on a phone, so the balance radar groups
 // them into eight regions. Every muscle belongs to exactly one region; the
@@ -1583,7 +1600,7 @@ if(ENV==='preview')document.documentElement.dataset.env='preview';
 const HAD_LOG=(()=>{try{return localStorage.getItem(KEY)!=null;}catch(e){return false;}})();
 /* Shown in Settings, in diagnostics and in backups, so a bug report can be
    matched to the exact build. */
-const APP_VERSION='2026.10.13-r43';
+const APP_VERSION='2026.10.13-r44';
 /* The logo (r25): an upright dumbbell that is also the I of Ironlog. Same
    numbers as scripts/icons.py, which draws the app icons. */
 const MARK_SVG='<svg class="mark" viewBox="-242 -378 484 756" aria-hidden="true" focusable="false"><rect class="mk-h" x="-30" y="-300" width="60" height="600" rx="14"/><rect class="mk-h" x="-80" y="-192" width="160" height="32" rx="12"/><rect class="mk-h" x="-80" y="160" width="160" height="32" rx="12"/><rect class="mk-p" x="-240" y="-376" width="480" height="92" rx="30"/><rect class="mk-p" x="-190" y="-270" width="380" height="66" rx="26"/><rect class="mk-p" x="-190" y="204" width="380" height="66" rx="26"/><rect class="mk-p" x="-240" y="284" width="480" height="92" rx="30"/></svg>';
@@ -1855,6 +1872,8 @@ function normalize(s){
   if(out.settings.smallPlates!==true)delete out.settings.smallPlates;
   // Your gym (r33, item 207): absent unless set; rebuilt in one key order so a save hashes the same every time.
   {const g=gymClean(out.settings.gym);if(g)out.settings.gym=g;else delete out.settings.gym;}
+  // The profile (r44, item 271): absent unless set, rebuilt in one key order.
+  {const p=profClean(out.settings.profile);if(p)out.settings.profile=p;else delete out.settings.profile;}
   // RIR: on (as logged), cal (on, shifted by your calibration sets), off.
   out.settings.rirMode=['on','off','cal'].includes(out.settings.rirMode)?out.settings.rirMode:'on';
   out.settings.hidden=Array.isArray(out.settings.hidden)?[...new Set(out.settings.hidden.filter(k=>typeof k==='string'&&HIDEABLE_KEYS.has(k)))]:[];
@@ -2707,10 +2726,11 @@ function guideSheet(m){
    <p><b>Bodyweight</b> trends use 7-day averages. <b>Waist to height</b>: under 0.5 healthy, 0.5 to 0.59 increased, 0.6 or more high (NICE 2022).</p>`],
   ['plan','Plan and your own exercises',`<p>A routine has days, and each exercise has sets, a rep range, a target RIR, rest, and a load step. The <b>target RIR</b> is 1 unless you change it, a convention: muscle growth improves as sets end closer to failure (Robinson 2024), but going all the way to failure grew muscle no more than stopping 1 to 2 reps short (Refalo 2024) and costs more fatigue. Some lifts in the ready-made routines use 0 or 2. A <b>numbered cycle</b> runs Day 1, 2, 3 in order, so a missed day waits; <b>fixed weekdays</b> pin each day to a weekday.</p>
    <p><b>Your own exercise</b>: Plan, Exercise library, New exercise, or + New exercise when adding one. Set the primary and helper muscles, the equipment, what the number you type means (per dumbbell, total, per side, or stack), bodyweight or assisted, one side at a time, timed, Movement (compound or isolation), the load step, and the heaviest load available. Every number above uses them.</p>
+   <p><b>Your training</b> (Settings, and the routine picker on a first run) is optional. Strength starts new barbell, Smith, and machine compounds at 3 to 6 reps, 2 in reserve, 3 minutes' rest: heavier loads gave more strength for similar growth (Schoenfeld 2017; ACSM 2009), and 3 minutes' rest beat 1 (Schoenfeld 2016). Both starts them at 5 to 8; that and the 2 in reserve are conventions. Under 1 year, whatever the goal, new exercises start at 8 to 12 reps (ACSM 2009); compounds stop 3 reps short and isolation lifts 2, a convention. Size keeps the defaults. Your routine changes only when you tap Apply, which raises rest but never turns a timer of 0 on; under 1 year it raises reps in reserve and keeps your ranges. Focus muscles, up to two, get weekly targets about 30% higher and the others drop to maintenance, a third of the usual minimum (Bickel 2011, Spiering 2021); 30% is a convention, and targets you typed stay. With Strength, Pick for me favours a heavy compound that is stalled or within 3% of your best, rested, and not done for 5 days (both numbers conventions). Days a week marks the ready-made routines that fit; every other day fits 3 or 4.</p>
    <p>Drag ⠿ to reorder exercises or move them between days, and to reorder days.</p>`],
   ['sections','Sections',`<p>Tap a section's title to fold or open it. Drag its ⠿ to move it; the order is kept. Each time the app opens, every section starts folded, except Sessions on History.</p>
    <p><b>More sections</b>: when a tab has sections hidden, its bottom lists them; tap one to add it. The menu at the top right has Show, hide, or reorder sections. Settings, Layout shows or hides any section (nothing stops being tracked), and Default layout goes back to how a new install starts.</p>
-   <p><b>Your settings</b>: Settings has the rest timer, auto-mark, RIR, units, theme and accent, weekly set targets, and priority muscles.</p>`],
+   <p><b>Your settings</b>: Settings has your training (goal, days, minutes, and focus), the rest timer, auto-mark, RIR, units, theme and accent, weekly set targets, and priority muscles.</p>`],
   ['data','Your data',`${where}
    <p><b>Deleted</b> sessions, cardio, and routines wait in History, Recently deleted: the ${TRASH_MAX} most recent, for ${TRASH_DAYS} days, or until you delete them for good there. A ready-made routine removed unchanged is not kept, since New from a template adds it again. Undo in Settings covers deletes, resets, and imports from the last 7 days.</p>
    <p><b>Import workouts</b> reads notes, a spreadsheet, or an export from another app; you check everything before it is saved. On a first run, the import also makes your routine. Its days come from the workouts' names (or from the lifts in them when the names are all alike) and keep each day's latest sets and rep range. Your weekly targets then fit that routine.</p>
@@ -3765,10 +3785,13 @@ function fitTargets(R,actual){
      Log a workout now fits them to the starter, and an import or a pick
      after that left targets measured against a routine no longer used). */
   const same=x=>MK.every(m=>b[m]&&b[m][0]===x[m][0]&&b[m][1]===x[m][1]);
-  const fitOf=r=>{const p=plannedSets(r);const o={};for(const m of MK)o[m]=TRACK_ONLY.has(m)?BANDS[m]:[Math.min(BANDS[m][0],Math.floor(p[m]||0)),BANDS[m][1]];return o;};
-  if(!same(BANDS)&&![starterRoutine(),defaultRoutine()].some(r=>same(fitOf(r))))return false;
+  /* The defaults are the profile's (r44): with focus muscles set, those
+     targets are where a first-run pick starts. With no profile they are BANDS. */
+  const D={};for(const m of MK)D[m]=defBand(m);
+  const fitOf=r=>{const p=plannedSets(r);const o={};for(const m of MK)o[m]=TRACK_ONLY.has(m)?D[m]:profFit(m,prof(),p);return o;};
+  if(!same(D)&&![starterRoutine(),defaultRoutine()].some(r=>same(fitOf(r))))return false;
   const was=JSON.stringify(MK.map(m=>b[m]));
-  for(const m of MK)b[m]=[BANDS[m][0],BANDS[m][1]];
+  for(const m of MK)b[m]=[D[m][0],D[m][1]];
   const plan=plannedSets(R);
   /* actual (a routine made from an import, r31): no minimum above what the
      log itself averaged on a muscle the routine trains. A cycle's planned
@@ -3776,7 +3799,9 @@ function fitTargets(R,actual){
      alternating, 3 sessions a week, plans 2.8), and the review saw "Abs
      below target, add a set to Plank" measured against the lifter's own
      program. */
-  for(const m of MK){if(TRACK_ONLY.has(m))continue;let lo=Math.min(b[m][0],Math.floor(plan[m]||0));if(actual&&(plan[m]||0)>0)lo=Math.min(lo,Math.floor(actual[m]||0));if(lo!==b[m][0])b[m]=[lo,b[m][1]];}
+  // A focus muscle keeps its raised target (r44): raising it is the point of the focus.
+  const foc=new Set(prof().focus||[]);
+  for(const m of MK){if(TRACK_ONLY.has(m)||foc.has(m))continue;let lo=Math.min(b[m][0],Math.floor(plan[m]||0));if(actual&&(plan[m]||0)>0)lo=Math.min(lo,Math.floor(actual[m]||0));if(lo!==b[m][0])b[m]=[lo,b[m][1]];}
   return JSON.stringify(MK.map(m=>b[m]))!==was;
 }
 /* Plan against the usual ranges (r30, V's choice). Picking a routine on a
@@ -3788,7 +3813,8 @@ function fitTargets(R,actual){
 function planEvidenceNote(pv){
   const b=state.settings.bands;
   // Major muscles only (a default minimum of 8 or more): the usual range is about them; smaller ones have lower, softer defaults.
-  const low=MK.filter(m=>!TRACK_ONLY.has(m)&&BANDS[m][0]>=8&&b[m][0]<BANDS[m][0]&&belowMin(pv[m]||0,BANDS[m][0]));
+  // Brought down below the profile's own default too (r44): a focus's maintenance targets were not lowered to meet the plan.
+  const low=MK.filter(m=>!TRACK_ONLY.has(m)&&BANDS[m][0]>=8&&b[m][0]<Math.min(BANDS[m][0],defBand(m)[0])&&belowMin(pv[m]||0,BANDS[m][0]));
   if(!low.length)return '';
   return `<p class="small muted" id="planUsual" style="margin:8px 0 0">Under the usual range in this plan: ${esc(andList(low.map(m=>`${ML[m]} ${r1(pv[m]||0)} of ${BANDS[m][0]}`),12))}. ${tipi('The usual weekly range is 10 to 20 hard sets for most major muscles (typical in studies, not a ceiling); smaller muscles have lower ones. Your targets were set to this plan when you picked it, so Stats measures you against the plan. Fewer sets still build muscle, more slowly; add a set at a time when it feels easy.','About the usual range')}</p>`;
 }
@@ -3902,7 +3928,8 @@ function sessModelMin(ss){
   // estimate counts them (the r43 review: without it a lifter who supersets
   // read about 30% faster than the model and every estimate came out short).
   const day=ss.dayId?R.days.find(d=>d.id===ss.dayId):null;const link=id=>{const it=day&&day.items.find(i=>i.exId===id);return it&&it.ss||null;};
-  const items=ss.ex.map(b=>{const p=planFor(b.exId,R,ss.dayId);const rr=Array.isArray(b.rr)?b.rr:[p.repMin,p.repMax];
+  // plain (r44 review): a goal set later must not change how long a past session is read to have taken.
+  const items=ss.ex.map(b=>{const p=planFor(b.exId,R,ss.dayId,true);const rr=Array.isArray(b.rr)?b.rr:[p.repMin,p.repMax];
     return {...p,exId:b.exId,ss:link(b.exId),repMin:rr[0],repMax:rr[1],rest:+p.rest||0,sets:b.sets.filter(x=>!x.warm).length};}).filter(it=>it.sets>0);
   return items.length?dayMinutes({items},false,true):0;
 }
@@ -4475,7 +4502,9 @@ function suggestTimed(ex,plan,exps,opts,injM,all){
 }
 /* Default plan for an exercise that is not in the routine yet. Timed holds
    start at 30 to 60 seconds rather than 8 to 12. */
-function defPlan(exId){const ex=EX(exId);return ex.timed?{...DEFAULT_PLAN,repMin:30,repMax:60,rest:60}:{...DEFAULT_PLAN};}
+// The profile's rules for a lift (r44); with no profile, or Size, exactly the defaults as before.
+// plain: without the profile, for reading sessions already logged (the pace model, r44 review).
+function defPlan(exId,plain){const ex=EX(exId);return ex.timed?{...DEFAULT_PLAN,repMin:30,repMax:60,rest:60}:profPlan(ex,plain);}
 /* Load step: the exercise's own setting wins, so one change applies on every
    day and routine the lift appears in. */
 /* The default step is stored as 5 lb, from before units were chosen, so a
@@ -4637,12 +4666,12 @@ function jumpCap(ex,loadKg,early){return early?1.25:!isCompound(ex)&&loadKg<20?1
 function fitE(load,r,rir){const v=e1(load,r,rir);if(v!=null)return v;if(!(load>0&&r>0))return null;const q=rir==null||rir===''?0:Math.min(Math.max(+rir,0),E1_MAX_RIR);const t=+r+q;return t<=30?load*(1+t/30):null;}
 /* An exercise added mid-session borrows its settings from wherever it already
    sits in the active routine instead of a generic 3 x 8-12. */
-function planFor(exId,R,dayId){
+function planFor(exId,R,dayId,plain){
   R=R||activeRoutine();
   // The day being trained first: the same lift can sit on two days with different ranges.
   const days=dayId?[...R.days.filter(d=>d.id===dayId),...R.days.filter(d=>d.id!==dayId)]:R.days;
   for(const d of days)for(const it of d.items)if(it.exId===exId){const {uid:_u,ss:_s,...p}=it;return {...DEFAULT_PLAN,...p,ss:null};}
-  return defPlan(exId);
+  return defPlan(exId,plain);
 }
 /* What a swapped-in exercise is done for (r27). It keeps the slot's set
    count and superset. Its range, RIR, rest and step come from where it
@@ -6682,7 +6711,8 @@ function sessionMuscles(d){
 }
 function rankExercises(d){
   const I=IDX();const bands=state.settings.bands;
-  const pri=new Set(state.settings.priorities);const lag=new Set(I.scores.filter(x=>x.label==='lagging').map(x=>x.m));
+  // Focus muscles in the profile (r44) count as priorities here.
+  const pri=new Set([...state.settings.priorities,...(prof().focus||[])]);const lag=new Set(I.scores.filter(x=>x.label==='lagging').map(x=>x.m));
   const sess=sessionMuscles(d);const inS=new Set(d.ex.map(b=>b.exId));
   const inR=new Set();for(const dd of activeRoutine().days)for(const it of dd.items)inR.add(it.exId);
   const doneEx=d.ex.map(b=>EX(b.exId));
@@ -6713,7 +6743,9 @@ function rankExercises(d){
     if(inR.has(e.id))s+=0.5;
     if(LONG_IDS.has(e.id))s+=0.4;
     if(pri.has(m)||lag.has(m))s+=def>0?1.2:0.3;
-    if(!best[m]||s>best[m].s||(s===best[m].s&&e.name<best[m].e.name))best[m]={e,s,m,def,inSess,st,n,rec:rec[m],r7:r7[m]};
+    // Strength focus (r44, item 44): stalled lifts lose 0.8 above, so they net +0.8; near-best ones gain 1.2.
+    const sp=strengthPick(e,st,rec[m],at);if(sp)s+=sp==='stalled'?1.6:1.2;
+    if(!best[m]||s>best[m].s||(s===best[m].s&&e.name<best[m].e.name))best[m]={e,s,m,def,inSess,st,n,rec:rec[m],r7:r7[m],sp};
   }
   return Object.values(best).sort((a,b)=>b.s-a.s).slice(0,3).map(x=>{
     const plan=planFor(x.e.id,null,d.dayId);const cap=Math.max(1,SESSION_CAP-x.inSess);
@@ -6732,6 +6764,8 @@ function exReasons(x){
   else out.push('New to you: the first session sets its baseline.');
   if(LONG_IDS.has(x.e.id))out.push(LONG_TRIAL.has(x.e.id)?'Trains a two-joint muscle at a long length, which beat the shorter-length version in trials.':'Puts a two-joint muscle at a long length (a mechanical case, not trial-tested).');
   if(state.settings.priorities.includes(x.m))out.push('One of your priority muscles.');
+  else if((prof().focus||[]).includes(x.m))out.push('One of your focus muscles.');
+  if(x.sp)out.push(x.sp==='stalled'?`Strength focus: stalled lately, and ${STR_REST} days or more since you did it.`:`Strength focus: within 3% of your best, and ${STR_REST} days or more since you did it.`);
   return out;
 }
 /* Closest same-muscle replacements, used by Swap and Limited equipment.
@@ -7007,6 +7041,123 @@ function newBlock(exId,plan,opts){
   return {exId,plan:{...plan},note:'',lastNote:lastNoteOf(exId,opts&&opts.before),inj:sg.inj||null,hint:sg.text,last:sg.last,target:sg.target,tgt:sg.tgt,easier:sg.easier||null,lastR:sg.lastR,basis:sg.basis||undefined,sw:sg.w==null?null:sg.w,sets:Array.from({length:+plan.sets||3},()=>({w:fillLoads()?sg.w:null,r:null,rir:null,warm:false,drop:false,done:false}))};
 }
 const DEFAULT_PLAN={sets:3,repMin:8,repMax:12,rir:1,rest:90,inc:5*LB};
+/* ---------- PROFILE (r44, item 271, with 43 and 44) ----------
+   An optional short profile: goal, experience, days a week and up to two
+   focus muscles. V's answers (2026-10-13): it sets defaults and new plan
+   items only; the routine in use changes only through Apply; targets the
+   lifter typed stay as typed, and only the app's own targets move. With no
+   profile, or with Size, every number is exactly what it was before r44,
+   because the app's defaults were already set for size. */
+/* The profile's choices and focus numbers are in the data part (11): normalize
+   reads them while the save loads, before this part runs. */
+/* Built in one key order, absent keys left out, so a save hashes the same
+   every time and a phone without the profile syncs nothing new. */
+function profClean(p){
+  if(!p||typeof p!=='object'||Array.isArray(p))return null;const o={};
+  if(PROF_GOALS.some(g=>g[0]===p.goal))o.goal=p.goal;
+  if(PROF_EXP.some(g=>g[0]===p.exp))o.exp=p.exp;
+  if(PROF_DAYS.includes(p.days))o.days=p.days;
+  const f=Array.isArray(p.focus)?[...new Set(p.focus.filter(m=>typeof m==='string'&&MK.includes(m)&&!TRACK_ONLY.has(m)))].slice(0,FOCUS_MAX):[];
+  if(f.length)o.focus=f;
+  return Object.keys(o).length?o:null;
+}
+function prof(){return state.settings.profile||{};}
+/* The heavy compounds a Strength or Both goal moves: barbell, Smith and
+   machine compounds with a strength estimate, as the copy says (the r44
+   review: `estInLoad` took goblet squats and single-dumbbell rows and left
+   out selectorized machine presses and rows). */
+const PROF_EQUIP=new Set(['barbell','smith','machine']);
+// Hip and back accessories on a bar or a machine, not lifts trained heavy for strength (a judgment, the r44 review).
+const PROF_NOT_HEAVY=new Set(['reverseHyper','goodMorning','gluteBridge']);
+function profHeavy(ex){return !!ex&&!ex.timed&&!ex.bw&&isCompound(ex)&&!noE1(ex)&&PROF_EQUIP.has(ex.equip)&&!PROF_NOT_HEAVY.has(ex.id);}
+/* What a profile changes in a plan item (the rules Apply and new items share):
+   - Strength or Both, past the first year: heavy compounds (`profHeavy`) at
+     3 to 6 or 5 to 8 reps, 2 in reserve, 3 minutes' rest.
+     Heavier loads gave more strength for similar growth (Schoenfeld 2017
+     meta-analysis of low vs high loads; ACSM 2009 position stand: 1 to 6 RM
+     for strength past the novice stage); 3 minutes' rest beat 1 for strength
+     and size (Schoenfeld 2016). 5 to 8 for Both is a convention between the
+     two, and 2 in reserve on heavy compounds is the app's own (templates).
+   - Under a year: 8 to 12 reps for everything (ACSM 2009: novices gain
+     strength and size there), 3 in reserve on compounds and 2 on isolation,
+     as the beginner plan (a convention: easier to judge, further from failure).
+   Isolation lifts past the first year, timed holds and Size keep the defaults. */
+function profRule(ex,p){
+  p=p||prof();if(!ex||ex.timed)return null;
+  if(p.exp==='new')return {repMin:8,repMax:12,rir:isCompound(ex)?3:2};
+  if((p.goal==='strength'||p.goal==='both')&&profHeavy(ex))return p.goal==='strength'?{repMin:3,repMax:6,rir:2,rest:180}:{repMin:5,repMax:8,rir:2,rest:180};
+  return null;
+}
+function profPlan(ex,plain){const r=plain?null:profRule(ex);return r?{...DEFAULT_PLAN,...r}:{...DEFAULT_PLAN};}
+/* A muscle's weekly target with this profile (the defaults with no focus). */
+function defBand(m,p){
+  const b=BANDS[m];const f=(p||prof()).focus||[];
+  if(!f.length||TRACK_ONLY.has(m))return [b[0],b[1]];
+  if(f.includes(m))return [Math.round(b[0]*FOCUS_UP),Math.round(b[1]*FOCUS_UP)];
+  return [Math.ceil(b[0]*MAINT_SHARE),b[1]];
+}
+/* The app's own target for a muscle under the old profile, which a profile
+   change may move: its default, or that default brought down to the routine
+   in use on a first run (fitTargets). Anything else was typed, including a
+   target typed back to the plain default while a focus was on (the r44
+   review). Returns 'def', 'fit' or null. */
+function bandKind(m,b,oldP){
+  const d=defBand(m,oldP);if(b[0]===d[0]&&b[1]===d[1])return 'def';if(((oldP||{}).focus||[]).includes(m))return null;
+  const R=activeRoutine();if(!R)return null;const p=Math.floor(plannedSets(R)[m]||0);
+  return b[1]===d[1]&&b[0]<d[0]&&b[0]===Math.min(d[0],p)?'fit':null;
+}
+/* Moves the app's own targets from the old profile's to the new one's.
+   Targets fitted to the routine in use stay fitted: when every target reads
+   as the default or fitted and at least one as fitted (the test fitTargets
+   uses), all are fitted to the new defaults, as a first-run pick does, so a
+   focus on and off comes back to the same numbers (the r44 review: a
+   fitted 6 read as the focus's maintenance 4, then went back to 10; and one
+   typed target that happened to equal the plan must not fit the rest). A
+   focus muscle is never brought down to the plan: raising it is the point.
+   Returns {muscle: [from, to]} for what moved, as copies. */
+function profFit(m,p,plan){const d=defBand(m,p);return (p.focus||[]).includes(m)?d:[Math.min(d[0],Math.floor(plan[m]||0)),d[1]];}
+function profMoveBands(oldP,newP){
+  const b=state.settings.bands;const moved={};const K={};
+  for(const m of MK)if(!TRACK_ONLY.has(m))K[m]=bandKind(m,b[m],oldP);
+  // Fitted only when every target of the app's own is exactly what fitting to this routine gives, as in fitTargets; typed ones are left out of the test.
+  const R=activeRoutine();const P=R?plannedSets(R):{};
+  const fitted=Object.values(K).includes('fit')&&Object.keys(K).filter(m=>K[m]).every(m=>{const f=profFit(m,oldP,P);return b[m][0]===f[0]&&b[m][1]===f[1];});const plan=fitted?P:{};
+  // Not fitted: a target that only looks fitted was typed, and stays.
+  for(const m in K){if(!K[m]||(!fitted&&K[m]!=='def'))continue;
+    const to=fitted?profFit(m,newP,plan):defBand(m,newP);
+    if(b[m][0]===to[0]&&b[m][1]===to[1])continue;moved[m]=[b[m].slice(),to.slice()];b[m]=to.slice();}
+  return moved;
+}
+/* Apply (V's answer 1): the profile's rules on the routine in use, only the
+   fields a rule sets, on items where they differ. Rest is only raised, and a
+   rest of 0 (no timer, on purpose) is left alone. Under a year, Apply only
+   raises reps in reserve and keeps the routine's ranges: a ready-made
+   routine's 5 x 5 or 10 to 15 was chosen on purpose, and 8 to 12 is where new
+   exercises start (the r44 review). Returns what would change. */
+function profApplyList(R){
+  const out=[];if(!R)return out;const nw=prof().exp==='new';
+  R.days.forEach((d,di)=>d.items.forEach(it=>{const r=profRule(EX(it.exId));if(!r)return;
+    const ch={};for(const k in r){
+      if(k==='rest'){if(+it.rest!==0&&!(+it.rest>=r.rest))ch.rest=r.rest;}
+      else if(nw){if(k==='rir'&&!(+it.rir>=r.rir))ch.rir=r.rir;}
+      else if(it[k]!==r[k])ch[k]=r[k];}
+    if(Object.keys(ch).length)out.push({di,it,ch});}));
+  return out;
+}
+// What Apply changes, said in its question.
+function profApplyWhat(){const p=prof();return p.exp==='new'?'Reps in reserve go up to 3 on compounds and 2 on isolation; rep ranges stay.':p.goal==='both'?'Heavy compounds go to 5 to 8 reps, 2 in reserve, and at least 3 minutes\' rest.':'Heavy compounds go to 3 to 6 reps, 2 in reserve, and at least 3 minutes\' rest.';}
+/* Strength focus in Pick for me (item 44): with Strength as the goal, a
+   barbell or machine compound you have logged, not trained for 5 days or
+   more and recovered, is favoured when it is stalled or near its best
+   (within 3%, the app's threshold for a real change). The ranking without
+   a Strength goal is unchanged. */
+const STR_REST=5,STR_NEAR=0.97;
+function strengthPick(e,st,rec,at){
+  if(prof().goal!=='strength'||!profHeavy(e)||!st||!st.last||rec.r<1)return null;
+  if(!(daysOff(e.id,{before:at})>=STR_REST))return null;
+  const near=st.bestAll>0&&st.last.best>=st.bestAll*STR_NEAR;
+  return st.stalled?'stalled':near?'near':null;
+}
 /* Round a load to something you can actually put on a bar or pick off a rack:
    nearest 5 lb, or nearest 2.5 kg. Used for suggested warm-up loads only;
    anything the user types is left exactly as typed. */
@@ -8037,13 +8188,35 @@ function gymInput(t){
   // Not a rack yet: keep what was typed on screen only, and take the old rack out of use.
   ui.gymDb=d;if(g.db){delete g.db;gymSave(g);}else rerenderKeepScroll();
 }
+/* Your training (r44, item 271). Each choice taps on and off; nothing here
+   is needed, and with nothing set the app is as before. */
+function profChips(k,opts,cur,label){return `<div class="ob-units" role="group" aria-label="${label}">${opts.map(([v,l])=>`<button class="chip ${cur===v?'on':''}" data-act="profSet" data-k="${k}" data-v="${v}" aria-pressed="${cur===v}">${l}</button>`).join('')}</div>`;}
+function profFields(){
+  const p=prof();
+  return `<div><p class="small muted" style="margin:0 0 6px;font-weight:600"><span class="hastip" data-tip="${esc(PROF_GOAL_TIP)}">Goal</span></p>${profChips('goal',PROF_GOALS,p.goal,'Goal')}</div>
+  <div><p class="small muted" style="margin:0 0 6px;font-weight:600"><span class="hastip" data-tip="${esc(PROF_EXP_TIP)}">Years lifting</span></p>${profChips('exp',PROF_EXP,p.exp,'Years lifting')}</div>
+  <div><p class="small muted" style="margin:0 0 6px;font-weight:600"><span class="hastip" data-tip="Ready-made routines that fit are marked when you pick one. Every other day fits 3 or 4.">Days a week</span></p>${profChips('days',PROF_DAYS.map(d=>[d,String(d)]),p.days,'Days a week')}</div>`;
+}
+const PROF_GOAL_TIP='Size keeps the app\'s defaults. Strength: new barbell, Smith, and machine compounds start at 3 to 6 reps, 2 in reserve, 3 minutes\' rest. Heavier loads gave more strength for similar growth (Schoenfeld 2017; ACSM 2009), and 3 minutes\' rest beat 1 (Schoenfeld 2016). Both starts them at 5 to 8; that and the 2 in reserve are conventions. Strength also favours stalled or near-best compounds in Pick for me. Your routine changes only with Apply.';
+const PROF_EXP_TIP='Under 1 year, whatever the goal: new exercises start at 8 to 12 reps (ACSM 2009). Compounds stop 3 reps short and isolation lifts 2, as in the beginner plan, a convention: easier to judge, further from failure. Apply raises reps in reserve to that and keeps your ranges.';
+const PROF_FOCUS_TIP='Up to two. Their weekly targets go up about 30% and the other major muscles drop to maintenance, a third of the usual minimum (size and strength held on a third of the volume: Bickel 2011, Spiering 2021). Only targets you have not typed move, and taking a focus off puts them back. Pick for me favours them.';
+function profSub(){const p=prof();const a=[];if(p.goal)a.push(PROF_GOALS.find(g=>g[0]===p.goal)[1]);if(p.days)a.push(`${p.days} days`);if(p.focus)a.push(p.focus.map(m=>ML[m]).join(', '));if(state.settings.timeBudget)a.push(`${state.settings.timeBudget} min`);return a.join(' · ')||'optional';}
+function profSettings(){
+  const s=state.settings;const p=prof();const f=p.focus||[];const R=activeRoutine();const ap=profApplyList(R);
+  return `${profFields()}
+  <label class="field"><span class="hastip" data-tip="Planned days whose time estimate runs over it are flagged. Rest per exercise is set in Plan; 0 s means no timer.">Lifting time budget (minutes)</span><input type="text" inputmode="numeric" data-bind="timeBudget" value="${s.timeBudget==null?'':s.timeBudget}" placeholder="e.g. 70"></label>
+  <div><p class="small muted" style="margin:0 0 6px;font-weight:600"><span class="hastip" data-tip="${esc(PROF_FOCUS_TIP)}">Focus muscles</span> <span class="muted" style="font-weight:400">${f.length} of ${FOCUS_MAX}</span></p>
+  <div class="chips" role="group" aria-label="Focus muscles">${MUSCLES.filter(([k])=>!TRACK_ONLY.has(k)).map(([k,l])=>`<button class="chip ${f.includes(k)?'on':''}" data-act="profSet" data-k="focus" data-v="${k}" aria-pressed="${f.includes(k)}">${l}</button>`).join('')}</div></div>
+  ${ap.length?`<div class="panel row spread" id="profApply"><p class="small" style="margin:0;flex:1 1 180px"><b>${ap.length} exercise${ap.length===1?'':'s'}</b> in ${esc(R.name)} differ from your profile.</p><button class="btn sm" data-act="profApply">Apply</button></div>`:''}`;
+}
 function viewSettings(){
   const s=state.settings;const hasDemo=state.sessions.some(x=>x.demo)||state.bodyweights.some(x=>x.demo);
   // Each group folds (for this visit) and moves (order is saved).
-  const SUB={help:'Guide, report a problem',gym:gymSub(),general:`${s.unit==='kg'?'kg, cm':'lb, in'} · ${s.theme==='system'?'device theme':s.theme}`,timer:`${s.timerMode==='off'?'timer off':s.timerMode+' timer'}${s.timeBudget?` · ${s.timeBudget} min budget`:''}`,rir:{on:'on',cal:'corrected',off:'off'}[s.rirMode],layout:s.hidden.length?`${s.hidden.length} hidden`:'everything shown',prio:s.priorities.length?s.priorities.map(m=>ML[m]).join(', '):'none',bands:'',data:cloud.on?(cloud.status==='synced'?'synced':'syncing'):'this device only',more:hasDemo?'demo data loaded':'demo data, diagnostics, erase'};
+  const SUB={help:'Guide, report a problem',gym:gymSub(),general:`${s.unit==='kg'?'kg, cm':'lb, in'} · ${s.theme==='system'?'device theme':s.theme}`,profile:profSub(),timer:s.timerMode==='off'?'timer off':s.timerMode+' timer',rir:{on:'on',cal:'corrected',off:'off'}[s.rirMode],layout:s.hidden.length?`${s.hidden.length} hidden`:'everything shown',prio:s.priorities.length?s.priorities.map(m=>ML[m]).join(', '):'none',bands:'',data:cloud.on?(cloud.status==='synced'?'synced':'syncing'):'this device only',more:hasDemo?'demo data loaded':'demo data, diagnostics, erase'};
   const G=(k,title,help,id)=>`<details class="sec" ${id?`id="${id}"`:''} data-sk="settings:${k}" data-mkey="${k}" ${isOpen('settings:'+k,false)?'open':''}><summary>${sgrip(title)}<span class="sec-t">${esc(title)}</span><span class="sec-s">${esc(SUB[k]||'')}</span><span class="chev" aria-hidden="true"></span></summary><div class="sec-b">${help?helpLink(help):''}`;
   // The build number lives in Diagnostics; only the preview says what it is up top.
   return `${pageHead(ENV==='preview'?'Ironlog Preview '+APP_VERSION:'','Settings',cloud.on?(window.claude?'Saved to your Claude account and this device':'Synced to your account and saved on this device'):'Saved on this device')}
+  ${G('profile','Your training')}<div class="card stack">${profSettings()}</div></div></details>
   ${G('general','General')}<div class="card stack"><div class="grid2"><label class="field">Units<select data-bind="unit"><option value="lb" ${s.unit==='lb'?'selected':''}>lb and inches</option><option value="kg" ${s.unit==='kg'?'selected':''}>kg and cm</option></select></label>
   <label class="field">Theme<select data-bind="theme"><option value="system" ${s.theme==='system'?'selected':''}>Match device</option><option value="dark" ${s.theme==='dark'?'selected':''}>Dark</option><option value="light" ${s.theme==='light'?'selected':''}>Light</option></select></label></div>
   <label class="field">Name (optional)<input type="text" data-bind="userName" value="${esc(s.userName||'')}" maxlength="40" autocomplete="given-name"></label>
@@ -8064,7 +8237,7 @@ function viewSettings(){
   <label class="field"><span class="hastip" data-tip="Blank: Today opens on an empty session, and you add exercises as you go; your plan's day is still one tap away. Each exercise still gets its suggested weight from your history.">Today starts with</span><select data-bind="todayStart"><option value="plan" ${state.settings.todayStart!=='free'?'selected':''}>My plan's day</option><option value="free" ${state.settings.todayStart==='free'?'selected':''}>A blank session (freestyle)</option></select></label>
   <label class="check-inline"><input type="checkbox" data-bind="autoAdj" ${adjOn()?'checked':''}><span class="hastip" data-tip="After a set that was clearly easier or harder than planned, the sets after it that you have not typed a load for move up or down. A line says why, with Keep to undo it. Two reps or more in reserve over your target, or three past the top of the range, moves up; two or more under the range moves down. A rep or two lost per set is normal and changes nothing.">Adjust the next sets from the last one</span></label>
   <label class="check-inline"><input type="checkbox" data-bind="wakeLock" ${s.wakeLock?'checked':''}><span class="hastip" data-tip="A locked phone pauses this page, so the rest alert cannot sound until you unlock. Keeping the screen on avoids that, at some battery cost.">Keep the screen on during a session</span></label>
-  <label class="field"><span class="hastip" data-tip="Planned days whose time estimate runs over it are flagged. Rest per exercise is set in Plan; 0 s means no timer.">Lifting time budget (minutes)</span><input type="text" inputmode="numeric" data-bind="timeBudget" value="${s.timeBudget==null?'':s.timeBudget}" placeholder="e.g. 70"></label></div></div></details>
+</div></div></details>
   ${G('rir','Effort (RIR)')}<div class="card stack">${rirSettings()}</div></div></details>
   ${G('layout','Layout')}<div class="card stack">${layoutSettings()}</div></div></details>
   ${G('prio','Priority muscles','prio')}${helpText('prio','Shown in Weak points so they stay on your radar.')}
@@ -8221,12 +8394,16 @@ function renderModalBody(){
   }else if(m.kind==='imp'){h=impSheet(m);
   }else if(m.kind==='templates'){
     h=`<div class="sheet" role="dialog" aria-modal="true"><div class="sheet-h"><h3>Pick a routine</h3><button class="ib" aria-label="Close" data-act="mClose">✕</button></div>
+    ${/* Your training on a first run (r44, V's answer 3): folded, optional, here rather than on Set up, which stays as short as r21 made it; the days mark the routines below. */''}
+    ${m.from==='welcome'?`<div class="ob-prof" id="obProf"><button class="ob-prof-h" data-act="obProfTog" aria-expanded="${!!ui.obProf}">Your training <span class="muted">(optional)</span></button>${ui.obProf?`<div class="stack">${profFields()}</div>`:''}</div>`:''}
     <p class="small muted" style="margin:0 0 8px">${m.imported?'Your workouts are in. The names in the file did not say which days they were, so pick the routine you follow, or the closest; your targets and the next workout come from it. Change anything later in Plan.':'A starting point with sets, reps, and rest worked out. Change anything later in Plan.'}</p>
     <div class="tpl-list">${TEMPLATES.filter(t=>!t.hidden).map(t=>{
       // Minutes come from the same time model as Plan, so the list and the plan agree.
       // A range (r28): an average read as a promise, and Today then showed a longer first day.
       const r=routineFromTemplate(t.key);const tr=r.days.filter(d=>!d.rest);const mins=tr.map(d=>Math.round(dayMinutes(d)/5)*5);const lo=Math.min(...mins),hi=Math.max(...mins);const min=lo===hi?estMin(lo):`${lo} to ${hi} min`;
-      return `<button class="tpl" data-act="tplPick" data-k="${t.key}"><span class="tpl-t">${esc(t.name)}</span><span class="tpl-w">${esc(t.who)}</span><span class="tpl-m">${esc(t.meta)} · ${min} · ${tr.map(d=>esc(d.name)).join(', ')}</span></button>`;}).join('')}</div></div>`;
+      // The days a week in Your training (r44) mark the routines that fit; every other day counts as about 3.5.
+      const pd=prof().days;const fits=pd&&Math.abs(tr.length*7/r.days.length-pd)<=0.5;
+      return `<button class="tpl" data-act="tplPick" data-k="${t.key}"><span class="tpl-t">${esc(t.name)}${fits?' <span class="pill">Fits your days</span>':''}</span><span class="tpl-w">${esc(t.who)}</span><span class="tpl-m">${esc(t.meta)} · ${min} · ${tr.map(d=>esc(d.name)).join(', ')}</span></button>`;}).join('')}</div></div>`;
   }else if(m.kind==='routineNew'){
     h=`<div class="sheet" role="dialog" aria-modal="true"><div class="sheet-h"><h3>New routine</h3><button class="ib" aria-label="Close" data-act="mClose">✕</button></div>
     <label class="field">Name<input type="text" id="rNewName" placeholder="e.g. Upper focus, 6 days"></label>
@@ -9597,6 +9774,36 @@ const ACT={
   obTourPick(t){obTour.user=true;obTourStop();obTourGo(+t.dataset.i,true);},
   obAcctLater(){try{localStorage.setItem(OB_ACCT,'later');}catch(e){/* per device only */}obOutClear();window.scrollTo(0,0);render();},
   obAcctBack(){try{localStorage.removeItem(OB_ACCT);}catch(e){/* nothing to clear */}window.scrollTo(0,0);render();},
+  /* Your training (r44): a tap on a choice sets it, a tap on the one set
+     clears it. Focus moves only the app's own weekly targets, with Undo. */
+  profSet(t){
+    const k=t.dataset.k;const raw=t.dataset.v;const v=k==='days'?+raw:raw;
+    const old=prof();const p={...old,focus:(old.focus||[]).slice()};
+    if(k==='focus'){const i=p.focus.indexOf(v);if(i>=0)p.focus.splice(i,1);else{if(p.focus.length>=FOCUS_MAX){toast('Two at most. Tap one to take it off.');return;}p.focus.push(v);}}
+    else if(k==='goal'||k==='exp'||k==='days')p[k]=p[k]===v?undefined:v;else return;
+    const np=profClean(p);const was=state.settings.profile?JSON.parse(JSON.stringify(state.settings.profile)):null;let moved={};
+    /* Undo puts the profile back and each target this moved that still reads
+       what it was moved to (the r44 review: the merge lost them when a target
+       was typed in between). */
+    snapshot(()=>{if(was)state.settings.profile=was;else delete state.settings.profile;const b=state.settings.bands;
+      for(const m in moved)if(b[m]&&b[m][0]===moved[m][1][0]&&b[m][1]===moved[m][1][1])b[m]=moved[m][0].slice();return true;});
+    if(np)state.settings.profile=np;else delete state.settings.profile;
+    if(k==='focus')moved=profMoveBands(old,np||{});
+    commit();rerenderKeepScroll();
+    const n=Object.keys(moved).length;
+    if(n)toast(`Weekly targets moved for ${n} muscle${n===1?'':'s'}. Ones you typed stay.`,true);
+  },
+  // The fold in the first-run routine picker (r44): its own state, so a re-render keeps it open.
+  obProfTog(){ui.obProf=!ui.obProf;rerenderKeepScroll();},
+  profApply(){
+    const R=activeRoutine();const list=profApplyList(R);if(!list.length)return;
+    confirmBox(`Apply to ${R.name}?`,`${list.length} exercise${list.length===1?'':'s'}. ${profApplyWhat()} Sets and exercises stay as they are.`,'Apply',()=>{
+      const live=activeRoutine();if(!live||live.id!==R.id)return;
+      snapshot();const L=profApplyList(live);
+      for(const x of L){Object.assign(x.it,x.ch);syncDraftPlan({r:live,di:x.di,it:x.it});}
+      commit();rerenderKeepScroll();toast(`${live.name}: ${L.length} exercise${L.length===1?'':'s'} updated`,true);
+    });
+  },
   obUnit(t){const v=t.dataset.v;if(v!=='lb'&&v!=='kg')return;state.settings.unit=v;commit();render();},
   tplPick(t){
     const m=ui.modal;const from=m&&m.kind==='templates'?m.from:'plan';const k=t.getAttribute('data-k');
@@ -10907,7 +11114,7 @@ function fillSets(bi,list){
 
 window.__onLib=(which)=>{if((which==='chart'&&ui.tab==='dash')||(which==='sortable'&&ui.tab==='program'))rerenderKeepScroll();};
 trashTidy();
-window.__ironlog={get state(){return state;},set state(v){state=v;},keepExtra,EXTRA_MAX,draftPlanMin,pace,paceRatios,sessModelMin,PACE_N,PACE_DAYS,PACE_MIN,plainTemplate,trashTidy,ENV,KEY,COMMON,COMMON_TIP,isCommon,bwEvery,isRestWeek,sessCmp,avgWeeks,weekStreak,coach,noLog,afterSet,adjOn,bwAt,newBlock,cycleState,sortedSessions,addDays,loadIn,gymRack,gymClean,dbListOf,capOf,refreshEx,effShow,rirScale,setStr,libExercises,obGate,obTour,andList,belowMin,aboveMax,starterRoutine,starterSigs,plateList,exBarKg,VOL_MODES,liveLogFetch,regionSrc,fitTargets,firstFullWeek,moveBlock,BANDS,installSheet,siteHost,greyW,effW,greyR,lighterLoad,incOf,swapPlan,planSetsPerWeek,weekNeed,stepRead,e1inv,rtfAt,rtfOf,rtfBand,calStats,rirEff,isHard,setCredit,tonnage,loadMode,loadWords,loadNote,progStep,jumpCap,setSecs,setupSecs,recovery,rolling7,rankDays,rankExercises,isCompound,patternOf,noE1,whtrLine,exHeadline,remainMin,shortPlan,weekPlan,cycleProjection,lastLighterWeek,regionBalance,parseHeight,mixCheck,swapCands,eqPlan,exportCSV,importData,chunksOf,assemble,sessionMuscles,TRACK_ONLY,cloud,Hx,mergeChunk,baseOf,sync:()=>cq(cloudPull),TEMPLATES,lastRFor,impDate,impRows,impNorm,impMatch,impFromText,impFromTable,impHeader,impBuild,impStart,impXlsx,parseSets,undoStack,undoRestore,undoForget,allTimeBests,bestsBoard,obActive,fmtW,rirUsual,rirEst,routineFromTemplate,plannedSets,map3d:()=>({state:B3.state,fail:B3.fail,meshes:B3.meshes.length,yaw:B3.yaw,glow:Object.keys(B3.mats).filter(m=>B3.mats[m].emissiveIntensity>0),canvas:!!document.querySelector('#bm3d canvas'),colors:Object.fromEntries(Object.entries(B3.mats).map(([m,mt])=>[m,'#'+mt.color.getHexString()])),pick:(x,y)=>map3dPick(x,y),want:map3dColors()}),cloudState:()=>({on:cloud.on,status:cloud.status,err:cloud.err,uid:cloud.uid,acct:cloud.acct}),acctUser:()=>acct.user,acctWaiting:()=>!!acctWait.pw,flush:()=>cq(cloudFlush),backupDue,routineUpdates,planFor,platesMode,plateText,chunksOf,IDX,suggest,e1,render,ACT,ui,makeDemo,invalidate,normalize,snapshot,saveNow,timer,weekStats,weekStart,today,EX,blockProgress,dayMinutes,weekStreak,coach,tonnageNow,livePR,movers,stalledIds,muscleStatus,actualAvg4,plannedPerWeek,parseSets,fillSets,newBlock,lastNoteOf,sizeRows,sessionMuscleSets,sessionCapNote,routineClutter,rowBlank,dayReasons,impTextSets,liftTrend,prsWithin,activeRoutine,rackStep,repFloor,sessionLength,prBeat,exInjury,exJoints,openModal,EQUIP,HARD_EX,recentLighter,planEvidenceNote,howToUrl,editFp,toast,avgWeeks,regionWk,REGION_WKS,SAFETY_TXT,libFiltered,nameMatch,workLoad,fitE,offSession,tagged,fatigueStalls,avgWeeksTxt,routineFromLog,repSpan,rangeWords,calDueIdx,readyCard,sameRR,hintOnce,overSets,rackTol,daysOff,BACK_DAYS,prName,sessTm,effTgt,bwDueCard,bwNoLoad,applyPick,joinAdjacent,sameExOnce,goalState,goalLine,bwRefLoad,ML,exMusParts,musTrend};
+window.__ironlog={get state(){return state;},set state(v){state=v;},profHeavy,bandKind,prof,profClean,profRule,profPlan,defPlan,defBand,profMoveBands,profApplyList,strengthPick,PROF_DAYS,FOCUS_MAX,estInLoad,keepExtra,EXTRA_MAX,draftPlanMin,pace,paceRatios,sessModelMin,PACE_N,PACE_DAYS,PACE_MIN,plainTemplate,trashTidy,ENV,KEY,COMMON,COMMON_TIP,isCommon,bwEvery,isRestWeek,sessCmp,avgWeeks,weekStreak,coach,noLog,afterSet,adjOn,bwAt,newBlock,cycleState,sortedSessions,addDays,loadIn,gymRack,gymClean,dbListOf,capOf,refreshEx,effShow,rirScale,setStr,libExercises,obGate,obTour,andList,belowMin,aboveMax,starterRoutine,starterSigs,plateList,exBarKg,VOL_MODES,liveLogFetch,regionSrc,fitTargets,firstFullWeek,moveBlock,BANDS,installSheet,siteHost,greyW,effW,greyR,lighterLoad,incOf,swapPlan,planSetsPerWeek,weekNeed,stepRead,e1inv,rtfAt,rtfOf,rtfBand,calStats,rirEff,isHard,setCredit,tonnage,loadMode,loadWords,loadNote,progStep,jumpCap,setSecs,setupSecs,recovery,rolling7,rankDays,rankExercises,isCompound,patternOf,noE1,whtrLine,exHeadline,remainMin,shortPlan,weekPlan,cycleProjection,lastLighterWeek,regionBalance,parseHeight,mixCheck,swapCands,eqPlan,exportCSV,importData,chunksOf,assemble,sessionMuscles,TRACK_ONLY,cloud,Hx,mergeChunk,baseOf,sync:()=>cq(cloudPull),TEMPLATES,lastRFor,impDate,impRows,impNorm,impMatch,impFromText,impFromTable,impHeader,impBuild,impStart,impXlsx,parseSets,undoStack,undoRestore,undoForget,allTimeBests,bestsBoard,obActive,fmtW,rirUsual,rirEst,routineFromTemplate,plannedSets,map3d:()=>({state:B3.state,fail:B3.fail,meshes:B3.meshes.length,yaw:B3.yaw,glow:Object.keys(B3.mats).filter(m=>B3.mats[m].emissiveIntensity>0),canvas:!!document.querySelector('#bm3d canvas'),colors:Object.fromEntries(Object.entries(B3.mats).map(([m,mt])=>[m,'#'+mt.color.getHexString()])),pick:(x,y)=>map3dPick(x,y),want:map3dColors()}),cloudState:()=>({on:cloud.on,status:cloud.status,err:cloud.err,uid:cloud.uid,acct:cloud.acct}),acctUser:()=>acct.user,acctWaiting:()=>!!acctWait.pw,flush:()=>cq(cloudFlush),backupDue,routineUpdates,planFor,platesMode,plateText,chunksOf,IDX,suggest,e1,render,ACT,ui,makeDemo,invalidate,normalize,snapshot,saveNow,timer,weekStats,weekStart,today,EX,blockProgress,dayMinutes,weekStreak,coach,tonnageNow,livePR,movers,stalledIds,muscleStatus,actualAvg4,plannedPerWeek,parseSets,fillSets,newBlock,lastNoteOf,sizeRows,sessionMuscleSets,sessionCapNote,routineClutter,rowBlank,dayReasons,impTextSets,liftTrend,prsWithin,activeRoutine,rackStep,repFloor,sessionLength,prBeat,exInjury,exJoints,openModal,EQUIP,HARD_EX,recentLighter,planEvidenceNote,howToUrl,editFp,toast,avgWeeks,regionWk,REGION_WKS,SAFETY_TXT,libFiltered,nameMatch,workLoad,fitE,offSession,tagged,fatigueStalls,avgWeeksTxt,routineFromLog,repSpan,rangeWords,calDueIdx,readyCard,sameRR,hintOnce,overSets,rackTol,daysOff,BACK_DAYS,prName,sessTm,effTgt,bwDueCard,bwNoLoad,applyPick,joinAdjacent,sameExOnce,goalState,goalLine,bwRefLoad,ML,exMusParts,musTrend};
 render();
 wakeOn();
 timerResume();
