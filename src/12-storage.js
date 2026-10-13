@@ -14,7 +14,7 @@ if(ENV==='preview')document.documentElement.dataset.env='preview';
 const HAD_LOG=(()=>{try{return localStorage.getItem(KEY)!=null;}catch(e){return false;}})();
 /* Shown in Settings, in diagnostics and in backups, so a bug report can be
    matched to the exact build. */
-const APP_VERSION='2026.10.13-r43';
+const APP_VERSION='2026.10.13-r44';
 /* The logo (r25): an upright dumbbell that is also the I of Ironlog. Same
    numbers as scripts/icons.py, which draws the app icons. */
 const MARK_SVG='<svg class="mark" viewBox="-242 -378 484 756" aria-hidden="true" focusable="false"><rect class="mk-h" x="-30" y="-300" width="60" height="600" rx="14"/><rect class="mk-h" x="-80" y="-192" width="160" height="32" rx="12"/><rect class="mk-h" x="-80" y="160" width="160" height="32" rx="12"/><rect class="mk-p" x="-240" y="-376" width="480" height="92" rx="30"/><rect class="mk-p" x="-190" y="-270" width="380" height="66" rx="26"/><rect class="mk-p" x="-190" y="204" width="380" height="66" rx="26"/><rect class="mk-p" x="-240" y="284" width="480" height="92" rx="30"/></svg>';
@@ -286,6 +286,8 @@ function normalize(s){
   if(out.settings.smallPlates!==true)delete out.settings.smallPlates;
   // Your gym (r33, item 207): absent unless set; rebuilt in one key order so a save hashes the same every time.
   {const g=gymClean(out.settings.gym);if(g)out.settings.gym=g;else delete out.settings.gym;}
+  // The profile (r44, item 271): absent unless set, rebuilt in one key order.
+  {const p=profClean(out.settings.profile);if(p)out.settings.profile=p;else delete out.settings.profile;}
   // RIR: on (as logged), cal (on, shifted by your calibration sets), off.
   out.settings.rirMode=['on','off','cal'].includes(out.settings.rirMode)?out.settings.rirMode:'on';
   out.settings.hidden=Array.isArray(out.settings.hidden)?[...new Set(out.settings.hidden.filter(k=>typeof k==='string'&&HIDEABLE_KEYS.has(k)))]:[];

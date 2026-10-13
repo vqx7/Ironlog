@@ -425,7 +425,9 @@ function suggestTimed(ex,plan,exps,opts,injM,all){
 }
 /* Default plan for an exercise that is not in the routine yet. Timed holds
    start at 30 to 60 seconds rather than 8 to 12. */
-function defPlan(exId){const ex=EX(exId);return ex.timed?{...DEFAULT_PLAN,repMin:30,repMax:60,rest:60}:{...DEFAULT_PLAN};}
+// The profile's rules for a lift (r44); with no profile, or Size, exactly the defaults as before.
+// plain: without the profile, for reading sessions already logged (the pace model, r44 review).
+function defPlan(exId,plain){const ex=EX(exId);return ex.timed?{...DEFAULT_PLAN,repMin:30,repMax:60,rest:60}:profPlan(ex,plain);}
 /* Load step: the exercise's own setting wins, so one change applies on every
    day and routine the lift appears in. */
 /* The default step is stored as 5 lb, from before units were chosen, so a
@@ -587,12 +589,12 @@ function jumpCap(ex,loadKg,early){return early?1.25:!isCompound(ex)&&loadKg<20?1
 function fitE(load,r,rir){const v=e1(load,r,rir);if(v!=null)return v;if(!(load>0&&r>0))return null;const q=rir==null||rir===''?0:Math.min(Math.max(+rir,0),E1_MAX_RIR);const t=+r+q;return t<=30?load*(1+t/30):null;}
 /* An exercise added mid-session borrows its settings from wherever it already
    sits in the active routine instead of a generic 3 x 8-12. */
-function planFor(exId,R,dayId){
+function planFor(exId,R,dayId,plain){
   R=R||activeRoutine();
   // The day being trained first: the same lift can sit on two days with different ranges.
   const days=dayId?[...R.days.filter(d=>d.id===dayId),...R.days.filter(d=>d.id!==dayId)]:R.days;
   for(const d of days)for(const it of d.items)if(it.exId===exId){const {uid:_u,ss:_s,...p}=it;return {...DEFAULT_PLAN,...p,ss:null};}
-  return defPlan(exId);
+  return defPlan(exId,plain);
 }
 /* What a swapped-in exercise is done for (r27). It keeps the slot's set
    count and superset. Its range, RIR, rest and step come from where it

@@ -70,6 +70,8 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
     await page.click('[data-bind="autoDone"] + span'); await wait(80);
     ok(await ev(() => /RIR, reps in reserve:/.test(document.querySelector('[data-mkey="rir"]').innerText)), 'the Effort (RIR) setting says what RIR is, on screen');
     // The controls keep their spoken names with an i beside the label (review, r27).
+    // The time budget sits in Your training since r44.
+    await ev(() => { const L = window.__ironlog; L.ui.folds['settings:profile'] = true; L.render(); }); await wait(80);
     const names = await Promise.all([
       page.getByRole('checkbox', { name: 'Auto-mark a set done after its reps', exact: true }).count(),
       page.getByRole('checkbox', { name: 'Keep the screen on during a session', exact: true }).count(),

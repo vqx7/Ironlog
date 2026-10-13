@@ -97,12 +97,16 @@ function renderModalBody(){
   }else if(m.kind==='imp'){h=impSheet(m);
   }else if(m.kind==='templates'){
     h=`<div class="sheet" role="dialog" aria-modal="true"><div class="sheet-h"><h3>Pick a routine</h3><button class="ib" aria-label="Close" data-act="mClose">✕</button></div>
+    ${/* Your training on a first run (r44, V's answer 3): folded, optional, here rather than on Set up, which stays as short as r21 made it; the days mark the routines below. */''}
+    ${m.from==='welcome'?`<div class="ob-prof" id="obProf"><button class="ob-prof-h" data-act="obProfTog" aria-expanded="${!!ui.obProf}">Your training <span class="muted">(optional)</span></button>${ui.obProf?`<div class="stack">${profFields()}</div>`:''}</div>`:''}
     <p class="small muted" style="margin:0 0 8px">${m.imported?'Your workouts are in. The names in the file did not say which days they were, so pick the routine you follow, or the closest; your targets and the next workout come from it. Change anything later in Plan.':'A starting point with sets, reps, and rest worked out. Change anything later in Plan.'}</p>
     <div class="tpl-list">${TEMPLATES.filter(t=>!t.hidden).map(t=>{
       // Minutes come from the same time model as Plan, so the list and the plan agree.
       // A range (r28): an average read as a promise, and Today then showed a longer first day.
       const r=routineFromTemplate(t.key);const tr=r.days.filter(d=>!d.rest);const mins=tr.map(d=>Math.round(dayMinutes(d)/5)*5);const lo=Math.min(...mins),hi=Math.max(...mins);const min=lo===hi?estMin(lo):`${lo} to ${hi} min`;
-      return `<button class="tpl" data-act="tplPick" data-k="${t.key}"><span class="tpl-t">${esc(t.name)}</span><span class="tpl-w">${esc(t.who)}</span><span class="tpl-m">${esc(t.meta)} · ${min} · ${tr.map(d=>esc(d.name)).join(', ')}</span></button>`;}).join('')}</div></div>`;
+      // The days a week in Your training (r44) mark the routines that fit; every other day counts as about 3.5.
+      const pd=prof().days;const fits=pd&&Math.abs(tr.length*7/r.days.length-pd)<=0.5;
+      return `<button class="tpl" data-act="tplPick" data-k="${t.key}"><span class="tpl-t">${esc(t.name)}${fits?' <span class="pill">Fits your days</span>':''}</span><span class="tpl-w">${esc(t.who)}</span><span class="tpl-m">${esc(t.meta)} · ${min} · ${tr.map(d=>esc(d.name)).join(', ')}</span></button>`;}).join('')}</div></div>`;
   }else if(m.kind==='routineNew'){
     h=`<div class="sheet" role="dialog" aria-modal="true"><div class="sheet-h"><h3>New routine</h3><button class="ib" aria-label="Close" data-act="mClose">✕</button></div>
     <label class="field">Name<input type="text" id="rNewName" placeholder="e.g. Upper focus, 6 days"></label>

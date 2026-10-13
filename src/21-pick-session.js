@@ -119,7 +119,8 @@ function sessionMuscles(d){
 }
 function rankExercises(d){
   const I=IDX();const bands=state.settings.bands;
-  const pri=new Set(state.settings.priorities);const lag=new Set(I.scores.filter(x=>x.label==='lagging').map(x=>x.m));
+  // Focus muscles in the profile (r44) count as priorities here.
+  const pri=new Set([...state.settings.priorities,...(prof().focus||[])]);const lag=new Set(I.scores.filter(x=>x.label==='lagging').map(x=>x.m));
   const sess=sessionMuscles(d);const inS=new Set(d.ex.map(b=>b.exId));
   const inR=new Set();for(const dd of activeRoutine().days)for(const it of dd.items)inR.add(it.exId);
   const doneEx=d.ex.map(b=>EX(b.exId));
@@ -150,7 +151,9 @@ function rankExercises(d){
     if(inR.has(e.id))s+=0.5;
     if(LONG_IDS.has(e.id))s+=0.4;
     if(pri.has(m)||lag.has(m))s+=def>0?1.2:0.3;
-    if(!best[m]||s>best[m].s||(s===best[m].s&&e.name<best[m].e.name))best[m]={e,s,m,def,inSess,st,n,rec:rec[m],r7:r7[m]};
+    // Strength focus (r44, item 44): stalled lifts lose 0.8 above, so they net +0.8; near-best ones gain 1.2.
+    const sp=strengthPick(e,st,rec[m],at);if(sp)s+=sp==='stalled'?1.6:1.2;
+    if(!best[m]||s>best[m].s||(s===best[m].s&&e.name<best[m].e.name))best[m]={e,s,m,def,inSess,st,n,rec:rec[m],r7:r7[m],sp};
   }
   return Object.values(best).sort((a,b)=>b.s-a.s).slice(0,3).map(x=>{
     const plan=planFor(x.e.id,null,d.dayId);const cap=Math.max(1,SESSION_CAP-x.inSess);
@@ -169,6 +172,8 @@ function exReasons(x){
   else out.push('New to you: the first session sets its baseline.');
   if(LONG_IDS.has(x.e.id))out.push(LONG_TRIAL.has(x.e.id)?'Trains a two-joint muscle at a long length, which beat the shorter-length version in trials.':'Puts a two-joint muscle at a long length (a mechanical case, not trial-tested).');
   if(state.settings.priorities.includes(x.m))out.push('One of your priority muscles.');
+  else if((prof().focus||[]).includes(x.m))out.push('One of your focus muscles.');
+  if(x.sp)out.push(x.sp==='stalled'?`Strength focus: stalled lately, and ${STR_REST} days or more since you did it.`:`Strength focus: within 3% of your best, and ${STR_REST} days or more since you did it.`);
   return out;
 }
 /* Closest same-muscle replacements, used by Swap and Limited equipment.
@@ -444,6 +449,123 @@ function newBlock(exId,plan,opts){
   return {exId,plan:{...plan},note:'',lastNote:lastNoteOf(exId,opts&&opts.before),inj:sg.inj||null,hint:sg.text,last:sg.last,target:sg.target,tgt:sg.tgt,easier:sg.easier||null,lastR:sg.lastR,basis:sg.basis||undefined,sw:sg.w==null?null:sg.w,sets:Array.from({length:+plan.sets||3},()=>({w:fillLoads()?sg.w:null,r:null,rir:null,warm:false,drop:false,done:false}))};
 }
 const DEFAULT_PLAN={sets:3,repMin:8,repMax:12,rir:1,rest:90,inc:5*LB};
+/* ---------- PROFILE (r44, item 271, with 43 and 44) ----------
+   An optional short profile: goal, experience, days a week and up to two
+   focus muscles. V's answers (2026-10-13): it sets defaults and new plan
+   items only; the routine in use changes only through Apply; targets the
+   lifter typed stay as typed, and only the app's own targets move. With no
+   profile, or with Size, every number is exactly what it was before r44,
+   because the app's defaults were already set for size. */
+/* The profile's choices and focus numbers are in the data part (11): normalize
+   reads them while the save loads, before this part runs. */
+/* Built in one key order, absent keys left out, so a save hashes the same
+   every time and a phone without the profile syncs nothing new. */
+function profClean(p){
+  if(!p||typeof p!=='object'||Array.isArray(p))return null;const o={};
+  if(PROF_GOALS.some(g=>g[0]===p.goal))o.goal=p.goal;
+  if(PROF_EXP.some(g=>g[0]===p.exp))o.exp=p.exp;
+  if(PROF_DAYS.includes(p.days))o.days=p.days;
+  const f=Array.isArray(p.focus)?[...new Set(p.focus.filter(m=>typeof m==='string'&&MK.includes(m)&&!TRACK_ONLY.has(m)))].slice(0,FOCUS_MAX):[];
+  if(f.length)o.focus=f;
+  return Object.keys(o).length?o:null;
+}
+function prof(){return state.settings.profile||{};}
+/* The heavy compounds a Strength or Both goal moves: barbell, Smith and
+   machine compounds with a strength estimate, as the copy says (the r44
+   review: `estInLoad` took goblet squats and single-dumbbell rows and left
+   out selectorized machine presses and rows). */
+const PROF_EQUIP=new Set(['barbell','smith','machine']);
+// Hip and back accessories on a bar or a machine, not lifts trained heavy for strength (a judgment, the r44 review).
+const PROF_NOT_HEAVY=new Set(['reverseHyper','goodMorning','gluteBridge']);
+function profHeavy(ex){return !!ex&&!ex.timed&&!ex.bw&&isCompound(ex)&&!noE1(ex)&&PROF_EQUIP.has(ex.equip)&&!PROF_NOT_HEAVY.has(ex.id);}
+/* What a profile changes in a plan item (the rules Apply and new items share):
+   - Strength or Both, past the first year: heavy compounds (`profHeavy`) at
+     3 to 6 or 5 to 8 reps, 2 in reserve, 3 minutes' rest.
+     Heavier loads gave more strength for similar growth (Schoenfeld 2017
+     meta-analysis of low vs high loads; ACSM 2009 position stand: 1 to 6 RM
+     for strength past the novice stage); 3 minutes' rest beat 1 for strength
+     and size (Schoenfeld 2016). 5 to 8 for Both is a convention between the
+     two, and 2 in reserve on heavy compounds is the app's own (templates).
+   - Under a year: 8 to 12 reps for everything (ACSM 2009: novices gain
+     strength and size there), 3 in reserve on compounds and 2 on isolation,
+     as the beginner plan (a convention: easier to judge, further from failure).
+   Isolation lifts past the first year, timed holds and Size keep the defaults. */
+function profRule(ex,p){
+  p=p||prof();if(!ex||ex.timed)return null;
+  if(p.exp==='new')return {repMin:8,repMax:12,rir:isCompound(ex)?3:2};
+  if((p.goal==='strength'||p.goal==='both')&&profHeavy(ex))return p.goal==='strength'?{repMin:3,repMax:6,rir:2,rest:180}:{repMin:5,repMax:8,rir:2,rest:180};
+  return null;
+}
+function profPlan(ex,plain){const r=plain?null:profRule(ex);return r?{...DEFAULT_PLAN,...r}:{...DEFAULT_PLAN};}
+/* A muscle's weekly target with this profile (the defaults with no focus). */
+function defBand(m,p){
+  const b=BANDS[m];const f=(p||prof()).focus||[];
+  if(!f.length||TRACK_ONLY.has(m))return [b[0],b[1]];
+  if(f.includes(m))return [Math.round(b[0]*FOCUS_UP),Math.round(b[1]*FOCUS_UP)];
+  return [Math.ceil(b[0]*MAINT_SHARE),b[1]];
+}
+/* The app's own target for a muscle under the old profile, which a profile
+   change may move: its default, or that default brought down to the routine
+   in use on a first run (fitTargets). Anything else was typed, including a
+   target typed back to the plain default while a focus was on (the r44
+   review). Returns 'def', 'fit' or null. */
+function bandKind(m,b,oldP){
+  const d=defBand(m,oldP);if(b[0]===d[0]&&b[1]===d[1])return 'def';if(((oldP||{}).focus||[]).includes(m))return null;
+  const R=activeRoutine();if(!R)return null;const p=Math.floor(plannedSets(R)[m]||0);
+  return b[1]===d[1]&&b[0]<d[0]&&b[0]===Math.min(d[0],p)?'fit':null;
+}
+/* Moves the app's own targets from the old profile's to the new one's.
+   Targets fitted to the routine in use stay fitted: when every target reads
+   as the default or fitted and at least one as fitted (the test fitTargets
+   uses), all are fitted to the new defaults, as a first-run pick does, so a
+   focus on and off comes back to the same numbers (the r44 review: a
+   fitted 6 read as the focus's maintenance 4, then went back to 10; and one
+   typed target that happened to equal the plan must not fit the rest). A
+   focus muscle is never brought down to the plan: raising it is the point.
+   Returns {muscle: [from, to]} for what moved, as copies. */
+function profFit(m,p,plan){const d=defBand(m,p);return (p.focus||[]).includes(m)?d:[Math.min(d[0],Math.floor(plan[m]||0)),d[1]];}
+function profMoveBands(oldP,newP){
+  const b=state.settings.bands;const moved={};const K={};
+  for(const m of MK)if(!TRACK_ONLY.has(m))K[m]=bandKind(m,b[m],oldP);
+  // Fitted only when every target of the app's own is exactly what fitting to this routine gives, as in fitTargets; typed ones are left out of the test.
+  const R=activeRoutine();const P=R?plannedSets(R):{};
+  const fitted=Object.values(K).includes('fit')&&Object.keys(K).filter(m=>K[m]).every(m=>{const f=profFit(m,oldP,P);return b[m][0]===f[0]&&b[m][1]===f[1];});const plan=fitted?P:{};
+  // Not fitted: a target that only looks fitted was typed, and stays.
+  for(const m in K){if(!K[m]||(!fitted&&K[m]!=='def'))continue;
+    const to=fitted?profFit(m,newP,plan):defBand(m,newP);
+    if(b[m][0]===to[0]&&b[m][1]===to[1])continue;moved[m]=[b[m].slice(),to.slice()];b[m]=to.slice();}
+  return moved;
+}
+/* Apply (V's answer 1): the profile's rules on the routine in use, only the
+   fields a rule sets, on items where they differ. Rest is only raised, and a
+   rest of 0 (no timer, on purpose) is left alone. Under a year, Apply only
+   raises reps in reserve and keeps the routine's ranges: a ready-made
+   routine's 5 x 5 or 10 to 15 was chosen on purpose, and 8 to 12 is where new
+   exercises start (the r44 review). Returns what would change. */
+function profApplyList(R){
+  const out=[];if(!R)return out;const nw=prof().exp==='new';
+  R.days.forEach((d,di)=>d.items.forEach(it=>{const r=profRule(EX(it.exId));if(!r)return;
+    const ch={};for(const k in r){
+      if(k==='rest'){if(+it.rest!==0&&!(+it.rest>=r.rest))ch.rest=r.rest;}
+      else if(nw){if(k==='rir'&&!(+it.rir>=r.rir))ch.rir=r.rir;}
+      else if(it[k]!==r[k])ch[k]=r[k];}
+    if(Object.keys(ch).length)out.push({di,it,ch});}));
+  return out;
+}
+// What Apply changes, said in its question.
+function profApplyWhat(){const p=prof();return p.exp==='new'?'Reps in reserve go up to 3 on compounds and 2 on isolation; rep ranges stay.':p.goal==='both'?'Heavy compounds go to 5 to 8 reps, 2 in reserve, and at least 3 minutes\' rest.':'Heavy compounds go to 3 to 6 reps, 2 in reserve, and at least 3 minutes\' rest.';}
+/* Strength focus in Pick for me (item 44): with Strength as the goal, a
+   barbell or machine compound you have logged, not trained for 5 days or
+   more and recovered, is favoured when it is stalled or near its best
+   (within 3%, the app's threshold for a real change). The ranking without
+   a Strength goal is unchanged. */
+const STR_REST=5,STR_NEAR=0.97;
+function strengthPick(e,st,rec,at){
+  if(prof().goal!=='strength'||!profHeavy(e)||!st||!st.last||rec.r<1)return null;
+  if(!(daysOff(e.id,{before:at})>=STR_REST))return null;
+  const near=st.bestAll>0&&st.last.best>=st.bestAll*STR_NEAR;
+  return st.stalled?'stalled':near?'near':null;
+}
 /* Round a load to something you can actually put on a bar or pick off a rack:
    nearest 5 lb, or nearest 2.5 kg. Used for suggested warm-up loads only;
    anything the user types is left exactly as typed. */

@@ -108,13 +108,35 @@ function gymInput(t){
   // Not a rack yet: keep what was typed on screen only, and take the old rack out of use.
   ui.gymDb=d;if(g.db){delete g.db;gymSave(g);}else rerenderKeepScroll();
 }
+/* Your training (r44, item 271). Each choice taps on and off; nothing here
+   is needed, and with nothing set the app is as before. */
+function profChips(k,opts,cur,label){return `<div class="ob-units" role="group" aria-label="${label}">${opts.map(([v,l])=>`<button class="chip ${cur===v?'on':''}" data-act="profSet" data-k="${k}" data-v="${v}" aria-pressed="${cur===v}">${l}</button>`).join('')}</div>`;}
+function profFields(){
+  const p=prof();
+  return `<div><p class="small muted" style="margin:0 0 6px;font-weight:600"><span class="hastip" data-tip="${esc(PROF_GOAL_TIP)}">Goal</span></p>${profChips('goal',PROF_GOALS,p.goal,'Goal')}</div>
+  <div><p class="small muted" style="margin:0 0 6px;font-weight:600"><span class="hastip" data-tip="${esc(PROF_EXP_TIP)}">Years lifting</span></p>${profChips('exp',PROF_EXP,p.exp,'Years lifting')}</div>
+  <div><p class="small muted" style="margin:0 0 6px;font-weight:600"><span class="hastip" data-tip="Ready-made routines that fit are marked when you pick one. Every other day fits 3 or 4.">Days a week</span></p>${profChips('days',PROF_DAYS.map(d=>[d,String(d)]),p.days,'Days a week')}</div>`;
+}
+const PROF_GOAL_TIP='Size keeps the app\'s defaults. Strength: new barbell, Smith, and machine compounds start at 3 to 6 reps, 2 in reserve, 3 minutes\' rest. Heavier loads gave more strength for similar growth (Schoenfeld 2017; ACSM 2009), and 3 minutes\' rest beat 1 (Schoenfeld 2016). Both starts them at 5 to 8; that and the 2 in reserve are conventions. Strength also favours stalled or near-best compounds in Pick for me. Your routine changes only with Apply.';
+const PROF_EXP_TIP='Under 1 year, whatever the goal: new exercises start at 8 to 12 reps (ACSM 2009). Compounds stop 3 reps short and isolation lifts 2, as in the beginner plan, a convention: easier to judge, further from failure. Apply raises reps in reserve to that and keeps your ranges.';
+const PROF_FOCUS_TIP='Up to two. Their weekly targets go up about 30% and the other major muscles drop to maintenance, a third of the usual minimum (size and strength held on a third of the volume: Bickel 2011, Spiering 2021). Only targets you have not typed move, and taking a focus off puts them back. Pick for me favours them.';
+function profSub(){const p=prof();const a=[];if(p.goal)a.push(PROF_GOALS.find(g=>g[0]===p.goal)[1]);if(p.days)a.push(`${p.days} days`);if(p.focus)a.push(p.focus.map(m=>ML[m]).join(', '));if(state.settings.timeBudget)a.push(`${state.settings.timeBudget} min`);return a.join(' · ')||'optional';}
+function profSettings(){
+  const s=state.settings;const p=prof();const f=p.focus||[];const R=activeRoutine();const ap=profApplyList(R);
+  return `${profFields()}
+  <label class="field"><span class="hastip" data-tip="Planned days whose time estimate runs over it are flagged. Rest per exercise is set in Plan; 0 s means no timer.">Lifting time budget (minutes)</span><input type="text" inputmode="numeric" data-bind="timeBudget" value="${s.timeBudget==null?'':s.timeBudget}" placeholder="e.g. 70"></label>
+  <div><p class="small muted" style="margin:0 0 6px;font-weight:600"><span class="hastip" data-tip="${esc(PROF_FOCUS_TIP)}">Focus muscles</span> <span class="muted" style="font-weight:400">${f.length} of ${FOCUS_MAX}</span></p>
+  <div class="chips" role="group" aria-label="Focus muscles">${MUSCLES.filter(([k])=>!TRACK_ONLY.has(k)).map(([k,l])=>`<button class="chip ${f.includes(k)?'on':''}" data-act="profSet" data-k="focus" data-v="${k}" aria-pressed="${f.includes(k)}">${l}</button>`).join('')}</div></div>
+  ${ap.length?`<div class="panel row spread" id="profApply"><p class="small" style="margin:0;flex:1 1 180px"><b>${ap.length} exercise${ap.length===1?'':'s'}</b> in ${esc(R.name)} differ from your profile.</p><button class="btn sm" data-act="profApply">Apply</button></div>`:''}`;
+}
 function viewSettings(){
   const s=state.settings;const hasDemo=state.sessions.some(x=>x.demo)||state.bodyweights.some(x=>x.demo);
   // Each group folds (for this visit) and moves (order is saved).
-  const SUB={help:'Guide, report a problem',gym:gymSub(),general:`${s.unit==='kg'?'kg, cm':'lb, in'} · ${s.theme==='system'?'device theme':s.theme}`,timer:`${s.timerMode==='off'?'timer off':s.timerMode+' timer'}${s.timeBudget?` · ${s.timeBudget} min budget`:''}`,rir:{on:'on',cal:'corrected',off:'off'}[s.rirMode],layout:s.hidden.length?`${s.hidden.length} hidden`:'everything shown',prio:s.priorities.length?s.priorities.map(m=>ML[m]).join(', '):'none',bands:'',data:cloud.on?(cloud.status==='synced'?'synced':'syncing'):'this device only',more:hasDemo?'demo data loaded':'demo data, diagnostics, erase'};
+  const SUB={help:'Guide, report a problem',gym:gymSub(),general:`${s.unit==='kg'?'kg, cm':'lb, in'} · ${s.theme==='system'?'device theme':s.theme}`,profile:profSub(),timer:s.timerMode==='off'?'timer off':s.timerMode+' timer',rir:{on:'on',cal:'corrected',off:'off'}[s.rirMode],layout:s.hidden.length?`${s.hidden.length} hidden`:'everything shown',prio:s.priorities.length?s.priorities.map(m=>ML[m]).join(', '):'none',bands:'',data:cloud.on?(cloud.status==='synced'?'synced':'syncing'):'this device only',more:hasDemo?'demo data loaded':'demo data, diagnostics, erase'};
   const G=(k,title,help,id)=>`<details class="sec" ${id?`id="${id}"`:''} data-sk="settings:${k}" data-mkey="${k}" ${isOpen('settings:'+k,false)?'open':''}><summary>${sgrip(title)}<span class="sec-t">${esc(title)}</span><span class="sec-s">${esc(SUB[k]||'')}</span><span class="chev" aria-hidden="true"></span></summary><div class="sec-b">${help?helpLink(help):''}`;
   // The build number lives in Diagnostics; only the preview says what it is up top.
   return `${pageHead(ENV==='preview'?'Ironlog Preview '+APP_VERSION:'','Settings',cloud.on?(window.claude?'Saved to your Claude account and this device':'Synced to your account and saved on this device'):'Saved on this device')}
+  ${G('profile','Your training')}<div class="card stack">${profSettings()}</div></div></details>
   ${G('general','General')}<div class="card stack"><div class="grid2"><label class="field">Units<select data-bind="unit"><option value="lb" ${s.unit==='lb'?'selected':''}>lb and inches</option><option value="kg" ${s.unit==='kg'?'selected':''}>kg and cm</option></select></label>
   <label class="field">Theme<select data-bind="theme"><option value="system" ${s.theme==='system'?'selected':''}>Match device</option><option value="dark" ${s.theme==='dark'?'selected':''}>Dark</option><option value="light" ${s.theme==='light'?'selected':''}>Light</option></select></label></div>
   <label class="field">Name (optional)<input type="text" data-bind="userName" value="${esc(s.userName||'')}" maxlength="40" autocomplete="given-name"></label>
@@ -135,7 +157,7 @@ function viewSettings(){
   <label class="field"><span class="hastip" data-tip="Blank: Today opens on an empty session, and you add exercises as you go; your plan's day is still one tap away. Each exercise still gets its suggested weight from your history.">Today starts with</span><select data-bind="todayStart"><option value="plan" ${state.settings.todayStart!=='free'?'selected':''}>My plan's day</option><option value="free" ${state.settings.todayStart==='free'?'selected':''}>A blank session (freestyle)</option></select></label>
   <label class="check-inline"><input type="checkbox" data-bind="autoAdj" ${adjOn()?'checked':''}><span class="hastip" data-tip="After a set that was clearly easier or harder than planned, the sets after it that you have not typed a load for move up or down. A line says why, with Keep to undo it. Two reps or more in reserve over your target, or three past the top of the range, moves up; two or more under the range moves down. A rep or two lost per set is normal and changes nothing.">Adjust the next sets from the last one</span></label>
   <label class="check-inline"><input type="checkbox" data-bind="wakeLock" ${s.wakeLock?'checked':''}><span class="hastip" data-tip="A locked phone pauses this page, so the rest alert cannot sound until you unlock. Keeping the screen on avoids that, at some battery cost.">Keep the screen on during a session</span></label>
-  <label class="field"><span class="hastip" data-tip="Planned days whose time estimate runs over it are flagged. Rest per exercise is set in Plan; 0 s means no timer.">Lifting time budget (minutes)</span><input type="text" inputmode="numeric" data-bind="timeBudget" value="${s.timeBudget==null?'':s.timeBudget}" placeholder="e.g. 70"></label></div></div></details>
+</div></div></details>
   ${G('rir','Effort (RIR)')}<div class="card stack">${rirSettings()}</div></div></details>
   ${G('layout','Layout')}<div class="card stack">${layoutSettings()}</div></div></details>
   ${G('prio','Priority muscles','prio')}${helpText('prio','Shown in Weak points so they stay on your radar.')}

@@ -785,10 +785,13 @@ function fitTargets(R,actual){
      Log a workout now fits them to the starter, and an import or a pick
      after that left targets measured against a routine no longer used). */
   const same=x=>MK.every(m=>b[m]&&b[m][0]===x[m][0]&&b[m][1]===x[m][1]);
-  const fitOf=r=>{const p=plannedSets(r);const o={};for(const m of MK)o[m]=TRACK_ONLY.has(m)?BANDS[m]:[Math.min(BANDS[m][0],Math.floor(p[m]||0)),BANDS[m][1]];return o;};
-  if(!same(BANDS)&&![starterRoutine(),defaultRoutine()].some(r=>same(fitOf(r))))return false;
+  /* The defaults are the profile's (r44): with focus muscles set, those
+     targets are where a first-run pick starts. With no profile they are BANDS. */
+  const D={};for(const m of MK)D[m]=defBand(m);
+  const fitOf=r=>{const p=plannedSets(r);const o={};for(const m of MK)o[m]=TRACK_ONLY.has(m)?D[m]:profFit(m,prof(),p);return o;};
+  if(!same(D)&&![starterRoutine(),defaultRoutine()].some(r=>same(fitOf(r))))return false;
   const was=JSON.stringify(MK.map(m=>b[m]));
-  for(const m of MK)b[m]=[BANDS[m][0],BANDS[m][1]];
+  for(const m of MK)b[m]=[D[m][0],D[m][1]];
   const plan=plannedSets(R);
   /* actual (a routine made from an import, r31): no minimum above what the
      log itself averaged on a muscle the routine trains. A cycle's planned
@@ -796,7 +799,9 @@ function fitTargets(R,actual){
      alternating, 3 sessions a week, plans 2.8), and the review saw "Abs
      below target, add a set to Plank" measured against the lifter's own
      program. */
-  for(const m of MK){if(TRACK_ONLY.has(m))continue;let lo=Math.min(b[m][0],Math.floor(plan[m]||0));if(actual&&(plan[m]||0)>0)lo=Math.min(lo,Math.floor(actual[m]||0));if(lo!==b[m][0])b[m]=[lo,b[m][1]];}
+  // A focus muscle keeps its raised target (r44): raising it is the point of the focus.
+  const foc=new Set(prof().focus||[]);
+  for(const m of MK){if(TRACK_ONLY.has(m)||foc.has(m))continue;let lo=Math.min(b[m][0],Math.floor(plan[m]||0));if(actual&&(plan[m]||0)>0)lo=Math.min(lo,Math.floor(actual[m]||0));if(lo!==b[m][0])b[m]=[lo,b[m][1]];}
   return JSON.stringify(MK.map(m=>b[m]))!==was;
 }
 /* Plan against the usual ranges (r30, V's choice). Picking a routine on a
@@ -808,7 +813,8 @@ function fitTargets(R,actual){
 function planEvidenceNote(pv){
   const b=state.settings.bands;
   // Major muscles only (a default minimum of 8 or more): the usual range is about them; smaller ones have lower, softer defaults.
-  const low=MK.filter(m=>!TRACK_ONLY.has(m)&&BANDS[m][0]>=8&&b[m][0]<BANDS[m][0]&&belowMin(pv[m]||0,BANDS[m][0]));
+  // Brought down below the profile's own default too (r44): a focus's maintenance targets were not lowered to meet the plan.
+  const low=MK.filter(m=>!TRACK_ONLY.has(m)&&BANDS[m][0]>=8&&b[m][0]<Math.min(BANDS[m][0],defBand(m)[0])&&belowMin(pv[m]||0,BANDS[m][0]));
   if(!low.length)return '';
   return `<p class="small muted" id="planUsual" style="margin:8px 0 0">Under the usual range in this plan: ${esc(andList(low.map(m=>`${ML[m]} ${r1(pv[m]||0)} of ${BANDS[m][0]}`),12))}. ${tipi('The usual weekly range is 10 to 20 hard sets for most major muscles (typical in studies, not a ceiling); smaller muscles have lower ones. Your targets were set to this plan when you picked it, so Stats measures you against the plan. Fewer sets still build muscle, more slowly; add a set at a time when it feels easy.','About the usual range')}</p>`;
 }
@@ -922,7 +928,8 @@ function sessModelMin(ss){
   // estimate counts them (the r43 review: without it a lifter who supersets
   // read about 30% faster than the model and every estimate came out short).
   const day=ss.dayId?R.days.find(d=>d.id===ss.dayId):null;const link=id=>{const it=day&&day.items.find(i=>i.exId===id);return it&&it.ss||null;};
-  const items=ss.ex.map(b=>{const p=planFor(b.exId,R,ss.dayId);const rr=Array.isArray(b.rr)?b.rr:[p.repMin,p.repMax];
+  // plain (r44 review): a goal set later must not change how long a past session is read to have taken.
+  const items=ss.ex.map(b=>{const p=planFor(b.exId,R,ss.dayId,true);const rr=Array.isArray(b.rr)?b.rr:[p.repMin,p.repMax];
     return {...p,exId:b.exId,ss:link(b.exId),repMin:rr[0],repMax:rr[1],rest:+p.rest||0,sets:b.sets.filter(x=>!x.warm).length};}).filter(it=>it.sets>0);
   return items.length?dayMinutes({items},false,true):0;
 }

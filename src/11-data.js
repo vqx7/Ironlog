@@ -16,6 +16,18 @@ const NEW_MUSCLES_V5=['serratus','rotatorCuff'];
    made every routine read as short. A convention, said so in the Guide. */
 const TRACK_ONLY=new Set(['serratus','rotatorCuff','neck','tibialis']);
 const BANDS={chest:[10,20],serratus:[2,8],lats:[10,20],upperBack:[10,20],traps:[6,16],lowerBack:[3,10],frontDelts:[4,12],sideDelts:[10,20],rearDelts:[8,16],rotatorCuff:[2,8],biceps:[10,20],triceps:[10,20],forearms:[4,12],abs:[6,16],obliques:[3,10],neck:[2,10],quads:[10,20],hamstrings:[10,20],glutes:[8,16],adductors:[4,12],abductors:[4,12],calves:[8,16],tibialis:[2,8]};
+/* The profile (r44): its choices, read by normalize while the save loads. */
+const PROF_GOALS=[['size','Size'],['strength','Strength'],['both','Both']];
+const PROF_EXP=[['new','Under 1'],['mid','1 to 3'],['adv','Over 3']];
+const PROF_DAYS=[2,3,4,5,6];
+const FOCUS_MAX=2;
+/* Focus muscles (item 43): weekly targets about 30% higher, the other major
+   muscles at maintenance, a third of the usual minimum. More weekly sets
+   grow a muscle more (Pelland 2025, the dose-response meta-regression the
+   targets rest on); 30% is a convention, not a measured dose. Size and
+   strength were kept for months on a third of the volume when load stayed
+   up (Bickel 2011; Spiering 2021 review). */
+const FOCUS_UP=1.3,MAINT_SHARE=1/3;
 const EQUIP=[['barbell','Barbell'],['dumbbell','Dumbbell'],['cable','Cable'],['machine','Machine'],['smith','Smith machine'],['landmine','Landmine'],['bodyweight','Bodyweight'],['other','Other']];
 // Twenty-three spokes is unreadable on a phone, so the balance radar groups
 // them into eight regions. Every muscle belongs to exactly one region; the
