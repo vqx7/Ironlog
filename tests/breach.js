@@ -4,13 +4,12 @@
 // message; a password not found goes through; only the first 5 characters of
 // its SHA-1 hash are sent; and when the service cannot be reached, sign-up is
 // not blocked.
-const { execFileSync } = require('child_process');
 const fs = require('fs'); const os = require('os'); const path = require('path'); const crypto = require('crypto');
 const { chromium } = require('playwright');
 const { start } = require('./fake-supabase');
 const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log('FAIL', m, x !== undefined ? JSON.stringify(x) : ''); } else console.log('ok  ', m); };
 const wait = ms => new Promise(r => setTimeout(r, ms));
-execFileSync('node', [path.join(__dirname, '..', 'scripts', 'build.js')], { stdio: 'ignore' });
+require('./h').build();
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'ironlog-hibp-'));
 fs.cpSync(path.join(__dirname, '..', 'dist'), tmp, { recursive: true });
 const sha = p => crypto.createHash('sha1').update(p).digest('hex').toUpperCase();

@@ -119,7 +119,8 @@ function sessionMuscles(d){
 }
 function rankExercises(d){
   const I=IDX();const bands=state.settings.bands;
-  const pri=new Set(state.settings.priorities);const lag=new Set(I.scores.filter(x=>x.label==='lagging').map(x=>x.m));
+  // Focus muscles in the profile (r44) count as priorities here.
+  const pri=new Set([...state.settings.priorities,...(prof().focus||[])]);const lag=new Set(I.scores.filter(x=>x.label==='lagging').map(x=>x.m));
   const sess=sessionMuscles(d);const inS=new Set(d.ex.map(b=>b.exId));
   const inR=new Set();for(const dd of activeRoutine().days)for(const it of dd.items)inR.add(it.exId);
   const doneEx=d.ex.map(b=>EX(b.exId));
@@ -150,7 +151,9 @@ function rankExercises(d){
     if(inR.has(e.id))s+=0.5;
     if(LONG_IDS.has(e.id))s+=0.4;
     if(pri.has(m)||lag.has(m))s+=def>0?1.2:0.3;
-    if(!best[m]||s>best[m].s||(s===best[m].s&&e.name<best[m].e.name))best[m]={e,s,m,def,inSess,st,n,rec:rec[m],r7:r7[m]};
+    // Strength focus (r44, item 44): stalled lifts lose 0.8 above, so they net +0.8; near-best ones gain 1.2.
+    const sp=strengthPick(e,st,rec[m],at);if(sp)s+=sp==='stalled'?1.6:1.2;
+    if(!best[m]||s>best[m].s||(s===best[m].s&&e.name<best[m].e.name))best[m]={e,s,m,def,inSess,st,n,rec:rec[m],r7:r7[m],sp};
   }
   return Object.values(best).sort((a,b)=>b.s-a.s).slice(0,3).map(x=>{
     const plan=planFor(x.e.id,null,d.dayId);const cap=Math.max(1,SESSION_CAP-x.inSess);
@@ -169,6 +172,8 @@ function exReasons(x){
   else out.push('New to you: the first session sets its baseline.');
   if(LONG_IDS.has(x.e.id))out.push(LONG_TRIAL.has(x.e.id)?'Trains a two-joint muscle at a long length, which beat the shorter-length version in trials.':'Puts a two-joint muscle at a long length (a mechanical case, not trial-tested).');
   if(state.settings.priorities.includes(x.m))out.push('One of your priority muscles.');
+  else if((prof().focus||[]).includes(x.m))out.push('One of your focus muscles.');
+  if(x.sp)out.push(x.sp==='stalled'?`Strength focus: stalled lately, and ${STR_REST} days or more since you did it.`:`Strength focus: within 3% of your best, and ${STR_REST} days or more since you did it.`);
   return out;
 }
 /* Closest same-muscle replacements, used by Swap and Limited equipment.
@@ -441,9 +446,123 @@ function newBlock(exId,plan,opts){
   const sg=suggest(exId,plan,opts);
   // sw is the load the app suggested, kept so a later refresh can tell a row
   // still on the suggestion from one the lifter typed (refreshBlock).
-  return {exId,plan:{...plan},note:'',lastNote:lastNoteOf(exId,opts&&opts.before),inj:sg.inj||null,hint:sg.text,last:sg.last,target:sg.target,tgt:sg.tgt,easier:sg.easier||null,lastR:sg.lastR,basis:sg.basis||undefined,sw:sg.w==null?null:sg.w,sets:Array.from({length:+plan.sets||3},()=>({w:fillLoads()?sg.w:null,r:null,rir:null,warm:false,drop:false,done:false}))};
+  return {exId,plan:{...plan},note:'',lastNote:lastNoteOf(exId,opts&&opts.before),inj:sg.inj||null,hint:sg.text,last:sg.last,prev:sg.prev||undefined,prevOff:sg.prevOff||undefined,target:sg.target,tgt:sg.tgt,easier:sg.easier||null,lastR:sg.lastR,basis:sg.basis||undefined,sw:sg.w==null?null:sg.w,sets:Array.from({length:+plan.sets||3},()=>({w:fillLoads()?sg.w:null,r:null,rir:null,warm:false,drop:false,done:false}))};
 }
 const DEFAULT_PLAN={sets:3,repMin:8,repMax:12,rir:1,rest:90,inc:5*LB};
+/* The Last column (r44, V: "what I did last time next to what I'm about to
+   do"). b.prev is the sets at the working load of the session the Last line
+   names, the same sets the grey reps repeat; row n of the working sets sits
+   beside set n of them. The line above the sets then names only the session
+   ("Last (Oct 10, trimmed)"), unless a top single or a pyramid's other
+   loads were left out of the column (b.prevOff): then it keeps every set. A
+   block from before r44 has no prev and keeps the whole line. */
+function lastCell(b,i){return Array.isArray(b.prev)&&i>=0&&i<b.prev.length?b.prev[i]:'';}
+function lastHead(b){const t=b.last||'';if(!Array.isArray(b.prev)||!b.prev.length||b.prevOff)return t;const k=t.indexOf('):');return k>0?t.slice(0,k+1):t;}
+/* ---------- PROFILE (r44, item 271, with 43 and 44) ----------
+   An optional short profile: goal, experience, days a week and up to two
+   focus muscles. V's answers (2026-10-13): it sets defaults and new plan
+   items only; the routine in use changes only through Apply; targets the
+   lifter typed stay as typed, and only the app's own targets move. With no
+   profile, or with Size, every number is exactly what it was before r44,
+   because the app's defaults were already set for size. */
+/* The profile's choices and focus numbers are in the data part (11): normalize
+   reads them while the save loads, before this part runs. */
+/* Built in one key order, absent keys left out, so a save hashes the same
+   every time and a phone without the profile syncs nothing new. */
+function profClean(p){
+  if(!p||typeof p!=='object'||Array.isArray(p))return null;const o={};
+  if(PROF_GOALS.some(g=>g[0]===p.goal))o.goal=p.goal;
+  if(PROF_EXP.some(g=>g[0]===p.exp))o.exp=p.exp;
+  if(PROF_DAYS.includes(p.days))o.days=p.days;
+  const f=Array.isArray(p.focus)?[...new Set(p.focus.filter(m=>typeof m==='string'&&MK.includes(m)&&!TRACK_ONLY.has(m)))].slice(0,FOCUS_MAX):[];
+  if(f.length)o.focus=f;
+  return Object.keys(o).length?o:null;
+}
+function prof(){return state.settings.profile||{};}
+/* The heavy compounds a Strength or Both goal moves: barbell, Smith and
+   machine compounds with a strength estimate, as the copy says (the r44
+   review: `estInLoad` took goblet squats and single-dumbbell rows and left
+   out selectorized machine presses and rows). */
+const PROF_EQUIP=new Set(['barbell','smith','machine']);
+// Hip and back accessories on a bar or a machine, not lifts trained heavy for strength (a judgment, the r44 review).
+const PROF_NOT_HEAVY=new Set(['reverseHyper','goodMorning','gluteBridge']);
+function profHeavy(ex){return !!ex&&!ex.timed&&!ex.bw&&isCompound(ex)&&!noE1(ex)&&PROF_EQUIP.has(ex.equip)&&!PROF_NOT_HEAVY.has(ex.id);}
+/* What a profile changes in a plan item (the rules Apply and new items share):
+   - Strength or Both, past the first year: heavy compounds (`profHeavy`) at
+     3 to 6 or 5 to 8 reps, 2 in reserve, 3 minutes' rest.
+     Heavier loads gave more strength for similar growth (Schoenfeld 2017
+     meta-analysis of low vs high loads; ACSM 2009 position stand: 1 to 6 RM
+     for strength past the novice stage); 3 minutes' rest beat 1 for strength
+     and size (Schoenfeld 2016). 5 to 8 for Both is a convention between the
+     two, and 2 in reserve on heavy compounds is the app's own (templates).
+   - Under a year: 8 to 12 reps for everything (ACSM 2009: novices gain
+     strength and size there), 3 in reserve on compounds and 2 on isolation,
+     as the beginner plan (a convention: easier to judge, further from failure).
+   Isolation lifts past the first year, timed holds and Size keep the defaults. */
+function profRule(ex,p){
+  p=p||prof();if(!ex||ex.timed)return null;
+  if(p.exp==='new')return {repMin:8,repMax:12,rir:isCompound(ex)?3:2};
+  if((p.goal==='strength'||p.goal==='both')&&profHeavy(ex))return p.goal==='strength'?{repMin:3,repMax:6,rir:2,rest:180}:{repMin:5,repMax:8,rir:2,rest:180};
+  return null;
+}
+function profPlan(ex,plain){const r=plain?null:profRule(ex);return r?{...DEFAULT_PLAN,...r}:{...DEFAULT_PLAN};}
+/* A muscle's weekly target with this profile (the defaults with no focus). */
+function defBand(m,p){
+  const b=BANDS[m];const f=(p||prof()).focus||[];
+  if(!f.length||TRACK_ONLY.has(m))return [b[0],b[1]];
+  if(f.includes(m))return [Math.round(b[0]*FOCUS_UP),Math.round(b[1]*FOCUS_UP)];
+  return [Math.ceil(b[0]*MAINT_SHARE),b[1]];
+}
+/* The app's own target for a muscle (r44): the profile's default, brought
+   down to the floor a first-run routine pick recorded (settings.bandsFit),
+   except on a focus muscle, whose raised target is the point. A target that
+   reads anything else was typed and never moves; typed back to this number,
+   it is the app's again. Nothing is guessed: the floors are the one fact
+   that cannot be worked out later, so fitTargets stores them (the r44
+   review found four bugs in inferring them). */
+function appBand(m,p){
+  p=p||prof();const d=defBand(m,p);const f=(state.settings.bandsFit||{})[m];
+  return f==null||TRACK_ONLY.has(m)||(p.focus||[]).includes(m)?d:[Math.min(d[0],f),d[1]];
+}
+/* Moves the app's own targets from the old profile's to the new one's.
+   Returns {muscle: [from, to]} for what moved, as copies, since Weekly set
+   targets edits the arrays in place. */
+function profMoveBands(oldP,newP){
+  const b=state.settings.bands;const moved={};
+  for(const m of MK){if(TRACK_ONLY.has(m))continue;const o=appBand(m,oldP);if(b[m][0]!==o[0]||b[m][1]!==o[1])continue;
+    const to=appBand(m,newP);if(b[m][0]===to[0]&&b[m][1]===to[1])continue;moved[m]=[b[m].slice(),to.slice()];b[m]=to.slice();}
+  return moved;
+}
+/* Apply (V's answer 1): the profile's rules on the routine in use, only the
+   fields a rule sets, on items where they differ. Rest is only raised, and a
+   rest of 0 (no timer, on purpose) is left alone. Under a year, Apply only
+   raises reps in reserve and keeps the routine's ranges: a ready-made
+   routine's 5 x 5 or 10 to 15 was chosen on purpose, and 8 to 12 is where new
+   exercises start (the r44 review). Returns what would change. */
+function profApplyList(R){
+  const out=[];if(!R)return out;const nw=prof().exp==='new';
+  R.days.forEach((d,di)=>d.items.forEach(it=>{const r=profRule(EX(it.exId));if(!r)return;
+    const ch={};for(const k in r){
+      if(k==='rest'){if(+it.rest!==0&&!(+it.rest>=r.rest))ch.rest=r.rest;}
+      else if(nw){if(k==='rir'&&!(+it.rir>=r.rir))ch.rir=r.rir;}
+      else if(it[k]!==r[k])ch[k]=r[k];}
+    if(Object.keys(ch).length)out.push({di,it,ch});}));
+  return out;
+}
+// What Apply changes, said in its question.
+function profApplyWhat(){const p=prof();return p.exp==='new'?'Reps in reserve go up to 3 on compounds and 2 on isolation; rep ranges stay.':p.goal==='both'?'Heavy compounds go to 5 to 8 reps, 2 in reserve, and at least 3 minutes\' rest.':'Heavy compounds go to 3 to 6 reps, 2 in reserve, and at least 3 minutes\' rest.';}
+/* Strength focus in Pick for me (item 44): with Strength as the goal, a
+   barbell or machine compound you have logged, not trained for 5 days or
+   more and recovered, is favoured when it is stalled or near its best
+   (within 3%, the app's threshold for a real change). The ranking without
+   a Strength goal is unchanged. */
+const STR_REST=5,STR_NEAR=0.97;
+function strengthPick(e,st,rec,at){
+  if(prof().goal!=='strength'||!profHeavy(e)||!st||!st.last||rec.r<1)return null;
+  if(!(daysOff(e.id,{before:at})>=STR_REST))return null;
+  const near=st.bestAll>0&&st.last.best>=st.bestAll*STR_NEAR;
+  return st.stalled?'stalled':near?'near':null;
+}
 /* Round a load to something you can actually put on a bar or pick off a rack:
    nearest 5 lb, or nearest 2.5 kg. Used for suggested warm-up loads only;
    anything the user types is left exactly as typed. */
@@ -558,20 +677,21 @@ function viewLogger(){
     const partner=ss?d.ex.filter(x=>x!==b&&x.plan.ss===p.ss).map(x=>exName(x.exId)).join(' + '):'';
     h+=`<section class="block${ss?' ss':''}" id="blk-${bi}" data-bi="${bi}"><div class="bh">${bgrip(bi,ex.name)}<div class="bh-m"><h3 ${ex.note?`aria-labelledby="bhn-${bi}"`:''}><span id="bhn-${bi}">${esc(ex.name)}</span>${ex.note?` ${tipi(ex.note,'About '+ex.name)}`:''}</h3><p class="small muted">${esc(ML[ex.primary])} · ${b.sets.filter(x=>!x.warm&&!x.drop).length||p.sets}×${repSpan(p.repMin,p.repMax,'-')}${ex.timed?'s':''}${ex.perSide?'/side':''}${nr?'':` @${effTgt(p.rir)}`} · ${p.rest}s${ss?` · <span class="tag blue">Superset ${ss}</span>`:''}${b.inj?` · <span class="tag red">Injury: ${injLabel(b.inj)}</span>`:''}</p>${lmChips(ex)}</div>
       <div class="bh-acts">${!d.editingId&&blockDone(b)?`<button class="ib" aria-label="Fold ${esc(ex.name)}" data-act="bFold" data-b="${bi}">▴</button>`:''}<button class="ib" aria-label="Exercise options" data-act="bMenu" data-b="${bi}">⋯</button></div></div>
-      ${b.target?`<p class="hint"><b>Today: ${esc(targetText(b))}</b>${b.basis?` ${tipi(`Target from your last full session, ${fmtDate(b.basis)}. Trimmed, lighter, and deload sessions don't set targets.`,'Where this target comes from')}`:''}<span class="tp muted" style="display:block">${esc(b.last)}</span>${b.easier?`<span class="tp ez">${esc(b.easier)}</span>`:''}${progressLine(b,bi)}</p>`:`<p class="hint">${esc(hintOnce(b.hint||'',hintSeen))}</p>`}${bi===calIdx?`<p class="small caldue">Due for an RIR check: take one set here to failure. <button class="linkbtn tall" data-act="bCal" data-b="${bi}">Calibration set</button> <button class="linkbtn tall" data-act="calSnooze">Not now</button></p>`:''}
+      ${b.target?`<p class="hint"><b>Today: ${esc(targetText(b))}</b>${b.basis?` ${tipi(`Target from your last full session, ${fmtDate(b.basis)}. Trimmed, lighter, and deload sessions don't set targets.`,'Where this target comes from')}`:''}<span class="tp muted" style="display:block">${esc(lastHead(b))}</span>${b.easier?`<span class="tp ez">${esc(b.easier)}</span>`:''}${progressLine(b,bi)}</p>`:`<p class="hint">${esc(hintOnce(b.hint||'',hintSeen))}</p>`}${bi===calIdx?`<p class="small caldue">Due for an RIR check: take one set here to failure. <button class="linkbtn tall" data-act="bCal" data-b="${bi}">Calibration set</button> <button class="linkbtn tall" data-act="calSnooze">Not now</button></p>`:''}
       ${ss&&partner?`<p class="small muted" style="margin:2px 0 0">Superset with ${esc(partner)}; rest after the pair.</p>`:''}
       ${b.lastNote&&!b.note?`<p class="small lnote">Your note, ${esc(fmtDate(b.lastNote.date))}: ${esc(b.lastNote.text)} <button class="linkbtn" data-act="noteReuse" data-b="${bi}">Use again</button></p>`:''}
       ${b.note?`<p class="small bnote" id="bn-${bi}">${esc(b.note)}</p>`:`<p class="small bnote" id="bn-${bi}" hidden></p>`}
-      <div class="sg head${nr?' norir':''}"><span>#</span><span data-tip="${esc('Load: '+loadWords(ex))}">${loadHead(ex)}</span><span>${ex.timed?(ex.perSide?'Sec/side':'Sec'):ex.perSide?'Reps/side':'Reps'}</span>${nr?'':`<span>${effWord()}</span>`}<span>W/D</span><span>Done</span></div>`;
+      <div class="sg head${nr?' norir':''}"><span data-tip="Tap a set's number to mark it a warm-up or a drop set.">#</span><span class="lsh">Last</span><span class="lh" data-tip="${esc('Load: '+loadWords(ex))}">${loadHead(ex)}</span><span>${ex.timed?(ex.perSide?'Sec/side':'Sec'):ex.perSide?'Reps/side':'Reps'}</span>${nr?'':`<span>${effWord()}</span>`}<span>Done</span></div>`;
     b.sets.forEach((s,si)=>{
       const g=greyR(b,si);const ph=g==null?'':g;
       const pr=s.done?livePR(b.exId,s,d.date):null;
       const wn=b.sets.slice(0,si+1).filter(x=>!x.warm&&!x.drop).length;
-      h+=`<div class="sg${nr?' norir':''} ${s.done?'done':''}${pr?' pr':''}"${pr?` data-pr="${pr}"`:''}><span class="n${s.drop?' drop':s.warm?' warm':''}">${s.drop?'↓':s.warm?'W':wn}</span>
+      // Last time's set for this row, beside this time's (r44, V): working sets only, by their order.
+      const lt=s.warm||s.drop?'':lastCell(b,wn-1);
+      h+=`<div class="sg${nr?' norir':''} ${s.done?'done':''}${pr?' pr':''}"${pr?` data-pr="${pr}"`:''}><button class="n wbtn${s.drop?' drop':s.warm?' warm':''}" aria-label="Set ${si+1} type: ${s.warm?'warm-up':s.drop?'drop set':'working set'}. Tap to change" data-act="sWarm" data-b="${bi}" data-s="${si}">${s.drop?'↓':s.warm?'W':wn}</button><span class="ls" aria-label="${lt?esc('Last time '+lt):'No set last time'}">${lt?esc(lt).replace('×','<wbr>×'):'–'}</span>
         <input type="text" inputmode="decimal" enterkeyhint="next" aria-label="${esc(ex.name)}, set ${si+1} load" data-f="w" data-b="${bi}" data-s="${si}" value="${loadIn(ex,s.w)}" placeholder="${(()=>{const g=s.w==null?greyW(b,si):null;return g!=null?loadIn(ex,g):ex.bw?'0':'';})()}">
         <input type="text" inputmode="numeric" enterkeyhint="next" aria-label="${esc(ex.name)}, set ${si+1} ${ex.timed?'seconds':'reps'}${ex.perSide?' per side':''}" data-f="r" data-b="${bi}" data-s="${si}" value="${s.r==null?'':s.r}" placeholder="${ph}">
         ${nr?'':rirSelect(s.rir,bi,si,p.rir)}
-        <button class="wbtn ${s.warm?'on':s.drop?'drop':''}" aria-label="Set ${si+1} type: ${s.warm?'warm-up':s.drop?'drop set':'working set'}. Tap to change" data-act="sWarm" data-b="${bi}" data-s="${si}">${s.drop?'D':s.warm?'W':'–'}</button>
         <button class="cbtn ${s.done?'on':''}" aria-label="Set ${si+1} done" aria-pressed="${s.done?'true':'false'}" data-act="sDone" data-b="${bi}" data-s="${si}">✓</button></div>`;
     });
     h+=adjLine(b,bi);

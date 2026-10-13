@@ -52,4 +52,12 @@ function cspFix(html, fakeBase) {
   const hashes = [...html.matchAll(/<script>([\s\S]*?)<\/script>/g)].map(m => `'sha256-${crypto.createHash('sha256').update(m[1], 'utf8').digest('base64')}'`);
   return html.replace(/script-src 'self'( 'sha256-[^']+')+/, `script-src 'self' ${hashes.join(' ')}`);
 }
-module.exports = { open, cspFix };
+/* The standalone and preview builds. tests/run.js builds both once before
+   running suites side by side (r44) and sets IRONLOG_BUILT for its children,
+   since scripts/build.js starts by deleting dist/ and a rebuild in one suite
+   would pull it from under another. A suite run on its own still builds. */
+function build(preview) {
+  if (process.env.IRONLOG_BUILT === '1') return;
+  require('child_process').execFileSync('node', [path.join(__dirname, '..', 'scripts', 'build.js'), ...(preview ? ['--preview'] : [])], { stdio: 'ignore' });
+}
+module.exports = { open, cspFix, build };

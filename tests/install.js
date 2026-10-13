@@ -3,13 +3,12 @@
 // install prompt; an iPhone gets the Share > Add to Home Screen guide for its
 // browser; Not now hides it on that device; on Today it sits under the
 // account line (item 55); nothing shows in the source file.
-const { execFileSync } = require('child_process');
 const fs = require('fs'); const os = require('os'); const path = require('path');
 const { chromium } = require('playwright');
 const { start } = require('./fake-supabase');
 const { open } = require('./h');
 const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log('FAIL', m, x !== undefined ? JSON.stringify(x) : ''); } else console.log('ok  ', m); };
-execFileSync('node', [path.join(__dirname, '..', 'scripts', 'build.js')], { stdio: 'ignore' });
+require('./h').build();
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'ironlog-inst-'));
 fs.cpSync(path.join(__dirname, '..', 'dist'), tmp, { recursive: true });
 const IPHONE_SAFARI = 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1';

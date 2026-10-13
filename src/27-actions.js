@@ -97,7 +97,7 @@ function syncDraftPlan(f){
 function refreshBlock(b){
   const d=state.draft;if(!d||!b)return;const old=b.sets.find(x=>!x.done&&!x.warm);const oldW=b.sw!==undefined?b.sw:old?old.w:null;
   const sg=suggest(b.exId,b.plan,{deload:!!d.deload,light:!!d.light||!!b.light,before:d.date});
-  Object.assign(b,{inj:sg.inj||null,hint:sg.text,last:sg.last,target:sg.target,tgt:sg.tgt,easier:sg.easier||null,lastR:sg.lastR,basis:sg.basis||undefined,lastNote:lastNoteOf(b.exId,d.date),sw:sg.w==null?null:sg.w});
+  Object.assign(b,{inj:sg.inj||null,hint:sg.text,last:sg.last,prev:sg.prev||undefined,prevOff:sg.prevOff||undefined,target:sg.target,tgt:sg.tgt,easier:sg.easier||null,lastR:sg.lastR,basis:sg.basis||undefined,lastNote:lastNoteOf(b.exId,d.date),sw:sg.w==null?null:sg.w});
   for(const x of b.sets)if(!x.done&&!x.warm&&!x.drop&&x.r==null&&x.w===oldW&&!carried.has(x))x.w=sg.w;
 }
 const ACT={
@@ -405,6 +405,46 @@ const ACT={
   obTourPick(t){obTour.user=true;obTourStop();obTourGo(+t.dataset.i,true);},
   obAcctLater(){try{localStorage.setItem(OB_ACCT,'later');}catch(e){/* per device only */}obOutClear();window.scrollTo(0,0);render();},
   obAcctBack(){try{localStorage.removeItem(OB_ACCT);}catch(e){/* nothing to clear */}window.scrollTo(0,0);render();},
+  /* Your training (r44): a tap on a choice sets it, a tap on the one set
+     clears it. Focus moves only the app's own weekly targets, with Undo. */
+  profSet(t){
+    const k=t.dataset.k;const raw=t.dataset.v;const v=k==='days'?+raw:raw;
+    const old=prof();const p={...old,focus:(old.focus||[]).slice()};
+    if(k==='focus'){const i=p.focus.indexOf(v);if(i>=0)p.focus.splice(i,1);else{if(p.focus.length>=FOCUS_MAX){toast('Two at most. Tap one to take it off.');return;}p.focus.push(v);}}
+    else if(k==='goal'||k==='exp'||k==='days')p[k]=p[k]===v?undefined:v;else return;
+    const np=profClean(p);const was=state.settings.profile?JSON.parse(JSON.stringify(state.settings.profile)):null;let moved={};
+    /* Undo puts the profile back and each target this moved that still reads
+       what it was moved to (the r44 review: the merge lost them when a target
+       was typed in between). */
+    snapshot(()=>{if(was)state.settings.profile=was;else delete state.settings.profile;const b=state.settings.bands;
+      for(const m in moved)if(b[m]&&b[m][0]===moved[m][1][0]&&b[m][1]===moved[m][1][1])b[m]=moved[m][0].slice();return true;});
+    if(np)state.settings.profile=np;else delete state.settings.profile;
+    if(k==='focus')moved=profMoveBands(old,np||{});
+    commit();rerenderKeepScroll();
+    const n=Object.keys(moved).length;
+    // A focus whose own target was typed does nothing to it; say so rather than nothing (the r44 review).
+    const kept=k==='focus'&&np&&(np.focus||[]).includes(v)&&!moved[v];
+    if(kept)toast(`Your ${ML[v]} target is one you set, so it stays. Default targets in Weekly set targets puts the app's back.`,n>0,8000);
+    else if(n)toast(`Weekly targets moved for ${n} muscle${n===1?'':'s'}. Ones you typed stay.`,true);
+  },
+  // Weekly set targets back to the defaults (r44), with Your training's focus; typed ones and a first-run fit go.
+  bandsDefault(){
+    const b=state.settings.bands;const fit=state.settings.bandsFit?{...state.settings.bandsFit}:null;const moved={};
+    for(const m of MK){const d=defBand(m);if(b[m][0]!==d[0]||b[m][1]!==d[1])moved[m]=[b[m].slice(),d.slice()];}
+    // Undo puts back the floors and each target that still reads the default it was set to (the r44 review: the merge kept the floors and lost the targets).
+    snapshot(()=>{if(fit)state.settings.bandsFit=fit;else delete state.settings.bandsFit;for(const m in moved)if(b[m][0]===moved[m][1][0]&&b[m][1]===moved[m][1][1])b[m]=moved[m][0].slice();return true;});
+    for(const m in moved)b[m]=moved[m][1].slice();delete state.settings.bandsFit;commit();rerenderKeepScroll();toast('Weekly set targets back to the defaults',true);},
+  // The fold in the first-run routine picker (r44): its own state, so a re-render keeps it open.
+  obProfTog(){ui.obProf=!ui.obProf;rerenderKeepScroll();},
+  profApply(){
+    const R=activeRoutine();const list=profApplyList(R);if(!list.length)return;
+    confirmBox(`Apply to ${R.name}?`,`${list.length} exercise${list.length===1?'':'s'}. ${profApplyWhat()} Sets and exercises stay as they are.`,'Apply',()=>{
+      const live=activeRoutine();if(!live||live.id!==R.id)return;
+      snapshot();const L=profApplyList(live);
+      for(const x of L){Object.assign(x.it,x.ch);syncDraftPlan({r:live,di:x.di,it:x.it});}
+      commit();rerenderKeepScroll();toast(`${live.name}: ${L.length} exercise${L.length===1?'':'s'} updated`,true);
+    });
+  },
   obUnit(t){const v=t.dataset.v;if(v!=='lb'&&v!=='kg')return;state.settings.unit=v;commit();render();},
   tplPick(t){
     const m=ui.modal;const from=m&&m.kind==='templates'?m.from:'plan';const k=t.getAttribute('data-k');
@@ -699,8 +739,6 @@ const ACT={
     const s=draftSet(t);const bi=+t.dataset.b,si=+t.dataset.s;if(!s)return;
     if(!s.warm&&!s.drop)s.warm=true;else if(s.warm){s.warm=false;s.drop=true;}else s.drop=false;
     adjSync(state.draft.ex[bi]);
-    t.classList.toggle('on',s.warm);t.classList.toggle('drop',!!s.drop);t.textContent=s.drop?'D':s.warm?'W':'–';
-    t.setAttribute('aria-label',`Set ${si+1} type: ${s.warm?'warm-up':s.drop?'drop set':'working set'}. Tap to change`);
     // Numbers, placeholders and the progress bar all depend on which rows are
     // working sets, so redraw the block rather than patch one row.
     refreshPR(bi,si,false);updateProgress(bi);updateSessBar();saveNow();rerenderKeepScroll();

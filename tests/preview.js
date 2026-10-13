@@ -4,7 +4,6 @@
 // sync table; the same account signs in to both; signing out of the preview
 // leaves the live app signed in; the preview offers no Delete my account;
 // both open offline; a missing preview table is explained, not silent.
-const { execFileSync } = require('child_process');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
@@ -13,8 +12,8 @@ const { start, quietHibp } = require('./fake-supabase');
 const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log('FAIL', m, x !== undefined ? JSON.stringify(x) : ''); } else console.log('ok  ', m); };
 const wait = ms => new Promise(r => setTimeout(r, ms));
 const ROOT = path.join(__dirname, '..');
-execFileSync('node', [path.join(ROOT, 'scripts', 'build.js')], { stdio: 'ignore' });
-execFileSync('node', [path.join(ROOT, 'scripts', 'build.js'), '--preview'], { stdio: 'ignore' });
+require('./h').build();
+require('./h').build(true);
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'ironlog-pv-'));
 fs.cpSync(path.join(ROOT, 'dist'), tmp, { recursive: true });
 fs.cpSync(path.join(ROOT, 'dist-preview'), path.join(tmp, 'preview'), { recursive: true });

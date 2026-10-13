@@ -5,7 +5,6 @@
 // the page changing under the lifter; Later hides it; it comes back after a
 // relaunch; Reload switches to the new version once, with the session in
 // progress intact and the old cache gone. Also checks the privacy line.
-const { execFileSync } = require('child_process');
 const http = require('http');
 const fs = require('fs');
 const os = require('os');
@@ -13,7 +12,7 @@ const path = require('path');
 const { chromium } = require('playwright');
 const fails = []; const ok = (c, m) => { if (!c) { fails.push(m); console.log('FAIL', m); } else console.log('ok  ', m); };
 const DIST = path.join(__dirname, '..', 'dist');
-execFileSync('node', [path.join(__dirname, '..', 'scripts', 'build.js')], { stdio: 'ignore' });
+require('./h').build();
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'ironlog-upd-'));
 const V1 = path.join(tmp, 'v1'), V2 = path.join(tmp, 'v2');
 fs.cpSync(DIST, V1, { recursive: true }); fs.cpSync(DIST, V2, { recursive: true });

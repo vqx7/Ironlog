@@ -6,7 +6,6 @@
 // address the app is really on. The second half runs the real build against
 // the stand-in Supabase: signing in and out from the menu.
 const { open } = require('./h');
-const { execFileSync } = require('child_process');
 const fs = require('fs'); const os = require('os'); const path = require('path');
 const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log('FAIL', m, x !== undefined ? JSON.stringify(x) : ''); } else console.log('ok  ', m); };
 const wait = ms => new Promise(r => setTimeout(r, ms));
@@ -70,6 +69,8 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
     await page.click('[data-bind="autoDone"] + span'); await wait(80);
     ok(await ev(() => /RIR, reps in reserve:/.test(document.querySelector('[data-mkey="rir"]').innerText)), 'the Effort (RIR) setting says what RIR is, on screen');
     // The controls keep their spoken names with an i beside the label (review, r27).
+    // The time budget sits in Your training since r44.
+    await ev(() => { const L = window.__ironlog; L.ui.folds['settings:profile'] = true; L.render(); }); await wait(80);
     const names = await Promise.all([
       page.getByRole('checkbox', { name: 'Auto-mark a set done after its reps', exact: true }).count(),
       page.getByRole('checkbox', { name: 'Keep the screen on during a session', exact: true }).count(),
@@ -150,7 +151,7 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
   {
     const { chromium } = require('playwright');
     const { start, quietHibp } = require('./fake-supabase');
-    execFileSync('node', [path.join(__dirname, '..', 'scripts', 'build.js')], { stdio: 'ignore' });
+    require('./h').build();
     const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'ironlog-r27-'));
     fs.cpSync(path.join(__dirname, '..', 'dist'), tmp, { recursive: true });
     const fake = await start(tmp);
