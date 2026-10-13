@@ -159,6 +159,34 @@ const ACT={
   acctOpen(t){openModal({kind:'account',mode:t.dataset.mode==='signup'?'signup':'signin',email:'',pw:''});},
   acctMode(t){const m=ui.modal;if(!m||m.kind!=='account')return;if(m.mode==='wait')waitStop();m.mode=t.dataset.mode;m.err='';m.pw='';renderModal();},
   acctWaitNow(){waitTry(true);},
+  /* Confirm sign-up with the emailed code (r45). This action owns success:
+     the poll is held off while it runs, and the sign-in event's own wait
+     branch stands aside (acctWait.coding), so nothing toasts or syncs twice.
+     A code fails when the emailed link was opened first (it used the code up),
+     so the password is tried once before the error is shown. */
+  async acctCode(){
+    const m=ui.modal,A=AUTH();if(!m||m.kind!=='account'||m.busy||!A||!A.verifyCode)return;
+    for(const el of document.querySelectorAll('#modal [data-abind]'))m[el.dataset.abind]=el.value;
+    const email=String(m.email||acctWait.email||'').trim().toLowerCase();const pw=acctWait.pw||String(m.pw||'');
+    if(!EMAIL_RE.test(email)){m.err='Enter your email address.';renderModal();return;}
+    clearTimeout(acctWait.timer);acctWait.timer=null;acctWait.busy=true;acctWait.coding=true;m.busy=true;m.err='';renderModal();
+    const ok=user=>{acct.user=user;waitStop();obOutClear();try{localStorage.removeItem(ACCT_LATER);}catch(e){/* nothing to clear */}if(ui.modal===m)closeModal();toast('Email confirmed. Signed in and syncing.');if(!cloud.on)cloudInit();acctRerender();};
+    try{ok(await A.verifyCode(email,m.code));}
+    catch(e){
+      let done=false;
+      if(pw&&e&&e.code!=='no_code'){try{ok(await A.signIn(email,pw));done=true;}catch(e2){/* still not confirmed: show the code's error */}}
+      if(!done){log('auth',e);if(ui.modal===m)m.err=(e&&e.message)||'Something went wrong. Try again.';}
+    }finally{acctWait.busy=false;acctWait.coding=false;if(ui.modal===m){m.busy=false;renderModal();}waitSchedule();}
+  },
+  async acctResend(){
+    const m=ui.modal,A=AUTH();if(!m||m.kind!=='account'||m.busy||!A||!A.resendCode)return;
+    for(const el of document.querySelectorAll('#modal [data-abind]'))m[el.dataset.abind]=el.value;
+    const email=String(m.email||acctWait.email||'').trim().toLowerCase();if(!EMAIL_RE.test(email)){m.err='Enter your email address.';renderModal();return;}
+    m.busy=true;m.err='';renderModal();
+    try{await A.resendCode(email);m.code='';toast('A new email is on its way. Use its code.');}
+    catch(e){log('auth',e);m.err=(e&&e.message)||'Something went wrong. Try again.';}
+    finally{if(ui.modal===m){m.busy=false;renderModal();}}
+  },
   /* The answer on a browser that opened the confirmation link (item 61b). */
   async acctWhere(t){
     const m=ui.modal,A=AUTH();if(!m||m.kind!=='account'||m.mode!=='where'||!A)return;m.answered=true;
@@ -172,6 +200,8 @@ const ACT={
   },
   async acctSubmit(){
     const m=ui.modal,A=AUTH();if(!m||m.kind!=='account'||m.busy||!A)return;
+    // Go in the code field: the browser clicks the form's first button (Sign in), so route it to the code (r45).
+    if(document.activeElement&&document.activeElement.dataset&&document.activeElement.dataset.abind==='code')return ACT.acctCode();
     // Read the fields as they are now: autofill does not always fire input events.
     for(const el of document.querySelectorAll('#modal [data-abind]'))m[el.dataset.abind]=el.value;
     const email=String(m.email||'').trim().toLowerCase(),pw=String(m.pw||'');
@@ -201,7 +231,9 @@ const ACT={
           done({mode:'sent',title:'Password changed',msg:'Open Ironlog from your home screen and sign in with the new password. If you use Ironlog in this browser instead, sign in here.'});
         }else{done(null);toast('Password changed');}
       }
-    }catch(e){log('auth',e);if(ui.modal===m){m.err=(e&&e.message)||'Something went wrong. Try again.';}}
+    }catch(e){log('auth',e);if(ui.modal===m){m.err=(e&&e.message)||'Something went wrong. Try again.';
+      // Not confirmed yet: the code works from here too (r45), whatever happened to the waiting sheet.
+      if(m.mode==='signin'&&e&&e.code==='email_not_confirmed')m.needCode=true;}}
     finally{if(ui.modal===m){m.busy=false;renderModal();}}
   },
   acctDelete(){

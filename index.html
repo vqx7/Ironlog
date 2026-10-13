@@ -1587,7 +1587,7 @@ if(ENV==='preview')document.documentElement.dataset.env='preview';
 const HAD_LOG=(()=>{try{return localStorage.getItem(KEY)!=null;}catch(e){return false;}})();
 /* Shown in Settings, in diagnostics and in backups, so a bug report can be
    matched to the exact build. */
-const APP_VERSION='2026.10.13-r44';
+const APP_VERSION='2026.10.13-r45';
 /* The logo (r25): an upright dumbbell that is also the I of Ironlog. Same
    numbers as scripts/icons.py, which draws the app icons. */
 const MARK_SVG='<svg class="mark" viewBox="-242 -378 484 756" aria-hidden="true" focusable="false"><rect class="mk-h" x="-30" y="-300" width="60" height="600" rx="14"/><rect class="mk-h" x="-80" y="-192" width="160" height="32" rx="12"/><rect class="mk-h" x="-80" y="160" width="160" height="32" rx="12"/><rect class="mk-p" x="-240" y="-376" width="480" height="92" rx="30"/><rect class="mk-p" x="-190" y="-270" width="380" height="66" rx="26"/><rect class="mk-p" x="-190" y="204" width="380" height="66" rx="26"/><rect class="mk-p" x="-240" y="284" width="480" height="92" rx="30"/></svg>';
@@ -2823,7 +2823,7 @@ function waitStop(){
 function waitSchedule(){
   clearTimeout(acctWait.timer);acctWait.timer=null;if(!acctWait.pw)return;
   const age=Date.now()-acctWait.t;
-  if(age>30*60000){waitStop();const m=ui.modal;if(m&&m.kind==='account'&&m.mode==='wait'){m.mode='signin';m.err='Still not confirmed. Once you have opened the link, sign in here.';renderModal();}return;}
+  if(age>30*60000){waitStop();const m=ui.modal;if(m&&m.kind==='account'&&m.mode==='wait'){m.mode='signin';m.needCode=true;m.err='Still not confirmed. Type the code from the email, or open its link and sign in here.';renderModal();}return;}
   acctWait.timer=setTimeout(()=>waitTry(false),age<5*60000?20000:60000);
 }
 async function waitTry(manual){
@@ -2841,7 +2841,7 @@ async function waitTry(manual){
     const m=sheet();
     const unconfirmed=e&&(e.code==='email_not_confirmed'||/Confirm your email/i.test(e.message||''));
     if(!unconfirmed&&/Wrong email or password/.test((e&&e.message)||'')){waitStop();if(m){m.mode='signin';m.err='That password did not work. Sign in with the one you chose.';}}
-    else if(m&&manual)m.err=unconfirmed?'Not confirmed yet. Open the link in the email first.':((e&&e.message)||'Try again.');
+    else if(m&&manual)m.err=unconfirmed?'Not confirmed yet. Type the code from the email, or open its link.':((e&&e.message)||'Try again.');
     if(!unconfirmed)log('auth',e);
   }finally{acctWait.busy=false;const m=sheet();if(m){m.busy=false;renderModal();}waitSchedule();}
 }
@@ -2853,7 +2853,7 @@ async function acctInit(){
     acct.user=user;
     if(ev==='PASSWORD_RECOVERY'&&!(ui.modal&&ui.modal.kind==='account'))openModal({kind:'account',mode:'newpw',pw:''});
     // Signed in some other way while waiting for the confirmation (another tab sharing this storage): stop waiting.
-    if(ev==='SIGNED_IN'&&user&&acctWait.pw){waitStop();const m=ui.modal;if(m&&m.kind==='account'&&m.mode==='wait'){closeModal();toast('Email confirmed. Signed in and syncing.');}}
+    if(ev==='SIGNED_IN'&&user&&acctWait.pw&&!acctWait.coding){waitStop();const m=ui.modal;if(m&&m.kind==='account'&&m.mode==='wait'){closeModal();toast('Email confirmed. Signed in and syncing.');}}
     if(ev==='SIGNED_IN'&&!cloud.on)cloudInit();
     if(ev==='SIGNED_OUT'&&cloud.on&&!window.claude)cloudStop();
     if(ev==='SIGNED_IN'||ev==='SIGNED_OUT')fbCheckReader();
@@ -2906,6 +2906,11 @@ function acctPanel(){
     :`<div class="panel" id="acctPanel"><p class="small hastip" style="margin:0 0 8px" data-tip="${esc(isStandalone()?'Deleting the app from the home screen deletes the log on this phone. An account keeps it, or save a backup file below.':'Clearing this browser\'s data deletes the log here. An account keeps it, or save a backup file below.')}"><b>Saved on this ${isStandalone()||coarse()?'phone':'device'} only.</b> Create an account to back it up and use it on any device.</p><div class="row"><button class="btn sm primary" data-act="acctOpen" data-mode="signup">Create account</button><button class="btn sm" data-act="acctOpen" data-mode="signin">Sign in</button></div></div>`;
 }
 const EMAIL_RE=/^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+/* The code from the confirmation email (r45), on the waiting sheet and, after
+   "Confirm your email first", on sign-in: the code needs only the email, so
+   it still works after the wait gives up or the app was closed. Digits only
+   are sent; the length is the project's (6 by default), so none is forced. */
+function codeField(m){return `<label class="field">Code from the email<input type="text" inputmode="numeric" autocomplete="one-time-code" data-abind="code" value="${esc(m.code||'')}" enterkeyhint="go"></label><button type="button" class="btn ${m.mode==='wait'?'primary ':''}block" data-act="acctCode" ${m.busy?'disabled':''}>Confirm with the code</button><div class="row"><button type="button" class="linkbtn tall" data-act="acctResend" ${m.busy?'disabled':''}>Send a new code</button></div>`;}
 function acctSheet(m){
   const f=(label,k,type,ac,extra)=>`<label class="field">${label}<input type="${type}" data-abind="${k}" value="${esc(m[k]||'')}" autocomplete="${ac}" ${extra||''}></label>`;
   const email=f('Email','email','email','email','autocapitalize="off" autocorrect="off" spellcheck="false" inputmode="email" enterkeyhint="next"');
@@ -2916,11 +2921,11 @@ function acctSheet(m){
   const link=(mode,label)=>`<button type="button" class="linkbtn tall" data-act="acctMode" data-mode="${mode}">${label}</button>`;
   const T={signin:'Sign in',signup:'Create account',forgot:'Reset password',newpw:'New password',sent:m.title||'Check your email',wait:'Check your email',where:m.title||'Email confirmed'};
   let b='';
-  if(m.mode==='signin')b=`${email}${f('Password','pw','password','current-password','enterkeyhint="go"')}${err}${go('Sign in')}<div class="row spread">${link('forgot','Forgot password?')}${link('signup','Create an account')}</div>`;
-  else if(m.mode==='signup')b=`${email}${f('Password (8 or more characters)','pw','password','new-password','minlength="8" enterkeyhint="go"')}${err}${go('Create account')}<p class="small muted" style="margin:0">We email you a link to confirm the address. Your email is only for signing in and never shared.</p><div class="row">${link('signin','I have an account')}</div>`;
+  if(m.mode==='signin')b=`${email}${f('Password','pw','password','current-password','enterkeyhint="go"')}${err}${m.needCode?codeField(m):''}${go('Sign in')}<div class="row spread">${link('forgot','Forgot password?')}${link('signup','Create an account')}</div>`;
+  else if(m.mode==='signup')b=`${email}${f('Password (8 or more characters)','pw','password','new-password','minlength="8" enterkeyhint="go"')}${err}${go('Create account')}<p class="small muted" style="margin:0">We email you a link and a code to confirm the address. Your email is only for signing in and never shared.</p><div class="row">${link('signin','I have an account')}</div>`;
   else if(m.mode==='forgot')b=`${email}${err}${go('Email me a reset link')}<p class="small muted" style="margin:0">The link opens in your browser. Set the new password there, then sign in here.</p><div class="row">${link('signin','Back to sign in')}</div>`;
   else if(m.mode==='newpw')b=`${f('New password (8 or more characters)','pw','password','new-password','minlength="8" enterkeyhint="go"')}${err}${go('Save new password')}`;
-  else if(m.mode==='wait')b=`<p style="margin:0">We sent a confirmation link to <b>${esc(m.email||'')}</b>. Tap it, then come back here. Ironlog signs you in by itself.</p><p class="small muted waitline" style="margin:0" aria-live="polite">${m.busy?'Checking':'Waiting for the confirmation'}</p>${err}<button type="button" class="btn primary block" data-act="acctWaitNow" ${m.busy?'disabled':''}>I have confirmed</button><div class="row">${link('signup','Use a different email')}</div>`;
+  else if(m.mode==='wait')b=`<p style="margin:0">We sent a confirmation email to <b>${esc(m.email||'')}</b>. Type its code here, or tap its link and come back: Ironlog signs you in by itself.</p>${codeField(m)}<p class="small muted waitline" style="margin:0" aria-live="polite">${m.busy?'Checking':'Waiting for the confirmation'}</p>${err}<button type="button" class="btn primary block" data-act="acctWaitNow" ${m.busy?'disabled':''}>I have confirmed</button><div class="row">${link('signup','Use a different email')}</div>`;
   else if(m.mode==='where')b=`<p style="margin:0">Where do you use Ironlog?</p><button type="button" class="btn primary block" data-act="acctWhere" data-v="app">The home-screen app</button><button type="button" class="btn block" data-act="acctWhere" data-v="here">Here in this browser</button>`;
   else b=`<p style="margin:0">${esc(m.msg||'')}</p><button type="button" class="btn primary block" data-act="mClose">OK</button>`;
   return `<div class="sheet" role="dialog" aria-modal="true" aria-label="${esc(T[m.mode]||'Account')}"><div class="sheet-h"><h3>${esc(T[m.mode]||'Account')}</h3><button class="ib" aria-label="Close" data-act="mClose">✕</button></div><form class="stack" id="acctForm" novalidate>${b}</form></div>`;
@@ -7068,8 +7073,14 @@ const DEFAULT_PLAN={sets:3,repMin:8,repMax:12,rir:1,rest:90,inc:5*LB};
    ("Last (Oct 10, trimmed)"), unless a top single or a pyramid's other
    loads were left out of the column (b.prevOff): then it keeps every set. A
    block from before r44 has no prev and keeps the whole line. */
-function lastCell(b,i){return Array.isArray(b.prev)&&i>=0&&i<b.prev.length?b.prev[i]:'';}
-function lastHead(b){const t=b.last||'';if(!Array.isArray(b.prev)||!b.prev.length||b.prevOff)return t;const k=t.indexOf('):');return k>0?t.slice(0,k+1):t;}
+/* The same lift again later in the session (r45): last time's sets are one
+   merged list (sameExOnce), and how they were split between the blocks is
+   not recorded, so the column cannot say which set this row repeats. The
+   later block shows dashes and the whole Last line instead of a wrong row
+   (the r45 spec review). Keyed like sameExOnce: the lift and a lighter block. */
+function lastDup(d,bi){const b=d.ex[bi];return !!b&&d.ex.slice(0,bi).some(x=>x.exId===b.exId&&!!x.light===!!b.light);}
+function lastCell(b,i,dup){return !dup&&Array.isArray(b.prev)&&i>=0&&i<b.prev.length?b.prev[i]:'';}
+function lastHead(b,dup){const t=b.last||'';if(dup||!Array.isArray(b.prev)||!b.prev.length||b.prevOff)return t;const k=t.indexOf('):');return k>0?t.slice(0,k+1):t;}
 /* ---------- PROFILE (r44, item 271, with 43 and 44) ----------
    An optional short profile: goal, experience, days a week and up to two
    focus muscles. V's answers (2026-10-13): it sets defaults and new plan
@@ -7280,7 +7291,7 @@ function viewLogger(){
   const calIdx=d.editingId?-1:calDueIdx(d);
   const letters=ssLetters(d.ex.map(b=>b.plan));
   d.ex.forEach((b,bi)=>{
-    const ex=EX(b.exId);const p=b.plan;const ss=p.ss?letters[p.ss]:null;const nr=!rirShow(ex);
+    const ex=EX(b.exId);const p=b.plan;const ss=p.ss?letters[p.ss]:null;const nr=!rirShow(ex);const dupB=lastDup(d,bi);
     if(!d.editingId&&blockDone(b)&&!blkIsOpen(bi,b)){
       const ws=b.sets.filter(x=>!x.warm);const prs=ws.filter(x=>livePR(b.exId,x,d.date)).length;
       h+=`<section class="block folded" id="blk-${bi}" data-bi="${bi}">${bgrip(bi,ex.name)}<button class="bfold" data-act="bOpen" data-b="${bi}" aria-expanded="false" aria-label="${esc(ex.name)}, done. Open to edit"><span class="bf-ck" aria-hidden="true">✓</span><span class="bf-t"><b>${esc(ex.name)}</b><span>${esc(ws.map(x=>setShort(ex,x.w,x.r)).join(', '))}</span></span>${prs?`<span class="bf-pr">PR</span>`:''}<span class="chev" aria-hidden="true"></span></button></section>`;
@@ -7289,7 +7300,7 @@ function viewLogger(){
     const partner=ss?d.ex.filter(x=>x!==b&&x.plan.ss===p.ss).map(x=>exName(x.exId)).join(' + '):'';
     h+=`<section class="block${ss?' ss':''}" id="blk-${bi}" data-bi="${bi}"><div class="bh">${bgrip(bi,ex.name)}<div class="bh-m"><h3 ${ex.note?`aria-labelledby="bhn-${bi}"`:''}><span id="bhn-${bi}">${esc(ex.name)}</span>${ex.note?` ${tipi(ex.note,'About '+ex.name)}`:''}</h3><p class="small muted">${esc(ML[ex.primary])} · ${b.sets.filter(x=>!x.warm&&!x.drop).length||p.sets}×${repSpan(p.repMin,p.repMax,'-')}${ex.timed?'s':''}${ex.perSide?'/side':''}${nr?'':` @${effTgt(p.rir)}`} · ${p.rest}s${ss?` · <span class="tag blue">Superset ${ss}</span>`:''}${b.inj?` · <span class="tag red">Injury: ${injLabel(b.inj)}</span>`:''}</p>${lmChips(ex)}</div>
       <div class="bh-acts">${!d.editingId&&blockDone(b)?`<button class="ib" aria-label="Fold ${esc(ex.name)}" data-act="bFold" data-b="${bi}">▴</button>`:''}<button class="ib" aria-label="Exercise options" data-act="bMenu" data-b="${bi}">⋯</button></div></div>
-      ${b.target?`<p class="hint"><b>Today: ${esc(targetText(b))}</b>${b.basis?` ${tipi(`Target from your last full session, ${fmtDate(b.basis)}. Trimmed, lighter, and deload sessions don't set targets.`,'Where this target comes from')}`:''}<span class="tp muted" style="display:block">${esc(lastHead(b))}</span>${b.easier?`<span class="tp ez">${esc(b.easier)}</span>`:''}${progressLine(b,bi)}</p>`:`<p class="hint">${esc(hintOnce(b.hint||'',hintSeen))}</p>`}${bi===calIdx?`<p class="small caldue">Due for an RIR check: take one set here to failure. <button class="linkbtn tall" data-act="bCal" data-b="${bi}">Calibration set</button> <button class="linkbtn tall" data-act="calSnooze">Not now</button></p>`:''}
+      ${b.target?`<p class="hint"><b>Today: ${esc(targetText(b))}</b>${b.basis?` ${tipi(`Target from your last full session, ${fmtDate(b.basis)}. Trimmed, lighter, and deload sessions don't set targets.`,'Where this target comes from')}`:''}<span class="tp muted" style="display:block">${esc(lastHead(b,dupB))}</span>${b.easier?`<span class="tp ez">${esc(b.easier)}</span>`:''}${progressLine(b,bi)}</p>`:`<p class="hint">${esc(hintOnce(b.hint||'',hintSeen))}</p>`}${bi===calIdx?`<p class="small caldue">Due for an RIR check: take one set here to failure. <button class="linkbtn tall" data-act="bCal" data-b="${bi}">Calibration set</button> <button class="linkbtn tall" data-act="calSnooze">Not now</button></p>`:''}
       ${ss&&partner?`<p class="small muted" style="margin:2px 0 0">Superset with ${esc(partner)}; rest after the pair.</p>`:''}
       ${b.lastNote&&!b.note?`<p class="small lnote">Your note, ${esc(fmtDate(b.lastNote.date))}: ${esc(b.lastNote.text)} <button class="linkbtn" data-act="noteReuse" data-b="${bi}">Use again</button></p>`:''}
       ${b.note?`<p class="small bnote" id="bn-${bi}">${esc(b.note)}</p>`:`<p class="small bnote" id="bn-${bi}" hidden></p>`}
@@ -7299,7 +7310,7 @@ function viewLogger(){
       const pr=s.done?livePR(b.exId,s,d.date):null;
       const wn=b.sets.slice(0,si+1).filter(x=>!x.warm&&!x.drop).length;
       // Last time's set for this row, beside this time's (r44, V): working sets only, by their order.
-      const lt=s.warm||s.drop?'':lastCell(b,wn-1);
+      const lt=s.warm||s.drop?'':lastCell(b,wn-1,dupB);
       h+=`<div class="sg${nr?' norir':''} ${s.done?'done':''}${pr?' pr':''}"${pr?` data-pr="${pr}"`:''}><button class="n wbtn${s.drop?' drop':s.warm?' warm':''}" aria-label="Set ${si+1} type: ${s.warm?'warm-up':s.drop?'drop set':'working set'}. Tap to change" data-act="sWarm" data-b="${bi}" data-s="${si}">${s.drop?'↓':s.warm?'W':wn}</button><span class="ls" aria-label="${lt?esc('Last time '+lt):'No set last time'}">${lt?esc(lt).replace('×','<wbr>×'):'–'}</span>
         <input type="text" inputmode="decimal" enterkeyhint="next" aria-label="${esc(ex.name)}, set ${si+1} load" data-f="w" data-b="${bi}" data-s="${si}" value="${loadIn(ex,s.w)}" placeholder="${(()=>{const g=s.w==null?greyW(b,si):null;return g!=null?loadIn(ex,g):ex.bw?'0':'';})()}">
         <input type="text" inputmode="numeric" enterkeyhint="next" aria-label="${esc(ex.name)}, set ${si+1} ${ex.timed?'seconds':'reps'}${ex.perSide?' per side':''}" data-f="r" data-b="${bi}" data-s="${si}" value="${s.r==null?'':s.r}" placeholder="${ph}">
@@ -9561,6 +9572,34 @@ const ACT={
   acctOpen(t){openModal({kind:'account',mode:t.dataset.mode==='signup'?'signup':'signin',email:'',pw:''});},
   acctMode(t){const m=ui.modal;if(!m||m.kind!=='account')return;if(m.mode==='wait')waitStop();m.mode=t.dataset.mode;m.err='';m.pw='';renderModal();},
   acctWaitNow(){waitTry(true);},
+  /* Confirm sign-up with the emailed code (r45). This action owns success:
+     the poll is held off while it runs, and the sign-in event's own wait
+     branch stands aside (acctWait.coding), so nothing toasts or syncs twice.
+     A code fails when the emailed link was opened first (it used the code up),
+     so the password is tried once before the error is shown. */
+  async acctCode(){
+    const m=ui.modal,A=AUTH();if(!m||m.kind!=='account'||m.busy||!A||!A.verifyCode)return;
+    for(const el of document.querySelectorAll('#modal [data-abind]'))m[el.dataset.abind]=el.value;
+    const email=String(m.email||acctWait.email||'').trim().toLowerCase();const pw=acctWait.pw||String(m.pw||'');
+    if(!EMAIL_RE.test(email)){m.err='Enter your email address.';renderModal();return;}
+    clearTimeout(acctWait.timer);acctWait.timer=null;acctWait.busy=true;acctWait.coding=true;m.busy=true;m.err='';renderModal();
+    const ok=user=>{acct.user=user;waitStop();obOutClear();try{localStorage.removeItem(ACCT_LATER);}catch(e){/* nothing to clear */}if(ui.modal===m)closeModal();toast('Email confirmed. Signed in and syncing.');if(!cloud.on)cloudInit();acctRerender();};
+    try{ok(await A.verifyCode(email,m.code));}
+    catch(e){
+      let done=false;
+      if(pw&&e&&e.code!=='no_code'){try{ok(await A.signIn(email,pw));done=true;}catch(e2){/* still not confirmed: show the code's error */}}
+      if(!done){log('auth',e);if(ui.modal===m)m.err=(e&&e.message)||'Something went wrong. Try again.';}
+    }finally{acctWait.busy=false;acctWait.coding=false;if(ui.modal===m){m.busy=false;renderModal();}waitSchedule();}
+  },
+  async acctResend(){
+    const m=ui.modal,A=AUTH();if(!m||m.kind!=='account'||m.busy||!A||!A.resendCode)return;
+    for(const el of document.querySelectorAll('#modal [data-abind]'))m[el.dataset.abind]=el.value;
+    const email=String(m.email||acctWait.email||'').trim().toLowerCase();if(!EMAIL_RE.test(email)){m.err='Enter your email address.';renderModal();return;}
+    m.busy=true;m.err='';renderModal();
+    try{await A.resendCode(email);m.code='';toast('A new email is on its way. Use its code.');}
+    catch(e){log('auth',e);m.err=(e&&e.message)||'Something went wrong. Try again.';}
+    finally{if(ui.modal===m){m.busy=false;renderModal();}}
+  },
   /* The answer on a browser that opened the confirmation link (item 61b). */
   async acctWhere(t){
     const m=ui.modal,A=AUTH();if(!m||m.kind!=='account'||m.mode!=='where'||!A)return;m.answered=true;
@@ -9574,6 +9613,8 @@ const ACT={
   },
   async acctSubmit(){
     const m=ui.modal,A=AUTH();if(!m||m.kind!=='account'||m.busy||!A)return;
+    // Go in the code field: the browser clicks the form's first button (Sign in), so route it to the code (r45).
+    if(document.activeElement&&document.activeElement.dataset&&document.activeElement.dataset.abind==='code')return ACT.acctCode();
     // Read the fields as they are now: autofill does not always fire input events.
     for(const el of document.querySelectorAll('#modal [data-abind]'))m[el.dataset.abind]=el.value;
     const email=String(m.email||'').trim().toLowerCase(),pw=String(m.pw||'');
@@ -9603,7 +9644,9 @@ const ACT={
           done({mode:'sent',title:'Password changed',msg:'Open Ironlog from your home screen and sign in with the new password. If you use Ironlog in this browser instead, sign in here.'});
         }else{done(null);toast('Password changed');}
       }
-    }catch(e){log('auth',e);if(ui.modal===m){m.err=(e&&e.message)||'Something went wrong. Try again.';}}
+    }catch(e){log('auth',e);if(ui.modal===m){m.err=(e&&e.message)||'Something went wrong. Try again.';
+      // Not confirmed yet: the code works from here too (r45), whatever happened to the waiting sheet.
+      if(m.mode==='signin'&&e&&e.code==='email_not_confirmed')m.needCode=true;}}
     finally{if(ui.modal===m){m.busy=false;renderModal();}}
   },
   acctDelete(){
@@ -10722,7 +10765,10 @@ document.addEventListener('keydown',e=>{if(e.key==='Escape'&&TIP.el)tipHide();})
 /* ---------- events ---------- */
 /* The sign-in sheet is a real form so the phone offers to save and fill the
    password; it never navigates. Enter submits it through its button. */
-document.addEventListener('submit',e=>{if(e.target&&e.target.id==='acctForm'){e.preventDefault();const b=e.target.querySelector('[data-act="acctSubmit"]');if(b&&!b.disabled&&!(e.submitter===b))ACT.acctSubmit();}});
+document.addEventListener('submit',e=>{if(e.target&&e.target.id==='acctForm'){e.preventDefault();const b=e.target.querySelector('[data-act="acctSubmit"]');
+  // Go on the keyboard in the code field confirms with the code (r45); elsewhere it submits as before.
+  if(document.activeElement&&document.activeElement.dataset&&document.activeElement.dataset.abind==='code'){ACT.acctCode();return;}
+  if(b&&!b.disabled&&!(e.submitter===b))ACT.acctSubmit();}});
 document.addEventListener('click',e=>{
   const tab=e.target.closest('#tabs button');
   if(tab){ui.tab=tab.dataset.tab;if(ui.tab==='program')ui.planView='routine';window.scrollTo(0,0);render();return;}

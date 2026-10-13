@@ -8,7 +8,9 @@ Last updated: r36 live, 2026-10-11.
 
 1. B5, the trigger, then its check: Report a problem from the app and an issue appears in `ironlog-feedback` (steps below).
 2. B6: protect `main` (steps below). Until it is on, nothing stops a change reaching the live app without a pull request.
-3. A20 (r37 to r42): done 2026-10-11 and 12, all live (pull requests #27 to #31 and #33; #32, the restyle, closed unmerged). Live build 2026.10.12-r42, checked by Claude on the gh-pages branch. Reload on your phone when "New version ready" shows.
+3. C6, before your next user signs up: add the code to the confirmation email (5 minutes, below). r45 lets a new person confirm by typing it in the app, since on an iPhone the link opens in Safari instead.
+   A21 (r43 and r44): r43 live 2026-10-13 (pull request #34, merged by you). r44 is pull request #35 (Your training, the Last column, the security suite, faster checks): merge it once its checks pass, then tap Reload on every phone.
+   A20 (r37 to r42): done 2026-10-11 and 12, all live (pull requests #27 to #31 and #33; #32, the restyle, closed unmerged). Live build 2026.10.12-r42, checked by Claude on the gh-pages branch. Reload on your phone when "New version ready" shows.
    A19 (r35 and r36): done 2026-10-11, both live (pull requests #25 and #26, merged by Claude at your word). Reload on your phone when "New version ready" shows.
    A18 (r34.2): done 2026-10-11 (pull request #24, merged by you).
    A17 (r34.1): done 2026-10-10 (pull request #23, merged by Claude at your word; Day 2, Recently deleted can be cleared, the RPE line). Reload on your phone.
@@ -293,6 +295,15 @@ Status: done. Step 1 checked by Claude (2026-10-02); steps 2 and 3 as you report
 1. GitHub > vqx7/Ironlog > **Settings** > **Pages** > **Custom domain**: your domain > **Save**. Wait for the DNS check to pass, then tick **Enforce HTTPS** (the certificate can take up to an hour). The old vqx7.github.io/Ironlog link then forwards to the domain.
 2. Supabase > **Authentication** > **URL Configuration**: Site URL `https://ironapp.org/`. Under Redirect URLs add `https://ironapp.org/` and `https://ironapp.org/preview/`. Keep the old vqx7.github.io entries until every phone has moved.
 3. Your phone: open `https://ironapp.org` in Safari, sign in, check your log is there, **Add to Home Screen**. Then remove the old Ironlog and Preview icons (signed in, nothing is lost).
+
+### C6. The code in the confirmation email (r45, item 61)
+Status: to do, before your next user signs up.
+1. Supabase > **Authentication** > **Emails** > **Templates** > **Confirm signup**. Under the existing link, add this line (keep the link):
+   `Or type this code in the Ironlog app: {{ .Token }}`
+   **Save**.
+2. Supabase > **Authentication** > **Sign In / Providers** > **Email**: check **Email OTP expiration** is `3600` (an hour, the default). The code is six digits; the app takes whatever the email shows.
+3. Check: create a test account from the app with an address you own. The email shows the link and a 6-digit code. Type the code in the app: it signs in. Then delete the test account (Settings > Your data > Delete my account).
+Until step 1 is done the email has no code, and the link works as before.
 
 ## Security and privacy
 

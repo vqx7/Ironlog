@@ -63,7 +63,10 @@ document.addEventListener('keydown',e=>{if(e.key==='Escape'&&TIP.el)tipHide();})
 /* ---------- events ---------- */
 /* The sign-in sheet is a real form so the phone offers to save and fill the
    password; it never navigates. Enter submits it through its button. */
-document.addEventListener('submit',e=>{if(e.target&&e.target.id==='acctForm'){e.preventDefault();const b=e.target.querySelector('[data-act="acctSubmit"]');if(b&&!b.disabled&&!(e.submitter===b))ACT.acctSubmit();}});
+document.addEventListener('submit',e=>{if(e.target&&e.target.id==='acctForm'){e.preventDefault();const b=e.target.querySelector('[data-act="acctSubmit"]');
+  // Go on the keyboard in the code field confirms with the code (r45); elsewhere it submits as before.
+  if(document.activeElement&&document.activeElement.dataset&&document.activeElement.dataset.abind==='code'){ACT.acctCode();return;}
+  if(b&&!b.disabled&&!(e.submitter===b))ACT.acctSubmit();}});
 document.addEventListener('click',e=>{
   const tab=e.target.closest('#tabs button');
   if(tab){ui.tab=tab.dataset.tab;if(ui.tab==='program')ui.planView='routine';window.scrollTo(0,0);render();return;}
