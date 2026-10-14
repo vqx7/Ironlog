@@ -131,6 +131,40 @@ const PW = 'correct horse 45';
   ok(dup.ph0[0] === String(dup.lastR[0]) && dup.ph1[0] === String(dup.repMin) && !dup.copy, 'its grey reps do not repeat the first block\'s either: the bottom of the range, and no Copy last', dup);
   await G.ctx.close();
 
+  // ---- 7. A save this build cannot read is kept aside and offered back (the r45 audit: before, it sat in storage with nothing offering it).
+  const H = await open('index.html', { browser, clock: '2026-10-13T10:00:00' });
+  const good = await H.page.evaluate(() => { const L = window.__ironlog; L.state.settings.onboarded = true; L.makeDemo(); L.saveNow(); return localStorage.getItem('ironlog.v1'); });
+  await H.ctx.close();
+  // normalize throws on a save whose routines field is a string with a getter... simplest real case: JSON that parses but whose version field makes normalize throw is hard to make; a save that is not JSON at all is the common one (a truncated write).
+  const bad = good.slice(0, Math.floor(good.length * 0.6));
+  const I = await open('index.html', { browser, clock: '2026-10-13T10:00:00', setup: async (ctx) => { await ctx.addInitScript(b => { localStorage.setItem('ironlog.v1', b); }, bad); } });
+  const kept = await I.page.evaluate(() => ({ aside: (localStorage.getItem('ironlog.v1.unreadable') || '').length, first: !!document.getElementById('obPage'), diag: window.__ironlog.state.sessions.length }));
+  ok(kept.aside === bad.length && kept.first && kept.diag === 0, 'a truncated save is kept aside at start, and the app opens fresh', kept);
+  await I.page.evaluate(() => { const L = window.__ironlog; L.ACT.obAcctLater && L.ACT.obAcctLater(); L.state.settings.onboarded = true; L.saveNow(); L.ui.tab = 'settings'; L.ui.folds['settings:data'] = true; L.render(); });
+  const panel = await I.page.evaluate(() => { const p = document.getElementById('unreadPanel'); return p ? p.innerText : ''; });
+  ok(/could not be read/.test(panel) && /Restore it/.test(panel) && /Show its text/.test(panel) && /Forget it/.test(panel), 'Settings, Your data offers the save kept aside: Restore, Show its text, Forget', panel);
+  await I.page.click('[data-act="unreadShow"]'); await wait(80);
+  const shown = await I.page.evaluate(() => (document.getElementById('mText') || {}).value || '');
+  ok(shown === bad, 'Show its text shows the save exactly, as text'); await I.page.evaluate(() => window.__ironlog.ACT.mClose());
+  await I.page.click('[data-act="unreadRestore"]'); await wait(80);
+  const t1 = await I.page.evaluate(() => document.getElementById('toast').innerText);
+  ok(/not valid backup text/.test(t1), 'Restore on a truncated save says it is not valid, and keeps it', t1);
+  // A save normalize can read but with damaged records: restored through the import, which says what was skipped, then the copy aside is let go.
+  const dmg = (() => { const o = JSON.parse(good); o.sessions = [...o.sessions, { nope: 1 }, 'x']; return JSON.stringify(o); })();
+  await I.page.evaluate(d => { localStorage.setItem('ironlog.v1.unreadable', d); window.__ironlog.render(); }, dmg);
+  await I.page.click('[data-act="unreadRestore"]'); await wait(80);
+  const q = await I.page.evaluate(() => document.querySelector('.sheet') && document.querySelector('.sheet').innerText);
+  ok(/damaged record/.test(q || '') && /Replace my data/.test(q || ''), 'a readable save with damaged records restores through the import, which says what is skipped', q);
+  await I.page.click('.sheet [data-act="mOk"]'); await wait(150);
+  const after = await I.page.evaluate(() => ({ n: window.__ironlog.state.sessions.length, aside: localStorage.getItem('ironlog.v1.unreadable'), panel: !!document.getElementById('unreadPanel') }));
+  ok(after.n > 10 && after.aside === null, 'restored: the sessions are back and the copy aside is gone', after);
+  // Damaged records in the save itself are counted in Diagnostics at start.
+  const J = await open('index.html', { browser, clock: '2026-10-13T10:00:00', setup: async (ctx) => { await ctx.addInitScript(d => { localStorage.setItem('ironlog.v1', d); }, dmg); } });
+  const dg = await J.page.evaluate(() => { const L = window.__ironlog; L.ui.tab = 'settings'; L.ui.folds['settings:more'] = true; L.render(); return document.querySelector('[data-mkey="more"]').innerText; });
+  ok(/2 damaged records were skipped when the save was read/.test(dg), 'Diagnostics says how many damaged records the save held', dg.slice(0, 300));
+  ok(!I.errors.length && !J.errors.filter(e => !/load/.test(e)).length, 'no page errors', [I.errors, J.errors]);
+  await I.ctx.close(); await J.ctx.close();
+
   await browser.close(); await fake.close(); fs.rmSync(tmp, { recursive: true, force: true });
   console.log(fails.length ? `${fails.length} FAILED` : 'ALL PASS'); process.exit(fails.length ? 1 : 0);
 })().catch(e => { console.log('FAIL crashed:', e && e.stack || e); process.exit(1); });

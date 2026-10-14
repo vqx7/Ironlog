@@ -129,6 +129,8 @@ function profSettings(){
   <div class="chips" role="group" aria-label="Focus muscles">${MUSCLES.filter(([k])=>!TRACK_ONLY.has(k)).map(([k,l])=>`<button class="chip ${f.includes(k)?'on':''}" data-act="profSet" data-k="focus" data-v="${k}" aria-pressed="${f.includes(k)}">${l}</button>`).join('')}</div></div>
   ${ap.length?`<div class="panel row spread" id="profApply"><p class="small" style="margin:0;flex:1 1 180px"><b>${ap.length} exercise${ap.length===1?'':'s'}</b> in ${esc(R.name)} differ from your profile.</p><button class="btn sm" data-act="profApply">Apply</button></div>`:''}`;
 }
+/* The save this build could not read at start (load() keeps its text aside, r45 review: before, it sat there with nothing offering it back). */
+function unreadableRaw(){try{return localStorage.getItem(KEY+'.unreadable')||'';}catch(e){return '';}}
 function viewSettings(){
   const s=state.settings;const hasDemo=state.sessions.some(x=>x.demo)||state.bodyweights.some(x=>x.demo);
   // Each group folds (for this visit) and moves (order is saved).
@@ -160,7 +162,7 @@ function viewSettings(){
 </div></div></details>
   ${G('rir','Effort (RIR)')}<div class="card stack">${rirSettings()}</div></div></details>
   ${G('layout','Layout')}<div class="card stack">${layoutSettings()}</div></div></details>
-  ${G('prio','Priority muscles','prio')}${helpText('prio','Shown in Weak points so they stay on your radar.')}
+  ${G('prio','Priority muscles','prio')}${helpText('prio','Flagged as Your priority in Stats, Muscles, and favoured by Pick for me.')}
   <div class="card chips">${MUSCLES.map(([k,l])=>`<button class="chip ${s.priorities.includes(k)?'on':''}" data-act="prio" data-m="${k}">${l}</button>`).join('')}</div></div></details>
   ${G('bands','Weekly set targets','bands')}${helpText('bands','Fractional hard sets per week: direct work 1, helper muscles 0.5 (Pelland 2025). 10 to 20 for major muscles fits the dose-response data; the upper number is typical, not a ceiling, and more still helps a little at more cost. Smaller muscles are set lower because compound lifts hit them indirectly, and their numbers are convention: no study has tested a dose for them. Serratus, rotator cuff, neck, and tibialis are tracked only. Raise one or two muscles for a specialisation block, or set focus muscles in Your training. Default targets puts every one back.')}
   <div class="card"><table class="t"><tr><th>Muscle</th><th class="r">Min</th><th class="r">Max</th></tr>${MUSCLES.map(([k,l])=>`<tr><td>${l}</td><td class="r"><input style="width:70px" type="text" inputmode="numeric" aria-label="${l} minimum hard sets a week" data-band="${k}" data-bi="0" value="${s.bands[k][0]}"></td><td class="r"><input style="width:70px" type="text" inputmode="numeric" aria-label="${l} maximum hard sets a week" data-band="${k}" data-bi="1" value="${s.bands[k][1]}"></td></tr>`).join('')}</table>
@@ -172,6 +174,7 @@ function viewSettings(){
   ${privacyLine()}${safetyLine()}
   ${backupDue()?`<p class="callout yellow" style="margin:10px 0 0"><b>Backup due.</b> ${s.lastExport?`Last backup file ${fmtDate(s.lastExport)}.`:'No backup file yet.'} ${cloud.on?'Your account has not synced this week. Export one below.':''}</p>`:''}
   ${storageOk?'':'<p class="small" style="color:var(--red)">This browser is blocking local storage, so this device keeps nothing between reloads without cloud sync.</p>'}
+  ${unreadableRaw()?`<div class="panel" id="unreadPanel" style="margin-top:8px"><p class="small" style="margin:0 0 6px"><b>A save on this device could not be read</b> by this build, and was kept aside. Restore brings back what it can and says what was skipped.</p><div class="row"><button class="btn sm primary" data-act="unreadRestore">Restore it</button><button class="btn sm" data-act="unreadShow">Show its text</button><button class="btn sm" data-act="unreadForget">Forget it</button></div></div>`:''}
   <div class="card stack"><div class="row"><button class="btn primary" data-act="export" data-tip="The backup: restores everything, on any device.">Export backup (.json)</button><button class="btn" data-act="showBackup" data-tip="The same backup as text, to copy somewhere safe.">Show backup text</button><button class="btn" data-act="exportCsv" data-tip="One row per set for spreadsheets. Import workouts reads it back, but it is not a full backup: routines and settings are not in it.">Export sets (.csv)</button></div>
   <button class="btn" data-act="impOpen" data-tip="Adds sessions from notes, a spreadsheet, or an export from another app. You check everything before it is saved.">Import workouts</button>
   <label class="field">Restore a backup file (replaces everything)<input type="file" accept=".json,application/json" id="importFile"></label>

@@ -555,6 +555,8 @@ function load(){
   return normalize(null);
 }
 let state=load();
+// Records the save held that this build could not read are gone at the next save (r45 review): say so in Diagnostics.
+if(normalize.dropped)log('load',new Error(`${normalize.dropped} damaged record${normalize.dropped===1?' was':'s were'} skipped when the save was read`));
 let saveT=null;
 function saveNow(){
   clearTimeout(saveT);saveT=null;

@@ -10,7 +10,7 @@ const { chromium } = require('playwright');
 const fails = []; const ok = (c, m) => { if (!c) { fails.push(m); console.log('FAIL', m); } else console.log('ok  ', m); };
 const DIST = path.join(__dirname, '..', 'dist');
 require('./h').build();
-const TYPES = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.woff2': 'font/woff2', '.png': 'image/png', '.webmanifest': 'application/manifest+json' };
+const TYPES = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.woff2': 'font/woff2', '.png': 'image/png', '.webmanifest': 'application/manifest+json', '.txt': 'text/plain' };
 const server = http.createServer((req, res) => {
   let p = decodeURIComponent(req.url.split('?')[0]); if (p.endsWith('/')) p += 'index.html';
   const f = path.join(DIST, p.replace(/^\/ironlog\//, '/'));
@@ -49,6 +49,11 @@ const server = http.createServer((req, res) => {
   ok(await page.evaluate(() => !!navigator.serviceWorker.controller), 'the service worker controls the page');
   const cached = await page.evaluate(async () => { const ks = await caches.keys(); const c = await caches.open(ks.find(k => k.startsWith('ironlog-'))); return (await c.keys()).length; });
   ok(cached >= 15, `all app files are cached (${cached})`);
+  // A navigation to another file on the site goes to that file, not the app (r45 review: Open-source licenses opened Ironlog in the new tab).
+  const nav = await ctx.newPage(); await nav.goto(page.url().replace(/[^/]*$/, '') + 'LICENSES.txt');
+  const navText = await nav.evaluate(() => document.body.innerText.slice(0, 2000));
+  ok(/Permission is hereby granted/.test(navText) && !/<div id="view"|Ironlog Preview|data-act=/.test(navText) && !(await nav.evaluate(() => !!document.getElementById('view'))), 'with the worker in control, opening LICENSES.txt in a tab shows the licenses, not the app');
+  await nav.close();
   // Offline.
   await page.evaluate(() => { const L = window.__ironlog; L.state.settings.onboarded = true; L.makeDemo(); L.render(); localStorage.setItem('ironlog.v1.tipWake', '1'); });
   await ctx.setOffline(true);
