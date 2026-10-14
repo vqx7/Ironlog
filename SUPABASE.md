@@ -16,7 +16,9 @@ What V does in the Supabase dashboard, once. The app code (sign-in screen, sync 
 create table public.docs (
   user_id uuid not null default auth.uid() references auth.users(id) on delete cascade,
   path text not null,
-  data jsonb not null,
+  -- At most 1 MB stored per document (r45): the largest the app writes is
+  -- tens of kilobytes, so this only stops an account filling the free database.
+  data jsonb not null check (pg_column_size(data) <= 1048576),
   updated_at timestamptz not null default now(),
   primary key (user_id, path)
 );
@@ -221,7 +223,7 @@ The preview build (vqx7.github.io/Ironlog/preview/) uses the same project and th
 create table public.docs_preview (
   user_id uuid not null default auth.uid() references auth.users(id) on delete cascade,
   path text not null,
-  data jsonb not null,
+  data jsonb not null check (pg_column_size(data) <= 1048576),
   updated_at timestamptz not null default now(),
   primary key (user_id, path)
 );
@@ -239,6 +241,18 @@ revoke all on public.docs_preview from anon;
 2. Optional: Authentication > URL Configuration > Redirect URLs, add `https://vqx7.github.io/Ironlog/preview/`. Only needed to create a new account or reset a password from inside the preview; signing in to an existing account works without it.
 
 The preview has no Delete my account (it would delete your real account). Deleting an account deletes its preview rows too (`on delete cascade`). To clear preview data only: Table Editor > docs_preview, delete your rows.
+
+## Part 6: a size limit on each synced document (added in r45, 1 minute)
+
+Tables made before r45 have no limit on a document's size, so one account could fill the free plan's 500 MB database. The largest document the app writes is tens of kilobytes. SQL Editor > New query, paste this, Run:
+
+```sql
+-- At most 1 MB stored per synced document. "not valid" skips the check on rows already there.
+alter table public.docs add constraint docs_data_size check (pg_column_size(data) <= 1048576) not valid;
+alter table public.docs_preview add constraint docs_preview_data_size check (pg_column_size(data) <= 1048576) not valid;
+```
+
+   To check, run `select conname from pg_constraint where conname like '%data_size';` in a new query: it lists both names. Nothing changes in the app.
 
 ## Who can see the data
 

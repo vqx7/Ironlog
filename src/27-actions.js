@@ -892,7 +892,9 @@ const ACT={
      first, naming how many; an untouched one goes with an Undo as before. */
   bDel(t){const d=state.draft;const bi=+t.dataset.b;const blk=d.ex[bi];if(!blk)return;const did=d.id;
     const go=()=>{const dd=state.draft;if(!dd||dd.id!==did||dd.ex[bi]!==blk){if(ui.modal)closeModal();toast('That exercise changed. Nothing was removed.');rerenderKeepScroll();return;}
-      snapshot(()=>{const d3=state.draft;if(!d3||d3.id!==did)return false;d3.ex.splice(Math.min(bi,d3.ex.length),0,blk);fixSupersets(d3.ex.map(x=>x.plan));return true;});
+      // Back after the exercise it followed, which an automatic reorder may have moved (r45 review).
+      const prevBlk=bi>0?dd.ex[bi-1]:null;
+      snapshot(()=>{const d3=state.draft;if(!d3||d3.id!==did)return false;const k=prevBlk?d3.ex.indexOf(prevBlk):-1;d3.ex.splice(prevBlk==null?0:k>=0?k+1:Math.min(bi,d3.ex.length),0,blk);fixSupersets(d3.ex.map(x=>x.plan));return true;});
       keepOpen(()=>dd.ex.splice(bi,1));saveNow();rerenderKeepScroll();toast('Exercise removed',true);};
     const logged=blk.sets.filter(x=>x.done).length,typed=blk.sets.filter(x=>!x.done&&(+x.r>0||x.rir!=null)).length;
     if(logged||typed){if(ui.modal)closeModal();confirmBox(`Remove ${EX(blk.exId).name}?`,`${logged?`${logged} logged set${logged===1?'':'s'}`:''}${logged&&typed?' and ':''}${typed?`${typed} typed set${typed===1?'':'s'}`:''} go with it. Undo is offered right after.`,'Remove exercise',go,true);return;}

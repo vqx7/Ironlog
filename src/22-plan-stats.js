@@ -211,8 +211,18 @@ function viewDash(){
   if(!state.sessions.length){
     h+=`<div class="card"><p style="margin:0"><b>No sessions yet.</b> Trends start after a few sessions. ${tipi('Trends, stall detection, and rankings need a few sessions of each exercise. To preview the full Stats page, load demo data in Settings.','About Stats')}</p></div>`;
   }
-  h+=`<div class="kpis"><div class="kpi"><div class="v">${adher==null?NIL:adher+'%'}</div><div class="l">${freeMode()?'Adherence: freestyle, no plan to follow':!planned?'Adherence: no planned days':adher==null?'Adherence: appears after your first full week':`Adherence, previous ${wks4} full week${wks4===1?'':'s'} (${Math.round(done4)}/${Math.round(need4)})`}</div></div>
-  <div class="kpi"><div class="v">${nz(wkHard)}</div><div class="l">${freeMode()?'Hard sets this week':`Hard sets this week, of ${weekStats().tgt} planned`}</div></div>
+  /* The tiles count what was done (V, 2026-10-13: less anchoring on the
+     plan): sessions and PRs in the last 28 days, with the 28 before when the
+     log reaches back that far, so month on month reads at a glance.
+     Adherence stays in Consistency, hard sets against the plan in Volume and
+     This week. PRs are the ones Recent PRs lists (big). */
+  const d28=addDays(today(),-27),d56=addDays(today(),-55);const back=state.sessions.length&&sortedSessions()[0].date<=addDays(d28,-1);
+  const in28=d=>d>=d28,in56=d=>d>=d56&&d<d28;
+  const sess4=state.sessions.filter(x=>in28(x.date)).length,sessP=state.sessions.filter(x=>in56(x.date)).length;
+  const prs4=I.prs.filter(p=>p.big&&in28(p.date)).length,prsP=I.prs.filter(p=>p.big&&in56(p.date)).length;
+  const was=n=>back?` (${n} in the 4 weeks before)`:'';
+  h+=`<div class="kpis"><div class="kpi"><div class="v">${nz(sess4)}</div><div class="l">Sessions, last 4 weeks${was(sessP)}</div></div>
+  <div class="kpi"><div class="v">${nz(prs4)}</div><div class="l">PRs, last 4 weeks${was(prsP)}</div></div>
 ${extraKpis()}</div>`;
   if(state.sessions.length)h+=dashSummary();
 /*ai{*/  if(aiOn()&&state.sessions.some(x=>!x.demo))h+=`<div class="card row spread"><span class="small">Ask Claude a question about your own log: a stall, a split, a weak point.</span><button class="btn sm primary" data-act="aiReview">Ask Claude</button></div>`;/*}ai=*/
@@ -340,7 +350,7 @@ ${extraKpis()}</div>`;
    heat+=cw;}
   // Only once a check-in has been answered: for anyone who skips it, the fold only said it needs 6 (r41).
   if(readiness().n)heat+=sub('ready','Readiness and performance',readinessBody());
-  {const sk=weekStreak();h+=dsec('consistency','Consistency','12 weeks from your first logged session; once you have more, the latest 12, with All for the rest. Faded squares are days still ahead. Filled squares are days with a logged lifting session. The streak counts weeks that hit the sessions your routine plans. Cardio minutes are shown under the grid and never count as lifting sessions.',heat,noLog()?'Nothing logged yet':`${sk.weeks}-week streak${adher!=null?` · ${adher}% adherence`:''}`);}
+  {const sk=weekStreak();const adhLine=`<p class="small muted" style="margin:0 0 8px" id="adhLine">${freeMode()?'Adherence: freestyle, no plan to follow':!planned?'Adherence: no planned days':adher==null?'Adherence: appears after your first full week':`Adherence, previous ${wks4} full week${wks4===1?'':'s'}: ${adher}% of planned sessions (${Math.round(done4)}/${Math.round(need4)})`}</p>`;h+=dsec('consistency','Consistency','12 weeks from your first logged session; once you have more, the latest 12, with All for the rest. Faded squares are days still ahead. Filled squares are days with a logged lifting session. The streak counts weeks that hit the sessions your routine plans. Cardio minutes are shown under the grid and never count as lifting sessions. Adherence is the planned sessions done over the previous 4 full weeks, each week counted up to its plan.',noLog()?heat:adhLine+heat,noLog()?'Nothing logged yet':`${sk.weeks}-week streak${adher!=null?` · ${adher}% adherence`:''}`);}
 
   // body: chart, entry, tape, muscle map
   h+=dsec('body','Body','Daily bodyweight with a 7-day average. Tape changes help cross-check which muscles are actually growing.',

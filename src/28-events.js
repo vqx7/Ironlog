@@ -169,7 +169,7 @@ document.addEventListener('change',e=>{
     else if((state.settings.autoDone||state.draft.past)&&!s.done&&+s.r>0){
       const toRir=!state.draft.past&&lastDown.el&&Date.now()-lastDown.t<700&&lastDown.el.closest&&lastDown.el.closest(`.rirb[data-b="${bi}"][data-s="${si}"]`);
       // Heading for this row's RIR box: tick when its strip closes (or after 2 s if it never opened).
-      if(toRir){pendAuto={b:bi,s:si};setTimeout(()=>{if(pendAuto&&pendAuto.b===bi&&pendAuto.s===si&&!document.querySelector('.rirstrip'))autoPending();},2000);}
+      if(toRir){const p={b:bi,s:si};pendAuto=p;setTimeout(()=>{if(pendAuto===p&&!document.querySelector('.rirstrip'))autoPending();},2000);} // by identity: an automatic reorder renumbers p.b (r45)
       else{lastAuto={b:bi,s:si,t:Date.now()};setDone(bi,si,true);}}
     else if(s.done){refreshPR(bi,si,false);afterSet(bi,si);}
     saveSoon();return;}

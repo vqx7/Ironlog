@@ -309,14 +309,17 @@ function renderWeekBar(){const el=document.getElementById('wkbar');if(!el)return
 const NIL='–';
 function noLog(){return !state.sessions.length;}
 const nz=v=>noLog()?NIL:v;
-/* The week at a glance, beside the day's name: hard sets logged against the
-   routine's plan, the same two numbers as This week. A ring fills, which
-   reads faster than a sentence. Tapping it opens This week. */
+/* The week at a glance, beside the day's name: sessions done against the
+   sessions the routine plans this week, the same two numbers as This week's
+   title. V (2026-10-13): the headline counts what was done, not planned
+   sets; hard sets against the plan stay inside This week. A ring fills,
+   which reads faster than a sentence. Tapping it opens This week. */
 function heroRing(w){
-  if(!(w.tgt>0))return '';
-  const r=26,c=2*Math.PI*r,p=Math.max(0,Math.min(1,w.got/w.tgt));
-  const lbl=noLog()?`No sets logged yet; ${w.tgt} hard sets planned this week`:`${r1(w.got)} of ${w.tgt} hard sets this week`;
-  return `<button type="button" class="ring" data-act="goWeek" aria-label="${esc(lbl)}. Open This week" data-tip="${esc(lbl)}"><svg viewBox="0 0 64 64" aria-hidden="true"><circle cx="32" cy="32" r="${r}" class="rt"/><circle cx="32" cy="32" r="${r}" class="rp" stroke-dasharray="${(c*p).toFixed(2)} ${c.toFixed(2)}" transform="rotate(-90 32 32)"/></svg><span class="rv">${noLog()?NIL:`${Math.round(p*100)}<small>%</small>`}</span><span class="rl">week</span></button>`;
+  if(!(w.planDays>0))return '';
+  const r=26,c=2*Math.PI*r,p=Math.max(0,Math.min(1,w.doneDays/w.planDays));
+  const pd=`${w.weekly||weekFactor(w.R)===1?'':'about '}${w.planDays}`;
+  const lbl=noLog()?`No sessions logged yet; ${pd} planned this week`:`${w.doneDays} of ${pd} sessions this week`;
+  return `<button type="button" class="ring" data-act="goWeek" aria-label="${esc(lbl)}. Open This week" data-tip="${esc(lbl)}"><svg viewBox="0 0 64 64" aria-hidden="true"><circle cx="32" cy="32" r="${r}" class="rt"/><circle cx="32" cy="32" r="${r}" class="rp" stroke-dasharray="${(c*p).toFixed(2)} ${c.toFixed(2)}" transform="rotate(-90 32 32)"/></svg><span class="rv">${noLog()?NIL:`${w.doneDays}<small>/${w.planDays}</small>`}</span><span class="rl">week</span></button>`;
 }
 function weekStats(){
   const R=activeRoutine();

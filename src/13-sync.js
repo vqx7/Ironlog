@@ -212,6 +212,17 @@ function trackEdits(){
 /* After adopting or merging, record the new content as seen without marking
    it as a local edit. */
 function resyncLocalH(){try{const ch=chunksOf(state);cloud.localH={};for(const id in ch)cloud.localH[id]=hashStr(JSON.stringify(ch[id]));for(const id in cloud.meta)if(!(id in cloud.localH))cloud.localH[id]=hashStr(JSON.stringify(emptyChunk(id)));}catch(e){log('sync-track',e);}}
+/* The session in progress is one record, so another device finishing or
+   discarding it replaces this one's (the later edit wins). Said in its own
+   words rather than the generic note (r45, audit item 288). */
+function draftNote(prev){
+  if(!prev||state.draft&&state.draft.id===prev.id)return;
+  /* Only called when the draft document itself came from the cloud, so a
+     Finish or Discard made here during a sync is never put on another device. */
+  if(prev.editingId){if(!state.draft)toast('The edit in progress was closed on another device.');return;}
+  const sid=prev.id;
+  toast(state.sessions.some(s=>s.id===sid)?'The workout in progress was saved on another device.':state.draft?'The workout in progress was replaced by the one on another device.':'The workout in progress was discarded on another device.');
+}
 function conflictNote(stat){if(stat.conflicts){log('sync-conflict',`${stat.conflicts} record(s) edited on two devices; kept the later edit`);toast(`${stat.conflicts} item${stat.conflicts===1?' was':'s were'} edited on two devices. The later edit was kept.`);}}
 /* A short lease on a lock document so two devices do not interleave their
    read-then-write of the same documents. If the lease is unavailable the
@@ -249,7 +260,7 @@ async function cloudFlush(){
   setCloud('saving');
   try{
     if(!(await takeLease())){clearTimeout(cloud.t);cloud.t=setTimeout(()=>cq(cloudFlush),2500);return;}
-    let adopted=false,moreBody=false;const stat={conflicts:0};const tooBig=[];const legB=legacyBodyBase();
+    let adopted=false,moreBody=false;const stat={conflicts:0};let dn=null;const tooBig=[];const legB=legacyBodyBase();
     for(const x of todo){
       /* Read before write. If another device changed this document since we
          last agreed on it, merge record by record instead of overwriting. */
@@ -268,6 +279,7 @@ async function cloudFlush(){
         if(rd){
           const ret=+b.et||+b.at;const merged=mergeChunk(x.id,baseFor(x.id,m,legB),JSON.parse(json),rd,ret>(cloud.editAt[x.id]||0),stat);
           cloud.editAt[x.id]=Math.max(cloud.editAt[x.id]||0,ret);
+          if(x.id==='draft')dn={prev:state.draft};
           applyChunk(x.id,merged);adopted=true;
           if(x.id==='core'&&absorbLegacy(legacyBody(rd)))moreBody=true;
           json=JSON.stringify(chunksOf(state)[x.id]||emptyChunk(x.id));
@@ -280,7 +292,7 @@ async function cloudFlush(){
       await withTimeout(ref(x.id).set({v:1,at,et:cloud.editAt[x.id]||at,json}),20000);
       cloud.meta[x.id]={h:hashStr(json),at,b:baseOf(x.id,JSON.parse(json))};saveMeta();
     }
-    if(adopted){invalidate();try{localStorage.setItem(KEY,JSON.stringify(state));}catch(e){log('storage',e);}resyncLocalH();if(!ui.modal)rerenderKeepScroll();conflictNote(stat);}
+    if(adopted){invalidate();try{localStorage.setItem(KEY,JSON.stringify(state));}catch(e){log('storage',e);}resyncLocalH();if(!ui.modal)rerenderKeepScroll();conflictNote(stat);if(dn)draftNote(dn.prev);}
     cloud.retry=0;
     // Weigh-ins found in an older core go to their body documents on the next pass.
     if(moreBody)cloudSoon();
@@ -305,7 +317,7 @@ async function cloudPull(){
   const rids=Object.keys(remote);
   if(!rids.length){await cloudFlush();return;}
   const local=chunksOf(state);const first=!Object.keys(cloud.meta).length;
-  let parts=null,merged=false;const stat={conflicts:0};const adoptedIds=new Set();const leg={bodyweights:[],measurements:[]};const legB=legacyBodyBase();
+  let parts=null,merged=false,draftIn=false;const stat={conflicts:0};const adoptedIds=new Set();const leg={bodyweights:[],measurements:[]};const legB=legacyBodyBase();
   if(first){
     const rState=assemble(Object.fromEntries(rids.map(k=>[k,remote[k].data])));
     if(!bootHadLocal||(!realCount(state)&&!state.bodyweights.some(b=>!b.demo)&&!state.measurements.some(x=>!x.demo)&&!state.draft&&!(state.cardio||[]).length)){
@@ -328,6 +340,7 @@ async function cloudPull(){
       const r=remote[id],m=cloud.meta[id];
       // Unchanged in the cloud since we last agreed. Content, not clocks, decides.
       if(m&&r.h===m.h)continue;
+      if(id==='draft')draftIn=true;
       const lJson=JSON.stringify(local[id]||emptyChunk(id));const localDirty=!m||hashStr(lJson)!==m.h;
       if(!localDirty){parts[id]=r.data;adoptedIds.add(id);any=true;continue;}
       if(id==='core'){const L=legacyBody(r.data);leg.bodyweights.push(...L.bodyweights);leg.measurements.push(...L.measurements);}
@@ -338,6 +351,7 @@ async function cloudPull(){
     }
     if(!any)parts=null;
   }
+  const dr0=state.draft;
   if(parts){state=assemble(parts);absorbLegacy(leg);}
   if(parts||merged){
     invalidate();try{localStorage.setItem(KEY,JSON.stringify(state));}catch(e){log('storage',e);}
@@ -352,7 +366,7 @@ async function cloudPull(){
     {const n0=(state.trash||[]).length;state.trash=(state.trash||[]).filter(t=>!(t.kind==='routine'&&plainTemplate(t.data)));if(state.trash.length!==n0)saveNow();}
     if(!ui.modal)rerenderKeepScroll();else render();
     if(merged)toast('Merged this device with your cloud copy',true);
-    conflictNote(stat);
+    conflictNote(stat);if(draftIn)draftNote(dr0);
   }else if(first){
     for(const id of rids)cloud.meta[id]={h:'x',at:remote[id].at,b:null};
   }

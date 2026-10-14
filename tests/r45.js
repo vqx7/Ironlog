@@ -131,6 +131,121 @@ const PW = 'correct horse 45';
   ok(dup.ph0[0] === String(dup.lastR[0]) && dup.ph1[0] === String(dup.repMin) && !dup.copy, 'its grey reps do not repeat the first block\'s either: the bottom of the range, and no Copy last', dup);
   await G.ctx.close();
 
+  // ---- 8. Auto-reorder (V 2026-10-13): the first set ticked on an exercise below untouched ones moves it up, to just after the last one touched.
+  const K = await open('index.html', { browser, clock: '2026-10-13T10:00:00' });
+  const ko = await K.page.evaluate(async () => {
+    const L = window.__ironlog; const w = ms => new Promise(r => setTimeout(r, ms));
+    L.state.settings.onboarded = true; L.state.settings.autoDone = true; L.makeDemo(); L.saveNow(); L.render(); document.querySelector('[data-act="startSession"]').click(); await w(100);
+    const d = L.state.draft; d.ex.forEach(b => { if (b.plan) delete b.plan.ss; }); L.saveNow(); L.render();
+    const ids = () => d.ex.map(b => b.exId); const before = ids();
+    const top = i => document.getElementById('blk-' + i).getBoundingClientRect().top;
+    document.getElementById('blk-2').scrollIntoView(); await w(50); const t0 = top(2); document.querySelector('[data-act="sDone"][data-b="2"][data-s="0"]').click();
+    const still = ids().join() === before.join(); await w(2000);
+    const one = { ids: ids(), dy: Math.abs(top(0) - t0), done: d.ex[0].sets[0].done };
+    // Typed reps tick by auto-mark; the block moves to just after the one touched, and the checkmark tapped within 15 s still confirms it.
+    const inp = document.querySelector('[data-f="r"][data-b="3"][data-s="0"]'); inp.value = '8'; inp.dispatchEvent(new Event('input', { bubbles: true })); inp.dispatchEvent(new Event('change', { bubbles: true }));
+    await w(2000); const two = ids();
+    document.querySelector('[data-act="sDone"][data-b="1"][data-s="0"]').click(); await w(100);
+    const confirmed = d.ex[1].exId === before[3] && d.ex[1].sets[0].done;
+    // A second set on a moved exercise moves nothing.
+    document.querySelector('[data-act="sDone"][data-b="0"][data-s="1"]').click(); await w(2000); const three = ids();
+    // Never in a superset, a past workout, an edit, or past the same lift.
+    const b5 = d.ex[5]; b5.sets[0].done = true; const free = L.orderAt(b5);
+    b5.plan.ss = 'x'; const ss = L.orderAt(b5); delete b5.plan.ss;
+    d.past = true; const past = L.orderAt(b5); delete d.past;
+    d.editingId = 'e'; const ed = L.orderAt(b5); delete d.editingId;
+    const o3 = d.ex[3].exId; d.ex[3].exId = b5.exId; const same = L.orderAt(b5); d.ex[3].exId = o3;
+    // Two first sets ticked inside the wait both move, in the order ticked (r45 review).
+    L.state.draft = null; L.saveNow(); L.render(); document.querySelector('[data-act="startSession"]').click(); await w(100);
+    const d2 = L.state.draft; d2.ex.forEach(b => { if (b.plan) delete b.plan.ss; }); L.saveNow(); L.render(); const B = d2.ex.map(b => b.exId);
+    document.querySelector('[data-act="sDone"][data-b="3"][data-s="0"]').click(); await w(100); document.querySelector('[data-act="sDone"][data-b="5"][data-s="0"]').click(); await w(2000);
+    const both = d2.ex.map(b => b.exId).join() === [B[3], B[5], B[0], B[1], B[2], B[4], ...B.slice(6)].join();
+    // Undo of Remove puts the exercise back after the one it followed, even after a reorder in between.
+    L.ACT.bDel({ dataset: { b: '3' } }); await w(100); // removes B[1]; it followed B[0]
+    document.querySelector('[data-act="sDone"][data-b="4"][data-s="0"]').click(); await w(2000); // B[4] moves up past B[2] and B[0]
+    L.ACT.undo(); await w(100);
+    const undone = d2.ex.map(b => b.exId).slice(0, 6).join() === [B[3], B[5], B[4], B[0], B[1], B[2]].join();
+    return { before, still, one, two, confirmed, three, free, ss, past, ed, same, both, undone, order: L.state.draft.ex.map(b => b.exId) };
+  });
+  const B4 = ko.before;
+  ok(ko.still && ko.one.ids.join() === [B4[2], B4[0], B4[1], ...B4.slice(3)].join() && ko.one.done && ko.one.dy < 2, 'the first set ticked on the third exercise moves it to the top after a moment, and it stays where it was on the screen', ko.one);
+  ok(ko.two.join() === [B4[2], B4[3], B4[0], B4[1], ...B4.slice(4)].join() && ko.confirmed, 'reps typed on the fourth tick it and move it to just after the one started; the checkmark tapped next still confirms it', { two: ko.two, confirmed: ko.confirmed });
+  ok(ko.three.join() === ko.two.join(), 'a second set on a moved exercise moves nothing', ko.three);
+  ok(ko.free === 2 && ko.ss === -1 && ko.past === -1 && ko.ed === -1 && ko.same === 4, 'never in a superset, a past workout, or an edit from History, and never past the same lift', ko);
+  ok(ko.both && ko.undone, 'two exercises started inside the wait both move, in the order started; Undo of Remove puts an exercise back after the one it followed', ko.order);
+  ok(!K.errors.length, 'no page errors (auto-reorder)', K.errors);
+  await K.ctx.close();
+
+  // ---- 9. The session in progress finished or discarded on another device says so (audit item 288), not the generic two-devices note.
+  {
+    const store = new Map();
+    const cloudSetup = async (ctx, page) => {
+      await page.exposeFunction('__dbGet', p => store.has(p) ? store.get(p) : null);
+      await page.exposeFunction('__dbSet', (p, v) => { store.set(p, v); return true; });
+      await page.exposeFunction('__dbList', p => JSON.stringify([...store.entries()].filter(([k]) => k.startsWith(p + '/') && !k.slice(p.length + 1).includes('/')).map(([k, v]) => [k.slice(p.length + 1), v])));
+      await page.addInitScript(() => {
+        window.claude = { use: async k => {
+          if (k === 'user') return { id: async () => 'u1' };
+          if (k === 'db') return { doc: p => ({ get: async () => { const v = await window.__dbGet(p); return v == null ? { exists: false, data: () => null } : { exists: true, data: () => JSON.parse(v) }; }, set: async o => { await window.__dbSet(p, JSON.stringify(o)); } }),
+            collection: p => ({ get: async () => { const l = JSON.parse(await window.__dbList(p)); return { docs: l.map(([id, v]) => ({ id, exists: true, data: () => JSON.parse(v) })) }; } }) };
+          return null; } };
+      });
+    };
+    const A = await open('index.html', { browser, clock: '2026-10-13T10:00:00', setup: cloudSetup });
+    const B = await open('index.html', { browser, clock: '2026-10-13T10:00:00', setup: cloudSetup });
+    await wait(800);
+    const toastOf = P => P.page.evaluate(() => { const t = document.getElementById('toast'); return t ? t.innerText : ''; });
+    const startOnA = async () => { await A.page.evaluate(() => { const L = window.__ironlog; L.state.settings.onboarded = true; L.ui.tab = 'today'; L.render(); document.querySelector('[data-act="startSession"]').click(); }); await wait(100);
+      await A.page.evaluate(() => window.__ironlog.flush()); await wait(300); await B.page.evaluate(() => window.__ironlog.sync()); await wait(500); };
+    await startOnA();
+    const onB = await B.page.evaluate(() => !!window.__ironlog.state.draft);
+    await B.page.evaluate(() => { window.__ironlog.ACT.discard(); }); await wait(100);
+    await B.page.evaluate(() => window.__ironlog.flush()); await wait(300);
+    await A.page.evaluate(() => window.__ironlog.sync()); await wait(500);
+    const t1 = await toastOf(A); const gone = await A.page.evaluate(() => window.__ironlog.state.draft === null);
+    ok(onB && gone && /discarded on another device/.test(t1), 'a session in progress discarded on the other phone: this one says so', { onB, gone, t1 });
+    await startOnA();
+    await B.page.evaluate(() => { const L = window.__ironlog; const d = L.state.draft; d.ex[0].sets[0].r = 8; d.ex[0].sets[0].w = 50; d.ex[0].sets[0].done = true; d._rampAsked = true; d._leftAsked = true; L.ACT.finishNow(); }); await wait(300);
+    await B.page.evaluate(() => window.__ironlog.flush()); await wait(300);
+    await A.page.evaluate(() => window.__ironlog.sync()); await wait(500);
+    const t2 = await toastOf(A);
+    ok(/saved on another device/.test(t2), 'finished on the other phone: this one says it was saved there', t2);
+    // An edit from History closed on the other phone is not called saved (r45 review: the session always exists).
+    await A.page.evaluate(() => { const L = window.__ironlog; L.ui.tab = 'history'; L.render(); L.ACT.histEdit({ dataset: { id: L.state.sessions[L.state.sessions.length - 1].id } }); }); await wait(100);
+    await A.page.evaluate(() => window.__ironlog.flush()); await wait(300); await B.page.evaluate(() => window.__ironlog.sync()); await wait(500);
+    const hadEdit = await B.page.evaluate(() => { const L = window.__ironlog; const e = !!(L.state.draft && L.state.draft.editingId); L.state.draft = null; L.saveNow(); return e; }); await wait(100); // what Discard's confirm does
+    await B.page.evaluate(() => window.__ironlog.flush()); await wait(300);
+    await A.page.evaluate(() => window.__ironlog.sync()); await wait(500);
+    const t3 = await toastOf(A);
+    ok(hadEdit && /edit in progress was closed on another device/.test(t3) && !/saved on another/.test(t3), 'an edit closed on the other phone says so, not saved', t3);
+    ok(!A.errors.length && !B.errors.length, 'no page errors (two phones)', [...A.errors, ...B.errors]);
+    await A.ctx.close(); await B.ctx.close();
+  }
+
+  // ---- 10. A lift logged only as drop sets never counts toward "stalled at once" (audit item 289).
+  {
+    const Q = await open('index.html', { browser, clock: '2026-10-13T10:00:00' });
+    const fs10 = await Q.page.evaluate(() => { const L = window.__ironlog; const s = L.state; s.settings.onboarded = true;
+      const mk = (i, drop) => ({ id: 'q' + i, date: `2026-09-${String(10 + i * 3).padStart(2, '0')}`, dayName: 'A', notes: '', ex: [{ exId: 'bench', sets: [{ w: 60, r: 8, rir: 1, done: true, drop: drop || undefined }, { w: 50, r: 8, rir: 1, done: true, drop: drop || undefined }] }] });
+      s.sessions = [0, 1, 2, 3, 4, 5].map(i => mk(i, true)); L.invalidate(); const a = L.fatigueStalls(['bench']);
+      s.sessions.push(mk(6, false)); L.invalidate(); const b = L.fatigueStalls(['bench']);
+      return { a, b }; });
+    ok(fs10.a.length === 0 && fs10.b.join() === 'bench', 'a compound lift logged only as drop sets in its last 6 sessions is left out of "stalled at once"; one main set brings it back', fs10);
+    await Q.ctx.close();
+  }
+
+  // ---- 11. A problem report's screenshot is at most 500,000 characters, even from a large noisy image (audit item 287).
+  {
+    const S = await open('index.html', { browser, clock: '2026-10-13T10:00:00' });
+    const shot = await S.page.evaluate(async () => { const c = document.createElement('canvas'); c.width = 2400; c.height = 3200; const x = c.getContext('2d'); const im = x.createImageData(c.width, c.height);
+      for (let i = 0; i < im.data.length; i++) im.data[i] = (i & 3) === 3 ? 255 : Math.random() * 256; x.putImageData(im, 0, 0);
+      const blob = await new Promise(r => c.toBlob(r, 'image/png')); const d = await window.__ironlog.fbShrink(blob);
+      const small = document.createElement('canvas'); small.width = 400; small.height = 300; small.getContext('2d').fillRect(0, 0, 100, 100); const d2 = await window.__ironlog.fbShrink(await new Promise(r => small.toBlob(r, 'image/png')));
+      return { big: blob.size, len: d ? d.length : null, jpeg: !!d && d.startsWith('data:image/jpeg;base64,'), small: d2 && d2.length }; });
+    ok(shot.big > 5e6 && (shot.len === null || (shot.jpeg && shot.len <= 500000)) && shot.small > 0 && shot.small <= 500000, 'screenshots are made 500,000 characters or less (or refused), and an ordinary one goes through', shot);
+    await S.ctx.close();
+  }
+
   // ---- 7. A save this build cannot read is kept aside and offered back (the r45 audit: before, it sat in storage with nothing offering it).
   const H = await open('index.html', { browser, clock: '2026-10-13T10:00:00' });
   const good = await H.page.evaluate(() => { const L = window.__ironlog; L.state.settings.onboarded = true; L.makeDemo(); L.saveNow(); return localStorage.getItem('ironlog.v1'); });

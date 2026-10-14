@@ -136,7 +136,7 @@ const sess = (id, date, exId, sets) => ({ id, date, dayIdx: 0, dayId: null, dayN
 
   // ---- Demo data: a lifter who follows the routine.
   {
-    for (const k of ['ul4', 'full3', 'full2', 'ppl6', 'split5', 'str5', 'db3', 'onemuscle']) {
+    for (const k of ['ul4', 'full3', 'full3t', 'full2', 'ppl6', 'split5', 'str5', 'db3', 'onemuscle']) {
       const P = await open('index.html', { touch: true, clock: '2026-10-03T11:30:00', realStarter: true });
       const { page } = P; const ev = (f, a) => page.evaluate(f, a);
       await ev((k) => { const L = window.__ironlog; const r = L.routineFromTemplate(k); L.state.routines = [r]; L.state.activeRoutineId = r.id; L.ACT.demoLoad(); }, k);

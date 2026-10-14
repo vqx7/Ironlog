@@ -349,6 +349,16 @@ const TEMPLATES=(()=>{
       D('Full body A',[I('legPress',3,8,12,3,120),I('machPress',3,8,12,3,120),I('latPulldown',3,8,12,3,120),I('seatedCurl',2,10,15,2,75),I('dbLateral',2,10,15,2,60)]),R(),
       D('Full body B',[I('goblet',3,8,12,3,120),I('incDb',3,8,12,3,120),I('cableRow',3,8,12,3,120),I('dbRdl',3,8,12,3,120),I('pressdown',2,10,15,2,60)]),R(),
       D('Full body C',[I('legPress',3,8,12,3,120),I('dbBench',3,8,12,3,120),I('machRow',3,8,12,3,120),I('lyingCurl',2,10,15,2,75),I('dbCurl',2,10,15,2,60)]),R(),R()]},
+    /* Past the first year, three days a week (r45, V): the full3 days are a
+       first routine (machines, 3 in reserve, under 10 sets a muscle), so a
+       trained lifter with three days had only Strength or the dumbbell
+       routine. The main barbell lifts at 6 to 10 and 2 in reserve, the
+       rest at 1, 6 to 9 hard sets a week for each major muscle (a helper
+       muscle counting half), about an hour a day. Conventions, as everywhere here. */
+    {key:'full3t',name:'Full body, 3 days, trained',who:'Past your first year: the main lifts and their accessories, the whole body three times a week',meta:'3 days a week',days:[
+      D('Full body A',[I('backSquat',3,6,10,2,180),I('bench',3,6,10,2,150),I('cableRow',3,8,12,1,120),I('seatedCurl',3,10,15,1,75),I('dbLateral',3,10,20,1,60),I('inclineCurl',2,10,15,1,60)]),R(),
+      D('Full body B',[I('rdl',3,6,10,2,150),I('ohp',3,6,10,2,150),I('pullup',3,6,10,2,150),I('legPress',3,10,15,1,120),I('cableFly',3,10,15,1,75),I('standCalf',3,10,15,1,60)]),R(),
+      D('Full body C',[I('hackSquat',3,8,12,1,150),I('incDb',3,8,12,1,120),I('latPulldown',3,8,12,1,120),I('lyingCurl',3,10,15,1,75),I('cableLateral',3,10,20,1,60),I('ohCableExt',3,10,15,1,60),I('seatedCalf',3,10,15,1,60)]),R(),R()]},
     /* Two days a week (r30): the whole body each day, about an hour. */
     {key:'full2',name:'Full body, 2 days',who:'Two sessions a week: the whole body each time',meta:'2 days a week',days:[
       D('Full body A',[I('backSquat',3,6,10,2,180),I('bench',3,6,10,2,150),I('cableRow',3,8,12,2,120),I('seatedCurl',3,10,15,1,75),I('dbLateral',3,10,20,1,60),I('inclineCurl',2,10,15,1,60)]),R(),R(),

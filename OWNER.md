@@ -2,13 +2,14 @@
 
 Everything that needs you, in one place, with the exact code to paste. Claude keeps this file current: an item moves to Done only when you confirm it, or when Claude can check it from here (and says how it checked). Build work and decisions are tracked in `PENDING.md`; this file is only what you do by hand.
 
-Last updated: r36 live, 2026-10-11.
+Last updated: r44 live, r45 in pull request #36, 2026-10-13.
 
 ## Now, in this order
 
 1. B5, the trigger, then its check: Report a problem from the app and an issue appears in `ironlog-feedback` (steps below).
 2. B6: protect `main` (steps below). Until it is on, nothing stops a change reaching the live app without a pull request.
 3. C6, before you merge r45 (pull request #36): add the code to the confirmation email (5 minutes, below). r45 tells a new person to type that code in the app, since on an iPhone the link opens in Safari instead, so the email must carry it first.
+   D7, any time (with C6 is easiest): a 1 MB limit on each synced document (1 minute, below).
    A21 (r43 and r44): r43 live 2026-10-13 (pull request #34, merged by you). r44 is pull request #35 (Your training, the Last column, the security suite, faster checks): merge it once its checks pass, then tap Reload on every phone.
    A20 (r37 to r42): done 2026-10-11 and 12, all live (pull requests #27 to #31 and #33; #32, the restyle, closed unmerged). Live build 2026.10.12-r42, checked by Claude on the gh-pages branch. Reload on your phone when "New version ready" shows.
    A19 (r35 and r36): done 2026-10-11, both live (pull requests #25 and #26, merged by Claude at your word). Reload on your phone when "New version ready" shows.
@@ -328,6 +329,18 @@ Status: to do. Claude's GitHub access cannot delete branches.
 Every one of these is already in `main`, so nothing is lost.
 1. github.com/vqx7/Ironlog/branches > tap the trash icon on `keep-domain`, `r26`, `r27`, `r28`, `r29`, `r29.4`, `r29.5`, `r30`, `r30.1`, `r31`, `r31.1`, `r31.3`, `r32`, `r32.1`, `r33`, `r34`, `r34.1`, `r34.2`, `r35`, `r36`, `r37`, `r38`, `r39`, `r40`, `r41` and `r42-copy` (checked by Claude 2026-10-12 with git on a full clone: each one is already inside `main`, so nothing is lost). `r42-look` holds the two commits of the restyle you turned down (pull request #32, closed); delete it too unless you want it kept for reference. `r31.2` holds one commit that is not in `main`, a first-page layout that r31.3 replaced the same day and that is live in its newer form; delete it too unless you want that old version kept. Keep `main` and `gh-pages`. Claude tried to delete them on 2026-10-10 and this session is not allowed to delete branches.
 2. So it does not happen again: Settings > General > Pull Requests > tick **Automatically delete head branches**. Each branch then goes when its pull request is merged. (Still off as of 2026-10-10, checked by Claude.)
+
+### D7. A size limit on each synced document (r45, item 286, 1 minute)
+Status: to do, any time (with C6 is easiest). Tables made before r45 have no limit, so one account could fill the free plan's 500 MB database; the app's largest document is tens of kilobytes, so nothing changes in the app.
+1. Supabase > **SQL Editor** > **New query**, paste this, **Run**:
+
+```sql
+-- At most 1 MB stored per synced document. "not valid" skips the check on rows already there.
+alter table public.docs add constraint docs_data_size check (pg_column_size(data) <= 1048576) not valid;
+alter table public.docs_preview add constraint docs_preview_data_size check (pg_column_size(data) <= 1048576) not valid;
+```
+
+2. Check: run `select conname from pg_constraint where conname like '%data_size';` in a new query. It lists both names.
 
 ## Checks on your phone (items 7 and 63)
 Status: to do whenever you are at the gym; tell Claude what you see.

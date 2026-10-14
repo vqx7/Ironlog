@@ -3,7 +3,9 @@
    went. After a ticked working set, when it was clearly off, the rows below
    that are still the app's (nothing typed) take a new load:
    - lighter than planned: 2 or more reps in reserve over the target with the
-     reps in the range, or 3 or more reps past the top of the range;
+     reps in the range, or 2 or more reps past the top of the range (the
+     same 2 that moves the next session's load from the estimate, r27;
+     3 until r45, V: 14 reps on a 10 to 12 range left the load alone);
    - heavier than planned: 2 or more reps under both the bottom of the range
      and what this session expected of the set (last time's reps at this
      load, or the target's minimum after a new load), not stopped early (no
@@ -51,7 +53,7 @@ function assessSet(bi,si){
     const tgt=+p.rir||0,lo=+p.repMin,hi=+p.repMax,r=+s.r;const q=s.rir==null||s.rir===''?null:+s.rir;const qe=q!=null?q:rirEst(s,ex);
     const bw=bwRefLoad(ex),Lt=s.w+bw;
     const expR=b.tgt&&b.tgt.kind==='load'&&+b.tgt.repMin>0?+b.tgt.repMin:(lastRFor(b,si)!=null?+lastRFor(b,si):lo);
-    const light=(q!=null&&q>=tgt+2&&r>=lo)||r>=hi+3,heavy=r<=Math.min(lo,expR)-2&&(q==null||q<=tgt);
+    const light=(q!=null&&q>=tgt+2&&r>=lo)||r>=hi+2,heavy=r<=Math.min(lo,expR)-2&&(q==null||q<=tgt);
     if(Lt>0&&(light||heavy)){
       const est=fitE(Lt,r,qe==null?0:Math.min(qe,E1_MAX_RIR));
       if(est){
