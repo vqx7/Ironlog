@@ -87,7 +87,7 @@ async function pool(list,n){
      allowance, one entry per failed suite with all its failing lines. */
   if(process.env.GITHUB_ACTIONS&&failed.length){
     const esc=t=>t.replace(/%/g,'%25').replace(/\r/g,'').replace(/\n/g,'%0A');
-    const parts=failed.map(r=>{const ls=r.out.split('\n').filter(l=>!/^ok /.test(l)&&/FAIL|Error|error/.test(l)).slice(0,40).map(l=>'  '+l.slice(0,300));return `${r.s}${r.tag}\n${(ls.length?ls:['  '+r.out.slice(-300)]).join('\n')}`;});
+    const parts=failed.map(r=>{const ls=r.out.split('\n').filter(l=>!/^ok /.test(l)&&/FAIL|Error|error/.test(l)).slice(0,40).map(l=>'  '+l.slice(0,1500));return `${r.s}${r.tag}\n${(ls.length?ls:['  '+r.out.slice(-300)]).join('\n')}`;});
     const chunks=[];let cur='';for(const p of parts){if(cur&&cur.length+p.length>20000){chunks.push(cur);cur='';}cur+=(cur?'\n':'')+p.slice(0,20000);}if(cur)chunks.push(cur);
     chunks.slice(0,9).forEach((c,i)=>console.log(`::warning title=Every failure in this shard (${i+1} of ${Math.min(chunks.length,9)})::${esc(c)}`));
   }

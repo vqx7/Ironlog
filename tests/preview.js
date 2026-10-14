@@ -38,11 +38,12 @@ fs.cpSync(path.join(ROOT, 'dist-preview'), path.join(tmp, 'preview'), { recursiv
   const browser = await engine.launch();
   const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true });
   await quietHibp(ctx);
-  // Rejections the page itself saw, to tell them from what the browser logs (WebKit, 2026-10-14).
+  // Every promise rejection the page itself does not handle, kept across reloads in this tab.
   await ctx.addInitScript(() => { addEventListener('unhandledrejection', e => { try { const k = '__ilRej', a = JSON.parse(sessionStorage.getItem(k) || '[]'); a.push(location.pathname + ': ' + String(e.reason && e.reason.message || e.reason)); sessionStorage.setItem(k, JSON.stringify(a)); } catch (x) { /* storage off */ } }); });
   const page = await ctx.newPage();
   const errors = [];
-  page.on('pageerror', e => errors.push('page error: ' + e.message + ((e.stack || '').split('\n')[1] ? ' ' + (e.stack || '').split('\n')[1].trim() : '')));
+  let offline = false;
+  page.on('pageerror', e => { if (offline && require('./h').offlineLoad(e.message)) return; errors.push('page error: ' + e.message); });
   page.on('console', m => { if (m.type() === 'error' && !/Failed to load resource|status of 4\d\d/.test(m.text())) errors.push(`console: ${JSON.stringify(m.text())} at ${m.location().url || '?'}`); });
   const ev = (f, a) => page.evaluate(f, a);
   const ready = () => page.waitForFunction(() => window.__ironlog && window.__libs && window.__libs.chart, null, { timeout: 15000 });
@@ -126,12 +127,12 @@ fs.cpSync(path.join(ROOT, 'dist-preview'), path.join(tmp, 'preview'), { recursiv
   ok((await ev(() => caches.keys())).some(k => k.startsWith('ilpreview-')), 'opening the live app does not remove the preview\'s offline copy');
 
   // ---- Both open offline.
-  await ctx.setOffline(true);
+  await ctx.setOffline(true); offline = true;
   await page.goto(PV); await ready().catch(() => {});
   ok(await ev(() => window.__ironlog && window.__ironlog.ENV === 'preview').catch(() => false), 'the preview opens offline');
   await page.goto(LIVE); await ready().catch(() => {});
   ok(await ev(() => window.__ironlog && window.__ironlog.ENV === 'live').catch(() => false), 'the live app opens offline');
-  await ctx.setOffline(false);
+  await ctx.setOffline(false); offline = false;
 
   // ---- The preview table not created yet: a plain message, and the phone keeps the log.
   fake.previewTable(false);
@@ -160,7 +161,10 @@ fs.cpSync(path.join(ROOT, 'dist-preview'), path.join(tmp, 'preview'), { recursiv
   ok(c3.n === n3 && !c3.ob && /Ironlog is unchanged/.test(c3.toast), 'signed out, it copies the live log kept on this phone, and the first-run pages end', { c3, n3 });
   await ctx3.close();
 
-  ok(!errors.length, 'no page errors (' + errors.join(' | ') + (errors.length ? ' | the page saw: ' + JSON.stringify(await page.evaluate(() => JSON.parse(sessionStorage.getItem('__ilRej') || '[]')).catch(() => 'closed')) : '') + ')');
+  ok(!errors.length, 'no page errors (' + errors.join(' | ') + ')');
+  // What tests/h.js offlineLoad leaves out rests on the page itself seeing no rejection; this holds it to that.
+  const rej = await page.evaluate(() => JSON.parse(sessionStorage.getItem('__ilRej') || '[]'));
+  ok(!rej.length, 'no promise rejection went unhandled in the page, offline or not', rej);
   await browser.close(); await fake.close();
   console.log(fails.length ? `${fails.length} FAILED` : 'ALL PASS');
   process.exit(fails.length ? 1 : 0);

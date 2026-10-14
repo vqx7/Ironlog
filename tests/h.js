@@ -86,6 +86,17 @@ async function touchDriver(page) {
     if (end) window.__ilTouch = null;
   }, [type, x, y]);
 }
+/* A request the network refused while a suite has the browser offline, as
+   WebKit reports it from the service worker: "Unhandled Promise Rejection:
+   TypeError: Load failed" and "Fetch API cannot load http://...", which
+   Playwright hands over as page errors cut at their first colon. The page
+   itself saw no rejection (2026-10-14: every unhandledrejection it heard was
+   kept and the list was empty). In these suites the stand-in Supabase shares
+   the app's origin, so the worker handles its requests; the real Supabase is
+   another origin, which the worker never touches. Chromium reports the same
+   refused loads as "Failed to load resource", which those suites already
+   leave out. Only for a page error heard while the suite has set offline. */
+const offlineLoad = msg => ENGINE === 'webkit' && (msg === 'TypeError: Load failed' || /^\/[\d.]+:\d+\//.test(msg));
 /* The installed build carries a Content Security Policy that allows each
    inline script by its hash and network calls only to the Supabase project
    (r29). A suite that points a copy of the build at the stand-in Supabase, or
@@ -105,4 +116,4 @@ function build(preview) {
   if (process.env.IRONLOG_BUILT === '1') return;
   require('child_process').execFileSync('node', [path.join(__dirname, '..', 'scripts', 'build.js'), ...(preview ? ['--preview'] : [])], { stdio: 'ignore' });
 }
-module.exports = { open, cspFix, build, engine, ENGINE, touchDriver };
+module.exports = { open, cspFix, build, engine, ENGINE, touchDriver, offlineLoad };
