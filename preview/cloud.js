@@ -68,7 +68,7 @@
     // A confirmation code that is wrong, used or expired: Supabase answers all three the same way, so one message (r45 review).
     else if (/otp_expired|token has expired or is invalid/i.test(msg + code)) return Object.assign(new Error('That code is wrong or has expired. Use the newest email, or send a new one.'), { code: 'bad_code' });
     // One email per address a minute: "you can only request this after 42 seconds".
-    else if (/request this after (\d+) seconds?/i.test(msg)) return Object.assign(new Error(`Wait ${msg.match(/after (\d+) seconds?/i)[1]} seconds, then send a new code.`), { code: 'wait' });
+    else if (/request this after (\d+) seconds?/i.test(msg)) return Object.assign(new Error(`Wait ${msg.match(/after (\d+) seconds?/i)[1]} seconds, then try again.`), { code: 'wait' });
     else if (/rate limit|over_email_send_rate_limit|too many/i.test(msg + code) || status === 429) text = 'Too many emails in the last hour. Try again later.';
     else if (/weak_password|password should/i.test(msg + code)) text = msg || 'Choose a longer password.';
     else if (/same_password|should be different/i.test(msg + code)) text = 'Choose a password different from the old one.';
