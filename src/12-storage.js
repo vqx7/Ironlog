@@ -491,7 +491,7 @@ function normalize(s){
         rir:clampN(pl.rir,0,10,1),rest:clampN(pl.rest,0,1800,90),inc:clampN(pl.inc,0,500,5*LB),ss:typeof pl.ss==='string'&&pl.ss?fixId(pl.ss):null,
         ...(pl.jump!=null&&pl.jump!==''&&isNum(+pl.jump)?{jump:Math.min(Math.max(+pl.jump,0),20)}:{})};
       if(plan.repMax<plan.repMin)plan.repMax=plan.repMin;
-      return keepExtra(b,{exId:fixId(b.exId),plan,
+      return keepExtra(b,{...(typeof b.bid==='string'&&b.bid?{bid:fixId(b.bid)}:{}),exId:fixId(b.exId),plan,
         note:typeof b.note==='string'?b.note:'',
         inj:typeof b.inj==='string'&&(MK.includes(b.inj)||JK.includes(b.inj))?b.inj:null,
         hint:typeof b.hint==='string'?b.hint:'',

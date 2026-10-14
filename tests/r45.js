@@ -203,7 +203,8 @@ const PW = 'correct horse 45';
     await B.page.evaluate(() => window.__ironlog.flush()); await wait(300);
     await A.page.evaluate(() => window.__ironlog.sync()); await wait(500);
     const t1 = await toastOf(A); const gone = await A.page.evaluate(() => window.__ironlog.state.draft === null);
-    ok(onB && gone && /discarded on another device/.test(t1), 'a session in progress discarded on the other phone: this one says so', { onB, gone, t1 });
+    // r46: "discarded" was a guess (a finished workout whose session document had not arrived read the same), so this says closed, which is true either way.
+    ok(onB && gone && /closed on another device/.test(t1) && !/discarded/.test(t1), 'a session in progress closed on the other phone: this one says so, without guessing whether it was saved', { onB, gone, t1 });
     await startOnA();
     await B.page.evaluate(() => { const L = window.__ironlog; const d = L.state.draft; d.ex[0].sets[0].r = 8; d.ex[0].sets[0].w = 50; d.ex[0].sets[0].done = true; d._rampAsked = true; d._leftAsked = true; L.ACT.finishNow(); }); await wait(300);
     await B.page.evaluate(() => window.__ironlog.flush()); await wait(300);

@@ -139,8 +139,9 @@ const today=()=>iso(new Date());
 /* One Intl formatter per format, made once: toLocaleDateString builds a new
    one on every call, about a fifth of a Stats render (r46). Same output. */
 const DTF={};const dtf=(k,o)=>DTF[k]||(DTF[k]=new Intl.DateTimeFormat(undefined,o));
-const fmtDate=s=>dtf('d',{month:'short',day:'numeric'}).format(parse(s));
-const fmtDateLong=s=>dtf('l',{weekday:'short',month:'short',day:'numeric',year:'numeric'}).format(parse(s));
+const fmtWith=(k,o,s)=>{const d=parse(s);return isNaN(+d)?'':dtf(k,o).format(d);};
+const fmtDate=s=>fmtWith('d',{month:'short',day:'numeric'},s);
+const fmtDateLong=s=>fmtWith('l',{weekday:'short',month:'short',day:'numeric',year:'numeric'},s);
 // History rows sit under a week header, so the year only shows when it is not this one.
 const fmtDateRow=s=>parse(s).toLocaleDateString(undefined,{weekday:'short',month:'short',day:'numeric',...(s.slice(0,4)===today().slice(0,4)?{}:{year:'numeric'})});
 

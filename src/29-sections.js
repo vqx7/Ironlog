@@ -15,11 +15,13 @@ function bgrip(bi,name){return `<span class="bgrip" role="button" tabindex="0" d
 /* One way to move an exercise in a session: the drag, the arrow keys on its
    handle and the ⋯ menu's Move up and Move down all come here. A superset
    split by the move is undone (its members are no longer next to each
-   other, so the rest timer would never start), and timers that point at a
-   block by its position are dropped, since the position changed (r29). */
+   other, so the rest timer would never start), and a pending fold is dropped
+   because the lifter is rearranging and should not have an exercise fold
+   under them (r29). Nothing here goes stale any more: since r46 the fold,
+   the confirm window and the pending auto-mark hold the exercise itself. */
 function moveBlock(a,b){
   const d=state.draft;if(!d||b<0||b>=d.ex.length||a===b)return false;
-  clearTimeout(foldT);foldT=null;lastAuto=null;
+  clearTimeout(foldT);foldT=null;
   keepOpen(()=>{move(d.ex,a,b);fixSupersets(d.ex.map(x=>x.plan).filter(Boolean));});
   saveNow();return true;
 }
@@ -54,13 +56,13 @@ function orderRun(){
   let moved=false;
   for(const b of q){
     const bi=d.ex.indexOf(b),j=orderAt(b);if(j<0)continue;
-    // Positions that point at blocks follow the move.
+    /* Only the focused field still carries a number, since it is markup; the
+       set waiting to be confirmed, the pending auto-mark and the fold timer
+       all hold the exercise itself now (r46), so the move leaves them alone. */
     const mi=i=>i===bi?j:(i>=j&&i<bi?i+1:i);
-    const la=lastAuto?Object.assign({},lastAuto,{b:mi(lastAuto.b)}):null;
-    if(pendAuto)pendAuto.b=mi(pendAuto.b);
     if(ae&&ae.dataset&&/^\d+$/.test(ae.dataset.b||''))ae.dataset.b=String(mi(+ae.dataset.b));
     if(!moveBlock(bi,j))continue;
-    lastAuto=la;moved=true;
+    moved=true;
   }
   if(!moved||ui.tab!=='today')return;
   rerenderKeepScroll();

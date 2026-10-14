@@ -315,7 +315,7 @@ const nz=v=>noLog()?NIL:v;
    sets; hard sets against the plan stay inside This week. A ring fills,
    which reads faster than a sentence. Tapping it opens This week. */
 function heroRing(w){
-  if(!(w.planDays>0)||isRestWeek(weekStart(today())))return '';
+  if(!(w.planDays>0))return '';
   const r=26,c=2*Math.PI*r,p=Math.max(0,Math.min(1,w.doneDays/w.planDays));
   const pd=`${w.weekly||weekFactor(w.R)===1?'':'about '}${w.planDays}`;
   const lbl=noLog()?`No sessions logged yet; ${pd} planned this week`:`${w.doneDays} of ${pd} sessions this week`;
@@ -336,7 +336,11 @@ function weekStats(){
      (r40, hardCredit). */
   let got=0;for(const x of state.sessions)if(x.date>=cur&&x.date<=addDays(cur,6))for(const b of x.ex){const e=EX(b.exId);for(const q of b.sets)got+=hardCredit(q,e);}
   const tgt=planSetsPerWeek(R,isDeloadWeek());
-  return {R,weekly,planDays,doneDays,got,tgt,pct:tgt>0?Math.min(100,got/tgt*100):0,cardioMin,cardioN};
+  /* A rest week is said once, here, so the ring, the card and its body all
+     follow (r46: the ring and the title were given their own test for it and
+     the body kept saying "0 hard sets logged of 145 planned" underneath). */
+  const rest=isRestWeek(cur);
+  return {R,weekly,planDays:rest?0:planDays,doneDays,got,tgt:rest?0:tgt,pct:!rest&&tgt>0?Math.min(100,got/tgt*100):0,cardioMin,cardioN,rest};
 }
 function cycleStrip(R){
   const cs=cycleState(R);
@@ -369,6 +373,9 @@ function weekBody(w){
   if(freeMode())return `${tog}<div class="hrow" style="margin:5px 0 0"><p class="small muted" style="margin:0" id="wkSets">${noLog()?'Nothing logged yet.':`${r1(w.got)} hard sets this week.`}</p>${helpBtn('wk')}</div>
   ${w.cardioMin?`<p class="small" style="margin:5px 0 0">Cardio and mobility: ${w.cardioMin} min in ${w.cardioN} entr${w.cardioN===1?'y':'ies'}</p>`:''}${liftedLine()}
   ${helpText('wk','Each set counts once; a set at RIR 4 or more is not hard and does not count. Muscle targets are on the Muscle map and in Stats.')}`;
+  if(w.rest)return `${tog}<div class="hrow" style="margin:5px 0 0"><p class="small muted" style="margin:0" id="wkSets">Rest week. ${w.got?`${r1(w.got)} hard sets logged.`:'Nothing planned.'}</p>${helpBtn('wk')}</div>
+  ${w.cardioMin?`<p class="small" style="margin:5px 0 0">Cardio and mobility: ${w.cardioMin} min in ${w.cardioN} entr${w.cardioN===1?'y':'ies'}</p>`:''}${liftedLine()}
+  ${helpText('wk','A rest week you marked in Settings. It does not count as missed: your averages, streak, and adherence skip it.')}`;
   return `${tog}${w.weekly?'':cycleStrip(w.R)}
   <div class="band" data-tip="${noLog()?`${w.tgt} hard sets planned`:`${w.got} hard sets logged of ${w.tgt} planned`}"><div class="fill prog" style="width:${w.pct}%"></div></div>
   ${w.cardioMin?`<p class="small" style="margin:5px 0 0">Cardio and mobility: ${w.cardioMin} min in ${w.cardioN} entr${w.cardioN===1?'y':'ies'}</p>`:''}
@@ -386,9 +393,8 @@ function weekCard(){
     const title=ym===cur?'This month':new Date(ym+'-15T12:00:00').toLocaleDateString(undefined,{month:'long',year:'numeric'});
     return sec({sk:'today:week',key:'week',title,sub:`${n} session${n===1?'':'s'}`,body});
   }
-  if(freeMode())return sec({sk:'today:week',key:'week',title:'This week',sub:noLog()?'Nothing logged yet':`${w.doneDays} session${w.doneDays===1?'':'s'}`,body});
-  // A rest week has nothing to hit (r46: it read 0 of 4 beside the coach's Rest week).
-  if(isRestWeek(weekStart(today())))return sec({sk:'today:week',key:'week',title:'This week',sub:`Rest week${w.doneDays?`, ${w.doneDays} session${w.doneDays===1?'':'s'}`:''}`,body});
+  if(freeMode())return sec({sk:'today:week',key:'week',title:'This week',sub:w.rest?`Rest week${w.doneDays?`, ${w.doneDays} session${w.doneDays===1?'':'s'}`:''}`:noLog()?'Nothing logged yet':`${w.doneDays} session${w.doneDays===1?'':'s'}`,body});
+  if(w.rest)return sec({sk:'today:week',key:'week',title:'This week',sub:`Rest week${w.doneDays?`, ${w.doneDays} session${w.doneDays===1?'':'s'}`:''}`,body});
   return sec({sk:'today:week',key:'week',title:'This week',sub:noLog()?`${w.weekly||weekFactor(w.R)===1?'':'~'}${w.planDays} sessions planned`:`${w.doneDays} of ${w.weekly||weekFactor(w.R)===1?'':'~'}${w.planDays} sessions`,body});
 }
 /* Quick answers before a session starts: is this lift moving, and what to do. */
@@ -451,7 +457,7 @@ function newBlock(exId,plan,opts){
   const sg=suggest(exId,plan,opts);
   // sw is the load the app suggested, kept so a later refresh can tell a row
   // still on the suggestion from one the lifter typed (refreshBlock).
-  return {exId,plan:{...plan},note:'',lastNote:lastNoteOf(exId,opts&&opts.before),inj:sg.inj||null,hint:sg.text,last:sg.last,prev:sg.prev||undefined,prevOff:sg.prevOff||undefined,target:sg.target,tgt:sg.tgt,easier:sg.easier||null,lastR:sg.lastR,basis:sg.basis||undefined,sw:sg.w==null?null:sg.w,sets:Array.from({length:+plan.sets||3},()=>({w:fillLoads()?sg.w:null,r:null,rir:null,warm:false,drop:false,done:false}))};
+  return {bid:uid(),exId,plan:{...plan},note:'',lastNote:lastNoteOf(exId,opts&&opts.before),inj:sg.inj||null,hint:sg.text,last:sg.last,prev:sg.prev||undefined,prevOff:sg.prevOff||undefined,target:sg.target,tgt:sg.tgt,easier:sg.easier||null,lastR:sg.lastR,basis:sg.basis||undefined,sw:sg.w==null?null:sg.w,sets:Array.from({length:+plan.sets||3},()=>({w:fillLoads()?sg.w:null,r:null,rir:null,warm:false,drop:false,done:false}))};
 }
 const DEFAULT_PLAN={sets:3,repMin:8,repMax:12,rir:1,rest:90,inc:5*LB};
 /* The Last column (r44, V: "what I did last time next to what I'm about to
@@ -629,8 +635,9 @@ function rirClose(){const el=document.querySelector('.rirstrip');if(!el)return;c
 let pendAuto=null;
 function autoPending(){
   const p=pendAuto;pendAuto=null;if(!p||!state.draft||!state.settings.autoDone)return;
-  const s=state.draft.ex[p.b]&&state.draft.ex[p.b].sets[p.s];if(!s||s.done||!(+s.r>0))return;
-  lastAuto={b:p.b,s:p.s,t:Date.now()};setDone(p.b,p.s,true);
+  const bi=blkIdx(p.b);if(bi<0)return;
+  const s=state.draft.ex[bi].sets[p.s];if(!s||s.done||!(+s.r>0))return;
+  lastAuto={b:blkRef(bi),s:p.s,t:Date.now()};setDone(bi,p.s,true);
 }
 function rirShowStrip(bi,si){
   rirClose();const btn=document.querySelector(`.rirb[data-b="${bi}"][data-s="${si}"]`);const s=state.draft&&state.draft.ex[bi]&&state.draft.ex[bi].sets[si];

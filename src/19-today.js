@@ -451,6 +451,8 @@ function recentLighter(days){
   return d;
 }
 // Counted PRs only (r32): the ones marked big.
+// PRs worth announcing within any window. The screens use recent4w below; the
+// suites reach for this one to check a window of their own.
 function prsWithin(days){const from=addDays(today(),-days);return IDX().prs.filter(x=>x.date>=from&&x.big);}
 /* The last 28 days, today included, and the 28 before: the one window for
    sessions and PRs on Today, the Stats tiles, and Recent PRs (r46, from the

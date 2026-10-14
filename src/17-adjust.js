@@ -149,12 +149,26 @@ let foldT=null;
 // True while an exercise is being dragged in a session (r29): renders and
 // automatic folds wait, so the drag is not torn out from under the finger.
 let blockDrag=false;
-function autoFold(bi){
+/* Pointing at an exercise in the session over time (r46). Neither handle on
+   its own survives: a place changes whenever exercises move, and the object
+   is replaced by normalize, which runs on every sync, Undo, cross-tab write
+   and restore. The id made with the exercise survives both, so it leads, with
+   the object and then the place behind it for a session started on a build
+   before this one, which has no id. */
+function blkRef(bi){const d=state.draft;const b=d&&d.ex[bi];return b?{bid:b.bid||null,b,i:bi}:null;}
+function blkIdx(r){
+  const d=state.draft;if(!d||!r||!r.b)return -1;
+  if(r.bid)return d.ex.findIndex(x=>x.bid===r.bid);
+  const j=d.ex.indexOf(r.b);if(j>=0)return j;
+  const k=d.ex[r.i];return k&&k.exId===r.b.exId?r.i:-1;
+}
+function autoFold(ref){
   foldT=null;if(blockDrag)return;const d=state.draft;
   if(!d||d.editingId||ui.modal||ui.tab!=='today')return;
-  const b=d.ex[bi];if(!b||!blockDone(b)||blkIsOpen(bi,b))return;
+  const bi=blkIdx(ref);const b=bi<0?null:d.ex[bi];
+  if(!b||!blockDone(b)||blkIsOpen(bi,b))return;
   // Any open effort strip waits the fold, not only this exercise's (r34.2: the rebuild closed a strip just opened on the next one).
-  if(document.querySelector('.rirstrip')){foldT=setTimeout(()=>autoFold(bi),1500);return;}
+  if(document.querySelector('.rirstrip')){foldT=setTimeout(()=>autoFold(ref),1500);return;}
   let nx=d.ex.findIndex((x,i)=>i>bi&&!blockDone(x));if(nx<0)nx=d.ex.findIndex(x=>!blockDone(x));
   const a0=nx>=0?document.getElementById('blk-'+nx):null;const top0=a0?a0.getBoundingClientRect().top:null;
   rerenderKeepScroll();

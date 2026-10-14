@@ -78,12 +78,75 @@ const CLOCK = '2026-10-14T10:00:00';
     await P.ctx.close();
   }
 
-  // ---- 4. Sync: Finish sends the session before the emptied draft; an edit replaced from another device says so.
+  // ---- 4. The confirm window and the pending fold hold the exercise, not its place in the list.
+  // On r45 a move cleared them, so the checkmark tapped right after an auto-marked set unticked it.
   {
-    const store = new Map(); const writes = [];
+    const P = await open('index.html', { browser, clock: CLOCK });
+    const r = await P.page.evaluate(async () => { const L = window.__ironlog; const w = ms => new Promise(r => setTimeout(r, ms));
+      L.state.settings.onboarded = true; L.state.settings.autoDone = true; L.makeDemo(); L.saveNow(); L.render();
+      document.querySelector('[data-act="startSession"]').click(); await w(100);
+      const d = L.state.draft; d.ex.forEach(b => { if (b.plan) delete b.plan.ss; }); L.saveNow(); L.render();
+      const blk = d.ex[2]; const ids = () => d.ex.map(b => b.exId);
+      // Auto-mark set 1 of the third exercise by typing reps and leaving.
+      const inp = document.querySelector('[data-f="r"][data-b="2"][data-s="0"]'); inp.value = '8';
+      inp.dispatchEvent(new Event('input', { bubbles: true })); inp.dispatchEvent(new Event('change', { bubbles: true }));
+      await w(2400); // the automatic reorder also runs here
+      const movedTo = d.ex.indexOf(blk); const after = ids();
+      // Now move it again by hand, then tap its checkmark: it must confirm, not untick.
+      L.ACT.bDown({ dataset: { b: String(movedTo) } }); await w(150);
+      const at = d.ex.indexOf(blk);
+      document.querySelector(`[data-act="sDone"][data-b="${at}"][data-s="0"]`).click(); await w(150);
+      return { ticked: blk.sets[0].done, reps: blk.sets[0].r, movedTo, at, after: after.slice(0, 3) }; });
+    ok(r.ticked && r.reps === 8, 'after an automatic reorder and a manual move, the checkmark still confirms the auto-marked set instead of unticking it', r);
+    ok(!P.errors.length, 'no page errors (identity)', P.errors);
+    await P.ctx.close();
+  }
+
+  // ---- 5. The confirm window and the pending auto-mark survive both a move and a rebuild.
+  // A position survives a rebuild but not a move (r45's bug, section 4); the exercise object survives a
+  // move but not a rebuild, since normalize() replaces every one of them on each sync, Undo, cross-tab
+  // write and restore. The id each exercise now carries survives both, which is what these check.
+  {
+    const P = await open('index.html', { browser, clock: CLOCK });
+    const r = await P.page.evaluate(async () => { const L = window.__ironlog; const w = ms => new Promise(r => setTimeout(r, ms));
+      L.state.settings.onboarded = true; L.state.settings.autoDone = true; L.makeDemo(); L.saveNow(); L.render();
+      document.querySelector('[data-act="startSession"]').click(); await w(150);
+      const d0 = L.state.draft; d0.ex.forEach(b => { if (b.plan) delete b.plan.ss; }); L.saveNow(); L.render();
+      const ids = d0.ex.map(b => b.bid);
+      // a. Auto-mark a set, rebuild the session (what Undo and a sync both do), then tap its checkmark.
+      const inp = document.querySelector('[data-f="r"][data-b="0"][data-s="0"]'); inp.value = '8';
+      inp.dispatchEvent(new Event('input', { bubbles: true })); inp.dispatchEvent(new Event('change', { bubbles: true }));
+      await w(300);
+      L.ACT.bDel({ dataset: { b: '3' } }); await w(150); L.ACT.undo(); await w(250);
+      const i = L.state.draft.ex.findIndex(b => b.sets[0] && b.sets[0].done);
+      document.querySelector(`[data-act="sDone"][data-b="${i}"][data-s="0"]`).click(); await w(150);
+      const confirmKept = L.state.draft.ex[i].sets[0].done;
+      // b. A pending auto-mark waiting on the effort strip, with a rebuild in between: the set must still tick.
+      L.state.draft = null; L.saveNow(); L.ui.tab = 'today'; L.render(); document.querySelector('[data-act="startSession"]').click(); await w(150);
+      const d = L.state.draft; d.ex.forEach(b => { if (b.plan) delete b.plan.ss; }); L.saveNow(); L.render();
+      const r2 = document.querySelector('[data-f="r"][data-b="1"][data-s="0"]'); r2.value = '9';
+      r2.dispatchEvent(new Event('input', { bubbles: true }));
+      const box = document.querySelector('.rirb[data-b="1"][data-s="0"]');
+      box.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true })); box.click(); await w(120);
+      r2.dispatchEvent(new Event('change', { bubbles: true })); await w(120);
+      L.state = L.normalize(L.state); L.invalidate();   // a sync lands while the strip is open
+      const pick = document.querySelector('[data-act="rirPick"][data-v="1"]'); if (pick) pick.click(); await w(400);
+      const b1 = L.state.draft.ex[1];
+      return { ids: ids.every(x => typeof x === 'string' && x), confirmKept, pendDone: b1.sets[0].done, pendReps: b1.sets[0].r };
+    });
+    ok(r.ids, 'every exercise in a session carries an id of its own');
+    ok(r.confirmKept, 'the checkmark still confirms an auto-marked set after the session was rebuilt (an Undo, a sync)', r);
+    ok(r.pendDone && r.pendReps === 9, 'a set waiting on the effort strip is still ticked when a sync rebuilds the session first', r);
+    ok(!P.errors.length, 'no page errors (identity through a rebuild)', P.errors);
+    await P.ctx.close();
+  }
+
+  // ---- 6. Sync: Finish sends the session before the emptied draft; an edit replaced from another device says so.
+  {
+    const store = new Map(); const writes = []; let hold = false;
     const cloudSetup = async (ctx, page) => {
       await page.exposeFunction('__dbGet', p => store.has(p) ? store.get(p) : null);
-      await page.exposeFunction('__dbSet', (p, v) => { store.set(p, v); writes.push(p.split('/').pop()); return true; });
+      await page.exposeFunction('__dbSet', (p, v) => { const id = p.split('/').pop(); writes.push(id); if (hold && /^s-/.test(id)) return true; store.set(p, v); return true; });
       await page.exposeFunction('__dbList', p => JSON.stringify([...store.entries()].filter(([k]) => k.startsWith(p + '/') && !k.slice(p.length + 1).includes('/')).map(([k, v]) => [k.slice(p.length + 1), v])));
       await page.addInitScript(() => {
         window.claude = { use: async k => {
@@ -112,6 +175,16 @@ const CLOCK = '2026-10-14T10:00:00';
     await A.page.evaluate(() => window.__ironlog.sync()); await wait(500);
     const t = await A.page.evaluate(() => ({ toast: document.getElementById('toast').innerText, ed: !!(window.__ironlog.state.draft && window.__ironlog.state.draft.editingId) }));
     ok(/edit in progress was replaced by the workout on another device/.test(t.toast) && !t.ed, 'an edit replaced by a workout started on the other phone says so', t);
+    // A finished workout whose session document never arrives (a failed write): never called discarded.
+    await A.page.evaluate(() => { const L = window.__ironlog; L.state.draft = null; L.saveNow(); L.ui.tab = 'today'; L.render(); document.querySelector('[data-act="startSession"]').click(); }); await wait(100);
+    await A.page.evaluate(() => window.__ironlog.flush()); await wait(300); await B.page.evaluate(() => window.__ironlog.sync()); await wait(500);
+    hold = true;
+    await B.page.evaluate(() => { const L = window.__ironlog; const d = L.state.draft; d.ex[0].sets[0].r = 8; d.ex[0].sets[0].w = 50; d.ex[0].sets[0].done = true; d._rampAsked = true; d._leftAsked = true; L.ACT.finishNow(); }); await wait(200);
+    await B.page.evaluate(() => window.__ironlog.flush()); await wait(400);
+    await A.page.evaluate(() => window.__ironlog.sync()); await wait(500);
+    const t2 = await A.page.evaluate(() => ({ toast: document.getElementById('toast').innerText, n: window.__ironlog.state.sessions.length }));
+    ok(/closed on another device/.test(t2.toast) && !/discarded|saved/.test(t2.toast), 'a workout finished on the other phone whose session document never arrived is called closed, never discarded or saved', t2);
+    hold = false;
     ok(!A.errors.length && !B.errors.length, 'no page errors (two phones)', [...A.errors, ...B.errors]);
     await A.ctx.close(); await B.ctx.close();
   }
