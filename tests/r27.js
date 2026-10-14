@@ -113,8 +113,7 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
     await ev(() => document.querySelectorAll('#view > details').forEach(d => { d.open = false; }));
     const gb = await page.locator(`#view > [data-mkey="${t0[1]}"] .sgrip`).first().boundingBox();
     const tb = await page.locator(`#view > [data-mkey="${t0[4]}"]`).first().boundingBox();
-    const cdp = await page.context().newCDPSession(page);
-    const tp = (type, x, y) => cdp.send('Input.dispatchTouchEvent', { type, touchPoints: type === 'touchEnd' ? [] : [{ x, y }] });
+    const tp = await require('./h').touchDriver(page);
     const x0 = gb.x + gb.width / 2, y0 = gb.y + gb.height / 2, y1 = tb.y + tb.height - 5;
     await tp('touchStart', x0, y0); await wait(50);
     for (let k = 1; k <= 20; k++) { await tp('touchMove', x0, y0 + (y1 - y0) * k / 20); await wait(25); }

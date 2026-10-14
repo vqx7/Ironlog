@@ -108,8 +108,17 @@ const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log
   await A.page.tap(rs(1, 2)); await A.page.waitForTimeout(80);
   await blank(); await A.page.waitForTimeout(150);
   g = await row(1, 2);
-  ok(g.done && g.r === g.last, 'a tap on blank space after the grey reps ticks the set', g);
+  /* WebKit, the engine of every iPhone browser, moves focus only to what can
+     take it, so a tap on blank text leaves the reps field focused: nothing
+     is ticked until the lifter goes on (found
+     2026-10-14, the first WebKit run). There the check is that the field is
+     still focused with nothing ticked, and that going on to the next set's
+     reps then takes the grey number. */
+  const webkit = require('./h').ENGINE === 'webkit';
+  if (webkit) { const f = await ev(s => document.activeElement === document.querySelector(s), rs(1, 2)); ok(f && !g.done, 'WebKit: a tap on blank space leaves the grey reps field focused, nothing ticked', { focused: f, ...g }); }
+  else ok(g.done && g.r === g.last, 'a tap on blank space after the grey reps ticks the set', g);
   await A.page.tap(rs(1, 3)).catch(() => {}); await A.page.waitForTimeout(80);
+  if (webkit) { g = await row(1, 2); ok(g.done && g.r === g.last, 'WebKit: going on to the next set\'s reps takes the grey number for the set left', g); }
   const has3 = await ev(() => !!document.querySelector('.sg input[data-f="r"][data-b="1"][data-s="3"]'));
   if (has3) {
     await A.page.tap('[data-act="sDone"][data-b="1"][data-s="3"]'); await A.page.waitForTimeout(250);

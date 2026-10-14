@@ -43,6 +43,8 @@ async function open(file, opts = {}) {
        installed app is served from one https origin. So in WebKit the
        standalone build's own files are served from disk with the header,
        as its own origin would serve them. */
+    // What the page made itself (an object URL for a picked screenshot, a data URL) is its own, never another site's.
+    if (u.startsWith('blob:') || u.startsWith('data:')) return r.continue();
     if (u.startsWith('file:')) {
       if (ENGINE !== 'webkit' || r.request().isNavigationRequest()) return r.continue();
       let f; try { f = require('url').fileURLToPath(u); } catch (e) { return r.continue(); }
@@ -59,6 +61,30 @@ async function open(file, opts = {}) {
   await page.waitForFunction(() => window.__libs && window.__libs.chart && window.__libs.sortable);
   await page.evaluate(() => document.fonts.ready);
   return { browser, ctx, page, errors };
+}
+/* A finger on the screen: tp('touchStart' | 'touchMove' | 'touchEnd', x, y),
+   in viewport pixels. Chromium takes real touches through its DevTools
+   protocol. WebKit's Playwright driver can only tap, so there the touch is
+   built the way Playwright builds one for WebKit (document.createTouch, as
+   iOS has it) and sent to the element under the first touch, which keeps
+   every later move and the end, as a real touch does. On a WebKit page
+   SortableJS listens to these touch events, since it never uses pointer
+   events in Safari: the path an iPhone takes, where Chromium takes the
+   pointer one. */
+async function touchDriver(page) {
+  if (ENGINE === 'chromium') {
+    const cdp = await page.context().newCDPSession(page);
+    return (type, x, y) => cdp.send('Input.dispatchTouchEvent', { type, touchPoints: type === 'touchEnd' ? [] : [{ x, y }] });
+  }
+  return (type, x, y) => page.evaluate(([type, x, y]) => {
+    if (type === 'touchStart') window.__ilTouch = document.elementFromPoint(x, y) || document.body;
+    const target = window.__ilTouch; if (!target) return;
+    const se = document.scrollingElement || document.documentElement;
+    const t = document.createTouch(window, target, 1, x + se.scrollLeft, y + se.scrollTop, x, y);
+    const end = type === 'touchEnd', one = document.createTouchList(t), none = document.createTouchList();
+    target.dispatchEvent(new TouchEvent(type.toLowerCase(), { bubbles: true, cancelable: true, composed: true, view: window, touches: end ? none : one, targetTouches: end ? none : one, changedTouches: one }));
+    if (end) window.__ilTouch = null;
+  }, [type, x, y]);
 }
 /* The installed build carries a Content Security Policy that allows each
    inline script by its hash and network calls only to the Supabase project
@@ -79,4 +105,4 @@ function build(preview) {
   if (process.env.IRONLOG_BUILT === '1') return;
   require('child_process').execFileSync('node', [path.join(__dirname, '..', 'scripts', 'build.js'), ...(preview ? ['--preview'] : [])], { stdio: 'ignore' });
 }
-module.exports = { open, cspFix, build, engine, ENGINE };
+module.exports = { open, cspFix, build, engine, ENGINE, touchDriver };
