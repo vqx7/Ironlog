@@ -8,7 +8,7 @@
 //    unknown is byte for byte what r42 made of it.
 // 2. Estimated minutes follow your own sessions (item 279): the median of
 //    actual over model for up to 8 timed sessions in 84 days, from 3 on.
-const { open } = require('./h'); const { chromium } = require('playwright');
+const { open } = require('./h'); const { engine } = require('./h');
 const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log('FAIL', m, x === undefined ? '' : JSON.stringify(x).slice(0, 400)); } else console.log('ok  ', m); };
 const CLOCK = '2026-10-13T10:00:00';
 const store = new Map();
@@ -50,7 +50,7 @@ const PATHS = (s, k) => {
 };
 
 (async () => {
-  const browser = await chromium.launch();
+  const browser = await engine.launch();
 
   // ---------- 1. Unknown fields kept ----------
   const P = await open('index.html', { browser, clock: CLOCK });

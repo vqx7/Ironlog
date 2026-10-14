@@ -4,7 +4,7 @@
 // browser; Not now hides it on that device; on Today it sits under the
 // account line (item 55); nothing shows in the source file.
 const fs = require('fs'); const os = require('os'); const path = require('path');
-const { chromium } = require('playwright');
+const { engine } = require('./h');
 const { start } = require('./fake-supabase');
 const { open } = require('./h');
 const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log('FAIL', m, x !== undefined ? JSON.stringify(x) : ''); } else console.log('ok  ', m); };
@@ -19,7 +19,7 @@ const IPHONE_CHROME = 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) Ap
   const html = fs.readFileSync(path.join(tmp, 'index.html'), 'utf8');
   fs.writeFileSync(path.join(tmp, 'index.html'), require('./h').cspFix(html.replace(/"url":"https:\/\/[a-z0-9]+\.supabase\.co"/, `"url":"${fake.base}"`), fake.base));
   const APP = fake.base + '/ironlog/';
-  const browser = await chromium.launch();
+  const browser = await engine.launch();
   const all = [];
   async function dev(opts = {}) {
     const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true, serviceWorkers: 'block', userAgent: opts.ua });

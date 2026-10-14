@@ -1137,8 +1137,12 @@ const addDays=(s,n)=>{const d=parse(s);d.setDate(d.getDate()+n);return iso(d);};
 const weekStart=s=>{const d=parse(s);d.setDate(d.getDate()-((d.getDay()+6)%7));return iso(d);};
 const daysBetween=(a,b)=>Math.round((parse(b)-parse(a))/86400000);
 const today=()=>iso(new Date());
-const fmtDate=s=>parse(s).toLocaleDateString(undefined,{month:'short',day:'numeric'});
-const fmtDateLong=s=>parse(s).toLocaleDateString(undefined,{weekday:'short',month:'short',day:'numeric',year:'numeric'});
+/* One Intl formatter per format, made once: toLocaleDateString builds a new
+   one on every call, about a fifth of a Stats render (r46). Same output. */
+const DTF={};const dtf=(k,o)=>DTF[k]||(DTF[k]=new Intl.DateTimeFormat(undefined,o));
+const fmtWith=(k,o,s)=>{const d=parse(s);return isNaN(+d)?'':dtf(k,o).format(d);};
+const fmtDate=s=>fmtWith('d',{month:'short',day:'numeric'},s);
+const fmtDateLong=s=>fmtWith('l',{weekday:'short',month:'short',day:'numeric',year:'numeric'},s);
 // History rows sit under a week header, so the year only shows when it is not this one.
 const fmtDateRow=s=>parse(s).toLocaleDateString(undefined,{weekday:'short',month:'short',day:'numeric',...(s.slice(0,4)===today().slice(0,4)?{}:{year:'numeric'})});
 
@@ -1597,7 +1601,7 @@ if(ENV==='preview')document.documentElement.dataset.env='preview';
 const HAD_LOG=(()=>{try{return localStorage.getItem(KEY)!=null;}catch(e){return false;}})();
 /* Shown in Settings, in diagnostics and in backups, so a bug report can be
    matched to the exact build. */
-const APP_VERSION='2026.10.13-r45';
+const APP_VERSION='2026.10.14-r46';
 /* The logo (r25): an upright dumbbell that is also the I of Ironlog. Same
    numbers as scripts/icons.py, which draws the app icons. */
 const MARK_SVG='<svg class="mark" viewBox="-242 -378 484 756" aria-hidden="true" focusable="false"><rect class="mk-h" x="-30" y="-300" width="60" height="600" rx="14"/><rect class="mk-h" x="-80" y="-192" width="160" height="32" rx="12"/><rect class="mk-h" x="-80" y="160" width="160" height="32" rx="12"/><rect class="mk-p" x="-240" y="-376" width="480" height="92" rx="30"/><rect class="mk-p" x="-190" y="-270" width="380" height="66" rx="26"/><rect class="mk-p" x="-190" y="204" width="380" height="66" rx="26"/><rect class="mk-p" x="-240" y="284" width="480" height="92" rx="30"/></svg>';
@@ -2074,7 +2078,7 @@ function normalize(s){
         rir:clampN(pl.rir,0,10,1),rest:clampN(pl.rest,0,1800,90),inc:clampN(pl.inc,0,500,5*LB),ss:typeof pl.ss==='string'&&pl.ss?fixId(pl.ss):null,
         ...(pl.jump!=null&&pl.jump!==''&&isNum(+pl.jump)?{jump:Math.min(Math.max(+pl.jump,0),20)}:{})};
       if(plan.repMax<plan.repMin)plan.repMax=plan.repMin;
-      return keepExtra(b,{exId:fixId(b.exId),plan,
+      return keepExtra(b,{...(typeof b.bid==='string'&&b.bid?{bid:fixId(b.bid)}:{}),exId:fixId(b.exId),plan,
         note:typeof b.note==='string'?b.note:'',
         inj:typeof b.inj==='string'&&(MK.includes(b.inj)||JK.includes(b.inj))?b.inj:null,
         hint:typeof b.hint==='string'?b.hint:'',
@@ -2418,10 +2422,21 @@ function resyncLocalH(){try{const ch=chunksOf(state);cloud.localH={};for(const i
 function draftNote(prev){
   if(!prev||state.draft&&state.draft.id===prev.id)return;
   /* Only called when the draft document itself came from the cloud, so a
-     Finish or Discard made here during a sync is never put on another device. */
-  if(prev.editingId){if(!state.draft)toast('The edit in progress was closed on another device.');return;}
+     Finish or Discard made here during a sync is never put on another device.
+     It says what it can see, and no more: the session it became, the workout
+     that took its place, or just that it is closed. Whether a workout we
+     cannot see was finished or discarded is not recorded anywhere, and the
+     other phone's session document may simply not have arrived (a weak
+     signal, a failed write), so "discarded" was a guess that came out wrong
+     on a save that did not upload (r46). The draft goes up last, so in the
+     ordinary case the session is already here and this says saved. */
+  if(prev.editingId){const d=state.draft;
+    if(!d)toast('The edit in progress was closed on another device.');
+    else if(d.editingId){const s=state.sessions.find(x=>x.id===d.editingId);toast(s?`Now editing ${s.dayName||'a session'}, ${fmtDate(s.date)}, opened on another device.`:'A different saved session was opened for editing on another device.');}
+    else toast('The edit in progress was replaced by the workout on another device.');
+    return;}
   const sid=prev.id;
-  toast(state.sessions.some(s=>s.id===sid)?'The workout in progress was saved on another device.':state.draft?'The workout in progress was replaced by the one on another device.':'The workout in progress was discarded on another device.');
+  toast(state.sessions.some(s=>s.id===sid)?'The workout in progress was saved on another device.':state.draft?'The workout in progress was replaced by the one on another device.':'The workout in progress was closed on another device.');
 }
 function conflictNote(stat){if(stat.conflicts){log('sync-conflict',`${stat.conflicts} record(s) edited on two devices; kept the later edit`);toast(`${stat.conflicts} item${stat.conflicts===1?' was':'s were'} edited on two devices. The later edit was kept.`);}}
 /* A short lease on a lock document so two devices do not interleave their
@@ -2456,6 +2471,10 @@ async function cloudFlush(){
     if(m&&!m.b&&m.h===h){m.b=baseOf(id,data);backfilled=true;}
     if(!m||m.h!==h)todo.push({id,json,h});}
   if(backfilled)saveMeta();
+  /* The draft goes up last (r46, the r45 QC): Finish empties it and adds the
+     session, and written first, a device pulling in between saw the workout
+     gone and no session, and said it was discarded. */
+  todo.sort((a,b)=>(a.id==='draft')-(b.id==='draft'));
   if(!todo.length){if(cloud.status!=='synced'){cloud.last=Date.now();saveMeta();setCloud('synced');}return;}
   setCloud('saving');
   try{
@@ -5114,12 +5133,26 @@ let foldT=null;
 // True while an exercise is being dragged in a session (r29): renders and
 // automatic folds wait, so the drag is not torn out from under the finger.
 let blockDrag=false;
-function autoFold(bi){
+/* Pointing at an exercise in the session over time (r46). Neither handle on
+   its own survives: a place changes whenever exercises move, and the object
+   is replaced by normalize, which runs on every sync, Undo, cross-tab write
+   and restore. The id made with the exercise survives both, so it leads, with
+   the object and then the place behind it for a session started on a build
+   before this one, which has no id. */
+function blkRef(bi){const d=state.draft;const b=d&&d.ex[bi];return b?{bid:b.bid||null,b,i:bi}:null;}
+function blkIdx(r){
+  const d=state.draft;if(!d||!r||!r.b)return -1;
+  if(r.bid)return d.ex.findIndex(x=>x.bid===r.bid);
+  const j=d.ex.indexOf(r.b);if(j>=0)return j;
+  const k=d.ex[r.i];return k&&k.exId===r.b.exId?r.i:-1;
+}
+function autoFold(ref){
   foldT=null;if(blockDrag)return;const d=state.draft;
   if(!d||d.editingId||ui.modal||ui.tab!=='today')return;
-  const b=d.ex[bi];if(!b||!blockDone(b)||blkIsOpen(bi,b))return;
+  const bi=blkIdx(ref);const b=bi<0?null:d.ex[bi];
+  if(!b||!blockDone(b)||blkIsOpen(bi,b))return;
   // Any open effort strip waits the fold, not only this exercise's (r34.2: the rebuild closed a strip just opened on the next one).
-  if(document.querySelector('.rirstrip')){foldT=setTimeout(()=>autoFold(bi),1500);return;}
+  if(document.querySelector('.rirstrip')){foldT=setTimeout(()=>autoFold(ref),1500);return;}
   let nx=d.ex.findIndex((x,i)=>i>bi&&!blockDone(x));if(nx<0)nx=d.ex.findIndex(x=>!blockDone(x));
   const a0=nx>=0?document.getElementById('blk-'+nx):null;const top0=a0?a0.getBoundingClientRect().top:null;
   rerenderKeepScroll();
@@ -5358,6 +5391,7 @@ function timerResume(){
 }
 /* One place that marks a set done or not done, so the checkmark and auto-done
    paths cannot drift apart. The rest timer starts here only in Auto mode. */
+// The set waiting to be confirmed, held through blkRef, so neither a move nor a rebuild points it at another exercise (r46).
 let lastAuto=null;
 /* Reps far past anything logged on the lift and its range (a typo: 105 for
    10) are asked about before they count (r32, second check: 100 x 105 was
@@ -5393,7 +5427,7 @@ function setDone(bi,si,val){
   // on the set's RIR box opens it. A blank RIR is fine: see rirSettings().
   const askRir=val&&state.settings.rirAsk===true&&!s.warm&&s.rir==null&&rirShow(EX(b.exId))&&!!document.querySelector(`.rirb[data-b="${bi}"][data-s="${si}"]`);
   if(askRir)rirShowStrip(bi,si);else if(!val)rirClose();
-  if(val&&!askRir&&!state.draft.editingId&&blockDone(b))foldT=setTimeout(()=>autoFold(bi),1200);
+  if(val&&!askRir&&!state.draft.editingId&&blockDone(b)){const rf=blkRef(bi);foldT=setTimeout(()=>autoFold(rf),1200);}
   // The first set ticked on an exercise below untouched ones moves it up (r45).
   if(val&&b.sets.filter(x=>x.done).length===1&&orderAt(b)>=0)orderSoon(b);
   saveNow();
@@ -5914,7 +5948,8 @@ const fmtBig=kg=>Math.round(toD(kg)).toLocaleString();
 // Tile subtitles only: 295,403 becomes 295k so it fits a small phone.
 const fmtK=kg=>{const v=Math.round(toD(kg));return v>=10000?Math.round(v/1000)+'k':v.toLocaleString();};
 // Sessions in the week, not days (r34): two plan days done on one day are two of the week's sessions.
-function weekSessions(ws){const end=addDays(ws,6);let n=0;for(const x of state.sessions)if(x.date>=ws&&x.date<=end)n++;return n;}
+// Counted once per change and kept with the analytics, as weekRoutine's are (r46: the streak scanned every session for each of 104 weeks, twice a render).
+function weekSessions(ws){const I=IDX();if(!I.weekN){I.weekN={};for(const x of state.sessions){const w=weekStart(x.date);I.weekN[w]=(I.weekN[w]||0)+1;}}return I.weekN[ws]||0;}
 /* Planned hard sets (r27). A planned set counts only if its target RIR
    would make it hard (3 or less, or every set when RIR is off), the same test
    as a logged set; a plan at RIR 4 used to set a weekly target that logging
@@ -5974,7 +6009,19 @@ function recentLighter(days){
   return d;
 }
 // Counted PRs only (r32): the ones marked big.
+// PRs worth announcing within any window. The screens use recent4w below; the
+// suites reach for this one to check a window of their own.
 function prsWithin(days){const from=addDays(today(),-days);return IDX().prs.filter(x=>x.date>=from&&x.big);}
+/* The last 28 days, today included, and the 28 before: the one window for
+   sessions and PRs on Today, the Stats tiles, and Recent PRs (r46, from the
+   r45 QC: 30, 28, and 14 days on three screens). The 4 weeks before are
+   given only when the log covers all of them, so 2 days of a first month
+   never read as a jump. */
+function recent4w(){
+  const d28=addDays(today(),-27),d56=addDays(today(),-55);const ss=sortedSessions();
+  const back=ss.length>0&&ss[0].date<=d56;const in28=d=>d>=d28,in56=d=>d>=d56&&d<d28;const P=IDX().prs.filter(p=>p.big);
+  return {back,sess:ss.filter(x=>in28(x.date)).length,sessP:ss.filter(x=>in56(x.date)).length,prs:P.filter(p=>in28(p.date)),prsP:P.filter(p=>in56(p.date)).length};
+}
 function movers(){return Object.entries(IDX().exStats).filter(([,x])=>x.moving&&!x.stalled&&x.fresh).sort((a,b)=>b[1].pct-a[1].pct).map(([id,x])=>({id,pct:x.pct,wk:x.spanW||2}));}
 function stalledIds(){return Object.entries(IDX().exStats).filter(([,x])=>x.stalled).map(([id])=>id);}
 /* Stalls that can point to whole-body fatigue (r31): compound lifts with a
@@ -6056,11 +6103,11 @@ function coachButton(c,di){
   return `<button class="btn sm" style="margin-top:8px" data-act="goDash" data-sec="${c.act.sec}"${c.act.m?` data-m="${c.act.m}"`:''}${c.act.ex?` data-ex="${c.act.ex}"`:''}>${esc(c.act.label)}</button>`;
 }
 function homeTiles(){
-  const sk=weekStreak();const pr=prsWithin(30);
+  const sk=weekStreak();const pr=recent4w().prs;
   const last=pr[0];const ago=last?daysBetween(last.date,today()):null;
   return `<div class="tiles">
   <button class="tile" data-act="goDash" data-sec="consistency" aria-label="${noLog()?'No streak yet':sk.weeks+' week streak'}. Open consistency"><div class="tv">${nz(sk.weeks)}</div><div class="tl">week streak</div><div class="ts">${freeMode()?'Weeks trained in a row':sk.thisWeek>=sk.need?'This week done':`Weeks with ${sk.need}+ sessions`}${sk.best>sk.weeks?` · best ${sk.best}`:''}</div></button>
-  <button class="tile" data-act="goDash" data-sec="bests" aria-label="${noLog()?'No PRs yet':pr.length+' PRs in the last 30 days'}. Open all-time bests"><div class="tv">${nz(pr.length)}</div><div class="tl">PRs, last 30 days</div><div class="ts">${last?`Latest: ${esc(exName(last.exId))}, ${ago===0?'today':ago===1?'yesterday':ago+' days ago'}`:'None yet'}</div></button>
+  <button class="tile" data-act="goDash" data-sec="bests" aria-label="${noLog()?'No PRs yet':pr.length+' PRs in the last 4 weeks'}. Open all-time bests"><div class="tv">${nz(pr.length)}</div><div class="tl">PRs, last 4 weeks</div><div class="ts">${last?`Latest: ${esc(exName(last.exId))}, ${ago===0?'today':ago===1?'yesterday':ago+' days ago'}`:'None yet'}</div></button>
   </div>`;
 }
 // An estimate is said as a load only where it is a load someone could put on the bar (a 1RM is shown for these lifts).
@@ -7007,7 +7054,11 @@ function weekStats(){
      (r40, hardCredit). */
   let got=0;for(const x of state.sessions)if(x.date>=cur&&x.date<=addDays(cur,6))for(const b of x.ex){const e=EX(b.exId);for(const q of b.sets)got+=hardCredit(q,e);}
   const tgt=planSetsPerWeek(R,isDeloadWeek());
-  return {R,weekly,planDays,doneDays,got,tgt,pct:tgt>0?Math.min(100,got/tgt*100):0,cardioMin,cardioN};
+  /* A rest week is said once, here, so the ring, the card and its body all
+     follow (r46: the ring and the title were given their own test for it and
+     the body kept saying "0 hard sets logged of 145 planned" underneath). */
+  const rest=isRestWeek(cur);
+  return {R,weekly,planDays:rest?0:planDays,doneDays,got,tgt:rest?0:tgt,pct:!rest&&tgt>0?Math.min(100,got/tgt*100):0,cardioMin,cardioN,rest};
 }
 function cycleStrip(R){
   const cs=cycleState(R);
@@ -7040,6 +7091,9 @@ function weekBody(w){
   if(freeMode())return `${tog}<div class="hrow" style="margin:5px 0 0"><p class="small muted" style="margin:0" id="wkSets">${noLog()?'Nothing logged yet.':`${r1(w.got)} hard sets this week.`}</p>${helpBtn('wk')}</div>
   ${w.cardioMin?`<p class="small" style="margin:5px 0 0">Cardio and mobility: ${w.cardioMin} min in ${w.cardioN} entr${w.cardioN===1?'y':'ies'}</p>`:''}${liftedLine()}
   ${helpText('wk','Each set counts once; a set at RIR 4 or more is not hard and does not count. Muscle targets are on the Muscle map and in Stats.')}`;
+  if(w.rest)return `${tog}<div class="hrow" style="margin:5px 0 0"><p class="small muted" style="margin:0" id="wkSets">Rest week. ${w.got?`${r1(w.got)} hard sets logged.`:'Nothing planned.'}</p>${helpBtn('wk')}</div>
+  ${w.cardioMin?`<p class="small" style="margin:5px 0 0">Cardio and mobility: ${w.cardioMin} min in ${w.cardioN} entr${w.cardioN===1?'y':'ies'}</p>`:''}${liftedLine()}
+  ${helpText('wk','A rest week you marked in Settings. It does not count as missed: your averages, streak, and adherence skip it.')}`;
   return `${tog}${w.weekly?'':cycleStrip(w.R)}
   <div class="band" data-tip="${noLog()?`${w.tgt} hard sets planned`:`${w.got} hard sets logged of ${w.tgt} planned`}"><div class="fill prog" style="width:${w.pct}%"></div></div>
   ${w.cardioMin?`<p class="small" style="margin:5px 0 0">Cardio and mobility: ${w.cardioMin} min in ${w.cardioN} entr${w.cardioN===1?'y':'ies'}</p>`:''}
@@ -7057,7 +7111,8 @@ function weekCard(){
     const title=ym===cur?'This month':new Date(ym+'-15T12:00:00').toLocaleDateString(undefined,{month:'long',year:'numeric'});
     return sec({sk:'today:week',key:'week',title,sub:`${n} session${n===1?'':'s'}`,body});
   }
-  if(freeMode())return sec({sk:'today:week',key:'week',title:'This week',sub:noLog()?'Nothing logged yet':`${w.doneDays} session${w.doneDays===1?'':'s'}`,body});
+  if(freeMode())return sec({sk:'today:week',key:'week',title:'This week',sub:w.rest?`Rest week${w.doneDays?`, ${w.doneDays} session${w.doneDays===1?'':'s'}`:''}`:noLog()?'Nothing logged yet':`${w.doneDays} session${w.doneDays===1?'':'s'}`,body});
+  if(w.rest)return sec({sk:'today:week',key:'week',title:'This week',sub:`Rest week${w.doneDays?`, ${w.doneDays} session${w.doneDays===1?'':'s'}`:''}`,body});
   return sec({sk:'today:week',key:'week',title:'This week',sub:noLog()?`${w.weekly||weekFactor(w.R)===1?'':'~'}${w.planDays} sessions planned`:`${w.doneDays} of ${w.weekly||weekFactor(w.R)===1?'':'~'}${w.planDays} sessions`,body});
 }
 /* Quick answers before a session starts: is this lift moving, and what to do. */
@@ -7120,7 +7175,7 @@ function newBlock(exId,plan,opts){
   const sg=suggest(exId,plan,opts);
   // sw is the load the app suggested, kept so a later refresh can tell a row
   // still on the suggestion from one the lifter typed (refreshBlock).
-  return {exId,plan:{...plan},note:'',lastNote:lastNoteOf(exId,opts&&opts.before),inj:sg.inj||null,hint:sg.text,last:sg.last,prev:sg.prev||undefined,prevOff:sg.prevOff||undefined,target:sg.target,tgt:sg.tgt,easier:sg.easier||null,lastR:sg.lastR,basis:sg.basis||undefined,sw:sg.w==null?null:sg.w,sets:Array.from({length:+plan.sets||3},()=>({w:fillLoads()?sg.w:null,r:null,rir:null,warm:false,drop:false,done:false}))};
+  return {bid:uid(),exId,plan:{...plan},note:'',lastNote:lastNoteOf(exId,opts&&opts.before),inj:sg.inj||null,hint:sg.text,last:sg.last,prev:sg.prev||undefined,prevOff:sg.prevOff||undefined,target:sg.target,tgt:sg.tgt,easier:sg.easier||null,lastR:sg.lastR,basis:sg.basis||undefined,sw:sg.w==null?null:sg.w,sets:Array.from({length:+plan.sets||3},()=>({w:fillLoads()?sg.w:null,r:null,rir:null,warm:false,drop:false,done:false}))};
 }
 const DEFAULT_PLAN={sets:3,repMin:8,repMax:12,rir:1,rest:90,inc:5*LB};
 /* The Last column (r44, V: "what I did last time next to what I'm about to
@@ -7298,8 +7353,9 @@ function rirClose(){const el=document.querySelector('.rirstrip');if(!el)return;c
 let pendAuto=null;
 function autoPending(){
   const p=pendAuto;pendAuto=null;if(!p||!state.draft||!state.settings.autoDone)return;
-  const s=state.draft.ex[p.b]&&state.draft.ex[p.b].sets[p.s];if(!s||s.done||!(+s.r>0))return;
-  lastAuto={b:p.b,s:p.s,t:Date.now()};setDone(p.b,p.s,true);
+  const bi=blkIdx(p.b);if(bi<0)return;
+  const s=state.draft.ex[bi].sets[p.s];if(!s||s.done||!(+s.r>0))return;
+  lastAuto={b:blkRef(bi),s:p.s,t:Date.now()};setDone(bi,p.s,true);
 }
 function rirShowStrip(bi,si){
   rirClose();const btn=document.querySelector(`.rirb[data-b="${bi}"][data-s="${si}"]`);const s=state.draft&&state.draft.ex[bi]&&state.draft.ex[bi].sets[si];
@@ -7630,7 +7686,8 @@ function viewDash(){
   let done4=0,wks4=0,need4=0;
   for(let k=1;k<=4;k++){
     const ws=addDays(cur,-7*k);if(!firstWk||ws<firstWk)break;if(isRestWeek(ws))continue;let n=0;wks4++;
-    for(let d=0;d<7;d++)if(sessDates.has(addDays(ws,d)))n++;
+    // Sessions, as the ring, This week, and the streak count them (r46: distinct days read a two-a-day as one).
+    n=weekSessions(ws);
     const wr=weekRoutine(ws);const nw=trainDaysOf(wr)*weekFactor(wr);done4+=Math.min(n,nw);need4+=nw;
   }
   const adher=planned&&wks4&&need4>0?Math.round(done4/need4*100):null;
@@ -7639,7 +7696,6 @@ function viewDash(){
   // Each set once, as on Today. Summing the per-muscle counts double counts
   // secondary work (a bench set is 1 chest + 0.5 triceps + 0.5 delts).
   const wkHard=weekStats().got;
-  const pr14=I.prs.filter(p=>p.date>=addDays(today(),-14)&&p.big).length;
   const stalled=Object.entries(I.exStats).filter(([,s])=>s.stalled);
   // How much of the last 4 weeks of volume is measured rather than assumed.
   const rc=I.rirCov;const covPct=rc.total&&state.settings.rirMode!=='off'?Math.round(rc.logged/rc.total*100):null;
@@ -7655,11 +7711,8 @@ function viewDash(){
      log reaches back that far, so month on month reads at a glance.
      Adherence stays in Consistency, hard sets against the plan in Volume and
      This week. PRs are the ones Recent PRs lists (big). */
-  const d28=addDays(today(),-27),d56=addDays(today(),-55);const back=state.sessions.length&&sortedSessions()[0].date<=addDays(d28,-1);
-  const in28=d=>d>=d28,in56=d=>d>=d56&&d<d28;
-  const sess4=state.sessions.filter(x=>in28(x.date)).length,sessP=state.sessions.filter(x=>in56(x.date)).length;
-  const prs4=I.prs.filter(p=>p.big&&in28(p.date)).length,prsP=I.prs.filter(p=>p.big&&in56(p.date)).length;
-  const was=n=>back?` (${n} in the 4 weeks before)`:'';
+  const R4=recent4w();const sess4=R4.sess,sessP=R4.sessP,prs4=R4.prs.length,prsP=R4.prsP;
+  const was=n=>R4.back?` (${n} in the 4 weeks before)`:'';
   h+=`<div class="kpis"><div class="kpi"><div class="v">${nz(sess4)}</div><div class="l">Sessions, last 4 weeks${was(sessP)}</div></div>
   <div class="kpi"><div class="v">${nz(prs4)}</div><div class="l">PRs, last 4 weeks${was(prsP)}</div></div>
 ${extraKpis()}</div>`;
@@ -7739,7 +7792,7 @@ ${extraKpis()}</div>`;
   const bigPR=I.prs.filter(p=>p.big);
   const prBody=bigPR.length?bigPR.slice(0,15).map(p=>{const ex=EX(p.exId);const iso=p.type==='e1RM'&&!isCompound(ex);const ps=iso?prSet(p.exId,p.date):null;return `<div class="row spread" style="padding:6px 0;border-bottom:1px solid var(--line)"><span>${esc(ex.name)} <span class="tag ${p.type==='Rep PR'?'blue':'green'}">${ex.timed&&p.type==='Rep PR'?'Time PR':p.type==='e1RM'?(iso?'PR':prName(p)):p.type}</span></span><span class="num">${p.type==='e1RM'?(iso?(ps?setShort(ex,ps.w,ps.r):''):fmtE(p.value)+' '+U()):setShort(ex,p.w,p.r)} <span class="muted small">${fmtDate(p.date)}</span></span></div>`;}).join(''):'<p class="muted">No PRs yet. Your first session of an exercise sets the baseline.</p>';
   h+=dsec('exercise','Lifts',`Estimated 1RM uses reps to failure, which is reps plus RIR: Brzycki up to 10, Epley at 11 and 12, none above 12 or for a set called above RIR 4. A blank RIR reads as your usual RIR on that lift once you have rated 3 of its sets in 12 weeks; until then it counts as 0, so the estimate errs low. Numbers stay in the frame you log in, per dumbbell or per side where that applies. Bodyweight lifts add the share of your bodyweight they move: all of it for pull-ups and dips, 64% for push-ups. Lifts that turn about one joint (leg raises, crunches, Nordics) get no estimate; their progress is reps and load. Trends read the average of each session's working sets and need 3 sessions over 2 weeks or more within 6 weeks. A heavy single before back-off sets counts toward bests only. Moving or falling means past 3% with a clear trend, since estimates swing 2 to 8% day to day. A PR is a weight PR (more weight than any earlier set), a new best estimate within its range of reps to failure (1 to 5, 6 to 10, 11 to 12), or a rep PR (more reps at a load than any earlier set); a set that is more than one shows the first. Stalled: flat or falling over your last 6 sessions, or 3 weeks if that covers more (at least 4 sessions), with no PR in the last 3, no heavier load, and no more reps at the same load, not counting deload, lighter, and trimmed sessions.`,
-    exh+sub('prs','Recent PRs',prBody,noLog()?'none yet':pr14||!bigPR.length?`${pr14} in 14 days`:`latest ${fmtDate(bigPR[0].date)}`)+sub('bests','All-time bests',bestsBody.html,bestsBody.n?`${bestsBody.n} lift${bestsBody.n===1?'':'s'}`:'none yet')+sub('stalls','Stalls',stl,stalled.length?`<span class="pill ${fatigueStalls(stalled.map(([id])=>id)).length>=3?'red':'yellow'}">${stalled.length} stalled</span>`:'none'),noLog()?'Nothing logged yet':`${Object.keys(I.byEx).length} lift${Object.keys(I.byEx).length===1?'':'s'} tracked`);
+    exh+sub('prs','Recent PRs',prBody,noLog()?'none yet':prs4||!bigPR.length?`${prs4} in 4 weeks`:`latest ${fmtDate(bigPR[0].date)}`)+sub('bests','All-time bests',bestsBody.html,bestsBody.n?`${bestsBody.n} lift${bestsBody.n===1?'':'s'}`:'none yet')+sub('stalls','Stalls',stl,stalled.length?`<span class="pill ${fatigueStalls(stalled.map(([id])=>id)).length>=3?'red':'yellow'}">${stalled.length} stalled</span>`:'none'),noLog()?'Nothing logged yet':`${Object.keys(I.byEx).length} lift${Object.keys(I.byEx).length===1?'':'s'} tracked`);
 
   // consistency heat map
   // Starts at your first logged week; weeks ahead fill a young log.
@@ -8338,7 +8391,7 @@ function viewSettings(){
 </div></div></details>
   ${G('rir','Effort (RIR)')}<div class="card stack">${rirSettings()}</div></div></details>
   ${G('layout','Layout')}<div class="card stack">${layoutSettings()}</div></div></details>
-  ${G('prio','Priority muscles','prio')}${helpText('prio','Flagged as Your priority in Stats, Muscles, and favoured by Pick for me.')}
+  ${G('prio','Priority muscles','prio')}${helpText('prio','Flagged as Your priority under Muscles in Stats, and favoured by Pick for me.')}
   <div class="card chips">${MUSCLES.map(([k,l])=>`<button class="chip ${s.priorities.includes(k)?'on':''}" data-act="prio" data-m="${k}">${l}</button>`).join('')}</div></div></details>
   ${G('bands','Weekly set targets','bands')}${helpText('bands','Fractional hard sets per week: direct work 1, helper muscles 0.5 (Pelland 2025). 10 to 20 for major muscles fits the dose-response data; the upper number is typical, not a ceiling, and more still helps a little at more cost. Smaller muscles are set lower because compound lifts hit them indirectly, and their numbers are convention: no study has tested a dose for them. Serratus, rotator cuff, neck, and tibialis are tracked only. Raise one or two muscles for a specialisation block, or set focus muscles in Your training. Default targets puts every one back.')}
   <div class="card"><table class="t"><tr><th>Muscle</th><th class="r">Min</th><th class="r">Max</th></tr>${MUSCLES.map(([k,l])=>`<tr><td>${l}</td><td class="r"><input style="width:70px" type="text" inputmode="numeric" aria-label="${l} minimum hard sets a week" data-band="${k}" data-bi="0" value="${s.bands[k][0]}"></td><td class="r"><input style="width:70px" type="text" inputmode="numeric" aria-label="${l} maximum hard sets a week" data-band="${k}" data-bi="1" value="${s.bands[k][1]}"></td></tr>`).join('')}</table>
@@ -8350,7 +8403,7 @@ function viewSettings(){
   ${privacyLine()}${safetyLine()}
   ${backupDue()?`<p class="callout yellow" style="margin:10px 0 0"><b>Backup due.</b> ${s.lastExport?`Last backup file ${fmtDate(s.lastExport)}.`:'No backup file yet.'} ${cloud.on?'Your account has not synced this week. Export one below.':''}</p>`:''}
   ${storageOk?'':'<p class="small" style="color:var(--red)">This browser is blocking local storage, so this device keeps nothing between reloads without cloud sync.</p>'}
-  ${unreadableRaw()?`<div class="panel" id="unreadPanel" style="margin-top:8px"><p class="small" style="margin:0 0 6px"><b>A save on this device could not be read</b> by this build, and was kept aside. Restore brings back what it can and says what was skipped.</p><div class="row"><button class="btn sm primary" data-act="unreadRestore">Restore it</button><button class="btn sm" data-act="unreadShow">Show its text</button><button class="btn sm" data-act="unreadForget">Forget it</button></div></div>`:''}
+  ${unreadableRaw()?`<div class="panel" id="unreadPanel" style="margin-top:8px"><p class="small" style="margin:0 0 6px"><b>A save on this device could not be read</b> by this build, and was kept aside. Restore tries it again, which a later build may read; Show its text to copy it out.</p><div class="row"><button class="btn sm primary" data-act="unreadRestore">Restore it</button><button class="btn sm" data-act="unreadShow">Show its text</button><button class="btn sm" data-act="unreadForget">Forget it</button></div></div>`:''}
   <div class="card stack"><div class="row"><button class="btn primary" data-act="export" data-tip="The backup: restores everything, on any device.">Export backup (.json)</button><button class="btn" data-act="showBackup" data-tip="The same backup as text, to copy somewhere safe.">Show backup text</button><button class="btn" data-act="exportCsv" data-tip="One row per set for spreadsheets. Import workouts reads it back, but it is not a full backup: routines and settings are not in it.">Export sets (.csv)</button></div>
   <button class="btn" data-act="impOpen" data-tip="Adds sessions from notes, a spreadsheet, or an export from another app. You check everything before it is saved.">Import workouts</button>
   <label class="field">Restore a backup file (replaces everything)<input type="file" accept=".json,application/json" id="importFile"></label>
@@ -10189,7 +10242,7 @@ const ACT={
     rirClose();if(btn)try{btn.focus({preventScroll:true});}catch(e){/* focus is best effort */}
     if(s.done){refreshPR(bi,si,false);afterSet(bi,si);}updateProgress(bi);
     // The fold waits for the effort of the last set, then goes.
-    if(!d.editingId&&blockDone(b)){clearTimeout(foldT);foldT=setTimeout(()=>autoFold(bi),900);}
+    if(!d.editingId&&blockDone(b)){clearTimeout(foldT);const rf=blkRef(bi);foldT=setTimeout(()=>autoFold(rf),900);}
     saveSoon();},
   bOpen(t){const bi=+t.dataset.b;const b=state.draft&&state.draft.ex[bi];if(!b)return;ui.blkOpen.add(blkKey(bi,b));blkOpenObj.add(b);rerenderKeepScroll();
     const el=document.getElementById('blk-'+bi);if(el)try{el.scrollIntoView({block:'nearest'});}catch(e){/* scroll is best effort */}},
@@ -10244,7 +10297,7 @@ const ACT={
        checkmark confirms it for 15 s, until another set is touched: typing
        reps, picking RIR and then tapping the checkmark is the natural order,
        and it used to untick the set. A second tap undoes it. */
-    if(lastAuto&&(lastAuto.b!==bi||lastAuto.s!==si))lastAuto=null;
+    if(lastAuto&&(blkIdx(lastAuto.b)!==bi||lastAuto.s!==si))lastAuto=null;
     if(lastAuto&&Date.now()-lastAuto.t<15000&&s.done){lastAuto=null;return;}
     /* Tapping done on an empty reps field logs the grey number in it (see
        greyR), like the paper log you copy from. Warm-ups have none, so
@@ -10745,7 +10798,7 @@ const ACT={
     const s=state.sessions.find(x=>x.id===t.dataset.id);if(!s)return;
     const go=()=>{const R=state.routines.find(r=>r.id===s.routineId)||activeRoutine();
       const dayItems=s.free?[]:((R.days[sessDayIdx(R,s)]||{items:[]}).items);
-      state.draft={id:uid(),editingId:s.id,deload:!!s.deload,light:!!s.light,free:s.free?true:undefined,chk:s.chk?{...s.chk}:undefined,startedAt:null,durMin:s.durMin||null,date:s.date,dayIdx:s.dayIdx,dayId:s.dayId||null,dayName:s.dayName,routineId:s.routineId,notes:s.notes||'',ex:s.ex.map(b=>{const it=dayItems.find(i=>i.exId===b.exId);const plan=it?{...it}:planFor(b.exId);return {exId:b.exId,plan,note:b.note||'',keepRR:b.rr||null,cut:b.cut?true:undefined,light:b.light?true:undefined,hint:'Editing saved sets.',lastR:[],sets:b.sets.map(x=>({w:x.w,r:x.r,rir:x.rir,warm:!!x.warm,drop:!!x.drop,done:true,cal:x.cal?{...x.cal}:undefined}))};})};
+      state.draft={id:uid(),editingId:s.id,deload:!!s.deload,light:!!s.light,free:s.free?true:undefined,chk:s.chk?{...s.chk}:undefined,startedAt:null,durMin:s.durMin||null,date:s.date,dayIdx:s.dayIdx,dayId:s.dayId||null,dayName:s.dayName,routineId:s.routineId,notes:s.notes||'',ex:s.ex.map(b=>{const it=dayItems.find(i=>i.exId===b.exId);const plan=it?{...it}:planFor(b.exId);return {bid:uid(),exId:b.exId,plan,note:b.note||'',keepRR:b.rr||null,cut:b.cut?true:undefined,light:b.light?true:undefined,hint:'Editing saved sets.',lastR:[],sets:b.sets.map(x=>({w:x.w,r:x.r,rir:x.rir,warm:!!x.warm,drop:!!x.drop,done:true,cal:x.cal?{...x.cal}:undefined}))};})};
       editFp0.set(state.draft.id,editFp(state.draft));
       saveNow();ui.tab='today';window.scrollTo(0,0);render();};
     if(state.draft)confirmBox('Replace the session in progress?','You have an unsaved session open. Editing this one will discard it.','Discard and edit',go,true);else go();
@@ -10950,8 +11003,8 @@ document.addEventListener('change',e=>{
     else if((state.settings.autoDone||state.draft.past)&&!s.done&&+s.r>0){
       const toRir=!state.draft.past&&lastDown.el&&Date.now()-lastDown.t<700&&lastDown.el.closest&&lastDown.el.closest(`.rirb[data-b="${bi}"][data-s="${si}"]`);
       // Heading for this row's RIR box: tick when its strip closes (or after 2 s if it never opened).
-      if(toRir){const p={b:bi,s:si};pendAuto=p;setTimeout(()=>{if(pendAuto===p&&!document.querySelector('.rirstrip'))autoPending();},2000);} // by identity: an automatic reorder renumbers p.b (r45)
-      else{lastAuto={b:bi,s:si,t:Date.now()};setDone(bi,si,true);}}
+      if(toRir){const p={b:blkRef(bi),s:si};pendAuto=p;setTimeout(()=>{if(pendAuto===p&&!document.querySelector('.rirstrip'))autoPending();},2000);} // by identity: a later tick must not run this one (r45)
+      else{lastAuto={b:blkRef(bi),s:si,t:Date.now()};setDone(bi,si,true);}}
     else if(s.done){refreshPR(bi,si,false);afterSet(bi,si);}
     saveSoon();return;}
   if(t.dataset.f){
@@ -11060,7 +11113,7 @@ function acceptGrey(bi,si){
   if(!x||x.done||x.warm||x.drop||+x.r>0)return false;
   const lr=greyR(b,si);if(!(lr>0))return false;
   x.r=Math.round(lr);const inp=document.querySelector(`.sg input[data-f="r"][data-b="${bi}"][data-s="${si}"]`);if(inp)inp.value=String(x.r);
-  lastAuto={b:bi,s:si,t:Date.now()};setDone(bi,si,true);return true;
+  lastAuto={b:blkRef(bi),s:si,t:Date.now()};setDone(bi,si,true);return true;
 }
 let lastDown={el:null,t:0};
 document.addEventListener('pointerdown',e=>{lastDown={el:e.target,t:Date.now()};},true);
@@ -11093,11 +11146,13 @@ function bgrip(bi,name){return `<span class="bgrip" role="button" tabindex="0" d
 /* One way to move an exercise in a session: the drag, the arrow keys on its
    handle and the ⋯ menu's Move up and Move down all come here. A superset
    split by the move is undone (its members are no longer next to each
-   other, so the rest timer would never start), and timers that point at a
-   block by its position are dropped, since the position changed (r29). */
+   other, so the rest timer would never start), and a pending fold is dropped
+   because the lifter is rearranging and should not have an exercise fold
+   under them (r29). Nothing here goes stale any more: since r46 the fold,
+   the confirm window and the pending auto-mark hold the exercise itself. */
 function moveBlock(a,b){
   const d=state.draft;if(!d||b<0||b>=d.ex.length||a===b)return false;
-  clearTimeout(foldT);foldT=null;lastAuto=null;
+  clearTimeout(foldT);foldT=null;
   keepOpen(()=>{move(d.ex,a,b);fixSupersets(d.ex.map(x=>x.plan).filter(Boolean));});
   saveNow();return true;
 }
@@ -11132,13 +11187,13 @@ function orderRun(){
   let moved=false;
   for(const b of q){
     const bi=d.ex.indexOf(b),j=orderAt(b);if(j<0)continue;
-    // Positions that point at blocks follow the move.
+    /* Only the focused field still carries a number, since it is markup; the
+       set waiting to be confirmed, the pending auto-mark and the fold timer
+       all hold the exercise itself now (r46), so the move leaves them alone. */
     const mi=i=>i===bi?j:(i>=j&&i<bi?i+1:i);
-    const la=lastAuto?Object.assign({},lastAuto,{b:mi(lastAuto.b)}):null;
-    if(pendAuto)pendAuto.b=mi(pendAuto.b);
     if(ae&&ae.dataset&&/^\d+$/.test(ae.dataset.b||''))ae.dataset.b=String(mi(+ae.dataset.b));
     if(!moveBlock(bi,j))continue;
-    lastAuto=la;moved=true;
+    moved=true;
   }
   if(!moved||ui.tab!=='today')return;
   rerenderKeepScroll();
@@ -11445,7 +11500,7 @@ window.__onLib=(which)=>{if((which==='chart'&&ui.tab==='dash')||(which==='sortab
 trashTidy();
 // r44: floors from a first-run pick made before they were recorded (fitRecordOld), once, on this device's state.
 try{if(fitRecordOld())saveNow();}catch(e){log('fitRecordOld',e);}
-window.__ironlog={get state(){return state;},set state(v){state=v;},fbShrink,orderAt,orderRun,dropOnlyLift,profHeavy,appBand,fitRecordOld,prof,profClean,profRule,profPlan,defPlan,defBand,profMoveBands,profApplyList,strengthPick,PROF_DAYS,FOCUS_MAX,estInLoad,keepExtra,EXTRA_MAX,draftPlanMin,pace,paceRatios,sessModelMin,PACE_N,PACE_DAYS,PACE_MIN,plainTemplate,trashTidy,ENV,KEY,COMMON,COMMON_TIP,isCommon,bwEvery,isRestWeek,sessCmp,avgWeeks,weekStreak,coach,noLog,afterSet,adjOn,bwAt,newBlock,cycleState,sortedSessions,addDays,loadIn,gymRack,gymClean,dbListOf,capOf,refreshEx,effShow,rirScale,setStr,libExercises,obGate,obTour,andList,belowMin,aboveMax,starterRoutine,starterSigs,plateList,exBarKg,VOL_MODES,liveLogFetch,regionSrc,fitTargets,firstFullWeek,moveBlock,BANDS,installSheet,siteHost,greyW,effW,greyR,lighterLoad,incOf,swapPlan,planSetsPerWeek,weekNeed,stepRead,e1inv,rtfAt,rtfOf,rtfBand,calStats,rirEff,isHard,setCredit,tonnage,loadMode,loadWords,loadNote,progStep,jumpCap,setSecs,setupSecs,recovery,rolling7,rankDays,rankExercises,isCompound,patternOf,noE1,whtrLine,exHeadline,remainMin,shortPlan,weekPlan,cycleProjection,lastLighterWeek,regionBalance,parseHeight,mixCheck,swapCands,eqPlan,exportCSV,importData,chunksOf,assemble,sessionMuscles,TRACK_ONLY,cloud,Hx,mergeChunk,baseOf,sync:()=>cq(cloudPull),TEMPLATES,lastRFor,impDate,impRows,impNorm,impMatch,impFromText,impFromTable,impHeader,impBuild,impStart,impXlsx,parseSets,undoStack,undoRestore,undoForget,allTimeBests,bestsBoard,obActive,fmtW,rirUsual,rirEst,routineFromTemplate,plannedSets,map3d:()=>({state:B3.state,fail:B3.fail,meshes:B3.meshes.length,yaw:B3.yaw,glow:Object.keys(B3.mats).filter(m=>B3.mats[m].emissiveIntensity>0),canvas:!!document.querySelector('#bm3d canvas'),colors:Object.fromEntries(Object.entries(B3.mats).map(([m,mt])=>[m,'#'+mt.color.getHexString()])),pick:(x,y)=>map3dPick(x,y),want:map3dColors()}),cloudState:()=>({on:cloud.on,status:cloud.status,err:cloud.err,uid:cloud.uid,acct:cloud.acct}),acctUser:()=>acct.user,acctWaiting:()=>!!acctWait.pw,flush:()=>cq(cloudFlush),backupDue,routineUpdates,planFor,platesMode,plateText,chunksOf,IDX,suggest,e1,render,ACT,ui,makeDemo,invalidate,normalize,snapshot,saveNow,timer,weekStats,weekStart,today,EX,blockProgress,dayMinutes,weekStreak,coach,tonnageNow,livePR,movers,stalledIds,muscleStatus,actualAvg4,plannedPerWeek,parseSets,/*ai{*/aiSetsValid,fillSets,/*}ai=fillSets,*/newBlock,lastNoteOf,sizeRows,sessionMuscleSets,sessionCapNote,routineClutter,rowBlank,dayReasons,impTextSets,liftTrend,prsWithin,activeRoutine,rackStep,repFloor,sessionLength,prBeat,exInjury,exJoints,openModal,EQUIP,HARD_EX,recentLighter,planEvidenceNote,howToUrl,editFp,toast,avgWeeks,regionWk,REGION_WKS,SAFETY_TXT,libFiltered,nameMatch,workLoad,fitE,offSession,tagged,fatigueStalls,avgWeeksTxt,routineFromLog,repSpan,rangeWords,calDueIdx,readyCard,/*ai{*/aiDigest,debriefPrompt,reviewPrompt,swapPrompt,AI,/*}ai=*/sameRR,hintOnce,overSets,rackTol,daysOff,BACK_DAYS,prName,sessTm,effTgt,bwDueCard,bwNoLoad,applyPick,joinAdjacent,sameExOnce,goalState,goalLine,bwRefLoad,ML,exMusParts,musTrend};
+window.__ironlog={get state(){return state;},set state(v){state=v;},recent4w,weekSessions,fmtDate,fmtDateLong,fbShrink,orderAt,orderRun,dropOnlyLift,profHeavy,appBand,fitRecordOld,prof,profClean,profRule,profPlan,defPlan,defBand,profMoveBands,profApplyList,strengthPick,PROF_DAYS,FOCUS_MAX,estInLoad,keepExtra,EXTRA_MAX,draftPlanMin,pace,paceRatios,sessModelMin,PACE_N,PACE_DAYS,PACE_MIN,plainTemplate,trashTidy,ENV,KEY,COMMON,COMMON_TIP,isCommon,bwEvery,isRestWeek,sessCmp,avgWeeks,weekStreak,coach,noLog,afterSet,adjOn,bwAt,newBlock,cycleState,sortedSessions,addDays,loadIn,gymRack,gymClean,dbListOf,capOf,refreshEx,effShow,rirScale,setStr,libExercises,obGate,obTour,andList,belowMin,aboveMax,starterRoutine,starterSigs,plateList,exBarKg,VOL_MODES,liveLogFetch,regionSrc,fitTargets,firstFullWeek,moveBlock,BANDS,installSheet,siteHost,greyW,effW,greyR,lighterLoad,incOf,swapPlan,planSetsPerWeek,weekNeed,stepRead,e1inv,rtfAt,rtfOf,rtfBand,calStats,rirEff,isHard,setCredit,tonnage,loadMode,loadWords,loadNote,progStep,jumpCap,setSecs,setupSecs,recovery,rolling7,rankDays,rankExercises,isCompound,patternOf,noE1,whtrLine,exHeadline,remainMin,shortPlan,weekPlan,cycleProjection,lastLighterWeek,regionBalance,parseHeight,mixCheck,swapCands,eqPlan,exportCSV,importData,chunksOf,assemble,sessionMuscles,TRACK_ONLY,cloud,Hx,mergeChunk,baseOf,sync:()=>cq(cloudPull),TEMPLATES,lastRFor,impDate,impRows,impNorm,impMatch,impFromText,impFromTable,impHeader,impBuild,impStart,impXlsx,parseSets,undoStack,undoRestore,undoForget,allTimeBests,bestsBoard,obActive,fmtW,rirUsual,rirEst,routineFromTemplate,plannedSets,map3d:()=>({state:B3.state,fail:B3.fail,meshes:B3.meshes.length,yaw:B3.yaw,glow:Object.keys(B3.mats).filter(m=>B3.mats[m].emissiveIntensity>0),canvas:!!document.querySelector('#bm3d canvas'),colors:Object.fromEntries(Object.entries(B3.mats).map(([m,mt])=>[m,'#'+mt.color.getHexString()])),pick:(x,y)=>map3dPick(x,y),want:map3dColors()}),cloudState:()=>({on:cloud.on,status:cloud.status,err:cloud.err,uid:cloud.uid,acct:cloud.acct}),acctUser:()=>acct.user,acctWaiting:()=>!!acctWait.pw,flush:()=>cq(cloudFlush),backupDue,routineUpdates,planFor,platesMode,plateText,chunksOf,IDX,suggest,e1,render,ACT,ui,makeDemo,invalidate,normalize,snapshot,saveNow,timer,weekStats,weekStart,today,EX,blockProgress,dayMinutes,weekStreak,coach,tonnageNow,livePR,movers,stalledIds,muscleStatus,actualAvg4,plannedPerWeek,parseSets,/*ai{*/aiSetsValid,fillSets,/*}ai=fillSets,*/newBlock,lastNoteOf,sizeRows,sessionMuscleSets,sessionCapNote,routineClutter,rowBlank,dayReasons,impTextSets,liftTrend,prsWithin,activeRoutine,rackStep,repFloor,sessionLength,prBeat,exInjury,exJoints,openModal,EQUIP,HARD_EX,recentLighter,planEvidenceNote,howToUrl,editFp,toast,avgWeeks,regionWk,REGION_WKS,SAFETY_TXT,libFiltered,nameMatch,workLoad,fitE,offSession,tagged,fatigueStalls,avgWeeksTxt,routineFromLog,repSpan,rangeWords,calDueIdx,readyCard,/*ai{*/aiDigest,debriefPrompt,reviewPrompt,swapPrompt,AI,/*}ai=*/sameRR,hintOnce,overSets,rackTol,daysOff,BACK_DAYS,prName,sessTm,effTgt,bwDueCard,bwNoLoad,applyPick,joinAdjacent,sameExOnce,goalState,goalLine,bwRefLoad,ML,exMusParts,musTrend};
 render();
 wakeOn();
 timerResume();

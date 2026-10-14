@@ -1,7 +1,7 @@
 // r23: the header without the wordmark (week days 44 px wide), importing
 // workouts from notes, spreadsheets (CSV, pasted cells, .xlsx), Strong and
 // Hevy, assisted pull-ups and dips, and Today's This week / At a glance split.
-const { open } = require('./h'); const { chromium } = require('playwright');
+const { open } = require('./h'); const { engine } = require('./h');
 const fs = require('fs'); const os = require('os'); const path = require('path');
 const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log('FAIL', m, x !== undefined ? JSON.stringify(x) : ''); } else console.log('ok  ', m); };
 const wait = ms => new Promise(r => setTimeout(r, ms));
@@ -61,7 +61,7 @@ function xlsx(rows) {
   return Buffer.concat([...locals, cd, end]);
 }
 (async () => {
-  const browser = await chromium.launch();
+  const browser = await engine.launch();
   const page = async (opts = {}) => { const A = await open('index.html', { browser, touch: true, clock: '2026-09-28T12:00:00', ...opts }); await A.page.evaluate(u => { const L = window.__ironlog; L.state.settings.onboarded = true; if (u) L.state.settings.unit = u; L.saveNow(); L.render(); localStorage.setItem('ironlog.v1.tipWake', '1'); }, opts.unit || null); return A; };
   const sessTxt = ev => ev(() => { const L = window.__ironlog; return L.state.sessions.filter(s => !s.demo).sort((a, b) => a.date < b.date ? -1 : 1).map(s => s.date + ' ' + s.dayName + ': ' + s.ex.map(b => L.EX(b.exId).name + ' [' + b.sets.map(x => (x.warm ? 'W' : x.drop ? 'D' : '') + Math.round(x.w * 10) / 10 + 'x' + x.r + (x.rir != null ? '@' + x.rir : '')).join(' ') + ']').join('; ')); });
   const openImp = async P => { await P.page.evaluate(() => window.__ironlog.ACT.impOpen()); await wait(120); };

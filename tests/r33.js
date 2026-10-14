@@ -35,8 +35,8 @@ async function engineRun(page, cases, gym) {
 }
 
 (async () => {
-  const { chromium } = require('playwright');
-  const browser = await chromium.launch();
+  const { engine } = require('./h');
+  const browser = await engine.launch();
 
   // ---------- Part 1a: nothing set in Your gym changes nothing ----------
   {

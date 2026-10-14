@@ -136,8 +136,12 @@ const addDays=(s,n)=>{const d=parse(s);d.setDate(d.getDate()+n);return iso(d);};
 const weekStart=s=>{const d=parse(s);d.setDate(d.getDate()-((d.getDay()+6)%7));return iso(d);};
 const daysBetween=(a,b)=>Math.round((parse(b)-parse(a))/86400000);
 const today=()=>iso(new Date());
-const fmtDate=s=>parse(s).toLocaleDateString(undefined,{month:'short',day:'numeric'});
-const fmtDateLong=s=>parse(s).toLocaleDateString(undefined,{weekday:'short',month:'short',day:'numeric',year:'numeric'});
+/* One Intl formatter per format, made once: toLocaleDateString builds a new
+   one on every call, about a fifth of a Stats render (r46). Same output. */
+const DTF={};const dtf=(k,o)=>DTF[k]||(DTF[k]=new Intl.DateTimeFormat(undefined,o));
+const fmtWith=(k,o,s)=>{const d=parse(s);return isNaN(+d)?'':dtf(k,o).format(d);};
+const fmtDate=s=>fmtWith('d',{month:'short',day:'numeric'},s);
+const fmtDateLong=s=>fmtWith('l',{weekday:'short',month:'short',day:'numeric',year:'numeric'},s);
 // History rows sit under a week header, so the year only shows when it is not this one.
 const fmtDateRow=s=>parse(s).toLocaleDateString(undefined,{weekday:'short',month:'short',day:'numeric',...(s.slice(0,4)===today().slice(0,4)?{}:{year:'numeric'})});
 

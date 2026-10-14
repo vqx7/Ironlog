@@ -2,7 +2,7 @@
 // r21 phone and r22 phones on one cloud, so no weigh-in is lost while phones
 // run different builds; Undo after a reload (item 20); the first-run pages;
 // the PR board and the PR moment (items 27, 28).
-const { open } = require('./h'); const { chromium } = require('playwright');
+const { open } = require('./h'); const { engine } = require('./h');
 const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log('FAIL', m, x !== undefined ? JSON.stringify(x) : ''); } else console.log('ok  ', m); };
 const store = new Map();
 const cloudSetup = async (ctx, page) => {
@@ -21,7 +21,7 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
 const doc = id => { const v = store.get('data/users/u1/' + id); return v ? JSON.parse(JSON.parse(v).json) : null; };
 const ids = list => (list || []).map(x => x.id).sort().join();
 (async () => {
-  const browser = await chromium.launch();
+  const browser = await engine.launch();
   // ---- 19. Body data in yearly documents, across an r21 phone and r22 phones.
   const O = await open('baselines/r21.html', { browser, clock: '2026-09-26T10:00:00', setup: cloudSetup });
   const oev = (f, a) => O.page.evaluate(f, a);

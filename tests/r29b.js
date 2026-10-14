@@ -11,7 +11,7 @@ const { open } = require('./h');
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
-const { chromium } = require('playwright');
+const { engine } = require('./h');
 const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log('FAIL', m, x !== undefined ? JSON.stringify(x) : ''); } else console.log('ok  ', m); };
 const wait = ms => new Promise(r => setTimeout(r, ms));
 const LB = 0.45359237;
@@ -415,7 +415,7 @@ const sess = (id, date, exId, sets) => ({ id, date, dayIdx: 0, dayId: null, dayN
     const server = http.createServer((req, res) => { let p = decodeURIComponent(req.url.split('?')[0]); if (p.endsWith('/')) p += 'index.html'; const f = path.join(DIST, p.replace(/^\/ironlog\//, '/')); if (!f.startsWith(DIST) || !fs.existsSync(f)) { res.writeHead(404); res.end('nf'); return; } res.writeHead(200, { 'Content-Type': TYPES[path.extname(f)] || 'application/octet-stream' }); fs.createReadStream(f).pipe(res); });
     await new Promise(r => server.listen(0, '127.0.0.1', r));
     const base = `http://127.0.0.1:${server.address().port}/ironlog/`;
-    const browser = await chromium.launch();
+    const browser = await engine.launch();
     const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true });
     await ctx.addInitScript(() => { window.__cspv = []; document.addEventListener('securitypolicyviolation', e => window.__cspv.push(e.violatedDirective + ' ' + e.blockedURI)); });
     const page = await ctx.newPage(); const errors = []; page.on('pageerror', e => errors.push(e.message)); page.on('console', m => { if (m.type() === 'error') errors.push(m.text()); });

@@ -23,8 +23,8 @@ const seed = (L, unit, exId, list, rr) => {
 };
 
 (async () => {
-  const { chromium } = require('playwright');
-  const browser = await chromium.launch();
+  const { engine } = require('./h');
+  const browser = await engine.launch();
 
   // ---------- 193: a lighter day or deload is lighter than the normal day ----------
   {

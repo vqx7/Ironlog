@@ -2,9 +2,9 @@
 // unioned but exercises/routines/settings come wholesale from the side with more
 // real sessions. A custom exercise that only the smaller side has is dropped, and
 // its sessions render as "Deleted exercise".
-const {open}=require(require('path').join(__dirname,'..','h.js'));const {chromium}=require('playwright');
+const {open,engine}=require(require('path').join(__dirname,'..','h.js'));
 const {cloudSetup,wait}=require('./cloud.js');const P=require('path').join(__dirname,'..','..','index.html');
-(async()=>{const browser=await chromium.launch();
+(async()=>{const browser=await engine.launch();
 const A=await open(P,{browser,clock:'2026-09-20T10:00:00',setup:cloudSetup});await wait(800);
 await A.page.evaluate(()=>{const L=window.__ironlog;const R=L.state.routines[0];for(const id of ['a1','a2'])L.state.sessions.push({id,date:'2026-09-1'+id[1],dayIdx:0,dayId:R.days[0].id,dayName:'Chest',routineId:R.id,notes:'',ex:[{exId:'bench',sets:[{w:100,r:8,rir:2}]}]});L.invalidate();});
 await A.page.evaluate(()=>window.__ironlog.flush());await wait(400);

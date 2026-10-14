@@ -46,10 +46,10 @@ const noise = (wk, i) => 1 + 0.02 * Math.sin(wk * 2.3 + i * 1.7);
 const r5 = v => Math.round(v / 5) * 5;
 
 (async () => {
-  const { chromium } = require('playwright');
+  const { engine } = require('./h');
   const report = {};
   for (const mode of ['grey', 'fill']) {
-    const browser = await chromium.launch();
+    const browser = await engine.launch();
     let state = null; const errors = []; const T = mode + ': ';
     const rows = Object.fromEntries(LIFTS.map(L => [L.id, []]));
     for (let wk = 0; wk <= WEEKS; wk++) {

@@ -6,7 +6,7 @@
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
-const { chromium } = require('playwright');
+const { engine } = require('./h');
 const fails = []; const ok = (c, m) => { if (!c) { fails.push(m); console.log('FAIL', m); } else console.log('ok  ', m); };
 const DIST = path.join(__dirname, '..', 'dist');
 require('./h').build();
@@ -20,7 +20,7 @@ const server = http.createServer((req, res) => {
 (async () => {
   await new Promise(r => server.listen(0, '127.0.0.1', r));
   const base = `http://127.0.0.1:${server.address().port}/ironlog/`;
-  const browser = await chromium.launch();
+  const browser = await engine.launch();
   const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true });
   const page = await ctx.newPage();
   const errors = []; page.on('pageerror', e => errors.push(e.message)); page.on('console', m => { if (m.type() === 'error') errors.push(m.text()); });

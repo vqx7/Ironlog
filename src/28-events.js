@@ -169,8 +169,8 @@ document.addEventListener('change',e=>{
     else if((state.settings.autoDone||state.draft.past)&&!s.done&&+s.r>0){
       const toRir=!state.draft.past&&lastDown.el&&Date.now()-lastDown.t<700&&lastDown.el.closest&&lastDown.el.closest(`.rirb[data-b="${bi}"][data-s="${si}"]`);
       // Heading for this row's RIR box: tick when its strip closes (or after 2 s if it never opened).
-      if(toRir){const p={b:bi,s:si};pendAuto=p;setTimeout(()=>{if(pendAuto===p&&!document.querySelector('.rirstrip'))autoPending();},2000);} // by identity: an automatic reorder renumbers p.b (r45)
-      else{lastAuto={b:bi,s:si,t:Date.now()};setDone(bi,si,true);}}
+      if(toRir){const p={b:blkRef(bi),s:si};pendAuto=p;setTimeout(()=>{if(pendAuto===p&&!document.querySelector('.rirstrip'))autoPending();},2000);} // by identity: a later tick must not run this one (r45)
+      else{lastAuto={b:blkRef(bi),s:si,t:Date.now()};setDone(bi,si,true);}}
     else if(s.done){refreshPR(bi,si,false);afterSet(bi,si);}
     saveSoon();return;}
   if(t.dataset.f){
@@ -279,7 +279,7 @@ function acceptGrey(bi,si){
   if(!x||x.done||x.warm||x.drop||+x.r>0)return false;
   const lr=greyR(b,si);if(!(lr>0))return false;
   x.r=Math.round(lr);const inp=document.querySelector(`.sg input[data-f="r"][data-b="${bi}"][data-s="${si}"]`);if(inp)inp.value=String(x.r);
-  lastAuto={b:bi,s:si,t:Date.now()};setDone(bi,si,true);return true;
+  lastAuto={b:blkRef(bi),s:si,t:Date.now()};setDone(bi,si,true);return true;
 }
 let lastDown={el:null,t:0};
 document.addEventListener('pointerdown',e=>{lastDown={el:e.target,t:Date.now()};},true);

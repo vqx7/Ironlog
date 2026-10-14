@@ -191,7 +191,8 @@ function viewDash(){
   let done4=0,wks4=0,need4=0;
   for(let k=1;k<=4;k++){
     const ws=addDays(cur,-7*k);if(!firstWk||ws<firstWk)break;if(isRestWeek(ws))continue;let n=0;wks4++;
-    for(let d=0;d<7;d++)if(sessDates.has(addDays(ws,d)))n++;
+    // Sessions, as the ring, This week, and the streak count them (r46: distinct days read a two-a-day as one).
+    n=weekSessions(ws);
     const wr=weekRoutine(ws);const nw=trainDaysOf(wr)*weekFactor(wr);done4+=Math.min(n,nw);need4+=nw;
   }
   const adher=planned&&wks4&&need4>0?Math.round(done4/need4*100):null;
@@ -200,7 +201,6 @@ function viewDash(){
   // Each set once, as on Today. Summing the per-muscle counts double counts
   // secondary work (a bench set is 1 chest + 0.5 triceps + 0.5 delts).
   const wkHard=weekStats().got;
-  const pr14=I.prs.filter(p=>p.date>=addDays(today(),-14)&&p.big).length;
   const stalled=Object.entries(I.exStats).filter(([,s])=>s.stalled);
   // How much of the last 4 weeks of volume is measured rather than assumed.
   const rc=I.rirCov;const covPct=rc.total&&state.settings.rirMode!=='off'?Math.round(rc.logged/rc.total*100):null;
@@ -216,11 +216,8 @@ function viewDash(){
      log reaches back that far, so month on month reads at a glance.
      Adherence stays in Consistency, hard sets against the plan in Volume and
      This week. PRs are the ones Recent PRs lists (big). */
-  const d28=addDays(today(),-27),d56=addDays(today(),-55);const back=state.sessions.length&&sortedSessions()[0].date<=addDays(d28,-1);
-  const in28=d=>d>=d28,in56=d=>d>=d56&&d<d28;
-  const sess4=state.sessions.filter(x=>in28(x.date)).length,sessP=state.sessions.filter(x=>in56(x.date)).length;
-  const prs4=I.prs.filter(p=>p.big&&in28(p.date)).length,prsP=I.prs.filter(p=>p.big&&in56(p.date)).length;
-  const was=n=>back?` (${n} in the 4 weeks before)`:'';
+  const R4=recent4w();const sess4=R4.sess,sessP=R4.sessP,prs4=R4.prs.length,prsP=R4.prsP;
+  const was=n=>R4.back?` (${n} in the 4 weeks before)`:'';
   h+=`<div class="kpis"><div class="kpi"><div class="v">${nz(sess4)}</div><div class="l">Sessions, last 4 weeks${was(sessP)}</div></div>
   <div class="kpi"><div class="v">${nz(prs4)}</div><div class="l">PRs, last 4 weeks${was(prsP)}</div></div>
 ${extraKpis()}</div>`;
@@ -300,7 +297,7 @@ ${extraKpis()}</div>`;
   const bigPR=I.prs.filter(p=>p.big);
   const prBody=bigPR.length?bigPR.slice(0,15).map(p=>{const ex=EX(p.exId);const iso=p.type==='e1RM'&&!isCompound(ex);const ps=iso?prSet(p.exId,p.date):null;return `<div class="row spread" style="padding:6px 0;border-bottom:1px solid var(--line)"><span>${esc(ex.name)} <span class="tag ${p.type==='Rep PR'?'blue':'green'}">${ex.timed&&p.type==='Rep PR'?'Time PR':p.type==='e1RM'?(iso?'PR':prName(p)):p.type}</span></span><span class="num">${p.type==='e1RM'?(iso?(ps?setShort(ex,ps.w,ps.r):''):fmtE(p.value)+' '+U()):setShort(ex,p.w,p.r)} <span class="muted small">${fmtDate(p.date)}</span></span></div>`;}).join(''):'<p class="muted">No PRs yet. Your first session of an exercise sets the baseline.</p>';
   h+=dsec('exercise','Lifts',`Estimated 1RM uses reps to failure, which is reps plus RIR: Brzycki up to 10, Epley at 11 and 12, none above 12 or for a set called above RIR 4. A blank RIR reads as your usual RIR on that lift once you have rated 3 of its sets in 12 weeks; until then it counts as 0, so the estimate errs low. Numbers stay in the frame you log in, per dumbbell or per side where that applies. Bodyweight lifts add the share of your bodyweight they move: all of it for pull-ups and dips, 64% for push-ups. Lifts that turn about one joint (leg raises, crunches, Nordics) get no estimate; their progress is reps and load. Trends read the average of each session's working sets and need 3 sessions over 2 weeks or more within 6 weeks. A heavy single before back-off sets counts toward bests only. Moving or falling means past 3% with a clear trend, since estimates swing 2 to 8% day to day. A PR is a weight PR (more weight than any earlier set), a new best estimate within its range of reps to failure (1 to 5, 6 to 10, 11 to 12), or a rep PR (more reps at a load than any earlier set); a set that is more than one shows the first. Stalled: flat or falling over your last 6 sessions, or 3 weeks if that covers more (at least 4 sessions), with no PR in the last 3, no heavier load, and no more reps at the same load, not counting deload, lighter, and trimmed sessions.`,
-    exh+sub('prs','Recent PRs',prBody,noLog()?'none yet':pr14||!bigPR.length?`${pr14} in 14 days`:`latest ${fmtDate(bigPR[0].date)}`)+sub('bests','All-time bests',bestsBody.html,bestsBody.n?`${bestsBody.n} lift${bestsBody.n===1?'':'s'}`:'none yet')+sub('stalls','Stalls',stl,stalled.length?`<span class="pill ${fatigueStalls(stalled.map(([id])=>id)).length>=3?'red':'yellow'}">${stalled.length} stalled</span>`:'none'),noLog()?'Nothing logged yet':`${Object.keys(I.byEx).length} lift${Object.keys(I.byEx).length===1?'':'s'} tracked`);
+    exh+sub('prs','Recent PRs',prBody,noLog()?'none yet':prs4||!bigPR.length?`${prs4} in 4 weeks`:`latest ${fmtDate(bigPR[0].date)}`)+sub('bests','All-time bests',bestsBody.html,bestsBody.n?`${bestsBody.n} lift${bestsBody.n===1?'':'s'}`:'none yet')+sub('stalls','Stalls',stl,stalled.length?`<span class="pill ${fatigueStalls(stalled.map(([id])=>id)).length>=3?'red':'yellow'}">${stalled.length} stalled</span>`:'none'),noLog()?'Nothing logged yet':`${Object.keys(I.byEx).length} lift${Object.keys(I.byEx).length===1?'':'s'} tracked`);
 
   // consistency heat map
   // Starts at your first logged week; weeks ahead fill a young log.

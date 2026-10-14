@@ -1,9 +1,9 @@
 // A moves session S to another half-month (date edit); B edits S's notes offline.
 // Per-chunk merge keeps B's copy in the old chunk and A's copy in the new one;
 // normalize() never dedupes by id, so S exists twice for good.
-const {open}=require(require('path').join(__dirname,'..','h.js'));const {chromium}=require('playwright');
+const {open,engine}=require(require('path').join(__dirname,'..','h.js'));
 const {cloudSetup,wait}=require('./cloud.js');const P=require('path').join(__dirname,'..','..','index.html');
-(async()=>{const browser=await chromium.launch();
+(async()=>{const browser=await engine.launch();
 const A=await open(P,{browser,clock:'2026-09-20T10:00:00',setup:cloudSetup});
 const B=await open(P,{browser,clock:'2026-09-20T10:00:00',setup:cloudSetup});await wait(800);
 await A.page.evaluate(()=>{const L=window.__ironlog;const R=L.state.routines[0];L.state.sessions.push({id:'S',date:'2026-09-18',dayIdx:0,dayId:R.days[0].id,dayName:'Chest',routineId:R.id,notes:'',ex:[{exId:'bench',sets:[{w:100,r:8,rir:2}]}]});L.invalidate();});

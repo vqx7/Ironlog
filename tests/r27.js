@@ -113,8 +113,7 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
     await ev(() => document.querySelectorAll('#view > details').forEach(d => { d.open = false; }));
     const gb = await page.locator(`#view > [data-mkey="${t0[1]}"] .sgrip`).first().boundingBox();
     const tb = await page.locator(`#view > [data-mkey="${t0[4]}"]`).first().boundingBox();
-    const cdp = await page.context().newCDPSession(page);
-    const tp = (type, x, y) => cdp.send('Input.dispatchTouchEvent', { type, touchPoints: type === 'touchEnd' ? [] : [{ x, y }] });
+    const tp = await require('./h').touchDriver(page);
     const x0 = gb.x + gb.width / 2, y0 = gb.y + gb.height / 2, y1 = tb.y + tb.height - 5;
     await tp('touchStart', x0, y0); await wait(50);
     for (let k = 1; k <= 20; k++) { await tp('touchMove', x0, y0 + (y1 - y0) * k / 20); await wait(25); }
@@ -149,7 +148,7 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
 
   // ---- Part 2: the real build with accounts, against the stand-in Supabase.
   {
-    const { chromium } = require('playwright');
+    const { engine } = require('./h');
     const { start, quietHibp } = require('./fake-supabase');
     require('./h').build();
     const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'ironlog-r27-'));
@@ -157,7 +156,7 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
     const fake = await start(tmp);
     const ip = path.join(tmp, 'index.html');
     fs.writeFileSync(ip, require('./h').cspFix(fs.readFileSync(ip, 'utf8').replace(/"url":"https:\/\/[a-z0-9]+\.supabase\.co"/, `"url":"${fake.base}"`), fake.base));
-    const browser = await chromium.launch();
+    const browser = await engine.launch();
     const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true, serviceWorkers: 'block' });
     await quietHibp(ctx);
     const page = await ctx.newPage(); const errors = []; page.on('pageerror', e => errors.push(e.message));

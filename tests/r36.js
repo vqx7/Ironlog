@@ -83,8 +83,8 @@ const digest = h => {
 };
 
 (async () => {
-  const { chromium } = require('playwright');
-  const browser = await chromium.launch();
+  const { engine } = require('./h');
+  const browser = await engine.launch();
   const A = await open(BASE, { browser, clock: '2026-10-11T12:00:00' });
   const B = await open(FILE, { browser, clock: '2026-10-11T12:00:00' });
   let same = 0, firstDiff = null, errs = 0; const t0 = Date.now();

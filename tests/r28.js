@@ -183,8 +183,7 @@ const TABS = ['today', 'program', 'dash', 'history', 'settings'];
     const P = await open('index.html', { touch: true, clock: '2026-10-02T12:00:00' });
     const { page } = P; const ev = (f, a) => page.evaluate(f, a);
     await ev(() => { const L = window.__ironlog; const t = L.TEMPLATES.find(x => /upper/i.test(x.name)); const r = L.routineFromTemplate(t.key); L.state.routines = [r]; L.state.activeRoutineId = r.id; L.state.settings.onboarded = true; localStorage.setItem('ironlog.v1.installLater', '1'); L.render(); });
-    const cdp = await page.context().newCDPSession(page);
-    const tp = (type, x, y) => cdp.send('Input.dispatchTouchEvent', { type, touchPoints: type === 'touchEnd' ? [] : [{ x, y }] });
+    const tp = await require('./h').touchDriver(page);
     const order = () => ev(() => [...document.querySelectorAll('#view > [data-mkey]')].map(e => e.dataset.mkey));
     const tab = t => ev(t => { const L = window.__ironlog; L.ui.tab = t; window.scrollTo(0, 0); L.render(); }, t);
     // Settings with Layout open, whatever this visit last did with it.

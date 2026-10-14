@@ -13,8 +13,8 @@ const LB = 0.45359237;
 const ODD = /shared (phone|device|computer)|someone else|another person|other people|anyone else|whoever shared|not your (phone|device)|public (computer|device)|second person|other users/i;
 
 (async () => {
-  const { chromium } = require('playwright');
-  const browser = await chromium.launch();
+  const { engine } = require('./h');
+  const browser = await engine.launch();
 
   // ---------- 1. The engine, with hand-worked numbers ----------
   {

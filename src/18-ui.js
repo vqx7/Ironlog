@@ -226,6 +226,7 @@ function timerResume(){
 }
 /* One place that marks a set done or not done, so the checkmark and auto-done
    paths cannot drift apart. The rest timer starts here only in Auto mode. */
+// The set waiting to be confirmed, held through blkRef, so neither a move nor a rebuild points it at another exercise (r46).
 let lastAuto=null;
 /* Reps far past anything logged on the lift and its range (a typo: 105 for
    10) are asked about before they count (r32, second check: 100 x 105 was
@@ -261,7 +262,7 @@ function setDone(bi,si,val){
   // on the set's RIR box opens it. A blank RIR is fine: see rirSettings().
   const askRir=val&&state.settings.rirAsk===true&&!s.warm&&s.rir==null&&rirShow(EX(b.exId))&&!!document.querySelector(`.rirb[data-b="${bi}"][data-s="${si}"]`);
   if(askRir)rirShowStrip(bi,si);else if(!val)rirClose();
-  if(val&&!askRir&&!state.draft.editingId&&blockDone(b))foldT=setTimeout(()=>autoFold(bi),1200);
+  if(val&&!askRir&&!state.draft.editingId&&blockDone(b)){const rf=blkRef(bi);foldT=setTimeout(()=>autoFold(rf),1200);}
   // The first set ticked on an exercise below untouched ones moves it up (r45).
   if(val&&b.sets.filter(x=>x.done).length===1&&orderAt(b)>=0)orderSoon(b);
   saveNow();

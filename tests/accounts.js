@@ -8,7 +8,7 @@
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
-const { chromium } = require('playwright');
+const { engine } = require('./h');
 const { start, quietHibp } = require('./fake-supabase');
 const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log('FAIL', m, x !== undefined ? JSON.stringify(x) : ''); } else console.log('ok  ', m); };
 const wait = ms => new Promise(r => setTimeout(r, ms));
@@ -26,21 +26,24 @@ fs.cpSync(DIST, tmp, { recursive: true });
   ok(!/service_role|sb_secret_/.test(html + fs.readFileSync(path.join(tmp, 'cloud.js'), 'utf8')), 'no secret key anywhere in the build');
   fs.writeFileSync(ip, require('./h').cspFix(html.replace(/"url":"https:\/\/[a-z0-9]+\.supabase\.co"/, `"url":"${fake.base}"`), fake.base));
   const APP = fake.base + '/ironlog/';
-  const browser = await chromium.launch();
+  const browser = await engine.launch();
   const devices = [];
   async function device(url, sw, fresh) {
     const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true, serviceWorkers: sw ? 'allow' : 'block' });
     await quietHibp(ctx);
+    // Every promise rejection the page itself does not handle, kept across reloads in this tab.
+    await ctx.addInitScript(() => { addEventListener('unhandledrejection', e => { try { const k = '__ilRej', a = JSON.parse(sessionStorage.getItem(k) || '[]'); a.push(location.pathname + ': ' + String(e.reason && e.reason.message || e.reason)); sessionStorage.setItem(k, JSON.stringify(a)); } catch (x) { /* storage off */ } }); });
     const page = await ctx.newPage();
     const errors = [];
-    page.on('pageerror', e => errors.push(e.message));
+    const st = { offline: false };
+    page.on('pageerror', e => { if (st.offline && require('./h').offlineLoad(e.message)) return; errors.push('page error: ' + e.message); });
     // A refused sign-in shows up as a failed request in the console; that is expected here.
-    page.on('console', m => { if (m.type() === 'error' && !/Failed to load resource|status of 4\d\d/.test(m.text())) errors.push(m.text()); });
+    page.on('console', m => { if (m.type() === 'error' && !/Failed to load resource|status of 4\d\d/.test(m.text())) errors.push(`console: ${JSON.stringify(m.text())} at ${m.location().url || '?'}`); });
     await page.goto(url || APP); await page.waitForFunction(() => window.__ironlog && window.__libs && window.__libs.chart, null, { timeout: 15000 });
     // The install offer has its own suite (tests/install.js); here it is dismissed so the account line shows.
     await page.evaluate(() => { localStorage.setItem('ironlog.v1.installLater', '1'); });
     if (!fresh) await page.evaluate(() => { const L = window.__ironlog; L.state.settings.onboarded = true; L.saveNow(); L.render(); localStorage.setItem('ironlog.v1.tipWake', '1'); });
-    const d = { ctx, page, errors, ev: (f, a) => page.evaluate(f, a) };
+    const d = { ctx, page, errors, st, ev: (f, a) => page.evaluate(f, a) };
     devices.push(d); return d;
   }
   const logOn = (D, id, w) => D.ev(([id, w]) => { const L = window.__ironlog; const R = L.state.routines[0]; L.state.sessions.push({ id, date: '2026-09-25', dayIdx: 0, dayId: R.days[0].id, dayName: 'Chest', routineId: R.id, notes: '', ex: [{ exId: 'bench', sets: [{ w, r: 8, rir: 2 }] }] }); L.invalidate(); L.saveNow(); L.render(); }, [id, w]);
@@ -342,12 +345,12 @@ fs.cpSync(DIST, tmp, { recursive: true });
   await H.page.click('#acctPanel [data-act="acctOpen"][data-mode="signin"]'); await wait(100);
   await fill(H, 'signin', 'v@example.com', 'new horse 3');
   ok(await synced(H), 'installed-app device: signed in and synced');
-  await H.ctx.setOffline(true);
+  await H.ctx.setOffline(true); H.st.offline = true;
   await H.page.reload(); await H.page.waitForFunction(() => window.__ironlog, null, { timeout: 15000 }); await wait(1500);
   ok((await H.ev(() => window.__ironlog.state.sessions.some(s => s.id === 'sA2'))) && !!(await H.ev(() => window.__ironlog.acctUser())), 'offline launch: the log is there and the sign-in is kept');
   await logOn(H, 'sH-offline', 130); await H.ev(() => window.__ironlog.flush()); await wait(800);
   ok(!sessIn(rowsOf('v@example.com')).includes('sH-offline'), 'offline: nothing sent, saved on the phone');
-  await H.ctx.setOffline(false);
+  await H.ctx.setOffline(false); H.st.offline = false;
   await H.ev(() => window.dispatchEvent(new Event('online'))); await wait(2500);
   ok(sessIn(rowsOf('v@example.com')).includes('sH-offline') && (await H.ev(() => window.__ironlog.cloudState().status)) === 'synced', 'back online: what was logged offline reaches the account by itself', sessIn(rowsOf('v@example.com')));
 
@@ -472,6 +475,9 @@ fs.cpSync(DIST, tmp, { recursive: true });
   ok(fit, 'no sideways scrolling at 320 px');
 
   for (const d of devices) ok(!d.errors.length, 'no console errors on a device', d.errors);
+  // What tests/h.js offlineLoad leaves out rests on the page itself seeing no rejection; this holds it to that.
+  const rej = []; for (const d of devices) { const r = await d.page.evaluate(() => JSON.parse(sessionStorage.getItem('__ilRej') || '[]')).catch(() => null); if (r) rej.push(...r); }
+  ok(!rej.length, 'no promise rejection went unhandled in a page, offline or not', rej);
   console.log(fails.length ? `FAILURES ${fails.length}` : 'ALL PASS');
   await browser.close(); await fake.close(); fs.rmSync(tmp, { recursive: true, force: true });
   process.exit(fails.length ? 1 : 0);

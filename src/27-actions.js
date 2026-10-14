@@ -706,7 +706,7 @@ const ACT={
     rirClose();if(btn)try{btn.focus({preventScroll:true});}catch(e){/* focus is best effort */}
     if(s.done){refreshPR(bi,si,false);afterSet(bi,si);}updateProgress(bi);
     // The fold waits for the effort of the last set, then goes.
-    if(!d.editingId&&blockDone(b)){clearTimeout(foldT);foldT=setTimeout(()=>autoFold(bi),900);}
+    if(!d.editingId&&blockDone(b)){clearTimeout(foldT);const rf=blkRef(bi);foldT=setTimeout(()=>autoFold(rf),900);}
     saveSoon();},
   bOpen(t){const bi=+t.dataset.b;const b=state.draft&&state.draft.ex[bi];if(!b)return;ui.blkOpen.add(blkKey(bi,b));blkOpenObj.add(b);rerenderKeepScroll();
     const el=document.getElementById('blk-'+bi);if(el)try{el.scrollIntoView({block:'nearest'});}catch(e){/* scroll is best effort */}},
@@ -761,7 +761,7 @@ const ACT={
        checkmark confirms it for 15 s, until another set is touched: typing
        reps, picking RIR and then tapping the checkmark is the natural order,
        and it used to untick the set. A second tap undoes it. */
-    if(lastAuto&&(lastAuto.b!==bi||lastAuto.s!==si))lastAuto=null;
+    if(lastAuto&&(blkIdx(lastAuto.b)!==bi||lastAuto.s!==si))lastAuto=null;
     if(lastAuto&&Date.now()-lastAuto.t<15000&&s.done){lastAuto=null;return;}
     /* Tapping done on an empty reps field logs the grey number in it (see
        greyR), like the paper log you copy from. Warm-ups have none, so
@@ -1262,7 +1262,7 @@ const ACT={
     const s=state.sessions.find(x=>x.id===t.dataset.id);if(!s)return;
     const go=()=>{const R=state.routines.find(r=>r.id===s.routineId)||activeRoutine();
       const dayItems=s.free?[]:((R.days[sessDayIdx(R,s)]||{items:[]}).items);
-      state.draft={id:uid(),editingId:s.id,deload:!!s.deload,light:!!s.light,free:s.free?true:undefined,chk:s.chk?{...s.chk}:undefined,startedAt:null,durMin:s.durMin||null,date:s.date,dayIdx:s.dayIdx,dayId:s.dayId||null,dayName:s.dayName,routineId:s.routineId,notes:s.notes||'',ex:s.ex.map(b=>{const it=dayItems.find(i=>i.exId===b.exId);const plan=it?{...it}:planFor(b.exId);return {exId:b.exId,plan,note:b.note||'',keepRR:b.rr||null,cut:b.cut?true:undefined,light:b.light?true:undefined,hint:'Editing saved sets.',lastR:[],sets:b.sets.map(x=>({w:x.w,r:x.r,rir:x.rir,warm:!!x.warm,drop:!!x.drop,done:true,cal:x.cal?{...x.cal}:undefined}))};})};
+      state.draft={id:uid(),editingId:s.id,deload:!!s.deload,light:!!s.light,free:s.free?true:undefined,chk:s.chk?{...s.chk}:undefined,startedAt:null,durMin:s.durMin||null,date:s.date,dayIdx:s.dayIdx,dayId:s.dayId||null,dayName:s.dayName,routineId:s.routineId,notes:s.notes||'',ex:s.ex.map(b=>{const it=dayItems.find(i=>i.exId===b.exId);const plan=it?{...it}:planFor(b.exId);return {bid:uid(),exId:b.exId,plan,note:b.note||'',keepRR:b.rr||null,cut:b.cut?true:undefined,light:b.light?true:undefined,hint:'Editing saved sets.',lastR:[],sets:b.sets.map(x=>({w:x.w,r:x.r,rir:x.rir,warm:!!x.warm,drop:!!x.drop,done:true,cal:x.cal?{...x.cal}:undefined}))};})};
       editFp0.set(state.draft.id,editFp(state.draft));
       saveNow();ui.tab='today';window.scrollTo(0,0);render();};
     if(state.draft)confirmBox('Replace the session in progress?','You have an unsaved session open. Editing this one will discard it.','Discard and edit',go,true);else go();

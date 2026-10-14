@@ -218,10 +218,21 @@ function resyncLocalH(){try{const ch=chunksOf(state);cloud.localH={};for(const i
 function draftNote(prev){
   if(!prev||state.draft&&state.draft.id===prev.id)return;
   /* Only called when the draft document itself came from the cloud, so a
-     Finish or Discard made here during a sync is never put on another device. */
-  if(prev.editingId){if(!state.draft)toast('The edit in progress was closed on another device.');return;}
+     Finish or Discard made here during a sync is never put on another device.
+     It says what it can see, and no more: the session it became, the workout
+     that took its place, or just that it is closed. Whether a workout we
+     cannot see was finished or discarded is not recorded anywhere, and the
+     other phone's session document may simply not have arrived (a weak
+     signal, a failed write), so "discarded" was a guess that came out wrong
+     on a save that did not upload (r46). The draft goes up last, so in the
+     ordinary case the session is already here and this says saved. */
+  if(prev.editingId){const d=state.draft;
+    if(!d)toast('The edit in progress was closed on another device.');
+    else if(d.editingId){const s=state.sessions.find(x=>x.id===d.editingId);toast(s?`Now editing ${s.dayName||'a session'}, ${fmtDate(s.date)}, opened on another device.`:'A different saved session was opened for editing on another device.');}
+    else toast('The edit in progress was replaced by the workout on another device.');
+    return;}
   const sid=prev.id;
-  toast(state.sessions.some(s=>s.id===sid)?'The workout in progress was saved on another device.':state.draft?'The workout in progress was replaced by the one on another device.':'The workout in progress was discarded on another device.');
+  toast(state.sessions.some(s=>s.id===sid)?'The workout in progress was saved on another device.':state.draft?'The workout in progress was replaced by the one on another device.':'The workout in progress was closed on another device.');
 }
 function conflictNote(stat){if(stat.conflicts){log('sync-conflict',`${stat.conflicts} record(s) edited on two devices; kept the later edit`);toast(`${stat.conflicts} item${stat.conflicts===1?' was':'s were'} edited on two devices. The later edit was kept.`);}}
 /* A short lease on a lock document so two devices do not interleave their
@@ -256,6 +267,10 @@ async function cloudFlush(){
     if(m&&!m.b&&m.h===h){m.b=baseOf(id,data);backfilled=true;}
     if(!m||m.h!==h)todo.push({id,json,h});}
   if(backfilled)saveMeta();
+  /* The draft goes up last (r46, the r45 QC): Finish empties it and adds the
+     session, and written first, a device pulling in between saw the workout
+     gone and no session, and said it was discarded. */
+  todo.sort((a,b)=>(a.id==='draft')-(b.id==='draft'));
   if(!todo.length){if(cloud.status!=='synced'){cloud.last=Date.now();saveMeta();setCloud('synced');}return;}
   setCloud('saving');
   try{

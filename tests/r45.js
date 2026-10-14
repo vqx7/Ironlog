@@ -7,7 +7,7 @@
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
-const { chromium } = require('playwright');
+const { engine } = require('./h');
 const { start, quietHibp } = require('./fake-supabase');
 const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log('FAIL', m, x !== undefined ? JSON.stringify(x).slice(0, 400) : ''); } else console.log('ok  ', m); };
 const wait = ms => new Promise(r => setTimeout(r, ms));
@@ -22,7 +22,7 @@ const PW = 'correct horse 45';
   const ip = path.join(tmp, 'index.html');
   fs.writeFileSync(ip, require('./h').cspFix(fs.readFileSync(ip, 'utf8').replace(/"url":"https:\/\/[a-z0-9]+\.supabase\.co"/, `"url":"${fake.base}"`), fake.base));
   const APP = fake.base + '/ironlog/';
-  const browser = await chromium.launch();
+  const browser = await engine.launch();
   async function device(w) {
     const ctx = await browser.newContext({ viewport: { width: w || 390, height: 844 }, hasTouch: true, isMobile: true, serviceWorkers: 'block' });
     await quietHibp(ctx);
@@ -69,7 +69,7 @@ const PW = 'correct horse 45';
   const first = fake.codeFor('b@x.test');
   await B.page.click('#modal [data-act="acctResend"]'); await idle(B);
   s = await sheet(B);
-  ok(s && /^Wait \d+ seconds, then send a new code\.$/.test(s.err) && fake.codeFor('b@x.test') === first, 'a new code within the minute: "Wait N seconds", and the code is unchanged', s);
+  ok(s && /^Wait \d+ seconds, then try again\.$/.test(s.err) /* r46: the same message shows on Create account and Reset password, which have no code */ && fake.codeFor('b@x.test') === first, 'a new code within the minute: "Wait N seconds", and the code is unchanged', s);
   fake.ageCode('b@x.test', 61000);
   await B.page.click('#modal [data-act="acctResend"]'); await idle(B);
   const second = fake.codeFor('b@x.test');
@@ -203,7 +203,8 @@ const PW = 'correct horse 45';
     await B.page.evaluate(() => window.__ironlog.flush()); await wait(300);
     await A.page.evaluate(() => window.__ironlog.sync()); await wait(500);
     const t1 = await toastOf(A); const gone = await A.page.evaluate(() => window.__ironlog.state.draft === null);
-    ok(onB && gone && /discarded on another device/.test(t1), 'a session in progress discarded on the other phone: this one says so', { onB, gone, t1 });
+    // r46: "discarded" was a guess (a finished workout whose session document had not arrived read the same), so this says closed, which is true either way.
+    ok(onB && gone && /closed on another device/.test(t1) && !/discarded/.test(t1), 'a session in progress closed on the other phone: this one says so, without guessing whether it was saved', { onB, gone, t1 });
     await startOnA();
     await B.page.evaluate(() => { const L = window.__ironlog; const d = L.state.draft; d.ex[0].sets[0].r = 8; d.ex[0].sets[0].w = 50; d.ex[0].sets[0].done = true; d._rampAsked = true; d._leftAsked = true; L.ACT.finishNow(); }); await wait(300);
     await B.page.evaluate(() => window.__ironlog.flush()); await wait(300);

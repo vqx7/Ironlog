@@ -1,6 +1,6 @@
 // Data flow: storage, reload, draft recovery, backup round trip, CSV, trash,
 // undo, and two devices syncing through a shared (mock) cloud store.
-const {open}=require('./h');const {chromium}=require('playwright');
+const {open}=require('./h');const { engine } = require('./h');
 const fails=[];const ok=(c,m,x)=>{if(!c){fails.push(m);console.log('FAIL',m,x!==undefined?JSON.stringify(x):'');}else console.log('ok  ',m,x!==undefined?JSON.stringify(x).slice(0,160):'');};
 const store=new Map();
 const cloudSetup=async(ctx,page)=>{
@@ -12,7 +12,7 @@ const cloudSetup=async(ctx,page)=>{
     if(k==='db')return {doc:p=>({get:async()=>{const v=await window.__dbGet(p);return v==null?{exists:false,data:()=>null}:{exists:true,data:()=>JSON.parse(v)};},set:async o=>{await window.__dbSet(p,JSON.stringify(o));return true;}}),collection:p=>({get:async()=>{const l=JSON.parse(await window.__dbList(p));return {docs:l.map(([id,v])=>({id,exists:true,data:()=>JSON.parse(v)}))};}})};
     return null;}};});
 };
-(async()=>{const browser=await chromium.launch();
+(async()=>{const browser=await engine.launch();
 // ---- 1. log a session through the UI, reload, it is there; draft survives reload
 {
 const {page,errors,ctx}=await open('index.html',{browser,clock:'2026-09-26T10:00:00'});

@@ -94,7 +94,14 @@ const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log
   // Leaving an empty reps field accepts the grey number (the iPhone number pad has no Next key).
   const row = (b, s) => ev(([b, s]) => { const x = window.__ironlog.state.draft.ex[b].sets[s]; return { done: !!x.done, r: x.r, last: window.__ironlog.lastRFor(window.__ironlog.state.draft.ex[b], s) }; }, [b, s]);
   const rs = (b, s) => `.sg input[data-f="r"][data-b="${b}"][data-s="${s}"]`;
-  const blank = async () => { const p = await ev(() => { const el = [...document.querySelectorAll('#view p, #view h2, #view h3, #view .muted, #view .small')].find(e => !e.closest('button,a,select,label,input,textarea,[data-act],summary') && e.getBoundingClientRect().top > 60 && e.getBoundingClientRect().bottom < innerHeight - 90 && e.getBoundingClientRect().width > 20); if (!el) return null; const r = el.getBoundingClientRect(); return { x: r.left + 4, y: r.top + r.height / 2 }; }); if (p) await A.page.touchscreen.tap(p.x, p.y); return !!p; };
+  /* Blank space is a point with nothing a finger could mean within 30 px:
+     WebKit, as on an iPhone, moves a tap to a button or handle near the
+     finger (on 2026-10-14 WebKit was given text beside an exercise's handle, and
+     the tap went to the handle). */
+  const blank = async () => { const p = await ev(() => { const hot = 'button,a,select,label,input,textarea,[data-act],summary,[role="button"],[tabindex]'; const clear = (x, y) => { for (let dx = -30; dx <= 30; dx += 10) for (let dy = -30; dy <= 30; dy += 10) { const e = document.elementFromPoint(x + dx, y + dy); if (!e || !e.closest('#view') || e.closest(hot)) return false; } return true; };
+    for (const el of document.querySelectorAll('#view p, #view h2, #view h3, #view .muted, #view .small')) { if (el.closest(hot)) continue; const r = el.getBoundingClientRect(); if (r.top <= 60 || r.bottom >= innerHeight - 90 || r.width <= 20) continue;
+      for (let x = r.left + 4; x < r.right - 4; x += 12) { const y = r.top + r.height / 2; if (clear(x, y)) return { x, y }; } }
+    return null; }); if (p) await A.page.touchscreen.tap(p.x, p.y); return !!p; };
   await ev(() => { window.__ironlog.state.settings.autoDone = true; });
   await A.page.locator(rs(1, 1)).scrollIntoViewIfNeeded(); await A.page.tap(rs(1, 1)); await A.page.waitForTimeout(80);
   await ev(() => document.activeElement.blur()); await A.page.waitForTimeout(150);
@@ -106,9 +113,12 @@ const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log
   const tapped = await blank(); await A.page.waitForTimeout(150);
   ok(tapped && !(await row(1, 2)).done, 'leaving the load field does not tick it either (only reps confirm a set)');
   await A.page.tap(rs(1, 2)); await A.page.waitForTimeout(80);
+  // What the tap reached and where focus went, so a failure here says why.
+  await ev(() => { const d = e => e ? e.tagName.toLowerCase() + (e.className && typeof e.className === 'string' ? '.' + e.className.trim().split(/\s+/).join('.') : '') + (e.dataset && e.dataset.f ? `[${e.dataset.f}${e.dataset.b},${e.dataset.s}]` : '') : null; window.__tapLog = [['before', d(document.activeElement), document.hasFocus()]]; for (const t of ['pointerdown', 'touchstart', 'mousedown', 'focusout', 'focusin', 'click']) document.addEventListener(t, e => window.__tapLog.push([t, d(e.target), d(e.relatedTarget)]), true); window.__tapD = d; });
   await blank(); await A.page.waitForTimeout(150);
+  const tapLog = await ev(() => [...window.__tapLog, ['after', window.__tapD(document.activeElement), document.hasFocus()]]);
   g = await row(1, 2);
-  ok(g.done && g.r === g.last, 'a tap on blank space after the grey reps ticks the set', g);
+  ok(g.done && g.r === g.last, 'a tap on blank space after the grey reps ticks the set', { ...g, tapLog });
   await A.page.tap(rs(1, 3)).catch(() => {}); await A.page.waitForTimeout(80);
   const has3 = await ev(() => !!document.querySelector('.sg input[data-f="r"][data-b="1"][data-s="3"]'));
   if (has3) {

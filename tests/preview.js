@@ -7,7 +7,7 @@
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
-const { chromium } = require('playwright');
+const { engine } = require('./h');
 const { start, quietHibp } = require('./fake-supabase');
 const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log('FAIL', m, x !== undefined ? JSON.stringify(x) : ''); } else console.log('ok  ', m); };
 const wait = ms => new Promise(r => setTimeout(r, ms));
@@ -35,13 +35,16 @@ fs.cpSync(path.join(ROOT, 'dist-preview'), path.join(tmp, 'preview'), { recursiv
   const swLive = fs.readFileSync(path.join(tmp, 'sw.js'), 'utf8'), swPv = fs.readFileSync(path.join(tmp, 'preview/sw.js'), 'utf8');
   ok(/const CACHE="ironlog-/.test(swLive) && /const CACHE="ilpreview-/.test(swPv) && !/startsWith\("ironlog-"\)/.test(swPv), 'the two workers name and clear only their own caches');
 
-  const browser = await chromium.launch();
+  const browser = await engine.launch();
   const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true });
   await quietHibp(ctx);
+  // Every promise rejection the page itself does not handle, kept across reloads in this tab.
+  await ctx.addInitScript(() => { addEventListener('unhandledrejection', e => { try { const k = '__ilRej', a = JSON.parse(sessionStorage.getItem(k) || '[]'); a.push(location.pathname + ': ' + String(e.reason && e.reason.message || e.reason)); sessionStorage.setItem(k, JSON.stringify(a)); } catch (x) { /* storage off */ } }); });
   const page = await ctx.newPage();
   const errors = [];
-  page.on('pageerror', e => errors.push(e.message));
-  page.on('console', m => { if (m.type() === 'error' && !/Failed to load resource|status of 4\d\d/.test(m.text())) errors.push(m.text()); });
+  let offline = false;
+  page.on('pageerror', e => { if (offline && require('./h').offlineLoad(e.message)) return; errors.push('page error: ' + e.message); });
+  page.on('console', m => { if (m.type() === 'error' && !/Failed to load resource|status of 4\d\d/.test(m.text())) errors.push(`console: ${JSON.stringify(m.text())} at ${m.location().url || '?'}`); });
   const ev = (f, a) => page.evaluate(f, a);
   const ready = () => page.waitForFunction(() => window.__ironlog && window.__libs && window.__libs.chart, null, { timeout: 15000 });
   const synced = () => page.waitForFunction(() => { const c = window.__ironlog.cloudState(); return c.on && c.status === 'synced'; }, null, { timeout: 15000 }).then(() => true, () => false);
@@ -124,12 +127,12 @@ fs.cpSync(path.join(ROOT, 'dist-preview'), path.join(tmp, 'preview'), { recursiv
   ok((await ev(() => caches.keys())).some(k => k.startsWith('ilpreview-')), 'opening the live app does not remove the preview\'s offline copy');
 
   // ---- Both open offline.
-  await ctx.setOffline(true);
+  await ctx.setOffline(true); offline = true;
   await page.goto(PV); await ready().catch(() => {});
   ok(await ev(() => window.__ironlog && window.__ironlog.ENV === 'preview').catch(() => false), 'the preview opens offline');
   await page.goto(LIVE); await ready().catch(() => {});
   ok(await ev(() => window.__ironlog && window.__ironlog.ENV === 'live').catch(() => false), 'the live app opens offline');
-  await ctx.setOffline(false);
+  await ctx.setOffline(false); offline = false;
 
   // ---- The preview table not created yet: a plain message, and the phone keeps the log.
   fake.previewTable(false);
@@ -159,6 +162,9 @@ fs.cpSync(path.join(ROOT, 'dist-preview'), path.join(tmp, 'preview'), { recursiv
   await ctx3.close();
 
   ok(!errors.length, 'no page errors (' + errors.join(' | ') + ')');
+  // What tests/h.js offlineLoad leaves out rests on the page itself seeing no rejection; this holds it to that.
+  const rej = await page.evaluate(() => JSON.parse(sessionStorage.getItem('__ilRej') || '[]'));
+  ok(!rej.length, 'no promise rejection went unhandled in the page, offline or not', rej);
   await browser.close(); await fake.close();
   console.log(fails.length ? `${fails.length} FAILED` : 'ALL PASS');
   process.exit(fails.length ? 1 : 0);
