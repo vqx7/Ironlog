@@ -1,6 +1,6 @@
 # What each suite checks
 
-Moved out of CLAUDE.md in r44 so every session starts with less to read; this is the same table. `tests/run.js` runs them all (side by side since r44), `node tests/<name>.js` runs one. Add a row here for every new suite.
+Moved out of CLAUDE.md in r44 so every session starts with less to read; this is the same table. `tests/run.js` runs them all (side by side since r44), `node tests/<name>.js` runs one. Add a row here for every new suite. Since 2026-10-14 `npm run test:webkit` (or `IRONLOG_BROWSER=webkit node tests/<name>.js`) runs the same suites in WebKit; the few left out are in `WEBKIT_SKIP` in `tests/run.js`, each with its reason.
 
 | Suite | Covers |
 |---|---|

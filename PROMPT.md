@@ -4,7 +4,7 @@ Paste everything below the line into Claude Code opened on this repo.
 
 ---
 
-You are working on Ironlog. Read `CLAUDE.md` first: it has the code map, the rules and the evidence base. `index.html` is the only source. It ships as a Claude artifact and as the standalone app in `dist/` (GitHub Pages, `gh-pages` branch).
+You are working on Ironlog. Read `CLAUDE.md` first: it has the code map, the rules and the evidence base. `src/` is the source, and `npm run join` writes `index.html` from it. It ships as the standalone app in `dist/` (GitHub Pages, `gh-pages` branch); the Claude artifact was retired on 2026-09-27.
 
 Rules: run `npm test` before and after every change, and all suites must pass on both builds. Add tests for every behaviour you change. Never weaken or delete an assertion to make it pass; ask instead. Never lose data: new stored fields get a `normalize()` default, and changes of meaning get a migration and a `tests/migration.js` case. Copy is short and plain, with no em dashes. Bump `APP_VERSION` once per published build. Work on a branch, and summarise each task in 3 lines.
 
