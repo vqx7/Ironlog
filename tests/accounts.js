@@ -31,6 +31,8 @@ fs.cpSync(DIST, tmp, { recursive: true });
   async function device(url, sw, fresh) {
     const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true, serviceWorkers: sw ? 'allow' : 'block' });
     await quietHibp(ctx);
+    // Rejections the page itself saw, to tell them from what the browser logs (WebKit, 2026-10-14).
+    await ctx.addInitScript(() => { addEventListener('unhandledrejection', e => { try { const k = '__ilRej', a = JSON.parse(sessionStorage.getItem(k) || '[]'); a.push(location.pathname + ': ' + String(e.reason && e.reason.message || e.reason)); sessionStorage.setItem(k, JSON.stringify(a)); } catch (x) { /* storage off */ } }); });
     const page = await ctx.newPage();
     const errors = [];
     page.on('pageerror', e => errors.push('page error: ' + e.message + ((e.stack || '').split('\n')[1] ? ' ' + (e.stack || '').split('\n')[1].trim() : '')));
@@ -471,7 +473,7 @@ fs.cpSync(DIST, tmp, { recursive: true });
   const fit = await G.ev(() => document.documentElement.scrollWidth <= window.innerWidth);
   ok(fit, 'no sideways scrolling at 320 px');
 
-  for (const d of devices) ok(!d.errors.length, 'no console errors on a device', d.errors);
+  for (const d of devices) ok(!d.errors.length, 'no console errors on a device', d.errors.length ? { errors: d.errors, pageSaw: await d.page.evaluate(() => JSON.parse(sessionStorage.getItem('__ilRej') || '[]')).catch(() => 'closed') } : undefined);
   console.log(fails.length ? `FAILURES ${fails.length}` : 'ALL PASS');
   await browser.close(); await fake.close(); fs.rmSync(tmp, { recursive: true, force: true });
   process.exit(fails.length ? 1 : 0);

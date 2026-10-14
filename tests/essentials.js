@@ -94,7 +94,14 @@ const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log
   // Leaving an empty reps field accepts the grey number (the iPhone number pad has no Next key).
   const row = (b, s) => ev(([b, s]) => { const x = window.__ironlog.state.draft.ex[b].sets[s]; return { done: !!x.done, r: x.r, last: window.__ironlog.lastRFor(window.__ironlog.state.draft.ex[b], s) }; }, [b, s]);
   const rs = (b, s) => `.sg input[data-f="r"][data-b="${b}"][data-s="${s}"]`;
-  const blank = async () => { const p = await ev(() => { const el = [...document.querySelectorAll('#view p, #view h2, #view h3, #view .muted, #view .small')].find(e => !e.closest('button,a,select,label,input,textarea,[data-act],summary') && e.getBoundingClientRect().top > 60 && e.getBoundingClientRect().bottom < innerHeight - 90 && e.getBoundingClientRect().width > 20); if (!el) return null; const r = el.getBoundingClientRect(); return { x: r.left + 4, y: r.top + r.height / 2 }; }); if (p) await A.page.touchscreen.tap(p.x, p.y); return !!p; };
+  /* Blank space is a point with nothing a finger could mean within 30 px:
+     WebKit, as on an iPhone, moves a tap to a button or handle near the
+     finger (on 2026-10-14 WebKit was given text beside an exercise's handle, and
+     the tap went to the handle). */
+  const blank = async () => { const p = await ev(() => { const hot = 'button,a,select,label,input,textarea,[data-act],summary,[role="button"],[tabindex]'; const clear = (x, y) => { for (let dx = -30; dx <= 30; dx += 10) for (let dy = -30; dy <= 30; dy += 10) { const e = document.elementFromPoint(x + dx, y + dy); if (!e || !e.closest('#view') || e.closest(hot)) return false; } return true; };
+    for (const el of document.querySelectorAll('#view p, #view h2, #view h3, #view .muted, #view .small')) { if (el.closest(hot)) continue; const r = el.getBoundingClientRect(); if (r.top <= 60 || r.bottom >= innerHeight - 90 || r.width <= 20) continue;
+      for (let x = r.left + 4; x < r.right - 4; x += 12) { const y = r.top + r.height / 2; if (clear(x, y)) return { x, y }; } }
+    return null; }); if (p) await A.page.touchscreen.tap(p.x, p.y); return !!p; };
   await ev(() => { window.__ironlog.state.settings.autoDone = true; });
   await A.page.locator(rs(1, 1)).scrollIntoViewIfNeeded(); await A.page.tap(rs(1, 1)); await A.page.waitForTimeout(80);
   await ev(() => document.activeElement.blur()); await A.page.waitForTimeout(150);
@@ -111,17 +118,8 @@ const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log
   await blank(); await A.page.waitForTimeout(150);
   const tapLog = await ev(() => [...window.__tapLog, ['after', window.__tapD(document.activeElement), document.hasFocus()]]);
   g = await row(1, 2);
-  /* WebKit, the engine of every iPhone browser, moves focus only to what can
-     take it, so a tap on blank text leaves the reps field focused: nothing
-     is ticked until the lifter goes on (found
-     2026-10-14, the first WebKit run). There the check is that the field is
-     still focused with nothing ticked, and that going on to the next set's
-     reps then takes the grey number. */
-  const webkit = require('./h').ENGINE === 'webkit';
-  if (webkit) { const f = await ev(s => document.activeElement === document.querySelector(s), rs(1, 2)); ok(f && !g.done, 'WebKit: a tap on blank space leaves the grey reps field focused, nothing ticked', { focused: f, ...g, tapLog }); }
-  else ok(g.done && g.r === g.last, 'a tap on blank space after the grey reps ticks the set', { ...g, tapLog });
+  ok(g.done && g.r === g.last, 'a tap on blank space after the grey reps ticks the set', { ...g, tapLog });
   await A.page.tap(rs(1, 3)).catch(() => {}); await A.page.waitForTimeout(80);
-  if (webkit) { g = await row(1, 2); ok(g.done && g.r === g.last, 'WebKit: going on to the next set\'s reps takes the grey number for the set left', g); }
   const has3 = await ev(() => !!document.querySelector('.sg input[data-f="r"][data-b="1"][data-s="3"]'));
   if (has3) {
     await A.page.tap('[data-act="sDone"][data-b="1"][data-s="3"]'); await A.page.waitForTimeout(250);
