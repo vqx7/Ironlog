@@ -15,6 +15,7 @@ const FD = path.join(__dirname, '..', 'node_modules/@fontsource');
 let FCSS = '';
 for (const w of [600, 700, 800]) FCSS += `@font-face{font-family:'Big Shoulders Display';font-weight:${w};src:url(https://fonts.local/bsd-${w}.woff2) format('woff2');}`;
 for (const w of [400, 500, 600, 700]) FCSS += `@font-face{font-family:'Hanken Grotesk';font-weight:${w};src:url(https://fonts.local/hg-${w}.woff2) format('woff2');}`;
+const FILE_TYPES = { '.html': 'text/html', '.js': 'text/javascript', '.mjs': 'text/javascript', '.css': 'text/css', '.woff2': 'font/woff2', '.png': 'image/png', '.svg': 'image/svg+xml', '.webmanifest': 'application/manifest+json', '.json': 'application/json', '.txt': 'text/plain' };
 async function open(file, opts = {}) {
   // IRONLOG_FILE runs the same suites against another build (the standalone dist/index.html).
   if (file === 'index.html' && process.env.IRONLOG_FILE) file = process.env.IRONLOG_FILE;
@@ -35,7 +36,19 @@ async function open(file, opts = {}) {
     if (u.includes('Chart.js') || u.includes('chart.js')) return r.fulfill({ contentType: 'application/javascript', body: CHART });
     if (u.includes('Sortable')) return r.fulfill({ contentType: 'application/javascript', body: SORT });
     if (/three(@[\d.]+)?\/build\/three\.module\.min\.js/.test(u)) return r.fulfill({ contentType: 'application/javascript', headers: { 'Access-Control-Allow-Origin': '*' }, body: THREE });
-    if (u.startsWith('file:')) return r.continue();
+    /* A page opened from a file has the origin null. Chromium lets it load
+       fonts and the manifest from its own folder; WebKit sends those as
+       cross-origin requests and refuses them ("Origin null is not allowed by
+       Access-Control-Allow-Origin"), which only a file can cause: the
+       installed app is served from one https origin. So in WebKit the
+       standalone build's own files are served from disk with the header,
+       as its own origin would serve them. */
+    if (u.startsWith('file:')) {
+      if (ENGINE !== 'webkit' || r.request().isNavigationRequest()) return r.continue();
+      let f; try { f = require('url').fileURLToPath(u); } catch (e) { return r.continue(); }
+      if (!fs.existsSync(f) || !fs.statSync(f).isFile()) return r.continue();
+      return r.fulfill({ contentType: FILE_TYPES[path.extname(f)] || 'application/octet-stream', headers: { 'Access-Control-Allow-Origin': '*' }, body: fs.readFileSync(f) });
+    }
     if (u.includes('fonts.googleapis.com/css')) return r.fulfill({ contentType: 'text/css', body: FCSS });
     let m = u.match(/fonts\.local\/bsd-(\d+)/); if (m) return r.fulfill({ contentType: 'font/woff2', body: fs.readFileSync(`${FD}/big-shoulders-display/files/big-shoulders-display-latin-${m[1]}-normal.woff2`) });
     m = u.match(/fonts\.local\/hg-(\d+)/); if (m) return r.fulfill({ contentType: 'font/woff2', body: fs.readFileSync(`${FD}/hanken-grotesk/files/hanken-grotesk-latin-${m[1]}-normal.woff2`) });
