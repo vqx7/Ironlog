@@ -22,8 +22,8 @@ const seedBW = (L, bw, lists) => {
 const mk = (id, d, exId, sets, rr, extra) => ({ id, date: d, dayIdx: 0, dayId: null, dayName: 'T', routineId: '', notes: '', ...(extra || {}), ex: [{ exId, rr, sets: sets.map(([w, r, rir]) => ({ w, r, rir, done: true })) }] });
 
 (async () => {
-  const { chromium } = require('playwright');
-  const browser = await chromium.launch();
+  const { engine } = require('./h');
+  const browser = await engine.launch();
 
   // ---------- Part 1: bodyweight PRs ----------
   {

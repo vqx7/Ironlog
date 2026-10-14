@@ -45,8 +45,8 @@ const readAll = () => {
 };
 
 (async () => {
-  const { chromium } = require('playwright');
-  const browser = await chromium.launch();
+  const { engine } = require('./h');
+  const browser = await engine.launch();
 
   // ---- An ordinary log.
   {

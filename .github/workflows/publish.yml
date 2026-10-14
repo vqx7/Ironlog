@@ -47,6 +47,36 @@ jobs:
           path: screenshots/
           if-no-files-found: ignore
           retention-days: 7
+  # The same suites in WebKit (2026-10-14), in four shards like the above.
+  # Every browser on an iPhone is WebKit, Safari and the home-screen app
+  # included, and V uses an iPhone, so a change that breaks only there is
+  # caught here before it reaches the phone.
+  webkit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install
+        run: |
+          npm install --no-audit --no-fund
+          npx playwright install --with-deps webkit
+      - name: Every suite in shard ${{ matrix.shard }} of 4 in WebKit, source and standalone build
+        run: node tests/run.js --browser webkit --shard ${{ matrix.shard }}/4 --jobs 1
+      - name: Screenshots from the run
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: screenshots-webkit-${{ matrix.shard }}
+          path: screenshots/
+          if-no-files-found: ignore
+          retention-days: 7
   # One check named test, as OWNER.md B6 asks branch protection to require. It
   # runs whatever the shards did and fails unless all four passed: a skipped
   # job would count as passing a required check.

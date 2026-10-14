@@ -14,8 +14,8 @@ const LB = 0.45359237;
 const brz = (load, rtf) => load * 36 / (37 - rtf);
 
 (async () => {
-  const { chromium } = require('playwright');
-  const browser = await chromium.launch();
+  const { engine } = require('./h');
+  const browser = await engine.launch();
   for (const dark of [false, true]) {
     const T = dark ? ' (dark)' : ' (light)';
     const P = await open(FILE, { browser, touch: true, dark, w: 375, h: 760, clock: '2026-10-11T12:00:00' });

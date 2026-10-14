@@ -44,8 +44,8 @@ const PLAN = [
 (async () => {
   for (const mode of ['grey', 'fill']) {
     const T = mode + ': ';
-    const { chromium } = require('playwright');
-    const browser = await chromium.launch();
+    const { engine } = require('./h');
+    const browser = await engine.launch();
     let state = null; const allErrors = [];
     // The independent model: per lift, the sessions logged, newest last.
     const hist = Object.fromEntries(EXS.map(e => [e.id, [{ load: e.start, reps: [8, 8, 8].map(r => Math.min(r, e.max)), kind: 'full', date: '2026-08-31' }]]));

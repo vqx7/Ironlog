@@ -17,8 +17,8 @@ const mid = (a, b) => rgbOf(a).map((x, i) => srgb((lin(x) + lin(rgbOf(b)[i])) / 
 const near = (a, b) => a.every((x, i) => Math.abs(x - b[i]) <= 2);
 
 (async () => {
-  const { chromium } = require('playwright');
-  const browser = await chromium.launch();
+  const { engine } = require('./h');
+  const browser = await engine.launch();
   for (const dark of [false, true]) {
     const T = dark ? ' (dark)' : ' (light)';
     const P = await open(FILE, { browser, touch: true, dark, w: 390, h: 844, clock: '2026-10-11T12:00:00' });

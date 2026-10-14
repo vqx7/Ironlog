@@ -148,8 +148,8 @@ const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log
   }
 
   // ---- A session left open by the live build before r25 (r24) carries on here.
-  const { chromium } = require('playwright');
-  const browser = await chromium.launch();
+  const { engine } = require('./h');
+  const browser = await engine.launch();
   const O = await open('baselines/r24.html', { browser, touch: true, clock: '2026-09-20T10:00:00' });
   await O.page.evaluate(() => { const L = window.__ironlog; L.state.settings.onboarded = true; L.makeDemo(); /* r30: history here, not sample data */ for (const k of ['sessions', 'bodyweights', 'measurements']) for (const x of L.state[k]) delete x.demo; L.invalidate && L.invalidate(); L.ui.tab = 'today'; L.ui.todayDay = 0; L.render(); });
   await O.page.click('.hero [data-act="startSession"]:not([data-light])'); await O.page.waitForTimeout(150);

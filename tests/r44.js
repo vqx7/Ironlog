@@ -4,7 +4,7 @@
 // targets kept and only the app's own moved, asked on Set up (skippable) and
 // in Settings. Expected numbers are worked out here from the rules, not read
 // back from the app's own helpers.
-const { open } = require('./h'); const { chromium } = require('playwright');
+const { open } = require('./h'); const { engine } = require('./h');
 const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log('FAIL', m, x === undefined ? '' : JSON.stringify(x).slice(0, 400)); } else console.log('ok  ', m); };
 const CLOCK = '2026-10-13T10:00:00';
 const wait = ms => new Promise(r => setTimeout(r, ms));
@@ -15,7 +15,7 @@ const focusBand = (m, f) => TRACK.has(m) || !f.length ? BANDS[m] : f.includes(m)
 const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
 
 (async () => {
-  const browser = await chromium.launch();
+  const browser = await engine.launch();
   const P = await open('index.html', { browser, clock: CLOCK });
   const ev = (f, a) => P.page.evaluate(f, a);
   await ev(() => { const L = window.__ironlog; L.state.settings.onboarded = true; L.render(); });

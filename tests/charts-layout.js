@@ -2,7 +2,7 @@
 const {open}=require('./h');const fs=require('fs');
 const fails=[];const ok=(c,m)=>{if(!c){fails.push(m);console.log('FAIL',m);}else console.log('ok  ',m);};
 (async()=>{
-const {chromium}=require('playwright');const browser=await chromium.launch();
+const { engine } = require('./h');const browser=await engine.launch();
 // ---- A: young log (sessions only last week and this week), weekly routine
 {
 const {page,errors,ctx}=await open('index.html',{browser,clock:'2026-09-26T10:00:00'});

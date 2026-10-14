@@ -9,8 +9,8 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
 const CLOCK = '2026-10-14T10:00:00';
 
 (async () => {
-  const { chromium } = require('playwright');
-  const browser = await chromium.launch();
+  const { engine } = require('./h');
+  const browser = await engine.launch();
 
   // ---- 1. Counts: Today's PR tile, the Stats tiles and Recent PRs read one window.
   {

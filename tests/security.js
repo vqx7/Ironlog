@@ -7,7 +7,7 @@
 // link anywhere but https, mailto or the app itself. It runs on the source
 // file and on the standalone build (whose Content Security Policy is a second
 // wall; this proves the first one).
-const { open } = require('./h'); const { chromium } = require('playwright');
+const { open } = require('./h'); const { engine } = require('./h');
 const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log('FAIL', m, x === undefined ? '' : JSON.stringify(x).slice(0, 400)); } else console.log('ok  ', m); };
 const CLOCK = '2026-10-13T10:00:00';
 const wait = ms => new Promise(r => setTimeout(r, ms));
@@ -16,7 +16,7 @@ const P = ['<img src=x id=pwn1 onerror=__xss=1>', '<b class=pwnb>b</b>', '"><svg
 const ALL = P.join(' ');
 
 (async () => {
-  const browser = await chromium.launch();
+  const browser = await engine.launch();
   const S = await open('index.html', { browser, clock: CLOCK });
   await S.page.evaluate(p => {
     const L = window.__ironlog; const all = p.join(' '); L.state.settings.onboarded = true; L.makeDemo();

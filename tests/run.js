@@ -5,6 +5,7 @@
 //   node tests/run.js --jobs 1       one at a time, as before r44
 //   node tests/run.js --shard 2/4    the second quarter only (the GitHub workflow runs four at once)
 //   IRONLOG_JOBS=2 npm test          the same as --jobs 2
+//   node tests/run.js --browser webkit   the same suites in WebKit, the engine of every iPhone browser
 const {execFile,execFileSync}=require('child_process');const fs=require('fs');const os=require('os');const path=require('path');
 fs.mkdirSync('screenshots',{recursive:true});
 const suites=['unit-math','unit-analytics','dataflow','migration','acceptance','flows','charts-layout','cycle-create','fuzz','integrity','gym-ux','design','uat','essentials','comeback-removed','map3d','pwa','update','accounts','install','r21','r22','r23','r24','r25','preview','owner-doc','sql','journey','progress','breach','custom','r27','r28','r29','r29b','r29c','r30','r31','r32','r32b','r33','r34','r34b','r35','r36','r38','r39','r40','r41','realism','r42','r43','r44','r45','r46','coherence','seams','security','hygiene'];
@@ -17,14 +18,29 @@ const distSuites=['dataflow','acceptance','flows','gym-ux','design','uat','essen
    run one at a time after the others, so a busy machine cannot make them
    flaky (the r44 review). No retries: a retry would hide a real flake. */
 const SERIAL=new Set(['gym-ux','r25','r33','update','journey','realism','r21','integrity']);
+/* WebKit (2026-10-14): every browser on an iPhone is WebKit, Safari and the
+   home-screen app included, and until then nothing ran there. --browser webkit
+   runs the same suites and the same standalone-build reruns in WebKit
+   (tests/h.js picks the engine from IRONLOG_BROWSER). A suite left out says
+   why here; none is left out to hide a failure. */
+const WEBKIT_SKIP={
+  hygiene:'reads the repo, no browser',
+  'owner-doc':'reads the docs, no browser',
+  sql:'runs the SQL in PGlite, no browser',
+};
 
 const arg=k=>{const i=process.argv.indexOf(k);return i>0?process.argv[i+1]:null;};
+const browserName=arg('--browser')||'chromium';
+if(!['chromium','webkit'].includes(browserName)){console.error('--browser is chromium or webkit');process.exit(2);}
+const wk=browserName==='webkit';
 const jobs=Math.max(1,+(arg('--jobs')||process.env.IRONLOG_JOBS||Math.min(4,os.cpus().length))||1);
 const shard=(arg('--shard')||'1/1').split('/').map(Number);
 if(!(shard[1]>=1&&shard[0]>=1&&shard[0]<=shard[1])){console.error('--shard is i/n, as in 2/4');process.exit(2);}
 
 // Every run in order: the source file first, then the standalone build.
-const all=[...suites.map(s=>({s,tag:'',env:{}})),...distSuites.map(s=>({s,tag:' (standalone build)',env:{IRONLOG_FILE:'dist/index.html'}}))];
+const all=wk
+  ?[...suites.filter(s=>!WEBKIT_SKIP[s]).map(s=>({s,tag:' (WebKit)',env:{IRONLOG_BROWSER:'webkit'}})),...distSuites.filter(s=>!WEBKIT_SKIP[s]).map(s=>({s,tag:' (standalone build, WebKit)',env:{IRONLOG_BROWSER:'webkit',IRONLOG_FILE:'dist/index.html'}}))]
+  :[...suites.map(s=>({s,tag:'',env:{}})),...distSuites.map(s=>({s,tag:' (standalone build)',env:{IRONLOG_FILE:'dist/index.html'}}))];
 // A shard takes every n-th run, so the long suites spread across shards.
 const mine=all.filter((_,i)=>i%shard[1]===shard[0]-1);
 
@@ -66,6 +82,6 @@ async function pool(list,n){
   await pool(mine.filter(x=>!SERIAL.has(x.s)),jobs);
   await pool(mine.filter(x=>SERIAL.has(x.s)),1);
   const min=Math.round((Date.now()-t0)/6000)/10;
-  console.log(bad?`${bad} suite(s) failed (${min} min, ${jobs} at a time)`:`All suites passed (${min} min, ${jobs} at a time${shard[1]>1?`, shard ${shard.join('/')}`:''})`);
+  console.log(bad?`${bad} suite(s) failed (${min} min, ${jobs} at a time${wk?', WebKit':''})`:`All suites passed (${min} min, ${jobs} at a time${shard[1]>1?`, shard ${shard.join('/')}`:''}${wk?', WebKit':''})`);
   process.exit(bad?1:0);
 })();

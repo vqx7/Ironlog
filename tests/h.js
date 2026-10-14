@@ -1,5 +1,11 @@
-// Shared harness: loads an Ironlog build in Chromium with CDN libs served locally.
-const { chromium } = require('playwright');
+// Shared harness: loads an Ironlog build in Chromium (or WebKit) with CDN libs served locally.
+/* IRONLOG_BROWSER picks the engine every suite launches: chromium, the
+   default, or webkit, the engine of every browser on an iPhone, Safari and
+   the home-screen app included. Suites launch through `engine`, never
+   playwright's chromium directly, so one setting moves the whole run. */
+const ENGINE = process.env.IRONLOG_BROWSER || 'chromium';
+if (!['chromium', 'webkit'].includes(ENGINE)) throw new Error(`IRONLOG_BROWSER is chromium or webkit, not ${ENGINE}`);
+const engine = require('playwright')[ENGINE];
 const path = require('path');
 const fs = require('fs');
 const CHART = fs.readFileSync(path.join(__dirname, '..', 'node_modules/chart.js/dist/chart.umd.js'), 'utf8');
@@ -12,7 +18,7 @@ for (const w of [400, 500, 600, 700]) FCSS += `@font-face{font-family:'Hanken Gr
 async function open(file, opts = {}) {
   // IRONLOG_FILE runs the same suites against another build (the standalone dist/index.html).
   if (file === 'index.html' && process.env.IRONLOG_FILE) file = process.env.IRONLOG_FILE;
-  const browser = opts.browser || await chromium.launch();
+  const browser = opts.browser || await engine.launch();
   const ctx = await browser.newContext({ viewport: { width: opts.w || 390, height: opts.h || 844 }, deviceScaleFactor: opts.dpr || 1, hasTouch: !!opts.touch, isMobile: !!opts.touch, colorScheme: opts.dark ? 'dark' : 'light' });
   // Most suites were written on the six-day routine installs started with
   // before r29; they keep it. opts.realStarter runs a new install as shipped.
@@ -60,4 +66,4 @@ function build(preview) {
   if (process.env.IRONLOG_BUILT === '1') return;
   require('child_process').execFileSync('node', [path.join(__dirname, '..', 'scripts', 'build.js'), ...(preview ? ['--preview'] : [])], { stdio: 'ignore' });
 }
-module.exports = { open, cspFix, build };
+module.exports = { open, cspFix, build, engine, ENGINE };

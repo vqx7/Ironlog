@@ -149,7 +149,7 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
 
   // ---- Part 2: the real build with accounts, against the stand-in Supabase.
   {
-    const { chromium } = require('playwright');
+    const { engine } = require('./h');
     const { start, quietHibp } = require('./fake-supabase');
     require('./h').build();
     const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'ironlog-r27-'));
@@ -157,7 +157,7 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
     const fake = await start(tmp);
     const ip = path.join(tmp, 'index.html');
     fs.writeFileSync(ip, require('./h').cspFix(fs.readFileSync(ip, 'utf8').replace(/"url":"https:\/\/[a-z0-9]+\.supabase\.co"/, `"url":"${fake.base}"`), fake.base));
-    const browser = await chromium.launch();
+    const browser = await engine.launch();
     const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true, serviceWorkers: 'block' });
     await quietHibp(ctx);
     const page = await ctx.newPage(); const errors = []; page.on('pageerror', e => errors.push(e.message));

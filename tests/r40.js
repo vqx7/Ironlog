@@ -10,8 +10,8 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
 const FILE = 'index.html';
 
 (async () => {
-  const { chromium } = require('playwright');
-  const browser = await chromium.launch();
+  const { engine } = require('./h');
+  const browser = await engine.launch();
   for (const dark of [false, true]) {
     const T = dark ? ' (dark)' : ' (light)';
     const P = await open(FILE, { browser, touch: true, dark, w: 375, h: 760, clock: '2026-10-11T12:00:00' });

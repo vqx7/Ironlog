@@ -57,8 +57,8 @@ const reassemble = (L, docs) => {
 const docsOf = (L, S) => JSON.parse(JSON.stringify(L.chunksOf(S)));
 
 (async () => {
-  const { chromium } = require('playwright');
-  const browser = await chromium.launch();
+  const { engine } = require('./h');
+  const browser = await engine.launch();
   const C = await open('index.html', { browser, clock: '2026-10-13T10:00:00' });
   const P = await open('baselines/' + prev, { browser, clock: '2026-10-13T10:00:00' });
   const fn = `const make=${make};const reassemble=${reassemble};const docsOf=${docsOf};return {make,reassemble,docsOf};`;

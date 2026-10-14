@@ -1,9 +1,9 @@
 // User acceptance: load labels, mix-up warning, tips on hover and hold, less
 // text on screen, a full logged session, unit and RIR switches.
-const {open}=require('./h');const {chromium}=require('playwright');
+const {open}=require('./h');const { engine } = require('./h');
 const fails=[];const ok=(c,m,x)=>{if(!c){fails.push(m);console.log('FAIL',m,JSON.stringify(x));}else console.log('ok  ',m,x!==undefined?JSON.stringify(x).slice(0,220):'');};
 const visText=async(page)=>page.evaluate(()=>{let n=0;const w=document.createTreeWalker(document.getElementById('view'),NodeFilter.SHOW_TEXT);while(w.nextNode()){const t=w.currentNode;const el=t.parentElement;if(!el||el.closest('[hidden]')||el.closest('select')||el.closest('details:not([open]) > :not(summary)'))continue;const r=el.getBoundingClientRect();if(!r.width||!r.height)continue;n+=t.textContent.trim().length;}return n;});
-(async()=>{const browser=await chromium.launch();
+(async()=>{const browser=await engine.launch();
 // ---- text volume: old build vs new, same data, same open sections
 const sizes={};
 // The same log in both: r12's demo, carried into the current build (since

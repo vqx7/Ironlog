@@ -5,7 +5,7 @@
 // its SHA-1 hash are sent; and when the service cannot be reached, sign-up is
 // not blocked.
 const fs = require('fs'); const os = require('os'); const path = require('path'); const crypto = require('crypto');
-const { chromium } = require('playwright');
+const { engine } = require('./h');
 const { start } = require('./fake-supabase');
 const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log('FAIL', m, x !== undefined ? JSON.stringify(x) : ''); } else console.log('ok  ', m); };
 const wait = ms => new Promise(r => setTimeout(r, ms));
@@ -19,7 +19,7 @@ const BAD = 'password1234';
   const fake = await start(tmp);
   const ip = path.join(tmp, 'index.html');
   fs.writeFileSync(ip, require('./h').cspFix(fs.readFileSync(ip, 'utf8').replace(/"url":"https:\/\/[a-z0-9]+\.supabase\.co"/, `"url":"${fake.base}"`), fake.base));
-  const browser = await chromium.launch();
+  const browser = await engine.launch();
   const asked = []; let hibpDown = false;
   async function device() {
     const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true, serviceWorkers: 'block' });

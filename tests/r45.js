@@ -7,7 +7,7 @@
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
-const { chromium } = require('playwright');
+const { engine } = require('./h');
 const { start, quietHibp } = require('./fake-supabase');
 const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log('FAIL', m, x !== undefined ? JSON.stringify(x).slice(0, 400) : ''); } else console.log('ok  ', m); };
 const wait = ms => new Promise(r => setTimeout(r, ms));
@@ -22,7 +22,7 @@ const PW = 'correct horse 45';
   const ip = path.join(tmp, 'index.html');
   fs.writeFileSync(ip, require('./h').cspFix(fs.readFileSync(ip, 'utf8').replace(/"url":"https:\/\/[a-z0-9]+\.supabase\.co"/, `"url":"${fake.base}"`), fake.base));
   const APP = fake.base + '/ironlog/';
-  const browser = await chromium.launch();
+  const browser = await engine.launch();
   async function device(w) {
     const ctx = await browser.newContext({ viewport: { width: w || 390, height: 844 }, hasTouch: true, isMobile: true, serviceWorkers: 'block' });
     await quietHibp(ctx);

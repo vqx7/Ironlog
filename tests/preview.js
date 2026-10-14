@@ -7,7 +7,7 @@
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
-const { chromium } = require('playwright');
+const { engine } = require('./h');
 const { start, quietHibp } = require('./fake-supabase');
 const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log('FAIL', m, x !== undefined ? JSON.stringify(x) : ''); } else console.log('ok  ', m); };
 const wait = ms => new Promise(r => setTimeout(r, ms));
@@ -35,7 +35,7 @@ fs.cpSync(path.join(ROOT, 'dist-preview'), path.join(tmp, 'preview'), { recursiv
   const swLive = fs.readFileSync(path.join(tmp, 'sw.js'), 'utf8'), swPv = fs.readFileSync(path.join(tmp, 'preview/sw.js'), 'utf8');
   ok(/const CACHE="ironlog-/.test(swLive) && /const CACHE="ilpreview-/.test(swPv) && !/startsWith\("ironlog-"\)/.test(swPv), 'the two workers name and clear only their own caches');
 
-  const browser = await chromium.launch();
+  const browser = await engine.launch();
   const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true });
   await quietHibp(ctx);
   const page = await ctx.newPage();
