@@ -71,6 +71,12 @@ function runOne(x){
 function report(r){
   const pass=/ALL PASS|fuzz clean/.test(r.out)&&!/^FAIL/m.test(r.out);
   console.log(`${pass?'PASS':'FAIL'}  ${r.s}${r.tag}  ${r.sec}s`);
+  /* A note is something that went wrong outside the checks, such as a
+     teardown step tests/h.js settle let go of. It does not fail the suite,
+     so on GitHub it is written as a notice, which the API serves; else a
+     stall that comes back would pass unseen. */
+  const notes=r.out.split('\n').filter(l=>/^note /.test(l));
+  for(const l of notes){console.log(l);if(process.env.GITHUB_ACTIONS)console.log(`::notice title=${r.s}${r.tag}::${l.replace(/%/g,'%25').replace(/\r/g,'').replace(/\n/g,'%0A').slice(0,400)}`);}
   if(!pass){bad++;failed.push(r);const lines=r.out.split('\n').filter(l=>!/^ok /.test(l)&&/FAIL|Error|error/.test(l)).slice(0,15);console.log(lines.join('\n'));
     // On GitHub the job log sits behind a sign-in, but annotations can be read
     // through the API, so each failing line is also written as one.
