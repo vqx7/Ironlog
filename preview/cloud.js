@@ -63,8 +63,12 @@
     // permissions ('denied'), while sync keeps retrying.
     if (PREVIEW && /docs_preview/.test(msg) && /PGRST205|42P01|does not exist|schema cache/i.test(msg + code)) return Object.assign(new Error('Preview sync is not set up yet. The preview keeps its log on this phone meanwhile.'), { code: 'denied' });
     if (/invalid login credentials|invalid_credentials/i.test(msg + code)) text = 'Wrong email or password.';
-    else if (/email not confirmed|email_not_confirmed/i.test(msg + code)) text = 'Confirm your email first: open the link we sent, then sign in here.';
+    else if (/email not confirmed|email_not_confirmed/i.test(msg + code)) text = 'Confirm your email first: type the code from the email below, or open its link.';
     else if (/already registered|user_already_exists/i.test(msg + code)) text = 'An account with this email already exists. Sign in instead.';
+    // A confirmation code that is wrong, used or expired: Supabase answers all three the same way, so one message (r45 review).
+    else if (/otp_expired|token has expired or is invalid/i.test(msg + code)) return Object.assign(new Error('That code is wrong or has expired. Use the newest email, or send a new one.'), { code: 'bad_code' });
+    // One email per address a minute: "you can only request this after 42 seconds".
+    else if (/request this after (\d+) seconds?/i.test(msg)) return Object.assign(new Error(`Wait ${msg.match(/after (\d+) seconds?/i)[1]} seconds, then send a new code.`), { code: 'wait' });
     else if (/rate limit|over_email_send_rate_limit|too many/i.test(msg + code) || status === 429) text = 'Too many emails in the last hour. Try again later.';
     else if (/weak_password|password should/i.test(msg + code)) text = msg || 'Choose a longer password.';
     else if (/same_password|should be different/i.test(msg + code)) text = 'Choose a password different from the old one.';
@@ -122,6 +126,23 @@
       // identities (so the reply does not reveal who has an account).
       if (data && data.user && Array.isArray(data.user.identities) && data.user.identities.length === 0) throw friendly({ message: 'User already registered' });
       return { confirm: !(data && data.session), user: who(data && data.session) };
+    },
+    /* The 6-digit code in the confirmation email (r45, item 61): typed in the
+       app, so it works where the emailed link opens a browser instead (an
+       iPhone's home-screen app). type 'email' is Supabase's current name for
+       a sign-up's code ('signup' is deprecated for verifying). */
+    async verifyCode(email, code) {
+      const token = String(code || '').replace(/\D/g, '');
+      if (!token) throw Object.assign(new Error('Type the code from the email.'), { code: 'no_code' });
+      const { data, error } = await sb.auth.verifyOtp({ email, token, type: 'email' });
+      if (error) throw friendly(error);
+      hold = false;
+      return who(data && data.session);
+    },
+    /* A new confirmation email, with its link pointing back at this build (the preview's own address in the preview). */
+    async resendCode(email) {
+      const { error } = await sb.auth.resend({ type: 'signup', email, options: { emailRedirectTo: site() } });
+      if (error) throw friendly(error);
     },
     async signIn(email, password) {
       const { data, error } = await sb.auth.signInWithPassword({ email, password });
