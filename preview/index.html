@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-N/mTXwFTBFccXJeXguQVUbWrTDOjfgCNUlJicBwRfWY=' 'sha256-tuSgXs5JTxAxl+0h6Mmbx/BgvpNDfjiq2RiZRPGtwkc=' 'sha256-YHdgjdaHPObo0ajgr78/3fg0b/g2KACx2Yivxr2AJEo=' 'sha256-vZiUh6VMx9F1UoAlHeOtswOW0V8mZeJGv7ICzE+9elI=' 'sha256-J4UrXwIeplIJZfkgJq3M75mmvlwXBomq0l+LhSwoEfI='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https://fqvupierxrvpoidtwlon.supabase.co wss://fqvupierxrvpoidtwlon.supabase.co https://api.pwnedpasswords.com; worker-src 'self'; manifest-src 'self'; media-src 'self'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-N/mTXwFTBFccXJeXguQVUbWrTDOjfgCNUlJicBwRfWY=' 'sha256-tuSgXs5JTxAxl+0h6Mmbx/BgvpNDfjiq2RiZRPGtwkc=' 'sha256-YHdgjdaHPObo0ajgr78/3fg0b/g2KACx2Yivxr2AJEo=' 'sha256-8c5JiPna0iOG2aTlBdZQAZVjq9LLInry47wo/1dSEeQ=' 'sha256-J4UrXwIeplIJZfkgJq3M75mmvlwXBomq0l+LhSwoEfI='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https://fqvupierxrvpoidtwlon.supabase.co wss://fqvupierxrvpoidtwlon.supabase.co https://api.pwnedpasswords.com; worker-src 'self'; manifest-src 'self'; media-src 'self'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Ironlog Preview</title>
 <script>window.IRONLOG_APP=true;window.IRONLOG_ENV='preview';window.__installEvt=null;
@@ -1155,8 +1155,9 @@ const today=()=>iso(new Date());
 /* One Intl formatter per format, made once: toLocaleDateString builds a new
    one on every call, about a fifth of a Stats render (r46). Same output. */
 const DTF={};const dtf=(k,o)=>DTF[k]||(DTF[k]=new Intl.DateTimeFormat(undefined,o));
-const fmtDate=s=>dtf('d',{month:'short',day:'numeric'}).format(parse(s));
-const fmtDateLong=s=>dtf('l',{weekday:'short',month:'short',day:'numeric',year:'numeric'}).format(parse(s));
+const fmtWith=(k,o,s)=>{const d=parse(s);return isNaN(+d)?'':dtf(k,o).format(d);};
+const fmtDate=s=>fmtWith('d',{month:'short',day:'numeric'},s);
+const fmtDateLong=s=>fmtWith('l',{weekday:'short',month:'short',day:'numeric',year:'numeric'},s);
 // History rows sit under a week header, so the year only shows when it is not this one.
 const fmtDateRow=s=>parse(s).toLocaleDateString(undefined,{weekday:'short',month:'short',day:'numeric',...(s.slice(0,4)===today().slice(0,4)?{}:{year:'numeric'})});
 
@@ -2092,7 +2093,7 @@ function normalize(s){
         rir:clampN(pl.rir,0,10,1),rest:clampN(pl.rest,0,1800,90),inc:clampN(pl.inc,0,500,5*LB),ss:typeof pl.ss==='string'&&pl.ss?fixId(pl.ss):null,
         ...(pl.jump!=null&&pl.jump!==''&&isNum(+pl.jump)?{jump:Math.min(Math.max(+pl.jump,0),20)}:{})};
       if(plan.repMax<plan.repMin)plan.repMax=plan.repMin;
-      return keepExtra(b,{exId:fixId(b.exId),plan,
+      return keepExtra(b,{...(typeof b.bid==='string'&&b.bid?{bid:fixId(b.bid)}:{}),exId:fixId(b.exId),plan,
         note:typeof b.note==='string'?b.note:'',
         inj:typeof b.inj==='string'&&(MK.includes(b.inj)||JK.includes(b.inj))?b.inj:null,
         hint:typeof b.hint==='string'?b.hint:'',
@@ -2436,10 +2437,21 @@ function resyncLocalH(){try{const ch=chunksOf(state);cloud.localH={};for(const i
 function draftNote(prev){
   if(!prev||state.draft&&state.draft.id===prev.id)return;
   /* Only called when the draft document itself came from the cloud, so a
-     Finish or Discard made here during a sync is never put on another device. */
-  if(prev.editingId){toast(state.draft?'The edit in progress was replaced by the workout on another device.':'The edit in progress was closed on another device.');return;}
+     Finish or Discard made here during a sync is never put on another device.
+     It says what it can see, and no more: the session it became, the workout
+     that took its place, or just that it is closed. Whether a workout we
+     cannot see was finished or discarded is not recorded anywhere, and the
+     other phone's session document may simply not have arrived (a weak
+     signal, a failed write), so "discarded" was a guess that came out wrong
+     on a save that did not upload (r46). The draft goes up last, so in the
+     ordinary case the session is already here and this says saved. */
+  if(prev.editingId){const d=state.draft;
+    if(!d)toast('The edit in progress was closed on another device.');
+    else if(d.editingId){const s=state.sessions.find(x=>x.id===d.editingId);toast(s?`Now editing ${s.dayName||'a session'}, ${fmtDate(s.date)}, opened on another device.`:'A different saved session was opened for editing on another device.');}
+    else toast('The edit in progress was replaced by the workout on another device.');
+    return;}
   const sid=prev.id;
-  toast(state.sessions.some(s=>s.id===sid)?'The workout in progress was saved on another device.':state.draft?'The workout in progress was replaced by the one on another device.':'The workout in progress was discarded on another device.');
+  toast(state.sessions.some(s=>s.id===sid)?'The workout in progress was saved on another device.':state.draft?'The workout in progress was replaced by the one on another device.':'The workout in progress was closed on another device.');
 }
 function conflictNote(stat){if(stat.conflicts){log('sync-conflict',`${stat.conflicts} record(s) edited on two devices; kept the later edit`);toast(`${stat.conflicts} item${stat.conflicts===1?' was':'s were'} edited on two devices. The later edit was kept.`);}}
 /* A short lease on a lock document so two devices do not interleave their
@@ -5136,12 +5148,26 @@ let foldT=null;
 // True while an exercise is being dragged in a session (r29): renders and
 // automatic folds wait, so the drag is not torn out from under the finger.
 let blockDrag=false;
-function autoFold(bi){
+/* Pointing at an exercise in the session over time (r46). Neither handle on
+   its own survives: a place changes whenever exercises move, and the object
+   is replaced by normalize, which runs on every sync, Undo, cross-tab write
+   and restore. The id made with the exercise survives both, so it leads, with
+   the object and then the place behind it for a session started on a build
+   before this one, which has no id. */
+function blkRef(bi){const d=state.draft;const b=d&&d.ex[bi];return b?{bid:b.bid||null,b,i:bi}:null;}
+function blkIdx(r){
+  const d=state.draft;if(!d||!r||!r.b)return -1;
+  if(r.bid)return d.ex.findIndex(x=>x.bid===r.bid);
+  const j=d.ex.indexOf(r.b);if(j>=0)return j;
+  const k=d.ex[r.i];return k&&k.exId===r.b.exId?r.i:-1;
+}
+function autoFold(ref){
   foldT=null;if(blockDrag)return;const d=state.draft;
   if(!d||d.editingId||ui.modal||ui.tab!=='today')return;
-  const b=d.ex[bi];if(!b||!blockDone(b)||blkIsOpen(bi,b))return;
+  const bi=blkIdx(ref);const b=bi<0?null:d.ex[bi];
+  if(!b||!blockDone(b)||blkIsOpen(bi,b))return;
   // Any open effort strip waits the fold, not only this exercise's (r34.2: the rebuild closed a strip just opened on the next one).
-  if(document.querySelector('.rirstrip')){foldT=setTimeout(()=>autoFold(bi),1500);return;}
+  if(document.querySelector('.rirstrip')){foldT=setTimeout(()=>autoFold(ref),1500);return;}
   let nx=d.ex.findIndex((x,i)=>i>bi&&!blockDone(x));if(nx<0)nx=d.ex.findIndex(x=>!blockDone(x));
   const a0=nx>=0?document.getElementById('blk-'+nx):null;const top0=a0?a0.getBoundingClientRect().top:null;
   rerenderKeepScroll();
@@ -5380,6 +5406,7 @@ function timerResume(){
 }
 /* One place that marks a set done or not done, so the checkmark and auto-done
    paths cannot drift apart. The rest timer starts here only in Auto mode. */
+// The set waiting to be confirmed, held through blkRef, so neither a move nor a rebuild points it at another exercise (r46).
 let lastAuto=null;
 /* Reps far past anything logged on the lift and its range (a typo: 105 for
    10) are asked about before they count (r32, second check: 100 x 105 was
@@ -5415,7 +5442,7 @@ function setDone(bi,si,val){
   // on the set's RIR box opens it. A blank RIR is fine: see rirSettings().
   const askRir=val&&state.settings.rirAsk===true&&!s.warm&&s.rir==null&&rirShow(EX(b.exId))&&!!document.querySelector(`.rirb[data-b="${bi}"][data-s="${si}"]`);
   if(askRir)rirShowStrip(bi,si);else if(!val)rirClose();
-  if(val&&!askRir&&!state.draft.editingId&&blockDone(b))foldT=setTimeout(()=>autoFold(bi),1200);
+  if(val&&!askRir&&!state.draft.editingId&&blockDone(b)){const rf=blkRef(bi);foldT=setTimeout(()=>autoFold(rf),1200);}
   // The first set ticked on an exercise below untouched ones moves it up (r45).
   if(val&&b.sets.filter(x=>x.done).length===1&&orderAt(b)>=0)orderSoon(b);
   saveNow();
@@ -5997,6 +6024,8 @@ function recentLighter(days){
   return d;
 }
 // Counted PRs only (r32): the ones marked big.
+// PRs worth announcing within any window. The screens use recent4w below; the
+// suites reach for this one to check a window of their own.
 function prsWithin(days){const from=addDays(today(),-days);return IDX().prs.filter(x=>x.date>=from&&x.big);}
 /* The last 28 days, today included, and the 28 before: the one window for
    sessions and PRs on Today, the Stats tiles, and Recent PRs (r46, from the
@@ -7019,7 +7048,7 @@ const nz=v=>noLog()?NIL:v;
    sets; hard sets against the plan stay inside This week. A ring fills,
    which reads faster than a sentence. Tapping it opens This week. */
 function heroRing(w){
-  if(!(w.planDays>0)||isRestWeek(weekStart(today())))return '';
+  if(!(w.planDays>0))return '';
   const r=26,c=2*Math.PI*r,p=Math.max(0,Math.min(1,w.doneDays/w.planDays));
   const pd=`${w.weekly||weekFactor(w.R)===1?'':'about '}${w.planDays}`;
   const lbl=noLog()?`No sessions logged yet; ${pd} planned this week`:`${w.doneDays} of ${pd} sessions this week`;
@@ -7040,7 +7069,11 @@ function weekStats(){
      (r40, hardCredit). */
   let got=0;for(const x of state.sessions)if(x.date>=cur&&x.date<=addDays(cur,6))for(const b of x.ex){const e=EX(b.exId);for(const q of b.sets)got+=hardCredit(q,e);}
   const tgt=planSetsPerWeek(R,isDeloadWeek());
-  return {R,weekly,planDays,doneDays,got,tgt,pct:tgt>0?Math.min(100,got/tgt*100):0,cardioMin,cardioN};
+  /* A rest week is said once, here, so the ring, the card and its body all
+     follow (r46: the ring and the title were given their own test for it and
+     the body kept saying "0 hard sets logged of 145 planned" underneath). */
+  const rest=isRestWeek(cur);
+  return {R,weekly,planDays:rest?0:planDays,doneDays,got,tgt:rest?0:tgt,pct:!rest&&tgt>0?Math.min(100,got/tgt*100):0,cardioMin,cardioN,rest};
 }
 function cycleStrip(R){
   const cs=cycleState(R);
@@ -7073,6 +7106,9 @@ function weekBody(w){
   if(freeMode())return `${tog}<div class="hrow" style="margin:5px 0 0"><p class="small muted" style="margin:0" id="wkSets">${noLog()?'Nothing logged yet.':`${r1(w.got)} hard sets this week.`}</p>${helpBtn('wk')}</div>
   ${w.cardioMin?`<p class="small" style="margin:5px 0 0">Cardio and mobility: ${w.cardioMin} min in ${w.cardioN} entr${w.cardioN===1?'y':'ies'}</p>`:''}${liftedLine()}
   ${helpText('wk','Each set counts once; a set at RIR 4 or more is not hard and does not count. Muscle targets are on the Muscle map and in Stats.')}`;
+  if(w.rest)return `${tog}<div class="hrow" style="margin:5px 0 0"><p class="small muted" style="margin:0" id="wkSets">Rest week. ${w.got?`${r1(w.got)} hard sets logged.`:'Nothing planned.'}</p>${helpBtn('wk')}</div>
+  ${w.cardioMin?`<p class="small" style="margin:5px 0 0">Cardio and mobility: ${w.cardioMin} min in ${w.cardioN} entr${w.cardioN===1?'y':'ies'}</p>`:''}${liftedLine()}
+  ${helpText('wk','A rest week you marked in Settings. It does not count as missed: your averages, streak, and adherence skip it.')}`;
   return `${tog}${w.weekly?'':cycleStrip(w.R)}
   <div class="band" data-tip="${noLog()?`${w.tgt} hard sets planned`:`${w.got} hard sets logged of ${w.tgt} planned`}"><div class="fill prog" style="width:${w.pct}%"></div></div>
   ${w.cardioMin?`<p class="small" style="margin:5px 0 0">Cardio and mobility: ${w.cardioMin} min in ${w.cardioN} entr${w.cardioN===1?'y':'ies'}</p>`:''}
@@ -7090,9 +7126,8 @@ function weekCard(){
     const title=ym===cur?'This month':new Date(ym+'-15T12:00:00').toLocaleDateString(undefined,{month:'long',year:'numeric'});
     return sec({sk:'today:week',key:'week',title,sub:`${n} session${n===1?'':'s'}`,body});
   }
-  if(freeMode())return sec({sk:'today:week',key:'week',title:'This week',sub:noLog()?'Nothing logged yet':`${w.doneDays} session${w.doneDays===1?'':'s'}`,body});
-  // A rest week has nothing to hit (r46: it read 0 of 4 beside the coach's Rest week).
-  if(isRestWeek(weekStart(today())))return sec({sk:'today:week',key:'week',title:'This week',sub:`Rest week${w.doneDays?`, ${w.doneDays} session${w.doneDays===1?'':'s'}`:''}`,body});
+  if(freeMode())return sec({sk:'today:week',key:'week',title:'This week',sub:w.rest?`Rest week${w.doneDays?`, ${w.doneDays} session${w.doneDays===1?'':'s'}`:''}`:noLog()?'Nothing logged yet':`${w.doneDays} session${w.doneDays===1?'':'s'}`,body});
+  if(w.rest)return sec({sk:'today:week',key:'week',title:'This week',sub:`Rest week${w.doneDays?`, ${w.doneDays} session${w.doneDays===1?'':'s'}`:''}`,body});
   return sec({sk:'today:week',key:'week',title:'This week',sub:noLog()?`${w.weekly||weekFactor(w.R)===1?'':'~'}${w.planDays} sessions planned`:`${w.doneDays} of ${w.weekly||weekFactor(w.R)===1?'':'~'}${w.planDays} sessions`,body});
 }
 /* Quick answers before a session starts: is this lift moving, and what to do. */
@@ -7155,7 +7190,7 @@ function newBlock(exId,plan,opts){
   const sg=suggest(exId,plan,opts);
   // sw is the load the app suggested, kept so a later refresh can tell a row
   // still on the suggestion from one the lifter typed (refreshBlock).
-  return {exId,plan:{...plan},note:'',lastNote:lastNoteOf(exId,opts&&opts.before),inj:sg.inj||null,hint:sg.text,last:sg.last,prev:sg.prev||undefined,prevOff:sg.prevOff||undefined,target:sg.target,tgt:sg.tgt,easier:sg.easier||null,lastR:sg.lastR,basis:sg.basis||undefined,sw:sg.w==null?null:sg.w,sets:Array.from({length:+plan.sets||3},()=>({w:fillLoads()?sg.w:null,r:null,rir:null,warm:false,drop:false,done:false}))};
+  return {bid:uid(),exId,plan:{...plan},note:'',lastNote:lastNoteOf(exId,opts&&opts.before),inj:sg.inj||null,hint:sg.text,last:sg.last,prev:sg.prev||undefined,prevOff:sg.prevOff||undefined,target:sg.target,tgt:sg.tgt,easier:sg.easier||null,lastR:sg.lastR,basis:sg.basis||undefined,sw:sg.w==null?null:sg.w,sets:Array.from({length:+plan.sets||3},()=>({w:fillLoads()?sg.w:null,r:null,rir:null,warm:false,drop:false,done:false}))};
 }
 const DEFAULT_PLAN={sets:3,repMin:8,repMax:12,rir:1,rest:90,inc:5*LB};
 /* The Last column (r44, V: "what I did last time next to what I'm about to
@@ -7333,8 +7368,9 @@ function rirClose(){const el=document.querySelector('.rirstrip');if(!el)return;c
 let pendAuto=null;
 function autoPending(){
   const p=pendAuto;pendAuto=null;if(!p||!state.draft||!state.settings.autoDone)return;
-  const s=state.draft.ex[p.b]&&state.draft.ex[p.b].sets[p.s];if(!s||s.done||!(+s.r>0))return;
-  lastAuto={b:p.b,s:p.s,t:Date.now()};setDone(p.b,p.s,true);
+  const bi=blkIdx(p.b);if(bi<0)return;
+  const s=state.draft.ex[bi].sets[p.s];if(!s||s.done||!(+s.r>0))return;
+  lastAuto={b:blkRef(bi),s:p.s,t:Date.now()};setDone(bi,p.s,true);
 }
 function rirShowStrip(bi,si){
   rirClose();const btn=document.querySelector(`.rirb[data-b="${bi}"][data-s="${si}"]`);const s=state.draft&&state.draft.ex[bi]&&state.draft.ex[bi].sets[si];
@@ -10207,7 +10243,7 @@ const ACT={
     rirClose();if(btn)try{btn.focus({preventScroll:true});}catch(e){/* focus is best effort */}
     if(s.done){refreshPR(bi,si,false);afterSet(bi,si);}updateProgress(bi);
     // The fold waits for the effort of the last set, then goes.
-    if(!d.editingId&&blockDone(b)){clearTimeout(foldT);foldT=setTimeout(()=>autoFold(bi),900);}
+    if(!d.editingId&&blockDone(b)){clearTimeout(foldT);const rf=blkRef(bi);foldT=setTimeout(()=>autoFold(rf),900);}
     saveSoon();},
   bOpen(t){const bi=+t.dataset.b;const b=state.draft&&state.draft.ex[bi];if(!b)return;ui.blkOpen.add(blkKey(bi,b));blkOpenObj.add(b);rerenderKeepScroll();
     const el=document.getElementById('blk-'+bi);if(el)try{el.scrollIntoView({block:'nearest'});}catch(e){/* scroll is best effort */}},
@@ -10262,7 +10298,7 @@ const ACT={
        checkmark confirms it for 15 s, until another set is touched: typing
        reps, picking RIR and then tapping the checkmark is the natural order,
        and it used to untick the set. A second tap undoes it. */
-    if(lastAuto&&(lastAuto.b!==bi||lastAuto.s!==si))lastAuto=null;
+    if(lastAuto&&(blkIdx(lastAuto.b)!==bi||lastAuto.s!==si))lastAuto=null;
     if(lastAuto&&Date.now()-lastAuto.t<15000&&s.done){lastAuto=null;return;}
     /* Tapping done on an empty reps field logs the grey number in it (see
        greyR), like the paper log you copy from. Warm-ups have none, so
@@ -10741,7 +10777,7 @@ m.err=`Could not read that. Try the pattern 225x5, 5, 4 ${rirScale()==='rpe'?'rp
     const s=state.sessions.find(x=>x.id===t.dataset.id);if(!s)return;
     const go=()=>{const R=state.routines.find(r=>r.id===s.routineId)||activeRoutine();
       const dayItems=s.free?[]:((R.days[sessDayIdx(R,s)]||{items:[]}).items);
-      state.draft={id:uid(),editingId:s.id,deload:!!s.deload,light:!!s.light,free:s.free?true:undefined,chk:s.chk?{...s.chk}:undefined,startedAt:null,durMin:s.durMin||null,date:s.date,dayIdx:s.dayIdx,dayId:s.dayId||null,dayName:s.dayName,routineId:s.routineId,notes:s.notes||'',ex:s.ex.map(b=>{const it=dayItems.find(i=>i.exId===b.exId);const plan=it?{...it}:planFor(b.exId);return {exId:b.exId,plan,note:b.note||'',keepRR:b.rr||null,cut:b.cut?true:undefined,light:b.light?true:undefined,hint:'Editing saved sets.',lastR:[],sets:b.sets.map(x=>({w:x.w,r:x.r,rir:x.rir,warm:!!x.warm,drop:!!x.drop,done:true,cal:x.cal?{...x.cal}:undefined}))};})};
+      state.draft={id:uid(),editingId:s.id,deload:!!s.deload,light:!!s.light,free:s.free?true:undefined,chk:s.chk?{...s.chk}:undefined,startedAt:null,durMin:s.durMin||null,date:s.date,dayIdx:s.dayIdx,dayId:s.dayId||null,dayName:s.dayName,routineId:s.routineId,notes:s.notes||'',ex:s.ex.map(b=>{const it=dayItems.find(i=>i.exId===b.exId);const plan=it?{...it}:planFor(b.exId);return {bid:uid(),exId:b.exId,plan,note:b.note||'',keepRR:b.rr||null,cut:b.cut?true:undefined,light:b.light?true:undefined,hint:'Editing saved sets.',lastR:[],sets:b.sets.map(x=>({w:x.w,r:x.r,rir:x.rir,warm:!!x.warm,drop:!!x.drop,done:true,cal:x.cal?{...x.cal}:undefined}))};})};
       editFp0.set(state.draft.id,editFp(state.draft));
       saveNow();ui.tab='today';window.scrollTo(0,0);render();};
     if(state.draft)confirmBox('Replace the session in progress?','You have an unsaved session open. Editing this one will discard it.','Discard and edit',go,true);else go();
@@ -10946,8 +10982,8 @@ document.addEventListener('change',e=>{
     else if((state.settings.autoDone||state.draft.past)&&!s.done&&+s.r>0){
       const toRir=!state.draft.past&&lastDown.el&&Date.now()-lastDown.t<700&&lastDown.el.closest&&lastDown.el.closest(`.rirb[data-b="${bi}"][data-s="${si}"]`);
       // Heading for this row's RIR box: tick when its strip closes (or after 2 s if it never opened).
-      if(toRir){const p={b:bi,s:si};pendAuto=p;setTimeout(()=>{if(pendAuto===p&&!document.querySelector('.rirstrip'))autoPending();},2000);} // by identity: an automatic reorder renumbers p.b (r45)
-      else{lastAuto={b:bi,s:si,t:Date.now()};setDone(bi,si,true);}}
+      if(toRir){const p={b:blkRef(bi),s:si};pendAuto=p;setTimeout(()=>{if(pendAuto===p&&!document.querySelector('.rirstrip'))autoPending();},2000);} // by identity: a later tick must not run this one (r45)
+      else{lastAuto={b:blkRef(bi),s:si,t:Date.now()};setDone(bi,si,true);}}
     else if(s.done){refreshPR(bi,si,false);afterSet(bi,si);}
     saveSoon();return;}
   if(t.dataset.f){
@@ -11056,7 +11092,7 @@ function acceptGrey(bi,si){
   if(!x||x.done||x.warm||x.drop||+x.r>0)return false;
   const lr=greyR(b,si);if(!(lr>0))return false;
   x.r=Math.round(lr);const inp=document.querySelector(`.sg input[data-f="r"][data-b="${bi}"][data-s="${si}"]`);if(inp)inp.value=String(x.r);
-  lastAuto={b:bi,s:si,t:Date.now()};setDone(bi,si,true);return true;
+  lastAuto={b:blkRef(bi),s:si,t:Date.now()};setDone(bi,si,true);return true;
 }
 let lastDown={el:null,t:0};
 document.addEventListener('pointerdown',e=>{lastDown={el:e.target,t:Date.now()};},true);
@@ -11089,11 +11125,13 @@ function bgrip(bi,name){return `<span class="bgrip" role="button" tabindex="0" d
 /* One way to move an exercise in a session: the drag, the arrow keys on its
    handle and the ⋯ menu's Move up and Move down all come here. A superset
    split by the move is undone (its members are no longer next to each
-   other, so the rest timer would never start), and timers that point at a
-   block by its position are dropped, since the position changed (r29). */
+   other, so the rest timer would never start), and a pending fold is dropped
+   because the lifter is rearranging and should not have an exercise fold
+   under them (r29). Nothing here goes stale any more: since r46 the fold,
+   the confirm window and the pending auto-mark hold the exercise itself. */
 function moveBlock(a,b){
   const d=state.draft;if(!d||b<0||b>=d.ex.length||a===b)return false;
-  clearTimeout(foldT);foldT=null;lastAuto=null;
+  clearTimeout(foldT);foldT=null;
   keepOpen(()=>{move(d.ex,a,b);fixSupersets(d.ex.map(x=>x.plan).filter(Boolean));});
   saveNow();return true;
 }
@@ -11128,13 +11166,13 @@ function orderRun(){
   let moved=false;
   for(const b of q){
     const bi=d.ex.indexOf(b),j=orderAt(b);if(j<0)continue;
-    // Positions that point at blocks follow the move.
+    /* Only the focused field still carries a number, since it is markup; the
+       set waiting to be confirmed, the pending auto-mark and the fold timer
+       all hold the exercise itself now (r46), so the move leaves them alone. */
     const mi=i=>i===bi?j:(i>=j&&i<bi?i+1:i);
-    const la=lastAuto?Object.assign({},lastAuto,{b:mi(lastAuto.b)}):null;
-    if(pendAuto)pendAuto.b=mi(pendAuto.b);
     if(ae&&ae.dataset&&/^\d+$/.test(ae.dataset.b||''))ae.dataset.b=String(mi(+ae.dataset.b));
     if(!moveBlock(bi,j))continue;
-    lastAuto=la;moved=true;
+    moved=true;
   }
   if(!moved||ui.tab!=='today')return;
   rerenderKeepScroll();
