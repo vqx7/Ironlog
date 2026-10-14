@@ -69,7 +69,7 @@ const PW = 'correct horse 45';
   const first = fake.codeFor('b@x.test');
   await B.page.click('#modal [data-act="acctResend"]'); await idle(B);
   s = await sheet(B);
-  ok(s && /^Wait \d+ seconds, then send a new code\.$/.test(s.err) && fake.codeFor('b@x.test') === first, 'a new code within the minute: "Wait N seconds", and the code is unchanged', s);
+  ok(s && /^Wait \d+ seconds, then try again\.$/.test(s.err) /* r46: the same message shows on Create account and Reset password, which have no code */ && fake.codeFor('b@x.test') === first, 'a new code within the minute: "Wait N seconds", and the code is unchanged', s);
   fake.ageCode('b@x.test', 61000);
   await B.page.click('#modal [data-act="acctResend"]'); await idle(B);
   const second = fake.codeFor('b@x.test');

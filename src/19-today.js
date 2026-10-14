@@ -390,7 +390,8 @@ const fmtBig=kg=>Math.round(toD(kg)).toLocaleString();
 // Tile subtitles only: 295,403 becomes 295k so it fits a small phone.
 const fmtK=kg=>{const v=Math.round(toD(kg));return v>=10000?Math.round(v/1000)+'k':v.toLocaleString();};
 // Sessions in the week, not days (r34): two plan days done on one day are two of the week's sessions.
-function weekSessions(ws){const end=addDays(ws,6);let n=0;for(const x of state.sessions)if(x.date>=ws&&x.date<=end)n++;return n;}
+// Counted once per change and kept with the analytics, as weekRoutine's are (r46: the streak scanned every session for each of 104 weeks, twice a render).
+function weekSessions(ws){const I=IDX();if(!I.weekN){I.weekN={};for(const x of state.sessions){const w=weekStart(x.date);I.weekN[w]=(I.weekN[w]||0)+1;}}return I.weekN[ws]||0;}
 /* Planned hard sets (r27). A planned set counts only if its target RIR
    would make it hard (3 or less, or every set when RIR is off), the same test
    as a logged set; a plan at RIR 4 used to set a weekly target that logging
@@ -451,6 +452,16 @@ function recentLighter(days){
 }
 // Counted PRs only (r32): the ones marked big.
 function prsWithin(days){const from=addDays(today(),-days);return IDX().prs.filter(x=>x.date>=from&&x.big);}
+/* The last 28 days, today included, and the 28 before: the one window for
+   sessions and PRs on Today, the Stats tiles, and Recent PRs (r46, from the
+   r45 QC: 30, 28, and 14 days on three screens). The 4 weeks before are
+   given only when the log covers all of them, so 2 days of a first month
+   never read as a jump. */
+function recent4w(){
+  const d28=addDays(today(),-27),d56=addDays(today(),-55);const ss=sortedSessions();
+  const back=ss.length>0&&ss[0].date<=d56;const in28=d=>d>=d28,in56=d=>d>=d56&&d<d28;const P=IDX().prs.filter(p=>p.big);
+  return {back,sess:ss.filter(x=>in28(x.date)).length,sessP:ss.filter(x=>in56(x.date)).length,prs:P.filter(p=>in28(p.date)),prsP:P.filter(p=>in56(p.date)).length};
+}
 function movers(){return Object.entries(IDX().exStats).filter(([,x])=>x.moving&&!x.stalled&&x.fresh).sort((a,b)=>b[1].pct-a[1].pct).map(([id,x])=>({id,pct:x.pct,wk:x.spanW||2}));}
 function stalledIds(){return Object.entries(IDX().exStats).filter(([,x])=>x.stalled).map(([id])=>id);}
 /* Stalls that can point to whole-body fatigue (r31): compound lifts with a
@@ -532,11 +543,11 @@ function coachButton(c,di){
   return `<button class="btn sm" style="margin-top:8px" data-act="goDash" data-sec="${c.act.sec}"${c.act.m?` data-m="${c.act.m}"`:''}${c.act.ex?` data-ex="${c.act.ex}"`:''}>${esc(c.act.label)}</button>`;
 }
 function homeTiles(){
-  const sk=weekStreak();const pr=prsWithin(30);
+  const sk=weekStreak();const pr=recent4w().prs;
   const last=pr[0];const ago=last?daysBetween(last.date,today()):null;
   return `<div class="tiles">
   <button class="tile" data-act="goDash" data-sec="consistency" aria-label="${noLog()?'No streak yet':sk.weeks+' week streak'}. Open consistency"><div class="tv">${nz(sk.weeks)}</div><div class="tl">week streak</div><div class="ts">${freeMode()?'Weeks trained in a row':sk.thisWeek>=sk.need?'This week done':`Weeks with ${sk.need}+ sessions`}${sk.best>sk.weeks?` · best ${sk.best}`:''}</div></button>
-  <button class="tile" data-act="goDash" data-sec="bests" aria-label="${noLog()?'No PRs yet':pr.length+' PRs in the last 30 days'}. Open all-time bests"><div class="tv">${nz(pr.length)}</div><div class="tl">PRs, last 30 days</div><div class="ts">${last?`Latest: ${esc(exName(last.exId))}, ${ago===0?'today':ago===1?'yesterday':ago+' days ago'}`:'None yet'}</div></button>
+  <button class="tile" data-act="goDash" data-sec="bests" aria-label="${noLog()?'No PRs yet':pr.length+' PRs in the last 4 weeks'}. Open all-time bests"><div class="tv">${nz(pr.length)}</div><div class="tl">PRs, last 4 weeks</div><div class="ts">${last?`Latest: ${esc(exName(last.exId))}, ${ago===0?'today':ago===1?'yesterday':ago+' days ago'}`:'None yet'}</div></button>
   </div>`;
 }
 // An estimate is said as a load only where it is a load someone could put on the bar (a 1RM is shown for these lifts).

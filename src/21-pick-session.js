@@ -315,7 +315,7 @@ const nz=v=>noLog()?NIL:v;
    sets; hard sets against the plan stay inside This week. A ring fills,
    which reads faster than a sentence. Tapping it opens This week. */
 function heroRing(w){
-  if(!(w.planDays>0))return '';
+  if(!(w.planDays>0)||isRestWeek(weekStart(today())))return '';
   const r=26,c=2*Math.PI*r,p=Math.max(0,Math.min(1,w.doneDays/w.planDays));
   const pd=`${w.weekly||weekFactor(w.R)===1?'':'about '}${w.planDays}`;
   const lbl=noLog()?`No sessions logged yet; ${pd} planned this week`:`${w.doneDays} of ${pd} sessions this week`;
@@ -387,6 +387,8 @@ function weekCard(){
     return sec({sk:'today:week',key:'week',title,sub:`${n} session${n===1?'':'s'}`,body});
   }
   if(freeMode())return sec({sk:'today:week',key:'week',title:'This week',sub:noLog()?'Nothing logged yet':`${w.doneDays} session${w.doneDays===1?'':'s'}`,body});
+  // A rest week has nothing to hit (r46: it read 0 of 4 beside the coach's Rest week).
+  if(isRestWeek(weekStart(today())))return sec({sk:'today:week',key:'week',title:'This week',sub:`Rest week${w.doneDays?`, ${w.doneDays} session${w.doneDays===1?'':'s'}`:''}`,body});
   return sec({sk:'today:week',key:'week',title:'This week',sub:noLog()?`${w.weekly||weekFactor(w.R)===1?'':'~'}${w.planDays} sessions planned`:`${w.doneDays} of ${w.weekly||weekFactor(w.R)===1?'':'~'}${w.planDays} sessions`,body});
 }
 /* Quick answers before a session starts: is this lift moving, and what to do. */
