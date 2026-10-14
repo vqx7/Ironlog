@@ -9887,7 +9887,7 @@ const ACT={
   },
   // The save kept aside at start (r45): restored through the import's checks, shown as text, or let go.
   unreadRestore(){const raw=unreadableRaw();if(!raw)return;importData(raw,()=>{try{localStorage.removeItem(KEY+'.unreadable');}catch(e){/* nothing to clear */}});},
-  unreadShow(){const raw=unreadableRaw();if(raw)openModal({kind:'text',title:'Save kept aside',help:'Select all and copy it somewhere safe.',text:raw});},
+  unreadShow(){const raw=unreadableRaw();if(raw)openModal({kind:'text',title:'Save kept aside',help:'Select all and copy it somewhere safe.',text:raw,readonly:true});},
   unreadForget(){confirmBox('Forget the save kept aside?','It is deleted for good. Export or copy it first if you might want it.','Forget it',()=>{try{localStorage.removeItem(KEY+'.unreadable');}catch(e){/* nothing to clear */}rerenderKeepScroll();toast('Forgotten');},true);},
   // Weekly set targets back to the defaults (r44), with Your training's focus; typed ones and a first-run fit go.
   bandsDefault(){
