@@ -4,7 +4,7 @@
 // Part 1 runs on the source and again on dist/ (tests/run.js); Part 2 builds
 // dist/ and runs once, against the stand-in Supabase.
 const fs = require('fs'); const os = require('os'); const path = require('path');
-const { open, cspFix } = require('./h');
+const { open, cspFix, settle } = require('./h');
 const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log('FAIL', m, x !== undefined ? JSON.stringify(x) : ''); } else console.log('ok  ', m); };
 const wait = ms => new Promise(r => setTimeout(r, ms));
 const FILE = 'index.html';
@@ -474,6 +474,8 @@ async function engineRun(page, cases, gym) {
     ok(await M.ev(() => window.__ironlog.obTour.i === 0 && !window.__ironlog.obTour.auto), 'with reduced motion it never moves on its own');
     const N = await device({ w: 320 });
     ok(await N.ev(() => document.documentElement.scrollWidth <= 320 && [...document.querySelectorAll('.ob-slide')][0].getBoundingClientRect().right <= 320), 'at 320 px the slide fits and nothing spills sideways');
+    // Done with the four first-page devices; left open they kept talking to the server until it closed.
+    for (const [d, n] of [[W, 'W'], [A, 'A'], [M, 'M'], [N, 'N']]) await settle(d.ctx.close(), `closing device ${n}`);
 
     // Sign-out while changes have not reached the account: nothing is removed, and keeping them is offered.
     const S = await device();
@@ -520,7 +522,7 @@ async function engineRun(page, cases, gym) {
       await S.page.click('#modal [data-act="mAlt"]'); await wait(1500);
       const mid = await S.ev(() => ({ out: !window.__ironlog.acctUser(), draft: !!window.__ironlog.state.draft, ob: document.body.classList.contains('obmode'), tabs: getComputedStyle(document.querySelector('.tabs')).display !== 'none', flag: localStorage.getItem('ironlog.v1.signedOut') }));
       ok(mid.out && mid.draft && !mid.ob && mid.tabs && mid.flag === null, 'signed out mid-session with a copy kept: the session and the tabs stay, and it does not end on the first page', mid);
-      await S.ctx.close();
+      await settle(S.ctx.close(), 'closing device S');
     }
     // 15. A confirmation link opened in a browser that had signed out: answering "the home-screen app" leaves it on the first page.
     {
@@ -534,13 +536,13 @@ async function engineRun(page, cases, gym) {
         await D.ev(() => { const L = window.__ironlog; if (L.ui.modal) L.ACT.mClose(); L.render(); }); await wait(200);
         const w = await D.ev(() => ({ out: !window.__ironlog.acctUser(), flag: localStorage.getItem('ironlog.v1.signedOut'), step: (document.getElementById('obPage') || { dataset: {} }).dataset.step }));
         ok(w.out && w.flag === '1' && w.step === 'acct', 'a confirmation link in a signed-out browser, answered "the home-screen app": still signed out, still on the first page', w);
-        await D.ctx.close();
+        await settle(D.ctx.close(), 'closing device D');
       } else ok(false, 'the stand-in server gave a session for the confirmation-link check', sess);
     }
-    await fake.close();
+    await settle(fake.close(), 'closing the stand-in server');
   }
 
   console.log(fails.length ? `${fails.length} FAILED` : 'ALL PASS');
-  await browser.close().catch(() => {});
+  await settle(browser.close(), 'closing the browser');
   process.exit(fails.length ? 1 : 0);
 })().catch(e => { console.log('FAIL crash', e); process.exit(1); });

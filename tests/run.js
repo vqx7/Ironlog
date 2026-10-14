@@ -60,8 +60,11 @@ function runOne(x){
     // part of the log readable without a sign-in, could not say where.
     execFile('node',[`tests/${x.s}.js`],{encoding:'utf8',timeout:900000,maxBuffer:64<<20,env:{...process.env,...x.env,IRONLOG_BUILT:'1'}},(e,stdout,stderr)=>{
       let out=(stdout||'')+(stderr||'');
-      if(e&&e.killed&&e.signal==='SIGTERM'&&Date.now()-t>=899000){const last=out.trim().split('\n').filter(l=>/^ok /.test(l)).slice(-1)[0]||'(no check passed)';out+=`\nFAIL stopped after 15 minutes; the last check that passed: ${last.replace(/^ok +/,'').slice(0,200)}`;}
-      else if(e&&e.signal)out+=`\nFAIL stopped by ${e.signal}`;
+      /* Playwright catches SIGTERM and exits with a code of its own, so a
+         suite stopped for time has killed set and no signal (r33 on
+         2026-10-14: stopped at 15 minutes and said nothing). */
+      if(e&&e.killed&&Date.now()-t>=899000){const last=out.trim().split('\n').filter(l=>/^ok /.test(l)).slice(-1)[0]||'(no check passed)';out+=`\nFAIL stopped after 15 minutes; the last check that passed: ${last.replace(/^ok +/,'').slice(0,200)}`;}
+      else if(e&&(e.signal||e.killed))out+=`\nFAIL stopped by ${e.signal||'the runner'}`;
       done({...x,out,sec:Math.round((Date.now()-t)/1000)});});});
 }
 // Results print in suite order whatever order they finish in, so a log reads the same every run.

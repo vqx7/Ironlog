@@ -213,7 +213,11 @@ function start(root) {
       setDeny(v) { deny = !!v; },
       deployDelete(v) { fnDeployed = !!v; },
       feedback, addReader(email) { const x = users.get(email); if (x) readers.add(x.id); }, feedbackTables(v) { fbOn = !!v; },
-      close: () => new Promise(q => server.close(q)) });
+      /* server.close waits for every open request to end, and one the browser
+         left half sent never does (r33 stopped at 15 minutes on GitHub after
+         its last check, 2026-10-14). The suites are done with the server by
+         then, so its connections are closed with it. */
+      close: () => new Promise(q => { server.close(q); server.closeAllConnections(); }) });
   }));
 }
 // Since r26 sign-up and a new password are checked against Have I Been
