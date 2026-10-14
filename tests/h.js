@@ -36,15 +36,15 @@ async function open(file, opts = {}) {
     if (u.includes('Chart.js') || u.includes('chart.js')) return r.fulfill({ contentType: 'application/javascript', body: CHART });
     if (u.includes('Sortable')) return r.fulfill({ contentType: 'application/javascript', body: SORT });
     if (/three(@[\d.]+)?\/build\/three\.module\.min\.js/.test(u)) return r.fulfill({ contentType: 'application/javascript', headers: { 'Access-Control-Allow-Origin': '*' }, body: THREE });
-    /* A page opened from a file has the origin null. Chromium lets it load
-       fonts and the manifest from its own folder; WebKit sends those as
-       cross-origin requests and refuses them ("Origin null is not allowed by
-       Access-Control-Allow-Origin"), which only a file can cause: the
-       installed app is served from one https origin. So in WebKit the
-       standalone build's own files are served from disk with the header,
-       as its own origin would serve them. */
     // What the page made itself (an object URL for a picked screenshot, a data URL) is its own, never another site's.
     if (u.startsWith('blob:') || u.startsWith('data:')) return r.continue();
+    /* A page opened from a file has the origin null. Chromium lets it read
+       the files beside it; WebKit sends the ones fetched in CORS mode (web
+       fonts are) as cross-origin requests and refuses them ("Origin null is
+       not allowed by Access-Control-Allow-Origin"). Only a file page meets
+       this: the installed app is served from one https origin. So in WebKit
+       the build's own files are served from disk with the header, as that
+       origin would serve them. */
     if (u.startsWith('file:')) {
       if (ENGINE !== 'webkit' || r.request().isNavigationRequest()) return r.continue();
       let f; try { f = require('url').fileURLToPath(u); } catch (e) { return r.continue(); }

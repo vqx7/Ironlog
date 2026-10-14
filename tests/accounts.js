@@ -33,7 +33,7 @@ fs.cpSync(DIST, tmp, { recursive: true });
     await quietHibp(ctx);
     const page = await ctx.newPage();
     const errors = [];
-    page.on('pageerror', e => errors.push('page error: ' + e.message));
+    page.on('pageerror', e => errors.push('page error: ' + e.message + ((e.stack || '').split('\n')[1] ? ' ' + (e.stack || '').split('\n')[1].trim() : '')));
     // A refused sign-in shows up as a failed request in the console; that is expected here.
     page.on('console', m => { if (m.type() === 'error' && !/Failed to load resource|status of 4\d\d/.test(m.text())) errors.push(`console: ${JSON.stringify(m.text())} at ${m.location().url || '?'}`); });
     await page.goto(url || APP); await page.waitForFunction(() => window.__ironlog && window.__libs && window.__libs.chart, null, { timeout: 15000 });

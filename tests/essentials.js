@@ -106,7 +106,10 @@ const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log
   const tapped = await blank(); await A.page.waitForTimeout(150);
   ok(tapped && !(await row(1, 2)).done, 'leaving the load field does not tick it either (only reps confirm a set)');
   await A.page.tap(rs(1, 2)); await A.page.waitForTimeout(80);
+  // What the tap reached and where focus went, so a failure here says why.
+  await ev(() => { const d = e => e ? e.tagName.toLowerCase() + (e.className && typeof e.className === 'string' ? '.' + e.className.trim().split(/\s+/).join('.') : '') + (e.dataset && e.dataset.f ? `[${e.dataset.f}${e.dataset.b},${e.dataset.s}]` : '') : null; window.__tapLog = [['before', d(document.activeElement), document.hasFocus()]]; for (const t of ['pointerdown', 'touchstart', 'mousedown', 'focusout', 'focusin', 'click']) document.addEventListener(t, e => window.__tapLog.push([t, d(e.target), d(e.relatedTarget)]), true); window.__tapD = d; });
   await blank(); await A.page.waitForTimeout(150);
+  const tapLog = await ev(() => [...window.__tapLog, ['after', window.__tapD(document.activeElement), document.hasFocus()]]);
   g = await row(1, 2);
   /* WebKit, the engine of every iPhone browser, moves focus only to what can
      take it, so a tap on blank text leaves the reps field focused: nothing
@@ -115,8 +118,8 @@ const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log
      still focused with nothing ticked, and that going on to the next set's
      reps then takes the grey number. */
   const webkit = require('./h').ENGINE === 'webkit';
-  if (webkit) { const f = await ev(s => document.activeElement === document.querySelector(s), rs(1, 2)); ok(f && !g.done, 'WebKit: a tap on blank space leaves the grey reps field focused, nothing ticked', { focused: f, ...g }); }
-  else ok(g.done && g.r === g.last, 'a tap on blank space after the grey reps ticks the set', g);
+  if (webkit) { const f = await ev(s => document.activeElement === document.querySelector(s), rs(1, 2)); ok(f && !g.done, 'WebKit: a tap on blank space leaves the grey reps field focused, nothing ticked', { focused: f, ...g, tapLog }); }
+  else ok(g.done && g.r === g.last, 'a tap on blank space after the grey reps ticks the set', { ...g, tapLog });
   await A.page.tap(rs(1, 3)).catch(() => {}); await A.page.waitForTimeout(80);
   if (webkit) { g = await row(1, 2); ok(g.done && g.r === g.last, 'WebKit: going on to the next set\'s reps takes the grey number for the set left', g); }
   const has3 = await ev(() => !!document.querySelector('.sg input[data-f="r"][data-b="1"][data-s="3"]'));
