@@ -25,7 +25,7 @@ function start(root) {
   const readers = new Set();    // user ids in public.feedback_readers
   let fbOn = true;              // false: the feedback tables are not created yet
   const log = [];
-  let tokenLife = 3600; let deny = false; let fnDeployed = false;
+  let tokenLife = 3600; let deny = false; let fnDeployed = false; const codeLife = 3600 * 1000;
   const now = () => Math.floor(Date.now() / 1000);
   const userJson = u => ({ id: u.id, aud: 'authenticated', role: 'authenticated', email: u.email,
     email_confirmed_at: u.confirmed ? u.created : null, confirmed_at: u.confirmed ? u.created : null,
@@ -82,7 +82,8 @@ function start(root) {
         if (!password || password.length < 6) return send(res, 422, { code: 422, error_code: 'weak_password', msg: 'Password should be at least 6 characters.', weak_password: { reasons: ['length'] } });
         const ex = users.get(email);
         if (ex) { const f = userJson(ex); f.identities = []; f.id = crypto.randomUUID(); return send(res, 200, f); }
-        const nu = { id: crypto.randomUUID(), email, password, confirmed: false, created: new Date().toISOString() };
+        // r45: each sign-up's email carries a 6-digit code as well as the link; only the newest works, for an hour.
+        const nu = { id: crypto.randomUUID(), email, password, confirmed: false, created: new Date().toISOString(), code: String(crypto.randomInt(0, 1e6)).padStart(6, '0'), codeAt: Date.now(), sentAt: Date.now() };
         users.set(email, nu);
         return send(res, 200, userJson(nu));
       }
@@ -106,6 +107,20 @@ function start(root) {
         const c = caller(req); if (!c || c.expired) return authErr(res, 401, 'bad_jwt', 'invalid JWT');
         if (req.method === 'PUT') { const b = json(); if (b.password) { if (b.password === c.password) return authErr(res, 422, 'same_password', 'New password should be different from the old password.'); c.password = b.password; } }
         return send(res, 200, userJson(c));
+      }
+      // r45: confirming with the code, as the real service answers: only type 'email' verifies a sign-up's code, and a
+      // wrong, used or expired code all get the same 403 otp_expired (the real service does not tell them apart).
+      if (p === '/auth/v1/verify' && req.method === 'POST') {
+        const b = json(); const x = users.get(b.email); const bad = () => authErr(res, 403, 'otp_expired', 'Token has expired or is invalid');
+        if (b.type !== 'email') return authErr(res, 400, 'validation_failed', 'Verify requires a valid type');
+        if (!x || x.confirmed || !x.code || b.token !== x.code || Date.now() - x.codeAt > codeLife) return bad();
+        x.confirmed = true; x.code = null; return send(res, 200, session(x));
+      }
+      if (p === '/auth/v1/resend' && req.method === 'POST') {
+        const b = json(); const x = users.get(b.email);
+        if (b.type !== 'signup') return authErr(res, 400, 'validation_failed', 'Resend requires a valid type');
+        if (x && !x.confirmed) { const wait = 60 - Math.floor((Date.now() - x.sentAt) / 1000); if (wait > 0) return authErr(res, 429, 'over_email_send_rate_limit', `For security purposes, you can only request this after ${wait} seconds.`); x.code = String(crypto.randomInt(0, 1e6)).padStart(6, '0'); x.codeAt = x.sentAt = Date.now(); x.redirect = b.options && b.options.email_redirect_to || u.searchParams.get('redirect_to') || null; }
+        return send(res, 200, {});
       }
       if (p === '/auth/v1/logout') { const t = (req.headers.authorization || '').replace(/^Bearer /, ''); tokens.delete(t); return send(res, 204); }
       if (p === '/auth/v1/recover') return send(res, 200, {});
@@ -190,7 +205,9 @@ function start(root) {
     r({ base, users, rows, rowsPreview, log,
       previewTable(v) { pvOn = !!v; },
       addUser(email, password) { const nu = { id: crypto.randomUUID(), email, password, confirmed: true, created: new Date().toISOString() }; users.set(email, nu); return nu; },
-      confirm(email) { const x = users.get(email); if (x) x.confirmed = true; },
+      confirm(email) { const x = users.get(email); if (x) { x.confirmed = true; x.code = null; } },
+      codeFor(email) { const x = users.get(email); return x && x.code; },
+      ageCode(email, ms) { const x = users.get(email); if (x) { x.codeAt -= ms; x.sentAt -= ms; } },
       expireTokens() { for (const v of tokens.values()) v.exp = now() - 10; },
       setTokenLife(s) { tokenLife = s; },
       setDeny(v) { deny = !!v; },

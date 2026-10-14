@@ -63,7 +63,10 @@ document.addEventListener('keydown',e=>{if(e.key==='Escape'&&TIP.el)tipHide();})
 /* ---------- events ---------- */
 /* The sign-in sheet is a real form so the phone offers to save and fill the
    password; it never navigates. Enter submits it through its button. */
-document.addEventListener('submit',e=>{if(e.target&&e.target.id==='acctForm'){e.preventDefault();const b=e.target.querySelector('[data-act="acctSubmit"]');if(b&&!b.disabled&&!(e.submitter===b))ACT.acctSubmit();}});
+document.addEventListener('submit',e=>{if(e.target&&e.target.id==='acctForm'){e.preventDefault();const b=e.target.querySelector('[data-act="acctSubmit"]');
+  // Go on the keyboard in the code field confirms with the code (r45); elsewhere it submits as before.
+  if(document.activeElement&&document.activeElement.dataset&&document.activeElement.dataset.abind==='code'){ACT.acctCode();return;}
+  if(b&&!b.disabled&&!(e.submitter===b))ACT.acctSubmit();}});
 document.addEventListener('click',e=>{
   const tab=e.target.closest('#tabs button');
   if(tab){ui.tab=tab.dataset.tab;if(ui.tab==='program')ui.planView='routine';window.scrollTo(0,0);render();return;}
@@ -166,7 +169,7 @@ document.addEventListener('change',e=>{
     else if((state.settings.autoDone||state.draft.past)&&!s.done&&+s.r>0){
       const toRir=!state.draft.past&&lastDown.el&&Date.now()-lastDown.t<700&&lastDown.el.closest&&lastDown.el.closest(`.rirb[data-b="${bi}"][data-s="${si}"]`);
       // Heading for this row's RIR box: tick when its strip closes (or after 2 s if it never opened).
-      if(toRir){pendAuto={b:bi,s:si};setTimeout(()=>{if(pendAuto&&pendAuto.b===bi&&pendAuto.s===si&&!document.querySelector('.rirstrip'))autoPending();},2000);}
+      if(toRir){const p={b:bi,s:si};pendAuto=p;setTimeout(()=>{if(pendAuto===p&&!document.querySelector('.rirstrip'))autoPending();},2000);} // by identity: an automatic reorder renumbers p.b (r45)
       else{lastAuto={b:bi,s:si,t:Date.now()};setDone(bi,si,true);}}
     else if(s.done){refreshPR(bi,si,false);afterSet(bi,si);}
     saveSoon();return;}

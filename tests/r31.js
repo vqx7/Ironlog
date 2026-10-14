@@ -158,7 +158,7 @@ function strongCsv(weeks, name) {
       const linked = st.sessions.filter(s => s.routineId === R.id).length;
       const sq = tr.map(d => d.items.find(i => i.exId === 'backSquat'));
       const bi = tr.map(d => d.items.find(i => i.exId === 'bench')).find(Boolean); const bench = bi && [bi.sets, bi.repMin, bi.repMax];
-      L.ui.tab = 'dash'; L.render(); const dash = document.getElementById('view').innerText.replace(/\s+/g, ' ');
+      L.ui.tab = 'dash'; L.render(); const dash = (document.getElementById('view').innerText + ' ' + ((document.querySelector('#adhLine') || {}).textContent || '')).replace(/\s+/g, ' '); // adherence moved into Consistency (V 2026-10-13), folded
       L.ui.tab = 'today'; L.render(); const hero = (document.querySelector('.hero') || {}).innerText || '';
       return { sqRir: sq.map(i => i && i.rir), bench, routines: st.routines.map(r => r.name), name: R.name, days: R.days.map(d => d.rest ? 'Rest' : d.name), items: tr.map(d => d.items.map(i => i.exId)), sq: sq.map(i => i && [i.sets, i.repMin, i.repMax]),
         linked, n: st.sessions.length, coach: L.coach().text, dash, hero: hero.replace(/\s+/g, ' '), toast: document.getElementById('toast').innerText, tab: L.ui.tab };

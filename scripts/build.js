@@ -236,7 +236,10 @@ self.addEventListener('fetch',e=>{
   const r=e.request;if(r.method!=='GET')return;
   const u=new URL(r.url);if(u.origin!==location.origin)return;
   ${PREVIEW ? '' : "if(u.pathname.startsWith(OWN+'preview/'))return;"}
-  if(r.mode==='navigate'){
+  /* Only the app's own page is answered with the app (r45 review: every
+     same-origin navigation was, so Open-source licenses opened Ironlog in
+     the new tab instead of LICENSES.txt). Other paths go cache, then network. */
+  if(r.mode==='navigate'&&(u.pathname===OWN||u.pathname===OWN+'index.html')){
     e.respondWith(caches.open(CACHE).then(async c=>(await c.match('index.html'))||fetch(r).catch(()=>new Response('Offline',{status:503}))));
     return;
   }

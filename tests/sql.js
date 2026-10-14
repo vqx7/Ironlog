@@ -29,11 +29,30 @@ const V = '11111111-1111-1111-1111-111111111111', F = '22222222-2222-2222-2222-2
   await run(db, pick('create table public.docs_preview'), 'Part 5 docs_preview runs (A2)');
   await run(db, pick('create table public.feedback (').replace('YOUR IRONLOG ACCOUNT EMAIL','v@example.com'), 'Part 4 report tables run (B1), with your email filled in');
   await run(db, pick('create or replace function public.ping()'), 'keep-alive ping runs');
+  // Part 6 on tables made before r45 (no size check yet): the limit applies afterwards.
+  {
+    const old = new PGlite(); await old.exec(stub);
+    const strip = q => q.replace(/ check \(pg_column_size\(data\) <= 1048576\)/g, '');
+    await run(old, strip(pick('create table public.docs (')), 'pre-r45 docs table');
+    await run(old, strip(pick('create table public.docs_preview')), 'pre-r45 docs_preview table');
+    await old.exec(`insert into public.docs(user_id,path,data) values ('${V}','core','{}')`);
+    await run(old, pick('alter table public.docs add constraint docs_data_size'), 'Part 6 (r45 size limit) runs on tables with rows');
+    const big6 = JSON.stringify({ x: require('crypto').randomBytes(2400000).toString('base64') });
+    let r6 = 'ok'; try { await old.query(`insert into public.docs(user_id,path,data) values ($1,'big',$2::jsonb)`, [V, big6]); } catch (e) { r6 = e.message; }
+    ok(/docs_data_size/.test(r6), 'after Part 6, a document over 1 MB is refused');
+  }
+
   await as(db, V);
   ok(await tryq(db, `insert into public.docs_preview(path,data) values ('data/users/x/core','{}')`) === 'ok', 'signed in: can write own preview row');
   await as(db, F);
   const r = await db.query(`select count(*)::int n from public.docs_preview`); ok(r.rows[0].n === 0, 'another account sees none of those rows');
   ok(/row-level security|violates/i.test(await tryq(db, `insert into public.docs_preview(user_id,path,data) values ('${V}','p','{}')`)), 'cannot write a row for someone else');
+  // r45 (audit item 286): at most 1 MB stored per synced document; the app's largest is tens of kilobytes.
+  await as(db, V);
+  const big = JSON.stringify({ x: require('crypto').randomBytes(2400000).toString('base64') });
+  const bigTry = async t => { try { await db.query(`insert into public.${t}(path,data) values ($1,$2::jsonb)`, ['big', big]); return 'ok'; } catch (e) { return e.message; } };
+  ok(/check/i.test(await bigTry('docs')) && /check/i.test(await bigTry('docs_preview')), 'a document over 1 MB is refused, in docs and docs_preview');
+  ok(await tryq(db, `insert into public.docs(path,data) values ('core','{"sessions":[]}')`) === 'ok', 'an ordinary document is accepted');
   await as(db, null);
   ok(/permission denied/i.test(await tryq(db, `select * from public.docs_preview`)), 'signed out: no access to docs_preview');
   ok(/permission denied|row-level/i.test(await tryq(db, `insert into public.feedback(category,message) values ('bug','signed out spam text')`)), 'signed out: a report is refused');

@@ -361,7 +361,8 @@ const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
     await F.page.click('#obProf [data-act="profSet"][data-k="days"][data-v="3"]');
     const c1 = await fe(() => { const r = [...document.querySelectorAll('#obProf .chip, #obProf .ob-prof-h')].map(c => c.getBoundingClientRect()); return { open: !!document.querySelector('#obProf .chip'), p: window.__ironlog.state.settings.profile, over: document.documentElement.scrollWidth > window.innerWidth || [...document.querySelectorAll('.sheet *')].some(e => e.getBoundingClientRect().right > window.innerWidth + 0.5), h: Math.min(...r.map(x => x.height)), wid: Math.min(...r.map(x => x.width)), focus: !!document.querySelector('#obProf [data-k="focus"]'), fits: [...document.querySelectorAll('.tpl')].filter(b => /Fits your days/.test(b.innerText)).map(b => b.dataset.k) }; });
     ok(c1.open && same(c1.p, { goal: 'both', exp: 'new', days: 3 }) && !c1.over && c1.h >= 44 && c1.wid >= 44 && !c1.focus, `${tag}: it stays open after each tap, saves the choices, 44 px targets, no sideways scroll, no focus muscles here`, c1);
-    ok(same(c1.fits, ['full3', 'str5', 'db3']), `${tag}: the routines that fit 3 days are marked right there`, c1.fits);
+    ok(same(c1.fits, ['full3', 'full3t', 'str5', 'db3']), // r45 adds the trained 3-day full body
+       `${tag}: the routines that fit 3 days are marked right there`, c1.fits);
     ok(!F.errors.length, `${tag}: no page errors`, F.errors);
     await F.ctx.close();
   }

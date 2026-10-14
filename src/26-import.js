@@ -449,7 +449,7 @@ async function liveLogFetch(){
   return {st:best&&realCount(best)?best:null,err};
 }
 function previewCopyBtn(cls){return ENV==='preview'?`<button class="btn ${cls||''}" data-act="previewCopy">Copy my log in</button>`:'';}
-function importData(text){
+function importData(text,after){
   let obj;try{obj=JSON.parse(text);}catch(e){toast('That is not valid backup text');return;}
   const s=obj&&obj.state?obj.state:obj;
   if(!s||typeof s!=='object'||!Array.isArray(s.exercises)||!Array.isArray(s.routines)||!Array.isArray(s.sessions)){toast('That file is not an Ironlog backup');return;}
@@ -461,7 +461,7 @@ function importData(text){
   const body=`This backup has ${clean.sessions.length} session${clean.sessions.length===1?'':'s'} and ${clean.routines.length} routine${clean.routines.length===1?'':'s'}.`
     +(dropped?` ${dropped} damaged record${dropped===1?' was':'s were'} skipped.`:'')
     +' It will replace everything currently in the app. You can step this back with Undo.';
-  confirmBox('Replace all data?',body,'Replace my data',()=>{snapshot();state=clean;commit();closeModal();ui.tab='today';render();toast('Backup imported',true);},true);
+  confirmBox('Replace all data?',body,'Replace my data',()=>{snapshot();state=clean;commit();closeModal();ui.tab='today';render();toast('Backup imported',true);if(after)after();},true);
 }
 function mulberry(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};}
 /* Demo data looked at before setting up (V, r28): whatever is changed while

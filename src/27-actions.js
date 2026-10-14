@@ -159,6 +159,37 @@ const ACT={
   acctOpen(t){openModal({kind:'account',mode:t.dataset.mode==='signup'?'signup':'signin',email:'',pw:''});},
   acctMode(t){const m=ui.modal;if(!m||m.kind!=='account')return;if(m.mode==='wait')waitStop();m.mode=t.dataset.mode;m.err='';m.pw='';renderModal();},
   acctWaitNow(){waitTry(true);},
+  /* Confirm sign-up with the emailed code (r45). This action owns success:
+     the poll is held off while it runs, and the sign-in event's own wait
+     branch stands aside (acctWait.coding), so nothing toasts or syncs twice.
+     A code fails when the emailed link was opened first (it used the code up),
+     so the password is tried once before the error is shown. */
+  async acctCode(){
+    const m=ui.modal,A=AUTH();if(!m||m.kind!=='account'||m.busy||!A||!A.verifyCode)return;
+    for(const el of document.querySelectorAll('#modal [data-abind]'))m[el.dataset.abind]=el.value;
+    // A poll already signing in (the app just came back to the front): let it finish first, and stop if it signed in (r45 review).
+    if(acctWait.busy){m.busy=true;renderModal();for(let i=0;i<50&&acctWait.busy;i++)await new Promise(r=>setTimeout(r,100));m.busy=false;if(acct.user||ui.modal!==m)return;
+      if(acctWait.busy){m.err='Still checking. Try again in a moment.';renderModal();return;}}
+    const email=String(m.email||acctWait.email||'').trim().toLowerCase();const pw=acctWait.pw||String(m.pw||'');
+    if(!EMAIL_RE.test(email)){m.err='Enter your email address.';renderModal();return;}
+    clearTimeout(acctWait.timer);acctWait.timer=null;acctWait.busy=true;acctWait.coding=true;m.busy=true;m.err='';renderModal();
+    const ok=user=>{acct.user=user;waitStop();obOutClear();try{localStorage.removeItem(ACCT_LATER);}catch(e){/* nothing to clear */}if(ui.modal===m)closeModal();toast('Email confirmed. Signed in and syncing.');if(!cloud.on)cloudInit();acctRerender();};
+    try{ok(await A.verifyCode(email,m.code));}
+    catch(e){
+      let done=false;
+      if(pw&&e&&e.code!=='no_code'){try{ok(await A.signIn(email,pw));done=true;}catch(e2){/* still not confirmed: show the code's error */}}
+      if(!done){log('auth',e);if(ui.modal===m)m.err=(e&&e.message)||'Something went wrong. Try again.';}
+    }finally{acctWait.busy=false;acctWait.coding=false;if(ui.modal===m){m.busy=false;renderModal();}waitSchedule();}
+  },
+  async acctResend(){
+    const m=ui.modal,A=AUTH();if(!m||m.kind!=='account'||m.busy||!A||!A.resendCode)return;
+    for(const el of document.querySelectorAll('#modal [data-abind]'))m[el.dataset.abind]=el.value;
+    const email=String(m.email||acctWait.email||'').trim().toLowerCase();if(!EMAIL_RE.test(email)){m.err='Enter your email address.';renderModal();return;}
+    m.busy=true;m.err='';renderModal();
+    try{await A.resendCode(email);m.code='';toast('A new email is on its way. Use its code.');}
+    catch(e){log('auth',e);m.err=(e&&e.message)||'Something went wrong. Try again.';}
+    finally{if(ui.modal===m){m.busy=false;renderModal();}}
+  },
   /* The answer on a browser that opened the confirmation link (item 61b). */
   async acctWhere(t){
     const m=ui.modal,A=AUTH();if(!m||m.kind!=='account'||m.mode!=='where'||!A)return;m.answered=true;
@@ -172,6 +203,8 @@ const ACT={
   },
   async acctSubmit(){
     const m=ui.modal,A=AUTH();if(!m||m.kind!=='account'||m.busy||!A)return;
+    // Go in the code field: the browser clicks the form's first button (Sign in), so route it to the code (r45).
+    if(document.activeElement&&document.activeElement.dataset&&document.activeElement.dataset.abind==='code')return ACT.acctCode();
     // Read the fields as they are now: autofill does not always fire input events.
     for(const el of document.querySelectorAll('#modal [data-abind]'))m[el.dataset.abind]=el.value;
     const email=String(m.email||'').trim().toLowerCase(),pw=String(m.pw||'');
@@ -201,7 +234,9 @@ const ACT={
           done({mode:'sent',title:'Password changed',msg:'Open Ironlog from your home screen and sign in with the new password. If you use Ironlog in this browser instead, sign in here.'});
         }else{done(null);toast('Password changed');}
       }
-    }catch(e){log('auth',e);if(ui.modal===m){m.err=(e&&e.message)||'Something went wrong. Try again.';}}
+    }catch(e){log('auth',e);if(ui.modal===m){m.err=(e&&e.message)||'Something went wrong. Try again.';
+      // Not confirmed yet: the code works from here too (r45), whatever happened to the waiting sheet.
+      if(m.mode==='signin'&&e&&e.code==='email_not_confirmed')m.needCode=true;}}
     finally{if(ui.modal===m){m.busy=false;renderModal();}}
   },
   acctDelete(){
@@ -427,6 +462,10 @@ const ACT={
     if(kept)toast(`Your ${ML[v]} target is one you set, so it stays. Default targets in Weekly set targets puts the app's back.`,n>0,8000);
     else if(n)toast(`Weekly targets moved for ${n} muscle${n===1?'':'s'}. Ones you typed stay.`,true);
   },
+  // The save kept aside at start (r45): restored through the import's checks, shown as text, or let go.
+  unreadRestore(){const raw=unreadableRaw();if(!raw)return;importData(raw,()=>{try{localStorage.removeItem(KEY+'.unreadable');}catch(e){/* nothing to clear */}});},
+  unreadShow(){const raw=unreadableRaw();if(raw)openModal({kind:'text',title:'Save kept aside',help:'Select all and copy it somewhere safe.',text:raw,readonly:true});},
+  unreadForget(){confirmBox('Forget the save kept aside?','It is deleted for good. Export or copy it first if you might want it.','Forget it',()=>{try{localStorage.removeItem(KEY+'.unreadable');}catch(e){/* nothing to clear */}rerenderKeepScroll();toast('Forgotten');},true);},
   // Weekly set targets back to the defaults (r44), with Your training's focus; typed ones and a first-run fit go.
   bandsDefault(){
     const b=state.settings.bands;const fit=state.settings.bandsFit?{...state.settings.bandsFit}:null;const moved={};
@@ -853,7 +892,9 @@ const ACT={
      first, naming how many; an untouched one goes with an Undo as before. */
   bDel(t){const d=state.draft;const bi=+t.dataset.b;const blk=d.ex[bi];if(!blk)return;const did=d.id;
     const go=()=>{const dd=state.draft;if(!dd||dd.id!==did||dd.ex[bi]!==blk){if(ui.modal)closeModal();toast('That exercise changed. Nothing was removed.');rerenderKeepScroll();return;}
-      snapshot(()=>{const d3=state.draft;if(!d3||d3.id!==did)return false;d3.ex.splice(Math.min(bi,d3.ex.length),0,blk);fixSupersets(d3.ex.map(x=>x.plan));return true;});
+      // Back after the exercise it followed, which an automatic reorder may have moved (r45 review).
+      const prevBlk=bi>0?dd.ex[bi-1]:null;
+      snapshot(()=>{const d3=state.draft;if(!d3||d3.id!==did)return false;const k=prevBlk?d3.ex.indexOf(prevBlk):-1;d3.ex.splice(prevBlk==null?0:k>=0?k+1:Math.min(bi,d3.ex.length),0,blk);fixSupersets(d3.ex.map(x=>x.plan));return true;});
       keepOpen(()=>dd.ex.splice(bi,1));saveNow();rerenderKeepScroll();toast('Exercise removed',true);};
     const logged=blk.sets.filter(x=>x.done).length,typed=blk.sets.filter(x=>!x.done&&(+x.r>0||x.rir!=null)).length;
     if(logged||typed){if(ui.modal)closeModal();confirmBox(`Remove ${EX(blk.exId).name}?`,`${logged?`${logged} logged set${logged===1?'':'s'}`:''}${logged&&typed?' and ':''}${typed?`${typed} typed set${typed===1?'':'s'}`:''} go with it. Undo is offered right after.`,'Remove exercise',go,true);return;}

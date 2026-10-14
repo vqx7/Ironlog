@@ -68,4 +68,18 @@ const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log
   ok(defs.length === 1, 'estMin is defined once', defs);
 }
 
+// The build this one replaces is kept as a baseline and read by the
+// migration and seams suites (r45: CLAUDE.md asked for it, nothing checked).
+{
+  const ver = (fs.readFileSync(path.join(ROOT, 'src', '12-storage.js'), 'utf8').match(/const APP_VERSION='[^']*-r(\d+)(?:\.(\d+))?'/) || []).slice(1).map(Number);
+  const base = fs.readdirSync(path.join(ROOT, 'baselines')).filter(f => /^r\d+(-\d+)?\.html$/.test(f));
+  const num = f => f.replace('.html', '').slice(1).split('-').map(Number);
+  const older = base.filter(f => { const [a, b] = num(f); return a < ver[0] || (a === ver[0] && (b || 0) < (ver[1] || 0)); });
+  const newest = older.sort((a, b) => { const x = num(a), y = num(b); return x[0] - y[0] || (x[1] || 0) - (y[1] || 0); }).pop();
+  ok(ver.length && newest && num(newest)[0] >= ver[0] - 1, `the build before r${ver[0]} is in baselines/ (${newest})`);
+  const mig = fs.readFileSync(path.join(__dirname, 'migration.js'), 'utf8');
+  const unread = base.filter(f => !mig.includes(`'baselines/${f}'`));
+  ok(unread.length === 0, 'every baseline is loaded by tests/migration.js', unread);
+}
+
 console.log(fails.length ? `${fails.length} FAILED` : 'ALL PASS'); process.exit(fails.length ? 1 : 0);

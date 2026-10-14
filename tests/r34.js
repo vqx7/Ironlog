@@ -136,6 +136,15 @@ const LB = 0.45359237;
     await tick(0, 13, null);
     r = await read();
     ok(r.adj && r.adj.up && r.adj.w > 185 && r.adj.w <= 185 * 1.1 + 1e-6, 'with effort not rated, 3 or more reps past the top moves up (at most 10%)', r.adj);
+    // r45 (V 2026-10-13): 2 past the top moves up, the same 2 as between sessions; 1 past does not.
+    await setup({ ex: 'bench', w: 185, lo: 6, hi: 10, r0: 8 });
+    await tick(0, 12, null);
+    r = await read();
+    ok(r.adj && r.adj.up && r.adj.w > 185 && r.adj.w <= 185 * 1.1 + 1e-6 && r.ph[1] === String(r.adj.w), 'r45: 2 reps past the top (12 on 6 to 10) moves the next sets up', r);
+    await setup({ ex: 'bench', w: 185, lo: 6, hi: 10, r0: 8 });
+    await tick(0, 11, null);
+    r = await read();
+    ok(!r.adj && r.ph[1] === '185', 'r45: 1 rep past the top (11 on 6 to 10) changes nothing; the next session adds load', r);
     // A typed load below is never changed.
     await setup({ ex: 'bench', w: 185, lo: 6, hi: 10, r0: 8 });
     await ev(() => { const i = document.querySelector('[data-f="w"][data-b="0"][data-s="2"]'); i.value = '190'; i.dispatchEvent(new Event('input', { bubbles: true })); i.dispatchEvent(new Event('change', { bubbles: true })); });
@@ -318,7 +327,7 @@ const LB = 0.45359237;
       s.sessions = [mk('a', '2026-09-15'), mk('b', '2026-09-17'), mk('c', '2026-09-22'), mk('d', '2026-09-24'), mk('e', '2026-09-29'), mk('f', '2026-10-01'), mk('g', '2026-10-06'), mk('h', '2026-10-08'), mk('i', '2026-10-08')];
       L.invalidate(); L.ui.tab = 'today'; L.ui.hidden; s.settings.hidden = []; L.render(); document.querySelectorAll('#view details').forEach(d => { d.open = true; });
       const wk = document.querySelector('[data-mkey="week"] .sec-s').textContent; const st = L.weekStreak(); const sub = document.querySelector('.hero .muted.small').textContent;
-      L.ui.tab = 'dash'; L.render(); const adh = [...document.querySelectorAll('.kpi .l')].map(x => x.textContent).find(t => /Adherence/.test(t));
+      L.ui.tab = 'dash'; L.render(); const adh = (document.querySelector('#adhLine') || {}).textContent; // V 2026-10-13: adherence moved from the tiles into Consistency
       return { wk, streak: st.weeks, need: st.need, sub, adh };
     });
     ok(fm.wk === '3 sessions' && fm.streak === 4 && fm.need === 1 && /3 sessions, 9 hard sets this week/.test(fm.sub) && /freestyle, no plan to follow/.test(fm.adh), 'freestyle: This week counts sessions (a two-a-day counts twice), the streak is weeks trained in a row, adherence has no plan', fm);

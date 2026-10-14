@@ -82,14 +82,15 @@ function guideSheet(m){
    <p><b>RIR check</b>: once you have 3 sessions, one machine or cable exercise may ask for one set to failure, to see how far your RIR calls are off. Not now, or finishing without it, waits 3 weeks.</p>
    <p><b>Last</b>, beside each set, is what you did on that set last time at your working load, from the session named above the sets; a top single or lighter sets stay in that line. <b>W and D</b>: tap a set's number once for a warm-up (kept, never analysed), twice for a drop set (counts half a set of volume, never as a PR or target). <b>+ Drop</b> beside + Set adds one at about 75% once a set is done; warm-ups are in the exercise's ⋯ menu.</p>
    <p><b>Supersets</b>: an exercise's ⋯ menu, Superset with the next one (Finish then offers to keep it in your plan), or Plan's Superset with next. The rest timer waits until the partners are done, and session minutes leave out the rest between them.</p>
-   <p><b>The next sets adjust</b> after a set that was clearly off plan, on the sets whose load is still the app's (never one you typed). Up: 2 or more reps in reserve over your target with the reps in your range, or 3 or more reps past the top. Down: 2 or more reps under both the range and what today asked for, without reserve to spare. The new load is what that set says you can do in the middle of the range (up) or at its bottom (down), with one more rep in reserve, in real steps, at most 10% up (15% on light isolation lifts), and at least one step when a set was rated 5 or more in reserve. When no heavier load fits, the same load for more reps. A blank effort reads as your usual. Keep stays on your load. Not on a lighter day, a deload, a past workout, an injured area, an assisted lift, or a bodyweight lift never done with added load. Settings, Rest timer and logging turns it off.</p>
+   <p><b>The next sets adjust</b> after a set that was clearly off plan, on the sets whose load is still the app's (never one you typed). Up: 2 or more reps in reserve over your target with the reps in your range, or 2 or more reps past the top. Down: 2 or more reps under both the range and what today asked for, without reserve to spare. The new load is what that set says you can do in the middle of the range (up) or at its bottom (down), with one more rep in reserve, in real steps, at most 10% up (15% on light isolation lifts), and at least one step when a set was rated 5 or more in reserve. When no heavier load fits, the same load for more reps. A blank effort reads as your usual. Keep stays on your load. Not on a lighter day, a deload, a past workout, an injured area, an assisted lift, or a bodyweight lift never done with added load. Settings, Rest timer and logging turns it off.</p>
    <p><b>+ Set and − Set</b>: − Set takes an empty row first and asks before a filled one. Removing anything you entered asks first, and Undo follows.</p>
    <p><b>Muscles worked</b>, in an exercise's ⋯ menu, shows what it trains on the body: the main muscle in your accent colour, helpers lighter (they count half a set). Flat or 3D, as on Today's map. The exercise editor shows the same as you pick the muscles.</p>
-   <p><b>Order</b>: drag an exercise by its ⠿ to move it, or use the arrow keys on the ⠿, or Move up and Move down in its ⋯ menu. A superset split by a move becomes two single exercises.</p>
+   <p><b>Order</b>: drag an exercise by its ⠿ to move it, or use the arrow keys on the ⠿, or Move up and Move down in its ⋯ menu. A superset split by a move becomes two single exercises. An exercise you start ahead of ones not yet touched moves up, to just after the last one you started.</p>
    <p><b>Swap</b>: sets you did stay with the old exercise; the new one takes the sets left, with its own rep range and rest when it has them in your routine.</p>
    <p><b>Finish</b> saves the ticked sets and asks about any with reps but no tick. <b>Discard</b> asks only when something was entered.</p>
    <p><b>A past workout</b>: tap an empty past day in the bar, or History, Log a past workout. Targets and PRs read as of that date.</p>`],
   ['rules','How targets are set',`<p class="muted">These are estimates from your log, not medical or coaching advice. Adjust them to how you feel on the day, and stop on pain.</p>
+   <p><b>In short.</b> Before a session, from your last full session: every set at the top of the range, or 2 or more in reserve over your target, more load; well short of the range, less load; anything else, the same load for more total reps. During a session, the next sets change only after a set that was clearly off: 2 or more reps past the top, or 2 or more in reserve over your target with the reps in the range, heavier; 2 or more reps under the range and under what was asked, lighter; anything else, the same load, with last time's reps in grey. Loads show in grey, taken when you tick the set, or typed in for you with Settings, Rest timer and logging, Fill in suggested loads. A load you type is never changed. The details follow.</p>
    <p>Each exercise progresses from its <b>last full session in the rep range you plan for it that day</b>, so the same lift on a heavy day and a light day progresses on each separately. A range not used within 6 weeks of your latest session of the lift starts from that latest session instead.</p>
    <p><b>The working load</b> is the load you did the most sets with (the heavier on a tie), leaving out loads under 60% of your heaviest. A heavy top set, or two, before your back-off sets counts for bests and PRs, while targets, grey reps, and trends build on the back-off sets.</p>
    <p><b>Every set at the top of the range</b>: add load, in whole steps of the exercise's load step, about 2.5% of the load on compound lifts and 5% on isolation lifts, at least one step. Plan, Load jump % sets a different share for one exercise (0: one step every time). When one step is large for the load (it costs 1.5 reps or more, as 5 lb on a 35 lb dumbbell does), on a range 3 or more reps wide, you first build a few reps past the top at this load, up to a quarter of the top of the range more, until your estimate says the new load allows the bottom of the range; then the load goes up. Past a quarter, the load goes up anyway, with the reps your estimate allows there as the target. A fixed-rep plan (5 x 5, 3 x 3-5) goes up a step every time all its sets are done.</p>
@@ -202,7 +203,14 @@ function fbInboxSheet(m){
 function fbShrink(file){
   return new Promise((res,rej)=>{
     const url=URL.createObjectURL(file);const img=new Image();
-    img.onload=()=>{try{const k=Math.min(1,1280/Math.max(img.naturalWidth,img.naturalHeight));const c=document.createElement('canvas');c.width=Math.max(1,Math.round(img.naturalWidth*k));c.height=Math.max(1,Math.round(img.naturalHeight*k));c.getContext('2d').drawImage(img,0,0,c.width,c.height);let q=0.72,d=c.toDataURL('image/jpeg',q);while(d.length>1400000&&q>0.3){q-=0.15;d=c.toDataURL('image/jpeg',q);}URL.revokeObjectURL(url);res(d.length<=1400000?d:null);}catch(e){URL.revokeObjectURL(url);rej(e);}};
+    /* At most 500,000 characters (about 370 KB): each screenshot is kept in
+       the tickets repository's history for good, so it is kept small (r45,
+       audit item 287; 1.4 MB before). Smaller sides before blurrier text. */
+    img.onload=()=>{try{const L=500000;let d=null;
+      for(const side of [1280,960,720]){const k=Math.min(1,side/Math.max(img.naturalWidth,img.naturalHeight));const c=document.createElement('canvas');c.width=Math.max(1,Math.round(img.naturalWidth*k));c.height=Math.max(1,Math.round(img.naturalHeight*k));c.getContext('2d').drawImage(img,0,0,c.width,c.height);
+        for(let q=0.72;q>0.3;q-=0.14){d=c.toDataURL('image/jpeg',q);if(d.length<=L)break;}
+        if(d.length<=L)break;}
+      URL.revokeObjectURL(url);res(d&&d.length<=L?d:null);}catch(e){URL.revokeObjectURL(url);rej(e);}};
     img.onerror=()=>{URL.revokeObjectURL(url);rej(new Error('Not an image'));};img.src=url;
   });
 }
@@ -232,7 +240,7 @@ function waitStop(){
 function waitSchedule(){
   clearTimeout(acctWait.timer);acctWait.timer=null;if(!acctWait.pw)return;
   const age=Date.now()-acctWait.t;
-  if(age>30*60000){waitStop();const m=ui.modal;if(m&&m.kind==='account'&&m.mode==='wait'){m.mode='signin';m.err='Still not confirmed. Once you have opened the link, sign in here.';renderModal();}return;}
+  if(age>30*60000){waitStop();const m=ui.modal;if(m&&m.kind==='account'&&m.mode==='wait'){m.mode='signin';m.needCode=true;m.err='Still not confirmed. Type the code from the email, or open its link and sign in here.';renderModal();}return;}
   acctWait.timer=setTimeout(()=>waitTry(false),age<5*60000?20000:60000);
 }
 async function waitTry(manual){
@@ -250,7 +258,7 @@ async function waitTry(manual){
     const m=sheet();
     const unconfirmed=e&&(e.code==='email_not_confirmed'||/Confirm your email/i.test(e.message||''));
     if(!unconfirmed&&/Wrong email or password/.test((e&&e.message)||'')){waitStop();if(m){m.mode='signin';m.err='That password did not work. Sign in with the one you chose.';}}
-    else if(m&&manual)m.err=unconfirmed?'Not confirmed yet. Open the link in the email first.':((e&&e.message)||'Try again.');
+    else if(m&&manual)m.err=unconfirmed?'Not confirmed yet. Type the code from the email, or open its link.':((e&&e.message)||'Try again.');
     if(!unconfirmed)log('auth',e);
   }finally{acctWait.busy=false;const m=sheet();if(m){m.busy=false;renderModal();}waitSchedule();}
 }
@@ -262,7 +270,7 @@ async function acctInit(){
     acct.user=user;
     if(ev==='PASSWORD_RECOVERY'&&!(ui.modal&&ui.modal.kind==='account'))openModal({kind:'account',mode:'newpw',pw:''});
     // Signed in some other way while waiting for the confirmation (another tab sharing this storage): stop waiting.
-    if(ev==='SIGNED_IN'&&user&&acctWait.pw){waitStop();const m=ui.modal;if(m&&m.kind==='account'&&m.mode==='wait'){closeModal();toast('Email confirmed. Signed in and syncing.');}}
+    if(ev==='SIGNED_IN'&&user&&acctWait.pw&&!acctWait.coding){waitStop();const m=ui.modal;if(m&&m.kind==='account'&&m.mode==='wait'){closeModal();toast('Email confirmed. Signed in and syncing.');}}
     if(ev==='SIGNED_IN'&&!cloud.on)cloudInit();
     if(ev==='SIGNED_OUT'&&cloud.on&&!window.claude)cloudStop();
     if(ev==='SIGNED_IN'||ev==='SIGNED_OUT')fbCheckReader();
@@ -315,6 +323,11 @@ function acctPanel(){
     :`<div class="panel" id="acctPanel"><p class="small hastip" style="margin:0 0 8px" data-tip="${esc(isStandalone()?'Deleting the app from the home screen deletes the log on this phone. An account keeps it, or save a backup file below.':'Clearing this browser\'s data deletes the log here. An account keeps it, or save a backup file below.')}"><b>Saved on this ${isStandalone()||coarse()?'phone':'device'} only.</b> Create an account to back it up and use it on any device.</p><div class="row"><button class="btn sm primary" data-act="acctOpen" data-mode="signup">Create account</button><button class="btn sm" data-act="acctOpen" data-mode="signin">Sign in</button></div></div>`;
 }
 const EMAIL_RE=/^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+/* The code from the confirmation email (r45), on the waiting sheet and, after
+   "Confirm your email first", on sign-in: the code needs only the email, so
+   it still works after the wait gives up or the app was closed. Digits only
+   are sent; the length is the project's (6 by default), so none is forced. */
+function codeField(m){return `<label class="field">Code from the email<input type="text" inputmode="numeric" autocomplete="one-time-code" data-abind="code" value="${esc(m.code||'')}" enterkeyhint="go"></label><button type="button" class="btn primary block" data-act="acctCode" ${m.busy?'disabled':''}>Confirm with the code</button><div class="row"><button type="button" class="linkbtn tall" data-act="acctResend" ${m.busy?'disabled':''}>Send a new code</button></div>`;}
 function acctSheet(m){
   const f=(label,k,type,ac,extra)=>`<label class="field">${label}<input type="${type}" data-abind="${k}" value="${esc(m[k]||'')}" autocomplete="${ac}" ${extra||''}></label>`;
   const email=f('Email','email','email','email','autocapitalize="off" autocorrect="off" spellcheck="false" inputmode="email" enterkeyhint="next"');
@@ -325,11 +338,11 @@ function acctSheet(m){
   const link=(mode,label)=>`<button type="button" class="linkbtn tall" data-act="acctMode" data-mode="${mode}">${label}</button>`;
   const T={signin:'Sign in',signup:'Create account',forgot:'Reset password',newpw:'New password',sent:m.title||'Check your email',wait:'Check your email',where:m.title||'Email confirmed'};
   let b='';
-  if(m.mode==='signin')b=`${email}${f('Password','pw','password','current-password','enterkeyhint="go"')}${err}${go('Sign in')}<div class="row spread">${link('forgot','Forgot password?')}${link('signup','Create an account')}</div>`;
-  else if(m.mode==='signup')b=`${email}${f('Password (8 or more characters)','pw','password','new-password','minlength="8" enterkeyhint="go"')}${err}${go('Create account')}<p class="small muted" style="margin:0">We email you a link to confirm the address. Your email is only for signing in and never shared.</p><div class="row">${link('signin','I have an account')}</div>`;
+  if(m.mode==='signin')b=`${email}${f('Password','pw','password','current-password','enterkeyhint="go"')}${err}${m.needCode?codeField(m):''}${go('Sign in')}<div class="row spread">${link('forgot','Forgot password?')}${link('signup','Create an account')}</div>`;
+  else if(m.mode==='signup')b=`${email}${f('Password (8 or more characters)','pw','password','new-password','minlength="8" enterkeyhint="go"')}${err}${go('Create account')}<p class="small muted" style="margin:0">We email you a link and a code to confirm the address. Your email is only for signing in and never shared.</p><div class="row">${link('signin','I have an account')}</div>`;
   else if(m.mode==='forgot')b=`${email}${err}${go('Email me a reset link')}<p class="small muted" style="margin:0">The link opens in your browser. Set the new password there, then sign in here.</p><div class="row">${link('signin','Back to sign in')}</div>`;
   else if(m.mode==='newpw')b=`${f('New password (8 or more characters)','pw','password','new-password','minlength="8" enterkeyhint="go"')}${err}${go('Save new password')}`;
-  else if(m.mode==='wait')b=`<p style="margin:0">We sent a confirmation link to <b>${esc(m.email||'')}</b>. Tap it, then come back here. Ironlog signs you in by itself.</p><p class="small muted waitline" style="margin:0" aria-live="polite">${m.busy?'Checking':'Waiting for the confirmation'}</p>${err}<button type="button" class="btn primary block" data-act="acctWaitNow" ${m.busy?'disabled':''}>I have confirmed</button><div class="row">${link('signup','Use a different email')}</div>`;
+  else if(m.mode==='wait')b=`<p style="margin:0">We sent a confirmation email to <b>${esc(m.email||'')}</b>. Type its code here, or tap its link and come back: Ironlog signs you in by itself.</p>${codeField(m)}<p class="small muted waitline" style="margin:0" aria-live="polite">${m.busy?'Checking':'Waiting for the confirmation'}</p>${err}<button type="button" class="btn block" data-act="acctWaitNow" ${m.busy?'disabled':''}>I have confirmed</button><div class="row">${link('signup','Use a different email')}</div>`;
   else if(m.mode==='where')b=`<p style="margin:0">Where do you use Ironlog?</p><button type="button" class="btn primary block" data-act="acctWhere" data-v="app">The home-screen app</button><button type="button" class="btn block" data-act="acctWhere" data-v="here">Here in this browser</button>`;
   else b=`<p style="margin:0">${esc(m.msg||'')}</p><button type="button" class="btn primary block" data-act="mClose">OK</button>`;
   return `<div class="sheet" role="dialog" aria-modal="true" aria-label="${esc(T[m.mode]||'Account')}"><div class="sheet-h"><h3>${esc(T[m.mode]||'Account')}</h3><button class="ib" aria-label="Close" data-act="mClose">✕</button></div><form class="stack" id="acctForm" novalidate>${b}</form></div>`;

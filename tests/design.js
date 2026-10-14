@@ -10,8 +10,9 @@ const fails = []; const ok = (c, m) => { if (!c) { fails.push(m); console.log('F
   await ev(() => { const L = window.__ironlog; L.state.settings.onboarded = true; L.makeDemo(); for (const k of ['sessions', 'bodyweights', 'measurements']) for (const x of L.state[k]) delete x.demo; L.invalidate(); L.ui.tab = 'today'; L.render(); localStorage.setItem('ironlog.v1.tipWake', '1'); });
 
   // Week ring matches This week.
-  const ring = await ev(() => { const L = window.__ironlog; const w = L.weekStats(); const r = document.querySelector('.hero .ring'); return { lbl: r && r.getAttribute('aria-label'), pct: r && r.querySelector('.rv').textContent, got: w.got, tgt: w.tgt }; });
-  ok(ring.lbl && ring.lbl.startsWith(`${ring.got} of ${ring.tgt} hard sets`) && ring.pct.startsWith(String(Math.round(ring.got / ring.tgt * 100))), 'hero ring shows this week\'s hard sets against plan (' + ring.lbl + ')');
+  // V 2026-10-13: the ring counts sessions done against the week's plan, as This week's title does.
+  const ring = await ev(() => { const L = window.__ironlog; const w = L.weekStats(); const r = document.querySelector('.hero .ring'); return { lbl: r && r.getAttribute('aria-label'), v: r && r.querySelector('.rv').textContent, done: w.doneDays, plan: w.planDays, wk: document.querySelector('[data-mkey="week"] .sec-s').textContent }; });
+  ok(ring.lbl && new RegExp('^' + ring.done + ' of (about )?' + ring.plan + ' sessions this week').test(ring.lbl) && ring.v === ring.done + '/' + ring.plan && ring.wk.startsWith(ring.done + ' of'), 'hero ring shows this week\'s sessions against plan, as This week does (' + ring.lbl + ')');
   await page.click('.hero .ring'); await page.waitForTimeout(400);
   ok(await ev(() => { const el = document.querySelector('[data-sk="today:week"]'); return el && el.open; }), 'tapping the ring opens This week');
 

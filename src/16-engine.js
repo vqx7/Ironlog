@@ -783,6 +783,11 @@ function progressLine(b,bi){const p=blockProgress(b);return p?`<span class="tp${
    on last time's first set, and shifted every set below it by one. */
 function lastRFor(b,si){
   const s=b.sets[si];if(!s||s.warm||s.drop||!Array.isArray(b.lastR))return null;
+  /* A later block of the same lift (r45): last time's reps are one merged
+     list and the split is not recorded, so none is offered; the grey reps
+     fall back to the set above or the bottom of the range, as the Last column
+     shows dashes (the r45 review). */
+  {const d=state.draft;const bi=d&&d.ex?d.ex.indexOf(b):-1;if(bi>0&&lastDup(d,bi))return null;}
   let k=0;for(let i=0;i<si;i++){const x=b.sets[i];if(!x.warm&&!x.drop)k++;}
   const v=b.lastR[k];return v!=null&&v>0?v:null;
 }

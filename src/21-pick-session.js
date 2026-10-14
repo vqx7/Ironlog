@@ -309,14 +309,17 @@ function renderWeekBar(){const el=document.getElementById('wkbar');if(!el)return
 const NIL='–';
 function noLog(){return !state.sessions.length;}
 const nz=v=>noLog()?NIL:v;
-/* The week at a glance, beside the day's name: hard sets logged against the
-   routine's plan, the same two numbers as This week. A ring fills, which
-   reads faster than a sentence. Tapping it opens This week. */
+/* The week at a glance, beside the day's name: sessions done against the
+   sessions the routine plans this week, the same two numbers as This week's
+   title. V (2026-10-13): the headline counts what was done, not planned
+   sets; hard sets against the plan stay inside This week. A ring fills,
+   which reads faster than a sentence. Tapping it opens This week. */
 function heroRing(w){
-  if(!(w.tgt>0))return '';
-  const r=26,c=2*Math.PI*r,p=Math.max(0,Math.min(1,w.got/w.tgt));
-  const lbl=noLog()?`No sets logged yet; ${w.tgt} hard sets planned this week`:`${r1(w.got)} of ${w.tgt} hard sets this week`;
-  return `<button type="button" class="ring" data-act="goWeek" aria-label="${esc(lbl)}. Open This week" data-tip="${esc(lbl)}"><svg viewBox="0 0 64 64" aria-hidden="true"><circle cx="32" cy="32" r="${r}" class="rt"/><circle cx="32" cy="32" r="${r}" class="rp" stroke-dasharray="${(c*p).toFixed(2)} ${c.toFixed(2)}" transform="rotate(-90 32 32)"/></svg><span class="rv">${noLog()?NIL:`${Math.round(p*100)}<small>%</small>`}</span><span class="rl">week</span></button>`;
+  if(!(w.planDays>0))return '';
+  const r=26,c=2*Math.PI*r,p=Math.max(0,Math.min(1,w.doneDays/w.planDays));
+  const pd=`${w.weekly||weekFactor(w.R)===1?'':'about '}${w.planDays}`;
+  const lbl=noLog()?`No sessions logged yet; ${pd} planned this week`:`${w.doneDays} of ${pd} sessions this week`;
+  return `<button type="button" class="ring" data-act="goWeek" aria-label="${esc(lbl)}. Open This week" data-tip="${esc(lbl)}"><svg viewBox="0 0 64 64" aria-hidden="true"><circle cx="32" cy="32" r="${r}" class="rt"/><circle cx="32" cy="32" r="${r}" class="rp" stroke-dasharray="${(c*p).toFixed(2)} ${c.toFixed(2)}" transform="rotate(-90 32 32)"/></svg><span class="rv">${noLog()?NIL:`${w.doneDays}<small>/${w.planDays}</small>`}</span><span class="rl">week</span></button>`;
 }
 function weekStats(){
   const R=activeRoutine();
@@ -456,8 +459,14 @@ const DEFAULT_PLAN={sets:3,repMin:8,repMax:12,rir:1,rest:90,inc:5*LB};
    ("Last (Oct 10, trimmed)"), unless a top single or a pyramid's other
    loads were left out of the column (b.prevOff): then it keeps every set. A
    block from before r44 has no prev and keeps the whole line. */
-function lastCell(b,i){return Array.isArray(b.prev)&&i>=0&&i<b.prev.length?b.prev[i]:'';}
-function lastHead(b){const t=b.last||'';if(!Array.isArray(b.prev)||!b.prev.length||b.prevOff)return t;const k=t.indexOf('):');return k>0?t.slice(0,k+1):t;}
+/* The same lift again later in the session (r45): last time's sets are one
+   merged list (sameExOnce), and how they were split between the blocks is
+   not recorded, so the column cannot say which set this row repeats. The
+   later block shows dashes and the whole Last line instead of a wrong row
+   (the r45 spec review). Keyed like sameExOnce: the lift and a lighter block. */
+function lastDup(d,bi){const b=d.ex[bi];return !!b&&d.ex.slice(0,bi).some(x=>x.exId===b.exId&&!!x.light===!!b.light);}
+function lastCell(b,i,dup){return !dup&&Array.isArray(b.prev)&&i>=0&&i<b.prev.length?b.prev[i]:'';}
+function lastHead(b,dup){const t=b.last||'';if(dup||!Array.isArray(b.prev)||!b.prev.length||b.prevOff)return t;const k=t.indexOf('):');return k>0?t.slice(0,k+1):t;}
 /* ---------- PROFILE (r44, item 271, with 43 and 44) ----------
    An optional short profile: goal, experience, days a week and up to two
    focus muscles. V's answers (2026-10-13): it sets defaults and new plan
@@ -668,7 +677,7 @@ function viewLogger(){
   const calIdx=d.editingId?-1:calDueIdx(d);
   const letters=ssLetters(d.ex.map(b=>b.plan));
   d.ex.forEach((b,bi)=>{
-    const ex=EX(b.exId);const p=b.plan;const ss=p.ss?letters[p.ss]:null;const nr=!rirShow(ex);
+    const ex=EX(b.exId);const p=b.plan;const ss=p.ss?letters[p.ss]:null;const nr=!rirShow(ex);const dupB=lastDup(d,bi);
     if(!d.editingId&&blockDone(b)&&!blkIsOpen(bi,b)){
       const ws=b.sets.filter(x=>!x.warm);const prs=ws.filter(x=>livePR(b.exId,x,d.date)).length;
       h+=`<section class="block folded" id="blk-${bi}" data-bi="${bi}">${bgrip(bi,ex.name)}<button class="bfold" data-act="bOpen" data-b="${bi}" aria-expanded="false" aria-label="${esc(ex.name)}, done. Open to edit"><span class="bf-ck" aria-hidden="true">✓</span><span class="bf-t"><b>${esc(ex.name)}</b><span>${esc(ws.map(x=>setShort(ex,x.w,x.r)).join(', '))}</span></span>${prs?`<span class="bf-pr">PR</span>`:''}<span class="chev" aria-hidden="true"></span></button></section>`;
@@ -677,7 +686,7 @@ function viewLogger(){
     const partner=ss?d.ex.filter(x=>x!==b&&x.plan.ss===p.ss).map(x=>exName(x.exId)).join(' + '):'';
     h+=`<section class="block${ss?' ss':''}" id="blk-${bi}" data-bi="${bi}"><div class="bh">${bgrip(bi,ex.name)}<div class="bh-m"><h3 ${ex.note?`aria-labelledby="bhn-${bi}"`:''}><span id="bhn-${bi}">${esc(ex.name)}</span>${ex.note?` ${tipi(ex.note,'About '+ex.name)}`:''}</h3><p class="small muted">${esc(ML[ex.primary])} · ${b.sets.filter(x=>!x.warm&&!x.drop).length||p.sets}×${repSpan(p.repMin,p.repMax,'-')}${ex.timed?'s':''}${ex.perSide?'/side':''}${nr?'':` @${effTgt(p.rir)}`} · ${p.rest}s${ss?` · <span class="tag blue">Superset ${ss}</span>`:''}${b.inj?` · <span class="tag red">Injury: ${injLabel(b.inj)}</span>`:''}</p>${lmChips(ex)}</div>
       <div class="bh-acts">${!d.editingId&&blockDone(b)?`<button class="ib" aria-label="Fold ${esc(ex.name)}" data-act="bFold" data-b="${bi}">▴</button>`:''}<button class="ib" aria-label="Exercise options" data-act="bMenu" data-b="${bi}">⋯</button></div></div>
-      ${b.target?`<p class="hint"><b>Today: ${esc(targetText(b))}</b>${b.basis?` ${tipi(`Target from your last full session, ${fmtDate(b.basis)}. Trimmed, lighter, and deload sessions don't set targets.`,'Where this target comes from')}`:''}<span class="tp muted" style="display:block">${esc(lastHead(b))}</span>${b.easier?`<span class="tp ez">${esc(b.easier)}</span>`:''}${progressLine(b,bi)}</p>`:`<p class="hint">${esc(hintOnce(b.hint||'',hintSeen))}</p>`}${bi===calIdx?`<p class="small caldue">Due for an RIR check: take one set here to failure. <button class="linkbtn tall" data-act="bCal" data-b="${bi}">Calibration set</button> <button class="linkbtn tall" data-act="calSnooze">Not now</button></p>`:''}
+      ${b.target?`<p class="hint"><b>Today: ${esc(targetText(b))}</b>${b.basis?` ${tipi(`Target from your last full session, ${fmtDate(b.basis)}. Trimmed, lighter, and deload sessions don't set targets.`,'Where this target comes from')}`:''}<span class="tp muted" style="display:block">${esc(lastHead(b,dupB))}</span>${b.easier?`<span class="tp ez">${esc(b.easier)}</span>`:''}${progressLine(b,bi)}</p>`:`<p class="hint">${esc(hintOnce(b.hint||'',hintSeen))}</p>`}${bi===calIdx?`<p class="small caldue">Due for an RIR check: take one set here to failure. <button class="linkbtn tall" data-act="bCal" data-b="${bi}">Calibration set</button> <button class="linkbtn tall" data-act="calSnooze">Not now</button></p>`:''}
       ${ss&&partner?`<p class="small muted" style="margin:2px 0 0">Superset with ${esc(partner)}; rest after the pair.</p>`:''}
       ${b.lastNote&&!b.note?`<p class="small lnote">Your note, ${esc(fmtDate(b.lastNote.date))}: ${esc(b.lastNote.text)} <button class="linkbtn" data-act="noteReuse" data-b="${bi}">Use again</button></p>`:''}
       ${b.note?`<p class="small bnote" id="bn-${bi}">${esc(b.note)}</p>`:`<p class="small bnote" id="bn-${bi}" hidden></p>`}
@@ -687,7 +696,7 @@ function viewLogger(){
       const pr=s.done?livePR(b.exId,s,d.date):null;
       const wn=b.sets.slice(0,si+1).filter(x=>!x.warm&&!x.drop).length;
       // Last time's set for this row, beside this time's (r44, V): working sets only, by their order.
-      const lt=s.warm||s.drop?'':lastCell(b,wn-1);
+      const lt=s.warm||s.drop?'':lastCell(b,wn-1,dupB);
       h+=`<div class="sg${nr?' norir':''} ${s.done?'done':''}${pr?' pr':''}"${pr?` data-pr="${pr}"`:''}><button class="n wbtn${s.drop?' drop':s.warm?' warm':''}" aria-label="Set ${si+1} type: ${s.warm?'warm-up':s.drop?'drop set':'working set'}. Tap to change" data-act="sWarm" data-b="${bi}" data-s="${si}">${s.drop?'↓':s.warm?'W':wn}</button><span class="ls" aria-label="${lt?esc('Last time '+lt):'No set last time'}">${lt?esc(lt).replace('×','<wbr>×'):'–'}</span>
         <input type="text" inputmode="decimal" enterkeyhint="next" aria-label="${esc(ex.name)}, set ${si+1} load" data-f="w" data-b="${bi}" data-s="${si}" value="${loadIn(ex,s.w)}" placeholder="${(()=>{const g=s.w==null?greyW(b,si):null;return g!=null?loadIn(ex,g):ex.bw?'0':'';})()}">
         <input type="text" inputmode="numeric" enterkeyhint="next" aria-label="${esc(ex.name)}, set ${si+1} ${ex.timed?'seconds':'reps'}${ex.perSide?' per side':''}" data-f="r" data-b="${bi}" data-s="${si}" value="${s.r==null?'':s.r}" placeholder="${ph}">

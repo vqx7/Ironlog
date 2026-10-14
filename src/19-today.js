@@ -457,7 +457,18 @@ function stalledIds(){return Object.entries(IDX().exStats).filter(([,x])=>x.stal
    strength estimate. A plank held at 60 s or curls stuck at one dumbbell say
    little about recovery, and they used to count toward "3 lifts stalled at
    once, a deload week may help". They are still listed as stalled. */
-function fatigueStalls(ids){return ids.filter(id=>{const e=EX(id);return e&&!e.timed&&!noE1(e)&&isCompound(e);});}
+/* A lift whose last 6 sessions logged drop sets and no main sets is read
+   from drop sets alone (IDX uses them when there is nothing else); it can
+   show as stalled, but it says nothing about fatigue, so it never counts
+   toward "stalled at once" (r45, audit item 289). Read from the log here,
+   so IDX keeps its shape. */
+function dropOnlyLift(id){
+  const ss=sortedSessions();let n=0;
+  for(let i=ss.length-1;i>=0&&n<6;i--){const bs=ss[i].ex.filter(b=>b.exId===id);if(!bs.length)continue;n++;
+    if(bs.some(b=>b.sets.some(s=>isWork(s)&&!s.drop)))return false;}
+  return n>0;
+}
+function fatigueStalls(ids){return ids.filter(id=>{const e=EX(id);return e&&!e.timed&&!noE1(e)&&isCompound(e)&&!dropOnlyLift(id);});}
 /* The single most useful thing to change this week, in priority order. Each
    branch states the number it is based on, so the advice can be checked. */
 function coach(){

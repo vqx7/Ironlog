@@ -262,6 +262,8 @@ function setDone(bi,si,val){
   const askRir=val&&state.settings.rirAsk===true&&!s.warm&&s.rir==null&&rirShow(EX(b.exId))&&!!document.querySelector(`.rirb[data-b="${bi}"][data-s="${si}"]`);
   if(askRir)rirShowStrip(bi,si);else if(!val)rirClose();
   if(val&&!askRir&&!state.draft.editingId&&blockDone(b))foldT=setTimeout(()=>autoFold(bi),1200);
+  // The first set ticked on an exercise below untouched ones moves it up (r45).
+  if(val&&b.sets.filter(x=>x.done).length===1&&orderAt(b)>=0)orderSoon(b);
   saveNow();
 }
 /* Screen wake lock, optional. A locked phone suspends the page and with it the

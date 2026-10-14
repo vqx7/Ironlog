@@ -143,7 +143,7 @@ const brz = (load, rtf) => load * 36 / (37 - rtf);
       const rows = [...document.querySelectorAll('#dashSummary .srow')].map(r => ({ l: r.querySelector('.sl').textContent, t: r.querySelector('.st').textContent }));
       return { tiles, rows, coach: L.coach() };
     });
-    ok(!sum.tiles.some(t => /Stalled exercises|Weight lifted this week/.test(t)) && sum.tiles.some(t => /^Adherence/.test(t)) && sum.tiles.some(t => /^Hard sets this week/.test(t)), 'Stats tiles: adherence and hard sets this week; no stall count (the Stuck line says it) and no weight lifted (Today has it)', sum.tiles);
+    ok(!sum.tiles.some(t => /Stalled exercises|Weight lifted this week/.test(t)) && sum.tiles.some(t => /^Sessions, last 4 weeks/.test(t)) && sum.tiles.some(t => /^PRs, last 4 weeks/.test(t)) && !sum.tiles.some(t => /planned|Adherence/.test(t)), 'Stats tiles (V 2026-10-13: done, not planned): sessions and PRs in the last 4 weeks; no stall count (the Stuck line says it) and no weight lifted (Today has it)', sum.tiles);
     const mv = sum.rows.find(r => /Moving/i.test(r.l));
     ok(mv && /Barbell Bench Press|Cable Fly|Pull-up/.test(mv.t) && !/%/.test(mv.t) && /over \d weeks/.test(mv.t), 'Moving names the lifts, with no percentages', mv);
     const vol = sum.rows.find(r => /Volume/i.test(r.l)); const chg = sum.rows.find(r => /Change/i.test(r.l));
