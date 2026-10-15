@@ -122,6 +122,8 @@ const CLOCK = '2026-10-15T10:00:00';
     ok(r.crash && r.btn === 'Report this', 'the recovery screen offers Report this', r);
     ok(r.m.kind === 'feedback' && r.m.cat === 'bug' && r.m.from === 'crash' && r.m.crash === true, 'it opens a problem report marked as a crash', r.m);
     ok(/^The app broke on the Stats screen\. Error: boom at render/.test(r.m.msg) && r.box === r.m.msg, 'written already: the screen and the error, in the box', { msg: r.m.msg, box: r.box });
+    const leak = await P.page.evaluate(() => { const L = window.__ironlog; const e = new Error('x'); e.stack = 'Error: x\n    at f (https://ironapp.org/index.html?v=1#access_token=SECRET&type=recovery:12:3)\n    at g (https://ironapp.org/index.html:14:5)'; L.log('test', e); return L.logBuf[L.logBuf.length - 1].s; });
+    ok(!/SECRET|access_token|\?v=1/.test(leak) && /index\.html:12:3/.test(leak) && /index\.html:14:5/.test(leak), 'a kept stack holds the file and line of each frame, never the page URL\'s query or fragment (a reset link carries its token there)', leak);
     ok(r.ctx.crash === true && r.ctx.last && r.ctx.last.a === 'render' && /boom at render/.test(r.ctx.last.m) && /index\.html:\d+/.test(r.ctx.last.s || '') && /\n/.test(r.ctx.last.s), 'the context marks the crash and its last error carries the stack, naming a line in the app (WebKit\'s stack is frames only, no message line)', r.ctx);
     await P.ctx.close();
   }
