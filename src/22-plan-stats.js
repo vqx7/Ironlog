@@ -490,6 +490,21 @@ function allTimeBests(id){
   const last=[est&&est.date,heavy&&heavy.date,...front.map(f=>f.date)].filter(Boolean).sort().pop();
   return {ex,est,heavy,front,last};
 }
+/* A lift's heaviest set, in the words the bests board uses, so nothing new is
+   invented and the two always read alike (r48, V: "is it easy to see what your
+   PR was during a today session"). It was two taps away, under the exercise's
+   menu. "Heaviest" rather than "PR": in this app a PR is a record the moment
+   it is set, while this is the standing best, which is what the question means. */
+function bestLine(exId){
+  const r=allTimeBests(exId);if(!r||!r.heavy)return '';
+  const ex=r.ex;
+  /* The date is dropped when the heaviest set was the lift's last session,
+     since the Last line beside it already carries that date and the column
+     shows those very sets. */
+  const exps=IDX().byEx[exId]||[];const newest=exps.length?exps[exps.length-1].date:null;
+  const when=r.heavy.date===newest?'':`, ${fmtDate(r.heavy.date)}`;
+  return `Heaviest ${setShort(ex,r.heavy.p.w,r.heavy.p.r)}${loadNote(ex)}${when}`;
+}
 function bestsBoard(){
   const I=IDX();const rows=Object.keys(I.byEx).map(allTimeBests).filter(Boolean).sort((a,b)=>a.last<b.last?1:a.last>b.last?-1:a.ex.name.localeCompare(b.ex.name));
   if(!rows.length)return {n:0,html:'<p class="muted">Your bests appear here after your first session.</p>'};

@@ -80,6 +80,10 @@ function moreRow(deload,playable,di){
    the Workout preview only with a plan's day on the card. */
 function todayRest({playable,di,cs,day,deload}){
   let h='';
+  /* Nothing logged yet: say where lifts done before this app go, since that
+     is how a new lifter's bests and targets start from what they can already
+     do (r48, V). History's empty state says the same; Today said nothing. */
+  if(noLog()&&!state.draft)h+=`<p class="small muted" id="preApp" style="margin:0 0 10px">Lifted before this app? <button class="linkbtn" data-act="pastOpen">Log a past workout</button> to bring your bests in; targets then start from them.</p>`;
   // Every section below the Start card can be dragged into any order by its
   // ⠿ handle; a new install starts in DEFAULT_ORDER.
   h+=weekCard();
