@@ -825,31 +825,9 @@ const ACT={
     const got=parseSets(txt,ex,defW,null,rirScale()==='rpe');
     const finish=list=>{const n=fillSets(m.b,list);closeModal();rerenderKeepScroll();toast(`${n} set${n===1?'':'s'} filled and marked done`);};
     if(got){finish(got);return;}
-/*ai{*/    if(!aiOn()){m.err=`Could not read that. Try the pattern 225x5, 5, 4 ${rirScale()==='rpe'?'rpe 9':'rir 1'}.`;renderModal();return;}
-    const ctl=new AbortController();AI.ctl=ctl;m.busy=true;m.err='';renderModal();
-    AI.fn.json(`Convert this gym log for the exercise "${ex.name}" into sets. Loads are in ${U()}.${ex.bw?' This is a bodyweight exercise: the load is weight added to bodyweight, and "bodyweight" or "bw" alone means 0.':''} When a set has no load, it uses the previous set's load; if no load is given anywhere, use null. ${rirScale()==='rpe'?'Effort is written as RPE (10 means no reps left): convert each to rir = 10 minus the RPE. ':''}RIR means reps in reserve; use null when it is not stated for a set, and apply a value stated for "all" or "each" to every set. Reply with only a JSON array, one object per set in order, like [{"w":225,"r":5,"rir":1}].\n\nLog: ${txt}`,{signal:ctl.signal,modelTier:'quick'})
-      .then(a=>{if(ui.modal!==m)return;const v=aiSetsValid(a);if(!v){m.err='Claude could not turn that into sets. Try the pattern 225x5, 5, 4 rir 1.';return;}
-        if(v.some(x=>!x.w)&&!ex.bw&&defW!=null)v.forEach(x=>{if(!x.w)x.w=defW;});finish(v);})
-      .catch(e=>{if(ui.modal!==m)return;m.err=aiErr(e)||'';})
-      .finally(()=>{if(AI.ctl===ctl)AI.ctl=null;if(ui.modal===m){m.busy=false;renderModal();}});
-/*}ai=m.err=`Could not read that. Try the pattern 225x5, 5, 4 ${rirScale()==='rpe'?'rpe 9':'rir 1'}.`;renderModal();*/  },
+m.err=`Could not read that. Try the pattern 225x5, 5, 4 ${rirScale()==='rpe'?'rpe 9':'rir 1'}.`;renderModal();  },
   aiStop(){if(AI.ctl){try{AI.ctl.abort();}catch(e){/* already finished */}}},
-/*ai{*/  aiDebrief(t){const sid=t.dataset.sid;const pr=debriefPrompt(sid);if(!pr){toast('That session is no longer saved');return;}const m={kind:'ai',title:'Session debrief'};openModal(m);aiRun(m,pr,'default');},
-  aiReview(){openModal({kind:'ai',title:'Ask Claude about your training',ask:true,q:''});},
-  aiAsk(){const m=ui.modal;if(!m||m.kind!=='ai')return;const q=(($('#aiQ')||{}).value||'').trim();m.q=q;if(!q){m.err='Type a question first.';renderModal();return;}if(!state.sessions.some(x=>!x.demo)){m.err='Log a session first so there is something to review.';renderModal();return;}aiRun(m,reviewPrompt(q),'default');},
-  bAiSwap(t){openModal({kind:'aiSwap',mode:'swapBlock',b:+t.dataset.b,why:'',picks:null});},
-  aiSwapAsk(){
-    const m=ui.modal;if(!m||m.kind!=='aiSwap'||!aiOn())return;const b=state.draft&&state.draft.ex[m.b];if(!b)return;
-    m.why=(($('#aiWhy')||{}).value||'').trim();const pr=swapPrompt(b,m.why);if(!pr){m.err='No other exercise in your library trains this muscle.';renderModal();return;}
-    const ctl=new AbortController();AI.ctl=ctl;m.busy=true;m.err='';renderModal();
-    AI.fn.json(pr.text,{signal:ctl.signal,modelTier:'default'})
-      .then(r=>{if(ui.modal!==m)return;const ok=new Set(pr.cands.map(e=>e.id));const seen=new Set();
-        const picks=(r&&Array.isArray(r.picks)?r.picks:[]).filter(p=>p&&typeof p.id==='string'&&ok.has(p.id)&&!seen.has(p.id)&&seen.add(p.id)).slice(0,3).map(p=>({id:p.id,why:typeof p.why==='string'?p.why.slice(0,200):''}));
-        if(!picks.length)m.err='No usable suggestions came back. Try again or use Swap exercise.';m.picks=picks;})
-      .catch(e=>{if(ui.modal!==m)return;m.err=aiErr(e);})
-      .finally(()=>{if(AI.ctl===ctl)AI.ctl=null;if(ui.modal===m){m.busy=false;renderModal();}});
-  },
-/*}ai=*/  heroMore(){ui.heroMore=!ui.heroMore;rerenderKeepScroll();},
+  heroMore(){ui.heroMore=!ui.heroMore;rerenderKeepScroll();},
   startAltOpen(t){openModal({kind:'startAlt',di:+t.dataset.day,free:t.dataset.free==='1'});},
   // A choice in Change: the sheet closes first, then the start it names runs as the card's button did.
   altGo(t){const go=t.dataset.go;closeModal();if(ACT[go])ACT[go](t);},

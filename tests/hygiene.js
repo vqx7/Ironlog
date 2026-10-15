@@ -82,4 +82,32 @@ const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log
   ok(unread.length === 0, 'every baseline is loaded by tests/migration.js', unread);
 }
 
+// The documents against the repository (r46). CLAUDE.md called the Claude
+// artifact a shipping channel for 17 days after OWNER.md recorded it retired,
+// and 147 lines of its code stayed in src/ because of it. Prose cannot be
+// checked by a machine, but the things prose names can be.
+{
+  const docs = ['CLAUDE.md', 'tests/SUITES.md', 'OWNER.md', 'FEEDBACK.md', 'SUPABASE.md'].filter(f => fs.existsSync(path.join(ROOT, f)));
+  const pathish = /`([A-Za-z0-9_.\-]+\/[A-Za-z0-9_.\-\/]+\.[a-z]{2,4})`/g;
+  const missing = [];
+  for (const d of docs) {
+    const txt = fs.readFileSync(path.join(ROOT, d), 'utf8');
+    for (const m of txt.matchAll(pathish)) {
+      const rel = m[1];
+      if (/^(https?|node_modules|data\/)/.test(rel)) continue;
+      if (!fs.existsSync(path.join(ROOT, rel))) missing.push(`${d}: ${rel}`);
+    }
+  }
+  ok(missing.length === 0, 'every repo file the documents name exists', missing);
+
+  const src = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
+  const back = ['/*ai{', '/*}ai', 'debriefPrompt', 'aiDigest', 'AI_STYLE', 'exProjection', 'loadAskCard', 'SIMPLE_HIDE'].filter(w => src.includes(w));
+  ok(back.length === 0, 'nothing the documents record as removed is back in the source', back);
+
+  const cm = fs.readFileSync(path.join(ROOT, 'CLAUDE.md'), 'utf8');
+  ok(!/ships two ways|as a Claude artifact \(a hosted/.test(cm), 'CLAUDE.md does not call the retired artifact a shipping channel');
+  const ver = (fs.readFileSync(path.join(ROOT, 'src', '12-storage.js'), 'utf8').match(/APP_VERSION='[^']*-r([0-9.]+)'/) || [])[1];
+  ok(ver && cm.includes(`Build r${ver},`), `CLAUDE.md says the build it is (r${ver})`, (cm.match(/Build r[0-9.]+/) || [])[0]);
+}
+
 console.log(fails.length ? `${fails.length} FAILED` : 'ALL PASS'); process.exit(fails.length ? 1 : 0);

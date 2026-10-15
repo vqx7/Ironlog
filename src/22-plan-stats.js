@@ -222,7 +222,7 @@ function viewDash(){
   <div class="kpi"><div class="v">${nz(prs4)}</div><div class="l">PRs, last 4 weeks${was(prsP)}</div></div>
 ${extraKpis()}</div>`;
   if(state.sessions.length)h+=dashSummary();
-/*ai{*/  if(aiOn()&&state.sessions.some(x=>!x.demo))h+=`<div class="card row spread"><span class="small">Ask Claude a question about your own log: a stall, a split, a weak point.</span><button class="btn sm primary" data-act="aiReview">Ask Claude</button></div>`;/*}ai=*/
+
 
   const avg=actualAvg4();const plan=plannedSets(R);const bands=state.settings.bands;
 
