@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-N/mTXwFTBFccXJeXguQVUbWrTDOjfgCNUlJicBwRfWY=' 'sha256-tuSgXs5JTxAxl+0h6Mmbx/BgvpNDfjiq2RiZRPGtwkc=' 'sha256-YHdgjdaHPObo0ajgr78/3fg0b/g2KACx2Yivxr2AJEo=' 'sha256-HaxfJxI8WyC6ki+OJve+R8sJEhLeJmvTXSA+6jafX+I=' 'sha256-J4UrXwIeplIJZfkgJq3M75mmvlwXBomq0l+LhSwoEfI='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https://fqvupierxrvpoidtwlon.supabase.co wss://fqvupierxrvpoidtwlon.supabase.co https://api.pwnedpasswords.com; worker-src 'self'; manifest-src 'self'; media-src 'self'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-N/mTXwFTBFccXJeXguQVUbWrTDOjfgCNUlJicBwRfWY=' 'sha256-tuSgXs5JTxAxl+0h6Mmbx/BgvpNDfjiq2RiZRPGtwkc=' 'sha256-YHdgjdaHPObo0ajgr78/3fg0b/g2KACx2Yivxr2AJEo=' 'sha256-e49/Uqf3U1a5/Nq74qy2WSbYSDjbYzU7kFbY94r7/HU=' 'sha256-J4UrXwIeplIJZfkgJq3M75mmvlwXBomq0l+LhSwoEfI='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https://fqvupierxrvpoidtwlon.supabase.co wss://fqvupierxrvpoidtwlon.supabase.co https://api.pwnedpasswords.com; worker-src 'self'; manifest-src 'self'; media-src 'self'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Ironlog Preview</title>
 <script>window.IRONLOG_APP=true;window.IRONLOG_ENV='preview';window.__installEvt=null;
@@ -1627,13 +1627,19 @@ const LOGK=KEY+'.log';
 // Week or Month in This week on Today (r26), per device.
 const WKVIEW_KEY=KEY+'.wkView';
 const logBuf=(()=>{try{const a=JSON.parse(localStorage.getItem(LOGK)||'[]');return Array.isArray(a)?a:[];}catch(e){return [];}})();
+/* A URL's query and fragment, cut from what the log keeps (r47). The log
+   goes out with a problem report, and the page's own URL holds a reset
+   link's token in its fragment for a moment after the link is opened; a stack
+   frame carries that URL, and an error message can. Only the part after ? or #
+   of a URL goes, up to the frame's :line:column, so the file and line stay and
+   ordinary words with a ? or # in them are left alone. */
+const logCut=t=>String(t).replace(/([a-z][a-z0-9+.-]*:\/\/[^\s?#)]*)[?#](?:[^\s):]|:(?!\d))*/gi,'$1');
 function log(area,err){
   try{
     const m=err&&err.message?err.message:err&&typeof err==='object'?JSON.stringify(err):String(err);
     // Where it broke, not only what it said (r47): the first lines of the stack travel with a problem report, so a crash can be found in the code without the phone.
-    // A frame carries the page's URL, which for a moment after a reset link is opened holds the token in its fragment; a query or fragment is cut from every frame, since the file and line are what a report needs.
-    const st=err&&typeof err.stack==='string'?err.stack.split('\n').slice(0,4).join('\n').replace(/[?#](?:[^\s):]|:(?!\d))*/g,'').slice(0,400):'';
-    logBuf.push({t:new Date().toISOString(),a:area,m:String(m).slice(0,300),v:APP_VERSION,...(st?{s:st}:{})});
+    const st=err&&typeof err.stack==='string'?logCut(err.stack.split('\n').slice(0,4).join('\n')).slice(0,400):'';
+    logBuf.push({t:new Date().toISOString(),a:area,m:logCut(m).slice(0,300),v:APP_VERSION,...(st?{s:st}:{})});
     while(logBuf.length>60)logBuf.shift();
     localStorage.setItem(LOGK,JSON.stringify(logBuf));
   }catch(e){/* logging must never throw */}
@@ -2696,15 +2702,24 @@ function fbContext(m){
   // A report about a crash must survive the crash (r47): each field that reads the log is guarded, so a save that cannot be read still sends what the rest knows.
   const safe=(f,alt)=>{try{return f();}catch(e){return alt;}};
   const d=safe(()=>state.draft,null);
-  return {build:APP_VERSION,env:ENV,at:new Date().toISOString(),device:String(navigator.userAgent||'').slice(0,300),
+  const ctx={build:APP_VERSION,env:ENV,at:new Date().toISOString(),device:String(navigator.userAgent||'').slice(0,300),
     screen:`${window.innerWidth}x${window.innerHeight} @${window.devicePixelRatio||1}x`,installed:isStandalone(),
     theme:state.settings.theme,accent:state.settings.accent||ACCENT0,unit:U(),from:m.from||ui.tab,exercise:m.ex||undefined,
     session:d?{past:!!d.past,free:!!d.free,editing:!!d.editingId,exercises:d.ex.length}:null,
     signedIn:!!acct.user,sync:cloud.on?cloud.status:'off',crash:m.crash||undefined,
     counts:safe(()=>({sessions:state.sessions.filter(x=>!x.demo).length,routines:state.routines.length}),null),
     errors:logBuf.slice(-10)};
+  /* The feedback table refuses a context over 20,000 bytes (SUPABASE.md, Part 4),
+     and that would refuse the whole report. Ten errors with their stacks fit in
+     plain text, but not if a message is in a script of 3 or 4 bytes a
+     character, so the oldest errors go first until it fits with room to spare. */
+  const bytes=()=>safe(()=>new TextEncoder().encode(JSON.stringify(ctx)).length,0);
+  while(ctx.errors.length>1&&bytes()>FB_CTX_MAX)ctx.errors.shift();
+  if(bytes()>FB_CTX_MAX)ctx.errors=ctx.errors.map(({s,...x})=>({...x,m:String(x.m).slice(0,100)}));
+  return ctx;
 }
-const FB_WHAT='Attached by the app: the build, your device and browser, screen size, which screen you came from, whether a session was open, sync status, and the last 10 errors it logged. Never your workouts. It goes to the app owner.';
+const FB_CTX_MAX=15000;
+const FB_WHAT='Attached by the app: the build, your device and browser, screen size, which screen you came from, whether a session was open, sync status, and up to 10 recent errors with where in the app each happened. Never your workouts. It goes to the app owner.';
 /* The Guide (r27): how Ironlog works and the rules behind its numbers, in
    one place, opened from the menu. Screens keep the number and the action;
    the reasoning lives here, so it is findable on a phone where nothing can
@@ -3099,8 +3114,8 @@ function loadLabel(ex,kg){if(ex.bw){return kg>0?`BW+${fmtW(kg)}`:kg<0?`BW−${fm
 const loadIn=(ex,w)=>w==null?'':fmtW(ex&&ex.assist?-w:w);
 
 /* ---------- analytics ---------- */
-let _idx=null,_cal=null,_bwRef,_pace=null;
-function invalidate(){_idx=null;EXMAP=null;_cal=null;_rirUse=null;_bwRef=undefined;_pace=null;}
+let _idx=null,_dix=null,_cal=null,_bwRef,_pace=null;
+function invalidate(){_idx=null;_dix=null;EXMAP=null;_cal=null;_rirUse=null;_bwRef=undefined;_pace=null;}
 function bwKnownAt(date){let best=null;for(const b of state.bodyweights)if(b.date<=date&&(!best||b.date>=best.date))best=b;return best?best.kg:null;}
 function bwAt(date){
   let best=null,earliest=null;
@@ -3357,13 +3372,13 @@ function sortedSessions(){return [...state.sessions].sort(sessCmp);}
    that groups sessions by day: the week bar, the calendar, the day picker,
    This month's title, Consistency's heatmap. Before r47 each grouped the log
    itself, and the week bar ordered a two-a-day by id where the day picker
-   ordered it by start time. Kept off IDX's own object so tests/r36.js still
-   compares that object with r35's. */
+   ordered it by start time. A cache of its own, cleared by invalidate() with
+   IDX's, so IDX's object keeps r35's shape (tests/r36.js compares it). */
 function dateIndex(){
-  const I=IDX();if(I.byDate)return I;
+  if(_dix)return _dix;
   const byDate={},weekN={};
   for(const x of sortedSessions()){(byDate[x.date]=byDate[x.date]||[]).push(x);const w=weekStart(x.date);weekN[w]=(weekN[w]||0)+1;}
-  I.byDate=byDate;I.weekN=weekN;return I;
+  return (_dix={byDate,weekN});
 }
 const sessionsOn=d=>dateIndex().byDate[d]||[];
 /* IDX() is everything the screens read, built once per change (r36: the
@@ -7065,6 +7080,8 @@ function weekBar(){
     const label=`${DAYS[i]} ${fmtDate(d)}: ${what}${cd.length?`, cardio ${cd.reduce((a,c)=>a+c.min,0)} min`:''}`;
     const inner=`<span class="wd">${WD2[i]}</span><span class="dn">${+d.slice(8)}</span><span class="nm">${name?esc(name):'&nbsp;'}</span>`;
     if(live&&d<t)h+=`<button type="button" class="${cls}" data-act="wkGo" data-date="${d}" data-tip="${esc(label)}" aria-label="${esc(label)}. Open the session">${inner}</button>`;
+    // A day with two sessions asks which, as the calendar does (r47): both go through calDay. Until r47 the bar opened one of them without asking.
+    else if(trained&&ss.length>1)h+=`<button type="button" class="${cls}" data-act="calDay" data-date="${d}" data-tip="${esc(label)}" aria-label="${esc(label)}. Choose one to open">${inner}</button>`;
     else if(trained)h+=`<button type="button" class="${cls}" data-act="wkOpen" data-id="${ss[0].id}" data-tip="${esc(label)}" aria-label="${esc(label)}. Open in History">${inner}</button>`;
     else if(d>=t)h+=`<button type="button" class="${cls}" data-act="wkGo" data-date="${d}"${p?` data-day="${p.di}"`:''} data-tip="${esc(label)}" aria-label="${esc(label)}. Open on Today">${inner}</button>`;
     // An empty past day logs a workout for that date (item 53): every day in the bar does something.
@@ -10151,7 +10168,8 @@ const ACT={
   // Signed out: the report as text for a message, without sending anything.
   async fbCopy(){
     const m=ui.modal;if(!m||m.kind!=='feedback')return;
-    const txt=`Ironlog: ${FB_TITLE[m.cat]||FB_TITLE.bug}\n\n(Write it here)\n\n${JSON.stringify(fbContext(m),null,1)}`;
+    // A report opened from the crash screen is already written (r47), so the copy carries it.
+    const txt=`Ironlog: ${FB_TITLE[m.cat]||FB_TITLE.bug}\n\n${m.msg&&m.msg.trim()?m.msg.trim():'(Write it here)'}\n\n${JSON.stringify(fbContext(m),null,1)}`;
     let ok=false;try{if(navigator.clipboard){await navigator.clipboard.writeText(txt);ok=true;}}catch(e){ok=false;}
     if(!ok){closeModal();openModal({kind:'text',title:'Report details',help:'Copy this into a message to the app owner, with what happened.',text:txt,readonly:true});return;}
     m.sent=true;m.copied=true;renderModal();
@@ -11442,7 +11460,7 @@ window.__onLib=(which)=>{if((which==='chart'&&ui.tab==='dash')||(which==='sortab
 trashTidy();
 // r44: floors from a first-run pick made before they were recorded (fitRecordOld), once, on this device's state.
 try{if(fitRecordOld())saveNow();}catch(e){log('fitRecordOld',e);}
-window.__ironlog={get state(){return state;},set state(v){state=v;},fbContext,logBuf,log,dateIndex,sessionsOn,bestLine,whyTarget,recent4w,weekSessions,fmtDate,fmtDateLong,fbShrink,orderAt,orderRun,dropOnlyLift,profHeavy,appBand,fitRecordOld,prof,profClean,profRule,profPlan,defPlan,defBand,profMoveBands,profApplyList,strengthPick,PROF_DAYS,FOCUS_MAX,estInLoad,keepExtra,EXTRA_MAX,draftPlanMin,pace,paceRatios,sessModelMin,PACE_N,PACE_DAYS,PACE_MIN,plainTemplate,trashTidy,ENV,KEY,COMMON,COMMON_TIP,isCommon,bwEvery,isRestWeek,sessCmp,avgWeeks,weekStreak,coach,noLog,afterSet,adjOn,bwAt,newBlock,cycleState,sortedSessions,addDays,loadIn,gymRack,gymClean,dbListOf,capOf,refreshEx,effShow,rirScale,setStr,libExercises,obGate,obTour,andList,belowMin,aboveMax,starterRoutine,starterSigs,plateList,exBarKg,VOL_MODES,liveLogFetch,regionSrc,fitTargets,firstFullWeek,moveBlock,BANDS,installSheet,siteHost,greyW,effW,greyR,lighterLoad,incOf,swapPlan,planSetsPerWeek,weekNeed,stepRead,e1inv,rtfAt,rtfOf,rtfBand,calStats,rirEff,isHard,setCredit,tonnage,loadMode,loadWords,loadNote,progStep,jumpCap,setSecs,setupSecs,recovery,rolling7,rankDays,rankExercises,isCompound,patternOf,noE1,whtrLine,exHeadline,remainMin,shortPlan,weekPlan,cycleProjection,lastLighterWeek,regionBalance,parseHeight,mixCheck,swapCands,eqPlan,exportCSV,importData,chunksOf,assemble,sessionMuscles,TRACK_ONLY,cloud,Hx,mergeChunk,baseOf,sync:()=>cq(cloudPull),TEMPLATES,lastRFor,impDate,impRows,impNorm,impMatch,impFromText,impFromTable,impHeader,impBuild,impStart,impXlsx,parseSets,undoStack,undoRestore,undoForget,allTimeBests,bestsBoard,obActive,fmtW,rirUsual,rirEst,routineFromTemplate,plannedSets,map3d:()=>({state:B3.state,fail:B3.fail,meshes:B3.meshes.length,yaw:B3.yaw,glow:Object.keys(B3.mats).filter(m=>B3.mats[m].emissiveIntensity>0),canvas:!!document.querySelector('#bm3d canvas'),colors:Object.fromEntries(Object.entries(B3.mats).map(([m,mt])=>[m,'#'+mt.color.getHexString()])),pick:(x,y)=>map3dPick(x,y),want:map3dColors()}),cloudState:()=>({on:cloud.on,status:cloud.status,err:cloud.err,uid:cloud.uid,acct:cloud.acct}),acctUser:()=>acct.user,acctWaiting:()=>!!acctWait.pw,flush:()=>cq(cloudFlush),backupDue,routineUpdates,planFor,platesMode,plateText,chunksOf,IDX,suggest,e1,render,ACT,ui,makeDemo,invalidate,normalize,snapshot,saveNow,timer,weekStats,weekStart,today,EX,blockProgress,dayMinutes,weekStreak,coach,tonnageNow,livePR,movers,stalledIds,muscleStatus,actualAvg4,plannedPerWeek,parseSets,fillSets,newBlock,lastNoteOf,sizeRows,sessionMuscleSets,sessionCapNote,routineClutter,rowBlank,dayReasons,impTextSets,liftTrend,prsWithin,activeRoutine,rackStep,repFloor,sessionLength,prBeat,exInjury,exJoints,openModal,EQUIP,HARD_EX,recentLighter,planEvidenceNote,howToUrl,editFp,toast,avgWeeks,regionWk,REGION_WKS,SAFETY_TXT,libFiltered,nameMatch,workLoad,fitE,offSession,tagged,fatigueStalls,avgWeeksTxt,routineFromLog,repSpan,rangeWords,calDueIdx,readyCard,sameRR,hintOnce,overSets,rackTol,daysOff,BACK_DAYS,prName,sessTm,effTgt,bwDueCard,bwNoLoad,applyPick,joinAdjacent,sameExOnce,goalState,goalLine,bwRefLoad,ML,exMusParts,musTrend};
+window.__ironlog={get state(){return state;},set state(v){state=v;},fbContext,FB_CTX_MAX,logCut,logBuf,log,dateIndex,sessionsOn,bestLine,whyTarget,recent4w,weekSessions,fmtDate,fmtDateLong,fbShrink,orderAt,orderRun,dropOnlyLift,profHeavy,appBand,fitRecordOld,prof,profClean,profRule,profPlan,defPlan,defBand,profMoveBands,profApplyList,strengthPick,PROF_DAYS,FOCUS_MAX,estInLoad,keepExtra,EXTRA_MAX,draftPlanMin,pace,paceRatios,sessModelMin,PACE_N,PACE_DAYS,PACE_MIN,plainTemplate,trashTidy,ENV,KEY,COMMON,COMMON_TIP,isCommon,bwEvery,isRestWeek,sessCmp,avgWeeks,weekStreak,coach,noLog,afterSet,adjOn,bwAt,newBlock,cycleState,sortedSessions,addDays,loadIn,gymRack,gymClean,dbListOf,capOf,refreshEx,effShow,rirScale,setStr,libExercises,obGate,obTour,andList,belowMin,aboveMax,starterRoutine,starterSigs,plateList,exBarKg,VOL_MODES,liveLogFetch,regionSrc,fitTargets,firstFullWeek,moveBlock,BANDS,installSheet,siteHost,greyW,effW,greyR,lighterLoad,incOf,swapPlan,planSetsPerWeek,weekNeed,stepRead,e1inv,rtfAt,rtfOf,rtfBand,calStats,rirEff,isHard,setCredit,tonnage,loadMode,loadWords,loadNote,progStep,jumpCap,setSecs,setupSecs,recovery,rolling7,rankDays,rankExercises,isCompound,patternOf,noE1,whtrLine,exHeadline,remainMin,shortPlan,weekPlan,cycleProjection,lastLighterWeek,regionBalance,parseHeight,mixCheck,swapCands,eqPlan,exportCSV,importData,chunksOf,assemble,sessionMuscles,TRACK_ONLY,cloud,Hx,mergeChunk,baseOf,sync:()=>cq(cloudPull),TEMPLATES,lastRFor,impDate,impRows,impNorm,impMatch,impFromText,impFromTable,impHeader,impBuild,impStart,impXlsx,parseSets,undoStack,undoRestore,undoForget,allTimeBests,bestsBoard,obActive,fmtW,rirUsual,rirEst,routineFromTemplate,plannedSets,map3d:()=>({state:B3.state,fail:B3.fail,meshes:B3.meshes.length,yaw:B3.yaw,glow:Object.keys(B3.mats).filter(m=>B3.mats[m].emissiveIntensity>0),canvas:!!document.querySelector('#bm3d canvas'),colors:Object.fromEntries(Object.entries(B3.mats).map(([m,mt])=>[m,'#'+mt.color.getHexString()])),pick:(x,y)=>map3dPick(x,y),want:map3dColors()}),cloudState:()=>({on:cloud.on,status:cloud.status,err:cloud.err,uid:cloud.uid,acct:cloud.acct}),acctUser:()=>acct.user,acctWaiting:()=>!!acctWait.pw,flush:()=>cq(cloudFlush),backupDue,routineUpdates,planFor,platesMode,plateText,chunksOf,IDX,suggest,e1,render,ACT,ui,makeDemo,invalidate,normalize,snapshot,saveNow,timer,weekStats,weekStart,today,EX,blockProgress,dayMinutes,weekStreak,coach,tonnageNow,livePR,movers,stalledIds,muscleStatus,actualAvg4,plannedPerWeek,parseSets,fillSets,newBlock,lastNoteOf,sizeRows,sessionMuscleSets,sessionCapNote,routineClutter,rowBlank,dayReasons,impTextSets,liftTrend,prsWithin,activeRoutine,rackStep,repFloor,sessionLength,prBeat,exInjury,exJoints,openModal,EQUIP,HARD_EX,recentLighter,planEvidenceNote,howToUrl,editFp,toast,avgWeeks,regionWk,REGION_WKS,SAFETY_TXT,libFiltered,nameMatch,workLoad,fitE,offSession,tagged,fatigueStalls,avgWeeksTxt,routineFromLog,repSpan,rangeWords,calDueIdx,readyCard,sameRR,hintOnce,overSets,rackTol,daysOff,BACK_DAYS,prName,sessTm,effTgt,bwDueCard,bwNoLoad,applyPick,joinAdjacent,sameExOnce,goalState,goalLine,bwRefLoad,ML,exMusParts,musTrend};
 render();
 wakeOn();
 timerResume();
