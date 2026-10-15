@@ -280,13 +280,12 @@ function weekPlan(R){
 }
 function weekBar(){
   const R=activeRoutine();const cur=weekStart(today()),t=today();const weekly=R.schedule==='weekly';
-  const byDate={};for(const x of state.sessions)(byDate[x.date]=byDate[x.date]||[]).push(x);
   const cByDate={};for(const c of state.cardio)(cByDate[c.date]=cByDate[c.date]||[]).push(c);
   const plan=weekPlan(R);let h='';
   // The + on empty past days appears once there is a log to add to; a brand-new week bar stays clean (the days still open the sheet).
   const hasLog=state.sessions.length>0;
   for(let i=0;i<7;i++){
-    const d=addDays(cur,i),ss=(byDate[d]||[]).slice().sort((a,b)=>a.id<b.id?-1:1),trained=ss.length>0,cd=cByDate[d]||[];
+    const d=addDays(cur,i),ss=sessionsOn(d),trained=ss.length>0,cd=cByDate[d]||[];
     const p=plan[d];const pd=p?p.day:null;const isPlan=!!pd&&!pd.rest&&pd.items.length>0;const isRest=!!pd&&pd.rest;
     // The session in progress sits on its own date, which for a past workout is not today.
     const live=!!state.draft&&!state.draft.editingId&&d===state.draft.date;
@@ -296,6 +295,8 @@ function weekBar(){
     const label=`${DAYS[i]} ${fmtDate(d)}: ${what}${cd.length?`, cardio ${cd.reduce((a,c)=>a+c.min,0)} min`:''}`;
     const inner=`<span class="wd">${WD2[i]}</span><span class="dn">${+d.slice(8)}</span><span class="nm">${name?esc(name):'&nbsp;'}</span>`;
     if(live&&d<t)h+=`<button type="button" class="${cls}" data-act="wkGo" data-date="${d}" data-tip="${esc(label)}" aria-label="${esc(label)}. Open the session">${inner}</button>`;
+    // A day with two sessions asks which, as the calendar does (r47): both go through calDay. Until r47 the bar opened one of them without asking.
+    else if(trained&&ss.length>1)h+=`<button type="button" class="${cls}" data-act="calDay" data-date="${d}" data-tip="${esc(label)}" aria-label="${esc(label)}. Choose one to open">${inner}</button>`;
     else if(trained)h+=`<button type="button" class="${cls}" data-act="wkOpen" data-id="${ss[0].id}" data-tip="${esc(label)}" aria-label="${esc(label)}. Open in History">${inner}</button>`;
     else if(d>=t)h+=`<button type="button" class="${cls}" data-act="wkGo" data-date="${d}"${p?` data-day="${p.di}"`:''} data-tip="${esc(label)}" aria-label="${esc(label)}. Open on Today">${inner}</button>`;
     // An empty past day logs a workout for that date (item 53): every day in the bar does something.
@@ -333,8 +334,10 @@ function weekStats(){
      where the split matters; summed across muscles it double-counts. The
      numerator is hard sets only, so a set left at RIR 4 or more does not
      count toward the week, unless Count RIR 4 to 5 as half a set is on
-     (r40, hardCredit). */
-  let got=0;for(const x of state.sessions)if(x.date>=cur&&x.date<=addDays(cur,6))for(const b of x.ex){const e=EX(b.exId);for(const q of b.sets)got+=hardCredit(q,e);}
+     (r40, hardCredit). Read from IDX's weekHard (r47), the same table the
+     recap, Volume and the muscle views count from; until r47 this walked the
+     log with its own copy of the rule. */
+  const got=IDX().weekHard[cur]||0;
   const tgt=planSetsPerWeek(R,isDeloadWeek());
   /* A rest week is said once, here, so the ring, the card and its body all
      follow (r46: the ring and the title were given their own test for it and
@@ -389,7 +392,7 @@ function weekCard(){
      month's name for an earlier one) with that month's session count. */
   if(ui.wkView==='month'){
     const cur=today().slice(0,7);const ym=ui.calYm&&ui.calYm<=cur?ui.calYm:cur;
-    const n=state.sessions.filter(x=>x.date.slice(0,7)===ym).length;
+    const n=Object.keys(dateIndex().byDate).filter(d=>d.slice(0,7)===ym).reduce((a,d)=>a+sessionsOn(d).length,0);
     const title=ym===cur?'This month':new Date(ym+'-15T12:00:00').toLocaleDateString(undefined,{month:'long',year:'numeric'});
     return sec({sk:'today:week',key:'week',title,sub:`${n} session${n===1?'':'s'}`,body});
   }
@@ -695,7 +698,7 @@ function viewLogger(){
     const partner=ss?d.ex.filter(x=>x!==b&&x.plan.ss===p.ss).map(x=>exName(x.exId)).join(' + '):'';
     h+=`<section class="block${ss?' ss':''}" id="blk-${bi}" data-bi="${bi}"><div class="bh">${bgrip(bi,ex.name)}<div class="bh-m"><h3 ${ex.note?`aria-labelledby="bhn-${bi}"`:''}><span id="bhn-${bi}">${esc(ex.name)}</span>${ex.note?` ${tipi(ex.note,'About '+ex.name)}`:''}</h3><p class="small muted">${esc(ML[ex.primary])} · ${b.sets.filter(x=>!x.warm&&!x.drop).length||p.sets}×${repSpan(p.repMin,p.repMax,'-')}${ex.timed?'s':''}${ex.perSide?'/side':''}${nr?'':` @${effTgt(p.rir)}`} · ${p.rest}s${ss?` · <span class="tag blue">Superset ${ss}</span>`:''}${b.inj?` · <span class="tag red">Injury: ${injLabel(b.inj)}</span>`:''}</p>${lmChips(ex)}</div>
       <div class="bh-acts">${!d.editingId&&blockDone(b)?`<button class="ib" aria-label="Fold ${esc(ex.name)}" data-act="bFold" data-b="${bi}">▴</button>`:''}<button class="ib" aria-label="Exercise options" data-act="bMenu" data-b="${bi}">⋯</button></div></div>
-      ${b.target?`<p class="hint"><b>Today: ${esc(targetText(b))}</b>${b.basis?` ${tipi(`Target from your last full session, ${fmtDate(b.basis)}. Trimmed, lighter, and deload sessions don't set targets.`,'Where this target comes from')}`:''}<span class="tp muted" style="display:block">${esc(lastHead(b,dupB))}</span>${b.easier?`<span class="tp ez">${esc(b.easier)}</span>`:''}${progressLine(b,bi)}</p>`:`<p class="hint">${esc(hintOnce(b.hint||'',hintSeen))}</p>`}${bi===calIdx?`<p class="small caldue">Due for an RIR check: take one set here to failure. <button class="linkbtn tall" data-act="bCal" data-b="${bi}">Calibration set</button> <button class="linkbtn tall" data-act="calSnooze">Not now</button></p>`:''}
+      ${b.target?`<p class="hint"><b>Today: ${esc(targetText(b))}</b>${whyTarget(b)?` ${tipi(whyTarget(b),'Why this target')}`:''}<span class="tp muted" style="display:block">${esc(lastHead(b,dupB))}</span>${(()=>{const bl=bestLine(b.exId);return bl?`<span class="tp muted" style="display:block">${esc(bl)}</span>`:'';})()}${b.easier?`<span class="tp ez">${esc(b.easier)}</span>`:''}${progressLine(b,bi)}</p>`:`<p class="hint">${esc(hintOnce(b.hint||'',hintSeen))}</p>`}${bi===calIdx?`<p class="small caldue">Due for an RIR check: take one set here to failure. <button class="linkbtn tall" data-act="bCal" data-b="${bi}">Calibration set</button> <button class="linkbtn tall" data-act="calSnooze">Not now</button></p>`:''}
       ${ss&&partner?`<p class="small muted" style="margin:2px 0 0">Superset with ${esc(partner)}; rest after the pair.</p>`:''}
       ${b.lastNote&&!b.note?`<p class="small lnote">Your note, ${esc(fmtDate(b.lastNote.date))}: ${esc(b.lastNote.text)} <button class="linkbtn" data-act="noteReuse" data-b="${bi}">Use again</button></p>`:''}
       ${b.note?`<p class="small bnote" id="bn-${bi}">${esc(b.note)}</p>`:`<p class="small bnote" id="bn-${bi}" hidden></p>`}

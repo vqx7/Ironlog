@@ -26,8 +26,8 @@ function loadLabel(ex,kg){if(ex.bw){return kg>0?`BW+${fmtW(kg)}`:kg<0?`BW−${fm
 const loadIn=(ex,w)=>w==null?'':fmtW(ex&&ex.assist?-w:w);
 
 /* ---------- analytics ---------- */
-let _idx=null,_cal=null,_bwRef,_pace=null;
-function invalidate(){_idx=null;EXMAP=null;_cal=null;_rirUse=null;_bwRef=undefined;_pace=null;}
+let _idx=null,_dix=null,_cal=null,_bwRef,_pace=null;
+function invalidate(){_idx=null;_dix=null;EXMAP=null;_cal=null;_rirUse=null;_bwRef=undefined;_pace=null;}
 function bwKnownAt(date){let best=null;for(const b of state.bodyweights)if(b.date<=date&&(!best||b.date>=best.date))best=b;return best?best.kg:null;}
 function bwAt(date){
   let best=null,earliest=null;
@@ -279,6 +279,20 @@ const repSpan=(lo,hi,sep=' to ')=>+lo===+hi?`${+lo}`:`${+lo}${sep}${+hi}`;
 const rangeWords=p=>+p.repMin===+p.repMax?`target of ${+p.repMin}`:`${+p.repMin}-${+p.repMax} range`;
 function median(a){if(!a.length)return null;const s=[...a].sort((x,y)=>x-y);const m=s.length>>1;return s.length%2?s[m]:(s[m-1]+s[m])/2;}
 function sortedSessions(){return [...state.sessions].sort(sessCmp);}
+/* The sessions on each date, in sessCmp order, and the count per week (r47).
+   Built once per change beside the other analytics and read by every screen
+   that groups sessions by day: the week bar, the calendar, the day picker,
+   This month's title, Consistency's heatmap. Before r47 each grouped the log
+   itself, and the week bar ordered a two-a-day by id where the day picker
+   ordered it by start time. A cache of its own, cleared by invalidate() with
+   IDX's, so IDX's object keeps r35's shape (tests/r36.js compares it). */
+function dateIndex(){
+  if(_dix)return _dix;
+  const byDate={},weekN={};
+  for(const x of sortedSessions()){(byDate[x.date]=byDate[x.date]||[]).push(x);const w=weekStart(x.date);weekN[w]=(weekN[w]||0)+1;}
+  return (_dix={byDate,weekN});
+}
+const sessionsOn=d=>dateIndex().byDate[d]||[];
 /* IDX() is everything the screens read, built once per change (r36: the
    one 420-line function split into its steps, each below, with no change to
    what comes out; tests/r36.js compares every number with r35 on random

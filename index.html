@@ -1601,7 +1601,7 @@ if(ENV==='preview')document.documentElement.dataset.env='preview';
 const HAD_LOG=(()=>{try{return localStorage.getItem(KEY)!=null;}catch(e){return false;}})();
 /* Shown in Settings, in diagnostics and in backups, so a bug report can be
    matched to the exact build. */
-const APP_VERSION='2026.10.14-r46';
+const APP_VERSION='2026.10.15-r47';
 /* The logo (r25): an upright dumbbell that is also the I of Ironlog. Same
    numbers as scripts/icons.py, which draws the app icons. */
 const MARK_SVG='<svg class="mark" viewBox="-242 -378 484 756" aria-hidden="true" focusable="false"><rect class="mk-h" x="-30" y="-300" width="60" height="600" rx="14"/><rect class="mk-h" x="-80" y="-192" width="160" height="32" rx="12"/><rect class="mk-h" x="-80" y="160" width="160" height="32" rx="12"/><rect class="mk-p" x="-240" y="-376" width="480" height="92" rx="30"/><rect class="mk-p" x="-190" y="-270" width="380" height="66" rx="26"/><rect class="mk-p" x="-190" y="204" width="380" height="66" rx="26"/><rect class="mk-p" x="-240" y="284" width="480" height="92" rx="30"/></svg>';
@@ -1612,10 +1612,19 @@ const LOGK=KEY+'.log';
 // Week or Month in This week on Today (r26), per device.
 const WKVIEW_KEY=KEY+'.wkView';
 const logBuf=(()=>{try{const a=JSON.parse(localStorage.getItem(LOGK)||'[]');return Array.isArray(a)?a:[];}catch(e){return [];}})();
+/* A URL's query and fragment, cut from what the log keeps (r47). The log
+   goes out with a problem report, and the page's own URL holds a reset
+   link's token in its fragment for a moment after the link is opened; a stack
+   frame carries that URL, and an error message can. Only the part after ? or #
+   of a URL goes, up to the frame's :line:column, so the file and line stay and
+   ordinary words with a ? or # in them are left alone. */
+const logCut=t=>String(t).replace(/([a-z][a-z0-9+.-]*:\/\/[^\s?#)]*)[?#](?:[^\s):]|:(?!\d))*/gi,'$1');
 function log(area,err){
   try{
     const m=err&&err.message?err.message:err&&typeof err==='object'?JSON.stringify(err):String(err);
-    logBuf.push({t:new Date().toISOString(),a:area,m:String(m).slice(0,300),v:APP_VERSION});
+    // Where it broke, not only what it said (r47): the first lines of the stack travel with a problem report, so a crash can be found in the code without the phone.
+    const st=err&&typeof err.stack==='string'?logCut(err.stack.split('\n').slice(0,4).join('\n')).slice(0,400):'';
+    logBuf.push({t:new Date().toISOString(),a:area,m:logCut(m).slice(0,300),v:APP_VERSION,...(st?{s:st}:{})});
     while(logBuf.length>60)logBuf.shift();
     localStorage.setItem(LOGK,JSON.stringify(logBuf));
   }catch(e){/* logging must never throw */}
@@ -2675,16 +2684,27 @@ async function fbCheckReader(){
   if(was!==acct.reader&&ui.tab==='settings'&&!ui.modal)rerenderKeepScroll();
 }
 function fbContext(m){
-  const d=state.draft;
-  return {build:APP_VERSION,env:ENV,at:new Date().toISOString(),device:String(navigator.userAgent||'').slice(0,300),
+  // A report about a crash must survive the crash (r47): each field that reads the log is guarded, so a save that cannot be read still sends what the rest knows.
+  const safe=(f,alt)=>{try{return f();}catch(e){return alt;}};
+  const d=safe(()=>state.draft,null);
+  const ctx={build:APP_VERSION,env:ENV,at:new Date().toISOString(),device:String(navigator.userAgent||'').slice(0,300),
     screen:`${window.innerWidth}x${window.innerHeight} @${window.devicePixelRatio||1}x`,installed:isStandalone(),
     theme:state.settings.theme,accent:state.settings.accent||ACCENT0,unit:U(),from:m.from||ui.tab,exercise:m.ex||undefined,
     session:d?{past:!!d.past,free:!!d.free,editing:!!d.editingId,exercises:d.ex.length}:null,
-    signedIn:!!acct.user,sync:cloud.on?cloud.status:'off',
-    counts:{sessions:state.sessions.filter(x=>!x.demo).length,routines:state.routines.length},
+    signedIn:!!acct.user,sync:cloud.on?cloud.status:'off',crash:m.crash||undefined,
+    counts:safe(()=>({sessions:state.sessions.filter(x=>!x.demo).length,routines:state.routines.length}),null),
     errors:logBuf.slice(-10)};
+  /* The feedback table refuses a context over 20,000 bytes (SUPABASE.md, Part 4),
+     and that would refuse the whole report. Ten errors with their stacks fit in
+     plain text, but not if a message is in a script of 3 or 4 bytes a
+     character, so the oldest errors go first until it fits with room to spare. */
+  const bytes=()=>safe(()=>new TextEncoder().encode(JSON.stringify(ctx)).length,0);
+  while(ctx.errors.length>1&&bytes()>FB_CTX_MAX)ctx.errors.shift();
+  if(bytes()>FB_CTX_MAX)ctx.errors=ctx.errors.map(({s,...x})=>({...x,m:String(x.m).slice(0,100)}));
+  return ctx;
 }
-const FB_WHAT='Attached by the app: the build, your device and browser, screen size, which screen you came from, whether a session was open, sync status, and the last 10 errors it logged. Never your workouts. It goes to the app owner.';
+const FB_CTX_MAX=15000;
+const FB_WHAT='Attached by the app: the build, your device and browser, screen size, which screen you came from, whether a session was open, sync status, and up to 10 recent errors with where in the app each happened. Never your workouts. It goes to the app owner.';
 /* The Guide (r27): how Ironlog works and the rules behind its numbers, in
    one place, opened from the menu. Screens keep the number and the action;
    the reasoning lives here, so it is findable on a phone where nothing can
@@ -2726,7 +2746,8 @@ function guideSheet(m){
    <p><b>Finish</b> saves the ticked sets and asks about any with reps but no tick. <b>Discard</b> asks only when something was entered.</p>
    <p><b>A past workout</b>: tap an empty past day in the bar, or History, Log a past workout. Targets and PRs read as of that date.</p>`],
   ['rules','How targets are set',`<p class="muted">These are estimates from your log, not medical or coaching advice. Adjust them to how you feel on the day, and stop on pain.</p>
-   <p><b>In short.</b> Before a session, from your last full session: every set at the top of the range, or 2 or more in reserve over your target, more load; well short of the range, less load; anything else, the same load for more total reps. During a session, the next sets change only after a set that was clearly off: 2 or more reps past the top, or 2 or more in reserve over your target with the reps in the range, heavier; 2 or more reps under the range and under what was asked, lighter; anything else, the same load, with last time's reps in grey. Loads show in grey, taken when you tick the set, or typed in for you with Settings, Rest timer and logging, Fill in suggested loads. A load you type is never changed. The details follow.</p>
+   <p><b>In short.</b> Before a session, from your last full session: every set at the top of the range, or 2 or more in reserve over your target, more load; well short of the range, less load; anything else, the same load for more total reps. During a session, the next sets change only after a set that was clearly off: 2 or more reps past the top, or 2 or more in reserve over your target with the reps in the range, heavier; 2 or more reps under the range and under what was asked, lighter; anything else, the same load, with last time's reps in grey. Loads show in grey, taken when you tick the set, or typed in for you with Settings, Rest timer and logging, Fill in suggested loads. A load you type is never changed. Every target on the session screen has an i beside it, Why this target, which gives the reason for that exact number and what makes the load go up next. The details follow.</p>
+   <p><b>A target is not a record.</b> The target is what to beat in today's session, worked out from your last full session of that lift. A record is the best you have ever done: the heaviest set of a lift shows while you train it, and every record is under Stats, Lifts, All-time bests. A PR is the moment you set one, and it is announced as you log the set. Lifts you did before this app count the same way once they are in: History, Log a past workout.</p>
    <p>Each exercise progresses from its <b>last full session in the rep range you plan for it that day</b>, so the same lift on a heavy day and a light day progresses on each separately. A range not used within 6 weeks of your latest session of the lift starts from that latest session instead.</p>
    <p><b>The working load</b> is the load you did the most sets with (the heavier on a tie), leaving out loads under 60% of your heaviest. A heavy top set, or two, before your back-off sets counts for bests and PRs, while targets, grey reps, and trends build on the back-off sets.</p>
    <p><b>Every set at the top of the range</b>: add load, in whole steps of the exercise's load step, about 2.5% of the load on compound lifts and 5% on isolation lifts, at least one step. Plan, Load jump % sets a different share for one exercise (0: one step every time). When one step is large for the load (it costs 1.5 reps or more, as 5 lb on a 35 lb dumbbell does), on a range 3 or more reps wide, you first build a few reps past the top at this load, up to a quarter of the top of the range more, until your estimate says the new load allows the bottom of the range; then the load goes up. Past a quarter, the load goes up anyway, with the reps your estimate allows there as the target. A fixed-rep plan (5 x 5, 3 x 3-5) goes up a step every time all its sets are done.</p>
@@ -2997,7 +3018,7 @@ function privacyLine(){
   if(!inClaude&&AUTH()&&acct.user)return `<p class="small muted" id="privacy" style="margin:8px 0 0"><b>Privacy:</b> no ads, no tracking. Your log syncs to your Ironlog account. Only you and the app's owner can see it. Reports you send go to the app owner. ${tipi('It is stored in a Supabase database. Database rules let each account read and write only its own data. The person who runs that database, the app owner, can see stored data and your email address, as with any app without end-to-end encryption. Your email is used only to sign in and reset your password, and nothing is shared or sold. A new password is checked against known breaches with only the first 5 characters of its hash; the password never leaves the phone. Backup files go only where you save them.','About privacy')}</p>`;
   if(!inClaude&&AUTH())return `<p class="small muted" id="privacy" style="margin:8px 0 0"><b>Privacy:</b> no ads, no tracking, and nothing sent without an account. Reports you send go to the app owner. ${tipi('Opening or updating the app downloads it from GitHub Pages, which, like any website host, sees your IP address; after that it works offline. With an account, your log and email are stored in a Supabase database, readable by your account and by the app owner; the email is used only to sign in and reset your password. A new password is checked against known breaches with only the first 5 characters of its hash. Deleting the app or this site\'s data deletes the copy on this device, so keep a backup file or an account.','About privacy')}</p>`;
   return inClaude
-    ?`<p class="small muted" id="privacy" style="margin:8px 0 0"><b>Privacy:</b> no ads, no tracking. Your log is stored with your Claude account. ${/*ai{*/tipi('Claude features (debrief, Ask Claude, swaps, reading typed sets) send the part of your log they need to Claude, and only when you tap them. Export and CSV files go only where you save them.','About privacy')/*}ai=tipi('Export and CSV files go only where you save them.','About privacy')*/}</p>`
+    ?`<p class="small muted" id="privacy" style="margin:8px 0 0"><b>Privacy:</b> no ads, no tracking. Your log is stored with your Claude account. ${tipi('Export and CSV files go only where you save them.','About privacy')}</p>`
     :`<p class="small muted" id="privacy" style="margin:8px 0 0"><b>Privacy:</b> no account, no ads, no tracking. Your log stays on this device and is sent nowhere. Reports you send go to the app owner. ${tipi('Ironlog has no server. Opening or updating the app downloads it from GitHub Pages, which, like any website host, sees your IP address; after that it works offline. Backup files go only where you save them. Deleting the app or this site\'s data deletes your log, so keep a backup file.','About privacy')}</p>`;
 }
 function syncInfo(){
@@ -3078,8 +3099,8 @@ function loadLabel(ex,kg){if(ex.bw){return kg>0?`BW+${fmtW(kg)}`:kg<0?`BW−${fm
 const loadIn=(ex,w)=>w==null?'':fmtW(ex&&ex.assist?-w:w);
 
 /* ---------- analytics ---------- */
-let _idx=null,_cal=null,_bwRef,_pace=null;
-function invalidate(){_idx=null;EXMAP=null;_cal=null;_rirUse=null;_bwRef=undefined;_pace=null;}
+let _idx=null,_dix=null,_cal=null,_bwRef,_pace=null;
+function invalidate(){_idx=null;_dix=null;EXMAP=null;_cal=null;_rirUse=null;_bwRef=undefined;_pace=null;}
 function bwKnownAt(date){let best=null;for(const b of state.bodyweights)if(b.date<=date&&(!best||b.date>=best.date))best=b;return best?best.kg:null;}
 function bwAt(date){
   let best=null,earliest=null;
@@ -3331,6 +3352,20 @@ const repSpan=(lo,hi,sep=' to ')=>+lo===+hi?`${+lo}`:`${+lo}${sep}${+hi}`;
 const rangeWords=p=>+p.repMin===+p.repMax?`target of ${+p.repMin}`:`${+p.repMin}-${+p.repMax} range`;
 function median(a){if(!a.length)return null;const s=[...a].sort((x,y)=>x-y);const m=s.length>>1;return s.length%2?s[m]:(s[m-1]+s[m])/2;}
 function sortedSessions(){return [...state.sessions].sort(sessCmp);}
+/* The sessions on each date, in sessCmp order, and the count per week (r47).
+   Built once per change beside the other analytics and read by every screen
+   that groups sessions by day: the week bar, the calendar, the day picker,
+   This month's title, Consistency's heatmap. Before r47 each grouped the log
+   itself, and the week bar ordered a two-a-day by id where the day picker
+   ordered it by start time. A cache of its own, cleared by invalidate() with
+   IDX's, so IDX's object keeps r35's shape (tests/r36.js compares it). */
+function dateIndex(){
+  if(_dix)return _dix;
+  const byDate={},weekN={};
+  for(const x of sortedSessions()){(byDate[x.date]=byDate[x.date]||[]).push(x);const w=weekStart(x.date);weekN[w]=(weekN[w]||0)+1;}
+  return (_dix={byDate,weekN});
+}
+const sessionsOn=d=>dateIndex().byDate[d]||[];
 /* IDX() is everything the screens read, built once per change (r36: the
    one 420-line function split into its steps, each below, with no change to
    what comes out; tests/r36.js compares every number with r35 on random
@@ -4890,6 +4925,19 @@ function targetText(b){
   const hold=m[2]==='s';const over=e.n===1?(hold?'in one hold':'in one set'):`over ${e.n} ${hold?'holds':'sets'}`;
   return `${e.total+1}${m[2]}+ ${m[3]||''}${over}${m[4]}`;
 }
+/* The reason behind a target, in the engine's own words (r47). b.hint is the
+   whole sentence the case wrote, and it opens with the Last line (b.last),
+   which the screen shows on its own line already, so that prefix comes off
+   rather than being said twice. Nothing is recomputed here: a second account
+   of the rules would be a second thing to keep right. */
+function whyTarget(b){
+  if(!b)return '';
+  // A session block renames the suggestion's text to hint, so take either.
+  const h=(b.hint||b.text||'').trim(),l=(b.last||'').trim();
+  const reason=l&&h.startsWith(l)?h.slice(l.length).trim():h;
+  const basis=b.basis?` The target comes from your last full session, ${fmtDate(b.basis)}; trimmed, lighter, and deload sessions do not set one.`:'';
+  return (reason+basis).trim();
+}
 function blockProgress(b){
   const t0=b.tgt;if(!t0)return null;const t=effTarget(b);
   const ex=EX(b.exId);const bw=bwRefLoad(ex);
@@ -5505,9 +5553,9 @@ function render(){
 function renderCrash(e){
   let txt='';try{txt=JSON.stringify({app:'ironlog',version:APP_VERSION,exported:new Date().toISOString(),state});}catch(e2){txt='(could not serialise data: '+e2.message+')';}
   const v=document.getElementById('view');if(!v)return;
-  v.innerHTML=`<div class="card"><h2>Something broke on this screen</h2><p class="small">Your data is saved and was not changed. Tap Try again to go back to Today. If it keeps happening, copy the backup text below and keep it somewhere safe.</p>
+  v.innerHTML=`<div class="card"><h2>Something broke on this screen</h2><p class="small">Your data is saved and was not changed. Tap Try again to go back to Today. Report this sends the error to the app owner. If it keeps happening, copy the backup text below and keep it somewhere safe.</p>
   <p class="small muted">Error: ${esc(e&&e.message||String(e))} · build ${APP_VERSION}</p>
-  <div class="row"><button class="btn primary" data-act="crashRetry">Try again</button></div>
+  <div class="row"><button class="btn primary" data-act="crashRetry">Try again</button><button class="btn" data-act="fbOpen" data-cat="bug" data-crash="1">Report this</button></div>
   <label class="field" style="margin-top:10px">Backup text<textarea readonly style="min-height:160px;font-size:12px">${esc(txt)}</textarea></label></div>`;
 }
 function renderInner(){
@@ -5638,6 +5686,10 @@ function moreRow(deload,playable,di){
    the Workout preview only with a plan's day on the card. */
 function todayRest({playable,di,cs,day,deload}){
   let h='';
+  /* Nothing logged yet: say where lifts done before this app go, since that
+     is how a new lifter's bests and targets start from what they can already
+     do (r48, V). History's empty state says the same; Today said nothing. */
+  if(noLog()&&!state.draft)h+=`<p class="small muted" id="preApp" style="margin:0 0 10px">Lifted before this app? <button class="linkbtn" data-act="pastOpen">Log a past workout</button> to bring your bests in; targets then start from them.</p>`;
   // Every section below the Start card can be dragged into any order by its
   // ⠿ handle; a new install starts in DEFAULT_ORDER.
   h+=weekCard();
@@ -5948,8 +6000,8 @@ const fmtBig=kg=>Math.round(toD(kg)).toLocaleString();
 // Tile subtitles only: 295,403 becomes 295k so it fits a small phone.
 const fmtK=kg=>{const v=Math.round(toD(kg));return v>=10000?Math.round(v/1000)+'k':v.toLocaleString();};
 // Sessions in the week, not days (r34): two plan days done on one day are two of the week's sessions.
-// Counted once per change and kept with the analytics, as weekRoutine's are (r46: the streak scanned every session for each of 104 weeks, twice a render).
-function weekSessions(ws){const I=IDX();if(!I.weekN){I.weekN={};for(const x of state.sessions){const w=weekStart(x.date);I.weekN[w]=(I.weekN[w]||0)+1;}}return I.weekN[ws]||0;}
+// Counted once per change and kept with the analytics (dateIndex, r47; r46: the streak scanned every session for each of 104 weeks, twice a render).
+function weekSessions(ws){return dateIndex().weekN[ws]||0;}
 /* Planned hard sets (r27). A planned set counts only if its target RIR
    would make it hard (3 or less, or every set when RIR is off), the same test
    as a logged set; a plan at RIR 4 used to set a weekly target that logging
@@ -6998,13 +7050,12 @@ function weekPlan(R){
 }
 function weekBar(){
   const R=activeRoutine();const cur=weekStart(today()),t=today();const weekly=R.schedule==='weekly';
-  const byDate={};for(const x of state.sessions)(byDate[x.date]=byDate[x.date]||[]).push(x);
   const cByDate={};for(const c of state.cardio)(cByDate[c.date]=cByDate[c.date]||[]).push(c);
   const plan=weekPlan(R);let h='';
   // The + on empty past days appears once there is a log to add to; a brand-new week bar stays clean (the days still open the sheet).
   const hasLog=state.sessions.length>0;
   for(let i=0;i<7;i++){
-    const d=addDays(cur,i),ss=(byDate[d]||[]).slice().sort((a,b)=>a.id<b.id?-1:1),trained=ss.length>0,cd=cByDate[d]||[];
+    const d=addDays(cur,i),ss=sessionsOn(d),trained=ss.length>0,cd=cByDate[d]||[];
     const p=plan[d];const pd=p?p.day:null;const isPlan=!!pd&&!pd.rest&&pd.items.length>0;const isRest=!!pd&&pd.rest;
     // The session in progress sits on its own date, which for a past workout is not today.
     const live=!!state.draft&&!state.draft.editingId&&d===state.draft.date;
@@ -7014,6 +7065,8 @@ function weekBar(){
     const label=`${DAYS[i]} ${fmtDate(d)}: ${what}${cd.length?`, cardio ${cd.reduce((a,c)=>a+c.min,0)} min`:''}`;
     const inner=`<span class="wd">${WD2[i]}</span><span class="dn">${+d.slice(8)}</span><span class="nm">${name?esc(name):'&nbsp;'}</span>`;
     if(live&&d<t)h+=`<button type="button" class="${cls}" data-act="wkGo" data-date="${d}" data-tip="${esc(label)}" aria-label="${esc(label)}. Open the session">${inner}</button>`;
+    // A day with two sessions asks which, as the calendar does (r47): both go through calDay. Until r47 the bar opened one of them without asking.
+    else if(trained&&ss.length>1)h+=`<button type="button" class="${cls}" data-act="calDay" data-date="${d}" data-tip="${esc(label)}" aria-label="${esc(label)}. Choose one to open">${inner}</button>`;
     else if(trained)h+=`<button type="button" class="${cls}" data-act="wkOpen" data-id="${ss[0].id}" data-tip="${esc(label)}" aria-label="${esc(label)}. Open in History">${inner}</button>`;
     else if(d>=t)h+=`<button type="button" class="${cls}" data-act="wkGo" data-date="${d}"${p?` data-day="${p.di}"`:''} data-tip="${esc(label)}" aria-label="${esc(label)}. Open on Today">${inner}</button>`;
     // An empty past day logs a workout for that date (item 53): every day in the bar does something.
@@ -7051,8 +7104,10 @@ function weekStats(){
      where the split matters; summed across muscles it double-counts. The
      numerator is hard sets only, so a set left at RIR 4 or more does not
      count toward the week, unless Count RIR 4 to 5 as half a set is on
-     (r40, hardCredit). */
-  let got=0;for(const x of state.sessions)if(x.date>=cur&&x.date<=addDays(cur,6))for(const b of x.ex){const e=EX(b.exId);for(const q of b.sets)got+=hardCredit(q,e);}
+     (r40, hardCredit). Read from IDX's weekHard (r47), the same table the
+     recap, Volume and the muscle views count from; until r47 this walked the
+     log with its own copy of the rule. */
+  const got=IDX().weekHard[cur]||0;
   const tgt=planSetsPerWeek(R,isDeloadWeek());
   /* A rest week is said once, here, so the ring, the card and its body all
      follow (r46: the ring and the title were given their own test for it and
@@ -7107,7 +7162,7 @@ function weekCard(){
      month's name for an earlier one) with that month's session count. */
   if(ui.wkView==='month'){
     const cur=today().slice(0,7);const ym=ui.calYm&&ui.calYm<=cur?ui.calYm:cur;
-    const n=state.sessions.filter(x=>x.date.slice(0,7)===ym).length;
+    const n=Object.keys(dateIndex().byDate).filter(d=>d.slice(0,7)===ym).reduce((a,d)=>a+sessionsOn(d).length,0);
     const title=ym===cur?'This month':new Date(ym+'-15T12:00:00').toLocaleDateString(undefined,{month:'long',year:'numeric'});
     return sec({sk:'today:week',key:'week',title,sub:`${n} session${n===1?'':'s'}`,body});
   }
@@ -7413,7 +7468,7 @@ function viewLogger(){
     const partner=ss?d.ex.filter(x=>x!==b&&x.plan.ss===p.ss).map(x=>exName(x.exId)).join(' + '):'';
     h+=`<section class="block${ss?' ss':''}" id="blk-${bi}" data-bi="${bi}"><div class="bh">${bgrip(bi,ex.name)}<div class="bh-m"><h3 ${ex.note?`aria-labelledby="bhn-${bi}"`:''}><span id="bhn-${bi}">${esc(ex.name)}</span>${ex.note?` ${tipi(ex.note,'About '+ex.name)}`:''}</h3><p class="small muted">${esc(ML[ex.primary])} · ${b.sets.filter(x=>!x.warm&&!x.drop).length||p.sets}×${repSpan(p.repMin,p.repMax,'-')}${ex.timed?'s':''}${ex.perSide?'/side':''}${nr?'':` @${effTgt(p.rir)}`} · ${p.rest}s${ss?` · <span class="tag blue">Superset ${ss}</span>`:''}${b.inj?` · <span class="tag red">Injury: ${injLabel(b.inj)}</span>`:''}</p>${lmChips(ex)}</div>
       <div class="bh-acts">${!d.editingId&&blockDone(b)?`<button class="ib" aria-label="Fold ${esc(ex.name)}" data-act="bFold" data-b="${bi}">▴</button>`:''}<button class="ib" aria-label="Exercise options" data-act="bMenu" data-b="${bi}">⋯</button></div></div>
-      ${b.target?`<p class="hint"><b>Today: ${esc(targetText(b))}</b>${b.basis?` ${tipi(`Target from your last full session, ${fmtDate(b.basis)}. Trimmed, lighter, and deload sessions don't set targets.`,'Where this target comes from')}`:''}<span class="tp muted" style="display:block">${esc(lastHead(b,dupB))}</span>${b.easier?`<span class="tp ez">${esc(b.easier)}</span>`:''}${progressLine(b,bi)}</p>`:`<p class="hint">${esc(hintOnce(b.hint||'',hintSeen))}</p>`}${bi===calIdx?`<p class="small caldue">Due for an RIR check: take one set here to failure. <button class="linkbtn tall" data-act="bCal" data-b="${bi}">Calibration set</button> <button class="linkbtn tall" data-act="calSnooze">Not now</button></p>`:''}
+      ${b.target?`<p class="hint"><b>Today: ${esc(targetText(b))}</b>${whyTarget(b)?` ${tipi(whyTarget(b),'Why this target')}`:''}<span class="tp muted" style="display:block">${esc(lastHead(b,dupB))}</span>${(()=>{const bl=bestLine(b.exId);return bl?`<span class="tp muted" style="display:block">${esc(bl)}</span>`:'';})()}${b.easier?`<span class="tp ez">${esc(b.easier)}</span>`:''}${progressLine(b,bi)}</p>`:`<p class="hint">${esc(hintOnce(b.hint||'',hintSeen))}</p>`}${bi===calIdx?`<p class="small caldue">Due for an RIR check: take one set here to failure. <button class="linkbtn tall" data-act="bCal" data-b="${bi}">Calibration set</button> <button class="linkbtn tall" data-act="calSnooze">Not now</button></p>`:''}
       ${ss&&partner?`<p class="small muted" style="margin:2px 0 0">Superset with ${esc(partner)}; rest after the pair.</p>`:''}
       ${b.lastNote&&!b.note?`<p class="small lnote">Your note, ${esc(fmtDate(b.lastNote.date))}: ${esc(b.lastNote.text)} <button class="linkbtn" data-act="noteReuse" data-b="${bi}">Use again</button></p>`:''}
       ${b.note?`<p class="small bnote" id="bn-${bi}">${esc(b.note)}</p>`:`<p class="small bnote" id="bn-${bi}" hidden></p>`}
@@ -7629,7 +7684,8 @@ function nextLine(exId){
   // The plan of the next day due that has this lift: one lift on a heavy and a light day has two targets (review of r41).
   const R=activeRoutine();const d=nextDayWith(exId,R);
   const sg=suggest(exId,d?planFor(exId,R,d.id):planFor(exId,R),{deload:isDeloadWeek()});
-  return sg&&sg.target?`<p class="small" id="nextLine" style="margin:6px 0 0"><b>Next session</b>: ${esc(sg.target)}</p>`:'';
+  const why=whyTarget(sg);
+  return sg&&sg.target?`<p class="small" id="nextLine" style="margin:6px 0 0"><b>Next session</b>: ${esc(sg.target)}${why?` ${tipi(why,'Why this target')}`:''}</p>`:'';
 }
 /* The next training day due that has the lift, or null: on a weekly plan
    today's weekday, or tomorrow's once today's day is logged (review of r41:
@@ -7679,7 +7735,7 @@ function viewDash(){
      before this one, which the label now says out loud. */
   const planned=freeMode()?0:trainDaysOf(R)*weekFactor(R);
   const cur=weekStart(today());
-  const sessDates=new Set(state.sessions.map(s=>s.date));
+  const sessDates=new Set(Object.keys(dateIndex().byDate));
   /* Only weeks since your first session count. Before that there was nothing
      to adhere to, and counting those weeks read 0% on day one. */
   const firstWk=firstFullWeek();
@@ -7717,7 +7773,7 @@ function viewDash(){
   <div class="kpi"><div class="v">${nz(prs4)}</div><div class="l">PRs, last 4 weeks${was(prsP)}</div></div>
 ${extraKpis()}</div>`;
   if(state.sessions.length)h+=dashSummary();
-/*ai{*/  if(aiOn()&&state.sessions.some(x=>!x.demo))h+=`<div class="card row spread"><span class="small">Ask Claude a question about your own log: a stall, a split, a weak point.</span><button class="btn sm primary" data-act="aiReview">Ask Claude</button></div>`;/*}ai=*/
+
 
   const avg=actualAvg4();const plan=plannedSets(R);const bands=state.settings.bands;
 
@@ -7983,6 +8039,21 @@ function allTimeBests(id){
   front.sort((a,b)=>b.p.pl-a.p.pl);
   const last=[est&&est.date,heavy&&heavy.date,...front.map(f=>f.date)].filter(Boolean).sort().pop();
   return {ex,est,heavy,front,last};
+}
+/* A lift's heaviest set, in the words the bests board uses, so nothing new is
+   invented and the two always read alike (r48, V: "is it easy to see what your
+   PR was during a today session"). It was two taps away, under the exercise's
+   menu. "Heaviest" rather than "PR": in this app a PR is a record the moment
+   it is set, while this is the standing best, which is what the question means. */
+function bestLine(exId){
+  const r=allTimeBests(exId);if(!r||!r.heavy)return '';
+  const ex=r.ex;
+  /* The date is dropped when the heaviest set was the lift's last session,
+     since the Last line beside it already carries that date and the column
+     shows those very sets. */
+  const exps=IDX().byEx[exId]||[];const newest=exps.length?exps[exps.length-1].date:null;
+  const when=r.heavy.date===newest?'':`, ${fmtDate(r.heavy.date)}`;
+  return `Heaviest ${setShort(ex,r.heavy.p.w,r.heavy.p.r)}${loadNote(ex)}${when}`;
 }
 function bestsBoard(){
   const I=IDX();const rows=Object.keys(I.byEx).map(allTimeBests).filter(Boolean).sort((a,b)=>a.last<b.last?1:a.last>b.last?-1:a.ex.name.localeCompare(b.ex.name));
@@ -8489,7 +8560,7 @@ function renderModalBody(){
     <p class="small muted" style="margin:0 0 10px">A week off on purpose. It is not counted as missed: averages, streak, and adherence skip it.</p>
     <div class="stack">${wk.map(([w,l])=>{const on=isRestWeek(w);return `<button class="btn block ${on?'primary':''}" data-act="restWk" data-w="${w}" aria-pressed="${on}">${l}, ${esc(fmtDate(w))} to ${esc(fmtDate(addDays(w,6)))}${on?': rest week':''}</button>`;}).join('')}</div></div>`;
   }else if(m.kind==='daypick'){
-    const ss=state.sessions.filter(x=>x.date===m.date).sort(sessCmp);
+    const ss=sessionsOn(m.date);
     const tm=sessTm;
     h=`<div class="sheet" role="dialog" aria-modal="true" aria-labelledby="dpH"><div class="sheet-h"><h3 id="dpH">${esc(fmtDate(m.date))}: ${ss.length} sessions</h3><button class="ib" aria-label="Close" data-act="mClose">✕</button></div>
     <div class="stack">${ss.map(x=>`<button class="btn block pastday" data-act="wkOpen" data-id="${x.id}"><span>${esc(x.dayName)}</span><small>${[tm(x),`${x.ex.length} exercise${x.ex.length===1?'':'s'}`].filter(Boolean).join(', ')}</small></button>`).join('')}</div></div>`;
@@ -8531,7 +8602,7 @@ function renderModalBody(){
     const nx=d.ex[m.b+1];const linked=!!(nx&&b.plan.ss&&nx.plan.ss===b.plan.ss);
     const op=(o,l,dis,cls)=>`<button class="btn block ${cls||''}" style="margin-top:6px" data-act="bMenuDo" data-op="${o}" data-b="${m.b}" ${dis?'disabled':''}>${l}</button>`;
     h=`<div class="sheet" role="dialog" aria-modal="true"><div class="sheet-h"><h3>${esc(exName(b.exId))}</h3><button class="ib" aria-label="Close" data-act="mClose">✕</button></div>
-    ${op('bHist','History and chart')}${op('bMus','Muscles worked')}${op('wAdd','Add a warm-up set')}${op('dropAdd','Add a drop set (about 75% load)')}${op('bQuick','Type or dictate sets')}${op('bNote',b.note?'Edit note':'Add note')}${op('bSwap','Swap exercise')}${howToLink(EX(b.exId))}${/*ai{*/aiOn()?op('bAiSwap','Ask Claude for a swap'):''/*}ai=''*/}${op('bInc',`Load step: ${fmtW(incOf(EX(b.exId),b.plan))} ${U()}`)}${op('bMax',`Heaviest available: ${EX(b.exId).maxLoad!=null?fmtW(EX(b.exId).maxLoad)+' '+U():'no limit'}`)}${rirShow(EX(b.exId))?op('bCal','Calibration set (RIR check)'):''}${nx?op('bSs',linked?'Unlink superset':`Superset with ${esc(exName(nx.exId))}`):''}${op('bUp','Move up',m.b===0)}${op('bDown','Move down',!nx)}${op('fbOpen','Report a problem')}${op('bDel','Remove from session',false,'danger')}</div>`;
+    ${op('bHist','History and chart')}${op('bMus','Muscles worked')}${op('wAdd','Add a warm-up set')}${op('dropAdd','Add a drop set (about 75% load)')}${op('bQuick','Type or dictate sets')}${op('bNote',b.note?'Edit note':'Add note')}${op('bSwap','Swap exercise')}${howToLink(EX(b.exId))}${''}${op('bInc',`Load step: ${fmtW(incOf(EX(b.exId),b.plan))} ${U()}`)}${op('bMax',`Heaviest available: ${EX(b.exId).maxLoad!=null?fmtW(EX(b.exId).maxLoad)+' '+U():'no limit'}`)}${rirShow(EX(b.exId))?op('bCal','Calibration set (RIR check)'):''}${nx?op('bSs',linked?'Unlink superset':`Superset with ${esc(exName(nx.exId))}`):''}${op('bUp','Move up',m.b===0)}${op('bDown','Move down',!nx)}${op('fbOpen','Report a problem')}${op('bDel','Remove from session',false,'danger')}</div>`;
   }else if(m.kind==='injury'){
     h=`<div class="sheet" role="dialog" aria-modal="true"><div class="sheet-h"><h3>Flag an injury</h3><button class="ib" aria-label="Close" data-act="mClose">✕</button></div>
     <p class="small muted hastip" data-tip="Every exercise that loads this muscle (directly or as a helper) or this joint is marked in your sessions: its target pauses, loads cap at last time, and it is left out of below-target advice until cleared.">Training aid, not medical advice: sharp, worsening, or lasting pain needs a clinician.</p>
@@ -8541,7 +8612,7 @@ function renderModalBody(){
     <div class="row"><button class="btn primary" data-act="injSave">Flag it</button><button class="btn" data-act="mClose">Cancel</button></div></div></div>`;
   }else if(m.kind==='recap'){
     const u=m.upd;
-    h=`<div class="sheet" role="dialog" aria-modal="true"><div class="sheet-h"><h3>${esc(m.title)}</h3><button class="ib" aria-label="Close" data-act="mClose">✕</button></div>${m.prs&&m.prs.length?`<div class="prblk" id="recapPR"><h4>${m.prs.length===1?'New PR':`${m.prs.length} new PRs`}</h4><ul>${m.prs.map(p=>`<li><b>${esc(p.name)}</b>: ${esc(p.what)}${p.was?` <span class="was">(${esc(p.was)})</span>`:''}</li>`).join('')}</ul></div>`:''}<ul class="recap">${m.lines.map(l=>`<li>${esc(l)}</li>`).join('')}</ul>${m.note?`<p class="small muted">${esc(m.note)}</p>`:''}${/*ai{*/aiOn()&&m.sid?`<button class="btn block" style="margin-bottom:8px" data-act="aiDebrief" data-sid="${esc(m.sid)}">Debrief with Claude</button>`:''/*}ai=''*/}
+    h=`<div class="sheet" role="dialog" aria-modal="true"><div class="sheet-h"><h3>${esc(m.title)}</h3><button class="ib" aria-label="Close" data-act="mClose">✕</button></div>${m.prs&&m.prs.length?`<div class="prblk" id="recapPR"><h4>${m.prs.length===1?'New PR':`${m.prs.length} new PRs`}</h4><ul>${m.prs.map(p=>`<li><b>${esc(p.name)}</b>: ${esc(p.what)}${p.was?` <span class="was">(${esc(p.was)})</span>`:''}</li>`).join('')}</ul></div>`:''}<ul class="recap">${m.lines.map(l=>`<li>${esc(l)}</li>`).join('')}</ul>${m.note?`<p class="small muted">${esc(m.note)}</p>`:''}${''}
     ${u?`<div class="hint"><b>Update ${esc(u.dayName)} in your routine?</b><br>${esc(u.text)}. Next time this day starts with the change.</div><button class="btn block" data-act="applyUpd">Update ${esc(u.dayName)}</button>`:''}
     <button class="btn primary block" style="margin-top:10px" data-act="mClose">${u?'Not now':'Done'}</button></div>`;
   }else if(m.kind==='imp'){h=impSheet(m);
@@ -8599,23 +8670,9 @@ function renderModalBody(){
     ${ex.timed?'<p class="small muted" style="margin:0">Timed hold: the number after x is seconds, for example <b>25x45, 40</b> or <b>bw x 60, 50</b>.</p>':''}
     <p class="small muted">Loads in ${U()}${loadNote(ex)}${ex.bw?', added to bodyweight (bw or bw+25)':''}. <b>${eg1}</b> or <b>${eg2}</b>. <span class="hastip" data-tip="Type or use the keyboard's dictation mic. ${rp?'rpe':'rir'} at the end applies to every set; @ gives ${effWord()} per set. A bare number repeats the last load. Sets fill from the first one not done and are marked done.${aiOn()?' Anything this cannot read is passed to Claude.':''}">More</span></p>
     <input type="text" id="qTxt" autocomplete="off" autocapitalize="off" spellcheck="false" value="${esc(m.text||'')}" placeholder="${ex.bw?'bw x 10, 8, 7':ph}" enterkeyhint="done">
-    ${m.err?`<p class="small" style="color:var(--red);margin:8px 0 0">${esc(m.err)}</p>`:''}${/*ai{*/m.busy?'<p class="small muted" style="margin:8px 0 0">Reading with Claude...</p>':''/*}ai=''*/}
+    ${m.err?`<p class="small" style="color:var(--red);margin:8px 0 0">${esc(m.err)}</p>`:''}${''}
     <div class="row" style="margin-top:10px"><button class="btn primary" data-act="qFill" ${m.busy?'disabled':''}>Fill sets</button>${m.busy?'<button class="btn" data-act="aiStop">Stop</button>':''}<button class="btn" data-act="mClose">Cancel</button></div></div>`;
-  /*ai{*/}else if(m.kind==='ai'){
-    h=`<div class="sheet" role="dialog" aria-modal="true"><div class="sheet-h"><h3>${esc(m.title)}</h3><button class="ib" aria-label="Close" data-act="mClose">✕</button></div>
-    ${m.ask?`<p class="small muted">Claude reads your routine, weekly volume, trends, body data, and recent sessions, then answers. Uses your Claude plan.</p><textarea id="aiQ" style="min-height:70px" placeholder="Why has my incline bench stalled? Is my Arms day too long?">${esc(m.q||'')}</textarea><div class="row" style="margin-top:8px"><button class="btn primary" data-act="aiAsk" ${m.busy?'disabled':''}>Ask Claude</button></div>`:''}
-    <div id="aiOut" class="aiout" aria-live="polite">${esc(m.out||(m.busy?'Thinking...':''))}</div>
-    ${m.err?`<p class="small" style="color:var(--red);margin:8px 0 0">${esc(m.err)}</p>`:''}
-    <div class="row" style="margin-top:10px">${m.busy?'<button class="btn" data-act="aiStop">Stop</button>':''}<button class="btn" data-act="mClose">Close</button></div>
-    <p class="small muted" style="margin:8px 0 0">Advice from Claude, not a clinician. It sees only what is logged here.</p></div>`;
-  }else if(m.kind==='aiSwap'){
-    const d=state.draft;const b=d&&d.ex[m.b];if(!b){ui.modal=null;el.hidden=true;return;}
-    h=`<div class="sheet" role="dialog" aria-modal="true"><div class="sheet-h"><h3>Swap ${esc(exName(b.exId))}</h3><button class="ib" aria-label="Close" data-act="mClose">✕</button></div>
-    <label class="field">Why swap (optional)<input type="text" id="aiWhy" value="${esc(m.why||'')}" placeholder="machine taken, shoulder feels off, short on time"></label>
-    <div class="row" style="margin-top:8px"><button class="btn primary" data-act="aiSwapAsk" ${m.busy?'disabled':''}>${m.picks?'Ask again':'Suggest swaps'}</button>${m.busy?'<button class="btn" data-act="aiStop">Stop</button>':''}</div>
-    ${m.busy?'<p class="small muted">Thinking...</p>':''}${m.err?`<p class="small" style="color:var(--red)">${esc(m.err)}</p>`:''}
-    <div style="margin-top:8px">${(m.picks||[]).map(p=>`<button class="pick" data-act="pickDo" data-ex="${esc(p.id)}"><span><b>${esc(exName(p.id))}</b><br><span class="small muted">${esc(p.why||'')}</span></span></button>`).join('')}</div></div>`;
-  /*}ai=*/}else if(m.kind==='max'){
+  }else if(m.kind==='max'){
     const e=EX(m.exId);
     h=`<div class="sheet" role="dialog" aria-modal="true"><div class="sheet-h"><h3>Heaviest available: ${esc(e.name)}</h3><button class="ib" aria-label="Close" data-act="mClose">✕</button></div>
     <label class="field">Load (${U()}${e.bw?', added to bodyweight':''})<input type="text" inputmode="decimal" id="maxVal" value="${e.maxLoad!=null?fmtW(e.maxLoad):''}" placeholder="No limit"></label>
@@ -8661,7 +8718,7 @@ function renderModalBody(){
     else if(best.ready<0.5)lead=`<p class="callout yellow" style="margin:0">Everything your routine has left leans on muscles still recovering from the last few days. A rest day, or easy cardio and mobility, is the better call. If you train anyway, the first option is the least fatigued.</p>`;
     else if(best.plan)lead='<p class="small" style="margin:0">Stick with the plan: it is also the best fit for today.</p>';
     else if(plan)lead=`<p class="small" style="margin:0">${esc(best.day.name)} fits today better than ${esc(plan.day.name)}, next in your plan: ${plan.ready<1?`${esc(plan.day.name)} leans on muscles that may still be recovering.`:'it trains what is furthest behind this week.'} ${tipi('Starting it moves your cycle on from there, the same as choosing it under Change day.','About the cycle')}</p>`;
-    const sameDay=state.sessions.some(x=>x.date===today());
+    const sameDay=sessionsOn(today()).length>0;
     h=`<div class="sheet" role="dialog" aria-modal="true"><div class="sheet-h"><h3>Pick for me</h3><button class="ib" aria-label="Close" data-act="mClose">✕</button></div>
     ${lead}${sameDay?'<p class="small muted" style="margin:8px 0 0">Includes the session you logged today.</p>':''}${rk.deload?'<p class="small muted" style="margin:8px 0 0">Deload week: counted at half the sets.</p>':''}
     ${top.map((x,k)=>`<div class="pcard${k===0?' best':''}"><div class="row spread"><b>${esc(dayLabel(rk.R,x.i))}: ${esc(x.day.name)}</b>${k===0?'<span class="tag green">Best fit</span>':''}</div>
@@ -9586,12 +9643,12 @@ function calBounds(){
 // The month header and grid, for the sheet (inline false) and This week (inline true).
 function calBody(ym,inline){
   const [y,mo]=ym.split('-').map(Number);const dim=new Date(y,mo,0).getDate();const lead=(new Date(y,mo-1,1).getDay()+6)%7;
-  const t=today();const bd={};for(const x of state.sessions)(bd[x.date]=bd[x.date]||[]).push(x);
+  const t=today();
   const cd={};for(const c of state.cardio)cd[c.date]=(cd[c.date]||0)+c.min;
   const {min,max}=calBounds();
   let g=DAYS.map(d=>`<span class="wd">${d.slice(0,2)}</span>`).join('')+'<span></span>'.repeat(lead);let n=0;
   for(let i=1;i<=dim;i++){
-    const d=`${ym}-${String(i).padStart(2,'0')}`;const ss=bd[d]||[];const c=cd[d]||0;if(ss.length)n+=ss.length;
+    const d=`${ym}-${String(i).padStart(2,'0')}`;const ss=sessionsOn(d);const c=cd[d]||0;if(ss.length)n+=ss.length;
     const cls=['cd',ss.length?'on':'',!ss.length&&c?'cardio':'',d===t?'today':'',d>t?'fut':''].filter(Boolean).join(' ');
     const what=ss.length?ss.map(x=>x.dayName||'Session').join(', '):c?`cardio ${c} min`:d>t?'':'nothing logged';
     const inner=`<span class="n">${i}</span><span class="x">${ss.length>1?'×'+ss.length:''}</span>`;
@@ -9606,7 +9663,7 @@ function calBody(ym,inline){
 function calSheet(m){return `<div class="sheet" role="dialog" aria-modal="true" aria-labelledby="calH">${calBody(m.ym,false)}</div>`;}
 function pastSheet(m){
   const R=activeRoutine();const due=pastDue(R,m.date);
-  const on=state.sessions.filter(x=>x.date===m.date).map(x=>x.dayName||'Session');
+  const on=sessionsOn(m.date).map(x=>x.dayName||'Session');
   const opts=R.days.map((d,i)=>({d,i})).filter(x=>!x.d.rest&&x.d.items.length>0).sort((a,b)=>(b.i===due)-(a.i===due));
   const btn=({d,i})=>`<button class="btn block${i===due?' primary':''} pastday" data-act="pastGo" data-day="${i}"><span>${esc(dayLabel(R,i))}: ${esc(d.name)}</span>${i===due?'<small>due then</small>':`<small>${d.items.length} exercises</small>`}</button>`;
   return `<div class="sheet" role="dialog" aria-modal="true" aria-labelledby="pastH"><div class="sheet-h"><h3 id="pastH">Log a past workout</h3><button class="ib" aria-label="Close" data-act="mClose">✕</button></div>
@@ -9672,7 +9729,7 @@ const ACT={
   calDay(t){
     const d=t.dataset.date;if(!isDate(d)||d>today())return;
     if(ui.modal)closeModal();
-    const ss=state.sessions.filter(x=>x.date===d);
+    const ss=sessionsOn(d);
     if(ss.length===1){ACT.wkOpen({dataset:{id:ss[0].id}});return;}
     // Two-a-days (r34): a day with more than one session asks which.
     if(ss.length>1){openModal({kind:'daypick',date:d});return;}
@@ -10075,7 +10132,14 @@ const ACT={
     const d=state.draft;const bi=t&&t.dataset&&t.dataset.b!=null?+t.dataset.b:null;const b=bi!=null&&d?d.ex[bi]:null;
     const from=ui.tab==='settings'?(ui.prevTab||'settings'):ui.tab;
     const cat=t&&t.dataset&&FB_TITLE[t.dataset.cat]?t.dataset.cat:'bug';
-    openModal({kind:'feedback',cat,msg:'',shot:null,from:ui.tab==='today'&&d?'session':from,ex:b?exName(b.exId):null});
+    /* From the crash screen (r47): the report opens written, with the error the
+       screen shows, so one tap sends it; the context marks it a crash and
+       carries the stack the log kept. Until r47 a crash reached the owner only
+       if the lifter wrote it up by hand. */
+    const crash=!!(t&&t.dataset&&t.dataset.crash);const last=crash?logBuf.filter(x=>x.a==='render').slice(-1)[0]:null;
+    const tabName={today:state.draft?'Session':'Today',program:'Plan',dash:'Stats',history:'History',settings:'Settings'}[ui.tab]||ui.tab;
+    const msg=crash?`The app broke on the ${tabName} screen.${last?` Error: ${last.m}`:''}`:'';
+    openModal({kind:'feedback',cat,msg,shot:null,from:crash?'crash':ui.tab==='today'&&d?'session':from,ex:b?exName(b.exId):null,crash:crash||undefined});
   },
   /* A lifter's own exercise stays in their log (r34). Suggesting it sends
      it to the owner as a report; the library changes only when the owner
@@ -10089,7 +10153,8 @@ const ACT={
   // Signed out: the report as text for a message, without sending anything.
   async fbCopy(){
     const m=ui.modal;if(!m||m.kind!=='feedback')return;
-    const txt=`Ironlog: ${FB_TITLE[m.cat]||FB_TITLE.bug}\n\n(Write it here)\n\n${JSON.stringify(fbContext(m),null,1)}`;
+    // A report opened from the crash screen is already written (r47), so the copy carries it.
+    const txt=`Ironlog: ${FB_TITLE[m.cat]||FB_TITLE.bug}\n\n${m.msg&&m.msg.trim()?m.msg.trim():'(Write it here)'}\n\n${JSON.stringify(fbContext(m),null,1)}`;
     let ok=false;try{if(navigator.clipboard){await navigator.clipboard.writeText(txt);ok=true;}}catch(e){ok=false;}
     if(!ok){closeModal();openModal({kind:'text',title:'Report details',help:'Copy this into a message to the app owner, with what happened.',text:txt,readonly:true});return;}
     m.sent=true;m.copied=true;renderModal();
@@ -10361,31 +10426,9 @@ const ACT={
     const got=parseSets(txt,ex,defW,null,rirScale()==='rpe');
     const finish=list=>{const n=fillSets(m.b,list);closeModal();rerenderKeepScroll();toast(`${n} set${n===1?'':'s'} filled and marked done`);};
     if(got){finish(got);return;}
-/*ai{*/    if(!aiOn()){m.err=`Could not read that. Try the pattern 225x5, 5, 4 ${rirScale()==='rpe'?'rpe 9':'rir 1'}.`;renderModal();return;}
-    const ctl=new AbortController();AI.ctl=ctl;m.busy=true;m.err='';renderModal();
-    AI.fn.json(`Convert this gym log for the exercise "${ex.name}" into sets. Loads are in ${U()}.${ex.bw?' This is a bodyweight exercise: the load is weight added to bodyweight, and "bodyweight" or "bw" alone means 0.':''} When a set has no load, it uses the previous set's load; if no load is given anywhere, use null. ${rirScale()==='rpe'?'Effort is written as RPE (10 means no reps left): convert each to rir = 10 minus the RPE. ':''}RIR means reps in reserve; use null when it is not stated for a set, and apply a value stated for "all" or "each" to every set. Reply with only a JSON array, one object per set in order, like [{"w":225,"r":5,"rir":1}].\n\nLog: ${txt}`,{signal:ctl.signal,modelTier:'quick'})
-      .then(a=>{if(ui.modal!==m)return;const v=aiSetsValid(a);if(!v){m.err='Claude could not turn that into sets. Try the pattern 225x5, 5, 4 rir 1.';return;}
-        if(v.some(x=>!x.w)&&!ex.bw&&defW!=null)v.forEach(x=>{if(!x.w)x.w=defW;});finish(v);})
-      .catch(e=>{if(ui.modal!==m)return;m.err=aiErr(e)||'';})
-      .finally(()=>{if(AI.ctl===ctl)AI.ctl=null;if(ui.modal===m){m.busy=false;renderModal();}});
-/*}ai=m.err=`Could not read that. Try the pattern 225x5, 5, 4 ${rirScale()==='rpe'?'rpe 9':'rir 1'}.`;renderModal();*/  },
+m.err=`Could not read that. Try the pattern 225x5, 5, 4 ${rirScale()==='rpe'?'rpe 9':'rir 1'}.`;renderModal();  },
   aiStop(){if(AI.ctl){try{AI.ctl.abort();}catch(e){/* already finished */}}},
-/*ai{*/  aiDebrief(t){const sid=t.dataset.sid;const pr=debriefPrompt(sid);if(!pr){toast('That session is no longer saved');return;}const m={kind:'ai',title:'Session debrief'};openModal(m);aiRun(m,pr,'default');},
-  aiReview(){openModal({kind:'ai',title:'Ask Claude about your training',ask:true,q:''});},
-  aiAsk(){const m=ui.modal;if(!m||m.kind!=='ai')return;const q=(($('#aiQ')||{}).value||'').trim();m.q=q;if(!q){m.err='Type a question first.';renderModal();return;}if(!state.sessions.some(x=>!x.demo)){m.err='Log a session first so there is something to review.';renderModal();return;}aiRun(m,reviewPrompt(q),'default');},
-  bAiSwap(t){openModal({kind:'aiSwap',mode:'swapBlock',b:+t.dataset.b,why:'',picks:null});},
-  aiSwapAsk(){
-    const m=ui.modal;if(!m||m.kind!=='aiSwap'||!aiOn())return;const b=state.draft&&state.draft.ex[m.b];if(!b)return;
-    m.why=(($('#aiWhy')||{}).value||'').trim();const pr=swapPrompt(b,m.why);if(!pr){m.err='No other exercise in your library trains this muscle.';renderModal();return;}
-    const ctl=new AbortController();AI.ctl=ctl;m.busy=true;m.err='';renderModal();
-    AI.fn.json(pr.text,{signal:ctl.signal,modelTier:'default'})
-      .then(r=>{if(ui.modal!==m)return;const ok=new Set(pr.cands.map(e=>e.id));const seen=new Set();
-        const picks=(r&&Array.isArray(r.picks)?r.picks:[]).filter(p=>p&&typeof p.id==='string'&&ok.has(p.id)&&!seen.has(p.id)&&seen.add(p.id)).slice(0,3).map(p=>({id:p.id,why:typeof p.why==='string'?p.why.slice(0,200):''}));
-        if(!picks.length)m.err='No usable suggestions came back. Try again or use Swap exercise.';m.picks=picks;})
-      .catch(e=>{if(ui.modal!==m)return;m.err=aiErr(e);})
-      .finally(()=>{if(AI.ctl===ctl)AI.ctl=null;if(ui.modal===m){m.busy=false;renderModal();}});
-  },
-/*}ai=*/  heroMore(){ui.heroMore=!ui.heroMore;rerenderKeepScroll();},
+  heroMore(){ui.heroMore=!ui.heroMore;rerenderKeepScroll();},
   startAltOpen(t){openModal({kind:'startAlt',di:+t.dataset.day,free:t.dataset.free==='1'});},
   // A choice in Change: the sheet closes first, then the start it names runs as the card's button did.
   altGo(t){const go=t.dataset.go;closeModal();if(ACT[go])ACT[go](t);},
@@ -11354,73 +11397,10 @@ function mountSortable(){
     }}));
 }
 
-/*ai{*//* ---------- Claude features (sample capability) ----------
-   Everything here runs on the viewer's own Claude plan and only on a tap.
-   The page works fully without it: when the viewer cannot use Claude, the
-   buttons are hidden. The set parser below needs no Claude at all; Claude is
-   asked only when the parser cannot read what was typed. */
-const AI={fn:null,ready:false,off:false,ctl:null};
-async function aiInit(){
-  try{
-    if(!window.claude||typeof window.claude.use!=='function')return;
-    const f=await window.claude.use('sample');
-    if(typeof f==='function'){AI.fn=f;AI.ready=true;if(ui.modal)renderModal();else if(ui.tab==='dash'||state.draft)rerenderKeepScroll();}
-  }catch(e){log('ai',e);}
-}
-const aiOn=()=>AI.ready&&!AI.off;
-function aiErr(e){
-  const c=e&&e.code;
-  if(['not_granted','sampling_disabled','not_declared','capability_disabled','capability_removed','tools_unavailable','images_unavailable'].includes(c)){AI.off=true;return 'Claude is not available in this view.';}
-  if(c==='cancelled')return '';
-  if(c==='rate_limited')return 'Claude is busy or your usage limit was reached. Try again later.';
-  if(c==='session_expired')return 'Sign in to Claude again, then try again.';
-  if(c==='prompt_too_large')return 'That is too much history to send at once. Ask about something narrower.';
-  if(c==='refused')return 'Claude declined this request. Rephrase it and try again.';
-  if(c==='invalid_json')return 'The reply could not be read. Try again.';
-  if(c==='empty_completion')return 'Claude returned nothing. Try again with a shorter request.';
-  return 'The connection to Claude failed. Try again.';
-}
-const setTxt=(ex,s)=>`${s.warm?'warm-up ':''}${s.drop?'drop ':''}${loadLabel(ex,+s.w||0)}${ex.bw?'':' '+U()} ${ex.timed?`held ${s.r} s`:`x ${s.r}`}${!ex.timed&&s.rir!=null&&s.rir!==''?` @ RIR ${s.rir}`:''}${s.cal?` (calibration set: predicted ${s.cal.pred} left at rep ${s.cal.at})`:''}`;
-function sessTxt(ss){
-  const tag=ss.deload?' (deload)':ss.light?' (lighter)':'';
-  const body=ss.ex.map(b=>{const ex=EX(b.exId);return `  ${ex.name} (load ${loadWords(ex)}${ex.perSide?', reps per side':''})${b.rr?` [planned ${repSpan(b.rr[0],b.rr[1],'-')} reps]`:''}: ${b.sets.map(s=>setTxt(ex,s)).join(', ')}${b.note?` (note: ${b.note})`:''}`;}).join('\n');
-  const ck=ss.chk?`, check-in ${CHK_Q.filter(([k])=>ss.chk[k]).map(([k,l,n])=>`${l.toLowerCase()} ${chkWord(n[ss.chk[k]-1])}`).join(', ')}`:'';
-  return `${ss.date} ${ss.dayName.replace(/ \((lighter|deload)\)$/,'')}${tag}${ss.free?' (freestyle)':''}${ss.durMin?`, ${ss.durMin} min`:''}${ck}\n${body}${ss.notes?`\n  Session note: ${ss.notes}`:''}`;
-}
-/* A plain-text picture of the training: routine, weekly volume against the
-   bands, strength trends, stalls, body data, then sessions newest first,
-   trimmed from the oldest end to stay well under the 64 KB input cap. */
-function aiDigest(maxBytes){
-  const I=IDX();const R=activeRoutine();const bands=state.settings.bands;const L=[];
-  if(state.settings.heightCm)L.push(`Height: ${heightTxt(state.settings.heightCm)}.`);
-  L.push(`Units: ${U()}. For bodyweight exercises the load shown is added weight (BW = bodyweight only). RIR = reps in reserve. Warm-up sets are excluded from analysis. Timed holds are logged in seconds.`);
-  if(state.settings.rirMode==='off')L.push('RIR tracking is switched off in this app: every working set counts as hard and estimates use reps alone.');
-  else if(state.settings.rirMode==='cal'){const c=calStats();if(c.recent>=2&&c.bias)L.push(`RIR correction is on: logged RIR is shifted by ${c.bias>0?'+':''}${c.bias} (median calibration error) before analysis.`);}
-  {const c=calStats();if(c.n)L.push(`Calibration sets: ${c.n}; median error ${c.bias>0?'+':''}${c.bias} reps (positive means the lifter stops with more reps left than they call).`);}
-  L.push(`Active routine "${R.name}", ${R.schedule==='weekly'?'fixed weekdays':`${R.days.length}-day cycle`}:`);
-  R.days.forEach((d,i)=>L.push(`- ${dayLabel(R,i)} ${d.name}${d.rest?': rest':': '+d.items.map(it=>`${exName(it.exId)} ${it.sets}x${repSpan(it.repMin,it.repMax,'-')} @${it.rir} RIR, ${it.rest}s rest`).join('; ')}`));
-  const avg=actualAvg4();
-  if(avg)L.push(`Hard sets per week, average over the last ${avg._weeks} trained week(s), direct 1 and secondary 0.5, with target band: ${MK.filter(m=>(avg[m]||0)>0||(!TRACK_ONLY.has(m)&&bands[m][0]>0)).map(m=>`${ML[m]} ${r1(avg[m]||0)} (${TRACK_ONLY.has(m)?'tracked only, no target':`${bands[m][0]}-${bands[m][1]}`})`).join(', ')}.`);
-  else L.push('No complete training week in the last 4 weeks yet, so weekly volume is not established.');
-  if(I.scores.length)L.push(`Strength trend (median e1RM change over up to 6 weeks, current rep range): ${I.scores.map(s=>`${ML[s.m]} ${s.clear?`${s.score>=0?'+':''}${r1(s.score)}%`:'unclear'}`).join(', ')}.`);
-  const st=stalledIds();if(st.length)L.push(`Stalled (flat 3 weeks or more, no PR in the last 3 sessions): ${st.map(exName).join(', ')}.`);
-  const inj=state.injuries||[];if(inj.length)L.push(`Injury flags: ${inj.map(x=>injLabel(x.m)+(x.note?` (${x.note})`:'')).join(', ')}.`);
-  if(isDeloadWeek())L.push('This week is a deload week.');
-  const bws=[...state.bodyweights].sort((a,b)=>a.date<b.date?-1:1).slice(-6);
-  if(bws.length)L.push(`Bodyweight: ${bws.map(b=>`${b.date} ${fmtW(b.kg)} ${U()}`).join(', ')}.`);
-  const ms=[...state.measurements].sort((a,b)=>a.date<b.date?-1:1).slice(-4);
-  if(ms.length)L.push(`Tape (${LU()}): ${ms.map(m=>`${m.date} `+MEAS.filter(([k])=>m[k]>0).map(([k,l])=>`${l} ${lenD(m[k])}`).join(', ')).join('; ')}.`);
-  const head=L.join('\n');
-  const ss=sortedSessions().filter(x=>!x.demo).reverse();
-  const out=[];let size=head.length+200;
-  for(const x of ss){const t=sessTxt(x);if(size+t.length>maxBytes)break;out.push(t);size+=t.length+1;}
-  return `${head}\n\nSessions, newest first (${out.length} of ${ss.length}):\n${out.join('\n')||'none'}`;
-}
 
-/*}ai=
 const AI={fn:null,ready:false,off:true,ctl:null};function aiInit(){}const aiOn=()=>false;
 
-*//* Typed or dictated sets. Examples it reads:
+/* Typed or dictated sets. Examples it reads:
    "235x5, 5, 4 rir 1"   three sets at 235, RIR 1 on each
    "185x8@2 205x6@1"      load changes mid-exercise, RIR per set
    "225 for 5 5 4 at 1"   "for" and "at" work like x and @ (RIR 1 on the last set)
@@ -11449,17 +11429,7 @@ function parseSets(text,ex,defW,conv,rpe){
   }
   return out.length&&out.length<=20?out:null;
 }
-/*ai{*/function aiSetsValid(a){
-  if(!Array.isArray(a)||!a.length||a.length>20)return null;
-  const out=[];let w=null;
-  for(const x of a){if(!x||typeof x!=='object')return null;
-    if(x.w!=null){if(!(isFinite(+x.w)&&+x.w>=0&&+x.w<=3000))return null;w=fromD(+x.w);}
-    const r=Math.round(+x.r);if(!(r>=1&&r<=100))return null;
-    const rir=x.rir==null||x.rir===''?null:+x.rir;if(rir!=null&&!(rir>=0&&rir<=10))return null;
-    out.push({w:w==null?0:w,r,rir});}
-  return out;
-}
-/*}ai=*/function fillSets(bi,list){
+function fillSets(bi,list){
   const d=state.draft;const b=d&&d.ex[bi];if(!b)return 0;
   // On an assisted lift the numbers typed or said are the machine's help.
   if(EX(b.exId).assist)for(const p of list)if(p.w>0)p.w=-p.w;
@@ -11470,37 +11440,12 @@ function parseSets(text,ex,defW,conv,rpe){
   }
   saveNow();return list.length;
 }
-/*ai{*/function aiRun(m,input,tier,onDone){
-  if(!aiOn())return;
-  const ctl=new AbortController();AI.ctl=ctl;m.busy=true;m.err='';m.out='';renderModal();
-  AI.fn(input,{signal:ctl.signal,modelTier:tier||'default',onText:({text})=>{m.out=text;const o=document.getElementById('aiOut');if(o)o.textContent=text;}})
-    .then(r=>{if(ui.modal!==m)return;m.out=r.text;m.done=true;onDone&&onDone(r);})
-    .catch(e=>{if(ui.modal!==m)return;m.out=e&&typeof e.text==='string'?e.text:'';m.err=aiErr(e);})
-    .finally(()=>{if(AI.ctl===ctl)AI.ctl=null;if(ui.modal!==m)return;m.busy=false;renderModal();});
-}
-const AI_STYLE='Write plain text only: no markdown, no headings, no bullet symbols, no bold. Short paragraphs. Be direct and specific, give numbers where they help, and never invent data that is not in what follows. If the data is too thin to support a conclusion, say so in one sentence.';
-function debriefPrompt(sid){
-  const ss=state.sessions.find(x=>x.id===sid);if(!ss)return null;
-  const prev=ss.ex.map(b=>{const ex=EX(b.exId);const p=sortedSessions().filter(x=>x.date<ss.date||(x.date===ss.date&&x.id!==ss.id)).reverse().find(x=>x.ex.some(y=>y.exId===b.exId));
-    if(!p)return `  ${ex.name}: first logged session.`;const pb=p.ex.find(y=>y.exId===b.exId);return `  ${ex.name}, ${p.date}: ${pb.sets.map(s=>setTxt(ex,s)).join(', ')}`;}).join('\n');
-  return `You are an experienced strength and hypertrophy coach reviewing one training session for your client. ${AI_STYLE} Keep it under 170 words. Cover: what went well, the single most useful change for next time with specific loads or reps, and anything in the numbers that looks like fatigue, poor warm-up practice or a logging mistake.\n\nSESSION JUST LOGGED\n${sessTxt(ss)}\n\nPREVIOUS TIME FOR EACH EXERCISE\n${prev}\n\nCONTEXT\n${aiDigest(24000)}`;
-}
-function reviewPrompt(q){
-  return `You are an experienced strength and hypertrophy coach with your client's complete training log in front of you. ${AI_STYLE} Keep it under 280 words. Answer this question from the client: "${q}"\n\nTRAINING LOG\n${aiDigest(52000)}`;
-}
-function swapPrompt(b,reason){
-  const ex=EX(b.exId);const mus=new Set([ex.primary,...ex.secondary]);
-  const cands=state.exercises.filter(e=>!e.archived&&e.id!==ex.id&&(e.primary===ex.primary||mus.has(e.primary))).sort((a,c)=>(c.primary===ex.primary)-(a.primary===ex.primary)).slice(0,70);
-  if(!cands.length)return null;
-  const inDay=new Set(state.draft.ex.map(x=>x.exId));
-  return {cands,text:`A lifter needs to swap one exercise during a session. Pick up to 3 replacements from the list, best first, that train the same main muscle through a similar range and are practical right now. Avoid exercises already in today's session unless nothing else fits. ${reason?`Reason for the swap: "${reason}".`:'No reason given.'}\n\nExercise to replace: ${ex.name} (main: ${ML[ex.primary]}${ex.secondary.length?`, also ${ex.secondary.map(m=>ML[m]).join(', ')}`:''}; ${EQL[ex.equip]||ex.equip}). Planned ${b.plan.sets}x${repSpan(b.plan.repMin,b.plan.repMax,'-')}.\nAlready in today's session: ${[...inDay].map(exName).join(', ')}.\nInjury flags: ${(state.injuries||[]).map(x=>ML[x.m]).join(', ')||'none'}.\n\nCandidates (id | name | main muscle | equipment):\n${cands.map(e=>`${e.id} | ${e.name} | ${ML[e.primary]} | ${EQL[e.equip]||e.equip}`).join('\n')}\n\nReply with only JSON: {"picks":[{"id":"<id from the list>","why":"<one short sentence>"}]}`};
-}
-/*}ai=*/
+
 window.__onLib=(which)=>{if((which==='chart'&&ui.tab==='dash')||(which==='sortable'&&ui.tab==='program'))rerenderKeepScroll();};
 trashTidy();
 // r44: floors from a first-run pick made before they were recorded (fitRecordOld), once, on this device's state.
 try{if(fitRecordOld())saveNow();}catch(e){log('fitRecordOld',e);}
-window.__ironlog={get state(){return state;},set state(v){state=v;},recent4w,weekSessions,fmtDate,fmtDateLong,fbShrink,orderAt,orderRun,dropOnlyLift,profHeavy,appBand,fitRecordOld,prof,profClean,profRule,profPlan,defPlan,defBand,profMoveBands,profApplyList,strengthPick,PROF_DAYS,FOCUS_MAX,estInLoad,keepExtra,EXTRA_MAX,draftPlanMin,pace,paceRatios,sessModelMin,PACE_N,PACE_DAYS,PACE_MIN,plainTemplate,trashTidy,ENV,KEY,COMMON,COMMON_TIP,isCommon,bwEvery,isRestWeek,sessCmp,avgWeeks,weekStreak,coach,noLog,afterSet,adjOn,bwAt,newBlock,cycleState,sortedSessions,addDays,loadIn,gymRack,gymClean,dbListOf,capOf,refreshEx,effShow,rirScale,setStr,libExercises,obGate,obTour,andList,belowMin,aboveMax,starterRoutine,starterSigs,plateList,exBarKg,VOL_MODES,liveLogFetch,regionSrc,fitTargets,firstFullWeek,moveBlock,BANDS,installSheet,siteHost,greyW,effW,greyR,lighterLoad,incOf,swapPlan,planSetsPerWeek,weekNeed,stepRead,e1inv,rtfAt,rtfOf,rtfBand,calStats,rirEff,isHard,setCredit,tonnage,loadMode,loadWords,loadNote,progStep,jumpCap,setSecs,setupSecs,recovery,rolling7,rankDays,rankExercises,isCompound,patternOf,noE1,whtrLine,exHeadline,remainMin,shortPlan,weekPlan,cycleProjection,lastLighterWeek,regionBalance,parseHeight,mixCheck,swapCands,eqPlan,exportCSV,importData,chunksOf,assemble,sessionMuscles,TRACK_ONLY,cloud,Hx,mergeChunk,baseOf,sync:()=>cq(cloudPull),TEMPLATES,lastRFor,impDate,impRows,impNorm,impMatch,impFromText,impFromTable,impHeader,impBuild,impStart,impXlsx,parseSets,undoStack,undoRestore,undoForget,allTimeBests,bestsBoard,obActive,fmtW,rirUsual,rirEst,routineFromTemplate,plannedSets,map3d:()=>({state:B3.state,fail:B3.fail,meshes:B3.meshes.length,yaw:B3.yaw,glow:Object.keys(B3.mats).filter(m=>B3.mats[m].emissiveIntensity>0),canvas:!!document.querySelector('#bm3d canvas'),colors:Object.fromEntries(Object.entries(B3.mats).map(([m,mt])=>[m,'#'+mt.color.getHexString()])),pick:(x,y)=>map3dPick(x,y),want:map3dColors()}),cloudState:()=>({on:cloud.on,status:cloud.status,err:cloud.err,uid:cloud.uid,acct:cloud.acct}),acctUser:()=>acct.user,acctWaiting:()=>!!acctWait.pw,flush:()=>cq(cloudFlush),backupDue,routineUpdates,planFor,platesMode,plateText,chunksOf,IDX,suggest,e1,render,ACT,ui,makeDemo,invalidate,normalize,snapshot,saveNow,timer,weekStats,weekStart,today,EX,blockProgress,dayMinutes,weekStreak,coach,tonnageNow,livePR,movers,stalledIds,muscleStatus,actualAvg4,plannedPerWeek,parseSets,/*ai{*/aiSetsValid,fillSets,/*}ai=fillSets,*/newBlock,lastNoteOf,sizeRows,sessionMuscleSets,sessionCapNote,routineClutter,rowBlank,dayReasons,impTextSets,liftTrend,prsWithin,activeRoutine,rackStep,repFloor,sessionLength,prBeat,exInjury,exJoints,openModal,EQUIP,HARD_EX,recentLighter,planEvidenceNote,howToUrl,editFp,toast,avgWeeks,regionWk,REGION_WKS,SAFETY_TXT,libFiltered,nameMatch,workLoad,fitE,offSession,tagged,fatigueStalls,avgWeeksTxt,routineFromLog,repSpan,rangeWords,calDueIdx,readyCard,/*ai{*/aiDigest,debriefPrompt,reviewPrompt,swapPrompt,AI,/*}ai=*/sameRR,hintOnce,overSets,rackTol,daysOff,BACK_DAYS,prName,sessTm,effTgt,bwDueCard,bwNoLoad,applyPick,joinAdjacent,sameExOnce,goalState,goalLine,bwRefLoad,ML,exMusParts,musTrend};
+window.__ironlog={get state(){return state;},set state(v){state=v;},fbContext,FB_CTX_MAX,logCut,logBuf,log,dateIndex,sessionsOn,bestLine,whyTarget,recent4w,weekSessions,fmtDate,fmtDateLong,fbShrink,orderAt,orderRun,dropOnlyLift,profHeavy,appBand,fitRecordOld,prof,profClean,profRule,profPlan,defPlan,defBand,profMoveBands,profApplyList,strengthPick,PROF_DAYS,FOCUS_MAX,estInLoad,keepExtra,EXTRA_MAX,draftPlanMin,pace,paceRatios,sessModelMin,PACE_N,PACE_DAYS,PACE_MIN,plainTemplate,trashTidy,ENV,KEY,COMMON,COMMON_TIP,isCommon,bwEvery,isRestWeek,sessCmp,avgWeeks,weekStreak,coach,noLog,afterSet,adjOn,bwAt,newBlock,cycleState,sortedSessions,addDays,loadIn,gymRack,gymClean,dbListOf,capOf,refreshEx,effShow,rirScale,setStr,libExercises,obGate,obTour,andList,belowMin,aboveMax,starterRoutine,starterSigs,plateList,exBarKg,VOL_MODES,liveLogFetch,regionSrc,fitTargets,firstFullWeek,moveBlock,BANDS,installSheet,siteHost,greyW,effW,greyR,lighterLoad,incOf,swapPlan,planSetsPerWeek,weekNeed,stepRead,e1inv,rtfAt,rtfOf,rtfBand,calStats,rirEff,isHard,setCredit,tonnage,loadMode,loadWords,loadNote,progStep,jumpCap,setSecs,setupSecs,recovery,rolling7,rankDays,rankExercises,isCompound,patternOf,noE1,whtrLine,exHeadline,remainMin,shortPlan,weekPlan,cycleProjection,lastLighterWeek,regionBalance,parseHeight,mixCheck,swapCands,eqPlan,exportCSV,importData,chunksOf,assemble,sessionMuscles,TRACK_ONLY,cloud,Hx,mergeChunk,baseOf,sync:()=>cq(cloudPull),TEMPLATES,lastRFor,impDate,impRows,impNorm,impMatch,impFromText,impFromTable,impHeader,impBuild,impStart,impXlsx,parseSets,undoStack,undoRestore,undoForget,allTimeBests,bestsBoard,obActive,fmtW,rirUsual,rirEst,routineFromTemplate,plannedSets,map3d:()=>({state:B3.state,fail:B3.fail,meshes:B3.meshes.length,yaw:B3.yaw,glow:Object.keys(B3.mats).filter(m=>B3.mats[m].emissiveIntensity>0),canvas:!!document.querySelector('#bm3d canvas'),colors:Object.fromEntries(Object.entries(B3.mats).map(([m,mt])=>[m,'#'+mt.color.getHexString()])),pick:(x,y)=>map3dPick(x,y),want:map3dColors()}),cloudState:()=>({on:cloud.on,status:cloud.status,err:cloud.err,uid:cloud.uid,acct:cloud.acct}),acctUser:()=>acct.user,acctWaiting:()=>!!acctWait.pw,flush:()=>cq(cloudFlush),backupDue,routineUpdates,planFor,platesMode,plateText,chunksOf,IDX,suggest,e1,render,ACT,ui,makeDemo,invalidate,normalize,snapshot,saveNow,timer,weekStats,weekStart,today,EX,blockProgress,dayMinutes,weekStreak,coach,tonnageNow,livePR,movers,stalledIds,muscleStatus,actualAvg4,plannedPerWeek,parseSets,fillSets,newBlock,lastNoteOf,sizeRows,sessionMuscleSets,sessionCapNote,routineClutter,rowBlank,dayReasons,impTextSets,liftTrend,prsWithin,activeRoutine,rackStep,repFloor,sessionLength,prBeat,exInjury,exJoints,openModal,EQUIP,HARD_EX,recentLighter,planEvidenceNote,howToUrl,editFp,toast,avgWeeks,regionWk,REGION_WKS,SAFETY_TXT,libFiltered,nameMatch,workLoad,fitE,offSession,tagged,fatigueStalls,avgWeeksTxt,routineFromLog,repSpan,rangeWords,calDueIdx,readyCard,sameRR,hintOnce,overSets,rackTol,daysOff,BACK_DAYS,prName,sessTm,effTgt,bwDueCard,bwNoLoad,applyPick,joinAdjacent,sameExOnce,goalState,goalLine,bwRefLoad,ML,exMusParts,musTrend};
 render();
 wakeOn();
 timerResume();

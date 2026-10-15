@@ -14,7 +14,7 @@ if(ENV==='preview')document.documentElement.dataset.env='preview';
 const HAD_LOG=(()=>{try{return localStorage.getItem(KEY)!=null;}catch(e){return false;}})();
 /* Shown in Settings, in diagnostics and in backups, so a bug report can be
    matched to the exact build. */
-const APP_VERSION='2026.10.14-r46';
+const APP_VERSION='2026.10.15-r47';
 /* The logo (r25): an upright dumbbell that is also the I of Ironlog. Same
    numbers as scripts/icons.py, which draws the app icons. */
 const MARK_SVG='<svg class="mark" viewBox="-242 -378 484 756" aria-hidden="true" focusable="false"><rect class="mk-h" x="-30" y="-300" width="60" height="600" rx="14"/><rect class="mk-h" x="-80" y="-192" width="160" height="32" rx="12"/><rect class="mk-h" x="-80" y="160" width="160" height="32" rx="12"/><rect class="mk-p" x="-240" y="-376" width="480" height="92" rx="30"/><rect class="mk-p" x="-190" y="-270" width="380" height="66" rx="26"/><rect class="mk-p" x="-190" y="204" width="380" height="66" rx="26"/><rect class="mk-p" x="-240" y="284" width="480" height="92" rx="30"/></svg>';
@@ -25,10 +25,19 @@ const LOGK=KEY+'.log';
 // Week or Month in This week on Today (r26), per device.
 const WKVIEW_KEY=KEY+'.wkView';
 const logBuf=(()=>{try{const a=JSON.parse(localStorage.getItem(LOGK)||'[]');return Array.isArray(a)?a:[];}catch(e){return [];}})();
+/* A URL's query and fragment, cut from what the log keeps (r47). The log
+   goes out with a problem report, and the page's own URL holds a reset
+   link's token in its fragment for a moment after the link is opened; a stack
+   frame carries that URL, and an error message can. Only the part after ? or #
+   of a URL goes, up to the frame's :line:column, so the file and line stay and
+   ordinary words with a ? or # in them are left alone. */
+const logCut=t=>String(t).replace(/([a-z][a-z0-9+.-]*:\/\/[^\s?#)]*)[?#](?:[^\s):]|:(?!\d))*/gi,'$1');
 function log(area,err){
   try{
     const m=err&&err.message?err.message:err&&typeof err==='object'?JSON.stringify(err):String(err);
-    logBuf.push({t:new Date().toISOString(),a:area,m:String(m).slice(0,300),v:APP_VERSION});
+    // Where it broke, not only what it said (r47): the first lines of the stack travel with a problem report, so a crash can be found in the code without the phone.
+    const st=err&&typeof err.stack==='string'?logCut(err.stack.split('\n').slice(0,4).join('\n')).slice(0,400):'';
+    logBuf.push({t:new Date().toISOString(),a:area,m:logCut(m).slice(0,300),v:APP_VERSION,...(st?{s:st}:{})});
     while(logBuf.length>60)logBuf.shift();
     localStorage.setItem(LOGK,JSON.stringify(logBuf));
   }catch(e){/* logging must never throw */}
