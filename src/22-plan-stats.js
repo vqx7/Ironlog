@@ -185,7 +185,7 @@ function viewDash(){
      before this one, which the label now says out loud. */
   const planned=freeMode()?0:trainDaysOf(R)*weekFactor(R);
   const cur=weekStart(today());
-  const sessDates=new Set(state.sessions.map(s=>s.date));
+  const sessDates=new Set(Object.keys(dateIndex().byDate));
   /* Only weeks since your first session count. Before that there was nothing
      to adhere to, and counting those weeks read 0% on day one. */
   const firstWk=firstFullWeek();

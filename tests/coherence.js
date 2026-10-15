@@ -144,6 +144,44 @@ const readAll = () => {
     await P.ctx.close();
   }
 
+  // ---- A day with two sessions, wherever it is shown (r47): the week bar, the
+  // calendar, the day picker, This month's title and History all read one index
+  // of sessions by date (dateIndex), in one order (sessCmp). Until r47 each
+  // grouped the log itself and the week bar ordered the day by id, so the
+  // morning session could be named second.
+  {
+    const P = await open(FILE, { browser, clock: '2026-10-14T10:00:00' });
+    const r = await P.page.evaluate(() => { const L = window.__ironlog; const s = L.state; s.settings.onboarded = true; s.settings.hidden = [];
+      const R = L.activeRoutine(); const days = R.days.filter(d => !d.rest);
+      const mk = (id, date, t, name) => ({ id, date, t, dayIdx: R.days.indexOf(days[0]), dayId: days[0].id, dayName: name, routineId: R.id, notes: '', ex: [{ exId: 'bench', sets: [{ w: 60, r: 8, rir: 1, done: true }] }] });
+      const ws = L.weekStart(L.today()); const mon = ws;
+      // The ids are in the opposite order to the clock, so only a reader that orders by start time names the morning first.
+      s.sessions = [mk('zz-morning', mon, Date.parse(mon + 'T07:00:00'), 'Morning'), mk('aa-evening', mon, Date.parse(mon + 'T18:00:00'), 'Evening'), mk('bb-other', L.addDays(ws, 2), Date.parse(L.addDays(ws, 2) + 'T09:00:00'), 'Other')];
+      L.state = L.normalize(s); L.invalidate(); L.saveNow();
+      const out = { mon };
+      L.ui.tab = 'today'; L.ui.wkView = 'week'; L.render();
+      const wb = [...document.querySelectorAll('#wkbar button')].find(b => b.querySelector('.dn').textContent === String(+mon.slice(8)));
+      out.bar = wb ? { name: wb.querySelector('.nm').textContent, label: wb.getAttribute('aria-label') } : null;
+      L.ACT.wkView({ dataset: { v: 'month' } }); L.render();
+      const cal = document.querySelector(`[data-act="calDay"][data-date="${mon}"]`);
+      out.cal = cal ? { x: cal.querySelector('.x').textContent, label: cal.getAttribute('aria-label') } : null;
+      out.monthTitle = (document.querySelector('[data-mkey="week"] .sec-s') || {}).textContent || '';
+      out.calMarks = [...document.querySelectorAll('[data-act="calDay"].on')].reduce((a, b) => a + (+(b.querySelector('.x').textContent.replace('×', '')) || 1), 0);
+      L.ACT.calDay({ dataset: { date: mon } });
+      out.pick = [...document.querySelectorAll('#modal [data-act="wkOpen"]')].map(b => b.textContent.trim());
+      L.ACT.mClose();
+      L.ui.tab = 'history'; L.render();
+      out.hist = [...document.querySelectorAll('#view [data-act="histToggle"][data-id]')].map(b => b.dataset.id);
+      return out; });
+    ok(r.bar && r.bar.name === 'Morning +1' && /Morning, Evening, logged/.test(r.bar.label), 'the week bar names the morning session first and counts the second', r.bar);
+    ok(r.cal && r.cal.x === '×2' && /Morning, Evening/.test(r.cal.label), 'the calendar marks the day ×2 in the same order', r.cal);
+    ok(r.pick.length === 2 && /^Morning/.test(r.pick[0]) && /^Evening/.test(r.pick[1]), 'the day picker lists them in that order', r.pick);
+    ok(/^3 sessions/.test(r.monthTitle) && r.calMarks === 3, 'This month counts what the calendar marks', { title: r.monthTitle, marks: r.calMarks });
+    ok(r.hist.indexOf('aa-evening') < r.hist.indexOf('zz-morning') && r.hist.includes('bb-other'), 'History, newest first, puts the evening above the morning', r.hist);
+    ok(!P.errors.length, 'no page errors (two sessions in a day)', P.errors);
+    await P.ctx.close();
+  }
+
   await browser.close();
   console.log(fails.length ? `${fails.length} FAILED` : 'ALL PASS'); process.exit(fails.length ? 1 : 0);
 })().catch(e => { console.log('FAIL crashed:', e && e.stack || e); process.exit(1); });

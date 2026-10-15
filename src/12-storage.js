@@ -28,7 +28,9 @@ const logBuf=(()=>{try{const a=JSON.parse(localStorage.getItem(LOGK)||'[]');retu
 function log(area,err){
   try{
     const m=err&&err.message?err.message:err&&typeof err==='object'?JSON.stringify(err):String(err);
-    logBuf.push({t:new Date().toISOString(),a:area,m:String(m).slice(0,300),v:APP_VERSION});
+    // Where it broke, not only what it said (r47): the first lines of the stack travel with a problem report, so a crash can be found in the code without the phone.
+    const st=err&&typeof err.stack==='string'?err.stack.split('\n').slice(0,4).join('\n').slice(0,400):'';
+    logBuf.push({t:new Date().toISOString(),a:area,m:String(m).slice(0,300),v:APP_VERSION,...(st?{s:st}:{})});
     while(logBuf.length>60)logBuf.shift();
     localStorage.setItem(LOGK,JSON.stringify(logBuf));
   }catch(e){/* logging must never throw */}

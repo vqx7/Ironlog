@@ -280,13 +280,12 @@ function weekPlan(R){
 }
 function weekBar(){
   const R=activeRoutine();const cur=weekStart(today()),t=today();const weekly=R.schedule==='weekly';
-  const byDate={};for(const x of state.sessions)(byDate[x.date]=byDate[x.date]||[]).push(x);
   const cByDate={};for(const c of state.cardio)(cByDate[c.date]=cByDate[c.date]||[]).push(c);
   const plan=weekPlan(R);let h='';
   // The + on empty past days appears once there is a log to add to; a brand-new week bar stays clean (the days still open the sheet).
   const hasLog=state.sessions.length>0;
   for(let i=0;i<7;i++){
-    const d=addDays(cur,i),ss=(byDate[d]||[]).slice().sort((a,b)=>a.id<b.id?-1:1),trained=ss.length>0,cd=cByDate[d]||[];
+    const d=addDays(cur,i),ss=sessionsOn(d),trained=ss.length>0,cd=cByDate[d]||[];
     const p=plan[d];const pd=p?p.day:null;const isPlan=!!pd&&!pd.rest&&pd.items.length>0;const isRest=!!pd&&pd.rest;
     // The session in progress sits on its own date, which for a past workout is not today.
     const live=!!state.draft&&!state.draft.editingId&&d===state.draft.date;
@@ -333,8 +332,10 @@ function weekStats(){
      where the split matters; summed across muscles it double-counts. The
      numerator is hard sets only, so a set left at RIR 4 or more does not
      count toward the week, unless Count RIR 4 to 5 as half a set is on
-     (r40, hardCredit). */
-  let got=0;for(const x of state.sessions)if(x.date>=cur&&x.date<=addDays(cur,6))for(const b of x.ex){const e=EX(b.exId);for(const q of b.sets)got+=hardCredit(q,e);}
+     (r40, hardCredit). Read from IDX's weekHard (r47), the same table the
+     recap, Volume and the muscle views count from; until r47 this walked the
+     log with its own copy of the rule. */
+  const got=IDX().weekHard[cur]||0;
   const tgt=planSetsPerWeek(R,isDeloadWeek());
   /* A rest week is said once, here, so the ring, the card and its body all
      follow (r46: the ring and the title were given their own test for it and
@@ -389,7 +390,7 @@ function weekCard(){
      month's name for an earlier one) with that month's session count. */
   if(ui.wkView==='month'){
     const cur=today().slice(0,7);const ym=ui.calYm&&ui.calYm<=cur?ui.calYm:cur;
-    const n=state.sessions.filter(x=>x.date.slice(0,7)===ym).length;
+    const n=Object.keys(dateIndex().byDate).filter(d=>d.slice(0,7)===ym).reduce((a,d)=>a+sessionsOn(d).length,0);
     const title=ym===cur?'This month':new Date(ym+'-15T12:00:00').toLocaleDateString(undefined,{month:'long',year:'numeric'});
     return sec({sk:'today:week',key:'week',title,sub:`${n} session${n===1?'':'s'}`,body});
   }

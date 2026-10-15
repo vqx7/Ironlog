@@ -39,13 +39,15 @@ async function fbCheckReader(){
   if(was!==acct.reader&&ui.tab==='settings'&&!ui.modal)rerenderKeepScroll();
 }
 function fbContext(m){
-  const d=state.draft;
+  // A report about a crash must survive the crash (r47): each field that reads the log is guarded, so a save that cannot be read still sends what the rest knows.
+  const safe=(f,alt)=>{try{return f();}catch(e){return alt;}};
+  const d=safe(()=>state.draft,null);
   return {build:APP_VERSION,env:ENV,at:new Date().toISOString(),device:String(navigator.userAgent||'').slice(0,300),
     screen:`${window.innerWidth}x${window.innerHeight} @${window.devicePixelRatio||1}x`,installed:isStandalone(),
     theme:state.settings.theme,accent:state.settings.accent||ACCENT0,unit:U(),from:m.from||ui.tab,exercise:m.ex||undefined,
     session:d?{past:!!d.past,free:!!d.free,editing:!!d.editingId,exercises:d.ex.length}:null,
-    signedIn:!!acct.user,sync:cloud.on?cloud.status:'off',
-    counts:{sessions:state.sessions.filter(x=>!x.demo).length,routines:state.routines.length},
+    signedIn:!!acct.user,sync:cloud.on?cloud.status:'off',crash:m.crash||undefined,
+    counts:safe(()=>({sessions:state.sessions.filter(x=>!x.demo).length,routines:state.routines.length}),null),
     errors:logBuf.slice(-10)};
 }
 const FB_WHAT='Attached by the app: the build, your device and browser, screen size, which screen you came from, whether a session was open, sync status, and the last 10 errors it logged. Never your workouts. It goes to the app owner.';

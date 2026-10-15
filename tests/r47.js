@@ -99,6 +99,33 @@ const CLOCK = '2026-10-15T10:00:00';
     await P.ctx.close();
   }
 
+  // ---- 5. A crash reaches the owner in one tap. The recovery screen offers
+  // Report this; the report opens written with the screen and the error, marked
+  // a crash, and the log it carries holds where in the code it broke. Until r47
+  // the screen offered Try again and a backup, and a crash reached the owner
+  // only if the lifter wrote it up by hand.
+  {
+    const P = await open('index.html', { browser, clock: CLOCK });
+    const r = await P.page.evaluate(() => { const L = window.__ironlog; L.state.settings.onboarded = true; L.makeDemo();
+      L.ui.tab = 'dash';
+      // A screen that cannot be drawn: reading the log throws.
+      Object.defineProperty(L.state, 'sessions', { configurable: true, get() { throw new Error('boom at render'); } });
+      L.render();
+      const out = { crash: /Something broke on this screen/.test(document.getElementById('view').textContent) };
+      const btn = document.querySelector('#view [data-act="fbOpen"][data-crash]');
+      out.btn = btn ? btn.textContent : null;
+      if (btn) btn.click();
+      const m = L.ui.modal || {}; out.m = { kind: m.kind, cat: m.cat, from: m.from, crash: m.crash, msg: m.msg };
+      out.box = (document.querySelector('#modal [data-fbind="msg"]') || {}).value || null;
+      const ctx = L.fbContext(m); out.ctx = { crash: ctx.crash, last: ctx.errors[ctx.errors.length - 1] };
+      return out; });
+    ok(r.crash && r.btn === 'Report this', 'the recovery screen offers Report this', r);
+    ok(r.m.kind === 'feedback' && r.m.cat === 'bug' && r.m.from === 'crash' && r.m.crash === true, 'it opens a problem report marked as a crash', r.m);
+    ok(/^The app broke on the Stats screen\. Error: boom at render/.test(r.m.msg) && r.box === r.m.msg, 'written already: the screen and the error, in the box', { msg: r.m.msg, box: r.box });
+    ok(r.ctx.crash === true && r.ctx.last && r.ctx.last.a === 'render' && /boom at render/.test(r.ctx.last.m) && /boom at render/.test(r.ctx.last.s || '') && /\n/.test(r.ctx.last.s), 'the context marks the crash and its last error carries the stack', r.ctx);
+    await P.ctx.close();
+  }
+
   await browser.close();
   console.log(fails.length ? `${fails.length} FAILED` : 'ALL PASS'); process.exit(fails.length ? 1 : 0);
 })().catch(e => { console.log('FAIL crashed:', e && e.stack || e); process.exit(1); });

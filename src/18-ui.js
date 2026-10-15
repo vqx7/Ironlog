@@ -340,9 +340,9 @@ function render(){
 function renderCrash(e){
   let txt='';try{txt=JSON.stringify({app:'ironlog',version:APP_VERSION,exported:new Date().toISOString(),state});}catch(e2){txt='(could not serialise data: '+e2.message+')';}
   const v=document.getElementById('view');if(!v)return;
-  v.innerHTML=`<div class="card"><h2>Something broke on this screen</h2><p class="small">Your data is saved and was not changed. Tap Try again to go back to Today. If it keeps happening, copy the backup text below and keep it somewhere safe.</p>
+  v.innerHTML=`<div class="card"><h2>Something broke on this screen</h2><p class="small">Your data is saved and was not changed. Tap Try again to go back to Today. Report this sends the error to the app owner. If it keeps happening, copy the backup text below and keep it somewhere safe.</p>
   <p class="small muted">Error: ${esc(e&&e.message||String(e))} · build ${APP_VERSION}</p>
-  <div class="row"><button class="btn primary" data-act="crashRetry">Try again</button></div>
+  <div class="row"><button class="btn primary" data-act="crashRetry">Try again</button><button class="btn" data-act="fbOpen" data-cat="bug" data-crash="1">Report this</button></div>
   <label class="field" style="margin-top:10px">Backup text<textarea readonly style="min-height:160px;font-size:12px">${esc(txt)}</textarea></label></div>`;
 }
 function renderInner(){

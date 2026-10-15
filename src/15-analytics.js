@@ -279,6 +279,20 @@ const repSpan=(lo,hi,sep=' to ')=>+lo===+hi?`${+lo}`:`${+lo}${sep}${+hi}`;
 const rangeWords=p=>+p.repMin===+p.repMax?`target of ${+p.repMin}`:`${+p.repMin}-${+p.repMax} range`;
 function median(a){if(!a.length)return null;const s=[...a].sort((x,y)=>x-y);const m=s.length>>1;return s.length%2?s[m]:(s[m-1]+s[m])/2;}
 function sortedSessions(){return [...state.sessions].sort(sessCmp);}
+/* The sessions on each date, in sessCmp order, and the count per week (r47).
+   Built once per change beside the other analytics and read by every screen
+   that groups sessions by day: the week bar, the calendar, the day picker,
+   This month's title, Consistency's heatmap. Before r47 each grouped the log
+   itself, and the week bar ordered a two-a-day by id where the day picker
+   ordered it by start time. Kept off IDX's own object so tests/r36.js still
+   compares that object with r35's. */
+function dateIndex(){
+  const I=IDX();if(I.byDate)return I;
+  const byDate={},weekN={};
+  for(const x of sortedSessions()){(byDate[x.date]=byDate[x.date]||[]).push(x);const w=weekStart(x.date);weekN[w]=(weekN[w]||0)+1;}
+  I.byDate=byDate;I.weekN=weekN;return I;
+}
+const sessionsOn=d=>dateIndex().byDate[d]||[];
 /* IDX() is everything the screens read, built once per change (r36: the
    one 420-line function split into its steps, each below, with no change to
    what comes out; tests/r36.js compares every number with r35 on random

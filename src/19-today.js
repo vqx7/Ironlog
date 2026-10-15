@@ -394,8 +394,8 @@ const fmtBig=kg=>Math.round(toD(kg)).toLocaleString();
 // Tile subtitles only: 295,403 becomes 295k so it fits a small phone.
 const fmtK=kg=>{const v=Math.round(toD(kg));return v>=10000?Math.round(v/1000)+'k':v.toLocaleString();};
 // Sessions in the week, not days (r34): two plan days done on one day are two of the week's sessions.
-// Counted once per change and kept with the analytics, as weekRoutine's are (r46: the streak scanned every session for each of 104 weeks, twice a render).
-function weekSessions(ws){const I=IDX();if(!I.weekN){I.weekN={};for(const x of state.sessions){const w=weekStart(x.date);I.weekN[w]=(I.weekN[w]||0)+1;}}return I.weekN[ws]||0;}
+// Counted once per change and kept with the analytics (dateIndex, r47; r46: the streak scanned every session for each of 104 weeks, twice a render).
+function weekSessions(ws){return dateIndex().weekN[ws]||0;}
 /* Planned hard sets (r27). A planned set counts only if its target RIR
    would make it hard (3 or less, or every set when RIR is off), the same test
    as a logged set; a plan at RIR 4 used to set a weekly target that logging
