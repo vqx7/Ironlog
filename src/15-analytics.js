@@ -26,8 +26,8 @@ function loadLabel(ex,kg){if(ex.bw){return kg>0?`BW+${fmtW(kg)}`:kg<0?`BW−${fm
 const loadIn=(ex,w)=>w==null?'':fmtW(ex&&ex.assist?-w:w);
 
 /* ---------- analytics ---------- */
-let _idx=null,_cal=null,_bwRef,_pace=null;
-function invalidate(){_idx=null;EXMAP=null;_cal=null;_rirUse=null;_bwRef=undefined;_pace=null;}
+let _idx=null,_dix=null,_cal=null,_bwRef,_pace=null;
+function invalidate(){_idx=null;_dix=null;EXMAP=null;_cal=null;_rirUse=null;_bwRef=undefined;_pace=null;}
 function bwKnownAt(date){let best=null;for(const b of state.bodyweights)if(b.date<=date&&(!best||b.date>=best.date))best=b;return best?best.kg:null;}
 function bwAt(date){
   let best=null,earliest=null;
@@ -284,13 +284,13 @@ function sortedSessions(){return [...state.sessions].sort(sessCmp);}
    that groups sessions by day: the week bar, the calendar, the day picker,
    This month's title, Consistency's heatmap. Before r47 each grouped the log
    itself, and the week bar ordered a two-a-day by id where the day picker
-   ordered it by start time. Kept off IDX's own object so tests/r36.js still
-   compares that object with r35's. */
+   ordered it by start time. A cache of its own, cleared by invalidate() with
+   IDX's, so IDX's object keeps r35's shape (tests/r36.js compares it). */
 function dateIndex(){
-  const I=IDX();if(I.byDate)return I;
+  if(_dix)return _dix;
   const byDate={},weekN={};
   for(const x of sortedSessions()){(byDate[x.date]=byDate[x.date]||[]).push(x);const w=weekStart(x.date);weekN[w]=(weekN[w]||0)+1;}
-  I.byDate=byDate;I.weekN=weekN;return I;
+  return (_dix={byDate,weekN});
 }
 const sessionsOn=d=>dateIndex().byDate[d]||[];
 /* IDX() is everything the screens read, built once per change (r36: the

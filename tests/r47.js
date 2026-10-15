@@ -120,10 +120,36 @@ const CLOCK = '2026-10-15T10:00:00';
       const ctx = L.fbContext(m); out.ctx = { crash: ctx.crash, last: ctx.errors[ctx.errors.length - 1] };
       return out; });
     ok(r.crash && r.btn === 'Report this', 'the recovery screen offers Report this', r);
+    // Where reports cannot be sent from here (signed out, or no service), Copy the details carries the written report too.
+    const copied = await P.page.evaluate(async () => { const L = window.__ironlog; try { Object.defineProperty(navigator, 'clipboard', { configurable: true, get: () => undefined }); } catch (e) { /* the sheet's fallback is the same text */ }
+      await L.ACT.fbCopy(); const m = L.ui.modal || {}; return m.kind === 'text' ? m.text : null; });
+    ok(copied && /^Ironlog: Report a problem\n\nThe app broke on the Stats screen\. Error: boom at render/.test(copied) && !/Write it here/.test(copied) && /"crash": true/.test(copied), 'Copy the details carries the written crash report and the context', copied && copied.slice(0, 160));
     ok(r.m.kind === 'feedback' && r.m.cat === 'bug' && r.m.from === 'crash' && r.m.crash === true, 'it opens a problem report marked as a crash', r.m);
     ok(/^The app broke on the Stats screen\. Error: boom at render/.test(r.m.msg) && r.box === r.m.msg, 'written already: the screen and the error, in the box', { msg: r.m.msg, box: r.box });
     const leak = await P.page.evaluate(() => { const L = window.__ironlog; const e = new Error('x'); e.stack = 'Error: x\n    at f (https://ironapp.org/index.html?v=1#access_token=SECRET&type=recovery:12:3)\n    at g (https://ironapp.org/index.html:14:5)'; L.log('test', e); return L.logBuf[L.logBuf.length - 1].s; });
     ok(!/SECRET|access_token|\?v=1/.test(leak) && /index\.html:12:3/.test(leak) && /index\.html:14:5/.test(leak), 'a kept stack holds the file and line of each frame, never the page URL\'s query or fragment (a reset link carries its token there)', leak);
+    // Every shape a URL takes in what the log keeps: Chromium's frames with and
+    // without a function name, WebKit's, a frame with no line, and a message.
+    // Words with a ? or # that are not part of a URL stay as they are.
+    const cut = await P.page.evaluate(() => { const L = window.__ironlog; const T = 'access_token=SECRET&refresh_token=R2&type=recovery';
+      const e = new Error('Failed to load https://ironapp.org/preview/?x=1#' + T + ' now');
+      // Four lines, as the log keeps four.
+      e.stack = '    at f (https://ironapp.org/index.html?v=1#' + T + ':12:3)\n    at https://ironapp.org/index.html#' + T + ':13:4\nbackupDue@https://ironapp.org/index.html#' + T + ':2173:12\n    at g (https://ironapp.org/index.html#' + T + ')';
+      L.log('test', e); const x = L.logBuf[L.logBuf.length - 1];
+      return { m: x.m, s: x.s, plain: [L.logCut("Unexpected token '#'"), L.logCut('What? No #2 here'), L.logCut('blob:https://ironapp.org/abc#frag:1:2')] }; });
+    ok(!/SECRET|R2|recovery|\?x=1|\?v=1/.test(cut.m + cut.s), 'neither a kept stack nor a kept message holds a URL\'s query or fragment, where a reset link carries its token', cut);
+    ok(/index\.html:12:3\)/.test(cut.s) && /index\.html:13:4/.test(cut.s) && /index\.html:2173:12/.test(cut.s) && /index\.html\)/.test(cut.s) && cut.m === 'Failed to load https://ironapp.org/preview/ now',
+      'the file and line of each frame stay, and the message keeps its words', cut);
+    ok(cut.plain[0] === "Unexpected token '#'" && cut.plain[1] === 'What? No #2 here' && cut.plain[2] === 'blob:https://ironapp.org/abc:1:2', 'a ? or # outside a URL is left alone', cut.plain);
+
+    // The feedback table refuses a context over 20,000 bytes, which would refuse
+    // the report. Sixty errors as long as the log keeps them, in a script of
+    // 3 bytes a character, still give a report that fits, newest error kept.
+    const fit = await P.page.evaluate(() => { const L = window.__ironlog; L.logBuf.length = 0;
+      for (let i = 0; i < 60; i++) { const e = new Error('漢'.repeat(400) + i); e.stack = ('    at f' + i + ' (https://ironapp.org/index.html:' + i + ':1)\n').repeat(4) + '漢'.repeat(400); L.log('t' + i, e); }
+      const ctx = L.fbContext({ from: 'today', crash: true }); const b = new TextEncoder().encode(JSON.stringify(ctx)).length;
+      return { b, max: L.FB_CTX_MAX, n: ctx.errors.length, last: ctx.errors[ctx.errors.length - 1].a, crash: ctx.crash }; });
+    ok(fit.b <= fit.max && fit.max <= 20000 && fit.n >= 1 && fit.last === 't59' && fit.crash === true, 'the worst the log can hold still fits under the table\'s limit, keeping the newest error', fit);
     ok(r.ctx.crash === true && r.ctx.last && r.ctx.last.a === 'render' && /boom at render/.test(r.ctx.last.m) && /index\.html:\d+/.test(r.ctx.last.s || '') && /\n/.test(r.ctx.last.s), 'the context marks the crash and its last error carries the stack, naming a line in the app (WebKit\'s stack is frames only, no message line)', r.ctx);
     await P.ctx.close();
   }

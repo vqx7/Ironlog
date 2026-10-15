@@ -42,15 +42,24 @@ function fbContext(m){
   // A report about a crash must survive the crash (r47): each field that reads the log is guarded, so a save that cannot be read still sends what the rest knows.
   const safe=(f,alt)=>{try{return f();}catch(e){return alt;}};
   const d=safe(()=>state.draft,null);
-  return {build:APP_VERSION,env:ENV,at:new Date().toISOString(),device:String(navigator.userAgent||'').slice(0,300),
+  const ctx={build:APP_VERSION,env:ENV,at:new Date().toISOString(),device:String(navigator.userAgent||'').slice(0,300),
     screen:`${window.innerWidth}x${window.innerHeight} @${window.devicePixelRatio||1}x`,installed:isStandalone(),
     theme:state.settings.theme,accent:state.settings.accent||ACCENT0,unit:U(),from:m.from||ui.tab,exercise:m.ex||undefined,
     session:d?{past:!!d.past,free:!!d.free,editing:!!d.editingId,exercises:d.ex.length}:null,
     signedIn:!!acct.user,sync:cloud.on?cloud.status:'off',crash:m.crash||undefined,
     counts:safe(()=>({sessions:state.sessions.filter(x=>!x.demo).length,routines:state.routines.length}),null),
     errors:logBuf.slice(-10)};
+  /* The feedback table refuses a context over 20,000 bytes (SUPABASE.md, Part 4),
+     and that would refuse the whole report. Ten errors with their stacks fit in
+     plain text, but not if a message is in a script of 3 or 4 bytes a
+     character, so the oldest errors go first until it fits with room to spare. */
+  const bytes=()=>safe(()=>new TextEncoder().encode(JSON.stringify(ctx)).length,0);
+  while(ctx.errors.length>1&&bytes()>FB_CTX_MAX)ctx.errors.shift();
+  if(bytes()>FB_CTX_MAX)ctx.errors=ctx.errors.map(({s,...x})=>({...x,m:String(x.m).slice(0,100)}));
+  return ctx;
 }
-const FB_WHAT='Attached by the app: the build, your device and browser, screen size, which screen you came from, whether a session was open, sync status, and the last 10 errors it logged. Never your workouts. It goes to the app owner.';
+const FB_CTX_MAX=15000;
+const FB_WHAT='Attached by the app: the build, your device and browser, screen size, which screen you came from, whether a session was open, sync status, and up to 10 recent errors with where in the app each happened. Never your workouts. It goes to the app owner.';
 /* The Guide (r27): how Ironlog works and the rules behind its numbers, in
    one place, opened from the menu. Screens keep the number and the action;
    the reasoning lives here, so it is findable on a phone where nothing can

@@ -560,7 +560,8 @@ const ACT={
   // Signed out: the report as text for a message, without sending anything.
   async fbCopy(){
     const m=ui.modal;if(!m||m.kind!=='feedback')return;
-    const txt=`Ironlog: ${FB_TITLE[m.cat]||FB_TITLE.bug}\n\n(Write it here)\n\n${JSON.stringify(fbContext(m),null,1)}`;
+    // A report opened from the crash screen is already written (r47), so the copy carries it.
+    const txt=`Ironlog: ${FB_TITLE[m.cat]||FB_TITLE.bug}\n\n${m.msg&&m.msg.trim()?m.msg.trim():'(Write it here)'}\n\n${JSON.stringify(fbContext(m),null,1)}`;
     let ok=false;try{if(navigator.clipboard){await navigator.clipboard.writeText(txt);ok=true;}}catch(e){ok=false;}
     if(!ok){closeModal();openModal({kind:'text',title:'Report details',help:'Copy this into a message to the app owner, with what happened.',text:txt,readonly:true});return;}
     m.sent=true;m.copied=true;renderModal();

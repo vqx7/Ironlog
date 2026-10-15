@@ -25,13 +25,19 @@ const LOGK=KEY+'.log';
 // Week or Month in This week on Today (r26), per device.
 const WKVIEW_KEY=KEY+'.wkView';
 const logBuf=(()=>{try{const a=JSON.parse(localStorage.getItem(LOGK)||'[]');return Array.isArray(a)?a:[];}catch(e){return [];}})();
+/* A URL's query and fragment, cut from what the log keeps (r47). The log
+   goes out with a problem report, and the page's own URL holds a reset
+   link's token in its fragment for a moment after the link is opened; a stack
+   frame carries that URL, and an error message can. Only the part after ? or #
+   of a URL goes, up to the frame's :line:column, so the file and line stay and
+   ordinary words with a ? or # in them are left alone. */
+const logCut=t=>String(t).replace(/([a-z][a-z0-9+.-]*:\/\/[^\s?#)]*)[?#](?:[^\s):]|:(?!\d))*/gi,'$1');
 function log(area,err){
   try{
     const m=err&&err.message?err.message:err&&typeof err==='object'?JSON.stringify(err):String(err);
     // Where it broke, not only what it said (r47): the first lines of the stack travel with a problem report, so a crash can be found in the code without the phone.
-    // A frame carries the page's URL, which for a moment after a reset link is opened holds the token in its fragment; a query or fragment is cut from every frame, since the file and line are what a report needs.
-    const st=err&&typeof err.stack==='string'?err.stack.split('\n').slice(0,4).join('\n').replace(/[?#](?:[^\s):]|:(?!\d))*/g,'').slice(0,400):'';
-    logBuf.push({t:new Date().toISOString(),a:area,m:String(m).slice(0,300),v:APP_VERSION,...(st?{s:st}:{})});
+    const st=err&&typeof err.stack==='string'?logCut(err.stack.split('\n').slice(0,4).join('\n')).slice(0,400):'';
+    logBuf.push({t:new Date().toISOString(),a:area,m:logCut(m).slice(0,300),v:APP_VERSION,...(st?{s:st}:{})});
     while(logBuf.length>60)logBuf.shift();
     localStorage.setItem(LOGK,JSON.stringify(logBuf));
   }catch(e){/* logging must never throw */}
