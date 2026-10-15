@@ -122,7 +122,7 @@ const CLOCK = '2026-10-15T10:00:00';
     ok(r.crash && r.btn === 'Report this', 'the recovery screen offers Report this', r);
     ok(r.m.kind === 'feedback' && r.m.cat === 'bug' && r.m.from === 'crash' && r.m.crash === true, 'it opens a problem report marked as a crash', r.m);
     ok(/^The app broke on the Stats screen\. Error: boom at render/.test(r.m.msg) && r.box === r.m.msg, 'written already: the screen and the error, in the box', { msg: r.m.msg, box: r.box });
-    ok(r.ctx.crash === true && r.ctx.last && r.ctx.last.a === 'render' && /boom at render/.test(r.ctx.last.m) && /boom at render/.test(r.ctx.last.s || '') && /\n/.test(r.ctx.last.s), 'the context marks the crash and its last error carries the stack', r.ctx);
+    ok(r.ctx.crash === true && r.ctx.last && r.ctx.last.a === 'render' && /boom at render/.test(r.ctx.last.m) && /index\.html:\d+/.test(r.ctx.last.s || '') && /\n/.test(r.ctx.last.s), 'the context marks the crash and its last error carries the stack, naming a line in the app (WebKit\'s stack is frames only, no message line)', r.ctx);
     await P.ctx.close();
   }
 
