@@ -9,6 +9,10 @@
 // a check-in. Expected numbers are worked out here from Brzycki.
 // Runs on the source and again on dist/ (tests/run.js).
 const { open } = require('./h');
+// r47 put a Why this target i beside Next session, as the session screen has.
+// The i is a button inside the line, so its letter joins innerText; these
+// checks still compare the line to the target exactly, with the button taken
+// out of the text rather than the comparison loosened.
 const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log('FAIL', m, x !== undefined ? JSON.stringify(x) : ''); } else console.log('ok  ', m); };
 const wait = ms => new Promise(r => setTimeout(r, ms));
 const FILE = 'index.html';
@@ -37,7 +41,7 @@ const brz = (load, rtf) => load * 36 / (37 - rtf);
       const sec = document.querySelector('#view [data-mkey="exercise"]'); const h = sec.querySelector('.headline');
       const tip = (h.querySelector('[data-tip]') || { dataset: {} }).dataset.tip || '';
       const ch = window.Chart && window.Chart.getChart && window.Chart.getChart('chEx');
-      return { head: h.innerText.replace(/\s*i$/, '').trim(), tip, next: (document.getElementById('nextLine') || {}).innerText || null, tiles: [...sec.querySelectorAll('.kpi .l')].map(x => x.textContent), charts: ch ? ch.data.datasets.map(d => d.label) : null, st: L.IDX().exStats[id] };
+      return { head: h.innerText.replace(/\s*i$/, '').trim(), tip, next: (() => { const n = document.getElementById('nextLine'); if (!n) return null; const c = n.cloneNode(true); c.querySelectorAll('.tipi').forEach(b => b.remove()); return c.innerText.trim(); })(), tiles: [...sec.querySelectorAll('.kpi .l')].map(x => x.textContent), charts: ch ? ch.data.datasets.map(d => d.label) : null, st: L.IDX().exStats[id] };
     }, id);
 
     // ---------- 1. A barbell lift's change in pounds of estimated strength ----------
@@ -88,7 +92,7 @@ const brz = (load, rtf) => load * 36 / (37 - rtf);
         if (i < 3) ss.push({ id: 'l' + i, date: L.addDays('2026-09-16', i * 7), dayIdx: tr[1], dayId: d2.id, dayName: d2.name, routineId: R.id, notes: '', ex: [{ exId: 'bench', rr: [8, 12], sets: [0, 1, 2].map(() => ({ w: (175 + i * 5) * LB, r: 12, rir: 1, done: true })) }] });
       }
       s.sessions = ss; s.draft = null; L.invalidate();
-      L.ui.tab = 'dash'; L.ui.dashEx = 'bench'; L.render(); const next = (document.getElementById('nextLine') || {}).innerText;
+      L.ui.tab = 'dash'; L.ui.dashEx = 'bench'; L.render(); const next = (() => { const n = document.getElementById('nextLine'); if (!n) return null; const c = n.cloneNode(true); c.querySelectorAll('.tipi').forEach(b => b.remove()); return c.innerText.trim(); })();
       // What the session itself shows: start the day due on Today and read the bench block's target.
       L.ui.tab = 'today'; L.ui.todayDay = null; L.render(); document.querySelector('.hero [data-act="startSession"]').click();
       const b = L.state.draft.ex.find(x => x.exId === 'bench'); const due = L.state.draft.dayName; const tgt = b ? b.target : null;
@@ -112,7 +116,7 @@ const brz = (load, rtf) => load * 36 / (37 - rtf);
         ss.push({ id: 'ww' + i, date: L.addDays('2026-09-23', i * 7), dayIdx: 2, dayId: wed.id, dayName: wed.name, routineId: R.id, notes: '', ex: [{ exId: 'bench', rr: [8, 12], sets: [0, 1, 2].map(() => ({ w: (175 + i * 5) * LB, r: 12, rir: 1, done: true })) }] });
       }
       s.sessions = ss; s.draft = null; L.invalidate();
-      const read = () => { L.invalidate(); L.ui.tab = 'dash'; L.ui.dashEx = 'bench'; L.render(); return (document.getElementById('nextLine') || {}).innerText; };
+      const read = () => { L.invalidate(); L.ui.tab = 'dash'; L.ui.dashEx = 'bench'; L.render(); return (() => { const n = document.getElementById('nextLine'); if (!n) return null; const c = n.cloneNode(true); c.querySelectorAll('.tipi').forEach(b => b.remove()); return c.innerText.trim(); })(); };
       const tgt = d => 'Next session: ' + L.suggest('bench', L.planFor('bench', R, d.id)).target;
       const before = read(), heavy = tgt(sun);
       s.sessions.push({ id: 'today', date: '2026-10-11', dayIdx: 6, dayId: sun.id, dayName: sun.name, routineId: R.id, notes: '', ex: [{ exId: 'bench', rr: [3, 5], sets: [0, 1, 2].map(() => ({ w: 240 * LB, r: 5, rir: 1, done: true })) }] });

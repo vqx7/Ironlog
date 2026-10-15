@@ -90,6 +90,23 @@ const readAll = () => {
     await P.ctx.close();
   }
 
+  // ---- The reason beside a target is the engine's own, so the two cannot drift (r47).
+  {
+    const P = await open(FILE, { browser, clock: '2026-10-15T10:00:00' });
+    const r = await P.page.evaluate(() => { const L = window.__ironlog;
+      L.state.settings.onboarded = true; L.makeDemo(); L.saveNow(); L.render();
+      document.querySelector('[data-act="startSession"]').click(); L.render();
+      return L.state.draft.ex.map((b, i) => { const tip = document.querySelector(`#blk-${i} .hint .tipi`);
+        return { target: !!b.target, shown: tip && tip.getAttribute('data-tip'), why: L.whyTarget ? L.whyTarget(b) : null, hint: b.hint || '' }; });
+    });
+    const withT = r.filter(x => x.target);
+    ok(withT.length > 0 && withT.every(x => x.shown && x.shown === x.why),
+      "every target on the session screen carries the engine's own reason, word for word", withT.filter(x => x.shown !== x.why).slice(0, 2));
+    ok(withT.every(x => x.hint.includes(x.why)), 'and that reason is part of the sentence the engine wrote, never a retelling', withT.filter(x => !x.hint.includes(x.why)).slice(0, 2));
+    ok(!P.errors.length, 'no page errors (reason beside target)', P.errors);
+    await P.ctx.close();
+  }
+
   // ---- A rest week: no screen asks for work, and none shows a target for it.
   {
     const P = await open(FILE, { browser, clock: '2026-10-14T10:00:00' });

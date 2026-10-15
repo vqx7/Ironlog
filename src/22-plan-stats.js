@@ -134,7 +134,8 @@ function nextLine(exId){
   // The plan of the next day due that has this lift: one lift on a heavy and a light day has two targets (review of r41).
   const R=activeRoutine();const d=nextDayWith(exId,R);
   const sg=suggest(exId,d?planFor(exId,R,d.id):planFor(exId,R),{deload:isDeloadWeek()});
-  return sg&&sg.target?`<p class="small" id="nextLine" style="margin:6px 0 0"><b>Next session</b>: ${esc(sg.target)}</p>`:'';
+  const why=whyTarget(sg);
+  return sg&&sg.target?`<p class="small" id="nextLine" style="margin:6px 0 0"><b>Next session</b>: ${esc(sg.target)}${why?` ${tipi(why,'Why this target')}`:''}</p>`:'';
 }
 /* The next training day due that has the lift, or null: on a weekly plan
    today's weekday, or tomorrow's once today's day is logged (review of r41:
