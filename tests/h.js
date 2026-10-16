@@ -116,4 +116,11 @@ function build(preview) {
   if (process.env.IRONLOG_BUILT === '1') return;
   require('child_process').execFileSync('node', [path.join(__dirname, '..', 'scripts', 'build.js'), ...(preview ? ['--preview'] : [])], { stdio: 'ignore' });
 }
-module.exports = { open, cspFix, build, engine, ENGINE, touchDriver, offlineLoad };
+/* Teardown that cannot hold a suite to the runner's 15 minutes: closing a
+   context, the browser or a server goes on after `ms` either way, with a line
+   saying what did not finish. It is not a check; every check has run by then. */
+function settle(p, what, ms = 30000) {
+  let t; const late = new Promise(r => { t = setTimeout(() => { console.log(`note ${what} did not finish in ${ms / 1000} s; went on without it`); r(); }, ms); });
+  return Promise.race([Promise.resolve(p).catch(() => {}), late]).finally(() => clearTimeout(t));
+}
+module.exports = { open, cspFix, build, engine, ENGINE, touchDriver, offlineLoad, settle };
