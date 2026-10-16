@@ -50,12 +50,12 @@ function calBounds(){
 // The month header and grid, for the sheet (inline false) and This week (inline true).
 function calBody(ym,inline){
   const [y,mo]=ym.split('-').map(Number);const dim=new Date(y,mo,0).getDate();const lead=(new Date(y,mo-1,1).getDay()+6)%7;
-  const t=today();const bd={};for(const x of state.sessions)(bd[x.date]=bd[x.date]||[]).push(x);
+  const t=today();
   const cd={};for(const c of state.cardio)cd[c.date]=(cd[c.date]||0)+c.min;
   const {min,max}=calBounds();
   let g=DAYS.map(d=>`<span class="wd">${d.slice(0,2)}</span>`).join('')+'<span></span>'.repeat(lead);let n=0;
   for(let i=1;i<=dim;i++){
-    const d=`${ym}-${String(i).padStart(2,'0')}`;const ss=bd[d]||[];const c=cd[d]||0;if(ss.length)n+=ss.length;
+    const d=`${ym}-${String(i).padStart(2,'0')}`;const ss=sessionsOn(d);const c=cd[d]||0;if(ss.length)n+=ss.length;
     const cls=['cd',ss.length?'on':'',!ss.length&&c?'cardio':'',d===t?'today':'',d>t?'fut':''].filter(Boolean).join(' ');
     const what=ss.length?ss.map(x=>x.dayName||'Session').join(', '):c?`cardio ${c} min`:d>t?'':'nothing logged';
     const inner=`<span class="n">${i}</span><span class="x">${ss.length>1?'×'+ss.length:''}</span>`;
@@ -70,7 +70,7 @@ function calBody(ym,inline){
 function calSheet(m){return `<div class="sheet" role="dialog" aria-modal="true" aria-labelledby="calH">${calBody(m.ym,false)}</div>`;}
 function pastSheet(m){
   const R=activeRoutine();const due=pastDue(R,m.date);
-  const on=state.sessions.filter(x=>x.date===m.date).map(x=>x.dayName||'Session');
+  const on=sessionsOn(m.date).map(x=>x.dayName||'Session');
   const opts=R.days.map((d,i)=>({d,i})).filter(x=>!x.d.rest&&x.d.items.length>0).sort((a,b)=>(b.i===due)-(a.i===due));
   const btn=({d,i})=>`<button class="btn block${i===due?' primary':''} pastday" data-act="pastGo" data-day="${i}"><span>${esc(dayLabel(R,i))}: ${esc(d.name)}</span>${i===due?'<small>due then</small>':`<small>${d.items.length} exercises</small>`}</button>`;
   return `<div class="sheet" role="dialog" aria-modal="true" aria-labelledby="pastH"><div class="sheet-h"><h3 id="pastH">Log a past workout</h3><button class="ib" aria-label="Close" data-act="mClose">✕</button></div>
@@ -136,7 +136,7 @@ const ACT={
   calDay(t){
     const d=t.dataset.date;if(!isDate(d)||d>today())return;
     if(ui.modal)closeModal();
-    const ss=state.sessions.filter(x=>x.date===d);
+    const ss=sessionsOn(d);
     if(ss.length===1){ACT.wkOpen({dataset:{id:ss[0].id}});return;}
     // Two-a-days (r34): a day with more than one session asks which.
     if(ss.length>1){openModal({kind:'daypick',date:d});return;}
@@ -539,7 +539,14 @@ const ACT={
     const d=state.draft;const bi=t&&t.dataset&&t.dataset.b!=null?+t.dataset.b:null;const b=bi!=null&&d?d.ex[bi]:null;
     const from=ui.tab==='settings'?(ui.prevTab||'settings'):ui.tab;
     const cat=t&&t.dataset&&FB_TITLE[t.dataset.cat]?t.dataset.cat:'bug';
-    openModal({kind:'feedback',cat,msg:'',shot:null,from:ui.tab==='today'&&d?'session':from,ex:b?exName(b.exId):null});
+    /* From the crash screen (r47): the report opens written, with the error the
+       screen shows, so one tap sends it; the context marks it a crash and
+       carries the stack the log kept. Until r47 a crash reached the owner only
+       if the lifter wrote it up by hand. */
+    const crash=!!(t&&t.dataset&&t.dataset.crash);const last=crash?logBuf.filter(x=>x.a==='render').slice(-1)[0]:null;
+    const tabName={today:state.draft?'Session':'Today',program:'Plan',dash:'Stats',history:'History',settings:'Settings'}[ui.tab]||ui.tab;
+    const msg=crash?`The app broke on the ${tabName} screen.${last?` Error: ${last.m}`:''}`:'';
+    openModal({kind:'feedback',cat,msg,shot:null,from:crash?'crash':ui.tab==='today'&&d?'session':from,ex:b?exName(b.exId):null,crash:crash||undefined});
   },
   /* A lifter's own exercise stays in their log (r34). Suggesting it sends
      it to the owner as a report; the library changes only when the owner
@@ -553,7 +560,8 @@ const ACT={
   // Signed out: the report as text for a message, without sending anything.
   async fbCopy(){
     const m=ui.modal;if(!m||m.kind!=='feedback')return;
-    const txt=`Ironlog: ${FB_TITLE[m.cat]||FB_TITLE.bug}\n\n(Write it here)\n\n${JSON.stringify(fbContext(m),null,1)}`;
+    // A report opened from the crash screen is already written (r47), so the copy carries it.
+    const txt=`Ironlog: ${FB_TITLE[m.cat]||FB_TITLE.bug}\n\n${m.msg&&m.msg.trim()?m.msg.trim():'(Write it here)'}\n\n${JSON.stringify(fbContext(m),null,1)}`;
     let ok=false;try{if(navigator.clipboard){await navigator.clipboard.writeText(txt);ok=true;}}catch(e){ok=false;}
     if(!ok){closeModal();openModal({kind:'text',title:'Report details',help:'Copy this into a message to the app owner, with what happened.',text:txt,readonly:true});return;}
     m.sent=true;m.copied=true;renderModal();
@@ -825,31 +833,9 @@ const ACT={
     const got=parseSets(txt,ex,defW,null,rirScale()==='rpe');
     const finish=list=>{const n=fillSets(m.b,list);closeModal();rerenderKeepScroll();toast(`${n} set${n===1?'':'s'} filled and marked done`);};
     if(got){finish(got);return;}
-/*ai{*/    if(!aiOn()){m.err=`Could not read that. Try the pattern 225x5, 5, 4 ${rirScale()==='rpe'?'rpe 9':'rir 1'}.`;renderModal();return;}
-    const ctl=new AbortController();AI.ctl=ctl;m.busy=true;m.err='';renderModal();
-    AI.fn.json(`Convert this gym log for the exercise "${ex.name}" into sets. Loads are in ${U()}.${ex.bw?' This is a bodyweight exercise: the load is weight added to bodyweight, and "bodyweight" or "bw" alone means 0.':''} When a set has no load, it uses the previous set's load; if no load is given anywhere, use null. ${rirScale()==='rpe'?'Effort is written as RPE (10 means no reps left): convert each to rir = 10 minus the RPE. ':''}RIR means reps in reserve; use null when it is not stated for a set, and apply a value stated for "all" or "each" to every set. Reply with only a JSON array, one object per set in order, like [{"w":225,"r":5,"rir":1}].\n\nLog: ${txt}`,{signal:ctl.signal,modelTier:'quick'})
-      .then(a=>{if(ui.modal!==m)return;const v=aiSetsValid(a);if(!v){m.err='Claude could not turn that into sets. Try the pattern 225x5, 5, 4 rir 1.';return;}
-        if(v.some(x=>!x.w)&&!ex.bw&&defW!=null)v.forEach(x=>{if(!x.w)x.w=defW;});finish(v);})
-      .catch(e=>{if(ui.modal!==m)return;m.err=aiErr(e)||'';})
-      .finally(()=>{if(AI.ctl===ctl)AI.ctl=null;if(ui.modal===m){m.busy=false;renderModal();}});
-/*}ai=m.err=`Could not read that. Try the pattern 225x5, 5, 4 ${rirScale()==='rpe'?'rpe 9':'rir 1'}.`;renderModal();*/  },
+m.err=`Could not read that. Try the pattern 225x5, 5, 4 ${rirScale()==='rpe'?'rpe 9':'rir 1'}.`;renderModal();  },
   aiStop(){if(AI.ctl){try{AI.ctl.abort();}catch(e){/* already finished */}}},
-/*ai{*/  aiDebrief(t){const sid=t.dataset.sid;const pr=debriefPrompt(sid);if(!pr){toast('That session is no longer saved');return;}const m={kind:'ai',title:'Session debrief'};openModal(m);aiRun(m,pr,'default');},
-  aiReview(){openModal({kind:'ai',title:'Ask Claude about your training',ask:true,q:''});},
-  aiAsk(){const m=ui.modal;if(!m||m.kind!=='ai')return;const q=(($('#aiQ')||{}).value||'').trim();m.q=q;if(!q){m.err='Type a question first.';renderModal();return;}if(!state.sessions.some(x=>!x.demo)){m.err='Log a session first so there is something to review.';renderModal();return;}aiRun(m,reviewPrompt(q),'default');},
-  bAiSwap(t){openModal({kind:'aiSwap',mode:'swapBlock',b:+t.dataset.b,why:'',picks:null});},
-  aiSwapAsk(){
-    const m=ui.modal;if(!m||m.kind!=='aiSwap'||!aiOn())return;const b=state.draft&&state.draft.ex[m.b];if(!b)return;
-    m.why=(($('#aiWhy')||{}).value||'').trim();const pr=swapPrompt(b,m.why);if(!pr){m.err='No other exercise in your library trains this muscle.';renderModal();return;}
-    const ctl=new AbortController();AI.ctl=ctl;m.busy=true;m.err='';renderModal();
-    AI.fn.json(pr.text,{signal:ctl.signal,modelTier:'default'})
-      .then(r=>{if(ui.modal!==m)return;const ok=new Set(pr.cands.map(e=>e.id));const seen=new Set();
-        const picks=(r&&Array.isArray(r.picks)?r.picks:[]).filter(p=>p&&typeof p.id==='string'&&ok.has(p.id)&&!seen.has(p.id)&&seen.add(p.id)).slice(0,3).map(p=>({id:p.id,why:typeof p.why==='string'?p.why.slice(0,200):''}));
-        if(!picks.length)m.err='No usable suggestions came back. Try again or use Swap exercise.';m.picks=picks;})
-      .catch(e=>{if(ui.modal!==m)return;m.err=aiErr(e);})
-      .finally(()=>{if(AI.ctl===ctl)AI.ctl=null;if(ui.modal===m){m.busy=false;renderModal();}});
-  },
-/*}ai=*/  heroMore(){ui.heroMore=!ui.heroMore;rerenderKeepScroll();},
+  heroMore(){ui.heroMore=!ui.heroMore;rerenderKeepScroll();},
   startAltOpen(t){openModal({kind:'startAlt',di:+t.dataset.day,free:t.dataset.free==='1'});},
   // A choice in Change: the sheet closes first, then the start it names runs as the card's button did.
   altGo(t){const go=t.dataset.go;closeModal();if(ACT[go])ACT[go](t);},

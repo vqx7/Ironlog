@@ -69,16 +69,13 @@ const DIST = !!process.env.IRONLOG_FILE;
   ok(/target RIR is 1 unless you change it/i.test(guide) && /Refalo 2024/.test(guide), 'the Guide says the same under Plan');
   await ev(() => window.__ironlog.ACT.mClose());
 
-  // ---- Claude-only features.
+  // ---- The Claude artifact was retired on 2026-09-27 (OWNER.md), and in r46 its
+  // features left the source as well, so neither the source nor a build has them.
   const html = fs.readFileSync(process.env.IRONLOG_FILE || 'index.html', 'utf8');
   const words = ['AI_STYLE', 'debriefPrompt', 'reviewPrompt', 'swapPrompt', 'aiDigest', 'Ask Claude', 'Debrief with Claude', 'Reading with Claude', 'You are an experienced'];
-  if (DIST) {
-    ok(words.every(w => !html.includes(w)) && !/\/\*ai\{|\/\*\}ai/.test(html), 'the installed build has none of the Claude prompts, buttons, or markers', words.filter(w => html.includes(w)));
-    const ai = await ev(() => { const L = window.__ironlog; return { swap: false, keys: ['aiDebrief', 'aiReview', 'aiAsk', 'bAiSwap', 'aiSwapAsk'].filter(k => L.ACT[k]) }; });
-    ok(!ai.keys.length, 'none of their actions exist in the installed build', ai);
-  } else {
-    ok(words.every(w => html.includes(w)), 'the source keeps them for the Claude artifact');
-  }
+  ok(words.every(w => !html.includes(w)) && !/\/\*ai\{|\/\*\}ai/.test(html), 'no Claude prompt, button, or block marker is left, in the source or a build', words.filter(w => html.includes(w)));
+  const ai = await ev(() => { const L = window.__ironlog; return { keys: ['aiDebrief', 'aiReview', 'aiAsk', 'bAiSwap', 'aiSwapAsk'].filter(k => L.ACT[k]), fns: ['aiDigest', 'debriefPrompt', 'reviewPrompt', 'swapPrompt', 'AI'].filter(k => L[k]) }; });
+  ok(!ai.keys.length && !ai.fns.length, 'and none of their actions or functions are reachable', ai);
   // Type or dictate still reads sets, and says the pattern when it cannot.
   await ev(() => { const L = window.__ironlog; L.ui.tab = 'today'; L.render(); });
   await wait(100);

@@ -737,6 +737,19 @@ function targetText(b){
   const hold=m[2]==='s';const over=e.n===1?(hold?'in one hold':'in one set'):`over ${e.n} ${hold?'holds':'sets'}`;
   return `${e.total+1}${m[2]}+ ${m[3]||''}${over}${m[4]}`;
 }
+/* The reason behind a target, in the engine's own words (r47). b.hint is the
+   whole sentence the case wrote, and it opens with the Last line (b.last),
+   which the screen shows on its own line already, so that prefix comes off
+   rather than being said twice. Nothing is recomputed here: a second account
+   of the rules would be a second thing to keep right. */
+function whyTarget(b){
+  if(!b)return '';
+  // A session block renames the suggestion's text to hint, so take either.
+  const h=(b.hint||b.text||'').trim(),l=(b.last||'').trim();
+  const reason=l&&h.startsWith(l)?h.slice(l.length).trim():h;
+  const basis=b.basis?` The target comes from your last full session, ${fmtDate(b.basis)}; trimmed, lighter, and deload sessions do not set one.`:'';
+  return (reason+basis).trim();
+}
 function blockProgress(b){
   const t0=b.tgt;if(!t0)return null;const t=effTarget(b);
   const ex=EX(b.exId);const bw=bwRefLoad(ex);

@@ -134,7 +134,8 @@ function nextLine(exId){
   // The plan of the next day due that has this lift: one lift on a heavy and a light day has two targets (review of r41).
   const R=activeRoutine();const d=nextDayWith(exId,R);
   const sg=suggest(exId,d?planFor(exId,R,d.id):planFor(exId,R),{deload:isDeloadWeek()});
-  return sg&&sg.target?`<p class="small" id="nextLine" style="margin:6px 0 0"><b>Next session</b>: ${esc(sg.target)}</p>`:'';
+  const why=whyTarget(sg);
+  return sg&&sg.target?`<p class="small" id="nextLine" style="margin:6px 0 0"><b>Next session</b>: ${esc(sg.target)}${why?` ${tipi(why,'Why this target')}`:''}</p>`:'';
 }
 /* The next training day due that has the lift, or null: on a weekly plan
    today's weekday, or tomorrow's once today's day is logged (review of r41:
@@ -184,7 +185,7 @@ function viewDash(){
      before this one, which the label now says out loud. */
   const planned=freeMode()?0:trainDaysOf(R)*weekFactor(R);
   const cur=weekStart(today());
-  const sessDates=new Set(state.sessions.map(s=>s.date));
+  const sessDates=new Set(Object.keys(dateIndex().byDate));
   /* Only weeks since your first session count. Before that there was nothing
      to adhere to, and counting those weeks read 0% on day one. */
   const firstWk=firstFullWeek();
@@ -222,7 +223,7 @@ function viewDash(){
   <div class="kpi"><div class="v">${nz(prs4)}</div><div class="l">PRs, last 4 weeks${was(prsP)}</div></div>
 ${extraKpis()}</div>`;
   if(state.sessions.length)h+=dashSummary();
-/*ai{*/  if(aiOn()&&state.sessions.some(x=>!x.demo))h+=`<div class="card row spread"><span class="small">Ask Claude a question about your own log: a stall, a split, a weak point.</span><button class="btn sm primary" data-act="aiReview">Ask Claude</button></div>`;/*}ai=*/
+
 
   const avg=actualAvg4();const plan=plannedSets(R);const bands=state.settings.bands;
 
@@ -488,6 +489,21 @@ function allTimeBests(id){
   front.sort((a,b)=>b.p.pl-a.p.pl);
   const last=[est&&est.date,heavy&&heavy.date,...front.map(f=>f.date)].filter(Boolean).sort().pop();
   return {ex,est,heavy,front,last};
+}
+/* A lift's heaviest set, in the words the bests board uses, so nothing new is
+   invented and the two always read alike (r48, V: "is it easy to see what your
+   PR was during a today session"). It was two taps away, under the exercise's
+   menu. "Heaviest" rather than "PR": in this app a PR is a record the moment
+   it is set, while this is the standing best, which is what the question means. */
+function bestLine(exId){
+  const r=allTimeBests(exId);if(!r||!r.heavy)return '';
+  const ex=r.ex;
+  /* The date is dropped when the heaviest set was the lift's last session,
+     since the Last line beside it already carries that date and the column
+     shows those very sets. */
+  const exps=IDX().byEx[exId]||[];const newest=exps.length?exps[exps.length-1].date:null;
+  const when=r.heavy.date===newest?'':`, ${fmtDate(r.heavy.date)}`;
+  return `Heaviest ${setShort(ex,r.heavy.p.w,r.heavy.p.r)}${loadNote(ex)}${when}`;
 }
 function bestsBoard(){
   const I=IDX();const rows=Object.keys(I.byEx).map(allTimeBests).filter(Boolean).sort((a,b)=>a.last<b.last?1:a.last>b.last?-1:a.ex.name.localeCompare(b.ex.name));

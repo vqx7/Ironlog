@@ -90,6 +90,23 @@ const readAll = () => {
     await P.ctx.close();
   }
 
+  // ---- The reason beside a target is the engine's own, so the two cannot drift (r47).
+  {
+    const P = await open(FILE, { browser, clock: '2026-10-15T10:00:00' });
+    const r = await P.page.evaluate(() => { const L = window.__ironlog;
+      L.state.settings.onboarded = true; L.makeDemo(); L.saveNow(); L.render();
+      document.querySelector('[data-act="startSession"]').click(); L.render();
+      return L.state.draft.ex.map((b, i) => { const tip = document.querySelector(`#blk-${i} .hint .tipi`);
+        return { target: !!b.target, shown: tip && tip.getAttribute('data-tip'), why: L.whyTarget ? L.whyTarget(b) : null, hint: b.hint || '' }; });
+    });
+    const withT = r.filter(x => x.target);
+    ok(withT.length > 0 && withT.every(x => x.shown && x.shown === x.why),
+      "every target on the session screen carries the engine's own reason, word for word", withT.filter(x => x.shown !== x.why).slice(0, 2));
+    ok(withT.every(x => x.hint.includes(x.why)), 'and that reason is part of the sentence the engine wrote, never a retelling', withT.filter(x => !x.hint.includes(x.why)).slice(0, 2));
+    ok(!P.errors.length, 'no page errors (reason beside target)', P.errors);
+    await P.ctx.close();
+  }
+
   // ---- A rest week: no screen asks for work, and none shows a target for it.
   {
     const P = await open(FILE, { browser, clock: '2026-10-14T10:00:00' });
@@ -124,6 +141,85 @@ const readAll = () => {
     ok(pct && +pct[1] === 100 && pct[2] === pct[3],
       'a week that counts for the streak counts in full for adherence, a two-a-day included', { adh: r.adh, streak: r.streak });
     ok(!P.errors.length, 'no page errors (two-a-day)', P.errors);
+    await P.ctx.close();
+  }
+
+  // ---- Hard sets this week against the rule written out (r47). Volume and
+  // This week both read weekStats(), so comparing them cannot catch a change in
+  // weekStats itself; since r47 it reads IDX's weekHard instead of walking the
+  // log. This states the old walk here, as an oracle, and holds the app to it on
+  // random logs: warm-ups, drop sets, blank and high RIR, the same lift twice
+  // in a session, a lighter block, with Count RIR 4 to 5 as half a set off and
+  // on, and with RIR off.
+  {
+    const P = await open(FILE, { browser, clock: '2026-10-14T10:00:00' });
+    const bad = await P.page.evaluate(() => { const L = window.__ironlog; const s0 = L.state; s0.settings.onboarded = true;
+      let seed = 7; const rnd = () => { seed = (seed * 48271) % 2147483647; return seed / 2147483647; };
+      const ids = s0.exercises.slice(0, 12).map(e => e.id); const out = []; let checked = 0;
+      for (let t = 0; t < 40; t++) {
+        const s = L.state; const ss = []; const n = 4 + Math.floor(rnd() * 10);
+        for (let i = 0; i < n; i++) { const ex = []; const k = 1 + Math.floor(rnd() * 4);
+          for (let j = 0; j < k; j++) { const id = ids[Math.floor(rnd() * ids.length)];
+            ex.push({ exId: id, ...(rnd() < 0.15 ? { light: true } : {}), sets: Array.from({ length: 1 + Math.floor(rnd() * 5) }, () => ({ w: 20 + Math.floor(rnd() * 30) * 2.5, r: Math.floor(rnd() * 15), rir: rnd() < 0.2 ? null : Math.floor(rnd() * 6), done: true, ...(rnd() < 0.15 ? { warm: true } : rnd() < 0.15 ? { drop: true } : {}) })) }); }
+          ss.push({ id: 'h' + t + '_' + i, date: L.addDays(L.today(), -Math.floor(rnd() * 12)), dayName: 'A', notes: '', ex }); }
+        s.sessions = ss; s.settings.rirHalf = t % 3 === 1 ? true : undefined; s.settings.rirMode = t % 3 === 2 ? 'off' : undefined;
+        L.state = L.normalize(s); L.invalidate();
+        // The rule from its parts (r40's hardCredit): a hard set counts its credit
+        // (a drop set half); with the setting on and RIR not off, any other working
+        // set past RIR 3 counts half of that; nothing else counts.
+        const half = !!L.state.settings.rirHalf && L.state.settings.rirMode !== 'off';
+        const credit = (q, e) => { if (L.isHard(q, e)) return L.setCredit(q); const work = !q.warm && +q.r > 0; if (!half || !work) return 0; const v = L.rirEst(q, e); return v != null && v > 3 ? L.setCredit(q) * 0.5 : 0; };
+        const cur = L.weekStart(L.today()); let want = 0;
+        for (const x of L.state.sessions) if (x.date >= cur && x.date <= L.addDays(cur, 6)) for (const b of x.ex) { const e = L.EX(b.exId); for (const q of b.sets) want += credit(q, e); }
+        const got = L.weekStats().got; checked++;
+        if (Math.abs(got - want) > 1e-9) out.push({ t, got, want });
+      }
+      return { out, checked }; });
+    ok(bad.checked === 40 && bad.out.length === 0, 'This week\'s hard sets equal the rule written out, on 40 random logs with the half-set setting off and on and with RIR off', bad);
+    ok(!P.errors.length, 'no page errors (hard sets)', P.errors);
+    await P.ctx.close();
+  }
+
+  // ---- A day with two sessions, wherever it is shown (r47): the week bar, the
+  // calendar, the day picker, This month's title and History all read one index
+  // of sessions by date (dateIndex), in one order (sessCmp). Until r47 each
+  // grouped the log itself and the week bar ordered the day by id, so the
+  // morning session could be named second.
+  {
+    const P = await open(FILE, { browser, clock: '2026-10-14T10:00:00' });
+    const r = await P.page.evaluate(() => { const L = window.__ironlog; const s = L.state; s.settings.onboarded = true; s.settings.hidden = [];
+      const R = L.activeRoutine(); const days = R.days.filter(d => !d.rest);
+      const mk = (id, date, t, name) => ({ id, date, t, dayIdx: R.days.indexOf(days[0]), dayId: days[0].id, dayName: name, routineId: R.id, notes: '', ex: [{ exId: 'bench', sets: [{ w: 60, r: 8, rir: 1, done: true }] }] });
+      const ws = L.weekStart(L.today()); const mon = ws;
+      // The ids are in the opposite order to the clock, so only a reader that orders by start time names the morning first.
+      s.sessions = [mk('zz-morning', mon, Date.parse(mon + 'T07:00:00'), 'Morning'), mk('aa-evening', mon, Date.parse(mon + 'T18:00:00'), 'Evening'), mk('bb-other', L.addDays(ws, 2), Date.parse(L.addDays(ws, 2) + 'T09:00:00'), 'Other')];
+      L.state = L.normalize(s); L.invalidate(); L.saveNow();
+      const out = { mon };
+      L.ui.tab = 'today'; L.ui.wkView = 'week'; L.render();
+      const wb = [...document.querySelectorAll('#wkbar button')].find(b => b.querySelector('.dn').textContent === String(+mon.slice(8)));
+      out.bar = wb ? { name: wb.querySelector('.nm').textContent, label: wb.getAttribute('aria-label') } : null;
+      // Tapping that day on the bar asks which session, as the calendar does.
+      if (wb) wb.click();
+      out.barPick = L.ui.modal && L.ui.modal.kind === 'daypick' ? [...document.querySelectorAll('#modal [data-act="wkOpen"]')].map(b => b.textContent.trim()) : (L.ui.modal ? 'sheet ' + L.ui.modal.kind : 'tab ' + L.ui.tab);
+      L.ACT.mClose(); L.ui.tab = 'today'; L.render();
+      L.ACT.wkView({ dataset: { v: 'month' } }); L.render();
+      const cal = document.querySelector(`#view [data-act="calDay"][data-date="${mon}"]`);
+      out.cal = cal ? { x: cal.querySelector('.x').textContent, label: cal.getAttribute('aria-label') } : null;
+      out.monthTitle = (document.querySelector('[data-mkey="week"] .sec-s') || {}).textContent || '';
+      out.calMarks = [...document.querySelectorAll('#view [data-act="calDay"].on')].reduce((a, b) => a + (+(b.querySelector('.x').textContent.replace('×', '')) || 1), 0);
+      L.ACT.calDay({ dataset: { date: mon } });
+      out.pick = [...document.querySelectorAll('#modal [data-act="wkOpen"]')].map(b => b.textContent.trim());
+      L.ACT.mClose();
+      L.ui.tab = 'history'; L.render();
+      out.hist = [...document.querySelectorAll('#view [data-act="histToggle"][data-id]')].map(b => b.dataset.id);
+      return out; });
+    ok(r.bar && r.bar.name === 'Morning +1' && /Morning, Evening, logged/.test(r.bar.label), 'the week bar names the morning session first and counts the second', r.bar);
+    ok(r.cal && r.cal.x === '×2' && /Morning, Evening/.test(r.cal.label), 'the calendar marks the day ×2 in the same order', r.cal);
+    ok(r.pick.length === 2 && /^Morning/.test(r.pick[0]) && /^Evening/.test(r.pick[1]), 'the day picker lists them in that order', r.pick);
+    ok(Array.isArray(r.barPick) && r.barPick.join('|') === r.pick.join('|'), 'tapping the day on the week bar asks which, with the same list the calendar opens', { bar: r.barPick, cal: r.pick });
+    ok(/^3 sessions/.test(r.monthTitle) && r.calMarks === 3, 'This month counts what the calendar marks', { title: r.monthTitle, marks: r.calMarks });
+    ok(r.hist.indexOf('aa-evening') < r.hist.indexOf('zz-morning') && r.hist.includes('bb-other'), 'History, newest first, puts the evening above the morning', r.hist);
+    ok(!P.errors.length, 'no page errors (two sessions in a day)', P.errors);
     await P.ctx.close();
   }
 
