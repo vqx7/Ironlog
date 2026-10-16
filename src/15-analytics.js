@@ -213,7 +213,9 @@ function tonnage(ex,s,date){
    - Nothing past 12 RTF: the spread between people and in RIR calls grows
      too wide there (Nuzzo 2024, Halperin 2022).
    - A set called at more than 4 RIR is left out rather than read as 4.
-   Estimates run low on deadlifts and high on leg-press-type machines. */
+   No correction is made per exercise: nothing in the evidence base (CLAUDE.md)
+   establishes how a formula errs on a given lift, so the number is shown as
+   an estimate everywhere (fmtE, "Est. 1RM") rather than adjusted. */
 const E1_MAX_RIR=4;
 function rtfOf(r,rir){const q=rir==null||rir===''||!isFinite(+rir)?0:Math.max(+rir,0);return q>E1_MAX_RIR?null:+r+q;}
 function e1(load,r,rir){
@@ -986,12 +988,11 @@ function pace(){
 }
 /* Per-session volume per muscle, counted the same way as weekly volume
    (direct 1, secondary 0.5). Weekly bands cannot see a once-a-week split
-   putting 17 sets on one muscle in one session. The dose-response
-   meta-regression by Pelland et al. (2024) found hypertrophy returns per
-   session flattening beyond roughly 11 fractional sets, so anything above 10
-   is flagged as a likely place to move sets to another day. */
-// Past about 11 fractional sets for one muscle in a session, studies cannot
-// detect extra growth (Remmert 2025, preprint). Flagged above 11, advisory.
+   putting 17 sets on one muscle in one session. The per-session
+   meta-regression (Remmert 2025, a preprint from the group behind the weekly
+   dose-response paper, Pelland 2025) could not detect extra growth past about
+   11 fractional sets for one muscle in a session, so more than 11 is flagged
+   as a likely place to move sets to another day. Advisory, a convention. */
 const SESSION_CAP=11;
 function sessionMuscleSets(day){
   const out={};

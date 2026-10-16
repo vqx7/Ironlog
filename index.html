@@ -1601,7 +1601,7 @@ if(ENV==='preview')document.documentElement.dataset.env='preview';
 const HAD_LOG=(()=>{try{return localStorage.getItem(KEY)!=null;}catch(e){return false;}})();
 /* Shown in Settings, in diagnostics and in backups, so a bug report can be
    matched to the exact build. */
-const APP_VERSION='2026.10.15-r47';
+const APP_VERSION='2026.10.16-r48';
 /* The logo (r25): an upright dumbbell that is also the I of Ironlog. Same
    numbers as scripts/icons.py, which draws the app icons. */
 const MARK_SVG='<svg class="mark" viewBox="-242 -378 484 756" aria-hidden="true" focusable="false"><rect class="mk-h" x="-30" y="-300" width="60" height="600" rx="14"/><rect class="mk-h" x="-80" y="-192" width="160" height="32" rx="12"/><rect class="mk-h" x="-80" y="160" width="160" height="32" rx="12"/><rect class="mk-p" x="-240" y="-376" width="480" height="92" rx="30"/><rect class="mk-p" x="-190" y="-270" width="380" height="66" rx="26"/><rect class="mk-p" x="-190" y="204" width="380" height="66" rx="26"/><rect class="mk-p" x="-240" y="284" width="480" height="92" rx="30"/></svg>';
@@ -2769,7 +2769,7 @@ function guideSheet(m){
    <p><b>Make it lighter</b>, after a low check-in, changes only the exercises not started yet. What you already did at full effort still sets next time's target.</p>
    <p><b>An injury</b> flagged on a muscle or a joint (knee, hip, shoulder, elbow, wrist) pauses targets for exercises that load it and caps their load at last time.</p>
    <p><b>Changes apply at once</b>: a new load step, rep range, or heaviest load reaches the exercises in your session that you have not started yet.</p>`],
-  ['stats','Volume and Stats',`<p><b>A hard set</b> is a working set at RIR 3 or less${off?' (with RIR off, every working set)':''}. Helper muscles count half a set (Pelland 2025). With Settings, Count ${halfLbl()} as half a set on, a working set past RIR 3 counts half toward your weekly sets and targets, planned ones too (a convention); estimates, PRs, recovery, and the per-workout flag still count hard sets only.</p>
+  ['stats','Volume and Stats',`<p><b>A hard set</b> is a working set at RIR 3 or less${off?' (with RIR off, every working set)':''}. Helper muscles count half a set (Pelland 2025); which muscles are helpers on each lift is the library's own call, a convention. With Settings, Count ${halfLbl()} as half a set on, a working set past RIR 3 counts half toward your weekly sets and targets, planned ones too (a convention); estimates, PRs, recovery, and the per-workout flag still count hard sets only.</p>
    <p><b>Weekly targets</b> are per muscle in Settings, Weekly set targets. 10 to 20 hard sets a week for major muscles is typical, not a ceiling. Serratus, rotator cuff, neck, and tibialis are tracked only: counted and shown, with no target, since no study sets a dose for them and most routines leave them to indirect work. A target starting at 0 is met with no sets. A muscle is below target when its weekly average, to one decimal as shown, is under the minimum. The radar on Stats measures each region against its minimum, so on or past the ring is on target. It averages your last 4 full weeks; the chips above it switch to 2 or 8 weeks, for the radar only. During the week, short of the minimum shows as under way, not below.</p>
    <p><b>Lagging strength</b> is a muscle whose lifts are falling, or flat with one of them stalled (a convention); with no clear trend, a stalled lift reads <b>A lift stalled</b>. A muscle whose lifts are all within day-to-day noise reads <b>unclear</b>, never 0%.</p>
    <p><b>Your target and the usual range</b>: picking a ready-made routine sets your minimums to what it plans, so Stats measures you against your plan. Plan, Weekly volume names the muscles that plan puts under the usual range.</p>
@@ -3286,7 +3286,9 @@ function tonnage(ex,s,date){
    - Nothing past 12 RTF: the spread between people and in RIR calls grows
      too wide there (Nuzzo 2024, Halperin 2022).
    - A set called at more than 4 RIR is left out rather than read as 4.
-   Estimates run low on deadlifts and high on leg-press-type machines. */
+   No correction is made per exercise: nothing in the evidence base (CLAUDE.md)
+   establishes how a formula errs on a given lift, so the number is shown as
+   an estimate everywhere (fmtE, "Est. 1RM") rather than adjusted. */
 const E1_MAX_RIR=4;
 function rtfOf(r,rir){const q=rir==null||rir===''||!isFinite(+rir)?0:Math.max(+rir,0);return q>E1_MAX_RIR?null:+r+q;}
 function e1(load,r,rir){
@@ -4059,12 +4061,11 @@ function pace(){
 }
 /* Per-session volume per muscle, counted the same way as weekly volume
    (direct 1, secondary 0.5). Weekly bands cannot see a once-a-week split
-   putting 17 sets on one muscle in one session. The dose-response
-   meta-regression by Pelland et al. (2024) found hypertrophy returns per
-   session flattening beyond roughly 11 fractional sets, so anything above 10
-   is flagged as a likely place to move sets to another day. */
-// Past about 11 fractional sets for one muscle in a session, studies cannot
-// detect extra growth (Remmert 2025, preprint). Flagged above 11, advisory.
+   putting 17 sets on one muscle in one session. The per-session
+   meta-regression (Remmert 2025, a preprint from the group behind the weekly
+   dose-response paper, Pelland 2025) could not detect extra growth past about
+   11 fractional sets for one muscle in a session, so more than 11 is flagged
+   as a likely place to move sets to another day. Advisory, a convention. */
 const SESSION_CAP=11;
 function sessionMuscleSets(day){
   const out={};
@@ -6418,7 +6419,7 @@ function exBodyFlat(e,small){
   const fig=(view,label)=>`<figure class="bm"><svg viewBox="0 0 120 210" aria-hidden="true"><g class="bm-base">${BM_BASE}</g>${Object.entries(BM[view]).map(([k,sh])=>`<g class="mx ${k===main?'ex-main':help.includes(k)?'ex-help':''}">${sh.map(bmShape).join('')}</g>`).join('')}</svg><figcaption>${label}</figcaption></figure>`;
   return `<div class="bm-wrap${small?' bm-small':''}">${fig('f','Front')}${fig('b','Back')}</div>`;
 }
-function exMusWords(e){const {main,help}=exMusParts(e);return `<p class="small" style="margin:0"><b>Main</b>: ${esc(ML[main]||main)}${help.length?`. <b>Helpers</b>: ${esc(andList(help.map(k=>ML[k]||k)))} ${tipi('A helper muscle counts half a set toward its weekly total (Pelland 2025).','About helper muscles')}`:''}</p>`;}
+function exMusWords(e){const {main,help}=exMusParts(e);return `<p class="small" style="margin:0"><b>Main</b>: ${esc(ML[main]||main)}${help.length?`. <b>Helpers</b>: ${esc(andList(help.map(k=>ML[k]||k)))} ${tipi('A helper muscle counts half a set toward its weekly total (Pelland 2025). Which muscles are helpers on a lift is the library\'s own call, including grip and holding muscles such as the forearms and traps on a deadlift, which the study behind the half credit did not measure.','About helper muscles')}`:''}</p>`;}
 function exMusLegend(e){return `<div class="bm-legend small"><span><i class="ex-main"></i>Main</span>${exMusParts(e).help.length?'<span><i class="ex-help"></i>Helper</span>':''}</div>`;}
 function map3dLoad(cb){
   if(B3.state==='ready'||B3.state==='fail'){cb();return;}
