@@ -293,7 +293,8 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
     const m = await ev(() => { const x = window.__ironlog.map3d(); return { state: x.state, meshes: x.meshes, n: Object.keys(x.colors).length }; });
     ok(m.state === 'ready' && m.meshes > 50 && m.n >= 23, 'the 3D body draws with all 23 muscle groups', m);
     // The waist is narrower than the chest and the hips: a lifter, not a barrel.
-    const prof = await ev(() => { const s = document.documentElement.innerHTML; const i = s.indexOf("const B3_PARTS=["); const t = s.slice(i, s.indexOf('\n', s.indexOf('prof', i))); const pts = JSON.parse(t.slice(t.indexOf('prof:') + 5, t.indexOf(']],', t.indexOf('prof:')) + 2).replace(/([\[,])\./g, '$10.')); const at = y => pts.reduce((b, p) => Math.abs(p[1] - y) < Math.abs(b[1] - y) ? p : b)[0]; return { waist: at(1.07), chest: at(1.32), hips: at(.93) }; });
+    // The neutral body's profile, the first part, read from the app itself (r49: the script is bundled, so its source text is not the code as written).
+    const prof = await ev(() => { const pts = window.__ironlog.B3_PARTS[0].prof; const at = y => pts.reduce((b, p) => Math.abs(p[1] - y) < Math.abs(b[1] - y) ? p : b)[0]; return { waist: at(1.07), chest: at(1.32), hips: at(.93) }; });
     ok(prof.waist < prof.chest * 0.75 && prof.waist < prof.hips, 'the torso tapers: waist well under the chest and under the hips', prof);
     ok(!P.errors.length, 'no page errors (3D)', P.errors);
     await P.browser.close();

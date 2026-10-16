@@ -473,7 +473,8 @@ const ODD = /shared (phone|device|computer)|someone else|another person|other pe
   // ---------- 3. Copy: no shared-phone wording, no em dashes ----------
   {
     // The source, every line (comments too, so nothing slips in by a copy from one).
-    for (const f of ['index.html', 'scripts/cloud-supabase.js']) {
+    // Since r49 the page's script is bundled without comments, so the source files are read as written as well.
+    for (const f of ['index.html', 'scripts/cloud-supabase.js', ...require('./h').sourceFiles()]) {
       const src = fs.readFileSync(path.join(__dirname, '..', f), 'utf8');
       const odd = src.split('\n').map((l, i) => [i + 1, l]).filter(([, l]) => ODD.test(l)).map(([n, l]) => n + ': ' + l.trim().slice(0, 120));
       ok(!odd.length, `${f}: no talk of shared phones, someone else, or another person`, odd.slice(0, 5));

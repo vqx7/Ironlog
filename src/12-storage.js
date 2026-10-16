@@ -6,19 +6,16 @@
    (and undo database) keeps the preview's log apart. Only scripts/build.js
    --preview sets IRONLOG_ENV. */
 const ENV=window.IRONLOG_ENV==='preview'?'preview':'live';
-const KEY=ENV==='preview'?'ironlog-preview.v1':'ironlog.v1';
+const KEY=ENV==='preview'?`${STORAGE_ID}-preview.v1`:`${STORAGE_ID}.v1`;
 if(ENV==='preview')document.documentElement.dataset.env='preview';
 /* Whether this device had a log before this page first ran. Read before any
    save, for the new-icon note (r25): only an existing install still has the
    old icon on its home screen. */
 const HAD_LOG=(()=>{try{return localStorage.getItem(KEY)!=null;}catch(e){return false;}})();
-/* Shown in Settings, in diagnostics and in backups, so a bug report can be
-   matched to the exact build. */
-const APP_VERSION='2026.10.16-r48';
 /* The logo (r25): an upright dumbbell that is also the I of Ironlog. Same
    numbers as scripts/icons.py, which draws the app icons. */
 const MARK_SVG='<svg class="mark" viewBox="-242 -378 484 756" aria-hidden="true" focusable="false"><rect class="mk-h" x="-30" y="-300" width="60" height="600" rx="14"/><rect class="mk-h" x="-80" y="-192" width="160" height="32" rx="12"/><rect class="mk-h" x="-80" y="160" width="160" height="32" rx="12"/><rect class="mk-p" x="-240" y="-376" width="480" height="92" rx="30"/><rect class="mk-p" x="-190" y="-270" width="380" height="66" rx="26"/><rect class="mk-p" x="-190" y="204" width="380" height="66" rx="26"/><rect class="mk-p" x="-240" y="284" width="480" height="92" rx="30"/></svg>';
-const LOCKUP=`<span class="vh">Ironlog</span>${MARK_SVG}<span class="rn" aria-hidden="true">ron</span><span aria-hidden="true">log</span>`;
+const LOCKUP=`<span class="vh">${APP_NAME}</span>${MARK_SVG}<span class="rn" aria-hidden="true">${WORDMARK.strong}</span><span aria-hidden="true">${WORDMARK.light}</span>`;
 /* Diagnostics log: the last 60 errors, kept in this browser only. Errors that
    used to be swallowed silently land here, and Settings can copy them. */
 const LOGK=KEY+'.log';
@@ -70,7 +67,7 @@ const undoStack=[],UNDO_MAX=20;
    in-session entries carry cannot be stored; after a reload those entries
    undo through the three-way merge, which gives the same result. Best
    effort: without IndexedDB, Undo works as before, for this visit only. */
-const UNDO_DB=ENV==='preview'?'ironlog-preview-undo':'ironlog-undo',UNDO_TTL=7*864e5;let undoDbP=null,undoT=null;
+const UNDO_DB=ENV==='preview'?`${STORAGE_ID}-preview-undo`:`${STORAGE_ID}-undo`,UNDO_TTL=7*864e5;let undoDbP=null,undoT=null;
 function undoDb(){
   if(!undoDbP)undoDbP=new Promise(res=>{try{const r=indexedDB.open(UNDO_DB,1);r.onupgradeneeded=()=>r.result.createObjectStore('kv');r.onsuccess=()=>res(r.result);r.onerror=()=>res(null);}catch(e){res(null);}});
   return undoDbP;

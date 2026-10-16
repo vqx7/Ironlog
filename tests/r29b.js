@@ -410,7 +410,9 @@ const sess = (id, date, exId, sets) => ({ id, date, dayIdx: 0, dayId: null, dayN
     ok(/Content-Security-Policy/.test(prev), 'the preview build has it too');
     // The look-ahead scanner can read the app's script as markup now and then;
     // an image tag written in it was fetched as "${m.shot}" (a stray 404).
-    ok(!/<(img|source|video|audio|iframe)\b/i.test(fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8').split('<script>')[1] || ''), 'no media tag written literally in the app\'s script (\\x3cimg instead), so nothing is fetched from a template');
+    // Every inline script: until r49 this read only the first, the library loader, and never the app's.
+    const scripts = [...fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8').matchAll(/<script>([\s\S]*?)<\/script>/g)].map(m => m[1]);
+    ok(scripts.length >= 2 && scripts.every(t => !/<(img|source|video|audio|iframe)\b/i.test(t)), 'no media tag written literally in the app\'s script (\\x3cimg instead), so nothing is fetched from a template');
     const TYPES = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.woff2': 'font/woff2', '.png': 'image/png', '.webmanifest': 'application/manifest+json' };
     const server = http.createServer((req, res) => { let p = decodeURIComponent(req.url.split('?')[0]); if (p.endsWith('/')) p += 'index.html'; const f = path.join(DIST, p.replace(/^\/ironlog\//, '/')); if (!f.startsWith(DIST) || !fs.existsSync(f)) { res.writeHead(404); res.end('nf'); return; } res.writeHead(200, { 'Content-Type': TYPES[path.extname(f)] || 'application/octet-stream' }); fs.createReadStream(f).pipe(res); });
     await new Promise(r => server.listen(0, '127.0.0.1', r));

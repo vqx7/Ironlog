@@ -79,7 +79,8 @@ fs.cpSync(path.join(ROOT, 'dist-preview'), path.join(tmp, 'preview'), { recursiv
   ok(await ev(() => { const t = document.querySelector('.tabs'); return parseFloat(getComputedStyle(t).borderTopWidth) >= 2 && /PREVIEW/.test(getComputedStyle(t, '::before').content); }), 'the preview carries a PREVIEW tag on the tab bar');
   await seed('pv-1');
   const kick = await ev(() => { const L = window.__ironlog; L.ui.tab = 'settings'; L.render(); const k = document.querySelector('#view .ph .kick'); return k ? k.textContent : ''; });
-  ok(/^Ironlog Preview \d/.test(kick), 'Settings names the preview build (' + kick + ')');
+  const cfg = require('../scripts/config');
+  ok(kick === `${cfg.PREVIEW_NAME} ${cfg.VERSION_LINE}`, 'Settings names the preview and its version and build (' + kick + ')');
   await ev(() => { const L = window.__ironlog; L.ui.tab = 'today'; L.render(); });
   await ev(() => { const L = window.__ironlog; L.snapshot(); L.state.sessions[0].notes = 'undo me'; L.saveNow(); });
   await wait(300);

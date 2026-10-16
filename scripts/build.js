@@ -1,6 +1,6 @@
-// Builds the standalone installable app into dist/ from the one source file.
+// Builds the standalone installable app into dist/ from index.html, the page
+// scripts/join.js builds from src/.
 //
-// index.html stays the single source and keeps working as the Claude artifact.
 // This script copies it and changes only what a self-hosted, offline app
 // needs: fonts and libraries served from the same site (a gym basement has
 // no signal, and a CDN outage must not break logging), a web app manifest
@@ -23,9 +23,12 @@ const crypto = require('crypto');
 const ROOT = path.join(__dirname, '..');
 const PREVIEW = process.argv.includes('--preview');
 const DIST = path.join(ROOT, PREVIEW ? 'dist-preview' : 'dist');
-// Cache names: the live worker deletes every old cache starting "ironlog-",
-// so the preview's caches must never start with it.
-const CACHE_PREFIX = PREVIEW ? 'ilpreview-' : 'ironlog-';
+// The name, the build and the storage identifier come from src/app/config.ts
+// (r49), the one place they are defined.
+const cfg = require('./config');
+// Cache names: the live worker deletes every old cache starting with the
+// storage identifier and "-", so the preview's caches must never start with it.
+const CACHE_PREFIX = PREVIEW ? 'ilpreview-' : `${cfg.STORAGE_ID}-`;
 const NM = path.join(ROOT, 'node_modules');
 const src = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
 
@@ -36,8 +39,11 @@ function replaceOnce(text, a, b, what) {
   return text.replace(a, b);
 }
 
-const version = (src.match(/const APP_VERSION='([^']+)'/) || [])[1];
-must(version, 'APP_VERSION not found in index.html');
+// index.html carries the build in a meta tag written from config, so a page
+// left unjoined after a change to config is caught here.
+must(!'ilpreview-'.startsWith(`${cfg.STORAGE_ID}-`), 'the preview\'s cache prefix starts with the live one, so the live worker would delete it');
+const version = cfg.APP_VERSION;
+must(version && src.includes(`<meta name="app-build" content="${version}">`), `index.html is not built from src/ for ${version}: run npm run join`);
 
 fs.rmSync(DIST, { recursive: true, force: true });
 for (const d of ['vendor', 'fonts', 'icons']) fs.mkdirSync(path.join(DIST, d), { recursive: true });
@@ -59,7 +65,12 @@ if (cloudCfg) {
   must(/^sb_publishable_/.test(cloudCfg.key || '') || /^eyJ/.test(cloudCfg.key || ''), 'supabase.config.json: key must be the publishable (or legacy anon) key');
   must(!/secret|service_role/i.test(cloudCfg.key), 'supabase.config.json: never the secret key');
   fs.copyFileSync(path.join(NM, '@supabase/supabase-js/dist/umd/supabase.js'), path.join(DIST, 'vendor/supabase.js'));
-  fs.copyFileSync(path.join(ROOT, 'scripts/cloud-supabase.js'), path.join(DIST, 'cloud.js'));
+  // cloud.js gets the values it needs from src/app/config.ts written in at
+  // build time (r49), not from a global set at run time: its sign-in storage
+  // key must never come out as "undefined.auth". Every placeholder is filled
+  // or the build stops.
+  const cloudJs = fs.readFileSync(path.join(ROOT, 'scripts/cloud-supabase.js'), 'utf8').replace(/\{\{(\w+)\}\}/g, (m, k) => { must(typeof cfg[k] === 'string' && cfg[k], `cloud-supabase.js: unknown placeholder ${m}`); return cfg[k]; });
+  fs.writeFileSync(path.join(DIST, 'cloud.js'), cloudJs);
 }
 
 // Fonts: the weights the page asks Google Fonts for, latin subset.
@@ -78,8 +89,8 @@ fs.writeFileSync(path.join(DIST, 'fonts/fonts.css'), css);
 const ICONS = ['icon-192.png', 'icon-512.png', 'icon-maskable-512.png', 'apple-touch-icon.png', 'favicon-64.png'];
 const ICON_DIR = path.join(ROOT, 'assets', PREVIEW ? 'preview' : '');
 for (const f of ICONS) fs.copyFileSync(path.join(ICON_DIR, f), path.join(DIST, 'icons', f));
-const NAME = PREVIEW ? 'Ironlog Preview' : 'Ironlog';
-const SHORT = PREVIEW ? 'Preview' : 'Ironlog';
+const NAME = PREVIEW ? cfg.PREVIEW_NAME : cfg.APP_NAME;
+const SHORT = PREVIEW ? cfg.PREVIEW_LABEL : cfg.APP_NAME;
 
 let html = src;
 // Fonts from this site instead of Google.
@@ -90,7 +101,8 @@ must(!/fonts\.googleapis/.test(html), 'Google Fonts link still present');
 // Libraries: the local copy first, the CDNs stay as fallbacks.
 html = replaceOnce(html, "loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.2/Sortable.min.js',", "loadScript(['vendor/Sortable.min.js','https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.2/Sortable.min.js',", 'Sortable loader');
 html = replaceOnce(html, "loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js',", "loadScript(['vendor/chart.umd.js','https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js',", 'Chart.js loader');
-html = replaceOnce(html, "const THREE_URLS=['https://cdn.jsdelivr.net/npm/three@0.159.0/build/three.module.min.js',", "const THREE_URLS=['./vendor/three.module.min.js','https://cdn.jsdelivr.net/npm/three@0.159.0/build/three.module.min.js',", 'three.js loader');
+// three.js needs no edit here since r49: src/app/config.ts lists the
+// installed app's own copy first whenever IRONLOG_APP is set (head script).
 /* The Claude artifact was retired on 2026-09-27 (OWNER.md), so in r46 the
    features that only ran there (debriefs, Ask Claude, suggested swaps, Claude
    reading typed sets) left the source as well, rather than being stripped out
@@ -117,7 +129,7 @@ window.addEventListener('appinstalled',()=>{window.__installEvt=null;if(window.i
 <link rel="icon" type="image/png" href="icons/favicon-64.png">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 `;
-html = replaceOnce(html, '<title>Ironlog</title>\n', `<title>${NAME}</title>\n` + head, 'title');
+html = replaceOnce(html, `<title>${cfg.APP_NAME}</title>\n`, `<title>${NAME}</title>\n` + head, 'title');
 // The cloud script runs before the app's own script, so cloudProvider() finds
 // window.ironlogCloud on its first check.
 if (cloudCfg) html = replaceOnce(html, '</head>', `<script>window.IRONLOG_SUPABASE=${JSON.stringify({ url: cloudCfg.url, key: cloudCfg.key })};</script>
@@ -204,7 +216,7 @@ const files = ['./', 'index.html', 'manifest.webmanifest', 'fonts/fonts.css',
 const h = crypto.createHash('sha256');
 for (const f of files) if (f !== './') h.update(fs.readFileSync(path.join(DIST, f)));
 const cacheName = `${CACHE_PREFIX}${version}-${h.digest('hex').slice(0, 10)}`;
-const sw = `/* Ironlog service worker. Generated by scripts/build.js; do not edit. */
+const sw = `/* ${cfg.APP_NAME} service worker. Generated by scripts/build.js; do not edit. */
 const CACHE=${JSON.stringify(cacheName)};
 const FILES=${JSON.stringify(files)};
 /* A first install takes over at once. An update installs and then waits until
@@ -229,7 +241,7 @@ self.addEventListener('fetch',e=>{
   const u=new URL(r.url);if(u.origin!==location.origin)return;
   ${PREVIEW ? '' : "if(u.pathname.startsWith(OWN+'preview/'))return;"}
   /* Only the app's own page is answered with the app (r45 review: every
-     same-origin navigation was, so Open-source licenses opened Ironlog in
+     same-origin navigation was, so Open-source licenses opened the app in
      the new tab instead of LICENSES.txt). Other paths go cache, then network. */
   if(r.mode==='navigate'&&(u.pathname===OWN||u.pathname===OWN+'index.html')){
     e.respondWith(caches.open(CACHE).then(async c=>(await c.match('index.html'))||fetch(r).catch(()=>new Response('Offline',{status:503}))));

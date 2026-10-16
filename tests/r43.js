@@ -137,10 +137,15 @@ const PATHS = (s, k) => {
   // this build put it last, the next one put it back, and each pull rewrote the core document).
   {
     const fs = require('fs'), os = require('os'), path = require('path');
-    const src = fs.readFileSync('index.html', 'utf8'); const anchor = 'id:fixId(e.id),name:e.name,';
-    ok(src.split(anchor).length === 2, 'the simulated next build finds the exercise record to change');
+    // Built as a real next build is (r49): the source part changed, then bundled by scripts/join.js.
+    const anchor = 'id:fixId(e.id),name:e.name,';
+    const part = fs.readdirSync(path.join(__dirname, '..', 'src')).filter(f => /^[12]\d-.+\.js$/.test(f)).find(f => fs.readFileSync(path.join(__dirname, '..', 'src', f), 'utf8').includes(anchor));
+    const partSrc = part ? fs.readFileSync(path.join(__dirname, '..', 'src', part), 'utf8') : '';
+    ok(part && partSrc.split(anchor).length === 2, 'the simulated next build finds the exercise record to change', part);
     const next = path.join(os.tmpdir(), 'ironlog-next-r43test.html');
-    fs.writeFileSync(next, src.replace(anchor, anchor + "zz:typeof e.zz==='string'?e.zz:undefined,"));
+    const nextHtml = require('../scripts/join').build({ override: { [part]: partSrc.replace(anchor, anchor + "zz:typeof e.zz==='string'?e.zz:undefined,") } }).html;
+    ok(nextHtml.includes('zz: typeof e.zz') && nextHtml !== fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8'), 'and the next build carries the new field');
+    fs.writeFileSync(next, nextHtml);
     store.clear(); const writes = {}; const set0 = store.set.bind(store); store.set = (k, v) => { const id = k.split('/').pop(); writes[id] = (writes[id] || 0) + 1; return set0(k, v); };
     const X = await open('index.html', { browser, clock: CLOCK, setup: cloudSetup });
     const N = await open(next, { browser, clock: CLOCK, setup: cloudSetup });

@@ -148,7 +148,7 @@ const ACT={
     const how=installKind();
     if(how==='prompt'){
       const e=window.__installEvt;window.__installEvt=null;
-      try{e.prompt();Promise.resolve(e.userChoice).then(r=>{if(r&&r.outcome==='accepted')toast('Installing Ironlog. Open it from your home screen.');rerenderKeepScroll();},()=>{});}
+      try{e.prompt();Promise.resolve(e.userChoice).then(r=>{if(r&&r.outcome==='accepted')toast(`Installing ${APP_NAME}. Open it from your home screen.`);rerenderKeepScroll();},()=>{});}
       catch(err){log('install',err);openModal({kind:'install',how:'menu'});}
       return;
     }
@@ -199,7 +199,7 @@ const ACT={
     }
     try{await A.signOut();}catch(e){log('auth',e);}
     acct.user=null;
-    ui.modal={kind:'account',mode:'sent',title:'Switch back to the app',msg:'Open Ironlog from your home screen. If it still shows Check your email, it signs in by itself; otherwise sign in there.'};renderModal();acctRerender();
+    ui.modal={kind:'account',mode:'sent',title:'Switch back to the app',msg:`Open ${APP_NAME} from your home screen. If it still shows Check your email, it signs in by itself; otherwise sign in there.`};renderModal();acctRerender();
   },
   async acctSubmit(){
     const m=ui.modal,A=AUTH();if(!m||m.kind!=='account'||m.busy||!A)return;
@@ -231,7 +231,7 @@ const ACT={
           // Same reason as a confirmation link: this browser was signed in by
           // the emailed link only. The installed app signs in with the new password.
           try{await A.signOut();}catch(e){log('auth',e);}acct.user=null;
-          done({mode:'sent',title:'Password changed',msg:'Open Ironlog from your home screen and sign in with the new password. If you use Ironlog in this browser instead, sign in here.'});
+          done({mode:'sent',title:'Password changed',msg:`Open ${APP_NAME} from your home screen and sign in with the new password. If you use ${APP_NAME} in this browser instead, sign in here.`});
         }else{done(null);toast('Password changed');}
       }
     }catch(e){log('auth',e);if(ui.modal===m){m.err=(e&&e.message)||'Something went wrong. Try again.';
@@ -417,14 +417,14 @@ const ACT={
   bestsAll(){ui.bestsAll=true;rerenderKeepScroll();},
   async previewCopy(){
     if(ENV!=='preview')return;
-    toast('Looking for your Ironlog log');
+    toast(`Looking for your ${APP_NAME} log`);
     const {st,err}=await liveLogFetch();
     if(!st){
-      if(!acct.user&&AUTH()){confirmBox('Sign in first','This test version keeps a separate log. Sign in with your Ironlog account to copy your log in. Your log in Ironlog stays as it is.','Sign in',()=>ACT.acctOpen({dataset:{mode:'signin'}}));return;}
-      toast(err?`Could not read your Ironlog log: ${err.message}`:'No Ironlog log found for this account or on this phone.',null,6000);return;}
+      if(!acct.user&&AUTH()){confirmBox('Sign in first',`This test version keeps a separate log. Sign in with your ${APP_NAME} account to copy your log in. Your log in ${APP_NAME} stays as it is.`,'Sign in',()=>ACT.acctOpen({dataset:{mode:'signin'}}));return;}
+      toast(err?`Could not read your ${APP_NAME} log: ${err.message}`:`No ${APP_NAME} log found for this account or on this phone.`,null,6000);return;}
     const n=realCount(st);st.draft=null;
-    const go=()=>{snapshot();state=st;commit();closeModal();ui.tab='today';render();toast(`Copied ${n} session${n===1?'':'s'} from Ironlog. Ironlog is unchanged.`,true);};
-    if(realCount(state)||state.draft)confirmBox('Replace the preview log?',`Your Ironlog log has ${n} session${n===1?'':'s'}. Copying replaces everything in this test version; your log in Ironlog stays as it is. Undo can step this back.`,'Copy my log',go);
+    const go=()=>{snapshot();state=st;commit();closeModal();ui.tab='today';render();toast(`Copied ${n} session${n===1?'':'s'} from ${APP_NAME}. ${APP_NAME} is unchanged.`,true);};
+    if(realCount(state)||state.draft)confirmBox('Replace the preview log?',`Your ${APP_NAME} log has ${n} session${n===1?'':'s'}. Copying replaces everything in this test version; your log in ${APP_NAME} stays as it is. Undo can step this back.`,'Copy my log',go);
     else go();
   },
   obSample(){openModal({kind:'templates',from:'welcome'});},
@@ -561,7 +561,7 @@ const ACT={
   async fbCopy(){
     const m=ui.modal;if(!m||m.kind!=='feedback')return;
     // A report opened from the crash screen is already written (r47), so the copy carries it.
-    const txt=`Ironlog: ${FB_TITLE[m.cat]||FB_TITLE.bug}\n\n${m.msg&&m.msg.trim()?m.msg.trim():'(Write it here)'}\n\n${JSON.stringify(fbContext(m),null,1)}`;
+    const txt=`${APP_NAME}: ${FB_TITLE[m.cat]||FB_TITLE.bug}\n\n${m.msg&&m.msg.trim()?m.msg.trim():'(Write it here)'}\n\n${JSON.stringify(fbContext(m),null,1)}`;
     let ok=false;try{if(navigator.clipboard){await navigator.clipboard.writeText(txt);ok=true;}}catch(e){ok=false;}
     if(!ok){closeModal();openModal({kind:'text',title:'Report details',help:'Copy this into a message to the app owner, with what happened.',text:txt,readonly:true});return;}
     m.sent=true;m.copied=true;renderModal();
@@ -578,7 +578,7 @@ const ACT={
     const fb={category:FB_CATS.some(([k])=>k===m.cat)?m.cat:'bug',message:msg,reply_to:reply||null,screenshot:m.shot||null,context:fbContext(m)};
     if(!F){
       // No feedback service here: the report as text, to paste into a message.
-      const txt=`Ironlog: ${FB_TITLE[fb.category]}\n\n${msg}\n\n${JSON.stringify(fb.context,null,1)}`;
+      const txt=`${APP_NAME}: ${FB_TITLE[fb.category]}\n\n${msg}\n\n${JSON.stringify(fb.context,null,1)}`;
       let ok=false;try{if(navigator.clipboard){await navigator.clipboard.writeText(txt);ok=true;}}catch(e){ok=false;}
       if(!ok){closeModal();openModal({kind:'text',title:'Feedback',help:'Copy this and send it to the app owner.',text:txt,readonly:true});return;}
       m.sent=true;m.copied=true;m.dirty=false;renderModal();return;
@@ -592,7 +592,7 @@ const ACT={
     const F=FB();if(!F||typeof F.inbox!=='function')return;const m={kind:'fbInbox',items:null};openModal(m);
     try{const it=await F.inbox(50);if(ui.modal===m){m.items=it;renderModal();}}catch(e){log('feedback',e);if(ui.modal===m){m.err=(e&&e.message)||'Could not load feedback.';renderModal();}}
   },
-  diagCopy(){const t=JSON.stringify({version:APP_VERSION,cloud:{on:cloud.on,status:cloud.status,err:cloud.err,last:cloud.last},log:logBuf},null,1);openModal({kind:'text',title:'Diagnostics',help:'Copy this and paste it into a bug report. It holds errors and sync status, not your workouts.',text:t,readonly:true});},
+  diagCopy(){const t=JSON.stringify({build:APP_VERSION,version:DISPLAY_VERSION,cloud:{on:cloud.on,status:cloud.status,err:cloud.err,last:cloud.last},log:logBuf},null,1);openModal({kind:'text',title:'Diagnostics',help:'Copy this and paste it into a bug report. It holds errors and sync status, not your workouts.',text:t,readonly:true});},
   diagClear(){logBuf.length=0;try{localStorage.removeItem(LOGK);}catch(e){log('diag',e);}rerenderKeepScroll();toast('Log cleared');},
   undo(){
     if(!undoStack.length){toast('Nothing left to undo');return;}
@@ -1258,7 +1258,7 @@ m.err=`Could not read that. Try the pattern 225x5, 5, 4 ${rirScale()==='rpe'?'rp
   export(){exportBackup();},
   syncNow(){if(!cloud.on)return;cloud.retry=0;setCloud('connecting');cq(cloudPull).then(()=>{if(cloud.status==='synced')toast('Synced');});},
   exportCsv(){exportCSV();},
-  showBackup(){openModal({kind:'text',title:'Backup text',help:'Select all and copy. Paste it into Import on any device to restore.',text:JSON.stringify({app:'ironlog',exported:new Date().toISOString(),state}),readonly:true});},
+  showBackup(){openModal({kind:'text',title:'Backup text',help:'Select all and copy. Paste it into Import on any device to restore.',text:JSON.stringify({app:STORAGE_ID,exported:new Date().toISOString(),state}),readonly:true});},
   copyText(){const ta=$('#mText');ta.select();let ok=false;try{if(navigator.clipboard){navigator.clipboard.writeText(ta.value).then(()=>{markExported();toast('Copied');},()=>toast('Select the text and copy it manually'));return;}ok=document.execCommand('copy');}catch(e){log('copy',e);}if(ok)markExported();toast(ok?'Copied':'Select the text and copy it manually');},
   pasteImport(){openModal({kind:'text',title:'Import backup text',help:'Paste the full backup text here.',text:'',readonly:false});},
   importText(){importData($('#mText').value);},

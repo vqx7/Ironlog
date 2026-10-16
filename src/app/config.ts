@@ -1,0 +1,68 @@
+/* The values that name and identify the app, each defined once (r49).
+   Everything that shows the name, the version or the site reads them from
+   here: the screens, the page title and heading (written by scripts/join.js),
+   the installed app's manifest and home-screen label (scripts/build.js) and
+   the account script's messages. tests/hygiene.js fails when any of them is
+   typed anywhere else.
+
+   STORAGE_ID is here too, but it is an identifier, not the name: every
+   storage key, cache and backup mark is built from it, and it never changes
+   when the name does (see below). */
+
+declare global {
+  interface Window { IRONLOG_APP?: boolean; IRONLOG_ENV?: string; }
+}
+
+/** The identifier in every storage key, cache name and backup file:
+    "ironlog.v1", the undo database, the sign-in slot, the caches, and the
+    backup's {app:"ironlog"} mark. NEVER change it, whatever the app is called:
+    a phone looks for its log under this exact key, and a different one would
+    leave every saved log behind. It is here so it is typed once. */
+export const STORAGE_ID = 'ironlog';
+
+/** The app's name, as people see it. */
+export const APP_NAME = 'Ironlog';
+
+/** The start of an exported file's name ("ironlog-backup-2026-10-16.json"),
+    which a lifter sees in Files, so it follows the name. */
+export const FILE_PREFIX = APP_NAME.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+
+/** The test build's name and its home-screen label (r24). */
+export const PREVIEW_NAME = `${APP_NAME} Preview`;
+export const PREVIEW_LABEL = 'Preview';
+
+/** The logo's wordmark (r25): the dumbbell mark is the first letter, the rest
+    is set as text. A new name needs a new wordmark, so tests/hygiene.js checks
+    the three still spell APP_NAME. `strong` is set in the ink colour at full
+    weight, `light` in the muted colour (.ob-logo in the styles). */
+export const WORDMARK = { mark: 'I', strong: 'ron', light: 'log' } as const;
+
+/** The version people see (V, 2026-10-16): 2.0 from r49, the minor number up
+    by one for each release merged, the major number for a large change. */
+export const DISPLAY_VERSION = '2.0';
+
+/** The build: shown beside the version in Diagnostics, problem reports and
+    backups, so a report is matched to the exact code; also names the service
+    worker's cache. Bump it for every published build (CLAUDE.md rule 8).
+    Problem reports and Copy diagnostics carry it as `build` and the version
+    people see as `version`; a backup keeps it under `version`, as every
+    build before r49 wrote backups, so old and new backups read the same. */
+export const APP_VERSION = '2026.10.16-r49';
+
+/** Version and build together, for Diagnostics and the recovery screen. */
+export const VERSION_LINE = `${DISPLAY_VERSION} (build ${APP_VERSION})`;
+
+/** Where the app is published, for the install steps when the page is opened
+    from a file (r27); a page on the web reads its own address instead. */
+export const SITE_HOST = 'ironapp.org';
+export const SITE_DIR_FALLBACK = '/Ironlog';
+
+/** three.js for the 3D body (r20). The installed app ships its own copy and
+    tries it first; the public CDNs stay as fallbacks. This was a text edit in
+    scripts/build.js until r49, which broke once the script was bundled. */
+const THREE_CDN = [
+  'https://cdn.jsdelivr.net/npm/three@0.159.0/build/three.module.min.js',
+  'https://unpkg.com/three@0.159.0/build/three.module.min.js',
+];
+export const THREE_URLS: readonly string[] =
+  typeof window !== 'undefined' && window.IRONLOG_APP ? ['./vendor/three.module.min.js', ...THREE_CDN] : THREE_CDN;

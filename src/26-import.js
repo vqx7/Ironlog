@@ -402,7 +402,7 @@ function impSheet(m){
     <textarea id="impText" aria-label="Paste your log" style="min-height:160px;font-size:14px" placeholder="Sep 20&#10;Bench press 185x8, 185x7, 185x6&#10;Lat pulldown 3x10 @ 120">${esc(m.text||'')}</textarea>
     ${m.err?`<p class="small" style="color:var(--red);margin:8px 0 0">${esc(m.err)}</p>`:''}
     <button class="btn block" style="margin-top:10px" data-act="impRead">Read it</button>
-    <p class="small muted hastip" style="margin:10px 0 0" data-tip="Notes: a date on its own line, then one exercise per line with its sets (185x8, 185x7, or 3x10 @ 120). A spreadsheet: a file, or copy the cells and paste them, with columns such as date, exercise, weight, and reps. Another app: export your workouts as a CSV file from its settings, then choose that file here. Handwritten: photograph the page, open it in Photos, press and hold the writing, tap Copy, and paste it here. An Ironlog backup file restores your whole log instead.">What can I import?</p></div></div>`;
+    <p class="small muted hastip" style="margin:10px 0 0" data-tip="Notes: a date on its own line, then one exercise per line with its sets (185x8, 185x7, or 3x10 @ 120). A spreadsheet: a file, or copy the cells and paste them, with columns such as date, exercise, weight, and reps. Another app: export your workouts as a CSV file from its settings, then choose that file here. Handwritten: photograph the page, open it in Photos, press and hold the writing, tap Copy, and paste it here. A backup file from ${APP_NAME} restores your whole log instead.">What can I import?</p></div></div>`;
   const r=m.res;
   if(r.needMap){const head=m.tab.rows[0];const opt=(f,label,need)=>`<label class="field">${label}${need?'':' <span class="muted">(optional)</span>'}<select data-mapf="${f}"><option value="">None</option>${head.map((h,i)=>`<option value="${i}" ${m.tab.map[f]===i?'selected':''}>${esc(String(h||'Column '+(i+1)).slice(0,30))}</option>`).join('')}</select></label>`;
     return H('Which column is which?')+`<p class="small muted" style="margin:0 0 8px">The first row is read as column names.</p>${opt('date','Date',1)}${opt('ex','Exercise',1)}${opt('w','Weight, none if bodyweight only')}${opt('r','Reps',1)}${opt('sets','Sets')}${opt('rir','RIR')}${opt('name','Workout name')}
@@ -439,7 +439,7 @@ function impSheet(m){
    more sessions wins. The live app and its table are never written. */
 async function liveLogFetch(){
   let local=null;
-  try{const raw=localStorage.getItem('ironlog.v1');if(raw)local=normalize(JSON.parse(raw));}catch(e){local=null;}
+  try{const raw=localStorage.getItem(`${STORAGE_ID}.v1`);if(raw)local=normalize(JSON.parse(raw));}catch(e){local=null;}
   let remote=null,err=null;
   if(typeof window.ironlogLiveDocs==='function'&&acct.user){
     try{const parts={};for(const d of await window.ironlogLiveDocs()){if(!isChunkId(d.id)||!d.data||typeof d.data.json!=='string')continue;try{parts[d.id]=JSON.parse(d.data.json);}catch(e){/* an unreadable chunk is skipped */}}
@@ -452,7 +452,7 @@ function previewCopyBtn(cls){return ENV==='preview'?`<button class="btn ${cls||'
 function importData(text,after){
   let obj;try{obj=JSON.parse(text);}catch(e){toast('That is not valid backup text');return;}
   const s=obj&&obj.state?obj.state:obj;
-  if(!s||typeof s!=='object'||!Array.isArray(s.exercises)||!Array.isArray(s.routines)||!Array.isArray(s.sessions)){toast('That file is not an Ironlog backup');return;}
+  if(!s||typeof s!=='object'||!Array.isArray(s.exercises)||!Array.isArray(s.routines)||!Array.isArray(s.sessions)){toast(`That file is not a backup from ${APP_NAME}`);return;}
   // Validate first and report honestly, rather than importing something that
   // renders once and then throws.
   let clean;try{clean=normalize(s);}catch(e){toast('That backup could not be read');return;}

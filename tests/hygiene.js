@@ -9,8 +9,20 @@
 // 3. Estimated minutes are worded in one place, `estMin`. A "~N min" or an
 //    "about N min" typed into any other template is how r42's first build
 //    missed one spot ("About 40 min after the change").
+// 4. One source for every value that names or identifies the app (r49, V:
+//    "don't hardcode", asked again and again): the name, the domain and the
+//    build exist only in src/app/config.ts. Everything else reads them, and a
+//    copy typed anywhere in code, markup or the scripts fails here. Comments
+//    may still say the name; they are prose, not values.
+// 5. The module boundary (r49, ARCHITECTURE.md): src/app/ never imports the
+//    legacy parts, and the typed modules pass the TypeScript checker.
 const fs = require('fs'); const path = require('path');
 const ROOT = path.join(__dirname, '..');
+// Every script file under src/: the legacy parts and the typed modules in src/app/.
+// src/app/ is read at any depth.
+const appFiles = d => fs.readdirSync(path.join(ROOT, 'src', d), { withFileTypes: true }).flatMap(e => e.isDirectory() ? appFiles(d + '/' + e.name) : /\.ts$/.test(e.name) ? [d + '/' + e.name] : []);
+const SRC_CODE = [...fs.readdirSync(path.join(ROOT, 'src')).filter(f => f.endsWith('.js')), ...appFiles('app')];
+const cfg = require('../scripts/config');
 const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log('FAIL', m, x === undefined ? '' : JSON.stringify(x)); } else console.log('ok  ', m); };
 
 // 1. Orphaned test files.
@@ -55,7 +67,7 @@ const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log
 // 3. Minutes wording only from estMin.
 {
   const hits = [];
-  for (const f of fs.readdirSync(path.join(ROOT, 'src')).filter(f => f.endsWith('.js'))) {
+  for (const f of SRC_CODE) {
     fs.readFileSync(path.join(ROOT, 'src', f), 'utf8').split('\n').forEach((line, i) => {
       if (/const estMin=/.test(line)) return;
       // "about" before a number that ends the text or is followed by min or minutes;
@@ -64,14 +76,105 @@ const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log
     });
   }
   ok(hits.length === 0, 'estimated minutes are worded only by estMin ("~N min"), nowhere by hand', hits);
-  const defs = fs.readdirSync(path.join(ROOT, 'src')).filter(f => f.endsWith('.js')).filter(f => /const estMin=/.test(fs.readFileSync(path.join(ROOT, 'src', f), 'utf8')));
+  const defs = SRC_CODE.filter(f => /const estMin=/.test(fs.readFileSync(path.join(ROOT, 'src', f), 'utf8')));
   ok(defs.length === 1, 'estMin is defined once', defs);
+}
+
+// 4. One source for the name, the domain, the build and the storage id (r49).
+{
+  const acorn = require('acorn');
+  const CONFIG = 'app/config.ts';
+  const esc = t => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  // Values that must exist only in config.ts, searched for in code and markup, never in comments.
+  const banned = [
+    ['the app name', new RegExp(esc(cfg.APP_NAME))],
+    ['the site address', new RegExp(esc(cfg.SITE_HOST))],
+    ['a build id', /\b\d{4}\.\d{1,2}\.\d{1,2}-r\d+(?:\.\d+)?\b/],
+  ];
+  // The storage id is also the start of identifiers (window.ironlogAuth,
+  // IRONLOG_ENV), so it is looked for inside string, template and pattern
+  // tokens only, where storage keys, backup marks and file names live, and
+  // only where no letter follows it ("ironlog.v1", "ironlog-backup", "ironlog").
+  const idInStrings = new RegExp(esc(cfg.STORAGE_ID) + '(?![A-Za-z_])');
+  // A script's code with its comments removed, by the parser, so a URL's //
+  // inside a string is never taken for a comment; and its literal tokens.
+  const read = (txt, ts) => {
+    if (ts) txt = require('esbuild').transformSync(txt, { loader: 'ts' }).code;
+    const comments = [];
+    const ast = acorn.parse(txt, { ecmaVersion: 'latest', sourceType: 'module', allowReturnOutsideFunction: true, allowImportExportEverywhere: true, onComment: (b, t, a, z) => comments.push([a, z]) });
+    const keep = []; let last = 0; for (const [a, z] of comments) { keep.push(txt.slice(last, a)); last = z; } keep.push(txt.slice(last));
+    const lits = []; for (const t of acorn.tokenizer(txt, { ecmaVersion: 'latest', sourceType: 'module', allowReturnOutsideFunction: true, allowImportExportEverywhere: true })) if (t.type === acorn.tokTypes.string || t.type === acorn.tokTypes.template || t.type === acorn.tokTypes.regexp) lits.push(txt.slice(t.start, t.end));
+    return { code: keep.join(' '), lits, ast };
+  };
+  const files = [
+    ...SRC_CODE.filter(f => f !== CONFIG).map(f => ['src/' + f, f.endsWith('.ts') ? 'ts' : 'js']),
+    ...fs.readdirSync(path.join(ROOT, 'src')).filter(f => /\.(html|css)$/.test(f)).map(f => ['src/' + f, 'page']),
+    ['scripts/build.js', 'js'], ['scripts/join.js', 'js'], ['scripts/cloud-supabase.js', 'js'], ['scripts/config.js', 'js'], ['scripts/depmap.js', 'js'],
+  ];
+  // The legacy parts are pieces of one script, so they are read joined.
+  const isLegacy = f => /^src\/[12]\d-.+\.js$/.test(f);
+  const texts = [['src/10-29 (legacy parts)', read(files.filter(([f]) => isLegacy(f)).map(([f]) => fs.readFileSync(path.join(ROOT, f), 'utf8')).join(''), false)]];
+  for (const [f, k] of files) {
+    if (isLegacy(f)) continue;
+    const raw = fs.readFileSync(path.join(ROOT, f), 'utf8');
+    if (k === 'page') { const t = raw.replace(/<!--[\s\S]*?-->/g, '').replace(/\/\*[\s\S]*?\*\//g, ''); texts.push([f, { code: t, lits: [t] }]); }
+    else texts.push([f, read(raw, k === 'ts')]);
+  }
+  const near = (t, re) => (t.match(new RegExp('.{0,30}' + re.source + '.{0,30}', re.flags.replace('g', ''))) || [''])[0].trim();
+  for (const [what, re] of banned) {
+    const hits = texts.filter(([, t]) => re.test(t.code)).map(([f, t]) => `${f}: ${near(t.code, re)}`);
+    ok(hits.length === 0, `${what} is typed only in src/app/config.ts, nowhere else in code or markup`, hits);
+  }
+  const idHits = []; for (const [f, t] of texts) for (const l of t.lits) if (idInStrings.test(l)) idHits.push(`${f}: ${near(l, idInStrings)}`);
+  ok(idHits.length === 0, 'the storage id ("ironlog" in keys, caches, backup marks and file names) is typed only in src/app/config.ts', idHits);
+  // Nothing config.ts exports is bound again anywhere: declarations, parameters, destructuring, catch, functions, classes.
+  const names = new Set(Object.keys(cfg)); const rebound = [];
+  const bind = (p, f) => { if (!p) return; if (p.type === 'Identifier') { if (names.has(p.name)) rebound.push(`${f}: ${p.name}`); } else if (p.type === 'ObjectPattern') p.properties.forEach(q => bind(q.type === 'RestElement' ? q.argument : q.value, f)); else if (p.type === 'ArrayPattern') p.elements.forEach(q => bind(q, f)); else if (p.type === 'RestElement') bind(p.argument, f); else if (p.type === 'AssignmentPattern') bind(p.left, f); };
+  const walk = (n, f) => { if (!n || typeof n.type !== 'string') return;
+    if (n.type === 'VariableDeclarator') bind(n.id, f);
+    if (/Function/.test(n.type)) { if (n.id) bind(n.id, f); n.params.forEach(q => bind(q, f)); }
+    if (n.type === 'ClassDeclaration' && n.id) bind(n.id, f);
+    if (n.type === 'CatchClause') bind(n.param, f);
+    for (const k in n) { const v = n[k]; if (Array.isArray(v)) v.forEach(x => walk(x, f)); else if (v && typeof v.type === 'string' && k !== 'type') walk(v, f); } };
+  for (const [f, t] of texts) if (t.ast) walk(t.ast, f);
+  ok(rebound.length === 0, 'nothing config.ts defines is declared or bound a second time (a local of the same name would hide it)', rebound);
+  ok((cfg.WORDMARK.mark + cfg.WORDMARK.strong + cfg.WORDMARK.light).toLowerCase() === cfg.APP_NAME.toLowerCase(), 'the logo\'s wordmark spells the app name (a new name needs a new wordmark)', cfg.WORDMARK);
+  ok(/^\d+\.\d+$/.test(cfg.DISPLAY_VERSION), 'the version people see is major.minor', cfg.DISPLAY_VERSION);
+}
+
+// 5. The module boundary, the ratchet and the type checker (r49).
+{
+  // Every import, export-from, dynamic import and require in src/app/, at any
+  // depth, must resolve inside src/app/.
+  const APP = path.join(ROOT, 'src', 'app'); const out = [];
+  for (const f of SRC_CODE.filter(f => f.startsWith('app/'))) {
+    const txt = fs.readFileSync(path.join(ROOT, 'src', f), 'utf8');
+    for (const m of txt.matchAll(/\b(?:import|export)\s+(?:[^'";]*?\s+from\s+)?['"]([^'"]+)['"]|\bimport\s*\(\s*['"]([^'"]+)['"]|\brequire\s*\(\s*['"]([^'"]+)['"]/g)) {
+      const spec = m[1] || m[2] || m[3];
+      const to = path.resolve(path.dirname(path.join(ROOT, 'src', f)), spec);
+      if (!spec.startsWith('.') || !(to + path.sep).startsWith(APP + path.sep)) out.push(`${f}: ${spec}`);
+    }
+  }
+  ok(out.length === 0, 'the modules in src/app/ import only each other, never the legacy parts or anything outside', out);
+  const legacyImports = fs.readdirSync(path.join(ROOT, 'src')).filter(f => /^[12]\d-.+\.js$/.test(f)).filter(f => /^\s*import[\s('"{*]/m.test(fs.readFileSync(path.join(ROOT, 'src', f), 'utf8')));
+  ok(legacyImports.length === 0, 'the legacy parts import only through src/09-imports.js', legacyImports);
+  // The ratchet (ARCHITECTURE.md): the legacy script never grows, in declarations or in lines.
+  const arch = fs.readFileSync(path.join(ROOT, 'ARCHITECTURE.md'), 'utf8');
+  const capD = +((arch.match(/^Legacy top-level declarations: (\d+)$/m) || [])[1]);
+  const capL = +((arch.match(/^Legacy lines: (\d+)$/m) || [])[1]);
+  const nowD = require('../scripts/depmap').count();
+  const nowL = fs.readdirSync(path.join(ROOT, 'src')).filter(f => /^[12]\d-.+\.js$/.test(f)).reduce((n, f) => n + fs.readFileSync(path.join(ROOT, 'src', f), 'utf8').split('\n').length - 1, 0);
+  ok(capD > 0 && capL > 0 && nowD <= capD && nowL <= capL, `the legacy script is no larger than ARCHITECTURE.md records (${nowD} of ${capD} declarations, ${nowL} of ${capL} lines); new code goes in src/app/`);
+  ok(nowD >= capD && nowL >= capL, 'when code leaves the legacy script, the numbers in ARCHITECTURE.md are lowered to match, so the ratchet holds at the new level', { nowD, capD, nowL, capL });
+  const { spawnSync } = require('child_process');
+  const tsc = spawnSync(process.execPath, [require.resolve('typescript/bin/tsc'), '--noEmit', '-p', path.join(ROOT, 'tsconfig.json')], { encoding: 'utf8' });
+  ok(tsc.status === 0, 'the typed modules pass the TypeScript checker (strict)', (tsc.stdout + tsc.stderr).trim().split('\n').slice(0, 10));
 }
 
 // The build this one replaces is kept as a baseline and read by the
 // migration and seams suites (r45: CLAUDE.md asked for it, nothing checked).
 {
-  const ver = (fs.readFileSync(path.join(ROOT, 'src', '12-storage.js'), 'utf8').match(/const APP_VERSION='[^']*-r(\d+)(?:\.(\d+))?'/) || []).slice(1).map(Number);
+  const ver = (cfg.APP_VERSION.match(/-r(\d+)(?:\.(\d+))?$/) || []).slice(1).map(Number);
   const base = fs.readdirSync(path.join(ROOT, 'baselines')).filter(f => /^r\d+(-\d+)?\.html$/.test(f));
   const num = f => f.replace('.html', '').slice(1).split('-').map(Number);
   const older = base.filter(f => { const [a, b] = num(f); return a < ver[0] || (a === ver[0] && (b || 0) < (ver[1] || 0)); });
@@ -100,13 +203,15 @@ const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log
   }
   ok(missing.length === 0, 'every repo file the documents name exists', missing);
 
-  const src = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
+  // The source parts, not index.html: since r49 the page's script is bundled
+  // and its comments are gone, and the /*ai{ markers were comments.
+  const src = fs.readdirSync(path.join(ROOT, 'src')).filter(f => /\.(js|html|css)$/.test(f)).map(f => fs.readFileSync(path.join(ROOT, 'src', f), 'utf8')).join('\n') + SRC_CODE.filter(f => f.startsWith('app/')).map(f => fs.readFileSync(path.join(ROOT, 'src', f), 'utf8')).join('\n');
   const back = ['/*ai{', '/*}ai', 'debriefPrompt', 'aiDigest', 'AI_STYLE', 'exProjection', 'loadAskCard', 'SIMPLE_HIDE'].filter(w => src.includes(w));
   ok(back.length === 0, 'nothing the documents record as removed is back in the source', back);
 
   const cm = fs.readFileSync(path.join(ROOT, 'CLAUDE.md'), 'utf8');
   ok(!/ships two ways|as a Claude artifact \(a hosted/.test(cm), 'CLAUDE.md does not call the retired artifact a shipping channel');
-  const ver = (fs.readFileSync(path.join(ROOT, 'src', '12-storage.js'), 'utf8').match(/APP_VERSION='[^']*-r([0-9.]+)'/) || [])[1];
+  const ver = (cfg.APP_VERSION.match(/-r([0-9.]+)$/) || [])[1];
   ok(ver && cm.includes(`Build r${ver},`), `CLAUDE.md says the build it is (r${ver})`, (cm.match(/Build r[0-9.]+/) || [])[0]);
 }
 

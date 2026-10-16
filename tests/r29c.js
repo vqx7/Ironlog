@@ -71,7 +71,8 @@ const DIST = !!process.env.IRONLOG_FILE;
 
   // ---- The Claude artifact was retired on 2026-09-27 (OWNER.md), and in r46 its
   // features left the source as well, so neither the source nor a build has them.
-  const html = fs.readFileSync(process.env.IRONLOG_FILE || 'index.html', 'utf8');
+  // The page, and since r49 the source files too: the page's script is bundled and its comments are gone, and the /*ai{ markers were comments.
+  const html = [fs.readFileSync(process.env.IRONLOG_FILE || 'index.html', 'utf8'), ...require('./h').sourceTexts()].join('\n');
   const words = ['AI_STYLE', 'debriefPrompt', 'reviewPrompt', 'swapPrompt', 'aiDigest', 'Ask Claude', 'Debrief with Claude', 'Reading with Claude', 'You are an experienced'];
   ok(words.every(w => !html.includes(w)) && !/\/\*ai\{|\/\*\}ai/.test(html), 'no Claude prompt, button, or block marker is left, in the source or a build', words.filter(w => html.includes(w)));
   const ai = await ev(() => { const L = window.__ironlog; return { keys: ['aiDebrief', 'aiReview', 'aiAsk', 'bAiSwap', 'aiSwapAsk'].filter(k => L.ACT[k]), fns: ['aiDigest', 'debriefPrompt', 'reviewPrompt', 'swapPrompt', 'AI'].filter(k => L[k]) }; });
