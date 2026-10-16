@@ -87,7 +87,7 @@ function exBodyFlat(e,small){
   const fig=(view,label)=>`<figure class="bm"><svg viewBox="0 0 120 210" aria-hidden="true"><g class="bm-base">${BM_BASE}</g>${Object.entries(BM[view]).map(([k,sh])=>`<g class="mx ${k===main?'ex-main':help.includes(k)?'ex-help':''}">${sh.map(bmShape).join('')}</g>`).join('')}</svg><figcaption>${label}</figcaption></figure>`;
   return `<div class="bm-wrap${small?' bm-small':''}">${fig('f','Front')}${fig('b','Back')}</div>`;
 }
-function exMusWords(e){const {main,help}=exMusParts(e);return `<p class="small" style="margin:0"><b>Main</b>: ${esc(ML[main]||main)}${help.length?`. <b>Helpers</b>: ${esc(andList(help.map(k=>ML[k]||k)))} ${tipi('A helper muscle counts half a set toward its weekly total (Pelland 2025).','About helper muscles')}`:''}</p>`;}
+function exMusWords(e){const {main,help}=exMusParts(e);return `<p class="small" style="margin:0"><b>Main</b>: ${esc(ML[main]||main)}${help.length?`. <b>Helpers</b>: ${esc(andList(help.map(k=>ML[k]||k)))} ${tipi('A helper muscle counts half a set toward its weekly total (Pelland 2025). Which muscles are helpers on a lift is the library\'s own call, including grip and holding muscles such as the forearms and traps on a deadlift, which the study behind the half credit did not measure.','About helper muscles')}`:''}</p>`;}
 function exMusLegend(e){return `<div class="bm-legend small"><span><i class="ex-main"></i>Main</span>${exMusParts(e).help.length?'<span><i class="ex-help"></i>Helper</span>':''}</div>`;}
 function map3dLoad(cb){
   if(B3.state==='ready'||B3.state==='fail'){cb();return;}
