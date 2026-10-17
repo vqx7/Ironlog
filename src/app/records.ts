@@ -59,6 +59,8 @@ export function did(tag: string, obj: unknown, i: number): string {
    match after the repair. */
 // Names Object already has ("constructor", "__proto__") are out too: many
 // lookups key plain objects by id, and those would find the built-in instead.
+// Not a type guard: a false answer would tell TypeScript the value is no
+// string, and a string that fails the pattern is still one.
 export const okId = (v: unknown): boolean =>
   typeof v === 'string' && /^[\w.:-]{1,100}$/.test(v) && !(v in Object.prototype);
 

@@ -9,6 +9,7 @@
 //
 // Usage: node scripts/build.js             (writes dist/, prints the file list)
 //        node scripts/build.js --preview   (writes dist-preview/, the preview build)
+//        node scripts/build.js --out <dir>  (writes there instead; either build)
 //
 // The preview build (r24) is the same app, published to /preview/ under the
 // live app on the same site. The site is one origin, so the two share this
@@ -22,7 +23,10 @@ const crypto = require('crypto');
 
 const ROOT = path.join(__dirname, '..');
 const PREVIEW = process.argv.includes('--preview');
-const DIST = path.join(ROOT, PREVIEW ? 'dist-preview' : 'dist');
+// --out <dir> writes somewhere else (tests/hygiene.js checks the build in a
+// temporary directory while the browser suites use dist/ beside it).
+const OUT = process.argv.indexOf('--out') >= 0 ? process.argv[process.argv.indexOf('--out') + 1] : null;
+const DIST = OUT ? path.resolve(OUT) : path.join(ROOT, PREVIEW ? 'dist-preview' : 'dist');
 // The name, the build and the storage identifier come from src/app/config.ts
 // (r49), the one place they are defined.
 const cfg = require('./config');

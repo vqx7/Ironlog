@@ -101,8 +101,9 @@ const freeNames = node => scan(node).refs;
 function letExports(SRC) {
   const esbuild = require('esbuild'); const out = new Set(); const APP = path.join(SRC, 'app');
   if (!fs.existsSync(APP)) return out;
-  for (const f of fs.readdirSync(APP).filter(f => f.endsWith('.ts'))) {
-    const js = esbuild.transformSync(fs.readFileSync(path.join(APP, f), 'utf8'), { loader: 'ts', format: 'esm' }).code;
+  const walk = d => fs.readdirSync(d, { withFileTypes: true }).flatMap(e => e.isDirectory() ? walk(path.join(d, e.name)) : e.name.endsWith('.ts') ? [path.join(d, e.name)] : []);
+  for (const f of walk(APP)) {
+    const js = esbuild.transformSync(fs.readFileSync(f, 'utf8'), { loader: 'ts', format: 'esm' }).code;
     const top = acorn.parse(js, { ecmaVersion: 'latest', sourceType: 'module' }).body;
     const lets = new Set(top.filter(x => x.type === 'VariableDeclaration' && x.kind !== 'const').flatMap(x => x.declarations.flatMap(d => patNames(d.id, []))));
     for (const x of top) {

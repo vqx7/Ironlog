@@ -322,9 +322,16 @@ const declNames = st => st.type === 'FunctionDeclaration' || st.type === 'ClassD
   ok(notOnPage.length === 0 && notInMods.length === 0, `the declarations on the page outside the legacy script are the modules' (${onPage.size})`, { notOnPage, notInMods });
   const differ = [...onPage].filter(([n, d]) => inMods.has(n) && d.code !== inMods.get(n).code).map(([n, d]) => ({ name: n, page: d.code.slice(0, 200), module: inMods.get(n).code.slice(0, 200) }));
   ok(differ.length === 0, 'every declaration on the page outside the legacy script is its module\'s code', differ.slice(0, 3));
-  const others = f => [...fs.readFileSync(path.join(ROOT, f), 'utf8').matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/g)].map(m => m[1]).filter(t => t !== legacyIn(f).app);
-  const now = others('index.html'), was = others(MOVES[MOVES.length - 1].baseline);
-  ok(now.length === was.length && now.every((t, i) => t === was[i]), `the page's other inline scripts are ${MOVES[MOVES.length - 1].baseline}'s (${now.length})`, { now: now.map(t => t.slice(0, 80)), was: was.map(t => t.slice(0, 80)) });
+  // A move changes nothing a lifter sees, so the page around the app script
+  // (markup, styles, the loader, and with them any handler attribute, which
+  // is a script the check above does not see) is the baseline's once the
+  // build id is set aside. A release that changes the page says so in its
+  // move entry (`page: 'why'`), and then this check only prints the reason.
+  const mvLast = MOVES[MOVES.length - 1];
+  const around = (f, id) => fs.readFileSync(path.join(ROOT, f), 'utf8').replace(legacyIn(f).app, '{{APP}}').split(id).join('{{APP_VERSION}}');
+  const idOf = f => (fs.readFileSync(path.join(ROOT, f), 'utf8').match(/<meta name="app-build" content="([^"]+)"/) || [])[1];
+  if (mvLast.page) console.log(`note ${mvLast.release} changes the page outside the app script: ${mvLast.page}`);
+  else ok(around('index.html', idOf('index.html')) === around(mvLast.baseline, idOf(mvLast.baseline)), `the page outside the app script is ${mvLast.baseline}'s, the build id set aside`);
 }
 
 // Every module is either in a move, so this suite compares it, or written new

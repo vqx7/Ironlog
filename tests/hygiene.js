@@ -46,9 +46,9 @@ const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log
   const md = fs.readFileSync(path.join(__dirname, 'SUITES.md'), 'utf8'); const rows = new Set([...md.matchAll(/^\| ([\w-]+) \|/gm)].map(m => m[1]));
   const noRow = [...listed].filter(n => !rows.has(n));
   ok(noRow.length === 0, 'every suite has a row in tests/SUITES.md', noRow);
-  // r44: suites run side by side, so none runs scripts/build.js itself (it deletes dist/ first); h.js build() does, only when a suite runs alone.
-  const direct = files.filter(f => f !== 'h' && f !== 'run' && /scripts', 'build\.js'|build\.js'\]/.test(fs.readFileSync(path.join(__dirname, f + '.js'), 'utf8')));
-  ok(direct.length === 0, 'no suite runs the build itself; they call build() from tests/h.js', direct);
+  // r44: suites run side by side, so none runs scripts/build.js into dist/ itself (it deletes dist/ first); h.js build() does, only when a suite runs alone. Since r51 a suite may run it with --out into a directory of its own.
+  const direct = files.filter(f => f !== 'h' && f !== 'run' && /scripts', 'build\.js'|build\.js'\]/.test(fs.readFileSync(path.join(__dirname, f + '.js'), 'utf8')) && !fs.readFileSync(path.join(__dirname, f + '.js'), 'utf8').includes("'--out'"));
+  ok(direct.length === 0, 'no suite runs the build into dist/ itself; they call build() from tests/h.js, or build with --out into their own directory', direct);
 }
 
 // 2. Duplicated selectors, per block.
@@ -204,6 +204,8 @@ const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log
   ok(twice.length === 0, 'no legacy declaration has the name of a module export: moved code exists once, and the module copy is the one that runs', twice);
   const unimported = dm.free.filter(n => exported.has(n)).map(n => `${n} (src/${exported.get(n)})`);
   ok(unimported.length === 0, 'every module export the legacy script uses is imported in src/09-imports.js', unimported);
+  const dead = dm.imports.filter(x => !x.used).map(x => `${x.name} from ${x.from}`);
+  ok(dead.length === 0, 'every name src/09-imports.js imports is used by the legacy script', dead);
   // The names the legacy script reads without declaring or importing them are
   // the browser's and JavaScript's own (r50 review): a moved name deleted with
   // its import, or misspelt, would otherwise pass every check here and fail
@@ -359,6 +361,40 @@ const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log
     const differ = keys.filter(k => JSON.stringify(direct[k]) !== JSON.stringify(cfg[k]));
     ok(keys.length > 10 && differ.length === 0, 'scripts/config.js gives the values src/app/config.ts defines, no more and no less', differ);
   }
+  // The shipped build (dist/, and the preview) is index.html with what
+  // scripts/build.js adds: the head script, the account settings, the
+  // loader's local copies, the boot script and the install metadata. The
+  // app script is index.html's byte for byte, the account settings are
+  // supabase.config.json's, the Content Security Policy's hashes are the
+  // inline scripts', and everything else build.js writes is pinned by hash
+  // in tests/dist-page.json, which changes only when build.js does, on
+  // purpose and in review (the r51 review: a timer that wiped the log,
+  // put in the boot script, reached dist/ with every check green).
+  {
+    const crypto = require('crypto'), { spawnSync } = require('child_process');
+    const sha = t => crypto.createHash('sha256').update(t, 'utf8').digest('hex');
+    const scripts = h => [...h.matchAll(/<script>([\s\S]*?)<\/script>/g)].map(m => m[1]);
+    const pageApp = scripts(fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8')).sort((a, b) => b.length - a.length)[0];
+    const pinned = JSON.parse(fs.readFileSync(path.join(__dirname, 'dist-page.json'), 'utf8'));
+    const cloud = JSON.parse(fs.readFileSync(path.join(ROOT, 'supabase.config.json'), 'utf8'));
+    const tmp = fs.mkdtempSync(path.join(require('os').tmpdir(), 'ironlog-dist-'));
+    for (const [kind, args] of [['live', []], ['preview', ['--preview']]]) {
+      const dir = path.join(tmp, kind);
+      const b = spawnSync(process.execPath, [path.join(ROOT, 'scripts', 'build.js'), ...args, '--out', dir], { encoding: 'utf8', cwd: ROOT });
+      if (b.status !== 0) { ok(false, `scripts/build.js builds the ${kind} app`, (b.stdout + b.stderr).trim().split('\n').slice(-3)); continue; }
+      const html = fs.readFileSync(path.join(dir, 'index.html'), 'utf8');
+      const all = scripts(html), app = [...all].sort((a, b) => b.length - a.length)[0];
+      ok(app === pageApp, `the ${kind} build's app script is index.html's, byte for byte`);
+      const acct = `window.IRONLOG_SUPABASE=${JSON.stringify({ url: cloud.url, key: cloud.key })};`;
+      ok(all.includes(acct), `the ${kind} build's account settings are supabase.config.json's`);
+      const csp = (html.match(/<meta http-equiv="Content-Security-Policy" content="([^"]*)"/) || [])[1] || '';
+      const want = all.map(t => `'sha256-${crypto.createHash('sha256').update(t, 'utf8').digest('base64')}'`);
+      ok(want.every(h => csp.includes(h)) && (csp.match(/'sha256-/g) || []).length === want.length, `the ${kind} build's Content Security Policy allows exactly its ${all.length} inline scripts`);
+      const rest = html.replace(app, '{{APP}}').replace(acct, '{{ACCT}}').replace(/(<meta http-equiv="Content-Security-Policy" content=")[^"]*/, '$1{{CSP}}').split(cfg.APP_VERSION).join('{{APP_VERSION}}');
+      ok(sha(rest) === pinned[kind], `everything else in the ${kind} build's page is what tests/dist-page.json pins (change it on purpose when scripts/build.js changes)`, { now: sha(rest), pinned: pinned[kind] });
+    }
+    fs.rmSync(tmp, { recursive: true, force: true });
+  }
 }
 
 // The build this one replaces is kept as a baseline and read by the
@@ -373,6 +409,18 @@ const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log
   const mig = fs.readFileSync(path.join(__dirname, 'migration.js'), 'utf8');
   const unread = base.filter(f => !mig.includes(`'baselines/${f}'`));
   ok(unread.length === 0, 'every baseline is loaded by tests/migration.js', unread);
+  // A baseline is a published build and never changes: each is pinned by
+  // hash in baselines/SHA256SUMS, so an edit to one (the r51 review made the
+  // same change in a baseline and in the source, and the move check saw no
+  // difference) shows as a change to that file in review. A new baseline is
+  // added to the list with `sha256sum baselines/<file> >> baselines/SHA256SUMS`.
+  {
+    const crypto = require('crypto');
+    const sums = Object.fromEntries(fs.readFileSync(path.join(ROOT, 'baselines', 'SHA256SUMS'), 'utf8').trim().split('\n').map(l => { const [h, f] = l.trim().split(/\s+\*?/); return [path.basename(f), h]; }));
+    const bad = base.filter(f => sums[f] !== crypto.createHash('sha256').update(fs.readFileSync(path.join(ROOT, 'baselines', f))).digest('hex')).map(f => `${f}: ${sums[f] ? 'changed' : 'not listed'}`);
+    const gone = Object.keys(sums).filter(f => !base.includes(f));
+    ok(base.length > 30 && bad.length === 0 && gone.length === 0, 'every baseline is the published build its hash in baselines/SHA256SUMS says', [...bad, ...gone.map(f => `${f}: listed, missing`)]);
+  }
 }
 
 // The documents against the repository (r46). CLAUDE.md called the Claude

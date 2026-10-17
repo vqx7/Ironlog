@@ -85,7 +85,9 @@ export const clampN = (v: unknown, lo: number, hi: number, d: number | null): nu
   return Math.min(Math.max(n as number, lo), hi);
 };
 
-/** A date in the log's form, YYYY-MM-DD (the shape, not whether the day exists). */
+/** A date in the log's form, YYYY-MM-DD (the shape, not whether the day
+    exists). Not a type guard either: a false answer would then tell
+    TypeScript the value is no string, and most strings are not dates. */
 export const isDate = (v: unknown): boolean => typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v);
 
 /** Rounded to one decimal. */
