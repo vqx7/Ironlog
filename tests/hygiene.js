@@ -216,17 +216,15 @@ const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log
   // undefined, not an error (the second r51 review made the store read
   // HIST_PAGE from layout, which read the store, and History's page size came
   // out undefined with every other check green). Type-only imports leave no
-  // code and do not count. A new module is given its layer here.
+  // code and do not count. The layers are written once, in ARCHITECTURE.md
+  // ("Layer N, what: module, module"), and read from there.
   {
-    const LAYER = {
-      config: 0, types: 0,
-      util: 1, units: 1, library: 1, routines: 1, formulas: 1, records: 1, gym: 1, profile: 1,
-      session: 2, loads: 2, prs: 2, trend: 2, volume: 2, goals: 2, importing: 2,
-      chunks: 3, merge: 3, store: 3,
-      format: 4, layout: 4, icons: 4, charts: 4, feedback: 4,
-    };
+    const LAYER = {}, twice = [];
+    for (const m of fs.readFileSync(path.join(ROOT, 'ARCHITECTURE.md'), 'utf8').matchAll(/^Layer (\d+), [^:]+: (.+)$/gm)) for (const name of m[2].split(',').map(x => x.trim())) { if (name in LAYER) twice.push(name); LAYER[name] = +m[1]; }
+    ok(twice.length === 0, 'ARCHITECTURE.md gives each module one layer', twice);
     const mods = fs.readdirSync(APP).filter(f => f.endsWith('.ts')).map(f => f.slice(0, -3));
-    ok(mods.every(m => m in LAYER), 'every module in src/app/ has its layer in tests/hygiene.js', mods.filter(m => !(m in LAYER)));
+    ok(Object.keys(LAYER).length > 20 && mods.every(m => m in LAYER), 'every module in src/app/ has its layer in ARCHITECTURE.md', mods.filter(m => !(m in LAYER)));
+    ok(Object.keys(LAYER).every(m => mods.includes(m)), 'every module ARCHITECTURE.md gives a layer exists', Object.keys(LAYER).filter(m => !mods.includes(m)));
     const deps = new Map(), up = [];
     for (const m of mods) {
       const js = esbuild.transformSync(fs.readFileSync(path.join(APP, m + '.ts'), 'utf8'), { loader: 'ts', format: 'esm' }).code;

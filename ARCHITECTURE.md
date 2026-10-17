@@ -30,7 +30,14 @@ src/01-03, 99       the page's markup and styles
 
 - **TypeScript**, strict, checked on every test run (`tests/hygiene.js`).
 - **esbuild** bundles it into the one inline script the page needs. Every suite opens the page as a file, where module scripts are refused, and the installed app's Content Security Policy fingerprints each inline script, so the output stays one inline script. A larger toolchain such as Vite (a dev server, with Rollup or Rolldown for production) would add nothing this app uses.
-- **Modules with one-way dependencies**: config at the bottom, then data, engine and analytics (pure functions of their inputs), then storage and sync, then the screens. A module never reaches into another's internals. Since r51 `tests/hygiene.js` holds each module to its layer (0 `config` and `types`; 1 data: `util`, `units`, `library`, `routines`, `formulas`, `records`, `gym`, `profile`; 2 engine and analytics: `session`, `loads`, `prs`, `trend`, `volume`, `goals`, `importing`; 3 storage and sync: `chunks`, `merge`, `store`; 4 screens: `format`, `layout`, `icons`, `charts`, `feedback`), an import goes only to the same layer or below, a new module is given its layer there, and no import goes round in a circle: the bundle turns a module's `const` into `var`, so in a circle a value read before its module has run is `undefined`, not an error.
+- **Modules with one-way dependencies**: config at the bottom, then data, engine and analytics (pure functions of their inputs), then storage and sync, then the screens. A module never reaches into another's internals. Since r51 `tests/hygiene.js` holds each module to its layer in the list below, the one place the layers are written: an import goes only to the same layer or below, a new module is added to the list, and no import goes round in a circle (the bundle turns a module's `const` into `var`, so in a circle a value read before its module has run is `undefined`, not an error).
+
+Layer 0, config and record shapes: config, types
+Layer 1, data: util, units, library, routines, formulas, records, gym, profile
+Layer 2, engine and analytics: session, loads, prs, trend, volume, goals, importing
+Layer 3, storage and sync: chunks, merge, store
+Layer 4, screens: format, layout, icons, charts, feedback
+
 - **Screens as components**, one per tab, reading copy and labels from one place.
 
 ## How it gets there: the legacy code shrinks
