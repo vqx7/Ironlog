@@ -146,5 +146,8 @@ Addresses waiting for their phase: www.youtube.com (howToUrl, phase 5)
 - A value that names, identifies or configures the app is defined once, in `src/app/config.ts`, and read everywhere else. `tests/hygiene.js` fails on the name, the site address, a build id or the storage id typed anywhere else, in code or markup.
 - `src/app/` imports only `src/app/`. The legacy parts import only through `src/09-imports.js`.
 - The legacy script never grows, in declarations or in lines (the ratchet above).
+- Types say only what is true: no `any` in `src/app/`; every cast and `!` has its reason in a comment; the casts, `!` and open index signatures only fall in number (the ratchet in The outside review); every `catch` in a module throws or says why (`tests/hygiene.js`).
+- Outside addresses, library versions and the font faces are config's, like the name; any other outside address waits in The outside review's list for its phase (`tests/hygiene.js`).
+- Nothing a screen sets up outlives the render that drew it: charts, drag lists, intervals and the 3D body's one WebGL context (`tests/cleanup.js`).
 - Storage keys keep "ironlog" whatever the app is called: they are built from `STORAGE_ID`, an identifier that never changes, since renaming it would leave saved logs behind. `tests/r49.js` holds the keys to their exact values.
 - Moving code changes no behaviour: the suites, the coherence checks and the r36 equivalence say so before a phase is merged.
