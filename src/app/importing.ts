@@ -93,10 +93,12 @@ export function impDate(str: unknown, ref?: string): string | null {
   return null;
 }
 
-/* Spreadsheet day numbers (days since 30 Dec 1899). */
+/* Spreadsheet day numbers (days since 30 Dec 1899). A blank cell is null,
+   which compares as 0 and so fails the range check; the casts say that to
+   TypeScript, and past the check the number is real. */
 export function impSerial(n: number | null): string | null {
   if (!((n as number) > 20000 && (n as number) < 80000)) return null;
-  const d = new Date(Date.UTC(1899, 11, 30) + Math.floor(n as number) * 864e5);
+  const d = new Date(Date.UTC(1899, 11, 30) + Math.floor(n!) * 864e5);
   return d.toISOString().slice(0, 10);
 }
 
@@ -111,8 +113,8 @@ export function impRows(text: string): string[][] | null {
       ['\t', cnt('\t')],
       [';', cnt(';')],
       [',', cnt(',')]
-    ] as [string, number][]
-  ).sort((a, b) => b[1] - a[1])[0] as [string, number];
+    ] satisfies [string, number][]
+  ).sort((a, b) => b[1] - a[1])[0];
   if (!sep[1]) return null;
   const d = sep[0];
   const rows: string[][] = [];
@@ -193,11 +195,10 @@ export async function impXlsx(buf: ArrayBuffer): Promise<string[][]> {
   if (sst)
     for (const si of X(sst).getElementsByTagName('si'))
       ss.push([...si.getElementsByTagName('t')].map(t => t.textContent).join(''));
+  // The sheets by number, so the first sheet is the one read.
   const sheet = Object.keys(files)
     .filter(k => /^xl\/worksheets\/sheet\d+\.xml$/.test(k))
-    .sort(
-      (a, b) => parseInt((a.match(/\d+/) as RegExpMatchArray)[0]) - parseInt((b.match(/\d+/) as RegExpMatchArray)[0])
-    )[0];
+    .sort((a, b) => parseInt(a.match(/\d+/)![0]) - parseInt(b.match(/\d+/)![0]))[0];
   if (!sheet) throw new Error('sheet');
   const rows: string[][] = [];
   const col = (r: string) => {
@@ -205,7 +206,8 @@ export async function impXlsx(buf: ArrayBuffer): Promise<string[][]> {
     for (const ch of r.replace(/\d+/g, '')) c = c * 26 + (ch.charCodeAt(0) - 64);
     return c - 1;
   };
-  for (const rw of X((await read(sheet)) as string).getElementsByTagName('row')) {
+  // The sheet's name came from the zip's own list of files, so read finds it.
+  for (const rw of X((await read(sheet))!).getElementsByTagName('row')) {
     const row: string[] = [];
     for (const c of rw.getElementsByTagName('c')) {
       const i = col(c.getAttribute('r') || 'A');
@@ -262,6 +264,7 @@ export const IMP_SYN: readonly (readonly [RegExp, string])[] = [
   [/\bkettle ?bells?\b|\bkb\b/g, 'kettlebell']
 ];
 
+/** A name as its words, lower case, each in the one spelling IMP_SYN gives it, with filler words left out. */
 export function impNorm(name: unknown): string[] {
   let s = String(name || '')
     .toLowerCase()
@@ -409,6 +412,9 @@ export const IMP_COLS: Readonly<Record<string, readonly RegExp[]>> = {
   dist: [/^(distance|distance_km|distance_miles)$/]
 };
 
+/* The column each field is in, read from the header row: for each field in
+   turn, the first of its patterns that matches a column no earlier field
+   took. A field with no column is left out. */
 export function impHeader(row: readonly unknown[]): Record<string, number> {
   const map: Record<string, number> = {};
   const k = row.map(h =>
@@ -441,18 +447,15 @@ export function impHeader(row: readonly unknown[]): Record<string, number> {
   return map;
 }
 
+/** The unit the weight column's header names ("Weight (kg)", "lbs"), or null when it names none. */
 export function impUnitOf(headers: readonly unknown[], map: Record<string, number>): 'kg' | 'lb' | null {
   const h = map.w != null ? String(headers[map.w]).toLowerCase() : '';
   return /kg|kilo/.test(h) ? 'kg' : /lb|pound/.test(h) ? 'lb' : null;
 }
 
-/* Table rows to sessions: grouped by date and workout name, exercises in
-   order of first appearance. A row with no date or exercise continues the
-   one above (sheets often write the date once). Rows without reps or
-   seconds (Strong's rest timer, cardio distance rows) are skipped and counted. */
-/* Cardio by name, for imported rows that carry a time or distance and no
-   reps (r30: Strong's treadmill rows were dropped). Carries and lunges that
-   say "walk" are lifting. */
+/* Cardio by name, or null: an imported row with a distance, or with a
+   cardio name and no reps, is cardio (r30: Strong's treadmill rows were
+   dropped). Carries and lunges that say "walk" are lifting. */
 export function impCardioKind(name: unknown): string | null {
   const n = String(name || '').toLowerCase();
   if (/farmer|carry|lunge|suitcase/.test(n)) return null;
@@ -477,6 +480,11 @@ export function impCardioKind(name: unknown): string | null {
                     : null;
 }
 
+/* Table rows to sessions: grouped by date and workout name, exercises in
+   order of first appearance. A row with no date or exercise continues the
+   one above (sheets often write the date once). Rest timer rows, and rows
+   with neither reps nor seconds that are not cardio, are skipped and
+   counted; cardio rows become cardio entries (r30). */
 export function impFromTable(rows: readonly (readonly unknown[])[], map: Record<string, number>) {
   const head = rows[0];
   let unit = impUnitOf(head, map);
@@ -524,8 +532,9 @@ export function impFromTable(rows: readonly (readonly unknown[])[], map: Record<
       skipped++;
       continue;
     }
-    /* A distance, or a time with no reps on a cardio name, is cardio: kept
-       as a cardio entry per date and kind, time and distance added up. */
+    /* A distance, or a cardio name with no reps, is cardio: kept as a
+       cardio entry per date and kind, time and distance added up. A blank
+       distance is null and reads as 0, as reps and seconds do above. */
     const ck = impCardioKind(ex);
     const dist = num(cell('dist')) as number;
     if (dist > 0 || (ck && !(reps > 0))) {
@@ -560,11 +569,11 @@ export function impFromTable(rows: readonly (readonly unknown[])[], map: Record<
     };
     const k = date + '|' + name;
     if (!S.has(k)) S.set(k, { date, name, items: new Map(), note: '' });
-    const ss = S.get(k) as ImpSession;
+    const ss = S.get(k)!;
     if (/^(yes|true|1|y)$/i.test(String(cell('deload') || '').trim())) ss.deload = true;
     if (!ss.items.has(ex)) ss.items.set(ex, { name: ex, sets: [], note: cell('note') });
     const n = Math.min(Math.max(Math.round(num(cell('sets')) || 1), 1), 20);
-    for (let j = 0; j < n; j++) (ss.items.get(ex) as ImpItem).sets.push({ ...set });
+    for (let j = 0; j < n; j++) ss.items.get(ex)!.sets.push({ ...set });
   }
   return {
     sessions: [...S.values()].map(x => ({
@@ -651,5 +660,9 @@ export function impSetsText(t: unknown): string {
   return s.trim();
 }
 
+/* Workout names that say nothing about the day: blank, "Morning workout",
+   "Session", "Imported" and the like. When a recent session has one,
+   routineFromLog (in the import screen) groups sessions into days by the
+   lifts they share instead of by name. */
 export const GENERIC_WORKOUT =
   /^\s*((early|late)\s+)?(morning|afternoon|evening|night|midday|lunch|weekend)?\s*(workout|session|training|lifting|lift|gym)?\s*$|^imported$/i;

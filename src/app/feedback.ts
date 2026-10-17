@@ -10,18 +10,19 @@ export const FB_CATS: readonly (readonly [string, string])[] = [
   ['idea', 'Suggestion']
 ];
 
+/* Per kind: the sheet's title (also in the first line of a report copied as
+   text, and the test of whether a kind is known), the label over the text
+   box, and the box's placeholder. */
 export const FB_TITLE: Readonly<Record<string, string>> = {
   bug: 'Report a problem',
   question: 'Ask a question',
   idea: 'Suggest something'
 };
-
 export const FB_ASK: Readonly<Record<string, string>> = {
   bug: 'What went wrong?',
   question: 'Your question',
   idea: 'Your suggestion'
 };
-
 export const FB_HINT: Readonly<Record<string, string>> = {
   bug: 'What you tapped, what you expected, what happened',
   question: '',
@@ -37,6 +38,7 @@ export const FB_MIN = 10,
 /** Bytes of attached context, under the 20,000 the feedback table refuses past. */
 export const FB_CTX_MAX = 15000;
 
+/** The tip on the report sheet that says what the app attaches to a report (fbContext builds it). */
 export const FB_WHAT =
   'Attached by the app: the build, your device and browser, screen size, which screen you came from, whether a session was open, sync status, and up to 10 recent errors with where in the app each happened. Never your workouts. It goes to the app owner.';
 

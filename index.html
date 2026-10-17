@@ -2555,9 +2555,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     if (sst)
       for (const si of X(sst).getElementsByTagName("si"))
         ss.push([...si.getElementsByTagName("t")].map((t) => t.textContent).join(""));
-    const sheet = Object.keys(files).filter((k) => /^xl\/worksheets\/sheet\d+\.xml$/.test(k)).sort(
-      (a, b) => parseInt(a.match(/\d+/)[0]) - parseInt(b.match(/\d+/)[0])
-    )[0];
+    const sheet = Object.keys(files).filter((k) => /^xl\/worksheets\/sheet\d+\.xml$/.test(k)).sort((a, b) => parseInt(a.match(/\d+/)[0]) - parseInt(b.match(/\d+/)[0]))[0];
     if (!sheet) throw new Error("sheet");
     const rows = [];
     const col = (r) => {

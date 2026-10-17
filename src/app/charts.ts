@@ -4,17 +4,19 @@
 
 import { isDate, daysBetween, weekStart, today } from './util';
 
-/* 'base' is the chart's own first window (8 weeks, 12 for the grid). */
+/* The windows a chart's chips can pick, with their weeks. A saved choice is
+   checked against these keys; rangeWeeks gives the weeks.
+   'base' is the chart's own first window (8 weeks, 12 for the grid). */
 export const RANGES: readonly (readonly [string, number])[] = [
   ['base', 0],
   ['6m', 26],
   ['all', Infinity]
 ];
 
-/** The earliest date in a list of dated records, or null. */
-export function firstDate(list: readonly ({ date?: unknown } | null | undefined)[]): string | null {
+/** The earliest date in a list of dated records (sessions, cardio, weigh-ins), or null. */
+export function firstDate(list: readonly ({ date?: string | undefined } | null | undefined)[]): string | null {
   let f: string | null = null;
-  for (const x of list) if (x && isDate(x.date) && (!f || (x.date as string) < f)) f = x.date as string;
+  for (const x of list) if (x && isDate(x.date) && (!f || x.date! < f)) f = x.date!;
   return f;
 }
 

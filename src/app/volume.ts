@@ -11,6 +11,7 @@ export function belowMin(v: number | null | undefined, lo: number): boolean {
   return lo > 0 && r1(v || 0) < lo;
 }
 
+/** Above a weekly maximum, judged at the same one decimal. */
 export function aboveMax(v: number | null | undefined, hi: number): boolean {
   return r1(v || 0) > hi;
 }

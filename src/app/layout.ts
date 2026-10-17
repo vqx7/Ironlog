@@ -13,9 +13,11 @@ export const DSECS: readonly (readonly [string, string])[] = [
   ['body', 'Body']
 ];
 
+/** The keys alone, in the same order: a saved fold list keeps only these, and the jump strip orders them. */
 export const DSEC_KEYS = DSECS.map(x => x[0]);
 
-// Legacy: older builds saved folds here. Kept only so old saves normalize; unused.
+// Legacy: older builds saved folds here. A fresh state still starts with these and normalize keeps the
+// list, so a save keeps its shape; nothing reads it.
 export const DSEC_FOLDED: readonly string[] = ['consistency', 'body'];
 
 // Old section keys still arrive from tiles, summary rows and the coach. They
@@ -51,7 +53,6 @@ export const DEFAULT_HIDDEN: readonly string[] = [
   'program:schedule',
   'program:pvol'
 ];
-
 export const DEFAULT_ORDER: Readonly<Record<string, readonly string[]>> = {
   today: ['session', 'map', 'week', 'injuries', 'coach', 'tiles', 'body'],
   dash: ['exercise', 'volume', 'weak', 'consistency', 'body']
@@ -94,7 +95,8 @@ export const FORM_SHEETS: ReadonlySet<string> = new Set([
   'walk'
 ]);
 
-/* Ember is the default since r37 (V: "default to the orange ember one for now"): no accent stored reads as Ember. */
+/* The accents Settings > General offers, as a key and a label.
+   Ember is the default since r37 (V: "default to the orange ember one for now"): no accent stored reads as Ember. */
 export const ACCENTS: readonly (readonly [string, string])[] = [
   ['ember', 'Ember'],
   ['blue', 'Blue'],
@@ -102,6 +104,7 @@ export const ACCENTS: readonly (readonly [string, string])[] = [
   ['pink', 'Pink']
 ];
 
+/** The default accent, read when none is stored; choosing it again removes the stored one. */
 export const ACCENT0 = 'ember';
 
 /* The weeks the radar averages (r31.2, V: one week says little about
