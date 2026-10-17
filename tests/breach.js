@@ -23,7 +23,7 @@ const BAD = 'password1234';
   const asked = []; let hibpDown = false;
   async function device() {
     const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true, serviceWorkers: 'block' });
-    await ctx.route('https://api.pwnedpasswords.com/**', r => {
+    await ctx.route(`${require('../scripts/config').HIBP_ORIGIN}/**`, r => {
       if (hibpDown) return r.abort();
       const pre = r.request().url().split('/range/')[1]; asked.push({ pre, headers: r.request().headers() });
       // Padded answers: a few endings with count 0, and the bad password's ending when its prefix is asked.

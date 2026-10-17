@@ -207,7 +207,7 @@ export async function impXlsx(buf: ArrayBuffer): Promise<string[][]> {
     for (const ch of r.replace(/\d+/g, '')) c = c * 26 + (ch.charCodeAt(0) - 64);
     return c - 1;
   };
-  // The sheet's name came from the zip's own list of files, so read finds it.
+  // The sheet's name came from the zip's own list of files, so read finds it (the !).
   for (const rw of X((await read(sheet))!).getElementsByTagName('row')) {
     const row: string[] = [];
     for (const c of rw.getElementsByTagName('c')) {
@@ -612,45 +612,56 @@ export function impSetsText(t: unknown): string {
      (r32, second check: that line saved nine sets at 100 and two at 9). Only
      6 to 10; "@2" stays RIR. */
   if (/(^|\s)\d{2,}(\.\d+)?\s*(x|×|\*|\s\d)/.test(s))
-    s = s.replace(/@\s*((?:6|7|8|9)(?:\.5)?|10)(?![\d.x×*])/g, (_m, v) => ` rpe ${v} `);
+    s = s.replace(/@\s*((?:6|7|8|9)(?:\.5)?|10)(?![\d.x×*])/g, (_m: string, v: string) => ` rpe ${v} `);
   {
-    let rpe = null;
-    s = s.replace(/@?\s*\brpe\s*(\d+(?:\.\d+)?)|@\s*(\d+(?:\.\d+)?)\s*rpe\b/g, (_m, a, b) => {
-      const v = +(a || b);
-      if (v >= 5 && v <= 10) rpe = v;
-      return ' ';
-    });
+    let rpe: number | null = null;
+    s = s.replace(
+      /@?\s*\brpe\s*(\d+(?:\.\d+)?)|@\s*(\d+(?:\.\d+)?)\s*rpe\b/g,
+      (_m: string, a: string | undefined, b: string | undefined) => {
+        // One of the two groups matched, digits and all, so a || b is a number's
+        // text; the cast says so, since TypeScript refuses + on undefined.
+        const v = +((a || b) as string);
+        if (v >= 5 && v <= 10) rpe = v;
+        return ' ';
+      }
+    );
     if (rpe != null) s = s.trim() + ' rir ' + (10 - rpe) + ' ';
   }
-  s = s.replace(/(^|\s)(?:bw\s*)?\+\s*(\d+(?:\.\d+)?)\s+(\d{1,2})\s*[x×*]\s*(\d{1,3})(?=\s|,|$)/g, (m, p, w, a, r) =>
-    +a <= 10 ? p + Array(+a).fill(`bw+${w}x${r}`).join(' ') : m
+  s = s.replace(
+    /(^|\s)(?:bw\s*)?\+\s*(\d+(?:\.\d+)?)\s+(\d{1,2})\s*[x×*]\s*(\d{1,3})(?=\s|,|$)/g,
+    (m: string, p: string, w: string, a: string, r: string) =>
+      +a <= 10 ? p + Array(+a).fill(`bw+${w}x${r}`).join(' ') : m
   );
   s = s.replace(
     /(^|\s)(?:bw\s*)?\+\s*(\d+(?:\.\d+)?)\s*[x×*]\s*(\d{1,3})(?=\s|,|$)/g,
-    (_m, p, w, r) => `${p}bw+${w}x${r}`
+    (_m: string, p: string, w: string, r: string) => `${p}bw+${w}x${r}`
   );
-  s = s.replace(/(^|\s)bw\s+(\d{1,2})\s*[x×*]\s*(\d{1,3})(?=\s|,|$)/g, (m, p, a, r) =>
+  s = s.replace(/(^|\s)bw\s+(\d{1,2})\s*[x×*]\s*(\d{1,3})(?=\s|,|$)/g, (m: string, p: string, a: string, r: string) =>
     +a <= 10 ? p + Array(+a).fill(`bwx${r}`).join(' ') : m
   );
   // sets x reps @ load, and "3 sets of 10 at 60"
-  s = s.replace(/\b(\d{1,2})\s*(?:x|×|\*|sets? of)\s*(\d{1,3})\s*(?:@|at)\s*(\d+(?:\.\d+)?)\b/g, (m, a, b, c) =>
-    +a <= 10 && +c > +a ? Array(+a).fill(`${c}x${b}`).join(' ') : m
+  s = s.replace(
+    /\b(\d{1,2})\s*(?:x|×|\*|sets? of)\s*(\d{1,3})\s*(?:@|at)\s*(\d+(?:\.\d+)?)\b/g,
+    (m: string, a: string, b: string, c: string) => (+a <= 10 && +c > +a ? Array(+a).fill(`${c}x${b}`).join(' ') : m)
   );
   /* sets x reps then a load at the end: "OHP 3x8 40" is 3 sets of 8 at 40
      (r30, from the review: it read as 3 x 8 and 3 x 40). Only up to 10 sets,
      and only a last number larger than the set count, so "185x8 8" (a load
      for 8, then 8 more reps) still reads as before. */
-  s = s.replace(/(^|\s)(\d{1,2})\s*[x×*]\s*(\d{1,3})\s+(\d+(?:\.\d+)?)\s*$/, (m, p, a, b, c) =>
-    +a <= 10 && +c > +b && +c > +a ? p + Array(+a).fill(`${c}x${b}`).join(' ') : m
+  s = s.replace(
+    /(^|\s)(\d{1,2})\s*[x×*]\s*(\d{1,3})\s+(\d+(?:\.\d+)?)\s*$/,
+    (m: string, p: string, a: string, b: string, c: string) =>
+      +a <= 10 && +c > +b && +c > +a ? p + Array(+a).fill(`${c}x${b}`).join(' ') : m
   );
   // load x reps x sets
-  s = s.replace(/\b(\d+(?:\.\d+)?)\s*[x×*]\s*(\d{1,3})\s*[x×*]\s*(\d{1,2})\b/g, (m, a, b, c) =>
-    +c <= 10 ? Array(+c).fill(`${a}x${b}`).join(' ') : m
+  s = s.replace(
+    /\b(\d+(?:\.\d+)?)\s*[x×*]\s*(\d{1,3})\s*[x×*]\s*(\d{1,2})\b/g,
+    (m: string, a: string, b: string, c: string) => (+c <= 10 ? Array(+c).fill(`${a}x${b}`).join(' ') : m)
   );
   // A load then a list of reps: "185: 10/8/8" or "185 - 10, 8, 8" is each rep count at 185.
   s = s.replace(
     /(^|\s)(\d{2,}(?:\.\d+)?)(?:\s*[:\-–]\s*|\s+)(\d{1,2}(?:\s*[/,]\s*\d{1,2})+)(?=\s*$)/g,
-    (_m, p, a, l) =>
+    (_m: string, p: string, a: string, l: string) =>
       p +
       l
         .split(/\s*[/,]\s*/)
@@ -658,8 +669,10 @@ export function impSetsText(t: unknown): string {
         .join(' ')
   );
   // load then sets x reps: "225 5x5"
-  s = s.replace(/(^|\s)(\d{2,}(?:\.\d+)?)\s+(\d{1,2})\s*[x×*]\s*(\d{1,3})(?=\s|,|$)/g, (m, p, a, b, c) =>
-    +b <= 10 ? p + Array(+b).fill(`${a}x${c}`).join(' ') : m
+  s = s.replace(
+    /(^|\s)(\d{2,}(?:\.\d+)?)\s+(\d{1,2})\s*[x×*]\s*(\d{1,3})(?=\s|,|$)/g,
+    (m: string, p: string, a: string, b: string, c: string) =>
+      +b <= 10 ? p + Array(+b).fill(`${a}x${c}`).join(' ') : m
   );
   return s.trim();
 }

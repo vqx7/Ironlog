@@ -58,8 +58,11 @@ export const DEFAULT_ORDER: Readonly<Record<string, readonly string[]>> = {
   dash: ['exercise', 'volume', 'weak', 'consistency', 'body']
 };
 
-/** A fresh copy of the default order, to store and edit. */
-export const defaultOrder = (): Record<string, string[]> => JSON.parse(JSON.stringify(DEFAULT_ORDER));
+/** A fresh copy of the default order, to store and edit. JSON.parse is typed
+    any, which would let anything through unchecked; the cast says what the
+    copy is: DEFAULT_ORDER's shape, written out and read back. */
+export const defaultOrder = (): Record<string, string[]> =>
+  JSON.parse(JSON.stringify(DEFAULT_ORDER)) as Record<string, string[]>;
 
 /** A saved order kept for the sections still present, each missing one placed after the one it follows. */
 export function orderKeys(saved: readonly string[], present: readonly string[]): string[] {

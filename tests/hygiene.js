@@ -117,7 +117,8 @@ const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log
   const files = [
     ...SRC_CODE.filter(f => f !== CONFIG).map(f => ['src/' + f, f.endsWith('.ts') ? 'ts' : 'js']),
     ...fs.readdirSync(path.join(ROOT, 'src')).filter(f => /\.(html|css)$/.test(f)).map(f => ['src/' + f, 'page']),
-    ['scripts/build.js', 'js'], ['scripts/join.js', 'js'], ['scripts/cloud-supabase.js', 'js'], ['scripts/config.js', 'js'], ['scripts/depmap.js', 'js'],
+    // Every script, not a list of them (the r51 review added one the list never read).
+    ...fs.readdirSync(path.join(ROOT, 'scripts')).filter(f => f.endsWith('.js')).map(f => ['scripts/' + f, 'js']),
   ];
   // The legacy parts are pieces of one script, so they are read joined.
   const isLegacy = f => /^src\/[12]\d-.+\.js$/.test(f);
@@ -148,16 +149,19 @@ const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log
   ok(rebound.length === 0, 'nothing config.ts defines is declared or bound a second time (a local of the same name would hide it)', rebound);
   // Outside addresses, library versions and the font faces (r51, the outside
   // review V brought; ARCHITECTURE.md): config.ts defines each once, and the
-  // markup, the style sheet, the build and the account script read them. Each
-  // version is the one package.json pins. Every outside address in src/ and
-  // scripts/ is config's, or waits for its phase in ARCHITECTURE.md's list,
-  // and a listed one must still be there, so the list only shrinks.
+  // markup, the style sheet, the build, the account script and the test
+  // fixtures read them. Each version is the one package.json pins. Every
+  // outside address in src/ and scripts/ (https, http, wss or written from
+  // //) is config's, or waits for its phase in ARCHITECTURE.md's list, and a
+  // listed one must still be there, so the list only shrinks. Searched for
+  // as typed: an address or version assembled from pieces at run time is
+  // beyond a search of the text, and is review's to catch.
   {
     const pkg = require('../package.json').devDependencies;
     const pins = { CHART_VERSION: 'chart.js', SORTABLE_VERSION: 'sortablejs', THREE_VERSION: 'three' };
     const off = Object.entries(pins).filter(([k, p]) => typeof cfg[k] !== 'string' || cfg[k] !== pkg[p]).map(([k, p]) => `${k} ${cfg[k]}, package.json ${p} ${pkg[p]}`);
     ok(off.length === 0, 'each library version in config.ts is the exact one package.json pins', off);
-    const HOST = /https:\/\/([a-z0-9-]+(?:\.[a-z0-9-]+)+)/gi;
+    const HOST = /(?:(?:https?|wss?):)?\/\/([a-z0-9-]+(?:\.[a-z0-9-]+)*\.[a-z]{2,})(?![a-z0-9-])/gi;
     const strs = Object.values(cfg).flatMap(v => (typeof v === 'string' ? [v] : Array.isArray(v) ? v.filter(x => typeof x === 'string') : []));
     const owned = new Set(strs.flatMap(s => [...s.matchAll(HOST)].map(m => m[1].toLowerCase())));
     ok(['cdnjs.cloudflare.com', 'cdn.jsdelivr.net', 'unpkg.com', 'fonts.googleapis.com', 'fonts.gstatic.com', 'api.pwnedpasswords.com'].every(h => owned.has(h)), 'config.ts defines the CDNs, the fonts\' two origins and the password check\'s origin', [...owned]);
@@ -165,17 +169,25 @@ const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log
     const line = (arch.match(/^Addresses waiting for their phase: (.+)$/m) || [])[1];
     const waiting = new Map(line ? [...line.matchAll(/([a-z0-9-]+(?:\.[a-z0-9-]+)+) \(([^)]+)\)/g)].map(m => [m[1].toLowerCase(), m[2]]) : []);
     ok(line !== undefined, 'ARCHITECTURE.md lists the outside addresses still waiting for their phase');
+    // The values config owns that are not addresses: the versions, the faces and their weights, the style sheet's address whole, and a library's name with the first two parts of its version ("three.js 0.159").
+    const short = v => v.split('.').slice(0, 2).join('\\.');
+    const named = [['chart\\.js', cfg.CHART_VERSION], ['sortable(?:js)?', cfg.SORTABLE_VERSION], ['three(?:\\.js)?', cfg.THREE_VERSION]].map(([n, v]) => new RegExp(`${n}[\\s@/v-]*${short(v)}(?![\\d])`, 'i'));
+    const values = [cfg.CHART_VERSION, cfg.SORTABLE_VERSION, cfg.THREE_VERSION, cfg.FONT_DISPLAY, cfg.FONT_BODY, cfg.FONT_DISPLAY_WEIGHTS, cfg.FONT_BODY_WEIGHTS, cfg.FONTS_CSS];
+    const owns = s => [...[...s.matchAll(HOST)].map(m => m[1].toLowerCase()).filter(h => owned.has(h)), ...values.filter(v => s.includes(v)), ...named.filter(re => re.test(s)).map(re => re.source)];
     const hosts = [], copies = [], seen = new Set();
     for (const [f, t] of texts) {
       for (const m of t.code.matchAll(HOST)) {
         const h = m[1].toLowerCase(); seen.add(h);
-        if (owned.has(h)) copies.push(`${f}: ${h}`);
-        else if (!(waiting.has(h) && f === 'src/10-29 (legacy parts)')) hosts.push(`${f}: ${h}`);
+        if (!owned.has(h) && !(waiting.has(h) && f === 'src/10-29 (legacy parts)')) hosts.push(`${f}: ${h}`);
       }
-      // The versions and the faces, wherever a value can be: string, template and pattern tokens, or anywhere in markup and styles.
-      for (const v of [cfg.CHART_VERSION, cfg.SORTABLE_VERSION, cfg.THREE_VERSION, cfg.FONT_DISPLAY, cfg.FONT_BODY, cfg.FONTS_CSS]) if (t.lits.some(l => l.includes(v))) copies.push(`${f}: ${v}`);
+      for (const l of [t.code, ...t.lits]) for (const v of owns(l)) copies.push(`${f}: ${v}`);
     }
-    ok(copies.length === 0, 'the outside addresses, library versions and font faces config.ts defines are typed nowhere else in src/ or scripts/', copies);
+    // The test fixtures too: a font or address changed in config would otherwise leave them serving the old one. This suite, which states what config must define, excepted.
+    for (const f of fs.readdirSync(__dirname).filter(x => x.endsWith('.js') && x !== 'hygiene.js')) {
+      const r = read(fs.readFileSync(path.join(__dirname, f), 'utf8'), false);
+      for (const l of [r.code, ...r.lits]) for (const v of owns(l)) copies.push(`tests/${f}: ${v}`);
+    }
+    ok(copies.length === 0, 'the outside addresses, library versions, font faces and weights config.ts defines are typed nowhere else in src/, scripts/ or tests/', [...new Set(copies)]);
     ok(hosts.length === 0, 'every other outside address in src/ or scripts/ waits for its phase in ARCHITECTURE.md, in the legacy script', hosts);
     const gone = [...waiting.keys()].filter(h => !seen.has(h));
     ok(gone.length === 0, 'every address ARCHITECTURE.md lists as waiting is still in the legacy script (a moved one leaves the list)', gone);
@@ -334,76 +346,107 @@ const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log
     ok(bare.length === 0, 'every name src/app/ exports has a comment saying what it is for', bare);
   }
   // Types say only what is true (r51, the outside review V brought;
-  // ARCHITECTURE.md). No `any`. Every cast (other than `as const`) and every
-  // `!` has its reason in a comment: on its own line, alone on the line
-  // above, or leading a statement, declaration or property that holds it and
-  // naming it ("cast", or the !). Casts, `!` and open index signatures are
-  // counted against ARCHITECTURE.md's numbers, which only fall: higher fails,
-  // and lower fails until the numbers are lowered, as the legacy ratchet does.
+  // ARCHITECTURE.md). Read with the type checker, so an `any` is found
+  // wherever it is, not only where the word is written: no parameter,
+  // variable, call or property read in src/app/ has the type any, except a
+  // call wrapped directly in a cast, which makes it explicit (JSON.parse is
+  // typed any). Every cast (other than `as const`) and every `!` (a non-null
+  // assertion, or a definite assignment such as `let x!: T`) has a comment
+  // naming it ("cast", or a ! standing alone): on its line, alone on the line
+  // above, or leading a statement, declaration or property that holds it. A
+  // cast to a type parameter is refused, since one generic helper would turn
+  // any number of casts into calls the count never sees. Casts, `!` and open
+  // types (an index signature, or a Record keyed by string, whose values are
+  // unknown or any) are counted against ARCHITECTURE.md's numbers, which only
+  // fall: higher fails, and lower fails until the numbers are lowered. What a
+  // comment says is review's to judge, and one comment on a declaration may
+  // cover several casts in it; the count shows a new one in the diff.
+  const appComments = new Map(); // module -> [pos, end] of every comment, from the syntax tree
   {
-    const CAST = /\bcasts?\b/i, BANG = /(^|[\s`(\w)\]])!([\s`),.;:]|$)/;
-    const anys = [], unexplained = []; let casts = 0, bangs = 0, open = 0;
+    const CAST = /\bcasts?\b/i, BANG = /(^|[\s(`])!([\s`),.;:]|$)/;
+    const conf = ts.parseJsonConfigFileContent(ts.readConfigFile(path.join(ROOT, 'tsconfig.json'), ts.sys.readFile).config, ts.sys, ROOT);
+    const prog = ts.createProgram(conf.fileNames, conf.options), ch = prog.getTypeChecker();
+    const anys = [], unexplained = [], generic = []; let casts = 0, bangs = 0, open = 0;
+    const isAny = n => { try { return !!(ch.getTypeAtLocation(n).flags & ts.TypeFlags.Any); } catch (e) { return false; } };
+    const loose = n => n && (n.kind === ts.SyntaxKind.UnknownKeyword || n.kind === ts.SyntaxKind.AnyKeyword);
     for (const id of MODS) {
-      const f = id + '.ts', txt = fs.readFileSync(path.join(APP, f), 'utf8');
-      const sf = ts.createSourceFile(f, txt, ts.ScriptTarget.Latest, true);
+      const f = id + '.ts', sf = prog.getSourceFile(path.join(APP, f)), txt = sf.text;
+      const at = n => `${f}:${sf.getLineAndCharacterOfPosition(n.getStart(sf)).line + 1}`;
       const lead = n => (ts.getLeadingCommentRanges(txt, n.pos) || []).map(c => txt.slice(c.pos, c.end)).join('\n');
-      // Which lines hold a comment and which hold code, from the syntax tree's
-      // tokens and the comments around them, so a // inside a string or a
-      // regular expression is never taken for one.
-      const commentLines = new Set(), codeLines = new Set();
+      // Which lines hold a comment and which hold code, from the tokens and
+      // the comments around them, so a // inside a string or a regular
+      // expression is never taken for one.
+      const commentLines = new Set(), codeLines = new Set(), ranges = new Map();
       const mark = (set, a, z) => { for (let l = sf.getLineAndCharacterOfPosition(a).line, e = sf.getLineAndCharacterOfPosition(z).line; l <= e; l++) set.add(l); };
       const tokens = n => {
-        for (const c of [...(ts.getLeadingCommentRanges(txt, n.pos) || []), ...(ts.getTrailingCommentRanges(txt, n.end) || [])]) mark(commentLines, c.pos, c.end);
+        for (const c of [...(ts.getLeadingCommentRanges(txt, n.pos) || []), ...(ts.getTrailingCommentRanges(txt, n.end) || [])]) { mark(commentLines, c.pos, c.end); ranges.set(c.pos, [c.pos, c.end]); }
         const kids = n.getChildren(sf);
         if (!kids.length && n.kind !== ts.SyntaxKind.EndOfFileToken) mark(codeLines, n.getStart(sf), n.end);
         kids.forEach(tokens);
       };
       tokens(sf);
+      appComments.set(id, [...ranges.values()]);
+      const lineComments = l => [...ranges.values()].filter(([a, z]) => sf.getLineAndCharacterOfPosition(a).line <= l && sf.getLineAndCharacterOfPosition(z).line >= l).map(([a, z]) => txt.slice(a, z)).join('\n');
+      const named = (n, re, held) => {
+        const l = sf.getLineAndCharacterOfPosition(n.getStart(sf)).line;
+        const above = l > 0 && commentLines.has(l - 1) && !codeLines.has(l - 1) ? lineComments(l - 1) : '';
+        return re.test(lineComments(l)) || re.test(above) || held.some(c => re.test(c));
+      };
       const visit = (n, held) => {
-        if (n.kind === ts.SyntaxKind.AnyKeyword) anys.push(`${f}:${sf.getLineAndCharacterOfPosition(n.getStart(sf)).line + 1}`);
-        if (ts.isIndexSignatureDeclaration(n)) open++;
+        if (n.kind === ts.SyntaxKind.AnyKeyword) anys.push(`${at(n)} the word any`);
+        const reads = (ts.isParameter(n) && ts.isIdentifier(n.name)) || (ts.isVariableDeclaration(n) && ts.isIdentifier(n.name)) || ts.isCallExpression(n) || ts.isPropertyAccessExpression(n) || ts.isElementAccessExpression(n);
+        if (reads && !(n.parent && (ts.isAsExpression(n.parent) || ts.isTypeAssertionExpression(n.parent))) && isAny(ts.isParameter(n) || ts.isVariableDeclaration(n) ? n.name : n)) anys.push(`${at(n)} ${n.getText(sf).slice(0, 50).replace(/\s+/g, ' ')}`);
+        if (ts.isIndexSignatureDeclaration(n) && loose(n.type)) open++;
+        if (ts.isTypeReferenceNode(n) && n.typeName.getText(sf) === 'Record' && n.typeArguments && n.typeArguments.length === 2 && n.typeArguments[0].kind === ts.SyntaxKind.StringKeyword && loose(n.typeArguments[1])) open++;
         const isCast = (ts.isAsExpression(n) || ts.isTypeAssertionExpression(n)) && n.type.getText(sf) !== 'const';
-        const isBang = ts.isNonNullExpression(n);
-        if (isCast || isBang) {
-          if (isCast) casts++; else bangs++;
-          const l = sf.getLineAndCharacterOfPosition(n.getStart(sf)).line;
-          const above = l > 0 && commentLines.has(l - 1) && !codeLines.has(l - 1);
-          if (!commentLines.has(l) && !above && !held.some(c => (isCast ? CAST : BANG).test(c))) unexplained.push(`${f}:${l + 1} ${n.getText(sf).slice(0, 50).replace(/\s+/g, ' ')}`);
+        const isBang = ts.isNonNullExpression(n) || ((ts.isVariableDeclaration(n) || ts.isPropertyDeclaration(n)) && !!n.exclamationToken);
+        if (isCast) {
+          casts++;
+          if (!named(n, CAST, held)) unexplained.push(`${at(n)} ${n.getText(sf).slice(0, 50).replace(/\s+/g, ' ')}`);
+          const tp = x => (ts.isTypeReferenceNode(x) && (() => { const s = ch.getSymbolAtLocation(x.typeName); return !!(s && s.flags & ts.SymbolFlags.TypeParameter); })()) || !!ts.forEachChild(x, k => tp(k) || undefined);
+          if (tp(n.type)) generic.push(`${at(n)} ${n.getText(sf).slice(0, 50)}`);
+        }
+        if (isBang) {
+          bangs++;
+          if (!named(n, BANG, held)) unexplained.push(`${at(n)} ${n.getText(sf).slice(0, 50).replace(/\s+/g, ' ')}`);
         }
         const own = ts.isStatement(n) || ts.isVariableDeclaration(n) || ts.isPropertyAssignment(n) || ts.isClassElement(n) ? [...held, lead(n)] : held;
         ts.forEachChild(n, k => visit(k, own));
       };
       visit(sf, []);
     }
-    ok(anys.length === 0, 'no `any` in src/app/', anys);
-    ok(unexplained.length === 0, `every cast and every ! in src/app/ has its reason in a comment (${casts} casts, ${bangs} !)`, unexplained);
+    ok(anys.length === 0, 'no value in src/app/ has the type any, found by the type checker (a call wrapped in a cast excepted, as the cast makes it explicit)', anys);
+    ok(unexplained.length === 0, `every cast and every ! in src/app/ has a comment naming it (${casts} casts, ${bangs} !)`, unexplained);
+    ok(generic.length === 0, 'no cast in src/app/ is to a type parameter (a generic helper would hide casts from the count)', generic);
     const arch = fs.readFileSync(path.join(ROOT, 'ARCHITECTURE.md'), 'utf8');
     const cap = re => +((arch.match(re) || [])[1]);
-    const cc = cap(/^Casts: (\d+)$/m), cb = cap(/^Non-null assertions: (\d+)$/m), co = cap(/^Open index signatures: (\d+)$/m);
-    ok(cc >= 0 && cb >= 0 && co >= 0 && casts <= cc && bangs <= cb && open <= co, `src/app/ has no more casts, ! or open index signatures than ARCHITECTURE.md records (${casts} of ${cc}, ${bangs} of ${cb}, ${open} of ${co})`);
-    ok(casts >= cc && bangs >= cb && open >= co, 'when a cast, a ! or an open index signature goes, the number in ARCHITECTURE.md is lowered to match, so it stays gone', { casts, cc, bangs, cb, open, co });
+    const cc = cap(/^Casts: (\d+)$/m), cb = cap(/^Non-null assertions: (\d+)$/m), co = cap(/^Open types: (\d+)$/m);
+    ok(cc >= 0 && cb >= 0 && co >= 0 && casts <= cc && bangs <= cb && open <= co, `src/app/ has no more casts, ! or open types than ARCHITECTURE.md records (${casts} of ${cc}, ${bangs} of ${cb}, ${open} of ${co})`);
+    ok(casts >= cc && bangs >= cb && open >= co, 'when a cast, a ! or an open type goes, the number in ARCHITECTURE.md is lowered to match, so it stays gone', { casts, cc, bangs, cb, open, co });
   }
-  // An error handled in a module says why (r51, the outside review): every
-  // `catch` in src/app/ throws or carries a comment, inside the block,
-  // saying why the error is expected and what the fallback is. A module
+  // An error handled in a module carries a comment (r51, the outside review):
+  // every `catch` block in src/app/, and every function handed to a promise's
+  // .catch, throws (not from a function nested inside it) or holds a comment,
+  // read from the syntax tree, saying why the error is expected and what the
+  // fallback is. Whether the comment says that is review's to judge. A module
   // cannot log yet (`log` is legacy until phase 4).
   {
     const silent = [];
-    const throws = x => ts.isThrowStatement(x) || !!ts.forEachChild(x, c => throws(c) || undefined);
+    const throws = x => ts.isThrowStatement(x) || (!ts.isFunctionLike(x) && !!ts.forEachChild(x, c => throws(c) || undefined));
     for (const id of MODS) {
       const f = id + '.ts', txt = fs.readFileSync(path.join(APP, f), 'utf8');
       const sf = ts.createSourceFile(f, txt, ts.ScriptTarget.Latest, true);
+      const comments = appComments.get(id) || [];
+      const hasComment = b => comments.some(([a, z]) => a >= b.getStart(sf) && z <= b.end);
+      const handler = (b, where) => { if (!hasComment(b) && !throws(b)) silent.push(`${f}:${sf.getLineAndCharacterOfPosition(where.getStart(sf)).line + 1}`); };
       const visit = n => {
-        if (ts.isCatchClause(n)) {
-          const b = n.block, body = txt.slice(b.getStart(sf) + 1, b.end - 1);
-          const comment = /\/\/|\/\*/.test(body.replace(/(['"`])(?:\\.|(?!\1)[^\\])*\1/g, '""'));
-          if (!comment && !throws(b)) silent.push(`${f}:${sf.getLineAndCharacterOfPosition(n.getStart(sf)).line + 1}`);
-        }
+        if (ts.isCatchClause(n)) handler(n.block, n);
+        if (ts.isCallExpression(n) && ts.isPropertyAccessExpression(n.expression) && n.expression.name.text === 'catch' && n.arguments[0] && ts.isFunctionLike(n.arguments[0])) handler(n.arguments[0].body, n);
         ts.forEachChild(n, visit);
       };
       visit(sf);
     }
-    ok(silent.length === 0, 'every catch in src/app/ throws or says in a comment why the error is expected', silent);
+    ok(silent.length === 0, 'every catch in src/app/, a promise\'s .catch included, throws or carries a comment saying why the error is expected', silent);
   }
   // Every module is laid out by Prettier from the committed .prettierrc.json,
   // so layout is never a matter of taste or of hand (layout never changes

@@ -46,7 +46,10 @@ const HOOKS = `(() => {
   await wait(200);
   // The 3D body on Today, built once for the visit.
   await page.click('[data-act="mapView"][data-v="3d"]');
-  await page.waitForFunction(() => ['ready', 'fail'].includes(window.__ironlog.map3d().state), null, { timeout: 20000 }).catch(() => {});
+  // It must settle, ready or failed; still loading after 60 s fails here
+  // rather than letting the no-context branch below pass in silence.
+  const settled = await page.waitForFunction(() => ['ready', 'fail'].includes(window.__ironlog.map3d().state), null, { timeout: 60000 }).then(() => true, () => false);
+  ok(settled, 'the 3D body settles, ready or failed', await ev(() => window.__ironlog.map3d().state));
   const ready = await ev(() => window.__ironlog.map3d().state === 'ready');
 
   // What is alive now, against what is on screen.
@@ -87,7 +90,7 @@ const HOOKS = `(() => {
 
   ok(last.charted > 0, `Stats draws charts to count (${last.charted})`, last);
   ok(last.liveCharts === last.charted, `the live charts are the ones on screen after eight rounds (${last.liveCharts} live, ${last.charted} on screen)`, last);
-  ok(first.sortLive >= 0 && last.sortLive === last.lists, `the live drag lists are the ones on screen (${last.sortLive} live, ${last.lists} on screen)`, { first, last });
+  ok(first.sortLive === first.lists && last.sortLive === last.lists, `the live drag lists are the ones on screen, after the first round and the eighth (${first.sortLive} and ${last.sortLive} live, ${first.lists} and ${last.lists} on screen)`, { first, last });
   ok(await ev(() => window.__live.sortMade) > 8, 'drag lists were made and torn down through the rounds', await ev(() => window.__live));
   ok(last.iv <= first.iv, `intervals do not accumulate (${first.iv} after the first round, ${last.iv} after the eighth)`, { first, last });
   if (ready) ok(last.webgl === 1, 'the 3D body makes one WebGL context for the whole visit, on Today and in the sheet', last);

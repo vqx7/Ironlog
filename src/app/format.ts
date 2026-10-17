@@ -32,8 +32,9 @@ export function sessTm(x: { t?: number | null }): string {
   try {
     return x.t ? new Date(x.t).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) : '';
   } catch (e) {
-    // Formatting a time throws a RangeError where the browser cannot use the
-    // locale or the options; the session then shows no time rather than failing.
+    // A guard only: with these options a number does not make it throw (a time
+    // out of range gives "Invalid Date" instead, PENDING 308); if an engine
+    // did throw, the session shows no time rather than breaking History.
     return '';
   }
 }

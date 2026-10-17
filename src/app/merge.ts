@@ -71,8 +71,9 @@ export function merge3List<X extends { id?: unknown }>(
       continue;
     }
     if (!a || !b) {
-      // Present on one side only. Deleted by the other side if the present copy
-      // is exactly the base; otherwise it is new or edited there, so keep it.
+      // Present on one side only (so a || b is there, the !). Deleted by the other
+      // side if the present copy is exactly the base; otherwise it is new or
+      // edited there, so keep it.
       const p = (a || b)!,
         ph = a ? ah : rh;
       if (known && ph === bh) continue;
@@ -113,13 +114,13 @@ type DraftLike = { id: string; ex: { exId: string }[] } & Record<string, unknown
    action, local = now, other = before it. Exercises changed only by the
    action go back; ones changed since keep the newer version. As a whole
    record, any set logged after the action used to block the undo. */
-export function mergeDraft<D extends DraftLike>(
-  base: D | null | undefined,
-  cur: D | null | undefined,
-  pre: D | null | undefined
-): D | null {
+export function mergeDraft(
+  base: DraftLike | null | undefined,
+  cur: DraftLike | null | undefined,
+  pre: DraftLike | null | undefined
+): DraftLike | null {
   if (!pre || !cur || !base || pre.id !== cur.id || base.id !== cur.id) return cur === undefined ? null : cur;
-  type B = D['ex'][number];
+  type B = DraftLike['ex'][number];
   const keyed = (list: readonly B[] | null | undefined): [string, B][] => {
     const seen: Record<string, number> = {};
     return (list || []).map((b): [string, B] => {
@@ -165,7 +166,6 @@ export function mergeDraft<D extends DraftLike>(
   for (const f of ['notes', 'dayName', 'deload', 'light', 'limited', 'cardio', 'chk']) {
     if (canon(cur[f]) === canon(base[f])) res[f] = pre[f];
   }
-  // The same session with each exercise and field taken from one of its
-  // versions, so still a D.
-  return res as D;
+  // The same session with each exercise and field taken from one of its versions.
+  return res;
 }

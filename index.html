@@ -3185,11 +3185,14 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       s = s.replace(/@\s*((?:6|7|8|9)(?:\.5)?|10)(?![\d.x×*])/g, (_m, v) => ` rpe ${v} `);
     {
       let rpe = null;
-      s = s.replace(/@?\s*\brpe\s*(\d+(?:\.\d+)?)|@\s*(\d+(?:\.\d+)?)\s*rpe\b/g, (_m, a, b) => {
-        const v = +(a || b);
-        if (v >= 5 && v <= 10) rpe = v;
-        return " ";
-      });
+      s = s.replace(
+        /@?\s*\brpe\s*(\d+(?:\.\d+)?)|@\s*(\d+(?:\.\d+)?)\s*rpe\b/g,
+        (_m, a, b) => {
+          const v = +(a || b);
+          if (v >= 5 && v <= 10) rpe = v;
+          return " ";
+        }
+      );
       if (rpe != null) s = s.trim() + " rir " + (10 - rpe) + " ";
     }
     s = s.replace(

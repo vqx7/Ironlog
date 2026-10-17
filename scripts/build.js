@@ -103,8 +103,14 @@ let html = src;
 html = replaceOnce(html, `<link rel="preconnect" href="${cfg.FONTS_ORIGIN}">\n`, '', 'Google Fonts preconnect');
 html = replaceOnce(html, `<link rel="preconnect" href="${cfg.FONT_FILES_ORIGIN}" crossorigin>\n`, '', 'gstatic preconnect');
 html = replaceOnce(html, `<link href="${cfg.FONTS_CSS}" rel="stylesheet">`, '<link rel="stylesheet" href="fonts/fonts.css">', 'Google Fonts style sheet');
-// No tag still points at Google Fonts (config's own values in the app script are only text).
-must(![cfg.FONTS_ORIGIN, cfg.FONT_FILES_ORIGIN].some(o => new RegExp(`<link[^>]*href="${o.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`).test(html)), 'Google Fonts link still present');
+// Nothing on the page still reaches Google Fonts: no tag, no @import in the
+// styles, anywhere outside the inline scripts. The app script holds config's
+// values as text, which fetch nothing (r51; the r51 review found a check
+// limited to <link> tags passed an @import).
+{
+  const outside = html.replace(/<script>[\s\S]*?<\/script>/g, '');
+  must(![cfg.FONTS_ORIGIN, cfg.FONT_FILES_ORIGIN].some(o => outside.includes(o.replace(/^https:/, ''))), 'Google Fonts link still present');
+}
 // Libraries: the local copy first, the CDNs stay as fallbacks.
 html = replaceOnce(html, `loadScript(['${cfg.SORTABLE_URLS[0]}',`, `loadScript(['vendor/Sortable.min.js','${cfg.SORTABLE_URLS[0]}',`, 'Sortable loader');
 html = replaceOnce(html, `loadScript(['${cfg.CHART_URLS[0]}',`, `loadScript(['vendor/chart.umd.js','${cfg.CHART_URLS[0]}',`, 'Chart.js loader');

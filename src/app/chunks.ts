@@ -78,7 +78,7 @@ export function chunksOf(st: Save): Record<string, Doc> {
       const c = out[bodyChunkOf(x.date)] || (out[bodyChunkOf(x.date)] = {});
       (c[k] || (c[k] = [])).push(x);
     }
-  // A body document holds only the two lists filled just above.
+  // A body document holds only the two lists filled just above, as the cast says.
   for (const id in out) if (id.startsWith('b-')) for (const k in out[id]) (out[id][k] as Dated[]).sort(bySess);
   // Every session document is made with its sessions list, here or below, which
   // the ! after `.sessions` says to TypeScript.

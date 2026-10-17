@@ -60,8 +60,8 @@ export function gymClean(g: Raw): Gym | null {
     const x = +(v as number);
     return isFinite(x) ? Math.round(x * 1000) / 1000 : NaN;
   };
-  // g.db is whatever was stored; the cast lets the lines below test its fields,
-  // each of which is read through n().
+  // g.db is whatever was stored or typed in Settings; the cast lets the lines
+  // below test its fields, each of which is read through n().
   const d = g.db as Raw;
   if (d && typeof d === 'object') {
     const lo = n(d.lo),
@@ -84,7 +84,7 @@ export function gymClean(g: Raw): Gym | null {
   }
   if (Array.isArray(g.plates)) {
     const all = gymPlates(g.u);
-    // Inside the callback TypeScript no longer knows g.plates is an array.
+    // Inside the callback TypeScript no longer knows g.plates is an array, hence the cast.
     const pl = all.filter(x => (g.plates as unknown[]).map(n).includes(x));
     if (pl.length) out.plates = pl;
   }

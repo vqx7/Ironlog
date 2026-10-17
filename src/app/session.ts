@@ -15,7 +15,7 @@ import { isWork } from './formulas';
    load settleLoad writes in when the set is ticked or saved at Finish: the
    load of the nearest working set above that has one, else the block's
    suggestion; none on a warm-up or a drop set. A row that exists means the
-   block does, which the b! below says to TypeScript. */
+   block does, which the ! on each b below says to TypeScript. */
 export function greyW(b: DraftBlock | null | undefined, si: number): number | null {
   const s = b && b.sets[si];
   if (!s || s.warm || s.drop) return null;

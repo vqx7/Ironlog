@@ -31,18 +31,23 @@ const OPEN = "(function(){\n'use strict';\n", CLOSE = '})();\n';
 
 // Every placeholder must be known and filled, so the page title and heading
 // are never a second copy of the name. A list of addresses (the library
-// loader's, r51) is written as the items of a script's array, each in single
-// quotes, so an item holding a quote, a backslash or a line break stops the
-// build. tests/hygiene.js reads the style sheet through this too, as the
-// page holds it.
+// loader's, r51) is written only as the items of a script's array, so its
+// placeholder must sit between [ and ]; each item goes in single quotes, and
+// an item holding a quote, a backslash, a line break or a < (which could end
+// the script) stops the build. tests/hygiene.js reads the style sheet
+// through this too, as the page holds it.
 function fill(t) {
   const cfg = require('./config');
-  const value = (m, v) => {
+  return t.replace(/\{\{(\w+)\}\}/g, (m, k, at) => {
+    const v = Object.prototype.hasOwnProperty.call(cfg, k) ? cfg[k] : undefined;
     if (typeof v === 'string') return v;
-    if (Array.isArray(v) && v.length && v.every(x => typeof x === 'string' && !/['\\\n]/.test(x))) return v.map(x => `'${x}'`).join(',');
+    if (Array.isArray(v)) {
+      if (t[at - 1] !== '[' || t[at + m.length] !== ']') throw new Error(`join: the list ${m} goes only between [ and ], as a script array's items`);
+      if (!v.length || !v.every(x => typeof x === 'string' && !/['\\\r\n<\u2028\u2029]/.test(x))) throw new Error(`join: ${m} must be addresses with no quote, backslash, line break or <`);
+      return v.map(x => `'${x}'`).join(',');
+    }
     throw new Error(`join: unknown placeholder ${m}`);
-  };
-  return t.replace(/\{\{(\w+)\}\}/g, (m, k) => value(m, Object.prototype.hasOwnProperty.call(cfg, k) ? cfg[k] : undefined));
+  });
 }
 
 function build({ override = {} } = {}) {
