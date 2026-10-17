@@ -11,6 +11,12 @@ Ironlog started as a Claude artifact, which has to be one HTML file. When the ar
 ```
 src/app/            TypeScript modules, the whole app when this is done
   config.ts         names, versions, addresses: every value defined once (r49)
+  types.ts          the record shapes: an exercise, a plan item, a session (r50)
+  util.ts           text, ids, dates, numbers, the sync hash (r50)
+  units.ts          units and plates (r50)
+  library.ts        muscles, joints, equipment, the exercise library (r50)
+  routines.ts       the default plan and the ready-made routines (r50)
+  formulas.ts       the 1RM estimate, working load, set counting, time (r50)
   ...               one module per area, in the order of the phases below
 src/01-03, 99       the page's markup and styles
 ```
@@ -28,27 +34,31 @@ The current code is the **legacy script**: `src/10-*.js` to `src/29-*.js`, joine
 
 **The ratchet:** the legacy script may never grow. `tests/hygiene.js` fails when it has more top-level declarations or more lines than the numbers below, and also when it has fewer, until the numbers are lowered to match, so each phase locks in what it moved. A change that adds code adds it in `src/app/`.
 
-Legacy top-level declarations: 928
-Legacy lines: 10452
+Legacy top-level declarations: 819
+Legacy lines: 9863
 
-| Measured (scripts/depmap.js) | r49 |
-|---|---|
-| Legacy top-level declarations | 928 |
-| Pure, movable as they are | 324 |
-| Shared mutable names | 61 (`ui` written from 12 files, `state` from 10) |
-| Legacy lines | 10,452 |
+| Measured (scripts/depmap.js) | r49 | r50 |
+|---|---|---|
+| Legacy top-level declarations | 928 | 819 |
+| Pure, movable as they are | 324 | 215 |
+| Shared mutable names | 61 (`ui` written from 12 files, `state` from 10) | 61 |
+| Legacy lines | 10,452 | 9,863 |
+| In `src/app/` | `config.ts` | and `util`, `units`, `library`, `routines`, `formulas` (109 declarations) |
 
 ## The phases
 
 Each phase is its own pull request, tried in the preview before V merges it. Each proves it changes nothing a lifter sees: the full suite in Chromium and WebKit, `tests/coherence.js`, and for the engine and analytics the 2,000 seeded histories of `tests/r36.js` giving identical numbers before and after.
 
 1. **Toolchain and config (r49).** esbuild, TypeScript, `src/app/config.ts`, the version people see (2.0) apart from the build, the single-source and boundary checks, the ratchet. Done in r49.
-2. **Pure math and data.** The 1RM formulas, load steps, volume counting, the exercise library and routines: the pure declarations first, in the order the map gives (a declaration moves only after everything it uses has).
+2. **Pure math and data (r50).** The bottom layers, 109 declarations that read nothing but their arguments and each other: `util.ts` (text, ids, dates, numbers, the sync hash), `units.ts` (units and plates), `library.ts` (muscles, joints, equipment, the exercise library and what an exercise is), `routines.ts` (the default plan and the ready-made routines) and `formulas.ts` (the 1RM estimate and its inverses, the working load, set counting, the time model and the thresholds behind trends and breaks). Moved as they were: `tests/moved.js` compares each with the same declaration in r49 after esbuild's printer, so types and layout are free and every expression and literal must match, and a one-value change fails it. The pure functions that still read a setting or the log (the load step in the unit on screen, the analytics) wait for phase 3. Done in r50.
 3. **State with one owner.** `state`, `ui` and `cloud` move into a store module that the legacy code imports under the same names; the engine and analytics are then rewritten to take the state they read as arguments (the engine reads `state` directly in 31 places today), so they become pure and unit-tested.
 4. **Storage and sync.** Same storage keys, same sync documents, same key order: `tests/seams.js`, `tests/migration.js` and every baseline hold them to it.
 5. **Screens.** One tab at a time as components, Settings first and the session screen last. The legacy script is deleted when it is empty.
 
 ## Rules (each enforced by a test, not by memory)
+
+- Moving code changes no code: `tests/moved.js` holds every moved declaration to the build its phase started from, token for token once types and layout are set aside. A declaration changed on purpose after it moved is listed there with the release and the reason.
+- Moved code exists once: no legacy declaration takes a module export's name (it would hide the module's copy), every export the legacy script uses is imported, and every import is used (`tests/hygiene.js`, from `scripts/depmap.js`'s scope-aware reading of the legacy script).
 
 - A value that names, identifies or configures the app is defined once, in `src/app/config.ts`, and read everywhere else. `tests/hygiene.js` fails on the name, the site address, a build id or the storage id typed anywhere else, in code or markup.
 - `src/app/` imports only `src/app/`. The legacy parts import only through `src/09-imports.js`.

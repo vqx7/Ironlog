@@ -35,14 +35,6 @@ function daysOff(exId,opts){
   const xs=(IDX().byEx[exId]||[]).filter(x=>x.date<=T);if(!xs.length)return 0;
   return daysBetween(xs[xs.length-1].date,T);
 }
-/* Back after more than 4 weeks off a lift (a convention, r34.2, from the
-   review: after 6 weeks away the app asked for the next load up, as if no
-   time had passed). Strength holds for about 4 weeks without training and
-   falls faster after (Bosquet 2013, a meta-analysis of training cessation),
-   so the first session back is about 90% of the last working load, in whole
-   steps, like a Lighter day but with the usual sets; the session after it
-   picks up from the last full session. */
-const BACK_DAYS=28;
 function suggest(exId,plan,opts){
   opts=opts||{};const ex=EX(exId);
   const off=!(opts.deload||opts.light)&&!ex.timed?daysOff(exId,opts):0;const back=off>BACK_DAYS;
@@ -377,8 +369,6 @@ function sgReps(C){
    middle of the range with one more rep in reserve than planned, rounded
    down to the step (the related lift's rack for dumbbells). Conventions,
    meant to err light; the next session works out from what was done. */
-// One leg or arm at a time, by name: a lunge is not a squat at 90% of its load.
-const KIN_UNI=/lunge|split squat|step-up|single[- ]|one[- ]arm|1-arm|pistol|bulgarian|cossack|unilateral/i;
 function kinOf(ex,T){
   if(!ex||ex.bw||ex.assist||ex.timed||noE1(ex)||!['barbell','dumbbell','kettlebell','landmine','other'].includes(ex.equip))return null;
   const pat=patternOf(ex);if(!pat)return null;const I=IDX();let best=null;const from=addDays(T,-120);
@@ -436,7 +426,6 @@ function defPlan(exId,plain){const ex=EX(exId);return ex.timed?{...DEFAULT_PLAN,
    kg user saw "add 2.3 kg". Either unit's default (5 lb or 2.5 kg) now reads
    as the current unit's, so steps follow a change of units; any other step is
    used exactly as typed (r27). */
-const STEP_LB=5*LB;
 function unitStep(){return U()==='kg'?2.5:STEP_LB;}
 function stepRead(v){return Math.abs(v-STEP_LB)<1e-6||Math.abs(v-2.5)<1e-6?unitStep():v;}
 /* `at`: the load the step is taken from. Only a rack from Your gym needs it
@@ -471,7 +460,6 @@ function gymClean(g){
 }
 function gymOf(){const g=state.settings.gym;return g&&typeof g==='object'?g:null;}
 const gymK=(g,v)=>g.u==='kg'?v:v*LB;
-function r3(v){return Math.round(v*1000)/1000;}
 /* Dumbbells as typed in Settings: from, to, a step, and optionally a
    smaller step up to some weight (5 to 25 by 2.5, then 5s to 120). */
 // More than 300 weights is a typo (0.5 to 200 by 0.5), refused rather than cut short.
@@ -555,9 +543,6 @@ function swapW(ex,res,nw){
    load logged on it fits: 12, 14 and 16 kg is a rack in 2 kg steps, 12.5 and
    15 one in 2.5. Loads that fit both (10, 20) keep the default. Steps are
    read in the unit on screen, since that is what the rack is labelled in. */
-const RACK={dumbbell:{kg:[2.5,2,1,0.5],lb:[5,2.5,1]},kettlebell:{kg:[4,2,1],lb:[5,2.5]}};
-// The library files kettlebell lifts under Other equipment, so they are found by name.
-function rackKind(ex){return ex.equip==='dumbbell'?'dumbbell':ex.equip==='kettlebell'||/kettlebell/i.test(ex.name||'')?'kettlebell':null;}
 function rackStep(ex){
   const I=IDX();I._rack=I._rack||{};const key=U()+ex.id;if(I._rack[key]!==undefined)return I._rack[key];
   const xs=(I.byEx[ex.id]||[]).slice(-12);const ws=[];for(const x of xs)for(const p of x.pts)if(p.w>0)ws.push(toD(p.w));
@@ -569,26 +554,11 @@ function rackStep(ex){
    multiples of the smallest step you can add, sized to about 2.5% of the
    load on compound lifts and 5% on isolation lifts. A fixed 5 lb was 20% on a
    25 lb raise and 1% on a 500 lb leg press. */
-/* The jump can be set per exercise in a routine (plan.jump, r30, V: "the
-   progression should be overridable in the planner"): a percent of the load,
-   rounded down to whole load steps and never less than one step; 0 means
-   always one step. Unset, it is the 2.5% or 5% above. */
-function jumpPct(ex,plan){return plan&&plan.jump!=null&&isNum(+plan.jump)?Math.max(0,+plan.jump)/100:isCompound(ex)?0.025:0.05;}
 function progStep(ex,plan,loadKg,at){
   const L=at!=null?gymRack(ex,plan):null;
   /* On a rack: the heaviest rack weight within the jump, at least the next one up. */
   if(L){const ta=rackTol(L,at);const up=L.filter(x=>x>at+ta);if(!up.length)return rackGap(L,at);const want=at+jumpPct(ex,plan)*Math.max(0,loadKg);let nw=up[0];for(const x of up)if(x<=want+1e-6)nw=x;return nw-at;}
   const inc=incOf(ex,plan,at);if(!(inc>0))return inc;const pct=jumpPct(ex,plan);return inc*Math.max(1,Math.floor(pct*Math.max(0,loadKg)/inc+1e-9));}
-/* Most a single session's easy RIR may raise the load: 10%, or 15% on an
-   isolation lift under 20 kg, where one plate or dumbbell step is a large
-   fraction. One rep of RIR error is normal, so bigger jumps overshoot. */
-function jumpCap(ex,loadKg,early){return early?1.25:!isCompound(ex)&&loadKg<20?1.15:1.10;}
-/* For picking a load only, never shown (r31): the estimate up to 12 reps to
-   failure, then Epley to 30. With the 12-rep limit, a set of 25 or a set of
-   12 with 5 in reserve had no estimate, so a beginner who started light got
-   one 5 lb step a session for months. Past 12 it is rough, which is why the
-   jump stays capped. */
-function fitE(load,r,rir){const v=e1(load,r,rir);if(v!=null)return v;if(!(load>0&&r>0))return null;const q=rir==null||rir===''?0:Math.min(Math.max(+rir,0),E1_MAX_RIR);const t=+r+q;return t<=30?load*(1+t/30):null;}
 /* An exercise added mid-session borrows its settings from wherever it already
    sits in the active routine instead of a generic 3 x 8-12. */
 function planFor(exId,R,dayId,plain){
@@ -615,7 +585,6 @@ function swapPlan(p,fromId,toId,R,dayId){
 }
 function easierText(ex,e){return `Getting easier at ${loadLabel(ex,e.w)}${ex.bw?'':' '+U()}: RIR ${e.from} → ${e.to} at the same reps. Adding load today is reasonable.`;}
 /* Plates per side for a barbell load, greedy from the biggest plate down. */
-const PLATES_LB=[45,35,25,10,5,2.5],PLATES_KG=[25,20,15,10,5,2.5,1.25];
 /* Small change plates (r29, item 98) add 1.25 lb or 0.5 kg, for gyms that
    have them; the load step is still set per exercise. */
 function plateList(u){u=u||U();const g=gymOf();const own=g&&(g.u||U())===u&&Array.isArray(g.plates)&&g.plates.length?g.plates.slice().sort((a,b)=>b-a):null;const b=own||(u==='lb'?PLATES_LB:PLATES_KG);return state.settings.smallPlates?[...b,u==='lb'?1.25:0.5]:b;}

@@ -14,20 +14,6 @@
    - Injured muscles are avoided; priority and lagging muscles count more;
      your cycle order and lifts you already know and progress on get a nudge.
    None of this is a fixed rule of physiology: it is a transparent ranking. */
-/* Two-joint muscles trained at a long length. Trials in untrained people:
-   seated over lying leg curls (Maeo 2021), overhead over pushdown triceps work
-   (Maeo 2023), standing over seated calf raises for the gastrocnemius
-   (Kinoshita 2023). Incline and Bayesian curls rest on mechanics only. A small
-   tie-breaking nudge, never more. */
-/* The 0.90 quantile of Student's t, for the two-sided 80% interval of a fitted
-   slope with n-2 degrees of freedom. The normal value (1.2816) was used
-   before; with 3 to 6 sessions the interval came out up to 2.4 times too
-   narrow, so noise was called a trend. Past 30 degrees of freedom the
-   approximation below is within 0.001 of the table. */
-const T90=[NaN,3.078,1.886,1.638,1.533,1.476,1.440,1.415,1.397,1.383,1.372,1.363,1.356,1.350,1.345,1.341,1.337,1.333,1.330,1.328,1.325,1.323,1.321,1.319,1.318,1.316,1.315,1.314,1.313,1.311,1.310];
-function t90(df){df=Math.floor(df);if(!(df>=1))return T90[1];return df<=30?T90[df]:1.2816+0.8521/df;}
-const LONG_TRIAL=new Set(['seatedCurl','ohCableExt','ohDbExt','standCalf']);
-const LONG_IDS=new Set([...LONG_TRIAL,'katana','inclineCurl','bayesianCurl','rdl','sldl','dbRdl','slRdl','donkeyCalf','sissy']);
 function rolling7(m,extra,at){
   const dm=IDX().dayMus;const t=at||today();let v=0;
   for(let k=0;k<7;k++){const x=dm[addDays(t,-k)];if(x&&x[m])v+=x[m];}
@@ -179,10 +165,6 @@ function exReasons(x){
 /* Closest same-muscle replacements, used by Swap and Limited equipment.
    Same main muscle and same kind of set (timed or reps) are required; then
    shared helper muscles, lifts you already log, and like-for-like setup. */
-/* Exercises most people cannot do for sets of 8 to 15 when they start (r30,
-   from the review: a seated leg curl became Nordic curls for 3 x 10-15, and
-   a lat pulldown became pull-ups). A judgment, not a measurement. */
-const HARD_EX=new Set(['nordic','revNordic','ghr','sissy','dragonFlag','pullup','chinup','dips','triDips','hangingLegRaise']);
 // Done before at the rep range asked for, or close: then it is not too hard for this lifter.
 function canDo(e,repMin){const xs=IDX().byEx[e.id]||[];return xs.some(x=>x.pts.some(p=>p.r>=Math.max(1,(+repMin||1)-2)));}
 function swapScore(o,e,repMin){
@@ -462,7 +444,6 @@ function newBlock(exId,plan,opts){
   // still on the suggestion from one the lifter typed (refreshBlock).
   return {bid:uid(),exId,plan:{...plan},note:'',lastNote:lastNoteOf(exId,opts&&opts.before),inj:sg.inj||null,hint:sg.text,last:sg.last,prev:sg.prev||undefined,prevOff:sg.prevOff||undefined,target:sg.target,tgt:sg.tgt,easier:sg.easier||null,lastR:sg.lastR,basis:sg.basis||undefined,sw:sg.w==null?null:sg.w,sets:Array.from({length:+plan.sets||3},()=>({w:fillLoads()?sg.w:null,r:null,rir:null,warm:false,drop:false,done:false}))};
 }
-const DEFAULT_PLAN={sets:3,repMin:8,repMax:12,rir:1,rest:90,inc:5*LB};
 /* The Last column (r44, V: "what I did last time next to what I'm about to
    do"). b.prev is the sets at the working load of the session the Last line
    names, the same sets the grey reps repeat; row n of the working sets sits
@@ -499,14 +480,6 @@ function profClean(p){
   return Object.keys(o).length?o:null;
 }
 function prof(){return state.settings.profile||{};}
-/* The heavy compounds a Strength or Both goal moves: barbell, Smith and
-   machine compounds with a strength estimate, as the copy says (the r44
-   review: `estInLoad` took goblet squats and single-dumbbell rows and left
-   out selectorized machine presses and rows). */
-const PROF_EQUIP=new Set(['barbell','smith','machine']);
-// Hip and back accessories on a bar or a machine, not lifts trained heavy for strength (a judgment, the r44 review).
-const PROF_NOT_HEAVY=new Set(['reverseHyper','goodMorning','gluteBridge']);
-function profHeavy(ex){return !!ex&&!ex.timed&&!ex.bw&&isCompound(ex)&&!noE1(ex)&&PROF_EQUIP.has(ex.equip)&&!PROF_NOT_HEAVY.has(ex.id);}
 /* What a profile changes in a plan item (the rules Apply and new items share):
    - Strength or Both, past the first year: heavy compounds (`profHeavy`) at
      3 to 6 or 5 to 8 reps, 2 in reserve, 3 minutes' rest.

@@ -92,10 +92,6 @@ function storageTest(){try{localStorage.setItem('__il','1');localStorage.removeI
    and import, so this also protects against a half-written localStorage
    record. Anything unusable is dropped; the count is reported to the caller
    via normalize.dropped. */
-const isNum=v=>typeof v==='number'&&isFinite(v);
-const numOr=(v,d)=>{const n=typeof v==='string'?parseFloat(v):v;return isNum(n)?n:d;};
-const clampN=(v,lo,hi,d)=>{const n=numOr(v,d);return Math.min(Math.max(n,lo),hi);};
-const isDate=v=>typeof v==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(v);
 /* Upper limits for body entries. Past these a number is a typo, and an
    unbounded one showed as "Infinity lb" and broke waist-to-height. */
 const BW_MAX_KG=400,BW_MIN_KG=20,MEAS_MAX_CM=300;
@@ -167,7 +163,6 @@ function cleanChk(c){
 /* Distance (r30) is stored in km, shown in miles to someone logging in lb.
    Optional and absent unless given, so older entries keep their hashes. */
 const distU=()=>U()==='kg'?'km':'mi';
-const KM_MI=1.609344;
 const distShow=km=>Math.round((U()==='kg'?km:km/KM_MI)*100)/100;
 const distIn=v=>{const n=numIn(v);return n!=null&&n>0?Math.min(Math.round((U()==='kg'?n:n*KM_MI)*1000)/1000,1000):null;};
 function cleanCardio(c,draft,i){

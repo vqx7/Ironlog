@@ -3,6 +3,10 @@
 // it uses (scope-aware: a local that shadows one is not counted), which names
 // are shared mutable state, and which declarations are pure (no browser, no
 // shared state, transitively), the ones that can move to a module as they are.
+// Since r50 it also reads src/09-imports.js: which imported names the legacy
+// script uses, and which names it uses that nothing declares or imports (the
+// browser's globals, and nothing else: tests/hygiene.js checks that none of
+// them is a module's export, which would fail only when the line runs).
 //   node scripts/depmap.js            summary
 //   node scripts/depmap.js --json f   the full map written to f
 // tests/hygiene.js reads `count()` for the ratchet in ARCHITECTURE.md.
@@ -39,6 +43,11 @@ for (const st of body) {
   else topStmts.push({ node: st, file: fileAt(st.start) });
 }
 const TOP = new Set(decls.map(d => d.name));
+// The names src/09-imports.js brings in from src/app/, which the legacy parts read as their own.
+const IMP_FILE = path.join(SRC, '09-imports.js');
+const imports = fs.existsSync(IMP_FILE) ? acorn.parse(fs.readFileSync(IMP_FILE, 'utf8'), { ecmaVersion: 2023, sourceType: 'module' }).body
+  .filter(s => s.type === 'ImportDeclaration').flatMap(s => s.specifiers.map(x => ({ name: x.local.name, from: s.source.value }))) : [];
+const IMPORTED = new Set(imports.map(x => x.name));
 
 // Scope-aware walk: identifiers that resolve to a top-level name.
 function hoisted(stmts, out) { // var and function declarations hoisted to a function scope
@@ -51,11 +60,11 @@ function hoisted(stmts, out) { // var and function declarations hoisted to a fun
   return out;
 }
 function refs(node) {
-  const used = new Set(), writes = new Set();
+  const used = new Set(), writes = new Set(), usedImp = new Set(), free = new Set();
   function walk(n, scope) {
     if (!n || typeof n.type !== 'string') return;
     switch (n.type) {
-      case 'Identifier': if (TOP.has(n.name) && !scope.has(n.name)) used.add(n.name); return;
+      case 'Identifier': if (scope.has(n.name)) return; if (TOP.has(n.name)) used.add(n.name); else if (IMPORTED.has(n.name)) usedImp.add(n.name); else free.add(n.name); return;
       case 'FunctionDeclaration': case 'FunctionExpression': case 'ArrowFunctionExpression': {
         const s = new Set(scope);
         if (n.id && n.type !== 'FunctionDeclaration') s.add(n.id.name);
@@ -103,10 +112,12 @@ function refs(node) {
     else if (p.type === 'ArrayPattern') p.elements.forEach(q => walkPat(q, scope));
   }
   walk(node, new Set());
-  return { used, writes };
+  return { used, writes, usedImp, free };
 }
-for (const d of decls) { const r = refs(d.node); r.used.delete(d.name); d.uses = r.used; d.writes = r.writes; }
+for (const d of decls) { const r = refs(d.node); r.used.delete(d.name); d.uses = r.used; d.writes = r.writes; d.usedImp = r.usedImp; d.free = r.free; }
 const topRefs = topStmts.map(t => ({ ...t, ...refs(t.node) }));
+const impUsed = new Set([...decls, ...topRefs].flatMap(d => [...d.usedImp]));
+const freeNames = new Set([...decls, ...topRefs].flatMap(d => [...d.free]));
 
 // Mutable shared state: top-level let names written anywhere other than their declaration.
 const written = new Map();
@@ -133,7 +144,7 @@ for (const d of decls) d.pure = !impure(d.name);
 const edges = {};
 for (const d of decls) for (const u of d.uses) { const to = byName.get(u).file; if (to !== d.file) { const k = d.file + ' -> ' + to; edges[k] = (edges[k] || 0) + 1; } }
 
-const out = { files: {}, mutable: {}, edges, decls: decls.map(d => ({ name: d.name, kind: d.kind, file: d.file, lines: d.lines, pure: d.pure, browser: d.browser, uses: [...d.uses] })) };
+const out = { imports: imports.map(x => ({ ...x, used: impUsed.has(x.name) })), free: [...freeNames].sort(), files: {}, mutable: {}, edges, decls: decls.map(d => ({ name: d.name, kind: d.kind, file: d.file, lines: d.lines, pure: d.pure, browser: d.browser, uses: [...d.uses] })) };
 for (const f of files) {
   const ds = decls.filter(d => d.file === f);
   out.files[f] = { decls: ds.length, functions: ds.filter(d => d.kind === 'function').length, pure: ds.filter(d => d.pure).length, lines: fs.readFileSync(path.join(SRC, f), 'utf8').split('\n').length - 1 };

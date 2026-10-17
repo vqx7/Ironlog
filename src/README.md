@@ -7,8 +7,10 @@ it, the one page `scripts/build.js` and every test use. Edit here, then join;
 modules, one phase at a time, and `tests/hygiene.js` enforces the rules.
 
 - `app/`: the typed modules (TypeScript, strict). `app/config.ts` is the one
-  place for the app's name, version, build, site address and storage id. New
-  code goes here, never in the legacy parts.
+  place for the app's name, version, build, site address and storage id.
+  Since r50: `types.ts` (record shapes), `util.ts`, `units.ts`, `library.ts`,
+  `routines.ts` and `formulas.ts`, moved from the legacy parts unchanged
+  (`tests/moved.js`). New code goes here, never in the legacy parts.
 - `01-head.html`, `02-style.css`, `03-body.html`, `99-tail.html`: the page's
   head, styles, markup and close. `{{NAME}}` placeholders in them are filled
   from `app/config.ts` by the join.

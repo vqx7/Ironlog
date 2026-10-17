@@ -3,7 +3,6 @@ const U=()=>state.settings.unit;
 const LU=()=>U()==='lb'?'in':'cm';
 const toD=kg=>kg==null?null:(U()==='lb'?kg/LB:kg);
 const fromD=v=>v==null?null:(U()==='lb'?v*LB:v);
-const r1=n=>Math.round(n*10)/10;
 const fmtW=kg=>kg==null||isNaN(kg)?'':String(r1(toD(kg)));
 /* Estimates (1RM, PR toasts, the bests board) are good to a few percent at best, so they
    show whole pounds or half kilos (r34): 293.8 next to 294 and 301 read as
@@ -11,7 +10,6 @@ const fmtW=kg=>kg==null||isNaN(kg)?'':String(r1(toD(kg)));
 const fmtE=kg=>{if(kg==null||isNaN(kg))return '';const v=toD(kg);return String(U()==='lb'?Math.round(v):Math.round(v*2)/2);};
 const lenD=cm=>cm==null?'':String(r1(U()==='lb'?cm/IN:cm));
 const lenFrom=v=>U()==='lb'?v*IN:v;
-function numIn(v){if(v===''||v==null)return null;const n=parseFloat(String(v).replace(',','.'));return isNaN(n)?null:n;}
 
 /* ---------- lookups ---------- */
 let EXMAP=null;
@@ -34,7 +32,6 @@ function bwAt(date){
   for(const b of state.bodyweights){if(b.date<=date&&(!best||b.date>=best.date))best=b;if(!earliest||b.date<earliest.date)earliest=b;}
   return (best||earliest)?(best||earliest).kg:null;
 }
-const isWork=s=>!s.warm&&+s.r>0;
 /* RIR as the analytics read it. Off: ignored everywhere, so every working set
    counts as hard and estimates use reps alone. On: as logged. Corrected: as
    logged, shifted by the median error of your recent calibration sets once
@@ -102,7 +99,6 @@ const rirEst=(s,ex)=>{const q=rirEff(s,ex);return q!=null?q:ex?rirUsual(ex.id):n
    read as above and shown as assumed. A drop set is half a set: one heavy
    set with three drops is not four sets of work. */
 const isHard=(s,ex)=>{if(!isWork(s))return false;const q=rirEst(s,ex);return q==null||q<=3;};
-const setCredit=s=>s.drop?0.5:1;
 /* Count RIR 4 to 5 as half a set (r40, item 41; a setting, off by default).
    Any working set past RIR 3 counts half: calls top out at 5, but Corrected
    RIR can read a call of 4 as 5.5 or 6, and that set is no less hard than a
@@ -120,14 +116,6 @@ function hardCredit(s,ex){if(isHard(s,ex))return setCredit(s);if(!rirHalfOn()||!
 /* One set as text, for history, tables and the coach: 225×5, or 45 s for a timed hold. */
 function setShort(ex,w,r){return ex.timed?`${loadLabel(ex,+w||0)} for ${r}s`:`${loadLabel(ex,+w||0)}×${r}`;}
 function setStr(ex,x){return `${x.warm?'(W) ':x.drop?'(D) ':''}${setShort(ex,x.w,x.r)}${!ex.timed&&x.rir!=null&&x.rir!==''?(rirScale()==='rpe'?' @RPE '+effShow(x.rir):' @'+effShow(x.rir)):''}${x.cal?' (RIR check)':''}`;}
-/* Share of bodyweight an exercise actually moves. Only push-ups are measured
-   (force plates, Ebben 2011: 64% on the floor, about 70% feet on a 30 cm
-   box). A deficit adds depth, not load, so it stays at 64%. Pull-ups and dips
-   use the whole body (the hands and forearms barely move; about 95% by
-   segment tables). The rest are estimates from segment masses (de Leva 1996)
-   and are editable per exercise. Only a user edit is stored. */
-const BWF={assistPullup:1,assistDip:1,pullup:1,chinup:1,dips:1,triDips:1,pushup:.64,deficitPushup:.64,declinePushup:.7,invertedRow:.6,hyperext:.6,hangingLegRaise:.35,abWheel:.5,dragonFlag:.7,neckBridge:.3,sissy:.85,revNordic:.85,nordic:.85,ghr:.85,plank:.65,sidePlank:.6,deadHang:1,neckBridgeHold:.3,wallSit:.7,pushupPlus:.64,kneeRaise:.3,reverseCrunch:.3,crunch:.3,russianTwist:.4,copenhagen:.5};
-function bwShare(ex){return ex&&ex.bwf!=null?ex.bwf:(ex&&BWF[ex.id]!=null?BWF[ex.id]:1);}
 function bwLoad(ex,date){return ex&&ex.bw?(bwAt(date)||0)*bwShare(ex):0;}
 function loadOf(ex,s,date){return bwLoad(ex,date)+(+s.w||0);}
 /* PRs on a bodyweight lift are judged at one bodyweight (r32.1): the latest
@@ -157,14 +145,6 @@ function prLoad(ex,s,date){return ex&&ex.bw?bwRef()*bwShare(ex)+(+s.w||0):loadOf
    moved: both dumbbells, both sides of the plates, both limbs when reps are
    logged per side. Changing an exercise's setting does not convert past sets. */
 const LOAD_MODES=[['each','Per dumbbell (two dumbbells)'],['total','Total on the implement'],['side','Plates on one side'],['stack','Stack setting']];
-const ONE_DB=new Set(['dbRow','krocRow','dbPullover','ohDbExt','concCurl','sideBend','goblet','slCalf','leanAwayLat','sideLyingER','slRdl']);
-function loadMode(ex){
-  if(!ex)return 'total';if(ex.bw)return 'bw';
-  if(['each','total','side','stack'].includes(ex.load))return ex.load;
-  if(ex.equip==='dumbbell')return ONE_DB.has(ex.id)?'total':'each';
-  if(ex.equip==='cable'||(ex.equip==='machine'&&!PLATE_SIDE_IDS.includes(ex.id)))return 'stack';
-  return 'total';
-}
 /* Short words for the load: shown next to numbers and on the exercise. */
 function loadWords(ex){
   const m=loadMode(ex);
@@ -204,44 +184,6 @@ function tonnage(ex,s,date){
   const load=m==='bw'?Math.max(0,bl+w):(m==='each'||m==='side')?w*2:w;
   return load*(+s.r||0)*(ex.perSide?2:1);
 }
-/* The one 1RM estimate used everywhere: trends, PRs, live badges, targets,
-   load suggestions and the CSV. It works on reps to failure (RTF): reps plus
-   logged RIR, a blank RIR counting as 0 (so the estimate errs low).
-   - Brzycki up to 10 RTF: load x 36/(37 - RTF). Exactly the load at 1 RTF.
-   - Epley for 11 and 12 RTF: load x (1 + RTF/30). The two meet at 10 RTF, so
-     the curve has no jump. Epley alone read a double as 6.7% above a single.
-   - Nothing past 12 RTF: the spread between people and in RIR calls grows
-     too wide there (Nuzzo 2024, Halperin 2022).
-   - A set called at more than 4 RIR is left out rather than read as 4.
-   No correction is made per exercise: nothing in the evidence base (CLAUDE.md)
-   establishes how a formula errs on a given lift, so the number is shown as
-   an estimate everywhere (fmtE, "Est. 1RM") rather than adjusted. */
-const E1_MAX_RIR=4;
-function rtfOf(r,rir){const q=rir==null||rir===''||!isFinite(+rir)?0:Math.max(+rir,0);return q>E1_MAX_RIR?null:+r+q;}
-function e1(load,r,rir){
-  if(!(load>0&&r>0))return null;
-  const rtf=rtfOf(r,rir);if(rtf==null||rtf>E1_MAX_REPS)return null;
-  return rtf<=10?load*36/(37-rtf):load*(1+rtf/30);
-}
-/* The reading a lift's trend is drawn from (r30): e1() up to 12 reps to
-   failure, then Epley up to 20. Past 12 the formulas spread too far to state
-   a 1RM, but one lift compared with itself at similar reps still shows which
-   way it is going, so a leg press done for 15 is not left without a trend.
-   Never shown as a 1RM. */
-function trendE(load,r,rir){
-  if(!(load>0&&r>0))return null;const rtf=rtfOf(r,rir);if(rtf==null)return null;
-  return rtf<=E1_MAX_REPS?e1(load,r,rir):rtf<=20?load*(1+rtf/30):null;
-}
-/* A rep PR counts at 90% or more of the strongest set before it (r30, a convention). */
-const REP_PR_SHARE=0.9;
-/* The load that leaves a given number of reps to failure at an estimated 1RM:
-   the inverse of e1(). Past 12 RTF it keeps using Epley, only to pick loads. */
-function e1inv(est,rtf){return rtf<=10?est*(37-rtf)/36:est/(1+rtf/30);}
-/* Reps to failure a load allows at an estimated 1RM, the inverse the other way. */
-function rtfAt(est,load){if(!(est>0&&load>0))return null;const b=37-36*load/est;return b<=10?b:30*(est/load-1);}
-/* Rep band for PR comparisons: estimates from triples and from sets of 12 are
-   not interchangeable, so a best is judged within its own band. */
-const rtfBand=rtf=>rtf<=5?1:rtf<=10?2:3;
 // The bands in words, counted as reps to failure (reps plus RIR).
 /* Bands count reps to failure (reps plus reps in reserve), so they say so (r34.2, from the review:
    "sets of 11 to 12 reps" named the band of a set of 8 at 3 in reserve). */
@@ -253,33 +195,9 @@ const BAND_WORDS={1:'1 to 5 reps to failure',2:'6 to 10 reps to failure',3:'11 t
 const BAND_SHORT={1:'1 to 5 reps to failure',2:'6 to 10 reps to failure',3:'11 to 12 reps to failure'};
 function prOverall(p){return p.prevAll==null||(p.value!=null&&p.value>p.prevAll+1e-6);}
 function prName(p){return prOverall(p)?'Best estimate':`Best for ${BAND_SHORT[p.bb]||'its reps'}`;}
-/* The working load of one session of a lift (r31): the load done for the
-   most sets, the heavier on a tie, among loads at 60% or more of the
-   session's heaviest (unmarked warm-ups sit lower). A heavy top set, or a
-   pair of them, before back-off sets is a top set: it counts for bests and
-   PRs, while the next target, the grey reps and the trend build on the
-   back-off sets the session was made of. The review tried each rule in
-   turn: "heaviest done twice" read two singles at 405 before 335 x 5 x 5 as
-   the work, and "heaviest near the range" read one 365 x 4 before 335 x 5 x 5
-   as five sets due at 365. Straight sets, ramps to a load, and pyramids
-   (one set at each load, so the heaviest) read as before. repMin is kept
-   for callers; the rule does not need it. Assisted lifts store less help as
-   a higher number, so the heaviest is still the hardest. */
-function workLoad(pts,repMin){
-  if(!pts.length)return 0;
-  /* The 60% is of the total moved (load, which adds the bodyweight share on
-     a pull-up or dip), not of the number typed: +25 on a 180 lb pull-up is
-     89% of +50, not half (the review saw +50 prescribed for every set). */
-  const T=p=>p.load!=null?p.load:p.w;const top=Math.max(...pts.map(T));const floor=top>0?top*0.6:-Infinity;
-  const ok=p=>T(p)>=floor-1e-9;const k=v=>Math.round(v*1000);const n=new Map();for(const p of pts)if(ok(p))n.set(k(p.w),(n.get(k(p.w))||0)+1);
-  let w=null,best=-1;for(const p of pts){if(!ok(p))continue;const c=n.get(k(p.w));if(c>best||(c===best&&p.w>w)){best=c;w=p.w;}}
-  return w==null?Math.max(...pts.map(p=>p.w)):w;
-}
-const atLoad=(pts,w)=>pts.filter(p=>Math.abs(p.w-w)<1e-6);
 // A rep range in words and labels: "5" when both ends are the same (r31: "5-5", "5×5-5").
 const repSpan=(lo,hi,sep=' to ')=>+lo===+hi?`${+lo}`:`${+lo}${sep}${+hi}`;
 const rangeWords=p=>+p.repMin===+p.repMax?`target of ${+p.repMin}`:`${+p.repMin}-${+p.repMax} range`;
-function median(a){if(!a.length)return null;const s=[...a].sort((x,y)=>x-y);const m=s.length>>1;return s.length%2?s[m]:(s[m-1]+s[m])/2;}
 function sortedSessions(){return [...state.sessions].sort(sessCmp);}
 /* The sessions on each date, in sessCmp order, and the count per week (r47).
    Built once per change beside the other analytics and read by every screen
@@ -920,20 +838,6 @@ function avgWeeks(n,lightToo){
   Object.defineProperty(out,'_conf',{value:conf,enumerable:false});
   return out;
 }
-/* Time estimate, worded by estMin ("~75 min") wherever it shows. Per set: 40 s up to 12
-   reps and 3 s for each rep past that (middle of the planned range), twice
-   that plus 15 s to switch for a lift done one side at a time, the hold plus
-   20 s for a timed hold; then its rest (none between superset partners).
-   Warm-up and setup: 5 min for each of the first two compound lifts, 3 for
-   later compounds, 1 for isolation work. The rest after the final set is
-   never taken, so it is dropped. */
-function setSecs(ex,p){
-  const mid=((+p.repMin||0)+(+p.repMax||0))/2;
-  let t=ex.timed?mid+20:40+3*Math.max(0,mid-12);
-  if(ex.perSide)t=t*2+15;
-  return t;
-}
-function setupSecs(ex,compoundsBefore){return isCompound(ex)?(compoundsBefore<2?300:180):60;}
 /* half: a lighter or deload session, which runs half the sets (rounded up).
    raw: the model alone, without your pace (pace() compares with it). */
 function dayMinutes(day,half,raw){
@@ -955,7 +859,6 @@ function dayMinutes(day,half,raw){
    PACE_MIN usable sessions: the model as is (1). Conventions, not measured
    numbers: the model itself is one. Past workouts and imports have no time,
    so they never count. */
-const PACE_N=8,PACE_DAYS=84,PACE_MIN=3,PACE_LO=1/3,PACE_HI=3;
 function sessModelMin(ss){
   const R=state.routines.find(r=>r.id===ss.routineId)||activeRoutine();
   // Superset links come from the day's plan, so partners rest once, as every
@@ -986,14 +889,6 @@ function pace(){
   if(r.length<PACE_MIN)return _pace=1;
   const k=r.length>>1;return _pace=r.length%2?r[k]:(r[k-1]+r[k])/2;
 }
-/* Per-session volume per muscle, counted the same way as weekly volume
-   (direct 1, secondary 0.5). Weekly bands cannot see a once-a-week split
-   putting 17 sets on one muscle in one session. The per-session
-   meta-regression (Remmert 2025, a preprint from the group behind the weekly
-   dose-response paper, Pelland 2025) could not detect extra growth past about
-   11 fractional sets for one muscle in a session, so more than 11 is flagged
-   as a likely place to move sets to another day. Advisory, a convention. */
-const SESSION_CAP=11;
 function sessionMuscleSets(day){
   const out={};
   for(const it of day.items){const ex=EX(it.exId);const n=+it.sets||0;out[ex.primary]=(out[ex.primary]||0)+n;for(const m of ex.secondary)out[m]=(out[m]||0)+0.5*n;}
@@ -1102,15 +997,3 @@ function lastOf(all,base,fmt,repMin){
   const rl=workLoad(rec.pts,repMin||0);const rp=atLoad(rec.pts,rl);const shown=rp.length?rp:rec.pts;
   return {line,prev:shown.map(fmt).slice(0,30),prevOff:shown.length<rec.pts.length||undefined,lastR:(wp.length?wp:repsFrom.pts).map(p=>fl(p.r)),basis:rec!==base?base.date:null};
 }
-/* One test for a session that is lighter or shorter on purpose (tagged), or
-   also read as lighter from its loads (offSession): neither sets a target, a
-   trend or a stall (r31: written out by hand in six places, which could
-   drift). IDX uses tagged() while it is still deciding which are read as
-   lighter. */
-/* The floor for reps that set targets and grey reps (r32): one set under
-   the range among two or more is read at the bottom of the range. With more
-   of them under it, the load was heavy that day or too heavy, and the drop
-   below the range (or the way back to it) handles that. */
-function repFloor(pts,repMin){const m=+repMin||0;const ok=m>0&&pts.length>=2&&pts.filter(p=>p.r<m).length===1;return r=>ok?Math.max(r,m):r;}
-const tagged=x=>!!x&&!!(x.deload||x.light||x.cut);
-const offSession=x=>tagged(x)||!!(x&&x.auto);

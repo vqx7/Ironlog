@@ -15,7 +15,11 @@
 //    copy typed anywhere in code, markup or the scripts fails here. Comments
 //    may still say the name; they are prose, not values.
 // 5. The module boundary (r49, ARCHITECTURE.md): src/app/ never imports the
-//    legacy parts, and the typed modules pass the TypeScript checker.
+//    legacy parts, and the typed modules pass the TypeScript checker. Since
+//    r50, when code moves: nothing exists twice (no legacy declaration takes
+//    a module export's name, which would hide the module's copy), nothing
+//    moved is left unimported (the legacy script would fail only when that
+//    line ran), and nothing is imported that the legacy script does not use.
 const fs = require('fs'); const path = require('path');
 const ROOT = path.join(__dirname, '..');
 // Every script file under src/: the legacy parts and the typed modules in src/app/.
@@ -166,6 +170,23 @@ const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log
   const nowL = fs.readdirSync(path.join(ROOT, 'src')).filter(f => /^[12]\d-.+\.js$/.test(f)).reduce((n, f) => n + fs.readFileSync(path.join(ROOT, 'src', f), 'utf8').split('\n').length - 1, 0);
   ok(capD > 0 && capL > 0 && nowD <= capD && nowL <= capL, `the legacy script is no larger than ARCHITECTURE.md records (${nowD} of ${capD} declarations, ${nowL} of ${capL} lines); new code goes in src/app/`);
   ok(nowD >= capD && nowL >= capL, 'when code leaves the legacy script, the numbers in ARCHITECTURE.md are lowered to match, so the ratchet holds at the new level', { nowD, capD, nowL, capL });
+  // Every name the modules export, read from the code esbuild makes of them.
+  const esbuild = require('esbuild'), acorn = require('acorn'); const exported = new Map();
+  for (const f of SRC_CODE.filter(f => f.startsWith('app/'))) {
+    const js = esbuild.transformSync(fs.readFileSync(path.join(ROOT, 'src', f), 'utf8'), { loader: 'ts', format: 'esm' }).code;
+    for (const st of acorn.parse(js, { ecmaVersion: 'latest', sourceType: 'module' }).body) if (st.type === 'ExportNamedDeclaration') {
+      for (const sp of st.specifiers || []) exported.set(sp.exported.name, f);
+      const d = st.declaration; if (d && d.id) exported.set(d.id.name, f); if (d && d.declarations) for (const x of d.declarations) exported.set(x.id.name, f);
+    }
+  }
+  const dm = require('../scripts/depmap').map(path.join(ROOT, 'src'));
+  ok(exported.size > 100 && dm.imports.length > 100, `the modules' exports and the legacy script's imports are read (${exported.size} exports, ${dm.imports.length} imports)`);
+  const twice = dm.decls.filter(d => exported.has(d.name)).map(d => `${d.file}: ${d.name} (also in src/${exported.get(d.name)})`);
+  ok(twice.length === 0, 'no legacy declaration has the name of a module export: moved code exists once, and the module copy is the one that runs', twice);
+  const unimported = dm.free.filter(n => exported.has(n)).map(n => `${n} (src/${exported.get(n)})`);
+  ok(unimported.length === 0, 'every module export the legacy script uses is imported in src/09-imports.js', unimported);
+  const dead = dm.imports.filter(x => !x.used).map(x => `${x.name} from ${x.from}`);
+  ok(dead.length === 0, 'every name src/09-imports.js imports is used by the legacy script', dead);
   const { spawnSync } = require('child_process');
   const tsc = spawnSync(process.execPath, [require.resolve('typescript/bin/tsc'), '--noEmit', '-p', path.join(ROOT, 'tsconfig.json')], { encoding: 'utf8' });
   ok(tsc.status === 0, 'the typed modules pass the TypeScript checker (strict)', (tsc.stdout + tsc.stderr).trim().split('\n').slice(0, 10));

@@ -21,8 +21,6 @@ if(!cloud.devId)cloud.devId='dev-'+uid();
    instead of the first flush writing an empty state over it. */
 if(!bootHadLocal){cloud.meta={};cloud.editAt={};}
 function saveMeta(){try{localStorage.setItem(SYNC_KEY,JSON.stringify({meta:cloud.meta,last:cloud.last,editAt:cloud.editAt,devId:cloud.devId,acct:cloud.acct||undefined}));}catch(e){log('sync-meta',e);}}
-function hashStr(str){let h1=0xdeadbeef,h2=0x41c6ce57;for(let i=0;i<str.length;i++){const c=str.charCodeAt(i);h1=Math.imul(h1^c,2654435761);h2=Math.imul(h2^c,1597334677);}
-  h1=Math.imul(h1^(h1>>>16),2246822507)^Math.imul(h2^(h2>>>13),3266489909);h2=Math.imul(h2^(h2>>>16),2246822507)^Math.imul(h1^(h1>>>13),3266489909);return (h2>>>0).toString(36)+(h1>>>0).toString(36);}
 const chunkOf=date=>`s-${date.slice(0,7)}-${+date.slice(8,10)<=15?1:2}`;
 const bySess=sessCmp;
 /* Body data (item 19): bodyweights and tape measurements sync in one document

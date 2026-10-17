@@ -14,19 +14,6 @@ function updRender(){
   if(show&&!el.firstChild)el.innerHTML='<span class="ut">New version ready</span><button type="button" class="btn sm primary" data-act="appUpdate">Reload</button><button type="button" class="btn sm" data-act="appUpdateLater">Later</button>';
 }
 window.ironlogUpdateReady=()=>{upd.ready=true;updRender();};
-/* A list in a sentence (V, r29): "a and b", "a, b, and c", with the
-   serial comma; max shows that many and then "and N more". */
-function andList(a,max){
-  a=(a||[]).filter(x=>x!=null&&x!=='');
-  if(max&&a.length>max){const rest=a.length-max;a=[...a.slice(0,max),`${rest} more`];}
-  return a.length<3?a.join(' and '):a.slice(0,-1).join(', ')+', and '+a[a.length-1];
-}
-const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const uid=()=>Math.random().toString(36).slice(2,9)+Date.now().toString(36).slice(-4);
-const LB=0.45359237, IN=2.54;
-const DAYS=['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
-const MAX_DAYS=14;
-function dayLabel(R,i){return R&&R.schedule==='weekly'?DAYS[i]:`Day ${i+1}`;}
 /* Weekly numbers (planned volume, adherence, the week bar) assume one cycle day
    per calendar day. A 7-day cycle is therefore exactly 1x; a 4-day cycle runs
    1.75 times a week. */
@@ -63,18 +50,6 @@ function cycleState(R,asOf){
   const restToday=since>=1&&since<=run;
   return {last:L.i,lastDate:L.s.date,next,done,restToday,restIdx:restToday?(L.i+since)%n:-1};
 }
-// Estimates stop at 12 reps to failure: past that the formulas spread too far to trust.
-const E1_MAX_REPS=12;
-/* Two planned rep ranges match when equal, or when either is unknown (sessions
-   logged before rep ranges were recorded). */
-function sameRR(a,b){return !a||!b||(a[0]===b[0]&&a[1]===b[1]);}
-/* Percent change over the trend window below which a muscle is treated as flat
-   rather than moving. Weak points and Return on volume both read this, so the
-   two sections can no longer describe the same number differently. */
-// 3%: day-to-day swings in estimated 1RM run 2 to 8% (Sigvaldsen 2023), so a
-// 1% change is noise. A lift is also only called moving or falling when its
-// fitted slope is clear of zero (see IDX).
-const GROW_PCT=3;
 
 /* ---------- supersets, deload, injuries ---------- */
 /* A superset is consecutive items sharing an id. Groups of one are not
@@ -108,34 +83,9 @@ function isDeloadWeek(){return !!state.deloadWeek&&state.deloadWeek===weekStart(
 function freeMode(){return state.settings.todayStart==='free';}
 function isRestWeek(ws){const r=state.settings.restWeeks;return Array.isArray(r)&&r.includes(ws);}
 function injuredSet(){return new Set((state.injuries||[]).map(x=>x.m));}
-/* Joints (r30, from the review: only muscles could be flagged, so a sore
-   knee or elbow had no flag). A joint flag marks the exercises that load it,
-   by movement pattern and main muscle, the same way a muscle flag does:
-   targets pause, loads cap at last time, 3 or more reps in reserve. Which
-   exercises load which joint is a judgment, stated in the sheet. The muscle
-   lists (weekly targets, Pick for me) are unchanged by a joint flag. */
-const JOINTS=[['j_knee','Knee'],['j_hip','Hip'],['j_shoulder','Shoulder'],['j_elbow','Elbow'],['j_wrist','Wrist']];
-const JK=JOINTS.map(j=>j[0]);const JL=Object.fromEntries(JOINTS);
-const injLabel=k=>ML[k]||JL[k]||k;
-function exJoints(e){
-  const p=patternOf(e),n=String(e.name||'').toLowerCase(),m=e.primary,out=[];
-  if(p==='squat'||m==='quads'||/leg curl|nordic|lunge|step-up|split squat/.test(n))out.push('j_knee');
-  if(p==='hinge'||p==='squat'||['glutes','adductors','abductors'].includes(m)||/thrust|bridge/.test(n))out.push('j_hip');
-  if(['press','fly','raise','vpull','pullover','rearfly'].includes(p)&&!['quads','hamstrings','glutes','calves','abs','obliques'].includes(m)||['chest','frontDelts','sideDelts','rearDelts','rotatorCuff'].includes(m)||/\bdips?\b|face pull|upright/.test(n))out.push('j_shoulder');
-  if((['ext','vpull','row'].includes(p)||(p==='curl'&&m!=='hamstrings'))&&m!=='quads'||['biceps','triceps','forearms'].includes(m)||/\bdips?\b|close.grip|skull/.test(n))out.push('j_elbow');
-  if(m==='forearms'||(p==='curl'&&m==='biceps')||/push-up|front squat|\bdips?\b|wrist/.test(n)||(p==='press'&&['barbell','dumbbell'].includes(e.equip)))out.push('j_wrist');
-  return out;
-}
 function exInjury(ex){const s=injuredSet();if(!s.size)return null;if(s.has(ex.primary))return ex.primary;for(const m of ex.secondary)if(s.has(m))return m;for(const j of exJoints(ex))if(s.has(j))return j;return null;}
 
 /* ---------- dates (local) ---------- */
-const pad=n=>String(n).padStart(2,'0');
-const iso=d=>`${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
-const parse=s=>{const[a,b,c]=s.split('-').map(Number);return new Date(a,b-1,c);};
-const addDays=(s,n)=>{const d=parse(s);d.setDate(d.getDate()+n);return iso(d);};
-const weekStart=s=>{const d=parse(s);d.setDate(d.getDate()-((d.getDay()+6)%7));return iso(d);};
-const daysBetween=(a,b)=>Math.round((parse(b)-parse(a))/86400000);
-const today=()=>iso(new Date());
 /* One Intl formatter per format, made once: toLocaleDateString builds a new
    one on every call, about a fifth of a Stats render (r46). Same output. */
 const DTF={};const dtf=(k,o)=>DTF[k]||(DTF[k]=new Intl.DateTimeFormat(undefined,o));
