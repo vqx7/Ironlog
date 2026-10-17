@@ -249,7 +249,7 @@ Supabase > **Integrations** > **Database Webhooks** (enable it if asked) > **Cre
 Check: Report a problem from the app. Within seconds an issue labelled `feedback` appears in `ironlog-feedback`. If not: Edge Functions > `feedback-to-issue` > **Logs** says why (401 means the header and the secret differ).
 
 ### B6. Protect main, so a pull request is the only way into the live app
-Status: to do, right after B5 (D2 is done, so merges on the website use your private address). Once it is on, Claude opens pull requests and you merge them on the website.
+Status: done 2026-10-15 (V): the ruleset `main` is active, requiring a pull request and the `test` check, and refusing deletion and force pushes (checked through the API on 2026-10-17: `gh api repos/vqx7/Ironlog/rules/branches/main`). Claude opens pull requests and you merge them on the website. The steps below are kept as the record of what was set.
 GitHub > vqx7/Ironlog > **Settings** > **Rules** > **Rulesets** > **New ruleset** > **New branch ruleset**.
 - Name `main`. Enforcement status: **Active**.
 - Target branches: **Add target** > **Include default branch**.
