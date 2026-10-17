@@ -584,7 +584,6 @@ function swapPlan(p,fromId,toId,R,dayId){
   return o;
 }
 function easierText(ex,e){return `Getting easier at ${loadLabel(ex,e.w)}${ex.bw?'':' '+U()}: RIR ${e.from} → ${e.to} at the same reps. Adding load today is reasonable.`;}
-/* Plates per side for a barbell load, greedy from the biggest plate down. */
 /* Small change plates (r29, item 98) add 1.25 lb or 0.5 kg, for gyms that
    have them; the load step is still set per exercise. */
 function plateList(u){u=u||U();const g=gymOf();const own=g&&(g.u||U())===u&&Array.isArray(g.plates)&&g.plates.length?g.plates.slice().sort((a,b)=>b-a):null;const b=own||(u==='lb'?PLATES_LB:PLATES_KG);return state.settings.smallPlates?[...b,u==='lb'?1.25:0.5]:b;}
@@ -626,6 +625,7 @@ function platesMode(ex){
   if(PLATE_SIDE_IDS.includes(ex.id))return 'side';
   return 'none';
 }
+/* Plates per side for a barbell load, greedy from the biggest plate down. */
 function plateText(kg,mode,ex){
   mode=mode||'bar';if(mode==='none')return '';
   /* The plates are counted in the unit the gym's plates are labelled in,

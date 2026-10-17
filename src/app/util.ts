@@ -19,7 +19,7 @@ export function andList(a?: readonly (string | number | null | undefined)[] | nu
 export const esc = (s: unknown): string =>
   String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' } as Record<string, string>)[c] as string);
 
-/** A new record id: seven random base-36 characters, then the last four of the time. */
+/** A new record id: up to seven random base-36 characters, then the last four of the time. */
 export const uid = (): string => Math.random().toString(36).slice(2, 9) + Date.now().toString(36).slice(-4);
 
 /* ---------- dates (local) ----------
@@ -57,12 +57,14 @@ export const today = (): string => iso(new Date());
 
 /* ---------- numbers ---------- */
 
-export const isNum = (v: unknown): v is number => typeof v === 'number' && isFinite(v);
+/** A finite number. Not a type guard: false also means NaN or Infinity, so a
+    false answer says nothing about the type. */
+export const isNum = (v: unknown): boolean => typeof v === 'number' && isFinite(v);
 
 /** A number from a number or a numeric string, else the default. */
 export const numOr = <T>(v: unknown, d: T): number | T => {
   const n = typeof v === 'string' ? parseFloat(v) : v;
-  return isNum(n) ? n : d;
+  return isNum(n) ? (n as number) : d;
 };
 
 /** A number kept between lo and hi, else the default kept between them. A
@@ -74,7 +76,8 @@ export const clampN = (v: unknown, lo: number, hi: number, d: number | null): nu
   return Math.min(Math.max(n as number, lo), hi);
 };
 
-export const isDate = (v: unknown): v is string => typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v);
+/** A date in the log's form, YYYY-MM-DD (the shape, not whether the day exists). */
+export const isDate = (v: unknown): boolean => typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v);
 
 /** Rounded to one decimal. */
 export const r1 = (n: number): number => Math.round(n * 10) / 10;

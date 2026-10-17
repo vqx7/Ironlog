@@ -19,7 +19,9 @@
 //    r50, when code moves: nothing exists twice (no legacy declaration takes
 //    a module export's name, which would hide the module's copy), nothing
 //    moved is left unimported (the legacy script would fail only when that
-//    line ran), and nothing is imported that the legacy script does not use.
+//    line ran), nothing is imported that the legacy script does not use, and
+//    every name the legacy script reads without declaring or importing it is
+//    a known global.
 const fs = require('fs'); const path = require('path');
 const ROOT = path.join(__dirname, '..');
 // Every script file under src/: the legacy parts and the typed modules in src/app/.
@@ -185,6 +187,13 @@ const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log
   ok(twice.length === 0, 'no legacy declaration has the name of a module export: moved code exists once, and the module copy is the one that runs', twice);
   const unimported = dm.free.filter(n => exported.has(n)).map(n => `${n} (src/${exported.get(n)})`);
   ok(unimported.length === 0, 'every module export the legacy script uses is imported in src/09-imports.js', unimported);
+  // The names the legacy script reads without declaring or importing them are
+  // the browser's and JavaScript's own (r50 review): a moved name deleted with
+  // its import, or misspelt, would otherwise pass every check here and fail
+  // only when its line ran. A new global the code really needs goes on this list.
+  const GLOBALS = new Set(['Array', 'Blob', 'Boolean', 'CSS', 'DOMParser', 'DataView', 'Date', 'DecompressionStream', 'Error', 'File', 'FileReader', 'Image', 'Infinity', 'Intl', 'JSON', 'Map', 'Math', 'MouseEvent', 'MutationObserver', 'NaN', 'Number', 'Object', 'Promise', 'Response', 'Set', 'String', 'TextDecoder', 'TextEncoder', 'URL', 'Uint8Array', 'WeakMap', 'WeakSet', 'cancelAnimationFrame', 'clearInterval', 'clearTimeout', 'document', 'encodeURIComponent', 'getComputedStyle', 'history', 'indexedDB', 'isFinite', 'isNaN', 'localStorage', 'location', 'matchMedia', 'navigator', 'parseFloat', 'parseInt', 'performance', 'queueMicrotask', 'requestAnimationFrame', 'setInterval', 'setTimeout', 'undefined', 'window']);
+  const unknown = dm.free.filter(n => !GLOBALS.has(n));
+  ok(dm.free.length > 40 && unknown.length === 0, 'every name the legacy script reads without declaring or importing it is a known browser or JavaScript global', unknown);
   const dead = dm.imports.filter(x => !x.used).map(x => `${x.name} from ${x.from}`);
   ok(dead.length === 0, 'every name src/09-imports.js imports is used by the legacy script', dead);
   const { spawnSync } = require('child_process');

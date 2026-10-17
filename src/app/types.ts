@@ -1,8 +1,11 @@
-/* The shapes of the log's records, as normalize() writes them (src/12-storage.js
-   until phase 4 moves it). Types only: nothing here exists at run time. A
-   function takes the narrowest shape it reads (isWork reads a set's warm and
-   reps, nothing else), so a draft row, a saved set and a test's literal all
-   fit, and the types claim no more about the data than the code does. */
+/* The shapes of the log's records that the modules read, as normalize()
+   writes them (src/12-storage.js until phase 4 moves it). Types only: nothing
+   here exists at run time. A function takes the narrowest shape it reads
+   (isWork reads a set's warm and reps, nothing else), so a draft row, a saved
+   set and a test's literal all fit, and the types claim no more about the data
+   than the code does. An optional field may also hold undefined: normalize
+   writes some as keys with no value, which JSON then drops. A shape is added
+   here when code that reads it moves, so that something checks it. */
 
 /** A muscle's key, in MUSCLES order. */
 export type MuscleKey =
@@ -28,16 +31,16 @@ export interface Exercise {
   note: string;
   custom: boolean;
   archived: boolean;
-  inc?: number | null;
-  plates?: 'bar' | 'side' | 'sleeve' | 'none' | null;
-  load?: 'each' | 'total' | 'side' | 'stack';
-  timed?: true;
-  kind?: 'compound' | 'iso';
-  assist?: true;
-  bwf?: number;
-  maxLoad?: number;
-  barKg?: number;
-  goal?: { w: number; r: number };
+  inc?: number | null | undefined;
+  plates?: 'bar' | 'side' | 'sleeve' | 'none' | null | undefined;
+  load?: 'each' | 'total' | 'side' | 'stack' | undefined;
+  timed?: true | undefined;
+  kind?: 'compound' | 'iso' | undefined;
+  assist?: true | undefined;
+  bwf?: number | undefined;
+  maxLoad?: number | undefined;
+  barKg?: number | undefined;
+  goal?: { w: number; r: number } | undefined;
 }
 
 /** A routine day's exercise: the plan for it. */
@@ -51,7 +54,7 @@ export interface PlanItem {
   rest: number;
   inc: number;
   ss: string | null;
-  jump?: number;
+  jump?: number | undefined;
 }
 
 /** The parts of a plan the engine reads (an item, or DEFAULT_PLAN with no ids). */
@@ -82,41 +85,12 @@ export interface LoggedSet {
   cal?: unknown;
 }
 
-/** One exercise in a saved session. */
-export interface LoggedBlock {
-  exId: string;
-  note: string;
-  rr: [number, number] | null;
-  cut?: true;
-  light?: true;
-  sets: LoggedSet[];
-}
-
-/** A saved session. */
-export interface Session {
-  id: string;
-  date: string;
-  dayIdx: number;
-  dayId: string | null;
-  durMin: number | null;
-  dayName: string;
-  routineId: string;
-  notes: string;
-  demo: boolean;
-  deload: boolean;
-  light: boolean;
-  free?: true;
-  chk?: unknown;
-  ex: LoggedBlock[];
-  t?: number;
-}
-
 /** One set as the analytics read it (a point in IDX's byEx): the load as typed,
     the reps, and `load`, the total moved where it differs (a bodyweight share added). */
 export interface Point {
   w: number;
   r: number;
-  load?: number | null;
+  load?: number | null | undefined;
 }
 
 /** The library's row for one exercise: id, name, primary muscle, helper muscles

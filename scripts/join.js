@@ -45,6 +45,11 @@ function build({ override = {} } = {}) {
     // Nothing is removed beyond what bundling needs: the legacy code keeps
     // every function, so window.__ironlog and the tests see it whole.
     treeShaking: false, minify: false, charset: 'utf8', legalComments: 'none',
+    // ES modules always run in strict mode, and the legacy script declares it
+    // itself, but the wrapper esbuild puts around the bundle does not, so the
+    // modules' code would run in sloppy mode on the page (the r50 review).
+    // The directive at the top of the script makes all of it strict.
+    banner: { js: '"use strict";' },
     write: false, logLevel: 'silent',
   });
   const script = escapeMarkup(out.outputFiles[0].text);

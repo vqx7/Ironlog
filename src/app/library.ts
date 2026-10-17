@@ -104,7 +104,8 @@ export const MEAS: readonly (readonly [string, string])[] = [['arm', 'Arm'], ['f
 /* ---------- the exercise library ---------- */
 
 // id, name, primary, secondary, equipment, flags (b = bodyweight plus added load, r = less common), note
-// (also s = one side at a time, t = timed, a = assisted; the type checks every primary muscle is a muscle key)
+// (also s = one side at a time, t = timed, a = assisted; the type checks that each row's main muscle
+// is a muscle key, not the helper muscles, which are one string)
 export const LIB: readonly LibRow[] = [
 ['bench','Barbell Bench Press','chest','frontDelts triceps','barbell','',''],
 ['pauseBench','Paused Bench Press','chest','frontDelts triceps','barbell','r','A full stop on the chest, as in a meet, then press.'],
@@ -364,8 +365,8 @@ export const ONE_DB: ReadonlySet<string> = new Set(['dbRow', 'krocRow', 'dbPullo
 
 /** What the load number on an exercise means: per dumbbell, the total on the
     implement, plates on one side, a stack setting, or bodyweight plus added
-    load. The lifter's choice (ex.load) wins; otherwise it follows the
-    equipment. */
+    load. A bodyweight lift is always the last; otherwise the lifter's choice
+    (ex.load) wins, and without one it follows the equipment. */
 export function loadMode(ex: Pick<Exercise, 'id' | 'bw' | 'load' | 'equip'> | null | undefined): LoadMode {
   if (!ex) return 'total';
   if (ex.bw) return 'bw';

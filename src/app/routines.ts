@@ -59,8 +59,10 @@ export function defaultRoutine(): NewRoutine {
 /* Ready-made routines, so nobody has to build one from scratch. Most land
    near 10 to 20 hard sets a week for the major muscles (the beginner,
    two-day, strength and dumbbell ones are lighter on purpose), trains most of them
-   twice a week where the days allow it (Schoenfeld 2016 and later reviews:
-   frequency matters mainly as a way to spread volume), and keeps sessions
+   twice a week where the days allow it (with weekly volume matched, how often
+   a muscle is trained made no detectable difference to growth: Schoenfeld,
+   Grgic and Krieger 2019, in CLAUDE.md's Evidence base; so frequency matters
+   mainly as a way to spread volume), and keeps sessions
    near an hour. Rep ranges and RIR follow the same conventions as the rest of
    the app. They are starting points: everything is editable in Plan. */
 export const TEMPLATES: readonly Template[] = (() => {

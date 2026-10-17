@@ -227,7 +227,8 @@ export function t90(df: number): number {
    Warm-up and setup: 5 min for each of the first two compound lifts, 3 for
    later compounds, 1 for isolation work. The rest after the final set is
    never taken, so it is dropped. (The rests are added by dayMinutes in the
-   analytics.) */
+   analytics.) Every figure here is a convention, not a measurement; your own
+   pace (pace(), r43) scales the total to how long your sessions take. */
 export function setSecs(ex: Pick<Exercise, 'timed' | 'perSide'>, p: { repMin: number | string; repMax: number | string }): number {
   const mid = ((+p.repMin || 0) + (+p.repMax || 0)) / 2;
   let t = ex.timed ? mid + 20 : 40 + 3 * Math.max(0, mid - 12);
