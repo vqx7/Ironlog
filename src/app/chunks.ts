@@ -41,15 +41,24 @@ export const bySess = sessCmp;
    into core, and those are picked up (legacyBody) and moved on the next sync. */
 export const bodyChunkOf = (date: string | null | undefined): string => 'b-' + String(date || '').slice(0, 4);
 
-/** A document's lists of dated records, as the loops below fill them (the casts say so to TypeScript and are not code). */
-type Lists = { [field: string]: Dated[] };
+/** One sync document: core's fields, the draft, or the lists of dated
+    records a session or body document holds. */
+type Doc = {
+  sessions?: Dated[];
+  cardio?: Dated[];
+  bodyweights?: Dated[];
+  measurements?: Dated[];
+  [field: string]: unknown;
+};
 
-/** Every document of a save, by id. */
-export function chunksOf(st: Save): Record<string, Record<string, unknown>> {
+/** Every document of a save, by id, with the dated records in each kept in
+    the one session order (bySess). A session or body document exists only
+    when it has something in it. */
+export function chunksOf(st: Save): Record<string, Doc> {
   /* Core still carries the two keys, always empty, in the place r21 wrote
      them. An older build then reads a core shaped like its own and writes it
      back unchanged, instead of both builds rewriting core on every sync. */
-  const out: Record<string, Record<string, unknown>> = {
+  const out: Record<string, Doc> = {
     core: {
       version: st.version,
       settings: st.settings,
@@ -66,24 +75,26 @@ export function chunksOf(st: Save): Record<string, Record<string, unknown>> {
   };
   for (const k of ['bodyweights', 'measurements'] as const)
     for (const x of st[k] || []) {
-      const c = (out[bodyChunkOf(x.date)] || (out[bodyChunkOf(x.date)] = {})) as Lists;
+      const c = out[bodyChunkOf(x.date)] || (out[bodyChunkOf(x.date)] = {});
       (c[k] || (c[k] = [])).push(x);
     }
-  for (const id in out) if (id.startsWith('b-')) for (const k in out[id]) (out[id] as Lists)[k]!.sort(bySess);
+  // A body document holds only the two lists filled just above.
+  for (const id in out) if (id.startsWith('b-')) for (const k in out[id]) (out[id][k] as Dated[]).sort(bySess);
+  // Every session document is made with its sessions list, here or below.
   for (const x of st.sessions) {
     const k = chunkOf(x.date);
-    ((out[k] || (out[k] = { sessions: [] })) as Lists).sessions!.push(x);
+    (out[k] || (out[k] = { sessions: [] })).sessions!.push(x);
   }
   // Cardio shares the half-month documents. The key is only written when a
   // chunk has cardio, so documents without any are byte-identical to before.
   for (const x of st.cardio || []) {
     const k = chunkOf(x.date);
-    const c = (out[k] || (out[k] = { sessions: [] })) as Lists;
+    const c = out[k] || (out[k] = { sessions: [] });
     (c.cardio || (c.cardio = [])).push(x);
   }
   for (const k in out) {
-    if ((out[k] as Lists).sessions) (out[k] as Lists).sessions!.sort(bySess);
-    if ((out[k] as Lists).cardio) (out[k] as Lists).cardio!.sort(bySess);
+    if (out[k].sessions) out[k].sessions.sort(bySess);
+    if (out[k].cardio) out[k].cardio.sort(bySess);
   }
   return out;
 }
@@ -107,7 +118,7 @@ export function legacyBody(raw: { bodyweights?: unknown; measurements?: unknown 
   };
 }
 
-/** Two lists of records by id, the first list's record winning where both have one. */
+/** Two lists of records by id, the first list's record winning where both have one. A record with no id is left out. */
 export function unionById<X extends { id?: unknown }>(
   a: readonly X[] | null | undefined,
   b: readonly X[] | null | undefined

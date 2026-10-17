@@ -12,10 +12,15 @@ import { hashStr } from './util';
 /** The conflicts a merge counted. */
 type Stat = { conflicts: number };
 
+/** A plain object read by its own keys. */
+type Fields = Record<string, unknown>;
+
 /* Record fingerprint that ignores key order. A record saved straight from the
    logger and the same record after normalize() list their fields in a
    different order; a plain JSON hash called that an edit, and a deleted
-   session could come back. */
+   session could come back. A field holding undefined is left out, as JSON
+   leaves it out. By here x is an object and not an array; the casts let
+   TypeScript read it by key. */
 export function canon(x: unknown): string {
   if (x === undefined) return 'null';
   if (x === null || typeof x !== 'object') return JSON.stringify(x);
@@ -23,9 +28,9 @@ export function canon(x: unknown): string {
   return (
     '{' +
     Object.keys(x)
-      .filter(k => (x as Record<string, unknown>)[k] !== undefined)
+      .filter(k => (x as Fields)[k] !== undefined)
       .sort()
-      .map(k => JSON.stringify(k) + ':' + canon((x as Record<string, unknown>)[k]))
+      .map(k => JSON.stringify(k) + ':' + canon((x as Fields)[k]))
       .join(',') +
     '}'
   );
@@ -34,7 +39,11 @@ export function canon(x: unknown): string {
 /** A record's fingerprint. */
 export const Hx = (x: unknown): string => hashStr(canon(x));
 
-/** Two versions of a list of records with ids against their base (id to fingerprint). */
+/** Merges two versions of a list of records with ids against their base (id
+    to fingerprint), record by record as described at the top. With no base
+    (as on a first sync) nothing reads as deleted. Local records keep their
+    order, then remote ones local lacks; a record with no string id is left
+    out. */
 export function merge3List<X extends { id?: unknown }>(
   base: Record<string, string> | null | undefined,
   l: readonly X[] | null | undefined,
@@ -55,14 +64,16 @@ export function merge3List<X extends { id?: unknown }>(
       bh = known ? base[id] : '?';
     const ah = a ? Hx(a) : undefined,
       rh = b ? Hx(b) : undefined;
+    // Every id came from one side or the other, so at least one of a and b
+    // is there, and equal fingerprints mean both are.
     if (ah === rh) {
-      out.push(a as X);
+      out.push(a!);
       continue;
     }
     if (!a || !b) {
       // Present on one side only. Deleted by the other side if the present copy
       // is exactly the base; otherwise it is new or edited there, so keep it.
-      const p = (a || b) as X,
+      const p = (a || b)!,
         ph = a ? ah : rh;
       if (known && ph === bh) continue;
       out.push(p);
@@ -82,7 +93,9 @@ export function merge3List<X extends { id?: unknown }>(
   return out;
 }
 
-/** Two versions of one value against its base fingerprint. */
+/** Merges two versions of one value against its base fingerprint: the side
+    that changed wins, and when both did, remoteWins decides and the conflict
+    is counted. */
 export function merge3Val<V>(bh: string | undefined, a: V, b: V, remoteWins: boolean, stat: Stat): V {
   const ah = Hx(a),
     rh = Hx(b);
@@ -109,9 +122,9 @@ export function mergeDraft<D extends DraftLike>(
   type B = D['ex'][number];
   const keyed = (list: readonly B[] | null | undefined): [string, B][] => {
     const seen: Record<string, number> = {};
-    return (list || []).map(b => {
+    return (list || []).map((b): [string, B] => {
       const k = b.exId + '#' + (seen[b.exId] = (seen[b.exId] || 0) + 1);
-      return [k, b] as [string, B];
+      return [k, b];
     });
   };
   const B = new Map(keyed(base.ex)),
@@ -148,9 +161,11 @@ export function mergeDraft<D extends DraftLike>(
       if (v && !out.includes(v)) out.push(v);
     }
   }
-  const res = { ...cur, ex: out } as D;
+  const res: DraftLike = { ...cur, ex: out };
   for (const f of ['notes', 'dayName', 'deload', 'light', 'limited', 'cardio', 'chk']) {
-    if (canon(cur[f]) === canon(base[f])) (res as Record<string, unknown>)[f] = pre[f];
+    if (canon(cur[f]) === canon(base[f])) res[f] = pre[f];
   }
-  return res;
+  // The same session with each exercise and field taken from one of its
+  // versions, so still a D.
+  return res as D;
 }

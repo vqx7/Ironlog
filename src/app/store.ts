@@ -14,8 +14,10 @@
     it is an object. */
 export type State = { [field: string]: unknown };
 
-/* Set once at start, from the save on this device (setState(load()) in the
-   storage part), before anything reads it. */
+/* First set at start, from the save on this device (setState(load()) in the
+   storage part), before anything reads it, which is what the ! says; after
+   that it is replaced only through setState (a restore, a sync, Undo, and
+   others). */
 export let state!: State;
 
 /** Replaces the whole log and returns it, as `state = next` did. */
@@ -23,7 +25,8 @@ export function setState(next: State): State {
   return (state = next);
 }
 
-/** Sessions History shows at a time, and adds with Show more: ui's first page (kept here, so the state layer imports no screen module). */
+/** Sessions History shows at a time, and adds with Show more: ui's first
+    page (kept here, so the state layer imports no screen module). */
 export const HIST_PAGE = 25;
 
 /** What the screens are showing. Fields the legacy script adds later (the

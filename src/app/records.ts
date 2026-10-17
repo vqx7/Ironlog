@@ -62,6 +62,9 @@ export function did(tag: string, obj: unknown, i: number): string {
 export const okId = (v: unknown): boolean =>
   typeof v === 'string' && /^[\w.:-]{1,100}$/.test(v) && !(v in Object.prototype);
 
+/** An id as normalize() keeps it: the value itself when okId accepts it,
+    else "x" and a hash of it (see above). The cast stands for okId's check
+    that v is a string, which TypeScript cannot follow. */
 export function fixId(v: unknown): string {
   return okId(v) ? (v as string) : 'x' + hashStr(String(v));
 }
@@ -75,6 +78,8 @@ export const safeKey = (k: unknown): boolean => typeof k === 'string' && !/["'<>
 export const EXTRA_MAX = 2000,
   EXTRA_KEYS = 20;
 
+/** Whether an unknown field's name may be kept: a letter, then up to 39
+    letters, digits, or underscores, and no name Object already has. */
 export const okExtraKey = (k: string): boolean => /^[A-Za-z][\w]{0,39}$/.test(k) && !(k in Object.prototype);
 
 /** The fields of a plan item, a cardio entry and a tape entry that are written only when valid. */
@@ -119,7 +124,7 @@ export function cleanTgt(t: Raw): Record<string, unknown> | null {
     o[k] = v == null ? null : isNum(numOr(v, NaN)) ? numOr(v, 0) : null;
   }
   if (Array.isArray(t.rs))
-    o.rs = (t.rs as unknown[]).slice(0, 30).map(v => {
+    o.rs = t.rs.slice(0, 30).map((v: unknown) => {
       const n = numOr(v, NaN);
       return isNum(n) && n >= 0 ? Math.min(n, 1000) : 0;
     });
@@ -128,8 +133,10 @@ export function cleanTgt(t: Raw): Record<string, unknown> | null {
 
 /* ---------- sessions ---------- */
 
-/* One logged session, every field checked. Also used on the copies kept in
-   Recently deleted, so a copy there can be compared with a live one. */
+/* Whether a record can be a logged session at all: an object with a date
+   and a list of exercises. normalize() drops anything else before its
+   cleaner checks every field, and uses both on the copies kept in Recently
+   deleted, so a copy there can be compared with a live one. */
 export const okSess = (ss: Raw): boolean => !!ss && typeof ss === 'object' && isDate(ss.date) && Array.isArray(ss.ex);
 
 /* One order for sessions everywhere (r34, two-a-days): by date, then by the

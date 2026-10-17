@@ -64,5 +64,6 @@ const THREE_CDN = [
   'https://cdn.jsdelivr.net/npm/three@0.159.0/build/three.module.min.js',
   'https://unpkg.com/three@0.159.0/build/three.module.min.js',
 ];
+/** The addresses map3dLoad tries in turn, the installed app's own copy first. */
 export const THREE_URLS: readonly string[] =
   typeof window !== 'undefined' && window.IRONLOG_APP ? ['./vendor/three.module.min.js', ...THREE_CDN] : THREE_CDN;

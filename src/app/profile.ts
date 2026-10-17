@@ -7,21 +7,25 @@
 import { MK, TRACK_ONLY } from './library';
 
 /* The profile (r44): its choices, read by normalize while the save loads. */
+
+/** The goals a profile can name, each with its label on screen. */
 export const PROF_GOALS: readonly (readonly [string, string])[] = [
   ['size', 'Size'],
   ['strength', 'Strength'],
   ['both', 'Both']
 ];
 
+/** Years lifting, as the profile's choices and their labels on screen. */
 export const PROF_EXP: readonly (readonly [string, string])[] = [
   ['new', 'Under 1'],
   ['mid', '1 to 3'],
   ['adv', 'Over 3']
 ];
 
+/** The training days a week a profile can name. */
 export const PROF_DAYS: readonly number[] = [2, 3, 4, 5, 6];
 
-/** Focus muscles a profile can name. */
+/** The most focus muscles a profile can name. */
 export const FOCUS_MAX = 2;
 
 /* Focus muscles (item 43): weekly targets about 30% higher, the other major
@@ -41,7 +45,13 @@ export interface Profile {
   focus?: string[];
 }
 
-/* Built in one key order, absent keys left out, so a save hashes the same
+/* A saved profile cleaned for normalize(): each choice kept only when it is
+   one of the choices above, and focus muscles only when they are muscles
+   with a target (not tracked-only), once each and at most FOCUS_MAX; null
+   when nothing is left. The choices are checked by membership, which
+   TypeScript cannot follow; the casts stand for those checks.
+
+   Built in one key order, absent keys left out, so a save hashes the same
    every time and a phone without the profile syncs nothing new. (Until r51
    the choices above sat in an earlier part than this function, because
    normalize read them while the save loaded; in a module they are defined
@@ -55,8 +65,9 @@ export function profClean(p: Partial<Record<string, unknown>> | null | undefined
   const f = Array.isArray(p.focus)
     ? [
         ...new Set(
-          (p.focus as unknown[]).filter(
-            (m): m is string => typeof m === 'string' && MK.includes(m as never) && !TRACK_ONLY.has(m)
+          p.focus.filter(
+            (m: unknown): m is string =>
+              typeof m === 'string' && (MK as readonly string[]).includes(m) && !TRACK_ONLY.has(m)
           )
         )
       ].slice(0, FOCUS_MAX)
@@ -73,11 +84,11 @@ export function profClean(p: Partial<Record<string, unknown>> | null | undefined
 export const STR_REST = 5,
   STR_NEAR = 0.97;
 
+/** The tips beside the profile's Goal and Years lifting (in Settings and in
+    the routine picker on a first run) and Focus muscles (in Settings). */
 export const PROF_GOAL_TIP =
   "Size keeps the app's defaults. Strength: new barbell, Smith, and machine compounds start at 3 to 6 reps, 2 in reserve, 3 minutes' rest. Heavier loads gave more strength for similar growth (Schoenfeld 2017; ACSM 2009), and 3 minutes' rest beat 1 (Schoenfeld 2016). Both starts them at 5 to 8; that and the 2 in reserve are conventions. Strength also favours stalled or near-best compounds in Pick for me. Your routine changes only with Apply.";
-
 export const PROF_EXP_TIP =
   'Under 1 year, whatever the goal: new exercises start at 8 to 12 reps (ACSM 2009). Compounds stop 3 reps short and isolation lifts 2, as in the beginner plan, a convention: easier to judge, further from failure. Apply raises reps in reserve to that and keeps your ranges.';
-
 export const PROF_FOCUS_TIP =
   'Up to two. Their weekly targets go up about 30% and the other major muscles drop to maintenance, a third of the usual minimum (size and strength held on a third of the volume: Bickel 2011, Spiering 2021). Only targets you have not typed move, and taking a focus off puts them back. Pick for me favours them.';

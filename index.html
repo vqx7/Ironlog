@@ -1978,9 +1978,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     while (v <= d.hi + 1e-6) {
       if (out.length >= 300) return null;
       out.push(r3(v));
-      v = r3(
-        v + (d.fine > 0 && d.fineTo > 0 && v < d.fineTo - 1e-6 ? d.fine : d.st)
-      );
+      v = r3(v + (d.fine > 0 && d.fineTo > 0 && v < d.fineTo - 1e-6 ? d.fine : d.st));
     }
     return out;
   }

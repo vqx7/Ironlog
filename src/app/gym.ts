@@ -44,15 +44,23 @@ export function gymPlates(u: string): number[] {
   return u === 'kg' ? [25, 20, 15, 10, 5, 2.5, 1.25] : [45, 35, 25, 10, 5, 2.5];
 }
 
-/* Every field checked; anything out of range is dropped, never guessed. */
-export function gymClean(g: Partial<Record<string, unknown>> | null | undefined): Gym | null {
+/** A gym or a rack as it arrives, from a save, a backup, another device, or
+    the Settings form: any field may hold anything, so each is checked. */
+type Raw = Partial<Record<string, unknown>> | null | undefined;
+
+/* A gym cleaned for normalize() and the Settings form. Every field checked;
+   anything out of range is dropped, never guessed. A gym with nothing left
+   but its unit is null, so it is not stored. */
+export function gymClean(g: Raw): Gym | null {
   if (!g || typeof g !== 'object' || (g.u !== 'lb' && g.u !== 'kg')) return null;
   const out: Gym = { u: g.u };
+  // Unary plus turns whatever is there into a number or NaN; TypeScript
+  // refuses it on an unknown value, hence the cast.
   const n = (v: unknown): number => {
     const x = +(v as number);
     return isFinite(x) ? Math.round(x * 1000) / 1000 : NaN;
   };
-  const d = g.db as Partial<Record<string, unknown>> | null | undefined;
+  const d = g.db as Raw;
   if (d && typeof d === 'object') {
     const lo = n(d.lo),
       hi = n(d.hi),
@@ -69,13 +77,12 @@ export function gymClean(g: Partial<Record<string, unknown>> | null | undefined)
     }
   }
   if (Array.isArray(g.kb)) {
-    const kb = [...new Set((g.kb as unknown[]).map(n).filter(x => x > 0 && x <= 300))]
-      .sort((a, b) => a - b)
-      .slice(0, 40);
+    const kb = [...new Set(g.kb.map(n).filter(x => x > 0 && x <= 300))].sort((a, b) => a - b).slice(0, 40);
     if (kb.length) out.kb = kb;
   }
   if (Array.isArray(g.plates)) {
     const all = gymPlates(g.u);
+    // Inside the callback TypeScript no longer knows g.plates is an array.
     const pl = all.filter(x => (g.plates as unknown[]).map(n).includes(x));
     if (pl.length) out.plates = pl;
   }
@@ -90,7 +97,12 @@ export function gymClean(g: Partial<Record<string, unknown>> | null | undefined)
 export const gymK = (g: Pick<Gym, 'u'>, v: number): number => (g.u === 'kg' ? v : v * LB);
 
 /* Dumbbells as typed in Settings: from, to, a step, and optionally a
-   smaller step up to some weight (5 to 25 by 2.5, then 5s to 120). */
+   smaller step up to some weight (5 to 25 by 2.5, then 5s to 120). Returns
+   the weights, lightest first, or null when the fields do not make a rack.
+   The form also passes a rack still being typed, with fields missing: a
+   comparison with a missing field is false, so the first line refuses it.
+   The smaller step's two fields are optional and read the same way, which
+   is what the two casts say; each is used only once it is above 0. */
 // More than 300 weights is a typo (0.5 to 200 by 0.5), refused rather than cut short.
 export function dbListOf(d: DbRack | null | undefined): number[] | null {
   if (!d || !(d.lo > 0) || !(d.hi >= d.lo) || !(d.st > 0)) return null;
@@ -99,12 +111,7 @@ export function dbListOf(d: DbRack | null | undefined): number[] | null {
   while (v <= d.hi + 1e-6) {
     if (out.length >= 300) return null;
     out.push(r3(v));
-    v = r3(
-      v +
-        ((d.fine as number) > 0 && (d.fineTo as number) > 0 && v < (d.fineTo as number) - 1e-6
-          ? (d.fine as number)
-          : d.st)
-    );
+    v = r3(v + ((d.fine as number) > 0 && (d.fineTo as number) > 0 && v < d.fineTo! - 1e-6 ? d.fine! : d.st));
   }
   return out;
 }
