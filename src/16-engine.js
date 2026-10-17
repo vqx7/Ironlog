@@ -446,28 +446,7 @@ function incOf(ex,plan,at){
    means nothing changes: every default below is the step used before.
    Precedence: a step set on the exercise or in the plan, then Your gym, then
    the rack read from logged loads (r32), then 5 lb or 2.5 kg. */
-// Function declarations, not constants: normalize() runs on the first load, before the constants below exist.
-function gymPlates(u){return u==='kg'?[25,20,15,10,5,2.5,1.25]:[45,35,25,10,5,2.5];}
-/* Every field checked; anything out of range is dropped, never guessed. */
-function gymClean(g){
-  if(!g||typeof g!=='object'||(g.u!=='lb'&&g.u!=='kg'))return null;const out={u:g.u};const n=v=>{const x=+v;return isFinite(x)?Math.round(x*1000)/1000:NaN;};
-  const d=g.db;if(d&&typeof d==='object'){const lo=n(d.lo),hi=n(d.hi),st=n(d.st),fine=n(d.fine),fineTo=n(d.fineTo);
-    if(lo>0&&hi>=lo&&hi<=500&&st>0&&st<=50){const db={lo,hi,st};if(fine>0&&fine<st&&fineTo>lo){db.fine=fine;db.fineTo=Math.min(fineTo,hi);}if(dbListOf(db))out.db=db;}}
-  if(Array.isArray(g.kb)){const kb=[...new Set(g.kb.map(n).filter(x=>x>0&&x<=300))].sort((a,b)=>a-b).slice(0,40);if(kb.length)out.kb=kb;}
-  if(Array.isArray(g.plates)){const all=gymPlates(g.u);const pl=all.filter(x=>g.plates.map(n).includes(x));if(pl.length)out.plates=pl;}
-  {const st=n(g.stack);if(st>0&&st<=100)out.stack=st;}
-  return Object.keys(out).length>1?out:null;
-}
 function gymOf(){const g=state.settings.gym;return g&&typeof g==='object'?g:null;}
-const gymK=(g,v)=>g.u==='kg'?v:v*LB;
-/* Dumbbells as typed in Settings: from, to, a step, and optionally a
-   smaller step up to some weight (5 to 25 by 2.5, then 5s to 120). */
-// More than 300 weights is a typo (0.5 to 200 by 0.5), refused rather than cut short.
-function dbListOf(d){
-  if(!d||!(d.lo>0)||!(d.hi>=d.lo)||!(d.st>0))return null;const out=[];let v=d.lo;
-  while(v<=d.hi+1e-6){if(out.length>=300)return null;out.push(r3(v));v=r3(v+(d.fine>0&&d.fineTo>0&&v<d.fineTo-1e-6?d.fine:d.st));}
-  return out;
-}
 /* The loads this lift can be done at, in kg, lightest first, or null: only
    dumbbell and kettlebell lifts, with no step of their own, logged as the
    weight of one bell (per dumbbell, or one dumbbell held). */
@@ -617,14 +596,6 @@ function lighterLoad(ex,plan,from,to){
   if(w<floor-1e-6)w=Math.min(floor,from);
   return Math.max(0,w);
 }
-function platesMode(ex){
-  if(ex.plates)return ex.plates;
-  if(ex.bw)return 'none';
-  if(ex.equip==='barbell')return 'bar';
-  if(ex.equip==='landmine')return 'sleeve';
-  if(PLATE_SIDE_IDS.includes(ex.id))return 'side';
-  return 'none';
-}
 /* Plates per side for a barbell load, greedy from the biggest plate down. */
 function plateText(kg,mode,ex){
   mode=mode||'bar';if(mode==='none')return '';
@@ -678,34 +649,6 @@ function carryLoad(bi,si){
   updateProgress(bi);
 }
 function updatePlates(bi,si){const el=document.getElementById('pl-'+bi);if(!el||!state.draft||!state.draft.ex[bi])return;el.textContent=plateLine(state.draft.ex[bi],si);}
-/* Live score for one logger block against its target. Only sets marked done,
-   not warm-up, with reps, at or above the target load count. */
-/* The old version counted every done set at or above the target load, then
-   summed reps across all of them. Reps at 225 and reps at 275 are not the same
-   currency, so going heavier for fewer reps read as "not beaten" and a single
-   heavy set could read as beaten without the comparison meaning anything.
-   Reps are now compared only at the target load; anything heavier is judged on
-   estimated 1RM against your previous best, which is the comparable number. */
-/* A reps target compares today's first n sets at the load with last time's
-   first n. When today has fewer working sets (removed, or trimmed by Short on
-   time), the target shrinks to those sets, since the old total could no
-   longer be reached. Targets saved before rs existed keep the old numbers. */
-function effTarget(b){
-  const t=b.tgt;if(!t||t.kind!=='reps')return t;
-  const nw=b.sets.filter(x=>!x.warm&&!x.drop).length;
-  if(!Array.isArray(t.rs)||!(nw>0)||nw>=t.n)return t;
-  return {...t,n:nw,total:t.rs.slice(0,nw).reduce((a,v)=>a+v,0)};
-}
-/* "Over your first 3 sets" only when the plan has more sets than that, so
-   the extra ones are clearly not counted; "over 4 sets" when 4 is all there
-   are (r34.2, from the review). */
-function overSets(n,plan,kind){const w=kind==='hold'?'hold':'set';if(n===1)return `in one ${w}`;return +(plan&&plan.sets)>n?`over your first ${n} ${w}s`:`over ${n} ${w}s`;}
-function targetText(b){
-  const t=b.tgt,e=effTarget(b);if(!t||t===e||!b.target)return b.target;
-  const m=b.target.match(/^(\d+)(s?)\+ (reps )?(?:in one set|over (?:your first )?\d+ sets|in one hold|over (?:your first )?\d+ holds)( at .*)$/);if(!m)return b.target;
-  const hold=m[2]==='s';const over=e.n===1?(hold?'in one hold':'in one set'):`over ${e.n} ${hold?'holds':'sets'}`;
-  return `${e.total+1}${m[2]}+ ${m[3]||''}${over}${m[4]}`;
-}
 /* The reason behind a target, in the engine's own words (r47). b.hint is the
    whole sentence the case wrote, and it opens with the Last line (b.last),
    which the screen shows on its own line already, so that prefix comes off
@@ -805,9 +748,3 @@ function refreshGrey(bi){
    > "Fill in suggested loads" (settings.loadFill 'fill') puts them in the
    rows as before. Warm-up and drop rows get their loads when added. */
 const fillLoads=()=>state.settings.loadFill==='fill';
-function greyW(b,si){
-  const s=b&&b.sets[si];if(!s||s.warm||s.drop)return null;
-  // After a set the app adjusted from (b.adj, r34), the rows under it carry the adjusted load.
-  for(let i=si-1;i>=0;i--){const x=b.sets[i];if(!x.warm&&!x.drop&&x.w!=null)return b.adj&&b.adj.at===i?b.adj.w:x.w;}
-  return b.sw==null?null:b.sw;
-}

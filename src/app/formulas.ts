@@ -93,7 +93,7 @@ export const REP_PR_SHARE = 0.9;
 /* ---------- sets and sessions ---------- */
 
 /** A working set: not a warm-up, and reps done. */
-export const isWork = (s: Pick<LoggedSet, 'warm'> & { r: number | string }): boolean => !s.warm && +s.r > 0;
+export const isWork = (s: { warm?: boolean | undefined; r: number | string | null }): boolean => !s.warm && +(s.r as number) > 0;
 
 /** A set's weight in a weekly count: a drop set counts half. */
 export const setCredit = (s: Pick<LoggedSet, 'drop'>): number => s.drop ? 0.5 : 1;
@@ -255,3 +255,6 @@ export const PACE_N = 8, PACE_DAYS = 84, PACE_MIN = 3, PACE_LO = 1 / 3, PACE_HI 
    11 fractional sets for one muscle in a session, so more than 11 is flagged
    as a likely place to move sets to another day. Advisory, a convention. */
 export const SESSION_CAP = 11;
+
+/** The Plan editor's tip on the load jump (jumpPct above), r30. */
+export const JUMP_TIP = 'When every set reaches the top of the rep range, the load goes up by about this share, in whole load steps and at least one step. Blank: 2.5% on compound lifts, 5% on isolation lifts, a convention. 0: one step every time. Until then the target is to beat last time\'s total reps at the same load. When the step is large for the load, a few more reps come first, so the new load starts inside the range.';

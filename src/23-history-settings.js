@@ -1,6 +1,4 @@
 /* ---------- HISTORY ---------- */
-/* A session's start time, for telling two sessions on one day apart. */
-function sessTm(x){try{return x.t?new Date(x.t).toLocaleTimeString([],{hour:'numeric',minute:'2-digit'}):'';}catch(e){return '';}}
 function viewHistory(){
   const ss=[...state.sessions].sort((a,b)=>sessCmp(b,a));
   // Rows that share a date show their start time, or two sessions on one day look the same.
@@ -59,7 +57,6 @@ function viewHistory(){
    until From, To, and Step make a rack, so a half-filled form is never
    thrown away or saved. */
 function gymSub(){const g=gymOf();if(!g)return 'usual steps';const L=dbListOf(g.db);const parts=[];if(L)parts.push(`dumbbells ${fmtG(L[0])} to ${fmtG(L[L.length-1])} ${g.u}`);if(g.kb)parts.push(`${g.kb.length} kettlebell${g.kb.length===1?'':'s'}`);if(g.plates)parts.push('plates');if(g.stack)parts.push(`stacks by ${fmtG(g.stack)}`);return parts.join(', ')||'usual steps';}
-const fmtG=v=>String(Math.round(v*1000)/1000);
 function gymSettings(){
   const g=gymOf();const u=gymUnit();const d=ui.gymDb||(g&&g.db)||{};const v=k=>d[k]==null||!isFinite(d[k])?'':fmtG(d[k]);
   const lb=u==='lb';const L=dbListOf(g&&g.db);const plates=gymPlates(u);const on=g&&g.plates?g.plates:plates;
@@ -117,9 +114,6 @@ function profFields(){
   <div><p class="small muted" style="margin:0 0 6px;font-weight:600"><span class="hastip" data-tip="${esc(PROF_EXP_TIP)}">Years lifting</span></p>${profChips('exp',PROF_EXP,p.exp,'Years lifting')}</div>
   <div><p class="small muted" style="margin:0 0 6px;font-weight:600"><span class="hastip" data-tip="Ready-made routines that fit are marked when you pick one. Every other day fits 3 or 4.">Days a week</span></p>${profChips('days',PROF_DAYS.map(d=>[d,String(d)]),p.days,'Days a week')}</div>`;
 }
-const PROF_GOAL_TIP='Size keeps the app\'s defaults. Strength: new barbell, Smith, and machine compounds start at 3 to 6 reps, 2 in reserve, 3 minutes\' rest. Heavier loads gave more strength for similar growth (Schoenfeld 2017; ACSM 2009), and 3 minutes\' rest beat 1 (Schoenfeld 2016). Both starts them at 5 to 8; that and the 2 in reserve are conventions. Strength also favours stalled or near-best compounds in Pick for me. Your routine changes only with Apply.';
-const PROF_EXP_TIP='Under 1 year, whatever the goal: new exercises start at 8 to 12 reps (ACSM 2009). Compounds stop 3 reps short and isolation lifts 2, as in the beginner plan, a convention: easier to judge, further from failure. Apply raises reps in reserve to that and keeps your ranges.';
-const PROF_FOCUS_TIP='Up to two. Their weekly targets go up about 30% and the other major muscles drop to maintenance, a third of the usual minimum (size and strength held on a third of the volume: Bickel 2011, Spiering 2021). Only targets you have not typed move, and taking a focus off puts them back. Pick for me favours them.';
 function profSub(){const p=prof();const a=[];if(p.goal)a.push(PROF_GOALS.find(g=>g[0]===p.goal)[1]);if(p.days)a.push(`${p.days} days`);if(p.focus)a.push(p.focus.map(m=>ML[m]).join(', '));if(state.settings.timeBudget)a.push(`${state.settings.timeBudget} min`);return a.join(' · ')||'optional';}
 function profSettings(){
   const s=state.settings;const p=prof();const f=p.focus||[];const R=activeRoutine();const ap=profApplyList(R);

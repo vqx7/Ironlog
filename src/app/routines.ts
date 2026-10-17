@@ -149,3 +149,96 @@ export function routineFromTemplate(key: string): NewRoutine | null {
   if (t.build) return t.build();
   return { id: uid(), name: t.name, schedule: 'cycle', days: t.days.map(d => ({ id: uid(), name: d.name, rest: !!d.rest, items: d.items.map(it => ({ uid: uid(), ...it, inc: 5 * LB })) })) };
 }
+
+/* ---------- routine helpers (phase 3a, r51; moved unchanged, tests/moved.js holds them to r50's code) ---------- */
+
+/** The parts of a routine these helpers read. */
+type RoutineLike = { schedule: string; days: { id?: string; rest?: boolean; items: { ss?: string | null; sets?: number | string }[] }[] };
+
+/* Weekly numbers (planned volume, adherence, the week bar) assume one cycle day
+   per calendar day. A 7-day cycle is therefore exactly 1x; a 4-day cycle runs
+   1.75 times a week. */
+export function weekFactor(R: RoutineLike): number {
+  return R.schedule === 'weekly' ? 1 : 7 / Math.max(1, R.days.length);
+}
+
+/** The days of a routine with something to train. */
+export function trainDaysOf(R: RoutineLike): number {
+  return R.days.filter(d => !d.rest && d.items.length > 0).length;
+}
+
+/** Training days a week, for a weekly schedule or a cycle. */
+export function plannedPerWeek(R: RoutineLike): number {
+  return R.schedule === 'weekly' ? trainDaysOf(R) : Math.round(trainDaysOf(R) * weekFactor(R));
+}
+
+/* Sessions store the id of the day they were logged against, so reordering or
+   removing cycle days never relinks history to the wrong workout. Sessions from
+   before v3 have only a position, which is still correct because migration
+   kept every day where it was. */
+export function sessDayIdx(R: RoutineLike, s: { dayId?: string | null; dayIdx: number }): number {
+  if (s.dayId) { const i = R.days.findIndex(d => d.id === s.dayId); return i; }
+  return s.dayIdx >= 0 && s.dayIdx < R.days.length ? s.dayIdx : -1;
+}
+
+/** The sets a day plans. */
+export function daySets(day: { items: { sets?: number | string }[] }): number {
+  return day.items.reduce((a, it) => a + +(it.sets as number), 0);
+}
+
+/* A superset is consecutive items sharing an id. Groups of one are not
+   supersets, so a reorder or delete that leaves a stray tag clears it. */
+export function fixSupersets(items: { ss?: string | null }[]): void {
+  let i = 0;
+  while (i < items.length) {
+    const id = (items[i] as { ss?: string | null }).ss;
+    if (!id) { i++; continue; }
+    let j = i; while (j < items.length && (items[j] as { ss?: string | null }).ss === id) j++;
+    if (j - i < 2) (items[i] as { ss?: string | null }).ss = null;
+    i = j;
+  }
+  // The same id reappearing later in the day would read as one group; give it its own.
+  const seen = new Set<string>(); let prev: string | null | undefined = null;
+  items.forEach((it, k) => { if (it.ss && it.ss !== prev && seen.has(it.ss)) it.ss = it.ss + '-g' + k; if (it.ss) seen.add(it.ss); prev = it.ss; });
+}
+
+/* Letter per superset group, in order of first appearance, for labels. */
+export function ssLetters(items: readonly { ss?: string | null }[]): Record<string, string> {
+  const m: Record<string, string> = {}; let n = 0;
+  for (const it of items) if (it.ss && !(it.ss in m)) m[it.ss] = String.fromCharCode(65 + (n++ % 26));
+  return m;
+}
+
+/* Toggle the link between entry i and i+1. get(x) returns the object holding ss. */
+export function linkToggle<X>(arr: X[], i: number, get: (x: X) => { ss?: string | null }): boolean {
+  const a = get(arr[i] as X), b = arr[i + 1] && get(arr[i + 1] as X); if (!a || !b) return false;
+  if (a.ss && a.ss === b.ss) { const g = uid(), old = a.ss; for (let k = i + 1; k < arr.length && get(arr[k] as X).ss === old; k++) get(arr[k] as X).ss = g; }
+  else { const id = a.ss || b.ss || uid(); const olds = [a.ss, b.ss].filter(Boolean); for (const x of arr) { const o = get(x); if (o.ss && olds.includes(o.ss)) o.ss = id; } a.ss = id; b.ss = id; }
+  const tmp = arr.map(get); fixSupersets(tmp); return true;
+}
+
+/** Moves an entry of a list from i to j, in place; out of range does nothing. */
+export function move<X>(arr: X[], i: number, j: number): void {
+  if (j < 0 || j >= arr.length) return;
+  const [x] = arr.splice(i, 1); arr.splice(j, 0, x as X);
+}
+
+/* Routine housekeeping. Empty: no exercise on any day. Duplicate: same name
+   and same days and exercises as an earlier routine. Only routines that are
+   not active and have no logged sessions are offered for cleanup; logged
+   sessions are kept either way. */
+export const routineEmpty = (r: { days: { items: unknown[] }[] }): boolean => r.days.every(d => !d.items.length);
+
+/** What makes two routines the same: the name, schedule, days and every item's plan. */
+export const routineSig = (r: Pick<Routine, 'name' | 'schedule'> & { days: { name: string; rest?: boolean; items: { exId: string; sets: unknown; repMin: unknown; repMax: unknown; rir: unknown; rest: unknown }[] }[] }): string => JSON.stringify([r.name.trim().toLowerCase(), r.schedule, r.days.map(d => [d.name, !!d.rest, d.items.map(i => [i.exId, +(i.sets as number), +(i.repMin as number), +(i.repMax as number), +(i.rir as number), +(i.rest as number)])])]);
+
+/* "Eight plans, 2 to 6 days a week", counted from the list (r30: the line
+   said six after two were added). Every other day counts as about 3.5. */
+export function tplCountLine(): string {
+  const T = TEMPLATES.filter(t => !t.hidden);
+  const n = T.map(t => { const r = routineFromTemplate(t.key) as NewRoutine; return r.days.filter(d => !d.rest).length * 7 / r.days.length; });
+  const W = ['No', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine', 'Ten', 'Eleven', 'Twelve'];
+  return `${W[T.length] || T.length} plans, ${Math.floor(Math.min(...n))} to ${Math.round(Math.max(...n))} days a week`;
+}
+
+export const RIR_TGT_TIP = 'Target RIR is 1 unless you change it, a convention: muscle growth improves as sets end closer to failure (Robinson 2024), but going all the way to failure grew muscle no more than stopping 1 to 2 reps short (Refalo 2024) and costs more fatigue. Some lifts in the ready-made routines use 0 or 2.';

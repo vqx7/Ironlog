@@ -1,0 +1,155 @@
+/* What a stored record may hold: the schema version, the limits on body
+   entries and kept unknown fields, the id checks, the cleaners for a
+   calibration set, a check-in and a target, the order of sessions, and how
+   long deleted things are kept (phase 3a, r51; moved unchanged from the
+   legacy script, tests/moved.js holds them to r50's code). normalize(),
+   which applies them to a whole save, moves with storage in phase 4. */
+
+import { hashStr, numOr, isNum, isDate } from './util';
+import { MEAS } from './library';
+
+/* Bumped to 2 when per-side exercises and deleted-built-in tracking arrived.
+   normalize() migrates v1 saves in place; nothing the user edited is touched. */
+/* v4: cardio entries, the Recently deleted list, per-exercise load step and
+   plate helper, and the lighter-session flag. Every v4 field has a default in
+   normalize(), so v3 data loads unchanged. */
+/* v5: two new muscles (serratus, rotator cuff). Built-in exercises that train
+   them secondarily get the new muscle added; nothing else a user set is
+   touched, because those keys could not exist before v5. */
+export const STATE_VERSION = 5;
+
+/* Deleted sessions, cardio entries and routines are kept for 30 days so a
+   mistaken delete can be restored after the tab is closed. Their ids also act
+   as tombstones: a second device that still holds a deleted session cannot
+   merge it back in while the entry is here. Capped so the core cloud document
+   never approaches its size limit. */
+export const TRASH_DAYS = 30,
+  TRASH_MAX = 20,
+  TRASH_BYTES = 60000;
+
+/* Upper limits for body entries. Past these a number is a typo, and an
+   unbounded one showed as "Infinity lb" and broke waist-to-height. */
+export const BW_MAX_KG = 400,
+  BW_MIN_KG = 20,
+  MEAS_MAX_CM = 300;
+
+/* ---------- ids ---------- */
+
+/* Stable id for a record that arrived without one. It used to be random, so two
+   devices repairing the same record made two different ids and a merge kept
+   both. The position is included so identical records stay distinct. */
+export function did(tag: string, obj: unknown, i: number): string {
+  let j = '';
+  try {
+    j = JSON.stringify(obj);
+  } catch (e) {
+    j = String(i);
+  }
+  return tag + hashStr(j + '#' + i);
+}
+
+/* Ids go straight into HTML attributes and CSS selectors, so an imported
+   backup or a cloud document must not be able to smuggle markup in through
+   one. Every id the app makes itself fits this pattern. Anything else is
+   replaced by a hash of itself, which is the same on every device, so a
+   record and the references to it (an exercise and its logged sets) still
+   match after the repair. */
+// Names Object already has ("constructor", "__proto__") are out too: many
+// lookups key plain objects by id, and those would find the built-in instead.
+export const okId = (v: unknown): boolean =>
+  typeof v === 'string' && /^[\w.:-]{1,100}$/.test(v) && !(v in Object.prototype);
+
+export function fixId(v: unknown): string {
+  return okId(v) ? (v as string) : 'x' + hashStr(String(v));
+}
+
+/** A key safe to put in markup: a string with none of the characters HTML treats as syntax. */
+export const safeKey = (k: unknown): boolean => typeof k === 'string' && !/["'<>&`]/.test(k);
+
+/* ---------- fields a newer build added ---------- */
+
+/* Fields a newer build adds to a record, kept as they came (r43). Every record
+   is rebuilt from the fields this build knows, so a phone on an older build
+   used to drop anything newer whenever it loaded or synced the log: an r37
+   phone wiped a lift goal set on r38. A field this build does not know is now
+   kept, untouched and never read. Only plain JSON data passes, under a name
+   that cannot reach Object's prototype, at most EXTRA_KEYS fields and
+   EXTRA_MAX characters of them (names included) per record, so a hostile
+   backup or cloud row can neither run anything nor grow the log past what a
+   sync document holds. `known` names fields this build writes only when valid
+   (a load jump, a distance): an invalid one is dropped, not kept as if new.
+   With anything kept, the record takes the key order it came in: sync
+   documents are compared as written, key order included, so a newer build
+   that puts its field mid-record and this one that put it last would rewrite
+   each other's copy on every pull (found by the r43 review, the same loop as
+   r21 and r28's settings). A record with nothing unknown comes out exactly as
+   before, so its fingerprint and the sync are unchanged. */
+export const EXTRA_MAX = 2000,
+  EXTRA_KEYS = 20;
+
+export const okExtraKey = (k: string): boolean => /^[A-Za-z][\w]{0,39}$/.test(k) && !(k in Object.prototype);
+
+/** The fields of a plan item, a cardio entry and a tape entry that are written only when valid. */
+export const KNOWN_ITEM: ReadonlySet<string> = new Set(['jump']),
+  KNOWN_CARDIO: ReadonlySet<string> = new Set(['dist']),
+  KNOWN_MEAS: ReadonlySet<string> = new Set(MEAS.map(x => x[0]));
+
+/* ---------- cleaners ---------- */
+
+/** What a cleaner is given: anything, from a save, a backup or another device. */
+type Raw = Partial<Record<string, unknown>> | null | undefined;
+
+/* A calibration set: the rep you would normally have stopped at, and the reps
+   you thought were left there. The set itself is logged to failure. */
+export function cleanCal(c: Raw): { at: number; pred: number } | null {
+  if (!c || typeof c !== 'object') return null;
+  const at = numOr(c.at, NaN),
+    pred = numOr(c.pred, NaN);
+  if (!isNum(at) || !isNum(pred) || at < 1 || pred < 0) return null;
+  return { at: Math.min(Math.round(at), 1000), pred: Math.min(Math.round(pred * 2) / 2, 10) };
+}
+
+/* Pre-session check-in: 1 poor, 2 OK, 3 good, per question. */
+export function cleanChk(c: Raw): Record<string, number> | null {
+  if (!c || typeof c !== 'object') return null;
+  const o: Record<string, number> = {};
+  for (const k of ['sleep', 'energy', 'joints']) {
+    const v = Math.round(numOr(c[k], NaN));
+    if (v >= 1 && v <= 3) o[k] = v;
+  }
+  return Object.keys(o).length ? o : null;
+}
+
+/* The load or reps target set when the session started. Only its numbers are
+   read, so only numbers survive. */
+export function cleanTgt(t: Raw): Record<string, unknown> | null {
+  if (!t || typeof t !== 'object' || (t.kind !== 'load' && t.kind !== 'reps')) return null;
+  const o: Record<string, unknown> = { kind: t.kind };
+  for (const k of ['w', 'repMin', 'total', 'n', 'prevBest']) {
+    if (!(k in t)) continue;
+    const v = t[k];
+    o[k] = v == null ? null : isNum(numOr(v, NaN)) ? numOr(v, 0) : null;
+  }
+  if (Array.isArray(t.rs))
+    o.rs = (t.rs as unknown[]).slice(0, 30).map(v => {
+      const n = numOr(v, NaN);
+      return isNum(n) && n >= 0 ? Math.min(n, 1000) : 0;
+    });
+  return o;
+}
+
+/* ---------- sessions ---------- */
+
+/* One logged session, every field checked. Also used on the copies kept in
+   Recently deleted, so a copy there can be compared with a live one. */
+export const okSess = (ss: Raw): boolean => !!ss && typeof ss === 'object' && isDate(ss.date) && Array.isArray(ss.ex);
+
+/* One order for sessions everywhere (r34, two-a-days): by date, then by the
+   time each started, then by id. Ordered by date alone, a morning and an
+   evening session on one day came out in whatever order the list held, and
+   after a sync by their random ids, so "last time" could be the morning. */
+export const sessCmp = (
+  a: { date: string; t?: number | null; id: string },
+  b: { date: string; t?: number | null; id: string }
+): number =>
+  a.date < b.date ? -1 : a.date > b.date ? 1 : (a.t || 0) - (b.t || 0) || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0);

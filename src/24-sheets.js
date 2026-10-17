@@ -240,39 +240,6 @@ function renderModalBody(){
     if(hd&&!sh.hasAttribute('aria-label'))sh.setAttribute('aria-label',hd.textContent||'Dialog');
   }
 }
-/* The same exercise twice in one session (r34.2, V): sets done on one lift
-   are one exposure of it, whatever order they were logged in. Blocks side by
-   side are joined into one (live when a swap or an add lands next to the
-   same exercise, and at Finish); apart (2nd and 4th), they stay where they
-   were done, and the numbers read them together (sameExOnce in IDX). A
-   lighter block and a normal one are different work and never join. */
-function joinable(a,b){return !!a&&!!b&&a.exId===b.exId&&!a.light===!b.light;}
-/* Rows of a block made for the same exercise, appended to the one already
-   there: the working rows still to do, and the plan's count with them. */
-function joinRows(into,from){
-  const rows=from.sets.filter(x=>!x.warm&&!x.drop&&!x.done);
-  into.sets.push(...rows);into.plan={...into.plan,sets:into.sets.filter(x=>!x.warm&&!x.drop).length};
-  return rows;
-}
-/* Saved exercises side by side on the same lift become one, sets in order. */
-function joinAdjacent(ex){
-  const out=[];
-  for(const b of ex){const a=out[out.length-1];
-    if(a&&a.exId===b.exId&&!a.light===!b.light){a.sets=[...a.sets,...b.sets];if(b.note&&b.note.trim())a.note=[a.note,b.note].filter(x=>x&&x.trim()).join(' ');if(!a.rr&&b.rr)a.rr=b.rr;a.cut=a.cut&&b.cut?true:undefined;continue;}
-    out.push({...b,sets:[...b.sets]});}
-  return out;
-}
-/* For the numbers, every block of one lift in a session reads as one: one
-   exposure for targets, trends, stalls and PRs (two blocks used to count as
-   two sessions on one day, and could each set a PR). */
-function sameExOnce(ex){
-  const by=new Map();const out=[];
-  for(const b of ex){const k=b.exId+(b.light?'|l':'');const a=by.get(k);
-    if(!a){const c={...b,sets:[...b.sets]};by.set(k,c);out.push(c);continue;}
-    const wa=a.sets.filter(isWork).length,wb=b.sets.filter(isWork).length;
-    a.sets.push(...b.sets);if(wb>wa&&b.rr)a.rr=b.rr;else if(!a.rr&&b.rr)a.rr=b.rr;a.cut=!!(a.cut&&b.cut);}
-  return out;
-}
 /* One place that applies a choice from the exercise picker, or an exercise
    just created from it, for every mode the picker opens in. Adding to a
    session scrolls to the new exercise and marks it, instead of leaving it

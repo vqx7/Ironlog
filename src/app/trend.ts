@@ -1,0 +1,53 @@
+/* The sessions a lift's trend reads, and its two ends (r41), shared by the
+   trend itself and by the screens that say its change, so the two cannot
+   disagree (phase 3a, r51; moved unchanged from the legacy script,
+   tests/moved.js holds them to r50's code). The trend's reading of each
+   session (tv) is set by the analytics, which move in 3b. */
+
+import { addDays } from './util';
+import { offSession, sameRR } from './formulas';
+
+/** One exposure of a lift as the trend reads it: its date, its planned range, its reading. */
+type Exposure = {
+  date: string;
+  rr: [number, number] | null;
+  tv?: number | null;
+  deload?: boolean;
+  light?: boolean;
+  cut?: boolean;
+  auto?: boolean;
+};
+
+/* The sessions a lift's trend reads, shared by the trend itself and by the
+   screens that say its change in loads (r41), so the two cannot disagree.
+   Full sessions only; the current rep range only, since changing the range
+   restarts the baseline instead of drawing one line across two scales; and
+   the 6 weeks up to the lift's own last session (r30: it ended at the newest
+   session of any kind, so logging an upper day moved a split squat's trend
+   from +14% to +9% without a new split squat set). */
+export function trendScope<X extends Exposure>(exps: readonly X[], anchor: string) {
+  const real = exps.filter(x => !offSession(x));
+  const curRR = real.length ? (real[real.length - 1] as X).rr : null;
+  const inRange = real.filter(x => sameRR(x.rr, curRR));
+  const lastReal = real.length ? (real[real.length - 1] as X) : null;
+  const exWin = addDays(lastReal ? lastReal.date : anchor, -42);
+  return { real, curRR, inRange, lastReal, exWin };
+}
+
+/* The sessions in that scope with a trend reading. Separate from trendScope
+   because idxLift sets each session's reading (tv) only after deciding
+   whether RIR enters the trend, which needs the scope first. */
+export function trendW<X extends Exposure>(sc: { inRange: readonly X[]; exWin: string }): X[] {
+  return sc.inRange.filter(x => x.date >= sc.exWin && x.tv != null);
+}
+
+/* Both ends of the trend are the better of two sessions, to damp a single
+   fluky one. With exactly three, best-of-two at each end counts the middle
+   one twice (100, 120, 110 came out as 0% instead of +10%), so three use
+   single ends. It returns the sessions, not only their readings, so a screen
+   can show what was lifted. The first of equal readings wins, as before. */
+export function trendEnds<X extends { tv?: number | null }>(w: readonly X[]): { first: X; last: X } {
+  const k = w.length >= 4 ? 2 : 1;
+  const best = (a: readonly X[]): X => a.reduce((m, x) => ((x.tv as number) > (m.tv as number) ? x : m));
+  return { first: best(w.slice(0, k)), last: best(w.slice(w.length - k)) };
+}

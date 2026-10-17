@@ -12,10 +12,6 @@ if(ENV==='preview')document.documentElement.dataset.env='preview';
    save, for the new-icon note (r25): only an existing install still has the
    old icon on its home screen. */
 const HAD_LOG=(()=>{try{return localStorage.getItem(KEY)!=null;}catch(e){return false;}})();
-/* The logo (r25): an upright dumbbell that is also the I of Ironlog. Same
-   numbers as scripts/icons.py, which draws the app icons. */
-const MARK_SVG='<svg class="mark" viewBox="-242 -378 484 756" aria-hidden="true" focusable="false"><rect class="mk-h" x="-30" y="-300" width="60" height="600" rx="14"/><rect class="mk-h" x="-80" y="-192" width="160" height="32" rx="12"/><rect class="mk-h" x="-80" y="160" width="160" height="32" rx="12"/><rect class="mk-p" x="-240" y="-376" width="480" height="92" rx="30"/><rect class="mk-p" x="-190" y="-270" width="380" height="66" rx="26"/><rect class="mk-p" x="-190" y="204" width="380" height="66" rx="26"/><rect class="mk-p" x="-240" y="284" width="480" height="92" rx="30"/></svg>';
-const LOCKUP=`<span class="vh">${APP_NAME}</span>${MARK_SVG}<span class="rn" aria-hidden="true">${WORDMARK.strong}</span><span aria-hidden="true">${WORDMARK.light}</span>`;
 /* Diagnostics log: the last 60 errors, kept in this browser only. Errors that
    used to be swallowed silently land here, and Settings can copy them. */
 const LOGK=KEY+'.log';
@@ -41,15 +37,6 @@ function log(area,err){
 }
 window.addEventListener('error',e=>log('uncaught',e.error||e.message));
 window.addEventListener('unhandledrejection',e=>log('promise',e.reason));
-/* Bumped to 2 when per-side exercises and deleted-built-in tracking arrived.
-   normalize() migrates v1 saves in place; nothing the user edited is touched. */
-/* v4: cardio entries, the Recently deleted list, per-exercise load step and
-   plate helper, and the lighter-session flag. Every v4 field has a default in
-   normalize(), so v3 data loads unchanged. */
-/* v5: two new muscles (serratus, rotator cuff). Built-in exercises that train
-   them secondarily get the new muscle added; nothing else a user set is
-   touched, because those keys could not exist before v5. */
-const STATE_VERSION=5;
 /* v3: routines became numbered cycles of 1 to 14 days. Older routines keep the
    same days in the same order and only change label, so no session loses its
    link to the day it was logged against. Fixed weekdays remain as an option. */
@@ -92,43 +79,7 @@ function storageTest(){try{localStorage.setItem('__il','1');localStorage.removeI
    and import, so this also protects against a half-written localStorage
    record. Anything unusable is dropped; the count is reported to the caller
    via normalize.dropped. */
-/* Upper limits for body entries. Past these a number is a typo, and an
-   unbounded one showed as "Infinity lb" and broke waist-to-height. */
-const BW_MAX_KG=400,BW_MIN_KG=20,MEAS_MAX_CM=300;
 /* One cardio or mobility entry. In a draft the minutes may still be blank. */
-/* Stable id for a record that arrived without one. It used to be random, so two
-   devices repairing the same record made two different ids and a merge kept
-   both. The position is included so identical records stay distinct. */
-function did(tag,obj,i){let j='';try{j=JSON.stringify(obj);}catch(e){j=String(i);}return tag+hashStr(j+'#'+i);}
-/* Ids go straight into HTML attributes and CSS selectors, so an imported
-   backup or a cloud document must not be able to smuggle markup in through
-   one. Every id the app makes itself fits this pattern. Anything else is
-   replaced by a hash of itself, which is the same on every device, so a
-   record and the references to it (an exercise and its logged sets) still
-   match after the repair. */
-// Names Object already has ("constructor", "__proto__") are out too: many
-// lookups key plain objects by id, and those would find the built-in instead.
-const okId=v=>typeof v==='string'&&/^[\w.:-]{1,100}$/.test(v)&&!(v in Object.prototype);
-function fixId(v){return okId(v)?v:'x'+hashStr(String(v));}
-const safeKey=k=>typeof k==='string'&&!/["'<>&`]/.test(k);
-/* Fields a newer build adds to a record, kept as they came (r43). Every record
-   is rebuilt from the fields this build knows, so a phone on an older build
-   used to drop anything newer whenever it loaded or synced the log: an r37
-   phone wiped a lift goal set on r38. A field this build does not know is now
-   kept, untouched and never read. Only plain JSON data passes, under a name
-   that cannot reach Object's prototype, at most EXTRA_KEYS fields and
-   EXTRA_MAX characters of them (names included) per record, so a hostile
-   backup or cloud row can neither run anything nor grow the log past what a
-   sync document holds. `known` names fields this build writes only when valid
-   (a load jump, a distance): an invalid one is dropped, not kept as if new.
-   With anything kept, the record takes the key order it came in: sync
-   documents are compared as written, key order included, so a newer build
-   that puts its field mid-record and this one that put it last would rewrite
-   each other's copy on every pull (found by the r43 review, the same loop as
-   r21 and r28's settings). A record with nothing unknown comes out exactly as
-   before, so its fingerprint and the sync are unchanged. */
-const EXTRA_MAX=2000,EXTRA_KEYS=20;
-const okExtraKey=k=>/^[A-Za-z][\w]{0,39}$/.test(k)&&!(k in Object.prototype);
 function keepExtra(src,out,known){
   if(!src||typeof src!=='object'||Array.isArray(src))return out;
   let room=EXTRA_MAX,n=0;
@@ -145,21 +96,6 @@ function keepExtra(src,out,known){
   return out;
 }
 keepExtra.n=0;
-const KNOWN_ITEM=new Set(['jump']),KNOWN_CARDIO=new Set(['dist']),KNOWN_MEAS=new Set(MEAS.map(x=>x[0]));
-/* A calibration set: the rep you would normally have stopped at, and the reps
-   you thought were left there. The set itself is logged to failure. */
-function cleanCal(c){
-  if(!c||typeof c!=='object')return null;
-  const at=numOr(c.at,NaN),pred=numOr(c.pred,NaN);
-  if(!isNum(at)||!isNum(pred)||at<1||pred<0)return null;
-  return {at:Math.min(Math.round(at),1000),pred:Math.min(Math.round(pred*2)/2,10)};
-}
-/* Pre-session check-in: 1 poor, 2 OK, 3 good, per question. */
-function cleanChk(c){
-  if(!c||typeof c!=='object')return null;const o={};
-  for(const k of ['sleep','energy','joints']){const v=Math.round(numOr(c[k],NaN));if(v>=1&&v<=3)o[k]=v;}
-  return Object.keys(o).length?o:null;
-}
 /* Distance (r30) is stored in km, shown in miles to someone logging in lb.
    Optional and absent unless given, so older entries keep their hashes. */
 const distU=()=>U()==='kg'?'km':'mi';
@@ -172,18 +108,6 @@ function cleanCardio(c,draft,i){
     when:CWHENL[c.when]?c.when:'solo',note:typeof c.note==='string'?c.note.slice(0,200):'',demo:!!c.demo,
     ...(isNum(dk)&&dk>0?{dist:Math.min(Math.round(dk*1000)/1000,1000)}:{})},KNOWN_CARDIO);
 }
-/* The load or reps target set when the session started. Only its numbers are
-   read, so only numbers survive. */
-function cleanTgt(t){
-  if(!t||typeof t!=='object'||(t.kind!=='load'&&t.kind!=='reps'))return null;
-  const o={kind:t.kind};
-  for(const k of ['w','repMin','total','n','prevBest']){if(!(k in t))continue;const v=t[k];o[k]=v==null?null:(isNum(numOr(v,NaN))?numOr(v,0):null);}
-  if(Array.isArray(t.rs))o.rs=t.rs.slice(0,30).map(v=>{const n=numOr(v,NaN);return isNum(n)&&n>=0?Math.min(n,1000):0;});
-  return o;
-}
-/* One logged session, every field checked. Also used on the copies kept in
-   Recently deleted, so a copy there can be compared with a live one. */
-const okSess=ss=>!!ss&&typeof ss==='object'&&isDate(ss.date)&&Array.isArray(ss.ex);
 function cleanSess(ss,si){
   return keepExtra(ss,{
     id:typeof ss.id==='string'?fixId(ss.id):did('s',ss,si),date:ss.date,
@@ -220,11 +144,6 @@ function cleanSess(ss,si){
     t:Number.isFinite(+ss.t)&&+ss.t>0?Math.round(+ss.t):undefined
   });
 }
-/* One order for sessions everywhere (r34, two-a-days): by date, then by the
-   time each started, then by id. Ordered by date alone, a morning and an
-   evening session on one day came out in whatever order the list held, and
-   after a sync by their random ids, so "last time" could be the morning. */
-const sessCmp=(a,b)=>a.date<b.date?-1:a.date>b.date?1:((a.t||0)-(b.t||0))||(a.id<b.id?-1:a.id>b.id?1:0);
 function normalize(s){
   const f=freshState();
   normalize.dropped=0;
@@ -555,7 +474,7 @@ function load(){
   }
   return normalize(null);
 }
-let state=load();
+setState(load());
 // Records the save held that this build could not read are gone at the next save (r45 review): say so in Diagnostics.
 if(normalize.dropped)log('load',new Error(`${normalize.dropped} damaged record${normalize.dropped===1?' was':'s were'} skipped when the save was read`));
 let saveT=null;
@@ -607,7 +526,6 @@ function saveStateNow(){
   if(!cls&&backupDue()){cls='warn';txt='Saved · backup due';}
   return {cls,txt};
 }
-const MENU_ICON='<svg class="mi" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="12" cy="8.4" r="3.7"/><path d="M4.8 19.6c1.3-3.7 4.1-5.4 7.2-5.4s5.9 1.7 7.2 5.4"/></svg>';
 function setSaveState(){const el=$('#saveState');if(!el)return;
   const {cls,txt}=saveStateNow();
   el.className='ssb'+(cls?' '+cls:'');

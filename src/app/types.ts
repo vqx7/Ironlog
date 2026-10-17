@@ -97,3 +97,46 @@ export interface Point {
     (space separated), equipment, flags (b bodyweight, r less common, s per side,
     t timed, a assisted) and a note. */
 export type LibRow = readonly [id: string, name: string, primary: MuscleKey, secondary: string, equip: string, flags: string, note: string];
+
+/** A set in the session in progress: the load as typed (null until typed or
+    taken from the grey load), the reps as typed (text while being typed),
+    what was called, and its marks. */
+export interface DraftSet {
+  w: number | null;
+  r: number | string | null;
+  rir?: number | string | null | undefined;
+  done?: boolean | undefined;
+  warm?: boolean | undefined;
+  drop?: boolean | undefined;
+}
+
+/** The target a block was given when the session started (cleanTgt keeps its numbers). */
+export interface Target {
+  kind: 'load' | 'reps';
+  w?: number | null | undefined;
+  repMin?: number | null | undefined;
+  total?: number | null | undefined;
+  n?: number | null | undefined;
+  rs?: number[] | undefined;
+  prevBest?: number | null | undefined;
+}
+
+/** One exercise in the session in progress: its plan, its rows, the target
+    and suggestion it started with, an adjustment made mid-session (r34), and
+    last time's sets for the Last column (r44). */
+export interface DraftBlock {
+  exId: string;
+  plan: { sets?: number | undefined; rest?: number | string | undefined; ss?: string | null | undefined };
+  sets: DraftSet[];
+  light?: boolean | undefined;
+  note?: string | undefined;
+  rr?: [number, number] | null | undefined;
+  cut?: boolean | undefined;
+  tgt?: Target | null | undefined;
+  target?: string | undefined;
+  adj?: { at: number; w: number } | null | undefined;
+  sw?: number | null | undefined;
+  prev?: string[] | undefined;
+  prevOff?: boolean | undefined;
+  last?: string | undefined;
+}

@@ -416,3 +416,17 @@ export const PROF_NOT_HEAVY: ReadonlySet<string> = new Set(['reverseHyper', 'goo
 export function profHeavy(ex: Pick<Exercise, 'id' | 'name' | 'primary' | 'equip' | 'bw' | 'timed' | 'kind'> | null | undefined): boolean {
   return !!ex && !ex.timed && !ex.bw && isCompound(ex) && !noE1(ex) && PROF_EQUIP.has(ex.equip) && !PROF_NOT_HEAVY.has(ex.id);
 }
+
+/* ---------- finding exercises (phase 3a, r51; moved unchanged, tests/moved.js holds them to r50's code) ---------- */
+
+export const COMMON_TIP = 'Most common: the lifts in the top 25 by sets logged, overall, for men, or for women, among over 700,000 StrengthLog users (2025). Less common: useful lifts many gyms or programs skip, a judgment.';
+
+/** Most common lifts first, the rest after, each in the order given. */
+export const commonFirst = <E extends Pick<Exercise, 'id' | 'custom' | 'rare'>>(list: readonly E[]): E[] => [...list.filter(isCommon), ...list.filter(e => !isCommon(e))];
+
+/* Search by words, ignoring hyphens, spaces and case (r31): "t bar row" and
+   "tbar" did not find Landmine T-Bar Row, so it looked missing. */
+export function nameMatch(name: unknown, q: unknown): boolean {
+  const ws = String(q || '').toLowerCase().split(/[^a-z0-9]+/).filter(Boolean); if (!ws.length) return true;
+  const n = String(name || '').toLowerCase().replace(/[^a-z0-9]/g, ''); return ws.every(w => n.includes(w));
+}

@@ -75,10 +75,6 @@ function itemHTML(R,di,it,ii){
     ${ex.note?`<p class="small muted">${esc(ex.note)}</p>`:''}</div>`:''}</li>`;
 }
 function bLibItems(){return commonFirst(libFiltered(ui.bLibQ,ui.bLibM,'',false)).map(e=>`<li class="it" data-ex="${e.id}"><div class="ir"><span class="grip" aria-hidden="true">⠿</span><div class="imain"><b>${esc(e.name)}</b><span>${esc(ML[e.primary])}, ${esc(EQL[e.equip]||e.equip)}${isCommon(e)?', common':e.rare?', less common':''}</span></div><button class="ib" aria-label="Add ${esc(e.name)}" data-act="libAdd" data-ex="${e.id}">+</button></div></li>`).join('');}
-const commonFirst=list=>[...list.filter(isCommon),...list.filter(e=>!isCommon(e))];
-/* Search by words, ignoring hyphens, spaces and case (r31): "t bar row" and
-   "tbar" did not find Landmine T-Bar Row, so it looked missing. */
-function nameMatch(name,q){const ws=String(q||'').toLowerCase().split(/[^a-z0-9]+/).filter(Boolean);if(!ws.length)return true;const n=String(name||'').toLowerCase().replace(/[^a-z0-9]/g,'');return ws.every(w=>n.includes(w));}
 function libFiltered(q,m,e,kind){
   q=(q||'').toLowerCase().trim();
   return state.exercises.filter(x=>!x.archived&&(!q||nameMatch(x.name,q))&&(!m||x.primary===m||x.secondary.includes(m))&&(!e||x.equip===e)&&(!kind||(kind==='rare'?x.rare:isCommon(x)))).sort((a,b)=>a.name.localeCompare(b.name));
@@ -149,7 +145,6 @@ function nextDayWith(exId,R){
   for(let k=0;k<n;k++){const d=R.days[(start+k)%n];if(d&&!d.rest&&d.items.some(it=>it.exId===exId))return d;}
   return null;
 }
-function goalOk(ex){return !!ex&&!ex.timed&&!ex.assist;}
 function goalState(exId){
   const ex=EX(exId);const g=ex&&ex.goal;if(!g||!goalOk(ex))return null;
   const I=IDX();const exps=I.byEx[exId]||[];const bw=bwRefLoad(ex);
@@ -161,11 +156,6 @@ function goalState(exId){
   const pct=!noBw&&need&&cur?Math.min(100,cur/need*100):null;
   return {g,hit,pct,cur,need,noBw};
 }
-/* The load still to add for the goal's reps: the goal's load less what the
-   best estimate says is possible for those reps now (e1inv, the inverse of
-   the estimate). The gap between the two estimates themselves overstated it
-   by up to two thirds (review of r41: 35 lb shown for a 26 lb gap). */
-function goalGap(s){return s.g.w-e1inv(s.cur,s.g.r);}
 function goalWords(ex,g){return `${loadLabel(ex,g.w)}${ex.bw?'':' '+U()}${loadNote(ex)} × ${g.r}`;}
 function goalLine(exId){
   const ex=EX(exId);if(!goalOk(ex))return '';
@@ -369,12 +359,7 @@ const k0=ws=>ws===weekStart(today())?'This wk':fmtDate(ws);
    Line charts (a lift's strength, bodyweight) use real dates on the x axis,
    so gaps between sessions look like gaps, and they leave room ahead in
    the same way until the data fills it. */
-/* 'base' is the chart's own first window (8 weeks, 12 for the grid). */
-const RANGES=[['base',0],['6m',26],['all',Infinity]];
-function firstDate(list){let f=null;for(const x of list)if(x&&isDate(x.date)&&(!f||x.date<f))f=x.date;return f;}
-function weeksSpan(first){return first?Math.round(daysBetween(weekStart(first),weekStart(today()))/7)+1:0;}
 function rangeKey(id,def){const k=(ui.rng||{})[id];return RANGES.some(r=>r[0]===k)?k:(def||'base');}
-function rangeWeeks(k,base){return k==='all'?Infinity:k==='6m'?26:base;}
 function weekWindow(first,id,base){
   base=base||8;const cur=weekStart(today());if(!first)return [];
   const fw=weekStart(first);const n=weeksSpan(first);
@@ -410,11 +395,6 @@ function dayAxis(base,win){
    the chart is always drawn from real sets (V, r29: a blank card read as the
    chart being gone). With no sessions at all it still draws, empty, with the
    target ring. The chart and the table use this one source. */
-/* The weeks the radar averages (r31.2, V: one week says little about
-   balance): the last 2, 4 or 8 full weeks, 4 unless changed, kept per
-   device. Fewer full weeks logged than chosen: those, said so; none yet:
-   this week so far, said so. This week on its own is Volume's This week. */
-const REGION_WKS=[[2,'2 wk'],[4,'4 wk'],[8,'8 wk']];
 const REGION_KEY=KEY+'.regionWk';
 function regionWk(){let v=ui.regionWk!=null?ui.regionWk:null;if(v==null)try{v=localStorage.getItem(REGION_KEY);}catch(e){/* private mode: the default */}const n=v==null?4:+v;return REGION_WKS.some(x=>x[0]===n)?n:4;}
 function regionSrc(){

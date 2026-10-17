@@ -44,7 +44,6 @@ function recovery(m,at){
   if(!recent)return {r:1,days:null,sets:0,need:0};
   return {r:worst.r,days:recent.days,sets:recent.sets,need:worst.need};
 }
-function agoTxt(k){return k===0?'today':k===1?'yesterday':`${k} days ago`;}
 function lastHitTxt(m){const rc=recovery(m);return rc.days==null?'not trained hard in 3 weeks':`last hard ${agoTxt(rc.days)}`;}
 /* Hard sets per muscle a routine day plans, direct only (for the headline
    muscles) and direct plus half for secondaries (for the scoring). */
@@ -239,7 +238,6 @@ function pickerBody(m){
    History; today or a day ahead opens Today on the workout planned for it.
    Numbered cycles are projected forward from where you are in the rotation,
    the same rule Today uses, so the week shows what is coming. */
-const WD2=['Mo','Tu','We','Th','Fr','Sa','Su'];
 /* The cycle day that falls on each date from today on. After a session the
    calendar walks the cycle one day per day, rest days included; a missed day
    waits (Today offers the next training day, whatever the date). */
@@ -287,9 +285,6 @@ function weekBar(){
   return h;
 }
 function renderWeekBar(){const el=document.getElementById('wkbar');if(!el)return;try{el.innerHTML=weekBar();}catch(e){log('weekbar',e);el.innerHTML='';}}
-/* Nothing logged yet (r34, V): a dash, not a row of zeros. A count of 0
-   once there is a log is real and stays a number. */
-const NIL='–';
 function noLog(){return !state.sessions.length;}
 const nz=v=>noLog()?NIL:v;
 /* The week at a glance, beside the day's name: sessions done against the
@@ -444,21 +439,6 @@ function newBlock(exId,plan,opts){
   // still on the suggestion from one the lifter typed (refreshBlock).
   return {bid:uid(),exId,plan:{...plan},note:'',lastNote:lastNoteOf(exId,opts&&opts.before),inj:sg.inj||null,hint:sg.text,last:sg.last,prev:sg.prev||undefined,prevOff:sg.prevOff||undefined,target:sg.target,tgt:sg.tgt,easier:sg.easier||null,lastR:sg.lastR,basis:sg.basis||undefined,sw:sg.w==null?null:sg.w,sets:Array.from({length:+plan.sets||3},()=>({w:fillLoads()?sg.w:null,r:null,rir:null,warm:false,drop:false,done:false}))};
 }
-/* The Last column (r44, V: "what I did last time next to what I'm about to
-   do"). b.prev is the sets at the working load of the session the Last line
-   names, the same sets the grey reps repeat; row n of the working sets sits
-   beside set n of them. The line above the sets then names only the session
-   ("Last (Oct 10, trimmed)"), unless a top single or a pyramid's other
-   loads were left out of the column (b.prevOff): then it keeps every set. A
-   block from before r44 has no prev and keeps the whole line. */
-/* The same lift again later in the session (r45): last time's sets are one
-   merged list (sameExOnce), and how they were split between the blocks is
-   not recorded, so the column cannot say which set this row repeats. The
-   later block shows dashes and the whole Last line instead of a wrong row
-   (the r45 spec review). Keyed like sameExOnce: the lift and a lighter block. */
-function lastDup(d,bi){const b=d.ex[bi];return !!b&&d.ex.slice(0,bi).some(x=>x.exId===b.exId&&!!x.light===!!b.light);}
-function lastCell(b,i,dup){return !dup&&Array.isArray(b.prev)&&i>=0&&i<b.prev.length?b.prev[i]:'';}
-function lastHead(b,dup){const t=b.last||'';if(dup||!Array.isArray(b.prev)||!b.prev.length||b.prevOff)return t;const k=t.indexOf('):');return k>0?t.slice(0,k+1):t;}
 /* ---------- PROFILE (r44, item 271, with 43 and 44) ----------
    An optional short profile: goal, experience, days a week and up to two
    focus muscles. V's answers (2026-10-13): it sets defaults and new plan
@@ -466,19 +446,6 @@ function lastHead(b,dup){const t=b.last||'';if(dup||!Array.isArray(b.prev)||!b.p
    lifter typed stay as typed, and only the app's own targets move. With no
    profile, or with Size, every number is exactly what it was before r44,
    because the app's defaults were already set for size. */
-/* The profile's choices and focus numbers are in the data part (11): normalize
-   reads them while the save loads, before this part runs. */
-/* Built in one key order, absent keys left out, so a save hashes the same
-   every time and a phone without the profile syncs nothing new. */
-function profClean(p){
-  if(!p||typeof p!=='object'||Array.isArray(p))return null;const o={};
-  if(PROF_GOALS.some(g=>g[0]===p.goal))o.goal=p.goal;
-  if(PROF_EXP.some(g=>g[0]===p.exp))o.exp=p.exp;
-  if(PROF_DAYS.includes(p.days))o.days=p.days;
-  const f=Array.isArray(p.focus)?[...new Set(p.focus.filter(m=>typeof m==='string'&&MK.includes(m)&&!TRACK_ONLY.has(m)))].slice(0,FOCUS_MAX):[];
-  if(f.length)o.focus=f;
-  return Object.keys(o).length?o:null;
-}
 function prof(){return state.settings.profile||{};}
 /* What a profile changes in a plan item (the rules Apply and new items share):
    - Strength or Both, past the first year: heavy compounds (`profHeavy`) at
@@ -544,12 +511,6 @@ function profApplyList(R){
 }
 // What Apply changes, said in its question.
 function profApplyWhat(){const p=prof();return p.exp==='new'?'Reps in reserve go up to 3 on compounds and 2 on isolation; rep ranges stay.':p.goal==='both'?'Heavy compounds go to 5 to 8 reps, 2 in reserve, and at least 3 minutes\' rest.':'Heavy compounds go to 3 to 6 reps, 2 in reserve, and at least 3 minutes\' rest.';}
-/* Strength focus in Pick for me (item 44): with Strength as the goal, a
-   barbell or machine compound you have logged, not trained for 5 days or
-   more and recovered, is favoured when it is stalled or near its best
-   (within 3%, the app's threshold for a real change). The ranking without
-   a Strength goal is unchanged. */
-const STR_REST=5,STR_NEAR=0.97;
 function strengthPick(e,st,rec,at){
   if(prof().goal!=='strength'||!profHeavy(e)||!st||!st.last||rec.r<1)return null;
   if(!(daysOff(e.id,{before:at})>=STR_REST))return null;
@@ -573,7 +534,6 @@ function roundLoad(kg,down){
    (open, spin, confirm on every set). The cell shows the value; tapping it
    opens the strip under that set, and ticking a set done with no RIR yet
    opens it by itself, so logging effort is one tap. */
-const RIR_OPTS=['0','1','2','3','4','5'];
 /* Effort in half points or as RPE (r33, item 206): a setting for how effort
    is entered and shown. What is stored is always RIR (RPE 8 is RIR 2, RPE
    8.5 is RIR 1.5), so every estimate, hard-set count and target reads it
@@ -637,18 +597,6 @@ function cardioDraftCard(d){
   return sec({sk:'logger:cardio',title:'Cardio and mobility',sub:n?`${n} entr${n===1?'y':'ies'}${mins?`, ${mins} min`:''}`:'optional',body:`${rows}
   <div class="row" style="margin-top:${n?10:0}px"><button class="btn sm" data-act="cDraftAdd" data-when="pre">+ Before lifting</button><button class="btn sm" data-act="cDraftAdd" data-when="post">+ After lifting</button></div>`});
 }
-/* A line said on every exercise is said once (r34.2, from the review: the
-   first-time paragraph on all 8 exercises, "Half the usual sets, nothing to
-   beat." on each of a lighter day's). Later exercises keep what is theirs:
-   the load and the reps. */
-const HINT_ONCE=['Half the usual sets, nothing to beat.',"Next time's load is worked out from this.",'If the first set is off, change the load.','Next time picks up from here.'];
-function hintOnce(t,seen){
-  if(!t)return '';
-  const m=t.match(/^First time: pick a load you think you could lift about (\d+) times, erring light\. Do (.+?), (?:stopping with about \d+ still in you|to the last rep you can do well)\. Next time's load is worked out from this\.$/);
-  if(m){if(seen.has('first'))return `First time: a load you could lift about ${m[1]} times; do ${m[2]}.`;seen.add('first');return t;}
-  let out=t;for(const x of HINT_ONCE)if(out.includes(x)){if(seen.has(x))out=out.replace(' '+x,'').replace(x,'');else seen.add(x);}
-  return out.trim();
-}
 function viewLogger(){
   // Warm-ups are not counted, the same as the progress bar under it.
   const d=state.draft;const hintSeen=new Set();const doneN=d.ex.reduce((a,b)=>a+b.sets.filter(s=>s.done&&!s.warm).length,0);
@@ -707,12 +655,6 @@ function viewLogger(){
    nothing to weight lifted, and had no estimate, with no weigh-in). Saved
    like a weigh-in on Today; Not now is kept per device. */
 const BWASK_KEY=KEY+'.bwAsk';
-/* Weigh-ins on a cadence (r34, V: at the start, then every two weeks or so,
-   the time frame the lifter's to set). Bodyweight lifts use the latest
-   weigh-in, so an old one keeps counting until a new one comes in. Every 7,
-   14 (the default) or 30 days, or off (Settings > General); Later waits 2
-   days on this device. A new install is asked on the Set up page instead. */
-const BW_EVERY=[[7,'Every week'],[14,'Every 2 weeks'],[30,'Every month'],[0,'Off']];
 const BWSNOOZE_KEY=KEY+'.bwSnooze';
 function bwEvery(){const v=state.settings.bwEvery;return v===0||v===7||v===30?v:14;}
 function bwLast(){let b=null;for(const x of state.bodyweights)if(!b||x.date>b.date)b=x;return b;}

@@ -127,8 +127,6 @@ function acctBar(){
   try{if(localStorage.getItem(OB_ACCT)==='later'&&!state.sessions.some(x=>!x.demo))return '';}catch(e){/* show it */}
   return `<div class="acctbar" id="acctBar"><span class="small"><b>Only on this phone.</b><span class="ab-more"> Sync it with an account.</span></span><button class="btn sm primary" data-act="acctOpen" data-mode="signup">Set up sync</button><button class="ib" aria-label="Not now" data-act="acctLater">✕</button></div>`;
 }
-/* The greeting on Today, when a name is set in Settings > General. */
-function greeting(){const h=new Date().getHours();return h<5?'Evening':h<12?'Morning':h<17?'Afternoon':'Evening';}
 /* ---------- install (the installable build opened in a browser) ----------
    Android and desktop Chrome offer a real install: the build catches that
    offer and Install uses it. An iPhone has no install button for websites
@@ -184,8 +182,6 @@ function installBar(){
   const ios=/^ios/.test(installKind());
   return `<div class="acctbar" id="installBar"><span class="small"><b>Get the app.</b>${ios?'':`<span class="ab-more"> Install ${APP_NAME} on your home screen.</span>`}</span><button class="btn sm primary" data-act="install">${ios?'Add to Home Screen':'Install'}</button><button class="ib" aria-label="Not now" data-act="installLater">✕</button></div>`;
 }
-const SHARE_ICON='<svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12M8 7l4-4 4 4"/><path d="M6 11H5a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-8a1 1 0 0 0-1-1h-1"/></svg>';
-const ADD_ICON='<svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="4"/><path d="M12 8v8M8 12h8"/></svg>';
 /* Where the button is, drawn: Safari 26's compact bar (⋯ beside the
    address), older Safari's bottom toolbar (Share in the middle), Chrome's
    address bar (Share at its right). The ring marks the one to tap. */
@@ -365,20 +361,7 @@ function welcomeCard(){
 /* Injuries: one line per flagged muscle. Exercises that load it are marked in
    every session, their progression target is paused, and the muscle is left
    out of "below target" reads until the flag is cleared. */
-/* Today's date without the comma (V, r42): "Mon Oct 12". Built from two
-   parts so every locale keeps its own day and month words. */
-function todayEye(){const d=new Date();return d.toLocaleDateString(undefined,{weekday:'short'})+' '+d.toLocaleDateString(undefined,{month:'short',day:'numeric'});}
 /* "~82 min", flagged when it runs past the lifting budget in Settings. */
-/* Rounded to 5 minutes, as in the routine picker (r32, from the third review:
-   the picker said 55 to 75 min and Today "about 77 min" for the same day),
-   and so is the time left in a session; under 10 minutes, to the minute.
-   The budget is compared before rounding. */
-const min5=m=>m>=10?Math.round(m/5)*5:Math.max(1,Math.round(m));
-/* Every estimated duration on screen is written here and nowhere else (V,
-   r42: "~75 min", never "about"). Callers round first, as each did before;
-   this only words the number. tests/hygiene.js fails on the wording typed
-   anywhere else in the source. */
-const estMin=n=>`~${n} min`;
 function minTxt(m){const b=state.settings.timeBudget;const r=min5(m);return b&&m>b?`<span class="overb">${estMin(r)}, over your ${b} min budget</span>`:estMin(r);}
 function injuryCard(){
   const inj=state.injuries||[];if(!inj.length)return '';
@@ -405,7 +388,6 @@ function planHard(it){return state.settings.rirMode==='off'||!(+it.rir>3);}
 // A planned set at RIR 4 to 5 counts half with the setting on (r40), as logged ones do.
 function planCredit(it){return planHard(it)?1:rirHalfOn()&&+it.rir<=5?0.5:0;}
 function planSetsPerWeek(R,deload){const n=R.days.reduce((a,d)=>a+(d.rest?0:d.items.reduce((x,it)=>x+planCredit(it)*(deload?Math.max(1,Math.ceil(+it.sets/2)):+it.sets),0)),0);return R.schedule==='weekly'?n:Math.round(n*weekFactor(R));}
-function plannedPerWeek(R){return R.schedule==='weekly'?trainDaysOf(R):Math.round(trainDaysOf(R)*weekFactor(R));}
 /* Consecutive weeks in which you trained at least as many days as the routine
    plans. The current week joins the streak once it is met, and does not break
    it before it is over. */
@@ -556,8 +538,6 @@ function homeTiles(){
   <button class="tile" data-act="goDash" data-sec="bests" aria-label="${noLog()?'No PRs yet':pr.length+' PRs in the last 4 weeks'}. Open all-time bests"><div class="tv">${nz(pr.length)}</div><div class="tl">PRs, last 4 weeks</div><div class="ts">${last?`Latest: ${esc(exName(last.exId))}, ${ago===0?'today':ago===1?'yesterday':ago+' days ago'}`:'None yet'}</div></button>
   </div>`;
 }
-// An estimate is said as a load only where it is a load someone could put on the bar (a 1RM is shown for these lifts).
-function estInLoad(ex){return isCompound(ex)&&!ex.bw&&!noE1(ex)&&loadMode(ex)==='total';}
 /* A lift's change said in what was lifted, from the two sessions its trend
    compares (trendEnds). On an estInLoad lift whose two sessions both have a
    1RM estimate it is the change in that estimate, the number its chart and

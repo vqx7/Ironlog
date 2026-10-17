@@ -117,3 +117,10 @@ export function hashStr(str: string): string {
   h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507) ^ Math.imul(h1 ^ (h1 >>> 13), 3266489909);
   return (h2 >>> 0).toString(36) + (h1 >>> 0).toString(36);
 }
+
+/* ---------- seeded random numbers ---------- */
+
+/** Mulberry32: random numbers from a seed, the same series every time for the same seed (the demo log). */
+export function mulberry(a: number): () => number {
+  return function () { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; };
+}

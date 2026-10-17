@@ -11,7 +11,6 @@
    nears the 256 KB cap and logging a set rewrites only the small draft doc.
    Each document stores its chunk as a JSON string with a timestamp. Only chunks
    whose content changed are written, one at a time, in order. */
-const cloud={on:false,db:null,uid:null,status:'local',last:null,meta:{},editAt:{},localH:{},devId:null,pendAt:null,chain:Promise.resolve(),t:null,retry:0,dirtyAt:0,lastPull:0,err:null};
 const SYNC_KEY=KEY+'.sync';
 try{const m=JSON.parse(localStorage.getItem(SYNC_KEY)||'null');if(m&&typeof m==='object'){cloud.meta=m.meta&&typeof m.meta==='object'?m.meta:{};cloud.last=m.last||null;cloud.editAt=m.editAt&&typeof m.editAt==='object'?m.editAt:{};cloud.devId=typeof m.devId==='string'?m.devId:null;cloud.acct=typeof m.acct==='string'?m.acct:null;}}catch(e){log('sync-meta',e);}
 if(!cloud.devId)cloud.devId='dev-'+uid();
@@ -21,30 +20,6 @@ if(!cloud.devId)cloud.devId='dev-'+uid();
    instead of the first flush writing an empty state over it. */
 if(!bootHadLocal){cloud.meta={};cloud.editAt={};}
 function saveMeta(){try{localStorage.setItem(SYNC_KEY,JSON.stringify({meta:cloud.meta,last:cloud.last,editAt:cloud.editAt,devId:cloud.devId,acct:cloud.acct||undefined}));}catch(e){log('sync-meta',e);}}
-const chunkOf=date=>`s-${date.slice(0,7)}-${+date.slice(8,10)<=15?1:2}`;
-const bySess=sessCmp;
-/* Body data (item 19): bodyweights and tape measurements sync in one document
-   per year, b-YYYY, instead of inside core, where years of daily weigh-ins
-   would have passed the size cap and stopped core (routines, settings) from
-   syncing. Builds before r22 read only core, draft and s- documents and never
-   touch a b- document, so they cannot delete one; they still write weigh-ins
-   into core, and those are picked up (legacyBody) and moved on the next sync. */
-const bodyChunkOf=date=>'b-'+String(date||'').slice(0,4);
-function chunksOf(st){
-  /* Core still carries the two keys, always empty, in the place r21 wrote
-     them. An older build then reads a core shaped like its own and writes it
-     back unchanged, instead of both builds rewriting core on every sync. */
-  const out={core:{version:st.version,settings:st.settings,exercises:st.exercises,routines:st.routines,activeRoutineId:st.activeRoutineId,bodyweights:[],measurements:[],deloadWeek:st.deloadWeek||null,injuries:st.injuries||[],trash:st.trash||[]},draft:{draft:st.draft||null}};
-  for(const k of ['bodyweights','measurements'])for(const x of (st[k]||[])){const c=out[bodyChunkOf(x.date)]||(out[bodyChunkOf(x.date)]={});(c[k]||(c[k]=[])).push(x);}
-  for(const id in out)if(id.startsWith('b-'))for(const k in out[id])out[id][k].sort(bySess);
-  for(const x of st.sessions){const k=chunkOf(x.date);(out[k]||(out[k]={sessions:[]})).sessions.push(x);}
-  // Cardio shares the half-month documents. The key is only written when a
-  // chunk has cardio, so documents without any are byte-identical to before.
-  for(const x of (st.cardio||[])){const k=chunkOf(x.date);const c=out[k]||(out[k]={sessions:[]});(c.cardio||(c.cardio=[])).push(x);}
-  for(const k in out){if(out[k].sessions)out[k].sessions.sort(bySess);if(out[k].cardio)out[k].cardio.sort(bySess);}
-  return out;
-}
-const emptyChunk=id=>id==='core'?null:id==='draft'?{draft:null}:id.startsWith('b-')?{}:{sessions:[]};
 function assemble(parts){
   const core=parts.core||{};const sessions=[],cardio=[],bw=[],ms=[];
   for(const k in parts)if(k.startsWith('s-')&&parts[k]){if(Array.isArray(parts[k].sessions))sessions.push(...parts[k].sessions);if(Array.isArray(parts[k].cardio))cardio.push(...parts[k].cardio);}
@@ -60,17 +35,13 @@ function assemble(parts){
    device that updated first stays deleted when this one updates. Read before
    any document is processed, since syncing core replaces that base. */
 function legacyBodyBase(){const a=cloud.meta.core&&cloud.meta.core.b&&cloud.meta.core.b.a;if(!a||!(a.bodyweights||a.measurements))return null;return {a:{bodyweights:a.bodyweights||{},measurements:a.measurements||{}}};}
-const baseFor=(id,m,legB)=>m&&m.b?m.b:id.startsWith('b-')?legB:null;
-function legacyBody(raw){return {bodyweights:raw&&Array.isArray(raw.bodyweights)?raw.bodyweights:[],measurements:raw&&Array.isArray(raw.measurements)?raw.measurements:[]};}
 /* Adds them to the log without replacing anything already here; the next
    sync writes them into their body documents. Returns whether any were new. */
 function absorbLegacy(L){
   const add=k=>{const have=new Set((state[k]||[]).map(x=>x&&x.id));return (L[k]||[]).filter(x=>x&&typeof x.id==='string'&&!have.has(x.id));};
   const bw=add('bodyweights'),ms=add('measurements');if(!bw.length&&!ms.length)return false;
-  state=normalize({...state,bodyweights:state.bodyweights.concat(bw),measurements:state.measurements.concat(ms)});return true;
+  setState(normalize({...state,bodyweights:state.bodyweights.concat(bw),measurements:state.measurements.concat(ms)}));return true;
 }
-function unionById(a,b){const m=new Map();for(const x of b||[])if(x&&x.id)m.set(x.id,x);for(const x of a||[])if(x&&x.id)m.set(x.id,x);return [...m.values()];}
-const realCount=st=>st.sessions.filter(x=>!x.demo).length;
 const cq=fn=>(cloud.chain=cloud.chain.then(fn,fn));
 function withTimeout(pr,ms){return Promise.race([pr,new Promise((_,rej)=>setTimeout(()=>rej({code:'timeout'}),ms))]);}
 function setCloud(st,err){cloud.status=st;cloud.err=err||null;setSaveState();const el=document.getElementById('syncInfo');if(el)el.innerHTML=syncInfo();}
@@ -91,19 +62,6 @@ function cloudFail(e){
    keeping data is the recoverable mistake. Without a base (a document last
    synced by an older build) nothing can be judged deleted, so both sides'
    records are kept, which is how sync behaved before. */
-/* Record fingerprint that ignores key order. A record saved straight from the
-   logger and the same record after normalize() list their fields in a
-   different order; a plain JSON hash called that an edit, and a deleted
-   session could come back. */
-function canon(x){
-  if(x===undefined)return 'null';
-  if(x===null||typeof x!=='object')return JSON.stringify(x);
-  if(Array.isArray(x))return '['+x.map(canon).join(',')+']';
-  return '{'+Object.keys(x).filter(k=>x[k]!==undefined).sort().map(k=>JSON.stringify(k)+':'+canon(x[k])).join(',')+'}';
-}
-const Hx=x=>hashStr(canon(x));
-const CORE_ARR=['routines','exercises','injuries','trash'];
-const CORE_FIELDS=['version','activeRoutineId','deloadWeek'];
 /* Every comparison runs on the normalized form of a document. A record saved
    straight from the logger lacks defaults that normalize() adds later (demo,
    light), so without this the same session read as edited and a deletion on
@@ -124,35 +82,6 @@ function baseOf(id,data){
   if(id==='draft')return {d:Hx(data.draft)};
   if(id.startsWith('b-'))return {a:{bodyweights:hl(data.bodyweights),measurements:hl(data.measurements)}};
   return {a:{sessions:hl(data.sessions),cardio:hl(data.cardio)}};
-}
-function merge3List(base,l,r,remoteWins,stat){
-  const known=!!base;base=base||{};
-  const L=new Map(),Rm=new Map();
-  for(const x of l||[])if(x&&typeof x.id==='string')L.set(x.id,x);
-  for(const x of r||[])if(x&&typeof x.id==='string')Rm.set(x.id,x);
-  const out=[];
-  for(const id of [...L.keys(),...[...Rm.keys()].filter(k=>!L.has(k))]){
-    const a=L.get(id),b=Rm.get(id),bh=known?base[id]:'?';
-    const ah=a?Hx(a):undefined,rh=b?Hx(b):undefined;
-    if(ah===rh){out.push(a);continue;}
-    if(!a||!b){
-      // Present on one side only. Deleted by the other side if the present copy
-      // is exactly the base; otherwise it is new or edited there, so keep it.
-      const p=a||b,ph=a?ah:rh;
-      if(known&&ph===bh)continue;
-      out.push(p);continue;
-    }
-    if(ah===bh){out.push(b);continue;}
-    if(rh===bh){out.push(a);continue;}
-    stat.conflicts++;out.push(remoteWins?b:a);
-  }
-  return out;
-}
-function merge3Val(bh,a,b,remoteWins,stat){
-  const ah=Hx(a),rh=Hx(b);
-  if(ah===rh||rh===bh)return a;
-  if(ah===bh)return b;
-  stat.conflicts++;return remoteWins?b:a;
 }
 function mergeChunk(id,base,local,remote,remoteWins,stat){
   local=normChunk(id,local||emptyChunk(id))||{};remote=normChunk(id,remote||emptyChunk(id))||{};
@@ -182,12 +111,11 @@ function mergeChunk(id,base,local,remote,remoteWins,stat){
 }
 /* Put one merged document back into state. */
 function applyChunk(id,data){
-  if(id==='core'){const c=data||{};state=normalize({...state,version:c.version,settings:c.settings,exercises:c.exercises,routines:c.routines,activeRoutineId:c.activeRoutineId,deloadWeek:c.deloadWeek,injuries:c.injuries,trash:c.trash});}
-  else if(id.startsWith('b-')){const c=data||{};state=normalize({...state,bodyweights:state.bodyweights.filter(q=>bodyChunkOf(q.date)!==id).concat(c.bodyweights||[]),measurements:state.measurements.filter(q=>bodyChunkOf(q.date)!==id).concat(c.measurements||[])});}
-  else if(id==='draft')state=normalize({...state,draft:data?data.draft:null});
-  else state=normalize({...state,sessions:state.sessions.filter(q=>chunkOf(q.date)!==id).concat((data&&data.sessions)||[]),cardio:(state.cardio||[]).filter(q=>chunkOf(q.date)!==id).concat((data&&data.cardio)||[])});
+  if(id==='core'){const c=data||{};setState(normalize({...state,version:c.version,settings:c.settings,exercises:c.exercises,routines:c.routines,activeRoutineId:c.activeRoutineId,deloadWeek:c.deloadWeek,injuries:c.injuries,trash:c.trash}));}
+  else if(id.startsWith('b-')){const c=data||{};setState(normalize({...state,bodyweights:state.bodyweights.filter(q=>bodyChunkOf(q.date)!==id).concat(c.bodyweights||[]),measurements:state.measurements.filter(q=>bodyChunkOf(q.date)!==id).concat(c.measurements||[])}));}
+  else if(id==='draft')setState(normalize({...state,draft:data?data.draft:null}));
+  else setState(normalize({...state,sessions:state.sessions.filter(q=>chunkOf(q.date)!==id).concat((data&&data.sessions)||[]),cardio:(state.cardio||[]).filter(q=>chunkOf(q.date)!==id).concat((data&&data.cardio)||[])}));
 }
-const isChunkId=id=>id==='core'||id==='draft'||/^s-\d{4}-\d{2}-[12]$/.test(id)||/^b-\d{4}$/.test(id);
 /* When each document last changed on this device. It decides conflicts, so it
    is tracked per document: an edit to a session no longer makes an older
    routine edit look new. Kept across reloads. */
@@ -342,7 +270,7 @@ async function cloudPull(){
          routines are combined by id (that side's copy wins a clash), so a
          custom exercise or routine made on the other device is not lost and
          its logged sets keep their name. */
-      state=normalize({...base,exercises:unionById(base.exercises,other.exercises),routines:unionById(base.routines,other.routines),sessions:unionById(state.sessions,rState.sessions),bodyweights:unionById(state.bodyweights,rState.bodyweights),measurements:unionById(state.measurements,rState.measurements),cardio:unionById(state.cardio,rState.cardio),trash:unionById(state.trash,rState.trash),draft:state.draft||rState.draft});
+      setState(normalize({...base,exercises:unionById(base.exercises,other.exercises),routines:unionById(base.routines,other.routines),sessions:unionById(state.sessions,rState.sessions),bodyweights:unionById(state.bodyweights,rState.bodyweights),measurements:unionById(state.measurements,rState.measurements),cardio:unionById(state.cardio,rState.cardio),trash:unionById(state.trash,rState.trash),draft:state.draft||rState.draft}));
       // The cloud copy becomes the agreed base, so the merged result is what
       // the flush writes, rather than being merged a second time.
       for(const id of rids){cloud.meta[id]={h:remote[id].h,at:remote[id].at,b:baseOf(id,remote[id].data)};cloud.editAt[id]=Date.now();}
@@ -365,7 +293,7 @@ async function cloudPull(){
     if(!any)parts=null;
   }
   const dr0=state.draft;
-  if(parts){state=assemble(parts);absorbLegacy(leg);}
+  if(parts){setState(assemble(parts));absorbLegacy(leg);}
   if(parts||merged){
     invalidate();try{localStorage.setItem(KEY,JSON.stringify(state));}catch(e){log('storage',e);}
     for(const id of adoptedIds){

@@ -26,7 +26,6 @@ function pastDraft(date,di){
    (r30: Cancel on an untouched edit asked "Discard this session?"). Kept in
    memory per draft; after a reload the edit asks as before. */
 const editFp0=new Map();
-function editFp(d){return JSON.stringify({date:d.date,notes:(d.notes||'').trim(),ex:d.ex.map(b=>[b.exId,(b.note||'').trim(),b.sets.map(x=>[x.w==null?null:+x.w,x.r==null||x.r===''?null:+x.r,x.rir==null||x.rir===''?null:+x.rir,!!x.done,!!x.warm,!!x.drop])]),c:(d.cardio||[]).map(c=>[c.kind,c.min,c.hr,c.dist||null])});}
 function draftEntered(d){
   if(!d)return false;
   // A typed load counts too (r25): with grey loads, a load in the row is the lifter's.
@@ -42,7 +41,6 @@ function draftEntered(d){
    Consistency square. The pull-down on the week bar (r25) is gone: the
    calendar rose from the bottom of the screen while the finger pulled down
    from the top. */
-const MONTHS=['January','February','March','April','May','June','July','August','September','October','November','December'];
 function calBounds(){
   const t=today().slice(0,7);const f=firstDate([...state.sessions,...state.cardio]);
   return {min:f&&f.slice(0,7)<t?f.slice(0,7):t,max:t};
@@ -267,7 +265,7 @@ const ACT={
          first page would read as the session lost. */
       const mid=!remove&&!!state.draft;
       if(!mid)try{localStorage.setItem(OB_OUT,'1');localStorage.removeItem(OB_ACCT);}catch(e){/* per device only */}
-      if(remove){undoForget();state=normalize(null);saveNow();invalidate();}
+      if(remove){undoForget();setState(normalize(null));saveNow();invalidate();}
       if(!mid){ui.tab='today';window.scrollTo(0,0);}render();toast(remove?'Signed out':'Signed out. A copy stays on this phone.');
     };
     // With changes not yet in the account, say so first rather than "saved in your account" (r34.2).
@@ -398,7 +396,7 @@ const ACT={
     /* A first run (no log of their own yet, the starter routine untouched):
        the routine comes from the import (r31), or the picker opens. */
     const AR=activeRoutine();const first=!realCount(state)&&!!AR&&starterSigs().includes(routineSig(AR))&&!state.sessions.some(q=>q.routineId===AR.id);
-    snapshot();state=normalize({...state,exercises:state.exercises.concat(b.newEx),sessions:state.sessions.concat(b.sessions),cardio:state.cardio.concat(b.cardio),settings:{...state.settings,onboarded:true}});invalidate();
+    snapshot();setState(normalize({...state,exercises:state.exercises.concat(b.newEx),sessions:state.sessions.concat(b.sessions),cardio:state.cardio.concat(b.cardio),settings:{...state.settings,onboarded:true}}));invalidate();
     const msg=`Imported ${b.sessions.length} session${b.sessions.length===1?'':'s'}${b.cardio.length?`, ${b.cardio.length} cardio entr${b.cardio.length===1?'y':'ies'}`:''}${b.newEx.length?`, ${b.newEx.length} new exercise${b.newEx.length===1?'':'s'}`:''}`;
     const inf=first&&b.sessions.length?routineFromLog(state.sessions):null;
     if(inf){
@@ -423,7 +421,7 @@ const ACT={
       if(!acct.user&&AUTH()){confirmBox('Sign in first',`This test version keeps a separate log. Sign in with your ${APP_NAME} account to copy your log in. Your log in ${APP_NAME} stays as it is.`,'Sign in',()=>ACT.acctOpen({dataset:{mode:'signin'}}));return;}
       toast(err?`Could not read your ${APP_NAME} log: ${err.message}`:`No ${APP_NAME} log found for this account or on this phone.`,null,6000);return;}
     const n=realCount(st);st.draft=null;
-    const go=()=>{snapshot();state=st;commit();closeModal();ui.tab='today';render();toast(`Copied ${n} session${n===1?'':'s'} from ${APP_NAME}. ${APP_NAME} is unchanged.`,true);};
+    const go=()=>{snapshot();setState(st);commit();closeModal();ui.tab='today';render();toast(`Copied ${n} session${n===1?'':'s'} from ${APP_NAME}. ${APP_NAME} is unchanged.`,true);};
     if(realCount(state)||state.draft)confirmBox('Replace the preview log?',`Your ${APP_NAME} log has ${n} session${n===1?'':'s'}. Copying replaces everything in this test version; your log in ${APP_NAME} stays as it is. Undo can step this back.`,'Copy my log',go);
     else go();
   },
@@ -604,7 +602,7 @@ const ACT={
        keep their newer version. */
     const e=undoStack.pop();undoPersist();const before=canon(state);
     let done=false;
-    if(e.inv){try{done=e.inv()===true;}catch(x){log('undo',x);done=false;}if(done)state=normalize(state);}
+    if(e.inv){try{done=e.inv()===true;}catch(x){log('undo',x);done=false;}if(done)setState(normalize(state));}
     if(!done)try{
       const pre=normalize(JSON.parse(e.pre));const post=e.post?normalize(JSON.parse(e.post)):state;
       const P=chunksOf(pre),Q=chunksOf(post),C=chunksOf(state);const stat={conflicts:0};const parts={};
@@ -613,7 +611,7 @@ const ACT={
         parts[id]=id==='draft'?{draft:mergeDraft(Q.draft&&Q.draft.draft,C.draft&&C.draft.draft,P.draft&&P.draft.draft)}
           :mergeChunk(id,q?baseOf(id,q):null,C[id]||emptyChunk(id),P[id]||emptyChunk(id),false,stat);
       }
-      state=assemble(parts);
+      setState(assemble(parts));
     }catch(x){log('undo',x);toast('Could not undo that');return;}
     if(canon(state)===before){toast('Nothing to undo there: it has changed since.');const below0=undoStack[undoStack.length-1];if(below0&&below0.post==null)below0.post=e.pre;return;}
     // If the step below never saw a save of its own, its result is the state
@@ -687,7 +685,7 @@ const ACT={
     if(x.kind==='session'&&!state.sessions.some(s=>s.id===x.id))state.sessions.push(x.data);
     else if(x.kind==='cardio'&&!state.cardio.some(c=>c.id===x.id))state.cardio.push(x.data);
     else if(x.kind==='routine'&&!state.routines.some(r=>r.id===x.id))state.routines.push(x.data);
-    state=normalize(state);commit();render();toast('Restored');
+    setState(normalize(state));commit();render();toast('Restored');
   },
   restWkOpen(){openModal({kind:'restwk'});},
   restWk(t){const ws=t.dataset.w;if(!isDate(ws))return;snapshot();const r=(state.settings.restWeeks||[]).slice();const on=r.includes(ws);
@@ -1268,7 +1266,7 @@ m.err=`Could not read that. Try the pattern 225x5, 5, 4 ${rirScale()==='rpe'?'rp
     if(first)fitTargets(activeRoutine());makeDemo();ui.tab='dash';window.scrollTo(0,0);render();toast('Demo data loaded');});},
   demoStart(){state.sessions=state.sessions.filter(s=>!s.demo);state.bodyweights=state.bodyweights.filter(b=>!b.demo);state.measurements=state.measurements.filter(m=>!m.demo);demoRestore();commit();ui.tab='today';ui.folds={};window.scrollTo(0,0);render();},
   demoClear(){snapshot();state.sessions=state.sessions.filter(s=>!s.demo);state.bodyweights=state.bodyweights.filter(b=>!b.demo);state.measurements=state.measurements.filter(m=>!m.demo);demoRestore();commit();render();toast('Demo data cleared',true);},
-  resetAll(){confirmBox('Erase everything?',`All routines, sessions, custom exercises, and body data will be deleted${cloud.on?' on this device and in your cloud copy':' on this device'}. Export a backup first if you might want it.`,'Erase everything',()=>{snapshot();state=normalize(null);commit();ui.tab='today';render();toast('Everything erased',true);},true);}
+  resetAll(){confirmBox('Erase everything?',`All routines, sessions, custom exercises, and body data will be deleted${cloud.on?' on this device and in your cloud copy':' on this device'}. Export a backup first if you might want it.`,'Erase everything',()=>{snapshot();setState(normalize(null));commit();ui.tab='today';render();toast('Everything erased',true);},true);}
 };
 
 /* A load far from last time's (under 60% or over 140% of it) is the usual

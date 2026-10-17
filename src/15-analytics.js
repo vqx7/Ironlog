@@ -144,24 +144,6 @@ function prLoad(ex,s,date){return ex&&ex.bw?bwRef()*bwShare(ex)+(+s.w||0):loadOf
    so progress compares like with like. Weight lifted counts what actually
    moved: both dumbbells, both sides of the plates, both limbs when reps are
    logged per side. Changing an exercise's setting does not convert past sets. */
-const LOAD_MODES=[['each','Per dumbbell (two dumbbells)'],['total','Total on the implement'],['side','Plates on one side'],['stack','Stack setting']];
-/* Short words for the load: shown next to numbers and on the exercise. */
-function loadWords(ex){
-  const m=loadMode(ex);
-  if(ex&&ex.assist)return 'machine help';
-  if(m==='each')return 'per dumbbell';
-  if(m==='side')return 'plates per side';
-  if(m==='stack')return 'stack setting';
-  if(m==='bw')return 'added to bodyweight';
-  if(ex.equip==='dumbbell')return 'one dumbbell';
-  if(ex.equip==='barbell')return 'total, bar included';
-  if(ex.equip==='landmine')return 'plates on the sleeve';
-  if(ex.equip==='smith')return 'total on the bar';
-  if(PLATE_SIDE_IDS.includes(ex.id)||ex.equip==='machine')return 'total plates';
-  return 'total';
-}
-/* After a number in running text: "80 lb per dumbbell", "90 lb per side". */
-function loadNote(ex){const m=loadMode(ex);return m==='each'?' per dumbbell':m==='side'?' per side':'';}
 /* Load column heading in the logger. */
 function loadHead(ex){const m=loadMode(ex),u=U().toUpperCase();if(ex&&ex.assist)return 'Help '+u;return m==='each'?u+' each':m==='side'?u+'/side':m==='stack'?'Stack':m==='bw'?'+'+u:u;}
 /* On the exercise, always visible: what the load number is, and reps per
@@ -184,20 +166,6 @@ function tonnage(ex,s,date){
   const load=m==='bw'?Math.max(0,bl+w):(m==='each'||m==='side')?w*2:w;
   return load*(+s.r||0)*(ex.perSide?2:1);
 }
-// The bands in words, counted as reps to failure (reps plus RIR).
-/* Bands count reps to failure (reps plus reps in reserve), so they say so (r34.2, from the review:
-   "sets of 11 to 12 reps" named the band of a set of 8 at 3 in reserve). */
-const BAND_WORDS={1:'1 to 5 reps to failure',2:'6 to 10 reps to failure',3:'11 to 12 reps to failure'};
-/* What an estimate PR is called (r34.2, from the review: a best for 6 to 8
-   reps was shown as "Best estimate 30 kg (was 29)" beside an all-time best
-   estimate of 30 kg from a set of 11): Best estimate only when it beats every
-   earlier set's estimate, else the best for its band of reps. */
-const BAND_SHORT={1:'1 to 5 reps to failure',2:'6 to 10 reps to failure',3:'11 to 12 reps to failure'};
-function prOverall(p){return p.prevAll==null||(p.value!=null&&p.value>p.prevAll+1e-6);}
-function prName(p){return prOverall(p)?'Best estimate':`Best for ${BAND_SHORT[p.bb]||'its reps'}`;}
-// A rep range in words and labels: "5" when both ends are the same (r31: "5-5", "5×5-5").
-const repSpan=(lo,hi,sep=' to ')=>+lo===+hi?`${+lo}`:`${+lo}${sep}${+hi}`;
-const rangeWords=p=>+p.repMin===+p.repMax?`target of ${+p.repMin}`:`${+p.repMin}-${+p.repMax} range`;
 function sortedSessions(){return [...state.sessions].sort(sessCmp);}
 /* The sessions on each date, in sessCmp order, and the count per week (r47).
    Built once per change beside the other analytics and read by every screen
@@ -459,35 +427,6 @@ function idxPRs(id,exps,prs){
     if(x.best!=null)maxBest=maxBest==null?x.best:Math.max(maxBest,x.best);
   });
   return maxBest;
-}
-/* The sessions a lift's trend reads, shared by the trend itself and by the
-   screens that say its change in loads (r41), so the two cannot disagree.
-   Full sessions only; the current rep range only, since changing the range
-   restarts the baseline instead of drawing one line across two scales; and
-   the 6 weeks up to the lift's own last session (r30: it ended at the newest
-   session of any kind, so logging an upper day moved a split squat's trend
-   from +14% to +9% without a new split squat set). */
-function trendScope(exps,anchor){
-  const real=exps.filter(x=>!offSession(x));
-  const curRR=real.length?real[real.length-1].rr:null;
-  const inRange=real.filter(x=>sameRR(x.rr,curRR));
-  const lastReal=real.length?real[real.length-1]:null;
-  const exWin=addDays(lastReal?lastReal.date:anchor,-42);
-  return {real,curRR,inRange,lastReal,exWin};
-}
-/* The sessions in that scope with a trend reading. Separate from trendScope
-   because idxLift sets each session's reading (tv) only after deciding
-   whether RIR enters the trend, which needs the scope first. */
-function trendW(sc){return sc.inRange.filter(x=>x.date>=sc.exWin&&x.tv!=null);}
-/* Both ends of the trend are the better of two sessions, to damp a single
-   fluky one. With exactly three, best-of-two at each end counts the middle
-   one twice (100, 120, 110 came out as 0% instead of +10%), so three use
-   single ends. It returns the sessions, not only their readings, so a screen
-   can show what was lifted. The first of equal readings wins, as before. */
-function trendEnds(w){
-  const k=w.length>=4?2:1;
-  const best=a=>a.reduce((m,x)=>x.tv>m.tv?x:m);
-  return {first:best(w.slice(0,k)),last:best(w.slice(w.length-k))};
 }
 /* Step 5: one lift's trend, stall, signals and bests. */
 function idxLift(id,exps,maxBest,anchor,winStart){
@@ -903,7 +842,6 @@ function sessionCapNote(day){
   const who=andList(list);
   return `<p class="small" style="margin:4px 12px 0"><span class="flag hastip" data-tip="More than ${SESSION_CAP} sets for one muscle in one workout. That line is a convention from one study not yet peer reviewed (Remmert 2025), which found no extra growth past it. Consider moving some to another day. Helper-muscle sets count as half.">Heavy for one workout: ${who} sets</span></p>`;
 }
-function daySets(day){return day.items.reduce((a,it)=>a+ +it.sets,0);}
 /* Size check: tape change per site against the hard sets a week its muscles
    got over the same stretch. Needs two measurements of a site at least 21
    days apart; the baseline is the earliest one within 12 weeks of the latest.

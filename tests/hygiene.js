@@ -75,14 +75,15 @@ const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log
   const hits = [];
   for (const f of SRC_CODE) {
     fs.readFileSync(path.join(ROOT, 'src', f), 'utf8').split('\n').forEach((line, i) => {
-      if (/const estMin=/.test(line)) return;
+      // The definition itself (r51: in src/app/format.ts, laid out with spaces).
+      if (/const estMin\s*=/.test(line)) return;
       // "about" before a number that ends the text or is followed by min or minutes;
       // "about ${load} for", "about ${n} reps" and the like are not minutes.
       if (/~\$\{/.test(line) || /[Aa]bout \$\{[^}]*\}\)?(\s*min\b|\s*minutes\b|`)/.test(line)) hits.push(`${f}:${i + 1}`);
     });
   }
   ok(hits.length === 0, 'estimated minutes are worded only by estMin ("~N min"), nowhere by hand', hits);
-  const defs = SRC_CODE.filter(f => /const estMin=/.test(fs.readFileSync(path.join(ROOT, 'src', f), 'utf8')));
+  const defs = SRC_CODE.filter(f => /const estMin\s*=/.test(fs.readFileSync(path.join(ROOT, 'src', f), 'utf8')));
   ok(defs.length === 1, 'estMin is defined once', defs);
 }
 
