@@ -2,9 +2,9 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-S8FAbJynVyMJIEwZhds89JF25agb/leVUlpcisPzucM=' 'sha256-tuSgXs5JTxAxl+0h6Mmbx/BgvpNDfjiq2RiZRPGtwkc=' 'sha256-YHdgjdaHPObo0ajgr78/3fg0b/g2KACx2Yivxr2AJEo=' 'sha256-vGdUBtOAnGo6csSjNNz8//HyOADXOb+hX9J01kTCO+0=' 'sha256-J4UrXwIeplIJZfkgJq3M75mmvlwXBomq0l+LhSwoEfI='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https://fqvupierxrvpoidtwlon.supabase.co wss://fqvupierxrvpoidtwlon.supabase.co https://api.pwnedpasswords.com; worker-src 'self'; manifest-src 'self'; media-src 'self'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-S8FAbJynVyMJIEwZhds89JF25agb/leVUlpcisPzucM=' 'sha256-tuSgXs5JTxAxl+0h6Mmbx/BgvpNDfjiq2RiZRPGtwkc=' 'sha256-YHdgjdaHPObo0ajgr78/3fg0b/g2KACx2Yivxr2AJEo=' 'sha256-IspcXr1mcGCgbVEvGRUyoi31UN8ay7XwQ/IAuG7V3XI=' 'sha256-J4UrXwIeplIJZfkgJq3M75mmvlwXBomq0l+LhSwoEfI='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https://fqvupierxrvpoidtwlon.supabase.co wss://fqvupierxrvpoidtwlon.supabase.co https://api.pwnedpasswords.com; worker-src 'self'; manifest-src 'self'; media-src 'self'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="app-build" content="2026.10.16-r49">
+<meta name="app-build" content="2026.10.16-r50">
 <title>Ironlog</title>
 <script>window.IRONLOG_APP=true;window.__installEvt=null;
 window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();window.__installEvt=e;if(window.ironlogInstallReady)window.ironlogInstallReady();});
@@ -1015,6 +1015,7 @@ loadScript(['vendor/chart.umd.js','https://cdnjs.cloudflare.com/ajax/libs/Chart.
 })();
 </script>
 <script>
+"use strict";
 (() => {
   // src/app/config.ts
   var STORAGE_ID = "ironlog";
@@ -1023,8 +1024,8 @@ loadScript(['vendor/chart.umd.js','https://cdnjs.cloudflare.com/ajax/libs/Chart.
   var PREVIEW_NAME = `${APP_NAME} Preview`;
   var PREVIEW_LABEL = "Preview";
   var WORDMARK = { mark: "I", strong: "ron", light: "log" };
-  var DISPLAY_VERSION = "2.0";
-  var APP_VERSION = "2026.10.16-r49";
+  var DISPLAY_VERSION = "2.1";
+  var APP_VERSION = "2026.10.16-r50";
   var VERSION_LINE = `${DISPLAY_VERSION} (build ${APP_VERSION})`;
   var SITE_HOST = "ironapp.org";
   var SITE_DIR_FALLBACK = "/Ironlog";
@@ -1033,6 +1034,585 @@ loadScript(['vendor/chart.umd.js','https://cdnjs.cloudflare.com/ajax/libs/Chart.
     "https://unpkg.com/three@0.159.0/build/three.module.min.js"
   ];
   var THREE_URLS = typeof window !== "undefined" && window.IRONLOG_APP ? ["./vendor/three.module.min.js", ...THREE_CDN] : THREE_CDN;
+
+  // src/app/util.ts
+  function andList(a, max) {
+    a = (a || []).filter((x) => x != null && x !== "");
+    if (max && a.length > max) {
+      const rest = a.length - max;
+      a = [...a.slice(0, max), `${rest} more`];
+    }
+    return a.length < 3 ? a.join(" and ") : a.slice(0, -1).join(", ") + ", and " + a[a.length - 1];
+  }
+  var esc = (s) => String(s == null ? "" : s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+  var uid = () => Math.random().toString(36).slice(2, 9) + Date.now().toString(36).slice(-4);
+  var pad = (n) => String(n).padStart(2, "0");
+  var iso = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+  var parse = (s) => {
+    const [a, b, c] = s.split("-").map(Number);
+    return new Date(a, b - 1, c);
+  };
+  var addDays = (s, n) => {
+    const d = parse(s);
+    d.setDate(d.getDate() + n);
+    return iso(d);
+  };
+  var weekStart = (s) => {
+    const d = parse(s);
+    d.setDate(d.getDate() - (d.getDay() + 6) % 7);
+    return iso(d);
+  };
+  var daysBetween = (a, b) => Math.round((parse(b) - parse(a)) / 864e5);
+  var today = () => iso(/* @__PURE__ */ new Date());
+  var isNum = (v) => typeof v === "number" && isFinite(v);
+  var numOr = (v, d) => {
+    const n = typeof v === "string" ? parseFloat(v) : v;
+    return isNum(n) ? n : d;
+  };
+  var clampN = (v, lo, hi, d) => {
+    const n = numOr(v, d);
+    return Math.min(Math.max(n, lo), hi);
+  };
+  var isDate = (v) => typeof v === "string" && /^\d{4}-\d{2}-\d{2}$/.test(v);
+  var r1 = (n) => Math.round(n * 10) / 10;
+  function r3(v) {
+    return Math.round(v * 1e3) / 1e3;
+  }
+  function numIn(v) {
+    if (v === "" || v == null) return null;
+    const n = parseFloat(String(v).replace(",", "."));
+    return isNaN(n) ? null : n;
+  }
+  function median(a) {
+    if (!a.length) return null;
+    const s = [...a].sort((x, y) => x - y);
+    const m = s.length >> 1;
+    return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2;
+  }
+  function hashStr(str) {
+    let h1 = 3735928559, h2 = 1103547991;
+    for (let i = 0; i < str.length; i++) {
+      const c = str.charCodeAt(i);
+      h1 = Math.imul(h1 ^ c, 2654435761);
+      h2 = Math.imul(h2 ^ c, 1597334677);
+    }
+    h1 = Math.imul(h1 ^ h1 >>> 16, 2246822507) ^ Math.imul(h2 ^ h2 >>> 13, 3266489909);
+    h2 = Math.imul(h2 ^ h2 >>> 16, 2246822507) ^ Math.imul(h1 ^ h1 >>> 13, 3266489909);
+    return (h2 >>> 0).toString(36) + (h1 >>> 0).toString(36);
+  }
+
+  // src/app/units.ts
+  var LB = 0.45359237, IN = 2.54;
+  var KM_MI = 1.609344;
+  var STEP_LB = 5 * LB;
+  var PLATES_LB = [45, 35, 25, 10, 5, 2.5], PLATES_KG = [25, 20, 15, 10, 5, 2.5, 1.25];
+
+  // src/app/library.ts
+  var MUSCLES = [["chest", "Chest"], ["serratus", "Serratus"], ["lats", "Lats"], ["upperBack", "Upper back"], ["traps", "Traps"], ["lowerBack", "Lower back"], ["frontDelts", "Front delts"], ["sideDelts", "Side delts"], ["rearDelts", "Rear delts"], ["rotatorCuff", "Rotator cuff"], ["biceps", "Biceps"], ["triceps", "Triceps"], ["forearms", "Forearms"], ["abs", "Abs"], ["obliques", "Obliques"], ["neck", "Neck"], ["quads", "Quads"], ["hamstrings", "Hamstrings"], ["glutes", "Glutes"], ["adductors", "Adductors"], ["abductors", "Abductors"], ["calves", "Calves"], ["tibialis", "Tibialis"]];
+  var MK = MUSCLES.map((m) => m[0]);
+  var ML = Object.fromEntries(MUSCLES);
+  var NEW_MUSCLES_V5 = ["serratus", "rotatorCuff"];
+  var TRACK_ONLY = /* @__PURE__ */ new Set(["serratus", "rotatorCuff", "neck", "tibialis"]);
+  var BANDS = { chest: [10, 20], serratus: [2, 8], lats: [10, 20], upperBack: [10, 20], traps: [6, 16], lowerBack: [3, 10], frontDelts: [4, 12], sideDelts: [10, 20], rearDelts: [8, 16], rotatorCuff: [2, 8], biceps: [10, 20], triceps: [10, 20], forearms: [4, 12], abs: [6, 16], obliques: [3, 10], neck: [2, 10], quads: [10, 20], hamstrings: [10, 20], glutes: [8, 16], adductors: [4, 12], abductors: [4, 12], calves: [8, 16], tibialis: [2, 8] };
+  var REGIONS = [
+    ["Chest", ["chest"]],
+    ["Back", ["lats", "upperBack", "traps", "lowerBack"]],
+    ["Shoulders", ["frontDelts", "sideDelts", "rearDelts", "rotatorCuff", "serratus"]],
+    ["Arms", ["biceps", "triceps", "forearms"]],
+    ["Core", ["abs", "obliques", "neck"]],
+    ["Quads", ["quads", "adductors"]],
+    ["Posterior", ["hamstrings", "glutes", "abductors"]],
+    ["Calves", ["calves", "tibialis"]]
+  ];
+  var JOINTS = [["j_knee", "Knee"], ["j_hip", "Hip"], ["j_shoulder", "Shoulder"], ["j_elbow", "Elbow"], ["j_wrist", "Wrist"]];
+  var JK = JOINTS.map((j) => j[0]);
+  var JL = Object.fromEntries(JOINTS);
+  var injLabel = (k) => ML[k] || JL[k] || k;
+  function exJoints(e) {
+    const p = patternOf(e), n = String(e.name || "").toLowerCase(), m = e.primary, out = [];
+    if (p === "squat" || m === "quads" || /leg curl|nordic|lunge|step-up|split squat/.test(n)) out.push("j_knee");
+    if (p === "hinge" || p === "squat" || ["glutes", "adductors", "abductors"].includes(m) || /thrust|bridge/.test(n)) out.push("j_hip");
+    if (["press", "fly", "raise", "vpull", "pullover", "rearfly"].includes(p) && !["quads", "hamstrings", "glutes", "calves", "abs", "obliques"].includes(m) || ["chest", "frontDelts", "sideDelts", "rearDelts", "rotatorCuff"].includes(m) || /\bdips?\b|face pull|upright/.test(n)) out.push("j_shoulder");
+    if ((["ext", "vpull", "row"].includes(p) || p === "curl" && m !== "hamstrings") && m !== "quads" || ["biceps", "triceps", "forearms"].includes(m) || /\bdips?\b|close.grip|skull/.test(n)) out.push("j_elbow");
+    if (m === "forearms" || p === "curl" && m === "biceps" || /push-up|front squat|\bdips?\b|wrist/.test(n) || p === "press" && ["barbell", "dumbbell"].includes(e.equip)) out.push("j_wrist");
+    return out;
+  }
+  var EQUIP = [["barbell", "Barbell"], ["dumbbell", "Dumbbell"], ["cable", "Cable"], ["machine", "Machine"], ["smith", "Smith machine"], ["landmine", "Landmine"], ["bodyweight", "Bodyweight"], ["other", "Other"]];
+  var EQL = Object.fromEntries(EQUIP);
+  var PLATE_SIDE_IDS = ["hackSquat", "pendulum", "legPress", "legPressCalf", "beltSquat", "machHipThrust"];
+  var CARDIO = [["walk", "Treadmill walk"], ["incline", "Incline walk"], ["elliptical", "Elliptical"], ["bike", "Bike"], ["stairs", "Stair climber"], ["rower", "Rower"], ["run", "Run"], ["hiit", "HIIT"], ["mobility", "Mobility / stretching"], ["other", "Other"]];
+  var CARDIOL = Object.fromEntries(CARDIO);
+  var CWHEN = [["pre", "Before lifting"], ["post", "After lifting"], ["solo", "On its own"]];
+  var CWHENL = Object.fromEntries(CWHEN);
+  var MEAS = [["arm", "Arm"], ["forearm", "Forearm"], ["chest", "Chest"], ["waist", "Waist"], ["thigh", "Thigh"], ["calf", "Calf"], ["neck", "Neck"]];
+  var LIB = [
+    ["bench", "Barbell Bench Press", "chest", "frontDelts triceps", "barbell", "", ""],
+    ["pauseBench", "Paused Bench Press", "chest", "frontDelts triceps", "barbell", "r", "A full stop on the chest, as in a meet, then press."],
+    ["floorPress", "Floor Press", "chest", "triceps frontDelts", "barbell", "r", "Lying on the floor: the upper arms stop on it, so the range is shorter."],
+    ["incBench", "Incline Barbell Bench Press", "chest", "frontDelts triceps", "barbell", "", "Low incline (about 30°) keeps the chest as the prime mover."],
+    ["dbBench", "DB Bench Press", "chest", "frontDelts triceps", "dumbbell", "", ""],
+    ["incDb", "Incline DB Press", "chest", "frontDelts triceps", "dumbbell", "", ""],
+    ["smithInc", "Smith Incline Press", "chest", "frontDelts triceps", "smith", "", ""],
+    ["machPress", "Machine Chest Press", "chest", "frontDelts triceps", "machine", "", ""],
+    ["dips", "Dips (chest lean)", "chest", "triceps frontDelts", "bodyweight", "b", "Log added load only. Bodyweight is added automatically for trends."],
+    ["pecDeck", "Pec Deck Fly", "chest", "frontDelts", "machine", "", ""],
+    ["cableFly", "Cable Fly", "chest", "frontDelts", "cable", "", ""],
+    ["lowHighFly", "Low-to-High Cable Fly", "chest", "frontDelts", "cable", "r", "Arcs upward from hip height. Biases the upper (clavicular) chest."],
+    ["highLowFly", "High-to-Low Cable Fly", "chest", "", "cable", "r", "Arcs downward. Biases the lower (sternal) chest."],
+    ["dbFly", "DB Fly", "chest", "frontDelts", "dumbbell", "", ""],
+    ["pushup", "Push-up", "chest", "triceps frontDelts serratus", "bodyweight", "b", ""],
+    ["deficitPushup", "Deficit Push-up", "chest", "triceps frontDelts serratus", "bodyweight", "br", "Hands on handles or plates so the chest drops below hand level."],
+    ["declinePushup", "Decline Push-up (feet raised)", "chest", "frontDelts triceps serratus", "bodyweight", "b", "Feet on a bench: about 70% of bodyweight, against 64% for a floor push-up (Ebben 2011)."],
+    ["pullup", "Pull-up", "lats", "biceps upperBack", "bodyweight", "b", "Log added load only. Bodyweight is added automatically for trends."],
+    ["chinup", "Chin-up", "lats", "biceps upperBack", "bodyweight", "b", ""],
+    ["assistPullup", "Assisted Pull-up (machine)", "lats", "biceps upperBack", "machine", "ba", "Type the help the machine gives. Less help is progress."],
+    ["assistDip", "Assisted Dip (machine)", "chest", "triceps frontDelts", "machine", "ba", "Type the help the machine gives. Less help is progress."],
+    ["latPulldown", "Lat Pulldown", "lats", "biceps upperBack", "cable", "", ""],
+    ["singlePulldown", "Single-Arm Cable Pulldown", "lats", "biceps", "cable", "rs", "Kneeling. Drive the elbow toward the hip with a long stretch at the top."],
+    ["straightArm", "Straight-Arm Cable Pulldown", "lats", "", "cable", "", ""],
+    ["dbPullover", "DB Pullover", "lats", "chest serratus", "dumbbell", "", ""],
+    ["landmineRow", "Landmine T-Bar Row", "upperBack", "lats biceps rearDelts", "landmine", "", ""],
+    ["meadowsRow", "Meadows Row", "lats", "upperBack biceps rearDelts", "landmine", "rs", "Single-arm landmine row from a staggered stance. Big stretch."],
+    ["cableRow", "Seated Cable Row", "upperBack", "lats biceps rearDelts", "cable", "", ""],
+    ["bbRow", "Barbell Row", "upperBack", "lats biceps rearDelts lowerBack", "barbell", "", ""],
+    ["dbRow", "One-Arm DB Row", "lats", "upperBack biceps", "dumbbell", "s", ""],
+    ["krocRow", "Kroc Row", "lats", "upperBack biceps forearms", "dumbbell", "rs", "Heavy, high-rep one-arm DB row with controlled body english. Trains grip hard."],
+    ["sealRow", "Seal Row", "upperBack", "lats rearDelts biceps", "barbell", "r", "Face down on a raised bench. Takes the lower back out of rowing."],
+    ["machRow", "Chest-Supported Machine Row", "upperBack", "lats biceps rearDelts", "machine", "", ""],
+    ["invertedRow", "Inverted Row", "upperBack", "lats biceps", "bodyweight", "b", ""],
+    ["rackPull", "Rack Pull", "upperBack", "traps lowerBack glutes forearms", "barbell", "", ""],
+    ["kelsoShrug", "Kelso Shrug", "upperBack", "traps", "other", "r", "Chest-supported. Pinch the shoulder blades together without bending the arms. Mid traps and rhomboids."],
+    ["bbShrug", "Barbell Shrug", "traps", "forearms", "barbell", "", ""],
+    ["dbShrug", "DB Shrug", "traps", "forearms", "dumbbell", "", ""],
+    ["hyperext", "45° Hyperextension", "lowerBack", "glutes hamstrings", "bodyweight", "b", "Rounding the upper back slightly shifts work toward the glutes."],
+    ["reverseHyper", "Reverse Hyperextension", "glutes", "lowerBack hamstrings", "machine", "r", "Torso fixed, legs swing up. Hip extension with low spinal compression."],
+    ["goodMorning", "Good Morning", "hamstrings", "lowerBack glutes", "barbell", "", ""],
+    ["seatedDbPress", "Seated DB Shoulder Press", "frontDelts", "sideDelts triceps serratus", "dumbbell", "", ""],
+    ["ohp", "Standing Overhead Press", "frontDelts", "sideDelts triceps serratus", "barbell", "", ""],
+    ["machShoulder", "Machine Shoulder Press", "frontDelts", "sideDelts triceps serratus", "machine", "", ""],
+    ["landminePress", "Half-Kneeling Landmine Press", "frontDelts", "chest triceps serratus", "landmine", "rs", "Arced pressing path that many cranky shoulders tolerate well."],
+    ["zPress", "Z Press", "frontDelts", "sideDelts triceps abs serratus", "barbell", "r", "Seated on the floor, legs straight, no back support. Exposes core and upper-back weak links."],
+    ["dbLateral", "DB Lateral Raise", "sideDelts", "", "dumbbell", "", ""],
+    ["cableLateral", "Cable Lateral Raise", "sideDelts", "", "cable", "", ""],
+    ["leanAwayLat", "Lean-Away Lateral Raise", "sideDelts", "", "dumbbell", "rs", "Hold a post and lean away. Loads the bottom range that standard raises miss."],
+    ["machLateral", "Machine Lateral Raise", "sideDelts", "", "machine", "", ""],
+    ["cableY", "Cable Y-Raise", "sideDelts", "traps", "cable", "r", "Arms travel up and out in a Y. Side delts plus lower traps."],
+    ["luRaise", "Lu Raise", "sideDelts", "frontDelts traps serratus", "dumbbell", "r", "Light plates or DBs raised to overhead with straight arms."],
+    ["uprightRow", "Wide-Grip Cable Upright Row", "sideDelts", "traps", "cable", "", ""],
+    ["reversePecDeck", "Reverse Pec Deck", "rearDelts", "upperBack rotatorCuff", "machine", "", ""],
+    ["facePull", "Face Pull", "rearDelts", "upperBack traps rotatorCuff", "cable", "", ""],
+    ["cableRearFly", "Cross-Body Cable Rear Delt Fly", "rearDelts", "upperBack rotatorCuff", "cable", "s", ""],
+    ["ohCableExt", "Overhead Cable Triceps Extension", "triceps", "", "cable", "", "Long head at long length. Grew the triceps more than pushdowns in a 2023 study (Maeo et al.)."],
+    ["pressdown", "Triceps Pressdown", "triceps", "", "cable", "", ""],
+    ["skull", "EZ-Bar Skull Crusher", "triceps", "", "barbell", "", ""],
+    ["jmPress", "JM Press", "triceps", "chest", "barbell", "r", "Hybrid of close-grip bench and skull crusher. The Smith version is easier to learn."],
+    ["cgBench", "Close-Grip Bench Press", "triceps", "chest frontDelts", "barbell", "", ""],
+    ["katana", "Katana Triceps Extension", "triceps", "", "cable", "rs", "Single arm from a low cable, extending overhead across the body."],
+    ["tatePress", "Tate Press", "triceps", "", "dumbbell", "r", "Elbows flare out as the DBs lower toward the chest."],
+    ["triDips", "Dips (upright, triceps focus)", "triceps", "chest frontDelts", "bodyweight", "b", ""],
+    ["inclineCurl", "Incline DB Curl", "biceps", "", "dumbbell", "", "Shoulder extended, so the long head works at long length."],
+    ["bayesianCurl", "Bayesian Cable Curl", "biceps", "", "cable", "r", "Face away from a low cable with the arm behind the torso. Tension at long length."],
+    ["preacher", "Preacher Curl", "biceps", "", "machine", "", ""],
+    ["spiderCurl", "Spider Curl", "biceps", "", "dumbbell", "r", "Chest on an incline bench, arms hanging. Tension at short length."],
+    ["bbCurl", "Barbell Curl", "biceps", "forearms", "barbell", "", ""],
+    ["cableCurl", "Cable Curl", "biceps", "", "cable", "", ""],
+    ["hammer", "Hammer Curl", "biceps", "forearms", "dumbbell", "", ""],
+    ["dragCurl", "Drag Curl", "biceps", "", "barbell", "r", "The bar stays against the torso while the elbows travel back."],
+    ["zottman", "Zottman Curl", "biceps", "forearms", "dumbbell", "r", "Palms up on the way up, palms down on the way down."],
+    ["reverseCurl", "Reverse EZ Curl", "forearms", "biceps", "barbell", "", ""],
+    ["wristCurl", "Wrist Curl", "forearms", "", "barbell", "", ""],
+    ["revWristCurl", "Reverse Wrist Curl", "forearms", "", "barbell", "", ""],
+    ["wristRoller", "Wrist Roller", "forearms", "", "other", "r", "Log one full roll up and down as one rep."],
+    ["cableCrunch", "Cable Crunch", "abs", "", "cable", "", ""],
+    ["hangingLegRaise", "Hanging Leg Raise", "abs", "", "bodyweight", "b", "Curl the pelvis up. Swinging the legs only trains the hip flexors."],
+    ["abWheel", "Ab Wheel Rollout", "abs", "lats", "bodyweight", "b", ""],
+    ["dragonFlag", "Dragon Flag", "abs", "", "bodyweight", "br", "Lower slowly as one rigid unit. Use negatives until full reps are possible."],
+    ["declineCrunch", "Weighted Decline Crunch", "abs", "", "other", "", ""],
+    ["woodchop", "Cable Woodchop", "obliques", "abs", "cable", "s", "Log reps per side."],
+    ["pallof", "Pallof Press", "obliques", "abs", "cable", "rs", "Anti-rotation press. Log reps per side."],
+    ["sideBend", "DB Side Bend", "obliques", "", "dumbbell", "s", ""],
+    ["neckCurl", "Neck Flexion (plate or harness)", "neck", "", "other", "r", "Start light and progress slowly."],
+    ["neckExt", "Neck Extension (harness)", "neck", "traps", "other", "r", "Start light and progress slowly."],
+    ["neckBridge", "Neck Bridge", "neck", "", "bodyweight", "br", "Controlled range. Build tolerance gradually."],
+    ["hackSquat", "Hack Squat", "quads", "glutes adductors", "machine", "", ""],
+    ["pendulum", "Pendulum Squat", "quads", "glutes adductors", "machine", "", ""],
+    ["legPress", "Leg Press", "quads", "glutes adductors", "machine", "", ""],
+    ["beltSquat", "Belt Squat", "quads", "glutes adductors", "machine", "r", "Loads the legs with no spinal compression."],
+    ["backSquat", "Barbell Back Squat", "quads", "glutes adductors lowerBack", "barbell", "", ""],
+    ["pauseSquat", "Pause Squat", "quads", "glutes adductors lowerBack", "barbell", "r", "A full stop of about 2 seconds at the bottom, then up."],
+    ["frontSquat", "Front Squat", "quads", "glutes adductors", "barbell", "", ""],
+    ["smithSquat", "Smith Squat", "quads", "glutes adductors", "smith", "", ""],
+    ["bss", "Bulgarian Split Squat", "quads", "glutes adductors", "dumbbell", "s", ""],
+    ["walkingLunge", "Walking Lunge", "quads", "glutes adductors", "dumbbell", "", ""],
+    ["legExt", "Leg Extension", "quads", "", "machine", "", ""],
+    ["sissy", "Sissy Squat", "quads", "", "bodyweight", "br", "Knees travel forward while the hips stay extended. Rectus femoris at long length."],
+    ["revNordic", "Reverse Nordic", "quads", "", "bodyweight", "br", "Kneeling lean-back. Start with a short range."],
+    ["cossack", "Cossack Squat", "adductors", "quads glutes", "other", "rs", "Deep side-to-side squat. Adductors at long length."],
+    ["adductor", "Hip Adductor Machine", "adductors", "", "machine", "", ""],
+    ["abductor", "Hip Abductor Machine", "abductors", "glutes", "machine", "", ""],
+    ["sldl", "Stiff-Leg Deadlift", "hamstrings", "glutes lowerBack", "barbell", "", ""],
+    ["rdl", "Romanian Deadlift", "hamstrings", "glutes lowerBack", "barbell", "", ""],
+    ["dbRdl", "DB Romanian Deadlift", "hamstrings", "glutes lowerBack", "dumbbell", "", ""],
+    ["deadlift", "Conventional Deadlift", "glutes", "hamstrings lowerBack quads traps forearms", "barbell", "", ""],
+    ["sumoDl", "Sumo Deadlift", "glutes", "quads adductors hamstrings lowerBack traps forearms", "barbell", "", "Wide stance, hands inside the knees."],
+    ["powerClean", "Power Clean", "glutes", "hamstrings quads traps upperBack", "barbell", "r", "The bar from the floor to the shoulders in one fast pull. Add load only while the bar stays fast."],
+    ["kbSwing", "Kettlebell Swing", "glutes", "hamstrings lowerBack", "other", "", "A hip snap, not a squat: the arms only guide the bell. Enter the bell's weight."],
+    ["seatedCurl", "Seated Leg Curl", "hamstrings", "", "machine", "", "Grew the hamstrings more than lying curls in a 2021 study (Maeo et al.)."],
+    ["lyingCurl", "Lying Leg Curl", "hamstrings", "", "machine", "", ""],
+    ["nordic", "Nordic Hamstring Curl", "hamstrings", "", "bodyweight", "br", "Very demanding eccentric. Use a band or partial range until full reps are possible."],
+    ["ghr", "Glute-Ham Raise", "hamstrings", "glutes", "bodyweight", "br", ""],
+    ["hipThrust", "Barbell Hip Thrust", "glutes", "hamstrings", "barbell", "", ""],
+    ["pullThrough", "Cable Pull-Through", "glutes", "hamstrings", "cable", "r", "Hip hinge facing away from a low cable."],
+    ["kickback", "Cable Glute Kickback", "glutes", "", "cable", "s", ""],
+    ["standCalf", "Standing Calf Raise", "calves", "", "machine", "", "Full stretch at the bottom with a pause."],
+    ["seatedCalf", "Seated Calf Raise", "calves", "", "machine", "", "Bent knee shifts the work to the soleus."],
+    ["legPressCalf", "Leg Press Calf Raise", "calves", "", "machine", "", ""],
+    ["tibRaise", "Tibialis Raise", "tibialis", "", "other", "r", "Back against a wall, heels down, raise the toes. The shin muscle is rarely trained."],
+    // v5 additions. The first library leaned on less common, evidence-flagged
+    // variations and left out staples, the plain dumbbell curl among them. These
+    // fill every muscle's everyday options, plus direct work for the two new
+    // muscles.
+    ["dbCurl", "DB Curl", "biceps", "forearms", "dumbbell", "", "Standing or seated, both arms or alternating."],
+    ["ezCurl", "EZ-Bar Curl", "biceps", "forearms", "barbell", "", "The angled grip is easier on the wrists than a straight bar."],
+    ["concCurl", "Concentration Curl", "biceps", "", "dumbbell", "s", ""],
+    ["machCurl", "Machine Biceps Curl", "biceps", "", "machine", "", ""],
+    ["declineBench", "Decline Barbell Bench Press", "chest", "triceps frontDelts", "barbell", "", "Biases the lower (sternal) chest."],
+    ["smithBench", "Smith Machine Bench Press", "chest", "frontDelts triceps", "smith", "", ""],
+    ["incMachPress", "Incline Machine Press", "chest", "frontDelts triceps", "machine", "", ""],
+    ["incDbFly", "Incline DB Fly", "chest", "frontDelts", "dumbbell", "", "Upper chest at a long length."],
+    ["ngPulldown", "Close-Grip Neutral Pulldown", "lats", "biceps upperBack", "cable", "", ""],
+    ["machHighRow", "Machine High Row", "lats", "upperBack biceps", "machine", "", ""],
+    ["machPullover", "Machine Pullover", "lats", "", "machine", "r", "Lats through a full arc with no biceps limit."],
+    ["csDbRow", "Chest-Supported DB Row", "upperBack", "lats rearDelts biceps", "dumbbell", "", "Face down on an incline bench, so the lower back stays out of it."],
+    ["pendlayRow", "Pendlay Row", "upperBack", "lats biceps rearDelts lowerBack", "barbell", "r", "Each rep starts dead on the floor."],
+    ["trapBarDl", "Trap Bar Deadlift", "glutes", "quads hamstrings lowerBack traps forearms", "barbell", "", "More upright and easier on the lower back than a straight bar."],
+    ["arnold", "Arnold Press", "frontDelts", "sideDelts triceps serratus", "dumbbell", "", ""],
+    ["smithOhp", "Smith Machine Shoulder Press", "frontDelts", "sideDelts triceps serratus", "smith", "", ""],
+    ["dbFrontRaise", "DB Front Raise", "frontDelts", "", "dumbbell", "", ""],
+    ["cableFrontRaise", "Cable Front Raise", "frontDelts", "", "cable", "", ""],
+    ["dbRearFly", "Bent-Over DB Rear Delt Fly", "rearDelts", "upperBack rotatorCuff", "dumbbell", "", ""],
+    ["ohDbExt", "Overhead DB Triceps Extension", "triceps", "", "dumbbell", "", "One dumbbell, both hands. Long head at a long length."],
+    ["ropePressdown", "Rope Triceps Pressdown", "triceps", "", "cable", "", ""],
+    ["triKickback", "Triceps Kickback", "triceps", "", "cable", "s", "Cable keeps tension at lockout; a dumbbell works too."],
+    ["machDip", "Seated Dip Machine", "triceps", "chest frontDelts", "machine", "", ""],
+    ["machCrunch", "Machine Crunch", "abs", "", "machine", "", ""],
+    ["kneeRaise", "Captain's Chair Knee Raise", "abs", "", "bodyweight", "b", "Curl the pelvis up at the top, not just the knees."],
+    ["reverseCrunch", "Reverse Crunch", "abs", "", "bodyweight", "b", ""],
+    ["crunch", "Crunch", "abs", "", "bodyweight", "b", ""],
+    ["russianTwist", "Russian Twist", "obliques", "abs", "bodyweight", "b", "Log reps per side or total, the same way each time."],
+    ["neckLat", "Neck Lateral Flexion (plate or band)", "neck", "", "other", "rs", "Start light and progress slowly."],
+    ["neckMachine", "4-Way Neck Machine", "neck", "traps", "machine", "r", "Start light. Note which direction in the exercise note."],
+    ["goblet", "Goblet Squat", "quads", "glutes adductors", "dumbbell", "", ""],
+    ["revLunge", "Reverse Lunge", "quads", "glutes adductors", "dumbbell", "s", "Stepping back is easier on the knees than a forward lunge."],
+    ["stepUp", "Step-Up", "quads", "glutes", "dumbbell", "s", ""],
+    ["standCurl", "Standing Single-Leg Curl", "hamstrings", "", "machine", "s", ""],
+    ["slRdl", "Single-Leg RDL", "hamstrings", "glutes", "dumbbell", "rs", ""],
+    ["gluteBridge", "Barbell Glute Bridge", "glutes", "hamstrings", "barbell", "", ""],
+    ["machHipThrust", "Machine Hip Thrust", "glutes", "hamstrings", "machine", "", ""],
+    ["cableAbduction", "Cable Hip Abduction", "abductors", "glutes", "cable", "s", ""],
+    ["slCalf", "Single-Leg DB Calf Raise", "calves", "", "dumbbell", "s", "Full stretch at the bottom with a pause."],
+    ["donkeyCalf", "Donkey Calf Raise", "calves", "", "machine", "r", "Hips bent, so the calves work at a longer length."],
+    ["pushupPlus", "Push-up Plus", "serratus", "chest triceps", "bodyweight", "b", "At the top, keep pushing the floor away so the shoulder blades wrap forward."],
+    ["serratusPunch", "Cable Serratus Punch", "serratus", "", "cable", "rs", "Arm straight. Reach forward past lockout by moving only the shoulder blade."],
+    ["cableER", "Cable External Rotation", "rotatorCuff", "", "cable", "s", "Elbow at your side, forearm rotates out. Light and slow."],
+    ["sideLyingER", "Side-Lying DB External Rotation", "rotatorCuff", "rearDelts", "dumbbell", "s", "Light and slow; stop well short of any pinch."],
+    ["platePinch", "Plate Pinch Hold", "forearms", "", "other", "rt", "Timed: pinch plates smooth side out. Log seconds and the total plate weight."],
+    ["copenhagen", "Copenhagen Plank", "adductors", "obliques", "bodyweight", "brts", "Timed side plank with the top leg on a bench, per side. Start with the knee on the bench."],
+    // Timed holds (flag t): the reps column holds seconds. No e1RM is estimated from them.
+    ["plank", "Plank", "abs", "obliques", "bodyweight", "bt", "Timed hold: log seconds. Add a plate on your back once the top of the range is easy."],
+    ["sidePlank", "Side Plank", "obliques", "abs", "bodyweight", "bts", "Timed hold, per side: log seconds."],
+    ["deadHang", "Dead Hang", "forearms", "lats", "bodyweight", "bt", "Timed hang from a bar: log seconds. Builds grip endurance."],
+    ["neckBridgeHold", "Neck Bridge Hold", "neck", "", "bodyweight", "brt", "Timed isometric: log seconds. Build tolerance gradually."],
+    ["wallSit", "Wall Sit", "quads", "", "bodyweight", "brt", "Timed hold with thighs parallel: log seconds."],
+    ["farmerHold", "Farmer Carry or Hold", "forearms", "traps upperBack", "dumbbell", "rt", "Timed: log seconds and the load in each hand."]
+  ];
+  var COMMON = /* @__PURE__ */ new Set(["bench", "backSquat", "deadlift", "latPulldown", "ohp", "bbRow", "dbLateral", "legExt", "legPress", "bbCurl", "pressdown", "incDb", "dbCurl", "pullup", "cableRow", "ropePressdown", "lyingCurl", "dbRow", "seatedDbPress", "rdl", "seatedCurl", "hammer", "cableFly", "dbBench", "facePull", "cgBench", "hipThrust", "bss", "sldl", "abductor"]);
+  var isCommon = (e) => !!e && !e.custom && !e.rare && COMMON.has(e.id);
+  function libExercises() {
+    return LIB.map(([id, name, primary, sec, equip, flags, note]) => {
+      const o = { id, name, primary, secondary: sec ? sec.split(" ") : [], equip, bw: flags.includes("b"), rare: flags.includes("r"), perSide: flags.includes("s"), note, custom: false, archived: false };
+      if (flags.includes("t")) o.timed = true;
+      if (flags.includes("a")) o.assist = true;
+      return o;
+    });
+  }
+  var PATTERNS = [["calf", /calf raise/], ["hinge", /hyperextension/], ["squat", /leg press|hack squat|pendulum/], ["rearfly", /rear delt|reverse pec/], ["pullover", /pullover/], ["fly", /\bfly|flye|pec deck/], ["ext", /pressdown|extension|kickback|skull|tate press|jm press/], ["vpull", /pulldown|pull-up|chin-up|high row/], ["row", /\brow\b/], ["curl", /curl/], ["press", /press|push-up|\bdips?\b|bench/], ["squat", /squat|lunge|step-up/], ["hinge", /deadlift|rdl|rack pull|good morning|pull-through|hip thrust|bridge|hyperextension|power clean|swing/], ["raise", /raise/], ["core", /crunch|rollout|dragon|plank|twist/], ["shrug", /shrug/]];
+  function patternOf(e) {
+    const n = String(e && e.name || "").toLowerCase();
+    for (const [k, re] of PATTERNS) if (re.test(n)) return k;
+    return null;
+  }
+  var NON_COMPOUND_PRIMARY = /* @__PURE__ */ new Set(["abs", "obliques", "neck", "forearms", "serratus", "rotatorCuff", "calves", "tibialis"]);
+  function autoCompound(ex) {
+    return !!ex && !ex.timed && !NON_COMPOUND_PRIMARY.has(ex.primary) && ["press", "row", "vpull", "squat", "hinge"].includes(patternOf(ex));
+  }
+  function isCompound(ex) {
+    if (ex && ex.kind === "compound") return !ex.timed;
+    if (ex && ex.kind === "iso") return false;
+    return autoCompound(ex);
+  }
+  var NO_E1 = /* @__PURE__ */ new Set(["hangingLegRaise", "kneeRaise", "reverseCrunch", "crunch", "dragonFlag", "abWheel", "russianTwist", "neckBridge", "nordic", "ghr", "revNordic", "sissy"]);
+  var noE1 = (ex) => !!ex && (!!ex.timed || NO_E1.has(ex.id));
+  var SLOW_RECOVERY = /* @__PURE__ */ new Set(["deadlift", "sumoDl", "trapBarDl", "rdl", "sldl", "dbRdl", "slRdl", "goodMorning", "nordic", "ghr", "walkingLunge"]);
+  var BWF = { assistPullup: 1, assistDip: 1, pullup: 1, chinup: 1, dips: 1, triDips: 1, pushup: 0.64, deficitPushup: 0.64, declinePushup: 0.7, invertedRow: 0.6, hyperext: 0.6, hangingLegRaise: 0.35, abWheel: 0.5, dragonFlag: 0.7, neckBridge: 0.3, sissy: 0.85, revNordic: 0.85, nordic: 0.85, ghr: 0.85, plank: 0.65, sidePlank: 0.6, deadHang: 1, neckBridgeHold: 0.3, wallSit: 0.7, pushupPlus: 0.64, kneeRaise: 0.3, reverseCrunch: 0.3, crunch: 0.3, russianTwist: 0.4, copenhagen: 0.5 };
+  function bwShare(ex) {
+    return ex && ex.bwf != null ? ex.bwf : ex && BWF[ex.id] != null ? BWF[ex.id] : 1;
+  }
+  var ONE_DB = /* @__PURE__ */ new Set(["dbRow", "krocRow", "dbPullover", "ohDbExt", "concCurl", "sideBend", "goblet", "slCalf", "leanAwayLat", "sideLyingER", "slRdl"]);
+  function loadMode(ex) {
+    if (!ex) return "total";
+    if (ex.bw) return "bw";
+    if (["each", "total", "side", "stack"].includes(ex.load)) return ex.load;
+    if (ex.equip === "dumbbell") return ONE_DB.has(ex.id) ? "total" : "each";
+    if (ex.equip === "cable" || ex.equip === "machine" && !PLATE_SIDE_IDS.includes(ex.id)) return "stack";
+    return "total";
+  }
+  var KIN_UNI = /lunge|split squat|step-up|single[- ]|one[- ]arm|1-arm|pistol|bulgarian|cossack|unilateral/i;
+  var RACK = { dumbbell: { kg: [2.5, 2, 1, 0.5], lb: [5, 2.5, 1] }, kettlebell: { kg: [4, 2, 1], lb: [5, 2.5] } };
+  function rackKind(ex) {
+    return ex.equip === "dumbbell" ? "dumbbell" : ex.equip === "kettlebell" || /kettlebell/i.test(ex.name || "") ? "kettlebell" : null;
+  }
+  var LONG_TRIAL = /* @__PURE__ */ new Set(["seatedCurl", "ohCableExt", "ohDbExt", "standCalf"]);
+  var LONG_IDS = /* @__PURE__ */ new Set([...LONG_TRIAL, "katana", "inclineCurl", "bayesianCurl", "rdl", "sldl", "dbRdl", "slRdl", "donkeyCalf", "sissy"]);
+  var HARD_EX = /* @__PURE__ */ new Set(["nordic", "revNordic", "ghr", "sissy", "dragonFlag", "pullup", "chinup", "dips", "triDips", "hangingLegRaise"]);
+  var PROF_EQUIP = /* @__PURE__ */ new Set(["barbell", "smith", "machine"]);
+  var PROF_NOT_HEAVY = /* @__PURE__ */ new Set(["reverseHyper", "goodMorning", "gluteBridge"]);
+  function profHeavy(ex) {
+    return !!ex && !ex.timed && !ex.bw && isCompound(ex) && !noE1(ex) && PROF_EQUIP.has(ex.equip) && !PROF_NOT_HEAVY.has(ex.id);
+  }
+
+  // src/app/routines.ts
+  var DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+  var MAX_DAYS = 14;
+  function dayLabel(R, i) {
+    return R && R.schedule === "weekly" ? DAYS[i] : `Day ${i + 1}`;
+  }
+  var DEFAULT_PLAN = { sets: 3, repMin: 8, repMax: 12, rir: 1, rest: 90, inc: 5 * LB };
+  function defaultRoutine() {
+    const I = (exId, sets, repMin, repMax, rir, rest) => ({ uid: uid(), exId, sets, repMin, repMax, rir, rest, inc: 5 * LB });
+    const D = (name, items, rest) => ({ id: uid(), name, rest: !!rest, items });
+    return { id: uid(), name: "One muscle a day, high volume", schedule: "cycle", days: [
+      D("Chest", [I("incBench", 4, 6, 10, 1, 180), I("bench", 3, 6, 10, 1, 180), I("dips", 3, 8, 12, 1, 120), I("lowHighFly", 3, 10, 15, 0, 90), I("pecDeck", 2, 12, 15, 0, 75), I("deficitPushup", 2, 10, 25, 0, 75), I("cableCrunch", 3, 10, 15, 1, 60)]),
+      D("Back", [I("pullup", 4, 6, 10, 1, 150), I("landmineRow", 3, 8, 12, 1, 120), I("cableRow", 3, 8, 12, 1, 120), I("dbPullover", 3, 10, 15, 1, 90), I("kelsoShrug", 3, 10, 15, 1, 90), I("rackPull", 3, 5, 8, 2, 180)]),
+      D("Legs A: quads", [I("hackSquat", 4, 6, 12, 1, 180), I("legPress", 3, 10, 15, 1, 150), I("bss", 3, 8, 12, 1, 120), I("legExt", 3, 10, 15, 0, 90), I("sissy", 2, 8, 15, 1, 90), I("adductor", 3, 10, 15, 1, 75), I("standCalf", 4, 8, 12, 0, 60), I("tibRaise", 2, 15, 25, 1, 45)]),
+      D("Shoulders", [I("seatedDbPress", 3, 6, 10, 1, 150), I("cableLateral", 4, 10, 20, 0, 60), I("leanAwayLat", 3, 10, 15, 0, 60), I("cableY", 2, 12, 20, 0, 60), I("reversePecDeck", 4, 12, 20, 0, 60), I("facePull", 2, 12, 20, 0, 60), I("dbShrug", 3, 8, 12, 1, 75), I("hangingLegRaise", 3, 10, 15, 1, 60), I("neckCurl", 2, 15, 20, 2, 45), I("neckExt", 2, 15, 20, 2, 45)]),
+      D("Legs B: posterior", [I("sldl", 4, 6, 10, 2, 180), I("seatedCurl", 4, 8, 12, 0, 90), I("nordic", 3, 3, 8, 1, 120), I("hyperext", 3, 10, 15, 1, 75), I("abductor", 4, 12, 20, 0, 60), I("seatedCalf", 4, 10, 15, 0, 60), I("abWheel", 3, 8, 15, 1, 60)]),
+      D("Arms", [I("ohCableExt", 4, 8, 12, 0, 75), I("jmPress", 3, 6, 10, 1, 120), I("pressdown", 3, 10, 15, 0, 60), I("inclineCurl", 4, 8, 12, 0, 75), I("bayesianCurl", 3, 10, 15, 0, 60), I("preacher", 3, 8, 12, 0, 60), I("hammer", 2, 10, 12, 1, 60), I("wristCurl", 2, 12, 20, 0, 45), I("revWristCurl", 2, 12, 20, 0, 45), I("woodchop", 3, 10, 15, 1, 45)]),
+      D("Rest", [], true)
+    ] };
+  }
+  var TEMPLATES = (() => {
+    const I = (exId, sets, repMin, repMax, rir, rest) => ({ exId, sets, repMin, repMax, rir, rest });
+    const D = (name, items) => ({ name, items }), R = () => ({ name: "Rest", items: [], rest: true });
+    return [
+      /* New to lifting (r30, from the review: 7 exercises, about 19 sets and
+         over an hour, with incline curls and hack squats, was not a first
+         routine). Five exercises a day on machines and dumbbells, 2 to 3 sets,
+         3 reps in reserve (easy to judge: stop when a rep slows down), about
+         45 minutes. Weekly sets sit under the usual 10 on purpose; add a set as
+         it gets easy. */
+      { key: "full3", name: "Full body, 3 days", who: "New to lifting: five exercises a day, machines and dumbbells, stopping well short of failure. Add a set once it feels easy", meta: "3 days a week", days: [
+        D("Full body A", [I("legPress", 3, 8, 12, 3, 120), I("machPress", 3, 8, 12, 3, 120), I("latPulldown", 3, 8, 12, 3, 120), I("seatedCurl", 2, 10, 15, 2, 75), I("dbLateral", 2, 10, 15, 2, 60)]),
+        R(),
+        D("Full body B", [I("goblet", 3, 8, 12, 3, 120), I("incDb", 3, 8, 12, 3, 120), I("cableRow", 3, 8, 12, 3, 120), I("dbRdl", 3, 8, 12, 3, 120), I("pressdown", 2, 10, 15, 2, 60)]),
+        R(),
+        D("Full body C", [I("legPress", 3, 8, 12, 3, 120), I("dbBench", 3, 8, 12, 3, 120), I("machRow", 3, 8, 12, 3, 120), I("lyingCurl", 2, 10, 15, 2, 75), I("dbCurl", 2, 10, 15, 2, 60)]),
+        R(),
+        R()
+      ] },
+      /* Past the first year, three days a week (r45, V): the full3 days are a
+         first routine (machines, 3 in reserve, under 10 sets a muscle), so a
+         trained lifter with three days had only Strength or the dumbbell
+         routine. The main barbell lifts at 6 to 10 and 2 in reserve, the
+         rest at 1, 6 to 9 hard sets a week for each major muscle (a helper
+         muscle counting half), about an hour a day. Conventions, as everywhere here. */
+      { key: "full3t", name: "Full body, 3 days, trained", who: "Past your first year: the main lifts and their accessories, the whole body three times a week", meta: "3 days a week", days: [
+        D("Full body A", [I("backSquat", 3, 6, 10, 2, 180), I("bench", 3, 6, 10, 2, 150), I("cableRow", 3, 8, 12, 1, 120), I("seatedCurl", 3, 10, 15, 1, 75), I("dbLateral", 3, 10, 20, 1, 60), I("inclineCurl", 2, 10, 15, 1, 60)]),
+        R(),
+        D("Full body B", [I("rdl", 3, 6, 10, 2, 150), I("ohp", 3, 6, 10, 2, 150), I("pullup", 3, 6, 10, 2, 150), I("legPress", 3, 10, 15, 1, 120), I("cableFly", 3, 10, 15, 1, 75), I("standCalf", 3, 10, 15, 1, 60)]),
+        R(),
+        D("Full body C", [I("hackSquat", 3, 8, 12, 1, 150), I("incDb", 3, 8, 12, 1, 120), I("latPulldown", 3, 8, 12, 1, 120), I("lyingCurl", 3, 10, 15, 1, 75), I("cableLateral", 3, 10, 20, 1, 60), I("ohCableExt", 3, 10, 15, 1, 60), I("seatedCalf", 3, 10, 15, 1, 60)]),
+        R(),
+        R()
+      ] },
+      /* Two days a week (r30): the whole body each day, about an hour. */
+      { key: "full2", name: "Full body, 2 days", who: "Two sessions a week: the whole body each time", meta: "2 days a week", days: [
+        D("Full body A", [I("backSquat", 3, 6, 10, 2, 180), I("bench", 3, 6, 10, 2, 150), I("cableRow", 3, 8, 12, 2, 120), I("seatedCurl", 3, 10, 15, 1, 75), I("dbLateral", 3, 10, 20, 1, 60), I("inclineCurl", 2, 10, 15, 1, 60)]),
+        R(),
+        R(),
+        D("Full body B", [I("rdl", 3, 6, 10, 2, 150), I("incDb", 3, 8, 12, 2, 120), I("latPulldown", 3, 8, 12, 2, 120), I("legPress", 3, 10, 15, 1, 120), I("cableLateral", 3, 10, 20, 1, 60), I("ohCableExt", 2, 10, 15, 1, 60), I("standCalf", 3, 10, 15, 1, 60)]),
+        R(),
+        R(),
+        R()
+      ] },
+      { key: "ul4", name: "Upper / lower, 4 days", who: "The common all-round choice", meta: "4 days a week", days: [
+        D("Upper A", [I("bench", 4, 6, 10, 2, 150), I("bbRow", 3, 6, 10, 2, 150), I("latPulldown", 4, 8, 12, 1, 120), I("cableFly", 2, 10, 15, 1, 75), I("dbLateral", 5, 10, 20, 1, 60), I("facePull", 2, 12, 20, 1, 60), I("pressdown", 3, 10, 15, 1, 60), I("inclineCurl", 3, 10, 15, 1, 60)]),
+        D("Lower A", [I("backSquat", 3, 6, 10, 2, 180), I("rdl", 3, 6, 10, 2, 150), I("legExt", 3, 10, 15, 1, 75), I("seatedCurl", 3, 10, 15, 1, 75), I("standCalf", 4, 10, 15, 1, 60), I("cableCrunch", 3, 10, 15, 1, 60)]),
+        R(),
+        D("Upper B", [I("incDb", 4, 8, 12, 2, 120), I("cableRow", 4, 8, 12, 1, 120), I("pullup", 3, 6, 10, 2, 150), I("cableLateral", 5, 10, 20, 1, 60), I("reversePecDeck", 3, 12, 20, 1, 60), I("ohCableExt", 3, 10, 15, 1, 60), I("hammer", 3, 10, 15, 1, 60)]),
+        D("Lower B", [I("hackSquat", 3, 8, 12, 1, 150), I("hipThrust", 3, 8, 12, 1, 120), I("lyingCurl", 3, 10, 15, 1, 75), I("bss", 2, 8, 12, 1, 90), I("seatedCalf", 4, 10, 15, 1, 60), I("hangingLegRaise", 3, 10, 15, 1, 60)]),
+        R(),
+        R()
+      ] },
+      { key: "ppl6", name: "Push / pull / legs, 6 days", who: "Training most days, wants more volume", meta: "6 days a week", days: [
+        D("Push A", [I("bench", 3, 6, 10, 2, 150), I("seatedDbPress", 3, 8, 12, 1, 120), I("cableFly", 3, 10, 15, 1, 75), I("cableLateral", 4, 10, 20, 1, 60), I("ohCableExt", 3, 10, 15, 1, 60)]),
+        D("Pull A", [I("pullup", 4, 6, 10, 1, 150), I("bbRow", 3, 6, 10, 2, 150), I("facePull", 3, 12, 20, 1, 60), I("inclineCurl", 3, 10, 15, 1, 60), I("hammer", 2, 10, 15, 1, 60)]),
+        D("Legs A", [I("backSquat", 3, 6, 10, 2, 180), I("rdl", 3, 6, 10, 2, 150), I("legExt", 3, 10, 15, 1, 75), I("seatedCurl", 3, 10, 15, 1, 75), I("standCalf", 4, 10, 15, 1, 60), I("cableCrunch", 3, 10, 15, 1, 60)]),
+        D("Push B", [I("incBench", 3, 6, 10, 2, 150), I("machShoulder", 3, 8, 12, 1, 120), I("pecDeck", 3, 10, 15, 0, 75), I("dbLateral", 4, 12, 20, 0, 60), I("pressdown", 3, 10, 15, 1, 60)]),
+        D("Pull B", [I("latPulldown", 4, 8, 12, 1, 120), I("machRow", 3, 8, 12, 1, 120), I("reversePecDeck", 3, 12, 20, 0, 60), I("bayesianCurl", 3, 10, 15, 0, 60), I("reverseCurl", 2, 10, 15, 1, 60)]),
+        D("Legs B", [I("hackSquat", 3, 8, 12, 1, 150), I("hipThrust", 3, 8, 12, 1, 120), I("lyingCurl", 3, 10, 15, 1, 75), I("bss", 2, 8, 12, 1, 90), I("seatedCalf", 4, 10, 15, 1, 60), I("hangingLegRaise", 3, 10, 15, 1, 60)]),
+        R()
+      ] },
+      { key: "split5", name: "Body-part split, 5 days", who: "The classic gym split, one or two muscles a day", meta: "5 days a week", days: [
+        D("Chest", [I("bench", 3, 6, 10, 2, 150), I("incDb", 3, 8, 12, 1, 120), I("cableFly", 3, 10, 15, 1, 75), I("dips", 2, 8, 12, 1, 120), I("cableCrunch", 3, 10, 15, 1, 60)]),
+        D("Back", [I("pullup", 4, 6, 10, 1, 150), I("bbRow", 3, 6, 10, 2, 150), I("cableRow", 3, 8, 12, 1, 120), I("latPulldown", 3, 8, 12, 1, 120), I("reversePecDeck", 3, 12, 20, 0, 60)]),
+        D("Legs", [I("backSquat", 3, 6, 10, 2, 180), I("rdl", 3, 6, 10, 2, 150), I("legPress", 3, 10, 15, 1, 120), I("legExt", 3, 10, 15, 1, 75), I("seatedCurl", 4, 10, 15, 1, 75), I("hipThrust", 3, 8, 12, 1, 120), I("standCalf", 4, 10, 15, 1, 60)]),
+        // Lateral raises split over two days (r30): nine sets in one session added little past the first five or six.
+        D("Shoulders", [I("ohp", 3, 6, 10, 2, 150), I("cableLateral", 5, 10, 20, 1, 60), I("facePull", 3, 12, 20, 1, 60), I("dbShrug", 3, 10, 15, 1, 60), I("seatedCalf", 4, 10, 15, 1, 60), I("hangingLegRaise", 3, 10, 15, 1, 60)]),
+        D("Arms and legs", [I("inclineCurl", 4, 8, 12, 1, 75), I("ohCableExt", 4, 8, 12, 1, 75), I("hammer", 3, 10, 12, 1, 60), I("pressdown", 3, 10, 15, 1, 60), I("dbLateral", 4, 12, 20, 1, 60), I("bss", 3, 8, 12, 1, 90), I("lyingCurl", 3, 10, 15, 1, 75)]),
+        R(),
+        R()
+      ] },
+      /* Strength (r30, from the review: nothing for someone after a stronger
+         squat, bench and deadlift). The classic five sets of five, alternating
+         two days: when all five sets reach 5, the load goes up a step; two
+         sessions short of 5 bring it down to what the estimate says fits.
+         Fewer sets per muscle than the weekly targets, on purpose. */
+      { key: "str5", name: "Strength, 5 x 5", who: "Stronger squat, bench, press, row, and deadlift: five sets of five, a step more each time all five reach 5", meta: "every other day", days: [
+        D("Strength A", [I("backSquat", 5, 5, 5, 2, 180), I("bench", 5, 5, 5, 2, 180), I("bbRow", 5, 5, 5, 2, 150)]),
+        R(),
+        D("Strength B", [I("backSquat", 5, 5, 5, 2, 180), I("ohp", 5, 5, 5, 2, 180), I("deadlift", 1, 5, 5, 2, 240)]),
+        R()
+      ] },
+      { key: "db3", name: "Dumbbells only, 3 days", who: "Home or hotel gym: dumbbells and a bench. A lighter start, like full body: fewer sets a week than the targets, so add a set as it gets easy", meta: "3 days a week", days: [
+        D("Dumbbell A", [I("goblet", 3, 8, 15, 2, 120), I("dbBench", 3, 8, 12, 2, 120), I("dbRow", 3, 8, 12, 2, 90), I("dbLateral", 3, 12, 20, 1, 60), I("dbRearFly", 3, 12, 20, 1, 60), I("dbCurl", 3, 10, 15, 1, 60), I("slCalf", 3, 10, 15, 1, 45)]),
+        R(),
+        D("Dumbbell B", [I("dbRdl", 3, 8, 12, 2, 120), I("seatedDbPress", 3, 8, 12, 2, 120), I("csDbRow", 3, 8, 12, 1, 90), I("revLunge", 3, 8, 12, 2, 90), I("dbLateral", 3, 12, 20, 1, 60), I("ohDbExt", 3, 10, 15, 1, 60), I("reverseCrunch", 2, 10, 15, 1, 60)]),
+        R(),
+        D("Dumbbell C", [I("bss", 3, 8, 12, 2, 90), I("incDb", 3, 8, 12, 2, 120), I("dbPullover", 3, 10, 15, 1, 75), I("slRdl", 3, 8, 12, 1, 75), I("dbRearFly", 2, 12, 20, 1, 60), I("hammer", 3, 10, 15, 1, 60), I("slCalf", 3, 10, 15, 1, 45)]),
+        R(),
+        R()
+      ] },
+      /* High volume, trimmed (r30, from the review: 17 chest sets in one
+         session, mostly to failure, and a neck circuit on shoulder day). At
+         most 11 sets for one muscle in a session (the app's per-session line),
+         isolation lifts at 1 RIR with a few at 0, no neck work (tracked only).
+         Installs before r30 keep their copy; Plan changes it. */
+      { key: "onemuscle", name: "One muscle a day, high volume", who: "Experienced, six days a week. Long sessions with many sets for one muscle, up to 11", meta: "6 days a week", days: [
+        D("Chest", [I("incBench", 4, 6, 10, 1, 180), I("bench", 3, 6, 10, 1, 180), I("lowHighFly", 2, 10, 15, 1, 90), I("pecDeck", 2, 12, 15, 0, 75), I("cableCrunch", 3, 10, 15, 1, 60)]),
+        D("Back", [I("pullup", 4, 6, 10, 1, 150), I("landmineRow", 3, 8, 12, 1, 120), I("cableRow", 2, 8, 12, 1, 120), I("dbPullover", 3, 10, 15, 1, 90), I("kelsoShrug", 2, 10, 15, 1, 90), I("rackPull", 2, 5, 8, 2, 180)]),
+        D("Legs A: quads", [I("hackSquat", 4, 6, 12, 1, 180), I("legPress", 3, 10, 15, 1, 150), I("legExt", 2, 10, 15, 0, 90), I("bss", 2, 8, 12, 1, 120), I("adductor", 3, 10, 15, 1, 75), I("standCalf", 4, 8, 12, 1, 60), I("tibRaise", 2, 15, 25, 1, 45)]),
+        D("Shoulders", [I("seatedDbPress", 3, 6, 10, 1, 150), I("cableLateral", 5, 10, 20, 1, 60), I("leanAwayLat", 4, 10, 15, 1, 60), I("reversePecDeck", 4, 12, 20, 1, 60), I("facePull", 2, 12, 20, 1, 60), I("dbShrug", 3, 8, 12, 1, 75), I("hangingLegRaise", 3, 10, 15, 1, 60)]),
+        D("Legs B: posterior", [I("sldl", 4, 6, 10, 2, 180), I("seatedCurl", 3, 8, 12, 1, 90), I("nordic", 2, 3, 8, 1, 120), I("hyperext", 3, 10, 15, 1, 75), I("abductor", 4, 12, 20, 1, 60), I("seatedCalf", 4, 10, 15, 0, 60), I("abWheel", 3, 8, 15, 1, 60)]),
+        D("Arms", [I("ohCableExt", 4, 8, 12, 1, 75), I("jmPress", 3, 6, 10, 1, 120), I("pressdown", 3, 10, 15, 0, 60), I("inclineCurl", 4, 8, 12, 1, 75), I("bayesianCurl", 3, 10, 15, 1, 60), I("preacher", 3, 8, 12, 0, 60), I("wristCurl", 2, 12, 20, 1, 45), I("revWristCurl", 2, 12, 20, 1, 45), I("woodchop", 3, 10, 15, 1, 45)]),
+        R()
+      ] },
+      // The routine installs started with before r29, kept for the suites written on it (tests/h.js) and to recognise it; never offered.
+      { key: "legacy", hidden: true, name: "One muscle a day, high volume", who: "", meta: "", build: () => defaultRoutine() }
+    ];
+  })();
+  function routineFromTemplate(key) {
+    const t = TEMPLATES.find((x) => x.key === key);
+    if (!t) return null;
+    if (t.build) return t.build();
+    return { id: uid(), name: t.name, schedule: "cycle", days: t.days.map((d) => ({ id: uid(), name: d.name, rest: !!d.rest, items: d.items.map((it) => ({ uid: uid(), ...it, inc: 5 * LB })) })) };
+  }
+
+  // src/app/formulas.ts
+  var E1_MAX_REPS = 12;
+  var E1_MAX_RIR = 4;
+  function rtfOf(r, rir) {
+    const q = rir == null || rir === "" || !isFinite(+rir) ? 0 : Math.max(+rir, 0);
+    return q > E1_MAX_RIR ? null : +r + q;
+  }
+  function e1(load, r, rir) {
+    if (!(load > 0 && r > 0)) return null;
+    const rtf = rtfOf(r, rir);
+    if (rtf == null || rtf > E1_MAX_REPS) return null;
+    return rtf <= 10 ? load * 36 / (37 - rtf) : load * (1 + rtf / 30);
+  }
+  function trendE(load, r, rir) {
+    if (!(load > 0 && r > 0)) return null;
+    const rtf = rtfOf(r, rir);
+    if (rtf == null) return null;
+    return rtf <= E1_MAX_REPS ? e1(load, r, rir) : rtf <= 20 ? load * (1 + rtf / 30) : null;
+  }
+  function fitE(load, r, rir) {
+    const v = e1(load, r, rir);
+    if (v != null) return v;
+    if (!(load > 0 && r > 0)) return null;
+    const q = rir == null || rir === "" ? 0 : Math.min(Math.max(+rir, 0), E1_MAX_RIR);
+    const t = +r + q;
+    return t <= 30 ? load * (1 + t / 30) : null;
+  }
+  function e1inv(est, rtf) {
+    return rtf <= 10 ? est * (37 - rtf) / 36 : est / (1 + rtf / 30);
+  }
+  function rtfAt(est, load) {
+    if (!(est > 0 && load > 0)) return null;
+    const b = 37 - 36 * load / est;
+    return b <= 10 ? b : 30 * (est / load - 1);
+  }
+  var rtfBand = (rtf) => rtf <= 5 ? 1 : rtf <= 10 ? 2 : 3;
+  var REP_PR_SHARE = 0.9;
+  var isWork = (s) => !s.warm && +s.r > 0;
+  var setCredit = (s) => s.drop ? 0.5 : 1;
+  function sameRR(a, b) {
+    return !a || !b || a[0] === b[0] && a[1] === b[1];
+  }
+  function workLoad(pts, _repMin) {
+    if (!pts.length) return 0;
+    const T = (p) => p.load != null ? p.load : p.w;
+    const top = Math.max(...pts.map(T));
+    const floor = top > 0 ? top * 0.6 : -Infinity;
+    const ok = (p) => T(p) >= floor - 1e-9;
+    const k = (v) => Math.round(v * 1e3);
+    const n = /* @__PURE__ */ new Map();
+    for (const p of pts) if (ok(p)) n.set(k(p.w), (n.get(k(p.w)) || 0) + 1);
+    let w = null, best = -1;
+    for (const p of pts) {
+      if (!ok(p)) continue;
+      const c = n.get(k(p.w));
+      if (c > best || c === best && p.w > w) {
+        best = c;
+        w = p.w;
+      }
+    }
+    return w == null ? Math.max(...pts.map((p) => p.w)) : w;
+  }
+  var atLoad = (pts, w) => pts.filter((p) => Math.abs(p.w - w) < 1e-6);
+  function repFloor(pts, repMin) {
+    const m = +repMin || 0;
+    const ok = m > 0 && pts.length >= 2 && pts.filter((p) => p.r < m).length === 1;
+    return (r) => ok ? Math.max(r, m) : r;
+  }
+  var tagged = (x) => !!x && !!(x.deload || x.light || x.cut);
+  var offSession = (x) => tagged(x) || !!(x && x.auto);
+  function jumpPct(ex, plan) {
+    return plan && plan.jump != null && isNum(+plan.jump) ? Math.max(0, +plan.jump) / 100 : isCompound(ex) ? 0.025 : 0.05;
+  }
+  function jumpCap(ex, loadKg, early) {
+    return early ? 1.25 : !isCompound(ex) && loadKg < 20 ? 1.15 : 1.1;
+  }
+  var BACK_DAYS = 28;
+  var GROW_PCT = 3;
+  var T90 = [NaN, 3.078, 1.886, 1.638, 1.533, 1.476, 1.44, 1.415, 1.397, 1.383, 1.372, 1.363, 1.356, 1.35, 1.345, 1.341, 1.337, 1.333, 1.33, 1.328, 1.325, 1.323, 1.321, 1.319, 1.318, 1.316, 1.315, 1.314, 1.313, 1.311, 1.31];
+  function t90(df) {
+    df = Math.floor(df);
+    if (!(df >= 1)) return T90[1];
+    return df <= 30 ? T90[df] : 1.2816 + 0.8521 / df;
+  }
+  function setSecs(ex, p) {
+    const mid = ((+p.repMin || 0) + (+p.repMax || 0)) / 2;
+    let t = ex.timed ? mid + 20 : 40 + 3 * Math.max(0, mid - 12);
+    if (ex.perSide) t = t * 2 + 15;
+    return t;
+  }
+  function setupSecs(ex, compoundsBefore) {
+    return isCompound(ex) ? compoundsBefore < 2 ? 300 : 180 : 60;
+  }
+  var PACE_N = 8, PACE_DAYS = 84, PACE_MIN = 3, PACE_LO = 1 / 3, PACE_HI = 3;
+  var SESSION_CAP = 11;
 
   // src/legacy.js
   (function() {
@@ -1050,22 +1630,6 @@ loadScript(['vendor/chart.umd.js','https://cdnjs.cloudflare.com/ajax/libs/Chart.
       upd.ready = true;
       updRender();
     };
-    function andList(a, max) {
-      a = (a || []).filter((x) => x != null && x !== "");
-      if (max && a.length > max) {
-        const rest = a.length - max;
-        a = [...a.slice(0, max), `${rest} more`];
-      }
-      return a.length < 3 ? a.join(" and ") : a.slice(0, -1).join(", ") + ", and " + a[a.length - 1];
-    }
-    const esc = (s) => String(s == null ? "" : s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
-    const uid = () => Math.random().toString(36).slice(2, 9) + Date.now().toString(36).slice(-4);
-    const LB = 0.45359237, IN = 2.54;
-    const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
-    const MAX_DAYS = 14;
-    function dayLabel(R, i) {
-      return R && R.schedule === "weekly" ? DAYS[i] : `Day ${i + 1}`;
-    }
     function weekFactor(R) {
       return R.schedule === "weekly" ? 1 : 7 / Math.max(1, R.days.length);
     }
@@ -1121,11 +1685,6 @@ loadScript(['vendor/chart.umd.js','https://cdnjs.cloudflare.com/ajax/libs/Chart.
       const restToday = since >= 1 && since <= run;
       return { last: L.i, lastDate: L.s.date, next, done, restToday, restIdx: restToday ? (L.i + since) % n : -1 };
     }
-    const E1_MAX_REPS = 12;
-    function sameRR(a, b) {
-      return !a || !b || a[0] === b[0] && a[1] === b[1];
-    }
-    const GROW_PCT = 3;
     function fixSupersets(items) {
       let i = 0;
       while (i < items.length) {
@@ -1166,19 +1725,6 @@ loadScript(['vendor/chart.umd.js','https://cdnjs.cloudflare.com/ajax/libs/Chart.
     function injuredSet() {
       return new Set((state.injuries || []).map((x) => x.m));
     }
-    const JOINTS = [["j_knee", "Knee"], ["j_hip", "Hip"], ["j_shoulder", "Shoulder"], ["j_elbow", "Elbow"], ["j_wrist", "Wrist"]];
-    const JK = JOINTS.map((j) => j[0]);
-    const JL = Object.fromEntries(JOINTS);
-    const injLabel = (k) => ML[k] || JL[k] || k;
-    function exJoints(e) {
-      const p = patternOf(e), n = String(e.name || "").toLowerCase(), m = e.primary, out = [];
-      if (p === "squat" || m === "quads" || /leg curl|nordic|lunge|step-up|split squat/.test(n)) out.push("j_knee");
-      if (p === "hinge" || p === "squat" || ["glutes", "adductors", "abductors"].includes(m) || /thrust|bridge/.test(n)) out.push("j_hip");
-      if (["press", "fly", "raise", "vpull", "pullover", "rearfly"].includes(p) && !["quads", "hamstrings", "glutes", "calves", "abs", "obliques"].includes(m) || ["chest", "frontDelts", "sideDelts", "rearDelts", "rotatorCuff"].includes(m) || /\bdips?\b|face pull|upright/.test(n)) out.push("j_shoulder");
-      if ((["ext", "vpull", "row"].includes(p) || p === "curl" && m !== "hamstrings") && m !== "quads" || ["biceps", "triceps", "forearms"].includes(m) || /\bdips?\b|close.grip|skull/.test(n)) out.push("j_elbow");
-      if (m === "forearms" || p === "curl" && m === "biceps" || /push-up|front squat|\bdips?\b|wrist/.test(n) || p === "press" && ["barbell", "dumbbell"].includes(e.equip)) out.push("j_wrist");
-      return out;
-    }
     function exInjury(ex) {
       const s = injuredSet();
       if (!s.size) return null;
@@ -1187,24 +1733,6 @@ loadScript(['vendor/chart.umd.js','https://cdnjs.cloudflare.com/ajax/libs/Chart.
       for (const j of exJoints(ex)) if (s.has(j)) return j;
       return null;
     }
-    const pad = (n) => String(n).padStart(2, "0");
-    const iso = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
-    const parse = (s) => {
-      const [a, b, c] = s.split("-").map(Number);
-      return new Date(a, b - 1, c);
-    };
-    const addDays = (s, n) => {
-      const d = parse(s);
-      d.setDate(d.getDate() + n);
-      return iso(d);
-    };
-    const weekStart = (s) => {
-      const d = parse(s);
-      d.setDate(d.getDate() - (d.getDay() + 6) % 7);
-      return iso(d);
-    };
-    const daysBetween = (a, b) => Math.round((parse(b) - parse(a)) / 864e5);
-    const today = () => iso(/* @__PURE__ */ new Date());
     const DTF = {};
     const dtf = (k, o) => DTF[k] || (DTF[k] = new Intl.DateTimeFormat(void 0, o));
     const fmtWith = (k, o, s) => {
@@ -1214,40 +1742,17 @@ loadScript(['vendor/chart.umd.js','https://cdnjs.cloudflare.com/ajax/libs/Chart.
     const fmtDate = (s) => fmtWith("d", { month: "short", day: "numeric" }, s);
     const fmtDateLong = (s) => fmtWith("l", { weekday: "short", month: "short", day: "numeric", year: "numeric" }, s);
     const fmtDateRow = (s) => parse(s).toLocaleDateString(void 0, { weekday: "short", month: "short", day: "numeric", ...s.slice(0, 4) === today().slice(0, 4) ? {} : { year: "numeric" } });
-    const MUSCLES = [["chest", "Chest"], ["serratus", "Serratus"], ["lats", "Lats"], ["upperBack", "Upper back"], ["traps", "Traps"], ["lowerBack", "Lower back"], ["frontDelts", "Front delts"], ["sideDelts", "Side delts"], ["rearDelts", "Rear delts"], ["rotatorCuff", "Rotator cuff"], ["biceps", "Biceps"], ["triceps", "Triceps"], ["forearms", "Forearms"], ["abs", "Abs"], ["obliques", "Obliques"], ["neck", "Neck"], ["quads", "Quads"], ["hamstrings", "Hamstrings"], ["glutes", "Glutes"], ["adductors", "Adductors"], ["abductors", "Abductors"], ["calves", "Calves"], ["tibialis", "Tibialis"]];
-    const MK = MUSCLES.map((m) => m[0]);
-    const ML = Object.fromEntries(MUSCLES);
-    const NEW_MUSCLES_V5 = ["serratus", "rotatorCuff"];
-    const TRACK_ONLY = /* @__PURE__ */ new Set(["serratus", "rotatorCuff", "neck", "tibialis"]);
-    const BANDS = { chest: [10, 20], serratus: [2, 8], lats: [10, 20], upperBack: [10, 20], traps: [6, 16], lowerBack: [3, 10], frontDelts: [4, 12], sideDelts: [10, 20], rearDelts: [8, 16], rotatorCuff: [2, 8], biceps: [10, 20], triceps: [10, 20], forearms: [4, 12], abs: [6, 16], obliques: [3, 10], neck: [2, 10], quads: [10, 20], hamstrings: [10, 20], glutes: [8, 16], adductors: [4, 12], abductors: [4, 12], calves: [8, 16], tibialis: [2, 8] };
     const PROF_GOALS = [["size", "Size"], ["strength", "Strength"], ["both", "Both"]];
     const PROF_EXP = [["new", "Under 1"], ["mid", "1 to 3"], ["adv", "Over 3"]];
     const PROF_DAYS = [2, 3, 4, 5, 6];
     const FOCUS_MAX = 2;
     const FOCUS_UP = 1.3, MAINT_SHARE = 1 / 3;
-    const EQUIP = [["barbell", "Barbell"], ["dumbbell", "Dumbbell"], ["cable", "Cable"], ["machine", "Machine"], ["smith", "Smith machine"], ["landmine", "Landmine"], ["bodyweight", "Bodyweight"], ["other", "Other"]];
-    const REGIONS = [
-      ["Chest", ["chest"]],
-      ["Back", ["lats", "upperBack", "traps", "lowerBack"]],
-      ["Shoulders", ["frontDelts", "sideDelts", "rearDelts", "rotatorCuff", "serratus"]],
-      ["Arms", ["biceps", "triceps", "forearms"]],
-      ["Core", ["abs", "obliques", "neck"]],
-      ["Quads", ["quads", "adductors"]],
-      ["Posterior", ["hamstrings", "glutes", "abductors"]],
-      ["Calves", ["calves", "tibialis"]]
-    ];
-    const EQL = Object.fromEntries(EQUIP);
     const DSECS = [["volume", "Volume"], ["exercise", "Lifts"], ["weak", "Muscles"], ["consistency", "Consistency"], ["body", "Body"]];
     const DSEC_KEYS = DSECS.map((x) => x[0]);
     const SEC_TABS = ["today", "program", "dash", "history", "settings"];
     const DSEC_FOLDED = ["consistency", "body"];
     const DSEC_ALIAS = { stalls: "exercise", prs: "exercise", bests: "exercise", rank: "weak", svol: "volume" };
-    const CARDIO = [["walk", "Treadmill walk"], ["incline", "Incline walk"], ["elliptical", "Elliptical"], ["bike", "Bike"], ["stairs", "Stair climber"], ["rower", "Rower"], ["run", "Run"], ["hiit", "HIIT"], ["mobility", "Mobility / stretching"], ["other", "Other"]];
-    const CARDIOL = Object.fromEntries(CARDIO);
-    const CWHEN = [["pre", "Before lifting"], ["post", "After lifting"], ["solo", "On its own"]];
-    const CWHENL = Object.fromEntries(CWHEN);
     const TRASH_DAYS = 30, TRASH_MAX = 20, TRASH_BYTES = 6e4;
-    const PLATE_SIDE_IDS = ["hackSquat", "pendulum", "legPress", "legPressCalf", "beltSquat", "machHipThrust"];
     const VOL_MODES = [["region", "By region"], ["week", "This week"], ["avg", "Recent average"], ["trend", "Weekly trend"], ["load", "Load"]];
     const PLATE_MODES = [["auto", "Automatic"], ["bar", "Barbell: bar plus plates per side"], ["side", "Plates per side, no bar"], ["sleeve", "One sleeve (landmine)"], ["none", "None"]];
     const HIDEABLE = [
@@ -1280,343 +1785,10 @@ loadScript(['vendor/chart.umd.js','https://cdnjs.cloudflare.com/ajax/libs/Chart.
     const DEFAULT_ORDER = { today: ["session", "map", "week", "injuries", "coach", "tiles", "body"], dash: ["exercise", "volume", "weak", "consistency", "body"] };
     const defaultOrder = () => JSON.parse(JSON.stringify(DEFAULT_ORDER));
     const MAIN_FIXED = { history: "sessions" };
-    const MEAS = [["arm", "Arm"], ["forearm", "Forearm"], ["chest", "Chest"], ["waist", "Waist"], ["thigh", "Thigh"], ["calf", "Calf"], ["neck", "Neck"]];
-    const LIB = [
-      ["bench", "Barbell Bench Press", "chest", "frontDelts triceps", "barbell", "", ""],
-      ["pauseBench", "Paused Bench Press", "chest", "frontDelts triceps", "barbell", "r", "A full stop on the chest, as in a meet, then press."],
-      ["floorPress", "Floor Press", "chest", "triceps frontDelts", "barbell", "r", "Lying on the floor: the upper arms stop on it, so the range is shorter."],
-      ["incBench", "Incline Barbell Bench Press", "chest", "frontDelts triceps", "barbell", "", "Low incline (about 30°) keeps the chest as the prime mover."],
-      ["dbBench", "DB Bench Press", "chest", "frontDelts triceps", "dumbbell", "", ""],
-      ["incDb", "Incline DB Press", "chest", "frontDelts triceps", "dumbbell", "", ""],
-      ["smithInc", "Smith Incline Press", "chest", "frontDelts triceps", "smith", "", ""],
-      ["machPress", "Machine Chest Press", "chest", "frontDelts triceps", "machine", "", ""],
-      ["dips", "Dips (chest lean)", "chest", "triceps frontDelts", "bodyweight", "b", "Log added load only. Bodyweight is added automatically for trends."],
-      ["pecDeck", "Pec Deck Fly", "chest", "frontDelts", "machine", "", ""],
-      ["cableFly", "Cable Fly", "chest", "frontDelts", "cable", "", ""],
-      ["lowHighFly", "Low-to-High Cable Fly", "chest", "frontDelts", "cable", "r", "Arcs upward from hip height. Biases the upper (clavicular) chest."],
-      ["highLowFly", "High-to-Low Cable Fly", "chest", "", "cable", "r", "Arcs downward. Biases the lower (sternal) chest."],
-      ["dbFly", "DB Fly", "chest", "frontDelts", "dumbbell", "", ""],
-      ["pushup", "Push-up", "chest", "triceps frontDelts serratus", "bodyweight", "b", ""],
-      ["deficitPushup", "Deficit Push-up", "chest", "triceps frontDelts serratus", "bodyweight", "br", "Hands on handles or plates so the chest drops below hand level."],
-      ["declinePushup", "Decline Push-up (feet raised)", "chest", "frontDelts triceps serratus", "bodyweight", "b", "Feet on a bench: about 70% of bodyweight, against 64% for a floor push-up (Ebben 2011)."],
-      ["pullup", "Pull-up", "lats", "biceps upperBack", "bodyweight", "b", "Log added load only. Bodyweight is added automatically for trends."],
-      ["chinup", "Chin-up", "lats", "biceps upperBack", "bodyweight", "b", ""],
-      ["assistPullup", "Assisted Pull-up (machine)", "lats", "biceps upperBack", "machine", "ba", "Type the help the machine gives. Less help is progress."],
-      ["assistDip", "Assisted Dip (machine)", "chest", "triceps frontDelts", "machine", "ba", "Type the help the machine gives. Less help is progress."],
-      ["latPulldown", "Lat Pulldown", "lats", "biceps upperBack", "cable", "", ""],
-      ["singlePulldown", "Single-Arm Cable Pulldown", "lats", "biceps", "cable", "rs", "Kneeling. Drive the elbow toward the hip with a long stretch at the top."],
-      ["straightArm", "Straight-Arm Cable Pulldown", "lats", "", "cable", "", ""],
-      ["dbPullover", "DB Pullover", "lats", "chest serratus", "dumbbell", "", ""],
-      ["landmineRow", "Landmine T-Bar Row", "upperBack", "lats biceps rearDelts", "landmine", "", ""],
-      ["meadowsRow", "Meadows Row", "lats", "upperBack biceps rearDelts", "landmine", "rs", "Single-arm landmine row from a staggered stance. Big stretch."],
-      ["cableRow", "Seated Cable Row", "upperBack", "lats biceps rearDelts", "cable", "", ""],
-      ["bbRow", "Barbell Row", "upperBack", "lats biceps rearDelts lowerBack", "barbell", "", ""],
-      ["dbRow", "One-Arm DB Row", "lats", "upperBack biceps", "dumbbell", "s", ""],
-      ["krocRow", "Kroc Row", "lats", "upperBack biceps forearms", "dumbbell", "rs", "Heavy, high-rep one-arm DB row with controlled body english. Trains grip hard."],
-      ["sealRow", "Seal Row", "upperBack", "lats rearDelts biceps", "barbell", "r", "Face down on a raised bench. Takes the lower back out of rowing."],
-      ["machRow", "Chest-Supported Machine Row", "upperBack", "lats biceps rearDelts", "machine", "", ""],
-      ["invertedRow", "Inverted Row", "upperBack", "lats biceps", "bodyweight", "b", ""],
-      ["rackPull", "Rack Pull", "upperBack", "traps lowerBack glutes forearms", "barbell", "", ""],
-      ["kelsoShrug", "Kelso Shrug", "upperBack", "traps", "other", "r", "Chest-supported. Pinch the shoulder blades together without bending the arms. Mid traps and rhomboids."],
-      ["bbShrug", "Barbell Shrug", "traps", "forearms", "barbell", "", ""],
-      ["dbShrug", "DB Shrug", "traps", "forearms", "dumbbell", "", ""],
-      ["hyperext", "45° Hyperextension", "lowerBack", "glutes hamstrings", "bodyweight", "b", "Rounding the upper back slightly shifts work toward the glutes."],
-      ["reverseHyper", "Reverse Hyperextension", "glutes", "lowerBack hamstrings", "machine", "r", "Torso fixed, legs swing up. Hip extension with low spinal compression."],
-      ["goodMorning", "Good Morning", "hamstrings", "lowerBack glutes", "barbell", "", ""],
-      ["seatedDbPress", "Seated DB Shoulder Press", "frontDelts", "sideDelts triceps serratus", "dumbbell", "", ""],
-      ["ohp", "Standing Overhead Press", "frontDelts", "sideDelts triceps serratus", "barbell", "", ""],
-      ["machShoulder", "Machine Shoulder Press", "frontDelts", "sideDelts triceps serratus", "machine", "", ""],
-      ["landminePress", "Half-Kneeling Landmine Press", "frontDelts", "chest triceps serratus", "landmine", "rs", "Arced pressing path that many cranky shoulders tolerate well."],
-      ["zPress", "Z Press", "frontDelts", "sideDelts triceps abs serratus", "barbell", "r", "Seated on the floor, legs straight, no back support. Exposes core and upper-back weak links."],
-      ["dbLateral", "DB Lateral Raise", "sideDelts", "", "dumbbell", "", ""],
-      ["cableLateral", "Cable Lateral Raise", "sideDelts", "", "cable", "", ""],
-      ["leanAwayLat", "Lean-Away Lateral Raise", "sideDelts", "", "dumbbell", "rs", "Hold a post and lean away. Loads the bottom range that standard raises miss."],
-      ["machLateral", "Machine Lateral Raise", "sideDelts", "", "machine", "", ""],
-      ["cableY", "Cable Y-Raise", "sideDelts", "traps", "cable", "r", "Arms travel up and out in a Y. Side delts plus lower traps."],
-      ["luRaise", "Lu Raise", "sideDelts", "frontDelts traps serratus", "dumbbell", "r", "Light plates or DBs raised to overhead with straight arms."],
-      ["uprightRow", "Wide-Grip Cable Upright Row", "sideDelts", "traps", "cable", "", ""],
-      ["reversePecDeck", "Reverse Pec Deck", "rearDelts", "upperBack rotatorCuff", "machine", "", ""],
-      ["facePull", "Face Pull", "rearDelts", "upperBack traps rotatorCuff", "cable", "", ""],
-      ["cableRearFly", "Cross-Body Cable Rear Delt Fly", "rearDelts", "upperBack rotatorCuff", "cable", "s", ""],
-      ["ohCableExt", "Overhead Cable Triceps Extension", "triceps", "", "cable", "", "Long head at long length. Grew the triceps more than pushdowns in a 2023 study (Maeo et al.)."],
-      ["pressdown", "Triceps Pressdown", "triceps", "", "cable", "", ""],
-      ["skull", "EZ-Bar Skull Crusher", "triceps", "", "barbell", "", ""],
-      ["jmPress", "JM Press", "triceps", "chest", "barbell", "r", "Hybrid of close-grip bench and skull crusher. The Smith version is easier to learn."],
-      ["cgBench", "Close-Grip Bench Press", "triceps", "chest frontDelts", "barbell", "", ""],
-      ["katana", "Katana Triceps Extension", "triceps", "", "cable", "rs", "Single arm from a low cable, extending overhead across the body."],
-      ["tatePress", "Tate Press", "triceps", "", "dumbbell", "r", "Elbows flare out as the DBs lower toward the chest."],
-      ["triDips", "Dips (upright, triceps focus)", "triceps", "chest frontDelts", "bodyweight", "b", ""],
-      ["inclineCurl", "Incline DB Curl", "biceps", "", "dumbbell", "", "Shoulder extended, so the long head works at long length."],
-      ["bayesianCurl", "Bayesian Cable Curl", "biceps", "", "cable", "r", "Face away from a low cable with the arm behind the torso. Tension at long length."],
-      ["preacher", "Preacher Curl", "biceps", "", "machine", "", ""],
-      ["spiderCurl", "Spider Curl", "biceps", "", "dumbbell", "r", "Chest on an incline bench, arms hanging. Tension at short length."],
-      ["bbCurl", "Barbell Curl", "biceps", "forearms", "barbell", "", ""],
-      ["cableCurl", "Cable Curl", "biceps", "", "cable", "", ""],
-      ["hammer", "Hammer Curl", "biceps", "forearms", "dumbbell", "", ""],
-      ["dragCurl", "Drag Curl", "biceps", "", "barbell", "r", "The bar stays against the torso while the elbows travel back."],
-      ["zottman", "Zottman Curl", "biceps", "forearms", "dumbbell", "r", "Palms up on the way up, palms down on the way down."],
-      ["reverseCurl", "Reverse EZ Curl", "forearms", "biceps", "barbell", "", ""],
-      ["wristCurl", "Wrist Curl", "forearms", "", "barbell", "", ""],
-      ["revWristCurl", "Reverse Wrist Curl", "forearms", "", "barbell", "", ""],
-      ["wristRoller", "Wrist Roller", "forearms", "", "other", "r", "Log one full roll up and down as one rep."],
-      ["cableCrunch", "Cable Crunch", "abs", "", "cable", "", ""],
-      ["hangingLegRaise", "Hanging Leg Raise", "abs", "", "bodyweight", "b", "Curl the pelvis up. Swinging the legs only trains the hip flexors."],
-      ["abWheel", "Ab Wheel Rollout", "abs", "lats", "bodyweight", "b", ""],
-      ["dragonFlag", "Dragon Flag", "abs", "", "bodyweight", "br", "Lower slowly as one rigid unit. Use negatives until full reps are possible."],
-      ["declineCrunch", "Weighted Decline Crunch", "abs", "", "other", "", ""],
-      ["woodchop", "Cable Woodchop", "obliques", "abs", "cable", "s", "Log reps per side."],
-      ["pallof", "Pallof Press", "obliques", "abs", "cable", "rs", "Anti-rotation press. Log reps per side."],
-      ["sideBend", "DB Side Bend", "obliques", "", "dumbbell", "s", ""],
-      ["neckCurl", "Neck Flexion (plate or harness)", "neck", "", "other", "r", "Start light and progress slowly."],
-      ["neckExt", "Neck Extension (harness)", "neck", "traps", "other", "r", "Start light and progress slowly."],
-      ["neckBridge", "Neck Bridge", "neck", "", "bodyweight", "br", "Controlled range. Build tolerance gradually."],
-      ["hackSquat", "Hack Squat", "quads", "glutes adductors", "machine", "", ""],
-      ["pendulum", "Pendulum Squat", "quads", "glutes adductors", "machine", "", ""],
-      ["legPress", "Leg Press", "quads", "glutes adductors", "machine", "", ""],
-      ["beltSquat", "Belt Squat", "quads", "glutes adductors", "machine", "r", "Loads the legs with no spinal compression."],
-      ["backSquat", "Barbell Back Squat", "quads", "glutes adductors lowerBack", "barbell", "", ""],
-      ["pauseSquat", "Pause Squat", "quads", "glutes adductors lowerBack", "barbell", "r", "A full stop of about 2 seconds at the bottom, then up."],
-      ["frontSquat", "Front Squat", "quads", "glutes adductors", "barbell", "", ""],
-      ["smithSquat", "Smith Squat", "quads", "glutes adductors", "smith", "", ""],
-      ["bss", "Bulgarian Split Squat", "quads", "glutes adductors", "dumbbell", "s", ""],
-      ["walkingLunge", "Walking Lunge", "quads", "glutes adductors", "dumbbell", "", ""],
-      ["legExt", "Leg Extension", "quads", "", "machine", "", ""],
-      ["sissy", "Sissy Squat", "quads", "", "bodyweight", "br", "Knees travel forward while the hips stay extended. Rectus femoris at long length."],
-      ["revNordic", "Reverse Nordic", "quads", "", "bodyweight", "br", "Kneeling lean-back. Start with a short range."],
-      ["cossack", "Cossack Squat", "adductors", "quads glutes", "other", "rs", "Deep side-to-side squat. Adductors at long length."],
-      ["adductor", "Hip Adductor Machine", "adductors", "", "machine", "", ""],
-      ["abductor", "Hip Abductor Machine", "abductors", "glutes", "machine", "", ""],
-      ["sldl", "Stiff-Leg Deadlift", "hamstrings", "glutes lowerBack", "barbell", "", ""],
-      ["rdl", "Romanian Deadlift", "hamstrings", "glutes lowerBack", "barbell", "", ""],
-      ["dbRdl", "DB Romanian Deadlift", "hamstrings", "glutes lowerBack", "dumbbell", "", ""],
-      ["deadlift", "Conventional Deadlift", "glutes", "hamstrings lowerBack quads traps forearms", "barbell", "", ""],
-      ["sumoDl", "Sumo Deadlift", "glutes", "quads adductors hamstrings lowerBack traps forearms", "barbell", "", "Wide stance, hands inside the knees."],
-      ["powerClean", "Power Clean", "glutes", "hamstrings quads traps upperBack", "barbell", "r", "The bar from the floor to the shoulders in one fast pull. Add load only while the bar stays fast."],
-      ["kbSwing", "Kettlebell Swing", "glutes", "hamstrings lowerBack", "other", "", "A hip snap, not a squat: the arms only guide the bell. Enter the bell's weight."],
-      ["seatedCurl", "Seated Leg Curl", "hamstrings", "", "machine", "", "Grew the hamstrings more than lying curls in a 2021 study (Maeo et al.)."],
-      ["lyingCurl", "Lying Leg Curl", "hamstrings", "", "machine", "", ""],
-      ["nordic", "Nordic Hamstring Curl", "hamstrings", "", "bodyweight", "br", "Very demanding eccentric. Use a band or partial range until full reps are possible."],
-      ["ghr", "Glute-Ham Raise", "hamstrings", "glutes", "bodyweight", "br", ""],
-      ["hipThrust", "Barbell Hip Thrust", "glutes", "hamstrings", "barbell", "", ""],
-      ["pullThrough", "Cable Pull-Through", "glutes", "hamstrings", "cable", "r", "Hip hinge facing away from a low cable."],
-      ["kickback", "Cable Glute Kickback", "glutes", "", "cable", "s", ""],
-      ["standCalf", "Standing Calf Raise", "calves", "", "machine", "", "Full stretch at the bottom with a pause."],
-      ["seatedCalf", "Seated Calf Raise", "calves", "", "machine", "", "Bent knee shifts the work to the soleus."],
-      ["legPressCalf", "Leg Press Calf Raise", "calves", "", "machine", "", ""],
-      ["tibRaise", "Tibialis Raise", "tibialis", "", "other", "r", "Back against a wall, heels down, raise the toes. The shin muscle is rarely trained."],
-      // v5 additions. The first library leaned on less common, evidence-flagged
-      // variations and left out staples, the plain dumbbell curl among them. These
-      // fill every muscle's everyday options, plus direct work for the two new
-      // muscles.
-      ["dbCurl", "DB Curl", "biceps", "forearms", "dumbbell", "", "Standing or seated, both arms or alternating."],
-      ["ezCurl", "EZ-Bar Curl", "biceps", "forearms", "barbell", "", "The angled grip is easier on the wrists than a straight bar."],
-      ["concCurl", "Concentration Curl", "biceps", "", "dumbbell", "s", ""],
-      ["machCurl", "Machine Biceps Curl", "biceps", "", "machine", "", ""],
-      ["declineBench", "Decline Barbell Bench Press", "chest", "triceps frontDelts", "barbell", "", "Biases the lower (sternal) chest."],
-      ["smithBench", "Smith Machine Bench Press", "chest", "frontDelts triceps", "smith", "", ""],
-      ["incMachPress", "Incline Machine Press", "chest", "frontDelts triceps", "machine", "", ""],
-      ["incDbFly", "Incline DB Fly", "chest", "frontDelts", "dumbbell", "", "Upper chest at a long length."],
-      ["ngPulldown", "Close-Grip Neutral Pulldown", "lats", "biceps upperBack", "cable", "", ""],
-      ["machHighRow", "Machine High Row", "lats", "upperBack biceps", "machine", "", ""],
-      ["machPullover", "Machine Pullover", "lats", "", "machine", "r", "Lats through a full arc with no biceps limit."],
-      ["csDbRow", "Chest-Supported DB Row", "upperBack", "lats rearDelts biceps", "dumbbell", "", "Face down on an incline bench, so the lower back stays out of it."],
-      ["pendlayRow", "Pendlay Row", "upperBack", "lats biceps rearDelts lowerBack", "barbell", "r", "Each rep starts dead on the floor."],
-      ["trapBarDl", "Trap Bar Deadlift", "glutes", "quads hamstrings lowerBack traps forearms", "barbell", "", "More upright and easier on the lower back than a straight bar."],
-      ["arnold", "Arnold Press", "frontDelts", "sideDelts triceps serratus", "dumbbell", "", ""],
-      ["smithOhp", "Smith Machine Shoulder Press", "frontDelts", "sideDelts triceps serratus", "smith", "", ""],
-      ["dbFrontRaise", "DB Front Raise", "frontDelts", "", "dumbbell", "", ""],
-      ["cableFrontRaise", "Cable Front Raise", "frontDelts", "", "cable", "", ""],
-      ["dbRearFly", "Bent-Over DB Rear Delt Fly", "rearDelts", "upperBack rotatorCuff", "dumbbell", "", ""],
-      ["ohDbExt", "Overhead DB Triceps Extension", "triceps", "", "dumbbell", "", "One dumbbell, both hands. Long head at a long length."],
-      ["ropePressdown", "Rope Triceps Pressdown", "triceps", "", "cable", "", ""],
-      ["triKickback", "Triceps Kickback", "triceps", "", "cable", "s", "Cable keeps tension at lockout; a dumbbell works too."],
-      ["machDip", "Seated Dip Machine", "triceps", "chest frontDelts", "machine", "", ""],
-      ["machCrunch", "Machine Crunch", "abs", "", "machine", "", ""],
-      ["kneeRaise", "Captain's Chair Knee Raise", "abs", "", "bodyweight", "b", "Curl the pelvis up at the top, not just the knees."],
-      ["reverseCrunch", "Reverse Crunch", "abs", "", "bodyweight", "b", ""],
-      ["crunch", "Crunch", "abs", "", "bodyweight", "b", ""],
-      ["russianTwist", "Russian Twist", "obliques", "abs", "bodyweight", "b", "Log reps per side or total, the same way each time."],
-      ["neckLat", "Neck Lateral Flexion (plate or band)", "neck", "", "other", "rs", "Start light and progress slowly."],
-      ["neckMachine", "4-Way Neck Machine", "neck", "traps", "machine", "r", "Start light. Note which direction in the exercise note."],
-      ["goblet", "Goblet Squat", "quads", "glutes adductors", "dumbbell", "", ""],
-      ["revLunge", "Reverse Lunge", "quads", "glutes adductors", "dumbbell", "s", "Stepping back is easier on the knees than a forward lunge."],
-      ["stepUp", "Step-Up", "quads", "glutes", "dumbbell", "s", ""],
-      ["standCurl", "Standing Single-Leg Curl", "hamstrings", "", "machine", "s", ""],
-      ["slRdl", "Single-Leg RDL", "hamstrings", "glutes", "dumbbell", "rs", ""],
-      ["gluteBridge", "Barbell Glute Bridge", "glutes", "hamstrings", "barbell", "", ""],
-      ["machHipThrust", "Machine Hip Thrust", "glutes", "hamstrings", "machine", "", ""],
-      ["cableAbduction", "Cable Hip Abduction", "abductors", "glutes", "cable", "s", ""],
-      ["slCalf", "Single-Leg DB Calf Raise", "calves", "", "dumbbell", "s", "Full stretch at the bottom with a pause."],
-      ["donkeyCalf", "Donkey Calf Raise", "calves", "", "machine", "r", "Hips bent, so the calves work at a longer length."],
-      ["pushupPlus", "Push-up Plus", "serratus", "chest triceps", "bodyweight", "b", "At the top, keep pushing the floor away so the shoulder blades wrap forward."],
-      ["serratusPunch", "Cable Serratus Punch", "serratus", "", "cable", "rs", "Arm straight. Reach forward past lockout by moving only the shoulder blade."],
-      ["cableER", "Cable External Rotation", "rotatorCuff", "", "cable", "s", "Elbow at your side, forearm rotates out. Light and slow."],
-      ["sideLyingER", "Side-Lying DB External Rotation", "rotatorCuff", "rearDelts", "dumbbell", "s", "Light and slow; stop well short of any pinch."],
-      ["platePinch", "Plate Pinch Hold", "forearms", "", "other", "rt", "Timed: pinch plates smooth side out. Log seconds and the total plate weight."],
-      ["copenhagen", "Copenhagen Plank", "adductors", "obliques", "bodyweight", "brts", "Timed side plank with the top leg on a bench, per side. Start with the knee on the bench."],
-      // Timed holds (flag t): the reps column holds seconds. No e1RM is estimated from them.
-      ["plank", "Plank", "abs", "obliques", "bodyweight", "bt", "Timed hold: log seconds. Add a plate on your back once the top of the range is easy."],
-      ["sidePlank", "Side Plank", "obliques", "abs", "bodyweight", "bts", "Timed hold, per side: log seconds."],
-      ["deadHang", "Dead Hang", "forearms", "lats", "bodyweight", "bt", "Timed hang from a bar: log seconds. Builds grip endurance."],
-      ["neckBridgeHold", "Neck Bridge Hold", "neck", "", "bodyweight", "brt", "Timed isometric: log seconds. Build tolerance gradually."],
-      ["wallSit", "Wall Sit", "quads", "", "bodyweight", "brt", "Timed hold with thighs parallel: log seconds."],
-      ["farmerHold", "Farmer Carry or Hold", "forearms", "traps upperBack", "dumbbell", "rt", "Timed: log seconds and the load in each hand."]
-    ];
-    const COMMON = /* @__PURE__ */ new Set(["bench", "backSquat", "deadlift", "latPulldown", "ohp", "bbRow", "dbLateral", "legExt", "legPress", "bbCurl", "pressdown", "incDb", "dbCurl", "pullup", "cableRow", "ropePressdown", "lyingCurl", "dbRow", "seatedDbPress", "rdl", "seatedCurl", "hammer", "cableFly", "dbBench", "facePull", "cgBench", "hipThrust", "bss", "sldl", "abductor"]);
-    const isCommon = (e) => !!e && !e.custom && !e.rare && COMMON.has(e.id);
     const JUMP_TIP = "When every set reaches the top of the rep range, the load goes up by about this share, in whole load steps and at least one step. Blank: 2.5% on compound lifts, 5% on isolation lifts, a convention. 0: one step every time. Until then the target is to beat last time's total reps at the same load. When the step is large for the load, a few more reps come first, so the new load starts inside the range.";
     const RIR_TGT_TIP = "Target RIR is 1 unless you change it, a convention: muscle growth improves as sets end closer to failure (Robinson 2024), but going all the way to failure grew muscle no more than stopping 1 to 2 reps short (Refalo 2024) and costs more fatigue. Some lifts in the ready-made routines use 0 or 2.";
     const COMMON_TIP = "Most common: the lifts in the top 25 by sets logged, overall, for men, or for women, among over 700,000 StrengthLog users (2025). Less common: useful lifts many gyms or programs skip, a judgment.";
     const exTags = (e, skip) => `${isCommon(e) && skip !== "common" ? '<span class="tag common">Most common</span>' : ""}${e.rare && skip !== "rare" ? '<span class="tag rare">Less common</span>' : ""}`;
-    function libExercises() {
-      return LIB.map(([id, name, primary, sec2, equip, flags, note]) => {
-        const o = { id, name, primary, secondary: sec2 ? sec2.split(" ") : [], equip, bw: flags.includes("b"), rare: flags.includes("r"), perSide: flags.includes("s"), note, custom: false, archived: false };
-        if (flags.includes("t")) o.timed = true;
-        if (flags.includes("a")) o.assist = true;
-        return o;
-      });
-    }
-    const PATTERNS = [["calf", /calf raise/], ["hinge", /hyperextension/], ["squat", /leg press|hack squat|pendulum/], ["rearfly", /rear delt|reverse pec/], ["pullover", /pullover/], ["fly", /\bfly|flye|pec deck/], ["ext", /pressdown|extension|kickback|skull|tate press|jm press/], ["vpull", /pulldown|pull-up|chin-up|high row/], ["row", /\brow\b/], ["curl", /curl/], ["press", /press|push-up|\bdips?\b|bench/], ["squat", /squat|lunge|step-up/], ["hinge", /deadlift|rdl|rack pull|good morning|pull-through|hip thrust|bridge|hyperextension|power clean|swing/], ["raise", /raise/], ["core", /crunch|rollout|dragon|plank|twist/], ["shrug", /shrug/]];
-    function patternOf(e) {
-      const n = String(e && e.name || "").toLowerCase();
-      for (const [k, re] of PATTERNS) if (re.test(n)) return k;
-      return null;
-    }
-    const NON_COMPOUND_PRIMARY = /* @__PURE__ */ new Set(["abs", "obliques", "neck", "forearms", "serratus", "rotatorCuff", "calves", "tibialis"]);
-    function autoCompound(ex) {
-      return !!ex && !ex.timed && !NON_COMPOUND_PRIMARY.has(ex.primary) && ["press", "row", "vpull", "squat", "hinge"].includes(patternOf(ex));
-    }
-    function isCompound(ex) {
-      if (ex && ex.kind === "compound") return !ex.timed;
-      if (ex && ex.kind === "iso") return false;
-      return autoCompound(ex);
-    }
-    const NO_E1 = /* @__PURE__ */ new Set(["hangingLegRaise", "kneeRaise", "reverseCrunch", "crunch", "dragonFlag", "abWheel", "russianTwist", "neckBridge", "nordic", "ghr", "revNordic", "sissy"]);
-    const noE1 = (ex) => !!ex && (!!ex.timed || NO_E1.has(ex.id));
-    const SLOW_RECOVERY = /* @__PURE__ */ new Set(["deadlift", "sumoDl", "trapBarDl", "rdl", "sldl", "dbRdl", "slRdl", "goodMorning", "nordic", "ghr", "walkingLunge"]);
-    function defaultRoutine() {
-      const I = (exId, sets, repMin, repMax, rir, rest) => ({ uid: uid(), exId, sets, repMin, repMax, rir, rest, inc: 5 * LB });
-      const D = (name, items, rest) => ({ id: uid(), name, rest: !!rest, items });
-      return { id: uid(), name: "One muscle a day, high volume", schedule: "cycle", days: [
-        D("Chest", [I("incBench", 4, 6, 10, 1, 180), I("bench", 3, 6, 10, 1, 180), I("dips", 3, 8, 12, 1, 120), I("lowHighFly", 3, 10, 15, 0, 90), I("pecDeck", 2, 12, 15, 0, 75), I("deficitPushup", 2, 10, 25, 0, 75), I("cableCrunch", 3, 10, 15, 1, 60)]),
-        D("Back", [I("pullup", 4, 6, 10, 1, 150), I("landmineRow", 3, 8, 12, 1, 120), I("cableRow", 3, 8, 12, 1, 120), I("dbPullover", 3, 10, 15, 1, 90), I("kelsoShrug", 3, 10, 15, 1, 90), I("rackPull", 3, 5, 8, 2, 180)]),
-        D("Legs A: quads", [I("hackSquat", 4, 6, 12, 1, 180), I("legPress", 3, 10, 15, 1, 150), I("bss", 3, 8, 12, 1, 120), I("legExt", 3, 10, 15, 0, 90), I("sissy", 2, 8, 15, 1, 90), I("adductor", 3, 10, 15, 1, 75), I("standCalf", 4, 8, 12, 0, 60), I("tibRaise", 2, 15, 25, 1, 45)]),
-        D("Shoulders", [I("seatedDbPress", 3, 6, 10, 1, 150), I("cableLateral", 4, 10, 20, 0, 60), I("leanAwayLat", 3, 10, 15, 0, 60), I("cableY", 2, 12, 20, 0, 60), I("reversePecDeck", 4, 12, 20, 0, 60), I("facePull", 2, 12, 20, 0, 60), I("dbShrug", 3, 8, 12, 1, 75), I("hangingLegRaise", 3, 10, 15, 1, 60), I("neckCurl", 2, 15, 20, 2, 45), I("neckExt", 2, 15, 20, 2, 45)]),
-        D("Legs B: posterior", [I("sldl", 4, 6, 10, 2, 180), I("seatedCurl", 4, 8, 12, 0, 90), I("nordic", 3, 3, 8, 1, 120), I("hyperext", 3, 10, 15, 1, 75), I("abductor", 4, 12, 20, 0, 60), I("seatedCalf", 4, 10, 15, 0, 60), I("abWheel", 3, 8, 15, 1, 60)]),
-        D("Arms", [I("ohCableExt", 4, 8, 12, 0, 75), I("jmPress", 3, 6, 10, 1, 120), I("pressdown", 3, 10, 15, 0, 60), I("inclineCurl", 4, 8, 12, 0, 75), I("bayesianCurl", 3, 10, 15, 0, 60), I("preacher", 3, 8, 12, 0, 60), I("hammer", 2, 10, 12, 1, 60), I("wristCurl", 2, 12, 20, 0, 45), I("revWristCurl", 2, 12, 20, 0, 45), I("woodchop", 3, 10, 15, 1, 45)]),
-        D("Rest", [], true)
-      ] };
-    }
-    const TEMPLATES = (() => {
-      const I = (exId, sets, repMin, repMax, rir, rest) => ({ exId, sets, repMin, repMax, rir, rest });
-      const D = (name, items) => ({ name, items }), R = () => ({ name: "Rest", items: [], rest: true });
-      return [
-        /* New to lifting (r30, from the review: 7 exercises, about 19 sets and
-           over an hour, with incline curls and hack squats, was not a first
-           routine). Five exercises a day on machines and dumbbells, 2 to 3 sets,
-           3 reps in reserve (easy to judge: stop when a rep slows down), about
-           45 minutes. Weekly sets sit under the usual 10 on purpose; add a set as
-           it gets easy. */
-        { key: "full3", name: "Full body, 3 days", who: "New to lifting: five exercises a day, machines and dumbbells, stopping well short of failure. Add a set once it feels easy", meta: "3 days a week", days: [
-          D("Full body A", [I("legPress", 3, 8, 12, 3, 120), I("machPress", 3, 8, 12, 3, 120), I("latPulldown", 3, 8, 12, 3, 120), I("seatedCurl", 2, 10, 15, 2, 75), I("dbLateral", 2, 10, 15, 2, 60)]),
-          R(),
-          D("Full body B", [I("goblet", 3, 8, 12, 3, 120), I("incDb", 3, 8, 12, 3, 120), I("cableRow", 3, 8, 12, 3, 120), I("dbRdl", 3, 8, 12, 3, 120), I("pressdown", 2, 10, 15, 2, 60)]),
-          R(),
-          D("Full body C", [I("legPress", 3, 8, 12, 3, 120), I("dbBench", 3, 8, 12, 3, 120), I("machRow", 3, 8, 12, 3, 120), I("lyingCurl", 2, 10, 15, 2, 75), I("dbCurl", 2, 10, 15, 2, 60)]),
-          R(),
-          R()
-        ] },
-        /* Past the first year, three days a week (r45, V): the full3 days are a
-           first routine (machines, 3 in reserve, under 10 sets a muscle), so a
-           trained lifter with three days had only Strength or the dumbbell
-           routine. The main barbell lifts at 6 to 10 and 2 in reserve, the
-           rest at 1, 6 to 9 hard sets a week for each major muscle (a helper
-           muscle counting half), about an hour a day. Conventions, as everywhere here. */
-        { key: "full3t", name: "Full body, 3 days, trained", who: "Past your first year: the main lifts and their accessories, the whole body three times a week", meta: "3 days a week", days: [
-          D("Full body A", [I("backSquat", 3, 6, 10, 2, 180), I("bench", 3, 6, 10, 2, 150), I("cableRow", 3, 8, 12, 1, 120), I("seatedCurl", 3, 10, 15, 1, 75), I("dbLateral", 3, 10, 20, 1, 60), I("inclineCurl", 2, 10, 15, 1, 60)]),
-          R(),
-          D("Full body B", [I("rdl", 3, 6, 10, 2, 150), I("ohp", 3, 6, 10, 2, 150), I("pullup", 3, 6, 10, 2, 150), I("legPress", 3, 10, 15, 1, 120), I("cableFly", 3, 10, 15, 1, 75), I("standCalf", 3, 10, 15, 1, 60)]),
-          R(),
-          D("Full body C", [I("hackSquat", 3, 8, 12, 1, 150), I("incDb", 3, 8, 12, 1, 120), I("latPulldown", 3, 8, 12, 1, 120), I("lyingCurl", 3, 10, 15, 1, 75), I("cableLateral", 3, 10, 20, 1, 60), I("ohCableExt", 3, 10, 15, 1, 60), I("seatedCalf", 3, 10, 15, 1, 60)]),
-          R(),
-          R()
-        ] },
-        /* Two days a week (r30): the whole body each day, about an hour. */
-        { key: "full2", name: "Full body, 2 days", who: "Two sessions a week: the whole body each time", meta: "2 days a week", days: [
-          D("Full body A", [I("backSquat", 3, 6, 10, 2, 180), I("bench", 3, 6, 10, 2, 150), I("cableRow", 3, 8, 12, 2, 120), I("seatedCurl", 3, 10, 15, 1, 75), I("dbLateral", 3, 10, 20, 1, 60), I("inclineCurl", 2, 10, 15, 1, 60)]),
-          R(),
-          R(),
-          D("Full body B", [I("rdl", 3, 6, 10, 2, 150), I("incDb", 3, 8, 12, 2, 120), I("latPulldown", 3, 8, 12, 2, 120), I("legPress", 3, 10, 15, 1, 120), I("cableLateral", 3, 10, 20, 1, 60), I("ohCableExt", 2, 10, 15, 1, 60), I("standCalf", 3, 10, 15, 1, 60)]),
-          R(),
-          R(),
-          R()
-        ] },
-        { key: "ul4", name: "Upper / lower, 4 days", who: "The common all-round choice", meta: "4 days a week", days: [
-          D("Upper A", [I("bench", 4, 6, 10, 2, 150), I("bbRow", 3, 6, 10, 2, 150), I("latPulldown", 4, 8, 12, 1, 120), I("cableFly", 2, 10, 15, 1, 75), I("dbLateral", 5, 10, 20, 1, 60), I("facePull", 2, 12, 20, 1, 60), I("pressdown", 3, 10, 15, 1, 60), I("inclineCurl", 3, 10, 15, 1, 60)]),
-          D("Lower A", [I("backSquat", 3, 6, 10, 2, 180), I("rdl", 3, 6, 10, 2, 150), I("legExt", 3, 10, 15, 1, 75), I("seatedCurl", 3, 10, 15, 1, 75), I("standCalf", 4, 10, 15, 1, 60), I("cableCrunch", 3, 10, 15, 1, 60)]),
-          R(),
-          D("Upper B", [I("incDb", 4, 8, 12, 2, 120), I("cableRow", 4, 8, 12, 1, 120), I("pullup", 3, 6, 10, 2, 150), I("cableLateral", 5, 10, 20, 1, 60), I("reversePecDeck", 3, 12, 20, 1, 60), I("ohCableExt", 3, 10, 15, 1, 60), I("hammer", 3, 10, 15, 1, 60)]),
-          D("Lower B", [I("hackSquat", 3, 8, 12, 1, 150), I("hipThrust", 3, 8, 12, 1, 120), I("lyingCurl", 3, 10, 15, 1, 75), I("bss", 2, 8, 12, 1, 90), I("seatedCalf", 4, 10, 15, 1, 60), I("hangingLegRaise", 3, 10, 15, 1, 60)]),
-          R(),
-          R()
-        ] },
-        { key: "ppl6", name: "Push / pull / legs, 6 days", who: "Training most days, wants more volume", meta: "6 days a week", days: [
-          D("Push A", [I("bench", 3, 6, 10, 2, 150), I("seatedDbPress", 3, 8, 12, 1, 120), I("cableFly", 3, 10, 15, 1, 75), I("cableLateral", 4, 10, 20, 1, 60), I("ohCableExt", 3, 10, 15, 1, 60)]),
-          D("Pull A", [I("pullup", 4, 6, 10, 1, 150), I("bbRow", 3, 6, 10, 2, 150), I("facePull", 3, 12, 20, 1, 60), I("inclineCurl", 3, 10, 15, 1, 60), I("hammer", 2, 10, 15, 1, 60)]),
-          D("Legs A", [I("backSquat", 3, 6, 10, 2, 180), I("rdl", 3, 6, 10, 2, 150), I("legExt", 3, 10, 15, 1, 75), I("seatedCurl", 3, 10, 15, 1, 75), I("standCalf", 4, 10, 15, 1, 60), I("cableCrunch", 3, 10, 15, 1, 60)]),
-          D("Push B", [I("incBench", 3, 6, 10, 2, 150), I("machShoulder", 3, 8, 12, 1, 120), I("pecDeck", 3, 10, 15, 0, 75), I("dbLateral", 4, 12, 20, 0, 60), I("pressdown", 3, 10, 15, 1, 60)]),
-          D("Pull B", [I("latPulldown", 4, 8, 12, 1, 120), I("machRow", 3, 8, 12, 1, 120), I("reversePecDeck", 3, 12, 20, 0, 60), I("bayesianCurl", 3, 10, 15, 0, 60), I("reverseCurl", 2, 10, 15, 1, 60)]),
-          D("Legs B", [I("hackSquat", 3, 8, 12, 1, 150), I("hipThrust", 3, 8, 12, 1, 120), I("lyingCurl", 3, 10, 15, 1, 75), I("bss", 2, 8, 12, 1, 90), I("seatedCalf", 4, 10, 15, 1, 60), I("hangingLegRaise", 3, 10, 15, 1, 60)]),
-          R()
-        ] },
-        { key: "split5", name: "Body-part split, 5 days", who: "The classic gym split, one or two muscles a day", meta: "5 days a week", days: [
-          D("Chest", [I("bench", 3, 6, 10, 2, 150), I("incDb", 3, 8, 12, 1, 120), I("cableFly", 3, 10, 15, 1, 75), I("dips", 2, 8, 12, 1, 120), I("cableCrunch", 3, 10, 15, 1, 60)]),
-          D("Back", [I("pullup", 4, 6, 10, 1, 150), I("bbRow", 3, 6, 10, 2, 150), I("cableRow", 3, 8, 12, 1, 120), I("latPulldown", 3, 8, 12, 1, 120), I("reversePecDeck", 3, 12, 20, 0, 60)]),
-          D("Legs", [I("backSquat", 3, 6, 10, 2, 180), I("rdl", 3, 6, 10, 2, 150), I("legPress", 3, 10, 15, 1, 120), I("legExt", 3, 10, 15, 1, 75), I("seatedCurl", 4, 10, 15, 1, 75), I("hipThrust", 3, 8, 12, 1, 120), I("standCalf", 4, 10, 15, 1, 60)]),
-          // Lateral raises split over two days (r30): nine sets in one session added little past the first five or six.
-          D("Shoulders", [I("ohp", 3, 6, 10, 2, 150), I("cableLateral", 5, 10, 20, 1, 60), I("facePull", 3, 12, 20, 1, 60), I("dbShrug", 3, 10, 15, 1, 60), I("seatedCalf", 4, 10, 15, 1, 60), I("hangingLegRaise", 3, 10, 15, 1, 60)]),
-          D("Arms and legs", [I("inclineCurl", 4, 8, 12, 1, 75), I("ohCableExt", 4, 8, 12, 1, 75), I("hammer", 3, 10, 12, 1, 60), I("pressdown", 3, 10, 15, 1, 60), I("dbLateral", 4, 12, 20, 1, 60), I("bss", 3, 8, 12, 1, 90), I("lyingCurl", 3, 10, 15, 1, 75)]),
-          R(),
-          R()
-        ] },
-        /* Strength (r30, from the review: nothing for someone after a stronger
-           squat, bench and deadlift). The classic five sets of five, alternating
-           two days: when all five sets reach 5, the load goes up a step; two
-           sessions short of 5 bring it down to what the estimate says fits.
-           Fewer sets per muscle than the weekly targets, on purpose. */
-        { key: "str5", name: "Strength, 5 x 5", who: "Stronger squat, bench, press, row, and deadlift: five sets of five, a step more each time all five reach 5", meta: "every other day", days: [
-          D("Strength A", [I("backSquat", 5, 5, 5, 2, 180), I("bench", 5, 5, 5, 2, 180), I("bbRow", 5, 5, 5, 2, 150)]),
-          R(),
-          D("Strength B", [I("backSquat", 5, 5, 5, 2, 180), I("ohp", 5, 5, 5, 2, 180), I("deadlift", 1, 5, 5, 2, 240)]),
-          R()
-        ] },
-        { key: "db3", name: "Dumbbells only, 3 days", who: "Home or hotel gym: dumbbells and a bench. A lighter start, like full body: fewer sets a week than the targets, so add a set as it gets easy", meta: "3 days a week", days: [
-          D("Dumbbell A", [I("goblet", 3, 8, 15, 2, 120), I("dbBench", 3, 8, 12, 2, 120), I("dbRow", 3, 8, 12, 2, 90), I("dbLateral", 3, 12, 20, 1, 60), I("dbRearFly", 3, 12, 20, 1, 60), I("dbCurl", 3, 10, 15, 1, 60), I("slCalf", 3, 10, 15, 1, 45)]),
-          R(),
-          D("Dumbbell B", [I("dbRdl", 3, 8, 12, 2, 120), I("seatedDbPress", 3, 8, 12, 2, 120), I("csDbRow", 3, 8, 12, 1, 90), I("revLunge", 3, 8, 12, 2, 90), I("dbLateral", 3, 12, 20, 1, 60), I("ohDbExt", 3, 10, 15, 1, 60), I("reverseCrunch", 2, 10, 15, 1, 60)]),
-          R(),
-          D("Dumbbell C", [I("bss", 3, 8, 12, 2, 90), I("incDb", 3, 8, 12, 2, 120), I("dbPullover", 3, 10, 15, 1, 75), I("slRdl", 3, 8, 12, 1, 75), I("dbRearFly", 2, 12, 20, 1, 60), I("hammer", 3, 10, 15, 1, 60), I("slCalf", 3, 10, 15, 1, 45)]),
-          R(),
-          R()
-        ] },
-        /* High volume, trimmed (r30, from the review: 17 chest sets in one
-           session, mostly to failure, and a neck circuit on shoulder day). At
-           most 11 sets for one muscle in a session (the app's per-session line),
-           isolation lifts at 1 RIR with a few at 0, no neck work (tracked only).
-           Installs before r30 keep their copy; Plan changes it. */
-        { key: "onemuscle", name: "One muscle a day, high volume", who: "Experienced, six days a week. Long sessions with many sets for one muscle, up to 11", meta: "6 days a week", days: [
-          D("Chest", [I("incBench", 4, 6, 10, 1, 180), I("bench", 3, 6, 10, 1, 180), I("lowHighFly", 2, 10, 15, 1, 90), I("pecDeck", 2, 12, 15, 0, 75), I("cableCrunch", 3, 10, 15, 1, 60)]),
-          D("Back", [I("pullup", 4, 6, 10, 1, 150), I("landmineRow", 3, 8, 12, 1, 120), I("cableRow", 2, 8, 12, 1, 120), I("dbPullover", 3, 10, 15, 1, 90), I("kelsoShrug", 2, 10, 15, 1, 90), I("rackPull", 2, 5, 8, 2, 180)]),
-          D("Legs A: quads", [I("hackSquat", 4, 6, 12, 1, 180), I("legPress", 3, 10, 15, 1, 150), I("legExt", 2, 10, 15, 0, 90), I("bss", 2, 8, 12, 1, 120), I("adductor", 3, 10, 15, 1, 75), I("standCalf", 4, 8, 12, 1, 60), I("tibRaise", 2, 15, 25, 1, 45)]),
-          D("Shoulders", [I("seatedDbPress", 3, 6, 10, 1, 150), I("cableLateral", 5, 10, 20, 1, 60), I("leanAwayLat", 4, 10, 15, 1, 60), I("reversePecDeck", 4, 12, 20, 1, 60), I("facePull", 2, 12, 20, 1, 60), I("dbShrug", 3, 8, 12, 1, 75), I("hangingLegRaise", 3, 10, 15, 1, 60)]),
-          D("Legs B: posterior", [I("sldl", 4, 6, 10, 2, 180), I("seatedCurl", 3, 8, 12, 1, 90), I("nordic", 2, 3, 8, 1, 120), I("hyperext", 3, 10, 15, 1, 75), I("abductor", 4, 12, 20, 1, 60), I("seatedCalf", 4, 10, 15, 0, 60), I("abWheel", 3, 8, 15, 1, 60)]),
-          D("Arms", [I("ohCableExt", 4, 8, 12, 1, 75), I("jmPress", 3, 6, 10, 1, 120), I("pressdown", 3, 10, 15, 0, 60), I("inclineCurl", 4, 8, 12, 1, 75), I("bayesianCurl", 3, 10, 15, 1, 60), I("preacher", 3, 8, 12, 0, 60), I("wristCurl", 2, 12, 20, 1, 45), I("revWristCurl", 2, 12, 20, 1, 45), I("woodchop", 3, 10, 15, 1, 45)]),
-          R()
-        ] },
-        // The routine installs started with before r29, kept for the suites written on it (tests/h.js) and to recognise it; never offered.
-        { key: "legacy", hidden: true, name: "One muscle a day, high volume", who: "", meta: "", build: () => defaultRoutine() }
-      ];
-    })();
     function tplCountLine() {
       const T = TEMPLATES.filter((t) => !t.hidden);
       const n = T.map((t) => {
@@ -1632,12 +1804,6 @@ loadScript(['vendor/chart.umd.js','https://cdnjs.cloudflare.com/ajax/libs/Chart.
     }
     function starterSigs() {
       return [routineSig(starterRoutine()), routineSig(defaultRoutine())];
-    }
-    function routineFromTemplate(key) {
-      const t = TEMPLATES.find((x) => x.key === key);
-      if (!t) return null;
-      if (t.build) return t.build();
-      return { id: uid(), name: t.name, schedule: "cycle", days: t.days.map((d) => ({ id: uid(), name: d.name, rest: !!d.rest, items: d.items.map((it) => ({ uid: uid(), ...it, inc: 5 * LB })) })) };
     }
     function freshState() {
       const r = starterRoutine();
@@ -1764,16 +1930,6 @@ loadScript(['vendor/chart.umd.js','https://cdnjs.cloudflare.com/ajax/libs/Chart.
         return false;
       }
     }
-    const isNum = (v) => typeof v === "number" && isFinite(v);
-    const numOr = (v, d) => {
-      const n = typeof v === "string" ? parseFloat(v) : v;
-      return isNum(n) ? n : d;
-    };
-    const clampN = (v, lo, hi, d) => {
-      const n = numOr(v, d);
-      return Math.min(Math.max(n, lo), hi);
-    };
-    const isDate = (v) => typeof v === "string" && /^\d{4}-\d{2}-\d{2}$/.test(v);
     const BW_MAX_KG = 400, BW_MIN_KG = 20, MEAS_MAX_CM = 300;
     function did(tag, obj, i) {
       let j = "";
@@ -1841,7 +1997,6 @@ loadScript(['vendor/chart.umd.js','https://cdnjs.cloudflare.com/ajax/libs/Chart.
       return Object.keys(o).length ? o : null;
     }
     const distU = () => U() === "kg" ? "km" : "mi";
-    const KM_MI = 1.609344;
     const distShow = (km) => Math.round((U() === "kg" ? km : km / KM_MI) * 100) / 100;
     const distIn = (v) => {
       const n = numIn(v);
@@ -2407,17 +2562,6 @@ loadScript(['vendor/chart.umd.js','https://cdnjs.cloudflare.com/ajax/libs/Chart.
       } catch (e) {
         log("sync-meta", e);
       }
-    }
-    function hashStr(str) {
-      let h1 = 3735928559, h2 = 1103547991;
-      for (let i = 0; i < str.length; i++) {
-        const c = str.charCodeAt(i);
-        h1 = Math.imul(h1 ^ c, 2654435761);
-        h2 = Math.imul(h2 ^ c, 1597334677);
-      }
-      h1 = Math.imul(h1 ^ h1 >>> 16, 2246822507) ^ Math.imul(h2 ^ h2 >>> 13, 3266489909);
-      h2 = Math.imul(h2 ^ h2 >>> 16, 2246822507) ^ Math.imul(h1 ^ h1 >>> 13, 3266489909);
-      return (h2 >>> 0).toString(36) + (h1 >>> 0).toString(36);
     }
     const chunkOf = (date) => `s-${date.slice(0, 7)}-${+date.slice(8, 10) <= 15 ? 1 : 2}`;
     const bySess = sessCmp;
@@ -3523,7 +3667,6 @@ loadScript(['vendor/chart.umd.js','https://cdnjs.cloudflare.com/ajax/libs/Chart.
     const LU = () => U() === "lb" ? "in" : "cm";
     const toD = (kg) => kg == null ? null : U() === "lb" ? kg / LB : kg;
     const fromD = (v) => v == null ? null : U() === "lb" ? v * LB : v;
-    const r1 = (n) => Math.round(n * 10) / 10;
     const fmtW = (kg) => kg == null || isNaN(kg) ? "" : String(r1(toD(kg)));
     const fmtE = (kg) => {
       if (kg == null || isNaN(kg)) return "";
@@ -3532,11 +3675,6 @@ loadScript(['vendor/chart.umd.js','https://cdnjs.cloudflare.com/ajax/libs/Chart.
     };
     const lenD = (cm) => cm == null ? "" : String(r1(U() === "lb" ? cm / IN : cm));
     const lenFrom = (v) => U() === "lb" ? v * IN : v;
-    function numIn(v) {
-      if (v === "" || v == null) return null;
-      const n = parseFloat(String(v).replace(",", "."));
-      return isNaN(n) ? null : n;
-    }
     let EXMAP = null;
     function EX(id) {
       if (!EXMAP) {
@@ -3579,7 +3717,6 @@ loadScript(['vendor/chart.umd.js','https://cdnjs.cloudflare.com/ajax/libs/Chart.
       }
       return best || earliest ? (best || earliest).kg : null;
     }
-    const isWork = (s) => !s.warm && +s.r > 0;
     function rirEff(s, ex) {
       const m = state.settings.rirMode;
       if (m === "off") return null;
@@ -3657,7 +3794,6 @@ loadScript(['vendor/chart.umd.js','https://cdnjs.cloudflare.com/ajax/libs/Chart.
       const q = rirEst(s, ex);
       return q == null || q <= 3;
     };
-    const setCredit = (s) => s.drop ? 0.5 : 1;
     const halfLbl = () => {
       const k = rirScale();
       return k === "rpe" ? "RPE 5 to 6.5" : k === "half" ? "RIR 3.5 to 5" : "RIR 4 to 5";
@@ -3675,10 +3811,6 @@ loadScript(['vendor/chart.umd.js','https://cdnjs.cloudflare.com/ajax/libs/Chart.
     function setStr(ex, x) {
       return `${x.warm ? "(W) " : x.drop ? "(D) " : ""}${setShort(ex, x.w, x.r)}${!ex.timed && x.rir != null && x.rir !== "" ? rirScale() === "rpe" ? " @RPE " + effShow(x.rir) : " @" + effShow(x.rir) : ""}${x.cal ? " (RIR check)" : ""}`;
     }
-    const BWF = { assistPullup: 1, assistDip: 1, pullup: 1, chinup: 1, dips: 1, triDips: 1, pushup: 0.64, deficitPushup: 0.64, declinePushup: 0.7, invertedRow: 0.6, hyperext: 0.6, hangingLegRaise: 0.35, abWheel: 0.5, dragonFlag: 0.7, neckBridge: 0.3, sissy: 0.85, revNordic: 0.85, nordic: 0.85, ghr: 0.85, plank: 0.65, sidePlank: 0.6, deadHang: 1, neckBridgeHold: 0.3, wallSit: 0.7, pushupPlus: 0.64, kneeRaise: 0.3, reverseCrunch: 0.3, crunch: 0.3, russianTwist: 0.4, copenhagen: 0.5 };
-    function bwShare(ex) {
-      return ex && ex.bwf != null ? ex.bwf : ex && BWF[ex.id] != null ? BWF[ex.id] : 1;
-    }
     function bwLoad(ex, date) {
       return ex && ex.bw ? (bwAt(date) || 0) * bwShare(ex) : 0;
     }
@@ -3691,15 +3823,6 @@ loadScript(['vendor/chart.umd.js','https://cdnjs.cloudflare.com/ajax/libs/Chart.
       return ex && ex.bw ? bwRef() * bwShare(ex) + (+s.w || 0) : loadOf(ex, s, date);
     }
     const LOAD_MODES = [["each", "Per dumbbell (two dumbbells)"], ["total", "Total on the implement"], ["side", "Plates on one side"], ["stack", "Stack setting"]];
-    const ONE_DB = /* @__PURE__ */ new Set(["dbRow", "krocRow", "dbPullover", "ohDbExt", "concCurl", "sideBend", "goblet", "slCalf", "leanAwayLat", "sideLyingER", "slRdl"]);
-    function loadMode(ex) {
-      if (!ex) return "total";
-      if (ex.bw) return "bw";
-      if (["each", "total", "side", "stack"].includes(ex.load)) return ex.load;
-      if (ex.equip === "dumbbell") return ONE_DB.has(ex.id) ? "total" : "each";
-      if (ex.equip === "cable" || ex.equip === "machine" && !PLATE_SIDE_IDS.includes(ex.id)) return "stack";
-      return "total";
-    }
     function loadWords(ex) {
       const m = loadMode(ex);
       if (ex && ex.assist) return "machine help";
@@ -3738,33 +3861,6 @@ loadScript(['vendor/chart.umd.js','https://cdnjs.cloudflare.com/ajax/libs/Chart.
       const load2 = m === "bw" ? Math.max(0, bl + w) : m === "each" || m === "side" ? w * 2 : w;
       return load2 * (+s.r || 0) * (ex.perSide ? 2 : 1);
     }
-    const E1_MAX_RIR = 4;
-    function rtfOf(r, rir) {
-      const q = rir == null || rir === "" || !isFinite(+rir) ? 0 : Math.max(+rir, 0);
-      return q > E1_MAX_RIR ? null : +r + q;
-    }
-    function e1(load2, r, rir) {
-      if (!(load2 > 0 && r > 0)) return null;
-      const rtf = rtfOf(r, rir);
-      if (rtf == null || rtf > E1_MAX_REPS) return null;
-      return rtf <= 10 ? load2 * 36 / (37 - rtf) : load2 * (1 + rtf / 30);
-    }
-    function trendE(load2, r, rir) {
-      if (!(load2 > 0 && r > 0)) return null;
-      const rtf = rtfOf(r, rir);
-      if (rtf == null) return null;
-      return rtf <= E1_MAX_REPS ? e1(load2, r, rir) : rtf <= 20 ? load2 * (1 + rtf / 30) : null;
-    }
-    const REP_PR_SHARE = 0.9;
-    function e1inv(est, rtf) {
-      return rtf <= 10 ? est * (37 - rtf) / 36 : est / (1 + rtf / 30);
-    }
-    function rtfAt(est, load2) {
-      if (!(est > 0 && load2 > 0)) return null;
-      const b = 37 - 36 * load2 / est;
-      return b <= 10 ? b : 30 * (est / load2 - 1);
-    }
-    const rtfBand = (rtf) => rtf <= 5 ? 1 : rtf <= 10 ? 2 : 3;
     const BAND_WORDS = { 1: "1 to 5 reps to failure", 2: "6 to 10 reps to failure", 3: "11 to 12 reps to failure" };
     const BAND_SHORT = { 1: "1 to 5 reps to failure", 2: "6 to 10 reps to failure", 3: "11 to 12 reps to failure" };
     function prOverall(p) {
@@ -3773,35 +3869,8 @@ loadScript(['vendor/chart.umd.js','https://cdnjs.cloudflare.com/ajax/libs/Chart.
     function prName(p) {
       return prOverall(p) ? "Best estimate" : `Best for ${BAND_SHORT[p.bb] || "its reps"}`;
     }
-    function workLoad(pts, repMin) {
-      if (!pts.length) return 0;
-      const T = (p) => p.load != null ? p.load : p.w;
-      const top = Math.max(...pts.map(T));
-      const floor = top > 0 ? top * 0.6 : -Infinity;
-      const ok = (p) => T(p) >= floor - 1e-9;
-      const k = (v) => Math.round(v * 1e3);
-      const n = /* @__PURE__ */ new Map();
-      for (const p of pts) if (ok(p)) n.set(k(p.w), (n.get(k(p.w)) || 0) + 1);
-      let w = null, best = -1;
-      for (const p of pts) {
-        if (!ok(p)) continue;
-        const c = n.get(k(p.w));
-        if (c > best || c === best && p.w > w) {
-          best = c;
-          w = p.w;
-        }
-      }
-      return w == null ? Math.max(...pts.map((p) => p.w)) : w;
-    }
-    const atLoad = (pts, w) => pts.filter((p) => Math.abs(p.w - w) < 1e-6);
     const repSpan = (lo, hi, sep = " to ") => +lo === +hi ? `${+lo}` : `${+lo}${sep}${+hi}`;
     const rangeWords = (p) => +p.repMin === +p.repMax ? `target of ${+p.repMin}` : `${+p.repMin}-${+p.repMax} range`;
-    function median(a) {
-      if (!a.length) return null;
-      const s = [...a].sort((x, y) => x - y);
-      const m = s.length >> 1;
-      return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2;
-    }
     function sortedSessions() {
       return [...state.sessions].sort(sessCmp);
     }
@@ -4386,15 +4455,6 @@ loadScript(['vendor/chart.umd.js','https://cdnjs.cloudflare.com/ajax/libs/Chart.
       Object.defineProperty(out, "_conf", { value: conf, enumerable: false });
       return out;
     }
-    function setSecs(ex, p) {
-      const mid = ((+p.repMin || 0) + (+p.repMax || 0)) / 2;
-      let t = ex.timed ? mid + 20 : 40 + 3 * Math.max(0, mid - 12);
-      if (ex.perSide) t = t * 2 + 15;
-      return t;
-    }
-    function setupSecs(ex, compoundsBefore) {
-      return isCompound(ex) ? compoundsBefore < 2 ? 300 : 180 : 60;
-    }
     function dayMinutes(day, half, raw) {
       if (!day.items.length) return 0;
       let s = 0, cN = 0;
@@ -4409,7 +4469,6 @@ loadScript(['vendor/chart.umd.js','https://cdnjs.cloudflare.com/ajax/libs/Chart.
       const lastRest = +day.items[day.items.length - 1].rest || 0;
       return Math.round(Math.max(0, s - lastRest) * (raw ? 1 : pace()) / 60);
     }
-    const PACE_N = 8, PACE_DAYS = 84, PACE_MIN = 3, PACE_LO = 1 / 3, PACE_HI = 3;
     function sessModelMin(ss) {
       const R = state.routines.find((r) => r.id === ss.routineId) || activeRoutine();
       const day = ss.dayId ? R.days.find((d) => d.id === ss.dayId) : null;
@@ -4447,7 +4506,6 @@ loadScript(['vendor/chart.umd.js','https://cdnjs.cloudflare.com/ajax/libs/Chart.
       const k = r.length >> 1;
       return _pace = r.length % 2 ? r[k] : (r[k - 1] + r[k]) / 2;
     }
-    const SESSION_CAP = 11;
     function sessionMuscleSets(day) {
       const out = {};
       for (const it of day.items) {
@@ -4546,13 +4604,6 @@ loadScript(['vendor/chart.umd.js','https://cdnjs.cloudflare.com/ajax/libs/Chart.
       const shown = rp.length ? rp : rec.pts;
       return { line, prev: shown.map(fmt).slice(0, 30), prevOff: shown.length < rec.pts.length || void 0, lastR: (wp.length ? wp : repsFrom.pts).map((p) => fl(p.r)), basis: rec !== base ? base.date : null };
     }
-    function repFloor(pts, repMin) {
-      const m = +repMin || 0;
-      const ok = m > 0 && pts.length >= 2 && pts.filter((p) => p.r < m).length === 1;
-      return (r) => ok ? Math.max(r, m) : r;
-    }
-    const tagged = (x) => !!x && !!(x.deload || x.light || x.cut);
-    const offSession = (x) => tagged(x) || !!(x && x.auto);
     function snapUnit(ex, plan, res, down) {
       if (!res || res.w == null || res.top == null || ex.timed) return res;
       if (gymRack(ex, plan)) return rackSnap(ex, plan, res);
@@ -4571,7 +4622,6 @@ loadScript(['vendor/chart.umd.js','https://cdnjs.cloudflare.com/ajax/libs/Chart.
       if (!xs.length) return 0;
       return daysBetween(xs[xs.length - 1].date, T);
     }
-    const BACK_DAYS = 28;
     function suggest(exId, plan, opts) {
       opts = opts || {};
       const ex = EX(exId);
@@ -4903,7 +4953,6 @@ loadScript(['vendor/chart.umd.js','https://cdnjs.cloudflare.com/ajax/libs/Chart.
         easier: stx.easier ? easierText(ex, stx.easier) : null
       };
     }
-    const KIN_UNI = /lunge|split squat|step-up|single[- ]|one[- ]arm|1-arm|pistol|bulgarian|cossack|unilateral/i;
     function kinOf(ex, T) {
       if (!ex || ex.bw || ex.assist || ex.timed || noE1(ex) || !["barbell", "dumbbell", "kettlebell", "landmine", "other"].includes(ex.equip)) return null;
       const pat = patternOf(ex);
@@ -5007,7 +5056,6 @@ loadScript(['vendor/chart.umd.js','https://cdnjs.cloudflare.com/ajax/libs/Chart.
       const ex = EX(exId);
       return ex.timed ? { ...DEFAULT_PLAN, repMin: 30, repMax: 60, rest: 60 } : profPlan(ex, plain);
     }
-    const STEP_LB = 5 * LB;
     function unitStep() {
       return U() === "kg" ? 2.5 : STEP_LB;
     }
@@ -5070,9 +5118,6 @@ loadScript(['vendor/chart.umd.js','https://cdnjs.cloudflare.com/ajax/libs/Chart.
       return g && typeof g === "object" ? g : null;
     }
     const gymK = (g, v) => g.u === "kg" ? v : v * LB;
-    function r3(v) {
-      return Math.round(v * 1e3) / 1e3;
-    }
     function dbListOf(d) {
       if (!d || !(d.lo > 0) || !(d.hi >= d.lo) || !(d.st > 0)) return null;
       const out = [];
@@ -5163,10 +5208,6 @@ loadScript(['vendor/chart.umd.js','https://cdnjs.cloudflare.com/ajax/libs/Chart.
       if (res.tgt && res.tgt.w != null) out.tgt = { ...res.tgt, w: nw };
       return out;
     }
-    const RACK = { dumbbell: { kg: [2.5, 2, 1, 0.5], lb: [5, 2.5, 1] }, kettlebell: { kg: [4, 2, 1], lb: [5, 2.5] } };
-    function rackKind(ex) {
-      return ex.equip === "dumbbell" ? "dumbbell" : ex.equip === "kettlebell" || /kettlebell/i.test(ex.name || "") ? "kettlebell" : null;
-    }
     function rackStep(ex) {
       const I = IDX();
       I._rack = I._rack || {};
@@ -5178,9 +5219,6 @@ loadScript(['vendor/chart.umd.js','https://cdnjs.cloudflare.com/ajax/libs/Chart.
       const fits = (g2) => ws.every((w) => Math.abs(w / g2 - Math.round(w / g2)) < 0.01);
       const g = ws.length ? RACK[rackKind(ex)][U()].find(fits) : null;
       return I._rack[key] = g ? fromD(g) : null;
-    }
-    function jumpPct(ex, plan) {
-      return plan && plan.jump != null && isNum(+plan.jump) ? Math.max(0, +plan.jump) / 100 : isCompound(ex) ? 0.025 : 0.05;
     }
     function progStep(ex, plan, loadKg, at) {
       const L = at != null ? gymRack(ex, plan) : null;
@@ -5197,17 +5235,6 @@ loadScript(['vendor/chart.umd.js','https://cdnjs.cloudflare.com/ajax/libs/Chart.
       if (!(inc > 0)) return inc;
       const pct = jumpPct(ex, plan);
       return inc * Math.max(1, Math.floor(pct * Math.max(0, loadKg) / inc + 1e-9));
-    }
-    function jumpCap(ex, loadKg, early) {
-      return early ? 1.25 : !isCompound(ex) && loadKg < 20 ? 1.15 : 1.1;
-    }
-    function fitE(load2, r, rir) {
-      const v = e1(load2, r, rir);
-      if (v != null) return v;
-      if (!(load2 > 0 && r > 0)) return null;
-      const q = rir == null || rir === "" ? 0 : Math.min(Math.max(+rir, 0), E1_MAX_RIR);
-      const t = +r + q;
-      return t <= 30 ? load2 * (1 + t / 30) : null;
     }
     function planFor(exId, R, dayId, plain) {
       R = R || activeRoutine();
@@ -5231,7 +5258,6 @@ loadScript(['vendor/chart.umd.js','https://cdnjs.cloudflare.com/ajax/libs/Chart.
     function easierText(ex, e) {
       return `Getting easier at ${loadLabel(ex, e.w)}${ex.bw ? "" : " " + U()}: RIR ${e.from} → ${e.to} at the same reps. Adding load today is reasonable.`;
     }
-    const PLATES_LB = [45, 35, 25, 10, 5, 2.5], PLATES_KG = [25, 20, 15, 10, 5, 2.5, 1.25];
     function plateList(u) {
       u = u || U();
       const g = gymOf();
@@ -7737,14 +7763,6 @@ loadScript(['vendor/chart.umd.js','https://cdnjs.cloudflare.com/ajax/libs/Chart.
       }
       return { bl, changes, est: Math.round(cost()), over: cost() > mins };
     }
-    const T90 = [NaN, 3.078, 1.886, 1.638, 1.533, 1.476, 1.44, 1.415, 1.397, 1.383, 1.372, 1.363, 1.356, 1.35, 1.345, 1.341, 1.337, 1.333, 1.33, 1.328, 1.325, 1.323, 1.321, 1.319, 1.318, 1.316, 1.315, 1.314, 1.313, 1.311, 1.31];
-    function t90(df) {
-      df = Math.floor(df);
-      if (!(df >= 1)) return T90[1];
-      return df <= 30 ? T90[df] : 1.2816 + 0.8521 / df;
-    }
-    const LONG_TRIAL = /* @__PURE__ */ new Set(["seatedCurl", "ohCableExt", "ohDbExt", "standCalf"]);
-    const LONG_IDS = /* @__PURE__ */ new Set([...LONG_TRIAL, "katana", "inclineCurl", "bayesianCurl", "rdl", "sldl", "dbRdl", "slRdl", "donkeyCalf", "sissy"]);
     function rolling7(m, extra, at) {
       const dm = IDX().dayMus;
       const t = at || today();
@@ -7959,7 +7977,6 @@ loadScript(['vendor/chart.umd.js','https://cdnjs.cloudflare.com/ajax/libs/Chart.
       if (x.sp) out.push(x.sp === "stalled" ? `Strength focus: stalled lately, and ${STR_REST} days or more since you did it.` : `Strength focus: within 3% of your best, and ${STR_REST} days or more since you did it.`);
       return out;
     }
-    const HARD_EX = /* @__PURE__ */ new Set(["nordic", "revNordic", "ghr", "sissy", "dragonFlag", "pullup", "chinup", "dips", "triDips", "hangingLegRaise"]);
     function canDo(e, repMin) {
       const xs = IDX().byEx[e.id] || [];
       return xs.some((x) => x.pts.some((p) => p.r >= Math.max(1, (+repMin || 1) - 2)));
@@ -8280,7 +8297,6 @@ loadScript(['vendor/chart.umd.js','https://cdnjs.cloudflare.com/ajax/libs/Chart.
       const sg = suggest(exId, plan, opts);
       return { bid: uid(), exId, plan: { ...plan }, note: "", lastNote: lastNoteOf(exId, opts && opts.before), inj: sg.inj || null, hint: sg.text, last: sg.last, prev: sg.prev || void 0, prevOff: sg.prevOff || void 0, target: sg.target, tgt: sg.tgt, easier: sg.easier || null, lastR: sg.lastR, basis: sg.basis || void 0, sw: sg.w == null ? null : sg.w, sets: Array.from({ length: +plan.sets || 3 }, () => ({ w: fillLoads() ? sg.w : null, r: null, rir: null, warm: false, drop: false, done: false })) };
     }
-    const DEFAULT_PLAN = { sets: 3, repMin: 8, repMax: 12, rir: 1, rest: 90, inc: 5 * LB };
     function lastDup(d, bi) {
       const b = d.ex[bi];
       return !!b && d.ex.slice(0, bi).some((x) => x.exId === b.exId && !!x.light === !!b.light);
@@ -8306,11 +8322,6 @@ loadScript(['vendor/chart.umd.js','https://cdnjs.cloudflare.com/ajax/libs/Chart.
     }
     function prof() {
       return state.settings.profile || {};
-    }
-    const PROF_EQUIP = /* @__PURE__ */ new Set(["barbell", "smith", "machine"]);
-    const PROF_NOT_HEAVY = /* @__PURE__ */ new Set(["reverseHyper", "goodMorning", "gluteBridge"]);
-    function profHeavy(ex) {
-      return !!ex && !ex.timed && !ex.bw && isCompound(ex) && !noE1(ex) && PROF_EQUIP.has(ex.equip) && !PROF_NOT_HEAVY.has(ex.id);
     }
     function profRule(ex, p) {
       p = p || prof();
