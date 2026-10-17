@@ -29,8 +29,8 @@ function loadScript(urls,done){
   document.head.appendChild(s);
 }
 window.__libs={sortable:false,chart:false};
-loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.2/Sortable.min.js','https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js'],ok=>{window.__libs.sortable=ok&&!!window.Sortable;if(window.__onLib)window.__onLib('sortable');});
-loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js','https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js','https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.js'],ok=>{window.__libs.chart=ok&&!!window.Chart;if(window.__onLib)window.__onLib('chart');});
+loadScript([{{SORTABLE_URLS}}],ok=>{window.__libs.sortable=ok&&!!window.Sortable;if(window.__onLib)window.__onLib('sortable');});
+loadScript([{{CHART_URLS}}],ok=>{window.__libs.chart=ok&&!!window.Chart;if(window.__onLib)window.__onLib('chart');});
 })();
 </script>
 <script>

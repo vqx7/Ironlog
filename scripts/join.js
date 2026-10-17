@@ -29,6 +29,22 @@ const isLegacy = f => /^[12]\d-.+\.js$/.test(f);
 // wrapper's code sees them as it sees its own names.
 const OPEN = "(function(){\n'use strict';\n", CLOSE = '})();\n';
 
+// Every placeholder must be known and filled, so the page title and heading
+// are never a second copy of the name. A list of addresses (the library
+// loader's, r51) is written as the items of a script's array, each in single
+// quotes, so an item holding a quote, a backslash or a line break stops the
+// build. tests/hygiene.js reads the style sheet through this too, as the
+// page holds it.
+function fill(t) {
+  const cfg = require('./config');
+  const value = (m, v) => {
+    if (typeof v === 'string') return v;
+    if (Array.isArray(v) && v.length && v.every(x => typeof x === 'string' && !/['\\\n]/.test(x))) return v.map(x => `'${x}'`).join(',');
+    throw new Error(`join: unknown placeholder ${m}`);
+  };
+  return t.replace(/\{\{(\w+)\}\}/g, (m, k) => value(m, Object.prototype.hasOwnProperty.call(cfg, k) ? cfg[k] : undefined));
+}
+
 function build({ override = {} } = {}) {
   const all = fs.readdirSync(dir).filter(f => /^\d\d-.+\.(html|css|js)$/.test(f)).sort();
   for (const f of Object.keys(override)) if (!all.includes(f)) throw new Error(`join: no part ${f} to override`);
@@ -62,10 +78,6 @@ function build({ override = {} } = {}) {
   });
   const script = escapeMarkup(out.outputFiles[0].text);
 
-  // Every placeholder must be known and filled, so the page title and heading
-  // are never a second copy of the name.
-  const cfg = require('./config');
-  const fill = t => t.replace(/\{\{(\w+)\}\}/g, (m, k) => { if (typeof cfg[k] !== 'string') throw new Error(`join: unknown placeholder ${m}`); return cfg[k]; });
   const parts = [];
   for (const f of page) {
     parts.push(fill(read(f)));
@@ -99,7 +111,7 @@ function escapeMarkup(js) {
   return js;
 }
 
-module.exports = { build, escapeMarkup };
+module.exports = { build, escapeMarkup, fill };
 
 if (require.main === module) {
   try {

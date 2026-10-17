@@ -105,7 +105,7 @@
       const buf = await crypto.subtle.digest('SHA-1', new TextEncoder().encode(password));
       const hex = [...new Uint8Array(buf)].map(b => b.toString(16).padStart(2, '0')).join('').toUpperCase();
       const ctl = new AbortController(); const t = setTimeout(() => ctl.abort(), 3000);
-      const res = await fetch('https://api.pwnedpasswords.com/range/' + hex.slice(0, 5), { headers: { 'Add-Padding': 'true' }, signal: ctl.signal, cache: 'no-store' });
+      const res = await fetch('{{HIBP_ORIGIN}}/range/' + hex.slice(0, 5), { headers: { 'Add-Padding': 'true' }, signal: ctl.signal, cache: 'no-store' });
       clearTimeout(t); if (!res.ok) return 0;
       const tail = hex.slice(5);
       for (const line of (await res.text()).split('\n')) { const [h, n] = line.trim().split(':'); if (h === tail) return +n || 0; }

@@ -1014,9 +1014,32 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
   var VERSION_LINE = `${DISPLAY_VERSION} (build ${APP_VERSION})`;
   var SITE_HOST = "ironapp.org";
   var SITE_DIR_FALLBACK = "/Ironlog";
+  var CDNJS = "https://cdnjs.cloudflare.com/ajax/libs";
+  var JSDELIVR = "https://cdn.jsdelivr.net/npm";
+  var UNPKG = "https://unpkg.com";
+  var CHART_VERSION = "4.4.1";
+  var SORTABLE_VERSION = "1.15.2";
+  var THREE_VERSION = "0.159.0";
+  var SORTABLE_URLS = [
+    `${CDNJS}/Sortable/${SORTABLE_VERSION}/Sortable.min.js`,
+    `${JSDELIVR}/sortablejs@${SORTABLE_VERSION}/Sortable.min.js`
+  ];
+  var CHART_URLS = [
+    `${CDNJS}/Chart.js/${CHART_VERSION}/chart.umd.min.js`,
+    `${CDNJS}/Chart.js/${CHART_VERSION}/chart.umd.js`,
+    `${JSDELIVR}/chart.js@${CHART_VERSION}/dist/chart.umd.js`
+  ];
+  var FONT_DISPLAY = "Big Shoulders Display";
+  var FONT_DISPLAY_WEIGHTS = "600;700;800";
+  var FONT_BODY = "Hanken Grotesk";
+  var FONT_BODY_WEIGHTS = "400;500;600;700";
+  var FONTS_ORIGIN = "https://fonts.googleapis.com";
+  var FONT_FILES_ORIGIN = "https://fonts.gstatic.com";
+  var FONTS_CSS = `${FONTS_ORIGIN}/css2?family=${FONT_DISPLAY.replace(/ /g, "+")}:wght@${FONT_DISPLAY_WEIGHTS}&family=${FONT_BODY.replace(/ /g, "+")}:wght@${FONT_BODY_WEIGHTS}&display=swap`;
+  var HIBP_ORIGIN = "https://api.pwnedpasswords.com";
   var THREE_CDN = [
-    "https://cdn.jsdelivr.net/npm/three@0.159.0/build/three.module.min.js",
-    "https://unpkg.com/three@0.159.0/build/three.module.min.js"
+    `${JSDELIVR}/three@${THREE_VERSION}/build/three.module.min.js`,
+    `${UNPKG}/three@${THREE_VERSION}/build/three.module.min.js`
   ];
   var THREE_URLS = typeof window !== "undefined" && window.IRONLOG_APP ? ["./vendor/three.module.min.js", ...THREE_CDN] : THREE_CDN;
 

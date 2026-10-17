@@ -49,8 +49,8 @@
   --dock:color-mix(in srgb,var(--volt) 40%,#0b0d10); --on-dock:#ffffff;
   /* 46% at its lightest keeps white text at 4.5:1 or more on all three accents (Volt is the closest, 4.66). */
   --dock-bg:linear-gradient(165deg,color-mix(in srgb,var(--volt) 46%,#0b0d10),color-mix(in srgb,var(--volt) 32%,#0b0d10));
-  --font:'Hanken Grotesk',system-ui,-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;
-  --display:'Big Shoulders Display','Arial Narrow','Roboto Condensed','Helvetica Neue',system-ui,sans-serif;
+  --font:'{{FONT_BODY}}',system-ui,-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;
+  --display:'{{FONT_DISPLAY}}','Arial Narrow','Roboto Condensed','Helvetica Neue',system-ui,sans-serif;
   --r-lg:22px; --r-md:14px; --r-sm:12px;
   --head-h:52px;
   color-scheme:light;

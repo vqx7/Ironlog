@@ -53,7 +53,8 @@ const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log
 
 // 2. Duplicated selectors, per block.
 {
-  const css = fs.readFileSync(path.join(ROOT, 'src/02-style.css'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');
+  // As the page holds it: its {{NAME}} placeholders filled (r51, the font names).
+  const css = require('../scripts/join').fill(fs.readFileSync(path.join(ROOT, 'src/02-style.css'), 'utf8')).replace(/\/\*[\s\S]*?\*\//g, '');
   const stack = [{ name: 'top', sels: new Map() }]; let buf = ''; const dups = [];
   for (const ch of css) {
     if (ch === '{') {
@@ -145,6 +146,40 @@ const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log
     for (const k in n) { const v = n[k]; if (Array.isArray(v)) v.forEach(x => walk(x, f)); else if (v && typeof v.type === 'string' && k !== 'type') walk(v, f); } };
   for (const [f, t] of texts) if (t.ast) walk(t.ast, f);
   ok(rebound.length === 0, 'nothing config.ts defines is declared or bound a second time (a local of the same name would hide it)', rebound);
+  // Outside addresses, library versions and the font faces (r51, the outside
+  // review V brought; ARCHITECTURE.md): config.ts defines each once, and the
+  // markup, the style sheet, the build and the account script read them. Each
+  // version is the one package.json pins. Every outside address in src/ and
+  // scripts/ is config's, or waits for its phase in ARCHITECTURE.md's list,
+  // and a listed one must still be there, so the list only shrinks.
+  {
+    const pkg = require('../package.json').devDependencies;
+    const pins = { CHART_VERSION: 'chart.js', SORTABLE_VERSION: 'sortablejs', THREE_VERSION: 'three' };
+    const off = Object.entries(pins).filter(([k, p]) => typeof cfg[k] !== 'string' || cfg[k] !== pkg[p]).map(([k, p]) => `${k} ${cfg[k]}, package.json ${p} ${pkg[p]}`);
+    ok(off.length === 0, 'each library version in config.ts is the exact one package.json pins', off);
+    const HOST = /https:\/\/([a-z0-9-]+(?:\.[a-z0-9-]+)+)/gi;
+    const strs = Object.values(cfg).flatMap(v => (typeof v === 'string' ? [v] : Array.isArray(v) ? v.filter(x => typeof x === 'string') : []));
+    const owned = new Set(strs.flatMap(s => [...s.matchAll(HOST)].map(m => m[1].toLowerCase())));
+    ok(['cdnjs.cloudflare.com', 'cdn.jsdelivr.net', 'unpkg.com', 'fonts.googleapis.com', 'fonts.gstatic.com', 'api.pwnedpasswords.com'].every(h => owned.has(h)), 'config.ts defines the CDNs, the fonts\' two origins and the password check\'s origin', [...owned]);
+    const arch = fs.readFileSync(path.join(ROOT, 'ARCHITECTURE.md'), 'utf8');
+    const line = (arch.match(/^Addresses waiting for their phase: (.+)$/m) || [])[1];
+    const waiting = new Map(line ? [...line.matchAll(/([a-z0-9-]+(?:\.[a-z0-9-]+)+) \(([^)]+)\)/g)].map(m => [m[1].toLowerCase(), m[2]]) : []);
+    ok(line !== undefined, 'ARCHITECTURE.md lists the outside addresses still waiting for their phase');
+    const hosts = [], copies = [], seen = new Set();
+    for (const [f, t] of texts) {
+      for (const m of t.code.matchAll(HOST)) {
+        const h = m[1].toLowerCase(); seen.add(h);
+        if (owned.has(h)) copies.push(`${f}: ${h}`);
+        else if (!(waiting.has(h) && f === 'src/10-29 (legacy parts)')) hosts.push(`${f}: ${h}`);
+      }
+      // The versions and the faces, wherever a value can be: string, template and pattern tokens, or anywhere in markup and styles.
+      for (const v of [cfg.CHART_VERSION, cfg.SORTABLE_VERSION, cfg.THREE_VERSION, cfg.FONT_DISPLAY, cfg.FONT_BODY, cfg.FONTS_CSS]) if (t.lits.some(l => l.includes(v))) copies.push(`${f}: ${v}`);
+    }
+    ok(copies.length === 0, 'the outside addresses, library versions and font faces config.ts defines are typed nowhere else in src/ or scripts/', copies);
+    ok(hosts.length === 0, 'every other outside address in src/ or scripts/ waits for its phase in ARCHITECTURE.md, in the legacy script', hosts);
+    const gone = [...waiting.keys()].filter(h => !seen.has(h));
+    ok(gone.length === 0, 'every address ARCHITECTURE.md lists as waiting is still in the legacy script (a moved one leaves the list)', gone);
+  }
   ok((cfg.WORDMARK.mark + cfg.WORDMARK.strong + cfg.WORDMARK.light).toLowerCase() === cfg.APP_NAME.toLowerCase(), 'the logo\'s wordmark spells the app name (a new name needs a new wordmark)', cfg.WORDMARK);
   ok(/^\d+\.\d+$/.test(cfg.DISPLAY_VERSION), 'the version people see is major.minor', cfg.DISPLAY_VERSION);
 }
