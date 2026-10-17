@@ -43,7 +43,7 @@ export function e1(load: number, r: number, rir?: Rir): number | null {
   if (!(load > 0 && r > 0)) return null;
   const rtf = rtfOf(r, rir);
   if (rtf == null || rtf > E1_MAX_REPS) return null;
-  return rtf <= 10 ? load * 36 / (37 - rtf) : load * (1 + rtf / 30);
+  return rtf <= 10 ? (load * 36) / (37 - rtf) : load * (1 + rtf / 30);
 }
 
 /* The reading a lift's trend is drawn from (r30): e1() up to 12 reps to
@@ -75,19 +75,19 @@ export function fitE(load: number, r: number, rir?: Rir): number | null {
 /* The load that leaves a given number of reps to failure at an estimated 1RM:
    the inverse of e1(). Past 12 RTF it keeps using Epley, only to pick loads. */
 export function e1inv(est: number, rtf: number): number {
-  return rtf <= 10 ? est * (37 - rtf) / 36 : est / (1 + rtf / 30);
+  return rtf <= 10 ? (est * (37 - rtf)) / 36 : est / (1 + rtf / 30);
 }
 
 /* Reps to failure a load allows at an estimated 1RM, the inverse the other way. */
 export function rtfAt(est: number, load: number): number | null {
   if (!(est > 0 && load > 0)) return null;
-  const b = 37 - 36 * load / est;
+  const b = 37 - (36 * load) / est;
   return b <= 10 ? b : 30 * (est / load - 1);
 }
 
 /* Rep band for PR comparisons: estimates from triples and from sets of 12 are
    not interchangeable, so a best is judged within its own band. */
-export const rtfBand = (rtf: number): 1 | 2 | 3 => rtf <= 5 ? 1 : rtf <= 10 ? 2 : 3;
+export const rtfBand = (rtf: number): 1 | 2 | 3 => (rtf <= 5 ? 1 : rtf <= 10 ? 2 : 3);
 
 /* A rep PR counts at 90% or more of the strongest set before it (r30, a convention). */
 export const REP_PR_SHARE = 0.9;
@@ -96,14 +96,18 @@ export const REP_PR_SHARE = 0.9;
 
 /** A working set: not a warm-up, and reps done. Reps are null on a row with
     none typed, which + reads as 0; the cast only lets TypeScript accept the +. */
-export const isWork = (s: { warm?: boolean | undefined; r: number | string | null }): boolean => !s.warm && +(s.r as number) > 0;
+export const isWork = (s: { warm?: boolean | undefined; r: number | string | null }): boolean =>
+  !s.warm && +(s.r as number) > 0;
 
 /** A set's weight in a weekly count: a drop set counts half. */
-export const setCredit = (s: Pick<LoggedSet, 'drop'>): number => s.drop ? 0.5 : 1;
+export const setCredit = (s: Pick<LoggedSet, 'drop'>): number => (s.drop ? 0.5 : 1);
 
 /* Two planned rep ranges match when equal, or when either is unknown (sessions
    logged before rep ranges were recorded). */
-export function sameRR(a: readonly [number, number] | null | undefined, b: readonly [number, number] | null | undefined): boolean {
+export function sameRR(
+  a: readonly [number, number] | null | undefined,
+  b: readonly [number, number] | null | undefined
+): boolean {
   return !a || !b || (a[0] === b[0] && a[1] === b[1]);
 }
 
@@ -124,7 +128,7 @@ export function workLoad(pts: readonly Point[], _repMin?: number): number {
   /* The 60% is of the total moved (load, which adds the bodyweight share on
      a pull-up or dip), not of the number typed: +25 on a 180 lb pull-up is
      89% of +50, not half (the review saw +50 prescribed for every set). */
-  const T = (p: Point): number => p.load != null ? p.load : p.w;
+  const T = (p: Point): number => (p.load != null ? p.load : p.w);
   const top = Math.max(...pts.map(T));
   const floor = top > 0 ? top * 0.6 : -Infinity;
   const ok = (p: Point): boolean => T(p) >= floor - 1e-9;
@@ -135,27 +139,35 @@ export function workLoad(pts: readonly Point[], _repMin?: number): number {
      sets it (its count beats -1), so the comparison never meets a null. The
      ! says so to TypeScript and is not code, as is the one on the count, which
      the loop above set for every load at or over the floor. */
-  let w: number | null = null, best = -1;
+  let w: number | null = null,
+    best = -1;
   for (const p of pts) {
     if (!ok(p)) continue;
     const c = n.get(k(p.w))!;
-    if (c > best || (c === best && p.w > w!)) { best = c; w = p.w; }
+    if (c > best || (c === best && p.w > w!)) {
+      best = c;
+      w = p.w;
+    }
   }
   return w == null ? Math.max(...pts.map(p => p.w)) : w;
 }
 
 /** The sets at a load (within a millionth, as loads are stored in kg). */
-export const atLoad = <P extends Pick<Point, 'w'>>(pts: readonly P[], w: number): P[] => pts.filter(p => Math.abs(p.w - w) < 1e-6);
+export const atLoad = <P extends Pick<Point, 'w'>>(pts: readonly P[], w: number): P[] =>
+  pts.filter(p => Math.abs(p.w - w) < 1e-6);
 
 /* The floor for reps that set targets and grey reps (r32): one set under
    the range among two or more is read at the bottom of the range. With more
    of them under it, the load was heavy that day or too heavy, and the drop
    below the range (or the way back to it) handles that. */
-export function repFloor(pts: readonly Pick<Point, 'r'>[], repMin: number | string | null | undefined): (r: number) => number {
+export function repFloor(
+  pts: readonly Pick<Point, 'r'>[],
+  repMin: number | string | null | undefined
+): (r: number) => number {
   // No range reads as 0: +undefined is NaN, and NaN || 0 is 0 (the cast tells TypeScript so).
   const m = +(repMin as number) || 0;
   const ok = m > 0 && pts.length >= 2 && pts.filter(p => p.r < m).length === 1;
-  return r => ok ? Math.max(r, m) : r;
+  return r => (ok ? Math.max(r, m) : r);
 }
 
 /** The marks a session can carry that keep it from setting targets and trends. */
@@ -178,7 +190,10 @@ export const offSession = (x: SessionMarks): boolean => tagged(x) || !!(x && x.a
    progression should be overridable in the planner"): a percent of the load,
    rounded down to whole load steps and never less than one step; 0 means
    always one step. Unset, it is the 2.5% or 5%. */
-export function jumpPct(ex: Parameters<typeof isCompound>[0], plan: { jump?: number | string | null } | null | undefined): number {
+export function jumpPct(
+  ex: Parameters<typeof isCompound>[0],
+  plan: { jump?: number | string | null } | null | undefined
+): number {
   return plan && plan.jump != null && isNum(+plan.jump) ? Math.max(0, +plan.jump) / 100 : isCompound(ex) ? 0.025 : 0.05;
 }
 
@@ -187,7 +202,7 @@ export function jumpPct(ex: Parameters<typeof isCompound>[0], plan: { jump?: num
    fraction. One rep of RIR error is normal, so bigger jumps overshoot. */
 /* early: a lift's first 3 sessions, which may jump 25% (r31). */
 export function jumpCap(ex: Parameters<typeof isCompound>[0], loadKg: number, early?: boolean): number {
-  return early ? 1.25 : !isCompound(ex) && loadKg < 20 ? 1.15 : 1.10;
+  return early ? 1.25 : !isCompound(ex) && loadKg < 20 ? 1.15 : 1.1;
 }
 
 /* Back after more than 4 weeks off a lift (a convention, r34.2, from the
@@ -214,7 +229,39 @@ export const GROW_PCT = 3;
    before; with 3 to 6 sessions the interval came out up to 2.4 times too
    narrow, so noise was called a trend. Past 30 degrees of freedom the
    approximation below is within 0.001 of the table. */
-export const T90: readonly number[] = [NaN, 3.078, 1.886, 1.638, 1.533, 1.476, 1.440, 1.415, 1.397, 1.383, 1.372, 1.363, 1.356, 1.350, 1.345, 1.341, 1.337, 1.333, 1.330, 1.328, 1.325, 1.323, 1.321, 1.319, 1.318, 1.316, 1.315, 1.314, 1.313, 1.311, 1.310];
+export const T90: readonly number[] = [
+  NaN,
+  3.078,
+  1.886,
+  1.638,
+  1.533,
+  1.476,
+  1.44,
+  1.415,
+  1.397,
+  1.383,
+  1.372,
+  1.363,
+  1.356,
+  1.35,
+  1.345,
+  1.341,
+  1.337,
+  1.333,
+  1.33,
+  1.328,
+  1.325,
+  1.323,
+  1.321,
+  1.319,
+  1.318,
+  1.316,
+  1.315,
+  1.314,
+  1.313,
+  1.311,
+  1.31
+];
 
 /** The quantile for df degrees of freedom, whole degrees only: under 1 reads as 1, past 30 the approximation. */
 export function t90(df: number): number {
@@ -234,7 +281,10 @@ export function t90(df: number): number {
    never taken, so it is dropped. (The rests are added by dayMinutes in the
    analytics.) Every figure here is a convention, not a measurement; your own
    pace (pace(), r43) scales the total to how long your sessions take. */
-export function setSecs(ex: Pick<Exercise, 'timed' | 'perSide'>, p: { repMin: number | string; repMax: number | string }): number {
+export function setSecs(
+  ex: Pick<Exercise, 'timed' | 'perSide'>,
+  p: { repMin: number | string; repMax: number | string }
+): number {
   const mid = ((+p.repMin || 0) + (+p.repMax || 0)) / 2;
   let t = ex.timed ? mid + 20 : 40 + 3 * Math.max(0, mid - 12);
   if (ex.perSide) t = t * 2 + 15;
@@ -252,7 +302,11 @@ export function setupSecs(ex: Parameters<typeof isCompound>[0], compoundsBefore:
     days, needs PACE_MIN of them, and leaves out a session at under PACE_LO or
     over PACE_HI times its model (a clock left running or stopped early).
     Conventions; the comment on pace() says the rest. */
-export const PACE_N = 8, PACE_DAYS = 84, PACE_MIN = 3, PACE_LO = 1 / 3, PACE_HI = 3;
+export const PACE_N = 8,
+  PACE_DAYS = 84,
+  PACE_MIN = 3,
+  PACE_LO = 1 / 3,
+  PACE_HI = 3;
 
 /* Per-session volume per muscle, counted the same way as weekly volume
    (direct 1, secondary 0.5). Weekly bands cannot see a once-a-week split
@@ -265,4 +319,5 @@ export const SESSION_CAP = 11;
 
 /** The Plan editor's tip on the load jump (jumpPct above), r30; moved in
     phase 3a (r51), tests/moved.js holds it to r50's code. */
-export const JUMP_TIP = 'When every set reaches the top of the rep range, the load goes up by about this share, in whole load steps and at least one step. Blank: 2.5% on compound lifts, 5% on isolation lifts, a convention. 0: one step every time. Until then the target is to beat last time\'s total reps at the same load. When the step is large for the load, a few more reps come first, so the new load starts inside the range.';
+export const JUMP_TIP =
+  "When every set reaches the top of the rep range, the load goes up by about this share, in whole load steps and at least one step. Blank: 2.5% on compound lifts, 5% on isolation lifts, a convention. 0: one step every time. Until then the target is to beat last time's total reps at the same load. When the step is large for the load, a few more reps come first, so the new load starts inside the range.";

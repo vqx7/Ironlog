@@ -16,7 +16,31 @@ import type { Exercise, LibRow, LoadMode, MuscleKey } from './types';
    face pulls and rear-delt work), so their bands are small, like the neck's
    and tibialis'. No study sets a hypertrophy dose for either. */
 /** Every muscle the app counts, in display order: key and name. */
-export const MUSCLES: readonly (readonly [MuscleKey, string])[] = [['chest', 'Chest'], ['serratus', 'Serratus'], ['lats', 'Lats'], ['upperBack', 'Upper back'], ['traps', 'Traps'], ['lowerBack', 'Lower back'], ['frontDelts', 'Front delts'], ['sideDelts', 'Side delts'], ['rearDelts', 'Rear delts'], ['rotatorCuff', 'Rotator cuff'], ['biceps', 'Biceps'], ['triceps', 'Triceps'], ['forearms', 'Forearms'], ['abs', 'Abs'], ['obliques', 'Obliques'], ['neck', 'Neck'], ['quads', 'Quads'], ['hamstrings', 'Hamstrings'], ['glutes', 'Glutes'], ['adductors', 'Adductors'], ['abductors', 'Abductors'], ['calves', 'Calves'], ['tibialis', 'Tibialis']];
+export const MUSCLES: readonly (readonly [MuscleKey, string])[] = [
+  ['chest', 'Chest'],
+  ['serratus', 'Serratus'],
+  ['lats', 'Lats'],
+  ['upperBack', 'Upper back'],
+  ['traps', 'Traps'],
+  ['lowerBack', 'Lower back'],
+  ['frontDelts', 'Front delts'],
+  ['sideDelts', 'Side delts'],
+  ['rearDelts', 'Rear delts'],
+  ['rotatorCuff', 'Rotator cuff'],
+  ['biceps', 'Biceps'],
+  ['triceps', 'Triceps'],
+  ['forearms', 'Forearms'],
+  ['abs', 'Abs'],
+  ['obliques', 'Obliques'],
+  ['neck', 'Neck'],
+  ['quads', 'Quads'],
+  ['hamstrings', 'Hamstrings'],
+  ['glutes', 'Glutes'],
+  ['adductors', 'Adductors'],
+  ['abductors', 'Abductors'],
+  ['calves', 'Calves'],
+  ['tibialis', 'Tibialis']
+];
 
 /** The muscle keys, in display order. */
 export const MK = MUSCLES.map(m => m[0]);
@@ -38,7 +62,31 @@ export const TRACK_ONLY: ReadonlySet<string> = new Set(['serratus', 'rotatorCuff
 /** The default weekly hard-set band for each muscle, [minimum, maximum]
     (CLAUDE.md, Evidence base: 10 to 20 for the major muscles is typical, not
     a ceiling). The type requires a band for every muscle. */
-export const BANDS: Readonly<Record<MuscleKey, readonly [number, number]>> = { chest: [10, 20], serratus: [2, 8], lats: [10, 20], upperBack: [10, 20], traps: [6, 16], lowerBack: [3, 10], frontDelts: [4, 12], sideDelts: [10, 20], rearDelts: [8, 16], rotatorCuff: [2, 8], biceps: [10, 20], triceps: [10, 20], forearms: [4, 12], abs: [6, 16], obliques: [3, 10], neck: [2, 10], quads: [10, 20], hamstrings: [10, 20], glutes: [8, 16], adductors: [4, 12], abductors: [4, 12], calves: [8, 16], tibialis: [2, 8] };
+export const BANDS: Readonly<Record<MuscleKey, readonly [number, number]>> = {
+  chest: [10, 20],
+  serratus: [2, 8],
+  lats: [10, 20],
+  upperBack: [10, 20],
+  traps: [6, 16],
+  lowerBack: [3, 10],
+  frontDelts: [4, 12],
+  sideDelts: [10, 20],
+  rearDelts: [8, 16],
+  rotatorCuff: [2, 8],
+  biceps: [10, 20],
+  triceps: [10, 20],
+  forearms: [4, 12],
+  abs: [6, 16],
+  obliques: [3, 10],
+  neck: [2, 10],
+  quads: [10, 20],
+  hamstrings: [10, 20],
+  glutes: [8, 16],
+  adductors: [4, 12],
+  abductors: [4, 12],
+  calves: [8, 16],
+  tibialis: [2, 8]
+};
 
 // Twenty-three spokes is unreadable on a phone, so the balance radar groups
 // them into eight regions. Every muscle belongs to exactly one region; the
@@ -63,7 +111,13 @@ export const REGIONS: readonly (readonly [string, readonly MuscleKey[]])[] = [
    targets pause, loads cap at last time, 3 or more reps in reserve. Which
    exercises load which joint is a judgment, stated in the sheet. The muscle
    lists (weekly targets, Pick for me) are unchanged by a joint flag. */
-export const JOINTS: readonly (readonly [string, string])[] = [['j_knee', 'Knee'], ['j_hip', 'Hip'], ['j_shoulder', 'Shoulder'], ['j_elbow', 'Elbow'], ['j_wrist', 'Wrist']];
+export const JOINTS: readonly (readonly [string, string])[] = [
+  ['j_knee', 'Knee'],
+  ['j_hip', 'Hip'],
+  ['j_shoulder', 'Shoulder'],
+  ['j_elbow', 'Elbow'],
+  ['j_wrist', 'Wrist']
+];
 
 /** The joint keys, and a joint's name by key. */
 export const JK = JOINTS.map(j => j[0]);
@@ -75,39 +129,101 @@ export const injLabel = (k: string): string => ML[k] || JL[k] || k;
 /** The joints an exercise loads, by its movement pattern, main muscle and name. */
 export function exJoints(e: Pick<Exercise, 'name' | 'primary' | 'equip'>): string[] {
   // p is null for a name with no pattern, which no list holds, so includes says false; `p as string` lets TypeScript ask.
-  const p = patternOf(e), n = String(e.name || '').toLowerCase(), m = e.primary, out: string[] = [];
+  const p = patternOf(e),
+    n = String(e.name || '').toLowerCase(),
+    m = e.primary,
+    out: string[] = [];
   if (p === 'squat' || m === 'quads' || /leg curl|nordic|lunge|step-up|split squat/.test(n)) out.push('j_knee');
-  if (p === 'hinge' || p === 'squat' || ['glutes', 'adductors', 'abductors'].includes(m) || /thrust|bridge/.test(n)) out.push('j_hip');
-  if (['press', 'fly', 'raise', 'vpull', 'pullover', 'rearfly'].includes(p as string) && !['quads', 'hamstrings', 'glutes', 'calves', 'abs', 'obliques'].includes(m) || ['chest', 'frontDelts', 'sideDelts', 'rearDelts', 'rotatorCuff'].includes(m) || /\bdips?\b|face pull|upright/.test(n)) out.push('j_shoulder');
-  if ((['ext', 'vpull', 'row'].includes(p as string) || (p === 'curl' && m !== 'hamstrings')) && m !== 'quads' || ['biceps', 'triceps', 'forearms'].includes(m) || /\bdips?\b|close.grip|skull/.test(n)) out.push('j_elbow');
-  if (m === 'forearms' || (p === 'curl' && m === 'biceps') || /push-up|front squat|\bdips?\b|wrist/.test(n) || (p === 'press' && ['barbell', 'dumbbell'].includes(e.equip))) out.push('j_wrist');
+  if (p === 'hinge' || p === 'squat' || ['glutes', 'adductors', 'abductors'].includes(m) || /thrust|bridge/.test(n))
+    out.push('j_hip');
+  if (
+    (['press', 'fly', 'raise', 'vpull', 'pullover', 'rearfly'].includes(p as string) &&
+      !['quads', 'hamstrings', 'glutes', 'calves', 'abs', 'obliques'].includes(m)) ||
+    ['chest', 'frontDelts', 'sideDelts', 'rearDelts', 'rotatorCuff'].includes(m) ||
+    /\bdips?\b|face pull|upright/.test(n)
+  )
+    out.push('j_shoulder');
+  if (
+    ((['ext', 'vpull', 'row'].includes(p as string) || (p === 'curl' && m !== 'hamstrings')) && m !== 'quads') ||
+    ['biceps', 'triceps', 'forearms'].includes(m) ||
+    /\bdips?\b|close.grip|skull/.test(n)
+  )
+    out.push('j_elbow');
+  if (
+    m === 'forearms' ||
+    (p === 'curl' && m === 'biceps') ||
+    /push-up|front squat|\bdips?\b|wrist/.test(n) ||
+    (p === 'press' && ['barbell', 'dumbbell'].includes(e.equip))
+  )
+    out.push('j_wrist');
   return out;
 }
 
 /* ---------- equipment, cardio and the tape ---------- */
 
 /** The equipment kinds an exercise can have, key and name, and a name by key. */
-export const EQUIP: readonly (readonly [string, string])[] = [['barbell', 'Barbell'], ['dumbbell', 'Dumbbell'], ['cable', 'Cable'], ['machine', 'Machine'], ['smith', 'Smith machine'], ['landmine', 'Landmine'], ['bodyweight', 'Bodyweight'], ['other', 'Other']];
+export const EQUIP: readonly (readonly [string, string])[] = [
+  ['barbell', 'Barbell'],
+  ['dumbbell', 'Dumbbell'],
+  ['cable', 'Cable'],
+  ['machine', 'Machine'],
+  ['smith', 'Smith machine'],
+  ['landmine', 'Landmine'],
+  ['bodyweight', 'Bodyweight'],
+  ['other', 'Other']
+];
 export const EQL = Object.fromEntries(EQUIP);
 
 // Plate-loaded machines in the built-in library. Selectorized versions exist,
 // so this is only the default; the exercise editor can change it.
-export const PLATE_SIDE_IDS: readonly string[] = ['hackSquat', 'pendulum', 'legPress', 'legPressCalf', 'beltSquat', 'machHipThrust'];
+export const PLATE_SIDE_IDS: readonly string[] = [
+  'hackSquat',
+  'pendulum',
+  'legPress',
+  'legPressCalf',
+  'beltSquat',
+  'machHipThrust'
+];
 
 /** Cardio and mobility kinds, and when they were done against the lifting. */
-export const CARDIO: readonly (readonly [string, string])[] = [['walk', 'Treadmill walk'], ['incline', 'Incline walk'], ['elliptical', 'Elliptical'], ['bike', 'Bike'], ['stairs', 'Stair climber'], ['rower', 'Rower'], ['run', 'Run'], ['hiit', 'HIIT'], ['mobility', 'Mobility / stretching'], ['other', 'Other']];
+export const CARDIO: readonly (readonly [string, string])[] = [
+  ['walk', 'Treadmill walk'],
+  ['incline', 'Incline walk'],
+  ['elliptical', 'Elliptical'],
+  ['bike', 'Bike'],
+  ['stairs', 'Stair climber'],
+  ['rower', 'Rower'],
+  ['run', 'Run'],
+  ['hiit', 'HIIT'],
+  ['mobility', 'Mobility / stretching'],
+  ['other', 'Other']
+];
 export const CARDIOL = Object.fromEntries(CARDIO);
-export const CWHEN: readonly (readonly [string, string])[] = [['pre', 'Before lifting'], ['post', 'After lifting'], ['solo', 'On its own']];
+export const CWHEN: readonly (readonly [string, string])[] = [
+  ['pre', 'Before lifting'],
+  ['post', 'After lifting'],
+  ['solo', 'On its own']
+];
 export const CWHENL = Object.fromEntries(CWHEN);
 
 /** The tape measurements, key and name. */
-export const MEAS: readonly (readonly [string, string])[] = [['arm', 'Arm'], ['forearm', 'Forearm'], ['chest', 'Chest'], ['waist', 'Waist'], ['thigh', 'Thigh'], ['calf', 'Calf'], ['neck', 'Neck']];
+export const MEAS: readonly (readonly [string, string])[] = [
+  ['arm', 'Arm'],
+  ['forearm', 'Forearm'],
+  ['chest', 'Chest'],
+  ['waist', 'Waist'],
+  ['thigh', 'Thigh'],
+  ['calf', 'Calf'],
+  ['neck', 'Neck']
+];
 
 /* ---------- the exercise library ---------- */
 
 // id, name, primary, secondary, equipment, flags (b = bodyweight plus added load, r = less common), note
 // (also s = one side at a time, t = timed, a = assisted; the type checks that each row's main muscle
 // is a muscle key, not the helper muscles, which are one string)
+// A table, one exercise a line, so a row can be read and checked whole; the formatter would spread each over eight lines.
+// prettier-ignore
 export const LIB: readonly LibRow[] = [
 ['bench','Barbell Bench Press','chest','frontDelts triceps','barbell','',''],
 ['pauseBench','Paused Bench Press','chest','frontDelts triceps','barbell','r','A full stop on the chest, as in a meet, then press.'],
@@ -296,33 +412,108 @@ export const LIB: readonly LibRow[] = [
    common tag, first in the exercise picker, and a filter in the library.
    Nothing stored: it follows the library id, and an exercise someone marks
    as less common is not called most common. */
-export const COMMON: ReadonlySet<string> = new Set(['bench', 'backSquat', 'deadlift', 'latPulldown', 'ohp', 'bbRow', 'dbLateral', 'legExt', 'legPress', 'bbCurl', 'pressdown', 'incDb', 'dbCurl', 'pullup', 'cableRow', 'ropePressdown', 'lyingCurl', 'dbRow', 'seatedDbPress', 'rdl', 'seatedCurl', 'hammer', 'cableFly', 'dbBench', 'facePull', 'cgBench', 'hipThrust', 'bss', 'sldl', 'abductor']);
+export const COMMON: ReadonlySet<string> = new Set([
+  'bench',
+  'backSquat',
+  'deadlift',
+  'latPulldown',
+  'ohp',
+  'bbRow',
+  'dbLateral',
+  'legExt',
+  'legPress',
+  'bbCurl',
+  'pressdown',
+  'incDb',
+  'dbCurl',
+  'pullup',
+  'cableRow',
+  'ropePressdown',
+  'lyingCurl',
+  'dbRow',
+  'seatedDbPress',
+  'rdl',
+  'seatedCurl',
+  'hammer',
+  'cableFly',
+  'dbBench',
+  'facePull',
+  'cgBench',
+  'hipThrust',
+  'bss',
+  'sldl',
+  'abductor'
+]);
 
 /** Shown as Most common: a library lift in COMMON that the lifter has not
     marked less common (a custom exercise never is). */
-export const isCommon = (e: Pick<Exercise, 'id' | 'custom' | 'rare'> | null | undefined): boolean => !!e && !e.custom && !e.rare && COMMON.has(e.id);
+export const isCommon = (e: Pick<Exercise, 'id' | 'custom' | 'rare'> | null | undefined): boolean =>
+  !!e && !e.custom && !e.rare && COMMON.has(e.id);
 
 /** The library as exercise records, fresh objects on every call. */
 export function libExercises(): Exercise[] {
-  return LIB.map(([id, name, primary, sec, equip, flags, note]) => { const o: Exercise = { id, name, primary, secondary: sec ? sec.split(' ') : [], equip, bw: flags.includes('b'), rare: flags.includes('r'), perSide: flags.includes('s'), note, custom: false, archived: false }; if (flags.includes('t')) o.timed = true; if (flags.includes('a')) o.assist = true; return o; });
+  return LIB.map(([id, name, primary, sec, equip, flags, note]) => {
+    const o: Exercise = {
+      id,
+      name,
+      primary,
+      secondary: sec ? sec.split(' ') : [],
+      equip,
+      bw: flags.includes('b'),
+      rare: flags.includes('r'),
+      perSide: flags.includes('s'),
+      note,
+      custom: false,
+      archived: false
+    };
+    if (flags.includes('t')) o.timed = true;
+    if (flags.includes('a')) o.assist = true;
+    return o;
+  });
 }
 
 /* ---------- what an exercise is ---------- */
 
 /* Movement pattern from the name, so a fly is replaced by a fly rather than a
    press that happens to share helper muscles. Checked in order. */
-export const PATTERNS: readonly (readonly [string, RegExp])[] = [['calf', /calf raise/], ['hinge', /hyperextension/], ['squat', /leg press|hack squat|pendulum/], ['rearfly', /rear delt|reverse pec/], ['pullover', /pullover/], ['fly', /\bfly|flye|pec deck/], ['ext', /pressdown|extension|kickback|skull|tate press|jm press/], ['vpull', /pulldown|pull-up|chin-up|high row/], ['row', /\brow\b/], ['curl', /curl/], ['press', /press|push-up|\bdips?\b|bench/], ['squat', /squat|lunge|step-up/], ['hinge', /deadlift|rdl|rack pull|good morning|pull-through|hip thrust|bridge|hyperextension|power clean|swing/], ['raise', /raise/], ['core', /crunch|rollout|dragon|plank|twist/], ['shrug', /shrug/]];
+export const PATTERNS: readonly (readonly [string, RegExp])[] = [
+  ['calf', /calf raise/],
+  ['hinge', /hyperextension/],
+  ['squat', /leg press|hack squat|pendulum/],
+  ['rearfly', /rear delt|reverse pec/],
+  ['pullover', /pullover/],
+  ['fly', /\bfly|flye|pec deck/],
+  ['ext', /pressdown|extension|kickback|skull|tate press|jm press/],
+  ['vpull', /pulldown|pull-up|chin-up|high row/],
+  ['row', /\brow\b/],
+  ['curl', /curl/],
+  ['press', /press|push-up|\bdips?\b|bench/],
+  ['squat', /squat|lunge|step-up/],
+  ['hinge', /deadlift|rdl|rack pull|good morning|pull-through|hip thrust|bridge|hyperextension|power clean|swing/],
+  ['raise', /raise/],
+  ['core', /crunch|rollout|dragon|plank|twist/],
+  ['shrug', /shrug/]
+];
 
 /** An exercise's movement pattern: the first of PATTERNS its name matches, or null. */
 export function patternOf(e: { name?: string } | null | undefined): string | null {
-  const n = String(e && e.name || '').toLowerCase();
+  const n = String((e && e.name) || '').toLowerCase();
   for (const [k, re] of PATTERNS) if (re.test(n)) return k;
   return null;
 }
 
 /* Compound: a press, row, pull, squat or hinge for a main muscle. Used to
    split RIR calibration, size load steps, spot warm-ups and budget time. */
-export const NON_COMPOUND_PRIMARY: ReadonlySet<string> = new Set(['abs', 'obliques', 'neck', 'forearms', 'serratus', 'rotatorCuff', 'calves', 'tibialis']);
+export const NON_COMPOUND_PRIMARY: ReadonlySet<string> = new Set([
+  'abs',
+  'obliques',
+  'neck',
+  'forearms',
+  'serratus',
+  'rotatorCuff',
+  'calves',
+  'tibialis'
+]);
 
 type Kinded = Pick<Exercise, 'name' | 'primary' | 'timed' | 'kind'>;
 
@@ -331,7 +522,12 @@ type Kinded = Pick<Exercise, 'name' | 'primary' | 'timed' | 'kind'>;
    reads it from the name as before. */
 export function autoCompound(ex: Kinded | null | undefined): boolean {
   // A null pattern is in no list (see exJoints for the cast).
-  return !!ex && !ex.timed && !NON_COMPOUND_PRIMARY.has(ex.primary) && ['press', 'row', 'vpull', 'squat', 'hinge'].includes(patternOf(ex) as string);
+  return (
+    !!ex &&
+    !ex.timed &&
+    !NON_COMPOUND_PRIMARY.has(ex.primary) &&
+    ['press', 'row', 'vpull', 'squat', 'hinge'].includes(patternOf(ex) as string)
+  );
 }
 
 /** Whether an exercise counts as a compound lift. A timed hold never does;
@@ -346,14 +542,40 @@ export function isCompound(ex: Kinded | null | undefined): boolean {
    sissy squats): the share of bodyweight is kept for display, but torque, not
    mass moved, sets how hard they are, so they get no 1RM estimate and no
    tonnage. Progress on them reads from reps and added load. */
-export const NO_E1: ReadonlySet<string> = new Set(['hangingLegRaise', 'kneeRaise', 'reverseCrunch', 'crunch', 'dragonFlag', 'abWheel', 'russianTwist', 'neckBridge', 'nordic', 'ghr', 'revNordic', 'sissy']);
+export const NO_E1: ReadonlySet<string> = new Set([
+  'hangingLegRaise',
+  'kneeRaise',
+  'reverseCrunch',
+  'crunch',
+  'dragonFlag',
+  'abWheel',
+  'russianTwist',
+  'neckBridge',
+  'nordic',
+  'ghr',
+  'revNordic',
+  'sissy'
+]);
 
 /** No 1RM estimate for this exercise: a timed hold, or a lift in NO_E1. */
-export const noE1 = (ex: Pick<Exercise, 'id' | 'timed'> | null | undefined): boolean => !!ex && (!!ex.timed || NO_E1.has(ex.id));
+export const noE1 = (ex: Pick<Exercise, 'id' | 'timed'> | null | undefined): boolean =>
+  !!ex && (!!ex.timed || NO_E1.has(ex.id));
 
 /* Lifts that add recovery time: heavy lengthened hamstring and hinge work,
    walking lunges (Pareja-Blanco 2020; eccentric-heavy damage). */
-export const SLOW_RECOVERY: ReadonlySet<string> = new Set(['deadlift', 'sumoDl', 'trapBarDl', 'rdl', 'sldl', 'dbRdl', 'slRdl', 'goodMorning', 'nordic', 'ghr', 'walkingLunge']);
+export const SLOW_RECOVERY: ReadonlySet<string> = new Set([
+  'deadlift',
+  'sumoDl',
+  'trapBarDl',
+  'rdl',
+  'sldl',
+  'dbRdl',
+  'slRdl',
+  'goodMorning',
+  'nordic',
+  'ghr',
+  'walkingLunge'
+]);
 
 /* Share of bodyweight an exercise actually moves. Only push-ups are measured
    (force plates, Ebben 2011: 64% on the floor, about 70% feet on a 30 cm
@@ -361,16 +583,59 @@ export const SLOW_RECOVERY: ReadonlySet<string> = new Set(['deadlift', 'sumoDl',
    use the whole body (the hands and forearms barely move; about 95% by
    segment tables). The rest are estimates from segment masses (de Leva 1996)
    and are editable per exercise. Only a user edit is stored. */
-export const BWF: Readonly<Record<string, number>> = { assistPullup: 1, assistDip: 1, pullup: 1, chinup: 1, dips: 1, triDips: 1, pushup: .64, deficitPushup: .64, declinePushup: .7, invertedRow: .6, hyperext: .6, hangingLegRaise: .35, abWheel: .5, dragonFlag: .7, neckBridge: .3, sissy: .85, revNordic: .85, nordic: .85, ghr: .85, plank: .65, sidePlank: .6, deadHang: 1, neckBridgeHold: .3, wallSit: .7, pushupPlus: .64, kneeRaise: .3, reverseCrunch: .3, crunch: .3, russianTwist: .4, copenhagen: .5 };
+export const BWF: Readonly<Record<string, number>> = {
+  assistPullup: 1,
+  assistDip: 1,
+  pullup: 1,
+  chinup: 1,
+  dips: 1,
+  triDips: 1,
+  pushup: 0.64,
+  deficitPushup: 0.64,
+  declinePushup: 0.7,
+  invertedRow: 0.6,
+  hyperext: 0.6,
+  hangingLegRaise: 0.35,
+  abWheel: 0.5,
+  dragonFlag: 0.7,
+  neckBridge: 0.3,
+  sissy: 0.85,
+  revNordic: 0.85,
+  nordic: 0.85,
+  ghr: 0.85,
+  plank: 0.65,
+  sidePlank: 0.6,
+  deadHang: 1,
+  neckBridgeHold: 0.3,
+  wallSit: 0.7,
+  pushupPlus: 0.64,
+  kneeRaise: 0.3,
+  reverseCrunch: 0.3,
+  crunch: 0.3,
+  russianTwist: 0.4,
+  copenhagen: 0.5
+};
 
 /** The share of bodyweight an exercise moves: the lifter's own figure, else
     the table's, else all of it. */
 export function bwShare(ex: Pick<Exercise, 'id' | 'bwf'> | null | undefined): number {
-  return ex && ex.bwf != null ? ex.bwf : (ex && BWF[ex.id] != null ? BWF[ex.id] : 1);
+  return ex && ex.bwf != null ? ex.bwf : ex && BWF[ex.id] != null ? BWF[ex.id] : 1;
 }
 
 /** Dumbbell lifts done with one dumbbell, so the number typed is the total. */
-export const ONE_DB: ReadonlySet<string> = new Set(['dbRow', 'krocRow', 'dbPullover', 'ohDbExt', 'concCurl', 'sideBend', 'goblet', 'slCalf', 'leanAwayLat', 'sideLyingER', 'slRdl']);
+export const ONE_DB: ReadonlySet<string> = new Set([
+  'dbRow',
+  'krocRow',
+  'dbPullover',
+  'ohDbExt',
+  'concCurl',
+  'sideBend',
+  'goblet',
+  'slCalf',
+  'leanAwayLat',
+  'sideLyingER',
+  'slRdl'
+]);
 
 /** What the load number on an exercise means: per dumbbell, the total on the
     implement, plates on one side, a stack setting, or bodyweight plus added
@@ -394,11 +659,17 @@ export const KIN_UNI = /lunge|split squat|step-up|single[- ]|one[- ]arm|1-arm|pi
 /** The spacings dumbbell and kettlebell racks come in, per unit, largest
     first (r32). The engine's rackStep picks the largest one every load logged
     on a lift fits. */
-export const RACK: Readonly<Record<'dumbbell' | 'kettlebell', { readonly kg: readonly number[]; readonly lb: readonly number[] }>> = { dumbbell: { kg: [2.5, 2, 1, 0.5], lb: [5, 2.5, 1] }, kettlebell: { kg: [4, 2, 1], lb: [5, 2.5] } };
+export const RACK: Readonly<
+  Record<'dumbbell' | 'kettlebell', { readonly kg: readonly number[]; readonly lb: readonly number[] }>
+> = { dumbbell: { kg: [2.5, 2, 1, 0.5], lb: [5, 2.5, 1] }, kettlebell: { kg: [4, 2, 1], lb: [5, 2.5] } };
 
 // The library files kettlebell lifts under Other equipment, so they are found by name.
 export function rackKind(ex: Pick<Exercise, 'equip'> & { name?: string }): 'dumbbell' | 'kettlebell' | null {
-  return ex.equip === 'dumbbell' ? 'dumbbell' : ex.equip === 'kettlebell' || /kettlebell/i.test(ex.name || '') ? 'kettlebell' : null;
+  return ex.equip === 'dumbbell'
+    ? 'dumbbell'
+    : ex.equip === 'kettlebell' || /kettlebell/i.test(ex.name || '')
+      ? 'kettlebell'
+      : null;
 }
 
 /* Two-joint muscles trained at a long length. Trials in untrained people:
@@ -409,12 +680,34 @@ export function rackKind(ex: Pick<Exercise, 'equip'> & { name?: string }): 'dumb
 /** The lifts with a trial behind the long-length bonus. */
 export const LONG_TRIAL: ReadonlySet<string> = new Set(['seatedCurl', 'ohCableExt', 'ohDbExt', 'standCalf']);
 /** Those, and the lifts that get it from mechanics alone. */
-export const LONG_IDS: ReadonlySet<string> = new Set([...LONG_TRIAL, 'katana', 'inclineCurl', 'bayesianCurl', 'rdl', 'sldl', 'dbRdl', 'slRdl', 'donkeyCalf', 'sissy']);
+export const LONG_IDS: ReadonlySet<string> = new Set([
+  ...LONG_TRIAL,
+  'katana',
+  'inclineCurl',
+  'bayesianCurl',
+  'rdl',
+  'sldl',
+  'dbRdl',
+  'slRdl',
+  'donkeyCalf',
+  'sissy'
+]);
 
 /* Exercises most people cannot do for sets of 8 to 15 when they start (r30,
    from the review: a seated leg curl became Nordic curls for 3 x 10-15, and
    a lat pulldown became pull-ups). A judgment, not a measurement. */
-export const HARD_EX: ReadonlySet<string> = new Set(['nordic', 'revNordic', 'ghr', 'sissy', 'dragonFlag', 'pullup', 'chinup', 'dips', 'triDips', 'hangingLegRaise']);
+export const HARD_EX: ReadonlySet<string> = new Set([
+  'nordic',
+  'revNordic',
+  'ghr',
+  'sissy',
+  'dragonFlag',
+  'pullup',
+  'chinup',
+  'dips',
+  'triDips',
+  'hangingLegRaise'
+]);
 
 /* The heavy compounds a Strength or Both goal moves: barbell, Smith and
    machine compounds with a strength estimate, as the copy says (the r44
@@ -427,22 +720,37 @@ export const PROF_NOT_HEAVY: ReadonlySet<string> = new Set(['reverseHyper', 'goo
 /** A heavy compound for Your training (profRule, r44): a compound with a 1RM
     estimate, not timed or bodyweight, on a barbell, a Smith machine, or a
     machine, and not in PROF_NOT_HEAVY. */
-export function profHeavy(ex: Pick<Exercise, 'id' | 'name' | 'primary' | 'equip' | 'bw' | 'timed' | 'kind'> | null | undefined): boolean {
-  return !!ex && !ex.timed && !ex.bw && isCompound(ex) && !noE1(ex) && PROF_EQUIP.has(ex.equip) && !PROF_NOT_HEAVY.has(ex.id);
+export function profHeavy(
+  ex: Pick<Exercise, 'id' | 'name' | 'primary' | 'equip' | 'bw' | 'timed' | 'kind'> | null | undefined
+): boolean {
+  return (
+    !!ex && !ex.timed && !ex.bw && isCompound(ex) && !noE1(ex) && PROF_EQUIP.has(ex.equip) && !PROF_NOT_HEAVY.has(ex.id)
+  );
 }
 
 /* ---------- finding exercises (phase 3a, r51; moved unchanged, tests/moved.js holds them to r50's code) ---------- */
 
 /** The tip beside the library's Most common and Less common filter: where
     the list comes from, and what less common means. */
-export const COMMON_TIP = 'Most common: the lifts in the top 25 by sets logged, overall, for men, or for women, among over 700,000 StrengthLog users (2025). Less common: useful lifts many gyms or programs skip, a judgment.';
+export const COMMON_TIP =
+  'Most common: the lifts in the top 25 by sets logged, overall, for men, or for women, among over 700,000 StrengthLog users (2025). Less common: useful lifts many gyms or programs skip, a judgment.';
 
 /** Most common lifts first, the rest after, each in the order given. */
-export const commonFirst = <E extends Pick<Exercise, 'id' | 'custom' | 'rare'>>(list: readonly E[]): E[] => [...list.filter(isCommon), ...list.filter(e => !isCommon(e))];
+export const commonFirst = <E extends Pick<Exercise, 'id' | 'custom' | 'rare'>>(list: readonly E[]): E[] => [
+  ...list.filter(isCommon),
+  ...list.filter(e => !isCommon(e))
+];
 
 /* Search by words, ignoring hyphens, spaces and case (r31): "t bar row" and
    "tbar" did not find Landmine T-Bar Row, so it looked missing. */
 export function nameMatch(name: unknown, q: unknown): boolean {
-  const ws = String(q || '').toLowerCase().split(/[^a-z0-9]+/).filter(Boolean); if (!ws.length) return true;
-  const n = String(name || '').toLowerCase().replace(/[^a-z0-9]/g, ''); return ws.every(w => n.includes(w));
+  const ws = String(q || '')
+    .toLowerCase()
+    .split(/[^a-z0-9]+/)
+    .filter(Boolean);
+  if (!ws.length) return true;
+  const n = String(name || '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, '');
+  return ws.every(w => n.includes(w));
 }

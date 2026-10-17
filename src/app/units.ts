@@ -5,7 +5,8 @@
    convert to and from the unit on screen. */
 
 /** Kilograms in a pound, and centimetres in an inch (both exact by definition). */
-export const LB = 0.45359237, IN = 2.54;
+export const LB = 0.45359237,
+  IN = 2.54;
 
 /** Kilometres in a mile (exact by definition). */
 export const KM_MI = 1.609344;
@@ -17,4 +18,5 @@ export const STEP_LB = 5 * LB;
 
 /** The plates a gym usually has, heaviest first, in each unit: what the plate
     count for a barbell load is made from unless Your gym lists its own. */
-export const PLATES_LB = [45, 35, 25, 10, 5, 2.5], PLATES_KG = [25, 20, 15, 10, 5, 2.5, 1.25];
+export const PLATES_LB = [45, 35, 25, 10, 5, 2.5],
+  PLATES_KG = [25, 20, 15, 10, 5, 2.5, 1.25];

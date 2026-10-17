@@ -18,7 +18,10 @@ export function andList(a?: readonly (string | number | null | undefined)[] | nu
 /** Text made safe to put into markup: the five characters HTML treats as syntax.
     The cast lets TypeScript look a character up in the table by any string. */
 export const esc = (s: unknown): string =>
-  String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' } as Record<string, string>)[c]);
+  String(s == null ? '' : s).replace(
+    /[&<>"']/g,
+    c => (({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }) as Record<string, string>)[c]
+  );
 
 /** A new record id: up to seven random base-36 characters, then the last four of the time. */
 export const uid = (): string => Math.random().toString(36).slice(2, 9) + Date.now().toString(36).slice(-4);
@@ -114,7 +117,8 @@ export function median(a: readonly number[]): number | null {
     whether a sync document changed. The mixing is cyrb53's; both 32-bit
     halves are written in base 36. */
 export function hashStr(str: string): string {
-  let h1 = 0xdeadbeef, h2 = 0x41c6ce57;
+  let h1 = 0xdeadbeef,
+    h2 = 0x41c6ce57;
   for (let i = 0; i < str.length; i++) {
     const c = str.charCodeAt(i);
     h1 = Math.imul(h1 ^ c, 2654435761);
@@ -129,5 +133,11 @@ export function hashStr(str: string): string {
 
 /** Mulberry32: random numbers from a seed, the same series every time for the same seed (the demo log). */
 export function mulberry(a: number): () => number {
-  return function () { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; };
+  return function () {
+    a |= 0;
+    a = (a + 0x6d2b79f5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
 }

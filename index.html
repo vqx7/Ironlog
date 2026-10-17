@@ -1029,7 +1029,10 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     }
     return a.length < 3 ? a.join(" and ") : a.slice(0, -1).join(", ") + ", and " + a[a.length - 1];
   }
-  var esc = (s) => String(s == null ? "" : s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+  var esc = (s) => String(s == null ? "" : s).replace(
+    /[&<>"']/g,
+    (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]
+  );
   var uid = () => Math.random().toString(36).slice(2, 9) + Date.now().toString(36).slice(-4);
   var pad = (n) => String(n).padStart(2, "0");
   var iso = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
@@ -1102,12 +1105,60 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
   var PLATES_LB = [45, 35, 25, 10, 5, 2.5], PLATES_KG = [25, 20, 15, 10, 5, 2.5, 1.25];
 
   // src/app/library.ts
-  var MUSCLES = [["chest", "Chest"], ["serratus", "Serratus"], ["lats", "Lats"], ["upperBack", "Upper back"], ["traps", "Traps"], ["lowerBack", "Lower back"], ["frontDelts", "Front delts"], ["sideDelts", "Side delts"], ["rearDelts", "Rear delts"], ["rotatorCuff", "Rotator cuff"], ["biceps", "Biceps"], ["triceps", "Triceps"], ["forearms", "Forearms"], ["abs", "Abs"], ["obliques", "Obliques"], ["neck", "Neck"], ["quads", "Quads"], ["hamstrings", "Hamstrings"], ["glutes", "Glutes"], ["adductors", "Adductors"], ["abductors", "Abductors"], ["calves", "Calves"], ["tibialis", "Tibialis"]];
+  var MUSCLES = [
+    ["chest", "Chest"],
+    ["serratus", "Serratus"],
+    ["lats", "Lats"],
+    ["upperBack", "Upper back"],
+    ["traps", "Traps"],
+    ["lowerBack", "Lower back"],
+    ["frontDelts", "Front delts"],
+    ["sideDelts", "Side delts"],
+    ["rearDelts", "Rear delts"],
+    ["rotatorCuff", "Rotator cuff"],
+    ["biceps", "Biceps"],
+    ["triceps", "Triceps"],
+    ["forearms", "Forearms"],
+    ["abs", "Abs"],
+    ["obliques", "Obliques"],
+    ["neck", "Neck"],
+    ["quads", "Quads"],
+    ["hamstrings", "Hamstrings"],
+    ["glutes", "Glutes"],
+    ["adductors", "Adductors"],
+    ["abductors", "Abductors"],
+    ["calves", "Calves"],
+    ["tibialis", "Tibialis"]
+  ];
   var MK = MUSCLES.map((m) => m[0]);
   var ML = Object.fromEntries(MUSCLES);
   var NEW_MUSCLES_V5 = ["serratus", "rotatorCuff"];
   var TRACK_ONLY = /* @__PURE__ */ new Set(["serratus", "rotatorCuff", "neck", "tibialis"]);
-  var BANDS = { chest: [10, 20], serratus: [2, 8], lats: [10, 20], upperBack: [10, 20], traps: [6, 16], lowerBack: [3, 10], frontDelts: [4, 12], sideDelts: [10, 20], rearDelts: [8, 16], rotatorCuff: [2, 8], biceps: [10, 20], triceps: [10, 20], forearms: [4, 12], abs: [6, 16], obliques: [3, 10], neck: [2, 10], quads: [10, 20], hamstrings: [10, 20], glutes: [8, 16], adductors: [4, 12], abductors: [4, 12], calves: [8, 16], tibialis: [2, 8] };
+  var BANDS = {
+    chest: [10, 20],
+    serratus: [2, 8],
+    lats: [10, 20],
+    upperBack: [10, 20],
+    traps: [6, 16],
+    lowerBack: [3, 10],
+    frontDelts: [4, 12],
+    sideDelts: [10, 20],
+    rearDelts: [8, 16],
+    rotatorCuff: [2, 8],
+    biceps: [10, 20],
+    triceps: [10, 20],
+    forearms: [4, 12],
+    abs: [6, 16],
+    obliques: [3, 10],
+    neck: [2, 10],
+    quads: [10, 20],
+    hamstrings: [10, 20],
+    glutes: [8, 16],
+    adductors: [4, 12],
+    abductors: [4, 12],
+    calves: [8, 16],
+    tibialis: [2, 8]
+  };
   var REGIONS = [
     ["Chest", ["chest"]],
     ["Back", ["lats", "upperBack", "traps", "lowerBack"]],
@@ -1118,27 +1169,76 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     ["Posterior", ["hamstrings", "glutes", "abductors"]],
     ["Calves", ["calves", "tibialis"]]
   ];
-  var JOINTS = [["j_knee", "Knee"], ["j_hip", "Hip"], ["j_shoulder", "Shoulder"], ["j_elbow", "Elbow"], ["j_wrist", "Wrist"]];
+  var JOINTS = [
+    ["j_knee", "Knee"],
+    ["j_hip", "Hip"],
+    ["j_shoulder", "Shoulder"],
+    ["j_elbow", "Elbow"],
+    ["j_wrist", "Wrist"]
+  ];
   var JK = JOINTS.map((j) => j[0]);
   var JL = Object.fromEntries(JOINTS);
   var injLabel = (k) => ML[k] || JL[k] || k;
   function exJoints(e) {
     const p = patternOf(e), n = String(e.name || "").toLowerCase(), m = e.primary, out = [];
     if (p === "squat" || m === "quads" || /leg curl|nordic|lunge|step-up|split squat/.test(n)) out.push("j_knee");
-    if (p === "hinge" || p === "squat" || ["glutes", "adductors", "abductors"].includes(m) || /thrust|bridge/.test(n)) out.push("j_hip");
-    if (["press", "fly", "raise", "vpull", "pullover", "rearfly"].includes(p) && !["quads", "hamstrings", "glutes", "calves", "abs", "obliques"].includes(m) || ["chest", "frontDelts", "sideDelts", "rearDelts", "rotatorCuff"].includes(m) || /\bdips?\b|face pull|upright/.test(n)) out.push("j_shoulder");
-    if ((["ext", "vpull", "row"].includes(p) || p === "curl" && m !== "hamstrings") && m !== "quads" || ["biceps", "triceps", "forearms"].includes(m) || /\bdips?\b|close.grip|skull/.test(n)) out.push("j_elbow");
-    if (m === "forearms" || p === "curl" && m === "biceps" || /push-up|front squat|\bdips?\b|wrist/.test(n) || p === "press" && ["barbell", "dumbbell"].includes(e.equip)) out.push("j_wrist");
+    if (p === "hinge" || p === "squat" || ["glutes", "adductors", "abductors"].includes(m) || /thrust|bridge/.test(n))
+      out.push("j_hip");
+    if (["press", "fly", "raise", "vpull", "pullover", "rearfly"].includes(p) && !["quads", "hamstrings", "glutes", "calves", "abs", "obliques"].includes(m) || ["chest", "frontDelts", "sideDelts", "rearDelts", "rotatorCuff"].includes(m) || /\bdips?\b|face pull|upright/.test(n))
+      out.push("j_shoulder");
+    if ((["ext", "vpull", "row"].includes(p) || p === "curl" && m !== "hamstrings") && m !== "quads" || ["biceps", "triceps", "forearms"].includes(m) || /\bdips?\b|close.grip|skull/.test(n))
+      out.push("j_elbow");
+    if (m === "forearms" || p === "curl" && m === "biceps" || /push-up|front squat|\bdips?\b|wrist/.test(n) || p === "press" && ["barbell", "dumbbell"].includes(e.equip))
+      out.push("j_wrist");
     return out;
   }
-  var EQUIP = [["barbell", "Barbell"], ["dumbbell", "Dumbbell"], ["cable", "Cable"], ["machine", "Machine"], ["smith", "Smith machine"], ["landmine", "Landmine"], ["bodyweight", "Bodyweight"], ["other", "Other"]];
+  var EQUIP = [
+    ["barbell", "Barbell"],
+    ["dumbbell", "Dumbbell"],
+    ["cable", "Cable"],
+    ["machine", "Machine"],
+    ["smith", "Smith machine"],
+    ["landmine", "Landmine"],
+    ["bodyweight", "Bodyweight"],
+    ["other", "Other"]
+  ];
   var EQL = Object.fromEntries(EQUIP);
-  var PLATE_SIDE_IDS = ["hackSquat", "pendulum", "legPress", "legPressCalf", "beltSquat", "machHipThrust"];
-  var CARDIO = [["walk", "Treadmill walk"], ["incline", "Incline walk"], ["elliptical", "Elliptical"], ["bike", "Bike"], ["stairs", "Stair climber"], ["rower", "Rower"], ["run", "Run"], ["hiit", "HIIT"], ["mobility", "Mobility / stretching"], ["other", "Other"]];
+  var PLATE_SIDE_IDS = [
+    "hackSquat",
+    "pendulum",
+    "legPress",
+    "legPressCalf",
+    "beltSquat",
+    "machHipThrust"
+  ];
+  var CARDIO = [
+    ["walk", "Treadmill walk"],
+    ["incline", "Incline walk"],
+    ["elliptical", "Elliptical"],
+    ["bike", "Bike"],
+    ["stairs", "Stair climber"],
+    ["rower", "Rower"],
+    ["run", "Run"],
+    ["hiit", "HIIT"],
+    ["mobility", "Mobility / stretching"],
+    ["other", "Other"]
+  ];
   var CARDIOL = Object.fromEntries(CARDIO);
-  var CWHEN = [["pre", "Before lifting"], ["post", "After lifting"], ["solo", "On its own"]];
+  var CWHEN = [
+    ["pre", "Before lifting"],
+    ["post", "After lifting"],
+    ["solo", "On its own"]
+  ];
   var CWHENL = Object.fromEntries(CWHEN);
-  var MEAS = [["arm", "Arm"], ["forearm", "Forearm"], ["chest", "Chest"], ["waist", "Waist"], ["thigh", "Thigh"], ["calf", "Calf"], ["neck", "Neck"]];
+  var MEAS = [
+    ["arm", "Arm"],
+    ["forearm", "Forearm"],
+    ["chest", "Chest"],
+    ["waist", "Waist"],
+    ["thigh", "Thigh"],
+    ["calf", "Calf"],
+    ["neck", "Neck"]
+  ];
   var LIB = [
     ["bench", "Barbell Bench Press", "chest", "frontDelts triceps", "barbell", "", ""],
     ["pauseBench", "Paused Bench Press", "chest", "frontDelts triceps", "barbell", "r", "A full stop on the chest, as in a meet, then press."],
@@ -1320,23 +1420,92 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     ["wallSit", "Wall Sit", "quads", "", "bodyweight", "brt", "Timed hold with thighs parallel: log seconds."],
     ["farmerHold", "Farmer Carry or Hold", "forearms", "traps upperBack", "dumbbell", "rt", "Timed: log seconds and the load in each hand."]
   ];
-  var COMMON = /* @__PURE__ */ new Set(["bench", "backSquat", "deadlift", "latPulldown", "ohp", "bbRow", "dbLateral", "legExt", "legPress", "bbCurl", "pressdown", "incDb", "dbCurl", "pullup", "cableRow", "ropePressdown", "lyingCurl", "dbRow", "seatedDbPress", "rdl", "seatedCurl", "hammer", "cableFly", "dbBench", "facePull", "cgBench", "hipThrust", "bss", "sldl", "abductor"]);
+  var COMMON = /* @__PURE__ */ new Set([
+    "bench",
+    "backSquat",
+    "deadlift",
+    "latPulldown",
+    "ohp",
+    "bbRow",
+    "dbLateral",
+    "legExt",
+    "legPress",
+    "bbCurl",
+    "pressdown",
+    "incDb",
+    "dbCurl",
+    "pullup",
+    "cableRow",
+    "ropePressdown",
+    "lyingCurl",
+    "dbRow",
+    "seatedDbPress",
+    "rdl",
+    "seatedCurl",
+    "hammer",
+    "cableFly",
+    "dbBench",
+    "facePull",
+    "cgBench",
+    "hipThrust",
+    "bss",
+    "sldl",
+    "abductor"
+  ]);
   var isCommon = (e) => !!e && !e.custom && !e.rare && COMMON.has(e.id);
   function libExercises() {
     return LIB.map(([id, name, primary, sec, equip, flags, note]) => {
-      const o = { id, name, primary, secondary: sec ? sec.split(" ") : [], equip, bw: flags.includes("b"), rare: flags.includes("r"), perSide: flags.includes("s"), note, custom: false, archived: false };
+      const o = {
+        id,
+        name,
+        primary,
+        secondary: sec ? sec.split(" ") : [],
+        equip,
+        bw: flags.includes("b"),
+        rare: flags.includes("r"),
+        perSide: flags.includes("s"),
+        note,
+        custom: false,
+        archived: false
+      };
       if (flags.includes("t")) o.timed = true;
       if (flags.includes("a")) o.assist = true;
       return o;
     });
   }
-  var PATTERNS = [["calf", /calf raise/], ["hinge", /hyperextension/], ["squat", /leg press|hack squat|pendulum/], ["rearfly", /rear delt|reverse pec/], ["pullover", /pullover/], ["fly", /\bfly|flye|pec deck/], ["ext", /pressdown|extension|kickback|skull|tate press|jm press/], ["vpull", /pulldown|pull-up|chin-up|high row/], ["row", /\brow\b/], ["curl", /curl/], ["press", /press|push-up|\bdips?\b|bench/], ["squat", /squat|lunge|step-up/], ["hinge", /deadlift|rdl|rack pull|good morning|pull-through|hip thrust|bridge|hyperextension|power clean|swing/], ["raise", /raise/], ["core", /crunch|rollout|dragon|plank|twist/], ["shrug", /shrug/]];
+  var PATTERNS = [
+    ["calf", /calf raise/],
+    ["hinge", /hyperextension/],
+    ["squat", /leg press|hack squat|pendulum/],
+    ["rearfly", /rear delt|reverse pec/],
+    ["pullover", /pullover/],
+    ["fly", /\bfly|flye|pec deck/],
+    ["ext", /pressdown|extension|kickback|skull|tate press|jm press/],
+    ["vpull", /pulldown|pull-up|chin-up|high row/],
+    ["row", /\brow\b/],
+    ["curl", /curl/],
+    ["press", /press|push-up|\bdips?\b|bench/],
+    ["squat", /squat|lunge|step-up/],
+    ["hinge", /deadlift|rdl|rack pull|good morning|pull-through|hip thrust|bridge|hyperextension|power clean|swing/],
+    ["raise", /raise/],
+    ["core", /crunch|rollout|dragon|plank|twist/],
+    ["shrug", /shrug/]
+  ];
   function patternOf(e) {
     const n = String(e && e.name || "").toLowerCase();
     for (const [k, re] of PATTERNS) if (re.test(n)) return k;
     return null;
   }
-  var NON_COMPOUND_PRIMARY = /* @__PURE__ */ new Set(["abs", "obliques", "neck", "forearms", "serratus", "rotatorCuff", "calves", "tibialis"]);
+  var NON_COMPOUND_PRIMARY = /* @__PURE__ */ new Set([
+    "abs",
+    "obliques",
+    "neck",
+    "forearms",
+    "serratus",
+    "rotatorCuff",
+    "calves",
+    "tibialis"
+  ]);
   function autoCompound(ex) {
     return !!ex && !ex.timed && !NON_COMPOUND_PRIMARY.has(ex.primary) && ["press", "row", "vpull", "squat", "hinge"].includes(patternOf(ex));
   }
@@ -1345,14 +1514,82 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     if (ex && ex.kind === "iso") return false;
     return autoCompound(ex);
   }
-  var NO_E1 = /* @__PURE__ */ new Set(["hangingLegRaise", "kneeRaise", "reverseCrunch", "crunch", "dragonFlag", "abWheel", "russianTwist", "neckBridge", "nordic", "ghr", "revNordic", "sissy"]);
+  var NO_E1 = /* @__PURE__ */ new Set([
+    "hangingLegRaise",
+    "kneeRaise",
+    "reverseCrunch",
+    "crunch",
+    "dragonFlag",
+    "abWheel",
+    "russianTwist",
+    "neckBridge",
+    "nordic",
+    "ghr",
+    "revNordic",
+    "sissy"
+  ]);
   var noE1 = (ex) => !!ex && (!!ex.timed || NO_E1.has(ex.id));
-  var SLOW_RECOVERY = /* @__PURE__ */ new Set(["deadlift", "sumoDl", "trapBarDl", "rdl", "sldl", "dbRdl", "slRdl", "goodMorning", "nordic", "ghr", "walkingLunge"]);
-  var BWF = { assistPullup: 1, assistDip: 1, pullup: 1, chinup: 1, dips: 1, triDips: 1, pushup: 0.64, deficitPushup: 0.64, declinePushup: 0.7, invertedRow: 0.6, hyperext: 0.6, hangingLegRaise: 0.35, abWheel: 0.5, dragonFlag: 0.7, neckBridge: 0.3, sissy: 0.85, revNordic: 0.85, nordic: 0.85, ghr: 0.85, plank: 0.65, sidePlank: 0.6, deadHang: 1, neckBridgeHold: 0.3, wallSit: 0.7, pushupPlus: 0.64, kneeRaise: 0.3, reverseCrunch: 0.3, crunch: 0.3, russianTwist: 0.4, copenhagen: 0.5 };
+  var SLOW_RECOVERY = /* @__PURE__ */ new Set([
+    "deadlift",
+    "sumoDl",
+    "trapBarDl",
+    "rdl",
+    "sldl",
+    "dbRdl",
+    "slRdl",
+    "goodMorning",
+    "nordic",
+    "ghr",
+    "walkingLunge"
+  ]);
+  var BWF = {
+    assistPullup: 1,
+    assistDip: 1,
+    pullup: 1,
+    chinup: 1,
+    dips: 1,
+    triDips: 1,
+    pushup: 0.64,
+    deficitPushup: 0.64,
+    declinePushup: 0.7,
+    invertedRow: 0.6,
+    hyperext: 0.6,
+    hangingLegRaise: 0.35,
+    abWheel: 0.5,
+    dragonFlag: 0.7,
+    neckBridge: 0.3,
+    sissy: 0.85,
+    revNordic: 0.85,
+    nordic: 0.85,
+    ghr: 0.85,
+    plank: 0.65,
+    sidePlank: 0.6,
+    deadHang: 1,
+    neckBridgeHold: 0.3,
+    wallSit: 0.7,
+    pushupPlus: 0.64,
+    kneeRaise: 0.3,
+    reverseCrunch: 0.3,
+    crunch: 0.3,
+    russianTwist: 0.4,
+    copenhagen: 0.5
+  };
   function bwShare(ex) {
     return ex && ex.bwf != null ? ex.bwf : ex && BWF[ex.id] != null ? BWF[ex.id] : 1;
   }
-  var ONE_DB = /* @__PURE__ */ new Set(["dbRow", "krocRow", "dbPullover", "ohDbExt", "concCurl", "sideBend", "goblet", "slCalf", "leanAwayLat", "sideLyingER", "slRdl"]);
+  var ONE_DB = /* @__PURE__ */ new Set([
+    "dbRow",
+    "krocRow",
+    "dbPullover",
+    "ohDbExt",
+    "concCurl",
+    "sideBend",
+    "goblet",
+    "slCalf",
+    "leanAwayLat",
+    "sideLyingER",
+    "slRdl"
+  ]);
   function loadMode(ex) {
     if (!ex) return "total";
     if (ex.bw) return "bw";
@@ -1367,15 +1604,40 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     return ex.equip === "dumbbell" ? "dumbbell" : ex.equip === "kettlebell" || /kettlebell/i.test(ex.name || "") ? "kettlebell" : null;
   }
   var LONG_TRIAL = /* @__PURE__ */ new Set(["seatedCurl", "ohCableExt", "ohDbExt", "standCalf"]);
-  var LONG_IDS = /* @__PURE__ */ new Set([...LONG_TRIAL, "katana", "inclineCurl", "bayesianCurl", "rdl", "sldl", "dbRdl", "slRdl", "donkeyCalf", "sissy"]);
-  var HARD_EX = /* @__PURE__ */ new Set(["nordic", "revNordic", "ghr", "sissy", "dragonFlag", "pullup", "chinup", "dips", "triDips", "hangingLegRaise"]);
+  var LONG_IDS = /* @__PURE__ */ new Set([
+    ...LONG_TRIAL,
+    "katana",
+    "inclineCurl",
+    "bayesianCurl",
+    "rdl",
+    "sldl",
+    "dbRdl",
+    "slRdl",
+    "donkeyCalf",
+    "sissy"
+  ]);
+  var HARD_EX = /* @__PURE__ */ new Set([
+    "nordic",
+    "revNordic",
+    "ghr",
+    "sissy",
+    "dragonFlag",
+    "pullup",
+    "chinup",
+    "dips",
+    "triDips",
+    "hangingLegRaise"
+  ]);
   var PROF_EQUIP = /* @__PURE__ */ new Set(["barbell", "smith", "machine"]);
   var PROF_NOT_HEAVY = /* @__PURE__ */ new Set(["reverseHyper", "goodMorning", "gluteBridge"]);
   function profHeavy(ex) {
     return !!ex && !ex.timed && !ex.bw && isCompound(ex) && !noE1(ex) && PROF_EQUIP.has(ex.equip) && !PROF_NOT_HEAVY.has(ex.id);
   }
   var COMMON_TIP = "Most common: the lifts in the top 25 by sets logged, overall, for men, or for women, among over 700,000 StrengthLog users (2025). Less common: useful lifts many gyms or programs skip, a judgment.";
-  var commonFirst = (list) => [...list.filter(isCommon), ...list.filter((e) => !isCommon(e))];
+  var commonFirst = (list) => [
+    ...list.filter(isCommon),
+    ...list.filter((e) => !isCommon(e))
+  ];
   function nameMatch(name, q) {
     const ws = String(q || "").toLowerCase().split(/[^a-z0-9]+/).filter(Boolean);
     if (!ws.length) return true;
@@ -1517,7 +1779,17 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     const t = TEMPLATES.find((x) => x.key === key);
     if (!t) return null;
     if (t.build) return t.build();
-    return { id: uid(), name: t.name, schedule: "cycle", days: t.days.map((d) => ({ id: uid(), name: d.name, rest: !!d.rest, items: d.items.map((it) => ({ uid: uid(), ...it, inc: 5 * LB })) })) };
+    return {
+      id: uid(),
+      name: t.name,
+      schedule: "cycle",
+      days: t.days.map((d) => ({
+        id: uid(),
+        name: d.name,
+        rest: !!d.rest,
+        items: d.items.map((it) => ({ uid: uid(), ...it, inc: 5 * LB }))
+      }))
+    };
   }
   function weekFactor(R) {
     return R.schedule === "weekly" ? 1 : 7 / Math.max(1, R.days.length);
@@ -1591,7 +1863,11 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     arr.splice(j, 0, x);
   }
   var routineEmpty = (r) => r.days.every((d) => !d.items.length);
-  var routineSig = (r) => JSON.stringify([r.name.trim().toLowerCase(), r.schedule, r.days.map((d) => [d.name, !!d.rest, d.items.map((i) => [i.exId, +i.sets, +i.repMin, +i.repMax, +i.rir, +i.rest])])]);
+  var routineSig = (r) => JSON.stringify([
+    r.name.trim().toLowerCase(),
+    r.schedule,
+    r.days.map((d) => [d.name, !!d.rest, d.items.map((i) => [i.exId, +i.sets, +i.repMin, +i.repMax, +i.rir, +i.rest])])
+  ]);
   function tplCountLine() {
     const T = TEMPLATES.filter((t) => !t.hidden);
     const n = T.map((t) => {
@@ -1681,7 +1957,39 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
   }
   var BACK_DAYS = 28;
   var GROW_PCT = 3;
-  var T90 = [NaN, 3.078, 1.886, 1.638, 1.533, 1.476, 1.44, 1.415, 1.397, 1.383, 1.372, 1.363, 1.356, 1.35, 1.345, 1.341, 1.337, 1.333, 1.33, 1.328, 1.325, 1.323, 1.321, 1.319, 1.318, 1.316, 1.315, 1.314, 1.313, 1.311, 1.31];
+  var T90 = [
+    NaN,
+    3.078,
+    1.886,
+    1.638,
+    1.533,
+    1.476,
+    1.44,
+    1.415,
+    1.397,
+    1.383,
+    1.372,
+    1.363,
+    1.356,
+    1.35,
+    1.345,
+    1.341,
+    1.337,
+    1.333,
+    1.33,
+    1.328,
+    1.325,
+    1.323,
+    1.321,
+    1.319,
+    1.318,
+    1.316,
+    1.315,
+    1.314,
+    1.313,
+    1.311,
+    1.31
+  ];
   function t90(df) {
     df = Math.floor(df);
     if (!(df >= 1)) return T90[1];

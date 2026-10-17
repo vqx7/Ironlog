@@ -284,19 +284,33 @@ const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log
     }
     ok(bare.length === 0, 'every name src/app/ exports has a comment saying what it is for', bare);
   }
-  // Modules written or grown from r51 on are laid out by Prettier from the
-  // committed .prettierrc.json, so the layout is reproducible; the modules of
-  // r49 and r50 keep their hand layout (layout never changes code, which
-  // tests/moved.js proves). A new module is formatted.
+  // Every module is laid out by Prettier from the committed .prettierrc.json,
+  // so layout is never a matter of taste or of hand (layout never changes
+  // code, which tests/moved.js proves). A data table may keep its rows on
+  // their own lines behind `// prettier-ignore`, only at a module's top
+  // level and only with a comment directly above saying why; the check
+  // prints each so a review sees them. Until r51 the r49 and r50 modules
+  // were exempt, which was an exception, not a standard.
   {
-    const HAND = ['config', 'types', 'util', 'units', 'library', 'routines', 'formulas'];
-    const files = fs.readdirSync(APP).filter(f => f.endsWith('.ts') && !HAND.includes(f.slice(0, -3))).map(f => path.join(APP, f));
+    const files = fs.readdirSync(APP).filter(f => f.endsWith('.ts')).map(f => path.join(APP, f));
     const { spawnSync } = require('child_process');
     const pr = spawnSync(process.execPath, [require.resolve('prettier/bin/prettier.cjs'), '--check', ...files], { encoding: 'utf8', cwd: ROOT });
-    ok(files.length > 15 && pr.status === 0, `the modules outside the hand-laid ones are formatted by Prettier (${files.length} files)`, (pr.stdout + pr.stderr).trim().split('\n').filter(l => /\[warn\]|error/i.test(l)).slice(0, 10));
+    ok(files.length > 20 && pr.status === 0, `every module in src/app/ is formatted by Prettier (${files.length} files)`, (pr.stdout + pr.stderr).trim().split('\n').filter(l => /\[warn\]|error/i.test(l)).slice(0, 10));
+    const ts = require('typescript'); const bad = [], tables = [];
+    for (const f of fs.readdirSync(APP).filter(f => f.endsWith('.ts'))) {
+      const txt = fs.readFileSync(path.join(APP, f), 'utf8');
+      const sf = ts.createSourceFile(f, txt, ts.ScriptTarget.Latest, true);
+      const topRanges = sf.statements.flatMap(st => (ts.getLeadingCommentRanges(txt, st.pos) || []).map(c => ({ ...c, st })));
+      for (const m of txt.matchAll(/prettier-ignore/g)) {
+        const at = topRanges.find(c => c.pos <= m.index && m.index < c.end);
+        if (!at) { bad.push(`${f}: a prettier-ignore inside a declaration, or not a comment of its own`); continue; }
+        const before = topRanges.filter(c => c.st === at.st && c.end <= at.pos);
+        if (!before.length) { bad.push(`${f}: the prettier-ignore on ${at.st.name ? at.st.name.text : 'a declaration'} has no comment above it saying why`); continue; }
+        tables.push(`${f}: ${txt.slice(before[before.length - 1].pos, before[before.length - 1].end).replace(/^\/[/*]\s*|\s*\*\/$/g, '').slice(0, 90)}`);
+      }
+    }
+    ok(bad.length === 0, `a prettier-ignore sits only on a top-level declaration, under a comment saying why (${tables.length}: ${tables.join('; ')})`, bad);
   }
-  const dead = dm.imports.filter(x => !x.used).map(x => `${x.name} from ${x.from}`);
-  ok(dead.length === 0, 'every name src/09-imports.js imports is used by the legacy script', dead);
   const { spawnSync } = require('child_process');
   const tsc = spawnSync(process.execPath, [require.resolve('typescript/bin/tsc'), '--noEmit', '-p', path.join(ROOT, 'tsconfig.json')], { encoding: 'utf8' });
   ok(tsc.status === 0, 'the typed modules pass the TypeScript checker (strict)', (tsc.stdout + tsc.stderr).trim().split('\n').slice(0, 10));

@@ -9,10 +9,29 @@
 
 /** A muscle's key, in MUSCLES order. */
 export type MuscleKey =
-  | 'chest' | 'serratus' | 'lats' | 'upperBack' | 'traps' | 'lowerBack'
-  | 'frontDelts' | 'sideDelts' | 'rearDelts' | 'rotatorCuff' | 'biceps' | 'triceps'
-  | 'forearms' | 'abs' | 'obliques' | 'neck' | 'quads' | 'hamstrings' | 'glutes'
-  | 'adductors' | 'abductors' | 'calves' | 'tibialis';
+  | 'chest'
+  | 'serratus'
+  | 'lats'
+  | 'upperBack'
+  | 'traps'
+  | 'lowerBack'
+  | 'frontDelts'
+  | 'sideDelts'
+  | 'rearDelts'
+  | 'rotatorCuff'
+  | 'biceps'
+  | 'triceps'
+  | 'forearms'
+  | 'abs'
+  | 'obliques'
+  | 'neck'
+  | 'quads'
+  | 'hamstrings'
+  | 'glutes'
+  | 'adductors'
+  | 'abductors'
+  | 'calves'
+  | 'tibialis';
 
 /** How the load number on an exercise reads (loadMode). */
 export type LoadMode = 'each' | 'total' | 'side' | 'stack' | 'bw';
@@ -98,7 +117,15 @@ export interface Point {
 /** The library's row for one exercise: id, name, primary muscle, helper muscles
     (space separated), equipment, flags (b bodyweight, r less common, s per side,
     t timed, a assisted) and a note. */
-export type LibRow = readonly [id: string, name: string, primary: MuscleKey, secondary: string, equip: string, flags: string, note: string];
+export type LibRow = readonly [
+  id: string,
+  name: string,
+  primary: MuscleKey,
+  secondary: string,
+  equip: string,
+  flags: string,
+  note: string
+];
 
 /** A set in the session in progress: the load as typed (null until typed or
     taken from the grey load), the reps as typed (text while being typed),

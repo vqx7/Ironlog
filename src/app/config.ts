@@ -10,7 +10,10 @@
    when the name does (see below). */
 
 declare global {
-  interface Window { IRONLOG_APP?: boolean; IRONLOG_ENV?: string; }
+  interface Window {
+    IRONLOG_APP?: boolean;
+    IRONLOG_ENV?: string;
+  }
 }
 
 /** The identifier in every storage key, cache name and backup file:
@@ -62,7 +65,7 @@ export const SITE_DIR_FALLBACK = '/Ironlog';
     scripts/build.js until r49, which broke once the script was bundled. */
 const THREE_CDN = [
   'https://cdn.jsdelivr.net/npm/three@0.159.0/build/three.module.min.js',
-  'https://unpkg.com/three@0.159.0/build/three.module.min.js',
+  'https://unpkg.com/three@0.159.0/build/three.module.min.js'
 ];
 /** The addresses map3dLoad tries in turn, the installed app's own copy first. */
 export const THREE_URLS: readonly string[] =
