@@ -17,7 +17,10 @@ const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'ironlog-upd-'));
 const V1 = path.join(tmp, 'v1'), V2 = path.join(tmp, 'v2');
 fs.cpSync(DIST, V1, { recursive: true }); fs.cpSync(DIST, V2, { recursive: true });
 // Build two: a different version string and so a different cache name, as a real publish produces.
-const v1 = (fs.readFileSync(path.join(V1, 'index.html'), 'utf8').match(/const APP_VERSION='([^']+)'/) || [])[1];
+// The build is in the page's app-build meta tag, written from src/app/config.ts (r49).
+const BUILD_RE = /<meta name="app-build" content="([^"]+)">/;
+const v1 = (fs.readFileSync(path.join(V1, 'index.html'), 'utf8').match(BUILD_RE) || [])[1];
+if (!v1) throw new Error('no app-build meta tag in dist/index.html');
 const v2 = v1 + '-next';
 for (const f of ['index.html', 'sw.js']) {
   const p = path.join(V2, f); fs.writeFileSync(p, f.endsWith('.html') ? require('./h').cspFix(fs.readFileSync(p, 'utf8').split(v1).join(v2)) : fs.readFileSync(p, 'utf8').split(v1).join(v2));
@@ -40,7 +43,7 @@ const server = http.createServer((req, res) => {
   // Full page loads only: the app's own history entries (Back through tabs) are same-page and do not count.
   let navs = 0; page.on('load', () => { navs++; });
   const ready = () => page.waitForFunction(() => window.__ironlog && window.__libs && window.__libs.chart, null, { timeout: 15000 });
-  const ver = () => page.evaluate(() => (document.documentElement.innerHTML.match(/const APP_VERSION='([^']+)'/) || [])[1]);
+  const ver = () => page.evaluate(() => (document.querySelector('meta[name="app-build"]') || {}).content);
   const bar = () => page.evaluate(() => { const b = document.getElementById('updbar'); return !!b && !b.hidden && b.getBoundingClientRect().height > 0; });
 
   await page.goto(base); await ready();
@@ -88,7 +91,7 @@ const server = http.createServer((req, res) => {
   // Reload: one switch to the new version, session intact.
   const navsBefore = navs;
   await page.click('#updbar [data-act="appUpdate"]');
-  await page.waitForFunction(v => (document.documentElement.innerHTML.match(/const APP_VERSION='([^']+)'/) || [])[1] === v && window.__ironlog, v2, { timeout: 15000 }).catch(() => {});
+  await page.waitForFunction(v => (document.querySelector('meta[name="app-build"]') || {}).content === v && window.__ironlog, v2, { timeout: 15000 }).catch(() => {});
   await ready().catch(() => {}); await page.waitForTimeout(1500);
   ok((await ver()) === v2, 'Reload switches to the new version (' + (await ver()) + ')');
   ok(navs - navsBefore === 1, 'it reloads exactly once (' + (navs - navsBefore) + ')');

@@ -1,14 +1,24 @@
 # src/
 
-The app's source, in parts. `npm run join` writes them, in name order, into
-`index.html`, the one file the Claude artifact, `scripts/build.js` and every
-test use. Edit here, then join; `tests/r36.js` fails if `index.html` and
-`src/` disagree.
+The app's source. `npm run join` (`scripts/join.js`) builds `index.html` from
+it, the one page `scripts/build.js` and every test use. Edit here, then join;
+`tests/r36.js` fails if `index.html` and `src/` disagree. Read
+`ARCHITECTURE.md` first: the code is moving from the legacy script into typed
+modules, one phase at a time, and `tests/hygiene.js` enforces the rules.
 
-The parts are cut where the code already had section headers, so each one is
-plain to find. They are pieces of one page and one script (the app runs in a
-single function scope), not separate modules: a part may use names defined in
-another. 01 to 03 are the page head, the styles and the markup; 10 to 29 the
-script, from start-up and reference data through storage, sync, accounts, the
-numbers (15 analytics, 16 the load engine, 17 adjusting the next sets), the
-screens, the sheets and actions, and events; 99 closes the page.
+- `app/`: the typed modules (TypeScript, strict). `app/config.ts` is the one
+  place for the app's name, version, build, site address and storage id. New
+  code goes here, never in the legacy parts.
+- `01-head.html`, `02-style.css`, `03-body.html`, `99-tail.html`: the page's
+  head, styles, markup and close. `{{NAME}}` placeholders in them are filled
+  from `app/config.ts` by the join.
+- `09-imports.js`: the `import` lines through which the legacy script reads
+  `app/`. The join puts it first, outside the legacy wrapper.
+- `10-*.js` to `29-*.js`: the legacy script, cut in r36 where the code had
+  section headers. They are pieces of one script in one function scope, kept
+  in their original wrapper: a part may use names defined in another. 10 to
+  29 run from start-up and reference data through storage, sync, accounts,
+  the numbers (15 analytics, 16 the load engine, 17 adjusting the next sets),
+  the screens, the sheets and actions, and events. The join bundles them with
+  esbuild into the page's one inline script. They may shrink, never grow (the
+  ratchet in `ARCHITECTURE.md`).

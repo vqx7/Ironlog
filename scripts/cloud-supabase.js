@@ -49,7 +49,7 @@
      need a secret kept by the browser that asked for the email, and the link
      usually opens in a different one. */
   const sb = window.supabase.createClient(CFG.url, CFG.key, {
-    auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true, flowType: 'implicit', storageKey: PREVIEW ? 'ironlog-preview.auth' : 'ironlog.auth' }
+    auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true, flowType: 'implicit', storageKey: PREVIEW ? '{{STORAGE_ID}}-preview.auth' : '{{STORAGE_ID}}.auth' }
   });
   const site = () => location.origin + location.pathname;
 
@@ -272,7 +272,7 @@
      security limits the read to the signed-in account's own rows. */
   if (PREVIEW) window.ironlogLiveDocs = async () => {
     const s = await session().catch(() => null);
-    if (!s) throw Object.assign(new Error('Sign in with your Ironlog account first.'), { code: 'signin' });
+    if (!s) throw Object.assign(new Error('Sign in with your {{APP_NAME}} account first.'), { code: 'signin' });
     const base = `data/users/${s.user.id}`;
     const { data, error } = await authed(() => sb.from('docs').select('path,data').like('path', likeEsc(base) + '/%'));
     if (error) throw friendly(error);

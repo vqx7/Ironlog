@@ -107,8 +107,8 @@ async function exportFile(data,filename,mime,okMsg,onSaved,fallbackTitle,fallbac
     {label:'Show the text instead',fn:()=>openModal({kind:'text',title:fallbackTitle,help:fallbackHelp,text:data,readonly:true})});
 }
 function exportBackup(){
-  const data=JSON.stringify({app:'ironlog',version:APP_VERSION,exported:new Date().toISOString(),state},null,1);
-  return exportFile(data,`ironlog-backup-${today()}.json`,'application/json','Backup saved',markExported,
+  const data=JSON.stringify({app:STORAGE_ID,version:APP_VERSION,exported:new Date().toISOString(),state},null,1);
+  return exportFile(data,`${FILE_PREFIX}-backup-${today()}.json`,'application/json','Backup saved',markExported,
     'Backup text','Copy all of this and keep it somewhere safe. Paste it into Import on any device to restore.');
 }
 /* One row per set, in display units, for anyone who wants this in a spreadsheet.
@@ -131,6 +131,6 @@ function exportCSV(){
     rows.push([c.date,'Cardio','no',CARDIOL[c.kind],'',1,'no','no','no','','','','','','',[CWHENL[c.when],c.dist?`${distShow(c.dist)} ${distU()}`:'',c.note].filter(Boolean).join('; '),c.min,c.hr==null?'':c.hr,'minutes','']);
   if(rows.length===1){toast('No sessions to export');return;}
   const data=rows.map(r=>r.map(q).join(',')).join('\r\n');
-  return exportFile(data,`ironlog-sets-${today()}.csv`,'text/csv','CSV saved',null,
+  return exportFile(data,`${FILE_PREFIX}-sets-${today()}.csv`,'text/csv','CSV saved',null,
     'CSV text','Copy all of this and paste it into a spreadsheet. This is not a backup.');
 }

@@ -123,4 +123,13 @@ function settle(p, what, ms = 30000) {
   let t; const late = new Promise(r => { t = setTimeout(() => { console.log(`note ${what} did not finish in ${ms / 1000} s; went on without it`); r(); }, ms); });
   return Promise.race([Promise.resolve(p).catch(() => {}), late]).finally(() => clearTimeout(t));
 }
-module.exports = { open, cspFix, build, engine, ENGINE, touchDriver, offlineLoad, settle };
+/* The source files as written (r49): the page parts and the typed modules in
+   src/app/, at any depth. The page's script is bundled and carries no
+   comments, so a check that must see comments reads these. */
+function sourceFiles() {
+  const root = path.join(__dirname, '..'); const out = [];
+  const walk = d => { for (const e of fs.readdirSync(path.join(root, d), { withFileTypes: true })) { const r = d + '/' + e.name; if (e.isDirectory()) walk(r); else if (/\.(js|ts|html|css)$/.test(e.name)) out.push(r); } };
+  walk('src'); return out.sort();
+}
+function sourceTexts() { return sourceFiles().map(f => fs.readFileSync(path.join(__dirname, '..', f), 'utf8')); }
+module.exports = { open, cspFix, build, engine, ENGINE, touchDriver, offlineLoad, settle, sourceFiles, sourceTexts };

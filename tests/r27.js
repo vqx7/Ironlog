@@ -28,8 +28,8 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
     }
     await ev(() => { const L = window.__ironlog; L.ui.tab = 'history'; L.render(); });
     await page.click('#saveState'); await wait(80);
-    const menu = await ev(() => { const m = document.getElementById('modal'); return { kind: window.__ironlog.ui.modal && window.__ironlog.ui.modal.kind, rows: [...m.querySelectorAll('.mnu')].map(b => ({ t: b.textContent.replace('›', '').trim(), h: b.getBoundingClientRect().height })), acct: m.querySelector('#menuAcct').innerText, build: /Build \d{4}\.\d{2}\.\d{2}-r\d+/.test(m.innerText) }; });
-    ok(menu.kind === 'menu' && JSON.stringify(menu.rows.map(r => r.t)) === JSON.stringify(['Report a problem', 'Guide', 'Show, hide, or reorder sections', 'Your data and backups']) && menu.rows.every(r => r.h >= 48) && menu.build, 'the menu: Report a problem, Guide, Show, hide, or reorder sections (r28), Your data and backups (48 px rows), and the build', menu);
+    const menu = await ev(() => { const m = document.getElementById('modal'); return { kind: window.__ironlog.ui.modal && window.__ironlog.ui.modal.kind, rows: [...m.querySelectorAll('.mnu')].map(b => ({ t: b.textContent.replace('›', '').trim(), h: b.getBoundingClientRect().height })), acct: m.querySelector('#menuAcct').innerText, build: /Version \d+\.\d+\b/.test(m.innerText) && !/\d{4}\.\d{2}\.\d{2}-r\d+/.test(m.innerText) }; });
+    ok(menu.kind === 'menu' && JSON.stringify(menu.rows.map(r => r.t)) === JSON.stringify(['Report a problem', 'Guide', 'Show, hide, or reorder sections', 'Your data and backups']) && menu.rows.every(r => r.h >= 48) && menu.build, 'the menu: Report a problem, Guide, Show, hide, or reorder sections (r28), Your data and backups (48 px rows), and the version (since r49 the version people see, never the build id)', menu);
     ok(/Saved/.test(menu.acct) && !/Sign in/.test(menu.acct), 'without accounts (the source file) it says where the log is saved, and offers no sign-in', menu.acct);
     // The close button, and the phone's Back, close it.
     await page.click('#modal [data-act="mClose"]'); await wait(60);

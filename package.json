@@ -1,8 +1,7 @@
 {
   "name": "ironlog",
-  "version": "2026.10.4-r30",
   "private": true,
-  "description": "Ironlog workout tracker: single-file web app plus its test suites",
+  "description": "Workout tracker: a web app built from src/ (TypeScript modules and the legacy script) plus its test suites",
   "scripts": {
     "test": "node tests/run.js",
     "setup": "npx playwright install chromium",
@@ -10,16 +9,21 @@
     "join": "node scripts/join.js",
     "join:check": "node scripts/join.js --check",
     "setup:webkit": "npx playwright install webkit",
-    "test:webkit": "node tests/run.js --browser webkit"
+    "test:webkit": "node tests/run.js --browser webkit",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "depmap": "node scripts/depmap.js"
   },
   "devDependencies": {
+    "@electric-sql/pglite": "0.5.8",
     "@fontsource/big-shoulders-display": "^5.0.0",
     "@fontsource/hanken-grotesk": "^5.0.0",
     "@supabase/supabase-js": "2.117.2",
+    "acorn": "8.19.0",
     "chart.js": "4.4.1",
+    "esbuild": "0.28.2",
     "playwright": "^1.56.0",
     "sortablejs": "1.15.2",
     "three": "0.159.0",
-    "@electric-sql/pglite": "0.5.8"
+    "typescript": "6.0.3"
   }
 }

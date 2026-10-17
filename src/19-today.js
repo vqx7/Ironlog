@@ -139,8 +139,8 @@ const INSTALL_LATER=KEY+'.installLater';
 function canInstallHere(){return !!window.IRONLOG_APP&&!isStandalone()&&!(window.claude&&typeof window.claude.use==='function');}
 /* Where this copy of the app lives, for the install pictures and steps, so
    they stay right when the app moves to its own domain (r27). */
-function siteHost(){return location.host&&/^https?:$/.test(location.protocol)?location.host:'ironapp.org';}
-function siteDir(){const p=location.pathname.replace(/[^/]*$/,'').replace(/\/$/,'');return /^https?:$/.test(location.protocol)?p:'/Ironlog';}
+function siteHost(){return location.host&&/^https?:$/.test(location.protocol)?location.host:SITE_HOST;}
+function siteDir(){const p=location.pathname.replace(/[^/]*$/,'').replace(/\/$/,'');return /^https?:$/.test(location.protocol)?p:SITE_DIR_FALLBACK;}
 function installKind(){
   const ua=navigator.userAgent||'';
   const ios=/iPhone|iPad|iPod/.test(ua)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
@@ -167,14 +167,14 @@ function iconNoteDue(){
 }
 function iconBar(){
   if(!window.IRONLOG_APP||!iconNoteDue())return '';
-  return `<div class="acctbar" id="iconBar"><span class="small"><b>New app icon.</b><span class="ab-more"> Your home screen keeps the old one until Ironlog is added again.</span></span><button class="btn sm" data-act="iconHow">How</button><button class="ib" aria-label="Not now" data-act="iconLater">✕</button></div>`;
+  return `<div class="acctbar" id="iconBar"><span class="small"><b>New app icon.</b><span class="ab-more"> Your home screen keeps the old one until ${APP_NAME} is added again.</span></span><button class="btn sm" data-act="iconHow">How</button><button class="ib" aria-label="Not now" data-act="iconLater">✕</button></div>`;
 }
 function iconSheet(){
   const safe=!!acct.user&&cloud.on;
   return `<div class="sheet" role="dialog" aria-modal="true" aria-labelledby="icH"><div class="sheet-h"><h3 id="icH">Get the new icon</h3><button class="ib" aria-label="Close" data-act="mClose">✕</button></div>
   ${safe?'<p class="small" style="margin:0 0 10px">Your log is in your account, so nothing is lost.</p>'
-    :`<p class="small callout yellow" style="margin:0 0 10px"><b>Removing Ironlog from the home screen also removes the log on this phone.</b> Sign in first so it is kept in your account, or save a backup.</p><div class="row" style="margin-bottom:10px">${AUTH()?'<button class="btn sm primary" data-act="acctOpen" data-mode="signin">Sign in</button>':''}<button class="btn sm" data-act="export">Save a backup</button></div>`}
-  <ol class="steps"><li>Press and hold Ironlog on your home screen and remove it.</li><li>Open ${esc(location.host+location.pathname.replace(/index\.html$/,''))} in Safari, tap Share, then Add to Home Screen.</li><li>Open the new icon${safe?' and sign in':''}.</li></ol>
+    :`<p class="small callout yellow" style="margin:0 0 10px"><b>Removing ${APP_NAME} from the home screen also removes the log on this phone.</b> Sign in first so it is kept in your account, or save a backup.</p><div class="row" style="margin-bottom:10px">${AUTH()?'<button class="btn sm primary" data-act="acctOpen" data-mode="signin">Sign in</button>':''}<button class="btn sm" data-act="export">Save a backup</button></div>`}
+  <ol class="steps"><li>Press and hold ${APP_NAME} on your home screen and remove it.</li><li>Open ${esc(location.host+location.pathname.replace(/index\.html$/,''))} in Safari, tap Share, then Add to Home Screen.</li><li>Open the new icon${safe?' and sign in':''}.</li></ol>
   <button class="btn block" style="margin-top:12px" data-act="iconLater">Done</button></div>`;
 }
 function installBar(){
@@ -182,7 +182,7 @@ function installBar(){
   try{if(localStorage.getItem(INSTALL_LATER))return '';}catch(e){/* storage blocked: show it */}
   // An iPhone has no install, only Add to Home Screen, so the button says that (item 56).
   const ios=/^ios/.test(installKind());
-  return `<div class="acctbar" id="installBar"><span class="small"><b>Get the app.</b>${ios?'':'<span class="ab-more"> Install Ironlog on your home screen.</span>'}</span><button class="btn sm primary" data-act="install">${ios?'Add to Home Screen':'Install'}</button><button class="ib" aria-label="Not now" data-act="installLater">✕</button></div>`;
+  return `<div class="acctbar" id="installBar"><span class="small"><b>Get the app.</b>${ios?'':`<span class="ab-more"> Install ${APP_NAME} on your home screen.</span>`}</span><button class="btn sm primary" data-act="install">${ios?'Add to Home Screen':'Install'}</button><button class="ib" aria-label="Not now" data-act="installLater">✕</button></div>`;
 }
 const SHARE_ICON='<svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12M8 7l4-4 4 4"/><path d="M6 11H5a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-8a1 1 0 0 0-1-1h-1"/></svg>';
 const ADD_ICON='<svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="4"/><path d="M12 8v8M8 12h8"/></svg>';
@@ -215,9 +215,9 @@ function installSheet(m){
   else body=`<ol class="isteps">${step(1,"Open your browser's menu (⋮ or ⋯).")}${step(2,'Choose <b>Install app</b> or <b>Add to Home screen</b>, then confirm.')}</ol>`;
   /* The reasons go in a tip (item 56). One line stays on screen only when it
      matters: a log already kept in this browser does not follow the app. */
-  const tip=(ios?'An iPhone installs web apps only from the Share menu; Apple allows no install button. If Add to Home Screen is not in the list, scroll down or tap More. Keep Open as Web App on if it is shown. ':'')+'Then open Ironlog from your home screen: it starts full screen and works offline. A log kept in this browser does not move by itself: sign in inside the app, or export a backup here and import it there.';
+  const tip=(ios?'An iPhone installs web apps only from the Share menu; Apple allows no install button. If Add to Home Screen is not in the list, scroll down or tap More. Keep Open as Web App on if it is shown. ':'')+`Then open ${APP_NAME} from your home screen: it starts full screen and works offline. A log kept in this browser does not move by itself: sign in inside the app, or export a backup here and import it there.`;
   const hasLog=state.sessions.some(x=>!x.demo)&&!acct.user;
-  return `<div class="sheet" role="dialog" aria-modal="true" aria-labelledby="instH"><div class="sheet-h"><h3 id="instH">${ios?'Add to Home Screen':'Install Ironlog'}</h3>${tipi(tip,'About installing')}<button class="ib" aria-label="Close" data-act="mClose" style="margin-left:auto">✕</button></div>${installPic(m.how)}${body}${hasLog?'<p class="small" style="margin:10px 0 0">Your log here does not move by itself. Sign in in the app, or use a backup.</p>':''}<button type="button" class="btn primary block" style="margin-top:14px" data-act="mClose">Done</button></div>`;
+  return `<div class="sheet" role="dialog" aria-modal="true" aria-labelledby="instH"><div class="sheet-h"><h3 id="instH">${ios?'Add to Home Screen':`Install ${APP_NAME}`}</h3>${tipi(tip,'About installing')}<button class="ib" aria-label="Close" data-act="mClose" style="margin-left:auto">✕</button></div>${installPic(m.how)}${body}${hasLog?'<p class="small" style="margin:10px 0 0">Your log here does not move by itself. Sign in in the app, or use a backup.</p>':''}<button type="button" class="btn primary block" style="margin-top:14px" data-act="mClose">Done</button></div>`;
 }
 /* First run (r22). A new install opens on its own pages instead of Today:
    first the account (Create account, I have an account, Not now), then an
@@ -285,7 +285,7 @@ function obTourSlides(){
 }
 function obTourHTML(){
   const sl=obTourSlides();const n=sl.length;const i=Math.min(obTour.i,n-1);
-  return `<section class="ob-tour" aria-roledescription="carousel" aria-label="What Ironlog does">
+  return `<section class="ob-tour" aria-roledescription="carousel" aria-label="What ${APP_NAME} does">
   <div class="ob-track" id="obTrack">${sl.map(([v,t],k)=>`<article class="ob-slide${k===i?' on':''}" role="group" aria-roledescription="slide" aria-label="${k+1} of ${n}: ${esc(t)}" data-i="${k}">${v}<h2>${esc(t)}</h2></article>`).join('')}</div>
   <div class="ob-pips" role="group" aria-label="Slides">${sl.map(([,t],k)=>`<button type="button" data-act="obTourPick" data-i="${k}" aria-label="Show ${esc(t)}"${k===i?' aria-current="true"':''}></button>`).join('')}</div></section>`;
 }
