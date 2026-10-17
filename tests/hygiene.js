@@ -262,6 +262,28 @@ const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log
     }
     ok(bad.length === 0, 'the type checker is switched off nowhere in src/app/, beyond the one listed exception', bad);
   }
+  // Every name a module exports says what it is for, in a comment of its own
+  // directly above it, or shares the comment of the group it sits in (related
+  // exports with no blank line between them under one comment). A section
+  // heading such as `/* ---------- loads ---------- */` is not an explanation.
+  // From r51 (V: the code explains itself in plain words).
+  {
+    const ts = require('typescript'); const bare = [];
+    for (const f of fs.readdirSync(APP).filter(f => f.endsWith('.ts'))) {
+      const txt = fs.readFileSync(path.join(APP, f), 'utf8');
+      const sf = ts.createSourceFile(f, txt, ts.ScriptTarget.Latest, true);
+      let prevEnd = -1;
+      for (const st of sf.statements) {
+        const exported = (ts.canHaveModifiers(st) && ts.getModifiers(st) || []).some(m => m.kind === ts.SyntaxKind.ExportKeyword);
+        if (!exported) { prevEnd = -1; continue; }
+        const said = (ts.getLeadingCommentRanges(txt, st.pos) || []).some(c => !/^\/\*\s*-{3,}[\s\S]*-{3,}\s*\*\/$/.test(txt.slice(c.pos, c.end)));
+        const grouped = prevEnd >= 0 && !/\n[ \t]*\n/.test(txt.slice(prevEnd, st.getStart(sf)));
+        if (!said && !grouped) bare.push(`${f}: ${st.name ? st.name.text : st.declarationList ? st.declarationList.declarations.map(d => d.name.getText(sf)).join(', ') : '?'}`);
+        prevEnd = st.end;
+      }
+    }
+    ok(bare.length === 0, 'every name src/app/ exports has a comment saying what it is for', bare);
+  }
   // Modules written or grown from r51 on are laid out by Prettier from the
   // committed .prettierrc.json, so the layout is reproducible; the modules of
   // r49 and r50 keep their hand layout (layout never changes code, which
