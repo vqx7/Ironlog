@@ -116,6 +116,16 @@
 details>*{box-sizing:border-box}
 input[type=file]{max-width:100%;width:100%;font-size:14px}
 html{scroll-padding-top:calc(var(--head-h) + env(safe-area-inset-top,0px));-webkit-text-size-adjust:100%}
+/* iOS 26's home-screen app (r51; two iPhone users, 2026-10-17: the tab bar
+   rises and the page shrinks on History, Settings and sometimes Plan). With
+   viewport-fit=cover and the translucent status bar, iOS 26 gives a page
+   shorter than the screen a viewport shorter by the status bar's height, so
+   the fixed tab bar stops above the bottom edge; a page at least as tall as
+   the screen gets the whole screen (frappe-ui pull request 1284, citing
+   WebKit bug 301108). So in the installed app the page is at least the
+   screen's height, and never more: 100lvh caps it where iOS has no such
+   bug. Browsers without lvh drop the line, as before. */
+@media (display-mode:standalone){html{min-height:min(100lvh,calc(100% + env(safe-area-inset-top,0px)))}}
 body{margin:0;background:var(--bg);color:var(--ink);font:400 16px/1.45 var(--font);-webkit-font-smoothing:antialiased}
 button,input,select,textarea{font:inherit;color:inherit}
 h1,h2,h3{font-family:var(--display);font-weight:700;line-height:1.02;margin:0;text-wrap:balance;letter-spacing:.01em}

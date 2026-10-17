@@ -47,7 +47,11 @@ const MOVES = [
     added: { setState: { why: 'r51: an import cannot be assigned to, so the legacy script replaces the log through this; it returns the value as the assignment did', code: 'function setState(next) { return state = next; }', uses: ['state'], check: m => { const a = { sessions: [] }, b = { sessions: [1] }; return m.setState(a) === a && m.state === a && m.setState(b) === b && m.state === b && m.setState.length === 1; } } },
     // The legacy script left behind must be r50's, statement for statement,
     // once each setState(x) is read back as the assignment it replaced.
-    legacy: { calls: { setState: 'state' }, statements: { 'state = load();': 'let state = load();' } } },
+    legacy: { calls: { setState: 'state' }, statements: { 'state = load();': 'let state = load();' } },
+    // The one change on the page outside the app script (two iPhone users,
+    // 2026-10-17): the installed app's page is held to the screen's height on
+    // iOS 26 (src/02-style.css says why; tests/ios-bar.js holds it).
+    page: { why: 'the tab bar on iOS 26 home-screen apps (tests/ios-bar.js)', adds: ["/* iOS 26's home-screen app (r51; two iPhone users, 2026-10-17: the tab bar\n   rises and the page shrinks on History, Settings and sometimes Plan). With\n   viewport-fit=cover and the translucent status bar, iOS 26 gives a page\n   shorter than the screen a viewport shorter by the status bar's height, so\n   the fixed tab bar stops above the bottom edge; a page at least as tall as\n   the screen gets the whole screen (frappe-ui pull request 1284, citing\n   WebKit bug 301108). So in the installed app the page is at least the\n   screen's height, and never more: 100lvh caps it where iOS has no such\n   bug. Browsers without lvh drop the line, as before. */\n@media (display-mode:standalone){html{min-height:min(100lvh,calc(100% + env(safe-area-inset-top,0px)))}}\n"] } },
 ];
 
 // One declaration as a normalized statement: a function as written, a
@@ -326,12 +330,17 @@ const declNames = st => st.type === 'FunctionDeclaration' || st.type === 'ClassD
   // (markup, styles, the loader, and with them any handler attribute, which
   // is a script the check above does not see) is the baseline's once the
   // build id is set aside. A release that changes the page says so in its
-  // move entry (`page: 'why'`), and then this check only prints the reason.
+  // move entry (`page: { why, adds: [text] }`): the page must then be the
+  // baseline's with exactly those texts added, each once, and nothing else.
   const mvLast = MOVES[MOVES.length - 1];
   const around = (f, id) => fs.readFileSync(path.join(ROOT, f), 'utf8').replace(legacyIn(f).app, '{{APP}}').split(id).join('{{APP_VERSION}}');
   const idOf = f => (fs.readFileSync(path.join(ROOT, f), 'utf8').match(/<meta name="app-build" content="([^"]+)"/) || [])[1];
-  if (mvLast.page) console.log(`note ${mvLast.release} changes the page outside the app script: ${mvLast.page}`);
-  else ok(around('index.html', idOf('index.html')) === around(mvLast.baseline, idOf(mvLast.baseline)), `the page outside the app script is ${mvLast.baseline}'s, the build id set aside`);
+  const adds = mvLast.page ? mvLast.page.adds : [];
+  let rest = around('index.html', idOf('index.html')); const missing = [];
+  for (const a of adds) { if (typeof a !== 'string' || !a || rest.split(a).length !== 2) missing.push(a); else rest = rest.replace(a, ''); }
+  if (mvLast.page) console.log(`note ${mvLast.release} adds to the page outside the app script: ${mvLast.page.why}`);
+  ok(!mvLast.page || (typeof mvLast.page.why === 'string' && Array.isArray(adds) && adds.length > 0), 'a move entry that changes the page says why and lists exactly what it adds');
+  ok(missing.length === 0 && rest === around(mvLast.baseline, idOf(mvLast.baseline)), `the page outside the app script is ${mvLast.baseline}'s, the build id set aside${adds.length ? `, with exactly the ${adds.length} listed addition${adds.length > 1 ? 's' : ''}` : ''}`, missing.length ? { missing } : undefined);
 }
 
 // Every module is either in a move, so this suite compares it, or written new
