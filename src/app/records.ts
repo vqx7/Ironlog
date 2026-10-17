@@ -46,6 +46,8 @@ export function did(tag: string, obj: unknown, i: number): string {
   try {
     j = JSON.stringify(obj);
   } catch (e) {
+    // JSON.stringify throws only on a cycle or a BigInt, which parsed data never
+    // holds; such a record would be told apart by its position alone.
     j = String(i);
   }
   return tag + hashStr(j + '#' + i);

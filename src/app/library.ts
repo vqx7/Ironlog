@@ -126,9 +126,10 @@ export const JL = Object.fromEntries(JOINTS);
 /** The name of an injury flag: a muscle's or a joint's, else the key itself. */
 export const injLabel = (k: string): string => ML[k] || JL[k] || k;
 
-/** The joints an exercise loads, by its movement pattern, main muscle and name. */
+/** The joints an exercise loads, by its movement pattern, main muscle and
+    name. p is null for a name with no pattern, which no list holds, so
+    includes says false; the two casts, `p as string`, let TypeScript ask. */
 export function exJoints(e: Pick<Exercise, 'name' | 'primary' | 'equip'>): string[] {
-  // p is null for a name with no pattern, which no list holds, so includes says false; `p as string` lets TypeScript ask.
   const p = patternOf(e),
     n = String(e.name || '').toLowerCase(),
     m = e.primary,

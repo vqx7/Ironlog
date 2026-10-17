@@ -95,7 +95,7 @@ export function impDate(str: unknown, ref?: string): string | null {
 
 /* Spreadsheet day numbers (days since 30 Dec 1899). A blank cell is null,
    which compares as 0 and so fails the range check; the casts say that to
-   TypeScript, and past the check the number is real. */
+   TypeScript, and past the check the number is real, as the ! says. */
 export function impSerial(n: number | null): string | null {
   if (!((n as number) > 20000 && (n as number) < 80000)) return null;
   const d = new Date(Date.UTC(1899, 11, 30) + Math.floor(n!) * 864e5);
@@ -195,7 +195,8 @@ export async function impXlsx(buf: ArrayBuffer): Promise<string[][]> {
   if (sst)
     for (const si of X(sst).getElementsByTagName('si'))
       ss.push([...si.getElementsByTagName('t')].map(t => t.textContent).join(''));
-  // The sheets by number, so the first sheet is the one read.
+  // The sheets by number, so the first sheet is the one read. Each name matched
+  // the pattern with a number in it, so match finds one (the two !).
   const sheet = Object.keys(files)
     .filter(k => /^xl\/worksheets\/sheet\d+\.xml$/.test(k))
     .sort((a, b) => parseInt(a.match(/\d+/)![0]) - parseInt(b.match(/\d+/)![0]))[0];
@@ -536,6 +537,7 @@ export function impFromTable(rows: readonly (readonly unknown[])[], map: Record<
        cardio entry per date and kind, time and distance added up. A blank
        distance is null and reads as 0, as reps and seconds do above. */
     const ck = impCardioKind(ex);
+    // The cast lets TypeScript compare it: null > 0 is false, as for reps.
     const dist = num(cell('dist')) as number;
     if (dist > 0 || (ck && !(reps > 0))) {
       cardio++;
@@ -569,10 +571,12 @@ export function impFromTable(rows: readonly (readonly unknown[])[], map: Record<
     };
     const k = date + '|' + name;
     if (!S.has(k)) S.set(k, { date, name, items: new Map(), note: '' });
+    // Made just above when it was missing, so it is there (the !).
     const ss = S.get(k)!;
     if (/^(yes|true|1|y)$/i.test(String(cell('deload') || '').trim())) ss.deload = true;
     if (!ss.items.has(ex)) ss.items.set(ex, { name: ex, sets: [], note: cell('note') });
     const n = Math.min(Math.max(Math.round(num(cell('sets')) || 1), 1), 20);
+    // The item was added above when it was missing (the !).
     for (let j = 0; j < n; j++) ss.items.get(ex)!.sets.push({ ...set });
   }
   return {

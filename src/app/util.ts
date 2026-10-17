@@ -73,6 +73,7 @@ export const isNum = (v: unknown): boolean => typeof v === 'number' && isFinite(
 /** A number from a number or a numeric string, else the default. */
 export const numOr = <T>(v: unknown, d: T): number | T => {
   const n = typeof v === 'string' ? parseFloat(v) : v;
+  // isNum is no type guard (above), so the cast says what it just checked.
   return isNum(n) ? (n as number) : d;
 };
 

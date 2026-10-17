@@ -135,12 +135,12 @@ export function workLoad(pts: readonly Point[], _repMin?: number): number {
   const k = (v: number): number => Math.round(v * 1000);
   const n = new Map<number, number>();
   for (const p of pts) if (ok(p)) n.set(k(p.w), (n.get(k(p.w)) || 0) + 1);
+  let w: number | null = null,
+    best = -1;
   /* w is null only until the first set at or over the floor, which always
      sets it (its count beats -1), so the comparison never meets a null. The
      ! says so to TypeScript and is not code, as is the one on the count, which
      the loop above set for every load at or over the floor. */
-  let w: number | null = null,
-    best = -1;
   for (const p of pts) {
     if (!ok(p)) continue;
     const c = n.get(k(p.w))!;

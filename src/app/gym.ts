@@ -60,6 +60,8 @@ export function gymClean(g: Raw): Gym | null {
     const x = +(v as number);
     return isFinite(x) ? Math.round(x * 1000) / 1000 : NaN;
   };
+  // g.db is whatever was stored; the cast lets the lines below test its fields,
+  // each of which is read through n().
   const d = g.db as Raw;
   if (d && typeof d === 'object') {
     const lo = n(d.lo),
@@ -102,7 +104,8 @@ export const gymK = (g: Pick<Gym, 'u'>, v: number): number => (g.u === 'kg' ? v 
    The form also passes a rack still being typed, with fields missing: a
    comparison with a missing field is false, so the first line refuses it.
    The smaller step's two fields are optional and read the same way, which
-   is what the two casts say; each is used only once it is above 0. */
+   is what the two casts say, and the two ! after them: each field is used
+   only once it is above 0. */
 // More than 300 weights is a typo (0.5 to 200 by 0.5), refused rather than cut short.
 export function dbListOf(d: DbRack | null | undefined): number[] | null {
   if (!d || !(d.lo > 0) || !(d.hi >= d.lo) || !(d.st > 0)) return null;

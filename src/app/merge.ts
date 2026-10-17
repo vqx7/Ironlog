@@ -65,7 +65,7 @@ export function merge3List<X extends { id?: unknown }>(
     const ah = a ? Hx(a) : undefined,
       rh = b ? Hx(b) : undefined;
     // Every id came from one side or the other, so at least one of a and b
-    // is there, and equal fingerprints mean both are.
+    // is there, and equal fingerprints mean both are (the ! on a).
     if (ah === rh) {
       out.push(a!);
       continue;

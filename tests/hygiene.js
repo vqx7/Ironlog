@@ -333,6 +333,78 @@ const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log
     }
     ok(bare.length === 0, 'every name src/app/ exports has a comment saying what it is for', bare);
   }
+  // Types say only what is true (r51, the outside review V brought;
+  // ARCHITECTURE.md). No `any`. Every cast (other than `as const`) and every
+  // `!` has its reason in a comment: on its own line, alone on the line
+  // above, or leading a statement, declaration or property that holds it and
+  // naming it ("cast", or the !). Casts, `!` and open index signatures are
+  // counted against ARCHITECTURE.md's numbers, which only fall: higher fails,
+  // and lower fails until the numbers are lowered, as the legacy ratchet does.
+  {
+    const CAST = /\bcasts?\b/i, BANG = /(^|[\s`(\w)\]])!([\s`),.;:]|$)/;
+    const anys = [], unexplained = []; let casts = 0, bangs = 0, open = 0;
+    for (const id of MODS) {
+      const f = id + '.ts', txt = fs.readFileSync(path.join(APP, f), 'utf8');
+      const sf = ts.createSourceFile(f, txt, ts.ScriptTarget.Latest, true);
+      const lead = n => (ts.getLeadingCommentRanges(txt, n.pos) || []).map(c => txt.slice(c.pos, c.end)).join('\n');
+      // Which lines hold a comment and which hold code, from the syntax tree's
+      // tokens and the comments around them, so a // inside a string or a
+      // regular expression is never taken for one.
+      const commentLines = new Set(), codeLines = new Set();
+      const mark = (set, a, z) => { for (let l = sf.getLineAndCharacterOfPosition(a).line, e = sf.getLineAndCharacterOfPosition(z).line; l <= e; l++) set.add(l); };
+      const tokens = n => {
+        for (const c of [...(ts.getLeadingCommentRanges(txt, n.pos) || []), ...(ts.getTrailingCommentRanges(txt, n.end) || [])]) mark(commentLines, c.pos, c.end);
+        const kids = n.getChildren(sf);
+        if (!kids.length && n.kind !== ts.SyntaxKind.EndOfFileToken) mark(codeLines, n.getStart(sf), n.end);
+        kids.forEach(tokens);
+      };
+      tokens(sf);
+      const visit = (n, held) => {
+        if (n.kind === ts.SyntaxKind.AnyKeyword) anys.push(`${f}:${sf.getLineAndCharacterOfPosition(n.getStart(sf)).line + 1}`);
+        if (ts.isIndexSignatureDeclaration(n)) open++;
+        const isCast = (ts.isAsExpression(n) || ts.isTypeAssertionExpression(n)) && n.type.getText(sf) !== 'const';
+        const isBang = ts.isNonNullExpression(n);
+        if (isCast || isBang) {
+          if (isCast) casts++; else bangs++;
+          const l = sf.getLineAndCharacterOfPosition(n.getStart(sf)).line;
+          const above = l > 0 && commentLines.has(l - 1) && !codeLines.has(l - 1);
+          if (!commentLines.has(l) && !above && !held.some(c => (isCast ? CAST : BANG).test(c))) unexplained.push(`${f}:${l + 1} ${n.getText(sf).slice(0, 50).replace(/\s+/g, ' ')}`);
+        }
+        const own = ts.isStatement(n) || ts.isVariableDeclaration(n) || ts.isPropertyAssignment(n) || ts.isClassElement(n) ? [...held, lead(n)] : held;
+        ts.forEachChild(n, k => visit(k, own));
+      };
+      visit(sf, []);
+    }
+    ok(anys.length === 0, 'no `any` in src/app/', anys);
+    ok(unexplained.length === 0, `every cast and every ! in src/app/ has its reason in a comment (${casts} casts, ${bangs} !)`, unexplained);
+    const arch = fs.readFileSync(path.join(ROOT, 'ARCHITECTURE.md'), 'utf8');
+    const cap = re => +((arch.match(re) || [])[1]);
+    const cc = cap(/^Casts: (\d+)$/m), cb = cap(/^Non-null assertions: (\d+)$/m), co = cap(/^Open index signatures: (\d+)$/m);
+    ok(cc >= 0 && cb >= 0 && co >= 0 && casts <= cc && bangs <= cb && open <= co, `src/app/ has no more casts, ! or open index signatures than ARCHITECTURE.md records (${casts} of ${cc}, ${bangs} of ${cb}, ${open} of ${co})`);
+    ok(casts >= cc && bangs >= cb && open >= co, 'when a cast, a ! or an open index signature goes, the number in ARCHITECTURE.md is lowered to match, so it stays gone', { casts, cc, bangs, cb, open, co });
+  }
+  // An error handled in a module says why (r51, the outside review): every
+  // `catch` in src/app/ throws or carries a comment, inside the block,
+  // saying why the error is expected and what the fallback is. A module
+  // cannot log yet (`log` is legacy until phase 4).
+  {
+    const silent = [];
+    const throws = x => ts.isThrowStatement(x) || !!ts.forEachChild(x, c => throws(c) || undefined);
+    for (const id of MODS) {
+      const f = id + '.ts', txt = fs.readFileSync(path.join(APP, f), 'utf8');
+      const sf = ts.createSourceFile(f, txt, ts.ScriptTarget.Latest, true);
+      const visit = n => {
+        if (ts.isCatchClause(n)) {
+          const b = n.block, body = txt.slice(b.getStart(sf) + 1, b.end - 1);
+          const comment = /\/\/|\/\*/.test(body.replace(/(['"`])(?:\\.|(?!\1)[^\\])*\1/g, '""'));
+          if (!comment && !throws(b)) silent.push(`${f}:${sf.getLineAndCharacterOfPosition(n.getStart(sf)).line + 1}`);
+        }
+        ts.forEachChild(n, visit);
+      };
+      visit(sf);
+    }
+    ok(silent.length === 0, 'every catch in src/app/ throws or says in a comment why the error is expected', silent);
+  }
   // Every module is laid out by Prettier from the committed .prettierrc.json,
   // so layout is never a matter of taste or of hand (layout never changes
   // code, which tests/moved.js proves). A data table may keep its rows on

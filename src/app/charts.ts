@@ -16,6 +16,8 @@ export const RANGES: readonly (readonly [string, number])[] = [
 /** The earliest date in a list of dated records (sessions, cardio, weigh-ins), or null. */
 export function firstDate(list: readonly ({ date?: string | undefined } | null | undefined)[]): string | null {
   let f: string | null = null;
+  // isDate has just checked x.date is a date string; it is not a type guard
+  // (util.ts says why), so the two ! say so to TypeScript.
   for (const x of list) if (x && isDate(x.date) && (!f || x.date! < f)) f = x.date!;
   return f;
 }
