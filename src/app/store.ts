@@ -9,8 +9,6 @@
    work (ARCHITECTURE.md). The four objects are moved unchanged, and
    tests/moved.js holds them to r50's code. */
 
-import { HIST_PAGE } from './layout';
-
 /** The whole log as normalize() returns it. Typed field by field in 3b, as
     the engine and analytics move and read it; until then it says only that
     it is an object. */
@@ -24,6 +22,9 @@ export let state!: State;
 export function setState(next: State): State {
   return (state = next);
 }
+
+/** Sessions History shows at a time, and adds with Show more: ui's first page (kept here, so the state layer imports no screen module). */
+export const HIST_PAGE = 25;
 
 /** What the screens are showing. Fields the legacy script adds later (the
     calendar's month, the bests list opened, and others) are allowed by the
@@ -93,8 +94,9 @@ export const ui: Ui = {
 };
 
 /* Where the sync is: on or not, the provider (db, uid), its status, each
-   document's last known hashes (meta, localH), when the log was last edited
-   and sent, the queue of writes (chain), and the last error. */
+   document's last sync record (meta: its hash, when, and the merge base) and
+   this device's hashes (localH), when the log was last edited and sent, the
+   queue of writes (chain), and the last error. */
 export interface Cloud {
   on: boolean;
   db: unknown;

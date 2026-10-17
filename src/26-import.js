@@ -27,6 +27,9 @@ function impMatch(name){
     if(e.id!==al)out.push({id:e.id,sc});}
   return out.sort((x,y)=>y.sc-x.sc).slice(0,8);
 }
+/* Free text: a date line starts a day; each other line is an exercise name
+   followed by its sets, or sets alone continuing the exercise above, or a
+   name alone with its sets on the next lines (impSetsText reads the sets). */
 function impFromText(text){
   const lines=String(text).split(/\r?\n/);const S=[];let cur=null,ex=null,pend=null,hint=null;const unread=[];
   const day=(date,name)=>{if(pend)unread.push(pend.raw);cur={date,name:name||'',items:[]};S.push(cur);ex=null;pend=null;};

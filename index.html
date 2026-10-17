@@ -1792,7 +1792,6 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     });
     return order;
   }
-  var HIST_PAGE = 25;
   var FORM_SHEETS = /* @__PURE__ */ new Set([
     "imp",
     "feedback",
@@ -2924,6 +2923,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
   function setState(next) {
     return state = next;
   }
+  var HIST_PAGE = 25;
   var ui = {
     blkOpen: /* @__PURE__ */ new Set(),
     tab: "today",

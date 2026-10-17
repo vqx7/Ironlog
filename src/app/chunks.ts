@@ -96,7 +96,7 @@ export const emptyChunk = (id: string): object | null =>
 export const baseFor = <B>(id: string, m: { b?: B } | null | undefined, legB: B | null): B | null =>
   m && m.b ? m.b : id.startsWith('b-') ? legB : null;
 
-/** The weigh-ins and tape entries an older build wrote into core. */
+/* Weigh-ins and measurements that a build before r22 wrote into core. */
 export function legacyBody(raw: { bodyweights?: unknown; measurements?: unknown } | null | undefined): {
   bodyweights: unknown[];
   measurements: unknown[];

@@ -195,6 +195,9 @@ const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log
   const GLOBALS = new Set(['Array', 'Blob', 'Boolean', 'CSS', 'DOMParser', 'DataView', 'Date', 'DecompressionStream', 'Error', 'File', 'FileReader', 'Image', 'Infinity', 'Intl', 'JSON', 'Map', 'Math', 'MouseEvent', 'MutationObserver', 'NaN', 'Number', 'Object', 'Promise', 'Response', 'Set', 'String', 'TextDecoder', 'TextEncoder', 'URL', 'Uint8Array', 'WeakMap', 'WeakSet', 'cancelAnimationFrame', 'clearInterval', 'clearTimeout', 'document', 'encodeURIComponent', 'getComputedStyle', 'history', 'indexedDB', 'isFinite', 'isNaN', 'localStorage', 'location', 'matchMedia', 'navigator', 'parseFloat', 'parseInt', 'performance', 'queueMicrotask', 'requestAnimationFrame', 'setInterval', 'setTimeout', 'undefined', 'window']);
   const unknown = dm.free.filter(n => !GLOBALS.has(n));
   ok(dm.free.length > 40 && unknown.length === 0, 'every name the legacy script reads without declaring or importing it is a known browser or JavaScript global', unknown);
+  // An import with no names runs a module for its effects alone, which nothing would compare (the r51 review).
+  const bare = [...fs.readFileSync(path.join(ROOT, 'src', '09-imports.js'), 'utf8').matchAll(/^\s*import\s*['"]([^'"]+)['"]/gm)].map(m => m[1]);
+  ok(bare.length === 0, 'src/09-imports.js imports names only, never a module for its effects', bare);
   const dead = dm.imports.filter(x => !x.used).map(x => `${x.name} from ${x.from}`);
   ok(dead.length === 0, 'every name src/09-imports.js imports is used by the legacy script', dead);
   const { spawnSync } = require('child_process');

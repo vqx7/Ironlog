@@ -662,6 +662,14 @@ function whyTarget(b){
   const basis=b.basis?` The target comes from your last full session, ${fmtDate(b.basis)}; trimmed, lighter, and deload sessions do not set one.`:'';
   return (reason+basis).trim();
 }
+/* Live score for one logger block against its target. Only sets marked done,
+   not warm-up, with reps, at or above the target load count. */
+/* The old version counted every done set at or above the target load, then
+   summed reps across all of them. Reps at 225 and reps at 275 are not the same
+   currency, so going heavier for fewer reps read as "not beaten" and a single
+   heavy set could read as beaten without the comparison meaning anything.
+   Reps are now compared only at the target load; anything heavier is judged on
+   estimated 1RM against your previous best, which is the comparable number. */
 function blockProgress(b){
   const t0=b.tgt;if(!t0)return null;const t=effTarget(b);
   const ex=EX(b.exId);const bw=bwRefLoad(ex);

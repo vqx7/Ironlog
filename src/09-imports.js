@@ -9,7 +9,7 @@ import { MUSCLES, MK, ML, NEW_MUSCLES_V5, TRACK_ONLY, BANDS, REGIONS, EQUIP, EQL
 import { DAYS, MAX_DAYS, dayLabel, DEFAULT_PLAN, defaultRoutine, TEMPLATES, routineFromTemplate, RIR_TGT_TIP, daySets, fixSupersets, linkToggle, move, plannedPerWeek, routineEmpty, routineSig, sessDayIdx, ssLetters, tplCountLine, trainDaysOf, weekFactor } from './app/routines';
 import { E1_MAX_RIR, rtfOf, e1, e1inv, rtfAt, trendE, fitE, rtfBand, REP_PR_SHARE, t90, jumpPct, jumpCap, workLoad, atLoad, repFloor, isWork, setCredit, tagged, offSession, sameRR, setSecs, setupSecs, GROW_PCT, BACK_DAYS, SESSION_CAP, PACE_N, PACE_DAYS, PACE_MIN, PACE_LO, PACE_HI, JUMP_TIP } from './app/formulas';
 import { MONTHS, NIL, WD2, agoTxt, estMin, fmtDateRow, fmtG, greeting, min5, rangeWords, repSpan, sessTm, todayEye } from './app/format';
-import { ACCENT0, ACCENTS, BW_EVERY, DEFAULT_HIDDEN, DSECS, DSEC_ALIAS, DSEC_FOLDED, DSEC_KEYS, FORM_SHEETS, HIST_PAGE, REGION_WKS, VOL_MODES, defaultOrder, orderKeys } from './app/layout';
+import { ACCENT0, ACCENTS, BW_EVERY, DEFAULT_HIDDEN, DSECS, DSEC_ALIAS, DSEC_FOLDED, DSEC_KEYS, FORM_SHEETS, REGION_WKS, VOL_MODES, defaultOrder, orderKeys } from './app/layout';
 import { ADD_ICON, LOCKUP, MENU_ICON, SHARE_ICON } from './app/icons';
 import { FOCUS_MAX, FOCUS_UP, MAINT_SHARE, PROF_DAYS, PROF_EXP, PROF_EXP_TIP, PROF_FOCUS_TIP, PROF_GOALS, PROF_GOAL_TIP, STR_NEAR, STR_REST, profClean } from './app/profile';
 import { BW_MAX_KG, BW_MIN_KG, EXTRA_KEYS, EXTRA_MAX, KNOWN_CARDIO, KNOWN_ITEM, KNOWN_MEAS, MEAS_MAX_CM, STATE_VERSION, TRASH_BYTES, TRASH_DAYS, TRASH_MAX, cleanCal, cleanChk, cleanTgt, did, fixId, okExtraKey, okSess, safeKey, sessCmp } from './app/records';
@@ -25,4 +25,4 @@ import { goalGap, goalOk } from './app/goals';
 import { RANGES, firstDate, rangeWeeks, weeksSpan } from './app/charts';
 import { GENERIC_WORKOUT, IMP_ALIAS, IMP_MAX_ROWS, impDate, impFromTable, impGuess, impHeader, impNorm, impRows, impSetsText, impXlsx } from './app/importing';
 import { FB_ASK, FB_CATS, FB_CTX_MAX, FB_DAY, FB_HINT, FB_IMG_MB, FB_MAX, FB_MIN, FB_SHOT_RE, FB_TITLE, FB_WHAT } from './app/feedback';
-import { state, setState, ui, cloud, acct, acctWait } from './app/store';
+import { state, setState, ui, cloud, acct, acctWait, HIST_PAGE } from './app/store';

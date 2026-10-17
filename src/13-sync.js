@@ -28,7 +28,6 @@ function assemble(parts){
   const L=legacyBody(core);
   return normalize({...core,bodyweights:unionById(bw,L.bodyweights),measurements:unionById(ms,L.measurements),sessions,cardio,draft:parts.draft?parts.draft.draft:null});
 }
-/* Weigh-ins and measurements that a build before r22 wrote into core. */
 /* The first time a device sees a body document it has no base for it. Its
    core base from before r22 already records which weigh-ins both sides had
    agreed on, by id, so that serves as the base: a weigh-in deleted on a

@@ -74,9 +74,6 @@ export function orderKeys(saved: readonly string[], present: readonly string[]):
   return order;
 }
 
-/** Sessions History shows at a time, and adds with Show more. */
-export const HIST_PAGE = 25;
-
 // Sheets whose fields hold something typed. Search boxes in pickers do not count.
 export const FORM_SHEETS: ReadonlySet<string> = new Set([
   'imp',

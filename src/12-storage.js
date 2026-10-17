@@ -37,9 +37,6 @@ function log(area,err){
 }
 window.addEventListener('error',e=>log('uncaught',e.error||e.message));
 window.addEventListener('unhandledrejection',e=>log('promise',e.reason));
-/* v3: routines became numbered cycles of 1 to 14 days. Older routines keep the
-   same days in the same order and only change label, so no session loses its
-   link to the day it was logged against. Fixed weekdays remain as an option. */
 let storageOk=true;let bootHadLocal=false;let storageBoot=true;
 /* The text this tab last wrote or adopted. Another tab's change is merged
    against it (see the storage listener). */
@@ -79,7 +76,22 @@ function storageTest(){try{localStorage.setItem('__il','1');localStorage.removeI
    and import, so this also protects against a half-written localStorage
    record. Anything unusable is dropped; the count is reported to the caller
    via normalize.dropped. */
-/* One cardio or mobility entry. In a draft the minutes may still be blank. */
+/* Fields a newer build adds to a record, kept as they came (r43). Every record
+   is rebuilt from the fields this build knows, so a phone on an older build
+   used to drop anything newer whenever it loaded or synced the log: an r37
+   phone wiped a lift goal set on r38. A field this build does not know is now
+   kept, untouched and never read. Only plain JSON data passes, under a name
+   that cannot reach Object's prototype, at most EXTRA_KEYS fields and
+   EXTRA_MAX characters of them (names included) per record, so a hostile
+   backup or cloud row can neither run anything nor grow the log past what a
+   sync document holds. `known` names fields this build writes only when valid
+   (a load jump, a distance): an invalid one is dropped, not kept as if new.
+   With anything kept, the record takes the key order it came in: sync
+   documents are compared as written, key order included, so a newer build
+   that puts its field mid-record and this one that put it last would rewrite
+   each other's copy on every pull (found by the r43 review, the same loop as
+   r21 and r28's settings). A record with nothing unknown comes out exactly as
+   before, so its fingerprint and the sync are unchanged. */
 function keepExtra(src,out,known){
   if(!src||typeof src!=='object'||Array.isArray(src))return out;
   let room=EXTRA_MAX,n=0;
@@ -101,6 +113,7 @@ keepExtra.n=0;
 const distU=()=>U()==='kg'?'km':'mi';
 const distShow=km=>Math.round((U()==='kg'?km:km/KM_MI)*100)/100;
 const distIn=v=>{const n=numIn(v);return n!=null&&n>0?Math.min(Math.round((U()==='kg'?n:n*KM_MI)*1000)/1000,1000):null;};
+/* One cardio or mobility entry. In a draft the minutes may still be blank. */
 function cleanCardio(c,draft,i){
   const m=numOr(c.min,NaN),hr=numOr(c.hr,NaN),dk=numOr(c.dist,NaN);
   return keepExtra(c,{id:typeof c.id==='string'?fixId(c.id):did('c',c,i),date:isDate(c.date)?c.date:today(),kind:CARDIOL[c.kind]?c.kind:'other',

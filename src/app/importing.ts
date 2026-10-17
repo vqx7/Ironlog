@@ -582,11 +582,9 @@ export function impFromTable(rows: readonly (readonly unknown[])[], map: Record<
   };
 }
 
-/* Free text: a date line starts a day; each other line is an exercise name
-   followed by its sets, or sets alone continuing the exercise above, or a
-   name alone with its sets on the next lines. Sets use the same reading as
-   Type or dictate sets (parseSets), plus "3x10 @ 60" and "60x10x3" for sets
-   of reps at a load, and units written next to numbers. */
+/* Sets typed as free text, read the way Type or dictate sets reads them
+   (parseSets), plus "3x10 @ 60" and "60x10x3" for sets of reps at a load,
+   and units written next to numbers. */
 export function impSetsText(t: unknown): string {
   let s = ' ' + String(t).toLowerCase() + ' ';
   s = s.replace(/(\d),(\d{1,2})(?=\s*(?:lbs?|kgs?)?\s*[x×*])/g, '$1.$2');

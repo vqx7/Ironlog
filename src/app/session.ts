@@ -32,14 +32,6 @@ export function effW(b: DraftBlock | null | undefined, si: number): number | nul
   return s.w != null ? s.w : greyW(b, si);
 }
 
-/* Live score for one logger block against its target. Only sets marked done,
-   not warm-up, with reps, at or above the target load count. */
-/* The old version counted every done set at or above the target load, then
-   summed reps across all of them. Reps at 225 and reps at 275 are not the same
-   currency, so going heavier for fewer reps read as "not beaten" and a single
-   heavy set could read as beaten without the comparison meaning anything.
-   Reps are now compared only at the target load; anything heavier is judged on
-   estimated 1RM against your previous best, which is the comparable number. */
 /* A reps target compares today's first n sets at the load with last time's
    first n. When today has fewer working sets (removed, or trimmed by Short on
    time), the target shrinks to those sets, since the old total could no
@@ -255,7 +247,14 @@ export function editFp(d: {
   });
 }
 
-/** The RIR strip's choices, 0 to 5. */
+/* RIR used to be a free-text field, which on a phone means opening the keyboard
+   mid-set. Almost nobody does that, so almost every set came through blank and
+   the volume bands silently counted it as hard anyway. A native picker is one
+   tap, which is the difference between measuring and assuming. */
+/* RIR is picked from a strip of 0 to 5 instead of the phone's dropdown wheel
+   (open, spin, confirm on every set). The cell shows the value; tapping it
+   opens the strip under that set, and ticking a set done with no RIR yet
+   opens it by itself, so logging effort is one tap. */
 export const RIR_OPTS: readonly string[] = ['0', '1', '2', '3', '4', '5'];
 
 /* A line said on every exercise is said once (r34.2, from the review: the

@@ -43,8 +43,8 @@ const MOVES = [
   // state is declared there without a value, and the legacy script's one
   // assignment at start, like every later one, goes through setState.
   { release: 'r51', baseline: 'baselines/r50.html', modules: ['util', 'library', 'routines', 'formulas', 'format', 'layout', 'icons', 'profile', 'records', 'gym', 'chunks', 'merge', 'session', 'loads', 'prs', 'trend', 'volume', 'goals', 'charts', 'importing', 'feedback', 'store'],
-    changed: { state: { why: 'r51: declared in the store with no value; the save is put in it by setState(load()) where `let state=load();` stood', check: m => m.state === undefined } },
-    added: { setState: { why: 'r51: an import cannot be assigned to, so the legacy script replaces the log through this; it returns the value as the assignment did', check: m => { const a = { sessions: [] }, b = { sessions: [1] }; return m.setState(a) === a && m.state === a && m.setState(b) === b && m.state === b && m.setState.length === 1; } } },
+    changed: { state: { why: 'r51: declared in the store with no value; the save is put in it by setState(load()) where `let state=load();` stood', code: 'let state = undefined;', uses: [], check: m => m.state === undefined } },
+    added: { setState: { why: 'r51: an import cannot be assigned to, so the legacy script replaces the log through this; it returns the value as the assignment did', code: 'function setState(next) { return state = next; }', uses: ['state'], check: m => { const a = { sessions: [] }, b = { sessions: [1] }; return m.setState(a) === a && m.state === a && m.setState(b) === b && m.state === b && m.setState.length === 1; } } },
     // The legacy script left behind must be r50's, statement for statement,
     // once each setState(x) is read back as the assignment it replaced.
     legacy: { calls: { setState: 'state' }, statements: { 'state = load();': 'let state = load();' } } },
@@ -88,11 +88,13 @@ function legacyOf(file) {
   const scripts = [...html.matchAll(/<script>([\s\S]*?)<\/script>/g)].map(m => m[1]);
   const app = scripts.reduce((a, b) => (b.length > a.length ? b : a), '');
   const ast = acorn.parse(app, { ecmaVersion: 'latest' });
+  // The legacy script is the largest function that starts with "use strict",
+  // so a module function that happens to start with it is never taken for it.
   let body = null, outer = [];
   (function find(n, up) {
-    if (body || !n || typeof n.type !== 'string') return;
+    if (!n || typeof n.type !== 'string') return;
     if (/Function/.test(n.type) && n.body && n.body.type === 'BlockStatement') {
-      if (n.body.body[0] && n.body.body[0].directive === 'use strict') { body = n.body.body; outer = up; return; }
+      if (n.body.body[0] && n.body.body[0].directive === 'use strict' && (!body || n.body.body.length > body.length)) { body = n.body.body; outer = up; }
       up = [...up, ...n.body.body];
     }
     for (const k in n) { const v = n[k]; if (Array.isArray(v)) v.forEach(x => find(x, up)); else if (v && typeof v.type === 'string') find(v, up); }
@@ -109,6 +111,8 @@ function moduleOf(name) {
   const top = declared(ast.body);
   for (const s of ast.body) {
     if (s.type === 'ImportDeclaration') {
+      // An import with no names (`import './x'`) runs a module for its effects: nothing a move may bring (the r51 review).
+      if (!s.specifiers.length) odd.push(`import '${s.source.value}' (run for its effects)`);
       for (const sp of s.specifiers) {
         if (sp.type !== 'ImportSpecifier' || sp.imported.name !== sp.local.name) odd.push(`import ${js.slice(sp.start, sp.end)} from ${s.source.value}`);
         imports.set(sp.local.name, { from: path.basename(s.source.value), name: sp.imported ? sp.imported.name : null, rel: s.source.value });
@@ -149,8 +153,16 @@ for (const [mod, m] of mods) {
   const missing = [], differ = [], astray = [];
   for (const [name, d] of m.exported) {
     const mv = homeOf(mod, name);
-    if (mv && mv.changed[name]) continue;
-    if (!mv && MOVES.some(x => x.modules.includes(mod) && x.added && x.added[name])) continue;
+    // Code added or changed on purpose is held to the exact code its entry
+    // states and to the names it states it uses (the r51 review: without
+    // this, any body passed as long as the executable check did).
+    const spec = mv && mv.changed[name] ? mv.changed[name] : !mv ? (MOVES.find(x => x.modules.includes(mod) && x.added && x.added[name]) || { added: {} }).added[name] : null;
+    if (spec) {
+      const uses = [...freeNames(d.node)].filter(u => u !== name).sort();
+      if (!spec.code || norm(spec.code) !== d.code) differ.push({ name, release: 'stated', was: spec.code ? norm(spec.code) : '(no code stated)', now: d.code.slice(0, 300) });
+      else if (JSON.stringify(uses) !== JSON.stringify([...(spec.uses || [])].sort()) || uses.some(u => !m.exported.has(u) && !m.imports.has(u))) astray.push(`${name} uses ${uses.join(', ') || 'nothing'}, its entry states ${(spec.uses || []).join(', ') || 'nothing'}`);
+      continue;
+    }
     const base = mv && bases.get(mv.release);
     const was = base && base.decls.get(name);
     if (!was || d == null) { missing.push(name); continue; }
@@ -203,8 +215,8 @@ function legacyStatements(file) {
   const ast = acorn.parse(app, { ecmaVersion: 'latest' });
   let body = null;
   (function find(n) {
-    if (body || !n || typeof n.type !== 'string') return;
-    if (/Function/.test(n.type) && n.body && n.body.type === 'BlockStatement' && n.body.body[0] && n.body.body[0].directive === 'use strict') { body = n.body.body; return; }
+    if (!n || typeof n.type !== 'string') return;
+    if (/Function/.test(n.type) && n.body && n.body.type === 'BlockStatement' && n.body.body[0] && n.body.body[0].directive === 'use strict' && (!body || n.body.body.length > body.length)) body = n.body.body;
     for (const k in n) { const v = n[k]; if (Array.isArray(v)) v.forEach(find); else if (v && typeof v.type === 'string') find(v); }
   })(ast);
   return { app, body: body || [] };
@@ -234,6 +246,17 @@ const declNames = st => st.type === 'FunctionDeclaration' || st.type === 'ClassD
   ok(before.length === after.length && i === before.length, `${mv.release}: every statement left in the legacy script is ${mv.baseline}'s, in order, once the listed rewrites are read back (${after.length} statements)`, i < Math.max(before.length, after.length) ? { at: i, was: (before[i] || '').slice(0, 200), now: (after[i] || '').slice(0, 200) } : { counts: [before.length, after.length] });
 }
 
+// Every module is either in a move, so this suite compares it, or written new
+// on purpose and held by tests of its own (the r51 review: a module in
+// neither list was compared by nothing).
+const NEW_MODULES = {
+  config: 'r49: the app\'s name, version, address and storage id, written new; held by tests/hygiene.js and tests/r49.js',
+  types: 'types only: nothing of it exists at run time',
+};
+{
+  const loose = fs.readdirSync(APP).filter(f => f.endsWith('.ts')).map(f => f.slice(0, -3)).filter(m => !listed.includes(m) && !NEW_MODULES[m]);
+  ok(loose.length === 0, 'every module in src/app/ is in a move or listed as written new, with the tests that hold it', loose);
+}
 // Moved code lives only in the modules a move lists, where it is compared.
 {
   const legacyNames = new Set(MOVES.flatMap(mv => [...legacyOf(mv.baseline).decls.keys()]));

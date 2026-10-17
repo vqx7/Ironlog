@@ -526,14 +526,6 @@ function roundLoad(kg,down){
   const step=U()==='lb'?5:2.5;const d=toD(kg);
   return fromD(Math.max(step,(down?Math.floor(d/step+1e-9):Math.round(d/step))*step));
 }
-/* RIR used to be a free-text field, which on a phone means opening the keyboard
-   mid-set. Almost nobody does that, so almost every set came through blank and
-   the volume bands silently counted it as hard anyway. A native picker is one
-   tap, which is the difference between measuring and assuming. */
-/* RIR is picked from a strip of 0 to 5 instead of the phone's dropdown wheel
-   (open, spin, confirm on every set). The cell shows the value; tapping it
-   opens the strip under that set, and ticking a set done with no RIR yet
-   opens it by itself, so logging effort is one tap. */
 /* Effort in half points or as RPE (r33, item 206): a setting for how effort
    is entered and shown. What is stored is always RIR (RPE 8 is RIR 2, RPE
    8.5 is RIR 1.5), so every estimate, hard-set count and target reads it

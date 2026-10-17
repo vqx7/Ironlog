@@ -155,7 +155,9 @@ for (const d of decls) for (const w of d.writes) written.set(w, (written.get(w) 
 for (const t of topRefs) for (const w of t.writes) written.set(w, (written.get(w) || new Set()).add(t.file));
 
 // Browser-touching: a declaration that names document/window/navigator/localStorage etc. directly in its code.
-const BROWSER = /\b(document|window|navigator|localStorage|sessionStorage|indexedDB|location|history|requestAnimationFrame|setTimeout|setInterval|fetch|matchMedia|getComputedStyle|Chart|Sortable|alert|confirm)\b/;
+// Since r51 also the browser-only APIs that Node lacks (the r51 review: the .xlsx reader uses DOMParser,
+// Blob, Response and DecompressionStream, and counted as pure), so pure means it can run in a unit test.
+const BROWSER = /\b(document|window|navigator|localStorage|sessionStorage|indexedDB|location|history|requestAnimationFrame|cancelAnimationFrame|setTimeout|setInterval|fetch|matchMedia|getComputedStyle|Chart|Sortable|alert|confirm|DOMParser|Blob|Response|DecompressionStream|FileReader|File|Image|MutationObserver|MouseEvent|CSS)\b/;
 const byName = new Map(decls.map(d => [d.name, d]));
 for (const d of decls) d.browser = BROWSER.test(code.slice(d.node.start, d.node.end));
 // Imported names that are shared state: exported with `let`, or written by the legacy script.
