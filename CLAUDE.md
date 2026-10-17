@@ -173,6 +173,7 @@ The suites and what each checks: `tests/SUITES.md`.
 6. Phone first: 44 px touch targets, no horizontal overflow at 320 px, and light and dark both checked. `tests/charts-layout.js` checks overflow.
 7. Code comments explain why, not what, in full sentences. That is the house style of this file.
 8. Bump `APP_VERSION` in `src/app/config.ts` for every published build, and `DISPLAY_VERSION` (what people see: 2.0 from r49, the minor number up one per release merged, the major for a large change) with it; `STATE_VERSION` only when the stored shape changes.
+9. **No shortcuts, no workarounds, no exceptions (V, 2026-10-17).** The proper thing is done the first time: a cast where a type belongs, an export with no comment, a value typed in two places, a module exempted from the formatter, a check set aside, a rule remembered instead of tested, a document left out of date, are each a shortcut, and confessing one afterwards does not cut it. When the proper thing costs more, it is still what is done. A new rule gets a test that fails without it, and the list of such tests in `tests/hygiene.js` only grows. Nothing in `src/app/` is hand-coded where it can be derived from one source. Nothing that works for a lifter, on screen or in a flow, is weakened for the sake of the code. Report what was verified and how, and what was not checked; never a problem that does not exist.
 
 ## Publishing
 
