@@ -62,13 +62,17 @@ const MOVES = [
 // breaks when it reprints, so without it a reformatted list read as a change
 // (found in r51, when the new modules were formatted).
 const norm = text => esbuild.transformSync(text, { loader: 'js', legalComments: 'none', minifyIdentifiers: true, minifyWhitespace: true }).code.trim();
-function decls(code, statements) {
+// `kind` prints every variable with that keyword instead of its own, for a
+// comparison where the keyword is the bundler's choice, not the code's: the
+// minifier picks local names from the whole statement, keyword included.
+function decls(code, statements, kind) {
   const out = new Map();
   for (const st of statements) {
     const s = st.type === 'ExportNamedDeclaration' ? st.declaration : st;
     if (!s) continue;
     if (s.type === 'FunctionDeclaration') out.set(s.id.name, { code: norm(code.slice(s.start, s.end)), node: s });
-    else if (s.type === 'VariableDeclaration') for (const d of s.declarations) if (d.id.type === 'Identifier') out.set(d.id.name, { code: norm(`${s.kind} ${d.id.name} = ${d.init ? code.slice(d.init.start, d.init.end) : 'undefined'};`), node: d });
+    // The initializer is taken from after the name to the end of the declarator, so a parenthesized one keeps its parentheses (a sequence in them made esbuild stop, the r51 mutation test).
+    else if (s.type === 'VariableDeclaration') for (const d of s.declarations) if (d.id.type === 'Identifier') out.set(d.id.name, { code: norm(`${kind || s.kind} ${d.id.name}${d.init ? code.slice(d.id.end, d.end) : ' = undefined'};`), node: d });
   }
   return out;
 }
@@ -104,13 +108,46 @@ function legacyIn(file) {
     if (inner.length && isLegacy(inner[inner.length - 1])) { wrap = call(inner[inner.length - 1]); outer = inner.slice(0, -1); }
   }
   if (!wrap) throw new Error(`${file}: the app script is not in the shape scripts/join.js builds, so its legacy script cannot be found`);
-  return { app, body: wrap.body.body, outer: [...ast.body, ...outer] };
+  // There is one legacy script, and it is the one found: a second call of
+  // the same shape anywhere in the script (a copy of the legacy body
+  // appended to it, the r51 mutation test) stops the suite.
+  let shaped = 0;
+  (function count(n) { if (!n || typeof n.type !== 'string') return; if (isLegacy(n)) shaped++; for (const k in n) { const v = n[k]; if (Array.isArray(v)) v.forEach(count); else if (v && typeof v.type === 'string') count(v); } })(ast);
+  if (shaped !== 1) throw new Error(`${file}: ${shaped} scripts of the legacy script's shape, where there is one`);
+  return { app, ast, body: wrap.body.body, outer: [...ast.body.filter(s => s !== top[0]), ...outer], strict: ast.body[0] && ast.body[0].directive === 'use strict' };
 }
 // The legacy script's top-level declarations, and the names declared outside it.
 function legacyOf(file) {
   const { app, body, outer } = legacyIn(file);
   return { decls: decls(app, body), outer: declared(outer) };
 }
+// Every file under src/app/, at any depth, named by its path from src/app/
+// without `.ts` (`util`, `screens/today`). Anything that is not a `.ts` file
+// is refused: the bundler would take `util.tsx` before `util.ts`, and no
+// check reads it (the r51 mutation test).
+function appFiles(dir = APP, rel = '') {
+  const out = { ids: [], other: [] };
+  for (const f of fs.readdirSync(dir, { withFileTypes: true }).sort((a, b) => a.name.localeCompare(b.name))) {
+    const r = rel ? `${rel}/${f.name}` : f.name;
+    if (f.isDirectory()) { const sub = appFiles(path.join(dir, f.name), r); out.ids.push(...sub.ids); out.other.push(...sub.other); }
+    else if (f.name.endsWith('.ts')) out.ids.push(r.slice(0, -3));
+    else out.other.push(r);
+  }
+  return out;
+}
+const FILES = appFiles();
+ok(FILES.other.length === 0, 'src/app/ holds .ts files only', FILES.other);
+// An import's target as a module id, resolved from the importing file's own
+// place, never by its base name (a `./sub/util` matched `util` before, the
+// r51 mutation test); `fromApp` says it is a module of src/app/.
+function resolveImport(fromId, spec) {
+  const abs = path.resolve(path.dirname(path.join(APP, fromId + '.ts')), spec);
+  const rel = path.relative(APP, abs).split(path.sep).join('/');
+  const fromApp = !rel.startsWith('..') && !path.isAbsolute(rel) && fs.existsSync(abs + '.ts');
+  return { from: rel, fromApp, spec };
+}
+// A module's code as esbuild compiles it on its own, with its syntax tree.
+const compiled = mod => { const js = esbuild.transformSync(fs.readFileSync(path.join(APP, mod + '.ts'), 'utf8'), { loader: 'ts', format: 'esm' }).code; return { js, ast: acorn.parse(js, { ecmaVersion: 'latest', sourceType: 'module' }) }; };
 // A module as esbuild leaves it for the browser: what it imports (local name
 // to source and imported name), its top-level statements, and its exports.
 function moduleOf(name) {
@@ -125,7 +162,7 @@ function moduleOf(name) {
       if (!s.specifiers.length) odd.push(`import '${s.source.value}' (run for its effects)`);
       for (const sp of s.specifiers) {
         if (sp.type !== 'ImportSpecifier' || sp.imported.name !== sp.local.name) odd.push(`import ${js.slice(sp.start, sp.end)} from ${s.source.value}`);
-        imports.set(sp.local.name, { from: path.basename(s.source.value), name: sp.imported ? sp.imported.name : null, rel: s.source.value });
+        imports.set(sp.local.name, { ...resolveImport(name, s.source.value), name: sp.imported ? sp.imported.name : null });
       }
       continue;
     }
@@ -133,9 +170,14 @@ function moduleOf(name) {
       // esbuild prints `export function f` as `function f` plus `export { f }`,
       // so the exported names come from either form.
       for (const sp of s.specifiers || []) { if (sp.exported.name !== sp.local.name || !top.has(sp.local.name)) odd.push(`export ${js.slice(sp.start, sp.end)}`); exported.add(sp.exported.name); }
+      if (s.declaration && s.declaration.type === 'VariableDeclaration' && s.declaration.declarations.some(d => d.id.type !== 'Identifier')) odd.push(`a destructured export: ${js.slice(s.start, Math.min(s.end, s.start + 80))}`);
       if (s.declaration) for (const n of declared([s])) exported.add(n);
       continue;
     }
+    // A binding made by destructuring is a top-level name too, and one that
+    // can take a global's name or run code on load (`const { Math } = ...`,
+    // `const [] = [...]`, the r51 mutation test); only plain names pass.
+    if (s.type === 'VariableDeclaration' && s.declarations.some(d => d.id.type !== 'Identifier')) odd.push(`a destructured top-level binding: ${js.slice(s.start, Math.min(s.end, s.start + 80))}`);
     if (s.type === 'FunctionDeclaration' || s.type === 'VariableDeclaration') continue; // checked below: every one must be exported
     odd.push(js.slice(s.start, Math.min(s.end, s.start + 80)));
   }
@@ -152,12 +194,12 @@ const bases = new Map(MOVES.map(mv => [mv.release, legacyOf(mv.baseline)]));
 const listed = [...new Set(MOVES.flatMap(mv => mv.modules))];
 const mods = new Map();
 for (const mod of listed) {
-  if (!fs.existsSync(path.join(APP, mod + '.ts'))) { ok(false, `src/app/${mod}.ts exists`); continue; }
+  if (!FILES.ids.includes(mod)) { ok(false, `src/app/${mod}.ts exists`); continue; }
   mods.set(mod, moduleOf(mod));
 }
 // The names a module exports from its own declarations (re-exports never count).
 const ownCache = new Map();
-const ownExports = mod => { if (!ownCache.has(mod)) ownCache.set(mod, mods.get(mod) ? new Set(mods.get(mod).exported.keys()) : fs.existsSync(path.join(APP, mod + '.ts')) ? new Set(moduleOf(mod).exported.keys()) : new Set()); return ownCache.get(mod); };
+const ownExports = mod => { if (!ownCache.has(mod)) ownCache.set(mod, mods.get(mod) ? new Set(mods.get(mod).exported.keys()) : FILES.ids.includes(mod) ? new Set(moduleOf(mod).exported.keys()) : new Set()); return ownCache.get(mod); };
 const homeOf = (mod, name) => { for (const mv of [...MOVES].reverse()) if (mv.modules.includes(mod) && bases.get(mv.release).decls.has(name)) return mv; return null; };
 const counted = Object.fromEntries(MOVES.map(mv => [mv.release, 0]));
 for (const mv of MOVES) ok(bases.get(mv.release).decls.size > 500, `${mv.release}: the legacy declarations of ${mv.baseline} are read (${bases.get(mv.release).decls.size})`);
@@ -185,7 +227,7 @@ for (const [mod, m] of mods) {
     for (const u of freeNames(d.node)) {
       if (u === name) continue;
       const imp = m.imports.get(u);
-      const fromApp = imp && imp.rel.startsWith('./') && fs.existsSync(path.join(APP, imp.from + '.ts'));
+      const fromApp = imp && imp.fromApp;
       let good;
       if (base.decls.has(u)) good = imp ? (fromApp && mods.has(imp.from) && mods.get(imp.from).exported.has(u) && !!homeOf(imp.from, u)) : m.exported.has(u);
       // A module's name must come from the module that declares it, under the
@@ -193,7 +235,7 @@ for (const [mod, m] of mods) {
       // the same name (the r51 review: APP_NAME from types meant PREVIEW_NAME).
       else if (base.outer.has(u)) good = imp ? !!fromApp && ownExports(imp.from).has(u) : m.exported.has(u);
       else good = !imp && !m.exported.has(u);
-      if (!good) astray.push(`${name} uses ${u}: ${base.decls.has(u) ? 'a legacy declaration' : base.outer.has(u) ? 'a module export' : 'a global'} in ${mv.baseline}, ${imp ? `imported here from ${imp.rel}` : m.exported.has(u) ? 'declared here' : 'unbound here'}`);
+      if (!good) astray.push(`${name} uses ${u}: ${base.decls.has(u) ? 'a legacy declaration' : base.outer.has(u) ? 'a module export' : 'a global'} in ${mv.baseline}, ${imp ? `imported here from ${imp.spec}` : m.exported.has(u) ? 'declared here' : 'unbound here'}`);
     }
   }
   ok(missing.length === 0, `every export of src/app/${mod}.ts was a declaration in the baseline of the move that moved it (nothing new slipped into a move)`, missing);
@@ -251,20 +293,57 @@ const declNames = st => st.type === 'FunctionDeclaration' || st.type === 'ClassD
   ok(before.length === after.length && i === before.length, `${mv.release}: every statement left in the legacy script is ${mv.baseline}'s, in order, once the listed rewrites are read back (${after.length} statements)`, i < Math.max(before.length, after.length) ? { at: i, was: (before[i] || '').slice(0, 200), now: (after[i] || '').slice(0, 200) } : { counts: [before.length, after.length] });
 }
 
+// The page is what src/ builds, and the module code on it is the modules'
+// code (the r51 mutation test: a build script that injected a file, a
+// package.json field that swapped a module in, a replace on the bundle's
+// text, a module in a subfolder under a known name, and an index.html edited
+// by hand each passed every check, since nothing compared the bundled module
+// code with src/app/). So: scripts/join.js builds index.html exactly; the
+// script starts strict; outside the legacy script the page holds only
+// declarations, each one module's by name and code (types and layout set
+// aside, and every variable printed as `var`, which the bundler writes for a
+// module's `const` and `let`), every module
+// declaration is on the page once, and the page's other inline scripts are
+// the baseline's.
+{
+  let built = null, why = '';
+  try { built = require('../scripts/join').build().html; } catch (e) { why = String(e.message).split('\n')[0]; }
+  ok(built !== null && built === fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8'), 'index.html is what scripts/join.js builds from src/', why || undefined);
+  const page = legacyIn('index.html');
+  ok(page.strict, 'the page\'s script starts with "use strict", so the modules run strict as modules do');
+  const stmts = page.outer.filter(s => !(s.type === 'ExpressionStatement' && s.directive));
+  const odd = stmts.filter(s => s.type !== 'VariableDeclaration' && s.type !== 'FunctionDeclaration').map(s => page.app.slice(s.start, Math.min(s.end, s.start + 80)));
+  ok(odd.length === 0, 'outside the legacy script the page holds declarations only', odd);
+  const onPage = decls(page.app, stmts.filter(s => s.type === 'VariableDeclaration' || s.type === 'FunctionDeclaration'), 'var');
+  const inMods = new Map(), twice = [];
+  for (const id of FILES.ids) { const c = compiled(id); for (const [n, d] of decls(c.js, c.ast.body, 'var')) { if (inMods.has(n)) twice.push(`${n} (${inMods.get(n).id}, ${id})`); inMods.set(n, { id, code: d.code }); } }
+  ok(twice.length === 0, 'no two modules declare the same top-level name, so the bundler renames nothing', twice);
+  const notOnPage = [...inMods.keys()].filter(n => !onPage.has(n)), notInMods = [...onPage.keys()].filter(n => !inMods.has(n));
+  ok(notOnPage.length === 0 && notInMods.length === 0, `the declarations on the page outside the legacy script are the modules' (${onPage.size})`, { notOnPage, notInMods });
+  const differ = [...onPage].filter(([n, d]) => inMods.has(n) && d.code !== inMods.get(n).code).map(([n, d]) => ({ name: n, page: d.code.slice(0, 200), module: inMods.get(n).code.slice(0, 200) }));
+  ok(differ.length === 0, 'every declaration on the page outside the legacy script is its module\'s code', differ.slice(0, 3));
+  const others = f => [...fs.readFileSync(path.join(ROOT, f), 'utf8').matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/g)].map(m => m[1]).filter(t => t !== legacyIn(f).app);
+  const now = others('index.html'), was = others(MOVES[MOVES.length - 1].baseline);
+  ok(now.length === was.length && now.every((t, i) => t === was[i]), `the page's other inline scripts are ${MOVES[MOVES.length - 1].baseline}'s (${now.length})`, { now: now.map(t => t.slice(0, 80)), was: was.map(t => t.slice(0, 80)) });
+}
+
 // Every module is either in a move, so this suite compares it, or written new
 // on purpose and held by tests of its own (the r51 review: a module in
 // neither list was compared by nothing). A module written new is also held to
 // what it may contain, since nothing compares it with a baseline (the second
 // r51 review put `Math.round = x => Math.floor(x)` in types.ts and in
 // config.ts, and a copy of the legacy body in config.ts, and each passed).
-const compiled = mod => { const js = esbuild.transformSync(fs.readFileSync(path.join(APP, mod + '.ts'), 'utf8'), { loader: 'ts', format: 'esm' }).code; return { js, ast: acorn.parse(js, { ecmaVersion: 'latest', sourceType: 'module' }) }; };
 // Each value config defines is a constant made from literals and config's own
 // constants: no import, no function, no assignment, nothing that runs, except
-// the string methods FILE_PREFIX is made with and the two page flags the build
-// sets on window (IRONLOG_APP picks the installed app's own three.js).
+// the string methods FILE_PREFIX is made with and, in THREE_URLS alone, the
+// page flag the build sets on window (IRONLOG_APP picks the installed app's
+// own three.js). Nothing else may differ between the page and Node (a
+// STORAGE_ID that read the flag passed, the r51 mutation test: the installed
+// app would have lost its log while every check saw the other branch).
 function configRules() {
   const { ast } = compiled('config'), bad = [], own = new Set();
-  const CALLS = new Set(['toLowerCase', 'replace']), FLAGS = new Set(['IRONLOG_APP', 'IRONLOG_ENV']);
+  const CALLS = new Set(['toLowerCase', 'replace']), FLAGS = new Set(['IRONLOG_APP']), FLAGGED = new Set(['THREE_URLS']);
+  let current = null;
   const NODES = new Set(['Literal', 'TemplateLiteral', 'TemplateElement', 'ArrayExpression', 'ObjectExpression', 'Property', 'SpreadElement', 'Identifier', 'MemberExpression', 'ConditionalExpression', 'LogicalExpression', 'BinaryExpression', 'UnaryExpression', 'CallExpression']);
   const okCall = n => n.callee.type === 'MemberExpression' && !n.callee.computed && CALLS.has(n.callee.property.name) && ((n.callee.object.type === 'Identifier' && own.has(n.callee.object.name)) || (n.callee.object.type === 'CallExpression' && okCall(n.callee.object)));
   const walk = (n, up) => {
@@ -273,8 +352,8 @@ function configRules() {
     if (n.type === 'CallExpression' && !okCall(n)) bad.push('a call other than toLowerCase or replace on a config value');
     if (n.type === 'UnaryExpression' && n.operator === 'delete') bad.push('delete');
     if (n.type === 'Identifier' && !(up && ((up.type === 'MemberExpression' && up.property === n && !up.computed) || (up.type === 'Property' && up.key === n && !up.computed)))) {
-      const flag = up && up.type === 'MemberExpression' && up.object === n && !up.computed && FLAGS.has(up.property.name);
-      const tof = up && up.type === 'UnaryExpression' && up.operator === 'typeof';
+      const flag = FLAGGED.has(current) && up && up.type === 'MemberExpression' && up.object === n && !up.computed && FLAGS.has(up.property.name);
+      const tof = FLAGGED.has(current) && up && up.type === 'UnaryExpression' && up.operator === 'typeof';
       if (n.name === 'window' ? !(flag || tof) : !own.has(n.name)) bad.push(`the name ${n.name}`);
     }
     if (n.type === 'MemberExpression' && n.computed) bad.push('a computed property');
@@ -286,7 +365,7 @@ function configRules() {
     if (tail.includes(st)) continue;
     const d = st.type === 'ExportNamedDeclaration' && !st.source && !st.specifiers.length ? st.declaration : st;
     if (!d || d.type !== 'VariableDeclaration' || d.kind !== 'const') { bad.push(`a top-level ${st.type}${st.source ? ' from ' + st.source.value : ''}`); continue; }
-    for (const x of d.declarations) { if (x.id.type !== 'Identifier' || !x.init) { bad.push('a const with no name or value'); continue; } walk(x.init, null); own.add(x.id.name); }
+    for (const x of d.declarations) { if (x.id.type !== 'Identifier' || !x.init) { bad.push('a const with no name or value'); continue; } current = x.id.name; walk(x.init, null); own.add(x.id.name); }
   }
   for (const st of tail) for (const sp of st.specifiers) if (sp.local.name !== sp.exported.name || !own.has(sp.local.name)) bad.push(`export ${sp.local.name} as ${sp.exported.name}`);
   return bad;
@@ -296,7 +375,7 @@ const NEW_MODULES = {
   types: { why: 'types only: nothing of it exists at run time', rules: () => { const { js } = compiled('types'); return js.trim() === '' || js.trim() === 'export {};' ? [] : [js.trim().slice(0, 200)]; } },
 };
 {
-  const loose = fs.readdirSync(APP).filter(f => f.endsWith('.ts')).map(f => f.slice(0, -3)).filter(m => !listed.includes(m) && !NEW_MODULES[m]);
+  const loose = FILES.ids.filter(m => !listed.includes(m) && !NEW_MODULES[m]);
   ok(loose.length === 0, 'every module in src/app/ is in a move or listed as written new, with the tests that hold it', loose);
   for (const [mod, spec] of Object.entries(NEW_MODULES)) { let bad; try { bad = spec.rules(); } catch (e) { bad = [String(e)]; } ok(bad.length === 0, `src/app/${mod}.ts holds only what a module written new may (${spec.why.split(':')[0]})`, bad); }
 }
@@ -304,9 +383,9 @@ const NEW_MODULES = {
 {
   const legacyNames = new Set(MOVES.flatMap(mv => [...legacyOf(mv.baseline).decls.keys()]));
   const stray = [];
-  for (const f of fs.readdirSync(APP).filter(f => f.endsWith('.ts'))) {
-    const mod = f.slice(0, -3); if (listed.includes(mod)) continue;
-    for (const name of moduleOf(mod).exported.keys()) if (legacyNames.has(name)) stray.push(`src/app/${f}: ${name}`);
+  for (const mod of FILES.ids) {
+    if (listed.includes(mod)) continue;
+    for (const name of moduleOf(mod).exported.keys()) if (legacyNames.has(name)) stray.push(`src/app/${mod}.ts: ${name}`);
   }
   ok(stray.length === 0, 'no module outside a move exports a name that was a legacy declaration in a move\'s baseline', stray);
 }

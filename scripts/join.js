@@ -39,9 +39,17 @@ function build({ override = {} } = {}) {
   const body = legacy.map(read).join('');
   if (!body.startsWith(OPEN)) throw new Error(`join: ${legacy[0]} must start with the wrapper ${JSON.stringify(OPEN)}`);
   if (!body.endsWith(CLOSE)) throw new Error(`join: ${legacy[legacy.length - 1]} must end with ${JSON.stringify(CLOSE)}`);
+  // The parts are that one call and nothing after it: a second script
+  // appended inside a part would otherwise ride along (the r51 mutation test).
+  const parsed = require('acorn').parse(body, { ecmaVersion: 'latest', sourceType: 'script' });
+  if (parsed.body.length !== 1) throw new Error(`join: the legacy parts must be one statement, the wrapper's call; they are ${parsed.body.length}`);
   const out = esbuild.buildSync({
     stdin: { contents: read(IMPORTS) + body, sourcefile: 'legacy.js', resolveDir: dir, loader: 'js' },
     bundle: true, format: 'iife', target: 'esnext', platform: 'browser',
+    // An import resolves to a .ts or .js file by its path and nothing else:
+    // never a .tsx beside a module (the r51 mutation test put one there, and
+    // the bundle took it first while every check read the .ts).
+    resolveExtensions: ['.ts', '.js'],
     // Nothing is removed beyond what bundling needs: the legacy code keeps
     // every function, so window.__ironlog and the tests see it whole.
     treeShaking: false, minify: false, charset: 'utf8', legalComments: 'none',

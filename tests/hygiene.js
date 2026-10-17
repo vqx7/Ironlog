@@ -153,15 +153,31 @@ const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log
 {
   // Every import, export-from, dynamic import and require in src/app/, at any
   // depth, must resolve inside src/app/.
-  const APP = path.join(ROOT, 'src', 'app'); const out = [];
-  for (const f of SRC_CODE.filter(f => f.startsWith('app/'))) {
-    const txt = fs.readFileSync(path.join(ROOT, 'src', f), 'utf8');
-    for (const m of txt.matchAll(/\b(?:import|export)\s+(?:[^'";]*?\s+from\s+)?['"]([^'"]+)['"]|\bimport\s*\(\s*['"]([^'"]+)['"]|\brequire\s*\(\s*['"]([^'"]+)['"]/g)) {
-      const spec = m[1] || m[2] || m[3];
-      const to = path.resolve(path.dirname(path.join(ROOT, 'src', f)), spec);
-      if (!spec.startsWith('.') || !(to + path.sep).startsWith(APP + path.sep)) out.push(`${f}: ${spec}`);
-    }
-  }
+  const APP = path.join(ROOT, 'src', 'app');
+  const ts = require('typescript');
+  // The modules by id: the path from src/app/ without `.ts`, at any depth.
+  const MODS = SRC_CODE.filter(f => f.startsWith('app/')).map(f => f.slice(4, -3));
+  // Every place a module names another file, read from the syntax tree, so a
+  // comment that mentions an import is not one (the r51 mutation test found
+  // the text scan over-broad): import and export-from statements, type-only
+  // ones included, `import x = require()`, `import()` and `require()` calls
+  // at any depth. Each must resolve to a `.ts` file inside src/app/.
+  const edgesOf = id => {
+    const txt = fs.readFileSync(path.join(APP, id + '.ts'), 'utf8');
+    const sf = ts.createSourceFile(id, txt, ts.ScriptTarget.Latest, true);
+    const out = [];
+    const spec = n => (ts.isStringLiteral(n) ? n.text : '(computed)');
+    (function walk(n) {
+      if ((ts.isImportDeclaration(n) || ts.isExportDeclaration(n)) && n.moduleSpecifier) out.push({ spec: spec(n.moduleSpecifier), typeOnly: !!(n.importClause && n.importClause.isTypeOnly) || !!n.isTypeOnly });
+      else if (ts.isImportEqualsDeclaration(n) && ts.isExternalModuleReference(n.moduleReference)) out.push({ spec: spec(n.moduleReference.expression), typeOnly: false });
+      else if (ts.isCallExpression(n) && (n.expression.kind === ts.SyntaxKind.ImportKeyword || (ts.isIdentifier(n.expression) && /^(require|__require)$/.test(n.expression.text))) && n.arguments.length) out.push({ spec: spec(n.arguments[0]), typeOnly: false });
+      ts.forEachChild(n, walk);
+    })(sf);
+    return out.map(e => { const abs = path.resolve(path.dirname(path.join(APP, id + '.ts')), e.spec); const rel = path.relative(APP, abs).split(path.sep).join('/'); return { ...e, to: rel, inside: e.spec.startsWith('.') && !rel.startsWith('..') && fs.existsSync(abs + '.ts') }; });
+  };
+  const EDGES = new Map(MODS.map(id => [id, edgesOf(id)]));
+  const out = [];
+  for (const [id, es] of EDGES) for (const e of es) if (!e.inside) out.push(`${id}: ${e.spec}`);
   ok(out.length === 0, 'the modules in src/app/ import only each other, never the legacy parts or anything outside', out);
   const legacyImports = fs.readdirSync(path.join(ROOT, 'src')).filter(f => /^[12]\d-.+\.js$/.test(f)).filter(f => /^\s*import[\s('"{*]/m.test(fs.readFileSync(path.join(ROOT, 'src', f), 'utf8')));
   ok(legacyImports.length === 0, 'the legacy parts import only through src/09-imports.js', legacyImports);
@@ -204,7 +220,8 @@ const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log
     const txt = fs.readFileSync(path.join(ROOT, 'src', '09-imports.js'), 'utf8'); const odd = [];
     for (const st of acorn.parse(txt, { ecmaVersion: 'latest', sourceType: 'module' }).body) {
       const named = st.type === 'ImportDeclaration' && st.specifiers.length > 0 && st.specifiers.every(sp => sp.type === 'ImportSpecifier' && sp.imported.name === sp.local.name);
-      if (!named || !/^\.\/app\/[a-z]+$/.test(st.source.value)) odd.push(txt.slice(st.start, Math.min(st.end, st.start + 100)));
+      const to = named && st.source.value.startsWith('./app/') ? path.resolve(ROOT, 'src', st.source.value) : null;
+      if (!to || !fs.existsSync(to + '.ts')) odd.push(txt.slice(st.start, Math.min(st.end, st.start + 100)));
     }
     ok(odd.length === 0, 'src/09-imports.js holds only imports of names, under their own names, from src/app/', odd);
   }
@@ -222,20 +239,14 @@ const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log
     const LAYER = {}, twice = [];
     for (const m of fs.readFileSync(path.join(ROOT, 'ARCHITECTURE.md'), 'utf8').matchAll(/^Layer (\d+), [^:]+: (.+)$/gm)) for (const name of m[2].split(',').map(x => x.trim())) { if (name in LAYER) twice.push(name); LAYER[name] = +m[1]; }
     ok(twice.length === 0, 'ARCHITECTURE.md gives each module one layer', twice);
-    const mods = fs.readdirSync(APP).filter(f => f.endsWith('.ts')).map(f => f.slice(0, -3));
+    const mods = MODS;
     ok(Object.keys(LAYER).length > 20 && mods.every(m => m in LAYER), 'every module in src/app/ has its layer in ARCHITECTURE.md', mods.filter(m => !(m in LAYER)));
     ok(Object.keys(LAYER).every(m => mods.includes(m)), 'every module ARCHITECTURE.md gives a layer exists', Object.keys(LAYER).filter(m => !mods.includes(m)));
+    // Every import at any depth and in any form counts (edgesOf), the ones
+    // that leave no code too, since a layer is about what a module may know.
     const deps = new Map(), up = [];
     for (const m of mods) {
-      const js = esbuild.transformSync(fs.readFileSync(path.join(APP, m + '.ts'), 'utf8'), { loader: 'ts', format: 'esm' }).code;
-      // Every import at any depth counts, `import()` inside a function too.
-      const to = [];
-      (function walk(n) {
-        if (!n || typeof n.type !== 'string') return;
-        if (n.source && /^(Import|ExportNamed|ExportAll)Declaration$/.test(n.type)) to.push(path.basename(n.source.value));
-        if (n.type === 'ImportExpression') to.push(n.source.type === 'Literal' ? path.basename(String(n.source.value)) : '(computed)');
-        for (const k in n) { const v = n[k]; if (Array.isArray(v)) v.forEach(walk); else if (v && typeof v.type === 'string') walk(v); }
-      })(acorn.parse(js, { ecmaVersion: 'latest', sourceType: 'module' }));
+      const to = EDGES.get(m).map(e => e.to);
       deps.set(m, to);
       for (const t of to) if (!(LAYER[t] <= LAYER[m])) up.push(`${m} (layer ${LAYER[m]}) imports ${t} (layer ${LAYER[t]})`);
     }
@@ -254,10 +265,11 @@ const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log
   {
     const EXPECT = { 'importing.ts': 1 }; // the duplicate 'assisted dip' key, kept so the move changes no code (PENDING 304)
     const bad = [];
-    for (const f of fs.readdirSync(APP).filter(f => f.endsWith('.ts'))) {
-      const txt = fs.readFileSync(path.join(APP, f), 'utf8');
-      if (/@ts-(nocheck|ignore)\b/.test(txt)) bad.push(`${f}: @ts-nocheck or @ts-ignore`);
-      const n = (txt.match(/@ts-expect-error\b/g) || []).length;
+    // A directive is a comment that opens with it (`// @ts-ignore`); prose that mentions one is not (the r51 mutation test).
+    for (const id of MODS) {
+      const f = id + '.ts', txt = fs.readFileSync(path.join(APP, f), 'utf8');
+      if (/(\/\/|\/\*)\s*@ts-(nocheck|ignore)\b/.test(txt)) bad.push(`${f}: @ts-nocheck or @ts-ignore`);
+      const n = (txt.match(/(\/\/|\/\*)\s*@ts-expect-error\b/g) || []).length;
       if (n !== (EXPECT[f] || 0)) bad.push(`${f}: ${n} @ts-expect-error, ${EXPECT[f] || 0} listed`);
     }
     ok(bad.length === 0, 'the type checker is switched off nowhere in src/app/, beyond the one listed exception', bad);
@@ -268,9 +280,9 @@ const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log
   // heading such as `/* ---------- loads ---------- */` is not an explanation.
   // From r51 (V: the code explains itself in plain words).
   {
-    const ts = require('typescript'); const bare = [];
-    for (const f of fs.readdirSync(APP).filter(f => f.endsWith('.ts'))) {
-      const txt = fs.readFileSync(path.join(APP, f), 'utf8');
+    const bare = [];
+    for (const id of MODS) {
+      const f = id + '.ts', txt = fs.readFileSync(path.join(APP, f), 'utf8');
       const sf = ts.createSourceFile(f, txt, ts.ScriptTarget.Latest, true);
       let prevEnd = -1;
       for (const st of sf.statements) {
@@ -292,13 +304,13 @@ const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log
   // prints each so a review sees them. Until r51 the r49 and r50 modules
   // were exempt, which was an exception, not a standard.
   {
-    const files = fs.readdirSync(APP).filter(f => f.endsWith('.ts')).map(f => path.join(APP, f));
+    const files = MODS.map(id => path.join(APP, id + '.ts'));
     const { spawnSync } = require('child_process');
     const pr = spawnSync(process.execPath, [require.resolve('prettier/bin/prettier.cjs'), '--check', ...files], { encoding: 'utf8', cwd: ROOT });
     ok(files.length > 20 && pr.status === 0, `every module in src/app/ is formatted by Prettier (${files.length} files)`, (pr.stdout + pr.stderr).trim().split('\n').filter(l => /\[warn\]|error/i.test(l)).slice(0, 10));
-    const ts = require('typescript'); const bad = [], tables = [];
-    for (const f of fs.readdirSync(APP).filter(f => f.endsWith('.ts'))) {
-      const txt = fs.readFileSync(path.join(APP, f), 'utf8');
+    const bad = [], tables = [];
+    for (const id of MODS) {
+      const f = id + '.ts', txt = fs.readFileSync(path.join(APP, f), 'utf8');
       const sf = ts.createSourceFile(f, txt, ts.ScriptTarget.Latest, true);
       const topRanges = sf.statements.flatMap(st => (ts.getLeadingCommentRanges(txt, st.pos) || []).map(c => ({ ...c, st })));
       for (const m of txt.matchAll(/prettier-ignore/g)) {
@@ -311,9 +323,42 @@ const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log
     }
     ok(bad.length === 0, `a prettier-ignore sits only on a top-level declaration, under a comment saying why (${tables.length}: ${tables.join('; ')})`, bad);
   }
+  // The checker's settings are the ones ARCHITECTURE.md relies on, and it
+  // reads every module: a tsconfig that covered one file passed everything
+  // (the r51 mutation test).
+  {
+    const read = ts.readConfigFile(path.join(ROOT, 'tsconfig.json'), ts.sys.readFile);
+    const conf = read.error ? null : ts.parseJsonConfigFileContent(read.config, ts.sys, ROOT);
+    const o = conf ? conf.options : {};
+    const need = { strict: true, noUnusedLocals: true, noUnusedParameters: true, noImplicitReturns: true, noFallthroughCasesInSwitch: true, exactOptionalPropertyTypes: true, isolatedModules: true, noEmit: true };
+    const off = Object.entries(need).filter(([k, v]) => o[k] !== v).map(([k]) => k);
+    const unread = conf ? MODS.filter(id => !conf.fileNames.map(f => path.resolve(f)).includes(path.join(APP, id + '.ts'))) : MODS;
+    ok(conf && off.length === 0 && unread.length === 0, 'tsconfig.json keeps the strict settings on and reads every module', { off, unread: unread.slice(0, 5), error: read.error && read.error.messageText });
+  }
   const { spawnSync } = require('child_process');
   const tsc = spawnSync(process.execPath, [require.resolve('typescript/bin/tsc'), '--noEmit', '-p', path.join(ROOT, 'tsconfig.json')], { encoding: 'utf8' });
   ok(tsc.status === 0, 'the typed modules pass the TypeScript checker (strict)', (tsc.stdout + tsc.stderr).trim().split('\n').slice(0, 10));
+  // The bundler resolves a module by its path and nothing else: a `browser`
+  // or `exports` map in package.json would hand it another file in place of
+  // a module (the r51 mutation test), and scripts/join.js pins the
+  // extensions it may try.
+  {
+    const pkg = JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf8'));
+    const maps = ['browser', 'exports', 'imports', 'module', 'main'].filter(k => k in pkg);
+    ok(maps.length === 0, 'package.json has no field that maps a module to another file', maps);
+    ok(/resolveExtensions:\s*\['\.ts',\s*'\.js'\]/.test(fs.readFileSync(path.join(ROOT, 'scripts', 'join.js'), 'utf8')), 'scripts/join.js resolves imports to .ts and .js files only');
+  }
+  // scripts/config.js, which the build and the tests read, gives exactly the
+  // values src/app/config.ts defines: a loader that changed one passed, with
+  // the page saying one build and its meta tag another (the r51 mutation test).
+  {
+    const out = esbuild.buildSync({ entryPoints: [path.join(APP, 'config.ts')], bundle: true, format: 'cjs', platform: 'neutral', write: false, logLevel: 'silent' }).outputFiles[0].text;
+    const file = path.join(require('os').tmpdir(), `ironlog-config-${process.pid}.cjs`); fs.writeFileSync(file, out);
+    let direct; try { direct = require(file); } finally { fs.unlinkSync(file); }
+    const keys = [...new Set([...Object.keys(direct), ...Object.keys(cfg)])];
+    const differ = keys.filter(k => JSON.stringify(direct[k]) !== JSON.stringify(cfg[k]));
+    ok(keys.length > 10 && differ.length === 0, 'scripts/config.js gives the values src/app/config.ts defines, no more and no less', differ);
+  }
 }
 
 // The build this one replaces is kept as a baseline and read by the
