@@ -230,7 +230,14 @@ const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log
     const deps = new Map(), up = [];
     for (const m of mods) {
       const js = esbuild.transformSync(fs.readFileSync(path.join(APP, m + '.ts'), 'utf8'), { loader: 'ts', format: 'esm' }).code;
-      const to = acorn.parse(js, { ecmaVersion: 'latest', sourceType: 'module' }).body.filter(st => st.source && /^(Import|ExportNamed|ExportAll)Declaration$/.test(st.type)).map(st => path.basename(st.source.value));
+      // Every import at any depth counts, `import()` inside a function too.
+      const to = [];
+      (function walk(n) {
+        if (!n || typeof n.type !== 'string') return;
+        if (n.source && /^(Import|ExportNamed|ExportAll)Declaration$/.test(n.type)) to.push(path.basename(n.source.value));
+        if (n.type === 'ImportExpression') to.push(n.source.type === 'Literal' ? path.basename(String(n.source.value)) : '(computed)');
+        for (const k in n) { const v = n[k]; if (Array.isArray(v)) v.forEach(walk); else if (v && typeof v.type === 'string') walk(v); }
+      })(acorn.parse(js, { ecmaVersion: 'latest', sourceType: 'module' }));
       deps.set(m, to);
       for (const t of to) if (!(LAYER[t] <= LAYER[m])) up.push(`${m} (layer ${LAYER[m]}) imports ${t} (layer ${LAYER[t]})`);
     }
