@@ -60,6 +60,7 @@ export interface PlanItem {
 /** The parts of a plan the engine reads (an item, or DEFAULT_PLAN with no ids). */
 export type Plan = Omit<PlanItem, 'uid' | 'exId' | 'ss'> & Partial<Pick<PlanItem, 'uid' | 'exId' | 'ss'>>;
 
+/** A routine's day: the plan for each of its exercises, in order, and whether it is a rest day. */
 export interface Day {
   id: string;
   name: string;
@@ -67,6 +68,7 @@ export interface Day {
   items: PlanItem[];
 }
 
+/** A routine: its days, one per weekday (weekly) or repeating in order (cycle). */
 export interface Routine {
   id: string;
   name: string;

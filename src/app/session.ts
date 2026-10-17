@@ -11,18 +11,20 @@ import { isWork } from './formulas';
 
 /* ---------- loads and targets ---------- */
 
+/* The load a row shows in grey while its load field is empty (r25), and the
+   load settleLoad writes in when the set is ticked or saved at Finish: the
+   load of the nearest working set above that has one, else the block's
+   suggestion; none on a warm-up or a drop set. A row that exists means the
+   block does, which the b! below says to TypeScript. */
 export function greyW(b: DraftBlock | null | undefined, si: number): number | null {
   const s = b && b.sets[si];
   if (!s || s.warm || s.drop) return null;
   // After a set the app adjusted from (b.adj, r34), the rows under it carry the adjusted load.
   for (let i = si - 1; i >= 0; i--) {
-    const x = (b as DraftBlock).sets[i] as DraftSet;
-    if (!x.warm && !x.drop && x.w != null)
-      return (b as DraftBlock).adj && ((b as DraftBlock).adj as { at: number }).at === i
-        ? ((b as DraftBlock).adj as { w: number }).w
-        : x.w;
+    const x = b!.sets[i];
+    if (!x.warm && !x.drop && x.w != null) return b!.adj && b!.adj.at === i ? b!.adj.w : x.w;
   }
-  return (b as DraftBlock).sw == null ? null : ((b as DraftBlock).sw as number);
+  return b!.sw == null ? null : b!.sw;
 }
 
 // What a row's load is or will be: typed, else its grey load.
@@ -35,7 +37,9 @@ export function effW(b: DraftBlock | null | undefined, si: number): number | nul
 /* A reps target compares today's first n sets at the load with last time's
    first n. When today has fewer working sets (removed, or trimmed by Short on
    time), the target shrinks to those sets, since the old total could no
-   longer be reached. Targets saved before rs existed keep the old numbers. */
+   longer be reached. Targets saved before rs existed keep the old numbers.
+   cleanTgt lets a target's n be absent or null, which the comparison reads
+   as JavaScript does; the cast only lets TypeScript accept that. */
 export function effTarget(b: DraftBlock): Target | null | undefined {
   const t = b.tgt;
   if (!t || t.kind !== 'reps') return t;
@@ -44,10 +48,13 @@ export function effTarget(b: DraftBlock): Target | null | undefined {
   return { ...t, n: nw, total: t.rs.slice(0, nw).reduce((a, v) => a + v, 0) };
 }
 
-/** The target as worded on the block, with the sets it counts brought down to today's (effTarget). */
+/** The target as worded on the block, with the sets it counts brought down to today's (effTarget).
+    effTarget gives back a target whenever the block has one, and with none
+    the function returns before e is read, as the ! says. cleanTgt lets total
+    be null, and the cast lets TypeScript add 1 to it as JavaScript does. */
 export function targetText(b: DraftBlock): string | undefined {
   const t = b.tgt,
-    e = effTarget(b) as Target;
+    e = effTarget(b)!;
   if (!t || t === e || !b.target) return b.target;
   const m = b.target.match(
     /^(\d+)(s?)\+ (reps )?(?:in one set|over (?:your first )?\d+ sets|in one hold|over (?:your first )?\d+ holds)( at .*)$/
@@ -60,7 +67,8 @@ export function targetText(b: DraftBlock): string | undefined {
 
 /* "Over your first 3 sets" only when the plan has more sets than that, so
    the extra ones are clearly not counted; "over 4 sets" when 4 is all there
-   are (r34.2, from the review). */
+   are (r34.2, from the review). With no plan or no count, + reads 0 or NaN,
+   neither more than n; the cast only lets TypeScript accept the +. */
 export function overSets(n: number, plan: { sets?: number | undefined } | null | undefined, kind?: string): string {
   const w = kind === 'hold' ? 'hold' : 'set';
   if (n === 1) return `in one ${w}`;
@@ -69,13 +77,13 @@ export function overSets(n: number, plan: { sets?: number | undefined } | null |
 
 /* ---------- progress ---------- */
 
-/** An exercise is done when it has working sets and every one is ticked. */
+/** An exercise is done when it has sets other than warm-ups and every one of them is ticked. */
 export function blockDone(b: DraftBlock): boolean {
   const w = b.sets.filter(x => !x.warm);
   return w.length > 0 && w.every(x => x.done);
 }
 
-/** Working sets ticked out of all of them, and the share. */
+/** Sets other than warm-ups ticked out of all of them, and the share in percent. */
 export function sessProgress(d: { ex: DraftBlock[] }): { n: number; k: number; pct: number } {
   let n = 0,
     k = 0;
@@ -88,9 +96,10 @@ export function sessProgress(d: { ex: DraftBlock[] }): { n: number; k: number; p
   return { n, k, pct: n ? (k / n) * 100 : 0 };
 }
 
-/** The rest after an exercise: none before the next one of the same superset, else its plan's. */
+/** The rest after an exercise: none before the next one of the same superset, else its plan's.
+    A plan with no rest reads as 0; the cast only lets TypeScript accept the +. */
 export function blockRest(d: { ex: DraftBlock[] }, bi: number): number {
-  const b = d.ex[bi] as DraftBlock,
+  const b = d.ex[bi],
     nx = d.ex[bi + 1];
   return b.plan.ss && nx && nx.plan.ss === b.plan.ss ? 0 : +(b.plan.rest as number) || 0;
 }
@@ -114,10 +123,14 @@ export function lastDup(d: { ex: DraftBlock[] }, bi: number): boolean {
   return !!b && d.ex.slice(0, bi).some(x => x.exId === b.exId && !!x.light === !!b.light);
 }
 
+/** The Last column beside working row i (counted from 0): set i of last time,
+    blank past the end of last time's sets, with no prev, or on a repeat of the lift (dup). */
 export function lastCell(b: DraftBlock, i: number, dup?: boolean): string {
-  return !dup && Array.isArray(b.prev) && i >= 0 && i < b.prev.length ? (b.prev[i] as string) : '';
+  return !dup && Array.isArray(b.prev) && i >= 0 && i < b.prev.length ? b.prev[i] : '';
 }
 
+/** The Last line above the sets: shortened to the session's name and date (up
+    to the closing bracket) while the column shows the sets, else whole. */
 export function lastHead(b: DraftBlock, dup?: boolean): string {
   const t = b.last || '';
   if (dup || !Array.isArray(b.prev) || !b.prev.length || b.prevOff) return t;
@@ -268,6 +281,10 @@ export const HINT_ONCE: readonly string[] = [
   'Next time picks up from here.'
 ];
 
+/** A suggestion's hint as the session screen shows it: once a line has been
+    said on an earlier exercise (recorded in seen, which the session screen
+    makes anew each time it is drawn), the first-time paragraph is shortened
+    and the HINT_ONCE lines are left out. */
 export function hintOnce(t: string | null | undefined, seen: Set<string>): string {
   if (!t) return '';
   const m = t.match(

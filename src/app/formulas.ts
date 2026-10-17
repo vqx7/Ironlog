@@ -37,6 +37,8 @@ export function rtfOf(r: number | string, rir?: Rir): number | null {
   return q > E1_MAX_RIR ? null : +r + q;
 }
 
+/** The estimated 1RM of one set, by the rules above E1_MAX_RIR; null when the
+    set gives none (no load or reps, a reserve past 4, or past 12 reps to failure). */
 export function e1(load: number, r: number, rir?: Rir): number | null {
   if (!(load > 0 && r > 0)) return null;
   const rtf = rtfOf(r, rir);
@@ -92,7 +94,8 @@ export const REP_PR_SHARE = 0.9;
 
 /* ---------- sets and sessions ---------- */
 
-/** A working set: not a warm-up, and reps done. */
+/** A working set: not a warm-up, and reps done. Reps are null on a row with
+    none typed, which + reads as 0; the cast only lets TypeScript accept the +. */
 export const isWork = (s: { warm?: boolean | undefined; r: number | string | null }): boolean => !s.warm && +(s.r as number) > 0;
 
 /** A set's weight in a weekly count: a drop set counts half. */
@@ -130,12 +133,13 @@ export function workLoad(pts: readonly Point[], _repMin?: number): number {
   for (const p of pts) if (ok(p)) n.set(k(p.w), (n.get(k(p.w)) || 0) + 1);
   /* w is null only until the first set at or over the floor, which always
      sets it (its count beats -1), so the comparison never meets a null. The
-     cast says so to TypeScript and is not code. */
+     ! says so to TypeScript and is not code, as is the one on the count, which
+     the loop above set for every load at or over the floor. */
   let w: number | null = null, best = -1;
   for (const p of pts) {
     if (!ok(p)) continue;
-    const c = n.get(k(p.w)) as number;
-    if (c > best || (c === best && p.w > (w as number))) { best = c; w = p.w; }
+    const c = n.get(k(p.w))!;
+    if (c > best || (c === best && p.w > w!)) { best = c; w = p.w; }
   }
   return w == null ? Math.max(...pts.map(p => p.w)) : w;
 }
@@ -212,10 +216,11 @@ export const GROW_PCT = 3;
    approximation below is within 0.001 of the table. */
 export const T90: readonly number[] = [NaN, 3.078, 1.886, 1.638, 1.533, 1.476, 1.440, 1.415, 1.397, 1.383, 1.372, 1.363, 1.356, 1.350, 1.345, 1.341, 1.337, 1.333, 1.330, 1.328, 1.325, 1.323, 1.321, 1.319, 1.318, 1.316, 1.315, 1.314, 1.313, 1.311, 1.310];
 
+/** The quantile for df degrees of freedom, whole degrees only: under 1 reads as 1, past 30 the approximation. */
 export function t90(df: number): number {
   df = Math.floor(df);
-  if (!(df >= 1)) return T90[1] as number;
-  return df <= 30 ? (T90[df] as number) : 1.2816 + 0.8521 / df;
+  if (!(df >= 1)) return T90[1];
+  return df <= 30 ? T90[df] : 1.2816 + 0.8521 / df;
 }
 
 /* ---------- time ---------- */
@@ -236,6 +241,8 @@ export function setSecs(ex: Pick<Exercise, 'timed' | 'perSide'>, p: { repMin: nu
   return t;
 }
 
+/** Warm-up and setup before a lift, in seconds, by the time model above:
+    compoundsBefore is how many compound lifts came earlier in the day. */
 export function setupSecs(ex: Parameters<typeof isCompound>[0], compoundsBefore: number): number {
   return isCompound(ex) ? (compoundsBefore < 2 ? 300 : 180) : 60;
 }
@@ -256,5 +263,6 @@ export const PACE_N = 8, PACE_DAYS = 84, PACE_MIN = 3, PACE_LO = 1 / 3, PACE_HI 
    as a likely place to move sets to another day. Advisory, a convention. */
 export const SESSION_CAP = 11;
 
-/** The Plan editor's tip on the load jump (jumpPct above), r30. */
+/** The Plan editor's tip on the load jump (jumpPct above), r30; moved in
+    phase 3a (r51), tests/moved.js holds it to r50's code. */
 export const JUMP_TIP = 'When every set reaches the top of the rep range, the load goes up by about this share, in whole load steps and at least one step. Blank: 2.5% on compound lifts, 5% on isolation lifts, a convention. 0: one step every time. Until then the target is to beat last time\'s total reps at the same load. When the step is large for the load, a few more reps come first, so the new load starts inside the range.';

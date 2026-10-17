@@ -25,6 +25,7 @@ export type Template = { key: string; name: string; who: string; meta: string; h
   | { build: () => NewRoutine; days?: undefined }
 );
 
+/** The weekday names, Monday first, in the order a weekly routine's days are kept. */
 export const DAYS: readonly string[] = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
 /** The most days a routine can have. */
@@ -32,7 +33,7 @@ export const MAX_DAYS = 14;
 
 /** A routine day's label: the weekday on a weekly schedule, else its place in the cycle. */
 export function dayLabel(R: Pick<Routine, 'schedule'> | null | undefined, i: number): string {
-  return R && R.schedule === 'weekly' ? (DAYS[i] as string) : `Day ${i + 1}`;
+  return R && R.schedule === 'weekly' ? DAYS[i] : `Day ${i + 1}`;
 }
 
 /** The plan an exercise gets when nothing else sets one: 3 sets of 8 to 12 at
@@ -182,8 +183,8 @@ export function sessDayIdx(R: RoutineLike, s: { dayId?: string | null; dayIdx: n
 }
 
 /** The sets a day plans. */
-export function daySets(day: { items: { sets?: number | string }[] }): number {
-  return day.items.reduce((a, it) => a + +(it.sets as number), 0);
+export function daySets(day: { items: { sets: number | string }[] }): number {
+  return day.items.reduce((a, it) => a + +it.sets, 0);
 }
 
 /* A superset is consecutive items sharing an id. Groups of one are not
@@ -191,10 +192,10 @@ export function daySets(day: { items: { sets?: number | string }[] }): number {
 export function fixSupersets(items: { ss?: string | null }[]): void {
   let i = 0;
   while (i < items.length) {
-    const id = (items[i] as { ss?: string | null }).ss;
+    const id = items[i].ss;
     if (!id) { i++; continue; }
-    let j = i; while (j < items.length && (items[j] as { ss?: string | null }).ss === id) j++;
-    if (j - i < 2) (items[i] as { ss?: string | null }).ss = null;
+    let j = i; while (j < items.length && items[j].ss === id) j++;
+    if (j - i < 2) items[i].ss = null;
     i = j;
   }
   // The same id reappearing later in the day would read as one group; give it its own.
@@ -211,8 +212,8 @@ export function ssLetters(items: readonly { ss?: string | null }[]): Record<stri
 
 /* Toggle the link between entry i and i+1. get(x) returns the object holding ss. */
 export function linkToggle<X>(arr: X[], i: number, get: (x: X) => { ss?: string | null }): boolean {
-  const a = get(arr[i] as X), b = arr[i + 1] && get(arr[i + 1] as X); if (!a || !b) return false;
-  if (a.ss && a.ss === b.ss) { const g = uid(), old = a.ss; for (let k = i + 1; k < arr.length && get(arr[k] as X).ss === old; k++) get(arr[k] as X).ss = g; }
+  const a = get(arr[i]), b = arr[i + 1] && get(arr[i + 1]); if (!a || !b) return false;
+  if (a.ss && a.ss === b.ss) { const g = uid(), old = a.ss; for (let k = i + 1; k < arr.length && get(arr[k]).ss === old; k++) get(arr[k]).ss = g; }
   else { const id = a.ss || b.ss || uid(); const olds = [a.ss, b.ss].filter(Boolean); for (const x of arr) { const o = get(x); if (o.ss && olds.includes(o.ss)) o.ss = id; } a.ss = id; b.ss = id; }
   const tmp = arr.map(get); fixSupersets(tmp); return true;
 }
@@ -220,7 +221,7 @@ export function linkToggle<X>(arr: X[], i: number, get: (x: X) => { ss?: string 
 /** Moves an entry of a list from i to j, in place; out of range does nothing. */
 export function move<X>(arr: X[], i: number, j: number): void {
   if (j < 0 || j >= arr.length) return;
-  const [x] = arr.splice(i, 1); arr.splice(j, 0, x as X);
+  const [x] = arr.splice(i, 1); arr.splice(j, 0, x);
 }
 
 /* Routine housekeeping. Empty: no exercise on any day. Duplicate: same name
@@ -230,15 +231,17 @@ export function move<X>(arr: X[], i: number, j: number): void {
 export const routineEmpty = (r: { days: { items: unknown[] }[] }): boolean => r.days.every(d => !d.items.length);
 
 /** What makes two routines the same: the name, schedule, days and every item's plan. */
-export const routineSig = (r: Pick<Routine, 'name' | 'schedule'> & { days: { name: string; rest?: boolean; items: { exId: string; sets: unknown; repMin: unknown; repMax: unknown; rir: unknown; rest: unknown }[] }[] }): string => JSON.stringify([r.name.trim().toLowerCase(), r.schedule, r.days.map(d => [d.name, !!d.rest, d.items.map(i => [i.exId, +(i.sets as number), +(i.repMin as number), +(i.repMax as number), +(i.rir as number), +(i.rest as number)])])]);
+export const routineSig = (r: Pick<Routine, 'name' | 'schedule'> & { days: { name: string; rest?: boolean; items: { exId: string; sets: number | string; repMin: number | string; repMax: number | string; rir: number | string; rest: number | string }[] }[] }): string => JSON.stringify([r.name.trim().toLowerCase(), r.schedule, r.days.map(d => [d.name, !!d.rest, d.items.map(i => [i.exId, +i.sets, +i.repMin, +i.repMax, +i.rir, +i.rest])])]);
 
 /* "Eight plans, 2 to 6 days a week", counted from the list (r30: the line
-   said six after two were added). Every other day counts as about 3.5. */
+   said six after two were added). Every other day counts as about 3.5.
+   Each key comes from TEMPLATES itself, so each copy is found (the !). */
 export function tplCountLine(): string {
   const T = TEMPLATES.filter(t => !t.hidden);
-  const n = T.map(t => { const r = routineFromTemplate(t.key) as NewRoutine; return r.days.filter(d => !d.rest).length * 7 / r.days.length; });
+  const n = T.map(t => { const r = routineFromTemplate(t.key)!; return r.days.filter(d => !d.rest).length * 7 / r.days.length; });
   const W = ['No', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine', 'Ten', 'Eleven', 'Twelve'];
   return `${W[T.length] || T.length} plans, ${Math.floor(Math.min(...n))} to ${Math.round(Math.max(...n))} days a week`;
 }
 
+/** The Plan editor's tip on target RIR (r29.5): why the default is 1, a convention. */
 export const RIR_TGT_TIP = 'Target RIR is 1 unless you change it, a convention: muscle growth improves as sets end closer to failure (Robinson 2024), but going all the way to failure grew muscle no more than stopping 1 to 2 reps short (Refalo 2024) and costs more fatigue. Some lifts in the ready-made routines use 0 or 2.';

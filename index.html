@@ -2146,8 +2146,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     if (!s || s.warm || s.drop) return null;
     for (let i = si - 1; i >= 0; i--) {
       const x = b.sets[i];
-      if (!x.warm && !x.drop && x.w != null)
-        return b.adj && b.adj.at === i ? b.adj.w : x.w;
+      if (!x.warm && !x.drop && x.w != null) return b.adj && b.adj.at === i ? b.adj.w : x.w;
     }
     return b.sw == null ? null : b.sw;
   }
