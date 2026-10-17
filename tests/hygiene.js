@@ -195,9 +195,79 @@ const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log
   const GLOBALS = new Set(['Array', 'Blob', 'Boolean', 'CSS', 'DOMParser', 'DataView', 'Date', 'DecompressionStream', 'Error', 'File', 'FileReader', 'Image', 'Infinity', 'Intl', 'JSON', 'Map', 'Math', 'MouseEvent', 'MutationObserver', 'NaN', 'Number', 'Object', 'Promise', 'Response', 'Set', 'String', 'TextDecoder', 'TextEncoder', 'URL', 'Uint8Array', 'WeakMap', 'WeakSet', 'cancelAnimationFrame', 'clearInterval', 'clearTimeout', 'document', 'encodeURIComponent', 'getComputedStyle', 'history', 'indexedDB', 'isFinite', 'isNaN', 'localStorage', 'location', 'matchMedia', 'navigator', 'parseFloat', 'parseInt', 'performance', 'queueMicrotask', 'requestAnimationFrame', 'setInterval', 'setTimeout', 'undefined', 'window']);
   const unknown = dm.free.filter(n => !GLOBALS.has(n));
   ok(dm.free.length > 40 && unknown.length === 0, 'every name the legacy script reads without declaring or importing it is a known browser or JavaScript global', unknown);
-  // An import with no names runs a module for its effects alone, which nothing would compare (the r51 review).
-  const bare = [...fs.readFileSync(path.join(ROOT, 'src', '09-imports.js'), 'utf8').matchAll(/^\s*import\s*['"]([^'"]+)['"]/gm)].map(m => m[1]);
-  ok(bare.length === 0, 'src/09-imports.js imports names only, never a module for its effects', bare);
+  // src/09-imports.js holds named imports from src/app/ and nothing else: an
+  // import with no names (`import './x'`, `import {} from './x'`) or a
+  // re-export (`export * from './x'`) runs a module for its effects alone,
+  // which nothing compares (the two r51 reviews), and a renamed or namespace
+  // import would let one name stand for another.
+  {
+    const txt = fs.readFileSync(path.join(ROOT, 'src', '09-imports.js'), 'utf8'); const odd = [];
+    for (const st of acorn.parse(txt, { ecmaVersion: 'latest', sourceType: 'module' }).body) {
+      const named = st.type === 'ImportDeclaration' && st.specifiers.length > 0 && st.specifiers.every(sp => sp.type === 'ImportSpecifier' && sp.imported.name === sp.local.name);
+      if (!named || !/^\.\/app\/[a-z]+$/.test(st.source.value)) odd.push(txt.slice(st.start, Math.min(st.end, st.start + 100)));
+    }
+    ok(odd.length === 0, 'src/09-imports.js holds only imports of names, under their own names, from src/app/', odd);
+  }
+  // One-way dependencies (ARCHITECTURE.md): config and the record types at
+  // the bottom, then data, then the engine and analytics, then storage and
+  // sync, then the screens. A module imports only from its own layer or
+  // below, and no import goes round in a circle. The bundle turns a module's
+  // const into var, so in a circle a value read before its module has run is
+  // undefined, not an error (the second r51 review made the store read
+  // HIST_PAGE from layout, which read the store, and History's page size came
+  // out undefined with every other check green). Type-only imports leave no
+  // code and do not count. A new module is given its layer here.
+  {
+    const LAYER = {
+      config: 0, types: 0,
+      util: 1, units: 1, library: 1, routines: 1, formulas: 1, records: 1, gym: 1, profile: 1,
+      session: 2, loads: 2, prs: 2, trend: 2, volume: 2, goals: 2, importing: 2,
+      chunks: 3, merge: 3, store: 3,
+      format: 4, layout: 4, icons: 4, charts: 4, feedback: 4,
+    };
+    const mods = fs.readdirSync(APP).filter(f => f.endsWith('.ts')).map(f => f.slice(0, -3));
+    ok(mods.every(m => m in LAYER), 'every module in src/app/ has its layer in tests/hygiene.js', mods.filter(m => !(m in LAYER)));
+    const deps = new Map(), up = [];
+    for (const m of mods) {
+      const js = esbuild.transformSync(fs.readFileSync(path.join(APP, m + '.ts'), 'utf8'), { loader: 'ts', format: 'esm' }).code;
+      const to = acorn.parse(js, { ecmaVersion: 'latest', sourceType: 'module' }).body.filter(st => st.source && /^(Import|ExportNamed|ExportAll)Declaration$/.test(st.type)).map(st => path.basename(st.source.value));
+      deps.set(m, to);
+      for (const t of to) if (!(LAYER[t] <= LAYER[m])) up.push(`${m} (layer ${LAYER[m]}) imports ${t} (layer ${LAYER[t]})`);
+    }
+    ok(up.length === 0, 'each module imports only from its own layer or below', up);
+    const cycles = [], state = new Map();
+    const visit = (m, trail) => {
+      if (state.get(m) === 2) return; if (state.get(m) === 1) { cycles.push([...trail.slice(trail.indexOf(m)), m].join(' > ')); return; }
+      state.set(m, 1); for (const t of deps.get(m) || []) visit(t, [...trail, m]); state.set(m, 2);
+    };
+    for (const m of mods) visit(m, []);
+    ok(cycles.length === 0, 'no import in src/app/ goes round in a circle', cycles);
+  }
+  // The checker is never switched off: no @ts-nocheck or @ts-ignore, and an
+  // expected error only where listed with its reason (the second r51 review
+  // hid a copy of the legacy script in config.ts behind @ts-nocheck).
+  {
+    const EXPECT = { 'importing.ts': 1 }; // the duplicate 'assisted dip' key, kept so the move changes no code (PENDING 304)
+    const bad = [];
+    for (const f of fs.readdirSync(APP).filter(f => f.endsWith('.ts'))) {
+      const txt = fs.readFileSync(path.join(APP, f), 'utf8');
+      if (/@ts-(nocheck|ignore)\b/.test(txt)) bad.push(`${f}: @ts-nocheck or @ts-ignore`);
+      const n = (txt.match(/@ts-expect-error\b/g) || []).length;
+      if (n !== (EXPECT[f] || 0)) bad.push(`${f}: ${n} @ts-expect-error, ${EXPECT[f] || 0} listed`);
+    }
+    ok(bad.length === 0, 'the type checker is switched off nowhere in src/app/, beyond the one listed exception', bad);
+  }
+  // Modules written or grown from r51 on are laid out by Prettier from the
+  // committed .prettierrc.json, so the layout is reproducible; the modules of
+  // r49 and r50 keep their hand layout (layout never changes code, which
+  // tests/moved.js proves). A new module is formatted.
+  {
+    const HAND = ['config', 'types', 'util', 'units', 'library', 'routines', 'formulas'];
+    const files = fs.readdirSync(APP).filter(f => f.endsWith('.ts') && !HAND.includes(f.slice(0, -3))).map(f => path.join(APP, f));
+    const { spawnSync } = require('child_process');
+    const pr = spawnSync(process.execPath, [require.resolve('prettier/bin/prettier.cjs'), '--check', ...files], { encoding: 'utf8', cwd: ROOT });
+    ok(files.length > 15 && pr.status === 0, `the modules outside the hand-laid ones are formatted by Prettier (${files.length} files)`, (pr.stdout + pr.stderr).trim().split('\n').filter(l => /\[warn\]|error/i.test(l)).slice(0, 10));
+  }
   const dead = dm.imports.filter(x => !x.used).map(x => `${x.name} from ${x.from}`);
   ok(dead.length === 0, 'every name src/09-imports.js imports is used by the legacy script', dead);
   const { spawnSync } = require('child_process');

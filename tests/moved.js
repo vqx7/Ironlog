@@ -26,9 +26,9 @@
 // legacy declaration, so moved code cannot sit somewhere this suite does not
 // look.
 //
-// A declaration changed on purpose after its move is listed in `changed` with
-// the release and the reason, and is then held by the suites for its
-// behaviour instead.
+// A declaration changed on purpose in a move, or added by one, is listed in
+// `changed` or `added` with the release and the reason, and is held to the
+// exact code and names its entry states and to an executable check.
 const fs = require('fs'); const path = require('path');
 const acorn = require('acorn'); const esbuild = require('esbuild');
 const { freeNames } = require('../scripts/depmap');
@@ -79,27 +79,37 @@ const declared = statements => new Set(statements.flatMap(st => {
   if (s.type === 'VariableDeclaration') return s.declarations.filter(d => d.id.type === 'Identifier').map(d => d.id.name);
   return [];
 }));
-// The legacy script's top-level declarations in a built page: the body of the
-// function that starts with "use strict" inside the bundle (r49 on), or the
-// page's whole app script (before r49). `outer` is what the bundle declared
-// outside the legacy wrapper: the modules' code (config's names, in r49).
-function legacyOf(file) {
+// The legacy script in a built page, found by the shape scripts/join.js gives
+// the bundle, never by what the code looks like: before r49 the page's app
+// script is the legacy function called at once, `(function(){'use strict';
+// ...})();`, and from r49 esbuild's wrapper `(() => { ... })();` (after a
+// "use strict" line from r50) holds the modules' code and then, as its last
+// statement, that same call, since esbuild writes the entry's own code after
+// the modules it imports. Anything else stops the suite. Until r51 this took
+// the largest function that starts with "use strict", and the review showed a
+// copy of the legacy body in a module was then read in its place, so a change
+// to the real one went unseen. `outer` is what the bundle declared outside the
+// legacy wrapper: the modules' code.
+function legacyIn(file) {
   const html = fs.readFileSync(path.join(ROOT, file), 'utf8');
-  const scripts = [...html.matchAll(/<script>([\s\S]*?)<\/script>/g)].map(m => m[1]);
-  const app = scripts.reduce((a, b) => (b.length > a.length ? b : a), '');
+  const app = [...html.matchAll(/<script>([\s\S]*?)<\/script>/g)].map(m => m[1]).reduce((a, b) => (b.length > a.length ? b : a), '');
   const ast = acorn.parse(app, { ecmaVersion: 'latest' });
-  // The legacy script is the largest function that starts with "use strict",
-  // so a module function that happens to start with it is never taken for it.
-  let body = null, outer = [];
-  (function find(n, up) {
-    if (!n || typeof n.type !== 'string') return;
-    if (/Function/.test(n.type) && n.body && n.body.type === 'BlockStatement') {
-      if (n.body.body[0] && n.body.body[0].directive === 'use strict' && (!body || n.body.body.length > body.length)) { body = n.body.body; outer = up; }
-      up = [...up, ...n.body.body];
-    }
-    for (const k in n) { const v = n[k]; if (Array.isArray(v)) v.forEach(x => find(x, up)); else if (v && typeof v.type === 'string') find(v, up); }
-  })(ast, ast.body);
-  return { decls: decls(app, body || []), outer: declared(outer) };
+  const top = ast.body.filter(s => !(s.type === 'ExpressionStatement' && s.directive === 'use strict'));
+  const call = s => s && s.type === 'ExpressionStatement' && s.expression.type === 'CallExpression' && !s.expression.arguments.length ? s.expression.callee : null;
+  const isLegacy = s => { const f = call(s); return !!f && f.type === 'FunctionExpression' && !f.params.length && f.body.body.length > 0 && f.body.body[0].directive === 'use strict'; };
+  let wrap = null, outer = [];
+  if (top.length === 1 && isLegacy(top[0])) wrap = call(top[0]);
+  else if (top.length === 1 && call(top[0]) && call(top[0]).type === 'ArrowFunctionExpression' && call(top[0]).body.type === 'BlockStatement') {
+    const inner = call(top[0]).body.body;
+    if (inner.length && isLegacy(inner[inner.length - 1])) { wrap = call(inner[inner.length - 1]); outer = inner.slice(0, -1); }
+  }
+  if (!wrap) throw new Error(`${file}: the app script is not in the shape scripts/join.js builds, so its legacy script cannot be found`);
+  return { app, body: wrap.body.body, outer: [...ast.body, ...outer] };
+}
+// The legacy script's top-level declarations, and the names declared outside it.
+function legacyOf(file) {
+  const { app, body, outer } = legacyIn(file);
+  return { decls: decls(app, body), outer: declared(outer) };
 }
 // A module as esbuild leaves it for the browser: what it imports (local name
 // to source and imported name), its top-level statements, and its exports.
@@ -145,6 +155,9 @@ for (const mod of listed) {
   if (!fs.existsSync(path.join(APP, mod + '.ts'))) { ok(false, `src/app/${mod}.ts exists`); continue; }
   mods.set(mod, moduleOf(mod));
 }
+// The names a module exports from its own declarations (re-exports never count).
+const ownCache = new Map();
+const ownExports = mod => { if (!ownCache.has(mod)) ownCache.set(mod, mods.get(mod) ? new Set(mods.get(mod).exported.keys()) : fs.existsSync(path.join(APP, mod + '.ts')) ? new Set(moduleOf(mod).exported.keys()) : new Set()); return ownCache.get(mod); };
 const homeOf = (mod, name) => { for (const mv of [...MOVES].reverse()) if (mv.modules.includes(mod) && bases.get(mv.release).decls.has(name)) return mv; return null; };
 const counted = Object.fromEntries(MOVES.map(mv => [mv.release, 0]));
 for (const mv of MOVES) ok(bases.get(mv.release).decls.size > 500, `${mv.release}: the legacy declarations of ${mv.baseline} are read (${bases.get(mv.release).decls.size})`);
@@ -175,7 +188,10 @@ for (const [mod, m] of mods) {
       const fromApp = imp && imp.rel.startsWith('./') && fs.existsSync(path.join(APP, imp.from + '.ts'));
       let good;
       if (base.decls.has(u)) good = imp ? (fromApp && mods.has(imp.from) && mods.get(imp.from).exported.has(u) && !!homeOf(imp.from, u)) : m.exported.has(u);
-      else if (base.outer.has(u)) good = imp ? !!fromApp : m.exported.has(u);
+      // A module's name must come from the module that declares it, under the
+      // same name: a re-export elsewhere could hand over another value with
+      // the same name (the r51 review: APP_NAME from types meant PREVIEW_NAME).
+      else if (base.outer.has(u)) good = imp ? !!fromApp && ownExports(imp.from).has(u) : m.exported.has(u);
       else good = !imp && !m.exported.has(u);
       if (!good) astray.push(`${name} uses ${u}: ${base.decls.has(u) ? 'a legacy declaration' : base.outer.has(u) ? 'a module export' : 'a global'} in ${mv.baseline}, ${imp ? `imported here from ${imp.rel}` : m.exported.has(u) ? 'declared here' : 'unbound here'}`);
     }
@@ -209,18 +225,7 @@ for (const mv of MOVES) ok(counted[mv.release] > 0, `${mv.release}: ${counted[mv
 // rewrites the move lists are read back (r51: setState(x) for state = x). So
 // nothing but the move and its listed rewrites can change in the legacy
 // script, which the comparison of moved code alone does not show.
-function legacyStatements(file) {
-  const html = fs.readFileSync(path.join(ROOT, file), 'utf8');
-  const app = [...html.matchAll(/<script>([\s\S]*?)<\/script>/g)].map(m => m[1]).reduce((a, b) => (b.length > a.length ? b : a), '');
-  const ast = acorn.parse(app, { ecmaVersion: 'latest' });
-  let body = null;
-  (function find(n) {
-    if (!n || typeof n.type !== 'string') return;
-    if (/Function/.test(n.type) && n.body && n.body.type === 'BlockStatement' && n.body.body[0] && n.body.body[0].directive === 'use strict' && (!body || n.body.body.length > body.length)) body = n.body.body;
-    for (const k in n) { const v = n[k]; if (Array.isArray(v)) v.forEach(find); else if (v && typeof v.type === 'string') find(v); }
-  })(ast);
-  return { app, body: body || [] };
-}
+const legacyStatements = file => legacyIn(file);
 const declNames = st => st.type === 'FunctionDeclaration' || st.type === 'ClassDeclaration' ? [st.id.name] : st.type === 'VariableDeclaration' ? st.declarations.filter(d => d.id.type === 'Identifier').map(d => d.id.name) : [];
 {
   const mv = MOVES[MOVES.length - 1];
@@ -248,14 +253,52 @@ const declNames = st => st.type === 'FunctionDeclaration' || st.type === 'ClassD
 
 // Every module is either in a move, so this suite compares it, or written new
 // on purpose and held by tests of its own (the r51 review: a module in
-// neither list was compared by nothing).
+// neither list was compared by nothing). A module written new is also held to
+// what it may contain, since nothing compares it with a baseline (the second
+// r51 review put `Math.round = x => Math.floor(x)` in types.ts and in
+// config.ts, and a copy of the legacy body in config.ts, and each passed).
+const compiled = mod => { const js = esbuild.transformSync(fs.readFileSync(path.join(APP, mod + '.ts'), 'utf8'), { loader: 'ts', format: 'esm' }).code; return { js, ast: acorn.parse(js, { ecmaVersion: 'latest', sourceType: 'module' }) }; };
+// Each value config defines is a constant made from literals and config's own
+// constants: no import, no function, no assignment, nothing that runs, except
+// the string methods FILE_PREFIX is made with and the two page flags the build
+// sets on window (IRONLOG_APP picks the installed app's own three.js).
+function configRules() {
+  const { ast } = compiled('config'), bad = [], own = new Set();
+  const CALLS = new Set(['toLowerCase', 'replace']), FLAGS = new Set(['IRONLOG_APP', 'IRONLOG_ENV']);
+  const NODES = new Set(['Literal', 'TemplateLiteral', 'TemplateElement', 'ArrayExpression', 'ObjectExpression', 'Property', 'SpreadElement', 'Identifier', 'MemberExpression', 'ConditionalExpression', 'LogicalExpression', 'BinaryExpression', 'UnaryExpression', 'CallExpression']);
+  const okCall = n => n.callee.type === 'MemberExpression' && !n.callee.computed && CALLS.has(n.callee.property.name) && ((n.callee.object.type === 'Identifier' && own.has(n.callee.object.name)) || (n.callee.object.type === 'CallExpression' && okCall(n.callee.object)));
+  const walk = (n, up) => {
+    if (!n || typeof n.type !== 'string') return;
+    if (!NODES.has(n.type)) { bad.push(n.type); return; }
+    if (n.type === 'CallExpression' && !okCall(n)) bad.push('a call other than toLowerCase or replace on a config value');
+    if (n.type === 'UnaryExpression' && n.operator === 'delete') bad.push('delete');
+    if (n.type === 'Identifier' && !(up && ((up.type === 'MemberExpression' && up.property === n && !up.computed) || (up.type === 'Property' && up.key === n && !up.computed)))) {
+      const flag = up && up.type === 'MemberExpression' && up.object === n && !up.computed && FLAGS.has(up.property.name);
+      const tof = up && up.type === 'UnaryExpression' && up.operator === 'typeof';
+      if (n.name === 'window' ? !(flag || tof) : !own.has(n.name)) bad.push(`the name ${n.name}`);
+    }
+    if (n.type === 'MemberExpression' && n.computed) bad.push('a computed property');
+    for (const k in n) { if (k === 'type') continue; const v = n[k]; if (Array.isArray(v)) v.forEach(x => walk(x, n)); else if (v && typeof v.type === 'string') walk(v, n); }
+  };
+  // esbuild writes the exports as one `export { a, b }` at the end.
+  const tail = ast.body.filter(st => st.type === 'ExportNamedDeclaration' && !st.source && !st.declaration);
+  for (const st of ast.body) {
+    if (tail.includes(st)) continue;
+    const d = st.type === 'ExportNamedDeclaration' && !st.source && !st.specifiers.length ? st.declaration : st;
+    if (!d || d.type !== 'VariableDeclaration' || d.kind !== 'const') { bad.push(`a top-level ${st.type}${st.source ? ' from ' + st.source.value : ''}`); continue; }
+    for (const x of d.declarations) { if (x.id.type !== 'Identifier' || !x.init) { bad.push('a const with no name or value'); continue; } walk(x.init, null); own.add(x.id.name); }
+  }
+  for (const st of tail) for (const sp of st.specifiers) if (sp.local.name !== sp.exported.name || !own.has(sp.local.name)) bad.push(`export ${sp.local.name} as ${sp.exported.name}`);
+  return bad;
+}
 const NEW_MODULES = {
-  config: 'r49: the app\'s name, version, address and storage id, written new; held by tests/hygiene.js and tests/r49.js',
-  types: 'types only: nothing of it exists at run time',
+  config: { why: 'r49: the app\'s name, version, address and storage id, written new; held by tests/hygiene.js and tests/r49.js', rules: configRules },
+  types: { why: 'types only: nothing of it exists at run time', rules: () => { const { js } = compiled('types'); return js.trim() === '' || js.trim() === 'export {};' ? [] : [js.trim().slice(0, 200)]; } },
 };
 {
   const loose = fs.readdirSync(APP).filter(f => f.endsWith('.ts')).map(f => f.slice(0, -3)).filter(m => !listed.includes(m) && !NEW_MODULES[m]);
   ok(loose.length === 0, 'every module in src/app/ is in a move or listed as written new, with the tests that hold it', loose);
+  for (const [mod, spec] of Object.entries(NEW_MODULES)) { let bad; try { bad = spec.rules(); } catch (e) { bad = [String(e)]; } ok(bad.length === 0, `src/app/${mod}.ts holds only what a module written new may (${spec.why.split(':')[0]})`, bad); }
 }
 // Moved code lives only in the modules a move lists, where it is compared.
 {
