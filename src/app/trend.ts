@@ -2,21 +2,12 @@
    trend itself and by the screens that say its change, so the two cannot
    disagree (phase 3a, r51; moved unchanged from the legacy script,
    tests/moved.js holds them to r50's code). The trend's reading of each
-   session (tv) is set by the analytics, which move in 3b. */
+   session (tv) is set by the analytics (analytics.ts, idxLift), whose
+   exposures these read (model.ts). */
 
+import type { Exposure } from './model';
 import { addDays } from './util';
 import { offSession, sameRR } from './formulas';
-
-/** One exposure of a lift as the trend reads it: its date, its planned range, its reading. */
-type Exposure = {
-  date: string;
-  rr: [number, number] | null;
-  tv?: number | null;
-  deload?: boolean;
-  light?: boolean;
-  cut?: boolean;
-  auto?: boolean;
-};
 
 /** An exposure that has a trend reading. */
 type Read = { tv: number };

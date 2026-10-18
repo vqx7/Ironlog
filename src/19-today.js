@@ -376,48 +376,6 @@ function injuryCard(){
 const fmtBig=kg=>Math.round(toD(kg)).toLocaleString();
 // Tile subtitles only: 295,403 becomes 295k so it fits a small phone.
 const fmtK=kg=>{const v=Math.round(toD(kg));return v>=10000?Math.round(v/1000)+'k':v.toLocaleString();};
-// Sessions in the week, not days (r34): two plan days done on one day are two of the week's sessions.
-// Counted once per change and kept with the analytics (dateIndex, r47; r46: the streak scanned every session for each of 104 weeks, twice a render).
-function weekSessions(ws){return dateIndex().weekN[ws]||0;}
-/* Planned hard sets (r27). A planned set counts only if its target RIR
-   would make it hard (3 or less, or every set when RIR is off), the same test
-   as a logged set; a plan at RIR 4 used to set a weekly target that logging
-   it could never meet. In a deload week each exercise is half its sets,
-   rounded up, as the sessions are. */
-function planHard(it){return state.settings.rirMode==='off'||!(+it.rir>3);}
-// A planned set at RIR 4 to 5 counts half with the setting on (r40), as logged ones do.
-function planCredit(it){return planHard(it)?1:rirHalfOn()&&+it.rir<=5?0.5:0;}
-function planSetsPerWeek(R,deload){const n=R.days.reduce((a,d)=>a+(d.rest?0:d.items.reduce((x,it)=>x+planCredit(it)*(deload?Math.max(1,Math.ceil(+it.sets/2)):+it.sets),0)),0);return R.schedule==='weekly'?n:Math.round(n*weekFactor(R));}
-/* Consecutive weeks in which you trained at least as many days as the routine
-   plans. The current week joins the streak once it is met, and does not break
-   it before it is over. */
-/* What a past week asked for: the routine most of its sessions were logged
-   against, so switching from a 3-day to a 6-day routine does not rescore the
-   weeks done on the 3-day one (r27). A week without routine sessions reads
-   the active routine. */
-function weekRoutine(ws){
-  // Built once per change and kept with the other analytics, so a streak over two years reads it, not every session per week.
-  const I=IDX();if(!I.weekRid){const by={};for(const x of state.sessions){if(!x.routineId||x.free)continue;const w=weekStart(x.date);const c=by[w]||(by[w]={});c[x.routineId]=(c[x.routineId]||0)+1;}
-    I.weekRid={};for(const w in by){let id=null;for(const k in by[w])if(id==null||by[w][k]>by[w][id])id=k;I.weekRid[w]=id;}}
-  const id=I.weekRid[ws];return (id&&state.routines.find(r=>r.id===id))||activeRoutine();
-}
-function weekNeed(ws){return freeMode()?1:Math.max(1,plannedPerWeek(weekRoutine(ws)));}
-function weekStreak(){
-  const R=activeRoutine();const need=freeMode()?1:Math.max(1,plannedPerWeek(R));
-  const cur=weekStart(today());const thisWeek=weekSessions(cur);
-  if(!state.sessions.length)return {weeks:0,best:0,need,thisWeek:0};
-  const first=weekStart(sortedSessions()[0].date);
-  let run=null,cnt=0,best=0;
-  for(let k=1;k<=104;k++){
-    const wk=addDays(cur,-7*k);if(wk<first)break;
-    if(isRestWeek(wk))continue;
-    if(weekSessions(wk)>=weekNeed(wk)){cnt++;best=Math.max(best,cnt);}
-    else{if(run==null)run=cnt;cnt=0;}
-  }
-  if(run==null)run=cnt;
-  const weeks=run+(thisWeek>=need?1:0);
-  return {weeks,best:Math.max(best,weeks),need,thisWeek};
-}
 function weekVolume(ws,upto){const end=addDays(ws,upto==null?6:upto);let v=0;for(const x of IDX().sessVol)if(x.date>=ws&&x.date<=end)v+=x.vol;return v;}
 /* This week so far against last week at the same point, so a Tuesday is never
    compared with a whole finished week. */
@@ -425,16 +383,6 @@ function tonnageNow(){
   const cur=weekStart(today());const off=daysBetween(cur,today());
   const now=weekVolume(cur,off),prev=weekVolume(addDays(cur,-7),off),prevFull=weekVolume(addDays(cur,-7));
   return {now,prev,prevFull,delta:prev>0?(now/prev-1)*100:null};
-}
-/* The newest lighter session (deload, lighter day, or read as lighter from
-   its loads) within the last `days`, or null. */
-function recentLighter(days){
-  const from=addDays(today(),-days);let d=null;
-  for(const x of state.sessions)if(x.date>=from&&(x.deload||x.light)&&(!d||x.date>d))d=x.date;
-  const I=IDX();for(const id in I.byEx)for(const x of I.byEx[id])if(x.auto&&x.date>=from&&(!d||x.date>d))d=x.date;
-  // A rest week is recovery too: its last day, or today while it runs.
-  for(const w of state.settings.restWeeks||[]){const e=addDays(w,6)<today()?addDays(w,6):today();if(e>=from&&w<=today()&&(!d||e>d))d=e;}
-  return d;
 }
 // Counted PRs only (r32): the ones marked big.
 // PRs worth announcing within any window. The screens use recent4w below; the
@@ -449,80 +397,6 @@ function recent4w(){
   const d28=addDays(today(),-27),d56=addDays(today(),-55);const ss=sortedSessions();
   const back=ss.length>0&&ss[0].date<=d56;const in28=d=>d>=d28,in56=d=>d>=d56&&d<d28;const P=IDX().prs.filter(p=>p.big);
   return {back,sess:ss.filter(x=>in28(x.date)).length,sessP:ss.filter(x=>in56(x.date)).length,prs:P.filter(p=>in28(p.date)),prsP:P.filter(p=>in56(p.date)).length};
-}
-function movers(){return Object.entries(IDX().exStats).filter(([,x])=>x.moving&&!x.stalled&&x.fresh).sort((a,b)=>b[1].pct-a[1].pct).map(([id,x])=>({id,pct:x.pct,wk:x.spanW||2}));}
-function stalledIds(){return Object.entries(IDX().exStats).filter(([,x])=>x.stalled).map(([id])=>id);}
-/* Stalls that can point to whole-body fatigue (r31): compound lifts with a
-   strength estimate. A plank held at 60 s or curls stuck at one dumbbell say
-   little about recovery, and they used to count toward "3 lifts stalled at
-   once, a deload week may help". They are still listed as stalled. */
-/* A lift whose last 6 sessions logged drop sets and no main sets is read
-   from drop sets alone (IDX uses them when there is nothing else); it can
-   show as stalled, but it says nothing about fatigue, so it never counts
-   toward "stalled at once" (r45, audit item 289). Read from the log here,
-   so IDX keeps its shape. */
-function dropOnlyLift(id){
-  const ss=sortedSessions();let n=0;
-  for(let i=ss.length-1;i>=0&&n<6;i--){const bs=ss[i].ex.filter(b=>b.exId===id);if(!bs.length)continue;n++;
-    if(bs.some(b=>b.sets.some(s=>isWork(s)&&!s.drop)))return false;}
-  return n>0;
-}
-function fatigueStalls(ids){return ids.filter(id=>{const e=EX(id);return e&&!e.timed&&!noE1(e)&&isCompound(e)&&!dropOnlyLift(id);});}
-/* The single most useful thing to change this week, in priority order. Each
-   branch states the number it is based on, so the advice can be checked. */
-function coach(){
-  const I=IDX();const R=activeRoutine();
-  if(!state.sessions.length)return {tone:'blue',text:'Log your first session. Advice starts after a few sessions.',act:null};
-  if(isRestWeek(weekStart(today())))return {tone:'blue',text:'Rest week. Nothing to hit this week.',why:'It does not count as missed: your averages, streak, and adherence skip it, and your targets pick up where they were.',act:null};
-  if(isDeloadWeek())return {tone:'blue',text:`Deload week. It ends Sunday.`,why:'Half the sets, about 90% loads, 3 or more reps in reserve. Your targets pick up where they were.',act:null};
-  const stalled=stalledIds();
-  /* A deload is not suggested within 4 weeks of a lighter week, tagged or read
-     from the loads (r30): the review saw "6 lifts stalled, a deload week may
-     help" three weeks after one. */
-  const rl=recentLighter(28);
-  const big=fatigueStalls(stalled);
-  if(big.length>=3&&!rl)return {tone:'red',text:`${big.length} main lifts stalled at once: ${andList(big.map(exName),3)}. A deload week may help.`,why:'Several main lifts flat together often points to fatigue. Check sleep, food, and stress. A deload week is half the sets at about 90% loads. Isolation and core lifts are not counted.',act:{label:'Start a deload week',deload:true}};
-  const inj=injuredSet();
-  const avg=actualAvg4();const bands=state.settings.bands;
-  /* Two or more of the last 4 weeks with no training (r31): the averages are
-     per week trained, so they can look fine while most weeks are missed.
-     Turning up comes before any set count. */
-  if(avg&&avg._missed>=2){const w=avg._weeks,n=Math.min(4,w+avg._missed);return {tone:'yellow',text:`You trained in ${w} of the last ${n} weeks. Getting the weeks in matters more than adding sets.`,why:'Set counts are per week you trained: weeks with no training are left out of the averages rather than counted as zero, so a short break does not read as below target everywhere.',act:null};}
-  if(avg){
-    const lagSet=new Set(I.scores.filter(x=>x.label==='lagging').map(x=>x.m));
-    /* Largest shortfall in sets first. Sorting by the fraction of target put
-       a small muscle at 0 of 2 sets ahead of a major one at 5 of 10, which is
-       backwards for a hypertrophy-first plan. The fraction still breaks ties. */
-    const under=MK.filter(m=>!inj.has(m)&&!TRACK_ONLY.has(m)&&belowMin(avg[m],bands[m][0])).map(m=>({m,got:avg[m]||0,lo:bands[m][0],hi:bands[m][1],pri:state.settings.priorities.includes(m)?1:0,lag:lagSet.has(m)?1:0}))
-      .sort((a,b)=>(b.pri-a.pri)||(b.lag-a.lag)||((b.lo-b.got)-(a.lo-a.got))||(a.got/a.lo-b.got/b.lo));
-    if(under.length){
-      const u=under[0];const gap=Math.max(1,Math.ceil(u.lo-u.got));
-      /* An exercise the lifter actually does (r31): one in the routine that
-         has been logged first, then any logged lift for the muscle, then the
-         routine's. The review saw "Add 5 sets to Lat Pulldown" for someone
-         who had never done one. */
-      const done=id=>(I.byEx[id]||[]).length>0;const forM=id=>{const e=EX(id);return !!e&&e.primary===u.m;};
-      const inR=[];for(const d of R.days)for(const it of d.items)if(forM(it.exId)&&!inR.includes(it.exId))inR.push(it.exId);
-      const logged=Object.keys(I.byEx).filter(id=>forM(id)&&state.exercises.some(e=>e.id===id&&!e.archived)).sort((x,y)=>I.byEx[y][I.byEx[y].length-1].date.localeCompare(I.byEx[x][I.byEx[x].length-1].date));
-      const exId=inR.find(done)||logged[0]||inR[0]||null;
-      const how=exId?`Add ${gap} set${gap>1?'s':''} a week to ${exName(exId)}.`:'Add an exercise for it.';
-      return {tone:'yellow',text:`${ML[u.m]}: ${r1(u.got)} hard set${r1(u.got)===1?'':'s'} a week, target ${u.lo}-${u.hi}. ${how}${under.length>1?` ${under.length-1} more below target.`:''}`,why:`Your average of hard sets per week over your recent full weeks. The largest shortfall comes first, and priority muscles before the rest.${exId?'':' Nothing in your routine trains it directly.'}`,act:{label:`See ${ML[u.m]}`,sec:'volume',m:u.m}};
-    }
-  }
-  /* A lift stuck at the top of its range has not run out of progress; the
-     load has not gone up (r32, from the third review: lateral raises at 15
-     of 12-15 for weeks were told to change the range). */
-  if(stalled.length){const id=stalled[0];const st=I.exStats[id];const p=planFor(id);const lw=st&&st.last?atLoad(st.last.pts,st.last.topW):[];
-    if(lw.length&&lw.every(q=>q.r>=+p.repMax))return {tone:'yellow',text:`${exName(id)} has been at the top of its range at ${loadLabel(EX(id),st.last.topW)}${EX(id).bw?'':' '+U()} for 3 weeks: it is due a step up, not a new range. The session's target says how.`,why:'Every set reached the top of the range. The next step is more load, or, when one step is large for the load, a few more reps first.',act:{label:'See the lift',sec:'exercise',ex:id}};
-    return {tone:'yellow',text:`${exName(id)} has stalled. Try another rep range or a close variation for a few weeks.`,why:'Flat or down over its last 6 sessions (or 3 weeks), with no PR in the last 3, no heavier load, and no more reps at the same load, leaving out deload, lighter, and trimmed sessions.',act:{label:'See the lift',sec:'exercise',ex:id}};}
-  // Missing RIR is not coached: it is optional by design and blanks are read as your usual RIR.
-  // Scores are sorted high to low, so the steepest fall is the last one.
-  const lag=I.scores.filter(x=>x.clear&&x.score<=-GROW_PCT);
-  if(lag.length){const x=lag[lag.length-1];return {tone:'yellow',text:`${ML[x.m]} strength is falling over ${x.wk||6} weeks. Check sleep and recovery before adding sets.`,act:{label:`See ${ML[x.m]}`,sec:'rank',m:x.m}};}
-  // Someone back from a break (nothing since before the last 4 weeks) has
-  // history but no recent weeks; "first full week" was wrong for them.
-  if(!avg)return {tone:'blue',text:state.sessions.some(x=>x.date<addDays(weekStart(today()),-28))&&!state.sessions.some(x=>x.date>=addDays(weekStart(today()),-28))?'Nothing logged in the last 4 weeks. Volume advice comes back after a full week of training.':'Volume advice appears here after your first full week.',act:null};
-  return {tone:'green',text:'Every muscle at target, nothing stalled.',act:null};
 }
 function coachButton(c,di){
   if(!c.act)return '';
@@ -643,12 +517,6 @@ function exHistSheet(exId){
 function bestSet(exId){
   let b=null;for(const x of IDX().byEx[exId]||[])for(const p of x.pts){const v=trendE(p.load,p.r,0)||p.load;if(!b||v>b.v+1e-9)b={v,w:p.w,r:p.r,date:x.date};}
   return b;
-}
-/* A muscle's strength trend in words (r30): unclear when none of its lifts
-   has a trend outside day-to-day noise, never "+0%". */
-function musTrend(sc){
-  if(!sc.clear)return `Strength trend unclear: ${sc.n?`${sc.n} lift${sc.n===1?'':'s'} measured, changes within day-to-day noise`:'not enough sessions'}`;
-  return Math.abs(sc.score)<GROW_PCT?`No clear strength change over ${sc.wk||6} weeks`:`Strength ${sc.score>=0?'rising':'falling'} over ${sc.wk||6} weeks`;
 }
 function muscleHeadline(m){
   const I=IDX();const avg=actualAvg4();const [lo,hi]=state.settings.bands[m];const sc=I.scores.find(x=>x.m===m);const parts=[];

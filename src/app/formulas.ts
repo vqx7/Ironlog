@@ -5,7 +5,7 @@
    code). Each is a pure function of its arguments. Where a number comes from
    is said beside it; CLAUDE.md's Evidence base has the sources. */
 
-import type { Exercise, LoggedSet, Point } from './types';
+import type { Exercise, Point, Rir } from './types';
 import { isNum } from './util';
 import { isCompound } from './library';
 
@@ -27,9 +27,6 @@ export const E1_MAX_REPS = 12;
    establishes how a formula errs on a given lift, so the number is shown as
    an estimate everywhere (fmtE, "Est. 1RM") rather than adjusted. */
 export const E1_MAX_RIR = 4;
-
-/** A RIR as typed: a number, a numeric string, or blank. */
-type Rir = number | string | null | undefined;
 
 /** Reps to failure: reps plus the RIR called (blank as 0), or null past E1_MAX_RIR. */
 export function rtfOf(r: number | string, rir?: Rir): number | null {
@@ -100,7 +97,7 @@ export const isWork = (s: { warm?: boolean | undefined; r: number | string | nul
   !s.warm && +(s.r as number) > 0;
 
 /** A set's weight in a weekly count: a drop set counts half. */
-export const setCredit = (s: Pick<LoggedSet, 'drop'>): number => (s.drop ? 0.5 : 1);
+export const setCredit = (s: { drop?: boolean | undefined }): number => (s.drop ? 0.5 : 1);
 
 /* Two planned rep ranges match when equal, or when either is unknown (sessions
    logged before rep ranges were recorded). */
@@ -192,7 +189,7 @@ export const offSession = (x: SessionMarks): boolean => tagged(x) || !!(x && x.a
    always one step. Unset, it is the 2.5% or 5%. */
 export function jumpPct(
   ex: Parameters<typeof isCompound>[0],
-  plan: { jump?: number | string | null } | null | undefined
+  plan: { jump?: number | string | null | undefined } | null | undefined
 ): number {
   return plan && plan.jump != null && isNum(+plan.jump) ? Math.max(0, +plan.jump) / 100 : isCompound(ex) ? 0.025 : 0.05;
 }
@@ -282,7 +279,7 @@ export function t90(df: number): number {
    analytics.) Every figure here is a convention, not a measurement; your own
    pace (pace(), r43) scales the total to how long your sessions take. */
 export function setSecs(
-  ex: Pick<Exercise, 'timed' | 'perSide'>,
+  ex: Partial<Pick<Exercise, 'timed' | 'perSide'>>,
   p: { repMin: number | string; repMax: number | string }
 ): number {
   const mid = ((+p.repMin || 0) + (+p.repMax || 0)) / 2;

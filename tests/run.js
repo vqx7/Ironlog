@@ -8,7 +8,7 @@
 //   node tests/run.js --browser webkit   the same suites in WebKit, the engine of every iPhone browser
 const {execFile,execFileSync}=require('child_process');const fs=require('fs');const os=require('os');const path=require('path');
 fs.mkdirSync('screenshots',{recursive:true});
-const suites=['unit-math','unit-analytics','dataflow','migration','acceptance','flows','charts-layout','cycle-create','fuzz','integrity','gym-ux','design','uat','essentials','comeback-removed','map3d','cleanup','ios-bar','pwa','update','accounts','install','r21','r22','r23','r24','r25','preview','owner-doc','sql','journey','progress','breach','custom','r27','r28','r29','r29b','r29c','r30','r31','r32','r32b','r33','r34','r34b','r35','r36','r38','r39','r40','r41','realism','r42','r43','r44','r45','r46','r47','r49','bests','coherence','seams','security','hygiene','moved','perf'];
+const suites=['unit-math','unit-analytics','dataflow','migration','acceptance','flows','charts-layout','cycle-create','fuzz','integrity','gym-ux','design','uat','essentials','comeback-removed','map3d','cleanup','ios-bar','pwa','update','accounts','install','r21','r22','r23','r24','r25','preview','owner-doc','sql','journey','progress','breach','custom','r27','r28','r29','r29b','r29c','r30','r31','r32','r32b','r33','r34','r34b','r35','r36','r38','r39','r40','r41','realism','r42','r43','r44','r45','r46','r47','r49','r52','engine','bests','coherence','seams','security','hygiene','moved','perf'];
 // The standalone build (dist/) runs the user-facing suites again.
 // map3d is not among them: a file:// page cannot import a module, and pwa checks the 3D body in dist/ over http.
 // r39 is not either, for the same reason: most of it is the 3D body in a sheet.
@@ -29,6 +29,7 @@ const WEBKIT_SKIP={
   'owner-doc':'reads the docs, no browser',
   sql:'runs the SQL in PGlite, no browser',
   perf:'times the app, and one engine\'s milliseconds on a shared runner say nothing about another\'s',
+  engine:'runs the engine in Node against Chromium\'s answers; tests/r52.js compares the two builds in WebKit',
 };
 
 const arg=k=>{const i=process.argv.indexOf(k);return i>0?process.argv[i+1]:null;};

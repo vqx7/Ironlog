@@ -4,6 +4,7 @@
    r50's code). The rules that apply a profile to a plan move with the
    engine. */
 
+import type { Profile } from './types';
 import { MK, TRACK_ONLY } from './library';
 
 /* The profile (r44): its choices, read by normalize while the save loads. */
@@ -36,14 +37,6 @@ export const FOCUS_MAX = 2;
    up (Bickel 2011; Spiering 2021 review). */
 export const FOCUS_UP = 1.3,
   MAINT_SHARE = 1 / 3;
-
-/** A saved profile as normalize() keeps it. */
-export interface Profile {
-  goal?: string;
-  exp?: string;
-  days?: number;
-  focus?: string[];
-}
 
 /* A saved profile cleaned for normalize(): each choice kept only when it is
    one of the choices above, and focus muscles only when they are muscles

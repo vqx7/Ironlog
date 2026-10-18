@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="app-build" content="2026.10.17-r51">
+<meta name="app-build" content="2026.10.17-r52">
 <title>Ironlog</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -1022,8 +1022,8 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
   var PREVIEW_NAME = `${APP_NAME} Preview`;
   var PREVIEW_LABEL = "Preview";
   var WORDMARK = { mark: "I", strong: "ron", light: "log" };
-  var DISPLAY_VERSION = "2.2";
-  var APP_VERSION = "2026.10.17-r51";
+  var DISPLAY_VERSION = "2.3";
+  var APP_VERSION = "2026.10.17-r52";
   var VERSION_LINE = `${DISPLAY_VERSION} (build ${APP_VERSION})`;
   var SITE_HOST = "ironapp.org";
   var SITE_DIR_FALLBACK = "/Ironlog";
@@ -1133,12 +1133,6 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       return ((t ^ t >>> 14) >>> 0) / 4294967296;
     };
   }
-
-  // src/app/units.ts
-  var LB = 0.45359237, IN = 2.54;
-  var KM_MI = 1.609344;
-  var STEP_LB = 5 * LB;
-  var PLATES_LB = [45, 35, 25, 10, 5, 2.5], PLATES_KG = [25, 20, 15, 10, 5, 2.5, 1.25];
 
   // src/app/library.ts
   var MUSCLES = [
@@ -1681,6 +1675,143 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     return ws.every((w) => n.includes(w));
   }
 
+  // src/app/records.ts
+  var STATE_VERSION = 5;
+  var TRASH_DAYS = 30, TRASH_MAX = 20, TRASH_BYTES = 6e4;
+  var BW_MAX_KG = 400, BW_MIN_KG = 20, MEAS_MAX_CM = 300;
+  function did(tag, obj, i) {
+    let j = "";
+    try {
+      j = JSON.stringify(obj);
+    } catch (e) {
+      j = String(i);
+    }
+    return tag + hashStr(j + "#" + i);
+  }
+  var okId = (v) => typeof v === "string" && /^[\w.:-]{1,100}$/.test(v) && !(v in Object.prototype);
+  function fixId(v) {
+    return okId(v) ? v : "x" + hashStr(String(v));
+  }
+  var safeKey = (k) => typeof k === "string" && !/["'<>&`]/.test(k);
+  var EXTRA_MAX = 2e3, EXTRA_KEYS = 20;
+  var okExtraKey = (k) => /^[A-Za-z][\w]{0,39}$/.test(k) && !(k in Object.prototype);
+  var KNOWN_ITEM = /* @__PURE__ */ new Set(["jump"]), KNOWN_CARDIO = /* @__PURE__ */ new Set(["dist"]), KNOWN_MEAS = new Set(MEAS.map((x) => x[0]));
+  function cleanCal(c) {
+    if (!c || typeof c !== "object") return null;
+    const at = numOr(c.at, NaN), pred = numOr(c.pred, NaN);
+    if (!isNum(at) || !isNum(pred) || at < 1 || pred < 0) return null;
+    return { at: Math.min(Math.round(at), 1e3), pred: Math.min(Math.round(pred * 2) / 2, 10) };
+  }
+  function cleanChk(c) {
+    if (!c || typeof c !== "object") return null;
+    const o = {};
+    for (const k of ["sleep", "energy", "joints"]) {
+      const v = Math.round(numOr(c[k], NaN));
+      if (v >= 1 && v <= 3) o[k] = v;
+    }
+    return Object.keys(o).length ? o : null;
+  }
+  function cleanTgt(t) {
+    if (!t || typeof t !== "object" || t.kind !== "load" && t.kind !== "reps") return null;
+    const o = { kind: t.kind };
+    for (const k of ["w", "repMin", "total", "n", "prevBest"]) {
+      if (!(k in t)) continue;
+      const v = t[k];
+      o[k] = v == null ? null : isNum(numOr(v, NaN)) ? numOr(v, 0) : null;
+    }
+    if (Array.isArray(t.rs))
+      o.rs = t.rs.slice(0, 30).map((v) => {
+        const n = numOr(v, NaN);
+        return isNum(n) && n >= 0 ? Math.min(n, 1e3) : 0;
+      });
+    return o;
+  }
+  var okSess = (ss) => !!ss && typeof ss === "object" && isDate(ss.date) && Array.isArray(ss.ex);
+  var sessCmp = (a, b) => a.date < b.date ? -1 : a.date > b.date ? 1 : (a.t || 0) - (b.t || 0) || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0);
+
+  // src/app/model.ts
+  function freshCaches() {
+    return { EXMAP: null, _idx: null, _dix: null, _cal: null, _rirUse: null, _bwRef: void 0, _pace: null };
+  }
+  function modelOf(s, today2) {
+    return { s, today: today2, c: freshCaches() };
+  }
+  function isDeloadWeekIn(M) {
+    return !!M.s.deloadWeek && M.s.deloadWeek === weekStart(M.today());
+  }
+  function freeModeIn(M) {
+    return M.s.settings.todayStart === "free";
+  }
+  function isRestWeekIn(M, ws) {
+    const r = M.s.settings.restWeeks;
+    return Array.isArray(r) && r.includes(ws);
+  }
+  function injuredSetIn(M) {
+    return new Set((M.s.injuries || []).map((x) => x.m));
+  }
+  function exInjuryIn(M, ex) {
+    const s = injuredSetIn(M);
+    if (!s.size) return null;
+    if (s.has(ex.primary)) return ex.primary;
+    for (const m of ex.secondary) if (s.has(m)) return m;
+    for (const j of exJoints(ex)) if (s.has(j)) return j;
+    return null;
+  }
+  var UIn = (M) => M.s.settings.unit;
+  function EXIn(M, id) {
+    if (!M.c.EXMAP) {
+      M.c.EXMAP = /* @__PURE__ */ Object.create(null);
+      for (const e of M.s.exercises) M.c.EXMAP[e.id] = e;
+    }
+    return M.c.EXMAP[id] || {
+      id,
+      name: "Deleted exercise",
+      primary: "chest",
+      secondary: [],
+      equip: "other",
+      bw: false,
+      archived: true
+    };
+  }
+  var exNameIn = (M, id) => EXIn(M, id).name;
+  function activeRoutineIn(M) {
+    return M.s.routines.find((r) => r.id === M.s.activeRoutineId) || M.s.routines[0];
+  }
+  function invalidateIn(M) {
+    M.c._idx = null;
+    M.c._dix = null;
+    M.c.EXMAP = null;
+    M.c._cal = null;
+    M.c._rirUse = null;
+    M.c._bwRef = void 0;
+    M.c._pace = null;
+  }
+  var rirHalfOnIn = (M) => M.s.settings.rirHalf === true && M.s.settings.rirMode !== "off";
+  function sortedSessionsIn(M) {
+    return [...M.s.sessions].sort(sessCmp);
+  }
+  function gymOfIn(M) {
+    const g = M.s.settings.gym;
+    return g && typeof g === "object" ? g : null;
+  }
+  function profIn(M) {
+    return M.s.settings.profile || {};
+  }
+
+  // src/app/units.ts
+  var LB = 0.45359237, IN = 2.54;
+  var KM_MI = 1.609344;
+  var STEP_LB = 5 * LB;
+  var PLATES_LB = [45, 35, 25, 10, 5, 2.5], PLATES_KG = [25, 20, 15, 10, 5, 2.5, 1.25];
+  var toDIn = (M, kg) => kg == null ? null : UIn(M) === "lb" ? kg / LB : kg;
+  var fromDIn = (M, v) => v == null ? null : UIn(M) === "lb" ? v * LB : v;
+  function unitStepIn(M) {
+    return UIn(M) === "kg" ? 2.5 : STEP_LB;
+  }
+  function stepReadIn(M, v) {
+    return Math.abs(v - STEP_LB) < 1e-6 || Math.abs(v - 2.5) < 1e-6 ? unitStepIn(M) : v;
+  }
+
   // src/app/routines.ts
   var DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
   var MAX_DAYS = 14;
@@ -1914,6 +2045,49 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     return `${W[T.length] || T.length} plans, ${Math.floor(Math.min(...n))} to ${Math.round(Math.max(...n))} days a week`;
   }
   var RIR_TGT_TIP = "Target RIR is 1 unless you change it, a convention: muscle growth improves as sets end closer to failure (Robinson 2024), but going all the way to failure grew muscle no more than stopping 1 to 2 reps short (Refalo 2024) and costs more fatigue. Some lifts in the ready-made routines use 0 or 2.";
+  function profRuleIn(M, ex, p) {
+    p = p || profIn(M);
+    if (!ex || ex.timed) return null;
+    if (p.exp === "new") return { repMin: 8, repMax: 12, rir: isCompound(ex) ? 3 : 2 };
+    if ((p.goal === "strength" || p.goal === "both") && profHeavy(ex))
+      return p.goal === "strength" ? { repMin: 3, repMax: 6, rir: 2, rest: 180 } : { repMin: 5, repMax: 8, rir: 2, rest: 180 };
+    return null;
+  }
+  function profPlanIn(M, ex, plain) {
+    const r = plain ? null : profRuleIn(M, ex);
+    return r ? { ...DEFAULT_PLAN, ...r } : { ...DEFAULT_PLAN };
+  }
+  function defPlanIn(M, exId, plain) {
+    const ex = EXIn(M, exId);
+    return ex.timed ? { ...DEFAULT_PLAN, repMin: 30, repMax: 60, rest: 60 } : profPlanIn(M, ex, plain);
+  }
+  function planForIn(M, exId, R, dayId, plain) {
+    R = R || activeRoutineIn(M);
+    const days = dayId ? [...R.days.filter((d) => d.id === dayId), ...R.days.filter((d) => d.id !== dayId)] : R.days;
+    for (const d of days)
+      for (const it of d.items)
+        if (it.exId === exId) {
+          const { uid: _u, ss: _s, ...p } = it;
+          return { ...DEFAULT_PLAN, ...p, ss: null };
+        }
+    return defPlanIn(M, exId, plain);
+  }
+  function planHardIn(M, it) {
+    return M.s.settings.rirMode === "off" || !(+it.rir > 3);
+  }
+  function planCreditIn(M, it) {
+    return planHardIn(M, it) ? 1 : rirHalfOnIn(M) && +it.rir <= 5 ? 0.5 : 0;
+  }
+  function planSetsPerWeekIn(M, R, deload) {
+    const n = R.days.reduce(
+      (a, d) => a + (d.rest ? 0 : d.items.reduce(
+        (x, it) => x + planCreditIn(M, it) * (deload ? Math.max(1, Math.ceil(+it.sets / 2)) : +it.sets),
+        0
+      )),
+      0
+    );
+    return R.schedule === "weekly" ? n : Math.round(n * weekFactor(R));
+  }
 
   // src/app/formulas.ts
   var E1_MAX_REPS = 12;
@@ -2090,6 +2264,13 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
   var fmtG = (v) => String(Math.round(v * 1e3) / 1e3);
   var repSpan = (lo, hi, sep = " to ") => +lo === +hi ? `${+lo}` : `${+lo}${sep}${+hi}`;
   var rangeWords = (p) => +p.repMin === +p.repMax ? `target of ${+p.repMin}` : `${+p.repMin}-${+p.repMax} range`;
+  var DTF = {};
+  var dtf = (k, o) => DTF[k] || (DTF[k] = new Intl.DateTimeFormat(void 0, o));
+  var fmtWith = (k, o, s) => {
+    const d = parse(s);
+    return isNaN(+d) ? "" : dtf(k, o).format(d);
+  };
+  var fmtDate = (s) => fmtWith("d", { month: "short", day: "numeric" }, s);
 
   // src/app/layout.ts
   var DSECS = [
@@ -2217,60 +2398,6 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
   var PROF_EXP_TIP = "Under 1 year, whatever the goal: new exercises start at 8 to 12 reps (ACSM 2009). Compounds stop 3 reps short and isolation lifts 2, as in the beginner plan, a convention: easier to judge, further from failure. Apply raises reps in reserve to that and keeps your ranges.";
   var PROF_FOCUS_TIP = "Up to two. Their weekly targets go up about 30% and the other major muscles drop to maintenance, a third of the usual minimum (size and strength held on a third of the volume: Bickel 2011, Spiering 2021). Only targets you have not typed move, and taking a focus off puts them back. Pick for me favours them.";
 
-  // src/app/records.ts
-  var STATE_VERSION = 5;
-  var TRASH_DAYS = 30, TRASH_MAX = 20, TRASH_BYTES = 6e4;
-  var BW_MAX_KG = 400, BW_MIN_KG = 20, MEAS_MAX_CM = 300;
-  function did(tag, obj, i) {
-    let j = "";
-    try {
-      j = JSON.stringify(obj);
-    } catch (e) {
-      j = String(i);
-    }
-    return tag + hashStr(j + "#" + i);
-  }
-  var okId = (v) => typeof v === "string" && /^[\w.:-]{1,100}$/.test(v) && !(v in Object.prototype);
-  function fixId(v) {
-    return okId(v) ? v : "x" + hashStr(String(v));
-  }
-  var safeKey = (k) => typeof k === "string" && !/["'<>&`]/.test(k);
-  var EXTRA_MAX = 2e3, EXTRA_KEYS = 20;
-  var okExtraKey = (k) => /^[A-Za-z][\w]{0,39}$/.test(k) && !(k in Object.prototype);
-  var KNOWN_ITEM = /* @__PURE__ */ new Set(["jump"]), KNOWN_CARDIO = /* @__PURE__ */ new Set(["dist"]), KNOWN_MEAS = new Set(MEAS.map((x) => x[0]));
-  function cleanCal(c) {
-    if (!c || typeof c !== "object") return null;
-    const at = numOr(c.at, NaN), pred = numOr(c.pred, NaN);
-    if (!isNum(at) || !isNum(pred) || at < 1 || pred < 0) return null;
-    return { at: Math.min(Math.round(at), 1e3), pred: Math.min(Math.round(pred * 2) / 2, 10) };
-  }
-  function cleanChk(c) {
-    if (!c || typeof c !== "object") return null;
-    const o = {};
-    for (const k of ["sleep", "energy", "joints"]) {
-      const v = Math.round(numOr(c[k], NaN));
-      if (v >= 1 && v <= 3) o[k] = v;
-    }
-    return Object.keys(o).length ? o : null;
-  }
-  function cleanTgt(t) {
-    if (!t || typeof t !== "object" || t.kind !== "load" && t.kind !== "reps") return null;
-    const o = { kind: t.kind };
-    for (const k of ["w", "repMin", "total", "n", "prevBest"]) {
-      if (!(k in t)) continue;
-      const v = t[k];
-      o[k] = v == null ? null : isNum(numOr(v, NaN)) ? numOr(v, 0) : null;
-    }
-    if (Array.isArray(t.rs))
-      o.rs = t.rs.slice(0, 30).map((v) => {
-        const n = numOr(v, NaN);
-        return isNum(n) && n >= 0 ? Math.min(n, 1e3) : 0;
-      });
-    return o;
-  }
-  var okSess = (ss) => !!ss && typeof ss === "object" && isDate(ss.date) && Array.isArray(ss.ex);
-  var sessCmp = (a, b) => a.date < b.date ? -1 : a.date > b.date ? 1 : (a.t || 0) - (b.t || 0) || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0);
-
   // src/app/gym.ts
   var PLATE_MODES = [
     ["auto", "Automatic"],
@@ -2335,6 +2462,76 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     if (ex.equip === "landmine") return "sleeve";
     if (PLATE_SIDE_IDS.includes(ex.id)) return "side";
     return "none";
+  }
+  function gymRackIn(M, ex, plan) {
+    const g = gymOfIn(M);
+    if (!g || !ex || ex.bw || ex.assist || ex.timed || ex.inc != null) return null;
+    if (plan && isNum(+plan.inc) && Math.abs(stepReadIn(M, +plan.inc) - unitStepIn(M)) > 1e-6) return null;
+    const k = rackKind(ex);
+    if (!k) return null;
+    const m = loadMode(ex);
+    if (!(m === "each" || m === "total" && (ex.load == null || ONE_DB.has(ex.id)))) return null;
+    const L = k === "dumbbell" ? dbListOf(g.db) : Array.isArray(g.kb) && g.kb.length ? g.kb : null;
+    return L && L.length ? L.map((v) => gymK(g, v)) : null;
+  }
+  function rackTolIn(M, L, at) {
+    const base = UIn(M) === "lb" ? 0.05 * LB : 0.05;
+    if (!L || !L.length || at == null || !isNum(at)) return base;
+    let i = 0;
+    for (let k = 1; k < L.length; k++) if (Math.abs(L[k] - at) < Math.abs(L[i] - at)) i = k;
+    const gs = [i > 0 ? L[i] - L[i - 1] : null, i < L.length - 1 ? L[i + 1] - L[i] : null].filter(
+      (g) => g != null && g > 0
+    );
+    const gap = gs.length ? Math.min(...gs) : 0;
+    return Math.abs(L[i] - at) <= Math.max(base, 0.45 * gap) ? Math.max(base, Math.abs(L[i] - at) + 1e-6) : base;
+  }
+  function rackGapIn(M, L, at) {
+    if (L.length < 2) return L[0] || 0;
+    if (at != null) {
+      const t = rackTolIn(M, L, at);
+      const nx = L.find((x) => x > at + t);
+      if (nx != null) return nx - at;
+      return L[L.length - 1] - L[L.length - 2];
+    }
+    const gs = L.slice(1).map((x, i) => r3(x - L[i]));
+    const c = {};
+    let best = gs[0];
+    for (const v of gs) {
+      c[v] = (c[v] || 0) + 1;
+      if (c[v] > c[best]) best = v;
+    }
+    return best;
+  }
+  function gymStepIn(M, ex) {
+    const g = gymOfIn(M);
+    if (!g || !ex || ex.bw || ex.timed) return null;
+    const pm = platesMode(ex), m = loadMode(ex);
+    if (Array.isArray(g.plates) && g.plates.length && pm !== "none") {
+      const mn = Math.min(...g.plates);
+      return gymK(g, m === "side" || pm === "sleeve" ? mn : 2 * mn);
+    }
+    if (m === "stack" && g.stack > 0) return gymK(g, g.stack);
+    return null;
+  }
+  function capOfIn(M, ex, plan, top) {
+    const L = gymRackIn(M, ex, plan);
+    let r = L ? L[L.length - 1] : null;
+    if (r != null && top != null && top > r + rackTolIn(M, L, top)) r = null;
+    return ex.maxLoad != null ? r != null ? Math.min(ex.maxLoad, r) : ex.maxLoad : r;
+  }
+  function atCapOfIn(M, ex, plan, top, cap) {
+    const L = gymRackIn(M, ex, plan);
+    return cap != null && top >= cap - (L && (ex.maxLoad == null || cap < ex.maxLoad - 1e-6) ? rackTolIn(M, L, top) : 1e-6);
+  }
+  function exBarKgIn(M, ex) {
+    return ex && ex.barKg > 0 ? ex.barKg : barKgIn(M);
+  }
+  function barKgIn(M) {
+    const b = M.s.settings.barKg;
+    if (b != null) return b;
+    const g = gymOfIn(M);
+    const u = g && g.u || UIn(M);
+    return u === "lb" ? 45 * LB : 20;
   }
 
   // src/app/chunks.ts
@@ -2687,6 +2884,26 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
   }
   function estInLoad(ex) {
     return isCompound(ex) && !ex.bw && !noE1(ex) && loadMode(ex) === "total";
+  }
+  var fmtWIn = (M, kg) => kg == null || isNaN(kg) ? "" : String(r1(toDIn(M, kg)));
+  function loadLabelIn(M, ex, kg) {
+    if (ex.bw) {
+      return kg > 0 ? `BW+${fmtWIn(M, kg)}` : kg < 0 ? `BW−${fmtWIn(M, -kg)}` : "BW";
+    }
+    return fmtWIn(M, kg);
+  }
+  function swapWIn(M, ex, res, nw) {
+    const a = loadLabelIn(M, ex, res.w), b = loadLabelIn(M, ex, nw);
+    const fix = (t) => t ? t.split(a).join(b) : t;
+    const out = { ...res, w: nw, target: fix(res.target) };
+    out.text = res.last && res.text.startsWith(res.last) ? res.last + fix(res.text.slice(res.last.length)) : fix(res.text);
+    if (res.tgt && res.tgt.w != null) out.tgt = { ...res.tgt, w: nw };
+    return out;
+  }
+  function roundLoadIn(M, kg, down) {
+    const step = UIn(M) === "lb" ? 5 : 2.5;
+    const d = toDIn(M, kg);
+    return fromDIn(M, Math.max(step, (down ? Math.floor(d / step + 1e-9) : Math.round(d / step)) * step));
   }
 
   // src/app/prs.ts
@@ -3320,6 +3537,1855 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
   var acct = { user: null, checked: false, reader: false };
   var acctWait = { email: "", pw: "", t: 0, timer: null, busy: false, last: 0 };
 
+  // src/app/analytics.ts
+  function bwKnownAtIn(M, date) {
+    let best = null;
+    for (const b of M.s.bodyweights) if (b.date <= date && (!best || b.date >= best.date)) best = b;
+    return best ? best.kg : null;
+  }
+  function bwAtIn(M, date) {
+    let best = null, earliest = null;
+    for (const b of M.s.bodyweights) {
+      if (b.date <= date && (!best || b.date >= best.date)) best = b;
+      if (!earliest || b.date < earliest.date) earliest = b;
+    }
+    return best || earliest ? (best || earliest).kg : null;
+  }
+  function rirEffIn(M, s, ex) {
+    const m = M.s.settings.rirMode;
+    if (m === "off") return null;
+    if (s.rir == null || s.rir === "") return null;
+    const v = +s.rir;
+    if (!isFinite(v)) return null;
+    if (m === "cal" && !s.cal && v <= 4) {
+      const c = calStatsIn(M);
+      const k = ex ? isCompound(ex) ? "c" : "i" : null;
+      const src = k && c.cls[k].recent >= 2 ? c.cls[k] : c;
+      if (src.recent >= 2 && src.bias) return Math.min(10, Math.max(0, v + src.bias));
+    }
+    return v;
+  }
+  var CAL_WEEKS = 12;
+  function calSummary(list) {
+    const last = list.slice(-8);
+    const n = last.length;
+    const med = n ? median(last.map((p) => p.err)) : null;
+    const shr = med == null ? 0 : med * n / (n + 3);
+    return {
+      recent: n,
+      raw: med,
+      bias: Math.max(-2, Math.min(2, Math.sign(shr) * Math.round(Math.abs(shr) * 2) / 2)),
+      mae: n ? last.reduce((a, p) => a + Math.abs(p.err), 0) / n : null
+    };
+  }
+  function calStatsIn(M) {
+    if (M.c._cal) return M.c._cal;
+    const pts = [];
+    for (const s of M.s.sessions) {
+      if (s.demo) continue;
+      for (const b of s.ex) {
+        const c = isCompound(EXIn(M, b.exId)) ? "c" : "i";
+        for (const x of b.sets)
+          if (x.cal && +x.r >= x.cal.at) pts.push({ date: s.date, err: +x.r - x.cal.at - x.cal.pred, c });
+      }
+    }
+    pts.sort((a, b) => a.date < b.date ? -1 : a.date > b.date ? 1 : 0);
+    const cut = addDays(M.today(), -7 * CAL_WEEKS);
+    const rec = pts.filter((p) => p.date >= cut);
+    M.c._cal = {
+      ...calSummary(rec),
+      n: pts.length,
+      lastDate: pts.length ? pts[pts.length - 1].date : null,
+      cls: { c: calSummary(rec.filter((p) => p.c === "c")), i: calSummary(rec.filter((p) => p.c === "i")) }
+    };
+    return M.c._cal;
+  }
+  function rirUsualIn(M, exId) {
+    if (M.s.settings.rirMode === "off") return null;
+    if (!M.c._rirUse) {
+      M.c._rirUse = /* @__PURE__ */ Object.create(null);
+      const cut = addDays(M.today(), -7 * CAL_WEEKS);
+      const by = /* @__PURE__ */ Object.create(null);
+      for (const ss of M.s.sessions) {
+        if (ss.date < cut) continue;
+        for (const b of ss.ex) {
+          const ex = EXIn(M, b.exId);
+          if (ex.timed) continue;
+          for (const x of b.sets) {
+            if (!isWork(x) || x.drop || x.cal) continue;
+            const q = rirEffIn(M, x, ex);
+            if (q != null) (by[b.exId] || (by[b.exId] = [])).push(q);
+          }
+        }
+      }
+      for (const k in by) if (by[k].length >= 3) M.c._rirUse[k] = median(by[k]);
+    }
+    const v = M.c._rirUse[exId];
+    return v == null ? null : v;
+  }
+  var rirEstIn = (M, s, ex) => {
+    const q = rirEffIn(M, s, ex);
+    return q != null ? q : ex ? rirUsualIn(M, ex.id) : null;
+  };
+  var isHardIn = (M, s, ex) => {
+    if (!isWork(s)) return false;
+    const q = rirEstIn(M, s, ex);
+    return q == null || q <= 3;
+  };
+  function hardCreditIn(M, s, ex) {
+    if (isHardIn(M, s, ex)) return setCredit(s);
+    if (!rirHalfOnIn(M) || !isWork(s)) return 0;
+    const q = rirEstIn(M, s, ex);
+    return q != null && q > 3 ? setCredit(s) * 0.5 : 0;
+  }
+  function bwLoadIn(M, ex, date) {
+    return ex && ex.bw ? (bwAtIn(M, date) || 0) * bwShare(ex) : 0;
+  }
+  function loadOfIn(M, ex, s, date) {
+    return bwLoadIn(M, ex, date) + (+s.w || 0);
+  }
+  var bwRefIn = (M) => M.c._bwRef !== void 0 ? M.c._bwRef : M.c._bwRef = bwAtIn(M, "9999-12-31") || 0;
+  var bwRefLoadIn = (M, ex) => ex && ex.bw ? bwRefIn(M) * bwShare(ex) : 0;
+  function prLoadIn(M, ex, s, date) {
+    return ex && ex.bw ? bwRefIn(M) * bwShare(ex) + (+s.w || 0) : loadOfIn(M, ex, s, date);
+  }
+  function tonnageIn(M, ex, s, date) {
+    const m = loadMode(ex);
+    const w = +s.w || 0;
+    const known = bwKnownAtIn(M, date || M.today());
+    const bl = ex && ex.bw && known != null ? known * bwShare(ex) : 0;
+    const load = m === "bw" ? Math.max(0, bl + w) : m === "each" || m === "side" ? w * 2 : w;
+    return load * (+s.r || 0) * (ex.perSide ? 2 : 1);
+  }
+  function dateIndexIn(M) {
+    if (M.c._dix) return M.c._dix;
+    const byDate = {}, weekN = {};
+    for (const x of sortedSessionsIn(M)) {
+      (byDate[x.date] = byDate[x.date] || []).push(x);
+      const w = weekStart(x.date);
+      weekN[w] = (weekN[w] || 0) + 1;
+    }
+    return M.c._dix = { byDate, weekN };
+  }
+  function IDXIn(M) {
+    if (M.c._idx) return M.c._idx;
+    const sessions = sortedSessionsIn(M);
+    const V = idxSessionsIn(M, sessions);
+    const byEx = V.byEx;
+    const anchor = sessions.length ? sessions[sessions.length - 1].date : M.today();
+    const winStart = addDays(anchor, -42);
+    const wkAuto = idxAutoLighter(byEx);
+    const lightWk = idxLightWeeks(sessions, wkAuto);
+    const prs = [];
+    const exStats = {};
+    for (const id of Object.keys(byEx)) {
+      const maxBest = idxPRsIn(M, id, byEx[id], prs);
+      exStats[id] = idxLiftIn(M, id, byEx[id], maxBest, anchor, winStart);
+    }
+    const scores = idxScoresIn(M, exStats);
+    prs.sort((a, b) => a.date < b.date ? 1 : a.date > b.date ? -1 : 0);
+    M.c._idx = {
+      byEx,
+      exStats,
+      scores,
+      prs,
+      sessVol: V.sessVol,
+      weekSets: V.weekSets,
+      weekConf: V.weekConf,
+      weekHard: V.weekHard,
+      dayMus: V.dayMus,
+      dayMeta: V.dayMeta,
+      anchor,
+      lightWk,
+      rirCov: { logged: V.rirLogged, total: V.rirTotal }
+    };
+    return M.c._idx;
+  }
+  function idxSessionsIn(M, sessions) {
+    const byEx = {}, sessVol = [], weekSets = {}, weekConf = {}, dayMus = {}, dayMeta = {}, weekHard = {};
+    const recentFrom = addDays(M.today(), -28);
+    const seenEx = /* @__PURE__ */ new Set();
+    let rirLogged = 0, rirTotal = 0;
+    for (const ss of sessions) {
+      let vol = 0;
+      const wk = weekStart(ss.date);
+      const ws = weekSets[wk] || (weekSets[wk] = {});
+      const wc = weekConf[wk] || (weekConf[wk] = {});
+      const dm = dayMus[ss.date] || (dayMus[ss.date] = {});
+      const dx = dayMeta[ss.date] || (dayMeta[ss.date] = {});
+      for (const b of sameExOnce(ss.ex)) {
+        const ex = EXIn(M, b.exId);
+        const novel = !seenEx.has(b.exId);
+        const mus = [[ex.primary, 1], ...ex.secondary.map((m) => [m, 0.5])];
+        for (const s of b.sets) {
+          if (!isWork(s)) continue;
+          const logged = M.s.settings.rirMode === "off" || !(s.rir == null || s.rir === "");
+          if (ss.date >= recentFrom) {
+            rirTotal++;
+            if (logged) rirLogged++;
+          }
+          const hard = isHardIn(M, s, ex);
+          const cr = hard ? setCredit(s) : hardCreditIn(M, s, ex);
+          if (!cr) continue;
+          const q = rirEffIn(M, s, ex);
+          weekHard[wk] = (weekHard[wk] || 0) + cr;
+          for (const [m, f] of mus) {
+            ws[m] = (ws[m] || 0) + f * cr;
+            if (logged) wc[m] = (wc[m] || 0) + f * cr;
+            if (!hard) continue;
+            dm[m] = (dm[m] || 0) + f * cr;
+            const o = dx[m] || (dx[m] = { fail: 0, easy: 0, hard: 0, slow: false, novel: false });
+            o.hard++;
+            if (q === 0) o.fail++;
+            if (q != null && q >= 3) o.easy++;
+            if (SLOW_RECOVERY.has(ex.id)) o.slow = true;
+            if (novel) o.novel = true;
+          }
+        }
+        seenEx.add(b.exId);
+        const work = b.sets.filter(isWork);
+        if (!work.length) continue;
+        const main = work.filter((s) => !s.drop);
+        const ptsSrc = main.length ? main : work;
+        const pts = ptsSrc.map((s) => {
+          const pl = prLoadIn(M, ex, s, ss.date);
+          return {
+            load: ex.bw ? pl : loadOfIn(M, ex, s, ss.date),
+            pl,
+            r: +s.r,
+            w: +s.w || 0,
+            rir: rirEffIn(M, s, ex),
+            rq: rirEstIn(M, s, ex)
+          };
+        });
+        const topW = workLoad(pts, b.rr ? b.rr[0] : 0);
+        const tr = pts.filter((p) => Math.abs(p.w - topW) < 1e-6 && p.rir != null);
+        const atTop = atLoad(pts, topW);
+        const topRir = tr.length ? tr.reduce((a, p) => a + p.rir, 0) / tr.length : null;
+        const topReps = atTop.reduce((a, p) => a + p.r, 0);
+        const drop = atTop.length >= 2 ? atTop[0].r - atTop[atTop.length - 1].r : null;
+        let best = null, bb = null;
+        if (!noE1(ex))
+          for (const p of pts) {
+            const v2 = e1(p.load, p.r, p.rq);
+            if (v2 != null && (best == null || v2 > best)) {
+              best = v2;
+              bb = rtfBand(rtfOf(p.r, p.rq));
+            }
+          }
+        let pb = best, pbb = bb;
+        if (ex.bw) {
+          pb = null;
+          pbb = null;
+          if (!noE1(ex))
+            for (const p of pts) {
+              const v2 = e1(p.pl, p.r, p.rq);
+              if (v2 != null && (pb == null || v2 > pb)) {
+                pb = v2;
+                pbb = rtfBand(rtfOf(p.r, p.rq));
+              }
+            }
+        }
+        let tAdj = null, tRaw = null, topL = 0, rated = 0;
+        if (!noE1(ex)) {
+          const avg = (f) => {
+            const v2 = atTop.map(f).filter((x) => x != null);
+            return v2.length ? v2.reduce((a, b2) => a + b2, 0) / v2.length : null;
+          };
+          tAdj = avg((p) => trendE(p.load, p.r, p.rq));
+          tRaw = avg((p) => trendE(p.load, p.r, 0));
+        }
+        for (const p of pts) {
+          if (p.load > topL) topL = p.load;
+          if (p.rir != null) rated++;
+        }
+        const v = ex && ex.timed ? 0 : work.reduce((a, s) => a + tonnageIn(M, ex, s, ss.date), 0);
+        vol += v;
+        (byEx[b.exId] || (byEx[b.exId] = [])).push({
+          date: ss.date,
+          sid: ss.id,
+          pts,
+          best,
+          bb,
+          pb,
+          pbb,
+          vol: v,
+          n: work.length,
+          topW,
+          topRir,
+          topReps,
+          drop,
+          deload: !!ss.deload,
+          light: !!ss.light || !!b.light,
+          rr: b.rr || null,
+          topN: atTop.length,
+          cut: !!b.cut,
+          tAdj,
+          tRaw,
+          topL,
+          rated
+        });
+      }
+      sessVol.push({ date: ss.date, vol, id: ss.id, day: ss.dayName });
+    }
+    return { byEx, sessVol, weekSets, weekConf, dayMus, dayMeta, weekHard, rirLogged, rirTotal };
+  }
+  function idxAutoLighter(byEx) {
+    const wkAuto = {};
+    for (const id of Object.keys(byEx)) {
+      const exps = byEx[id];
+      const prev = [];
+      let run = [];
+      for (const x of exps) {
+        if (tagged(x)) continue;
+        const k = weekStart(x.date);
+        const o = wkAuto[k] || (wkAuto[k] = { n: 0, l: 0 });
+        o.n++;
+        const ref = prev.filter((q) => sameRR(q.rr, x.rr)).slice(-3);
+        if (ref.length >= 2) {
+          const mL = Math.max(...ref.map((q) => q.topL)), mT = Math.max(...ref.map((q) => q.tRaw == null ? -Infinity : q.tRaw));
+          if (mL > 0 && x.topL <= mL * 0.9 + 1e-9 && (x.tRaw == null || !isFinite(mT) || x.tRaw <= mT * 0.93 + 1e-9)) {
+            x.auto = true;
+            o.l++;
+            run.push(x);
+            if (run.length >= 3 && daysBetween(run[0].date, run[run.length - 1].date) >= 14) {
+              for (const q of run) {
+                q.auto = false;
+                q.keep = true;
+                wkAuto[weekStart(q.date)].l--;
+              }
+              prev.length = 0;
+              prev.push(...run);
+              run = [];
+            }
+            continue;
+          }
+        }
+        run = [];
+        prev.push(x);
+      }
+    }
+    for (const id of Object.keys(byEx)) {
+      const prev = [];
+      for (const x of byEx[id]) {
+        if (tagged(x)) continue;
+        if (x.auto || x.keep) {
+          if (x.keep) prev.push(x);
+          continue;
+        }
+        const o = wkAuto[weekStart(x.date)];
+        const ref = prev.filter((q) => sameRR(q.rr, x.rr)).slice(-3);
+        if (o && o.l >= 2 && o.l * 2 >= o.n && ref.length) {
+          const mL = Math.max(...ref.map((q) => q.topL)), mT = Math.max(...ref.map((q) => q.tRaw == null ? -Infinity : q.tRaw));
+          if (x.topL < mL - 1e-6 || x.tRaw != null && isFinite(mT) && x.tRaw < mT * 0.97) {
+            x.auto = true;
+            continue;
+          }
+        }
+        prev.push(x);
+      }
+    }
+    return wkAuto;
+  }
+  function idxLightWeeks(sessions, wkAuto) {
+    const lightWk = {};
+    {
+      const tag = {};
+      for (const ss of sessions) {
+        const k = weekStart(ss.date);
+        const o = tag[k] || (tag[k] = { n: 0, l: 0 });
+        o.n++;
+        if (ss.deload || ss.light) o.l++;
+      }
+      for (const k in tag) if (tag[k].n && tag[k].l === tag[k].n) lightWk[k] = true;
+      for (const k in wkAuto) {
+        const o = wkAuto[k];
+        if (o.l >= 2 && o.l * 2 >= o.n) lightWk[k] = true;
+      }
+    }
+    return lightWk;
+  }
+  function idxPRsIn(M, id, exps, prs) {
+    const front = [];
+    let maxBest = null, maxPb = null;
+    const ex = EXIn(M, id);
+    let prevMaxW = -Infinity, topSc = 0;
+    const bestIn = (i) => {
+      let m = null;
+      for (let k = 0; k < i; k++) {
+        const q = exps[k];
+        if (q.pb != null && q.pbb === exps[i].pbb) m = m == null ? q.pb : Math.max(m, q.pb);
+      }
+      return m;
+    };
+    const dominated = (p) => front.some((q) => q.pl >= p.pl - 1e-6 && q.r >= p.r);
+    const addFront = (p) => {
+      if (dominated(p)) return;
+      for (let k = front.length - 1; k >= 0; k--) if (p.pl >= front[k].pl - 1e-6 && p.r >= front[k].r) front.splice(k, 1);
+      front.push(p);
+    };
+    exps.forEach((x, i) => {
+      let repPR = null;
+      const sc = (q) => e1(q.pl, q.r, q.rq) || q.pl * (1 + q.r / 30);
+      const floor = front.reduce((a, q) => Math.max(a, sc(q)), 0) * REP_PR_SHARE;
+      if (i > 0) {
+        for (const p of x.pts) {
+          if (!dominated(p) && sc(p) >= floor - 1e-9 && (!repPR || sc(p) > sc(repPR))) repPR = p;
+        }
+      }
+      const pb = bestIn(i);
+      const e1PR = i > 0 && x.pb != null && pb != null && x.pb > pb + 1e-6;
+      const wPR = i > 0 && !ex.timed ? x.pts.filter((p) => p.r > 0 && p.w > prevMaxW + 1e-6).sort((a, b) => b.w - a.w || b.r - a.r)[0] : null;
+      x.progress = i > 0 && (!!repPR || e1PR || !!wPR);
+      const big = noE1(ex) || !!ex.timed || x.pts.some((q) => sc(q) > topSc + 1e-9);
+      const offPR = x.deload || x.light;
+      if (!offPR) {
+        if (wPR)
+          prs.push({
+            date: x.date,
+            sid: x.sid,
+            exId: id,
+            type: "Weight PR",
+            w: wPR.w,
+            r: wPR.r,
+            prevW: prevMaxW,
+            value: e1PR ? x.pb : null,
+            prev: e1PR ? pb : null,
+            prevAll: maxPb,
+            bb: x.pbb,
+            big
+          });
+        else if (e1PR)
+          prs.push({
+            date: x.date,
+            sid: x.sid,
+            exId: id,
+            type: "e1RM",
+            value: x.pb,
+            prev: pb,
+            prevAll: maxPb,
+            bb: x.pbb,
+            big
+          });
+        else if (repPR)
+          prs.push({
+            date: x.date,
+            sid: x.sid,
+            exId: id,
+            type: "Rep PR",
+            w: repPR.w,
+            r: repPR.r,
+            prevR: front.filter((q) => q.pl >= repPR.pl - 1e-6).reduce((a, q) => Math.max(a, q.r), 0),
+            big
+          });
+      }
+      if (x.pb != null) maxPb = maxPb == null ? x.pb : Math.max(maxPb, x.pb);
+      for (const p of x.pts) if (p.r > 0) prevMaxW = Math.max(prevMaxW, p.w);
+      for (const p of x.pts) topSc = Math.max(topSc, sc(p));
+      for (const p of x.pts) addFront(p);
+      if (x.best != null) maxBest = maxBest == null ? x.best : Math.max(maxBest, x.best);
+    });
+    return maxBest;
+  }
+  function idxLiftIn(M, id, exps, maxBest, anchor, winStart) {
+    const sc = trendScope(exps, anchor);
+    const { real, curRR, inRange, lastReal } = sc;
+    const exI = EXIn(M, id);
+    const plC = planForIn(M, id);
+    const capL = lastReal ? capOfIn(M, exI, plC, lastReal.topW) : null;
+    const capped = !!lastReal && atCapOfIn(M, exI, plC, lastReal.topW, capL);
+    const recent = inRange.slice(-8);
+    const nPts = recent.reduce((a, x) => a + x.pts.length, 0), nRated = recent.reduce((a, x) => a + x.rated, 0);
+    const useAdj = M.s.settings.rirMode !== "off" && nPts > 0 && nRated / nPts >= 0.8;
+    for (const x of exps) x.tv = useAdj ? x.tAdj : x.tRaw;
+    const slopeOf = (list) => {
+      const xs = list.map((x) => daysBetween(list[0].date, x.date)), ys = list.map((x) => x.tv);
+      const n = xs.length;
+      const mx = xs.reduce((a, b2) => a + b2, 0) / n, my = ys.reduce((a, b2) => a + b2, 0) / n;
+      let sxy = 0, sxx = 0;
+      xs.forEach((xv, k) => {
+        sxy += (xv - mx) * (ys[k] - my);
+        sxx += (xv - mx) ** 2;
+      });
+      if (!(sxx > 0)) return null;
+      const b = sxy / sxx;
+      let rss = 0;
+      xs.forEach((xv, k) => {
+        const e = ys[k] - (my + b * (xv - mx));
+        rss += e * e;
+      });
+      const se = n > 2 ? Math.sqrt(rss / (n - 2) / sxx) : null;
+      return { b, se, my, n };
+    };
+    const withE1 = inRange.filter((x) => x.tv != null);
+    let stalled = false;
+    const current = !!lastReal && lastReal.date >= winStart && lastReal.date >= addDays(M.today(), -42) && !exI.archived && M.s.exercises.some((e) => e.id === id);
+    if (!capped && current) {
+      const wE = withE1;
+      if (wE.length >= 4) {
+        const lastE = wE[wE.length - 1].date;
+        let i0 = wE.length - 1;
+        while (i0 > 0 && (wE.length - i0 < 6 || daysBetween(wE[i0].date, lastE) < 21)) i0--;
+        const l = wE.slice(i0);
+        if (daysBetween(l[0].date, lastE) >= 21) {
+          const z = l[l.length - 1], a0 = l[0];
+          const same = l.slice(0, -1).filter((x) => Math.abs(x.topW - z.topW) < 1e-6 && x.topN >= z.topN);
+          const moved = l.slice(-3).some((x) => x.progress) || z.topL > a0.topL + 1e-6 || z.topW > a0.topW + 1e-6 || same.length > 0 && z.topReps > Math.max(...same.map((x) => x.topReps));
+          const sen = (() => {
+            const a = [];
+            for (let i = 0; i < l.length; i++)
+              for (let j = i + 1; j < l.length; j++) {
+                const dd = daysBetween(l[i].date, l[j].date);
+                if (dd > 0) a.push((l[j].tv - l[i].tv) / dd);
+              }
+            return a.length ? median(a) : null;
+          })();
+          const my = l.reduce((a, x) => a + x.tv, 0) / l.length;
+          stalled = sen != null && my > 0 && sen * 7 / my * 100 < 0.1 && !moved;
+        }
+      } else if (withE1.length < 2) stalled = inRange.length >= 4 && inRange.slice(-3).every((x) => !x.progress);
+    }
+    const w = trendW(sc);
+    let pct = null, slope = null, slopeSe = null, moving = false, falling = false, pLo = null, pHi = null, spanW = null, loadUp = false;
+    const spanD = w.length ? daysBetween(w[0].date, w[w.length - 1].date) : 0;
+    if (w.length >= 3 && spanD >= 14) {
+      spanW = Math.max(2, Math.round(spanD / 7));
+      const ends = trendEnds(w);
+      pct = (ends.last.tv / ends.first.tv - 1) * 100;
+      const f = slopeOf(w);
+      if (f) {
+        slope = f.b * 7 / f.my * 100;
+        slopeSe = f.se != null ? f.se * 7 / f.my * 100 : null;
+        const tq = t90(f.n - 2);
+        const lo = slopeSe != null ? slope - tq * slopeSe : slope, hi = slopeSe != null ? slope + tq * slopeSe : slope;
+        moving = pct >= GROW_PCT && lo > 0;
+        falling = pct <= -GROW_PCT && hi < 0;
+        if (slopeSe != null) {
+          pLo = lo;
+          pHi = hi;
+        }
+      }
+      const z = w[w.length - 1], a0 = w[0];
+      const zr = z.pts.filter((p) => Math.abs(p.w - z.topW) < 1e-6).map((p) => p.r);
+      if (z.topW > a0.topW + 1e-6 && zr.length && Math.min(...zr) >= (z.rr ? +z.rr[0] : 1) && pct < 0) {
+        loadUp = true;
+        falling = false;
+        if (pHi != null && pHi < 0) {
+          pLo = null;
+          pHi = null;
+        }
+      }
+    }
+    let easier = null;
+    if (inRange.length >= 3) {
+      const l3 = inRange.slice(-3);
+      const sameW = l3.every((x) => Math.abs(x.topW - l3[0].topW) < 1e-6);
+      const allRir = l3.every((x) => x.topRir != null);
+      const repsHeld = l3.every((x) => x.topReps >= l3[0].topReps);
+      const climbing = l3[1].topRir >= l3[0].topRir && l3[2].topRir >= l3[1].topRir && l3[2].topRir - l3[0].topRir >= 1;
+      if (sameW && allRir && repsHeld && climbing)
+        easier = { w: l3[0].topW, from: r1(l3[0].topRir), to: r1(l3[2].topRir) };
+    }
+    let fade = null;
+    if (inRange.length >= 3) {
+      const l3 = inRange.slice(-3);
+      if (l3.every((x) => Math.abs(x.topW - l3[0].topW) < 1e-6) && l3.every((x) => x.drop != null) && l3[2].drop - l3[0].drop >= 2)
+        fade = { w: l3[0].topW, from: l3[0].drop, to: l3[2].drop };
+    }
+    let bestCur = null;
+    const byBand = {};
+    for (const x of exps) {
+      if (x.best == null) continue;
+      if (sameRR(x.rr, curRR)) bestCur = bestCur == null ? x.best : Math.max(bestCur, x.best);
+    }
+    for (const x of exps) if (x.pb != null) byBand[x.pbb] = Math.max(byBand[x.pbb] || 0, x.pb);
+    const fresh = !!lastReal && lastReal.date >= addDays(M.today(), -BACK_DAYS);
+    return {
+      n: exps.length,
+      stalled,
+      pct,
+      slope,
+      slopeSe,
+      moving,
+      falling,
+      pLo,
+      pHi,
+      spanW,
+      loadUp,
+      useAdj,
+      fresh,
+      byBand,
+      wN: w.length,
+      wSpan: w.length ? daysBetween(w[0].date, w[w.length - 1].date) : 0,
+      last: real.length ? real[real.length - 1] : exps[exps.length - 1],
+      best: bestCur,
+      bestAll: maxBest,
+      rr: curRR,
+      easier,
+      fade,
+      capped
+    };
+  }
+  function idxScoresIn(M, exStats) {
+    const byMuscle = {}, bySecondary = {}, stallP = {}, stallS = {}, seenP = {}, seenS = {}, spanP = {}, spanS = {};
+    for (const [id, st] of Object.entries(exStats)) {
+      const ex = EXIn(M, id);
+      if (st.stalled) {
+        stallP[ex.primary] = true;
+        for (const m of ex.secondary) stallS[m] = true;
+      }
+      if (st.pct == null || !st.fresh) continue;
+      if (st.wN < 4 || st.wSpan < 21) continue;
+      seenP[ex.primary] = (seenP[ex.primary] || 0) + 1;
+      for (const m of ex.secondary) seenS[m] = (seenS[m] || 0) + 1;
+      if (!(st.moving || st.falling)) continue;
+      (byMuscle[ex.primary] || (byMuscle[ex.primary] = [])).push(st.pct);
+      for (const m of ex.secondary) (bySecondary[m] || (bySecondary[m] = [])).push(st.pct);
+      spanP[ex.primary] = Math.max(spanP[ex.primary] || 0, st.spanW || 0);
+      for (const m of ex.secondary) spanS[m] = Math.max(spanS[m] || 0, st.spanW || 0);
+    }
+    const scoreMuscles = {};
+    for (const m of MK) {
+      if (seenP[m]) scoreMuscles[m] = { arr: byMuscle[m] || [], n: seenP[m], indirect: false };
+      else if ((seenS[m] || 0) >= 2) scoreMuscles[m] = { arr: bySecondary[m] || [], n: seenS[m], indirect: true };
+      else if (stallP[m]) scoreMuscles[m] = { arr: [], n: 0, indirect: false };
+    }
+    const scores = Object.entries(scoreMuscles).map(([m, o]) => ({
+      m,
+      score: o.arr.length ? median(o.arr) : 0,
+      clear: o.arr.length > 0,
+      n: o.n,
+      indirect: o.indirect,
+      stall: !!(o.indirect ? stallS[m] : stallP[m]),
+      wk: (o.indirect ? spanS[m] : spanP[m]) || null
+    })).sort((a, b) => b.score - a.score);
+    scores.forEach((s) => {
+      const growing = s.clear && s.score >= GROW_PCT, declining = s.clear && s.score <= -GROW_PCT;
+      if (declining) s.label = "lagging";
+      else if (growing) s.label = "progressing";
+      else s.label = s.stall ? "lagging" : "steady";
+    });
+    return scores;
+  }
+  function lastOf(all, base, fmt, repMin) {
+    const rec = all && all.length ? all[all.length - 1] : base;
+    const kind = rec.cut ? "trimmed" : rec.light || rec.auto ? "lighter" : rec.deload ? "deload" : "";
+    const line = `Last (${fmtDate(rec.date)}${kind ? ", " + kind : ""}): ${rec.pts.map(fmt).join(", ")}.`;
+    const repsFrom = rec !== base && (rec.deload || rec.light || rec.auto) ? base : rec;
+    const wl = workLoad(repsFrom.pts, repMin || 0);
+    const wp = atLoad(repsFrom.pts, wl);
+    const fl = repFloor(wp.length ? wp : repsFrom.pts, repMin);
+    const rl = workLoad(rec.pts, repMin || 0);
+    const rp = atLoad(rec.pts, rl);
+    const shown = rp.length ? rp : rec.pts;
+    return {
+      line,
+      prev: shown.map(fmt).slice(0, 30),
+      prevOff: shown.length < rec.pts.length || void 0,
+      lastR: (wp.length ? wp : repsFrom.pts).map((p) => fl(p.r)),
+      basis: rec !== base ? base.date : null
+    };
+  }
+  function weekSessionsIn(M, ws) {
+    return dateIndexIn(M).weekN[ws] || 0;
+  }
+  function statsUpToIn(M, exId, exps) {
+    const now = IDXIn(M).exStats[exId] || {};
+    let best = null, bestAll = null;
+    const byBand = {};
+    for (const x of exps) {
+      if (x.best == null) continue;
+      if (sameRR(x.rr, now.rr)) best = best == null ? x.best : Math.max(best, x.best);
+      bestAll = bestAll == null ? x.best : Math.max(bestAll, x.best);
+    }
+    for (const x of exps) if (x.pb != null) byBand[x.pbb] = Math.max(byBand[x.pbb] || 0, x.pb);
+    return { best, bestAll, byBand, rr: now.rr, easier: null };
+  }
+
+  // src/app/weeks.ts
+  function firstFullWeekIn(M) {
+    const f = firstDate(M.s.sessions);
+    if (!f) return null;
+    const w = weekStart(f);
+    return f > w ? addDays(w, 7) : w;
+  }
+  function avgWeeksTxt(avg) {
+    const w = avg._weeks, m = avg._missed || 0, l = avg._light || 0, r = avg._rest || 0;
+    if (!m && !l && !r) return `your last ${w} full week${w === 1 ? "" : "s"}`;
+    const out = [
+      l ? `${l === 1 ? "a lighter week" : l + " lighter weeks"}` : "",
+      r ? `${r === 1 ? "a rest week" : r + " rest weeks"}` : ""
+    ].filter(Boolean);
+    return `the ${w} week${w === 1 ? "" : "s"} you trained of the last ${avg._span || Math.min(avg._n || 4, w + m)}${out.length ? `, ${out.join(" and ")} left out` : ""}`;
+  }
+  function actualAvg4In(M, lightToo) {
+    return avgWeeksIn(M, 4, lightToo);
+  }
+  function avgWeeksIn(M, n, lightToo) {
+    const I = IDXIn(M);
+    const cur = weekStart(M.today());
+    let weeks = 0;
+    const tot = {}, con = {};
+    const ff = firstFullWeekIn(M);
+    let extra = 0, missed = 0, span = 0, ffHit = false, rest = 0, light = 0;
+    for (let k = 1; k <= Math.min(2 * n, n + extra); k++) {
+      const wk = addDays(cur, -7 * k);
+      if (ff && wk < ff) {
+        ffHit = true;
+        continue;
+      }
+      span = k;
+      if (isRestWeekIn(M, wk)) {
+        extra++;
+        rest++;
+        continue;
+      }
+      const ws = I.weekSets[wk];
+      if (!ws) {
+        if (k <= n) missed++;
+        continue;
+      }
+      if (I.lightWk[wk] && !lightToo) {
+        extra++;
+        light++;
+        continue;
+      }
+      weeks++;
+      for (const m in ws) tot[m] = (tot[m] || 0) + ws[m];
+      const wc = I.weekConf[wk] || {};
+      for (const m in wc) con[m] = (con[m] || 0) + wc[m];
+    }
+    if (!weeks && extra && !lightToo) return avgWeeksIn(M, n, true);
+    if (!weeks) return null;
+    const out = {}, conf = {};
+    for (const m in tot) out[m] = tot[m] / weeks;
+    for (const m in con) conf[m] = con[m] / weeks;
+    Object.defineProperty(out, "_weeks", { value: weeks, enumerable: false });
+    Object.defineProperty(out, "_missed", { value: missed, enumerable: false });
+    Object.defineProperty(out, "_n", { value: n, enumerable: false });
+    Object.defineProperty(out, "_span", { value: span, enumerable: false });
+    Object.defineProperty(out, "_light", { value: lightToo ? 0 : light, enumerable: false });
+    Object.defineProperty(out, "_rest", { value: rest, enumerable: false });
+    Object.defineProperty(out, "_ff", { value: ffHit, enumerable: false });
+    Object.defineProperty(out, "_conf", { value: conf, enumerable: false });
+    return out;
+  }
+  function regionBalanceIn(M, sets) {
+    const bands = M.s.settings.bands;
+    return REGIONS.map(([label, all]) => {
+      const ms = all.filter((m) => !TRACK_ONLY.has(m));
+      const got = ms.reduce((a, m) => a + (sets[m] || 0), 0);
+      const mid = ms.reduce((a, m) => a + (bands[m][0] + bands[m][1]) / 2, 0);
+      const lo = ms.reduce((a, m) => a + bands[m][0], 0);
+      const hi = ms.reduce((a, m) => a + bands[m][1], 0);
+      return {
+        label,
+        ms,
+        got,
+        mid,
+        lo,
+        hi,
+        pct: lo > 0 ? got / lo * 100 : 0,
+        low: belowMin(got, lo),
+        high: aboveMax(got, hi)
+      };
+    });
+  }
+  function weekRoutineIn(M, ws) {
+    const I = IDXIn(M);
+    if (!I.weekRid) {
+      const by = {};
+      for (const x of M.s.sessions) {
+        if (!x.routineId || x.free) continue;
+        const w = weekStart(x.date);
+        const c = by[w] || (by[w] = {});
+        c[x.routineId] = (c[x.routineId] || 0) + 1;
+      }
+      I.weekRid = {};
+      for (const w in by) {
+        let id2 = null;
+        for (const k in by[w]) if (id2 == null || by[w][k] > by[w][id2]) id2 = k;
+        I.weekRid[w] = id2;
+      }
+    }
+    const id = I.weekRid[ws];
+    return id && M.s.routines.find((r) => r.id === id) || activeRoutineIn(M);
+  }
+  function weekNeedIn(M, ws) {
+    return freeModeIn(M) ? 1 : Math.max(1, plannedPerWeek(weekRoutineIn(M, ws)));
+  }
+  function weekStreakIn(M) {
+    const R = activeRoutineIn(M);
+    const need = freeModeIn(M) ? 1 : Math.max(1, plannedPerWeek(R));
+    const cur = weekStart(M.today());
+    const thisWeek = weekSessionsIn(M, cur);
+    if (!M.s.sessions.length) return { weeks: 0, best: 0, need, thisWeek: 0 };
+    const first = weekStart(sortedSessionsIn(M)[0].date);
+    let run = null, cnt = 0, best = 0;
+    for (let k = 1; k <= 104; k++) {
+      const wk = addDays(cur, -7 * k);
+      if (wk < first) break;
+      if (isRestWeekIn(M, wk)) continue;
+      if (weekSessionsIn(M, wk) >= weekNeedIn(M, wk)) {
+        cnt++;
+        best = Math.max(best, cnt);
+      } else {
+        if (run == null) run = cnt;
+        cnt = 0;
+      }
+    }
+    if (run == null) run = cnt;
+    const weeks = run + (thisWeek >= need ? 1 : 0);
+    return { weeks, best: Math.max(best, weeks), need, thisWeek };
+  }
+  function recentLighterIn(M, days) {
+    const from = addDays(M.today(), -days);
+    let d = null;
+    for (const x of M.s.sessions) if (x.date >= from && (x.deload || x.light) && (!d || x.date > d)) d = x.date;
+    const I = IDXIn(M);
+    for (const id in I.byEx) for (const x of I.byEx[id]) if (x.auto && x.date >= from && (!d || x.date > d)) d = x.date;
+    for (const w of M.s.settings.restWeeks || []) {
+      const e = addDays(w, 6) < M.today() ? addDays(w, 6) : M.today();
+      if (e >= from && w <= M.today() && (!d || e > d)) d = e;
+    }
+    return d;
+  }
+  function weekStatsIn(M) {
+    const R = activeRoutineIn(M);
+    const cur = weekStart(M.today());
+    const weekly = R.schedule === "weekly";
+    let cardioMin = 0, cardioN = 0;
+    for (const c of M.s.cardio)
+      if (c.date >= cur && c.date <= addDays(cur, 6)) {
+        cardioMin += c.min;
+        cardioN++;
+      }
+    const doneDays = weekSessionsIn(M, cur);
+    const planDays = weekly ? trainDaysOf(R) : Math.round(trainDaysOf(R) * weekFactor(R));
+    const got = IDXIn(M).weekHard[cur] || 0;
+    const tgt = planSetsPerWeekIn(M, R, isDeloadWeekIn(M));
+    const rest = isRestWeekIn(M, cur);
+    return {
+      R,
+      weekly,
+      planDays: rest ? 0 : planDays,
+      doneDays,
+      got,
+      tgt: rest ? 0 : tgt,
+      pct: !rest && tgt > 0 ? Math.min(100, got / tgt * 100) : 0,
+      cardioMin,
+      cardioN,
+      rest
+    };
+  }
+
+  // src/app/coach.ts
+  var SIZE_MAP = [
+    ["arm", ["biceps", "triceps"]],
+    ["forearm", ["forearms"]],
+    ["chest", ["chest"]],
+    ["thigh", ["quads", "hamstrings", "adductors"]],
+    ["calf", ["calves"]],
+    ["neck", ["neck"]]
+  ];
+  function moversIn(M) {
+    return Object.entries(IDXIn(M).exStats).filter(([, x]) => x.moving && !x.stalled && x.fresh).sort((a, b) => b[1].pct - a[1].pct).map(([id, x]) => ({ id, pct: x.pct, wk: x.spanW || 2 }));
+  }
+  function stalledIdsIn(M) {
+    return Object.entries(IDXIn(M).exStats).filter(([, x]) => x.stalled).map(([id]) => id);
+  }
+  function dropOnlyLiftIn(M, id) {
+    const ss = sortedSessionsIn(M);
+    let n = 0;
+    for (let i = ss.length - 1; i >= 0 && n < 6; i--) {
+      const bs = ss[i].ex.filter((b) => b.exId === id);
+      if (!bs.length) continue;
+      n++;
+      if (bs.some((b) => b.sets.some((s) => isWork(s) && !s.drop))) return false;
+    }
+    return n > 0;
+  }
+  function fatigueStallsIn(M, ids) {
+    return ids.filter((id) => {
+      const e = EXIn(M, id);
+      return e && !e.timed && !noE1(e) && isCompound(e) && !dropOnlyLiftIn(M, id);
+    });
+  }
+  function coachIn(M) {
+    const I = IDXIn(M);
+    const R = activeRoutineIn(M);
+    if (!M.s.sessions.length)
+      return { tone: "blue", text: "Log your first session. Advice starts after a few sessions.", act: null };
+    if (isRestWeekIn(M, weekStart(M.today())))
+      return {
+        tone: "blue",
+        text: "Rest week. Nothing to hit this week.",
+        why: "It does not count as missed: your averages, streak, and adherence skip it, and your targets pick up where they were.",
+        act: null
+      };
+    if (isDeloadWeekIn(M))
+      return {
+        tone: "blue",
+        text: `Deload week. It ends Sunday.`,
+        why: "Half the sets, about 90% loads, 3 or more reps in reserve. Your targets pick up where they were.",
+        act: null
+      };
+    const stalled = stalledIdsIn(M);
+    const rl = recentLighterIn(M, 28);
+    const big = fatigueStallsIn(M, stalled);
+    if (big.length >= 3 && !rl)
+      return {
+        tone: "red",
+        text: `${big.length} main lifts stalled at once: ${andList(
+          big.map((id) => exNameIn(M, id)),
+          3
+        )}. A deload week may help.`,
+        why: "Several main lifts flat together often points to fatigue. Check sleep, food, and stress. A deload week is half the sets at about 90% loads. Isolation and core lifts are not counted.",
+        act: { label: "Start a deload week", deload: true }
+      };
+    const inj = injuredSetIn(M);
+    const avg = actualAvg4In(M);
+    const bands = M.s.settings.bands;
+    if (avg && avg._missed >= 2) {
+      const w = avg._weeks, n = Math.min(4, w + avg._missed);
+      return {
+        tone: "yellow",
+        text: `You trained in ${w} of the last ${n} weeks. Getting the weeks in matters more than adding sets.`,
+        why: "Set counts are per week you trained: weeks with no training are left out of the averages rather than counted as zero, so a short break does not read as below target everywhere.",
+        act: null
+      };
+    }
+    if (avg) {
+      const lagSet = new Set(I.scores.filter((x) => x.label === "lagging").map((x) => x.m));
+      const under = MK.filter((m) => !inj.has(m) && !TRACK_ONLY.has(m) && belowMin(avg[m], bands[m][0])).map((m) => ({
+        m,
+        got: avg[m] || 0,
+        lo: bands[m][0],
+        hi: bands[m][1],
+        pri: M.s.settings.priorities.includes(m) ? 1 : 0,
+        lag: lagSet.has(m) ? 1 : 0
+      })).sort((a, b) => b.pri - a.pri || b.lag - a.lag || b.lo - b.got - (a.lo - a.got) || a.got / a.lo - b.got / b.lo);
+      if (under.length) {
+        const u = under[0];
+        const gap = Math.max(1, Math.ceil(u.lo - u.got));
+        const done = (id) => (I.byEx[id] || []).length > 0;
+        const forM = (id) => {
+          const e = EXIn(M, id);
+          return !!e && e.primary === u.m;
+        };
+        const inR = [];
+        for (const d of R.days) for (const it of d.items) if (forM(it.exId) && !inR.includes(it.exId)) inR.push(it.exId);
+        const logged = Object.keys(I.byEx).filter((id) => forM(id) && M.s.exercises.some((e) => e.id === id && !e.archived)).sort((x, y) => I.byEx[y][I.byEx[y].length - 1].date.localeCompare(I.byEx[x][I.byEx[x].length - 1].date));
+        const exId = inR.find(done) || logged[0] || inR[0] || null;
+        const how = exId ? `Add ${gap} set${gap > 1 ? "s" : ""} a week to ${exNameIn(M, exId)}.` : "Add an exercise for it.";
+        return {
+          tone: "yellow",
+          text: `${ML[u.m]}: ${r1(u.got)} hard set${r1(u.got) === 1 ? "" : "s"} a week, target ${u.lo}-${u.hi}. ${how}${under.length > 1 ? ` ${under.length - 1} more below target.` : ""}`,
+          why: `Your average of hard sets per week over your recent full weeks. The largest shortfall comes first, and priority muscles before the rest.${exId ? "" : " Nothing in your routine trains it directly."}`,
+          act: { label: `See ${ML[u.m]}`, sec: "volume", m: u.m }
+        };
+      }
+    }
+    if (stalled.length) {
+      const id = stalled[0];
+      const st = I.exStats[id];
+      const p = planForIn(M, id);
+      const lw = st && st.last ? atLoad(st.last.pts, st.last.topW) : [];
+      if (lw.length && lw.every((q) => q.r >= +p.repMax))
+        return {
+          tone: "yellow",
+          text: `${exNameIn(M, id)} has been at the top of its range at ${loadLabelIn(M, EXIn(M, id), st.last.topW)}${EXIn(M, id).bw ? "" : " " + UIn(M)} for 3 weeks: it is due a step up, not a new range. The session's target says how.`,
+          why: "Every set reached the top of the range. The next step is more load, or, when one step is large for the load, a few more reps first.",
+          act: { label: "See the lift", sec: "exercise", ex: id }
+        };
+      return {
+        tone: "yellow",
+        text: `${exNameIn(M, id)} has stalled. Try another rep range or a close variation for a few weeks.`,
+        why: "Flat or down over its last 6 sessions (or 3 weeks), with no PR in the last 3, no heavier load, and no more reps at the same load, leaving out deload, lighter, and trimmed sessions.",
+        act: { label: "See the lift", sec: "exercise", ex: id }
+      };
+    }
+    const lag = I.scores.filter((x) => x.clear && x.score <= -GROW_PCT);
+    if (lag.length) {
+      const x = lag[lag.length - 1];
+      return {
+        tone: "yellow",
+        text: `${ML[x.m]} strength is falling over ${x.wk || 6} weeks. Check sleep and recovery before adding sets.`,
+        act: { label: `See ${ML[x.m]}`, sec: "rank", m: x.m }
+      };
+    }
+    if (!avg)
+      return {
+        tone: "blue",
+        text: M.s.sessions.some((x) => x.date < addDays(weekStart(M.today()), -28)) && !M.s.sessions.some((x) => x.date >= addDays(weekStart(M.today()), -28)) ? "Nothing logged in the last 4 weeks. Volume advice comes back after a full week of training." : "Volume advice appears here after your first full week.",
+        act: null
+      };
+    return { tone: "green", text: "Every muscle at target, nothing stalled.", act: null };
+  }
+  function musTrend(sc) {
+    if (!sc.clear)
+      return `Strength trend unclear: ${sc.n ? `${sc.n} lift${sc.n === 1 ? "" : "s"} measured, changes within day-to-day noise` : "not enough sessions"}`;
+    return Math.abs(sc.score) < GROW_PCT ? `No clear strength change over ${sc.wk || 6} weeks` : `Strength ${sc.score >= 0 ? "rising" : "falling"} over ${sc.wk || 6} weeks`;
+  }
+  var chkWord = (n) => n === "OK" ? "OK" : n.toLowerCase();
+  var CHK_Q = [
+    ["sleep", "Sleep", ["Poor", "OK", "Good"]],
+    ["energy", "Energy", ["Low", "OK", "High"]],
+    ["joints", "Aches", ["Sore", "A little", "None"]]
+  ];
+  function readinessIn(M) {
+    const I = IDXIn(M);
+    const bySid = {};
+    for (const id in I.byEx)
+      I.byEx[id].forEach((x, i) => {
+        if (i === 0 || offSession(x)) return;
+        const o = bySid[x.sid] || (bySid[x.sid] = { n: 0, p: 0 });
+        o.n++;
+        if (x.progress) o.p++;
+      });
+    const sess = M.s.sessions.filter((s) => !s.demo && s.chk && bySid[s.id]);
+    const rows = CHK_Q.map(([k, l, names]) => ({
+      k,
+      l,
+      groups: [3, 2, 1].map((v) => {
+        const g = sess.filter((s) => s.chk[k] === v);
+        const n = g.reduce((a, s) => a + bySid[s.id].n, 0), p = g.reduce((a, s) => a + bySid[s.id].p, 0);
+        return { v, name: names[v - 1], sessions: g.length, rate: n ? p / n * 100 : null };
+      })
+    }));
+    return { n: sess.length, rows };
+  }
+
+  // src/app/time.ts
+  function dayMinutesIn(M, day, half, raw) {
+    if (!day.items.length) return 0;
+    let s = 0, cN = 0;
+    day.items.forEach((it, i) => {
+      const ex = EXIn(M, it.exId);
+      const nx = day.items[i + 1];
+      const rest = it.ss && nx && nx.ss === it.ss ? 0 : +it.rest;
+      const n = half ? Math.max(1, Math.ceil(it.sets / 2)) : +it.sets;
+      s += n * (setSecs(ex, it) + rest) + setupSecs(ex, cN);
+      if (isCompound(ex)) cN++;
+    });
+    const lastRest = +day.items[day.items.length - 1].rest || 0;
+    return Math.round(Math.max(0, s - lastRest) * (raw ? 1 : paceIn(M)) / 60);
+  }
+  function sessModelMinIn(M, ss) {
+    const R = M.s.routines.find((r) => r.id === ss.routineId) || activeRoutineIn(M);
+    const day = ss.dayId ? R.days.find((d) => d.id === ss.dayId) : null;
+    const link = (id) => {
+      const it = day && day.items.find((i) => i.exId === id);
+      return it && it.ss || null;
+    };
+    const items = ss.ex.map((b) => {
+      const p = planForIn(M, b.exId, R, ss.dayId, true);
+      const rr = Array.isArray(b.rr) ? b.rr : [p.repMin, p.repMax];
+      return {
+        ...p,
+        exId: b.exId,
+        ss: link(b.exId),
+        repMin: rr[0],
+        repMax: rr[1],
+        rest: +p.rest || 0,
+        sets: b.sets.filter((x) => !x.warm).length
+      };
+    }).filter((it) => it.sets > 0);
+    return items.length ? dayMinutesIn(M, { items }, false, true) : 0;
+  }
+  function paceRatiosIn(M) {
+    const from = addDays(M.today(), -PACE_DAYS);
+    const out = [];
+    const sameDay = {};
+    for (const x of M.s.sessions) sameDay[x.date] = (sameDay[x.date] || 0) + 1;
+    for (const ss of sortedSessionsIn(M).slice().reverse()) {
+      if (out.length >= PACE_N || ss.date < from) break;
+      if (ss.demo || !(ss.durMin >= 1)) continue;
+      const m = sessModelMinIn(M, ss);
+      if (m < 1) continue;
+      const cm = sameDay[ss.date] === 1 ? M.s.cardio.filter((c) => c.date === ss.date && (c.when === "pre" || c.when === "post")).reduce((a, c) => a + (+c.min || 0), 0) : 0;
+      const r = (ss.durMin - cm) / m;
+      if (r >= PACE_LO && r <= PACE_HI) out.push(r);
+    }
+    return out;
+  }
+  function paceIn(M) {
+    if (M.c._pace != null) return M.c._pace;
+    const r = paceRatiosIn(M).sort((a, b) => a - b);
+    if (r.length < PACE_MIN) return M.c._pace = 1;
+    const k = r.length >> 1;
+    return M.c._pace = r.length % 2 ? r[k] : (r[k - 1] + r[k]) / 2;
+  }
+
+  // src/app/engine.ts
+  function snapUnitIn(M, ex, plan, res, down) {
+    if (!res || res.w == null || res.top == null || ex.timed) return res;
+    if (gymRackIn(M, ex, plan)) return rackSnapIn(M, ex, plan, res);
+    const st = toDIn(M, incOfIn(M, ex, plan));
+    if (!(st > 0)) return res;
+    const off = (v) => Math.abs(toDIn(M, v) / st - Math.round(toDIn(M, v) / st)) > 0.02;
+    const typed = (v) => Math.abs(toDIn(M, v) / 0.05 - Math.round(toDIn(M, v) / 0.05)) < 0.1;
+    if (!off(res.top) || !off(res.w) || typed(res.top)) return res;
+    const nw = fromDIn(M, (down ? Math.floor(toDIn(M, res.w) / st + 1e-9) : Math.round(toDIn(M, res.w) / st)) * st);
+    if (Math.abs(nw - res.w) < 1e-9) return res;
+    return swapWIn(M, ex, res, nw);
+  }
+  function daysOffIn(M, exId, opts) {
+    const T = opts && opts.before && isDate(opts.before) ? opts.before : M.today();
+    const xs = (IDXIn(M).byEx[exId] || []).filter((x) => x.date <= T);
+    if (!xs.length) return 0;
+    return daysBetween(xs[xs.length - 1].date, T);
+  }
+  function suggestIn(M, exId, plan, opts) {
+    opts = opts || {};
+    const ex = EXIn(M, exId);
+    const off = !(opts.deload || opts.light) && !ex.timed ? daysOffIn(M, exId, opts) : 0;
+    const back = off > BACK_DAYS;
+    if (!(opts.deload || opts.light || back) || ex.timed)
+      return snapUnitIn(M, ex, plan, suggestCoreIn(M, exId, plan, opts));
+    const base = suggestCoreIn(M, exId, plan, { ...opts, deload: false, light: false });
+    if (base.kin && base.w > 0) {
+      const ks = !gymRackIn(M, ex, plan) && rackKind(ex) && rackKind(EXIn(M, base.kin)) ? rackStepIn(M, EXIn(M, base.kin)) : null;
+      const lw = ks ? fromDIn(M, Math.floor(toDIn(M, base.w * 0.9) / toDIn(M, ks) + 1e-9) * toDIn(M, ks)) : lighterLoadIn(M, ex, plan, base.w, base.w * 0.9);
+      return {
+        ...base,
+        w: lw,
+        lastR: Array(Math.max(1, +plan.sets || 1)).fill(+plan.repMin),
+        text: `First time, ${opts.deload ? "deload" : "Lighter day"}. About ${loadLabelIn(M, ex, lw)} ${UIn(M)}${loadNote(ex)} for ${repSpan(plan.repMin, plan.repMax, "-")} with 3 or more reps in reserve, from your ${EXIn(M, base.kin).name}. Half the usual sets, nothing to beat.`
+      };
+    }
+    if (base.inj || !base.last || base.w == null) return base;
+    const word = opts.deload ? "Deload" : opts.light ? "Lighter day" : `Back after ${Math.round(off / 7)} weeks`;
+    const step = incOfIn(M, ex, plan);
+    const w0 = base.top != null ? Math.min(base.w, base.top) : base.w;
+    const bl = bwRefLoadIn(M, ex);
+    const lbl = (w2) => `${loadLabelIn(M, ex, w2)}${ex.bw ? "" : " " + UIn(M)}${loadNote(ex)}`;
+    const hs = step > 0 ? toDIn(M, step) : UIn(M) === "lb" ? 5 : 2.5;
+    const dw = ex.assist ? -fromDIn(M, Math.ceil(toDIn(M, bl > 0 ? bl - (w0 + bl) * 0.9 : -w0 * 1.1) / hs - 1e-9) * hs) : ex.bw ? (w0 + bl) * 0.9 - bl > 0 ? lighterLoadIn(M, ex, plan, w0, (w0 + bl) * 0.9 - bl) : 0 : lighterLoadIn(M, ex, plan, w0, w0 * 0.9);
+    const w = w0 > 0 || ex.assist ? dw : w0;
+    const n = Math.max(1, (base.lastR || []).length || +plan.sets || 1);
+    if (back)
+      return snapUnitIn(
+        M,
+        ex,
+        plan,
+        {
+          top: base.top,
+          prev: base.prev,
+          prevOff: base.prevOff,
+          w,
+          text: `${base.last} ${word}: about ${lbl(w)} for ${repSpan(plan.repMin, plan.repMax, "-")} with 2 or more reps in reserve. Next time picks up from here.`,
+          lastR: Array(n).fill(+plan.repMin),
+          basis: base.basis,
+          last: base.last,
+          target: "",
+          tgt: null,
+          easier: null,
+          back: Math.round(off / 7)
+        },
+        true
+      );
+    return snapUnitIn(
+      M,
+      ex,
+      plan,
+      {
+        top: base.top,
+        prev: base.prev,
+        prevOff: base.prevOff,
+        w,
+        text: `${base.last} ${word}: about ${lbl(w)} for ${repSpan(plan.repMin, plan.repMax, "-")} with 3 or more reps in reserve. Half the usual sets, nothing to beat.`,
+        lastR: Array(n).fill(+plan.repMin),
+        basis: base.basis,
+        last: base.last,
+        target: "",
+        tgt: null,
+        easier: null
+      },
+      true
+    );
+  }
+  function suggestCoreIn(M, exId, plan, opts) {
+    opts = opts || {};
+    const T = opts.before && isDate(opts.before) ? opts.before : M.today();
+    const every = IDXIn(M).byEx[exId];
+    const all = every ? every.filter((x) => x.date <= T) : every;
+    const ex = EXIn(M, exId);
+    const injM = exInjuryIn(M, ex);
+    const full = all ? all.filter((x) => !offSession(x)) : [];
+    const want = [+plan.repMin, +plan.repMax];
+    const exact = (x) => !!x.rr && x.rr[0] === want[0] && x.rr[1] === want[1];
+    const lastEx = full.filter(exact).pop();
+    const inRR = !!lastEx && lastEx.date >= addDays(full[full.length - 1].date, -42);
+    const fullRR = inRR ? full.filter((x) => sameRR(x.rr, want)) : [];
+    const exps = all && all.length ? fullRR.length ? fullRR : full.length ? full : all : all;
+    const seen = inRR ? all.filter((x) => sameRR(x.rr, want)) : all;
+    if (ex.timed) return suggestTimedIn(M, ex, plan, exps, opts, injM, seen);
+    if (!exps || !exps.length) return sgFirstIn(M, ex, plan, T, injM);
+    const last = exps[exps.length - 1], ws = last.pts;
+    const stx = all.length < every.length ? statsUpToIn(M, exId, all) : IDXIn(M).exStats[exId] || {};
+    const top = workLoad(ws, +plan.repMin);
+    const step = incOfIn(M, ex, plan, top);
+    const noAdd = !!ex.bw && !ex.assist && !all.some((x) => x.pts.some((p) => p.w > 1e-6));
+    const abW = ["abs", "obliques"].includes(ex.primary);
+    const cap = capOfIn(M, ex, plan, top);
+    const atCap = atCapOfIn(M, ex, plan, top, cap);
+    const capW = (w) => cap != null ? Math.min(w, cap) : w;
+    const topPts = ws.filter((p) => Math.abs(p.w - top) < 1e-6);
+    const L0 = lastOf(seen, last, (p) => `${loadLabelIn(M, ex, p.w)}×${p.r}`, +plan.repMin);
+    const lastR = L0.lastR, lastS = L0.line, basis = L0.basis;
+    const lbl = (w) => `${loadLabelIn(M, ex, w)}${ex.bw ? "" : " " + UIn(M)}${loadNote(ex)}`;
+    const prevBest = stx.best == null ? null : stx.best;
+    if (injM)
+      return {
+        top,
+        prev: L0.prev,
+        prevOff: L0.prevOff,
+        w: top,
+        text: `${lastS} Injury flagged (${injLabel(injM)}): stay at or below ${lbl(top)}, keep 3 or more reps in reserve, stop on pain.`,
+        lastR,
+        basis,
+        last: lastS,
+        target: "",
+        tgt: null,
+        easier: null,
+        inj: injM
+      };
+    const tgtRir = +plan.rir || 0;
+    const early = exps.length <= 3;
+    const fl = repFloor(topPts, plan.repMin);
+    const tp = topPts.slice(0, Math.max(1, +plan.sets || topPts.length)).map((p) => ({ ...p, r: fl(p.r) }));
+    const C = {
+      ex,
+      exId,
+      plan,
+      opts,
+      T,
+      all,
+      every,
+      exps,
+      seen,
+      inRR,
+      injM,
+      last,
+      ws,
+      stx,
+      top,
+      step,
+      noAdd,
+      abW,
+      cap,
+      atCap,
+      capW,
+      topPts,
+      lastR,
+      lastS,
+      basis,
+      lbl,
+      prevBest,
+      tgtRir,
+      early,
+      fl,
+      tp
+    };
+    const res = sgEasyIn(M, C) || sgPastRangeIn(M, C) || sgBelowRangeIn(M, C) || sgNoStep(C) || sgTopOfRangeIn(M, C) || sgBadDay(C) || sgRepsIn(M, C);
+    return res && res.last ? { ...res, prev: L0.prev, prevOff: L0.prevOff } : res;
+  }
+  function sgFirstIn(M, ex, plan, T, injM) {
+    if (injM)
+      return {
+        w: ex.bw ? 0 : null,
+        text: `Injury flagged (${injLabel(injM)}). Start light, keep 3 or more reps in reserve, and stop on pain.`,
+        lastR: [],
+        last: "",
+        target: "",
+        tgt: null,
+        inj: injM
+      };
+    const rr = +plan.rir || 0;
+    const can = +plan.repMax + Math.round(rr);
+    const reps = `${repSpan(plan.repMin, plan.repMax)} rep${+plan.repMax === 1 ? "" : "s"}`;
+    const stop = rr >= 1 ? `stopping with about ${rr} still in you` : "to the last rep you can do well";
+    const kin = !ex.bw ? kinStartIn(M, ex, plan, T) : null;
+    if (kin)
+      return {
+        w: kin.w,
+        text: `First time. About ${loadLabelIn(M, ex, kin.w)} ${UIn(M)}${loadNote(ex)} for ${reps}, from your ${kin.ex.name} (${kin.set}, ${fmtDate(kin.date)}), ${stop}. If the first set is off, change the load.`,
+        lastR: [],
+        last: "",
+        target: "",
+        tgt: null,
+        kin: kin.ex.id
+      };
+    const text = ex.assist ? `First time: set the help so you could do about ${can} reps. Do ${reps}, ${stop}. Next time the help is set from this.` : ex.bw ? `First time: your bodyweight only. Do ${reps}, ${stop}. If ${plan.repMin} is out of reach, use an easier version; if it is easy past ${plan.repMax}, the next target says so.` : `First time: pick a load you think you could lift about ${can} times, erring light. Do ${reps}, ${stop}. Next time's load is worked out from this.`;
+    return { w: ex.bw ? 0 : null, text, lastR: [], last: "", target: "", tgt: null };
+  }
+  function sgEasyIn(M, C) {
+    const { ex, plan, top, step, noAdd, atCap, capW, topPts, lastR, lastS, basis, lbl, prevBest, tgtRir, early } = C;
+    if (step > 0 && !atCap && !noAdd && !noE1(ex) && topPts.length && topPts.every((p) => p.rir != null && p.rir >= tgtRir + 2 && p.r >= plan.repMin)) {
+      let est = null;
+      for (const p of topPts) {
+        const v = fitE(p.load, p.r, Math.min(p.rir, E1_MAX_RIR));
+        if (v != null && (est == null || v > est)) est = v;
+      }
+      const bwNow = bwRefLoadIn(M, ex);
+      const topLoad = top + bwNow;
+      if (est != null && topLoad > 0) {
+        const want = Math.min(
+          e1inv(est, Math.round((+plan.repMin + +plan.repMax) / 2) + Math.min(tgtRir, E1_MAX_RIR)),
+          topLoad * jumpCap(ex, topLoad, early)
+        ) - bwNow;
+        let k = Math.floor((want - top) / step + 1e-6);
+        if (k < 1 && topPts.every((p) => p.rir >= 5)) k = 1;
+        if (k >= 1) {
+          const nw = ex.assist && top < 0 ? Math.min(0, top + k * step) : capW(top + k * step);
+          const rr = r1(topPts.reduce((a, p) => a + p.rir, 0) / topPts.length);
+          return {
+            top,
+            w: nw,
+            text: `${lastS} RIR ${rr} at ${lbl(top)} against a target of ${tgtRir}, so that load was light. Try ${lbl(nw)} for ${repSpan(plan.repMin, plan.repMax, "-")} reps.`,
+            lastR,
+            basis,
+            last: lastS,
+            target: `${lbl(nw)} for ${plan.repMin}+ reps in every set`,
+            tgt: { kind: "load", w: nw, repMin: +plan.repMin, prevBest },
+            easier: null
+          };
+        }
+      }
+    }
+    return null;
+  }
+  function sgPastRangeIn(M, C) {
+    const { ex, plan, top, step, noAdd, atCap, capW, topPts, lastR, lastS, basis, lbl, prevBest, tgtRir, early } = C;
+    if (step > 0 && !atCap && !noAdd && !noE1(ex) && topPts.length && topPts.every((p) => p.r >= +plan.repMax + 2)) {
+      let est = null;
+      for (const p of topPts) {
+        const v = fitE(p.load, p.r, p.rq);
+        if (v != null && (est == null || v > est)) est = v;
+      }
+      const bwNow = bwRefLoadIn(M, ex);
+      const topLoad = top + bwNow;
+      if (est != null && topLoad > 0) {
+        const want = Math.min(
+          e1inv(est, Math.round((+plan.repMin + +plan.repMax) / 2) + Math.min(tgtRir, E1_MAX_RIR)),
+          topLoad * jumpCap(ex, topLoad, early)
+        ) - bwNow;
+        const k = Math.floor((want - top) / step + 1e-6);
+        const one = progStepIn(M, ex, plan, topLoad, top);
+        if (k >= 1 && k * step > one + 1e-6) {
+          const nw = ex.assist && top < 0 ? Math.min(0, top + k * step) : capW(top + k * step);
+          const minR = Math.min(...topPts.map((p) => p.r));
+          return {
+            top,
+            w: nw,
+            text: `${lastS} Every set at ${lbl(top)} reached ${minR}+ reps, well past your ${rangeWords(plan)}. Try ${lbl(nw)} for ${repSpan(plan.repMin, plan.repMax, "-")} reps.`,
+            lastR,
+            basis,
+            last: lastS,
+            target: `${lbl(nw)} for ${plan.repMin}+ reps in every set`,
+            tgt: { kind: "load", w: nw, repMin: +plan.repMin, prevBest },
+            easier: null
+          };
+        }
+      }
+    }
+    return null;
+  }
+  function sgBelowRangeIn(M, C) {
+    const { ex, plan, exps, inRR, top, step, noAdd, topPts, lastR, lastS, basis, lbl, prevBest, tgtRir } = C;
+    if (step > 0 && !noAdd && topPts.length && topPts.every((p) => p.r < +plan.repMin)) {
+      const gap = +plan.repMin - Math.max(...topPts.map((p) => p.r));
+      const prev = exps.length >= 2 ? exps[exps.length - 2] : null;
+      const prevAt = prev ? prev.pts.filter((p) => Math.abs(p.w - top) < 1e-6) : [];
+      const sumR = (a) => a.reduce((x, p) => x + p.r, 0);
+      const rising = prevAt.length > 0 && sumR(topPts.slice(0, prevAt.length)) > sumR(prevAt);
+      const justUp = !!prev && prev.topW < top - 1e-6 && top - prev.topW <= step * 1.5 + 1e-6;
+      const repeat = !!prev && Math.abs(prev.topW - top) < 1e-6 && prevAt.every((p) => p.r < +plan.repMin) && !rising;
+      let shortRun = 0;
+      for (let k = exps.length - 1; k >= 0; k--) {
+        const x = exps[k];
+        if (Math.abs(x.topW - top) > 1e-6) break;
+        const at = atLoad(x.pts, x.topW);
+        if (!at.length || !at.every((p) => p.r < +plan.repMin)) break;
+        shortRun++;
+      }
+      if (gap >= 2 && !(justUp && gap <= 3) || repeat || !inRR || shortRun >= 4) {
+        let est = null;
+        for (const p of topPts) {
+          const v = e1(p.load, p.r, p.rq);
+          if (v != null && (est == null || v > est)) est = v;
+        }
+        const bwNow = bwRefLoadIn(M, ex);
+        if (est != null) {
+          const want = e1inv(est, +plan.repMin + Math.min(tgtRir, E1_MAX_RIR)) - bwNow;
+          const k = Math.ceil((top - want) / step - 1e-6);
+          const nw = top - k * step;
+          if (k >= 1 && (nw > 0 || ex.bw && (nw >= 0 || ex.assist))) {
+            const bestR = Math.max(...topPts.map((p) => p.r));
+            return {
+              top,
+              w: nw,
+              text: `${lastS} Top sets at ${lbl(top)} stopped at ${bestR} rep${bestR === 1 ? "" : "s"}, below your ${rangeWords(plan)}. Drop to ${lbl(nw)} and build back up.`,
+              lastR,
+              basis,
+              last: lastS,
+              target: `${lbl(nw)} for ${plan.repMin}+ reps in every set`,
+              tgt: { kind: "load", w: nw, repMin: +plan.repMin, prevBest },
+              easier: null,
+              down: true
+            };
+          }
+        }
+      }
+    }
+    return null;
+  }
+  function sgNoStep(C) {
+    const { plan, top, step, noAdd, abW, atCap, topPts, lastR, lastS, basis, lbl, prevBest, tp } = C;
+    if (atCap || !(step > 0) || noAdd) {
+      const where = atCap ? "the heaviest load available" : noAdd ? "your bodyweight" : "a fixed load (load step 0)";
+      const below = topPts.every((p) => p.r < +plan.repMin);
+      const total = tp.reduce((a, p) => a + p.r, 0);
+      const nT = tp.length;
+      const over = overSets(nT, plan);
+      const ext = +plan.repMax + Math.max(3, Math.round(+plan.repMax * 0.4));
+      const maxed = topPts.every((p) => p.r >= ext);
+      const tip = maxed ? noAdd && !abW ? ` Every set reached ${ext}+ on bodyweight alone. Add a little load (a belt or a vest) by typing it, or make each rep harder: a 3 to 4 second lowering, a pause, or a harder version.` : ` Every set reached ${ext}+ at ${where}, so make each rep harder instead: lower for 3 to 4 seconds and pause at the stretch, go one arm or one leg at a time, or finish with a drop set. Add a note when you change it so the numbers stay comparable.` : below ? ` That is ${where}, so build the reps up to ${plan.repMin} or more.` : ` That is ${where}, so keep adding reps past ${plan.repMax}.`;
+      return {
+        top,
+        w: top,
+        text: `${lastS} Beat ${total} reps ${over} at ${lbl(top)}.${tip}`,
+        lastR,
+        basis,
+        last: lastS,
+        target: `${total + 1}+ reps ${over} at ${lbl(top)}${atCap ? ", the heaviest available" : ""}`,
+        tgt: { kind: "reps", w: top, total, n: nT, rs: tp.map((p) => p.r), prevBest },
+        easier: maxed ? `Past ${ext} reps at ${atCap ? "the heaviest load" : "this load"}: slow the lowering to 3 to 4 seconds with a pause at the stretch, go one side at a time, or add a drop set.` : null,
+        capped: atCap
+      };
+    }
+    return null;
+  }
+  function sgTopOfRangeIn(M, C) {
+    const { ex, plan, top, cap, capW, topPts, lastR, lastS, basis, lbl, prevBest, tgtRir, tp } = C;
+    if (topPts.every((p) => p.r >= plan.repMax)) {
+      const nw = capW(top + progStepIn(M, ex, plan, top + bwRefLoadIn(M, ex), top));
+      if (ex.assist) {
+        const aw = top < 0 ? Math.min(0, nw) : nw;
+        return {
+          top,
+          w: aw,
+          text: `${lastS} Every set at ${lbl(top)} hit ${plan.repMax}: ${aw === 0 ? "try it without help" : `take ${fmtWIn(M, aw - top)} ${UIn(M)} of help off`} and aim for ${plan.repMin}+ reps.`,
+          lastR,
+          basis,
+          last: lastS,
+          target: `${lbl(aw)} for ${plan.repMin}+ reps in every set`,
+          tgt: { kind: "load", w: aw, repMin: +plan.repMin, prevBest },
+          easier: null
+        };
+      }
+      const wide = +plan.repMax - +plan.repMin >= 3;
+      let aim = +plan.repMin;
+      const q = Math.min(tgtRir, E1_MAX_RIR);
+      const bwT = bwRefLoadIn(M, ex);
+      if (!noE1(ex)) {
+        let est = null;
+        for (const p of topPts) {
+          const v = fitE(p.load, p.r, p.rq);
+          if (v != null && (est == null || v > est)) est = v;
+        }
+        const f = est ? rtfAt(est, nw + bwT) : null;
+        const cost = f != null ? rtfAt(est, top + bwT) - f : 0;
+        if (f != null && cost >= 1.5 && wide) {
+          const can = Math.floor(f - q + 1e-9);
+          if (can < aim) aim = Math.max(1, can);
+        }
+      }
+      if (topPts.every((p) => p.rir != null && p.rir >= 5)) aim = +plan.repMin;
+      const big = aim < +plan.repMin;
+      if (big && nw + bwT > 0 && top + bwT > 0) {
+        const rn = +plan.repMin + q;
+        const need = rn <= 10 ? (nw + bwT) * 36 / (37 - rn) : (nw + bwT) * (1 + rn / 30);
+        const ext2 = +plan.repMax + Math.max(2, Math.round(+plan.repMax * 0.25));
+        const Z = Math.min(ext2, Math.ceil(rtfAt(need, top + bwT) - q - 1e-9));
+        const minR = Math.min(...topPts.map((p) => p.r));
+        if (Z > minR) {
+          const total = tp.reduce((a, p) => a + p.r, 0);
+          const nT = tp.length;
+          const over = overSets(nT, plan);
+          return {
+            top,
+            w: top,
+            text: `${lastS} Every set at ${lbl(top)} hit ${plan.repMax}. The next step, ${fmtWIn(M, nw - top)} ${UIn(M)}, is large for this load, so build every set to ${Z} here first; then the new load starts inside your range.`,
+            lastR,
+            basis,
+            last: lastS,
+            target: `${total + 1}+ reps ${over} at ${lbl(top)}, building to ${Z} each`,
+            tgt: { kind: "reps", w: top, total, n: nT, rs: tp.map((p) => p.r), prevBest },
+            easier: null,
+            buildTo: Z
+          };
+        }
+      }
+      return {
+        top,
+        w: nw,
+        text: `${lastS} Every set at ${lbl(top)} hit ${plan.repMax}: add ${fmtWIn(M, nw - top)} ${UIn(M)}${cap != null && nw >= cap - 1e-6 ? ", which is the heaviest available," : ""} and aim for ${aim}+ reps${big ? `, then build back to ${plan.repMax}. That step is large for this load, so fewer reps than the range is expected at first` : ""}.`,
+        lastR,
+        basis,
+        last: lastS,
+        target: `${lbl(nw)} for ${aim}+ reps in every set`,
+        tgt: { kind: "load", w: nw, repMin: aim, prevBest },
+        easier: null
+      };
+    }
+    return null;
+  }
+  function sgBadDay(C) {
+    const { plan, exps, top, topPts, lastR, lastS, basis, lbl, prevBest } = C;
+    {
+      const prv = exps.length >= 2 ? exps[exps.length - 2] : null;
+      const pAt = prv && Math.abs(prv.topW - top) < 1e-6 ? atLoad(prv.pts, top) : [];
+      if (topPts.length && topPts.every((p) => p.r < +plan.repMin) && pAt.length && pAt.every((p) => p.r >= +plan.repMin))
+        return {
+          top,
+          w: top,
+          text: `${lastS} Every set fell under ${plan.repMin} at ${lbl(top)}, where you did ${plan.repMin}+ the time before. Stay at ${lbl(top)} and get back to ${plan.repMin}+ in every set.`,
+          lastR,
+          basis,
+          last: lastS,
+          target: `${lbl(top)} for ${plan.repMin}+ reps in every set`,
+          tgt: { kind: "load", w: top, repMin: +plan.repMin, prevBest },
+          easier: null
+        };
+    }
+    return null;
+  }
+  function sgRepsIn(M, C) {
+    const { ex, plan, stx, top, topPts, lastR, lastS, basis, lbl, prevBest, tp } = C;
+    const total = tp.reduce((a, p) => a + p.r, 0);
+    const nT = tp.length;
+    const over = overSets(nT, plan);
+    const floored = tp.some((p, i) => topPts[i] && topPts[i].r < p.r) ? ` (a set under ${plan.repMin} counts as ${plan.repMin})` : "";
+    return {
+      top,
+      w: top,
+      text: `${lastS} Beat ${total} reps ${over} at ${lbl(top)}${floored}. When every set at that load reaches ${plan.repMax}, ${ex.assist ? "take some help off" : "add load"}.`,
+      lastR,
+      basis,
+      last: lastS,
+      target: `${total + 1}+ reps ${over} at ${lbl(top)}`,
+      tgt: { kind: "reps", w: top, total, n: nT, rs: tp.map((p) => p.r), prevBest },
+      easier: stx.easier ? easierTextIn(M, ex, stx.easier) : null
+    };
+  }
+  function kinOfIn(M, ex, T) {
+    if (!ex || ex.bw || ex.assist || ex.timed || noE1(ex) || !["barbell", "dumbbell", "kettlebell", "landmine", "other"].includes(ex.equip))
+      return null;
+    const pat = patternOf(ex);
+    if (!pat) return null;
+    const I = IDXIn(M);
+    let best = null;
+    const from = addDays(T, -120);
+    for (const id of Object.keys(I.byEx)) {
+      if (id === ex.id) continue;
+      const e = EXIn(M, id);
+      if (!e || e.archived || e.bw || e.assist || e.timed || noE1(e) || e.equip !== ex.equip || loadMode(e) !== loadMode(ex) || !!e.perSide !== !!ex.perSide || KIN_UNI.test(e.name) !== KIN_UNI.test(ex.name) || e.primary !== ex.primary || patternOf(e) !== pat)
+        continue;
+      const xs = I.byEx[id].filter((x2) => x2.date <= T && !offSession(x2) && !x2.cut);
+      const x = xs[xs.length - 1];
+      if (!x || x.date < from) continue;
+      if (!best || x.date > best.x.date) best = { ex: e, x };
+    }
+    return best;
+  }
+  function kinStartIn(M, ex, plan, T) {
+    const k = kinOfIn(M, ex, T);
+    if (!k) return null;
+    const x = k.x;
+    const wl = workLoad(x.pts, +plan.repMin || 0);
+    const at = atLoad(x.pts, wl);
+    let est = null, set = null;
+    for (const p of at) {
+      const v = fitE(p.load, p.r, p.rq);
+      if (v != null && (est == null || v > est)) {
+        est = v;
+        set = p;
+      }
+    }
+    if (est == null) return null;
+    const mid = Math.round((+plan.repMin + +plan.repMax) / 2);
+    const q = Math.min((+plan.rir || 0) + 1, E1_MAX_RIR);
+    const want = e1inv(est * (isCompound(ex) ? 0.8 : 0.9), mid + q);
+    const L = gymRackIn(M, ex, plan);
+    let w;
+    if (L) {
+      const c = L.filter((x2) => x2 <= want + 1e-6);
+      if (!c.length) return null;
+      w = c[c.length - 1];
+    } else {
+      const rs = rackKind(ex) && rackKind(k.ex) ? rackStepIn(M, k.ex) : null;
+      const st = toDIn(M, rs || incOfIn(M, ex, plan));
+      if (!(st > 0)) return null;
+      w = fromDIn(M, Math.floor(toDIn(M, want) / st + 1e-9) * st);
+    }
+    if (!(w > 0)) return null;
+    return { ex: k.ex, date: x.date, w, set: `${loadLabelIn(M, k.ex, set.w)}×${set.r}` };
+  }
+  function suggestTimedIn(M, ex, plan, exps, opts, injM, all) {
+    opts = opts || {};
+    const side = ex.perSide ? " per side" : "";
+    if (!exps || !exps.length) {
+      if (injM)
+        return {
+          w: ex.bw ? 0 : null,
+          text: `Injury flagged (${injLabel(injM)}). Keep holds short and easy, and stop on pain.`,
+          lastR: [],
+          last: "",
+          target: "",
+          tgt: null,
+          inj: injM
+        };
+      return {
+        w: ex.bw ? 0 : null,
+        text: `No history yet. Hold for ${repSpan(plan.repMin, plan.repMax, "-")} seconds${side} each set.`,
+        lastR: [],
+        last: "",
+        target: "",
+        tgt: null
+      };
+    }
+    const last = exps[exps.length - 1], ws = last.pts;
+    const top = Math.max(...ws.map((p) => p.w));
+    const topPts = ws.filter((p) => Math.abs(p.w - top) < 1e-6);
+    const lbl = (w) => `${loadLabelIn(M, ex, w)}${ex.bw ? "" : " " + UIn(M)}${loadNote(ex)}`;
+    const L0 = lastOf(all, last, (p) => `${loadLabelIn(M, ex, p.w)} for ${p.r}s`);
+    const lastR = L0.lastR, lastS = L0.line, basis = L0.basis;
+    if (injM)
+      return {
+        prev: L0.prev,
+        prevOff: L0.prevOff,
+        w: top,
+        text: `${lastS} Injury flagged (${injLabel(injM)}): stay at or below ${lbl(top)}, keep it easy, and stop on pain.`,
+        lastR,
+        basis,
+        last: lastS,
+        target: "",
+        tgt: null,
+        easier: null,
+        inj: injM
+      };
+    if (opts.deload || opts.light)
+      return {
+        prev: L0.prev,
+        prevOff: L0.prevOff,
+        w: top,
+        text: `${lastS} ${opts.deload ? "Deload" : "Lighter day"}: same load, hold about two thirds as long, and stop well before shaking.`,
+        lastR,
+        basis,
+        last: lastS,
+        target: "",
+        tgt: null,
+        easier: null
+      };
+    const step = incOfIn(M, ex, plan, top);
+    const cap = capOfIn(M, ex, plan, top);
+    if (step > 0 && topPts.every((p) => p.r >= plan.repMax) && !atCapOfIn(M, ex, plan, top, cap)) {
+      const nw = cap != null ? Math.min(top + step, cap) : top + step;
+      return {
+        prev: L0.prev,
+        prevOff: L0.prevOff,
+        w: nw,
+        text: `${lastS} Every hold at ${lbl(top)} reached ${plan.repMax}s: add ${fmtWIn(M, nw - top)} ${UIn(M)}${ex.bw ? " (a plate or a vest)" : ""} and aim for ${plan.repMin}s+.`,
+        lastR,
+        basis,
+        last: lastS,
+        target: `${lbl(nw)} for ${plan.repMin}s+ in every set`,
+        tgt: { kind: "load", w: nw, repMin: +plan.repMin, prevBest: null },
+        easier: null
+      };
+    }
+    const total = topPts.reduce((a, p) => a + p.r, 0);
+    const nT = topPts.length;
+    const over = overSets(nT, plan, "hold");
+    return {
+      prev: L0.prev,
+      prevOff: L0.prevOff,
+      w: top,
+      text: `${lastS} Beat ${total}s ${over} at ${lbl(top)}. When every hold reaches ${plan.repMax}s, add load.`,
+      lastR,
+      basis,
+      last: lastS,
+      target: `${total + 1}s+ ${over} at ${lbl(top)}`,
+      tgt: { kind: "reps", w: top, total, n: nT, rs: topPts.map((p) => p.r), prevBest: null },
+      easier: null
+    };
+  }
+  function incOfIn(M, ex, plan, at) {
+    const v = stepReadIn(M, ex && ex.inc != null ? ex.inc : plan && isNum(+plan.inc) ? +plan.inc : STEP_LB);
+    if (ex && ex.inc == null && Math.abs(v - unitStepIn(M)) < 1e-6) {
+      const L = gymRackIn(M, ex, plan);
+      if (L) return rackGapIn(M, L, at);
+      if (rackKind(ex)) {
+        const g = rackStepIn(M, ex);
+        if (g) return g;
+      }
+      const gs = gymStepIn(M, ex);
+      if (gs) return gs;
+    }
+    return v;
+  }
+  function rackSnapIn(M, ex, plan, res) {
+    const L = gymRackIn(M, ex, plan);
+    if (!L || !res || res.w == null || ex.timed) return res;
+    const w = res.w, top = res.top, tl = rackTolIn(M), tt = rackTolIn(M, L, top);
+    if (L.some((x) => Math.abs(x - w) < 1e-6) || top != null && Math.abs(w - top) < 1e-6) return res;
+    const dn = L.filter((x) => x <= w + tl);
+    let nw;
+    if (top != null && w > top) {
+      const c = dn.filter((x) => x > top + tt);
+      nw = c.length ? c[c.length - 1] : L.find((x) => x > top + tt);
+    } else nw = dn.length ? dn[dn.length - 1] : L[0];
+    return nw == null || Math.abs(nw - w) < 1e-9 ? res : swapWIn(M, ex, res, nw);
+  }
+  function rackStepIn(M, ex) {
+    const I = IDXIn(M);
+    I._rack = I._rack || {};
+    const key = UIn(M) + ex.id;
+    if (I._rack[key] !== void 0) return I._rack[key];
+    const xs = (I.byEx[ex.id] || []).slice(-12);
+    const ws = [];
+    for (const x of xs) for (const p of x.pts) if (p.w > 0) ws.push(toDIn(M, p.w));
+    const fits = (g2) => ws.every((w) => Math.abs(w / g2 - Math.round(w / g2)) < 0.01);
+    const g = ws.length ? RACK[rackKind(ex)][UIn(M)].find(fits) : null;
+    return I._rack[key] = g ? fromDIn(M, g) : null;
+  }
+  function progStepIn(M, ex, plan, loadKg, at) {
+    const L = at != null ? gymRackIn(M, ex, plan) : null;
+    if (L) {
+      const ta = rackTolIn(M, L, at);
+      const up = L.filter((x) => x > at + ta);
+      if (!up.length) return rackGapIn(M, L, at);
+      const want = at + jumpPct(ex, plan) * Math.max(0, loadKg);
+      let nw = up[0];
+      for (const x of up) if (x <= want + 1e-6) nw = x;
+      return nw - at;
+    }
+    const inc = incOfIn(M, ex, plan, at);
+    if (!(inc > 0)) return inc;
+    const pct = jumpPct(ex, plan);
+    return inc * Math.max(1, Math.floor(pct * Math.max(0, loadKg) / inc + 1e-9));
+  }
+  function easierTextIn(M, ex, e) {
+    return `Getting easier at ${loadLabelIn(M, ex, e.w)}${ex.bw ? "" : " " + UIn(M)}: RIR ${e.from} → ${e.to} at the same reps. Adding load today is reasonable.`;
+  }
+  function lighterLoadIn(M, ex, plan, from, to) {
+    const L = gymRackIn(M, ex, plan);
+    if (L) {
+      const tl = rackTolIn(M), tf = rackTolIn(M, L, from);
+      const lo = L.filter((x) => x < from - tf);
+      if (!lo.length) return Math.max(0, from);
+      const c = lo.filter((x) => x <= to + tl);
+      return c.length ? c[c.length - 1] : lo[0];
+    }
+    const step = incOfIn(M, ex, plan, from);
+    let w;
+    if (step > 0) {
+      const k = Math.max(1, Math.ceil((from - to) / step - 1e-6));
+      w = from - k * step;
+    } else w = roundLoadIn(M, to, true);
+    const floor = platesMode(ex) === "bar" && loadMode(ex) === "total" && (isCompound(ex) || ex.barKg > 0) ? exBarKgIn(M, ex) : 0;
+    if (w < floor - 1e-6) w = Math.min(floor, from);
+    return Math.max(0, w);
+  }
+
+  // src/app/live.ts
+  var LIVE = {
+    get s() {
+      return state;
+    },
+    today,
+    c: freshCaches()
+  };
+  function live(f) {
+    return (...args) => f(LIVE, ...args);
+  }
+  var EX = live(EXIn);
+  var U = live(UIn);
+  var activeRoutine = live(activeRoutineIn);
+  var exInjury = live(exInjuryIn);
+  var exName = live(exNameIn);
+  var freeMode = live(freeModeIn);
+  var gymOf = live(gymOfIn);
+  var injuredSet = live(injuredSetIn);
+  var invalidate = live(invalidateIn);
+  var isDeloadWeek = live(isDeloadWeekIn);
+  var isRestWeek = live(isRestWeekIn);
+  var prof = live(profIn);
+  var rirHalfOn = live(rirHalfOnIn);
+  var sortedSessions = live(sortedSessionsIn);
+  var fromD = live(fromDIn);
+  var stepRead = live(stepReadIn);
+  var toD = live(toDIn);
+  var defPlan = live(defPlanIn);
+  var planCredit = live(planCreditIn);
+  var planFor = live(planForIn);
+  var planSetsPerWeek = live(planSetsPerWeekIn);
+  var profPlan = live(profPlanIn);
+  var profRule = live(profRuleIn);
+  var barKg = live(barKgIn);
+  var capOf = live(capOfIn);
+  var exBarKg = live(exBarKgIn);
+  var gymRack = live(gymRackIn);
+  var rackTol = live(rackTolIn);
+  var fmtW = live(fmtWIn);
+  var loadLabel = live(loadLabelIn);
+  var IDX = live(IDXIn);
+  var bwAt = live(bwAtIn);
+  var bwLoad = live(bwLoadIn);
+  var bwRef = live(bwRefIn);
+  var bwRefLoad = live(bwRefLoadIn);
+  var calStats = live(calStatsIn);
+  var dateIndex = live(dateIndexIn);
+  var hardCredit = live(hardCreditIn);
+  var isHard = live(isHardIn);
+  var loadOf = live(loadOfIn);
+  var prLoad = live(prLoadIn);
+  var rirEff = live(rirEffIn);
+  var rirEst = live(rirEstIn);
+  var rirUsual = live(rirUsualIn);
+  var statsUpTo = live(statsUpToIn);
+  var tonnage = live(tonnageIn);
+  var weekSessions = live(weekSessionsIn);
+  var dayMinutes = live(dayMinutesIn);
+  var pace = live(paceIn);
+  var paceRatios = live(paceRatiosIn);
+  var sessModelMin = live(sessModelMinIn);
+  var actualAvg4 = live(actualAvg4In);
+  var avgWeeks = live(avgWeeksIn);
+  var firstFullWeek = live(firstFullWeekIn);
+  var recentLighter = live(recentLighterIn);
+  var regionBalance = live(regionBalanceIn);
+  var weekNeed = live(weekNeedIn);
+  var weekRoutine = live(weekRoutineIn);
+  var weekStats = live(weekStatsIn);
+  var weekStreak = live(weekStreakIn);
+  var coach = live(coachIn);
+  var dropOnlyLift = live(dropOnlyLiftIn);
+  var fatigueStalls = live(fatigueStallsIn);
+  var movers = live(moversIn);
+  var readiness = live(readinessIn);
+  var stalledIds = live(stalledIdsIn);
+  var daysOff = live(daysOffIn);
+  var easierText = live(easierTextIn);
+  var incOf = live(incOfIn);
+  var lighterLoad = live(lighterLoadIn);
+  var progStep = live(progStepIn);
+  var rackStep = live(rackStepIn);
+  var suggestCore = live(suggestCoreIn);
+  var suggest = live(suggestIn);
+
   // src/legacy.js
   (function() {
     "use strict";
@@ -3378,34 +5444,6 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       const restToday = since >= 1 && since <= run;
       return { last: L.i, lastDate: L.s.date, next, done, restToday, restIdx: restToday ? (L.i + since) % n : -1 };
     }
-    function isDeloadWeek() {
-      return !!state.deloadWeek && state.deloadWeek === weekStart(today());
-    }
-    function freeMode() {
-      return state.settings.todayStart === "free";
-    }
-    function isRestWeek(ws) {
-      const r = state.settings.restWeeks;
-      return Array.isArray(r) && r.includes(ws);
-    }
-    function injuredSet() {
-      return new Set((state.injuries || []).map((x) => x.m));
-    }
-    function exInjury(ex) {
-      const s = injuredSet();
-      if (!s.size) return null;
-      if (s.has(ex.primary)) return ex.primary;
-      for (const m of ex.secondary) if (s.has(m)) return m;
-      for (const j of exJoints(ex)) if (s.has(j)) return j;
-      return null;
-    }
-    const DTF = {};
-    const dtf = (k, o) => DTF[k] || (DTF[k] = new Intl.DateTimeFormat(void 0, o));
-    const fmtWith = (k, o, s) => {
-      const d = parse(s);
-      return isNaN(+d) ? "" : dtf(k, o).format(d);
-    };
-    const fmtDate = (s) => fmtWith("d", { month: "short", day: "numeric" }, s);
     const fmtDateLong = (s) => fmtWith("l", { weekday: "short", month: "short", day: "numeric", year: "numeric" }, s);
     const SEC_TABS = ["today", "program", "dash", "history", "settings"];
     const HIDEABLE = [
@@ -5150,11 +7188,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       if (saveT) saveNow();
       if (trackT || cloud.pendAt) trackEdits();
     });
-    const U = () => state.settings.unit;
     const LU = () => U() === "lb" ? "in" : "cm";
-    const toD = (kg) => kg == null ? null : U() === "lb" ? kg / LB : kg;
-    const fromD = (v) => v == null ? null : U() === "lb" ? v * LB : v;
-    const fmtW = (kg) => kg == null || isNaN(kg) ? "" : String(r1(toD(kg)));
     const fmtE = (kg) => {
       if (kg == null || isNaN(kg)) return "";
       const v = toD(kg);
@@ -5162,152 +7196,17 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     };
     const lenD = (cm) => cm == null ? "" : String(r1(U() === "lb" ? cm / IN : cm));
     const lenFrom = (v) => U() === "lb" ? v * IN : v;
-    let EXMAP = null;
-    function EX(id) {
-      if (!EXMAP) {
-        EXMAP = /* @__PURE__ */ Object.create(null);
-        for (const e of state.exercises) EXMAP[e.id] = e;
-      }
-      return EXMAP[id] || { id, name: "Deleted exercise", primary: "chest", secondary: [], equip: "other", bw: false, archived: true };
-    }
-    const exName = (id) => EX(id).name;
-    function activeRoutine() {
-      return state.routines.find((r) => r.id === state.activeRoutineId) || state.routines[0];
-    }
-    function loadLabel(ex, kg) {
-      if (ex.bw) {
-        return kg > 0 ? `BW+${fmtW(kg)}` : kg < 0 ? `BW−${fmtW(-kg)}` : "BW";
-      }
-      return fmtW(kg);
-    }
     const loadIn = (ex, w) => w == null ? "" : fmtW(ex && ex.assist ? -w : w);
-    let _idx = null, _dix = null, _cal = null, _bwRef, _pace = null;
-    function invalidate() {
-      _idx = null;
-      _dix = null;
-      EXMAP = null;
-      _cal = null;
-      _rirUse = null;
-      _bwRef = void 0;
-      _pace = null;
-    }
-    function bwKnownAt(date) {
-      let best = null;
-      for (const b of state.bodyweights) if (b.date <= date && (!best || b.date >= best.date)) best = b;
-      return best ? best.kg : null;
-    }
-    function bwAt(date) {
-      let best = null, earliest = null;
-      for (const b of state.bodyweights) {
-        if (b.date <= date && (!best || b.date >= best.date)) best = b;
-        if (!earliest || b.date < earliest.date) earliest = b;
-      }
-      return best || earliest ? (best || earliest).kg : null;
-    }
-    function rirEff(s, ex) {
-      const m = state.settings.rirMode;
-      if (m === "off") return null;
-      if (s.rir == null || s.rir === "") return null;
-      const v = +s.rir;
-      if (!isFinite(v)) return null;
-      if (m === "cal" && !s.cal && v <= 4) {
-        const c = calStats();
-        const k = ex ? isCompound(ex) ? "c" : "i" : null;
-        const src = k && c.cls[k].recent >= 2 ? c.cls[k] : c;
-        if (src.recent >= 2 && src.bias) return Math.min(10, Math.max(0, v + src.bias));
-      }
-      return v;
-    }
     const rirShow = (ex) => state.settings.rirMode !== "off" && !(ex && ex.timed);
-    const CAL_WEEKS = 12;
-    function calSummary(list) {
-      const last = list.slice(-8);
-      const n = last.length;
-      const med = n ? median(last.map((p) => p.err)) : null;
-      const shr = med == null ? 0 : med * n / (n + 3);
-      return { recent: n, raw: med, bias: Math.max(-2, Math.min(2, Math.sign(shr) * Math.round(Math.abs(shr) * 2) / 2)), mae: n ? last.reduce((a, p) => a + Math.abs(p.err), 0) / n : null };
-    }
-    function calStats() {
-      if (_cal) return _cal;
-      const pts = [];
-      for (const s of state.sessions) {
-        if (s.demo) continue;
-        for (const b of s.ex) {
-          const c = isCompound(EX(b.exId)) ? "c" : "i";
-          for (const x of b.sets) if (x.cal && +x.r >= x.cal.at) pts.push({ date: s.date, err: +x.r - x.cal.at - x.cal.pred, c });
-        }
-      }
-      pts.sort((a, b) => a.date < b.date ? -1 : a.date > b.date ? 1 : 0);
-      const cut = addDays(today(), -7 * CAL_WEEKS);
-      const rec = pts.filter((p) => p.date >= cut);
-      _cal = {
-        ...calSummary(rec),
-        n: pts.length,
-        lastDate: pts.length ? pts[pts.length - 1].date : null,
-        cls: { c: calSummary(rec.filter((p) => p.c === "c")), i: calSummary(rec.filter((p) => p.c === "i")) }
-      };
-      return _cal;
-    }
-    let _rirUse = null;
-    function rirUsual(exId) {
-      if (state.settings.rirMode === "off") return null;
-      if (!_rirUse) {
-        _rirUse = /* @__PURE__ */ Object.create(null);
-        const cut = addDays(today(), -7 * CAL_WEEKS);
-        const by = /* @__PURE__ */ Object.create(null);
-        for (const ss of state.sessions) {
-          if (ss.date < cut) continue;
-          for (const b of ss.ex) {
-            const ex = EX(b.exId);
-            if (ex.timed) continue;
-            for (const x of b.sets) {
-              if (!isWork(x) || x.drop || x.cal) continue;
-              const q = rirEff(x, ex);
-              if (q != null) (by[b.exId] || (by[b.exId] = [])).push(q);
-            }
-          }
-        }
-        for (const k in by) if (by[k].length >= 3) _rirUse[k] = median(by[k]);
-      }
-      const v = _rirUse[exId];
-      return v == null ? null : v;
-    }
-    const rirEst = (s, ex) => {
-      const q = rirEff(s, ex);
-      return q != null ? q : ex ? rirUsual(ex.id) : null;
-    };
-    const isHard = (s, ex) => {
-      if (!isWork(s)) return false;
-      const q = rirEst(s, ex);
-      return q == null || q <= 3;
-    };
     const halfLbl = () => {
       const k = rirScale();
       return k === "rpe" ? "RPE 5 to 6.5" : k === "half" ? "RIR 3.5 to 5" : "RIR 4 to 5";
     };
-    const rirHalfOn = () => state.settings.rirHalf === true && state.settings.rirMode !== "off";
-    function hardCredit(s, ex) {
-      if (isHard(s, ex)) return setCredit(s);
-      if (!rirHalfOn() || !isWork(s)) return 0;
-      const q = rirEst(s, ex);
-      return q != null && q > 3 ? setCredit(s) * 0.5 : 0;
-    }
     function setShort(ex, w, r) {
       return ex.timed ? `${loadLabel(ex, +w || 0)} for ${r}s` : `${loadLabel(ex, +w || 0)}×${r}`;
     }
     function setStr(ex, x) {
       return `${x.warm ? "(W) " : x.drop ? "(D) " : ""}${setShort(ex, x.w, x.r)}${!ex.timed && x.rir != null && x.rir !== "" ? rirScale() === "rpe" ? " @RPE " + effShow(x.rir) : " @" + effShow(x.rir) : ""}${x.cal ? " (RIR check)" : ""}`;
-    }
-    function bwLoad(ex, date) {
-      return ex && ex.bw ? (bwAt(date) || 0) * bwShare(ex) : 0;
-    }
-    function loadOf(ex, s, date) {
-      return bwLoad(ex, date) + (+s.w || 0);
-    }
-    const bwRef = () => _bwRef !== void 0 ? _bwRef : _bwRef = bwAt("9999-12-31") || 0;
-    const bwRefLoad = (ex) => ex && ex.bw ? bwRef() * bwShare(ex) : 0;
-    function prLoad(ex, s, date) {
-      return ex && ex.bw ? bwRef() * bwShare(ex) + (+s.w || 0) : loadOf(ex, s, date);
     }
     function loadHead(ex) {
       const m = loadMode(ex), u = U().toUpperCase();
@@ -5321,412 +7220,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       const long = { each: "Enter the weight of one dumbbell. Weight lifted counts both.", side: "Enter the plates on one side. Weight lifted counts both sides.", stack: "Enter the pin setting. It is not comparable across machines.", bw: "Enter only what you add (belt, vest, dumbbell); 0 for bodyweight. Your logged bodyweight is added for estimates." }[m] || (ex.equip === "barbell" ? "Enter everything on the bar, the bar included." : ex.equip === "dumbbell" ? "Enter the weight of the one dumbbell you hold." : "Enter the total load.");
       return `<p class="lmrow"><span class="lm" data-tip="${esc(long)}">${esc(loadWords(ex))}</span>${ex.perSide ? `<span class="lm" data-tip="${esc(ex.timed ? "Seconds for one side; do the same on the other." : "Reps for one side; do the same on the other. One set still counts as one set.")}">${ex.timed ? "seconds" : "reps"} per side</span>` : ""}</p>`;
     }
-    function tonnage(ex, s, date) {
-      const m = loadMode(ex);
-      const w = +s.w || 0;
-      const known = bwKnownAt(date || today());
-      const bl = ex && ex.bw && known != null ? known * bwShare(ex) : 0;
-      const load2 = m === "bw" ? Math.max(0, bl + w) : m === "each" || m === "side" ? w * 2 : w;
-      return load2 * (+s.r || 0) * (ex.perSide ? 2 : 1);
-    }
-    function sortedSessions() {
-      return [...state.sessions].sort(sessCmp);
-    }
-    function dateIndex() {
-      if (_dix) return _dix;
-      const byDate = {}, weekN = {};
-      for (const x of sortedSessions()) {
-        (byDate[x.date] = byDate[x.date] || []).push(x);
-        const w = weekStart(x.date);
-        weekN[w] = (weekN[w] || 0) + 1;
-      }
-      return _dix = { byDate, weekN };
-    }
     const sessionsOn = (d) => dateIndex().byDate[d] || [];
-    function IDX() {
-      if (_idx) return _idx;
-      const sessions = sortedSessions();
-      const V = idxSessions(sessions);
-      const byEx = V.byEx;
-      const anchor = sessions.length ? sessions[sessions.length - 1].date : today();
-      const winStart = addDays(anchor, -42);
-      const wkAuto = idxAutoLighter(byEx);
-      const lightWk = idxLightWeeks(sessions, wkAuto);
-      const prs = [];
-      const exStats = {};
-      for (const id of Object.keys(byEx)) {
-        const maxBest = idxPRs(id, byEx[id], prs);
-        exStats[id] = idxLift(id, byEx[id], maxBest, anchor, winStart);
-      }
-      const scores = idxScores(exStats);
-      prs.sort((a, b) => a.date < b.date ? 1 : a.date > b.date ? -1 : 0);
-      _idx = { byEx, exStats, scores, prs, sessVol: V.sessVol, weekSets: V.weekSets, weekConf: V.weekConf, weekHard: V.weekHard, dayMus: V.dayMus, dayMeta: V.dayMeta, anchor, lightWk, rirCov: { logged: V.rirLogged, total: V.rirTotal } };
-      return _idx;
-    }
-    function idxSessions(sessions) {
-      const byEx = {}, sessVol = [], weekSets = {}, weekConf = {}, dayMus = {}, dayMeta = {}, weekHard = {};
-      const recentFrom = addDays(today(), -28);
-      const seenEx = /* @__PURE__ */ new Set();
-      let rirLogged = 0, rirTotal = 0;
-      for (const ss of sessions) {
-        let vol = 0;
-        const wk = weekStart(ss.date);
-        const ws = weekSets[wk] || (weekSets[wk] = {});
-        const wc = weekConf[wk] || (weekConf[wk] = {});
-        const dm = dayMus[ss.date] || (dayMus[ss.date] = {});
-        const dx = dayMeta[ss.date] || (dayMeta[ss.date] = {});
-        for (const b of sameExOnce(ss.ex)) {
-          const ex = EX(b.exId);
-          const novel = !seenEx.has(b.exId);
-          const mus = [[ex.primary, 1], ...ex.secondary.map((m) => [m, 0.5])];
-          for (const s of b.sets) {
-            if (!isWork(s)) continue;
-            const logged = state.settings.rirMode === "off" || !(s.rir == null || s.rir === "");
-            if (ss.date >= recentFrom) {
-              rirTotal++;
-              if (logged) rirLogged++;
-            }
-            const hard = isHard(s, ex);
-            const cr = hard ? setCredit(s) : hardCredit(s, ex);
-            if (!cr) continue;
-            const q = rirEff(s, ex);
-            weekHard[wk] = (weekHard[wk] || 0) + cr;
-            for (const [m, f] of mus) {
-              ws[m] = (ws[m] || 0) + f * cr;
-              if (logged) wc[m] = (wc[m] || 0) + f * cr;
-              if (!hard) continue;
-              dm[m] = (dm[m] || 0) + f * cr;
-              const o = dx[m] || (dx[m] = { fail: 0, easy: 0, hard: 0, slow: false, novel: false });
-              o.hard++;
-              if (q === 0) o.fail++;
-              if (q != null && q >= 3) o.easy++;
-              if (SLOW_RECOVERY.has(ex.id)) o.slow = true;
-              if (novel) o.novel = true;
-            }
-          }
-          seenEx.add(b.exId);
-          const work = b.sets.filter(isWork);
-          if (!work.length) continue;
-          const main = work.filter((s) => !s.drop);
-          const ptsSrc = main.length ? main : work;
-          const pts = ptsSrc.map((s) => {
-            const pl = prLoad(ex, s, ss.date);
-            return { load: ex.bw ? pl : loadOf(ex, s, ss.date), pl, r: +s.r, w: +s.w || 0, rir: rirEff(s, ex), rq: rirEst(s, ex) };
-          });
-          const topW = workLoad(pts, b.rr ? b.rr[0] : 0);
-          const tr = pts.filter((p) => Math.abs(p.w - topW) < 1e-6 && p.rir != null);
-          const atTop = atLoad(pts, topW);
-          const topRir = tr.length ? tr.reduce((a, p) => a + p.rir, 0) / tr.length : null;
-          const topReps = atTop.reduce((a, p) => a + p.r, 0);
-          const drop = atTop.length >= 2 ? atTop[0].r - atTop[atTop.length - 1].r : null;
-          let best = null, bb = null;
-          if (!noE1(ex)) for (const p of pts) {
-            const v2 = e1(p.load, p.r, p.rq);
-            if (v2 != null && (best == null || v2 > best)) {
-              best = v2;
-              bb = rtfBand(rtfOf(p.r, p.rq));
-            }
-          }
-          let pb = best, pbb = bb;
-          if (ex.bw) {
-            pb = null;
-            pbb = null;
-            if (!noE1(ex)) for (const p of pts) {
-              const v2 = e1(p.pl, p.r, p.rq);
-              if (v2 != null && (pb == null || v2 > pb)) {
-                pb = v2;
-                pbb = rtfBand(rtfOf(p.r, p.rq));
-              }
-            }
-          }
-          let tAdj = null, tRaw = null, topL = 0, rated = 0;
-          if (!noE1(ex)) {
-            const avg = (f) => {
-              const v2 = atTop.map(f).filter((x) => x != null);
-              return v2.length ? v2.reduce((a, b2) => a + b2, 0) / v2.length : null;
-            };
-            tAdj = avg((p) => trendE(p.load, p.r, p.rq));
-            tRaw = avg((p) => trendE(p.load, p.r, 0));
-          }
-          for (const p of pts) {
-            if (p.load > topL) topL = p.load;
-            if (p.rir != null) rated++;
-          }
-          const v = ex && ex.timed ? 0 : work.reduce((a, s) => a + tonnage(ex, s, ss.date), 0);
-          vol += v;
-          (byEx[b.exId] || (byEx[b.exId] = [])).push({ date: ss.date, sid: ss.id, pts, best, bb, pb, pbb, vol: v, n: work.length, topW, topRir, topReps, drop, deload: !!ss.deload, light: !!ss.light || !!b.light, rr: b.rr || null, topN: atTop.length, cut: !!b.cut, tAdj, tRaw, topL, rated });
-        }
-        sessVol.push({ date: ss.date, vol, id: ss.id, day: ss.dayName });
-      }
-      return { byEx, sessVol, weekSets, weekConf, dayMus, dayMeta, weekHard, rirLogged, rirTotal };
-    }
-    function idxAutoLighter(byEx) {
-      const wkAuto = {};
-      for (const id of Object.keys(byEx)) {
-        const exps = byEx[id];
-        const prev = [];
-        let run = [];
-        for (const x of exps) {
-          if (tagged(x)) continue;
-          const k = weekStart(x.date);
-          const o = wkAuto[k] || (wkAuto[k] = { n: 0, l: 0 });
-          o.n++;
-          const ref2 = prev.filter((q) => sameRR(q.rr, x.rr)).slice(-3);
-          if (ref2.length >= 2) {
-            const mL = Math.max(...ref2.map((q) => q.topL)), mT = Math.max(...ref2.map((q) => q.tRaw == null ? -Infinity : q.tRaw));
-            if (mL > 0 && x.topL <= mL * 0.9 + 1e-9 && (x.tRaw == null || !isFinite(mT) || x.tRaw <= mT * 0.93 + 1e-9)) {
-              x.auto = true;
-              o.l++;
-              run.push(x);
-              if (run.length >= 3 && daysBetween(run[0].date, run[run.length - 1].date) >= 14) {
-                for (const q of run) {
-                  q.auto = false;
-                  q.keep = true;
-                  wkAuto[weekStart(q.date)].l--;
-                }
-                prev.length = 0;
-                prev.push(...run);
-                run = [];
-              }
-              continue;
-            }
-          }
-          run = [];
-          prev.push(x);
-        }
-      }
-      for (const id of Object.keys(byEx)) {
-        const prev = [];
-        for (const x of byEx[id]) {
-          if (tagged(x)) continue;
-          if (x.auto || x.keep) {
-            if (x.keep) prev.push(x);
-            continue;
-          }
-          const o = wkAuto[weekStart(x.date)];
-          const ref2 = prev.filter((q) => sameRR(q.rr, x.rr)).slice(-3);
-          if (o && o.l >= 2 && o.l * 2 >= o.n && ref2.length) {
-            const mL = Math.max(...ref2.map((q) => q.topL)), mT = Math.max(...ref2.map((q) => q.tRaw == null ? -Infinity : q.tRaw));
-            if (x.topL < mL - 1e-6 || x.tRaw != null && isFinite(mT) && x.tRaw < mT * 0.97) {
-              x.auto = true;
-              continue;
-            }
-          }
-          prev.push(x);
-        }
-      }
-      return wkAuto;
-    }
-    function idxLightWeeks(sessions, wkAuto) {
-      const lightWk = {};
-      {
-        const tag = {};
-        for (const ss of sessions) {
-          const k = weekStart(ss.date);
-          const o = tag[k] || (tag[k] = { n: 0, l: 0 });
-          o.n++;
-          if (ss.deload || ss.light) o.l++;
-        }
-        for (const k in tag) if (tag[k].n && tag[k].l === tag[k].n) lightWk[k] = true;
-        for (const k in wkAuto) {
-          const o = wkAuto[k];
-          if (o.l >= 2 && o.l * 2 >= o.n) lightWk[k] = true;
-        }
-      }
-      return lightWk;
-    }
-    function idxPRs(id, exps, prs) {
-      const front = [];
-      let maxBest = null, maxPb = null;
-      const ex = EX(id);
-      let prevMaxW = -Infinity, topSc = 0;
-      const bestIn = (i) => {
-        let m = null;
-        for (let k = 0; k < i; k++) {
-          const q = exps[k];
-          if (q.pb != null && q.pbb === exps[i].pbb) m = m == null ? q.pb : Math.max(m, q.pb);
-        }
-        return m;
-      };
-      const dominated = (p) => front.some((q) => q.pl >= p.pl - 1e-6 && q.r >= p.r);
-      const addFront = (p) => {
-        if (dominated(p)) return;
-        for (let k = front.length - 1; k >= 0; k--) if (p.pl >= front[k].pl - 1e-6 && p.r >= front[k].r) front.splice(k, 1);
-        front.push(p);
-      };
-      exps.forEach((x, i) => {
-        let repPR = null;
-        const sc = (q) => e1(q.pl, q.r, q.rq) || q.pl * (1 + q.r / 30);
-        const floor = front.reduce((a, q) => Math.max(a, sc(q)), 0) * REP_PR_SHARE;
-        if (i > 0) {
-          for (const p of x.pts) {
-            if (!dominated(p) && sc(p) >= floor - 1e-9 && (!repPR || sc(p) > sc(repPR))) repPR = p;
-          }
-        }
-        const pb = bestIn(i);
-        const e1PR = i > 0 && x.pb != null && pb != null && x.pb > pb + 1e-6;
-        const wPR = i > 0 && !ex.timed ? x.pts.filter((p) => p.r > 0 && p.w > prevMaxW + 1e-6).sort((a, b) => b.w - a.w || b.r - a.r)[0] : null;
-        x.progress = i > 0 && (!!repPR || e1PR || !!wPR);
-        const big = noE1(ex) || !!ex.timed || x.pts.some((q) => sc(q) > topSc + 1e-9);
-        const offPR = x.deload || x.light;
-        if (!offPR) {
-          if (wPR) prs.push({ date: x.date, sid: x.sid, exId: id, type: "Weight PR", w: wPR.w, r: wPR.r, prevW: prevMaxW, value: e1PR ? x.pb : null, prev: e1PR ? pb : null, prevAll: maxPb, bb: x.pbb, big });
-          else if (e1PR) prs.push({ date: x.date, sid: x.sid, exId: id, type: "e1RM", value: x.pb, prev: pb, prevAll: maxPb, bb: x.pbb, big });
-          else if (repPR) prs.push({ date: x.date, sid: x.sid, exId: id, type: "Rep PR", w: repPR.w, r: repPR.r, prevR: front.filter((q) => q.pl >= repPR.pl - 1e-6).reduce((a, q) => Math.max(a, q.r), 0), big });
-        }
-        if (x.pb != null) maxPb = maxPb == null ? x.pb : Math.max(maxPb, x.pb);
-        for (const p of x.pts) if (p.r > 0) prevMaxW = Math.max(prevMaxW, p.w);
-        for (const p of x.pts) topSc = Math.max(topSc, sc(p));
-        for (const p of x.pts) addFront(p);
-        if (x.best != null) maxBest = maxBest == null ? x.best : Math.max(maxBest, x.best);
-      });
-      return maxBest;
-    }
-    function idxLift(id, exps, maxBest, anchor, winStart) {
-      const sc = trendScope(exps, anchor);
-      const { real, curRR, inRange, lastReal, exWin } = sc;
-      const exI = EX(id);
-      const plC = planFor(id);
-      const capL = lastReal ? capOf(exI, plC, lastReal.topW) : null;
-      const capped = !!lastReal && atCapOf(exI, plC, lastReal.topW, capL);
-      const recent = inRange.slice(-8);
-      const nPts = recent.reduce((a, x) => a + x.pts.length, 0), nRated = recent.reduce((a, x) => a + x.rated, 0);
-      const useAdj = state.settings.rirMode !== "off" && nPts > 0 && nRated / nPts >= 0.8;
-      for (const x of exps) x.tv = useAdj ? x.tAdj : x.tRaw;
-      const slopeOf = (list) => {
-        const xs = list.map((x) => daysBetween(list[0].date, x.date)), ys = list.map((x) => x.tv);
-        const n = xs.length;
-        const mx = xs.reduce((a, b2) => a + b2, 0) / n, my = ys.reduce((a, b2) => a + b2, 0) / n;
-        let sxy = 0, sxx = 0;
-        xs.forEach((xv, k) => {
-          sxy += (xv - mx) * (ys[k] - my);
-          sxx += (xv - mx) ** 2;
-        });
-        if (!(sxx > 0)) return null;
-        const b = sxy / sxx;
-        let rss = 0;
-        xs.forEach((xv, k) => {
-          const e = ys[k] - (my + b * (xv - mx));
-          rss += e * e;
-        });
-        const se = n > 2 ? Math.sqrt(rss / (n - 2) / sxx) : null;
-        return { b, se, my, n };
-      };
-      const withE1 = inRange.filter((x) => x.tv != null);
-      let stalled = false;
-      const current = !!lastReal && lastReal.date >= winStart && lastReal.date >= addDays(today(), -42) && !exI.archived && state.exercises.some((e) => e.id === id);
-      if (!capped && current) {
-        const wE = withE1;
-        if (wE.length >= 4) {
-          const lastE = wE[wE.length - 1].date;
-          let i0 = wE.length - 1;
-          while (i0 > 0 && (wE.length - i0 < 6 || daysBetween(wE[i0].date, lastE) < 21)) i0--;
-          const l = wE.slice(i0);
-          if (daysBetween(l[0].date, lastE) >= 21) {
-            const z = l[l.length - 1], a0 = l[0];
-            const same = l.slice(0, -1).filter((x) => Math.abs(x.topW - z.topW) < 1e-6 && x.topN >= z.topN);
-            const moved = l.slice(-3).some((x) => x.progress) || z.topL > a0.topL + 1e-6 || z.topW > a0.topW + 1e-6 || same.length > 0 && z.topReps > Math.max(...same.map((x) => x.topReps));
-            const sen = (() => {
-              const a = [];
-              for (let i = 0; i < l.length; i++) for (let j = i + 1; j < l.length; j++) {
-                const dd = daysBetween(l[i].date, l[j].date);
-                if (dd > 0) a.push((l[j].tv - l[i].tv) / dd);
-              }
-              return a.length ? median(a) : null;
-            })();
-            const my = l.reduce((a, x) => a + x.tv, 0) / l.length;
-            stalled = sen != null && my > 0 && sen * 7 / my * 100 < 0.1 && !moved;
-          }
-        } else if (withE1.length < 2) stalled = inRange.length >= 4 && inRange.slice(-3).every((x) => !x.progress);
-      }
-      const w = trendW(sc);
-      let pct = null, slope = null, slopeSe = null, moving = false, falling = false, pLo = null, pHi = null, spanW = null, loadUp = false;
-      const spanD = w.length ? daysBetween(w[0].date, w[w.length - 1].date) : 0;
-      if (w.length >= 3 && spanD >= 14) {
-        spanW = Math.max(2, Math.round(spanD / 7));
-        const ends = trendEnds(w);
-        pct = (ends.last.tv / ends.first.tv - 1) * 100;
-        const f = slopeOf(w);
-        if (f) {
-          slope = f.b * 7 / f.my * 100;
-          slopeSe = f.se != null ? f.se * 7 / f.my * 100 : null;
-          const tq = t90(f.n - 2);
-          const lo = slopeSe != null ? slope - tq * slopeSe : slope, hi = slopeSe != null ? slope + tq * slopeSe : slope;
-          moving = pct >= GROW_PCT && lo > 0;
-          falling = pct <= -GROW_PCT && hi < 0;
-          if (slopeSe != null) {
-            pLo = lo;
-            pHi = hi;
-          }
-        }
-        const z = w[w.length - 1], a0 = w[0];
-        const zr = z.pts.filter((p) => Math.abs(p.w - z.topW) < 1e-6).map((p) => p.r);
-        if (z.topW > a0.topW + 1e-6 && zr.length && Math.min(...zr) >= (z.rr ? +z.rr[0] : 1) && pct < 0) {
-          loadUp = true;
-          falling = false;
-          if (pHi != null && pHi < 0) {
-            pLo = null;
-            pHi = null;
-          }
-        }
-      }
-      let easier = null;
-      if (inRange.length >= 3) {
-        const l3 = inRange.slice(-3);
-        const sameW = l3.every((x) => Math.abs(x.topW - l3[0].topW) < 1e-6);
-        const allRir = l3.every((x) => x.topRir != null);
-        const repsHeld = l3.every((x) => x.topReps >= l3[0].topReps);
-        const climbing = l3[1].topRir >= l3[0].topRir && l3[2].topRir >= l3[1].topRir && l3[2].topRir - l3[0].topRir >= 1;
-        if (sameW && allRir && repsHeld && climbing) easier = { w: l3[0].topW, from: r1(l3[0].topRir), to: r1(l3[2].topRir) };
-      }
-      let fade = null;
-      if (inRange.length >= 3) {
-        const l3 = inRange.slice(-3);
-        if (l3.every((x) => Math.abs(x.topW - l3[0].topW) < 1e-6) && l3.every((x) => x.drop != null) && l3[2].drop - l3[0].drop >= 2) fade = { w: l3[0].topW, from: l3[0].drop, to: l3[2].drop };
-      }
-      let bestCur = null;
-      const byBand = {};
-      for (const x of exps) {
-        if (x.best == null) continue;
-        if (sameRR(x.rr, curRR)) bestCur = bestCur == null ? x.best : Math.max(bestCur, x.best);
-      }
-      for (const x of exps) if (x.pb != null) byBand[x.pbb] = Math.max(byBand[x.pbb] || 0, x.pb);
-      const fresh = !!lastReal && lastReal.date >= addDays(today(), -BACK_DAYS);
-      return { n: exps.length, stalled, pct, slope, slopeSe, moving, falling, pLo, pHi, spanW, loadUp, useAdj, fresh, byBand, wN: w.length, wSpan: w.length ? daysBetween(w[0].date, w[w.length - 1].date) : 0, last: real.length ? real[real.length - 1] : exps[exps.length - 1], best: bestCur, bestAll: maxBest, rr: curRR, easier, fade, capped };
-    }
-    function idxScores(exStats) {
-      const byMuscle = {}, bySecondary = {}, stallP = {}, stallS = {}, seenP = {}, seenS = {}, spanP = {}, spanS = {};
-      for (const [id, st] of Object.entries(exStats)) {
-        const ex = EX(id);
-        if (st.stalled) {
-          stallP[ex.primary] = true;
-          for (const m of ex.secondary) stallS[m] = true;
-        }
-        if (st.pct == null || !st.fresh) continue;
-        if (st.wN < 4 || st.wSpan < 21) continue;
-        seenP[ex.primary] = (seenP[ex.primary] || 0) + 1;
-        for (const m of ex.secondary) seenS[m] = (seenS[m] || 0) + 1;
-        if (!(st.moving || st.falling)) continue;
-        (byMuscle[ex.primary] || (byMuscle[ex.primary] = [])).push(st.pct);
-        for (const m of ex.secondary) (bySecondary[m] || (bySecondary[m] = [])).push(st.pct);
-        spanP[ex.primary] = Math.max(spanP[ex.primary] || 0, st.spanW || 0);
-        for (const m of ex.secondary) spanS[m] = Math.max(spanS[m] || 0, st.spanW || 0);
-      }
-      const scoreMuscles = {};
-      for (const m of MK) {
-        if (seenP[m]) scoreMuscles[m] = { arr: byMuscle[m] || [], n: seenP[m], indirect: false };
-        else if ((seenS[m] || 0) >= 2) scoreMuscles[m] = { arr: bySecondary[m] || [], n: seenS[m], indirect: true };
-        else if (stallP[m]) scoreMuscles[m] = { arr: [], n: 0, indirect: false };
-      }
-      const scores = Object.entries(scoreMuscles).map(([m, o]) => ({ m, score: o.arr.length ? median(o.arr) : 0, clear: o.arr.length > 0, n: o.n, indirect: o.indirect, stall: !!(o.indirect ? stallS[m] : stallP[m]), wk: (o.indirect ? spanS[m] : spanP[m]) || null })).sort((a, b) => b.score - a.score);
-      scores.forEach((s) => {
-        const growing = s.clear && s.score >= GROW_PCT, declining = s.clear && s.score <= -GROW_PCT;
-        if (declining) s.label = "lagging";
-        else if (growing) s.label = "progressing";
-        else s.label = s.stall ? "lagging" : "steady";
-      });
-      return scores;
-    }
     function lastLighterWeek() {
       const I = IDX();
       const cur = weekStart(today());
@@ -5833,121 +7327,6 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       }
       return out;
     }
-    function firstFullWeek() {
-      const f = firstDate(state.sessions);
-      if (!f) return null;
-      const w = weekStart(f);
-      return f > w ? addDays(w, 7) : w;
-    }
-    function avgWeeksTxt(avg) {
-      const w = avg._weeks, m = avg._missed || 0, l = avg._light || 0, r = avg._rest || 0;
-      if (!m && !l && !r) return `your last ${w} full week${w === 1 ? "" : "s"}`;
-      const out = [l ? `${l === 1 ? "a lighter week" : l + " lighter weeks"}` : "", r ? `${r === 1 ? "a rest week" : r + " rest weeks"}` : ""].filter(Boolean);
-      return `the ${w} week${w === 1 ? "" : "s"} you trained of the last ${avg._span || Math.min(avg._n || 4, w + m)}${out.length ? `, ${out.join(" and ")} left out` : ""}`;
-    }
-    function actualAvg4(lightToo) {
-      return avgWeeks(4, lightToo);
-    }
-    function avgWeeks(n, lightToo) {
-      const I = IDX();
-      const cur = weekStart(today());
-      let weeks = 0;
-      const tot = {}, con = {};
-      const ff = firstFullWeek();
-      let extra = 0, missed = 0, span = 0, ffHit = false, rest = 0, light = 0;
-      for (let k = 1; k <= Math.min(2 * n, n + extra); k++) {
-        const wk = addDays(cur, -7 * k);
-        if (ff && wk < ff) {
-          ffHit = true;
-          continue;
-        }
-        span = k;
-        if (isRestWeek(wk)) {
-          extra++;
-          rest++;
-          continue;
-        }
-        const ws = I.weekSets[wk];
-        if (!ws) {
-          if (k <= n) missed++;
-          continue;
-        }
-        if (I.lightWk[wk] && !lightToo) {
-          extra++;
-          light++;
-          continue;
-        }
-        weeks++;
-        for (const m in ws) tot[m] = (tot[m] || 0) + ws[m];
-        const wc = I.weekConf[wk] || {};
-        for (const m in wc) con[m] = (con[m] || 0) + wc[m];
-      }
-      if (!weeks && extra && !lightToo) return avgWeeks(n, true);
-      if (!weeks) return null;
-      const out = {}, conf = {};
-      for (const m in tot) out[m] = tot[m] / weeks;
-      for (const m in con) conf[m] = con[m] / weeks;
-      Object.defineProperty(out, "_weeks", { value: weeks, enumerable: false });
-      Object.defineProperty(out, "_missed", { value: missed, enumerable: false });
-      Object.defineProperty(out, "_n", { value: n, enumerable: false });
-      Object.defineProperty(out, "_span", { value: span, enumerable: false });
-      Object.defineProperty(out, "_light", { value: lightToo ? 0 : light, enumerable: false });
-      Object.defineProperty(out, "_rest", { value: rest, enumerable: false });
-      Object.defineProperty(out, "_ff", { value: ffHit, enumerable: false });
-      Object.defineProperty(out, "_conf", { value: conf, enumerable: false });
-      return out;
-    }
-    function dayMinutes(day, half, raw) {
-      if (!day.items.length) return 0;
-      let s = 0, cN = 0;
-      day.items.forEach((it, i) => {
-        const ex = EX(it.exId);
-        const nx = day.items[i + 1];
-        const rest = it.ss && nx && nx.ss === it.ss ? 0 : +it.rest;
-        const n = half ? Math.max(1, Math.ceil(it.sets / 2)) : +it.sets;
-        s += n * (setSecs(ex, it) + rest) + setupSecs(ex, cN);
-        if (isCompound(ex)) cN++;
-      });
-      const lastRest = +day.items[day.items.length - 1].rest || 0;
-      return Math.round(Math.max(0, s - lastRest) * (raw ? 1 : pace()) / 60);
-    }
-    function sessModelMin(ss) {
-      const R = state.routines.find((r) => r.id === ss.routineId) || activeRoutine();
-      const day = ss.dayId ? R.days.find((d) => d.id === ss.dayId) : null;
-      const link = (id) => {
-        const it = day && day.items.find((i) => i.exId === id);
-        return it && it.ss || null;
-      };
-      const items = ss.ex.map((b) => {
-        const p = planFor(b.exId, R, ss.dayId, true);
-        const rr = Array.isArray(b.rr) ? b.rr : [p.repMin, p.repMax];
-        return { ...p, exId: b.exId, ss: link(b.exId), repMin: rr[0], repMax: rr[1], rest: +p.rest || 0, sets: b.sets.filter((x) => !x.warm).length };
-      }).filter((it) => it.sets > 0);
-      return items.length ? dayMinutes({ items }, false, true) : 0;
-    }
-    function paceRatios() {
-      const from = addDays(today(), -PACE_DAYS);
-      const out = [];
-      const sameDay = {};
-      for (const x of state.sessions) sameDay[x.date] = (sameDay[x.date] || 0) + 1;
-      for (const ss of sortedSessions().slice().reverse()) {
-        if (out.length >= PACE_N || ss.date < from) break;
-        if (ss.demo || !(ss.durMin >= 1)) continue;
-        const m = sessModelMin(ss);
-        if (m < 1) continue;
-        const cm = sameDay[ss.date] === 1 ? state.cardio.filter((c) => c.date === ss.date && (c.when === "pre" || c.when === "post")).reduce((a, c) => a + (+c.min || 0), 0) : 0;
-        const r = (ss.durMin - cm) / m;
-        if (r >= PACE_LO && r <= PACE_HI) out.push(r);
-      }
-      return out;
-    }
-    function pace() {
-      if (_pace != null) return _pace;
-      const r = paceRatios().sort((a, b) => a - b);
-      if (r.length < PACE_MIN) return _pace = 1;
-      const k = r.length >> 1;
-      return _pace = r.length % 2 ? r[k] : (r[k - 1] + r[k]) / 2;
-    }
     function sessionMuscleSets(day) {
       const out = {};
       for (const it of day.items) {
@@ -5967,7 +7346,6 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       const who = andList(list);
       return `<p class="small" style="margin:4px 12px 0"><span class="flag hastip" data-tip="More than ${SESSION_CAP} sets for one muscle in one workout. That line is a convention from one study not yet peer reviewed (Remmert 2025), which found no extra growth past it. Consider moving some to another day. Helper-muscle sets count as half.">Heavy for one workout: ${who} sets</span></p>`;
     }
-    const SIZE_MAP = [["arm", ["biceps", "triceps"]], ["forearm", ["forearms"]], ["chest", ["chest"]], ["thigh", ["quads", "hamstrings", "adductors"]], ["calf", ["calves"]], ["neck", ["neck"]]];
     function sizeRows() {
       const ms = [...state.measurements].sort((a, b) => a.date < b.date ? -1 : a.date > b.date ? 1 : 0);
       const I = IDX();
@@ -6019,622 +7397,6 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       const what = (r) => r.weeks ? `${r1(r.sets)} hard sets a week for ${andList(r.mus.map((m) => ML[m]))}` : "no logged training in between";
       return top + rows.map((r) => `<div style="padding:6px 0;border-bottom:1px solid var(--line)"><div class="row spread"><b>${esc(ML2[r.k])}</b><span class="num">${Math.abs(r.d) < mdc(r.k) ? '<span class="tag">within tape error</span> ' : ""}${sgn(r.d)} ${LU()}</span></div><p class="small muted" style="margin:2px 0 0">${one ? "" : `${span(r)}, `}${what(r)}.${one ? "" : ctx(r)}</p></div>`).join("") + '<p class="small muted hastip" style="margin-top:8px" data-tip="Same spot, same time of day, before training, relaxed or flexed the same way each time. Under about 1 cm on arms, thighs, calves, and neck (1.5 cm on the chest) is within what a tape repeats to.">How to measure</p>';
     }
-    function regionBalance(sets) {
-      const bands = state.settings.bands;
-      return REGIONS.map(([label, all]) => {
-        const ms = all.filter((m) => !TRACK_ONLY.has(m));
-        const got = ms.reduce((a, m) => a + (sets[m] || 0), 0);
-        const mid = ms.reduce((a, m) => a + (bands[m][0] + bands[m][1]) / 2, 0);
-        const lo = ms.reduce((a, m) => a + bands[m][0], 0);
-        const hi = ms.reduce((a, m) => a + bands[m][1], 0);
-        return { label, ms, got, mid, lo, hi, pct: lo > 0 ? got / lo * 100 : 0, low: belowMin(got, lo), high: aboveMax(got, hi) };
-      });
-    }
-    function lastOf(all, base, fmt, repMin) {
-      const rec = all && all.length ? all[all.length - 1] : base;
-      const kind = rec.cut ? "trimmed" : rec.light || rec.auto ? "lighter" : rec.deload ? "deload" : "";
-      const line = `Last (${fmtDate(rec.date)}${kind ? ", " + kind : ""}): ${rec.pts.map(fmt).join(", ")}.`;
-      const repsFrom = rec !== base && (rec.deload || rec.light || rec.auto) ? base : rec;
-      const wl = workLoad(repsFrom.pts, repMin || 0);
-      const wp = atLoad(repsFrom.pts, wl);
-      const fl = repFloor(wp.length ? wp : repsFrom.pts, repMin);
-      const rl = workLoad(rec.pts, repMin || 0);
-      const rp = atLoad(rec.pts, rl);
-      const shown = rp.length ? rp : rec.pts;
-      return { line, prev: shown.map(fmt).slice(0, 30), prevOff: shown.length < rec.pts.length || void 0, lastR: (wp.length ? wp : repsFrom.pts).map((p) => fl(p.r)), basis: rec !== base ? base.date : null };
-    }
-    function snapUnit(ex, plan, res, down) {
-      if (!res || res.w == null || res.top == null || ex.timed) return res;
-      if (gymRack(ex, plan)) return rackSnap(ex, plan, res);
-      const st = toD(incOf(ex, plan));
-      if (!(st > 0)) return res;
-      const off = (v) => Math.abs(toD(v) / st - Math.round(toD(v) / st)) > 0.02;
-      const typed = (v) => Math.abs(toD(v) / 0.05 - Math.round(toD(v) / 0.05)) < 0.1;
-      if (!off(res.top) || !off(res.w) || typed(res.top)) return res;
-      const nw = fromD((down ? Math.floor(toD(res.w) / st + 1e-9) : Math.round(toD(res.w) / st)) * st);
-      if (Math.abs(nw - res.w) < 1e-9) return res;
-      return swapW(ex, res, nw);
-    }
-    function daysOff(exId, opts) {
-      const T = opts && opts.before && isDate(opts.before) ? opts.before : today();
-      const xs = (IDX().byEx[exId] || []).filter((x) => x.date <= T);
-      if (!xs.length) return 0;
-      return daysBetween(xs[xs.length - 1].date, T);
-    }
-    function suggest(exId, plan, opts) {
-      opts = opts || {};
-      const ex = EX(exId);
-      const off = !(opts.deload || opts.light) && !ex.timed ? daysOff(exId, opts) : 0;
-      const back = off > BACK_DAYS;
-      if (!(opts.deload || opts.light || back) || ex.timed) return snapUnit(ex, plan, suggestCore(exId, plan, opts));
-      const base = suggestCore(exId, plan, { ...opts, deload: false, light: false });
-      if (base.kin && base.w > 0) {
-        const ks = !gymRack(ex, plan) && rackKind(ex) && rackKind(EX(base.kin)) ? rackStep(EX(base.kin)) : null;
-        const lw = ks ? fromD(Math.floor(toD(base.w * 0.9) / toD(ks) + 1e-9) * toD(ks)) : lighterLoad(ex, plan, base.w, base.w * 0.9);
-        return { ...base, w: lw, lastR: Array(Math.max(1, +plan.sets || 1)).fill(+plan.repMin), text: `First time, ${opts.deload ? "deload" : "Lighter day"}. About ${loadLabel(ex, lw)} ${U()}${loadNote(ex)} for ${repSpan(plan.repMin, plan.repMax, "-")} with 3 or more reps in reserve, from your ${EX(base.kin).name}. Half the usual sets, nothing to beat.` };
-      }
-      if (base.inj || !base.last || base.w == null) return base;
-      const T = opts.before && isDate(opts.before) ? opts.before : today();
-      const word = opts.deload ? "Deload" : opts.light ? "Lighter day" : `Back after ${Math.round(off / 7)} weeks`;
-      const step = incOf(ex, plan);
-      const w0 = base.top != null ? Math.min(base.w, base.top) : base.w;
-      const bl = bwRefLoad(ex);
-      const lbl = (w2) => `${loadLabel(ex, w2)}${ex.bw ? "" : " " + U()}${loadNote(ex)}`;
-      const hs = step > 0 ? toD(step) : U() === "lb" ? 5 : 2.5;
-      const dw = ex.assist ? -fromD(Math.ceil(toD(bl > 0 ? bl - (w0 + bl) * 0.9 : -w0 * 1.1) / hs - 1e-9) * hs) : ex.bw ? (w0 + bl) * 0.9 - bl > 0 ? lighterLoad(ex, plan, w0, (w0 + bl) * 0.9 - bl) : 0 : lighterLoad(ex, plan, w0, w0 * 0.9);
-      const w = w0 > 0 || ex.assist ? dw : w0;
-      const n = Math.max(1, (base.lastR || []).length || +plan.sets || 1);
-      if (back) return snapUnit(ex, plan, { top: base.top, prev: base.prev, prevOff: base.prevOff, w, text: `${base.last} ${word}: about ${lbl(w)} for ${repSpan(plan.repMin, plan.repMax, "-")} with 2 or more reps in reserve. Next time picks up from here.`, lastR: Array(n).fill(+plan.repMin), basis: base.basis, last: base.last, target: "", tgt: null, easier: null, back: Math.round(off / 7) }, true);
-      return snapUnit(ex, plan, { top: base.top, prev: base.prev, prevOff: base.prevOff, w, text: `${base.last} ${word}: about ${lbl(w)} for ${repSpan(plan.repMin, plan.repMax, "-")} with 3 or more reps in reserve. Half the usual sets, nothing to beat.`, lastR: Array(n).fill(+plan.repMin), basis: base.basis, last: base.last, target: "", tgt: null, easier: null }, true);
-    }
-    function suggestCore(exId, plan, opts) {
-      opts = opts || {};
-      const T = opts.before && isDate(opts.before) ? opts.before : today();
-      const every = IDX().byEx[exId];
-      const all = every ? every.filter((x) => x.date <= T) : every;
-      const ex = EX(exId);
-      const injM = exInjury(ex);
-      const full = all ? all.filter((x) => !offSession(x)) : [];
-      const want = [+plan.repMin, +plan.repMax];
-      const exact = (x) => !!x.rr && x.rr[0] === want[0] && x.rr[1] === want[1];
-      const lastEx = full.filter(exact).pop();
-      const inRR = !!lastEx && lastEx.date >= addDays(full[full.length - 1].date, -42);
-      const fullRR = inRR ? full.filter((x) => sameRR(x.rr, want)) : [];
-      const exps = all && all.length ? fullRR.length ? fullRR : full.length ? full : all : all;
-      const seen = inRR ? all.filter((x) => sameRR(x.rr, want)) : all;
-      if (ex.timed) return suggestTimed(ex, plan, exps, opts, injM, seen);
-      if (!exps || !exps.length) return sgFirst(ex, plan, T, injM);
-      const last = exps[exps.length - 1], ws = last.pts;
-      const stx = all.length < every.length ? statsUpTo(exId, all) : IDX().exStats[exId] || {};
-      const top = workLoad(ws, +plan.repMin);
-      const step = incOf(ex, plan, top);
-      const noAdd = !!ex.bw && !ex.assist && !all.some((x) => x.pts.some((p) => p.w > 1e-6));
-      const abW = ["abs", "obliques"].includes(ex.primary);
-      const cap = capOf(ex, plan, top);
-      const atCap = atCapOf(ex, plan, top, cap);
-      const capW = (w) => cap != null ? Math.min(w, cap) : w;
-      const topPts = ws.filter((p) => Math.abs(p.w - top) < 1e-6);
-      const L0 = lastOf(seen, last, (p) => `${loadLabel(ex, p.w)}×${p.r}`, +plan.repMin);
-      const lastR = L0.lastR, lastS = L0.line, basis = L0.basis;
-      const lbl = (w) => `${loadLabel(ex, w)}${ex.bw ? "" : " " + U()}${loadNote(ex)}`;
-      const prevBest = stx.best == null ? null : stx.best;
-      if (injM) return { top, prev: L0.prev, prevOff: L0.prevOff, w: top, text: `${lastS} Injury flagged (${injLabel(injM)}): stay at or below ${lbl(top)}, keep 3 or more reps in reserve, stop on pain.`, lastR, basis, last: lastS, target: "", tgt: null, easier: null, inj: injM };
-      const tgtRir = +plan.rir || 0;
-      const early = exps.length <= 3;
-      const fl = repFloor(topPts, plan.repMin);
-      const tp = topPts.slice(0, Math.max(1, +plan.sets || topPts.length)).map((p) => ({ ...p, r: fl(p.r) }));
-      const C = { ex, exId, plan, opts, T, all, every, exps, seen, inRR, injM, last, ws, stx, top, step, noAdd, abW, cap, atCap, capW, topPts, lastR, lastS, basis, lbl, prevBest, tgtRir, early, fl, tp };
-      const res = sgEasy(C) || sgPastRange(C) || sgBelowRange(C) || sgNoStep(C) || sgTopOfRange(C) || sgBadDay(C) || sgReps(C);
-      return res && res.last ? { ...res, prev: L0.prev, prevOff: L0.prevOff } : res;
-    }
-    function sgFirst(ex, plan, T, injM) {
-      if (injM) return { w: ex.bw ? 0 : null, text: `Injury flagged (${injLabel(injM)}). Start light, keep 3 or more reps in reserve, and stop on pain.`, lastR: [], last: "", target: "", tgt: null, inj: injM };
-      const rr = +plan.rir || 0;
-      const can = +plan.repMax + Math.round(rr);
-      const reps = `${repSpan(plan.repMin, plan.repMax)} rep${+plan.repMax === 1 ? "" : "s"}`;
-      const stop = rr >= 1 ? `stopping with about ${rr} still in you` : "to the last rep you can do well";
-      const kin = !ex.bw ? kinStart(ex, plan, T) : null;
-      if (kin) return { w: kin.w, text: `First time. About ${loadLabel(ex, kin.w)} ${U()}${loadNote(ex)} for ${reps}, from your ${kin.ex.name} (${kin.set}, ${fmtDate(kin.date)}), ${stop}. If the first set is off, change the load.`, lastR: [], last: "", target: "", tgt: null, kin: kin.ex.id };
-      const text = ex.assist ? `First time: set the help so you could do about ${can} reps. Do ${reps}, ${stop}. Next time the help is set from this.` : ex.bw ? `First time: your bodyweight only. Do ${reps}, ${stop}. If ${plan.repMin} is out of reach, use an easier version; if it is easy past ${plan.repMax}, the next target says so.` : `First time: pick a load you think you could lift about ${can} times, erring light. Do ${reps}, ${stop}. Next time's load is worked out from this.`;
-      return { w: ex.bw ? 0 : null, text, lastR: [], last: "", target: "", tgt: null };
-    }
-    function sgEasy(C) {
-      const { ex, exId, plan, opts, T, all, every, exps, seen, inRR, injM, last, ws, stx, top, step, noAdd, abW, cap, atCap, capW, topPts, lastR, lastS, basis, lbl, prevBest, tgtRir, early, fl, tp } = C;
-      if (step > 0 && !atCap && !noAdd && !noE1(ex) && topPts.length && topPts.every((p) => p.rir != null && p.rir >= tgtRir + 2 && p.r >= plan.repMin)) {
-        let est = null;
-        for (const p of topPts) {
-          const v = fitE(p.load, p.r, Math.min(p.rir, E1_MAX_RIR));
-          if (v != null && (est == null || v > est)) est = v;
-        }
-        const bwNow = bwRefLoad(ex);
-        const topLoad = top + bwNow;
-        if (est != null && topLoad > 0) {
-          const want = Math.min(e1inv(est, Math.round((+plan.repMin + +plan.repMax) / 2) + Math.min(tgtRir, E1_MAX_RIR)), topLoad * jumpCap(ex, topLoad, early)) - bwNow;
-          let k = Math.floor((want - top) / step + 1e-6);
-          if (k < 1 && topPts.every((p) => p.rir >= 5)) k = 1;
-          if (k >= 1) {
-            const nw = ex.assist && top < 0 ? Math.min(0, top + k * step) : capW(top + k * step);
-            const rr = r1(topPts.reduce((a, p) => a + p.rir, 0) / topPts.length);
-            return {
-              top,
-              w: nw,
-              text: `${lastS} RIR ${rr} at ${lbl(top)} against a target of ${tgtRir}, so that load was light. Try ${lbl(nw)} for ${repSpan(plan.repMin, plan.repMax, "-")} reps.`,
-              lastR,
-              basis,
-              last: lastS,
-              target: `${lbl(nw)} for ${plan.repMin}+ reps in every set`,
-              tgt: { kind: "load", w: nw, repMin: +plan.repMin, prevBest },
-              easier: null
-            };
-          }
-        }
-      }
-      return null;
-    }
-    function sgPastRange(C) {
-      const { ex, exId, plan, opts, T, all, every, exps, seen, inRR, injM, last, ws, stx, top, step, noAdd, abW, cap, atCap, capW, topPts, lastR, lastS, basis, lbl, prevBest, tgtRir, early, fl, tp } = C;
-      if (step > 0 && !atCap && !noAdd && !noE1(ex) && topPts.length && topPts.every((p) => p.r >= +plan.repMax + 2)) {
-        let est = null;
-        for (const p of topPts) {
-          const v = fitE(p.load, p.r, p.rq);
-          if (v != null && (est == null || v > est)) est = v;
-        }
-        const bwNow = bwRefLoad(ex);
-        const topLoad = top + bwNow;
-        if (est != null && topLoad > 0) {
-          const want = Math.min(e1inv(est, Math.round((+plan.repMin + +plan.repMax) / 2) + Math.min(tgtRir, E1_MAX_RIR)), topLoad * jumpCap(ex, topLoad, early)) - bwNow;
-          const k = Math.floor((want - top) / step + 1e-6);
-          const one = progStep(ex, plan, topLoad, top);
-          if (k >= 1 && k * step > one + 1e-6) {
-            const nw = ex.assist && top < 0 ? Math.min(0, top + k * step) : capW(top + k * step);
-            const minR = Math.min(...topPts.map((p) => p.r));
-            return {
-              top,
-              w: nw,
-              text: `${lastS} Every set at ${lbl(top)} reached ${minR}+ reps, well past your ${rangeWords(plan)}. Try ${lbl(nw)} for ${repSpan(plan.repMin, plan.repMax, "-")} reps.`,
-              lastR,
-              basis,
-              last: lastS,
-              target: `${lbl(nw)} for ${plan.repMin}+ reps in every set`,
-              tgt: { kind: "load", w: nw, repMin: +plan.repMin, prevBest },
-              easier: null
-            };
-          }
-        }
-      }
-      return null;
-    }
-    function sgBelowRange(C) {
-      const { ex, exId, plan, opts, T, all, every, exps, seen, inRR, injM, last, ws, stx, top, step, noAdd, abW, cap, atCap, capW, topPts, lastR, lastS, basis, lbl, prevBest, tgtRir, early, fl, tp } = C;
-      if (step > 0 && !noAdd && topPts.length && topPts.every((p) => p.r < +plan.repMin)) {
-        const gap = +plan.repMin - Math.max(...topPts.map((p) => p.r));
-        const prev = exps.length >= 2 ? exps[exps.length - 2] : null;
-        const prevAt = prev ? prev.pts.filter((p) => Math.abs(p.w - top) < 1e-6) : [];
-        const sumR = (a) => a.reduce((x, p) => x + p.r, 0);
-        const rising = prevAt.length > 0 && sumR(topPts.slice(0, prevAt.length)) > sumR(prevAt);
-        const justUp = !!prev && prev.topW < top - 1e-6 && top - prev.topW <= step * 1.5 + 1e-6;
-        const repeat = !!prev && Math.abs(prev.topW - top) < 1e-6 && prevAt.every((p) => p.r < +plan.repMin) && !rising;
-        let shortRun = 0;
-        for (let k = exps.length - 1; k >= 0; k--) {
-          const x = exps[k];
-          if (Math.abs(x.topW - top) > 1e-6) break;
-          const at = atLoad(x.pts, x.topW);
-          if (!at.length || !at.every((p) => p.r < +plan.repMin)) break;
-          shortRun++;
-        }
-        if (gap >= 2 && !(justUp && gap <= 3) || repeat || !inRR || shortRun >= 4) {
-          let est = null;
-          for (const p of topPts) {
-            const v = e1(p.load, p.r, p.rq);
-            if (v != null && (est == null || v > est)) est = v;
-          }
-          const bwNow = bwRefLoad(ex);
-          if (est != null) {
-            const want = e1inv(est, +plan.repMin + Math.min(tgtRir, E1_MAX_RIR)) - bwNow;
-            const k = Math.ceil((top - want) / step - 1e-6);
-            const nw = top - k * step;
-            if (k >= 1 && (nw > 0 || ex.bw && (nw >= 0 || ex.assist))) {
-              const bestR = Math.max(...topPts.map((p) => p.r));
-              return {
-                top,
-                w: nw,
-                text: `${lastS} Top sets at ${lbl(top)} stopped at ${bestR} rep${bestR === 1 ? "" : "s"}, below your ${rangeWords(plan)}. Drop to ${lbl(nw)} and build back up.`,
-                lastR,
-                basis,
-                last: lastS,
-                target: `${lbl(nw)} for ${plan.repMin}+ reps in every set`,
-                tgt: { kind: "load", w: nw, repMin: +plan.repMin, prevBest },
-                easier: null,
-                down: true
-              };
-            }
-          }
-        }
-      }
-      return null;
-    }
-    function sgNoStep(C) {
-      const { ex, exId, plan, opts, T, all, every, exps, seen, inRR, injM, last, ws, stx, top, step, noAdd, abW, cap, atCap, capW, topPts, lastR, lastS, basis, lbl, prevBest, tgtRir, early, fl, tp } = C;
-      if (atCap || !(step > 0) || noAdd) {
-        const where = atCap ? "the heaviest load available" : noAdd ? "your bodyweight" : "a fixed load (load step 0)";
-        const below = topPts.every((p) => p.r < +plan.repMin);
-        const total = tp.reduce((a, p) => a + p.r, 0);
-        const nT = tp.length;
-        const over = overSets(nT, plan);
-        const ext = +plan.repMax + Math.max(3, Math.round(+plan.repMax * 0.4));
-        const maxed = topPts.every((p) => p.r >= ext);
-        const tip = maxed ? noAdd && !abW ? ` Every set reached ${ext}+ on bodyweight alone. Add a little load (a belt or a vest) by typing it, or make each rep harder: a 3 to 4 second lowering, a pause, or a harder version.` : ` Every set reached ${ext}+ at ${where}, so make each rep harder instead: lower for 3 to 4 seconds and pause at the stretch, go one arm or one leg at a time, or finish with a drop set. Add a note when you change it so the numbers stay comparable.` : below ? ` That is ${where}, so build the reps up to ${plan.repMin} or more.` : ` That is ${where}, so keep adding reps past ${plan.repMax}.`;
-        return {
-          top,
-          w: top,
-          text: `${lastS} Beat ${total} reps ${over} at ${lbl(top)}.${tip}`,
-          lastR,
-          basis,
-          last: lastS,
-          target: `${total + 1}+ reps ${over} at ${lbl(top)}${atCap ? ", the heaviest available" : ""}`,
-          tgt: { kind: "reps", w: top, total, n: nT, rs: tp.map((p) => p.r), prevBest },
-          easier: maxed ? `Past ${ext} reps at ${atCap ? "the heaviest load" : "this load"}: slow the lowering to 3 to 4 seconds with a pause at the stretch, go one side at a time, or add a drop set.` : null,
-          capped: atCap
-        };
-      }
-      return null;
-    }
-    function sgTopOfRange(C) {
-      const { ex, exId, plan, opts, T, all, every, exps, seen, inRR, injM, last, ws, stx, top, step, noAdd, abW, cap, atCap, capW, topPts, lastR, lastS, basis, lbl, prevBest, tgtRir, early, fl, tp } = C;
-      if (topPts.every((p) => p.r >= plan.repMax)) {
-        const nw = capW(top + progStep(ex, plan, top + bwRefLoad(ex), top));
-        if (ex.assist) {
-          const aw = top < 0 ? Math.min(0, nw) : nw;
-          return {
-            top,
-            w: aw,
-            text: `${lastS} Every set at ${lbl(top)} hit ${plan.repMax}: ${aw === 0 ? "try it without help" : `take ${fmtW(aw - top)} ${U()} of help off`} and aim for ${plan.repMin}+ reps.`,
-            lastR,
-            basis,
-            last: lastS,
-            target: `${lbl(aw)} for ${plan.repMin}+ reps in every set`,
-            tgt: { kind: "load", w: aw, repMin: +plan.repMin, prevBest },
-            easier: null
-          };
-        }
-        const wide = +plan.repMax - +plan.repMin >= 3;
-        let aim = +plan.repMin;
-        const q = Math.min(tgtRir, E1_MAX_RIR);
-        const bwT = bwRefLoad(ex);
-        if (!noE1(ex)) {
-          let est = null;
-          for (const p of topPts) {
-            const v = fitE(p.load, p.r, p.rq);
-            if (v != null && (est == null || v > est)) est = v;
-          }
-          const f = est ? rtfAt(est, nw + bwT) : null;
-          const cost = f != null ? rtfAt(est, top + bwT) - f : 0;
-          if (f != null && cost >= 1.5 && wide) {
-            const can = Math.floor(f - q + 1e-9);
-            if (can < aim) aim = Math.max(1, can);
-          }
-        }
-        if (topPts.every((p) => p.rir != null && p.rir >= 5)) aim = +plan.repMin;
-        const big = aim < +plan.repMin;
-        if (big && nw + bwT > 0 && top + bwT > 0) {
-          const rn = +plan.repMin + q;
-          const need = rn <= 10 ? (nw + bwT) * 36 / (37 - rn) : (nw + bwT) * (1 + rn / 30);
-          const ext2 = +plan.repMax + Math.max(2, Math.round(+plan.repMax * 0.25));
-          const Z = Math.min(ext2, Math.ceil(rtfAt(need, top + bwT) - q - 1e-9));
-          const minR = Math.min(...topPts.map((p) => p.r));
-          if (Z > minR) {
-            const total = tp.reduce((a, p) => a + p.r, 0);
-            const nT = tp.length;
-            const over = overSets(nT, plan);
-            return {
-              top,
-              w: top,
-              text: `${lastS} Every set at ${lbl(top)} hit ${plan.repMax}. The next step, ${fmtW(nw - top)} ${U()}, is large for this load, so build every set to ${Z} here first; then the new load starts inside your range.`,
-              lastR,
-              basis,
-              last: lastS,
-              target: `${total + 1}+ reps ${over} at ${lbl(top)}, building to ${Z} each`,
-              tgt: { kind: "reps", w: top, total, n: nT, rs: tp.map((p) => p.r), prevBest },
-              easier: null,
-              buildTo: Z
-            };
-          }
-        }
-        return {
-          top,
-          w: nw,
-          text: `${lastS} Every set at ${lbl(top)} hit ${plan.repMax}: add ${fmtW(nw - top)} ${U()}${cap != null && nw >= cap - 1e-6 ? ", which is the heaviest available," : ""} and aim for ${aim}+ reps${big ? `, then build back to ${plan.repMax}. That step is large for this load, so fewer reps than the range is expected at first` : ""}.`,
-          lastR,
-          basis,
-          last: lastS,
-          target: `${lbl(nw)} for ${aim}+ reps in every set`,
-          tgt: { kind: "load", w: nw, repMin: aim, prevBest },
-          easier: null
-        };
-      }
-      return null;
-    }
-    function sgBadDay(C) {
-      const { ex, exId, plan, opts, T, all, every, exps, seen, inRR, injM, last, ws, stx, top, step, noAdd, abW, cap, atCap, capW, topPts, lastR, lastS, basis, lbl, prevBest, tgtRir, early, fl, tp } = C;
-      {
-        const prv = exps.length >= 2 ? exps[exps.length - 2] : null;
-        const pAt = prv && Math.abs(prv.topW - top) < 1e-6 ? atLoad(prv.pts, top) : [];
-        if (topPts.length && topPts.every((p) => p.r < +plan.repMin) && pAt.length && pAt.every((p) => p.r >= +plan.repMin))
-          return {
-            top,
-            w: top,
-            text: `${lastS} Every set fell under ${plan.repMin} at ${lbl(top)}, where you did ${plan.repMin}+ the time before. Stay at ${lbl(top)} and get back to ${plan.repMin}+ in every set.`,
-            lastR,
-            basis,
-            last: lastS,
-            target: `${lbl(top)} for ${plan.repMin}+ reps in every set`,
-            tgt: { kind: "load", w: top, repMin: +plan.repMin, prevBest },
-            easier: null
-          };
-      }
-      return null;
-    }
-    function sgReps(C) {
-      const { ex, exId, plan, opts, T, all, every, exps, seen, inRR, injM, last, ws, stx, top, step, noAdd, abW, cap, atCap, capW, topPts, lastR, lastS, basis, lbl, prevBest, tgtRir, early, fl, tp } = C;
-      const total = tp.reduce((a, p) => a + p.r, 0);
-      const nT = tp.length;
-      const over = overSets(nT, plan);
-      const floored = tp.some((p, i) => topPts[i] && topPts[i].r < p.r) ? ` (a set under ${plan.repMin} counts as ${plan.repMin})` : "";
-      return {
-        top,
-        w: top,
-        text: `${lastS} Beat ${total} reps ${over} at ${lbl(top)}${floored}. When every set at that load reaches ${plan.repMax}, ${ex.assist ? "take some help off" : "add load"}.`,
-        lastR,
-        basis,
-        last: lastS,
-        target: `${total + 1}+ reps ${over} at ${lbl(top)}`,
-        tgt: { kind: "reps", w: top, total, n: nT, rs: tp.map((p) => p.r), prevBest },
-        easier: stx.easier ? easierText(ex, stx.easier) : null
-      };
-    }
-    function kinOf(ex, T) {
-      if (!ex || ex.bw || ex.assist || ex.timed || noE1(ex) || !["barbell", "dumbbell", "kettlebell", "landmine", "other"].includes(ex.equip)) return null;
-      const pat = patternOf(ex);
-      if (!pat) return null;
-      const I = IDX();
-      let best = null;
-      const from = addDays(T, -120);
-      for (const id of Object.keys(I.byEx)) {
-        if (id === ex.id) continue;
-        const e = EX(id);
-        if (!e || e.archived || e.bw || e.assist || e.timed || noE1(e) || e.equip !== ex.equip || loadMode(e) !== loadMode(ex) || !!e.perSide !== !!ex.perSide || KIN_UNI.test(e.name) !== KIN_UNI.test(ex.name) || e.primary !== ex.primary || patternOf(e) !== pat) continue;
-        const xs = I.byEx[id].filter((x2) => x2.date <= T && !offSession(x2) && !x2.cut);
-        const x = xs[xs.length - 1];
-        if (!x || x.date < from) continue;
-        if (!best || x.date > best.x.date) best = { ex: e, x };
-      }
-      return best;
-    }
-    function kinStart(ex, plan, T) {
-      const k = kinOf(ex, T);
-      if (!k) return null;
-      const x = k.x;
-      const wl = workLoad(x.pts, +plan.repMin || 0);
-      const at = atLoad(x.pts, wl);
-      let est = null, set = null;
-      for (const p of at) {
-        const v = fitE(p.load, p.r, p.rq);
-        if (v != null && (est == null || v > est)) {
-          est = v;
-          set = p;
-        }
-      }
-      if (est == null) return null;
-      const mid = Math.round((+plan.repMin + +plan.repMax) / 2);
-      const q = Math.min((+plan.rir || 0) + 1, E1_MAX_RIR);
-      const want = e1inv(est * (isCompound(ex) ? 0.8 : 0.9), mid + q);
-      const L = gymRack(ex, plan);
-      let w;
-      if (L) {
-        const c = L.filter((x2) => x2 <= want + 1e-6);
-        if (!c.length) return null;
-        w = c[c.length - 1];
-      } else {
-        const rs = rackKind(ex) && rackKind(k.ex) ? rackStep(k.ex) : null;
-        const st = toD(rs || incOf(ex, plan));
-        if (!(st > 0)) return null;
-        w = fromD(Math.floor(toD(want) / st + 1e-9) * st);
-      }
-      if (!(w > 0)) return null;
-      return { ex: k.ex, date: x.date, w, set: `${loadLabel(k.ex, set.w)}×${set.r}` };
-    }
-    function suggestTimed(ex, plan, exps, opts, injM, all) {
-      opts = opts || {};
-      const side = ex.perSide ? " per side" : "";
-      if (!exps || !exps.length) {
-        if (injM) return { w: ex.bw ? 0 : null, text: `Injury flagged (${injLabel(injM)}). Keep holds short and easy, and stop on pain.`, lastR: [], last: "", target: "", tgt: null, inj: injM };
-        return { w: ex.bw ? 0 : null, text: `No history yet. Hold for ${repSpan(plan.repMin, plan.repMax, "-")} seconds${side} each set.`, lastR: [], last: "", target: "", tgt: null };
-      }
-      const last = exps[exps.length - 1], ws = last.pts;
-      const top = Math.max(...ws.map((p) => p.w));
-      const topPts = ws.filter((p) => Math.abs(p.w - top) < 1e-6);
-      const lbl = (w) => `${loadLabel(ex, w)}${ex.bw ? "" : " " + U()}${loadNote(ex)}`;
-      const L0 = lastOf(all, last, (p) => `${loadLabel(ex, p.w)} for ${p.r}s`);
-      const lastR = L0.lastR, lastS = L0.line, basis = L0.basis;
-      if (injM) return { prev: L0.prev, prevOff: L0.prevOff, w: top, text: `${lastS} Injury flagged (${injLabel(injM)}): stay at or below ${lbl(top)}, keep it easy, and stop on pain.`, lastR, basis, last: lastS, target: "", tgt: null, easier: null, inj: injM };
-      if (opts.deload || opts.light) return { prev: L0.prev, prevOff: L0.prevOff, w: top, text: `${lastS} ${opts.deload ? "Deload" : "Lighter day"}: same load, hold about two thirds as long, and stop well before shaking.`, lastR, basis, last: lastS, target: "", tgt: null, easier: null };
-      const step = incOf(ex, plan, top);
-      const cap = capOf(ex, plan, top);
-      if (step > 0 && topPts.every((p) => p.r >= plan.repMax) && !atCapOf(ex, plan, top, cap)) {
-        const nw = cap != null ? Math.min(top + step, cap) : top + step;
-        return {
-          prev: L0.prev,
-          prevOff: L0.prevOff,
-          w: nw,
-          text: `${lastS} Every hold at ${lbl(top)} reached ${plan.repMax}s: add ${fmtW(nw - top)} ${U()}${ex.bw ? " (a plate or a vest)" : ""} and aim for ${plan.repMin}s+.`,
-          lastR,
-          basis,
-          last: lastS,
-          target: `${lbl(nw)} for ${plan.repMin}s+ in every set`,
-          tgt: { kind: "load", w: nw, repMin: +plan.repMin, prevBest: null },
-          easier: null
-        };
-      }
-      const total = topPts.reduce((a, p) => a + p.r, 0);
-      const nT = topPts.length;
-      const over = overSets(nT, plan, "hold");
-      return {
-        prev: L0.prev,
-        prevOff: L0.prevOff,
-        w: top,
-        text: `${lastS} Beat ${total}s ${over} at ${lbl(top)}. When every hold reaches ${plan.repMax}s, add load.`,
-        lastR,
-        basis,
-        last: lastS,
-        target: `${total + 1}s+ ${over} at ${lbl(top)}`,
-        tgt: { kind: "reps", w: top, total, n: nT, rs: topPts.map((p) => p.r), prevBest: null },
-        easier: null
-      };
-    }
-    function defPlan(exId, plain) {
-      const ex = EX(exId);
-      return ex.timed ? { ...DEFAULT_PLAN, repMin: 30, repMax: 60, rest: 60 } : profPlan(ex, plain);
-    }
-    function unitStep() {
-      return U() === "kg" ? 2.5 : STEP_LB;
-    }
-    function stepRead(v) {
-      return Math.abs(v - STEP_LB) < 1e-6 || Math.abs(v - 2.5) < 1e-6 ? unitStep() : v;
-    }
-    function incOf(ex, plan, at) {
-      const v = stepRead(ex && ex.inc != null ? ex.inc : plan && isNum(+plan.inc) ? +plan.inc : STEP_LB);
-      if (ex && ex.inc == null && Math.abs(v - unitStep()) < 1e-6) {
-        const L = gymRack(ex, plan);
-        if (L) return rackGap(L, at);
-        if (rackKind(ex)) {
-          const g = rackStep(ex);
-          if (g) return g;
-        }
-        const gs = gymStep(ex);
-        if (gs) return gs;
-      }
-      return v;
-    }
-    function gymOf() {
-      const g = state.settings.gym;
-      return g && typeof g === "object" ? g : null;
-    }
-    function gymRack(ex, plan) {
-      const g = gymOf();
-      if (!g || !ex || ex.bw || ex.assist || ex.timed || ex.inc != null) return null;
-      if (plan && isNum(+plan.inc) && Math.abs(stepRead(+plan.inc) - unitStep()) > 1e-6) return null;
-      const k = rackKind(ex);
-      if (!k) return null;
-      const m = loadMode(ex);
-      if (!(m === "each" || m === "total" && (ex.load == null || ONE_DB.has(ex.id)))) return null;
-      const L = k === "dumbbell" ? dbListOf(g.db) : Array.isArray(g.kb) && g.kb.length ? g.kb : null;
-      return L && L.length ? L.map((v) => gymK(g, v)) : null;
-    }
-    function rackTol(L, at) {
-      const base = U() === "lb" ? 0.05 * LB : 0.05;
-      if (!L || !L.length || at == null || !isNum(at)) return base;
-      let i = 0;
-      for (let k = 1; k < L.length; k++) if (Math.abs(L[k] - at) < Math.abs(L[i] - at)) i = k;
-      const gs = [i > 0 ? L[i] - L[i - 1] : null, i < L.length - 1 ? L[i + 1] - L[i] : null].filter((g) => g != null && g > 0);
-      const gap = gs.length ? Math.min(...gs) : 0;
-      return Math.abs(L[i] - at) <= Math.max(base, 0.45 * gap) ? Math.max(base, Math.abs(L[i] - at) + 1e-6) : base;
-    }
-    function rackGap(L, at) {
-      if (L.length < 2) return L[0] || 0;
-      if (at != null) {
-        const t = rackTol(L, at);
-        const nx = L.find((x) => x > at + t);
-        if (nx != null) return nx - at;
-        return L[L.length - 1] - L[L.length - 2];
-      }
-      const gs = L.slice(1).map((x, i) => r3(x - L[i]));
-      const c = {};
-      let best = gs[0];
-      for (const v of gs) {
-        c[v] = (c[v] || 0) + 1;
-        if (c[v] > c[best]) best = v;
-      }
-      return best;
-    }
-    function gymStep(ex) {
-      const g = gymOf();
-      if (!g || !ex || ex.bw || ex.timed) return null;
-      const pm = platesMode(ex), m = loadMode(ex);
-      if (Array.isArray(g.plates) && g.plates.length && pm !== "none") {
-        const mn = Math.min(...g.plates);
-        return gymK(g, m === "side" || pm === "sleeve" ? mn : 2 * mn);
-      }
-      if (m === "stack" && g.stack > 0) return gymK(g, g.stack);
-      return null;
-    }
-    function capOf(ex, plan, top) {
-      const L = gymRack(ex, plan);
-      let r = L ? L[L.length - 1] : null;
-      if (r != null && top != null && top > r + rackTol(L, top)) r = null;
-      return ex.maxLoad != null ? r != null ? Math.min(ex.maxLoad, r) : ex.maxLoad : r;
-    }
-    function atCapOf(ex, plan, top, cap) {
-      const L = gymRack(ex, plan);
-      return cap != null && top >= cap - (L && (ex.maxLoad == null || cap < ex.maxLoad - 1e-6) ? rackTol(L, top) : 1e-6);
-    }
-    function rackSnap(ex, plan, res) {
-      const L = gymRack(ex, plan);
-      if (!L || !res || res.w == null || ex.timed) return res;
-      const w = res.w, top = res.top, tl = rackTol(), tt = rackTol(L, top);
-      if (L.some((x) => Math.abs(x - w) < 1e-6) || top != null && Math.abs(w - top) < 1e-6) return res;
-      const dn = L.filter((x) => x <= w + tl);
-      let nw;
-      if (top != null && w > top) {
-        const c = dn.filter((x) => x > top + tt);
-        nw = c.length ? c[c.length - 1] : L.find((x) => x > top + tt);
-      } else nw = dn.length ? dn[dn.length - 1] : L[0];
-      return nw == null || Math.abs(nw - w) < 1e-9 ? res : swapW(ex, res, nw);
-    }
-    function swapW(ex, res, nw) {
-      const a = loadLabel(ex, res.w), b = loadLabel(ex, nw);
-      const fix = (t) => t ? t.split(a).join(b) : t;
-      const out = { ...res, w: nw, target: fix(res.target) };
-      out.text = res.last && res.text.startsWith(res.last) ? res.last + fix(res.text.slice(res.last.length)) : fix(res.text);
-      if (res.tgt && res.tgt.w != null) out.tgt = { ...res.tgt, w: nw };
-      return out;
-    }
-    function rackStep(ex) {
-      const I = IDX();
-      I._rack = I._rack || {};
-      const key = U() + ex.id;
-      if (I._rack[key] !== void 0) return I._rack[key];
-      const xs = (I.byEx[ex.id] || []).slice(-12);
-      const ws = [];
-      for (const x of xs) for (const p of x.pts) if (p.w > 0) ws.push(toD(p.w));
-      const fits = (g2) => ws.every((w) => Math.abs(w / g2 - Math.round(w / g2)) < 0.01);
-      const g = ws.length ? RACK[rackKind(ex)][U()].find(fits) : null;
-      return I._rack[key] = g ? fromD(g) : null;
-    }
-    function progStep(ex, plan, loadKg, at) {
-      const L = at != null ? gymRack(ex, plan) : null;
-      if (L) {
-        const ta = rackTol(L, at);
-        const up = L.filter((x) => x > at + ta);
-        if (!up.length) return rackGap(L, at);
-        const want = at + jumpPct(ex, plan) * Math.max(0, loadKg);
-        let nw = up[0];
-        for (const x of up) if (x <= want + 1e-6) nw = x;
-        return nw - at;
-      }
-      const inc = incOf(ex, plan, at);
-      if (!(inc > 0)) return inc;
-      const pct = jumpPct(ex, plan);
-      return inc * Math.max(1, Math.floor(pct * Math.max(0, loadKg) / inc + 1e-9));
-    }
-    function planFor(exId, R, dayId, plain) {
-      R = R || activeRoutine();
-      const days = dayId ? [...R.days.filter((d) => d.id === dayId), ...R.days.filter((d) => d.id !== dayId)] : R.days;
-      for (const d of days) for (const it of d.items) if (it.exId === exId) {
-        const { uid: _u, ss: _s, ...p } = it;
-        return { ...DEFAULT_PLAN, ...p, ss: null };
-      }
-      return defPlan(exId, plain);
-    }
     function swapPlan(p, fromId, toId, R, dayId) {
       R = R || activeRoutine();
       const inR = R.days.some((d) => d.items.some((it) => it.exId === toId));
@@ -6645,44 +7407,12 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       else delete o.jump;
       return o;
     }
-    function easierText(ex, e) {
-      return `Getting easier at ${loadLabel(ex, e.w)}${ex.bw ? "" : " " + U()}: RIR ${e.from} → ${e.to} at the same reps. Adding load today is reasonable.`;
-    }
     function plateList(u) {
       u = u || U();
       const g = gymOf();
       const own = g && (g.u || U()) === u && Array.isArray(g.plates) && g.plates.length ? g.plates.slice().sort((a, b2) => b2 - a) : null;
       const b = own || (u === "lb" ? PLATES_LB : PLATES_KG);
       return state.settings.smallPlates ? [...b, u === "lb" ? 1.25 : 0.5] : b;
-    }
-    function exBarKg(ex) {
-      return ex && ex.barKg > 0 ? ex.barKg : barKg();
-    }
-    function barKg() {
-      const b = state.settings.barKg;
-      if (b != null) return b;
-      const g = gymOf();
-      const u = g && g.u || U();
-      return u === "lb" ? 45 * LB : 20;
-    }
-    function lighterLoad(ex, plan, from, to) {
-      const L = gymRack(ex, plan);
-      if (L) {
-        const tl = rackTol(), tf = rackTol(L, from);
-        const lo = L.filter((x) => x < from - tf);
-        if (!lo.length) return Math.max(0, from);
-        const c = lo.filter((x) => x <= to + tl);
-        return c.length ? c[c.length - 1] : lo[0];
-      }
-      const step = incOf(ex, plan, from);
-      let w;
-      if (step > 0) {
-        const k = Math.max(1, Math.ceil((from - to) / step - 1e-6));
-        w = from - k * step;
-      } else w = roundLoad(to, true);
-      const floor = platesMode(ex) === "bar" && loadMode(ex) === "total" && (isCompound(ex) || ex.barKg > 0) ? exBarKg(ex) : 0;
-      if (w < floor - 1e-6) w = Math.min(floor, from);
-      return Math.max(0, w);
     }
     function plateText(kg, mode, ex) {
       mode = mode || "bar";
@@ -7604,11 +8334,11 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       {
         const tb = document.querySelector('#tabs button[data-tab="today"]');
         if (tb) {
-          const live = !!state.draft;
-          tb.classList.toggle("live", live);
+          const live2 = !!state.draft;
+          tb.classList.toggle("live", live2);
           const sp = tb.querySelector("span");
-          if (sp) sp.textContent = live ? "Session" : "Today";
-          tb.setAttribute("aria-label", live ? state.draft.editingId ? "Session being edited" : "Session in progress" : "Today");
+          if (sp) sp.textContent = live2 ? "Session" : "Today";
+          tb.setAttribute("aria-label", live2 ? state.draft.editingId ? "Session being edited" : "Session in progress" : "Today");
         }
       }
       renderWeekBar();
@@ -8055,66 +8785,6 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       const v = Math.round(toD(kg));
       return v >= 1e4 ? Math.round(v / 1e3) + "k" : v.toLocaleString();
     };
-    function weekSessions(ws) {
-      return dateIndex().weekN[ws] || 0;
-    }
-    function planHard(it) {
-      return state.settings.rirMode === "off" || !(+it.rir > 3);
-    }
-    function planCredit(it) {
-      return planHard(it) ? 1 : rirHalfOn() && +it.rir <= 5 ? 0.5 : 0;
-    }
-    function planSetsPerWeek(R, deload) {
-      const n = R.days.reduce((a, d) => a + (d.rest ? 0 : d.items.reduce((x, it) => x + planCredit(it) * (deload ? Math.max(1, Math.ceil(+it.sets / 2)) : +it.sets), 0)), 0);
-      return R.schedule === "weekly" ? n : Math.round(n * weekFactor(R));
-    }
-    function weekRoutine(ws) {
-      const I = IDX();
-      if (!I.weekRid) {
-        const by = {};
-        for (const x of state.sessions) {
-          if (!x.routineId || x.free) continue;
-          const w = weekStart(x.date);
-          const c = by[w] || (by[w] = {});
-          c[x.routineId] = (c[x.routineId] || 0) + 1;
-        }
-        I.weekRid = {};
-        for (const w in by) {
-          let id2 = null;
-          for (const k in by[w]) if (id2 == null || by[w][k] > by[w][id2]) id2 = k;
-          I.weekRid[w] = id2;
-        }
-      }
-      const id = I.weekRid[ws];
-      return id && state.routines.find((r) => r.id === id) || activeRoutine();
-    }
-    function weekNeed(ws) {
-      return freeMode() ? 1 : Math.max(1, plannedPerWeek(weekRoutine(ws)));
-    }
-    function weekStreak() {
-      const R = activeRoutine();
-      const need = freeMode() ? 1 : Math.max(1, plannedPerWeek(R));
-      const cur = weekStart(today());
-      const thisWeek = weekSessions(cur);
-      if (!state.sessions.length) return { weeks: 0, best: 0, need, thisWeek: 0 };
-      const first = weekStart(sortedSessions()[0].date);
-      let run = null, cnt = 0, best = 0;
-      for (let k = 1; k <= 104; k++) {
-        const wk = addDays(cur, -7 * k);
-        if (wk < first) break;
-        if (isRestWeek(wk)) continue;
-        if (weekSessions(wk) >= weekNeed(wk)) {
-          cnt++;
-          best = Math.max(best, cnt);
-        } else {
-          if (run == null) run = cnt;
-          cnt = 0;
-        }
-      }
-      if (run == null) run = cnt;
-      const weeks = run + (thisWeek >= need ? 1 : 0);
-      return { weeks, best: Math.max(best, weeks), need, thisWeek };
-    }
     function weekVolume(ws, upto) {
       const end = addDays(ws, upto == null ? 6 : upto);
       let v = 0;
@@ -8127,18 +8797,6 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       const now = weekVolume(cur, off), prev = weekVolume(addDays(cur, -7), off), prevFull = weekVolume(addDays(cur, -7));
       return { now, prev, prevFull, delta: prev > 0 ? (now / prev - 1) * 100 : null };
     }
-    function recentLighter(days) {
-      const from = addDays(today(), -days);
-      let d = null;
-      for (const x of state.sessions) if (x.date >= from && (x.deload || x.light) && (!d || x.date > d)) d = x.date;
-      const I = IDX();
-      for (const id in I.byEx) for (const x of I.byEx[id]) if (x.auto && x.date >= from && (!d || x.date > d)) d = x.date;
-      for (const w of state.settings.restWeeks || []) {
-        const e = addDays(w, 6) < today() ? addDays(w, 6) : today();
-        if (e >= from && w <= today() && (!d || e > d)) d = e;
-      }
-      return d;
-    }
     function prsWithin(days) {
       const from = addDays(today(), -days);
       return IDX().prs.filter((x) => x.date >= from && x.big);
@@ -8150,81 +8808,6 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       const in28 = (d) => d >= d28, in56 = (d) => d >= d56 && d < d28;
       const P = IDX().prs.filter((p) => p.big);
       return { back, sess: ss.filter((x) => in28(x.date)).length, sessP: ss.filter((x) => in56(x.date)).length, prs: P.filter((p) => in28(p.date)), prsP: P.filter((p) => in56(p.date)).length };
-    }
-    function movers() {
-      return Object.entries(IDX().exStats).filter(([, x]) => x.moving && !x.stalled && x.fresh).sort((a, b) => b[1].pct - a[1].pct).map(([id, x]) => ({ id, pct: x.pct, wk: x.spanW || 2 }));
-    }
-    function stalledIds() {
-      return Object.entries(IDX().exStats).filter(([, x]) => x.stalled).map(([id]) => id);
-    }
-    function dropOnlyLift(id) {
-      const ss = sortedSessions();
-      let n = 0;
-      for (let i = ss.length - 1; i >= 0 && n < 6; i--) {
-        const bs = ss[i].ex.filter((b) => b.exId === id);
-        if (!bs.length) continue;
-        n++;
-        if (bs.some((b) => b.sets.some((s) => isWork(s) && !s.drop))) return false;
-      }
-      return n > 0;
-    }
-    function fatigueStalls(ids) {
-      return ids.filter((id) => {
-        const e = EX(id);
-        return e && !e.timed && !noE1(e) && isCompound(e) && !dropOnlyLift(id);
-      });
-    }
-    function coach() {
-      const I = IDX();
-      const R = activeRoutine();
-      if (!state.sessions.length) return { tone: "blue", text: "Log your first session. Advice starts after a few sessions.", act: null };
-      if (isRestWeek(weekStart(today()))) return { tone: "blue", text: "Rest week. Nothing to hit this week.", why: "It does not count as missed: your averages, streak, and adherence skip it, and your targets pick up where they were.", act: null };
-      if (isDeloadWeek()) return { tone: "blue", text: `Deload week. It ends Sunday.`, why: "Half the sets, about 90% loads, 3 or more reps in reserve. Your targets pick up where they were.", act: null };
-      const stalled = stalledIds();
-      const rl = recentLighter(28);
-      const big = fatigueStalls(stalled);
-      if (big.length >= 3 && !rl) return { tone: "red", text: `${big.length} main lifts stalled at once: ${andList(big.map(exName), 3)}. A deload week may help.`, why: "Several main lifts flat together often points to fatigue. Check sleep, food, and stress. A deload week is half the sets at about 90% loads. Isolation and core lifts are not counted.", act: { label: "Start a deload week", deload: true } };
-      const inj = injuredSet();
-      const avg = actualAvg4();
-      const bands = state.settings.bands;
-      if (avg && avg._missed >= 2) {
-        const w = avg._weeks, n = Math.min(4, w + avg._missed);
-        return { tone: "yellow", text: `You trained in ${w} of the last ${n} weeks. Getting the weeks in matters more than adding sets.`, why: "Set counts are per week you trained: weeks with no training are left out of the averages rather than counted as zero, so a short break does not read as below target everywhere.", act: null };
-      }
-      if (avg) {
-        const lagSet = new Set(I.scores.filter((x) => x.label === "lagging").map((x) => x.m));
-        const under = MK.filter((m) => !inj.has(m) && !TRACK_ONLY.has(m) && belowMin(avg[m], bands[m][0])).map((m) => ({ m, got: avg[m] || 0, lo: bands[m][0], hi: bands[m][1], pri: state.settings.priorities.includes(m) ? 1 : 0, lag: lagSet.has(m) ? 1 : 0 })).sort((a, b) => b.pri - a.pri || b.lag - a.lag || b.lo - b.got - (a.lo - a.got) || a.got / a.lo - b.got / b.lo);
-        if (under.length) {
-          const u = under[0];
-          const gap = Math.max(1, Math.ceil(u.lo - u.got));
-          const done = (id) => (I.byEx[id] || []).length > 0;
-          const forM = (id) => {
-            const e = EX(id);
-            return !!e && e.primary === u.m;
-          };
-          const inR = [];
-          for (const d of R.days) for (const it of d.items) if (forM(it.exId) && !inR.includes(it.exId)) inR.push(it.exId);
-          const logged = Object.keys(I.byEx).filter((id) => forM(id) && state.exercises.some((e) => e.id === id && !e.archived)).sort((x, y) => I.byEx[y][I.byEx[y].length - 1].date.localeCompare(I.byEx[x][I.byEx[x].length - 1].date));
-          const exId = inR.find(done) || logged[0] || inR[0] || null;
-          const how = exId ? `Add ${gap} set${gap > 1 ? "s" : ""} a week to ${exName(exId)}.` : "Add an exercise for it.";
-          return { tone: "yellow", text: `${ML[u.m]}: ${r1(u.got)} hard set${r1(u.got) === 1 ? "" : "s"} a week, target ${u.lo}-${u.hi}. ${how}${under.length > 1 ? ` ${under.length - 1} more below target.` : ""}`, why: `Your average of hard sets per week over your recent full weeks. The largest shortfall comes first, and priority muscles before the rest.${exId ? "" : " Nothing in your routine trains it directly."}`, act: { label: `See ${ML[u.m]}`, sec: "volume", m: u.m } };
-        }
-      }
-      if (stalled.length) {
-        const id = stalled[0];
-        const st = I.exStats[id];
-        const p = planFor(id);
-        const lw = st && st.last ? atLoad(st.last.pts, st.last.topW) : [];
-        if (lw.length && lw.every((q) => q.r >= +p.repMax)) return { tone: "yellow", text: `${exName(id)} has been at the top of its range at ${loadLabel(EX(id), st.last.topW)}${EX(id).bw ? "" : " " + U()} for 3 weeks: it is due a step up, not a new range. The session's target says how.`, why: "Every set reached the top of the range. The next step is more load, or, when one step is large for the load, a few more reps first.", act: { label: "See the lift", sec: "exercise", ex: id } };
-        return { tone: "yellow", text: `${exName(id)} has stalled. Try another rep range or a close variation for a few weeks.`, why: "Flat or down over its last 6 sessions (or 3 weeks), with no PR in the last 3, no heavier load, and no more reps at the same load, leaving out deload, lighter, and trimmed sessions.", act: { label: "See the lift", sec: "exercise", ex: id } };
-      }
-      const lag = I.scores.filter((x) => x.clear && x.score <= -GROW_PCT);
-      if (lag.length) {
-        const x = lag[lag.length - 1];
-        return { tone: "yellow", text: `${ML[x.m]} strength is falling over ${x.wk || 6} weeks. Check sleep and recovery before adding sets.`, act: { label: `See ${ML[x.m]}`, sec: "rank", m: x.m } };
-      }
-      if (!avg) return { tone: "blue", text: state.sessions.some((x) => x.date < addDays(weekStart(today()), -28)) && !state.sessions.some((x) => x.date >= addDays(weekStart(today()), -28)) ? "Nothing logged in the last 4 weeks. Volume advice comes back after a full week of training." : "Volume advice appears here after your first full week.", act: null };
-      return { tone: "green", text: "Every muscle at target, nothing stalled.", act: null };
     }
     function coachButton(c, di) {
       if (!c.act) return "";
@@ -8366,10 +8949,6 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
         if (!b || v > b.v + 1e-9) b = { v, w: p.w, r: p.r, date: x.date };
       }
       return b;
-    }
-    function musTrend(sc) {
-      if (!sc.clear) return `Strength trend unclear: ${sc.n ? `${sc.n} lift${sc.n === 1 ? "" : "s"} measured, changes within day-to-day noise` : "not enough sessions"}`;
-      return Math.abs(sc.score) < GROW_PCT ? `No clear strength change over ${sc.wk || 6} weeks` : `Strength ${sc.score >= 0 ? "rising" : "falling"} over ${sc.wk || 6} weeks`;
     }
     function muscleHeadline(m) {
       const I = IDX();
@@ -8812,18 +9391,6 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       }).filter((x) => x > 0);
       return { avg, n: ss.length, plan: pl.length ? Math.round(pl.reduce((a, b) => a + b, 0) / pl.length) : null };
     }
-    function statsUpTo(exId, exps) {
-      const now = IDX().exStats[exId] || {};
-      let best = null, bestAll = null;
-      const byBand = {};
-      for (const x of exps) {
-        if (x.best == null) continue;
-        if (sameRR(x.rr, now.rr)) best = best == null ? x.best : Math.max(best, x.best);
-        bestAll = bestAll == null ? x.best : Math.max(bestAll, x.best);
-      }
-      for (const x of exps) if (x.pb != null) byBand[x.pbb] = Math.max(byBand[x.pbb] || 0, x.pb);
-      return { best, bestAll, byBand, rr: now.rr, easier: null };
-    }
     function livePR(exId, s, date) {
       if (!s || s.warm || s.drop || !(+s.r > 0)) return null;
       const I = IDX();
@@ -8920,25 +9487,6 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       let m = 0;
       for (const x of exps) for (const p of x.pts) if (p.pl >= load2 - 1e-6) m = Math.max(m, p.r);
       return m ? ` (was ${m} ${ex.timed ? "s" : "reps"})` : " (heaviest yet)";
-    }
-    const chkWord = (n) => n === "OK" ? "OK" : n.toLowerCase();
-    const CHK_Q = [["sleep", "Sleep", ["Poor", "OK", "Good"]], ["energy", "Energy", ["Low", "OK", "High"]], ["joints", "Aches", ["Sore", "A little", "None"]]];
-    function readiness() {
-      const I = IDX();
-      const bySid = {};
-      for (const id in I.byEx) I.byEx[id].forEach((x, i) => {
-        if (i === 0 || offSession(x)) return;
-        const o = bySid[x.sid] || (bySid[x.sid] = { n: 0, p: 0 });
-        o.n++;
-        if (x.progress) o.p++;
-      });
-      const sess = state.sessions.filter((s) => !s.demo && s.chk && bySid[s.id]);
-      const rows = CHK_Q.map(([k, l, names]) => ({ k, l, groups: [3, 2, 1].map((v) => {
-        const g = sess.filter((s) => s.chk[k] === v);
-        const n = g.reduce((a, s) => a + bySid[s.id].n, 0), p = g.reduce((a, s) => a + bySid[s.id].p, 0);
-        return { v, name: names[v - 1], sessions: g.length, rate: n ? p / n * 100 : null };
-      }) }));
-      return { n: sess.length, rows };
     }
     function readinessBody() {
       const r = readiness();
@@ -9389,13 +9937,13 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
         const pd = p ? p.day : null;
         const isPlan = !!pd && !pd.rest && pd.items.length > 0;
         const isRest = !!pd && pd.rest;
-        const live = !!state.draft && !state.draft.editingId && d === state.draft.date;
-        const cls = ["w", trained ? "on" : "", !trained && cd.length ? "cardio" : "", !trained && !cd.length && isPlan && d >= t ? "plan" : "", !trained && weekly && isPlan && d < t ? "miss" : "", !trained && !cd.length && isRest && d >= t ? "rest" : "", d === t ? "today" : "", live ? "live" : ""].filter(Boolean).join(" ");
+        const live2 = !!state.draft && !state.draft.editingId && d === state.draft.date;
+        const cls = ["w", trained ? "on" : "", !trained && cd.length ? "cardio" : "", !trained && !cd.length && isPlan && d >= t ? "plan" : "", !trained && weekly && isPlan && d < t ? "miss" : "", !trained && !cd.length && isRest && d >= t ? "rest" : "", d === t ? "today" : "", live2 ? "live" : ""].filter(Boolean).join(" ");
         const name = trained ? ss[0].dayName + (ss.length > 1 ? ` +${ss.length - 1}` : "") : cd.length ? "Cardio" : p && d >= t ? isRest ? "Rest" : pd.name : weekly && isPlan && d < t ? pd.name : "";
-        const what = trained ? `${ss.map((x) => x.dayName).join(", ")}, logged` : live ? "session in progress" : isPlan ? d < t ? weekly ? `${pd.name}, missed` : "nothing logged" : `${pd.name}, planned` : isRest && d >= t ? "rest day" : "nothing logged";
+        const what = trained ? `${ss.map((x) => x.dayName).join(", ")}, logged` : live2 ? "session in progress" : isPlan ? d < t ? weekly ? `${pd.name}, missed` : "nothing logged" : `${pd.name}, planned` : isRest && d >= t ? "rest day" : "nothing logged";
         const label = `${DAYS[i]} ${fmtDate(d)}: ${what}${cd.length ? `, cardio ${cd.reduce((a, c) => a + c.min, 0)} min` : ""}`;
         const inner = `<span class="wd">${WD2[i]}</span><span class="dn">${+d.slice(8)}</span><span class="nm">${name ? esc(name) : "&nbsp;"}</span>`;
-        if (live && d < t) h += `<button type="button" class="${cls}" data-act="wkGo" data-date="${d}" data-tip="${esc(label)}" aria-label="${esc(label)}. Open the session">${inner}</button>`;
+        if (live2 && d < t) h += `<button type="button" class="${cls}" data-act="wkGo" data-date="${d}" data-tip="${esc(label)}" aria-label="${esc(label)}. Open the session">${inner}</button>`;
         else if (trained && ss.length > 1) h += `<button type="button" class="${cls}" data-act="calDay" data-date="${d}" data-tip="${esc(label)}" aria-label="${esc(label)}. Choose one to open">${inner}</button>`;
         else if (trained) h += `<button type="button" class="${cls}" data-act="wkOpen" data-id="${ss[0].id}" data-tip="${esc(label)}" aria-label="${esc(label)}. Open in History">${inner}</button>`;
         else if (d >= t) h += `<button type="button" class="${cls}" data-act="wkGo" data-date="${d}"${p ? ` data-day="${p.di}"` : ""} data-tip="${esc(label)}" aria-label="${esc(label)}. Open on Today">${inner}</button>`;
@@ -9423,22 +9971,6 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       const pd = `${w.weekly || weekFactor(w.R) === 1 ? "" : "about "}${w.planDays}`;
       const lbl = noLog() ? `No sessions logged yet; ${pd} planned this week` : `${w.doneDays} of ${pd} sessions this week`;
       return `<button type="button" class="ring" data-act="goWeek" aria-label="${esc(lbl)}. Open This week" data-tip="${esc(lbl)}"><svg viewBox="0 0 64 64" aria-hidden="true"><circle cx="32" cy="32" r="${r}" class="rt"/><circle cx="32" cy="32" r="${r}" class="rp" stroke-dasharray="${(c * p).toFixed(2)} ${c.toFixed(2)}" transform="rotate(-90 32 32)"/></svg><span class="rv">${noLog() ? NIL : `${w.doneDays}<small>/${w.planDays}</small>`}</span><span class="rl">week</span></button>`;
-    }
-    function weekStats() {
-      const R = activeRoutine();
-      const cur = weekStart(today());
-      const weekly = R.schedule === "weekly";
-      let cardioMin = 0, cardioN = 0;
-      for (const c of state.cardio) if (c.date >= cur && c.date <= addDays(cur, 6)) {
-        cardioMin += c.min;
-        cardioN++;
-      }
-      const doneDays = weekSessions(cur);
-      const planDays = weekly ? trainDaysOf(R) : Math.round(trainDaysOf(R) * weekFactor(R));
-      const got = IDX().weekHard[cur] || 0;
-      const tgt = planSetsPerWeek(R, isDeloadWeek());
-      const rest = isRestWeek(cur);
-      return { R, weekly, planDays: rest ? 0 : planDays, doneDays, got, tgt: rest ? 0 : tgt, pct: !rest && tgt > 0 ? Math.min(100, got / tgt * 100) : 0, cardioMin, cardioN, rest };
     }
     function cycleStrip(R) {
       const cs = cycleState(R);
@@ -9555,20 +10087,6 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       const sg = suggest(exId, plan, opts);
       return { bid: uid(), exId, plan: { ...plan }, note: "", lastNote: lastNoteOf(exId, opts && opts.before), inj: sg.inj || null, hint: sg.text, last: sg.last, prev: sg.prev || void 0, prevOff: sg.prevOff || void 0, target: sg.target, tgt: sg.tgt, easier: sg.easier || null, lastR: sg.lastR, basis: sg.basis || void 0, sw: sg.w == null ? null : sg.w, sets: Array.from({ length: +plan.sets || 3 }, () => ({ w: fillLoads() ? sg.w : null, r: null, rir: null, warm: false, drop: false, done: false })) };
     }
-    function prof() {
-      return state.settings.profile || {};
-    }
-    function profRule(ex, p) {
-      p = p || prof();
-      if (!ex || ex.timed) return null;
-      if (p.exp === "new") return { repMin: 8, repMax: 12, rir: isCompound(ex) ? 3 : 2 };
-      if ((p.goal === "strength" || p.goal === "both") && profHeavy(ex)) return p.goal === "strength" ? { repMin: 3, repMax: 6, rir: 2, rest: 180 } : { repMin: 5, repMax: 8, rir: 2, rest: 180 };
-      return null;
-    }
-    function profPlan(ex, plain) {
-      const r = plain ? null : profRule(ex);
-      return r ? { ...DEFAULT_PLAN, ...r } : { ...DEFAULT_PLAN };
-    }
     function defBand(m, p) {
       const b = BANDS[m];
       const f = (p || prof()).focus || [];
@@ -9624,11 +10142,6 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       if (!(daysOff(e.id, { before: at }) >= STR_REST)) return null;
       const near = st.bestAll > 0 && st.last.best >= st.bestAll * STR_NEAR;
       return st.stalled ? "stalled" : near ? "near" : null;
-    }
-    function roundLoad(kg, down) {
-      const step = U() === "lb" ? 5 : 2.5;
-      const d = toD(kg);
-      return fromD(Math.max(step, (down ? Math.floor(d / step + 1e-9) : Math.round(d / step)) * step));
     }
     const rirScale = () => state.settings.rirScale === "half" || state.settings.rirScale === "rpe" ? state.settings.rirScale : "whole";
     const effWord = () => rirScale() === "rpe" ? "RPE" : "RIR";
@@ -13549,17 +14062,17 @@ ${extraKpis()}</div>`;
         const list = profApplyList(R);
         if (!list.length) return;
         confirmBox(`Apply to ${R.name}?`, `${list.length} exercise${list.length === 1 ? "" : "s"}. ${profApplyWhat()} Sets and exercises stay as they are.`, "Apply", () => {
-          const live = activeRoutine();
-          if (!live || live.id !== R.id) return;
+          const live2 = activeRoutine();
+          if (!live2 || live2.id !== R.id) return;
           snapshot();
-          const L = profApplyList(live);
+          const L = profApplyList(live2);
           for (const x of L) {
             Object.assign(x.it, x.ch);
-            syncDraftPlan({ r: live, di: x.di, it: x.it });
+            syncDraftPlan({ r: live2, di: x.di, it: x.it });
           }
           commit();
           rerenderKeepScroll();
-          toast(`${live.name}: ${L.length} exercise${L.length === 1 ? "" : "s"} updated`, true);
+          toast(`${live2.name}: ${L.length} exercise${L.length === 1 ? "" : "s"} updated`, true);
         });
       },
       obUnit(t) {
@@ -17131,7 +17644,7 @@ ${JSON.stringify(fb.context, null, 1)}`;
       return state;
     }, set state(v) {
       setState(v);
-    }, fbContext, FB_CTX_MAX, logCut, logBuf, log, dateIndex, sessionsOn, bestLine, whyTarget, recent4w, weekSessions, fmtDate, fmtDateLong, fbShrink, orderAt, orderRun, dropOnlyLift, profHeavy, appBand, fitRecordOld, prof, profClean, profRule, profPlan, defPlan, defBand, profMoveBands, profApplyList, strengthPick, PROF_DAYS, FOCUS_MAX, estInLoad, keepExtra, EXTRA_MAX, draftPlanMin, pace, paceRatios, sessModelMin, PACE_N, PACE_DAYS, PACE_MIN, plainTemplate, trashTidy, ENV, KEY, COMMON, COMMON_TIP, isCommon, bwEvery, isRestWeek, sessCmp, avgWeeks, weekStreak, coach, noLog, afterSet, adjOn, bwAt, newBlock, cycleState, sortedSessions, addDays, loadIn, gymRack, gymClean, dbListOf, capOf, refreshEx, effShow, rirScale, setStr, libExercises, obGate, obTour, andList, belowMin, aboveMax, starterRoutine, starterSigs, plateList, exBarKg, VOL_MODES, liveLogFetch, regionSrc, fitTargets, firstFullWeek, moveBlock, BANDS, installSheet, siteHost, greyW, effW, greyR, lighterLoad, incOf, swapPlan, planSetsPerWeek, weekNeed, stepRead, e1inv, rtfAt, rtfOf, rtfBand, calStats, rirEff, isHard, setCredit, tonnage, loadMode, loadWords, loadNote, progStep, jumpCap, setSecs, setupSecs, recovery, rolling7, rankDays, rankExercises, isCompound, patternOf, noE1, whtrLine, exHeadline, remainMin, shortPlan, weekPlan, cycleProjection, lastLighterWeek, regionBalance, parseHeight, mixCheck, swapCands, eqPlan, exportCSV, importData, chunksOf, assemble, sessionMuscles, TRACK_ONLY, cloud, Hx, mergeChunk, baseOf, sync: () => cq(cloudPull), TEMPLATES, lastRFor, impDate, impRows, impNorm, impMatch, impFromText, impFromTable, impHeader, impBuild, impStart, impXlsx, parseSets, undoStack, undoRestore, undoForget, allTimeBests, bestsBoard, obActive, fmtW, rirUsual, rirEst, routineFromTemplate, plannedSets, map3d: () => ({ state: B3.state, fail: B3.fail, meshes: B3.meshes.length, yaw: B3.yaw, glow: Object.keys(B3.mats).filter((m) => B3.mats[m].emissiveIntensity > 0), canvas: !!document.querySelector("#bm3d canvas"), colors: Object.fromEntries(Object.entries(B3.mats).map(([m, mt]) => [m, "#" + mt.color.getHexString()])), pick: (x, y) => map3dPick(x, y), want: map3dColors() }), cloudState: () => ({ on: cloud.on, status: cloud.status, err: cloud.err, uid: cloud.uid, acct: cloud.acct }), acctUser: () => acct.user, acctWaiting: () => !!acctWait.pw, flush: () => cq(cloudFlush), backupDue, routineUpdates, planFor, platesMode, plateText, chunksOf, IDX, suggest, e1, render, ACT, ui, makeDemo, invalidate, normalize, snapshot, saveNow, timer, weekStats, weekStart, today, EX, blockProgress, dayMinutes, weekStreak, coach, tonnageNow, livePR, movers, stalledIds, muscleStatus, actualAvg4, plannedPerWeek, parseSets, fillSets, newBlock, lastNoteOf, sizeRows, sessionMuscleSets, sessionCapNote, routineClutter, rowBlank, dayReasons, impTextSets, liftTrend, prsWithin, activeRoutine, rackStep, repFloor, sessionLength, prBeat, exInjury, exJoints, openModal, EQUIP, HARD_EX, recentLighter, planEvidenceNote, howToUrl, editFp, toast, avgWeeks, regionWk, REGION_WKS, SAFETY_TXT, libFiltered, nameMatch, workLoad, fitE, offSession, tagged, fatigueStalls, avgWeeksTxt, routineFromLog, repSpan, rangeWords, calDueIdx, readyCard, sameRR, hintOnce, overSets, rackTol, daysOff, BACK_DAYS, prName, sessTm, effTgt, bwDueCard, bwNoLoad, applyPick, joinAdjacent, sameExOnce, goalState, goalLine, bwRefLoad, ML, exMusParts, musTrend };
+    }, fbContext, FB_CTX_MAX, logCut, logBuf, log, dateIndex, sessionsOn, bestLine, whyTarget, recent4w, weekSessions, fmtDate, fmtDateLong, fbShrink, orderAt, orderRun, dropOnlyLift, profHeavy, appBand, fitRecordOld, prof, profClean, profRule, profPlan, defPlan, defBand, profMoveBands, profApplyList, strengthPick, PROF_DAYS, FOCUS_MAX, estInLoad, keepExtra, EXTRA_MAX, draftPlanMin, pace, paceRatios, sessModelMin, PACE_N, PACE_DAYS, PACE_MIN, plainTemplate, trashTidy, ENV, KEY, COMMON, COMMON_TIP, isCommon, bwEvery, isRestWeek, sessCmp, avgWeeks, weekStreak, coach, noLog, afterSet, adjOn, bwAt, newBlock, cycleState, sortedSessions, addDays, loadIn, gymRack, gymClean, dbListOf, capOf, refreshEx, effShow, rirScale, setStr, libExercises, obGate, obTour, andList, belowMin, aboveMax, starterRoutine, starterSigs, plateList, exBarKg, VOL_MODES, liveLogFetch, regionSrc, fitTargets, firstFullWeek, moveBlock, BANDS, installSheet, siteHost, greyW, effW, greyR, lighterLoad, incOf, swapPlan, planSetsPerWeek, weekNeed, stepRead, e1inv, rtfAt, rtfOf, rtfBand, calStats, rirEff, isHard, setCredit, tonnage, loadMode, loadWords, loadNote, progStep, jumpCap, setSecs, setupSecs, recovery, rolling7, rankDays, rankExercises, isCompound, patternOf, noE1, whtrLine, exHeadline, remainMin, shortPlan, weekPlan, cycleProjection, lastLighterWeek, regionBalance, parseHeight, mixCheck, swapCands, eqPlan, exportCSV, importData, chunksOf, assemble, sessionMuscles, TRACK_ONLY, cloud, Hx, mergeChunk, baseOf, sync: () => cq(cloudPull), TEMPLATES, lastRFor, impDate, impRows, impNorm, impMatch, impFromText, impFromTable, impHeader, impBuild, impStart, impXlsx, parseSets, undoStack, undoRestore, undoForget, allTimeBests, bestsBoard, obActive, fmtW, rirUsual, rirEst, routineFromTemplate, plannedSets, map3d: () => ({ state: B3.state, fail: B3.fail, meshes: B3.meshes.length, yaw: B3.yaw, glow: Object.keys(B3.mats).filter((m) => B3.mats[m].emissiveIntensity > 0), canvas: !!document.querySelector("#bm3d canvas"), colors: Object.fromEntries(Object.entries(B3.mats).map(([m, mt]) => [m, "#" + mt.color.getHexString()])), pick: (x, y) => map3dPick(x, y), want: map3dColors() }), cloudState: () => ({ on: cloud.on, status: cloud.status, err: cloud.err, uid: cloud.uid, acct: cloud.acct }), acctUser: () => acct.user, acctWaiting: () => !!acctWait.pw, flush: () => cq(cloudFlush), backupDue, routineUpdates, planFor, platesMode, plateText, chunksOf, IDX, suggest, e1, render, ACT, ui, makeDemo, invalidate, normalize, snapshot, saveNow, timer, weekStats, weekStart, today, EX, blockProgress, dayMinutes, weekStreak, coach, tonnageNow, livePR, movers, stalledIds, muscleStatus, actualAvg4, plannedPerWeek, parseSets, fillSets, newBlock, lastNoteOf, sizeRows, sessionMuscleSets, sessionCapNote, routineClutter, rowBlank, dayReasons, impTextSets, liftTrend, prsWithin, activeRoutine, rackStep, repFloor, sessionLength, prBeat, exInjury, exJoints, openModal, EQUIP, HARD_EX, recentLighter, planEvidenceNote, howToUrl, editFp, toast, avgWeeks, regionWk, REGION_WKS, SAFETY_TXT, libFiltered, nameMatch, workLoad, fitE, offSession, tagged, fatigueStalls, avgWeeksTxt, routineFromLog, repSpan, rangeWords, calDueIdx, readyCard, sameRR, hintOnce, overSets, rackTol, daysOff, BACK_DAYS, prName, sessTm, effTgt, bwDueCard, bwNoLoad, applyPick, joinAdjacent, sameExOnce, goalState, goalLine, bwRefLoad, ML, exMusParts, musTrend, U, toD, fromD, loadLabel, exName, planCredit, gymOf, isDeloadWeek, freeMode, injuredSet, prLoad, statsUpTo, readiness, bwRef, weekRoutine, easierText, barKg, suggestCore, loadOf, bwLoad, hardCredit, rirHalfOn };
     render();
     wakeOn();
     timerResume();

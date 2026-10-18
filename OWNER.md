@@ -348,12 +348,12 @@ Status: to do whenever you are at the gym; tell Claude what you see.
 - Rest timer across a screen lock; the share sheet to Files for a backup; the notch in the home-screen app; "New version ready" then Reload.
 - Auto-mark with the keyboard's Done on a grey reps field; the 3D body's drag and tap; the Add to Home Screen guide on iOS 26 Safari.
 - The app signing itself in after a confirmation link; a past workout from the week bar; the light Today card; a screenshot attached to a report.
-- Ask the two friends on iOS 26 (for PENDING 303's tab bar fix), before r51 is live: which iPhone model; then, with the bar down on Today, tap History straight away (not Plan first): does the bar rise? And when it is up anywhere, send a problem report from the menu (signed in): the report carries the screen's size, so a shorter height than usual shows the viewport shrank. On an iPhone 852 points tall (14 Pro, 15, 15 Pro or 16) Today is a little taller than the screen (about 863 px with a real log, a margin of about 11), so a bar rising on History reached straight from Today points to a cause other than a short page; on a taller model (16 Pro and up, Plus and Pro Max) Today itself can be short, so this test does not separate the two there, and the report's screen size is the test. Once r51 is live: whether it still rises on History, Plan or Settings. No browser here is an installed iPhone app, so they are the check.
 
 ## Reminders
 - Renew the `ironlog-feedback` token (B3) before it expires, a year after you make it. Claude writes the date here when you say B3 is done.
 
 ## Done
+- The tab bar on iOS 26 home-screen apps (r51): two iPhone users confirmed it stays on the bottom edge (2026-10-17).
 - Supabase Part 1 (project, `docs` table, keys) and your account, with real sync confirmed (2026-09-27).
 - Delete my account function and keep-alive `ping()` deployed; checked from the build machine: the function answers 405 "Use POST", `ping()` returns "ok" (2026-09-27).
 - Claude artifact retired; log moved into the installed app (2026-09-27).

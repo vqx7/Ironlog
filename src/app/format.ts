@@ -1,7 +1,11 @@
-/* Words and numbers as the screens say them: dates, times, durations, rep
-   ranges and counts (phase 3a, r51; moved unchanged from the legacy script,
-   tests/moved.js holds them to r50's code). Durations are worded only by
-   estMin, which tests/hygiene.js enforces. */
+/* Words and numbers as the screens and the engine's sentences say them:
+   dates, times, durations, rep ranges and counts (phase 3a, r51, and the
+   date words the engine uses in 3b, r52; moved unchanged from the legacy
+   script, tests/moved.js holds each to the code of the build its phase
+   started from). Durations are worded only by estMin, which
+   tests/hygiene.js enforces. Layer 2 since r52, beside the engine whose
+   sentences use it; a few words here read the clock (fmtDateRow, todayEye,
+   greeting) and so may never be reached from the engine (tests/hygiene.js). */
 
 import { parse, today } from './util';
 
@@ -99,3 +103,22 @@ export const repSpan = (lo: number | string, hi: number | string, sep = ' to '):
 /** A plan's reps as a phrase: "target of 5" or "8-12 range". */
 export const rangeWords = (p: { repMin: number | string; repMax: number | string }): string =>
   +p.repMin === +p.repMax ? `target of ${+p.repMin}` : `${+p.repMin}-${+p.repMax} range`;
+
+/* ---------- dates as the engine's sentences say them (phase 3b, r52; moved unchanged from the legacy script, tests/moved.js holds them to r51's code) ---------- */
+
+/* One Intl formatter per format, made once: toLocaleDateString builds a new
+   one on every call, about a fifth of a Stats render (r46). Same output. */
+export const DTF: Record<string, Intl.DateTimeFormat> = {};
+
+/** The kept formatter for a format, made on first use. */
+export const dtf = (k: string, o: Intl.DateTimeFormatOptions): Intl.DateTimeFormat =>
+  DTF[k] || (DTF[k] = new Intl.DateTimeFormat(undefined, o));
+
+/** A date (YYYY-MM-DD) in a kept format; empty for a date that does not parse. */
+export const fmtWith = (k: string, o: Intl.DateTimeFormatOptions, s: string): string => {
+  const d = parse(s);
+  return isNaN(+d) ? '' : dtf(k, o).format(d);
+};
+
+/** A date as "Oct 17". */
+export const fmtDate = (s: string): string => fmtWith('d', { month: 'short', day: 'numeric' }, s);
