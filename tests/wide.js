@@ -282,12 +282,22 @@ function ser(v) {
   };
   try { return JSON.stringify(enc(v, [])); } catch (e) { return 'SERR ' + e.message; }
 }
-// An error, by its kind and message, the message read back as the r51 name
-// where it quotes a function taking the model (V8 words a TypeError from the
-// source: "IDXIn(...).byEx" for r51's "IDX(...).byEx"; the crash screen
-// shows that text, the one difference r52 makes, ARCHITECTURE.md).
+// An error, by its kind and message, the message read back by the rules
+// tests/moved.js reads the code back by, where it quotes the code: a
+// function taking the model as its r51 name with the model left out of its
+// arguments, and M.s, M.c.X and M.today as state, X and today. An engine
+// words a TypeError from the source: V8 writes "IDXIn(...).byEx" for r51's
+// "IDX(...).byEx", and Safari's engine the arguments too, "IDXIn(M).byEx"
+// for "IDX().byEx" (found on GitHub, in WebKit). The crash screen shows that
+// text, the one difference r52 makes (ARCHITECTURE.md).
 function err(e) {
-  return 'ERR ' + (e && e.name) + ': ' + String(e && e.message).replace(/\b([A-Za-z_$][\w$]*)In\(/g, '$1(');
+  const back = String(e && e.message)
+    .replace(/\b([A-Za-z_$][\w$]*)In\(M(?:, |(?=\)))/g, '$1(')
+    .replace(/\b([A-Za-z_$][\w$]*)In\(/g, '$1(')
+    .replace(/\bM\.s\b/g, 'state')
+    .replace(/\bM\.c\.([A-Za-z_$][\w$]*)/g, '$1')
+    .replace(/\bM\.today\b/g, 'today');
+  return 'ERR ' + (e && e.name) + ': ' + back;
 }
 // What the digest is given for one history.
 const specOf = h => ({ raw: JSON.stringify(h.raw), today: h.today, ids: h.ids, ser: ser.toString(), err: err.toString() });
