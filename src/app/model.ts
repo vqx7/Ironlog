@@ -149,13 +149,13 @@ export interface Idx {
   scores: Score[];
   prs: Pr[];
   sessVol: { date: string; vol: number; id: string; day: string }[];
-  weekSets: Record<string, Record<string, number>>;
-  weekConf: Record<string, Record<string, number>>;
-  weekHard: Record<string, number>;
-  dayMus: Record<string, Record<string, number>>;
-  dayMeta: Record<string, Record<string, DayMeta>>;
+  weekSets: Partial<Record<string, Record<string, number>>>;
+  weekConf: Partial<Record<string, Record<string, number>>>;
+  weekHard: Partial<Record<string, number>>;
+  dayMus: Partial<Record<string, Record<string, number>>>;
+  dayMeta: Partial<Record<string, Record<string, DayMeta>>>;
   anchor: string;
-  lightWk: Record<string, boolean>;
+  lightWk: Partial<Record<string, boolean>>;
   rirCov: { logged: number; total: number };
   _rack?: Record<string, number | null>;
   weekRid?: Record<string, string | null>;
@@ -163,8 +163,8 @@ export interface Idx {
 
 /** The sessions on each date, in sessCmp order, and the count per week (dateIndex). */
 export interface DateIndex {
-  byDate: Record<string, Session[]>;
-  weekN: Record<string, number>;
+  byDate: Partial<Record<string, Session[]>>;
+  weekN: Partial<Record<string, number>>;
 }
 
 /** RIR checks summed up (calSummary): how many, their median error, the
@@ -222,11 +222,11 @@ export type ExerciseLike = Pick<Exercise, 'id' | 'name' | 'primary' | 'secondary
 /** The values built from the log once per change, under their r51 names,
     each null (or undefined) until first read and again after invalidate. */
 export interface Caches {
-  EXMAP: Record<string, Exercise> | null;
+  EXMAP: Partial<Record<string, Exercise>> | null;
   _idx: Idx | null;
   _dix: DateIndex | null;
   _cal: CalStats | null;
-  _rirUse: Record<string, number> | null;
+  _rirUse: Partial<Record<string, number>> | null;
   _bwRef: number | undefined;
   _pace: number | null;
 }

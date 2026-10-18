@@ -247,7 +247,11 @@ function moduleOf(name) {
   // 3b), never by its name; its name is the r51 name with In added.
   const modelFns = new Map();
   for (const [n, d] of all) { const f = fnOf(d.node); if (f && f.params.length && f.params[0].type === 'Identifier' && f.params[0].name === MODEL) modelFns.set(n, n.endsWith('In') ? n.slice(0, -2) : null); }
-  return { js, ast, imports, odd, modelFns, exported: new Map([...exported].map(n => [n, all.get(n)])) };
+  // Names declared in a statement with other declarators: code added on
+  // purpose must stand alone, so nothing rides in its statement (the second
+  // r52 review put an adapter in LIVE's statement, and a cast with it).
+  const shared = new Set(ast.body.map(st => (st.type === 'ExportNamedDeclaration' ? st.declaration : st)).filter(st => st && st.type === 'VariableDeclaration' && st.declarations.length > 1).flatMap(st => st.declarations.filter(d => d.id.type === 'Identifier').map(d => d.id.name)));
+  return { js, ast, imports, odd, modelFns, shared, exported: new Map([...exported].map(n => [n, all.get(n)])) };
 }
 // The function a top-level declaration is: a function declaration, or a
 // variable bound to a function or arrow expression.
@@ -420,6 +424,7 @@ for (const [mod, m] of mods) {
     // this, any body passed as long as the executable check did).
     const spec = mv && mv.changed[name] ? mv.changed[name] : !mv ? (MOVES.find(x => x.modules.includes(mod) && x.added && x.added[name]) || { added: {} }).added[name] : null;
     if (spec) {
+      if (m.shared.has(name)) { differ.push({ name, release: 'stated', was: 'a statement of its own', now: 'declared with others in one statement' }); continue; }
       const uses = [...freeNames(d.node)].filter(u => u !== name).sort();
       if (!spec.code || norm(spec.code) !== d.code) differ.push({ name, release: 'stated', was: spec.code ? norm(spec.code) : '(no code stated)', now: d.code.slice(0, 300) });
       else if (JSON.stringify(uses) !== JSON.stringify([...(spec.uses || [])].sort()) || uses.some(u => !m.exported.has(u) && !m.imports.has(u))) astray.push(`${name} uses ${uses.join(', ') || 'nothing'}, its entry states ${(spec.uses || []).join(', ') || 'nothing'}`);
@@ -565,7 +570,7 @@ for (const mv of MOVES) if (mv.adapters) {
     for (const st of sf.statements) {
       if (!ts.isVariableStatement(st)) continue;
       const names = st.declarationList.declarations.map(d => d.name.getText(sf));
-      if (names.some(n => mv.added[n])) continue;
+      if (names.length === 1 && mv.added[names[0]]) continue;
       const want = names.length === 1 ? `export const ${names[0]} = ${mv.adapters.fn}(${names[0]}In);` : null;
       if (st.getText(sf) !== want) problems.push(`src/app/${mv.adapters.module}.ts as written: ${st.getText(sf).slice(0, 80)}`);
     }

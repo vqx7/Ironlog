@@ -4,9 +4,12 @@
 // stays in the legacy script until phase 4), deep-frozen, with the page's
 // language and time zone. Each of the 74 names live.ts gives the legacy
 // script is called with the page's own arguments on a fresh model and must
-// give the page's answer, then again on a second fresh model; a write to the
-// frozen log, or to a frozen argument, throws and shows as a different
-// answer. The functions only the engine calls (sgEasyIn, idxLiftIn and the
+// give the page's answer, then again on a second fresh model. The bundle runs
+// strict, so a write to the frozen log, a frozen argument or one of the
+// modules' tables (all frozen too) throws and shows as a different answer;
+// and on every tenth history the second model reads the log through a proxy
+// that records any attempt to change it, so an attempt whose error the code
+// catches is seen as well. The functions only the engine calls (sgEasyIn, idxLiftIn and the
 // like) are reached through these, and how much of each module runs is
 // measured with V8's own coverage and Node's source maps: the lines run in
 // each module are a ratchet in ARCHITECTURE.md that may only rise.
@@ -27,7 +30,33 @@ if (process.argv[2] === '--child') {
   const [dataFile, bundleFile] = process.argv.slice(3);
   const E = require(bundleFile);
   const data = JSON.parse(fs.readFileSync(dataFile, 'utf8'));
-  const out = { locale: Intl.DateTimeFormat().resolvedOptions().locale, timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone, calls: 0, same: 0, again: 0, first: null, names: {} };
+  // Every value a module keeps (its tables), frozen, so a write to one by any
+  // path throws, an alias included (the second r52 review), but for the date
+  // formatters hygiene's rule 6 lists, which only gain entries.
+  const STATE_OK = new Set(['DTF']);
+  const freezeDeep = v => { if (v && typeof v === 'object' && !Object.isFrozen(v)) { Object.freeze(v); for (const k of Object.getOwnPropertyNames(v)) freezeDeep(v[k]); } return v; };
+  let tables = 0; for (const [k, v] of Object.entries(E)) if (v && typeof v === 'object' && !STATE_OK.has(k)) { freezeDeep(v); tables++; }
+  const out = { locale: Intl.DateTimeFormat().resolvedOptions().locale, timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone, calls: 0, same: 0, again: 0, first: null, names: {}, tables, watched: 0, writes: [] };
+  // A log that records every attempt to change it, even one whose error the
+  // code catches (the second r52 review swallowed one): a proxy over an
+  // unfrozen copy, each object reached through it watched too.
+  const watch = (root, seen) => {
+    const wrap = new WeakMap();
+    const p = (o, path) => {
+      if (!o || typeof o !== 'object') return o;
+      if (wrap.has(o)) return wrap.get(o);
+      const pr = new Proxy(o, {
+        get: (t, k, r) => p(Reflect.get(t, k, r), path + '.' + String(k)),
+        set: (t, k) => { seen.push(`${path}.${String(k)} set`); return false; },
+        defineProperty: (t, k) => { seen.push(`${path}.${String(k)} defined`); return false; },
+        deleteProperty: (t, k) => { seen.push(`${path}.${String(k)} deleted`); return false; },
+        setPrototypeOf: () => { seen.push(`${path} prototype set`); return false; },
+        preventExtensions: () => { seen.push(`${path} frozen or sealed`); return false; }
+      });
+      wrap.set(o, pr); return pr;
+    };
+    return p(root, 'log');
+  };
   const freeze = v => { if (v && typeof v === 'object' && !Object.isFrozen(v)) { Object.freeze(v); for (const k of Object.keys(v)) freeze(v[k]); } return v; };
   for (const h of data.histories) {
     const state = freeze(decode(h.state));
@@ -36,14 +65,18 @@ if (process.argv[2] === '--child') {
     for (const [tagged, calls] of byName) {
       const name = tagged.replace(/^~/, ''), fn = E[name + 'In'];
       out.names[name] = (out.names[name] || 0) + calls.length;
+      // Every tenth history's second round runs on the watched log (a proxy is slow).
+      const watched = h.seed % 10 === 0;
       for (const round of [0, 1]) {
-        const M = E.modelOf(state, () => h.today);
+        const seen = [];
+        const M = E.modelOf(round === 1 && watched ? watch(decode(h.state), seen) : state, () => h.today);
         for (const [args, res] of calls) {
           let r; try { r = fn(M, ...freeze(decode(args))); } catch (e) { r = err(e); }
           const got = typeof fn === 'function' ? ser(r) : 'no such function';
           if (round === 0) { out.calls++; if (got === res) out.same++; else if (!out.first) out.first = { seed: h.seed, name, args: args.slice(0, 300), page: res.slice(0, 400), node: got.slice(0, 400) }; }
           else if (got === res) out.again++;
         }
+        if (round === 1 && watched) { out.watched += calls.length; for (const w of seen) if (out.writes.length < 5) out.writes.push(`${name}: ${w}`); if (seen.length) out.wroteAny = true; }
       }
     }
   }
@@ -119,7 +152,11 @@ function lineCoverage(covDir, bundleFile, mapPayload) {
   await settle(browser.close(), 'closing the browser');
 
   // The engine's modules, bundled for Node with their source map.
-  const entry = MODULES.map(m => `export * from './${m}';`).join('\n');
+  // The engine's modules, and every other module but the store and the live
+  // model (which the engine never reaches), so each table the engine could
+  // reach is there to be frozen in the child.
+  const others = fs.readdirSync(APP).filter(f => f.endsWith('.ts')).map(f => f.slice(0, -3)).filter(m => !MODULES.includes(m) && !['store', 'live'].includes(m)).sort();
+  const entry = [...MODULES, ...others].map(m => `export * from './${m}';`).join('\n');
   // Strict, as the page's bundle is (scripts/join.js) and as modules always
   // are: in sloppy mode a write to a frozen object fails silently, so a write
   // to the log would pass unseen (the r52 review).
@@ -142,12 +179,14 @@ function lineCoverage(covDir, bundleFile, mapPayload) {
   let res = null;
   const crash = results.find(r => r.crash);
   if (crash) ok(false, 'the engine ran in Node', crash.crash);
-  else for (const r of results) { if (!res) res = r; else { res.calls += r.calls; res.same += r.same; res.again += r.again; res.first = res.first || r.first; for (const [n, c] of Object.entries(r.names)) res.names[n] = (res.names[n] || 0) + c; } }
+  else for (const r of results) { if (!res) res = r; else { res.calls += r.calls; res.same += r.same; res.again += r.again; res.watched += r.watched; res.wroteAny = res.wroteAny || r.wroteAny; res.writes.push(...r.writes); res.first = res.first || r.first; for (const [n, c] of Object.entries(r.names)) res.names[n] = (res.names[n] || 0) + c; } }
   if (res) {
     ok(res.locale === intl.locale && res.timeZone === intl.timeZone, `Node read dates in the page's language and time zone (${intl.locale}, ${intl.timeZone})`, { node: [res.locale, res.timeZone], page: intl });
     ok(Object.keys(res.names).length === 74, `all 74 names were called in Node (${Object.keys(res.names).length})`, Object.keys(res.names));
     ok(res.calls > K * 1000 && res.same === res.calls, `each of the 74, on a fresh model of a frozen log, gives the page's answer: ${res.same} of ${res.calls} calls over ${K} histories (${Math.round((Date.now() - t0) / 1000)} s)`, res.first);
     ok(res.again === res.calls, `and gives it again on a second fresh model (${res.again} of ${res.calls})`);
+    ok(res.tables > 40, `every table the modules keep was frozen for the run, so no write to one passes (${res.tables})`);
+    ok(res.watched > 0 && !res.wroteAny, `no call tried to change the log, watched on every tenth history's second round, a caught error included (${res.watched} calls)`, res.writes);
     const per = lineCoverage(covDir, js.path, JSON.parse(map.text));
     ok(per && MODULES.every(m => per[m] && per[m].all > 0), 'V8 measured the lines run in each module of the engine', per);
     if (per) {

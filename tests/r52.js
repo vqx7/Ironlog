@@ -46,7 +46,9 @@ function baseWithHook() {
   return { file, same: out.replace(`, ${HOOK22.join(', ')} };`, ' };') === html };
 }
 
-const { wide, digest, specOf } = require('./wide');
+const { wide, digest, specOf, ser, err } = require('./wide');
+// The encoding and error text the scenarios below write with, handed to the page as text (one copy, tests/wide.js).
+const SER = ser.toString(), ERR = err.toString();
 
 (async () => {
   ok(LIVE74.length === 74, `src/09-imports.js imports the 74 adapters this suite calls (${LIVE74.length})`);
@@ -62,7 +64,7 @@ const { wide, digest, specOf } = require('./wide');
   const LIB = await B.page.evaluate(() => window.__ironlog.libExercises());
 
   // The histories.
-  let same = 0, firstDiff = null, errs = 0, size = 0, lines = 0; const t0 = Date.now(); const called = new Set();
+  let same = 0, firstDiff = null, errs = 0, size = 0, lines = 0, wrote = 0; const t0 = Date.now(); const called = new Set();
   const cov = {};
   const hit = (k, c) => { cov[k] = (cov[k] || 0) + (c ? 1 : 0); };
   const BR = { easy: /so that load was light/, past: /well past your/, below: /Drop to /, noStep: /That is (the heaviest|your bodyweight|a fixed)|on bodyweight alone/, top: /hit \d+: (add|take)/, bad: /Every set fell under/, first: /First time/, back: /Back after/, build: /building to/, inj: /Injury flagged/, kin: /from your /, holds: /Beat \d+s /, light: /Lighter day/, deload: /Deload/ };
@@ -76,6 +78,8 @@ const { wide, digest, specOf } = require('./wide');
     else if (!firstDiff) { const la = a.split('\n'), lb = b.split('\n'); let k = 0; while (k < la.length && la[k] === lb[k]) k++; firstDiff = { seed: 52000 + i, line: k, r51: (la[k] || '').slice(0, 600), r52: (lb[k] || '').slice(0, 600) }; }
     const calls = b.split('\n').map(l => l.split('\t')).filter(c => c.length === 3);
     if (calls.some(([n, , r]) => ['suggest', 'IDX', 'coach'].includes(n) && r.startsWith('"ERR'))) errs++;
+    const ls = b.split('\n'), before = ls.find(l => l.startsWith('state ')).slice(6), after = (ls.find(l => l.startsWith('state-after ')) || '').slice(12);
+    if (before !== after) wrote++;
     // What the histories reached, read from the normalized log and the answers, so a pass means each path ran.
     // (The digest writes undefined as ~undef; read back as absent here.)
     const st = JSON.parse(b.slice(6, b.indexOf('\n')), (k, v) => (v === '~undef' ? undefined : v));
@@ -101,6 +105,7 @@ const { wide, digest, specOf } = require('./wide');
   }
   ok(same === N, `the 74 give the same answers as r51 on all ${N} wide histories, every day of the week as today (${same} identical, ${Math.round((Date.now() - t0) / 1000)} s)`, firstDiff);
   ok(errs === 0, 'no history made suggest, IDX or the coach throw in this build', errs);
+  ok(wrote === 0, 'the log after every call is the log the calls were given, in every history (none writes to it)', wrote);
   ok(LIVE74.every(n => called.has(n)), 'every one of the 74 was called and its answers compared', LIVE74.filter(n => !called.has(n)));
   console.log(`note each history's answers: ${Math.round(lines / N)} calls, ${Math.round(size / N / 1000)} kB on average`);
   console.log('coverage (histories reaching each)', JSON.stringify(cov));
@@ -128,7 +133,8 @@ const { wide, digest, specOf } = require('./wide');
   // read on Monday exactly as r51 read them.
   {
     const keys = ['isDeloadWeek', 'weekStats', 'weekStreak', 'coach', 'recentLighter', 'firstFullWeek', 'actualAvg4', 'paceRatios', 'pace', 'movers', 'stalledIds', 'readiness'];
-    const read = ([ids, keys]) => { const L = window.__ironlog; const err = e => 'ERR ' + (e && e.name) + ': ' + String(e && e.message).replace(/\b([A-Za-z_$][\w$]*)In\(/g, '$1('); const o = {}; for (const k of keys) { try { o[k] = JSON.stringify(k === 'recentLighter' ? L[k](28) : L[k]()); } catch (e) { o[k] = err(e); } } for (const id of ids) { try { o['s ' + id] = JSON.stringify(L.suggest(id, L.planFor(id), {})); o['d ' + id] = JSON.stringify(L.daysOff(id)); } catch (e) { o['s ' + id] = err(e); } } o.idx = JSON.stringify(L.IDX().anchor); o.dix = JSON.stringify(Object.keys(L.dateIndex().weekN)); return JSON.stringify(o); };
+    // Each read whole in the digest's encoding (the second r52 review hid a change in avgWeeks's notes from JSON), and the log after it.
+    const read = ([ids, keys, S, E]) => { const L = window.__ironlog; const ser = new Function(`return (${S})`)(), err = new Function(`return (${E})`)(); const o = {}; for (const k of keys) { try { o[k] = ser(k === 'recentLighter' ? L[k](28) : L[k]()); } catch (e) { o[k] = err(e); } } for (const id of ids) { try { o['s ' + id] = ser(L.suggest(id, L.planFor(id), {})); o['d ' + id] = ser(L.daysOff(id)); } catch (e) { o['s ' + id] = err(e); } } o.idx = ser(L.IDX()); o.dix = ser(L.dateIndex()); o.log = ser(L.state); return JSON.stringify(o); };
     let agree = 0, differs = 0, firstOff = null, turned = 0; const M = 40;
     for (let i = 0; i < M; i++) {
       const h = wide(53000 + i, LIB);
@@ -137,11 +143,11 @@ const { wide, digest, specOf } = require('./wide');
       const run = async P => {
         await P.page.clock.setFixedTime(sun);
         await P.page.evaluate(raw => { const L = window.__ironlog; const r = JSON.parse(raw); const d = new Date(); const g = (d.getDay() + 6) % 7; d.setDate(d.getDate() - g); r.deloadWeek = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; L.state = L.normalize(r); L.invalidate(); }, JSON.stringify(h.raw));
-        const before = await P.page.evaluate(read, [h.ids, keys]);
+        const before = await P.page.evaluate(read, [h.ids, keys, SER, ERR]);
         await P.page.clock.setFixedTime(mon);
-        const stale = await P.page.evaluate(read, [h.ids, keys]);
+        const stale = await P.page.evaluate(read, [h.ids, keys, SER, ERR]);
         await P.page.evaluate(() => window.__ironlog.invalidate());
-        const after = await P.page.evaluate(read, [h.ids, keys]);
+        const after = await P.page.evaluate(read, [h.ids, keys, SER, ERR]);
         return [before, stale, after];
       };
       const [a, b] = [await run(A), await run(B)];
@@ -168,13 +174,14 @@ const { wide, digest, specOf } = require('./wide');
       _rack: { build: 'ids.map(id => { try { return L.rackStep(L.EX(id)); } catch (e) { return "ERR"; } })', change: 's.sessions.forEach(x => x.ex.forEach(b => b.sets.forEach(y => { y.w = y.w + 0.37; })))', read: 'ids.map(id => { try { return L.rackStep(L.EX(id)); } catch (e) { return "ERR"; } })' },
       weekRid: { build: 'L.weekRoutine(L.state.sessions.length ? L.state.sessions[0].date : "2026-10-05")', change: 's.routines.push({ ...s.routines[0], id: "zz-r", name: "Swapped" }); s.sessions.forEach(x => { x.routineId = "zz-r"; })', read: 'L.weekRoutine(L.state.sessions.length ? L.state.sessions[0].date : "2026-10-05").name' },
     };
-    const run = async (P, h, c) => P.page.evaluate(([raw, ids, c]) => {
+    const run = async (P, h, c) => P.page.evaluate(([raw, ids, c, S, E]) => {
       const L = window.__ironlog; L.state = L.normalize(JSON.parse(raw)); L.invalidate(); const s = L.state;
-      const ev = t => { try { return JSON.stringify(new Function('L', 's', 'ids', `return (${t});`)(L, s, ids)); } catch (e) { return 'ERR ' + (e && e.name) + ': ' + String(e && e.message).replace(/\b([A-Za-z_$][\w$]*)In\(/g, '$1('); } };
+      const ser = new Function(`return (${S})`)(), err = new Function(`return (${E})`)();
+      const ev = t => { try { return ser(new Function('L', 's', 'ids', `return (${t});`)(L, s, ids)); } catch (e) { return err(e); } };
       const built = ev(c.build); ev(c.read); new Function('L', 's', 'ids', c.change)(L, s, ids);
       const stale = ev(c.read); L.invalidate(); const after = ev(c.read);
-      return [built, stale, after];
-    }, [JSON.stringify(h.raw), h.ids, c]);
+      return [built, stale, after, ser(L.state)];
+    }, [JSON.stringify(h.raw), h.ids, c, SER, ERR]);
     const bad = [], moved = [];
     for (const [name, c] of Object.entries(cases)) {
       let agree = 0, changed = 0;
@@ -198,12 +205,15 @@ const { wide, digest, specOf } = require('./wide');
   // fixed, with the random ids set aside (each id read as the order it first
   // appears in).
   {
-    const demo = P => P.page.evaluate(() => {
+    const demo = P => P.page.evaluate(([S]) => {
       const L = window.__ironlog; L.state = L.normalize(null); L.invalidate(); L.makeDemo(); L.invalidate();
+      const ser = new Function(`return (${S})`)();
       const ids = new Map(); const canon = v => (typeof v === 'string' && /^[a-z0-9]{8,}$/i.test(v) && /\d/.test(v) && /[a-z]/i.test(v) ? (ids.has(v) || ids.set(v, '#' + ids.size), ids.get(v)) : v);
+      // Read in the digest's encoding first, so no property is left out, then the ids set aside.
       const walk = x => (Array.isArray(x) ? x.map(walk) : x && typeof x === 'object' ? Object.fromEntries(Object.entries(x).map(([k, v]) => [k, walk(v)])) : canon(x));
-      return JSON.stringify({ state: walk(L.state), idx: walk(JSON.parse(JSON.stringify(L.IDX()))), coach: walk(L.coach()) });
-    });
+      const enc = v => walk(JSON.parse(ser(v)));
+      return JSON.stringify({ state: enc(L.state), idx: enc(L.IDX()), coach: enc(L.coach()) });
+    }, [SER]);
     await Promise.all([A, B].map(P => P.page.clock.setFixedTime(new Date('2026-10-14T12:00:00'))));
     const [a, b] = [await demo(A), await demo(B)];
     let k = 0; while (k < a.length && a[k] === b[k]) k++;

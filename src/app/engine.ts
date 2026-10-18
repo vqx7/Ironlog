@@ -126,7 +126,8 @@ export function daysOffIn(M: Model, exId: string, opts?: SuggestOpts | null): nu
    (suggestCore), or a lighter day, a deload, or a lift back after a break
    worked out from it (above). A close variation's start, a lighter one, is
    given only when it set a load, as the ! after base.w say; once the base has
-   a load (the test below), it is read as one. */
+   a load (the test below), it is read as one. toD and fromD of a number are
+   numbers, as the other ! say. */
 export function suggestIn(M: Model, exId: string, plan: Plan, opts?: SuggestOpts | null): Suggestion {
   opts = opts || {};
   const ex = EXIn(M, exId);

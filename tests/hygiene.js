@@ -449,7 +449,8 @@ const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log
     const markMove = (sf, n) => {
       const st = sf.statements.find(x => x.pos <= n.pos && n.end <= x.end);
       if (!st) return null;
-      const fns = ts.isFunctionDeclaration(st) && st.name ? [[st.name.text, st]] : ts.isVariableStatement(st) ? st.declarationList.declarations.filter(d => ts.isIdentifier(d.name)).map(d => [d.name.text, d.initializer && (ts.isArrowFunction(d.initializer) || ts.isFunctionExpression(d.initializer)) ? d.initializer : null]) : [];
+      // The declarator holding the mark, never a neighbour in its statement (the second r52 review).
+      const fns = ts.isFunctionDeclaration(st) && st.name ? [[st.name.text, st]] : ts.isVariableStatement(st) ? st.declarationList.declarations.filter(d => ts.isIdentifier(d.name) && d.pos <= n.pos && n.end <= d.end).map(d => [d.name.text, d.initializer && (ts.isArrowFunction(d.initializer) || ts.isFunctionExpression(d.initializer)) ? d.initializer : null]) : [];
       const names = fns.map(([name, f]) => (f && f.parameters.length && ts.isIdentifier(f.parameters[0].name) && f.parameters[0].name.text === 'M' && name.endsWith('In') ? name.slice(0, -2) : name));
       for (const mv of [...MOVE_MARKS].reverse()) if (names.some(x => mv.legacy.has(x))) return mv;
       return null;
@@ -674,9 +675,15 @@ const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log
 // util's uid), nothing from the store or the live model, no global but
 // JavaScript's own listed below (window, document, storage, timers, fetch,
 // performance and crypto are not on it), and no value a module keeps and
-// changes at its top level (a let or var, or a constant written through
-// anywhere in src/app/), other than the one listed. Intl is listed: the
-// engine's sentences word dates in the phone's language, as they did in r51.
+// changes at its top level (a let or var, a constant written through by name
+// anywhere in src/app/ or by Object's own writers, or a value made at load by
+// running a function, whose closure could keep state), other than the one
+// listed. Intl is listed: the engine's sentences word dates in the phone's
+// language, as they did in r51. The code is read as written, so a value that
+// is undefined only when it runs, a write through a local alias, and a read
+// built by reflection are beyond it: tests/engine.js freezes every module
+// table and watches the log for writes while the engine runs, and review
+// reads the rest.
 {
   const acorn = require('acorn'), esbuild = require('esbuild');
   const { freeNames, scanWrites } = require('../scripts/depmap');
@@ -707,6 +714,19 @@ const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log
   for (const [id, m] of mods) {
     for (const [n, k] of m.kind) if (k !== 'const' && k !== 'function') written.add(`${id}.${n}`);
     for (const [, d] of m.decl) for (const w of scanWrites(d)) { const i = m.imp.get(w); written.add(i ? `${i.from}.${i.name}` : `${id}.${w}`); }
+    // And what Object's own writers change: Object.assign, defineProperty,
+    // defineProperties and setPrototypeOf on a module's value (the second
+    // r52 review wrote one with Object.assign). A write through a local
+    // alias is beyond a reading of the code; tests/engine.js freezes every
+    // module value, so such a write throws there.
+    for (const [, d] of m.decl) (function walk(n) {
+      if (!n || typeof n.type !== 'string') return;
+      if (n.type === 'CallExpression' && n.callee.type === 'MemberExpression' && !n.callee.computed && n.callee.object.type === 'Identifier' && n.callee.object.name === 'Object' && ['assign', 'defineProperty', 'defineProperties', 'setPrototypeOf'].includes(n.callee.property.name) && n.arguments[0]) {
+        let t = n.arguments[0]; while (t.type === 'MemberExpression') t = t.object;
+        if (t.type === 'Identifier') { const i = m.imp.get(t.name); if (i) written.add(`${i.from}.${i.name}`); else if (m.decl.has(t.name)) written.add(`${id}.${t.name}`); }
+      }
+      for (const k in n) { if (k === 'type') continue; const v = n[k]; if (Array.isArray(v)) v.forEach(walk); else if (v && typeof v.type === 'string') walk(v); }
+    })(d);
   }
   const starts = [];
   for (const [id, m] of mods) for (const [n, d] of m.decl) { const f = d.type === 'FunctionDeclaration' ? d : d.init && /Function/.test(d.init.type) ? d.init : null; if (f && f.params.length && f.params[0].type === 'Identifier' && f.params[0].name === 'M') starts.push(`${id}.${n}`); }
@@ -735,7 +755,17 @@ const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log
         if (n.name === 'Math' && !(p && p.type === 'MemberExpression' && p.object === n && !p.computed && p.property.name !== 'random')) out.push('Math.random or Math as a value');
         if (p && p.type === 'MemberExpression' && p.object === n && p.computed) out.push(`a computed read of the global ${n.name}`);
       }
-      if (n.type === 'CallExpression' && n.arguments.length === 0 && n.callee.type === 'MemberExpression' && !n.callee.computed && ['format', 'formatToParts'].includes(n.callee.property.name)) out.push(`${n.callee.property.name}() with no date (the clock)`);
+      // A formatter's format reads now when given no date: refused with no
+      // argument or with undefined, null or void written in its place, and
+      // taken as a value (the second r52 review called a bound one). An
+      // argument that is undefined only when the code runs is beyond a
+      // reading of the code.
+      if (n.type === 'MemberExpression' && !n.computed && ['format', 'formatToParts'].includes(n.property.name)) {
+        const call = p && p.type === 'CallExpression' && p.callee === n ? p : null;
+        const a = call && call.arguments[0];
+        if (!call) out.push(`${n.property.name} taken as a value (it reads now when called with no date)`);
+        else if (!a || (a.type === 'Identifier' && a.name === 'undefined') || (a.type === 'Literal' && a.value === null) || (a.type === 'UnaryExpression' && a.operator === 'void') || a.type === 'SpreadElement') out.push(`${n.property.name}() with no date (the clock)`);
+      }
       const next = [...up, n];
       for (const k in n) { if (k === 'type') continue; const v = n[k]; if (Array.isArray(v)) v.forEach(x => walk(x, next)); else if (v && typeof v.type === 'string') walk(v, next); }
     })(d, []);
@@ -749,6 +779,18 @@ const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log
     const m = mods.get(id), d = m && m.decl.get(n);
     if (!d) { problems.push(`${trail.join(' > ')}: ${key} is not a declaration of src/app/`); return; }
     if (written.has(key) && !STATE_OK[key]) problems.push(`${trail.join(' > ')} reads ${key}, a value kept and changed at a module's top level`);
+    // A value made at load by running a function written in src/app/ (an
+    // immediately called function, or one of the modules' own): its closure
+    // can keep state no write above shows (the second r52 review kept a
+    // counter so).
+    if (d.type === 'VariableDeclarator' && d.init && !STATE_OK[key]) (function walk(x) {
+      if (!x || typeof x.type !== 'string' || /Function/.test(x.type)) return;
+      if (x.type === 'CallExpression' || x.type === 'NewExpression') {
+        const c = x.callee;
+        if (/Function/.test(c.type) || (c.type === 'Identifier' && (m.decl.has(c.name) || (m.imp.has(c.name) && m.imp.get(c.name).from)))) problems.push(`${[...trail, key].join(' > ')} is made at load by running ${c.type === 'Identifier' ? c.name : 'a function written in place'}, whose closure can keep state`);
+      }
+      for (const k in x) { if (k === 'type') continue; const v = x[k]; if (Array.isArray(v)) v.forEach(walk); else if (v && typeof v.type === 'string') walk(v); }
+    })(d.init);
     for (const x of inCode(id, d)) problems.push(`${[...trail, key].join(' > ')} uses ${x}`);
     for (const u of freeNames(d)) {
       if (u === n) continue;

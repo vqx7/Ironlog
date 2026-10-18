@@ -245,6 +245,10 @@ function digest(spec) {
   const I1 = L.IDX();
   out.push('fresh ' + ser([I1 !== I0, L.dateIndex() !== D0, L.calStats() !== C0]));
   call('IDX'); call('coach'); call('weekStats'); if (ids[0]) call('suggest', ids[0], L.planFor(ids[0]), {});
+  // The log after every call: none writes to it, so it must still be the
+  // log read above, in both builds (the second r52 review wrote to it where
+  // no answer showed it).
+  out.push('state-after ' + ser(s));
   return out.join('\n');
 }
 
