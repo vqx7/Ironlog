@@ -2,9 +2,9 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-N/mTXwFTBFccXJeXguQVUbWrTDOjfgCNUlJicBwRfWY=' 'sha256-tuSgXs5JTxAxl+0h6Mmbx/BgvpNDfjiq2RiZRPGtwkc=' 'sha256-YHdgjdaHPObo0ajgr78/3fg0b/g2KACx2Yivxr2AJEo=' 'sha256-IspcXr1mcGCgbVEvGRUyoi31UN8ay7XwQ/IAuG7V3XI=' 'sha256-J4UrXwIeplIJZfkgJq3M75mmvlwXBomq0l+LhSwoEfI='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https://fqvupierxrvpoidtwlon.supabase.co wss://fqvupierxrvpoidtwlon.supabase.co https://api.pwnedpasswords.com; worker-src 'self'; manifest-src 'self'; media-src 'self'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-N/mTXwFTBFccXJeXguQVUbWrTDOjfgCNUlJicBwRfWY=' 'sha256-tuSgXs5JTxAxl+0h6Mmbx/BgvpNDfjiq2RiZRPGtwkc=' 'sha256-YHdgjdaHPObo0ajgr78/3fg0b/g2KACx2Yivxr2AJEo=' 'sha256-XBQ7A+fLiLfJz5g6yq4mYmkux6eGKR4GOib7KqFpETQ=' 'sha256-J4UrXwIeplIJZfkgJq3M75mmvlwXBomq0l+LhSwoEfI='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https://fqvupierxrvpoidtwlon.supabase.co wss://fqvupierxrvpoidtwlon.supabase.co https://api.pwnedpasswords.com; worker-src 'self'; manifest-src 'self'; media-src 'self'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="app-build" content="2026.10.16-r50">
+<meta name="app-build" content="2026.10.17-r51">
 <title>Ironlog Preview</title>
 <script>window.IRONLOG_APP=true;window.IRONLOG_ENV='preview';window.__installEvt=null;
 window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();window.__installEvt=e;if(window.ironlogInstallReady)window.ironlogInstallReady();});
@@ -139,6 +139,19 @@ window.addEventListener('appinstalled',()=>{window.__installEvt=null;if(window.i
 details>*{box-sizing:border-box}
 input[type=file]{max-width:100%;width:100%;font-size:14px}
 html{scroll-padding-top:calc(var(--head-h) + env(safe-area-inset-top,0px));-webkit-text-size-adjust:100%}
+/* iOS 26's home-screen app (r51; two iPhone users, 2026-10-17: the tab bar
+   rises and the page shrinks when tapping through the tabs, on History,
+   Settings and sometimes Plan). With viewport-fit=cover and the translucent
+   status bar, iOS 26 gives a page shorter than the screen a viewport shorter
+   by the status bar's height, so the fixed tab bar stops above the bottom
+   edge (frappe-ui pull requests 1284 and 1289). With a real log, Plan (about
+   780 px) is shorter than every current iPhone and Today (about 860 to 920)
+   than the larger ones, while Stats, History and Settings are taller; Plan
+   comes before those three in the bar, so the short viewport may begin on
+   Plan and carry over. That is a reading, not a proof (PENDING 303). In the installed
+   app no page is shorter than the screen now, and none is taller for it:
+   100lvh caps it where iOS has no such bug. Browsers without lvh drop it. */
+@media (display-mode:standalone){html{min-height:min(100lvh,calc(100% + env(safe-area-inset-top,0px)))}}
 body{margin:0;background:var(--bg);color:var(--ink);font:400 16px/1.45 var(--font);-webkit-font-smoothing:antialiased}
 button,input,select,textarea{font:inherit;color:inherit}
 h1,h2,h3{font-family:var(--display);font-weight:700;line-height:1.02;margin:0;text-wrap:balance;letter-spacing:.01em}
@@ -1024,14 +1037,37 @@ loadScript(['vendor/chart.umd.js','https://cdnjs.cloudflare.com/ajax/libs/Chart.
   var PREVIEW_NAME = `${APP_NAME} Preview`;
   var PREVIEW_LABEL = "Preview";
   var WORDMARK = { mark: "I", strong: "ron", light: "log" };
-  var DISPLAY_VERSION = "2.1";
-  var APP_VERSION = "2026.10.16-r50";
+  var DISPLAY_VERSION = "2.2";
+  var APP_VERSION = "2026.10.17-r51";
   var VERSION_LINE = `${DISPLAY_VERSION} (build ${APP_VERSION})`;
   var SITE_HOST = "ironapp.org";
   var SITE_DIR_FALLBACK = "/Ironlog";
+  var CDNJS = "https://cdnjs.cloudflare.com/ajax/libs";
+  var JSDELIVR = "https://cdn.jsdelivr.net/npm";
+  var UNPKG = "https://unpkg.com";
+  var CHART_VERSION = "4.4.1";
+  var SORTABLE_VERSION = "1.15.2";
+  var THREE_VERSION = "0.159.0";
+  var SORTABLE_URLS = [
+    `${CDNJS}/Sortable/${SORTABLE_VERSION}/Sortable.min.js`,
+    `${JSDELIVR}/sortablejs@${SORTABLE_VERSION}/Sortable.min.js`
+  ];
+  var CHART_URLS = [
+    `${CDNJS}/Chart.js/${CHART_VERSION}/chart.umd.min.js`,
+    `${CDNJS}/Chart.js/${CHART_VERSION}/chart.umd.js`,
+    `${JSDELIVR}/chart.js@${CHART_VERSION}/dist/chart.umd.js`
+  ];
+  var FONT_DISPLAY = "Big Shoulders Display";
+  var FONT_DISPLAY_WEIGHTS = "600;700;800";
+  var FONT_BODY = "Hanken Grotesk";
+  var FONT_BODY_WEIGHTS = "400;500;600;700";
+  var FONTS_ORIGIN = "https://fonts.googleapis.com";
+  var FONT_FILES_ORIGIN = "https://fonts.gstatic.com";
+  var FONTS_CSS = `${FONTS_ORIGIN}/css2?family=${FONT_DISPLAY.replace(/ /g, "+")}:wght@${FONT_DISPLAY_WEIGHTS}&family=${FONT_BODY.replace(/ /g, "+")}:wght@${FONT_BODY_WEIGHTS}&display=swap`;
+  var HIBP_ORIGIN = "https://api.pwnedpasswords.com";
   var THREE_CDN = [
-    "https://cdn.jsdelivr.net/npm/three@0.159.0/build/three.module.min.js",
-    "https://unpkg.com/three@0.159.0/build/three.module.min.js"
+    `${JSDELIVR}/three@${THREE_VERSION}/build/three.module.min.js`,
+    `${UNPKG}/three@${THREE_VERSION}/build/three.module.min.js`
   ];
   var THREE_URLS = typeof window !== "undefined" && window.IRONLOG_APP ? ["./vendor/three.module.min.js", ...THREE_CDN] : THREE_CDN;
 
@@ -1044,7 +1080,10 @@ loadScript(['vendor/chart.umd.js','https://cdnjs.cloudflare.com/ajax/libs/Chart.
     }
     return a.length < 3 ? a.join(" and ") : a.slice(0, -1).join(", ") + ", and " + a[a.length - 1];
   }
-  var esc = (s) => String(s == null ? "" : s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+  var esc = (s) => String(s == null ? "" : s).replace(
+    /[&<>"']/g,
+    (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]
+  );
   var uid = () => Math.random().toString(36).slice(2, 9) + Date.now().toString(36).slice(-4);
   var pad = (n) => String(n).padStart(2, "0");
   var iso = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
@@ -1100,6 +1139,15 @@ loadScript(['vendor/chart.umd.js','https://cdnjs.cloudflare.com/ajax/libs/Chart.
     h2 = Math.imul(h2 ^ h2 >>> 16, 2246822507) ^ Math.imul(h1 ^ h1 >>> 13, 3266489909);
     return (h2 >>> 0).toString(36) + (h1 >>> 0).toString(36);
   }
+  function mulberry(a) {
+    return function() {
+      a |= 0;
+      a = a + 1831565813 | 0;
+      let t = Math.imul(a ^ a >>> 15, 1 | a);
+      t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+      return ((t ^ t >>> 14) >>> 0) / 4294967296;
+    };
+  }
 
   // src/app/units.ts
   var LB = 0.45359237, IN = 2.54;
@@ -1108,12 +1156,60 @@ loadScript(['vendor/chart.umd.js','https://cdnjs.cloudflare.com/ajax/libs/Chart.
   var PLATES_LB = [45, 35, 25, 10, 5, 2.5], PLATES_KG = [25, 20, 15, 10, 5, 2.5, 1.25];
 
   // src/app/library.ts
-  var MUSCLES = [["chest", "Chest"], ["serratus", "Serratus"], ["lats", "Lats"], ["upperBack", "Upper back"], ["traps", "Traps"], ["lowerBack", "Lower back"], ["frontDelts", "Front delts"], ["sideDelts", "Side delts"], ["rearDelts", "Rear delts"], ["rotatorCuff", "Rotator cuff"], ["biceps", "Biceps"], ["triceps", "Triceps"], ["forearms", "Forearms"], ["abs", "Abs"], ["obliques", "Obliques"], ["neck", "Neck"], ["quads", "Quads"], ["hamstrings", "Hamstrings"], ["glutes", "Glutes"], ["adductors", "Adductors"], ["abductors", "Abductors"], ["calves", "Calves"], ["tibialis", "Tibialis"]];
+  var MUSCLES = [
+    ["chest", "Chest"],
+    ["serratus", "Serratus"],
+    ["lats", "Lats"],
+    ["upperBack", "Upper back"],
+    ["traps", "Traps"],
+    ["lowerBack", "Lower back"],
+    ["frontDelts", "Front delts"],
+    ["sideDelts", "Side delts"],
+    ["rearDelts", "Rear delts"],
+    ["rotatorCuff", "Rotator cuff"],
+    ["biceps", "Biceps"],
+    ["triceps", "Triceps"],
+    ["forearms", "Forearms"],
+    ["abs", "Abs"],
+    ["obliques", "Obliques"],
+    ["neck", "Neck"],
+    ["quads", "Quads"],
+    ["hamstrings", "Hamstrings"],
+    ["glutes", "Glutes"],
+    ["adductors", "Adductors"],
+    ["abductors", "Abductors"],
+    ["calves", "Calves"],
+    ["tibialis", "Tibialis"]
+  ];
   var MK = MUSCLES.map((m) => m[0]);
   var ML = Object.fromEntries(MUSCLES);
   var NEW_MUSCLES_V5 = ["serratus", "rotatorCuff"];
   var TRACK_ONLY = /* @__PURE__ */ new Set(["serratus", "rotatorCuff", "neck", "tibialis"]);
-  var BANDS = { chest: [10, 20], serratus: [2, 8], lats: [10, 20], upperBack: [10, 20], traps: [6, 16], lowerBack: [3, 10], frontDelts: [4, 12], sideDelts: [10, 20], rearDelts: [8, 16], rotatorCuff: [2, 8], biceps: [10, 20], triceps: [10, 20], forearms: [4, 12], abs: [6, 16], obliques: [3, 10], neck: [2, 10], quads: [10, 20], hamstrings: [10, 20], glutes: [8, 16], adductors: [4, 12], abductors: [4, 12], calves: [8, 16], tibialis: [2, 8] };
+  var BANDS = {
+    chest: [10, 20],
+    serratus: [2, 8],
+    lats: [10, 20],
+    upperBack: [10, 20],
+    traps: [6, 16],
+    lowerBack: [3, 10],
+    frontDelts: [4, 12],
+    sideDelts: [10, 20],
+    rearDelts: [8, 16],
+    rotatorCuff: [2, 8],
+    biceps: [10, 20],
+    triceps: [10, 20],
+    forearms: [4, 12],
+    abs: [6, 16],
+    obliques: [3, 10],
+    neck: [2, 10],
+    quads: [10, 20],
+    hamstrings: [10, 20],
+    glutes: [8, 16],
+    adductors: [4, 12],
+    abductors: [4, 12],
+    calves: [8, 16],
+    tibialis: [2, 8]
+  };
   var REGIONS = [
     ["Chest", ["chest"]],
     ["Back", ["lats", "upperBack", "traps", "lowerBack"]],
@@ -1124,27 +1220,76 @@ loadScript(['vendor/chart.umd.js','https://cdnjs.cloudflare.com/ajax/libs/Chart.
     ["Posterior", ["hamstrings", "glutes", "abductors"]],
     ["Calves", ["calves", "tibialis"]]
   ];
-  var JOINTS = [["j_knee", "Knee"], ["j_hip", "Hip"], ["j_shoulder", "Shoulder"], ["j_elbow", "Elbow"], ["j_wrist", "Wrist"]];
+  var JOINTS = [
+    ["j_knee", "Knee"],
+    ["j_hip", "Hip"],
+    ["j_shoulder", "Shoulder"],
+    ["j_elbow", "Elbow"],
+    ["j_wrist", "Wrist"]
+  ];
   var JK = JOINTS.map((j) => j[0]);
   var JL = Object.fromEntries(JOINTS);
   var injLabel = (k) => ML[k] || JL[k] || k;
   function exJoints(e) {
     const p = patternOf(e), n = String(e.name || "").toLowerCase(), m = e.primary, out = [];
     if (p === "squat" || m === "quads" || /leg curl|nordic|lunge|step-up|split squat/.test(n)) out.push("j_knee");
-    if (p === "hinge" || p === "squat" || ["glutes", "adductors", "abductors"].includes(m) || /thrust|bridge/.test(n)) out.push("j_hip");
-    if (["press", "fly", "raise", "vpull", "pullover", "rearfly"].includes(p) && !["quads", "hamstrings", "glutes", "calves", "abs", "obliques"].includes(m) || ["chest", "frontDelts", "sideDelts", "rearDelts", "rotatorCuff"].includes(m) || /\bdips?\b|face pull|upright/.test(n)) out.push("j_shoulder");
-    if ((["ext", "vpull", "row"].includes(p) || p === "curl" && m !== "hamstrings") && m !== "quads" || ["biceps", "triceps", "forearms"].includes(m) || /\bdips?\b|close.grip|skull/.test(n)) out.push("j_elbow");
-    if (m === "forearms" || p === "curl" && m === "biceps" || /push-up|front squat|\bdips?\b|wrist/.test(n) || p === "press" && ["barbell", "dumbbell"].includes(e.equip)) out.push("j_wrist");
+    if (p === "hinge" || p === "squat" || ["glutes", "adductors", "abductors"].includes(m) || /thrust|bridge/.test(n))
+      out.push("j_hip");
+    if (["press", "fly", "raise", "vpull", "pullover", "rearfly"].includes(p) && !["quads", "hamstrings", "glutes", "calves", "abs", "obliques"].includes(m) || ["chest", "frontDelts", "sideDelts", "rearDelts", "rotatorCuff"].includes(m) || /\bdips?\b|face pull|upright/.test(n))
+      out.push("j_shoulder");
+    if ((["ext", "vpull", "row"].includes(p) || p === "curl" && m !== "hamstrings") && m !== "quads" || ["biceps", "triceps", "forearms"].includes(m) || /\bdips?\b|close.grip|skull/.test(n))
+      out.push("j_elbow");
+    if (m === "forearms" || p === "curl" && m === "biceps" || /push-up|front squat|\bdips?\b|wrist/.test(n) || p === "press" && ["barbell", "dumbbell"].includes(e.equip))
+      out.push("j_wrist");
     return out;
   }
-  var EQUIP = [["barbell", "Barbell"], ["dumbbell", "Dumbbell"], ["cable", "Cable"], ["machine", "Machine"], ["smith", "Smith machine"], ["landmine", "Landmine"], ["bodyweight", "Bodyweight"], ["other", "Other"]];
+  var EQUIP = [
+    ["barbell", "Barbell"],
+    ["dumbbell", "Dumbbell"],
+    ["cable", "Cable"],
+    ["machine", "Machine"],
+    ["smith", "Smith machine"],
+    ["landmine", "Landmine"],
+    ["bodyweight", "Bodyweight"],
+    ["other", "Other"]
+  ];
   var EQL = Object.fromEntries(EQUIP);
-  var PLATE_SIDE_IDS = ["hackSquat", "pendulum", "legPress", "legPressCalf", "beltSquat", "machHipThrust"];
-  var CARDIO = [["walk", "Treadmill walk"], ["incline", "Incline walk"], ["elliptical", "Elliptical"], ["bike", "Bike"], ["stairs", "Stair climber"], ["rower", "Rower"], ["run", "Run"], ["hiit", "HIIT"], ["mobility", "Mobility / stretching"], ["other", "Other"]];
+  var PLATE_SIDE_IDS = [
+    "hackSquat",
+    "pendulum",
+    "legPress",
+    "legPressCalf",
+    "beltSquat",
+    "machHipThrust"
+  ];
+  var CARDIO = [
+    ["walk", "Treadmill walk"],
+    ["incline", "Incline walk"],
+    ["elliptical", "Elliptical"],
+    ["bike", "Bike"],
+    ["stairs", "Stair climber"],
+    ["rower", "Rower"],
+    ["run", "Run"],
+    ["hiit", "HIIT"],
+    ["mobility", "Mobility / stretching"],
+    ["other", "Other"]
+  ];
   var CARDIOL = Object.fromEntries(CARDIO);
-  var CWHEN = [["pre", "Before lifting"], ["post", "After lifting"], ["solo", "On its own"]];
+  var CWHEN = [
+    ["pre", "Before lifting"],
+    ["post", "After lifting"],
+    ["solo", "On its own"]
+  ];
   var CWHENL = Object.fromEntries(CWHEN);
-  var MEAS = [["arm", "Arm"], ["forearm", "Forearm"], ["chest", "Chest"], ["waist", "Waist"], ["thigh", "Thigh"], ["calf", "Calf"], ["neck", "Neck"]];
+  var MEAS = [
+    ["arm", "Arm"],
+    ["forearm", "Forearm"],
+    ["chest", "Chest"],
+    ["waist", "Waist"],
+    ["thigh", "Thigh"],
+    ["calf", "Calf"],
+    ["neck", "Neck"]
+  ];
   var LIB = [
     ["bench", "Barbell Bench Press", "chest", "frontDelts triceps", "barbell", "", ""],
     ["pauseBench", "Paused Bench Press", "chest", "frontDelts triceps", "barbell", "r", "A full stop on the chest, as in a meet, then press."],
@@ -1326,23 +1471,92 @@ loadScript(['vendor/chart.umd.js','https://cdnjs.cloudflare.com/ajax/libs/Chart.
     ["wallSit", "Wall Sit", "quads", "", "bodyweight", "brt", "Timed hold with thighs parallel: log seconds."],
     ["farmerHold", "Farmer Carry or Hold", "forearms", "traps upperBack", "dumbbell", "rt", "Timed: log seconds and the load in each hand."]
   ];
-  var COMMON = /* @__PURE__ */ new Set(["bench", "backSquat", "deadlift", "latPulldown", "ohp", "bbRow", "dbLateral", "legExt", "legPress", "bbCurl", "pressdown", "incDb", "dbCurl", "pullup", "cableRow", "ropePressdown", "lyingCurl", "dbRow", "seatedDbPress", "rdl", "seatedCurl", "hammer", "cableFly", "dbBench", "facePull", "cgBench", "hipThrust", "bss", "sldl", "abductor"]);
+  var COMMON = /* @__PURE__ */ new Set([
+    "bench",
+    "backSquat",
+    "deadlift",
+    "latPulldown",
+    "ohp",
+    "bbRow",
+    "dbLateral",
+    "legExt",
+    "legPress",
+    "bbCurl",
+    "pressdown",
+    "incDb",
+    "dbCurl",
+    "pullup",
+    "cableRow",
+    "ropePressdown",
+    "lyingCurl",
+    "dbRow",
+    "seatedDbPress",
+    "rdl",
+    "seatedCurl",
+    "hammer",
+    "cableFly",
+    "dbBench",
+    "facePull",
+    "cgBench",
+    "hipThrust",
+    "bss",
+    "sldl",
+    "abductor"
+  ]);
   var isCommon = (e) => !!e && !e.custom && !e.rare && COMMON.has(e.id);
   function libExercises() {
     return LIB.map(([id, name, primary, sec, equip, flags, note]) => {
-      const o = { id, name, primary, secondary: sec ? sec.split(" ") : [], equip, bw: flags.includes("b"), rare: flags.includes("r"), perSide: flags.includes("s"), note, custom: false, archived: false };
+      const o = {
+        id,
+        name,
+        primary,
+        secondary: sec ? sec.split(" ") : [],
+        equip,
+        bw: flags.includes("b"),
+        rare: flags.includes("r"),
+        perSide: flags.includes("s"),
+        note,
+        custom: false,
+        archived: false
+      };
       if (flags.includes("t")) o.timed = true;
       if (flags.includes("a")) o.assist = true;
       return o;
     });
   }
-  var PATTERNS = [["calf", /calf raise/], ["hinge", /hyperextension/], ["squat", /leg press|hack squat|pendulum/], ["rearfly", /rear delt|reverse pec/], ["pullover", /pullover/], ["fly", /\bfly|flye|pec deck/], ["ext", /pressdown|extension|kickback|skull|tate press|jm press/], ["vpull", /pulldown|pull-up|chin-up|high row/], ["row", /\brow\b/], ["curl", /curl/], ["press", /press|push-up|\bdips?\b|bench/], ["squat", /squat|lunge|step-up/], ["hinge", /deadlift|rdl|rack pull|good morning|pull-through|hip thrust|bridge|hyperextension|power clean|swing/], ["raise", /raise/], ["core", /crunch|rollout|dragon|plank|twist/], ["shrug", /shrug/]];
+  var PATTERNS = [
+    ["calf", /calf raise/],
+    ["hinge", /hyperextension/],
+    ["squat", /leg press|hack squat|pendulum/],
+    ["rearfly", /rear delt|reverse pec/],
+    ["pullover", /pullover/],
+    ["fly", /\bfly|flye|pec deck/],
+    ["ext", /pressdown|extension|kickback|skull|tate press|jm press/],
+    ["vpull", /pulldown|pull-up|chin-up|high row/],
+    ["row", /\brow\b/],
+    ["curl", /curl/],
+    ["press", /press|push-up|\bdips?\b|bench/],
+    ["squat", /squat|lunge|step-up/],
+    ["hinge", /deadlift|rdl|rack pull|good morning|pull-through|hip thrust|bridge|hyperextension|power clean|swing/],
+    ["raise", /raise/],
+    ["core", /crunch|rollout|dragon|plank|twist/],
+    ["shrug", /shrug/]
+  ];
   function patternOf(e) {
     const n = String(e && e.name || "").toLowerCase();
     for (const [k, re] of PATTERNS) if (re.test(n)) return k;
     return null;
   }
-  var NON_COMPOUND_PRIMARY = /* @__PURE__ */ new Set(["abs", "obliques", "neck", "forearms", "serratus", "rotatorCuff", "calves", "tibialis"]);
+  var NON_COMPOUND_PRIMARY = /* @__PURE__ */ new Set([
+    "abs",
+    "obliques",
+    "neck",
+    "forearms",
+    "serratus",
+    "rotatorCuff",
+    "calves",
+    "tibialis"
+  ]);
   function autoCompound(ex) {
     return !!ex && !ex.timed && !NON_COMPOUND_PRIMARY.has(ex.primary) && ["press", "row", "vpull", "squat", "hinge"].includes(patternOf(ex));
   }
@@ -1351,14 +1565,82 @@ loadScript(['vendor/chart.umd.js','https://cdnjs.cloudflare.com/ajax/libs/Chart.
     if (ex && ex.kind === "iso") return false;
     return autoCompound(ex);
   }
-  var NO_E1 = /* @__PURE__ */ new Set(["hangingLegRaise", "kneeRaise", "reverseCrunch", "crunch", "dragonFlag", "abWheel", "russianTwist", "neckBridge", "nordic", "ghr", "revNordic", "sissy"]);
+  var NO_E1 = /* @__PURE__ */ new Set([
+    "hangingLegRaise",
+    "kneeRaise",
+    "reverseCrunch",
+    "crunch",
+    "dragonFlag",
+    "abWheel",
+    "russianTwist",
+    "neckBridge",
+    "nordic",
+    "ghr",
+    "revNordic",
+    "sissy"
+  ]);
   var noE1 = (ex) => !!ex && (!!ex.timed || NO_E1.has(ex.id));
-  var SLOW_RECOVERY = /* @__PURE__ */ new Set(["deadlift", "sumoDl", "trapBarDl", "rdl", "sldl", "dbRdl", "slRdl", "goodMorning", "nordic", "ghr", "walkingLunge"]);
-  var BWF = { assistPullup: 1, assistDip: 1, pullup: 1, chinup: 1, dips: 1, triDips: 1, pushup: 0.64, deficitPushup: 0.64, declinePushup: 0.7, invertedRow: 0.6, hyperext: 0.6, hangingLegRaise: 0.35, abWheel: 0.5, dragonFlag: 0.7, neckBridge: 0.3, sissy: 0.85, revNordic: 0.85, nordic: 0.85, ghr: 0.85, plank: 0.65, sidePlank: 0.6, deadHang: 1, neckBridgeHold: 0.3, wallSit: 0.7, pushupPlus: 0.64, kneeRaise: 0.3, reverseCrunch: 0.3, crunch: 0.3, russianTwist: 0.4, copenhagen: 0.5 };
+  var SLOW_RECOVERY = /* @__PURE__ */ new Set([
+    "deadlift",
+    "sumoDl",
+    "trapBarDl",
+    "rdl",
+    "sldl",
+    "dbRdl",
+    "slRdl",
+    "goodMorning",
+    "nordic",
+    "ghr",
+    "walkingLunge"
+  ]);
+  var BWF = {
+    assistPullup: 1,
+    assistDip: 1,
+    pullup: 1,
+    chinup: 1,
+    dips: 1,
+    triDips: 1,
+    pushup: 0.64,
+    deficitPushup: 0.64,
+    declinePushup: 0.7,
+    invertedRow: 0.6,
+    hyperext: 0.6,
+    hangingLegRaise: 0.35,
+    abWheel: 0.5,
+    dragonFlag: 0.7,
+    neckBridge: 0.3,
+    sissy: 0.85,
+    revNordic: 0.85,
+    nordic: 0.85,
+    ghr: 0.85,
+    plank: 0.65,
+    sidePlank: 0.6,
+    deadHang: 1,
+    neckBridgeHold: 0.3,
+    wallSit: 0.7,
+    pushupPlus: 0.64,
+    kneeRaise: 0.3,
+    reverseCrunch: 0.3,
+    crunch: 0.3,
+    russianTwist: 0.4,
+    copenhagen: 0.5
+  };
   function bwShare(ex) {
     return ex && ex.bwf != null ? ex.bwf : ex && BWF[ex.id] != null ? BWF[ex.id] : 1;
   }
-  var ONE_DB = /* @__PURE__ */ new Set(["dbRow", "krocRow", "dbPullover", "ohDbExt", "concCurl", "sideBend", "goblet", "slCalf", "leanAwayLat", "sideLyingER", "slRdl"]);
+  var ONE_DB = /* @__PURE__ */ new Set([
+    "dbRow",
+    "krocRow",
+    "dbPullover",
+    "ohDbExt",
+    "concCurl",
+    "sideBend",
+    "goblet",
+    "slCalf",
+    "leanAwayLat",
+    "sideLyingER",
+    "slRdl"
+  ]);
   function loadMode(ex) {
     if (!ex) return "total";
     if (ex.bw) return "bw";
@@ -1373,12 +1655,45 @@ loadScript(['vendor/chart.umd.js','https://cdnjs.cloudflare.com/ajax/libs/Chart.
     return ex.equip === "dumbbell" ? "dumbbell" : ex.equip === "kettlebell" || /kettlebell/i.test(ex.name || "") ? "kettlebell" : null;
   }
   var LONG_TRIAL = /* @__PURE__ */ new Set(["seatedCurl", "ohCableExt", "ohDbExt", "standCalf"]);
-  var LONG_IDS = /* @__PURE__ */ new Set([...LONG_TRIAL, "katana", "inclineCurl", "bayesianCurl", "rdl", "sldl", "dbRdl", "slRdl", "donkeyCalf", "sissy"]);
-  var HARD_EX = /* @__PURE__ */ new Set(["nordic", "revNordic", "ghr", "sissy", "dragonFlag", "pullup", "chinup", "dips", "triDips", "hangingLegRaise"]);
+  var LONG_IDS = /* @__PURE__ */ new Set([
+    ...LONG_TRIAL,
+    "katana",
+    "inclineCurl",
+    "bayesianCurl",
+    "rdl",
+    "sldl",
+    "dbRdl",
+    "slRdl",
+    "donkeyCalf",
+    "sissy"
+  ]);
+  var HARD_EX = /* @__PURE__ */ new Set([
+    "nordic",
+    "revNordic",
+    "ghr",
+    "sissy",
+    "dragonFlag",
+    "pullup",
+    "chinup",
+    "dips",
+    "triDips",
+    "hangingLegRaise"
+  ]);
   var PROF_EQUIP = /* @__PURE__ */ new Set(["barbell", "smith", "machine"]);
   var PROF_NOT_HEAVY = /* @__PURE__ */ new Set(["reverseHyper", "goodMorning", "gluteBridge"]);
   function profHeavy(ex) {
     return !!ex && !ex.timed && !ex.bw && isCompound(ex) && !noE1(ex) && PROF_EQUIP.has(ex.equip) && !PROF_NOT_HEAVY.has(ex.id);
+  }
+  var COMMON_TIP = "Most common: the lifts in the top 25 by sets logged, overall, for men, or for women, among over 700,000 StrengthLog users (2025). Less common: useful lifts many gyms or programs skip, a judgment.";
+  var commonFirst = (list) => [
+    ...list.filter(isCommon),
+    ...list.filter((e) => !isCommon(e))
+  ];
+  function nameMatch(name, q) {
+    const ws = String(q || "").toLowerCase().split(/[^a-z0-9]+/).filter(Boolean);
+    if (!ws.length) return true;
+    const n = String(name || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+    return ws.every((w) => n.includes(w));
   }
 
   // src/app/routines.ts
@@ -1515,8 +1830,105 @@ loadScript(['vendor/chart.umd.js','https://cdnjs.cloudflare.com/ajax/libs/Chart.
     const t = TEMPLATES.find((x) => x.key === key);
     if (!t) return null;
     if (t.build) return t.build();
-    return { id: uid(), name: t.name, schedule: "cycle", days: t.days.map((d) => ({ id: uid(), name: d.name, rest: !!d.rest, items: d.items.map((it) => ({ uid: uid(), ...it, inc: 5 * LB })) })) };
+    return {
+      id: uid(),
+      name: t.name,
+      schedule: "cycle",
+      days: t.days.map((d) => ({
+        id: uid(),
+        name: d.name,
+        rest: !!d.rest,
+        items: d.items.map((it) => ({ uid: uid(), ...it, inc: 5 * LB }))
+      }))
+    };
   }
+  function weekFactor(R) {
+    return R.schedule === "weekly" ? 1 : 7 / Math.max(1, R.days.length);
+  }
+  function trainDaysOf(R) {
+    return R.days.filter((d) => !d.rest && d.items.length > 0).length;
+  }
+  function plannedPerWeek(R) {
+    return R.schedule === "weekly" ? trainDaysOf(R) : Math.round(trainDaysOf(R) * weekFactor(R));
+  }
+  function sessDayIdx(R, s) {
+    if (s.dayId) {
+      const i = R.days.findIndex((d) => d.id === s.dayId);
+      return i;
+    }
+    return s.dayIdx >= 0 && s.dayIdx < R.days.length ? s.dayIdx : -1;
+  }
+  function daySets(day) {
+    return day.items.reduce((a, it) => a + +it.sets, 0);
+  }
+  function fixSupersets(items) {
+    let i = 0;
+    while (i < items.length) {
+      const id = items[i].ss;
+      if (!id) {
+        i++;
+        continue;
+      }
+      let j = i;
+      while (j < items.length && items[j].ss === id) j++;
+      if (j - i < 2) items[i].ss = null;
+      i = j;
+    }
+    const seen = /* @__PURE__ */ new Set();
+    let prev = null;
+    items.forEach((it, k) => {
+      if (it.ss && it.ss !== prev && seen.has(it.ss)) it.ss = it.ss + "-g" + k;
+      if (it.ss) seen.add(it.ss);
+      prev = it.ss;
+    });
+  }
+  function ssLetters(items) {
+    const m = {};
+    let n = 0;
+    for (const it of items) if (it.ss && !(it.ss in m)) m[it.ss] = String.fromCharCode(65 + n++ % 26);
+    return m;
+  }
+  function linkToggle(arr, i, get) {
+    const a = get(arr[i]), b = arr[i + 1] && get(arr[i + 1]);
+    if (!a || !b) return false;
+    if (a.ss && a.ss === b.ss) {
+      const g = uid(), old = a.ss;
+      for (let k = i + 1; k < arr.length && get(arr[k]).ss === old; k++) get(arr[k]).ss = g;
+    } else {
+      const id = a.ss || b.ss || uid();
+      const olds = [a.ss, b.ss].filter(Boolean);
+      for (const x of arr) {
+        const o = get(x);
+        if (o.ss && olds.includes(o.ss)) o.ss = id;
+      }
+      a.ss = id;
+      b.ss = id;
+    }
+    const tmp = arr.map(get);
+    fixSupersets(tmp);
+    return true;
+  }
+  function move(arr, i, j) {
+    if (j < 0 || j >= arr.length) return;
+    const [x] = arr.splice(i, 1);
+    arr.splice(j, 0, x);
+  }
+  var routineEmpty = (r) => r.days.every((d) => !d.items.length);
+  var routineSig = (r) => JSON.stringify([
+    r.name.trim().toLowerCase(),
+    r.schedule,
+    r.days.map((d) => [d.name, !!d.rest, d.items.map((i) => [i.exId, +i.sets, +i.repMin, +i.repMax, +i.rir, +i.rest])])
+  ]);
+  function tplCountLine() {
+    const T = TEMPLATES.filter((t) => !t.hidden);
+    const n = T.map((t) => {
+      const r = routineFromTemplate(t.key);
+      return r.days.filter((d) => !d.rest).length * 7 / r.days.length;
+    });
+    const W = ["No", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine", "Ten", "Eleven", "Twelve"];
+    return `${W[T.length] || T.length} plans, ${Math.floor(Math.min(...n))} to ${Math.round(Math.max(...n))} days a week`;
+  }
+  var RIR_TGT_TIP = "Target RIR is 1 unless you change it, a convention: muscle growth improves as sets end closer to failure (Robinson 2024), but going all the way to failure grew muscle no more than stopping 1 to 2 reps short (Refalo 2024) and costs more fatigue. Some lifts in the ready-made routines use 0 or 2.";
 
   // src/app/formulas.ts
   var E1_MAX_REPS = 12;
@@ -1596,7 +2008,39 @@ loadScript(['vendor/chart.umd.js','https://cdnjs.cloudflare.com/ajax/libs/Chart.
   }
   var BACK_DAYS = 28;
   var GROW_PCT = 3;
-  var T90 = [NaN, 3.078, 1.886, 1.638, 1.533, 1.476, 1.44, 1.415, 1.397, 1.383, 1.372, 1.363, 1.356, 1.35, 1.345, 1.341, 1.337, 1.333, 1.33, 1.328, 1.325, 1.323, 1.321, 1.319, 1.318, 1.316, 1.315, 1.314, 1.313, 1.311, 1.31];
+  var T90 = [
+    NaN,
+    3.078,
+    1.886,
+    1.638,
+    1.533,
+    1.476,
+    1.44,
+    1.415,
+    1.397,
+    1.383,
+    1.372,
+    1.363,
+    1.356,
+    1.35,
+    1.345,
+    1.341,
+    1.337,
+    1.333,
+    1.33,
+    1.328,
+    1.325,
+    1.323,
+    1.321,
+    1.319,
+    1.318,
+    1.316,
+    1.315,
+    1.314,
+    1.313,
+    1.311,
+    1.31
+  ];
   function t90(df) {
     df = Math.floor(df);
     if (!(df >= 1)) return T90[1];
@@ -1613,6 +2057,1283 @@ loadScript(['vendor/chart.umd.js','https://cdnjs.cloudflare.com/ajax/libs/Chart.
   }
   var PACE_N = 8, PACE_DAYS = 84, PACE_MIN = 3, PACE_LO = 1 / 3, PACE_HI = 3;
   var SESSION_CAP = 11;
+  var JUMP_TIP = "When every set reaches the top of the rep range, the load goes up by about this share, in whole load steps and at least one step. Blank: 2.5% on compound lifts, 5% on isolation lifts, a convention. 0: one step every time. Until then the target is to beat last time's total reps at the same load. When the step is large for the load, a few more reps come first, so the new load starts inside the range.";
+
+  // src/app/format.ts
+  var fmtDateRow = (s) => parse(s).toLocaleDateString(void 0, {
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+    ...s.slice(0, 4) === today().slice(0, 4) ? {} : { year: "numeric" }
+  });
+  function todayEye() {
+    const d = /* @__PURE__ */ new Date();
+    return d.toLocaleDateString(void 0, { weekday: "short" }) + " " + d.toLocaleDateString(void 0, { month: "short", day: "numeric" });
+  }
+  function sessTm(x) {
+    try {
+      return x.t ? new Date(x.t).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }) : "";
+    } catch (e) {
+      return "";
+    }
+  }
+  function greeting() {
+    const h = (/* @__PURE__ */ new Date()).getHours();
+    return h < 5 ? "Evening" : h < 12 ? "Morning" : h < 17 ? "Afternoon" : "Evening";
+  }
+  function agoTxt(k) {
+    return k === 0 ? "today" : k === 1 ? "yesterday" : `${k} days ago`;
+  }
+  var WD2 = ["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"];
+  var MONTHS = [
+    "January",
+    "February",
+    "March",
+    "April",
+    "May",
+    "June",
+    "July",
+    "August",
+    "September",
+    "October",
+    "November",
+    "December"
+  ];
+  var min5 = (m) => m >= 10 ? Math.round(m / 5) * 5 : Math.max(1, Math.round(m));
+  var estMin = (n) => `~${n} min`;
+  var NIL = "–";
+  var fmtG = (v) => String(Math.round(v * 1e3) / 1e3);
+  var repSpan = (lo, hi, sep = " to ") => +lo === +hi ? `${+lo}` : `${+lo}${sep}${+hi}`;
+  var rangeWords = (p) => +p.repMin === +p.repMax ? `target of ${+p.repMin}` : `${+p.repMin}-${+p.repMax} range`;
+
+  // src/app/layout.ts
+  var DSECS = [
+    ["volume", "Volume"],
+    ["exercise", "Lifts"],
+    ["weak", "Muscles"],
+    ["consistency", "Consistency"],
+    ["body", "Body"]
+  ];
+  var DSEC_KEYS = DSECS.map((x) => x[0]);
+  var DSEC_FOLDED = ["consistency", "body"];
+  var DSEC_ALIAS = {
+    stalls: "exercise",
+    prs: "exercise",
+    bests: "exercise",
+    rank: "weak",
+    svol: "volume"
+  };
+  var VOL_MODES = [
+    ["region", "By region"],
+    ["week", "This week"],
+    ["avg", "Recent average"],
+    ["trend", "Weekly trend"],
+    ["load", "Load"]
+  ];
+  var DEFAULT_HIDDEN = [
+    "today:tiles",
+    "today:coach",
+    "today:body",
+    "program:schedule",
+    "program:pvol"
+  ];
+  var DEFAULT_ORDER = {
+    today: ["session", "map", "week", "injuries", "coach", "tiles", "body"],
+    dash: ["exercise", "volume", "weak", "consistency", "body"]
+  };
+  var defaultOrder = () => JSON.parse(JSON.stringify(DEFAULT_ORDER));
+  function orderKeys(saved, present) {
+    const order = saved.filter((k) => present.includes(k));
+    present.forEach((k, i) => {
+      if (order.includes(k)) return;
+      const prev = present.slice(0, i).reverse().find((q) => order.includes(q));
+      order.splice(prev ? order.indexOf(prev) + 1 : 0, 0, k);
+    });
+    return order;
+  }
+  var FORM_SHEETS = /* @__PURE__ */ new Set([
+    "imp",
+    "feedback",
+    "account",
+    "exEdit",
+    "injury",
+    "cardio",
+    "quick",
+    "note",
+    "text",
+    "routineNew",
+    "inc",
+    "max",
+    "load",
+    "reps",
+    "cal",
+    "walk"
+  ]);
+  var ACCENTS = [
+    ["ember", "Ember"],
+    ["blue", "Blue"],
+    ["volt", "Volt"],
+    ["pink", "Pink"]
+  ];
+  var ACCENT0 = "ember";
+  var REGION_WKS = [
+    [2, "2 wk"],
+    [4, "4 wk"],
+    [8, "8 wk"]
+  ];
+  var BW_EVERY = [
+    [7, "Every week"],
+    [14, "Every 2 weeks"],
+    [30, "Every month"],
+    [0, "Off"]
+  ];
+
+  // src/app/icons.ts
+  var MARK_SVG = '<svg class="mark" viewBox="-242 -378 484 756" aria-hidden="true" focusable="false"><rect class="mk-h" x="-30" y="-300" width="60" height="600" rx="14"/><rect class="mk-h" x="-80" y="-192" width="160" height="32" rx="12"/><rect class="mk-h" x="-80" y="160" width="160" height="32" rx="12"/><rect class="mk-p" x="-240" y="-376" width="480" height="92" rx="30"/><rect class="mk-p" x="-190" y="-270" width="380" height="66" rx="26"/><rect class="mk-p" x="-190" y="204" width="380" height="66" rx="26"/><rect class="mk-p" x="-240" y="284" width="480" height="92" rx="30"/></svg>';
+  var LOCKUP = `<span class="vh">${APP_NAME}</span>${MARK_SVG}<span class="rn" aria-hidden="true">${WORDMARK.strong}</span><span aria-hidden="true">${WORDMARK.light}</span>`;
+  var MENU_ICON = '<svg class="mi" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="12" cy="8.4" r="3.7"/><path d="M4.8 19.6c1.3-3.7 4.1-5.4 7.2-5.4s5.9 1.7 7.2 5.4"/></svg>';
+  var SHARE_ICON = '<svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12M8 7l4-4 4 4"/><path d="M6 11H5a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-8a1 1 0 0 0-1-1h-1"/></svg>';
+  var ADD_ICON = '<svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="4"/><path d="M12 8v8M8 12h8"/></svg>';
+
+  // src/app/profile.ts
+  var PROF_GOALS = [
+    ["size", "Size"],
+    ["strength", "Strength"],
+    ["both", "Both"]
+  ];
+  var PROF_EXP = [
+    ["new", "Under 1"],
+    ["mid", "1 to 3"],
+    ["adv", "Over 3"]
+  ];
+  var PROF_DAYS = [2, 3, 4, 5, 6];
+  var FOCUS_MAX = 2;
+  var FOCUS_UP = 1.3, MAINT_SHARE = 1 / 3;
+  function profClean(p) {
+    if (!p || typeof p !== "object" || Array.isArray(p)) return null;
+    const o = {};
+    if (PROF_GOALS.some((g) => g[0] === p.goal)) o.goal = p.goal;
+    if (PROF_EXP.some((g) => g[0] === p.exp)) o.exp = p.exp;
+    if (PROF_DAYS.includes(p.days)) o.days = p.days;
+    const f = Array.isArray(p.focus) ? [
+      ...new Set(
+        // Array.isArray turns an unknown into any[]; the cast keeps each entry unknown for the test below.
+        p.focus.filter(
+          // The type predicate is a cast, and true: typeof says m is a string.
+          (m) => typeof m === "string" && MK.includes(m) && !TRACK_ONLY.has(m)
+        )
+      )
+    ].slice(0, FOCUS_MAX) : [];
+    if (f.length) o.focus = f;
+    return Object.keys(o).length ? o : null;
+  }
+  var STR_REST = 5, STR_NEAR = 0.97;
+  var PROF_GOAL_TIP = "Size keeps the app's defaults. Strength: new barbell, Smith, and machine compounds start at 3 to 6 reps, 2 in reserve, 3 minutes' rest. Heavier loads gave more strength for similar growth (Schoenfeld 2017; ACSM 2009), and 3 minutes' rest beat 1 (Schoenfeld 2016). Both starts them at 5 to 8; that and the 2 in reserve are conventions. Strength also favours stalled or near-best compounds in Pick for me. Your routine changes only with Apply.";
+  var PROF_EXP_TIP = "Under 1 year, whatever the goal: new exercises start at 8 to 12 reps (ACSM 2009). Compounds stop 3 reps short and isolation lifts 2, as in the beginner plan, a convention: easier to judge, further from failure. Apply raises reps in reserve to that and keeps your ranges.";
+  var PROF_FOCUS_TIP = "Up to two. Their weekly targets go up about 30% and the other major muscles drop to maintenance, a third of the usual minimum (size and strength held on a third of the volume: Bickel 2011, Spiering 2021). Only targets you have not typed move, and taking a focus off puts them back. Pick for me favours them.";
+
+  // src/app/records.ts
+  var STATE_VERSION = 5;
+  var TRASH_DAYS = 30, TRASH_MAX = 20, TRASH_BYTES = 6e4;
+  var BW_MAX_KG = 400, BW_MIN_KG = 20, MEAS_MAX_CM = 300;
+  function did(tag, obj, i) {
+    let j = "";
+    try {
+      j = JSON.stringify(obj);
+    } catch (e) {
+      j = String(i);
+    }
+    return tag + hashStr(j + "#" + i);
+  }
+  var okId = (v) => typeof v === "string" && /^[\w.:-]{1,100}$/.test(v) && !(v in Object.prototype);
+  function fixId(v) {
+    return okId(v) ? v : "x" + hashStr(String(v));
+  }
+  var safeKey = (k) => typeof k === "string" && !/["'<>&`]/.test(k);
+  var EXTRA_MAX = 2e3, EXTRA_KEYS = 20;
+  var okExtraKey = (k) => /^[A-Za-z][\w]{0,39}$/.test(k) && !(k in Object.prototype);
+  var KNOWN_ITEM = /* @__PURE__ */ new Set(["jump"]), KNOWN_CARDIO = /* @__PURE__ */ new Set(["dist"]), KNOWN_MEAS = new Set(MEAS.map((x) => x[0]));
+  function cleanCal(c) {
+    if (!c || typeof c !== "object") return null;
+    const at = numOr(c.at, NaN), pred = numOr(c.pred, NaN);
+    if (!isNum(at) || !isNum(pred) || at < 1 || pred < 0) return null;
+    return { at: Math.min(Math.round(at), 1e3), pred: Math.min(Math.round(pred * 2) / 2, 10) };
+  }
+  function cleanChk(c) {
+    if (!c || typeof c !== "object") return null;
+    const o = {};
+    for (const k of ["sleep", "energy", "joints"]) {
+      const v = Math.round(numOr(c[k], NaN));
+      if (v >= 1 && v <= 3) o[k] = v;
+    }
+    return Object.keys(o).length ? o : null;
+  }
+  function cleanTgt(t) {
+    if (!t || typeof t !== "object" || t.kind !== "load" && t.kind !== "reps") return null;
+    const o = { kind: t.kind };
+    for (const k of ["w", "repMin", "total", "n", "prevBest"]) {
+      if (!(k in t)) continue;
+      const v = t[k];
+      o[k] = v == null ? null : isNum(numOr(v, NaN)) ? numOr(v, 0) : null;
+    }
+    if (Array.isArray(t.rs))
+      o.rs = t.rs.slice(0, 30).map((v) => {
+        const n = numOr(v, NaN);
+        return isNum(n) && n >= 0 ? Math.min(n, 1e3) : 0;
+      });
+    return o;
+  }
+  var okSess = (ss) => !!ss && typeof ss === "object" && isDate(ss.date) && Array.isArray(ss.ex);
+  var sessCmp = (a, b) => a.date < b.date ? -1 : a.date > b.date ? 1 : (a.t || 0) - (b.t || 0) || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0);
+
+  // src/app/gym.ts
+  var PLATE_MODES = [
+    ["auto", "Automatic"],
+    ["bar", "Barbell: bar plus plates per side"],
+    ["side", "Plates per side, no bar"],
+    ["sleeve", "One sleeve (landmine)"],
+    ["none", "None"]
+  ];
+  function gymPlates(u) {
+    return u === "kg" ? [25, 20, 15, 10, 5, 2.5, 1.25] : [45, 35, 25, 10, 5, 2.5];
+  }
+  function gymClean(g) {
+    if (!g || typeof g !== "object" || g.u !== "lb" && g.u !== "kg") return null;
+    const out = { u: g.u };
+    const n = (v) => {
+      const x = +v;
+      return isFinite(x) ? Math.round(x * 1e3) / 1e3 : NaN;
+    };
+    const d = g.db;
+    if (d && typeof d === "object") {
+      const lo = n(d.lo), hi = n(d.hi), st = n(d.st), fine = n(d.fine), fineTo = n(d.fineTo);
+      if (lo > 0 && hi >= lo && hi <= 500 && st > 0 && st <= 50) {
+        const db = { lo, hi, st };
+        if (fine > 0 && fine < st && fineTo > lo) {
+          db.fine = fine;
+          db.fineTo = Math.min(fineTo, hi);
+        }
+        if (dbListOf(db)) out.db = db;
+      }
+    }
+    if (Array.isArray(g.kb)) {
+      const kb = [...new Set(g.kb.map(n).filter((x) => x > 0 && x <= 300))].sort((a, b) => a - b).slice(0, 40);
+      if (kb.length) out.kb = kb;
+    }
+    if (Array.isArray(g.plates)) {
+      const all = gymPlates(g.u);
+      const pl = all.filter((x) => g.plates.map(n).includes(x));
+      if (pl.length) out.plates = pl;
+    }
+    {
+      const st = n(g.stack);
+      if (st > 0 && st <= 100) out.stack = st;
+    }
+    return Object.keys(out).length > 1 ? out : null;
+  }
+  var gymK = (g, v) => g.u === "kg" ? v : v * LB;
+  function dbListOf(d) {
+    if (!d || !(d.lo > 0) || !(d.hi >= d.lo) || !(d.st > 0)) return null;
+    const out = [];
+    let v = d.lo;
+    while (v <= d.hi + 1e-6) {
+      if (out.length >= 300) return null;
+      out.push(r3(v));
+      v = r3(v + (d.fine > 0 && d.fineTo > 0 && v < d.fineTo - 1e-6 ? d.fine : d.st));
+    }
+    return out;
+  }
+  function platesMode(ex) {
+    if (ex.plates) return ex.plates;
+    if (ex.bw) return "none";
+    if (ex.equip === "barbell") return "bar";
+    if (ex.equip === "landmine") return "sleeve";
+    if (PLATE_SIDE_IDS.includes(ex.id)) return "side";
+    return "none";
+  }
+
+  // src/app/chunks.ts
+  var chunkOf = (date) => `s-${date.slice(0, 7)}-${+date.slice(8, 10) <= 15 ? 1 : 2}`;
+  var bySess = sessCmp;
+  var bodyChunkOf = (date) => "b-" + String(date || "").slice(0, 4);
+  function chunksOf(st) {
+    const out = {
+      core: {
+        version: st.version,
+        settings: st.settings,
+        exercises: st.exercises,
+        routines: st.routines,
+        activeRoutineId: st.activeRoutineId,
+        bodyweights: [],
+        measurements: [],
+        deloadWeek: st.deloadWeek || null,
+        injuries: st.injuries || [],
+        trash: st.trash || []
+      },
+      draft: { draft: st.draft || null }
+    };
+    for (const k of ["bodyweights", "measurements"])
+      for (const x of st[k] || []) {
+        const c = out[bodyChunkOf(x.date)] || (out[bodyChunkOf(x.date)] = {});
+        (c[k] || (c[k] = [])).push(x);
+      }
+    for (const id in out) if (id.startsWith("b-")) for (const k in out[id]) out[id][k].sort(bySess);
+    for (const x of st.sessions) {
+      const k = chunkOf(x.date);
+      (out[k] || (out[k] = { sessions: [] })).sessions.push(x);
+    }
+    for (const x of st.cardio || []) {
+      const k = chunkOf(x.date);
+      const c = out[k] || (out[k] = { sessions: [] });
+      (c.cardio || (c.cardio = [])).push(x);
+    }
+    for (const k in out) {
+      if (out[k].sessions) out[k].sessions.sort(bySess);
+      if (out[k].cardio) out[k].cardio.sort(bySess);
+    }
+    return out;
+  }
+  var emptyChunk = (id) => id === "core" ? null : id === "draft" ? { draft: null } : id.startsWith("b-") ? {} : { sessions: [] };
+  var baseFor = (id, m, legB) => m && m.b ? m.b : id.startsWith("b-") ? legB : null;
+  function legacyBody(raw) {
+    return {
+      bodyweights: raw && Array.isArray(raw.bodyweights) ? raw.bodyweights : [],
+      measurements: raw && Array.isArray(raw.measurements) ? raw.measurements : []
+    };
+  }
+  function unionById(a, b) {
+    const m = /* @__PURE__ */ new Map();
+    for (const x of b || []) if (x && x.id) m.set(x.id, x);
+    for (const x of a || []) if (x && x.id) m.set(x.id, x);
+    return [...m.values()];
+  }
+  var realCount = (st) => st.sessions.filter((x) => !x.demo).length;
+  var CORE_ARR = ["routines", "exercises", "injuries", "trash"];
+  var CORE_FIELDS = ["version", "activeRoutineId", "deloadWeek"];
+  var isChunkId = (id) => id === "core" || id === "draft" || /^s-\d{4}-\d{2}-[12]$/.test(id) || /^b-\d{4}$/.test(id);
+
+  // src/app/merge.ts
+  function canon(x) {
+    if (x === void 0) return "null";
+    if (x === null || typeof x !== "object") return JSON.stringify(x);
+    if (Array.isArray(x)) return "[" + x.map(canon).join(",") + "]";
+    return "{" + Object.keys(x).filter((k) => x[k] !== void 0).sort().map((k) => JSON.stringify(k) + ":" + canon(x[k])).join(",") + "}";
+  }
+  var Hx = (x) => hashStr(canon(x));
+  function merge3List(base, l, r, remoteWins, stat) {
+    const known = !!base;
+    base = base || {};
+    const L = /* @__PURE__ */ new Map(), Rm = /* @__PURE__ */ new Map();
+    for (const x of l || []) if (x && typeof x.id === "string") L.set(x.id, x);
+    for (const x of r || []) if (x && typeof x.id === "string") Rm.set(x.id, x);
+    const out = [];
+    for (const id of [...L.keys(), ...[...Rm.keys()].filter((k) => !L.has(k))]) {
+      const a = L.get(id), b = Rm.get(id), bh = known ? base[id] : "?";
+      const ah = a ? Hx(a) : void 0, rh = b ? Hx(b) : void 0;
+      if (ah === rh) {
+        out.push(a);
+        continue;
+      }
+      if (!a || !b) {
+        const p = a || b, ph = a ? ah : rh;
+        if (known && ph === bh) continue;
+        out.push(p);
+        continue;
+      }
+      if (ah === bh) {
+        out.push(b);
+        continue;
+      }
+      if (rh === bh) {
+        out.push(a);
+        continue;
+      }
+      stat.conflicts++;
+      out.push(remoteWins ? b : a);
+    }
+    return out;
+  }
+  function merge3Val(bh, a, b, remoteWins, stat) {
+    const ah = Hx(a), rh = Hx(b);
+    if (ah === rh || rh === bh) return a;
+    if (ah === bh) return b;
+    stat.conflicts++;
+    return remoteWins ? b : a;
+  }
+  function mergeDraft(base, cur, pre) {
+    if (!pre || !cur || !base || pre.id !== cur.id || base.id !== cur.id) return cur === void 0 ? null : cur;
+    const keyed = (list) => {
+      const seen = {};
+      return (list || []).map((b) => {
+        const k = b.exId + "#" + (seen[b.exId] = (seen[b.exId] || 0) + 1);
+        return [k, b];
+      });
+    };
+    const B = new Map(keyed(base.ex)), C = keyed(cur.ex), P = keyed(pre.ex);
+    const Cm = new Map(C);
+    const pick = (k) => {
+      const b = B.get(k), c = Cm.get(k), p = P.find((x) => x[0] === k);
+      const pv = p ? p[1] : void 0;
+      const bh = b ? canon(b) : null, ch = c ? canon(c) : null, ph = pv ? canon(pv) : null;
+      if (ch === bh) return pv;
+      if (ph === bh) return c;
+      return c;
+    };
+    const out = [];
+    const ord = (l) => l.map((x) => x[0]).join("|");
+    const keep = ord(keyed(base.ex)) === ord(P);
+    for (const [k] of keep ? C : P) {
+      const v = pick(k);
+      if (v) out.push(v);
+    }
+    for (const [k, _c] of C) {
+      if (!P.some((x) => x[0] === k)) {
+        const v = pick(k);
+        if (v && !out.includes(v)) out.push(v);
+      }
+    }
+    const res = { ...cur, ex: out };
+    for (const f of ["notes", "dayName", "deload", "light", "limited", "cardio", "chk"]) {
+      if (canon(cur[f]) === canon(base[f])) res[f] = pre[f];
+    }
+    return res;
+  }
+
+  // src/app/session.ts
+  function greyW(b, si) {
+    const s = b && b.sets[si];
+    if (!s || s.warm || s.drop) return null;
+    for (let i = si - 1; i >= 0; i--) {
+      const x = b.sets[i];
+      if (!x.warm && !x.drop && x.w != null) return b.adj && b.adj.at === i ? b.adj.w : x.w;
+    }
+    return b.sw == null ? null : b.sw;
+  }
+  function effW(b, si) {
+    const s = b && b.sets[si];
+    if (!s) return null;
+    return s.w != null ? s.w : greyW(b, si);
+  }
+  function effTarget(b) {
+    const t = b.tgt;
+    if (!t || t.kind !== "reps") return t;
+    const nw = b.sets.filter((x) => !x.warm && !x.drop).length;
+    if (!Array.isArray(t.rs) || !(nw > 0) || nw >= t.n) return t;
+    return { ...t, n: nw, total: t.rs.slice(0, nw).reduce((a, v) => a + v, 0) };
+  }
+  function targetText(b) {
+    const t = b.tgt, e = effTarget(b);
+    if (!t || t === e || !b.target) return b.target;
+    const m = b.target.match(
+      /^(\d+)(s?)\+ (reps )?(?:in one set|over (?:your first )?\d+ sets|in one hold|over (?:your first )?\d+ holds)( at .*)$/
+    );
+    if (!m) return b.target;
+    const hold = m[2] === "s";
+    const over = e.n === 1 ? hold ? "in one hold" : "in one set" : `over ${e.n} ${hold ? "holds" : "sets"}`;
+    return `${e.total + 1}${m[2]}+ ${m[3] || ""}${over}${m[4]}`;
+  }
+  function overSets(n, plan, kind) {
+    const w = kind === "hold" ? "hold" : "set";
+    if (n === 1) return `in one ${w}`;
+    return +(plan && plan.sets) > n ? `over your first ${n} ${w}s` : `over ${n} ${w}s`;
+  }
+  function blockDone(b) {
+    const w = b.sets.filter((x) => !x.warm);
+    return w.length > 0 && w.every((x) => x.done);
+  }
+  function sessProgress(d) {
+    let n = 0, k = 0;
+    for (const b of d.ex)
+      for (const x of b.sets)
+        if (!x.warm) {
+          n++;
+          if (x.done) k++;
+        }
+    return { n, k, pct: n ? k / n * 100 : 0 };
+  }
+  function blockRest(d, bi) {
+    const b = d.ex[bi], nx = d.ex[bi + 1];
+    return b.plan.ss && nx && nx.plan.ss === b.plan.ss ? 0 : +b.plan.rest || 0;
+  }
+  function lastDup(d, bi) {
+    const b = d.ex[bi];
+    return !!b && d.ex.slice(0, bi).some((x) => x.exId === b.exId && !!x.light === !!b.light);
+  }
+  function lastCell(b, i, dup) {
+    return !dup && Array.isArray(b.prev) && i >= 0 && i < b.prev.length ? b.prev[i] : "";
+  }
+  function lastHead(b, dup) {
+    const t = b.last || "";
+    if (dup || !Array.isArray(b.prev) || !b.prev.length || b.prevOff) return t;
+    const k = t.indexOf("):");
+    return k > 0 ? t.slice(0, k + 1) : t;
+  }
+  function joinable(a, b) {
+    return !!a && !!b && a.exId === b.exId && !a.light === !b.light;
+  }
+  function joinRows(into, from) {
+    const rows = from.sets.filter((x) => !x.warm && !x.drop && !x.done);
+    into.sets.push(...rows);
+    into.plan = { ...into.plan, sets: into.sets.filter((x) => !x.warm && !x.drop).length };
+    return rows;
+  }
+  function joinAdjacent(ex) {
+    const out = [];
+    for (const b of ex) {
+      const a = out[out.length - 1];
+      if (a && a.exId === b.exId && !a.light === !b.light) {
+        a.sets = [...a.sets, ...b.sets];
+        if (b.note && b.note.trim()) a.note = [a.note, b.note].filter((x) => x && x.trim()).join(" ");
+        if (!a.rr && b.rr) a.rr = b.rr;
+        a.cut = a.cut && b.cut ? true : void 0;
+        continue;
+      }
+      out.push({ ...b, sets: [...b.sets] });
+    }
+    return out;
+  }
+  function sameExOnce(ex) {
+    const by = /* @__PURE__ */ new Map();
+    const out = [];
+    for (const b of ex) {
+      const k = b.exId + (b.light ? "|l" : "");
+      const a = by.get(k);
+      if (!a) {
+        const c = { ...b, sets: [...b.sets] };
+        by.set(k, c);
+        out.push(c);
+        continue;
+      }
+      const wa = a.sets.filter(isWork).length, wb = b.sets.filter(isWork).length;
+      a.sets.push(...b.sets);
+      if (wb > wa && b.rr) a.rr = b.rr;
+      else if (!a.rr && b.rr) a.rr = b.rr;
+      a.cut = !!(a.cut && b.cut);
+    }
+    return out;
+  }
+  function freeDraft(name, ex) {
+    return {
+      id: uid(),
+      startedAt: Date.now(),
+      date: today(),
+      dayIdx: 0,
+      dayId: null,
+      dayName: name,
+      routineId: "",
+      free: true,
+      deload: false,
+      light: false,
+      cardio: [],
+      notes: "",
+      editingId: null,
+      ex: ex || []
+    };
+  }
+  function editFp(d) {
+    return JSON.stringify({
+      date: d.date,
+      notes: (d.notes || "").trim(),
+      ex: d.ex.map((b) => [
+        b.exId,
+        (b.note || "").trim(),
+        b.sets.map((x) => [
+          x.w == null ? null : +x.w,
+          x.r == null || x.r === "" ? null : +x.r,
+          x.rir == null || x.rir === "" ? null : +x.rir,
+          !!x.done,
+          !!x.warm,
+          !!x.drop
+        ])
+      ]),
+      c: (d.cardio || []).map((c) => [c.kind, c.min, c.hr, c.dist || null])
+    });
+  }
+  var RIR_OPTS = ["0", "1", "2", "3", "4", "5"];
+  var HINT_ONCE = [
+    "Half the usual sets, nothing to beat.",
+    "Next time's load is worked out from this.",
+    "If the first set is off, change the load.",
+    "Next time picks up from here."
+  ];
+  function hintOnce(t, seen) {
+    if (!t) return "";
+    const m = t.match(
+      /^First time: pick a load you think you could lift about (\d+) times, erring light\. Do (.+?), (?:stopping with about \d+ still in you|to the last rep you can do well)\. Next time's load is worked out from this\.$/
+    );
+    if (m) {
+      if (seen.has("first")) return `First time: a load you could lift about ${m[1]} times; do ${m[2]}.`;
+      seen.add("first");
+      return t;
+    }
+    let out = t;
+    for (const x of HINT_ONCE)
+      if (out.includes(x)) {
+        if (seen.has(x)) out = out.replace(" " + x, "").replace(x, "");
+        else seen.add(x);
+      }
+    return out.trim();
+  }
+
+  // src/app/loads.ts
+  var LOAD_MODES = [
+    ["each", "Per dumbbell (two dumbbells)"],
+    ["total", "Total on the implement"],
+    ["side", "Plates on one side"],
+    ["stack", "Stack setting"]
+  ];
+  function loadWords(ex) {
+    const m = loadMode(ex);
+    if (ex && ex.assist) return "machine help";
+    if (m === "each") return "per dumbbell";
+    if (m === "side") return "plates per side";
+    if (m === "stack") return "stack setting";
+    if (m === "bw") return "added to bodyweight";
+    if (ex.equip === "dumbbell") return "one dumbbell";
+    if (ex.equip === "barbell") return "total, bar included";
+    if (ex.equip === "landmine") return "plates on the sleeve";
+    if (ex.equip === "smith") return "total on the bar";
+    if (PLATE_SIDE_IDS.includes(ex.id) || ex.equip === "machine") return "total plates";
+    return "total";
+  }
+  function loadNote(ex) {
+    const m = loadMode(ex);
+    return m === "each" ? " per dumbbell" : m === "side" ? " per side" : "";
+  }
+  function estInLoad(ex) {
+    return isCompound(ex) && !ex.bw && !noE1(ex) && loadMode(ex) === "total";
+  }
+
+  // src/app/prs.ts
+  var BAND_WORDS = {
+    1: "1 to 5 reps to failure",
+    2: "6 to 10 reps to failure",
+    3: "11 to 12 reps to failure"
+  };
+  var BAND_SHORT = {
+    1: "1 to 5 reps to failure",
+    2: "6 to 10 reps to failure",
+    3: "11 to 12 reps to failure"
+  };
+  function prOverall(p) {
+    return p.prevAll == null || p.value != null && p.value > p.prevAll + 1e-6;
+  }
+  function prName(p) {
+    return prOverall(p) ? "Best estimate" : `Best for ${BAND_SHORT[p.bb] || "its reps"}`;
+  }
+
+  // src/app/trend.ts
+  function trendScope(exps, anchor) {
+    const real = exps.filter((x) => !offSession(x));
+    const curRR = real.length ? real[real.length - 1].rr : null;
+    const inRange = real.filter((x) => sameRR(x.rr, curRR));
+    const lastReal = real.length ? real[real.length - 1] : null;
+    const exWin = addDays(lastReal ? lastReal.date : anchor, -42);
+    return { real, curRR, inRange, lastReal, exWin };
+  }
+  function trendW(sc) {
+    return sc.inRange.filter((x) => x.date >= sc.exWin && x.tv != null);
+  }
+  function trendEnds(w) {
+    const k = w.length >= 4 ? 2 : 1;
+    const best = (a) => a.reduce((m, x) => x.tv > m.tv ? x : m);
+    return { first: best(w.slice(0, k)), last: best(w.slice(w.length - k)) };
+  }
+
+  // src/app/volume.ts
+  function belowMin(v, lo) {
+    return lo > 0 && r1(v || 0) < lo;
+  }
+  function aboveMax(v, hi) {
+    return r1(v || 0) > hi;
+  }
+  var lowSt = (x) => x.st === "under" || x.st === "none" && x.lo > 0;
+
+  // src/app/goals.ts
+  function goalOk(ex) {
+    return !!ex && !ex.timed && !ex.assist;
+  }
+  function goalGap(s) {
+    return s.g.w - e1inv(s.cur, s.g.r);
+  }
+
+  // src/app/charts.ts
+  var RANGES = [
+    ["base", 0],
+    ["6m", 26],
+    ["all", Infinity]
+  ];
+  function firstDate(list) {
+    let f = null;
+    for (const x of list) if (x && isDate(x.date) && (!f || x.date < f)) f = x.date;
+    return f;
+  }
+  function weeksSpan(first) {
+    return first ? Math.round(daysBetween(weekStart(first), weekStart(today())) / 7) + 1 : 0;
+  }
+  function rangeWeeks(k, base) {
+    return k === "all" ? Infinity : k === "6m" ? 26 : base;
+  }
+
+  // src/app/importing.ts
+  var IMP_MAX_ROWS = 5e4;
+  var MON = {
+    jan: 1,
+    feb: 2,
+    mar: 3,
+    apr: 4,
+    may: 5,
+    jun: 6,
+    jul: 7,
+    aug: 8,
+    sep: 9,
+    sept: 9,
+    oct: 10,
+    nov: 11,
+    dec: 12
+  };
+  function impDate(str, ref) {
+    const s = String(str || "").toLowerCase().replace(/(\d)(st|nd|rd|th)\b/g, "$1").trim();
+    if (!s) return null;
+    const t = ref || today();
+    const ty = +t.slice(0, 4);
+    const mk = (y, m, d) => {
+      if (!(m >= 1 && m <= 12 && d >= 1 && d <= 31)) return null;
+      const iso2 = `${y}-${String(m).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+      return isDate(iso2) && new Date(y, m - 1, d).getDate() === d ? iso2 : null;
+    };
+    const noYear = (m, d) => {
+      let x = mk(ty, m, d);
+      if (x && x > t) x = mk(ty - 1, m, d);
+      return x;
+    };
+    const yy = (y) => y < 100 ? 2e3 + y : y;
+    let g = s.match(/(?<!\d)(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})(?!\d)/);
+    if (g) return mk(+g[1], +g[2], +g[3]);
+    g = s.match(/\b(\d{1,2})[/.-](\d{1,2})(?:[/.-](\d{2,4}))?\b/);
+    if (g) {
+      let a = +g[1], b = +g[2];
+      let m = a, d = b;
+      if (a > 12 && b <= 12) {
+        m = b;
+        d = a;
+      }
+      const x = g[3] ? mk(yy(+g[3]), m, d) : noYear(m, d);
+      return x && +x.slice(0, 4) >= ty - 20 ? x : null;
+    }
+    g = s.match(/\b(\d{1,2})\s+([a-z]{3,9})\.?,?\s*(\d{4})?\b/);
+    if (g && MON[g[2].slice(0, 4)] || g && MON[g[2].slice(0, 3)]) {
+      const m = MON[g[2].slice(0, 4)] || MON[g[2].slice(0, 3)];
+      return g[3] ? mk(+g[3], m, +g[1]) : noYear(m, +g[1]);
+    }
+    g = s.match(/\b([a-z]{3,9})\.?\s+(\d{1,2})(?:,?\s*(\d{4}))?\b/);
+    if (g && (MON[g[1].slice(0, 4)] || MON[g[1].slice(0, 3)])) {
+      const m = MON[g[1].slice(0, 4)] || MON[g[1].slice(0, 3)];
+      return g[3] ? mk(+g[3], m, +g[2]) : noYear(m, +g[2]);
+    }
+    return null;
+  }
+  function impSerial(n) {
+    if (!(n > 2e4 && n < 8e4)) return null;
+    const d = new Date(Date.UTC(1899, 11, 30) + Math.floor(n) * 864e5);
+    return d.toISOString().slice(0, 10);
+  }
+  function impRows(text) {
+    const first = text.split(/\r?\n/)[0] || "";
+    const cnt = (c) => first.split(c).length - 1;
+    const sep = [
+      ["	", cnt("	")],
+      [";", cnt(";")],
+      [",", cnt(",")]
+    ].sort((a, b) => b[1] - a[1])[0];
+    if (!sep[1]) return null;
+    const d = sep[0];
+    const rows = [];
+    let row = [], f = "", q = false;
+    for (let i = 0; i < text.length; i++) {
+      const c = text[i];
+      if (q) {
+        if (c === '"') {
+          if (text[i + 1] === '"') {
+            f += '"';
+            i++;
+          } else q = false;
+        } else f += c;
+        continue;
+      }
+      if (c === '"' && f === "") q = true;
+      else if (c === d) {
+        row.push(f);
+        f = "";
+      } else if (c === "\n" || c === "\r") {
+        if (c === "\r" && text[i + 1] === "\n") i++;
+        row.push(f);
+        f = "";
+        if (row.some((x) => x.trim())) rows.push(row);
+        row = [];
+        if (rows.length > IMP_MAX_ROWS) break;
+      } else f += c;
+    }
+    row.push(f);
+    if (row.some((x) => x.trim())) rows.push(row);
+    return rows.length >= 2 ? rows : null;
+  }
+  async function impXlsx(buf) {
+    if (typeof DecompressionStream !== "function") throw new Error("old");
+    const u = new Uint8Array(buf), dv = new DataView(buf);
+    let eo = -1;
+    for (let i = u.length - 22; i >= 0 && i > u.length - 7e4; i--)
+      if (dv.getUint32(i, true) === 101010256) {
+        eo = i;
+        break;
+      }
+    if (eo < 0) throw new Error("zip");
+    const n = dv.getUint16(eo + 10, true);
+    let p = dv.getUint32(eo + 16, true);
+    const files = {};
+    for (let k = 0; k < n; k++) {
+      const meth = dv.getUint16(p + 10, true), cs = dv.getUint32(p + 20, true), nl = dv.getUint16(p + 28, true), el = dv.getUint16(p + 30, true), cl = dv.getUint16(p + 32, true), lo = dv.getUint32(p + 42, true);
+      const name = new TextDecoder().decode(u.subarray(p + 46, p + 46 + nl));
+      files[name] = { meth, cs, lo };
+      p += 46 + nl + el + cl;
+    }
+    const read = async (name) => {
+      const f = files[name];
+      if (!f) return null;
+      const ln = dv.getUint16(f.lo + 26, true), le = dv.getUint16(f.lo + 28, true);
+      const data = u.subarray(f.lo + 30 + ln + le, f.lo + 30 + ln + le + f.cs);
+      if (f.meth === 0) return new TextDecoder().decode(data);
+      const out = await new Response(
+        new Blob([data]).stream().pipeThrough(new DecompressionStream("deflate-raw"))
+      ).arrayBuffer();
+      return new TextDecoder().decode(out);
+    };
+    const X = (t) => new DOMParser().parseFromString(t, "application/xml");
+    const ss = [];
+    const sst = await read("xl/sharedStrings.xml");
+    if (sst)
+      for (const si of X(sst).getElementsByTagName("si"))
+        ss.push([...si.getElementsByTagName("t")].map((t) => t.textContent).join(""));
+    const sheet = Object.keys(files).filter((k) => /^xl\/worksheets\/sheet\d+\.xml$/.test(k)).sort((a, b) => parseInt(a.match(/\d+/)[0]) - parseInt(b.match(/\d+/)[0]))[0];
+    if (!sheet) throw new Error("sheet");
+    const rows = [];
+    const col = (r) => {
+      let c = 0;
+      for (const ch of r.replace(/\d+/g, "")) c = c * 26 + (ch.charCodeAt(0) - 64);
+      return c - 1;
+    };
+    for (const rw of X(await read(sheet)).getElementsByTagName("row")) {
+      const row = [];
+      for (const c of rw.getElementsByTagName("c")) {
+        const i = col(c.getAttribute("r") || "A");
+        const t = c.getAttribute("t");
+        const v = c.getElementsByTagName("v")[0];
+        let val = "";
+        if (t === "s") val = ss[+(v && v.textContent)] || "";
+        else if (t === "inlineStr") val = [...c.getElementsByTagName("t")].map((x) => x.textContent).join("");
+        else val = v ? v.textContent : "";
+        row[i] = val;
+      }
+      for (let i = 0; i < row.length; i++) if (row[i] == null) row[i] = "";
+      if (row.some((x) => String(x).trim())) rows.push(row);
+      if (rows.length > IMP_MAX_ROWS) break;
+    }
+    return rows;
+  }
+  var IMP_SYN = [
+    [/\bdumb ?bells?\b|\bdbs?\b/g, "db"],
+    [/\bbar ?bells?\b|\bbb\b/g, "bb"],
+    [/\bpull[ -]?downs?\b/g, "pulldown"],
+    [/\bpull[ -]?ups?\b/g, "pullup"],
+    [/\bchin[ -]?ups?\b|\bchins\b/g, "chinup"],
+    [/\bpush[ -]?ups?\b/g, "pushup"],
+    [/\bsit[ -]?ups?\b/g, "situp"],
+    [/\b(push|press)[ -]?downs?\b/g, "pushdown"],
+    [/\bdead[ -]?lifts?\b/g, "deadlift"],
+    [/\bromanian deadlift\b|\brdls?\b/g, "rdl"],
+    [/\bover ?head press\b|\bohp\b/g, "ohp"],
+    [/\bskull ?crushers?\b/g, "skullcrusher"],
+    [/\btriceps?\b/g, "tricep"],
+    [/\bbiceps?\b/g, "bicep"],
+    [/\bext\b|\bextensions?\b/g, "extension"],
+    [/\braises?\b/g, "raise"],
+    [/\bflyes?\b|\bflies\b|\bflys?\b/g, "fly"],
+    [/\bmachine\b/g, "machine"],
+    [/\bsmith machine\b/g, "smith"],
+    [/\bcurls\b/g, "curl"],
+    [/\brows\b/g, "row"],
+    [/\bsquats\b/g, "squat"],
+    [/\blunges\b/g, "lunge"],
+    [/\bdips\b/g, "dip"],
+    [/\bshrugs\b/g, "shrug"],
+    [/\bpresses\b/g, "press"],
+    [/\bcrunches\b/g, "crunch"],
+    [/\bcalves\b|\bcalfs\b/g, "calf"],
+    [/\bhamstrings?\b/g, "ham"],
+    [/\bdeg(rees?)?\b|°/g, ""],
+    [/\bpaused\b/g, "pause"],
+    [/\bkettle ?bells?\b|\bkb\b/g, "kettlebell"]
+  ];
+  function impNorm(name) {
+    let s = String(name || "").toLowerCase().replace(/[()\[\],.&/+_-]/g, " ").replace(/\s+/g, " ").trim();
+    for (const [re, v] of IMP_SYN) s = s.replace(re, v);
+    return s.split(" ").filter((w) => w && !["the", "a", "with", "of", "and", "on", "exercise"].includes(w));
+  }
+  var IMP_ALIAS = {
+    "calf raise": "standCalf",
+    "standing calf raise": "standCalf",
+    "seated calf raise": "seatedCalf",
+    "db shoulder press": "seatedDbPress",
+    "shoulder press db": "seatedDbPress",
+    "overhead press": "ohp",
+    "skullcrusher": "skull",
+    "assisted pullup": "assistPullup",
+    "assisted chinup": "assistPullup",
+    "chinup assisted": "assistPullup",
+    "assisted dip": "assistDip",
+    "tricep dip assisted": "assistDip",
+    "pullup assisted": "assistPullup",
+    // @ts-expect-error: this key is written twice with the same value; kept so the move changes no code.
+    "assisted dip": "assistDip",
+    "dip assisted": "assistDip",
+    "squat": "backSquat",
+    "bb squat": "backSquat",
+    "back squat": "backSquat",
+    "bench": "bench",
+    "bench press": "bench",
+    "bb bench": "bench",
+    "flat bench": "bench",
+    "deadlift": "deadlift",
+    "ohp": "ohp",
+    "shoulder press": "ohp",
+    "military press": "ohp",
+    "pullup": "pullup",
+    "chinup": "chinup",
+    "row": "bbRow",
+    "bb row": "bbRow",
+    "bent over row": "bbRow",
+    "leg press": "legPress",
+    "lat pulldown": "latPulldown",
+    "pulldown": "latPulldown",
+    "dip": "dips",
+    "rdl": "rdl",
+    "hip thrust": "hipThrust",
+    "pushdown": "pressdown",
+    "tricep pushdown": "pressdown",
+    "tricep pushdown straight bar": "pressdown",
+    "pushdown straight bar": "pressdown",
+    "tricep pushdown rope": "ropePressdown",
+    "pushdown rope": "ropePressdown",
+    "rope pushdown": "ropePressdown",
+    "pushup": "pushup",
+    "curl": "dbCurl",
+    "db curl": "dbCurl",
+    "bicep curl": "dbCurl",
+    "bb curl": "bbCurl",
+    "lat raise": "dbLateral",
+    "lateral raise": "dbLateral",
+    "lateral": "dbLateral",
+    "side raise": "dbLateral",
+    "lateral raise db": "dbLateral",
+    "db lateral raise": "dbLateral"
+  };
+  function impGuess(name) {
+    const w = impNorm(name).join(" ");
+    const has = (re) => re.test(w);
+    const primary = has(/tricep|pushdown|skullcrusher|kickback/) ? "triceps" : has(/curl/) && !has(/leg|ham/) ? "biceps" : has(/leg curl|ham|rdl|good morning/) ? "hamstrings" : has(/calf/) ? "calves" : has(/lateral|side raise/) ? "sideDelts" : has(/rear|face pull|reverse fly/) ? "rearDelts" : has(/ohp|shoulder press|military|front raise/) ? "frontDelts" : has(/shrug/) ? "traps" : has(/pulldown|pullup|chinup|pullover/) ? "lats" : has(/row/) ? "upperBack" : has(/squat|leg press|lunge|leg extension|hack|split/) ? "quads" : has(/deadlift|hip thrust|glute|bridge/) ? "glutes" : has(/crunch|situp|plank|ab |abs|leg raise/) ? "abs" : "chest";
+    if (has(/assist/)) return { primary: has(/dip/) ? "chest" : "lats", equip: "machine", assist: true };
+    const equip = has(/\bdb\b/) ? "dumbbell" : has(/\bbb\b/) ? "barbell" : has(/cable/) ? "cable" : has(/smith/) ? "smith" : has(/machine/) ? "machine" : has(/pullup|chinup|pushup|dip|plank|situp/) ? "bodyweight" : "other";
+    return { primary, equip };
+  }
+  var IMP_COLS = {
+    date: [/^date$/, /^(workout date|start_?time|date ?time|when)$/, /^day$/],
+    name: [/^(workout name|workout|title|session|routine)$/],
+    ex: [/^(exercise( name)?|exercise_title|movement|lift)$/, /^name$/],
+    w: [
+      /^(weight|load)$/,
+      /^load_(lb|kg)$/,
+      /^(weight|load)[ _]?\(?(kgs?|lbs?|pounds?|kilos?)\)?$/,
+      /^(kgs?|lbs?)$/,
+      /^(?!total).*\b(weight|load)\b.*$/
+    ],
+    r: [/^(reps?|repetitions|rep count)$/],
+    sets: [/^sets$/],
+    rir: [/^rir$/],
+    rpe: [/^rpe$/],
+    type: [/^(set order|set_type|set type|type)$/],
+    warm: [/^(warm ?up|warmup)$/],
+    drop: [/^(drop ?set|dropset)$/],
+    secs: [/^(seconds|duration_seconds|time \(s\)|secs)$/],
+    note: [/^(notes?|exercise_notes|exercise_note|comment)$/],
+    unit: [/^(weight unit|unit|units)$/],
+    deload: [/^deload$/],
+    dist: [/^(distance|distance_km|distance_miles)$/]
+  };
+  function impHeader(row) {
+    const map = {};
+    const k = row.map(
+      (h) => String(h || "").trim().toLowerCase().replace(/\s+/g, " ")
+    );
+    for (const f in IMP_COLS)
+      for (const re of IMP_COLS[f]) {
+        const i = k.findIndex((h, j) => re.test(h) && !Object.values(map).includes(j));
+        if (i >= 0) {
+          map[f] = i;
+          break;
+        }
+      }
+    if (map.w == null) {
+      const i = k.findIndex((h) => /^load_(lb|kg)$/.test(h));
+      if (i >= 0) map.w = i;
+    }
+    if (k.some((h) => /^load_(lb|kg)$/.test(h)) && k.includes("exercise_note")) {
+      const d = k.indexOf("day");
+      if (map.name == null && d >= 0 && d !== map.date) map.name = d;
+      if (map.unit != null && k[map.unit] === "unit") delete map.unit;
+    }
+    return map;
+  }
+  function impUnitOf(headers, map) {
+    const h = map.w != null ? String(headers[map.w]).toLowerCase() : "";
+    return /kg|kilo/.test(h) ? "kg" : /lb|pound/.test(h) ? "lb" : null;
+  }
+  function impCardioKind(name) {
+    const n = String(name || "").toLowerCase();
+    if (/farmer|carry|lunge|suitcase/.test(n)) return null;
+    return /treadmill.*incline|incline.*walk/.test(n) ? "incline" : /elliptical|cross ?trainer/.test(n) ? "elliptical" : /stair|stepper|step ?mill/.test(n) ? "stairs" : /rowing|rower|\berg\b|concept ?2/.test(n) ? "rower" : /cycl|bike|spin/.test(n) ? "bike" : /\b(run|running|jog|jogging|sprint)/.test(n) ? "run" : /treadmill|\bwalk|walking|hike|hiking/.test(n) ? "walk" : /hiit|interval/.test(n) ? "hiit" : /cardio|swim/.test(n) ? "other" : null;
+  }
+  function impFromTable(rows, map) {
+    const head = rows[0];
+    let unit = impUnitOf(head, map);
+    const numTypes = map.type != null && /set_type/i.test(String(head[map.type]));
+    const rowUnit = (r) => {
+      if (map.unit == null) return null;
+      const v = String(r[map.unit] || "").toLowerCase();
+      return /kg|kilo/.test(v) ? "kg" : /lb|pound/.test(v) ? "lb" : null;
+    };
+    if (!unit && map.unit != null) for (let i = 1; i < rows.length && !unit; i++) unit = rowUnit(rows[i]);
+    const S = /* @__PURE__ */ new Map();
+    let lastDate = null, lastEx = null, lastName = "";
+    let skipped = 0, cardio = 0;
+    const bad = [];
+    const C = /* @__PURE__ */ new Map();
+    const num = (v) => {
+      const n = parseFloat(String(v == null ? "" : v).replace(",", "."));
+      return isFinite(n) ? n : null;
+    };
+    for (let i = 1; i < rows.length; i++) {
+      const r = rows[i];
+      const cell = (f) => map[f] == null ? "" : String(r[map[f]] == null ? "" : r[map[f]]).trim();
+      let date = cell("date");
+      date = date ? impDate(date) || impSerial(num(date)) : lastDate;
+      const ex = cell("ex") || lastEx;
+      if (!date || !ex) {
+        skipped++;
+        if (bad.length < 8) bad.push(r.join(", ").slice(0, 80));
+        continue;
+      }
+      lastDate = date;
+      lastEx = ex;
+      const name = cell("name") || (cell("date") ? "" : lastName);
+      lastName = name;
+      const reps = num(cell("r")), secs = num(cell("secs"));
+      const w = num(cell("w")) || 0;
+      if (/^rest timer$/i.test(ex) || /rest/i.test(cell("type"))) {
+        skipped++;
+        continue;
+      }
+      const ck = impCardioKind(ex);
+      const dist = num(cell("dist"));
+      if (dist > 0 || ck && !(reps > 0)) {
+        cardio++;
+        const k2 = date + "|" + (ck || "other");
+        const o = C.get(k2) || { date, kind: ck || "other", secs: 0, dist: 0, name: ex };
+        o.secs += secs > 0 ? secs : 0;
+        o.dist += dist > 0 ? dist : 0;
+        C.set(k2, o);
+        continue;
+      }
+      if (!(reps > 0) && !(secs > 0)) {
+        skipped++;
+        continue;
+      }
+      const ty = cell("type").toLowerCase();
+      const yes = (v) => /^(1|true|yes|y|x)$/i.test(v);
+      const rpe = num(cell("rpe"));
+      let rir = num(cell("rir"));
+      if (rir == null && rpe != null && rpe >= 5 && rpe <= 10) rir = Math.max(0, 10 - rpe);
+      const code = numTypes ? ty : "";
+      if (ty === "f" || ty === "failure" || code === "4") rir = 0;
+      const set = {
+        w,
+        r: reps > 0 ? Math.round(reps) : Math.round(secs),
+        rir: rir != null && rir >= 0 && rir <= 10 ? rir : null,
+        warm: ty === "w" || ty === "warmup" || ty === "warm-up" || code === "2" || yes(cell("warm")),
+        drop: ty === "d" || ty === "dropset" || ty === "drop" || code === "3" || yes(cell("drop")),
+        timed: !(reps > 0),
+        u: rowUnit(r)
+      };
+      const k = date + "|" + name;
+      if (!S.has(k)) S.set(k, { date, name, items: /* @__PURE__ */ new Map(), note: "" });
+      const ss = S.get(k);
+      if (/^(yes|true|1|y)$/i.test(String(cell("deload") || "").trim())) ss.deload = true;
+      if (!ss.items.has(ex)) ss.items.set(ex, { name: ex, sets: [], note: cell("note") });
+      const n = Math.min(Math.max(Math.round(num(cell("sets")) || 1), 1), 20);
+      for (let j = 0; j < n; j++) ss.items.get(ex).sets.push({ ...set });
+    }
+    return {
+      sessions: [...S.values()].map((x) => ({
+        date: x.date,
+        name: x.name,
+        items: [...x.items.values()],
+        deload: x.deload || void 0
+      })),
+      unit,
+      skipped,
+      cardio,
+      cardioRows: [...C.values()],
+      unread: bad,
+      cut: rows.length > IMP_MAX_ROWS
+    };
+  }
+  function impSetsText(t) {
+    let s = " " + String(t).toLowerCase() + " ";
+    s = s.replace(/(\d),(\d{1,2})(?=\s*(?:lbs?|kgs?)?\s*[x×*])/g, "$1.$2");
+    s = s.replace(/(\d)\s*(lbs?|kgs?|#)(?=[\s,x×*@;/]|$)/g, "$1 ");
+    s = s.replace(/(\d)\s*(?:s|sec|secs|seconds)\b/g, "$1");
+    if (/(^|\s)\d{2,}(\.\d+)?\s*(x|×|\*|\s\d)/.test(s))
+      s = s.replace(/@\s*((?:6|7|8|9)(?:\.5)?|10)(?![\d.x×*])/g, (_m, v) => ` rpe ${v} `);
+    {
+      let rpe = null;
+      s = s.replace(
+        /@?\s*\brpe\s*(\d+(?:\.\d+)?)|@\s*(\d+(?:\.\d+)?)\s*rpe\b/g,
+        (_m, a, b) => {
+          const v = +(a || b);
+          if (v >= 5 && v <= 10) rpe = v;
+          return " ";
+        }
+      );
+      if (rpe != null) s = s.trim() + " rir " + (10 - rpe) + " ";
+    }
+    s = s.replace(
+      /(^|\s)(?:bw\s*)?\+\s*(\d+(?:\.\d+)?)\s+(\d{1,2})\s*[x×*]\s*(\d{1,3})(?=\s|,|$)/g,
+      (m, p, w, a, r) => +a <= 10 ? p + Array(+a).fill(`bw+${w}x${r}`).join(" ") : m
+    );
+    s = s.replace(
+      /(^|\s)(?:bw\s*)?\+\s*(\d+(?:\.\d+)?)\s*[x×*]\s*(\d{1,3})(?=\s|,|$)/g,
+      (_m, p, w, r) => `${p}bw+${w}x${r}`
+    );
+    s = s.replace(
+      /(^|\s)bw\s+(\d{1,2})\s*[x×*]\s*(\d{1,3})(?=\s|,|$)/g,
+      (m, p, a, r) => +a <= 10 ? p + Array(+a).fill(`bwx${r}`).join(" ") : m
+    );
+    s = s.replace(
+      /\b(\d{1,2})\s*(?:x|×|\*|sets? of)\s*(\d{1,3})\s*(?:@|at)\s*(\d+(?:\.\d+)?)\b/g,
+      (m, a, b, c) => +a <= 10 && +c > +a ? Array(+a).fill(`${c}x${b}`).join(" ") : m
+    );
+    s = s.replace(
+      /(^|\s)(\d{1,2})\s*[x×*]\s*(\d{1,3})\s+(\d+(?:\.\d+)?)\s*$/,
+      (m, p, a, b, c) => +a <= 10 && +c > +b && +c > +a ? p + Array(+a).fill(`${c}x${b}`).join(" ") : m
+    );
+    s = s.replace(
+      /\b(\d+(?:\.\d+)?)\s*[x×*]\s*(\d{1,3})\s*[x×*]\s*(\d{1,2})\b/g,
+      (m, a, b, c) => +c <= 10 ? Array(+c).fill(`${a}x${b}`).join(" ") : m
+    );
+    s = s.replace(
+      /(^|\s)(\d{2,}(?:\.\d+)?)(?:\s*[:\-–]\s*|\s+)(\d{1,2}(?:\s*[/,]\s*\d{1,2})+)(?=\s*$)/g,
+      (_m, p, a, l) => p + l.split(/\s*[/,]\s*/).map((r) => `${a}x${r}`).join(" ")
+    );
+    s = s.replace(
+      /(^|\s)(\d{2,}(?:\.\d+)?)\s+(\d{1,2})\s*[x×*]\s*(\d{1,3})(?=\s|,|$)/g,
+      (m, p, a, b, c) => +b <= 10 ? p + Array(+b).fill(`${a}x${c}`).join(" ") : m
+    );
+    return s.trim();
+  }
+  var GENERIC_WORKOUT = /^\s*((early|late)\s+)?(morning|afternoon|evening|night|midday|lunch|weekend)?\s*(workout|session|training|lifting|lift|gym)?\s*$|^imported$/i;
+
+  // src/app/feedback.ts
+  var FB_CATS = [
+    ["bug", "Problem"],
+    ["question", "Question"],
+    ["idea", "Suggestion"]
+  ];
+  var FB_TITLE = {
+    bug: "Report a problem",
+    question: "Ask a question",
+    idea: "Suggest something"
+  };
+  var FB_ASK = {
+    bug: "What went wrong?",
+    question: "Your question",
+    idea: "Your suggestion"
+  };
+  var FB_HINT = {
+    bug: "What you tapped, what you expected, what happened",
+    question: "",
+    idea: ""
+  };
+  var FB_MIN = 10, FB_MAX = 1e3, FB_DAY = 5, FB_IMG_MB = 10;
+  var FB_CTX_MAX = 15e3;
+  var FB_WHAT = "Attached by the app: the build, your device and browser, screen size, which screen you came from, whether a session was open, sync status, and up to 10 recent errors with where in the app each happened. Never your workouts. It goes to the app owner.";
+  var FB_SHOT_RE = /^data:image\/jpeg;base64,[A-Za-z0-9+/]+={0,2}$/;
+
+  // src/app/store.ts
+  var state;
+  function setState(next) {
+    return state = next;
+  }
+  var HIST_PAGE = 25;
+  var ui = {
+    blkOpen: /* @__PURE__ */ new Set(),
+    tab: "today",
+    todayDay: null,
+    mapSel: null,
+    mapSrc: null,
+    prevOpen: false,
+    help: /* @__PURE__ */ new Set(),
+    planView: "routine",
+    histEx: "",
+    histLimit: HIST_PAGE,
+    wkOpen: false,
+    libQ: "",
+    libM: "",
+    libE: "",
+    libKind: "",
+    bRoutine: null,
+    bLibOpen: false,
+    bLibQ: "",
+    bLibM: "",
+    bTarget: 0,
+    openItem: null,
+    dashEx: null,
+    dashMuscle: "chest",
+    volMode: "region",
+    histOpen: null,
+    modal: null,
+    folds: {},
+    rng: {},
+    eqLast: null
+  };
+  var cloud = {
+    on: false,
+    db: null,
+    uid: null,
+    status: "local",
+    last: null,
+    meta: {},
+    editAt: {},
+    localH: {},
+    devId: null,
+    pendAt: null,
+    chain: Promise.resolve(),
+    t: null,
+    retry: 0,
+    dirtyAt: 0,
+    lastPull: 0,
+    err: null
+  };
+  var acct = { user: null, checked: false, reader: false };
+  var acctWait = { email: "", pw: "", t: 0, timer: null, busy: false, last: 0 };
 
   // src/legacy.js
   (function() {
@@ -1630,19 +3351,6 @@ loadScript(['vendor/chart.umd.js','https://cdnjs.cloudflare.com/ajax/libs/Chart.
       upd.ready = true;
       updRender();
     };
-    function weekFactor(R) {
-      return R.schedule === "weekly" ? 1 : 7 / Math.max(1, R.days.length);
-    }
-    function trainDaysOf(R) {
-      return R.days.filter((d) => !d.rest && d.items.length > 0).length;
-    }
-    function sessDayIdx(R, s) {
-      if (s.dayId) {
-        const i = R.days.findIndex((d) => d.id === s.dayId);
-        return i;
-      }
-      return s.dayIdx >= 0 && s.dayIdx < R.days.length ? s.dayIdx : -1;
-    }
     function cycleState(R, asOf) {
       const n = R.days.length;
       const T = asOf || today();
@@ -1685,33 +3393,6 @@ loadScript(['vendor/chart.umd.js','https://cdnjs.cloudflare.com/ajax/libs/Chart.
       const restToday = since >= 1 && since <= run;
       return { last: L.i, lastDate: L.s.date, next, done, restToday, restIdx: restToday ? (L.i + since) % n : -1 };
     }
-    function fixSupersets(items) {
-      let i = 0;
-      while (i < items.length) {
-        const id = items[i].ss;
-        if (!id) {
-          i++;
-          continue;
-        }
-        let j = i;
-        while (j < items.length && items[j].ss === id) j++;
-        if (j - i < 2) items[i].ss = null;
-        i = j;
-      }
-      const seen = /* @__PURE__ */ new Set();
-      let prev = null;
-      items.forEach((it, k) => {
-        if (it.ss && it.ss !== prev && seen.has(it.ss)) it.ss = it.ss + "-g" + k;
-        if (it.ss) seen.add(it.ss);
-        prev = it.ss;
-      });
-    }
-    function ssLetters(items) {
-      const m = {};
-      let n = 0;
-      for (const it of items) if (it.ss && !(it.ss in m)) m[it.ss] = String.fromCharCode(65 + n++ % 26);
-      return m;
-    }
     function isDeloadWeek() {
       return !!state.deloadWeek && state.deloadWeek === weekStart(today());
     }
@@ -1741,20 +3422,7 @@ loadScript(['vendor/chart.umd.js','https://cdnjs.cloudflare.com/ajax/libs/Chart.
     };
     const fmtDate = (s) => fmtWith("d", { month: "short", day: "numeric" }, s);
     const fmtDateLong = (s) => fmtWith("l", { weekday: "short", month: "short", day: "numeric", year: "numeric" }, s);
-    const fmtDateRow = (s) => parse(s).toLocaleDateString(void 0, { weekday: "short", month: "short", day: "numeric", ...s.slice(0, 4) === today().slice(0, 4) ? {} : { year: "numeric" } });
-    const PROF_GOALS = [["size", "Size"], ["strength", "Strength"], ["both", "Both"]];
-    const PROF_EXP = [["new", "Under 1"], ["mid", "1 to 3"], ["adv", "Over 3"]];
-    const PROF_DAYS = [2, 3, 4, 5, 6];
-    const FOCUS_MAX = 2;
-    const FOCUS_UP = 1.3, MAINT_SHARE = 1 / 3;
-    const DSECS = [["volume", "Volume"], ["exercise", "Lifts"], ["weak", "Muscles"], ["consistency", "Consistency"], ["body", "Body"]];
-    const DSEC_KEYS = DSECS.map((x) => x[0]);
     const SEC_TABS = ["today", "program", "dash", "history", "settings"];
-    const DSEC_FOLDED = ["consistency", "body"];
-    const DSEC_ALIAS = { stalls: "exercise", prs: "exercise", bests: "exercise", rank: "weak", svol: "volume" };
-    const TRASH_DAYS = 30, TRASH_MAX = 20, TRASH_BYTES = 6e4;
-    const VOL_MODES = [["region", "By region"], ["week", "This week"], ["avg", "Recent average"], ["trend", "Weekly trend"], ["load", "Load"]];
-    const PLATE_MODES = [["auto", "Automatic"], ["bar", "Barbell: bar plus plates per side"], ["side", "Plates per side, no bar"], ["sleeve", "One sleeve (landmine)"], ["none", "None"]];
     const HIDEABLE = [
       ["today", "week", "This week"],
       ["today", "tiles", "At a glance"],
@@ -1781,23 +3449,8 @@ loadScript(['vendor/chart.umd.js','https://cdnjs.cloudflare.com/ajax/libs/Chart.
     ];
     const HIDEABLE_KEYS = new Set(HIDEABLE.map(([t, k]) => t + ":" + k));
     const HIDE_TABS = [["today", "Today"], ["program", "Plan"], ["dash", "Stats"], ["history", "History"], ["settings", "Settings"]];
-    const DEFAULT_HIDDEN = ["today:tiles", "today:coach", "today:body", "program:schedule", "program:pvol"];
-    const DEFAULT_ORDER = { today: ["session", "map", "week", "injuries", "coach", "tiles", "body"], dash: ["exercise", "volume", "weak", "consistency", "body"] };
-    const defaultOrder = () => JSON.parse(JSON.stringify(DEFAULT_ORDER));
     const MAIN_FIXED = { history: "sessions" };
-    const JUMP_TIP = "When every set reaches the top of the rep range, the load goes up by about this share, in whole load steps and at least one step. Blank: 2.5% on compound lifts, 5% on isolation lifts, a convention. 0: one step every time. Until then the target is to beat last time's total reps at the same load. When the step is large for the load, a few more reps come first, so the new load starts inside the range.";
-    const RIR_TGT_TIP = "Target RIR is 1 unless you change it, a convention: muscle growth improves as sets end closer to failure (Robinson 2024), but going all the way to failure grew muscle no more than stopping 1 to 2 reps short (Refalo 2024) and costs more fatigue. Some lifts in the ready-made routines use 0 or 2.";
-    const COMMON_TIP = "Most common: the lifts in the top 25 by sets logged, overall, for men, or for women, among over 700,000 StrengthLog users (2025). Less common: useful lifts many gyms or programs skip, a judgment.";
     const exTags = (e, skip) => `${isCommon(e) && skip !== "common" ? '<span class="tag common">Most common</span>' : ""}${e.rare && skip !== "rare" ? '<span class="tag rare">Less common</span>' : ""}`;
-    function tplCountLine() {
-      const T = TEMPLATES.filter((t) => !t.hidden);
-      const n = T.map((t) => {
-        const r = routineFromTemplate(t.key);
-        return r.days.filter((d) => !d.rest).length * 7 / r.days.length;
-      });
-      const W = ["No", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine", "Ten", "Eleven", "Twelve"];
-      return `${W[T.length] || T.length} plans, ${Math.floor(Math.min(...n))} to ${Math.round(Math.max(...n))} days a week`;
-    }
     function starterRoutine() {
       const k = window.IRONLOG_STARTER;
       return routineFromTemplate(k && TEMPLATES.some((t) => t.key === k) ? k : "ul4");
@@ -1833,8 +3486,6 @@ loadScript(['vendor/chart.umd.js','https://cdnjs.cloudflare.com/ajax/libs/Chart.
         return false;
       }
     })();
-    const MARK_SVG = '<svg class="mark" viewBox="-242 -378 484 756" aria-hidden="true" focusable="false"><rect class="mk-h" x="-30" y="-300" width="60" height="600" rx="14"/><rect class="mk-h" x="-80" y="-192" width="160" height="32" rx="12"/><rect class="mk-h" x="-80" y="160" width="160" height="32" rx="12"/><rect class="mk-p" x="-240" y="-376" width="480" height="92" rx="30"/><rect class="mk-p" x="-190" y="-270" width="380" height="66" rx="26"/><rect class="mk-p" x="-190" y="204" width="380" height="66" rx="26"/><rect class="mk-p" x="-240" y="284" width="480" height="92" rx="30"/></svg>';
-    const LOCKUP = `<span class="vh">${APP_NAME}</span>${MARK_SVG}<span class="rn" aria-hidden="true">${WORDMARK.strong}</span><span aria-hidden="true">${WORDMARK.light}</span>`;
     const LOGK = KEY + ".log";
     const WKVIEW_KEY = KEY + ".wkView";
     const logBuf = (() => {
@@ -1858,7 +3509,6 @@ loadScript(['vendor/chart.umd.js','https://cdnjs.cloudflare.com/ajax/libs/Chart.
     }
     window.addEventListener("error", (e) => log("uncaught", e.error || e.message));
     window.addEventListener("unhandledrejection", (e) => log("promise", e.reason));
-    const STATE_VERSION = 5;
     let storageOk = true;
     let bootHadLocal = false;
     let storageBoot = true;
@@ -1930,23 +3580,6 @@ loadScript(['vendor/chart.umd.js','https://cdnjs.cloudflare.com/ajax/libs/Chart.
         return false;
       }
     }
-    const BW_MAX_KG = 400, BW_MIN_KG = 20, MEAS_MAX_CM = 300;
-    function did(tag, obj, i) {
-      let j = "";
-      try {
-        j = JSON.stringify(obj);
-      } catch (e) {
-        j = String(i);
-      }
-      return tag + hashStr(j + "#" + i);
-    }
-    const okId = (v) => typeof v === "string" && /^[\w.:-]{1,100}$/.test(v) && !(v in Object.prototype);
-    function fixId(v) {
-      return okId(v) ? v : "x" + hashStr(String(v));
-    }
-    const safeKey = (k) => typeof k === "string" && !/["'<>&`]/.test(k);
-    const EXTRA_MAX = 2e3, EXTRA_KEYS = 20;
-    const okExtraKey = (k) => /^[A-Za-z][\w]{0,39}$/.test(k) && !(k in Object.prototype);
     function keepExtra(src, out, known) {
       if (!src || typeof src !== "object" || Array.isArray(src)) return out;
       let room = EXTRA_MAX, n = 0;
@@ -1980,22 +3613,6 @@ loadScript(['vendor/chart.umd.js','https://cdnjs.cloudflare.com/ajax/libs/Chart.
       return out;
     }
     keepExtra.n = 0;
-    const KNOWN_ITEM = /* @__PURE__ */ new Set(["jump"]), KNOWN_CARDIO = /* @__PURE__ */ new Set(["dist"]), KNOWN_MEAS = new Set(MEAS.map((x) => x[0]));
-    function cleanCal(c) {
-      if (!c || typeof c !== "object") return null;
-      const at = numOr(c.at, NaN), pred = numOr(c.pred, NaN);
-      if (!isNum(at) || !isNum(pred) || at < 1 || pred < 0) return null;
-      return { at: Math.min(Math.round(at), 1e3), pred: Math.min(Math.round(pred * 2) / 2, 10) };
-    }
-    function cleanChk(c) {
-      if (!c || typeof c !== "object") return null;
-      const o = {};
-      for (const k of ["sleep", "energy", "joints"]) {
-        const v = Math.round(numOr(c[k], NaN));
-        if (v >= 1 && v <= 3) o[k] = v;
-      }
-      return Object.keys(o).length ? o : null;
-    }
     const distU = () => U() === "kg" ? "km" : "mi";
     const distShow = (km) => Math.round((U() === "kg" ? km : km / KM_MI) * 100) / 100;
     const distIn = (v) => {
@@ -2016,21 +3633,6 @@ loadScript(['vendor/chart.umd.js','https://cdnjs.cloudflare.com/ajax/libs/Chart.
         ...isNum(dk) && dk > 0 ? { dist: Math.min(Math.round(dk * 1e3) / 1e3, 1e3) } : {}
       }, KNOWN_CARDIO);
     }
-    function cleanTgt(t) {
-      if (!t || typeof t !== "object" || t.kind !== "load" && t.kind !== "reps") return null;
-      const o = { kind: t.kind };
-      for (const k of ["w", "repMin", "total", "n", "prevBest"]) {
-        if (!(k in t)) continue;
-        const v = t[k];
-        o[k] = v == null ? null : isNum(numOr(v, NaN)) ? numOr(v, 0) : null;
-      }
-      if (Array.isArray(t.rs)) o.rs = t.rs.slice(0, 30).map((v) => {
-        const n = numOr(v, NaN);
-        return isNum(n) && n >= 0 ? Math.min(n, 1e3) : 0;
-      });
-      return o;
-    }
-    const okSess = (ss) => !!ss && typeof ss === "object" && isDate(ss.date) && Array.isArray(ss.ex);
     function cleanSess(ss, si) {
       return keepExtra(ss, {
         id: typeof ss.id === "string" ? fixId(ss.id) : did("s", ss, si),
@@ -2070,7 +3672,6 @@ loadScript(['vendor/chart.umd.js','https://cdnjs.cloudflare.com/ajax/libs/Chart.
         t: Number.isFinite(+ss.t) && +ss.t > 0 ? Math.round(+ss.t) : void 0
       });
     }
-    const sessCmp = (a, b) => a.date < b.date ? -1 : a.date > b.date ? 1 : (a.t || 0) - (b.t || 0) || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0);
     function normalize(s) {
       const f = freshState();
       normalize.dropped = 0;
@@ -2458,7 +4059,7 @@ loadScript(['vendor/chart.umd.js','https://cdnjs.cloudflare.com/ajax/libs/Chart.
       }
       return normalize(null);
     }
-    let state = load();
+    setState(load());
     if (normalize.dropped) log("load", new Error(`${normalize.dropped} damaged record${normalize.dropped === 1 ? " was" : "s were"} skipped when the save was read`));
     let saveT = null;
     function saveNow() {
@@ -2517,7 +4118,6 @@ loadScript(['vendor/chart.umd.js','https://cdnjs.cloudflare.com/ajax/libs/Chart.
       }
       return { cls, txt };
     }
-    const MENU_ICON = '<svg class="mi" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="12" cy="8.4" r="3.7"/><path d="M4.8 19.6c1.3-3.7 4.1-5.4 7.2-5.4s5.9 1.7 7.2 5.4"/></svg>';
     function setSaveState() {
       const el = $("#saveState");
       if (!el) return;
@@ -2537,7 +4137,6 @@ loadScript(['vendor/chart.umd.js','https://cdnjs.cloudflare.com/ajax/libs/Chart.
         if (ui.modal && ui.modal.kind === "menu" && !$("#modal").hidden) renderModal();
       }
     }
-    const cloud = { on: false, db: null, uid: null, status: "local", last: null, meta: {}, editAt: {}, localH: {}, devId: null, pendAt: null, chain: Promise.resolve(), t: null, retry: 0, dirtyAt: 0, lastPull: 0, err: null };
     const SYNC_KEY = KEY + ".sync";
     try {
       const m = JSON.parse(localStorage.getItem(SYNC_KEY) || "null");
@@ -2563,32 +4162,6 @@ loadScript(['vendor/chart.umd.js','https://cdnjs.cloudflare.com/ajax/libs/Chart.
         log("sync-meta", e);
       }
     }
-    const chunkOf = (date) => `s-${date.slice(0, 7)}-${+date.slice(8, 10) <= 15 ? 1 : 2}`;
-    const bySess = sessCmp;
-    const bodyChunkOf = (date) => "b-" + String(date || "").slice(0, 4);
-    function chunksOf(st) {
-      const out = { core: { version: st.version, settings: st.settings, exercises: st.exercises, routines: st.routines, activeRoutineId: st.activeRoutineId, bodyweights: [], measurements: [], deloadWeek: st.deloadWeek || null, injuries: st.injuries || [], trash: st.trash || [] }, draft: { draft: st.draft || null } };
-      for (const k of ["bodyweights", "measurements"]) for (const x of st[k] || []) {
-        const c = out[bodyChunkOf(x.date)] || (out[bodyChunkOf(x.date)] = {});
-        (c[k] || (c[k] = [])).push(x);
-      }
-      for (const id in out) if (id.startsWith("b-")) for (const k in out[id]) out[id][k].sort(bySess);
-      for (const x of st.sessions) {
-        const k = chunkOf(x.date);
-        (out[k] || (out[k] = { sessions: [] })).sessions.push(x);
-      }
-      for (const x of st.cardio || []) {
-        const k = chunkOf(x.date);
-        const c = out[k] || (out[k] = { sessions: [] });
-        (c.cardio || (c.cardio = [])).push(x);
-      }
-      for (const k in out) {
-        if (out[k].sessions) out[k].sessions.sort(bySess);
-        if (out[k].cardio) out[k].cardio.sort(bySess);
-      }
-      return out;
-    }
-    const emptyChunk = (id) => id === "core" ? null : id === "draft" ? { draft: null } : id.startsWith("b-") ? {} : { sessions: [] };
     function assemble(parts) {
       const core = parts.core || {};
       const sessions = [], cardio = [], bw = [], ms = [];
@@ -2608,10 +4181,6 @@ loadScript(['vendor/chart.umd.js','https://cdnjs.cloudflare.com/ajax/libs/Chart.
       if (!a || !(a.bodyweights || a.measurements)) return null;
       return { a: { bodyweights: a.bodyweights || {}, measurements: a.measurements || {} } };
     }
-    const baseFor = (id, m, legB) => m && m.b ? m.b : id.startsWith("b-") ? legB : null;
-    function legacyBody(raw) {
-      return { bodyweights: raw && Array.isArray(raw.bodyweights) ? raw.bodyweights : [], measurements: raw && Array.isArray(raw.measurements) ? raw.measurements : [] };
-    }
     function absorbLegacy(L) {
       const add = (k) => {
         const have = new Set((state[k] || []).map((x) => x && x.id));
@@ -2619,16 +4188,9 @@ loadScript(['vendor/chart.umd.js','https://cdnjs.cloudflare.com/ajax/libs/Chart.
       };
       const bw = add("bodyweights"), ms = add("measurements");
       if (!bw.length && !ms.length) return false;
-      state = normalize({ ...state, bodyweights: state.bodyweights.concat(bw), measurements: state.measurements.concat(ms) });
+      setState(normalize({ ...state, bodyweights: state.bodyweights.concat(bw), measurements: state.measurements.concat(ms) }));
       return true;
     }
-    function unionById(a, b) {
-      const m = /* @__PURE__ */ new Map();
-      for (const x of b || []) if (x && x.id) m.set(x.id, x);
-      for (const x of a || []) if (x && x.id) m.set(x.id, x);
-      return [...m.values()];
-    }
-    const realCount = (st) => st.sessions.filter((x) => !x.demo).length;
     const cq = (fn) => cloud.chain = cloud.chain.then(fn, fn);
     function withTimeout(pr, ms) {
       return Promise.race([pr, new Promise((_, rej) => setTimeout(() => rej({ code: "timeout" }), ms))]);
@@ -2660,15 +4222,6 @@ loadScript(['vendor/chart.umd.js','https://cdnjs.cloudflare.com/ajax/libs/Chart.
       clearTimeout(cloud.t);
       cloud.t = setTimeout(() => cq(cloudFlush), wait);
     }
-    function canon(x) {
-      if (x === void 0) return "null";
-      if (x === null || typeof x !== "object") return JSON.stringify(x);
-      if (Array.isArray(x)) return "[" + x.map(canon).join(",") + "]";
-      return "{" + Object.keys(x).filter((k) => x[k] !== void 0).sort().map((k) => JSON.stringify(k) + ":" + canon(x[k])).join(",") + "}";
-    }
-    const Hx = (x) => hashStr(canon(x));
-    const CORE_ARR = ["routines", "exercises", "injuries", "trash"];
-    const CORE_FIELDS = ["version", "activeRoutineId", "deloadWeek"];
     function normChunk(id, data) {
       if (!data) return data;
       try {
@@ -2699,46 +4252,6 @@ loadScript(['vendor/chart.umd.js','https://cdnjs.cloudflare.com/ajax/libs/Chart.
       if (id === "draft") return { d: Hx(data.draft) };
       if (id.startsWith("b-")) return { a: { bodyweights: hl(data.bodyweights), measurements: hl(data.measurements) } };
       return { a: { sessions: hl(data.sessions), cardio: hl(data.cardio) } };
-    }
-    function merge3List(base, l, r, remoteWins, stat) {
-      const known = !!base;
-      base = base || {};
-      const L = /* @__PURE__ */ new Map(), Rm = /* @__PURE__ */ new Map();
-      for (const x of l || []) if (x && typeof x.id === "string") L.set(x.id, x);
-      for (const x of r || []) if (x && typeof x.id === "string") Rm.set(x.id, x);
-      const out = [];
-      for (const id of [...L.keys(), ...[...Rm.keys()].filter((k) => !L.has(k))]) {
-        const a = L.get(id), b = Rm.get(id), bh = known ? base[id] : "?";
-        const ah = a ? Hx(a) : void 0, rh = b ? Hx(b) : void 0;
-        if (ah === rh) {
-          out.push(a);
-          continue;
-        }
-        if (!a || !b) {
-          const p = a || b, ph = a ? ah : rh;
-          if (known && ph === bh) continue;
-          out.push(p);
-          continue;
-        }
-        if (ah === bh) {
-          out.push(b);
-          continue;
-        }
-        if (rh === bh) {
-          out.push(a);
-          continue;
-        }
-        stat.conflicts++;
-        out.push(remoteWins ? b : a);
-      }
-      return out;
-    }
-    function merge3Val(bh, a, b, remoteWins, stat) {
-      const ah = Hx(a), rh = Hx(b);
-      if (ah === rh || rh === bh) return a;
-      if (ah === bh) return b;
-      stat.conflicts++;
-      return remoteWins ? b : a;
     }
     function mergeChunk(id, base, local, remote, remoteWins, stat) {
       local = normChunk(id, local || emptyChunk(id)) || {};
@@ -2782,14 +4295,13 @@ loadScript(['vendor/chart.umd.js','https://cdnjs.cloudflare.com/ajax/libs/Chart.
     function applyChunk(id, data) {
       if (id === "core") {
         const c = data || {};
-        state = normalize({ ...state, version: c.version, settings: c.settings, exercises: c.exercises, routines: c.routines, activeRoutineId: c.activeRoutineId, deloadWeek: c.deloadWeek, injuries: c.injuries, trash: c.trash });
+        setState(normalize({ ...state, version: c.version, settings: c.settings, exercises: c.exercises, routines: c.routines, activeRoutineId: c.activeRoutineId, deloadWeek: c.deloadWeek, injuries: c.injuries, trash: c.trash }));
       } else if (id.startsWith("b-")) {
         const c = data || {};
-        state = normalize({ ...state, bodyweights: state.bodyweights.filter((q) => bodyChunkOf(q.date) !== id).concat(c.bodyweights || []), measurements: state.measurements.filter((q) => bodyChunkOf(q.date) !== id).concat(c.measurements || []) });
-      } else if (id === "draft") state = normalize({ ...state, draft: data ? data.draft : null });
-      else state = normalize({ ...state, sessions: state.sessions.filter((q) => chunkOf(q.date) !== id).concat(data && data.sessions || []), cardio: (state.cardio || []).filter((q) => chunkOf(q.date) !== id).concat(data && data.cardio || []) });
+        setState(normalize({ ...state, bodyweights: state.bodyweights.filter((q) => bodyChunkOf(q.date) !== id).concat(c.bodyweights || []), measurements: state.measurements.filter((q) => bodyChunkOf(q.date) !== id).concat(c.measurements || []) }));
+      } else if (id === "draft") setState(normalize({ ...state, draft: data ? data.draft : null }));
+      else setState(normalize({ ...state, sessions: state.sessions.filter((q) => chunkOf(q.date) !== id).concat(data && data.sessions || []), cardio: (state.cardio || []).filter((q) => chunkOf(q.date) !== id).concat(data && data.cardio || []) }));
     }
-    const isChunkId = (id) => id === "core" || id === "draft" || /^s-\d{4}-\d{2}-[12]$/.test(id) || /^b-\d{4}$/.test(id);
     let trackT = null;
     function markEdit() {
       if (!cloud.pendAt) cloud.pendAt = Date.now();
@@ -3036,7 +4548,7 @@ loadScript(['vendor/chart.umd.js','https://cdnjs.cloudflare.com/ajax/libs/Chart.
           snapshot();
           merged = true;
           const base = realCount(state) > realCount(rState) ? state : rState, other = base === state ? rState : state;
-          state = normalize({ ...base, exercises: unionById(base.exercises, other.exercises), routines: unionById(base.routines, other.routines), sessions: unionById(state.sessions, rState.sessions), bodyweights: unionById(state.bodyweights, rState.bodyweights), measurements: unionById(state.measurements, rState.measurements), cardio: unionById(state.cardio, rState.cardio), trash: unionById(state.trash, rState.trash), draft: state.draft || rState.draft });
+          setState(normalize({ ...base, exercises: unionById(base.exercises, other.exercises), routines: unionById(base.routines, other.routines), sessions: unionById(state.sessions, rState.sessions), bodyweights: unionById(state.bodyweights, rState.bodyweights), measurements: unionById(state.measurements, rState.measurements), cardio: unionById(state.cardio, rState.cardio), trash: unionById(state.trash, rState.trash), draft: state.draft || rState.draft }));
           for (const id of rids) {
             cloud.meta[id] = { h: remote[id].h, at: remote[id].at, b: baseOf(id, remote[id].data) };
             cloud.editAt[id] = Date.now();
@@ -3071,7 +4583,7 @@ loadScript(['vendor/chart.umd.js','https://cdnjs.cloudflare.com/ajax/libs/Chart.
       }
       const dr0 = state.draft;
       if (parts) {
-        state = assemble(parts);
+        setState(assemble(parts));
         absorbLegacy(leg);
       }
       if (parts || merged) {
@@ -3147,7 +4659,6 @@ loadScript(['vendor/chart.umd.js','https://cdnjs.cloudflare.com/ajax/libs/Chart.
       }
     }
     const AUTH = () => window.ironlogAuth && typeof window.ironlogAuth.user === "function" ? window.ironlogAuth : null;
-    const acct = { user: null, checked: false, reader: false };
     const ACCT_LATER = KEY + ".acctLater";
     function cloudStop() {
       clearTimeout(cloud.t);
@@ -3170,11 +4681,6 @@ loadScript(['vendor/chart.umd.js','https://cdnjs.cloudflare.com/ajax/libs/Chart.
       }
     }
     const FB = () => window.ironlogFeedback && typeof window.ironlogFeedback.send === "function" ? window.ironlogFeedback : null;
-    const FB_CATS = [["bug", "Problem"], ["question", "Question"], ["idea", "Suggestion"]];
-    const FB_TITLE = { bug: "Report a problem", question: "Ask a question", idea: "Suggest something" };
-    const FB_ASK = { bug: "What went wrong?", question: "Your question", idea: "Your suggestion" };
-    const FB_HINT = { bug: "What you tapped, what you expected, what happened", question: "", idea: "" };
-    const FB_MIN = 10, FB_MAX = 1e3, FB_DAY = 5, FB_IMG_MB = 10;
     const FB_SENT = KEY + ".fbSent";
     function fbRecent() {
       try {
@@ -3229,8 +4735,6 @@ loadScript(['vendor/chart.umd.js','https://cdnjs.cloudflare.com/ajax/libs/Chart.
       if (bytes() > FB_CTX_MAX) ctx.errors = ctx.errors.map(({ s, ...x }) => ({ ...x, m: String(x.m).slice(0, 100) }));
       return ctx;
     }
-    const FB_CTX_MAX = 15e3;
-    const FB_WHAT = "Attached by the app: the build, your device and browser, screen size, which screen you came from, whether a session was open, sync status, and up to 10 recent errors with where in the app each happened. Never your workouts. It goes to the app owner.";
     function guideSheet(m) {
       const off = state.settings.rirMode === "off";
       const kg = U() === "kg";
@@ -3358,7 +4862,6 @@ loadScript(['vendor/chart.umd.js','https://cdnjs.cloudflare.com/ajax/libs/Chart.
   ${m.err ? `<p class="small" role="alert" style="color:var(--red);margin:0">${esc(m.err)}</p>` : ""}
   <button type="button" class="btn primary block" data-act="fbSend" ${m.busy ? "disabled" : ""}>${m.busy ? "Sending" : F ? "Send" : "Copy report"}</button></div></div>`;
     }
-    const FB_SHOT_RE = /^data:image\/jpeg;base64,[A-Za-z0-9+/]+={0,2}$/;
     function fbInboxSheet(m) {
       const it = m.items;
       const body = m.err ? `<p class="small" role="alert" style="color:var(--red)">${esc(m.err)}</p>` : !it ? '<p class="muted">Loading</p>' : !it.length ? '<p class="muted">No feedback yet.</p>' : `<ul class="clist fbinbox">${it.map((x) => `<li><div style="min-width:0;flex:1"><p class="small" style="margin:0"><span class="tag ${x.category === "bug" ? "red" : x.category === "idea" ? "green" : "blue"}">${esc(x.category)}</span> <span class="muted">${esc(String(x.created_at || "").slice(0, 16).replace("T", " "))}${x.reply_to ? ` · ${esc(x.reply_to)}` : ""}</span></p><p style="margin:4px 0 0;white-space:pre-wrap;overflow-wrap:anywhere">${esc(x.message)}</p>${x.screenshot && FB_SHOT_RE.test(x.screenshot) ? `\x3cimg class="fbthumb" src="${esc(x.screenshot)}" alt="Screenshot">` : ""}${x.issue_url && /^https:\/\/github\.com\//.test(x.issue_url) ? `<p class="small" style="margin:4px 0 0"><a href="${esc(x.issue_url)}" target="_blank" rel="noopener">GitHub issue</a></p>` : ""}<details class="small muted"><summary>Attached by the app</summary><pre class="fbctx">${esc(JSON.stringify(x.context || {}, null, 1))}</pre></details></div></li>`).join("")}</ul>`;
@@ -3399,7 +4902,6 @@ loadScript(['vendor/chart.umd.js','https://cdnjs.cloudflare.com/ajax/libs/Chart.
       });
     }
     const ACCT_WAIT = KEY + ".acctWait";
-    const acctWait = { email: "", pw: "", t: 0, timer: null, busy: false, last: 0 };
     function waitStart(email, pw) {
       acctWait.email = email;
       acctWait.pw = pw;
@@ -3633,12 +5135,12 @@ loadScript(['vendor/chart.umd.js','https://cdnjs.cloudflare.com/ajax/libs/Chart.
         base = null;
       }
       const stat = { conflicts: 0 };
-      if (!base || canon(state) === canon(base)) state = incoming;
+      if (!base || canon(state) === canon(base)) setState(incoming);
       else {
         const L = chunksOf(state), Rr = chunksOf(incoming), B = chunksOf(base), parts = {};
         for (const id of /* @__PURE__ */ new Set([...Object.keys(L), ...Object.keys(Rr), ...Object.keys(B)]))
           parts[id] = mergeChunk(id, baseOf(id, B[id] || emptyChunk(id)), L[id] || emptyChunk(id), Rr[id] || emptyChunk(id), true, stat);
-        state = assemble(parts);
+        setState(assemble(parts));
       }
       lastSaved = ev.newValue;
       clearTimeout(saveT);
@@ -3822,25 +5324,6 @@ loadScript(['vendor/chart.umd.js','https://cdnjs.cloudflare.com/ajax/libs/Chart.
     function prLoad(ex, s, date) {
       return ex && ex.bw ? bwRef() * bwShare(ex) + (+s.w || 0) : loadOf(ex, s, date);
     }
-    const LOAD_MODES = [["each", "Per dumbbell (two dumbbells)"], ["total", "Total on the implement"], ["side", "Plates on one side"], ["stack", "Stack setting"]];
-    function loadWords(ex) {
-      const m = loadMode(ex);
-      if (ex && ex.assist) return "machine help";
-      if (m === "each") return "per dumbbell";
-      if (m === "side") return "plates per side";
-      if (m === "stack") return "stack setting";
-      if (m === "bw") return "added to bodyweight";
-      if (ex.equip === "dumbbell") return "one dumbbell";
-      if (ex.equip === "barbell") return "total, bar included";
-      if (ex.equip === "landmine") return "plates on the sleeve";
-      if (ex.equip === "smith") return "total on the bar";
-      if (PLATE_SIDE_IDS.includes(ex.id) || ex.equip === "machine") return "total plates";
-      return "total";
-    }
-    function loadNote(ex) {
-      const m = loadMode(ex);
-      return m === "each" ? " per dumbbell" : m === "side" ? " per side" : "";
-    }
     function loadHead(ex) {
       const m = loadMode(ex), u = U().toUpperCase();
       if (ex && ex.assist) return "Help " + u;
@@ -3861,16 +5344,6 @@ loadScript(['vendor/chart.umd.js','https://cdnjs.cloudflare.com/ajax/libs/Chart.
       const load2 = m === "bw" ? Math.max(0, bl + w) : m === "each" || m === "side" ? w * 2 : w;
       return load2 * (+s.r || 0) * (ex.perSide ? 2 : 1);
     }
-    const BAND_WORDS = { 1: "1 to 5 reps to failure", 2: "6 to 10 reps to failure", 3: "11 to 12 reps to failure" };
-    const BAND_SHORT = { 1: "1 to 5 reps to failure", 2: "6 to 10 reps to failure", 3: "11 to 12 reps to failure" };
-    function prOverall(p) {
-      return p.prevAll == null || p.value != null && p.value > p.prevAll + 1e-6;
-    }
-    function prName(p) {
-      return prOverall(p) ? "Best estimate" : `Best for ${BAND_SHORT[p.bb] || "its reps"}`;
-    }
-    const repSpan = (lo, hi, sep = " to ") => +lo === +hi ? `${+lo}` : `${+lo}${sep}${+hi}`;
-    const rangeWords = (p) => +p.repMin === +p.repMax ? `target of ${+p.repMin}` : `${+p.repMin}-${+p.repMax} range`;
     function sortedSessions() {
       return [...state.sessions].sort(sessCmp);
     }
@@ -4123,22 +5596,6 @@ loadScript(['vendor/chart.umd.js','https://cdnjs.cloudflare.com/ajax/libs/Chart.
         if (x.best != null) maxBest = maxBest == null ? x.best : Math.max(maxBest, x.best);
       });
       return maxBest;
-    }
-    function trendScope(exps, anchor) {
-      const real = exps.filter((x) => !offSession(x));
-      const curRR = real.length ? real[real.length - 1].rr : null;
-      const inRange = real.filter((x) => sameRR(x.rr, curRR));
-      const lastReal = real.length ? real[real.length - 1] : null;
-      const exWin = addDays(lastReal ? lastReal.date : anchor, -42);
-      return { real, curRR, inRange, lastReal, exWin };
-    }
-    function trendW(sc) {
-      return sc.inRange.filter((x) => x.date >= sc.exWin && x.tv != null);
-    }
-    function trendEnds(w) {
-      const k = w.length >= 4 ? 2 : 1;
-      const best = (a) => a.reduce((m, x) => x.tv > m.tv ? x : m);
-      return { first: best(w.slice(0, k)), last: best(w.slice(w.length - k)) };
     }
     function idxLift(id, exps, maxBest, anchor, winStart) {
       const sc = trendScope(exps, anchor);
@@ -4524,9 +5981,6 @@ loadScript(['vendor/chart.umd.js','https://cdnjs.cloudflare.com/ajax/libs/Chart.
       const list = over.map(([m, v]) => `${ML[m]} ${r1(v)}`);
       const who = andList(list);
       return `<p class="small" style="margin:4px 12px 0"><span class="flag hastip" data-tip="More than ${SESSION_CAP} sets for one muscle in one workout. That line is a convention from one study not yet peer reviewed (Remmert 2025), which found no extra growth past it. Consider moving some to another day. Helper-muscle sets count as half.">Heavy for one workout: ${who} sets</span></p>`;
-    }
-    function daySets(day) {
-      return day.items.reduce((a, it) => a + +it.sets, 0);
     }
     const SIZE_MAP = [["arm", ["biceps", "triceps"]], ["forearm", ["forearms"]], ["chest", ["chest"]], ["thigh", ["quads", "hamstrings", "adductors"]], ["calf", ["calves"]], ["neck", ["neck"]]];
     function sizeRows() {
@@ -5076,58 +6530,9 @@ loadScript(['vendor/chart.umd.js','https://cdnjs.cloudflare.com/ajax/libs/Chart.
       }
       return v;
     }
-    function gymPlates(u) {
-      return u === "kg" ? [25, 20, 15, 10, 5, 2.5, 1.25] : [45, 35, 25, 10, 5, 2.5];
-    }
-    function gymClean(g) {
-      if (!g || typeof g !== "object" || g.u !== "lb" && g.u !== "kg") return null;
-      const out = { u: g.u };
-      const n = (v) => {
-        const x = +v;
-        return isFinite(x) ? Math.round(x * 1e3) / 1e3 : NaN;
-      };
-      const d = g.db;
-      if (d && typeof d === "object") {
-        const lo = n(d.lo), hi = n(d.hi), st = n(d.st), fine = n(d.fine), fineTo = n(d.fineTo);
-        if (lo > 0 && hi >= lo && hi <= 500 && st > 0 && st <= 50) {
-          const db = { lo, hi, st };
-          if (fine > 0 && fine < st && fineTo > lo) {
-            db.fine = fine;
-            db.fineTo = Math.min(fineTo, hi);
-          }
-          if (dbListOf(db)) out.db = db;
-        }
-      }
-      if (Array.isArray(g.kb)) {
-        const kb = [...new Set(g.kb.map(n).filter((x) => x > 0 && x <= 300))].sort((a, b) => a - b).slice(0, 40);
-        if (kb.length) out.kb = kb;
-      }
-      if (Array.isArray(g.plates)) {
-        const all = gymPlates(g.u);
-        const pl = all.filter((x) => g.plates.map(n).includes(x));
-        if (pl.length) out.plates = pl;
-      }
-      {
-        const st = n(g.stack);
-        if (st > 0 && st <= 100) out.stack = st;
-      }
-      return Object.keys(out).length > 1 ? out : null;
-    }
     function gymOf() {
       const g = state.settings.gym;
       return g && typeof g === "object" ? g : null;
-    }
-    const gymK = (g, v) => g.u === "kg" ? v : v * LB;
-    function dbListOf(d) {
-      if (!d || !(d.lo > 0) || !(d.hi >= d.lo) || !(d.st > 0)) return null;
-      const out = [];
-      let v = d.lo;
-      while (v <= d.hi + 1e-6) {
-        if (out.length >= 300) return null;
-        out.push(r3(v));
-        v = r3(v + (d.fine > 0 && d.fineTo > 0 && v < d.fineTo - 1e-6 ? d.fine : d.st));
-      }
-      return out;
     }
     function gymRack(ex, plan) {
       const g = gymOf();
@@ -5294,14 +6699,6 @@ loadScript(['vendor/chart.umd.js','https://cdnjs.cloudflare.com/ajax/libs/Chart.
       if (w < floor - 1e-6) w = Math.min(floor, from);
       return Math.max(0, w);
     }
-    function platesMode(ex) {
-      if (ex.plates) return ex.plates;
-      if (ex.bw) return "none";
-      if (ex.equip === "barbell") return "bar";
-      if (ex.equip === "landmine") return "sleeve";
-      if (PLATE_SIDE_IDS.includes(ex.id)) return "side";
-      return "none";
-    }
     function plateText(kg, mode, ex) {
       mode = mode || "bar";
       if (mode === "none") return "";
@@ -5357,27 +6754,6 @@ loadScript(['vendor/chart.umd.js','https://cdnjs.cloudflare.com/ajax/libs/Chart.
       const el = document.getElementById("pl-" + bi);
       if (!el || !state.draft || !state.draft.ex[bi]) return;
       el.textContent = plateLine(state.draft.ex[bi], si);
-    }
-    function effTarget(b) {
-      const t = b.tgt;
-      if (!t || t.kind !== "reps") return t;
-      const nw = b.sets.filter((x) => !x.warm && !x.drop).length;
-      if (!Array.isArray(t.rs) || !(nw > 0) || nw >= t.n) return t;
-      return { ...t, n: nw, total: t.rs.slice(0, nw).reduce((a, v) => a + v, 0) };
-    }
-    function overSets(n, plan, kind) {
-      const w = kind === "hold" ? "hold" : "set";
-      if (n === 1) return `in one ${w}`;
-      return +(plan && plan.sets) > n ? `over your first ${n} ${w}s` : `over ${n} ${w}s`;
-    }
-    function targetText(b) {
-      const t = b.tgt, e = effTarget(b);
-      if (!t || t === e || !b.target) return b.target;
-      const m = b.target.match(/^(\d+)(s?)\+ (reps )?(?:in one set|over (?:your first )?\d+ sets|in one hold|over (?:your first )?\d+ holds)( at .*)$/);
-      if (!m) return b.target;
-      const hold = m[2] === "s";
-      const over = e.n === 1 ? hold ? "in one hold" : "in one set" : `over ${e.n} ${hold ? "holds" : "sets"}`;
-      return `${e.total + 1}${m[2]}+ ${m[3] || ""}${over}${m[4]}`;
     }
     function whyTarget(b) {
       if (!b) return "";
@@ -5479,15 +6855,6 @@ loadScript(['vendor/chart.umd.js','https://cdnjs.cloudflare.com/ajax/libs/Chart.
       });
     }
     const fillLoads = () => state.settings.loadFill === "fill";
-    function greyW(b, si) {
-      const s = b && b.sets[si];
-      if (!s || s.warm || s.drop) return null;
-      for (let i = si - 1; i >= 0; i--) {
-        const x = b.sets[i];
-        if (!x.warm && !x.drop && x.w != null) return b.adj && b.adj.at === i ? b.adj.w : x.w;
-      }
-      return b.sw == null ? null : b.sw;
-    }
     function heavierLoad(ex, plan, from, to) {
       const L = gymRack(ex, plan);
       if (L) {
@@ -5632,11 +6999,6 @@ loadScript(['vendor/chart.umd.js','https://cdnjs.cloudflare.com/ajax/libs/Chart.
         if (last) last.insertAdjacentHTML("afterend", html);
       }
     }
-    function effW(b, si) {
-      const s = b && b.sets[si];
-      if (!s) return null;
-      return s.w != null ? s.w : greyW(b, si);
-    }
     function settleLoad(b, si) {
       const s = b && b.sets[si];
       if (!s || s.w != null) return;
@@ -5677,18 +7039,6 @@ loadScript(['vendor/chart.umd.js','https://cdnjs.cloudflare.com/ajax/libs/Chart.
         } else ui.blkOpen.delete(k);
       });
       return r;
-    }
-    function blockDone(b) {
-      const w = b.sets.filter((x) => !x.warm);
-      return w.length > 0 && w.every((x) => x.done);
-    }
-    function sessProgress(d) {
-      let n = 0, k = 0;
-      for (const b of d.ex) for (const x of b.sets) if (!x.warm) {
-        n++;
-        if (x.done) k++;
-      }
-      return { n, k, pct: n ? k / n * 100 : 0 };
     }
     function updateSessBar() {
       const d = state.draft;
@@ -5789,8 +7139,6 @@ loadScript(['vendor/chart.umd.js','https://cdnjs.cloudflare.com/ajax/libs/Chart.
       const q = !!actions && actions.lastIndexOf("<button") === 0 && actions.includes('class="hb"');
       return `<div class="ph${q ? " q" : ""}"><div>${kick ? `<p class="kick">${kick}</p>` : ""}<h2>${esc(title)}</h2>${meta ? `<p class="meta">${meta}</p>` : ""}</div>${actions ? `<div class="ph-a">${actions}</div>` : ""}</div>`;
     }
-    const HIST_PAGE = 25;
-    const ui = { blkOpen: /* @__PURE__ */ new Set(), tab: "today", todayDay: null, mapSel: null, mapSrc: null, prevOpen: false, help: /* @__PURE__ */ new Set(), planView: "routine", histEx: "", histLimit: HIST_PAGE, wkOpen: false, libQ: "", libM: "", libE: "", libKind: "", bRoutine: null, bLibOpen: false, bLibQ: "", bLibM: "", bTarget: 0, openItem: null, dashEx: null, dashMuscle: "chest", volMode: "region", histOpen: null, modal: null, folds: {}, rng: {}, eqLast: null };
     let toastT = null;
     function toastQuiet() {
       const el = $("#toast");
@@ -5818,44 +7166,6 @@ loadScript(['vendor/chart.umd.js','https://cdnjs.cloudflare.com/ajax/libs/Chart.
       while (undoStack.length > UNDO_MAX) undoStack.shift();
       undoPersist();
     }
-    function mergeDraft(base, cur, pre) {
-      if (!pre || !cur || !base || pre.id !== cur.id || base.id !== cur.id) return cur === void 0 ? null : cur;
-      const keyed = (list) => {
-        const seen = {};
-        return (list || []).map((b) => {
-          const k = b.exId + "#" + (seen[b.exId] = (seen[b.exId] || 0) + 1);
-          return [k, b];
-        });
-      };
-      const B = new Map(keyed(base.ex)), C = keyed(cur.ex), P = keyed(pre.ex);
-      const Cm = new Map(C);
-      const pick = (k) => {
-        const b = B.get(k), c = Cm.get(k), p = P.find((x) => x[0] === k);
-        const pv = p ? p[1] : void 0;
-        const bh = b ? canon(b) : null, ch = c ? canon(c) : null, ph = pv ? canon(pv) : null;
-        if (ch === bh) return pv;
-        if (ph === bh) return c;
-        return c;
-      };
-      const out = [];
-      const ord = (l) => l.map((x) => x[0]).join("|");
-      const keep = ord(keyed(base.ex)) === ord(P);
-      for (const [k] of keep ? C : P) {
-        const v = pick(k);
-        if (v) out.push(v);
-      }
-      for (const [k, c] of C) {
-        if (!P.some((x) => x[0] === k)) {
-          const v = pick(k);
-          if (v && !out.includes(v)) out.push(v);
-        }
-      }
-      const res = { ...cur, ex: out };
-      for (const f of ["notes", "dayName", "deload", "light", "limited", "cardio", "chk"]) {
-        if (canon(cur[f]) === canon(base[f])) res[f] = pre[f];
-      }
-      return res;
-    }
     function capturePost() {
       const e = undoStack[undoStack.length - 1];
       if (e && e.post == null) {
@@ -5880,7 +7190,6 @@ loadScript(['vendor/chart.umd.js','https://cdnjs.cloudflare.com/ajax/libs/Chart.
         return false;
       }
     };
-    const FORM_SHEETS = /* @__PURE__ */ new Set(["imp", "feedback", "account", "exEdit", "injury", "cardio", "quick", "note", "text", "routineNew", "inc", "max", "load", "reps", "cal", "walk"]);
     function modalPush() {
       try {
         if (!(history.state && history.state.ilModal)) history.pushState({ ilModal: 1, ilTab: ui.tab }, "");
@@ -6263,8 +7572,6 @@ loadScript(['vendor/chart.umd.js','https://cdnjs.cloudflare.com/ajax/libs/Chart.
       });
       sortables = [];
     }
-    const ACCENTS = [["ember", "Ember"], ["blue", "Blue"], ["volt", "Volt"], ["pink", "Pink"]];
-    const ACCENT0 = "ember";
     function applyTheme() {
       const t = state.settings.theme;
       if (t === "system") delete document.documentElement.dataset.theme;
@@ -6488,10 +7795,6 @@ loadScript(['vendor/chart.umd.js','https://cdnjs.cloudflare.com/ajax/libs/Chart.
       }
       return `<div class="acctbar" id="acctBar"><span class="small"><b>Only on this phone.</b><span class="ab-more"> Sync it with an account.</span></span><button class="btn sm primary" data-act="acctOpen" data-mode="signup">Set up sync</button><button class="ib" aria-label="Not now" data-act="acctLater">✕</button></div>`;
     }
-    function greeting() {
-      const h = (/* @__PURE__ */ new Date()).getHours();
-      return h < 5 ? "Evening" : h < 12 ? "Morning" : h < 17 ? "Afternoon" : "Evening";
-    }
     const INSTALL_LATER = KEY + ".installLater";
     function canInstallHere() {
       return !!window.IRONLOG_APP && !isStandalone() && !(window.claude && typeof window.claude.use === "function");
@@ -6555,8 +7858,6 @@ loadScript(['vendor/chart.umd.js','https://cdnjs.cloudflare.com/ajax/libs/Chart.
       const ios = /^ios/.test(installKind());
       return `<div class="acctbar" id="installBar"><span class="small"><b>Get the app.</b>${ios ? "" : `<span class="ab-more"> Install ${APP_NAME} on your home screen.</span>`}</span><button class="btn sm primary" data-act="install">${ios ? "Add to Home Screen" : "Install"}</button><button class="ib" aria-label="Not now" data-act="installLater">✕</button></div>`;
     }
-    const SHARE_ICON = '<svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12M8 7l4-4 4 4"/><path d="M6 11H5a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-8a1 1 0 0 0-1-1h-1"/></svg>';
-    const ADD_ICON = '<svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="4"/><path d="M12 8v8M8 12h8"/></svg>';
     function installPic(how) {
       const hl = (x, y) => `<circle cx="${x}" cy="${y}" r="25" class="ip-hl"/>`;
       const url = (x, y, w) => `<rect x="${x}" y="${y}" width="${w}" height="40" rx="20" class="ip-b"/><text x="${x + w / 2}" y="${y + 25}" text-anchor="middle" class="ip-t">${esc(siteHost())}</text>`;
@@ -6753,12 +8054,6 @@ loadScript(['vendor/chart.umd.js','https://cdnjs.cloudflare.com/ajax/libs/Chart.
       if (state.sessions.some((s) => s.demo)) return `<div class="card welcome" id="demoNote"><p class="small" style="margin:0 0 8px"><b>You are looking at demo data.</b> 8 weeks of generated sessions to look around; none of it is yours.</p><button class="btn sm primary" data-act="demoStart">Clear demo and set up</button></div>`;
       return "";
     }
-    function todayEye() {
-      const d = /* @__PURE__ */ new Date();
-      return d.toLocaleDateString(void 0, { weekday: "short" }) + " " + d.toLocaleDateString(void 0, { month: "short", day: "numeric" });
-    }
-    const min5 = (m) => m >= 10 ? Math.round(m / 5) * 5 : Math.max(1, Math.round(m));
-    const estMin = (n) => `~${n} min`;
     function minTxt(m) {
       const b = state.settings.timeBudget;
       const r = min5(m);
@@ -6787,9 +8082,6 @@ loadScript(['vendor/chart.umd.js','https://cdnjs.cloudflare.com/ajax/libs/Chart.
     function planSetsPerWeek(R, deload) {
       const n = R.days.reduce((a, d) => a + (d.rest ? 0 : d.items.reduce((x, it) => x + planCredit(it) * (deload ? Math.max(1, Math.ceil(+it.sets / 2)) : +it.sets), 0)), 0);
       return R.schedule === "weekly" ? n : Math.round(n * weekFactor(R));
-    }
-    function plannedPerWeek(R) {
-      return R.schedule === "weekly" ? trainDaysOf(R) : Math.round(trainDaysOf(R) * weekFactor(R));
     }
     function weekRoutine(ws) {
       const I = IDX();
@@ -6964,9 +8256,6 @@ loadScript(['vendor/chart.umd.js','https://cdnjs.cloudflare.com/ajax/libs/Chart.
   <button class="tile" data-act="goDash" data-sec="consistency" aria-label="${noLog() ? "No streak yet" : sk.weeks + " week streak"}. Open consistency"><div class="tv">${nz(sk.weeks)}</div><div class="tl">week streak</div><div class="ts">${freeMode() ? "Weeks trained in a row" : sk.thisWeek >= sk.need ? "This week done" : `Weeks with ${sk.need}+ sessions`}${sk.best > sk.weeks ? ` · best ${sk.best}` : ""}</div></button>
   <button class="tile" data-act="goDash" data-sec="bests" aria-label="${noLog() ? "No PRs yet" : pr.length + " PRs in the last 4 weeks"}. Open all-time bests"><div class="tv">${nz(pr.length)}</div><div class="tl">PRs, last 4 weeks</div><div class="ts">${last ? `Latest: ${esc(exName(last.exId))}, ${ago === 0 ? "today" : ago === 1 ? "yesterday" : ago + " days ago"}` : "None yet"}</div></button>
   </div>`;
-    }
-    function estInLoad(ex) {
-      return isCompound(ex) && !ex.bw && !noE1(ex) && loadMode(ex) === "total";
     }
     function liftChange(exId, dir, ow) {
       const I = IDX();
@@ -7472,12 +8761,6 @@ loadScript(['vendor/chart.umd.js','https://cdnjs.cloudflare.com/ajax/libs/Chart.
       if (x[0] === "r") return `<rect x="${x[1]}" y="${x[2]}" width="${x[3]}" height="${x[4]}" rx="${x[5]}"/>`;
       return `<polygon points="${x[1].map((q) => q.join(",")).join(" ")}"/>`;
     }
-    function belowMin(v, lo) {
-      return lo > 0 && r1(v || 0) < lo;
-    }
-    function aboveMax(v, hi) {
-      return r1(v || 0) > hi;
-    }
     function muscleStatus(src, soFar) {
       const b = state.settings.bands;
       const out = {};
@@ -7488,7 +8771,6 @@ loadScript(['vendor/chart.umd.js','https://cdnjs.cloudflare.com/ajax/libs/Chart.
       }
       return out;
     }
-    const lowSt = (x) => x.st === "under" || x.st === "none" && x.lo > 0;
     function bodyMapCard() {
       const I = IDX();
       const avg = actualAvg4();
@@ -7693,10 +8975,6 @@ loadScript(['vendor/chart.umd.js','https://cdnjs.cloudflare.com/ajax/libs/Chart.
       if (low < 2) return `<p class="callout" style="margin:8px 0 0" id="readyCard">One low answer: keep the loads and leave a rep more in reserve than planned if it feels heavy.</p>`;
       return `<div class="callout yellow" style="margin:8px 0 0" id="readyCard"><p style="margin:0">Low readiness today. ${tipi("A lighter or shorter session fits a low day better than pushing. Make it lighter changes only the exercises not started: half the sets, about 90% loads, nothing to beat.")}</p><div class="row" style="margin-top:8px">${open ? '<button class="btn sm" data-act="makeLight">Make it lighter</button>' : ""}${left > 0 ? '<button class="btn sm" data-act="shortOpen">Short on time</button>' : ""}</div></div>`;
     }
-    function blockRest(d, bi) {
-      const b = d.ex[bi], nx = d.ex[bi + 1];
-      return b.plan.ss && nx && nx.plan.ss === b.plan.ss ? 0 : +b.plan.rest || 0;
-    }
     function leftMin(d) {
       if (!d || d.editingId || d.free || d.past) return 0;
       const m = remainMin(d);
@@ -7795,9 +9073,6 @@ loadScript(['vendor/chart.umd.js','https://cdnjs.cloudflare.com/ajax/libs/Chart.
       }
       if (!recent) return { r: 1, days: null, sets: 0, need: 0 };
       return { r: worst.r, days: recent.days, sets: recent.sets, need: worst.need };
-    }
-    function agoTxt(k) {
-      return k === 0 ? "today" : k === 1 ? "yesterday" : `${k} days ago`;
     }
     function lastHitTxt(m) {
       const rc = recovery(m);
@@ -8078,7 +9353,6 @@ loadScript(['vendor/chart.umd.js','https://cdnjs.cloudflare.com/ajax/libs/Chart.
       const rowG = (e) => pickRow(e, used, true);
       return h + (com.length ? grp(`Most common (${com.length})`) + com.map(rowG).join("") : "") + grp(com.length ? `All other exercises (${rest.length})` : `All exercises (${all.length})`) + rest.map(row).join("");
     }
-    const WD2 = ["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"];
     function cycleProjection(R, days) {
       const n = R.days.length;
       const t = today();
@@ -8154,7 +9428,6 @@ loadScript(['vendor/chart.umd.js','https://cdnjs.cloudflare.com/ajax/libs/Chart.
         el.innerHTML = "";
       }
     }
-    const NIL = "–";
     function noLog() {
       return !state.sessions.length;
     }
@@ -8297,29 +9570,6 @@ loadScript(['vendor/chart.umd.js','https://cdnjs.cloudflare.com/ajax/libs/Chart.
       const sg = suggest(exId, plan, opts);
       return { bid: uid(), exId, plan: { ...plan }, note: "", lastNote: lastNoteOf(exId, opts && opts.before), inj: sg.inj || null, hint: sg.text, last: sg.last, prev: sg.prev || void 0, prevOff: sg.prevOff || void 0, target: sg.target, tgt: sg.tgt, easier: sg.easier || null, lastR: sg.lastR, basis: sg.basis || void 0, sw: sg.w == null ? null : sg.w, sets: Array.from({ length: +plan.sets || 3 }, () => ({ w: fillLoads() ? sg.w : null, r: null, rir: null, warm: false, drop: false, done: false })) };
     }
-    function lastDup(d, bi) {
-      const b = d.ex[bi];
-      return !!b && d.ex.slice(0, bi).some((x) => x.exId === b.exId && !!x.light === !!b.light);
-    }
-    function lastCell(b, i, dup) {
-      return !dup && Array.isArray(b.prev) && i >= 0 && i < b.prev.length ? b.prev[i] : "";
-    }
-    function lastHead(b, dup) {
-      const t = b.last || "";
-      if (dup || !Array.isArray(b.prev) || !b.prev.length || b.prevOff) return t;
-      const k = t.indexOf("):");
-      return k > 0 ? t.slice(0, k + 1) : t;
-    }
-    function profClean(p) {
-      if (!p || typeof p !== "object" || Array.isArray(p)) return null;
-      const o = {};
-      if (PROF_GOALS.some((g) => g[0] === p.goal)) o.goal = p.goal;
-      if (PROF_EXP.some((g) => g[0] === p.exp)) o.exp = p.exp;
-      if (PROF_DAYS.includes(p.days)) o.days = p.days;
-      const f = Array.isArray(p.focus) ? [...new Set(p.focus.filter((m) => typeof m === "string" && MK.includes(m) && !TRACK_ONLY.has(m)))].slice(0, FOCUS_MAX) : [];
-      if (f.length) o.focus = f;
-      return Object.keys(o).length ? o : null;
-    }
     function prof() {
       return state.settings.profile || {};
     }
@@ -8384,7 +9634,6 @@ loadScript(['vendor/chart.umd.js','https://cdnjs.cloudflare.com/ajax/libs/Chart.
       const p = prof();
       return p.exp === "new" ? "Reps in reserve go up to 3 on compounds and 2 on isolation; rep ranges stay." : p.goal === "both" ? "Heavy compounds go to 5 to 8 reps, 2 in reserve, and at least 3 minutes' rest." : "Heavy compounds go to 3 to 6 reps, 2 in reserve, and at least 3 minutes' rest.";
     }
-    const STR_REST = 5, STR_NEAR = 0.97;
     function strengthPick(e, st, rec, at) {
       if (prof().goal !== "strength" || !profHeavy(e) || !st || !st.last || rec.r < 1) return null;
       if (!(daysOff(e.id, { before: at }) >= STR_REST)) return null;
@@ -8396,7 +9645,6 @@ loadScript(['vendor/chart.umd.js','https://cdnjs.cloudflare.com/ajax/libs/Chart.
       const d = toD(kg);
       return fromD(Math.max(step, (down ? Math.floor(d / step + 1e-9) : Math.round(d / step)) * step));
     }
-    const RIR_OPTS = ["0", "1", "2", "3", "4", "5"];
     const rirScale = () => state.settings.rirScale === "half" || state.settings.rirScale === "rpe" ? state.settings.rirScale : "whole";
     const effWord = () => rirScale() === "rpe" ? "RPE" : "RIR";
     function effTgt(rir) {
@@ -8485,22 +9733,6 @@ loadScript(['vendor/chart.umd.js','https://cdnjs.cloudflare.com/ajax/libs/Chart.
       return sec({ sk: "logger:cardio", title: "Cardio and mobility", sub: n ? `${n} entr${n === 1 ? "y" : "ies"}${mins ? `, ${mins} min` : ""}` : "optional", body: `${rows}
   <div class="row" style="margin-top:${n ? 10 : 0}px"><button class="btn sm" data-act="cDraftAdd" data-when="pre">+ Before lifting</button><button class="btn sm" data-act="cDraftAdd" data-when="post">+ After lifting</button></div>` });
     }
-    const HINT_ONCE = ["Half the usual sets, nothing to beat.", "Next time's load is worked out from this.", "If the first set is off, change the load.", "Next time picks up from here."];
-    function hintOnce(t, seen) {
-      if (!t) return "";
-      const m = t.match(/^First time: pick a load you think you could lift about (\d+) times, erring light\. Do (.+?), (?:stopping with about \d+ still in you|to the last rep you can do well)\. Next time's load is worked out from this\.$/);
-      if (m) {
-        if (seen.has("first")) return `First time: a load you could lift about ${m[1]} times; do ${m[2]}.`;
-        seen.add("first");
-        return t;
-      }
-      let out = t;
-      for (const x of HINT_ONCE) if (out.includes(x)) {
-        if (seen.has(x)) out = out.replace(" " + x, "").replace(x, "");
-        else seen.add(x);
-      }
-      return out.trim();
-    }
     function viewLogger() {
       const d = state.draft;
       const hintSeen = /* @__PURE__ */ new Set();
@@ -8567,7 +9799,6 @@ loadScript(['vendor/chart.umd.js','https://cdnjs.cloudflare.com/ajax/libs/Chart.
       return h;
     }
     const BWASK_KEY = KEY + ".bwAsk";
-    const BW_EVERY = [[7, "Every week"], [14, "Every 2 weeks"], [30, "Every month"], [0, "Off"]];
     const BWSNOOZE_KEY = KEY + ".bwSnooze";
     function bwEvery() {
       const v = state.settings.bwEvery;
@@ -8697,13 +9928,6 @@ loadScript(['vendor/chart.umd.js','https://cdnjs.cloudflare.com/ajax/libs/Chart.
     function bLibItems() {
       return commonFirst(libFiltered(ui.bLibQ, ui.bLibM, "", false)).map((e) => `<li class="it" data-ex="${e.id}"><div class="ir"><span class="grip" aria-hidden="true">⠿</span><div class="imain"><b>${esc(e.name)}</b><span>${esc(ML[e.primary])}, ${esc(EQL[e.equip] || e.equip)}${isCommon(e) ? ", common" : e.rare ? ", less common" : ""}</span></div><button class="ib" aria-label="Add ${esc(e.name)}" data-act="libAdd" data-ex="${e.id}">+</button></div></li>`).join("");
     }
-    const commonFirst = (list) => [...list.filter(isCommon), ...list.filter((e) => !isCommon(e))];
-    function nameMatch(name, q) {
-      const ws = String(q || "").toLowerCase().split(/[^a-z0-9]+/).filter(Boolean);
-      if (!ws.length) return true;
-      const n = String(name || "").toLowerCase().replace(/[^a-z0-9]/g, "");
-      return ws.every((w) => n.includes(w));
-    }
     function libFiltered(q, m, e, kind) {
       q = (q || "").toLowerCase().trim();
       return state.exercises.filter((x) => !x.archived && (!q || nameMatch(x.name, q)) && (!m || x.primary === m || x.secondary.includes(m)) && (!e || x.equip === e) && (!kind || (kind === "rare" ? x.rare : isCommon(x)))).sort((a, b) => a.name.localeCompare(b.name));
@@ -8762,9 +9986,6 @@ loadScript(['vendor/chart.umd.js','https://cdnjs.cloudflare.com/ajax/libs/Chart.
       }
       return null;
     }
-    function goalOk(ex) {
-      return !!ex && !ex.timed && !ex.assist;
-    }
     function goalState(exId) {
       const ex = EX(exId);
       const g = ex && ex.goal;
@@ -8792,9 +10013,6 @@ loadScript(['vendor/chart.umd.js','https://cdnjs.cloudflare.com/ajax/libs/Chart.
       }
       const pct = !noBw && need && cur ? Math.min(100, cur / need * 100) : null;
       return { g, hit, pct, cur, need, noBw };
-    }
-    function goalGap(s) {
-      return s.g.w - e1inv(s.cur, s.g.r);
     }
     function goalWords(ex, g) {
       return `${loadLabel(ex, g.w)}${ex.bw ? "" : " " + U()}${loadNote(ex)} × ${g.r}`;
@@ -8996,21 +10214,9 @@ ${extraKpis()}</div>`;
       return h;
     }
     const k0 = (ws) => ws === weekStart(today()) ? "This wk" : fmtDate(ws);
-    const RANGES = [["base", 0], ["6m", 26], ["all", Infinity]];
-    function firstDate(list) {
-      let f = null;
-      for (const x of list) if (x && isDate(x.date) && (!f || x.date < f)) f = x.date;
-      return f;
-    }
-    function weeksSpan(first) {
-      return first ? Math.round(daysBetween(weekStart(first), weekStart(today())) / 7) + 1 : 0;
-    }
     function rangeKey(id, def) {
       const k = (ui.rng || {})[id];
       return RANGES.some((r) => r[0] === k) ? k : def || "base";
-    }
-    function rangeWeeks(k, base) {
-      return k === "all" ? Infinity : k === "6m" ? 26 : base;
     }
     function weekWindow(first, id, base) {
       base = base || 8;
@@ -9047,7 +10253,6 @@ ${extraKpis()}</div>`;
       const step = Math.max(7, Math.ceil(span / 6 / 7) * 7);
       return { type: "linear", min: win.min, max: win.max, ticks: { stepSize: step, includeBounds: false, maxRotation: 0, autoSkip: false, callback: (v) => fmtDate(addDays(base, Math.round(v))) } };
     }
-    const REGION_WKS = [[2, "2 wk"], [4, "4 wk"], [8, "8 wk"]];
     const REGION_KEY = KEY + ".regionWk";
     function regionWk() {
       let v = ui.regionWk != null ? ui.regionWk : null;
@@ -9483,13 +10688,6 @@ ${extraKpis()}</div>`;
         mkChart("chBW", { type: "line", data: { datasets: [{ label: `Bodyweight (${U()})`, data: bw.map((b, i) => ({ x: xs[i], y: r1(toD(b.kg)) })), borderColor: muted, backgroundColor: muted, pointRadius: 2, showLine: false }, { label: "7-day average", data: avg.map((v, i) => ({ x: xs[i], y: v })), borderColor: blue, pointRadius: 0, tension: 0.3, borderWidth: 2 }] }, options: bo });
       }
     }
-    function sessTm(x) {
-      try {
-        return x.t ? new Date(x.t).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }) : "";
-      } catch (e) {
-        return "";
-      }
-    }
     function viewHistory() {
       const ss = [...state.sessions].sort((a, b) => sessCmp(b, a));
       const perDay = {};
@@ -9569,7 +10767,6 @@ ${extraKpis()}</div>`;
       if (g.stack) parts.push(`stacks by ${fmtG(g.stack)}`);
       return parts.join(", ") || "usual steps";
     }
-    const fmtG = (v) => String(Math.round(v * 1e3) / 1e3);
     function gymSettings() {
       const g = gymOf();
       const u = gymUnit();
@@ -9679,9 +10876,6 @@ ${extraKpis()}</div>`;
   <div><p class="small muted" style="margin:0 0 6px;font-weight:600"><span class="hastip" data-tip="${esc(PROF_EXP_TIP)}">Years lifting</span></p>${profChips("exp", PROF_EXP, p.exp, "Years lifting")}</div>
   <div><p class="small muted" style="margin:0 0 6px;font-weight:600"><span class="hastip" data-tip="Ready-made routines that fit are marked when you pick one. Every other day fits 3 or 4.">Days a week</span></p>${profChips("days", PROF_DAYS.map((d) => [d, String(d)]), p.days, "Days a week")}</div>`;
     }
-    const PROF_GOAL_TIP = "Size keeps the app's defaults. Strength: new barbell, Smith, and machine compounds start at 3 to 6 reps, 2 in reserve, 3 minutes' rest. Heavier loads gave more strength for similar growth (Schoenfeld 2017; ACSM 2009), and 3 minutes' rest beat 1 (Schoenfeld 2016). Both starts them at 5 to 8; that and the 2 in reserve are conventions. Strength also favours stalled or near-best compounds in Pick for me. Your routine changes only with Apply.";
-    const PROF_EXP_TIP = "Under 1 year, whatever the goal: new exercises start at 8 to 12 reps (ACSM 2009). Compounds stop 3 reps short and isolation lifts 2, as in the beginner plan, a convention: easier to judge, further from failure. Apply raises reps in reserve to that and keeps your ranges.";
-    const PROF_FOCUS_TIP = "Up to two. Their weekly targets go up about 30% and the other major muscles drop to maintenance, a third of the usual minimum (size and strength held on a third of the volume: Bickel 2011, Spiering 2021). Only targets you have not typed move, and taking a focus off puts them back. Pick for me favours them.";
     function profSub() {
       const p = prof();
       const a = [];
@@ -10135,50 +11329,6 @@ ${extraKpis()}</div>`;
         if (hd && !sh.hasAttribute("aria-label")) sh.setAttribute("aria-label", hd.textContent || "Dialog");
       }
     }
-    function joinable(a, b) {
-      return !!a && !!b && a.exId === b.exId && !a.light === !b.light;
-    }
-    function joinRows(into, from) {
-      const rows = from.sets.filter((x) => !x.warm && !x.drop && !x.done);
-      into.sets.push(...rows);
-      into.plan = { ...into.plan, sets: into.sets.filter((x) => !x.warm && !x.drop).length };
-      return rows;
-    }
-    function joinAdjacent(ex) {
-      const out = [];
-      for (const b of ex) {
-        const a = out[out.length - 1];
-        if (a && a.exId === b.exId && !a.light === !b.light) {
-          a.sets = [...a.sets, ...b.sets];
-          if (b.note && b.note.trim()) a.note = [a.note, b.note].filter((x) => x && x.trim()).join(" ");
-          if (!a.rr && b.rr) a.rr = b.rr;
-          a.cut = a.cut && b.cut ? true : void 0;
-          continue;
-        }
-        out.push({ ...b, sets: [...b.sets] });
-      }
-      return out;
-    }
-    function sameExOnce(ex) {
-      const by = /* @__PURE__ */ new Map();
-      const out = [];
-      for (const b of ex) {
-        const k = b.exId + (b.light ? "|l" : "");
-        const a = by.get(k);
-        if (!a) {
-          const c = { ...b, sets: [...b.sets] };
-          by.set(k, c);
-          out.push(c);
-          continue;
-        }
-        const wa = a.sets.filter(isWork).length, wb = b.sets.filter(isWork).length;
-        a.sets.push(...b.sets);
-        if (wb > wa && b.rr) a.rr = b.rr;
-        else if (!a.rr && b.rr) a.rr = b.rr;
-        a.cut = !!(a.cut && b.cut);
-      }
-      return out;
-    }
     function applyPick(m, id) {
       if (!m || !id) return;
       if (m.mode === "addDay") {
@@ -10331,8 +11481,6 @@ ${extraKpis()}</div>`;
       void el.offsetWidth;
       el.classList.add("flash");
     }
-    const routineEmpty = (r) => r.days.every((d) => !d.items.length);
-    const routineSig = (r) => JSON.stringify([r.name.trim().toLowerCase(), r.schedule, r.days.map((d) => [d.name, !!d.rest, d.items.map((i) => [i.exId, +i.sets, +i.repMin, +i.repMax, +i.rir, +i.rest])])]);
     function routineClutter() {
       const used = new Set(state.sessions.map((x) => x.routineId));
       const seen = /* @__PURE__ */ new Set();
@@ -10359,31 +11507,6 @@ ${extraKpis()}</div>`;
     }
     function newItem(exId) {
       return { uid: uid(), exId, ...defPlan(exId) };
-    }
-    function linkToggle(arr, i, get) {
-      const a = get(arr[i]), b = arr[i + 1] && get(arr[i + 1]);
-      if (!a || !b) return false;
-      if (a.ss && a.ss === b.ss) {
-        const g = uid(), old = a.ss;
-        for (let k = i + 1; k < arr.length && get(arr[k]).ss === old; k++) get(arr[k]).ss = g;
-      } else {
-        const id = a.ss || b.ss || uid();
-        const olds = [a.ss, b.ss].filter(Boolean);
-        for (const x of arr) {
-          const o = get(x);
-          if (o.ss && olds.includes(o.ss)) o.ss = id;
-        }
-        a.ss = id;
-        b.ss = id;
-      }
-      const tmp = arr.map(get);
-      fixSupersets(tmp);
-      return true;
-    }
-    function move(arr, i, j) {
-      if (j < 0 || j >= arr.length) return;
-      const [x] = arr.splice(i, 1);
-      arr.splice(j, 0, x);
     }
     function draftSet(t) {
       const b = state.draft && state.draft.ex[+t.dataset.b];
@@ -10603,154 +11726,6 @@ ${extraKpis()}</div>`;
         "Copy all of this and paste it into a spreadsheet. This is not a backup."
       );
     }
-    const IMP_MAX_ROWS = 5e4;
-    const MON = { jan: 1, feb: 2, mar: 3, apr: 4, may: 5, jun: 6, jul: 7, aug: 8, sep: 9, sept: 9, oct: 10, nov: 11, dec: 12 };
-    function impDate(str, ref2) {
-      const s = String(str || "").toLowerCase().replace(/(\d)(st|nd|rd|th)\b/g, "$1").trim();
-      if (!s) return null;
-      const t = ref2 || today();
-      const ty = +t.slice(0, 4);
-      const mk = (y, m, d) => {
-        if (!(m >= 1 && m <= 12 && d >= 1 && d <= 31)) return null;
-        const iso2 = `${y}-${String(m).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
-        return isDate(iso2) && new Date(y, m - 1, d).getDate() === d ? iso2 : null;
-      };
-      const noYear = (m, d) => {
-        let x = mk(ty, m, d);
-        if (x && x > t) x = mk(ty - 1, m, d);
-        return x;
-      };
-      const yy = (y) => y < 100 ? 2e3 + y : y;
-      let g = s.match(/(?<!\d)(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})(?!\d)/);
-      if (g) return mk(+g[1], +g[2], +g[3]);
-      g = s.match(/\b(\d{1,2})[/.-](\d{1,2})(?:[/.-](\d{2,4}))?\b/);
-      if (g) {
-        let a = +g[1], b = +g[2];
-        let m = a, d = b;
-        if (a > 12 && b <= 12) {
-          m = b;
-          d = a;
-        }
-        const x = g[3] ? mk(yy(+g[3]), m, d) : noYear(m, d);
-        return x && +x.slice(0, 4) >= ty - 20 ? x : null;
-      }
-      g = s.match(/\b(\d{1,2})\s+([a-z]{3,9})\.?,?\s*(\d{4})?\b/);
-      if (g && MON[g[2].slice(0, 4)] || g && MON[g[2].slice(0, 3)]) {
-        const m = MON[g[2].slice(0, 4)] || MON[g[2].slice(0, 3)];
-        return g[3] ? mk(+g[3], m, +g[1]) : noYear(m, +g[1]);
-      }
-      g = s.match(/\b([a-z]{3,9})\.?\s+(\d{1,2})(?:,?\s*(\d{4}))?\b/);
-      if (g && (MON[g[1].slice(0, 4)] || MON[g[1].slice(0, 3)])) {
-        const m = MON[g[1].slice(0, 4)] || MON[g[1].slice(0, 3)];
-        return g[3] ? mk(+g[3], m, +g[2]) : noYear(m, +g[2]);
-      }
-      return null;
-    }
-    function impSerial(n) {
-      if (!(n > 2e4 && n < 8e4)) return null;
-      const d = new Date(Date.UTC(1899, 11, 30) + Math.floor(n) * 864e5);
-      return d.toISOString().slice(0, 10);
-    }
-    function impRows(text) {
-      const first = text.split(/\r?\n/)[0] || "";
-      const cnt = (c) => first.split(c).length - 1;
-      const sep = [["	", cnt("	")], [";", cnt(";")], [",", cnt(",")]].sort((a, b) => b[1] - a[1])[0];
-      if (!sep[1]) return null;
-      const d = sep[0];
-      const rows = [];
-      let row = [], f = "", q = false;
-      for (let i = 0; i < text.length; i++) {
-        const c = text[i];
-        if (q) {
-          if (c === '"') {
-            if (text[i + 1] === '"') {
-              f += '"';
-              i++;
-            } else q = false;
-          } else f += c;
-          continue;
-        }
-        if (c === '"' && f === "") q = true;
-        else if (c === d) {
-          row.push(f);
-          f = "";
-        } else if (c === "\n" || c === "\r") {
-          if (c === "\r" && text[i + 1] === "\n") i++;
-          row.push(f);
-          f = "";
-          if (row.some((x) => x.trim())) rows.push(row);
-          row = [];
-          if (rows.length > IMP_MAX_ROWS) break;
-        } else f += c;
-      }
-      row.push(f);
-      if (row.some((x) => x.trim())) rows.push(row);
-      return rows.length >= 2 ? rows : null;
-    }
-    async function impXlsx(buf) {
-      if (typeof DecompressionStream !== "function") throw new Error("old");
-      const u = new Uint8Array(buf), dv = new DataView(buf);
-      let eo = -1;
-      for (let i = u.length - 22; i >= 0 && i > u.length - 7e4; i--) if (dv.getUint32(i, true) === 101010256) {
-        eo = i;
-        break;
-      }
-      if (eo < 0) throw new Error("zip");
-      const n = dv.getUint16(eo + 10, true);
-      let p = dv.getUint32(eo + 16, true);
-      const files = {};
-      for (let k = 0; k < n; k++) {
-        const meth = dv.getUint16(p + 10, true), cs = dv.getUint32(p + 20, true), nl = dv.getUint16(p + 28, true), el = dv.getUint16(p + 30, true), cl = dv.getUint16(p + 32, true), lo = dv.getUint32(p + 42, true);
-        const name = new TextDecoder().decode(u.subarray(p + 46, p + 46 + nl));
-        files[name] = { meth, cs, lo };
-        p += 46 + nl + el + cl;
-      }
-      const read = async (name) => {
-        const f = files[name];
-        if (!f) return null;
-        const ln = dv.getUint16(f.lo + 26, true), le = dv.getUint16(f.lo + 28, true);
-        const data = u.subarray(f.lo + 30 + ln + le, f.lo + 30 + ln + le + f.cs);
-        if (f.meth === 0) return new TextDecoder().decode(data);
-        const out = await new Response(new Blob([data]).stream().pipeThrough(new DecompressionStream("deflate-raw"))).arrayBuffer();
-        return new TextDecoder().decode(out);
-      };
-      const X = (t) => new DOMParser().parseFromString(t, "application/xml");
-      const ss = [];
-      const sst = await read("xl/sharedStrings.xml");
-      if (sst) for (const si of X(sst).getElementsByTagName("si")) ss.push([...si.getElementsByTagName("t")].map((t) => t.textContent).join(""));
-      const sheet = Object.keys(files).filter((k) => /^xl\/worksheets\/sheet\d+\.xml$/.test(k)).sort((a, b) => parseInt(a.match(/\d+/)[0]) - parseInt(b.match(/\d+/)[0]))[0];
-      if (!sheet) throw new Error("sheet");
-      const rows = [];
-      const col = (r) => {
-        let c = 0;
-        for (const ch of r.replace(/\d+/g, "")) c = c * 26 + (ch.charCodeAt(0) - 64);
-        return c - 1;
-      };
-      for (const rw of X(await read(sheet)).getElementsByTagName("row")) {
-        const row = [];
-        for (const c of rw.getElementsByTagName("c")) {
-          const i = col(c.getAttribute("r") || "A");
-          const t = c.getAttribute("t");
-          const v = c.getElementsByTagName("v")[0];
-          let val = "";
-          if (t === "s") val = ss[+(v && v.textContent)] || "";
-          else if (t === "inlineStr") val = [...c.getElementsByTagName("t")].map((x) => x.textContent).join("");
-          else val = v ? v.textContent : "";
-          row[i] = val;
-        }
-        for (let i = 0; i < row.length; i++) if (row[i] == null) row[i] = "";
-        if (row.some((x) => String(x).trim())) rows.push(row);
-        if (rows.length > IMP_MAX_ROWS) break;
-      }
-      return rows;
-    }
-    const IMP_SYN = [[/\bdumb ?bells?\b|\bdbs?\b/g, "db"], [/\bbar ?bells?\b|\bbb\b/g, "bb"], [/\bpull[ -]?downs?\b/g, "pulldown"], [/\bpull[ -]?ups?\b/g, "pullup"], [/\bchin[ -]?ups?\b|\bchins\b/g, "chinup"], [/\bpush[ -]?ups?\b/g, "pushup"], [/\bsit[ -]?ups?\b/g, "situp"], [/\b(push|press)[ -]?downs?\b/g, "pushdown"], [/\bdead[ -]?lifts?\b/g, "deadlift"], [/\bromanian deadlift\b|\brdls?\b/g, "rdl"], [/\bover ?head press\b|\bohp\b/g, "ohp"], [/\bskull ?crushers?\b/g, "skullcrusher"], [/\btriceps?\b/g, "tricep"], [/\bbiceps?\b/g, "bicep"], [/\bext\b|\bextensions?\b/g, "extension"], [/\braises?\b/g, "raise"], [/\bflyes?\b|\bflies\b|\bflys?\b/g, "fly"], [/\bmachine\b/g, "machine"], [/\bsmith machine\b/g, "smith"], [/\bcurls\b/g, "curl"], [/\brows\b/g, "row"], [/\bsquats\b/g, "squat"], [/\blunges\b/g, "lunge"], [/\bdips\b/g, "dip"], [/\bshrugs\b/g, "shrug"], [/\bpresses\b/g, "press"], [/\bcrunches\b/g, "crunch"], [/\bcalves\b|\bcalfs\b/g, "calf"], [/\bhamstrings?\b/g, "ham"], [/\bdeg(rees?)?\b|°/g, ""], [/\bpaused\b/g, "pause"], [/\bkettle ?bells?\b|\bkb\b/g, "kettlebell"]];
-    function impNorm(name) {
-      let s = String(name || "").toLowerCase().replace(/[()\[\],.&/+_-]/g, " ").replace(/\s+/g, " ").trim();
-      for (const [re, v] of IMP_SYN) s = s.replace(re, v);
-      return s.split(" ").filter((w) => w && !["the", "a", "with", "of", "and", "on", "exercise"].includes(w));
-    }
-    const IMP_ALIAS = { "calf raise": "standCalf", "standing calf raise": "standCalf", "seated calf raise": "seatedCalf", "db shoulder press": "seatedDbPress", "shoulder press db": "seatedDbPress", "overhead press": "ohp", "skullcrusher": "skull", "assisted pullup": "assistPullup", "assisted chinup": "assistPullup", "chinup assisted": "assistPullup", "assisted dip": "assistDip", "tricep dip assisted": "assistDip", "pullup assisted": "assistPullup", "assisted dip": "assistDip", "dip assisted": "assistDip", "squat": "backSquat", "bb squat": "backSquat", "back squat": "backSquat", "bench": "bench", "bench press": "bench", "bb bench": "bench", "flat bench": "bench", "deadlift": "deadlift", "ohp": "ohp", "shoulder press": "ohp", "military press": "ohp", "pullup": "pullup", "chinup": "chinup", "row": "bbRow", "bb row": "bbRow", "bent over row": "bbRow", "leg press": "legPress", "lat pulldown": "latPulldown", "pulldown": "latPulldown", "dip": "dips", "rdl": "rdl", "hip thrust": "hipThrust", "pushdown": "pressdown", "tricep pushdown": "pressdown", "tricep pushdown straight bar": "pressdown", "pushdown straight bar": "pressdown", "tricep pushdown rope": "ropePressdown", "pushdown rope": "ropePressdown", "rope pushdown": "ropePressdown", "pushup": "pushup", "curl": "dbCurl", "db curl": "dbCurl", "bicep curl": "dbCurl", "bb curl": "bbCurl", "lat raise": "dbLateral", "lateral raise": "dbLateral", "lateral": "dbLateral", "side raise": "dbLateral", "lateral raise db": "dbLateral", "db lateral raise": "dbLateral" };
     function impMatch(name) {
       const a = new Set(impNorm(name));
       if (!a.size) return [];
@@ -10782,160 +11757,6 @@ ${extraKpis()}</div>`;
         if (e.id !== al) out.push({ id: e.id, sc });
       }
       return out.sort((x, y) => y.sc - x.sc).slice(0, 8);
-    }
-    function impGuess(name) {
-      const w = impNorm(name).join(" ");
-      const has = (re) => re.test(w);
-      const primary = has(/tricep|pushdown|skullcrusher|kickback/) ? "triceps" : has(/curl/) && !has(/leg|ham/) ? "biceps" : has(/leg curl|ham|rdl|good morning/) ? "hamstrings" : has(/calf/) ? "calves" : has(/lateral|side raise/) ? "sideDelts" : has(/rear|face pull|reverse fly/) ? "rearDelts" : has(/ohp|shoulder press|military|front raise/) ? "frontDelts" : has(/shrug/) ? "traps" : has(/pulldown|pullup|chinup|pullover/) ? "lats" : has(/row/) ? "upperBack" : has(/squat|leg press|lunge|leg extension|hack|split/) ? "quads" : has(/deadlift|hip thrust|glute|bridge/) ? "glutes" : has(/crunch|situp|plank|ab |abs|leg raise/) ? "abs" : "chest";
-      if (has(/assist/)) return { primary: has(/dip/) ? "chest" : "lats", equip: "machine", assist: true };
-      const equip = has(/\bdb\b/) ? "dumbbell" : has(/\bbb\b/) ? "barbell" : has(/cable/) ? "cable" : has(/smith/) ? "smith" : has(/machine/) ? "machine" : has(/pullup|chinup|pushup|dip|plank|situp/) ? "bodyweight" : "other";
-      return { primary, equip };
-    }
-    const IMP_COLS = {
-      date: [/^date$/, /^(workout date|start_?time|date ?time|when)$/, /^day$/],
-      name: [/^(workout name|workout|title|session|routine)$/],
-      ex: [/^(exercise( name)?|exercise_title|movement|lift)$/, /^name$/],
-      w: [/^(weight|load)$/, /^load_(lb|kg)$/, /^(weight|load)[ _]?\(?(kgs?|lbs?|pounds?|kilos?)\)?$/, /^(kgs?|lbs?)$/, /^(?!total).*\b(weight|load)\b.*$/],
-      r: [/^(reps?|repetitions|rep count)$/],
-      sets: [/^sets$/],
-      rir: [/^rir$/],
-      rpe: [/^rpe$/],
-      type: [/^(set order|set_type|set type|type)$/],
-      warm: [/^(warm ?up|warmup)$/],
-      drop: [/^(drop ?set|dropset)$/],
-      secs: [/^(seconds|duration_seconds|time \(s\)|secs)$/],
-      note: [/^(notes?|exercise_notes|exercise_note|comment)$/],
-      unit: [/^(weight unit|unit|units)$/],
-      deload: [/^deload$/],
-      dist: [/^(distance|distance_km|distance_miles)$/]
-    };
-    function impHeader(row) {
-      const map = {};
-      const k = row.map((h) => String(h || "").trim().toLowerCase().replace(/\s+/g, " "));
-      for (const f in IMP_COLS) for (const re of IMP_COLS[f]) {
-        const i = k.findIndex((h, j) => re.test(h) && !Object.values(map).includes(j));
-        if (i >= 0) {
-          map[f] = i;
-          break;
-        }
-      }
-      if (map.w == null) {
-        const i = k.findIndex((h) => /^load_(lb|kg)$/.test(h));
-        if (i >= 0) map.w = i;
-      }
-      if (k.some((h) => /^load_(lb|kg)$/.test(h)) && k.includes("exercise_note")) {
-        const d = k.indexOf("day");
-        if (map.name == null && d >= 0 && d !== map.date) map.name = d;
-        if (map.unit != null && k[map.unit] === "unit") delete map.unit;
-      }
-      return map;
-    }
-    function impUnitOf(headers, map) {
-      const h = map.w != null ? String(headers[map.w]).toLowerCase() : "";
-      return /kg|kilo/.test(h) ? "kg" : /lb|pound/.test(h) ? "lb" : null;
-    }
-    function impCardioKind(name) {
-      const n = String(name || "").toLowerCase();
-      if (/farmer|carry|lunge|suitcase/.test(n)) return null;
-      return /treadmill.*incline|incline.*walk/.test(n) ? "incline" : /elliptical|cross ?trainer/.test(n) ? "elliptical" : /stair|stepper|step ?mill/.test(n) ? "stairs" : /rowing|rower|\berg\b|concept ?2/.test(n) ? "rower" : /cycl|bike|spin/.test(n) ? "bike" : /\b(run|running|jog|jogging|sprint)/.test(n) ? "run" : /treadmill|\bwalk|walking|hike|hiking/.test(n) ? "walk" : /hiit|interval/.test(n) ? "hiit" : /cardio|swim/.test(n) ? "other" : null;
-    }
-    function impFromTable(rows, map) {
-      const head = rows[0];
-      let unit = impUnitOf(head, map);
-      const numTypes = map.type != null && /set_type/i.test(String(head[map.type]));
-      const rowUnit = (r) => {
-        if (map.unit == null) return null;
-        const v = String(r[map.unit] || "").toLowerCase();
-        return /kg|kilo/.test(v) ? "kg" : /lb|pound/.test(v) ? "lb" : null;
-      };
-      if (!unit && map.unit != null) for (let i = 1; i < rows.length && !unit; i++) unit = rowUnit(rows[i]);
-      const S = /* @__PURE__ */ new Map();
-      let lastDate = null, lastEx = null, lastName = "";
-      let skipped = 0, cardio = 0;
-      const bad = [];
-      const C = /* @__PURE__ */ new Map();
-      const num = (v) => {
-        const n = parseFloat(String(v == null ? "" : v).replace(",", "."));
-        return isFinite(n) ? n : null;
-      };
-      for (let i = 1; i < rows.length; i++) {
-        const r = rows[i];
-        const cell = (f) => map[f] == null ? "" : String(r[map[f]] == null ? "" : r[map[f]]).trim();
-        let date = cell("date");
-        date = date ? impDate(date) || impSerial(num(date)) : lastDate;
-        const ex = cell("ex") || lastEx;
-        if (!date || !ex) {
-          skipped++;
-          if (bad.length < 8) bad.push(r.join(", ").slice(0, 80));
-          continue;
-        }
-        lastDate = date;
-        lastEx = ex;
-        const name = cell("name") || (cell("date") ? "" : lastName);
-        lastName = name;
-        const reps = num(cell("r")), secs = num(cell("secs"));
-        const w = num(cell("w")) || 0;
-        if (/^rest timer$/i.test(ex) || /rest/i.test(cell("type"))) {
-          skipped++;
-          continue;
-        }
-        const ck = impCardioKind(ex);
-        const dist = num(cell("dist"));
-        if (dist > 0 || ck && !(reps > 0)) {
-          cardio++;
-          const k2 = date + "|" + (ck || "other");
-          const o = C.get(k2) || { date, kind: ck || "other", secs: 0, dist: 0, name: ex };
-          o.secs += secs > 0 ? secs : 0;
-          o.dist += dist > 0 ? dist : 0;
-          C.set(k2, o);
-          continue;
-        }
-        if (!(reps > 0) && !(secs > 0)) {
-          skipped++;
-          continue;
-        }
-        const ty = cell("type").toLowerCase();
-        const yes = (v) => /^(1|true|yes|y|x)$/i.test(v);
-        const rpe = num(cell("rpe"));
-        let rir = num(cell("rir"));
-        if (rir == null && rpe != null && rpe >= 5 && rpe <= 10) rir = Math.max(0, 10 - rpe);
-        const code = numTypes ? ty : "";
-        if (ty === "f" || ty === "failure" || code === "4") rir = 0;
-        const set = { w, r: reps > 0 ? Math.round(reps) : Math.round(secs), rir: rir != null && rir >= 0 && rir <= 10 ? rir : null, warm: ty === "w" || ty === "warmup" || ty === "warm-up" || code === "2" || yes(cell("warm")), drop: ty === "d" || ty === "dropset" || ty === "drop" || code === "3" || yes(cell("drop")), timed: !(reps > 0), u: rowUnit(r) };
-        const k = date + "|" + name;
-        if (!S.has(k)) S.set(k, { date, name, items: /* @__PURE__ */ new Map(), note: "" });
-        const ss = S.get(k);
-        if (/^(yes|true|1|y)$/i.test(String(cell("deload") || "").trim())) ss.deload = true;
-        if (!ss.items.has(ex)) ss.items.set(ex, { name: ex, sets: [], note: cell("note") });
-        const n = Math.min(Math.max(Math.round(num(cell("sets")) || 1), 1), 20);
-        for (let j = 0; j < n; j++) ss.items.get(ex).sets.push({ ...set });
-      }
-      return { sessions: [...S.values()].map((x) => ({ date: x.date, name: x.name, items: [...x.items.values()], deload: x.deload || void 0 })), unit, skipped, cardio, cardioRows: [...C.values()], unread: bad, cut: rows.length > IMP_MAX_ROWS };
-    }
-    function impSetsText(t) {
-      let s = " " + String(t).toLowerCase() + " ";
-      s = s.replace(/(\d),(\d{1,2})(?=\s*(?:lbs?|kgs?)?\s*[x×*])/g, "$1.$2");
-      s = s.replace(/(\d)\s*(lbs?|kgs?|#)(?=[\s,x×*@;/]|$)/g, "$1 ");
-      s = s.replace(/(\d)\s*(?:s|sec|secs|seconds)\b/g, "$1");
-      if (/(^|\s)\d{2,}(\.\d+)?\s*(x|×|\*|\s\d)/.test(s)) s = s.replace(/@\s*((?:6|7|8|9)(?:\.5)?|10)(?![\d.x×*])/g, (m, v) => ` rpe ${v} `);
-      {
-        let rpe = null;
-        s = s.replace(/@?\s*\brpe\s*(\d+(?:\.\d+)?)|@\s*(\d+(?:\.\d+)?)\s*rpe\b/g, (m, a, b) => {
-          const v = +(a || b);
-          if (v >= 5 && v <= 10) rpe = v;
-          return " ";
-        });
-        if (rpe != null) s = s.trim() + " rir " + (10 - rpe) + " ";
-      }
-      s = s.replace(/(^|\s)(?:bw\s*)?\+\s*(\d+(?:\.\d+)?)\s+(\d{1,2})\s*[x×*]\s*(\d{1,3})(?=\s|,|$)/g, (m, p, w, a, r) => +a <= 10 ? p + Array(+a).fill(`bw+${w}x${r}`).join(" ") : m);
-      s = s.replace(/(^|\s)(?:bw\s*)?\+\s*(\d+(?:\.\d+)?)\s*[x×*]\s*(\d{1,3})(?=\s|,|$)/g, (m, p, w, r) => `${p}bw+${w}x${r}`);
-      s = s.replace(/(^|\s)bw\s+(\d{1,2})\s*[x×*]\s*(\d{1,3})(?=\s|,|$)/g, (m, p, a, r) => +a <= 10 ? p + Array(+a).fill(`bwx${r}`).join(" ") : m);
-      s = s.replace(/\b(\d{1,2})\s*(?:x|×|\*|sets? of)\s*(\d{1,3})\s*(?:@|at)\s*(\d+(?:\.\d+)?)\b/g, (m, a, b, c) => +a <= 10 && +c > +a ? Array(+a).fill(`${c}x${b}`).join(" ") : m);
-      s = s.replace(/(^|\s)(\d{1,2})\s*[x×*]\s*(\d{1,3})\s+(\d+(?:\.\d+)?)\s*$/, (m, p, a, b, c) => +a <= 10 && +c > +b && +c > +a ? p + Array(+a).fill(`${c}x${b}`).join(" ") : m);
-      s = s.replace(/\b(\d+(?:\.\d+)?)\s*[x×*]\s*(\d{1,3})\s*[x×*]\s*(\d{1,2})\b/g, (m, a, b, c) => +c <= 10 ? Array(+c).fill(`${a}x${b}`).join(" ") : m);
-      s = s.replace(/(^|\s)(\d{2,}(?:\.\d+)?)(?:\s*[:\-–]\s*|\s+)(\d{1,2}(?:\s*[/,]\s*\d{1,2})+)(?=\s*$)/g, (m, p, a, l) => p + l.split(/\s*[/,]\s*/).map((r) => `${a}x${r}`).join(" "));
-      s = s.replace(/(^|\s)(\d{2,}(?:\.\d+)?)\s+(\d{1,2})\s*[x×*]\s*(\d{1,3})(?=\s|,|$)/g, (m, p, a, b, c) => +b <= 10 ? p + Array(+b).fill(`${a}x${c}`).join(" ") : m);
-      return s.trim();
     }
     function impFromText(text) {
       const lines = String(text).split(/\r?\n/);
@@ -11191,7 +12012,6 @@ ${extraKpis()}</div>`;
       }
       return { sessions: fresh, cardio, cardioNoTime, dup, bad, odd, timedOff, newEx: Object.values(newEx).filter((e) => fresh.some((ss) => ss.ex.some((b) => b.exId === e.id))) };
     }
-    const GENERIC_WORKOUT = /^\s*((early|late)\s+)?(morning|afternoon|evening|night|midday|lunch|weekend)?\s*(workout|session|training|lifting|lift|gym)?\s*$|^imported$/i;
     function routineFromLog(sessions) {
       const all = sessions.filter((x) => !x.demo && x.ex && x.ex.length);
       if (!all.length) return null;
@@ -11446,7 +12266,7 @@ ${extraKpis()}</div>`;
       const body = `This backup has ${clean.sessions.length} session${clean.sessions.length === 1 ? "" : "s"} and ${clean.routines.length} routine${clean.routines.length === 1 ? "" : "s"}.` + (dropped ? ` ${dropped} damaged record${dropped === 1 ? " was" : "s were"} skipped.` : "") + " It will replace everything currently in the app. You can step this back with Undo.";
       confirmBox("Replace all data?", body, "Replace my data", () => {
         snapshot();
-        state = clean;
+        setState(clean);
         commit();
         closeModal();
         ui.tab = "today";
@@ -11454,15 +12274,6 @@ ${extraKpis()}</div>`;
         toast("Backup imported", true);
         if (after) after();
       }, true);
-    }
-    function mulberry(a) {
-      return function() {
-        a |= 0;
-        a = a + 1831565813 | 0;
-        let t = Math.imul(a ^ a >>> 15, 1 | a);
-        t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
-        return ((t ^ t >>> 14) >>> 0) / 4294967296;
-      };
     }
     const DEMOSET_KEY = KEY + ".demoSettings";
     const demoFirstRun = () => !state.settings.onboarded && !realCount(state) && !state.draft;
@@ -11657,9 +12468,6 @@ ${extraKpis()}</div>`;
       if (!realMeas.has(addDays(t, -1))) state.measurements.push({ id: uid(), date: addDays(t, -1), arm: 16.3 * IN, forearm: 13.2 * IN, chest: 44.4 * IN, waist: 33.4 * IN, thigh: 24.4 * IN, calf: 15.1 * IN, neck: 16.2 * IN, demo: true });
       commit();
     }
-    function freeDraft(name, ex) {
-      return { id: uid(), startedAt: Date.now(), date: today(), dayIdx: 0, dayId: null, dayName: name, routineId: "", free: true, deload: false, light: false, cardio: [], notes: "", editingId: null, ex: ex || [] };
-    }
     function pastDue(R, date) {
       const ok = (i) => !!R.days[i] && !R.days[i].rest && R.days[i].items.length > 0;
       if (R.schedule === "weekly") {
@@ -11682,9 +12490,6 @@ ${extraKpis()}</div>`;
       return { id: uid(), startedAt: null, date, dayIdx: di, dayId: day.id, dayName: day.name + (deload ? " (deload)" : ""), routineId: R.id, deload, light: false, past: true, cardio: [], notes: note, note0: note, editingId: null, ex: items.map((it) => newBlock(it.exId, it, { deload, before: date })) };
     }
     const editFp0 = /* @__PURE__ */ new Map();
-    function editFp(d) {
-      return JSON.stringify({ date: d.date, notes: (d.notes || "").trim(), ex: d.ex.map((b) => [b.exId, (b.note || "").trim(), b.sets.map((x) => [x.w == null ? null : +x.w, x.r == null || x.r === "" ? null : +x.r, x.rir == null || x.rir === "" ? null : +x.rir, !!x.done, !!x.warm, !!x.drop])]), c: (d.cardio || []).map((c) => [c.kind, c.min, c.hr, c.dist || null]) });
-    }
     function draftEntered(d) {
       if (!d) return false;
       if (d.ex.some((b) => b.note && b.note.trim() || b.sets.some((x) => x.done || +x.r > 0 || !rowBlank(b, x)))) return true;
@@ -11693,7 +12498,6 @@ ${extraKpis()}</div>`;
       if (!n) return false;
       return typeof d.note0 === "string" ? n !== d.note0.trim() : true;
     }
-    const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
     function calBounds() {
       const t = today().slice(0, 7);
       const f = firstDate([...state.sessions, ...state.cardio]);
@@ -12205,7 +13009,7 @@ ${extraKpis()}</div>`;
           }
           if (remove) {
             undoForget();
-            state = normalize(null);
+            setState(normalize(null));
             saveNow();
             invalidate();
           }
@@ -12523,7 +13327,7 @@ ${extraKpis()}</div>`;
         const AR = activeRoutine();
         const first = !realCount(state) && !!AR && starterSigs().includes(routineSig(AR)) && !state.sessions.some((q) => q.routineId === AR.id);
         snapshot();
-        state = normalize({ ...state, exercises: state.exercises.concat(b.newEx), sessions: state.sessions.concat(b.sessions), cardio: state.cardio.concat(b.cardio), settings: { ...state.settings, onboarded: true } });
+        setState(normalize({ ...state, exercises: state.exercises.concat(b.newEx), sessions: state.sessions.concat(b.sessions), cardio: state.cardio.concat(b.cardio), settings: { ...state.settings, onboarded: true } }));
         invalidate();
         const msg = `Imported ${b.sessions.length} session${b.sessions.length === 1 ? "" : "s"}${b.cardio.length ? `, ${b.cardio.length} cardio entr${b.cardio.length === 1 ? "y" : "ies"}` : ""}${b.newEx.length ? `, ${b.newEx.length} new exercise${b.newEx.length === 1 ? "" : "s"}` : ""}`;
         const inf = first && b.sessions.length ? routineFromLog(state.sessions) : null;
@@ -12586,7 +13390,7 @@ ${extraKpis()}</div>`;
         st.draft = null;
         const go = () => {
           snapshot();
-          state = st;
+          setState(st);
           commit();
           closeModal();
           ui.tab = "today";
@@ -13071,7 +13875,7 @@ ${JSON.stringify(fb.context, null, 1)}`;
             log("undo", x);
             done = false;
           }
-          if (done) state = normalize(state);
+          if (done) setState(normalize(state));
         }
         if (!done) try {
           const pre = normalize(JSON.parse(e.pre));
@@ -13083,7 +13887,7 @@ ${JSON.stringify(fb.context, null, 1)}`;
             const q = Q[id] || emptyChunk(id);
             parts[id] = id === "draft" ? { draft: mergeDraft(Q.draft && Q.draft.draft, C.draft && C.draft.draft, P.draft && P.draft.draft) } : mergeChunk(id, q ? baseOf(id, q) : null, C[id] || emptyChunk(id), P[id] || emptyChunk(id), false, stat);
           }
-          state = assemble(parts);
+          setState(assemble(parts));
         } catch (x) {
           log("undo", x);
           toast("Could not undo that");
@@ -13328,7 +14132,7 @@ ${JSON.stringify(fb.context, null, 1)}`;
         if (x.kind === "session" && !state.sessions.some((s) => s.id === x.id)) state.sessions.push(x.data);
         else if (x.kind === "cardio" && !state.cardio.some((c) => c.id === x.id)) state.cardio.push(x.data);
         else if (x.kind === "routine" && !state.routines.some((r) => r.id === x.id)) state.routines.push(x.data);
-        state = normalize(state);
+        setState(normalize(state));
         commit();
         render();
         toast("Restored");
@@ -14984,7 +15788,7 @@ ${JSON.stringify(fb.context, null, 1)}`;
       resetAll() {
         confirmBox("Erase everything?", `All routines, sessions, custom exercises, and body data will be deleted${cloud.on ? " on this device and in your cloud copy" : " on this device"}. Export a backup first if you might want it.`, "Erase everything", () => {
           snapshot();
-          state = normalize(null);
+          setState(normalize(null));
           commit();
           ui.tab = "today";
           render();
@@ -16076,15 +16880,6 @@ ${JSON.stringify(fb.context, null, 1)}`;
       const v = $("#view");
       return v ? [...v.children].filter((e) => e.dataset && e.dataset.mkey) : [];
     }
-    function orderKeys(saved, present) {
-      const order = saved.filter((k) => present.includes(k));
-      present.forEach((k, i) => {
-        if (order.includes(k)) return;
-        const prev = present.slice(0, i).reverse().find((q) => order.includes(q));
-        order.splice(prev ? order.indexOf(prev) + 1 : 0, 0, k);
-      });
-      return order;
-    }
     function applySecOrder() {
       const saved = state.settings.secOrder[ui.tab];
       if (!saved || !saved.length) return;
@@ -16350,7 +17145,7 @@ ${JSON.stringify(fb.context, null, 1)}`;
     window.__ironlog = { B3_PARTS, THREE_URLS, get state() {
       return state;
     }, set state(v) {
-      state = v;
+      setState(v);
     }, fbContext, FB_CTX_MAX, logCut, logBuf, log, dateIndex, sessionsOn, bestLine, whyTarget, recent4w, weekSessions, fmtDate, fmtDateLong, fbShrink, orderAt, orderRun, dropOnlyLift, profHeavy, appBand, fitRecordOld, prof, profClean, profRule, profPlan, defPlan, defBand, profMoveBands, profApplyList, strengthPick, PROF_DAYS, FOCUS_MAX, estInLoad, keepExtra, EXTRA_MAX, draftPlanMin, pace, paceRatios, sessModelMin, PACE_N, PACE_DAYS, PACE_MIN, plainTemplate, trashTidy, ENV, KEY, COMMON, COMMON_TIP, isCommon, bwEvery, isRestWeek, sessCmp, avgWeeks, weekStreak, coach, noLog, afterSet, adjOn, bwAt, newBlock, cycleState, sortedSessions, addDays, loadIn, gymRack, gymClean, dbListOf, capOf, refreshEx, effShow, rirScale, setStr, libExercises, obGate, obTour, andList, belowMin, aboveMax, starterRoutine, starterSigs, plateList, exBarKg, VOL_MODES, liveLogFetch, regionSrc, fitTargets, firstFullWeek, moveBlock, BANDS, installSheet, siteHost, greyW, effW, greyR, lighterLoad, incOf, swapPlan, planSetsPerWeek, weekNeed, stepRead, e1inv, rtfAt, rtfOf, rtfBand, calStats, rirEff, isHard, setCredit, tonnage, loadMode, loadWords, loadNote, progStep, jumpCap, setSecs, setupSecs, recovery, rolling7, rankDays, rankExercises, isCompound, patternOf, noE1, whtrLine, exHeadline, remainMin, shortPlan, weekPlan, cycleProjection, lastLighterWeek, regionBalance, parseHeight, mixCheck, swapCands, eqPlan, exportCSV, importData, chunksOf, assemble, sessionMuscles, TRACK_ONLY, cloud, Hx, mergeChunk, baseOf, sync: () => cq(cloudPull), TEMPLATES, lastRFor, impDate, impRows, impNorm, impMatch, impFromText, impFromTable, impHeader, impBuild, impStart, impXlsx, parseSets, undoStack, undoRestore, undoForget, allTimeBests, bestsBoard, obActive, fmtW, rirUsual, rirEst, routineFromTemplate, plannedSets, map3d: () => ({ state: B3.state, fail: B3.fail, meshes: B3.meshes.length, yaw: B3.yaw, glow: Object.keys(B3.mats).filter((m) => B3.mats[m].emissiveIntensity > 0), canvas: !!document.querySelector("#bm3d canvas"), colors: Object.fromEntries(Object.entries(B3.mats).map(([m, mt]) => [m, "#" + mt.color.getHexString()])), pick: (x, y) => map3dPick(x, y), want: map3dColors() }), cloudState: () => ({ on: cloud.on, status: cloud.status, err: cloud.err, uid: cloud.uid, acct: cloud.acct }), acctUser: () => acct.user, acctWaiting: () => !!acctWait.pw, flush: () => cq(cloudFlush), backupDue, routineUpdates, planFor, platesMode, plateText, chunksOf, IDX, suggest, e1, render, ACT, ui, makeDemo, invalidate, normalize, snapshot, saveNow, timer, weekStats, weekStart, today, EX, blockProgress, dayMinutes, weekStreak, coach, tonnageNow, livePR, movers, stalledIds, muscleStatus, actualAvg4, plannedPerWeek, parseSets, fillSets, newBlock, lastNoteOf, sizeRows, sessionMuscleSets, sessionCapNote, routineClutter, rowBlank, dayReasons, impTextSets, liftTrend, prsWithin, activeRoutine, rackStep, repFloor, sessionLength, prBeat, exInjury, exJoints, openModal, EQUIP, HARD_EX, recentLighter, planEvidenceNote, howToUrl, editFp, toast, avgWeeks, regionWk, REGION_WKS, SAFETY_TXT, libFiltered, nameMatch, workLoad, fitE, offSession, tagged, fatigueStalls, avgWeeksTxt, routineFromLog, repSpan, rangeWords, calDueIdx, readyCard, sameRR, hintOnce, overSets, rackTol, daysOff, BACK_DAYS, prName, sessTm, effTgt, bwDueCard, bwNoLoad, applyPick, joinAdjacent, sameExOnce, goalState, goalLine, bwRefLoad, ML, exMusParts, musTrend };
     render();
     wakeOn();
