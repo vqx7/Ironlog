@@ -5,8 +5,9 @@
    reader is as it was. An import cannot be assigned to, so the log is
    replaced only through setState, which returns the value as the
    assignment did; the properties of ui, cloud and the log are still written
-   from many places, and giving those writes one path is 3b's and phase 5's
-   work (ARCHITECTURE.md). The four objects are moved unchanged, and
+   from many places, and giving those writes one path is the work of phases
+   4 and 5 (ARCHITECTURE.md); since 3b the engine and the analytics read the
+   log through live.ts's model instead of importing it. The four objects are moved unchanged, and
    tests/moved.js holds them to r50's code. */
 
 import type { EngineState } from './types';
