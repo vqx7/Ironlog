@@ -655,8 +655,9 @@ export function sgTopOfRangeIn(M: Model, C: SuggestCtx): Suggestion | null {
          a fixed-rep plan goes up and repeats the reps, the drop below the
          range catching a miss. Read against the planned RIR alone, a 5 x 5
          at 335 with no RIR rated (read as 0) made 5 lb (1.5%) look like two
-         reps. A first f is read only from an estimate, as the ! says. */
+         reps. */
       const f = est ? rtfAt(est, nw + bwT) : null;
+      // f is read only from an estimate, so est is there, as the ! says.
       const cost = f != null ? (rtfAt(est!, top + bwT) as number) - f : 0;
       if (f != null && cost >= 1.5 && wide) {
         const can = Math.floor(f - q + 1e-9);

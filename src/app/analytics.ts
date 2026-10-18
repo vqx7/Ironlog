@@ -266,6 +266,7 @@ export function tonnageIn(M: Model, ex: ExerciseLike, s: LoadedSet, date?: strin
   const known = bwKnownAtIn(M, date || M.today());
   const bl = ex && ex.bw && known != null ? known * bwShare(ex) : 0;
   const load = m === 'bw' ? Math.max(0, bl + w) : m === 'each' || m === 'side' ? w * 2 : w;
+  // No reps reads as 0 the same way, which the cast lets TypeScript accept.
   return load * (+(s.r as number) || 0) * (ex.perSide ? 2 : 1);
 }
 
@@ -431,7 +432,6 @@ export function idxSessionsIn(M: Model, sessions: readonly Session[]) {
       const drop = atTop.length >= 2 ? atTop[0].r - atTop[atTop.length - 1].r : null;
       // Timed holds and joint-rotation bodyweight lifts have no 1RM, and
       // seconds times load is not tonnage. bb: rep band of the best set.
-      // A set with an estimate has reps to failure, as the two ! below say (e1 gives none without them).
       let best: number | null = null,
         bb: number | null = null;
       if (!noE1(ex))
@@ -439,6 +439,7 @@ export function idxSessionsIn(M: Model, sessions: readonly Session[]) {
           const v = e1(p.load, p.r, p.rq);
           if (v != null && (best == null || v > best)) {
             best = v;
+            // A set with an estimate has reps to failure (e1 gives none without them), as the ! says.
             bb = rtfBand(rtfOf(p.r, p.rq)!);
           }
         }
@@ -453,6 +454,7 @@ export function idxSessionsIn(M: Model, sessions: readonly Session[]) {
             const v = e1(p.pl, p.r, p.rq);
             if (v != null && (pb == null || v > pb)) {
               pb = v;
+              // The same: an estimate means reps to failure, as the ! says.
               pbb = rtfBand(rtfOf(p.r, p.rq)!);
             }
           }
@@ -869,7 +871,7 @@ export function idxLiftIn(
            not set it: a squat at 20, 20, 30, 22, 24, 24 working reps read
            stalled from its one good day, and a press alternating 6s and
            5s read up from its last two. These sessions all have a reading
-           (withE1), as the four ! below say. */
+           (withE1), as the two ! below say. */
         const sen = (() => {
           const a: number[] = [];
           for (let i = 0; i < l.length; i++)
@@ -879,6 +881,7 @@ export function idxLiftIn(
             }
           return a.length ? median(a) : null;
         })();
+        // Every session in l has a reading (withE1), as the ! says.
         const my = l.reduce((a, x) => a + x.tv!, 0) / l.length;
         stalled = sen != null && my > 0 && ((sen * 7) / my) * 100 < 0.1 && !moved;
       }
@@ -942,31 +945,31 @@ export function idxLiftIn(
   }
   /* RIR drift: the same load and at least the same reps across the last three
      exposures while logged RIR climbed by a full rep or more. e1RM cannot see
-     this, but it is the clearest sign that the load is due to go up.
-     climbing is worked out before allRir is tested, so a missing top RIR
-     compares as 0 there and the result counts only when all three have one:
-     the casts let TypeScript accept that comparison; once allRir holds, each
-     has one, as the ! say. */
+     this, but it is the clearest sign that the load is due to go up. */
   let easier: ExStat['easier'] = null;
   if (inRange.length >= 3) {
     const l3 = inRange.slice(-3);
     const sameW = l3.every(x => Math.abs(x.topW - l3[0].topW) < 1e-6);
     const allRir = l3.every(x => x.topRir != null);
     const repsHeld = l3.every(x => x.topReps >= l3[0].topReps);
+    // Worked out before allRir is tested, so a missing top RIR compares as 0
+    // here, and it counts only when all three have one: the casts let
+    // TypeScript accept the comparison.
     const climbing =
       (l3[1].topRir as number) >= (l3[0].topRir as number) &&
       (l3[2].topRir as number) >= (l3[1].topRir as number) &&
       (l3[2].topRir as number) - (l3[0].topRir as number) >= 1;
+    // Once allRir holds, each top RIR is there, as the ! say.
     if (sameW && allRir && repsHeld && climbing)
       easier = { w: l3[0].topW, from: r1(l3[0].topRir!), to: r1(l3[2].topRir!) };
   }
   /* Widening set-to-set drop-off at an unchanged load: the top set still goes
      up but the back sets fall away. That is a fatigue or rest-length signal,
-     not lost strength, and no other number here shows it. Each drop is read
-     only once all three are known, as the ! say. */
+     not lost strength, and no other number here shows it. */
   let fade: ExStat['fade'] = null;
   if (inRange.length >= 3) {
     const l3 = inRange.slice(-3);
+    // Each drop is read only once all three are known, as the ! say.
     if (
       l3.every(x => Math.abs(x.topW - l3[0].topW) < 1e-6) &&
       l3.every(x => x.drop != null) &&
@@ -976,13 +979,13 @@ export function idxLiftIn(
   }
   // best: the top e1RM in the current rep range, which is what targets and
   // the live PR badge compare against. bestAll ignores rep range.
-  // A session with a best estimate has its band, as the ! says.
   let bestCur: number | null = null;
   const byBand: Record<number, number> = {};
   for (const x of exps) {
     if (x.best == null) continue;
     if (sameRR(x.rr, curRR)) bestCur = bestCur == null ? x.best : Math.max(bestCur, x.best);
   }
+  // A session with an estimate at the PR load has its band, as the ! say.
   for (const x of exps) if (x.pb != null) byBand[x.pbb!] = Math.max(byBand[x.pbb!] || 0, x.pb);
   // fresh: trained in the last 42 days, so its trend still says something about the muscle now.
   // Done within the last 4 weeks (r34.2: 42 days let a lift 6 weeks off still read "up" and project ahead after a break).

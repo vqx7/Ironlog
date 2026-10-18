@@ -164,9 +164,12 @@ for (const t of topRefs) for (const w of t.writes) written.set(w, (written.get(w
 const BROWSER = /\b(document|window|navigator|localStorage|sessionStorage|indexedDB|location|history|requestAnimationFrame|cancelAnimationFrame|setTimeout|setInterval|fetch|matchMedia|getComputedStyle|Chart|Sortable|alert|confirm|DOMParser|Blob|Response|DecompressionStream|FileReader|File|Image|MutationObserver|MouseEvent|CSS)\b/;
 const byName = new Map(decls.map(d => [d.name, d]));
 for (const d of decls) d.browser = BROWSER.test(code.slice(d.node.start, d.node.end));
-// Imported names that are shared state: exported with `let`, or written by the legacy script.
+// Imported names that are shared state: exported with `let`, or written by
+// the legacy script, or one of live.ts's adapters (r52), each of which reads
+// the store's log, the clock and the live caches, so a screen that calls EX
+// is not counted as pure.
 const LETS = letExports(SRC);
-const mutImp = new Set([...imports.map(x => x.name).filter(n => LETS.has(n)), ...[...decls, ...topRefs].flatMap(d => [...d.writesImp])]);
+const mutImp = new Set([...imports.map(x => x.name).filter(n => LETS.has(n)), ...imports.filter(x => x.from === './app/live').map(x => x.name), ...[...decls, ...topRefs].flatMap(d => [...d.writesImp])]);
 // A declaration is pure if neither it nor anything it uses touches the browser or shared state.
 const MUT = new Set([...written.keys(), ...mutImp]);
 const memo = new Map();

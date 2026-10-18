@@ -22,6 +22,9 @@
 //    line ran), nothing is imported that the legacy script does not use, and
 //    every name the legacy script reads without declaring or importing it is
 //    a known global.
+// 6. Nothing behind the model's back (r52, ARCHITECTURE.md phase 3b): the
+//    engine and the analytics read the log, the date and their caches only
+//    through the model they are given, all the way down.
 const fs = require('fs'); const path = require('path');
 const ROOT = path.join(__dirname, '..');
 // Every script file under src/: the legacy parts and the typed modules in src/app/.
@@ -29,6 +32,25 @@ const ROOT = path.join(__dirname, '..');
 const appFiles = d => fs.readdirSync(path.join(ROOT, 'src', d), { withFileTypes: true }).flatMap(e => e.isDirectory() ? appFiles(d + '/' + e.name) : /\.ts$/.test(e.name) ? [d + '/' + e.name] : []);
 const SRC_CODE = [...fs.readdirSync(path.join(ROOT, 'src')).filter(f => f.endsWith('.js')), ...appFiles('app')];
 const cfg = require('../scripts/config');
+// The top-level declarations of the legacy script in a published build: the
+// function the bundle calls last (tests/moved.js finds it strictly, and holds
+// each move to it).
+function legacyNames(file) {
+  const acorn = require('acorn');
+  const html = fs.readFileSync(path.join(ROOT, file), 'utf8');
+  const app = [...html.matchAll(/<script>([\s\S]*?)<\/script>/g)].map(m => m[1]).reduce((a, b) => (b.length > a.length ? b : a), '');
+  const top = acorn.parse(app, { ecmaVersion: 'latest' }).body.filter(st => !(st.type === 'ExpressionStatement' && st.directive));
+  const call = st => st && st.type === 'ExpressionStatement' && st.expression.type === 'CallExpression' ? st.expression.callee : null;
+  const outer = top.length === 1 && call(top[0]);
+  const inner = outer && outer.body && outer.body.body;
+  const legacy = inner && call(inner[inner.length - 1]);
+  const out = new Set();
+  for (const st of (legacy && legacy.body && legacy.body.body) || []) {
+    if (st.type === 'FunctionDeclaration') out.add(st.id.name);
+    else if (st.type === 'VariableDeclaration') for (const d of st.declarations) if (d.id.type === 'Identifier') out.add(d.id.name);
+  }
+  return out;
+}
 const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log('FAIL', m, x === undefined ? '' : JSON.stringify(x)); } else console.log('ok  ', m); };
 
 // 1. Orphaned test files.
@@ -411,6 +433,27 @@ const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log
     };
     const overloads = [];
     const loose = n => n && (n.kind === ts.SyntaxKind.UnknownKeyword || n.kind === ts.SyntaxKind.AnyKeyword);
+    // Marks in moved code (phase 3b, ARCHITECTURE.md): strict TypeScript
+    // needs a ! or a cast wherever moved code relies on a fact established in
+    // another statement, and a move may not change the code to show it. Such
+    // a mark records an assumption the code already made, so it counts
+    // against its move's own number, recorded when the move is made and only
+    // falling after; every other mark counts against the numbers above. A
+    // mark belongs to a move when the top-level declaration holding it has a
+    // name (less the In of a function taking the model, M) that was a
+    // declaration of the legacy script in the build the move started from:
+    // read from that build itself, so a mark in new or changed code can never
+    // ride on a move (tests/moved.js holds what a move may change, and allows
+    // no mark in an adapter, whose code it fixes).
+    const MOVE_MARKS = [...fs.readFileSync(path.join(ROOT, 'ARCHITECTURE.md'), 'utf8').matchAll(/^Marks in (r\d+)'s moved code \(from (baselines\/[\w.-]+\.html)\): (\d+) casts, (\d+) non-null assertions$/gm)].map(m => ({ release: m[1], baseline: m[2], casts: +m[3], bangs: +m[4], legacy: legacyNames(m[2]), nowCasts: 0, nowBangs: 0 }));
+    const markMove = (sf, n) => {
+      const st = sf.statements.find(x => x.pos <= n.pos && n.end <= x.end);
+      if (!st) return null;
+      const fns = ts.isFunctionDeclaration(st) && st.name ? [[st.name.text, st]] : ts.isVariableStatement(st) ? st.declarationList.declarations.filter(d => ts.isIdentifier(d.name)).map(d => [d.name.text, d.initializer && (ts.isArrowFunction(d.initializer) || ts.isFunctionExpression(d.initializer)) ? d.initializer : null]) : [];
+      const names = fns.map(([name, f]) => (f && f.parameters.length && ts.isIdentifier(f.parameters[0].name) && f.parameters[0].name.text === 'M' && name.endsWith('In') ? name.slice(0, -2) : name));
+      for (const mv of [...MOVE_MARKS].reverse()) if (names.some(x => mv.legacy.has(x))) return mv;
+      return null;
+    };
     for (const id of MODS) {
       const f = id + '.ts', sf = prog.getSourceFile(path.join(APP, f)), txt = sf.text;
       const at = n => `${f}:${sf.getLineAndCharacterOfPosition(n.getStart(sf)).line + 1}`;
@@ -438,20 +481,26 @@ const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log
         if (n.kind === ts.SyntaxKind.AnyKeyword) anys.push(`${at(n)} the word any`);
         const reads = ts.isIdentifier(n) || ts.isCallExpression(n) || ts.isAwaitExpression(n) || ts.isPropertyAccessExpression(n) || ts.isElementAccessExpression(n);
         const inType = x => { if (x.parent && ts.isModuleDeclaration(x.parent) && x.parent.name === x) return true; for (let u = x.parent; u; u = u.parent) { if (ts.isTypeNode(u)) return true; if (ts.isStatement(u) || ts.isExpression(u)) return false; } return false; };
+        // The property a destructuring takes (`uid` in `const { uid: _u } = it`)
+        // names a property, not a value: the checker gives such a name any, and
+        // the binding beside it (`_u`) is the value, read here like any other
+        // (found in r52, on planFor's `{ uid: _u, ss: _s, ...p }`).
+        const propName = x => !!x.parent && ts.isBindingElement(x.parent) && x.parent.propertyName === x;
         const wrapped = x => { let u = x.parent; while (u && (ts.isParenthesizedExpression(u) || (ts.isPropertyAccessExpression(u) && u.name === x))) { x = u; u = u.parent; } return !!u && (ts.isAsExpression(u) || ts.isTypeAssertionExpression(u)); };
-        if (reads && !inType(n) && !wrapped(n) && isAny(n)) anys.push(`${at(n)} ${n.getText(sf).slice(0, 50).replace(/\s+/g, ' ')}`);
+        if (reads && !inType(n) && !propName(n) && !wrapped(n) && isAny(n)) anys.push(`${at(n)} ${n.getText(sf).slice(0, 50).replace(/\s+/g, ' ')}`);
         if ((ts.isFunctionDeclaration(n) || ts.isMethodDeclaration(n) || ts.isConstructorDeclaration(n)) && !n.body) overloads.push(at(n));
         if (ts.isIndexSignatureDeclaration(n) && loose(n.type)) open++;
         if (ts.isTypeReferenceNode(n) && n.typeName.getText(sf) === 'Record' && n.typeArguments && n.typeArguments.length === 2 && n.typeArguments[0].kind === ts.SyntaxKind.StringKeyword && loose(n.typeArguments[1])) open++;
         const isCast = ((ts.isAsExpression(n) || ts.isTypeAssertionExpression(n)) && n.type.getText(sf) !== 'const') || ts.isTypePredicateNode(n) || (ts.isParameter(n) && unchecked(n));
         const isBang = ts.isNonNullExpression(n) || ((ts.isVariableDeclaration(n) || ts.isPropertyDeclaration(n)) && !!n.exclamationToken);
+        const mv = isCast || isBang ? markMove(sf, n) : null;
         if (isCast) {
-          casts++;
+          if (mv) mv.nowCasts++; else casts++;
           if (!named(n, CAST, held)) unexplained.push(`${at(n)} ${n.getText(sf).slice(0, 50).replace(/\s+/g, ' ')}`);
           if (n.type && holdsParam(n.type, n)) generic.push(`${at(n)} ${n.getText(sf).slice(0, 50)}`);
         }
         if (isBang) {
-          bangs++;
+          if (mv) mv.nowBangs++; else bangs++;
           if (!named(n, BANG, held)) unexplained.push(`${at(n)} ${n.getText(sf).slice(0, 50).replace(/\s+/g, ' ')}`);
         }
         const own = ts.isStatement(n) || ts.isVariableDeclaration(n) || ts.isPropertyAssignment(n) || ts.isClassElement(n) ? [...held, lead(n)] : held;
@@ -468,6 +517,11 @@ const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log
     const cc = cap(/^Casts: (\d+)$/m), cb = cap(/^Non-null assertions: (\d+)$/m), co = cap(/^Open types: (\d+)$/m);
     ok(cc >= 0 && cb >= 0 && co >= 0 && casts <= cc && bangs <= cb && open <= co, `src/app/ has no more casts, ! or open types than ARCHITECTURE.md records (${casts} of ${cc}, ${bangs} of ${cb}, ${open} of ${co})`);
     ok(casts >= cc && bangs >= cb && open >= co, 'when a cast, a ! or an open type goes, the number in ARCHITECTURE.md is lowered to match, so it stays gone', { casts, cc, bangs, cb, open, co });
+    for (const mv of MOVE_MARKS) {
+      ok(mv.legacy.size > 300, `${mv.release}'s marks are told apart by the legacy declarations of ${mv.baseline} (${mv.legacy.size})`);
+      ok(mv.nowCasts <= mv.casts && mv.nowBangs <= mv.bangs, `the code ${mv.release} moved has no more casts or ! than ARCHITECTURE.md records for it (${mv.nowCasts} of ${mv.casts}, ${mv.nowBangs} of ${mv.bangs})`);
+      ok(mv.nowCasts >= mv.casts && mv.nowBangs >= mv.bangs, `when a cast or a ! in the code ${mv.release} moved goes, its number in ARCHITECTURE.md is lowered to match`, { casts: mv.nowCasts, recorded: mv.casts, bangs: mv.nowBangs, recordedBangs: mv.bangs });
+    }
   }
   // An error handled in a module carries a comment (r51, the outside review):
   // every `catch` block in src/app/, and every handler given to a promise
@@ -608,6 +662,85 @@ const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log
     }
     fs.rmSync(tmp, { recursive: true, force: true });
   }
+}
+
+// 6. Nothing behind the model's back (phase 3b, r52; ARCHITECTURE.md). The
+// engine and the analytics are functions of a model: the log, the date and
+// the caches come in through M and nowhere else. So every function taking
+// the model, and every declaration it reaches through any reference (a call,
+// or a function passed as a value, such as .filter(isWork) or .sort(sessCmp)),
+// in any module and through any import, reads no clock (util's today,
+// Date.now, a new Date() with no arguments), nothing random (Math.random,
+// util's uid), nothing from the store or the live model, no global but
+// JavaScript's own listed below (window, document, storage, timers, fetch,
+// performance and crypto are not on it), and no value a module keeps and
+// changes at its top level (a let or var, or a constant written through
+// anywhere in src/app/), other than the one listed. Intl is listed: the
+// engine's sentences word dates in the phone's language, as they did in r51.
+{
+  const acorn = require('acorn'), esbuild = require('esbuild');
+  const { freeNames, scanWrites } = require('../scripts/depmap');
+  const APP = path.join(ROOT, 'src', 'app');
+  const ids = SRC_CODE.filter(f => f.startsWith('app/')).map(f => f.slice(4, -3));
+  // JavaScript's own names that read nothing outside the code: no clock, no randomness, no page.
+  const PURE_GLOBALS = new Set(['Array', 'Boolean', 'Date', 'Error', 'Infinity', 'Intl', 'JSON', 'Map', 'Math', 'NaN', 'Number', 'Object', 'RangeError', 'RegExp', 'Set', 'String', 'Symbol', 'TypeError', 'WeakMap', 'WeakSet', 'isFinite', 'isNaN', 'parseFloat', 'parseInt', 'undefined']);
+  // Module values that change after load, allowed where reading them changes no result (each with its reason).
+  const STATE_OK = { 'format.DTF': 'a store of date formatters, one per format, made once: the same words with or without it (r46)' };
+  // Declarations that read the clock or randomness, by module and name.
+  const BANNED = { 'util.today': 'the clock', 'util.uid': 'randomness', 'store.*': 'the store', 'live.*': 'the live model' };
+  const mods = new Map();
+  for (const id of ids) {
+    const js = esbuild.transformSync(fs.readFileSync(path.join(APP, id + '.ts'), 'utf8'), { loader: 'ts', format: 'esm' }).code;
+    const ast = acorn.parse(js, { ecmaVersion: 'latest', sourceType: 'module' });
+    const decl = new Map(), kind = new Map(), imp = new Map();
+    for (const st of ast.body) {
+      const s2 = st.type === 'ExportNamedDeclaration' ? st.declaration : st;
+      if (st.type === 'ImportDeclaration') { for (const sp of st.specifiers) imp.set(sp.local.name, { from: path.relative(APP, path.resolve(path.dirname(path.join(APP, id)), st.source.value)).split(path.sep).join('/'), name: sp.imported ? sp.imported.name : '*' }); continue; }
+      if (!s2) continue;
+      if (s2.type === 'FunctionDeclaration') { decl.set(s2.id.name, s2); kind.set(s2.id.name, 'function'); }
+      else if (s2.type === 'VariableDeclaration') for (const d of s2.declarations) if (d.id.type === 'Identifier') { decl.set(d.id.name, d); kind.set(d.id.name, s2.kind); }
+    }
+    mods.set(id, { js, ast, decl, kind, imp });
+  }
+  // Every module value written after load: a let or var, or anything a declaration in any module writes through.
+  const written = new Set();
+  for (const [id, m] of mods) {
+    for (const [n, k] of m.kind) if (k !== 'const' && k !== 'function') written.add(`${id}.${n}`);
+    for (const [, d] of m.decl) for (const w of scanWrites(d)) { const i = m.imp.get(w); written.add(i ? `${i.from}.${i.name}` : `${id}.${w}`); }
+  }
+  const starts = [];
+  for (const [id, m] of mods) for (const [n, d] of m.decl) { const f = d.type === 'FunctionDeclaration' ? d : d.init && /Function/.test(d.init.type) ? d.init : null; if (f && f.params.length && f.params[0].type === 'Identifier' && f.params[0].name === 'M') starts.push(`${id}.${n}`); }
+  const problems = [], seen = new Set();
+  // Within one declaration: a new Date() with no arguments, Date.now, Math.random.
+  const inCode = (id, d) => {
+    const out = [];
+    (function walk(n) {
+      if (!n || typeof n.type !== 'string') return;
+      if (n.type === 'NewExpression' && n.callee.type === 'Identifier' && n.callee.name === 'Date' && n.arguments.length === 0) out.push('new Date() (the clock)');
+      if (n.type === 'MemberExpression' && !n.computed && n.object.type === 'Identifier' && ((n.object.name === 'Date' && n.property.name === 'now') || (n.object.name === 'Math' && n.property.name === 'random'))) out.push(`${n.object.name}.${n.property.name}`);
+      for (const k in n) { if (k === 'type') continue; const v = n[k]; if (Array.isArray(v)) v.forEach(walk); else if (v && typeof v.type === 'string') walk(v); }
+    })(d);
+    return out;
+  };
+  const visit = (key, trail) => {
+    if (seen.has(key)) return; seen.add(key);
+    const [id, n] = [key.slice(0, key.indexOf('.')), key.slice(key.indexOf('.') + 1)];
+    const ban = BANNED[key] || BANNED[`${id}.*`];
+    if (ban) { problems.push(`${trail.join(' > ')} reads ${ban} (${key})`); return; }
+    const m = mods.get(id), d = m && m.decl.get(n);
+    if (!d) { problems.push(`${trail.join(' > ')}: ${key} is not a declaration of src/app/`); return; }
+    if (written.has(key) && !STATE_OK[key]) problems.push(`${trail.join(' > ')} reads ${key}, a value kept and changed at a module's top level`);
+    for (const x of inCode(id, d)) problems.push(`${[...trail, key].join(' > ')} uses ${x}`);
+    for (const u of freeNames(d)) {
+      if (u === n) continue;
+      const i = m.imp.get(u);
+      if (i) visit(`${i.from}.${i.name}`, [...trail, key]);
+      else if (m.decl.has(u)) visit(`${id}.${u}`, [...trail, key]);
+      else if (!PURE_GLOBALS.has(u)) problems.push(`${[...trail, key].join(' > ')} reads the global ${u}`);
+    }
+  };
+  for (const s0 of starts) visit(s0, []);
+  ok(problems.length === 0 && starts.length >= 97 && seen.size > starts.length, `every function taking the model (${starts.length}) and all it reaches (${seen.size - starts.length} more declarations) read the log, the date and the caches only through the model: no clock, randomness, store, live model, page or module state but the listed`, problems.slice(0, 8));
 }
 
 // The build this one replaces is kept as a baseline and read by the
