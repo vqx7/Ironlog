@@ -24,7 +24,7 @@ type Fields = Record<string, unknown>;
 export function canon(x: unknown): string {
   if (x === undefined) return 'null';
   if (x === null || typeof x !== 'object') return JSON.stringify(x);
-  // Array.isArray turns an unknown into any[]; the cast keeps each entry unknown for canon.
+  // Array.isArray turns x, an object here, into any[]; the cast keeps each entry unknown for canon.
   if (Array.isArray(x)) return '[' + (x as unknown[]).map(canon).join(',') + ']';
   return (
     '{' +

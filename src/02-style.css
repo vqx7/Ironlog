@@ -123,9 +123,9 @@ html{scroll-padding-top:calc(var(--head-h) + env(safe-area-inset-top,0px));-webk
    by the status bar's height, so the fixed tab bar stops above the bottom
    edge (frappe-ui pull requests 1284 and 1289). With a real log, Plan (about
    780 px) is shorter than every current iPhone and Today (about 860 to 920)
-   than the larger ones, while History and Settings are taller; Plan comes
-   just before them in the bar, so the short viewport may begin on Plan and
-   carry over. That is a reading, not a proof (PENDING 303). In the installed
+   than the larger ones, while Stats, History and Settings are taller; Plan
+   comes before those three in the bar, so the short viewport may begin on
+   Plan and carry over. That is a reading, not a proof (PENDING 303). In the installed
    app no page is shorter than the screen now, and none is taller for it:
    100lvh caps it where iOS has no such bug. Browsers without lvh drop it. */
 @media (display-mode:standalone){html{min-height:min(100lvh,calc(100% + env(safe-area-inset-top,0px)))}}

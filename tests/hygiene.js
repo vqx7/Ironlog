@@ -380,15 +380,19 @@ const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log
     const holdsAny = (ty, d = 0) => !!ty && d < 6 && (!!(ty.flags & ts.TypeFlags.Any) || (ty.types || []).some(x => holdsAny(x, d + 1)) || (ty.objectFlags & ts.ObjectFlags.Reference ? ch.getTypeArguments(ty) : []).some(x => holdsAny(x, d + 1)));
     const isAny = n => { try { return holdsAny(ch.getTypeAtLocation(n)); } catch (e) { return false; } };
     // A written type that names a type parameter of a declaration around the cast, anywhere in it: in an
-    // object, a function, keyof, a conditional or a type argument, and through any alias it names (an
-    // alias's own parameters, such as Record's, are not the cast's).
+    // object, a function, keyof, a conditional or a type argument, and through any alias, interface or
+    // typeof it names (an alias's own parameters, such as Record's, are not the cast's).
+    const aroundCast = (s, cast) => (s.declarations || []).some(d => d.getSourceFile() === cast.getSourceFile() && d.parent.pos <= cast.pos && cast.end <= d.parent.end);
+    const typeParamIn = (ty, cast, d = 0) => !!ty && d < 6 && ((!!(ty.flags & ts.TypeFlags.TypeParameter) && !!ty.symbol && aroundCast(ty.symbol, cast)) || (ty.types || []).some(x => typeParamIn(x, cast, d + 1)) || (ty.objectFlags & ts.ObjectFlags.Reference ? ch.getTypeArguments(ty) : []).some(x => typeParamIn(x, cast, d + 1)));
     const holdsParam = (node, cast, seen = new Set()) => {
       if (!node) return false;
       if (ts.isTypeReferenceNode(node) || ts.isExpressionWithTypeArguments(node)) {
         const s = ch.getSymbolAtLocation(ts.isTypeReferenceNode(node) ? node.typeName : node.expression);
-        if (s && s.flags & ts.SymbolFlags.TypeParameter && (s.declarations || []).some(d => d.getSourceFile() === cast.getSourceFile() && d.parent.pos <= cast.pos && cast.end <= d.parent.end)) return true;
-        if (s && s.flags & ts.SymbolFlags.TypeAlias && !seen.has(s)) { seen.add(s); for (const dcl of s.declarations || []) if (ts.isTypeAliasDeclaration(dcl) && holdsParam(dcl.type, cast, seen)) return true; }
+        if (s && s.flags & ts.SymbolFlags.TypeParameter && aroundCast(s, cast)) return true;
+        if (s && s.flags & (ts.SymbolFlags.TypeAlias | ts.SymbolFlags.Interface) && !seen.has(s)) { seen.add(s); for (const dcl of s.declarations || []) if ((ts.isTypeAliasDeclaration(dcl) && holdsParam(dcl.type, cast, seen)) || (ts.isInterfaceDeclaration(dcl) && dcl.getSourceFile() === cast.getSourceFile() && [...(dcl.heritageClauses || []), ...dcl.members].some(m => holdsParam(m, cast, seen)))) return true; }
       }
+      // typeof x, where x's type is or holds a type parameter around the cast.
+      if (ts.isTypeQueryNode(node)) { try { if (typeParamIn(ch.getTypeAtLocation(node.exprName), cast)) return true; } catch (e) { /* a name the checker cannot type is no type parameter */ } }
       return !!ts.forEachChild(node, k => holdsParam(k, cast, seen) || undefined);
     };
     // A parameter written with a type where the function's contextual type gives it any: an annotation nothing checks.
