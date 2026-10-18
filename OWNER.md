@@ -348,7 +348,7 @@ Status: to do whenever you are at the gym; tell Claude what you see.
 - Rest timer across a screen lock; the share sheet to Files for a backup; the notch in the home-screen app; "New version ready" then Reload.
 - Auto-mark with the keyboard's Done on a grey reps field; the 3D body's drag and tap; the Add to Home Screen guide on iOS 26 Safari.
 - The app signing itself in after a confirmation link; a past workout from the week bar; the light Today card; a screenshot attached to a report.
-- Once r51 is live: ask the two friends on iOS 26 whether the tab bar still rises on History, Settings or Plan in the home-screen app (r51's fix for iOS 26's short viewport; no browser here can be an installed iPhone app, so they are the check). If it still rises, their iOS version and the exact steps.
+- Ask the two friends on iOS 26 (for PENDING 303's tab bar fix), before r51 is live: does the bar rise on Settings when they tap Settings straight from Today, without passing History? Settings is taller than the screen and comes right after History in the bar, so the short viewport may carry over from History; if it rises straight from Today too, Settings has a cause of its own. Once r51 is live: whether it still rises on History, Plan or Settings. No browser here is an installed iPhone app, so they are the check.
 
 ## Reminders
 - Renew the `ironlog-feedback` token (B3) before it expires, a year after you make it. Claude writes the date here when you say B3 is done.

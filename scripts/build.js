@@ -106,10 +106,11 @@ html = replaceOnce(html, `<link href="${cfg.FONTS_CSS}" rel="stylesheet">`, '<li
 // Nothing on the page still reaches Google Fonts: no tag, no @import in the
 // styles, anywhere outside the inline scripts. The app script holds config's
 // values as text, which fetch nothing (r51; the r51 review found a check
-// limited to <link> tags passed an @import).
+// limited to <link> tags passed an @import). Read in any case and with CSS
+// escapes taken out, as a browser would read it.
 {
-  const outside = html.replace(/<script>[\s\S]*?<\/script>/g, '');
-  must(![cfg.FONTS_ORIGIN, cfg.FONT_FILES_ORIGIN].some(o => outside.includes(o.replace(/^https:/, ''))), 'Google Fonts link still present');
+  const outside = html.replace(/<script>[\s\S]*?<\/script>/g, '').toLowerCase().replace(/\\/g, '');
+  must(![cfg.FONTS_ORIGIN, cfg.FONT_FILES_ORIGIN].some(o => outside.includes(o.toLowerCase().replace(/^https:/, ''))), 'Google Fonts link still present');
 }
 // Libraries: the local copy first, the CDNs stay as fallbacks.
 html = replaceOnce(html, `loadScript(['${cfg.SORTABLE_URLS[0]}',`, `loadScript(['vendor/Sortable.min.js','${cfg.SORTABLE_URLS[0]}',`, 'Sortable loader');

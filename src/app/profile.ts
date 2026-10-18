@@ -66,6 +66,7 @@ export function profClean(p: Partial<Record<string, unknown>> | null | undefined
     ? [
         ...new Set(
           p.focus.filter(
+            // The type predicate is a cast, and true: typeof says m is a string.
             (m: unknown): m is string =>
               typeof m === 'string' && (MK as readonly string[]).includes(m) && !TRACK_ONLY.has(m)
           )

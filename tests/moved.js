@@ -51,7 +51,7 @@ const MOVES = [
     // The one change on the page outside the app script (two iPhone users,
     // 2026-10-17): the installed app's page is held to the screen's height on
     // iOS 26 (src/02-style.css says why; tests/ios-bar.js holds it).
-    page: { why: 'the tab bar on iOS 26 home-screen apps (tests/ios-bar.js)', adds: ["/* iOS 26's home-screen app (r51; two iPhone users, 2026-10-17: the tab bar\n   rises and the page shrinks on History, Settings and sometimes Plan). With\n   viewport-fit=cover and the translucent status bar, iOS 26 gives a page\n   shorter than the screen a viewport shorter by the status bar's height, so\n   the fixed tab bar stops above the bottom edge; a page at least as tall as\n   the screen gets the whole screen (frappe-ui pull request 1284, citing\n   WebKit bug 301108). So in the installed app the page is at least the\n   screen's height, and never more: 100lvh caps it where iOS has no such\n   bug. Browsers without lvh drop the line, as before. */\n@media (display-mode:standalone){html{min-height:min(100lvh,calc(100% + env(safe-area-inset-top,0px)))}}\n"] } },
+    page: { why: 'the tab bar on iOS 26 home-screen apps (tests/ios-bar.js)', adds: [{ after: "html{scroll-padding-top:calc(var(--head-h) + env(safe-area-inset-top,0px));-webkit-text-size-adjust:100%}\n", text: "/* iOS 26's home-screen app (r51; two iPhone users, 2026-10-17: the tab bar\n   rises and the page shrinks when tapping through the tabs, on History,\n   Settings and sometimes Plan). With viewport-fit=cover and the translucent\n   status bar, iOS 26 gives a page shorter than the screen a viewport shorter\n   by the status bar's height, so the fixed tab bar stops above the bottom\n   edge (frappe-ui pull requests 1284 and 1289). History, and Plan on taller\n   phones, are shorter than the screen; Settings is not (about 1,050 px\n   folded), but it comes right after History in the bar, so the short\n   viewport may simply carry over to it. In the installed app no page is\n   shorter than the screen now, and none is taller for it: 100lvh caps it\n   where iOS has no such bug. Browsers without lvh drop the line. */\n@media (display-mode:standalone){html{min-height:min(100lvh,calc(100% + env(safe-area-inset-top,0px)))}}\n" }] } },
 ];
 
 // One declaration as a normalized statement: a function as written, a
@@ -330,17 +330,24 @@ const declNames = st => st.type === 'FunctionDeclaration' || st.type === 'ClassD
   // (markup, styles, the loader, and with them any handler attribute, which
   // is a script the check above does not see) is the baseline's once the
   // build id is set aside. A release that changes the page says so in its
-  // move entry (`page: { why, adds: [text] }`): the page must then be the
-  // baseline's with exactly those texts added, each once, and nothing else.
+  // move entry (`page: { why, adds: [{ after, text }] }`): the page must then
+  // be the baseline's with each text inserted directly after its anchor, a
+  // run of the baseline's own text found there exactly once, and nothing
+  // else (the second r51 review moved an addition into a comment, where it
+  // dropped a rule, and the text alone still matched).
   const mvLast = MOVES[MOVES.length - 1];
   const around = (f, id) => fs.readFileSync(path.join(ROOT, f), 'utf8').replace(legacyIn(f).app, '{{APP}}').split(id).join('{{APP_VERSION}}');
   const idOf = f => (fs.readFileSync(path.join(ROOT, f), 'utf8').match(/<meta name="app-build" content="([^"]+)"/) || [])[1];
   const adds = mvLast.page ? mvLast.page.adds : [];
-  let rest = around('index.html', idOf('index.html')); const missing = [];
-  for (const a of adds) { if (typeof a !== 'string' || !a || rest.split(a).length !== 2) missing.push(a); else rest = rest.replace(a, ''); }
+  const base = around(mvLast.baseline, idOf(mvLast.baseline));
+  let want = base; const bad = [];
+  for (const a of Array.isArray(adds) ? adds : []) {
+    if (!a || typeof a.after !== 'string' || !a.after || typeof a.text !== 'string' || !a.text || base.split(a.after).length !== 2) { bad.push(a && a.after ? a.after.slice(0, 60) : a); continue; }
+    want = want.replace(a.after, () => a.after + a.text);
+  }
   if (mvLast.page) console.log(`note ${mvLast.release} adds to the page outside the app script: ${mvLast.page.why}`);
-  ok(!mvLast.page || (typeof mvLast.page.why === 'string' && Array.isArray(adds) && adds.length > 0), 'a move entry that changes the page says why and lists exactly what it adds');
-  ok(missing.length === 0 && rest === around(mvLast.baseline, idOf(mvLast.baseline)), `the page outside the app script is ${mvLast.baseline}'s, the build id set aside${adds.length ? `, with exactly the ${adds.length} listed addition${adds.length > 1 ? 's' : ''}` : ''}`, missing.length ? { missing } : undefined);
+  ok(!mvLast.page || (typeof mvLast.page.why === 'string' && Array.isArray(adds) && adds.length > 0 && bad.length === 0), 'a move entry that changes the page says why and gives each addition an anchor found once in the baseline', bad.length ? { bad } : undefined);
+  ok(around('index.html', idOf('index.html')) === want, `the page outside the app script is ${mvLast.baseline}'s, the build id set aside${adds.length ? `, with exactly the ${adds.length} listed addition${adds.length > 1 ? 's' : ''}, each at its anchor` : ''}`);
 }
 
 // Every module is either in a move, so this suite compares it, or written new

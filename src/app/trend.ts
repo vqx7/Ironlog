@@ -39,9 +39,11 @@ export function trendScope<X extends Exposure>(exps: readonly X[], anchor: strin
 
 /* The sessions in that scope with a trend reading. Separate from trendScope
    because idxLift sets each session's reading (tv) only after deciding
-   whether RIR enters the trend, which needs the scope first. */
-export function trendW<X extends Exposure>(sc: { inRange: readonly X[]; exWin: string }): (X & Read)[] {
-  return sc.inRange.filter((x): x is X & Read => x.date >= sc.exWin && x.tv != null);
+   whether RIR enters the trend, which needs the scope first. The filter's
+   type predicate is a cast: a session it keeps has a reading (tv), which is
+   what the test beside it checks. */
+export function trendW(sc: { inRange: readonly Exposure[]; exWin: string }): (Exposure & Read)[] {
+  return sc.inRange.filter((x): x is Exposure & Read => x.date >= sc.exWin && x.tv != null);
 }
 
 /* Both ends of the trend are the better of two sessions, to damp a single

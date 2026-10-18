@@ -597,7 +597,11 @@ export function impFromTable(rows: readonly (readonly unknown[])[], map: Record<
 
 /* Sets typed as free text, read the way Type or dictate sets reads them
    (parseSets), plus "3x10 @ 60" and "60x10x3" for sets of reps at a load,
-   and units written next to numbers. */
+   and units written next to numbers. The group parameters of the replace
+   callbacks below are typed by hand, which makes each a cast, since
+   String.replace types them any: every group typed string is one its
+   pattern must match ((^|\s) matches empty text at worst), and the RPE
+   pattern's two groups are alternatives, so each is string | undefined. */
 export function impSetsText(t: unknown): string {
   let s = ' ' + String(t).toLowerCase() + ' ';
   s = s.replace(/(\d),(\d{1,2})(?=\s*(?:lbs?|kgs?)?\s*[x×*])/g, '$1.$2');

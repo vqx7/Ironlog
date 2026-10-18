@@ -172,11 +172,14 @@ const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log
     // The values config owns that are not addresses: the versions, the faces and their weights, the style sheet's address whole, and a library's name with the first two parts of its version ("three.js 0.159").
     const short = v => v.split('.').slice(0, 2).join('\\.');
     const named = [['chart\\.js', cfg.CHART_VERSION], ['sortable(?:js)?', cfg.SORTABLE_VERSION], ['three(?:\\.js)?', cfg.THREE_VERSION]].map(([n, v]) => new RegExp(`${n}[\\s@/v-]*${short(v)}(?![\\d])`, 'i'));
-    const values = [cfg.CHART_VERSION, cfg.SORTABLE_VERSION, cfg.THREE_VERSION, cfg.FONT_DISPLAY, cfg.FONT_BODY, cfg.FONT_DISPLAY_WEIGHTS, cfg.FONT_BODY_WEIGHTS, cfg.FONTS_CSS];
-    const owns = s => [...[...s.matchAll(HOST)].map(m => m[1].toLowerCase()).filter(h => owned.has(h)), ...values.filter(v => s.includes(v)), ...named.filter(re => re.test(s)).map(re => re.source)];
+    const values = [cfg.CHART_VERSION, cfg.SORTABLE_VERSION, cfg.THREE_VERSION, cfg.FONT_DISPLAY, cfg.FONT_BODY, cfg.FONTS_CSS].map(v => v.toLowerCase());
+    // The weights in any spelling of the list: "600;700;800", [600, 700, 800].
+    const weights = [cfg.FONT_DISPLAY_WEIGHTS, cfg.FONT_BODY_WEIGHTS].map(w => new RegExp(`(?<![\\d])${w.split(';').join('[\\s\'"]*[,;][\\s\'"]*')}(?![\\d])`));
+    // Read as written and with a pattern's escapes undone ("https:\/\/api\.pwned..." is the address), in any case.
+    const owns = s0 => { const s = s0.replace(/\\([./])/g, '$1'), low = s.toLowerCase(); return [...[...s.matchAll(HOST)].map(m => m[1].toLowerCase()).filter(h => owned.has(h)), ...values.filter(v => low.includes(v)), ...named.filter(re => re.test(s)).map(re => re.source), ...weights.filter(re => re.test(s)).map(re => re.source)]; };
     const hosts = [], copies = [], seen = new Set();
     for (const [f, t] of texts) {
-      for (const m of t.code.matchAll(HOST)) {
+      for (const m of t.code.replace(/\\([./])/g, '$1').matchAll(HOST)) {
         const h = m[1].toLowerCase(); seen.add(h);
         if (!owned.has(h) && !(waiting.has(h) && f === 'src/10-29 (legacy parts)')) hosts.push(`${f}: ${h}`);
       }
@@ -347,15 +350,21 @@ const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log
   }
   // Types say only what is true (r51, the outside review V brought;
   // ARCHITECTURE.md). Read with the type checker, so an `any` is found
-  // wherever it is, not only where the word is written: no parameter,
-  // variable, call or property read in src/app/ has the type any, except a
-  // call wrapped directly in a cast, which makes it explicit (JSON.parse is
-  // typed any). Every cast (other than `as const`) and every `!` (a non-null
-  // assertion, or a definite assignment such as `let x!: T`) has a comment
-  // naming it ("cast", or a ! standing alone): on its line, alone on the line
-  // above, or leading a statement, declaration or property that holds it. A
-  // cast to a type parameter is refused, since one generic helper would turn
-  // any number of casts into calls the count never sees. Casts, `!` and open
+  // wherever it is, not only where the word is written: no name (a
+  // parameter, a variable, a destructured binding, any identifier read), call,
+  // await or property read in src/app/ has the type any, except an expression
+  // wrapped directly in a cast, which makes it explicit (JSON.parse is typed
+  // any). The other ways to tell TypeScript a type it cannot check count as
+  // casts: `as` (other than `as const`), a type predicate (`x is T`), and a
+  // parameter annotated where its contextual type is any (a
+  // String.replace callback's groups); overloads are refused, since their
+  // signatures are not checked against the implementation. Every cast and
+  // every `!` (a non-null assertion, or a definite assignment such as
+  // `let x!: T`) has a comment naming it ("cast", or a ! standing alone): on
+  // its line, alone on the line above, or leading a statement, declaration or
+  // property that holds it. A cast whose type is or holds a type parameter is
+  // refused, however it is spelled (an alias too), since one generic helper
+  // would turn any number of casts into calls the count never sees. Casts, `!` and open
   // types (an index signature, or a Record keyed by string, whose values are
   // unknown or any) are counted against ARCHITECTURE.md's numbers, which only
   // fall: higher fails, and lower fails until the numbers are lowered. What a
@@ -368,6 +377,23 @@ const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log
     const prog = ts.createProgram(conf.fileNames, conf.options), ch = prog.getTypeChecker();
     const anys = [], unexplained = [], generic = []; let casts = 0, bangs = 0, open = 0;
     const isAny = n => { try { return !!(ch.getTypeAtLocation(n).flags & ts.TypeFlags.Any); } catch (e) { return false; } };
+    // A type that is, or holds, a type parameter, through unions, intersections, aliases and type arguments.
+    const holdsParam = (ty, d = 0) => !!ty && d < 6 && (!!(ty.flags & ts.TypeFlags.TypeParameter) || (ty.types || []).some(x => holdsParam(x, d + 1)) || (ty.aliasTypeArguments || []).some(x => holdsParam(x, d + 1)) || (ty.objectFlags & ts.ObjectFlags.Reference ? ch.getTypeArguments(ty) : []).some(x => holdsParam(x, d + 1)));
+    // A parameter written with a type where the function's contextual type gives it any: an annotation nothing checks.
+    const unchecked = p => {
+      const fn = p.parent;
+      // Typing a parameter unknown where it would be any hides nothing, so it is not counted.
+      if (!p.type || p.type.kind === ts.SyntaxKind.UnknownKeyword || !(ts.isArrowFunction(fn) || ts.isFunctionExpression(fn))) return false;
+      const ct = ch.getContextualType(fn), sig = ct && ch.getSignaturesOfType(ct, ts.SignatureKind.Call)[0];
+      if (!sig) return false;
+      const i = fn.parameters.indexOf(p), ps = sig.parameters, last = ps[ps.length - 1];
+      const rest = !!(last && last.valueDeclaration && ts.isParameter(last.valueDeclaration) && last.valueDeclaration.dotDotDotToken);
+      let ty;
+      if (rest && i >= ps.length - 1) { const r = ch.getTypeOfSymbolAtLocation(last, fn); ty = ch.getIndexTypeOfType(r, ts.IndexKind.Number) || r; }
+      else if (i < ps.length) ty = ch.getTypeOfSymbolAtLocation(ps[i], fn);
+      return !!(ty && ty.flags & ts.TypeFlags.Any);
+    };
+    const overloads = [];
     const loose = n => n && (n.kind === ts.SyntaxKind.UnknownKeyword || n.kind === ts.SyntaxKind.AnyKeyword);
     for (const id of MODS) {
       const f = id + '.ts', sf = prog.getSourceFile(path.join(APP, f)), txt = sf.text;
@@ -394,17 +420,19 @@ const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log
       };
       const visit = (n, held) => {
         if (n.kind === ts.SyntaxKind.AnyKeyword) anys.push(`${at(n)} the word any`);
-        const reads = (ts.isParameter(n) && ts.isIdentifier(n.name)) || (ts.isVariableDeclaration(n) && ts.isIdentifier(n.name)) || ts.isCallExpression(n) || ts.isPropertyAccessExpression(n) || ts.isElementAccessExpression(n);
-        if (reads && !(n.parent && (ts.isAsExpression(n.parent) || ts.isTypeAssertionExpression(n.parent))) && isAny(ts.isParameter(n) || ts.isVariableDeclaration(n) ? n.name : n)) anys.push(`${at(n)} ${n.getText(sf).slice(0, 50).replace(/\s+/g, ' ')}`);
+        const reads = ts.isIdentifier(n) || ts.isCallExpression(n) || ts.isAwaitExpression(n) || ts.isPropertyAccessExpression(n) || ts.isElementAccessExpression(n);
+        const inType = x => { if (x.parent && ts.isModuleDeclaration(x.parent) && x.parent.name === x) return true; for (let u = x.parent; u; u = u.parent) { if (ts.isTypeNode(u)) return true; if (ts.isStatement(u) || ts.isExpression(u)) return false; } return false; };
+        const wrapped = x => { let u = x.parent; while (u && (ts.isParenthesizedExpression(u) || (ts.isPropertyAccessExpression(u) && u.name === x))) { x = u; u = u.parent; } return !!u && (ts.isAsExpression(u) || ts.isTypeAssertionExpression(u)); };
+        if (reads && !inType(n) && !wrapped(n) && isAny(n)) anys.push(`${at(n)} ${n.getText(sf).slice(0, 50).replace(/\s+/g, ' ')}`);
+        if ((ts.isFunctionDeclaration(n) || ts.isMethodDeclaration(n)) && !n.body) overloads.push(at(n));
         if (ts.isIndexSignatureDeclaration(n) && loose(n.type)) open++;
         if (ts.isTypeReferenceNode(n) && n.typeName.getText(sf) === 'Record' && n.typeArguments && n.typeArguments.length === 2 && n.typeArguments[0].kind === ts.SyntaxKind.StringKeyword && loose(n.typeArguments[1])) open++;
-        const isCast = (ts.isAsExpression(n) || ts.isTypeAssertionExpression(n)) && n.type.getText(sf) !== 'const';
+        const isCast = ((ts.isAsExpression(n) || ts.isTypeAssertionExpression(n)) && n.type.getText(sf) !== 'const') || ts.isTypePredicateNode(n) || (ts.isParameter(n) && unchecked(n));
         const isBang = ts.isNonNullExpression(n) || ((ts.isVariableDeclaration(n) || ts.isPropertyDeclaration(n)) && !!n.exclamationToken);
         if (isCast) {
           casts++;
           if (!named(n, CAST, held)) unexplained.push(`${at(n)} ${n.getText(sf).slice(0, 50).replace(/\s+/g, ' ')}`);
-          const tp = x => (ts.isTypeReferenceNode(x) && (() => { const s = ch.getSymbolAtLocation(x.typeName); return !!(s && s.flags & ts.SymbolFlags.TypeParameter); })()) || !!ts.forEachChild(x, k => tp(k) || undefined);
-          if (tp(n.type)) generic.push(`${at(n)} ${n.getText(sf).slice(0, 50)}`);
+          if (n.type && holdsParam(ch.getTypeFromTypeNode(n.type))) generic.push(`${at(n)} ${n.getText(sf).slice(0, 50)}`);
         }
         if (isBang) {
           bangs++;
@@ -415,9 +443,10 @@ const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log
       };
       visit(sf, []);
     }
-    ok(anys.length === 0, 'no value in src/app/ has the type any, found by the type checker (a call wrapped in a cast excepted, as the cast makes it explicit)', anys);
+    ok(anys.length === 0, 'no value in src/app/ has the type any, found by the type checker (an expression wrapped in a cast excepted, as the cast makes it explicit)', anys);
     ok(unexplained.length === 0, `every cast and every ! in src/app/ has a comment naming it (${casts} casts, ${bangs} !)`, unexplained);
-    ok(generic.length === 0, 'no cast in src/app/ is to a type parameter (a generic helper would hide casts from the count)', generic);
+    ok(generic.length === 0, 'no cast in src/app/ is to a type that is or holds a type parameter (a generic helper would hide casts from the count)', generic);
+    ok(overloads.length === 0, 'no overloads in src/app/ (their signatures are not checked against the implementation)', overloads);
     const arch = fs.readFileSync(path.join(ROOT, 'ARCHITECTURE.md'), 'utf8');
     const cap = re => +((arch.match(re) || [])[1]);
     const cc = cap(/^Casts: (\d+)$/m), cb = cap(/^Non-null assertions: (\d+)$/m), co = cap(/^Open types: (\d+)$/m);
@@ -425,28 +454,42 @@ const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log
     ok(casts >= cc && bangs >= cb && open >= co, 'when a cast, a ! or an open type goes, the number in ARCHITECTURE.md is lowered to match, so it stays gone', { casts, cc, bangs, cb, open, co });
   }
   // An error handled in a module carries a comment (r51, the outside review):
-  // every `catch` block in src/app/, and every function handed to a promise's
-  // .catch, throws (not from a function nested inside it) or holds a comment,
-  // read from the syntax tree, saying why the error is expected and what the
-  // fallback is. Whether the comment says that is review's to judge. A module
-  // cannot log yet (`log` is legacy until phase 4).
+  // every `catch` block in src/app/, and every handler given to a promise
+  // (`.catch(fn)`, `["catch"](fn)`, the second function of `.then`), ends in
+  // a throw or holds a comment, read from the syntax tree, saying why the
+  // error is expected and what the fallback is; a handler must be written in
+  // place, so it can be read. A `finally` may not return, which would swallow
+  // an error silently. Whether a comment says why is review's to judge. A
+  // module cannot log yet (`log` is legacy until phase 4).
   {
     const silent = [];
-    const throws = x => ts.isThrowStatement(x) || (!ts.isFunctionLike(x) && !!ts.forEachChild(x, c => throws(c) || undefined));
     for (const id of MODS) {
       const f = id + '.ts', txt = fs.readFileSync(path.join(APP, f), 'utf8');
       const sf = ts.createSourceFile(f, txt, ts.ScriptTarget.Latest, true);
       const comments = appComments.get(id) || [];
+      const where = n => `${f}:${sf.getLineAndCharacterOfPosition(n.getStart(sf)).line + 1}`;
       const hasComment = b => comments.some(([a, z]) => a >= b.getStart(sf) && z <= b.end);
-      const handler = (b, where) => { if (!hasComment(b) && !throws(b)) silent.push(`${f}:${sf.getLineAndCharacterOfPosition(where.getStart(sf)).line + 1}`); };
+      // Ends in a throw: the block's own last statement, so a throw that only sometimes runs, or one in a nested function, does not count.
+      const endsInThrow = b => ts.isBlock(b) && b.statements.length > 0 && ts.isThrowStatement(b.statements[b.statements.length - 1]);
+      const handler = (fn, at) => {
+        if (!fn || !ts.isFunctionLike(fn) || !fn.body) { silent.push(`${where(at)} (a handler not written in place)`); return; }
+        if (!hasComment(fn.body) && !endsInThrow(fn.body)) silent.push(where(at));
+      };
+      const returnsIn = x => ts.isReturnStatement(x) || (!ts.isFunctionLike(x) && !!ts.forEachChild(x, c => returnsIn(c) || undefined));
       const visit = n => {
-        if (ts.isCatchClause(n)) handler(n.block, n);
-        if (ts.isCallExpression(n) && ts.isPropertyAccessExpression(n.expression) && n.expression.name.text === 'catch' && n.arguments[0] && ts.isFunctionLike(n.arguments[0])) handler(n.arguments[0].body, n);
+        if (ts.isCatchClause(n) && !hasComment(n.block) && !endsInThrow(n.block)) silent.push(where(n));
+        if (ts.isTryStatement(n) && n.finallyBlock && returnsIn(n.finallyBlock)) silent.push(`${where(n.finallyBlock)} (a return in finally)`);
+        if (ts.isCallExpression(n)) {
+          const e = n.expression;
+          const name = ts.isPropertyAccessExpression(e) ? e.name.text : ts.isElementAccessExpression(e) && ts.isStringLiteralLike(e.argumentExpression) ? e.argumentExpression.text : '';
+          if (name === 'catch') handler(n.arguments[0], n);
+          if (name === 'then' && n.arguments.length > 1) handler(n.arguments[1], n);
+        }
         ts.forEachChild(n, visit);
       };
       visit(sf);
     }
-    ok(silent.length === 0, 'every catch in src/app/, a promise\'s .catch included, throws or carries a comment saying why the error is expected', silent);
+    ok(silent.length === 0, 'every catch and promise handler in src/app/ ends in a throw or carries a comment saying why the error is expected, and no finally returns', silent);
   }
   // Every module is laid out by Prettier from the committed .prettierrc.json,
   // so layout is never a matter of taste or of hand (layout never changes

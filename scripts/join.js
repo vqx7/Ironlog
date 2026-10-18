@@ -31,18 +31,34 @@ const OPEN = "(function(){\n'use strict';\n", CLOSE = '})();\n';
 
 // Every placeholder must be known and filled, so the page title and heading
 // are never a second copy of the name. A list of addresses (the library
-// loader's, r51) is written only as the items of a script's array, so its
-// placeholder must sit between [ and ]; each item goes in single quotes, and
-// an item holding a quote, a backslash, a line break or a < (which could end
-// the script) stops the build. tests/hygiene.js reads the style sheet
-// through this too, as the page holds it.
+// loader's, r51) is written only as the items of an array in an inline
+// script: the script around it is parsed with the placeholder standing for
+// one name, which must be an array's only item (so not inside a string, a
+// comment, a property access or markup). Each item goes in single quotes,
+// and an item holding a quote, a backslash, a line break or a < (which
+// could end the script) stops the build. tests/hygiene.js reads the style
+// sheet through this too, as the page holds it.
+function inScriptArray(t, at, len) {
+  for (const s of t.matchAll(/<script>([\s\S]*?)<\/script>/g)) {
+    const a = s.index + '<script>'.length, z = a + s[1].length;
+    if (at < a || at + len > z) continue;
+    const SENT = '__IRONLOG_LIST__';
+    const js = (s[1].slice(0, at - a) + SENT + s[1].slice(at - a + len)).replace(/\{\{\w+\}\}/g, '0');
+    let ast; try { ast = require('acorn').parse(js, { ecmaVersion: 'latest' }); } catch (e) { return false; }
+    let found = false;
+    const walk = n => { if (!n || typeof n.type !== 'string') return; if (n.type === 'ArrayExpression' && n.elements.length === 1 && n.elements[0] && n.elements[0].type === 'Identifier' && n.elements[0].name === SENT) found = true; for (const k in n) { const v = n[k]; if (Array.isArray(v)) v.forEach(walk); else if (v && typeof v.type === 'string') walk(v); } };
+    walk(ast);
+    return found && js.split(SENT).length === 2;
+  }
+  return false;
+}
 function fill(t) {
   const cfg = require('./config');
   return t.replace(/\{\{(\w+)\}\}/g, (m, k, at) => {
     const v = Object.prototype.hasOwnProperty.call(cfg, k) ? cfg[k] : undefined;
     if (typeof v === 'string') return v;
     if (Array.isArray(v)) {
-      if (t[at - 1] !== '[' || t[at + m.length] !== ']') throw new Error(`join: the list ${m} goes only between [ and ], as a script array's items`);
+      if (!inScriptArray(t, at, m.length)) throw new Error(`join: the list ${m} goes only as an array's only item, in an inline script`);
       if (!v.length || !v.every(x => typeof x === 'string' && !/['\\\r\n<\u2028\u2029]/.test(x))) throw new Error(`join: ${m} must be addresses with no quote, backslash, line break or <`);
       return v.map(x => `'${x}'`).join(',');
     }
