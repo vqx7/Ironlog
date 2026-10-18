@@ -65,7 +65,8 @@ export function profClean(p: Partial<Record<string, unknown>> | null | undefined
   const f = Array.isArray(p.focus)
     ? [
         ...new Set(
-          p.focus.filter(
+          // Array.isArray turns an unknown into any[]; the cast keeps each entry unknown for the test below.
+          (p.focus as unknown[]).filter(
             // The type predicate is a cast, and true: typeof says m is a string.
             (m: unknown): m is string =>
               typeof m === 'string' && (MK as readonly string[]).includes(m) && !TRACK_ONLY.has(m)

@@ -176,7 +176,7 @@ const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log
     // The weights in any spelling of the list: "600;700;800", [600, 700, 800].
     const weights = [cfg.FONT_DISPLAY_WEIGHTS, cfg.FONT_BODY_WEIGHTS].map(w => new RegExp(`(?<![\\d])${w.split(';').join('[\\s\'"]*[,;][\\s\'"]*')}(?![\\d])`));
     // Read as written and with a pattern's escapes undone ("https:\/\/api\.pwned..." is the address), in any case.
-    const owns = s0 => { const s = s0.replace(/\\([./])/g, '$1'), low = s.toLowerCase(); return [...[...s.matchAll(HOST)].map(m => m[1].toLowerCase()).filter(h => owned.has(h)), ...values.filter(v => low.includes(v)), ...named.filter(re => re.test(s)).map(re => re.source), ...weights.filter(re => re.test(s)).map(re => re.source)]; };
+    const owns = s0 => { const s = s0.replace(/\\([./])/g, '$1'), low = s.toLowerCase(); return [...[...owned].filter(h => low.includes(h)), ...values.filter(v => low.includes(v)), ...named.filter(re => re.test(s)).map(re => re.source), ...weights.filter(re => re.test(s)).map(re => re.source)]; };
     const hosts = [], copies = [], seen = new Set();
     for (const [f, t] of texts) {
       for (const m of t.code.replace(/\\([./])/g, '$1').matchAll(HOST)) {
@@ -376,9 +376,21 @@ const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log
     const conf = ts.parseJsonConfigFileContent(ts.readConfigFile(path.join(ROOT, 'tsconfig.json'), ts.sys.readFile).config, ts.sys, ROOT);
     const prog = ts.createProgram(conf.fileNames, conf.options), ch = prog.getTypeChecker();
     const anys = [], unexplained = [], generic = []; let casts = 0, bangs = 0, open = 0;
-    const isAny = n => { try { return !!(ch.getTypeAtLocation(n).flags & ts.TypeFlags.Any); } catch (e) { return false; } };
-    // A type that is, or holds, a type parameter, through unions, intersections, aliases and type arguments.
-    const holdsParam = (ty, d = 0) => !!ty && d < 6 && (!!(ty.flags & ts.TypeFlags.TypeParameter) || (ty.types || []).some(x => holdsParam(x, d + 1)) || (ty.aliasTypeArguments || []).some(x => holdsParam(x, d + 1)) || (ty.objectFlags & ts.ObjectFlags.Reference ? ch.getTypeArguments(ty) : []).some(x => holdsParam(x, d + 1)));
+    // A type that is any, or holds any as a union member or a type argument (any[] from Array.isArray, Map<any, any> from new Map()).
+    const holdsAny = (ty, d = 0) => !!ty && d < 6 && (!!(ty.flags & ts.TypeFlags.Any) || (ty.types || []).some(x => holdsAny(x, d + 1)) || (ty.objectFlags & ts.ObjectFlags.Reference ? ch.getTypeArguments(ty) : []).some(x => holdsAny(x, d + 1)));
+    const isAny = n => { try { return holdsAny(ch.getTypeAtLocation(n)); } catch (e) { return false; } };
+    // A written type that names a type parameter of a declaration around the cast, anywhere in it: in an
+    // object, a function, keyof, a conditional or a type argument, and through any alias it names (an
+    // alias's own parameters, such as Record's, are not the cast's).
+    const holdsParam = (node, cast, seen = new Set()) => {
+      if (!node) return false;
+      if (ts.isTypeReferenceNode(node) || ts.isExpressionWithTypeArguments(node)) {
+        const s = ch.getSymbolAtLocation(ts.isTypeReferenceNode(node) ? node.typeName : node.expression);
+        if (s && s.flags & ts.SymbolFlags.TypeParameter && (s.declarations || []).some(d => d.getSourceFile() === cast.getSourceFile() && d.parent.pos <= cast.pos && cast.end <= d.parent.end)) return true;
+        if (s && s.flags & ts.SymbolFlags.TypeAlias && !seen.has(s)) { seen.add(s); for (const dcl of s.declarations || []) if (ts.isTypeAliasDeclaration(dcl) && holdsParam(dcl.type, cast, seen)) return true; }
+      }
+      return !!ts.forEachChild(node, k => holdsParam(k, cast, seen) || undefined);
+    };
     // A parameter written with a type where the function's contextual type gives it any: an annotation nothing checks.
     const unchecked = p => {
       const fn = p.parent;
@@ -424,7 +436,7 @@ const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log
         const inType = x => { if (x.parent && ts.isModuleDeclaration(x.parent) && x.parent.name === x) return true; for (let u = x.parent; u; u = u.parent) { if (ts.isTypeNode(u)) return true; if (ts.isStatement(u) || ts.isExpression(u)) return false; } return false; };
         const wrapped = x => { let u = x.parent; while (u && (ts.isParenthesizedExpression(u) || (ts.isPropertyAccessExpression(u) && u.name === x))) { x = u; u = u.parent; } return !!u && (ts.isAsExpression(u) || ts.isTypeAssertionExpression(u)); };
         if (reads && !inType(n) && !wrapped(n) && isAny(n)) anys.push(`${at(n)} ${n.getText(sf).slice(0, 50).replace(/\s+/g, ' ')}`);
-        if ((ts.isFunctionDeclaration(n) || ts.isMethodDeclaration(n)) && !n.body) overloads.push(at(n));
+        if ((ts.isFunctionDeclaration(n) || ts.isMethodDeclaration(n) || ts.isConstructorDeclaration(n)) && !n.body) overloads.push(at(n));
         if (ts.isIndexSignatureDeclaration(n) && loose(n.type)) open++;
         if (ts.isTypeReferenceNode(n) && n.typeName.getText(sf) === 'Record' && n.typeArguments && n.typeArguments.length === 2 && n.typeArguments[0].kind === ts.SyntaxKind.StringKeyword && loose(n.typeArguments[1])) open++;
         const isCast = ((ts.isAsExpression(n) || ts.isTypeAssertionExpression(n)) && n.type.getText(sf) !== 'const') || ts.isTypePredicateNode(n) || (ts.isParameter(n) && unchecked(n));
@@ -432,7 +444,7 @@ const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log
         if (isCast) {
           casts++;
           if (!named(n, CAST, held)) unexplained.push(`${at(n)} ${n.getText(sf).slice(0, 50).replace(/\s+/g, ' ')}`);
-          if (n.type && holdsParam(ch.getTypeFromTypeNode(n.type))) generic.push(`${at(n)} ${n.getText(sf).slice(0, 50)}`);
+          if (n.type && holdsParam(n.type, n)) generic.push(`${at(n)} ${n.getText(sf).slice(0, 50)}`);
         }
         if (isBang) {
           bangs++;
@@ -446,7 +458,7 @@ const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log
     ok(anys.length === 0, 'no value in src/app/ has the type any, found by the type checker (an expression wrapped in a cast excepted, as the cast makes it explicit)', anys);
     ok(unexplained.length === 0, `every cast and every ! in src/app/ has a comment naming it (${casts} casts, ${bangs} !)`, unexplained);
     ok(generic.length === 0, 'no cast in src/app/ is to a type that is or holds a type parameter (a generic helper would hide casts from the count)', generic);
-    ok(overloads.length === 0, 'no overloads in src/app/ (their signatures are not checked against the implementation)', overloads);
+    ok(overloads.length === 0, 'no function, method or constructor in src/app/ is declared without a body: no overloads (their signatures are not checked against the implementation) and no `declare function`', overloads);
     const arch = fs.readFileSync(path.join(ROOT, 'ARCHITECTURE.md'), 'utf8');
     const cap = re => +((arch.match(re) || [])[1]);
     const cc = cap(/^Casts: (\d+)$/m), cb = cap(/^Non-null assertions: (\d+)$/m), co = cap(/^Open types: (\d+)$/m);
@@ -468,17 +480,21 @@ const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log
       const sf = ts.createSourceFile(f, txt, ts.ScriptTarget.Latest, true);
       const comments = appComments.get(id) || [];
       const where = n => `${f}:${sf.getLineAndCharacterOfPosition(n.getStart(sf)).line + 1}`;
-      const hasComment = b => comments.some(([a, z]) => a >= b.getStart(sf) && z <= b.end);
+      // A comment in the block itself, not in a function nested inside it.
+      const nested = []; const fns = x => { if (x !== undefined && ts.isFunctionLike(x)) nested.push([x.getStart(sf), x.end]); ts.forEachChild(x, fns); };
+      fns(sf);
+      const hasComment = b => comments.some(([a, z]) => a >= b.getStart(sf) && z <= b.end && !nested.some(([p, q]) => p > b.getStart(sf) && a >= p && z <= q));
       // Ends in a throw: the block's own last statement, so a throw that only sometimes runs, or one in a nested function, does not count.
       const endsInThrow = b => ts.isBlock(b) && b.statements.length > 0 && ts.isThrowStatement(b.statements[b.statements.length - 1]);
       const handler = (fn, at) => {
         if (!fn || !ts.isFunctionLike(fn) || !fn.body) { silent.push(`${where(at)} (a handler not written in place)`); return; }
         if (!hasComment(fn.body) && !endsInThrow(fn.body)) silent.push(where(at));
       };
-      const returnsIn = x => ts.isReturnStatement(x) || (!ts.isFunctionLike(x) && !!ts.forEachChild(x, c => returnsIn(c) || undefined));
+      // A return, break or continue in a finally ends it early and drops an error in flight.
+      const returnsIn = x => ts.isReturnStatement(x) || ts.isBreakStatement(x) || ts.isContinueStatement(x) || (!ts.isFunctionLike(x) && !!ts.forEachChild(x, c => returnsIn(c) || undefined));
       const visit = n => {
         if (ts.isCatchClause(n) && !hasComment(n.block) && !endsInThrow(n.block)) silent.push(where(n));
-        if (ts.isTryStatement(n) && n.finallyBlock && returnsIn(n.finallyBlock)) silent.push(`${where(n.finallyBlock)} (a return in finally)`);
+        if (ts.isTryStatement(n) && n.finallyBlock && returnsIn(n.finallyBlock)) silent.push(`${where(n.finallyBlock)} (a return, break or continue in finally)`);
         if (ts.isCallExpression(n)) {
           const e = n.expression;
           const name = ts.isPropertyAccessExpression(e) ? e.name.text : ts.isElementAccessExpression(e) && ts.isStringLiteralLike(e.argumentExpression) ? e.argumentExpression.text : '';
@@ -489,7 +505,7 @@ const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log
       };
       visit(sf);
     }
-    ok(silent.length === 0, 'every catch and promise handler in src/app/ ends in a throw or carries a comment saying why the error is expected, and no finally returns', silent);
+    ok(silent.length === 0, 'every catch and promise handler in src/app/ ends in a throw or carries a comment saying why the error is expected, and no finally returns, breaks or continues', silent);
   }
   // Every module is laid out by Prettier from the committed .prettierrc.json,
   // so layout is never a matter of taste or of hand (layout never changes

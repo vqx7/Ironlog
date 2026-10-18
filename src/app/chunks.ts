@@ -113,9 +113,10 @@ export function legacyBody(raw: { bodyweights?: unknown; measurements?: unknown 
   bodyweights: unknown[];
   measurements: unknown[];
 } {
+  // Array.isArray turns an unknown into any[]; the casts keep the entries unknown, as the return type says.
   return {
-    bodyweights: raw && Array.isArray(raw.bodyweights) ? raw.bodyweights : [],
-    measurements: raw && Array.isArray(raw.measurements) ? raw.measurements : []
+    bodyweights: raw && Array.isArray(raw.bodyweights) ? (raw.bodyweights as unknown[]) : [],
+    measurements: raw && Array.isArray(raw.measurements) ? (raw.measurements as unknown[]) : []
   };
 }
 

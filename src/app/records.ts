@@ -128,8 +128,9 @@ export function cleanTgt(t: Raw): Record<string, unknown> | null {
     const v = t[k];
     o[k] = v == null ? null : isNum(numOr(v, NaN)) ? numOr(v, 0) : null;
   }
+  // Array.isArray turns an unknown into any[]; the cast keeps each entry unknown, for the checks below.
   if (Array.isArray(t.rs))
-    o.rs = t.rs.slice(0, 30).map((v: unknown) => {
+    o.rs = (t.rs as unknown[]).slice(0, 30).map((v: unknown) => {
       const n = numOr(v, NaN);
       return isNum(n) && n >= 0 ? Math.min(n, 1000) : 0;
     });

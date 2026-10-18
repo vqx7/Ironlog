@@ -132,12 +132,13 @@ html{scroll-padding-top:calc(var(--head-h) + env(safe-area-inset-top,0px));-webk
    Settings and sometimes Plan). With viewport-fit=cover and the translucent
    status bar, iOS 26 gives a page shorter than the screen a viewport shorter
    by the status bar's height, so the fixed tab bar stops above the bottom
-   edge (frappe-ui pull requests 1284 and 1289). History, and Plan on taller
-   phones, are shorter than the screen; Settings is not (about 1,050 px
-   folded), but it comes right after History in the bar, so the short
-   viewport may simply carry over to it. In the installed app no page is
-   shorter than the screen now, and none is taller for it: 100lvh caps it
-   where iOS has no such bug. Browsers without lvh drop the line. */
+   edge (frappe-ui pull requests 1284 and 1289). With a real log, Plan (about
+   780 px) is shorter than every current iPhone and Today (about 860 to 920)
+   than the larger ones, while History and Settings are taller; Plan comes
+   just before them in the bar, so the short viewport may begin on Plan and
+   carry over. That is a reading, not a proof (PENDING 303). In the installed
+   app no page is shorter than the screen now, and none is taller for it:
+   100lvh caps it where iOS has no such bug. Browsers without lvh drop it. */
 @media (display-mode:standalone){html{min-height:min(100lvh,calc(100% + env(safe-area-inset-top,0px)))}}
 body{margin:0;background:var(--bg);color:var(--ink);font:400 16px/1.45 var(--font);-webkit-font-smoothing:antialiased}
 button,input,select,textarea{font:inherit;color:inherit}
@@ -2201,6 +2202,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     if (PROF_DAYS.includes(p.days)) o.days = p.days;
     const f = Array.isArray(p.focus) ? [
       ...new Set(
+        // Array.isArray turns an unknown into any[]; the cast keeps each entry unknown for the test below.
         p.focus.filter(
           // The type predicate is a cast, and true: typeof says m is a string.
           (m) => typeof m === "string" && MK.includes(m) && !TRACK_ONLY.has(m)

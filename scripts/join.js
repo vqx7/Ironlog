@@ -33,8 +33,9 @@ const OPEN = "(function(){\n'use strict';\n", CLOSE = '})();\n';
 // are never a second copy of the name. A list of addresses (the library
 // loader's, r51) is written only as the items of an array in an inline
 // script: the script around it is parsed with the placeholder standing for
-// one name, which must be an array's only item (so not inside a string, a
-// comment, a property access or markup). Each item goes in single quotes,
+// one name, which must be an array's only item, the array a value of its own
+// (so not inside a string, a comment, a template, markup, or the key of a
+// property access). Each item goes in single quotes,
 // and an item holding a quote, a backslash, a line break or a < (which
 // could end the script) stops the build. tests/hygiene.js reads the style
 // sheet through this too, as the page holds it.
@@ -46,8 +47,9 @@ function inScriptArray(t, at, len) {
     const js = (s[1].slice(0, at - a) + SENT + s[1].slice(at - a + len)).replace(/\{\{\w+\}\}/g, '0');
     let ast; try { ast = require('acorn').parse(js, { ecmaVersion: 'latest' }); } catch (e) { return false; }
     let found = false;
-    const walk = n => { if (!n || typeof n.type !== 'string') return; if (n.type === 'ArrayExpression' && n.elements.length === 1 && n.elements[0] && n.elements[0].type === 'Identifier' && n.elements[0].name === SENT) found = true; for (const k in n) { const v = n[k]; if (Array.isArray(v)) v.forEach(walk); else if (v && typeof v.type === 'string') walk(v); } };
-    walk(ast);
+    // The array is a value of its own: not the key of a property access, and not inside a template.
+    const walk = (n, up, inTpl) => { if (!n || typeof n.type !== 'string') return; const tpl = inTpl || n.type === 'TemplateLiteral'; if (n.type === 'ArrayExpression' && n.elements.length === 1 && n.elements[0] && n.elements[0].type === 'Identifier' && n.elements[0].name === SENT && !tpl && !(up && up.type === 'MemberExpression' && up.computed && up.property === n)) found = true; for (const k in n) { const v = n[k]; if (Array.isArray(v)) v.forEach(x => walk(x, n, tpl)); else if (v && typeof v.type === 'string') walk(v, n, tpl); } };
+    walk(ast, null, false);
     return found && js.split(SENT).length === 2;
   }
   return false;

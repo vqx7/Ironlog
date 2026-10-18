@@ -106,10 +106,14 @@ html = replaceOnce(html, `<link href="${cfg.FONTS_CSS}" rel="stylesheet">`, '<li
 // Nothing on the page still reaches Google Fonts: no tag, no @import in the
 // styles, anywhere outside the inline scripts. The app script holds config's
 // values as text, which fetch nothing (r51; the r51 review found a check
-// limited to <link> tags passed an @import). Read in any case and with CSS
-// escapes taken out, as a browser would read it.
+// limited to <link> tags passed an @import). Read as a browser would: CSS
+// escapes (\67 for g, \. for .) and URL escapes (%2e) decoded, in any case.
 {
-  const outside = html.replace(/<script>[\s\S]*?<\/script>/g, '').toLowerCase().replace(/\\/g, '');
+  const outside = html.replace(/<script>[\s\S]*?<\/script>/g, '')
+    .replace(/\\([0-9a-fA-F]{1,6})\s?/g, (m, h) => String.fromCodePoint(parseInt(h, 16)))
+    .replace(/\\(.)/g, '$1')
+    .replace(/%([0-9a-fA-F]{2})/g, (m, h) => String.fromCharCode(parseInt(h, 16)))
+    .toLowerCase();
   must(![cfg.FONTS_ORIGIN, cfg.FONT_FILES_ORIGIN].some(o => outside.includes(o.toLowerCase().replace(/^https:/, ''))), 'Google Fonts link still present');
 }
 // Libraries: the local copy first, the CDNs stay as fallbacks.

@@ -79,7 +79,10 @@ export function gymClean(g: Raw): Gym | null {
     }
   }
   if (Array.isArray(g.kb)) {
-    const kb = [...new Set(g.kb.map(n).filter(x => x > 0 && x <= 300))].sort((a, b) => a - b).slice(0, 40);
+    // Array.isArray turns an unknown into any[]; the cast keeps each entry unknown until n() reads it.
+    const kb = [...new Set((g.kb as unknown[]).map(n).filter(x => x > 0 && x <= 300))]
+      .sort((a, b) => a - b)
+      .slice(0, 40);
     if (kb.length) out.kb = kb;
   }
   if (Array.isArray(g.plates)) {

@@ -570,7 +570,7 @@ export function impFromTable(rows: readonly (readonly unknown[])[], map: Record<
       u: rowUnit(r)
     };
     const k = date + '|' + name;
-    if (!S.has(k)) S.set(k, { date, name, items: new Map(), note: '' });
+    if (!S.has(k)) S.set(k, { date, name, items: new Map<string, ImpItem>(), note: '' });
     // Made just above when it was missing, so it is there (the !).
     const ss = S.get(k)!;
     if (/^(yes|true|1|y)$/i.test(String(cell('deload') || '').trim())) ss.deload = true;
@@ -634,19 +634,20 @@ export function impSetsText(t: unknown): string {
   s = s.replace(
     /(^|\s)(?:bw\s*)?\+\s*(\d+(?:\.\d+)?)\s+(\d{1,2})\s*[x×*]\s*(\d{1,3})(?=\s|,|$)/g,
     (m: string, p: string, w: string, a: string, r: string) =>
-      +a <= 10 ? p + Array(+a).fill(`bw+${w}x${r}`).join(' ') : m
+      +a <= 10 ? p + Array<string>(+a).fill(`bw+${w}x${r}`).join(' ') : m
   );
   s = s.replace(
     /(^|\s)(?:bw\s*)?\+\s*(\d+(?:\.\d+)?)\s*[x×*]\s*(\d{1,3})(?=\s|,|$)/g,
     (_m: string, p: string, w: string, r: string) => `${p}bw+${w}x${r}`
   );
   s = s.replace(/(^|\s)bw\s+(\d{1,2})\s*[x×*]\s*(\d{1,3})(?=\s|,|$)/g, (m: string, p: string, a: string, r: string) =>
-    +a <= 10 ? p + Array(+a).fill(`bwx${r}`).join(' ') : m
+    +a <= 10 ? p + Array<string>(+a).fill(`bwx${r}`).join(' ') : m
   );
   // sets x reps @ load, and "3 sets of 10 at 60"
   s = s.replace(
     /\b(\d{1,2})\s*(?:x|×|\*|sets? of)\s*(\d{1,3})\s*(?:@|at)\s*(\d+(?:\.\d+)?)\b/g,
-    (m: string, a: string, b: string, c: string) => (+a <= 10 && +c > +a ? Array(+a).fill(`${c}x${b}`).join(' ') : m)
+    (m: string, a: string, b: string, c: string) =>
+      +a <= 10 && +c > +a ? Array<string>(+a).fill(`${c}x${b}`).join(' ') : m
   );
   /* sets x reps then a load at the end: "OHP 3x8 40" is 3 sets of 8 at 40
      (r30, from the review: it read as 3 x 8 and 3 x 40). Only up to 10 sets,
@@ -655,12 +656,12 @@ export function impSetsText(t: unknown): string {
   s = s.replace(
     /(^|\s)(\d{1,2})\s*[x×*]\s*(\d{1,3})\s+(\d+(?:\.\d+)?)\s*$/,
     (m: string, p: string, a: string, b: string, c: string) =>
-      +a <= 10 && +c > +b && +c > +a ? p + Array(+a).fill(`${c}x${b}`).join(' ') : m
+      +a <= 10 && +c > +b && +c > +a ? p + Array<string>(+a).fill(`${c}x${b}`).join(' ') : m
   );
   // load x reps x sets
   s = s.replace(
     /\b(\d+(?:\.\d+)?)\s*[x×*]\s*(\d{1,3})\s*[x×*]\s*(\d{1,2})\b/g,
-    (m: string, a: string, b: string, c: string) => (+c <= 10 ? Array(+c).fill(`${a}x${b}`).join(' ') : m)
+    (m: string, a: string, b: string, c: string) => (+c <= 10 ? Array<string>(+c).fill(`${a}x${b}`).join(' ') : m)
   );
   // A load then a list of reps: "185: 10/8/8" or "185 - 10, 8, 8" is each rep count at 185.
   s = s.replace(
@@ -676,7 +677,7 @@ export function impSetsText(t: unknown): string {
   s = s.replace(
     /(^|\s)(\d{2,}(?:\.\d+)?)\s+(\d{1,2})\s*[x×*]\s*(\d{1,3})(?=\s|,|$)/g,
     (m: string, p: string, a: string, b: string, c: string) =>
-      +b <= 10 ? p + Array(+b).fill(`${a}x${c}`).join(' ') : m
+      +b <= 10 ? p + Array<string>(+b).fill(`${a}x${c}`).join(' ') : m
   );
   return s.trim();
 }
