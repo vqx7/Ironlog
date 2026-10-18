@@ -29,6 +29,45 @@ const isLegacy = f => /^[12]\d-.+\.js$/.test(f);
 // wrapper's code sees them as it sees its own names.
 const OPEN = "(function(){\n'use strict';\n", CLOSE = '})();\n';
 
+// Every placeholder must be known and filled, so the page title and heading
+// are never a second copy of the name. A list of addresses (the library
+// loader's, r51) is written only as the items of an array in an inline
+// script: the script around it is parsed with the placeholder standing for
+// one name, which must be an array's only item, the array a value of its own
+// (so not inside a string, a comment, a template, markup, or the key of a
+// property access). Each item goes in single quotes,
+// and an item holding a quote, a backslash, a line break or a < (which
+// could end the script) stops the build. tests/hygiene.js reads the style
+// sheet through this too, as the page holds it.
+function inScriptArray(t, at, len) {
+  for (const s of t.matchAll(/<script>([\s\S]*?)<\/script>/g)) {
+    const a = s.index + '<script>'.length, z = a + s[1].length;
+    if (at < a || at + len > z) continue;
+    const SENT = '__IRONLOG_LIST__';
+    const js = (s[1].slice(0, at - a) + SENT + s[1].slice(at - a + len)).replace(/\{\{\w+\}\}/g, '0');
+    let ast; try { ast = require('acorn').parse(js, { ecmaVersion: 'latest' }); } catch (e) { return false; }
+    let found = false;
+    // The array is a value of its own: not the key of a property access, and not inside a template.
+    const walk = (n, up, inTpl) => { if (!n || typeof n.type !== 'string') return; const tpl = inTpl || n.type === 'TemplateLiteral'; if (n.type === 'ArrayExpression' && n.elements.length === 1 && n.elements[0] && n.elements[0].type === 'Identifier' && n.elements[0].name === SENT && !tpl && !(up && up.type === 'MemberExpression' && up.computed && up.property === n)) found = true; for (const k in n) { const v = n[k]; if (Array.isArray(v)) v.forEach(x => walk(x, n, tpl)); else if (v && typeof v.type === 'string') walk(v, n, tpl); } };
+    walk(ast, null, false);
+    return found && js.split(SENT).length === 2;
+  }
+  return false;
+}
+function fill(t) {
+  const cfg = require('./config');
+  return t.replace(/\{\{(\w+)\}\}/g, (m, k, at) => {
+    const v = Object.prototype.hasOwnProperty.call(cfg, k) ? cfg[k] : undefined;
+    if (typeof v === 'string') return v;
+    if (Array.isArray(v)) {
+      if (!inScriptArray(t, at, m.length)) throw new Error(`join: the list ${m} goes only as an array's only item, in an inline script`);
+      if (!v.length || !v.every(x => typeof x === 'string' && !/['\\\r\n<\u2028\u2029]/.test(x))) throw new Error(`join: ${m} must be addresses with no quote, backslash, line break or <`);
+      return v.map(x => `'${x}'`).join(',');
+    }
+    throw new Error(`join: unknown placeholder ${m}`);
+  });
+}
+
 function build({ override = {} } = {}) {
   const all = fs.readdirSync(dir).filter(f => /^\d\d-.+\.(html|css|js)$/.test(f)).sort();
   for (const f of Object.keys(override)) if (!all.includes(f)) throw new Error(`join: no part ${f} to override`);
@@ -39,9 +78,17 @@ function build({ override = {} } = {}) {
   const body = legacy.map(read).join('');
   if (!body.startsWith(OPEN)) throw new Error(`join: ${legacy[0]} must start with the wrapper ${JSON.stringify(OPEN)}`);
   if (!body.endsWith(CLOSE)) throw new Error(`join: ${legacy[legacy.length - 1]} must end with ${JSON.stringify(CLOSE)}`);
+  // The parts are that one call and nothing after it: a second script
+  // appended inside a part would otherwise ride along (the r51 mutation test).
+  const parsed = require('acorn').parse(body, { ecmaVersion: 'latest', sourceType: 'script' });
+  if (parsed.body.length !== 1) throw new Error(`join: the legacy parts must be one statement, the wrapper's call; they are ${parsed.body.length}`);
   const out = esbuild.buildSync({
     stdin: { contents: read(IMPORTS) + body, sourcefile: 'legacy.js', resolveDir: dir, loader: 'js' },
     bundle: true, format: 'iife', target: 'esnext', platform: 'browser',
+    // An import resolves to a .ts or .js file by its path and nothing else:
+    // never a .tsx beside a module (the r51 mutation test put one there, and
+    // the bundle took it first while every check read the .ts).
+    resolveExtensions: ['.ts', '.js'],
     // Nothing is removed beyond what bundling needs: the legacy code keeps
     // every function, so window.__ironlog and the tests see it whole.
     treeShaking: false, minify: false, charset: 'utf8', legalComments: 'none',
@@ -54,10 +101,6 @@ function build({ override = {} } = {}) {
   });
   const script = escapeMarkup(out.outputFiles[0].text);
 
-  // Every placeholder must be known and filled, so the page title and heading
-  // are never a second copy of the name.
-  const cfg = require('./config');
-  const fill = t => t.replace(/\{\{(\w+)\}\}/g, (m, k) => { if (typeof cfg[k] !== 'string') throw new Error(`join: unknown placeholder ${m}`); return cfg[k]; });
   const parts = [];
   for (const f of page) {
     parts.push(fill(read(f)));
@@ -91,7 +134,7 @@ function escapeMarkup(js) {
   return js;
 }
 
-module.exports = { build, escapeMarkup };
+module.exports = { build, escapeMarkup, fill };
 
 if (require.main === module) {
   try {

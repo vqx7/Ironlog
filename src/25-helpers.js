@@ -1,10 +1,4 @@
 /* ---------- actions ---------- */
-/* Routine housekeeping. Empty: no exercise on any day. Duplicate: same name
-   and same days and exercises as an earlier routine. Only routines that are
-   not active and have no logged sessions are offered for cleanup; logged
-   sessions are kept either way. */
-const routineEmpty=r=>r.days.every(d=>!d.items.length);
-const routineSig=r=>JSON.stringify([r.name.trim().toLowerCase(),r.schedule,r.days.map(d=>[d.name,!!d.rest,d.items.map(i=>[i.exId,+i.sets,+i.repMin,+i.repMax,+i.rir,+i.rest])])]);
 function routineClutter(){
   const used=new Set(state.sessions.map(x=>x.routineId));const seen=new Set();const out=[];
   for(const r of state.routines){
@@ -18,14 +12,6 @@ const nameTaken=(nm,exceptId)=>state.routines.some(r=>r.id!==exceptId&&r.name.tr
 function curRoutineB(){return state.routines.find(r=>r.id===ui.bRoutine)||activeRoutine();}
 function findItem(uidv){for(const r of state.routines)for(let di=0;di<r.days.length;di++){const i=r.days[di].items.findIndex(x=>x.uid===uidv);if(i>=0)return {r,di,i,it:r.days[di].items[i]};}return null;}
 function newItem(exId){return {uid:uid(),exId,...defPlan(exId)};}
-/* Toggle the link between entry i and i+1. get(x) returns the object holding ss. */
-function linkToggle(arr,i,get){
-  const a=get(arr[i]),b=arr[i+1]&&get(arr[i+1]);if(!a||!b)return false;
-  if(a.ss&&a.ss===b.ss){const g=uid(),old=a.ss;for(let k=i+1;k<arr.length&&get(arr[k]).ss===old;k++)get(arr[k]).ss=g;}
-  else{const id=a.ss||b.ss||uid();const olds=[a.ss,b.ss].filter(Boolean);for(const x of arr){const o=get(x);if(o.ss&&olds.includes(o.ss))o.ss=id;}a.ss=id;b.ss=id;}
-  const tmp=arr.map(get);fixSupersets(tmp);return true;
-}
-function move(arr,i,j){if(j<0||j>=arr.length)return;const [x]=arr.splice(i,1);arr.splice(j,0,x);}
 /* Null when the row is gone. Rebuilding the view removes a still-focused reps
    field, and the browser then fires its pending change for a set that − Set,
    Swap or Undo has just removed. */

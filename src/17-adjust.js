@@ -113,8 +113,6 @@ function afterSet(bi,si){
   if(old){if(html)old.outerHTML=html;else old.remove();}
   else if(html){const last=[...document.querySelectorAll(`#blk-${bi} .sg`)].pop();if(last)last.insertAdjacentHTML('afterend',html);}
 }
-// What a row's load is or will be: typed, else its grey load.
-function effW(b,si){const s=b&&b.sets[si];if(!s)return null;return s.w!=null?s.w:greyW(b,si);}
 /* A set being ticked takes its grey load, so a saved set never has an empty
    load that would be stored as 0. */
 function settleLoad(b,si){
@@ -139,8 +137,6 @@ function keepOpen(fn){
   const dd=state.draft;if(dd)dd.ex.forEach((b,i)=>{const k=blkKey(i,b);if(was.has(b)){ui.blkOpen.add(k);blkOpenObj.add(b);}else ui.blkOpen.delete(k);});
   return r;
 }
-function blockDone(b){const w=b.sets.filter(x=>!x.warm);return w.length>0&&w.every(x=>x.done);}
-function sessProgress(d){let n=0,k=0;for(const b of d.ex)for(const x of b.sets)if(!x.warm){n++;if(x.done)k++;}return {n,k,pct:n?k/n*100:0};}
 function updateSessBar(){const d=state.draft;
   // Minutes left follow each tick, not just the next redraw (r34.2: "about 75 min left" with every set done).
   const lf=document.getElementById('sessLeft');if(d&&lf){const left=leftMin(d);lf.textContent=left>0?`, ${estMin(left)} left`:'';}

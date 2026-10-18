@@ -12,9 +12,13 @@ const CHART = fs.readFileSync(path.join(__dirname, '..', 'node_modules/chart.js/
 const SORT = fs.readFileSync(path.join(__dirname, '..', 'node_modules/sortablejs/Sortable.min.js'), 'utf8');
 const THREE = fs.readFileSync(path.join(__dirname, '..', 'node_modules/three/build/three.module.min.js'), 'utf8');
 const FD = path.join(__dirname, '..', 'node_modules/@fontsource');
+// The page's two faces and their weights come from src/app/config.ts, as the
+// page's and the build's do (r51), each served from its @fontsource package,
+// named after the face as scripts/build.js names it.
+const cfg = require('../scripts/config');
+const FACES = [[cfg.FONT_DISPLAY, cfg.FONT_DISPLAY_WEIGHTS], [cfg.FONT_BODY, cfg.FONT_BODY_WEIGHTS]].map(([family, w]) => [family, family.toLowerCase().replace(/ /g, '-'), w.split(';')]);
 let FCSS = '';
-for (const w of [600, 700, 800]) FCSS += `@font-face{font-family:'Big Shoulders Display';font-weight:${w};src:url(https://fonts.local/bsd-${w}.woff2) format('woff2');}`;
-for (const w of [400, 500, 600, 700]) FCSS += `@font-face{font-family:'Hanken Grotesk';font-weight:${w};src:url(https://fonts.local/hg-${w}.woff2) format('woff2');}`;
+for (const [family, dir, weights] of FACES) for (const w of weights) FCSS += `@font-face{font-family:'${family}';font-weight:${w};src:url(https://fonts.local/${dir}-${w}.woff2) format('woff2');}`;
 const FILE_TYPES = { '.html': 'text/html', '.js': 'text/javascript', '.mjs': 'text/javascript', '.css': 'text/css', '.woff2': 'font/woff2', '.png': 'image/png', '.svg': 'image/svg+xml', '.webmanifest': 'application/manifest+json', '.json': 'application/json', '.txt': 'text/plain' };
 async function open(file, opts = {}) {
   // IRONLOG_FILE runs the same suites against another build (the standalone dist/index.html).
@@ -51,9 +55,8 @@ async function open(file, opts = {}) {
       if (!fs.existsSync(f) || !fs.statSync(f).isFile()) return r.continue();
       return r.fulfill({ contentType: FILE_TYPES[path.extname(f)] || 'application/octet-stream', headers: { 'Access-Control-Allow-Origin': '*' }, body: fs.readFileSync(f) });
     }
-    if (u.includes('fonts.googleapis.com/css')) return r.fulfill({ contentType: 'text/css', body: FCSS });
-    let m = u.match(/fonts\.local\/bsd-(\d+)/); if (m) return r.fulfill({ contentType: 'font/woff2', body: fs.readFileSync(`${FD}/big-shoulders-display/files/big-shoulders-display-latin-${m[1]}-normal.woff2`) });
-    m = u.match(/fonts\.local\/hg-(\d+)/); if (m) return r.fulfill({ contentType: 'font/woff2', body: fs.readFileSync(`${FD}/hanken-grotesk/files/hanken-grotesk-latin-${m[1]}-normal.woff2`) });
+    if (u.startsWith(cfg.FONTS_ORIGIN + '/css')) return r.fulfill({ contentType: 'text/css', body: FCSS });
+    const m = u.match(/fonts\.local\/([a-z-]+)-(\d+)\.woff2$/); if (m && FACES.some(([, d, ws]) => d === m[1] && ws.includes(m[2]))) return r.fulfill({ contentType: 'font/woff2', body: fs.readFileSync(`${FD}/${m[1]}/files/${m[1]}-latin-${m[2]}-normal.woff2`) });
     return r.abort();
   });
   if (opts.setup) await opts.setup(ctx, page);

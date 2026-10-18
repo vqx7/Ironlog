@@ -68,7 +68,7 @@ const ROOT = path.join(__dirname, '..');
     ok(r.diag.build === cfg.APP_VERSION && r.diag.version === cfg.DISPLAY_VERSION, 'Copy diagnostics carries the build and the version people see, under the same keys as a problem report', r.diag);
     ok(r.ctx.build === cfg.APP_VERSION && r.ctx.version === cfg.DISPLAY_VERSION, 'a problem report carries both the build and the version people see', r.ctx);
     // The installed app tries its own copy of three.js first; a page from a file goes to the CDN.
-    ok(r.app ? r.three === './vendor/three.module.min.js' : /^https:\/\/cdn\.jsdelivr\.net\//.test(r.three), r.app ? 'the installed app loads its own copy of three.js first' : 'the source page loads three.js from the CDN', r.three);
+    ok(r.app ? r.three === './vendor/three.module.min.js' : /^https:\/\//.test(r.three) && r.three === cfg.THREE_URLS[0], r.app ? 'the installed app loads its own copy of three.js first' : 'the source page loads three.js from the CDN', r.three);
     // ---- 4 (on the page). The storage identifiers keep their exact values.
     ok(r.key === 'ironlog.v1', 'the log is still stored under "ironlog.v1"', r.key);
     ok(r.backupApp === 'ironlog', 'a backup is still marked {app:"ironlog"}, so every build can restore it', r.backupApp);

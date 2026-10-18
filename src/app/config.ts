@@ -10,7 +10,10 @@
    when the name does (see below). */
 
 declare global {
-  interface Window { IRONLOG_APP?: boolean; IRONLOG_ENV?: string; }
+  interface Window {
+    IRONLOG_APP?: boolean;
+    IRONLOG_ENV?: string;
+  }
 }
 
 /** The identifier in every storage key, cache name and backup file:
@@ -39,7 +42,7 @@ export const WORDMARK = { mark: 'I', strong: 'ron', light: 'log' } as const;
 
 /** The version people see (V, 2026-10-16): 2.0 from r49, the minor number up
     by one for each release merged, the major number for a large change. */
-export const DISPLAY_VERSION = '2.1';
+export const DISPLAY_VERSION = '2.2';
 
 /** The build: shown beside the version in Diagnostics, problem reports and
     backups, so a report is matched to the exact code; also names the service
@@ -47,7 +50,7 @@ export const DISPLAY_VERSION = '2.1';
     Problem reports and Copy diagnostics carry it as `build` and the version
     people see as `version`; a backup keeps it under `version`, as every
     build before r49 wrote backups, so old and new backups read the same. */
-export const APP_VERSION = '2026.10.16-r50';
+export const APP_VERSION = '2026.10.17-r51';
 
 /** Version and build together, for Diagnostics and the recovery screen. */
 export const VERSION_LINE = `${DISPLAY_VERSION} (build ${APP_VERSION})`;
@@ -57,12 +60,64 @@ export const VERSION_LINE = `${DISPLAY_VERSION} (build ${APP_VERSION})`;
 export const SITE_HOST = 'ironapp.org';
 export const SITE_DIR_FALLBACK = '/Ironlog';
 
+/* Outside addresses and library versions (r51, from the outside review V
+   brought): each is defined here once. The page's library loader and fonts
+   read them through scripts/join.js's placeholders, the style sheet's font
+   names the same way, scripts/build.js for the installed app's own copies,
+   its Content Security Policy and its license list, and the account script
+   through the build's placeholders. tests/hygiene.js fails on any of them
+   typed anywhere else, and on a version that differs from the one
+   package.json pins. */
+
+/** The public CDNs the page falls back to. */
+const CDNJS = 'https://cdnjs.cloudflare.com/ajax/libs';
+const JSDELIVR = 'https://cdn.jsdelivr.net/npm';
+const UNPKG = 'https://unpkg.com';
+
+/** The library versions, as package.json pins them; the installed app ships
+    that package's own file. */
+export const CHART_VERSION = '4.4.1';
+export const SORTABLE_VERSION = '1.15.2';
+export const THREE_VERSION = '0.159.0';
+
+/** Where the page loads SortableJS (drag to reorder) and Chart.js from, tried
+    in turn; the installed app tries its own copy first (scripts/build.js). */
+export const SORTABLE_URLS: readonly string[] = [
+  `${CDNJS}/Sortable/${SORTABLE_VERSION}/Sortable.min.js`,
+  `${JSDELIVR}/sortablejs@${SORTABLE_VERSION}/Sortable.min.js`
+];
+export const CHART_URLS: readonly string[] = [
+  `${CDNJS}/Chart.js/${CHART_VERSION}/chart.umd.min.js`,
+  `${CDNJS}/Chart.js/${CHART_VERSION}/chart.umd.js`,
+  `${JSDELIVR}/chart.js@${CHART_VERSION}/dist/chart.umd.js`
+];
+
+/** The two typefaces (r20): the display face for headings and big numbers,
+    the body face for everything else, and the weights the page uses of each.
+    The page asks Google Fonts for them; the installed app ships the same
+    weights from the @fontsource packages (scripts/build.js). */
+export const FONT_DISPLAY = 'Big Shoulders Display';
+export const FONT_DISPLAY_WEIGHTS = '600;700;800';
+export const FONT_BODY = 'Hanken Grotesk';
+export const FONT_BODY_WEIGHTS = '400;500;600;700';
+/** Google Fonts: the style sheet's origin, the font files' origin, and the
+    style sheet for the two faces above. */
+export const FONTS_ORIGIN = 'https://fonts.googleapis.com';
+export const FONT_FILES_ORIGIN = 'https://fonts.gstatic.com';
+export const FONTS_CSS = `${FONTS_ORIGIN}/css2?family=${FONT_DISPLAY.replace(/ /g, '+')}:wght@${FONT_DISPLAY_WEIGHTS}&family=${FONT_BODY.replace(/ /g, '+')}:wght@${FONT_BODY_WEIGHTS}&display=swap`;
+
+/** Have I Been Pwned's password range service (r26), which the account
+    script asks before an account takes a password; the installed app's
+    Content Security Policy allows it. */
+export const HIBP_ORIGIN = 'https://api.pwnedpasswords.com';
+
 /** three.js for the 3D body (r20). The installed app ships its own copy and
     tries it first; the public CDNs stay as fallbacks. This was a text edit in
     scripts/build.js until r49, which broke once the script was bundled. */
 const THREE_CDN = [
-  'https://cdn.jsdelivr.net/npm/three@0.159.0/build/three.module.min.js',
-  'https://unpkg.com/three@0.159.0/build/three.module.min.js',
+  `${JSDELIVR}/three@${THREE_VERSION}/build/three.module.min.js`,
+  `${UNPKG}/three@${THREE_VERSION}/build/three.module.min.js`
 ];
+/** The addresses map3dLoad tries in turn, the installed app's own copy first. */
 export const THREE_URLS: readonly string[] =
   typeof window !== 'undefined' && window.IRONLOG_APP ? ['./vendor/three.module.min.js', ...THREE_CDN] : THREE_CDN;

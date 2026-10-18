@@ -205,11 +205,6 @@ function bmShape(x){
   if(x[0]==='r')return `<rect x="${x[1]}" y="${x[2]}" width="${x[3]}" height="${x[4]}" rx="${x[5]}"/>`;
   return `<polygon points="${x[1].map(q=>q.join(',')).join(' ')}"/>`;
 }
-/* Below or above a weekly target, judged at the precision the screen shows
-   (one decimal, r29): an average of 9.96 reads "10" and is not called below
-   a minimum of 10. A minimum of 0 is never missed. */
-function belowMin(v,lo){return lo>0&&r1(v||0)<lo;}
-function aboveMax(v,hi){return r1(v||0)>hi;}
 /* soFar (r29): the week is still going, so a muscle short of its minimum is
    under way ('part'), not below target; amber on a Tuesday read as behind
    for training that had not happened yet. With no sets a muscle is 'none'
@@ -222,7 +217,6 @@ function muscleStatus(src,soFar){
   for(const m of MK){const v=src?(src[m]||0):0;const [lo,hi]=b[m];out[m]={v,lo,hi,st:TRACK_ONLY.has(m)?'track':v<=0?(!soFar&&src&&lo>0?'under':'none'):belowMin(v,lo)?(soFar?'part':'under'):aboveMax(v,hi)?'over':'in'};}
   return out;
 }
-const lowSt=x=>x.st==='under'||(x.st==='none'&&x.lo>0);
 function bodyMapCard(){
   const I=IDX();const avg=actualAvg4();
   const src=(ui.mapSrc==='week'||!avg)?'week':'avg';
@@ -388,7 +382,6 @@ function readyCard(d,low){
    Minutes of lifting left in the session, counted like the plan estimate:
    40 seconds a set plus its rest (none inside a superset), and 3 minutes of
    setup for an exercise not started yet. */
-function blockRest(d,bi){const b=d.ex[bi],nx=d.ex[bi+1];return (b.plan.ss&&nx&&nx.plan.ss===b.plan.ss)?0:(+b.plan.rest||0);}
 /* Minutes left for the header: none once every set is done (min5 shows at least 1, so 0 left read "about 1 min left"). */
 function leftMin(d){if(!d||d.editingId||d.free||d.past)return 0;const m=remainMin(d);return m>0?min5(m):0;}
 function remainMin(d){

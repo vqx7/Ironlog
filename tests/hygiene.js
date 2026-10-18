@@ -46,14 +46,15 @@ const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log
   const md = fs.readFileSync(path.join(__dirname, 'SUITES.md'), 'utf8'); const rows = new Set([...md.matchAll(/^\| ([\w-]+) \|/gm)].map(m => m[1]));
   const noRow = [...listed].filter(n => !rows.has(n));
   ok(noRow.length === 0, 'every suite has a row in tests/SUITES.md', noRow);
-  // r44: suites run side by side, so none runs scripts/build.js itself (it deletes dist/ first); h.js build() does, only when a suite runs alone.
-  const direct = files.filter(f => f !== 'h' && f !== 'run' && /scripts', 'build\.js'|build\.js'\]/.test(fs.readFileSync(path.join(__dirname, f + '.js'), 'utf8')));
-  ok(direct.length === 0, 'no suite runs the build itself; they call build() from tests/h.js', direct);
+  // r44: suites run side by side, so none runs scripts/build.js into dist/ itself (it deletes dist/ first); h.js build() does, only when a suite runs alone. Since r51 a suite may run it with --out into a directory of its own.
+  const direct = files.filter(f => f !== 'h' && f !== 'run' && /scripts', 'build\.js'|build\.js'\]/.test(fs.readFileSync(path.join(__dirname, f + '.js'), 'utf8')) && !fs.readFileSync(path.join(__dirname, f + '.js'), 'utf8').includes("'--out'"));
+  ok(direct.length === 0, 'no suite runs the build into dist/ itself; they call build() from tests/h.js, or build with --out into their own directory', direct);
 }
 
 // 2. Duplicated selectors, per block.
 {
-  const css = fs.readFileSync(path.join(ROOT, 'src/02-style.css'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');
+  // As the page holds it: its {{NAME}} placeholders filled (r51, the font names).
+  const css = require('../scripts/join').fill(fs.readFileSync(path.join(ROOT, 'src/02-style.css'), 'utf8')).replace(/\/\*[\s\S]*?\*\//g, '');
   const stack = [{ name: 'top', sels: new Map() }]; let buf = ''; const dups = [];
   for (const ch of css) {
     if (ch === '{') {
@@ -75,14 +76,15 @@ const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log
   const hits = [];
   for (const f of SRC_CODE) {
     fs.readFileSync(path.join(ROOT, 'src', f), 'utf8').split('\n').forEach((line, i) => {
-      if (/const estMin=/.test(line)) return;
+      // The definition itself (r51: in src/app/format.ts, laid out with spaces).
+      if (/const estMin\s*=/.test(line)) return;
       // "about" before a number that ends the text or is followed by min or minutes;
       // "about ${load} for", "about ${n} reps" and the like are not minutes.
       if (/~\$\{/.test(line) || /[Aa]bout \$\{[^}]*\}\)?(\s*min\b|\s*minutes\b|`)/.test(line)) hits.push(`${f}:${i + 1}`);
     });
   }
   ok(hits.length === 0, 'estimated minutes are worded only by estMin ("~N min"), nowhere by hand', hits);
-  const defs = SRC_CODE.filter(f => /const estMin=/.test(fs.readFileSync(path.join(ROOT, 'src', f), 'utf8')));
+  const defs = SRC_CODE.filter(f => /const estMin\s*=/.test(fs.readFileSync(path.join(ROOT, 'src', f), 'utf8')));
   ok(defs.length === 1, 'estMin is defined once', defs);
 }
 
@@ -115,7 +117,8 @@ const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log
   const files = [
     ...SRC_CODE.filter(f => f !== CONFIG).map(f => ['src/' + f, f.endsWith('.ts') ? 'ts' : 'js']),
     ...fs.readdirSync(path.join(ROOT, 'src')).filter(f => /\.(html|css)$/.test(f)).map(f => ['src/' + f, 'page']),
-    ['scripts/build.js', 'js'], ['scripts/join.js', 'js'], ['scripts/cloud-supabase.js', 'js'], ['scripts/config.js', 'js'], ['scripts/depmap.js', 'js'],
+    // Every script, not a list of them (the r51 review added one the list never read).
+    ...fs.readdirSync(path.join(ROOT, 'scripts')).filter(f => f.endsWith('.js')).map(f => ['scripts/' + f, 'js']),
   ];
   // The legacy parts are pieces of one script, so they are read joined.
   const isLegacy = f => /^src\/[12]\d-.+\.js$/.test(f);
@@ -144,6 +147,54 @@ const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log
     for (const k in n) { const v = n[k]; if (Array.isArray(v)) v.forEach(x => walk(x, f)); else if (v && typeof v.type === 'string' && k !== 'type') walk(v, f); } };
   for (const [f, t] of texts) if (t.ast) walk(t.ast, f);
   ok(rebound.length === 0, 'nothing config.ts defines is declared or bound a second time (a local of the same name would hide it)', rebound);
+  // Outside addresses, library versions and the font faces (r51, the outside
+  // review V brought; ARCHITECTURE.md): config.ts defines each once, and the
+  // markup, the style sheet, the build, the account script and the test
+  // fixtures read them. Each version is the one package.json pins. Every
+  // outside address in src/ and scripts/ (https, http, wss or written from
+  // //) is config's, or waits for its phase in ARCHITECTURE.md's list, and a
+  // listed one must still be there, so the list only shrinks. Searched for
+  // as typed: an address or version assembled from pieces at run time is
+  // beyond a search of the text, and is review's to catch.
+  {
+    const pkg = require('../package.json').devDependencies;
+    const pins = { CHART_VERSION: 'chart.js', SORTABLE_VERSION: 'sortablejs', THREE_VERSION: 'three' };
+    const off = Object.entries(pins).filter(([k, p]) => typeof cfg[k] !== 'string' || cfg[k] !== pkg[p]).map(([k, p]) => `${k} ${cfg[k]}, package.json ${p} ${pkg[p]}`);
+    ok(off.length === 0, 'each library version in config.ts is the exact one package.json pins', off);
+    const HOST = /(?:(?:https?|wss?):)?\/\/([a-z0-9-]+(?:\.[a-z0-9-]+)*\.[a-z]{2,})(?![a-z0-9-])/gi;
+    const strs = Object.values(cfg).flatMap(v => (typeof v === 'string' ? [v] : Array.isArray(v) ? v.filter(x => typeof x === 'string') : []));
+    const owned = new Set(strs.flatMap(s => [...s.matchAll(HOST)].map(m => m[1].toLowerCase())));
+    ok(['cdnjs.cloudflare.com', 'cdn.jsdelivr.net', 'unpkg.com', 'fonts.googleapis.com', 'fonts.gstatic.com', 'api.pwnedpasswords.com'].every(h => owned.has(h)), 'config.ts defines the CDNs, the fonts\' two origins and the password check\'s origin', [...owned]);
+    const arch = fs.readFileSync(path.join(ROOT, 'ARCHITECTURE.md'), 'utf8');
+    const line = (arch.match(/^Addresses waiting for their phase: (.+)$/m) || [])[1];
+    const waiting = new Map(line ? [...line.matchAll(/([a-z0-9-]+(?:\.[a-z0-9-]+)+) \(([^)]+)\)/g)].map(m => [m[1].toLowerCase(), m[2]]) : []);
+    ok(line !== undefined, 'ARCHITECTURE.md lists the outside addresses still waiting for their phase');
+    // The values config owns that are not addresses: the versions, the faces and their weights, the style sheet's address whole, and a library's name with the first two parts of its version ("three.js 0.159").
+    const short = v => v.split('.').slice(0, 2).join('\\.');
+    const named = [['chart\\.js', cfg.CHART_VERSION], ['sortable(?:js)?', cfg.SORTABLE_VERSION], ['three(?:\\.js)?', cfg.THREE_VERSION]].map(([n, v]) => new RegExp(`${n}[\\s@/v-]*${short(v)}(?![\\d])`, 'i'));
+    const values = [cfg.CHART_VERSION, cfg.SORTABLE_VERSION, cfg.THREE_VERSION, cfg.FONT_DISPLAY, cfg.FONT_BODY, cfg.FONTS_CSS].map(v => v.toLowerCase());
+    // The weights in any spelling of the list: "600;700;800", [600, 700, 800].
+    const weights = [cfg.FONT_DISPLAY_WEIGHTS, cfg.FONT_BODY_WEIGHTS].map(w => new RegExp(`(?<![\\d])${w.split(';').join('[\\s\'"]*[,;][\\s\'"]*')}(?![\\d])`));
+    // Read as written and with a pattern's escapes undone ("https:\/\/api\.pwned..." is the address), in any case.
+    const owns = s0 => { const s = s0.replace(/\\([./])/g, '$1'), low = s.toLowerCase(); return [...[...owned].filter(h => low.includes(h)), ...values.filter(v => low.includes(v)), ...named.filter(re => re.test(s)).map(re => re.source), ...weights.filter(re => re.test(s)).map(re => re.source)]; };
+    const hosts = [], copies = [], seen = new Set();
+    for (const [f, t] of texts) {
+      for (const m of t.code.replace(/\\([./])/g, '$1').matchAll(HOST)) {
+        const h = m[1].toLowerCase(); seen.add(h);
+        if (!owned.has(h) && !(waiting.has(h) && f === 'src/10-29 (legacy parts)')) hosts.push(`${f}: ${h}`);
+      }
+      for (const l of [t.code, ...t.lits]) for (const v of owns(l)) copies.push(`${f}: ${v}`);
+    }
+    // The test fixtures too: a font or address changed in config would otherwise leave them serving the old one. This suite, which states what config must define, excepted.
+    for (const f of fs.readdirSync(__dirname).filter(x => x.endsWith('.js') && x !== 'hygiene.js')) {
+      const r = read(fs.readFileSync(path.join(__dirname, f), 'utf8'), false);
+      for (const l of [r.code, ...r.lits]) for (const v of owns(l)) copies.push(`tests/${f}: ${v}`);
+    }
+    ok(copies.length === 0, 'the outside addresses, library versions, font faces and weights config.ts defines are typed nowhere else in src/, scripts/ or tests/', [...new Set(copies)]);
+    ok(hosts.length === 0, 'every other outside address in src/ or scripts/ waits for its phase in ARCHITECTURE.md, in the legacy script', hosts);
+    const gone = [...waiting.keys()].filter(h => !seen.has(h));
+    ok(gone.length === 0, 'every address ARCHITECTURE.md lists as waiting is still in the legacy script (a moved one leaves the list)', gone);
+  }
   ok((cfg.WORDMARK.mark + cfg.WORDMARK.strong + cfg.WORDMARK.light).toLowerCase() === cfg.APP_NAME.toLowerCase(), 'the logo\'s wordmark spells the app name (a new name needs a new wordmark)', cfg.WORDMARK);
   ok(/^\d+\.\d+$/.test(cfg.DISPLAY_VERSION), 'the version people see is major.minor', cfg.DISPLAY_VERSION);
 }
@@ -152,15 +203,31 @@ const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log
 {
   // Every import, export-from, dynamic import and require in src/app/, at any
   // depth, must resolve inside src/app/.
-  const APP = path.join(ROOT, 'src', 'app'); const out = [];
-  for (const f of SRC_CODE.filter(f => f.startsWith('app/'))) {
-    const txt = fs.readFileSync(path.join(ROOT, 'src', f), 'utf8');
-    for (const m of txt.matchAll(/\b(?:import|export)\s+(?:[^'";]*?\s+from\s+)?['"]([^'"]+)['"]|\bimport\s*\(\s*['"]([^'"]+)['"]|\brequire\s*\(\s*['"]([^'"]+)['"]/g)) {
-      const spec = m[1] || m[2] || m[3];
-      const to = path.resolve(path.dirname(path.join(ROOT, 'src', f)), spec);
-      if (!spec.startsWith('.') || !(to + path.sep).startsWith(APP + path.sep)) out.push(`${f}: ${spec}`);
-    }
-  }
+  const APP = path.join(ROOT, 'src', 'app');
+  const ts = require('typescript');
+  // The modules by id: the path from src/app/ without `.ts`, at any depth.
+  const MODS = SRC_CODE.filter(f => f.startsWith('app/')).map(f => f.slice(4, -3));
+  // Every place a module names another file, read from the syntax tree, so a
+  // comment that mentions an import is not one (the r51 mutation test found
+  // the text scan over-broad): import and export-from statements, type-only
+  // ones included, `import x = require()`, `import()` and `require()` calls
+  // at any depth. Each must resolve to a `.ts` file inside src/app/.
+  const edgesOf = id => {
+    const txt = fs.readFileSync(path.join(APP, id + '.ts'), 'utf8');
+    const sf = ts.createSourceFile(id, txt, ts.ScriptTarget.Latest, true);
+    const out = [];
+    const spec = n => (ts.isStringLiteral(n) ? n.text : '(computed)');
+    (function walk(n) {
+      if ((ts.isImportDeclaration(n) || ts.isExportDeclaration(n)) && n.moduleSpecifier) out.push({ spec: spec(n.moduleSpecifier), typeOnly: !!(n.importClause && n.importClause.isTypeOnly) || !!n.isTypeOnly });
+      else if (ts.isImportEqualsDeclaration(n) && ts.isExternalModuleReference(n.moduleReference)) out.push({ spec: spec(n.moduleReference.expression), typeOnly: false });
+      else if (ts.isCallExpression(n) && (n.expression.kind === ts.SyntaxKind.ImportKeyword || (ts.isIdentifier(n.expression) && /^(require|__require)$/.test(n.expression.text))) && n.arguments.length) out.push({ spec: spec(n.arguments[0]), typeOnly: false });
+      ts.forEachChild(n, walk);
+    })(sf);
+    return out.map(e => { const abs = path.resolve(path.dirname(path.join(APP, id + '.ts')), e.spec); const rel = path.relative(APP, abs).split(path.sep).join('/'); return { ...e, to: rel, inside: e.spec.startsWith('.') && !rel.startsWith('..') && fs.existsSync(abs + '.ts') }; });
+  };
+  const EDGES = new Map(MODS.map(id => [id, edgesOf(id)]));
+  const out = [];
+  for (const [id, es] of EDGES) for (const e of es) if (!e.inside) out.push(`${id}: ${e.spec}`);
   ok(out.length === 0, 'the modules in src/app/ import only each other, never the legacy parts or anything outside', out);
   const legacyImports = fs.readdirSync(path.join(ROOT, 'src')).filter(f => /^[12]\d-.+\.js$/.test(f)).filter(f => /^\s*import[\s('"{*]/m.test(fs.readFileSync(path.join(ROOT, 'src', f), 'utf8')));
   ok(legacyImports.length === 0, 'the legacy parts import only through src/09-imports.js', legacyImports);
@@ -187,6 +254,8 @@ const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log
   ok(twice.length === 0, 'no legacy declaration has the name of a module export: moved code exists once, and the module copy is the one that runs', twice);
   const unimported = dm.free.filter(n => exported.has(n)).map(n => `${n} (src/${exported.get(n)})`);
   ok(unimported.length === 0, 'every module export the legacy script uses is imported in src/09-imports.js', unimported);
+  const dead = dm.imports.filter(x => !x.used).map(x => `${x.name} from ${x.from}`);
+  ok(dead.length === 0, 'every name src/09-imports.js imports is used by the legacy script', dead);
   // The names the legacy script reads without declaring or importing them are
   // the browser's and JavaScript's own (r50 review): a moved name deleted with
   // its import, or misspelt, would otherwise pass every check here and fail
@@ -194,11 +263,351 @@ const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log
   const GLOBALS = new Set(['Array', 'Blob', 'Boolean', 'CSS', 'DOMParser', 'DataView', 'Date', 'DecompressionStream', 'Error', 'File', 'FileReader', 'Image', 'Infinity', 'Intl', 'JSON', 'Map', 'Math', 'MouseEvent', 'MutationObserver', 'NaN', 'Number', 'Object', 'Promise', 'Response', 'Set', 'String', 'TextDecoder', 'TextEncoder', 'URL', 'Uint8Array', 'WeakMap', 'WeakSet', 'cancelAnimationFrame', 'clearInterval', 'clearTimeout', 'document', 'encodeURIComponent', 'getComputedStyle', 'history', 'indexedDB', 'isFinite', 'isNaN', 'localStorage', 'location', 'matchMedia', 'navigator', 'parseFloat', 'parseInt', 'performance', 'queueMicrotask', 'requestAnimationFrame', 'setInterval', 'setTimeout', 'undefined', 'window']);
   const unknown = dm.free.filter(n => !GLOBALS.has(n));
   ok(dm.free.length > 40 && unknown.length === 0, 'every name the legacy script reads without declaring or importing it is a known browser or JavaScript global', unknown);
-  const dead = dm.imports.filter(x => !x.used).map(x => `${x.name} from ${x.from}`);
-  ok(dead.length === 0, 'every name src/09-imports.js imports is used by the legacy script', dead);
+  // src/09-imports.js holds named imports from src/app/ and nothing else: an
+  // import with no names (`import './x'`, `import {} from './x'`) or a
+  // re-export (`export * from './x'`) runs a module for its effects alone,
+  // which nothing compares (the two r51 reviews), and a renamed or namespace
+  // import would let one name stand for another.
+  {
+    const txt = fs.readFileSync(path.join(ROOT, 'src', '09-imports.js'), 'utf8'); const odd = [];
+    for (const st of acorn.parse(txt, { ecmaVersion: 'latest', sourceType: 'module' }).body) {
+      const named = st.type === 'ImportDeclaration' && st.specifiers.length > 0 && st.specifiers.every(sp => sp.type === 'ImportSpecifier' && sp.imported.name === sp.local.name);
+      const to = named && st.source.value.startsWith('./app/') ? path.resolve(ROOT, 'src', st.source.value) : null;
+      if (!to || !fs.existsSync(to + '.ts')) odd.push(txt.slice(st.start, Math.min(st.end, st.start + 100)));
+    }
+    ok(odd.length === 0, 'src/09-imports.js holds only imports of names, under their own names, from src/app/', odd);
+  }
+  // One-way dependencies (ARCHITECTURE.md): config and the record types at
+  // the bottom, then data, then the engine and analytics, then storage and
+  // sync, then the screens. A module imports only from its own layer or
+  // below, and no import goes round in a circle. The bundle turns a module's
+  // const into var, so in a circle a value read before its module has run is
+  // undefined, not an error (the second r51 review made the store read
+  // HIST_PAGE from layout, which read the store, and History's page size came
+  // out undefined with every other check green). Type-only imports leave no
+  // code and do not count. The layers are written once, in ARCHITECTURE.md
+  // ("Layer N, what: module, module"), and read from there.
+  {
+    const LAYER = {}, twice = [];
+    for (const m of fs.readFileSync(path.join(ROOT, 'ARCHITECTURE.md'), 'utf8').matchAll(/^Layer (\d+), [^:]+: (.+)$/gm)) for (const name of m[2].split(',').map(x => x.trim())) { if (name in LAYER) twice.push(name); LAYER[name] = +m[1]; }
+    ok(twice.length === 0, 'ARCHITECTURE.md gives each module one layer', twice);
+    const mods = MODS;
+    ok(Object.keys(LAYER).length > 20 && mods.every(m => m in LAYER), 'every module in src/app/ has its layer in ARCHITECTURE.md', mods.filter(m => !(m in LAYER)));
+    ok(Object.keys(LAYER).every(m => mods.includes(m)), 'every module ARCHITECTURE.md gives a layer exists', Object.keys(LAYER).filter(m => !mods.includes(m)));
+    // Every import at any depth and in any form counts (edgesOf), the ones
+    // that leave no code too, since a layer is about what a module may know.
+    const deps = new Map(), up = [];
+    for (const m of mods) {
+      const to = EDGES.get(m).map(e => e.to);
+      deps.set(m, to);
+      for (const t of to) if (!(LAYER[t] <= LAYER[m])) up.push(`${m} (layer ${LAYER[m]}) imports ${t} (layer ${LAYER[t]})`);
+    }
+    ok(up.length === 0, 'each module imports only from its own layer or below', up);
+    const cycles = [], state = new Map();
+    const visit = (m, trail) => {
+      if (state.get(m) === 2) return; if (state.get(m) === 1) { cycles.push([...trail.slice(trail.indexOf(m)), m].join(' > ')); return; }
+      state.set(m, 1); for (const t of deps.get(m) || []) visit(t, [...trail, m]); state.set(m, 2);
+    };
+    for (const m of mods) visit(m, []);
+    ok(cycles.length === 0, 'no import in src/app/ goes round in a circle', cycles);
+  }
+  // The checker is never switched off: no @ts-nocheck or @ts-ignore, and an
+  // expected error only where listed with its reason (the second r51 review
+  // hid a copy of the legacy script in config.ts behind @ts-nocheck).
+  {
+    const EXPECT = { 'importing.ts': 1 }; // the duplicate 'assisted dip' key, kept so the move changes no code (PENDING 304)
+    const bad = [];
+    // A directive is a comment that opens with it (`// @ts-ignore`); prose that mentions one is not (the r51 mutation test).
+    for (const id of MODS) {
+      const f = id + '.ts', txt = fs.readFileSync(path.join(APP, f), 'utf8');
+      if (/(\/\/|\/\*)\s*@ts-(nocheck|ignore)\b/.test(txt)) bad.push(`${f}: @ts-nocheck or @ts-ignore`);
+      const n = (txt.match(/(\/\/|\/\*)\s*@ts-expect-error\b/g) || []).length;
+      if (n !== (EXPECT[f] || 0)) bad.push(`${f}: ${n} @ts-expect-error, ${EXPECT[f] || 0} listed`);
+    }
+    ok(bad.length === 0, 'the type checker is switched off nowhere in src/app/, beyond the one listed exception', bad);
+  }
+  // Every name a module exports says what it is for, in a comment of its own
+  // directly above it, or shares the comment of the group it sits in (related
+  // exports with no blank line between them under one comment). A section
+  // heading such as `/* ---------- loads ---------- */` is not an explanation.
+  // From r51 (V: the code explains itself in plain words).
+  {
+    const bare = [];
+    for (const id of MODS) {
+      const f = id + '.ts', txt = fs.readFileSync(path.join(APP, f), 'utf8');
+      const sf = ts.createSourceFile(f, txt, ts.ScriptTarget.Latest, true);
+      let prevEnd = -1;
+      for (const st of sf.statements) {
+        const exported = (ts.canHaveModifiers(st) && ts.getModifiers(st) || []).some(m => m.kind === ts.SyntaxKind.ExportKeyword);
+        if (!exported) { prevEnd = -1; continue; }
+        const said = (ts.getLeadingCommentRanges(txt, st.pos) || []).some(c => !/^\/\*\s*-{3,}[\s\S]*-{3,}\s*\*\/$/.test(txt.slice(c.pos, c.end)));
+        const grouped = prevEnd >= 0 && !/\n[ \t]*\n/.test(txt.slice(prevEnd, st.getStart(sf)));
+        if (!said && !grouped) bare.push(`${f}: ${st.name ? st.name.text : st.declarationList ? st.declarationList.declarations.map(d => d.name.getText(sf)).join(', ') : '?'}`);
+        prevEnd = st.end;
+      }
+    }
+    ok(bare.length === 0, 'every name src/app/ exports has a comment saying what it is for', bare);
+  }
+  // Types say only what is true (r51, the outside review V brought;
+  // ARCHITECTURE.md). Read with the type checker, so an `any` is found
+  // wherever it is, not only where the word is written: no name (a
+  // parameter, a variable, a destructured binding, any identifier read), call,
+  // await or property read in src/app/ has the type any, except an expression
+  // wrapped directly in a cast, which makes it explicit (JSON.parse is typed
+  // any). The other ways to tell TypeScript a type it cannot check count as
+  // casts: `as` (other than `as const`), a type predicate (`x is T`), and a
+  // parameter annotated where its contextual type is any (a
+  // String.replace callback's groups); overloads are refused, since their
+  // signatures are not checked against the implementation. Every cast and
+  // every `!` (a non-null assertion, or a definite assignment such as
+  // `let x!: T`) has a comment naming it ("cast", or a ! standing alone): on
+  // its line, alone on the line above, or leading a statement, declaration or
+  // property that holds it. A cast whose type is or holds a type parameter is
+  // refused, however it is spelled (an alias too), since one generic helper
+  // would turn any number of casts into calls the count never sees. Casts, `!` and open
+  // types (an index signature, or a Record keyed by string, whose values are
+  // unknown or any) are counted against ARCHITECTURE.md's numbers, which only
+  // fall: higher fails, and lower fails until the numbers are lowered. What a
+  // comment says is review's to judge, and one comment on a declaration may
+  // cover several casts in it; the count shows a new one in the diff.
+  const appComments = new Map(); // module -> [pos, end] of every comment, from the syntax tree
+  {
+    const CAST = /\bcasts?\b/i, BANG = /(^|[\s(`])!([\s`),.;:]|$)/;
+    const conf = ts.parseJsonConfigFileContent(ts.readConfigFile(path.join(ROOT, 'tsconfig.json'), ts.sys.readFile).config, ts.sys, ROOT);
+    const prog = ts.createProgram(conf.fileNames, conf.options), ch = prog.getTypeChecker();
+    const anys = [], unexplained = [], generic = []; let casts = 0, bangs = 0, open = 0;
+    // A type that is any, or holds any as a union member or a type argument (any[] from Array.isArray, Map<any, any> from new Map()).
+    const holdsAny = (ty, d = 0) => !!ty && d < 6 && (!!(ty.flags & ts.TypeFlags.Any) || (ty.types || []).some(x => holdsAny(x, d + 1)) || (ty.objectFlags & ts.ObjectFlags.Reference ? ch.getTypeArguments(ty) : []).some(x => holdsAny(x, d + 1)));
+    const isAny = n => { try { return holdsAny(ch.getTypeAtLocation(n)); } catch (e) { return false; } };
+    // A written type that names a type parameter of a declaration around the cast, anywhere in it: in an
+    // object, a function, keyof, a conditional or a type argument, and through any alias, interface or
+    // typeof it names (an alias's own parameters, such as Record's, are not the cast's).
+    const aroundCast = (s, cast) => (s.declarations || []).some(d => d.getSourceFile() === cast.getSourceFile() && d.parent.pos <= cast.pos && cast.end <= d.parent.end);
+    const typeParamIn = (ty, cast, d = 0) => !!ty && d < 6 && ((!!(ty.flags & ts.TypeFlags.TypeParameter) && !!ty.symbol && aroundCast(ty.symbol, cast)) || (ty.types || []).some(x => typeParamIn(x, cast, d + 1)) || (ty.objectFlags & ts.ObjectFlags.Reference ? ch.getTypeArguments(ty) : []).some(x => typeParamIn(x, cast, d + 1)));
+    const holdsParam = (node, cast, seen = new Set()) => {
+      if (!node) return false;
+      if (ts.isTypeReferenceNode(node) || ts.isExpressionWithTypeArguments(node)) {
+        const s = ch.getSymbolAtLocation(ts.isTypeReferenceNode(node) ? node.typeName : node.expression);
+        if (s && s.flags & ts.SymbolFlags.TypeParameter && aroundCast(s, cast)) return true;
+        if (s && s.flags & (ts.SymbolFlags.TypeAlias | ts.SymbolFlags.Interface) && !seen.has(s)) { seen.add(s); for (const dcl of s.declarations || []) if ((ts.isTypeAliasDeclaration(dcl) && holdsParam(dcl.type, cast, seen)) || (ts.isInterfaceDeclaration(dcl) && dcl.getSourceFile() === cast.getSourceFile() && [...(dcl.heritageClauses || []), ...dcl.members].some(m => holdsParam(m, cast, seen)))) return true; }
+      }
+      // typeof x, where x's type is or holds a type parameter around the cast.
+      if (ts.isTypeQueryNode(node)) { try { if (typeParamIn(ch.getTypeAtLocation(node.exprName), cast)) return true; } catch (e) { /* a name the checker cannot type is no type parameter */ } }
+      return !!ts.forEachChild(node, k => holdsParam(k, cast, seen) || undefined);
+    };
+    // A parameter written with a type where the function's contextual type gives it any: an annotation nothing checks.
+    const unchecked = p => {
+      const fn = p.parent;
+      // Typing a parameter unknown where it would be any hides nothing, so it is not counted.
+      if (!p.type || p.type.kind === ts.SyntaxKind.UnknownKeyword || !(ts.isArrowFunction(fn) || ts.isFunctionExpression(fn))) return false;
+      const ct = ch.getContextualType(fn), sig = ct && ch.getSignaturesOfType(ct, ts.SignatureKind.Call)[0];
+      if (!sig) return false;
+      const i = fn.parameters.indexOf(p), ps = sig.parameters, last = ps[ps.length - 1];
+      const rest = !!(last && last.valueDeclaration && ts.isParameter(last.valueDeclaration) && last.valueDeclaration.dotDotDotToken);
+      let ty;
+      if (rest && i >= ps.length - 1) { const r = ch.getTypeOfSymbolAtLocation(last, fn); ty = ch.getIndexTypeOfType(r, ts.IndexKind.Number) || r; }
+      else if (i < ps.length) ty = ch.getTypeOfSymbolAtLocation(ps[i], fn);
+      return !!(ty && ty.flags & ts.TypeFlags.Any);
+    };
+    const overloads = [];
+    const loose = n => n && (n.kind === ts.SyntaxKind.UnknownKeyword || n.kind === ts.SyntaxKind.AnyKeyword);
+    for (const id of MODS) {
+      const f = id + '.ts', sf = prog.getSourceFile(path.join(APP, f)), txt = sf.text;
+      const at = n => `${f}:${sf.getLineAndCharacterOfPosition(n.getStart(sf)).line + 1}`;
+      const lead = n => (ts.getLeadingCommentRanges(txt, n.pos) || []).map(c => txt.slice(c.pos, c.end)).join('\n');
+      // Which lines hold a comment and which hold code, from the tokens and
+      // the comments around them, so a // inside a string or a regular
+      // expression is never taken for one.
+      const commentLines = new Set(), codeLines = new Set(), ranges = new Map();
+      const mark = (set, a, z) => { for (let l = sf.getLineAndCharacterOfPosition(a).line, e = sf.getLineAndCharacterOfPosition(z).line; l <= e; l++) set.add(l); };
+      const tokens = n => {
+        for (const c of [...(ts.getLeadingCommentRanges(txt, n.pos) || []), ...(ts.getTrailingCommentRanges(txt, n.end) || [])]) { mark(commentLines, c.pos, c.end); ranges.set(c.pos, [c.pos, c.end]); }
+        const kids = n.getChildren(sf);
+        if (!kids.length && n.kind !== ts.SyntaxKind.EndOfFileToken) mark(codeLines, n.getStart(sf), n.end);
+        kids.forEach(tokens);
+      };
+      tokens(sf);
+      appComments.set(id, [...ranges.values()]);
+      const lineComments = l => [...ranges.values()].filter(([a, z]) => sf.getLineAndCharacterOfPosition(a).line <= l && sf.getLineAndCharacterOfPosition(z).line >= l).map(([a, z]) => txt.slice(a, z)).join('\n');
+      const named = (n, re, held) => {
+        const l = sf.getLineAndCharacterOfPosition(n.getStart(sf)).line;
+        const above = l > 0 && commentLines.has(l - 1) && !codeLines.has(l - 1) ? lineComments(l - 1) : '';
+        return re.test(lineComments(l)) || re.test(above) || held.some(c => re.test(c));
+      };
+      const visit = (n, held) => {
+        if (n.kind === ts.SyntaxKind.AnyKeyword) anys.push(`${at(n)} the word any`);
+        const reads = ts.isIdentifier(n) || ts.isCallExpression(n) || ts.isAwaitExpression(n) || ts.isPropertyAccessExpression(n) || ts.isElementAccessExpression(n);
+        const inType = x => { if (x.parent && ts.isModuleDeclaration(x.parent) && x.parent.name === x) return true; for (let u = x.parent; u; u = u.parent) { if (ts.isTypeNode(u)) return true; if (ts.isStatement(u) || ts.isExpression(u)) return false; } return false; };
+        const wrapped = x => { let u = x.parent; while (u && (ts.isParenthesizedExpression(u) || (ts.isPropertyAccessExpression(u) && u.name === x))) { x = u; u = u.parent; } return !!u && (ts.isAsExpression(u) || ts.isTypeAssertionExpression(u)); };
+        if (reads && !inType(n) && !wrapped(n) && isAny(n)) anys.push(`${at(n)} ${n.getText(sf).slice(0, 50).replace(/\s+/g, ' ')}`);
+        if ((ts.isFunctionDeclaration(n) || ts.isMethodDeclaration(n) || ts.isConstructorDeclaration(n)) && !n.body) overloads.push(at(n));
+        if (ts.isIndexSignatureDeclaration(n) && loose(n.type)) open++;
+        if (ts.isTypeReferenceNode(n) && n.typeName.getText(sf) === 'Record' && n.typeArguments && n.typeArguments.length === 2 && n.typeArguments[0].kind === ts.SyntaxKind.StringKeyword && loose(n.typeArguments[1])) open++;
+        const isCast = ((ts.isAsExpression(n) || ts.isTypeAssertionExpression(n)) && n.type.getText(sf) !== 'const') || ts.isTypePredicateNode(n) || (ts.isParameter(n) && unchecked(n));
+        const isBang = ts.isNonNullExpression(n) || ((ts.isVariableDeclaration(n) || ts.isPropertyDeclaration(n)) && !!n.exclamationToken);
+        if (isCast) {
+          casts++;
+          if (!named(n, CAST, held)) unexplained.push(`${at(n)} ${n.getText(sf).slice(0, 50).replace(/\s+/g, ' ')}`);
+          if (n.type && holdsParam(n.type, n)) generic.push(`${at(n)} ${n.getText(sf).slice(0, 50)}`);
+        }
+        if (isBang) {
+          bangs++;
+          if (!named(n, BANG, held)) unexplained.push(`${at(n)} ${n.getText(sf).slice(0, 50).replace(/\s+/g, ' ')}`);
+        }
+        const own = ts.isStatement(n) || ts.isVariableDeclaration(n) || ts.isPropertyAssignment(n) || ts.isClassElement(n) ? [...held, lead(n)] : held;
+        ts.forEachChild(n, k => visit(k, own));
+      };
+      visit(sf, []);
+    }
+    ok(anys.length === 0, 'no value in src/app/ has the type any, found by the type checker (an expression wrapped in a cast excepted, as the cast makes it explicit)', anys);
+    ok(unexplained.length === 0, `every cast and every ! in src/app/ has a comment naming it (${casts} casts, ${bangs} !)`, unexplained);
+    ok(generic.length === 0, 'no cast in src/app/ is to a type that is or holds a type parameter (a generic helper would hide casts from the count)', generic);
+    ok(overloads.length === 0, 'no function, method or constructor in src/app/ is declared without a body: no overloads (their signatures are not checked against the implementation) and no `declare function`', overloads);
+    const arch = fs.readFileSync(path.join(ROOT, 'ARCHITECTURE.md'), 'utf8');
+    const cap = re => +((arch.match(re) || [])[1]);
+    const cc = cap(/^Casts: (\d+)$/m), cb = cap(/^Non-null assertions: (\d+)$/m), co = cap(/^Open types: (\d+)$/m);
+    ok(cc >= 0 && cb >= 0 && co >= 0 && casts <= cc && bangs <= cb && open <= co, `src/app/ has no more casts, ! or open types than ARCHITECTURE.md records (${casts} of ${cc}, ${bangs} of ${cb}, ${open} of ${co})`);
+    ok(casts >= cc && bangs >= cb && open >= co, 'when a cast, a ! or an open type goes, the number in ARCHITECTURE.md is lowered to match, so it stays gone', { casts, cc, bangs, cb, open, co });
+  }
+  // An error handled in a module carries a comment (r51, the outside review):
+  // every `catch` block in src/app/, and every handler given to a promise
+  // (`.catch(fn)`, `["catch"](fn)`, the second function of `.then`), ends in
+  // a throw or holds a comment, read from the syntax tree, saying why the
+  // error is expected and what the fallback is; a handler must be written in
+  // place, so it can be read. A `finally` may not return, which would swallow
+  // an error silently. Whether a comment says why is review's to judge. A
+  // module cannot log yet (`log` is legacy until phase 4).
+  {
+    const silent = [];
+    for (const id of MODS) {
+      const f = id + '.ts', txt = fs.readFileSync(path.join(APP, f), 'utf8');
+      const sf = ts.createSourceFile(f, txt, ts.ScriptTarget.Latest, true);
+      const comments = appComments.get(id) || [];
+      const where = n => `${f}:${sf.getLineAndCharacterOfPosition(n.getStart(sf)).line + 1}`;
+      // A comment in the block itself, not in a function nested inside it.
+      const nested = []; const fns = x => { if (x !== undefined && ts.isFunctionLike(x)) nested.push([x.getStart(sf), x.end]); ts.forEachChild(x, fns); };
+      fns(sf);
+      const hasComment = b => comments.some(([a, z]) => a >= b.getStart(sf) && z <= b.end && !nested.some(([p, q]) => p > b.getStart(sf) && a >= p && z <= q));
+      // Ends in a throw: the block's own last statement, so a throw that only sometimes runs, or one in a nested function, does not count.
+      const endsInThrow = b => ts.isBlock(b) && b.statements.length > 0 && ts.isThrowStatement(b.statements[b.statements.length - 1]);
+      const handler = (fn, at) => {
+        if (!fn || !ts.isFunctionLike(fn) || !fn.body) { silent.push(`${where(at)} (a handler not written in place)`); return; }
+        if (!hasComment(fn.body) && !endsInThrow(fn.body)) silent.push(where(at));
+      };
+      // A return, break or continue in a finally ends it early and drops an error in flight.
+      const returnsIn = x => ts.isReturnStatement(x) || ts.isBreakStatement(x) || ts.isContinueStatement(x) || (!ts.isFunctionLike(x) && !!ts.forEachChild(x, c => returnsIn(c) || undefined));
+      const visit = n => {
+        if (ts.isCatchClause(n) && !hasComment(n.block) && !endsInThrow(n.block)) silent.push(where(n));
+        if (ts.isTryStatement(n) && n.finallyBlock && returnsIn(n.finallyBlock)) silent.push(`${where(n.finallyBlock)} (a return, break or continue in finally)`);
+        if (ts.isCallExpression(n)) {
+          const e = n.expression;
+          const name = ts.isPropertyAccessExpression(e) ? e.name.text : ts.isElementAccessExpression(e) && ts.isStringLiteralLike(e.argumentExpression) ? e.argumentExpression.text : '';
+          if (name === 'catch') handler(n.arguments[0], n);
+          if (name === 'then' && n.arguments.length > 1) handler(n.arguments[1], n);
+        }
+        ts.forEachChild(n, visit);
+      };
+      visit(sf);
+    }
+    ok(silent.length === 0, 'every catch and promise handler in src/app/ ends in a throw or carries a comment saying why the error is expected, and no finally returns, breaks or continues', silent);
+  }
+  // Every module is laid out by Prettier from the committed .prettierrc.json,
+  // so layout is never a matter of taste or of hand (layout never changes
+  // code, which tests/moved.js proves). A data table may keep its rows on
+  // their own lines behind `// prettier-ignore`, only at a module's top
+  // level and only with a comment directly above saying why; the check
+  // prints each so a review sees them. Until r51 the r49 and r50 modules
+  // were exempt, which was an exception, not a standard.
+  {
+    const files = MODS.map(id => path.join(APP, id + '.ts'));
+    const { spawnSync } = require('child_process');
+    const pr = spawnSync(process.execPath, [require.resolve('prettier/bin/prettier.cjs'), '--check', ...files], { encoding: 'utf8', cwd: ROOT });
+    ok(files.length > 20 && pr.status === 0, `every module in src/app/ is formatted by Prettier (${files.length} files)`, (pr.stdout + pr.stderr).trim().split('\n').filter(l => /\[warn\]|error/i.test(l)).slice(0, 10));
+    const bad = [], tables = [];
+    for (const id of MODS) {
+      const f = id + '.ts', txt = fs.readFileSync(path.join(APP, f), 'utf8');
+      const sf = ts.createSourceFile(f, txt, ts.ScriptTarget.Latest, true);
+      const topRanges = sf.statements.flatMap(st => (ts.getLeadingCommentRanges(txt, st.pos) || []).map(c => ({ ...c, st })));
+      for (const m of txt.matchAll(/prettier-ignore/g)) {
+        const at = topRanges.find(c => c.pos <= m.index && m.index < c.end);
+        if (!at) { bad.push(`${f}: a prettier-ignore inside a declaration, or not a comment of its own`); continue; }
+        const before = topRanges.filter(c => c.st === at.st && c.end <= at.pos);
+        if (!before.length) { bad.push(`${f}: the prettier-ignore on ${at.st.name ? at.st.name.text : 'a declaration'} has no comment above it saying why`); continue; }
+        tables.push(`${f}: ${txt.slice(before[before.length - 1].pos, before[before.length - 1].end).replace(/^\/[/*]\s*|\s*\*\/$/g, '').slice(0, 90)}`);
+      }
+    }
+    ok(bad.length === 0, `a prettier-ignore sits only on a top-level declaration, under a comment saying why (${tables.length}: ${tables.join('; ')})`, bad);
+  }
+  // The checker's settings are the ones ARCHITECTURE.md relies on, and it
+  // reads every module: a tsconfig that covered one file passed everything
+  // (the r51 mutation test).
+  {
+    const read = ts.readConfigFile(path.join(ROOT, 'tsconfig.json'), ts.sys.readFile);
+    const conf = read.error ? null : ts.parseJsonConfigFileContent(read.config, ts.sys, ROOT);
+    const o = conf ? conf.options : {};
+    const need = { strict: true, noUnusedLocals: true, noUnusedParameters: true, noImplicitReturns: true, noFallthroughCasesInSwitch: true, exactOptionalPropertyTypes: true, isolatedModules: true, noEmit: true };
+    const off = Object.entries(need).filter(([k, v]) => o[k] !== v).map(([k]) => k);
+    const unread = conf ? MODS.filter(id => !conf.fileNames.map(f => path.resolve(f)).includes(path.join(APP, id + '.ts'))) : MODS;
+    ok(conf && off.length === 0 && unread.length === 0, 'tsconfig.json keeps the strict settings on and reads every module', { off, unread: unread.slice(0, 5), error: read.error && read.error.messageText });
+  }
   const { spawnSync } = require('child_process');
   const tsc = spawnSync(process.execPath, [require.resolve('typescript/bin/tsc'), '--noEmit', '-p', path.join(ROOT, 'tsconfig.json')], { encoding: 'utf8' });
   ok(tsc.status === 0, 'the typed modules pass the TypeScript checker (strict)', (tsc.stdout + tsc.stderr).trim().split('\n').slice(0, 10));
+  // The bundler resolves a module by its path and nothing else: a `browser`
+  // or `exports` map in package.json would hand it another file in place of
+  // a module (the r51 mutation test), and scripts/join.js pins the
+  // extensions it may try.
+  {
+    const pkg = JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf8'));
+    const maps = ['browser', 'exports', 'imports', 'module', 'main'].filter(k => k in pkg);
+    ok(maps.length === 0, 'package.json has no field that maps a module to another file', maps);
+    ok(/resolveExtensions:\s*\['\.ts',\s*'\.js'\]/.test(fs.readFileSync(path.join(ROOT, 'scripts', 'join.js'), 'utf8')), 'scripts/join.js resolves imports to .ts and .js files only');
+  }
+  // scripts/config.js, which the build and the tests read, gives exactly the
+  // values src/app/config.ts defines: a loader that changed one passed, with
+  // the page saying one build and its meta tag another (the r51 mutation test).
+  {
+    const out = esbuild.buildSync({ entryPoints: [path.join(APP, 'config.ts')], bundle: true, format: 'cjs', platform: 'neutral', write: false, logLevel: 'silent' }).outputFiles[0].text;
+    const file = path.join(require('os').tmpdir(), `ironlog-config-${process.pid}.cjs`); fs.writeFileSync(file, out);
+    let direct; try { direct = require(file); } finally { fs.unlinkSync(file); }
+    const keys = [...new Set([...Object.keys(direct), ...Object.keys(cfg)])];
+    const differ = keys.filter(k => JSON.stringify(direct[k]) !== JSON.stringify(cfg[k]));
+    ok(keys.length > 10 && differ.length === 0, 'scripts/config.js gives the values src/app/config.ts defines, no more and no less', differ);
+  }
+  // The shipped build (dist/, and the preview) is index.html with what
+  // scripts/build.js adds: the head script, the account settings, the
+  // loader's local copies, the boot script and the install metadata. The
+  // app script is index.html's byte for byte, the account settings are
+  // supabase.config.json's, the Content Security Policy's hashes are the
+  // inline scripts', and everything else build.js writes is pinned by hash
+  // in tests/dist-page.json, which changes only when build.js does, on
+  // purpose and in review (the r51 review: a timer that wiped the log,
+  // put in the boot script, reached dist/ with every check green).
+  {
+    const crypto = require('crypto'), { spawnSync } = require('child_process');
+    const sha = t => crypto.createHash('sha256').update(t, 'utf8').digest('hex');
+    const scripts = h => [...h.matchAll(/<script>([\s\S]*?)<\/script>/g)].map(m => m[1]);
+    const pageApp = scripts(fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8')).sort((a, b) => b.length - a.length)[0];
+    const pinned = JSON.parse(fs.readFileSync(path.join(__dirname, 'dist-page.json'), 'utf8'));
+    const cloud = JSON.parse(fs.readFileSync(path.join(ROOT, 'supabase.config.json'), 'utf8'));
+    const tmp = fs.mkdtempSync(path.join(require('os').tmpdir(), 'ironlog-dist-'));
+    for (const [kind, args] of [['live', []], ['preview', ['--preview']]]) {
+      const dir = path.join(tmp, kind);
+      const b = spawnSync(process.execPath, [path.join(ROOT, 'scripts', 'build.js'), ...args, '--out', dir], { encoding: 'utf8', cwd: ROOT });
+      if (b.status !== 0) { ok(false, `scripts/build.js builds the ${kind} app`, (b.stdout + b.stderr).trim().split('\n').slice(-3)); continue; }
+      const html = fs.readFileSync(path.join(dir, 'index.html'), 'utf8');
+      const all = scripts(html), app = [...all].sort((a, b) => b.length - a.length)[0];
+      ok(app === pageApp, `the ${kind} build's app script is index.html's, byte for byte`);
+      const acct = `window.IRONLOG_SUPABASE=${JSON.stringify({ url: cloud.url, key: cloud.key })};`;
+      ok(all.includes(acct), `the ${kind} build's account settings are supabase.config.json's`);
+      const csp = (html.match(/<meta http-equiv="Content-Security-Policy" content="([^"]*)"/) || [])[1] || '';
+      const want = all.map(t => `'sha256-${crypto.createHash('sha256').update(t, 'utf8').digest('base64')}'`);
+      ok(want.every(h => csp.includes(h)) && (csp.match(/'sha256-/g) || []).length === want.length, `the ${kind} build's Content Security Policy allows exactly its ${all.length} inline scripts`);
+      const rest = html.replace(app, '{{APP}}').replace(acct, '{{ACCT}}').replace(/(<meta http-equiv="Content-Security-Policy" content=")[^"]*/, '$1{{CSP}}').split(cfg.APP_VERSION).join('{{APP_VERSION}}');
+      ok(sha(rest) === pinned[kind], `everything else in the ${kind} build's page is what tests/dist-page.json pins (change it on purpose when scripts/build.js changes)`, { now: sha(rest), pinned: pinned[kind] });
+    }
+    fs.rmSync(tmp, { recursive: true, force: true });
+  }
 }
 
 // The build this one replaces is kept as a baseline and read by the
@@ -213,6 +622,18 @@ const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log
   const mig = fs.readFileSync(path.join(__dirname, 'migration.js'), 'utf8');
   const unread = base.filter(f => !mig.includes(`'baselines/${f}'`));
   ok(unread.length === 0, 'every baseline is loaded by tests/migration.js', unread);
+  // A baseline is a published build and never changes: each is pinned by
+  // hash in baselines/SHA256SUMS, so an edit to one (the r51 review made the
+  // same change in a baseline and in the source, and the move check saw no
+  // difference) shows as a change to that file in review. A new baseline is
+  // added to the list with `sha256sum baselines/<file> >> baselines/SHA256SUMS`.
+  {
+    const crypto = require('crypto');
+    const sums = Object.fromEntries(fs.readFileSync(path.join(ROOT, 'baselines', 'SHA256SUMS'), 'utf8').trim().split('\n').map(l => { const [h, f] = l.trim().split(/\s+\*?/); return [path.basename(f), h]; }));
+    const bad = base.filter(f => sums[f] !== crypto.createHash('sha256').update(fs.readFileSync(path.join(ROOT, 'baselines', f))).digest('hex')).map(f => `${f}: ${sums[f] ? 'changed' : 'not listed'}`);
+    const gone = Object.keys(sums).filter(f => !base.includes(f));
+    ok(base.length > 30 && bad.length === 0 && gone.length === 0, 'every baseline is the published build its hash in baselines/SHA256SUMS says', [...bad, ...gone.map(f => `${f}: listed, missing`)]);
+  }
 }
 
 // The documents against the repository (r46). CLAUDE.md called the Claude

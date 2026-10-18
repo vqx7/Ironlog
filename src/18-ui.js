@@ -39,9 +39,6 @@ function openMain(){
    wrapping it onto a line of its own under a long subtitle (r28, Plan). */
 function pageHead(kick,title,meta,actions){const q=!!actions&&actions.lastIndexOf('<button')===0&&actions.includes('class="hb"');return `<div class="ph${q?' q':''}"><div>${kick?`<p class="kick">${kick}</p>`:''}<h2>${esc(title)}</h2>${meta?`<p class="meta">${meta}</p>`:''}</div>${actions?`<div class="ph-a">${actions}</div>`:''}</div>`;}
 
-/* ---------- UI state ---------- */
-const HIST_PAGE=25;
-const ui={blkOpen:new Set(),tab:'today',todayDay:null,mapSel:null,mapSrc:null,prevOpen:false,help:new Set(),planView:'routine',histEx:'',histLimit:HIST_PAGE,wkOpen:false,libQ:'',libM:'',libE:'',libKind:'',bRoutine:null,bLibOpen:false,bLibQ:'',bLibM:'',bTarget:0,openItem:null,dashEx:null,dashMuscle:'chest',volMode:'region',histOpen:null,modal:null,folds:{},rng:{},eqLast:null};
 
 /* ---------- toast / modal ---------- */
 /* Undo used to be one snapshot that the toast timer nulled out after six
@@ -64,32 +61,6 @@ function snapshot(inv){
   while(undoStack.length>UNDO_MAX)undoStack.shift();
   undoPersist();
 }
-/* Undo inside a session: the session in progress merged exercise by
-   exercise (keyed by exercise and its occurrence), base = right after the
-   action, local = now, other = before it. Exercises changed only by the
-   action go back; ones changed since keep the newer version. As a whole
-   record, any set logged after the action used to block the undo. */
-function mergeDraft(base,cur,pre){
-  if(!pre||!cur||!base||pre.id!==cur.id||base.id!==cur.id)return cur===undefined?null:cur;
-  const keyed=list=>{const seen={};return (list||[]).map(b=>{const k=b.exId+'#'+(seen[b.exId]=(seen[b.exId]||0)+1);return [k,b];});};
-  const B=new Map(keyed(base.ex)),C=keyed(cur.ex),P=keyed(pre.ex);const Cm=new Map(C);
-  const pick=(k)=>{const b=B.get(k),c=Cm.get(k),p=P.find(x=>x[0]===k);const pv=p?p[1]:undefined;
-    const bh=b?canon(b):null,ch=c?canon(c):null,ph=pv?canon(pv):null;
-    if(ch===bh)return pv;if(ph===bh)return c;return c;};
-  const out=[];
-  // An action that left the exercises' order alone (a Settings change, a
-  // layout reset) must not undo a reorder made after it, so the order now is
-  // kept (r29: dragging exercises made that common). An action that changed
-  // the order or the list puts back the order from before it.
-  const ord=l=>l.map(x=>x[0]).join('|');
-  const keep=ord(keyed(base.ex))===ord(P);
-  // Keep the order of the version before the action, then anything added since.
-  for(const [k] of keep?C:P){const v=pick(k);if(v)out.push(v);}
-  for(const [k,c] of C){if(!P.some(x=>x[0]===k)){const v=pick(k);if(v&&!out.includes(v))out.push(v);}}
-  const res={...cur,ex:out};
-  for(const f of ['notes','dayName','deload','light','limited','cardio','chk']){if(canon(cur[f])===canon(base[f]))res[f]=pre[f];}
-  return res;
-}
 /* The first save after a snapshot is the action itself; remember the result,
    so Undo can tell the action apart from anything logged after it. */
 function capturePost(){const e=undoStack[undoStack.length-1];if(e&&e.post==null){try{e.post=JSON.stringify(state);undoPersist();}catch(x){log('undo',x);}}}
@@ -110,8 +81,6 @@ const coarse=()=>{try{return window.matchMedia('(pointer:coarse)').matches;}catc
    a sheet with its own buttons leaves that entry in place and the next sheet
    reuses it, rather than calling history.back(), whose delayed event could
    land on a sheet opened a moment later. */
-// Sheets whose fields hold something typed. Search boxes in pickers do not count.
-const FORM_SHEETS=new Set(['imp','feedback','account','exEdit','injury','cardio','quick','note','text','routineNew','inc','max','load','reps','cal','walk']);
 function modalPush(){try{if(!(history.state&&history.state.ilModal))history.pushState({ilModal:1,ilTab:ui.tab},'');}catch(e){/* history is best effort in a frame */}}
 /* Back also steps back through tabs, like a native app: each tab change adds
    one history entry holding the tab, and Back shows the tab of the entry it
@@ -320,8 +289,6 @@ function killDynamic(){
   // floating copy of the block on the page; it goes with the old list.
   blockDrag=false;if(document.body.classList.contains('blkdrag')){document.body.classList.remove('blkdrag');const v=document.getElementById('view');if(v)v.style.paddingBottom='';}if(typeof edgeScroll!=='undefined')edgeScroll.stop();document.querySelectorAll('.sortable-fallback,.sortable-ghost').forEach(e=>{if(!e.closest('#view'))e.remove();});
   while(charts.length){try{charts.pop().destroy();}catch(e){/* chart already gone */}}sortables.forEach(s=>{try{s.destroy();}catch(e){/* list already gone */}});sortables=[];}
-/* Ember is the default since r37 (V: "default to the orange ember one for now"): no accent stored reads as Ember. */
-const ACCENTS=[['ember','Ember'],['blue','Blue'],['volt','Volt'],['pink','Pink']];const ACCENT0='ember';
 function applyTheme(){const t=state.settings.theme;if(t==='system')delete document.documentElement.dataset.theme;else document.documentElement.dataset.theme=t;
   document.documentElement.dataset.accent=state.settings.accent||ACCENT0;
   // The installed app's status bar takes this colour, so it follows the theme.

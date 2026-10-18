@@ -38,6 +38,8 @@ jobs:
         run: |
           npm install --no-audit --no-fund
           npx playwright install --with-deps chromium
+      - name: The proof suites on their own, so a runner that dropped one could not hide it
+        run: node tests/hygiene.js && node tests/moved.js
       - name: Every suite in shard ${{ matrix.shard }} of 4, source and standalone build
         run: node tests/run.js --shard ${{ matrix.shard }}/4 --jobs 1
       - name: Screenshots from the run

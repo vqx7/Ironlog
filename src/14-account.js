@@ -4,7 +4,6 @@
    nothing below shows. An account is optional: without one the app keeps
    working on this device exactly as before. */
 const AUTH=()=>window.ironlogAuth&&typeof window.ironlogAuth.user==='function'?window.ironlogAuth:null;
-const acct={user:null,checked:false,reader:false};
 const ACCT_LATER=KEY+'.acctLater';
 function cloudStop(){
   clearTimeout(cloud.t);cloud.on=false;cloud.db=null;cloud.uid=null;cloud.acct=null;
@@ -25,11 +24,6 @@ function acctRerender(){if((ui.tab==='settings'||ui.tab==='today')&&!ui.modal)re
    the details for a message. Without a report service at all (the plain
    source file) it copies the report as text. */
 const FB=()=>window.ironlogFeedback&&typeof window.ironlogFeedback.send==='function'?window.ironlogFeedback:null;
-const FB_CATS=[['bug','Problem'],['question','Question'],['idea','Suggestion']];
-const FB_TITLE={bug:'Report a problem',question:'Ask a question',idea:'Suggest something'};
-const FB_ASK={bug:'What went wrong?',question:'Your question',idea:'Your suggestion'};
-const FB_HINT={bug:'What you tapped, what you expected, what happened',question:'',idea:''};
-const FB_MIN=10,FB_MAX=1000,FB_DAY=5,FB_IMG_MB=10;
 const FB_SENT=KEY+'.fbSent';
 // Reports sent from this device in the last 24 hours (the database keeps the real count).
 function fbRecent(){try{const a=JSON.parse(localStorage.getItem(FB_SENT)||'[]');const cut=Date.now()-864e5;return Array.isArray(a)?a.filter(t=>+t>cut):[];}catch(e){return [];}}
@@ -58,8 +52,6 @@ function fbContext(m){
   if(bytes()>FB_CTX_MAX)ctx.errors=ctx.errors.map(({s,...x})=>({...x,m:String(x.m).slice(0,100)}));
   return ctx;
 }
-const FB_CTX_MAX=15000;
-const FB_WHAT='Attached by the app: the build, your device and browser, screen size, which screen you came from, whether a session was open, sync status, and up to 10 recent errors with where in the app each happened. Never your workouts. It goes to the app owner.';
 /* The Guide (r27): how Ironlog works and the rules behind its numbers, in
    one place, opened from the menu. Screens keep the number and the action;
    the reasoning lives here, so it is findable on a phone where nothing can
@@ -200,11 +192,6 @@ function fbSheet(m){
   <button type="button" class="btn primary block" data-act="fbSend" ${m.busy?'disabled':''}>${m.busy?'Sending':F?'Send':'Copy report'}</button></div></div>`;
 }
 /* The owner's inbox: the reports, newest first, read-only. */
-/* A report's screenshot is written by whoever sent it, through the API as
-   well as the app, so the Inbox shows it only when it is a plain base64 JPEG
-   from start to end. Checking only the start let a quote end the src and add
-   script to the owner's page (found in the r29 review). */
-const FB_SHOT_RE=/^data:image\/jpeg;base64,[A-Za-z0-9+/]+={0,2}$/;
 function fbInboxSheet(m){
   const it=m.items;
   const body=m.err?`<p class="small" role="alert" style="color:var(--red)">${esc(m.err)}</p>`:!it?'<p class="muted">Loading</p>':!it.length?'<p class="muted">No feedback yet.</p>':`<ul class="clist fbinbox">${it.map(x=>`<li><div style="min-width:0;flex:1"><p class="small" style="margin:0"><span class="tag ${x.category==='bug'?'red':x.category==='idea'?'green':'blue'}">${esc(x.category)}</span> <span class="muted">${esc(String(x.created_at||'').slice(0,16).replace('T',' '))}${x.reply_to?` · ${esc(x.reply_to)}`:''}</span></p><p style="margin:4px 0 0;white-space:pre-wrap;overflow-wrap:anywhere">${esc(x.message)}</p>${x.screenshot&&FB_SHOT_RE.test(x.screenshot)?`\x3cimg class="fbthumb" src="${esc(x.screenshot)}" alt="Screenshot">`:''}${x.issue_url&&/^https:\/\/github\.com\//.test(x.issue_url)?`<p class="small" style="margin:4px 0 0"><a href="${esc(x.issue_url)}" target="_blank" rel="noopener">GitHub issue</a></p>`:''}<details class="small muted"><summary>Attached by the app</summary><pre class="fbctx">${esc(JSON.stringify(x.context||{},null,1))}</pre></details></div></li>`).join('')}</ul>`;
@@ -239,7 +226,6 @@ function fbShrink(file){
    that shares this storage (the same browser, or Android's installed app)
    can then tell that the link was opened where Ironlog lives. */
 const ACCT_WAIT=KEY+'.acctWait';
-const acctWait={email:'',pw:'',t:0,timer:null,busy:false,last:0};
 function waitStart(email,pw){
   acctWait.email=email;acctWait.pw=pw;acctWait.t=Date.now();
   try{localStorage.setItem(ACCT_WAIT,JSON.stringify({t:Date.now()}));}catch(e){/* storage blocked: the app still waits */}
@@ -406,12 +392,12 @@ window.addEventListener('storage',ev=>{
   try{incoming=normalize(JSON.parse(ev.newValue));}catch(e){log('tabs',e);return;}
   try{base=lastSaved?normalize(JSON.parse(lastSaved)):null;}catch(e){base=null;}
   const stat={conflicts:0};
-  if(!base||canon(state)===canon(base))state=incoming;
+  if(!base||canon(state)===canon(base))setState(incoming);
   else{
     const L=chunksOf(state),Rr=chunksOf(incoming),B=chunksOf(base),parts={};
     for(const id of new Set([...Object.keys(L),...Object.keys(Rr),...Object.keys(B)]))
       parts[id]=mergeChunk(id,baseOf(id,B[id]||emptyChunk(id)),L[id]||emptyChunk(id),Rr[id]||emptyChunk(id),true,stat);
-    state=assemble(parts);
+    setState(assemble(parts));
   }
   lastSaved=ev.newValue;clearTimeout(saveT);saveT=null;
   invalidate();resyncLocalH();

@@ -7,6 +7,7 @@ const http = require('http');
 const fs = require('fs');
 const path = require('path');
 const { engine } = require('./h');
+const cfg = require('../scripts/config');
 const fails = []; const ok = (c, m) => { if (!c) { fails.push(m); console.log('FAIL', m); } else console.log('ok  ', m); };
 const DIST = path.join(__dirname, '..', 'dist');
 require('./h').build();
@@ -28,7 +29,7 @@ const server = http.createServer((req, res) => {
   await page.goto(base); await page.waitForFunction(() => window.__ironlog && window.__libs && window.__libs.chart && window.__libs.sortable, null, { timeout: 15000 });
   await page.evaluate(() => document.fonts.ready);
   ok(outside.length === 0, 'nothing is loaded from another site' + (outside.length ? ': ' + outside.slice(0, 3).join(', ') : ''));
-  const fontsOk = await page.evaluate(() => document.fonts.check("800 20px 'Big Shoulders Display'") && document.fonts.check("400 16px 'Hanken Grotesk'"));
+  const fontsOk = await page.evaluate(([d, b]) => document.fonts.check(`800 20px '${d}'`) && document.fonts.check(`400 16px '${b}'`), [cfg.FONT_DISPLAY, cfg.FONT_BODY]);
   ok(fontsOk, 'both fonts load from this site');
   // Manifest and icons.
   const man = await page.evaluate(async () => { const l = document.querySelector('link[rel=manifest]'); const r = await fetch(l.href); const j = await r.json();
@@ -41,7 +42,7 @@ const server = http.createServer((req, res) => {
   ok(/^rgb\(242, 243, 245\)$/.test(lightTheme), 'the status bar colour follows the light theme (' + lightTheme + ')');
   // The libraries' and fonts' licenses travel with the copies this build serves (r34).
   const lic = await page.evaluate(async () => { const r = await fetch('LICENSES.txt'); const t = r.ok ? await r.text() : ''; const L = window.__ironlog; const ob = L.state.settings.onboarded; L.state.settings.onboarded = true; L.ui.tab = 'settings'; L.render(); document.querySelectorAll('#view details').forEach(d => d.open = true); const a = [...document.querySelectorAll('#view a')].find(x => /Open-source licenses/.test(x.textContent)); const link = a ? a.getAttribute('href') : null; L.state.settings.onboarded = ob; return { ok: r.ok, t, link }; });
-  ok(lic.ok && ['Chart.js', 'SortableJS', 'three.js', 'Big Shoulders Display', 'Hanken Grotesk', 'Permission is hereby granted', 'SIL Open Font License'].every(k => lic.t.includes(k)) && lic.link === 'LICENSES.txt', 'LICENSES.txt is served with the MIT and OFL texts, linked from Settings > Diagnostics', { ok: lic.ok, n: lic.t.length, link: lic.link });
+  ok(lic.ok && ['Chart.js', 'SortableJS', 'three.js', cfg.FONT_DISPLAY, cfg.FONT_BODY, 'Permission is hereby granted', 'SIL Open Font License'].every(k => lic.t.includes(k)) && lic.link === 'LICENSES.txt', 'LICENSES.txt is served with the MIT and OFL texts, linked from Settings > Diagnostics', { ok: lic.ok, n: lic.t.length, link: lic.link });
   await page.evaluate(() => { const L = window.__ironlog; L.ui.tab = 'today'; L.render(); });
   // Service worker.
   await page.waitForFunction(() => navigator.serviceWorker && navigator.serviceWorker.controller || false, null, { timeout: 15000 }).catch(() => {});

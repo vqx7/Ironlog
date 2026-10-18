@@ -49,8 +49,8 @@
   --dock:color-mix(in srgb,var(--volt) 40%,#0b0d10); --on-dock:#ffffff;
   /* 46% at its lightest keeps white text at 4.5:1 or more on all three accents (Volt is the closest, 4.66). */
   --dock-bg:linear-gradient(165deg,color-mix(in srgb,var(--volt) 46%,#0b0d10),color-mix(in srgb,var(--volt) 32%,#0b0d10));
-  --font:'Hanken Grotesk',system-ui,-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;
-  --display:'Big Shoulders Display','Arial Narrow','Roboto Condensed','Helvetica Neue',system-ui,sans-serif;
+  --font:'{{FONT_BODY}}',system-ui,-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;
+  --display:'{{FONT_DISPLAY}}','Arial Narrow','Roboto Condensed','Helvetica Neue',system-ui,sans-serif;
   --r-lg:22px; --r-md:14px; --r-sm:12px;
   --head-h:52px;
   color-scheme:light;
@@ -116,6 +116,19 @@
 details>*{box-sizing:border-box}
 input[type=file]{max-width:100%;width:100%;font-size:14px}
 html{scroll-padding-top:calc(var(--head-h) + env(safe-area-inset-top,0px));-webkit-text-size-adjust:100%}
+/* iOS 26's home-screen app (r51; two iPhone users, 2026-10-17: the tab bar
+   rises and the page shrinks when tapping through the tabs, on History,
+   Settings and sometimes Plan). With viewport-fit=cover and the translucent
+   status bar, iOS 26 gives a page shorter than the screen a viewport shorter
+   by the status bar's height, so the fixed tab bar stops above the bottom
+   edge (frappe-ui pull requests 1284 and 1289). With a real log, Plan (about
+   780 px) is shorter than every current iPhone and Today (about 860 to 920)
+   than the larger ones, while Stats, History and Settings are taller; Plan
+   comes before those three in the bar, so the short viewport may begin on
+   Plan and carry over. That is a reading, not a proof (PENDING 303). In the installed
+   app no page is shorter than the screen now, and none is taller for it:
+   100lvh caps it where iOS has no such bug. Browsers without lvh drop it. */
+@media (display-mode:standalone){html{min-height:min(100lvh,calc(100% + env(safe-area-inset-top,0px)))}}
 body{margin:0;background:var(--bg);color:var(--ink);font:400 16px/1.45 var(--font);-webkit-font-smoothing:antialiased}
 button,input,select,textarea{font:inherit;color:inherit}
 h1,h2,h3{font-family:var(--display);font-weight:700;line-height:1.02;margin:0;text-wrap:balance;letter-spacing:.01em}

@@ -101,8 +101,9 @@ const freeNames = node => scan(node).refs;
 function letExports(SRC) {
   const esbuild = require('esbuild'); const out = new Set(); const APP = path.join(SRC, 'app');
   if (!fs.existsSync(APP)) return out;
-  for (const f of fs.readdirSync(APP).filter(f => f.endsWith('.ts'))) {
-    const js = esbuild.transformSync(fs.readFileSync(path.join(APP, f), 'utf8'), { loader: 'ts', format: 'esm' }).code;
+  const walk = d => fs.readdirSync(d, { withFileTypes: true }).flatMap(e => e.isDirectory() ? walk(path.join(d, e.name)) : e.name.endsWith('.ts') ? [path.join(d, e.name)] : []);
+  for (const f of walk(APP)) {
+    const js = esbuild.transformSync(fs.readFileSync(f, 'utf8'), { loader: 'ts', format: 'esm' }).code;
     const top = acorn.parse(js, { ecmaVersion: 'latest', sourceType: 'module' }).body;
     const lets = new Set(top.filter(x => x.type === 'VariableDeclaration' && x.kind !== 'const').flatMap(x => x.declarations.flatMap(d => patNames(d.id, []))));
     for (const x of top) {
@@ -155,7 +156,10 @@ for (const d of decls) for (const w of d.writes) written.set(w, (written.get(w) 
 for (const t of topRefs) for (const w of t.writes) written.set(w, (written.get(w) || new Set()).add(t.file));
 
 // Browser-touching: a declaration that names document/window/navigator/localStorage etc. directly in its code.
-const BROWSER = /\b(document|window|navigator|localStorage|sessionStorage|indexedDB|location|history|requestAnimationFrame|setTimeout|setInterval|fetch|matchMedia|getComputedStyle|Chart|Sortable|alert|confirm)\b/;
+// Since r51 also the web APIs a page provides (the r51 review: the .xlsx reader uses DOMParser, which
+// Node lacks, and counted as pure). Blob, Response, DecompressionStream and File exist in Node 22 as well;
+// they count anyway, which errs on the safe side: pure means it needs nothing a page provides.
+const BROWSER = /\b(document|window|navigator|localStorage|sessionStorage|indexedDB|location|history|requestAnimationFrame|cancelAnimationFrame|setTimeout|setInterval|fetch|matchMedia|getComputedStyle|Chart|Sortable|alert|confirm|DOMParser|Blob|Response|DecompressionStream|FileReader|File|Image|MutationObserver|MouseEvent|CSS)\b/;
 const byName = new Map(decls.map(d => [d.name, d]));
 for (const d of decls) d.browser = BROWSER.test(code.slice(d.node.start, d.node.end));
 // Imported names that are shared state: exported with `let`, or written by the legacy script.

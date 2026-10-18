@@ -17,7 +17,11 @@ export type NewRoutine = Omit<Routine, 'days'> & { days: (Omit<Day, 'items'> & {
 
 /** A ready-made routine's exercise: the plan without ids, which a copy gets. */
 export type TemplateItem = Pick<PlanItem, 'exId' | 'sets' | 'repMin' | 'repMax' | 'rir' | 'rest'>;
-export interface TemplateDay { name: string; items: TemplateItem[]; rest?: boolean }
+export interface TemplateDay {
+  name: string;
+  items: TemplateItem[];
+  rest?: boolean;
+}
 
 /** A ready-made routine: its days, or (the hidden legacy one) a function that builds it. */
 export type Template = { key: string; name: string; who: string; meta: string; hidden?: boolean } & (
@@ -25,6 +29,7 @@ export type Template = { key: string; name: string; who: string; meta: string; h
   | { build: () => NewRoutine; days?: undefined }
 );
 
+/** The weekday names, Monday first, in the order a weekly routine's days are kept. */
 export const DAYS: readonly string[] = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
 /** The most days a routine can have. */
@@ -32,7 +37,7 @@ export const MAX_DAYS = 14;
 
 /** A routine day's label: the weekday on a weekly schedule, else its place in the cycle. */
 export function dayLabel(R: Pick<Routine, 'schedule'> | null | undefined, i: number): string {
-  return R && R.schedule === 'weekly' ? (DAYS[i] as string) : `Day ${i + 1}`;
+  return R && R.schedule === 'weekly' ? DAYS[i] : `Day ${i + 1}`;
 }
 
 /** The plan an exercise gets when nothing else sets one: 3 sets of 8 to 12 at
@@ -42,6 +47,8 @@ export function dayLabel(R: Pick<Routine, 'schedule'> | null | undefined, i: num
 export const DEFAULT_PLAN: Readonly<Plan> = { sets: 3, repMin: 8, repMax: 12, rir: 1, rest: 90, inc: 5 * LB };
 
 /** The routine installs started with before r29 (the template marked legacy). */
+// A table, one day a line, so a day's exercises can be read and checked whole; the formatter would spread each set over its own line.
+// prettier-ignore
 export function defaultRoutine(): NewRoutine {
   const I = (exId: string, sets: number, repMin: number, repMax: number, rir: number, rest: number): NewItem => ({ uid: uid(), exId, sets, repMin, repMax, rir, rest, inc: 5 * LB });
   const D = (name: string, items: NewItem[], rest?: boolean) => ({ id: uid(), name, rest: !!rest, items });
@@ -65,6 +72,8 @@ export function defaultRoutine(): NewRoutine {
    mainly as a way to spread volume), and keeps sessions
    near an hour. Rep ranges and RIR follow the same conventions as the rest of
    the app. They are starting points: everything is editable in Plan. */
+// A table, one day a line, as defaultRoutine above.
+// prettier-ignore
 export const TEMPLATES: readonly Template[] = (() => {
   const I = (exId: string, sets: number, repMin: number, repMax: number, rir: number, rest: number): TemplateItem => ({ exId, sets, repMin, repMax, rir, rest });
   const D = (name: string, items: TemplateItem[]): TemplateDay => ({ name, items }), R = (): TemplateDay => ({ name: 'Rest', items: [], rest: true });
@@ -147,5 +156,167 @@ export function routineFromTemplate(key: string): NewRoutine | null {
   const t = TEMPLATES.find(x => x.key === key);
   if (!t) return null;
   if (t.build) return t.build();
-  return { id: uid(), name: t.name, schedule: 'cycle', days: t.days.map(d => ({ id: uid(), name: d.name, rest: !!d.rest, items: d.items.map(it => ({ uid: uid(), ...it, inc: 5 * LB })) })) };
+  return {
+    id: uid(),
+    name: t.name,
+    schedule: 'cycle',
+    days: t.days.map(d => ({
+      id: uid(),
+      name: d.name,
+      rest: !!d.rest,
+      items: d.items.map(it => ({ uid: uid(), ...it, inc: 5 * LB }))
+    }))
+  };
 }
+
+/* ---------- routine helpers (phase 3a, r51; moved unchanged, tests/moved.js holds them to r50's code) ---------- */
+
+/** The parts of a routine these helpers read. */
+type RoutineLike = {
+  schedule: string;
+  days: { id?: string; rest?: boolean; items: { ss?: string | null; sets?: number | string }[] }[];
+};
+
+/* Weekly numbers (planned volume, adherence, the week bar) assume one cycle day
+   per calendar day. A 7-day cycle is therefore exactly 1x; a 4-day cycle runs
+   1.75 times a week. */
+export function weekFactor(R: RoutineLike): number {
+  return R.schedule === 'weekly' ? 1 : 7 / Math.max(1, R.days.length);
+}
+
+/** The days of a routine with something to train. */
+export function trainDaysOf(R: RoutineLike): number {
+  return R.days.filter(d => !d.rest && d.items.length > 0).length;
+}
+
+/** Training days a week, for a weekly schedule or a cycle. */
+export function plannedPerWeek(R: RoutineLike): number {
+  return R.schedule === 'weekly' ? trainDaysOf(R) : Math.round(trainDaysOf(R) * weekFactor(R));
+}
+
+/* Sessions store the id of the day they were logged against, so reordering or
+   removing cycle days never relinks history to the wrong workout. Sessions from
+   before v3 have only a position, which is still correct because migration
+   kept every day where it was. */
+export function sessDayIdx(R: RoutineLike, s: { dayId?: string | null; dayIdx: number }): number {
+  if (s.dayId) {
+    const i = R.days.findIndex(d => d.id === s.dayId);
+    return i;
+  }
+  return s.dayIdx >= 0 && s.dayIdx < R.days.length ? s.dayIdx : -1;
+}
+
+/** The sets a day plans. */
+export function daySets(day: { items: { sets: number | string }[] }): number {
+  return day.items.reduce((a, it) => a + +it.sets, 0);
+}
+
+/* A superset is consecutive items sharing an id. Groups of one are not
+   supersets, so a reorder or delete that leaves a stray tag clears it. */
+export function fixSupersets(items: { ss?: string | null }[]): void {
+  let i = 0;
+  while (i < items.length) {
+    const id = items[i].ss;
+    if (!id) {
+      i++;
+      continue;
+    }
+    let j = i;
+    while (j < items.length && items[j].ss === id) j++;
+    if (j - i < 2) items[i].ss = null;
+    i = j;
+  }
+  // The same id reappearing later in the day would read as one group; give it its own.
+  const seen = new Set<string>();
+  let prev: string | null | undefined = null;
+  items.forEach((it, k) => {
+    if (it.ss && it.ss !== prev && seen.has(it.ss)) it.ss = it.ss + '-g' + k;
+    if (it.ss) seen.add(it.ss);
+    prev = it.ss;
+  });
+}
+
+/* Letter per superset group, in order of first appearance, for labels. */
+export function ssLetters(items: readonly { ss?: string | null }[]): Record<string, string> {
+  const m: Record<string, string> = {};
+  let n = 0;
+  for (const it of items) if (it.ss && !(it.ss in m)) m[it.ss] = String.fromCharCode(65 + (n++ % 26));
+  return m;
+}
+
+/* Toggle the link between entry i and i+1. get(x) returns the object holding ss. */
+export function linkToggle<X>(arr: X[], i: number, get: (x: X) => { ss?: string | null }): boolean {
+  const a = get(arr[i]),
+    b = arr[i + 1] && get(arr[i + 1]);
+  if (!a || !b) return false;
+  if (a.ss && a.ss === b.ss) {
+    const g = uid(),
+      old = a.ss;
+    for (let k = i + 1; k < arr.length && get(arr[k]).ss === old; k++) get(arr[k]).ss = g;
+  } else {
+    const id = a.ss || b.ss || uid();
+    const olds = [a.ss, b.ss].filter(Boolean);
+    for (const x of arr) {
+      const o = get(x);
+      if (o.ss && olds.includes(o.ss)) o.ss = id;
+    }
+    a.ss = id;
+    b.ss = id;
+  }
+  const tmp = arr.map(get);
+  fixSupersets(tmp);
+  return true;
+}
+
+/** Moves an entry of a list from i to j, in place; out of range does nothing. */
+export function move<X>(arr: X[], i: number, j: number): void {
+  if (j < 0 || j >= arr.length) return;
+  const [x] = arr.splice(i, 1);
+  arr.splice(j, 0, x);
+}
+
+/* Routine housekeeping. Empty: no exercise on any day. Duplicate: same name
+   and same days and exercises as an earlier routine. Only routines that are
+   not active and have no logged sessions are offered for cleanup; logged
+   sessions are kept either way. */
+export const routineEmpty = (r: { days: { items: unknown[] }[] }): boolean => r.days.every(d => !d.items.length);
+
+/** What makes two routines the same: the name, schedule, days and every item's plan. */
+export const routineSig = (
+  r: Pick<Routine, 'name' | 'schedule'> & {
+    days: {
+      name: string;
+      rest?: boolean;
+      items: {
+        exId: string;
+        sets: number | string;
+        repMin: number | string;
+        repMax: number | string;
+        rir: number | string;
+        rest: number | string;
+      }[];
+    }[];
+  }
+): string =>
+  JSON.stringify([
+    r.name.trim().toLowerCase(),
+    r.schedule,
+    r.days.map(d => [d.name, !!d.rest, d.items.map(i => [i.exId, +i.sets, +i.repMin, +i.repMax, +i.rir, +i.rest])])
+  ]);
+
+/* "Eight plans, 2 to 6 days a week", counted from the list (r30: the line
+   said six after two were added). Every other day counts as about 3.5.
+   Each key comes from TEMPLATES itself, so each copy is found (the !). */
+export function tplCountLine(): string {
+  const T = TEMPLATES.filter(t => !t.hidden);
+  const n = T.map(t => {
+    const r = routineFromTemplate(t.key)!;
+    return (r.days.filter(d => !d.rest).length * 7) / r.days.length;
+  });
+  const W = ['No', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine', 'Ten', 'Eleven', 'Twelve'];
+  return `${W[T.length] || T.length} plans, ${Math.floor(Math.min(...n))} to ${Math.round(Math.max(...n))} days a week`;
+}
+
+/** The Plan editor's tip on target RIR (r29.5): why the default is 1, a convention. */
+export const RIR_TGT_TIP =
+  'Target RIR is 1 unless you change it, a convention: muscle growth improves as sets end closer to failure (Robinson 2024), but going all the way to failure grew muscle no more than stopping 1 to 2 reps short (Refalo 2024) and costs more fatigue. Some lifts in the ready-made routines use 0 or 2.';

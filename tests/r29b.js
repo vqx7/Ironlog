@@ -404,7 +404,7 @@ const sess = (id, date, exId, sets) => ({ id, date, dayIdx: 0, dayId: null, dayN
     const inline = [...html.matchAll(/<script>([\s\S]*?)<\/script>/g)].map(m => `'sha256-${crypto.createHash('sha256').update(m[1], 'utf8').digest('base64')}'`);
     ok(meta && inline.length >= 3 && inline.every(h => meta.includes(h)), 'the build carries a policy that allows each of its inline scripts by hash', { n: inline.length });
     ok(/script-src 'self' 'sha256-/.test(meta) && !/unsafe-inline[^;]*;\s*style/.test(meta.split('style-src')[0]) && !/unsafe-eval/.test(meta) && /object-src 'none'/.test(meta) && /base-uri 'none'/.test(meta) && !/cdnjs|jsdelivr|unpkg/.test(meta), 'scripts only from this site and those hashes: no unsafe-inline or eval for scripts, no CDNs, no plugins, no base tag', meta.slice(0, 160));
-    ok(/connect-src 'self' https:\/\/[a-z0-9]+\.supabase\.co wss:\/\/[a-z0-9]+\.supabase\.co https:\/\/api\.pwnedpasswords\.com;/.test(meta), 'data can go only to this site, the Supabase project, and the breach check', meta.match(/connect-src[^;]+/));
+    ok(new RegExp(`connect-src 'self' https://[a-z0-9]+\\.supabase\\.co wss://[a-z0-9]+\\.supabase\\.co ${require('../scripts/config').HIBP_ORIGIN.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')};`).test(meta), 'data can go only to this site, the Supabase project, and the breach check', meta.match(/connect-src[^;]+/));
     ok(html.indexOf('Content-Security-Policy') < html.indexOf('<script'), 'the policy comes before the first script, so it covers every one');
     const prev = (() => { require('./h').build(true); return fs.readFileSync(path.join(ROOT, 'dist-preview', 'index.html'), 'utf8'); })();
     ok(/Content-Security-Policy/.test(prev), 'the preview build has it too');

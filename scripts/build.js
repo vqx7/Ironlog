@@ -9,6 +9,7 @@
 //
 // Usage: node scripts/build.js             (writes dist/, prints the file list)
 //        node scripts/build.js --preview   (writes dist-preview/, the preview build)
+//        node scripts/build.js --out <dir>  (writes there instead; either build)
 //
 // The preview build (r24) is the same app, published to /preview/ under the
 // live app on the same site. The site is one origin, so the two share this
@@ -22,7 +23,10 @@ const crypto = require('crypto');
 
 const ROOT = path.join(__dirname, '..');
 const PREVIEW = process.argv.includes('--preview');
-const DIST = path.join(ROOT, PREVIEW ? 'dist-preview' : 'dist');
+// --out <dir> writes somewhere else (tests/hygiene.js checks the build in a
+// temporary directory while the browser suites use dist/ beside it).
+const OUT = process.argv.indexOf('--out') >= 0 ? process.argv[process.argv.indexOf('--out') + 1] : null;
+const DIST = OUT ? path.resolve(OUT) : path.join(ROOT, PREVIEW ? 'dist-preview' : 'dist');
 // The name, the build and the storage identifier come from src/app/config.ts
 // (r49), the one place they are defined.
 const cfg = require('./config');
@@ -48,7 +52,8 @@ must(version && src.includes(`<meta name="app-build" content="${version}">`), `i
 fs.rmSync(DIST, { recursive: true, force: true });
 for (const d of ['vendor', 'fonts', 'icons']) fs.mkdirSync(path.join(DIST, d), { recursive: true });
 
-// Libraries: the exact versions the artifact loads from cdnjs.
+// Libraries: the versions src/app/config.ts names and package.json pins
+// (tests/hygiene.js holds the two equal), the same the page loads from the CDNs.
 fs.copyFileSync(path.join(NM, 'chart.js/dist/chart.umd.js'), path.join(DIST, 'vendor/chart.umd.js'));
 fs.copyFileSync(path.join(NM, 'sortablejs/Sortable.min.js'), path.join(DIST, 'vendor/Sortable.min.js'));
 // three.js for the 3D body; the app loads it only when 3D is first opened.
@@ -73,8 +78,9 @@ if (cloudCfg) {
   fs.writeFileSync(path.join(DIST, 'cloud.js'), cloudJs);
 }
 
-// Fonts: the weights the page asks Google Fonts for, latin subset.
-const FONTS = [['Big Shoulders Display', 'big-shoulders-display', [600, 700, 800]], ['Hanken Grotesk', 'hanken-grotesk', [400, 500, 600, 700]]];
+// Fonts: the faces and weights the page asks Google Fonts for (src/app/config.ts),
+// latin subset, from the @fontsource package named after each face.
+const FONTS = [[cfg.FONT_DISPLAY, cfg.FONT_DISPLAY_WEIGHTS], [cfg.FONT_BODY, cfg.FONT_BODY_WEIGHTS]].map(([family, w]) => [family, family.toLowerCase().replace(/ /g, '-'), w.split(';').map(Number)]);
 let css = '/* Self-hosted copies of the Google Fonts the app uses (SIL Open Font License). */\n';
 for (const [family, dir, weights] of FONTS) {
   for (const w of weights) {
@@ -94,13 +100,25 @@ const SHORT = PREVIEW ? cfg.PREVIEW_LABEL : cfg.APP_NAME;
 
 let html = src;
 // Fonts from this site instead of Google.
-html = replaceOnce(html, '<link rel="preconnect" href="https://fonts.googleapis.com">\n', '', 'Google Fonts preconnect');
-html = replaceOnce(html, '<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>\n', '', 'gstatic preconnect');
-html = html.replace(/<link href="https:\/\/fonts\.googleapis\.com\/css2[^"]*" rel="stylesheet">/, () => '<link rel="stylesheet" href="fonts/fonts.css">');
-must(!/fonts\.googleapis/.test(html), 'Google Fonts link still present');
+html = replaceOnce(html, `<link rel="preconnect" href="${cfg.FONTS_ORIGIN}">\n`, '', 'Google Fonts preconnect');
+html = replaceOnce(html, `<link rel="preconnect" href="${cfg.FONT_FILES_ORIGIN}" crossorigin>\n`, '', 'gstatic preconnect');
+html = replaceOnce(html, `<link href="${cfg.FONTS_CSS}" rel="stylesheet">`, '<link rel="stylesheet" href="fonts/fonts.css">', 'Google Fonts style sheet');
+// Nothing on the page still reaches Google Fonts: no tag, no @import in the
+// styles, anywhere outside the inline scripts. The app script holds config's
+// values as text, which fetch nothing (r51; the r51 review found a check
+// limited to <link> tags passed an @import). Read as a browser would: CSS
+// escapes (\67 for g, \. for .) and URL escapes (%2e) decoded, in any case.
+{
+  const outside = html.replace(/<script>[\s\S]*?<\/script>/g, '')
+    .replace(/\\([0-9a-fA-F]{1,6})\s?/g, (m, h) => String.fromCodePoint(parseInt(h, 16)))
+    .replace(/\\(.)/g, '$1')
+    .replace(/%([0-9a-fA-F]{2})/g, (m, h) => String.fromCharCode(parseInt(h, 16)))
+    .toLowerCase();
+  must(![cfg.FONTS_ORIGIN, cfg.FONT_FILES_ORIGIN].some(o => outside.includes(o.toLowerCase().replace(/^https:/, ''))), 'Google Fonts link still present');
+}
 // Libraries: the local copy first, the CDNs stay as fallbacks.
-html = replaceOnce(html, "loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.2/Sortable.min.js',", "loadScript(['vendor/Sortable.min.js','https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.2/Sortable.min.js',", 'Sortable loader');
-html = replaceOnce(html, "loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js',", "loadScript(['vendor/chart.umd.js','https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js',", 'Chart.js loader');
+html = replaceOnce(html, `loadScript(['${cfg.SORTABLE_URLS[0]}',`, `loadScript(['vendor/Sortable.min.js','${cfg.SORTABLE_URLS[0]}',`, 'Sortable loader');
+html = replaceOnce(html, `loadScript(['${cfg.CHART_URLS[0]}',`, `loadScript(['vendor/chart.umd.js','${cfg.CHART_URLS[0]}',`, 'Chart.js loader');
 // three.js needs no edit here since r49: src/app/config.ts lists the
 // installed app's own copy first whenever IRONLOG_APP is set (head script).
 /* The Claude artifact was retired on 2026-09-27 (OWNER.md), so in r46 the
@@ -184,7 +202,7 @@ const csp = [
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data: blob:",
   "font-src 'self'",
-  `connect-src 'self'${sbHost ? ` https://${sbHost} wss://${sbHost}` : ''} https://api.pwnedpasswords.com`,
+  `connect-src 'self'${sbHost ? ` https://${sbHost} wss://${sbHost}` : ''} ${cfg.HIBP_ORIGIN}`,
   "worker-src 'self'",
   "manifest-src 'self'",
   "media-src 'self'",
@@ -253,16 +271,16 @@ self.addEventListener('fetch',e=>{
 fs.writeFileSync(path.join(DIST, 'sw.js'), sw);
 // The libraries and fonts copied above are MIT and SIL Open Font License
 // works, and both licenses ask for their notice to travel with every copy.
-// The artifact loads them from their CDNs, which carry the notices; this
-// build serves its own copies, so their license texts are served beside them.
+// The page built from src/ loads them from their CDNs, which carry the
+// notices; this build serves its own copies, so their license texts are
+// served beside them.
 {
   const LIC = [
-    ['Chart.js 4.4.1', 'chart.js/LICENSE.md'],
-    ['SortableJS 1.15.2', 'sortablejs/LICENSE'],
-    ['three.js 0.159', 'three/LICENSE'],
+    [`Chart.js ${cfg.CHART_VERSION}`, 'chart.js/LICENSE.md'],
+    [`SortableJS ${cfg.SORTABLE_VERSION}`, 'sortablejs/LICENSE'],
+    [`three.js ${cfg.THREE_VERSION}`, 'three/LICENSE'],
     ...(cloudCfg ? [['supabase-js', '@supabase/supabase-js/LICENSE'], ['@supabase/auth-js', '@supabase/auth-js/LICENSE'], ['@supabase/functions-js', '@supabase/functions-js/LICENSE'], ['@supabase/postgrest-js', '@supabase/postgrest-js/LICENSE'], ['@supabase/realtime-js', '@supabase/realtime-js/LICENSE'], ['@supabase/storage-js', '@supabase/storage-js/LICENSE'], ['@supabase/phoenix', '@supabase/phoenix/LICENSE.md'], ['iceberg-js', 'iceberg-js/LICENSE']] : []),
-    ['Big Shoulders Display (font)', '@fontsource/big-shoulders-display/LICENSE'],
-    ['Hanken Grotesk (font)', '@fontsource/hanken-grotesk/LICENSE'],
+    ...FONTS.map(([family, dir]) => [`${family} (font)`, `@fontsource/${dir}/LICENSE`]),
   ];
   let txt = `${NAME} uses these open-source works, each under its own license, reproduced in full below.\n`;
   for (const [name, rel] of LIC) {
