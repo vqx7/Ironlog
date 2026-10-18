@@ -30,12 +30,6 @@ export const APP_NAME = 'Ironlog';
     which a lifter sees in Files, so it follows the name. */
 export const FILE_PREFIX = APP_NAME.toLowerCase().replace(/[^a-z0-9]+/g, '-');
 
-/** Where the preview build keeps its log on the phone (r24), read by the
-    account script, which copies the real log in at a sign-in only when this
-    holds no workout (scripts/cloud-supabase.js). The legacy script's KEY
-    builds the same value; tests/preview.js fails if the two part. */
-export const PREVIEW_LOG_KEY = `${STORAGE_ID}-preview.v1`;
-
 /** The test build's name and its home-screen label (r24). */
 export const PREVIEW_NAME = `${APP_NAME} Preview`;
 export const PREVIEW_LABEL = 'Preview';
@@ -56,7 +50,7 @@ export const DISPLAY_VERSION = '2.3';
     Problem reports and Copy diagnostics carry it as `build` and the version
     people see as `version`; a backup keeps it under `version`, as every
     build before r49 wrote backups, so old and new backups read the same. */
-export const APP_VERSION = '2026.10.18-r52';
+export const APP_VERSION = '2026.10.17-r52';
 
 /** Version and build together, for Diagnostics and the recovery screen. */
 export const VERSION_LINE = `${DISPLAY_VERSION} (build ${APP_VERSION})`;
