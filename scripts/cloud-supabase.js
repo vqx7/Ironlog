@@ -25,7 +25,8 @@
      tried in the preview reaches the real log, and offers no Delete my
      account, which would delete the real account. */
   const PREVIEW = window.IRONLOG_ENV === 'preview';
-  const DOCS = PREVIEW ? 'docs_preview' : 'docs';
+  const LIVE_DOCS = 'docs';
+  const DOCS = PREVIEW ? 'docs_preview' : LIVE_DOCS;
 
   /* Links in emails (confirm, reset) come back with the result in the address
      fragment. Read it before the client consumes and clears it. */
@@ -114,6 +115,46 @@
   }
   const BREACHED = 'This password has appeared in a data breach, so it is easy to guess. Choose a different one.';
 
+  /* The preview only (V, 2026-10-18: signed in to the preview, it showed
+     nothing). The preview syncs to its own table, so a sign-in there found an
+     empty log unless Copy my log in had been tapped first, where the live app
+     on a new phone opens on the log. Now signing in to the preview copies the
+     account's rows from the live table into the preview's when the preview
+     holds no workout of its own (no session but sample ones, and none in
+     progress), so the app's usual first sync brings the real log in. The
+     rows go across exactly as written, since sync compares documents as
+     written. The live table is only read. A preview with workouts of its own
+     keeps them: Copy my log in, which asks first, replaces them. Only a
+     sign-in does this, never a start, or a preview used without logging
+     would have its settings put back each time it opened. The preview's log
+     on this phone counts as its own too: one tried without an account is
+     not mixed with the real one. The sync waits for the copy (seeding), as
+     the sign-in starts it before signIn returns. */
+  let seeding = null;
+  const phoneWorkout = () => {
+    try {
+      const st = JSON.parse(localStorage.getItem('{{PREVIEW_LOG_KEY}}') || 'null');
+      return !!st && (!!st.draft || (Array.isArray(st.sessions) && st.sessions.some(s => s && !s.demo)));
+    } catch (e) { return true; } // A log on this phone that cannot be read may hold workouts: nothing is copied over it.
+  };
+  const workout = r => {
+    try {
+      const id = last(r.path), d = JSON.parse(r.data.json);
+      return id === 'draft' ? !!d.draft : /^s-/.test(id) && Array.isArray(d.sessions) && d.sessions.some(s => s && !s.demo);
+    } catch (e) { return false; } // A document that cannot be read holds no workout this can count.
+  };
+  async function seedFromLive(id) {
+    try {
+      if (phoneWorkout()) return;
+      if ((await accountRows(DOCS, id)).some(workout)) return;
+      const live = await accountRows(LIVE_DOCS, id);
+      if (!live.some(workout)) return;
+      // One request, so the copy is all there or not there at all.
+      const at = new Date().toISOString();
+      await authed(() => sb.from(DOCS).upsert(live.map(r => ({ user_id: id, path: r.path, data: r.data, updated_at: at })), { onConflict: 'user_id,path' }));
+    } catch (e) { /* The sign-in stands as it is, and Copy my log in still copies the log. */ }
+  }
+
   window.ironlogAuth = {
     landing,
     async user() { try { return who(await session()); } catch (e) { return null; } },
@@ -145,10 +186,15 @@
       if (error) throw friendly(error);
     },
     async signIn(email, password) {
-      const { data, error } = await sb.auth.signInWithPassword({ email, password });
-      if (error) throw friendly(error);
-      hold = false;
-      return who(data && data.session);
+      let copied = null;
+      if (PREVIEW) seeding = new Promise(r => { copied = r; });
+      try {
+        const { data, error } = await sb.auth.signInWithPassword({ email, password });
+        if (error) throw friendly(error);
+        hold = false;
+        if (PREVIEW && data && data.session) await seedFromLive(data.session.user.id);
+        return who(data && data.session);
+      } finally { if (copied) copied(); }
     },
     async signOut() {
       // Local scope: this device only; other devices stay signed in.
@@ -205,6 +251,14 @@
       if (!error) r = await run();
     }
     return r;
+  }
+  /* An account's documents in one table, as the sync reads them
+     (collection().get()): the direct children of its folder. */
+  async function accountRows(table, id) {
+    const base = `data/users/${id}`;
+    const { data, error } = await authed(() => sb.from(table).select('path,data').like('path', likeEsc(base) + '/%'));
+    if (error) throw friendly(error);
+    return (data || []).filter(r => r.path.indexOf('/', base.length + 1) < 0);
   }
   async function uid() { const s = await session(); if (!s) throw Object.assign(new Error('Signed out'), { code: 'revoked' }); return s.user.id; }
   const db = {
@@ -273,12 +327,10 @@
   if (PREVIEW) window.ironlogLiveDocs = async () => {
     const s = await session().catch(() => null);
     if (!s) throw Object.assign(new Error('Sign in with your {{APP_NAME}} account first.'), { code: 'signin' });
-    const base = `data/users/${s.user.id}`;
-    const { data, error } = await authed(() => sb.from('docs').select('path,data').like('path', likeEsc(base) + '/%'));
-    if (error) throw friendly(error);
-    return (data || []).filter(r => r.path.indexOf('/', base.length + 1) < 0).map(r => ({ id: last(r.path), data: r.data }));
+    return (await accountRows(LIVE_DOCS, s.user.id)).map(r => ({ id: last(r.path), data: r.data }));
   };
   window.ironlogCloud = async () => {
+    if (seeding) await seeding;
     if (hold) return null;
     const s = await session().catch(() => null);
     return s ? { db, userId: s.user.id } : null;

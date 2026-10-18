@@ -162,6 +162,55 @@ fs.cpSync(path.join(ROOT, 'dist-preview'), path.join(tmp, 'preview'), { recursiv
   ok(c3.n === n3 && !c3.ob && /Ironlog is unchanged/.test(c3.toast), 'signed out, it copies the live log kept on this phone, and the first-run pages end', { c3, n3 });
   await ctx3.close();
 
+  /* Signing in to the preview brings the real log (V, 2026-10-18: skipped the
+     account, went back, signed in, and the preview showed nothing). On an
+     iPhone the preview's storage is its own, so this runs in fresh browsers
+     with nothing on the phone: the account has a live log, and its preview
+     table only what an earlier sign-in with an empty log wrote, as V's had. */
+  {
+    fake.addUser('w@example.com', 'pass word 2');
+    const fresh = async () => { const c = await browser.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true, serviceWorkers: 'block' }); await quietHibp(c); const p = await c.newPage(); p.on('pageerror', e => errors.push('page error (sign-in copy): ' + e.message)); return { c, p }; };
+    const up = p => p.waitForFunction(() => window.__ironlog && window.__libs && window.__libs.chart, null, { timeout: 15000 });
+    const signInW = async p => {
+      await p.click('#obPage [data-act="acctOpen"][data-mode="signin"]'); await wait(100);
+      await p.fill('#modal [data-abind="email"]', 'w@example.com'); await p.fill('#modal [data-abind="pw"]', 'pass word 2');
+      await p.click('#modal [data-act="acctSubmit"]');
+      await p.waitForFunction(() => { const c = window.__ironlog.cloudState(); return !window.__ironlog.ui.modal && c.on && c.status === 'synced'; }, null, { timeout: 15000 }).catch(() => {}); await wait(500);
+    };
+    const look = p => p.evaluate(() => ({ n: window.__ironlog.state.sessions.length, ob: !!document.getElementById('obPage'), user: !!window.__ironlog.acctUser() }));
+    // First, a sign-in to the preview while the account had no log anywhere: the app itself writes its empty documents (a core and an empty draft) to the preview table.
+    { const { c, p } = await fresh(); await p.goto(PV); await up(p); await wait(300); await signInW(p); await c.close(); }
+    const pv0 = rowsOf(fake.rowsPreview, 'w@example.com').length;
+    // Then the live app on another phone: a real log, synced.
+    { const { c, p } = await fresh(); await p.goto(LIVE); await up(p);
+      await p.evaluate(() => { const L = window.__ironlog; L.state.settings.onboarded = true; L.makeDemo(); L.state.sessions.forEach(s => { delete s.demo; }); L.saveNow(); L.render(); });
+      await p.evaluate(() => window.__ironlog.ACT.acctOpen({ dataset: { mode: 'signin' } })); await wait(100);
+      await p.fill('#modal [data-abind="email"]', 'w@example.com'); await p.fill('#modal [data-abind="pw"]', 'pass word 2'); await p.click('#modal [data-act="acctSubmit"]');
+      await p.waitForFunction(() => { const c = window.__ironlog.cloudState(); return c.on && c.status === 'synced'; }, null, { timeout: 15000 });
+      await c.close(); }
+    const nLive = sessIn(rowsOf(fake.rows, 'w@example.com')).length;
+    const liveW = JSON.stringify(rowsOf(fake.rows, 'w@example.com').map(r => [r.path, r.data]));
+    ok(nLive > 10 && pv0 > 0 && sessIn(rowsOf(fake.rowsPreview, 'w@example.com')).length === 0, 'set up: a live log, and a preview table holding only what a sign-in with an empty log wrote', { nLive, pv0 });
+    // V's steps on a new install of the preview: Continue without an account, back, I have an account, sign in.
+    const { c, p } = await fresh(); await p.goto(PV); await up(p); await wait(300);
+    await p.click('#obPage [data-act="obAcctLater"]'); await wait(200);
+    await p.click('#obPage [data-act="obAcctBack"]'); await wait(200);
+    await signInW(p);
+    const a = await look(p);
+    ok(a.user && a.n === nLive && !a.ob, 'signing in to the preview, after skipping the account and going back, opens on the real log (' + a.n + ' of ' + nLive + ' sessions)', a);
+    ok(sessIn(rowsOf(fake.rowsPreview, 'w@example.com')).length === nLive, 'the preview table now holds the copy');
+    ok(JSON.stringify(rowsOf(fake.rows, 'w@example.com').map(r => [r.path, r.data])) === liveW, 'the live table is unchanged: only read');
+    // Signed out and in again, a preview with its own workout keeps it: a sign-in copies only into a preview with none.
+    await p.evaluate(() => { const L = window.__ironlog; L.state.sessions.push({ id: 'pv-own', date: '2026-10-01', dayIdx: 0, dayId: null, dayName: 'Session', routineId: '', free: true, notes: '', ex: [{ exId: 'bench', sets: [{ w: 50, r: 9, rir: 1, warm: false }] }] }); L.saveNow(); });
+    await p.evaluate(() => window.__ironlog.flush()); await wait(800);
+    ok(sessIn(rowsOf(fake.rowsPreview, 'w@example.com')).includes('pv-own'), 'set up: a workout logged in the preview is in its table');
+    await c.close();
+    const second = await fresh(); await second.p.goto(PV); await up(second.p); await wait(300);
+    await signInW(second.p);
+    ok(await second.p.evaluate(() => window.__ironlog.state.sessions.some(s => s.id === 'pv-own')) && sessIn(rowsOf(fake.rowsPreview, 'w@example.com')).includes('pv-own'), 'a preview with workouts of its own keeps them when signed in again: nothing is copied over them');
+    await second.c.close();
+  }
+
   ok(!errors.length, 'no page errors (' + errors.join(' | ') + ')');
   // What tests/h.js offlineLoad leaves out rests on the page itself seeing no rejection; this holds it to that.
   const rej = await page.evaluate(() => JSON.parse(sessionStorage.getItem('__ilRej') || '[]'));
