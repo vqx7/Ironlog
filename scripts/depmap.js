@@ -96,6 +96,8 @@ function scan(node) {
   return { refs, writes };
 }
 const freeNames = node => scan(node).refs;
+// The names a piece of code assigns or writes through, that it does not bind itself.
+const scanWrites = node => scan(node).writes;
 // The names each module in src/app/ exports with `let`: bindings that can
 // change after the module runs, so reading one is reading shared state.
 function letExports(SRC) {
@@ -190,7 +192,7 @@ for (const [n, fs2] of written) out.mutable[n] = { declaredIn: byName.get(n).fil
   return out;
 }
 
-module.exports = { map, freeNames, count: () => map(path.join(__dirname, '..', 'src')).decls.length };
+module.exports = { map, freeNames, scanWrites, count: () => map(path.join(__dirname, '..', 'src')).decls.length };
 if (require.main === module) {
   const m = map(path.join(__dirname, '..', 'src'));
   const j = process.argv.indexOf('--json');
