@@ -4,28 +4,12 @@
    tests/moved.js holds them to r50's code). The steps the engine reads from
    them move with the engine. */
 
-import type { Exercise } from './types';
-import { r3 } from './util';
-import { LB } from './units';
-import { PLATE_SIDE_IDS } from './library';
-
-/** A dumbbell rack as typed in Settings, in the gym's unit. */
-export interface DbRack {
-  lo: number;
-  hi: number;
-  st: number;
-  fine?: number;
-  fineTo?: number;
-}
-
-/** A saved gym, in the unit it is labelled in. */
-export interface Gym {
-  u: 'lb' | 'kg';
-  db?: DbRack;
-  kb?: number[];
-  plates?: number[];
-  stack?: number;
-}
+import type { DbRack, Exercise, Gym, Plan } from './types';
+import type { ExerciseLike, Model } from './model';
+import { isNum, r3 } from './util';
+import { LB, stepReadIn, unitStepIn } from './units';
+import { ONE_DB, PLATE_SIDE_IDS, loadMode, rackKind } from './library';
+import { UIn, gymOfIn } from './model';
 
 /** How plates load on an exercise, as chosen in the exercise editor. */
 export const PLATE_MODES: readonly (readonly [string, string])[] = [
@@ -130,4 +114,133 @@ export function platesMode(ex: Pick<Exercise, 'id' | 'bw' | 'equip' | 'plates'>)
   if (ex.equip === 'landmine') return 'sleeve';
   if (PLATE_SIDE_IDS.includes(ex.id)) return 'side';
   return 'none';
+}
+
+/* ---------- the steps the engine reads from Your gym (phase 3b, r52; moved from the legacy script, tests/moved.js reads them back to r51's code) ---------- */
+
+/* The loads this lift can be done at, in kg, lightest first, or null: only
+   dumbbell and kettlebell lifts, with no step of their own, logged as the
+   weight of one bell (per dumbbell, or one dumbbell held). */
+export function gymRackIn(
+  M: Model,
+  ex: ExerciseLike | null | undefined,
+  plan?: Pick<Plan, 'inc'> | null
+): number[] | null {
+  const g = gymOfIn(M);
+  if (!g || !ex || ex.bw || ex.assist || ex.timed || ex.inc != null) return null;
+  if (plan && isNum(+plan.inc) && Math.abs(stepReadIn(M, +plan.inc) - unitStepIn(M)) > 1e-6) return null;
+  const k = rackKind(ex);
+  if (!k) return null;
+  const m = loadMode(ex);
+  if (!(m === 'each' || (m === 'total' && (ex.load == null || ONE_DB.has(ex.id))))) return null;
+  const L = k === 'dumbbell' ? dbListOf(g.db) : Array.isArray(g.kb) && g.kb.length ? g.kb : null;
+  return L && L.length ? L.map(v => gymK(g, v)) : null;
+}
+
+/* A load typed as shown on screen is within half the last shown digit of
+   the bell it means: an 8 kg dumbbell is shown as 17.6 lb, which is 7.983 kg
+   (review of r33). Rack comparisons use this, so a bell typed as shown is
+   that bell, never "0.02 kg under the next one". */
+/* A load typed for a bell is that bell when it is nearer to it than to
+   its neighbours (r34.2, from the review: a 16 kg dumbbell typed as 35 lb,
+   15.88 kg, read as just under itself, and the "step up" was the same bell,
+   "add 0.3 lb"). Within 45% of the gap around the bell; never less than half
+   the last shown digit. Bounds a load must not pass (the target, the cap)
+   keep the narrow tolerance. The filter keeps only gaps above 0, which
+   TypeScript cannot follow into Math.min, hence the cast to numbers. */
+export function rackTolIn(M: Model, L?: readonly number[] | null, at?: number | null): number {
+  const base = UIn(M) === 'lb' ? 0.05 * LB : 0.05;
+  if (!L || !L.length || at == null || !isNum(at)) return base;
+  let i = 0;
+  for (let k = 1; k < L.length; k++) if (Math.abs(L[k] - at) < Math.abs(L[i] - at)) i = k;
+  const gs = [i > 0 ? L[i] - L[i - 1] : null, i < L.length - 1 ? L[i + 1] - L[i] : null].filter(
+    g => g != null && g > 0
+  ) as number[];
+  const gap = gs.length ? Math.min(...gs) : 0;
+  return Math.abs(L[i] - at) <= Math.max(base, 0.45 * gap) ? Math.max(base, Math.abs(L[i] - at) + 1e-6) : base;
+}
+
+// The step up from `at` on the rack; with no load to step from, its most common spacing.
+export function rackGapIn(M: Model, L: readonly number[], at?: number | null): number {
+  if (L.length < 2) return L[0] || 0;
+  if (at != null) {
+    const t = rackTolIn(M, L, at);
+    const nx = L.find(x => x > at + t);
+    if (nx != null) return nx - at;
+    return L[L.length - 1] - L[L.length - 2];
+  }
+  const gs = L.slice(1).map((x, i) => r3(x - L[i]));
+  const c: Record<number, number> = {};
+  let best = gs[0];
+  for (const v of gs) {
+    c[v] = (c[v] || 0) + 1;
+    if (c[v] > c[best]) best = v;
+  }
+  return best;
+}
+
+/* Gym-wide steps for other lifts: two of the smallest plate on hand for a
+   bar or a two-sleeve machine logged as the total (leg press, hack squat),
+   one for a landmine's single sleeve or a lift logged per side, a stack its
+   own step. A gym without a stack step has none, and an absent step compares
+   false with 0, which the cast lets TypeScript accept; past that test the
+   step is there, as the ! says. */
+export function gymStepIn(M: Model, ex: ExerciseLike | null | undefined): number | null {
+  const g = gymOfIn(M);
+  if (!g || !ex || ex.bw || ex.timed) return null;
+  const pm = platesMode(ex),
+    m = loadMode(ex);
+  if (Array.isArray(g.plates) && g.plates.length && pm !== 'none') {
+    const mn = Math.min(...g.plates);
+    return gymK(g, m === 'side' || pm === 'sleeve' ? mn : 2 * mn);
+  }
+  if (m === 'stack' && (g.stack as number) > 0) return gymK(g, g.stack!);
+  return null;
+}
+
+/* The heaviest available: the exercise's own, else the top of the rack. A
+   lift logged above the top of the rack is on bells the rack does not list
+   (another gym, a rack set wrong), so the rack is no cap for it (review). */
+export function capOfIn(
+  M: Model,
+  ex: ExerciseLike,
+  plan?: Pick<Plan, 'inc'> | null,
+  top?: number | null
+): number | null {
+  const L = gymRackIn(M, ex, plan);
+  let r = L ? L[L.length - 1] : null;
+  if (r != null && top != null && top > r + rackTolIn(M, L, top)) r = null;
+  return ex.maxLoad != null ? (r != null ? Math.min(ex.maxLoad, r) : ex.maxLoad) : r;
+}
+
+// At the cap: within the rack's tolerance when the cap is the rack's.
+export function atCapOfIn(
+  M: Model,
+  ex: ExerciseLike,
+  plan: Pick<Plan, 'inc'> | null | undefined,
+  top: number,
+  cap: number | null
+): boolean {
+  const L = gymRackIn(M, ex, plan);
+  return (
+    cap != null && top >= cap - (L && (ex.maxLoad == null || cap < ex.maxLoad - 1e-6) ? rackTolIn(M, L, top) : 1e-6)
+  );
+}
+
+/* The bar an exercise is loaded on: its own (a trap bar, an EZ bar) when set
+   in the exercise editor, else the bar in Settings. An exercise without its
+   own bar has none, and an absent bar compares false with 0, which the cast
+   lets TypeScript accept; past that test the bar is there, as the ! says. */
+export function exBarKgIn(M: Model, ex: ExerciseLike | null | undefined): number {
+  return ex && (ex.barKg as number) > 0 ? ex.barKg! : barKgIn(M);
+}
+
+/* The default bar is the gym's: a 20 kg bar in a gym labelled in kg, 45 lb in one in lb,
+   whatever unit the app shows (r34.2: a kg gym with the app in lb was given a 45 lb bar). */
+export function barKgIn(M: Model): number {
+  const b = M.s.settings.barKg;
+  if (b != null) return b;
+  const g = gymOfIn(M);
+  const u = (g && g.u) || UIn(M);
+  return u === 'lb' ? 45 * LB : 20;
 }

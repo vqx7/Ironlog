@@ -260,16 +260,6 @@ function sessionLength(){
   const pl=ss.filter(x=>x.routineId===R.id).map(x=>{const i=sessDayIdx(R,x);return i>=0?dayMinutes(R.days[i],x.light||x.deload):0;}).filter(x=>x>0);
   return {avg,n:ss.length,plan:pl.length?Math.round(pl.reduce((a,b)=>a+b,0)/pl.length):null};
 }
-/* The bests a lift had up to a date, for a past session entered after later
-   ones: the same fields exStats gives for the whole log (best in the current
-   rep range, best per band of reps to failure, best overall). No "easier"
-   read, since that is about the lift now. */
-function statsUpTo(exId,exps){
-  const now=IDX().exStats[exId]||{};let best=null,bestAll=null;const byBand={};
-  for(const x of exps){if(x.best==null)continue;if(sameRR(x.rr,now.rr))best=best==null?x.best:Math.max(best,x.best);bestAll=bestAll==null?x.best:Math.max(bestAll,x.best);}
-  for(const x of exps)if(x.pb!=null)byBand[x.pbb]=Math.max(byBand[x.pbb]||0,x.pb);
-  return {best,bestAll,byBand,rr:now.rr,easier:null};
-}
 /* A set is a PR live if its estimate beats your best, or no earlier set matched
    it on both load and reps: the same two tests the PR list uses. Only sets
    logged up to the session's date count, so a past session entered late is
@@ -339,19 +329,8 @@ function prBeat(exId,s,date,pr){
   return m?` (was ${m} ${ex.timed?'s':'reps'})`:' (heaviest yet)';
 }
 /* ---------- READINESS ----------
-   The three check-in taps against how the session went: the share of lifts
-   that set a PR (a new best estimate or a rep PR), per answer. First sessions
-   of a lift, and deload, lighter and trimmed work, are left out because they
-   cannot show progress. */
-const chkWord=n=>n==='OK'?'OK':n.toLowerCase();
-const CHK_Q=[['sleep','Sleep',['Poor','OK','Good']],['energy','Energy',['Low','OK','High']],['joints','Aches',['Sore','A little','None']]];
-function readiness(){
-  const I=IDX();const bySid={};
-  for(const id in I.byEx)I.byEx[id].forEach((x,i)=>{if(i===0||offSession(x))return;const o=bySid[x.sid]||(bySid[x.sid]={n:0,p:0});o.n++;if(x.progress)o.p++;});
-  const sess=state.sessions.filter(s=>!s.demo&&s.chk&&bySid[s.id]);
-  const rows=CHK_Q.map(([k,l,names])=>({k,l,groups:[3,2,1].map(v=>{const g=sess.filter(s=>s.chk[k]===v);const n=g.reduce((a,s)=>a+bySid[s.id].n,0),p=g.reduce((a,s)=>a+bySid[s.id].p,0);return {v,name:names[v-1],sessions:g.length,rate:n?p/n*100:null};})}));
-  return {n:sess.length,rows};
-}
+   The check-in against how sessions went: readiness and its words are in
+   src/app/coach.ts since r52; this draws them. */
 function readinessBody(){
   const r=readiness();
   if(r.n<6)return `<p class="small muted hastip" style="margin:0" data-tip="Answer the three check-in taps at the start of a session (sleep, energy, aches). After 6 sessions with answers, this shows whether they line up with how your lifts go.">Needs 6 sessions with a check-in${r.n?`; ${r.n} so far`:''}.</p>`;

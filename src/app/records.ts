@@ -150,7 +150,7 @@ export const okSess = (ss: Raw): boolean => !!ss && typeof ss === 'object' && is
    evening session on one day came out in whatever order the list held, and
    after a sync by their random ids, so "last time" could be the morning. */
 export const sessCmp = (
-  a: { date: string; t?: number | null; id: string },
-  b: { date: string; t?: number | null; id: string }
+  a: { date: string; t?: number | null | undefined; id: string },
+  b: { date: string; t?: number | null | undefined; id: string }
 ): number =>
   a.date < b.date ? -1 : a.date > b.date ? 1 : (a.t || 0) - (b.t || 0) || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0);

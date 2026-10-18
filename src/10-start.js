@@ -38,28 +38,7 @@ function cycleState(R,asOf){
   return {last:L.i,lastDate:L.s.date,next,done,restToday,restIdx:restToday?(L.i+since)%n:-1};
 }
 
-/* ---------- supersets, deload, injuries ---------- */
-function isDeloadWeek(){return !!state.deloadWeek&&state.deloadWeek===weekStart(today());}
-/* Rest weeks (r34, V): a week off on purpose (a holiday, a break) is marked,
-   this week or last, from More options on Today. It is not a missed week:
-   the weekly average reaches past it (like a lighter week), the streak and
-   adherence skip it, and the coach reads it as recovery. Kept in settings,
-   so it syncs, as week-start dates. */
-/* Freestyle mode (r34): Today starts blank, so no routine is being
-   followed. The week is then measured against the lifter's own training,
-   not a plan's days: the streak counts weeks trained in a row, This week says
-   sessions and hard sets without "of planned", and adherence has no plan to
-   measure. Muscle targets, suggestions and trends are the same either way. */
-function freeMode(){return state.settings.todayStart==='free';}
-function isRestWeek(ws){const r=state.settings.restWeeks;return Array.isArray(r)&&r.includes(ws);}
-function injuredSet(){return new Set((state.injuries||[]).map(x=>x.m));}
-function exInjury(ex){const s=injuredSet();if(!s.size)return null;if(s.has(ex.primary))return ex.primary;for(const m of ex.secondary)if(s.has(m))return m;for(const j of exJoints(ex))if(s.has(j))return j;return null;}
-
-/* ---------- dates (local) ---------- */
-/* One Intl formatter per format, made once: toLocaleDateString builds a new
-   one on every call, about a fifth of a Stats render (r46). Same output. */
-const DTF={};const dtf=(k,o)=>DTF[k]||(DTF[k]=new Intl.DateTimeFormat(undefined,o));
-const fmtWith=(k,o,s)=>{const d=parse(s);return isNaN(+d)?'':dtf(k,o).format(d);};
-const fmtDate=s=>fmtWith('d',{month:'short',day:'numeric'},s);
+/* ---------- dates (local) ----------
+   The long date, through format.ts's formatters (dtf), made once each. */
 const fmtDateLong=s=>fmtWith('l',{weekday:'short',month:'short',day:'numeric',year:'numeric'},s);
 

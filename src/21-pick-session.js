@@ -299,29 +299,6 @@ function heroRing(w){
   const lbl=noLog()?`No sessions logged yet; ${pd} planned this week`:`${w.doneDays} of ${pd} sessions this week`;
   return `<button type="button" class="ring" data-act="goWeek" aria-label="${esc(lbl)}. Open This week" data-tip="${esc(lbl)}"><svg viewBox="0 0 64 64" aria-hidden="true"><circle cx="32" cy="32" r="${r}" class="rt"/><circle cx="32" cy="32" r="${r}" class="rp" stroke-dasharray="${(c*p).toFixed(2)} ${c.toFixed(2)}" transform="rotate(-90 32 32)"/></svg><span class="rv">${noLog()?NIL:`${w.doneDays}<small>/${w.planDays}</small>`}</span><span class="rl">week</span></button>`;
 }
-function weekStats(){
-  const R=activeRoutine();
-  const cur=weekStart(today());const weekly=R.schedule==='weekly';
-  let cardioMin=0,cardioN=0;
-  for(const c of state.cardio)if(c.date>=cur&&c.date<=addDays(cur,6)){cardioMin+=c.min;cardioN++;}
-  const doneDays=weekSessions(cur);
-  const planDays=weekly?trainDaysOf(R):Math.round(trainDaysOf(R)*weekFactor(R));
-  /* Sets are counted once each here, the same way the Plan tab counts them.
-     Per-muscle volume (direct 1, secondary half) stays in the muscle views,
-     where the split matters; summed across muscles it double-counts. The
-     numerator is hard sets only, so a set left at RIR 4 or more does not
-     count toward the week, unless Count RIR 4 to 5 as half a set is on
-     (r40, hardCredit). Read from IDX's weekHard (r47), the same table the
-     recap, Volume and the muscle views count from; until r47 this walked the
-     log with its own copy of the rule. */
-  const got=IDX().weekHard[cur]||0;
-  const tgt=planSetsPerWeek(R,isDeloadWeek());
-  /* A rest week is said once, here, so the ring, the card and its body all
-     follow (r46: the ring and the title were given their own test for it and
-     the body kept saying "0 hard sets logged of 145 planned" underneath). */
-  const rest=isRestWeek(cur);
-  return {R,weekly,planDays:rest?0:planDays,doneDays,got,tgt:rest?0:tgt,pct:!rest&&tgt>0?Math.min(100,got/tgt*100):0,cardioMin,cardioN,rest};
-}
 function cycleStrip(R){
   const cs=cycleState(R);
   return `<div class="cyc" role="list" aria-label="Your cycle">${R.days.map((d,i)=>{
@@ -439,33 +416,6 @@ function newBlock(exId,plan,opts){
   // still on the suggestion from one the lifter typed (refreshBlock).
   return {bid:uid(),exId,plan:{...plan},note:'',lastNote:lastNoteOf(exId,opts&&opts.before),inj:sg.inj||null,hint:sg.text,last:sg.last,prev:sg.prev||undefined,prevOff:sg.prevOff||undefined,target:sg.target,tgt:sg.tgt,easier:sg.easier||null,lastR:sg.lastR,basis:sg.basis||undefined,sw:sg.w==null?null:sg.w,sets:Array.from({length:+plan.sets||3},()=>({w:fillLoads()?sg.w:null,r:null,rir:null,warm:false,drop:false,done:false}))};
 }
-/* ---------- PROFILE (r44, item 271, with 43 and 44) ----------
-   An optional short profile: goal, experience, days a week and up to two
-   focus muscles. V's answers (2026-10-13): it sets defaults and new plan
-   items only; the routine in use changes only through Apply; targets the
-   lifter typed stay as typed, and only the app's own targets move. With no
-   profile, or with Size, every number is exactly what it was before r44,
-   because the app's defaults were already set for size. */
-function prof(){return state.settings.profile||{};}
-/* What a profile changes in a plan item (the rules Apply and new items share):
-   - Strength or Both, past the first year: heavy compounds (`profHeavy`) at
-     3 to 6 or 5 to 8 reps, 2 in reserve, 3 minutes' rest.
-     Heavier loads gave more strength for similar growth (Schoenfeld 2017
-     meta-analysis of low vs high loads; ACSM 2009 position stand: 1 to 6 RM
-     for strength past the novice stage); 3 minutes' rest beat 1 for strength
-     and size (Schoenfeld 2016). 5 to 8 for Both is a convention between the
-     two, and 2 in reserve on heavy compounds is the app's own (templates).
-   - Under a year: 8 to 12 reps for everything (ACSM 2009: novices gain
-     strength and size there), 3 in reserve on compounds and 2 on isolation,
-     as the beginner plan (a convention: easier to judge, further from failure).
-   Isolation lifts past the first year, timed holds and Size keep the defaults. */
-function profRule(ex,p){
-  p=p||prof();if(!ex||ex.timed)return null;
-  if(p.exp==='new')return {repMin:8,repMax:12,rir:isCompound(ex)?3:2};
-  if((p.goal==='strength'||p.goal==='both')&&profHeavy(ex))return p.goal==='strength'?{repMin:3,repMax:6,rir:2,rest:180}:{repMin:5,repMax:8,rir:2,rest:180};
-  return null;
-}
-function profPlan(ex,plain){const r=plain?null:profRule(ex);return r?{...DEFAULT_PLAN,...r}:{...DEFAULT_PLAN};}
 /* A muscle's weekly target with this profile (the defaults with no focus). */
 function defBand(m,p){
   const b=BANDS[m];const f=(p||prof()).focus||[];
@@ -516,15 +466,6 @@ function strengthPick(e,st,rec,at){
   if(!(daysOff(e.id,{before:at})>=STR_REST))return null;
   const near=st.bestAll>0&&st.last.best>=st.bestAll*STR_NEAR;
   return st.stalled?'stalled':near?'near':null;
-}
-/* Round a load to something you can actually put on a bar or pick off a rack:
-   nearest 5 lb, or nearest 2.5 kg. Used for suggested warm-up loads only;
-   anything the user types is left exactly as typed. */
-/* down: round toward lighter. A deload rounded to nearest could land back on
-   the full load (90% of 25 lb is 22.5, which rounded up to 25). */
-function roundLoad(kg,down){
-  const step=U()==='lb'?5:2.5;const d=toD(kg);
-  return fromD(Math.max(step,(down?Math.floor(d/step+1e-9):Math.round(d/step))*step));
 }
 /* Effort in half points or as RPE (r33, item 206): a setting for how effort
    is entered and shown. What is stored is always RIR (RPE 8 is RIR 2, RPE

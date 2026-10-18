@@ -4,9 +4,12 @@
    code). Which routine a lifter starts on, and anything that reads the log,
    stays with the app's state. */
 
-import type { Day, Plan, PlanItem, Routine } from './types';
+import type { Day, Plan, PlanItem, Profile, Routine } from './types';
+import type { ExerciseLike, Model } from './model';
 import { uid } from './util';
 import { LB } from './units';
+import { EXIn, activeRoutineIn, profIn, rirHalfOnIn } from './model';
+import { isCompound, profHeavy } from './library';
 
 /** A plan item as a routine is first made: normalize() adds its superset
     link (null) when the routine is saved. */
@@ -320,3 +323,91 @@ export function tplCountLine(): string {
 /** The Plan editor's tip on target RIR (r29.5): why the default is 1, a convention. */
 export const RIR_TGT_TIP =
   'Target RIR is 1 unless you change it, a convention: muscle growth improves as sets end closer to failure (Robinson 2024), but going all the way to failure grew muscle no more than stopping 1 to 2 reps short (Refalo 2024) and costs more fatigue. Some lifts in the ready-made routines use 0 or 2.';
+
+/* ---------- the plan a lift is trained at (phase 3b, r52; moved from the legacy script, tests/moved.js reads them back to r51's code) ---------- */
+
+/** What a profile changes in a plan item: the range and reserve, and on a heavy compound the rest. */
+type ProfChange = { repMin: number; repMax: number; rir: number; rest?: number };
+
+/* What a profile changes in a plan item (the rules Apply and new items share):
+   - Strength or Both, past the first year: heavy compounds (`profHeavy`) at
+     3 to 6 or 5 to 8 reps, 2 in reserve, 3 minutes' rest.
+     Heavier loads gave more strength for similar growth (Schoenfeld 2017
+     meta-analysis of low vs high loads; ACSM 2009 position stand: 1 to 6 RM
+     for strength past the novice stage); 3 minutes' rest beat 1 for strength
+     and size (Schoenfeld 2016). 5 to 8 for Both is a convention between the
+     two, and 2 in reserve on heavy compounds is the app's own (templates).
+   - Under a year: 8 to 12 reps for everything (ACSM 2009: novices gain
+     strength and size there), 3 in reserve on compounds and 2 on isolation,
+     as the beginner plan (a convention: easier to judge, further from failure).
+   Isolation lifts past the first year, timed holds and Size keep the defaults. */
+export function profRuleIn(M: Model, ex: ExerciseLike | null | undefined, p?: Profile | null): ProfChange | null {
+  p = p || profIn(M);
+  if (!ex || ex.timed) return null;
+  if (p.exp === 'new') return { repMin: 8, repMax: 12, rir: isCompound(ex) ? 3 : 2 };
+  if ((p.goal === 'strength' || p.goal === 'both') && profHeavy(ex))
+    return p.goal === 'strength'
+      ? { repMin: 3, repMax: 6, rir: 2, rest: 180 }
+      : { repMin: 5, repMax: 8, rir: 2, rest: 180 };
+  return null;
+}
+
+/** The default plan with the profile's rules for a lift; `plain` leaves the profile out. */
+export function profPlanIn(M: Model, ex: ExerciseLike, plain?: boolean): Plan {
+  const r = plain ? null : profRuleIn(M, ex);
+  return r ? { ...DEFAULT_PLAN, ...r } : { ...DEFAULT_PLAN };
+}
+
+/* Default plan for an exercise that is not in the routine yet. Timed holds
+   start at 30 to 60 seconds rather than 8 to 12. */
+// The profile's rules for a lift (r44); with no profile, or Size, exactly the defaults as before.
+// plain: without the profile, for reading sessions already logged (the pace model, r44 review).
+export function defPlanIn(M: Model, exId: string, plain?: boolean): Plan {
+  const ex = EXIn(M, exId);
+  return ex.timed ? { ...DEFAULT_PLAN, repMin: 30, repMax: 60, rest: 60 } : profPlanIn(M, ex, plain);
+}
+
+/* An exercise added mid-session borrows its settings from wherever it already
+   sits in the active routine instead of a generic 3 x 8-12. */
+export function planForIn(M: Model, exId: string, R?: Routine | null, dayId?: string | null, plain?: boolean): Plan {
+  R = R || activeRoutineIn(M);
+  // The day being trained first: the same lift can sit on two days with different ranges.
+  const days = dayId ? [...R.days.filter(d => d.id === dayId), ...R.days.filter(d => d.id !== dayId)] : R.days;
+  for (const d of days)
+    for (const it of d.items)
+      if (it.exId === exId) {
+        const { uid: _u, ss: _s, ...p } = it;
+        return { ...DEFAULT_PLAN, ...p, ss: null };
+      }
+  return defPlanIn(M, exId, plain);
+}
+
+/* Planned hard sets (r27). A planned set counts only if its target RIR
+   would make it hard (3 or less, or every set when RIR is off), the same test
+   as a logged set; a plan at RIR 4 used to set a weekly target that logging
+   it could never meet. In a deload week each exercise is half its sets,
+   rounded up, as the sessions are. */
+export function planHardIn(M: Model, it: { rir: number | string }): boolean {
+  return M.s.settings.rirMode === 'off' || !(+it.rir > 3);
+}
+
+// A planned set at RIR 4 to 5 counts half with the setting on (r40), as logged ones do.
+export function planCreditIn(M: Model, it: { rir: number | string }): number {
+  return planHardIn(M, it) ? 1 : rirHalfOnIn(M) && +it.rir <= 5 ? 0.5 : 0;
+}
+
+/** A routine's planned hard sets a week (a deload week's halved per exercise). */
+export function planSetsPerWeekIn(M: Model, R: Routine, deload?: boolean): number {
+  const n = R.days.reduce(
+    (a, d) =>
+      a +
+      (d.rest
+        ? 0
+        : d.items.reduce(
+            (x, it) => x + planCreditIn(M, it) * (deload ? Math.max(1, Math.ceil(+it.sets / 2)) : +it.sets),
+            0
+          )),
+    0
+  );
+  return R.schedule === 'weekly' ? n : Math.round(n * weekFactor(R));
+}

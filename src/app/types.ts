@@ -95,6 +95,16 @@ export interface Routine {
   days: Day[];
 }
 
+/** A RIR as typed: a number, a numeric string, or blank. */
+export type Rir = number | string | null | undefined;
+
+/** A RIR check (a calibration set): taken to failure from `at` reps, with
+    `pred` the reps in reserve the lifter called there (cleanCal). */
+export interface RirCheck {
+  at: number;
+  pred: number;
+}
+
 /** One logged set. `w` is the number as typed (below 0 only on an assisted lift),
     `rir` what was called, null when left blank. */
 export interface LoggedSet {
@@ -103,7 +113,124 @@ export interface LoggedSet {
   rir: number | null;
   warm: boolean;
   drop: boolean;
-  cal?: unknown;
+  cal?: RirCheck | undefined;
+}
+
+/** One exercise in a saved session: its sets, the planned range at the time
+    (null on sessions logged before ranges were kept), and whether it was cut
+    short (Short on time) or made lighter mid-session (r31). */
+export interface SessionEx {
+  exId: string;
+  note: string;
+  rr: [number, number] | null;
+  cut?: true | undefined;
+  light?: true | undefined;
+  sets: LoggedSet[];
+}
+
+/** A saved session (cleanSess in the storage part). `t` is when it started,
+    which orders two sessions on one day (r34); `chk` the check-in's answers. */
+export interface Session {
+  id: string;
+  date: string;
+  dayIdx: number;
+  dayId: string | null;
+  durMin: number | null;
+  dayName: string;
+  routineId: string;
+  notes: string;
+  demo: boolean;
+  deload: boolean;
+  light: boolean;
+  free?: true | undefined;
+  chk?: Record<string, number> | undefined;
+  ex: SessionEx[];
+  t?: number | undefined;
+}
+
+/** A weigh-in, in kg. */
+export interface Bodyweight {
+  id: string;
+  date: string;
+  kg: number;
+  demo: boolean;
+}
+
+/** A cardio or mobility entry (cleanCardio): its minutes, and where it sat
+    against the lifting (`when`: before, after, or alone). */
+export interface CardioEntry {
+  id: string;
+  date: string;
+  kind: string;
+  min: number;
+  hr: number | null;
+  when: string;
+  note: string;
+  demo: boolean;
+  dist?: number | undefined;
+}
+
+/** An injury the lifter flagged: a muscle or a joint (`m`), since `date`. */
+export interface Injury {
+  id: string;
+  m: string;
+  note: string;
+  date: string;
+}
+
+/** A dumbbell rack as typed in Settings, in the gym's unit. */
+export interface DbRack {
+  lo: number;
+  hi: number;
+  st: number;
+  fine?: number;
+  fineTo?: number;
+}
+
+/** A saved gym, in the unit it is labelled in. */
+export interface Gym {
+  u: 'lb' | 'kg';
+  db?: DbRack;
+  kb?: number[];
+  plates?: number[];
+  stack?: number;
+}
+
+/** A saved profile as normalize() keeps it. */
+export interface Profile {
+  goal?: string;
+  exp?: string;
+  days?: number;
+  focus?: string[];
+}
+
+/** The settings the engine and the analytics read, as normalize() keeps them:
+    a field absent unless set is optional. */
+export interface EngineSettings {
+  unit: 'lb' | 'kg';
+  rirMode: 'on' | 'off' | 'cal';
+  rirHalf?: true | undefined;
+  gym?: Gym | undefined;
+  barKg: number | null;
+  profile?: Profile | undefined;
+  bands: Record<MuscleKey, [number, number]>;
+  priorities: MuscleKey[];
+  restWeeks?: string[] | undefined;
+  todayStart?: 'free' | undefined;
+}
+
+/** The log as the engine and the analytics read it: these fields and no
+    others, so the type checker refuses a read of any other (phase 3b). */
+export interface EngineState {
+  sessions: Session[];
+  exercises: Exercise[];
+  routines: Routine[];
+  activeRoutineId: string;
+  bodyweights: Bodyweight[];
+  cardio: CardioEntry[];
+  injuries: Injury[];
+  deloadWeek: string | null;
+  settings: EngineSettings;
 }
 
 /** One set as the analytics read it (a point in IDX's byEx): the load as typed,
