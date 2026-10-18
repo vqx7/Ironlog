@@ -46,7 +46,7 @@ function baseWithHook() {
   return { file, same: out.replace(`, ${HOOK22.join(', ')} };`, ' };') === html };
 }
 
-const { wide, digest } = require('./wide');
+const { wide, digest, specOf } = require('./wide');
 
 (async () => {
   ok(LIVE74.length === 74, `src/09-imports.js imports the 74 adapters this suite calls (${LIVE74.length})`);
@@ -70,7 +70,7 @@ const { wide, digest } = require('./wide');
     const h = wide(52000 + i, LIB);
     const when = new Date(h.today + 'T12:00:00');
     await Promise.all([A.page.clock.setFixedTime(when), B.page.clock.setFixedTime(when)]);
-    const spec = { raw: JSON.stringify(h.raw), today: h.today, ids: h.ids };
+    const spec = specOf(h);
     const [a, b] = await Promise.all([A.page.evaluate(digest, spec), B.page.evaluate(digest, spec)]);
     if (a === b) same++;
     else if (!firstDiff) { const la = a.split('\n'), lb = b.split('\n'); let k = 0; while (k < la.length && la[k] === lb[k]) k++; firstDiff = { seed: 52000 + i, line: k, r51: (la[k] || '').slice(0, 600), r52: (lb[k] || '').slice(0, 600) }; }
@@ -79,7 +79,8 @@ const { wide, digest } = require('./wide');
     // What the histories reached, read from the normalized log and the answers, so a pass means each path ran.
     // (The digest writes undefined as ~undef; read back as absent here.)
     const st = JSON.parse(b.slice(6, b.indexOf('\n')), (k, v) => (v === '~undef' ? undefined : v));
-    size += b.length; lines += b.split('\n').length;
+    size += b.length;
+    lines += calls.length;
     for (const [n] of calls) called.add(n.replace(/^~/, ''));
     const S = st.settings;
     const dow = new Date(h.today + 'T12:00:00').getDay(); hit('today weekday ' + dow, true);
@@ -108,13 +109,13 @@ const { wide, digest } = require('./wide');
 
   // Identity, read from a history in this build alone: what the comparison above shows to agree, here held to what it must be.
   {
-    const h = wide(52000, LIB); const spec = { raw: JSON.stringify(h.raw), today: h.today, ids: h.ids };
+    const h = wide(52000, LIB); const spec = specOf(h);
     await B.page.clock.setFixedTime(new Date(h.today + 'T12:00:00'));
     const d = await B.page.evaluate(digest, spec);
     const idn = JSON.parse(d.split('\n').find(l => l.startsWith('identity ')).slice(9));
     const fresh = JSON.parse(d.split('\n').find(l => l.startsWith('fresh ')).slice(6));
     ok(idn.filter(x => x[0] === 'EX is the record').every(x => x[2] === true) && idn.some(x => x[0] === 'EX is the record'), 'EX(id) is the log\'s own exercise record');
-    ok(idn.find(x => x[0] === 'caches kept').slice(1).every(x => x === true), 'IDX, dateIndex and calStats are each the same object until invalidate, and activeRoutine is the log\'s own routine', idn.find(x => x[0] === 'caches kept'));
+    ok(idn.find(x => x[0] === 'caches kept').slice(1).every(x => x === true), 'IDX, dateIndex and calStats are each the same object until invalidate, and activeRoutine and gymOf are the log\'s own', idn.find(x => x[0] === 'caches kept'));
     ok(fresh.every(x => x === true), 'invalidate makes IDX, dateIndex and calStats build anew', fresh);
   }
   {

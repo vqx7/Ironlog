@@ -52,7 +52,7 @@ if (process.argv[2] === '--child') {
 }
 
 const { open, engine, settle } = require('./h');
-const { wide, digest } = require('./wide');
+const { wide, digest, specOf } = require('./wide');
 const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log('FAIL', m, x !== undefined ? JSON.stringify(x).slice(0, 1500) : ''); } else console.log('ok  ', m); };
 
 // Line coverage of each source file from V8's block coverage of the bundle
@@ -107,7 +107,7 @@ function lineCoverage(covDir, bundleFile, mapPayload) {
   for (let i = 0; i < K; i++) {
     const h = wide(52000 + i, LIB);
     await B.page.clock.setFixedTime(new Date(h.today + 'T12:00:00'));
-    const d = await B.page.evaluate(digest, { raw: JSON.stringify(h.raw), today: h.today, ids: h.ids });
+    const d = await B.page.evaluate(digest, specOf(h));
     const lines = d.split('\n');
     const state = lines.find(l => l.startsWith('state ')).slice(6);
     // The calls up to invalidate and it: after it the page reads the caches anew, which a fresh model always does.
@@ -120,8 +120,12 @@ function lineCoverage(covDir, bundleFile, mapPayload) {
 
   // The engine's modules, bundled for Node with their source map.
   const entry = MODULES.map(m => `export * from './${m}';`).join('\n');
-  const built = require('esbuild').buildSync({ stdin: { contents: entry, resolveDir: APP, loader: 'ts', sourcefile: 'engine-entry.ts' }, bundle: true, format: 'cjs', platform: 'node', write: false, sourcemap: 'external', outfile: path.join(tmp, 'engine.js'), charset: 'utf8', logLevel: 'silent' });
+  // Strict, as the page's bundle is (scripts/join.js) and as modules always
+  // are: in sloppy mode a write to a frozen object fails silently, so a write
+  // to the log would pass unseen (the r52 review).
+  const built = require('esbuild').buildSync({ stdin: { contents: entry, resolveDir: APP, loader: 'ts', sourcefile: 'engine-entry.ts' }, bundle: true, format: 'cjs', platform: 'node', write: false, sourcemap: 'external', outfile: path.join(tmp, 'engine.js'), charset: 'utf8', banner: { js: '"use strict";' }, logLevel: 'silent' });
   const js = built.outputFiles.find(f => f.path.endsWith('.js')), map = built.outputFiles.find(f => f.path.endsWith('.map'));
+  ok(js.text.startsWith('"use strict";'), 'the engine runs strict in Node, so a write to the frozen log throws');
   fs.writeFileSync(js.path, js.text); fs.writeFileSync(map.path, map.text);
   const covDir = path.join(tmp, 'cov'); fs.mkdirSync(covDir);
   // The page's language and time zone, so dates are worded as the page words them.

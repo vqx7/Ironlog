@@ -443,8 +443,8 @@ const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log
     // name (less the In of a function taking the model, M) that was a
     // declaration of the legacy script in the build the move started from:
     // read from that build itself, so a mark in new or changed code can never
-    // ride on a move (tests/moved.js holds what a move may change, and allows
-    // no mark in an adapter, whose code it fixes).
+    // ride on a move (tests/moved.js holds what a move may change, and fixes
+    // each adapter's TypeScript text, so no mark can sit in one).
     const MOVE_MARKS = [...fs.readFileSync(path.join(ROOT, 'ARCHITECTURE.md'), 'utf8').matchAll(/^Marks in (r\d+)'s moved code \(from (baselines\/[\w.-]+\.html)\): (\d+) casts, (\d+) non-null assertions$/gm)].map(m => ({ release: m[1], baseline: m[2], casts: +m[3], bangs: +m[4], legacy: legacyNames(m[2]), nowCasts: 0, nowBangs: 0 }));
     const markMove = (sf, n) => {
       const st = sf.statements.find(x => x.pos <= n.pos && n.end <= x.end);
@@ -711,15 +711,34 @@ const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log
   const starts = [];
   for (const [id, m] of mods) for (const [n, d] of m.decl) { const f = d.type === 'FunctionDeclaration' ? d : d.init && /Function/.test(d.init.type) ? d.init : null; if (f && f.params.length && f.params[0].type === 'Identifier' && f.params[0].name === 'M') starts.push(`${id}.${n}`); }
   const problems = [], seen = new Set();
-  // Within one declaration: a new Date() with no arguments, Date.now, Math.random.
+  // Within one declaration, the clock and randomness in any form the code can
+  // be read to name them (the r52 review planted Math['random'](), Date(),
+  // new Date(...[]) and a date formatter given no date, and the first rule
+  // passed each): Date only as new Date(...) with arguments and none spread,
+  // or Date.UTC and Date.parse; Math only as Math.<name>, never random; a
+  // global never read through a computed name; and no format() or
+  // formatToParts() called without a value, which formats now. A read
+  // assembled by reflection (Object.getOwnPropertyDescriptor and the like) is
+  // beyond a reading of the code and is review's to catch.
   const inCode = (id, d) => {
-    const out = [];
-    (function walk(n) {
+    // A global is a name the declaration leaves free that its module neither imports nor declares.
+    const out = [], m = mods.get(id), free = new Set([...freeNames(d)].filter(x => !m.imp.has(x) && !m.decl.has(x)));
+    (function walk(n, up) {
       if (!n || typeof n.type !== 'string') return;
-      if (n.type === 'NewExpression' && n.callee.type === 'Identifier' && n.callee.name === 'Date' && n.arguments.length === 0) out.push('new Date() (the clock)');
-      if (n.type === 'MemberExpression' && !n.computed && n.object.type === 'Identifier' && ((n.object.name === 'Date' && n.property.name === 'now') || (n.object.name === 'Math' && n.property.name === 'random'))) out.push(`${n.object.name}.${n.property.name}`);
-      for (const k in n) { if (k === 'type') continue; const v = n[k]; if (Array.isArray(v)) v.forEach(walk); else if (v && typeof v.type === 'string') walk(v); }
-    })(d);
+      const p = up[up.length - 1];
+      if (n.type === 'Identifier' && free.has(n.name) && !(p && p.type === 'MemberExpression' && p.property === n && !p.computed) && !(p && p.type === 'Property' && p.key === n && !p.computed && !p.shorthand)) {
+        if (n.name === 'Date') {
+          const asNew = p && p.type === 'NewExpression' && p.callee === n && p.arguments.length > 0 && p.arguments.every(a => a.type !== 'SpreadElement');
+          const asPure = p && p.type === 'MemberExpression' && p.object === n && !p.computed && ['UTC', 'parse'].includes(p.property.name);
+          if (!asNew && !asPure) out.push('Date other than new Date(a date) (the clock)');
+        }
+        if (n.name === 'Math' && !(p && p.type === 'MemberExpression' && p.object === n && !p.computed && p.property.name !== 'random')) out.push('Math.random or Math as a value');
+        if (p && p.type === 'MemberExpression' && p.object === n && p.computed) out.push(`a computed read of the global ${n.name}`);
+      }
+      if (n.type === 'CallExpression' && n.arguments.length === 0 && n.callee.type === 'MemberExpression' && !n.callee.computed && ['format', 'formatToParts'].includes(n.callee.property.name)) out.push(`${n.callee.property.name}() with no date (the clock)`);
+      const next = [...up, n];
+      for (const k in n) { if (k === 'type') continue; const v = n[k]; if (Array.isArray(v)) v.forEach(x => walk(x, next)); else if (v && typeof v.type === 'string') walk(v, next); }
+    })(d, []);
     return out;
   };
   const visit = (key, trail) => {

@@ -213,8 +213,11 @@ export function suggestIn(M: Model, exId: string, plan: Plan, opts?: SuggestOpts
 /* The load engine's prescription for one lift (r36: the 250-line function cut
    into its cases, each below and tried in order, with no change to what comes
    out; tests/r36.js compares it with r35 on random histories). A lift with
-   sessions has them under its id in IDX (byEx); with none, every stays
-   unread past the test for exps below, and the ! after it say so. */
+   sessions has them under its id in IDX (byEx); with none, every and all are
+   absent, and the test for exps below returns first, so past it both are
+   there, and seen with them, as the ! after them say. seen reads all before
+   that test only when inRR holds, which needs a full session, so all is
+   there then too. */
 export function suggestCoreIn(M: Model, exId: string, plan: Plan, opts?: SuggestOpts | null): Suggestion {
   opts = opts || {};
   /* opts.before: the date of a past session being logged. Only what was
@@ -242,12 +245,13 @@ export function suggestCoreIn(M: Model, exId: string, plan: Plan, opts?: Suggest
   const inRR = !!lastEx && lastEx.date >= addDays(full[full.length - 1].date, -42);
   const fullRR = inRR ? full.filter(x => sameRR(x.rr, want)) : [];
   const exps = all && all.length ? (fullRR.length ? fullRR : full.length ? full : all) : all;
-  const seen = inRR ? all.filter(x => sameRR(x.rr, want)) : all;
+  const seen = inRR ? all!.filter(x => sameRR(x.rr, want)) : all;
   if (ex.timed) return suggestTimedIn(M, ex, plan, exps, opts, injM, seen);
   if (!exps || !exps.length) return sgFirstIn(M, ex, plan, T, injM);
   const last = exps[exps.length - 1],
     ws = last.pts;
-  const stx: Partial<LiftBests> = all.length < every!.length ? statsUpToIn(M, exId, all) : IDXIn(M).exStats[exId] || {};
+  const stx: Partial<LiftBests> =
+    all!.length < every!.length ? statsUpToIn(M, exId, all!) : IDXIn(M).exStats[exId] || {};
   const top = workLoad(ws, +plan.repMin);
   const step = incOfIn(M, ex, plan, top);
   /* Ab work on bodyweight with no load ever added (a hanging leg raise, a
@@ -258,7 +262,7 @@ export function suggestCoreIn(M: Model, exId: string, plan: Plan, opts?: Suggest
      ab work (from the review: push-ups done on bodyweight for 6 weeks were
      asked for BW+10 every session and counted as missed targets). A load
      typed once makes it a loaded lift. */
-  const noAdd = !!ex.bw && !ex.assist && !all.some(x => x.pts.some(p => p.w > 1e-6));
+  const noAdd = !!ex.bw && !ex.assist && !all!.some(x => x.pts.some(p => p.w > 1e-6));
   const abW = ['abs', 'obliques'].includes(ex.primary);
   // Heaviest available load (top of the stack or rack), if set.
   const cap = capOfIn(M, ex, plan, top);
@@ -313,10 +317,10 @@ export function suggestCoreIn(M: Model, exId: string, plan: Plan, opts?: Suggest
     plan,
     opts,
     T,
-    all,
+    all: all!,
     every: every!,
     exps,
-    seen,
+    seen: seen!,
     inRR,
     injM,
     last,
@@ -777,7 +781,9 @@ export function sgRepsIn(M: Model, C: SuggestCtx): Suggestion {
    variations differ more: a front squat is well under a back squat), for the
    middle of the range with one more rep in reserve than planned, rounded
    down to the step (the related lift's rack for dumbbells). Conventions,
-   meant to err light; the next session works out from what was done. */
+   meant to err light; the next session works out from what was done. Each
+   id read from IDX's byEx comes from its own keys, so it is there, as the !
+   says. */
 export function kinOfIn(
   M: Model,
   ex: ExerciseLike | null | undefined,
@@ -815,7 +821,7 @@ export function kinOfIn(
       patternOf(e) !== pat
     )
       continue;
-    const xs = I.byEx[id].filter(x => x.date <= T && !offSession(x) && !x.cut);
+    const xs = I.byEx[id]!.filter(x => x.date <= T && !offSession(x) && !x.cut);
     const x = xs[xs.length - 1];
     if (!x || x.date < from) continue;
     if (!best || x.date > best.x.date) best = { ex: e, x };

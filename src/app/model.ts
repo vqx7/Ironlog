@@ -144,8 +144,8 @@ export interface DayMeta {
     built, by the readers that need them: rack steps (`_rack`, rackStep) and
     the routine each past week was trained on (`weekRid`, weekRoutine). */
 export interface Idx {
-  byEx: Record<string, Exposure[]>;
-  exStats: Record<string, ExStat>;
+  byEx: Partial<Record<string, Exposure[]>>;
+  exStats: Partial<Record<string, ExStat>>;
   scores: Score[];
   prs: Pr[];
   sessVol: { date: string; vol: number; id: string; day: string }[];

@@ -555,6 +555,21 @@ for (const mv of MOVES) if (mv.adapters) {
     if (!src || !src.modelFns.has(name + 'In') || src.modelFns.get(name + 'In') !== name || homeOf(imp.from, name + 'In') !== mv) { problems.push(`${name}In is not a function taking the model that this move moved`); continue; }
     names.push(name);
   }
+  // The same in the TypeScript as written, statement for statement, since
+  // the compiled code shows no type: a cast in an adapter (`live(EXIn as
+  // ...)`) would otherwise pass here and be counted as moved code's mark by
+  // tests/hygiene.js (the r52 review).
+  {
+    const ts = require('typescript'), file = path.join(APP, mv.adapters.module + '.ts');
+    const sf = ts.createSourceFile(file, fs.readFileSync(file, 'utf8'), ts.ScriptTarget.Latest, true);
+    for (const st of sf.statements) {
+      if (!ts.isVariableStatement(st)) continue;
+      const names = st.declarationList.declarations.map(d => d.name.getText(sf));
+      if (names.some(n => mv.added[n])) continue;
+      const want = names.length === 1 ? `export const ${names[0]} = ${mv.adapters.fn}(${names[0]}In);` : null;
+      if (st.getText(sf) !== want) problems.push(`src/app/${mv.adapters.module}.ts as written: ${st.getText(sf).slice(0, 80)}`);
+    }
+  }
   const imp = acorn.parse(fs.readFileSync(path.join(ROOT, mv.adapters.imports), 'utf8'), { ecmaVersion: 'latest', sourceType: 'module' }).body.filter(st => st.type === 'ImportDeclaration' && st.source.value === `./app/${mv.adapters.module}`).flatMap(st => st.specifiers.map(sp => sp.imported.name));
   const a = [...names].sort(), b = [...imp].sort();
   ok(problems.length === 0 && JSON.stringify(a) === JSON.stringify(b) && a.length === mv.expect.adapters, `${mv.release}: ${a.length} adapters, each ${mv.adapters.fn}(XIn) under the r51 name, exactly the names the legacy script imports from src/app/${mv.adapters.module}.ts (${mv.expect.adapters} expected)`, problems.length ? problems.slice(0, 5) : { only_here: a.filter(x => !b.includes(x)), only_imported: b.filter(x => !a.includes(x)) });

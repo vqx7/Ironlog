@@ -231,13 +231,14 @@ export function weekStreakIn(M: Model): { weeks: number; best: number; need: num
 }
 
 /* The newest lighter session (deload, lighter day, or read as lighter from
-   its loads) within the last `days`, or null. */
+   its loads) within the last `days`, or null. Each id read from IDX's byEx
+   comes from its own keys, so it is there, as the ! says. */
 export function recentLighterIn(M: Model, days: number): string | null {
   const from = addDays(M.today(), -days);
   let d: string | null = null;
   for (const x of M.s.sessions) if (x.date >= from && (x.deload || x.light) && (!d || x.date > d)) d = x.date;
   const I = IDXIn(M);
-  for (const id in I.byEx) for (const x of I.byEx[id]) if (x.auto && x.date >= from && (!d || x.date > d)) d = x.date;
+  for (const id in I.byEx) for (const x of I.byEx[id]!) if (x.auto && x.date >= from && (!d || x.date > d)) d = x.date;
   // A rest week is recovery too: its last day, or today while it runs.
   for (const w of M.s.settings.restWeeks || []) {
     const e = addDays(w, 6) < M.today() ? addDays(w, 6) : M.today();

@@ -157,12 +157,10 @@ function wide(seed, LIB) {
 // out whole. Runs in the page.
 function digest(spec) {
   const L = window.__ironlog;
-  const ser = v => { try { return JSON.stringify(v, function (k, x) { if (x === undefined) return '~undef'; if (typeof x === 'function') return '~fn'; if (x instanceof Set) return { '~set': [...x] }; if (x instanceof Map) return { '~map': [...x.entries()] }; if (typeof x === 'number' && !isFinite(x)) return '~' + String(x); if (typeof x === 'number' && Object.is(x, -0)) return '~-0'; return x; }); } catch (e) { return 'SERR ' + e.message; } };
+  // The encoding and the error text are this file's ser and err, handed in
+  // as text (specOf), so the page and Node use one copy of each.
+  const ser = new Function(`return (${spec.ser})`)(), err = new Function(`return (${spec.err})`)();
   const out = [];
-  // An error is compared by its kind and message, the message read back as
-  // the r51 name where it quotes a function taking the model (V8 words a
-  // TypeError from the source: "IDXIn(...).byEx" for r51's "IDX(...).byEx").
-  const err = e => 'ERR ' + (e && e.name) + ': ' + String(e && e.message).replace(/\b([A-Za-z_$][\w$]*)In\(/g, '$1(');
   let tag = '';
   const call = (name, ...args) => { let r; try { r = L[name](...args); } catch (e) { r = err(e); } out.push(tag + name + '\t' + ser(args) + '\t' + ser(r)); return r; };
   const raw = JSON.parse(spec.raw);
@@ -187,9 +185,9 @@ function digest(spec) {
   idn.push(['EX of a missing id is a new stand-in each time', L.EX('missing-id') === L.EX('missing-id')]);
   idn.push(['prof is the log\'s profile', s.settings.profile ? L.prof() === s.settings.profile : null, L.prof() === L.prof()]);
   const I0 = L.IDX(), D0 = L.dateIndex(), C0 = L.calStats();
-  idn.push(['caches kept', L.IDX() === I0, L.dateIndex() === D0, L.calStats() === C0, L.activeRoutine() === s.routines.find(r => r.id === s.activeRoutineId) || s.routines[0] === L.activeRoutine()]);
-  // Made anew on each call in r51 (a sorted copy, a new Set, the settings' gym): compared across builds above, not held here.
-  idn.push(['made anew', L.sortedSessions() === L.sortedSessions(), L.injuredSet() === L.injuredSet(), L.gymOf() === L.gymOf()]);
+  idn.push(['caches kept', L.IDX() === I0, L.dateIndex() === D0, L.calStats() === C0, L.activeRoutine() === s.routines.find(r => r.id === s.activeRoutineId) || s.routines[0] === L.activeRoutine(), L.gymOf() === (s.settings.gym && typeof s.settings.gym === 'object' ? s.settings.gym : null)]);
+  // Made anew on each call in r51 (a sorted copy, a new Set): compared across builds, not held here.
+  idn.push(['made anew', L.sortedSessions() === L.sortedSessions(), L.injuredSet() === L.injuredSet()]);
   out.push('identity ' + ser(idn));
   for (const v of [0, 1, 2.5, 2.2679618, 20, 45.359237, 100.5, -40, 0.001, 1e-9, null, undefined]) { call('toD', v); call('fromD', v); call('fmtW', v); }
   for (const v of [2.2679618, 2.5, 5, 1.25, 0, 10, 4.5359237]) call('stepRead', v);
@@ -250,23 +248,63 @@ function digest(spec) {
   return out.join('\n');
 }
 
-// The encoding the digest writes, read back: '~undef' and the other marks
-// become the values they stand for, a property kept present when it was.
+// One encoding for an answer, in the page and in Node: JSON, with undefined,
+// -0, NaN, Infinity, a function, a hole, a Set and a Map marked, and every
+// own property of an object or array, a property that is not enumerable
+// (avgWeeks keeps its notes so) under its name marked "~ne:". JSON.stringify
+// alone drops those, and the r52 review changed two of them unseen.
+function ser(v) {
+  const enc = (x, up) => {
+    if (x === undefined) return '~undef';
+    if (typeof x === 'function') return '~fn';
+    if (typeof x === 'number') return Object.is(x, -0) ? '~-0' : isFinite(x) ? x : '~' + String(x);
+    if (x === null || typeof x !== 'object') return x;
+    if (up.includes(x)) return '~cycle';
+    const u2 = [...up, x];
+    if (x instanceof Set) return { '~set': [...x].map(y => enc(y, u2)) };
+    if (x instanceof Map) return { '~map': [...x.entries()].map(([k, y]) => [enc(k, u2), enc(y, u2)]) };
+    if (x instanceof Date) return { '~date': x.getTime() };
+    const props = {};
+    let extra = false;
+    for (const k of Object.getOwnPropertyNames(x)) {
+      if (Array.isArray(x) && (k === 'length' || String(k >>> 0) === k)) continue;
+      const d = Object.getOwnPropertyDescriptor(x, k);
+      props[d.enumerable ? k : '~ne:' + k] = 'value' in d ? enc(d.value, u2) : '~accessor';
+      extra = true;
+    }
+    if (!Array.isArray(x)) return props;
+    const items = []; for (let i = 0; i < x.length; i++) items.push(i in x ? enc(x[i], u2) : '~hole');
+    return extra ? { '~arr': items, '~props': props } : items;
+  };
+  try { return JSON.stringify(enc(v, [])); } catch (e) { return 'SERR ' + e.message; }
+}
+// An error, by its kind and message, the message read back as the r51 name
+// where it quotes a function taking the model (V8 words a TypeError from the
+// source: "IDXIn(...).byEx" for r51's "IDX(...).byEx"; the crash screen
+// shows that text, the one difference r52 makes, ARCHITECTURE.md).
+function err(e) {
+  return 'ERR ' + (e && e.name) + ': ' + String(e && e.message).replace(/\b([A-Za-z_$][\w$]*)In\(/g, '$1(');
+}
+// What the digest is given for one history.
+const specOf = h => ({ raw: JSON.stringify(h.raw), today: h.today, ids: h.ids, ser: ser.toString(), err: err.toString() });
+// ser read back: each mark becomes the value it stands for, a property kept
+// present when it was, and one marked "~ne:" defined as not enumerable.
 function decode(text) {
   const back = v => {
     if (v === '~undef') return undefined;
     if (v === '~NaN') return NaN; if (v === '~Infinity') return Infinity; if (v === '~-Infinity') return -Infinity; if (v === '~-0') return -0;
-    if (Array.isArray(v)) { const a = new Array(v.length); for (let i = 0; i < v.length; i++) a[i] = back(v[i]); return a; }
+    if (Array.isArray(v)) { const a = new Array(v.length); for (let i = 0; i < v.length; i++) if (v[i] !== '~hole') a[i] = back(v[i]); return a; }
     if (v && typeof v === 'object') {
-      if (Object.keys(v).length === 1 && Array.isArray(v['~set'])) return new Set(v['~set'].map(back));
-      if (Object.keys(v).length === 1 && Array.isArray(v['~map'])) return new Map(v['~map'].map(([k, x]) => [back(k), back(x)]));
-      const o = {}; for (const k of Object.keys(v)) o[k] = back(v[k]); return o;
+      const keys = Object.keys(v);
+      if (keys.length === 1 && Array.isArray(v['~set'])) return new Set(v['~set'].map(back));
+      if (keys.length === 1 && Array.isArray(v['~map'])) return new Map(v['~map'].map(([k, x]) => [back(k), back(x)]));
+      if (keys.length === 1 && typeof v['~date'] === 'number') return new Date(v['~date']);
+      const own = (o, props) => { for (const k of Object.keys(props)) { if (k.startsWith('~ne:')) Object.defineProperty(o, k.slice(4), { value: back(props[k]), enumerable: false, writable: true, configurable: true }); else o[k] = back(props[k]); } return o; };
+      if (keys.length === 2 && Array.isArray(v['~arr']) && v['~props']) return own(back(v['~arr']), v['~props']);
+      return own({}, v);
     }
     return v;
   };
   return back(JSON.parse(text));
 }
-// The same encoding in Node, for an answer computed there.
-const ser = v => { try { return JSON.stringify(v, function (k, x) { if (x === undefined) return '~undef'; if (typeof x === 'function') return '~fn'; if (x instanceof Set) return { '~set': [...x] }; if (x instanceof Map) return { '~map': [...x.entries()] }; if (typeof x === 'number' && !isFinite(x)) return '~' + String(x); if (typeof x === 'number' && Object.is(x, -0)) return '~-0'; return x; }); } catch (e) { return 'SERR ' + e.message; } };
-const err = e => 'ERR ' + (e && e.name) + ': ' + String(e && e.message).replace(/\b([A-Za-z_$][\w$]*)In\(/g, '$1(');
-module.exports = { rng, wide, digest, decode, ser, err };
+module.exports = { rng, wide, digest, decode, ser, err, specOf };

@@ -47,18 +47,20 @@ export const SIZE_MAP: readonly (readonly [string, readonly string[]])[] = [
 ];
 
 /* The lifts moving up, fastest first, with the weeks their trend covers.
-   A moving lift has a change, as the ! says. */
+   Every entry of IDX's exStats is a lift's stats (it holds no empty ones),
+   and a moving lift has a change, as the ! say. */
 export function moversIn(M: Model): { id: string; pct: number | null; wk: number }[] {
   return Object.entries(IDXIn(M).exStats)
-    .filter(([, x]) => x.moving && !x.stalled && x.fresh)
-    .sort((a, b) => b[1].pct! - a[1].pct!)
-    .map(([id, x]) => ({ id, pct: x.pct, wk: x.spanW || 2 }));
+    .filter(([, x]) => x!.moving && !x!.stalled && x!.fresh)
+    .sort((a, b) => b[1]!.pct! - a[1]!.pct!)
+    .map(([id, x]) => ({ id, pct: x!.pct, wk: x!.spanW || 2 }));
 }
 
-/** The ids of the lifts that have stalled. */
+/* The ids of the lifts that have stalled. Every entry of IDX's exStats is a
+   lift's stats, as the ! says. */
 export function stalledIdsIn(M: Model): string[] {
   return Object.entries(IDXIn(M).exStats)
-    .filter(([, x]) => x.stalled)
+    .filter(([, x]) => x!.stalled)
     .map(([id]) => id);
 }
 
@@ -172,9 +174,10 @@ export function coachIn(M: Model): CoachLine {
       };
       const inR: string[] = [];
       for (const d of R.days) for (const it of d.items) if (forM(it.exId) && !inR.includes(it.exId)) inR.push(it.exId);
+      // The ids come from byEx's own keys, so each is there, as the ! say.
       const logged = Object.keys(I.byEx)
         .filter(id => forM(id) && M.s.exercises.some(e => e.id === id && !e.archived))
-        .sort((x, y) => I.byEx[y][I.byEx[y].length - 1].date.localeCompare(I.byEx[x][I.byEx[x].length - 1].date));
+        .sort((x, y) => I.byEx[y]![I.byEx[y]!.length - 1].date.localeCompare(I.byEx[x]![I.byEx[x]!.length - 1].date));
       const exId = inR.find(done) || logged[0] || inR[0] || null;
       const how = exId
         ? `Add ${gap} set${gap > 1 ? 's' : ''} a week to ${exNameIn(M, exId)}.`
@@ -195,10 +198,11 @@ export function coachIn(M: Model): CoachLine {
     const st = I.exStats[id];
     const p = planForIn(M, id);
     const lw = st && st.last ? atLoad(st.last.pts, st.last.topW) : [];
+    // A set at the top of the range means st was there to read it from, as the ! says.
     if (lw.length && lw.every(q => q.r >= +p.repMax))
       return {
         tone: 'yellow',
-        text: `${exNameIn(M, id)} has been at the top of its range at ${loadLabelIn(M, EXIn(M, id), st.last.topW)}${EXIn(M, id).bw ? '' : ' ' + UIn(M)} for 3 weeks: it is due a step up, not a new range. The session's target says how.`,
+        text: `${exNameIn(M, id)} has been at the top of its range at ${loadLabelIn(M, EXIn(M, id), st!.last.topW)}${EXIn(M, id).bw ? '' : ' ' + UIn(M)} for 3 weeks: it is due a step up, not a new range. The session's target says how.`,
         why: 'Every set reached the top of the range. The next step is more load, or, when one step is large for the load, a few more reps first.',
         act: { label: 'See the lift', sec: 'exercise', ex: id }
       };
@@ -261,13 +265,13 @@ export const CHK_Q: readonly (readonly [string, string, readonly string[]])[] = 
 ];
 
 /* For each check-in answer, the sessions given it and the share of their
-   lifts that progressed. The sessions read are those with a check-in, as
-   the ! says. */
+   lifts that progressed. The sessions read are those with a check-in, and
+   each id read from IDX's byEx comes from its own keys, as the ! say. */
 export function readinessIn(M: Model) {
   const I = IDXIn(M);
   const bySid: Record<string, { n: number; p: number }> = {};
   for (const id in I.byEx)
-    I.byEx[id].forEach((x, i) => {
+    I.byEx[id]!.forEach((x, i) => {
       if (i === 0 || offSession(x)) return;
       const o = bySid[x.sid] || (bySid[x.sid] = { n: 0, p: 0 });
       o.n++;

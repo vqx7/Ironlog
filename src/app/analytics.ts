@@ -1083,9 +1083,10 @@ export function idxScoresIn(M: Model, exStats: Record<string, ExStat>): Score[] 
      "lagging" whatever the number said. So a muscle gaining 3% got a red
      "Lagging trend" flag in Weak points while Return on volume, which reads
      the same score against an absolute threshold, said "Growing. Hold this
-     volume." on the same screen. Rank still breaks ties, but a muscle that is
-     actually growing is never called lagging, and one that is actually going
-     backwards is always called lagging even if the rest of the list is worse.
+     volume." on the same screen. Now a muscle that is actually growing is
+     never called lagging, and one that is actually going backwards is always
+     called lagging even if the rest of the list is worse; rank decides no
+     label.
      In order below: going backwards is an absolute fact and does not need a
      ranking to be worth saying. A rising muscle is progressing (r30): ranked
      third or higher used to be needed too, so with eight muscles rising five
