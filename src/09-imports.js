@@ -17,7 +17,7 @@ import { PLATE_MODES, dbListOf, gymClean, gymPlates, platesMode } from './app/gy
 import { CORE_ARR, CORE_FIELDS, baseFor, bodyChunkOf, chunkOf, chunksOf, emptyChunk, isChunkId, legacyBody, realCount, unionById } from './app/chunks';
 import { Hx, canon, merge3List, merge3Val, mergeDraft } from './app/merge';
 import { RIR_OPTS, blockDone, blockRest, editFp, effTarget, effW, freeDraft, greyW, hintOnce, joinAdjacent, joinRows, joinable, lastCell, lastDup, lastHead, overSets, sameExOnce, sessProgress, targetText, whyTarget } from './app/session';
-import { LOAD_MODES, estInLoad, loadNote, loadWords } from './app/loads';
+import { LOAD_MODES, emptyLoad, estInLoad, loadNote, loadWords } from './app/loads';
 import { BAND_WORDS, prName, prOverall } from './app/prs';
 import { trendEnds, trendScope, trendW } from './app/trend';
 import { aboveMax, belowMin, lowSt } from './app/volume';
@@ -32,4 +32,5 @@ import { CHK_Q, SIZE_MAP, STALL_WHY, chkWord, musTrend } from './app/coach';
 import { EX, U, activeRoutine, exInjury, exName, freeMode, gymOf, injuredSet, invalidate, isDeloadWeek, isRestWeek, prof, rirHalfOn, sortedSessions, fromD, stepRead, toD, defPlan, planCredit, planFor, planSetsPerWeek, profPlan, profRule, routineUpdates, appBand, defBand, fitFloors, refit, plannedSets, stallWeeks, barKg, capOf, exBarKg, gymRack, rackTol, fmtW, loadLabel, IDX, sessionWords, bwAt, bwLoad, bwRef, bwRefLoad, calStats, dateIndex, hardCredit, isHard, loadOf, prFrame, prLoad, rirEff, rirEst, rirUsual, statsUpTo, tonnage, weekSessions, dayMinutes, pace, paceRatios, sessModelMin, actualAvg4, avgFirstWeek, avgWait, avgWeeks, firstFullWeek, lastLighterWeek, muscleStatus, recentLighter, regionBalance, weekNeed, weekRoutine, weekStats, weekStreak, weeksAvg, coach, dropOnlyLift, fatigueStalls, movers, readiness, stalledIds, daysOff, easierText, heavierLoad, incOf, lighterLoad, progStep, rackStep, suggestCore, suggest } from './app/live';
 import { AUTH, FB } from './app/providers';
 import { effShow, halfLbl, rirScale } from './app/effort';
+import { followViewport, morphInto } from './app/sheets';
 import { guideSheet } from './app/guide';

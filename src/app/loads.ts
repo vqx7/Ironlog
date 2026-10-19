@@ -45,6 +45,14 @@ export function estInLoad(ex: Exercise): boolean {
   return isCompound(ex) && !ex.bw && !noE1(ex) && loadMode(ex) === 'total';
 }
 
+/* What an empty load field shows when nothing is suggested: 0 on a
+   bodyweight lift, nothing added, and nothing on a loaded lift or an
+   assisted one, whose help is not known until it is typed (r54, PENDING
+   315 i: a first session showed 0 help, and ticked past it was saved at
+   full bodyweight, so the next normal session read lighter). */
+/** The grey text of an empty load field with no suggestion. */
+export const emptyLoad = (ex: Pick<Exercise, 'bw' | 'assist'>): string => (ex.bw && !ex.assist ? '0' : '');
+
 /* ---------- loads in words, in the unit on screen (phase 3b, r52; moved from the legacy script) ---------- */
 
 /** A load in kilograms as shown, rounded to a tenth; empty for none. toD of a number is a number, as the ! says. */

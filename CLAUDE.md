@@ -99,9 +99,11 @@ lines, then `ALL PASS` (the fuzz suite prints `fuzz clean`). Type check: `npx ts
 - **Numbers:** no number without a source in `docs/EVIDENCE.md`; a convention is labelled as one there and in a tip.
   Trends are never shown as a 1RM; a muscle with no clear lift reads unclear, never 0%; weight lifted is never a
   percentage against last week; no projections. Deloads and lighter loads are whole steps, never under the bar on a
-  barbell lift typed as the total. A lift on a deload, lighter or trimmed day sets no target or trend unless it was
-  done at its usual load, reps and sets, which makes it a full session for that lift (V, 2026-10-18: a day's label
-  never overrides what a lift did). A PR is a PR on any day.
+  barbell lift typed as the total. One rule for every session (V, 2026-10-18): a lift sets its next target only at
+  its usual load and reps for its usual sets; with fewer sets or a clearly weaker reading the target repeats and the
+  session still counts for the trend, stalls and PRs; done lighter it sets no target or trend, and done in full on a
+  lighter or deload day it is a full session (a day's label never overrides what a lift did). A break of more than
+  four weeks restarts a lift's readings. A PR is a PR on any day, and a change of units or gyms is never one.
 - **V's rulings on screen:** the Volume radar is drawn from what was logged, never the routine's plan, and always
   draws; no Planned chip on Stats; the plan's usual-range note is a quiet line on Plan, never a flag and never on
   Stats; no other app is named on screen; no wording about shared phones, someone else or another person; no
@@ -111,7 +113,9 @@ lines, then `ALL PASS` (the fuzz suite prints `fuzz clean`). Type check: `npx ts
   em dashes, hype or exclamation marks; the serial comma in any list of three; estimated minutes only through
   `estMin` ("~N min"); the first-run Set up page stays under 400 characters, in lines of 45 at most. Code comments
   explain why, not what, in full sentences.
-- **Phone:** 44 px touch targets, no sideways scroll at 320 px, light and dark both checked.
+- **Phone:** 44 px touch targets, no sideways scroll at 320 px, light and dark both checked. A sheet is sized and
+  placed by the part of the screen that shows (`--vv-h` and `--vv-top`, `src/app/sheets.ts`), never by the page, so
+  it sits above the on-screen keyboard.
 - **One source (V, r49):** a value that names, identifies or configures the app is defined once, in
   `src/app/config.ts`. Every storage key, cache name and backup mark is built from `STORAGE_ID` ("ironlog"), which
   never changes: a phone finds its log only under those keys (`tests/r49.js` holds them). Outside addresses and

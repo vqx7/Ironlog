@@ -878,13 +878,18 @@ table.t .stick-r{position:sticky;right:0;background:var(--bg);padding-left:6px}
 .hitem.open{background:none}
 
 /* ---------- modal, toast, timer ---------- */
-#modal{position:fixed;inset:0;z-index:50;background:rgba(6,7,9,.55);-webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px);display:flex;align-items:flex-end;justify-content:center}
-.sheet{position:relative;background:var(--surface);width:100%;max-width:640px;max-height:88vh;overflow:auto;overscroll-behavior:contain;border-radius:28px 28px 0 0;padding:22px 18px calc(18px + env(safe-area-inset-bottom,0px))}
+/* The sheets' layer covers the part of the screen that shows (--vv-top and
+   --vv-h, kept at the visual viewport by src/app/sheets.ts, r54): an iPhone's
+   keyboard covers the page without making it shorter, so a sheet sized by
+   the page sat behind it. Where there is no visual viewport, the whole page,
+   as before. */
+#modal{position:fixed;left:0;right:0;top:var(--vv-top,0px);height:var(--vv-h,100%);z-index:50;background:rgba(6,7,9,.55);-webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px);display:flex;align-items:flex-end;justify-content:center}
+.sheet{position:relative;background:var(--surface);width:100%;max-width:640px;max-height:calc(var(--vv-h,100vh)*.88);overflow:auto;overscroll-behavior:contain;border-radius:28px 28px 0 0;padding:22px 18px calc(18px + env(safe-area-inset-bottom,0px))}
 /* The grabber tells a phone user this slides up from the bottom. */
 .sheet::before{content:"";position:absolute;top:8px;left:50%;width:38px;height:5px;margin-left:-19px;border-radius:3px;background:var(--surface-3)}
 /* Pickers keep one height while you type, so the search box does not jump as
    the list shrinks; only the list scrolls. */
-.sheet.fixed{height:88vh;height:88dvh;display:flex;flex-direction:column;overflow:hidden;padding-bottom:calc(10px + env(safe-area-inset-bottom,0px))}
+.sheet.fixed{height:88vh;height:88dvh;height:calc(var(--vv-h,100dvh)*.88);display:flex;flex-direction:column;overflow:hidden;padding-bottom:calc(10px + env(safe-area-inset-bottom,0px))}
 .sheet.fixed .sheet-scroll{flex:1 1 auto;min-height:0;overflow:auto;overscroll-behavior:contain;margin:8px -16px 0;padding:0 16px 8px}
 .pick-grp{font:650 11.5px var(--font);letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin:14px 0 2px}
 .pick-grp:first-child{margin-top:4px}
@@ -3019,6 +3024,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
   function estInLoad(ex) {
     return isCompound(ex) && !ex.bw && !noE1(ex) && loadMode(ex) === "total";
   }
+  var emptyLoad = (ex) => ex.bw && !ex.assist ? "0" : "";
   var fmtWIn = (M, kg) => kg == null || isNaN(kg) ? "" : String(r1(toDIn(M, kg)));
   function loadLabelIn(M, ex, kg) {
     if (ex.bw) {
@@ -6017,6 +6023,64 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     return k === "rpe" ? "RPE 5 to 6.5" : k === "half" ? "RIR 3.5 to 5" : "RIR 4 to 5";
   };
 
+  // src/app/sheets.ts
+  function followViewport(win) {
+    const vv = win.visualViewport;
+    if (!vv) return () => void 0;
+    const root = win.document.documentElement;
+    const set = () => {
+      root.style.setProperty("--vv-top", `${vv.offsetTop}px`);
+      root.style.setProperty("--vv-h", `${vv.height}px`);
+    };
+    vv.addEventListener("resize", set);
+    vv.addEventListener("scroll", set);
+    set();
+    return () => {
+      vv.removeEventListener("resize", set);
+      vv.removeEventListener("scroll", set);
+    };
+  }
+  var wordsOnly = (n) => !Array.from(n.childNodes).some((c) => c instanceof Element);
+  function sameShape(a, b) {
+    if (wordsOnly(a) && wordsOnly(b)) return true;
+    if (a.childNodes.length !== b.childNodes.length) return false;
+    for (let i = 0; i < a.childNodes.length; i++) {
+      const x = a.childNodes[i], y = b.childNodes[i];
+      if (x.nodeType !== y.nodeType) return false;
+      if (x instanceof Element && y instanceof Element) {
+        if (x.tagName !== y.tagName || x instanceof HTMLSelectElement) return false;
+        if (x instanceof HTMLInputElement && y instanceof HTMLInputElement) {
+          if (x.type !== y.type || x.value !== y.value || x.checked !== y.checked) return false;
+        }
+        if (x instanceof HTMLTextAreaElement && y instanceof HTMLTextAreaElement && x.value !== y.value) return false;
+        if (!sameShape(x, y)) return false;
+      }
+    }
+    return true;
+  }
+  function copyInto(a, b) {
+    if (wordsOnly(a) && wordsOnly(b)) {
+      if (a.textContent !== b.textContent) a.textContent = b.textContent;
+      return;
+    }
+    for (let i = 0; i < a.childNodes.length; i++) {
+      const x = a.childNodes[i], y = b.childNodes[i];
+      if (x instanceof Element && y instanceof Element) {
+        for (const at of Array.from(x.attributes)) if (!y.hasAttribute(at.name)) x.removeAttribute(at.name);
+        for (const at of Array.from(y.attributes))
+          if (x.getAttribute(at.name) !== at.value) x.setAttribute(at.name, at.value);
+        copyInto(x, y);
+      } else if (x.nodeValue !== y.nodeValue) x.nodeValue = y.nodeValue;
+    }
+  }
+  function morphInto(el, html) {
+    const t = el.ownerDocument.createElement("template");
+    t.innerHTML = html;
+    if (!sameShape(el, t.content)) return false;
+    copyInto(el, t.content);
+    return true;
+  }
+
   // src/app/guide.ts
   function guideSheet(m) {
     const off = state.settings.rirMode === "off";
@@ -6079,9 +6143,9 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
    <p><b>The first session of a close variation</b> (a hammer curl after DB curls, a front squat after back squats) starts from the related lift's last full session in the last 120 days, when both use the same equipment, load, main muscle, and movement, with both arms or both legs at once. About 90% of its estimate (80% on a compound lift), for the middle of the range with one more rep in reserve, rounded down. Machines and cables start fresh, since two machines' numbers do not compare.</p>
    <p><b>At the heaviest load available</b> (set on the exercise), or with a load step of 0: more reps, then harder reps.</p>
    <p><b>Assisted machines</b>: less help is progress. <b>Timed holds</b>: add seconds, then load. <b>Bodyweight lifts never done with added load</b> (push-ups, pull-ups, a hanging leg raise): more reps, then harder reps or a little added load when you type it; the app never adds load you did not use.</p>
-   <p><b>Back after more than 4 weeks off a lift</b>: about 90% of its last working load, with 2 or more reps in reserve (a convention: strength holds for about 4 weeks without training and falls faster after, Bosquet 2013). That first session back is the lift's new start: the next target picks up from it, and its trend and stall test start again from it, never drawn across the break. A Lighter day or a deload as the first session back sets no target, so the session after it is still back.</p>
+   <p><b>Back after more than 4 weeks off a lift</b>: about 90% of its last working load, with 2 or more reps in reserve (a convention: strength holds for about 4 weeks without training and falls faster after, Bosquet 2013). That first session back is the lift's new start. The next target picks up from it; its trend and stall test start again from it too, never drawn across the break. A Lighter day or a deload as the first session back sets no target, so the session after it is still back.</p>
    <p><b>Your gym</b> (Settings): the dumbbells, kettlebells, plates, and stack steps you have. Suggestions stay on them, and a weight you type for a dumbbell counts as the nearest one.</p>
-   <p><b>One rule for every session.</b> A session sets the lift's next target only at its usual load and reps for its usual sets. Its usual is the middle of that session and the two before it in the range (not counting ones done lighter); its usual sets are never more than the plan asks. With fewer sets, or reps clearly under the usual at no heavier load (more than 3% by the strength reading, a convention), the target repeats, and the session still counts for its trend and PRs; two such sessions in a row are the new usual, and the app follows. A heavier load than the two before is a step up, never short of the usual by its reps. Done lighter, a session sets no target and no trend. The same holds on a lighter day or in a deload: a lift done there at its usual load and reps is read as on any day, and its own sets were cut by the day, so they never become its usual.</p>
+   <p><b>One rule for every session.</b> A session sets the lift's next target only at its usual load and reps for its usual sets. Its usual is the middle of that session and the two before it in the range (not counting ones done lighter); its usual sets are never more than the plan asks. With fewer sets, or reps clearly under the usual at no heavier load (more than 3% by the strength reading, a convention), the target repeats, and the session still counts for its trend and PRs; two such sessions in a row are the new usual, and the app follows. A heavier load than the two before is a step up, never short of the usual by its reps. A session done lighter sets no target and no trend. The same holds on a lighter day or in a deload: a lift done there at its usual load and reps is read as on any day, and its own sets were cut by the day, so they never become its usual.</p>
    <p><b>Last</b> is the most recent session of the lift in that day's rep range (the most recent of all when the range is new), labelled fewer sets, below usual, lighter, or deload when it was. When it did not set the target, the next target comes from the last full session, and the i beside the target names its date; grey reps come from that session too after one below usual or done lighter.</p>
    <p><b>Deload week</b>: half the sets (rounded up), about 90% of the load the normal day would ask for (or of last time's, if lower), in whole steps down (never under the empty bar on a full-bar lift), the bottom of the range, 3 or more reps in reserve. A week with ${LIGHTER_WEEK_WORDS}, stays out of the weekly volume average (a lift done there at its usual load with fewer sets than usual counts as done lighter for this, the sets cut on purpose); each lift done lighter stays out of its trend. A <b>lighter day</b> is the same for one day.</p>
    <p><b>Lighter sessions nobody marked</b> (an imported deload, say) are read from the numbers: a lift's heaviest load at least 10% under its previous three sessions and its strength reading at least 7% under. They are kept in history and, like a deload, set no target or trend. A session with half or more of its lifts done lighter, marked or read, is a lighter session, and a week with more than half its sessions lighter is left out of the weekly averages. Lighter sessions in a row for 2 weeks or more are a new level, not a deload, and count again. A convention.</p>
@@ -6103,7 +6167,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
    <p><b>Trends</b> read each session's working sets the same way, averaged, up to 20 reps to failure (so high-rep work has a trend too, never shown as a 1RM). RIR is used in a trend only when it is rated on 80% or more of the lift's sets; otherwise loads and reps alone, so tapping RIR on some days and not others cannot bend it. The 6 weeks are counted back from the lift's own last session, and a trend needs 3 sessions spread over 2 weeks or more; it says how many weeks it covers. A muscle's trend counts a lift once it has 4 sessions over 3 weeks or more, and says the weeks too. A trend shows how many sessions it rests on and its weekly rate with the range an 80% interval allows (about +1.5% a week, likely +1.2% to +1.8%). <b>Weight lifted</b> is load times reps; it falls when the load goes up and reps come down, so it is shown as a number, not as progress.</p>
    <p><b>A lift on Stats</b> says its change in what was lifted: the change in its estimated 1RM on a compound lift you load as a total (a barbell, a plate-loaded machine), the top set at each end on anything else. A number shows only when it points the same way as the trend. The percentages are behind its i. <b>Next session</b> is the target its next workout will show; there are no predictions of where a lift will be.</p>
    <p><b>Goals</b>: on Stats, Lifts, set a goal for a lift as a load for a number of reps (100 x 5). It is reached when a working set matches it, that load or more for those reps or more. Until then it shows how close your best estimate from the last 12 weeks is to what the goal takes done to failure, and, on a compound lift you load as a total, about how much load is left for those reps. It gives no date: your session targets are the steps toward it. On a bodyweight lift the load is the added load.</p>
-   <p><b>PRs</b>: a <b>weight PR</b> is more weight than any earlier set of the lift (less help on an assisted one); a <b>best estimate</b> beats every earlier estimate of the lift; a <b>best for its reps</b> beats the earlier best in the same band of reps to failure (1 to 5, 6 to 10, 11 to 12); a <b>rep PR</b> is more reps at a load than ever before, counted only when the set is at least 90% as strong as your strongest before it (a convention: 40 x 10 after 95 x 5 is not a PR). A set that is more than one shows the first of these. PRs count on any day, a lighter day, a deload, and an exercise made lighter included, and are announced as you log the set. Only a PR with a new best estimate is announced and counted (on a lift with no estimate, or a bodyweight lift before any weigh-in, any of them); a heavier set or more reps without one is kept in the list and named in the recap as heaviest yet. Counting them all made each load step a PR. On a bodyweight lift, PRs, estimates, trends, and charts are all read at your latest weigh-in for every session, so progress is more reps or more added load, never a change on the scale. Weight lifted uses each day's weigh-in, the work actually done.</p>
+   <p><b>PRs</b>: a <b>weight PR</b> is more weight than any earlier set of the lift (less help on an assisted one); a <b>best estimate</b> beats every earlier estimate of the lift; a <b>best for its reps</b> beats the earlier best in the same band of reps to failure (1 to 5, 6 to 10, 11 to 12); a <b>rep PR</b> is more reps at a load than ever before, counted only when the set is at least 90% as strong as your strongest before it (a convention: 40 x 10 after 95 x 5 is not a PR). A set that is more than one shows the first of these. A load in the other unit, after a change of units or gyms, is read as the earlier load it stands for when it is the nearest load over it on its own spacing (a convention: 155 lb after 70 kg, which is 154.3 lb, is not a weight PR; 157.5 lb is). PRs count on any day, a lighter day, a deload, and an exercise made lighter included, and are announced as you log the set. Only a PR with a new best estimate is announced and counted (on a lift with no estimate, or a bodyweight lift before any weigh-in, any of them); a heavier set or more reps without one is kept in the list and named in the recap as heaviest yet. Counting them all made each load step a PR. On a bodyweight lift, PRs, estimates, trends, and charts are all read at your latest weigh-in for every session, so progress is more reps or more added load, never a change on the scale. Weight lifted uses each day's weigh-in, the work actually done.</p>
    <p><b>Moving</b>: up 3% or more with a trend clearly above zero. <b>Stalled</b>: flat or falling over the last 6 sessions (by the middle of the changes between every pair of them, so one good or bad day does not decide it) in each rep range you train it in, or 3 weeks if that covers more (at least 4 sessions); a lift on a heavy day and a light day is stalled only when it is stalled in both. With no PR in the last 3 of them, nor, in a session of that range done lighter since the third-last, a set stronger than any before it, the load no heavier than at the start of that stretch, and no more reps at that load than any session before it in the stretch, and only while you still train the lift and no injury it loads is flagged (the app holds its load then). Adding load and dropping reps for a while, or adding reps to later sets, as double progression does, is not a stall. A deload is suggested when 3 or more main lifts (compound lifts with an estimate) stall together, and not within 4 weeks of a lighter week (more than half its sessions done lighter, counted once it ends or from the second, or a deload begun mid-week, once its last two or more deload sessions were done lighter), a rest week, or a week with nothing trained in it, a week marked as a deload included; isolation and core lifts are listed but not counted for it.</p>
    <p><b>Weekly averages</b> are over the weeks you trained of the last 4, from the week after your first (${FIRST_WEEK_REASON}). A lighter week (${LIGHTER_WEEK_WORDS}) or a rest week is swapped for an earlier one. A week with no training is left out rather than counted as zero, and when 2 or more of the 4 were missed the Coach says so first.</p>
    <p><b>Consistency</b>: weeks with at least as many sessions as the routine you trained that week plans (one session, when Today starts with a blank session). A cycle that is not a week long plans the whole number of sessions under its rate: every other day is 3.5 a week, so 3, for the streak, adherence, and This week alike. Rest weeks are skipped.</p>
@@ -7747,7 +7811,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     function acctSheet(m) {
       const f = (label, k, type, ac, extra) => `<label class="field">${label}<input type="${type}" data-abind="${k}" value="${esc(m[k] || "")}" autocomplete="${ac}" ${extra || ""}></label>`;
       const email = f("Email", "email", "email", "email", 'autocapitalize="off" autocorrect="off" spellcheck="false" inputmode="email" enterkeyhint="next"');
-      const err = m.err ? `<p class="small" role="alert" style="color:var(--red);margin:0">${esc(m.err)}</p>` : "";
+      const err = `<p class="small" role="alert" style="color:var(--red);margin:0"${m.err ? "" : " hidden"}>${esc(m.err || "")}</p>`;
       const busyW = { signin: "Signing in", signup: "Creating your account", forgot: "Sending the link", newpw: "Saving" }[m.mode] || "One moment";
       const go = (label) => `<button type="submit" class="btn primary block" data-act="acctSubmit" ${m.busy ? "disabled" : ""}>${m.busy ? busyW : esc(label)}</button>`;
       const link = (mode, label) => `<button type="button" class="linkbtn tall" data-act="acctMode" data-mode="${mode}">${label}</button>`;
@@ -8314,7 +8378,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
         const el = document.querySelector(`.sg input[data-f="w"][data-b="${bi}"][data-s="${si}"]`);
         if (!el) return;
         const g = greyW(b, si);
-        const v = g == null ? ex.bw ? "0" : "" : String(loadIn(ex, g));
+        const v = g == null ? emptyLoad(ex) : String(loadIn(ex, g));
         if (el.placeholder !== v) el.placeholder = v;
       });
     }
@@ -8581,6 +8645,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       document.body.classList.remove("modal-open");
       renderModal.last = null;
       if (was && was.kind === "exMus") {
+        cancelAnimationFrame(B3.anim);
         B3.ex = null;
         if (B3.yawKeep != null) {
           B3.yaw = B3.yawKeep;
@@ -10824,7 +10889,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
           h += `<div class="sg${nr ? " norir" : ""} ${s.done ? "done" : ""}${pr ? " pr" : ""}"${pr ? ` data-pr="${pr}"` : ""}><button class="n wbtn${s.drop ? " drop" : s.warm ? " warm" : ""}" aria-label="Set ${si + 1} type: ${s.warm ? "warm-up" : s.drop ? "drop set" : "working set"}. Tap to change" data-act="sWarm" data-b="${bi}" data-s="${si}">${s.drop ? "↓" : s.warm ? "W" : wn}</button><span class="ls" aria-label="${lt ? esc("Last time " + lt) : "No set last time"}">${lt ? esc(lt).replace("×", "<wbr>×") : "–"}</span>
         <input type="text" inputmode="decimal" enterkeyhint="next" aria-label="${esc(ex.name)}, set ${si + 1} load" data-f="w" data-b="${bi}" data-s="${si}" value="${loadIn(ex, s.w)}" placeholder="${(() => {
             const g2 = s.w == null ? greyW(b, si) : null;
-            return g2 != null ? loadIn(ex, g2) : ex.bw ? "0" : "";
+            return g2 != null ? loadIn(ex, g2) : emptyLoad(ex);
           })()}">
         <input type="text" inputmode="numeric" enterkeyhint="next" aria-label="${esc(ex.name)}, set ${si + 1} ${ex.timed ? "seconds" : "reps"}${ex.perSide ? " per side" : ""}" data-f="r" data-b="${bi}" data-s="${si}" value="${s.r == null ? "" : s.r}" placeholder="${ph}">
         ${nr ? "" : rirSelect(s.rir, bi, si, p.rir)}
@@ -12057,7 +12122,7 @@ ${extraKpis()}</div>`;
       const ae = document.activeElement;
       const fk = same && ae && el.contains(ae) ? focusKey(ae) : null;
       const ss = fk && typeof ae.selectionStart === "number" ? ae.selectionStart : null, se = fk && typeof ae.selectionEnd === "number" ? ae.selectionEnd : null;
-      renderModalBody();
+      renderModalBody(same);
       if (el.hidden || !ui.modal) {
         document.body.classList.remove("modal-open");
         renderModal.last = null;
@@ -12084,7 +12149,7 @@ ${extraKpis()}</div>`;
       }
     }
     renderModal.last = null;
-    function renderModalBody() {
+    function renderModalBody(keep) {
       const m = ui.modal;
       const el = $("#modal");
       if (!m) {
@@ -12368,7 +12433,7 @@ ${extraKpis()}</div>`;
     <p class="small muted">${esc(m.help)}</p><textarea id="mText" aria-label="${esc(m.title || "Text")}" style="min-height:220px;font-size:13px" ${m.readonly ? "readonly" : ""}>${esc(m.text || "")}</textarea>
     <div class="row" style="margin-top:10px">${m.readonly ? '<button class="btn primary" data-act="copyText">Copy</button>' : '<button class="btn primary" data-act="importText">Import</button>'}<button class="btn" data-act="mClose">Close</button></div></div>`;
       }
-      el.innerHTML = h;
+      if (!(keep && m.kind === "account" && morphInto(el, h))) el.innerHTML = h;
       el.hidden = false;
       const sh = el.querySelector(".sheet");
       if (sh) {
@@ -16968,6 +17033,7 @@ ${JSON.stringify(fb.context, null, 1)}`;
     document.addEventListener("keydown", (e) => {
       if (e.key === "Escape" && TIP.el) tipHide();
     });
+    followViewport(window);
     document.addEventListener("submit", (e) => {
       if (e.target && e.target.id === "acctForm") {
         e.preventDefault();
@@ -18168,7 +18234,7 @@ ${JSON.stringify(fb.context, null, 1)}`;
       return state;
     }, set state(v) {
       setState(v);
-    }, fbContext, FB_CTX_MAX, logCut, logBuf, log, dateIndex, sessionsOn, bestLine, whyTarget, recent4w, weekSessions, fmtDate, fmtDateLong, fbShrink, orderAt, orderRun, dropOnlyLift, profHeavy, appBand, fitRecordOld, prof, profClean, profRule, profPlan, defPlan, defBand, profMoveBands, profApplyList, strengthPick, PROF_DAYS, FOCUS_MAX, estInLoad, keepExtra, EXTRA_MAX, draftPlanMin, pace, paceRatios, sessModelMin, PACE_N, PACE_DAYS, PACE_MIN, plainTemplate, trashTidy, ENV, KEY, COMMON, COMMON_TIP, isCommon, bwEvery, isRestWeek, sessCmp, avgWeeks, weekStreak, coach, noLog, afterSet, adjOn, bwAt, newBlock, cycleState, sortedSessions, addDays, loadIn, gymRack, gymClean, dbListOf, capOf, refreshEx, effShow, rirScale, setStr, libExercises, obGate, obTour, andList, belowMin, aboveMax, starterRoutine, starterSigs, plateList, exBarKg, VOL_MODES, liveLogFetch, regionSrc, fitTargets, firstFullWeek, moveBlock, BANDS, installSheet, siteHost, greyW, effW, greyR, lighterLoad, heavierLoad, incOf, swapPlan, planSetsPerWeek, weekNeed, stepRead, e1inv, rtfAt, rtfOf, rtfBand, calStats, rirEff, isHard, setCredit, tonnage, loadMode, loadWords, loadNote, progStep, jumpCap, setSecs, setupSecs, recovery, rolling7, rankDays, rankExercises, isCompound, patternOf, noE1, whtrLine, exHeadline, remainMin, shortPlan, weekPlan, cycleProjection, lastLighterWeek, avgFirstWeek, avgWait, stallWeeks, weeksAvg, fitFloors, refit, regionBalance, parseHeight, mixCheck, swapCands, eqPlan, exportCSV, importData, chunksOf, assemble, sessionMuscles, TRACK_ONLY, cloud, Hx, mergeChunk, baseOf, sync: () => cq(cloudPull), TEMPLATES, lastRFor, impDate, impRows, impNorm, impMatch, impFromText, impFromTable, impHeader, impBuild, impStart, impXlsx, parseSets, undoStack, undoRestore, undoForget, allTimeBests, bestsBoard, obActive, fmtW, rirUsual, rirEst, routineFromTemplate, plannedSets, map3d: () => ({ state: B3.state, fail: B3.fail, meshes: B3.meshes.length, yaw: B3.yaw, glow: Object.keys(B3.mats).filter((m) => B3.mats[m].emissiveIntensity > 0), canvas: !!document.querySelector("#bm3d canvas"), colors: Object.fromEntries(Object.entries(B3.mats).map(([m, mt]) => [m, "#" + mt.color.getHexString()])), pick: (x, y) => map3dPick(x, y), want: map3dColors() }), cloudState: () => ({ on: cloud.on, status: cloud.status, err: cloud.err, uid: cloud.uid, acct: cloud.acct }), acctUser: () => acct.user, acctWaiting: () => !!acctWait.pw, flush: () => cq(cloudFlush), backupDue, routineUpdates, planFor, platesMode, plateText, chunksOf, IDX, suggest, e1, render, ACT, ui, makeDemo, invalidate, normalize, snapshot, saveNow, timer, weekStats, weekStart, today, EX, blockProgress, dayMinutes, weekStreak, coach, tonnageNow, livePR, movers, stalledIds, muscleStatus, actualAvg4, plannedPerWeek, parseSets, fillSets, newBlock, lastNoteOf, sizeRows, sessionMuscleSets, sessionCapNote, routineClutter, rowBlank, dayReasons, impTextSets, liftTrend, prsWithin, activeRoutine, rackStep, repFloor, sessionLength, prBeat, exInjury, exJoints, openModal, EQUIP, HARD_EX, recentLighter, planEvidenceNote, howToUrl, editFp, toast, avgWeeks, regionWk, REGION_WKS, SAFETY_TXT, libFiltered, nameMatch, workLoad, fitE, lighter, offTarget, sessionWord, sessionWords, dayLabel, daySets, ssLetters, routineSig, tplCountLine, fatigueStalls, avgWeeksTxt, routineFromLog, repSpan, rangeWords, calDueIdx, readyCard, sameRR, hintOnce, overSets, rackTol, daysOff, BACK_DAYS, prName, sessTm, effTgt, bwDueCard, bwNoLoad, applyPick, joinAdjacent, sameExOnce, goalState, goalLine, bwRefLoad, ML, exMusParts, musTrend, U, toD, fromD, loadLabel, exName, planCredit, gymOf, isDeloadWeek, freeMode, injuredSet, prLoad, statsUpTo, readiness, bwRef, weekRoutine, easierText, barKg, suggestCore, loadOf, bwLoad, hardCredit, rirHalfOn };
+    }, fbContext, FB_CTX_MAX, logCut, logBuf, log, dateIndex, sessionsOn, bestLine, whyTarget, recent4w, weekSessions, fmtDate, fmtDateLong, fbShrink, orderAt, orderRun, dropOnlyLift, profHeavy, appBand, fitRecordOld, prof, profClean, profRule, profPlan, defPlan, defBand, profMoveBands, profApplyList, strengthPick, PROF_DAYS, FOCUS_MAX, estInLoad, keepExtra, EXTRA_MAX, draftPlanMin, pace, paceRatios, sessModelMin, PACE_N, PACE_DAYS, PACE_MIN, plainTemplate, trashTidy, ENV, KEY, COMMON, COMMON_TIP, isCommon, bwEvery, isRestWeek, sessCmp, avgWeeks, weekStreak, coach, noLog, afterSet, adjOn, bwAt, newBlock, cycleState, sortedSessions, addDays, loadIn, gymRack, gymClean, dbListOf, capOf, refreshEx, effShow, rirScale, setStr, libExercises, obGate, obTour, andList, belowMin, aboveMax, starterRoutine, starterSigs, plateList, exBarKg, VOL_MODES, liveLogFetch, regionSrc, fitTargets, firstFullWeek, moveBlock, BANDS, installSheet, siteHost, greyW, effW, greyR, lighterLoad, heavierLoad, incOf, swapPlan, planSetsPerWeek, weekNeed, stepRead, e1inv, rtfAt, rtfOf, rtfBand, calStats, rirEff, isHard, setCredit, tonnage, loadMode, loadWords, loadNote, progStep, jumpCap, setSecs, setupSecs, recovery, rolling7, rankDays, rankExercises, isCompound, patternOf, noE1, whtrLine, exHeadline, remainMin, shortPlan, weekPlan, cycleProjection, lastLighterWeek, avgFirstWeek, avgWait, stallWeeks, weeksAvg, fitFloors, refit, regionBalance, parseHeight, mixCheck, swapCands, eqPlan, exportCSV, importData, chunksOf, assemble, sessionMuscles, TRACK_ONLY, cloud, Hx, mergeChunk, baseOf, sync: () => cq(cloudPull), TEMPLATES, lastRFor, impDate, impRows, impNorm, impMatch, impFromText, impFromTable, impHeader, impBuild, impStart, impXlsx, parseSets, undoStack, undoRestore, undoForget, allTimeBests, bestsBoard, obActive, fmtW, rirUsual, rirEst, routineFromTemplate, plannedSets, map3d: () => ({ state: B3.state, fail: B3.fail, meshes: B3.meshes.length, yaw: B3.yaw, glow: Object.keys(B3.mats).filter((m) => B3.mats[m].emissiveIntensity > 0), canvas: !!document.querySelector("#bm3d canvas"), colors: Object.fromEntries(Object.entries(B3.mats).map(([m, mt]) => [m, "#" + mt.color.getHexString()])), pick: (x, y) => map3dPick(x, y), want: map3dColors() }), cloudState: () => ({ on: cloud.on, status: cloud.status, err: cloud.err, uid: cloud.uid, acct: cloud.acct }), acctUser: () => acct.user, acctWaiting: () => !!acctWait.pw, flush: () => cq(cloudFlush), backupDue, routineUpdates, planFor, platesMode, plateText, chunksOf, IDX, suggest, e1, render, ACT, ui, makeDemo, invalidate, normalize, snapshot, saveNow, timer, weekStats, weekStart, today, EX, blockProgress, dayMinutes, weekStreak, coach, tonnageNow, livePR, movers, stalledIds, muscleStatus, actualAvg4, plannedPerWeek, parseSets, fillSets, newBlock, lastNoteOf, sizeRows, sessionMuscleSets, sessionCapNote, routineClutter, rowBlank, dayReasons, impTextSets, liftTrend, prsWithin, activeRoutine, rackStep, repFloor, sessionLength, prBeat, exInjury, exJoints, openModal, EQUIP, HARD_EX, recentLighter, planEvidenceNote, howToUrl, editFp, toast, avgWeeks, regionWk, REGION_WKS, SAFETY_TXT, libFiltered, nameMatch, workLoad, fitE, lighter, offTarget, sessionWord, sessionWords, dayLabel, daySets, ssLetters, routineSig, tplCountLine, fatigueStalls, avgWeeksTxt, routineFromLog, repSpan, rangeWords, calDueIdx, readyCard, sameRR, hintOnce, overSets, rackTol, daysOff, BACK_DAYS, prName, sessTm, effTgt, bwDueCard, bwNoLoad, applyPick, joinAdjacent, sameExOnce, goalState, goalLine, bwRefLoad, ML, exMusParts, musTrend, U, toD, fromD, loadLabel, exName, planCredit, gymOf, isDeloadWeek, freeMode, injuredSet, prLoad, statsUpTo, readiness, bwRef, weekRoutine, easierText, barKg, suggestCore, loadOf, bwLoad, hardCredit, rirHalfOn, prFrame };
     render();
     wakeOn();
     timerResume();

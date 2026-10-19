@@ -348,6 +348,7 @@ Status: to do whenever you are at the gym; tell Claude what you see.
 - Rest timer across a screen lock; the share sheet to Files for a backup; the notch in the home-screen app; "New version ready" then Reload.
 - Auto-mark with the keyboard's Done on a grey reps field; the 3D body's drag and tap; the Add to Home Screen guide on iOS 26 Safari.
 - The app signing itself in after a confirmation link; a past workout from the week bar; the light Today card; a screenshot attached to a report.
+- From r54, in the preview (PENDING 311 f; no browser here has an on-screen keyboard): sign in with a wrong password, then tap the email field and change it without closing the sheet; with the keyboard up, the sign-in sheet and the exercise picker's search sit above it, every field and button in view and working where you tap.
 
 ## Reminders
 - Renew the `ironlog-feedback` token (B3) before it expires, a year after you make it. Claude writes the date here when you say B3 is done.

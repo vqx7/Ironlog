@@ -10,7 +10,7 @@ function renderModal(){
   const st=old?old.scrollTop:0,ist=oldIn?oldIn.scrollTop:0;
   const ae=document.activeElement;const fk=same&&ae&&el.contains(ae)?focusKey(ae):null;
   const ss=fk&&typeof ae.selectionStart==='number'?ae.selectionStart:null,se=fk&&typeof ae.selectionEnd==='number'?ae.selectionEnd:null;
-  renderModalBody();
+  renderModalBody(same);
   if(el.hidden||!ui.modal){document.body.classList.remove('modal-open');renderModal.last=null;return;}
   if(document.getElementById('bm3dx'))mount3D();
   document.body.classList.add('modal-open');renderModal.last=ui.modal;
@@ -21,7 +21,7 @@ function renderModal(){
     if(n&&typeof n.focus==='function')try{n.focus({preventScroll:true});if(ss!=null&&typeof n.setSelectionRange==='function')n.setSelectionRange(ss,se);}catch(e){/* caret restore is best effort */}}
 }
 renderModal.last=null;
-function renderModalBody(){
+function renderModalBody(keep){
   const m=ui.modal;const el=$('#modal');if(!m){el.hidden=true;return;}
   let h='';
   if(m.kind==='account'){h=acctSheet(m);}
@@ -232,8 +232,8 @@ function renderModalBody(){
     <p class="small muted">${esc(m.help)}</p><textarea id="mText" aria-label="${esc(m.title||'Text')}" style="min-height:220px;font-size:13px" ${m.readonly?'readonly':''}>${esc(m.text||'')}</textarea>
     <div class="row" style="margin-top:10px">${m.readonly?'<button class="btn primary" data-act="copyText">Copy</button>':'<button class="btn primary" data-act="importText">Import</button>'}<button class="btn" data-act="mClose">Close</button></div></div>`;
   }
-  el.innerHTML=h;el.hidden=false;
-  const sh=el.querySelector('.sheet');
+  // The account sheet redrawn while signing in keeps its fields, so the one in use stays under the keyboard (r54, src/app/sheets.ts).
+  if(!(keep&&m.kind==='account'&&morphInto(el,h)))el.innerHTML=h;el.hidden=false;const sh=el.querySelector('.sheet');
   if(sh){
     if(!sh.hasAttribute('tabindex'))sh.setAttribute('tabindex','-1');
     const hd=sh.querySelector('h3');

@@ -119,7 +119,7 @@ function settleLoad(b,si){
 /* A typed load changes the grey loads of the empty rows under it. */
 function refreshGreyW(bi){
   const b=state.draft&&state.draft.ex[bi];if(!b)return;const ex=EX(b.exId);
-  b.sets.forEach((x,si)=>{if(x.w!=null)return;const el=document.querySelector(`.sg input[data-f="w"][data-b="${bi}"][data-s="${si}"]`);if(!el)return;const g=greyW(b,si);const v=g==null?(ex.bw?'0':''):String(loadIn(ex,g));if(el.placeholder!==v)el.placeholder=v;});
+  b.sets.forEach((x,si)=>{if(x.w!=null)return;const el=document.querySelector(`.sg input[data-f="w"][data-b="${bi}"][data-s="${si}"]`);if(!el)return;const g=greyW(b,si);const v=g==null?emptyLoad(ex):String(loadIn(ex,g));if(el.placeholder!==v)el.placeholder=v;});
 }
 // Keyed by session too, so a block opened in one session is not open in the next.
 const blkKey=(bi,b)=>((state.draft&&state.draft.id)||'')+':'+bi+':'+b.exId;

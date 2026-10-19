@@ -867,13 +867,18 @@ table.t .stick-r{position:sticky;right:0;background:var(--bg);padding-left:6px}
 .hitem.open{background:none}
 
 /* ---------- modal, toast, timer ---------- */
-#modal{position:fixed;inset:0;z-index:50;background:rgba(6,7,9,.55);-webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px);display:flex;align-items:flex-end;justify-content:center}
-.sheet{position:relative;background:var(--surface);width:100%;max-width:640px;max-height:88vh;overflow:auto;overscroll-behavior:contain;border-radius:28px 28px 0 0;padding:22px 18px calc(18px + env(safe-area-inset-bottom,0px))}
+/* The sheets' layer covers the part of the screen that shows (--vv-top and
+   --vv-h, kept at the visual viewport by src/app/sheets.ts, r54): an iPhone's
+   keyboard covers the page without making it shorter, so a sheet sized by
+   the page sat behind it. Where there is no visual viewport, the whole page,
+   as before. */
+#modal{position:fixed;left:0;right:0;top:var(--vv-top,0px);height:var(--vv-h,100%);z-index:50;background:rgba(6,7,9,.55);-webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px);display:flex;align-items:flex-end;justify-content:center}
+.sheet{position:relative;background:var(--surface);width:100%;max-width:640px;max-height:calc(var(--vv-h,100vh)*.88);overflow:auto;overscroll-behavior:contain;border-radius:28px 28px 0 0;padding:22px 18px calc(18px + env(safe-area-inset-bottom,0px))}
 /* The grabber tells a phone user this slides up from the bottom. */
 .sheet::before{content:"";position:absolute;top:8px;left:50%;width:38px;height:5px;margin-left:-19px;border-radius:3px;background:var(--surface-3)}
 /* Pickers keep one height while you type, so the search box does not jump as
    the list shrinks; only the list scrolls. */
-.sheet.fixed{height:88vh;height:88dvh;display:flex;flex-direction:column;overflow:hidden;padding-bottom:calc(10px + env(safe-area-inset-bottom,0px))}
+.sheet.fixed{height:88vh;height:88dvh;height:calc(var(--vv-h,100dvh)*.88);display:flex;flex-direction:column;overflow:hidden;padding-bottom:calc(10px + env(safe-area-inset-bottom,0px))}
 .sheet.fixed .sheet-scroll{flex:1 1 auto;min-height:0;overflow:auto;overscroll-behavior:contain;margin:8px -16px 0;padding:0 16px 8px}
 .pick-grp{font:650 11.5px var(--font);letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin:14px 0 2px}
 .pick-grp:first-child{margin-top:4px}

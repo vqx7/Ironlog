@@ -14,7 +14,8 @@
 //   - a bad day repeats the target, Last says "below usual" and grey reps
 //     come from the session before it; a second in a row is followed;
 //   - a session r53 saved as trimmed is read by the one rule, its trend
-//     counting; a lighter day at the usual load with fewer sets is short of
+//     counting, and one whose sets were filled in later is a full session
+//     (311 d); a lighter day at the usual load with fewer sets is short of
 //     the usual, its trend counting;
 //   - after a break the first session back sets the next target ("Next time
 //     picks up from here"), a trend does not run across the break, and a
@@ -29,7 +30,27 @@
 //   - the usual load on a lighter day is the working load, not a heavy
 //     single; a lift counted in full on a lighter day is one of the sessions
 //     a later one is read lighter against;
-//   - Finish's offer after a lighter day adds Pick for me's own count.
+//   - Finish's offer after a lighter day adds Pick for me's own count;
+//   - a week tagged as a deload, every lift done in full, is no lighter week
+//     and stays in the weekly averages (313 e);
+//   - a PR is announced as the set is logged on any day, and a bodyweight
+//     lift before any weigh-in has its rep PRs listed and announced (311 a);
+//   - a blank session in a week marked as a deload is a deload, an exercise
+//     added to it at half its sets (311 c);
+//   - a goal reads every set of the last 12 weeks, a lighter day's too, as
+//     the bests do (311 e);
+//   - Finish keeps an injury's hold on the saved exercise, and a lift held
+//     for an injury since cleared is not read as stalled (311 g);
+//   - an assisted lift's first session shows no help in grey, and Finish
+//     asks for the help used (315 i);
+//   - a change of units or gyms is not a PR (the 155 lb case of 315): in the
+//     PR list, as the set is logged and in the toast's numbers, for a
+//     barbell either way, dumbbells and an assisted lift, while a step past
+//     the old load and a rep more at the same weight still are;
+//   - a lift trained in two rep ranges is stalled only when every range in
+//     use is (312 A);
+//   - a sheet sits in the part of the screen the keyboard leaves, and the
+//     sign-in sheet keeps its fields through a wrong password (311 f).
 const { open } = require('./h');
 const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log('FAIL', m, x !== undefined ? JSON.stringify(x) : ''); } else console.log('ok  ', m); };
 const wait = ms => new Promise(r => setTimeout(r, ms));
@@ -89,6 +110,13 @@ const FILE = process.argv[2] || 'index.html';
     const kept = await ev(() => window.__ironlog.state.sessions.find(s => s.id === 'ca4').ex[0].cut === true);
     ok(r && r.short === 'sets' && n === 4 && nx.basis === '2026-10-08', 'a session saved as trimmed before r54 (102.5 x 8 x 3 after 100 x 8 x 4): short of its usual sets, so its target comes from Oct 8, and its trend now reads it (4 sessions)', { r, n, nx });
     ok(kept, 'the mark it was saved with is kept as saved (normalize keeps it; nothing reads it since r54)');
+  }
+  // A session saved as trimmed whose two forgotten sets were added later in History (PENDING 311 d): read again from its sets, a full session, so it sets the next target (r53: trimmed still, its target from the week before).
+  {
+    await log([ses('cb1', '2026-09-24', 'floorPress', [6, 10], x(100, [8, 8, 8, 8])), ses('cb2', '2026-10-01', 'floorPress', [6, 10], x(100, [8, 8, 8, 8])),
+      ses('cb3', '2026-10-08', 'floorPress', [6, 10], x(100, [9, 9, 9, 9]), { ex: { cut: true } })]);
+    const r = await read('floorPress', 'cb3'); const nx = await next('floorPress', P4);
+    ok(r && !r.short && !nx.basis && /^37\+ reps over 4 sets at 100 kg$/.test(nx.target || ''), 'floor press saved as trimmed, its sets since filled in to 100 x 9 x 4: a full session, so the next target comes from it (37+ reps over 4 sets)', { r, nx });
   }
   // A lighter day at the usual load, half the sets: short of the usual, its trend counting, the target repeating.
   {
@@ -205,6 +233,14 @@ const FILE = process.argv[2] || 'index.html';
     await ev(() => { const L = window.__ironlog; L.state.draft = null; L.saveNow(); });
   }
 
+  // ---- A week whose every session was tagged a deload, each lift at its usual work, is no lighter week: it stays in the weekly averages (PENDING 313 e).
+  {
+    const days = ['2026-09-14', '2026-09-17', '2026-09-21', '2026-09-24', '2026-09-28', '2026-10-01', '2026-10-05', '2026-10-08'];
+    await log(days.map((d, i) => ses('lw' + i, d, 'bench', [6, 10], x(100, [8, 8, 8]), d >= '2026-09-28' && d < '2026-10-05' ? { deload: true, dayName: 'Session (deload)' } : undefined)));
+    const w = await ev(() => { const L = window.__ironlog; const a = L.avgWeeks(4); return { light: !!L.IDX().lightWk['2026-09-28'], left: a ? a._light : null, chest: a ? a.chest : null, tags: L.IDX().byEx.bench.filter(q => q.date >= '2026-09-28' && q.date < '2026-10-05').map(q => [q.deload, q.tag || null]) }; });
+    ok(!w.light && w.left === 0 && w.chest === 6 && JSON.stringify(w.tags) === '[[false,"deload"],[false,"deload"]]', 'bench 100 x 8 x 3 twice a week for four weeks, the third week\'s two sessions tagged deload but done in full: not a lighter week, so the weekly average keeps it (6 chest sets a week; r53 left the week out by its label)', w);
+  }
+
   // ---- A PR is announced as the set is logged on any day (PENDING 311 a; r53 counted it, shown at Finish only).
   {
     await log(['2026-09-24', '2026-10-01', '2026-10-08'].map((d, i) => ses('pa' + i, d, 'bench', [6, 10], x(100, [8, 8, 8]))));
@@ -232,6 +268,52 @@ const FILE = process.argv[2] || 'index.html';
     const live = await ev(() => { const row = document.querySelector('[data-act="sDone"][data-b="0"][data-s="0"]').closest('.sg'); return { id: window.__ironlog.state.draft.ex[0].exId, pr: row.getAttribute('data-pr') }; });
     ok(live.id === 'pullup' && live.pr === 'Rep PR', 'and live: 10 pull-ups in a session after 8s is announced as a rep PR', live);
     await ev(() => { const L = window.__ironlog; L.state.draft = null; L.saveNow(); L.render(); });
+  }
+
+  // ---- A blank session in a week marked as a deload is a deload (PENDING 311 c: r53 started it untagged, at full sets).
+  {
+    await log(['2026-09-24', '2026-10-01', '2026-10-08'].map((d, i) => ses('fd' + i, d, 'bench', [6, 10], x(100, [8, 8, 8]))));
+    await ev(() => { const L = window.__ironlog; if (!L.isDeloadWeek()) L.ACT.deloadToggle(); L.ACT.startFree(); }); await wait(150);
+    await page.click('#modal [data-act="pickDo"][data-ex="bench"]'); await wait(150);
+    const fd = await ev(() => { const L = window.__ironlog; const d = L.state.draft; const b = d.ex[0]; return { week: L.isDeloadWeek(), deload: d.deload, name: d.dayName, ex: b && b.exId, rows: b ? b.sets.length : null, plan: L.planFor('bench', null, d.dayId).sets, full: b ? b.full : null, sw: b ? b.sw : null }; });
+    ok(fd.week && fd.deload === true && /deload/i.test(fd.name) && fd.ex === 'bench' && fd.rows === Math.ceil(fd.plan / 2) && fd.full === fd.plan && fd.sw < 100, 'a deload week marked, then a blank session: it is a deload, and bench added to it comes in at half its sets (' + fd.rows + ' of ' + fd.plan + ') and under 100 kg', fd);
+    await ev(() => { const L = window.__ironlog; L.state.draft = null; if (L.isDeloadWeek()) L.ACT.deloadToggle(); L.saveNow(); L.render(); });
+  }
+
+  // ---- A goal reads every set of the last 12 weeks, a lighter day's too, as the bests do (PENDING 311 e: r53 left those days out).
+  {
+    await log([ses('ga1', '2026-09-24', 'bench', [6, 10], x(90, [8, 8, 8])), ses('ga2', '2026-10-01', 'bench', [6, 10], x(90, [8, 8, 8])), ses('ga3', '2026-10-08', 'bench', [6, 10], [[120, 2, 1], [85, 8, 1], [85, 8, 1]], { light: true })]);
+    const g = await ev(() => { const L = window.__ironlog; L.state.exercises.find(e => e.id === 'bench').goal = { w: 110, r: 5 }; L.invalidate(); const s = L.goalState('bench'); const q = L.IDX().byEx.bench.find(e => e.sid === 'ga3'); return { cur: s.cur, pct: s.pct, light: q.light, best: q.best, line: L.goalLine('bench').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ') }; });
+    ok(g.light === true && Math.abs(g.cur - g.best) < 1e-9 && g.pct === 100 && /within reach/.test(g.line), 'bench 90 x 8 twice, then a Lighter day at 85 kg opened with 120 x 2: a goal of 110 x 5 reads that 120 x 2, as the bests do, so it is within reach (r53: 93% there)', g);
+    await ev(() => { const L = window.__ironlog; delete L.state.exercises.find(e => e.id === 'bench').goal; L.invalidate(); L.saveNow(); });
+  }
+
+  // ---- A session held for an injury stays held: clearing the injury does not make the lift read stalled (PENDING 311 g).
+  {
+    await log(['2026-09-24', '2026-10-01', '2026-10-08'].map((d, i) => ses('ia' + i, d, 'bench', [6, 10], x(100, [8, 8, 8]))));
+    await ev(() => { const L = window.__ironlog; L.state.injuries = [{ m: 'chest', note: '' }]; L.state = L.normalize(L.state); L.invalidate(); L.saveNow(); L.ACT.startSession({ dataset: { day: '0', light: '0' } }); const d = L.state.draft; d.ex = d.ex.filter(b => b.exId === 'bench'); for (const q of d.ex[0].sets) { q.w = 100; q.r = 8; q.done = true; } d._rampAsked = true; L.saveNow(); });
+    const held = await ev(() => window.__ironlog.state.draft.ex[0].inj);
+    await ev(() => window.__ironlog.ACT.finish()); await wait(400);
+    const saved = await ev(() => { const L = window.__ironlog; const ss = L.state.sessions[L.state.sessions.length - 1]; return { draft: !!L.state.draft, inj: ss.ex[0].inj, exId: ss.ex[0].exId, stored: JSON.parse(localStorage.getItem(L.KEY)).sessions.slice(-1)[0].ex[0].inj }; });
+    ok(held === 'chest' && !saved.draft && saved.exId === 'bench' && saved.inj === 'chest' && saved.stored === 'chest', 'chest flagged, bench held for it: Finish saves the hold on the exercise, on the phone too (r53 kept no record of it)', { held, saved });
+    await ev(() => { const L = window.__ironlog; L.state.injuries = []; L.invalidate(); L.saveNow(); });
+    const days = ['2026-08-27', '2026-09-03', '2026-09-10', '2026-09-17', '2026-09-24', '2026-10-01', '2026-10-08'];
+    await log(days.map((d, i) => ses('ih' + i, d, 'bench', [6, 10], x(100, [8, 8, 8]), i >= 3 ? { ex: { inj: 'chest' } } : undefined)));
+    const st = await ev(() => { const L = window.__ironlog; return { inj: L.state.injuries.length, kept: L.state.sessions.filter(q => q.ex[0].inj === 'chest').length, stalled: L.IDX().exStats.bench.stalled, ids: L.stalledIds(), coach: L.coach().text }; });
+    ok(st.inj === 0 && st.kept === 4 && st.stalled === false && !st.ids.includes('bench') && !/stall/i.test(st.coach), 'bench flat at 100 x 8 x 3 for seven weeks, the last four held for a chest injury now cleared: not stalled, and the coach does not say so (r53: stalled)', st);
+  }
+
+  // ---- An assisted lift's first session shows no help in grey, and Finish asks for the help used (PENDING 315 i).
+  {
+    await log([]);
+    await ev(() => { const L = window.__ironlog; L.ACT.startSession({ dataset: { day: '0', light: '0' } }); const d = L.state.draft; d.ex = []; L.saveNow(); L.ACT.pickSession(); }); await wait(100);
+    await ev(() => window.__ironlog.applyPick(window.__ironlog.ui.modal, 'assistPullup')); await wait(150);
+    const a = await ev(() => { const L = window.__ironlog; const d = L.state.draft; const b = d.ex[0]; const inp = document.querySelector('.sg input[data-f="w"][data-b="0"][data-s="0"]'); return { exId: b.exId, sw: b.sw, grey: L.greyW(b, 0), shown: inp ? inp.placeholder : null }; });
+    ok(a.exId === 'assistPullup' && a.sw == null && a.grey == null && !a.shown, 'assisted pull-ups with nothing logged: no help in grey to tick past (r53: 0, full bodyweight)', a);
+    await ev(() => { const L = window.__ironlog; const b = L.state.draft.ex[0]; for (const q of b.sets) { q.r = 6; q.done = true; } L.state.draft._rampAsked = true; L.saveNow(); L.ACT.finish(); }); await wait(300);
+    const q = await ev(() => { const L = window.__ironlog; const m = L.ui.modal; return { kind: m && m.kind, title: m && m.title, body: m && m.body, draft: !!L.state.draft }; });
+    ok(q.kind === 'confirm' && q.title === 'Add the help you used?' && /Assisted Pull-up/.test(q.body || '') && q.draft, 'ticked with no help typed, Finish asks for the help used before saving', q);
+    await ev(() => { const L = window.__ironlog; L.closeModal && L.closeModal(); L.ui.modal = null; L.state.draft = null; L.saveNow(); L.render(); });
   }
 
   // ---- Changing units or gyms is not a PR (PENDING 315, the audit: 155 lb after 70 kg logged a weight PR made of unit rounding; V 317 a).
@@ -289,9 +371,50 @@ const FILE = process.argv[2] || 'index.html';
     const rising = await ev(() => { const L = window.__ironlog; return { stalled: L.IDX().exStats.bench.stalled, ids: L.stalledIds() }; });
     ok(rising.stalled === false && !rising.ids.includes('bench'), 'bench flat at 100 x 8 x 3 on its heavy day for six weeks, its light day rising 60 to 70 kg: not stalled, though its newest session is a heavy day (r53 read the newest range alone: stalled)', rising);
     await log(two(() => 60));
-    const flat = await ev(() => { const L = window.__ironlog; return { stalled: L.IDX().exStats.bench.stalled, weeks: L.stallWeeks('bench') }; });
+    const flat = await ev(() => { const L = window.__ironlog; return { stalled: L.IDX().exStats.bench.stalled, weeks: L.stallWeeks ? L.stallWeeks('bench') : 'none on this build' }; });
     ok(flat.stalled === true && flat.weeks === 4, 'both days flat, the heavy day\'s stretch 5 weeks and the light day\'s 4: stalled, for as long as the shorter (4 weeks)', flat);
     await ev(() => { const L = window.__ironlog; const R = L.activeRoutine(); for (const d of R.days) d.items = d.items.filter(i => i.uid !== 'lb1'); L.saveNow(); });
+  }
+
+  // ---- Sheets and the on-screen keyboard (PENDING 311 f, 309; V on the r52 preview: after Wrong email or password the email
+  // could not be tapped, and sheets sit behind the keyboard). No browser here has an on-screen keyboard: the visual viewport
+  // is moved the way a keyboard moves it, and V checks the real one on the phone.
+  {
+    const Q = await open(FILE, { browser: P.browser, touch: true, clock: '2026-10-15T10:00:00', realStarter: true, setup: ctx => ctx.addInitScript(() => {
+      // A stand-in account service that refuses every password, as the real one answers a wrong one.
+      window.ironlogAuth = { user: async () => null, onChange: () => {}, signOut: async () => {}, release: () => {}, signIn: async () => { const e = new Error('Wrong email or password.'); e.code = 'invalid_credentials'; throw e; } };
+    }) });
+    const q = Q.page; const qe = (f, a) => q.evaluate(f, a);
+    await qe(() => { const L = window.__ironlog; L.state.settings.onboarded = true; L.saveNow(); L.render(); L.ACT.acctOpen({ dataset: { mode: 'signin' } }); }); await wait(150);
+    const EM = '#modal [data-abind="email"]', PW = '#modal [data-abind="pw"]';
+    await q.fill(EM, 'v@example.com'); await q.fill(PW, 'not it');
+    await qe(([a, b]) => { document.querySelector(a).__kept = 1; document.querySelector(b).__kept = 1; }, [EM, PW]);
+    await q.tap('#modal [data-act="acctSubmit"]');
+    await q.waitForFunction(() => { const m = window.__ironlog.ui.modal; return m && m.kind === 'account' && !m.busy && m.err; }, null, { timeout: 5000 }).catch(() => {});
+    const after = await qe(([a, b]) => { const al = document.querySelector('#modal [role="alert"]'); return { err: al && !al.hidden ? al.textContent : null, email: document.querySelector(a).__kept === 1, pw: document.querySelector(b).__kept === 1, value: document.querySelector(a).value }; }, [EM, PW]);
+    ok(after.err === 'Wrong email or password.' && after.email && after.pw && after.value === 'v@example.com', 'a wrong password: the sheet says so and keeps its fields as they were, the same fields, so the one in use stays under the keyboard (r53 drew new ones)', after);
+    await q.tap(EM); await wait(100);
+    const tapped = await qe((a) => document.activeElement === document.querySelector(a), EM);
+    await q.fill(EM, 'v2@example.com');
+    ok(tapped && (await qe((a) => document.querySelector(a).value, EM)) === 'v2@example.com', 'then a tap on the email field puts the cursor there, and it takes a new address (a guard: r53 does this here, in a browser with no keyboard)', { tapped });
+    // A keyboard that leaves the top 380 px of the screen, then the page scrolled 120 px to the field, then the keyboard closed.
+    const vv = (h, top) => qe(([h, top]) => { const v = window.visualViewport; if (h == null) { delete v.height; delete v.offsetTop; } else { Object.defineProperty(v, 'height', { configurable: true, get: () => h }); Object.defineProperty(v, 'offsetTop', { configurable: true, get: () => top }); } v.dispatchEvent(new Event('resize')); v.dispatchEvent(new Event('scroll')); }, [h, top]);
+    const box = () => qe(() => { const r = s => { const e = document.querySelector(s); if (!e) return null; const b = e.getBoundingClientRect(); return { top: Math.round(b.top), bottom: Math.round(b.bottom) }; }; return { modal: r('#modal'), sheet: r('#modal .sheet'), email: r('#modal [data-abind="email"]'), go: r('#modal [data-act="acctSubmit"]'), h: innerHeight }; });
+    await vv(380, 0); await wait(50); const k1 = await box();
+    ok(k1.modal.top === 0 && k1.modal.bottom === 380 && k1.sheet.bottom <= 380 && k1.email.top >= 0 && k1.go.bottom <= 380, 'with the keyboard up, the sign-in sheet sits in the 380 px it leaves, the email field and Sign in in view (r53: behind it)', k1);
+    await vv(380, 120); await wait(50); const k2 = await box();
+    ok(k2.modal.top === 120 && k2.modal.bottom === 500 && k2.sheet.bottom <= 500, 'and when the page scrolls to the field, the sheet moves with what shows', k2);
+    await vv(null); await wait(50); const k3 = await box();
+    ok(k3.modal.top === 0 && k3.modal.bottom === k3.h && k3.sheet.bottom === k3.h, 'and when the keyboard closes, the sheet is back at the bottom of the screen', k3);
+    // A sheet of a fixed height, the exercise picker with its search field, fits too.
+    await qe(() => { const L = window.__ironlog; L.ACT.mClose(); L.ACT.startSession({ dataset: { day: '0', light: '0' } }); L.ACT.pickSession(); }); await wait(150);
+    await vv(380, 0); await wait(50);
+    const pk = await qe(() => { const e = document.querySelector('#modal .sheet.fixed'); const b = e && e.getBoundingClientRect(); const s = document.querySelector('#modal input[type="search"], #modal input'); const sb = s && s.getBoundingClientRect(); return e ? { bottom: Math.round(b.bottom), height: Math.round(b.height), search: sb ? Math.round(sb.bottom) : null } : null; });
+    ok(pk && pk.bottom <= 380 && Math.abs(pk.height - 0.88 * 380) <= 1 && pk.search != null && pk.search <= 380, 'the exercise picker, a sheet of one height, takes 88% of what the keyboard leaves, its search field in view', pk);
+    await vv(null);
+    await qe(() => { const L = window.__ironlog; L.ACT.mClose(); L.state.draft = null; L.saveNow(); });
+    ok(!Q.errors.length, 'no page errors on the sheets with the keyboard', Q.errors);
+    await Q.ctx.close();
   }
 
   ok(!P.errors.length, 'no page errors', P.errors);

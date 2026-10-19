@@ -54,13 +54,16 @@ const EXTRA = {
   // History's words for each lift of a session (r54): the log's newest sessions, and none.
   sessionWords: (s) => [[s.sessions.slice(-6).map(x => x.id)], [[]]],
   // Each tagged lift a step up from loads on and off its rack, to a little above and well above (moved from the legacy script in r54).
+  // A set being logged, as its PRs judge it (r54): each lift's newest set, the same weight typed in the other unit on its usual step, a blank load, and no date.
+  prFrame: (s, ids) => ids.flatMap(id => { const ss = s.sessions.filter(x => x.ex.some(b => b.exId === id)); const last = ss[ss.length - 1]; if (!last) return [[id, { w: 20, r: 8 }, '']]; const set = last.ex.find(b => b.exId === id).sets[0], w = +set.w || 0; const other = Math.abs(w / 0.05 - Math.round(w / 0.05)) < 1e-6 ? Math.round(w / 0.45359237 / 5) * 5 * 0.45359237 : Math.round(w / 2.5) * 2.5; return [[id, set, last.date], [id, { ...set, w: other }, last.date], [id, { ...set, w: other, r: (+set.r || 0) + 1 }, last.date], [id, { w: '', r: 5 }, last.date], [id, set, '']]; }),
   heavierLoad: (s, ids) => ids.map(id => s.exercises.find(e => e.id === id)).filter(Boolean).flatMap(e => [[e, null, 20, 21], [e, null, 20, 40], [e, null, 5.443, 9], [e, { inc: 2.5 }, 50, 60]])
 };
 // Hand-made histories beside the wide ones, for paths those never reach, each built on a wide history's settings,
 // exercises and routines (since r54): a lifter back this week after ten weeks away, which is not a break (something
 // is logged in the last 4 weeks) and has no average yet (the coach's "after a full week of training"); and Strength
 // 5 x 5 done on Monday, Wednesday and Friday, every set as planned, whose last three full weeks hold four A days,
-// so chest and upper back are on plan under their minimum (weeks.ts, cycleMixIn; the coach's "Every muscle on plan").
+// so chest and upper back are on plan under their minimum (weeks.ts, cycleMixIn; the coach's "Every muscle on plan");
+// and a bench press changed from kilograms to pounds at the same weight (prSameLoad, r54).
 const day = (d, n) => new Date(Date.parse(d + 'T12:00:00Z') + n * 864e5).toISOString().slice(0, 10);
 const monday = d => day(d, -((new Date(d + 'T12:00:00Z').getUTCDay() + 6) % 7));
 // Strength 5 x 5 as the template makes it, and its planned hard sets a week by r54's reading (three sessions a week), as a first-run pick fits the targets to.
@@ -95,7 +98,13 @@ const SCENARIOS = [
       routines: [...h.raw.routines.filter(r => r.id !== R.id), R], activeRoutineId: R.id,
       settings: { ...h.raw.settings, restWeeks: [], todayStart: undefined, rirMode: 'on', rirHalf: undefined, profile: undefined, bandsFit: undefined, bands, priorities: [] },
       sessions } };
-  }
+  },
+  // A bench press in kilograms, then the same weight typed in pounds at another gym (155 lb, the nearest 5 lb load over
+  // 70 kg), one more rep there, and a step past it (157.5 lb): the PR reading of a load another unit stands for
+  // (prSameLoad, r54), which the wide histories, each made in one unit, may not reach.
+  h => ({ ...h, raw: { ...h.raw, injuries: [], deloadWeek: null, draft: null, settings: { ...h.raw.settings, restWeeks: [] },
+    sessions: [[-30, 70, 8], [-23, 70, 8], [-16, 155, 8], [-9, 155, 9], [-2, 157.5, 8]].map(([n, w, r], i) => ({ id: 'unit' + i, date: day(h.today, n), dayIdx: 0, dayId: null, dayName: 'Session', routineId: '', free: true, notes: '',
+      ex: [{ exId: 'bench', rr: [6, 10], sets: [{ w: i < 2 ? w : w * 0.45359237, r, rir: 1, done: true }, { w: i < 2 ? w : w * 0.45359237, r: 8, rir: 1, done: true }] }] })) } })
 ];
 
 // The child: the bundle on the page's histories, under V8's coverage.
