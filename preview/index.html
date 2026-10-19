@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-N/mTXwFTBFccXJeXguQVUbWrTDOjfgCNUlJicBwRfWY=' 'sha256-tuSgXs5JTxAxl+0h6Mmbx/BgvpNDfjiq2RiZRPGtwkc=' 'sha256-YHdgjdaHPObo0ajgr78/3fg0b/g2KACx2Yivxr2AJEo=' 'sha256-YoILfEALRZfGWpzGx8BxDvLAzmEZMY/KnooAa0f/fvo=' 'sha256-J4UrXwIeplIJZfkgJq3M75mmvlwXBomq0l+LhSwoEfI='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https://fqvupierxrvpoidtwlon.supabase.co wss://fqvupierxrvpoidtwlon.supabase.co https://api.pwnedpasswords.com; worker-src 'self'; manifest-src 'self'; media-src 'self'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-N/mTXwFTBFccXJeXguQVUbWrTDOjfgCNUlJicBwRfWY=' 'sha256-tuSgXs5JTxAxl+0h6Mmbx/BgvpNDfjiq2RiZRPGtwkc=' 'sha256-YHdgjdaHPObo0ajgr78/3fg0b/g2KACx2Yivxr2AJEo=' 'sha256-mft+1SE0/+Lqf0FCvQTym2XvJIwk7Xb9EiBd0xr/0QE=' 'sha256-J4UrXwIeplIJZfkgJq3M75mmvlwXBomq0l+LhSwoEfI='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https://fqvupierxrvpoidtwlon.supabase.co wss://fqvupierxrvpoidtwlon.supabase.co https://api.pwnedpasswords.com; worker-src 'self'; manifest-src 'self'; media-src 'self'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="app-build" content="2026.10.18-r54">
 <title>Ironlog Preview</title>
@@ -890,26 +890,17 @@ table.t .stick-r{position:sticky;right:0;background:var(--bg);padding-left:6px}
 .hitem.open{background:none}
 
 /* ---------- modal, toast, timer ---------- */
-/* The sheets' layer covers the whole screen, and its sheet sits at the bottom
-   of the part that shows (src/app/sheets.ts keeps --vv-h and --vv-under at the
-   visual viewport, r54): an iPhone's keyboard covers the page without making
-   it shorter, so a sheet at the page's bottom sat behind it. Below that part
-   (behind the keyboard, and in iOS 26 Safari behind its glass address pill
-   and the bar above the keyboard, which show what is under them) the strip is
-   the sheet's own colour, so no part of the page shows there (V on the r54
-   preview: the sheet sized to the part that shows left the page's own button
-   and text visible under it, "showing twice"). Where there is no visual
-   viewport, the whole page, as before. */
-#modal{position:fixed;inset:0;z-index:50;background:rgba(6,7,9,.55);-webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px);display:flex;align-items:flex-end;justify-content:center;padding-bottom:var(--vv-under,0px)}
-#modal::after{content:"";position:absolute;left:0;right:0;bottom:0;height:var(--vv-under,0px);background:var(--surface)}
-/* What a fixed element fills, measured by src/app/sheets.ts. */
-.vvprobe{position:fixed;top:0;bottom:0;left:0;width:0;visibility:hidden;pointer-events:none}
-.sheet{position:relative;background:var(--surface);width:100%;max-width:640px;max-height:calc(var(--vv-h,100vh)*.88);overflow:auto;overscroll-behavior:contain;border-radius:28px 28px 0 0;padding:22px 18px calc(18px + env(safe-area-inset-bottom,0px))}
+/* Sheets do not follow the on-screen keyboard: iOS scrolls the field being
+   typed in into view itself. r54 tried twice, sizing sheets by the visual
+   viewport, and on V's iPhone the first showed the page under the sheet and
+   the second moved the page up and down as the keyboard came (PENDING 322). */
+#modal{position:fixed;inset:0;z-index:50;background:rgba(6,7,9,.55);-webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px);display:flex;align-items:flex-end;justify-content:center}
+.sheet{position:relative;background:var(--surface);width:100%;max-width:640px;max-height:88vh;overflow:auto;overscroll-behavior:contain;border-radius:28px 28px 0 0;padding:22px 18px calc(18px + env(safe-area-inset-bottom,0px))}
 /* The grabber tells a phone user this slides up from the bottom. */
 .sheet::before{content:"";position:absolute;top:8px;left:50%;width:38px;height:5px;margin-left:-19px;border-radius:3px;background:var(--surface-3)}
 /* Pickers keep one height while you type, so the search box does not jump as
    the list shrinks; only the list scrolls. */
-.sheet.fixed{height:88vh;height:88dvh;height:calc(var(--vv-h,100dvh)*.88);display:flex;flex-direction:column;overflow:hidden;padding-bottom:calc(10px + env(safe-area-inset-bottom,0px))}
+.sheet.fixed{height:88vh;height:88dvh;display:flex;flex-direction:column;overflow:hidden;padding-bottom:calc(10px + env(safe-area-inset-bottom,0px))}
 .sheet.fixed .sheet-scroll{flex:1 1 auto;min-height:0;overflow:auto;overscroll-behavior:contain;margin:8px -16px 0;padding:0 16px 8px}
 .pick-grp{font:650 11.5px var(--font);letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin:14px 0 2px}
 .pick-grp:first-child{margin-top:4px}
@@ -947,7 +938,7 @@ details.more>summary .small{display:block;font-weight:400}
 @keyframes flashIn{0%{box-shadow:0 0 0 3px var(--volt-line)}100%{box-shadow:0 0 0 0 transparent}}
 .block.flash{animation:flashIn 1.4s ease-out}
 .sheet h3{font:700 22px/1.15 var(--font);letter-spacing:-.015em}
-@media(min-width:700px){#modal{align-items:center}#modal::after{display:none}.sheet{border-radius:28px}.sheet::before{display:none}}
+@media(min-width:700px){#modal{align-items:center}.sheet{border-radius:28px}.sheet::before{display:none}}
 .sheet-h{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:10px}
 .pick{display:flex;justify-content:space-between;align-items:center;gap:8px;width:100%;text-align:left;background:none;border:0;border-bottom:1px solid var(--line-soft);padding:11px 2px;cursor:pointer;color:var(--ink)}
 .pick b{font-weight:650}
@@ -6104,28 +6095,6 @@ loadScript(['vendor/chart.umd.js','https://cdnjs.cloudflare.com/ajax/libs/Chart.
   };
 
   // src/app/sheets.ts
-  function followViewport(win) {
-    const vv = win.visualViewport;
-    if (!vv) return () => void 0;
-    const doc = win.document, root = doc.documentElement;
-    const probe = doc.createElement("div");
-    probe.className = "vvprobe";
-    probe.setAttribute("aria-hidden", "true");
-    doc.body.appendChild(probe);
-    const set = () => {
-      const under = probe.getBoundingClientRect().height - vv.offsetTop - vv.height;
-      root.style.setProperty("--vv-h", `${vv.height}px`);
-      root.style.setProperty("--vv-under", `${under >= 1 ? under : 0}px`);
-    };
-    vv.addEventListener("resize", set);
-    vv.addEventListener("scroll", set);
-    set();
-    return () => {
-      vv.removeEventListener("resize", set);
-      vv.removeEventListener("scroll", set);
-      probe.remove();
-    };
-  }
   var wordsOnly = (n) => !Array.from(n.childNodes).some((c) => c instanceof Element);
   function sameShape(a, b) {
     if (wordsOnly(a) && wordsOnly(b)) return true;
@@ -17123,7 +17092,6 @@ ${JSON.stringify(fb.context, null, 1)}`;
     document.addEventListener("keydown", (e) => {
       if (e.key === "Escape" && TIP.el) tipHide();
     });
-    followViewport(window);
     document.addEventListener("submit", (e) => {
       if (e.target && e.target.id === "acctForm") {
         e.preventDefault();
