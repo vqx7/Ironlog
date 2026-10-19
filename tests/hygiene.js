@@ -261,6 +261,29 @@ const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log
   const nowL = fs.readdirSync(path.join(ROOT, 'src')).filter(f => /^[12]\d-.+\.js$/.test(f)).reduce((n, f) => n + fs.readFileSync(path.join(ROOT, 'src', f), 'utf8').split('\n').length - 1, 0);
   ok(capD > 0 && capL > 0 && nowD <= capD && nowL <= capL, `the legacy script is no larger than ARCHITECTURE.md records (${nowD} of ${capD} declarations, ${nowL} of ${capL} lines); new code goes in src/app/`);
   ok(nowD >= capD && nowL >= capL, 'when code leaves the legacy script, the numbers in ARCHITECTURE.md are lowered to match, so the ratchet holds at the new level', { nowD, capD, nowL, capL });
+  // The dependency map counts a module function that reads the store, the
+  // live model or the page as shared state for the legacy code that calls it,
+  // through any module between (r53, scripts/depmap.js moduleReach). With
+  // live.ts as the only rule, the seven legacy declarations that call
+  // rirScale, moved to effort.ts in r53, counted as pure though they read a
+  // setting. A small source tree of its own, so the check outlives the
+  // names it was found with.
+  {
+    const os = require('os'); const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'ironlog-depmap-'));
+    try {
+      fs.mkdirSync(path.join(tmp, 'app'));
+      const put = (f, t) => fs.writeFileSync(path.join(tmp, f), t);
+      put('app/store.ts', 'export let state: { a: number } = { a: 1 };\n');
+      put('app/eff.ts', "import { state } from './store';\nexport const scale = (): number => state.a;\n");
+      put('app/via.ts', "import { scale } from './eff';\nexport const twice = (): number => scale() * 2;\n");
+      put('app/page.ts', 'export const wide = (): number => window.innerWidth;\n');
+      put('app/calc.ts', 'export const two = (): number => 2;\n');
+      put('09-imports.js', "import { scale } from './app/eff';\nimport { twice } from './app/via';\nimport { wide } from './app/page';\nimport { two } from './app/calc';\n");
+      put('10-a.js', '(function(){\nfunction a(){ return scale(); }\nfunction b(){ return twice(); }\nfunction c(){ return wide(); }\nfunction d(){ return two(); }\nfunction e(){ return d(); }\n})();\n');
+      const fx = require('../scripts/depmap').map(tmp); const pure = Object.fromEntries(fx.decls.map(x => [x.name, x.pure]));
+      ok(pure.a === false && pure.b === false && pure.c === false && pure.d === true && pure.e === true, 'the dependency map reads a module function that reads the store, directly or through another module, or the page, as not pure for its callers, and one that reads none as pure', pure);
+    } finally { fs.rmSync(tmp, { recursive: true, force: true }); }
+  }
   // Every name the modules export, read from the code esbuild makes of them.
   const esbuild = require('esbuild'), acorn = require('acorn'); const exported = new Map();
   for (const f of SRC_CODE.filter(f => f.startsWith('app/'))) {
@@ -393,6 +416,20 @@ const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log
   // comment says is review's to judge, and one comment on a declaration may
   // cover several casts in it; the count shows a new one in the diff.
   const appComments = new Map(); // module -> [pos, end] of every comment, from the syntax tree
+  // No var in src/app/ (r53, the second review): a var declared inside a
+  // block belongs to the whole function, and the name reading that
+  // tests/moved.js holds edits to (scripts/depmap.js, freeNames) takes only a
+  // body's own statements as hoisted, so an edit adding one could change what
+  // a name means and pass. const and let mean what they say where they are.
+  {
+    const vars = [];
+    for (const f of SRC_CODE.filter(f => f.startsWith('app/') && f.endsWith('.ts'))) {
+      const sf = ts.createSourceFile(f, fs.readFileSync(path.join(ROOT, 'src', f), 'utf8'), ts.ScriptTarget.Latest, true);
+      const walk = n => { if (ts.isVariableDeclarationList(n) && !(n.flags & (ts.NodeFlags.Let | ts.NodeFlags.Const))) vars.push(`${f}:${sf.getLineAndCharacterOfPosition(n.getStart(sf)).line + 1}`); ts.forEachChild(n, walk); };
+      walk(sf);
+    }
+    ok(vars.length === 0, 'no var in src/app/: every variable is const or let, so a name means what its block says', vars);
+  }
   {
     const CAST = /\bcasts?\b/i, BANG = /(^|[\s(`])!([\s`),.;:]|$)/;
     const conf = ts.parseJsonConfigFileContent(ts.readConfigFile(path.join(ROOT, 'tsconfig.json'), ts.sys.readFile).config, ts.sys, ROOT);

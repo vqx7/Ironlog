@@ -114,9 +114,11 @@ export function coachIn(M: Model): CoachLine {
       act: null
     };
   const stalled = stalledIdsIn(M);
-  /* A deload is not suggested within 4 weeks of a lighter week, tagged or read
-     from the loads (r30): the review saw "6 lifts stalled, a deload week may
-     help" three weeks after one. */
+  /* A deload is not suggested within 4 weeks of a lighter week (r30): the
+     review saw "6 lifts stalled, a deload week may help" three weeks after
+     one. Since r53 the week is read from what the lifts did, not the labels,
+     and a week marked as a deload with nothing trained in it counts too, as
+     a rest week has since r34 (recentLighterIn). */
   const rl = recentLighterIn(M, 28);
   const big = fatigueStallsIn(M, stalled);
   if (big.length >= 3 && !rl)
@@ -209,7 +211,7 @@ export function coachIn(M: Model): CoachLine {
     return {
       tone: 'yellow',
       text: `${exNameIn(M, id)} has stalled. Try another rep range or a close variation for a few weeks.`,
-      why: 'Flat or down over its last 6 sessions (or 3 weeks), with no PR in the last 3, no heavier load, and no more reps at the same load, leaving out deload, lighter, and trimmed sessions.',
+      why: 'Flat or down over its last 6 sessions in this rep range (or 3 weeks), leaving out ones where it was trimmed or done lighter than usual, and, on a lighter day, in a deload, or on an exercise made lighter, ones with fewer reps or sets than usual; with no PR in the last 3 of them, nor a set stronger than any before it in a session left out since the third-last, no heavier load, and no more reps at the same load.',
       act: { label: 'See the lift', sec: 'exercise', ex: id }
     };
   }

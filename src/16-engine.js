@@ -74,19 +74,6 @@ function carryLoad(bi,si){
   updateProgress(bi);
 }
 function updatePlates(bi,si){const el=document.getElementById('pl-'+bi);if(!el||!state.draft||!state.draft.ex[bi])return;el.textContent=plateLine(state.draft.ex[bi],si);}
-/* The reason behind a target, in the engine's own words (r47). b.hint is the
-   whole sentence the case wrote, and it opens with the Last line (b.last),
-   which the screen shows on its own line already, so that prefix comes off
-   rather than being said twice. Nothing is recomputed here: a second account
-   of the rules would be a second thing to keep right. */
-function whyTarget(b){
-  if(!b)return '';
-  // A session block renames the suggestion's text to hint, so take either.
-  const h=(b.hint||b.text||'').trim(),l=(b.last||'').trim();
-  const reason=l&&h.startsWith(l)?h.slice(l.length).trim():h;
-  const basis=b.basis?` The target comes from your last full session, ${fmtDate(b.basis)}; trimmed, lighter, and deload sessions do not set one.`:'';
-  return (reason+basis).trim();
-}
 /* Live score for one logger block against its target. Only sets marked done,
    not warm-up, with reps, at or above the target load count. */
 /* The old version counted every done set at or above the target load, then

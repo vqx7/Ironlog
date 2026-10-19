@@ -16,32 +16,6 @@ function newItem(exId){return {uid:uid(),exId,...defPlan(exId)};}
    field, and the browser then fires its pending change for a set that − Set,
    Swap or Undo has just removed. */
 function draftSet(t){const b=state.draft&&state.draft.ex[+t.dataset.b];return b&&b.sets[+t.dataset.s]||null;}
-/* Exercises added or swapped in a session, relative to the routine day it was
-   logged against, so Finish can offer to make the change permanent. */
-function routineUpdates(d){
-  const R=state.routines.find(r=>r.id===d.routineId);if(!R)return null;
-  const day=R.days.find(x=>x.id===d.dayId);if(!day)return null;
-  const have=new Set(day.items.map(i=>i.exId));const add=[],swap=[];const seen=new Set();
-  for(const b of d.ex){
-    if(have.has(b.exId)||seen.has(b.exId)||!b.sets.some(s=>s.done&&!s.warm))continue;seen.add(b.exId);
-    // Limited-equipment swaps are for that session only.
-    if(d.limited&&b.swappedFrom)continue;
-    if(b.swappedFrom&&have.has(b.swappedFrom))swap.push({from:b.swappedFrom,to:b.exId});
-    else{const {ss:_s,...p}=b.plan;add.push({exId:b.exId,plan:{...p,sets:Math.max(1,+p.sets||3)}});}
-  }
-  /* A superset made in the session (r35, V, as Strong and Hevy ask): pairs
-     of exercises done linked that the day has, or will have after the
-     change, but not linked there. */
-  const after=new Set([...day.items.map(i=>i.exId).map(id=>{const sw=swap.find(x=>x.from===id);return sw?sw.to:id;}),...add.map(x=>x.exId)]);
-  const ss=[];const groups=new Map();
-  for(const b of d.ex){const g=b.plan&&b.plan.ss;if(!g||!b.sets.some(x=>x.done&&!x.warm))continue;(groups.get(g)||groups.set(g,[]).get(g)).push(b.exId);}
-  for(const ids of groups.values()){const u=[...new Set(ids)].filter(id=>after.has(id));if(u.length<2)continue;
-    const its=u.map(id=>day.items.find(i=>i.exId===id));
-    if(its.every(Boolean)&&its[0].ss&&its.every(i=>i.ss===its[0].ss))continue;ss.push(u);}
-  if(!add.length&&!swap.length&&!ss.length)return null;
-  const bits=[...swap.map(x=>`${exName(x.from)} → ${exName(x.to)}`),...add.map(x=>`add ${exName(x.exId)}`),...ss.map(u=>`superset ${andList(u.map(exName))}`)];
-  return {rid:R.id,dayId:day.id,dayName:day.name,add,swap,ss,text:bits.join(', ')};
-}
 /* A ready-made routine removed exactly as shipped can be added again from
    New from a template, so it is not kept in Recently deleted (r34.1, V: the
    same templates sat there for every new user with no way to clear them). */

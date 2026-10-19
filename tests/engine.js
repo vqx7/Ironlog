@@ -2,9 +2,12 @@
 // the engine and the analytics, bundled for Node with no page, are given the
 // wide histories of tests/r52.js as the page normalized them (normalize()
 // stays in the legacy script until phase 4), deep-frozen, with the page's
-// language and time zone. Each of the 74 names live.ts gives the legacy
-// script is called with the page's own arguments on a fresh model and must
-// give the page's answer, then again on a second fresh model. The bundle runs
+// language and time zone. Each of the 75 names live.ts gives the legacy
+// script (r52's 74, and routineUpdates since r53) is called with the page's
+// own arguments on a fresh model and must
+// give the page's answer, then again on a second fresh model; so is each of
+// PLAIN, the engine's functions the legacy script calls directly that take
+// no model (since r53 avgWeeksTxt, whose lines no adapter reaches). The bundle runs
 // strict, so a write to the frozen log, a frozen argument or one of the
 // modules' tables (all frozen too) throws and shows as a different answer;
 // and on every tenth history the second model reads the log through a proxy
@@ -23,6 +26,8 @@ const ROOT = path.join(__dirname, '..'); const APP = path.join(ROOT, 'src', 'app
 const MODULES = ['model', 'units', 'routines', 'gym', 'format', 'loads', 'analytics', 'time', 'weeks', 'coach', 'engine'];
 // The histories of tests/r52.js, all of them, in batches of 100 (each batch's calls are about 100 MB as text).
 const K = +process.env.ENGINE_N || 1000, BATCH = 100;
+// The engine's functions that take no model and that the digest calls (tests/wide.js), run in Node beside the adapters.
+const PLAIN = ['avgWeeksTxt'];
 
 // The child: the bundle on the page's histories, under V8's coverage.
 if (process.argv[2] === '--child') {
@@ -63,7 +68,7 @@ if (process.argv[2] === '--child') {
     const byName = new Map();
     for (const line of h.calls) { const [name, args, res] = line.split('\t'); if (!byName.has(name)) byName.set(name, []); byName.get(name).push([args, res]); }
     for (const [tagged, calls] of byName) {
-      const name = tagged.replace(/^~/, ''), fn = E[name + 'In'];
+      const name = tagged.replace(/^~/, ''), plain = PLAIN.includes(name), fn = plain ? E[name] : E[name + 'In'];
       out.names[name] = (out.names[name] || 0) + calls.length;
       // Every tenth history's second round runs on the watched log (a proxy is slow).
       const watched = h.seed % 10 === 0;
@@ -71,7 +76,7 @@ if (process.argv[2] === '--child') {
         const seen = [];
         const M = E.modelOf(round === 1 && watched ? watch(decode(h.state), seen) : state, () => h.today);
         for (const [args, res] of calls) {
-          let r; try { r = fn(M, ...freeze(decode(args))); } catch (e) { r = err(e); }
+          let r; try { r = plain ? fn(...freeze(decode(args))) : fn(M, ...freeze(decode(args))); } catch (e) { r = err(e); }
           const got = typeof fn === 'function' ? ser(r) : 'no such function';
           if (round === 0) { out.calls++; if (got === res) out.same++; else if (!out.first) out.first = { seed: h.seed, name, args: args.slice(0, 300), page: res.slice(0, 400), node: got.slice(0, 400) }; }
           else if (got === res) out.again++;
@@ -182,8 +187,8 @@ function lineCoverage(covDir, bundleFile, mapPayload) {
   else for (const r of results) { if (!res) res = r; else { res.calls += r.calls; res.same += r.same; res.again += r.again; res.watched += r.watched; res.wroteAny = res.wroteAny || r.wroteAny; res.writes.push(...r.writes); res.first = res.first || r.first; for (const [n, c] of Object.entries(r.names)) res.names[n] = (res.names[n] || 0) + c; } }
   if (res) {
     ok(res.locale === intl.locale && res.timeZone === intl.timeZone, `Node read dates in the page's language and time zone (${intl.locale}, ${intl.timeZone})`, { node: [res.locale, res.timeZone], page: intl });
-    ok(Object.keys(res.names).length === 74, `all 74 names were called in Node (${Object.keys(res.names).length})`, Object.keys(res.names));
-    ok(res.calls > K * 1000 && res.same === res.calls, `each of the 74, on a fresh model of a frozen log, gives the page's answer: ${res.same} of ${res.calls} calls over ${K} histories (${Math.round((Date.now() - t0) / 1000)} s)`, res.first);
+    ok(Object.keys(res.names).length === 75 + PLAIN.length && PLAIN.every(n => res.names[n] > 0), `all 75 names and ${PLAIN.join(', ')} were called in Node (${Object.keys(res.names).length})`, Object.keys(res.names));
+    ok(res.calls > K * 1000 && res.same === res.calls, `each of the 75, on a fresh model of a frozen log, and ${PLAIN.join(', ')}, gives the page's answer: ${res.same} of ${res.calls} calls over ${K} histories (${Math.round((Date.now() - t0) / 1000)} s)`, res.first);
     ok(res.again === res.calls, `and gives it again on a second fresh model (${res.again} of ${res.calls})`);
     ok(res.tables > 40, `every table the modules keep was frozen for the run, so no write to one passes (${res.tables})`);
     ok(res.watched > 0 && !res.wroteAny, `no call tried to change the log, watched on every tenth history's second round, a caught error included (${res.watched} calls)`, res.writes);

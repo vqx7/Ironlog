@@ -116,6 +116,44 @@ function letExports(SRC) {
   }
   return out;
 }
+// The module exports, as "module:name", that read shared state or the page
+// (r53): an export of the store or the live model, one whose code names a
+// browser global (BROWSER), and one that reads another such export or local
+// declaration, transitively through the modules. Until r53 only live.ts's
+// adapters read the store from a module, so live.ts was the rule; r53 moved
+// rirScale and halfLbl to effort.ts, which reads the store's log, and the
+// Guide to guide.ts, which reads it and the live model, and with live.ts as
+// the rule the seven legacy declarations that call rirScale (effWord and
+// the rest) counted as pure, though they read a setting.
+function moduleReach(SRC, BROWSER) {
+  const esbuild = require('esbuild'); const APP = path.join(SRC, 'app'); const out = new Set();
+  if (!fs.existsSync(APP)) return out;
+  const mods = new Map();
+  for (const f of fs.readdirSync(APP).filter(f => f.endsWith('.ts'))) {
+    const js = esbuild.transformSync(fs.readFileSync(path.join(APP, f), 'utf8'), { loader: 'ts', format: 'esm' }).code;
+    const imp = new Map(), decls = new Map(), exp = new Map();
+    for (const x of acorn.parse(js, { ecmaVersion: 'latest', sourceType: 'module' }).body) {
+      if (x.type === 'ImportDeclaration') { for (const sp of x.specifiers) imp.set(sp.local.name, { from: x.source.value.replace(/^\.\//, ''), name: sp.imported ? sp.imported.name : 'default' }); continue; }
+      const d = x.type === 'ExportNamedDeclaration' ? x.declaration : x;
+      if (x.type === 'ExportNamedDeclaration') for (const sp of x.specifiers || []) exp.set(sp.exported.name, sp.local.name);
+      if (!d) continue;
+      const names = d.type === 'VariableDeclaration' ? d.declarations.flatMap(v => patNames(v.id, []).map(n => [n, v])) : d.id ? [[d.id.name, d]] : [];
+      for (const [n, node] of names) { decls.set(n, node); if (x.type === 'ExportNamedDeclaration') exp.set(n, n); }
+    }
+    mods.set(f.slice(0, -3), { js, imp, decls, exp });
+  }
+  const memo = new Map();
+  const reaches = (mod, local, stack) => {
+    const key = mod + ':' + local; if (memo.has(key)) return memo.get(key); if (stack.has(key)) return false; stack.add(key);
+    const m = mods.get(mod); let r = false;
+    if (!m) r = false;
+    else if (m.imp.has(local)) { const i = m.imp.get(local); const t = mods.get(i.from); r = i.from === 'store' || i.from === 'live' || (!!t && t.exp.has(i.name) && reaches(i.from, t.exp.get(i.name), stack)); }
+    else if (m.decls.has(local)) { const node = m.decls.get(local); r = mod === 'store' || mod === 'live' || BROWSER.test(m.js.slice(node.start, node.end)) || [...freeNames(node)].some(u => u !== local && (m.imp.has(u) || m.decls.has(u)) && reaches(mod, u, stack)); }
+    memo.set(key, r); return r;
+  };
+  for (const [id, m] of mods) for (const [name, local] of m.exp) if (reaches(id, local, new Set())) out.add(id + ':' + name);
+  return out;
+}
 function map(SRC) {
 const files = fs.readdirSync(SRC).filter(f => /^[12]\d-.+\.js$/.test(f)).sort();
 let code = '', spans = [];
@@ -165,11 +203,13 @@ const BROWSER = /\b(document|window|navigator|localStorage|sessionStorage|indexe
 const byName = new Map(decls.map(d => [d.name, d]));
 for (const d of decls) d.browser = BROWSER.test(code.slice(d.node.start, d.node.end));
 // Imported names that are shared state: exported with `let`, or written by
-// the legacy script, or one of live.ts's adapters (r52), each of which reads
-// the store's log, the clock and the live caches, so a screen that calls EX
-// is not counted as pure.
+// the legacy script, or an export that reads the store, the live model or
+// the page (moduleReach: live.ts's adapters (r52), each of which reads the
+// store's log, the clock and the live caches, and since r53 any other), so a
+// screen that calls EX or rirScale is not counted as pure.
 const LETS = letExports(SRC);
-const mutImp = new Set([...imports.map(x => x.name).filter(n => LETS.has(n)), ...imports.filter(x => x.from === './app/live').map(x => x.name), ...[...decls, ...topRefs].flatMap(d => [...d.writesImp])]);
+const REACH = moduleReach(SRC, BROWSER);
+const mutImp = new Set([...imports.map(x => x.name).filter(n => LETS.has(n)), ...imports.filter(x => REACH.has(x.from.replace(/^\.\/app\//, '') + ':' + x.name)).map(x => x.name), ...[...decls, ...topRefs].flatMap(d => [...d.writesImp])]);
 // A declaration is pure if neither it nor anything it uses touches the browser or shared state.
 const MUT = new Set([...written.keys(), ...mutImp]);
 const memo = new Map();
