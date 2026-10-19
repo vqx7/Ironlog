@@ -885,6 +885,15 @@ const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log
   }
   ok(missing.length === 0, 'every repo file the documents name exists', missing);
 
+  // What GitHub runs, too (r54): tests/moved.js was deleted in r54 and the workflow still ran it, so every Chromium shard of
+  // pull request #47 failed before a suite ran, while every suite passed here, where nothing runs the workflow file.
+  const wf = path.join(ROOT, '.github', 'workflows');
+  const runs = [];
+  for (const f of fs.readdirSync(wf).filter(f => /\.ya?ml$/.test(f)))
+    for (const m of fs.readFileSync(path.join(wf, f), 'utf8').matchAll(/\bnode\s+((?:tests|scripts)\/[A-Za-z0-9_.\-\/]+\.js)\b/g)) runs.push([f, m[1]]);
+  const gone = runs.filter(([, rel]) => !fs.existsSync(path.join(ROOT, rel))).map(([f, rel]) => `${f}: ${rel}`);
+  ok(runs.length >= 3 && gone.length === 0, 'every script a GitHub workflow runs exists (' + runs.length + ')', gone);
+
   // The source parts, not index.html: since r49 the page's script is bundled
   // and its comments are gone, and the /*ai{ markers were comments.
   const src = fs.readdirSync(path.join(ROOT, 'src')).filter(f => /\.(js|html|css)$/.test(f)).map(f => fs.readFileSync(path.join(ROOT, 'src', f), 'utf8')).join('\n') + SRC_CODE.filter(f => f.startsWith('app/')).map(f => fs.readFileSync(path.join(ROOT, 'src', f), 'utf8')).join('\n');
