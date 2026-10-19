@@ -467,11 +467,6 @@ function strengthPick(e,st,rec,at){
   const near=st.bestAll>0&&st.last.best>=st.bestAll*STR_NEAR;
   return st.stalled?'stalled':near?'near':null;
 }
-/* Effort in half points or as RPE (r33, item 206): a setting for how effort
-   is entered and shown. What is stored is always RIR (RPE 8 is RIR 2, RPE
-   8.5 is RIR 1.5), so every estimate, hard-set count and target reads it
-   unchanged, and switching back and forth loses nothing. Unset is whole RIR. */
-const rirScale=()=>state.settings.rirScale==='half'||state.settings.rirScale==='rpe'?state.settings.rirScale:'whole';
 const effWord=()=>rirScale()==='rpe'?'RPE':'RIR';
 /* A plan's target effort as the lifter enters effort: "1 RIR", or "RPE 9" in RPE mode. */
 function effTgt(rir){return rirScale()==='rpe'?`RPE ${effShow(rir)}`:`${effShow(rir)} RIR`;}

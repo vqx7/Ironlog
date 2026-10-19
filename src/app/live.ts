@@ -29,7 +29,15 @@ import {
   sortedSessionsIn
 } from './model';
 import { fromDIn, stepReadIn, toDIn } from './units';
-import { defPlanIn, planCreditIn, planForIn, planSetsPerWeekIn, profPlanIn, profRuleIn } from './routines';
+import {
+  defPlanIn,
+  planCreditIn,
+  planForIn,
+  planSetsPerWeekIn,
+  profPlanIn,
+  profRuleIn,
+  routineUpdatesIn
+} from './routines';
 import { barKgIn, capOfIn, exBarKgIn, gymRackIn, rackTolIn } from './gym';
 import { fmtWIn, loadLabelIn } from './loads';
 import {
@@ -115,6 +123,7 @@ export const planFor = live(planForIn);
 export const planSetsPerWeek = live(planSetsPerWeekIn);
 export const profPlan = live(profPlanIn);
 export const profRule = live(profRuleIn);
+export const routineUpdates = live(routineUpdatesIn);
 export const barKg = live(barKgIn);
 export const capOf = live(capOfIn);
 export const exBarKg = live(exBarKgIn);

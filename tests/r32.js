@@ -399,10 +399,16 @@ const seed = (L, unit, exId, list, rr) => {
       const f = L.suggest('bench', { sets: 3, repMin: 6, repMax: 10, rir: 1, inc: 5 * 0.45359237 }, {}); out.w8 = { w: f.w / 0.45359237, text: f.text };
       const g = L.suggest('bench', { sets: 3, repMin: 6, repMax: 10, rir: 1, inc: 5 * 0.45359237 }, { light: true }); out.w8l = g.w / 0.45359237;
       L.state.settings.unit = 'kg'; L.invalidate();
-      // W4: a Lighter day's sets are never PRs.
+      // W4: a Lighter day's 90 x 12 after 100 x 8 is not a PR. r32 kept every
+      // PR off lighter days; since r53 (V, 2026-10-18: a PR is a PR whatever
+      // the day) a lighter day's sets are read like any day's, and only a set
+      // stronger than every earlier one is counted and announced (big). This
+      // set is weaker (90 x 12 scores 126, 100 x 8 at 1 in reserve 129), so it
+      // is still no PR anywhere a lifter looks: the counted list, Recent PRs
+      // and the recap all read big ones only.
       seed(L, 'kg', 'bench', [['2026-09-26', [[100, 8, 1]]]], [6, 10]);
       L.state.sessions.push({ id: 'lt', date: '2026-10-03', dayIdx: 0, dayId: null, dayName: 'A (lighter)', routineId: '', notes: '', light: true, ex: [{ exId: 'bench', rr: [6, 10], sets: [{ w: 90, r: 12, rir: 3, warm: false, drop: false }] }] }); L.invalidate();
-      out.w4 = L.IDX().prs.filter(x => x.date === '2026-10-03').length;
+      out.w4 = L.IDX().prs.filter(x => x.date === '2026-10-03' && x.big).length;
       return out;
     }, [seed.toString()]);
     ok(r.w1.w === 52.5 && r.w1.aim === 5, 'W1: 5 x 5 at 50 kg goes to 52.5 for 5s, never "building to 7"', r.w1);

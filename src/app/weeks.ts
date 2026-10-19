@@ -230,17 +230,72 @@ export function weekStreakIn(M: Model): { weeks: number; best: number; need: num
   return { weeks, best: Math.max(best, weeks), need, thisWeek };
 }
 
-/* The newest lighter session (deload, lighter day, or read as lighter from
-   its loads) within the last `days`, or null. Each id read from IDX's byEx
-   comes from its own keys, so it is there, as the ! says. */
+/* The newest session within the last `days` of a lighter week, or the end
+   of a rest week or of a week marked as a deload with nothing trained in
+   it, or null. The coach suggests no deload so soon after one. Read from
+   what the lifts did, not from the day's label (V, 2026-10-18): a session
+   is lighter when at least half its lifts were done lighter (still deload,
+   lighter or read lighter once a lift at its usual level counts in full,
+   idxTaggedFull), and a week is lighter when more than half its sessions
+   were, once it has ended, or while it is under way from the second; or,
+   for a deload begun mid-week, when its last two or more sessions were
+   deloads done lighter: the coach's own Deload week button marks the week
+   from the day it is tapped, and a lifter who trains four days and taps it
+   on Wednesday deloads on two of four (the fourth review). Only deload
+   sessions make that run, since lighter sessions late in a calendar week
+   are otherwise no different from ones early in it: two Lighter days on
+   Thursday and Friday after three normal days held the deload back where
+   the same two on Monday and Tuesday did not, and a heavy and light
+   programme with its light days late in the week never had one suggested
+   (the fifth review). A deload session is one tagged deload, or any in the
+   week marked as one: a blank or Freestyle session in a marked week is not
+   tagged (PENDING 311), so a lifter in Freestyle mode who tapped Deload
+   week on Wednesday was asked for another deload the next week (the sixth
+   review). Only the latest mark is kept, which is the one four weeks
+   reach in practice.
+   Until r53 any one lighter session, or one lift read lighter, counted (the
+   audit V asked for): one Lighter day after a poor night kept a deload the
+   lifts needed away for four weeks. A deload begun mid-week, Wednesday and
+   Friday after a normal Monday, is a lighter week, so the coach does not ask
+   again the next week (the review of r53); one deload session after a
+   normal Monday and Wednesday is not, as one Lighter day is not (the third
+   review); a deload done at full for every lift is no deload; and a week
+   marked as a deload counts on its own only with nothing trained in it,
+   since a week tapped on a Saturday after normal training held the coach
+   back for four weeks with no deload done (the second review). */
 export function recentLighterIn(M: Model, days: number): string | null {
   const from = addDays(M.today(), -days);
   let d: string | null = null;
-  for (const x of M.s.sessions) if (x.date >= from && (x.deload || x.light) && (!d || x.date > d)) d = x.date;
   const I = IDXIn(M);
-  for (const id in I.byEx) for (const x of I.byEx[id]!) if (x.auto && x.date >= from && (!d || x.date > d)) d = x.date;
-  // A rest week is recovery too: its last day, or today while it runs.
-  for (const w of M.s.settings.restWeeks || []) {
+  const cur = weekStart(M.today());
+  const lifts: Record<string, number> = {},
+    done: Record<string, number> = {};
+  for (const xs of Object.values(I.byEx))
+    for (const x of xs || []) {
+      lifts[x.sid] = (lifts[x.sid] || 0) + 1;
+      if (x.deload || x.light || x.auto) done[x.sid] = (done[x.sid] || 0) + 1;
+    }
+  const lighter = (sid: string): boolean => (done[sid] || 0) > 0 && (done[sid] || 0) * 2 >= (lifts[sid] || 0);
+  const all: Record<string, number> = {},
+    light: Record<string, number> = {},
+    tail: Record<string, number> = {};
+  for (const x of sortedSessionsIn(M)) {
+    const k = weekStart(x.date);
+    all[k] = (all[k] || 0) + 1;
+    if (lighter(x.id)) {
+      light[k] = (light[k] || 0) + 1;
+      tail[k] = x.deload || k === M.s.deloadWeek ? (tail[k] || 0) + 1 : 0;
+    } else tail[k] = 0;
+  }
+  const week = (k: string): boolean =>
+    ((light[k] || 0) * 2 > (all[k] || 0) && (k < cur || (light[k] || 0) >= 2)) || (tail[k] || 0) >= 2;
+  for (const x of M.s.sessions)
+    if (x.date >= from && lighter(x.id) && week(weekStart(x.date)) && (!d || x.date > d)) d = x.date;
+  // A rest week is recovery too, and so is a marked deload week with nothing trained in it: its last day, or today while it runs.
+  for (const w of [
+    ...(M.s.settings.restWeeks || []),
+    ...(M.s.deloadWeek && !all[M.s.deloadWeek] ? [M.s.deloadWeek] : [])
+  ]) {
     const e = addDays(w, 6) < M.today() ? addDays(w, 6) : M.today();
     if (e >= from && w <= M.today() && (!d || e > d)) d = e;
   }

@@ -10,12 +10,16 @@
    log through live.ts's model instead of importing it. The four objects are moved unchanged, and
    tests/moved.js holds them to r50's code. */
 
-import type { EngineState } from './types';
+import type { EngineSettings, EngineState } from './types';
 
 /** The whole log as normalize() returns it: the fields the engine and the
     analytics read, typed field by field since 3b (EngineState), and the rest
-    still open until normalize() moves (phase 4). */
-export type State = EngineState & { [field: string]: unknown };
+    still open until normalize() moves (phase 4). The settings are the
+    engine's, typed, and since r53 the effort scale effort.ts reads, which
+    the engine does not (normalize() keeps it 'half', 'rpe' or absent). */
+export type State = Omit<EngineState, 'settings'> & {
+  settings: EngineSettings & { rirScale?: 'half' | 'rpe' | undefined };
+} & { [field: string]: unknown };
 
 /* First set at start, from the save on this device (setState(load()) in the
    storage part), before anything reads it, which is what the ! says; after

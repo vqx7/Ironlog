@@ -236,8 +236,16 @@ function digest(spec) {
   for (const ws of weeks) { call('isRestWeek', ws); call('weekSessions', ws); call('weekNeed', ws); call('weekRoutine', ws); }
   for (const r2 of s.routines) { call('planSetsPerWeek', r2); call('planSetsPerWeek', r2, true); for (const d of r2.days) { call('dayMinutes', d); call('dayMinutes', d, true); call('dayMinutes', d, false, true); for (const it of d.items) call('planCredit', it); } }
   for (const ss of s.sessions.slice(-8)) call('sessModelMin', ss);
+  // Finish's offer to update the routine day (routineUpdates; changed in r53): the last sessions as finished drafts on the routine's first days, as a normal day, a lighter day, a deload and with limited equipment, the first exercise swapped in for the day's first and the first two done linked.
+  if (R) for (const ss of s.sessions.slice(-3)) for (const d of R.days.slice(0, 3)) for (const mark of [{}, { light: true }, { deload: true }, { limited: true }]) {
+    const half = mark.light || mark.deload;
+    const ex = ss.ex.map((b, i) => ({ exId: b.exId, swappedFrom: i === 0 && d.items[0] ? d.items[0].exId : null, plan: { ...L.planFor(b.exId, R, d.id), sets: Math.max(1, Math.ceil(b.sets.length / (half ? 2 : 1))), ss: i < 2 ? 'g1' : null }, sets: b.sets.map(x => ({ done: true, warm: !!x.warm })) }));
+    call('routineUpdates', { routineId: R.id, dayId: d.id, ...mark, ex });
+  }
   for (const d of [7, 28, 56]) call('recentLighter', d);
   call('actualAvg4'); call('actualAvg4', true); for (const n of [2, 4, 8]) { call('avgWeeks', n); call('avgWeeks', n, true); }
+  // The words for an average's weeks, a function of the average alone (r53: tests/engine.js runs it in Node too).
+  for (const v of [L.actualAvg4(), L.avgWeeks(2), L.avgWeeks(8, true)]) if (v) call('avgWeeksTxt', v);
   const avg = L.actualAvg4(); call('regionBalance', avg || {}); call('regionBalance', L.IDX().weekSets[ws0] || {}); call('regionBalance', {});
   call('fatigueStalls', L.stalledIds()); call('fatigueStalls', ids);
   // invalidate clears every cache: the same answers again, newly built.
@@ -251,6 +259,64 @@ function digest(spec) {
   out.push('state-after ' + ser(s));
   return out.join('\n');
 }
+
+// The scenarios a fresh comparison cannot reach (r52), shared since r53 by
+// tests/r52.js (r51 against r52) and tests/r53w.js (r52 against this build),
+// each run in one page P. midnightRun: a page left open past midnight from
+// Sunday into Monday, read before, after with Sunday's caches, and after
+// invalidate; `after(P, j)`, when given, is run in the same moment after
+// each read j (0, 1 and 2) and its answer kept beside it. staleRun: one cache read stale on purpose, the log changed and read
+// again before invalidate, then after it (STALE_CASES). demoRun: makeDemo's
+// whole log and what the engine reads in it, the random ids set aside.
+const MIDNIGHT_KEYS = ['isDeloadWeek', 'weekStats', 'weekStreak', 'coach', 'recentLighter', 'firstFullWeek', 'actualAvg4', 'paceRatios', 'pace', 'movers', 'stalledIds', 'readiness'];
+// Each read whole in the digest's encoding (the second r52 review hid a change in avgWeeks's notes from JSON), and the log after it; each lift's plan beside its suggestion.
+function midnightRead([ids, keys, S, E]) { const L = window.__ironlog; const ser = new Function(`return (${S})`)(), err = new Function(`return (${E})`)(); const o = {}; for (const k of keys) { try { o[k] = ser(k === 'recentLighter' ? L[k](28) : L[k]()); } catch (e) { o[k] = err(e); } } for (const id of ids) { try { o['p ' + id] = ser(L.planFor(id)); o['s ' + id] = ser(L.suggest(id, L.planFor(id), {})); o['d ' + id] = ser(L.daysOff(id)); } catch (e) { o['s ' + id] = err(e); } } o.idx = ser(L.IDX()); o.dix = ser(L.dateIndex()); o.log = ser(L.state); return JSON.stringify(o); }
+async function midnightRun(P, h, after) {
+  const sun = new Date('2026-10-11T23:59:30'), mon = new Date('2026-10-12T00:00:30');
+  const arg = [h.ids, MIDNIGHT_KEYS, ser.toString(), err.toString()];
+  await P.page.clock.setFixedTime(sun);
+  await P.page.evaluate(raw => { const L = window.__ironlog; const r = JSON.parse(raw); const d = new Date(); const g = (d.getDay() + 6) % 7; d.setDate(d.getDate() - g); r.deloadWeek = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; L.state = L.normalize(r); L.invalidate(); }, JSON.stringify(h.raw));
+  const out = [];
+  const one = async j => out.push([await P.page.evaluate(midnightRead, arg), after ? await after(P, j) : null]);
+  await one(0);
+  await P.page.clock.setFixedTime(mon);
+  await one(1);
+  await P.page.evaluate(() => window.__ironlog.invalidate());
+  await one(2);
+  return out;
+}
+const STALE_CASES = {
+  EXMAP: { build: 'L.EX(s.exercises[0].id)', change: "s.exercises.push({ ...s.exercises[0], id: 'zz-new', name: 'New lift' })", read: "[L.EX('zz-new').name, L.exName('zz-new')]" },
+  _idx: { build: 'L.IDX()', change: 's.sessions.push({ ...s.sessions[s.sessions.length - 1], id: "zz-s", date: s.sessions[s.sessions.length - 1].date })', read: 'Object.keys(L.IDX().byEx).map(k => L.IDX().byEx[k].length)' },
+  _dix: { build: 'L.dateIndex()', change: 's.sessions.push({ ...s.sessions[0], id: "zz-d", date: "2026-10-10" })', read: 'L.dateIndex().byDate["2026-10-10"] ? L.dateIndex().byDate["2026-10-10"].length : 0' },
+  _cal: { build: 'L.calStats()', change: 's.sessions.forEach(x => x.ex.forEach(b => b.sets.forEach(y => { if (y.rir != null) y.cal = { at: y.r + y.rir + 1, pred: y.rir }; })))', read: 'L.calStats()' },
+  _rirUse: { build: 'ids.map(id => L.rirUsual(id))', change: 's.sessions.forEach(x => x.ex.forEach(b => b.sets.forEach(y => { y.rir = 4; })))', read: 'ids.map(id => L.rirUsual(id))' },
+  _bwRef: { build: 'L.bwRef()', change: 's.bodyweights.push({ id: "zz-b", date: "2026-10-10", kg: 123 })', read: '[L.bwRef(), ids.map(id => L.bwRefLoad(L.EX(id)))]' },
+  _pace: { build: 'L.pace()', change: 's.sessions.forEach(x => { x.durMin = 200; })', read: '[L.pace(), L.paceRatios().length]' },
+  _rack: { build: 'ids.map(id => { try { return L.rackStep(L.EX(id)); } catch (e) { return "ERR"; } })', change: 's.sessions.forEach(x => x.ex.forEach(b => b.sets.forEach(y => { y.w = y.w + 0.37; })))', read: 'ids.map(id => { try { return L.rackStep(L.EX(id)); } catch (e) { return "ERR"; } })' },
+  weekRid: { build: 'L.weekRoutine(L.state.sessions.length ? L.state.sessions[0].date : "2026-10-05")', change: 's.routines.push({ ...s.routines[0], id: "zz-r", name: "Swapped" }); s.sessions.forEach(x => { x.routineId = "zz-r"; })', read: 'L.weekRoutine(L.state.sessions.length ? L.state.sessions[0].date : "2026-10-05").name' },
+};
+const staleRun = (P, h, c) => P.page.evaluate(([raw, ids, c, S, E]) => {
+  const L = window.__ironlog; L.state = L.normalize(JSON.parse(raw)); L.invalidate(); const s = L.state;
+  const ser = new Function(`return (${S})`)(), err = new Function(`return (${E})`)();
+  const ev = t => { try { return ser(new Function('L', 's', 'ids', `return (${t});`)(L, s, ids)); } catch (e) { return err(e); } };
+  const built = ev(c.build); ev(c.read); new Function('L', 's', 'ids', c.change)(L, s, ids);
+  const stale = ev(c.read); L.invalidate(); const after = ev(c.read);
+  return [built, stale, after, ser(L.state)];
+}, [JSON.stringify(h.raw), h.ids, c, ser.toString(), err.toString()]);
+// makeDemo calls the engine while it builds the demo log, so the log it
+// builds depends on when each cache fills: compared whole, its seed being
+// fixed, with the random ids set aside (each id read as the order it first
+// appears in). The page is left holding the demo log.
+const demoRun = P => P.page.evaluate(([S]) => {
+  const L = window.__ironlog; L.state = L.normalize(null); L.invalidate(); L.makeDemo(); L.invalidate();
+  const ser = new Function(`return (${S})`)();
+  const ids = new Map(); const canon = v => (typeof v === 'string' && /^[a-z0-9]{8,}$/i.test(v) && /\d/.test(v) && /[a-z]/i.test(v) ? (ids.has(v) || ids.set(v, '#' + ids.size), ids.get(v)) : v);
+  // Read in the digest's encoding first, so no property is left out, then the ids set aside.
+  const walk = x => (Array.isArray(x) ? x.map(walk) : x && typeof x === 'object' ? Object.fromEntries(Object.entries(x).map(([k, v]) => [k, walk(v)])) : canon(x));
+  const enc = v => walk(JSON.parse(ser(v)));
+  return JSON.stringify({ state: enc(L.state), idx: enc(L.IDX()), coach: enc(L.coach()) });
+}, [ser.toString()]);
 
 // One encoding for an answer, in the page and in Node: JSON, with undefined,
 // -0, NaN, Infinity, a function, a hole, a Set and a Map marked, and every
@@ -321,4 +387,165 @@ function decode(text) {
   };
   return back(JSON.parse(text));
 }
-module.exports = { rng, wide, digest, decode, ser, err, specOf };
+// What r53's changes on purpose can touch in one history, read in an r53 or
+// later page with the history loaded, so tests/r36.js and tests/r53w.js can
+// compare the rest. r53 (V, 2026-10-18): a lift done at its usual load and
+// reps on a lighter or deload day counts as a full session for it; PRs on
+// any day; no stall while an injury it loads is flagged; the coach holds
+// back a deload only after a lighter week; and a lift on no day of a
+// routine is planned from its own last full session (Finish's offer, the
+// last change, each suite checks call by call). full: a lift on a lighter
+// or deload day now counts as a full session, which reaches IDX and
+// everything read from it; injury: an injury is flagged, likewise. tagged:
+// each lift in a session tagged lighter or deload, or made lighter itself
+// (session id, a tab, the lift), whose PRs are new in IDX's PR list, so a
+// suite can take them out and compare the rest; such a PR also counts as
+// movement in its lift's stall test once it is since the third-last session
+// of the stretch (prOff, below; the fifth review), which a suite allows as
+// that rule says. rls: the
+// lighter-week test (recentLighter) over 7, 28 and 56 days by r52's rule
+// (the newest lighter or deload session or lift read lighter, then the end
+// of a rest week) and by r53's (the newest lighter session, half its lifts
+// done lighter, of a week with more than half its sessions lighter, once it
+// has ended or from the second, or, a deload begun mid-week, its last two or
+// more sessions deloads done lighter (tagged deload or in the marked week);
+// then the
+// end of a rest week or of a marked
+// deload week with nothing trained in it), read here from the log, a copy
+// of that rule kept beside it on purpose so each build's answer is held to
+// its rule (tests/r53.js holds the rule itself by named cases); rl: the coach's 28 days answer one way in one and the
+// other in the other, so r53's coach can suggest a deload r52's held back,
+// or the reverse, which only the coach reads. plan: a lift on no day of a
+// routine plans differently from r52's default, which reaches what is
+// called with that plan; planStall: such a lift is stalled, the one place
+// the analytics or the coach read a lift's plan for more than its load step
+// (the coach reads its range).
+function r53Touches() {
+  const L = window.__ironlog, s = L.state, I = L.IDX(), today = L.today();
+  const tagged = new Set();
+  for (const x of s.sessions) for (const b of x.ex) if (x.deload || x.light || b.light) tagged.add(x.id + '\t' + b.exId);
+  const full = Object.keys(I.byEx).some(id => I.byEx[id].some(x => tagged.has(x.sid + '\t' + id) && !x.deload && !x.light && !x.cut));
+  const injury = (s.injuries || []).length > 0;
+  const rls = {};
+  for (const days of [7, 28, 56]) {
+    const from = L.addDays(today, -days);
+    const rest = (d0, weeks) => { let d = d0; for (const w of weeks) { const e = L.addDays(w, 6) < today ? L.addDays(w, 6) : today; if (e >= from && w <= today && (!d || e > d)) d = e; } return d; };
+    let a = null; for (const x of s.sessions) if (x.date >= from && (x.deload || x.light) && (!a || x.date > a)) a = x.date;
+    for (const id in I.byEx) for (const x of I.byEx[id]) if (x.auto && x.date >= from && (!a || x.date > a)) a = x.date;
+    const cur = L.weekStart(today), lifts = {}, done = {}, all = {}, light = {}, tail = {};
+    for (const id in I.byEx) for (const x of I.byEx[id]) { lifts[x.sid] = (lifts[x.sid] || 0) + 1; if (x.deload || x.light || x.auto) done[x.sid] = (done[x.sid] || 0) + 1; }
+    const lighter = sid => (done[sid] || 0) > 0 && (done[sid] || 0) * 2 >= (lifts[sid] || 0);
+    for (const x of [...s.sessions].sort(L.sessCmp)) { const k = L.weekStart(x.date); all[k] = (all[k] || 0) + 1; if (lighter(x.id)) { light[k] = (light[k] || 0) + 1; tail[k] = x.deload || k === s.deloadWeek ? (tail[k] || 0) + 1 : 0; } else tail[k] = 0; }
+    const week = k => ((light[k] || 0) * 2 > (all[k] || 0) && (k < cur || (light[k] || 0) >= 2)) || (tail[k] || 0) >= 2;
+    let b = null; for (const x of s.sessions) if (x.date >= from && lighter(x.id) && week(L.weekStart(x.date)) && (!b || x.date > b)) b = x.date;
+    rls[days] = { r52: rest(a, s.settings.restWeeks || []), r53: rest(b, [...(s.settings.restWeeks || []), ...(s.deloadWeek && !all[s.deloadWeek] ? [s.deloadWeek] : [])]) };
+  }
+  const rl = !rls[28].r52 !== !rls[28].r53;
+  const differs = (p, q) => p.sets !== q.sets || p.repMin !== q.repMin || p.repMax !== q.repMax;
+  let plan = false, planStall = false;
+  for (const id of new Set(s.sessions.flatMap(x => x.ex.map(b => b.exId)))) {
+    for (const R of s.routines) if (!R.days.some(d => d.items.some(it => it.exId === id)) && differs(L.planFor(id, R), L.defPlan(id))) plan = true;
+    if (I.exStats[id] && I.exStats[id].stalled && differs(L.planFor(id), L.defPlan(id))) planStall = true;
+  }
+  // prOff: the lifts this build reads as not stalled that have a PR, on a session left out of the stall's stretch (trimmed or done lighter), in
+  // its range since the third-last session of the stretch (the fifth review: a PR is a PR whenever it happens; on a lift with a reading, one
+  // Recent PRs lists, the sixth review), each with the muscles it trains. r52 left those PRs out with their sessions, so it can read such a lift stalled; read here from this build's analytics, the
+  // stretch as idxLiftIn takes it (its last sessions with a reading when 4 or more have one, else all of them for the count test).
+  const prOff = {};
+  const off = x => !!(x.deload || x.light || x.cut || x.auto), sameR = (a, b) => !a || !b || (a[0] === b[0] && a[1] === b[1]);
+  for (const id in I.byEx) {
+    const xs = I.byEx[id], real = xs.filter(x => !off(x));
+    if (!real.length || !I.exStats[id] || I.exStats[id].stalled) continue;
+    const rr = real[real.length - 1].rr, inR = real.filter(x => sameR(x.rr, rr)), wE = inR.filter(x => x.tv != null);
+    const base = wE.length >= 4 ? wE : wE.length < 2 && inR.length >= 4 ? inR : null;
+    if (!base) continue;
+    const from = base[base.length - 3].date;
+    if (xs.some(x => off(x) && sameR(x.rr, rr) && x.date >= from && (base === wE ? I.prs.some(p => p.big && p.sid === x.sid && p.exId === id) : x.progress))) { try { const e = L.EX(id); prOff[id] = [e.primary, ...(e.secondary || [])]; } catch (e) { prOff[id] = []; } }
+  }
+  return { full, injury, tagged: [...tagged], rls, rl, plan, planStall, prOff };
+}
+
+// The coach as r53 changes it on purpose, else the same (r52's and r53's
+// answers, each from coach()), the stall tip read in r53's words: where the lighter-week test answers one way
+// in one build and the other in the other (rl), a deload suggested in one
+// and not the other, the side with no lighter week suggesting it; where a
+// stalled lift on no day of the routine is read at its own range
+// (planStall), the same lift named by both.
+function coachSame(a, b, t) {
+  // The stall tip's words changed in r53 (what is left out of a stall, and a PR on any day, read as r53 reads them); the same advice otherwise.
+  const tip = c => (c && typeof c.why === 'string' ? { ...c, why: c.why.replace('Flat or down over its last 6 sessions (or 3 weeks), with no PR in the last 3, no heavier load, and no more reps at the same load, leaving out deload, lighter, and trimmed sessions.', 'Flat or down over its last 6 sessions in this rep range (or 3 weeks), leaving out ones where it was trimmed or done lighter than usual, and, on a lighter day, in a deload, or on an exercise made lighter, ones with fewer reps or sets than usual; with no PR in the last 3 of them, nor a set stronger than any before it in a session left out since the third-last, no heavier load, and no more reps at the same load.') } : c);
+  if (ser(tip(a)) === ser(b)) return true;
+  const dl = c => !!c && /main lifts stalled at once/.test(c.text);
+  if (t.rl && dl(a) !== dl(b) && dl(b) === !t.rls[28].r53) return true;
+  const lift = c => c && c.act && c.act.sec === 'exercise' && c.act.ex;
+  return !!t.planStall && !!lift(a) && lift(a) === lift(b);
+}
+
+// Lighter and deload sessions done lighter than the lift's last full
+// sessions, as they are in the gym. A generator draws each session's loads
+// and reps on their own, so a lift on a day tagged lighter was often at or
+// over its usual, which since r53 makes it a full session for that lift,
+// reaching everything read from the log. tests/r36.js and tests/r53w.js
+// compare builds on what r53 does not change, so before a history is used
+// each tagged lift that is not trimmed is made lighter than its last three
+// full sessions in the same range (sessions with no range on record match
+// any, as sameRR has it), in the order the app sorts sessions (sessCmp):
+// 85% of the lightest of their top loads where every one had a load, no
+// added load where one had none, 5 kg more help than their most on an
+// assisted lift, and a fifth fewer reps than their fewest a set, at least
+// 1. A lift with no full
+// session before it is left as drawn, as r53 leaves its label alone. The
+// sessions are changed in place and returned. The suites still count the
+// histories where a lift counts in full regardless (a set of 1 cannot lose
+// a fifth), from the page's own reading (r53Touches).
+function honestTags(sessions) {
+  // The sets IDX reads a session by: the working sets less drop sets, or the drop sets when there is nothing else.
+  const work = q => !q.warm && +q.r > 0;
+  const same = (a, b) => !a || !b || (a[0] === b[0] && a[1] === b[1]);
+  const ord = [...sessions].sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : (a.t || 0) - (b.t || 0) || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0)));
+  const full = {};
+  for (const x of ord) for (const b of x.ex) {
+    const all = b.sets.filter(work), main = all.filter(q => !q.drop), ws = main.length ? main : all;
+    if (!(x.deload || x.light || b.light)) { if (!b.cut && ws.length) (full[b.exId] = full[b.exId] || []).push({ rr: b.rr, ws }); continue; }
+    const ref = (full[b.exId] || []).filter(q => same(q.rr, b.rr)).slice(-3);
+    if (b.cut || !ref.length) continue;
+    const top = Math.min(...ref.map(q => Math.max(...q.ws.map(z => +z.w || 0))));
+    const most = Math.min(...ref.map(q => Math.min(...q.ws.map(z => +z.w || 0))));
+    const minR = Math.min(...ref.map(q => Math.min(...q.ws.map(z => +z.r))));
+    for (const q of b.sets) { q.w = top > 0 ? top * 0.85 : top === 0 ? 0 : most - 5; q.r = Math.max(1, Math.floor(minR * 0.8)); }
+  }
+  return sessions;
+}
+
+// Shared by tests/r53w.js (against r52) and tests/r36.js (against r35).
+// The lifts whose stall r53 can lift on purpose: those a flagged injury loads, and those with a PR on a session left out of the stall since
+// the third-last session of its stretch (r53Touches, prOff), each with the muscles it trains. A lift of the second kind is not stalled here
+// by construction, so the allowance below is only ever the earlier build stalled and this build not.
+const freed = (t, inj) => ({ ids: [...inj.ids, ...Object.keys(t.prOff).filter(id => !inj.ids.includes(id))], mus: { ...t.prOff, ...inj.mus } });
+// IDX as r53 changes it (x the earlier build's, r52's or r35's, y this build's, both decoded and changed here).
+function idxSame(x, y, t, inj) {
+  const tagged = new Set(t.tagged); const before = y.prs.length;
+  y.prs = y.prs.filter(p => !tagged.has(p.sid + '\t' + p.exId));
+  const touched = new Set();
+  for (const id of inj.ids) { if (x.exStats[id] && x.exStats[id].stalled) for (const m of inj.mus[id]) touched.add(m); for (const I of [x, y]) if (I.exStats[id]) delete I.exStats[id].stalled; }
+  // A muscle the earlier build read as lagging only through a freed lift's stall moves the coach's order of muscles below target (lag).
+  const lag = x.scores.some(q => touched.has(q.m) && q.label === 'lagging');
+  for (const I of [x, y]) I.scores = I.scores.filter(q => !touched.has(q.m));
+  return { same: ser(x) === ser(y), out: before - y.prs.length, lag };
+}
+// The coach as r53 changes it: coachSame; or a freed lift's stall named in the earlier build's answer and in no stall message here,
+// or, where such a stall made a muscle read lagging there (lag), the same muscles below target taken in another order: both answers about
+// volume, with as many more below target. (When a deload is suggested or held back, or a freed lift's stall is no longer named, what
+// the coach says instead is its next branch, which this suite cannot read without writing the coach again; tests/r53.js holds those cases.)
+function coachOk(x, y, t, inj, names, lag) {
+  if (coachSame(x, y, t)) return true;
+  const below = c => { const k = c && /(\d+) more (below|above) target/.exec(c.text); return k ? k[1] + ' ' + k[2] : '0'; };
+  if (lag && x && y && x.act && y.act && x.act.sec === 'volume' && y.act.sec === 'volume' && below(x) === below(y)) return true;
+  const dl = c => !!c && /main lifts stalled at once/.test(c.text);
+  const one = c => (c && c.act && c.act.sec === 'exercise' && /has stalled|top of its range/.test(c.text) ? c.act.ex : null);
+  const namesInjured = c => (dl(c) && inj.ids.some(id => c.text.includes(names[id]))) || inj.ids.includes(one(c));
+  return inj.ids.length > 0 && namesInjured(x) && !namesInjured(y);
+}
+const less = (a, ids) => a.filter(id => !ids.includes(id));
+
+module.exports = { rng, wide, digest, decode, ser, err, specOf, r53Touches, coachSame, honestTags, freed, idxSame, coachOk, less, MIDNIGHT_KEYS, midnightRun, STALE_CASES, staleRun, demoRun };

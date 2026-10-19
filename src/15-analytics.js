@@ -17,10 +17,6 @@ const loadIn=(ex,w)=>w==null?'':fmtW(ex&&ex.assist?-w:w);
    (analytics.ts, weeks.ts, time.ts, coach.ts); what stays here moves with the
    screens that call it (ARCHITECTURE.md, phase 5). */
 const rirShow=ex=>state.settings.rirMode!=='off'&&!(ex&&ex.timed);
-/* RIR 4 to 5 as half a set (r40, a setting): hardCredit in
-   src/app/analytics.ts counts it and says why. This names the range in the
-   lifter's own effort scale: a half-rep scale allows 3.5, RPE reads 5 to 6.5. */
-const halfLbl=()=>{const k=rirScale();return k==='rpe'?'RPE 5 to 6.5':k==='half'?'RIR 3.5 to 5':'RIR 4 to 5';};
 /* One set as text, for history, tables and the coach: 225×5, or 45 s for a timed hold. */
 function setShort(ex,w,r){return ex.timed?`${loadLabel(ex,+w||0)} for ${r}s`:`${loadLabel(ex,+w||0)}×${r}`;}
 function setStr(ex,x){return `${x.warm?'(W) ':x.drop?'(D) ':''}${setShort(ex,x.w,x.r)}${!ex.timed&&x.rir!=null&&x.rir!==''?(rirScale()==='rpe'?' @RPE '+effShow(x.rir):' @'+effShow(x.rir)):''}${x.cal?' (RIR check)':''}`;}

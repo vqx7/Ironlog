@@ -22,7 +22,7 @@ import type {
 } from './model';
 import { MK, SLOW_RECOVERY, bwShare, isCompound, loadMode, noE1 } from './library';
 import { addDays, daysBetween, median, r1, weekStart } from './util';
-import { EXIn, rirHalfOnIn, sortedSessionsIn } from './model';
+import { EXIn, exInjuryIn, rirHalfOnIn, sortedSessionsIn } from './model';
 import {
   BACK_DAYS,
   GROW_PCT,
@@ -30,6 +30,7 @@ import {
   atLoad,
   e1,
   isWork,
+  offSession,
   repFloor,
   rtfBand,
   rtfOf,
@@ -301,12 +302,13 @@ export function IDXIn(M: Model): Idx {
   const anchor = sessions.length ? sessions[sessions.length - 1].date : M.today();
   const winStart = addDays(anchor, -42);
   const wkAuto = idxAutoLighter(byEx);
+  idxTaggedFull(byEx);
   const lightWk = idxLightWeeks(sessions, wkAuto);
   const prs: Pr[] = [];
   const exStats: Record<string, ExStat> = {};
   for (const id of Object.keys(byEx)) {
     const maxBest = idxPRsIn(M, id, byEx[id], prs);
-    exStats[id] = idxLiftIn(M, id, byEx[id], maxBest, anchor, winStart);
+    exStats[id] = idxLiftIn(M, id, byEx[id], maxBest, anchor, winStart, prs);
   }
   const scores = idxScoresIn(M, exStats);
   prs.sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0));
@@ -593,18 +595,82 @@ export function idxAutoLighter(byEx: Record<string, Exposure[]>): Record<string,
       }
       const o = wkAuto[weekStart(x.date)];
       const ref = prev.filter(q => sameRR(q.rr, x.rr)).slice(-3);
-      if (o && o.l >= 2 && o.l * 2 >= o.n && ref.length) {
-        const mL = Math.max(...ref.map(q => q.topL)),
-          mT = Math.max(...ref.map(q => (q.tRaw == null ? -Infinity : q.tRaw)));
-        if (x.topL < mL - 1e-6 || (x.tRaw != null && isFinite(mT) && x.tRaw < mT * 0.97)) {
-          x.auto = true;
-          continue;
-        }
+      if (o && o.l >= 2 && o.l * 2 >= o.n && ref.length && !atUsualLoad(x, ref)) {
+        x.auto = true;
+        continue;
       }
       prev.push(x);
     }
   }
   return wkAuto;
+}
+
+/** How far under its usual a lift's session may fall and still be at its
+    usual level: 97% of the best strength reading of the sessions it is
+    compared with (the r30 audit's tolerance, a convention: at 8 reps and the
+    same load, one of two sets a rep short is within it, every set a rep
+    short is not), or, where a lift has no reading, of each one's reps a set
+    (a convention of r53's, stricter: at 12 a set, 12, 12 and 11 is within it
+    and 12 and 11 is not; on a 60 s hold, 58 s is). */
+export const USUAL_SHARE = 0.97;
+
+/** Whether a lift's session was at its usual load (the r30 audit: a lift
+    done at its usual load in a lighter week is not lighter): its heaviest
+    load not under the heaviest of its previous full sessions in the range
+    (`ref`, up to three), and its strength reading, reps alone, no further
+    under theirs than USUAL_SHARE allows. */
+export function atUsualLoad(x: Exposure, ref: readonly Exposure[]): boolean {
+  const mL = Math.max(...ref.map(q => q.topL)),
+    mT = Math.max(...ref.map(q => (q.tRaw == null ? -Infinity : q.tRaw)));
+  return !(x.topL < mL - 1e-6 || (x.tRaw != null && isFinite(mT) && x.tRaw < mT * USUAL_SHARE));
+}
+
+/** Whether a lift's session on a deload or lighter day was at its usual
+    level (r53), against its previous full sessions in the range (`ref`, up
+    to three). First, as many sets at its working load as each of theirs: a
+    lighter day halves the sets, and two sets of 10 after four of 10, 10, 9
+    and 8 read per set as the usual, so the review of r53 saw the next target
+    add load off half the work; against the fewest of theirs, one session
+    stopped a set short (still a full session, at half or more) let half the
+    sets through again (the second review). Then, with a strength reading on
+    it and on one of them, the usual-load test above. Without one (a timed
+    hold, a lift with no estimate such as a hanging leg raise, a bodyweight
+    lift before any weigh-in, sets past 20 reps), the load says nothing on
+    its own: a bodyweight leg raise is at its usual load on every day, and
+    r53's first version counted 8 leg raises on a lighter day as a full
+    session after 12s. So the working load must be no lighter than any of
+    theirs (less help on an assisted lift), and the reps a set at it
+    (seconds on a hold) no further under any of theirs than USUAL_SHARE
+    allows. With no earlier full session in the range to compare with, it
+    is not: the day's label stands. */
+export function atUsualLevel(x: Exposure, ref: readonly Exposure[]): boolean {
+  if (!ref.length || ref.some(q => x.topN < q.topN)) return false;
+  if (x.tRaw != null && ref.some(q => q.tRaw != null)) return atUsualLoad(x, ref);
+  const reps = (q: Exposure): number => q.topReps / q.topN;
+  return ref.every(q => x.topW >= q.topW - 1e-6 && reps(x) >= reps(q) * USUAL_SHARE);
+}
+
+/* Step 2b (r53, V 2026-10-18: a session's label must not override what a
+   lift actually did): a lift on a deload or lighter day, or made lighter
+   mid-session, that was done at its usual level (atUsualLevel: its usual
+   load and reps for as many sets, read as step 2 reads a lift in a lighter
+   week where there is a strength reading) is a full session for that lift.
+   It sets its targets, its trend, its stalls and its Last line; the rest of
+   the day stays lighter. A lift done lighter, at 90% for more reps say, or
+   for fewer reps or fewer sets at its usual load, stays lighter, so it never
+   sets next time's target. A trimmed exercise stays as it was. */
+export function idxTaggedFull(byEx: Record<string, Exposure[]>): void {
+  for (const id of Object.keys(byEx)) {
+    const prev: Exposure[] = [];
+    for (const x of byEx[id]) {
+      if ((x.deload || x.light) && !x.cut) {
+        if (!atUsualLevel(x, prev.filter(q => sameRR(q.rr, x.rr)).slice(-3))) continue;
+        x.deload = false;
+        x.light = false;
+      }
+      if (!offSession(x)) prev.push(x);
+    }
+  }
 }
 
 /* Step 3: lighter weeks, tagged or read as lighter. */
@@ -711,49 +777,52 @@ export function idxPRsIn(M: Model, id: string, exps: Exposure[], prs: Pr[]): num
        set was weaker; sets past 12 reps have no estimate, so it was the
        band's first). Only stronger than ever, as the r32 rule says. */
     const big = noE1(ex) || !!ex.timed || x.pts.some(q => sc(q) > topSc + 1e-9);
-    // A deload or lighter day is lighter on purpose: its sets are never PRs (r32, second check: 90 x 12 on a Lighter day listed as one).
-    const offPR = x.deload || x.light;
+    /* A PR is a PR whatever the day is called (r53, V 2026-10-18: a set
+       stronger than any before it, logged on a Lighter day, was not
+       counted). r32 kept every PR off deload and lighter days after a weaker
+       set on one was listed as a PR; since r34.2 only a set stronger than
+       every earlier one is counted and announced (big), and a heavier set
+       without one is said once, quietly (Heaviest yet), so the day's label
+       decides nothing here. */
     // Each PR keeps its session (sid), so two sessions on one day never share one (r34.2), and the overall best before it (prevAll) beside the band's (prev).
-    if (!offPR) {
-      if (wPR)
-        prs.push({
-          date: x.date,
-          sid: x.sid,
-          exId: id,
-          type: 'Weight PR',
-          w: wPR.w,
-          r: wPR.r,
-          prevW: prevMaxW,
-          value: e1PR ? x.pb : null,
-          prev: e1PR ? pb : null,
-          prevAll: maxPb,
-          bb: x.pbb,
-          big
-        });
-      else if (e1PR)
-        prs.push({
-          date: x.date,
-          sid: x.sid,
-          exId: id,
-          type: 'e1RM',
-          value: x.pb,
-          prev: pb,
-          prevAll: maxPb,
-          bb: x.pbb,
-          big
-        });
-      else if (repPR)
-        prs.push({
-          date: x.date,
-          sid: x.sid,
-          exId: id,
-          type: 'Rep PR',
-          w: repPR.w,
-          r: repPR.r,
-          prevR: front.filter(q => q.pl >= repPR.pl - 1e-6).reduce((a, q) => Math.max(a, q.r), 0),
-          big
-        });
-    }
+    if (wPR)
+      prs.push({
+        date: x.date,
+        sid: x.sid,
+        exId: id,
+        type: 'Weight PR',
+        w: wPR.w,
+        r: wPR.r,
+        prevW: prevMaxW,
+        value: e1PR ? x.pb : null,
+        prev: e1PR ? pb : null,
+        prevAll: maxPb,
+        bb: x.pbb,
+        big
+      });
+    else if (e1PR)
+      prs.push({
+        date: x.date,
+        sid: x.sid,
+        exId: id,
+        type: 'e1RM',
+        value: x.pb,
+        prev: pb,
+        prevAll: maxPb,
+        bb: x.pbb,
+        big
+      });
+    else if (repPR)
+      prs.push({
+        date: x.date,
+        sid: x.sid,
+        exId: id,
+        type: 'Rep PR',
+        w: repPR.w,
+        r: repPR.r,
+        prevR: front.filter(q => q.pl >= repPR.pl - 1e-6).reduce((a, q) => Math.max(a, q.r), 0),
+        big
+      });
     if (x.pb != null) maxPb = maxPb == null ? x.pb : Math.max(maxPb, x.pb);
     for (const p of x.pts) if (p.r > 0) prevMaxW = Math.max(prevMaxW, p.w);
     for (const p of x.pts) topSc = Math.max(topSc, sc(p));
@@ -770,7 +839,8 @@ export function idxLiftIn(
   exps: Exposure[],
   maxBest: number | null,
   anchor: string,
-  winStart: string
+  winStart: string,
+  prs: readonly Pr[]
 ): ExStat {
   /* A deload session is lighter by design. It is charted and counted in
      volume, but it cannot stall a lift, bend its trend, or count as one of
@@ -834,13 +904,30 @@ export function idxLiftIn(
   /* Only a lift still being trained can be stalled: one not done in the
      last 42 days (counted from today and from the last session), or deleted
      or archived, used to stay stalled forever and kept the Coach calling
-     for a deload (r27). */
+     for a deload (r27). Nor one held for a flagged injury (r53, from the
+     audit V asked for): the engine keeps it at last time's load on purpose,
+     and three weeks of doing as told read as a stall to change the range. */
   const current =
     !!lastReal &&
     lastReal.date >= winStart &&
     lastReal.date >= addDays(M.today(), -42) &&
     !exI.archived &&
-    M.s.exercises.some(e => e.id === id);
+    M.s.exercises.some(e => e.id === id) &&
+    !exInjuryIn(M, exI);
+  /* A PR is movement whatever the day (r53, V 2026-10-18: a PR is a PR
+     whenever it happens). A session where the lift was trimmed or done
+     lighter is left out of the stretch, and its PR went with it, so a lift
+     that set one on yesterday's Lighter day read stalled beside it in Recent
+     PRs (the fifth review). The sessions left out, in the range, since the
+     third-last session of the stretch: on a lift with a reading, one of
+     them with a PR that Recent PRs lists (big, stronger than ever) counts as
+     movement, since a set that only beat earlier ones at its own lighter
+     load, 90 x 9 after 100 x 8, is no sign a plateau has ended and took a
+     deload the lifts needed away again (the sixth review); on a lift with
+     none, any PR, as for the sessions of the stretch. */
+  const offSince = (from: string): Exposure[] =>
+    exps.filter(x => offSession(x) && sameRR(x.rr, curRR) && x.date >= from);
+  const listed = (x: Exposure): boolean => prs.some(p => p.big && p.sid === x.sid && p.exId === id);
   if (!capped && current) {
     const wE = withE1;
     if (wE.length >= 4) {
@@ -860,6 +947,7 @@ export function idxLiftIn(
         const same = l.slice(0, -1).filter(x => Math.abs(x.topW - z.topW) < 1e-6 && x.topN >= z.topN);
         const moved =
           l.slice(-3).some(x => x.progress) ||
+          offSince(l[l.length - 3].date).some(listed) ||
           z.topL > a0.topL + 1e-6 ||
           z.topW > a0.topW + 1e-6 ||
           (same.length > 0 && z.topReps > Math.max(...same.map(x => x.topReps)));
@@ -885,7 +973,11 @@ export function idxLiftIn(
         const my = l.reduce((a, x) => a + x.tv!, 0) / l.length;
         stalled = sen != null && my > 0 && ((sen * 7) / my) * 100 < 0.1 && !moved;
       }
-    } else if (withE1.length < 2) stalled = inRange.length >= 4 && inRange.slice(-3).every(x => !x.progress);
+    } else if (withE1.length < 2)
+      stalled =
+        inRange.length >= 4 &&
+        inRange.slice(-3).every(x => !x.progress) &&
+        !offSince(inRange[inRange.length - 3].date).some(x => x.progress);
   }
   const w = trendW(sc);
   let pct: number | null = null,
@@ -1111,7 +1203,8 @@ export function idxScoresIn(M: Model, exStats: Record<string, ExStat>): Score[] 
    rule): a trimmed, lighter, or deload session is what you did last, so it is
    what you look back at, labelled for what it was. Targets still come from
    the last full session (base), so trimmed, lighter and deload work never
-   sets one. Grey reps and Copy last follow "Last" when its loads are the ones
+   sets one (since r53, a lift done at its usual level on a lighter day or in
+   a deload is full work, idxTaggedFull). Grey reps and Copy last follow "Last" when its loads are the ones
    you lift (trimmed and lighter sessions keep the loads); after a deload they
    come from the last full session, since deload reps were at lighter loads.
    basis is the date the target came from, when it is not the session in

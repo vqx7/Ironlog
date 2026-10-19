@@ -49,16 +49,19 @@ const CLOCK = '2026-10-15T10:00:00';
       document.querySelector('[data-act="startSession"]').click();
       const lift = L.state.draft.ex[0].exId;
       // The lift's newest session becomes a deload, so the target must come from the one before.
+      // A deload done lighter, as a deload is (about 85% of the loads): since r53 a lift done at its
+      // usual load in a deload is a full session for it and sets the target itself.
       const ss = L.sortedSessions().filter(x => x.ex.some(b => b.exId === lift));
       ss[ss.length - 1].deload = true;
+      for (const b of ss[ss.length - 1].ex) if (b.exId === lift) for (const x of b.sets) x.w = x.w * 0.85;
       L.state = L.normalize(L.state); L.invalidate(); L.state.draft = null; L.saveNow(); L.render();
       document.querySelector('[data-act="startSession"]').click(); L.render();
       const i = L.state.draft.ex.findIndex(x => x.exId === lift); const b = L.state.draft.ex[i];
       const tip = document.querySelector(`#blk-${i} .hint .tipi`);
       return b && b.basis ? { why: L.whyTarget(b), basis: b.basis, shown: tip && tip.getAttribute('data-tip') } : null;
     });
-    ok(r && /The target comes from your last full session/.test(r.why) && /deload sessions do not set one/.test(r.why) && r.shown === r.why,
-      'a target from an earlier full session names its date, and says deloads do not set one', r);
+    ok(r && /The target comes from your last full session/.test(r.why) && /a session where this lift was trimmed or done lighter than usual does not set one, nor, on a lighter day, in a deload, or on an exercise made lighter, one with fewer reps or sets than usual/.test(r.why) && r.shown === r.why,
+      'a target from an earlier full session names its date, and says a session where the lift was trimmed or done lighter than usual does not set one, nor, on a lighter day, in a deload, or on an exercise made lighter, one with fewer reps or sets (since r53 a lift done at its usual level in a deload does)', r);
     ok(!P.errors.length, 'no page errors (basis)', P.errors);
     await P.ctx.close();
   }

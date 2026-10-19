@@ -8,6 +8,7 @@
 import type { DraftBlock, DraftSet, Target } from './types';
 import { uid, today } from './util';
 import { isWork } from './formulas';
+import { fmtDate } from './format';
 
 /* ---------- loads and targets ---------- */
 
@@ -46,6 +47,41 @@ export function effTarget(b: DraftBlock): Target | null | undefined {
   const nw = b.sets.filter(x => !x.warm && !x.drop).length;
   if (!Array.isArray(t.rs) || !(nw > 0) || nw >= (t.n as number)) return t;
   return { ...t, n: nw, total: t.rs.slice(0, nw).reduce((a, v) => a + v, 0) };
+}
+
+/** What a target's reason is read from: a block in the session (its hint)
+    or a suggestion (its text), with its Last line and the date of the full
+    session the target came from when that was not the last. */
+export interface TargetReason {
+  hint?: string | undefined;
+  text?: string | undefined;
+  last?: string | undefined;
+  basis?: string | null | undefined;
+}
+
+/** The reason behind a target, in the engine's own words (r47). b.hint is the
+    whole sentence the case wrote, and it opens with the Last line (b.last),
+    which the screen shows on its own line already, so that prefix comes off
+    rather than being said twice. Nothing is recomputed here: a second account
+    of the rules would be a second thing to keep right. Since r53 a lift done
+    at its usual load and reps for as many sets on a lighter day or in a
+    deload sets the target, so the note says what does not: a session where
+    the lift was trimmed or done lighter than usual, and on a lighter day, in
+    a deload or on an exercise made lighter one with fewer reps or sets than
+    usual (until r53 it named lighter and deload sessions as a whole; moved
+    from the legacy script to say so). A
+    normal day with half or more of its sets done is full (r30), so the
+    note does not say fewer sets on any day. */
+export function whyTarget(b: TargetReason | null | undefined): string {
+  if (!b) return '';
+  // A session block renames the suggestion's text to hint, so take either.
+  const h = (b.hint || b.text || '').trim(),
+    l = (b.last || '').trim();
+  const reason = l && h.startsWith(l) ? h.slice(l.length).trim() : h;
+  const basis = b.basis
+    ? ` The target comes from your last full session, ${fmtDate(b.basis)}; a session where this lift was trimmed or done lighter than usual does not set one, nor, on a lighter day, in a deload, or on an exercise made lighter, one with fewer reps or sets than usual.`
+    : '';
+  return (reason + basis).trim();
 }
 
 /** The target as worded on the block, with the sets it counts brought down to today's (effTarget).

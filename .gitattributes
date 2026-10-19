@@ -1,0 +1,8 @@
+# GitHub's language bar counts bytes. The published builds kept for the
+# migration tests and the page built from src/ would make the repository
+# read as HTML; marked here, the bar counts the source (src/, scripts/,
+# tests/). GitHub also folds a generated file's changes in a pull request,
+# so index.html shows collapsed there. Nothing in the app or its tests reads
+# this file.
+baselines/*.html linguist-vendored
+index.html linguist-generated

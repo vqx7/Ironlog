@@ -1,7 +1,7 @@
 // r52 (phase 3b, ARCHITECTURE.md): the engine and the analytics became
 // functions of a model, and the app calls them through live.ts. This suite
 // proves the app gets the same answers as r51 on far more than tests/r36.js
-// reaches: r51 and this build side by side, the same 1,000 seeded histories
+// reaches: r51 and r52 side by side, the same 1,000 seeded histories
 // in each, built to reach injuries, RIR off and RIR checks, half sets, Your
 // training, a deload week, rest weeks, freestyle and free sessions, check-in
 // answers, demo sessions, priorities and own targets, steps, heaviest loads,
@@ -20,19 +20,25 @@
 // read stale on purpose, one at a time; and makeDemo's whole log, since the
 // demo calls the engine while it builds it.
 //
+// Since r53 the comparison is r51 against r52 as published
+// (baselines/r52.html), the build this suite proves: r53 changes on purpose
+// what some of these answers are (tests/r53.js and tests/r53w.js), so the
+// current build is compared with r52 there, and r52 with r51 here.
+//
 // r51's test hook does not reach 22 of the 74 names, so r51 is served with
 // those added to its hook, at that one place, the rest of its page held to
-// the baseline's text; this build's hook has the same 22 (tests/moved.js
+// the baseline's text; r52's hook has the same 22 (tests/moved.js
 // reads that back).
 const { open, engine, settle } = require('./h');
 const fs = require('fs'); const path = require('path'); const os = require('os');
 const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log('FAIL', m, x !== undefined ? JSON.stringify(x).slice(0, 1500) : ''); } else console.log('ok  ', m); };
 const ROOT = path.join(__dirname, '..');
 const BASE = 'baselines/r51.html';
+const CUR = 'baselines/r52.html';
 const N = +process.env.R52_N || 1000;
 const HOOK22 = ['U', 'toD', 'fromD', 'loadLabel', 'exName', 'planCredit', 'gymOf', 'isDeloadWeek', 'freeMode', 'injuredSet', 'prLoad', 'statsUpTo', 'readiness', 'bwRef', 'weekRoutine', 'easierText', 'barKg', 'suggestCore', 'loadOf', 'bwLoad', 'hardCredit', 'rirHalfOn'];
-// The 74 names the legacy script imports from live.ts, read from src/09-imports.js, so the list cannot drift from the code.
-const LIVE74 = (() => { const t = fs.readFileSync(path.join(ROOT, 'src', '09-imports.js'), 'utf8'); const m = t.match(/import \{([^}]*)\} from '\.\/app\/live';/); return m ? m[1].split(',').map(x => x.trim()).filter(Boolean) : []; })();
+// The 74 names r52's legacy script imports from live.ts, read from r52's own bundle, where each is `var X = live(XIn)`, so the list cannot drift from the build.
+const LIVE74 = [...fs.readFileSync(path.join(ROOT, CUR), 'utf8').matchAll(/\bvar ([A-Za-z0-9_$]+) = live\(\1In\);/g)].map(m => m[1]);
 
 // r51's page with the 22 names added at the end of its hook, the one change.
 function baseWithHook() {
@@ -46,19 +52,17 @@ function baseWithHook() {
   return { file, same: out.replace(`, ${HOOK22.join(', ')} };`, ' };') === html };
 }
 
-const { wide, digest, specOf, ser, err } = require('./wide');
-// The encoding and error text the scenarios below write with, handed to the page as text (one copy, tests/wide.js).
-const SER = ser.toString(), ERR = err.toString();
+const { wide, digest, specOf, midnightRun, STALE_CASES, staleRun, demoRun } = require('./wide');
 
 (async () => {
-  ok(LIVE74.length === 74, `src/09-imports.js imports the 74 adapters this suite calls (${LIVE74.length})`);
+  ok(LIVE74.length === 74, `${CUR} has the 74 adapters this suite calls (${LIVE74.length})`);
   const base = baseWithHook();
   ok(base.same, `${BASE} is served as published, but for the 22 names added at the end of its test hook`);
   const browser = await engine.launch();
   const T0 = new Date('2026-10-11T12:00:00');
   const setup = async (ctx, page) => { await page.clock.setFixedTime(T0); };
   const A = await open(base.file, { browser, setup });
-  const B = await open('index.html', { browser, setup });
+  const B = await open(CUR, { browser, setup });
   const hooks = await Promise.all([A, B].map(P => P.page.evaluate(names => names.filter(n => typeof window.__ironlog[n] !== 'function'), LIVE74)));
   ok(hooks[0].length === 0 && hooks[1].length === 0, 'both builds\' test hooks reach all 74 names', hooks);
   const LIB = await B.page.evaluate(() => window.__ironlog.libExercises());
@@ -104,7 +108,7 @@ const SER = ser.toString(), ERR = err.toString();
     hit('PRs', /"prs":\[\{/.test(b)); hit('a stall', /"stalled":true/.test(b)); hit('a lighter week', /"lightWk":\{"/.test(b)); hit('a rack', calls.some(([n, , r]) => n === 'gymRack' && r.startsWith('[')));
   }
   ok(same === N, `the 74 give the same answers as r51 on all ${N} wide histories, every day of the week as today (${same} identical, ${Math.round((Date.now() - t0) / 1000)} s)`, firstDiff);
-  ok(errs === 0, 'no history made suggest, IDX or the coach throw in this build', errs);
+  ok(errs === 0, 'no history made suggest, IDX or the coach throw in r52', errs);
   ok(wrote === 0, 'the log after every call is the log the calls were given, in every history (none writes to it)', wrote);
   ok(LIVE74.every(n => called.has(n)), 'every one of the 74 was called and its answers compared', LIVE74.filter(n => !called.has(n)));
   console.log(`note each history's answers: ${Math.round(lines / N)} calls, ${Math.round(size / N / 1000)} kB on average`);
@@ -112,7 +116,7 @@ const SER = ser.toString(), ERR = err.toString();
   const thin = Object.entries(cov).filter(([, n]) => n < Math.min(5, N / 50));
   ok(Object.keys(cov).length > 60 && thin.length === 0, 'the histories reach every feature and every case of the engine listed above', thin);
 
-  // Identity, read from a history in this build alone: what the comparison above shows to agree, here held to what it must be.
+  // Identity, read from a history in r52 alone: what the comparison above shows to agree, here held to what it must be.
   {
     const h = wide(52000, LIB); const spec = specOf(h);
     await B.page.clock.setFixedTime(new Date(h.today + 'T12:00:00'));
@@ -132,56 +136,25 @@ const SER = ser.toString(), ERR = err.toString();
   // no reload, read before and after invalidate. Caches built on Sunday are
   // read on Monday exactly as r51 read them.
   {
-    const keys = ['isDeloadWeek', 'weekStats', 'weekStreak', 'coach', 'recentLighter', 'firstFullWeek', 'actualAvg4', 'paceRatios', 'pace', 'movers', 'stalledIds', 'readiness'];
-    // Each read whole in the digest's encoding (the second r52 review hid a change in avgWeeks's notes from JSON), and the log after it.
-    const read = ([ids, keys, S, E]) => { const L = window.__ironlog; const ser = new Function(`return (${S})`)(), err = new Function(`return (${E})`)(); const o = {}; for (const k of keys) { try { o[k] = ser(k === 'recentLighter' ? L[k](28) : L[k]()); } catch (e) { o[k] = err(e); } } for (const id of ids) { try { o['s ' + id] = ser(L.suggest(id, L.planFor(id), {})); o['d ' + id] = ser(L.daysOff(id)); } catch (e) { o['s ' + id] = err(e); } } o.idx = ser(L.IDX()); o.dix = ser(L.dateIndex()); o.log = ser(L.state); return JSON.stringify(o); };
     let agree = 0, differs = 0, firstOff = null, turned = 0; const M = 40;
     for (let i = 0; i < M; i++) {
+      // The week marked as a deload week (midnightRun), so the week's turn is read too.
       const h = wide(53000 + i, LIB);
-      h.raw.deloadWeek = 'THIS_WEEK';
-      const sun = new Date('2026-10-11T23:59:30'), mon = new Date('2026-10-12T00:00:30');
-      const run = async P => {
-        await P.page.clock.setFixedTime(sun);
-        await P.page.evaluate(raw => { const L = window.__ironlog; const r = JSON.parse(raw); const d = new Date(); const g = (d.getDay() + 6) % 7; d.setDate(d.getDate() - g); r.deloadWeek = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; L.state = L.normalize(r); L.invalidate(); }, JSON.stringify(h.raw));
-        const before = await P.page.evaluate(read, [h.ids, keys, SER, ERR]);
-        await P.page.clock.setFixedTime(mon);
-        const stale = await P.page.evaluate(read, [h.ids, keys, SER, ERR]);
-        await P.page.evaluate(() => window.__ironlog.invalidate());
-        const after = await P.page.evaluate(read, [h.ids, keys, SER, ERR]);
-        return [before, stale, after];
-      };
+      const run = async P => (await midnightRun(P, h)).map(x => x[0]);
       const [a, b] = [await run(A), await run(B)];
       if (JSON.stringify(a) === JSON.stringify(b)) agree++;
       else { differs++; if (!firstOff) { const j = a.findIndex((x, n) => x !== b[n]); const oa = JSON.parse(a[j]), ob = JSON.parse(b[j]); const key = Object.keys(oa).find(q => oa[q] !== ob[q]); firstOff = { seed: 53000 + i, read: ['before midnight', 'after, caches from Sunday', 'after invalidate'][j], key, r51: String(oa[key]).slice(0, 400), r52: String(ob[key]).slice(0, 400) }; } }
       if (b[0] !== b[2]) turned++;
     }
     ok(differs === 0, `a page left open from Sunday into Monday reads the same as r51 before midnight, after it with the caches built on Sunday, and after invalidate (${agree} of ${M} histories)`, firstOff);
-    ok(turned > M / 2, `the week turns over at midnight in this build (${turned} of ${M} histories read differently on Monday)`);
+    ok(turned > M / 2, `the week turns over at midnight in r52 (${turned} of ${M} histories read differently on Monday)`);
   }
 
   // Each cache read stale on purpose, one at a time: the log changed and read
   // again before invalidate, then after it. r51 kept each cache until
-  // invalidate; this build must keep each exactly as long.
+  // invalidate; r52 must keep each exactly as long.
   {
-    const cases = {
-      EXMAP: { build: 'L.EX(s.exercises[0].id)', change: "s.exercises.push({ ...s.exercises[0], id: 'zz-new', name: 'New lift' })", read: "[L.EX('zz-new').name, L.exName('zz-new')]" },
-      _idx: { build: 'L.IDX()', change: 's.sessions.push({ ...s.sessions[s.sessions.length - 1], id: "zz-s", date: s.sessions[s.sessions.length - 1].date })', read: 'Object.keys(L.IDX().byEx).map(k => L.IDX().byEx[k].length)' },
-      _dix: { build: 'L.dateIndex()', change: 's.sessions.push({ ...s.sessions[0], id: "zz-d", date: "2026-10-10" })', read: 'L.dateIndex().byDate["2026-10-10"] ? L.dateIndex().byDate["2026-10-10"].length : 0' },
-      _cal: { build: 'L.calStats()', change: 's.sessions.forEach(x => x.ex.forEach(b => b.sets.forEach(y => { if (y.rir != null) y.cal = { at: y.r + y.rir + 1, pred: y.rir }; })))', read: 'L.calStats()' },
-      _rirUse: { build: 'ids.map(id => L.rirUsual(id))', change: 's.sessions.forEach(x => x.ex.forEach(b => b.sets.forEach(y => { y.rir = 4; })))', read: 'ids.map(id => L.rirUsual(id))' },
-      _bwRef: { build: 'L.bwRef()', change: 's.bodyweights.push({ id: "zz-b", date: "2026-10-10", kg: 123 })', read: '[L.bwRef(), ids.map(id => L.bwRefLoad(L.EX(id)))]' },
-      _pace: { build: 'L.pace()', change: 's.sessions.forEach(x => { x.durMin = 200; })', read: '[L.pace(), L.paceRatios().length]' },
-      _rack: { build: 'ids.map(id => { try { return L.rackStep(L.EX(id)); } catch (e) { return "ERR"; } })', change: 's.sessions.forEach(x => x.ex.forEach(b => b.sets.forEach(y => { y.w = y.w + 0.37; })))', read: 'ids.map(id => { try { return L.rackStep(L.EX(id)); } catch (e) { return "ERR"; } })' },
-      weekRid: { build: 'L.weekRoutine(L.state.sessions.length ? L.state.sessions[0].date : "2026-10-05")', change: 's.routines.push({ ...s.routines[0], id: "zz-r", name: "Swapped" }); s.sessions.forEach(x => { x.routineId = "zz-r"; })', read: 'L.weekRoutine(L.state.sessions.length ? L.state.sessions[0].date : "2026-10-05").name' },
-    };
-    const run = async (P, h, c) => P.page.evaluate(([raw, ids, c, S, E]) => {
-      const L = window.__ironlog; L.state = L.normalize(JSON.parse(raw)); L.invalidate(); const s = L.state;
-      const ser = new Function(`return (${S})`)(), err = new Function(`return (${E})`)();
-      const ev = t => { try { return ser(new Function('L', 's', 'ids', `return (${t});`)(L, s, ids)); } catch (e) { return err(e); } };
-      const built = ev(c.build); ev(c.read); new Function('L', 's', 'ids', c.change)(L, s, ids);
-      const stale = ev(c.read); L.invalidate(); const after = ev(c.read);
-      return [built, stale, after, ser(L.state)];
-    }, [JSON.stringify(h.raw), h.ids, c, SER, ERR]);
+    const cases = STALE_CASES, run = staleRun;
     const bad = [], moved = [];
     for (const [name, c] of Object.entries(cases)) {
       let agree = 0, changed = 0;
@@ -200,20 +173,9 @@ const SER = ser.toString(), ERR = err.toString();
     console.log('note stale reads that changed after invalidate, per cache (of 12):', moved.join(', '));
   }
 
-  // makeDemo calls the engine while it builds the demo log, so the log it
-  // builds depends on when each cache fills: compared whole, its seed being
-  // fixed, with the random ids set aside (each id read as the order it first
-  // appears in).
+  // makeDemo's whole log and what the engine reads in it (tests/wide.js, demoRun).
   {
-    const demo = P => P.page.evaluate(([S]) => {
-      const L = window.__ironlog; L.state = L.normalize(null); L.invalidate(); L.makeDemo(); L.invalidate();
-      const ser = new Function(`return (${S})`)();
-      const ids = new Map(); const canon = v => (typeof v === 'string' && /^[a-z0-9]{8,}$/i.test(v) && /\d/.test(v) && /[a-z]/i.test(v) ? (ids.has(v) || ids.set(v, '#' + ids.size), ids.get(v)) : v);
-      // Read in the digest's encoding first, so no property is left out, then the ids set aside.
-      const walk = x => (Array.isArray(x) ? x.map(walk) : x && typeof x === 'object' ? Object.fromEntries(Object.entries(x).map(([k, v]) => [k, walk(v)])) : canon(x));
-      const enc = v => walk(JSON.parse(ser(v)));
-      return JSON.stringify({ state: enc(L.state), idx: enc(L.IDX()), coach: enc(L.coach()) });
-    }, [SER]);
+    const demo = demoRun;
     await Promise.all([A, B].map(P => P.page.clock.setFixedTime(new Date('2026-10-14T12:00:00'))));
     const [a, b] = [await demo(A), await demo(B)];
     let k = 0; while (k < a.length && a[k] === b[k]) k++;

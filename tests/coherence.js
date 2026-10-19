@@ -44,6 +44,20 @@ const readAll = () => {
   return out;
 };
 
+// Stats > Lifts as a lifter reads it: each lift under Stalls with the date of its last session there, and each PR under Recent PRs with its
+// date, the shown dates read back to days.
+const stallsAndPRs = () => {
+  const L = window.__ironlog;
+  L.ui.tab = 'dash'; L.render(); document.querySelectorAll('#view details').forEach(d => { d.open = true; });
+  L.render(); document.querySelectorAll('#view details').forEach(d => { d.open = true; });
+  const iso = {}; for (let k = 0; k < 800; k++) { const d = L.addDays(L.today(), -k); if (!(L.fmtDate(d) in iso)) iso[L.fmtDate(d)] = d; }
+  const stalls = [...document.querySelectorAll('#sub-stalls .row.spread')].map(r => ({ name: r.children[0].textContent.trim(), last: iso[r.children[1].textContent.replace(/^last /, '').trim()] }));
+  const prs = [...document.querySelectorAll('#sub-prs .row.spread')].map(r => ({ name: r.children[0].childNodes[0].textContent.trim(), date: iso[r.querySelector('.num .muted').textContent.trim()] }));
+  return { stalls, prs };
+};
+// A lift under Stalls with a PR in Recent PRs dated after its last session there.
+const clashes = r => r.stalls.filter(st => r.prs.some(p => p.name === st.name && p.date > st.last));
+
 (async () => {
   const { engine } = require('./h');
   const browser = await engine.launch();
@@ -86,6 +100,9 @@ const readAll = () => {
     // 6. Nothing claims a number the log cannot support.
     ok(!/in the 4 weeks before/.test(r.dashText) || r.r4.back,
       'a comparison with the 4 weeks before appears only when the log covers them', { back: r.r4.back });
+    // 7. A lift is not stalled beside a newer PR of its own (r53, the fifth review).
+    const sp = await P.page.evaluate(stallsAndPRs);
+    ok(sp.prs.length > 0 && sp.stalls.every(x => x.last) && sp.prs.every(x => x.date) && clashes(sp).length === 0, 'no lift listed under Stalls has a PR in Recent PRs after its last session there', sp);
     ok(!P.errors.length, 'no page errors (ordinary log)', P.errors);
     await P.ctx.close();
   }
@@ -118,6 +135,24 @@ const readAll = () => {
     ok(!/of \d+ planned/.test(r.wkSets) && !/\d+ hard sets planned/.test(r.wkSets),
       'and nothing under it states a planned target for a week with no plan', r.wkSets);
     ok(!P.errors.length, 'no page errors (rest week)', P.errors);
+    await P.ctx.close();
+  }
+
+  // ---- A PR on a day left out of a stall (r53, the fifth review: a PR is a PR whenever it happens, V 2026-10-18). Bench press, back squat
+  // and Romanian deadlift at 100 x 8 for four sets every Thursday for six weeks, all three flat; then a Lighter day with the bench at 105 x 8,
+  // one set, and a session where the squat stopped after one set of 105 x 8 (trimmed): each a weight PR on a session the stall leaves out.
+  {
+    const P = await open(FILE, { browser, clock: '2026-10-14T10:00:00' });
+    await P.page.evaluate(() => { const L = window.__ironlog; const s = L.state; s.settings.onboarded = true; s.settings.hidden = []; s.injuries = []; s.draft = null;
+      const set = w => ({ w, r: 8, rir: 1, done: true });
+      const ses = (id, date, ex, light) => ({ id, date, dayIdx: 0, dayId: null, dayName: 'Session', routineId: '', free: true, light: !!light, notes: '', ex });
+      s.sessions = ['2026-09-03', '2026-09-10', '2026-09-17', '2026-09-24', '2026-10-01', '2026-10-08'].map((d, i) => ses('f' + i, d, ['bench', 'backSquat', 'rdl'].map(exId => ({ exId, rr: [6, 10], sets: [set(100), set(100), set(100), set(100)] }))));
+      s.sessions.push(ses('l', '2026-10-10', [{ exId: 'bench', rr: [6, 10], sets: [set(105)] }], true));
+      s.sessions.push(ses('t', '2026-10-11', [{ exId: 'backSquat', rr: [6, 10], cut: true, sets: [set(105)] }]));
+      L.state = L.normalize(s); L.invalidate(); L.saveNow(); });
+    const sp = await P.page.evaluate(stallsAndPRs);
+    ok(sp.stalls.length === 1 && sp.prs.length >= 2 && clashes(sp).length === 0, 'a weight PR on a Lighter day and one on a trimmed session are in Recent PRs, and neither lift is listed under Stalls beside it (the deadlift, flat, still is)', sp);
+    ok(!P.errors.length, 'no page errors (a PR on a day left out of a stall)', P.errors);
     await P.ctx.close();
   }
 
