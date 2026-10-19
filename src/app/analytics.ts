@@ -876,6 +876,18 @@ export function stallStretch<X extends { date: string }>(wE: readonly X[]): X[] 
   return daysBetween(l[0].date, lastE) >= 21 ? l : null;
 }
 
+/* How many weeks the stall test read a lift over: its stretch's span, or
+   null for a lift with no strength reading, which the count test reads over
+   its last 3 sessions. The coach and the lift's headline on Stats say it
+   (r54, from the audit V asked for: both said "3 weeks" of a lift flat for
+   ten). Its readings are the ones IDX set on its sessions. */
+/** The weeks a lift's stall stretch spans, or null when it is read by count. */
+export function stallWeeksIn(M: Model, id: string): number | null {
+  const I = IDXIn(M);
+  const l = stallStretch(trendScope(I.byEx[id] || [], M.today()).inRange.filter(x => x.tv != null));
+  return l ? Math.round(daysBetween(l[0].date, l[l.length - 1].date) / 7) : null;
+}
+
 /* Step 5: one lift's trend, stall, signals and bests. */
 export function idxLiftIn(
   M: Model,

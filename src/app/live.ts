@@ -56,6 +56,7 @@ import {
   rirEffIn,
   rirEstIn,
   rirUsualIn,
+  stallWeeksIn,
   statsUpToIn,
   tonnageIn,
   weekSessionsIn
@@ -147,6 +148,7 @@ export const prLoad = live(prLoadIn);
 export const rirEff = live(rirEffIn);
 export const rirEst = live(rirEstIn);
 export const rirUsual = live(rirUsualIn);
+export const stallWeeks = live(stallWeeksIn);
 export const statsUpTo = live(statsUpToIn);
 export const tonnage = live(tonnageIn);
 export const weekSessions = live(weekSessionsIn);

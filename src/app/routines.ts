@@ -194,9 +194,15 @@ export function trainDaysOf(R: RoutineLike): number {
   return R.days.filter(d => !d.rest && d.items.length > 0).length;
 }
 
+/* A cycle that is not 7 days long plans a fraction a week: an every-other-day
+   routine (5 x 5) 3.5, done in weeks of 4 and 3. The week counts as on plan at
+   the whole number below (r54, V's call of 2026-10-18 after the audit V asked
+   for: rounded to 4, a lifter doing exactly what the routine says never built a
+   streak, and the ring read 3 of 4 every other week). One rule for the ring,
+   This week, the streak and adherence. */
 /** Training days a week, for a weekly schedule or a cycle. */
 export function plannedPerWeek(R: RoutineLike): number {
-  return R.schedule === 'weekly' ? trainDaysOf(R) : Math.round(trainDaysOf(R) * weekFactor(R));
+  return R.schedule === 'weekly' ? trainDaysOf(R) : Math.floor(trainDaysOf(R) * weekFactor(R) + 1e-9);
 }
 
 /* Sessions store the id of the day they were logged against, so reordering or

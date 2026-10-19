@@ -28,8 +28,8 @@ import { FB_ASK, FB_CATS, FB_CTX_MAX, FB_DAY, FB_HINT, FB_IMG_MB, FB_MAX, FB_MIN
 import { state, setState, ui, cloud, acct, acctWait, HIST_PAGE } from './app/store';
 import { CAL_WEEKS } from './app/analytics';
 import { avgWeeksTxt } from './app/weeks';
-import { CHK_Q, SIZE_MAP, chkWord, musTrend } from './app/coach';
-import { EX, U, activeRoutine, exInjury, exName, freeMode, gymOf, injuredSet, invalidate, isDeloadWeek, isRestWeek, prof, rirHalfOn, sortedSessions, fromD, stepRead, toD, defPlan, planCredit, planFor, planSetsPerWeek, profPlan, profRule, routineUpdates, plannedSets, barKg, capOf, exBarKg, gymRack, rackTol, fmtW, loadLabel, IDX, bwAt, bwLoad, bwRef, bwRefLoad, calStats, dateIndex, hardCredit, isHard, loadOf, prLoad, rirEff, rirEst, rirUsual, statsUpTo, tonnage, weekSessions, dayMinutes, pace, paceRatios, sessModelMin, actualAvg4, avgWeeks, firstFullWeek, recentLighter, regionBalance, weekNeed, weekRoutine, weekStats, weekStreak, coach, dropOnlyLift, fatigueStalls, movers, readiness, stalledIds, daysOff, easierText, incOf, lighterLoad, progStep, rackStep, suggestCore, suggest } from './app/live';
+import { CHK_Q, SIZE_MAP, STALL_WHY, chkWord, musTrend } from './app/coach';
+import { EX, U, activeRoutine, exInjury, exName, freeMode, gymOf, injuredSet, invalidate, isDeloadWeek, isRestWeek, prof, rirHalfOn, sortedSessions, fromD, stepRead, toD, defPlan, planCredit, planFor, planSetsPerWeek, profPlan, profRule, routineUpdates, plannedSets, stallWeeks, barKg, capOf, exBarKg, gymRack, rackTol, fmtW, loadLabel, IDX, bwAt, bwLoad, bwRef, bwRefLoad, calStats, dateIndex, hardCredit, isHard, loadOf, prLoad, rirEff, rirEst, rirUsual, statsUpTo, tonnage, weekSessions, dayMinutes, pace, paceRatios, sessModelMin, actualAvg4, avgWeeks, firstFullWeek, recentLighter, regionBalance, weekNeed, weekRoutine, weekStats, weekStreak, coach, dropOnlyLift, fatigueStalls, movers, readiness, stalledIds, daysOff, easierText, incOf, lighterLoad, progStep, rackStep, suggestCore, suggest } from './app/live';
 import { AUTH, FB } from './app/providers';
 import { effShow, halfLbl, rirScale } from './app/effort';
 import { guideSheet } from './app/guide';

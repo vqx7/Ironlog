@@ -184,7 +184,7 @@ function viewDash(){
     const ws=addDays(cur,-7*k);if(!firstWk||ws<firstWk)break;if(isRestWeek(ws))continue;let n=0;wks4++;
     // Sessions, as the ring, This week, and the streak count them (r46: distinct days read a two-a-day as one).
     n=weekSessions(ws);
-    const wr=weekRoutine(ws);const nw=trainDaysOf(wr)*weekFactor(wr);done4+=Math.min(n,nw);need4+=nw;
+    const wr=weekRoutine(ws);const nw=plannedPerWeek(wr);done4+=Math.min(n,nw);need4+=nw;
   }
   const adher=planned&&wks4&&need4>0?Math.round(done4/need4*100):null;
   const thisWeek=I.weekSets[cur]||{};

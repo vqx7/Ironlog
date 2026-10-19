@@ -2094,7 +2094,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     return R.days.filter((d) => !d.rest && d.items.length > 0).length;
   }
   function plannedPerWeek(R) {
-    return R.schedule === "weekly" ? trainDaysOf(R) : Math.round(trainDaysOf(R) * weekFactor(R));
+    return R.schedule === "weekly" ? trainDaysOf(R) : Math.floor(trainDaysOf(R) * weekFactor(R) + 1e-9);
   }
   function sessDayIdx(R, s) {
     if (s.dayId) {
@@ -4112,6 +4112,11 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     const l = wE.slice(i0);
     return daysBetween(l[0].date, lastE) >= 21 ? l : null;
   }
+  function stallWeeksIn(M, id) {
+    const I = IDXIn(M);
+    const l = stallStretch(trendScope(I.byEx[id] || [], M.today()).inRange.filter((x) => x.tv != null));
+    return l ? Math.round(daysBetween(l[0].date, l[l.length - 1].date) / 7) : null;
+  }
   function idxLiftIn(M, id, exps, maxBest, anchor, winStart, prs) {
     const sc = trendScope(exps, anchor);
     const { real, curRR, inRange, lastReal } = sc;
@@ -4489,7 +4494,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
         cardioN++;
       }
     const doneDays = weekSessionsIn(M, cur);
-    const planDays = weekly ? trainDaysOf(R) : Math.round(trainDaysOf(R) * weekFactor(R));
+    const planDays = plannedPerWeek(R);
     const got = IDXIn(M).weekHard[cur] || 0;
     const tgt = planSetsPerWeekIn(M, R, isDeloadWeekIn(M));
     const rest = isRestWeekIn(M, cur);
@@ -4539,6 +4544,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       return e && !e.timed && !noE1(e) && isCompound(e) && !dropOnlyLiftIn(M, id);
     });
   }
+  var STALL_WHY = "Flat or down over its last 6 sessions in this rep range (or 3 weeks), leaving out ones where it was trimmed or done lighter than usual, and, on a lighter day, in a deload, or on an exercise made lighter, ones with fewer reps or sets than usual; with no PR in the last 3 of them, nor a set stronger than any before it in a session left out since the third-last, no heavier load, and no more reps at the same load.";
   function coachIn(M) {
     const I = IDXIn(M);
     const R = activeRoutineIn(M);
@@ -4627,19 +4633,19 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       const st = I.exStats[id];
       const p = planForIn(M, id);
       const lw = st && st.last ? atLoad(st.last.pts, st.last.topW) : [];
-      const l = stallStretch(trendScope(I.byEx[id] || [], M.today()).inRange.filter((x) => x.tv != null));
-      const flat = l ? `in ${Math.round(daysBetween(l[0].date, l[l.length - 1].date) / 7)} weeks` : "in its last 3 sessions";
+      const w = stallWeeksIn(M, id);
+      const flat = w != null ? `over the last ${w} weeks` : "over its last 3 sessions";
       if (lw.length && lw.every((q) => q.r >= +p.repMax))
         return {
           tone: "yellow",
-          text: `${exNameIn(M, id)} is at the top of its range at ${loadLabelIn(M, EXIn(M, id), st.last.topW)}${EXIn(M, id).bw ? "" : " " + UIn(M)} and has not moved ${flat}: it is due a step up, not a new range. The session's target says how.`,
+          text: `${exNameIn(M, id)} is at the top of its range at ${loadLabelIn(M, EXIn(M, id), st.last.topW)}${EXIn(M, id).bw ? "" : " " + UIn(M)} and has stalled ${flat}: it is due a step up, not a new range. The session's target says how.`,
           why: "Every set reached the top of the range. The next step is more load, or, when one step is large for the load, a few more reps first.",
           act: { label: "See the lift", sec: "exercise", ex: id }
         };
       return {
         tone: "yellow",
         text: `${exNameIn(M, id)} has stalled. Try another rep range or a close variation for a few weeks.`,
-        why: "Flat or down over its last 6 sessions in this rep range (or 3 weeks), leaving out ones where it was trimmed or done lighter than usual, and, on a lighter day, in a deload, or on an exercise made lighter, ones with fewer reps or sets than usual; with no PR in the last 3 of them, nor a set stronger than any before it in a session left out since the third-last, no heavier load, and no more reps at the same load.",
+        why: STALL_WHY,
         act: { label: "See the lift", sec: "exercise", ex: id }
       };
     }
@@ -5509,6 +5515,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
   var rirEff = live(rirEffIn);
   var rirEst = live(rirEstIn);
   var rirUsual = live(rirUsualIn);
+  var stallWeeks = live(stallWeeksIn);
   var statsUpTo = live(statsUpToIn);
   var tonnage = live(tonnageIn);
   var weekSessions = live(weekSessionsIn);
@@ -9050,8 +9057,9 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
         return lw.length && lw.every((q) => q.r >= +planFor(exId).repMax);
       })();
       if (st.stalled) {
-        parts.push(atTopR ? "Stalled at the top of the range: due a step up. The session's target says how." : "Stalled for 3 weeks. Try another rep range or a variation.");
-        more.push("Stalled: flat for 3 weeks or more, with no PR in the last 3 sessions, no heavier load, and no more reps at the same load.");
+        const sw = stallWeeks(exId);
+        parts.push(atTopR ? "Stalled at the top of the range: due a step up. The session's target says how." : `Stalled ${sw != null ? `over the last ${sw} weeks` : "over its last 3 sessions"}. Try another rep range or a variation.`);
+        more.push(STALL_WHY);
       } else if (st.pct == null) parts.push("A trend needs 3 sessions spread over 2 weeks.");
       else if (st.moving) parts.push(`${liftChange(exId, "Up", ow)}.`);
       else if (st.falling) parts.push(`${liftChange(exId, "Down", ow)}. Look at recovery before adding work.`);
@@ -10708,7 +10716,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
         wks4++;
         n = weekSessions(ws);
         const wr = weekRoutine(ws);
-        const nw = trainDaysOf(wr) * weekFactor(wr);
+        const nw = plannedPerWeek(wr);
         done4 += Math.min(n, nw);
         need4 += nw;
       }

@@ -16,12 +16,11 @@ import {
   isRestWeekIn,
   sortedSessionsIn
 } from './model';
-import { IDXIn, stallStretch } from './analytics';
-import { trendScope } from './trend';
+import { IDXIn, stallWeeksIn } from './analytics';
 import { actualAvg4In, recentLighterIn } from './weeks';
 import { GROW_PCT, atLoad, isWork, offSession } from './formulas';
 import { MK, ML, TRACK_ONLY, isCompound, noE1 } from './library';
-import { addDays, andList, daysBetween, r1, weekStart } from './util';
+import { addDays, andList, r1, weekStart } from './util';
 import { belowMin } from './volume';
 import { planForIn, plannedSetsIn } from './routines';
 import { loadLabelIn } from './loads';
@@ -93,6 +92,13 @@ export function fatigueStallsIn(M: Model, ids: readonly string[]): string[] {
     return e && !e.timed && !noE1(e) && isCompound(e) && !dropOnlyLiftIn(M, id);
   });
 }
+
+/* What a stall is, in the words the coach's tip and a lift's headline on
+   Stats both use (r54: the headline's own words, "flat for 3 weeks or more,
+   with no PR in the last 3 sessions", fell behind the rule in r53). */
+/** The stall rule, as a lifter reads it. */
+export const STALL_WHY =
+  'Flat or down over its last 6 sessions in this rep range (or 3 weeks), leaving out ones where it was trimmed or done lighter than usual, and, on a lighter day, in a deload, or on an exercise made lighter, ones with fewer reps or sets than usual; with no PR in the last 3 of them, nor a set stronger than any before it in a session left out since the third-last, no heavier load, and no more reps at the same load.';
 
 /* The single most useful thing to change this week, in priority order. Each
    branch states the number it is based on, so the advice can be checked. */
@@ -216,27 +222,23 @@ export function coachIn(M: Model): CoachLine {
     const st = I.exStats[id];
     const p = planForIn(M, id);
     const lw = st && st.last ? atLoad(st.last.pts, st.last.topW) : [];
-    /* How long it has not moved: the stretch the stall test read (r53, from
-       the audit V asked for: "for 3 weeks" was said of a lift flat for ten,
-       and of its whole stretch at the top of the range, which nothing
-       checks); a lift with no strength reading is read over its last 3
-       sessions. A set at the top of the range means st was there to read it
-       from, as the ! says. */
-    const l = stallStretch(trendScope(I.byEx[id] || [], M.today()).inRange.filter(x => x.tv != null));
-    const flat = l
-      ? `in ${Math.round(daysBetween(l[0].date, l[l.length - 1].date) / 7)} weeks`
-      : 'in its last 3 sessions';
+    /* How long it has stalled, the span the stall test read (r54, from the
+       audit V asked for: "for 3 weeks" was said of a lift flat for ten, and
+       of its whole stretch at the top of the range, which nothing checks). */
+    const w = stallWeeksIn(M, id);
+    const flat = w != null ? `over the last ${w} weeks` : 'over its last 3 sessions';
+    // A set at the top of the range means st was there to read it from, as the ! says.
     if (lw.length && lw.every(q => q.r >= +p.repMax))
       return {
         tone: 'yellow',
-        text: `${exNameIn(M, id)} is at the top of its range at ${loadLabelIn(M, EXIn(M, id), st!.last.topW)}${EXIn(M, id).bw ? '' : ' ' + UIn(M)} and has not moved ${flat}: it is due a step up, not a new range. The session's target says how.`,
+        text: `${exNameIn(M, id)} is at the top of its range at ${loadLabelIn(M, EXIn(M, id), st!.last.topW)}${EXIn(M, id).bw ? '' : ' ' + UIn(M)} and has stalled ${flat}: it is due a step up, not a new range. The session's target says how.`,
         why: 'Every set reached the top of the range. The next step is more load, or, when one step is large for the load, a few more reps first.',
         act: { label: 'See the lift', sec: 'exercise', ex: id }
       };
     return {
       tone: 'yellow',
       text: `${exNameIn(M, id)} has stalled. Try another rep range or a close variation for a few weeks.`,
-      why: 'Flat or down over its last 6 sessions in this rep range (or 3 weeks), leaving out ones where it was trimmed or done lighter than usual, and, on a lighter day, in a deload, or on an exercise made lighter, ones with fewer reps or sets than usual; with no PR in the last 3 of them, nor a set stronger than any before it in a session left out since the third-last, no heavier load, and no more reps at the same load.',
+      why: STALL_WHY,
       act: { label: 'See the lift', sec: 'exercise', ex: id }
     };
   }

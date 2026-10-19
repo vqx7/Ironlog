@@ -12,7 +12,7 @@ import { firstDate } from './charts';
 import { IDXIn, lighterTally, weekSessionsIn } from './analytics';
 import { REGIONS, TRACK_ONLY } from './library';
 import { aboveMax, belowMin } from './volume';
-import { planSetsPerWeekIn, plannedPerWeek, trainDaysOf, weekFactor } from './routines';
+import { planSetsPerWeekIn, plannedPerWeek } from './routines';
 
 /** What an average says about itself, kept beside the muscles' numbers and left
     out when they are listed: the full weeks it averages, the weeks missed,
@@ -297,7 +297,7 @@ export function weekStatsIn(M: Model) {
       cardioN++;
     }
   const doneDays = weekSessionsIn(M, cur);
-  const planDays = weekly ? trainDaysOf(R) : Math.round(trainDaysOf(R) * weekFactor(R));
+  const planDays = plannedPerWeek(R);
   /* Sets are counted once each here, the same way the Plan tab counts them.
      Per-muscle volume (direct 1, secondary half) stays in the muscle views,
      where the split matters; summed across muscles it double-counts. The

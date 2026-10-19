@@ -1,9 +1,9 @@
-// r53, the fixes from the whole-app audit V asked for on 2026-10-18 ("Instead
-// of assuming nothing has changed vs prior release"): a simulated lifter took
-// four journeys through the app as shipped in r52 and found these, each
-// present since earlier builds. This suite drives the app's own flows on the
-// real starter routine and fails on baselines/r52.html (`node tests/r53b.js
-// baselines/r52.html`):
+// r54, the fixes from the whole-app audit V asked for on 2026-10-18 ("Instead
+// of assuming nothing has changed vs prior release"; PENDING 315): a simulated
+// lifter took four journeys through the app as shipped in r52 and found these,
+// each present since earlier builds and still in r53. This suite drives the
+// app's own flows on the real starter routine and fails on r53 and on r52
+// (`node tests/r54.js baselines/r52.html`):
 //   - dumbbells in kg with Your gym not set: a first session's adjustment
 //     after 6 kg done easily is 8 kg, a dumbbell every kg rack has, not 8.5;
 //   - a log kept in kg read in lb: a load converted from the other unit is
