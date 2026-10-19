@@ -198,10 +198,13 @@ export function trainDaysOf(R: RoutineLike): number {
    the whole number below (r54, V's call of 2026-10-18 after the audit V asked
    for: rounded to 4, a lifter doing exactly what the routine says never built a
    streak, and the ring read 3 of 4 every other week). One rule for the ring,
-   This week, the streak and adherence. */
+   This week, the streak and adherence. A routine that trains plans at least
+   one a week, however long its cycle: rounded down alone, a cycle of one
+   training day in nine would plan none and lose its ring. */
 /** Training days a week, for a weekly schedule or a cycle. */
 export function plannedPerWeek(R: RoutineLike): number {
-  return R.schedule === 'weekly' ? trainDaysOf(R) : Math.floor(trainDaysOf(R) * weekFactor(R) + 1e-9);
+  const n = trainDaysOf(R);
+  return R.schedule === 'weekly' ? n : n ? Math.max(1, Math.floor(n * weekFactor(R) + 1e-9)) : 0;
 }
 
 /* Sessions store the id of the day they were logged against, so reordering or

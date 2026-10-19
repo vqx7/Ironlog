@@ -34,6 +34,15 @@ const ADAPTERS = [...fs.readFileSync(path.join(APP, 'live.ts'), 'utf8').matchAll
 // The adapters added since r53, which the digest does not call: tests/wide.js is shared with the comparisons pinned
 // to r52 and r53 (tests/r52.js, tests/r53w.js), so their calls are made here, after it, with these arguments.
 const EXTRA = { plannedSets: (s) => s.routines.map(r => [r]), stallWeeks: (s, ids) => ids.map(id => [id]), avgFirstWeek: () => [[]], lastLighterWeek: () => [[]] };
+// Hand-made histories beside the wide ones, for paths those never reach, each built on a wide history's settings,
+// exercises and routines (since r54): a lifter back this week after ten weeks away, which is not a break (something
+// is logged in the last 4 weeks) and has no average yet (the coach's "after a full week of training").
+const day = (d, n) => new Date(Date.parse(d + 'T12:00:00Z') + n * 864e5).toISOString().slice(0, 10);
+const SCENARIOS = [
+  h => ({ ...h, raw: { ...h.raw, injuries: [], deloadWeek: null, draft: null, settings: { ...h.raw.settings, restWeeks: [] },
+    sessions: [[-77, 60], [-73, 62.5], [-70, 65], [0, 67.5]].map(([n, w], i) => ({ id: 'back' + i, date: day(h.today, n), dayIdx: 0, dayId: null, dayName: 'Session', routineId: '', free: true, notes: '',
+      ex: [{ exId: 'bench', rr: [6, 10], sets: [{ w, r: 8, rir: 1, done: true }, { w, r: 8, rir: 1, done: true }] }] })) } })
+];
 
 // The child: the bundle on the page's histories, under V8's coverage.
 if (process.argv[2] === '--child') {
@@ -147,9 +156,9 @@ function lineCoverage(covDir, bundleFile, mapPayload) {
   const LIB = await B.page.evaluate(() => window.__ironlog.libExercises());
   const intl = await B.page.evaluate(() => { const o = Intl.DateTimeFormat().resolvedOptions(); return { locale: o.locale, timeZone: o.timeZone }; });
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'ironlog-engine-'));
-  const histories = [], batches = [];
-  for (let i = 0; i < K; i++) {
-    const h = wide(52000 + i, LIB);
+  const histories = [], batches = [], made = [];
+  for (let i = 0; i < K + SCENARIOS.length; i++) {
+    const h = i < K ? wide(52000 + i, LIB) : SCENARIOS[i - K](wide(52000 + i, LIB));
     await B.page.clock.setFixedTime(new Date(h.today + 'T12:00:00'));
     const d = await B.page.evaluate(digest, specOf(h));
     const lines = d.split('\n');
@@ -164,9 +173,11 @@ function lineCoverage(covDir, bundleFile, mapPayload) {
       for (const [name, argsOf] of Object.entries(extra)) for (const args of new Function(`return (${argsOf})`)()(L.state, spec.ids)) { let r; try { r = L[name](...args); } catch (e) { r = err(e); } out.push(name + '\t' + ser(args) + '\t' + ser(r)); }
       return out;
     }, [sp, Object.fromEntries(Object.entries(EXTRA).map(([k, f]) => [k, f.toString()]))]));
+    if (i >= K) made.push(calls.filter(l => l.startsWith('coach\t')).map(l => l.split('\t')[2]).join(' '));
     histories.push({ seed: 52000 + i, today: h.today, state, calls });
-    if (histories.length === BATCH || i === K - 1) { batches.push(path.join(tmp, `data-${batches.length}.json`)); fs.writeFileSync(batches[batches.length - 1], JSON.stringify({ histories })); histories.length = 0; }
+    if (histories.length === BATCH || i === K + SCENARIOS.length - 1) { batches.push(path.join(tmp, `data-${batches.length}.json`)); fs.writeFileSync(batches[batches.length - 1], JSON.stringify({ histories })); histories.length = 0; }
   }
+  ok(/Volume advice appears here after a full week of training/.test(made[0] || ''), 'the hand-made history reaches the coach line it was made for', made);
   ok(!B.errors.length, 'no page errors while the page answered', B.errors.slice(0, 3));
   await settle(browser.close(), 'closing the browser');
 
@@ -203,7 +214,7 @@ function lineCoverage(covDir, bundleFile, mapPayload) {
     ok(res.locale === intl.locale && res.timeZone === intl.timeZone, `Node read dates in the page's language and time zone (${intl.locale}, ${intl.timeZone})`, { node: [res.locale, res.timeZone], page: intl });
     const missing = ADAPTERS.filter(n => !(res.names[n] > 0));
     ok(ADAPTERS.length >= 79 && missing.length === 0 && Object.keys(res.names).length === ADAPTERS.length + PLAIN.length && PLAIN.every(n => res.names[n] > 0), `all ${ADAPTERS.length} adapters in live.ts and ${PLAIN.join(', ')} were called in Node (${Object.keys(res.names).length})`, { missing, names: Object.keys(res.names) });
-    ok(res.calls > K * 1000 && res.same === res.calls, `each of the ${ADAPTERS.length}, on a fresh model of a frozen log, and ${PLAIN.join(', ')}, gives the page's answer: ${res.same} of ${res.calls} calls over ${K} histories (${Math.round((Date.now() - t0) / 1000)} s)`, res.first);
+    ok(res.calls > K * 1000 && res.same === res.calls, `each of the ${ADAPTERS.length}, on a fresh model of a frozen log, and ${PLAIN.join(', ')}, gives the page's answer: ${res.same} of ${res.calls} calls over ${K} histories and ${SCENARIOS.length} made by hand (${Math.round((Date.now() - t0) / 1000)} s)`, res.first);
     ok(res.again === res.calls, `and gives it again on a second fresh model (${res.again} of ${res.calls})`);
     ok(res.tables > 40, `every table the modules keep was frozen for the run, so no write to one passes (${res.tables})`);
     ok(res.watched > 0 && !res.wroteAny, `no call tried to change the log, watched on every tenth history's second round, a caught error included (${res.watched} calls)`, res.writes);

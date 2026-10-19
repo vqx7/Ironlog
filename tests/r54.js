@@ -152,6 +152,9 @@ const FILE = process.argv[2] || 'index.html';
       return L.coach().text;
     });
     ok(/: do every planned set, to 3 or fewer reps in reserve\./.test(r) && !/Add \d+ sets? a week/.test(r), 'a plan that reaches every target, with planned sets skipped: the coach says to do every planned set, not to add sets (r53: "Add a set a week to" a lift the plan already has enough of)', r);
+    // The same on the RPE scale: the line says the effort as RPE, as the engine's reasons do since r54.
+    const rp = await ev(() => { const L = window.__ironlog; L.state.settings.rirScale = 'rpe'; L.invalidate(); const c = L.coach(); L.state.settings.rirScale = undefined; L.invalidate(); return { text: c.text, why: c.why || '' }; });
+    ok(/: do every planned set, to RPE 7 or harder\./.test(rp.text) && /counts as hard at RPE 7 or harder, so a planned set skipped, or ended at RPE 6 or easier/.test(rp.why) && !/reps in reserve/.test(rp.text + rp.why), 'on the RPE scale that line and its tip say RPE 7 or harder, not reps in reserve', rp);
   }
 
   // ---- How long a lift has stalled, from the stall's own stretch (the audit V asked for: "3 weeks" was said of a lift flat for ten).
@@ -179,6 +182,13 @@ const FILE = process.argv[2] || 'index.html';
       return { streak: L.weekStreak().weeks, adh: ((document.getElementById('adhLine') || {}).textContent || '').replace(/\s+/g, ' '), done: w.doneDays, plan: w.planDays };
     });
     ok(r.streak === 4 && /Adherence, previous 4 full weeks: 100% of planned sessions \(12\/12\)/.test(r.adh) && r.plan === 3 && r.done === 2, 'Strength 5 x 5, every other day, done exactly as the cycle runs: a 4-week streak, 100% adherence, and this week 2 of 3 (r53: weeks of 3 broke the streak, 93% adherence against 3.5 a week, 2 of 4)', r);
+    // A slow cycle, one training day in nine (0.78 a week), still plans one a week: rounded down alone it would plan none and lose its ring.
+    const slow = await ev(() => { const L = window.__ironlog; const S = L.state; const R = S.routines.find(r => r.id === S.activeRoutineId);
+      const slowR = { id: 'slow9', name: 'Slow', schedule: 'cycle', days: Array.from({ length: 9 }, (_, i) => ({ id: 'sd' + i, name: i ? 'Rest' : 'Day', rest: !!i, items: i ? [] : R.days[0].items.slice(0, 1) })) };
+      S.routines.push(slowR); S.activeRoutineId = 'slow9'; L.invalidate(); const w = L.weekStats(); L.ui.tab = 'today'; L.render();
+      const out = { plan: w.planDays, ring: !!document.querySelector('.hero .ring') };
+      S.activeRoutineId = R.id; S.routines = S.routines.filter(r => r.id !== 'slow9'); L.invalidate(); L.saveNow(); return out; });
+    ok(slow.plan === 1 && slow.ring, 'a cycle of one training day in nine plans 1 a week and keeps its ring', slow);
   }
 
   // ---- Build my own routine plans three days a week, with rest days between (the audit: three days and no rest planned 7 a week).

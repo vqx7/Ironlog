@@ -358,7 +358,8 @@ const LB = 0.45359237;
     const rest = await ev(() => {
       const L = window.__ironlog; const s = L.state; const o = {};
       const wk = d => ({ id: 'r' + d, date: d, dayIdx: 0, dayId: null, dayName: 'T', routineId: '', free: true, notes: '', ex: [{ exId: 'bench', rr: [8, 12], sets: [0, 1, 2].map(() => ({ w: 60, r: 10, rir: 1, done: true })) }] });
-      s.sessions = ['2026-08-31', '2026-09-07', '2026-09-14', '2026-09-28', '2026-10-05'].map(wk);
+      // From 24 August, so the week the average reaches past the rest week for is not the log's first, which the averages leave out since r54.
+      s.sessions = ['2026-08-24', '2026-08-31', '2026-09-07', '2026-09-14', '2026-09-28', '2026-10-05'].map(wk);
       L.invalidate();
       const a0 = L.avgWeeks(4); o.missedBefore = a0._missed; o.weeksBefore = a0._weeks;
       s.settings.restWeeks = ['2026-09-21']; L.state = L.normalize(s); L.invalidate();

@@ -21,6 +21,7 @@ import { FIRST_WEEK_WHY, actualAvg4In, avgFirstWeekIn, recentLighterIn } from '.
 import { GROW_PCT, atLoad, isWork, offSession } from './formulas';
 import { MK, ML, TRACK_ONLY, isCompound, noE1 } from './library';
 import { addDays, andList, r1, weekStart } from './util';
+import { effScale } from './format';
 import { belowMin } from './volume';
 import { planForIn, plannedSetsIn } from './routines';
 import { loadLabelIn } from './loads';
@@ -196,11 +197,15 @@ export function coachIn(M: Model): CoachLine {
          adding sets is not the fix. Not in Freestyle mode, where the plan is
          not what the lifter follows. */
       const planned = plannedSetsIn(M, R)[u.m] || 0;
+      // Hard and not, in the lifter's effort scale, as the engine's sentences say effort (format.ts, effScale).
+      const rpe = effScale(M.s.settings.rirScale) === 'rpe';
+      const hard = rpe ? 'RPE 7 or harder' : '3 or fewer reps in reserve',
+        easy = rpe ? 'at RPE 6 or easier' : 'with 4 or more in reserve';
       if (!freeModeIn(M) && !belowMin(planned, u.lo))
         return {
           tone: 'yellow',
-          text: `${ML[u.m]}: ${r1(u.got)} hard set${r1(u.got) === 1 ? '' : 's'} a week, target ${u.lo}-${u.hi}. Your plan has ${r1(planned)}: do every planned set${M.s.settings.rirMode === 'off' ? '' : ', to 3 or fewer reps in reserve'}.${under.length > 1 ? ` ${under.length - 1} more below target.` : ''}`,
-          why: `Your average of hard sets per week over your recent full weeks. Your plan already reaches the target, so the gap is in how the sets are done, not how many are planned: ${M.s.settings.rirMode === 'off' ? 'a planned set skipped does not count.' : "a set counts as hard at 3 or fewer reps in reserve, so a planned set skipped, or ended with 4 or more in reserve (as a lift's first sessions are while its load is found), does not."}`,
+          text: `${ML[u.m]}: ${r1(u.got)} hard set${r1(u.got) === 1 ? '' : 's'} a week, target ${u.lo}-${u.hi}. Your plan has ${r1(planned)}: do every planned set${M.s.settings.rirMode === 'off' ? '' : `, to ${hard}`}.${under.length > 1 ? ` ${under.length - 1} more below target.` : ''}`,
+          why: `Your average of hard sets per week over your recent full weeks. Your plan already reaches the target, so the gap is in how the sets are done, not how many are planned: ${M.s.settings.rirMode === 'off' ? 'a planned set skipped does not count.' : `a set counts as hard at ${hard}, so a planned set skipped, or ended ${easy} (as a lift's first sessions are while its load is found), does not.`}`,
           act: { label: `See ${ML[u.m]}`, sec: 'volume', m: u.m }
         };
       const how = exId
