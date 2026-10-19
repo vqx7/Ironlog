@@ -41,8 +41,9 @@ const cr=await ev(()=>!!document.querySelector('#pickList .pick.new'));ok(cr,'cr
 await page.click('#pickList .pick.new');await page.waitForTimeout(80);
 const e1=await ev(()=>({kind:window.__ironlog.ui.modal.kind,name:document.querySelector('[data-ebind="name"]').value,moreOpen:document.querySelector('details.more').open,btn:document.querySelector('[data-act="exSave"]').innerText,focus:document.activeElement&&document.activeElement.dataset.ebind}));
 ok(e1.kind==='exEdit'&&e1.name==='Zercher Carry','editor opened with name');ok(!e1.moreOpen,'more options folded in quick create');ok(/add to session/i.test(e1.btn),'save button says add to session: '+e1.btn);
-// scroll sheet then toggle a chip: scroll must be kept
-await ev(()=>{document.querySelector('.sheet').scrollTop=200;});
+// scroll sheet then toggle a chip: scroll must be kept, at the very bottom too (r54: there the redraw lost 4 px, as the label
+// i buttons that change the sheet's height came after the scroll was put back; r53 too, 226 -> 222)
+await ev(()=>{const sh=document.querySelector('.sheet');sh.scrollTop=sh.scrollHeight;});
 const st0=await ev(()=>document.querySelector('.sheet').scrollTop);
 await page.click('[data-act="secToggle"][data-m="traps"]');await page.waitForTimeout(50);
 const st1=await ev(()=>({st:document.querySelector('.sheet').scrollTop,on:document.querySelector('[data-act="secToggle"][data-m="traps"]').classList.contains('on')}));

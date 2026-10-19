@@ -10,7 +10,7 @@ function renderModal(){
   const st=old?old.scrollTop:0,ist=oldIn?oldIn.scrollTop:0;
   const ae=document.activeElement;const fk=same&&ae&&el.contains(ae)?focusKey(ae):null;
   const ss=fk&&typeof ae.selectionStart==='number'?ae.selectionStart:null,se=fk&&typeof ae.selectionEnd==='number'?ae.selectionEnd:null;
-  renderModalBody(same);
+  renderModalBody(same);tipLabels(el); // The labels' i buttons now, not when the page's watcher adds them after this task: they change the sheet's height, so a scroll put back before them slipped (r54; at the bottom, 4 px).
   if(el.hidden||!ui.modal){document.body.classList.remove('modal-open');renderModal.last=null;return;}
   if(document.getElementById('bm3dx'))mount3D();
   document.body.classList.add('modal-open');renderModal.last=ui.modal;

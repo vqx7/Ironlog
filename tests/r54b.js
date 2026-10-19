@@ -51,7 +51,8 @@
 //     use is (312 A), and at the top of its range, on Stats and in the coach,
 //     by the plan of the day it was last done on (found after the review);
 //   - the sign-in sheet keeps its fields through a wrong password (311 f),
-//     and sheets do not move with the keyboard (322);
+//     sheets do not move with the keyboard, and a sheet you type in opens
+//     tall, its fields at the top (322);
 //   - from the independent review of r54: a session's sets are its sets near
 //     its working load and any at its usual load, so a lighter or heavier set
 //     among them, or a load lowered mid-session, is no "fewer sets", while a
@@ -510,6 +511,35 @@ const FILE = process.argv[2] || 'index.html';
     await qe(() => { const L = window.__ironlog; L.ACT.mClose(); L.state.draft = null; L.saveNow(); });
     ok(!Q.errors.length, 'no page errors on the sheets with the keyboard', Q.errors);
     await Q.ctx.close();
+  }
+
+  // ---- A sheet you type in opens tall, its fields at the top (PENDING 322, V 2026-10-19: "fix it for all devices"). A field
+  // near the top is never under an iPhone's keyboard, so iOS scrolls nothing and nothing moves, and the sheet's own surface
+  // runs to the bottom of the screen, so no part of the page shows under the keyboard or Safari's glass bars. 240 px: on V's
+  // iPhone in Safari the keyboard and its bars left 280 points under a 46-point status bar (V's screenshot); these browsers
+  // have no status bar. A sheet with nothing to type in, the picker, and a sheet on a desktop are as before (guards).
+  for (const [w, h] of [[390, 844], [320, 568]]) {
+    const T = await open(FILE, { browser: P.browser, w, h, touch: true, clock: '2026-10-15T10:00:00', realStarter: true, setup: ctx => ctx.addInitScript(() => { window.ironlogAuth = { user: async () => null, onChange: () => {}, signOut: async () => {}, release: () => {}, signIn: async () => { throw new Error('no'); } }; }) });
+    const te = (f, a) => T.page.evaluate(f, a);
+    await te(() => { const L = window.__ironlog; L.state.settings.onboarded = true; L.saveNow(); L.render(); });
+    const sheet = async (how) => { await te(how => { const L = window.__ironlog; if (L.ui.modal) L.ACT.mClose(); new Function('L', how)(L); }, how); await wait(150);
+      return te(() => { const sh = document.querySelector('#modal .sheet'); const b = sh.getBoundingClientRect(); const f = [...sh.querySelectorAll('input:not([type=checkbox]):not([type=file]),textarea')].filter(e => e.offsetParent).map(e => { const r = e.getBoundingClientRect(); return [Math.round(r.top), Math.round(r.bottom)]; }); return { top: Math.round(b.top), bottom: Math.round(b.bottom), fields: f, h: innerHeight }; }); };
+    const si = await sheet("L.ACT.acctOpen({ dataset: { mode: 'signin' } })"), su = await sheet("L.ACT.acctOpen({ dataset: { mode: 'signup' } })"), fb = await sheet('L.ACT.fbOpen({ dataset: {} })');
+    // A field's first line, where the caret is when typing starts: a one-line field whole, a text box's top 44 px.
+    const tall = x => x.top === 12 && x.bottom === x.h && x.fields.length > 0 && x.fields.every(([t, b]) => Math.min(b, t + 44) <= 240);
+    ok(tall(si) && si.fields.length === 2 && tall(su) && tall(fb), `at ${w} x ${h}, the sign-in, create account and problem report sheets open tall, from 12 px to the bottom of the screen, the first line of every field in the top 240 px (the build V saw last had them at the bottom of the screen, under the keyboard)`, { si, su, fb });
+    const mn = await sheet('L.ACT.menuOpen({ dataset: {} })');
+    ok(mn.top > 100 && mn.bottom === mn.h && !mn.fields.length, `and the menu, with nothing to type in, keeps its own height at the bottom (a guard)`, mn);
+    ok(!T.errors.length, 'no page errors opening the sheets', T.errors);
+    await T.ctx.close();
+  }
+  {
+    const D = await open(FILE, { browser: P.browser, w: 1280, h: 800, clock: '2026-10-15T10:00:00', realStarter: true, setup: ctx => ctx.addInitScript(() => { window.ironlogAuth = { user: async () => null, onChange: () => {}, signOut: async () => {}, release: () => {}, signIn: async () => { throw new Error('no'); } }; }) });
+    const de = (f, a) => D.page.evaluate(f, a);
+    await de(() => { const L = window.__ironlog; L.state.settings.onboarded = true; L.saveNow(); L.render(); L.ACT.acctOpen({ dataset: { mode: 'signin' } }); }); await wait(150);
+    const dk = await de(() => { const b = document.querySelector('#modal .sheet').getBoundingClientRect(); return { top: Math.round(b.top), bottom: Math.round(b.bottom), h: innerHeight }; });
+    ok(dk.top > 100 && dk.bottom < dk.h - 100, 'on a desktop, with a mouse and no on-screen keyboard, the sign-in sheet stays a card in the middle of the screen (a guard)', dk);
+    await D.ctx.close();
   }
 
   ok(!P.errors.length, 'no page errors', P.errors);

@@ -884,6 +884,18 @@ table.t .stick-r{position:sticky;right:0;background:var(--bg);padding-left:6px}
    the second moved the page up and down as the keyboard came (PENDING 322). */
 #modal{position:fixed;inset:0;z-index:50;background:rgba(6,7,9,.55);-webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px);display:flex;align-items:flex-end;justify-content:center}
 .sheet{position:relative;background:var(--surface);width:100%;max-width:640px;max-height:88vh;overflow:auto;overscroll-behavior:contain;border-radius:28px 28px 0 0;padding:22px 18px calc(18px + env(safe-area-inset-bottom,0px))}
+/* A sheet you type in opens tall, from just under the status bar to the
+   bottom of the screen, its fields at the top (V on the r54 preview,
+   2026-10-19, PENDING 322). A field near the top is never under the
+   on-screen keyboard, so iOS has nothing to scroll and nothing moves, and the
+   sheet's own surface fills the screen below its fields, behind the keyboard
+   and Safari's glass bars, so no part of the page shows there. Safari on an
+   iPhone does not shrink the page for the keyboard (interactive-widget is
+   not shipped there), and code that followed the keyboard fought iOS (r54's
+   two tries). Read from the sheet's own fields, so no list of sheets is kept;
+   a sheet with nothing to type in, and the picker (its search already at its
+   top), are as before. Not where a mouse is the pointer: no keyboard there. */
+@media (max-width:699px),(pointer:coarse){.sheet:not(.fixed):has(textarea,input[type=text],input[type=search],input[type=email],input[type=password],input[type=number],input[type=tel],input[type=url],input:not([type])){height:calc(100% - env(safe-area-inset-top,0px) - 12px);max-height:none}}
 /* The grabber tells a phone user this slides up from the bottom. */
 .sheet::before{content:"";position:absolute;top:8px;left:50%;width:38px;height:5px;margin-left:-19px;border-radius:3px;background:var(--surface-3)}
 /* Pickers keep one height while you type, so the search box does not jump as
@@ -12167,6 +12179,7 @@ ${extraKpis()}</div>`;
       const fk = same && ae && el.contains(ae) ? focusKey(ae) : null;
       const ss = fk && typeof ae.selectionStart === "number" ? ae.selectionStart : null, se = fk && typeof ae.selectionEnd === "number" ? ae.selectionEnd : null;
       renderModalBody(same);
+      tipLabels(el);
       if (el.hidden || !ui.modal) {
         document.body.classList.remove("modal-open");
         renderModal.last = null;

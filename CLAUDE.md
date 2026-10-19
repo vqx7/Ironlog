@@ -113,9 +113,10 @@ lines, then `ALL PASS` (the fuzz suite prints `fuzz clean`). Type check: `npx ts
   em dashes, hype or exclamation marks; the serial comma in any list of three; estimated minutes only through
   `estMin` ("~N min"); the first-run Set up page stays under 400 characters, in lines of 45 at most. Code comments
   explain why, not what, in full sentences.
-- **Phone:** 44 px touch targets, no sideways scroll at 320 px, light and dark both checked. Sheets do not follow the
-  on-screen keyboard; iOS scrolls the field being typed in into view itself. No browser here has an on-screen
-  keyboard, so a change to how sheets meet it is tried on V's phone before a release carries it (PENDING 322).
+- **Phone:** 44 px touch targets, no sideways scroll at 320 px, light and dark both checked. No code follows the
+  on-screen keyboard (Safari does not shrink the page for it, and code that did fought iOS): a sheet you type in
+  opens tall, its fields at the top, so they are never under it (PENDING 322). No browser here has an on-screen
+  keyboard, so a change to how sheets meet it is tried on V's phone before a release carries it.
 - **One source (V, r49):** a value that names, identifies or configures the app is defined once, in
   `src/app/config.ts`. Every storage key, cache name and backup mark is built from `STORAGE_ID` ("ironlog"), which
   never changes: a phone finds its log only under those keys (`tests/r49.js` holds them). Outside addresses and
