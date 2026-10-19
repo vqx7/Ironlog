@@ -10,17 +10,6 @@ export const BAND_WORDS: Readonly<Record<number, string>> = {
   3: '11 to 12 reps to failure'
 };
 
-/* What an estimate PR is called (r34.2, from the review: a best for 6 to 8
-   reps was shown as "Best estimate 30 kg (was 29)" beside an all-time best
-   estimate of 30 kg from a set of 11): Best estimate only when it beats every
-   earlier set's estimate, else the best for its band of reps, the band
-   worded here. */
-export const BAND_SHORT: Readonly<Record<number, string>> = {
-  1: '1 to 5 reps to failure',
-  2: '6 to 10 reps to failure',
-  3: '11 to 12 reps to failure'
-};
-
 /** An estimate PR (type e1RM, the only kind these are given): its value, the
     best before it of any band, and its band. The analytics record a band with
     every estimate, so an estimate PR always has one. */
@@ -31,7 +20,12 @@ export function prOverall(p: Pick<PrMark, 'value' | 'prevAll'>): boolean {
   return p.prevAll == null || (p.value != null && p.value > p.prevAll + 1e-6);
 }
 
+/* What an estimate PR is called (r34.2, from the review: a best for 6 to 8
+   reps was shown as "Best estimate 30 kg (was 29)" beside an all-time best
+   estimate of 30 kg from a set of 11): Best estimate only when it beats every
+   earlier set's estimate, else the best for its band of reps, in the words
+   the toast uses (until r54 a second table typed the same words). */
 /** An estimate PR's name: Best estimate, or the best for its band of reps. */
 export function prName(p: PrMark): string {
-  return prOverall(p) ? 'Best estimate' : `Best for ${BAND_SHORT[p.bb] || 'its reps'}`;
+  return prOverall(p) ? 'Best estimate' : `Best for ${BAND_WORDS[p.bb] || 'its reps'}`;
 }

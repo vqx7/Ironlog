@@ -62,15 +62,12 @@ export interface TargetReason {
     whole sentence the case wrote, and it opens with the Last line (b.last),
     which the screen shows on its own line already, so that prefix comes off
     rather than being said twice. Nothing is recomputed here: a second account
-    of the rules would be a second thing to keep right. Since r53 a lift done
-    at its usual load and reps for as many sets on a lighter day or in a
-    deload sets the target, so the note says what does not: a session where
-    the lift was trimmed or done lighter than usual, and on a lighter day, in
-    a deload or on an exercise made lighter one with fewer reps or sets than
-    usual (until r53 it named lighter and deload sessions as a whole; moved
-    from the legacy script to say so). A
-    normal day with half or more of its sets done is full (r30), so the
-    note does not say fewer sets on any day. */
+    of the rules would be a second thing to keep right. The note says what
+    does not set a target, by V's one rule for every session (r54, PENDING
+    312 E): a session of the lift with fewer sets or reps than its usual, or
+    done lighter, whatever the day (r53 named trimmed sessions, and fewer
+    reps or sets on lighter days only; until r53 lighter and deload sessions
+    as a whole). */
 export function whyTarget(b: TargetReason | null | undefined): string {
   if (!b) return '';
   // A session block renames the suggestion's text to hint, so take either.
@@ -78,7 +75,7 @@ export function whyTarget(b: TargetReason | null | undefined): string {
     l = (b.last || '').trim();
   const reason = l && h.startsWith(l) ? h.slice(l.length).trim() : h;
   const basis = b.basis
-    ? ` The target comes from your last full session, ${fmtDate(b.basis)}; a session where this lift was trimmed or done lighter than usual does not set one, nor, on a lighter day, in a deload, or on an exercise made lighter, one with fewer reps or sets than usual.`
+    ? ` The target comes from your last full session, ${fmtDate(b.basis)}; one with fewer sets or reps than usual, or done lighter, does not set one.`
     : '';
   return (reason + basis).trim();
 }
@@ -145,7 +142,7 @@ export function blockRest(d: { ex: DraftBlock[] }, bi: number): number {
    do"). b.prev is the sets at the working load of the session the Last line
    names, the same sets the grey reps repeat; row n of the working sets sits
    beside set n of them. The line above the sets then names only the session
-   ("Last (Oct 10, trimmed)"), unless a top single or a pyramid's other
+   ("Last (Oct 10, fewer sets)"), unless a top single or a pyramid's other
    loads were left out of the column (b.prevOff): then it keeps every set. A
    block from before r44 has no prev and keeps the whole line. */
 /* The same lift again later in the session (r45): last time's sets are one
@@ -182,7 +179,6 @@ type Joinable = {
   sets: DraftSet[];
   note?: string | undefined;
   rr?: [number, number] | null | undefined;
-  cut?: boolean | undefined;
 };
 
 /* The same exercise twice in one session (r34.2, V): sets done on one lift
@@ -213,7 +209,6 @@ export function joinAdjacent<X extends Joinable>(ex: readonly X[]): X[] {
       a.sets = [...a.sets, ...b.sets];
       if (b.note && b.note.trim()) a.note = [a.note, b.note].filter(x => x && x.trim()).join(' ');
       if (!a.rr && b.rr) a.rr = b.rr;
-      a.cut = a.cut && b.cut ? true : undefined;
       continue;
     }
     out.push({ ...b, sets: [...b.sets] });
@@ -241,7 +236,6 @@ export function sameExOnce<X extends Joinable>(ex: readonly X[]): X[] {
     a.sets.push(...b.sets);
     if (wb > wa && b.rr) a.rr = b.rr;
     else if (!a.rr && b.rr) a.rr = b.rr;
-    a.cut = !!(a.cut && b.cut);
   }
   return out;
 }

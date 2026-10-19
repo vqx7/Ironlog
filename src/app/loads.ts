@@ -8,7 +8,7 @@ import type { Model, Suggestion } from './model';
 import { loadMode, PLATE_SIDE_IDS, isCompound, noE1 } from './library';
 import { r1 } from './util';
 import { UIn } from './model';
-import { fromDIn, toDIn } from './units';
+import { DEFAULT_STEP, fromDIn, toDIn } from './units';
 
 /** The load meanings a lifter can choose in the exercise editor. */
 export const LOAD_MODES: readonly (readonly [string, string])[] = [
@@ -79,7 +79,7 @@ export function swapWIn(M: Model, ex: Pick<Exercise, 'bw'>, res: Suggestion, nw:
    the full load (90% of 25 lb is 22.5, which rounded up to 25). toD of a
    number is a number, and so is fromD's, as the two ! say. */
 export function roundLoadIn(M: Model, kg: number, down?: boolean): number {
-  const step = UIn(M) === 'lb' ? 5 : 2.5;
+  const step = DEFAULT_STEP[UIn(M)];
   const d = toDIn(M, kg)!;
   return fromDIn(M, Math.max(step, (down ? Math.floor(d / step + 1e-9) : Math.round(d / step)) * step))!;
 }

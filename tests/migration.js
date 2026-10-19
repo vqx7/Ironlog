@@ -54,4 +54,31 @@ for(const [file,label] of [['baselines/r53.html','r53 (current live)'],['baselin
     await N2.ctx.close();
   }
 }
+// A session r53 saved with an exercise Short on time trimmed (marked cut), and one in progress with a trimmed exercise: since r54
+// nothing writes or reads the mark (V's one rule reads the log), so both keep it as saved, the saved record byte for byte (so its
+// sync hash is unchanged), and the trimmed exercise is read by the one rule: three sets after four is short of its usual sets.
+{
+  const P=await open('baselines/r53.html',{browser,clock:'2026-10-15T10:00:00',realStarter:true});
+  const made=await P.page.evaluate(()=>{const L=window.__ironlog;const s=L.state;s.settings.onboarded=true;s.settings.unit='kg';const R=L.activeRoutine();const day=R.days[0];
+    const set=(w,r)=>({w,r,rir:1,warm:false,drop:false});
+    s.sessions=['2026-09-24','2026-10-01','2026-10-08'].map((d,i)=>({id:'m'+i,date:d,dayIdx:0,dayId:day.id,dayName:day.name,routineId:R.id,notes:'',ex:[{exId:'bench',rr:[6,10],sets:[set(100,8),set(100,8),set(100,8),set(100,8)]}]}));
+    L.invalidate();L.saveNow();
+    // Upper A today, every exercise but the bench taken out, Short on time trimming it, three sets done, Finish.
+    L.ACT.startSession({dataset:{day:'0',light:'0'}});const d=L.state.draft;d.ex=d.ex.filter(b=>b.exId==='bench');L.ACT.shortOpen();L.ui.modal.mins=6;L.ACT.shortApply();
+    const b=L.state.draft.ex[0];const cut=!!b.cut;b.sets.forEach(x=>{x.w=100;x.r=8;x.done=true;});L.state.draft._leftAsked=true;L.state.draft._rampAsked=true;L.saveNow();L.ACT.finishNow();
+    const saved=L.state.sessions[L.state.sessions.length-1];
+    // Then a session in progress, trimmed the same way.
+    L.ACT.startSession({dataset:{day:'0',light:'0'}});const d2=L.state.draft;d2.ex=d2.ex.filter(x=>x.exId==='bench');L.ACT.shortOpen();L.ui.modal.mins=6;L.ACT.shortApply();L.saveNow();
+    return {cut,saved:JSON.stringify(saved),n:saved.ex[0].sets.length,draftCut:!!L.state.draft.ex[0].cut};});
+  const raw=await P.page.evaluate(()=>localStorage.getItem('ironlog.v1'));await P.ctx.close();
+  ok(made.cut&&made.draftCut&&JSON.parse(made.saved).ex[0].cut===true&&made.n<4,'set up: r53 marked the trimmed bench press, saved and in progress',made);
+  const N=await open('index.html',{browser,state:JSON.parse(raw),clock:'2026-10-15T10:00:00',realStarter:true});
+  const r=await N.page.evaluate((sid)=>{const L=window.__ironlog;const s=L.state;const ss=s.sessions.find(x=>x.id===sid);const x=(L.IDX().byEx.bench||[]).find(q=>q.sid===sid);
+    return {same:JSON.stringify(ss),draftCut:!!(s.draft&&s.draft.ex[0].cut),full:s.draft&&s.draft.ex[0].full,short:x&&x.short||null,light:x&&x.light};},JSON.parse(made.saved).id);
+  ok(r.same===made.saved,'r53\'s saved session with its trimmed bench press loads byte for byte, mark and all (its sync hash unchanged)',[r.same.slice(0,160),made.saved.slice(0,160)]);
+  ok(r.draftCut&&r.full===undefined,'the session in progress keeps its trimmed mark as saved, with no count added',r);
+  ok(r.short==='sets'&&r.light===false,'and the one rule reads the trimmed bench press: fewer sets than its usual four, so its target repeats while its trend counts',r);
+  ok(!N.errors.length,'no console errors loading r53\'s trimmed sessions',N.errors);
+  await N.ctx.close();
+}
 console.log(fails.length?'FAILURES '+fails.length:'ALL PASS');await browser.close();})();

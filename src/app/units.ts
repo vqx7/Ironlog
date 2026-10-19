@@ -14,10 +14,20 @@ export const LB = 0.45359237,
 /** Kilometres in a mile (exact by definition). */
 export const KM_MI = 1.609344;
 
+/** The default load step in each unit, as typed in it: 5 lb and 2.5 kg. */
+export const DEFAULT_STEP: Readonly<Record<'kg' | 'lb', number>> = { kg: 2.5, lb: 5 };
+
 /** The default load step, 5 lb, in kilograms. A step is stored in kg; the
     engine's stepRead reads this one, or 2.5 kg, as the default of whichever
     unit is on screen (r27). */
-export const STEP_LB = 5 * LB;
+export const STEP_LB = DEFAULT_STEP.lb * LB;
+
+/** Whether a number is a whole number of a step, to a millionth of the step. */
+export const onStep = (v: number, step: number): boolean => Math.abs(v / step - Math.round(v / step)) < 1e-6;
+
+/** What a load typed in its unit is a whole number of (r54): a load converted
+    from the other unit almost never is, so a number on it reads as typed. */
+export const TYPED_STEP = 0.05;
 
 /** The plates a gym usually has, heaviest first, in each unit: what the plate
     count for a barbell load is made from unless Your gym lists its own. */
@@ -44,10 +54,10 @@ export const fromDIn = (M: Model, v: number | null | undefined): number | null =
    used exactly as typed (r27). */
 /** The default load step in the unit on screen, stored in kg as STEP_LB is. */
 export function unitStepIn(M: Model): number {
-  return UIn(M) === 'kg' ? 2.5 : STEP_LB;
+  return UIn(M) === 'kg' ? DEFAULT_STEP.kg : STEP_LB;
 }
 
 /** A step as stored, read as the unit on screen's default when it is either unit's default. */
 export function stepReadIn(M: Model, v: number): number {
-  return Math.abs(v - STEP_LB) < 1e-6 || Math.abs(v - 2.5) < 1e-6 ? unitStepIn(M) : v;
+  return Math.abs(v - STEP_LB) < 1e-6 || Math.abs(v - DEFAULT_STEP.kg) < 1e-6 ? unitStepIn(M) : v;
 }

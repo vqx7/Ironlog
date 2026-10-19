@@ -251,24 +251,22 @@ function sessionLength(){
 /* A set is a PR live if its estimate beats your best, or no earlier set matched
    it on both load and reps: the same two tests the PR list uses. Only sets
    logged up to the session's date count, so a past session entered late is
-   judged against what came before it. */
+   judged against what came before it, at its load as the list judges it (prFrame, r54: changing units or gyms is not a PR). */
 function livePR(exId,s,date){
   if(!s||s.warm||s.drop||!(+s.r>0))return null;
-  const I=IDX();const every=I.byEx[exId];if(!every||!every.length)return null;
-  const exps=date?every.filter(x=>x.date<=date):every;if(!exps.length)return null;
-  const ex=EX(exId);const load=prLoad(ex,s,date);
-  const st=exps.length<every.length?statsUpTo(exId,exps):I.exStats[exId];const q0=rirEst(s,ex);const v=noE1(ex)?null:e1(load,+s.r,q0);
+  const f=prFrame(exId,s,date);if(!f)return null;const {ex,exps,st,load}=f;const q0=rirEst(s,ex);const v=noE1(ex)?null:e1(load,+s.r,q0);
   /* Announced only when stronger than ever (r32, as the list's big): by the
      same score as the rep PR floor, against every earlier set. A lift with
-     no estimate (timed, joint rotation) or no load known keeps every kind. */
+     no estimate (timed, joint rotation) or no load known keeps every kind,
+     a bodyweight lift before any weigh-in by its reps alone (r54). */
   const scq=(l,r,q)=>e1(l,r,q)||l*(1+r/30);let top=0,dom=false;
   for(const x of exps)for(const q of x.pts){if(q.pl>=load-1e-6&&q.r>=+s.r)dom=true;top=Math.max(top,scq(q.pl,q.r,q.rq));}
   const judge=!noE1(ex)&&!ex.timed&&load>0;const stronger=!judge||scq(load,+s.r,q0)>top+1e-9;
   // More weight than any earlier working set comes first (r29), as in the PR
   // list, and before the load check: an assisted set with no bodyweight
   // logged has no load to estimate from, but less help is still a PR.
-  if(!ex.timed&&s.w!==''&&s.w!=null&&isNum(+s.w)){let mw=-Infinity;for(const x of exps)for(const q of x.pts)if(q.r>0)mw=Math.max(mw,q.w);if(+s.w>mw+1e-6&&stronger)return 'Weight PR';}
-  if(!(load>0)&&!ex.timed)return null;
+  if(!ex.timed&&s.w!==''&&s.w!=null&&isNum(+s.w)&&f.w>f.heaviest+1e-6&&stronger)return 'Weight PR';
+  if(!(load>0)&&!ex.timed&&!ex.bw)return null;
   // A new best is judged within the set's own band of reps to failure.
   if(v!=null&&st){const bd=st.byBand&&st.byBand[rtfBand(rtfOf(+s.r,q0))];if(bd!=null&&v>bd+1e-6)return 'Best';}
   if(dom||!stronger)return null;
@@ -279,10 +277,10 @@ function livePR(exId,s,date){
 function refreshPR(bi,si,announce){
   const d=state.draft;if(!d)return;const b=d.ex[bi];const s=b&&b.sets[si];if(!s)return;
   const btn=document.querySelector(`[data-act="sDone"][data-b="${bi}"][data-s="${si}"]`);const row=btn&&btn.closest('.sg');if(!row)return;
-  const was=row.classList.contains('pr');let pr=s.done&&!d.light&&!d.deload&&!b.light?livePR(b.exId,s,d.date):null;
+  const was=row.classList.contains('pr');let pr=s.done?livePR(b.exId,s,d.date):null;
   /* Not a PR when an earlier set in this session was as strong (r32, second
-     check: 100 x 10, then 100 x 9 announced as a new best). Lighter and
-     deload work is never one. */
+     check: 100 x 10, then 100 x 9 announced as a new best). On any day since
+     r54, as the list counts it since r53 (PENDING 311 a). */
   if(pr){const ex=EX(b.exId);const scq=x=>{const l=prLoad(ex,x,d.date);return e1(l,+x.r,rirEst(x,ex))||l*(1+(+x.r)/30);};const me=scq(s);
     if(b.sets.some((x,i)=>i<si&&x.done&&!x.warm&&!x.drop&&+x.r>0&&scq(x)>=me-1e-9))pr=null;}
   row.classList.toggle('pr',!!pr);
@@ -296,11 +294,9 @@ function refreshPR(bi,si,announce){
   }
 }
 /* What a live PR beat, as a short tail for the toast: the old best estimate in
-   the set's band, or the most reps done at this load or heavier. */
+   the set's band, or the most reps done at this load or heavier, judged as livePR judges it and shown as logged, as the PR list shows it (r54). */
 function prBeat(exId,s,date,pr){
-  const I=IDX();const every=I.byEx[exId];if(!every)return '';
-  const exps=date?every.filter(x=>x.date<=date):every;const ex=EX(exId);const load=prLoad(ex,s,date);
-  const st=exps.length<every.length?statsUpTo(exId,exps):I.exStats[exId];const q=rirEst(s,ex);const bd=st&&st.byBand&&st.byBand[rtfBand(rtfOf(+s.r,q))];const v=noE1(ex)?null:e1(load,+s.r,q);
+  const f=prFrame(exId,s,date);if(!f)return '';const {ex,exps,st,load}=f;const q=rirEst(s,ex);const bd=st&&st.byBand&&st.byBand[rtfBand(rtfOf(+s.r,q))];const v=noE1(ex)?null:e1(load,+s.r,q),shown=noE1(ex)?null:e1(f.own,+s.r,q);
   /* The estimate a set beats is the best from sets of a similar number of
      reps (its band), so the toast names the band (r30): "new best estimate
      279" read as wrong beside an overall best of 301 from heavier sets. */
@@ -309,10 +305,10 @@ function prBeat(exId,s,date,pr){
     // The overall best before this set, so "was" never names a band's best that reads as lower than the bests board (r34.2).
     let all=null;for(const x of exps)if(x.pb!=null&&!(date&&x.date===date))all=all==null?x.pb:Math.max(all,x.pb);
     if(!isCompound(ex))return ` (your best for ${bandW})`;
-    return all==null||v>all+1e-6?` (estimated 1RM ${fmtE(v)} ${U()}${all!=null?`; was ${fmtE(all)}`:''})`:` (your best for ${bandW}, ${fmtE(v)} ${U()})`;}
-  if(pr==='Weight PR'){let mw=-Infinity;for(const x of exps)for(const p of x.pts)if(p.r>0)mw=Math.max(mw,p.w);
+    return all==null||shown>all+1e-6?` (estimated 1RM ${fmtE(shown)} ${U()}${all!=null?`; was ${fmtE(all)}`:''})`:` (your best for ${bandW}, ${fmtE(shown)} ${U()})`;}
+  if(pr==='Weight PR'){const mw=f.heaviest;
     const was=ex.assist?`less help than ever`:`heaviest before ${ex.bw?loadLabel(ex,mw):fmtW(mw)+' '+U()}`;
-    return ` (${was}${isCompound(ex)&&bd!=null&&v!=null&&v>bd+1e-6?`; best estimate for ${bandW} now ${fmtE(v)}`:''})`;}
+    return ` (${was}${isCompound(ex)&&bd!=null&&v!=null&&v>bd+1e-6?`; best estimate for ${bandW} now ${fmtE(shown)}`:''})`;}
   let m=0;for(const x of exps)for(const p of x.pts)if(p.pl>=load-1e-6)m=Math.max(m,p.r);
   return m?` (was ${m} ${ex.timed?'s':'reps'})`:' (heaviest yet)';
 }

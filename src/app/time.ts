@@ -9,7 +9,7 @@ import type { Model } from './model';
 import { EXIn, activeRoutineIn, sortedSessionsIn } from './model';
 import { PACE_DAYS, PACE_HI, PACE_LO, PACE_MIN, PACE_N, setSecs, setupSecs } from './formulas';
 import { isCompound } from './library';
-import { planForIn } from './routines';
+import { basePlanIn } from './routines';
 import { addDays } from './util';
 
 /** A planned exercise as the time model reads it: its sets, range, rest and superset link. */
@@ -59,7 +59,7 @@ export function sessModelMinIn(M: Model, ss: Session): number {
   // plain (r44 review): a goal set later must not change how long a past session is read to have taken.
   const items = ss.ex
     .map(b => {
-      const p = planForIn(M, b.exId, R, ss.dayId, true);
+      const p = basePlanIn(M, b.exId, R, ss.dayId, true);
       const rr = Array.isArray(b.rr) ? b.rr : [p.repMin, p.repMax];
       return {
         ...p,

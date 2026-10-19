@@ -41,7 +41,7 @@ src/01-03, 99       the page's markup and styles
 
 Layer 0, config and record shapes: config, types
 Layer 1, data: util, units, library, routines, formulas, records, gym, profile, model
-Layer 2, engine and analytics: session, loads, prs, trend, volume, goals, importing, format, charts, analytics, time, weeks, coach, engine
+Layer 2, engine and analytics: session, loads, prs, trend, volume, goals, importing, format, charts, analytics, time, weeks, coach, engine, plans
 Layer 3, storage and sync: chunks, merge, store, live
 Layer 4, screens: layout, icons, feedback, providers, effort, guide
 
@@ -56,14 +56,14 @@ The current code is the **legacy script**: `src/10-*.js` to `src/29-*.js`, joine
 **The ratchet:** the legacy script may never grow. `tests/hygiene.js` fails when it has more top-level declarations or more lines than the numbers below, and also when it has fewer, until the numbers are lowered to match, so each phase locks in what it moved. A change that adds code adds it in `src/app/`.
 
 Legacy top-level declarations: 504
-Legacy lines: 7391
+Legacy lines: 7389
 
 | Measured (scripts/depmap.js) | r49 | r50 | r51 | r52 | r53 | r54 |
 |---|---|---|---|---|---|---|
 | Legacy top-level declarations | 928 | 819 | 638 | 518 | 511 | 504 |
 | Pure, movable as they are | 324 | 215 (214 by r51's rule, which also counts browser-only APIs such as DOMParser) | 39 (each waits for its phase, below) | 34 (a call through `live.ts` counts as reading shared state) | 33 (since r53 a call to any module function that reads the store, the live model or the page counts too, `moduleReach`; by r52's rule 40, as effort.ts's `rirScale` reads the store) | 33 |
 | Shared mutable names | 61 (`ui` written from 12 files, `state` from 10) | 61 | 56 (`state`, `ui`, `cloud`, `acct` and `acctWait` are the store's) | 48 (the seven caches are the model's) | 48 | 48 |
-| Legacy lines | 10,452 | 9,863 | 9,134 | 7,585 | 7,436 | 7,391 |
+| Legacy lines | 10,452 | 9,863 | 9,134 | 7,585 | 7,436 | 7,389 |
 | In `src/app/` | `config.ts` | and `util`, `units`, `library`, `routines`, `formulas` (109 declarations) | and 18 more modules, the store among them (182 declarations: 176 moved, the four shared objects, `state` and `setState`) | and 7 more modules, five grown (the 120 moved as 113: 96 taking the model, 16 unchanged and `invalidateIn`, the caches given by `freshCaches`; with `modelOf`, `LIVE`, `live` and 74 adapters) | and 3 more modules, `guide`, `providers` and `effort` (7 declarations moved, `routineUpdates` and `whyTarget` among them to change, so 75 adapters; 4 added) | no more modules; `plannedSets`, `effShow` and `lastLighterWeek` moved (the third rewritten, to the averages' reading of a lighter week), 79 adapters |
 
 ## The phases

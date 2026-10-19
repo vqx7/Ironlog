@@ -6,7 +6,7 @@
 import type { DbRack, Exercise, Gym, Plan } from './types';
 import type { ExerciseLike, Model } from './model';
 import { isNum, r3 } from './util';
-import { LB, stepReadIn, unitStepIn } from './units';
+import { LB, PLATES_KG, PLATES_LB, stepReadIn, unitStepIn } from './units';
 import { ONE_DB, PLATE_SIDE_IDS, loadMode, rackKind } from './library';
 import { UIn, gymOfIn } from './model';
 
@@ -19,12 +19,13 @@ export const PLATE_MODES: readonly (readonly [string, string])[] = [
   ['none', 'None']
 ];
 
-/* The plates a gym may have, heaviest first, in its unit. A function, as it
-   has been since r33, when normalize() ran on the first load before the
-   constants of this part existed; in a module that no longer matters, and
-   the form is kept so the move changes no code. */
+/* The plates a gym may have, heaviest first, in its unit: the usual plates
+   (units.ts), as a new list on each call, as it always was, so no caller can
+   change the table. A function since r33, when normalize() ran on the first
+   load before the constants of its part existed; until r54 it typed the
+   lists a second time. */
 export function gymPlates(u: string): number[] {
-  return u === 'kg' ? [25, 20, 15, 10, 5, 2.5, 1.25] : [45, 35, 25, 10, 5, 2.5];
+  return [...(u === 'kg' ? PLATES_KG : PLATES_LB)];
 }
 
 /** A gym or a rack as it arrives, from a save, a backup, another device, or

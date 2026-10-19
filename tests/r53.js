@@ -89,18 +89,18 @@ const FILE = process.argv[2] || 'index.html';
     // Today is Thursday 15 October; the second lighter session is dated the same day, after the first.
     const strong = await one(120);
     const next = await ev(() => { const L = window.__ironlog; const b = L.newBlock('bench', L.planFor('bench'), {}); return { last: b.last, sw: b.sw, target: b.target }; });
-    const trendAt = await ev(() => { const L = window.__ironlog; const I = L.IDX(); const all = I.byEx.bench; return { lastFull: I.exStats.bench.last.date + ' ' + I.exStats.bench.last.topW, full: all.filter(x => !L.offSession(x)).map(x => x.topW) }; });
+    const trendAt = await ev(() => { const L = window.__ironlog; const I = L.IDX(); const all = I.byEx.bench; return { lastFull: I.exStats.bench.last.date + ' ' + I.exStats.bench.last.topW, full: all.filter(x => !L.offTarget(x)).map(x => x.topW) }; });
     // What the trend reads: the lift's full sessions (exStats.last is the newest of them, the end the trend is drawn to).
     const recent = await ev(() => window.__ironlog.recent4w().prs.filter(p => p.exId === 'bench').length);
     // Then a lighter day with a heavy single, 130 x 1: heavier than ever, not stronger than 120 x 8 (Brzycki 149 against 130).
     const single = await one([[130, 1], [90, 8]]);
-    const after = await ev(() => { const L = window.__ironlog; const I = L.IDX(); return I.byEx.bench.filter(x => !L.offSession(x)).map(x => x.topW); });
+    const after = await ev(() => { const L = window.__ironlog; const I = L.IDX(); return I.byEx.bench.filter(x => !L.offTarget(x)).map(x => x.topW); });
     // A lighter day done at the usual load, 120 x 8 again: no PR, and a full session for the bench press all the same.
     const usual = await one(120);
     // A lighter day at 100 for 18 and 18: stronger than ever by the rep score (100 x 18 scores 160, 120 x 8 at its usual 1 in reserve 154), so a PR, but done lighter, so the session stays lighter and the next target stays at 120.
     const reps = await one([[100, 18], [100, 18]]);
     const next2 = await ev(() => { const L = window.__ironlog; const b = L.newBlock('bench', L.planFor('bench'), {}); return { last: b.last, sw: b.sw, target: b.target }; });
-    const full2 = await ev(() => { const L = window.__ironlog; return L.IDX().byEx.bench.filter(x => !L.offSession(x)).map(x => x.topW); });
+    const full2 = await ev(() => { const L = window.__ironlog; return L.IDX().byEx.bench.filter(x => !L.offTarget(x)).map(x => x.topW); });
     // Back to the starter's pounds for the parts below.
     await ev(() => { const L = window.__ironlog; L.state.settings.unit = 'lb'; L.invalidate(); L.saveNow(); L.render(); });
     return { lighter, strong, next, recent, trend: trendAt, single, after, usual, reps, next2, full2 };
@@ -137,7 +137,8 @@ const FILE = process.argv[2] || 'index.html';
       await ev((sets) => { const L = window.__ironlog; const d = L.state.draft; d.ex = d.ex.filter(b => b.exId === 'bench'); for (const b of d.ex) b.sets = sets.map(([w, r]) => ({ w, r, rir: null, warm: false, drop: false, done: true })); L.saveNow(); }, sets);
       await ev(() => window.__ironlog.ACT.finish()); await wait(400);
       await ev(() => window.__ironlog.ACT.mClose()); await wait(100);
-      return ev(() => window.__ironlog.IDX().byEx.bench.slice(-1)[0].light);
+      // How the analytics read that bench press: done lighter, short of its usual (since r54, V's one rule), or full.
+      return ev(() => { const x = window.__ironlog.IDX().byEx.bench.slice(-1)[0]; return { light: x.light, short: x.short || null }; });
     };
     const twoLight = await day([[100, 10], [100, 10]]);
     const after = await next();
@@ -156,9 +157,10 @@ const FILE = process.argv[2] || 'index.html';
     const after2 = await next();
     return { before, twoLight, after, fourLight, before2, shortRef, after2 };
   })();
-  ok(half.twoLight === true && half.after.target === half.before.target && half.after.sw === half.before.sw && /over 4 sets/.test(half.before.target || ''), 'a lighter day with the bench at half its sets, 100 x 10 and 10 after four sets of 10, 10, 9 and 8: it stays lighter, and the next target is still the four-set one, with no load added off half the work', half);
-  ok(half.fourLight === false, 'a lighter day with all four sets done at the usual load and reps counts in full', half);
-  ok(half.shortRef === true && half.after2.target === half.before2.target && half.after2.sw === half.before2.sw, 'with one earlier session stopped after two sets of four, a lighter day of two sets of 10 still stays lighter, and the next target does not change', half);
+  // Since r54 (V's one rule) a lift done at its usual load and reps with fewer sets than usual is short of its usual, not lighter: its trend counts, and its target repeats, so the next target is the same as before.
+  ok(half.twoLight.light === false && half.twoLight.short === 'sets' && half.after.target === half.before.target && half.after.sw === half.before.sw && /over 4 sets/.test(half.before.target || ''), 'a lighter day with the bench at half its sets, 100 x 10 and 10 after four sets of 10, 10, 9 and 8: short of its usual by its sets, and the next target is still the four-set one, with no load added off half the work', half);
+  ok(half.fourLight.light === false && !half.fourLight.short, 'a lighter day with all four sets done at the usual load and reps counts in full', half);
+  ok(half.shortRef.light === false && half.shortRef.short === 'sets' && half.after2.target === half.before2.target && half.after2.sw === half.before2.sw, 'with one earlier session stopped after two sets of four, a lighter day of two sets of 10 is still short of its usual, and the next target does not change', half);
 
   // ---- Lifts with no strength reading on a lighter day: the load alone says nothing on them, so the reps (seconds on a hold) decide.
   const noRead = await (async () => {
@@ -239,7 +241,7 @@ const FILE = process.argv[2] || 'index.html';
     const lighterDay = await ev(() => { const L = window.__ironlog; return { coach: L.coach().text, stalled: Object.entries(L.IDX().exStats).filter(([, x]) => x.stalled).map(([id]) => id).sort() }; });
     // The same six weeks, and the Lighter day with the bench at 105 x 8, one set: a weight PR, so the bench is moving, not stalled; a PR is a PR whenever it happens (the fifth review).
     await ev(() => { const L = window.__ironlog; const x = L.state.sessions.find(q => q.id === 'cl'); x.ex[0].sets = [{ w: 105, r: 8, rir: 1, warm: false, drop: false }]; L.invalidate(); L.saveNow(); });
-    const prDay = await ev(() => { const L = window.__ironlog; const I = L.IDX(); return { coach: L.coach().text, prs: I.prs.filter(p => p.sid === 'cl').map(p => p.type), light: I.byEx.bench.find(x => x.sid === 'cl').light, stalled: Object.entries(I.exStats).filter(([, x]) => x.stalled).map(([id]) => id).sort() }; });
+    const prDay = await ev(() => { const L = window.__ironlog; const I = L.IDX(); return { coach: L.coach().text, prs: I.prs.filter(p => p.sid === 'cl').map(p => p.type), light: I.byEx.bench.find(x => x.sid === 'cl').light, short: I.byEx.bench.find(x => x.sid === 'cl').short || null, stalled: Object.entries(I.exStats).filter(([, x]) => x.stalled).map(([id]) => id).sort() }; });
     // The Lighter day's bench at 90 x 9, 3 in reserve: one rep more than the usual 8, at the lighter load. A rep PR at that load, not stronger than
     // ever, so Recent PRs does not list it and it does not end the stall (the sixth review).
     await ev(() => { const L = window.__ironlog; const x = L.state.sessions.find(q => q.id === 'cl'); x.ex[0].sets = [{ w: 90, r: 9, rir: 3, warm: false, drop: false }]; L.invalidate(); L.saveNow(); });
@@ -314,7 +316,8 @@ const FILE = process.argv[2] || 'index.html';
     return { lighterDay, prDay, repDay, afterDeload, thisWeek, markedLate, deloadFull, twoLight, oneDeload, fourDay, lightLate, deloadEarly, freeDeload, injured };
   })();
   ok(JSON.stringify(coach.lighterDay.stalled) === '["backSquat","bench","rdl"]' && /^3 main lifts stalled at once/.test(coach.lighterDay.coach || ''), 'one Lighter day after a poor night does not keep the deload away: three main lifts flat for six weeks, and the coach says so', coach.lighterDay);
-  ok(JSON.stringify(coach.prDay.prs) === '["Weight PR"]' && coach.prDay.light === true && JSON.stringify(coach.prDay.stalled) === '["backSquat","rdl"]' && !/^3 main lifts stalled at once/.test(coach.prDay.coach || '') && !/Bench Press has stalled/.test(coach.prDay.coach || ''), 'the same Lighter day with the bench at 105 x 8, one set: a weight PR on a session that stays lighter, and the bench no longer reads stalled beside it (two main lifts stalled, not three)', coach.prDay);
+  // Since r54 (V's one rule) the one set at a heavier load than usual is short of its usual by its sets, not lighter, so its PR is in the stall's own stretch.
+  ok(JSON.stringify(coach.prDay.prs) === '["Weight PR"]' && coach.prDay.light === false && coach.prDay.short === 'sets' && JSON.stringify(coach.prDay.stalled) === '["backSquat","rdl"]' && !/^3 main lifts stalled at once/.test(coach.prDay.coach || '') && !/Bench Press has stalled/.test(coach.prDay.coach || ''), 'the same Lighter day with the bench at 105 x 8, one set: a weight PR on a session short of its usual sets, and the bench no longer reads stalled beside it (two main lifts stalled, not three)', coach.prDay);
   ok(JSON.stringify(coach.repDay.prs) === '["Rep PR"]' && JSON.stringify(coach.repDay.stalled) === '["backSquat","bench","rdl"]' && /^3 main lifts stalled at once/.test(coach.repDay.coach || ''), 'the Lighter day\'s bench at 90 x 9 instead: a rep PR at the lighter load that Recent PRs does not list, so the bench still reads stalled and the coach still names all three', coach.repDay);
   ok(JSON.stringify(coach.afterDeload.stalled) === '["backSquat","bench","rdl"]' && !/stalled at once/.test(coach.afterDeload.coach || ''), 'a deload begun mid-week, on Wednesday and Friday after a normal Monday: the coach does not ask for another deload the next week', coach.afterDeload);
   ok(JSON.stringify(coach.thisWeek.stalled) === '["backSquat","bench","rdl"]' && /^3 main lifts stalled at once/.test(coach.thisWeek.coach || ''), 'a Lighter day this Monday, the week\'s only session so far, is not a lighter week yet: the coach still names the three stalled lifts', coach.thisWeek);

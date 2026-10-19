@@ -213,7 +213,7 @@ function renderModalBody(){
     ${allMet?'<p class="callout green" style="margin:8px 0 0">Every muscle is at or above target for the last 7 days. Anything more is optional.</p>':''}
     ${picks.length?picks.map((x,k)=>{const p=x.plan;const ex=x.e;const mins=Math.round((p.sets*(setSecs(ex,p)+(+p.rest||0))+setupSecs(ex,2))*pace()/60);return `<div class="pcard${k===0?' best':''}"><div class="row spread" style="flex-wrap:nowrap;align-items:flex-start"><span style="min-width:0"><b>${esc(ex.name)}</b><br><span class="small muted">${p.sets} × ${repSpan(p.repMin,p.repMax,'-')}${ex.timed?'s':''}${ex.perSide?' per side':''} · ${estMin(mins)}</span></span>${k===0?'<span class="tag green">Best fit</span>':''}</div>
       <ul>${exReasons(x).map(r=>`<li>${esc(r)}</li>`).join('')}</ul>
-      <div class="row" style="margin-top:8px"><button class="btn sm ${k===0?'primary':''}" data-act="pickExAdd" data-ex="${ex.id}" data-sets="${p.sets}">Add to session</button></div></div>`;}).join(''):'<p class="small">Nothing in your library fits: every exercise is already in this session or loads an injury.</p>'}
+      <div class="row" style="margin-top:8px"><button class="btn sm ${k===0?'primary':''}" data-act="pickExAdd" data-ex="${ex.id}" data-sets="${p.sets}" data-full="${x.full}">Add to session</button></div></div>`;}).join(''):'<p class="small">Nothing in your library fits: every exercise is already in this session or loads an injury.</p>'}
     <div class="row" style="margin-top:10px"><button class="btn sm" data-act="pickSession">Browse all exercises</button></div></div>`;
   }else if(m.kind==='eq'){
     const R=activeRoutine();const day=R.days[m.day];if(!day){ui.modal=null;el.hidden=true;return;}
@@ -250,7 +250,7 @@ function applyPick(m,id){
   if(m.mode==='swapItem'){const f=findItem(m.uid);if(f){const q=swapPlan(f.it,f.it.exId,id,f.r,f.r.days[f.di].id);Object.assign(f.it,{repMin:q.repMin,repMax:q.repMax,rir:q.rir,rest:q.rest,inc:q.inc});if(q.jump!=null)f.it.jump=q.jump;else delete f.it.jump;f.it.exId=id;commit();}closeModal();rerenderKeepScroll();return;}
   const d=state.draft;closeModal();if(!d){rerenderKeepScroll();return;}
   const half=p=>(d.deload||d.light)?{...p,sets:Math.max(1,Math.ceil(p.sets/2))}:p;
-  if(m.mode==='addBlock'){const nb=newBlock(id,half(planFor(id,null,d.dayId)),{deload:!!d.deload,light:!!d.light,before:d.date});
+  if(m.mode==='addBlock'){const p0=planFor(id,null,d.dayId,false,d.date);const nb=newBlock(id,half(p0),{deload:!!d.deload,light:!!d.light,before:d.date});if(d.deload||d.light)nb.full=+p0.sets;
     const li=d.ex.length-1;const last=d.ex[li];
     if(joinable(last,nb)){const before=JSON.parse(JSON.stringify(last.sets)),plan={...last.plan},did=d.id;const added=joinRows(last,nb);
       snapshot(()=>{const dd=state.draft;if(!dd||dd.id!==did)return false;const y=dd.ex.find(x=>x===last);if(!y||added.some(x=>x.done))return false;y.sets=y.sets.filter(x=>!added.includes(x));y.plan=plan;return y.sets.length===before.length;});
@@ -260,15 +260,14 @@ function applyPick(m,id){
      old exercise vanished. Now logged sets stay with the exercise they were
      done on, and the new one takes over the sets still to do. The count comes
      from the rows the exercise has now, not the routine's plan: the plan's
-     count undid Short on time, + Set and − Set (r24). A trimmed exercise
-     stays trimmed, so its replacement is kept out of trends too. */
+     count undid Short on time, + Set and − Set (r24). Since r54 nothing is
+     marked: the replacement is read by its own usual, as every lift is. */
   if(m.mode==='swapBlock'){const b=d.ex[m.b];if(!b){rerenderKeepScroll();return;}
     const orig=JSON.parse(JSON.stringify(b));const bi=m.b,did=d.id;
     // Sets ticked or typed stay with the exercise they were done on (r25: typed, not ticked, used to vanish).
     const done=b.sets.filter(x=>!rowBlank(b,x));const left=b.sets.filter(x=>!x.warm&&!x.drop&&rowBlank(b,x)).length;
     const rows=b.sets.filter(x=>!x.warm&&!x.drop).length;
     const nb=newBlock(id,{...swapPlan(b.plan,b.exId,id,null,d.dayId),sets:done.length?Math.max(1,left):Math.max(1,rows||+b.plan.sets||1)},{deload:!!d.deload,light:!!d.light,before:d.date});nb.swappedFrom=b.swappedFrom||b.exId;if(nb.swappedFrom===id)nb.swappedFrom=null;
-    if(b.cut)nb.cut=true;
     /* Swapped to the exercise just after it (or just before it, when nothing
        stays behind): the sets go to that one, so the lift is one exercise. */
     const ni=done.length?(joinable(d.ex[bi+1],nb)?bi+1:-1):joinable(d.ex[bi-1],nb)?bi-1:joinable(d.ex[bi+1],nb)?bi+1:-1;

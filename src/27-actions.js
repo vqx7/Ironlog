@@ -275,7 +275,8 @@ const ACT={
   },
   startFree(){
     if(state.draft){ui.tab='today';render();return;}
-    state.draft=freeDraft('Freestyle');ui.tab='today';
+    // In a week marked as a deload, a blank session is one too, as a routine day and Do again are (r54, PENDING 311 c: it started at full sets).
+    const dl=isDeloadWeek();state.draft={...freeDraft(dl?'Freestyle (deload)':'Freestyle'),deload:dl,notes:dl?'Deload: half sets, about 90% loads, 3+ RIR.':''};ui.tab='today';
     state.draft.note0=state.draft.notes||'';saveNow();window.scrollTo(0,0);render();wakeOn();
     openModal({kind:'picker',mode:'addBlock',title:'Add exercise to session',q:'',m:''});
   },
@@ -288,14 +289,13 @@ const ACT={
   shortApply(){
     const m=ui.modal;const d=state.draft;if(!m||!d||!m.mins){closeModal();return;}
     const pl=shortPlan(d,m.mins);m.applied=true;if(!pl.changes.length){closeModal();return;}
-    const drop=new Set();const removed=new Map(),wasCut=new Map(),order=d.ex.slice(),did=d.id;
+    const drop=new Set();const removed=new Map(),order=d.ex.slice(),did=d.id;
     /* Undo puts back exactly what the trim took (r25): the blank rows, at the
-       end of their exercise, the skipped exercises in their places, and the
-       trimmed mark as it was. Sets logged since stay. The merge Undo used
-       before brought back skipped exercises but not removed rows. */
+       end of their exercise, and the skipped exercises in their places. Sets
+       logged since stay (the merge Undo used before brought back skipped
+       exercises but not removed rows). Nothing is marked since r54. */
     snapshot(()=>{const dd=state.draft;if(!dd||dd.id!==did)return false;
       for(const [b,rows] of removed)if(dd.ex.includes(b))b.sets.push(...rows);
-      for(const [b,c] of wasCut)if(dd.ex.includes(b)){if(c)b.cut=true;else delete b.cut;}
       order.forEach((b,i)=>{if(drop.has(i)&&!dd.ex.includes(b))dd.ex.splice(Math.min(i,dd.ex.length),0,b);});
       fixSupersets(dd.ex.map(b=>b.plan));return true;});
     for(const x of pl.bl){
@@ -304,7 +304,7 @@ const ACT={
       // Only blank rows go, from the end; typed and ticked sets always stay.
       let n=x.undone-x.keep;const gone=[];
       for(let i=b.sets.length-1;i>=0&&n>0;i--){const s=b.sets[i];if(!s.warm&&rowBlank(b,s)){gone.unshift(...b.sets.splice(i,1));n--;}}
-      removed.set(b,gone);wasCut.set(b,!!b.cut);b.cut=true;
+      removed.set(b,gone);
     }
     d.ex=d.ex.filter((b,bi)=>!drop.has(bi));
     fixSupersets(d.ex.map(b=>b.plan));
@@ -526,7 +526,7 @@ const ACT={
         const it=day&&day.items.find(i=>i.exId===b.exId);if(it)return deload?{...it,sets:Math.max(1,Math.ceil(it.sets/2))}:{...it};
         const p=planFor(b.exId);if(b.rr){p.repMin=b.rr[0];p.repMax=Math.max(b.rr[0],b.rr[1]);}
         const n=b.sets.filter(isWork).length;if(n)p.sets=deload?Math.max(1,Math.ceil(n/2)):n;return p;};
-      const ex=s.ex.map(b=>newBlock(b.exId,plan(b),{deload}));
+      const ex=s.ex.map(b=>{const nb=newBlock(b.exId,plan(b),{deload});const n=b.sets.filter(isWork).length;if(deload&&n&&!(day&&day.items.some(i=>i.exId===b.exId)))nb.full=Math.min(n,30);return nb;});
       state.draft=day?{id:uid(),startedAt:Date.now(),date:today(),dayIdx:R.days.indexOf(day),dayId:day.id,dayName:day.name+(deload?' (deload)':''),routineId:R.id,deload,light:false,cardio:[],notes:deload?'Deload: half sets, about 90% loads, 3+ RIR.':'',editingId:null,ex}
         :{...freeDraft(s.free?s.dayName:`Again: ${s.dayName}`.slice(0,40),ex),deload};
       if(state.draft)state.draft.note0=state.draft.notes||'';ui.tab='today';saveNow();window.scrollTo(0,0);render();wakeOn();
@@ -897,8 +897,8 @@ m.err=`Could not read that. Try the pattern 225x5, 5, 4 ${rirScale()==='rpe'?'rp
   pickEx(){if(!state.draft)return;openModal({kind:'pickEx'});},
   pickExAdd(t){
     const d=state.draft;if(!d)return;const id=t.dataset.ex;if(!state.exercises.some(e=>e.id===id)){closeModal();return;}
-    const p=planFor(id,null,d.dayId);const n=Math.round(+t.dataset.sets);if(n>=1&&n<=30)p.sets=n;
-    d.ex.push(newBlock(id,p,{deload:!!d.deload,light:!!d.light,before:d.date}));saveNow();closeModal();afterAdd(d.ex.length-1);
+    const p=planFor(id,null,d.dayId,false,d.date);const n=Math.round(+t.dataset.sets),full=Math.round(+t.dataset.full);if(n>=1&&n<=30)p.sets=n;
+    const nb=newBlock(id,p,{deload:!!d.deload,light:!!d.light,before:d.date});if((d.deload||d.light)&&full>=1&&full<=30)nb.full=full;d.ex.push(nb);saveNow();closeModal();afterAdd(d.ex.length-1);
     toast(`${exName(id)} added: ${p.sets} set${p.sets===1?'':'s'}`);
   },
   /* Limited equipment: pick what is available, preview the swaps, start. */
@@ -951,7 +951,7 @@ m.err=`Could not read that. Try the pattern 225x5, 5, 4 ${rirScale()==='rpe'?'rp
       let n=0,left=0;for(const b of d.ex)for(const x of b.sets){if(x.warm)continue;n++;if(!x.done&&rowBlank(b,x))left++;}
       const any=d.ex.some(b=>b.sets.some(x=>x.done&&!x.warm));
       if(any&&left>0){
-        confirmBox(`${left} of ${n} sets not done`,`Finish now and they are left out. An exercise you started and did not finish is saved as trimmed, so it does not set your next target.`,'Finish now',()=>{const dd=state.draft;if(!dd)return;dd._leftAsked=true;ACT.finish();},false,{label:'Keep going',fn:()=>{}});
+        confirmBox(`${left} of ${n} sets not done`,`Finish now and they are left out. An exercise with fewer sets than usual does not set your next target, and still counts toward its trend.`,'Finish now',()=>{const dd=state.draft;if(!dd)return;dd._leftAsked=true;ACT.finish();},false,{label:'Keep going',fn:()=>{}});
         return;
       }
     }
@@ -1016,13 +1016,11 @@ m.err=`Could not read that. Try the pattern 225x5, 5, 4 ${rirScale()==='rpe'?'rp
   },
   finishNow(){
     const d=state.draft;if(!d)return;
-    /* Started and stopped with fewer than half its sets done (r30): saved as
-       trimmed, like Short on time, so one set of three never sets the next
-       target (a single set at the top of the range would add load). Half or
-       more counts as a full session, so someone who often does 3 of 4 still
-       has trends. A past workout or an edit keeps what it had. */
-    const unfinished=b=>{if(d.editingId||d.past)return false;const dn=b.sets.filter(x=>x.done&&!x.warm).length;const left=b.sets.filter(x=>!x.warm&&!x.done&&rowBlank(b,x)).length;return dn>0&&left>0&&dn<Math.ceil((dn+left)/2);};
-    const ex=d.ex.map(b=>({exId:b.exId,note:b.note||'',rr:b.keepRR!==undefined?b.keepRR:(b.plan&&+b.plan.repMin>0&&+b.plan.repMax>0?[+b.plan.repMin,+b.plan.repMax]:null),cut:b.cut||unfinished(b)?true:undefined,light:b.light?true:undefined,sets:b.sets.filter(s=>s.done).map(s=>({w:s.w==null?0:s.w,r:+s.r,rir:s.rir==null||s.rir===''?null:+s.rir,warm:!!s.warm,drop:!!s.drop&&!s.warm,cal:s.cal&&!s.warm?s.cal:undefined}))})).filter(b=>b.sets.length);
+    /* Nothing is marked trimmed since r54 (V's one rule, PENDING 312 E): an
+       exercise with fewer sets than usual, stopped early, Short on time, typed
+       in afterwards or edited, is read so from the log (analytics.ts,
+       idxShort), so it sets no target and still counts toward its trend. */
+    const ex=d.ex.map(b=>({exId:b.exId,note:b.note||'',rr:b.keepRR!==undefined?b.keepRR:(b.plan&&+b.plan.repMin>0&&+b.plan.repMax>0?[+b.plan.repMin,+b.plan.repMax]:null),light:b.light?true:undefined,...(b.inj?{inj:b.inj}:{}),sets:b.sets.filter(s=>s.done).map(s=>({w:s.w==null?0:s.w,r:+s.r,rir:s.rir==null||s.rir===''?null:+s.rir,warm:!!s.warm,drop:!!s.drop&&!s.warm,cal:s.cal&&!s.warm?s.cal:undefined}))})).filter(b=>b.sets.length);
     // Side by side, the same lift is saved as one exercise (r34.2, V); apart, each stays where it was done.
     const exJ=joinAdjacent(ex);ex.length=0;ex.push(...exJ);
     const cardio=(d.cardio||[]).filter(c=>c.min>0).map(c=>cleanCardio({...c,date:d.date}));
@@ -1032,7 +1030,7 @@ m.err=`Could not read that. Try the pattern 225x5, 5, 4 ${rirScale()==='rpe'?'rp
     // A blank load on a weighted lift used to save silently as a real 0 set,
     // which drags down volume load and still counts toward your weekly sets.
     const blanks=[];
-    for(const b of ex){const e=EX(b.exId);if(e.bw)continue;const n=b.sets.filter(s=>!(+s.w>0)).length;if(n)blanks.push(`${e.name} (${n} set${n>1?'s':''})`);}
+    for(const b of ex){const e=EX(b.exId);if(e.bw)continue;const n=b.sets.filter(s=>!(+s.w>0)).length;if(n)blanks.push(`${e.name} (${n} set${n>1?'s':''})`);}const help=[];for(const b of d.ex){const e=EX(b.exId);if(!e.assist)continue;const n=b.sets.filter(s=>s.done&&!s.warm&&s.w==null).length;if(n)help.push(`${e.name} (${n} set${n>1?'s':''})`);}
     const save=()=>{
       // Timed only when started and finished today in this app; an edit keeps
       // whatever the original session measured.
@@ -1094,9 +1092,9 @@ m.err=`Could not read that. Try the pattern 225x5, 5, 4 ${rirScale()==='rpe'?'rp
     /* Asked as "add them" first (r29, item 116): saved as 0, such a set still
        counts as a hard set but gives no estimate, PR, or weight lifted. Add
        loads goes back to the first one, opened, with its load field focused. */
-    if(blanks.length)confirmBox('Add the missing loads?',`${andList(blanks)} ${blanks.length>1?'have':'has'} reps but no weight. Saved like this, they count as hard sets but give no estimate, PR, or weight lifted.`,'Add loads',()=>{
+    if(blanks.length||help.length)confirmBox(blanks.length?'Add the missing loads?':'Add the help you used?',[blanks.length?`${andList(blanks)} ${blanks.length>1?'have':'has'} reps but no weight. Saved like this, they count as hard sets but give no estimate, PR, or weight lifted.`:'',help.length?`${andList(help)} ${help.length>1?'have':'has'} no help typed, so saved like this ${help.length>1?'they read':'it reads'} as no help, your full bodyweight.`:''].filter(Boolean).join(' '),blanks.length?'Add loads':'Add the help',()=>{
       const dr=state.draft;if(!dr)return;
-      for(let bi=0;bi<dr.ex.length;bi++){const b=dr.ex[bi];if(EX(b.exId).bw)continue;const si=b.sets.findIndex(x=>x.done&&!(+x.w>0));if(si<0)continue;
+      for(let bi=0;bi<dr.ex.length;bi++){const b=dr.ex[bi];const e=EX(b.exId);if(e.bw&&!e.assist)continue;const si=b.sets.findIndex(x=>x.done&&(e.assist?x.w==null:!(+x.w>0)));if(si<0)continue;
         ui.blkOpen.add(blkKey(bi,b));blkOpenObj.add(b);render();
         const f=document.querySelector(`[data-f="w"][data-b="${bi}"][data-s="${si}"]`);if(f){f.scrollIntoView({block:'center'});f.focus();f.classList.add('need');}return;}
     },false,{label:'Save anyway',fn:save});
@@ -1248,7 +1246,7 @@ m.err=`Could not read that. Try the pattern 225x5, 5, 4 ${rirScale()==='rpe'?'rp
     const s=state.sessions.find(x=>x.id===t.dataset.id);if(!s)return;
     const go=()=>{const R=state.routines.find(r=>r.id===s.routineId)||activeRoutine();
       const dayItems=s.free?[]:((R.days[sessDayIdx(R,s)]||{items:[]}).items);
-      state.draft={id:uid(),editingId:s.id,deload:!!s.deload,light:!!s.light,free:s.free?true:undefined,chk:s.chk?{...s.chk}:undefined,startedAt:null,durMin:s.durMin||null,date:s.date,dayIdx:s.dayIdx,dayId:s.dayId||null,dayName:s.dayName,routineId:s.routineId,notes:s.notes||'',ex:s.ex.map(b=>{const it=dayItems.find(i=>i.exId===b.exId);const plan=it?{...it}:planFor(b.exId);return {bid:uid(),exId:b.exId,plan,note:b.note||'',keepRR:b.rr||null,cut:b.cut?true:undefined,light:b.light?true:undefined,hint:'Editing saved sets.',lastR:[],sets:b.sets.map(x=>({w:x.w,r:x.r,rir:x.rir,warm:!!x.warm,drop:!!x.drop,done:true,cal:x.cal?{...x.cal}:undefined}))};})};
+      state.draft={id:uid(),editingId:s.id,deload:!!s.deload,light:!!s.light,free:s.free?true:undefined,chk:s.chk?{...s.chk}:undefined,startedAt:null,durMin:s.durMin||null,date:s.date,dayIdx:s.dayIdx,dayId:s.dayId||null,dayName:s.dayName,routineId:s.routineId,notes:s.notes||'',ex:s.ex.map(b=>{const it=dayItems.find(i=>i.exId===b.exId);const plan=it?{...it}:planFor(b.exId,null,null,false,s.date);return {bid:uid(),exId:b.exId,plan,note:b.note||'',keepRR:b.rr||null,light:b.light?true:undefined,hint:'Editing saved sets.',lastR:[],sets:b.sets.map(x=>({w:x.w,r:x.r,rir:x.rir,warm:!!x.warm,drop:!!x.drop,done:true,cal:x.cal?{...x.cal}:undefined}))};})};
       editFp0.set(state.draft.id,editFp(state.draft));
       saveNow();ui.tab='today';window.scrollTo(0,0);render();};
     if(state.draft)confirmBox('Replace the session in progress?','You have an unsaved session open. Editing this one will discard it.','Discard and edit',go,true);else go();

@@ -90,8 +90,9 @@ function strongCsv(weeks, name) {
       const L = window.__ironlog; const st = L.state; const R = st.routines[0];
       const mk = (date, sets) => ({ id: 'q' + date, date, dayIdx: 0, dayId: R.days[0].id, routineId: R.id, dayName: 'Strength A', ex: [{ exId: 'backSquat', rr: [5, 5], note: '', sets: sets.map(([w, r, rir]) => ({ w: w * LB, r, rir: rir == null ? null : rir, warm: false, drop: false })) }] });
       const plan = { sets: 5, repMin: 5, repMax: 5, rir: 2, rest: 180, inc: 5 * LB }; const five = w => Array(5).fill([w, 5]);
-      const run = sets => { st.sessions = [mk('2026-09-25', five(330)), mk('2026-09-30', sets)]; L.state = L.normalize(st); L.invalidate(); const g = L.suggest('backSquat', plan); return { w: Math.round(g.w / LB), text: g.text }; };
-      const out = { A: run([[405, 1, 1], [405, 1, 1], ...five(335)]), B: run([[255, 3], [255, 3], ...five(225)]), C: run([[365, 4, 2], ...five(335)]) };
+      const run = (sets, from) => { st.sessions = [mk('2026-09-25', five(from || 330)), mk('2026-09-30', sets)]; L.state = L.normalize(st); L.invalidate(); const g = L.suggest('backSquat', plan); return { w: Math.round(g.w / LB), text: g.text }; };
+      // B after 220 x 5 x 5, so the 225s are the lift's usual and the session sets the target; Bu after 330 x 5 x 5, where they are far under it (r54, V's one rule).
+      const out = { A: run([[405, 1, 1], [405, 1, 1], ...five(335)]), B: run([[255, 3], [255, 3], ...five(225)], 220), Bu: run([[255, 3], [255, 3], ...five(225)]), C: run([[365, 4, 2], ...five(335)]) };
       // A 3-5 plan (what an import gives a 5 x 5 squat): 385 x 2, then 335 x 5 x 5 (rv/pl/p6.js).
       st.sessions = [mk('2026-09-25', five(330)), mk('2026-09-30', [[385, 2], ...five(335)])]; L.state = L.normalize(st); L.invalidate();
       const d = L.suggest('backSquat', { ...plan, repMin: 3, repMax: 5 }); out.D = { w: Math.round(d.w / LB), text: d.text, lastR: d.lastR };
@@ -118,6 +119,7 @@ function strongCsv(weeks, name) {
     ok(r2.E === 350, 'two unmarked warm-ups at 135 then 345 x 5: the target builds on 345', r2.E);
     ok(r2.A.w === 340 && !/Drop|below/.test(r2.A.text), 'two singles at 405 then 335 x 5 x 5: still 340, never "drop to 345"', r2.A);
     ok(r2.B.w === 230 && !/Drop|below/.test(r2.B.text), 'two triples at 255 then 225 x 5 x 5: 230 for 5s, never "drop to 230"', r2.B);
+    ok(r2.Bu.w === 335 && /^Last \(Sep 30, below usual\)/.test(r2.Bu.text) && !/Drop/.test(r2.Bu.text), 'the same after 330 x 5 x 5: the 225s are far under the usual, so the target from 330 repeats (r54, V\'s one rule), never "drop to 230"', r2.Bu);
     // ---- 7. Three sessions in nine days are not a trend.
     ok(r.sqTrend.pct == null && /spread over 2 weeks/.test(r.bench), 'three sessions over 9 days give no trend, and the lift says what a trend needs', { t: r.sqTrend, h: r.bench });
     ok(!/over 6 weeks/.test(r.bench), 'no "over 6 weeks" for data that spans 9 days', r.bench);

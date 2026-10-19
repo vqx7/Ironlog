@@ -11,11 +11,24 @@ import type { LiftBests } from './analytics';
 import { EXIn, UIn, exInjuryIn } from './model';
 import { IDXIn, bwRefLoadIn, lastOf, statsUpToIn } from './analytics';
 import { atCapOfIn, capOfIn, exBarKgIn, gymRackIn, gymStepIn, platesMode, rackGapIn, rackTolIn } from './gym';
-import { LB, STEP_LB, fromDIn, inUnitIn, kgOfIn, stepReadIn, toDIn, unitStepIn } from './units';
+import {
+  DEFAULT_STEP,
+  LB,
+  STEP_LB,
+  TYPED_STEP,
+  fromDIn,
+  inUnitIn,
+  kgOfIn,
+  onStep,
+  stepReadIn,
+  toDIn,
+  unitStepIn
+} from './units';
 import { fmtWIn, loadLabelIn, loadNote, roundLoadIn, swapWIn } from './loads';
 import { addDays, daysBetween, isDate, isNum, r1 } from './util';
 import {
   BACK_DAYS,
+  afterBreak,
   E1_MAX_RIR,
   LIGHTER_LOAD,
   atLoad,
@@ -24,7 +37,8 @@ import {
   fitE,
   jumpCap,
   jumpPct,
-  offSession,
+  lighter,
+  offTarget,
   repFloor,
   rtfAt,
   sameRR,
@@ -51,6 +65,7 @@ export interface SuggestCtx {
   all: Exposure[];
   every: Exposure[];
   exps: Exposure[];
+  done: Exposure[];
   seen: Exposure[];
   inRR: boolean;
   injM: string | null;
@@ -115,7 +130,7 @@ function unitSnap(M: Model, ex: ExerciseLike, plan: Plan, res: Suggestion, down?
      load in five converted from the other unit passed for typed, so 42.5 kg
      shown as 93.7 lb was told to add 5 lb, to 98.7). */
   const off = (v: number): boolean => Math.abs(inUnitIn(M, v) / st - Math.round(inUnitIn(M, v) / st)) > 0.02;
-  const typed = (v: number): boolean => Math.abs(inUnitIn(M, v) / 0.05 - Math.round(inUnitIn(M, v) / 0.05)) < 1e-6;
+  const typed = (v: number): boolean => onStep(inUnitIn(M, v), TYPED_STEP);
   if (!off(res.top) || !off(res.w) || typed(res.top)) return res;
   /* Which step (r54). A lighter day, a deload or a return after a break takes
      the step below; anything else the nearest. Never under the floor (the
@@ -173,6 +188,23 @@ export function daysOffIn(M: Model, exId: string, opts?: SuggestOpts | null): nu
   return daysBetween(xs[xs.length - 1].date, T);
 }
 
+/* A lift is back after a break (BACK_DAYS) until a session since the break
+   sets its target: the length of the break, from its session before it to
+   the first after it, or to the date being logged when nothing came after;
+   else 0. The first session back is the lift's new start and sets the next
+   target (r54), so the lift stops being back once it is done, unless it was
+   done lighter (a Lighter day or a deload, tapped on coming back): until
+   r54 the session after that asked for the load from before the break. */
+function backDaysIn(M: Model, exId: string, opts: SuggestOpts): number {
+  const T = opts.before && isDate(opts.before) ? opts.before : M.today();
+  const xs = (IDXIn(M).byEx[exId] || []).filter(x => x.date <= T);
+  if (!xs.length) return 0;
+  if (afterBreak(xs[xs.length - 1], T)) return daysBetween(xs[xs.length - 1].date, T);
+  for (let i = xs.length - 1; i > 0 && offTarget(xs[i]); i--)
+    if (afterBreak(xs[i - 1], xs[i].date)) return daysBetween(xs[i - 1].date, xs[i].date);
+  return 0;
+}
+
 /* What to lift next for one exercise on a plan: the normal prescription
    (suggestCore), or a lighter day, a deload, or a lift back after a break
    worked out from it (above). A close variation's start, a lighter one, is
@@ -182,7 +214,7 @@ export function daysOffIn(M: Model, exId: string, opts?: SuggestOpts | null): nu
 export function suggestIn(M: Model, exId: string, plan: Plan, opts?: SuggestOpts | null): Suggestion {
   opts = opts || {};
   const ex = EXIn(M, exId);
-  const off = !(opts.deload || opts.light) && !ex.timed ? daysOffIn(M, exId, opts) : 0;
+  const off = !(opts.deload || opts.light) && !ex.timed ? backDaysIn(M, exId, opts) : 0;
   const back = off > BACK_DAYS;
   if (!(opts.deload || opts.light || back) || ex.timed)
     return snapUnitIn(M, ex, plan, suggestCoreIn(M, exId, plan, opts));
@@ -209,7 +241,7 @@ export function suggestIn(M: Model, exId: string, plan: Plan, opts?: SuggestOpts
   const bl = bwRefLoadIn(M, ex);
   const lbl = (w: number): string => `${loadLabelIn(M, ex, w)}${ex.bw ? '' : ' ' + UIn(M)}${loadNote(ex)}`;
   // Assisted: 90% of the lifted load means more help, rounded up to the machine's step so it never lands back on the full load.
-  const hs = step > 0 ? toDIn(M, step)! : UIn(M) === 'lb' ? 5 : 2.5;
+  const hs = step > 0 ? toDIn(M, step)! : DEFAULT_STEP[UIn(M)];
   const dw = ex.assist
     ? -fromDIn(M, Math.ceil(toDIn(M, bl > 0 ? bl - (w0 + bl) * 0.9 : -w0 * 1.1)! / hs - 1e-9) * hs)!
     : ex.bw
@@ -280,9 +312,8 @@ export function suggestCoreIn(M: Model, exId: string, plan: Plan, opts?: Suggest
   const all = every ? every.filter(x => x.date <= T) : every;
   const ex = EXIn(M, exId);
   const injM = exInjuryIn(M, ex);
-  // Deload and lighter sessions are short or light on purpose, so the last
-  // full session sets the target. If there is nothing else, use them.
-  const full = all ? all.filter(x => !offSession(x)) : [];
+  // The last full session sets the target: not one done lighter, nor one short of its usual (r54, V's one rule). If there is nothing else, use them.
+  const full = all ? all.filter(x => !offTarget(x)) : [];
   /* The same lift can sit on two days with different rep ranges (heavy 4-6,
      light 10-12). Each day progresses from its own sessions in its own range
      (r27). That holds while the range is in use: the newest session in it
@@ -297,6 +328,18 @@ export function suggestCoreIn(M: Model, exId: string, plan: Plan, opts?: Suggest
   const inRR = !!lastEx && lastEx.date >= addDays(full[full.length - 1].date, -42);
   const fullRR = inRR ? full.filter(x => sameRR(x.rr, want)) : [];
   const exps = all && all.length ? (fullRR.length ? fullRR : full.length ? full : all) : all;
+  /* The same sessions with those short of their usual (r54, V's one rule):
+     a short session sets no target, but it was done, so a case that reads
+     the session before last time's (two sessions under the range in a row,
+     reps rising after a step) reads it among these. */
+  const done =
+    all && all.length
+      ? fullRR.length
+        ? all.filter(x => !lighter(x) && sameRR(x.rr, want))
+        : full.length
+          ? all.filter(x => !lighter(x))
+          : all
+      : [];
   const seen = inRR ? all!.filter(x => sameRR(x.rr, want)) : all;
   if (ex.timed) return suggestTimedIn(M, ex, plan, exps, opts, injM, seen);
   if (!exps || !exps.length) return sgFirstIn(M, ex, plan, T, injM);
@@ -372,6 +415,7 @@ export function suggestCoreIn(M: Model, exId: string, plan: Plan, opts?: Suggest
     all: all!,
     every: every!,
     exps,
+    done,
     seen: seen!,
     inRR,
     injM,
@@ -410,9 +454,15 @@ export function suggestCoreIn(M: Model, exId: string, plan: Plan, opts?: Suggest
 
 /* No history yet: an injury note, a start from a close variation, or the first-time line. */
 export function sgFirstIn(M: Model, ex: ExerciseLike, plan: Plan, T: string, injM: string | null): Suggestion {
+  /* An assisted lift's help is the lifter's to set the first time (the text
+     says so): with none shown, a set ticked untyped is one Finish asks about,
+     where a help of 0 shown saved it at full bodyweight, and the next
+     session, with help typed, read as lighter (r54, from the audit V asked
+     for, PENDING 315 i). Bodyweight alone is a bodyweight lift's start. */
+  const w0 = ex.bw && !ex.assist ? 0 : null;
   if (injM)
     return {
-      w: ex.bw ? 0 : null,
+      w: w0,
       text: `Injury flagged (${injLabel(injM)}). Start light, keep 3 or more reps in reserve, and stop on pain.`,
       lastR: [],
       last: '',
@@ -449,7 +499,7 @@ export function sgFirstIn(M: Model, ex: ExerciseLike, plan: Plan, T: string, inj
     : ex.bw
       ? `First time: your bodyweight only. Do ${reps}, ${stop}. If ${plan.repMin} is out of reach, use an easier version; if it is easy past ${plan.repMax}, the next target says so.`
       : `First time: pick a load you think you could lift about ${can} times, erring light. Do ${reps}, ${stop}. Next time's load is worked out from this.`;
-  return { w: ex.bw ? 0 : null, text, lastR: [], last: '', target: '', tgt: null };
+  return { w: w0, text, lastR: [], last: '', target: '', tgt: null };
 }
 
 /* Every top set 2 or more over the target reserve: the load from the estimate.
@@ -562,7 +612,7 @@ export function sgPastRangeIn(M: Model, C: SuggestCtx): Suggestion | null {
 
 /* Every top set under the range: drop to a load that fits it. */
 export function sgBelowRangeIn(M: Model, C: SuggestCtx): Suggestion | null {
-  const { ex, plan, exps, inRR, top, step, noAdd, topPts, lastR, lastS, basis, lbl, prevBest, tgtRir } = C;
+  const { ex, plan, last, done, inRR, top, step, noAdd, topPts, lastR, lastS, basis, lbl, prevBest, tgtRir } = C;
   /* Below the rep range. Every top set fell short of repMin, either by 2 or
      more reps, or by any amount two sessions running at the same load. Adding
      one rep a week from there never reaches the range, so drop the load to
@@ -570,7 +620,9 @@ export function sgBelowRangeIn(M: Model, C: SuggestCtx): Suggestion | null {
      steps down from the last load, so stacks stay on real pins. */
   if (step > 0 && !noAdd && topPts.length && topPts.every(p => p.r < +plan.repMin)) {
     const gap = +plan.repMin - Math.max(...topPts.map(p => p.r));
-    const prev = exps.length >= 2 ? exps[exps.length - 2] : null;
+    // The session before last time's, short of its usual or not (r54): last time's is one of done.
+    const at = done.indexOf(last);
+    const prev = at >= 1 ? done[at - 1] : null;
     /* Not a drop while the reps are coming up after a step up (r31): a big
        step for the load (a dumbbell, a small stack) starts below the range
        on purpose, and dropping back made the load swing between two
@@ -589,8 +641,8 @@ export function sgBelowRangeIn(M: Model, C: SuggestCtx): Suggestion | null {
        not (r32, second check: 5, 5, 4, 4 then 5, 5, 5, 4 then 5, 5, 5, 5
        kept the load for weeks, each "rising"). */
     let shortRun = 0;
-    for (let k = exps.length - 1; k >= 0; k--) {
-      const x = exps[k];
+    for (let k = at; k >= 0; k--) {
+      const x = done[k];
       if (Math.abs(x.topW - top) > 1e-6) break;
       const at = atLoad(x.pts, x.topW);
       if (!at.length || !at.every(p => p.r < +plan.repMin)) break;
@@ -784,14 +836,16 @@ export function sgTopOfRangeIn(M: Model, C: SuggestCtx): Suggestion | null {
 
 /* A bad day under the range at a load done in it before: the bottom of the range again. */
 export function sgBadDay(C: SuggestCtx): Suggestion | null {
-  const { plan, exps, top, topPts, lastR, lastS, basis, lbl, prevBest } = C;
+  const { plan, last, done, top, topPts, lastR, lastS, basis, lbl, prevBest } = C;
   /* A bad day at a load already done in the range (r32, second check: 7,
      7, 6, 6 then 5, 5, 4, 4 asked "19+ reps" and greyed 5, 5, 4, 4): every set
      under the range, the session before at this load in it. The target is
      the bottom of the range in every set again, not one rep more than the
      bad day. */
   {
-    const prv = exps.length >= 2 ? exps[exps.length - 2] : null;
+    // The session before, short of its usual or not (r54), as in sgBelowRangeIn.
+    const at = done.indexOf(last);
+    const prv = at >= 1 ? done[at - 1] : null;
     const pAt = prv && Math.abs(prv.topW - top) < 1e-6 ? atLoad(prv.pts, top) : [];
     if (topPts.length && topPts.every(p => p.r < +plan.repMin) && pAt.length && pAt.every(p => p.r >= +plan.repMin))
       return {
@@ -885,7 +939,7 @@ export function kinOfIn(
       patternOf(e) !== pat
     )
       continue;
-    const xs = I.byEx[id]!.filter(x => x.date <= T && !offSession(x) && !x.cut);
+    const xs = I.byEx[id]!.filter(x => x.date <= T && !offTarget(x));
     const x = xs[xs.length - 1];
     if (!x || x.date < from) continue;
     if (!best || x.date > best.x.date) best = { ex: e, x };

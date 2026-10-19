@@ -383,7 +383,10 @@ const seed = (L, unit, exId, list, rr) => {
       out.w2 = { stalled: L.IDX().exStats.backSquat.stalled, head: L.exHeadline ? L.exHeadline('backSquat') : '' };
       // W6: a bad day at a load done in the range asks for the range again.
       seed(L, 'kg', 'bench', [['2026-09-26', [[100, 7, 2], [100, 7, 2], [100, 6, 2], [100, 6, 2]]], ['2026-10-03', [[100, 5, 2], [100, 5, 2], [100, 4, 2], [100, 4, 2]]]], [6, 10]);
-      const c = L.suggest('bench', { sets: 4, repMin: 6, repMax: 10, rir: 2, inc: 2.5 }, {}); out.w6 = { w: c.w, kind: c.tgt && c.tgt.kind, aim: c.tgt && c.tgt.repMin, target: c.target };
+      const c = L.suggest('bench', { sets: 4, repMin: 6, repMax: 10, rir: 2, inc: 2.5 }, {}); out.w6 = { w: c.w, kind: c.tgt && c.tgt.kind, aim: c.tgt && c.tgt.repMin, target: c.target, text: c.text };
+      // W6b: a bad day still within 3% of the usual reading (15s then 14s on a 15 to 20 range), so it counts (r54), under the range at a load done in it: the range again.
+      seed(L, 'kg', 'bench', [['2026-09-26', [[60, 15, 2], [60, 15, 2], [60, 15, 2]]], ['2026-10-03', [[60, 14, 2], [60, 14, 2], [60, 14, 2]]]], [15, 20]);
+      const c2 = L.suggest('bench', { sets: 3, repMin: 15, repMax: 20, rir: 2, inc: 2.5 }, {}); out.w6b = { w: c2.w, kind: c2.tgt && c2.tgt.kind, aim: c2.tgt && c2.tgt.repMin, target: c2.target };
       // Four sessions in a row under the range at one load drop it.
       seed(L, 'kg', 'bench', [['2026-09-12', [[100, 5], [100, 5], [100, 4]]], ['2026-09-19', [[100, 5], [100, 5], [100, 5]]], ['2026-09-26', [[100, 5], [100, 5], [100, 5]]], ['2026-10-03', [[100, 5], [100, 5], [100, 5]]]].map(([d, st]) => [d, st.map(([w, r]) => [w, r + 0, 2])]).map(([d, st], i) => [d, i === 3 ? st.map(x => [x[0], 5, 2]) : st]), [6, 10]);
       const e = L.suggest('bench', { sets: 3, repMin: 6, repMax: 10, rir: 2, inc: 2.5 }, {}); out.run = { w: e.w, text: e.text };
@@ -414,7 +417,9 @@ const seed = (L, unit, exId, list, rr) => {
     ok(r.w1.w === 52.5 && r.w1.aim === 5, 'W1: 5 x 5 at 50 kg goes to 52.5 for 5s, never "building to 7"', r.w1);
     ok(Math.abs(r.w1b.w - 100) < 1e-6 && !/building to/.test(r.w1b.text), 'W1: a 1 x 5 deadlift at 95 lb goes to 100', r.w1b);
     ok(r.w2.stalled === false, 'W2: squat 20, 20, 30, 22, 24, 24 working reps at 140 is not stalled by its one good day', r.w2);
-    ok(r.w6.w === 100 && r.w6.kind === 'load' && r.w6.aim === 6 && /6\+ reps in every set/.test(r.w6.target), 'W6: 7, 7, 6, 6 then 5, 5, 4, 4: stay at 100 and get back to 6+ in every set, not "19+ reps"', r.w6);
+    // Since r54 (V's one rule) a session clearly under its usual repeats the target, so this bad day is "below usual" and the target is the one it had.
+    ok(r.w6.w === 100 && r.w6.kind === 'reps' && /^27\+ reps over 4 sets at 100 kg$/.test(r.w6.target) && /^Last \(Oct 3, below usual\)/.test(r.w6.text || ''), 'W6: 7, 7, 6, 6 then 5, 5, 4, 4: stay at 100 with the target it had, 27+ reps over 4 sets, not "19+ reps"', r.w6);
+    ok(r.w6b.w === 60 && r.w6b.kind === 'load' && r.w6b.aim === 15 && /15\+ reps in every set/.test(r.w6b.target), 'W6b: 15, 15, 15 then 14, 14, 14 on a 15 to 20 range, within 3% so it counts: stay at 60 and get back to 15+ in every set, not "43+ reps"', r.w6b);
     ok(r.run.w < 100 && /Drop to/.test(r.run.text), 'W6: four sessions in a row under the range at one load drop it', r.run);
     ok(/a set under 6 counts as 6/.test(r.fl), 'W6: a target with one set read at the bottom of the range says so', r.fl);
     ok(!/·/.test(r.w7), 'W7: three sessions in 4 days get no trend word', r.w7);

@@ -117,14 +117,18 @@ export interface LoggedSet {
 }
 
 /** One exercise in a saved session: its sets, the planned range at the time
-    (null on sessions logged before ranges were kept), and whether it was cut
-    short (Short on time) or made lighter mid-session (r31). */
+    (null on sessions logged before ranges were kept), and whether it was made
+    lighter mid-session (r31), and the injury it was held for (`inj`, a muscle
+    or a joint, r54: its load capped and no target while that was flagged).
+    `cut` marked it trimmed from r24 to r53; since r54 it is neither written
+    nor read (V's one rule reads the log), and sessions saved before keep it. */
 export interface SessionEx {
   exId: string;
   note: string;
   rr: [number, number] | null;
   cut?: true | undefined;
   light?: true | undefined;
+  inj?: string | undefined;
   sets: LoggedSet[];
 }
 
@@ -282,8 +286,11 @@ export interface Target {
 }
 
 /** One exercise in the session in progress: its plan, its rows, the target
-    and suggestion it started with, an adjustment made mid-session (r34), and
-    last time's sets for the Last column (r44). */
+    and suggestion it started with, an adjustment made mid-session (r34),
+    last time's sets for the Last column (r44), and, for one added on a
+    lighter day or in a deload with its sets halved, the count before
+    (`full`, r54), for Finish's offer to the routine. `cut` marked it
+    trimmed until r53, and is neither written nor read since r54. */
 export interface DraftBlock {
   exId: string;
   plan: { sets?: number | undefined; rest?: number | string | undefined; ss?: string | null | undefined };
@@ -292,6 +299,7 @@ export interface DraftBlock {
   note?: string | undefined;
   rr?: [number, number] | null | undefined;
   cut?: boolean | undefined;
+  full?: number | undefined;
   tgt?: Target | null | undefined;
   target?: string | undefined;
   adj?: { at: number; w: number } | null | undefined;

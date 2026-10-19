@@ -1,16 +1,16 @@
 /* Routines as data: the weekday names, the default plan for an exercise, and
    the ready-made routines with the function that copies one (phase 2, r50;
-   moved unchanged from the legacy script). Which routine a lifter starts on, and anything that reads the log,
-   stays with the app's state. */
+   moved unchanged from the legacy script); a lift's plan in a routine, and
+   a routine's planned sets. Which routine a lifter starts on stays with the
+   app's state, and what reads the analytics, a lift's plan from its own
+   sessions and Finish's offer to change the routine, is in plans.ts (r54). */
 
-import type { Day, Plan, PlanItem, Profile, Routine, Session, SessionEx } from './types';
+import type { Day, Plan, PlanItem, Profile, Routine } from './types';
 import type { ExerciseLike, Model } from './model';
-import { andList, uid } from './util';
+import { uid } from './util';
 import { LB } from './units';
-import { EXIn, activeRoutineIn, exNameIn, profIn, rirHalfOnIn } from './model';
+import { EXIn, activeRoutineIn, profIn, rirHalfOnIn } from './model';
 import { isCompound, profHeavy } from './library';
-import { isWork } from './formulas';
-import { sessCmp } from './records';
 
 /** A plan item as a routine is first made: normalize() adds its superset
     link (null) when the routine is saved. */
@@ -401,37 +401,32 @@ export function defPlanIn(M: Model, exId: string, plain?: boolean): Plan {
   return ex.timed ? { ...DEFAULT_PLAN, repMin: 30, repMax: 60, rest: 60 } : profPlanIn(M, ex, plain);
 }
 
-/* An exercise added mid-session borrows its settings from wherever it already
-   sits in the active routine instead of a generic 3 x 8-12. */
-export function planForIn(M: Model, exId: string, R?: Routine | null, dayId?: string | null, plain?: boolean): Plan {
-  R = R || activeRoutineIn(M);
-  // The day being trained first: the same lift can sit on two days with different ranges.
-  const days = dayId ? [...R.days.filter(d => d.id === dayId), ...R.days.filter(d => d.id !== dayId)] : R.days;
+/* Where a lift sits in a routine (the active one unless given): its plan
+   there, the day being trained first, since the same lift can sit on two
+   days with different ranges; null on no day of it. */
+/** A lift's plan in a routine, the day given first, or null when it is on no day of it. */
+export function routinePlanIn(M: Model, exId: string, R?: Routine | null, dayId?: string | null): Plan | null {
+  const Q = R || activeRoutineIn(M);
+  const days = dayId ? [...Q.days.filter(d => d.id === dayId), ...Q.days.filter(d => d.id !== dayId)] : Q.days;
   for (const d of days)
     for (const it of d.items)
       if (it.exId === exId) {
         const { uid: _u, ss: _s, ...p } = it;
         return { ...DEFAULT_PLAN, ...p, ss: null };
       }
-  /* A lift on no day of the routine starts from its own last full session
-     (r53, V 2026-10-18: "tied at exercise level"; not a deload, a lighter
-     day, trimmed or sample): that session's number of working sets, and the
-     range it was planned at then where the training profile sets none for
-     the lift. Never logged, the default as before. plain (the pace model)
-     reads past sessions without this, as without the profile. */
-  const base = defPlanIn(M, exId, plain);
-  if (plain) return base;
-  const work = (q: { warm?: boolean; drop?: boolean; r: number | string | null }): boolean => isWork(q) && !q.drop;
-  let last: Session | null = null,
-    blk: SessionEx | null = null;
-  for (const x of M.s.sessions) {
-    if (x.demo || x.deload || x.light || (last && sessCmp(x, last) <= 0)) continue;
-    const b = x.ex.find(q => q.exId === exId && !q.cut && !q.light && q.sets.some(work));
-    if (b) [last, blk] = [x, b];
-  }
-  if (!blk) return base;
-  const range = blk.rr && !profRuleIn(M, EXIn(M, exId)) ? { repMin: blk.rr[0], repMax: blk.rr[1] } : {};
-  return { ...base, ...range, sets: blk.sets.filter(work).length };
+  return null;
+}
+
+/* A lift's plan as the routine has it, the day being trained first, else
+   its default (the profile's, unless plain): what the time model and the
+   analytics read, neither of which reads the lift's own sessions for it.
+   An exercise added mid-session, or a lift on no day of the routine, takes
+   the plan of plans.ts (planForIn), which adds the lift's own last full
+   session; until r54 this read it here, from the records, where the
+   analytics' reading of a session (done lighter, or short of its usual) is
+   not known (PENDING 313). */
+export function basePlanIn(M: Model, exId: string, R?: Routine | null, dayId?: string | null, plain?: boolean): Plan {
+  return routinePlanIn(M, exId, R, dayId) || defPlanIn(M, exId, plain);
 }
 
 /* Planned hard sets (r27). A planned set counts only if its target RIR
@@ -511,96 +506,4 @@ export function planSetsPerWeekIn(M: Model, R: Routine, deload?: boolean): numbe
     0
   );
   return Math.round(n * dayShare(R));
-}
-
-/** The parts of a finished session that Finish's offer reads: the routine day
-    it was logged against, its marks, and each exercise's plan and sets. */
-export interface FinishedDraft {
-  routineId: string;
-  dayId: string | null;
-  limited?: boolean | undefined;
-  deload?: boolean | undefined;
-  light?: boolean | undefined;
-  ex: {
-    exId: string;
-    swappedFrom?: string | null | undefined;
-    plan: Partial<Plan> & { ss?: string | null | undefined };
-    sets: { done?: boolean | undefined; warm?: boolean | undefined }[];
-  }[];
-}
-
-/** Finish's offer to update the routine day: exercises to add, swaps, supersets, and the words for them. */
-export interface RoutineUpdate {
-  rid: string;
-  dayId: string;
-  dayName: string;
-  add: { exId: string; plan: Partial<Plan> & { sets: number } }[];
-  swap: { from: string; to: string }[];
-  ss: string[][];
-  text: string;
-}
-
-/* Exercises added or swapped in a session, relative to the routine day it was
-   logged against, so Finish can offer to make the change permanent. An
-   exercise added on a lighter day or in a deload had half its sets (r30), so
-   the day gets the sets it would have on a normal day, the count that was
-   halved (r53, V 2026-10-18: added after a lighter day, it came back with
-   half its sets every time after). */
-export function routineUpdatesIn(M: Model, d: FinishedDraft): RoutineUpdate | null {
-  const R = M.s.routines.find(r => r.id === d.routineId);
-  if (!R) return null;
-  const day = R.days.find(x => x.id === d.dayId);
-  if (!day) return null;
-  const have = new Set(day.items.map(i => i.exId));
-  const add: RoutineUpdate['add'] = [],
-    swap: RoutineUpdate['swap'] = [];
-  const seen = new Set<string>();
-  for (const b of d.ex) {
-    if (have.has(b.exId) || seen.has(b.exId) || !b.sets.some(s => s.done && !s.warm)) continue;
-    seen.add(b.exId);
-    // Limited-equipment swaps are for that session only.
-    if (d.limited && b.swappedFrom) continue;
-    if (b.swappedFrom && have.has(b.swappedFrom)) swap.push({ from: b.swappedFrom, to: b.exId });
-    else {
-      const { ss: _s, ...p } = b.plan;
-      const sets = d.deload || d.light ? planForIn(M, b.exId, R, d.dayId).sets : p.sets;
-      add.push({ exId: b.exId, plan: { ...p, sets: Math.max(1, +(sets || 0) || 3) } });
-    }
-  }
-  /* A superset made in the session (r35, V, as Strong and Hevy ask): pairs
-     of exercises done linked that the day has, or will have after the
-     change, but not linked there. */
-  const after = new Set([
-    ...day.items
-      .map(i => i.exId)
-      .map(id => {
-        const sw = swap.find(x => x.from === id);
-        return sw ? sw.to : id;
-      }),
-    ...add.map(x => x.exId)
-  ]);
-  const ss: string[][] = [];
-  const groups = new Map<string, string[]>();
-  for (const b of d.ex) {
-    const g = b.plan && b.plan.ss;
-    if (!g || !b.sets.some(x => x.done && !x.warm)) continue;
-    let list = groups.get(g);
-    if (!list) groups.set(g, (list = []));
-    list.push(b.exId);
-  }
-  for (const ids of groups.values()) {
-    const u = [...new Set(ids)].filter(id => after.has(id));
-    if (u.length < 2) continue;
-    const its = u.map(id => day.items.find(i => i.exId === id));
-    const first = its[0];
-    if (first && first.ss && its.every(i => !!i && i.ss === first.ss)) continue;
-    ss.push(u);
-  }
-  if (!add.length && !swap.length && !ss.length) return null;
-  const bits = [
-    ...swap.map(x => `${exNameIn(M, x.from)} → ${exNameIn(M, x.to)}`),
-    ...add.map(x => `add ${exNameIn(M, x.exId)}`),
-    ...ss.map(u => `superset ${andList(u.map(id => exNameIn(M, id)))}`)
-  ];
-  return { rid: R.id, dayId: day.id, dayName: day.name, add, swap, ss, text: bits.join(', ') };
 }

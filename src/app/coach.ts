@@ -18,12 +18,13 @@ import {
 } from './model';
 import { IDXIn, stallWeeksIn } from './analytics';
 import { FIRST_WEEK_WHY, ON_PLAN_TIP, actualAvg4In, avgWaitIn, muscleStatusIn, recentLighterIn } from './weeks';
-import { GROW_PCT, atLoad, isWork, offSession } from './formulas';
+import { GROW_PCT, atLoad, isWork, lighter } from './formulas';
 import { MK, ML, isCompound, noE1 } from './library';
 import { andList, r1, weekStart } from './util';
 import { effScale } from './format';
 import { belowMin } from './volume';
-import { planForIn, plannedSetsIn } from './routines';
+import { plannedSetsIn } from './routines';
+import { planForIn } from './plans';
 import { loadLabelIn } from './loads';
 
 /** The coach's one line: its colour, the advice, the reason behind an i, the action it offers, and whether it says why no weekly average shows yet (`wait`, which Stats' summary shows once, as its Volume line). */
@@ -100,7 +101,7 @@ export function fatigueStallsIn(M: Model, ids: readonly string[]): string[] {
    with no PR in the last 3 sessions", fell behind the rule in r53). */
 /** The stall rule, as a lifter reads it. */
 export const STALL_WHY =
-  'Flat or down over its last 6 sessions in this rep range (or 3 weeks), leaving out ones where it was trimmed or done lighter than usual, and, on a lighter day, in a deload, or on an exercise made lighter, ones with fewer reps or sets than usual; with no PR in the last 3 of them, nor a set stronger than any before it in a session left out since the third-last, no heavier load, and no more reps at the same load.';
+  'Flat or down over its last 6 sessions (or 3 weeks) in each rep range you train it in, leaving out ones done lighter; with no PR in the last 3 of them, nor a set stronger than any before it in a session left out since the third-last, no heavier load, and no more reps at the same load.';
 
 /* The single most useful thing to change this week, in priority order. Each
    branch states the number it is based on, so the advice can be checked. */
@@ -303,8 +304,9 @@ export function musTrend(sc: Pick<Score, 'clear' | 'n' | 'score' | 'wk'>): strin
 /* ---------- READINESS ----------
    The three check-in taps against how the session went: the share of lifts
    that set a PR (a new best estimate or a rep PR), per answer. First sessions
-   of a lift, and deload, lighter and trimmed work, are left out because they
-   cannot show progress. */
+   of a lift, and work done lighter, are left out because they cannot show
+   progress; a session short of its usual, a bad day or one cut short, is in
+   (r54), since how a session went after a poor night is what this reads. */
 /** A check-in answer in a sentence: lower case, except OK. */
 export const chkWord = (n: string): string => (n === 'OK' ? 'OK' : n.toLowerCase());
 
@@ -323,7 +325,7 @@ export function readinessIn(M: Model) {
   const bySid: Record<string, { n: number; p: number }> = {};
   for (const id in I.byEx)
     I.byEx[id]!.forEach((x, i) => {
-      if (i === 0 || offSession(x)) return;
+      if (i === 0 || lighter(x)) return;
       const o = bySid[x.sid] || (bySid[x.sid] = { n: 0, p: 0 });
       o.n++;
       if (x.progress) o.p++;

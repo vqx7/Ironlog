@@ -141,11 +141,11 @@ function rankExercises(d){
     if(!best[m]||s>best[m].s||(s===best[m].s&&e.name<best[m].e.name))best[m]={e,s,m,def,inSess,st,n,rec:rec[m],r7:r7[m],sp};
   }
   return Object.values(best).sort((a,b)=>b.s-a.s).slice(0,3).map(x=>{
-    const plan=planFor(x.e.id,null,d.dayId);const cap=Math.max(1,SESSION_CAP-x.inSess);
+    const plan=planFor(x.e.id,null,d.dayId,false,d.date);const cap=Math.max(1,SESSION_CAP-x.inSess);
     let sets=Math.max(1,Math.min(cap,x.def>0?Math.min(+plan.sets||3,Math.max(2,Math.ceil(x.def))):2));
-    // A deload or lighter session halves its sets; what Pick for me adds to it does too (r27).
-    if(d.deload||d.light)sets=Math.max(1,Math.ceil(sets/2));
-    return {...x,plan:{...plan,sets}};
+    // A deload or lighter session halves its sets; what Pick for me adds to it does too (r27). full: the count before, for Finish's offer to the routine (r54).
+    const full=sets;if(d.deload||d.light)sets=Math.max(1,Math.ceil(sets/2));
+    return {...x,plan:{...plan,sets},full};
   });
 }
 function exReasons(x){
@@ -364,12 +364,12 @@ function liftTags(exId){
   return t.length?`<span class="chips">${t.join('')}</span>`:'';
 }
 function liftTrend(exId){
-  /* The last three full sessions only (r30): a deload or lighter day in the
-     list read as a drop. The word follows the numbers shown: within 1% is
-     flat, so "301 → 300.7 · up" cannot happen. Isolation lifts show their top
-     sets, not a 1RM. */
+  /* The sessions the trend reads (r30: a deload or lighter day in the list
+     read as a drop; since r54 one short of its usual is in). The word
+     follows the numbers shown: within 1% is flat, so "301 → 300.7 · up"
+     cannot happen. Isolation lifts show their top sets, not a 1RM. */
   const ex=EX(exId);const st=IDX().exStats[exId];
-  const exps=(IDX().byEx[exId]||[]).filter(x=>x.tv!=null&&!offSession(x)).slice(-3);
+  const exps=(IDX().byEx[exId]||[]).filter(x=>x.tv!=null&&!lighter(x)).slice(-3);
   if(exps.length<2)return '';
   /* The word follows the lift's trend when it has one (r32, from the third
      review: a press flat for 7 weeks read "67.5 → 69.7 → 69.7 · up" from its

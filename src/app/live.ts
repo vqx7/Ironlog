@@ -29,16 +29,8 @@ import {
   sortedSessionsIn
 } from './model';
 import { fromDIn, stepReadIn, toDIn } from './units';
-import {
-  defPlanIn,
-  planCreditIn,
-  planForIn,
-  planSetsPerWeekIn,
-  plannedSetsIn,
-  profPlanIn,
-  profRuleIn,
-  routineUpdatesIn
-} from './routines';
+import { defPlanIn, planCreditIn, planSetsPerWeekIn, plannedSetsIn, profPlanIn, profRuleIn } from './routines';
+import { planForIn, routineUpdatesIn } from './plans';
 import { appBandIn, defBandIn, fitFloorsIn, refitIn } from './profile';
 import { barKgIn, capOfIn, exBarKgIn, gymRackIn, rackTolIn } from './gym';
 import { fmtWIn, loadLabelIn } from './loads';
@@ -53,10 +45,12 @@ import {
   hardCreditIn,
   isHardIn,
   loadOfIn,
+  prFrameIn,
   prLoadIn,
   rirEffIn,
   rirEstIn,
   rirUsualIn,
+  sessionWordsIn,
   stallWeeksIn,
   statsUpToIn,
   tonnageIn,
@@ -155,10 +149,12 @@ export const dateIndex = live(dateIndexIn);
 export const hardCredit = live(hardCreditIn);
 export const isHard = live(isHardIn);
 export const loadOf = live(loadOfIn);
+export const prFrame = live(prFrameIn);
 export const prLoad = live(prLoadIn);
 export const rirEff = live(rirEffIn);
 export const rirEst = live(rirEstIn);
 export const rirUsual = live(rirUsualIn);
+export const sessionWords = live(sessionWordsIn);
 export const stallWeeks = live(stallWeeksIn);
 export const statsUpTo = live(statsUpToIn);
 export const tonnage = live(tonnageIn);

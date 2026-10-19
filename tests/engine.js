@@ -25,16 +25,21 @@ if (process.argv[2] !== '--child') process.env.TZ = 'UTC';
 const fs = require('fs'); const path = require('path'); const os = require('os');
 const { spawn } = require('child_process');
 const ROOT = path.join(__dirname, '..'); const APP = path.join(ROOT, 'src', 'app');
-const MODULES = ['model', 'units', 'routines', 'gym', 'format', 'loads', 'analytics', 'time', 'weeks', 'coach', 'engine'];
+const MODULES = ['model', 'units', 'routines', 'gym', 'format', 'loads', 'analytics', 'time', 'weeks', 'coach', 'engine', 'plans'];
 // The histories of tests/r52.js, all of them, in batches of 100 (each batch's calls are about 100 MB as text).
 const K = +process.env.ENGINE_N || 1000, BATCH = 100;
-// The engine's functions that take no model and that the digest calls (tests/wide.js), run in Node beside the adapters.
-const PLAIN = ['avgWeeksTxt'];
+// The engine's functions that take no model and that the digest calls (tests/wide.js), run in Node beside the adapters,
+// and since r54 the routine helpers the legacy script reads from routines.ts (EXTRA below calls them): when Finish's
+// offer and a lift's own plan moved to plans.ts (r54) the lines that ran went with them, and these keep routines.ts's share.
+const PLAIN = ['avgWeeksTxt', 'dayLabel', 'daySets', 'ssLetters', 'routineSig', 'tplCountLine'];
 // Every adapter live.ts gives the legacy script, read from live.ts itself, so a new one cannot go uncalled.
 const ADAPTERS = [...fs.readFileSync(path.join(APP, 'live.ts'), 'utf8').matchAll(/^export const (\w+) = live\(\w+In\);$/gm)].map(m => m[1]);
-// The adapters added since r53, which the digest does not call: tests/wide.js is shared with the comparisons pinned
-// to r52 and r53 (tests/r52.js, tests/r53w.js), so their calls are made here, after it, with these arguments.
+// The adapters added since r53, and the plain functions above the digest does not call: tests/wide.js is shared with
+// the comparisons pinned to r52 and r53 (tests/r52.js, tests/r53w.js), so their calls are made here, after it, with these arguments.
 const EXTRA = {
+  // Each routine's day labels (a cycle's Day N, a weekly one's weekday), planned sets a day, superset letters and signature, and the templates' line.
+  dayLabel: (s) => s.routines.flatMap(r => [[r, 0], [r, 3], [{ ...r, schedule: 'weekly' }, 2]]), daySets: (s) => s.routines.flatMap(r => r.days.map(d => [d])),
+  ssLetters: (s) => s.routines.flatMap(r => r.days.map(d => [d.items])), routineSig: (s) => s.routines.map(r => [r]), tplCountLine: () => [[]],
   plannedSets: (s) => s.routines.map(r => [r]), stallWeeks: (s, ids) => ids.map(id => [id]), avgFirstWeek: () => [[]], lastLighterWeek: () => [[]],
   // A week's sets so far and a plain average; the weekly averages, which carry the muscles on plan, reach it through the coach and regionBalance.
   muscleStatus: () => [[{ chest: 5, quads: 22, biceps: 0, serratus: 3 }], [{ chest: 5, quads: 22, biceps: 0 }, true], [null]],
@@ -46,6 +51,8 @@ const EXTRA = {
   fitFloors: (s) => s.routines.flatMap(r => [[r], [r, { chest: 3, quads: 4 }], [r, null, 1.75]]),
   refit: () => [[]],
   avgWait: () => [[]],
+  // History's words for each lift of a session (r54): the log's newest sessions, and none.
+  sessionWords: (s) => [[s.sessions.slice(-6).map(x => x.id)], [[]]],
   // Each tagged lift a step up from loads on and off its rack, to a little above and well above (moved from the legacy script in r54).
   heavierLoad: (s, ids) => ids.map(id => s.exercises.find(e => e.id === id)).filter(Boolean).flatMap(e => [[e, null, 20, 21], [e, null, 20, 40], [e, null, 5.443, 9], [e, { inc: 2.5 }, 50, 60]])
 };

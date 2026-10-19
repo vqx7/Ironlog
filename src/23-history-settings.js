@@ -20,7 +20,7 @@ function viewHistory(){
   // Every session used to be rebuilt into one string on every render. Past a
   // few hundred logs that is a visible stall on a phone for rows nobody has
   // scrolled to yet.
-  const page=shown.slice(0,ui.histLimit);
+  const page=shown.slice(0,ui.histLimit);const wd=sessionWords(page.map(s=>s.id));const wTag=(s,b)=>{const w=(wd[s.id]||{})[b.exId];return w&&!(w==='deload'&&s.deload)&&!(w==='lighter'&&s.light)?` <span class="tag">${w}</span>`:'';};
   /* Sessions sit under their week (Monday start), with the week's totals on
      the header, so a light or missed week shows without counting rows. The
      totals cover every session of that week in the current filter, not only
@@ -34,12 +34,12 @@ function viewHistory(){
       body+=`<div class="hweek"><span class="hw-t">${lbl}</span><span class="hw-s" data-tip="${esc(`${o.n} session${o.n===1?'':'s'}, ${o.sets} working sets, ${Math.round(toD(o.vol)).toLocaleString()} ${U()} lifted`)}">${o.sets} sets · ${fmtK(o.vol)} ${U()}</span></div>`;}
     const nSets=s.ex.reduce((a,b)=>a+b.sets.filter(isWork).length,0);const vol=(I.sessVol.find(v=>v.id===s.id)||{}).vol||0;const open=ui.histOpen===s.id;
     // A deload's name ends " (deload)", so beside its tag it read "(deload) deload" (r54, the audit): the tag says it once.
-    body+=`<div class="hitem${open?' open':''}"><button class="pick" style="border:0;padding:0" data-act="histToggle" data-id="${s.id}" aria-expanded="${open}"><span style="min-width:0"><b>${esc(s.deload?String(s.dayName||'Session').replace(/ \(deload\)$/,''):s.dayName||'Session')}</b>${s.deload?' <span class="tag blue">deload</span>':''}${s.free&&!/freestyle/i.test(s.dayName||'')?' <span class="tag">freestyle</span>':''}${s.ex.some(b=>b.cut)?' <span class="tag">trimmed</span>':''}${s.demo?' <span class="tag">demo</span>':''}<br><span class="small muted">${fmtDateRow(s.date)}${perDay[s.date]>1&&sessTm(s)?`, ${sessTm(s)}`:''}</span></span><span class="num small" style="text-align:right;flex:none">${nSets} sets<br><span class="muted">${Math.round(toD(vol)).toLocaleString()} ${U()}${s.durMin?` · ${s.durMin} min`:''}</span></span></button>`;
+    body+=`<div class="hitem${open?' open':''}"><button class="pick" style="border:0;padding:0" data-act="histToggle" data-id="${s.id}" aria-expanded="${open}"><span style="min-width:0"><b>${esc(s.deload?String(s.dayName||'Session').replace(/ \(deload\)$/,''):s.dayName||'Session')}</b>${s.deload?' <span class="tag blue">deload</span>':''}${s.free&&!/freestyle/i.test(s.dayName||'')?' <span class="tag">freestyle</span>':''}${Object.values(wd[s.id]||{}).includes('fewer sets')?' <span class="tag">fewer sets</span>':''}${s.demo?' <span class="tag">demo</span>':''}<br><span class="small muted">${fmtDateRow(s.date)}${perDay[s.date]>1&&sessTm(s)?`, ${sessTm(s)}`:''}</span></span><span class="num small" style="text-align:right;flex:none">${nSets} sets<br><span class="muted">${Math.round(toD(vol)).toLocaleString()} ${U()}${s.durMin?` · ${s.durMin} min`:''}</span></span></button>`;
     if(ui.histEx&&!open){const b=s.ex.find(x=>x.exId===ui.histEx);const ex=EX(ui.histEx);if(b)body+=`<p class="small" style="margin:6px 0 0">${b.sets.map(x=>setStr(ex,x)).join(', ')}${histUnits(ex)}</p>`;}
     if(open){
       body+='<div class="panel" style="margin-top:10px">';
       if(s.chk)body+=`<p class="small muted" style="margin:0 0 6px">Check-in: ${CHK_Q.filter(([k])=>s.chk[k]).map(([k,l,n])=>`${l.toLowerCase()} ${chkWord(n[s.chk[k]-1])}`).join(', ')}</p>`;
-      body+=s.ex.map(b=>{const ex=EX(b.exId);return `<p class="small" style="margin:0 0 6px"><b>${esc(ex.name)}</b>: ${b.sets.map(x=>setStr(ex,x)).join(', ')}${histUnits(ex)}${b.note?`<br><span class="muted">${esc(b.note)}</span>`:''}</p>`;}).join('');
+      body+=s.ex.map(b=>{const ex=EX(b.exId);return `<p class="small" style="margin:0 0 6px"><b>${esc(ex.name)}</b>${wTag(s,b)}: ${b.sets.map(x=>setStr(ex,x)).join(', ')}${histUnits(ex)}${b.note?`<br><span class="muted">${esc(b.note)}</span>`:''}</p>`;}).join('');
       if(s.notes)body+=`<p class="small muted" style="margin:0 0 6px">${esc(s.notes)}</p>`;
       body+=`<div class="row" style="margin-top:8px"><button class="btn sm" data-act="histEdit" data-id="${s.id}">Edit</button><button class="btn sm" data-act="histRepeat" data-id="${s.id}" data-tip="Start a new session today with these exercises">Do again</button><button class="btn sm danger" data-act="histDel" data-id="${s.id}">Delete</button></div></div>`;
     }

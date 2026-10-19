@@ -140,10 +140,12 @@ function cleanSess(ss,si){
       note:typeof b.note==='string'?b.note:'',
       // Planned rep range at the time, [min,max]. Older sessions have none.
       rr:Array.isArray(b.rr)&&b.rr.length===2&&b.rr.every(v=>Number.isFinite(+v)&&+v>0)?[Math.round(+b.rr[0]),Math.round(+b.rr[1])]:null,
-      // Sets trimmed by Short on time: kept out of trends like a lighter session.
+      // Marked trimmed (Short on time, under half its sets) until r53. Neither written nor read since r54 (V's one rule reads the log); kept, here and in drafts, so a record saved before keeps its shape and hash.
       cut:b.cut===true?true:undefined,
       // One exercise made lighter mid-session (r31, Make it lighter): out of trends and targets, the rest of the session counts.
       light:b.light===true?true:undefined,
+      // Held for a flagged injury, its key (r54): left out of the stall test. Absent unless held, so earlier records keep their hash.
+      ...(typeof b.inj==='string'&&(MK.includes(b.inj)||JK.includes(b.inj))?{inj:b.inj}:{}),
       sets:b.sets.filter(x=>x&&typeof x==='object').map(x=>keepExtra(x,{
         // Below 0 only for assisted sets (bodyweight minus the machine's help).
         w:clampN(x.w,-300,20000*LB,0),
@@ -152,7 +154,7 @@ function cleanSess(ss,si){
         warm:!!x.warm,drop:!!x.drop&&!x.warm,
         cal:x.warm?undefined:(cleanCal(x.cal)||undefined)
       }))
-    })).filter(b=>b.sets.length),
+    },KNOWN_SEX)).filter(b=>b.sets.length),
     // When the session started (r34): orders two sessions on one day. Absent on older ones, so their records hash as before.
     t:Number.isFinite(+ss.t)&&+ss.t>0?Math.round(+ss.t):undefined
   });
@@ -439,8 +441,10 @@ function normalize(s){
         lastR:Array.isArray(b.lastR)?b.lastR.slice(0,30).map(v=>{const n=numOr(v,NaN);return isNum(n)&&n>=0?Math.min(n,1000):null;}):[],
         swappedFrom:typeof b.swappedFrom==='string'?fixId(b.swappedFrom):null,
         cut:b.cut===true?true:undefined,
+        // Added on a lighter day or in a deload, the sets before they were halved, for Finish's offer to the routine (r54); absent otherwise.
+        full:Number.isInteger(b.full)&&b.full>=1&&b.full<=30?b.full:undefined,
         light:b.light===true?true:undefined,
-        // The date the target came from, when "Last" is a newer trimmed, lighter, or deload session (r26).
+        // The date the target came from, when "Last" is a newer session short of its usual, lighter, or a deload (r26).
         basis:isDate(b.basis)?b.basis:undefined,
         // The suggested load the rows started from (r24); absent in older drafts.
         sw:b.sw===null?null:b.sw===undefined||!isNum(+b.sw)?undefined:clampN(b.sw,-300,20000*LB,0),
