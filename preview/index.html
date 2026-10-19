@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-N/mTXwFTBFccXJeXguQVUbWrTDOjfgCNUlJicBwRfWY=' 'sha256-tuSgXs5JTxAxl+0h6Mmbx/BgvpNDfjiq2RiZRPGtwkc=' 'sha256-YHdgjdaHPObo0ajgr78/3fg0b/g2KACx2Yivxr2AJEo=' 'sha256-mft+1SE0/+Lqf0FCvQTym2XvJIwk7Xb9EiBd0xr/0QE=' 'sha256-J4UrXwIeplIJZfkgJq3M75mmvlwXBomq0l+LhSwoEfI='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https://fqvupierxrvpoidtwlon.supabase.co wss://fqvupierxrvpoidtwlon.supabase.co https://api.pwnedpasswords.com; worker-src 'self'; manifest-src 'self'; media-src 'self'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-N/mTXwFTBFccXJeXguQVUbWrTDOjfgCNUlJicBwRfWY=' 'sha256-tuSgXs5JTxAxl+0h6Mmbx/BgvpNDfjiq2RiZRPGtwkc=' 'sha256-YHdgjdaHPObo0ajgr78/3fg0b/g2KACx2Yivxr2AJEo=' 'sha256-XXnGO8rY6LAzVmK0uDNXek8le44waknJnOCIIaLQhyk=' 'sha256-J4UrXwIeplIJZfkgJq3M75mmvlwXBomq0l+LhSwoEfI='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https://fqvupierxrvpoidtwlon.supabase.co wss://fqvupierxrvpoidtwlon.supabase.co https://api.pwnedpasswords.com; worker-src 'self'; manifest-src 'self'; media-src 'self'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="app-build" content="2026.10.18-r54">
 <title>Ironlog Preview</title>
@@ -896,6 +896,18 @@ table.t .stick-r{position:sticky;right:0;background:var(--bg);padding-left:6px}
    the second moved the page up and down as the keyboard came (PENDING 322). */
 #modal{position:fixed;inset:0;z-index:50;background:rgba(6,7,9,.55);-webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px);display:flex;align-items:flex-end;justify-content:center}
 .sheet{position:relative;background:var(--surface);width:100%;max-width:640px;max-height:88vh;overflow:auto;overscroll-behavior:contain;border-radius:28px 28px 0 0;padding:22px 18px calc(18px + env(safe-area-inset-bottom,0px))}
+/* A sheet you type in opens tall, from just under the status bar to the
+   bottom of the screen, its fields at the top (V on the r54 preview,
+   2026-10-19, PENDING 322). A field near the top is never under the
+   on-screen keyboard, so iOS has nothing to scroll and nothing moves, and the
+   sheet's own surface fills the screen below its fields, behind the keyboard
+   and Safari's glass bars, so no part of the page shows there. Safari on an
+   iPhone does not shrink the page for the keyboard (interactive-widget is
+   not shipped there), and code that followed the keyboard fought iOS (r54's
+   two tries). Read from the sheet's own fields, so no list of sheets is kept;
+   a sheet with nothing to type in, and the picker (its search already at its
+   top), are as before. Not where a mouse is the pointer: no keyboard there. */
+@media (max-width:699px),(pointer:coarse){.sheet:not(.fixed):has(textarea,input[type=text],input[type=search],input[type=email],input[type=password],input[type=number],input[type=tel],input[type=url],input:not([type])){height:calc(100% - env(safe-area-inset-top,0px) - 12px);max-height:none}}
 /* The grabber tells a phone user this slides up from the bottom. */
 .sheet::before{content:"";position:absolute;top:8px;left:50%;width:38px;height:5px;margin-left:-19px;border-radius:3px;background:var(--surface-3)}
 /* Pickers keep one height while you type, so the search box does not jump as
@@ -12182,6 +12194,7 @@ ${extraKpis()}</div>`;
       const fk = same && ae && el.contains(ae) ? focusKey(ae) : null;
       const ss = fk && typeof ae.selectionStart === "number" ? ae.selectionStart : null, se = fk && typeof ae.selectionEnd === "number" ? ae.selectionEnd : null;
       renderModalBody(same);
+      tipLabels(el);
       if (el.hidden || !ui.modal) {
         document.body.classList.remove("modal-open");
         renderModal.last = null;
