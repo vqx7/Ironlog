@@ -2218,6 +2218,21 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
   function planCreditIn(M, it) {
     return planHardIn(M, it) ? 1 : rirHalfOnIn(M) && +it.rir <= 5 ? 0.5 : 0;
   }
+  function plannedSetsIn(M, routine) {
+    const out = {};
+    const f = weekFactor(routine);
+    for (const d of routine.days) {
+      if (d.rest) continue;
+      for (const it of d.items) {
+        const pc = planCreditIn(M, it);
+        if (!pc) continue;
+        const ex = EXIn(M, it.exId);
+        out[ex.primary] = (out[ex.primary] || 0) + it.sets * f * pc;
+        for (const m of ex.secondary) out[m] = (out[m] || 0) + 0.5 * it.sets * f * pc;
+      }
+    }
+    return out;
+  }
   function planSetsPerWeekIn(M, R, deload) {
     const n = R.days.reduce(
       (a, d) => a + (d.rest ? 0 : d.items.reduce(
@@ -2333,6 +2348,12 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     return isNaN(+d) ? "" : dtf(k, o).format(d);
   };
   var fmtDate = (s) => fmtWith("d", { month: "short", day: "numeric" }, s);
+  function effScale(v) {
+    return v === "half" || v === "rpe" ? v : "whole";
+  }
+  function effAt(scale, rir) {
+    return scale === "rpe" ? String(Math.round((10 - rir) * 10) / 10) : String(Math.round(rir * 10) / 10);
+  }
 
   // src/app/layout.ts
   var DSECS = [
@@ -3743,9 +3764,9 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     const byEx = V.byEx;
     const anchor = sessions.length ? sessions[sessions.length - 1].date : M.today();
     const winStart = addDays(anchor, -42);
-    const wkAuto = idxAutoLighter(byEx);
+    idxAutoLighter(byEx);
     idxTaggedFull(byEx);
-    const lightWk = idxLightWeeks(sessions, wkAuto);
+    const lightWk = idxLightWeeks(sessions, byEx, M.s.deloadWeek);
     const prs = [];
     const exStats = {};
     for (const id of Object.keys(byEx)) {
@@ -3978,22 +3999,30 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       }
     }
   }
-  function idxLightWeeks(sessions, wkAuto) {
-    const lightWk = {};
-    {
-      const tag = {};
-      for (const ss of sessions) {
-        const k = weekStart(ss.date);
-        const o = tag[k] || (tag[k] = { n: 0, l: 0 });
-        o.n++;
-        if (ss.deload || ss.light) o.l++;
+  function lighterTally(sessions, byEx, deloadWeek) {
+    const lifts = {}, done = {};
+    for (const xs of Object.values(byEx))
+      for (const x of xs || []) {
+        lifts[x.sid] = (lifts[x.sid] || 0) + 1;
+        if (x.deload || x.light || x.auto) done[x.sid] = (done[x.sid] || 0) + 1;
       }
-      for (const k in tag) if (tag[k].n && tag[k].l === tag[k].n) lightWk[k] = true;
-      for (const k in wkAuto) {
-        const o = wkAuto[k];
-        if (o.l >= 2 && o.l * 2 >= o.n) lightWk[k] = true;
-      }
+    const lighter = (sid) => (done[sid] || 0) > 0 && (done[sid] || 0) * 2 >= (lifts[sid] || 0);
+    const weeks = {};
+    for (const x of sessions) {
+      const k = weekStart(x.date);
+      const w = weeks[k] || (weeks[k] = { all: 0, light: 0, tail: 0 });
+      w.all++;
+      if (lighter(x.id)) {
+        w.light++;
+        w.tail = x.deload || k === deloadWeek ? w.tail + 1 : 0;
+      } else w.tail = 0;
     }
+    return { weeks, lighter };
+  }
+  function idxLightWeeks(sessions, byEx, deloadWeek) {
+    const lightWk = {};
+    const T = lighterTally(sessions, byEx, deloadWeek).weeks;
+    for (const k in T) if (T[k].light * 2 > T[k].all || T[k].tail >= 2) lightWk[k] = true;
     return lightWk;
   }
   function idxPRsIn(M, id, exps, prs) {
@@ -4075,6 +4104,14 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     });
     return maxBest;
   }
+  function stallStretch(wE) {
+    if (wE.length < 4) return null;
+    const lastE = wE[wE.length - 1].date;
+    let i0 = wE.length - 1;
+    while (i0 > 0 && (wE.length - i0 < 6 || daysBetween(wE[i0].date, lastE) < 21)) i0--;
+    const l = wE.slice(i0);
+    return daysBetween(l[0].date, lastE) >= 21 ? l : null;
+  }
   function idxLiftIn(M, id, exps, maxBest, anchor, winStart, prs) {
     const sc = trendScope(exps, anchor);
     const { real, curRR, inRange, lastReal } = sc;
@@ -4111,28 +4148,22 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     const offSince = (from) => exps.filter((x) => offSession(x) && sameRR(x.rr, curRR) && x.date >= from);
     const listed = (x) => prs.some((p) => p.big && p.sid === x.sid && p.exId === id);
     if (!capped && current) {
-      const wE = withE1;
-      if (wE.length >= 4) {
-        const lastE = wE[wE.length - 1].date;
-        let i0 = wE.length - 1;
-        while (i0 > 0 && (wE.length - i0 < 6 || daysBetween(wE[i0].date, lastE) < 21)) i0--;
-        const l = wE.slice(i0);
-        if (daysBetween(l[0].date, lastE) >= 21) {
-          const z = l[l.length - 1], a0 = l[0];
-          const same = l.slice(0, -1).filter((x) => Math.abs(x.topW - z.topW) < 1e-6 && x.topN >= z.topN);
-          const moved = l.slice(-3).some((x) => x.progress) || offSince(l[l.length - 3].date).some(listed) || z.topL > a0.topL + 1e-6 || z.topW > a0.topW + 1e-6 || same.length > 0 && z.topReps > Math.max(...same.map((x) => x.topReps));
-          const sen = (() => {
-            const a = [];
-            for (let i = 0; i < l.length; i++)
-              for (let j = i + 1; j < l.length; j++) {
-                const dd = daysBetween(l[i].date, l[j].date);
-                if (dd > 0) a.push((l[j].tv - l[i].tv) / dd);
-              }
-            return a.length ? median(a) : null;
-          })();
-          const my = l.reduce((a, x) => a + x.tv, 0) / l.length;
-          stalled = sen != null && my > 0 && sen * 7 / my * 100 < 0.1 && !moved;
-        }
+      const l = stallStretch(withE1);
+      if (l) {
+        const z = l[l.length - 1], a0 = l[0];
+        const same = l.slice(0, -1).filter((x) => Math.abs(x.topW - z.topW) < 1e-6 && x.topN >= z.topN);
+        const moved = l.slice(-3).some((x) => x.progress) || offSince(l[l.length - 3].date).some(listed) || z.topL > a0.topL + 1e-6 || z.topW > a0.topW + 1e-6 || same.length > 0 && z.topReps > Math.max(...same.map((x) => x.topReps));
+        const sen = (() => {
+          const a = [];
+          for (let i = 0; i < l.length; i++)
+            for (let j = i + 1; j < l.length; j++) {
+              const dd = daysBetween(l[i].date, l[j].date);
+              if (dd > 0) a.push((l[j].tv - l[i].tv) / dd);
+            }
+          return a.length ? median(a) : null;
+        })();
+        const my = l.reduce((a, x) => a + x.tv, 0) / l.length;
+        stalled = sen != null && my > 0 && sen * 7 / my * 100 < 0.1 && !moved;
       } else if (withE1.length < 2)
         stalled = inRange.length >= 4 && inRange.slice(-3).every((x) => !x.progress) && !offSince(inRange[inRange.length - 3].date).some((x) => x.progress);
     }
@@ -4434,28 +4465,13 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     let d = null;
     const I = IDXIn(M);
     const cur = weekStart(M.today());
-    const lifts = {}, done = {};
-    for (const xs of Object.values(I.byEx))
-      for (const x of xs || []) {
-        lifts[x.sid] = (lifts[x.sid] || 0) + 1;
-        if (x.deload || x.light || x.auto) done[x.sid] = (done[x.sid] || 0) + 1;
-      }
-    const lighter = (sid) => (done[sid] || 0) > 0 && (done[sid] || 0) * 2 >= (lifts[sid] || 0);
-    const all = {}, light = {}, tail = {};
-    for (const x of sortedSessionsIn(M)) {
-      const k = weekStart(x.date);
-      all[k] = (all[k] || 0) + 1;
-      if (lighter(x.id)) {
-        light[k] = (light[k] || 0) + 1;
-        tail[k] = x.deload || k === M.s.deloadWeek ? (tail[k] || 0) + 1 : 0;
-      } else tail[k] = 0;
-    }
-    const week = (k) => (light[k] || 0) * 2 > (all[k] || 0) && (k < cur || (light[k] || 0) >= 2) || (tail[k] || 0) >= 2;
+    const { weeks: T, lighter } = lighterTally(sortedSessionsIn(M), I.byEx, M.s.deloadWeek);
+    const week = (k) => !!I.lightWk[k] && (k < cur || T[k].light >= 2);
     for (const x of M.s.sessions)
       if (x.date >= from && lighter(x.id) && week(weekStart(x.date)) && (!d || x.date > d)) d = x.date;
     for (const w of [
       ...M.s.settings.restWeeks || [],
-      ...M.s.deloadWeek && !all[M.s.deloadWeek] ? [M.s.deloadWeek] : []
+      ...M.s.deloadWeek && !T[M.s.deloadWeek] ? [M.s.deloadWeek] : []
     ]) {
       const e = addDays(w, 6) < M.today() ? addDays(w, 6) : M.today();
       if (e >= from && w <= M.today() && (!d || e > d)) d = e;
@@ -4589,6 +4605,14 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
         for (const d of R.days) for (const it of d.items) if (forM(it.exId) && !inR.includes(it.exId)) inR.push(it.exId);
         const logged = Object.keys(I.byEx).filter((id) => forM(id) && M.s.exercises.some((e) => e.id === id && !e.archived)).sort((x, y) => I.byEx[y][I.byEx[y].length - 1].date.localeCompare(I.byEx[x][I.byEx[x].length - 1].date));
         const exId = inR.find(done) || logged[0] || inR[0] || null;
+        const planned = plannedSetsIn(M, R)[u.m] || 0;
+        if (!freeModeIn(M) && !belowMin(planned, u.lo))
+          return {
+            tone: "yellow",
+            text: `${ML[u.m]}: ${r1(u.got)} hard set${r1(u.got) === 1 ? "" : "s"} a week, target ${u.lo}-${u.hi}. Your plan has ${r1(planned)}: do every planned set${M.s.settings.rirMode === "off" ? "" : ", to 3 or fewer reps in reserve"}.${under.length > 1 ? ` ${under.length - 1} more below target.` : ""}`,
+            why: `Your average of hard sets per week over your recent full weeks. Your plan already reaches the target, so the gap is in how the sets are done, not how many are planned: ${M.s.settings.rirMode === "off" ? "a planned set skipped does not count." : "a set counts as hard at 3 or fewer reps in reserve, so a planned set skipped, or ended with 4 or more in reserve (as a lift's first sessions are while its load is found), does not."}`,
+            act: { label: `See ${ML[u.m]}`, sec: "volume", m: u.m }
+          };
         const how = exId ? `Add ${gap} set${gap > 1 ? "s" : ""} a week to ${exNameIn(M, exId)}.` : "Add an exercise for it.";
         return {
           tone: "yellow",
@@ -4603,10 +4627,12 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       const st = I.exStats[id];
       const p = planForIn(M, id);
       const lw = st && st.last ? atLoad(st.last.pts, st.last.topW) : [];
+      const l = stallStretch(trendScope(I.byEx[id] || [], M.today()).inRange.filter((x) => x.tv != null));
+      const flat = l ? `in ${Math.round(daysBetween(l[0].date, l[l.length - 1].date) / 7)} weeks` : "in its last 3 sessions";
       if (lw.length && lw.every((q) => q.r >= +p.repMax))
         return {
           tone: "yellow",
-          text: `${exNameIn(M, id)} has been at the top of its range at ${loadLabelIn(M, EXIn(M, id), st.last.topW)}${EXIn(M, id).bw ? "" : " " + UIn(M)} for 3 weeks: it is due a step up, not a new range. The session's target says how.`,
+          text: `${exNameIn(M, id)} is at the top of its range at ${loadLabelIn(M, EXIn(M, id), st.last.topW)}${EXIn(M, id).bw ? "" : " " + UIn(M)} and has not moved ${flat}: it is due a step up, not a new range. The session's target says how.`,
           why: "Every set reached the top of the range. The next step is more load, or, when one step is large for the load, a few more reps first.",
           act: { label: "See the lift", sec: "exercise", ex: id }
         };
@@ -4736,11 +4762,16 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     const st = toDIn(M, incOfIn(M, ex, plan));
     if (!(st > 0)) return res;
     const off = (v) => Math.abs(toDIn(M, v) / st - Math.round(toDIn(M, v) / st)) > 0.02;
-    const typed = (v) => Math.abs(toDIn(M, v) / 0.05 - Math.round(toDIn(M, v) / 0.05)) < 0.1;
+    const typed = (v) => Math.abs(toDIn(M, v) / 0.05 - Math.round(toDIn(M, v) / 0.05)) < 1e-6;
     if (!off(res.top) || !off(res.w) || typed(res.top)) return res;
-    const nw = fromDIn(M, (down ? Math.floor(toDIn(M, res.w) / st + 1e-9) : Math.round(toDIn(M, res.w) / st)) * st);
+    const dn = down || !!res.tgt && res.tgt.kind === "reps";
+    const nw = fromDIn(M, (dn ? Math.floor(toDIn(M, res.w) / st + 1e-9) : Math.round(toDIn(M, res.w) / st)) * st);
     if (Math.abs(nw - res.w) < 1e-9) return res;
-    return swapWIn(M, ex, res, nw);
+    const out = swapWIn(M, ex, res, nw);
+    const was = fmtWIn(M, res.w - res.top), now = fmtWIn(M, nw - res.top);
+    const say = (t) => t.replace(`add ${was} ${UIn(M)}`, `add ${now} ${UIn(M)}`).replace(`take ${was} ${UIn(M)} of help off`, `take ${now} ${UIn(M)} of help off`);
+    out.text = out.last && out.text.startsWith(out.last) ? out.last + say(out.text.slice(out.last.length)) : say(out.text);
+    return out;
   }
   function daysOffIn(M, exId, opts) {
     const T = opts && opts.before && isDate(opts.before) ? opts.before : M.today();
@@ -4952,10 +4983,11 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
         if (k >= 1) {
           const nw = ex.assist && top < 0 ? Math.min(0, top + k * step) : capW(top + k * step);
           const rr = r1(topPts.reduce((a, p) => a + p.rir, 0) / topPts.length);
+          const sc = effScale(M.s.settings.rirScale);
           return {
             top,
             w: nw,
-            text: `${lastS} RIR ${rr} at ${lbl(top)} against a target of ${tgtRir}, so that load was light. Try ${lbl(nw)} for ${repSpan(plan.repMin, plan.repMax, "-")} reps.`,
+            text: `${lastS} ${sc === "rpe" ? "RPE" : "RIR"} ${effAt(sc, rr)} at ${lbl(top)} against a target of ${sc === "rpe" ? "RPE " : ""}${effAt(sc, tgtRir)}, so that load was light. Try ${lbl(nw)} for ${repSpan(plan.repMin, plan.repMax, "-")} reps.`,
             lastR,
             basis,
             last: lastS,
@@ -5340,7 +5372,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       const L = gymRackIn(M, ex, plan);
       if (L) return rackGapIn(M, L, at);
       if (rackKind(ex)) {
-        const g = rackStepIn(M, ex);
+        const g = rackStepIn(M, ex, at);
         if (g) return g;
       }
       const gs = gymStepIn(M, ex);
@@ -5361,17 +5393,24 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     } else nw = dn.length ? dn[dn.length - 1] : L[0];
     return nw == null || Math.abs(nw - w) < 1e-9 ? res : swapWIn(M, ex, res, nw);
   }
-  function rackStepIn(M, ex) {
+  function rackStepIn(M, ex, at) {
     const I = IDXIn(M);
     I._rack = I._rack || {};
     const key = UIn(M) + ex.id;
-    if (I._rack[key] !== void 0) return I._rack[key];
-    const xs = (I.byEx[ex.id] || []).slice(-12);
-    const ws = [];
-    for (const x of xs) for (const p of x.pts) if (p.w > 0) ws.push(toDIn(M, p.w));
-    const fits = (g2) => ws.every((w) => Math.abs(w / g2 - Math.round(w / g2)) < 0.01);
-    const g = ws.length ? RACK[rackKind(ex)][UIn(M)].find(fits) : null;
-    return I._rack[key] = g ? fromDIn(M, g) : null;
+    const fit = (ws) => {
+      const fits = (g2) => ws.every((w) => Math.abs(w / g2 - Math.round(w / g2)) < 0.01);
+      const g = RACK[rackKind(ex)][UIn(M)].find(fits);
+      return g ? fromDIn(M, g) : null;
+    };
+    if (I._rack[key] === void 0) {
+      const xs = (I.byEx[ex.id] || []).slice(-12);
+      const ws = [];
+      for (const x of xs) for (const p of x.pts) if (p.w > 0) ws.push(toDIn(M, p.w));
+      I._rack[key] = ws.length ? fit(ws) : null;
+    }
+    const logged = (I.byEx[ex.id] || []).some((x) => x.pts.some((p) => p.w > 0));
+    const d = logged || at == null || !(at > 0) ? null : toDIn(M, at);
+    return d == null ? I._rack[key] : fit([d]);
   }
   function progStepIn(M, ex, plan, loadKg, at) {
     const L = at != null ? gymRackIn(M, ex, plan) : null;
@@ -5390,7 +5429,8 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     return inc * Math.max(1, Math.floor(pct * Math.max(0, loadKg) / inc + 1e-9));
   }
   function easierTextIn(M, ex, e) {
-    return `Getting easier at ${loadLabelIn(M, ex, e.w)}${ex.bw ? "" : " " + UIn(M)}: RIR ${e.from} → ${e.to} at the same reps. Adding load today is reasonable.`;
+    const sc = effScale(M.s.settings.rirScale);
+    return `Getting easier at ${loadLabelIn(M, ex, e.w)}${ex.bw ? "" : " " + UIn(M)}: ${sc === "rpe" ? "RPE" : "RIR"} ${effAt(sc, e.from)} → ${effAt(sc, e.to)} at the same reps. Adding load today is reasonable.`;
   }
   function lighterLoadIn(M, ex, plan, from, to) {
     const L = gymRackIn(M, ex, plan);
@@ -5444,6 +5484,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
   var planCredit = live(planCreditIn);
   var planFor = live(planForIn);
   var planSetsPerWeek = live(planSetsPerWeekIn);
+  var plannedSets = live(plannedSetsIn);
   var profPlan = live(profPlanIn);
   var profRule = live(profRuleIn);
   var routineUpdates = live(routineUpdatesIn);
@@ -5504,7 +5545,13 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
   var FB = () => window.ironlogFeedback && typeof window.ironlogFeedback.send === "function" ? window.ironlogFeedback : null;
 
   // src/app/effort.ts
-  var rirScale = () => state.settings.rirScale === "half" || state.settings.rirScale === "rpe" ? state.settings.rirScale : "whole";
+  var rirScale = () => effScale(state.settings.rirScale);
+  function effShow(v) {
+    if (v == null || v === "") return "";
+    const n = +v;
+    if (!isFinite(n)) return "";
+    return effAt(rirScale(), n);
+  }
   var halfLbl = () => {
     const k = rirScale();
     return k === "rpe" ? "RPE 5 to 6.5" : k === "half" ? "RIR 3.5 to 5" : "RIR 4 to 5";
@@ -7460,21 +7507,6 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     }
     function howToLink(e) {
       return e && e.name ? `<a class="btn block" style="margin-top:6px" href="${esc(howToUrl(e))}" target="_blank" rel="noopener noreferrer" data-tip="Opens a YouTube search for ${esc(e.name)} in your browser. Only the exercise name is sent.">How-to videos</a>` : "";
-    }
-    function plannedSets(routine) {
-      const out = {};
-      const f = weekFactor(routine);
-      for (const d of routine.days) {
-        if (d.rest) continue;
-        for (const it of d.items) {
-          const pc = planCredit(it);
-          if (!pc) continue;
-          const ex = EX(it.exId);
-          out[ex.primary] = (out[ex.primary] || 0) + it.sets * f * pc;
-          for (const m of ex.secondary) out[m] = (out[m] || 0) + 0.5 * it.sets * f * pc;
-        }
-      }
-      return out;
     }
     function sessionMuscleSets(day) {
       const out = {};
@@ -10288,12 +10320,6 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     const effWord = () => rirScale() === "rpe" ? "RPE" : "RIR";
     function effTgt(rir) {
       return rirScale() === "rpe" ? `RPE ${effShow(rir)}` : `${effShow(rir)} RIR`;
-    }
-    function effShow(v) {
-      if (v == null || v === "") return "";
-      const n = +v;
-      if (!isFinite(n)) return "";
-      return rirScale() === "rpe" ? String(Math.round((10 - n) * 10) / 10) : String(Math.round(n * 10) / 10);
     }
     function effOpts() {
       const sc = rirScale();

@@ -10,18 +10,20 @@ import {
   UIn,
   activeRoutineIn,
   exNameIn,
+  freeModeIn,
   injuredSetIn,
   isDeloadWeekIn,
   isRestWeekIn,
   sortedSessionsIn
 } from './model';
-import { IDXIn } from './analytics';
+import { IDXIn, stallStretch } from './analytics';
+import { trendScope } from './trend';
 import { actualAvg4In, recentLighterIn } from './weeks';
 import { GROW_PCT, atLoad, isWork, offSession } from './formulas';
 import { MK, ML, TRACK_ONLY, isCompound, noE1 } from './library';
-import { addDays, andList, r1, weekStart } from './util';
+import { addDays, andList, daysBetween, r1, weekStart } from './util';
 import { belowMin } from './volume';
-import { planForIn } from './routines';
+import { planForIn, plannedSetsIn } from './routines';
 import { loadLabelIn } from './loads';
 
 /** The coach's one line: its colour, the advice, the reason behind an i, and the action it offers. */
@@ -181,6 +183,20 @@ export function coachIn(M: Model): CoachLine {
         .filter(id => forM(id) && M.s.exercises.some(e => e.id === id && !e.archived))
         .sort((x, y) => I.byEx[y]![I.byEx[y]!.length - 1].date.localeCompare(I.byEx[x]![I.byEx[x]!.length - 1].date));
       const exId = inR.find(done) || logged[0] || inR[0] || null;
+      /* The plan already reaches the target (r53, from the audit V asked
+         for: a lifter doing every planned set was told for weeks to add
+         sets). The shortfall is then sets skipped, or ended 4 or more in
+         reserve, as a lift's first sessions are while its load is found, so
+         adding sets is not the fix. Not in Freestyle mode, where the plan is
+         not what the lifter follows. */
+      const planned = plannedSetsIn(M, R)[u.m] || 0;
+      if (!freeModeIn(M) && !belowMin(planned, u.lo))
+        return {
+          tone: 'yellow',
+          text: `${ML[u.m]}: ${r1(u.got)} hard set${r1(u.got) === 1 ? '' : 's'} a week, target ${u.lo}-${u.hi}. Your plan has ${r1(planned)}: do every planned set${M.s.settings.rirMode === 'off' ? '' : ', to 3 or fewer reps in reserve'}.${under.length > 1 ? ` ${under.length - 1} more below target.` : ''}`,
+          why: `Your average of hard sets per week over your recent full weeks. Your plan already reaches the target, so the gap is in how the sets are done, not how many are planned: ${M.s.settings.rirMode === 'off' ? 'a planned set skipped does not count.' : "a set counts as hard at 3 or fewer reps in reserve, so a planned set skipped, or ended with 4 or more in reserve (as a lift's first sessions are while its load is found), does not."}`,
+          act: { label: `See ${ML[u.m]}`, sec: 'volume', m: u.m }
+        };
       const how = exId
         ? `Add ${gap} set${gap > 1 ? 's' : ''} a week to ${exNameIn(M, exId)}.`
         : 'Add an exercise for it.';
@@ -200,11 +216,20 @@ export function coachIn(M: Model): CoachLine {
     const st = I.exStats[id];
     const p = planForIn(M, id);
     const lw = st && st.last ? atLoad(st.last.pts, st.last.topW) : [];
-    // A set at the top of the range means st was there to read it from, as the ! says.
+    /* How long it has not moved: the stretch the stall test read (r53, from
+       the audit V asked for: "for 3 weeks" was said of a lift flat for ten,
+       and of its whole stretch at the top of the range, which nothing
+       checks); a lift with no strength reading is read over its last 3
+       sessions. A set at the top of the range means st was there to read it
+       from, as the ! says. */
+    const l = stallStretch(trendScope(I.byEx[id] || [], M.today()).inRange.filter(x => x.tv != null));
+    const flat = l
+      ? `in ${Math.round(daysBetween(l[0].date, l[l.length - 1].date) / 7)} weeks`
+      : 'in its last 3 sessions';
     if (lw.length && lw.every(q => q.r >= +p.repMax))
       return {
         tone: 'yellow',
-        text: `${exNameIn(M, id)} has been at the top of its range at ${loadLabelIn(M, EXIn(M, id), st!.last.topW)}${EXIn(M, id).bw ? '' : ' ' + UIn(M)} for 3 weeks: it is due a step up, not a new range. The session's target says how.`,
+        text: `${exNameIn(M, id)} is at the top of its range at ${loadLabelIn(M, EXIn(M, id), st!.last.topW)}${EXIn(M, id).bw ? '' : ' ' + UIn(M)} and has not moved ${flat}: it is due a step up, not a new range. The session's target says how.`,
         why: 'Every set reached the top of the range. The next step is more load, or, when one step is large for the load, a few more reps first.',
         act: { label: 'See the lift', sec: 'exercise', ex: id }
       };

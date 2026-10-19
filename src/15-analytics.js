@@ -136,12 +136,6 @@ function planEvidenceNote(pv){
    the name). A custom exercise's name is searched as typed. */
 function howToUrl(e){return 'https://www.youtube.com/results?search_query='+encodeURIComponent(`${e.name} exercise form`);}
 function howToLink(e){return e&&e.name?`<a class="btn block" style="margin-top:6px" href="${esc(howToUrl(e))}" target="_blank" rel="noopener noreferrer" data-tip="Opens a YouTube search for ${esc(e.name)} in your browser. Only the exercise name is sent.">How-to videos</a>`:'';}
-function plannedSets(routine){
-  const out={};
-  const f=weekFactor(routine);
-  for(const d of routine.days){if(d.rest)continue;for(const it of d.items){const pc=planCredit(it);if(!pc)continue;const ex=EX(it.exId);out[ex.primary]=(out[ex.primary]||0)+it.sets*f*pc;for(const m of ex.secondary)out[m]=(out[m]||0)+0.5*it.sets*f*pc;}}
-  return out;
-}
 function sessionMuscleSets(day){
   const out={};
   for(const it of day.items){const ex=EX(it.exId);const n=+it.sets||0;out[ex.primary]=(out[ex.primary]||0)+n;for(const m of ex.secondary)out[m]=(out[m]||0)+0.5*n;}

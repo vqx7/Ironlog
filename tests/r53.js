@@ -69,7 +69,9 @@ const FILE = process.argv[2] || 'index.html';
     await ev(() => {
       const L = window.__ironlog; const S = L.state; const R = S.routines.find(r => r.id === S.activeRoutineId);
       const set = (w, r) => ({ w, r, rir: 1, warm: false, drop: false });
-      // Bench (Upper A, 6-10): 100 x 8, 8 on two Thursdays.
+      // Bench (Upper A, 6-10): 100 x 8, 8 on two Thursdays. The loads here are kilograms, so the screens show kilograms: a log kept in one
+      // unit and read in the other is put on the other unit's steps since r53 (tests/r53b.js), which is not what this part is about.
+      S.settings.unit = 'kg';
       S.sessions = ['2026-10-01', '2026-10-08'].map((d, i) => ({ id: 'b' + i, date: d, dayIdx: 0, dayId: R.days[0].id, dayName: 'Upper A', routineId: R.id, notes: '', ex: [{ exId: 'bench', rr: [6, 10], sets: [set(100, 8), set(100, 8)] }] }));
       S.draft = null; S.deloadWeek = null; L.invalidate(); L.saveNow(); L.render();
     });
@@ -99,22 +101,24 @@ const FILE = process.argv[2] || 'index.html';
     const reps = await one([[100, 18], [100, 18]]);
     const next2 = await ev(() => { const L = window.__ironlog; const b = L.newBlock('bench', L.planFor('bench'), {}); return { last: b.last, sw: b.sw, target: b.target }; });
     const full2 = await ev(() => { const L = window.__ironlog; return L.IDX().byEx.bench.filter(x => !L.offSession(x)).map(x => x.topW); });
+    // Back to the starter's pounds for the parts below.
+    await ev(() => { const L = window.__ironlog; L.state.settings.unit = 'lb'; L.invalidate(); L.saveNow(); L.render(); });
     return { lighter, strong, next, recent, trend: trendAt, single, after, usual, reps, next2, full2 };
   })();
-  // The screens show pounds (the starter's unit): 120 kg is 264.6 lb.
-  const lb120 = (120 / 0.45359237).toFixed(1);
+  // The screens show the log's kilograms in this part.
+  const w120 = '120';
   ok(pr.lighter.prs.length === 0 && pr.lighter.exp[0].light === true && !pr.lighter.recap, 'a lighter day at 90 x 8, no stronger than before: no PR, and the session stays lighter for the lift', pr.lighter);
   ok(JSON.stringify(pr.strong.prs) === JSON.stringify(['Weight PR']) && /Bench/.test(pr.strong.recap || ''), 'a lighter day at 120 x 8, stronger than ever: Finish shows it as a PR, and the PR list counts it', pr.strong);
   ok(pr.strong.exp[0].light === false, 'that session counts as a full one for the bench press', pr.strong.exp);
   ok(pr.recent === 1, 'Recent PRs counts it', pr.recent);
-  const lb130 = (130 / 0.45359237).toFixed(1);
-  ok(pr.single.prs.length === 0 && pr.single.exp[0].light === true && (pr.single.lines || []).some(l => /^Heaviest yet: Barbell Bench Press /.test(l) && l.includes(lb130)), 'a lighter day with a heavy single, 130 x 1, heavier than ever but not stronger: no PR, the recap says Heaviest yet, as on any day, and the session stays lighter', pr.single);
+  const w130 = '130';
+  ok(pr.single.prs.length === 0 && pr.single.exp[0].light === true && (pr.single.lines || []).some(l => /^Heaviest yet: Barbell Bench Press /.test(l) && l.includes(w130)), 'a lighter day with a heavy single, 130 x 1, heavier than ever but not stronger: no PR, the recap says Heaviest yet, as on any day, and the session stays lighter', pr.single);
   ok(JSON.stringify(pr.after) === '[100,100,120]', 'the trend still reads 100, 100, and 120: the single does not move it', pr.after);
   ok(pr.usual.prs.length === 0 && pr.usual.exp[0].light === false, 'a lighter day done at the usual load, 120 x 8 again: no PR, and a full session for the lift all the same', pr.usual);
   ok(JSON.stringify(pr.reps.prs) === '["Rep PR"]' && pr.reps.exp[0].light === true && /Bench/.test(pr.reps.recap || ''), 'a lighter day at 100 for 18 and 18: a PR (stronger than ever by the rep score), but done lighter, so the session stays lighter', pr.reps);
-  ok(JSON.stringify(pr.full2) === '[100,100,120,120]' && (pr.next2.target || '').includes(lb120) && pr.next2.sw >= 120 - 1e-6 && (pr.next2.last || '').includes('lighter'), 'and the next bench press is still set from 120: its load and target, while its Last line shows that lighter day, marked lighter', pr);
+  ok(JSON.stringify(pr.full2) === '[100,100,120,120]' && (pr.next2.target || '').includes(w120) && pr.next2.sw >= 120 - 1e-6 && (pr.next2.last || '').includes('lighter'), 'and the next bench press is still set from 120: its load and target, while its Last line shows that lighter day, marked lighter', pr);
   ok(pr.trend.lastFull === '2026-10-15 120' && JSON.stringify(pr.trend.full) === '[100,100,120]', 'the trend reads it: the bench press\'s full sessions are 100, 100, and 120, the lighter day at 90 left out', pr.trend);
-  ok((pr.next.last || '').includes(lb120) && !/lighter/i.test(pr.next.last || '') && pr.next.sw >= 120 - 1e-6 && (pr.next.target || '').includes(lb120), 'the next bench press starts from it: its Last line (without "lighter"), its load and its target are 120 kg', pr.next);
+  ok((pr.next.last || '').includes(w120) && !/lighter/i.test(pr.next.last || '') && pr.next.sw >= 120 - 1e-6 && (pr.next.target || '').includes(w120), 'the next bench press starts from it: its Last line (without "lighter"), its load and its target are 120 kg', pr.next);
 
   // ---- Half the sets at the usual load on a lighter day (the review of r53): the usual is the load and reps for as many sets.
   const half = await (async () => {

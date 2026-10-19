@@ -210,6 +210,8 @@ export interface EngineSettings {
   unit: 'lb' | 'kg';
   rirMode: 'on' | 'off' | 'cal';
   rirHalf?: true | undefined;
+  // The effort scale the engine's sentences are worded in (r53).
+  rirScale?: 'half' | 'rpe' | undefined;
   gym?: Gym | undefined;
   barKg: number | null;
   profile?: Profile | undefined;

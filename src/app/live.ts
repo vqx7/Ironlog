@@ -34,6 +34,7 @@ import {
   planCreditIn,
   planForIn,
   planSetsPerWeekIn,
+  plannedSetsIn,
   profPlanIn,
   profRuleIn,
   routineUpdatesIn
@@ -121,6 +122,7 @@ export const defPlan = live(defPlanIn);
 export const planCredit = live(planCreditIn);
 export const planFor = live(planForIn);
 export const planSetsPerWeek = live(planSetsPerWeekIn);
+export const plannedSets = live(plannedSetsIn);
 export const profPlan = live(profPlanIn);
 export const profRule = live(profRuleIn);
 export const routineUpdates = live(routineUpdatesIn);

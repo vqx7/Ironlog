@@ -122,3 +122,22 @@ export const fmtWith = (k: string, o: Intl.DateTimeFormatOptions, s: string): st
 
 /** A date as "Oct 17". */
 export const fmtDate = (s: string): string => fmtWith('d', { month: 'short', day: 'numeric' }, s);
+
+/* ---------- effort ---------- */
+
+/* The effort scale a setting names: half points or RPE, else whole RIR
+   (r33, item 206). One rule for the screens (rirScale, src/app/effort.ts)
+   and the engine's sentences (r53, from the audit V asked for: on the RPE
+   scale, the reason behind a target said "RIR 4 at 40 kg against a target of
+   1" under a header reading @RPE 9). */
+/** The effort scale a setting's value names. */
+export function effScale(v: unknown): 'whole' | 'half' | 'rpe' {
+  return v === 'half' || v === 'rpe' ? v : 'whole';
+}
+
+/* What is stored is always RIR; RPE is 10 less it. One decimal, so half
+   points show as they were entered. */
+/** An effort, stored as RIR, as shown in a scale. */
+export function effAt(scale: 'whole' | 'half' | 'rpe', rir: number): string {
+  return scale === 'rpe' ? String(Math.round((10 - rir) * 10) / 10) : String(Math.round(rir * 10) / 10);
+}

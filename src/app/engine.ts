@@ -31,7 +31,7 @@ import {
   workLoad
 } from './formulas';
 import { KIN_UNI, RACK, injLabel, isCompound, loadMode, noE1, patternOf, rackKind } from './library';
-import { fmtDate, rangeWords, repSpan } from './format';
+import { effAt, effScale, fmtDate, rangeWords, repSpan } from './format';
 import { overSets } from './session';
 
 /** How a suggestion is asked for: for a past session's date (`before`), as a deload, or as a lighter day. */
@@ -104,13 +104,33 @@ export function snapUnitIn(M: Model, ex: ExerciseLike, plan: Plan, res: Suggesti
   if (!(st > 0)) return res;
   /* Off the step and not a number anyone types (220.462 from 100 kg): a
      custom step (185 lb on a 10 lb step) or microplates (101.25) are left as
-     they are. */
+     they are. Typed is exact in the unit on screen, as a number typed in it
+     reads back (r53, from the audit V asked for: within a tenth of 0.05, one
+     load in five converted from the other unit passed for typed, so 42.5 kg
+     shown as 93.7 lb was told to add 5 lb, to 98.7). */
   const off = (v: number): boolean => Math.abs(toDIn(M, v)! / st - Math.round(toDIn(M, v)! / st)) > 0.02;
-  const typed = (v: number): boolean => Math.abs(toDIn(M, v)! / 0.05 - Math.round(toDIn(M, v)! / 0.05)) < 0.1;
+  const typed = (v: number): boolean => Math.abs(toDIn(M, v)! / 0.05 - Math.round(toDIn(M, v)! / 0.05)) < 1e-6;
   if (!off(res.top) || !off(res.w) || typed(res.top)) return res;
-  const nw = fromDIn(M, (down ? Math.floor(toDIn(M, res.w)! / st + 1e-9) : Math.round(toDIn(M, res.w)! / st)) * st)!;
+  /* Under a target of reps at last time's load, down to the step below, so
+     the reps asked for are not asked at a heavier load (r53, from the audit:
+     12.5 kg dumbbells shown in lb went up to 30 lb, 9% heavier, with the reps
+     to beat unchanged, and the lifter fell short). */
+  const dn = down || (!!res.tgt && res.tgt.kind === 'reps');
+  const nw = fromDIn(M, (dn ? Math.floor(toDIn(M, res.w)! / st + 1e-9) : Math.round(toDIn(M, res.w)! / st)) * st)!;
   if (Math.abs(nw - res.w) < 1e-9) return res;
-  return swapWIn(M, ex, res, nw);
+  const out = swapWIn(M, ex, res, nw);
+  /* The step the words name moves with the load, so they add up to what is
+     shown (r53, from the audit: "add 5 lb" to 93.7 lb beside 100 lb, and "take
+     5 lb of help off" beside help that moved by another amount). */
+  const was = fmtWIn(M, res.w - res.top),
+    now = fmtWIn(M, nw - res.top);
+  const say = (t: string): string =>
+    t
+      .replace(`add ${was} ${UIn(M)}`, `add ${now} ${UIn(M)}`)
+      .replace(`take ${was} ${UIn(M)} of help off`, `take ${now} ${UIn(M)} of help off`);
+  out.text =
+    out.last && out.text.startsWith(out.last) ? out.last + say(out.text.slice(out.last.length)) : say(out.text);
+  return out;
 }
 
 /* Days since a lift was last done, by its newest session of any kind up to
@@ -435,10 +455,12 @@ export function sgEasyIn(M: Model, C: SuggestCtx): Suggestion | null {
       if (k >= 1) {
         const nw = ex.assist && top < 0 ? Math.min(0, top + k * step) : capW(top + k * step);
         const rr = r1(topPts.reduce((a, p) => a + p.rir!, 0) / topPts.length);
+        // In the lifter's effort scale (r53, from the audit V asked for: RPE lifters were told RIR).
+        const sc = effScale(M.s.settings.rirScale);
         return {
           top,
           w: nw,
-          text: `${lastS} RIR ${rr} at ${lbl(top)} against a target of ${tgtRir}, so that load was light. Try ${lbl(nw)} for ${repSpan(plan.repMin, plan.repMax, '-')} reps.`,
+          text: `${lastS} ${sc === 'rpe' ? 'RPE' : 'RIR'} ${effAt(sc, rr)} at ${lbl(top)} against a target of ${sc === 'rpe' ? 'RPE ' : ''}${effAt(sc, tgtRir)}, so that load was light. Try ${lbl(nw)} for ${repSpan(plan.repMin, plan.repMax, '-')} reps.`,
           lastR,
           basis,
           last: lastS,
@@ -991,7 +1013,7 @@ export function incOfIn(
     const L = gymRackIn(M, ex, plan);
     if (L) return rackGapIn(M, L, at);
     if (rackKind(ex)) {
-      const g = rackStepIn(M, ex);
+      const g = rackStepIn(M, ex, at);
       if (g) return g;
     }
     const gs = gymStepIn(M, ex);
@@ -1030,18 +1052,30 @@ export function rackSnapIn(M: Model, ex: ExerciseLike, plan: Plan, res: Suggesti
    read in the unit on screen, since that is what the rack is labelled in.
    It is asked only of a dumbbell or kettlebell lift (its callers test
    rackKind first), as the ! after rackKind says, and toD of a number is a
-   number, as the other ! says. */
-export function rackStepIn(M: Model, ex: ExerciseLike): number | null {
+   number, as the other ! says. With nothing logged yet, the load in hand
+   (`at`) is the one weight of the rack known, read the same way (r53, from
+   the audit V asked for: a first session's 6 kg dumbbells, done easily, were
+   stepped to 8.5 kg, which no rack has, and the 6, 8.5 and 11 kg logged after
+   read as a rack in 0.5 kg steps for the next twelve sessions); it is not
+   kept, since it changes with the load. */
+export function rackStepIn(M: Model, ex: ExerciseLike, at?: number | null): number | null {
   const I = IDXIn(M);
   I._rack = I._rack || {};
   const key = UIn(M) + ex.id;
-  if (I._rack[key] !== undefined) return I._rack[key];
-  const xs = (I.byEx[ex.id] || []).slice(-12);
-  const ws: number[] = [];
-  for (const x of xs) for (const p of x.pts) if (p.w > 0) ws.push(toDIn(M, p.w)!);
-  const fits = (g: number): boolean => ws.every(w => Math.abs(w / g - Math.round(w / g)) < 0.01);
-  const g = ws.length ? RACK[rackKind(ex)!][UIn(M)].find(fits) : null;
-  return (I._rack[key] = g ? fromDIn(M, g) : null);
+  const fit = (ws: readonly number[]): number | null => {
+    const fits = (g: number): boolean => ws.every(w => Math.abs(w / g - Math.round(w / g)) < 0.01);
+    const g = RACK[rackKind(ex)!][UIn(M)].find(fits);
+    return g ? fromDIn(M, g) : null;
+  };
+  if (I._rack[key] === undefined) {
+    const xs = (I.byEx[ex.id] || []).slice(-12);
+    const ws: number[] = [];
+    for (const x of xs) for (const p of x.pts) if (p.w > 0) ws.push(toDIn(M, p.w)!);
+    I._rack[key] = ws.length ? fit(ws) : null;
+  }
+  const logged = (I.byEx[ex.id] || []).some(x => x.pts.some(p => p.w > 0));
+  const d = logged || at == null || !(at > 0) ? null : toDIn(M, at);
+  return d == null ? I._rack[key] : fit([d]);
 }
 
 /* When every set reaches the top of the range, the load goes up by whole
@@ -1069,7 +1103,9 @@ export function progStepIn(M: Model, ex: ExerciseLike, plan: Plan, loadKg: numbe
 
 /** The note that a lift is getting easier at a load (RIR climbing at the same reps), for the session. */
 export function easierTextIn(M: Model, ex: ExerciseLike, e: Drift): string {
-  return `Getting easier at ${loadLabelIn(M, ex, e.w)}${ex.bw ? '' : ' ' + UIn(M)}: RIR ${e.from} → ${e.to} at the same reps. Adding load today is reasonable.`;
+  // In the lifter's effort scale (r53, from the audit V asked for).
+  const sc = effScale(M.s.settings.rirScale);
+  return `Getting easier at ${loadLabelIn(M, ex, e.w)}${ex.bw ? '' : ' ' + UIn(M)}: ${sc === 'rpe' ? 'RPE' : 'RIR'} ${effAt(sc, e.from)} → ${effAt(sc, e.to)} at the same reps. Adding load today is reasonable.`;
 }
 
 /* A load at or below `to`, reached from `from` in whole steps of the

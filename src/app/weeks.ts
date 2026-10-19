@@ -9,7 +9,7 @@ import type { Model } from './model';
 import { activeRoutineIn, freeModeIn, isDeloadWeekIn, isRestWeekIn, sortedSessionsIn } from './model';
 import { addDays, weekStart } from './util';
 import { firstDate } from './charts';
-import { IDXIn, weekSessionsIn } from './analytics';
+import { IDXIn, lighterTally, weekSessionsIn } from './analytics';
 import { REGIONS, TRACK_ONLY } from './library';
 import { aboveMax, belowMin } from './volume';
 import { planSetsPerWeekIn, plannedPerWeek, trainDaysOf, weekFactor } from './routines';
@@ -268,33 +268,15 @@ export function recentLighterIn(M: Model, days: number): string | null {
   let d: string | null = null;
   const I = IDXIn(M);
   const cur = weekStart(M.today());
-  const lifts: Record<string, number> = {},
-    done: Record<string, number> = {};
-  for (const xs of Object.values(I.byEx))
-    for (const x of xs || []) {
-      lifts[x.sid] = (lifts[x.sid] || 0) + 1;
-      if (x.deload || x.light || x.auto) done[x.sid] = (done[x.sid] || 0) + 1;
-    }
-  const lighter = (sid: string): boolean => (done[sid] || 0) > 0 && (done[sid] || 0) * 2 >= (lifts[sid] || 0);
-  const all: Record<string, number> = {},
-    light: Record<string, number> = {},
-    tail: Record<string, number> = {};
-  for (const x of sortedSessionsIn(M)) {
-    const k = weekStart(x.date);
-    all[k] = (all[k] || 0) + 1;
-    if (lighter(x.id)) {
-      light[k] = (light[k] || 0) + 1;
-      tail[k] = x.deload || k === M.s.deloadWeek ? (tail[k] || 0) + 1 : 0;
-    } else tail[k] = 0;
-  }
-  const week = (k: string): boolean =>
-    ((light[k] || 0) * 2 > (all[k] || 0) && (k < cur || (light[k] || 0) >= 2)) || (tail[k] || 0) >= 2;
+  const { weeks: T, lighter } = lighterTally(sortedSessionsIn(M), I.byEx, M.s.deloadWeek);
+  // The lighter weeks the averages leave out (idxLightWeeks); the week in progress from its second lighter session.
+  const week = (k: string): boolean => !!I.lightWk[k] && (k < cur || T[k].light >= 2);
   for (const x of M.s.sessions)
     if (x.date >= from && lighter(x.id) && week(weekStart(x.date)) && (!d || x.date > d)) d = x.date;
   // A rest week is recovery too, and so is a marked deload week with nothing trained in it: its last day, or today while it runs.
   for (const w of [
     ...(M.s.settings.restWeeks || []),
-    ...(M.s.deloadWeek && !all[M.s.deloadWeek] ? [M.s.deloadWeek] : [])
+    ...(M.s.deloadWeek && !T[M.s.deloadWeek] ? [M.s.deloadWeek] : [])
   ]) {
     const e = addDays(w, 6) < M.today() ? addDays(w, 6) : M.today();
     if (e >= from && w <= M.today() && (!d || e > d)) d = e;

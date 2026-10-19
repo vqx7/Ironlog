@@ -470,7 +470,6 @@ function strengthPick(e,st,rec,at){
 const effWord=()=>rirScale()==='rpe'?'RPE':'RIR';
 /* A plan's target effort as the lifter enters effort: "1 RIR", or "RPE 9" in RPE mode. */
 function effTgt(rir){return rirScale()==='rpe'?`RPE ${effShow(rir)}`:`${effShow(rir)} RIR`;}
-function effShow(v){if(v==null||v==='')return '';const n=+v;if(!isFinite(n))return '';return rirScale()==='rpe'?String(Math.round((10-n)*10)/10):String(Math.round(n*10)/10);}
 function effOpts(){const sc=rirScale();return sc==='whole'?RIR_OPTS.slice():['0','0.5','1','1.5','2','2.5','3','3.5','4','4.5','5'];}
 const effAria=si=>rirScale()==='rpe'?`RPE for set ${si+1}`:`Reps in reserve for set ${si+1}`;
 function rirSelect(val,bi,si,target){

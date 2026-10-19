@@ -416,6 +416,27 @@ export function planCreditIn(M: Model, it: { rir: number | string }): number {
   return planHardIn(M, it) ? 1 : rirHalfOnIn(M) && +it.rir <= 5 ? 0.5 : 0;
 }
 
+/* A muscle's planned hard sets a week: each planned set's credit (above),
+   a helper muscle's at half, a cycle at its days a week (weekFactor). Moved
+   from the legacy script in r53, unchanged, so the coach can tell a plan
+   short of a muscle's target from one that already reaches it. */
+/** Planned hard sets a week for each muscle, from a routine. */
+export function plannedSetsIn(M: Model, routine: Routine): Record<string, number> {
+  const out: Record<string, number> = {};
+  const f = weekFactor(routine);
+  for (const d of routine.days) {
+    if (d.rest) continue;
+    for (const it of d.items) {
+      const pc = planCreditIn(M, it);
+      if (!pc) continue;
+      const ex = EXIn(M, it.exId);
+      out[ex.primary] = (out[ex.primary] || 0) + it.sets * f * pc;
+      for (const m of ex.secondary) out[m] = (out[m] || 0) + 0.5 * it.sets * f * pc;
+    }
+  }
+  return out;
+}
+
 /** A routine's planned hard sets a week (a deload week's halved per exercise). */
 export function planSetsPerWeekIn(M: Model, R: Routine, deload?: boolean): number {
   const n = R.days.reduce(

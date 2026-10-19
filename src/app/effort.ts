@@ -2,14 +2,25 @@
    from the legacy script in r53, with the Guide that names its ranges. */
 
 import { state } from './store';
+import { effAt, effScale } from './format';
 
 /* Effort in half points or as RPE (r33, item 206): a setting for how effort
    is entered and shown. What is stored is always RIR (RPE 8 is RIR 2, RPE
    8.5 is RIR 1.5), so every estimate, hard-set count and target reads it
    unchanged, and switching back and forth loses nothing. Unset is whole RIR. */
 /** The scale in use: whole RIR, half points, or RPE. */
-export const rirScale = () =>
-  state.settings.rirScale === 'half' || state.settings.rirScale === 'rpe' ? state.settings.rirScale : 'whole';
+export const rirScale = () => effScale(state.settings.rirScale);
+
+/* An effort as the lifter's scale shows it, blank when there is none (r33;
+   moved in r53 so the screens and the engine's sentences show it by one
+   rule, effAt). */
+/** A stored RIR, or nothing, as the effort scale in use shows it. */
+export function effShow(v: number | string | null | undefined): string {
+  if (v == null || v === '') return '';
+  const n = +v;
+  if (!isFinite(n)) return '';
+  return effAt(rirScale(), n);
+}
 
 /* RIR 4 to 5 as half a set (r40, a setting): hardCredit in
    src/app/analytics.ts counts it and says why. This names the range in the

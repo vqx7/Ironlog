@@ -301,9 +301,9 @@ export function IDXIn(M: Model): Idx {
   const byEx = V.byEx;
   const anchor = sessions.length ? sessions[sessions.length - 1].date : M.today();
   const winStart = addDays(anchor, -42);
-  const wkAuto = idxAutoLighter(byEx);
+  idxAutoLighter(byEx);
   idxTaggedFull(byEx);
-  const lightWk = idxLightWeeks(sessions, wkAuto);
+  const lightWk = idxLightWeeks(sessions, byEx, M.s.deloadWeek);
   const prs: Pr[] = [];
   const exStats: Record<string, ExStat> = {};
   for (const id of Object.keys(byEx)) {
@@ -673,30 +673,59 @@ export function idxTaggedFull(byEx: Record<string, Exposure[]>): void {
   }
 }
 
-/* Step 3: lighter weeks, tagged or read as lighter. */
+/* What a lighter week is, read from what the lifts did (r53, V 2026-10-18:
+   one reading for the weekly averages, the coach and Stats). A session is
+   lighter when half or more of its lifts were done lighter: still deload or
+   lighter once a lift at its usual level counts in full (idxTaggedFull), or
+   read lighter from the loads. Per week: its sessions, those lighter, and
+   the run of deload sessions done lighter at its end, a deload session
+   being one tagged deload or any in the week marked as one (a blank or
+   Freestyle session there is not tagged). Sessions in date order, as
+   sortedSessionsIn gives them. */
+/** Each week's sessions, lighter sessions and closing run of lighter deload sessions, and whether a session was lighter. */
+export function lighterTally(
+  sessions: readonly Session[],
+  byEx: Partial<Record<string, Exposure[]>>,
+  deloadWeek: string | null
+): { weeks: Record<string, { all: number; light: number; tail: number }>; lighter: (sid: string) => boolean } {
+  const lifts: Record<string, number> = {},
+    done: Record<string, number> = {};
+  for (const xs of Object.values(byEx))
+    for (const x of xs || []) {
+      lifts[x.sid] = (lifts[x.sid] || 0) + 1;
+      if (x.deload || x.light || x.auto) done[x.sid] = (done[x.sid] || 0) + 1;
+    }
+  const lighter = (sid: string): boolean => (done[sid] || 0) > 0 && (done[sid] || 0) * 2 >= (lifts[sid] || 0);
+  const weeks: Record<string, { all: number; light: number; tail: number }> = {};
+  for (const x of sessions) {
+    const k = weekStart(x.date);
+    const w = weeks[k] || (weeks[k] = { all: 0, light: 0, tail: 0 });
+    w.all++;
+    if (lighter(x.id)) {
+      w.light++;
+      w.tail = x.deload || k === deloadWeek ? w.tail + 1 : 0;
+    } else w.tail = 0;
+  }
+  return { weeks, lighter };
+}
+
+/* Step 3: lighter weeks (r30). Weekly volume averages skip them: a deload
+   halves the sets on purpose, and averaging it in read as below target for a
+   month after every deload. Since r53 a week is lighter when more than half
+   its sessions were, or its last two or more were deload sessions done
+   lighter (lighterTally), the reading the coach holds a deload back by, so
+   the averages leave out a deload begun mid-week, which they kept, and keep
+   a week of deload sessions done at full for every lift, which they left out
+   by its labels (the audit V asked for: four weeks of "add sets" after a
+   deload tapped on a Thursday, for a lifter doing every planned set). */
 export function idxLightWeeks(
   sessions: readonly Session[],
-  wkAuto: Record<string, WeekCount>
+  byEx: Record<string, Exposure[]>,
+  deloadWeek: string | null
 ): Record<string, boolean> {
-  /* Lighter weeks (r30): every session in the week tagged deload or lighter,
-     or the week read as lighter above. Weekly volume averages skip them: a
-     deload halves the sets on purpose, and averaging it in read as "below
-     target" for a month after every deload. */
   const lightWk: Record<string, boolean> = {};
-  {
-    const tag: Record<string, WeekCount> = {};
-    for (const ss of sessions) {
-      const k = weekStart(ss.date);
-      const o = tag[k] || (tag[k] = { n: 0, l: 0 });
-      o.n++;
-      if (ss.deload || ss.light) o.l++;
-    }
-    for (const k in tag) if (tag[k].n && tag[k].l === tag[k].n) lightWk[k] = true;
-    for (const k in wkAuto) {
-      const o = wkAuto[k];
-      if (o.l >= 2 && o.l * 2 >= o.n) lightWk[k] = true;
-    }
-  }
+  const T = lighterTally(sessions, byEx, deloadWeek).weeks;
+  for (const k in T) if (T[k].light * 2 > T[k].all || T[k].tail >= 2) lightWk[k] = true;
   return lightWk;
 }
 
@@ -832,6 +861,21 @@ export function idxPRsIn(M: Model, id: string, exps: Exposure[], prs: Pr[]): num
   return maxBest;
 }
 
+/* The sessions the stall test reads a lift with a strength reading over
+   (r30, r31): its last 6 in the range, widened to cover 21 days when 6 do
+   not, at least 4; none when they still do not reach 21 days. One rule for
+   the test (idxLiftIn) and the coach's words about it (r53, from the audit V
+   asked for: "for 3 weeks" was said of a lift flat for ten). */
+/** The stretch of sessions a stall is read over, or null when there is none. */
+export function stallStretch<X extends { date: string }>(wE: readonly X[]): X[] | null {
+  if (wE.length < 4) return null;
+  const lastE = wE[wE.length - 1].date;
+  let i0 = wE.length - 1;
+  while (i0 > 0 && (wE.length - i0 < 6 || daysBetween(wE[i0].date, lastE) < 21)) i0--;
+  const l = wE.slice(i0);
+  return daysBetween(l[0].date, lastE) >= 21 ? l : null;
+}
+
 /* Step 5: one lift's trend, stall, signals and bests. */
 export function idxLiftIn(
   M: Model,
@@ -929,50 +973,44 @@ export function idxLiftIn(
     exps.filter(x => offSession(x) && sameRR(x.rr, curRR) && x.date >= from);
   const listed = (x: Exposure): boolean => prs.some(p => p.big && p.sid === x.sid && p.exId === id);
   if (!capped && current) {
-    const wE = withE1;
-    if (wE.length >= 4) {
-      const lastE = wE[wE.length - 1].date;
-      let i0 = wE.length - 1;
-      while (i0 > 0 && (wE.length - i0 < 6 || daysBetween(wE[i0].date, lastE) < 21)) i0--;
-      const l = wE.slice(i0);
-      if (daysBetween(l[0].date, lastE) >= 21) {
-        /* More reps at the same working load over no more sets is progress
+    const l = stallStretch(withE1);
+    if (l) {
+      /* More reps at the same working load over no more sets is progress
            too (r31): double progression adds reps to sets 2 to 4 once set 1
            is at the top of the range, and that is not a stall. Since r32
            it has to beat every earlier session at that load in the
            stretch, not only the first: a press alternating 6, 6, 6 and 5,
            5, 4 at one load for 7 weeks "moved" every other week. */
-        const z = l[l.length - 1],
-          a0 = l[0];
-        const same = l.slice(0, -1).filter(x => Math.abs(x.topW - z.topW) < 1e-6 && x.topN >= z.topN);
-        const moved =
-          l.slice(-3).some(x => x.progress) ||
-          offSince(l[l.length - 3].date).some(listed) ||
-          z.topL > a0.topL + 1e-6 ||
-          z.topW > a0.topW + 1e-6 ||
-          (same.length > 0 && z.topReps > Math.max(...same.map(x => x.topReps)));
-        /* Flat is under 0.1% a week (r31): averaging working sets leaves
+      const z = l[l.length - 1],
+        a0 = l[0];
+      const same = l.slice(0, -1).filter(x => Math.abs(x.topW - z.topW) < 1e-6 && x.topN >= z.topN);
+      const moved =
+        l.slice(-3).some(x => x.progress) ||
+        offSince(l[l.length - 3].date).some(listed) ||
+        z.topL > a0.topL + 1e-6 ||
+        z.topW > a0.topW + 1e-6 ||
+        (same.length > 0 && z.topReps > Math.max(...same.map(x => x.topReps)));
+      /* Flat is under 0.1% a week (r31): averaging working sets leaves
            rounding dust, and identical sessions came out at +1e-32 a
            week, so a perfectly flat lift was not called stalled. */
-        /* Since r32 the line is the median of the slopes between every
+      /* Since r32 the line is the median of the slopes between every
            pair of sessions (Theil and Sen), so one good or bad day does
            not set it: a squat at 20, 20, 30, 22, 24, 24 working reps read
            stalled from its one good day, and a press alternating 6s and
            5s read up from its last two. These sessions all have a reading
            (withE1), as the two ! below say. */
-        const sen = (() => {
-          const a: number[] = [];
-          for (let i = 0; i < l.length; i++)
-            for (let j = i + 1; j < l.length; j++) {
-              const dd = daysBetween(l[i].date, l[j].date);
-              if (dd > 0) a.push((l[j].tv! - l[i].tv!) / dd);
-            }
-          return a.length ? median(a) : null;
-        })();
-        // Every session in l has a reading (withE1), as the ! says.
-        const my = l.reduce((a, x) => a + x.tv!, 0) / l.length;
-        stalled = sen != null && my > 0 && ((sen * 7) / my) * 100 < 0.1 && !moved;
-      }
+      const sen = (() => {
+        const a: number[] = [];
+        for (let i = 0; i < l.length; i++)
+          for (let j = i + 1; j < l.length; j++) {
+            const dd = daysBetween(l[i].date, l[j].date);
+            if (dd > 0) a.push((l[j].tv! - l[i].tv!) / dd);
+          }
+        return a.length ? median(a) : null;
+      })();
+      // Every session in l has a reading (withE1), as the ! says.
+      const my = l.reduce((a, x) => a + x.tv!, 0) / l.length;
+      stalled = sen != null && my > 0 && ((sen * 7) / my) * 100 < 0.1 && !moved;
     } else if (withE1.length < 2)
       stalled =
         inRange.length >= 4 &&
