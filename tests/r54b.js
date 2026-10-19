@@ -48,9 +48,19 @@
 //     barbell either way, dumbbells and an assisted lift, while a step past
 //     the old load and a rep more at the same weight still are;
 //   - a lift trained in two rep ranges is stalled only when every range in
-//     use is (312 A);
+//     use is (312 A), and at the top of its range, on Stats and in the coach,
+//     by the plan of the day it was last done on (found after the review);
 //   - a sheet sits in the part of the screen the keyboard leaves, and the
-//     sign-in sheet keeps its fields through a wrong password (311 f).
+//     sign-in sheet keeps its fields through a wrong password (311 f);
+//   - from the independent review of r54: a session's sets are its sets near
+//     its working load and any at its usual load, so a lighter or heavier set
+//     among them, or a load lowered mid-session, is no "fewer sets", while a
+//     back-off set a tenth or more lighter is no usual set; a set beyond the
+//     usual never counts against a session, on any day; and the stall's
+//     weeks are those the stall test read, held sessions left out. Each
+//     fails on the build the review read (2478d73) but the back-off set,
+//     which guards it; on r53, which marked no session short, the lighter,
+//     heavier and extra sets guard what it did, and the rest fail.
 const { open } = require('./h');
 const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log('FAIL', m, x !== undefined ? JSON.stringify(x) : ''); } else console.log('ok  ', m); };
 const wait = ms => new Promise(r => setTimeout(r, ms));
@@ -270,6 +280,72 @@ const FILE = process.argv[2] || 'index.html';
     await ev(() => { const L = window.__ironlog; L.state.draft = null; L.saveNow(); L.render(); });
   }
 
+  // ---- The independent review of r54: a session's sets are its sets near its working load, not only those at it, and a
+  // set beyond its usual never counts against it; the stall's weeks are those of the sessions the stall test read.
+  {
+    const P3 = { sets: 3, repMin: 8, repMax: 12, rir: 1, rest: 120, inc: 2.5 }, P4x = { ...P3, sets: 4 };
+    const tagOf = (exId, sid) => ev(([exId, sid]) => { const q = (window.__ironlog.IDX().byEx[exId] || []).find(e => e.sid === sid); return q ? { light: q.light, tag: q.tag || null, short: q.short || null } : null; }, [exId, sid]);
+    // All four planned sets, the last 2.5 kg lighter: a full session, its target from it (before the fix: "fewer sets", counting the three at 100).
+    await log([ses('ra1', '2026-10-01', 'bench', [8, 12], x(100, [9, 9, 9, 9])), ses('ra2', '2026-10-05', 'bench', [8, 12], x(100, [10, 9, 9, 9])), ses('ra3', '2026-10-09', 'bench', [8, 12], [[100, 10], [100, 9], [100, 9], [97.5, 9]])]);
+    const a = await read('bench', 'ra3'), na = await next('bench', P4x);
+    ok(a && !a.short && !na.basis && /^Last \(Oct 9\): /.test(na.text), 'bench 100 x 10, 9 and 9, then 97.5 x 9: all four planned sets, a full session that sets the next target (it read as fewer sets, counting only the three at 100)', { a, na });
+    // A heavier last set: 100 x 9, 9, then 102.5 x 7 after 100 x 8 x 3 twice, every planned set done.
+    await log([ses('rb1', '2026-10-01', 'bench', [6, 10], x(100, [8, 8, 8])), ses('rb2', '2026-10-05', 'bench', [6, 10], x(100, [8, 8, 8])), ses('rb3', '2026-10-09', 'bench', [6, 10], [[100, 9], [100, 9], [102.5, 7]])]);
+    const b = await read('bench', 'rb3'), nb = await next('bench', { ...P3, repMin: 6, repMax: 10 });
+    ok(b && !b.short && !nb.basis, 'bench 100 x 9, 9, then 102.5 x 7 after 100 x 8 x 3 twice: every planned set, the last tried a step up, a full session (it read as fewer sets)', { b, nb });
+    // A set a tenth or more under the working load is no usual set: 100 x 9, 9 and a back-off set of 80 x 12 after 100 x 8 x 3 twice
+    // is two sets at the usual load, fewer sets, so its target repeats. The review's build did the same (it counted only the sets at the
+    // working load), so this guards it; counting every lighter set read the session as full, its next target 19+ reps over the first 2 sets.
+    await log([ses('rk1', '2026-10-01', 'bench', [6, 10], x(100, [8, 8, 8])), ses('rk2', '2026-10-05', 'bench', [6, 10], x(100, [8, 8, 8])), ses('rk3', '2026-10-09', 'bench', [6, 10], [[100, 9], [100, 9], [80, 12]])]);
+    const k = await read('bench', 'rk3'), nk = await next('bench', { ...P3, repMin: 6, repMax: 10 });
+    ok(k && k.short === 'sets' && nk.basis === '2026-10-05' && /^Last \(Oct 9, fewer sets\): /.test(nk.text), 'bench 100 x 9, 9 and a back-off set of 80 x 12 after 100 x 8 x 3 twice: two sets at the usual load, so fewer sets and the target repeats from Oct 5', { k, nk });
+    // The load lowered after a bad first set: all three sets done, a bad day, "below usual", its target repeating.
+    await log([ses('rc1', '2026-10-01', 'bench', [8, 12], x(100, [9, 9, 9])), ses('rc2', '2026-10-05', 'bench', [8, 12], x(100, [10, 9, 9])), ses('rc3', '2026-10-09', 'bench', [8, 12], [[100, 6, 0], [90, 9], [90, 9]])]);
+    const c = await read('bench', 'rc3'), nc = await next('bench', P3);
+    ok(c && c.short === 'reading' && nc.basis === '2026-10-05' && /^Last \(Oct 9, below usual\): /.test(nc.text), 'bench 100 x 6, then 90 x 9 and 9 after 100 x 9 x 3: every set done, a bad day, so below usual and its target repeats (it read as fewer sets)', { c, nc });
+    // The same through the page, the load lowered further than a tenth by the app itself (the review's reproduction): the starter's
+    // bench, planned at 4 sets of 6 to 10, 100 x 7 x 4 twice; set 1 today stops at 3, so the app lowers the rest to 82.5 (r34), done
+    // for 7 each, then Finish. The set at 100 is a set at the usual load, so all four planned sets were done: below usual, not fewer sets.
+    {
+      const plan = await ev(() => { const it = window.__ironlog.activeRoutine().days[0].items.find(i => i.exId === 'bench'); return { sets: +it.sets, repMin: +it.repMin, repMax: +it.repMax }; });
+      const rr = [plan.repMin, plan.repMax];
+      await log([ses('rj1', '2026-10-01', 'bench', rr, x(100, Array(plan.sets).fill(plan.repMin + 1))), ses('rj2', '2026-10-08', 'bench', rr, x(100, Array(plan.sets).fill(plan.repMin + 1)))]);
+      await ev(() => { const L = window.__ironlog; L.ACT.startSession({ dataset: { day: '0', light: '0' } }); const d = L.state.draft; d.ex = d.ex.filter(b => b.exId === 'bench'); L.saveNow(); L.render(); }); await wait(200);
+      const typ = async (sel, v) => { await page.fill(sel, String(v)); await page.dispatchEvent(sel, 'input'); await page.dispatchEvent(sel, 'change'); };
+      const tick = async (si, w, r) => {
+        if (w != null) await typ(`.sg input[data-f="w"][data-b="0"][data-s="${si}"]`, w);
+        await typ(`.sg input[data-f="r"][data-b="0"][data-s="${si}"]`, r);
+        if (!(await ev(si => window.__ironlog.state.draft.ex[0].sets[si].done, si))) await page.click(`[data-act="sDone"][data-b="0"][data-s="${si}"]`);
+        await wait(150);
+      };
+      await tick(0, 100, plan.repMin - 3);
+      const adj = await ev(() => { const b = window.__ironlog.state.draft.ex[0]; return b.adj ? b.adj.w : null; });
+      for (let si = 1; si < plan.sets; si++) await tick(si, null, plan.repMin + 1);
+      await ev(() => window.__ironlog.ACT.finish()); await wait(300);
+      await ev(() => { const L = window.__ironlog; L.ui.modal = null; L.render(); });
+      const j = await ev(() => { const L = window.__ironlog; const xs = L.IDX().byEx.bench; const q = xs[xs.length - 1]; const g = L.suggest('bench', L.planFor('bench'), {}); return { saved: L.state.sessions.length, short: q.short || null, text: g.text, target: g.target, basis: g.basis || null }; });
+      ok(plan.sets === 4 && adj === 82.5 && j.saved === 3 && j.short === 'reading' && j.basis === '2026-10-08' && /^Last \(Oct 15, below usual\): 100×3, 82\.5×7, 82\.5×7, 82\.5×7\. /.test(j.text) && /^29\+ reps over 4 sets at 100 kg$/.test(j.target || ''), 'the starter\'s bench, set 1 stopped at 3 and the rest at the 82.5 the app lowered it to, through the page: all four planned sets, a bad day, so below usual and the target repeats (29+ reps over 4 sets at 100 kg; it read as fewer sets)', { plan, adj, j });
+    }
+    // An extra set of 5 after 11, 10 and 10, on a plan of 3 after 50 x 10 x 3 twice: the planned sets beat the target, so it moves on.
+    await log([ses('rd1', '2026-10-01', 'bench', [8, 12], x(50, [10, 10, 10])), ses('rd2', '2026-10-05', 'bench', [8, 12], x(50, [10, 10, 10])), ses('rd3', '2026-10-09', 'bench', [8, 12], [[50, 11], [50, 10], [50, 10], [50, 5, 0]])]);
+    const d = await read('bench', 'rd3'), nd = await next('bench', P3);
+    ok(d && !d.short && !nd.basis && /^32\+ reps over 3 sets at 50 kg$/.test(nd.target || ''), 'bench 50 x 11, 10 and 10 with an extra set of 5, after 50 x 10 x 3 twice: the three planned sets beat the target, so the next is 32+ (the extra set held it back as below usual)', { d, nd });
+    // A lifter who usually does 3 of 4 planned sets does all 4, the fourth the weakest: not under the usual by it.
+    await log([ses('re1', '2026-10-01', 'bench', [8, 12], x(50, [10, 10, 10])), ses('re2', '2026-10-05', 'bench', [8, 12], x(50, [10, 10, 10])), ses('re3', '2026-10-09', 'bench', [8, 12], [[50, 11], [50, 10], [50, 10], [50, 5, 0]])]);
+    const e = await read('bench', 're3'), ne = await next('bench', P4x);
+    ok(e && !e.short && !ne.basis, 'the same on a plan of 4 the lifter usually does 3 of: doing all four is not a session under the usual', { e, ne });
+    // A Lighter day at the usual 100 x 8 x 3 with a fourth set of 3: done in full, so counted in full (before: read lighter, from r53).
+    await log([ses('rf1', '2026-10-01', 'bench', [6, 10], x(100, [8, 8, 8])), ses('rf2', '2026-10-05', 'bench', [6, 10], x(100, [8, 8, 8])), ses('rf3', '2026-10-09', 'bench', [6, 10], [[100, 8], [100, 8], [100, 8], [100, 3]], { light: true, dayName: 'Session (lighter)' })]);
+    const f = await tagOf('bench', 'rf3');
+    ok(f && f.light === false && f.tag === 'light' && !f.short, 'a Lighter day at the usual 100 x 8 x 3 and a fourth set of 3: done in full, so a full session for the bench (the extra set read it lighter, on r53 too)', f);
+    // Flat at 100 x 8 x 3 for six weeks, then held for a chest injury twice a week for three weeks, the injury since cleared: the
+    // stall's weeks are the stretch the stall test read (five, ending before the injury), not the last weeks, which were held.
+    const pre = ['2026-08-03', '2026-08-10', '2026-08-17', '2026-08-24', '2026-08-31', '2026-09-07'], held = ['2026-09-21', '2026-09-24', '2026-09-28', '2026-10-01', '2026-10-05', '2026-10-08'];
+    await log([...pre.map((dd, i) => ses('rg' + i, dd, 'bench', [6, 10], x(100, [8, 8, 8], 2))), ...held.map((dd, i) => ses('rh' + i, dd, 'bench', [6, 10], x(100, [8, 8, 8], 2), { ex: { inj: 'chest' } }))]);
+    const g = await ev(() => { const L = window.__ironlog; return { stalled: L.IDX().exStats.bench.stalled, weeks: L.stallWeeks ? L.stallWeeks('bench') : null, head: L.exHeadline('bench').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ') }; });
+    ok(g.stalled === true && g.weeks === 5 && /Stalled over 5 weeks\./.test(g.head) && !/over the last/.test(g.head), 'bench flat for five weeks, then held for an injury since cleared: stalled, over the 5 weeks the test read, not "the last" weeks (it said the last 4, counting the held sessions)', g);
+  }
+
   // ---- A blank session in a week marked as a deload is a deload (PENDING 311 c: r53 started it untagged, at full sets).
   {
     await log(['2026-09-24', '2026-10-01', '2026-10-08'].map((d, i) => ses('fd' + i, d, 'bench', [6, 10], x(100, [8, 8, 8]))));
@@ -366,13 +442,23 @@ const FILE = process.argv[2] || 'index.html';
     await ev(() => { const L = window.__ironlog; const R = L.activeRoutine(); const B = R.days.find(d => d.name === 'Upper B'); if (!B.items.some(i => i.exId === 'bench')) B.items.push({ uid: 'lb1', exId: 'bench', sets: 3, repMin: 12, repMax: 15, rir: 1, rest: 90, inc: 2.5, ss: null }); L.saveNow(); });
     const heavyDays = ['2026-09-03', '2026-09-10', '2026-09-17', '2026-09-24', '2026-10-01', '2026-10-08', '2026-10-15'];
     const lightDays = ['2026-09-13', '2026-09-20', '2026-09-27', '2026-10-04', '2026-10-11'];
-    const two = (lightW) => [...heavyDays.map((d, i) => ses('sh' + i, d, 'bench', [6, 10], x(100, [8, 8, 8]))), ...lightDays.map((d, i) => ses('sl' + i, d, 'bench', [12, 15], x(lightW(i), [12, 12, 12])))].sort((a, b) => a.date < b.date ? -1 : 1);
+    const two = (lightW, hr = 8) => [...heavyDays.map((d, i) => ses('sh' + i, d, 'bench', [6, 10], x(100, [hr, hr, hr]))), ...lightDays.map((d, i) => ses('sl' + i, d, 'bench', [12, 15], x(lightW(i), [12, 12, 12])))].sort((a, b) => a.date < b.date ? -1 : 1);
     await log(two(i => 60 + 2.5 * i));
     const rising = await ev(() => { const L = window.__ironlog; return { stalled: L.IDX().exStats.bench.stalled, ids: L.stalledIds() }; });
     ok(rising.stalled === false && !rising.ids.includes('bench'), 'bench flat at 100 x 8 x 3 on its heavy day for six weeks, its light day rising 60 to 70 kg: not stalled, though its newest session is a heavy day (r53 read the newest range alone: stalled)', rising);
     await log(two(() => 60));
     const flat = await ev(() => { const L = window.__ironlog; return { stalled: L.IDX().exStats.bench.stalled, weeks: L.stallWeeks ? L.stallWeeks('bench') : 'none on this build' }; });
     ok(flat.stalled === true && flat.weeks === 4, 'both days flat, the heavy day\'s stretch 5 weeks and the light day\'s 4: stalled, for as long as the shorter (4 weeks)', flat);
+    // Whether a stalled lift is at the top of its range, on Stats and in the coach, is read against the range its last session was
+    // done at (found after r54's review: both read the plan's, the heavy day's 6 to 10, so the light day's 60 x 12 x 3, the bottom
+    // of 12 to 15, read as the top of the range and "due a step up"). Every minimum at 0 here, so the coach reaches its stall line.
+    const reads = () => ev(() => { const L = window.__ironlog; const b = L.state.settings.bands, kept = JSON.stringify(b); for (const m in b) b[m] = [0, b[m][1]]; L.invalidate(); const out = { stalled: L.IDX().exStats.bench.stalled, head: L.exHeadline('bench').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' '), coach: L.coach().text }; L.state.settings.bands = JSON.parse(kept); L.invalidate(); return out; });
+    await log(two(() => 60).filter(q => q.id !== 'sh6'));
+    const lt = await reads();
+    ok(lt.stalled === true && /Stalled over the last 4 weeks\. Try another rep range or a variation\./.test(lt.head) && /has stalled\. Try another rep range or a close variation/.test(lt.coach) && !/top of (its|the) range/.test(lt.head + lt.coach), 'both days flat, last done on the light day at 60 x 12 x 3, the bottom of its 12 to 15: Stats and the coach say stalled, try another range, not at the top of the range (it read the heavy day\'s 6 to 10)', lt);
+    await log(two(() => 60, 10));
+    const hv = await reads();
+    ok(hv.stalled === true && /Stalled at the top of the range: due a step up\./.test(hv.head) && /is at the top of its range at 100 kg and has stalled over the last 4 weeks: it is due a step up/.test(hv.coach), 'both days flat, last done on the heavy day at 100 x 10 x 3, the top of its 6 to 10: Stats and the coach say at the top of the range, due a step up, as before this fix', hv);
     await ev(() => { const L = window.__ironlog; const R = L.activeRoutine(); for (const d of R.days) d.items = d.items.filter(i => i.uid !== 'lb1'); L.saveNow(); });
   }
 

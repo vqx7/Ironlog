@@ -90,17 +90,26 @@ const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log
     await ev(() => window.__ironlog.ACT.pickSession()); await page.waitForTimeout(80);
     const added = await ev(() => { const L = window.__ironlog; const inS = new Set(L.state.draft.ex.map(b => b.exId)); const el = [...document.querySelectorAll('#pickList .pick[data-ex]')].find(p => !inS.has(p.dataset.ex) && !(L.IDX().byEx[p.dataset.ex] || []).length); el.click(); return el.dataset.ex; });
     await page.waitForTimeout(150);
-    const ai = await ev((id) => window.__ironlog.state.draft.ex.findIndex(b => b.exId === id), added);
-    await type(W(ai, 0), '40'); await type(R(ai, 0), '12');
-    if (mode === 'grey') await page.click(`[data-act="sDone"][data-b="${ai}"][data-s="0"]`); else await blur();
+    const at = () => ev((id) => window.__ironlog.state.draft.ex.findIndex(b => b.exId === id), added);
+    const a0 = await at();
+    await type(W(a0, 0), '40'); await type(R(a0, 0), '12');
+    if (mode === 'grey') await page.click(`[data-act="sDone"][data-b="${a0}"][data-s="0"]`); else await blur();
     await page.waitForTimeout(120);
+    // Its first tick, below exercises not yet touched, moves it up 0.9 s later (the auto-reorder, r45), as a lifter's next
+    // tap then finds it: wait for the move and find it again (on a busy machine the move landed mid-step, and the steps
+    // below typed into the exercise that had taken its place).
+    await page.waitForFunction(() => { const L = window.__ironlog; const d = L.state.draft; return !!d && d.ex.every(b => L.orderAt(b) < 0); }, null, { timeout: 10000 });
+    const ai = await at();
     // A second set (r30), as before r54, when an exercise stopped with under half its sets done was saved as trimmed.
     await type(W(ai, 1), '40'); await type(R(ai, 1), '11');
     if (mode === 'grey') await page.click(`[data-act="sDone"][data-b="${ai}"][data-s="1"]`); else await blur();
     await page.waitForTimeout(120);
     ok(await ev((i) => { const b = window.__ironlog.state.draft.ex[i]; return b.sets[0].done && b.sets[0].r === 12 && !b.cut; }, ai), T + 'an exercise added after the trim is logged and not marked trimmed');
 
-    // 9. Reload mid-session: everything as it was.
+    // 9. Reload mid-session: everything as it was. No move of the auto-reorder still to come, so the snapshot is the
+    // session as it stays (before 8b waited for its move, on a busy machine the move landed between the snapshot and the
+    // reload, and the orders differed).
+    await page.waitForFunction(() => { const L = window.__ironlog; const d = L.state.draft; return !!d && d.ex.every(b => L.orderAt(b) < 0); }, null, { timeout: 10000 });
     const pre = sig(await D());
     await page.reload(); await page.waitForFunction(() => window.__libs && window.__libs.chart); await page.waitForTimeout(200);
     const post = sig(await D());

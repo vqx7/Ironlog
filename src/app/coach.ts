@@ -16,7 +16,7 @@ import {
   isRestWeekIn,
   sortedSessionsIn
 } from './model';
-import { IDXIn, stallWeeksIn } from './analytics';
+import { IDXIn, stallWordsIn } from './analytics';
 import { FIRST_WEEK_WHY, ON_PLAN_TIP, actualAvg4In, avgWaitIn, muscleStatusIn, recentLighterIn } from './weeks';
 import { GROW_PCT, atLoad, isWork, lighter } from './formulas';
 import { MK, ML, isCompound, noE1 } from './library';
@@ -102,6 +102,32 @@ export function fatigueStallsIn(M: Model, ids: readonly string[]): string[] {
 /** The stall rule, as a lifter reads it. */
 export const STALL_WHY =
   'Flat or down over its last 6 sessions (or 3 weeks) in each rep range you train it in, leaving out ones done lighter; with no PR in the last 3 of them, nor a set stronger than any before it in a session left out since the third-last, no heavier load, and no more reps at the same load.';
+
+/** Whether a lift's last session not done lighter had every set at its
+    working load at the top of its range: the range the routine plans for the
+    lift on the day that session was done on, found by the session's day, else
+    by the range the session was done at, else the lift's plan (r32: a lift
+    there is due a step up, not a new range). The plan as it is now, so a
+    range changed since reads as before. One test for the coach and the lift's
+    headline on Stats (r54: both read the lift's plan with no day, the first
+    day's on a lift on two days, so 60 x 12 on a light day of 12 to 15, its
+    bottom, read as the top of the heavy day's 6 to 10, "due a step up"). */
+export function atRangeTopIn(M: Model, id: string): boolean {
+  const st = IDXIn(M).exStats[id];
+  if (!st || !st.last) return false;
+  const x = st.last,
+    rr = x.rr;
+  const R = activeRoutineIn(M);
+  const sess = M.s.sessions.find(q => q.id === x.sid);
+  const day =
+    R.days.find(d => !!sess && d.id === sess.dayId && d.items.some(it => it.exId === id)) ||
+    (rr
+      ? R.days.find(d => d.items.some(it => it.exId === id && +it.repMin === rr[0] && +it.repMax === rr[1]))
+      : undefined);
+  const top = +planForIn(M, id, R, day ? day.id : null).repMax;
+  const lw = atLoad(x.pts, x.topW);
+  return lw.length > 0 && lw.every(q => q.r >= top);
+}
 
 /* The single most useful thing to change this week, in priority order. Each
    branch states the number it is based on, so the advice can be checked. */
@@ -229,15 +255,12 @@ export function coachIn(M: Model): CoachLine {
   if (stalled.length) {
     const id = stalled[0];
     const st = I.exStats[id];
-    const p = planForIn(M, id);
-    const lw = st && st.last ? atLoad(st.last.pts, st.last.topW) : [];
     /* How long it has stalled, the span the stall test read (r54, from the
        audit V asked for: "for 3 weeks" was said of a lift flat for ten, and
        of its whole stretch at the top of the range, which nothing checks). */
-    const w = stallWeeksIn(M, id);
-    const flat = w != null ? `over the last ${w} weeks` : 'over its last 3 sessions';
-    // A set at the top of the range means st was there to read it from, as the ! says.
-    if (lw.length && lw.every(q => q.r >= +p.repMax))
+    const flat = stallWordsIn(M, id);
+    // A last session at the top of its range means st was there to read it from, as the ! says.
+    if (atRangeTopIn(M, id))
       return {
         tone: 'yellow',
         text: `${exNameIn(M, id)} is at the top of its range at ${loadLabelIn(M, EXIn(M, id), st!.last.topW)}${EXIn(M, id).bw ? '' : ' ' + UIn(M)} and has stalled ${flat}: it is due a step up, not a new range. The session's target says how.`,

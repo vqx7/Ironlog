@@ -2289,8 +2289,8 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     return df <= 30 ? T90[df] : 1.2816 + 0.8521 / df;
   }
   function setSecs(ex, p) {
-    const mid = ((+p.repMin || 0) + (+p.repMax || 0)) / 2;
-    let t = ex.timed ? mid + 20 : 40 + 3 * Math.max(0, mid - 12);
+    const mid2 = ((+p.repMin || 0) + (+p.repMax || 0)) / 2;
+    let t = ex.timed ? mid2 + 20 : 40 + 3 * Math.max(0, mid2 - 12);
     if (ex.perSide) t = t * 2 + 15;
     return t;
   }
@@ -4045,19 +4045,48 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     return wkAuto;
   }
   var USUAL_SHARE = 0.97;
+  var mid = (v) => [...v].sort((a, b) => a - b)[Math.floor(v.length / 2)];
+  function setsAt(q, usualW) {
+    let tw = -Infinity;
+    for (const p of q.pts) if (Math.abs(p.w - q.topW) < 1e-6) tw = Math.max(tw, p.load);
+    if (!(tw > 0)) return q.pts.length;
+    let n = 0;
+    for (const p of q.pts)
+      if (p.load >= tw * LIGHTER_LOAD - 1e-9 && (p.load * LIGHTER_LOAD <= tw + 1e-9 || p.w <= usualW + 1e-6)) n++;
+    return n;
+  }
+  var usualSets = (ref) => {
+    const w = mid(ref.map((q) => q.topW));
+    return mid(ref.map((q) => setsAt(q, w)));
+  };
+  function readingOf(q, k) {
+    if (q.tRaw == null) return null;
+    let sum = 0, n = 0;
+    for (const p of atLoad(q.pts, q.topW).slice(0, k)) {
+      const t = trendE(p.load, p.r, 0);
+      if (t != null) {
+        sum += t;
+        n++;
+      }
+    }
+    return n ? sum / n : q.tRaw;
+  }
+  function repsOf(q, k) {
+    const at = atLoad(q.pts, q.topW).slice(0, k);
+    return at.length ? at.reduce((a, p) => a + p.r, 0) / at.length : q.topReps / q.topN;
+  }
   function atUsualLoad(x, ref) {
-    const mW = Math.max(...ref.map((q) => q.topW)), mT = Math.max(...ref.map((q) => q.tRaw == null ? -Infinity : q.tRaw));
-    return !(x.topW < mW - 1e-6 || x.tRaw != null && isFinite(mT) && x.tRaw < mT * USUAL_SHARE);
+    const k = usualSets(ref);
+    const mW = Math.max(...ref.map((q) => q.topW)), mT = Math.max(...ref.map((q) => readingOf(q, k) ?? -Infinity)), t = readingOf(x, k);
+    return !(x.topW < mW - 1e-6 || t != null && isFinite(mT) && t < mT * USUAL_SHARE);
   }
   function atUsualWork(x, ref) {
     if (!ref.length) return false;
     if (x.tRaw != null && ref.some((q) => q.tRaw != null)) return atUsualLoad(x, ref);
-    const reps = (q) => q.topReps / q.topN;
-    return ref.every((q) => x.topW >= q.topW - 1e-6 && reps(x) >= reps(q) * USUAL_SHARE);
+    const k = usualSets(ref);
+    return ref.every((q) => x.topW >= q.topW - 1e-6 && repsOf(x, k) >= repsOf(q, k) * USUAL_SHARE);
   }
   function idxShort(byEx, planSets) {
-    const mid = (v) => [...v].sort((a, b) => a - b)[Math.floor(v.length / 2)];
-    const per = (q) => q.topReps / q.topN;
     for (const id of Object.keys(byEx)) {
       const normal = [];
       let last = null;
@@ -4074,17 +4103,21 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     function shortOf(x, before, cap) {
       const usual = (v, own) => mid(x.tag ? v : [...v, own]);
       const loads = before.map((q) => q.topW);
-      const was = Math.max(...loads);
+      const was = Math.max(...loads), usualW = usual(loads, x.topW);
       const up = x.topW > was + 1e-6;
-      const n = up ? x.pts.filter((p) => p.w >= was - 1e-6).length : x.topN;
-      const topNs = before.map((q) => q.topN);
-      const sets = usual(topNs, n);
-      if (n < (cap != null && cap > 0 ? Math.min(sets, cap) : sets)) return "sets";
+      const n = up ? Math.max(setsAt(x, usualW), x.pts.filter((p) => p.w >= was - 1e-6).length) : setsAt(x, usualW);
+      const sets = usual(
+        before.map((q) => setsAt(q, usualW)),
+        n
+      );
+      const want = cap != null && cap > 0 ? Math.min(sets, cap) : sets;
+      if (n < want) return "sets";
       if (up) return void 0;
-      const tr = (q) => q.tRaw ?? 0;
+      const tr = (q) => readingOf(q, want) ?? 0;
       if (x.tRaw != null && before.every((q) => q.tRaw != null))
         return tr(x) < usual(before.map(tr), tr(x)) * USUAL_SHARE - 1e-9 ? "reading" : void 0;
-      const lighterW = x.topW < usual(loads, x.topW) - 1e-6;
+      const per = (q) => repsOf(q, want);
+      const lighterW = x.topW < usualW - 1e-6;
       return lighterW || per(x) < usual(before.map(per), per(x)) * USUAL_SHARE - 1e-9 ? "reading" : void 0;
     }
   }
@@ -4222,15 +4255,29 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     const l = wE.slice(i0);
     return daysBetween(l[0].date, lastE) >= 21 ? l : null;
   }
-  function stallWeeksIn(M, id) {
+  var stallReads = (inR) => inR.filter((x) => !x.held && x.tv != null);
+  function stallSpans(M, id) {
     const I = IDXIn(M);
-    let weeks = null;
+    const out = [];
     for (const q of stallScopesIn(M, id, trendScope(I.byEx[id] || [], M.today()))) {
-      const l = stallStretch(q.inR.filter((x) => x.tv != null));
-      const w = l ? Math.round(daysBetween(l[0].date, l[l.length - 1].date) / 7) : null;
-      if (w != null) weeks = weeks == null ? w : Math.min(weeks, w);
+      const l = stallStretch(stallReads(q.inR));
+      if (l)
+        out.push({
+          weeks: Math.round(daysBetween(l[0].date, l[l.length - 1].date) / 7),
+          last: l[l.length - 1] === q.inR[q.inR.length - 1]
+        });
     }
-    return weeks;
+    return out;
+  }
+  function stallWeeksIn(M, id) {
+    const s = stallSpans(M, id);
+    return s.length ? Math.min(...s.map((x) => x.weeks)) : null;
+  }
+  function stallWordsIn(M, id) {
+    const s = stallSpans(M, id);
+    if (!s.length) return "over its last 3 sessions";
+    const q = s.reduce((a, b) => b.weeks < a.weeks ? b : a);
+    return q.last ? `over the last ${q.weeks} weeks` : `over ${q.weeks} weeks`;
   }
   function stallScopesIn(M, id, sc) {
     const out = [{ rr: sc.curRR, inR: sc.inRange }];
@@ -4282,7 +4329,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     const listed = (x) => prs.some((p) => p.big && p.sid === x.sid && p.exId === id);
     const stalledIn = (rr, all) => {
       const inR = all.filter((x) => !x.held);
-      const withE1 = inR.filter((x) => x.tv != null);
+      const withE1 = stallReads(all);
       const offSince = (from) => exps.filter((x) => (lighter(x) || x.held) && sameRR(x.rr, rr) && x.date >= from);
       const l = stallStretch(withE1);
       if (l) {
@@ -4641,7 +4688,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     return REGIONS.map(([label, all]) => {
       const ms = all.filter((m) => !TRACK_ONLY.has(m));
       const got = ms.reduce((a, m) => a + (sets[m] || 0), 0);
-      const mid = ms.reduce((a, m) => a + (bands[m][0] + bands[m][1]) / 2, 0);
+      const mid2 = ms.reduce((a, m) => a + (bands[m][0] + bands[m][1]) / 2, 0);
       const lo = ms.reduce((a, m) => a + bands[m][0], 0);
       const hi = ms.reduce((a, m) => a + bands[m][1], 0);
       const short = belowMin(got, lo);
@@ -4650,7 +4697,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
         label,
         ms,
         got,
-        mid,
+        mid: mid2,
         lo,
         hi,
         pct: lo > 0 ? got / lo * 100 : 0,
@@ -4879,6 +4926,17 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     });
   }
   var STALL_WHY = "Flat or down over its last 6 sessions (or 3 weeks) in each rep range you train it in, leaving out ones done lighter; with no PR in the last 3 of them, nor a set stronger than any before it in a session left out since the third-last, no heavier load, and no more reps at the same load.";
+  function atRangeTopIn(M, id) {
+    const st = IDXIn(M).exStats[id];
+    if (!st || !st.last) return false;
+    const x = st.last, rr = x.rr;
+    const R = activeRoutineIn(M);
+    const sess = M.s.sessions.find((q) => q.id === x.sid);
+    const day = R.days.find((d) => !!sess && d.id === sess.dayId && d.items.some((it) => it.exId === id)) || (rr ? R.days.find((d) => d.items.some((it) => it.exId === id && +it.repMin === rr[0] && +it.repMax === rr[1])) : void 0);
+    const top = +planForIn(M, id, R, day ? day.id : null).repMax;
+    const lw = atLoad(x.pts, x.topW);
+    return lw.length > 0 && lw.every((q) => q.r >= top);
+  }
   function coachIn(M) {
     const I = IDXIn(M);
     const R = activeRoutineIn(M);
@@ -4968,11 +5026,8 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     if (stalled.length) {
       const id = stalled[0];
       const st = I.exStats[id];
-      const p = planForIn(M, id);
-      const lw = st && st.last ? atLoad(st.last.pts, st.last.topW) : [];
-      const w = stallWeeksIn(M, id);
-      const flat = w != null ? `over the last ${w} weeks` : "over its last 3 sessions";
-      if (lw.length && lw.every((q) => q.r >= +p.repMax))
+      const flat = stallWordsIn(M, id);
+      if (atRangeTopIn(M, id))
         return {
           tone: "yellow",
           text: `${exNameIn(M, id)} is at the top of its range at ${loadLabelIn(M, EXIn(M, id), st.last.topW)}${EXIn(M, id).bw ? "" : " " + UIn(M)} and has stalled ${flat}: it is due a step up, not a new range. The session's target says how.`,
@@ -5649,9 +5704,9 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       }
     }
     if (est == null) return null;
-    const mid = Math.round((+plan.repMin + +plan.repMax) / 2);
+    const mid2 = Math.round((+plan.repMin + +plan.repMax) / 2);
     const q = Math.min((+plan.rir || 0) + 1, E1_MAX_RIR);
-    const want = e1inv(est * (isCompound(ex) ? 0.8 : 0.9), mid + q);
+    const want = e1inv(est * (isCompound(ex) ? 0.8 : 0.9), mid2 + q);
     const L = gymRackIn(M, ex, plan);
     let w;
     if (L) {
@@ -5969,6 +6024,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
   var rirUsual = live(rirUsualIn);
   var sessionWords = live(sessionWordsIn);
   var stallWeeks = live(stallWeeksIn);
+  var stallWords = live(stallWordsIn);
   var statsUpTo = live(statsUpToIn);
   var tonnage = live(tonnageIn);
   var weekSessions = live(weekSessionsIn);
@@ -5990,6 +6046,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
   var weekStats = live(weekStatsIn);
   var weekStreak = live(weekStreakIn);
   var weeksAvg = live(weeksAvgIn);
+  var atRangeTop = live(atRangeTopIn);
   var coach = live(coachIn);
   var dropOnlyLift = live(dropOnlyLiftIn);
   var fatigueStalls = live(fatigueStallsIn);
@@ -6145,7 +6202,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
    <p><b>Assisted machines</b>: less help is progress. <b>Timed holds</b>: add seconds, then load. <b>Bodyweight lifts never done with added load</b> (push-ups, pull-ups, a hanging leg raise): more reps, then harder reps or a little added load when you type it; the app never adds load you did not use.</p>
    <p><b>Back after more than 4 weeks off a lift</b>: about 90% of its last working load, with 2 or more reps in reserve (a convention: strength holds for about 4 weeks without training and falls faster after, Bosquet 2013). That first session back is the lift's new start. The next target picks up from it; its trend and stall test start again from it too, never drawn across the break. A Lighter day or a deload as the first session back sets no target, so the session after it is still back.</p>
    <p><b>Your gym</b> (Settings): the dumbbells, kettlebells, plates, and stack steps you have. Suggestions stay on them, and a weight you type for a dumbbell counts as the nearest one.</p>
-   <p><b>One rule for every session.</b> A session sets the lift's next target only at its usual load and reps for its usual sets. Its usual is the middle of that session and the two before it in the range (not counting ones done lighter); its usual sets are never more than the plan asks. With fewer sets, or reps clearly under the usual at no heavier load (more than 3% by the strength reading, a convention), the target repeats, and the session still counts for its trend and PRs; two such sessions in a row are the new usual, and the app follows. A heavier load than the two before is a step up, never short of the usual by its reps. A session done lighter sets no target and no trend. The same holds on a lighter day or in a deload: a lift done there at its usual load and reps is read as on any day, and its own sets were cut by the day, so they never become its usual.</p>
+   <p><b>One rule for every session.</b> A session sets the lift's next target only at its usual load and reps for its usual sets. Its usual is the middle of that session and the two before it in the range (not counting ones done lighter); its usual sets are never more than the plan asks. A set counts toward them when its load is within a tenth of the session's working load, or at the usual load (a convention): a last set tried a step up, or sets lowered after a hard first one, still count, and a back-off set a tenth or more lighter does not. Sets past the usual count are left out when a session is compared with its usual. With fewer sets, or reps clearly under the usual at no heavier load (more than 3% by the strength reading, a convention), the target repeats, and the session still counts for its trend and PRs; two such sessions in a row are the new usual, and the app follows. A heavier load than the two before is a step up, never short of the usual by its reps. A session done lighter sets no target and no trend. The same holds on a lighter day or in a deload: a lift done there at its usual load and reps is read as on any day, and its own sets were cut by the day, so they never become its usual.</p>
    <p><b>Last</b> is the most recent session of the lift in that day's rep range (the most recent of all when the range is new), labelled fewer sets, below usual, lighter, or deload when it was. When it did not set the target, the next target comes from the last full session, and the i beside the target names its date; grey reps come from that session too after one below usual or done lighter.</p>
    <p><b>Deload week</b>: half the sets (rounded up), about 90% of the load the normal day would ask for (or of last time's, if lower), in whole steps down (never under the empty bar on a full-bar lift), the bottom of the range, 3 or more reps in reserve. A week with ${LIGHTER_WEEK_WORDS}, stays out of the weekly volume average (a lift done there at its usual load with fewer sets than usual counts as done lighter for this, the sets cut on purpose); each lift done lighter stays out of its trend. A <b>lighter day</b> is the same for one day.</p>
    <p><b>Lighter sessions nobody marked</b> (an imported deload, say) are read from the numbers: a lift's heaviest load at least 10% under its previous three sessions and its strength reading at least 7% under. They are kept in history and, like a deload, set no target or trend. A session with half or more of its lifts done lighter, marked or read, is a lighter session, and a week with more than half its sessions lighter is left out of the weekly averages. Lighter sessions in a row for 2 weeks or more are a new level, not a deload, and count again. A convention.</p>
@@ -9517,13 +9574,9 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       if (st.slope != null) more.push(st.pLo != null && st.pHi - st.pLo >= 0.1 ? `About ${sg(st.slope)} a week (likely ${sg(st.pLo)} to ${sg(st.pHi)}), from ${ns}.` : `About ${sg(st.slope)} a week, from ${ns}.`);
       if (!st.useAdj) more.push("Read from loads and reps; RIR is left out of the trend until it is rated on most sets.");
       if (st.pct != null && st.slope != null && st.pct > 0 !== st.slope > 0 && Math.abs(st.pct) > 0.5 && Math.abs(st.slope) > 0.1) more.push(`The change (${sg(st.pct)}) compares ${st.wN >= 4 ? "the better of your first two sessions with the better of your last two" : "your first and last sessions"}; the weekly rate fits a line through all of them. They point different ways when one unusual session sits at an end, so the rate is the better guide.`);
-      const atTopR = (() => {
-        const lw = st.last ? atLoad(st.last.pts, st.last.topW) : [];
-        return lw.length && lw.every((q) => q.r >= +planFor(exId).repMax);
-      })();
+      const atTopR = atRangeTop(exId);
       if (st.stalled) {
-        const sw = stallWeeks(exId);
-        parts.push(atTopR ? "Stalled at the top of the range: due a step up. The session's target says how." : `Stalled ${sw != null ? `over the last ${sw} weeks` : "over its last 3 sessions"}. Try another rep range or a variation.`);
+        parts.push(atTopR ? "Stalled at the top of the range: due a step up. The session's target says how." : `Stalled ${stallWords(exId)}. Try another rep range or a variation.`);
         more.push(STALL_WHY);
       } else if (st.pct == null) parts.push("A trend needs 3 sessions spread over 2 weeks.");
       else if (st.moving) parts.push(`${liftChange(exId, "Up", ow)}.`);
@@ -14072,8 +14125,8 @@ ${extraKpis()}</div>`;
           }
           acct.user = null;
           cloudStop();
-          const mid = !remove && !!state.draft;
-          if (!mid) try {
+          const mid2 = !remove && !!state.draft;
+          if (!mid2) try {
             localStorage.setItem(OB_OUT, "1");
             localStorage.removeItem(OB_ACCT);
           } catch (e) {
@@ -14084,7 +14137,7 @@ ${extraKpis()}</div>`;
             saveNow();
             invalidate();
           }
-          if (!mid) {
+          if (!mid2) {
             ui.tab = "today";
             window.scrollTo(0, 0);
           }
@@ -18234,7 +18287,7 @@ ${JSON.stringify(fb.context, null, 1)}`;
       return state;
     }, set state(v) {
       setState(v);
-    }, fbContext, FB_CTX_MAX, logCut, logBuf, log, dateIndex, sessionsOn, bestLine, whyTarget, recent4w, weekSessions, fmtDate, fmtDateLong, fbShrink, orderAt, orderRun, dropOnlyLift, profHeavy, appBand, fitRecordOld, prof, profClean, profRule, profPlan, defPlan, defBand, profMoveBands, profApplyList, strengthPick, PROF_DAYS, FOCUS_MAX, estInLoad, keepExtra, EXTRA_MAX, draftPlanMin, pace, paceRatios, sessModelMin, PACE_N, PACE_DAYS, PACE_MIN, plainTemplate, trashTidy, ENV, KEY, COMMON, COMMON_TIP, isCommon, bwEvery, isRestWeek, sessCmp, avgWeeks, weekStreak, coach, noLog, afterSet, adjOn, bwAt, newBlock, cycleState, sortedSessions, addDays, loadIn, gymRack, gymClean, dbListOf, capOf, refreshEx, effShow, rirScale, setStr, libExercises, obGate, obTour, andList, belowMin, aboveMax, starterRoutine, starterSigs, plateList, exBarKg, VOL_MODES, liveLogFetch, regionSrc, fitTargets, firstFullWeek, moveBlock, BANDS, installSheet, siteHost, greyW, effW, greyR, lighterLoad, heavierLoad, incOf, swapPlan, planSetsPerWeek, weekNeed, stepRead, e1inv, rtfAt, rtfOf, rtfBand, calStats, rirEff, isHard, setCredit, tonnage, loadMode, loadWords, loadNote, progStep, jumpCap, setSecs, setupSecs, recovery, rolling7, rankDays, rankExercises, isCompound, patternOf, noE1, whtrLine, exHeadline, remainMin, shortPlan, weekPlan, cycleProjection, lastLighterWeek, avgFirstWeek, avgWait, stallWeeks, weeksAvg, fitFloors, refit, regionBalance, parseHeight, mixCheck, swapCands, eqPlan, exportCSV, importData, chunksOf, assemble, sessionMuscles, TRACK_ONLY, cloud, Hx, mergeChunk, baseOf, sync: () => cq(cloudPull), TEMPLATES, lastRFor, impDate, impRows, impNorm, impMatch, impFromText, impFromTable, impHeader, impBuild, impStart, impXlsx, parseSets, undoStack, undoRestore, undoForget, allTimeBests, bestsBoard, obActive, fmtW, rirUsual, rirEst, routineFromTemplate, plannedSets, map3d: () => ({ state: B3.state, fail: B3.fail, meshes: B3.meshes.length, yaw: B3.yaw, glow: Object.keys(B3.mats).filter((m) => B3.mats[m].emissiveIntensity > 0), canvas: !!document.querySelector("#bm3d canvas"), colors: Object.fromEntries(Object.entries(B3.mats).map(([m, mt]) => [m, "#" + mt.color.getHexString()])), pick: (x, y) => map3dPick(x, y), want: map3dColors() }), cloudState: () => ({ on: cloud.on, status: cloud.status, err: cloud.err, uid: cloud.uid, acct: cloud.acct }), acctUser: () => acct.user, acctWaiting: () => !!acctWait.pw, flush: () => cq(cloudFlush), backupDue, routineUpdates, planFor, platesMode, plateText, chunksOf, IDX, suggest, e1, render, ACT, ui, makeDemo, invalidate, normalize, snapshot, saveNow, timer, weekStats, weekStart, today, EX, blockProgress, dayMinutes, weekStreak, coach, tonnageNow, livePR, movers, stalledIds, muscleStatus, actualAvg4, plannedPerWeek, parseSets, fillSets, newBlock, lastNoteOf, sizeRows, sessionMuscleSets, sessionCapNote, routineClutter, rowBlank, dayReasons, impTextSets, liftTrend, prsWithin, activeRoutine, rackStep, repFloor, sessionLength, prBeat, exInjury, exJoints, openModal, EQUIP, HARD_EX, recentLighter, planEvidenceNote, howToUrl, editFp, toast, avgWeeks, regionWk, REGION_WKS, SAFETY_TXT, libFiltered, nameMatch, workLoad, fitE, lighter, offTarget, sessionWord, sessionWords, dayLabel, daySets, ssLetters, routineSig, tplCountLine, fatigueStalls, avgWeeksTxt, routineFromLog, repSpan, rangeWords, calDueIdx, readyCard, sameRR, hintOnce, overSets, rackTol, daysOff, BACK_DAYS, prName, sessTm, effTgt, bwDueCard, bwNoLoad, applyPick, joinAdjacent, sameExOnce, goalState, goalLine, bwRefLoad, ML, exMusParts, musTrend, U, toD, fromD, loadLabel, exName, planCredit, gymOf, isDeloadWeek, freeMode, injuredSet, prLoad, statsUpTo, readiness, bwRef, weekRoutine, easierText, barKg, suggestCore, loadOf, bwLoad, hardCredit, rirHalfOn, prFrame };
+    }, fbContext, FB_CTX_MAX, logCut, logBuf, log, dateIndex, sessionsOn, bestLine, whyTarget, recent4w, weekSessions, fmtDate, fmtDateLong, fbShrink, orderAt, orderRun, dropOnlyLift, profHeavy, appBand, fitRecordOld, prof, profClean, profRule, profPlan, defPlan, defBand, profMoveBands, profApplyList, strengthPick, PROF_DAYS, FOCUS_MAX, estInLoad, keepExtra, EXTRA_MAX, draftPlanMin, pace, paceRatios, sessModelMin, PACE_N, PACE_DAYS, PACE_MIN, plainTemplate, trashTidy, ENV, KEY, COMMON, COMMON_TIP, isCommon, bwEvery, isRestWeek, sessCmp, avgWeeks, weekStreak, coach, noLog, afterSet, adjOn, bwAt, newBlock, cycleState, sortedSessions, addDays, loadIn, gymRack, gymClean, dbListOf, capOf, refreshEx, effShow, rirScale, setStr, libExercises, obGate, obTour, andList, belowMin, aboveMax, starterRoutine, starterSigs, plateList, exBarKg, VOL_MODES, liveLogFetch, regionSrc, fitTargets, firstFullWeek, moveBlock, BANDS, installSheet, siteHost, greyW, effW, greyR, lighterLoad, heavierLoad, incOf, swapPlan, planSetsPerWeek, weekNeed, stepRead, e1inv, rtfAt, rtfOf, rtfBand, calStats, rirEff, isHard, setCredit, tonnage, loadMode, loadWords, loadNote, progStep, jumpCap, setSecs, setupSecs, recovery, rolling7, rankDays, rankExercises, isCompound, patternOf, noE1, whtrLine, exHeadline, remainMin, shortPlan, weekPlan, cycleProjection, lastLighterWeek, avgFirstWeek, avgWait, stallWeeks, weeksAvg, fitFloors, refit, regionBalance, parseHeight, mixCheck, swapCands, eqPlan, exportCSV, importData, chunksOf, assemble, sessionMuscles, TRACK_ONLY, cloud, Hx, mergeChunk, baseOf, sync: () => cq(cloudPull), TEMPLATES, lastRFor, impDate, impRows, impNorm, impMatch, impFromText, impFromTable, impHeader, impBuild, impStart, impXlsx, parseSets, undoStack, undoRestore, undoForget, allTimeBests, bestsBoard, obActive, fmtW, rirUsual, rirEst, routineFromTemplate, plannedSets, map3d: () => ({ state: B3.state, fail: B3.fail, meshes: B3.meshes.length, yaw: B3.yaw, glow: Object.keys(B3.mats).filter((m) => B3.mats[m].emissiveIntensity > 0), canvas: !!document.querySelector("#bm3d canvas"), colors: Object.fromEntries(Object.entries(B3.mats).map(([m, mt]) => [m, "#" + mt.color.getHexString()])), pick: (x, y) => map3dPick(x, y), want: map3dColors() }), cloudState: () => ({ on: cloud.on, status: cloud.status, err: cloud.err, uid: cloud.uid, acct: cloud.acct }), acctUser: () => acct.user, acctWaiting: () => !!acctWait.pw, flush: () => cq(cloudFlush), backupDue, routineUpdates, planFor, platesMode, plateText, chunksOf, IDX, suggest, e1, render, ACT, ui, makeDemo, invalidate, normalize, snapshot, saveNow, timer, weekStats, weekStart, today, EX, blockProgress, dayMinutes, weekStreak, coach, tonnageNow, livePR, movers, stalledIds, muscleStatus, actualAvg4, plannedPerWeek, parseSets, fillSets, newBlock, lastNoteOf, sizeRows, sessionMuscleSets, sessionCapNote, routineClutter, rowBlank, dayReasons, impTextSets, liftTrend, prsWithin, activeRoutine, rackStep, repFloor, sessionLength, prBeat, exInjury, exJoints, openModal, EQUIP, HARD_EX, recentLighter, planEvidenceNote, howToUrl, editFp, toast, avgWeeks, regionWk, REGION_WKS, SAFETY_TXT, libFiltered, nameMatch, workLoad, fitE, lighter, offTarget, sessionWord, sessionWords, dayLabel, daySets, ssLetters, routineSig, tplCountLine, fatigueStalls, avgWeeksTxt, routineFromLog, repSpan, rangeWords, calDueIdx, readyCard, sameRR, hintOnce, overSets, rackTol, daysOff, BACK_DAYS, prName, sessTm, effTgt, bwDueCard, bwNoLoad, applyPick, joinAdjacent, sameExOnce, goalState, goalLine, bwRefLoad, ML, exMusParts, musTrend, U, toD, fromD, loadLabel, exName, planCredit, gymOf, isDeloadWeek, freeMode, injuredSet, prLoad, statsUpTo, readiness, bwRef, weekRoutine, easierText, barKg, suggestCore, loadOf, bwLoad, hardCredit, rirHalfOn, prFrame, stallWords, atRangeTop };
     render();
     wakeOn();
     timerResume();

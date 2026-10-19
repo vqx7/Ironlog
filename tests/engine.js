@@ -4,12 +4,13 @@
 // stays in the legacy script until phase 4), deep-frozen, with the page's
 // language and time zone. Each of the names live.ts gives the legacy
 // script (r52's 74, routineUpdates since r53, and since r54 plannedSets,
-// stallWeeks, avgFirstWeek, lastLighterWeek, muscleStatus, weeksAvg, defBand,
-// appBand, fitFloors, refit, avgWait and heavierLoad, read from live.ts) is called
-// with the page's own arguments on a fresh model and must
-// give the page's answer, then again on a second fresh model; so is each of
-// PLAIN, the engine's functions the legacy script calls directly that take
-// no model (since r53 avgWeeksTxt, whose lines no adapter reaches). The bundle runs
+// stallWeeks, stallWords, atRangeTop, avgFirstWeek, lastLighterWeek, muscleStatus,
+// weeksAvg, defBand, appBand, fitFloors, refit, avgWait, sessionWords, prFrame
+// and heavierLoad, read from live.ts) is called with the page's own arguments
+// on a fresh model and must give the page's answer, then again on a second
+// fresh model; so is each of PLAIN, the engine's functions the legacy script
+// calls directly that take no model (since r53 avgWeeksTxt, whose lines no
+// adapter reaches, and since r54 the routine helpers and musTrend). The bundle runs
 // strict, so a write to the frozen log, a frozen argument or one of the
 // modules' tables (all frozen too) throws and shows as a different answer;
 // and on every tenth history the second model reads the log through a proxy
@@ -30,8 +31,9 @@ const MODULES = ['model', 'units', 'routines', 'gym', 'format', 'loads', 'analyt
 const K = +process.env.ENGINE_N || 1000, BATCH = 100;
 // The engine's functions that take no model and that the digest calls (tests/wide.js), run in Node beside the adapters,
 // and since r54 the routine helpers the legacy script reads from routines.ts (EXTRA below calls them): when Finish's
-// offer and a lift's own plan moved to plans.ts (r54) the lines that ran went with them, and these keep routines.ts's share.
-const PLAIN = ['avgWeeksTxt', 'dayLabel', 'daySets', 'ssLetters', 'routineSig', 'tplCountLine'];
+// offer and a lift's own plan moved to plans.ts (r54) the lines that ran went with them, and these keep routines.ts's share;
+// and musTrend, a muscle's strength trend in words, which Stats and the muscles sheet call and no adapter reaches (r54).
+const PLAIN = ['avgWeeksTxt', 'dayLabel', 'daySets', 'ssLetters', 'routineSig', 'tplCountLine', 'musTrend'];
 // Every adapter live.ts gives the legacy script, read from live.ts itself, so a new one cannot go uncalled.
 const ADAPTERS = [...fs.readFileSync(path.join(APP, 'live.ts'), 'utf8').matchAll(/^export const (\w+) = live\(\w+In\);$/gm)].map(m => m[1]);
 // The adapters added since r53, and the plain functions above the digest does not call: tests/wide.js is shared with
@@ -40,7 +42,7 @@ const EXTRA = {
   // Each routine's day labels (a cycle's Day N, a weekly one's weekday), planned sets a day, superset letters and signature, and the templates' line.
   dayLabel: (s) => s.routines.flatMap(r => [[r, 0], [r, 3], [{ ...r, schedule: 'weekly' }, 2]]), daySets: (s) => s.routines.flatMap(r => r.days.map(d => [d])),
   ssLetters: (s) => s.routines.flatMap(r => r.days.map(d => [d.items])), routineSig: (s) => s.routines.map(r => [r]), tplCountLine: () => [[]],
-  plannedSets: (s) => s.routines.map(r => [r]), stallWeeks: (s, ids) => ids.map(id => [id]), avgFirstWeek: () => [[]], lastLighterWeek: () => [[]],
+  plannedSets: (s) => s.routines.map(r => [r]), stallWeeks: (s, ids) => ids.map(id => [id]), stallWords: (s, ids) => ids.map(id => [id]), atRangeTop: (s, ids) => ids.map(id => [id]), avgFirstWeek: () => [[]], lastLighterWeek: () => [[]],
   // A week's sets so far and a plain average; the weekly averages, which carry the muscles on plan, reach it through the coach and regionBalance.
   muscleStatus: () => [[{ chest: 5, quads: 22, biceps: 0, serratus: 3 }], [{ chest: 5, quads: 22, biceps: 0 }, true], [null]],
   // The log's last three weeks trained, as the radar's fallback reads them (Monday-start weeks, as util's weekStart).
@@ -56,14 +58,18 @@ const EXTRA = {
   // Each tagged lift a step up from loads on and off its rack, to a little above and well above (moved from the legacy script in r54).
   // A set being logged, as its PRs judge it (r54): each lift's newest set, the same weight typed in the other unit on its usual step, a blank load, and no date.
   prFrame: (s, ids) => ids.flatMap(id => { const ss = s.sessions.filter(x => x.ex.some(b => b.exId === id)); const last = ss[ss.length - 1]; if (!last) return [[id, { w: 20, r: 8 }, '']]; const set = last.ex.find(b => b.exId === id).sets[0], w = +set.w || 0; const other = Math.abs(w / 0.05 - Math.round(w / 0.05)) < 1e-6 ? Math.round(w / 0.45359237 / 5) * 5 * 0.45359237 : Math.round(w / 2.5) * 2.5; return [[id, set, last.date], [id, { ...set, w: other }, last.date], [id, { ...set, w: other, r: (+set.r || 0) + 1 }, last.date], [id, { w: '', r: 5 }, last.date], [id, set, '']]; }),
-  heavierLoad: (s, ids) => ids.map(id => s.exercises.find(e => e.id === id)).filter(Boolean).flatMap(e => [[e, null, 20, 21], [e, null, 20, 40], [e, null, 5.443, 9], [e, { inc: 2.5 }, 50, 60]])
+  heavierLoad: (s, ids) => ids.map(id => s.exercises.find(e => e.id === id)).filter(Boolean).flatMap(e => [[e, null, 20, 21], [e, null, 20, 40], [e, null, 5.443, 9], [e, { inc: 2.5 }, 50, 60]]),
+  // Each muscle's score as the page reads it, and the shapes no history may hold: none measured, one, two, flat, rising and falling.
+  musTrend: () => [...window.__ironlog.IDX().scores.map(x => [x]), [{ clear: false, n: 0, score: 0 }], [{ clear: false, n: 1, score: 0 }], [{ clear: false, n: 2, score: 0 }], [{ clear: true, n: 2, score: 1.5 }], [{ clear: true, n: 1, score: 4.2, wk: 5 }], [{ clear: true, n: 3, score: -6 }]]
 };
 // Hand-made histories beside the wide ones, for paths those never reach, each built on a wide history's settings,
 // exercises and routines (since r54): a lifter back this week after ten weeks away, which is not a break (something
 // is logged in the last 4 weeks) and has no average yet (the coach's "after a full week of training"); and Strength
 // 5 x 5 done on Monday, Wednesday and Friday, every set as planned, whose last three full weeks hold four A days,
 // so chest and upper back are on plan under their minimum (weeks.ts, cycleMixIn; the coach's "Every muscle on plan");
-// and a bench press changed from kilograms to pounds at the same weight (prSameLoad, r54).
+// a bench press changed from kilograms to pounds at the same weight (prSameLoad, r54); and three for coach lines the
+// wide histories never reach: every muscle at target with nothing stalled, strength falling with nothing stalled, and
+// a lift stalled at the top of the range of the day it was last done on (r54, after its review).
 const day = (d, n) => new Date(Date.parse(d + 'T12:00:00Z') + n * 864e5).toISOString().slice(0, 10);
 const monday = d => day(d, -((new Date(d + 'T12:00:00Z').getUTCDay() + 6) % 7));
 // Strength 5 x 5 as the template makes it, and its planned hard sets a week by r54's reading (three sessions a week), as a first-run pick fits the targets to.
@@ -77,34 +83,69 @@ const str5 = () => {
     { id: 'sB', name: 'Strength B', rest: false, items: [it('b1', 'backSquat', 5, 180), it('b2', 'ohp', 5, 180), it('b3', 'deadlift', 1, 240)] },
     { id: 'sR2', name: 'Rest', rest: true, items: [] }] };
 };
+// Strength 5 x 5 done on Monday, Wednesday and Friday for four weeks, every set as planned and 2.5 heavier each
+// session, on a wide history's settings, exercises and routines, with each minimum target set by low (its own
+// minimum, where the history set one, over the default, and the muscle's planned sets a week).
+const str5Log = (h, { LIB, BANDS }, low) => {
+  const R = str5(), w0 = monday(h.today), lifts = ['backSquat', 'bench', 'bbRow', 'ohp', 'deadlift'];
+  const sessions = []; let k = 0;
+  for (const wk of [-28, -21, -14, -7]) for (const d of [0, 2, 4]) {
+    const di = k % 2 ? 2 : 0, dd = R.days[di];
+    sessions.push({ id: 'mwf' + k, date: day(w0, wk + d), dayIdx: di, dayId: dd.id, dayName: dd.name, routineId: R.id, notes: '',
+      ex: dd.items.map(x => ({ exId: x.exId, rr: [5, 5], sets: Array.from({ length: x.sets }, () => ({ w: 60 + 2.5 * k, r: 5, rir: 2, done: true })) })) });
+    k++;
+  }
+  // A wide history's own targets, where it set any, over the defaults, as normalize reads them.
+  const b = { ...BANDS, ...(h.raw.settings.bands || {}) }, bands = {};
+  for (const m in b) bands[m] = TRACKED.includes(m) ? b[m] : [low(b[m][0], STR5_PLANNED[m] || 0), b[m][1]];
+  return { ...h, raw: { ...h.raw, injuries: [], deloadWeek: null, draft: null,
+    exercises: h.raw.exercises.map(e => (lifts.includes(e.id) ? LIB.find(x => x.id === e.id) : e)),
+    routines: [...h.raw.routines.filter(r => r.id !== R.id), R], activeRoutineId: R.id,
+    settings: { ...h.raw.settings, restWeeks: [], todayStart: undefined, rirMode: 'on', rirHalf: undefined, profile: undefined, bandsFit: undefined, bands, priorities: [] },
+    sessions } };
+};
+// Bench on a heavy day (5 sets of 3 to 5) and a light day (4 of 8 to 12) of a one-week cycle for six weeks, each
+// session's load and reps from heavy(i) and light(i), the heavy days last when heavyLast, every minimum target at half
+// of what bench gives it a week (5 and 4 sets for the chest, its helpers half), or the history's own where lower.
+const heavyLight = (h, { LIB, BANDS }, heavy, light, heavyLast) => {
+  const it = (uid, sets, lo, hi) => ({ uid, exId: 'bench', sets, repMin: lo, repMax: hi, rir: 1, rest: 150, inc: 2.5, ss: null });
+  const rest = n => ({ id: 'hlr' + n, name: 'Rest', rest: true, items: [] });
+  const R = { id: 'hl2', name: 'Heavy and light', schedule: 'cycle', days: [{ id: 'hlH', name: 'Heavy', rest: false, items: [it('h1', 5, 3, 5)] }, rest(1), rest(2), { id: 'hlL', name: 'Light', rest: false, items: [it('l1', 4, 8, 12)] }, rest(3), rest(4), rest(5)] };
+  const one = (id, n, di, rr, k, [w, r]) => ({ id, date: day(h.today, n), dayIdx: di, dayId: R.days[di].id, dayName: R.days[di].name, routineId: R.id, notes: '', ex: [{ exId: 'bench', rr, sets: Array.from({ length: k }, () => ({ w, r, rir: 1, done: true })) }] });
+  const sessions = [0, 1, 2, 3, 4, 5].flatMap(i => {
+    const late = -1 - 7 * (5 - i), early = late - 3;
+    return [one('hv' + i, heavyLast ? late : early, 0, [3, 5], 5, heavy(i)), one('lt' + i, heavyLast ? early : late, 3, [8, 12], 4, light(i))];
+  }).sort((a, b) => (a.date < b.date ? -1 : 1));
+  const planned = { chest: 9, triceps: 4.5, frontDelts: 4.5 }, b = { ...BANDS, ...(h.raw.settings.bands || {}) }, bands = {};
+  for (const m in b) bands[m] = TRACKED.includes(m) ? b[m] : [Math.min(b[m][0], Math.floor((planned[m] || 0) / 2)), b[m][1]];
+  return { ...h, raw: { ...h.raw, injuries: [], deloadWeek: null, draft: null,
+    exercises: h.raw.exercises.map(e => (e.id === 'bench' ? LIB.find(x => x.id === 'bench') : e)),
+    routines: [...h.raw.routines.filter(r => r.id !== R.id), R], activeRoutineId: R.id,
+    settings: { ...h.raw.settings, restWeeks: [], todayStart: undefined, rirMode: 'on', rirHalf: undefined, profile: undefined, bandsFit: undefined, bands, priorities: [] },
+    sessions } };
+};
 const SCENARIOS = [
   h => ({ ...h, raw: { ...h.raw, injuries: [], deloadWeek: null, draft: null, settings: { ...h.raw.settings, restWeeks: [] },
     sessions: [[-77, 60], [-73, 62.5], [-70, 65], [0, 67.5]].map(([n, w], i) => ({ id: 'back' + i, date: day(h.today, n), dayIdx: 0, dayId: null, dayName: 'Session', routineId: '', free: true, notes: '',
       ex: [{ exId: 'bench', rr: [6, 10], sets: [{ w, r: 8, rir: 1, done: true }, { w, r: 8, rir: 1, done: true }] }] })) } }),
-  (h, { LIB, BANDS }) => {
-    const R = str5(), w0 = monday(h.today), lifts = ['backSquat', 'bench', 'bbRow', 'ohp', 'deadlift'];
-    const sessions = []; let k = 0;
-    for (const wk of [-28, -21, -14, -7]) for (const d of [0, 2, 4]) {
-      const di = k % 2 ? 2 : 0, dd = R.days[di];
-      sessions.push({ id: 'mwf' + k, date: day(w0, wk + d), dayIdx: di, dayId: dd.id, dayName: dd.name, routineId: R.id, notes: '',
-        ex: dd.items.map(x => ({ exId: x.exId, rr: [5, 5], sets: Array.from({ length: x.sets }, () => ({ w: 60 + 2.5 * k, r: 5, rir: 2, done: true })) })) });
-      k++;
-    }
-    // A wide history's own targets, where it set any, over the defaults, as normalize reads them.
-    const b = { ...BANDS, ...(h.raw.settings.bands || {}) }, bands = {};
-    for (const m in b) bands[m] = TRACKED.includes(m) ? b[m] : [Math.min(b[m][0], Math.floor(STR5_PLANNED[m] || 0)), b[m][1]];
-    return { ...h, raw: { ...h.raw, injuries: [], deloadWeek: null, draft: null,
-      exercises: h.raw.exercises.map(e => (lifts.includes(e.id) ? LIB.find(x => x.id === e.id) : e)),
-      routines: [...h.raw.routines.filter(r => r.id !== R.id), R], activeRoutineId: R.id,
-      settings: { ...h.raw.settings, restWeeks: [], todayStart: undefined, rirMode: 'on', rirHalf: undefined, profile: undefined, bandsFit: undefined, bands, priorities: [] },
-      sessions } };
-  },
+  (h, o) => str5Log(h, o, (lo, planned) => Math.min(lo, Math.floor(planned))),
   // A bench press in kilograms, then the same weight typed in pounds at another gym (155 lb, the nearest 5 lb load over
   // 70 kg), one more rep there, and a step past it (157.5 lb): the PR reading of a load another unit stands for
   // (prSameLoad, r54), which the wide histories, each made in one unit, may not reach.
   h => ({ ...h, raw: { ...h.raw, injuries: [], deloadWeek: null, draft: null, settings: { ...h.raw.settings, restWeeks: [] },
     sessions: [[-30, 70, 8], [-23, 70, 8], [-16, 155, 8], [-9, 155, 9], [-2, 157.5, 8]].map(([n, w, r], i) => ({ id: 'unit' + i, date: day(h.today, n), dayIdx: 0, dayId: null, dayName: 'Session', routineId: '', free: true, notes: '',
-      ex: [{ exId: 'bench', rr: [6, 10], sets: [{ w: i < 2 ? w : w * 0.45359237, r, rir: 1, done: true }, { w: i < 2 ? w : w * 0.45359237, r: 8, rir: 1, done: true }] }] })) } })
+      ex: [{ exId: 'bench', rr: [6, 10], sets: [{ w: i < 2 ? w : w * 0.45359237, r, rir: 1, done: true }, { w: i < 2 ? w : w * 0.45359237, r: 8, rir: 1, done: true }] }] })) } }),
+  // The same Strength 5 x 5 with each minimum brought down to half of what the plan gives a week: every muscle at
+  // target, nothing stalled (the coach's last line, which no other history reached).
+  (h, o) => str5Log(h, o, (lo, planned) => Math.min(lo, Math.floor(planned / 2))),
+  // Bench on a heavy day (3 to 5, a step heavier each week) and a light day (8 to 12 at one load, its reps falling), its
+  // targets at half the plan: stalled in one range only, so not stalled (312 A), while its trend reads the newest range,
+  // the light day's (PENDING 319), so chest strength is falling with every muscle at target (the coach's falling line).
+  (h, o) => heavyLight(h, o, i => [100 + 2.5 * i, 5], i => [70, [12, 11, 10, 9, 8, 8][i]], false),
+  // The same two days flat, 100 x 5 x 5 at the top of 3 to 5 and 70 x 10 x 4 in 8 to 12, the heavy day last: stalled in
+  // both, and at the top of its range by the plan of the day it was last done on (the coach's top-of-range line, which
+  // since r54 reads that day's plan, coach.ts's atRangeTopIn; no wide history reaches it).
+  (h, o) => heavyLight(h, o, () => [100, 5], () => [70, 10], true)
 ];
 
 // The child: the bundle on the page's histories, under V8's coverage.
@@ -242,7 +283,7 @@ function lineCoverage(covDir, bundleFile, mapPayload) {
     histories.push({ seed: 52000 + i, today: h.today, state, calls });
     if (histories.length === BATCH || i === K + SCENARIOS.length - 1) { batches.push(path.join(tmp, `data-${batches.length}.json`)); fs.writeFileSync(batches[batches.length - 1], JSON.stringify({ histories })); histories.length = 0; }
   }
-  ok(/Volume advice appears here after a full week of training/.test(made[0] || '') && /Every muscle on plan, nothing stalled/.test(made[1] || ''), 'the hand-made histories reach the coach lines they were made for', made);
+  ok(/Volume advice appears here after a full week of training/.test(made[0] || '') && /Every muscle on plan, nothing stalled/.test(made[1] || '') && /Every muscle at target, nothing stalled/.test(made[3] || '') && /Chest strength is falling over \d+ weeks/.test(made[4] || '') && /is at the top of its range at [^:]+ and has stalled over the last \d+ weeks: it is due a step up/.test(made[5] || ''), 'the hand-made histories reach the coach lines they were made for', made);
   ok(!B.errors.length, 'no page errors while the page answered', B.errors.slice(0, 3));
   await settle(browser.close(), 'closing the browser');
 

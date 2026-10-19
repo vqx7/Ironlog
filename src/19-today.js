@@ -464,12 +464,11 @@ function exHeadline(exId){
      different ways the reason sits behind the i, not as a line on screen (r40,
      V: the old note "Change and trend disagree" was confusing on its own). */
   if(st.pct!=null&&st.slope!=null&&(st.pct>0)!==(st.slope>0)&&Math.abs(st.pct)>0.5&&Math.abs(st.slope)>0.1)more.push(`The change (${sg(st.pct)}) compares ${st.wN>=4?'the better of your first two sessions with the better of your last two':'your first and last sessions'}; the weekly rate fits a line through all of them. They point different ways when one unusual session sits at an end, so the rate is the better guide.`);
-  const atTopR=(()=>{const lw=st.last?atLoad(st.last.pts,st.last.topW):[];return lw.length&&lw.every(q=>q.r>=+planFor(exId).repMax);})();
+  const atTopR=atRangeTop(exId);
   if(st.stalled){
     // At the top of the range, the advice is load, as on the Coach (r32).
     /* The span the stall test read, and its rule in the coach's words (r54, from the audit V asked for: "Stalled for 3 weeks" was fixed text, said of a lift flat for ten). */
-    const sw=stallWeeks(exId);
-    parts.push(atTopR?'Stalled at the top of the range: due a step up. The session\'s target says how.':`Stalled ${sw!=null?`over the last ${sw} weeks`:'over its last 3 sessions'}. Try another rep range or a variation.`);
+    parts.push(atTopR?'Stalled at the top of the range: due a step up. The session\'s target says how.':`Stalled ${stallWords(exId)}. Try another rep range or a variation.`);
     more.push(STALL_WHY);
   }else if(st.pct==null)parts.push('A trend needs 3 sessions spread over 2 weeks.');
   else if(st.moving)parts.push(`${liftChange(exId,'Up',ow)}.`);

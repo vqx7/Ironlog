@@ -52,6 +52,7 @@ import {
   rirUsualIn,
   sessionWordsIn,
   stallWeeksIn,
+  stallWordsIn,
   statsUpToIn,
   tonnageIn,
   weekSessionsIn
@@ -73,7 +74,7 @@ import {
   weekStreakIn,
   weeksAvgIn
 } from './weeks';
-import { coachIn, dropOnlyLiftIn, fatigueStallsIn, moversIn, readinessIn, stalledIdsIn } from './coach';
+import { atRangeTopIn, coachIn, dropOnlyLiftIn, fatigueStallsIn, moversIn, readinessIn, stalledIdsIn } from './coach';
 import {
   daysOffIn,
   easierTextIn,
@@ -156,6 +157,7 @@ export const rirEst = live(rirEstIn);
 export const rirUsual = live(rirUsualIn);
 export const sessionWords = live(sessionWordsIn);
 export const stallWeeks = live(stallWeeksIn);
+export const stallWords = live(stallWordsIn);
 export const statsUpTo = live(statsUpToIn);
 export const tonnage = live(tonnageIn);
 export const weekSessions = live(weekSessionsIn);
@@ -177,6 +179,7 @@ export const weekRoutine = live(weekRoutineIn);
 export const weekStats = live(weekStatsIn);
 export const weekStreak = live(weekStreakIn);
 export const weeksAvg = live(weeksAvgIn);
+export const atRangeTop = live(atRangeTopIn);
 export const coach = live(coachIn);
 export const dropOnlyLift = live(dropOnlyLiftIn);
 export const fatigueStalls = live(fatigueStallsIn);
