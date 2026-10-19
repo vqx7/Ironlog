@@ -1,8 +1,7 @@
 /* The numbers the engine and the analytics share: the 1RM estimate and its
    inverses, the working load of a session, set counting, the time model, and
    the thresholds behind trends, breaks and the per-session cap (phase 2, r50;
-   moved unchanged from the legacy script, tests/moved.js holds them to r49's
-   code). Each is a pure function of its arguments. Where a number comes from
+   moved unchanged from the legacy script). Each is a pure function of its arguments. Where a number comes from
    is said beside it; CLAUDE.md's Evidence base has the sources. */
 
 import type { Exercise, Point, Rir } from './types';
@@ -315,6 +314,6 @@ export const PACE_N = 8,
 export const SESSION_CAP = 11;
 
 /** The Plan editor's tip on the load jump (jumpPct above), r30; moved in
-    phase 3a (r51), tests/moved.js holds it to r50's code. */
+    phase 3a (r51). */
 export const JUMP_TIP =
   "When every set reaches the top of the rep range, the load goes up by about this share, in whole load steps and at least one step. Blank: 2.5% on compound lifts, 5% on isolation lifts, a convention. 0: one step every time. Until then the target is to beat last time's total reps at the same load. When the step is large for the load, a few more reps come first, so the new load starts inside the range.";

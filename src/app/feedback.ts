@@ -1,7 +1,6 @@
 /* Problem reports (r25): their kinds, the words on the sheet, the limits the
    feedback table also enforces, and the check on a report's screenshot
-   (phase 3a, r51; moved unchanged from the legacy script, tests/moved.js
-   holds them to r50's code). */
+   (phase 3a, r51; moved unchanged from the legacy script). */
 
 /** The kinds a report can be, stored as bug, question and idea. */
 export const FB_CATS: readonly (readonly [string, string])[] = [

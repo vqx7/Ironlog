@@ -12,7 +12,7 @@ import { effAt, effScale } from './format';
 export const rirScale = () => effScale(state.settings.rirScale);
 
 /* An effort as the lifter's scale shows it, blank when there is none (r33;
-   moved in r53 so the screens and the engine's sentences show it by one
+   moved in r54 so the screens and the engine's sentences show it by one
    rule, effAt). */
 /** A stored RIR, or nothing, as the effort scale in use shows it. */
 export function effShow(v: number | string | null | undefined): string {

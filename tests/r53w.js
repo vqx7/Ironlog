@@ -8,12 +8,13 @@
 // back a deload after a deload, a finished lighter week, a rest week or a
 // marked deload week, and no longer after one lighter session; and Finish's
 // offer adding an exercise from a lighter day or a deload at its normal-day
-// sets. tests/moved.js proves statically that
+// sets. tests/moved.js proved statically, for r53, that
 // nothing else in the code changed (every other declaration token for
 // token, the listed edits undone); this suite checks it by the answers,
 // call by call.
 //
-// Each history is run in r52 as published and in this build, with its
+// Each history is run in r52 as published and in this build (r53 as published,
+// baselines/r53.html, unless R53W_FILE names another; "this build" below), with its
 // tagged lifts done lighter than their usual (tests/wide.js, honestTags), as
 // in the gym. A history where a tagged lift still counts in full is counted
 // and left to tests/r53.js: that reaches every reader of the analytics. In
@@ -47,8 +48,9 @@ const { wide, digest, specOf, decode, ser, r53Touches, coachSame, honestTags, fr
 const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log('FAIL', m, x !== undefined ? JSON.stringify(x).slice(0, 1500) : ''); } else console.log('ok  ', m); };
 const BASE = 'baselines/r52.html';
 const N = +process.env.R53W_N || 1000;
-// The build compared with r52: this one, or another given to see that a change r53 does not make fails here.
-const FILE = process.env.R53W_FILE || 'index.html';
+// The build compared with r52: r53 as published (baselines/r53.html), pinned there since r54 so later
+// builds' deliberate changes are not read as r53's, or another given to see that a change r53 does not make fails here.
+const FILE = process.env.R53W_FILE || 'baselines/r53.html';
 
 // A plan-like object (sets and a range), anywhere in a value, with its sets and range set aside.
 const unplan = v => {

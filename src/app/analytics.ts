@@ -1,5 +1,5 @@
 /* The analytics index and what it reads (phase 3b, r52; moved from the
-   legacy script, tests/moved.js reads each back to r51's code): RIR as the
+   legacy script): RIR as the
    analytics read it and the RIR checks, hard sets, bodyweight, IDX() and its
    six steps, a lift's bests up to a date, the Last line, and the sessions by
    date. Each function that reads the log, the date or a cache takes the model
@@ -673,8 +673,9 @@ export function idxTaggedFull(byEx: Record<string, Exposure[]>): void {
   }
 }
 
-/* What a lighter week is, read from what the lifts did (r53, V 2026-10-18:
-   one reading for the weekly averages, the coach and Stats). A session is
+/* What a lighter week is, read from what the lifts did (r53, V 2026-10-18,
+   for the coach; since r54 one reading for the weekly averages, the coach
+   and Stats). A session is
    lighter when half or more of its lifts were done lighter: still deload or
    lighter once a lift at its usual level counts in full (idxTaggedFull), or
    read lighter from the loads. Per week: its sessions, those lighter, and
@@ -711,7 +712,7 @@ export function lighterTally(
 
 /* Step 3: lighter weeks (r30). Weekly volume averages skip them: a deload
    halves the sets on purpose, and averaging it in read as below target for a
-   month after every deload. Since r53 a week is lighter when more than half
+   month after every deload. Since r54 a week is lighter when more than half
    its sessions were, or its last two or more were deload sessions done
    lighter (lighterTally), the reading the coach holds a deload back by, so
    the averages leave out a deload begun mid-week, which they kept, and keep
@@ -864,7 +865,7 @@ export function idxPRsIn(M: Model, id: string, exps: Exposure[], prs: Pr[]): num
 /* The sessions the stall test reads a lift with a strength reading over
    (r30, r31): its last 6 in the range, widened to cover 21 days when 6 do
    not, at least 4; none when they still do not reach 21 days. One rule for
-   the test (idxLiftIn) and the coach's words about it (r53, from the audit V
+   the test (idxLiftIn) and the coach's words about it (r54, from the audit V
    asked for: "for 3 weeks" was said of a lift flat for ten). */
 /** The stretch of sessions a stall is read over, or null when there is none. */
 export function stallStretch<X extends { date: string }>(wE: readonly X[]): X[] | null {

@@ -1,5 +1,4 @@
-/* The load engine (phase 3b, r52; moved from the legacy script,
-   tests/moved.js reads each back to r51's code): what to lift next for one
+/* The load engine (phase 3b, r52; moved from the legacy script): what to lift next for one
    exercise (suggest and its cases), the steps a load moves in (racks, the
    gym's plates and stacks, the exercise's own step), lighter loads, a start
    borrowed from a close variation, and timed holds. Each function that reads
@@ -105,14 +104,14 @@ export function snapUnitIn(M: Model, ex: ExerciseLike, plan: Plan, res: Suggesti
   /* Off the step and not a number anyone types (220.462 from 100 kg): a
      custom step (185 lb on a 10 lb step) or microplates (101.25) are left as
      they are. Typed is exact in the unit on screen, as a number typed in it
-     reads back (r53, from the audit V asked for: within a tenth of 0.05, one
+     reads back (r54, from the audit V asked for: within a tenth of 0.05, one
      load in five converted from the other unit passed for typed, so 42.5 kg
      shown as 93.7 lb was told to add 5 lb, to 98.7). */
   const off = (v: number): boolean => Math.abs(toDIn(M, v)! / st - Math.round(toDIn(M, v)! / st)) > 0.02;
   const typed = (v: number): boolean => Math.abs(toDIn(M, v)! / 0.05 - Math.round(toDIn(M, v)! / 0.05)) < 1e-6;
   if (!off(res.top) || !off(res.w) || typed(res.top)) return res;
   /* Under a target of reps at last time's load, down to the step below, so
-     the reps asked for are not asked at a heavier load (r53, from the audit:
+     the reps asked for are not asked at a heavier load (r54, from the audit:
      12.5 kg dumbbells shown in lb went up to 30 lb, 9% heavier, with the reps
      to beat unchanged, and the lifter fell short). */
   const dn = down || (!!res.tgt && res.tgt.kind === 'reps');
@@ -120,7 +119,7 @@ export function snapUnitIn(M: Model, ex: ExerciseLike, plan: Plan, res: Suggesti
   if (Math.abs(nw - res.w) < 1e-9) return res;
   const out = swapWIn(M, ex, res, nw);
   /* The step the words name moves with the load, so they add up to what is
-     shown (r53, from the audit: "add 5 lb" to 93.7 lb beside 100 lb, and "take
+     shown (r54, from the audit: "add 5 lb" to 93.7 lb beside 100 lb, and "take
      5 lb of help off" beside help that moved by another amount). */
   const was = fmtWIn(M, res.w - res.top),
     now = fmtWIn(M, nw - res.top);
@@ -455,7 +454,7 @@ export function sgEasyIn(M: Model, C: SuggestCtx): Suggestion | null {
       if (k >= 1) {
         const nw = ex.assist && top < 0 ? Math.min(0, top + k * step) : capW(top + k * step);
         const rr = r1(topPts.reduce((a, p) => a + p.rir!, 0) / topPts.length);
-        // In the lifter's effort scale (r53, from the audit V asked for: RPE lifters were told RIR).
+        // In the lifter's effort scale (r54, from the audit V asked for: RPE lifters were told RIR).
         const sc = effScale(M.s.settings.rirScale);
         return {
           top,
@@ -1053,7 +1052,7 @@ export function rackSnapIn(M: Model, ex: ExerciseLike, plan: Plan, res: Suggesti
    It is asked only of a dumbbell or kettlebell lift (its callers test
    rackKind first), as the ! after rackKind says, and toD of a number is a
    number, as the other ! says. With nothing logged yet, the load in hand
-   (`at`) is the one weight of the rack known, read the same way (r53, from
+   (`at`) is the one weight of the rack known, read the same way (r54, from
    the audit V asked for: a first session's 6 kg dumbbells, done easily, were
    stepped to 8.5 kg, which no rack has, and the 6, 8.5 and 11 kg logged after
    read as a rack in 0.5 kg steps for the next twelve sessions); it is not
@@ -1103,7 +1102,7 @@ export function progStepIn(M: Model, ex: ExerciseLike, plan: Plan, loadKg: numbe
 
 /** The note that a lift is getting easier at a load (RIR climbing at the same reps), for the session. */
 export function easierTextIn(M: Model, ex: ExerciseLike, e: Drift): string {
-  // In the lifter's effort scale (r53, from the audit V asked for).
+  // In the lifter's effort scale (r54, from the audit V asked for).
   const sc = effScale(M.s.settings.rirScale);
   return `Getting easier at ${loadLabelIn(M, ex, e.w)}${ex.bw ? '' : ' ' + UIn(M)}: ${sc === 'rpe' ? 'RPE' : 'RIR'} ${effAt(sc, e.from)} → ${effAt(sc, e.to)} at the same reps. Adding load today is reasonable.`;
 }

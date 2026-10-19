@@ -1,8 +1,7 @@
 /* A session in progress: the grey and effective load of a row, the live
    target, the Last column, a lift done twice, the rest after an exercise, a
    blank session, the fingerprint an edit is compared by, and hints said once
-   (phase 3a, r51; moved unchanged from the legacy script, tests/moved.js
-   holds them to r50's code). What reads the log or the settings to fill a
+   (phase 3a, r51; moved unchanged from the legacy script). What reads the log or the settings to fill a
    session (suggestions, adjustments) moves with the engine in 3b. */
 
 import type { DraftBlock, DraftSet, Target } from './types';

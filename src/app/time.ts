@@ -1,5 +1,4 @@
-/* How long a session takes (phase 3b, r52; moved from the legacy script,
-   tests/moved.js reads each back to r51's code): the time model for a day's
+/* How long a session takes (phase 3b, r52; moved from the legacy script): the time model for a day's
    plan, the same model for the sets a past session logged, and your pace,
    the median of how long your timed sessions took against that model. They
    call each other (a day's minutes scale by the pace, which reads past

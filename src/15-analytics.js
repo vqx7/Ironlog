@@ -45,27 +45,6 @@ function lmChips(ex){
   return `<p class="lmrow"><span class="lm" data-tip="${esc(long)}">${esc(loadWords(ex))}</span>${ex.perSide?`<span class="lm" data-tip="${esc(ex.timed?'Seconds for one side; do the same on the other.':'Reps for one side; do the same on the other. One set still counts as one set.')}">${ex.timed?'seconds':'reps'} per side</span>`:''}</p>`;
 }
 const sessionsOn=d=>dateIndex().byDate[d]||[];
-/* How long since a week that was clearly lighter than your norm, counting a
-   week off as lighter. Only completed weeks are considered. */
-function lastLighterWeek(){
-  const I=IDX();const cur=weekStart(today());
-  // Each set once, as on Today; summing per-muscle counts double counts.
-  const tot=wk=>I.weekHard[wk]||0;
-  const first=state.sessions.length?weekStart(sortedSessions()[0].date):null;
-  if(!first)return null;
-  const vals=[];for(let k=1;k<=12;k++){const wk=addDays(cur,-7*k);if(wk<first)break;vals.push(tot(wk));}
-  const trained=vals.filter(v=>v>0);
-  if(trained.length<4)return null;
-  // Two empty weeks just gone are a break, not a lighter week (r34.2: "Last lighter week: 1 week ago (a week off)" after 6 weeks away).
-  if(vals.length>=2&&vals[0]===0&&vals[1]===0)return null;
-  const norm=median(trained);
-  /* A week of lighter loads counts too (r30 audit): a deload marked, or read
-     from the loads (I.lightWk), keeps the sets and drops the weight, so by
-     sets alone this said "No lighter week" about a week the trends had just
-     set aside as one. */
-  for(let k=0;k<vals.length;k++){const wk=addDays(cur,-7*(k+1));if(vals[k]<=norm*0.65)return {weeks:k+1,sets:r1(vals[k]),norm:r1(norm)};if(I.lightWk[wk])return {weeks:k+1,sets:r1(vals[k]),norm:r1(norm),loads:true};}
-  return {weeks:null,norm:r1(norm)};
-}
 /* First run only (r29, V: "targets that can actually be met"): when a new
    person picks a ready-made routine and the weekly targets are still the
    defaults, each muscle's minimum comes down to what the routine plans

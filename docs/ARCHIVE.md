@@ -192,6 +192,26 @@ The suites and what each checks: `tests/SUITES.md`.
 
 (The evidence base it ended with is in `docs/EVIDENCE.md`.)
 
+## Since r54: the code map, release by release
+
+Each release adds here the names it made or changed and why, so the map stays searchable without growing CLAUDE.md.
+
+### r54 (2026-10-18, version 2.5; PENDING 315 and 316)
+
+- **The audit's fixes (PENDING 315, V: every one).** Each case is in `tests/r54.js` and fails on r53.
+- **Dumbbells with nothing logged:** `rackStepIn(M, ex, at)` reads the load in hand (`at`) as the rack's one known weight when the lift has no logged load (6 kg gives a 2 kg step, so 8 kg, not 8.5); `incOfIn` passes it. Not kept, since it changes with the load.
+- **A log read in the other unit:** `snapUnitIn` counts a load as typed only when it is exact in the unit on screen (within 1e-6 of a 0.05 step), rounds down under a target of reps (`dn`), and restates "add X" and "take X of help off" for the step the shown load took.
+- **Effort in the lifter's scale:** `effScale(v)` and `effAt(scale, rir)` (`format.ts`) are the one rule for the screens (`rirScale`, `effShow` in `effort.ts`, moved there) and the engine's sentences (`sgEasyIn`, `easierTextIn`); RPE is 10 minus RIR.
+- **How long a lift has stalled:** `stallStretch(wE)` (`analytics.ts`) is the stretch the stall test reads (the last 6 sessions in the range, widened to 21 days, at least 4); `stallWeeksIn(M, id)` its span in weeks, null for a lift with no reading (its test reads the last 3 sessions). The coach's top-of-range line and `exHeadline` say it; `STALL_WHY` (`coach.ts`) is the rule in words, the coach's tip and the headline's.
+- **One reading of a lighter week:** `lighterTally` (a session is lighter when half or more of its lifts were done lighter; a week, by its sessions and its closing run of deload sessions done lighter) feeds `idxLightWeeks` (more than half the sessions, or a run of two or more), which the weekly averages leave out, `recentLighterIn` (the deload suggestion: those weeks, the week in progress from its second lighter session, rest weeks, a week with nothing trained, and a marked deload week with nothing trained while it runs) and `lastLighterWeekIn` (Stats' line under Stalls: completed weeks, rest, a week off or lighter, nothing until 4 weeks trained or just after two empty weeks). Its words: `LIGHTER_WEEK_WORDS`, `LIGHTER_WEEK_TIP`. Until r54 the averages read the labels (r30), Stats read hard sets against the usual week (65%), and the coach read what the lifts did (r53).
+- **The log's first week:** `avgFirstWeekIn(M)` is the week after the one the log starts in; `avgWeeksIn` starts there (until r54, `firstFullWeekIn`, which adherence still reads). `FIRST_WEEK_REASON` and `FIRST_WEEK_WHY` say why (the week loads are found). `regionSrc` labels a cut average "the N full weeks after your first week", shows the first week alone as "your first week, to <date>" (`first`, not `old`), and its note says "No full week to average yet". The coach with no average: "after your second week" until the first counted week is over, "after a full week of training" after that, the break line as before.
+- **The plan reaching the target:** `coachIn` says "Your plan has P: do every planned set" when `plannedSetsIn` (moved from the legacy `plannedSets`) already meets the muscle's minimum and the lifter is not in Freestyle; "Add N sets" only when the plan is short.
+- **Every other day:** `plannedPerWeek(R)` takes a cycle's rate down to the whole number, at least one for a routine that trains (V: 3.5 is 3), for the ring, This week, the streak (`weekNeedIn`, `weekStreakIn`) and adherence.
+- **Build my own routine:** `ACT.obOwn` makes Training, Rest, Training, Rest, Training, Rest, Rest.
+- **Past workouts:** `pastDraft` never sets one up as a deload; the deload week's mark does not store the day it was tapped.
+- **History:** a deload session's name drops its " (deload)" beside the deload tag.
+- **The way of working (PENDING 316):** `tests/moved.js` deleted; `tests/r53w.js` compares r52 with `baselines/r53.html`; `tests/engine.js` reads the adapters from `live.ts` and calls the four r54 added (`EXTRA`) after the digest that the pinned comparisons share.
+
 ## PENDING.md's Done section as of r53
 
 #### r52, live since 2026-10-18 (pull request #45, merged by V; build 2026.10.17-r52)

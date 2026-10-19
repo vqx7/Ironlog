@@ -1,5 +1,5 @@
 /* What the analytics tell the lifter (phase 3b, r52; moved from the legacy
-   script, tests/moved.js reads each back to r51's code): the lifts moving and
+   script): the lifts moving and
    stalled, the stalls that point to fatigue, the coach's one line, a muscle's
    trend in words, the size check's sites, and the check-in against how
    sessions went (readiness). */
@@ -17,7 +17,7 @@ import {
   sortedSessionsIn
 } from './model';
 import { IDXIn, stallWeeksIn } from './analytics';
-import { actualAvg4In, recentLighterIn } from './weeks';
+import { FIRST_WEEK_WHY, actualAvg4In, avgFirstWeekIn, recentLighterIn } from './weeks';
 import { GROW_PCT, atLoad, isWork, offSession } from './formulas';
 import { MK, ML, TRACK_ONLY, isCompound, noE1 } from './library';
 import { addDays, andList, r1, weekStart } from './util';
@@ -189,7 +189,7 @@ export function coachIn(M: Model): CoachLine {
         .filter(id => forM(id) && M.s.exercises.some(e => e.id === id && !e.archived))
         .sort((x, y) => I.byEx[y]![I.byEx[y]!.length - 1].date.localeCompare(I.byEx[x]![I.byEx[x]!.length - 1].date));
       const exId = inR.find(done) || logged[0] || inR[0] || null;
-      /* The plan already reaches the target (r53, from the audit V asked
+      /* The plan already reaches the target (r54, from the audit V asked
          for: a lifter doing every planned set was told for weeks to add
          sets). The shortfall is then sets skipped, or ended 4 or more in
          reserve, as a lift's first sessions are while its load is found, so
@@ -255,16 +255,28 @@ export function coachIn(M: Model): CoachLine {
   }
   // Someone back from a break (nothing since before the last 4 weeks) has
   // history but no recent weeks; "first full week" was wrong for them.
-  if (!avg)
-    return {
-      tone: 'blue',
-      text:
-        M.s.sessions.some(x => x.date < addDays(weekStart(M.today()), -28)) &&
-        !M.s.sessions.some(x => x.date >= addDays(weekStart(M.today()), -28))
-          ? 'Nothing logged in the last 4 weeks. Volume advice comes back after a full week of training.'
-          : 'Volume advice appears here after your first full week.',
-      act: null
-    };
+  /* Since r54 the averages start the week after the log's first
+     (avgFirstWeekIn), so until that week is over the advice waits for the
+     second week; any other time a full week of training brings it, which
+     r53 also called the first full week to a lifter months in. */
+  if (!avg) {
+    const ago = addDays(weekStart(M.today()), -28);
+    const af = avgFirstWeekIn(M);
+    if (M.s.sessions.some(x => x.date < ago) && !M.s.sessions.some(x => x.date >= ago))
+      return {
+        tone: 'blue',
+        text: 'Nothing logged in the last 4 weeks. Volume advice comes back after a full week of training.',
+        act: null
+      };
+    if (!af || weekStart(M.today()) <= af)
+      return {
+        tone: 'blue',
+        text: 'Volume advice appears here after your second week.',
+        why: FIRST_WEEK_WHY,
+        act: null
+      };
+    return { tone: 'blue', text: 'Volume advice appears here after a full week of training.', act: null };
+  }
   return { tone: 'green', text: 'Every muscle at target, nothing stalled.', act: null };
 }
 

@@ -1,7 +1,6 @@
 /* Routines as data: the weekday names, the default plan for an exercise, and
    the ready-made routines with the function that copies one (phase 2, r50;
-   moved unchanged from the legacy script, tests/moved.js holds them to r49's
-   code). Which routine a lifter starts on, and anything that reads the log,
+   moved unchanged from the legacy script). Which routine a lifter starts on, and anything that reads the log,
    stays with the app's state. */
 
 import type { Day, Plan, PlanItem, Profile, Routine, Session, SessionEx } from './types';
@@ -174,7 +173,7 @@ export function routineFromTemplate(key: string): NewRoutine | null {
   };
 }
 
-/* ---------- routine helpers (phase 3a, r51; moved unchanged, tests/moved.js holds them to r50's code) ---------- */
+/* ---------- routine helpers (phase 3a, r51; moved unchanged) ---------- */
 
 /** The parts of a routine these helpers read. */
 type RoutineLike = {
@@ -332,7 +331,7 @@ export function tplCountLine(): string {
 export const RIR_TGT_TIP =
   'Target RIR is 1 unless you change it, a convention: muscle growth improves as sets end closer to failure (Robinson 2024), but going all the way to failure grew muscle no more than stopping 1 to 2 reps short (Refalo 2024) and costs more fatigue. Some lifts in the ready-made routines use 0 or 2.';
 
-/* ---------- the plan a lift is trained at (phase 3b, r52; moved from the legacy script, tests/moved.js reads them back to r51's code) ---------- */
+/* ---------- the plan a lift is trained at (phase 3b, r52; moved from the legacy script) ---------- */
 
 /** What a profile changes in a plan item: the range and reserve, and on a heavy compound the rest. */
 type ProfChange = { repMin: number; repMax: number; rir: number; rest?: number };
@@ -424,7 +423,7 @@ export function planCreditIn(M: Model, it: { rir: number | string }): number {
 
 /* A muscle's planned hard sets a week: each planned set's credit (above),
    a helper muscle's at half, a cycle at its days a week (weekFactor). Moved
-   from the legacy script in r53, unchanged, so the coach can tell a plan
+   from the legacy script in r54, unchanged, so the coach can tell a plan
    short of a muscle's target from one that already reaches it. */
 /** Planned hard sets a week for each muscle, from a routine. */
 export function plannedSetsIn(M: Model, routine: Routine): Record<string, number> {

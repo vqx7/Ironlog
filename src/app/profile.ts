@@ -1,7 +1,6 @@
 /* Your training (r44, item 271, with items 43 and 44): the profile's choices,
    its focus numbers, how a saved profile is cleaned, and its tips (phase 3a,
-   r51; moved unchanged from the legacy script, tests/moved.js holds them to
-   r50's code). The rules that apply a profile to a plan move with the
+   r51; moved unchanged from the legacy script). The rules that apply a profile to a plan move with the
    engine. */
 
 import type { Profile } from './types';

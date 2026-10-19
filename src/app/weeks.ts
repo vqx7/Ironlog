@@ -1,5 +1,5 @@
 /* The week as the screens count it (phase 3b, r52; moved from the legacy
-   script, tests/moved.js reads each back to r51's code): the weekly averages
+   script): the weekly averages
    every flag, the coach and Muscles read, the region balance, the routine a
    past week was trained on and what it asked for, the streak, the newest
    lighter session, and this week's numbers on Today. */
@@ -33,14 +33,32 @@ export interface AvgMeta {
 /** A weekly average: hard sets a week per muscle, with what it says about itself (AvgMeta). */
 export type WeeklyAvg = Record<string, number> & AvgMeta;
 
-/* The week the log started in counts only if it started on that week's
-   first day (r29): someone who began on a Saturday with one session read as
-   "19 flagged" and a "1-week average" the following Monday. */
+/* The first week adherence counts: the week the log started in counts only
+   if it started on that week's first day (r29): someone who began on a
+   Saturday with one session read as "19 flagged" and a "1-week average" the
+   following Monday. The weekly averages start a week later (avgFirstWeekIn). */
 export function firstFullWeekIn(M: Model): string | null {
   const f = firstDate(M.s.sessions);
   if (!f) return null;
   const w = weekStart(f);
   return f > w ? addDays(w, 7) : w;
+}
+
+/* The weekly averages leave out the week the log starts in, however it
+   started (r54, from the audit V asked for): it is the week loads are found,
+   when sets end well short of failure while the weight is felt out, so a
+   lifter doing every planned set from then on read below target, and was
+   told to add sets, for the month it stayed in the average. */
+/** Why the first week is left out of the averages, in the Guide's words. */
+export const FIRST_WEEK_REASON = 'the week your loads are found, when sets usually end well short of failure';
+
+/** The same, as the coach, the radar's tip and Volume say it. */
+export const FIRST_WEEK_WHY = `Your first week is left out of the weekly averages: it is ${FIRST_WEEK_REASON}.`;
+
+/** The first week the weekly averages count, or null with nothing logged. */
+export function avgFirstWeekIn(M: Model): string | null {
+  const f = firstDate(M.s.sessions);
+  return f ? addDays(weekStart(f), 7) : null;
 }
 
 /* The weeks an average covers, in words: "your last 4 full weeks", or
@@ -75,7 +93,7 @@ export function avgWeeksIn(M: Model, n: number, lightToo?: boolean): WeeklyAvg |
   let weeks = 0;
   const tot: Record<string, number> = {},
     con: Record<string, number> = {};
-  const ff = firstFullWeekIn(M);
+  const ff = avgFirstWeekIn(M);
   /* The last n weeks, but a lighter week among them is skipped and the
      week before them takes its place (r30), up to twice as far back: a
      deload halves the sets on purpose, and averaging it in read as below
@@ -262,7 +280,10 @@ export function weekStreakIn(M: Model): { weeks: number; best: number; need: num
    review); a deload done at full for every lift is no deload; and a week
    marked as a deload counts on its own only with nothing trained in it,
    since a week tapped on a Saturday after normal training held the coach
-   back for four weeks with no deload done (the second review). */
+   back for four weeks with no deload done (the second review).
+   Since r54 a week with nothing trained in it counts too, as the Stats line
+   beside the suggestion has counted it since r30 (lastLighterWeekIn): one
+   reading of a lighter week for the averages, the suggestion and that line. */
 export function recentLighterIn(M: Model, days: number): string | null {
   const from = addDays(M.today(), -days);
   let d: string | null = null;
@@ -273,15 +294,58 @@ export function recentLighterIn(M: Model, days: number): string | null {
   const week = (k: string): boolean => !!I.lightWk[k] && (k < cur || T[k].light >= 2);
   for (const x of M.s.sessions)
     if (x.date >= from && lighter(x.id) && week(weekStart(x.date)) && (!d || x.date > d)) d = x.date;
-  // A rest week is recovery too, and so is a marked deload week with nothing trained in it: its last day, or today while it runs.
+  // Weeks gone by since the log began with nothing trained in them, back to the first that ends inside the window.
+  const off: string[] = [];
+  const f = firstDate(M.s.sessions);
+  if (f)
+    for (let w = weekStart(f) > weekStart(from) ? weekStart(f) : weekStart(from); w < cur; w = addDays(w, 7))
+      if (!T[w]) off.push(w);
+  /* A rest week is recovery too, and so is a week with nothing trained in it,
+     or a marked deload week with nothing trained in it yet: its last day, or
+     today while it runs. */
   for (const w of [
     ...(M.s.settings.restWeeks || []),
-    ...(M.s.deloadWeek && !T[M.s.deloadWeek] ? [M.s.deloadWeek] : [])
+    ...(M.s.deloadWeek && !T[M.s.deloadWeek] ? [M.s.deloadWeek] : []),
+    ...off
   ]) {
     const e = addDays(w, 6) < M.today() ? addDays(w, 6) : M.today();
     if (e >= from && w <= M.today() && (!d || e > d)) d = e;
   }
   return d;
+}
+
+/** What a lighter week is, in the words the Guide and Stats say it (idxLightWeeks, lighterTally). */
+export const LIGHTER_WEEK_WORDS =
+  'more than half its sessions done lighter, or two or more deload sessions done lighter at its end';
+
+/** The tip beside Stats' line on the last lighter week: what counts, and what reads it. */
+export const LIGHTER_WEEK_TIP = `A lighter week has ${LIGHTER_WEEK_WORDS}. A rest week or a week with nothing trained counts too. Your weekly averages leave these weeks out, and a deload is not suggested within 4 weeks of one.`;
+
+/* The last lighter week, said under Stalls on Stats (r30). Until r54 it was
+   read by hard sets, a week at 65% or less of the usual, and named weeks the
+   averages kept and the deload suggestion beside it did not count (the audit
+   V asked for). Since r54 it is their reading: a lighter week as the
+   averages leave it out, a rest week, or a week with nothing trained.
+   Completed weeks only, back to the week the log began, 12 at most; nothing
+   until 4 of them were trained, nor just after two empty weeks, which are a
+   break, not a lighter week (r34.2). */
+/** How many weeks ago the last lighter week was and what kind it was, weeks null for none in 12, or null with nothing to say. */
+export function lastLighterWeekIn(M: Model): { weeks: number | null; kind?: 'lighter' | 'rest' | 'off' } | null {
+  const f = firstDate(M.s.sessions);
+  if (!f) return null;
+  const I = IDXIn(M);
+  const cur = weekStart(M.today());
+  const ks: string[] = [];
+  for (let k = 1; k <= 12 && addDays(cur, -7 * k) >= weekStart(f); k++) ks.push(addDays(cur, -7 * k));
+  const trained = (w: string): boolean => weekSessionsIn(M, w) > 0;
+  if (ks.filter(trained).length < 4) return null;
+  if (ks.length >= 2 && !trained(ks[0]) && !trained(ks[1])) return null;
+  for (let k = 0; k < ks.length; k++) {
+    const w = ks[k];
+    const kind = isRestWeekIn(M, w) ? 'rest' : !trained(w) ? 'off' : I.lightWk[w] ? 'lighter' : null;
+    if (kind) return { weeks: k + 1, kind };
+  }
+  return { weeks: null };
 }
 
 /** This week on Today: the routine, sessions done and planned, hard sets against the plan, cardio, a rest week. */

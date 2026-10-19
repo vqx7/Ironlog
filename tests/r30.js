@@ -84,7 +84,7 @@ function strongCsv() {
     const au = await ev(() => { const L = window.__ironlog; const I = L.IDX(); L.ui.tab = 'dash'; L.render(); document.querySelectorAll('#view details').forEach(d => d.open = true); L.render(); document.querySelectorAll('#view details').forEach(d => d.open = true);
       return { push: I.byEx.pressdown.filter(x => x.auto).map(x => x.date), txt: document.getElementById('view').innerText, mv: (document.querySelector('#dashSummary .srow') || {}).innerText || '', heads: Object.keys(I.exStats).map(id => L.exHeadline(id)).join(' ') }; });
     ok(!au.push.length, 'a lift done at its usual load in a lighter week is not called lighter (the pushdown)', au.push);
-    ok(/Last lighter week: 2 weeks ago \(lighter loads\)/.test(au.txt) && !/No lighter week/.test(au.txt), 'Stalls names the deload week (lighter loads), never "No lighter week"', (au.txt.match(/[^\n]*lighter week[^\n]*/i) || [])[0]);
+    ok(/Last lighter week: 2 weeks ago\./.test(au.txt) && !/No lighter week/.test(au.txt), 'Stalls names the deload week, never "No lighter week" (since r54 without "(lighter loads)": a lighter week is read from what the lifts did, said in its tip)', (au.txt.match(/[^\n]*lighter week[^\n]*/i) || [])[0]);
     ok(/, and \d+ more, over \d+ weeks/.test(au.mv), 'Moving names two lifts and how many more', au.mv);
     ok(!/likely ([+-][\d.]+%) to \1/.test(au.heads), 'no trend range of zero width ("likely +1.9% to +1.9%")', au.heads.slice(0, 300));
     // One rule across the Lifts section: 1RM figures only for a compound lift with sets of 12 or fewer.
@@ -210,7 +210,8 @@ function strongCsv() {
 
     // A deload week is not averaged into weekly volume.
     const av = await ev(() => { const L = window.__ironlog; const LB = 0.45359237; const S = (id, d, n, dl) => ({ id, date: d, dayIdx: 0, dayId: null, dayName: 'A', routineId: '', free: true, notes: '', deload: !!dl, ex: [{ exId: 'bench', sets: Array.from({ length: n }, () => ({ w: 100 * LB, r: 8, rir: 1, warm: false })) }] });
-      L.state.sessions = [S('a0', '2026-08-24', 12), S('a1', '2026-08-31', 12), S('a2', '2026-09-07', 12), S('a3', '2026-09-14', 12), S('a4', '2026-09-21', 6, true), S('a5', '2026-09-28', 12)]; L.invalidate(); const a = L.actualAvg4(); return { chest: a.chest, weeks: a._weeks }; });
+      // From 17 August, so the week reached for is not the log's first, which the averages leave out since r54.
+      L.state.sessions = [S('az', '2026-08-17', 12), S('a0', '2026-08-24', 12), S('a1', '2026-08-31', 12), S('a2', '2026-09-07', 12), S('a3', '2026-09-14', 12), S('a4', '2026-09-21', 6, true), S('a5', '2026-09-28', 12)]; L.invalidate(); const a = L.actualAvg4(); return { chest: a.chest, weeks: a._weeks }; });
     ok(av.chest === 12 && av.weeks === 4, 'the weekly average skips the deload week and reaches one week further back', av);
 
     // Notes: "OHP 3x8 40" is 3 sets of 8 at 40.

@@ -1,7 +1,6 @@
 /* The sessions a lift's trend reads, and its two ends (r41), shared by the
    trend itself and by the screens that say its change, so the two cannot
-   disagree (phase 3a, r51; moved unchanged from the legacy script,
-   tests/moved.js holds them to r50's code). The trend's reading of each
+   disagree (phase 3a, r51; moved unchanged from the legacy script). The trend's reading of each
    session (tv) is set by the analytics (analytics.ts, idxLift), whose
    exposures these read (model.ts). */
 

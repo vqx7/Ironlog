@@ -28,7 +28,7 @@
 // r51's test hook does not reach 22 of the 74 names, so r51 is served with
 // those added to its hook, at that one place, the rest of its page held to
 // the baseline's text; r52's hook has the same 22 (tests/moved.js
-// reads that back).
+// read that back for r52).
 const { open, engine, settle } = require('./h');
 const fs = require('fs'); const path = require('path'); const os = require('os');
 const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log('FAIL', m, x !== undefined ? JSON.stringify(x).slice(0, 1500) : ''); } else console.log('ok  ', m); };

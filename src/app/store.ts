@@ -7,8 +7,7 @@
    assignment did; the properties of ui, cloud and the log are still written
    from many places, and giving those writes one path is the work of phases
    4 and 5 (ARCHITECTURE.md); since 3b the engine and the analytics read the
-   log through live.ts's model instead of importing it. The four objects are moved unchanged, and
-   tests/moved.js holds them to r50's code. */
+   log through live.ts's model instead of importing it. The four objects moved unchanged. */
 
 import type { EngineSettings, EngineState } from './types';
 

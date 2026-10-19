@@ -1,6 +1,5 @@
 /* Lift goals (r38): which lifts can have one, and how far a goal is (phase
-   3a, r51; moved unchanged from the legacy script, tests/moved.js holds them
-   to r50's code). goalState, which reads the log, stays in the legacy script
+   3a, r51; moved unchanged from the legacy script). goalState, which reads the log, stays in the legacy script
    until the screen that shows it moves (phase 5, ARCHITECTURE.md). */
 
 import type { Exercise } from './types';

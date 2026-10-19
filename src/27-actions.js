@@ -11,13 +11,14 @@ function pastDue(R,date){
   if(R.schedule==='weekly'){const i=(parse(date).getDay()+6)%7;return ok(i)?i:-1;}
   const cs=cycleState(R,date);return ok(cs.next)?cs.next:-1;
 }
+/* Never a deload (r54, from the audit V asked for): the week's mark does not
+   say which day Deload week was tapped, so a workout logged for a day before
+   it opened and saved as one. It is logged as what was done, and a lift done
+   lighter reads lighter from its numbers. */
 function pastDraft(date,di){
-  const R=activeRoutine();const deload=!!state.deloadWeek&&state.deloadWeek===weekStart(date);
-  const day=di==null?null:R.days[di];
+  const R=activeRoutine();const day=di==null?null:R.days[di];
   if(!day){const d=freeDraft('Freestyle');return {...d,date,startedAt:null,past:true};}
-  const items=day.items.map(it=>deload?{...it,sets:Math.max(1,Math.ceil(it.sets/2))}:it);
-  const note=deload?'Deload: half sets, about 90% loads, 3+ RIR.':'';
-  return {id:uid(),startedAt:null,date,dayIdx:di,dayId:day.id,dayName:day.name+(deload?' (deload)':''),routineId:R.id,deload,light:false,past:true,cardio:[],notes:note,note0:note,editingId:null,ex:items.map(it=>newBlock(it.exId,it,{deload,before:date}))};
+  return {id:uid(),startedAt:null,date,dayIdx:di,dayId:day.id,dayName:day.name,routineId:R.id,deload:false,light:false,past:true,cardio:[],notes:'',note0:'',editingId:null,ex:day.items.map(it=>newBlock(it.exId,it,{before:date}))};
 }
 /* Anything the lifter put into a session: a ticked set, typed reps or a
    typed load, an RIR, cardio minutes, a note on an exercise, or session notes other than the text the
@@ -502,7 +503,8 @@ const ACT={
   },
   obOwn(){
     state.settings.onboarded=true;
-    const r={id:uid(),name:'My routine',schedule:'cycle',days:[1,2,3].map(()=>({id:uid(),name:'Training day',rest:false,items:[]}))};
+    // Three training days with rest days between, as the ready-made 3-day routines are laid out (r54, the audit: three days and no rest planned 7 sessions a week).
+    const r={id:uid(),name:'My routine',schedule:'cycle',days:[0,1,0,1,0,1,1].map(x=>({id:uid(),name:x?'Rest':'Training day',rest:!!x,items:[]}))};
     state.routines.push(r);state.activeRoutineId=r.id;ui.bRoutine=r.id;ui.bTarget=0;ui.folds['program:library']=true;ui.folds['program:days']=true;ui.todayDay=null;
     ui.tab='program';ui.planView='routine';commit();window.scrollTo(0,0);render();
     toast('Name your days, then add exercises with + or by dragging.',false,7000);

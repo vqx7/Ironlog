@@ -1,8 +1,7 @@
 /* Which sections each tab has, in what order, and the choices that shape
    the screens: the accent, the volume views, the weeks the radar averages,
    the weigh-in cadence, the sheets that hold typed fields (phase 3a, r51;
-   moved unchanged from the legacy script, tests/moved.js holds them to r50's
-   code). */
+   moved unchanged from the legacy script). */
 
 // Dashboard sections, in display order. Keys are what the jump strip targets.
 export const DSECS: readonly (readonly [string, string])[] = [

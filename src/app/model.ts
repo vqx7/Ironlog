@@ -4,7 +4,7 @@
    of it takes the model as its first parameter, `M`, so it reads nothing
    else: a test hands it a log and a date, and the app hands it the one live
    model (live.ts). The accessors here moved unchanged from the legacy script
-   but for that parameter; tests/moved.js reads them back to r51's code. */
+   but for that parameter. */
 
 import type { EngineState, Exercise, Gym, Profile, Routine, Session, Target } from './types';
 import { weekStart } from './util';

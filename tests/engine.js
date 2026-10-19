@@ -2,9 +2,10 @@
 // the engine and the analytics, bundled for Node with no page, are given the
 // wide histories of tests/r52.js as the page normalized them (normalize()
 // stays in the legacy script until phase 4), deep-frozen, with the page's
-// language and time zone. Each of the 75 names live.ts gives the legacy
-// script (r52's 74, and routineUpdates since r53) is called with the page's
-// own arguments on a fresh model and must
+// language and time zone. Each of the names live.ts gives the legacy
+// script (r52's 74, routineUpdates since r53, and since r54 plannedSets,
+// stallWeeks, avgFirstWeek and lastLighterWeek, read from live.ts) is called
+// with the page's own arguments on a fresh model and must
 // give the page's answer, then again on a second fresh model; so is each of
 // PLAIN, the engine's functions the legacy script calls directly that take
 // no model (since r53 avgWeeksTxt, whose lines no adapter reaches). The bundle runs
@@ -28,6 +29,11 @@ const MODULES = ['model', 'units', 'routines', 'gym', 'format', 'loads', 'analyt
 const K = +process.env.ENGINE_N || 1000, BATCH = 100;
 // The engine's functions that take no model and that the digest calls (tests/wide.js), run in Node beside the adapters.
 const PLAIN = ['avgWeeksTxt'];
+// Every adapter live.ts gives the legacy script, read from live.ts itself, so a new one cannot go uncalled.
+const ADAPTERS = [...fs.readFileSync(path.join(APP, 'live.ts'), 'utf8').matchAll(/^export const (\w+) = live\(\w+In\);$/gm)].map(m => m[1]);
+// The adapters added since r53, which the digest does not call: tests/wide.js is shared with the comparisons pinned
+// to r52 and r53 (tests/r52.js, tests/r53w.js), so their calls are made here, after it, with these arguments.
+const EXTRA = { plannedSets: (s) => s.routines.map(r => [r]), stallWeeks: (s, ids) => ids.map(id => [id]), avgFirstWeek: () => [[]], lastLighterWeek: () => [[]] };
 
 // The child: the bundle on the page's histories, under V8's coverage.
 if (process.argv[2] === '--child') {
@@ -150,6 +156,14 @@ function lineCoverage(covDir, bundleFile, mapPayload) {
     const state = lines.find(l => l.startsWith('state ')).slice(6);
     // The calls up to invalidate and it: after it the page reads the caches anew, which a fresh model always does.
     const calls = []; for (const l of lines) { if (l.split('\t').length === 3) calls.push(l); if (l.startsWith('invalidate\t')) break; }
+    // The adapters the digest does not call, on the same log the digest leaves loaded.
+    const sp = specOf(h);
+    calls.push(...await B.page.evaluate(([spec, extra]) => {
+      const L = window.__ironlog; const ser = new Function(`return (${spec.ser})`)(), err = new Function(`return (${spec.err})`)();
+      const out = [];
+      for (const [name, argsOf] of Object.entries(extra)) for (const args of new Function(`return (${argsOf})`)()(L.state, spec.ids)) { let r; try { r = L[name](...args); } catch (e) { r = err(e); } out.push(name + '\t' + ser(args) + '\t' + ser(r)); }
+      return out;
+    }, [sp, Object.fromEntries(Object.entries(EXTRA).map(([k, f]) => [k, f.toString()]))]));
     histories.push({ seed: 52000 + i, today: h.today, state, calls });
     if (histories.length === BATCH || i === K - 1) { batches.push(path.join(tmp, `data-${batches.length}.json`)); fs.writeFileSync(batches[batches.length - 1], JSON.stringify({ histories })); histories.length = 0; }
   }
@@ -187,8 +201,9 @@ function lineCoverage(covDir, bundleFile, mapPayload) {
   else for (const r of results) { if (!res) res = r; else { res.calls += r.calls; res.same += r.same; res.again += r.again; res.watched += r.watched; res.wroteAny = res.wroteAny || r.wroteAny; res.writes.push(...r.writes); res.first = res.first || r.first; for (const [n, c] of Object.entries(r.names)) res.names[n] = (res.names[n] || 0) + c; } }
   if (res) {
     ok(res.locale === intl.locale && res.timeZone === intl.timeZone, `Node read dates in the page's language and time zone (${intl.locale}, ${intl.timeZone})`, { node: [res.locale, res.timeZone], page: intl });
-    ok(Object.keys(res.names).length === 75 + PLAIN.length && PLAIN.every(n => res.names[n] > 0), `all 75 names and ${PLAIN.join(', ')} were called in Node (${Object.keys(res.names).length})`, Object.keys(res.names));
-    ok(res.calls > K * 1000 && res.same === res.calls, `each of the 75, on a fresh model of a frozen log, and ${PLAIN.join(', ')}, gives the page's answer: ${res.same} of ${res.calls} calls over ${K} histories (${Math.round((Date.now() - t0) / 1000)} s)`, res.first);
+    const missing = ADAPTERS.filter(n => !(res.names[n] > 0));
+    ok(ADAPTERS.length >= 79 && missing.length === 0 && Object.keys(res.names).length === ADAPTERS.length + PLAIN.length && PLAIN.every(n => res.names[n] > 0), `all ${ADAPTERS.length} adapters in live.ts and ${PLAIN.join(', ')} were called in Node (${Object.keys(res.names).length})`, { missing, names: Object.keys(res.names) });
+    ok(res.calls > K * 1000 && res.same === res.calls, `each of the ${ADAPTERS.length}, on a fresh model of a frozen log, and ${PLAIN.join(', ')}, gives the page's answer: ${res.same} of ${res.calls} calls over ${K} histories (${Math.round((Date.now() - t0) / 1000)} s)`, res.first);
     ok(res.again === res.calls, `and gives it again on a second fresh model (${res.again} of ${res.calls})`);
     ok(res.tables > 40, `every table the modules keep was frozen for the run, so no write to one passes (${res.tables})`);
     ok(res.watched > 0 && !res.wroteAny, `no call tried to change the log, watched on every tenth history's second round, a caught error included (${res.watched} calls)`, res.writes);

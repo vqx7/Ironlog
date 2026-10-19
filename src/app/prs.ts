@@ -1,6 +1,5 @@
 /* What a PR is called and the rep bands estimates are judged in (phase 3a,
-   r51; moved unchanged from the legacy script, tests/moved.js holds them to
-   r50's code). Finding the PRs moves with the analytics. */
+   r51; moved unchanged from the legacy script). Finding the PRs moves with the analytics. */
 
 // The bands in words, counted as reps to failure (reps plus RIR).
 /* Bands count reps to failure (reps plus reps in reserve), so they say so (r34.2, from the review:

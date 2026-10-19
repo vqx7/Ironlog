@@ -1,6 +1,5 @@
 /* General helpers with no knowledge of training: text, ids, dates, numbers
-   and a string hash (phase 2, r50; moved unchanged from the legacy script,
-   tests/moved.js holds them to r49's code). */
+   and a string hash (phase 2, r50; moved unchanged from the legacy script). */
 
 /* ---------- text ---------- */
 
@@ -132,7 +131,7 @@ export function hashStr(str: string): string {
   return (h2 >>> 0).toString(36) + (h1 >>> 0).toString(36);
 }
 
-/* ---------- seeded random numbers (phase 3a, r51; moved unchanged, tests/moved.js holds it to r50's code) ---------- */
+/* ---------- seeded random numbers (phase 3a, r51; moved unchanged) ---------- */
 
 /** Mulberry32: random numbers from a seed, the same series every time for the same seed (the demo log). */
 export function mulberry(a: number): () => number {

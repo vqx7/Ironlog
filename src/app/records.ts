@@ -2,7 +2,7 @@
    entries and kept unknown fields, the id checks, the cleaners for a
    calibration set, a check-in and a target, the order of sessions, and how
    long deleted things are kept (phase 3a, r51; moved unchanged from the
-   legacy script, tests/moved.js holds them to r50's code). normalize(),
+   legacy script). normalize(),
    which applies them to a whole save, moves with storage in phase 4. */
 
 import { hashStr, numOr, isNum, isDate } from './util';

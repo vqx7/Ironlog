@@ -156,6 +156,45 @@ const clashes = r => r.stalls.filter(st => r.prs.some(p => p.name === st.name &&
     await P.ctx.close();
   }
 
+  // ---- A lighter week, wherever it is named (r54, from the audit V asked for: Stats read lighter weeks by hard sets, the weekly averages by
+  // the sessions' labels and the deload suggestion by what the lifts did, so one week could be lighter on one screen and not on the next).
+  // Bench press, back squat and Romanian deadlift flat at 100 x 8, 8, all three stalled, in two logs: a week with nothing trained two weeks
+  // ago, and four days a week with Deload week tapped on a Wednesday, its Thursday and Friday done at 90 for one set.
+  {
+    const lighterScreens = () => { const L = window.__ironlog;
+      L.ui.tab = 'dash'; L.ui.volMode = 'region'; L.render(); document.querySelectorAll('#view details').forEach(d => { d.open = true; });
+      L.render(); document.querySelectorAll('#view details').forEach(d => { d.open = true; });
+      // Each line of Stalls on its own, as it is shown: the lift rows end in dates, which run into the next line's number in the section's text.
+      const lines = [...document.querySelectorAll('#sub-stalls p')].map(e => e.textContent.replace(/\s+/g, ' ').trim());
+      const stalls = lines.join(' | ');
+      const lw = lines.map(t => /^Last lighter week: (\d+) weeks? ago( \(a (?:rest week|week off)\))?\./.exec(t)).find(Boolean);
+      const big = lines.map(t => /^(\d+) main lifts stalled at once/.exec(t)).find(Boolean);
+      const change = [...document.querySelectorAll('#dashSummary .srow')].map(e => e.textContent.replace(/\s+/g, ' ').trim()).find(t => /^Change/.test(t)) || '';
+      const radar = ([...document.querySelectorAll('#view p')].map(e => e.textContent).find(t => /^Using /.test(t)) || '').replace(/\s+/g, ' ');
+      return { lw: lw ? { weeks: +lw[1], kind: lw[2] || '' } : null, big: big ? +big[1] : 0, change, radar, none: /No lighter week in the last 12/.test(stalls) };
+    };
+    const logs = {
+      off: ['2026-09-03', '2026-09-10', '2026-09-17', '2026-09-24', '2026-10-08'].map(d => [d, 2, 100, '']),
+      mid: [].concat(...['2026-08-24', '2026-08-31', '2026-09-07', '2026-09-14', '2026-09-21', '2026-09-28', '2026-10-05'].map(mon => [0, 1, 3, 4].map(k => {
+        const d = new Date(Date.parse(mon + 'T12:00:00Z') + k * 864e5).toISOString().slice(0, 10); const dl = mon === '2026-10-05' && k >= 3; return [d, dl ? 1 : 2, dl ? 90 : 100, dl ? 'deload' : '']; })))
+    };
+    for (const [name, rows] of Object.entries(logs)) {
+      const P = await open(FILE, { browser, clock: '2026-10-15T10:00:00' });
+      await P.page.evaluate(rows => { const L = window.__ironlog; const s = L.state; s.settings.onboarded = true; s.settings.hidden = []; s.injuries = []; s.draft = null; s.deloadWeek = null;
+        s.sessions = rows.map(([date, n, w, tag], i) => ({ id: 'q' + i, date, dayIdx: 0, dayId: null, dayName: tag ? 'Session (deload)' : 'Session', routineId: '', free: true, deload: tag === 'deload', notes: '',
+          ex: ['bench', 'backSquat', 'rdl'].map(exId => ({ exId, rr: [6, 10], sets: Array.from({ length: n }, () => ({ w, r: 8, rir: tag ? 3 : 1, done: true })) })) }));
+        L.state = L.normalize(s); L.invalidate(); L.saveNow(); }, rows);
+      const r = await P.page.evaluate(lighterScreens);
+      const asks = /A deload week may help/.test(r.change);
+      ok(r.big >= 3 && (r.lw || r.none), `${name}: the log has three main lifts stalled at once and Stats says when the last lighter week was`, r);
+      ok(!(r.lw && r.lw.weeks <= 3 && asks), `${name}: no deload is suggested beside a lighter week Stats names in the last 3 weeks`, r);
+      ok(!(r.big >= 3 && !asks) || (r.lw && r.lw.weeks <= 4), `${name}: when three main lifts are stalled and no deload is suggested, Stats names the lighter week that holds it back`, r);
+      ok(!(r.lw && !r.lw.kind && r.lw.weeks <= 4) || /a lighter week left out/.test(r.radar), `${name}: a lighter week Stats names inside the radar's 4 weeks is one the radar says it left out`, r);
+      ok(!P.errors.length, `no page errors (lighter week, ${name})`, P.errors);
+      await P.ctx.close();
+    }
+  }
+
   // ---- Two sessions in a day: every screen counts a week the same way.
   {
     const P = await open(FILE, { browser, clock: '2026-10-14T10:00:00' });

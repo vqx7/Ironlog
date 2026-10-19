@@ -3,7 +3,7 @@
 A hypertrophy and strength tracker for one lifter, V, used on a phone at the gym. It ships as a standalone
 installable web app: built from `src/` into one page, served by GitHub Pages at https://ironapp.org, working
 offline, with the log on the phone and an optional account that syncs it. Every pull request also publishes a
-preview app at https://ironapp.org/preview/ to try on the phone before merging. Build r53, version 2.4, state schema v5.
+preview app at https://ironapp.org/preview/ to try on the phone before merging. Build r54, version 2.5, state schema v5.
 
 The Claude artifact version was retired by V on 2026-09-27 (`OWNER.md` Done): never work on it or republish it.
 `cloudProvider()` still takes Claude's db when `window.claude` exists, because the sync suites use it as their
@@ -31,8 +31,8 @@ stand-in cloud.
    knowledgeable lifter expects. A number shown in two places is one function, and `tests/coherence.js` checks
    that screens showing one quantity agree: extend it when a release adds or moves a number a lifter reads.
 4. Old code in the legacy parts may be fixed in place, with the failing test first. A screen that is being changed
-   substantially moves into `src/app/` instead. The legacy parts never grow: no new top-level declarations and no
-   more lines (the ratchet in `ARCHITECTURE.md`, checked by `tests/hygiene.js`).
+   substantially moves into `src/app/` instead. The legacy parts never grow: each build has no more top-level
+   declarations and no more lines than the last (the ratchet in `ARCHITECTURE.md`, checked by `tests/hygiene.js`).
 5. One independent review a release, briefed to report correctness and data-loss problems only, each with a
    reproduction. Fix what it confirms, with a test; record the rest in `PENDING.md`.
 6. Storage and sync keep the highest bar, because a lost log cannot be rebuilt (Invariants, Data and Sync).

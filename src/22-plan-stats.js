@@ -218,7 +218,7 @@ ${extraKpis()}</div>`;
   const avg=actualAvg4();const plan=plannedSets(R);const bands=state.settings.bands;
 
   // volume: five ways to read the same hard-set counts, plus tonnage
-  h+=dsec('volume','Volume','Hard sets per muscle. Direct work counts 1, secondary counts 0.5. A set counts as hard when you logged RIR 3 or less. A blank RIR is read as your usual RIR on that lift once you have rated 3 of its sets in the last 12 weeks, and until then counts as hard, because most working sets are. Blank sets are shaded lighter so you can see how much of the bar is measured and how much is assumed. Amber is under your weekly target, green is inside it, blue is over. In This week, pale green is short of the minimum while the week is still going. Below and above are judged at the one decimal shown. By region measures each region against its minimum, so 100% is on target; it averages your last 4 full weeks unless you pick 2 or 8 above the chart (the radar only: flags and the coach always use 4). Load is total weight × reps per week, comparable week to week but not session to session.',
+  h+=dsec('volume','Volume','Hard sets per muscle. Direct work counts 1, secondary counts 0.5. A set counts as hard when you logged RIR 3 or less. A blank RIR is read as your usual RIR on that lift once you have rated 3 of its sets in the last 12 weeks, and until then counts as hard, because most working sets are. Blank sets are shaded lighter so you can see how much of the bar is measured and how much is assumed. Amber is under your weekly target, green is inside it, blue is over. In This week, pale green is short of the minimum while the week is still going. Below and above are judged at the one decimal shown. By region measures each region against its minimum, so 100% is on target; it averages your last 4 full weeks unless you pick 2 or 8 above the chart (the radar only: flags and the coach always use 4). '+FIRST_WEEK_WHY+' Load is total weight × reps per week, comparable week to week but not session to session.',
     `${cov}
   <div class="chips">${VOL_MODES.map(([k,l])=>`<button class="chip ${ui.volMode===k?'on':''}" data-act="volMode" data-v="${k}">${l}</button>`).join('')}</div>
   ${ui.volMode==='region'?regionBody():ui.volMode==='trend'?trendBody():ui.volMode==='load'?`<div class="card">${volHeadline()}${state.sessions.length?`${rangeChips('vol',weeksSpan(firstDate(state.sessions)),8)}<div class="chartbox"><canvas id="chVol"></canvas></div>${chartFallback()}`:'<p class="small muted">Log a session to start this chart.</p>'}</div>`:`<div class="card">${ui.volMode==='week'?(MK.some(m=>(thisWeek[m]||0)>0)?volumeRows(thisWeek,state.settings.rirMode==='off'?null:thisWeekConf,true):'<p class="muted" style="margin:0">Nothing logged this week yet.</p>'):(avg?`<p class="small muted" style="margin:0 0 6px">Averaged over the ${avg._weeks} week${avg._weeks===1?'':'s'} with training in the last 4. Weeks with no sessions are excluded rather than counted as zero.</p>${volumeRows(avg,state.settings.rirMode==='off'?null:avg._conf)}`:'<p class="muted">No sessions in the previous 4 full weeks.</p>')}</div>`}`,noLog()?'Nothing logged yet':`${wkHard} hard sets this week`);
@@ -258,7 +258,7 @@ ${extraKpis()}</div>`;
     if(bigN>=3)stl+=`<p class="small hastip" style="color:var(--red);margin-top:8px" data-tip="Several main lifts flat together often points to fatigue. Check sleep, food, and stress; Deload week is under More options on Today (half the sets, about 90% loads, kept out of your trends). Isolation and core lifts are not counted here.">${bigN} main lifts stalled at once: likely fatigue</p>`;
   }else stl+='<p class="muted">No stalls detected.</p>';
   const lw=lastLighterWeek();
-  if(lw)stl+=`<p class="small muted" style="margin-top:8px">${lw.weeks==null?`No lighter week in the last 12. ${tipi(`Your usual week is ${lw.norm} hard sets. A lighter week is one well under that.`,'Lighter week')}`:`Last lighter week: ${lw.weeks} week${lw.weeks===1?'':'s'} ago (${lw.loads?'lighter loads':lw.sets>0?`${lw.sets} hard sets against your usual ${lw.norm}`:'a week off'}).`}</p>`;
+  if(lw)stl+=`<p class="small muted" style="margin-top:8px">${lw.weeks==null?'No lighter week in the last 12.':`Last lighter week: ${lw.weeks} week${lw.weeks===1?'':'s'} ago${lw.kind==='rest'?' (a rest week)':lw.kind==='off'?' (a week off)':''}.`} ${tipi(LIGHTER_WEEK_TIP,'Lighter week')}</p>`;
 
   // exercise trend
   const withData=Object.keys(I.byEx).filter(id=>I.byEx[id].length).sort((a,b)=>exName(a).localeCompare(exName(b)));
@@ -400,16 +400,16 @@ function regionWk(){let v=ui.regionWk!=null?ui.regionWk:null;if(v==null)try{v=lo
 function regionSrc(){
   const n=regionWk();
   const avg=avgWeeks(n);
-  if(avg)return {src:avg,n,label:avg._missed||avg._light||avg._rest?`your average over ${avgWeeksTxt(avg)}`:avg._weeks<n&&avg._ff?`your ${avg._weeks} full week${avg._weeks===1?'':'s'} logged so far`:`your ${avg._weeks}-week average`};
+  if(avg)return {src:avg,n,label:avg._missed||avg._light||avg._rest?`your average over ${avgWeeksTxt(avg)}`:avg._weeks<n&&avg._ff?`the ${avg._weeks} full week${avg._weeks===1?'':'s'} after your first week`:`your ${avg._weeks}-week average`};
   const I=IDX(),cur=weekStart(today());
   const wk=I.weekSets[cur]||{};
   if(MK.some(m=>(wk[m]||0)>0))return {src:wk,n,label:'this week so far',week:true,noFull:true};
   const has=w=>{const x=I.weekSets[w];return !!x&&MK.some(m=>(x[m]||0)>0);};
-  const ff=firstFullWeek();const all=Object.keys(I.weekSets).filter(w=>w<cur&&has(w)).sort();
+  const ff=avgFirstWeek();const all=Object.keys(I.weekSets).filter(w=>w<cur&&has(w)).sort();
   const full=all.filter(w=>!ff||w>=ff);const wks=(full.length?full:all).slice(-n);
   if(wks.length){const out={};for(const w of wks)for(const m in I.weekSets[w])out[m]=(out[m]||0)+I.weekSets[w][m]/wks.length;
     const end=addDays(wks[wks.length-1],6);
-    return {src:out,n,label:`your last ${wks.length===1?'trained week':wks.length+' trained weeks'}, to ${fmtDate(end)}`,old:true,end};}
+    return {src:out,n,label:full.length?`your last ${wks.length===1?'trained week':wks.length+' trained weeks'}, to ${fmtDate(end)}`:`your first week, to ${fmtDate(end)}`,old:!!full.length,first:!full.length,end};}
   return {src:{},label:'',empty:true};
 }
 function regionBody(){
@@ -425,9 +425,9 @@ function regionBody(){
   const rh=rs.week?`<p class="headline">This week so far: ${on} of ${regs.length} regions at their minimum.</p>`
     :!low.length?`<p class="headline">Every region at or above its minimum${high.length?'':', inside its target'}.</p>`
     :`<p class="headline">${on} of ${regs.length} regions on target. Furthest short: ${worst.label}, ${r1(worst.got)} of ${r1(worst.lo)} sets.</p>`;
-  const note=(rs.old?`Nothing logged in the last ${rs.n||4} weeks, so this shows ${esc(balLabel)}. `:'')+(rs.noFull?'No full week is logged yet, so this is this week so far. ':'')+(rs.week&&low.length?'The week is still going, so this fills in as you train.':'');
+  const note=(rs.old?`Nothing logged in the last ${rs.n||4} weeks, so this shows ${esc(balLabel)}. `:'')+(rs.noFull?'No full week to average yet, so this is this week so far. ':'')+(rs.week&&low.length?'The week is still going, so this fills in as you train.':'');
   const chips=`<div class="wkpick"><span class="small muted" id="wkpickL">Average of the last</span><div class="chips" role="group" aria-labelledby="wkpickL">${REGION_WKS.map(([k,l])=>`<button class="chip ${rs.n===k?'on':''}" data-act="regionWk" data-v="${k}" aria-pressed="${rs.n===k}">${l}</button>`).join('')}</div></div>`;
-  return `<div class="card">${rs.week?'':chips}${rh}<p class="small muted" style="margin:0 0 4px">Using ${esc(balLabel)}. ${tipi('Hard sets per region against the minimum of your weekly targets. On or past the dashed ring is on target.','Reading the chart')}</p><div class="chartbox tall"><canvas id="chRadar"></canvas></div>${chartFallback()}
+  return `<div class="card">${rs.week?'':chips}${rh}<p class="small muted" style="margin:0 0 4px">Using ${esc(balLabel)}. ${tipi(`Hard sets per region against the minimum of your weekly targets. On or past the dashed ring is on target.${rs.first||rs.src._ff?' '+FIRST_WEEK_WHY:''}`,'Reading the chart')}</p><div class="chartbox tall"><canvas id="chRadar"></canvas></div>${chartFallback()}
   <table class="t" style="margin-top:8px"><tr><th>Region</th><th class="r">Sets</th><th class="r">Minimum</th><th class="r">Of minimum</th></tr>
   ${regs.map(rg=>{const c=rg.low?(rs.week?'part':'yellow'):rg.high?'blue':'green';return `<tr><td><span class="plate ${c}" style="height:12px;vertical-align:-1px"></span> ${rg.label}</td><td class="r num">${r1(rg.got)}</td><td class="r muted small">${r1(rg.lo)}</td><td class="r num">${rg.lo>0?Math.round(rg.pct)+'%':'<span class="muted small">no minimum</span>'}</td></tr>`;}).join('')}</table>
   ${note?`<p class="small muted" style="margin-top:6px">${note}</p>`:''}</div>`;

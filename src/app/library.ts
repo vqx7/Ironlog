@@ -2,8 +2,7 @@
    bands, joints, equipment, cardio and tape kinds, the exercise library, and
    the rules read from an exercise alone (its movement pattern, whether it is a
    compound lift, its load meaning, its share of bodyweight). Phase 2, r50;
-   moved unchanged from the legacy script, tests/moved.js holds it to r49's
-   code. Nothing here reads the log or the settings. */
+   moved unchanged from the legacy script. Nothing here reads the log or the settings. */
 
 import type { Exercise, LibRow, LoadMode, MuscleKey } from './types';
 
@@ -729,7 +728,7 @@ export function profHeavy(
   );
 }
 
-/* ---------- finding exercises (phase 3a, r51; moved unchanged, tests/moved.js holds them to r50's code) ---------- */
+/* ---------- finding exercises (phase 3a, r51; moved unchanged) ---------- */
 
 /** The tip beside the library's Most common and Less common filter: where
     the list comes from, and what less common means. */

@@ -1,7 +1,7 @@
 /* Importing workouts (r23, PENDING 65): the parsers that turn a file or
    pasted text into rows, dates, exercise names and sets, before anything is
    matched to the library or saved (phase 3a, r51; moved unchanged from the
-   legacy script, tests/moved.js holds them to r50's code). The preview and
+   legacy script). The preview and
    the save, which read the log, stay with the import screen. */
 
 import { today, isDate } from './util';

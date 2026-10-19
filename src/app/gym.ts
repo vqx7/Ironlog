@@ -1,7 +1,6 @@
 /* Your gym (r33, item 207): the plates on hand, the dumbbell rack, the
    stack step, and how a saved gym is cleaned; and how plates load on an
-   exercise (phase 3a, r51; moved unchanged from the legacy script,
-   tests/moved.js holds them to r50's code). The steps the engine reads from
+   exercise (phase 3a, r51; moved unchanged from the legacy script). The steps the engine reads from
    them move with the engine. */
 
 import type { DbRack, Exercise, Gym, Plan } from './types';
@@ -116,7 +115,7 @@ export function platesMode(ex: Pick<Exercise, 'id' | 'bw' | 'equip' | 'plates'>)
   return 'none';
 }
 
-/* ---------- the steps the engine reads from Your gym (phase 3b, r52; moved from the legacy script, tests/moved.js reads them back to r51's code) ---------- */
+/* ---------- the steps the engine reads from Your gym (phase 3b, r52; moved from the legacy script) ---------- */
 
 /* The loads this lift can be done at, in kg, lightest first, or null: only
    dumbbell and kettlebell lifts, with no step of their own, logged as the

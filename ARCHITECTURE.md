@@ -55,16 +55,16 @@ The current code is the **legacy script**: `src/10-*.js` to `src/29-*.js`, joine
 
 **The ratchet:** the legacy script may never grow. `tests/hygiene.js` fails when it has more top-level declarations or more lines than the numbers below, and also when it has fewer, until the numbers are lowered to match, so each phase locks in what it moved. A change that adds code adds it in `src/app/`.
 
-Legacy top-level declarations: 509
-Legacy lines: 7429
+Legacy top-level declarations: 508
+Legacy lines: 7413
 
-| Measured (scripts/depmap.js) | r49 | r50 | r51 | r52 | r53 |
-|---|---|---|---|---|---|
-| Legacy top-level declarations | 928 | 819 | 638 | 518 | 511 |
-| Pure, movable as they are | 324 | 215 (214 by r51's rule, which also counts browser-only APIs such as DOMParser) | 39 (each waits for its phase, below) | 34 (a call through `live.ts` counts as reading shared state) | 33 (since r53 a call to any module function that reads the store, the live model or the page counts too, `moduleReach`; by r52's rule 40, as effort.ts's `rirScale` reads the store) |
-| Shared mutable names | 61 (`ui` written from 12 files, `state` from 10) | 61 | 56 (`state`, `ui`, `cloud`, `acct` and `acctWait` are the store's) | 48 (the seven caches are the model's) | 48 |
-| Legacy lines | 10,452 | 9,863 | 9,134 | 7,585 | 7,436 |
-| In `src/app/` | `config.ts` | and `util`, `units`, `library`, `routines`, `formulas` (109 declarations) | and 18 more modules, the store among them (182 declarations: 176 moved, the four shared objects, `state` and `setState`) | and 7 more modules, five grown (the 120 moved as 113: 96 taking the model, 16 unchanged and `invalidateIn`, the caches given by `freshCaches`; with `modelOf`, `LIVE`, `live` and 74 adapters) | and 3 more modules, `guide`, `providers` and `effort` (7 declarations moved, `routineUpdates` and `whyTarget` among them to change, so 75 adapters; 4 added) |
+| Measured (scripts/depmap.js) | r49 | r50 | r51 | r52 | r53 | r54 |
+|---|---|---|---|---|---|---|
+| Legacy top-level declarations | 928 | 819 | 638 | 518 | 511 | 508 |
+| Pure, movable as they are | 324 | 215 (214 by r51's rule, which also counts browser-only APIs such as DOMParser) | 39 (each waits for its phase, below) | 34 (a call through `live.ts` counts as reading shared state) | 33 (since r53 a call to any module function that reads the store, the live model or the page counts too, `moduleReach`; by r52's rule 40, as effort.ts's `rirScale` reads the store) | 33 |
+| Shared mutable names | 61 (`ui` written from 12 files, `state` from 10) | 61 | 56 (`state`, `ui`, `cloud`, `acct` and `acctWait` are the store's) | 48 (the seven caches are the model's) | 48 | 48 |
+| Legacy lines | 10,452 | 9,863 | 9,134 | 7,585 | 7,436 | 7,413 |
+| In `src/app/` | `config.ts` | and `util`, `units`, `library`, `routines`, `formulas` (109 declarations) | and 18 more modules, the store among them (182 declarations: 176 moved, the four shared objects, `state` and `setState`) | and 7 more modules, five grown (the 120 moved as 113: 96 taking the model, 16 unchanged and `invalidateIn`, the caches given by `freshCaches`; with `modelOf`, `LIVE`, `live` and 74 adapters) | and 3 more modules, `guide`, `providers` and `effort` (7 declarations moved, `routineUpdates` and `whyTarget` among them to change, so 75 adapters; 4 added) | no more modules; `plannedSets`, `effShow` and `lastLighterWeek` moved (the third rewritten, to the averages' reading of a lighter week), 79 adapters |
 
 ## The phases
 
@@ -75,9 +75,9 @@ Each phase is its own pull request, tried in the preview before V merges it. Eac
 3. **State with one owner**, in two releases (V, 2026-10-17: six releases from here, grouped only where grouping adds no risk).
    - **3a (r51): the rest of the self-contained code, and one owner for the shared state.** Done in r51, as planned below.
    - **3b (r52): the engine and analytics take what they read as arguments.** Done in r52 (pull request #45, merged by V on 2026-10-18) as planned below (Phase 3b in detail), with what the building found after the plan. `suggest`, `IDX()` and the readers around them stop reaching for `state` and the settings and are passed them, so they become pure functions with unit tests of their own; `tests/r36.js` (2,000 seeded histories) proves every number unchanged.
-   Between 3 and 4, **r53 is a behaviour release, not a phase**: V's rulings of 2026-10-18 and the audit's fixes, each change to moved code made through the move check's own `edits` (r53 in detail).
-4. **Storage and sync (r54), alone.** Same storage keys, same sync documents, same key order: `tests/seams.js`, `tests/migration.js` and every baseline hold them to it. Nothing rides along: a fault across devices must have one suspect, and the log is the one thing that cannot be repaired afterwards.
-5. **Screens (r55 to r57).** As components, two tabs a release: Settings and History, then Plan and Stats, then Today and the session screen last, alone, since it is used mid-workout. The legacy script is deleted when it is empty.
+   Between 3 and 4, **r53 is a behaviour release, not a phase**: V's rulings of 2026-10-18 and the audit's fixes, each change to moved code made through the move check's own `edits` (r53 in detail). **r54 is one too**: the whole-app audit's fixes, made under the way of working V approved on 2026-10-18 (r54 in detail).
+4. **Storage and sync (r55), alone.** Same storage keys, same sync documents, same key order: `tests/seams.js`, `tests/migration.js` and every baseline hold them to it. Nothing rides along: a fault across devices must have one suspect, and the log is the one thing that cannot be repaired afterwards.
+5. **Screens (r56 to r58).** As components, two tabs a release: Settings and History, then Plan and Stats, then Today and the session screen last, alone, since it is used mid-workout. The legacy script is deleted when it is empty.
 
 ### r53 in detail (a behaviour release between phases)
 
@@ -90,6 +90,14 @@ Each phase is its own pull request, tried in the preview before V merges it. Eac
 **What r53 leaves, said now.** A lifter on a lighter day sees a PR at Finish, not as the set is logged (`refreshPR`, legacy, with its toast and helpers, phase 5; PENDING 311). A lift on no day of the routine takes its sets from its last full session even when the analytics read that session as lighter from its loads (an untagged deload): `planForIn` is in layer 1 and the lighter reading in layer 2 (PENDING 313). A session promoted by step 2b is not one of the sessions step 2 compares later ones with, since step 2 runs first, and `planForIn` reads the day's label, not what the lift did (313). The weekly volume average reads a lighter week from its labels or from half or more of its lifts read lighter (r30), Stats' last lighter week line (`lastLighterWeek`, legacy) a third way, and the coach from what the lifts did (312). Clearing an injury lets a held lift read stalled until its next session (311). Its reps in reserve stay the plan's or the profile's, on purpose: last time's as the target would hide a load that was too light.
 
 **Progress:** built; checked against r52 and r35 as above; reviewed six times independently, every blocker fixed with a check that fails on the version before, the rest fixed or recorded (PENDING 311 to 314); not yet published.
+
+### r54 in detail (a behaviour release between phases)
+
+**Why it is not a phase.** The whole-app audit V asked for on 2026-10-18 (a simulated lifter on the real page, what a lifter expects written down first) found 11 problems, every one already in r52 (PENDING 315). V chose to ship the reviewed r53 first and to fix them in r54, under the way of working approved the same day (PENDING 316): legacy code fixed in place with a failing test first, and no token-for-token move check.
+
+**How the code changed.** In the modules: `engine.ts` (`rackStepIn` reads the load in hand when nothing is logged; `snapUnitIn` takes a load as typed only when exact in the unit on screen, rounds down under a target of reps, and names the step the shown load took; `sgEasyIn` and `easierTextIn` word effort in the lifter's scale), `format.ts` (`effScale`, `effAt`), `effort.ts` (`effShow`, moved from the legacy script), `analytics.ts` (`lighterTally`, and `idxLightWeeks` on it; `stallStretch` and `stallWeeksIn`), `weeks.ts` (`avgFirstWeekIn`, which the averages start from; `recentLighterIn` counting a week with nothing trained; `lastLighterWeekIn`, moved from the legacy script and rewritten to the averages' reading; the words `LIGHTER_WEEK_WORDS`, `LIGHTER_WEEK_TIP`, `FIRST_WEEK_REASON` and `FIRST_WEEK_WHY`), `routines.ts` (`plannedPerWeek` takes a cycle's rate down to a whole number, at least one; `plannedSetsIn`, moved from the legacy script), `coach.ts` (`STALL_WHY`, the stall's span, "do every planned set" when the plan reaches the target, and the lines with no average yet) and `guide.ts` (the rules' words). Four adapters added (`plannedSets`, `stallWeeks`, `avgFirstWeek`, `lastLighterWeek`), 79 in all. In the legacy script, fixed in place: `exHeadline` (the stall's span and its tip), the adherence line (`plannedPerWeek`), `regionSrc` and `regionBody` (labels and notes that stay true with the first week left out), the Volume help text, the Stats line on the last lighter week, `pastDraft` (never a deload), `ACT.obOwn` (rest days) and History's row (a deload named once). It lost 3 declarations and 23 lines.
+
+**How it is proved.** `tests/r54.js` drives the app's flows, and each of its cases fails on r53 (`node tests/r54.js baselines/r53.html`); `tests/coherence.js` gained a lighter-week case that fails on r53. Seven expectations in older suites changed with r54's rules on purpose, each with the reason beside it: `tests/r29.js` (a log's first week out of the averages, twice), `tests/r30.js` (the Stats line's words; a log one week longer, so the week reached for is not the first), `tests/r31.js` (the radar's two notes) and `tests/unit-analytics.js` (a lighter week read from what the lifts did, not counted in sets). `tests/engine.js` calls every adapter, read from `live.ts`. The comparisons of old builds stay pinned to what they proved: `tests/r36.js` (r35 and r52), `tests/r52.js` (r51 and r52) and `tests/r53w.js` (r52 and r53).
 
 ### Phase 3b in detail (r52)
 

@@ -1,8 +1,7 @@
 /* How the log splits into sync documents: core (settings, exercises,
    routines and the rest), the session in progress, a session document per
    half month (s-YYYY-MM-1 or -2) and a body document per year (b-YYYY)
-   (phase 3a, r51; moved unchanged from the legacy script, tests/moved.js
-   holds them to r50's code). Sending, pulling and merging them moves with
+   (phase 3a, r51; moved unchanged from the legacy script). Sending, pulling and merging them moves with
    sync in phase 4. */
 
 import { sessCmp } from './records';

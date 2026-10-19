@@ -27,9 +27,9 @@ import { GENERIC_WORKOUT, IMP_ALIAS, IMP_MAX_ROWS, impDate, impFromTable, impGue
 import { FB_ASK, FB_CATS, FB_CTX_MAX, FB_DAY, FB_HINT, FB_IMG_MB, FB_MAX, FB_MIN, FB_SHOT_RE, FB_TITLE, FB_WHAT } from './app/feedback';
 import { state, setState, ui, cloud, acct, acctWait, HIST_PAGE } from './app/store';
 import { CAL_WEEKS } from './app/analytics';
-import { avgWeeksTxt } from './app/weeks';
+import { avgWeeksTxt, FIRST_WEEK_WHY, LIGHTER_WEEK_TIP } from './app/weeks';
 import { CHK_Q, SIZE_MAP, STALL_WHY, chkWord, musTrend } from './app/coach';
-import { EX, U, activeRoutine, exInjury, exName, freeMode, gymOf, injuredSet, invalidate, isDeloadWeek, isRestWeek, prof, rirHalfOn, sortedSessions, fromD, stepRead, toD, defPlan, planCredit, planFor, planSetsPerWeek, profPlan, profRule, routineUpdates, plannedSets, stallWeeks, barKg, capOf, exBarKg, gymRack, rackTol, fmtW, loadLabel, IDX, bwAt, bwLoad, bwRef, bwRefLoad, calStats, dateIndex, hardCredit, isHard, loadOf, prLoad, rirEff, rirEst, rirUsual, statsUpTo, tonnage, weekSessions, dayMinutes, pace, paceRatios, sessModelMin, actualAvg4, avgWeeks, firstFullWeek, recentLighter, regionBalance, weekNeed, weekRoutine, weekStats, weekStreak, coach, dropOnlyLift, fatigueStalls, movers, readiness, stalledIds, daysOff, easierText, incOf, lighterLoad, progStep, rackStep, suggestCore, suggest } from './app/live';
+import { EX, U, activeRoutine, exInjury, exName, freeMode, gymOf, injuredSet, invalidate, isDeloadWeek, isRestWeek, prof, rirHalfOn, sortedSessions, fromD, stepRead, toD, defPlan, planCredit, planFor, planSetsPerWeek, profPlan, profRule, routineUpdates, plannedSets, stallWeeks, barKg, capOf, exBarKg, gymRack, rackTol, fmtW, loadLabel, IDX, bwAt, bwLoad, bwRef, bwRefLoad, calStats, dateIndex, hardCredit, isHard, loadOf, prLoad, rirEff, rirEst, rirUsual, statsUpTo, tonnage, weekSessions, dayMinutes, pace, paceRatios, sessModelMin, actualAvg4, avgFirstWeek, avgWeeks, firstFullWeek, lastLighterWeek, recentLighter, regionBalance, weekNeed, weekRoutine, weekStats, weekStreak, coach, dropOnlyLift, fatigueStalls, movers, readiness, stalledIds, daysOff, easierText, incOf, lighterLoad, progStep, rackStep, suggestCore, suggest } from './app/live';
 import { AUTH, FB } from './app/providers';
 import { effShow, halfLbl, rirScale } from './app/effort';
 import { guideSheet } from './app/guide';

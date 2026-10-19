@@ -5,8 +5,8 @@
    call, so an app left open past midnight reads the new day as r51 did; and
    whose caches are built on first use and cleared by invalidate, as r51's
    were. The legacy script calls the engine through the adapters below, under
-   r51's names, so not one of its calls changed. tests/moved.js holds LIVE and
-   live to their exact code and the adapters to their one form. */
+   r51's names, so not one of its calls changed. Every adapter has the one
+   form below: a function of the model, given LIVE. */
 
 import type { Model } from './model';
 import { freshCaches } from './model';
@@ -64,8 +64,10 @@ import {
 import { dayMinutesIn, paceIn, paceRatiosIn, sessModelMinIn } from './time';
 import {
   actualAvg4In,
+  avgFirstWeekIn,
   avgWeeksIn,
   firstFullWeekIn,
+  lastLighterWeekIn,
   recentLighterIn,
   regionBalanceIn,
   weekNeedIn,
@@ -157,8 +159,10 @@ export const pace = live(paceIn);
 export const paceRatios = live(paceRatiosIn);
 export const sessModelMin = live(sessModelMinIn);
 export const actualAvg4 = live(actualAvg4In);
+export const avgFirstWeek = live(avgFirstWeekIn);
 export const avgWeeks = live(avgWeeksIn);
 export const firstFullWeek = live(firstFullWeekIn);
+export const lastLighterWeek = live(lastLighterWeekIn);
 export const recentLighter = live(recentLighterIn);
 export const regionBalance = live(regionBalanceIn);
 export const weekNeed = live(weekNeedIn);

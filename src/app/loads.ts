@@ -1,5 +1,5 @@
 /* What a load number means, in words (phase 3a, r51; moved unchanged from
-   the legacy script, tests/moved.js holds them to r50's code). Every set
+   the legacy script). Every set
    stores the number as typed; its meaning is a property of the exercise
    (loadMode, in library.ts). */
 
@@ -45,7 +45,7 @@ export function estInLoad(ex: Exercise): boolean {
   return isCompound(ex) && !ex.bw && !noE1(ex) && loadMode(ex) === 'total';
 }
 
-/* ---------- loads in words, in the unit on screen (phase 3b, r52; moved from the legacy script, tests/moved.js reads them back to r51's code) ---------- */
+/* ---------- loads in words, in the unit on screen (phase 3b, r52; moved from the legacy script) ---------- */
 
 /** A load in kilograms as shown, rounded to a tenth; empty for none. toD of a number is a number, as the ! says. */
 export const fmtWIn = (M: Model, kg: number | null | undefined): string =>

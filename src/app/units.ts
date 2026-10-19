@@ -1,5 +1,5 @@
 /* Units and the plates a gym has (phase 2, r50; moved unchanged from the
-   legacy script, tests/moved.js holds them to r49's code). Logged loads are
+   legacy script). Logged loads are
    kept in kilograms, tape measurements in centimetres and cardio distances in
    kilometres (Your gym's lists keep the unit the gym is labelled in); these
    convert to and from the unit on screen. */

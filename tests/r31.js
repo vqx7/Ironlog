@@ -362,14 +362,14 @@ function strongCsv(weeks, name) {
     ok(a2.coach === a4.coach, 'the choice changes the radar only, never the coach or the flags', { a4: a4.coach, a2: a2.coach });
     await P.page.click('[data-act="regionWk"][data-v="8"]'); await wait(150);
     const a8 = await read();
-    // The log began on a Thursday, so its first week is not a full week (r29): 5 full weeks.
-    ok(a8.on === '8 wk' && /your 5 full weeks logged so far/.test(a8.text), '8 weeks with 5 full weeks logged says it uses the 5 there are', a8.text.slice(0, 300));
+    // The log began on a Thursday, so its first week is not a full week (r29), and since r54 a log's first week is left out however it began: 5 full weeks after it.
+    ok(a8.on === '8 wk' && /Using the 5 full weeks after your first week\./.test(a8.text), '8 weeks with 5 full weeks after the first says it uses the 5 there are', a8.text.slice(0, 300));
     await P.page.reload(); await P.page.waitForFunction(() => window.__ironlog); await ev(() => { const L = window.__ironlog; L.ui.tab = 'dash'; L.ui.volMode = 'region'; L.ui.folds['dash:volume'] = true; L.render(); });
     ok((await read()).on === '8 wk', 'the choice is kept on this phone after a reload');
     await P.page.click('[data-act="regionWk"][data-v="4"]'); await wait(150);
     await ev(() => { const L = window.__ironlog; const s = L.state.sessions; s.splice(0, s.length - 1); s[0].date = '2026-10-05'; L.invalidate(); L.render(); });
     const n0 = await read();
-    ok(/this week so far/.test(n0.text) && /No full week is logged yet/.test(n0.text) && n0.chips.length === 0, 'no full week yet: this week so far, it says why, and the week chips (which would change nothing) are hidden', n0);
+    ok(/this week so far/.test(n0.text) && /No full week to average yet/.test(n0.text) && n0.chips.length === 0, 'no full week yet: this week so far, it says why, and the week chips (which would change nothing) are hidden', n0);
     // The reviewer's case: 10 weekly sessions, a deload week and a missed week inside the 4-week window.
     await seed(10);
     await ev(() => { const L = window.__ironlog; const s = L.state.sessions; const wk = d => L.weekStart(d);
