@@ -71,7 +71,7 @@ const B3_PARTS=[
 function map3dColors(){
   const cs=getComputedStyle(document.documentElement);const v=n=>cs.getPropertyValue(n).trim();
   const dark=(document.documentElement.dataset.theme||(matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light'))==='dark';
-  return {base:dark?'#3b4048':'#d5d9de',none:dark?'#5d646d':'#a9b0b8',track:v('--muted'),under:v('--yellow'),part:v('--part'),in:v('--green'),over:v('--blue'),ex:v('--volt')};
+  return {base:dark?'#3b4048':'#d5d9de',none:dark?'#5d646d':'#a9b0b8',track:v('--muted'),under:v('--yellow'),part:v('--part'),plan:v('--part'),in:v('--green'),over:v('--blue'),ex:v('--volt')};
 }
 /* An exercise's muscles on the body (r39, item 172): the same flat figures and
    the same 3D body, lit by what the exercise trains instead of by the week's
@@ -205,18 +205,6 @@ function bmShape(x){
   if(x[0]==='r')return `<rect x="${x[1]}" y="${x[2]}" width="${x[3]}" height="${x[4]}" rx="${x[5]}"/>`;
   return `<polygon points="${x[1].map(q=>q.join(',')).join(' ')}"/>`;
 }
-/* soFar (r29): the week is still going, so a muscle short of its minimum is
-   under way ('part'), not below target; amber on a Tuesday read as behind
-   for training that had not happened yet. With no sets a muscle is 'none'
-   whatever its target: one whose minimum was brought down to 0 (a routine
-   that does not train it) showed green before a single set (V, r29).
-   On an average, a muscle with a minimum and no sets is below target, and
-   shows so on the map, in its legend and in the summary alike. */
-function muscleStatus(src,soFar){
-  const b=state.settings.bands;const out={};
-  for(const m of MK){const v=src?(src[m]||0):0;const [lo,hi]=b[m];out[m]={v,lo,hi,st:TRACK_ONLY.has(m)?'track':v<=0?(!soFar&&src&&lo>0?'under':'none'):belowMin(v,lo)?(soFar?'part':'under'):aboveMax(v,hi)?'over':'in'};}
-  return out;
-}
 function bodyMapCard(){
   const I=IDX();const avg=actualAvg4();
   const src=(ui.mapSrc==='week'||!avg)?'week':'avg';
@@ -225,15 +213,15 @@ function bodyMapCard(){
   const hsw=v=>`${r1(v)} hard set${r1(v)===1?'':'s'} a week`;const tgt=m=>TRACK_ONLY.has(m)?', tracked only':`, target ${st[m].lo} to ${st[m].hi}`;
   const lab=m=>noLog()?`${ML[m]}: nothing logged yet${tgt(m)}`:`${ML[m]}: ${hsw(st[m].v)}${tgt(m)}`;
   const fig=(view,label)=>`<figure class="bm"><svg viewBox="0 0 120 210" aria-label="${label} of body"><g class="bm-base">${BM_BASE}</g>${Object.entries(BM[view]).map(([m,sh])=>`<g class="mm st-${st[m].st}${ui.mapSel===m?' sel':''}" data-act="mapSel" data-m="${m}" role="button" tabindex="0" aria-label="${esc(lab(m))}"><title>${esc(lab(m))}</title>${sh.map(bmShape).join('')}</g>`).join('')}</svg><figcaption>${label}</figcaption></figure>`;
-  const counts={under:0,part:0,in:0,over:0,none:0,track:0};for(const m of MK)counts[st[m].st]++;
+  const counts={under:0,part:0,plan:0,in:0,over:0,none:0,track:0};for(const m of MK)counts[st[m].st]++;
   if(noLog())for(const k in counts)counts[k]=NIL;
   const sel=ui.mapSel&&st[ui.mapSel]?ui.mapSel:null;
   let detail;
   if(sel){
     const x=st[sel];const sc=I.scores.find(y=>y.m===sel);
-    const where=x.st==='none'?(src==='week'?'Not yet this week':'Not trained'):x.st==='track'?'Tracked only':x.st==='under'?`${r1(x.lo-x.v)} below target`:x.st==='part'?`${r1(x.lo-x.v)} to go`:x.st==='over'?`${r1(x.v-x.hi)} above target`:'On target';
+    const where=x.st==='none'?(src==='week'?'Not yet this week':'Not trained'):x.st==='track'?'Tracked only':x.st==='under'?`${r1(x.lo-x.v)} below target`:x.st==='part'?`${r1(x.lo-x.v)} to go`:x.st==='plan'?'On plan':x.st==='over'?`${r1(x.v-x.hi)} above target`:'On target';
     const tr=sc?`${musTrend(sc)}${sc.indirect?', read from exercises that train it indirectly':''}.`:'Not enough sessions yet for a strength trend.';
-    detail=`<div class="bm-detail"><div class="row spread"><b>${ML[sel]}</b><span class="tag ${x.st==='in'?'green':x.st==='under'?'yellow':x.st==='over'?'blue':''}">${where}</span></div><p class="small" style="margin:4px 0 6px">${src==='avg'?`${hsw(x.v)} on average over ${avgWeeksTxt(avg)}`:`${r1(x.v)} hard set${r1(x.v)===1?'':'s'} so far this week`}${tgt(sel)}. ${tr}</p><div class="row"><button class="btn sm" data-act="goDash" data-sec="volume" data-m="${sel}">Weekly trend</button><button class="btn sm" data-act="mapSel" data-m="${sel}">Close</button></div></div>`;
+    detail=`<div class="bm-detail"><div class="row spread"><b>${ML[sel]}</b><span class="tag ${x.st==='in'?'green':x.st==='under'?'yellow':x.st==='over'?'blue':x.st==='plan'?'hastip':''}"${x.st==='plan'?` data-tip="${esc(ON_PLAN_TIP)}"`:''}>${where}</span></div><p class="small" style="margin:4px 0 6px">${src==='avg'?`${hsw(x.v)} on average over ${avgWeeksTxt(avg)}`:`${r1(x.v)} hard set${r1(x.v)===1?'':'s'} so far this week`}${tgt(sel)}. ${tr}</p><div class="row"><button class="btn sm" data-act="goDash" data-sec="volume" data-m="${sel}">Weekly trend</button><button class="btn sm" data-act="mapSel" data-m="${sel}">Close</button></div></div>`;
   }else{
     const low=MK.filter(m=>!TRACK_ONLY.has(m)&&lowSt(st[m]));
     detail=`<p class="small muted" style="margin:6px 0 0">Tap a muscle ${tipi(`${mapView()==='3d'?'Drag sideways to turn it. ':''}Tap a muscle for its numbers.${src==='week'?' This is the week so far, so most muscles read low early in the week.':''}`,'About the map')}</p>${low.length&&src==='avg'?`<div class="row" style="margin-top:6px;gap:4px"><span class="small muted">Below target:</span>${low.slice(0,8).map(m=>`<button class="chip" data-act="mapSel" data-m="${m}">${ML[m]}</button>`).join('')}</div>`:''}`;
@@ -246,7 +234,7 @@ function bodyMapCard(){
   const stage=v3?`<div class="bm3d" id="bm3d"><div class="bm3d-stage" role="img" aria-label="3D body, shaded by hard sets a week. Drag sideways to turn it, tap a muscle for its numbers. The same numbers are in the flat view."></div><p class="bm3d-msg small muted" hidden></p><div class="seg bm3d-turn" role="group" aria-label="Turn the body"><button class="chip" data-act="map3dTurn" data-v="0">Front</button><button class="chip" data-act="map3dTurn" data-v="1">Side</button><button class="chip" data-act="map3dTurn" data-v="2">Back</button></div></div>`:`<div class="bm-wrap">${fig('f','Front')}${fig('b','Back')}</div>`;
   return sec({sk:'today:map',key:'map',title:'Muscle map',sub:msub,body:`<div class="row spread"><div class="seg" role="group" aria-label="View"><button class="chip ${v3?'':'on'}" data-act="mapView" data-v="flat" aria-pressed="${!v3}">Flat</button><button class="chip ${v3?'on':''}" data-act="mapView" data-v="3d" aria-pressed="${v3}">3D</button></div><div class="seg" role="group" aria-label="Time range">${avg?`<button class="chip ${src==='avg'?'on':''}" data-act="mapSrc" data-v="avg" aria-pressed="${src==='avg'}">4-week avg</button>`:''}<button class="chip ${src==='week'?'on':''}" data-act="mapSrc" data-v="week" aria-pressed="${src==='week'}">This week</button></div></div>
   ${stage}
-  <div class="bm-legend small">${src==='week'?`<span class="hastip" data-tip="The week is still going: short of the minimum so far, not behind."><i class="st-part"></i>Under way ${counts.part}</span>`:`<span><i class="st-under"></i>Below target ${counts.under}</span>`}<span><i class="st-in"></i>On target ${counts.in}</span><span><i class="st-over"></i>Above ${counts.over}</span><span><i class="st-none"></i>${src==='week'?'Not yet':'None'} ${counts.none}</span>${counts.track?`<span class="hastip" data-tip="Serratus, rotator cuff, neck, and tibialis: sets are counted, but no study sets a weekly dose, so they are never called under or over."><i class="st-track"></i>Tracked only ${counts.track}</span>`:''}</div>
+  <div class="bm-legend small">${src==='week'?`<span class="hastip" data-tip="The week is still going: short of the minimum so far, not behind."><i class="st-part"></i>Under way ${counts.part}</span>`:`<span><i class="st-under"></i>Below target ${counts.under}</span>${counts.plan?`<span class="hastip" data-tip="${esc(ON_PLAN_TIP)}"><i class="st-plan"></i>On plan ${counts.plan}</span>`:''}`}<span><i class="st-in"></i>On target ${counts.in}</span><span><i class="st-over"></i>Above ${counts.over}</span><span><i class="st-none"></i>${src==='week'?'Not yet':'None'} ${counts.none}</span>${counts.track?`<span class="hastip" data-tip="Serratus, rotator cuff, neck, and tibialis: sets are counted, but no study sets a weekly dose, so they are never called under or over."><i class="st-track"></i>Tracked only ${counts.track}</span>`:''}</div>
   ${detail}`});
 }
 /* Session length measured from Start to Finish. Sessions logged for a past date,

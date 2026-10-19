@@ -524,10 +524,13 @@ function muscleHeadline(m){
   const I=IDX();const avg=actualAvg4();const [lo,hi]=state.settings.bands[m];const sc=I.scores.find(x=>x.m===m);const parts=[];
   // Tracked-only muscles have no target to be above or below (r29).
   const tr=TRACK_ONLY.has(m);
-  if(avg){const v=avg[m]||0;parts.push(tr?`${r1(v)} hard sets a week over ${avgWeeksTxt(avg)}. Tracked only: no target.`:`${r1(v)} hard sets a week over ${avgWeeksTxt(avg)}, ${belowMin(v,lo)?`${r1(lo-v)} below`:aboveMax(v,hi)?`${r1(v-hi)} above`:'inside'} your ${lo} to ${hi} target.`);}
-  else parts.push(tr?'Tracked only: counted and shown, with no target.':`Target ${lo} to ${hi} hard sets a week. Finish a full week to compare against it.`);
+  // The status every screen reads (muscleStatus): on plan is said, with why behind an i (r54).
+  const st=avg?muscleStatus(avg)[m].st:null;
+  if(avg){const v=avg[m]||0;parts.push(tr?`${r1(v)} hard sets a week over ${avgWeeksTxt(avg)}. Tracked only: no target.`:`${r1(v)} hard sets a week over ${avgWeeksTxt(avg)}, ${st==='under'||st==='plan'?`${r1(lo-v)} below`:st==='over'?`${r1(v-hi)} above`:'inside'} your ${lo} to ${hi} target${st==='plan'?', on plan':''}.`);}
+  // With no average yet, what brings one, as the coach says it (avgWait, r54).
+  else{const w=avgWait();parts.push(tr?'Tracked only: counted and shown, with no target.':`Target ${lo} to ${hi} hard sets a week. ${w.lead}Compare against it after ${w.after}.`);}
   if(sc)parts.push(`${musTrend(sc)}${sc.indirect?', read from exercises that train it indirectly':''}${sc.label==='lagging'?', flagged as lagging':''}.`);
-  return `<p class="headline"><b>${esc(ML[m])}.</b> ${esc(parts.join(' '))}</p>`;
+  return `<p class="headline"><b>${esc(ML[m])}.</b> ${esc(parts.join(' '))}${st==='plan'?' '+tipi(ON_PLAN_TIP,'On plan'):''}</p>`;
 }
 function volHeadline(){
   if(!IDX().sessVol.length)return '';const tn=tonnageNow();
@@ -548,9 +551,12 @@ function extraKpis(){
 /* Up to four lines, each landing on the section that holds the detail. */
 function dashSummary(){
   const mvAll=movers(),mv=mvAll.slice(0,2);const stalled=stalledIds();
-  const avg=actualAvg4();const b=state.settings.bands;
+  const avg=actualAvg4();
   const inj=injuredSet();
-  const under=avg?MK.filter(m=>!inj.has(m)&&!TRACK_ONLY.has(m)&&belowMin(avg[m],b[m][0])):null,over=avg?MK.filter(m=>!TRACK_ONLY.has(m)&&aboveMax(avg[m],b[m][1])):null;
+  // Each muscle's status as every screen reads it (muscleStatus): a muscle on plan is not below target (r54).
+  const st=avg?muscleStatus(avg):null;
+  const under=st?MK.filter(m=>!inj.has(m)&&st[m].st==='under'):null,over=st?MK.filter(m=>st[m].st==='over'):null;
+  const onPlan=st?MK.filter(m=>!inj.has(m)&&st[m].st==='plan'):[];
   const c=coach();const list=(a,n)=>andList(a,n);
   const row=(tone,label,text,attrs)=>`<button class="srow" ${attrs}><i class="dot ${tone}"></i><span class="sl">${label}</span><span class="st">${text}</span><span class="chev2" aria-hidden="true">›</span></button>`;
   let h='<div class="card summary" id="dashSummary">';
@@ -565,10 +571,12 @@ function dashSummary(){
      estimate nobody lifts; the lift's own section says it in loads. */
   h+=row(mv.length?'green':'','Moving',mv.length?andList(mv.map(x=>`${esc(exName(x.id))}${one?'':` over ${x.wk} weeks`}`).concat(mvAll.length>2?[`${mvAll.length-2} more`]:[]))+(one?`, over ${mv[0].wk} weeks`:''):nTr?`No lift clearly rising yet: ${nTr} with a trend, each within day-to-day noise.`:'A trend needs 3 sessions of a lift over 2 weeks or more, within 6 weeks.',`data-act="goDash" data-sec="exercise"${mv.length?` data-ex="${mv[0].id}"`:''}`);
   h+=row(stalled.length?(fatigueStalls(stalled).length>=3?'red':'yellow'):'green','Stuck',stalled.length?esc(list(stalled.map(exName),3)):'Nothing stalled','data-act="goDash" data-sec="stalls"');
-  // When the coach's one change is the volume shortfall, the Volume line says it with the action and Change is not repeated (r41).
-  const cm=c.act&&c.act.sec==='volume'?c.act.m:null;const same=!!(cm&&under&&under.includes(cm));
+  // When the coach's one change is the volume shortfall, the Volume line says it with the action and Change is not repeated (r41);
+  // so too when the coach says why no average shows yet (r54: the two said different weeks), which the Volume line says otherwise.
+  const cm=c.act&&c.act.sec==='volume'?c.act.m:null;const same=!!(cm&&under&&under.includes(cm))||!!c.wait;
+  const w=under==null?avgWait():null;
   const above=over&&over.length?` Above: ${list(over.map(m=>ML[m]),2)}.`:'';
-  const vt=(same?c.text:under==null?'Finish a full week for a volume read.':under.length?`Below target: ${list(under.map(m=>ML[m]),3)}.`:'Every muscle at or above target.')+above;
+  const vt=(same?c.text:w?`${w.lead}A volume read comes${w.kind==='back'?' back':''} after ${w.after}.`:under.length?`Below target: ${list(under.map(m=>ML[m]),3)}.`:onPlan.length?'Every muscle on plan.':'Every muscle at or above target.')+above;
   h+=row(under==null?'':under.length?'yellow':'green','Volume',esc(vt),'data-act="goDash" data-sec="volume"');
   if(!same)h+=`<div class="srow static"><i class="dot ${c.tone}"></i><span class="sl">Change</span><span class="st">${esc(c.text)}</span></div>`;
   return h+'</div>';

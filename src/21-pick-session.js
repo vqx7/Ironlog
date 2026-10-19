@@ -416,24 +416,9 @@ function newBlock(exId,plan,opts){
   // still on the suggestion from one the lifter typed (refreshBlock).
   return {bid:uid(),exId,plan:{...plan},note:'',lastNote:lastNoteOf(exId,opts&&opts.before),inj:sg.inj||null,hint:sg.text,last:sg.last,prev:sg.prev||undefined,prevOff:sg.prevOff||undefined,target:sg.target,tgt:sg.tgt,easier:sg.easier||null,lastR:sg.lastR,basis:sg.basis||undefined,sw:sg.w==null?null:sg.w,sets:Array.from({length:+plan.sets||3},()=>({w:fillLoads()?sg.w:null,r:null,rir:null,warm:false,drop:false,done:false}))};
 }
-/* A muscle's weekly target with this profile (the defaults with no focus). */
-function defBand(m,p){
-  const b=BANDS[m];const f=(p||prof()).focus||[];
-  if(!f.length||TRACK_ONLY.has(m))return [b[0],b[1]];
-  if(f.includes(m))return [Math.round(b[0]*FOCUS_UP),Math.round(b[1]*FOCUS_UP)];
-  return [Math.ceil(b[0]*MAINT_SHARE),b[1]];
-}
-/* The app's own target for a muscle (r44): the profile's default, brought
-   down to the floor a first-run routine pick recorded (settings.bandsFit),
-   except on a focus muscle, whose raised target is the point. A target that
-   reads anything else was typed and never moves; typed back to this number,
-   it is the app's again. Nothing is guessed: the floors are the one fact
-   that cannot be worked out later, so fitTargets stores them (the r44
-   review found four bugs in inferring them). */
-function appBand(m,p){
-  p=p||prof();const d=defBand(m,p);const f=(state.settings.bandsFit||{})[m];
-  return f==null||TRACK_ONLY.has(m)||(p.focus||[]).includes(m)?d:[Math.min(d[0],f),d[1]];
-}
+/* A muscle's weekly target with a profile (defBand) and the app's own
+   target (appBand) are in src/app/profile.ts since r54, beside the floors a
+   first-run pick records (fitFloors) and their refit (refit). */
 /* Moves the app's own targets from the old profile's to the new one's.
    Returns {muscle: [from, to]} for what moved, as copies, since Weekly set
    targets edits the arrays in place. */

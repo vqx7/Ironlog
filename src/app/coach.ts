@@ -17,20 +17,21 @@ import {
   sortedSessionsIn
 } from './model';
 import { IDXIn, stallWeeksIn } from './analytics';
-import { FIRST_WEEK_WHY, actualAvg4In, avgFirstWeekIn, recentLighterIn } from './weeks';
+import { FIRST_WEEK_WHY, ON_PLAN_TIP, actualAvg4In, avgWaitIn, muscleStatusIn, recentLighterIn } from './weeks';
 import { GROW_PCT, atLoad, isWork, offSession } from './formulas';
-import { MK, ML, TRACK_ONLY, isCompound, noE1 } from './library';
-import { addDays, andList, r1, weekStart } from './util';
+import { MK, ML, isCompound, noE1 } from './library';
+import { andList, r1, weekStart } from './util';
 import { effScale } from './format';
 import { belowMin } from './volume';
 import { planForIn, plannedSetsIn } from './routines';
 import { loadLabelIn } from './loads';
 
-/** The coach's one line: its colour, the advice, the reason behind an i, and the action it offers. */
+/** The coach's one line: its colour, the advice, the reason behind an i, the action it offers, and whether it says why no weekly average shows yet (`wait`, which Stats' summary shows once, as its Volume line). */
 export interface CoachLine {
   tone: string;
   text: string;
   why?: string;
+  wait?: boolean;
   act: { label: string; deload?: boolean; sec?: string; m?: string; ex?: string } | null;
 }
 
@@ -156,12 +157,14 @@ export function coachIn(M: Model): CoachLine {
       act: null
     };
   }
-  if (avg) {
+  // Each muscle's status as every screen reads it (muscleStatusIn), so a muscle on plan is not below target here either.
+  const mst = avg ? muscleStatusIn(M, avg) : null;
+  if (avg && mst) {
     const lagSet = new Set(I.scores.filter(x => x.label === 'lagging').map(x => x.m));
     /* Largest shortfall in sets first. Sorting by the fraction of target put
        a small muscle at 0 of 2 sets ahead of a major one at 5 of 10, which is
        backwards for a hypertrophy-first plan. The fraction still breaks ties. */
-    const under = MK.filter(m => !inj.has(m) && !TRACK_ONLY.has(m) && belowMin(avg[m], bands[m][0]))
+    const under = MK.filter(m => !inj.has(m) && mst[m].st === 'under')
       .map(m => ({
         m,
         got: avg[m] || 0,
@@ -265,23 +268,25 @@ export function coachIn(M: Model): CoachLine {
      second week; any other time a full week of training brings it, which
      r53 also called the first full week to a lifter months in. */
   if (!avg) {
-    const ago = addDays(weekStart(M.today()), -28);
-    const af = avgFirstWeekIn(M);
-    if (M.s.sessions.some(x => x.date < ago) && !M.s.sessions.some(x => x.date >= ago))
-      return {
-        tone: 'blue',
-        text: 'Nothing logged in the last 4 weeks. Volume advice comes back after a full week of training.',
-        act: null
-      };
-    if (!af || weekStart(M.today()) <= af)
-      return {
-        tone: 'blue',
-        text: 'Volume advice appears here after your second week.',
-        why: FIRST_WEEK_WHY,
-        act: null
-      };
-    return { tone: 'blue', text: 'Volume advice appears here after a full week of training.', act: null };
+    const w = avgWaitIn(M);
+    const text = `${w.lead}Volume advice ${w.kind === 'back' ? 'comes back' : 'appears here'} after ${w.after}.`;
+    return w.kind === 'second'
+      ? { tone: 'blue', text, why: FIRST_WEEK_WHY, wait: true, act: null }
+      : { tone: 'blue', text, wait: true, act: null };
   }
+  /* Under the minimum only by which days of a cycle fell in the weeks
+     averaged (r54): on plan, so the line says that rather than at target. */
+  const onPlan = mst ? MK.filter(m => !inj.has(m) && mst[m].st === 'plan') : [];
+  if (onPlan.length)
+    return {
+      tone: 'green',
+      text: 'Every muscle on plan, nothing stalled.',
+      why: `Under the minimum over these weeks, on plan: ${andList(
+        onPlan.map(m => ML[m]),
+        4
+      )}. ${ON_PLAN_TIP}`,
+      act: null
+    };
   return { tone: 'green', text: 'Every muscle at target, nothing stalled.', act: null };
 }
 

@@ -166,6 +166,11 @@ export function repFloor(
   return r => (ok ? Math.max(r, m) : r);
 }
 
+/** A lift's session reads lighter than its usual when its heaviest load is this share of the heaviest of its previous three or less (r30, a convention: a deload is usually about 10% off), and its strength reading LIGHTER_READING of theirs or less. */
+export const LIGHTER_LOAD = 0.9;
+/** The strength reading, reps alone, at which a session with a load LIGHTER_LOAD or less under reads lighter (r30, a convention). */
+export const LIGHTER_READING = 0.93;
+
 /** The marks a session can carry that keep it from setting targets and trends. */
 type SessionMarks = { deload?: boolean; light?: boolean; cut?: boolean; auto?: boolean } | null | undefined;
 

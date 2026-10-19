@@ -24,13 +24,17 @@ export const STEP_LB = 5 * LB;
 export const PLATES_LB = [45, 35, 25, 10, 5, 2.5],
   PLATES_KG = [25, 20, 15, 10, 5, 2.5, 1.25];
 
+/** A load in kilograms, a number, in the unit on screen. */
+export const inUnitIn = (M: Model, kg: number): number => (UIn(M) === 'lb' ? kg / LB : kg);
+
+/** A load in the unit on screen, a number, in kilograms. */
+export const kgOfIn = (M: Model, v: number): number => (UIn(M) === 'lb' ? v * LB : v);
+
 /** A load in kilograms in the unit on screen (null stays null). */
-export const toDIn = (M: Model, kg: number | null | undefined): number | null =>
-  kg == null ? null : UIn(M) === 'lb' ? kg / LB : kg;
+export const toDIn = (M: Model, kg: number | null | undefined): number | null => (kg == null ? null : inUnitIn(M, kg));
 
 /** A load in the unit on screen in kilograms (null stays null). */
-export const fromDIn = (M: Model, v: number | null | undefined): number | null =>
-  v == null ? null : UIn(M) === 'lb' ? v * LB : v;
+export const fromDIn = (M: Model, v: number | null | undefined): number | null => (v == null ? null : kgOfIn(M, v));
 
 /* Load step: the exercise's own setting wins, so one change applies on every
    day and routine the lift appears in. */

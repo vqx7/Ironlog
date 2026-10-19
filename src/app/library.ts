@@ -658,10 +658,12 @@ export const KIN_UNI = /lunge|split squat|step-up|single[- ]|one[- ]arm|1-arm|pi
 
 /** The spacings dumbbell and kettlebell racks come in, per unit, largest
     first (r32). The engine's rackStep picks the largest one every load logged
-    on a lift fits. */
+    on a lift fits. Lb dumbbells come in 5 or 2.5 lb steps, never 1 (r54, V's
+    call: 12 lb went up to 13), and a lb dumbbell no spacing fits is read on
+    the 5 lb rack (the engine's rackGrid). */
 export const RACK: Readonly<
   Record<'dumbbell' | 'kettlebell', { readonly kg: readonly number[]; readonly lb: readonly number[] }>
-> = { dumbbell: { kg: [2.5, 2, 1, 0.5], lb: [5, 2.5, 1] }, kettlebell: { kg: [4, 2, 1], lb: [5, 2.5] } };
+> = { dumbbell: { kg: [2.5, 2, 1, 0.5], lb: [5, 2.5] }, kettlebell: { kg: [4, 2, 1], lb: [5, 2.5] } };
 
 // The library files kettlebell lifts under Other equipment, so they are found by name.
 export function rackKind(ex: Pick<Exercise, 'equip'> & { name?: string }): 'dumbbell' | 'kettlebell' | null {

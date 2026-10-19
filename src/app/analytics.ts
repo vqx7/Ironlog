@@ -26,6 +26,8 @@ import { EXIn, exInjuryIn, rirHalfOnIn, sortedSessionsIn } from './model';
 import {
   BACK_DAYS,
   GROW_PCT,
+  LIGHTER_LOAD,
+  LIGHTER_READING,
   REP_PR_SHARE,
   atLoad,
   e1,
@@ -554,7 +556,11 @@ export function idxAutoLighter(byEx: Record<string, Exposure[]>): Record<string,
       if (ref.length >= 2) {
         const mL = Math.max(...ref.map(q => q.topL)),
           mT = Math.max(...ref.map(q => (q.tRaw == null ? -Infinity : q.tRaw)));
-        if (mL > 0 && x.topL <= mL * 0.9 + 1e-9 && (x.tRaw == null || !isFinite(mT) || x.tRaw <= mT * 0.93 + 1e-9)) {
+        if (
+          mL > 0 &&
+          x.topL <= mL * LIGHTER_LOAD + 1e-9 &&
+          (x.tRaw == null || !isFinite(mT) || x.tRaw <= mT * LIGHTER_READING + 1e-9)
+        ) {
           x.auto = true;
           o.l++;
           run.push(x);

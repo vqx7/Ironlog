@@ -23,4 +23,35 @@ for(const [file,label] of [['baselines/r53.html','r53 (current live)'],['baselin
   ok(!N.errors.length,`${label}: no console errors`,N.errors);
   await N.ctx.close();
 }
+// Targets a first-run pick of Strength 5 x 5 fitted by the plan's reading before r54 (three and a half sessions a week) follow r54's
+// (three), once, at start: picked on r53 with its floors recorded, the same with chest typed to 9 since, and picked on r43, before
+// floors were recorded. Five weeks of Monday, Wednesday and Friday, every set as planned, are logged with each.
+{
+  const WANT={chest:[7,20],triceps:[7,20],upperBack:[7,20],lats:[3,20],biceps:[3,20],rearDelts:[3,16],sideDelts:[3,20],hamstrings:[0,20],traps:[0,16],forearms:[0,12]};
+  const FLOORS={chest:7,triceps:7,upperBack:7,lats:3,biceps:3,rearDelts:3,sideDelts:3,hamstrings:0,traps:0,forearms:0,abs:0,obliques:0,abductors:0,calves:0};
+  for(const [file,label,typed] of [['baselines/r53.html','r53',false],['baselines/r53.html','r53, chest typed to 9',true],['baselines/r43.html','r43',false]]){
+    const P=await open(file,{browser,clock:'2026-10-15T10:00:00',realStarter:true});
+    const before=await P.page.evaluate((typed)=>{const L=window.__ironlog;const S=L.state;S.settings.onboarded=true;
+      const R=L.routineFromTemplate('str5');S.routines.push(R);S.activeRoutineId=R.id;
+      S.settings.bands=Object.fromEntries(Object.entries(L.BANDS).map(([m,b])=>[m,b.slice()]));L.fitTargets(R);if(typed)S.settings.bands.chest=[9,20];
+      const tr=R.days.map((d,i)=>i).filter(i=>!R.days[i].rest);S.sessions=[];let k=0;
+      for(let t=Date.parse('2026-09-14T12:00:00Z');;t+=864e5){const date=new Date(t).toISOString().slice(0,10);if(date>='2026-10-15')break;if(![1,3,5].includes(new Date(t).getUTCDay()))continue;
+        const di=tr[k%tr.length],day=R.days[di];S.sessions.push({id:'m'+k,date,dayIdx:di,dayId:day.id,dayName:day.name,routineId:R.id,notes:'',ex:day.items.map(it=>({exId:it.exId,rr:[+it.repMin,+it.repMax],sets:Array.from({length:+it.sets},()=>({w:60+2.5*k,r:+it.repMin,rir:+it.rir,done:true}))}))});k++;}
+      S.draft=null;L.saveNow();return {chest:S.settings.bands.chest.slice(),fit:S.settings.bandsFit||null};},typed);
+    const raw=await P.page.evaluate(()=>localStorage.getItem('ironlog.v1'));await P.ctx.close();
+    const N=await open('index.html',{browser,state:JSON.parse(raw),clock:'2026-10-15T10:00:00',realStarter:true});
+    const r=await N.page.evaluate(()=>{const L=window.__ironlog;const S=L.state;const saved=JSON.parse(localStorage.getItem('ironlog.v1'));return {bands:S.settings.bands,fit:S.settings.bandsFit||null,saved:saved.settings.bands.chest,coach:L.coach().text};});
+    const want={...WANT,...(typed?{chest:[9,20]}:{})};
+    ok(before.chest[0]===(typed?9:8)&&(label==='r43'?before.fit===null:before.fit&&before.fit.chest===8),`${label}: the pick fitted chest to 8 with that reading${label==='r43'?', and recorded no floors':', and recorded the floors'}`,before);
+    ok(Object.entries(want).every(([m,b])=>r.bands[m][0]===b[0]&&r.bands[m][1]===b[1])&&r.bands.quads.join()==='10,20'&&r.fit&&Object.keys(r.fit).length===Object.keys(FLOORS).length&&Object.entries(FLOORS).every(([m,v])=>r.fit[m]===v)&&r.saved.join()===want.chest.join(),`${label}: on this build the app's own targets follow r54's plan (chest, triceps and upper back 7, four muscles 3)${typed?', chest as typed stays at 9':''}, r54's floors are recorded, and it is saved`,r);
+    // The three weeks averaged hold four A days, so chest is on plan; a target typed above the plan is the lifter's, and the plan is short of it.
+    ok(typed?/^Chest: 6\.7 hard sets a week, target 9-20\. Add /.test(r.coach):/^Every muscle (at target|on plan), nothing stalled\./.test(r.coach),typed?`${label}: chest typed above what the plan has is short of the lifter's own target, so the coach says to add sets`:`${label}: following the plan reads at target or on plan, not "add a set"`,r.coach);
+    const raw2=await N.page.evaluate(()=>localStorage.getItem('ironlog.v1'));await N.ctx.close();
+    const N2=await open('index.html',{browser,state:JSON.parse(raw2),clock:'2026-10-15T10:00:00',realStarter:true});
+    const again=await N2.page.evaluate(()=>{const S=window.__ironlog.state;return {bands:S.settings.bands,fit:S.settings.bandsFit||null};});
+    ok(JSON.stringify(again)===JSON.stringify({bands:r.bands,fit:r.fit}),`${label}: opened again, nothing moves: the refit is once`,again);
+    ok(!N.errors.length&&!N2.errors.length,`${label}: no console errors after the refit`,[...N.errors,...N2.errors]);
+    await N2.ctx.close();
+  }
+}
 console.log(fails.length?'FAILURES '+fails.length:'ALL PASS');await browser.close();})();

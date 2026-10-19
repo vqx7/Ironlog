@@ -80,20 +80,21 @@ function libFiltered(q,m,e,kind){
   return state.exercises.filter(x=>!x.archived&&(!q||nameMatch(x.name,q))&&(!m||x.primary===m||x.secondary.includes(m))&&(!e||x.equip===e)&&(!kind||(kind==='rare'?x.rare:isCommon(x)))).sort((a,b)=>a.name.localeCompare(b.name));
 }
 /* soFar: this week while it is still going, so short of the minimum is
-   under way (pale green), not amber (r29). */
+   under way (pale green), not amber (r29). Each row's status is the one
+   every screen reads (muscleStatus, r54): no sets is none, as on the map,
+   never green, and not yet this week rather than under way; on an average
+   with a minimum it is below, unless on plan. */
 function volumeRows(sets,conf,soFar){
   const bands=state.settings.bands;
   const maxScale=Math.max(24,...MK.map(m=>Math.max(sets[m]||0,bands[m][1]+2)));
-  const hasConf=!!conf;
+  const hasConf=!!conf;const st=muscleStatus(sets,soFar);
+  const plates={track:'none',none:'none',part:'part',plan:'plan',under:'yellow',over:'blue',in:'green'};
   const head=hasConf?`<div class="legend"><span><i style="background:var(--ink);opacity:.55"></i>RIR logged</span><span><i style="background:var(--green);opacity:.34"></i>assumed hard (RIR blank)</span></div>`:'';
   return head+MK.map(m=>{
-    const v=sets[m]||0;const[lo,hi]=bands[m];const tr=TRACK_ONLY.has(m);const lowV=belowMin(v,lo);const zero=!tr&&v<=0&&(soFar||lo<=0);
-    // No sets is none, as on the map (r29): never green, and not yet this
-    // week rather than under way. On an average with a minimum it is below.
-    const cls=tr?'track':zero?'none':lowV?(soFar?'part':'under'):aboveMax(v,hi)?'over':'in';
-    const plate=tr||zero?'none':lowV?(soFar?'part':'yellow'):aboveMax(v,hi)?'blue':'green';
+    const v=sets[m]||0;const[lo,hi]=bands[m];const tr=TRACK_ONLY.has(m);
+    const cls=st[m].st;const plate=plates[cls];
     const c=hasConf?Math.min(conf[m]||0,v):0;
-    const tip=` data-tip="${esc(ML[m])}: ${r1(v)} hard sets${hasConf?`, ${r1(c)} with RIR logged, ${r1(v-c)} assumed`:''}. ${tr?'Tracked only: no study sets a weekly dose for it.':`Target ${lo} to ${hi}; the upper number is typical, not a ceiling.`}"`;
+    const tip=` data-tip="${esc(ML[m])}: ${r1(v)} hard sets${hasConf?`, ${r1(c)} with RIR logged, ${r1(v-c)} assumed`:''}. ${tr?'Tracked only: no study sets a weekly dose for it.':`Target ${lo} to ${hi}; the upper number is typical, not a ceiling.${cls==='plan'?` On plan: ${esc(ON_PLAN_TIP)}`:''}`}"`;
     return `<div class="mrow"><span class="plate ${plate}"></span><span>${ML[m]}</span><div class="band"${tip}>${tr?'':`<div class="zone" style="left:${lo/maxScale*100}%;width:${(hi-lo)/maxScale*100}%"></div>`}<div class="fill ${cls}${hasConf?' ghost':''}" style="width:${Math.min(100,v/maxScale*100)}%"></div>${hasConf&&c>0?`<div class="fill conf" style="width:${Math.min(100,c/maxScale*100)}%"></div>`:''}</div><span class="r num">${r1(v)}<span class="muted small">${tr?' tracked':` /${lo}-${hi}`}</span></span></div>`;
   }).join('');
 }
@@ -215,13 +216,13 @@ ${extraKpis()}</div>`;
   if(state.sessions.length)h+=dashSummary();
 
 
-  const avg=actualAvg4();const plan=plannedSets(R);const bands=state.settings.bands;
+  const avg=actualAvg4();const plan=plannedSets(R);const bands=state.settings.bands;const avgSt=avg?muscleStatus(avg):null;
 
   // volume: five ways to read the same hard-set counts, plus tonnage
   h+=dsec('volume','Volume','Hard sets per muscle. Direct work counts 1, secondary counts 0.5. A set counts as hard when you logged RIR 3 or less. A blank RIR is read as your usual RIR on that lift once you have rated 3 of its sets in the last 12 weeks, and until then counts as hard, because most working sets are. Blank sets are shaded lighter so you can see how much of the bar is measured and how much is assumed. Amber is under your weekly target, green is inside it, blue is over. In This week, pale green is short of the minimum while the week is still going. Below and above are judged at the one decimal shown. By region measures each region against its minimum, so 100% is on target; it averages your last 4 full weeks unless you pick 2 or 8 above the chart (the radar only: flags and the coach always use 4). '+FIRST_WEEK_WHY+' Load is total weight × reps per week, comparable week to week but not session to session.',
     `${cov}
   <div class="chips">${VOL_MODES.map(([k,l])=>`<button class="chip ${ui.volMode===k?'on':''}" data-act="volMode" data-v="${k}">${l}</button>`).join('')}</div>
-  ${ui.volMode==='region'?regionBody():ui.volMode==='trend'?trendBody():ui.volMode==='load'?`<div class="card">${volHeadline()}${state.sessions.length?`${rangeChips('vol',weeksSpan(firstDate(state.sessions)),8)}<div class="chartbox"><canvas id="chVol"></canvas></div>${chartFallback()}`:'<p class="small muted">Log a session to start this chart.</p>'}</div>`:`<div class="card">${ui.volMode==='week'?(MK.some(m=>(thisWeek[m]||0)>0)?volumeRows(thisWeek,state.settings.rirMode==='off'?null:thisWeekConf,true):'<p class="muted" style="margin:0">Nothing logged this week yet.</p>'):(avg?`<p class="small muted" style="margin:0 0 6px">Averaged over the ${avg._weeks} week${avg._weeks===1?'':'s'} with training in the last 4. Weeks with no sessions are excluded rather than counted as zero.</p>${volumeRows(avg,state.settings.rirMode==='off'?null:avg._conf)}`:'<p class="muted">No sessions in the previous 4 full weeks.</p>')}</div>`}`,noLog()?'Nothing logged yet':`${wkHard} hard sets this week`);
+  ${ui.volMode==='region'?regionBody():ui.volMode==='trend'?trendBody():ui.volMode==='load'?`<div class="card">${volHeadline()}${state.sessions.length?`${rangeChips('vol',weeksSpan(firstDate(state.sessions)),8)}<div class="chartbox"><canvas id="chVol"></canvas></div>${chartFallback()}`:'<p class="small muted">Log a session to start this chart.</p>'}</div>`:`<div class="card">${ui.volMode==='week'?(MK.some(m=>(thisWeek[m]||0)>0)?volumeRows(thisWeek,state.settings.rirMode==='off'?null:thisWeekConf,true):'<p class="muted" style="margin:0">Nothing logged this week yet.</p>'):(avg?`<p class="small muted" style="margin:0 0 6px">Averaged over ${avgWeeksTxt(avg)}. Weeks with no sessions are left out rather than counted as zero.</p>${volumeRows(avg,state.settings.rirMode==='off'?null:avg._conf)}`:(w=>`<p class="muted">${w.lead}An average ${w.kind==='back'?'comes back':'starts'} after ${w.after}.${w.kind==='second'?' '+tipi(FIRST_WEEK_WHY,'Your first week'):''}</p>`)(avgWait()))}</div>`}`,noLog()?'Nothing logged yet':`${wkHard} hard sets this week`);
 
   // muscles: weak points, then return on volume folded beneath
   const inj=injuredSet();
@@ -238,7 +239,8 @@ ${extraKpis()}</div>`;
     if(inj.has(m))continue;
     if(TRACK_ONLY.has(m))continue;
     // One tag since r29; the routine's plan, when it is the reason, is in the line below.
-    if(avg&&belowMin(avg[m],bands[m][0]))add(m,'Below target','yellow');
+    // The status every screen reads (muscleStatus): a muscle on plan is not flagged (r54).
+    if(avgSt&&avgSt[m].st==='under')add(m,'Below target','yellow');
   }
   for(const m of state.settings.priorities)add(m,'Your priority','blue');
   const wp=Object.entries(reasons).sort((a,b)=>b[1].length-a[1].length);
@@ -400,14 +402,14 @@ function regionWk(){let v=ui.regionWk!=null?ui.regionWk:null;if(v==null)try{v=lo
 function regionSrc(){
   const n=regionWk();
   const avg=avgWeeks(n);
-  if(avg)return {src:avg,n,label:avg._missed||avg._light||avg._rest?`your average over ${avgWeeksTxt(avg)}`:avg._weeks<n&&avg._ff?`the ${avg._weeks} full week${avg._weeks===1?'':'s'} after your first week`:`your ${avg._weeks}-week average`};
+  if(avg)return {src:avg,n,label:avg._missed||avg._light||avg._rest?`your average over ${avgWeeksTxt(avg)}`:avg._weeks<n&&avg._ff?avgWeeksTxt(avg):`your ${avg._weeks}-week average`};
   const I=IDX(),cur=weekStart(today());
   const wk=I.weekSets[cur]||{};
   if(MK.some(m=>(wk[m]||0)>0))return {src:wk,n,label:'this week so far',week:true,noFull:true};
   const has=w=>{const x=I.weekSets[w];return !!x&&MK.some(m=>(x[m]||0)>0);};
   const ff=avgFirstWeek();const all=Object.keys(I.weekSets).filter(w=>w<cur&&has(w)).sort();
   const full=all.filter(w=>!ff||w>=ff);const wks=(full.length?full:all).slice(-n);
-  if(wks.length){const out={};for(const w of wks)for(const m in I.weekSets[w])out[m]=(out[m]||0)+I.weekSets[w][m]/wks.length;
+  if(wks.length){const out=weeksAvg(wks);
     const end=addDays(wks[wks.length-1],6);
     return {src:out,n,label:full.length?`your last ${wks.length===1?'trained week':wks.length+' trained weeks'}, to ${fmtDate(end)}`:`your first week, to ${fmtDate(end)}`,old:!!full.length,first:!full.length,end};}
   return {src:{},label:'',empty:true};
@@ -417,19 +419,20 @@ function regionBody(){
   if(rs.empty)return `<div class="card"><p class="headline">Nothing logged yet.</p><p class="small muted" style="margin:0 0 4px">Each region fills in with your own hard sets as you log them. The dashed ring is your weekly minimum.</p>${ENV==='preview'?`<p class="small" style="margin:6px 0">This test version keeps a separate log. ${previewCopyBtn('sm primary')}</p>`:''}<div class="chartbox tall"><canvas id="chRadar"></canvas></div>${chartFallback()}</div>`;
   const balLabel=rs.label;
   const regs=regionBalance(rs.src);
-  const low=regs.filter(x=>x.low),high=regs.filter(x=>x.high);
-  const on=regs.length-low.length;
+  const low=regs.filter(x=>x.low),high=regs.filter(x=>x.high),plan=regs.filter(x=>x.plan);
+  // A region on plan is short of its minimum only by which days of a cycle fell in the weeks (r54): not low, and not counted on target.
+  const on=regs.length-low.length-plan.length;
   // The furthest short is the lowest share of its minimum, said in sets.
   const worst=[...low].sort((a,b)=>a.pct-b.pct)[0];
   // One count of sets on the section: regions share sets, so their sum read as a second, larger total (r34.2).
   const rh=rs.week?`<p class="headline">This week so far: ${on} of ${regs.length} regions at their minimum.</p>`
-    :!low.length?`<p class="headline">Every region at or above its minimum${high.length?'':', inside its target'}.</p>`
+    :!low.length?(plan.length?'<p class="headline">Every region on plan.</p>':`<p class="headline">Every region at or above its minimum${high.length?'':', inside its target'}.</p>`)
     :`<p class="headline">${on} of ${regs.length} regions on target. Furthest short: ${worst.label}, ${r1(worst.got)} of ${r1(worst.lo)} sets.</p>`;
   const note=(rs.old?`Nothing logged in the last ${rs.n||4} weeks, so this shows ${esc(balLabel)}. `:'')+(rs.noFull?'No full week to average yet, so this is this week so far. ':'')+(rs.week&&low.length?'The week is still going, so this fills in as you train.':'');
   const chips=`<div class="wkpick"><span class="small muted" id="wkpickL">Average of the last</span><div class="chips" role="group" aria-labelledby="wkpickL">${REGION_WKS.map(([k,l])=>`<button class="chip ${rs.n===k?'on':''}" data-act="regionWk" data-v="${k}" aria-pressed="${rs.n===k}">${l}</button>`).join('')}</div></div>`;
-  return `<div class="card">${rs.week?'':chips}${rh}<p class="small muted" style="margin:0 0 4px">Using ${esc(balLabel)}. ${tipi(`Hard sets per region against the minimum of your weekly targets. On or past the dashed ring is on target.${rs.first||rs.src._ff?' '+FIRST_WEEK_WHY:''}`,'Reading the chart')}</p><div class="chartbox tall"><canvas id="chRadar"></canvas></div>${chartFallback()}
+  return `<div class="card">${rs.week?'':chips}${rh}<p class="small muted" style="margin:0 0 4px">Using ${esc(balLabel)}. ${tipi(`Hard sets per region against the minimum of your weekly targets. On or past the dashed ring is on target.${plan.length?' On plan: '+ON_PLAN_TIP:''}${rs.first||rs.src._ff?' '+FIRST_WEEK_WHY:''}`,'Reading the chart')}</p><div class="chartbox tall"><canvas id="chRadar"></canvas></div>${chartFallback()}
   <table class="t" style="margin-top:8px"><tr><th>Region</th><th class="r">Sets</th><th class="r">Minimum</th><th class="r">Of minimum</th></tr>
-  ${regs.map(rg=>{const c=rg.low?(rs.week?'part':'yellow'):rg.high?'blue':'green';return `<tr><td><span class="plate ${c}" style="height:12px;vertical-align:-1px"></span> ${rg.label}</td><td class="r num">${r1(rg.got)}</td><td class="r muted small">${r1(rg.lo)}</td><td class="r num">${rg.lo>0?Math.round(rg.pct)+'%':'<span class="muted small">no minimum</span>'}</td></tr>`;}).join('')}</table>
+  ${regs.map(rg=>{const c=rg.low?(rs.week?'part':'yellow'):rg.plan?'plan':rg.high?'blue':'green';return `<tr><td><span class="plate ${c}" style="height:12px;vertical-align:-1px"></span> ${rg.label}</td><td class="r num">${r1(rg.got)}</td><td class="r muted small">${r1(rg.lo)}</td><td class="r num">${rg.lo>0?Math.round(rg.pct)+'%':'<span class="muted small">no minimum</span>'}</td></tr>`;}).join('')}</table>
   ${note?`<p class="small muted" style="margin-top:6px">${note}</p>`:''}</div>`;
 }
 /* Volume section, "Weekly trend" mode: one muscle over time against its band. */

@@ -78,7 +78,6 @@ function fitTargets(R,actual){
   if(!same(D)&&![starterRoutine(),defaultRoutine()].some(r=>same(fitOf(r))))return false;
   const was=JSON.stringify(MK.map(m=>b[m]));
   for(const m of MK)b[m]=[D[m][0],D[m][1]];
-  const plan=plannedSets(R);
   /* actual (a routine made from an import, r31): no minimum above what the
      log itself averaged on a muscle the routine trains. A cycle's planned
      sets a week and the weeks as trained never match exactly (2 days
@@ -89,9 +88,9 @@ function fitTargets(R,actual){
   // Each floor is recorded (settings.bandsFit), so a later focus change knows which targets are the app's.
   /* A focus muscle's floor is recorded too, though not applied while it is a
      focus, so taking the focus off later brings it to the plan (the r44 review). */
-  const fit={};
-  for(const m of MK){if(TRACK_ONLY.has(m))continue;let lo=Math.floor(plan[m]||0);if(actual&&(plan[m]||0)>0)lo=Math.min(lo,Math.floor(actual[m]||0));
-    if(lo<BANDS[m][0]&&lo<b[m][0])fit[m]=lo;if(foc.has(m))continue;lo=Math.min(b[m][0],lo);if(lo!==b[m][0])b[m]=[lo,b[m][1]];}
+  // The floors are fitFloors' (src/app/profile.ts, r54), the one rule the refit of an older fit reads too.
+  const fit=fitFloors(R,actual);
+  for(const m in fit)if(!foc.has(m))b[m]=[fit[m],b[m][1]];
   if(Object.keys(fit).length)state.settings.bandsFit=fit;else delete state.settings.bandsFit;
   return JSON.stringify(MK.map(m=>b[m]))!==was;
 }

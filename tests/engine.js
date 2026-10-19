@@ -4,7 +4,8 @@
 // stays in the legacy script until phase 4), deep-frozen, with the page's
 // language and time zone. Each of the names live.ts gives the legacy
 // script (r52's 74, routineUpdates since r53, and since r54 plannedSets,
-// stallWeeks, avgFirstWeek and lastLighterWeek, read from live.ts) is called
+// stallWeeks, avgFirstWeek, lastLighterWeek, muscleStatus, weeksAvg, defBand,
+// appBand, fitFloors, refit, avgWait and heavierLoad, read from live.ts) is called
 // with the page's own arguments on a fresh model and must
 // give the page's answer, then again on a second fresh model; so is each of
 // PLAIN, the engine's functions the legacy script calls directly that take
@@ -33,15 +34,61 @@ const PLAIN = ['avgWeeksTxt'];
 const ADAPTERS = [...fs.readFileSync(path.join(APP, 'live.ts'), 'utf8').matchAll(/^export const (\w+) = live\(\w+In\);$/gm)].map(m => m[1]);
 // The adapters added since r53, which the digest does not call: tests/wide.js is shared with the comparisons pinned
 // to r52 and r53 (tests/r52.js, tests/r53w.js), so their calls are made here, after it, with these arguments.
-const EXTRA = { plannedSets: (s) => s.routines.map(r => [r]), stallWeeks: (s, ids) => ids.map(id => [id]), avgFirstWeek: () => [[]], lastLighterWeek: () => [[]] };
+const EXTRA = {
+  plannedSets: (s) => s.routines.map(r => [r]), stallWeeks: (s, ids) => ids.map(id => [id]), avgFirstWeek: () => [[]], lastLighterWeek: () => [[]],
+  // A week's sets so far and a plain average; the weekly averages, which carry the muscles on plan, reach it through the coach and regionBalance.
+  muscleStatus: () => [[{ chest: 5, quads: 22, biceps: 0, serratus: 3 }], [{ chest: 5, quads: 22, biceps: 0 }, true], [null]],
+  // The log's last three weeks trained, as the radar's fallback reads them (Monday-start weeks, as util's weekStart).
+  weeksAvg: (s) => { const ws = d => { const t = new Date(d + 'T12:00:00Z'); return new Date(t.getTime() - ((t.getUTCDay() + 6) % 7) * 864e5).toISOString().slice(0, 10); }; const all = [...new Set(s.sessions.map(x => ws(x.date)))].sort(); return [[all.slice(-3)], [[]]]; },
+  // The app's own targets (src/app/profile.ts since r54): with the log's own profile and floors, a focus, and floors given.
+  defBand: () => [['chest'], ['serratus'], ['quads', { focus: ['quads'] }], ['biceps', { focus: ['quads'] }]],
+  appBand: () => [['chest'], ['serratus'], ['quads', { focus: ['quads'] }], ['chest', null, { chest: 5 }], ['chest', null, null]],
+  fitFloors: (s) => s.routines.flatMap(r => [[r], [r, { chest: 3, quads: 4 }], [r, null, 1.75]]),
+  refit: () => [[]],
+  avgWait: () => [[]],
+  // Each tagged lift a step up from loads on and off its rack, to a little above and well above (moved from the legacy script in r54).
+  heavierLoad: (s, ids) => ids.map(id => s.exercises.find(e => e.id === id)).filter(Boolean).flatMap(e => [[e, null, 20, 21], [e, null, 20, 40], [e, null, 5.443, 9], [e, { inc: 2.5 }, 50, 60]])
+};
 // Hand-made histories beside the wide ones, for paths those never reach, each built on a wide history's settings,
 // exercises and routines (since r54): a lifter back this week after ten weeks away, which is not a break (something
-// is logged in the last 4 weeks) and has no average yet (the coach's "after a full week of training").
+// is logged in the last 4 weeks) and has no average yet (the coach's "after a full week of training"); and Strength
+// 5 x 5 done on Monday, Wednesday and Friday, every set as planned, whose last three full weeks hold four A days,
+// so chest and upper back are on plan under their minimum (weeks.ts, cycleMixIn; the coach's "Every muscle on plan").
 const day = (d, n) => new Date(Date.parse(d + 'T12:00:00Z') + n * 864e5).toISOString().slice(0, 10);
+const monday = d => day(d, -((new Date(d + 'T12:00:00Z').getUTCDay() + 6) % 7));
+// Strength 5 x 5 as the template makes it, and its planned hard sets a week by r54's reading (three sessions a week), as a first-run pick fits the targets to.
+const STR5_PLANNED = { quads: 15.75, glutes: 9, adductors: 7.5, lowerBack: 12, chest: 7.5, frontDelts: 11.25, triceps: 7.5, upperBack: 7.5, lats: 3.75, biceps: 3.75, rearDelts: 3.75, sideDelts: 3.75, hamstrings: 0.75, traps: 0.75, forearms: 0.75 };
+const TRACKED = ['serratus', 'rotatorCuff', 'neck', 'tibialis'];
+const str5 = () => {
+  const it = (uid, exId, sets, rest) => ({ uid, exId, sets, repMin: 5, repMax: 5, rir: 2, rest, inc: 2.5, ss: null });
+  return { id: 'str5x', name: 'Strength, 5 x 5', schedule: 'cycle', days: [
+    { id: 'sA', name: 'Strength A', rest: false, items: [it('a1', 'backSquat', 5, 180), it('a2', 'bench', 5, 180), it('a3', 'bbRow', 5, 150)] },
+    { id: 'sR1', name: 'Rest', rest: true, items: [] },
+    { id: 'sB', name: 'Strength B', rest: false, items: [it('b1', 'backSquat', 5, 180), it('b2', 'ohp', 5, 180), it('b3', 'deadlift', 1, 240)] },
+    { id: 'sR2', name: 'Rest', rest: true, items: [] }] };
+};
 const SCENARIOS = [
   h => ({ ...h, raw: { ...h.raw, injuries: [], deloadWeek: null, draft: null, settings: { ...h.raw.settings, restWeeks: [] },
     sessions: [[-77, 60], [-73, 62.5], [-70, 65], [0, 67.5]].map(([n, w], i) => ({ id: 'back' + i, date: day(h.today, n), dayIdx: 0, dayId: null, dayName: 'Session', routineId: '', free: true, notes: '',
-      ex: [{ exId: 'bench', rr: [6, 10], sets: [{ w, r: 8, rir: 1, done: true }, { w, r: 8, rir: 1, done: true }] }] })) } })
+      ex: [{ exId: 'bench', rr: [6, 10], sets: [{ w, r: 8, rir: 1, done: true }, { w, r: 8, rir: 1, done: true }] }] })) } }),
+  (h, { LIB, BANDS }) => {
+    const R = str5(), w0 = monday(h.today), lifts = ['backSquat', 'bench', 'bbRow', 'ohp', 'deadlift'];
+    const sessions = []; let k = 0;
+    for (const wk of [-28, -21, -14, -7]) for (const d of [0, 2, 4]) {
+      const di = k % 2 ? 2 : 0, dd = R.days[di];
+      sessions.push({ id: 'mwf' + k, date: day(w0, wk + d), dayIdx: di, dayId: dd.id, dayName: dd.name, routineId: R.id, notes: '',
+        ex: dd.items.map(x => ({ exId: x.exId, rr: [5, 5], sets: Array.from({ length: x.sets }, () => ({ w: 60 + 2.5 * k, r: 5, rir: 2, done: true })) })) });
+      k++;
+    }
+    // A wide history's own targets, where it set any, over the defaults, as normalize reads them.
+    const b = { ...BANDS, ...(h.raw.settings.bands || {}) }, bands = {};
+    for (const m in b) bands[m] = TRACKED.includes(m) ? b[m] : [Math.min(b[m][0], Math.floor(STR5_PLANNED[m] || 0)), b[m][1]];
+    return { ...h, raw: { ...h.raw, injuries: [], deloadWeek: null, draft: null,
+      exercises: h.raw.exercises.map(e => (lifts.includes(e.id) ? LIB.find(x => x.id === e.id) : e)),
+      routines: [...h.raw.routines.filter(r => r.id !== R.id), R], activeRoutineId: R.id,
+      settings: { ...h.raw.settings, restWeeks: [], todayStart: undefined, rirMode: 'on', rirHalf: undefined, profile: undefined, bandsFit: undefined, bands, priorities: [] },
+      sessions } };
+  }
 ];
 
 // The child: the bundle on the page's histories, under V8's coverage.
@@ -154,11 +201,13 @@ function lineCoverage(covDir, bundleFile, mapPayload) {
   const browser = await engine.launch();
   const B = await open('index.html', { browser, setup: async (ctx, page) => { await page.clock.setFixedTime(new Date('2026-10-11T12:00:00')); } });
   const LIB = await B.page.evaluate(() => window.__ironlog.libExercises());
+  // The default weekly targets, which a hand-made history fits to its routine as a first-run pick does.
+  const BANDS = await B.page.evaluate(() => window.__ironlog.BANDS);
   const intl = await B.page.evaluate(() => { const o = Intl.DateTimeFormat().resolvedOptions(); return { locale: o.locale, timeZone: o.timeZone }; });
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'ironlog-engine-'));
   const histories = [], batches = [], made = [];
   for (let i = 0; i < K + SCENARIOS.length; i++) {
-    const h = i < K ? wide(52000 + i, LIB) : SCENARIOS[i - K](wide(52000 + i, LIB));
+    const h = i < K ? wide(52000 + i, LIB) : SCENARIOS[i - K](wide(52000 + i, LIB), { LIB, BANDS });
     await B.page.clock.setFixedTime(new Date(h.today + 'T12:00:00'));
     const d = await B.page.evaluate(digest, specOf(h));
     const lines = d.split('\n');
@@ -177,7 +226,7 @@ function lineCoverage(covDir, bundleFile, mapPayload) {
     histories.push({ seed: 52000 + i, today: h.today, state, calls });
     if (histories.length === BATCH || i === K + SCENARIOS.length - 1) { batches.push(path.join(tmp, `data-${batches.length}.json`)); fs.writeFileSync(batches[batches.length - 1], JSON.stringify({ histories })); histories.length = 0; }
   }
-  ok(/Volume advice appears here after a full week of training/.test(made[0] || ''), 'the hand-made history reaches the coach line it was made for', made);
+  ok(/Volume advice appears here after a full week of training/.test(made[0] || '') && /Every muscle on plan, nothing stalled/.test(made[1] || ''), 'the hand-made histories reach the coach lines they were made for', made);
   ok(!B.errors.length, 'no page errors while the page answered', B.errors.slice(0, 3));
   await settle(browser.close(), 'closing the browser');
 

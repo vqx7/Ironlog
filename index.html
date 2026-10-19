@@ -383,7 +383,7 @@ label.field>input,label.field>select,label.field>textarea{margin-top:4px;color:v
 .chip.on{background:var(--ink);color:var(--on-ink);border-color:transparent}
 
 .plate{display:inline-block;width:6px;height:22px;border-radius:2px;flex:none}
-.plate.green{background:var(--green)} .plate.yellow{background:var(--yellow)} .plate.red{background:var(--red)} .plate.blue{background:var(--blue)} .plate.none{background:var(--line)} .plate.part{background:var(--part)}
+.plate.green{background:var(--green)} .plate.yellow{background:var(--yellow)} .plate.red{background:var(--red)} .plate.blue{background:var(--blue)} .plate.none{background:var(--line)} .plate.part,.plate.plan{background:var(--part)}
 
 /* ---------- program: days ---------- */
 .day{background:var(--surface);border:1px solid var(--card-b);border-radius:var(--r-lg);margin:10px 0;overflow:hidden}
@@ -651,7 +651,7 @@ body.obmode main,body.obmode #view{padding-bottom:24px}
 .band .zone{position:absolute;top:0;bottom:0;background:var(--green-bg)}
 .band .fill{position:absolute;top:0;bottom:0;left:0;border-radius:6px}
 .band .fill.prog{background:var(--volt);box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--volt-line) 40%,transparent)}
-.band .fill.under{background:var(--yellow)} .band .fill.in{background:var(--green)} .band .fill.over{background:var(--blue)} .band .fill.part{background:var(--part)}
+.band .fill.under{background:var(--yellow)} .band .fill.in{background:var(--green)} .band .fill.over{background:var(--blue)} .band .fill.part,.band .fill.plan{background:var(--part)}
 .band .fill.down{background:var(--red)}
 .band .fill.track{background:var(--muted)}
 .band .fill.ghost{opacity:.35}
@@ -812,7 +812,7 @@ table.t .stick-r{position:sticky;right:0;background:var(--bg);padding-left:6px}
 .mm *{stroke:var(--bg);stroke-width:.8}
 .mm.st-none *{fill:var(--surface-3)}
 .mm.st-under *{fill:var(--yellow)}
-.mm.st-part *{fill:var(--part)}
+.mm.st-part *,.mm.st-plan *{fill:var(--part)}
 .mm.st-in *{fill:var(--green)}
 .mm.st-over *{fill:var(--blue)}
 .mm.st-track *{fill:var(--muted)}
@@ -827,7 +827,7 @@ table.t .stick-r{position:sticky;right:0;background:var(--bg);padding-left:6px}
 .mm:focus-visible *{stroke:var(--ink);stroke-width:2.2}
 .bm-legend{display:flex;flex-wrap:wrap;gap:4px 12px;margin-top:8px;color:var(--muted)}
 .bm-legend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:5px;vertical-align:-1px}
-.bm-legend i.st-none{background:var(--surface-3)}.bm-legend i.st-track{background:var(--muted)}.bm-legend i.st-under{background:var(--yellow)}.bm-legend i.st-part{background:var(--part)}.bm-legend i.st-in{background:var(--green)}.bm-legend i.st-over{background:var(--blue)}
+.bm-legend i.st-none{background:var(--surface-3)}.bm-legend i.st-track{background:var(--muted)}.bm-legend i.st-under{background:var(--yellow)}.bm-legend i.st-part,.bm-legend i.st-plan{background:var(--part)}.bm-legend i.st-in{background:var(--green)}.bm-legend i.st-over{background:var(--blue)}
 .tpl-list{display:flex;flex-direction:column;gap:8px}
 .tpl{-webkit-appearance:none;appearance:none;display:flex;flex-direction:column;gap:3px;text-align:left;width:100%;border:1px solid var(--btn-b);background:var(--surface-2);border-radius:var(--r-md);padding:13px 14px;cursor:pointer;color:var(--ink);font:inherit;min-height:44px}
 .tpl:active{transform:scale(.99)}
@@ -1629,7 +1629,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     return "total";
   }
   var KIN_UNI = /lunge|split squat|step-up|single[- ]|one[- ]arm|1-arm|pistol|bulgarian|cossack|unilateral/i;
-  var RACK = { dumbbell: { kg: [2.5, 2, 1, 0.5], lb: [5, 2.5, 1] }, kettlebell: { kg: [4, 2, 1], lb: [5, 2.5] } };
+  var RACK = { dumbbell: { kg: [2.5, 2, 1, 0.5], lb: [5, 2.5] }, kettlebell: { kg: [4, 2, 1], lb: [5, 2.5] } };
   function rackKind(ex) {
     return ex.equip === "dumbbell" ? "dumbbell" : ex.equip === "kettlebell" || /kettlebell/i.test(ex.name || "") ? "kettlebell" : null;
   }
@@ -1803,8 +1803,10 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
   var KM_MI = 1.609344;
   var STEP_LB = 5 * LB;
   var PLATES_LB = [45, 35, 25, 10, 5, 2.5], PLATES_KG = [25, 20, 15, 10, 5, 2.5, 1.25];
-  var toDIn = (M, kg) => kg == null ? null : UIn(M) === "lb" ? kg / LB : kg;
-  var fromDIn = (M, v) => v == null ? null : UIn(M) === "lb" ? v * LB : v;
+  var inUnitIn = (M, kg) => UIn(M) === "lb" ? kg / LB : kg;
+  var kgOfIn = (M, v) => UIn(M) === "lb" ? v * LB : v;
+  var toDIn = (M, kg) => kg == null ? null : inUnitIn(M, kg);
+  var fromDIn = (M, v) => v == null ? null : kgOfIn(M, v);
   function unitStepIn(M) {
     return UIn(M) === "kg" ? 2.5 : STEP_LB;
   }
@@ -1880,6 +1882,8 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     const ok = m > 0 && pts.length >= 2 && pts.filter((p) => p.r < m).length === 1;
     return (r) => ok ? Math.max(r, m) : r;
   }
+  var LIGHTER_LOAD = 0.9;
+  var LIGHTER_READING = 0.93;
   var tagged = (x) => !!x && !!(x.deload || x.light || x.cut);
   var offSession = (x) => tagged(x) || !!(x && x.auto);
   function jumpPct(ex, plan) {
@@ -2090,8 +2094,23 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
   function weekFactor(R) {
     return R.schedule === "weekly" ? 1 : 7 / Math.max(1, R.days.length);
   }
+  function isTrainDay(d) {
+    return !d.rest && d.items.length > 0;
+  }
   function trainDaysOf(R) {
-    return R.days.filter((d) => !d.rest && d.items.length > 0).length;
+    return R.days.filter(isTrainDay).length;
+  }
+  function nextTrainIdx(R, i) {
+    const n = R.days.length;
+    if (i < 0) {
+      for (let k = 0; k < n; k++) if (isTrainDay(R.days[k])) return k;
+      return 0;
+    }
+    for (let k = 1; k <= n; k++) {
+      const j = (i + k) % n;
+      if (isTrainDay(R.days[j])) return j;
+    }
+    return i;
   }
   function plannedPerWeek(R) {
     const n = trainDaysOf(R);
@@ -2219,19 +2238,29 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
   function planCreditIn(M, it) {
     return planHardIn(M, it) ? 1 : rirHalfOnIn(M) && +it.rir <= 5 ? 0.5 : 0;
   }
-  function plannedSetsIn(M, routine) {
-    const out = {};
-    const f = weekFactor(routine);
-    for (const d of routine.days) {
-      if (d.rest) continue;
-      for (const it of d.items) {
-        const pc = planCreditIn(M, it);
-        if (!pc) continue;
-        const ex = EXIn(M, it.exId);
-        out[ex.primary] = (out[ex.primary] || 0) + it.sets * f * pc;
-        for (const m of ex.secondary) out[m] = (out[m] || 0) + 0.5 * it.sets * f * pc;
-      }
+  function dayShare(R) {
+    const n = trainDaysOf(R);
+    return R.schedule === "weekly" ? 1 : n ? plannedPerWeek(R) / n : 0;
+  }
+  function addDayCredit(M, d, f, out) {
+    if (d.rest) return;
+    for (const it of d.items) {
+      const pc = planCreditIn(M, it);
+      if (!pc) continue;
+      const ex = EXIn(M, it.exId);
+      out[ex.primary] = (out[ex.primary] || 0) + it.sets * f * pc;
+      for (const m of ex.secondary) out[m] = (out[m] || 0) + 0.5 * it.sets * f * pc;
     }
+  }
+  function dayCreditIn(M, d) {
+    const out = {};
+    addDayCredit(M, d, 1, out);
+    return out;
+  }
+  function plannedSetsIn(M, routine, share) {
+    const out = {};
+    const f = share ?? dayShare(routine);
+    for (const d of routine.days) addDayCredit(M, d, f, out);
     return out;
   }
   function planSetsPerWeekIn(M, R, deload) {
@@ -2242,7 +2271,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       )),
       0
     );
-    return R.schedule === "weekly" ? n : Math.round(n * weekFactor(R));
+    return Math.round(n * dayShare(R));
   }
   function routineUpdatesIn(M, d) {
     const R = M.s.routines.find((r) => r.id === d.routineId);
@@ -2481,6 +2510,51 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
   var PROF_GOAL_TIP = "Size keeps the app's defaults. Strength: new barbell, Smith, and machine compounds start at 3 to 6 reps, 2 in reserve, 3 minutes' rest. Heavier loads gave more strength for similar growth (Schoenfeld 2017; ACSM 2009), and 3 minutes' rest beat 1 (Schoenfeld 2016). Both starts them at 5 to 8; that and the 2 in reserve are conventions. Strength also favours stalled or near-best compounds in Pick for me. Your routine changes only with Apply.";
   var PROF_EXP_TIP = "Under 1 year, whatever the goal: new exercises start at 8 to 12 reps (ACSM 2009). Compounds stop 3 reps short and isolation lifts 2, as in the beginner plan, a convention: easier to judge, further from failure. Apply raises reps in reserve to that and keeps your ranges.";
   var PROF_FOCUS_TIP = "Up to two. Their weekly targets go up about 30% and the other major muscles drop to maintenance, a third of the usual minimum (size and strength held on a third of the volume: Bickel 2011, Spiering 2021). Only targets you have not typed move, and taking a focus off puts them back. Pick for me favours them.";
+  function defBandIn(M, m, p) {
+    const b = BANDS[m];
+    const f = (p || profIn(M)).focus || [];
+    if (!f.length || TRACK_ONLY.has(m)) return [b[0], b[1]];
+    if (f.includes(m)) return [Math.round(b[0] * FOCUS_UP), Math.round(b[1] * FOCUS_UP)];
+    return [Math.ceil(b[0] * MAINT_SHARE), b[1]];
+  }
+  function appBandIn(M, m, p, fit) {
+    const q = p || profIn(M);
+    const d = defBandIn(M, m, q);
+    const f = (fit === void 0 ? M.s.settings.bandsFit : fit) || {};
+    const lo = f[m];
+    return lo == null || TRACK_ONLY.has(m) || (q.focus || []).includes(m) ? d : [Math.min(d[0], lo), d[1]];
+  }
+  function fitFloorsIn(M, R, actual, share) {
+    const plan = plannedSetsIn(M, R, share);
+    const fit = {};
+    for (const m of MK) {
+      if (TRACK_ONLY.has(m)) continue;
+      let lo = Math.floor(plan[m] || 0);
+      if (actual && (plan[m] || 0) > 0) lo = Math.min(lo, Math.floor(actual[m] || 0));
+      if (lo < BANDS[m][0] && lo < defBandIn(M, m)[0]) fit[m] = lo;
+    }
+    return fit;
+  }
+  var sameFloors = (a, b) => MK.every((m) => a[m] === b[m]);
+  var sameBand = (a, b) => a[0] === b[0] && a[1] === b[1];
+  function refitIn(M) {
+    const R = activeRoutineIn(M);
+    if (R.schedule === "weekly") return null;
+    const s = M.s.settings;
+    const was = fitFloorsIn(M, R, null, weekFactor(R)), now = fitFloorsIn(M, R);
+    if (sameFloors(was, now)) return null;
+    if (s.bandsFit ? !sameFloors(s.bandsFit, was) : !!s.profile || !MK.every((m) => sameBand(s.bands[m], appBandIn(M, m, null, was))))
+      return null;
+    const bands = {};
+    for (const m of MK) {
+      if (TRACK_ONLY.has(m)) continue;
+      const o = appBandIn(M, m, null, was);
+      if (!sameBand(s.bands[m], o)) continue;
+      const n = appBandIn(M, m, null, now);
+      if (!sameBand(n, o)) bands[m] = n;
+    }
+    return { bands, fit: now };
+  }
 
   // src/app/gym.ts
   var PLATE_MODES = [
@@ -3936,7 +4010,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
         const ref = prev.filter((q) => sameRR(q.rr, x.rr)).slice(-3);
         if (ref.length >= 2) {
           const mL = Math.max(...ref.map((q) => q.topL)), mT = Math.max(...ref.map((q) => q.tRaw == null ? -Infinity : q.tRaw));
-          if (mL > 0 && x.topL <= mL * 0.9 + 1e-9 && (x.tRaw == null || !isFinite(mT) || x.tRaw <= mT * 0.93 + 1e-9)) {
+          if (mL > 0 && x.topL <= mL * LIGHTER_LOAD + 1e-9 && (x.tRaw == null || !isFinite(mT) || x.tRaw <= mT * LIGHTER_READING + 1e-9)) {
             x.auto = true;
             o.l++;
             run.push(x);
@@ -4345,12 +4419,21 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
   }
   function avgWeeksTxt(avg) {
     const w = avg._weeks, m = avg._missed || 0, l = avg._light || 0, r = avg._rest || 0;
-    if (!m && !l && !r) return `your last ${w} full week${w === 1 ? "" : "s"}`;
+    if (!m && !l && !r)
+      return avg._ff && w < avg._n ? `the ${w} full week${w === 1 ? "" : "s"} after your first week` : `your last ${w} full week${w === 1 ? "" : "s"}`;
     const out = [
       l ? `${l === 1 ? "a lighter week" : l + " lighter weeks"}` : "",
       r ? `${r === 1 ? "a rest week" : r + " rest weeks"}` : ""
     ].filter(Boolean);
     return `the ${w} week${w === 1 ? "" : "s"} you trained of the last ${avg._span || Math.min(avg._n || 4, w + m)}${out.length ? `, ${out.join(" and ")} left out` : ""}`;
+  }
+  function avgWaitIn(M) {
+    const ago = addDays(weekStart(M.today()), -28);
+    const af = avgFirstWeekIn(M);
+    if (M.s.sessions.some((x) => x.date < ago) && !M.s.sessions.some((x) => x.date >= ago))
+      return { kind: "back", lead: "Nothing logged in the last 4 weeks. ", after: "a full week of training" };
+    if (!af || weekStart(M.today()) <= af) return { kind: "second", lead: "", after: "your second week" };
+    return { kind: "full", lead: "", after: "a full week of training" };
   }
   function actualAvg4In(M, lightToo) {
     return avgWeeksIn(M, 4, lightToo);
@@ -4362,6 +4445,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     const tot = {}, con = {};
     const ff = avgFirstWeekIn(M);
     let extra = 0, missed = 0, span = 0, ffHit = false, rest = 0, light = 0;
+    const used = [];
     for (let k = 1; k <= Math.min(2 * n, n + extra); k++) {
       const wk = addDays(cur, -7 * k);
       if (ff && wk < ff) {
@@ -4385,6 +4469,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
         continue;
       }
       weeks++;
+      used.push(wk);
       for (const m in ws) tot[m] = (tot[m] || 0) + ws[m];
       const wc = I.weekConf[wk] || {};
       for (const m in wc) con[m] = (con[m] || 0) + wc[m];
@@ -4402,16 +4487,75 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     Object.defineProperty(out, "_rest", { value: rest, enumerable: false });
     Object.defineProperty(out, "_ff", { value: ffHit, enumerable: false });
     Object.defineProperty(out, "_conf", { value: conf, enumerable: false });
+    Object.defineProperty(out, "_mix", { value: cycleMixIn(M, used, out), enumerable: false });
+    return out;
+  }
+  function cycleMixIn(M, weeks, avg) {
+    const out = {};
+    const R = activeRoutineIn(M);
+    const need = plannedPerWeek(R);
+    if (!weeks.length || R.schedule === "weekly" || freeModeIn(M) || !need) return out;
+    const bands = M.s.settings.bands;
+    const plan = plannedSetsIn(M, R);
+    const short = MK.filter((m) => !TRACK_ONLY.has(m) && belowMin(avg[m], bands[m][0]) && !belowMin(plan[m], bands[m][0]));
+    if (!short.length) return out;
+    const wk = new Set(weeks);
+    const per = {}, due = {};
+    let prev = -1;
+    for (const s of sortedSessionsIn(M)) {
+      if (s.routineId !== R.id) continue;
+      const i = sessDayIdx(R, s);
+      if (i < 0) continue;
+      const d = nextTrainIdx(R, prev);
+      prev = i;
+      const w = weekStart(s.date);
+      if (!wk.has(w)) continue;
+      per[w] = (per[w] || 0) + 1;
+      const c = dayCreditIn(M, R.days[d]);
+      for (const m in c) due[m] = (due[m] || 0) + c[m];
+    }
+    if (weeks.some((w) => (per[w] || 0) < need)) return out;
+    for (const m of short) if (!belowMin(avg[m], (due[m] || 0) / weeks.length)) out[m] = true;
+    return out;
+  }
+  function weeksAvgIn(M, wks) {
+    const I = IDXIn(M);
+    const out = {};
+    for (const w of wks) {
+      const ws = I.weekSets[w] || {};
+      for (const m in ws) out[m] = (out[m] || 0) + ws[m] / wks.length;
+    }
+    Object.defineProperty(out, "_mix", { value: cycleMixIn(M, wks, out), enumerable: false });
+    return out;
+  }
+  var ON_PLAN_TIP = "Your routine runs as a cycle, so some weeks hold fewer of the days that train a muscle. Every session and set it had due in these weeks was done, and over the whole cycle it reaches the target.";
+  function muscleStatusIn(M, src, soFar) {
+    const b = M.s.settings.bands;
+    const mix = src && src._mix || {};
+    const out = {};
+    for (const m of MK) {
+      const v = src ? src[m] || 0 : 0;
+      const [lo, hi] = b[m];
+      out[m] = {
+        v,
+        lo,
+        hi,
+        st: TRACK_ONLY.has(m) ? "track" : mix[m] ? "plan" : v <= 0 ? !soFar && src && lo > 0 ? "under" : "none" : belowMin(v, lo) ? soFar ? "part" : "under" : aboveMax(v, hi) ? "over" : "in"
+      };
+    }
     return out;
   }
   function regionBalanceIn(M, sets) {
     const bands = M.s.settings.bands;
+    const st = muscleStatusIn(M, sets);
     return REGIONS.map(([label, all]) => {
       const ms = all.filter((m) => !TRACK_ONLY.has(m));
       const got = ms.reduce((a, m) => a + (sets[m] || 0), 0);
       const mid = ms.reduce((a, m) => a + (bands[m][0] + bands[m][1]) / 2, 0);
       const lo = ms.reduce((a, m) => a + bands[m][0], 0);
       const hi = ms.reduce((a, m) => a + bands[m][1], 0);
+      const short = belowMin(got, lo);
+      const plan = short && ms.some((m) => st[m].st === "plan") && !ms.some((m) => st[m].st === "under");
       return {
         label,
         ms,
@@ -4420,7 +4564,8 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
         lo,
         hi,
         pct: lo > 0 ? got / lo * 100 : 0,
-        low: belowMin(got, lo),
+        low: short && !plan,
+        plan,
         high: aboveMax(got, hi)
       };
     });
@@ -4622,9 +4767,10 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
         act: null
       };
     }
-    if (avg) {
+    const mst = avg ? muscleStatusIn(M, avg) : null;
+    if (avg && mst) {
       const lagSet = new Set(I.scores.filter((x) => x.label === "lagging").map((x) => x.m));
-      const under = MK.filter((m) => !inj.has(m) && !TRACK_ONLY.has(m) && belowMin(avg[m], bands[m][0])).map((m) => ({
+      const under = MK.filter((m) => !inj.has(m) && mst[m].st === "under").map((m) => ({
         m,
         got: avg[m] || 0,
         lo: bands[m][0],
@@ -4694,23 +4840,21 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       };
     }
     if (!avg) {
-      const ago = addDays(weekStart(M.today()), -28);
-      const af = avgFirstWeekIn(M);
-      if (M.s.sessions.some((x) => x.date < ago) && !M.s.sessions.some((x) => x.date >= ago))
-        return {
-          tone: "blue",
-          text: "Nothing logged in the last 4 weeks. Volume advice comes back after a full week of training.",
-          act: null
-        };
-      if (!af || weekStart(M.today()) <= af)
-        return {
-          tone: "blue",
-          text: "Volume advice appears here after your second week.",
-          why: FIRST_WEEK_WHY,
-          act: null
-        };
-      return { tone: "blue", text: "Volume advice appears here after a full week of training.", act: null };
+      const w = avgWaitIn(M);
+      const text = `${w.lead}Volume advice ${w.kind === "back" ? "comes back" : "appears here"} after ${w.after}.`;
+      return w.kind === "second" ? { tone: "blue", text, why: FIRST_WEEK_WHY, wait: true, act: null } : { tone: "blue", text, wait: true, act: null };
     }
+    const onPlan = mst ? MK.filter((m) => !inj.has(m) && mst[m].st === "plan") : [];
+    if (onPlan.length)
+      return {
+        tone: "green",
+        text: "Every muscle on plan, nothing stalled.",
+        why: `Under the minimum over these weeks, on plan: ${andList(
+          onPlan.map((m) => ML[m]),
+          4
+        )}. ${ON_PLAN_TIP}`,
+        act: null
+      };
     return { tone: "green", text: "Every muscle at target, nothing stalled.", act: null };
   }
   function musTrend(sc) {
@@ -4810,17 +4954,35 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
 
   // src/app/engine.ts
   function snapUnitIn(M, ex, plan, res, down) {
+    return gridSnap(M, ex, plan, unitSnap(M, ex, plan, res, down));
+  }
+  function unitSnap(M, ex, plan, res, down) {
     if (!res || res.w == null || res.top == null || ex.timed) return res;
     if (gymRackIn(M, ex, plan)) return rackSnapIn(M, ex, plan, res);
-    const st = toDIn(M, incOfIn(M, ex, plan));
+    const st = inUnitIn(M, incOfIn(M, ex, plan));
     if (!(st > 0)) return res;
-    const off = (v) => Math.abs(toDIn(M, v) / st - Math.round(toDIn(M, v) / st)) > 0.02;
-    const typed = (v) => Math.abs(toDIn(M, v) / 0.05 - Math.round(toDIn(M, v) / 0.05)) < 1e-6;
+    const off = (v) => Math.abs(inUnitIn(M, v) / st - Math.round(inUnitIn(M, v) / st)) > 0.02;
+    const typed = (v) => Math.abs(inUnitIn(M, v) / 0.05 - Math.round(inUnitIn(M, v) / 0.05)) < 1e-6;
     if (!off(res.top) || !off(res.w) || typed(res.top)) return res;
-    const dn = down || !!res.tgt && res.tgt.kind === "reps";
-    const nw = fromDIn(M, (dn ? Math.floor(toDIn(M, res.w) / st + 1e-9) : Math.round(toDIn(M, res.w) / st)) * st);
+    const x = inUnitIn(M, res.w);
+    const lo = Math.floor(x / st + 1e-9) * st;
+    const loaded = !ex.bw && !ex.assist;
+    const fl = Math.max(inUnitIn(M, loadFloorIn(M, ex)), loaded ? st : 0);
+    let d = down ? lo : Math.round(x / st) * st;
+    if (!down && loaded && d < x * LIGHTER_LOAD - 1e-9) d = lo + st;
+    if (!ex.assist && d < fl - 1e-9) d = Math.ceil(fl / st - 1e-9) * st;
+    const nw = kgOfIn(M, d);
     if (Math.abs(nw - res.w) < 1e-9) return res;
     const out = swapWIn(M, ex, res, nw);
+    if (nw > res.w + 1e-9 && res.tgt && res.tgt.kind === "reps") {
+      const lbl = `${loadLabelIn(M, ex, nw)}${ex.bw ? "" : " " + UIn(M)}${loadNote(ex)}`;
+      return {
+        ...out,
+        text: `${res.last ? res.last + " " : ""}${lbl} is the nearest load in ${UIn(M)} to what you did: aim for ${plan.repMin}+ reps in every set.`,
+        target: `${lbl} for ${plan.repMin}+ reps in every set`,
+        tgt: { kind: "load", w: nw, repMin: +plan.repMin, prevBest: res.tgt.prevBest }
+      };
+    }
     const was = fmtWIn(M, res.w - res.top), now = fmtWIn(M, nw - res.top);
     const say = (t) => t.replace(`add ${was} ${UIn(M)}`, `add ${now} ${UIn(M)}`).replace(`take ${was} ${UIn(M)} of help off`, `take ${now} ${UIn(M)} of help off`);
     out.text = out.last && out.text.startsWith(out.last) ? out.last + say(out.text.slice(out.last.length)) : say(out.text);
@@ -5032,9 +5194,12 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
           topLoad * jumpCap(ex, topLoad, early)
         ) - bwNow;
         let k = Math.floor((want - top) / step + 1e-6);
-        if (k < 1 && topPts.every((p) => p.rir >= 5)) k = 1;
-        if (k >= 1) {
-          const nw = ex.assist && top < 0 ? Math.min(0, top + k * step) : capW(top + k * step);
+        const easy5 = topPts.every((p) => p.rir >= 5);
+        if (k < 1 && easy5) k = 1;
+        const onR = offGrid(M, ex, plan, top) != null;
+        const rk = onR ? heavierLoadIn(M, ex, plan, top, want) ?? (easy5 ? top + step : null) : null;
+        if (onR ? rk != null : k >= 1) {
+          const nw = rk != null ? capW(rk) : ex.assist && top < 0 ? Math.min(0, top + k * step) : capW(top + k * step);
           const rr = r1(topPts.reduce((a, p) => a + p.rir, 0) / topPts.length);
           const sc = effScale(M.s.settings.rirScale);
           return {
@@ -5070,8 +5235,10 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
         ) - bwNow;
         const k = Math.floor((want - top) / step + 1e-6);
         const one = progStepIn(M, ex, plan, topLoad, top);
-        if (k >= 1 && k * step > one + 1e-6) {
-          const nw = ex.assist && top < 0 ? Math.min(0, top + k * step) : capW(top + k * step);
+        const onR = offGrid(M, ex, plan, top) != null;
+        const rk = onR ? heavierLoadIn(M, ex, plan, top, want) : null;
+        if (onR ? rk != null && rk - top > one + 1e-6 : k >= 1 && k * step > one + 1e-6) {
+          const nw = rk != null ? capW(rk) : ex.assist && top < 0 ? Math.min(0, top + k * step) : capW(top + k * step);
           const minR = Math.min(...topPts.map((p) => p.r));
           return {
             top,
@@ -5117,8 +5284,8 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
         if (est != null) {
           const want = e1inv(est, +plan.repMin + Math.min(tgtRir, E1_MAX_RIR)) - bwNow;
           const k = Math.ceil((top - want) / step - 1e-6);
-          const nw = top - k * step;
-          if (k >= 1 && (nw > 0 || ex.bw && (nw >= 0 || ex.assist))) {
+          const nw = k >= 1 && offGrid(M, ex, plan, top) ? lighterLoadIn(M, ex, plan, top, want) : top - k * step;
+          if (k >= 1 && nw < top - 1e-6 && (nw > 0 || ex.bw && (nw >= 0 || ex.assist))) {
             const bestR = Math.max(...topPts.map((p) => p.r));
             return {
               top,
@@ -5424,18 +5591,17 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     if (ex && ex.inc == null && Math.abs(v - unitStepIn(M)) < 1e-6) {
       const L = gymRackIn(M, ex, plan);
       if (L) return rackGapIn(M, L, at);
-      if (rackKind(ex)) {
-        const g = rackStepIn(M, ex, at);
-        if (g) return g;
-      }
+      const gr = rackGridIn(M, ex, plan, at);
+      if (gr) return at != null && at > 0 && offGrid(M, ex, plan, at) ? gridStep(M, gr, at, 1) - at : gr;
       const gs = gymStepIn(M, ex);
       if (gs) return gs;
     }
     return v;
   }
   function rackSnapIn(M, ex, plan, res) {
+    if (!res || res.w == null || ex.timed) return res;
     const L = gymRackIn(M, ex, plan);
-    if (!L || !res || res.w == null || ex.timed) return res;
+    if (!L) return gridSnap(M, ex, plan, res);
     const w = res.w, top = res.top, tl = rackTolIn(M), tt = rackTolIn(M, L, top);
     if (L.some((x) => Math.abs(x - w) < 1e-6) || top != null && Math.abs(w - top) < 1e-6) return res;
     const dn = L.filter((x) => x <= w + tl);
@@ -5465,6 +5631,36 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     const d = logged || at == null || !(at > 0) ? null : toDIn(M, at);
     return d == null ? I._rack[key] : fit([d]);
   }
+  function rackGridIn(M, ex, plan, at) {
+    if (!ex || ex.assist || ex.inc != null || !rackKind(ex) || gymRackIn(M, ex, plan)) return null;
+    if (Math.abs(stepReadIn(M, plan && isNum(+plan.inc) ? +plan.inc : STEP_LB) - unitStepIn(M)) > 1e-6) return null;
+    return rackStepIn(M, ex, at) || (UIn(M) === "lb" && rackKind(ex) === "dumbbell" ? 5 * LB : null);
+  }
+  var gridD = (M, g) => Math.round(inUnitIn(M, g) * 1e6) / 1e6;
+  function gridStep(M, g, at, dir) {
+    const gd = gridD(M, g), ad = inUnitIn(M, at), t = inUnitIn(M, rackTolIn(M));
+    return kgOfIn(M, (dir > 0 ? Math.floor((ad + t) / gd) + 1 : Math.ceil((ad - t) / gd) - 1) * gd);
+  }
+  function gridFloor(M, g, w, tol) {
+    const gd = gridD(M, g);
+    return kgOfIn(M, Math.floor((inUnitIn(M, w) + inUnitIn(M, tol)) / gd) * gd);
+  }
+  function offGrid(M, ex, plan, at) {
+    const g = rackGridIn(M, ex, plan, at);
+    if (g == null) return null;
+    const gd = gridD(M, g), ad = inUnitIn(M, at);
+    return Math.abs(ad - Math.round(ad / gd) * gd) > inUnitIn(M, rackTolIn(M)) ? g : null;
+  }
+  function gridSnap(M, ex, plan, res) {
+    const w = res.w, top = res.top;
+    const g = w == null || ex.timed ? null : rackGridIn(M, ex, plan, top);
+    if (w == null || g == null) return res;
+    const t = rackTolIn(M);
+    const dn = gridFloor(M, g, w, t);
+    if (Math.abs(dn - w) <= t || top != null && Math.abs(w - top) < 1e-6) return res;
+    const nw = top != null && w > top ? Math.max(dn, gridStep(M, g, top, 1)) : Math.max(dn, gridStep(M, g, 0, 1));
+    return Math.abs(nw - w) < 1e-9 ? res : swapWIn(M, ex, res, nw);
+  }
   function progStepIn(M, ex, plan, loadKg, at) {
     const L = at != null ? gymRackIn(M, ex, plan) : null;
     if (L) {
@@ -5476,6 +5672,11 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       for (const x of up) if (x <= want + 1e-6) nw = x;
       return nw - at;
     }
+    if (at != null) {
+      const gr = offGrid(M, ex, plan, at);
+      if (gr)
+        return Math.max(gridStep(M, gr, at, 1), gridFloor(M, gr, at + jumpPct(ex, plan) * Math.max(0, loadKg), 1e-6)) - at;
+    }
     const inc = incOfIn(M, ex, plan, at);
     if (!(inc > 0)) return inc;
     const pct = jumpPct(ex, plan);
@@ -5484,6 +5685,9 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
   function easierTextIn(M, ex, e) {
     const sc = effScale(M.s.settings.rirScale);
     return `Getting easier at ${loadLabelIn(M, ex, e.w)}${ex.bw ? "" : " " + UIn(M)}: ${sc === "rpe" ? "RPE" : "RIR"} ${effAt(sc, e.from)} → ${effAt(sc, e.to)} at the same reps. Adding load today is reasonable.`;
+  }
+  function loadFloorIn(M, ex) {
+    return platesMode(ex) === "bar" && loadMode(ex) === "total" && (isCompound(ex) || (ex.barKg ?? 0) > 0) ? exBarKgIn(M, ex) : 0;
   }
   function lighterLoadIn(M, ex, plan, from, to) {
     const L = gymRackIn(M, ex, plan);
@@ -5494,15 +5698,41 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       const c = lo.filter((x) => x <= to + tl);
       return c.length ? c[c.length - 1] : lo[0];
     }
+    const og = offGrid(M, ex, plan, from);
+    if (og) {
+      const dn = gridStep(M, og, from, -1), first = gridStep(M, og, 0, 1);
+      if (dn < first - 1e-6) return Math.max(0, from);
+      const c = gridFloor(M, og, to, rackTolIn(M));
+      return c >= first - 1e-6 ? Math.min(dn, c) : first;
+    }
     const step = incOfIn(M, ex, plan, from);
     let w;
     if (step > 0) {
       const k = Math.max(1, Math.ceil((from - to) / step - 1e-6));
       w = from - k * step;
     } else w = roundLoadIn(M, to, true);
-    const floor = platesMode(ex) === "bar" && loadMode(ex) === "total" && (isCompound(ex) || ex.barKg > 0) ? exBarKgIn(M, ex) : 0;
+    const floor = loadFloorIn(M, ex);
     if (w < floor - 1e-6) w = Math.min(floor, from);
+    const gr = rackGridIn(M, ex, plan, from);
+    if (gr && w < gridStep(M, gr, 0, 1) - 1e-6) w = Math.min(gridStep(M, gr, 0, 1), from);
     return Math.max(0, w);
+  }
+  function heavierLoadIn(M, ex, plan, from, to) {
+    const L = gymRackIn(M, ex, plan);
+    if (L) {
+      const tl = rackTolIn(M), tf = rackTolIn(M, L, from);
+      const c = L.filter((x) => x > from + tf && x <= to + tl);
+      return c.length ? c[c.length - 1] : null;
+    }
+    const og = offGrid(M, ex, plan, from);
+    if (og) {
+      const c = gridFloor(M, og, to, rackTolIn(M));
+      return c >= gridStep(M, og, from, 1) - 1e-6 ? c : null;
+    }
+    const step = incOfIn(M, ex, plan, from);
+    if (!(step > 0)) return null;
+    const k = Math.floor((to - from) / step + 1e-6);
+    return k >= 1 ? from + k * step : null;
   }
 
   // src/app/live.ts
@@ -5541,6 +5771,10 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
   var profPlan = live(profPlanIn);
   var profRule = live(profRuleIn);
   var routineUpdates = live(routineUpdatesIn);
+  var appBand = live(appBandIn);
+  var defBand = live(defBandIn);
+  var fitFloors = live(fitFloorsIn);
+  var refit = live(refitIn);
   var barKg = live(barKgIn);
   var capOf = live(capOfIn);
   var exBarKg = live(exBarKgIn);
@@ -5572,15 +5806,18 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
   var sessModelMin = live(sessModelMinIn);
   var actualAvg4 = live(actualAvg4In);
   var avgFirstWeek = live(avgFirstWeekIn);
+  var avgWait = live(avgWaitIn);
   var avgWeeks = live(avgWeeksIn);
   var firstFullWeek = live(firstFullWeekIn);
   var lastLighterWeek = live(lastLighterWeekIn);
+  var muscleStatus = live(muscleStatusIn);
   var recentLighter = live(recentLighterIn);
   var regionBalance = live(regionBalanceIn);
   var weekNeed = live(weekNeedIn);
   var weekRoutine = live(weekRoutineIn);
   var weekStats = live(weekStatsIn);
   var weekStreak = live(weekStreakIn);
+  var weeksAvg = live(weeksAvgIn);
   var coach = live(coachIn);
   var dropOnlyLift = live(dropOnlyLiftIn);
   var fatigueStalls = live(fatigueStallsIn);
@@ -5590,6 +5827,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
   var daysOff = live(daysOffIn);
   var easierText = live(easierTextIn);
   var incOf = live(incOfIn);
+  var heavierLoad = live(heavierLoadIn);
   var lighterLoad = live(lighterLoadIn);
   var progStep = live(progStepIn);
   var rackStep = live(rackStepIn);
@@ -5689,7 +5927,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
         "stats",
         "Volume and Stats",
         `<p><b>A hard set</b> is a working set at RIR 3 or less${off ? " (with RIR off, every working set)" : ""}. Helper muscles count half a set (Pelland 2025); which muscles are helpers on each lift is the library's own call, a convention. With Settings, Count ${halfLbl()} as half a set on, a working set past RIR 3 counts half toward your weekly sets and targets, planned ones too (a convention); estimates, PRs, recovery, and the per-workout flag still count hard sets only.</p>
-   <p><b>Weekly targets</b> are per muscle in Settings, Weekly set targets. 10 to 20 hard sets a week for major muscles is typical, not a ceiling. Serratus, rotator cuff, neck, and tibialis are tracked only: counted and shown, with no target, since no study sets a dose for them and most routines leave them to indirect work. A target starting at 0 is met with no sets. A muscle is below target when its weekly average, to one decimal as shown, is under the minimum. The radar on Stats measures each region against its minimum, so on or past the ring is on target. It averages your last 4 full weeks, from the week after your first; the chips above it switch to 2 or 8 weeks, for the radar only. During the week, short of the minimum shows as under way, not below.</p>
+   <p><b>Weekly targets</b> are per muscle in Settings, Weekly set targets. 10 to 20 hard sets a week for major muscles is typical, not a ceiling. Serratus, rotator cuff, neck, and tibialis are tracked only: counted and shown, with no target, since no study sets a dose for them and most routines leave them to indirect work. A target starting at 0 is met with no sets. A muscle is below target when its weekly average, to one decimal as shown, is under the minimum. On a routine run as a cycle, weeks can differ in which of its days fall in them (two days in turn, three times a week). A muscle under its minimum only because fewer of the days that train it fell in the weeks averaged reads <b>on plan</b> when every session and set the cycle had due in those weeks was done and the plan reaches the target over the whole cycle. The radar on Stats measures each region against its minimum, so on or past the ring is on target. It averages your last 4 full weeks, from the week after your first; the chips above it switch to 2 or 8 weeks, for the radar only. During the week, short of the minimum shows as under way, not below.</p>
    <p><b>Lagging strength</b> is a muscle whose lifts are falling, or flat with one of them stalled (a convention); with no clear trend, a stalled lift reads <b>A lift stalled</b>. A muscle whose lifts are all within day-to-day noise reads <b>unclear</b>, never 0%.</p>
    <p><b>Your target and the usual range</b>: picking a ready-made routine sets your minimums to what it plans, so Stats measures you against your plan. Plan, Weekly volume names the muscles that plan puts under the usual range.</p>
    <p><b>Planned sets</b> count the same way: a set planned at RIR 4 or more is not a planned hard set, and in a deload week the target is halved.</p>
@@ -5753,24 +5991,10 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     function cycleState(R, asOf) {
       const n = R.days.length;
       const T = asOf || today();
-      const isTrain = (i) => !R.days[i].rest && R.days[i].items.length > 0;
-      let first = 0;
-      for (let i = 0; i < n; i++) if (isTrain(i)) {
-        first = i;
-        break;
-      }
       const mine = state.sessions.filter((x) => x.routineId === R.id && (!asOf || x.date <= asOf)).map((x) => ({ s: x, i: sessDayIdx(R, x) })).filter((x) => x.i >= 0).sort((a, b) => sessCmp(a.s, b.s));
-      if (!mine.length) return { last: -1, lastDate: null, next: first, done: /* @__PURE__ */ new Set(), restToday: false, restIdx: -1 };
+      if (!mine.length) return { last: -1, lastDate: null, next: nextTrainIdx(R, -1), done: /* @__PURE__ */ new Set(), restToday: false, restIdx: -1 };
       const L = mine[mine.length - 1];
-      let next = -1;
-      for (let k = 1; k <= n; k++) {
-        const j = (L.i + k) % n;
-        if (isTrain(j)) {
-          next = j;
-          break;
-        }
-      }
-      if (next < 0) next = L.i;
+      const next = nextTrainIdx(R, L.i);
       const done = /* @__PURE__ */ new Set();
       if (next > L.i) {
         done.add(L.i);
@@ -7514,17 +7738,8 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       if (!same(D) && ![starterRoutine(), defaultRoutine()].some((r) => same(fitOf(r)))) return false;
       const was = JSON.stringify(MK.map((m) => b[m]));
       for (const m of MK) b[m] = [D[m][0], D[m][1]];
-      const plan = plannedSets(R);
-      const fit = {};
-      for (const m of MK) {
-        if (TRACK_ONLY.has(m)) continue;
-        let lo = Math.floor(plan[m] || 0);
-        if (actual && (plan[m] || 0) > 0) lo = Math.min(lo, Math.floor(actual[m] || 0));
-        if (lo < BANDS[m][0] && lo < b[m][0]) fit[m] = lo;
-        if (foc.has(m)) continue;
-        lo = Math.min(b[m][0], lo);
-        if (lo !== b[m][0]) b[m] = [lo, b[m][1]];
-      }
+      const fit = fitFloors(R, actual);
+      for (const m in fit) if (!foc.has(m)) b[m] = [fit[m], b[m][1]];
       if (Object.keys(fit).length) state.settings.bandsFit = fit;
       else delete state.settings.bandsFit;
       return JSON.stringify(MK.map((m) => b[m])) !== was;
@@ -7777,18 +7992,6 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       });
     }
     const fillLoads = () => state.settings.loadFill === "fill";
-    function heavierLoad(ex, plan, from, to) {
-      const L = gymRack(ex, plan);
-      if (L) {
-        const tl = rackTol(), tf = rackTol(L, from);
-        const c = L.filter((x) => x > from + tf && x <= to + tl);
-        return c.length ? c[c.length - 1] : null;
-      }
-      const step = incOf(ex, plan, from);
-      if (!(step > 0)) return null;
-      const k = Math.floor((to - from) / step + 1e-6);
-      return k >= 1 ? from + k * step : null;
-    }
     function adjOn() {
       return state.settings.autoAdj !== false;
     }
@@ -9165,12 +9368,16 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       const sc = I.scores.find((x) => x.m === m);
       const parts = [];
       const tr = TRACK_ONLY.has(m);
+      const st = avg ? muscleStatus(avg)[m].st : null;
       if (avg) {
         const v = avg[m] || 0;
-        parts.push(tr ? `${r1(v)} hard sets a week over ${avgWeeksTxt(avg)}. Tracked only: no target.` : `${r1(v)} hard sets a week over ${avgWeeksTxt(avg)}, ${belowMin(v, lo) ? `${r1(lo - v)} below` : aboveMax(v, hi) ? `${r1(v - hi)} above` : "inside"} your ${lo} to ${hi} target.`);
-      } else parts.push(tr ? "Tracked only: counted and shown, with no target." : `Target ${lo} to ${hi} hard sets a week. Finish a full week to compare against it.`);
+        parts.push(tr ? `${r1(v)} hard sets a week over ${avgWeeksTxt(avg)}. Tracked only: no target.` : `${r1(v)} hard sets a week over ${avgWeeksTxt(avg)}, ${st === "under" || st === "plan" ? `${r1(lo - v)} below` : st === "over" ? `${r1(v - hi)} above` : "inside"} your ${lo} to ${hi} target${st === "plan" ? ", on plan" : ""}.`);
+      } else {
+        const w = avgWait();
+        parts.push(tr ? "Tracked only: counted and shown, with no target." : `Target ${lo} to ${hi} hard sets a week. ${w.lead}Compare against it after ${w.after}.`);
+      }
       if (sc) parts.push(`${musTrend(sc)}${sc.indirect ? ", read from exercises that train it indirectly" : ""}${sc.label === "lagging" ? ", flagged as lagging" : ""}.`);
-      return `<p class="headline"><b>${esc(ML[m])}.</b> ${esc(parts.join(" "))}</p>`;
+      return `<p class="headline"><b>${esc(ML[m])}.</b> ${esc(parts.join(" "))}${st === "plan" ? " " + tipi(ON_PLAN_TIP, "On plan") : ""}</p>`;
     }
     function volHeadline() {
       if (!IDX().sessVol.length) return "";
@@ -9188,9 +9395,10 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       const mvAll = movers(), mv = mvAll.slice(0, 2);
       const stalled = stalledIds();
       const avg = actualAvg4();
-      const b = state.settings.bands;
       const inj = injuredSet();
-      const under = avg ? MK.filter((m) => !inj.has(m) && !TRACK_ONLY.has(m) && belowMin(avg[m], b[m][0])) : null, over = avg ? MK.filter((m) => !TRACK_ONLY.has(m) && aboveMax(avg[m], b[m][1])) : null;
+      const st = avg ? muscleStatus(avg) : null;
+      const under = st ? MK.filter((m) => !inj.has(m) && st[m].st === "under") : null, over = st ? MK.filter((m) => st[m].st === "over") : null;
+      const onPlan = st ? MK.filter((m) => !inj.has(m) && st[m].st === "plan") : [];
       const c = coach();
       const list = (a, n) => andList(a, n);
       const row = (tone, label, text, attrs) => `<button class="srow" ${attrs}><i class="dot ${tone}"></i><span class="sl">${label}</span><span class="st">${text}</span><span class="chev2" aria-hidden="true">›</span></button>`;
@@ -9200,9 +9408,10 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       h += row(mv.length ? "green" : "", "Moving", mv.length ? andList(mv.map((x) => `${esc(exName(x.id))}${one ? "" : ` over ${x.wk} weeks`}`).concat(mvAll.length > 2 ? [`${mvAll.length - 2} more`] : [])) + (one ? `, over ${mv[0].wk} weeks` : "") : nTr ? `No lift clearly rising yet: ${nTr} with a trend, each within day-to-day noise.` : "A trend needs 3 sessions of a lift over 2 weeks or more, within 6 weeks.", `data-act="goDash" data-sec="exercise"${mv.length ? ` data-ex="${mv[0].id}"` : ""}`);
       h += row(stalled.length ? fatigueStalls(stalled).length >= 3 ? "red" : "yellow" : "green", "Stuck", stalled.length ? esc(list(stalled.map(exName), 3)) : "Nothing stalled", 'data-act="goDash" data-sec="stalls"');
       const cm = c.act && c.act.sec === "volume" ? c.act.m : null;
-      const same = !!(cm && under && under.includes(cm));
+      const same = !!(cm && under && under.includes(cm)) || !!c.wait;
+      const w = under == null ? avgWait() : null;
       const above = over && over.length ? ` Above: ${list(over.map((m) => ML[m]), 2)}.` : "";
-      const vt = (same ? c.text : under == null ? "Finish a full week for a volume read." : under.length ? `Below target: ${list(under.map((m) => ML[m]), 3)}.` : "Every muscle at or above target.") + above;
+      const vt = (same ? c.text : w ? `${w.lead}A volume read comes${w.kind === "back" ? " back" : ""} after ${w.after}.` : under.length ? `Below target: ${list(under.map((m) => ML[m]), 3)}.` : onPlan.length ? "Every muscle on plan." : "Every muscle at or above target.") + above;
       h += row(under == null ? "" : under.length ? "yellow" : "green", "Volume", esc(vt), 'data-act="goDash" data-sec="volume"');
       if (!same) h += `<div class="srow static"><i class="dot ${c.tone}"></i><span class="sl">Change</span><span class="st">${esc(c.text)}</span></div>`;
       return h + "</div>";
@@ -9266,7 +9475,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       const cs = getComputedStyle(document.documentElement);
       const v = (n) => cs.getPropertyValue(n).trim();
       const dark = (document.documentElement.dataset.theme || (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light")) === "dark";
-      return { base: dark ? "#3b4048" : "#d5d9de", none: dark ? "#5d646d" : "#a9b0b8", track: v("--muted"), under: v("--yellow"), part: v("--part"), in: v("--green"), over: v("--blue"), ex: v("--volt") };
+      return { base: dark ? "#3b4048" : "#d5d9de", none: dark ? "#5d646d" : "#a9b0b8", track: v("--muted"), under: v("--yellow"), part: v("--part"), plan: v("--part"), in: v("--green"), over: v("--blue"), ex: v("--volt") };
     }
     function b3Host() {
       return document.getElementById("bm3dx") || document.getElementById("bm3d");
@@ -9533,16 +9742,6 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       if (x[0] === "r") return `<rect x="${x[1]}" y="${x[2]}" width="${x[3]}" height="${x[4]}" rx="${x[5]}"/>`;
       return `<polygon points="${x[1].map((q) => q.join(",")).join(" ")}"/>`;
     }
-    function muscleStatus(src, soFar) {
-      const b = state.settings.bands;
-      const out = {};
-      for (const m of MK) {
-        const v = src ? src[m] || 0 : 0;
-        const [lo, hi] = b[m];
-        out[m] = { v, lo, hi, st: TRACK_ONLY.has(m) ? "track" : v <= 0 ? !soFar && src && lo > 0 ? "under" : "none" : belowMin(v, lo) ? soFar ? "part" : "under" : aboveMax(v, hi) ? "over" : "in" };
-      }
-      return out;
-    }
     function bodyMapCard() {
       const I = IDX();
       const avg = actualAvg4();
@@ -9552,7 +9751,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       const tgt = (m) => TRACK_ONLY.has(m) ? ", tracked only" : `, target ${st[m].lo} to ${st[m].hi}`;
       const lab = (m) => noLog() ? `${ML[m]}: nothing logged yet${tgt(m)}` : `${ML[m]}: ${hsw(st[m].v)}${tgt(m)}`;
       const fig = (view, label) => `<figure class="bm"><svg viewBox="0 0 120 210" aria-label="${label} of body"><g class="bm-base">${BM_BASE}</g>${Object.entries(BM[view]).map(([m, sh]) => `<g class="mm st-${st[m].st}${ui.mapSel === m ? " sel" : ""}" data-act="mapSel" data-m="${m}" role="button" tabindex="0" aria-label="${esc(lab(m))}"><title>${esc(lab(m))}</title>${sh.map(bmShape).join("")}</g>`).join("")}</svg><figcaption>${label}</figcaption></figure>`;
-      const counts = { under: 0, part: 0, in: 0, over: 0, none: 0, track: 0 };
+      const counts = { under: 0, part: 0, plan: 0, in: 0, over: 0, none: 0, track: 0 };
       for (const m of MK) counts[st[m].st]++;
       if (noLog()) for (const k in counts) counts[k] = NIL;
       const sel = ui.mapSel && st[ui.mapSel] ? ui.mapSel : null;
@@ -9560,9 +9759,9 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       if (sel) {
         const x = st[sel];
         const sc = I.scores.find((y) => y.m === sel);
-        const where = x.st === "none" ? src === "week" ? "Not yet this week" : "Not trained" : x.st === "track" ? "Tracked only" : x.st === "under" ? `${r1(x.lo - x.v)} below target` : x.st === "part" ? `${r1(x.lo - x.v)} to go` : x.st === "over" ? `${r1(x.v - x.hi)} above target` : "On target";
+        const where = x.st === "none" ? src === "week" ? "Not yet this week" : "Not trained" : x.st === "track" ? "Tracked only" : x.st === "under" ? `${r1(x.lo - x.v)} below target` : x.st === "part" ? `${r1(x.lo - x.v)} to go` : x.st === "plan" ? "On plan" : x.st === "over" ? `${r1(x.v - x.hi)} above target` : "On target";
         const tr = sc ? `${musTrend(sc)}${sc.indirect ? ", read from exercises that train it indirectly" : ""}.` : "Not enough sessions yet for a strength trend.";
-        detail = `<div class="bm-detail"><div class="row spread"><b>${ML[sel]}</b><span class="tag ${x.st === "in" ? "green" : x.st === "under" ? "yellow" : x.st === "over" ? "blue" : ""}">${where}</span></div><p class="small" style="margin:4px 0 6px">${src === "avg" ? `${hsw(x.v)} on average over ${avgWeeksTxt(avg)}` : `${r1(x.v)} hard set${r1(x.v) === 1 ? "" : "s"} so far this week`}${tgt(sel)}. ${tr}</p><div class="row"><button class="btn sm" data-act="goDash" data-sec="volume" data-m="${sel}">Weekly trend</button><button class="btn sm" data-act="mapSel" data-m="${sel}">Close</button></div></div>`;
+        detail = `<div class="bm-detail"><div class="row spread"><b>${ML[sel]}</b><span class="tag ${x.st === "in" ? "green" : x.st === "under" ? "yellow" : x.st === "over" ? "blue" : x.st === "plan" ? "hastip" : ""}"${x.st === "plan" ? ` data-tip="${esc(ON_PLAN_TIP)}"` : ""}>${where}</span></div><p class="small" style="margin:4px 0 6px">${src === "avg" ? `${hsw(x.v)} on average over ${avgWeeksTxt(avg)}` : `${r1(x.v)} hard set${r1(x.v) === 1 ? "" : "s"} so far this week`}${tgt(sel)}. ${tr}</p><div class="row"><button class="btn sm" data-act="goDash" data-sec="volume" data-m="${sel}">Weekly trend</button><button class="btn sm" data-act="mapSel" data-m="${sel}">Close</button></div></div>`;
       } else {
         const low = MK.filter((m) => !TRACK_ONLY.has(m) && lowSt(st[m]));
         detail = `<p class="small muted" style="margin:6px 0 0">Tap a muscle ${tipi(`${mapView() === "3d" ? "Drag sideways to turn it. " : ""}Tap a muscle for its numbers.${src === "week" ? " This is the week so far, so most muscles read low early in the week." : ""}`, "About the map")}</p>${low.length && src === "avg" ? `<div class="row" style="margin-top:6px;gap:4px"><span class="small muted">Below target:</span>${low.slice(0, 8).map((m) => `<button class="chip" data-act="mapSel" data-m="${m}">${ML[m]}</button>`).join("")}</div>` : ""}`;
@@ -9584,7 +9783,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       const stage = v3 ? `<div class="bm3d" id="bm3d"><div class="bm3d-stage" role="img" aria-label="3D body, shaded by hard sets a week. Drag sideways to turn it, tap a muscle for its numbers. The same numbers are in the flat view."></div><p class="bm3d-msg small muted" hidden></p><div class="seg bm3d-turn" role="group" aria-label="Turn the body"><button class="chip" data-act="map3dTurn" data-v="0">Front</button><button class="chip" data-act="map3dTurn" data-v="1">Side</button><button class="chip" data-act="map3dTurn" data-v="2">Back</button></div></div>` : `<div class="bm-wrap">${fig("f", "Front")}${fig("b", "Back")}</div>`;
       return sec({ sk: "today:map", key: "map", title: "Muscle map", sub: msub, body: `<div class="row spread"><div class="seg" role="group" aria-label="View"><button class="chip ${v3 ? "" : "on"}" data-act="mapView" data-v="flat" aria-pressed="${!v3}">Flat</button><button class="chip ${v3 ? "on" : ""}" data-act="mapView" data-v="3d" aria-pressed="${v3}">3D</button></div><div class="seg" role="group" aria-label="Time range">${avg ? `<button class="chip ${src === "avg" ? "on" : ""}" data-act="mapSrc" data-v="avg" aria-pressed="${src === "avg"}">4-week avg</button>` : ""}<button class="chip ${src === "week" ? "on" : ""}" data-act="mapSrc" data-v="week" aria-pressed="${src === "week"}">This week</button></div></div>
   ${stage}
-  <div class="bm-legend small">${src === "week" ? `<span class="hastip" data-tip="The week is still going: short of the minimum so far, not behind."><i class="st-part"></i>Under way ${counts.part}</span>` : `<span><i class="st-under"></i>Below target ${counts.under}</span>`}<span><i class="st-in"></i>On target ${counts.in}</span><span><i class="st-over"></i>Above ${counts.over}</span><span><i class="st-none"></i>${src === "week" ? "Not yet" : "None"} ${counts.none}</span>${counts.track ? `<span class="hastip" data-tip="Serratus, rotator cuff, neck, and tibialis: sets are counted, but no study sets a weekly dose, so they are never called under or over."><i class="st-track"></i>Tracked only ${counts.track}</span>` : ""}</div>
+  <div class="bm-legend small">${src === "week" ? `<span class="hastip" data-tip="The week is still going: short of the minimum so far, not behind."><i class="st-part"></i>Under way ${counts.part}</span>` : `<span><i class="st-under"></i>Below target ${counts.under}</span>${counts.plan ? `<span class="hastip" data-tip="${esc(ON_PLAN_TIP)}"><i class="st-plan"></i>On plan ${counts.plan}</span>` : ""}`}<span><i class="st-in"></i>On target ${counts.in}</span><span><i class="st-over"></i>Above ${counts.over}</span><span><i class="st-none"></i>${src === "week" ? "Not yet" : "None"} ${counts.none}</span>${counts.track ? `<span class="hastip" data-tip="Serratus, rotator cuff, neck, and tibialis: sets are counted, but no study sets a weekly dose, so they are never called under or over."><i class="st-track"></i>Tracked only ${counts.track}</span>` : ""}</div>
   ${detail}` });
     }
     function sessionLength() {
@@ -10295,19 +10494,6 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       const sg = suggest(exId, plan, opts);
       return { bid: uid(), exId, plan: { ...plan }, note: "", lastNote: lastNoteOf(exId, opts && opts.before), inj: sg.inj || null, hint: sg.text, last: sg.last, prev: sg.prev || void 0, prevOff: sg.prevOff || void 0, target: sg.target, tgt: sg.tgt, easier: sg.easier || null, lastR: sg.lastR, basis: sg.basis || void 0, sw: sg.w == null ? null : sg.w, sets: Array.from({ length: +plan.sets || 3 }, () => ({ w: fillLoads() ? sg.w : null, r: null, rir: null, warm: false, drop: false, done: false })) };
     }
-    function defBand(m, p) {
-      const b = BANDS[m];
-      const f = (p || prof()).focus || [];
-      if (!f.length || TRACK_ONLY.has(m)) return [b[0], b[1]];
-      if (f.includes(m)) return [Math.round(b[0] * FOCUS_UP), Math.round(b[1] * FOCUS_UP)];
-      return [Math.ceil(b[0] * MAINT_SHARE), b[1]];
-    }
-    function appBand(m, p) {
-      p = p || prof();
-      const d = defBand(m, p);
-      const f = (state.settings.bandsFit || {})[m];
-      return f == null || TRACK_ONLY.has(m) || (p.focus || []).includes(m) ? d : [Math.min(d[0], f), d[1]];
-    }
     function profMoveBands(oldP, newP) {
       const b = state.settings.bands;
       const moved = {};
@@ -10635,17 +10821,17 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       const bands = state.settings.bands;
       const maxScale = Math.max(24, ...MK.map((m) => Math.max(sets[m] || 0, bands[m][1] + 2)));
       const hasConf = !!conf;
+      const st = muscleStatus(sets, soFar);
+      const plates = { track: "none", none: "none", part: "part", plan: "plan", under: "yellow", over: "blue", in: "green" };
       const head = hasConf ? `<div class="legend"><span><i style="background:var(--ink);opacity:.55"></i>RIR logged</span><span><i style="background:var(--green);opacity:.34"></i>assumed hard (RIR blank)</span></div>` : "";
       return head + MK.map((m) => {
         const v = sets[m] || 0;
         const [lo, hi] = bands[m];
         const tr = TRACK_ONLY.has(m);
-        const lowV = belowMin(v, lo);
-        const zero = !tr && v <= 0 && (soFar || lo <= 0);
-        const cls = tr ? "track" : zero ? "none" : lowV ? soFar ? "part" : "under" : aboveMax(v, hi) ? "over" : "in";
-        const plate = tr || zero ? "none" : lowV ? soFar ? "part" : "yellow" : aboveMax(v, hi) ? "blue" : "green";
+        const cls = st[m].st;
+        const plate = plates[cls];
         const c = hasConf ? Math.min(conf[m] || 0, v) : 0;
-        const tip = ` data-tip="${esc(ML[m])}: ${r1(v)} hard sets${hasConf ? `, ${r1(c)} with RIR logged, ${r1(v - c)} assumed` : ""}. ${tr ? "Tracked only: no study sets a weekly dose for it." : `Target ${lo} to ${hi}; the upper number is typical, not a ceiling.`}"`;
+        const tip = ` data-tip="${esc(ML[m])}: ${r1(v)} hard sets${hasConf ? `, ${r1(c)} with RIR logged, ${r1(v - c)} assumed` : ""}. ${tr ? "Tracked only: no study sets a weekly dose for it." : `Target ${lo} to ${hi}; the upper number is typical, not a ceiling.${cls === "plan" ? ` On plan: ${esc(ON_PLAN_TIP)}` : ""}`}"`;
         return `<div class="mrow"><span class="plate ${plate}"></span><span>${ML[m]}</span><div class="band"${tip}>${tr ? "" : `<div class="zone" style="left:${lo / maxScale * 100}%;width:${(hi - lo) / maxScale * 100}%"></div>`}<div class="fill ${cls}${hasConf ? " ghost" : ""}" style="width:${Math.min(100, v / maxScale * 100)}%"></div>${hasConf && c > 0 ? `<div class="fill conf" style="width:${Math.min(100, c / maxScale * 100)}%"></div>` : ""}</div><span class="r num">${r1(v)}<span class="muted small">${tr ? " tracked" : ` /${lo}-${hi}`}</span></span></div>`;
       }).join("");
     }
@@ -10769,13 +10955,14 @@ ${extraKpis()}</div>`;
       const avg = actualAvg4();
       const plan = plannedSets(R);
       const bands = state.settings.bands;
+      const avgSt = avg ? muscleStatus(avg) : null;
       h += dsec(
         "volume",
         "Volume",
         "Hard sets per muscle. Direct work counts 1, secondary counts 0.5. A set counts as hard when you logged RIR 3 or less. A blank RIR is read as your usual RIR on that lift once you have rated 3 of its sets in the last 12 weeks, and until then counts as hard, because most working sets are. Blank sets are shaded lighter so you can see how much of the bar is measured and how much is assumed. Amber is under your weekly target, green is inside it, blue is over. In This week, pale green is short of the minimum while the week is still going. Below and above are judged at the one decimal shown. By region measures each region against its minimum, so 100% is on target; it averages your last 4 full weeks unless you pick 2 or 8 above the chart (the radar only: flags and the coach always use 4). " + FIRST_WEEK_WHY + " Load is total weight × reps per week, comparable week to week but not session to session.",
         `${cov}
   <div class="chips">${VOL_MODES.map(([k, l]) => `<button class="chip ${ui.volMode === k ? "on" : ""}" data-act="volMode" data-v="${k}">${l}</button>`).join("")}</div>
-  ${ui.volMode === "region" ? regionBody() : ui.volMode === "trend" ? trendBody() : ui.volMode === "load" ? `<div class="card">${volHeadline()}${state.sessions.length ? `${rangeChips("vol", weeksSpan(firstDate(state.sessions)), 8)}<div class="chartbox"><canvas id="chVol"></canvas></div>${chartFallback()}` : '<p class="small muted">Log a session to start this chart.</p>'}</div>` : `<div class="card">${ui.volMode === "week" ? MK.some((m) => (thisWeek[m] || 0) > 0) ? volumeRows(thisWeek, state.settings.rirMode === "off" ? null : thisWeekConf, true) : '<p class="muted" style="margin:0">Nothing logged this week yet.</p>' : avg ? `<p class="small muted" style="margin:0 0 6px">Averaged over the ${avg._weeks} week${avg._weeks === 1 ? "" : "s"} with training in the last 4. Weeks with no sessions are excluded rather than counted as zero.</p>${volumeRows(avg, state.settings.rirMode === "off" ? null : avg._conf)}` : '<p class="muted">No sessions in the previous 4 full weeks.</p>'}</div>`}`,
+  ${ui.volMode === "region" ? regionBody() : ui.volMode === "trend" ? trendBody() : ui.volMode === "load" ? `<div class="card">${volHeadline()}${state.sessions.length ? `${rangeChips("vol", weeksSpan(firstDate(state.sessions)), 8)}<div class="chartbox"><canvas id="chVol"></canvas></div>${chartFallback()}` : '<p class="small muted">Log a session to start this chart.</p>'}</div>` : `<div class="card">${ui.volMode === "week" ? MK.some((m) => (thisWeek[m] || 0) > 0) ? volumeRows(thisWeek, state.settings.rirMode === "off" ? null : thisWeekConf, true) : '<p class="muted" style="margin:0">Nothing logged this week yet.</p>' : avg ? `<p class="small muted" style="margin:0 0 6px">Averaged over ${avgWeeksTxt(avg)}. Weeks with no sessions are left out rather than counted as zero.</p>${volumeRows(avg, state.settings.rirMode === "off" ? null : avg._conf)}` : ((w) => `<p class="muted">${w.lead}An average ${w.kind === "back" ? "comes back" : "starts"} after ${w.after}.${w.kind === "second" ? " " + tipi(FIRST_WEEK_WHY, "Your first week") : ""}</p>`)(avgWait())}</div>`}`,
         noLog() ? "Nothing logged yet" : `${wkHard} hard sets this week`
       );
       const inj = injuredSet();
@@ -10788,7 +10975,7 @@ ${extraKpis()}</div>`;
       for (const m of MK) {
         if (inj.has(m)) continue;
         if (TRACK_ONLY.has(m)) continue;
-        if (avg && belowMin(avg[m], bands[m][0])) add(m, "Below target", "yellow");
+        if (avgSt && avgSt[m].st === "under") add(m, "Below target", "yellow");
       }
       for (const m of state.settings.priorities) add(m, "Your priority", "blue");
       const wp = Object.entries(reasons).sort((a, b) => b[1].length - a[1].length);
@@ -10965,7 +11152,7 @@ ${extraKpis()}</div>`;
     function regionSrc() {
       const n = regionWk();
       const avg = avgWeeks(n);
-      if (avg) return { src: avg, n, label: avg._missed || avg._light || avg._rest ? `your average over ${avgWeeksTxt(avg)}` : avg._weeks < n && avg._ff ? `the ${avg._weeks} full week${avg._weeks === 1 ? "" : "s"} after your first week` : `your ${avg._weeks}-week average` };
+      if (avg) return { src: avg, n, label: avg._missed || avg._light || avg._rest ? `your average over ${avgWeeksTxt(avg)}` : avg._weeks < n && avg._ff ? avgWeeksTxt(avg) : `your ${avg._weeks}-week average` };
       const I = IDX(), cur = weekStart(today());
       const wk = I.weekSets[cur] || {};
       if (MK.some((m) => (wk[m] || 0) > 0)) return { src: wk, n, label: "this week so far", week: true, noFull: true };
@@ -10978,8 +11165,7 @@ ${extraKpis()}</div>`;
       const full = all.filter((w) => !ff || w >= ff);
       const wks = (full.length ? full : all).slice(-n);
       if (wks.length) {
-        const out = {};
-        for (const w of wks) for (const m in I.weekSets[w]) out[m] = (out[m] || 0) + I.weekSets[w][m] / wks.length;
+        const out = weeksAvg(wks);
         const end = addDays(wks[wks.length - 1], 6);
         return { src: out, n, label: full.length ? `your last ${wks.length === 1 ? "trained week" : wks.length + " trained weeks"}, to ${fmtDate(end)}` : `your first week, to ${fmtDate(end)}`, old: !!full.length, first: !full.length, end };
       }
@@ -10990,16 +11176,16 @@ ${extraKpis()}</div>`;
       if (rs.empty) return `<div class="card"><p class="headline">Nothing logged yet.</p><p class="small muted" style="margin:0 0 4px">Each region fills in with your own hard sets as you log them. The dashed ring is your weekly minimum.</p>${ENV === "preview" ? `<p class="small" style="margin:6px 0">This test version keeps a separate log. ${previewCopyBtn("sm primary")}</p>` : ""}<div class="chartbox tall"><canvas id="chRadar"></canvas></div>${chartFallback()}</div>`;
       const balLabel = rs.label;
       const regs = regionBalance(rs.src);
-      const low = regs.filter((x) => x.low), high = regs.filter((x) => x.high);
-      const on = regs.length - low.length;
+      const low = regs.filter((x) => x.low), high = regs.filter((x) => x.high), plan = regs.filter((x) => x.plan);
+      const on = regs.length - low.length - plan.length;
       const worst = [...low].sort((a, b) => a.pct - b.pct)[0];
-      const rh = rs.week ? `<p class="headline">This week so far: ${on} of ${regs.length} regions at their minimum.</p>` : !low.length ? `<p class="headline">Every region at or above its minimum${high.length ? "" : ", inside its target"}.</p>` : `<p class="headline">${on} of ${regs.length} regions on target. Furthest short: ${worst.label}, ${r1(worst.got)} of ${r1(worst.lo)} sets.</p>`;
+      const rh = rs.week ? `<p class="headline">This week so far: ${on} of ${regs.length} regions at their minimum.</p>` : !low.length ? plan.length ? '<p class="headline">Every region on plan.</p>' : `<p class="headline">Every region at or above its minimum${high.length ? "" : ", inside its target"}.</p>` : `<p class="headline">${on} of ${regs.length} regions on target. Furthest short: ${worst.label}, ${r1(worst.got)} of ${r1(worst.lo)} sets.</p>`;
       const note = (rs.old ? `Nothing logged in the last ${rs.n || 4} weeks, so this shows ${esc(balLabel)}. ` : "") + (rs.noFull ? "No full week to average yet, so this is this week so far. " : "") + (rs.week && low.length ? "The week is still going, so this fills in as you train." : "");
       const chips = `<div class="wkpick"><span class="small muted" id="wkpickL">Average of the last</span><div class="chips" role="group" aria-labelledby="wkpickL">${REGION_WKS.map(([k, l]) => `<button class="chip ${rs.n === k ? "on" : ""}" data-act="regionWk" data-v="${k}" aria-pressed="${rs.n === k}">${l}</button>`).join("")}</div></div>`;
-      return `<div class="card">${rs.week ? "" : chips}${rh}<p class="small muted" style="margin:0 0 4px">Using ${esc(balLabel)}. ${tipi(`Hard sets per region against the minimum of your weekly targets. On or past the dashed ring is on target.${rs.first || rs.src._ff ? " " + FIRST_WEEK_WHY : ""}`, "Reading the chart")}</p><div class="chartbox tall"><canvas id="chRadar"></canvas></div>${chartFallback()}
+      return `<div class="card">${rs.week ? "" : chips}${rh}<p class="small muted" style="margin:0 0 4px">Using ${esc(balLabel)}. ${tipi(`Hard sets per region against the minimum of your weekly targets. On or past the dashed ring is on target.${plan.length ? " On plan: " + ON_PLAN_TIP : ""}${rs.first || rs.src._ff ? " " + FIRST_WEEK_WHY : ""}`, "Reading the chart")}</p><div class="chartbox tall"><canvas id="chRadar"></canvas></div>${chartFallback()}
   <table class="t" style="margin-top:8px"><tr><th>Region</th><th class="r">Sets</th><th class="r">Minimum</th><th class="r">Of minimum</th></tr>
   ${regs.map((rg) => {
-        const c = rg.low ? rs.week ? "part" : "yellow" : rg.high ? "blue" : "green";
+        const c = rg.low ? rs.week ? "part" : "yellow" : rg.plan ? "plan" : rg.high ? "blue" : "green";
         return `<tr><td><span class="plate ${c}" style="height:12px;vertical-align:-1px"></span> ${rg.label}</td><td class="r num">${r1(rg.got)}</td><td class="r muted small">${r1(rg.lo)}</td><td class="r num">${rg.lo > 0 ? Math.round(rg.pct) + "%" : '<span class="muted small">no minimum</span>'}</td></tr>`;
       }).join("")}</table>
   ${note ? `<p class="small muted" style="margin-top:6px">${note}</p>` : ""}</div>`;
@@ -17798,11 +17984,23 @@ ${JSON.stringify(fb.context, null, 1)}`;
     } catch (e) {
       log("fitRecordOld", e);
     }
+    try {
+      const rf = refit();
+      if (rf) {
+        const b = state.settings.bands;
+        for (const m in rf.bands) b[m] = rf.bands[m].slice();
+        if (Object.keys(rf.fit).length) state.settings.bandsFit = rf.fit;
+        else delete state.settings.bandsFit;
+        saveNow();
+      }
+    } catch (e) {
+      log("refit", e);
+    }
     window.__ironlog = { B3_PARTS, THREE_URLS, get state() {
       return state;
     }, set state(v) {
       setState(v);
-    }, fbContext, FB_CTX_MAX, logCut, logBuf, log, dateIndex, sessionsOn, bestLine, whyTarget, recent4w, weekSessions, fmtDate, fmtDateLong, fbShrink, orderAt, orderRun, dropOnlyLift, profHeavy, appBand, fitRecordOld, prof, profClean, profRule, profPlan, defPlan, defBand, profMoveBands, profApplyList, strengthPick, PROF_DAYS, FOCUS_MAX, estInLoad, keepExtra, EXTRA_MAX, draftPlanMin, pace, paceRatios, sessModelMin, PACE_N, PACE_DAYS, PACE_MIN, plainTemplate, trashTidy, ENV, KEY, COMMON, COMMON_TIP, isCommon, bwEvery, isRestWeek, sessCmp, avgWeeks, weekStreak, coach, noLog, afterSet, adjOn, bwAt, newBlock, cycleState, sortedSessions, addDays, loadIn, gymRack, gymClean, dbListOf, capOf, refreshEx, effShow, rirScale, setStr, libExercises, obGate, obTour, andList, belowMin, aboveMax, starterRoutine, starterSigs, plateList, exBarKg, VOL_MODES, liveLogFetch, regionSrc, fitTargets, firstFullWeek, moveBlock, BANDS, installSheet, siteHost, greyW, effW, greyR, lighterLoad, incOf, swapPlan, planSetsPerWeek, weekNeed, stepRead, e1inv, rtfAt, rtfOf, rtfBand, calStats, rirEff, isHard, setCredit, tonnage, loadMode, loadWords, loadNote, progStep, jumpCap, setSecs, setupSecs, recovery, rolling7, rankDays, rankExercises, isCompound, patternOf, noE1, whtrLine, exHeadline, remainMin, shortPlan, weekPlan, cycleProjection, lastLighterWeek, avgFirstWeek, stallWeeks, regionBalance, parseHeight, mixCheck, swapCands, eqPlan, exportCSV, importData, chunksOf, assemble, sessionMuscles, TRACK_ONLY, cloud, Hx, mergeChunk, baseOf, sync: () => cq(cloudPull), TEMPLATES, lastRFor, impDate, impRows, impNorm, impMatch, impFromText, impFromTable, impHeader, impBuild, impStart, impXlsx, parseSets, undoStack, undoRestore, undoForget, allTimeBests, bestsBoard, obActive, fmtW, rirUsual, rirEst, routineFromTemplate, plannedSets, map3d: () => ({ state: B3.state, fail: B3.fail, meshes: B3.meshes.length, yaw: B3.yaw, glow: Object.keys(B3.mats).filter((m) => B3.mats[m].emissiveIntensity > 0), canvas: !!document.querySelector("#bm3d canvas"), colors: Object.fromEntries(Object.entries(B3.mats).map(([m, mt]) => [m, "#" + mt.color.getHexString()])), pick: (x, y) => map3dPick(x, y), want: map3dColors() }), cloudState: () => ({ on: cloud.on, status: cloud.status, err: cloud.err, uid: cloud.uid, acct: cloud.acct }), acctUser: () => acct.user, acctWaiting: () => !!acctWait.pw, flush: () => cq(cloudFlush), backupDue, routineUpdates, planFor, platesMode, plateText, chunksOf, IDX, suggest, e1, render, ACT, ui, makeDemo, invalidate, normalize, snapshot, saveNow, timer, weekStats, weekStart, today, EX, blockProgress, dayMinutes, weekStreak, coach, tonnageNow, livePR, movers, stalledIds, muscleStatus, actualAvg4, plannedPerWeek, parseSets, fillSets, newBlock, lastNoteOf, sizeRows, sessionMuscleSets, sessionCapNote, routineClutter, rowBlank, dayReasons, impTextSets, liftTrend, prsWithin, activeRoutine, rackStep, repFloor, sessionLength, prBeat, exInjury, exJoints, openModal, EQUIP, HARD_EX, recentLighter, planEvidenceNote, howToUrl, editFp, toast, avgWeeks, regionWk, REGION_WKS, SAFETY_TXT, libFiltered, nameMatch, workLoad, fitE, offSession, tagged, fatigueStalls, avgWeeksTxt, routineFromLog, repSpan, rangeWords, calDueIdx, readyCard, sameRR, hintOnce, overSets, rackTol, daysOff, BACK_DAYS, prName, sessTm, effTgt, bwDueCard, bwNoLoad, applyPick, joinAdjacent, sameExOnce, goalState, goalLine, bwRefLoad, ML, exMusParts, musTrend, U, toD, fromD, loadLabel, exName, planCredit, gymOf, isDeloadWeek, freeMode, injuredSet, prLoad, statsUpTo, readiness, bwRef, weekRoutine, easierText, barKg, suggestCore, loadOf, bwLoad, hardCredit, rirHalfOn };
+    }, fbContext, FB_CTX_MAX, logCut, logBuf, log, dateIndex, sessionsOn, bestLine, whyTarget, recent4w, weekSessions, fmtDate, fmtDateLong, fbShrink, orderAt, orderRun, dropOnlyLift, profHeavy, appBand, fitRecordOld, prof, profClean, profRule, profPlan, defPlan, defBand, profMoveBands, profApplyList, strengthPick, PROF_DAYS, FOCUS_MAX, estInLoad, keepExtra, EXTRA_MAX, draftPlanMin, pace, paceRatios, sessModelMin, PACE_N, PACE_DAYS, PACE_MIN, plainTemplate, trashTidy, ENV, KEY, COMMON, COMMON_TIP, isCommon, bwEvery, isRestWeek, sessCmp, avgWeeks, weekStreak, coach, noLog, afterSet, adjOn, bwAt, newBlock, cycleState, sortedSessions, addDays, loadIn, gymRack, gymClean, dbListOf, capOf, refreshEx, effShow, rirScale, setStr, libExercises, obGate, obTour, andList, belowMin, aboveMax, starterRoutine, starterSigs, plateList, exBarKg, VOL_MODES, liveLogFetch, regionSrc, fitTargets, firstFullWeek, moveBlock, BANDS, installSheet, siteHost, greyW, effW, greyR, lighterLoad, heavierLoad, incOf, swapPlan, planSetsPerWeek, weekNeed, stepRead, e1inv, rtfAt, rtfOf, rtfBand, calStats, rirEff, isHard, setCredit, tonnage, loadMode, loadWords, loadNote, progStep, jumpCap, setSecs, setupSecs, recovery, rolling7, rankDays, rankExercises, isCompound, patternOf, noE1, whtrLine, exHeadline, remainMin, shortPlan, weekPlan, cycleProjection, lastLighterWeek, avgFirstWeek, avgWait, stallWeeks, weeksAvg, fitFloors, refit, regionBalance, parseHeight, mixCheck, swapCands, eqPlan, exportCSV, importData, chunksOf, assemble, sessionMuscles, TRACK_ONLY, cloud, Hx, mergeChunk, baseOf, sync: () => cq(cloudPull), TEMPLATES, lastRFor, impDate, impRows, impNorm, impMatch, impFromText, impFromTable, impHeader, impBuild, impStart, impXlsx, parseSets, undoStack, undoRestore, undoForget, allTimeBests, bestsBoard, obActive, fmtW, rirUsual, rirEst, routineFromTemplate, plannedSets, map3d: () => ({ state: B3.state, fail: B3.fail, meshes: B3.meshes.length, yaw: B3.yaw, glow: Object.keys(B3.mats).filter((m) => B3.mats[m].emissiveIntensity > 0), canvas: !!document.querySelector("#bm3d canvas"), colors: Object.fromEntries(Object.entries(B3.mats).map(([m, mt]) => [m, "#" + mt.color.getHexString()])), pick: (x, y) => map3dPick(x, y), want: map3dColors() }), cloudState: () => ({ on: cloud.on, status: cloud.status, err: cloud.err, uid: cloud.uid, acct: cloud.acct }), acctUser: () => acct.user, acctWaiting: () => !!acctWait.pw, flush: () => cq(cloudFlush), backupDue, routineUpdates, planFor, platesMode, plateText, chunksOf, IDX, suggest, e1, render, ACT, ui, makeDemo, invalidate, normalize, snapshot, saveNow, timer, weekStats, weekStart, today, EX, blockProgress, dayMinutes, weekStreak, coach, tonnageNow, livePR, movers, stalledIds, muscleStatus, actualAvg4, plannedPerWeek, parseSets, fillSets, newBlock, lastNoteOf, sizeRows, sessionMuscleSets, sessionCapNote, routineClutter, rowBlank, dayReasons, impTextSets, liftTrend, prsWithin, activeRoutine, rackStep, repFloor, sessionLength, prBeat, exInjury, exJoints, openModal, EQUIP, HARD_EX, recentLighter, planEvidenceNote, howToUrl, editFp, toast, avgWeeks, regionWk, REGION_WKS, SAFETY_TXT, libFiltered, nameMatch, workLoad, fitE, offSession, tagged, fatigueStalls, avgWeeksTxt, routineFromLog, repSpan, rangeWords, calDueIdx, readyCard, sameRR, hintOnce, overSets, rackTol, daysOff, BACK_DAYS, prName, sessTm, effTgt, bwDueCard, bwNoLoad, applyPick, joinAdjacent, sameExOnce, goalState, goalLine, bwRefLoad, ML, exMusParts, musTrend, U, toD, fromD, loadLabel, exName, planCredit, gymOf, isDeloadWeek, freeMode, injuredSet, prLoad, statsUpTo, readiness, bwRef, weekRoutine, easierText, barKg, suggestCore, loadOf, bwLoad, hardCredit, rirHalfOn };
     render();
     wakeOn();
     timerResume();

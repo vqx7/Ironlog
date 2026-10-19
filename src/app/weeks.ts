@@ -1,8 +1,8 @@
 /* The week as the screens count it (phase 3b, r52; moved from the legacy
-   script): the weekly averages
-   every flag, the coach and Muscles read, the region balance, the routine a
-   past week was trained on and what it asked for, the streak, the newest
-   lighter session, and this week's numbers on Today. */
+   script): the weekly averages every flag, the coach and Muscles read, each
+   muscle's status against its target and the region balance (r54), the
+   routine a past week was trained on and what it asked for, the streak, the
+   newest lighter session, and this week's numbers on Today. */
 
 import type { Routine } from './types';
 import type { Model } from './model';
@@ -10,15 +10,16 @@ import { activeRoutineIn, freeModeIn, isDeloadWeekIn, isRestWeekIn, sortedSessio
 import { addDays, weekStart } from './util';
 import { firstDate } from './charts';
 import { IDXIn, lighterTally, weekSessionsIn } from './analytics';
-import { REGIONS, TRACK_ONLY } from './library';
+import { MK, REGIONS, TRACK_ONLY } from './library';
 import { aboveMax, belowMin } from './volume';
-import { planSetsPerWeekIn, plannedPerWeek } from './routines';
+import { dayCreditIn, nextTrainIdx, planSetsPerWeekIn, plannedPerWeek, plannedSetsIn, sessDayIdx } from './routines';
 
 /** What an average says about itself, kept beside the muscles' numbers and left
     out when they are listed: the full weeks it averages, the weeks missed,
     the weeks asked for, how far back it reached, the lighter and rest weeks
-    left out, whether the log's first week cut it short, and the share of the
-    sets whose RIR was logged, per muscle. */
+    left out, whether the log's first week cut it short, the share of the
+    sets whose RIR was logged, per muscle, and the muscles on plan though
+    under their minimum (cycleMixIn). */
 export interface AvgMeta {
   _weeks: number;
   _missed: number;
@@ -28,6 +29,7 @@ export interface AvgMeta {
   _rest: number;
   _ff: boolean;
   _conf: Record<string, number>;
+  _mix: Record<string, boolean>;
 }
 
 /** A weekly average: hard sets a week per muscle, with what it says about itself (AvgMeta). */
@@ -66,17 +68,45 @@ export function avgFirstWeekIn(M: Model): string | null {
 /* r31.2: says the span the weeks really came from, and a lighter week left
    out (the review saw "3 full weeks logged so far" for a deload and a
    missed week inside the window of a 9-week log). */
-export function avgWeeksTxt(avg: Pick<AvgMeta, '_weeks' | '_missed' | '_light' | '_rest' | '_span' | '_n'>): string {
+/* r54: an average cut short by the log's first week, left out while loads
+   are found (avgFirstWeekIn), says so, as the radar's label did alone (the
+   review of r54: Volume's Recent average said "the 1 week with training in
+   the last 4" in a log's third week). */
+export function avgWeeksTxt(
+  avg: Pick<AvgMeta, '_weeks' | '_missed' | '_light' | '_rest' | '_span' | '_n' | '_ff'>
+): string {
   const w = avg._weeks,
     m = avg._missed || 0,
     l = avg._light || 0,
     r = avg._rest || 0;
-  if (!m && !l && !r) return `your last ${w} full week${w === 1 ? '' : 's'}`;
+  if (!m && !l && !r)
+    return avg._ff && w < avg._n
+      ? `the ${w} full week${w === 1 ? '' : 's'} after your first week`
+      : `your last ${w} full week${w === 1 ? '' : 's'}`;
   const out = [
     l ? `${l === 1 ? 'a lighter week' : l + ' lighter weeks'}` : '',
     r ? `${r === 1 ? 'a rest week' : r + ' rest weeks'}` : ''
   ].filter(Boolean);
   return `the ${w} week${w === 1 ? '' : 's'} you trained of the last ${avg._span || Math.min(avg._n || 4, w + m)}${out.length ? `, ${out.join(' and ')} left out` : ''}`;
+}
+
+/* Why there is no weekly average yet, said one way by the coach, Stats'
+   summary, Volume's Recent average and a muscle's headline (r54, from the
+   review: Stats said to finish a full week beside the coach's after your
+   second week, and Recent average said no sessions in the previous 4 full
+   weeks of a log in its second week). Back: something logged before,
+   nothing in the last 4 weeks. Second: the log's first week, or the week
+   after it until it ends, since the averages leave the first week out
+   (avgFirstWeekIn). Otherwise a full week of training brings one. Read
+   only where there is no average. */
+/** What brings a weekly average where there is none yet, with a lead sentence for a lifter back from a break. */
+export function avgWaitIn(M: Model): { kind: 'back' | 'second' | 'full'; lead: string; after: string } {
+  const ago = addDays(weekStart(M.today()), -28);
+  const af = avgFirstWeekIn(M);
+  if (M.s.sessions.some(x => x.date < ago) && !M.s.sessions.some(x => x.date >= ago))
+    return { kind: 'back', lead: 'Nothing logged in the last 4 weeks. ', after: 'a full week of training' };
+  if (!af || weekStart(M.today()) <= af) return { kind: 'second', lead: '', after: 'your second week' };
+  return { kind: 'full', lead: '', after: 'a full week of training' };
 }
 
 /* The 4-week average every flag, the coach and Muscles read. The radar on
@@ -107,6 +137,7 @@ export function avgWeeksIn(M: Model, n: number, lightToo?: boolean): WeeklyAvg |
     ffHit = false,
     rest = 0,
     light = 0;
+  const used: string[] = [];
   for (let k = 1; k <= Math.min(2 * n, n + extra); k++) {
     const wk = addDays(cur, -7 * k);
     if (ff && wk < ff) {
@@ -130,6 +161,7 @@ export function avgWeeksIn(M: Model, n: number, lightToo?: boolean): WeeklyAvg |
       continue;
     }
     weeks++;
+    used.push(wk);
     for (const m in ws) tot[m] = (tot[m] || 0) + ws[m];
     const wc = I.weekConf[wk] || {};
     for (const m in wc) con[m] = (con[m] || 0) + wc[m];
@@ -153,16 +185,148 @@ export function avgWeeksIn(M: Model, n: number, lightToo?: boolean): WeeklyAvg |
   Object.defineProperty(out, '_rest', { value: rest, enumerable: false });
   Object.defineProperty(out, '_ff', { value: ffHit, enumerable: false });
   Object.defineProperty(out, '_conf', { value: conf, enumerable: false });
-  // The eight defineProperty calls above add what an average says about itself, which TypeScript cannot see; the cast names them.
+  Object.defineProperty(out, '_mix', { value: cycleMixIn(M, used, out), enumerable: false });
+  // The nine defineProperty calls above add what an average says about itself, which TypeScript cannot see; the cast names them.
   return out as WeeklyAvg;
+}
+
+/* A cycle's weeks are not alike when its turn is not a whole number of
+   weeks: Strength 5 x 5, two days alternating three times a week, has two
+   A days one week and one the next, so its chest sets go 10, 5, 10. The
+   plan's sets a week are the average over a turn (dayShare), so an average
+   of 1 or 3 weeks can fall short of a target the plan reaches (the review of
+   r54: in a lifter's third week five muscles read below target and the
+   coach said to do every planned set, to someone doing every one). A muscle
+   is short only by that, on plan, when every week averaged had the sessions
+   the plan asks for, the sets logged reach what the days due in those weeks
+   plan (the day after the one last trained, as Today offers it,
+   nextTrainIdx), and the plan reaches the target. A day trained out of turn,
+   a set or a session skipped, or a week on another routine still reads
+   below. Never on a weekly schedule, whose weeks are all alike, nor in
+   Freestyle, where the plan is not followed. */
+/** The muscles an average of the given weeks leaves under their minimum only by which days of a cycle fell in them. */
+export function cycleMixIn(
+  M: Model,
+  weeks: readonly string[],
+  avg: Readonly<Record<string, number>>
+): Record<string, boolean> {
+  const out: Record<string, boolean> = {};
+  const R = activeRoutineIn(M);
+  const need = plannedPerWeek(R);
+  if (!weeks.length || R.schedule === 'weekly' || freeModeIn(M) || !need) return out;
+  const bands = M.s.settings.bands;
+  const plan = plannedSetsIn(M, R);
+  const short = MK.filter(m => !TRACK_ONLY.has(m) && belowMin(avg[m], bands[m][0]) && !belowMin(plan[m], bands[m][0]));
+  if (!short.length) return out;
+  const wk = new Set(weeks);
+  const per: Record<string, number> = {},
+    due: Record<string, number> = {};
+  let prev = -1;
+  for (const s of sortedSessionsIn(M)) {
+    if (s.routineId !== R.id) continue;
+    const i = sessDayIdx(R, s);
+    if (i < 0) continue;
+    const d = nextTrainIdx(R, prev);
+    prev = i;
+    const w = weekStart(s.date);
+    if (!wk.has(w)) continue;
+    per[w] = (per[w] || 0) + 1;
+    const c = dayCreditIn(M, R.days[d]);
+    for (const m in c) due[m] = (due[m] || 0) + c[m];
+  }
+  if (weeks.some(w => (per[w] || 0) < need)) return out;
+  for (const m of short) if (!belowMin(avg[m], (due[m] || 0) / weeks.length)) out[m] = true;
+  return out;
+}
+
+/* The radar's fallback when no recent week was trained (regionSrc): the last
+   weeks trained, however long ago, averaged as they stand, with the muscles
+   on plan in them (cycleMixIn), as every average carries. */
+/** Hard sets a week per muscle over the given weeks, carrying the muscles on plan in them as `_mix`. */
+export function weeksAvgIn(M: Model, wks: readonly string[]): Record<string, number> {
+  const I = IDXIn(M);
+  const out: Record<string, number> = {};
+  for (const w of wks) {
+    const ws = I.weekSets[w] || {};
+    for (const m in ws) out[m] = (out[m] || 0) + ws[m] / wks.length;
+  }
+  Object.defineProperty(out, '_mix', { value: cycleMixIn(M, wks, out), enumerable: false });
+  return out;
+}
+
+/* On plan, as the screens say it (r54): under the minimum only by which
+   days of a cycle fell in the weeks averaged (cycleMixIn). */
+/** Why a muscle reads on plan though under its minimum, behind an i on the map, Volume, Muscles and the coach. */
+export const ON_PLAN_TIP =
+  'Your routine runs as a cycle, so some weeks hold fewer of the days that train a muscle. Every session and set it had due in these weeks was done, and over the whole cycle it reaches the target.';
+
+/** A muscle's weekly hard sets against its target as every screen reads it: its sets, minimum and maximum, and status. */
+export interface MuscleStatus {
+  v: number;
+  lo: number;
+  hi: number;
+  st: 'track' | 'none' | 'under' | 'part' | 'plan' | 'over' | 'in';
+}
+
+/* soFar (r29): the week is still going, so a muscle short of its minimum is
+   under way ('part'), not below target; amber on a Tuesday read as behind
+   for training that had not happened yet. With no sets a muscle is 'none'
+   whatever its target: one whose minimum was brought down to 0 (a routine
+   that does not train it) showed green before a single set (V, r29). On an
+   average, a muscle with a minimum and no sets is below target, and shows so
+   on the map, in its legend and in the summary alike. On plan ('plan', r54):
+   under its minimum only by which days of a cycle fell in the weeks averaged
+   (cycleMixIn). The one reading of a muscle's status for the coach, Stats'
+   summary, Volume, Muscles, the radar and the map (moved from the legacy
+   script in r54, when the coach, Muscles and Volume each still judged it
+   with belowMin themselves). */
+/** Each muscle's status against its weekly target, from an average (with its on-plan muscles) or a week's sets so far. */
+export function muscleStatusIn(
+  M: Model,
+  src: (Readonly<Record<string, number>> & { readonly _mix?: Readonly<Record<string, boolean>> }) | null,
+  soFar?: boolean
+): Record<string, MuscleStatus> {
+  const b = M.s.settings.bands;
+  const mix = (src && src._mix) || {};
+  const out: Record<string, MuscleStatus> = {};
+  for (const m of MK) {
+    const v = src ? src[m] || 0 : 0;
+    const [lo, hi] = b[m];
+    out[m] = {
+      v,
+      lo,
+      hi,
+      st: TRACK_ONLY.has(m)
+        ? 'track'
+        : mix[m]
+          ? 'plan'
+          : v <= 0
+            ? !soFar && src && lo > 0
+              ? 'under'
+              : 'none'
+            : belowMin(v, lo)
+              ? soFar
+                ? 'part'
+                : 'under'
+              : aboveMax(v, hi)
+                ? 'over'
+                : 'in'
+    };
+  }
+  return out;
 }
 
 /* Region balance: hard sets in a region against that region's combined
    minimum (r29; before, the midpoint of the band). 100 means the region has
    reached its target. This is relative to the bands you set, not an
-   absolute standard. */
-export function regionBalanceIn(M: Model, sets: Readonly<Record<string, number>>) {
+   absolute standard. A region short of its minimum only through muscles on
+   plan (muscleStatusIn) is on plan, not low (r54). */
+export function regionBalanceIn(
+  M: Model,
+  sets: Readonly<Record<string, number>> & { readonly _mix?: Readonly<Record<string, boolean>> }
+) {
   const bands = M.s.settings.bands;
+  const st = muscleStatusIn(M, sets);
   // Tracked-only muscles have no target, so they count toward neither side (r29).
   return REGIONS.map(([label, all]) => {
     const ms = all.filter(m => !TRACK_ONLY.has(m));
@@ -170,6 +334,8 @@ export function regionBalanceIn(M: Model, sets: Readonly<Record<string, number>>
     const mid = ms.reduce((a, m) => a + (bands[m][0] + bands[m][1]) / 2, 0);
     const lo = ms.reduce((a, m) => a + bands[m][0], 0);
     const hi = ms.reduce((a, m) => a + bands[m][1], 0);
+    const short = belowMin(got, lo);
+    const plan = short && ms.some(m => st[m].st === 'plan') && !ms.some(m => st[m].st === 'under');
     /* Measured against the region's minimum since r29: 100% is on target.
        Against the middle of the range, a region at its minimum sat well
        inside the ring and read as behind (V). */
@@ -181,7 +347,8 @@ export function regionBalanceIn(M: Model, sets: Readonly<Record<string, number>>
       lo,
       hi,
       pct: lo > 0 ? (got / lo) * 100 : 0,
-      low: belowMin(got, lo),
+      low: short && !plan,
+      plan,
       high: aboveMax(got, hi)
     };
   });

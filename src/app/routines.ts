@@ -188,9 +188,33 @@ export function weekFactor(R: RoutineLike): number {
   return R.schedule === 'weekly' ? 1 : 7 / Math.max(1, R.days.length);
 }
 
+/** Whether a routine day has something to train. */
+export function isTrainDay(d: RoutineLike['days'][number]): boolean {
+  return !d.rest && d.items.length > 0;
+}
+
 /** The days of a routine with something to train. */
 export function trainDaysOf(R: RoutineLike): number {
-  return R.days.filter(d => !d.rest && d.items.length > 0).length;
+  return R.days.filter(isTrainDay).length;
+}
+
+/* Where a cycle goes next (cycleState, on Today): the first training day
+   after the one last trained, so a missed day moves with the lifter instead
+   of being skipped, and the routine's first training day before any. The
+   weeks a cycle's days fell in are read by the same rule (weeks.ts,
+   cycleMixIn), so the two cannot disagree on which day was due. */
+/** A cycle's training day after day i (i below 0: before any), or i itself when it is the only one. */
+export function nextTrainIdx(R: RoutineLike, i: number): number {
+  const n = R.days.length;
+  if (i < 0) {
+    for (let k = 0; k < n; k++) if (isTrainDay(R.days[k])) return k;
+    return 0;
+  }
+  for (let k = 1; k <= n; k++) {
+    const j = (i + k) % n;
+    if (isTrainDay(R.days[j])) return j;
+  }
+  return i;
 }
 
 /* A cycle that is not 7 days long plans a fraction a week: an every-other-day
@@ -424,24 +448,52 @@ export function planCreditIn(M: Model, it: { rir: number | string }): number {
   return planHardIn(M, it) ? 1 : rirHalfOnIn(M) && +it.rir <= 5 ? 0.5 : 0;
 }
 
-/* A muscle's planned hard sets a week: each planned set's credit (above),
-   a helper muscle's at half, a cycle at its days a week (weekFactor). Moved
-   from the legacy script in r54, unchanged, so the coach can tell a plan
-   short of a muscle's target from one that already reaches it. */
-/** Planned hard sets a week for each muscle, from a routine. */
-export function plannedSetsIn(M: Model, routine: Routine): Record<string, number> {
-  const out: Record<string, number> = {};
-  const f = weekFactor(routine);
-  for (const d of routine.days) {
-    if (d.rest) continue;
-    for (const it of d.items) {
-      const pc = planCreditIn(M, it);
-      if (!pc) continue;
-      const ex = EXIn(M, it.exId);
-      out[ex.primary] = (out[ex.primary] || 0) + it.sets * f * pc;
-      for (const m of ex.secondary) out[m] = (out[m] || 0) + 0.5 * it.sets * f * pc;
-    }
+/* How many times a week each training day of a routine comes round: once on
+   a weekly schedule; on a cycle, the whole sessions the week plans
+   (plannedPerWeek) shared over its training days (r54, V 2026-10-18: the
+   planned sets follow the sessions a week counts as on plan, so Strength
+   5 x 5, every other day, plans three sessions' worth, 39 hard sets, where
+   three and a half read 46 and a lifter on plan was told to do every
+   planned set; the review of r54 found that). */
+/** How many times a week each training day of a routine comes round. */
+export function dayShare(R: RoutineLike): number {
+  const n = trainDaysOf(R);
+  return R.schedule === 'weekly' ? 1 : n ? plannedPerWeek(R) / n : 0;
+}
+
+/* Adds one day's planned hard sets per muscle into `out`, each counted f
+   times: each planned set's credit (above), a helper muscle's at half. */
+function addDayCredit(M: Model, d: Day, f: number, out: Record<string, number>): void {
+  if (d.rest) return;
+  for (const it of d.items) {
+    const pc = planCreditIn(M, it);
+    if (!pc) continue;
+    const ex = EXIn(M, it.exId);
+    out[ex.primary] = (out[ex.primary] || 0) + it.sets * f * pc;
+    for (const m of ex.secondary) out[m] = (out[m] || 0) + 0.5 * it.sets * f * pc;
   }
+}
+
+/* One day's planned hard sets per muscle, which the weeks a cycle's days
+   fell in are read from (weeks.ts, cycleMixIn, r54). */
+/** A routine day's planned hard sets per muscle. */
+export function dayCreditIn(M: Model, d: Day): Record<string, number> {
+  const out: Record<string, number> = {};
+  addDayCredit(M, d, 1, out);
+  return out;
+}
+
+/* A muscle's planned hard sets a week: each day's as often as it comes round
+   (dayShare). Moved from the legacy script in r54 so the coach can tell a
+   plan short of a muscle's target from one that already reaches it. `share`
+   reads the plan another way: before r54 each day of a cycle came round 7
+   divided by its length times a week (weekFactor), and the targets a
+   first-run pick fitted by that reading are refitted from it (refitIn). */
+/** Planned hard sets a week for each muscle, from a routine (each day `share` times a week, dayShare unless given). */
+export function plannedSetsIn(M: Model, routine: Routine, share?: number): Record<string, number> {
+  const out: Record<string, number> = {};
+  const f = share ?? dayShare(routine);
+  for (const d of routine.days) addDayCredit(M, d, f, out);
   return out;
 }
 
@@ -458,7 +510,7 @@ export function planSetsPerWeekIn(M: Model, R: Routine, deload?: boolean): numbe
           )),
     0
   );
-  return R.schedule === 'weekly' ? n : Math.round(n * weekFactor(R));
+  return Math.round(n * dayShare(R));
 }
 
 /** The parts of a finished session that Finish's offer reads: the routine day

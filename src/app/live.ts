@@ -39,6 +39,7 @@ import {
   profRuleIn,
   routineUpdatesIn
 } from './routines';
+import { appBandIn, defBandIn, fitFloorsIn, refitIn } from './profile';
 import { barKgIn, capOfIn, exBarKgIn, gymRackIn, rackTolIn } from './gym';
 import { fmtWIn, loadLabelIn } from './loads';
 import {
@@ -65,20 +66,24 @@ import { dayMinutesIn, paceIn, paceRatiosIn, sessModelMinIn } from './time';
 import {
   actualAvg4In,
   avgFirstWeekIn,
+  avgWaitIn,
   avgWeeksIn,
   firstFullWeekIn,
   lastLighterWeekIn,
+  muscleStatusIn,
   recentLighterIn,
   regionBalanceIn,
   weekNeedIn,
   weekRoutineIn,
   weekStatsIn,
-  weekStreakIn
+  weekStreakIn,
+  weeksAvgIn
 } from './weeks';
 import { coachIn, dropOnlyLiftIn, fatigueStallsIn, moversIn, readinessIn, stalledIdsIn } from './coach';
 import {
   daysOffIn,
   easierTextIn,
+  heavierLoadIn,
   incOfIn,
   lighterLoadIn,
   progStepIn,
@@ -129,6 +134,10 @@ export const plannedSets = live(plannedSetsIn);
 export const profPlan = live(profPlanIn);
 export const profRule = live(profRuleIn);
 export const routineUpdates = live(routineUpdatesIn);
+export const appBand = live(appBandIn);
+export const defBand = live(defBandIn);
+export const fitFloors = live(fitFloorsIn);
+export const refit = live(refitIn);
 export const barKg = live(barKgIn);
 export const capOf = live(capOfIn);
 export const exBarKg = live(exBarKgIn);
@@ -160,15 +169,18 @@ export const paceRatios = live(paceRatiosIn);
 export const sessModelMin = live(sessModelMinIn);
 export const actualAvg4 = live(actualAvg4In);
 export const avgFirstWeek = live(avgFirstWeekIn);
+export const avgWait = live(avgWaitIn);
 export const avgWeeks = live(avgWeeksIn);
 export const firstFullWeek = live(firstFullWeekIn);
 export const lastLighterWeek = live(lastLighterWeekIn);
+export const muscleStatus = live(muscleStatusIn);
 export const recentLighter = live(recentLighterIn);
 export const regionBalance = live(regionBalanceIn);
 export const weekNeed = live(weekNeedIn);
 export const weekRoutine = live(weekRoutineIn);
 export const weekStats = live(weekStatsIn);
 export const weekStreak = live(weekStreakIn);
+export const weeksAvg = live(weeksAvgIn);
 export const coach = live(coachIn);
 export const dropOnlyLift = live(dropOnlyLiftIn);
 export const fatigueStalls = live(fatigueStallsIn);
@@ -178,6 +190,7 @@ export const stalledIds = live(stalledIdsIn);
 export const daysOff = live(daysOffIn);
 export const easierText = live(easierTextIn);
 export const incOf = live(incOfIn);
+export const heavierLoad = live(heavierLoadIn);
 export const lighterLoad = live(lighterLoadIn);
 export const progStep = live(progStepIn);
 export const rackStep = live(rackStepIn);

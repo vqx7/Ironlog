@@ -216,6 +216,8 @@ export interface EngineSettings {
   barKg: number | null;
   profile?: Profile | undefined;
   bands: Record<MuscleKey, [number, number]>;
+  // The floors a first-run routine pick recorded (r44), whole sets per muscle.
+  bandsFit?: Partial<Record<MuscleKey, number>> | undefined;
   priorities: MuscleKey[];
   restWeeks?: string[] | undefined;
   todayStart?: 'free' | undefined;
