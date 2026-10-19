@@ -174,11 +174,11 @@ function primeAudio(){
 }
 /* A locked phone suspends the page, so the timer cannot sound or vibrate
    until you unlock it. Said once per device, the first time a rest starts
-   with the keep-awake setting off. */
+   with the keep-awake setting off, once no other message shows (r54: a PR's). */
 function wakeTip(){
   if(state.settings.wakeLock)return;
   try{if(localStorage.getItem(KEY+'.tipWake'))return;localStorage.setItem(KEY+'.tipWake','1');}catch(e){return;}
-  setTimeout(()=>toast('A locked screen holds the rest alert until you unlock. Settings can keep the screen on.',false,6000),600);
+  const say=()=>{const el=$('#toast');if(el&&!el.hidden){setTimeout(say,500);return;}toast('A locked screen holds the rest alert until you unlock. Settings can keep the screen on.',false,6000);};setTimeout(say,600);
 }
 /* The end time is kept on this device, so a phone that reloads a backgrounded
    tab mid-rest comes back to the same countdown. */

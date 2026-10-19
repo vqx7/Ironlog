@@ -5,10 +5,15 @@
 
    - The sheets' layer (#modal) is fixed to the page, and on an iPhone the
      keyboard covers the page without making it shorter, so a sheet sat
-     behind the keyboard. followViewport keeps two values on the page's root
-     at the part of the screen that shows (the visual viewport: its top and
-     height), which the style sheet sizes that layer by, so a sheet sits
-     above the keyboard and is drawn where it is tapped.
+     behind the keyboard. followViewport keeps two values on the page's root:
+     the visual viewport's height (the part of the screen that shows) and the
+     strip below it to the bottom of what a fixed element fills, which the
+     style sheet lifts the sheet by and paints in the sheet's colour, so a
+     sheet sits above the keyboard and nothing of the page shows under it. A
+     sheet sized to the part that shows (r54's first version) left the page
+     visible in that strip, where iOS 26 Safari draws it behind its glass
+     address pill and the bar above the keyboard (V on the r54 preview: the
+     page's own button and text under the sheet's, "showing twice").
    - A sheet redrawn while someone types in it was rebuilt from its markup,
      the field they were in replaced by a new one under the keyboard.
      morphInto puts the new markup into the old sheet in place when nothing
@@ -19,18 +24,27 @@
    none): the suites stand in for the keyboard by moving the visual
    viewport, and V checks the real one on the phone. */
 
-/** Keeps --vv-top and --vv-h on the page's root at the visual viewport's top
-    and height, now and as it moves (the keyboard opening or closing, the page
-    scrolled to a field), and returns what stops it. Nothing where a browser
-    has no visual viewport, so the style sheet's fallbacks, the whole page,
-    hold. */
+/** Keeps --vv-h on the page's root at the visual viewport's height, and
+    --vv-under at the strip from its bottom to the bottom of what a fixed
+    element fills (measured, by a fixed element of no width, since that is
+    what the sheets' layer fills), now and as it moves (the keyboard opening
+    or closing, the page scrolled to a field), and returns what stops it.
+    Nothing where a browser has no visual viewport, so the style sheet's
+    fallbacks, the whole page, hold. */
 export function followViewport(win: Window): () => void {
   const vv = win.visualViewport;
   if (!vv) return () => undefined;
-  const root = win.document.documentElement;
+  const doc = win.document,
+    root = doc.documentElement;
+  const probe = doc.createElement('div');
+  probe.className = 'vvprobe';
+  probe.setAttribute('aria-hidden', 'true');
+  doc.body.appendChild(probe);
   const set = (): void => {
-    root.style.setProperty('--vv-top', `${vv.offsetTop}px`);
+    const under = probe.getBoundingClientRect().height - vv.offsetTop - vv.height;
     root.style.setProperty('--vv-h', `${vv.height}px`);
+    // Under a pixel is rounding, not a strip.
+    root.style.setProperty('--vv-under', `${under >= 1 ? under : 0}px`);
   };
   vv.addEventListener('resize', set);
   vv.addEventListener('scroll', set);
@@ -38,6 +52,7 @@ export function followViewport(win: Window): () => void {
   return () => {
     vv.removeEventListener('resize', set);
     vv.removeEventListener('scroll', set);
+    probe.remove();
   };
 }
 

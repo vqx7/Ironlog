@@ -262,6 +262,12 @@ const FILE = process.argv[2] || 'index.html';
     await wait(150);
     const t = await ev(() => { const row = document.querySelector('[data-act="sDone"][data-b="0"][data-s="0"]').closest('.sg'); const el = document.getElementById('toast'); const toast = el && !el.hidden ? el.innerText : ''; return { light: window.__ironlog.state.draft.light, pr: row.getAttribute('data-pr'), toast }; });
     ok(t.light && t.pr === 'Weight PR' && /Weight PR: Barbell Bench Press/.test(t.toast), 'a Lighter day, the bench at 105 x 8 after 100 x 8 every week: the PR is announced as the set is logged, as on any day', t);
+    // This set started the device's first rest, which says once, 0.6 s later, that a locked screen holds the rest alert: it
+    // waits for the PR's message to go, where it used to take its place (found in r54, a run where this check read the toast late).
+    await wait(1000);
+    const t2 = await ev(() => { const el = document.getElementById('toast'); return el && !el.hidden ? el.innerText : ''; });
+    const tip = await page.waitForFunction(() => { const el = document.getElementById('toast'); return !!el && !el.hidden && /A locked screen holds the rest alert/.test(el.innerText); }, null, { timeout: 9000 }).then(() => true, () => false);
+    ok(/Weight PR: Barbell Bench Press/.test(t2) && tip, 'the first rest\'s one-time tip about a locked screen waits until the PR\'s message has gone, then shows (it took the PR\'s place 0.6 s after the set)', { t2, tip });
     await ev(() => { const L = window.__ironlog; L.state.draft = null; L.saveNow(); L.render(); });
   }
   // A bodyweight lift before any weigh-in has no load to score a set by: its rep PRs count, listed and announced (the sixth review of r53).
@@ -486,17 +492,27 @@ const FILE = process.argv[2] || 'index.html';
     // A keyboard that leaves the top 380 px of the screen, then the page scrolled 120 px to the field, then the keyboard closed.
     const vv = (h, top) => qe(([h, top]) => { const v = window.visualViewport; if (h == null) { delete v.height; delete v.offsetTop; } else { Object.defineProperty(v, 'height', { configurable: true, get: () => h }); Object.defineProperty(v, 'offsetTop', { configurable: true, get: () => top }); } v.dispatchEvent(new Event('resize')); v.dispatchEvent(new Event('scroll')); }, [h, top]);
     const box = () => qe(() => { const r = s => { const e = document.querySelector(s); if (!e) return null; const b = e.getBoundingClientRect(); return { top: Math.round(b.top), bottom: Math.round(b.bottom) }; }; return { modal: r('#modal'), sheet: r('#modal .sheet'), email: r('#modal [data-abind="email"]'), go: r('#modal [data-act="acctSubmit"]'), h: innerHeight }; });
+    /* What is under the strip of the screen below the part that shows, where iOS 26 Safari draws the page behind its glass
+       address pill and the bar above the keyboard (V on the r54 preview, 2026-10-19: the page's own Create account button
+       and its text showed there, under the sheet's, "showing twice"): the sheets' layer, every point of it, painted in the
+       sheet's own colour from the sheet's bottom to the screen's. */
+    const under = from => qe((from) => { const m = document.getElementById('modal'), sh = m.querySelector('.sheet'); const x = innerWidth / 2; const ys = [from + 2, Math.round((from + innerHeight) / 2), innerHeight - 2]; const pe = getComputedStyle(m, '::after'); return { hits: ys.map(y => { const e = document.elementFromPoint(x, y); return !!e && (e === m || m.contains(e)); }), strip: pe.content !== 'none' ? Math.round(parseFloat(pe.height)) : 0, bottom: pe.bottom, same: pe.backgroundColor === getComputedStyle(sh).backgroundColor, want: innerHeight - from }; }, from);
     await vv(380, 0); await wait(50); const k1 = await box();
-    ok(k1.modal.top === 0 && k1.modal.bottom === 380 && k1.sheet.bottom <= 380 && k1.email.top >= 0 && k1.go.bottom <= 380, 'with the keyboard up, the sign-in sheet sits in the 380 px it leaves, the email field and Sign in in view (r53: behind it)', k1);
+    ok(k1.sheet.bottom <= 380 && k1.email.top >= 0 && k1.go.bottom <= 380, 'with the keyboard up, the sign-in sheet sits in the 380 px it leaves, the email field and Sign in in view (r53: behind it)', k1);
+    const u1 = await under(380);
+    ok(k1.modal.top === 0 && k1.modal.bottom === k1.h && u1.hits.every(Boolean) && u1.strip === u1.want && u1.bottom === '0px' && u1.same, 'and below it, down to the bottom of the screen, only the sheet\'s own surface: no part of the page shows there (the r54 preview showed the page\'s own button and text under iOS\'s glass bars)', { k1, u1 });
     await vv(380, 120); await wait(50); const k2 = await box();
-    ok(k2.modal.top === 120 && k2.modal.bottom === 500 && k2.sheet.bottom <= 500, 'and when the page scrolls to the field, the sheet moves with what shows', k2);
+    const u2 = await under(500);
+    ok(k2.sheet.bottom === 500 && k2.sheet.top >= 120 && u2.hits.every(Boolean) && u2.strip === u2.want, 'and when the page scrolls to the field, the sheet moves with what shows, the strip below it with it', { k2, u2 });
     await vv(null); await wait(50); const k3 = await box();
-    ok(k3.modal.top === 0 && k3.modal.bottom === k3.h && k3.sheet.bottom === k3.h, 'and when the keyboard closes, the sheet is back at the bottom of the screen', k3);
+    const u3 = await under(k3.h);
+    ok(k3.modal.top === 0 && k3.modal.bottom === k3.h && k3.sheet.bottom === k3.h && u3.strip === 0, 'and when the keyboard closes, the sheet is back at the bottom of the screen, with no strip', { k3, u3 });
     // A sheet of a fixed height, the exercise picker with its search field, fits too.
     await qe(() => { const L = window.__ironlog; L.ACT.mClose(); L.ACT.startSession({ dataset: { day: '0', light: '0' } }); L.ACT.pickSession(); }); await wait(150);
     await vv(380, 0); await wait(50);
     const pk = await qe(() => { const e = document.querySelector('#modal .sheet.fixed'); const b = e && e.getBoundingClientRect(); const s = document.querySelector('#modal input[type="search"], #modal input'); const sb = s && s.getBoundingClientRect(); return e ? { bottom: Math.round(b.bottom), height: Math.round(b.height), search: sb ? Math.round(sb.bottom) : null } : null; });
-    ok(pk && pk.bottom <= 380 && Math.abs(pk.height - 0.88 * 380) <= 1 && pk.search != null && pk.search <= 380, 'the exercise picker, a sheet of one height, takes 88% of what the keyboard leaves, its search field in view', pk);
+    const u4 = await under(380);
+    ok(pk && pk.bottom <= 380 && Math.abs(pk.height - 0.88 * 380) <= 1 && pk.search != null && pk.search <= 380 && u4.hits.every(Boolean) && u4.strip === u4.want, 'the exercise picker, a sheet of one height, takes 88% of what the keyboard leaves, its search field in view, the page covered below it', { pk, u4 });
     await vv(null);
     await qe(() => { const L = window.__ironlog; L.ACT.mClose(); L.state.draft = null; L.saveNow(); });
     ok(!Q.errors.length, 'no page errors on the sheets with the keyboard', Q.errors);

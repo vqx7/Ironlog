@@ -114,8 +114,8 @@ lines, then `ALL PASS` (the fuzz suite prints `fuzz clean`). Type check: `npx ts
   `estMin` ("~N min"); the first-run Set up page stays under 400 characters, in lines of 45 at most. Code comments
   explain why, not what, in full sentences.
 - **Phone:** 44 px touch targets, no sideways scroll at 320 px, light and dark both checked. A sheet is sized and
-  placed by the part of the screen that shows (`--vv-h` and `--vv-top`, `src/app/sheets.ts`), never by the page, so
-  it sits above the on-screen keyboard.
+  placed by the part of the screen that shows (`--vv-h` and `--vv-under`, `src/app/sheets.ts`), never by the page, so
+  it sits above the on-screen keyboard, and the strip below that part is the sheet's own colour, never the page.
 - **One source (V, r49):** a value that names, identifies or configures the app is defined once, in
   `src/app/config.ts`. Every storage key, cache name and backup mark is built from `STORAGE_ID` ("ironlog"), which
   never changes: a phone finds its log only under those keys (`tests/r49.js` holds them). Outside addresses and
