@@ -50,8 +50,8 @@
 //   - a lift trained in two rep ranges is stalled only when every range in
 //     use is (312 A), and at the top of its range, on Stats and in the coach,
 //     by the plan of the day it was last done on (found after the review);
-//   - a sheet sits in the part of the screen the keyboard leaves, and the
-//     sign-in sheet keeps its fields through a wrong password (311 f);
+//   - the sign-in sheet keeps its fields through a wrong password (311 f),
+//     and sheets do not move with the keyboard (322);
 //   - from the independent review of r54: a session's sets are its sets near
 //     its working load and any at its usual load, so a lighter or heavier set
 //     among them, or a load lowered mid-session, is no "fewer sets", while a
@@ -468,9 +468,8 @@ const FILE = process.argv[2] || 'index.html';
     await ev(() => { const L = window.__ironlog; const R = L.activeRoutine(); for (const d of R.days) d.items = d.items.filter(i => i.uid !== 'lb1'); L.saveNow(); });
   }
 
-  // ---- Sheets and the on-screen keyboard (PENDING 311 f, 309; V on the r52 preview: after Wrong email or password the email
-  // could not be tapped, and sheets sit behind the keyboard). No browser here has an on-screen keyboard: the visual viewport
-  // is moved the way a keyboard moves it, and V checks the real one on the phone.
+  // ---- The sign-in sheet and the on-screen keyboard (PENDING 311 f, 309, 322; V on the r52 preview: after Wrong email or
+  // password the email field could not be tapped). No browser here has an on-screen keyboard; V checks the real one.
   {
     const Q = await open(FILE, { browser: P.browser, touch: true, clock: '2026-10-15T10:00:00', realStarter: true, setup: ctx => ctx.addInitScript(() => {
       // A stand-in account service that refuses every password, as the real one answers a wrong one.
@@ -489,30 +488,24 @@ const FILE = process.argv[2] || 'index.html';
     const tapped = await qe((a) => document.activeElement === document.querySelector(a), EM);
     await q.fill(EM, 'v2@example.com');
     ok(tapped && (await qe((a) => document.querySelector(a).value, EM)) === 'v2@example.com', 'then a tap on the email field puts the cursor there, and it takes a new address (a guard: r53 does this here, in a browser with no keyboard)', { tapped });
-    // A keyboard that leaves the top 380 px of the screen, then the page scrolled 120 px to the field, then the keyboard closed.
+    /* A stand-in keyboard (the visual viewport moved as a keyboard moves it: no browser here has one). Sheets do not follow
+       it: r54 tried twice, and on V's iPhone the first showed the page under the sheet ("showing twice") and the second made
+       the page move up and down slowly as the keyboard came and hid the sheet's last links (V, 2026-10-19). iOS scrolls the
+       field being typed in into view itself, as it did on r53, so the sheets' layer stays the whole screen, the sheet at its
+       bottom, and nothing moves when the keyboard comes or goes (this fails on the build V saw last, a guard of r53). */
     const vv = (h, top) => qe(([h, top]) => { const v = window.visualViewport; if (h == null) { delete v.height; delete v.offsetTop; } else { Object.defineProperty(v, 'height', { configurable: true, get: () => h }); Object.defineProperty(v, 'offsetTop', { configurable: true, get: () => top }); } v.dispatchEvent(new Event('resize')); v.dispatchEvent(new Event('scroll')); }, [h, top]);
-    const box = () => qe(() => { const r = s => { const e = document.querySelector(s); if (!e) return null; const b = e.getBoundingClientRect(); return { top: Math.round(b.top), bottom: Math.round(b.bottom) }; }; return { modal: r('#modal'), sheet: r('#modal .sheet'), email: r('#modal [data-abind="email"]'), go: r('#modal [data-act="acctSubmit"]'), h: innerHeight }; });
-    /* What is under the strip of the screen below the part that shows, where iOS 26 Safari draws the page behind its glass
-       address pill and the bar above the keyboard (V on the r54 preview, 2026-10-19: the page's own Create account button
-       and its text showed there, under the sheet's, "showing twice"): the sheets' layer, every point of it, painted in the
-       sheet's own colour from the sheet's bottom to the screen's. */
-    const under = from => qe((from) => { const m = document.getElementById('modal'), sh = m.querySelector('.sheet'); const x = innerWidth / 2; const ys = [from + 2, Math.round((from + innerHeight) / 2), innerHeight - 2]; const pe = getComputedStyle(m, '::after'); return { hits: ys.map(y => { const e = document.elementFromPoint(x, y); return !!e && (e === m || m.contains(e)); }), strip: pe.content !== 'none' ? Math.round(parseFloat(pe.height)) : 0, bottom: pe.bottom, same: pe.backgroundColor === getComputedStyle(sh).backgroundColor, want: innerHeight - from }; }, from);
+    const box = () => qe(() => { const r = s => { const e = document.querySelector(s); if (!e) return null; const b = e.getBoundingClientRect(); return { top: Math.round(b.top), bottom: Math.round(b.bottom), height: Math.round(b.height) }; }; const m = document.getElementById('modal'); const pe = getComputedStyle(m, '::after'); return { modal: r('#modal'), sheet: r('#modal .sheet'), h: innerHeight, strip: pe.content !== 'none' && parseFloat(pe.height) > 0 }; });
+    const k0 = await box();
     await vv(380, 0); await wait(50); const k1 = await box();
-    ok(k1.sheet.bottom <= 380 && k1.email.top >= 0 && k1.go.bottom <= 380, 'with the keyboard up, the sign-in sheet sits in the 380 px it leaves, the email field and Sign in in view (r53: behind it)', k1);
-    const u1 = await under(380);
-    ok(k1.modal.top === 0 && k1.modal.bottom === k1.h && u1.hits.every(Boolean) && u1.strip === u1.want && u1.bottom === '0px' && u1.same, 'and below it, down to the bottom of the screen, only the sheet\'s own surface: no part of the page shows there (the r54 preview showed the page\'s own button and text under iOS\'s glass bars)', { k1, u1 });
     await vv(380, 120); await wait(50); const k2 = await box();
-    const u2 = await under(500);
-    ok(k2.sheet.bottom === 500 && k2.sheet.top >= 120 && u2.hits.every(Boolean) && u2.strip === u2.want, 'and when the page scrolls to the field, the sheet moves with what shows, the strip below it with it', { k2, u2 });
     await vv(null); await wait(50); const k3 = await box();
-    const u3 = await under(k3.h);
-    ok(k3.modal.top === 0 && k3.modal.bottom === k3.h && k3.sheet.bottom === k3.h && u3.strip === 0, 'and when the keyboard closes, the sheet is back at the bottom of the screen, with no strip', { k3, u3 });
-    // A sheet of a fixed height, the exercise picker with its search field, fits too.
+    const still = k => k.modal.top === 0 && k.modal.bottom === k.h && k.sheet.bottom === k.h && k.sheet.top === k0.sheet.top && !k.strip;
+    ok(k0.sheet.bottom === k0.h && still(k1) && still(k2) && still(k3), 'with a keyboard coming, the page scrolled to the field and the keyboard gone, the sheets\' layer stays the whole screen and the sheet stays where it is at its bottom: nothing moves with the keyboard (the build V saw moved it, and the page with it)', { k0, k1, k2, k3 });
+    // A sheet of a fixed height, the exercise picker with its search field, keeps its height too.
     await qe(() => { const L = window.__ironlog; L.ACT.mClose(); L.ACT.startSession({ dataset: { day: '0', light: '0' } }); L.ACT.pickSession(); }); await wait(150);
-    await vv(380, 0); await wait(50);
-    const pk = await qe(() => { const e = document.querySelector('#modal .sheet.fixed'); const b = e && e.getBoundingClientRect(); const s = document.querySelector('#modal input[type="search"], #modal input'); const sb = s && s.getBoundingClientRect(); return e ? { bottom: Math.round(b.bottom), height: Math.round(b.height), search: sb ? Math.round(sb.bottom) : null } : null; });
-    const u4 = await under(380);
-    ok(pk && pk.bottom <= 380 && Math.abs(pk.height - 0.88 * 380) <= 1 && pk.search != null && pk.search <= 380 && u4.hits.every(Boolean) && u4.strip === u4.want, 'the exercise picker, a sheet of one height, takes 88% of what the keyboard leaves, its search field in view, the page covered below it', { pk, u4 });
+    const pick = () => qe(() => { const e = document.querySelector('#modal .sheet.fixed'); const b = e && e.getBoundingClientRect(); return e ? { bottom: Math.round(b.bottom), height: Math.round(b.height), h: innerHeight } : null; });
+    const p0 = await pick(); await vv(380, 0); await wait(50); const p1 = await pick();
+    ok(p0 && p1 && p1.bottom === p1.h && p1.height === p0.height && Math.abs(p0.height - 0.88 * p0.h) <= 1, 'the exercise picker keeps 88% of the screen whether the keyboard is up or not', { p0, p1 });
     await vv(null);
     await qe(() => { const L = window.__ironlog; L.ACT.mClose(); L.state.draft = null; L.saveNow(); });
     ok(!Q.errors.length, 'no page errors on the sheets with the keyboard', Q.errors);

@@ -61,8 +61,8 @@ window.addEventListener('scroll',()=>{if(TIP.el)tipHide();},{passive:true});
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&TIP.el)tipHide();});
 
 /* ---------- events ---------- */
-followViewport(window); // Sheets in the part of the screen that shows, above the keyboard (src/app/sheets.ts, r54).
-/* The sign-in sheet is a real form so the phone offers to save and fill the password; it never navigates. Enter submits it through its button. */
+/* The sign-in sheet is a real form so the phone offers to save and fill the
+   password; it never navigates. Enter submits it through its button. */
 document.addEventListener('submit',e=>{if(e.target&&e.target.id==='acctForm'){e.preventDefault();const b=e.target.querySelector('[data-act="acctSubmit"]');
   // Go on the keyboard in the code field confirms with the code (r45); elsewhere it submits as before.
   if(document.activeElement&&document.activeElement.dataset&&document.activeElement.dataset.abind==='code'){ACT.acctCode();return;}

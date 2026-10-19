@@ -32,5 +32,5 @@ import { CHK_Q, SIZE_MAP, STALL_WHY, chkWord, musTrend } from './app/coach';
 import { EX, U, activeRoutine, exInjury, exName, freeMode, gymOf, injuredSet, invalidate, isDeloadWeek, isRestWeek, prof, rirHalfOn, sortedSessions, fromD, stepRead, toD, defPlan, planCredit, planFor, planSetsPerWeek, profPlan, profRule, routineUpdates, appBand, defBand, fitFloors, refit, plannedSets, stallWeeks, stallWords, barKg, capOf, exBarKg, gymRack, rackTol, fmtW, loadLabel, IDX, sessionWords, bwAt, bwLoad, bwRef, bwRefLoad, calStats, dateIndex, hardCredit, isHard, loadOf, prFrame, prLoad, rirEff, rirEst, rirUsual, statsUpTo, tonnage, weekSessions, dayMinutes, pace, paceRatios, sessModelMin, actualAvg4, avgFirstWeek, avgWait, avgWeeks, firstFullWeek, lastLighterWeek, muscleStatus, recentLighter, regionBalance, weekNeed, weekRoutine, weekStats, weekStreak, weeksAvg, atRangeTop, coach, dropOnlyLift, fatigueStalls, movers, readiness, stalledIds, daysOff, easierText, heavierLoad, incOf, lighterLoad, progStep, rackStep, suggestCore, suggest } from './app/live';
 import { AUTH, FB } from './app/providers';
 import { effShow, halfLbl, rirScale } from './app/effort';
-import { followViewport, morphInto } from './app/sheets';
+import { morphInto } from './app/sheets';
 import { guideSheet } from './app/guide';
