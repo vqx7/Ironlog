@@ -610,7 +610,7 @@ const ACT={
       const P=chunksOf(pre),Q=chunksOf(post),C=chunksOf(state);const stat={conflicts:0};const parts={};
       for(const id of new Set([...Object.keys(P),...Object.keys(Q),...Object.keys(C)])){
         const q=Q[id]||emptyChunk(id);
-        parts[id]=id==='draft'?{draft:mergeDraft(Q.draft&&Q.draft.draft,C.draft&&C.draft.draft,P.draft&&P.draft.draft)}
+        parts[id]=id==='draft'?{draft:mergeDraft(e.post?JSON.parse(e.post).draft:state.draft,state.draft,JSON.parse(e.pre).draft)} /* the session in progress merged from its three versions as they were kept, the live one never normalized: compared with normalized copies, every exercise read as changed since and nothing went back (r55.1, the audit of r55: Undo after Make it lighter) */
           :mergeChunk(id,q?baseOf(id,q):null,C[id]||emptyChunk(id),P[id]||emptyChunk(id),false,stat);
       }
       setState(assemble(parts));
@@ -831,7 +831,7 @@ const ACT={
     const txt=(($('#qTxt')||{}).value||'').trim();m.text=txt;if(!txt){m.err='Type at least one set.';renderModal();return;}
     const ex=EX(b.exId);const fi=b.sets.findIndex(x=>!x.done&&!x.warm);const fw=fi>=0?effW(b,fi):null;const defW=fw!=null?fw:null;
     const got=parseSets(txt,ex,defW,null,rirScale()==='rpe');
-    const finish=list=>{const n=fillSets(m.b,list);closeModal();rerenderKeepScroll();toast(`${n} set${n===1?'':'s'} filled and marked done`);};
+    const finish=list=>{const n=fillSets(m.b,list);if(!(ui.modal&&ui.modal.kind==='confirm')){closeModal();rerenderKeepScroll();toast(`${n} set${n===1?'':'s'} filled and marked done`);}};
     if(got){finish(got);return;}
 m.err=`Could not read that. Try the pattern 225x5, 5, 4 ${rirScale()==='rpe'?'rpe 9':'rir 1'}.`;renderModal();  },
   aiStop(){if(AI.ctl){try{AI.ctl.abort();}catch(e){/* already finished */}}},

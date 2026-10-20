@@ -254,12 +254,12 @@ function fillSets(bi,list){
   const d=state.draft;const b=d&&d.ex[bi];if(!b)return 0;
   // On an assisted lift the numbers typed or said are the machine's help.
   if(EX(b.exId).assist)for(const p of list)if(p.w>0)p.w=-p.w;
-  let si=b.sets.findIndex(x=>!x.done&&!x.warm);if(si<0)si=b.sets.length;
+  let si=b.sets.findIndex(x=>!x.done&&!x.warm);if(si<0)si=b.sets.length;let far=-1;
   for(const p of list){
     if(si>=b.sets.length)b.sets.push({w:null,r:null,rir:null,warm:false,drop:false,done:false});
-    const x=b.sets[si];x.w=p.w;x.r=p.r;x.rir=p.rir;x.warm=false;x.drop=false;x.done=true;si++;
+    const x=b.sets[si];x.w=p.w;x.r=p.r;x.rir=p.rir;x.warm=false;x.drop=false;x.done=!oddLoad(b,si,d.date)&&!oddReps(b,x);if(!x.done&&far<0)far=si;si++; /* a set far off is left for setDone's question, as a tick asks it (r55.1, the audit of r55: 1000x8 was saved as typed, a 1285 kg PR) */
   }
-  saveNow();return list.length;
+  saveNow();if(far>=0){rerenderKeepScroll();setDone(bi,far,true);}return list.length;
 }
 
 window.__onLib=(which)=>{if((which==='chart'&&ui.tab==='dash')||(which==='sortable'&&ui.tab==='program'))rerenderKeepScroll();};

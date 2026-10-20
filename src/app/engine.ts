@@ -199,9 +199,22 @@ export function daysOffIn(M: Model, exId: string, opts?: SuggestOpts | null): nu
    target (r54), so the lift stops being back once it is done, unless it was
    done lighter (a Lighter day or a deload, tapped on coming back): until
    r54 the session after that asked for the load from before the break. */
-function backDaysIn(M: Model, exId: string, opts: SuggestOpts): number {
+function backDaysIn(M: Model, exId: string, plan: Plan, opts: SuggestOpts): number {
   const T = opts.before && isDate(opts.before) ? opts.before : M.today();
-  const xs = (IDXIn(M).byEx[exId] || []).filter(x => x.date <= T);
+  const all = (IDXIn(M).byEx[exId] || []).filter(x => x.date <= T);
+  /* A lift trained in two rep ranges restarts each on its own first session
+     back (r55.1, from the audit of r55: a light day eased after a break ended
+     the heavy day's return too, so the heavy day's first session back asked
+     for the load from before the break). The break is read from the sessions
+     in the plan's range when that range is in use, as the target is
+     (suggestCoreIn), and from all of them otherwise. */
+  const want: [number, number] = [+plan.repMin, +plan.repMax];
+  const xs = rangeInUse(
+    all.filter(x => !offTarget(x)),
+    want
+  )
+    ? all.filter(x => sameRR(x.rr, want))
+    : all;
   if (!xs.length) return 0;
   if (afterBreak(xs[xs.length - 1], T)) return daysBetween(xs[xs.length - 1].date, T);
   for (let i = xs.length - 1; i > 0 && offTarget(xs[i]); i--)
@@ -218,7 +231,7 @@ function backDaysIn(M: Model, exId: string, opts: SuggestOpts): number {
 export function suggestIn(M: Model, exId: string, plan: Plan, opts?: SuggestOpts | null): Suggestion {
   opts = opts || {};
   const ex = EXIn(M, exId);
-  const off = !(opts.deload || opts.light) && !ex.timed ? backDaysIn(M, exId, opts) : 0;
+  const off = !(opts.deload || opts.light) && !ex.timed ? backDaysIn(M, exId, plan, opts) : 0;
   const back = off > BACK_DAYS;
   if (!(opts.deload || opts.light || back) || ex.timed)
     return snapUnitIn(M, ex, plan, suggestCoreIn(M, exId, plan, opts));
@@ -306,6 +319,17 @@ export function suggestIn(M: Model, exId: string, plan: Plan, opts?: SuggestOpts
    there, and seen with them, as the ! after them say. seen reads all before
    that test only when inRR holds, which needs a full session, so all is
    there then too. */
+/* Whether the plan's rep range is in use for a lift (r27): its newest full
+   session in that range lies within the trend window (42 days) of the lift's
+   newest full session. A lift on two days at two ranges then reads each from
+   its own sessions; a range not used lately, or never logged, reads them all.
+   The target (suggestCoreIn) and the return after a break (backDaysIn) read
+   it alike. */
+function rangeInUse(full: readonly Exposure[], want: readonly [number, number]): boolean {
+  const last = full.filter(x => !!x.rr && x.rr[0] === want[0] && x.rr[1] === want[1]).pop();
+  return !!last && last.date >= addDays(full[full.length - 1].date, -42);
+}
+
 export function suggestCoreIn(M: Model, exId: string, plan: Plan, opts?: SuggestOpts | null): Suggestion {
   opts = opts || {};
   /* opts.before: the date of a past session being logged. Only what was
@@ -327,9 +351,7 @@ export function suggestCoreIn(M: Model, exId: string, plan: Plan, opts?: Suggest
      Sessions with no range on record (from before r13, imported or demo) go
      along with the range when it is in use. */
   const want: [number, number] = [+plan.repMin, +plan.repMax];
-  const exact = (x: Exposure): boolean => !!x.rr && x.rr[0] === want[0] && x.rr[1] === want[1];
-  const lastEx = full.filter(exact).pop();
-  const inRR = !!lastEx && lastEx.date >= addDays(full[full.length - 1].date, -42);
+  const inRR = rangeInUse(full, want);
   const fullRR = inRR ? full.filter(x => sameRR(x.rr, want)) : [];
   const exps = all && all.length ? (fullRR.length ? fullRR : full.length ? full : all) : all;
   /* The same sessions with those short of their usual (r54, V's one rule):
@@ -1110,7 +1132,7 @@ export function suggestTimedIn(
      weeks off was asked to beat its last time): the same load, holds about
      90% as long (the lighter day's 90%, r32, a convention), nothing to beat,
      and the next session picks up from this one. */
-  const off = backDaysIn(M, ex.id, opts);
+  const off = backDaysIn(M, ex.id, plan, opts);
   if (off > BACK_DAYS)
     return {
       prev: L0.prev,

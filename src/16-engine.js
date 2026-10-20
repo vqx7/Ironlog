@@ -91,7 +91,7 @@ function blockProgress(b){
   const heavier=done.filter(s=>(+s.w||0)>t.w+1e-6);
   let heavyBeat=false,heavyTxt='';
   if(heavier.length&&t.prevBest!=null&&!ex.timed){
-    let best=null,bs=null;for(const s of heavier){const v=e1(bw+(+s.w||0),+s.r,rirEst(s,ex));if(v!=null&&(best==null||v>best)){best=v;bs=s;}}
+    let best=null,bs=null;const seen=new Set();for(const x of IDX().byEx[b.exId]||[])for(const p of x.pts)seen.add(p.w); /* each set at the load it stands for, as PRs are judged (prSameLoad): the same load in the other unit beats nothing (r55.1, the audit of r55: 220.5 lb after 100 kg read as beaten by load) */for(const s of heavier){const v=e1(bw+prSameLoad(+s.w||0,seen),+s.r,rirEst(s,ex));if(v!=null&&(best==null||v>best)){best=v;bs=s;}}
     if(best!=null){
       heavyBeat=best>t.prevBest+1e-6;
       /* Estimates in whole pounds, and on an isolation lift the set itself,

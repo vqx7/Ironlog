@@ -130,7 +130,12 @@ function halfStep(a: number, u: 'kg' | 'lb'): number {
 export function prSameLoad(w: number, earlier: ReadonlySet<number>): number {
   const u = typedUnit(w);
   if (!u) return w;
-  const lo = w - halfStep(Math.abs(w), u) - 1e-9;
+  /* Or within half the last digit the screens show a load to (a tenth, so
+     0.05 in the unit it was typed in, TYPED_STEP): 100 kg is shown in lb as
+     220.5, and 220.5 typed as the Last column shows it is that load, not a
+     heavier one (r55.1, from the audit of r55: a Weight PR made of rounding). */
+  const k = u === 'lb' ? LB : 1;
+  const lo = w - Math.max(halfStep(Math.abs(w), u), TYPED_STEP * k) - 1e-9;
   let best = w;
   for (const e of earlier)
     if (e < w - 1e-9 && e >= lo && (best === w || e > best) && typedUnit(e) === (u === 'kg' ? 'lb' : 'kg')) best = e;

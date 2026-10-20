@@ -2234,7 +2234,8 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
   function prSameLoad(w, earlier) {
     const u = typedUnit(w);
     if (!u) return w;
-    const lo = w - halfStep(Math.abs(w), u) - 1e-9;
+    const k = u === "lb" ? LB : 1;
+    const lo = w - Math.max(halfStep(Math.abs(w), u), TYPED_STEP * k) - 1e-9;
     let best = w;
     for (const e of earlier)
       if (e < w - 1e-9 && e >= lo && (best === w || e > best) && typedUnit(e) === (u === "kg" ? "lb" : "kg")) best = e;
@@ -5437,9 +5438,14 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     if (!xs.length) return 0;
     return daysBetween(xs[xs.length - 1].date, T);
   }
-  function backDaysIn(M, exId, opts) {
+  function backDaysIn(M, exId, plan, opts) {
     const T = opts.before && isDate(opts.before) ? opts.before : M.today();
-    const xs = (IDXIn(M).byEx[exId] || []).filter((x) => x.date <= T);
+    const all = (IDXIn(M).byEx[exId] || []).filter((x) => x.date <= T);
+    const want = [+plan.repMin, +plan.repMax];
+    const xs = rangeInUse(
+      all.filter((x) => !offTarget(x)),
+      want
+    ) ? all.filter((x) => sameRR(x.rr, want)) : all;
     if (!xs.length) return 0;
     if (afterBreak(xs[xs.length - 1], T)) return daysBetween(xs[xs.length - 1].date, T);
     for (let i = xs.length - 1; i > 0 && offTarget(xs[i]); i--)
@@ -5449,7 +5455,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
   function suggestIn(M, exId, plan, opts) {
     opts = opts || {};
     const ex = EXIn(M, exId);
-    const off = !(opts.deload || opts.light) && !ex.timed ? backDaysIn(M, exId, opts) : 0;
+    const off = !(opts.deload || opts.light) && !ex.timed ? backDaysIn(M, exId, plan, opts) : 0;
     const back = off > BACK_DAYS;
     if (!(opts.deload || opts.light || back) || ex.timed)
       return snapUnitIn(M, ex, plan, suggestCoreIn(M, exId, plan, opts));
@@ -5515,6 +5521,10 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       true
     );
   }
+  function rangeInUse(full, want) {
+    const last = full.filter((x) => !!x.rr && x.rr[0] === want[0] && x.rr[1] === want[1]).pop();
+    return !!last && last.date >= addDays(full[full.length - 1].date, -42);
+  }
   function suggestCoreIn(M, exId, plan, opts) {
     opts = opts || {};
     const T = opts.before && isDate(opts.before) ? opts.before : M.today();
@@ -5524,9 +5534,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     const injM = exInjuryIn(M, ex);
     const full = all ? all.filter((x) => !offTarget(x)) : [];
     const want = [+plan.repMin, +plan.repMax];
-    const exact = (x) => !!x.rr && x.rr[0] === want[0] && x.rr[1] === want[1];
-    const lastEx = full.filter(exact).pop();
-    const inRR = !!lastEx && lastEx.date >= addDays(full[full.length - 1].date, -42);
+    const inRR = rangeInUse(full, want);
     const fullRR = inRR ? full.filter((x) => sameRR(x.rr, want)) : [];
     const exps = all && all.length ? fullRR.length ? fullRR : full.length ? full : all : all;
     const done = all && all.length ? fullRR.length ? all.filter((x) => !lighter(x) && sameRR(x.rr, want)) : full.length ? all.filter((x) => !lighter(x)) : all : [];
@@ -6035,7 +6043,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
         tgt: null,
         easier: null
       };
-    const off = backDaysIn(M, ex.id, opts);
+    const off = backDaysIn(M, ex.id, plan, opts);
     if (off > BACK_DAYS)
       return {
         prev: L0.prev,
@@ -8522,8 +8530,10 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       let heavyBeat = false, heavyTxt = "";
       if (heavier.length && t.prevBest != null && !ex.timed) {
         let best = null, bs = null;
+        const seen = /* @__PURE__ */ new Set();
+        for (const x of IDX().byEx[b.exId] || []) for (const p of x.pts) seen.add(p.w);
         for (const s of heavier) {
-          const v = e1(bw + (+s.w || 0), +s.r, rirEst(s, ex));
+          const v = e1(bw + prSameLoad(+s.w || 0, seen), +s.r, rirEst(s, ex));
           if (v != null && (best == null || v > best)) {
             best = v;
             bs = s;
@@ -15369,7 +15379,7 @@ ${JSON.stringify(fb.context, null, 1)}`;
           const parts = {};
           for (const id of /* @__PURE__ */ new Set([...Object.keys(P), ...Object.keys(Q), ...Object.keys(C)])) {
             const q = Q[id] || emptyChunk(id);
-            parts[id] = id === "draft" ? { draft: mergeDraft(Q.draft && Q.draft.draft, C.draft && C.draft.draft, P.draft && P.draft.draft) } : mergeChunk(id, q ? baseOf(id, q) : null, C[id] || emptyChunk(id), P[id] || emptyChunk(id), false, stat);
+            parts[id] = id === "draft" ? { draft: mergeDraft(e.post ? JSON.parse(e.post).draft : state.draft, state.draft, JSON.parse(e.pre).draft) } : mergeChunk(id, q ? baseOf(id, q) : null, C[id] || emptyChunk(id), P[id] || emptyChunk(id), false, stat);
           }
           setState(assemble(parts));
         } catch (x) {
@@ -16026,9 +16036,11 @@ ${JSON.stringify(fb.context, null, 1)}`;
         const got = parseSets(txt, ex, defW, null, rirScale() === "rpe");
         const finish = (list) => {
           const n = fillSets(m.b, list);
-          closeModal();
-          rerenderKeepScroll();
-          toast(`${n} set${n === 1 ? "" : "s"} filled and marked done`);
+          if (!(ui.modal && ui.modal.kind === "confirm")) {
+            closeModal();
+            rerenderKeepScroll();
+            toast(`${n} set${n === 1 ? "" : "s"} filled and marked done`);
+          }
         };
         if (got) {
           finish(got);
@@ -18658,6 +18670,7 @@ ${JSON.stringify(fb.context, null, 1)}`;
       }
       let si = b.sets.findIndex((x) => !x.done && !x.warm);
       if (si < 0) si = b.sets.length;
+      let far = -1;
       for (const p of list) {
         if (si >= b.sets.length) b.sets.push({ w: null, r: null, rir: null, warm: false, drop: false, done: false });
         const x = b.sets[si];
@@ -18666,10 +18679,15 @@ ${JSON.stringify(fb.context, null, 1)}`;
         x.rir = p.rir;
         x.warm = false;
         x.drop = false;
-        x.done = true;
+        x.done = !oddLoad(b, si, d.date) && !oddReps(b, x);
+        if (!x.done && far < 0) far = si;
         si++;
       }
       saveNow();
+      if (far >= 0) {
+        rerenderKeepScroll();
+        setDone(bi, far, true);
+      }
       return list.length;
     }
     window.__onLib = (which) => {
