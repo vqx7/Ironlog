@@ -14,7 +14,8 @@
 //   - demo data on the phone never goes into the account;
 //   - a problem report opened signed out comes back after signing in from it;
 //   - from the independent review of r55: demo data stays out of an empty
-//     account too, and a routine built before a first sign-in is kept.
+//     account too, a routine built before a first sign-in is kept, and of two
+//     workouts in progress the other device's ticked sets are saved.
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
@@ -143,6 +144,8 @@ fs.cpSync(SRC, tmp, { recursive: true });
   }
 
   // The independent review of r55 (each found on r55 and on r54 too).
+  const draftOf = D => D.ev(() => { const d = window.__ironlog.state.draft; return d ? { id: d.id, name: d.dayName, done: d.ex.reduce((a, b) => a + b.sets.filter(x => x.done).length, 0) } : null; });
+  const answer = async D => { for (let k = 0; k < 3 && await D.ev(() => window.__ironlog.ui.modal && window.__ironlog.ui.modal.kind === 'confirm'); k++) { await D.page.click('#modal [data-act="mOk"]'); await wait(300); } };
   // ---- Demo data on a phone, then a sign-in to a new account with nothing in it: the demo stays out of it too.
   {
     fake.addUser('six@example.com', 'correct horse 9');
@@ -168,6 +171,32 @@ fs.cpSync(SRC, tmp, { recursive: true });
     ok(after.routines.includes('My new plan') && after.sessions.includes('acc7') && core && core.routines.some(r => r.name === 'My new plan'), 'a routine built on a new phone with nothing logged, then a sign-in to an account with a log: it is kept, beside the account\'s log, and synced (r54 replaced it with the account\'s copy)', { after, account: core && core.routines.map(r => r.name) });
     await A.ctx.close();
   }
+  // ---- A workout in progress on each of two phones at a first sign-in: neither's ticked sets are lost.
+  {
+    const O = await account('eight@example.com', [mk('acc8', '2026-10-01', 'Old phone day')]);
+    await O.ev(() => { const L = window.__ironlog; L.ui.tab = 'today'; L.render(); });
+    await O.page.click('#view [data-act="startSession"]'); await wait(400);
+    for (let s = 0; s < 2; s++) { await O.page.fill(`#view .sg input[data-f="w"][data-b="0"][data-s="${s}"]`, '225'); await O.page.click(`#view [data-act="sDone"][data-b="0"][data-s="${s}"]`); await wait(200); await answer(O); }
+    await O.ev(() => window.__ironlog.flush()); await wait(1200);
+    const o0 = await draftOf(O);
+    const B = await firstRun();
+    await B.page.click('#obPage [data-act="obSample"]'); await wait(300);
+    await B.page.click('#modal [data-act="tplPick"][data-k="full3"]'); await wait(400);
+    await B.page.click('#view [data-act="startSession"]'); await wait(400);
+    await B.page.fill('#view .sg input[data-f="w"][data-b="0"][data-s="0"]', '95'); await B.page.click('#view [data-act="sDone"][data-b="0"][data-s="0"]'); await wait(200); await answer(B);
+    const b0 = await draftOf(B);
+    await B.signIn('eight@example.com');
+    const t = await B.toast();
+    await B.ev(() => window.__ironlog.flush()); await wait(1000);
+    const b1 = await draftOf(B);
+    const kept = await B.ev(id => { const s = window.__ironlog.state.sessions.find(x => x.id === id); return s ? s.ex.reduce((a, b) => a + b.sets.length, 0) : 0; }, o0 && o0.id);
+    await O.ev(() => window.__ironlog.sync()); await wait(1500);
+    const oKept = await O.ev(id => { const s = window.__ironlog.state.sessions.find(x => x.id === id); return s ? s.ex.reduce((a, b) => a + b.sets.length, 0) : 0; }, o0 && o0.id);
+    ok(o0 && o0.done === 2 && b0 && b0.done === 1 && b1 && b1.id === b0.id && b1.done === 1 && kept === 2 && oKept === 2 && sessIn('eight@example.com').includes(o0.id) && t && /other device is saved in History/.test(t.text),
+      'a workout in progress on the account\'s phone (2 sets ticked) and on a new phone (1 set) at the new phone\'s first sign-in: the new phone\'s stays in progress, the other\'s 2 sets are saved in History on both phones and the account, and the toast says so (r54 lost one of the two)', { o0, b0, b1, kept, oKept, toast: t });
+    await B.ctx.close(); await O.ctx.close();
+  }
+
   // ---- A problem report opened signed out: signing in from it goes back to it (the journey audit of r54, D13).
   {
     fake.addUser('five@example.com', 'correct horse 9');

@@ -693,6 +693,23 @@ const LB = 0.45359237;
     ok(d12.it && d12.it[0] === 3 && d12.it[1] === 6 && d12.it[3] >= 180 && /set to Your training/.test(d12.toast), 'Your training set to Strength in the first-run picker, then a routine picked: its bench press is at 3 to 6 reps with 3 minutes\' rest, and the toast says so (r54 kept 6 to 10, and Settings then offered to apply it)', d12);
     await back();
 
+    // Finish's way of saving an exercise is in one place since r55 (savedEx), so a first sign-in can save another device's
+    // workout in progress the same way: r54's own line, copied here as r54 has it, and savedEx give the same saved exercise,
+    // key order and blank fields included, on 3,000 random exercises (loads blank, typed or negative, reps as text or
+    // halves, RIR blank or as text, warm-ups, drops, RIR checks, kept ranges, plans without a range, marks).
+    const same = await ev(src => { const L = window.__ironlog; const r54 = new Function('return (' + src + ')')();
+      let seed = 55; const rnd = () => { seed = (seed * 1103515245 + 12345) % 2147483648; return seed / 2147483648; }; const pick = a => a[Math.floor(rnd() * a.length)];
+      const ser = x => JSON.stringify(x, (k, v) => (v === undefined ? '__undefined' : v));
+      let n = 0; const bad = [];
+      for (let i = 0; i < 3000; i++) {
+        const b = { exId: pick(['bench', 'pullup', 'plank', 'c_x']), plan: pick([undefined, {}, { repMin: 6, repMax: 10 }, { repMin: '8', repMax: '12' }, { repMin: 0, repMax: 5 }, { repMin: 5 }]),
+          sets: Array.from({ length: Math.floor(rnd() * 6) }, () => ({ w: pick([null, 0, 52.5, -20, 100]), r: pick([null, '', 0, 8, '8', 8.5, '10']), rir: pick([null, '', 0, 2, '1.5', undefined]), done: rnd() < 0.7, warm: pick([undefined, false, true]), drop: pick([undefined, false, true]), cal: pick([undefined, null, { at: 9, pred: 2 }]) })) };
+        if (rnd() < 0.5) b.keepRR = pick([undefined, null, [6, 10]]); if (rnd() < 0.3) b.light = pick([true, false]); if (rnd() < 0.3) b.inj = pick(['chest', '', null]); if (rnd() < 0.5) b.note = pick(['', 'felt good', undefined]);
+        const a = ser(r54(b)), c = ser(L.savedEx(b)); n++; if (a !== c && bad.length < 3) bad.push({ a, c });
+      }
+      return { n, bad }; }, "b=>({exId:b.exId,note:b.note||'',rr:b.keepRR!==undefined?b.keepRR:(b.plan&&+b.plan.repMin>0&&+b.plan.repMax>0?[+b.plan.repMin,+b.plan.repMax]:null),light:b.light?true:undefined,...(b.inj?{inj:b.inj}:{}),sets:b.sets.filter(s=>s.done).map(s=>({w:s.w==null?0:s.w,r:+s.r,rir:s.rir==null||s.rir===''?null:+s.rir,warm:!!s.warm,drop:!!s.drop&&!s.warm,cal:s.cal&&!s.warm?s.cal:undefined}))})");
+    ok(same.n === 3000 && same.bad.length === 0, 'Finish saves an exercise exactly as r54 did: r54\'s own line and savedEx agree on 3,000 random exercises, key order and blank fields included', same.bad);
+
     // D14: the Guide says when an import makes the routine.
     const gd14 = await ev(() => { const L = window.__ironlog; L.ACT.guideOpen({ dataset: { g: 'data' } }); const t = document.getElementById('modal').innerText.replace(/\s+/g, ' '); L.ACT.mClose(); return t; });
     ok(/an import whose workouts repeat \(most of them twice or more in its last 8 weeks\) also makes your routine; otherwise you pick the closest ready-made one/.test(gd14), 'the Guide says an import makes the routine only when its workouts repeat (r54 said every first-run import did; one session does not)', gd14.slice(0, 200));

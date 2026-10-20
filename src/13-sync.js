@@ -257,7 +257,7 @@ async function cloudPull(){
   const rids=Object.keys(remote);
   if(!rids.length){if(!Object.keys(cloud.meta).length&&hasDemo(state)){stripDemo(state);demoRestore();invalidate();saveNow();render();toast('Demo data cleared. It never goes into an account.');}await cloudFlush();return;} // an empty account takes this device's log as it is, less its demo data, as a merge does (r55, the review: an empty account was given the demo's 27 sessions)
   const local=chunksOf(state);const first=!Object.keys(cloud.meta).length;
-  let parts=null,merged=false,draftIn=false;const stat={conflicts:0};const adoptedIds=new Set();const leg={bodyweights:[],measurements:[]};const legB=legacyBodyBase();
+  let parts=null,merged=false,draftIn=false,keptDraft=false;const stat={conflicts:0};const adoptedIds=new Set();const leg={bodyweights:[],measurements:[]};const legB=legacyBodyBase();
   if(first){
     const rState=assemble(Object.fromEntries(rids.map(k=>[k,remote[k].data])));const mine={...state};stripDemo(mine); // demo data never goes into an account (r55, the audit: it was merged and uploaded)
     if(!realCount(mine)&&!mine.bodyweights.length&&!mine.measurements.length&&!state.draft&&!mine.cardio.length&&!mine.routines.some(r=>!plainTemplate(r)&&!routineEmpty(r))&&!mine.exercises.some(e=>e.custom)){ // by what is here, not by whether a save was found at start: a first run's workout was wiped by a sign-in before a reopen (r55, the audit)
@@ -268,8 +268,8 @@ async function cloudPull(){
       /* Settings come from the side with more sessions, but exercises and
          routines are combined by id (that side's copy wins a clash), so a
          custom exercise or routine made on the other device is not lost and
-         its logged sets keep their name. */
-      setState(normalize({...base,exercises:unionById(base.exercises,other.exercises),routines:unionById(base.routines,other.routines),sessions:unionById(mine.sessions,rState.sessions),bodyweights:unionById(mine.bodyweights,rState.bodyweights),measurements:unionById(mine.measurements,rState.measurements),cardio:unionById(mine.cardio,rState.cardio),trash:unionById(state.trash,rState.trash),draft:state.draft||rState.draft}));
+         its logged sets keep their name. Of two workouts in progress, this device's stays in progress and the other's ticked sets are saved, never dropped (r55, the review: one was lost on every device). */
+      const kept=state.draft&&rState.draft&&rState.draft.id!==state.draft.id?draftSession(rState.draft):null;keptDraft=!!kept&&![...mine.sessions,...rState.sessions].some(x=>x.id===kept.id);setState(normalize({...base,exercises:unionById(base.exercises,other.exercises),routines:unionById(base.routines,other.routines),sessions:unionById(mine.sessions,keptDraft?[...rState.sessions,kept]:rState.sessions),bodyweights:unionById(mine.bodyweights,rState.bodyweights),measurements:unionById(mine.measurements,rState.measurements),cardio:unionById(mine.cardio,rState.cardio),trash:unionById(state.trash,rState.trash),draft:state.draft||rState.draft}));
       // The cloud copy becomes the agreed base, so the merged result is what
       // the flush writes, rather than being merged a second time.
       for(const id of rids){cloud.meta[id]={h:remote[id].h,at:remote[id].at,b:baseOf(id,remote[id].data)};cloud.editAt[id]=Date.now();}
@@ -305,7 +305,7 @@ async function cloudPull(){
     // and the cleared list goes back to the cloud (r34.1).
     {const n0=(state.trash||[]).length;state.trash=(state.trash||[]).filter(t=>!(t.kind==='routine'&&plainTemplate(t.data)));if(state.trash.length!==n0)saveNow();}
     if(!ui.modal)rerenderKeepScroll();else render();
-    if(merged)toast('Merged this device with your cloud copy');
+    if(merged)toast(keptDraft?'Merged this device with your cloud copy. The workout in progress on your other device is saved in History.':'Merged this device with your cloud copy');
     conflictNote(stat);if(draftIn)draftNote(dr0);
   }else if(first){
     for(const id of rids)cloud.meta[id]={h:'x',at:remote[id].at,b:null};
