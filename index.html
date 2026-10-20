@@ -5416,7 +5416,33 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
 
   // src/app/engine.ts
   function snapUnitIn(M, ex, plan, res, down) {
+    const G = res && res.w != null && !ex.timed ? plateGridIn(M, ex, plan) : null;
+    if (G) return plateSnap(M, ex, plan, res, G, down);
     return gridSnap(M, ex, plan, unitSnap(M, ex, plan, res, down));
+  }
+  function plateGridIn(M, ex, plan) {
+    const g = gymOfIn(M);
+    if (!ex || ex.inc != null || ex.timed || !g || !Array.isArray(g.plates) || !g.plates.length) return null;
+    if (platesMode(ex) !== "bar" || loadMode(ex) !== "total") return null;
+    if (Math.abs(stepReadIn(M, plan && isNum(+plan.inc) ? +plan.inc : STEP_LB) - unitStepIn(M)) > 1e-6) return null;
+    const bar = loadFloorIn(M, ex);
+    if (!(bar > 0)) return null;
+    const mn = Math.min(...g.plates);
+    if (!g.plates.every((x) => Math.abs(x / mn - Math.round(x / mn)) < 1e-6)) return null;
+    return { bar, step: gymK(g, 2 * mn) };
+  }
+  function plateAt(G, w, dir) {
+    const k = (w - G.bar) / G.step;
+    const n = dir > 0 ? Math.ceil(k - 1e-3) : Math.floor(k + 1e-3);
+    return G.bar + Math.max(0, n) * G.step;
+  }
+  function plateSnap(M, ex, plan, res, G, down) {
+    const w = res.w, top = res.top;
+    if (w == null) return res;
+    const dn = plateAt(G, w, -1);
+    if (Math.abs(dn - w) < 1e-6) return res;
+    const nw = !down && top != null && w > top + 1e-6 ? dn > top + 1e-6 ? dn : plateAt(G, top + 1e-6, 1) : dn;
+    return moveIn(M, ex, plan, res, nw, "the nearest load your plates make");
   }
   function unitSnap(M, ex, plan, res, down) {
     if (!res || res.w == null || res.top == null || ex.timed) return res;
@@ -5435,16 +5461,21 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     if (!ex.assist && d < fl - 1e-9) d = Math.ceil(fl / st - 1e-9) * st;
     const nw = kgOfIn(M, d);
     if (Math.abs(nw - res.w) < 1e-9) return res;
+    return moveIn(M, ex, plan, res, nw, `the nearest load in ${UIn(M)}`);
+  }
+  function moveIn(M, ex, plan, res, nw, why) {
+    if (res.w == null || Math.abs(nw - res.w) < 1e-9) return res;
     const out = swapWIn(M, ex, res, nw);
     if (nw > res.w + 1e-9 && res.tgt && res.tgt.kind === "reps") {
       const lbl = `${loadLabelIn(M, ex, nw)}${ex.bw ? "" : " " + UIn(M)}${loadNote(ex)}`;
       return {
         ...out,
-        text: `${res.last ? res.last + " " : ""}${lbl} is the nearest load in ${UIn(M)} to what you did: aim for ${plan.repMin}+ reps in every set.`,
+        text: `${res.last ? res.last + " " : ""}${lbl} is ${why} to what you did: aim for ${plan.repMin}+ reps in every set.`,
         target: `${lbl} for ${plan.repMin}+ reps in every set`,
         tgt: { kind: "load", w: nw, repMin: +plan.repMin, prevBest: res.tgt.prevBest }
       };
     }
+    if (res.top == null) return out;
     const was = fmtWIn(M, res.w - res.top), now = fmtWIn(M, nw - res.top);
     const say = (t) => t.replace(`add ${was} ${UIn(M)}`, `add ${now} ${UIn(M)}`).replace(`take ${was} ${UIn(M)} of help off`, `take ${now} ${UIn(M)} of help off`);
     out.text = out.last && out.text.startsWith(out.last) ? out.last + say(out.text.slice(out.last.length)) : say(out.text);
@@ -6123,6 +6154,8 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       if (L) return rackGapIn(M, L, at);
       const gr = rackGridIn(M, ex, plan, at);
       if (gr) return at != null && at > 0 && offGrid(M, ex, plan, at) ? gridStep(M, gr, at, 1) - at : gr;
+      const G = plateGridIn(M, ex, plan);
+      if (G && at != null && at > 0 && Math.abs(plateAt(G, at, -1) - at) > 1e-6) return plateAt(G, at, 1) - at;
       const gs = gymStepIn(M, ex);
       if (gs) return gs;
     }
@@ -6235,6 +6268,9 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       const c = gridFloor(M, og, to, rackTolIn(M));
       return c >= first - 1e-6 ? Math.min(dn, c) : first;
     }
+    const G = plateGridIn(M, ex, plan);
+    if (G)
+      return from <= G.bar + 1e-6 ? Math.max(0, from) : Math.min(plateAt(G, to, -1), plateAt(G, from - G.step / 2, -1));
     const step = incOfIn(M, ex, plan, from);
     let w;
     if (step > 0) {
@@ -6258,6 +6294,11 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     if (og) {
       const c = gridFloor(M, og, to, rackTolIn(M));
       return c >= gridStep(M, og, from, 1) - 1e-6 ? c : null;
+    }
+    const G = plateGridIn(M, ex, plan);
+    if (G) {
+      const c = plateAt(G, to, -1);
+      return c > from + 1e-6 ? c : null;
     }
     const step = incOfIn(M, ex, plan, from);
     if (!(step > 0)) return null;

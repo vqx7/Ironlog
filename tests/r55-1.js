@@ -16,6 +16,9 @@
 //   - imports keep Strong's workout notes and durations, and Hevy's
 //     descriptions, durations and supersets, the supersets in the routine a
 //     first-run import makes (V 2026-10-19);
+//   - Your gym's plates on a barbell lift logged off them: the next load, the
+//     lighter day and the warm-ups are loads the bar and the plates on hand
+//     make, in lb and kg (327 c); with Your gym not set, as before (a guard);
 //   - Type or dictate sets asks before a set far off, as a tick does, the sets
 //     in range filled and ticked (327 a), and fills sets in range as before (a
 //     guard).
@@ -234,6 +237,43 @@ const ses = (id, date, exId, rr, sets, extra) => Object.assign({ id, date, dayId
     const day = hv.days.find(d => d.startsWith('Upper A:')) || '';
     const grp = id => ((day.split(':')[1] || '').split(',').find(x => x.startsWith(id)) || '').split('@')[1] || null;
     ok(hv.s.length === 2 && hv.s.every(x => x === 'Upper A|Short on time|71' || x === 'Upper A|Short on time|70') && grp('bench') && grp('bench') === grp('bbRow') && !grp('dbCurl'), 'a Hevy file on a first run: each session keeps its description and minutes (17:29 to 18:40), and the routine made from it has bench and rows in one superset, curls alone (r55 kept none of it)', { s: hv.s, day });
+  }
+
+  // ---- 327 c: Your gym's plates on a barbell lift logged off them. Bench at 230 lb, then the 2.5 lb plates turned off in Your
+  // gym (a 45 lb bar and 5 lb plates make 45 + 10n). r55 suggested 240, 230 or 200, a lighter day of 200 or 180, and warm-ups
+  // of 90, 140, 130, 80 and 120, none of them loadable.
+  {
+    const onLb = lb => { const k = (lb - 45) / 10; return Math.abs(k - Math.round(k)) < 1e-3 && lb >= 45 - 1e-6; };
+    const onKg = kg => { const k = (kg - 20) / 5; return Math.abs(k - Math.round(k)) < 1e-3 && kg >= 20 - 1e-6; };
+    const readBench = async (unit, plate) => {
+      await ev(() => { const L = window.__ironlog; delete L.state.settings.gym; L.state.settings.barKg = undefined; L.saveNow(); L.ui.tab = 'settings'; L.ui.folds['settings:gym'] = true; L.render(); });
+      await page.click(`[data-act="gymPlate"][data-v="${plate}"]`); await wait(120);
+      await startDay(0);
+      const k = unit === 'lb' ? 1 / LB : 1;
+      const b = await ev(() => { const L = window.__ironlog; const d = L.state.draft; const bi = d.ex.findIndex(x => x.exId === 'bench'); L.ACT.wAdd({ dataset: { b: String(bi) } }); L.ACT.wAdd({ dataset: { b: String(bi) } }); const b = d.ex[bi]; return { sw: b.sw, warm: b.sets.filter(x => x.warm).map(x => x.w), text: b.text || b.target }; });
+      await ev(() => { const L = window.__ironlog; L.state.draft = null; L.saveNow(); L.render(); });
+      const light = await ev(() => { const L = window.__ironlog; const g = L.suggest('bench', L.planFor('bench'), { light: true }); return g.w; });
+      return { sw: b.sw * k, warm: b.warm.map(w => w * k), light: light * k };
+    };
+    await ev(() => { const L = window.__ironlog; L.state.settings.unit = 'lb'; L.saveNow(); });
+    const lbs = [];
+    for (const reps of [10, 8, 4]) {
+      await log([ses('g1', '2026-10-01', 'bench', [6, 10], Array(4).fill([230 * LB, reps])), ses('g2', '2026-10-08', 'bench', [6, 10], Array(4).fill([230 * LB, reps]))]);
+      lbs.push({ reps, ...(await readBench('lb', 2.5)) });
+    }
+    const allLb = lbs.every(x => onLb(x.sw) && onLb(x.light) && x.warm.length >= 2 && x.warm.every(onLb));
+    ok(allLb && lbs[0].sw > 230 && lbs[0].sw <= 245 && lbs[1].sw <= 230 && lbs[2].sw < 230, 'bench at 230 lb, the 2.5 lb plates off: after 230 x 10, 8 and 4 the next load, the lighter day and the warm-ups are all loads a 45 lb bar and 5 lb plates make, up after the top of the range and not up otherwise (r55: 240, 230, 200, warm-ups 90 and 140)', lbs.map(x => ({ reps: x.reps, sw: +x.sw.toFixed(2), light: +x.light.toFixed(2), warm: x.warm.map(w => +w.toFixed(2)) })));
+    await ev(() => { const L = window.__ironlog; L.state.settings.unit = 'kg'; L.saveNow(); });
+    await log([ses('k1', '2026-10-01', 'bench', [6, 10], Array(4).fill([102.5, 10])), ses('k2', '2026-10-08', 'bench', [6, 10], Array(4).fill([102.5, 10]))]);
+    const kgs = await readBench('kg', 1.25);
+    ok(onKg(kgs.sw) && onKg(kgs.light) && kgs.warm.every(onKg) && kgs.sw > 102.5, 'in kg, bench at 102.5 kg with the 1.25 kg plates off: the next load, the lighter day and the warm-ups are loads a 20 kg bar and 2.5 kg plates make (r55: 107.5, 92.5, 87.5)', kgs);
+    // A guard: with every plate on hand, 230 lb is loadable and goes up as before, by 5 lb.
+    await ev(() => { const L = window.__ironlog; L.state.settings.unit = 'lb'; L.saveNow(); });
+    await log([ses('h1', '2026-10-01', 'bench', [6, 10], Array(4).fill([230 * LB, 10])), ses('h2', '2026-10-08', 'bench', [6, 10], Array(4).fill([230 * LB, 10]))]);
+    await ev(() => { const L = window.__ironlog; delete L.state.settings.gym; L.saveNow(); });
+    const full = await ev(() => { const L = window.__ironlog; return L.suggest('bench', L.planFor('bench'), {}).w / 0.45359237; });
+    ok(Math.abs(full - 235) < 0.01, 'a guard: with Your gym not set, 230 lb x 10 x 4 still goes to 235', { full });
+    await ev(() => { const L = window.__ironlog; delete L.state.settings.gym; L.state.settings.unit = 'kg'; L.saveNow(); L.render(); });
   }
 
   if (P.errors.length) ok(false, 'no page errors', P.errors);
