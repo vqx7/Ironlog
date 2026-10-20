@@ -422,7 +422,7 @@ const ACT={
       if(!acct.user&&AUTH()){confirmBox('Sign in first',`This test version keeps a separate log. Sign in with your ${APP_NAME} account to copy your log in. Your log in ${APP_NAME} stays as it is.`,'Sign in',()=>ACT.acctOpen({dataset:{mode:'signin'}}));return;}
       toast(err?`Could not read your ${APP_NAME} log: ${err.message}`:`No ${APP_NAME} log found for this account or on this phone.`,null,6000);return;}
     const n=realCount(st);st.draft=null;
-    const go=()=>{snapshot();setState(st);commit();closeModal();ui.tab='today';render();toast(`Copied ${n} session${n===1?'':'s'} from ${APP_NAME}. ${APP_NAME} is unchanged.`,true);};
+    const go=()=>{snapshot();setState(st);if(!cloud.on)cloudStop(true);commit();closeModal();ui.tab='today';render();toast(`Copied ${n} session${n===1?'':'s'} from ${APP_NAME}. ${APP_NAME} is unchanged.`,true);};
     if(realCount(state)||state.draft)confirmBox('Replace the preview log?',`Your ${APP_NAME} log has ${n} session${n===1?'':'s'}. Copying replaces everything in this test version; your log in ${APP_NAME} stays as it is. Undo can step this back.`,'Copy my log',go);
     else go();
   },
@@ -1023,9 +1023,9 @@ m.err=`Could not read that. Try the pattern 225x5, 5, 4 ${rirScale()==='rpe'?'rp
     const ex=d.ex.map(savedEx).filter(b=>b.sets.length); // savedEx (session.ts): one source with a first link keeping another device's workout (r55)
     // Side by side, the same lift is saved as one exercise (r34.2, V); apart, each stays where it was done.
     const exJ=joinAdjacent(ex);ex.length=0;ex.push(...exJ);
-    const cardio=(d.cardio||[]).filter(c=>c.min>0).map(c=>cleanCardio({...c,date:d.date}));
+    const cardio=draftCardio(d).map(c=>cleanCardio(c));
     if(!ex.length){
-      if(cardio.length&&!d.editingId){state.cardio.push(...cardio);state.draft=null;commit();stopTimer();wakeOff();ui.todayDay=null;window.scrollTo(0,0);render();toast('Cardio saved. No lifting session was recorded.');return;}
+      if(cardio.length&&!d.editingId){putById(state.cardio,cardio);state.draft=null;commit();stopTimer();wakeOff();ui.todayDay=null;window.scrollTo(0,0);render();toast('Cardio saved. No lifting session was recorded.');return;}
       toast('Mark at least one set done');return;}
     // A blank load on a weighted lift used to save silently as a real 0 set,
     // which drags down volume load and still counts toward your weekly sets.
@@ -1038,7 +1038,7 @@ m.err=`Could not read that. Try the pattern 225x5, 5, 4 ${rirScale()==='rpe'?'rp
       const sess={id:d.editingId||d.id,date:d.date,dayIdx:d.dayIdx,dayId:d.dayId||null,dayName:(d.dayName||'').trim()||'Session',routineId:d.routineId,ex,notes:d.notes||'',durMin,deload:!!d.deload,light:!!d.light,free:d.free?true:undefined,chk:cleanChk(d.chk)||undefined};
       // When it started: kept on an edit, else the start (or now, for a past workout entered later).
       {const was=d.editingId?state.sessions.find(x=>x.id===d.editingId):null;const t=was?was.t:(d.startedAt||Date.now());if(t)sess.t=t;const pw=d.editingId||d.free?undefined:pwOf(state.routines,d.routineId);if(pw)sess.pw=pw;} // and, new, what its routine planned a week (r55); an edit keeps the session's own (keepExtra below)
-      if(!d.editingId)state.cardio.push(...cardio);
+      if(!d.editingId)putById(state.cardio,cardio);
       /* An RIR check offered and passed over waits 3 weeks, as Not now does
          (r32, from the third review: it was offered every session from the
          fourth to the twelfth). Read before the session is saved, since the
@@ -1051,7 +1051,7 @@ m.err=`Could not read that. Try the pattern 225x5, 5, 4 ${rirScale()==='rpe'?'rp
          order, so one moved during the edit keeps them; sets are what the edit changes. */
       if(d.editingId){const i=state.sessions.findIndex(s=>s.id===d.editingId);if(i>=0){const o=state.sessions[i];sess.demo=o.demo;
         keepExtra(o,sess);const used=new Set();sess.ex.forEach(b=>{const ob=o.ex.find(x=>x.exId===b.exId&&!used.has(x));if(ob){used.add(ob);keepExtra(ob,b);}});state.sessions[i]=sess;}else state.sessions.push(sess);}
-      else state.sessions.push(sess);
+      else putById(state.sessions,[sess]); /* by id: the other phone's copy of this workout, kept at its first link, is replaced, never held twice (r55, the second review) */
       /* A real session saved while demo data is loaded (r30): the demo goes,
          so stats never mix generated sessions with yours (the review saw 33
          sessions, demo and real, in one set of numbers, and the demo note
@@ -1263,7 +1263,7 @@ m.err=`Could not read that. Try the pattern 225x5, 5, 4 ${rirScale()==='rpe'?'rp
   demoLoad(){confirmBox('Load demo data?','Adds 8 weeks of generated sessions tagged as demo, based on your active routine. Your own logs are not changed.','Load demo data',()=>{const first=demoFirstRun();demoKeep();
     // On a first run the targets fit the routine, as picking it would (r29);
     // demoRestore puts the settings back when the demo is cleared.
-    if(first)fitTargets(activeRoutine());makeDemo();ui.tab='dash';window.scrollTo(0,0);render();toast('Demo data loaded');});},
+    if(first)fitTargets(activeRoutine());if(!cloud.on)cloudStop(true);makeDemo();ui.tab='dash';window.scrollTo(0,0);render();toast('Demo data loaded');});},
   demoStart(){state.sessions=state.sessions.filter(s=>!s.demo);state.bodyweights=state.bodyweights.filter(b=>!b.demo);state.measurements=state.measurements.filter(m=>!m.demo);demoRestore();commit();ui.tab='today';ui.folds={};window.scrollTo(0,0);render();},
   demoClear(){snapshot();stripDemo(state);demoRestore();commit();render();toast('Demo data cleared',true);},
   resetAll(){confirmBox('Erase everything?',`All routines, sessions, custom exercises, and body data will be deleted${cloud.on?' on this device and in your cloud copy':' on this device'}. Export a backup first if you might want it.`,'Erase everything',()=>{snapshot();setState(normalize(null));if(!cloud.on)cloudStop(true);commit();ui.tab='today';render();toast('Everything erased',true);},true);}

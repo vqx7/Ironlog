@@ -1,6 +1,6 @@
 /* ---------- account (standalone app) ---------- */
 const ACCT_LATER=KEY+'.acctLater';
-function cloudStop(forget){ // forget: the log or the account is gone; else the sync notes stay with the copy kept, so signing back in to that account merges against them, as a sync does (r55, the audit: a first link let the kept copy undo edits and bring back deletions made since on other phones)
+function cloudStop(forget){ // forget: the log or the account is gone; else the sync notes stay with the copy kept, so signing back in to that account merges against them, as a sync does (r55, the audit: a first link let the kept copy undo edits and bring back deletions made since on other phones). A log replaced while signed out (Erase everything, a backup restored, Copy my log in, demo data loaded) is no longer that copy, so each of those forgets them: the next sign-in is a first link, which removes nothing and leaves demo data out (r55, the second review: a restored backup deleted the account's other sessions on every phone)
   clearTimeout(cloud.t);cloud.on=false;cloud.db=null;cloud.uid=null;if(forget){cloud.acct=null;cloud.meta={};cloud.editAt={};cloud.last=null;}
   cloud.retry=0;saveMeta();setCloud('local');
 }

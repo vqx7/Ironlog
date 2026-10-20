@@ -174,7 +174,7 @@ document.addEventListener('change',e=>{
     else if(s.done){refreshPR(bi,si,false);afterSet(bi,si);if(isMissed(s))toast(MISSED_SAID);}
     saveSoon();return;}
   if(t.dataset.f){
-    if(t.dataset.f==='w'&&state.draft){const s=draftSet(t);if(!s)return;if(s.done&&oddLoad(state.draft.ex[+t.dataset.b],+t.dataset.s,state.draft.date)){setDone(+t.dataset.b,+t.dataset.s,false);setDone(+t.dataset.b,+t.dataset.s,true);return;}/* a ticked set's load changed to one far off asks too (r55) */if(s.done){refreshPR(+t.dataset.b,+t.dataset.s,false);afterSet(+t.dataset.b,+t.dataset.s);}mixCheck(+t.dataset.b,+t.dataset.s);if(fillLoads())carryLoad(+t.dataset.b,+t.dataset.s);}
+    if(t.dataset.f==='w'&&state.draft){const s=draftSet(t);if(!s)return;const bi=+t.dataset.b,si=+t.dataset.s;const rf=!!ui.refix&&ui.refix.s===si&&blkIdx(ui.refix.b)===bi;if(rf)ui.refix=null;if(s.done&&oddLoad(state.draft.ex[bi],si,state.draft.date)){setDone(bi,si,false);setDone(bi,si,true,true);return;}/* a ticked set's load changed to one far off asks too, unticked until it is answered; Log it, or the load fixed after Fix it, ticks it again, its rest not started over (r55; the second review: after Fix it it stayed unticked, and Log it restarted the rest) */if(rf&&!s.done)setDone(bi,si,true,true);else if(s.done){refreshPR(bi,si,false);afterSet(bi,si);}mixCheck(bi,si);if(fillLoads())carryLoad(bi,si);}
     if(t.tagName==='SELECT'&&state.draft){
       const s=draftSet(t);if(!s)return;const n=numIn(t.value);
       s.rir=n==null?null:Math.min(Math.max(n,0),10);

@@ -335,6 +335,7 @@ Status: to do whenever you are at the gym; tell Claude what you see.
 - Auto-mark with the keyboard's Done on a grey reps field; the 3D body's drag and tap; the Add to Home Screen guide on iOS 26 Safari.
 - The app signing itself in after a confirmation link; a past workout from the week bar; the light Today card; a screenshot attached to a report.
 - From r54, in the preview (PENDING 311 f, 322; no browser here has an on-screen keyboard), in Safari and in the home-screen app: sign in with a wrong password, then tap the email field and change it without closing the sheet; the sheets you type in (sign in, create account, a problem report, a goal, a note) open tall with their fields at the top, so the field you tap stays in view with the keyboard up, nothing moves up and down as it comes, and nothing of the page shows under the sheet.
+- r55, in the preview (pull request #48): tick a set with 0 reps (it shows as missed); type 1000 on a bench set and tick it (it asks Log it or Fix it); change a ticked set's load to 1000, tap Fix it, type the right load (the set stays ticked); Settings > More shows one demo button and the version; save one tape measurement, then another the same day (one entry with both); in the preview, sign out with Keep on this phone, log a set or two, and sign back in (everything is still there, the new sets included).
 
 ## Reminders
 - Renew the `ironlog-feedback` token (B3) before it expires, a year after you make it. Claude writes the date here when you say B3 is done.

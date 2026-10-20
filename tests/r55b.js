@@ -16,6 +16,13 @@
 //   - from the independent review of r55: demo data stays out of an empty
 //     account too, a routine built before a first sign-in is kept, and of two
 //     workouts in progress the other device's ticked sets are saved.
+//   - from the second review of r55 (each failing on the build it reviewed,
+//     `node tests/r55b.js <a dist folder built from 3825898>`): a backup
+//     restored or demo data loaded while signed out keeping a copy forgets the
+//     sync notes, so signing back in deletes nothing and uploads no demo data;
+//     the other device's workout kept at a first sign-in keeps its check-in,
+//     its start and its cardio, and is in that device's History once after it
+//     is finished there.
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
@@ -228,6 +235,70 @@ fs.cpSync(SRC, tmp, { recursive: true });
     const a = await A.ev(() => window.__ironlog.state.sessions.map(x => x.id).join());
     ok(a === 'e1' && sessIn('ten@example.com').join() === 'e1', 'signed out keeping a copy, Erase everything on this phone, then signed back in: the account keeps its log and the phone gets it back (a guard: the copy erased is this phone\'s only)', { a, acc: sessIn('ten@example.com') });
     await A.ctx.close();
+  }
+
+  // ---- The second review of r55: a log replaced while signed out keeping a copy (a backup restored, demo data loaded) is no
+  // longer that copy, so the sync notes kept with it are forgotten and the next sign-in is a first link, which removes nothing.
+  // The reviewed r55 merged the restored backup against the notes, so the sessions the backup did not hold were deleted from the
+  // account and every phone, and loaded demo data went into the account.
+  const signOutKeep = async D => { await D.ev(() => window.__ironlog.ACT.acctSignOut()); await wait(300); await D.ev(() => { const b = [...document.querySelectorAll('#modal button')].find(x => /keep a copy/i.test(x.innerText)); b.click(); }); await wait(2000); };
+  {
+    const A = await account('eleven@example.com', [mk('k1', '2026-10-01', 'One'), mk('k2', '2026-10-03', 'Two'), mk('k3', '2026-10-05', 'Three')]);
+    await A.ev(() => window.__ironlog.flush()); await wait(1000);
+    const B = await device(); await B.signIn('eleven@example.com');
+    const backup = await A.ev(() => { const L = window.__ironlog; const s = JSON.parse(JSON.stringify(L.state)); s.sessions = s.sessions.filter(x => x.id === 'k1'); s.draft = null; return JSON.stringify({ app: 'ironlog', state: s }); });
+    await signOutKeep(A);
+    await A.ev(t => window.__ironlog.importData(t), backup); await wait(250); await A.page.click('#modal [data-act="mOk"]'); await wait(1200);
+    const restored = await A.ev(() => window.__ironlog.state.sessions.map(x => x.id).sort().join());
+    await B.ev(x => { const L = window.__ironlog; L.state.sessions.push(x); L.saveNow(); }, mk('k4', '2026-10-06', 'Four, on B')); await B.ev(() => window.__ironlog.flush()); await wait(1200);
+    await A.signIn('eleven@example.com');
+    await A.ev(() => window.__ironlog.flush()); await wait(1200); await B.ev(() => window.__ironlog.sync()); await wait(1500);
+    const ids = D => D.ev(() => window.__ironlog.state.sessions.map(x => x.id).sort().join());
+    const a = await ids(A), b = await ids(B), acc = sessIn('eleven@example.com').sort().join();
+    ok(restored === 'k1' && a === 'k1,k2,k3,k4' && b === a && acc === a, 'signed out keeping a copy, a backup with one of three sessions restored on that phone, a session logged on the other, then signed back in: every session stays in the account and on both phones (the reviewed r55 deleted the two the backup did not hold, everywhere)', { restored, a, b, acc });
+    await A.ctx.close(); await B.ctx.close();
+  }
+  {
+    const A = await account('twelve@example.com', [mk('d1', '2026-10-01', 'One')]);
+    await A.ev(() => window.__ironlog.flush()); await wait(1000);
+    await signOutKeep(A);
+    await A.ev(() => window.__ironlog.ACT.demoLoad()); await wait(250); await A.page.click('#modal [data-act="mOk"]'); await wait(800);
+    const demoHere = await A.ev(() => window.__ironlog.state.sessions.filter(x => x.demo).length);
+    await A.signIn('twelve@example.com');
+    await A.ev(() => window.__ironlog.flush()); await wait(1200);
+    const acc = sessIn('twelve@example.com'), accW = bwIn('twelve@example.com');
+    ok(demoHere > 10 && acc.join() === 'd1' && !accW.includes('demo'), 'signed out keeping a copy, demo data loaded, then signed back in: the account gets none of the demo sessions or weigh-ins and keeps its own (the reviewed r55 uploaded 27 demo sessions and 28 weigh-ins)', { demoHere, acc: acc.length, demoW: accW.filter(x => x === 'demo').length });
+    await A.ctx.close();
+  }
+  // ---- The other phone's workout kept at a first sign-in is saved as Finish saves it: with its check-in, its start and its
+  // cardio (the reviewed r55 dropped all three). And when that phone then ticks a set before it pulls and finishes, the
+  // workout is in its History once, its cardio once (the reviewed r55 held it twice, under one id, until a reload).
+  {
+    const O = await account('thirteen@example.com', [mk('acc13', '2026-10-01', 'Old phone day')]);
+    await O.ev(() => { const L = window.__ironlog; L.ui.tab = 'today'; L.render(); });
+    await O.page.click('#view [data-act="startSession"]'); await wait(400);
+    for (let s = 0; s < 2; s++) { await O.page.fill(`#view .sg input[data-f="w"][data-b="0"][data-s="${s}"]`, '225'); await O.page.click(`#view [data-act="sDone"][data-b="0"][data-s="${s}"]`); await wait(200); await answer(O); }
+    await O.ev(() => { const L = window.__ironlog; L.ACT.cDraftAdd({ dataset: { when: 'after' } }); L.state.draft.cardio[0].min = 20; L.state.draft.chk = { sleep: 1, energy: 2, joints: 3 }; L.saveNow(); });
+    await O.ev(() => window.__ironlog.flush()); await wait(1200);
+    const o0 = await O.ev(() => { const d = window.__ironlog.state.draft; return { id: d.id, cardio: d.cardio[0].id, t: d.startedAt }; });
+    const B = await firstRun();
+    await B.page.click('#obPage [data-act="obSample"]'); await wait(300);
+    await B.page.click('#modal [data-act="tplPick"][data-k="full3"]'); await wait(400);
+    await B.page.click('#view [data-act="startSession"]'); await wait(400);
+    await B.page.fill('#view .sg input[data-f="w"][data-b="0"][data-s="0"]', '95'); await B.page.click('#view [data-act="sDone"][data-b="0"][data-s="0"]'); await wait(200); await answer(B);
+    await B.signIn('thirteen@example.com');
+    await B.ev(() => window.__ironlog.flush()); await wait(1200);
+    const onB = await B.ev(([id, cid]) => { const S = window.__ironlog.state; const x = S.sessions.find(q => q.id === id); return { chk: x && x.chk ? Object.values(x.chk).join() : null, t: x ? x.t || null : null, cardio: S.cardio.filter(c => c.id === cid).map(c => c.min).join() }; }, [o0.id, o0.cardio]);
+    const accCardio = docs('thirteen@example.com', 's').flatMap(r => (JSON.parse(r.data.json).cardio || []).filter(c => c.id === o0.cardio)).length;
+    ok(onB.chk === '1,2,3' && onB.t === o0.t && onB.cardio === '20' && accCardio === 1, 'a workout in progress on the account\'s phone with a check-in and 20 minutes of cardio, kept in History at a new phone\'s first sign-in: its check-in, its start and its cardio are kept with it, on the new phone and in the account (the reviewed r55 dropped all three)', { onB, accCardio, t: o0.t });
+    // The account's phone ticks a third set before it pulls, then syncs and finishes.
+    await O.page.fill('#view .sg input[data-f="w"][data-b="0"][data-s="2"]', '225'); await O.page.click('#view [data-act="sDone"][data-b="0"][data-s="2"]'); await wait(200); await answer(O);
+    await wait(2500); await O.ev(() => window.__ironlog.sync()); await wait(1500);
+    const stillO = await draftOf(O);
+    await O.ev(() => window.__ironlog.ACT.finish()); await wait(300); await answer(O); await O.ev(() => { const L = window.__ironlog; if (L.ui.modal) L.ACT.mClose(); }); await wait(300);
+    const fin = await O.ev(([id, cid]) => { const S = window.__ironlog.state; return { copies: S.sessions.filter(q => q.id === id).map(q => q.ex.reduce((a, b) => a + b.sets.length, 0)).join(), cardio: S.cardio.filter(c => c.id === cid).length }; }, [o0.id, o0.cardio]);
+    ok(stillO && stillO.id === o0.id && stillO.done === 3 && fin.copies === '3' && fin.cardio === 1, 'that phone then ticks a third set before it pulls and finishes: its History holds the workout once, with its 3 sets, and its cardio once (the reviewed r55 held it twice, 2 sets and 3, until a reload)', { stillO, fin });
+    await B.ctx.close(); await O.ctx.close();
   }
 
   // ---- A problem report opened signed out: signing in from it goes back to it (the journey audit of r54, D13).

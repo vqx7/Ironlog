@@ -724,6 +724,20 @@ const LB = 0.45359237;
     await page.fill(W(1), '1050'); await page.dispatchEvent(W(1), 'input'); await page.dispatchEvent(W(1), 'change'); await wait(150);
     const q2 = await modal();
     ok(q2 && q2.kind === 'confirm' && q2.buttons.join('|') === 'Log it|Fix it', 'and changed afterwards to 1050, the app asks Log it or Fix it before keeping it (r54 kept it silently)', q2);
+    // The second review of r55: after Fix it, the load fixed ticks the set again (the reviewed r55 left it unticked, done count 0),
+    // and Log it keeps the set's rest running instead of starting it over (it went from 5 s left back to the full rest).
+    await page.click('#modal [data-act="mAlt"]'); await wait(150);
+    const focusW = await ev(() => { const a = document.activeElement; return a && a.dataset ? a.dataset.f + ':' + a.dataset.s : null; });
+    await typ(W(1), 105); await wait(150);
+    const fx = await row(1), fxQ = await modal();
+    ok(focusW === 'w:1' && fx.done && near(fx.w, 105 * LB) && fx.r === 7 && !fxQ, 'Fix it, then 105 typed back in: the set is ticked again at 105 x 7, with nothing asked (the reviewed r55 left it unticked)', { focusW, fx, fxQ });
+    await ev(() => { const L = window.__ironlog; L.state.settings.timerMode = 'auto'; L.saveNow(); });
+    await tick(1); // ticked here on any build, so the next case does not hang on this one
+    await ev(() => { window.__ironlog.timer.end = Date.now() + 5000; }); // a rest with 5 s left; starting it over would set it to the full rest
+    await typ(W(0), 1000); await wait(150);
+    const q3 = await modal(); if (q3) { await page.click('#modal [data-act="mOk"]'); await wait(150); }
+    const lg = await row(0), left = await ev(() => Math.round((window.__ironlog.timer.end - Date.now()) / 1000));
+    ok(q3 && q3.buttons.join('|') === 'Log it|Fix it' && lg.done && near(lg.w, 1000 * LB) && left <= 5, 'set 1 changed to 1000 with 5 s of rest left, then Log it: logged and ticked at 1000, and the rest still has 5 s left (the reviewed r55 started it over at the full rest)', { q3: q3 && q3.buttons, lg, left });
     await ev(() => { const L = window.__ironlog; if (L.ui.modal) L.ACT.mClose(); L.state.draft = null; L.saveNow(); L.render(); });
     // A second tape save on the same day adds to the day's entry, with Undo (r54 replaced the arm and chest with the waist alone).
     await log([]);
@@ -740,6 +754,16 @@ const LB = 0.45359237;
     await page.click('#modal [data-act="impGo"]'); await wait(400);
     const mu = await ev(() => { const L = window.__ironlog; if (L.ui.modal) L.ACT.mClose(); const g = id => { const s = L.state.sessions.find(x => x.ex.some(b => b.exId === id)); return s ? Math.round(s.ex.find(b => b.exId === id).sets[0].w * 10) / 10 : null; }; return { curl: g('dbCurl'), rdl: g('rdl') }; });
     ok(mu.curl === Math.round(30 * LB * 10) / 10 && mu.rdl === 100, 'notes with "Curls 30lb" and then "RDL 100kg": curls saved at 30 lb and the RDL at 100 kg (r54 saved the RDL at 100 lb)', mu);
+    // The second review of r55: the unit glued to the x ("100kgx8") and pounds written as # ("225#") are the line's own too.
+    await log([]); await ev(() => { const L = window.__ironlog; L.state.settings.unit = 'lb'; L.saveNow(); });
+    await ev(t => window.__ironlog.impStart({ text: t }), 'Sep 20\nCurls 30lb 3x12\n\nSep 22\nRDL 100kgx8, 100kgx8'); await wait(300);
+    await page.click('#modal [data-act="impGo"]'); await wait(400);
+    const glued = await ev(() => { const L = window.__ironlog; if (L.ui.modal) L.ACT.mClose(); const s = L.state.sessions.find(x => x.ex.some(b => b.exId === 'rdl')); return s ? Math.round(s.ex.find(b => b.exId === 'rdl').sets[0].w * 10) / 10 : null; });
+    await log([]); await ev(() => { const L = window.__ironlog; L.state.settings.unit = 'kg'; L.saveNow(); });
+    await ev(t => window.__ironlog.impStart({ text: t }), 'Sep 22\nSquat 100kg x 5\nBench 225# x 5'); await wait(300);
+    await page.click('#modal [data-act="impGo"]'); await wait(400);
+    const hash = await ev(() => { const L = window.__ironlog; if (L.ui.modal) L.ACT.mClose(); const s = L.state.sessions.find(x => x.ex.some(b => b.exId === 'bench')); return s ? Math.round(s.ex.find(b => b.exId === 'bench').sets[0].w * 10) / 10 : null; });
+    ok(glued === 100 && hash === Math.round(225 * LB * 10) / 10, 'notes with "RDL 100kgx8" after a line in lb, and "Bench 225# x 5" after "Squat 100kg x 5": the RDL saved at 100 kg and the bench at 225 lb (the reviewed r55 saved 100 lb and 225 kg)', { glued, hash });
 
     // A run of 5.2 km in a kg file, imported into a log kept in lb: the preview says it in the log's unit (the audit: "3.23 km").
     await log([]); await ev(() => { const L = window.__ironlog; L.state.settings.unit = 'lb'; L.saveNow(); });

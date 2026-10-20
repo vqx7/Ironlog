@@ -76,7 +76,7 @@ function impFromText(text){
 /* Sets from text are read once the exercise is known, so a bodyweight lift
    may have reps alone. The unit is applied at the end. */
 function impTextSets(it,exo,conv){const out=[];let defW=null;
-  for(const t of it.setsText){let st=impSetsText(t);const lu=/\bkgs?\b|\dkgs?\b/i.test(t)?'kg':/\blbs?\b|\dlbs?\b/i.test(t)?'lb':null;const cv=lu==='kg'?(v=>v):lu==='lb'?(v=>v*LB):conv; // a unit written on the line is that line's (r55, the audit: 100kg under an earlier 30lb was read as 100 lb)
+  for(const t of it.setsText){let st=impSetsText(t);const lu=/(?:\b|\d)kgs?(?![a-wyz])/i.test(t)?'kg':/(?:\b|\d)lbs?(?![a-wyz])|\d\s*#/i.test(t)?'lb':null;const cv=lu==='kg'?(v=>v):lu==='lb'?(v=>v*LB):conv; // a unit written on the line is that line's, glued to the x or as # for pounds too (r55, the audit: 100kg under an earlier 30lb was read as 100 lb; the second review: 100kgx8 and 225#)
     // On a bodyweight lift a bare "3x10" is sets of reps (no load to read); on a weighted lift it stays load x reps.
     if(exo.bw&&!exo.assist)st=st.replace(/(^|[\s,])(\d{1,2})x(\d{1,3})(?=$|[\s,])/g,(m,p,a,b)=>+a<=10&&!/@/.test(st)?p+Array(+a).fill('bwx'+b).join(' '):m);
     // On a weighted lift a bare "3x10" (up to 5 sets, no unit, no load anywhere on the line) is sets of reps with no load:
@@ -297,7 +297,7 @@ function importData(text,after){
   const body=`This backup has ${clean.sessions.length} session${clean.sessions.length===1?'':'s'} and ${clean.routines.length} routine${clean.routines.length===1?'':'s'}.`
     +(dropped?` ${dropped} damaged record${dropped===1?' was':'s were'} skipped.`:'')
     +' It will replace everything currently in the app. You can step this back with Undo.';
-  confirmBox('Replace all data?',body,'Replace my data',()=>{snapshot();setState(clean);commit();closeModal();ui.tab='today';render();toast('Backup imported',true);if(after)after();},true);
+  confirmBox('Replace all data?',body,'Replace my data',()=>{snapshot();setState(clean);if(!cloud.on)cloudStop(true);commit();closeModal();ui.tab='today';render();toast('Backup imported',true);if(after)after();},true);
 }
 /* Demo data looked at before setting up (V, r28): whatever is changed while
    looking around (sections shown or hidden, their order, the timer, RIR,

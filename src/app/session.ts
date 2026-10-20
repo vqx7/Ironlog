@@ -8,6 +8,7 @@ import type { DraftBlock, DraftSet, Session, SessionEx, Target } from './types';
 import { uid, today } from './util';
 import { isMissed, isWork } from './formulas';
 import { fmtDate } from './format';
+import { cleanChk } from './records';
 
 /* ---------- loads and targets ---------- */
 
@@ -246,19 +247,32 @@ export interface DraftLike {
   light?: boolean | undefined;
   free?: boolean | undefined;
   editingId?: string | null | undefined;
+  startedAt?: number | null | undefined;
+  chk?: Session['chk'] | null;
+  cardio?: readonly DraftCardio[] | undefined;
   ex: DraftBlock[];
+}
+
+/** A cardio row inside a workout in progress: what `draftCardio` reads of it. */
+export interface DraftCardio {
+  id?: string | undefined;
+  min?: number | null | undefined;
 }
 
 /* Another device's workout in progress, kept as a session when a first link
    keeps this device's own (r55, from the review: the merge kept one of the
    two and the other's ticked sets were lost on every device). Only what was
-   ticked, as Finish would save it, untimed; an edit of a saved session is
-   not one (that session is already kept). Null when nothing is ticked. */
+   ticked, as Finish would save it, with its check-in and the time it started
+   (the second review of r55: both were dropped), untimed; its cardio rows are
+   kept beside it through draftCardio, as Finish keeps them. An edit of a
+   saved session is not one (that session is already kept). Null when
+   nothing is ticked. */
 /** A workout in progress as a saved session of its ticked sets, or null when none is ticked or it is an edit. */
 export function draftSession(d: DraftLike): Session | null {
   if (d.editingId) return null;
   const ex = joinAdjacent(d.ex.map(savedEx).filter(b => b.sets.length));
   if (!ex.length) return null;
+  const chk = cleanChk(d.chk);
   return {
     id: d.id,
     date: d.date,
@@ -272,8 +286,22 @@ export function draftSession(d: DraftLike): Session | null {
     deload: !!d.deload,
     light: !!d.light,
     free: d.free ? true : undefined,
-    demo: false
+    demo: false,
+    ...(chk ? { chk } : {}),
+    ...(d.startedAt && d.startedAt > 0 ? { t: d.startedAt } : {})
   };
+}
+
+/* The cardio rows of a workout in progress that Finish saves: those with
+   minutes, dated the session's day. Finish and a first link's kept workout
+   read them here, so the two save the same entries under the same ids
+   (normalize then cleans each, as Finish's cleanCardio does). */
+/** A workout in progress's cardio rows with minutes, each dated the session's day. */
+export function draftCardio<C extends DraftCardio>(d: {
+  date: string;
+  cardio?: readonly C[] | undefined;
+}): (C & { date: string })[] {
+  return (d.cardio || []).filter(c => (c.min || 0) > 0).map(c => ({ ...c, date: d.date }));
 }
 
 /* Saved exercises side by side on the same lift become one, sets in order. */

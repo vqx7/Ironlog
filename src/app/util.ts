@@ -143,3 +143,17 @@ export function mulberry(a: number): () => number {
     return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
   };
 }
+
+/* A record saved again under its id replaces the copy there, so one is never
+   held twice: a workout in progress on another phone, kept in History at a
+   first link, and then finished on its own phone under the same id (the
+   second review of r55: History showed it twice until a reload). New ones go
+   at the end, where a push puts them. */
+/** Puts each item into the list by id, replacing one already there under that id. */
+export function putById<T extends { id: string }>(list: T[], items: readonly T[]): void {
+  for (const x of items) {
+    const i = list.findIndex(y => y.id === x.id);
+    if (i >= 0) list.splice(i, 1);
+    list.push(x);
+  }
+}

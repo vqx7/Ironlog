@@ -3,7 +3,7 @@
    legacy parts (10 to 29) read these names as they read their own. Each phase
    of ARCHITECTURE.md moves more code into src/app/ and out of those parts. */
 import { STORAGE_ID, APP_NAME, FILE_PREFIX, PREVIEW_NAME, DISPLAY_VERSION, APP_VERSION, VERSION_LINE, SITE_HOST, SITE_DIR_FALLBACK, THREE_URLS } from './app/config';
-import { esc, uid, pad, iso, parse, addDays, weekStart, daysBetween, today, isNum, numOr, clampN, isDate, median, r1, andList, hashStr, numIn, mulberry } from './app/util';
+import { esc, uid, pad, iso, parse, addDays, weekStart, daysBetween, today, isNum, numOr, clampN, isDate, median, r1, andList, hashStr, numIn, mulberry, putById } from './app/util';
 import { LB, IN, KM_MI, PLATES_LB, PLATES_KG } from './app/units';
 import { MUSCLES, MK, ML, NEW_MUSCLES_V5, TRACK_ONLY, BANDS, EQUIP, EQL, CARDIO, CARDIOL, CWHEN, CWHENL, MEAS, JOINTS, JK, JL, injLabel, exJoints, libExercises, COMMON, isCommon, patternOf, autoCompound, isCompound, noE1, BWF, bwShare, loadMode, rackKind, HARD_EX, LONG_TRIAL, LONG_IDS, profHeavy, COMMON_TIP, commonFirst, nameMatch } from './app/library';
 import { DAYS, MAX_DAYS, dayLabel, defaultRoutine, TEMPLATES, routineFromTemplate, RIR_TGT_TIP, daySets, fixSupersets, linkToggle, move, nextTrainIdx, plannedPerWeek, dropStarter, planItemOf, pwOf, trainOn, routineEmpty, routineSig, sessDayIdx, ssLetters, tplCountLine, trainDaysOf, weekFactor, dayShare } from './app/routines';
@@ -16,7 +16,7 @@ import { BW_MAX_KG, BW_MIN_KG, EXTRA_KEYS, EXTRA_MAX, KNOWN_CARDIO, KNOWN_ITEM, 
 import { PLATE_MODES, dbListOf, gymClean, gymPlates, platesMode } from './app/gym';
 import { CORE_ARR, CORE_FIELDS, baseFor, bodyChunkOf, chunkOf, chunksOf, emptyChunk, isChunkId, legacyBody, hasDemo, realCount, stripDemo, unionById } from './app/chunks';
 import { Hx, canon, merge3List, merge3Val, mergeDraft } from './app/merge';
-import { RIR_OPTS, blockDone, blockRest, editFp, effTarget, effW, draftSession, freeDraft, greyW, hintOnce, joinAdjacent, joinRows, joinable, lastCell, lastDup, lastHead, overSets, sameExOnce, savedEx, sessProgress, targetText, whyTarget } from './app/session';
+import { RIR_OPTS, blockDone, blockRest, editFp, effTarget, effW, draftCardio, draftSession, freeDraft, greyW, hintOnce, joinAdjacent, joinRows, joinable, lastCell, lastDup, lastHead, overSets, sameExOnce, savedEx, sessProgress, targetText, whyTarget } from './app/session';
 import { LOAD_MODES, emptyLoad, estInLoad, loadNote, loadWords } from './app/loads';
 import { BAND_WORDS, prName, prOverall } from './app/prs';
 import { trendEnds, trendScope, trendW } from './app/trend';
