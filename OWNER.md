@@ -2,30 +2,16 @@
 
 Everything that needs you, in one place, with the exact code to paste. Claude keeps this file current: an item moves to Done only when you confirm it, or when Claude can check it from here (and says how it checked). Build work and decisions are tracked in `PENDING.md`; this file is only what you do by hand.
 
-Last updated: r45 live, r46 in a pull request, 2026-10-14.
+Last updated: r54 live, r55 in pull request #48, 2026-10-20.
 
 ## Now, in this order
 
-1. B5, the trigger, then its check: Report a problem from the app and an issue appears in `ironlog-feedback` (steps below).
-2. B6: protect `main` (steps below). Until it is on, nothing stops a change reaching the live app without a pull request.
-3. C6, now (r45 is live): add the code to the confirmation email (5 minutes, below). r45 tells a new person to type that code in the app, since on an iPhone the link opens in Safari instead, so the email must carry it first.
-   D7, any time (with C6 is easiest): a 1 MB limit on each synced document (1 minute, below).
-   A22 (r45): done 2026-10-13 (pull request #36, merged by you; live build 2026.10.13-r45, checked by Claude on the gh-pages branch). Reload on your phone when New version ready shows.
-   A21 (r43 and r44): r43 live 2026-10-13 (pull request #34, merged by you). r44 is pull request #35 (Your training, the Last column, the security suite, faster checks): merge it once its checks pass, then tap Reload on every phone.
-   A20 (r37 to r42): done 2026-10-11 and 12, all live (pull requests #27 to #31 and #33; #32, the restyle, closed unmerged). Live build 2026.10.12-r42, checked by Claude on the gh-pages branch. Reload on your phone when "New version ready" shows.
-   A19 (r35 and r36): done 2026-10-11, both live (pull requests #25 and #26, merged by Claude at your word). Reload on your phone when "New version ready" shows.
-   A18 (r34.2): done 2026-10-11 (pull request #24, merged by you).
-   A17 (r34.1): done 2026-10-10 (pull request #23, merged by Claude at your word; Day 2, Recently deleted can be cleared, the RPE line). Reload on your phone.
-   A16 (r34, includes r33): done 2026-10-10 (pull request #22, merged by Claude at your word "go ahead and merge"; #21 shows as merged with it; live build 2026.10.10-r34, checked by Claude on the gh-pages branch and at https://ironapp.org/LICENSES.txt). Now: open Ironlog on your phone and tap Reload when it says New version ready. Then look at: in a session, a first set much easier or harder than planned (the line under it, and Keep); Settings > Rest timer and logging > Today starts with a blank session; Today > More options > Rest week; + Drop after a set; Settings > General > Weigh-in reminder; Stats on a pull-up or push-up; Sign out; Plan > Exercise library > Most common; Settings > Effort (RIR); Settings > Your gym.
-   Every phone you use: open Ironlog and tap Reload when it says New version ready. A phone still on r32.1 can drop a setting another phone added (Your gym, the effort setting) when both change settings before it updates.
-   A14 (r32.1): done 2026-10-09 (pull request #20, merged by you; live build 2026.10.07-r32.1, checked by Claude on the gh-pages branch).
-   A13 (r32): done 2026-10-07 (pull request #19, merged by you; live build 2026.10.07-r32).
-   A12 (r31.3): done 2026-10-06.
-   A11 (r31.2): done 2026-10-06.
-   A10 (r31.1): done 2026-10-05.
-   A9 (r30, 2026-10-04): done when r31 went live.
+1. A23 (r55, version 2.6): pull request #48. When its checks pass on GitHub, the preview at https://ironapp.org/preview/ is r55: try it on your phone (what to look at is in the pull request and under Checks on your phone), then merge it on GitHub's website if you are happy. Then tap Reload on every phone when New version ready shows.
+2. B5, the trigger, then its check: Report a problem from the app and an issue appears in `ironlog-feedback` (steps below). Status: to do, unless you have done it (Claude cannot see Supabase from here).
+3. C6: add the code to the confirmation email (5 minutes, below). The app asks a new person for the code the email should carry. Status: to do, unless you have done it.
+   D7, any time (with C6 is easiest): a 1 MB limit on each synced document (1 minute, below). Status: to do, unless you have done it.
 4. B7: choose who picks up the tickets.
-5. D6: delete six old branches and stop them piling up (2 minutes, below).
+5. D6: delete the old branches and stop them piling up (2 minutes, below).
 6. D5: lock down every account (two-step verification everywhere, push protection, DNSSEC, Claude's GitHub access limited to Ironlog).
 7. Before friends sign up, decide item 15 in PENDING.md: optional encryption. Today you can read every account's log in Supabase's Table Editor, and the app's privacy line says so. With encryption on, nobody but the owner of a log can read it, and a forgotten passphrase loses that cloud copy for good. You chose to launch without it (2026-09-27); this is the last point to change that before other people's logs are in it.
 8. After that, if you want it: decision 129 (make the repository private). Note that it hides the repository, not the app: every website's code is downloaded to the phone that opens it, so anyone can read the app's code at ironapp.org either way. No secret key is in it (checked 2026-10-04).
@@ -317,7 +303,7 @@ Status: to do. Each step is free and none of them stops Claude from building and
 1. **Your email** (the one every reset link goes to): turn on two-step verification with an authenticator app or a passkey. Everything else can be reset from this inbox, so it comes first.
 2. **GitHub:** your photo > Settings > Password and authentication > enable two-factor authentication (authenticator app or passkey). Save the recovery codes in your password manager.
 3. **GitHub, the Ironlog repository:** Settings > Advanced Security (or Code security) > turn on **Dependabot alerts**, **Secret Protection** and **Push protection**. They warn you if a key is ever committed by mistake. The repository stays public for now: free GitHub Pages needs that, and nothing secret is in it (the Supabase keys in it are the public ones; row level security protects the data). Making it private is decision 129 in PENDING.md.
-4. **GitHub, B6:** protect main (steps above). After that nothing reaches the live app without passing every test.
+4. **GitHub, B6:** protect main: done 2026-10-15 (B6 above).
 5. **GitHub, what Claude can reach:** your photo > Settings > Applications > Installed GitHub Apps > the Claude app > Configure > Repository access: **Only select repositories**, with `Ironlog` (and `ironlog-feedback` only if you want Claude to read tickets later). You can revoke it here at any time.
 6. **Supabase:** your account (top right) > Account preferences > Security > enable multi-factor authentication. Then Authentication > Sign In / Providers > Email: keep **Confirm email** on. Then Advisors > Security Advisor > Refresh: only the Leaked Password Protection warning should remain (Pro plan; the app checks passwords itself).
 7. **Cloudflare:** My Profile > Authentication > enable two-factor. Then your domain > DNS > Settings > **Enable DNSSEC** (one tap on a Cloudflare-registered domain). Domain Registration > Manage > check **Registrar lock** is on.
@@ -326,10 +312,10 @@ Status: to do. Each step is free and none of them stops Claude from building and
 10. **Never paste** the Supabase secret key, a GitHub token or the Resend key into a chat, the app or the repository. They belong only in the dashboards named in B4 and C4.
 
 ### D6. Old branches
-Status: to do. Claude's GitHub access cannot delete branches.
-Every one of these is already in `main`, so nothing is lost.
-1. github.com/vqx7/Ironlog/branches > tap the trash icon on `keep-domain`, `r26`, `r27`, `r28`, `r29`, `r29.4`, `r29.5`, `r30`, `r30.1`, `r31`, `r31.1`, `r31.3`, `r32`, `r32.1`, `r33`, `r34`, `r34.1`, `r34.2`, `r35`, `r36`, `r37`, `r38`, `r39`, `r40`, `r41` and `r42-copy` (checked by Claude 2026-10-12 with git on a full clone: each one is already inside `main`, so nothing is lost). `r42-look` holds the two commits of the restyle you turned down (pull request #32, closed); delete it too unless you want it kept for reference. `r31.2` holds one commit that is not in `main`, a first-page layout that r31.3 replaced the same day and that is live in its newer form; delete it too unless you want that old version kept. Keep `main` and `gh-pages`. Claude tried to delete them on 2026-10-10 and this session is not allowed to delete branches.
-2. So it does not happen again: Settings > General > Pull Requests > tick **Automatically delete head branches**. Each branch then goes when its pull request is merged. (Still off as of 2026-10-10, checked by Claude.)
+Status: to do (checked by Claude on 2026-10-20: the branches below are on GitHub, and Automatically delete head branches is still off). Claude's GitHub access cannot delete branches.
+The first seven are wholly in `main` (GitHub shows each 0 commits ahead of it), so deleting them loses nothing. Leave `r55` until pull request #48 is merged.
+1. github.com/vqx7/Ironlog/branches > tap the trash icon on `modular`, `modular-2`, `r48`, `r51`, `r52`, `r53` and `r54`. Two more hold commits that are not in `main`, your call: `r42-look` (the restyle you turned down, pull request #32) and `r31.2` (one commit pushed after its pull request #17 merged).
+2. So it does not happen again: Settings > General > Pull Requests > tick **Automatically delete head branches**. Each branch then goes when its pull request is merged.
 
 ### D7. A size limit on each synced document (r45, item 286, 1 minute)
 Status: to do, any time (with C6 is easiest). Tables made before r45 have no limit, so one account could fill the free plan's 500 MB database; the app's largest document is tens of kilobytes, so nothing changes in the app.
@@ -354,6 +340,8 @@ Status: to do whenever you are at the gym; tell Claude what you see.
 - Renew the `ironlog-feedback` token (B3) before it expires, a year after you make it. Claude writes the date here when you say B3 is done.
 
 ## Done
+- A9 to A22 (r30 to r45, 2026-10-04 to 2026-10-13), and r46 to r54 since: every release merged and published (pull requests #13 to #47; #32, the restyle, closed unmerged). r54 is live, build 2026.10.18-r54, checked by Claude on the gh-pages branch on 2026-10-20. Each release's own line is in this file's git history.
+- B6, protect main: done 2026-10-15 (details under B6).
 - The tab bar on iOS 26 home-screen apps (r51): two iPhone users confirmed it stays on the bottom edge (2026-10-17).
 - Supabase Part 1 (project, `docs` table, keys) and your account, with real sync confirmed (2026-09-27).
 - Delete my account function and keep-alive `ping()` deployed; checked from the build machine: the function answers 405 "Use POST", `ping()` returns "ok" (2026-09-27).
