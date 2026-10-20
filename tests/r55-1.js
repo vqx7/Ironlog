@@ -3,6 +3,9 @@
 // reproduced on r55 with the real buttons before it was fixed. Each case fails
 // on r55 (`node tests/r55-1.js baselines/r55.html`) unless it says it guards
 // what r55 already did:
+//   - a 0 ticked at a weight well under the session's working load asks, Log
+//     it as missed or Fix it (325 a), and at or near it is logged as missed at
+//     once (a guard);
 //   - a change of units is never a PR: 100 kg x 8, units to lb, then 220.5 x 8
 //     typed, as the Last column shows it, is the same load (327 b);
 //   - a lift trained in two rep ranges, back after a break, restarts each
@@ -135,6 +138,35 @@ const ses = (id, date, exId, rr, sets, extra) => Object.assign({ id, date, dayId
     const c = await quick('100x8, 100x8');
     ok(!c.m && /^100x8\* 100x8\*/.test(c.sets) && /2 sets filled and marked done/.test(await toastText()), 'a guard: "100x8, 100x8" fills and ticks both at once, and says so', c);
     await ev(() => { const L = window.__ironlog; L.state.draft = null; L.saveNow(); L.render(); });
+  }
+
+  // ---- 325 a (V 2026-10-19): a 0 ticked at a light weight asks first, Log it as missed or Fix it; at or near the working load a 0
+  // is logged as missed at once, as in r55. Bench 100 x 8 x 4 before, so the session's working load is 100 kg.
+  {
+    await log([ses('z1', '2026-10-01', 'bench', [6, 10], Array(4).fill([100, 8])), ses('z2', '2026-10-08', 'bench', [6, 10], Array(4).fill([100, 8]))]);
+    await ev(() => { const L = window.__ironlog; L.state.settings.autoDone = false; L.saveNow(); });
+    await startDay(0);
+    await ev(() => { const L = window.__ironlog; const d = L.state.draft; d.ex = d.ex.filter(b => b.exId === 'bench'); L.saveNow(); L.render(); });
+    const sw = await ev(() => window.__ironlog.state.draft.ex[0].sw);
+    await typ(W(0, 0), 60); await typ(R(0, 0), 0); await page.click('[data-act="sDone"][data-b="0"][data-s="0"]'); await wait(150);
+    const q = await modal(), q0 = await ev(() => window.__ironlog.state.draft.ex[0].sets[0].done);
+    ok(sw === 100 && q && q.kind === 'confirm' && q.buttons.join('|') === 'Log it as missed|Fix it' && !q0, '60 kg x 0 ticked with a 100 kg working load: it asks Log it as missed or Fix it, the set waiting unticked (r55 logged it as missed at once)', { sw, q, q0 });
+    if (q) { await page.click('#modal [data-act="mAlt"]'); await wait(150); }
+    const fixR = await ev(() => { const a = document.activeElement; return a && a.dataset ? a.dataset.f + ':' + a.dataset.s : null; });
+    await typ(R(0, 0), 8); await page.click('[data-act="sDone"][data-b="0"][data-s="0"]'); await wait(150);
+    const fixed = await ev(() => { const x = window.__ironlog.state.draft.ex[0].sets[0]; return x.w + 'x' + x.r + (x.done ? '*' : ''); });
+    ok(fixR === 'r:0' && fixed === '60x8*', 'Fix it goes to the reps; 8 typed and ticked logs 60 x 8', { fixR, fixed });
+    await typ(W(0, 1), 60); await typ(R(0, 1), 0); await page.click('[data-act="sDone"][data-b="0"][data-s="1"]'); await wait(150);
+    if (await modal()) { await page.click('#modal [data-act="mOk"]'); await wait(150); }
+    const logged = await ev(() => { const x = window.__ironlog.state.draft.ex[0].sets[1]; return x.w + 'x' + x.r + (x.done ? '*' : ''); });
+    ok(logged === '60x0*', 'and Log it as missed logs 60 x 0 as a missed set', { logged });
+    // Guards: at the working load, and within a tenth of it, a 0 is logged as missed at once, as r55 did.
+    await typ(W(0, 2), 100); await typ(R(0, 2), 0); await page.click('[data-act="sDone"][data-b="0"][data-s="2"]'); await wait(150);
+    const g1 = { m: await modal(), done: await ev(() => window.__ironlog.state.draft.ex[0].sets[2].done), t: await toastText() };
+    await typ(W(0, 3), 92.5); await typ(R(0, 3), 0); await page.click('[data-act="sDone"][data-b="0"][data-s="3"]'); await wait(150);
+    const g2 = { m: await modal(), done: await ev(() => window.__ironlog.state.draft.ex[0].sets[3].done) };
+    ok(!g1.m && g1.done && /missed/i.test(g1.t) && !g2.m && g2.done, 'a guard: 100 x 0 and 92.5 x 0 are logged as missed at once, nothing asked', { g1, g2 });
+    await ev(() => { const L = window.__ironlog; if (L.ui.modal) L.ACT.mClose(); L.state.draft = null; L.saveNow(); L.render(); });
   }
 
   if (P.errors.length) ok(false, 'no page errors', P.errors);

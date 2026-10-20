@@ -2882,6 +2882,16 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     if (!s) return null;
     return s.w != null ? s.w : greyW(b, si);
   }
+  function lightZero(b, si) {
+    const s = b.sets[si];
+    if (!s || s.warm || s.drop || !isMissed(s)) return false;
+    let work = b.sw != null && b.sw > 0 ? b.sw : 0;
+    b.sets.forEach((x, i) => {
+      if (i !== si && x.done && !x.warm && !x.drop && isWork(x) && x.w != null) work = Math.max(work, x.w);
+    });
+    const w = effW(b, si);
+    return work > 0 && w != null && w >= 0 && w < work * LIGHTER_LOAD - 1e-9;
+  }
   function effTarget(b) {
     const t = b.tgt;
     if (!t || t.kind !== "reps") return t;
@@ -9175,10 +9185,11 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       if (!s) return;
       const okKey = `${bi}:${si}:${s.r}:${effW(b, si)}`;
       const far = val && oddOk !== okKey && !oddReps(b, s) ? oddLoad(b, si, state.draft.date) : null;
-      if (val && oddOk !== okKey && (far || oddReps(b, s))) {
+      const lz = val && oddOk !== okKey && !far && lightZero(b, si);
+      if (val && oddOk !== okKey && (far || oddReps(b, s) || lz)) {
         const ex = EX(b.exId);
         const fix = far ? "w" : "r";
-        confirmBox(`${setShort(ex, effW(b, si), s.r)}${ex.bw ? "" : " " + U()}?`, `${far || `${s.r} ${ex.timed ? "seconds" : "reps"} is far past your ${rangeWords(b.plan)} and anything logged on this exercise.`} Log it as typed, or go back and fix it.`, "Log it", () => {
+        confirmBox(`${setShort(ex, effW(b, si), s.r)}${ex.bw ? "" : " " + U()}?`, lz ? `0 ${ex.timed ? "seconds" : "reps"} at a weight well under today's working load. Log it as missed, or go back and fix it.` : `${far || `${s.r} ${ex.timed ? "seconds" : "reps"} is far past your ${rangeWords(b.plan)} and anything logged on this exercise.`} Log it as typed, or go back and fix it.`, lz ? "Log it as missed" : "Log it", () => {
           oddOk = okKey;
           setDone(bi, si, true, again);
           saveNow();
