@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="app-build" content="2026.10.19-r55">
+<meta name="app-build" content="2026.10.20-r55.1">
 <title>Ironlog</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -1045,8 +1045,8 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
   var PREVIEW_NAME = `${APP_NAME} Preview`;
   var PREVIEW_LABEL = "Preview";
   var WORDMARK = { mark: "I", strong: "ron", light: "log" };
-  var DISPLAY_VERSION = "2.6";
-  var APP_VERSION = "2026.10.19-r55";
+  var DISPLAY_VERSION = "2.7";
+  var APP_VERSION = "2026.10.20-r55.1";
   var VERSION_LINE = `${DISPLAY_VERSION} (build ${APP_VERSION})`;
   var SITE_HOST = "ironapp.org";
   var SITE_DIR_FALLBACK = "/Ironlog";
@@ -2234,7 +2234,8 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
   function prSameLoad(w, earlier) {
     const u = typedUnit(w);
     if (!u) return w;
-    const lo = w - halfStep(Math.abs(w), u) - 1e-9;
+    const k = u === "lb" ? LB : 1;
+    const lo = w - Math.max(halfStep(Math.abs(w), u), TYPED_STEP * k) - 1e-9;
     let best = w;
     for (const e of earlier)
       if (e < w - 1e-9 && e >= lo && (best === w || e > best) && typedUnit(e) === (u === "kg" ? "lb" : "kg")) best = e;
@@ -3480,6 +3481,17 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     const equip = has(/\bdb\b/) ? "dumbbell" : has(/\bbb\b/) ? "barbell" : has(/cable/) ? "cable" : has(/smith/) ? "smith" : has(/machine/) ? "machine" : has(/pullup|chinup|pushup|dip|plank|situp/) ? "bodyweight" : "other";
     return { primary, equip };
   }
+  function impSpan(dur, start, end) {
+    const d = String(dur || "").toLowerCase();
+    const h = d.match(/(\d+(?:\.\d+)?)\s*h/), m = d.match(/(\d+)\s*m(?!s)/);
+    if (h || m) return (h ? +h[1] * 60 : 0) + (m ? +m[1] : 0);
+    const at = (x) => {
+      const day = impDate(x), t = String(x || "").match(/(\d{1,2}):(\d{2})(?!.*\d:\d)/);
+      return day && t ? Date.parse(`${day}T00:00:00Z`) / 6e4 + +t[1] * 60 + +t[2] : null;
+    };
+    const a = at(start), b = at(end);
+    return a != null && b != null && b > a ? b - a : null;
+  }
   var IMP_COLS = {
     date: [/^date$/, /^(workout date|start_?time|date ?time|when)$/, /^day$/],
     name: [/^(workout name|workout|title|session|routine)$/],
@@ -3502,7 +3514,11 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     note: [/^(notes?|exercise_notes|exercise_note|comment)$/],
     unit: [/^(weight unit|unit|units)$/],
     deload: [/^deload$/],
-    dist: [/^(distance|distance_km|distance_miles)$/]
+    dist: [/^(distance|distance_km|distance_miles)$/],
+    snote: [/^(workout notes?|description)$/],
+    dur: [/^(workout )?duration$/],
+    end: [/^end_?time$/],
+    ss: [/^superset(_id)?$/]
   };
   function impHeader(row) {
     const map = {};
@@ -3552,6 +3568,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       (h) => String(h == null ? "" : h).trim().toLowerCase()
     );
     const ours = heads.some((h) => /^load_(lb|kg)$/.test(h)) && heads.includes("exercise_note");
+    const strong = heads.includes("workout name") && heads.includes("set order");
     const col = (n) => ours && heads.includes(n) ? heads.indexOf(n) : null;
     const cNote = col("session_note"), cMin = col("session_minutes"), cHr = col("avg_hr"), cUnit = col("unit");
     const at = (r, i) => i == null ? "" : String(r[i] == null ? "" : r[i]).trim();
@@ -3638,11 +3655,13 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       const k = date + "|" + name;
       if (!S.has(k)) S.set(k, { date, name, items: /* @__PURE__ */ new Map(), note: "" });
       const ss = S.get(k);
-      if (!ss.note && at(r, cNote)) ss.note = at(r, cNote);
-      const dm = num(at(r, cMin));
-      if (ss.durMin == null && dm != null && dm > 0) ss.durMin = Math.round(dm);
+      const sn = ours ? at(r, cNote) : cell("snote");
+      if (!ss.note && sn) ss.note = sn;
+      const dm = ours ? num(at(r, cMin)) : impSpan(strong ? cell("dur") : "", cell("date"), cell("end"));
+      if (ss.durMin == null && dm != null && dm >= 1 && dm <= 600) ss.durMin = Math.round(dm);
       if (/^(yes|true|1|y)$/i.test(String(cell("deload") || "").trim())) ss.deload = true;
-      if (!ss.items.has(ex)) ss.items.set(ex, { name: ex, sets: [], note: cell("note") });
+      if (!ss.items.has(ex))
+        ss.items.set(ex, { name: ex, sets: [], note: cell("note"), ...cell("ss") ? { ss: cell("ss") } : {} });
       const n = Math.min(Math.max(Math.round(num(cell("sets")) || 1), 1), 20);
       for (let j = 0; j < n; j++) ss.items.get(ex).sets.push({ ...set });
     }
@@ -5397,7 +5416,33 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
 
   // src/app/engine.ts
   function snapUnitIn(M, ex, plan, res, down) {
+    const G = res && res.w != null && !ex.timed ? plateGridIn(M, ex, plan) : null;
+    if (G) return plateSnap(M, ex, plan, res, G, down);
     return gridSnap(M, ex, plan, unitSnap(M, ex, plan, res, down));
+  }
+  function plateGridIn(M, ex, plan) {
+    const g = gymOfIn(M);
+    if (!ex || ex.inc != null || ex.timed || !g || !Array.isArray(g.plates) || !g.plates.length) return null;
+    if (platesMode(ex) !== "bar" || loadMode(ex) !== "total") return null;
+    if (Math.abs(stepReadIn(M, plan && isNum(+plan.inc) ? +plan.inc : STEP_LB) - unitStepIn(M)) > 1e-6) return null;
+    const bar = loadFloorIn(M, ex);
+    if (!(bar > 0)) return null;
+    const mn = Math.min(...g.plates);
+    if (!g.plates.every((x) => Math.abs(x / mn - Math.round(x / mn)) < 1e-6)) return null;
+    return { bar, step: gymK(g, 2 * mn) };
+  }
+  function plateAt(G, w, dir) {
+    const k = (w - G.bar) / G.step;
+    const n = dir > 0 ? Math.ceil(k - 1e-3) : Math.floor(k + 1e-3);
+    return G.bar + Math.max(0, n) * G.step;
+  }
+  function plateSnap(M, ex, plan, res, G, down) {
+    const w = res.w, top = res.top;
+    if (w == null) return res;
+    const dn = plateAt(G, w, -1);
+    if (Math.abs(dn - w) < 1e-6) return res;
+    const nw = !down && top != null && w > top + 1e-6 ? dn > top + 1e-6 ? dn : plateAt(G, top + 1e-6, 1) : dn;
+    return moveIn(M, ex, plan, res, nw, "the nearest load your plates make");
   }
   function unitSnap(M, ex, plan, res, down) {
     if (!res || res.w == null || res.top == null || ex.timed) return res;
@@ -5416,16 +5461,21 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     if (!ex.assist && d < fl - 1e-9) d = Math.ceil(fl / st - 1e-9) * st;
     const nw = kgOfIn(M, d);
     if (Math.abs(nw - res.w) < 1e-9) return res;
+    return moveIn(M, ex, plan, res, nw, `the nearest load in ${UIn(M)}`);
+  }
+  function moveIn(M, ex, plan, res, nw, why) {
+    if (res.w == null || Math.abs(nw - res.w) < 1e-9) return res;
     const out = swapWIn(M, ex, res, nw);
     if (nw > res.w + 1e-9 && res.tgt && res.tgt.kind === "reps") {
       const lbl = `${loadLabelIn(M, ex, nw)}${ex.bw ? "" : " " + UIn(M)}${loadNote(ex)}`;
       return {
         ...out,
-        text: `${res.last ? res.last + " " : ""}${lbl} is the nearest load in ${UIn(M)} to what you did: aim for ${plan.repMin}+ reps in every set.`,
+        text: `${res.last ? res.last + " " : ""}${lbl} is ${why} to what you did: aim for ${plan.repMin}+ reps in every set.`,
         target: `${lbl} for ${plan.repMin}+ reps in every set`,
         tgt: { kind: "load", w: nw, repMin: +plan.repMin, prevBest: res.tgt.prevBest }
       };
     }
+    if (res.top == null) return out;
     const was = fmtWIn(M, res.w - res.top), now = fmtWIn(M, nw - res.top);
     const say = (t) => t.replace(`add ${was} ${UIn(M)}`, `add ${now} ${UIn(M)}`).replace(`take ${was} ${UIn(M)} of help off`, `take ${now} ${UIn(M)} of help off`);
     out.text = out.last && out.text.startsWith(out.last) ? out.last + say(out.text.slice(out.last.length)) : say(out.text);
@@ -5437,9 +5487,14 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     if (!xs.length) return 0;
     return daysBetween(xs[xs.length - 1].date, T);
   }
-  function backDaysIn(M, exId, opts) {
+  function backDaysIn(M, exId, plan, opts) {
     const T = opts.before && isDate(opts.before) ? opts.before : M.today();
-    const xs = (IDXIn(M).byEx[exId] || []).filter((x) => x.date <= T);
+    const all = (IDXIn(M).byEx[exId] || []).filter((x) => x.date <= T);
+    const want = [+plan.repMin, +plan.repMax];
+    const xs = rangeInUse(
+      all.filter((x) => !offTarget(x)),
+      want
+    ) ? all.filter((x) => sameRR(x.rr, want)) : all;
     if (!xs.length) return 0;
     if (afterBreak(xs[xs.length - 1], T)) return daysBetween(xs[xs.length - 1].date, T);
     for (let i = xs.length - 1; i > 0 && offTarget(xs[i]); i--)
@@ -5449,7 +5504,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
   function suggestIn(M, exId, plan, opts) {
     opts = opts || {};
     const ex = EXIn(M, exId);
-    const off = !(opts.deload || opts.light) && !ex.timed ? backDaysIn(M, exId, opts) : 0;
+    const off = !(opts.deload || opts.light) && !ex.timed ? backDaysIn(M, exId, plan, opts) : 0;
     const back = off > BACK_DAYS;
     if (!(opts.deload || opts.light || back) || ex.timed)
       return snapUnitIn(M, ex, plan, suggestCoreIn(M, exId, plan, opts));
@@ -5515,6 +5570,17 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       true
     );
   }
+  function rangeInUse(full, want) {
+    const last = full.filter((x) => !!x.rr && x.rr[0] === want[0] && x.rr[1] === want[1]).pop();
+    if (!last) return false;
+    let prev = last, span = 0;
+    for (const x of full) {
+      if (x.date <= last.date) continue;
+      if (!afterBreak(prev, x.date)) span += daysBetween(prev.date, x.date);
+      prev = x;
+    }
+    return span <= 42;
+  }
   function suggestCoreIn(M, exId, plan, opts) {
     opts = opts || {};
     const T = opts.before && isDate(opts.before) ? opts.before : M.today();
@@ -5524,9 +5590,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     const injM = exInjuryIn(M, ex);
     const full = all ? all.filter((x) => !offTarget(x)) : [];
     const want = [+plan.repMin, +plan.repMax];
-    const exact = (x) => !!x.rr && x.rr[0] === want[0] && x.rr[1] === want[1];
-    const lastEx = full.filter(exact).pop();
-    const inRR = !!lastEx && lastEx.date >= addDays(full[full.length - 1].date, -42);
+    const inRR = rangeInUse(full, want);
     const fullRR = inRR ? full.filter((x) => sameRR(x.rr, want)) : [];
     const exps = all && all.length ? fullRR.length ? fullRR : full.length ? full : all : all;
     const done = all && all.length ? fullRR.length ? all.filter((x) => !lighter(x) && sameRR(x.rr, want)) : full.length ? all.filter((x) => !lighter(x)) : all : [];
@@ -6035,7 +6099,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
         tgt: null,
         easier: null
       };
-    const off = backDaysIn(M, ex.id, opts);
+    const off = backDaysIn(M, ex.id, plan, opts);
     if (off > BACK_DAYS)
       return {
         prev: L0.prev,
@@ -6090,6 +6154,8 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       if (L) return rackGapIn(M, L, at);
       const gr = rackGridIn(M, ex, plan, at);
       if (gr) return at != null && at > 0 && offGrid(M, ex, plan, at) ? gridStep(M, gr, at, 1) - at : gr;
+      const G = plateGridIn(M, ex, plan);
+      if (G && at != null && at > 0 && Math.abs(plateAt(G, at, -1) - at) > 1e-6) return plateAt(G, at, 1) - at;
       const gs = gymStepIn(M, ex);
       if (gs) return gs;
     }
@@ -6202,6 +6268,9 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       const c = gridFloor(M, og, to, rackTolIn(M));
       return c >= first - 1e-6 ? Math.min(dn, c) : first;
     }
+    const G = plateGridIn(M, ex, plan);
+    if (G)
+      return from <= G.bar + 1e-6 ? Math.max(0, from) : Math.min(plateAt(G, to, -1), plateAt(G, from - G.step / 2, -1));
     const step = incOfIn(M, ex, plan, from);
     let w;
     if (step > 0) {
@@ -6226,6 +6295,11 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       const c = gridFloor(M, og, to, rackTolIn(M));
       return c >= gridStep(M, og, from, 1) - 1e-6 ? c : null;
     }
+    const G = plateGridIn(M, ex, plan);
+    if (G) {
+      const c = plateAt(G, to, -1);
+      return c > from + 1e-6 ? c : null;
+    }
     const step = incOfIn(M, ex, plan, from);
     if (!(step > 0)) return null;
     const k = Math.floor((to - from) / step + 1e-6);
@@ -6233,6 +6307,19 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
   }
   var ODD_SESSION = 3;
   var ODD_BEST = 2;
+  function lightZeroIn(M, b, si, date) {
+    const s = b.sets[si];
+    if (!s || s.warm || s.drop || !isMissed(s)) return false;
+    const ex = EXIn(M, b.exId);
+    const w = effW(b, si);
+    if (ex.assist || ex.timed || w == null) return false;
+    const bw = bwLoadIn(M, ex, date);
+    let work = b.sw != null && b.sw > 0 ? bw + b.sw : 0;
+    b.sets.forEach((x, i) => {
+      if (i !== si && x.done && !x.warm && !x.drop && isWork(x) && x.w != null) work = Math.max(work, bw + x.w);
+    });
+    return work > 0 && bw + w >= 0 && bw + w < work * LIGHTER_LOAD - 1e-9;
+  }
   function oddLoadIn(M, b, si, date) {
     const s = b.sets[si];
     if (!s || s.warm || s.drop) return null;
@@ -6369,6 +6456,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
   var incOf = live(incOfIn);
   var heavierLoad = live(heavierLoadIn);
   var oddLoad = live(oddLoadIn);
+  var lightZero = live(lightZeroIn);
   var lighterLoad = live(lighterLoadIn);
   var progStep = live(progStepIn);
   var rackStep = live(rackStepIn);
@@ -7402,6 +7490,15 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
         cloud.on = false;
         setCloud("local");
         render();
+        return;
+      }
+      if (c === "gone") {
+        const A = AUTH();
+        acct.user = null;
+        cloudStop(true);
+        if (A) A.signOut().catch((x) => log("auth", x));
+        render();
+        toast(e.message, null, 8e3);
         return;
       }
       if (c === "quota_exceeded") {
@@ -8522,8 +8619,10 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       let heavyBeat = false, heavyTxt = "";
       if (heavier.length && t.prevBest != null && !ex.timed) {
         let best = null, bs = null;
+        const seen = /* @__PURE__ */ new Set();
+        for (const x of IDX().byEx[b.exId] || []) for (const p of x.pts) seen.add(p.w);
         for (const s of heavier) {
-          const v = e1(bw + (+s.w || 0), +s.r, rirEst(s, ex));
+          const v = e1(bw + prSameLoad(+s.w || 0, seen), +s.r, rirEst(s, ex));
           if (v != null && (best == null || v > best)) {
             best = v;
             bs = s;
@@ -9165,10 +9264,11 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       if (!s) return;
       const okKey = `${bi}:${si}:${s.r}:${effW(b, si)}`;
       const far = val && oddOk !== okKey && !oddReps(b, s) ? oddLoad(b, si, state.draft.date) : null;
-      if (val && oddOk !== okKey && (far || oddReps(b, s))) {
+      const lz = val && oddOk !== okKey && !far && lightZero(b, si, state.draft.date);
+      if (val && oddOk !== okKey && (far || oddReps(b, s) || lz)) {
         const ex = EX(b.exId);
         const fix = far ? "w" : "r";
-        confirmBox(`${setShort(ex, effW(b, si), s.r)}${ex.bw ? "" : " " + U()}?`, `${far || `${s.r} ${ex.timed ? "seconds" : "reps"} is far past your ${rangeWords(b.plan)} and anything logged on this exercise.`} Log it as typed, or go back and fix it.`, "Log it", () => {
+        confirmBox(`${setShort(ex, effW(b, si), s.r)}${ex.bw ? "" : " " + U()}?`, lz ? `0 ${ex.timed ? "seconds" : "reps"} at a weight well under today's working load. Log it as missed, or go back and fix it.` : `${far || `${s.r} ${ex.timed ? "seconds" : "reps"} is far past your ${rangeWords(b.plan)} and anything logged on this exercise.`} Log it as typed, or go back and fix it.`, lz ? "Log it as missed" : "Log it", () => {
           oddOk = okKey;
           setDone(bi, si, true, again);
           saveNow();
@@ -13425,6 +13525,7 @@ ${extraKpis()}</div>`;
       const conv = m.unit === "kg" ? ((v) => v) : ((v) => v * LB);
       const newEx = /* @__PURE__ */ Object.create(null);
       const out = [];
+      const ssOf = {};
       const bad = [];
       const odd = [];
       let timedOff = 0;
@@ -13439,6 +13540,7 @@ ${extraKpis()}</div>`;
       for (const x of m.res.sessions) {
         const date = x.date || m.date;
         const ex = [];
+        const sid = uid(), grp = {};
         for (const it of x.items) {
           const exo = m.pick[it.name] === "new" ? newEx[it.name] : EX(m.pick[it.name]);
           if (!it.setsText && !exo.timed && it.sets.some((q) => q.timed)) {
@@ -13462,8 +13564,10 @@ ${extraKpis()}</div>`;
           const prev = ex.find((b) => b.exId === exo.id);
           if (prev) prev.sets.push(...sets);
           else ex.push({ exId: exo.id, note: it.note || "", rr: null, sets });
+          if (it.ss) grp[exo.id] = it.ss;
         }
-        if (ex.length) out.push({ id: uid(), date, dayIdx: 0, dayId: null, dayName: (x.name || "").slice(0, 60) || "Imported", routineId: "", free: true, ex, notes: x.note || "", durMin: x.durMin || null, deload: !!x.deload, light: false });
+        if (ex.length && Object.keys(grp).length) ssOf[sid] = grp;
+        if (ex.length) out.push({ id: sid, date, dayIdx: 0, dayId: null, dayName: (x.name || "").slice(0, 60) || "Imported", routineId: "", free: true, ex, notes: x.note || "", durMin: x.durMin || null, deload: !!x.deload, light: false });
       }
       const fp = (ss) => ss.date + "|" + ss.ex.map((b) => b.exId + ":" + b.sets.map((q) => q.r).join(",")).sort().join(";");
       const have = new Set(state.sessions.map(fp));
@@ -13493,9 +13597,9 @@ ${extraKpis()}</div>`;
         }
         cardio.push(cleanCardio({ id: uid(), date: c.date, kind: c.kind, min, hr: c.hr || null, when: c.when || "solo", note: c.note || "", dist: c.km != null ? c.km : c.dist > 0 ? m.unit === "kg" ? c.dist : c.dist * KM_MI : null }));
       }
-      return { sessions: fresh, cardio, cardioNoTime, dup, bad, odd, timedOff, newEx: Object.values(newEx).filter((e) => fresh.some((ss) => ss.ex.some((b) => b.exId === e.id))) };
+      return { sessions: fresh, ssOf, cardio, cardioNoTime, dup, bad, odd, timedOff, newEx: Object.values(newEx).filter((e) => fresh.some((ss) => ss.ex.some((b) => b.exId === e.id))) };
     }
-    function routineFromLog(sessions) {
+    function routineFromLog(sessions, ssOf) {
       const all = sessions.filter((x) => !x.demo && x.ex && x.ex.length);
       if (!all.length) return null;
       const byDate = (a, b) => a.date < b.date ? -1 : a.date > b.date ? 1 : 0;
@@ -13589,6 +13693,14 @@ ${extraKpis()}</div>`;
           if (q != null) it.rir = Math.min(4, Math.max(0, Math.round(q)));
           return it;
         });
+        {
+          const sg = ssOf && ssOf[latest.id] || {};
+          const gid = {};
+          for (const it of items) {
+            const k = sg[it.exId];
+            if (k && items.filter((o) => sg[o.exId] === k).length > 1) it.ss = gid[k] || (gid[k] = uid());
+          }
+        }
         return { g, day: { id: uid(), name: g.name, rest: false, items }, ids: lifts(latest) };
       }).filter((d) => d.day.items.length);
       if (!days.length) return null;
@@ -14807,7 +14919,7 @@ ${extraKpis()}</div>`;
         setState(normalize({ ...state, exercises: state.exercises.concat(b.newEx), sessions: state.sessions.concat(b.sessions), cardio: state.cardio.concat(b.cardio), settings: { ...state.settings, onboarded: true } }));
         invalidate();
         const msg = `Imported ${b.sessions.length} session${b.sessions.length === 1 ? "" : "s"}${b.cardio.length ? `, ${b.cardio.length} cardio entr${b.cardio.length === 1 ? "y" : "ies"}` : ""}${b.newEx.length ? `, ${b.newEx.length} new exercise${b.newEx.length === 1 ? "" : "s"}` : ""}`;
-        const inf = first && b.sessions.length ? routineFromLog(state.sessions) : null;
+        const inf = first && b.sessions.length ? routineFromLog(state.sessions, b.ssOf) : null;
         if (inf) {
           const R = inf.routine;
           state.routines = dropStarter(state.routines, state.sessions, starterSigs());
@@ -15369,7 +15481,7 @@ ${JSON.stringify(fb.context, null, 1)}`;
           const parts = {};
           for (const id of /* @__PURE__ */ new Set([...Object.keys(P), ...Object.keys(Q), ...Object.keys(C)])) {
             const q = Q[id] || emptyChunk(id);
-            parts[id] = id === "draft" ? { draft: mergeDraft(Q.draft && Q.draft.draft, C.draft && C.draft.draft, P.draft && P.draft.draft) } : mergeChunk(id, q ? baseOf(id, q) : null, C[id] || emptyChunk(id), P[id] || emptyChunk(id), false, stat);
+            parts[id] = id === "draft" ? { draft: mergeDraft(Q.draft && Q.draft.draft, normalize(JSON.parse(JSON.stringify(state))).draft, P.draft && P.draft.draft) } : mergeChunk(id, q ? baseOf(id, q) : null, C[id] || emptyChunk(id), P[id] || emptyChunk(id), false, stat);
           }
           setState(assemble(parts));
         } catch (x) {
@@ -16026,9 +16138,11 @@ ${JSON.stringify(fb.context, null, 1)}`;
         const got = parseSets(txt, ex, defW, null, rirScale() === "rpe");
         const finish = (list) => {
           const n = fillSets(m.b, list);
-          closeModal();
-          rerenderKeepScroll();
-          toast(`${n} set${n === 1 ? "" : "s"} filled and marked done`);
+          if (!(ui.modal && ui.modal.kind === "confirm")) {
+            closeModal();
+            rerenderKeepScroll();
+            toast(`${n} set${n === 1 ? "" : "s"} filled and marked done`);
+          }
         };
         if (got) {
           finish(got);
@@ -16425,7 +16539,7 @@ ${JSON.stringify(fb.context, null, 1)}`;
               const dd = state.draft;
               if (!dd) return;
               for (const [bi, b] of dd.ex.entries()) for (const [si, s] of b.sets.entries()) if (!s.done && (+s.r > 0 || isMissed(s))) {
-                if (oddReps(b, s) || oddLoad(b, si, dd.date)) {
+                if (oddReps(b, s) || oddLoad(b, si, dd.date) || lightZero(b, si, dd.date)) {
                   setDone(bi, si, true);
                   if (!s.done) return;
                 } else {
@@ -17268,6 +17382,10 @@ ${JSON.stringify(fb.context, null, 1)}`;
         importData($("#mText").value);
       },
       demoLoad() {
+        if (acct.user) {
+          toast("Demo data is for looking around before you sign in, so it stays off your account.", null, 6e3);
+          return;
+        }
         confirmBox("Load demo data?", "Adds 8 weeks of generated sessions tagged as demo, based on your active routine. Your own logs are not changed.", "Load demo data", () => {
           const first = demoFirstRun();
           demoKeep();
@@ -17875,10 +17993,12 @@ ${JSON.stringify(fb.context, null, 1)}`;
             lastAuto = { b: blkRef(bi), s: si, t: Date.now() };
             setDone(bi, si, true);
           }
+        } else if (s.done && isMissed(s)) {
+          setDone(bi, si, false);
+          setDone(bi, si, true, true);
         } else if (s.done) {
           refreshPR(bi, si, false);
           afterSet(bi, si);
-          if (isMissed(s)) toast(MISSED_SAID);
         }
         saveSoon();
         return;
@@ -18658,6 +18778,7 @@ ${JSON.stringify(fb.context, null, 1)}`;
       }
       let si = b.sets.findIndex((x) => !x.done && !x.warm);
       if (si < 0) si = b.sets.length;
+      let far = -1;
       for (const p of list) {
         if (si >= b.sets.length) b.sets.push({ w: null, r: null, rir: null, warm: false, drop: false, done: false });
         const x = b.sets[si];
@@ -18666,10 +18787,15 @@ ${JSON.stringify(fb.context, null, 1)}`;
         x.rir = p.rir;
         x.warm = false;
         x.drop = false;
-        x.done = true;
+        x.done = !oddLoad(b, si, d.date) && !oddReps(b, x);
+        if (!x.done && far < 0) far = si;
         si++;
       }
       saveNow();
+      if (far >= 0) {
+        rerenderKeepScroll();
+        setDone(bi, far, true);
+      }
       return list.length;
     }
     window.__onLib = (which) => {
@@ -18697,7 +18823,7 @@ ${JSON.stringify(fb.context, null, 1)}`;
       return state;
     }, set state(v) {
       setState(v);
-    }, fbContext, FB_CTX_MAX, logCut, logBuf, log, dateIndex, sessionsOn, bestLine, whyTarget, recent4w, weekSessions, fmtDate, fmtDateLong, fbShrink, orderAt, orderRun, dropOnlyLift, profHeavy, appBand, fitRecordOld, prof, profClean, profRule, profPlan, defPlan, defBand, profMoveBands, profApplyList, strengthPick, PROF_DAYS, FOCUS_MAX, estInLoad, keepExtra, EXTRA_MAX, draftPlanMin, pace, paceRatios, sessModelMin, PACE_N, PACE_DAYS, PACE_MIN, plainTemplate, trashTidy, ENV, KEY, COMMON, COMMON_TIP, isCommon, bwEvery, isRestWeek, sessCmp, avgWeeks, weekStreak, coach, noLog, afterSet, adjOn, bwAt, newBlock, cycleState, sortedSessions, addDays, loadIn, gymRack, gymClean, dbListOf, capOf, refreshEx, effShow, rirScale, setStr, libExercises, obGate, obTour, andList, belowMin, aboveMax, starterRoutine, starterSigs, plateList, exBarKg, VOL_MODES, liveLogFetch, regionSrc, fitTargets, firstFullWeek, moveBlock, BANDS, installSheet, siteHost, greyW, effW, greyR, lighterLoad, heavierLoad, incOf, swapPlan, planSetsPerWeek, weekNeed, stepRead, e1inv, rtfAt, rtfOf, rtfBand, calStats, rirEff, isHard, setCredit, tonnage, loadMode, loadWords, loadNote, progStep, jumpCap, setSecs, setupSecs, recovery, rolling7, rankDays, rankExercises, isCompound, patternOf, noE1, whtrLine, exHeadline, remainMin, shortPlan, weekPlan, cycleProjection, lastLighterWeek, avgFirstWeek, avgWait, stallWeeks, weeksAvg, fitFloors, refit, regionBalance, parseHeight, mixCheck, swapCands, eqPlan, exportCSV, importData, chunksOf, assemble, sessionMuscles, TRACK_ONLY, cloud, Hx, mergeChunk, baseOf, sync: () => cq(cloudPull), TEMPLATES, lastRFor, impDate, impRows, impNorm, impMatch, impFromText, impFromTable, impHeader, impBuild, impStart, impXlsx, parseSets, undoStack, undoRestore, undoForget, allTimeBests, bestsBoard, obActive, fmtW, rirUsual, rirEst, routineFromTemplate, plannedSets, map3d: () => ({ state: B3.state, fail: B3.fail, meshes: B3.meshes.length, yaw: B3.yaw, glow: Object.keys(B3.mats).filter((m) => B3.mats[m].emissiveIntensity > 0), canvas: !!document.querySelector("#bm3d canvas"), colors: Object.fromEntries(Object.entries(B3.mats).map(([m, mt]) => [m, "#" + mt.color.getHexString()])), pick: (x, y) => map3dPick(x, y), want: map3dColors() }), cloudState: () => ({ on: cloud.on, status: cloud.status, err: cloud.err, uid: cloud.uid, acct: cloud.acct }), acctUser: () => acct.user, acctWaiting: () => !!acctWait.pw, flush: () => cq(cloudFlush), backupDue, routineUpdates, planFor, platesMode, plateText, chunksOf, IDX, suggest, e1, render, ACT, ui, makeDemo, invalidate, normalize, snapshot, saveNow, timer, weekStats, weekStart, today, EX, blockProgress, dayMinutes, weekStreak, coach, tonnageNow, livePR, movers, stalledIds, muscleStatus, actualAvg4, plannedPerWeek, parseSets, fillSets, newBlock, lastNoteOf, sizeRows, sessionMuscleSets, sessionCapNote, routineClutter, rowBlank, dayReasons, impTextSets, liftTrend, prsWithin, activeRoutine, rackStep, repFloor, sessionLength, prBeat, exInjury, exJoints, openModal, EQUIP, HARD_EX, recentLighter, planEvidenceNote, howToUrl, editFp, toast, avgWeeks, regionWk, REGION_WKS, SAFETY_TXT, libFiltered, nameMatch, workLoad, fitE, lighter, offTarget, sessionWord, sessionWords, dayLabel, daySets, ssLetters, routineSig, tplCountLine, pwOf, dropStarter, trainOn, planItemOf, fatigueStalls, avgWeeksTxt, routineFromLog, repSpan, rangeWords, calDueIdx, readyCard, sameRR, hintOnce, overSets, rackTol, daysOff, BACK_DAYS, prName, sessTm, effTgt, bwDueCard, bwNoLoad, applyPick, joinAdjacent, sameExOnce, savedEx, goalState, goalLine, bwRefLoad, ML, exMusParts, musTrend, U, toD, fromD, loadLabel, exName, planCredit, gymOf, isDeloadWeek, freeMode, injuredSet, prLoad, statsUpTo, readiness, bwRef, weekRoutine, logBack, logStart, easierText, barKg, suggestCore, loadOf, bwLoad, hardCredit, rirHalfOn, prFrame, stallWords, atRangeTop, oddLoad };
+    }, fbContext, FB_CTX_MAX, logCut, logBuf, log, dateIndex, sessionsOn, bestLine, whyTarget, recent4w, weekSessions, fmtDate, fmtDateLong, fbShrink, orderAt, orderRun, dropOnlyLift, profHeavy, appBand, fitRecordOld, prof, profClean, profRule, profPlan, defPlan, defBand, profMoveBands, profApplyList, strengthPick, PROF_DAYS, FOCUS_MAX, estInLoad, keepExtra, EXTRA_MAX, draftPlanMin, pace, paceRatios, sessModelMin, PACE_N, PACE_DAYS, PACE_MIN, plainTemplate, trashTidy, ENV, KEY, COMMON, COMMON_TIP, isCommon, bwEvery, isRestWeek, sessCmp, avgWeeks, weekStreak, coach, noLog, afterSet, adjOn, bwAt, newBlock, cycleState, sortedSessions, addDays, loadIn, gymRack, gymClean, dbListOf, capOf, refreshEx, effShow, rirScale, setStr, libExercises, obGate, obTour, andList, belowMin, aboveMax, starterRoutine, starterSigs, plateList, exBarKg, VOL_MODES, liveLogFetch, regionSrc, fitTargets, firstFullWeek, moveBlock, BANDS, installSheet, siteHost, greyW, effW, greyR, lighterLoad, heavierLoad, incOf, swapPlan, planSetsPerWeek, weekNeed, stepRead, e1inv, rtfAt, rtfOf, rtfBand, calStats, rirEff, isHard, setCredit, tonnage, loadMode, loadWords, loadNote, progStep, jumpCap, setSecs, setupSecs, recovery, rolling7, rankDays, rankExercises, isCompound, patternOf, noE1, whtrLine, exHeadline, remainMin, shortPlan, weekPlan, cycleProjection, lastLighterWeek, avgFirstWeek, avgWait, stallWeeks, weeksAvg, fitFloors, refit, regionBalance, parseHeight, mixCheck, swapCands, eqPlan, exportCSV, importData, chunksOf, assemble, sessionMuscles, TRACK_ONLY, cloud, Hx, mergeChunk, baseOf, sync: () => cq(cloudPull), TEMPLATES, lastRFor, impDate, impRows, impNorm, impMatch, impFromText, impFromTable, impHeader, impBuild, impStart, impXlsx, parseSets, undoStack, undoRestore, undoForget, allTimeBests, bestsBoard, obActive, fmtW, rirUsual, rirEst, routineFromTemplate, plannedSets, map3d: () => ({ state: B3.state, fail: B3.fail, meshes: B3.meshes.length, yaw: B3.yaw, glow: Object.keys(B3.mats).filter((m) => B3.mats[m].emissiveIntensity > 0), canvas: !!document.querySelector("#bm3d canvas"), colors: Object.fromEntries(Object.entries(B3.mats).map(([m, mt]) => [m, "#" + mt.color.getHexString()])), pick: (x, y) => map3dPick(x, y), want: map3dColors() }), cloudState: () => ({ on: cloud.on, status: cloud.status, err: cloud.err, uid: cloud.uid, acct: cloud.acct }), acctUser: () => acct.user, acctWaiting: () => !!acctWait.pw, flush: () => cq(cloudFlush), backupDue, routineUpdates, planFor, platesMode, plateText, chunksOf, IDX, suggest, e1, render, ACT, ui, makeDemo, invalidate, normalize, snapshot, saveNow, timer, weekStats, weekStart, today, EX, blockProgress, dayMinutes, weekStreak, coach, tonnageNow, livePR, movers, stalledIds, muscleStatus, actualAvg4, plannedPerWeek, parseSets, fillSets, newBlock, lastNoteOf, sizeRows, sessionMuscleSets, sessionCapNote, routineClutter, rowBlank, dayReasons, impTextSets, liftTrend, prsWithin, activeRoutine, rackStep, repFloor, sessionLength, prBeat, exInjury, exJoints, openModal, EQUIP, HARD_EX, recentLighter, planEvidenceNote, howToUrl, editFp, toast, avgWeeks, regionWk, REGION_WKS, SAFETY_TXT, libFiltered, nameMatch, workLoad, fitE, lighter, offTarget, sessionWord, sessionWords, dayLabel, daySets, ssLetters, routineSig, tplCountLine, pwOf, dropStarter, trainOn, planItemOf, fatigueStalls, avgWeeksTxt, routineFromLog, repSpan, rangeWords, calDueIdx, readyCard, sameRR, hintOnce, overSets, rackTol, daysOff, BACK_DAYS, prName, sessTm, effTgt, bwDueCard, bwNoLoad, applyPick, joinAdjacent, sameExOnce, savedEx, goalState, goalLine, bwRefLoad, ML, exMusParts, musTrend, U, toD, fromD, loadLabel, exName, planCredit, gymOf, isDeloadWeek, freeMode, injuredSet, prLoad, statsUpTo, readiness, bwRef, weekRoutine, logBack, logStart, easierText, barKg, suggestCore, loadOf, bwLoad, hardCredit, rirHalfOn, prFrame, stallWords, atRangeTop, oddLoad, lightZero };
     render();
     wakeOn();
     timerResume();

@@ -206,9 +206,9 @@ function oddReps(b,s){
   return r>2*Math.max(+b.plan.repMax||0,best);
 }
 function setDone(bi,si,val,again){ /* again: the set was ticked before, and is ticked again after the far-off question, so its rest is not started over (r55, the second review) */
-  const b=state.draft.ex[bi];const s=b&&b.sets[si];if(!s)return;const okKey=`${bi}:${si}:${s.r}:${effW(b,si)}`;const far=val&&oddOk!==okKey&&!oddReps(b,s)?oddLoad(b,si,state.draft.date):null;
-  if(val&&oddOk!==okKey&&(far||oddReps(b,s))){const ex=EX(b.exId);const fix=far?'w':'r'; // a load far off asks too (r55, V), and Fix it goes back to the field
-    confirmBox(`${setShort(ex,effW(b,si),s.r)}${ex.bw?'':' '+U()}?`,`${far||`${s.r} ${ex.timed?'seconds':'reps'} is far past your ${rangeWords(b.plan)} and anything logged on this exercise.`} Log it as typed, or go back and fix it.`,'Log it',()=>{oddOk=okKey;setDone(bi,si,true,again);saveNow();rerenderKeepScroll();},false,{label:'Fix it',only:true,fn:()=>{if(again)ui.refix={b:blkRef(bi),s:si};const f=document.querySelector(`.sg input[data-f="${fix}"][data-b="${bi}"][data-s="${si}"]`);if(f){f.focus();if(f.select)f.select();}}});
+  const b=state.draft.ex[bi];const s=b&&b.sets[si];if(!s)return;const okKey=`${bi}:${si}:${s.r}:${effW(b,si)}`;const far=val&&oddOk!==okKey&&!oddReps(b,s)?oddLoad(b,si,state.draft.date):null;const lz=val&&oddOk!==okKey&&!far&&lightZero(b,si,state.draft.date); /* a 0 at a light weight asks too (r55.1, V 2026-10-19) */
+  if(val&&oddOk!==okKey&&(far||oddReps(b,s)||lz)){const ex=EX(b.exId);const fix=far?'w':'r'; // a load far off asks too (r55, V), and Fix it goes back to the field
+    confirmBox(`${setShort(ex,effW(b,si),s.r)}${ex.bw?'':' '+U()}?`,lz?`0 ${ex.timed?'seconds':'reps'} at a weight well under today's working load. Log it as missed, or go back and fix it.`:`${far||`${s.r} ${ex.timed?'seconds':'reps'} is far past your ${rangeWords(b.plan)} and anything logged on this exercise.`} Log it as typed, or go back and fix it.`,lz?'Log it as missed':'Log it',()=>{oddOk=okKey;setDone(bi,si,true,again);saveNow();rerenderKeepScroll();},false,{label:'Fix it',only:true,fn:()=>{if(again)ui.refix={b:blkRef(bi),s:si};const f=document.querySelector(`.sg input[data-f="${fix}"][data-b="${bi}"][data-s="${si}"]`);if(f){f.focus();if(f.select)f.select();}}});
     return;}
   if(val)settleLoad(b,si);
   s.done=val;if(val&&isMissed(s)&&!s.warm&&!s.drop)toast(MISSED_SAID); // a typed 0 (r55, V)

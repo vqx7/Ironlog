@@ -19,8 +19,8 @@ type ImpSet = {
   u: 'kg' | 'lb' | null;
 };
 /** An exercise of an imported session, in order of first appearance. */
-type ImpItem = { name: string; sets: ImpSet[]; note: string };
-/** An imported session: a date and a workout name, its exercises, whether it was a deload, and from the app's own file its note and minutes (r55). */
+type ImpItem = { name: string; sets: ImpSet[]; note: string; ss?: string };
+/** An imported session: a date and a workout name, its exercises, whether it was a deload, and its note and minutes, from the app's own file (r55) and from Strong and Hevy (r55.1). */
 type ImpSession = {
   date: string;
   name: string;
@@ -405,6 +405,27 @@ export function impGuess(name: unknown): { primary: string; equip: string; assis
   return { primary, equip };
 }
 
+/* The minutes a workout took, as Strong and Hevy write it (r55.1, V
+   2026-10-19: imports dropped them): Strong's duration as "1h 5m", "50m" or
+   "1h"; Hevy's start and end times, each a date and an "hh:mm" ("14 Sep 2026,
+   17:29"), across midnight too. A bare number says no unit, so it is left
+   out rather than guessed. Null when nothing reads. */
+/** A workout's minutes from a duration cell, or from its start and end cells, or null. */
+export function impSpan(dur: string, start: string, end: string): number | null {
+  const d = String(dur || '').toLowerCase();
+  const h = d.match(/(\d+(?:\.\d+)?)\s*h/),
+    m = d.match(/(\d+)\s*m(?!s)/);
+  if (h || m) return (h ? +h[1] * 60 : 0) + (m ? +m[1] : 0);
+  const at = (x: string): number | null => {
+    const day = impDate(x),
+      t = String(x || '').match(/(\d{1,2}):(\d{2})(?!.*\d:\d)/);
+    return day && t ? Date.parse(`${day}T00:00:00Z`) / 60000 + +t[1] * 60 + +t[2] : null;
+  };
+  const a = at(start),
+    b = at(end);
+  return a != null && b != null && b > a ? b - a : null;
+}
+
 /* Header words for each field, across Strong, Hevy and hand-made sheets. */
 /* Each field lists header names best first, so a sheet with both Date and Day
    takes Date, and a total-load column never passes for the weight. */
@@ -430,7 +451,11 @@ export const IMP_COLS: Readonly<Record<string, readonly RegExp[]>> = {
   note: [/^(notes?|exercise_notes|exercise_note|comment)$/],
   unit: [/^(weight unit|unit|units)$/],
   deload: [/^deload$/],
-  dist: [/^(distance|distance_km|distance_miles)$/]
+  dist: [/^(distance|distance_km|distance_miles)$/],
+  snote: [/^(workout notes?|description)$/],
+  dur: [/^(workout )?duration$/],
+  end: [/^end_?time$/],
+  ss: [/^superset(_id)?$/]
 };
 
 /* The column each field is in, read from the header row: for each field in
@@ -527,6 +552,10 @@ export function impFromTable(rows: readonly (readonly unknown[])[], map: Record<
       .toLowerCase()
   );
   const ours = heads.some(h => /^load_(lb|kg)$/.test(h)) && heads.includes('exercise_note');
+  /* Strong's file, by its own columns: its Duration is the workout's ("1h
+     5m"), where a hand-made sheet's Duration may be a set's (r55.1, the spec
+     review), so only Strong's is read as the session's minutes. */
+  const strong = heads.includes('workout name') && heads.includes('set order');
   const col = (n: string): number | null => (ours && heads.includes(n) ? heads.indexOf(n) : null);
   const cNote = col('session_note'),
     cMin = col('session_minutes'),
@@ -634,11 +663,13 @@ export function impFromTable(rows: readonly (readonly unknown[])[], map: Record<
     if (!S.has(k)) S.set(k, { date, name, items: new Map<string, ImpItem>(), note: '' });
     // Made just above when it was missing, so it is there (the !).
     const ss = S.get(k)!;
-    if (!ss.note && at(r, cNote)) ss.note = at(r, cNote);
-    const dm = num(at(r, cMin));
-    if (ss.durMin == null && dm != null && dm > 0) ss.durMin = Math.round(dm);
+    const sn = ours ? at(r, cNote) : cell('snote');
+    if (!ss.note && sn) ss.note = sn;
+    const dm = ours ? num(at(r, cMin)) : impSpan(strong ? cell('dur') : '', cell('date'), cell('end'));
+    if (ss.durMin == null && dm != null && dm >= 1 && dm <= 600) ss.durMin = Math.round(dm);
     if (/^(yes|true|1|y)$/i.test(String(cell('deload') || '').trim())) ss.deload = true;
-    if (!ss.items.has(ex)) ss.items.set(ex, { name: ex, sets: [], note: cell('note') });
+    if (!ss.items.has(ex))
+      ss.items.set(ex, { name: ex, sets: [], note: cell('note'), ...(cell('ss') ? { ss: cell('ss') } : {}) });
     const n = Math.min(Math.max(Math.round(num(cell('sets')) || 1), 1), 20);
     // The item was added above when it was missing (the !).
     for (let j = 0; j < n; j++) ss.items.get(ex)!.sets.push({ ...set });
