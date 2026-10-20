@@ -133,6 +133,32 @@ export function unionById<X extends { id?: unknown }>(
 /** Sessions in a save that are not demo data. */
 export const realCount = (st: { sessions: { demo?: boolean }[] }): number => st.sessions.filter(x => !x.demo).length;
 
+/* The one way demo data leaves a log (r55): Clear demo data, a real session
+   finished beside it, and a first link to an account, which demo data never
+   goes into (the review of r55 found an empty account given the demo's 27
+   sessions). Replaces the lists on the object given, so a shallow copy of
+   the log can be stripped without touching the log. */
+/** Takes the demo's sessions, weigh-ins, measurements and cardio out of a log, in place. */
+export function stripDemo(s: {
+  sessions: { demo?: boolean }[];
+  bodyweights: { demo?: boolean }[];
+  measurements: { demo?: boolean }[];
+  cardio?: { demo?: boolean }[] | undefined;
+}): void {
+  s.sessions = s.sessions.filter(x => !x.demo);
+  s.bodyweights = s.bodyweights.filter(x => !x.demo);
+  s.measurements = s.measurements.filter(x => !x.demo);
+  s.cardio = (s.cardio || []).filter(x => !x.demo);
+}
+
+/** Whether a log holds any demo data. */
+export const hasDemo = (s: {
+  sessions: { demo?: boolean }[];
+  bodyweights: { demo?: boolean }[];
+  measurements: { demo?: boolean }[];
+  cardio?: { demo?: boolean }[] | undefined;
+}): boolean => [s.sessions, s.bodyweights, s.measurements, s.cardio || []].some(a => a.some(x => x.demo));
+
 /** Core's list fields and single fields, merged record by record or value by value. */
 export const CORE_ARR: readonly string[] = ['routines', 'exercises', 'injuries', 'trash'];
 export const CORE_FIELDS: readonly string[] = ['version', 'activeRoutineId', 'deloadWeek'];

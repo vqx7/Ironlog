@@ -505,7 +505,7 @@ const ACT={
     state.settings.onboarded=true;
     // Three training days with rest days between, as the ready-made 3-day routines are laid out (r54, the audit: three days and no rest planned 7 sessions a week).
     const r={id:uid(),name:'My routine',schedule:'cycle',days:[0,1,0,1,0,1,1].map(x=>({id:uid(),name:x?'Rest':'Training day',rest:!!x,items:[]}))};
-    state.routines=dropStarter(state.routines,state.sessions,starterSigs());state.routines.push(r);state.activeRoutineId=r.id;ui.bRoutine=r.id;ui.bTarget=0;ui.folds['program:library']=true; // replacing the untouched starter, as a ready-made pick does (r55, the audit)ui.folds['program:days']=true;ui.todayDay=null;
+    state.routines=dropStarter(state.routines,state.sessions,starterSigs());state.routines.push(r);state.activeRoutineId=r.id;ui.bRoutine=r.id;ui.bTarget=0;ui.folds['program:library']=true;ui.folds['program:days']=true;ui.todayDay=null; // replacing the untouched starter, as a ready-made pick does (r55, the audit)
     ui.tab='program';ui.planView='routine';commit();window.scrollTo(0,0);render();
     toast('Name your days, then add exercises with + or by dragging.',false,7000);
   },
@@ -1020,7 +1020,7 @@ m.err=`Could not read that. Try the pattern 225x5, 5, 4 ${rirScale()==='rpe'?'rp
        exercise with fewer sets than usual, stopped early, Short on time, typed
        in afterwards or edited, is read so from the log (analytics.ts,
        idxShort), so it sets no target and still counts toward its trend. */
-    const ex=d.ex.map(b=>({exId:b.exId,note:b.note||'',rr:b.keepRR!==undefined?b.keepRR:(b.plan&&+b.plan.repMin>0&&+b.plan.repMax>0?[+b.plan.repMin,+b.plan.repMax]:null),light:b.light?true:undefined,...(b.inj?{inj:b.inj}:{}),sets:b.sets.filter(s=>s.done).map(s=>({w:s.w==null?0:s.w,r:+s.r,rir:s.rir==null||s.rir===''?null:+s.rir,warm:!!s.warm,drop:!!s.drop&&!s.warm,cal:s.cal&&!s.warm?s.cal:undefined}))})).filter(b=>b.sets.length);
+    const ex=d.ex.map(savedEx).filter(b=>b.sets.length); // savedEx (session.ts): one source with a first link keeping another device's workout (r55)
     // Side by side, the same lift is saved as one exercise (r34.2, V); apart, each stays where it was done.
     const exJ=joinAdjacent(ex);ex.length=0;ex.push(...exJ);
     const cardio=(d.cardio||[]).filter(c=>c.min>0).map(c=>cleanCardio({...c,date:d.date}));
@@ -1057,7 +1057,7 @@ m.err=`Could not read that. Try the pattern 225x5, 5, 4 ${rirScale()==='rpe'?'rp
          sessions, demo and real, in one set of numbers, and the demo note
          gone). Load demo data in Settings brings it back. */
       const demoGone=!d.editingId&&(state.sessions.some(x=>x.demo)||state.bodyweights.some(x=>x.demo)||state.measurements.some(x=>x.demo));
-      if(demoGone){state.sessions=state.sessions.filter(x=>!x.demo);state.bodyweights=state.bodyweights.filter(x=>!x.demo);state.measurements=state.measurements.filter(x=>!x.demo);state.cardio=state.cardio.filter(x=>!x.demo);demoRestore();invalidate();}
+      if(demoGone){stripDemo(state);demoRestore();invalidate();}
       // Saving an edit of a session that was deleted while the edit was open
       // brings it back: the save is the newer action.
       state.trash=state.trash.filter(t=>!(t.kind==='session'&&t.id===sess.id));
@@ -1265,7 +1265,7 @@ m.err=`Could not read that. Try the pattern 225x5, 5, 4 ${rirScale()==='rpe'?'rp
     // demoRestore puts the settings back when the demo is cleared.
     if(first)fitTargets(activeRoutine());makeDemo();ui.tab='dash';window.scrollTo(0,0);render();toast('Demo data loaded');});},
   demoStart(){state.sessions=state.sessions.filter(s=>!s.demo);state.bodyweights=state.bodyweights.filter(b=>!b.demo);state.measurements=state.measurements.filter(m=>!m.demo);demoRestore();commit();ui.tab='today';ui.folds={};window.scrollTo(0,0);render();},
-  demoClear(){snapshot();state.sessions=state.sessions.filter(s=>!s.demo);state.bodyweights=state.bodyweights.filter(b=>!b.demo);state.measurements=state.measurements.filter(m=>!m.demo);demoRestore();commit();render();toast('Demo data cleared',true);},
+  demoClear(){snapshot();stripDemo(state);demoRestore();commit();render();toast('Demo data cleared',true);},
   resetAll(){confirmBox('Erase everything?',`All routines, sessions, custom exercises, and body data will be deleted${cloud.on?' on this device and in your cloud copy':' on this device'}. Export a backup first if you might want it.`,'Erase everything',()=>{snapshot();setState(normalize(null));commit();ui.tab='today';render();toast('Everything erased',true);},true);}
 };
 

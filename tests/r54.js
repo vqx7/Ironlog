@@ -322,7 +322,7 @@ const FILE = process.argv[2] || 'index.html';
 
   // ---- A past workout logged in a week marked as a deload is set up as a normal day (the audit: the mark does not say which day it began).
   {
-    const R0 = await ev(() => { const L = window.__ironlog; const S = L.state; S.routines = S.routines.filter(r => r.id !== S.activeRoutineId || r.name !== 'My routine'); S.activeRoutineId = S.routines[0].id; S.sessions = []; S.draft = null; S.deloadWeek = '2026-10-12'; L.invalidate(); L.saveNow(); L.render(); const R = L.activeRoutine(); const i = R.days.findIndex(d => !d.rest && d.items.length); return { i, name: R.days[i].name, sets: R.days[i].items.map(x => +x.sets) }; });
+    const R0 = await ev(() => { const L = window.__ironlog; const S = L.state; S.routines = S.routines.filter(r => r.id !== S.activeRoutineId || r.name !== 'My routine'); if (!S.routines.length) S.routines = [L.starterRoutine()]; S.activeRoutineId = S.routines[0].id; S.sessions = []; S.draft = null; S.deloadWeek = '2026-10-12'; L.invalidate(); L.saveNow(); L.render(); const R = L.activeRoutine(); const i = R.days.findIndex(d => !d.rest && d.items.length); return { i, name: R.days[i].name, sets: R.days[i].items.map(x => +x.sets) }; });
     await ev(() => window.__ironlog.ACT.pastOpen({ dataset: { date: '2026-10-13' } }));
     await page.click(`[data-act="pastGo"][data-day="${R0.i}"]`); await wait(150);
     const d = await ev(() => { const x = window.__ironlog.state.draft; return { deload: x.deload, past: x.past, name: x.dayName, sets: x.ex.map(b => b.sets.length), note: x.notes }; });

@@ -255,6 +255,10 @@ const LB = 0.45359237;
     // The same with the heavy day rising: not falling.
     const e = await hl([[-18, 90, 5], [-11, 95, 5], [-4, 100, 5]], [[-15, 70, 12], [-8, 70, 10], [-1, 70, 8]]);
     ok(!e.falling && /; not in the 3 to 5 range\.$/.test(e.head) && !/falling/i.test(e.coach), 'and with the heavy day rising instead: not falling, the light day\'s range named as down: ' + e.head, e);
+    // The heavy day trained once in the window: its range is in use with too few sessions to read, so the lift is not read as falling,
+    // and the line says that range cannot tell yet (the review of r55: it said the lift was "not" down there, with no reading behind it).
+    const q = await hl([[-11, 100, 5]], [[-15, 70, 12], [-8, 70, 10], [-1, 70, 8]]);
+    ok(!q.falling && /^Down over 2 weeks in the 8 to 12 range: 70×12 to 70×8; too few sessions in the 3 to 5 range to tell\.$/.test(q.head), 'the heavy day done once in the window: not read as falling, and the line says the 3 to 5 range has too few sessions to tell: ' + q.head, q);
   }
 
   // ---- (e) Logging, from the journey audit of r54 (each the same on r53 unless it says so).
@@ -674,9 +678,12 @@ const LB = 0.45359237;
     const d8 = await ev(() => { const b = document.getElementById('updbar').getBoundingClientRect(); const pg = document.getElementById('obPage'); return { bar: [Math.round(b.top), Math.round(b.bottom)], page: pg ? Math.round(pg.getBoundingClientRect().top) : null }; });
     ok(d8.bar[0] <= 1 && d8.page != null && d8.page >= d8.bar[1] - 1, 'a new version ready on the first-run page: the bar sits at the top, above the page, not over it (r54: 52 px down, over the wordmark)', d8);
     await page.click('#updbar [data-act="appUpdateLater"]'); await wait(100);
+    await ev(() => { const L = window.__ironlog; L.ui.todayDay = 2; L.ui.folds['program:days'] = false; });
     await page.click('#obPage [data-act="obOwn"]'); await wait(300);
     const d11 = await ev(() => window.__ironlog.state.routines.map(r => r.name));
+    const d11b = await ev(() => { const L = window.__ironlog; return { days: L.ui.folds['program:days'], todayDay: L.ui.todayDay }; });
     ok(JSON.stringify(d11) === '["My routine"]', 'Build my own on the first run: My routine replaces the untouched starter, as a ready-made pick does (r54 kept both)', d11);
+    ok(d11b.days === true && d11b.todayDay == null, 'and it opens Plan with the days unfolded and no day left picked on Today (a guard: the reviewed r55 lost both to a comment)', d11b);
     await firstRun();
     await page.click('#obPage [data-act="obSample"]'); await wait(250);
     await page.click('#modal [data-act="obProfTog"]'); await wait(150);

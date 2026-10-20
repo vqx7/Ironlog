@@ -1403,14 +1403,21 @@ export function idxLiftIn(
      the light day and "up" after the heavy one. rrIn is the range the trend
      is read in when the lift is trained in more than one, so the screens
      name it; holdRR, when the trend falls there, the other ranges in use
-     where it does not. */
+     where it does not, and quietRR those with too few sessions for a trend
+     (r55, the review: a range trained once was said to be "not" down, a
+     claim with no reading behind it). Either keeps it from reading falling,
+     as a range in use with too few sessions keeps it from reading stalled. */
   const scopes = stallScopesIn(M, id, sc);
   const rrIn = scopes.length > 1 ? curRR : null;
-  const holdRR: [number, number][] = [];
+  const holdRR: [number, number][] = [],
+    quietRR: [number, number][] = [];
   if (t.falling)
-    for (const q of scopes.slice(1))
-      if (q.rr && !trendOf(trendW({ inRange: q.inR, exWin: sc.exWin })).falling) holdRR.push(q.rr);
-  const falling = t.falling && !holdRR.length;
+    for (const q of scopes.slice(1)) {
+      const o = q.rr ? trendOf(trendW({ inRange: q.inR, exWin: sc.exWin })) : null;
+      if (q.rr && o && o.pct == null) quietRR.push(q.rr);
+      else if (q.rr && o && !o.falling) holdRR.push(q.rr);
+    }
+  const falling = t.falling && !holdRR.length && !quietRR.length;
   /* RIR drift: the same load and at least the same reps across the last three
      exposures while logged RIR climbed by a full rep or more. e1RM cannot see
      this, but it is the clearest sign that the load is due to go up. */
@@ -1468,6 +1475,7 @@ export function idxLiftIn(
     falling,
     rrIn,
     holdRR,
+    quietRR,
     pLo,
     pHi,
     spanW,

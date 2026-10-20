@@ -2761,6 +2761,13 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     return [...m.values()];
   }
   var realCount = (st) => st.sessions.filter((x) => !x.demo).length;
+  function stripDemo(s) {
+    s.sessions = s.sessions.filter((x) => !x.demo);
+    s.bodyweights = s.bodyweights.filter((x) => !x.demo);
+    s.measurements = s.measurements.filter((x) => !x.demo);
+    s.cardio = (s.cardio || []).filter((x) => !x.demo);
+  }
+  var hasDemo = (s) => [s.sessions, s.bodyweights, s.measurements, s.cardio || []].some((a) => a.some((x) => x.demo));
   var CORE_ARR = ["routines", "exercises", "injuries", "trash"];
   var CORE_FIELDS = ["version", "activeRoutineId", "deloadWeek"];
   var isChunkId = (id) => id === "core" || id === "draft" || /^s-\d{4}-\d{2}-[12]$/.test(id) || /^b-\d{4}$/.test(id);
@@ -2936,6 +2943,44 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     into.sets.push(...rows);
     into.plan = { ...into.plan, sets: into.sets.filter((x) => !x.warm && !x.drop).length };
     return rows;
+  }
+  function savedEx(b) {
+    const rr = b.keepRR !== void 0 ? b.keepRR : b.plan && Number(b.plan.repMin) > 0 && Number(b.plan.repMax) > 0 ? [Number(b.plan.repMin), Number(b.plan.repMax)] : null;
+    return {
+      exId: b.exId,
+      note: b.note || "",
+      rr,
+      light: b.light ? true : void 0,
+      ...b.inj ? { inj: b.inj } : {},
+      sets: b.sets.filter((s) => s.done).map((s) => ({
+        w: s.w == null ? 0 : s.w,
+        r: Number(s.r),
+        rir: s.rir == null || s.rir === "" ? null : Number(s.rir),
+        warm: !!s.warm,
+        drop: !!s.drop && !s.warm,
+        cal: s.cal && !s.warm ? s.cal : void 0
+      }))
+    };
+  }
+  function draftSession(d) {
+    if (d.editingId) return null;
+    const ex = joinAdjacent(d.ex.map(savedEx).filter((b) => b.sets.length));
+    if (!ex.length) return null;
+    return {
+      id: d.id,
+      date: d.date,
+      dayIdx: d.dayIdx,
+      dayId: d.dayId || null,
+      dayName: (d.dayName || "").trim() || "Session",
+      routineId: d.routineId,
+      ex,
+      notes: d.notes || "",
+      durMin: null,
+      deload: !!d.deload,
+      light: !!d.light,
+      free: d.free ? true : void 0,
+      demo: false
+    };
   }
   function joinAdjacent(ex) {
     const out = [];
@@ -4466,12 +4511,14 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     const { pct, slope, slopeSe, moving, pLo, pHi, spanW, loadUp } = t;
     const scopes = stallScopesIn(M, id, sc);
     const rrIn = scopes.length > 1 ? curRR : null;
-    const holdRR = [];
-    if (t.falling) {
-      for (const q of scopes.slice(1))
-        if (q.rr && !trendOf(trendW({ inRange: q.inR, exWin: sc.exWin })).falling) holdRR.push(q.rr);
-    }
-    const falling = t.falling && !holdRR.length;
+    const holdRR = [], quietRR = [];
+    if (t.falling)
+      for (const q of scopes.slice(1)) {
+        const o = q.rr ? trendOf(trendW({ inRange: q.inR, exWin: sc.exWin })) : null;
+        if (q.rr && o && o.pct == null) quietRR.push(q.rr);
+        else if (q.rr && o && !o.falling) holdRR.push(q.rr);
+      }
+    const falling = t.falling && !holdRR.length && !quietRR.length;
     let easier = null;
     if (inRange.length >= 3) {
       const l3 = inRange.slice(-3);
@@ -4506,6 +4553,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       falling,
       rrIn,
       holdRR,
+      quietRR,
       pLo,
       pHi,
       spanW,
@@ -7658,26 +7706,37 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       }
       const rids = Object.keys(remote);
       if (!rids.length) {
+        if (!Object.keys(cloud.meta).length && hasDemo(state)) {
+          stripDemo(state);
+          demoRestore();
+          invalidate();
+          saveNow();
+          render();
+          toast("Demo data cleared. It never goes into an account.");
+        }
         await cloudFlush();
         return;
       }
       const local = chunksOf(state);
       const first = !Object.keys(cloud.meta).length;
-      let parts = null, merged = false, draftIn = false;
+      let parts = null, merged = false, draftIn = false, keptDraft = false;
       const stat = { conflicts: 0 };
       const adoptedIds = /* @__PURE__ */ new Set();
       const leg = { bodyweights: [], measurements: [] };
       const legB = legacyBodyBase();
       if (first) {
         const rState = assemble(Object.fromEntries(rids.map((k) => [k, remote[k].data])));
-        const mine = { ...state, sessions: state.sessions.filter((x) => !x.demo), bodyweights: state.bodyweights.filter((x) => !x.demo), measurements: state.measurements.filter((x) => !x.demo), cardio: (state.cardio || []).filter((x) => !x.demo) };
-        if (!realCount(mine) && !mine.bodyweights.length && !mine.measurements.length && !state.draft && !mine.cardio.length) {
+        const mine = { ...state };
+        stripDemo(mine);
+        if (!realCount(mine) && !mine.bodyweights.length && !mine.measurements.length && !state.draft && !mine.cardio.length && !mine.routines.some((r) => !plainTemplate(r) && !routineEmpty(r)) && !mine.exercises.some((e) => e.custom)) {
           parts = Object.fromEntries(rids.map((k) => [k, remote[k].data]));
           rids.forEach((k) => adoptedIds.add(k));
         } else {
           merged = true;
           const base = realCount(mine) > realCount(rState) ? mine : rState, other = base === mine ? rState : mine;
-          setState(normalize({ ...base, exercises: unionById(base.exercises, other.exercises), routines: unionById(base.routines, other.routines), sessions: unionById(mine.sessions, rState.sessions), bodyweights: unionById(mine.bodyweights, rState.bodyweights), measurements: unionById(mine.measurements, rState.measurements), cardio: unionById(mine.cardio, rState.cardio), trash: unionById(state.trash, rState.trash), draft: state.draft || rState.draft }));
+          const kept = state.draft && rState.draft && rState.draft.id !== state.draft.id ? draftSession(rState.draft) : null;
+          keptDraft = !!kept && ![...mine.sessions, ...rState.sessions].some((x) => x.id === kept.id);
+          setState(normalize({ ...base, exercises: unionById(base.exercises, other.exercises), routines: unionById(base.routines, other.routines), sessions: unionById(mine.sessions, keptDraft ? [...rState.sessions, kept] : rState.sessions), bodyweights: unionById(mine.bodyweights, rState.bodyweights), measurements: unionById(mine.measurements, rState.measurements), cardio: unionById(mine.cardio, rState.cardio), trash: unionById(state.trash, rState.trash), draft: state.draft || rState.draft }));
           for (const id of rids) {
             cloud.meta[id] = { h: remote[id].h, at: remote[id].at, b: baseOf(id, remote[id].data) };
             cloud.editAt[id] = Date.now();
@@ -7734,7 +7793,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
         }
         if (!ui.modal) rerenderKeepScroll();
         else render();
-        if (merged) toast("Merged this device with your cloud copy");
+        if (merged) toast(keptDraft ? "Merged this device with your cloud copy. The workout in progress on your other device is saved in History." : "Merged this device with your cloud copy");
         conflictNote(stat);
         if (draftIn) draftNote(dr0);
       } else if (first) {
@@ -8463,13 +8522,13 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       if (t.kind === "reps") {
         if (!at.length) return { text: heavyTxt || `Nothing logged at ${loadLabel(ex, t.w)} yet`, beat: heavyBeat };
         const cnt = t.n > 0 ? at.slice(0, t.n) : at;
-        const hi = +b.plan.repMax, cap = hi > 0 && t.total < hi * (t.n > 0 ? t.n : cnt.length) ? hi : Infinity;
+        const hi = +(b.plan || {}).repMax, cap = hi > 0 && t.total < hi * (t.n > 0 ? t.n : cnt.length) ? hi : Infinity;
         const n = cnt.reduce((a, s) => a + Math.min(+s.r, cap), 0);
         const sx = ex.timed ? "s" : "", u = ex.timed ? "s" : " reps";
         const fewer = t !== t0, base2 = fewer && n > t.total ? `${n}${u} over ${t.n} set${t.n === 1 ? "" : "s"}, last time ${t.total}${sx} over those. Fewer sets than usual: the target stays for next time` : n > t.total ? `Beaten: ${n}${u} at that load, last time ${t.total}${sx}` : `${n}${sx} of ${t.total + 1}${u} so far at that load`;
         return { text: heavyTxt ? `${base2}. ${heavyTxt}` : base2, beat: !fewer && (n > t.total || heavyBeat) };
       }
-      const rows = b.sets.filter((s) => !s.warm && !s.drop), planned = Math.min(rows.length, +b.plan.sets || rows.length);
+      const rows = b.sets.filter((s) => !s.warm && !s.drop), planned = Math.min(rows.length, +(b.plan || {}).sets || rows.length);
       const hit = rows.slice(0, planned).filter((s) => s.done && +s.r > 0 && (+s.w || 0) >= t.w - 1e-6 && +s.r >= t.repMin).length;
       const base = `${hit} of ${planned} sets hit ${t.repMin}${ex.timed ? "s" : ""}+ at that load`;
       return { text: heavyTxt ? `${base}. ${heavyTxt}` : base, beat: planned > 0 && hit >= planned || heavyBeat };
@@ -9853,8 +9912,9 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       } else if (st.pct == null) parts.push(ex.bw && !(bwRef() > 0) ? "A trend needs a weigh-in: a bodyweight lift is read at your bodyweight." : "A trend needs 3 sessions spread over 2 weeks.");
       else if (st.moving) parts.push(`${liftChange(exId, "Up", ow)}.`);
       else if (st.falling) parts.push(`${liftChange(exId, "Down", ow)}. Look at recovery before adding work.`);
-      else if (st.holdRR.length) {
-        parts.push(`${liftChange(exId, "Down", ow)}; not in the ${andList(st.holdRR.map((r) => repSpan(r[0], r[1])))} range${st.holdRR.length > 1 ? "s" : ""}.`);
+      else if (st.holdRR.length || st.quietRR.length) {
+        const rs = (a) => `the ${andList(a.map((r) => repSpan(r[0], r[1])))} range${a.length > 1 ? "s" : ""}`;
+        parts.push(`${liftChange(exId, "Down", ow)}${st.holdRR.length ? `; not in ${rs(st.holdRR)}` : ""}${st.quietRR.length ? `; too few sessions in ${rs(st.quietRR)} to tell` : ""}.`);
         more.push(FALL_WHY);
       } else if (st.pLo != null && (st.pLo > 0 || st.pHi < 0)) {
         parts.push(st.pct > 0 === st.pLo > 0 ? `${liftChange(exId, st.pLo > 0 ? "Slowly up" : "Slowly down", ow)}.` : `Slowly ${st.pLo > 0 ? "up" : "down"} ${ow}.`);
@@ -10998,7 +11058,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       const exps = (IDX().byEx[exId] || []).filter((x) => x.tv != null && !lighter(x) && (!st || sameRR(x.rr, st.rr))).slice(-3);
       if (exps.length < 2) return "";
       const ow = st && st.spanW ? ` over ${st.spanW} weeks${st.rrIn ? ` in the ${repSpan(st.rrIn[0], st.rrIn[1])} range` : ""}` : "";
-      const dir = st && st.fresh && st.pct != null ? st.moving ? `up${ow}` : st.falling ? `down${ow}` : st.holdRR && st.holdRR.length ? `down${ow}` : st.pLo != null && st.pLo > 0 ? `slowly up${ow}` : st.pHi != null && st.pHi < 0 ? `slowly down${ow}` : `no clear change over ${st.spanW || 2} weeks` : "";
+      const dir = st && st.fresh && st.pct != null ? st.moving ? `up${ow}` : st.falling ? `down${ow}` : st.holdRR && (st.holdRR.length || st.quietRR.length) ? `down${ow}` : st.pLo != null && st.pLo > 0 ? `slowly up${ow}` : st.pHi != null && st.pHi < 0 ? `slowly down${ow}` : `no clear change over ${st.spanW || 2} weeks` : "";
       if (isCompound(ex) && exps.every((x) => x.best != null)) {
         const v = exps.map((x) => fmtE(x.best));
         const d2 = dir;
@@ -12323,8 +12383,8 @@ ${extraKpis()}</div>`;
     }
     function viewSettings() {
       const s = state.settings;
-      const hasDemo = state.sessions.some((x) => x.demo) || state.bodyweights.some((x) => x.demo);
-      const SUB = { help: "Guide, report a problem", gym: gymSub(), general: `${s.unit === "kg" ? "kg, cm" : "lb, in"} · ${s.theme === "system" ? "device theme" : s.theme}`, profile: profSub(), timer: s.timerMode === "off" ? "timer off" : s.timerMode + " timer", rir: { on: "on", cal: "corrected", off: "off" }[s.rirMode], layout: s.hidden.length ? `${s.hidden.length} hidden` : "everything shown", prio: s.priorities.length ? s.priorities.map((m) => ML[m]).join(", ") : "none", bands: "", data: cloud.on ? cloud.status === "synced" ? "synced" : "syncing" : "this device only", more: hasDemo ? "demo data loaded" : "demo data, version, erase" };
+      const hasDemo2 = state.sessions.some((x) => x.demo) || state.bodyweights.some((x) => x.demo);
+      const SUB = { help: "Guide, report a problem", gym: gymSub(), general: `${s.unit === "kg" ? "kg, cm" : "lb, in"} · ${s.theme === "system" ? "device theme" : s.theme}`, profile: profSub(), timer: s.timerMode === "off" ? "timer off" : s.timerMode + " timer", rir: { on: "on", cal: "corrected", off: "off" }[s.rirMode], layout: s.hidden.length ? `${s.hidden.length} hidden` : "everything shown", prio: s.priorities.length ? s.priorities.map((m) => ML[m]).join(", ") : "none", bands: "", data: cloud.on ? cloud.status === "synced" ? "synced" : "syncing" : "this device only", more: hasDemo2 ? "demo data loaded" : "demo data, version, erase" };
       const G = (k, title, help, id) => `<details class="sec" ${id ? `id="${id}"` : ""} data-sk="settings:${k}" data-mkey="${k}" ${isOpen("settings:" + k, false) ? "open" : ""}><summary>${sgrip(title)}<span class="sec-t">${esc(title)}</span><span class="sec-s">${esc(SUB[k] || "")}</span><span class="chev" aria-hidden="true"></span></summary><div class="sec-b">${help ? helpLink(help) : ""}`;
       return `${pageHead(ENV === "preview" ? `${PREVIEW_NAME} ${VERSION_LINE}` : "", "Settings", cloud.on ? window.claude ? "Saved to your Claude account and this device" : "Synced to your account and saved on this device" : "Saved on this device")}
   ${G("profile", "Your training")}<div class="card stack">${profSettings()}</div></div></details>
@@ -12383,7 +12443,7 @@ ${extraKpis()}</div>`;
   ${G("more", "More")}<div class="card stack">
   <div><p class="small" style="margin:0 0 6px"><b>Demo data</b> ${tipi("8 weeks of generated sessions to preview Today and Stats. Everything demo is tagged and removed in one tap; your real logs are untouched.", "About demo data")}</p>
   <div class="row">${/* One button: Load, or Clear once loaded; the version, and the rest of Diagnostics only once an error is logged (r55, V). */
-      hasDemo ? '<button class="btn" data-act="demoClear">Clear demo data</button>' : '<button class="btn" data-act="demoLoad">Load demo data</button>'}</div></div>
+      hasDemo2 ? '<button class="btn" data-act="demoClear">Clear demo data</button>' : '<button class="btn" data-act="demoLoad">Load demo data</button>'}</div></div>
   <div><p class="small" style="margin:0 0 6px"><b>Version</b> ${VERSION_LINE}${logBuf.length ? ` <span class="muted">· cloud ${cloud.on ? esc(cloud.status) : "off"} · ${logBuf.length} logged error${logBuf.length === 1 ? "" : "s"}</span>` : ""}</p>
   ${logBuf.length ? `<ul class="clist">${logBuf.slice(-5).reverse().map((x) => `<li><span class="small"><b>${esc(x.a)}</b> ${esc(x.m)}</span><span class="small muted">${esc(x.t.slice(5, 16).replace("T", " "))}</span></li>`).join("")}</ul>` : ""}
   ${logBuf.length ? '<div class="row"><button class="btn sm" data-act="diagCopy">Copy diagnostics</button><button class="btn sm" data-act="diagClear">Clear log</button></div>' : ""}${window.IRONLOG_APP ? '<p class="small" style="margin:8px 0 0"><a href="LICENSES.txt" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;min-height:44px">Open-source licenses</a></p>' : ""}</div>
@@ -15027,6 +15087,8 @@ ${extraKpis()}</div>`;
         ui.bRoutine = r.id;
         ui.bTarget = 0;
         ui.folds["program:library"] = true;
+        ui.folds["program:days"] = true;
+        ui.todayDay = null;
         ui.tab = "program";
         ui.planView = "routine";
         commit();
@@ -16363,7 +16425,7 @@ ${JSON.stringify(fb.context, null, 1)}`;
       finishNow() {
         const d = state.draft;
         if (!d) return;
-        const ex = d.ex.map((b) => ({ exId: b.exId, note: b.note || "", rr: b.keepRR !== void 0 ? b.keepRR : b.plan && +b.plan.repMin > 0 && +b.plan.repMax > 0 ? [+b.plan.repMin, +b.plan.repMax] : null, light: b.light ? true : void 0, ...b.inj ? { inj: b.inj } : {}, sets: b.sets.filter((s) => s.done).map((s) => ({ w: s.w == null ? 0 : s.w, r: +s.r, rir: s.rir == null || s.rir === "" ? null : +s.rir, warm: !!s.warm, drop: !!s.drop && !s.warm, cal: s.cal && !s.warm ? s.cal : void 0 })) })).filter((b) => b.sets.length);
+        const ex = d.ex.map(savedEx).filter((b) => b.sets.length);
         const exJ = joinAdjacent(ex);
         ex.length = 0;
         ex.push(...exJ);
@@ -16433,10 +16495,7 @@ ${JSON.stringify(fb.context, null, 1)}`;
           } else state.sessions.push(sess);
           const demoGone = !d.editingId && (state.sessions.some((x) => x.demo) || state.bodyweights.some((x) => x.demo) || state.measurements.some((x) => x.demo));
           if (demoGone) {
-            state.sessions = state.sessions.filter((x) => !x.demo);
-            state.bodyweights = state.bodyweights.filter((x) => !x.demo);
-            state.measurements = state.measurements.filter((x) => !x.demo);
-            state.cardio = state.cardio.filter((x) => !x.demo);
+            stripDemo(state);
             demoRestore();
             invalidate();
           }
@@ -17208,9 +17267,7 @@ ${JSON.stringify(fb.context, null, 1)}`;
       },
       demoClear() {
         snapshot();
-        state.sessions = state.sessions.filter((s) => !s.demo);
-        state.bodyweights = state.bodyweights.filter((b) => !b.demo);
-        state.measurements = state.measurements.filter((m) => !m.demo);
+        stripDemo(state);
         demoRestore();
         commit();
         render();

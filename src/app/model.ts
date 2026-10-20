@@ -80,7 +80,8 @@ export interface Drift {
 /** One lift's reading (idxLift): its trend, stall, signals and bests. `rrIn`
     is the rep range its trend is read in when it is trained in more than
     one, and `holdRR`, when it falls there, the other ranges in use where it
-    does not, so it is not read as falling (r55, PENDING 319). */
+    does not, and `quietRR` those with too few sessions to tell, so it is not
+    read as falling (r55, PENDING 319). */
 export interface ExStat {
   n: number;
   stalled: boolean;
@@ -91,6 +92,7 @@ export interface ExStat {
   falling: boolean;
   rrIn: [number, number] | null;
   holdRR: [number, number][];
+  quietRR: [number, number][];
   pLo: number | null;
   pHi: number | null;
   spanW: number | null;

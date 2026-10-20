@@ -472,7 +472,7 @@ function exHeadline(exId){
     more.push(STALL_WHY);
   }else if(st.pct==null)parts.push(ex.bw&&!(bwRef()>0)?'A trend needs a weigh-in: a bodyweight lift is read at your bodyweight.':'A trend needs 3 sessions spread over 2 weeks.'); // (r55, the audit: said of pull-ups with 8 sessions and no weigh-in)
   else if(st.moving)parts.push(`${liftChange(exId,'Up',ow)}.`);
-  else if(st.falling)parts.push(`${liftChange(exId,'Down',ow)}. Look at recovery before adding work.`);else if(st.holdRR.length){parts.push(`${liftChange(exId,'Down',ow)}; not in the ${andList(st.holdRR.map(r=>repSpan(r[0],r[1])))} range${st.holdRR.length>1?'s':''}.`);more.push(FALL_WHY);} // one range down, another not (r55, V)
+  else if(st.falling)parts.push(`${liftChange(exId,'Down',ow)}. Look at recovery before adding work.`);else if(st.holdRR.length||st.quietRR.length){const rs=a=>`the ${andList(a.map(r=>repSpan(r[0],r[1])))} range${a.length>1?'s':''}`;parts.push(`${liftChange(exId,'Down',ow)}${st.holdRR.length?`; not in ${rs(st.holdRR)}`:''}${st.quietRR.length?`; too few sessions in ${rs(st.quietRR)} to tell`:''}.`);more.push(FALL_WHY);} // one range down, another not (r55, V)
   /* A small change the interval still puts on one side of zero is said as
      slow, not as "no clear change" next to a range that excludes 0 (r31). */
   else if(st.pLo!=null&&(st.pLo>0||st.pHi<0)){parts.push((st.pct>0)===(st.pLo>0)?`${liftChange(exId,st.pLo>0?'Slowly up':'Slowly down',ow)}.`:`Slowly ${st.pLo>0?'up':'down'} ${ow}.`);more.push(`Under the 3% that counts as ${st.pLo>0?'moving':'falling'}.`);}
