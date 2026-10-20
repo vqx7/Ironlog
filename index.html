@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="app-build" content="2026.10.20-r55.1">
+<meta name="app-build" content="2026.10.21-r56">
 <title>Ironlog</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -1045,8 +1045,8 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
   var PREVIEW_NAME = `${APP_NAME} Preview`;
   var PREVIEW_LABEL = "Preview";
   var WORDMARK = { mark: "I", strong: "ron", light: "log" };
-  var DISPLAY_VERSION = "2.7";
-  var APP_VERSION = "2026.10.20-r55.1";
+  var DISPLAY_VERSION = "2.8";
+  var APP_VERSION = "2026.10.21-r56";
   var VERSION_LINE = `${DISPLAY_VERSION} (build ${APP_VERSION})`;
   var SITE_HOST = "ironapp.org";
   var SITE_DIR_FALLBACK = "/Ironlog";
@@ -6880,6 +6880,11 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     saveNow();
   }
   var SYNC_KEY = KEY + ".sync";
+  var notesIn = (m) => ({
+    meta: rec(m.meta),
+    editAt: rec(m.editAt),
+    last: m.last
+  });
   function saveMeta() {
     try {
       localStorage.setItem(
@@ -7554,7 +7559,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       try {
         const m = rec(parseJson(ev.newValue));
         if (m) {
-          const meta = rec(m.meta), editAt = rec(m.editAt), last = m.last;
+          const { meta, editAt, last } = notesIn(m);
           if (meta) cloud.meta = meta;
           if (editAt) cloud.editAt = editAt;
           if (last) cloud.last = last;
@@ -7619,7 +7624,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     try {
       const m = rec(parseJson(localStorage.getItem(SYNC_KEY) || "null"));
       if (m) {
-        const meta = rec(m.meta), editAt = rec(m.editAt), last = m.last;
+        const { meta, editAt, last } = notesIn(m);
         cloud.meta = meta || {};
         cloud.last = last || null;
         cloud.editAt = editAt || {};
