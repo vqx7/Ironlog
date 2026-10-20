@@ -176,6 +176,20 @@ export interface CardioEntry {
   dist?: number | undefined;
 }
 
+/** A tape entry, in cm: the sites MEAS lists (library.ts), each absent unless measured. */
+export interface Measurement {
+  id: string;
+  date: string;
+  demo: boolean;
+  arm?: number | undefined;
+  forearm?: number | undefined;
+  chest?: number | undefined;
+  waist?: number | undefined;
+  thigh?: number | undefined;
+  calf?: number | undefined;
+  neck?: number | undefined;
+}
+
 /** An injury the lifter flagged: a muscle or a joint (`m`), since `date`. */
 export interface Injury {
   id: string;
@@ -227,6 +241,40 @@ export interface EngineSettings {
   priorities: MuscleKey[];
   restWeeks?: string[] | undefined;
   todayStart?: 'free' | undefined;
+}
+
+/** Every setting as normalize() keeps it (r56): the engine's, and the rest
+    the screens and the storage read. A field absent unless set is optional;
+    the rest are always written. A setting a newer build saved is kept beside
+    these at run time (keepExtra does not run on the settings; normalize
+    spreads them), unread by this build. */
+export interface Settings extends EngineSettings {
+  theme: 'system' | 'dark' | 'light';
+  timerMode: 'auto' | 'manual' | 'off';
+  timerSound: boolean;
+  timerCompact: boolean;
+  autoDone: boolean;
+  accent?: 'blue' | 'volt' | 'ember' | 'pink' | undefined;
+  rirAsk?: true | undefined;
+  autoAdj?: false | undefined;
+  bwEvery?: 0 | 7 | 30 | undefined;
+  loadFill?: 'fill' | undefined;
+  userName?: string | undefined;
+  homeFolded: string[];
+  secOrder: Record<string, string[]>;
+  folds: string[];
+  wakeLock: boolean;
+  smallPlates?: true | undefined;
+  hidden: string[];
+  onboarded: boolean;
+  calSnooze: string | null;
+  tidyV: 0 | 1;
+  heightCm: number | null;
+  timeBudget: number | null;
+  dashFolded: string[];
+  lastExport: string | null;
+  removedLib: string[];
+  bwGoalPct: number | null;
 }
 
 /** The log as the engine and the analytics read it: these fields and no

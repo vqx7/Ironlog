@@ -7,6 +7,8 @@
    Merging whole documents (mergeChunk) moves with sync in phase 4. */
 
 import { hashStr } from './util';
+import { arr, rec } from './records';
+import type { Rec } from './records';
 
 /** The conflicts a merge counted. */
 type Stat = { conflicts: number };
@@ -43,21 +45,28 @@ export const Hx = (x: unknown): string => hashStr(canon(x));
     to fingerprint), record by record as described at the top. With no base
     (as on a first sync) nothing reads as deleted. Local records keep their
     order, then remote ones local lacks; a record with no string id is left
-    out. */
-export function merge3List<X extends { id?: unknown }>(
+    out. The lists come straight from the documents (sync.ts, r56), so each
+    is read as it is: a list field that is no list reads as empty. */
+export function merge3List(
   base: Record<string, string> | null | undefined,
-  l: readonly X[] | null | undefined,
-  r: readonly X[] | null | undefined,
+  l: unknown,
+  r: unknown,
   remoteWins: boolean,
   stat: Stat
-): X[] {
+): Rec[] {
   const known = !!base;
   base = base || {};
-  const L = new Map<string, X>(),
-    Rm = new Map<string, X>();
-  for (const x of l || []) if (x && typeof x.id === 'string') L.set(x.id, x);
-  for (const x of r || []) if (x && typeof x.id === 'string') Rm.set(x.id, x);
-  const out: X[] = [];
+  const L = new Map<string, Rec>(),
+    Rm = new Map<string, Rec>();
+  for (const x of arr(l) || []) {
+    const R = rec(x);
+    if (R && typeof R.id === 'string') L.set(R.id, R);
+  }
+  for (const x of arr(r) || []) {
+    const R = rec(x);
+    if (R && typeof R.id === 'string') Rm.set(R.id, R);
+  }
+  const out: Rec[] = [];
   for (const id of [...L.keys(), ...[...Rm.keys()].filter(k => !L.has(k))]) {
     const a = L.get(id),
       b = Rm.get(id),

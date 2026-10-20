@@ -4,20 +4,27 @@
    confirmed). The legacy script imports them under the same names, so every
    reader is as it was. An import cannot be assigned to, so the log is
    replaced only through setState, which returns the value as the
-   assignment did; the properties of ui, cloud and the log are still written
-   from many places, and giving those writes one path is the work of phases
-   4 and 5 (ARCHITECTURE.md); since 3b the engine and the analytics read the
-   log through live.ts's model instead of importing it. The four objects moved unchanged. */
+   assignment did; the properties of ui and the log are still written from
+   many places, and giving those writes one path is the work of phase 5
+   (ARCHITECTURE.md); since 3b the engine and the analytics read the log
+   through live.ts's model instead of importing it, and since r56 cloud is
+   typed field by field, written by sync.ts and a few account actions. The
+   four objects moved unchanged. */
 
-import type { EngineSettings, EngineState } from './types';
+import type { EngineState, Measurement, Settings } from './types';
+import type { DraftLike } from './session';
 
 /** The whole log as normalize() returns it: the fields the engine and the
-    analytics read, typed field by field since 3b (EngineState), and the rest
-    still open until normalize() moves (phase 4). The settings are the
-    engine's, typed, and since r53 the effort scale effort.ts reads, which
-    the engine does not (normalize() keeps it 'half', 'rpe' or absent). */
+    analytics read, typed field by field since 3b (EngineState), the settings
+    as normalize() keeps every one of them, the tape entries and the session
+    in progress as the sync reads them (r56), and the rest (Recently deleted,
+    the schema version) still open until they are typed with the screens that
+    read them (phase 5). */
 export type State = Omit<EngineState, 'settings'> & {
-  settings: EngineSettings & { rirScale?: 'half' | 'rpe' | undefined };
+  version: number;
+  settings: Settings;
+  measurements: Measurement[];
+  draft: DraftLike | null;
 } & { [field: string]: unknown };
 
 /* First set at start, from the save on this device (setState(load()) in the
@@ -105,28 +112,68 @@ export const ui: Ui = {
   refix: null
 };
 
+/* ---------- the account's documents ---------- */
+
+/** A snapshot of a document in the account: whether it exists, and its content, of no known shape until read. */
+export interface CloudSnap {
+  exists: boolean;
+  data(): unknown;
+}
+/** One document in the account, by path: read whole, written whole, and (where the backend offers it) leased. */
+export interface CloudRef {
+  get(): Promise<CloudSnap>;
+  set(doc: Record<string, unknown>): Promise<unknown>;
+  acquire?(lease: { holder: string; ttlMs: number }): Promise<unknown>;
+}
+/** The account's document store, as scripts/cloud-supabase.js provides it (and the suites' stand-in): documents by path, and a listing of a collection's documents. */
+export interface CloudDb {
+  doc(path: string): CloudRef;
+  collection(path: string): { get(): Promise<{ docs: (CloudSnap & { id: string })[] }> };
+}
+
+/** The merge base a sync note keeps for a document (baseOf, sync.ts): per
+    record fingerprints by list (a), per field (f) and per setting (s) for
+    core, or the session in progress's fingerprint (d). */
+export interface Base {
+  a?: Record<string, Record<string, string>>;
+  f?: Record<string, string>;
+  s?: Record<string, string>;
+  d?: string;
+}
+/** A sync note for one document: the fingerprint of the copy last agreed
+    with the account, when that copy was written, and the merge base, absent
+    on a note an older build saved (it is filled in on the next sync). */
+export interface SyncNote {
+  h: string;
+  at: number;
+  b?: Base | null | undefined;
+}
+
 /* Where the sync is: on or not, the provider (db, uid), its status, each
-   document's last sync record (meta: its hash, when, and the merge base) and
-   this device's hashes (localH), when the log was last edited and sent, the
-   queue of writes (chain), and the last error. */
+   document's last sync note (meta: its hash, when, and the merge base) and
+   this device's hashes (localH), when each document was last edited here
+   (editAt) and sent, the queue of writes (chain), and the last error. Typed
+   field by field since r56, when its writers moved into sync.ts. The status
+   becomes one set of states in r56.1 (PENDING 307). */
 export interface Cloud {
   on: boolean;
-  db: unknown;
-  uid: unknown;
+  db: CloudDb | null;
+  uid: string | null;
   status: string;
-  last: unknown;
-  meta: Record<string, unknown>;
-  editAt: Record<string, unknown>;
-  localH: Record<string, unknown>;
-  devId: unknown;
-  pendAt: unknown;
+  last: number | null;
+  meta: Record<string, SyncNote>;
+  editAt: Record<string, number>;
+  localH: Record<string, string>;
+  devId: string | null;
+  /** The account the notes belong to, or null for notes saved before accounts existed. */
+  acct: string | null;
+  pendAt: number | null;
   chain: Promise<unknown>;
-  t: unknown;
+  t: number | null;
   retry: number;
   dirtyAt: number;
   lastPull: number;
-  err: unknown;
-  [field: string]: unknown;
+  err: string | null;
 }
 export const cloud: Cloud = {
   on: false,
@@ -138,6 +185,7 @@ export const cloud: Cloud = {
   editAt: {},
   localH: {},
   devId: null,
+  acct: null,
   pendAt: null,
   chain: Promise.resolve(),
   t: null,
@@ -146,6 +194,36 @@ export const cloud: Cloud = {
   lastPull: 0,
   err: null
 };
+
+/* ---------- the screens, as the storage and sync code reaches them ---------- */
+
+/* The storage and sync modules (phase 4, r56) redraw the page, show a toast
+   and read the first page's state through this one object, which the legacy
+   script fills once at start (setFx) with its own functions, so the modules
+   import nothing from the screens. It goes when the screens move (phase 5). */
+/** The screens' effects the storage and sync code calls. */
+export interface Fx {
+  /** Redraws the page. */
+  render(): void;
+  /** Redraws the page keeping the scroll position. */
+  rerenderKeepScroll(): void;
+  /** Shows a toast: the message, whether it offers Undo, for how long, and its kind. */
+  toast(msg: string, undo?: boolean | null, ms?: number | null, kind?: string): void;
+  /** Draws the save state's button (the menu button's dot and words). */
+  setSaveState(): void;
+  /** Redraws the sync line on Settings, when it is on screen. */
+  syncLine(): void;
+  /** Whether the first page is held open on this device after a sign-out (Today's obGate). */
+  obGate(): boolean;
+}
+/* Set once at the start of the legacy script, before anything that could
+   call an effect runs (the ! says so), as state is set by load(). */
+export let fx!: Fx;
+
+/** Gives the storage and sync code the screens' effects, once, at start. */
+export function setFx(f: Fx): void {
+  fx = f;
+}
 
 /** The account on this device: the user signed in, whether the check has run, and whether they read reports. */
 export interface Acct {

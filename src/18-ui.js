@@ -52,18 +52,16 @@ function toast(msg,undo,ms,kind){
   const el=$('#toast');el.classList.toggle('pr',kind==='pr');el.innerHTML=`<span>${esc(msg)}</span>${undo?'<button data-act="undo">Undo</button>':''}`;el.hidden=false;
   clearTimeout(toastT);toastT=setTimeout(()=>{el.hidden=true;},ms||(undo?6000:2600));
 }
-/* inv, when given, reverses the action directly on the current state and
-   returns true, or returns false when things have moved on too far, in which
-   case Undo falls back to the merge. Used for the in-session actions, where
-   a set logged a second later touches the same record. */
-function snapshot(inv){
-  try{undoStack.push({pre:JSON.stringify(state),post:null,inv:typeof inv==='function'?inv:null,t:Date.now()});}catch(e){return;}
-  while(undoStack.length>UNDO_MAX)undoStack.shift();
-  undoPersist();
-}
-/* The first save after a snapshot is the action itself; remember the result,
-   so Undo can tell the action apart from anything logged after it. */
-function capturePost(){const e=undoStack[undoStack.length-1];if(e&&e.post==null){try{e.post=JSON.stringify(state);undoPersist();}catch(x){log('undo',x);}}}
+/* The menu button's dot and words (r27; the reading is saveStateNow, in
+   src/app/storage.ts): drawn in place on every save and sync change. */
+function setSaveState(){const el=$('#saveState');if(!el)return;
+  const {cls,txt}=saveStateNow();
+  el.className='ssb'+(cls?' '+cls:'');
+  el.innerHTML=`${MENU_ICON}<span class="sd" aria-hidden="true"></span><span class="sst">${esc(txt)}</span>`;
+  el.setAttribute('aria-label','Menu. '+txt);el.setAttribute('data-tip',txt);
+  // An open menu follows the state, but is only redrawn when it changed, so a tap is never lost to a redraw.
+  let who='';try{who=acct.user?acct.user.email:'';}catch(e){/* before accounts are set up */}const key=cls+'|'+txt+'|'+who;
+  if(setSaveState.last!==key){setSaveState.last=key;if(ui.modal&&ui.modal.kind==='menu'&&!$('#modal').hidden)renderModal();}}
 /* Focus used to stay behind the overlay, so keyboard and screen-reader users
    could tab through the page underneath a supposedly modal sheet. */
 let modalReturn=null;

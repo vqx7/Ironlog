@@ -40,10 +40,10 @@ src/01-03, 99       the page's markup and styles
 - **Modules with one-way dependencies**: config at the bottom, then data, engine and analytics (pure functions of their inputs), then storage and sync, then the screens. A module never reaches into another's internals. Every file under `src/app/`, at any depth, is a `.ts` module named by its path, in a move or written new, formatted by Prettier, with a comment on every export. Since r51 `tests/hygiene.js` holds each module to its layer in the list below, the one place the layers are written: an import goes only to the same layer or below, a new module is added to the list, and no import goes round in a circle (the bundle turns a module's `const` into `var`, so in a circle a value read before its module has run is `undefined`, not an error).
 
 Layer 0, config and record shapes: config, types
-Layer 1, data: util, units, library, routines, formulas, records, gym, profile, model
+Layer 1, data: util, units, library, routines, formulas, records, gym, profile, model, layout
 Layer 2, engine and analytics: session, loads, prs, trend, volume, goals, importing, format, charts, analytics, time, weeks, coach, engine, plans
-Layer 3, storage and sync: chunks, merge, store, live
-Layer 4, screens: layout, icons, feedback, providers, effort, guide, sheets
+Layer 3, storage and sync: chunks, merge, store, live, providers, normalize, storage, sync
+Layer 4, screens: icons, feedback, effort, guide, sheets
 
 - **Screens as components**, one per tab, reading copy and labels from one place.
 
@@ -55,8 +55,8 @@ The current code is the **legacy script**: `src/10-*.js` to `src/29-*.js`, joine
 
 **The ratchet:** the legacy script may never grow. `tests/hygiene.js` fails when it has more top-level declarations or more lines than the numbers below, and also when it has fewer, until the numbers are lowered to match, so each phase locks in what it moved. A change that adds code adds it in `src/app/`.
 
-Legacy top-level declarations: 503
-Legacy lines: 7360
+Legacy top-level declarations: 424
+Legacy lines: 6366
 
 | Measured (scripts/depmap.js) | r49 | r50 | r51 | r52 | r53 | r54 | r55 |
 |---|---|---|---|---|---|---|---|
@@ -240,11 +240,12 @@ V brought two lists of engineering practice from another assistant (Gemini) and 
 
 1. **Types say only what is true**, read with the type checker, so an `any` is found where the word is not written: no name (a parameter, a variable, a destructured binding, any identifier read), call, await or property read in `src/app/` has a type that is any or holds any as a union member or a type argument (`any[]` from `Array.isArray` on an unknown, `Map<any, any>` from a bare `new Map()`, `any[]` from `Array(n)`), except an expression wrapped directly in a cast, which makes it explicit (`JSON.parse` is typed any). An any deeper inside an object's or a function's own type is beyond it. The other ways to tell TypeScript a type it cannot check count as casts: `as` (other than `as const`), a type predicate (`x is T`), and a parameter annotated where its contextual type is any, written in place as the callback (a `String.replace` callback's groups; typing one `unknown` hides nothing and is not counted; a named function passed instead is not read). A function, method or constructor declared without a body is refused: an overload's signature is not checked against the implementation (call signatures in an interface are not read). Every cast and every `!` (a non-null assertion, or a definite assignment such as `let x!: T`) has a comment naming it ("cast", or a `!` standing alone): on its own line, alone on the line above, or leading a statement that holds it. A cast whose written type names a type parameter of a declaration around it is refused, wherever in the type it is named (an object, a function, `keyof`, a conditional, a type argument) and through any alias, interface or `typeof` the type names, since one generic helper would turn any number of casts into calls the count never sees. The counts below are a ratchet, as the legacy script's size is: higher fails, and lower fails until the numbers are lowered, so a cast replaced by a real type stays replaced. Open types (an index signature, or a `Record` keyed by string, whose values are `unknown` or `any`), mostly on the shared state the untyped legacy script still writes, are counted the same way and close as their writers move. What a comment says, and whether one comment on a declaration rightly covers several casts in it, is review's to judge; the count shows any new one in the diff. The numbers were first set at 37, 24 and 6 and restated three times, in review, as the checker was made to see more: values typed any without the word became honest types (the import parser's regular-expression callbacks, `Array<string>(n)`, `new Map<string, ImpItem>()`, the copy of the default section order, `let rpe`), a generic cast became a plain return (`mergeDraft`, `trendW`), the definite assignment `let state!` began to count as a `!`, the twelve `Record<string, unknown>` as open types, the 30 hand-typed regular-expression groups and the two type predicates as casts, and the six `any[]` that `Array.isArray` leaves on an unknown became explained casts to `unknown[]`.
 
-Casts: 76
-Non-null assertions: 25
-Open types: 18
+Casts: 85
+Non-null assertions: 26
+Open types: 16
 
 Marks in r52's moved code (from baselines/r51.html): 21 casts, 77 non-null assertions
+Marks in r56's moved code (from baselines/r55.html): 4 casts, 2 non-null assertions
 
 A mark counts against the move that moved its declaration, edited or not: 86 non-null assertions when r52 moved them, 85 since r53's edit of `recentLighterIn` took one out, 77 since r54's snap of a suggestion onto the step in the unit on screen (`snapUnitIn`, now `unitSnap` beside it) reads its loads with `inUnitIn` and `kgOfIn`, the conversions of a number, where `toDIn` and `fromDIn` needed a `!` to say a number gives a number; 22 casts when r52 moved them, 21 since r54's `loadFloorIn`, which took the empty-bar test out of `lighterLoadIn`, reads a lift with no bar of its own as 0 (`?? 0`) where the cast said an absent bar compares false.
 

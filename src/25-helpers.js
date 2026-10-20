@@ -16,11 +16,11 @@ function newItem(exId){return {uid:uid(),exId,...defPlan(exId)};}
    field, and the browser then fires its pending change for a set that − Set,
    Swap or Undo has just removed. */
 function draftSet(t){const b=state.draft&&state.draft.ex[+t.dataset.b];return b&&b.sets[+t.dataset.s]||null;}
-/* A ready-made routine removed exactly as shipped can be added again from
-   New from a template, so it is not kept in Recently deleted (r34.1, V: the
-   same templates sat there for every new user with no way to clear them). */
-function tplSigs(){if(!tplSigs.c)tplSigs.c=new Set([...TEMPLATES.map(t=>routineFromTemplate(t.key)),starterRoutine(),defaultRoutine()].filter(Boolean).map(routineSig));return tplSigs.c;}
-function plainTemplate(r){try{return !!r&&tplSigs().has(routineSig(r));}catch(e){return false;}}
+/* Distance (r30) is stored in km, shown in miles to someone logging in lb.
+   Optional and absent unless given, so older entries keep their hashes. */
+const distU=()=>U()==='kg'?'km':'mi';
+const distShow=km=>Math.round((U()==='kg'?km:km/KM_MI)*100)/100;
+const distIn=v=>{const n=numIn(v);return n!=null&&n>0?Math.min(Math.round((U()==='kg'?n:n*KM_MI)*1000)/1000,1000):null;};
 /* Clears what earlier builds put there. Runs once at start, after every
    definition it reads exists. */
 function trashTidy(){const tr=state.trash||[];const keep=tr.filter(t=>!(t.kind==='routine'&&plainTemplate(t.data)));if(keep.length!==tr.length){state.trash=keep;commit();}}

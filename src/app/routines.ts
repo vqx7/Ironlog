@@ -552,25 +552,3 @@ export function planSetsPerWeekIn(M: Model, R: Routine, deload?: boolean): numbe
   );
   return Math.round(n * dayShare(R));
 }
-
-/* The routine a new install starts with (V, decision 114, r29): Upper /
-   lower, 4 days, the all-round choice, so someone who taps Log a workout now
-   or Import instead of picking is not dropped into the six-day high-volume
-   split. Saves that already have routines keep theirs. The suites built on
-   the routine installs started with before r29 run with IRONLOG_STARTER set
-   to it (tests/h.js); nothing else sets it (phase 4, r56; moved from the
-   legacy script). 'ul4' is a template's key, so a routine comes back, as the
-   ! says. */
-/** A new install's routine: Upper / lower, 4 days (or the template a suite names). */
-export function starterRoutine(): NewRoutine {
-  // The suites set it on the page's window before the app runs; the cast reads that one field.
-  const k = (window as unknown as { IRONLOG_STARTER?: unknown }).IRONLOG_STARTER;
-  return routineFromTemplate(typeof k === 'string' && k && TEMPLATES.some(t => t.key === k) ? k : 'ul4')!;
-}
-
-/* An untouched starter, the current one or the one installs began with
-   before r29, is replaced when a ready-made routine is picked on a first run. */
-/** The signatures of the two routines a new install has begun with. */
-export function starterSigs(): string[] {
-  return [routineSig(starterRoutine()), routineSig(defaultRoutine())];
-}
