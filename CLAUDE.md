@@ -3,7 +3,7 @@
 A hypertrophy and strength tracker for one lifter, V, used on a phone at the gym. It ships as a standalone
 installable web app: built from `src/` into one page, served by GitHub Pages at https://ironapp.org, working
 offline, with the log on the phone and an optional account that syncs it. Every pull request also publishes a
-preview app at https://ironapp.org/preview/ to try on the phone before merging. Build r55.1, version 2.7, state schema v5.
+preview app at https://ironapp.org/preview/ to try on the phone before merging. Build r56, version 2.8, state schema v5.
 
 The Claude artifact version was retired by V on 2026-09-27 (`OWNER.md` Done): never work on it or republish it.
 `cloudProvider()` still takes Claude's db when `window.claude` exists, because the sync suites use it as their
@@ -50,10 +50,14 @@ stand-in cloud.
   `setState`. The engine and the analytics are functions of a model (`model.ts`): each takes `M` (the log, the date
   the engine reads as today, the caches) as its first parameter and its name ends in `In` (`suggestIn`, `IDXIn`,
   `coachIn`). `live.ts` holds the one model the app runs on (`LIVE`) and the adapters through which the legacy
-  script calls those functions by their old names (`export const suggest = live(suggestIn);`).
-- `src/1*.js`, `src/2*.js`: the legacy script, cut into parts at its section headers (start-up, storage, sync,
-  accounts, the screens, sheets, actions and events), one function scope. It reads `src/app/` only through the
-  imports in `src/09-imports.js`. `src/01` to `src/03` are the page head, styles and markup.
+  script calls those functions by their old names (`export const suggest = live(suggestIn);`). Storage and sync are
+  typed since r56: `normalize.ts` (the log as every build reads it), `storage.ts` (the keys, where the save stands
+  (`device`), the error log (`log`), Undo's steps) and `sync.ts` (every write of the log, the account's documents,
+  the sync notes, another tab); they reach the screens only through `fx` in `store.ts`, which the legacy script
+  fills at start, and run nothing on import (`storageStart()`, `syncStart()`).
+- `src/1*.js`, `src/2*.js`: the legacy script, cut into parts at its section headers (start-up, accounts, the
+  screens, sheets, actions and events), one function scope. It reads `src/app/` only through the imports in
+  `src/09-imports.js`. `src/01` to `src/03` are the page head, styles and markup.
 - `index.html`: the whole app, built from `src/` by `npm run join` (`scripts/join.js`) and committed, because the
   build and every test use this one file. Never edit it by hand; read the source in `src/`.
 - `tests/`: Playwright suites that drive the real page. `tests/h.js` is the harness (serves the libraries from
@@ -130,7 +134,9 @@ lines, then `ALL PASS` (the fuzz suite prints `fuzz clean`). Type check: `npx ts
   never changes: a phone finds its log only under those keys (`tests/r49.js` holds them). Outside addresses and
   library versions come from config too; any other outside address must be listed in `ARCHITECTURE.md`.
 - **Modules:** new code goes in `src/app/` as strict TypeScript: no `any`, every cast and `!` with a comment saying
-  why, every export with a comment saying what it is for, formatted by Prettier. `src/app/` imports only
+  why, every export with a comment saying what it is for, every `catch` logging the error or saying why it is
+  expected, formatted by Prettier. A raw value (a save, a document, a note) is read through `rec`, `arr` and
+  `parseJson` in `records.ts`, never cast in place. `src/app/` imports only
   `src/app/`, each module only from its own layer or below (`ARCHITECTURE.md`), never in a circle. A function of the
   model reads nothing but the model and its arguments: no clock, randomness, store, page or changing module value
   (new engine or analytics code takes `M` first; the legacy script reaches it through an adapter in `live.ts`).

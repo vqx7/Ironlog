@@ -255,6 +255,16 @@ Each release adds here the names it made or changed and why, so the map stays se
 - **Undo:** `ACT.undo` merges the draft from the three versions normalized.
 - **Demo:** `ACT.demoLoad` does nothing but say why while `acct.user` is set.
 
+### r56 (2026-10-21, version 2.8; phase 4, PENDING 331)
+
+- **The log as every build reads it:** `normalize`, `keepExtra`, `cleanCardio`, `cleanSess`, `freshState`, `starterRoutine`, `starterSigs`, `tplSigs` and `plainTemplate` in `src/app/normalize.ts`; `normalize.dropped` and `keepExtra.n` are properties of the functions, as before. Raw values are read through `rec`, `arr` and `parseJson` (`records.ts`) and `spread` (`normalize.ts`); `oneOf`, `isMuscle` and `isMuscleOrJoint` are the membership tests, a Set of the keys behind them.
+- **The save on this device:** `src/app/storage.ts`: `ENV`, `KEY`, `LOGK`, `WKVIEW_KEY`, `DEMOSET_KEY`; `device` (`ok`, `boot`, `hadLocal`, `hadLog`, `lastSaved`: the flags `storageOk`, `storageBoot`, `bootHadLocal`, `HAD_LOG` and `lastSaved` were); `logBuf`, `logCut`, `log`; `storageTest`, `load`; `undoStack`, `snapshot`, `capturePost`, `undoPersist`, `undoRestore`, `undoForget`; `demoFirstRun`, `demoKeep`, `demoRestore`; `backupDue`, `saveStateNow`; `storageStart` (what the storage part ran at load); `clearTimer` (clearTimeout of a timer that may be null).
+- **Saving and the account's copy:** `src/app/sync.ts`: `saveNow`, `saveSoon`, `commit`; `SYNC_KEY`, `saveMeta`, `notesIn` (the notes as saved, the casts until 305); `assemble`, `cq`, `withTimeout`, `setCloud`, `baseOf`, `mergeChunk`, `trackEdits`, `resyncLocalH`, `conflictNote`, `hasUnsent`, `cloudSoon`, `cloudFlush`, `cloudPull`, `cloudChecked`, `cloudInit`, `cloudStop`; `syncStart` (the notes read, the device id, this device's hashes, the listeners `onStorage`, `onVisibility`, `onPageHide`).
+- **The screens, from the modules:** `fx` and `setFx` in `store.ts` (`render`, `rerenderKeepScroll`, `toast`, `setSaveState`, `syncLine`, `obGate`), filled by the first statement of the legacy script (`src/10-start.js`), then `storageStart()`, `syncStart()`. `syncLine` (`src/14-account.js`) is the sync line redrawn in place; `setSaveState` is in `src/18-ui.js`.
+- **Types:** `Settings`, `Measurement` (`types.ts`); `State` gained `version`, `settings: Settings`, `measurements`, `draft: DraftLike | null`; `Cloud` typed field by field, with `CloudDb`, `CloudRef`, `CloudSnap`, `SyncNote`, `Base` (`store.ts`); the page's services declared in `providers.ts` (`ironlogAuth` with `signOut`, `claude.use`, `ironlogCloud`), which is now layer 3.
+- **Helpers that read documents:** `merge3List` and `unionById` take their lists as they come (a list field that is no list reads as empty); `emptyChunk` returns a `Rec`; `bodyChunkOf` takes any value; `did` takes no position; `Dated.t` may be absent.
+- **Checks:** `tests/r56.js` (the moved code against `baselines/r55.html`); `tests/hygiene.js` rule 3 counts a logged catch as handled.
+
 ## PENDING.md's Done section, by release (r55 back)
 
 #### r55, live since 2026-10-20 (pull request #48, merged by V; build 2026.10.19-r55)

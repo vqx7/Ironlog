@@ -57,6 +57,25 @@ function damage(raw, seed) {
   const inputs = [];
   for (let i = 0; i < N; i++) { const h = wide(56000 + i, LIB); inputs.push(h.raw); if (i % 2 === 0) inputs.push(damage(h.raw, 56000 + i)); else inputs.push(damage(h.raw, 99000 + i)); }
   inputs.push(null, {}, [], 'x', { settings: {} }, { sessions: [{}] });
+  // Hand-made edges: the values the move reads through readers rather than as the old code spread or indexed them.
+  const h0 = wide(56999, LIB).raw;
+  const withS = (f) => { const r = JSON.parse(JSON.stringify(h0)); f(r); return r; };
+  inputs.push(
+    { settings: 'x' },                                                                   // a settings value that is a string, spread as its letters
+    { settings: ['a', 'b'] },                                                            // and one that is a list
+    { settings: { bands: 'x', restWeeks: ['2026-09-28', '2026-09-28', 'x', 7], secOrder: { today: ['a<b', 'ok', 7], dash: 'x' }, folds: ['x"y', 'ok'], hidden: ['today:week', 'nope', 3], homeFolded: ['map', 'x'], priorities: ['chest', 'nope'], bandsFit: { chest: 5, lats: 1.5, neck: 3, quads: 101 } } },
+    withS(r => { r.settings.bands = { chest: [90, 10], lats: ['8', '12'], quads: [1, 2, 3] }; }),      // bands the wrong way round, as strings, too long
+    withS(r => { r.cardio = [{ date: '2026-10-01', min: 20, kind: ['walk'], when: { a: 1 }, dist: '3.5' }, { date: '2026-10-02', min: 20, kind: 'constructor', when: 'toString' }]; }), // a kind that is a list, and keys Object already has
+    withS(r => { r.exercises.push({ id: 'constructor', name: 'x', primary: 'nope', secondary: ['chest', 'nope', 'chest'] }, { id: 'goal', name: 'g', goal: { w: '100', r: 8.4 }, timed: true, bwf: 2 }, { id: 'goal2', name: 'g', goal: { w: 100, r: 8.4 }, assist: true, bw: true }); }),
+    withS(r => { r.routines = [{ id: 'r', days: [] }, { id: 'w', schedule: 'weekly', days: [{ items: [{ exId: 'bench', repMin: 12, repMax: 8, jump: '5' }] }] }, { id: 'w8', schedule: 'weekly', days: [1, 2, 3, 4, 5, 6, 7, 8] }]; }),
+    withS(r => { r.trash = [{ id: 't', kind: 'routine', date: '2026-10-19', data: r.routines[0] }, { id: r.sessions[0].id, kind: 'session', date: '2026-10-19', data: r.sessions[0] }, { id: r.sessions[1].id, kind: 'session', date: '2026-10-19', data: { ...r.sessions[1], notes: 'edited' } }]; }), // a tombstone that holds, and one an edit outlives
+    withS(r => { r.sessions.push({ ...JSON.parse(JSON.stringify(r.sessions[0])), notes: 'twin' }); r.cardio = [{ id: 'c1', date: '2026-10-01', min: 20 }, { id: 'c1', date: '2026-10-02', min: 30 }]; }), // two copies of one id, sessions and cardio
+    withS(r => { r.draft = { ex: [{ exId: 'bench', sets: [{ w: null, r: '' }, { w: '80', r: '8', rir: '', done: 1 }], plan: 'x', adj: { at: 1, w: '80', from: 70, r: 8 }, keepRR: ['8', '12'], lastNote: { date: '2026-10-01', text: 'x' }, sw: '70' }], date: '2026-10-20', startedAt: '1760000000000', durMin: 0.4, cardio: [{ kind: 'walk' }, 'x'] }; }),
+    withS(r => { r.injuries = [{ m: 'chest', date: 'x' }, { m: 'knee', note: 7 }, { m: 'nope' }, 'x']; r.deloadWeek = 7; r.activeRoutineId = 'missing'; r.version = 1; }),
+    withS(r => { r.bodyweights = [{ date: '2026-10-01', kg: '80' }, { date: '2026-10-02', kg: 500 }, { date: 'x', kg: 80 }]; r.measurements = [{ date: '2026-10-01', arm: '40', waist: -1, calf: 400, extra: 1 }, { date: 'x' }]; }),
+    withS(r => { r.priors = [1]; r.version = 'x'; r.exercises = r.exercises.map(e => ({ ...e, perSide: 'yes' })); }), // v1 backfill of perSide
+    withS(r => { r.version = 4; r.exercises = r.exercises.map(e => ({ ...e, primary: 'chest', secondary: [] })); }) // v5 migration
+  );
   let same = 0, lines = 0, first = null, normalizeRuns = 0;
   for (let i = 0; i < inputs.length; i++) {
     const t = JSON.stringify(inputs[i] === undefined ? null : inputs[i]);
