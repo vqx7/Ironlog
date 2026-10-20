@@ -36,6 +36,7 @@ import {
   e1,
   e1inv,
   fitE,
+  isMissed,
   isWork,
   jumpCap,
   jumpPct,
@@ -321,13 +322,25 @@ export function suggestIn(M: Model, exId: string, plan: Plan, opts?: SuggestOpts
    there then too. */
 /* Whether the plan's rep range is in use for a lift (r27): its newest full
    session in that range lies within the trend window (42 days) of the lift's
-   newest full session. A lift on two days at two ranges then reads each from
-   its own sessions; a range not used lately, or never logged, reads them all.
-   The target (suggestCoreIn) and the return after a break (backDaysIn) read
-   it alike. */
+   newest full session before a break. A lift on two days at two ranges then
+   reads each from its own sessions; a range left for another while training
+   went on (a lift back on 8-12 after months on 5-8), or never logged, reads
+   them all. A break of more than four weeks (afterBreak) is no change of
+   range: the window is measured up to the last session before it, so a
+   range trained before a break is still its own after it (r55.1, the spec
+   review: with the window read to the session after the break, a heavy day
+   six weeks off read the light day's eased session as its start). The target
+   (suggestCoreIn) and the return after a break (backDaysIn) read it alike. */
 function rangeInUse(full: readonly Exposure[], want: readonly [number, number]): boolean {
   const last = full.filter(x => !!x.rr && x.rr[0] === want[0] && x.rr[1] === want[1]).pop();
-  return !!last && last.date >= addDays(full[full.length - 1].date, -42);
+  if (!last) return false;
+  let end: Exposure = last;
+  for (const x of full) {
+    if (x.date <= end.date) continue;
+    if (afterBreak(end, x.date)) break;
+    end = x;
+  }
+  return last.date >= addDays(end.date, -42);
 }
 
 export function suggestCoreIn(M: Model, exId: string, plan: Plan, opts?: SuggestOpts | null): Suggestion {
@@ -1485,6 +1498,32 @@ export function heavierLoadIn(
 export const ODD_SESSION = 3;
 /** How many times a lift's heaviest logged load a set may be before the app asks (r55, a convention, above). */
 export const ODD_BEST = 2;
+/* A set ticked with 0 reps at a load well under the session's working load
+   (r55.1, V 2026-10-19): at a warm weight a slip of the finger is likelier
+   than a missed attempt, so it is asked about, Log it as missed or Fix it,
+   where at or near the working load a 0 is logged as missed at once. Well
+   under is under LIGHTER_LOAD of the heavier of the block's suggested load and
+   the heaviest working set done today, the share a lighter session is read by
+   (a convention). Loads are compared as moved, a bodyweight lift's with its
+   share of bodyweight (as oddLoadIn compares them), so a 0 at bodyweight after
+   bodyweight sets is not asked and one after sets with 20 kg added is. A
+   warm-up, a drop, a timed hold and an assisted lift (its load is help) are
+   never asked. */
+/** Whether a ticked 0 on a row is at a load well under the session's working load, and so asked about. */
+export function lightZeroIn(M: Model, b: DraftBlock, si: number, date: string): boolean {
+  const s = b.sets[si];
+  if (!s || s.warm || s.drop || !isMissed(s)) return false;
+  const ex = EXIn(M, b.exId);
+  const w = effW(b, si);
+  if (ex.assist || ex.timed || w == null) return false;
+  const bw = bwLoadIn(M, ex, date);
+  let work = b.sw != null && b.sw > 0 ? bw + b.sw : 0;
+  b.sets.forEach((x, i) => {
+    if (i !== si && x.done && !x.warm && !x.drop && isWork(x) && x.w != null) work = Math.max(work, bw + x.w);
+  });
+  return work > 0 && bw + w >= 0 && bw + w < work * LIGHTER_LOAD - 1e-9;
+}
+
 /** Why a working set's load is far off its session or the lift's log, or null (above). */
 export function oddLoadIn(M: Model, b: DraftBlock, si: number, date: string): string | null {
   const s = b.sets[si];

@@ -82,6 +82,12 @@ const ses = (id, date, exId, rr, sets, extra) => Object.assign({ id, date, dayId
     const backDay = day('b1', '2026-08-24', 2, [8, 12], [[lightBack.w, 12], [lightBack.w, 12], [lightBack.w, 11], [lightBack.w, 11]]);
     const heavy = await read([...hist, backDay].sort((a, b) => (a.date < b.date ? -1 : 1)), plan);
     ok(lightBack.w < 75 && heavy.w < 85 && heavy.w >= 85 * 0.85 && /Back after/.test(heavy.text), 'bench in 3-5 and 8-12, six weeks off, the 8-12 day back eased: the 3-5 day\'s first session back is eased too, under its 85 kg before the break, and says why (r55 asked for 85 kg and more reps)', { lightBack, heavy });
+    // Seven weeks off (past the 42-day window a range is read in use by): the 8-12 day back first, then the 3-5 day.
+    const shifted = d => { const t = new Date(d + 'T00:00:00Z'); t.setUTCDate(t.getUTCDate() - 12); return t.toISOString().slice(0, 10); };
+    const hist7 = hist.map(x => ({ ...x, date: shifted(x.date) }));
+    const light7 = await read(hist7.slice().sort((a, b) => (a.date < b.date ? -1 : 1)), lightPlan);
+    const heavy7 = await read([...hist7, day('b1', '2026-08-24', 2, [8, 12], [[light7.w, 12], [light7.w, 12], [light7.w, 11], [light7.w, 11]])].sort((a, b) => (a.date < b.date ? -1 : 1)), plan);
+    ok(heavy7.w < 85 && heavy7.w >= 85 * 0.85 && /Back after/.test(heavy7.text), 'the same after seven weeks off: the 3-5 day\'s first session back is eased from its own 85 kg, not read from the light day (the first fix lost it past 42 days, the spec review)', { light7: light7.w, heavy7 });
     // A guard: a lift in one range only, back after the same break, is eased exactly as r55 eased it.
     const one = await read(hist.filter(x => x.dayIdx === 0), plan);
     ok(one.w < 85 && /Back after/.test(one.text), 'a guard: the same lift in one range, back after six weeks, is eased', one);
@@ -111,6 +117,15 @@ const ses = (id, date, exId, rr, sets, extra) => Object.assign({ id, date, dayId
     const b2 = await sig(), kept = await ev(() => window.__ironlog.state.draft.ex[1].sets[0].done);
     const rest = s => s.split(' ').filter((_, i) => i !== 1).join(' ');
     ok(b1 && rest(b2) === rest(b0) && kept, 'Make it lighter, a set logged on a lightened exercise, then Undo from Settings: the others are back as they were and that exercise keeps the set logged since (r55 left all of them lighter)', { b0, b2, kept });
+    // The same after a reload between Make it lighter and Undo (a reload normalizes the session in progress; the spec review).
+    await startDay(0); await logSet(0, 0, 60, 8);
+    const c0 = await sig(); await lighten(); await wait(900); // Undo's history is saved 400 ms after an action
+    await page.reload(); await page.waitForFunction(() => window.__ironlog && window.__libs && window.__libs.chart); await wait(800);
+    const afterReload = await ev(() => { const L = window.__ironlog; return { undo: L.undoStack ? L.undoStack.length : null, draft: !!L.state.draft, modal: L.ui.modal && L.ui.modal.kind }; });
+    await ev(() => window.__ironlog.ACT.undo()); await wait(300);
+    await ev(() => { const L = window.__ironlog; L.ui.tab = 'today'; L.render(); });
+    const c2 = await sig();
+    ok(afterReload.undo > 0 && afterReload.draft && c2 === c0, 'a guard: Make it lighter, the app reopened, then Undo: every exercise is back as it was (r55 did this; a fix comparing the raw copies would not, the spec review)', { afterReload, c0, c2 });
     await ev(() => { const L = window.__ironlog; L.state.draft = null; L.saveNow(); L.render(); });
   }
 
@@ -169,6 +184,27 @@ const ses = (id, date, exId, rr, sets, extra) => Object.assign({ id, date, dayId
     await typ(W(0, 3), 92.5); await typ(R(0, 3), 0); await page.click('[data-act="sDone"][data-b="0"][data-s="3"]'); await wait(150);
     const g2 = { m: await modal(), done: await ev(() => window.__ironlog.state.draft.ex[0].sets[3].done) };
     ok(!g1.m && g1.done && /missed/i.test(g1.t) && !g2.m && g2.done, 'a guard: 100 x 0 and 92.5 x 0 are logged as missed at once, nothing asked', { g1, g2 });
+    // A ticked set at a light weight whose reps are then changed to 0 asks too (the spec review: it was logged at once).
+    await ev(() => { const L = window.__ironlog; L.state.draft.ex[0].sets.push({ w: null, r: null, rir: null, warm: false, drop: false, done: false }); L.saveNow(); L.render(); });
+    await typ(W(0, 4), 60); await typ(R(0, 4), 8); await page.click('[data-act="sDone"][data-b="0"][data-s="4"]'); await wait(150);
+    await typ(R(0, 4), 0); await wait(150);
+    const e1 = { m: await modal(), done: await ev(() => window.__ironlog.state.draft.ex[0].sets[4].done) };
+    ok(e1.m && e1.m.buttons.join('|') === 'Log it as missed|Fix it' && !e1.done, 'a ticked 60 x 8 changed to 60 x 0: it asks Log it as missed or Fix it', e1);
+    await ev(() => { const L = window.__ironlog; if (L.ui.modal) L.ACT.mClose(); });
+    // Finish's Mark them done and save asks about it too, rather than saving it as missed.
+    await ev(() => window.__ironlog.ACT.finish()); await wait(200);
+    const f1 = await modal(); if (f1 && /no checkmark/.test(f1.text)) { await page.click('#modal [data-act="mOk"]'); await wait(200); }
+    const f2 = await modal();
+    ok(f2 && f2.buttons.join('|') === 'Log it as missed|Fix it', 'and at Finish, Mark it done and save asks the same before saving it', { f1: f1 && f1.text.slice(0, 80), f2 });
+    await ev(() => { const L = window.__ironlog; if (L.ui.modal) L.ACT.mClose(); L.state.draft = null; L.saveNow(); L.render(); });
+    // A guard: pull-ups at bodyweight, then a 0 at bodyweight, is at the working load and is logged as missed at once.
+    await log([ses('p1', '2026-10-01', 'pullup', [6, 10], Array(3).fill([0, 8])), ses('p2', '2026-10-08', 'pullup', [6, 10], Array(3).fill([0, 8]))]);
+    await ev(() => { const L = window.__ironlog; L.state.bodyweights = [{ id: 'bw1', date: '2026-10-10', kg: 80, demo: false }]; L.invalidate(); L.saveNow(); });
+    await startDay(0);
+    await ev(() => { const L = window.__ironlog; const d = L.state.draft; d.ex = [L.newBlock('pullup', L.planFor('pullup'), {})]; L.saveNow(); L.render(); });
+    await typ(R(0, 0), 0); await page.click('[data-act="sDone"][data-b="0"][data-s="0"]'); await wait(150);
+    const bw0 = { m: await modal(), done: await ev(() => window.__ironlog.state.draft.ex[0].sets[0].done) };
+    ok(!bw0.m && bw0.done, 'a guard: a pull-up at bodyweight with 0 reps, after bodyweight sets, is logged as missed at once', bw0);
     await ev(() => { const L = window.__ironlog; if (L.ui.modal) L.ACT.mClose(); L.state.draft = null; L.saveNow(); L.render(); });
   }
 
@@ -192,6 +228,8 @@ const ses = (id, date, exId, rr, sets, extra) => Object.assign({ id, date, dayId
     };
     const st = await fresh(STRONG, '2026-09-28T07:00:00');
     ok(st.s.join() === 'Legs||50,Push|Felt strong|65', 'a Strong file: the workout\'s note and its duration (1h 5m, 50m) are kept with each session (r55 kept neither)', st.s);
+    const hand = await fresh('Date,Exercise,Weight,Reps,Duration\n2026-09-10,Plank,0,1,1 min\n2026-09-10,Bench,100,8,\n', '2026-09-28T07:00:00');
+    ok(hand.s.length === 1 && /\|null$/.test(hand.s[0]), 'a guard: a hand-made sheet\'s Duration column (a set\'s, "1 min") is not read as the session\'s minutes', hand.s);
     const hv = await fresh(HEVY, '2026-09-28T07:00:00');
     const day = hv.days.find(d => d.startsWith('Upper A:')) || '';
     const grp = id => ((day.split(':')[1] || '').split(',').find(x => x.startsWith(id)) || '').split('@')[1] || null;

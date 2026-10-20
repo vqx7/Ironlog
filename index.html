@@ -2882,16 +2882,6 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     if (!s) return null;
     return s.w != null ? s.w : greyW(b, si);
   }
-  function lightZero(b, si) {
-    const s = b.sets[si];
-    if (!s || s.warm || s.drop || !isMissed(s)) return false;
-    let work = b.sw != null && b.sw > 0 ? b.sw : 0;
-    b.sets.forEach((x, i) => {
-      if (i !== si && x.done && !x.warm && !x.drop && isWork(x) && x.w != null) work = Math.max(work, x.w);
-    });
-    const w = effW(b, si);
-    return work > 0 && w != null && w >= 0 && w < work * LIGHTER_LOAD - 1e-9;
-  }
   function effTarget(b) {
     const t = b.tgt;
     if (!t || t.kind !== "reps") return t;
@@ -3578,6 +3568,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       (h) => String(h == null ? "" : h).trim().toLowerCase()
     );
     const ours = heads.some((h) => /^load_(lb|kg)$/.test(h)) && heads.includes("exercise_note");
+    const strong = heads.includes("workout name") && heads.includes("set order");
     const col = (n) => ours && heads.includes(n) ? heads.indexOf(n) : null;
     const cNote = col("session_note"), cMin = col("session_minutes"), cHr = col("avg_hr"), cUnit = col("unit");
     const at = (r, i) => i == null ? "" : String(r[i] == null ? "" : r[i]).trim();
@@ -3666,7 +3657,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       const ss = S.get(k);
       const sn = ours ? at(r, cNote) : cell("snote");
       if (!ss.note && sn) ss.note = sn;
-      const dm = ours ? num(at(r, cMin)) : impSpan(cell("dur"), cell("date"), cell("end"));
+      const dm = ours ? num(at(r, cMin)) : impSpan(strong ? cell("dur") : "", cell("date"), cell("end"));
       if (ss.durMin == null && dm != null && dm >= 1 && dm <= 600) ss.durMin = Math.round(dm);
       if (/^(yes|true|1|y)$/i.test(String(cell("deload") || "").trim())) ss.deload = true;
       if (!ss.items.has(ex))
@@ -5550,7 +5541,14 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
   }
   function rangeInUse(full, want) {
     const last = full.filter((x) => !!x.rr && x.rr[0] === want[0] && x.rr[1] === want[1]).pop();
-    return !!last && last.date >= addDays(full[full.length - 1].date, -42);
+    if (!last) return false;
+    let end = last;
+    for (const x of full) {
+      if (x.date <= end.date) continue;
+      if (afterBreak(end, x.date)) break;
+      end = x;
+    }
+    return last.date >= addDays(end.date, -42);
   }
   function suggestCoreIn(M, exId, plan, opts) {
     opts = opts || {};
@@ -6268,6 +6266,19 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
   }
   var ODD_SESSION = 3;
   var ODD_BEST = 2;
+  function lightZeroIn(M, b, si, date) {
+    const s = b.sets[si];
+    if (!s || s.warm || s.drop || !isMissed(s)) return false;
+    const ex = EXIn(M, b.exId);
+    const w = effW(b, si);
+    if (ex.assist || ex.timed || w == null) return false;
+    const bw = bwLoadIn(M, ex, date);
+    let work = b.sw != null && b.sw > 0 ? bw + b.sw : 0;
+    b.sets.forEach((x, i) => {
+      if (i !== si && x.done && !x.warm && !x.drop && isWork(x) && x.w != null) work = Math.max(work, bw + x.w);
+    });
+    return work > 0 && bw + w >= 0 && bw + w < work * LIGHTER_LOAD - 1e-9;
+  }
   function oddLoadIn(M, b, si, date) {
     const s = b.sets[si];
     if (!s || s.warm || s.drop) return null;
@@ -6404,6 +6415,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
   var incOf = live(incOfIn);
   var heavierLoad = live(heavierLoadIn);
   var oddLoad = live(oddLoadIn);
+  var lightZero = live(lightZeroIn);
   var lighterLoad = live(lighterLoadIn);
   var progStep = live(progStepIn);
   var rackStep = live(rackStepIn);
@@ -9211,7 +9223,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       if (!s) return;
       const okKey = `${bi}:${si}:${s.r}:${effW(b, si)}`;
       const far = val && oddOk !== okKey && !oddReps(b, s) ? oddLoad(b, si, state.draft.date) : null;
-      const lz = val && oddOk !== okKey && !far && lightZero(b, si);
+      const lz = val && oddOk !== okKey && !far && lightZero(b, si, state.draft.date);
       if (val && oddOk !== okKey && (far || oddReps(b, s) || lz)) {
         const ex = EX(b.exId);
         const fix = far ? "w" : "r";
@@ -15428,7 +15440,7 @@ ${JSON.stringify(fb.context, null, 1)}`;
           const parts = {};
           for (const id of /* @__PURE__ */ new Set([...Object.keys(P), ...Object.keys(Q), ...Object.keys(C)])) {
             const q = Q[id] || emptyChunk(id);
-            parts[id] = id === "draft" ? { draft: mergeDraft(e.post ? JSON.parse(e.post).draft : state.draft, state.draft, JSON.parse(e.pre).draft) } : mergeChunk(id, q ? baseOf(id, q) : null, C[id] || emptyChunk(id), P[id] || emptyChunk(id), false, stat);
+            parts[id] = id === "draft" ? { draft: mergeDraft(Q.draft && Q.draft.draft, normalize(JSON.parse(JSON.stringify(state))).draft, P.draft && P.draft.draft) } : mergeChunk(id, q ? baseOf(id, q) : null, C[id] || emptyChunk(id), P[id] || emptyChunk(id), false, stat);
           }
           setState(assemble(parts));
         } catch (x) {
@@ -16486,7 +16498,7 @@ ${JSON.stringify(fb.context, null, 1)}`;
               const dd = state.draft;
               if (!dd) return;
               for (const [bi, b] of dd.ex.entries()) for (const [si, s] of b.sets.entries()) if (!s.done && (+s.r > 0 || isMissed(s))) {
-                if (oddReps(b, s) || oddLoad(b, si, dd.date)) {
+                if (oddReps(b, s) || oddLoad(b, si, dd.date) || lightZero(b, si, dd.date)) {
                   setDone(bi, si, true);
                   if (!s.done) return;
                 } else {
@@ -17329,8 +17341,8 @@ ${JSON.stringify(fb.context, null, 1)}`;
         importData($("#mText").value);
       },
       demoLoad() {
-        if (acct.user && cloud.on) {
-          confirmBox("Demo data stays off your account", "Sign out first, keeping a copy on this phone, to look around with it.", "Sign out", () => ACT.acctSignOut());
+        if (acct.user) {
+          toast("Demo data is for looking around before you sign in, so it stays off your account.", null, 6e3);
           return;
         }
         confirmBox("Load demo data?", "Adds 8 weeks of generated sessions tagged as demo, based on your active routine. Your own logs are not changed.", "Load demo data", () => {
@@ -17940,10 +17952,12 @@ ${JSON.stringify(fb.context, null, 1)}`;
             lastAuto = { b: blkRef(bi), s: si, t: Date.now() };
             setDone(bi, si, true);
           }
+        } else if (s.done && isMissed(s)) {
+          setDone(bi, si, false);
+          setDone(bi, si, true, true);
         } else if (s.done) {
           refreshPR(bi, si, false);
           afterSet(bi, si);
-          if (isMissed(s)) toast(MISSED_SAID);
         }
         saveSoon();
         return;

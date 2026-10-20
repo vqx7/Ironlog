@@ -171,7 +171,7 @@ document.addEventListener('change',e=>{
       // Heading for this row's RIR box: tick when its strip closes (or after 2 s if it never opened).
       if(toW)pendAuto={b:blkRef(bi),s:si};else if(toRir){const p={b:blkRef(bi),s:si};pendAuto=p;setTimeout(()=>{if(pendAuto===p&&!document.querySelector('.rirstrip'))autoPending();},2000);} // by identity: a later tick must not run this one (r45)
       else{lastAuto={b:blkRef(bi),s:si,t:Date.now()};setDone(bi,si,true);}}
-    else if(s.done){refreshPR(bi,si,false);afterSet(bi,si);if(isMissed(s))toast(MISSED_SAID);}
+    else if(s.done&&isMissed(s)){setDone(bi,si,false);setDone(bi,si,true,true);} /* a ticked set changed to 0 asks, as a tick does, when its load is light (r55.1, the spec review) */else if(s.done){refreshPR(bi,si,false);afterSet(bi,si);}
     saveSoon();return;}
   if(t.dataset.f){
     if(t.dataset.f==='w'&&state.draft){const s=draftSet(t);if(!s)return;const bi=+t.dataset.b,si=+t.dataset.s;const rf=!!ui.refix&&ui.refix.s===si&&blkIdx(ui.refix.b)===bi;if(rf)ui.refix=null;if(s.done&&oddLoad(state.draft.ex[bi],si,state.draft.date)){setDone(bi,si,false);setDone(bi,si,true,true);return;}/* a ticked set's load changed to one far off asks too, unticked until it is answered; Log it, or the load fixed after Fix it, ticks it again, its rest not started over (r55; the second review: after Fix it it stayed unticked, and Log it restarted the rest) */if(rf&&!s.done)setDone(bi,si,true,true);else if(s.done){refreshPR(bi,si,false);afterSet(bi,si);}mixCheck(bi,si);if(fillLoads())carryLoad(bi,si);}

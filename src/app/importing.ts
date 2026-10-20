@@ -552,6 +552,10 @@ export function impFromTable(rows: readonly (readonly unknown[])[], map: Record<
       .toLowerCase()
   );
   const ours = heads.some(h => /^load_(lb|kg)$/.test(h)) && heads.includes('exercise_note');
+  /* Strong's file, by its own columns: its Duration is the workout's ("1h
+     5m"), where a hand-made sheet's Duration may be a set's (r55.1, the spec
+     review), so only Strong's is read as the session's minutes. */
+  const strong = heads.includes('workout name') && heads.includes('set order');
   const col = (n: string): number | null => (ours && heads.includes(n) ? heads.indexOf(n) : null);
   const cNote = col('session_note'),
     cMin = col('session_minutes'),
@@ -661,7 +665,7 @@ export function impFromTable(rows: readonly (readonly unknown[])[], map: Record<
     const ss = S.get(k)!;
     const sn = ours ? at(r, cNote) : cell('snote');
     if (!ss.note && sn) ss.note = sn;
-    const dm = ours ? num(at(r, cMin)) : impSpan(cell('dur'), cell('date'), cell('end'));
+    const dm = ours ? num(at(r, cMin)) : impSpan(strong ? cell('dur') : '', cell('date'), cell('end'));
     if (ss.durMin == null && dm != null && dm >= 1 && dm <= 600) ss.durMin = Math.round(dm);
     if (/^(yes|true|1|y)$/i.test(String(cell('deload') || '').trim())) ss.deload = true;
     if (!ss.items.has(ex))

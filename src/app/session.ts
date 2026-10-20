@@ -6,7 +6,7 @@
 
 import type { DraftBlock, DraftSet, Session, SessionEx, Target } from './types';
 import { uid, today } from './util';
-import { LIGHTER_LOAD, isMissed, isWork } from './formulas';
+import { isMissed, isWork } from './formulas';
 import { fmtDate } from './format';
 import { cleanChk } from './records';
 
@@ -35,27 +35,6 @@ export function effW(b: DraftBlock | null | undefined, si: number): number | nul
   const s = b && b.sets[si];
   if (!s) return null;
   return s.w != null ? s.w : greyW(b, si);
-}
-
-/* A set ticked with 0 reps at a load well under the session's working load
-   (r55.1, V 2026-10-19): at a warm weight a slip of the finger is likelier
-   than a missed attempt, so it is asked about, Log it as missed or Fix it,
-   where at or near the working load a 0 is logged as missed at once. Well
-   under is under LIGHTER_LOAD of the heavier of the block's suggested load and
-   the heaviest working set done today, the share a lighter session is read by
-   (a convention). Only on a loaded lift's working sets: a warm-up, a drop, a
-   bodyweight lift at no added load and an assisted lift (its load is help)
-   are never asked. */
-/** Whether a ticked 0 on a row is at a load well under the session's working load, and so asked about. */
-export function lightZero(b: DraftBlock, si: number): boolean {
-  const s = b.sets[si];
-  if (!s || s.warm || s.drop || !isMissed(s)) return false;
-  let work = b.sw != null && b.sw > 0 ? b.sw : 0;
-  b.sets.forEach((x, i) => {
-    if (i !== si && x.done && !x.warm && !x.drop && isWork(x) && x.w != null) work = Math.max(work, x.w);
-  });
-  const w = effW(b, si);
-  return work > 0 && w != null && w >= 0 && w < work * LIGHTER_LOAD - 1e-9;
 }
 
 /* A reps target compares today's first n sets at the load with last time's

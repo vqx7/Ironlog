@@ -610,7 +610,7 @@ const ACT={
       const P=chunksOf(pre),Q=chunksOf(post),C=chunksOf(state);const stat={conflicts:0};const parts={};
       for(const id of new Set([...Object.keys(P),...Object.keys(Q),...Object.keys(C)])){
         const q=Q[id]||emptyChunk(id);
-        parts[id]=id==='draft'?{draft:mergeDraft(e.post?JSON.parse(e.post).draft:state.draft,state.draft,JSON.parse(e.pre).draft)} /* the session in progress merged from its three versions as they were kept, the live one never normalized: compared with normalized copies, every exercise read as changed since and nothing went back (r55.1, the audit of r55: Undo after Make it lighter) */
+        parts[id]=id==='draft'?{draft:mergeDraft(Q.draft&&Q.draft.draft,normalize(JSON.parse(JSON.stringify(state))).draft,P.draft&&P.draft.draft)} /* the session in progress compared in one form, all three normalized, as a reload leaves it: the live one compared raw read every exercise as changed since and nothing went back (r55.1, the audit of r55: Undo after Make it lighter) */
           :mergeChunk(id,q?baseOf(id,q):null,C[id]||emptyChunk(id),P[id]||emptyChunk(id),false,stat);
       }
       setState(assemble(parts));
@@ -1007,7 +1007,7 @@ m.err=`Could not read that. Try the pattern 225x5, 5, 4 ${rirScale()==='rpe'?'rp
       confirmBox('Some sets are not marked done',
         `${total} set${total>1?'s have':' has'} reps entered but no checkmark, so ${total>1?'they':'it'} will not be saved: ${list}.`,
         `Mark ${total>1?'them':'it'} done and save`,
-        ()=>{const dd=state.draft;if(!dd)return;for(const [bi,b] of dd.ex.entries())for(const [si,s] of b.sets.entries())if(!s.done&&(+s.r>0||isMissed(s))){if(oddReps(b,s)||oddLoad(b,si,dd.date)){setDone(bi,si,true);if(!s.done)return;}else{settleLoad(b,si);s.done=true;}}saveNow();ACT.finishNow();}, // reps or a load far off ask first, as when ticked (r55, the audit: 110 reps put off once was saved here)
+        ()=>{const dd=state.draft;if(!dd)return;for(const [bi,b] of dd.ex.entries())for(const [si,s] of b.sets.entries())if(!s.done&&(+s.r>0||isMissed(s))){if(oddReps(b,s)||oddLoad(b,si,dd.date)||lightZero(b,si,dd.date)){setDone(bi,si,true);if(!s.done)return;}else{settleLoad(b,si);s.done=true;}}saveNow();ACT.finishNow();}, // reps or a load far off ask first, as when ticked (r55, the audit: 110 reps put off once was saved here)
         false,
         {label:'Save without them',fn:()=>ACT.finishNow()});
       return;
@@ -1260,7 +1260,7 @@ m.err=`Could not read that. Try the pattern 225x5, 5, 4 ${rirScale()==='rpe'?'rp
   copyText(){const ta=$('#mText');ta.select();let ok=false;try{if(navigator.clipboard){navigator.clipboard.writeText(ta.value).then(()=>{markExported();toast('Copied');},()=>toast('Select the text and copy it manually'));return;}ok=document.execCommand('copy');}catch(e){log('copy',e);}if(ok)markExported();toast(ok?'Copied':'Select the text and copy it manually');},
   pasteImport(){openModal({kind:'text',title:'Import backup text',help:'Paste the full backup text here.',text:'',readonly:false});},
   importText(){importData($('#mText').value);},
-  demoLoad(){if(acct.user&&cloud.on){confirmBox('Demo data stays off your account','Sign out first, keeping a copy on this phone, to look around with it.','Sign out',()=>ACT.acctSignOut());return;} /* signed in, it would sync into the account (r55.1, the second review of r55); signed out, the next sign-in leaves it out (r55) */confirmBox('Load demo data?','Adds 8 weeks of generated sessions tagged as demo, based on your active routine. Your own logs are not changed.','Load demo data',()=>{const first=demoFirstRun();demoKeep();
+  demoLoad(){if(acct.user){toast('Demo data is for looking around before you sign in, so it stays off your account.',null,6000);return;} /* signed in, it would sync into the account (r55.1, the second review of r55); signing out to load it would make the next sign-in a first link, which brings back what other phones deleted meanwhile, so it is not offered */confirmBox('Load demo data?','Adds 8 weeks of generated sessions tagged as demo, based on your active routine. Your own logs are not changed.','Load demo data',()=>{const first=demoFirstRun();demoKeep();
     // On a first run the targets fit the routine, as picking it would (r29);
     // demoRestore puts the settings back when the demo is cleared.
     if(first)fitTargets(activeRoutine());if(!cloud.on)cloudStop(true);makeDemo();ui.tab='dash';window.scrollTo(0,0);render();toast('Demo data loaded');});},

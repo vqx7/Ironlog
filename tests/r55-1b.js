@@ -6,8 +6,8 @@
 //     account no longer exists, signs out with its sync notes forgotten, and
 //     keeps its log, where r55 kept saying the log would sync (V 2026-10-19);
 //     an expired sign-in is not read as a deleted account (a guard);
-//   - Load demo data while signed in asks to sign out first, so no demo data
-//     reaches the account (PENDING 328 d).
+//   - Load demo data while signed in is not done, and says why, so no demo
+//     data reaches the account (PENDING 328 d).
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
@@ -81,12 +81,12 @@ fs.cpSync(SRC, tmp, { recursive: true });
     await D.ev(() => { const L = window.__ironlog; L.state.sessions.push({ id: 'own1', date: '2026-10-01', dayIdx: 0, dayId: null, dayName: 'Own', routineId: '', free: true, notes: '', ex: [{ exId: 'bench', sets: [{ w: 100, r: 5, rir: 2, warm: false, drop: false }] }] }); L.state = L.normalize(L.state); L.saveNow(); });
     await D.signIn('demo@example.com');
     await D.ev(() => window.__ironlog.ACT.demoLoad()); await wait(250);
-    const q = await D.ev(() => { const m = window.__ironlog.ui.modal; const el = document.querySelector('#modal .sheet'); return m ? { title: m.title, buttons: el ? [...el.querySelectorAll('button')].map(b => b.innerText.trim()) : [] } : null; });
-    await D.ev(() => { const L = window.__ironlog; if (L.ui.modal) L.ACT.mClose(); });
+    const q = { modal: await D.ev(() => !!window.__ironlog.ui.modal), toast: await D.toast() };
+    await D.ev(() => { const L = window.__ironlog; if (L.ui.modal) L.ACT.mOk(); });
     await D.ev(() => window.__ironlog.flush()); await wait(1200);
     const demoHere = await D.ev(() => window.__ironlog.state.sessions.filter(x => x.demo).length);
     const acc = sessIn('demo@example.com');
-    ok(q && /stays off your account/i.test(q.title) && q.buttons.includes('Sign out') && demoHere === 0 && !acc.includes('demo') && acc.includes('own1'), 'Load demo data while signed in: it says demo data stays off the account and offers Sign out first, and no demo session is loaded or reaches the account (r55 loaded 8 weeks of demo data and uploaded it)', { q, demoHere, acc: acc.length });
+    ok(!q.modal && /stays off your account/.test(q.toast || '') && demoHere === 0 && !acc.includes('demo') && acc.includes('own1'), 'Load demo data while signed in: it says demo data is for before signing in and stays off the account, and no demo session is loaded or reaches the account (r55 loaded 8 weeks of demo data and uploaded it)', { q, demoHere, acc: acc.length });
     await D.ctx.close();
   }
 
