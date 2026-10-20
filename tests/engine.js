@@ -32,8 +32,10 @@ const K = +process.env.ENGINE_N || 1000, BATCH = 100;
 // The engine's functions that take no model and that the digest calls (tests/wide.js), run in Node beside the adapters,
 // and since r54 the routine helpers the legacy script reads from routines.ts (EXTRA below calls them): when Finish's
 // offer and a lift's own plan moved to plans.ts (r54) the lines that ran went with them, and these keep routines.ts's share;
-// and musTrend, a muscle's strength trend in words, which Stats and the muscles sheet call and no adapter reaches (r54).
-const PLAIN = ['avgWeeksTxt', 'dayLabel', 'daySets', 'ssLetters', 'routineSig', 'tplCountLine', 'musTrend'];
+// and musTrend, a muscle's strength trend in words, which Stats and the muscles sheet call and no adapter reaches (r54);
+// and r55's routine helpers: what a session records of its routine (pwOf), a first-run choice replacing the starter
+// (dropStarter), a day given an exercise (trainOn) and the item a lift's plan comes from (planItemOf).
+const PLAIN = ['avgWeeksTxt', 'dayLabel', 'daySets', 'ssLetters', 'routineSig', 'tplCountLine', 'musTrend', 'pwOf', 'dropStarter', 'trainOn', 'planItemOf'];
 // Every adapter live.ts gives the legacy script, read from live.ts itself, so a new one cannot go uncalled.
 const ADAPTERS = [...fs.readFileSync(path.join(APP, 'live.ts'), 'utf8').matchAll(/^export const (\w+) = live\(\w+In\);$/gm)].map(m => m[1]);
 // The adapters added since r53, and the plain functions above the digest does not call: tests/wide.js is shared with
@@ -42,6 +44,15 @@ const EXTRA = {
   // Each routine's day labels (a cycle's Day N, a weekly one's weekday), planned sets a day, superset letters and signature, and the templates' line.
   dayLabel: (s) => s.routines.flatMap(r => [[r, 0], [r, 3], [{ ...r, schedule: 'weekly' }, 2]]), daySets: (s) => s.routines.flatMap(r => r.days.map(d => [d])),
   ssLetters: (s) => s.routines.flatMap(r => r.days.map(d => [d.items])), routineSig: (s) => s.routines.map(r => [r]), tplCountLine: () => [[]],
+  // r55: each routine's sessions a week by id (and an id no routine has), the routines less the first one's signature as a
+  // starter, each day given an exercise, and where each tagged lift's plan comes from, with and without a day to look at first.
+  pwOf: (s) => [[s.routines, s.activeRoutineId], [s.routines, 'none'], [[], '']],
+  dropStarter: (s) => [[s.routines, s.sessions, s.routines.slice(0, 1).map(r => window.__ironlog.routineSig(r))], [s.routines, [], []]],
+  trainOn: (s) => s.routines.flatMap(r => r.days.map(d => [d])),
+  planItemOf: (s, ids) => s.routines.slice(0, 2).flatMap(r => ids.slice(0, 6).flatMap(id => [[r, id], [r, id, r.days.length > 1 ? r.days[1].id : null]])),
+  // A lift's all-time bests, now and as of the log's middle session (a past workout's), and where the weeks are counted from.
+  allTimeBests: (s, ids) => ids.flatMap(id => [[id], [id, s.sessions.length ? s.sessions[Math.floor(s.sessions.length / 2)].date : '']]),
+  logBack: () => [[]], logStart: () => [[]],
   plannedSets: (s) => s.routines.map(r => [r]), stallWeeks: (s, ids) => ids.map(id => [id]), stallWords: (s, ids) => ids.map(id => [id]), atRangeTop: (s, ids) => ids.map(id => [id]), avgFirstWeek: () => [[]], lastLighterWeek: () => [[]],
   // A week's sets so far and a plain average; the weekly averages, which carry the muscles on plan, reach it through the coach and regionBalance.
   muscleStatus: () => [[{ chest: 5, quads: 22, biceps: 0, serratus: 3 }], [{ chest: 5, quads: 22, biceps: 0 }, true], [null]],

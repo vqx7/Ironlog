@@ -265,11 +265,9 @@ export function daySets(day: { items: { sets: number | string }[] }): number {
    goes with it when it is the name rest days are given (r55, from the audit:
    a day of Build my own or New blank, given an exercise, read "Rest" on Today
    and in the week bar with its exercises planned). A name typed stays. */
-/** Makes a rest day a training day, as when an exercise is added to it. */
-export function trainOn(d: { rest: boolean; name: string }): void {
-  if (!d.rest) return;
-  d.rest = false;
-  if (d.name === 'Rest') d.name = 'Training day';
+/** What a day given an exercise becomes: a training day, named Training day when it was a rest day named Rest. */
+export function trainOn(d: { rest: boolean; name: string }): { rest: false; name: string } {
+  return { rest: false, name: d.rest && d.name === 'Rest' ? 'Training day' : d.name };
 }
 
 /* A superset is consecutive items sharing an id. Groups of one are not

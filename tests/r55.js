@@ -620,6 +620,12 @@ const LB = 0.45359237;
     const c10 = await ev(() => (/Best set[^\n]*/.exec(document.getElementById('view').innerText) || [''])[0]);
     ok(/Best set BW×9/.test(c10) && /A trend needs a weigh-in/.test(c10) && !/A trend needs 3 sessions/.test(c10), 'pull-ups at bodyweight 7, 8, 9 and 9 reps with no weigh-in: Stats says the best set is BW×9 and that a trend needs a weigh-in (r54: BW×7, the first, and "a trend needs 3 sessions" after 4)', c10);
 
+    // And weighted: with no weigh-in a bodyweight lift has no trend, since its readings would be the added load alone (found while fixing C10).
+    await log([['2026-09-17', 10], ['2026-09-24', 12.5], ['2026-10-01', 15], ['2026-10-08', 17.5]].map(([d, w], i) => ses('wp' + i, d, 'pullup', [6, 10], [[w, 8], [w, 8], [w, 8]])));
+    const wt = async kg => { await ev(kg => { const L = window.__ironlog; L.state.bodyweights = kg ? [{ id: 'bw1', date: '2026-09-01', kg, demo: false }] : []; L.state = L.normalize(L.state); L.invalidate(); L.saveNow(); L.ui.tab = 'dash'; L.ui.dashEx = 'pullup'; }, kg); await openAll(); return ev(() => { const st = window.__ironlog.IDX().exStats.pullup; return { pct: st.pct == null ? null : Math.round(st.pct * 10) / 10, moving: st.moving, line: (/A trend needs a weigh-in[^\n]*|Up[^\n]*over[^\n]*/.exec(document.getElementById('view').innerText) || [''])[0] }; }); };
+    const wp0 = await wt(0), wp80 = await wt(80);
+    ok(wp0.pct === null && !wp0.moving && /A trend needs a weigh-in/.test(wp0.line) && wp80.pct === 5.4 && wp80.moving, 'pull-ups from BW+10 to BW+17.5 over three weeks: with no weigh-in no trend, and a weigh-in asked for; at an 80 kg weigh-in, up 5.4% (r54 read the added load alone: up 40%)', { wp0, wp80 });
+
     // C11: on the RPE scale, Plan's effort field is RPE.
     await log([]);
     await ev(() => { const L = window.__ironlog; L.state.settings.rirScale = 'rpe'; L.saveNow(); const R = L.activeRoutine(); const it = R.days[0].items[0]; it.rir = 2; L.ui.tab = 'program'; L.ui.bRoutine = R.id; L.ui.dayFocus = R.days[0].id; L.ui.openItem = it.uid; });

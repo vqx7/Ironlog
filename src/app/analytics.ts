@@ -1343,9 +1343,13 @@ export function idxLiftIn(
       loadUp = false;
     /* A trend needs 3 sessions spread over 2 weeks or more (r31): three
        sessions in nine days read as "+6.6% a week" from what was mostly one
-       good day. The text gives the weeks it really covers (spanW). */
+       good day. The text gives the weeks it really covers (spanW). A
+       bodyweight lift needs a weigh-in too (r55, found while fixing the
+       audit's C10): with none its readings are the added load alone, so
+       pull-ups from BW+10 to BW+17.5 read as 40% stronger, where at an 80 kg
+       weigh-in they are 5%. Goals have said so since r40 (goalState). */
     const spanD = w.length ? daysBetween(w[0].date, w[w.length - 1].date) : 0;
-    if (w.length >= 3 && spanD >= 14) {
+    if (w.length >= 3 && spanD >= 14 && !(exI.bw && !(bwRefIn(M) > 0))) {
       spanW = Math.max(2, Math.round(spanD / 7));
       const ends = trendEnds(w);
       pct = (ends.last.tv / ends.first.tv - 1) * 100;

@@ -640,7 +640,7 @@ const ACT={
       const at=Math.min(...its.map(i=>day.items.indexOf(i)));day.items=day.items.filter(i=>!its.includes(i));day.items.splice(at,0,...its);
       const g=uid();for(const i of its)i.ss=g;}
     fixSupersets(day.items);
-    if(day.items.length)trainOn(day);
+    if(day.items.length)Object.assign(day,trainOn(day));
     commit();render();toast(`${day.name} updated`,true);
   },
   goalOpen(t){openModal({kind:'goal',exId:t.dataset.ex});},
@@ -1123,7 +1123,7 @@ m.err=`Could not read that. Try the pattern 225x5, 5, 4 ${rirScale()==='rpe'?'rp
   iUp(t){const R=curRoutineB();move(R.days[+t.dataset.day].items,+t.dataset.i,+t.dataset.i-1);commit();rerenderKeepScroll();},
   iDown(t){const R=curRoutineB();move(R.days[+t.dataset.day].items,+t.dataset.i,+t.dataset.i+1);commit();rerenderKeepScroll();},
   iDel(t){snapshot();const R=curRoutineB();const [x]=R.days[+t.dataset.day].items.splice(+t.dataset.i,1);commit();rerenderKeepScroll();toast(`${exName(x.exId)} removed`,true);},
-  libAdd(t){const R=curRoutineB();const d=R.days[ui.bTarget];d.items.push(newItem(t.dataset.ex));trainOn(d);commit();rerenderKeepScroll();toast(`Added to ${dayLabel(R,ui.bTarget)}`);},
+  libAdd(t){const R=curRoutineB();const d=R.days[ui.bTarget];d.items.push(newItem(t.dataset.ex));Object.assign(d,trainOn(d));commit();rerenderKeepScroll();toast(`Added to ${dayLabel(R,ui.bTarget)}`);},
   rActive(){state.activeRoutineId=ui.bRoutine;ui.todayDay=null;commit();render();toast('Active routine changed');},
   rNew(){openModal({kind:'routineNew'});},
   rNewSave(){const nm=(($('#rNewName')||{}).value||'').trim();if(!nm){toast('Give the routine a name');return;}if(nameTaken(nm)){toast('A routine already has that name. Pick another.');return;}closeModal();ACT.rNewDo(nm);},
