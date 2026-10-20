@@ -13,6 +13,9 @@
 //     day is eased too (327 d), and a lift in one range is as before (a guard);
 //   - Undo after Make it lighter puts the exercises back as they were, at once
 //     and after a set logged on one of them (327 e);
+//   - imports keep Strong's workout notes and durations, and Hevy's
+//     descriptions, durations and supersets, the supersets in the routine a
+//     first-run import makes (V 2026-10-19);
 //   - Type or dictate sets asks before a set far off, as a tick does, the sets
 //     in range filled and ticked (327 a), and fills sets in range as before (a
 //     guard).
@@ -167,6 +170,32 @@ const ses = (id, date, exId, rr, sets, extra) => Object.assign({ id, date, dayId
     const g2 = { m: await modal(), done: await ev(() => window.__ironlog.state.draft.ex[0].sets[3].done) };
     ok(!g1.m && g1.done && /missed/i.test(g1.t) && !g2.m && g2.done, 'a guard: 100 x 0 and 92.5 x 0 are logged as missed at once, nothing asked', { g1, g2 });
     await ev(() => { const L = window.__ironlog; if (L.ui.modal) L.ACT.mClose(); L.state.draft = null; L.saveNow(); L.render(); });
+  }
+
+  // ---- V 2026-10-19: imports keep Strong's workout notes and durations, and Hevy's descriptions, durations and supersets. r55
+  // read none of them from those files (only from the app's own).
+  {
+    const STRONG = 'Date,Workout Name,Duration,Exercise Name,Set Order,Weight,Reps,Distance,Seconds,Notes,Workout Notes,RPE\n'
+      + '2026-09-10 18:02:11,"Push",1h 5m,"Bench Press (Barbell)",1,185,8,0,0,"","Felt strong",8\n'
+      + '2026-09-10 18:02:11,"Push",1h 5m,"Bench Press (Barbell)",2,185,7,0,0,"","Felt strong",9\n'
+      + '2026-09-12 07:30:00,"Legs",50m,"Squat (Barbell)",1,225,5,0,0,"","",\n';
+    const hevyRow = (date, end, ex, ss, i, w, r) => `"Upper A","${date}","${end}","Short on time","${ex}",${ss},"",${i},"normal",${w},${r},,,`;
+    const HEVY = '"title","start_time","end_time","description","exercise_title","superset_id","exercise_notes","set_index","set_type","weight_kg","reps","distance_km","duration_seconds","rpe"\n'
+      + ['14 Sep 2026, 17:29', '17 Sep 2026, 17:30'].flatMap(d => { const end = d.replace(/17:\d\d/, '18:40'); return [hevyRow(d, end, 'Bench Press (Barbell)', 0, 0, 80, 8), hevyRow(d, end, 'Bench Press (Barbell)', 0, 1, 80, 8), hevyRow(d, end, 'Bent Over Row (Barbell)', 0, 0, 70, 10), hevyRow(d, end, 'Bent Over Row (Barbell)', 0, 1, 70, 10), hevyRow(d, end, 'Bicep Curl (Dumbbell)', '', 0, 14, 12)]; }).join('\n') + '\n';
+    const fresh = async (csv, clock) => {
+      const Q = await open(FILE, { clock, realStarter: true, browser: P.browser }); const qe = (f, a) => Q.page.evaluate(f, a);
+      await qe(() => { const L = window.__ironlog; L.state.settings.onboarded = true; L.state.settings.unit = 'lb'; L.saveNow(); });
+      await qe(csv => window.__ironlog.impStart({ text: csv }), csv); await new Promise(r => setTimeout(r, 300));
+      await qe(() => window.__ironlog.ACT.impGo()); await new Promise(r => setTimeout(r, 300));
+      const out = await qe(() => { const L = window.__ironlog; if (L.ui.modal) L.ACT.mClose(); const S = L.state; const R = L.activeRoutine(); return { s: S.sessions.map(x => `${x.dayName}|${x.notes}|${x.durMin}`).sort(), days: R ? R.days.filter(d => !d.rest).map(d => d.name + ':' + d.items.map(i => i.exId + (i.ss ? '@' + i.ss : '')).join(',')) : [] }; });
+      await Q.ctx.close(); return out;
+    };
+    const st = await fresh(STRONG, '2026-09-28T07:00:00');
+    ok(st.s.join() === 'Legs||50,Push|Felt strong|65', 'a Strong file: the workout\'s note and its duration (1h 5m, 50m) are kept with each session (r55 kept neither)', st.s);
+    const hv = await fresh(HEVY, '2026-09-28T07:00:00');
+    const day = hv.days.find(d => d.startsWith('Upper A:')) || '';
+    const grp = id => ((day.split(':')[1] || '').split(',').find(x => x.startsWith(id)) || '').split('@')[1] || null;
+    ok(hv.s.length === 2 && hv.s.every(x => x === 'Upper A|Short on time|71' || x === 'Upper A|Short on time|70') && grp('bench') && grp('bench') === grp('bbRow') && !grp('dbCurl'), 'a Hevy file on a first run: each session keeps its description and minutes (17:29 to 18:40), and the routine made from it has bench and rows in one superset, curls alone (r55 kept none of it)', { s: hv.s, day });
   }
 
   if (P.errors.length) ok(false, 'no page errors', P.errors);

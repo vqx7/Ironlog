@@ -399,7 +399,7 @@ const ACT={
     const AR=activeRoutine();const first=!realCount(state)&&!!AR&&starterSigs().includes(routineSig(AR))&&!state.sessions.some(q=>q.routineId===AR.id);
     snapshot();setState(normalize({...state,exercises:state.exercises.concat(b.newEx),sessions:state.sessions.concat(b.sessions),cardio:state.cardio.concat(b.cardio),settings:{...state.settings,onboarded:true}}));invalidate();
     const msg=`Imported ${b.sessions.length} session${b.sessions.length===1?'':'s'}${b.cardio.length?`, ${b.cardio.length} cardio entr${b.cardio.length===1?'y':'ies'}`:''}${b.newEx.length?`, ${b.newEx.length} new exercise${b.newEx.length===1?'':'s'}`:''}`;
-    const inf=first&&b.sessions.length?routineFromLog(state.sessions):null;
+    const inf=first&&b.sessions.length?routineFromLog(state.sessions,b.ssOf):null;
     if(inf){
       const R=inf.routine;state.routines=dropStarter(state.routines,state.sessions,starterSigs());state.routines.push(R);state.activeRoutineId=R.id;
       // Imported sessions join their day (by name, or by their lifts), so the cycle, the streak and adherence read them.
@@ -1260,7 +1260,7 @@ m.err=`Could not read that. Try the pattern 225x5, 5, 4 ${rirScale()==='rpe'?'rp
   copyText(){const ta=$('#mText');ta.select();let ok=false;try{if(navigator.clipboard){navigator.clipboard.writeText(ta.value).then(()=>{markExported();toast('Copied');},()=>toast('Select the text and copy it manually'));return;}ok=document.execCommand('copy');}catch(e){log('copy',e);}if(ok)markExported();toast(ok?'Copied':'Select the text and copy it manually');},
   pasteImport(){openModal({kind:'text',title:'Import backup text',help:'Paste the full backup text here.',text:'',readonly:false});},
   importText(){importData($('#mText').value);},
-  demoLoad(){confirmBox('Load demo data?','Adds 8 weeks of generated sessions tagged as demo, based on your active routine. Your own logs are not changed.','Load demo data',()=>{const first=demoFirstRun();demoKeep();
+  demoLoad(){if(acct.user&&cloud.on){confirmBox('Demo data stays off your account','Sign out first, keeping a copy on this phone, to look around with it.','Sign out',()=>ACT.acctSignOut());return;} /* signed in, it would sync into the account (r55.1, the second review of r55); signed out, the next sign-in leaves it out (r55) */confirmBox('Load demo data?','Adds 8 weeks of generated sessions tagged as demo, based on your active routine. Your own logs are not changed.','Load demo data',()=>{const first=demoFirstRun();demoKeep();
     // On a first run the targets fit the routine, as picking it would (r29);
     // demoRestore puts the settings back when the demo is cleared.
     if(first)fitTargets(activeRoutine());if(!cloud.on)cloudStop(true);makeDemo();ui.tab='dash';window.scrollTo(0,0);render();toast('Demo data loaded');});},
