@@ -2944,44 +2944,6 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     into.plan = { ...into.plan, sets: into.sets.filter((x) => !x.warm && !x.drop).length };
     return rows;
   }
-  function savedEx(b) {
-    const rr = b.keepRR !== void 0 ? b.keepRR : b.plan && Number(b.plan.repMin) > 0 && Number(b.plan.repMax) > 0 ? [Number(b.plan.repMin), Number(b.plan.repMax)] : null;
-    return {
-      exId: b.exId,
-      note: b.note || "",
-      rr,
-      light: b.light ? true : void 0,
-      ...b.inj ? { inj: b.inj } : {},
-      sets: b.sets.filter((s) => s.done).map((s) => ({
-        w: s.w == null ? 0 : s.w,
-        r: Number(s.r),
-        rir: s.rir == null || s.rir === "" ? null : Number(s.rir),
-        warm: !!s.warm,
-        drop: !!s.drop && !s.warm,
-        cal: s.cal && !s.warm ? s.cal : void 0
-      }))
-    };
-  }
-  function draftSession(d) {
-    if (d.editingId) return null;
-    const ex = joinAdjacent(d.ex.map(savedEx).filter((b) => b.sets.length));
-    if (!ex.length) return null;
-    return {
-      id: d.id,
-      date: d.date,
-      dayIdx: d.dayIdx,
-      dayId: d.dayId || null,
-      dayName: (d.dayName || "").trim() || "Session",
-      routineId: d.routineId,
-      ex,
-      notes: d.notes || "",
-      durMin: null,
-      deload: !!d.deload,
-      light: !!d.light,
-      free: d.free ? true : void 0,
-      demo: false
-    };
-  }
   function joinAdjacent(ex) {
     const out = [];
     for (const b of ex) {
@@ -7719,7 +7681,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       }
       const local = chunksOf(state);
       const first = !Object.keys(cloud.meta).length;
-      let parts = null, merged = false, draftIn = false, keptDraft = false;
+      let parts = null, merged = false, draftIn = false;
       const stat = { conflicts: 0 };
       const adoptedIds = /* @__PURE__ */ new Set();
       const leg = { bodyweights: [], measurements: [] };
@@ -7734,9 +7696,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
         } else {
           merged = true;
           const base = realCount(mine) > realCount(rState) ? mine : rState, other = base === mine ? rState : mine;
-          const kept = state.draft && rState.draft && rState.draft.id !== state.draft.id ? draftSession(rState.draft) : null;
-          keptDraft = !!kept && ![...mine.sessions, ...rState.sessions].some((x) => x.id === kept.id);
-          setState(normalize({ ...base, exercises: unionById(base.exercises, other.exercises), routines: unionById(base.routines, other.routines), sessions: unionById(mine.sessions, keptDraft ? [...rState.sessions, kept] : rState.sessions), bodyweights: unionById(mine.bodyweights, rState.bodyweights), measurements: unionById(mine.measurements, rState.measurements), cardio: unionById(mine.cardio, rState.cardio), trash: unionById(state.trash, rState.trash), draft: state.draft || rState.draft }));
+          setState(normalize({ ...base, exercises: unionById(base.exercises, other.exercises), routines: unionById(base.routines, other.routines), sessions: unionById(mine.sessions, rState.sessions), bodyweights: unionById(mine.bodyweights, rState.bodyweights), measurements: unionById(mine.measurements, rState.measurements), cardio: unionById(mine.cardio, rState.cardio), trash: unionById(state.trash, rState.trash), draft: state.draft || rState.draft }));
           for (const id of rids) {
             cloud.meta[id] = { h: remote[id].h, at: remote[id].at, b: baseOf(id, remote[id].data) };
             cloud.editAt[id] = Date.now();
@@ -7793,7 +7753,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
         }
         if (!ui.modal) rerenderKeepScroll();
         else render();
-        if (merged) toast(keptDraft ? "Merged this device with your cloud copy. The workout in progress on your other device is saved in History." : "Merged this device with your cloud copy");
+        if (merged) toast("Merged this device with your cloud copy");
         conflictNote(stat);
         if (draftIn) draftNote(dr0);
       } else if (first) {
@@ -16425,7 +16385,7 @@ ${JSON.stringify(fb.context, null, 1)}`;
       finishNow() {
         const d = state.draft;
         if (!d) return;
-        const ex = d.ex.map(savedEx).filter((b) => b.sets.length);
+        const ex = d.ex.map((b) => ({ exId: b.exId, note: b.note || "", rr: b.keepRR !== void 0 ? b.keepRR : b.plan && +b.plan.repMin > 0 && +b.plan.repMax > 0 ? [+b.plan.repMin, +b.plan.repMax] : null, light: b.light ? true : void 0, ...b.inj ? { inj: b.inj } : {}, sets: b.sets.filter((s) => s.done).map((s) => ({ w: s.w == null ? 0 : s.w, r: +s.r, rir: s.rir == null || s.rir === "" ? null : +s.rir, warm: !!s.warm, drop: !!s.drop && !s.warm, cal: s.cal && !s.warm ? s.cal : void 0 })) })).filter((b) => b.sets.length);
         const exJ = joinAdjacent(ex);
         ex.length = 0;
         ex.push(...exJ);

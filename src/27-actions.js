@@ -1020,7 +1020,7 @@ m.err=`Could not read that. Try the pattern 225x5, 5, 4 ${rirScale()==='rpe'?'rp
        exercise with fewer sets than usual, stopped early, Short on time, typed
        in afterwards or edited, is read so from the log (analytics.ts,
        idxShort), so it sets no target and still counts toward its trend. */
-    const ex=d.ex.map(savedEx).filter(b=>b.sets.length); // savedEx (session.ts): one source with a first link keeping another device's workout (r55)
+    const ex=d.ex.map(b=>({exId:b.exId,note:b.note||'',rr:b.keepRR!==undefined?b.keepRR:(b.plan&&+b.plan.repMin>0&&+b.plan.repMax>0?[+b.plan.repMin,+b.plan.repMax]:null),light:b.light?true:undefined,...(b.inj?{inj:b.inj}:{}),sets:b.sets.filter(s=>s.done).map(s=>({w:s.w==null?0:s.w,r:+s.r,rir:s.rir==null||s.rir===''?null:+s.rir,warm:!!s.warm,drop:!!s.drop&&!s.warm,cal:s.cal&&!s.warm?s.cal:undefined}))})).filter(b=>b.sets.length);
     // Side by side, the same lift is saved as one exercise (r34.2, V); apart, each stays where it was done.
     const exJ=joinAdjacent(ex);ex.length=0;ex.push(...exJ);
     const cardio=(d.cardio||[]).filter(c=>c.min>0).map(c=>cleanCardio({...c,date:d.date}));

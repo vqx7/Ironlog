@@ -97,8 +97,7 @@ lines, then `ALL PASS` (the fuzz suite prints `fuzz clean`). Type check: `npx ts
   came (`keepExtra`); a new field is relied on only once every device runs a build that keeps it. `normalize` writes
   nothing that depends on the device: it also runs in the sync comparison, Undo and imports. A first sign-in keeps
   everything the phone made (sessions, weigh-ins, cardio, a workout in progress, routines, custom exercises) beside the
-  account's, with no Undo; of two workouts in progress, the other device's ticked sets are saved; demo data never goes
-  into an account (r55).
+  account's, with no Undo; demo data never goes into an account (r55).
 - **Numbers:** no number without a source in `docs/EVIDENCE.md`; a convention is labelled as one there and in a tip.
   Trends are never shown as a 1RM; a muscle with no clear lift reads unclear, never 0%; weight lifted is never a
   percentage against last week; no projections. Deloads and lighter loads are whole steps, never under the bar on a

@@ -16,7 +16,7 @@ import { BW_MAX_KG, BW_MIN_KG, EXTRA_KEYS, EXTRA_MAX, KNOWN_CARDIO, KNOWN_ITEM, 
 import { PLATE_MODES, dbListOf, gymClean, gymPlates, platesMode } from './app/gym';
 import { CORE_ARR, CORE_FIELDS, baseFor, bodyChunkOf, chunkOf, chunksOf, emptyChunk, isChunkId, legacyBody, hasDemo, realCount, stripDemo, unionById } from './app/chunks';
 import { Hx, canon, merge3List, merge3Val, mergeDraft } from './app/merge';
-import { RIR_OPTS, blockDone, blockRest, editFp, effTarget, effW, draftSession, freeDraft, greyW, hintOnce, joinAdjacent, joinRows, joinable, lastCell, lastDup, lastHead, overSets, sameExOnce, savedEx, sessProgress, targetText, whyTarget } from './app/session';
+import { RIR_OPTS, blockDone, blockRest, editFp, effTarget, effW, freeDraft, greyW, hintOnce, joinAdjacent, joinRows, joinable, lastCell, lastDup, lastHead, overSets, sameExOnce, sessProgress, targetText, whyTarget } from './app/session';
 import { LOAD_MODES, emptyLoad, estInLoad, loadNote, loadWords } from './app/loads';
 import { BAND_WORDS, prName, prOverall } from './app/prs';
 import { trendEnds, trendScope, trendW } from './app/trend';

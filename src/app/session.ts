@@ -4,7 +4,7 @@
    (phase 3a, r51; moved unchanged from the legacy script). What reads the log or the settings to fill a
    session (suggestions, adjustments) moves with the engine in 3b. */
 
-import type { DraftBlock, DraftSet, Session, SessionEx, Target } from './types';
+import type { DraftBlock, DraftSet, Target } from './types';
 import { uid, today } from './util';
 import { isMissed, isWork } from './formulas';
 import { fmtDate } from './format';
@@ -200,80 +200,6 @@ export function joinRows(into: DraftBlock, from: DraftBlock): DraftSet[] {
   into.sets.push(...rows);
   into.plan = { ...into.plan, sets: into.sets.filter(x => !x.warm && !x.drop).length };
   return rows;
-}
-
-/* A block as Finish saves it (r55: one source for Finish and for a first
-   link keeping another device's workout): its ticked sets as typed, a blank
-   load 0, the range it was planned at (or, in an edit, the range it was
-   saved with), and its marks, the keys in the order Finish always wrote. */
-/** An exercise in the session in progress as Finish saves it; an exercise with no set ticked comes back with no sets. */
-export function savedEx(b: DraftBlock): SessionEx {
-  const rr: [number, number] | null =
-    b.keepRR !== undefined
-      ? b.keepRR
-      : b.plan && Number(b.plan.repMin) > 0 && Number(b.plan.repMax) > 0
-        ? [Number(b.plan.repMin), Number(b.plan.repMax)]
-        : null;
-  return {
-    exId: b.exId,
-    note: b.note || '',
-    rr,
-    light: b.light ? true : undefined,
-    ...(b.inj ? { inj: b.inj } : {}),
-    sets: b.sets
-      .filter(s => s.done)
-      .map(s => ({
-        w: s.w == null ? 0 : s.w,
-        r: Number(s.r),
-        rir: s.rir == null || s.rir === '' ? null : Number(s.rir),
-        warm: !!s.warm,
-        drop: !!s.drop && !s.warm,
-        cal: s.cal && !s.warm ? s.cal : undefined
-      }))
-  };
-}
-
-/** The parts of a session in progress a saved session is made from. */
-export interface DraftLike {
-  id: string;
-  date: string;
-  dayIdx: number;
-  dayId?: string | null | undefined;
-  dayName?: string | undefined;
-  routineId: string;
-  notes?: string | undefined;
-  deload?: boolean | undefined;
-  light?: boolean | undefined;
-  free?: boolean | undefined;
-  editingId?: string | null | undefined;
-  ex: DraftBlock[];
-}
-
-/* Another device's workout in progress, kept as a session when a first link
-   keeps this device's own (r55, from the review: the merge kept one of the
-   two and the other's ticked sets were lost on every device). Only what was
-   ticked, as Finish would save it, untimed; an edit of a saved session is
-   not one (that session is already kept). Null when nothing is ticked. */
-/** A workout in progress as a saved session of its ticked sets, or null when none is ticked or it is an edit. */
-export function draftSession(d: DraftLike): Session | null {
-  if (d.editingId) return null;
-  const ex = joinAdjacent(d.ex.map(savedEx).filter(b => b.sets.length));
-  if (!ex.length) return null;
-  return {
-    id: d.id,
-    date: d.date,
-    dayIdx: d.dayIdx,
-    dayId: d.dayId || null,
-    dayName: (d.dayName || '').trim() || 'Session',
-    routineId: d.routineId,
-    ex,
-    notes: d.notes || '',
-    durMin: null,
-    deload: !!d.deload,
-    light: !!d.light,
-    free: d.free ? true : undefined,
-    demo: false
-  };
 }
 
 /* Saved exercises side by side on the same lift become one, sets in order. */
