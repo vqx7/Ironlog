@@ -49,7 +49,7 @@ fs.cpSync(SRC, tmp, { recursive: true });
     D.toast = () => page.evaluate(() => { const t = document.getElementById('toast'); return t && !t.hidden ? { text: t.innerText.replace(/\s+/g, ' '), undo: !!t.querySelector('[data-act="undo"]') } : null; });
     D.signIn = async (email) => {
       const ob = await page.evaluate(() => { const p = document.getElementById('obPage'); return p ? p.dataset.step : null; });
-      if (ob) { await page.click('#obPage [data-act="obAcctBack"]'); await wait(200); await page.click('#obPage [data-act="acctOpen"][data-mode="signin"]'); }
+      if (ob) { if (await page.$('#obPage [data-act="obAcctBack"]')) { await page.click('#obPage [data-act="obAcctBack"]'); await wait(200); } await page.click('#obPage [data-act="acctOpen"][data-mode="signin"]'); }
       else { await page.click('#saveState'); await wait(200); await page.click('#modal [data-act="acctOpen"][data-mode="signin"]'); }
       await wait(200);
       await page.fill('#modal [data-abind="email"]', email); await page.fill('#modal [data-abind="pw"]', 'correct horse 9');
@@ -195,6 +195,39 @@ fs.cpSync(SRC, tmp, { recursive: true });
     ok(o0 && o0.done === 2 && b0 && b0.done === 1 && b1 && b1.id === b0.id && b1.done === 1 && kept === 2 && oKept === 2 && sessIn('eight@example.com').includes(o0.id) && t && /other device is saved in History/.test(t.text),
       'a workout in progress on the account\'s phone (2 sets ticked) and on a new phone (1 set) at the new phone\'s first sign-in: the new phone\'s stays in progress, the other\'s 2 sets are saved in History on both phones and the account, and the toast says so (r54 lost one of the two)', { o0, b0, b1, kept, oKept, toast: t });
     await B.ctx.close(); await O.ctx.close();
+  }
+
+  // ---- Signed out keeping a copy, then signed back in: edits and deletions made meanwhile on another phone stand, and what
+  // this phone logged while signed out is kept (the end-to-end audit of r55: the kept copy undid the edit and brought the
+  // deleted session and weigh-in back on every device, since signing back in was read as a first link).
+  {
+    const A = await account('nine@example.com', [mk('k1', '2026-10-01', 'One'), mk('k2', '2026-10-03', 'Two')]);
+    await A.ev(() => { const L = window.__ironlog; L.state.bodyweights.push({ id: 'w1', date: '2026-10-02', kg: 80, demo: false }, { id: 'w2', date: '2026-10-04', kg: 81, demo: false }); L.saveNow(); });
+    await A.ev(() => window.__ironlog.flush()); await wait(1200);
+    const B = await device(); await B.signIn('nine@example.com');
+    await A.ev(() => window.__ironlog.ACT.acctSignOut()); await wait(300);
+    await A.ev(() => { const b = [...document.querySelectorAll('#modal button')].find(x => /keep a copy/i.test(x.innerText)); b.click(); }); await wait(2000);
+    await B.ev(() => { const L = window.__ironlog; const S = L.state; S.sessions = S.sessions.filter(x => x.id !== 'k1'); const k2 = S.sessions.find(x => x.id === 'k2'); k2.ex[0].sets[0].r = 4; S.bodyweights = S.bodyweights.filter(b => b.id !== 'w1'); L.saveNow(); });
+    await B.ev(() => window.__ironlog.flush()); await wait(1200);
+    await A.ev(s => { const L = window.__ironlog; L.state.sessions.push(s); L.saveNow(); }, mk('k3', '2026-10-05', 'Three, signed out'));
+    await A.signIn('nine@example.com');
+    await A.ev(() => window.__ironlog.flush()); await wait(1200); await B.ev(() => window.__ironlog.sync()); await wait(1500);
+    const read = D => D.ev(() => { const S = window.__ironlog.state; return { s: S.sessions.map(x => x.id + ':' + x.ex[0].sets[0].r).sort().join(), w: S.bodyweights.map(b => b.id).sort().join() }; });
+    const a = await read(A), b = await read(B), acc = sessIn('nine@example.com').sort().join(), accW = bwIn('nine@example.com').sort().join();
+    ok(a.s === 'k2:4,k3:5' && b.s === a.s && a.w === 'w2' && b.w === 'w2' && acc === 'k2,k3' && accW === '2026-10-04', 'a phone signed out keeping its copy, another phone deleting a session and a weigh-in and changing a set to 4 reps, then the first phone logging a session and signing back in: the edit and the deletions stand, the new session is kept, on both phones and in the account (the reviewed r55 put the old copy back everywhere)', { a, b, acc, accW });
+    await A.ctx.close(); await B.ctx.close();
+  }
+  // ---- Erase everything while signed out keeping a copy does not erase the account at the next sign-in.
+  {
+    const A = await account('ten@example.com', [mk('e1', '2026-10-01', 'One')]);
+    await A.ev(() => window.__ironlog.flush()); await wait(1000);
+    await A.ev(() => window.__ironlog.ACT.acctSignOut()); await wait(300);
+    await A.ev(() => { const b = [...document.querySelectorAll('#modal button')].find(x => /keep a copy/i.test(x.innerText)); b.click(); }); await wait(2000);
+    await A.ev(() => { const L = window.__ironlog; L.ACT.resetAll(); }); await wait(200); await A.page.click('#modal [data-act="mOk"]'); await wait(300);
+    await A.signIn('ten@example.com');
+    const a = await A.ev(() => window.__ironlog.state.sessions.map(x => x.id).join());
+    ok(a === 'e1' && sessIn('ten@example.com').join() === 'e1', 'signed out keeping a copy, Erase everything on this phone, then signed back in: the account keeps its log and the phone gets it back (a guard: the copy erased is this phone\'s only)', { a, acc: sessIn('ten@example.com') });
+    await A.ctx.close();
   }
 
   // ---- A problem report opened signed out: signing in from it goes back to it (the journey audit of r54, D13).

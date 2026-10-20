@@ -697,7 +697,7 @@ const LB = 0.45359237;
     // workout in progress the same way: r54's own line, copied here as r54 has it, and savedEx give the same saved exercise,
     // key order and blank fields included, on 3,000 random exercises (loads blank, typed or negative, reps as text or
     // halves, RIR blank or as text, warm-ups, drops, RIR checks, kept ranges, plans without a range, marks).
-    const same = await ev(src => { const L = window.__ironlog; const r54 = new Function('return (' + src + ')')();
+    const same = await ev(src => { const L = window.__ironlog; if (!L.savedEx) return { n: 0, bad: ['this build has no savedEx'] }; const r54 = new Function('return (' + src + ')')();
       let seed = 55; const rnd = () => { seed = (seed * 1103515245 + 12345) % 2147483648; return seed / 2147483648; }; const pick = a => a[Math.floor(rnd() * a.length)];
       const ser = x => JSON.stringify(x, (k, v) => (v === undefined ? '__undefined' : v));
       let n = 0; const bad = [];
@@ -709,6 +709,43 @@ const LB = 0.45359237;
       }
       return { n, bad }; }, "b=>({exId:b.exId,note:b.note||'',rr:b.keepRR!==undefined?b.keepRR:(b.plan&&+b.plan.repMin>0&&+b.plan.repMax>0?[+b.plan.repMin,+b.plan.repMax]:null),light:b.light?true:undefined,...(b.inj?{inj:b.inj}:{}),sets:b.sets.filter(s=>s.done).map(s=>({w:s.w==null?0:s.w,r:+s.r,rir:s.rir==null||s.rir===''?null:+s.rir,warm:!!s.warm,drop:!!s.drop&&!s.warm,cal:s.cal&&!s.warm?s.cal:undefined}))})");
     ok(same.n === 3000 && same.bad.length === 0, 'Finish saves an exercise exactly as r54 did: r54\'s own line and savedEx agree on 3,000 random exercises, key order and blank fields included', same.bad);
+
+    // From the end-to-end audit of r55: reps typed, then this row's load tapped and typed in. The set is ticked when the load
+    // is left, so the grey load is never written into the field being typed in (r54 and the reviewed r55 stored 101050, as 20000 lb).
+    await log([]); await ev(() => { const L = window.__ironlog; L.state.settings.unit = 'lb'; L.saveNow(); });
+    await start('bench');
+    await typ(W(0), 100); await typ(R(0), 8); await tick(0);
+    await page.click(R(1)); await page.keyboard.type('7'); await page.click(W(1)); await wait(150); await page.keyboard.type('105'); await wait(100);
+    const mid = await row(1);
+    await ev(() => document.activeElement.blur()); await wait(300);
+    const lw = await row(1);
+    ok(!mid.done && near(lw.w, 105 * LB) && lw.r === 7 && lw.done, 'reps typed on set 2, then its load tapped and 105 typed: nothing ticks while the load is typed, and leaving it logs 105 x 7 (r54 stored 101050, read as 20000 lb)', { mid, lw });
+    // A ticked set's load changed to one far off asks, as at the tick.
+    await page.fill(W(1), '1050'); await page.dispatchEvent(W(1), 'input'); await page.dispatchEvent(W(1), 'change'); await wait(150);
+    const q2 = await modal();
+    ok(q2 && q2.kind === 'confirm' && q2.buttons.join('|') === 'Log it|Fix it', 'and changed afterwards to 1050, the app asks Log it or Fix it before keeping it (r54 kept it silently)', q2);
+    await ev(() => { const L = window.__ironlog; if (L.ui.modal) L.ACT.mClose(); L.state.draft = null; L.saveNow(); L.render(); });
+    // A second tape save on the same day adds to the day's entry, with Undo (r54 replaced the arm and chest with the waist alone).
+    await log([]);
+    await ev(() => { const L = window.__ironlog; L.state.measurements = []; L.state.settings.hidden = []; L.ui.tab = 'today'; L.ui.folds['today:body'] = true; L.ui.folds['today:tape'] = true; L.saveNow(); L.render(); });
+    await page.fill('#ms_arm', '16'); await page.fill('#ms_chest', '44'); await page.click('#view [data-act="addMeas"]'); await wait(200);
+    await page.fill('#ms_waist', '33'); await page.click('#view [data-act="addMeas"]'); await wait(200);
+    const tp = await ev(() => { const m = window.__ironlog.state.measurements; const t = document.getElementById('toast'); return { n: m.length, keys: m[0] ? ['arm', 'chest', 'waist'].filter(k => m[0][k] > 0) : [], undo: !!(t && t.querySelector('[data-act="undo"]')) }; });
+    ok(tp.n === 1 && tp.keys.join() === 'arm,chest,waist' && tp.undo, 'arm and chest saved, then waist saved the same day: one entry with all three, and Undo offered (r54 kept the waist alone)', tp);
+
+    // Pasted notes with a unit written on each line: each line's own unit (the end-to-end audit of r55: 100kg read as 100 lb
+    // because an earlier line said 30lb).
+    await log([]); await ev(() => { const L = window.__ironlog; L.state.settings.unit = 'lb'; L.saveNow(); });
+    await ev(t => window.__ironlog.impStart({ text: t }), 'Sep 20\nCurls 30lb 3x12\n\nSep 22\nRDL 100kg x 8, 100kg x 8'); await wait(300);
+    await page.click('#modal [data-act="impGo"]'); await wait(400);
+    const mu = await ev(() => { const L = window.__ironlog; if (L.ui.modal) L.ACT.mClose(); const g = id => { const s = L.state.sessions.find(x => x.ex.some(b => b.exId === id)); return s ? Math.round(s.ex.find(b => b.exId === id).sets[0].w * 10) / 10 : null; }; return { curl: g('dbCurl'), rdl: g('rdl') }; });
+    ok(mu.curl === Math.round(30 * LB * 10) / 10 && mu.rdl === 100, 'notes with "Curls 30lb" and then "RDL 100kg": curls saved at 30 lb and the RDL at 100 kg (r54 saved the RDL at 100 lb)', mu);
+
+    // A run of 5.2 km in a kg file, imported into a log kept in lb: the preview says it in the log's unit (the audit: "3.23 km").
+    await log([]); await ev(() => { const L = window.__ironlog; L.state.settings.unit = 'lb'; L.saveNow(); });
+    await ev(t => window.__ironlog.impStart({ text: t }), 'Date;Workout Name;Exercise Name;Set Order;Weight;Weight Unit;Reps;RPE;Distance;Distance Unit;Seconds;Notes;Workout Notes;Workout Duration\n2026-09-03 18:10:00;"Pull";"Deadlift (Barbell)";1;140;kg;5;;;;0;"";"";1h 2m\n2026-09-03 18:10:00;"Pull";"Running (Outdoor)";1;0;kg;0;;5,2;km;1800;"";"";1h 2m'); await wait(300);
+    const dist = await ev(() => { const L = window.__ironlog; const t = (/Cardio: [^\n]*/.exec(document.getElementById('modal').innerText) || [''])[0]; L.ACT.mClose(); return t; });
+    ok(/3\.23 mi/.test(dist) && !/3\.23 km/.test(dist), 'a 5.2 km run in a kg file, previewed in a log kept in lb: "3.23 mi" (r54 said 3.23 km): ' + dist, dist);
 
     // D14: the Guide says when an import makes the routine.
     const gd14 = await ev(() => { const L = window.__ironlog; L.ACT.guideOpen({ dataset: { g: 'data' } }); const t = document.getElementById('modal').innerText.replace(/\s+/g, ' '); L.ACT.mClose(); return t; });

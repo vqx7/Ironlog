@@ -243,7 +243,7 @@ const ACT={
     confirmBox('Delete your account?','Your account and the synced copy of your log are deleted for good. The copy on this phone stays; export a backup first if you want one elsewhere.','Delete account',async()=>{
       toast('Deleting your account');
       try{await A.deleteAccount();}catch(e){log('auth',e);toast(e.message||'Could not delete the account. Try again.');acctRerender();return;}
-      acct.user=null;cloudStop();rerenderKeepScroll();toast('Account deleted. Your log is still on this phone.');
+      acct.user=null;cloudStop(true);rerenderKeepScroll();toast('Account deleted. Your log is still on this phone.');
     },true);
   },
   /* Sign out works like any app with an account (r33, V): the log lives in
@@ -260,7 +260,7 @@ const ACT={
       if(remove&&!(cloud.on&&cloud.status==='synced')){
         confirmBox('Not in your account yet','Some changes have not reached your account. Connect to the internet and sign out again, or sign out and keep them on this phone.','Keep on this phone and sign out',()=>out(false));return;}
       try{await A.signOut();}catch(e){log('auth',e);toast(e.message||'Could not sign out');return;}
-      acct.user=null;cloudStop();
+      acct.user=null;cloudStop(remove);
       /* A session in progress kept on the phone carries on where it was, and
          the app stays as it is after it: sending someone mid-workout to the
          first page would read as the session lost. */
@@ -1116,7 +1116,7 @@ m.err=`Could not read that. Try the pattern 225x5, 5, 4 ${rirScale()==='rpe'?'rp
   bwAskNo(){try{localStorage.setItem(BWASK_KEY,'1');}catch(e){/* per device only */}rerenderKeepScroll();},
   delBW(t){const id=t.dataset.id;const x=state.bodyweights.find(b=>b.id===id);if(!x)return;
     confirmBox('Delete weigh-in?',`${fmtDate(x.date)}: ${fmtW(x.kg)} ${U()}. Undo is offered right after.`,'Delete',()=>{snapshot();state.bodyweights=state.bodyweights.filter(b=>b.id!==id);commit();rerenderKeepScroll();toast('Entry deleted',true);},true);},
-  addMeas(){const m={id:uid(),date:today()};let any=false;for(const [k,lab] of MEAS){const v=numIn($('#ms_'+k).value);if(v!=null&&v>0){const cm=lenFrom(v);if(!(cm<=MEAS_MAX_CM)){toast(`${lab} looks too large. Check the number.`);return;}m[k]=cm;any=true;}}if(!any){toast('Enter at least one measurement');return;}state.measurements=state.measurements.filter(x=>x.date!==m.date);state.measurements.push(m);commit();rerenderKeepScroll();toast('Measurements saved');},
+  addMeas(){const m={id:uid(),date:today()};let any=false;for(const [k,lab] of MEAS){const v=numIn($('#ms_'+k).value);if(v!=null&&v>0){const cm=lenFrom(v);if(!(cm<=MEAS_MAX_CM)){toast(`${lab} looks too large. Check the number.`);return;}m[k]=cm;any=true;}}if(!any){toast('Enter at least one measurement');return;}snapshot();const was=state.measurements.find(x=>x.date===m.date);if(was)Object.assign(was,m,{id:was.id});else state.measurements.push(m);commit();rerenderKeepScroll();toast('Measurements saved',true);}, // a second save the same day adds to it, keeping what it does not retype, with Undo (r55, the audit: it replaced the day's entry)
   delMeas(t){const id=t.dataset.id;const x=state.measurements.find(m=>m.id===id);if(!x)return;
     confirmBox('Delete measurements?',`The tape entry from ${fmtDate(x.date)}. Undo is offered right after.`,'Delete',()=>{snapshot();state.measurements=state.measurements.filter(m=>m.id!==id);commit();rerenderKeepScroll();toast('Entry deleted',true);},true);},
   toggleItem(t){ui.openItem=ui.openItem===t.dataset.uid?null:t.dataset.uid;rerenderKeepScroll();},
@@ -1266,7 +1266,7 @@ m.err=`Could not read that. Try the pattern 225x5, 5, 4 ${rirScale()==='rpe'?'rp
     if(first)fitTargets(activeRoutine());makeDemo();ui.tab='dash';window.scrollTo(0,0);render();toast('Demo data loaded');});},
   demoStart(){state.sessions=state.sessions.filter(s=>!s.demo);state.bodyweights=state.bodyweights.filter(b=>!b.demo);state.measurements=state.measurements.filter(m=>!m.demo);demoRestore();commit();ui.tab='today';ui.folds={};window.scrollTo(0,0);render();},
   demoClear(){snapshot();stripDemo(state);demoRestore();commit();render();toast('Demo data cleared',true);},
-  resetAll(){confirmBox('Erase everything?',`All routines, sessions, custom exercises, and body data will be deleted${cloud.on?' on this device and in your cloud copy':' on this device'}. Export a backup first if you might want it.`,'Erase everything',()=>{snapshot();setState(normalize(null));commit();ui.tab='today';render();toast('Everything erased',true);},true);}
+  resetAll(){confirmBox('Erase everything?',`All routines, sessions, custom exercises, and body data will be deleted${cloud.on?' on this device and in your cloud copy':' on this device'}. Export a backup first if you might want it.`,'Erase everything',()=>{snapshot();setState(normalize(null));if(!cloud.on)cloudStop(true);commit();ui.tab='today';render();toast('Everything erased',true);},true);}
 };
 
 /* A load far from last time's (under 60% or over 140% of it) is the usual

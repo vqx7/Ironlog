@@ -1,8 +1,8 @@
 /* ---------- account (standalone app) ---------- */
 const ACCT_LATER=KEY+'.acctLater';
-function cloudStop(){
-  clearTimeout(cloud.t);cloud.on=false;cloud.db=null;cloud.uid=null;cloud.acct=null;
-  cloud.meta={};cloud.editAt={};cloud.last=null;cloud.retry=0;saveMeta();setCloud('local');
+function cloudStop(forget){ // forget: the log or the account is gone; else the sync notes stay with the copy kept, so signing back in to that account merges against them, as a sync does (r55, the audit: a first link let the kept copy undo edits and bring back deletions made since on other phones)
+  clearTimeout(cloud.t);cloud.on=false;cloud.db=null;cloud.uid=null;if(forget){cloud.acct=null;cloud.meta={};cloud.editAt={};cloud.last=null;}
+  cloud.retry=0;saveMeta();setCloud('local');
 }
 function acctRerender(){if((ui.tab==='settings'||ui.tab==='today')&&!ui.modal)rerenderKeepScroll();else{const el=document.getElementById('syncInfo');if(el)el.innerHTML=syncInfo();}}
 /* ---------- problem reports (PENDING 58, reworked in r25) ----------

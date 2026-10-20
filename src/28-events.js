@@ -167,14 +167,14 @@ document.addEventListener('change',e=>{
     // A set with no reps cannot be a done set; one typed as 0 is a missed set, ticked as typed (r55, V).
     if(s.done&&s.r==null){setDone(bi,si,false);t.dataset.cleared='1';} // marked, so leaving the field does not tick it again at the grey reps (r55, the audit)
     else if((state.settings.autoDone||state.draft.past)&&!s.done&&(+s.r>0||isMissed(s))){
-      const toRir=!state.draft.past&&lastDown.el&&Date.now()-lastDown.t<700&&lastDown.el.closest&&lastDown.el.closest(`.rirb[data-b="${bi}"][data-s="${si}"]`);
+      const toRir=!state.draft.past&&lastDown.el&&Date.now()-lastDown.t<700&&lastDown.el.closest&&lastDown.el.closest(`.rirb[data-b="${bi}"][data-s="${si}"]`);const toW=!toRir&&!state.draft.past&&lastDown.el&&Date.now()-lastDown.t<700&&lastDown.el.closest&&lastDown.el.closest(`.sg input[data-f="w"][data-b="${bi}"][data-s="${si}"]`); // heading for this row's load: tick when it is left, so the load is never written into the field being typed in (r55, the audit: 105 typed there became 101050)
       // Heading for this row's RIR box: tick when its strip closes (or after 2 s if it never opened).
-      if(toRir){const p={b:blkRef(bi),s:si};pendAuto=p;setTimeout(()=>{if(pendAuto===p&&!document.querySelector('.rirstrip'))autoPending();},2000);} // by identity: a later tick must not run this one (r45)
+      if(toW)pendAuto={b:blkRef(bi),s:si};else if(toRir){const p={b:blkRef(bi),s:si};pendAuto=p;setTimeout(()=>{if(pendAuto===p&&!document.querySelector('.rirstrip'))autoPending();},2000);} // by identity: a later tick must not run this one (r45)
       else{lastAuto={b:blkRef(bi),s:si,t:Date.now()};setDone(bi,si,true);}}
     else if(s.done){refreshPR(bi,si,false);afterSet(bi,si);if(isMissed(s))toast(MISSED_SAID);}
     saveSoon();return;}
   if(t.dataset.f){
-    if(t.dataset.f==='w'&&state.draft){const s=draftSet(t);if(!s)return;if(s.done){refreshPR(+t.dataset.b,+t.dataset.s,false);afterSet(+t.dataset.b,+t.dataset.s);}mixCheck(+t.dataset.b,+t.dataset.s);if(fillLoads())carryLoad(+t.dataset.b,+t.dataset.s);}
+    if(t.dataset.f==='w'&&state.draft){const s=draftSet(t);if(!s)return;if(s.done&&oddLoad(state.draft.ex[+t.dataset.b],+t.dataset.s,state.draft.date)){setDone(+t.dataset.b,+t.dataset.s,false);setDone(+t.dataset.b,+t.dataset.s,true);return;}/* a ticked set's load changed to one far off asks too (r55) */if(s.done){refreshPR(+t.dataset.b,+t.dataset.s,false);afterSet(+t.dataset.b,+t.dataset.s);}mixCheck(+t.dataset.b,+t.dataset.s);if(fillLoads())carryLoad(+t.dataset.b,+t.dataset.s);}
     if(t.tagName==='SELECT'&&state.draft){
       const s=draftSet(t);if(!s)return;const n=numIn(t.value);
       s.rir=n==null?null:Math.min(Math.max(n,0),10);
@@ -284,7 +284,7 @@ function acceptGrey(bi,si){
 let lastDown={el:null,t:0};
 document.addEventListener('pointerdown',e=>{lastDown={el:e.target,t:Date.now()};},true);
 document.addEventListener('focusout',e=>{
-  const t=e.target;if(!t||!t.matches||!t.matches('.sg input[data-f="r"]')||t.value.trim())return;if(t.dataset.cleared){delete t.dataset.cleared;return;}
+  const t=e.target;if(t&&t.matches&&t.matches('.sg input[data-f="w"]')&&pendAuto&&pendAuto.s===+t.dataset.s&&blkIdx(pendAuto.b)===+t.dataset.b){setTimeout(autoPending,0);return;}if(!t||!t.matches||!t.matches('.sg input[data-f="r"]')||t.value.trim())return;if(t.dataset.cleared){delete t.dataset.cleared;return;}
   if(rebuilding||!state.draft||!state.settings.autoDone)return;
   const bi=+t.dataset.b,si=+t.dataset.s;const to=e.relatedTarget;
   if(to&&to.dataset&&to.dataset.b===t.dataset.b&&to.dataset.s===t.dataset.s)return;

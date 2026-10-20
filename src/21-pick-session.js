@@ -484,7 +484,7 @@ let pendAuto=null;
 function autoPending(){
   const p=pendAuto;pendAuto=null;if(!p||!state.draft||!state.settings.autoDone)return;
   const bi=blkIdx(p.b);if(bi<0)return;
-  const s=state.draft.ex[bi].sets[p.s];if(!s||s.done||!(+s.r>0))return;
+  const s=state.draft.ex[bi].sets[p.s];if(!s||s.done||!(+s.r>0||isMissed(s)))return;
   lastAuto={b:blkRef(bi),s:p.s,t:Date.now()};setDone(bi,p.s,true);
 }
 function rirShowStrip(bi,si){

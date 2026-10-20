@@ -76,14 +76,14 @@ function impFromText(text){
 /* Sets from text are read once the exercise is known, so a bodyweight lift
    may have reps alone. The unit is applied at the end. */
 function impTextSets(it,exo,conv){const out=[];let defW=null;
-  for(const t of it.setsText){let st=impSetsText(t);
+  for(const t of it.setsText){let st=impSetsText(t);const lu=/\bkgs?\b|\dkgs?\b/i.test(t)?'kg':/\blbs?\b|\dlbs?\b/i.test(t)?'lb':null;const cv=lu==='kg'?(v=>v):lu==='lb'?(v=>v*LB):conv; // a unit written on the line is that line's (r55, the audit: 100kg under an earlier 30lb was read as 100 lb)
     // On a bodyweight lift a bare "3x10" is sets of reps (no load to read); on a weighted lift it stays load x reps.
     if(exo.bw&&!exo.assist)st=st.replace(/(^|[\s,])(\d{1,2})x(\d{1,3})(?=$|[\s,])/g,(m,p,a,b)=>+a<=10&&!/@/.test(st)?p+Array(+a).fill('bwx'+b).join(' '):m);
     // On a weighted lift a bare "3x10" (up to 5 sets, no unit, no load anywhere on the line) is sets of reps with no load:
     // at the load carried from the line above, else asked for rather than read as 3 lb for 10 reps.
     else if(!exo.timed&&/^\s*[1-5]\s*[x×*]\s*\d{1,3}(\s*,?\s*[1-5]\s*[x×*]\s*\d{1,3})*\s*$/.test(String(t).toLowerCase())){if(defW==null)return null;
       for(const g of String(t).toLowerCase().matchAll(/([1-5])\s*[x×*]\s*(\d{1,3})/g))for(let k=0;k<+g[1];k++)out.push({w:defW,r:+g[2],rir:undefined,warm:false,drop:false});continue;}
-    const g=parseSets(st,{bw:!!exo.bw||!!exo.timed},defW,conv);if(!g)return null;
+    const g=parseSets(st,{bw:!!exo.bw||!!exo.timed},defW,cv);if(!g)return null;
     out.push(...g.map(x=>({w:x.w,r:x.r,rir:x.rir,warm:false,drop:false})));defW=g[g.length-1].w;}
   return out;}
 /* Reads the input and opens the preview. */
@@ -258,7 +258,7 @@ function impSheet(m){
   ${unsure.length?`<p class="small" style="margin:12px 0 4px;font-weight:650">Check these exercises</p>${unsure.map(row).join('')}`:''}
   ${sure.length?`<details class="subsec" style="margin-top:8px"><summary>${sure.length} matched</summary>${sure.map(row).join('')}</details>`:''}
   ${r.unreadN||r.unread&&r.unread.length?`<details class="subsec" style="margin-top:8px"><summary>${r.unreadN||r.unread.length} line${(r.unreadN||r.unread.length)===1?'':'s'} not understood</summary><ul class="small" style="margin:6px 0 0;padding-left:18px">${r.unread.map(l=>`<li>${esc(l)}</li>`).join('')}</ul></details>`:''}
-  ${r.skipped?`<p class="small muted" style="margin:6px 0 0">${r.skipped} row${r.skipped===1?'':'s'} without an exercise, date, or reps were skipped.</p>`:''}${b.cardio.length?`<p class="small" style="margin:6px 0 0">Cardio: ${b.cardio.length} entr${b.cardio.length===1?'y':'ies'} (${esc(andList(b.cardio.slice(0,3).map(c=>`${CARDIOL[c.kind].toLowerCase()} ${fmtDate(c.date)}, ${c.min} min${c.dist?`, ${distShow(c.dist)} ${m.unit==='kg'?'km':'mi'}`:''}`),3))}${b.cardio.length>3?', and more':''}). Distances are read in ${m.unit==='kg'?'km':'miles'}, with the unit above.</p>`:''}${b.cardioNoTime?`<p class="small muted" style="margin:6px 0 0">${b.cardioNoTime} cardio entr${b.cardioNoTime===1?'y':'ies'} without a time left out: minutes are needed.</p>`:''}
+  ${r.skipped?`<p class="small muted" style="margin:6px 0 0">${r.skipped} row${r.skipped===1?'':'s'} without an exercise, date, or reps were skipped.</p>`:''}${b.cardio.length?`<p class="small" style="margin:6px 0 0">Cardio: ${b.cardio.length} entr${b.cardio.length===1?'y':'ies'} (${esc(andList(b.cardio.slice(0,3).map(c=>`${CARDIOL[c.kind].toLowerCase()} ${fmtDate(c.date)}, ${c.min} min${c.dist?`, ${distShow(c.dist)} ${distU()}`:''}`),3))}${b.cardio.length>3?', and more':''}). Distances are read in ${m.unit==='kg'?'km':'miles'}, with the unit above.</p>`:''}${b.cardioNoTime?`<p class="small muted" style="margin:6px 0 0">${b.cardioNoTime} cardio entr${b.cardioNoTime===1?'y':'ies'} without a time left out: minutes are needed.</p>`:''}
   ${b.bad.length?`<p class="small" style="margin:6px 0 0;color:var(--yellow)">Not imported, no weight given: ${esc(andList(b.bad,8))}. Write the load in, like 3x10 @ 60, and read it again.</p>`:''}
   ${b.odd.length?`<p class="small" id="impOdd" style="margin:6px 0 0;color:var(--yellow)">Check these, they look misread: ${esc(andList(b.odd,4))}. Fix the line and read it again if they are wrong.</p>`:''}
   ${b.timedOff?`<p class="small" style="margin:6px 0 0;color:var(--yellow)">${b.timedOff} timed set${b.timedOff===1?' was':'s were'} left out: the exercise chosen counts reps. Pick a timed one to keep them.</p>`:''}
