@@ -7439,6 +7439,15 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
         render();
         return;
       }
+      if (c === "gone") {
+        const A = AUTH();
+        acct.user = null;
+        cloudStop(true);
+        if (A) A.signOut().catch((x) => log("auth", x));
+        render();
+        toast(e.message, null, 8e3);
+        return;
+      }
       if (c === "quota_exceeded") {
         setCloud("offline", "The cloud copy is full. Export a backup and delete old demo data.");
         return;

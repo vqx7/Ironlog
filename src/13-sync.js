@@ -47,7 +47,7 @@ function setCloud(st,err){cloud.status=st;cloud.err=err||null;setSaveState();con
 function ref(id){return cloud.db.doc(`data/users/${cloud.uid}/${id}`);}
 function cloudFail(e){
   const c=e&&e.code;
-  if(c==='revoked'||c==='not_granted'||c==='capability_disabled'||c==='capability_removed'){cloud.on=false;setCloud('local');render();return;}
+  if(c==='revoked'||c==='not_granted'||c==='capability_disabled'||c==='capability_removed'){cloud.on=false;setCloud('local');render();return;}if(c==='gone'){const A=AUTH();acct.user=null;cloudStop(true);if(A)A.signOut().catch(x=>log('auth',x));render();toast(e.message,null,8000);return;} /* the account was deleted elsewhere: signed out, the notes forgotten, the log kept (r55.1) */
   if(c==='quota_exceeded'){setCloud('offline','The cloud copy is full. Export a backup and delete old demo data.');return;}
   setCloud('offline',c==='denied'?e.message:undefined);
   const wait=[5,15,60,180][Math.min(cloud.retry++,3)]*1000;clearTimeout(cloud.t);cloud.t=setTimeout(()=>cq(cloudFlush),wait);
