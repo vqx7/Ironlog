@@ -44,7 +44,7 @@ function renderModalBody(keep){
     h=`<div class="sheet" role="dialog" aria-modal="true" aria-labelledby="dpH"><div class="sheet-h"><h3 id="dpH">${esc(fmtDate(m.date))}: ${ss.length} sessions</h3><button class="ib" aria-label="Close" data-act="mClose">✕</button></div>
     <div class="stack">${ss.map(x=>`<button class="btn block pastday" data-act="wkOpen" data-id="${x.id}"><span>${esc(x.dayName)}</span><small>${[tm(x),`${x.ex.length} exercise${x.ex.length===1?'':'s'}`].filter(Boolean).join(', ')}</small></button>`).join('')}</div></div>`;
   }else if(m.kind==='confirm'){
-    h=`<div class="sheet" role="dialog" aria-modal="true"><div class="sheet-h"><h3>${esc(m.title)}</h3></div><p>${esc(m.body)}</p><div class="row" style="margin-top:12px"><button class="btn ${m.danger?'danger':'primary'}" data-act="mOk">${esc(m.okLabel)}</button>${m.alt&&!m.alt.quiet?`<button class="btn" data-act="mAlt">${esc(m.alt.label)}</button>`:''}<button class="btn" data-act="mClose">Cancel</button></div>${m.alt&&m.alt.quiet?`<button class="linkbtn alt-quiet" data-act="mAlt">${esc(m.alt.label)}</button>`:''}</div>`;
+    h=`<div class="sheet" role="dialog" aria-modal="true"><div class="sheet-h"><h3>${esc(m.title)}</h3></div><p>${esc(m.body)}</p><div class="row" style="margin-top:12px"><button class="btn ${m.danger?'danger':'primary'}" data-act="mOk">${esc(m.okLabel)}</button>${m.alt&&!m.alt.quiet?`<button class="btn" data-act="mAlt">${esc(m.alt.label)}</button>`:''}${m.alt&&m.alt.only?'':'<button class="btn" data-act="mClose">Cancel</button>'}</div>${m.alt&&m.alt.quiet?`<button class="linkbtn alt-quiet" data-act="mAlt">${esc(m.alt.label)}</button>`:''}</div>`;
   }else if(m.kind==='picker'){
     h=`<div class="sheet fixed" role="dialog" aria-modal="true"><div class="sheet-h"><h3>${esc(m.title)}</h3><button class="ib" aria-label="Close" data-act="mClose">✕</button></div>
     <div class="grid2"><input type="search" placeholder="Search" data-mbind="q" value="${esc(m.q)}" id="pickQ" enterkeyhint="search" autocomplete="off"><select data-mbind="m" aria-label="Muscle"><option value="">All muscles</option>${MUSCLES.map(([k,l])=>`<option value="${k}" ${m.m===k?'selected':''}>${l}</option>`).join('')}</select></div>
@@ -110,7 +110,7 @@ function renderModalBody(keep){
   }else if(m.kind==='routineNew'){
     h=`<div class="sheet" role="dialog" aria-modal="true"><div class="sheet-h"><h3>New routine</h3><button class="ib" aria-label="Close" data-act="mClose">✕</button></div>
     <label class="field">Name<input type="text" id="rNewName" placeholder="e.g. Upper focus, 6 days"></label>
-    <p class="small muted">Three empty training days. It is not active until you tap Make active.</p>
+    <p class="small muted">Three empty training days with rest days between. It is not active until you tap Make active.</p>
     <div class="row" style="margin-top:10px"><button class="btn primary" data-act="rNewSave">Create</button><button class="btn" data-act="mClose">Cancel</button></div></div>`;
   }else if(m.kind==='exMus'){
     const e=EX(m.exId);const v3=mapView()==='3d';const pm=exMusParts(e);B3.ex={main:pm.main,help:pm.help};if(B3.yawKeep==null)B3.yawKeep=B3.yaw;
@@ -246,7 +246,7 @@ function renderModalBody(keep){
    somewhere below the fold. */
 function applyPick(m,id){
   if(!m||!id)return;
-  if(m.mode==='addDay'){const R=curRoutineB();const d=R.days[m.day];closeModal();if(!d){rerenderKeepScroll();return;}d.items.push(newItem(id));if(d.rest)d.rest=false;commit();rerenderKeepScroll();toast(`${exName(id)} added to ${dayLabel(R,m.day)}`);return;}
+  if(m.mode==='addDay'){const R=curRoutineB();const d=R.days[m.day];closeModal();if(!d){rerenderKeepScroll();return;}d.items.push(newItem(id));Object.assign(d,trainOn(d));commit();rerenderKeepScroll();toast(`${exName(id)} added to ${dayLabel(R,m.day)}`);return;}
   if(m.mode==='swapItem'){const f=findItem(m.uid);if(f){const q=swapPlan(f.it,f.it.exId,id,f.r,f.r.days[f.di].id);Object.assign(f.it,{repMin:q.repMin,repMax:q.repMax,rir:q.rir,rest:q.rest,inc:q.inc});if(q.jump!=null)f.it.jump=q.jump;else delete f.it.jump;f.it.exId=id;commit();}closeModal();rerenderKeepScroll();return;}
   const d=state.draft;closeModal();if(!d){rerenderKeepScroll();return;}
   const half=p=>(d.deload||d.light)?{...p,sets:Math.max(1,Math.ceil(p.sets/2))}:p;
@@ -266,8 +266,8 @@ function applyPick(m,id){
     const orig=JSON.parse(JSON.stringify(b));const bi=m.b,did=d.id;
     // Sets ticked or typed stay with the exercise they were done on (r25: typed, not ticked, used to vanish).
     const done=b.sets.filter(x=>!rowBlank(b,x));const left=b.sets.filter(x=>!x.warm&&!x.drop&&rowBlank(b,x)).length;
-    const rows=b.sets.filter(x=>!x.warm&&!x.drop).length;
-    const nb=newBlock(id,{...swapPlan(b.plan,b.exId,id,null,d.dayId),sets:done.length?Math.max(1,left):Math.max(1,rows||+b.plan.sets||1)},{deload:!!d.deload,light:!!d.light,before:d.date});nb.swappedFrom=b.swappedFrom||b.exId;if(nb.swappedFrom===id)nb.swappedFrom=null;
+    const rows=b.sets.filter(x=>!x.warm&&!x.drop).length;if(done.length&&!left&&!m.all){const nn=EX(id).name;confirmBox(`Every set of ${EX(b.exId).name} is logged`,`Logged on the wrong exercise? Move the sets to ${nn}. Or add ${nn} after it.`,'Move the sets',()=>applyPick({...m,all:'move'},id),false,{label:`Add ${nn}`,fn:()=>applyPick({...m,all:'add'},id)});return;} // r55, the audit: it added the new lift with one set "for the sets left", none being left
+    const nb=newBlock(id,{...swapPlan(b.plan,b.exId,id,null,d.dayId),sets:done.length&&left?left:Math.max(1,rows||+b.plan.sets||1)},{deload:!!d.deload,light:!!d.light,before:d.date});if(m.all==='move'){nb.sets=b.sets;if(b.bid)nb.bid=b.bid;snapshot(()=>{const dd=state.draft;if(!dd||dd.id!==did)return false;const i=dd.ex.indexOf(nb);if(i<0)return false;dd.ex[i]=orig;return true;});d.ex[bi]=nb;fixSupersets(d.ex.map(x=>x.plan));saveNow();rerenderKeepScroll();toast(`Your sets are on ${EX(id).name} now`,true);return;}nb.swappedFrom=b.swappedFrom||b.exId;if(nb.swappedFrom===id)nb.swappedFrom=null;
     /* Swapped to the exercise just after it (or just before it, when nothing
        stays behind): the sets go to that one, so the lift is one exercise. */
     const ni=done.length?(joinable(d.ex[bi+1],nb)?bi+1:-1):joinable(d.ex[bi-1],nb)?bi-1:joinable(d.ex[bi+1],nb)?bi+1:-1;
@@ -288,7 +288,7 @@ function applyPick(m,id){
     if(done.length){b.sets=done;b.plan={...b.plan,sets:done.filter(x=>!x.warm&&!x.drop).length||1};keepOpen(()=>d.ex.splice(bi+1,0,nb));}
     else d.ex[bi]=nb;
     fixSupersets(d.ex.map(x=>x.plan));saveNow();rerenderKeepScroll();
-    toast(done.length?`${EX(id).name} added for the sets left. Your sets so far stay with ${EX(orig.exId).name}.`:`Swapped to ${EX(id).name}`,true);return;}
+    toast(done.length&&left?`${EX(id).name} added for the sets left. Your sets so far stay with ${EX(orig.exId).name}.`:done.length?`${EX(id).name} added after ${EX(orig.exId).name}`:`Swapped to ${EX(id).name}`,true);return;}
   rerenderKeepScroll();
 }
 function afterAdd(bi){

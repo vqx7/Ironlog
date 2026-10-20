@@ -90,7 +90,7 @@ function pastSheet(m){
    a set done keep what they started with, and typed loads are never touched. */
 function refreshEx(exId){if(state.draft&&!state.draft.editingId)for(const b of state.draft.ex)if(b.exId===exId&&!b.sets.some(x=>x.done))refreshBlock(b);}
 function syncDraftPlan(f){
-  const d=state.draft;if(!d||!f||d.editingId||d.routineId!==f.r.id||d.dayId!==f.r.days[f.di].id)return;
+  const d=state.draft;if(!d||!f||d.editingId||f.r!==(state.routines.find(r=>r.id===d.routineId)||activeRoutine())||planItemOf(f.r,f.it.exId,d.dayId)!==f.it)return; // the item the session's lift took its plan from (planFor's order), so a blank session's follows it too (r55, the audit)
   for(const b of d.ex)if(b.exId===f.it.exId&&!b.sets.some(x=>x.done)){for(const k of ['repMin','repMax','rir','rest','inc'])b.plan[k]=f.it[k];if(f.it.jump!=null)b.plan.jump=f.it.jump;else delete b.plan.jump;refreshBlock(b);}
 }
 function refreshBlock(b){
@@ -155,7 +155,7 @@ const ACT={
   },
   installLater(){try{localStorage.setItem(INSTALL_LATER,'1');}catch(e){log('storage',e);}rerenderKeepScroll();toast('Hidden. Settings > Your data has it.');},
   acctLater(){try{localStorage.setItem(ACCT_LATER,'1');}catch(e){log('storage',e);}rerenderKeepScroll();toast('Hidden. Settings > Your data has it.');},
-  acctOpen(t){openModal({kind:'account',mode:t.dataset.mode==='signup'?'signup':'signin',email:'',pw:''});},
+  acctOpen(t){openModal({kind:'account',mode:t.dataset.mode==='signup'?'signup':'signin',email:'',pw:'',back:ui.modal&&ui.modal.kind==='feedback'?ui.modal:undefined});}, // from a problem report, signing in goes back to it (r55, the audit: the report and what was typed in it were gone)
   acctMode(t){const m=ui.modal;if(!m||m.kind!=='account')return;if(m.mode==='wait')waitStop();m.mode=t.dataset.mode;m.err='';m.pw='';renderModal();},
   acctWaitNow(){waitTry(true);},
   /* Confirm sign-up with the emailed code (r45). This action owns success:
@@ -172,7 +172,7 @@ const ACT={
     const email=String(m.email||acctWait.email||'').trim().toLowerCase();const pw=acctWait.pw||String(m.pw||'');
     if(!EMAIL_RE.test(email)){m.err='Enter your email address.';renderModal();return;}
     clearTimeout(acctWait.timer);acctWait.timer=null;acctWait.busy=true;acctWait.coding=true;m.busy=true;m.err='';renderModal();
-    const ok=user=>{acct.user=user;waitStop();obOutClear();try{localStorage.removeItem(ACCT_LATER);}catch(e){/* nothing to clear */}if(ui.modal===m)closeModal();toast('Email confirmed. Signed in and syncing.');if(!cloud.on)cloudInit();acctRerender();};
+    const ok=user=>{acct.user=user;waitStop();obOutClear();try{localStorage.removeItem(ACCT_LATER);}catch(e){/* nothing to clear */}if(ui.modal===m)ACT.exBack();toast('Email confirmed. Signed in and syncing.');if(!cloud.on)cloudInit();acctRerender();};
     try{ok(await A.verifyCode(email,m.code));}
     catch(e){
       let done=false;
@@ -212,7 +212,7 @@ const ACT={
     if((m.mode==='signup'||m.mode==='newpw')&&!need(pw.length>=8,'Use 8 or more characters.'))return;
     if(m.mode==='signin'&&!need(pw.length>0,'Enter your password.'))return;
     m.busy=true;m.err='';renderModal();
-    const done=next=>{if(ui.modal!==m)return;if(next){ui.modal={kind:'account',...next};renderModal();}else closeModal();};
+    const done=next=>{if(ui.modal!==m)return;if(next){ui.modal={kind:'account',back:m.back,...next};renderModal();}else ACT.exBack();};
     try{
       if(m.mode==='signin'){
         acct.user=await A.signIn(email,pw);obOutClear();try{localStorage.removeItem(ACCT_LATER);}catch(e){/* nothing to clear */}done(null);
@@ -243,7 +243,7 @@ const ACT={
     confirmBox('Delete your account?','Your account and the synced copy of your log are deleted for good. The copy on this phone stays; export a backup first if you want one elsewhere.','Delete account',async()=>{
       toast('Deleting your account');
       try{await A.deleteAccount();}catch(e){log('auth',e);toast(e.message||'Could not delete the account. Try again.');acctRerender();return;}
-      acct.user=null;cloudStop();rerenderKeepScroll();toast('Account deleted. Your log is still on this phone.');
+      acct.user=null;cloudStop(true);rerenderKeepScroll();toast('Account deleted. Your log is still on this phone.');
     },true);
   },
   /* Sign out works like any app with an account (r33, V): the log lives in
@@ -260,7 +260,7 @@ const ACT={
       if(remove&&!(cloud.on&&cloud.status==='synced')){
         confirmBox('Not in your account yet','Some changes have not reached your account. Connect to the internet and sign out again, or sign out and keep them on this phone.','Keep on this phone and sign out',()=>out(false));return;}
       try{await A.signOut();}catch(e){log('auth',e);toast(e.message||'Could not sign out');return;}
-      acct.user=null;cloudStop();
+      acct.user=null;cloudStop(remove);
       /* A session in progress kept on the phone carries on where it was, and
          the app stays as it is after it: sending someone mid-workout to the
          first page would read as the session lost. */
@@ -401,7 +401,7 @@ const ACT={
     const msg=`Imported ${b.sessions.length} session${b.sessions.length===1?'':'s'}${b.cardio.length?`, ${b.cardio.length} cardio entr${b.cardio.length===1?'y':'ies'}`:''}${b.newEx.length?`, ${b.newEx.length} new exercise${b.newEx.length===1?'':'s'}`:''}`;
     const inf=first&&b.sessions.length?routineFromLog(state.sessions):null;
     if(inf){
-      const R=inf.routine;const starter=starterSigs();state.routines=state.routines.filter(x=>!starter.includes(routineSig(x))||state.sessions.some(q=>q.routineId===x.id));state.routines.push(R);state.activeRoutineId=R.id;
+      const R=inf.routine;state.routines=dropStarter(state.routines,state.sessions,starterSigs());state.routines.push(R);state.activeRoutineId=R.id;
       // Imported sessions join their day (by name, or by their lifts), so the cycle, the streak and adherence read them.
       for(const x of state.sessions){if(x.demo)continue;const d=inf.dayFor(x);if(!d)continue;x.routineId=R.id;x.dayId=d.id;x.dayIdx=R.days.indexOf(d);x.free=undefined;}
       invalidate();fitTargets(R,actualAvg4());invalidate();
@@ -422,7 +422,7 @@ const ACT={
       if(!acct.user&&AUTH()){confirmBox('Sign in first',`This test version keeps a separate log. Sign in with your ${APP_NAME} account to copy your log in. Your log in ${APP_NAME} stays as it is.`,'Sign in',()=>ACT.acctOpen({dataset:{mode:'signin'}}));return;}
       toast(err?`Could not read your ${APP_NAME} log: ${err.message}`:`No ${APP_NAME} log found for this account or on this phone.`,null,6000);return;}
     const n=realCount(st);st.draft=null;
-    const go=()=>{snapshot();setState(st);commit();closeModal();ui.tab='today';render();toast(`Copied ${n} session${n===1?'':'s'} from ${APP_NAME}. ${APP_NAME} is unchanged.`,true);};
+    const go=()=>{snapshot();setState(st);if(!cloud.on)cloudStop(true);commit();closeModal();ui.tab='today';render();toast(`Copied ${n} session${n===1?'':'s'} from ${APP_NAME}. ${APP_NAME} is unchanged.`,true);};
     if(realCount(state)||state.draft)confirmBox('Replace the preview log?',`Your ${APP_NAME} log has ${n} session${n===1?'':'s'}. Copying replaces everything in this test version; your log in ${APP_NAME} stays as it is. Undo can step this back.`,'Copy my log',go);
     else go();
   },
@@ -493,10 +493,10 @@ const ACT={
       // First run: the untouched starter routine is replaced by the pick, not
       // kept beside it. A routine with sessions logged against it always stays.
       if(same)state.activeRoutineId=same.id;
-      else{const starter=starterSigs();state.routines=state.routines.filter(x=>!starter.includes(routineSig(x))||state.sessions.some(q=>q.routineId===x.id));state.routines.push(r);state.activeRoutineId=r.id;}
-      const fit=fitTargets(state.routines.find(x=>x.id===state.activeRoutineId));
+      else{state.routines=dropStarter(state.routines,state.sessions,starterSigs());state.routines.push(r);state.activeRoutineId=r.id;}
+      const fit=fitTargets(state.routines.find(x=>x.id===state.activeRoutineId));const pa=profApplyList(activeRoutine());for(const x of pa)Object.assign(x.it,x.ch); // Your training, set in this sheet, applied as its Apply does (r55, the audit: Strength set here left the pick's plans as they were, and Settings then offered to apply it)
       state.settings.onboarded=true;ui.todayDay=null;ui.tab='today';commit();window.scrollTo(0,0);render();
-      toast(fit?`${r.name} is ready. Weekly set targets now match it; change them in Settings.`:`${r.name} is ready`,null,fit?6000:0);return;
+      toast(`${r.name} is ready${pa.length?', set to Your training':''}${fit?'. Weekly set targets now match it; change them in Settings.':''}`,null,fit||pa.length?6000:0);return;
     }
     if(same){ui.bRoutine=same.id;render();toast('You already have this routine unchanged. Opened it instead.');return;}
     state.routines.push(r);ui.bRoutine=r.id;commit();render();toast(`${r.name} added. Tap Make active to use it.`);
@@ -505,7 +505,7 @@ const ACT={
     state.settings.onboarded=true;
     // Three training days with rest days between, as the ready-made 3-day routines are laid out (r54, the audit: three days and no rest planned 7 sessions a week).
     const r={id:uid(),name:'My routine',schedule:'cycle',days:[0,1,0,1,0,1,1].map(x=>({id:uid(),name:x?'Rest':'Training day',rest:!!x,items:[]}))};
-    state.routines.push(r);state.activeRoutineId=r.id;ui.bRoutine=r.id;ui.bTarget=0;ui.folds['program:library']=true;ui.folds['program:days']=true;ui.todayDay=null;
+    state.routines=dropStarter(state.routines,state.sessions,starterSigs());state.routines.push(r);state.activeRoutineId=r.id;ui.bRoutine=r.id;ui.bTarget=0;ui.folds['program:library']=true;ui.folds['program:days']=true;ui.todayDay=null; // replacing the untouched starter, as a ready-made pick does (r55, the audit)
     ui.tab='program';ui.planView='routine';commit();window.scrollTo(0,0);render();
     toast('Name your days, then add exercises with + or by dragging.',false,7000);
   },
@@ -633,14 +633,14 @@ const ACT={
     const u=ui.modal&&ui.modal.upd;closeModal();if(!u)return;
     const R=state.routines.find(r=>r.id===u.rid);const day=R&&R.days.find(x=>x.id===u.dayId);if(!day){toast('That routine day no longer exists');return;}
     snapshot();
-    for(const x of u.swap){const it=day.items.find(i=>i.exId===x.from);if(it)it.exId=x.to;}
+    for(const x of u.swap){const it=day.items.find(i=>i.exId===x.from);if(it){it.exId=x.to;if(x.plan){Object.assign(it,x.plan);if(x.plan.jump==null)delete it.jump;}}} // at the plan it was done at (r55)
     for(const x of u.add)if(!day.items.some(i=>i.exId===x.exId))day.items.push({...x.plan,uid:uid(),exId:x.exId,ss:null});
     // Each superset kept: its exercises side by side, in the order done, under one link.
     for(const ids of u.ss||[]){const its=ids.map(id=>day.items.find(i=>i.exId===id)).filter(Boolean);if(its.length<2)continue;
       const at=Math.min(...its.map(i=>day.items.indexOf(i)));day.items=day.items.filter(i=>!its.includes(i));day.items.splice(at,0,...its);
       const g=uid();for(const i of its)i.ss=g;}
     fixSupersets(day.items);
-    if(day.rest&&day.items.length)day.rest=false;
+    if(day.items.length)Object.assign(day,trainOn(day));
     commit();render();toast(`${day.name} updated`,true);
   },
   goalOpen(t){openModal({kind:'goal',exId:t.dataset.ex});},
@@ -731,8 +731,8 @@ const ACT={
     if(linkToggle(items,f.i,x=>x)){commit();rerenderKeepScroll();}},
   dropAdd(t){
     const b=state.draft.ex[+t.dataset.b];
-    // The load the last working set was, or will be (a grey load counts).
-    let base=0;for(let i=b.sets.length-1;i>=0;i--){const s=b.sets[i];if(s.warm||s.drop)continue;const w=+effW(b,i)||0;if(w>0){base=w;break;}}
+    // The load the last working set was, or will be (a grey load counts); a missed set's is passed over (r55).
+    let base=0;for(let i=b.sets.length-1;i>=0;i--){const s=b.sets[i];if(s.warm||s.drop||isMissed(s))continue;const w=+effW(b,i)||0;if(w>0){base=w;break;}}
     b.sets.push({w:base>0?lighterLoad(EX(b.exId),b.plan,base,base*0.75):null,r:null,rir:null,warm:false,drop:true,done:false});
     saveNow();rerenderKeepScroll();toast('Drop set added');
   },
@@ -774,12 +774,12 @@ const ACT={
     /* Tapping done on an empty reps field logs the grey number in it (see
        greyR), like the paper log you copy from. Warm-ups have none, so
        those still ask. */
-    if(!s.done&&!(+s.r>0)){
+    if(!s.done&&!(+s.r>0)&&!isMissed(s)){ // a typed 0 is a missed set (r55, V), ticked as typed
       const b=state.draft.ex[bi];const lr=b?greyR(b,si):null;
       if(!(lr>0)){toast('Enter reps first');return;}
       s.r=Math.round(lr);const inp=document.querySelector(`.sg input[data-f="r"][data-b="${bi}"][data-s="${si}"]`);if(inp)inp.value=String(s.r);
     }
-    setDone(bi,si,!s.done);
+    const was=!!s.done;setDone(bi,si,!was);if(was){const b=state.draft.ex[bi];if(s.r!=null&&+s.r===greyR(b,si))s.r=null;const gw=greyW(b,si);if(!fillLoads()&&s.w!=null&&gw!=null&&Math.abs(s.w-gw)<1e-9)s.w=null;const o=ui.ordBack&&ui.ordBack.get(b);if(o&&!b.sets.some(x=>x.done)&&Date.now()-o.t<30000){ui.ordBack.delete(b);moveBlock(bi,Math.min(o.i,state.draft.ex.length-1));}saveNow();rerenderKeepScroll();} // Unticked (r55, the audit): numbers that are what the row shows in grey go back to grey, so a tap by mistake leaves nothing typed for Finish to offer to save, and an exercise the tick moved up goes back if it has no set left ticked, within half a minute.
   },
   tStart(t){const b=state.draft&&state.draft.ex[+t.dataset.b];if(b&&+b.plan.rest>0)startTimer(+b.plan.rest);},
   sWarm(t){
@@ -804,9 +804,9 @@ const ACT={
   goBackup(){if(ui.modal)closeModal();ui.tab='settings';ui.folds['settings:data']=true;window.scrollTo(0,0);render();const el=document.getElementById('dataSec');if(el)el.scrollIntoView({block:'start'});},
   // The new working set copies the last working set's load, not a drop set's
   // (75%) or a warm-up's.
-  sAdd(t){const b=state.draft.ex[+t.dataset.b];let li=-1;for(let i=b.sets.length-1;i>=0;i--)if(!b.sets[i].drop&&!b.sets[i].warm){li=i;break;}if(li<0)li=b.sets.length-1;
-    // Grey by default: the new row shows the load above it. Filled in, it copies that load (typed or grey).
-    b.sets.push({w:fillLoads()&&li>=0?effW(b,li):null,r:null,rir:null,warm:false,drop:false,done:false});saveNow();rerenderKeepScroll();},
+  sAdd(t){const bi=+t.dataset.b;const b=state.draft.ex[bi];const ld=b.sets.reduce((k,x,i)=>x.done&&isWork(x)&&!x.drop?i:k,-1);const row={w:null,r:null,rir:null,warm:false,drop:false,done:false};
+    // Grey by default: the new row shows the load above it, or what the last set ticked asks for, as a planned row under it would have (r55, V: after 300 x 1, + Set copied 300). Filled in, it takes that load.
+    b.sets.push(row);if(ld>=0)assessSet(bi,ld);if(fillLoads())row.w=effW(b,b.sets.length-1);saveNow();rerenderKeepScroll();},
   /* Warm-ups were missing entirely, which is also why the planned time estimate
      was optimistic. New warm-ups go in at the top, already flagged, so they
      stay out of every analytic, and are seeded from the working load. */
@@ -998,16 +998,16 @@ m.err=`Could not read that. Try the pattern 225x5, 5, 4 ${rirScale()==='rpe'?'rp
     /* Only sets marked done are saved. That is the rule, but silently obeying
        it is how a session of typed reps disappears: you fill five rows, tap the
        checkmark on one, and four sets are gone with no warning. Count them
-       first and let the user keep them. */
+       first and let the user keep them, a typed 0 (a missed set, r55) among them. */
     const unchecked=[];
-    for(const b of d.ex){const n=b.sets.filter(s=>!s.done&&!s.warm&&+s.r>0).length;if(n)unchecked.push({b,n,name:EX(b.exId).name});}
+    for(const b of d.ex){const n=b.sets.filter(s=>!s.done&&(+s.r>0||isMissed(s))).length;if(n)unchecked.push({b,n,name:EX(b.exId).name});} // warm-ups too, as the Guide says (r55, the audit)
     if(unchecked.length){
       const list=unchecked.map(u=>`${u.name} (${u.n} set${u.n>1?'s':''})`).join(', ');
       const total=unchecked.reduce((a,u)=>a+u.n,0);
       confirmBox('Some sets are not marked done',
         `${total} set${total>1?'s have':' has'} reps entered but no checkmark, so ${total>1?'they':'it'} will not be saved: ${list}.`,
         `Mark ${total>1?'them':'it'} done and save`,
-        ()=>{const dd=state.draft;if(!dd)return;for(const b of dd.ex)b.sets.forEach((s,si)=>{if(!s.done&&!s.warm&&+s.r>0){settleLoad(b,si);s.done=true;}});saveNow();ACT.finishNow();},
+        ()=>{const dd=state.draft;if(!dd)return;for(const [bi,b] of dd.ex.entries())for(const [si,s] of b.sets.entries())if(!s.done&&(+s.r>0||isMissed(s))){if(oddReps(b,s)||oddLoad(b,si,dd.date)){setDone(bi,si,true);if(!s.done)return;}else{settleLoad(b,si);s.done=true;}}saveNow();ACT.finishNow();}, // reps or a load far off ask first, as when ticked (r55, the audit: 110 reps put off once was saved here)
         false,
         {label:'Save without them',fn:()=>ACT.finishNow()});
       return;
@@ -1020,25 +1020,25 @@ m.err=`Could not read that. Try the pattern 225x5, 5, 4 ${rirScale()==='rpe'?'rp
        exercise with fewer sets than usual, stopped early, Short on time, typed
        in afterwards or edited, is read so from the log (analytics.ts,
        idxShort), so it sets no target and still counts toward its trend. */
-    const ex=d.ex.map(b=>({exId:b.exId,note:b.note||'',rr:b.keepRR!==undefined?b.keepRR:(b.plan&&+b.plan.repMin>0&&+b.plan.repMax>0?[+b.plan.repMin,+b.plan.repMax]:null),light:b.light?true:undefined,...(b.inj?{inj:b.inj}:{}),sets:b.sets.filter(s=>s.done).map(s=>({w:s.w==null?0:s.w,r:+s.r,rir:s.rir==null||s.rir===''?null:+s.rir,warm:!!s.warm,drop:!!s.drop&&!s.warm,cal:s.cal&&!s.warm?s.cal:undefined}))})).filter(b=>b.sets.length);
+    const ex=d.ex.map(savedEx).filter(b=>b.sets.length); // savedEx (session.ts): one source with a first link keeping another device's workout (r55)
     // Side by side, the same lift is saved as one exercise (r34.2, V); apart, each stays where it was done.
     const exJ=joinAdjacent(ex);ex.length=0;ex.push(...exJ);
-    const cardio=(d.cardio||[]).filter(c=>c.min>0).map(c=>cleanCardio({...c,date:d.date}));
+    const cardio=draftCardio(d).map(c=>cleanCardio(c));
     if(!ex.length){
-      if(cardio.length&&!d.editingId){state.cardio.push(...cardio);state.draft=null;commit();stopTimer();wakeOff();ui.todayDay=null;window.scrollTo(0,0);render();toast('Cardio saved. No lifting session was recorded.');return;}
+      if(cardio.length&&!d.editingId){putById(state.cardio,cardio);state.draft=null;commit();stopTimer();wakeOff();ui.todayDay=null;window.scrollTo(0,0);render();toast('Cardio saved. No lifting session was recorded.');return;}
       toast('Mark at least one set done');return;}
     // A blank load on a weighted lift used to save silently as a real 0 set,
     // which drags down volume load and still counts toward your weekly sets.
     const blanks=[];
-    for(const b of ex){const e=EX(b.exId);if(e.bw)continue;const n=b.sets.filter(s=>!(+s.w>0)).length;if(n)blanks.push(`${e.name} (${n} set${n>1?'s':''})`);}const help=[];for(const b of d.ex){const e=EX(b.exId);if(!e.assist)continue;const n=b.sets.filter(s=>s.done&&!s.warm&&s.w==null).length;if(n)help.push(`${e.name} (${n} set${n>1?'s':''})`);}
+    for(const b of ex){const e=EX(b.exId);if(e.bw)continue;const n=b.sets.filter(s=>!(+s.w>0)&&isWork(s)).length;if(n)blanks.push(`${e.name} (${n} set${n>1?'s':''})`);}const help=[];for(const b of d.ex){const e=EX(b.exId);if(!e.assist)continue;const n=b.sets.filter(s=>s.done&&!s.warm&&s.w==null).length;if(n)help.push(`${e.name} (${n} set${n>1?'s':''})`);}
     const save=()=>{
       // Timed only when started and finished today in this app; an edit keeps
       // whatever the original session measured.
       const durMin=d.editingId?(d.durMin||null):(d.startedAt&&d.date===today()?(()=>{const m=Math.round((Date.now()-d.startedAt)/60000);return m>=1&&m<=360?m:null;})():null);
       const sess={id:d.editingId||d.id,date:d.date,dayIdx:d.dayIdx,dayId:d.dayId||null,dayName:(d.dayName||'').trim()||'Session',routineId:d.routineId,ex,notes:d.notes||'',durMin,deload:!!d.deload,light:!!d.light,free:d.free?true:undefined,chk:cleanChk(d.chk)||undefined};
       // When it started: kept on an edit, else the start (or now, for a past workout entered later).
-      {const was=d.editingId?state.sessions.find(x=>x.id===d.editingId):null;const t=was?was.t:(d.startedAt||Date.now());if(t)sess.t=t;}
-      if(!d.editingId)state.cardio.push(...cardio);
+      {const was=d.editingId?state.sessions.find(x=>x.id===d.editingId):null;const t=was?was.t:(d.startedAt||Date.now());if(t)sess.t=t;const pw=d.editingId||d.free?undefined:pwOf(state.routines,d.routineId);if(pw)sess.pw=pw;} // and, new, what its routine planned a week (r55); an edit keeps the session's own (keepExtra below)
+      if(!d.editingId)putById(state.cardio,cardio);
       /* An RIR check offered and passed over waits 3 weeks, as Not now does
          (r32, from the third review: it was offered every session from the
          fourth to the twelfth). Read before the session is saved, since the
@@ -1051,20 +1051,20 @@ m.err=`Could not read that. Try the pattern 225x5, 5, 4 ${rirScale()==='rpe'?'rp
          order, so one moved during the edit keeps them; sets are what the edit changes. */
       if(d.editingId){const i=state.sessions.findIndex(s=>s.id===d.editingId);if(i>=0){const o=state.sessions[i];sess.demo=o.demo;
         keepExtra(o,sess);const used=new Set();sess.ex.forEach(b=>{const ob=o.ex.find(x=>x.exId===b.exId&&!used.has(x));if(ob){used.add(ob);keepExtra(ob,b);}});state.sessions[i]=sess;}else state.sessions.push(sess);}
-      else state.sessions.push(sess);
+      else putById(state.sessions,[sess]); /* by id: the other phone's copy of this workout, kept at its first link, is replaced, never held twice (r55, the second review) */
       /* A real session saved while demo data is loaded (r30): the demo goes,
          so stats never mix generated sessions with yours (the review saw 33
          sessions, demo and real, in one set of numbers, and the demo note
          gone). Load demo data in Settings brings it back. */
       const demoGone=!d.editingId&&(state.sessions.some(x=>x.demo)||state.bodyweights.some(x=>x.demo)||state.measurements.some(x=>x.demo));
-      if(demoGone){state.sessions=state.sessions.filter(x=>!x.demo);state.bodyweights=state.bodyweights.filter(x=>!x.demo);state.measurements=state.measurements.filter(x=>!x.demo);state.cardio=state.cardio.filter(x=>!x.demo);demoRestore();invalidate();}
+      if(demoGone){stripDemo(state);demoRestore();invalidate();}
       // Saving an edit of a session that was deleted while the edit was open
       // brings it back: the save is the newer action.
       state.trash=state.trash.filter(t=>!(t.kind==='session'&&t.id===sess.id));
       // Recap is computed before the draft is cleared, while the done flags exist.
       // Only exercises with a set done count toward targets (r30), and the
       // planned minutes are what this session planned after any trimming.
-      const tried=d.ex.filter(b=>b.tgt&&b.sets.some(x=>x.done&&!x.warm));
+      const tried=d.ex.filter(b=>b.tgt&&b.sets.some(x=>x.done&&!x.warm)&&effTarget(b)===b.tgt); // not one with fewer sets than its target's, which sets no target either way (r55)
       const targets=tried.length,beaten=tried.filter(b=>{const pr=blockProgress(b);return pr&&pr.beat;}).length;
       const pmDraft=draftPlanMin(d);
       const editing=!!d.editingId;
@@ -1074,10 +1074,10 @@ m.err=`Could not read that. Try the pattern 225x5, 5, 4 ${rirScale()==='rpe'?'rp
       const prAll=IDX().prs.filter(p=>(p.sid?p.sid===sess.id:p.date===sess.date)&&ex.some(b=>b.exId===p.exId));const prs=prAll.filter(p=>p.big);
       // Heavier than ever without a new best estimate: said once, quietly, not counted as a PR (r32).
       const heavier=prAll.filter(p=>!p.big&&p.type==='Weight PR').map(p=>{const e=EX(p.exId);return `${e.name} ${setShort(e,p.w,p.r)}`;});
-      const work=ex.reduce((a,b)=>a+b.sets.filter(isWork).length,0),hard=r1(ex.reduce((a,b)=>{const e=EX(b.exId);return a+b.sets.reduce((c,q)=>c+hardCredit(q,e),0);},0));
+      const work=ex.reduce((a,b)=>a+b.sets.filter(isWork).length,0),miss=ex.reduce((a,b)=>a+b.sets.filter(q=>!q.warm&&!q.drop&&isMissed(q)).length,0),hard=r1(ex.reduce((a,b)=>{const e=EX(b.exId);return a+b.sets.reduce((c,q)=>c+hardCredit(q,e),0);},0));
       ui.todayDay=null;window.scrollTo(0,0);render();
       if(editing){toast('Session updated');return;}
-      const lines=[`${work} working set${work===1?'':'s'}, ${hard} ${rirHalfOn()?'counted toward the week':'counted as hard'}`];
+      const lines=[`${work} working set${work===1?'':'s'}, ${hard} ${rirHalfOn()?'counted toward the week':'counted as hard'}${miss?`, and ${miss} missed`:''}`];
       // A session dated in the past says where it went, since it is not at the top of History.
       if(sess.date!==today())lines.unshift(`Saved under ${fmtDateLong(sess.date)}`);
       if(durMin){const pm=pmDraft;lines.push(`${durMin} minutes${pm&&!sess.free?`, planned ${estMin(pm)}`:''}`);}
@@ -1116,14 +1116,14 @@ m.err=`Could not read that. Try the pattern 225x5, 5, 4 ${rirScale()==='rpe'?'rp
   bwAskNo(){try{localStorage.setItem(BWASK_KEY,'1');}catch(e){/* per device only */}rerenderKeepScroll();},
   delBW(t){const id=t.dataset.id;const x=state.bodyweights.find(b=>b.id===id);if(!x)return;
     confirmBox('Delete weigh-in?',`${fmtDate(x.date)}: ${fmtW(x.kg)} ${U()}. Undo is offered right after.`,'Delete',()=>{snapshot();state.bodyweights=state.bodyweights.filter(b=>b.id!==id);commit();rerenderKeepScroll();toast('Entry deleted',true);},true);},
-  addMeas(){const m={id:uid(),date:today()};let any=false;for(const [k,lab] of MEAS){const v=numIn($('#ms_'+k).value);if(v!=null&&v>0){const cm=lenFrom(v);if(!(cm<=MEAS_MAX_CM)){toast(`${lab} looks too large. Check the number.`);return;}m[k]=cm;any=true;}}if(!any){toast('Enter at least one measurement');return;}state.measurements=state.measurements.filter(x=>x.date!==m.date);state.measurements.push(m);commit();rerenderKeepScroll();toast('Measurements saved');},
+  addMeas(){const m={id:uid(),date:today()};let any=false;for(const [k,lab] of MEAS){const v=numIn($('#ms_'+k).value);if(v!=null&&v>0){const cm=lenFrom(v);if(!(cm<=MEAS_MAX_CM)){toast(`${lab} looks too large. Check the number.`);return;}m[k]=cm;any=true;}}if(!any){toast('Enter at least one measurement');return;}snapshot();const was=state.measurements.find(x=>x.date===m.date);if(was)Object.assign(was,m,{id:was.id});else state.measurements.push(m);commit();rerenderKeepScroll();toast('Measurements saved',true);}, // a second save the same day adds to it, keeping what it does not retype, with Undo (r55, the audit: it replaced the day's entry)
   delMeas(t){const id=t.dataset.id;const x=state.measurements.find(m=>m.id===id);if(!x)return;
     confirmBox('Delete measurements?',`The tape entry from ${fmtDate(x.date)}. Undo is offered right after.`,'Delete',()=>{snapshot();state.measurements=state.measurements.filter(m=>m.id!==id);commit();rerenderKeepScroll();toast('Entry deleted',true);},true);},
   toggleItem(t){ui.openItem=ui.openItem===t.dataset.uid?null:t.dataset.uid;rerenderKeepScroll();},
   iUp(t){const R=curRoutineB();move(R.days[+t.dataset.day].items,+t.dataset.i,+t.dataset.i-1);commit();rerenderKeepScroll();},
   iDown(t){const R=curRoutineB();move(R.days[+t.dataset.day].items,+t.dataset.i,+t.dataset.i+1);commit();rerenderKeepScroll();},
   iDel(t){snapshot();const R=curRoutineB();const [x]=R.days[+t.dataset.day].items.splice(+t.dataset.i,1);commit();rerenderKeepScroll();toast(`${exName(x.exId)} removed`,true);},
-  libAdd(t){const R=curRoutineB();const d=R.days[ui.bTarget];d.items.push(newItem(t.dataset.ex));if(d.rest)d.rest=false;commit();rerenderKeepScroll();toast(`Added to ${dayLabel(R,ui.bTarget)}`);},
+  libAdd(t){const R=curRoutineB();const d=R.days[ui.bTarget];d.items.push(newItem(t.dataset.ex));Object.assign(d,trainOn(d));commit();rerenderKeepScroll();toast(`Added to ${dayLabel(R,ui.bTarget)}`);},
   rActive(){state.activeRoutineId=ui.bRoutine;ui.todayDay=null;commit();render();toast('Active routine changed');},
   rNew(){openModal({kind:'routineNew'});},
   rNewSave(){const nm=(($('#rNewName')||{}).value||'').trim();if(!nm){toast('Give the routine a name');return;}if(nameTaken(nm)){toast('A routine already has that name. Pick another.');return;}closeModal();ACT.rNewDo(nm);},
@@ -1131,13 +1131,13 @@ m.err=`Could not read that. Try the pattern 225x5, 5, 4 ${rirScale()==='rpe'?'rp
   rNewDo(nm){
     // An existing empty routine is reused rather than stacking another blank one.
     const blank=state.routines.find(r=>routineEmpty(r)&&r.id!==state.activeRoutineId);
-    if(blank){blank.name=nm||blank.name;ui.bRoutine=blank.id;commit();render();toast('Reused your empty routine');return;}const r={id:uid(),name:nm||'New routine',schedule:'cycle',days:[1,2,3].map(()=>({id:uid(),name:'Training day',rest:false,items:[]}))};state.routines.push(r);ui.bRoutine=r.id;commit();render();},
+    if(blank){blank.name=nm||blank.name;ui.bRoutine=blank.id;commit();render();toast('Reused your empty routine');return;}const r={id:uid(),name:nm||'New routine',schedule:'cycle',days:[0,1,0,1,0,1,1].map(x=>({id:uid(),name:x?'Rest':'Training day',rest:!!x,items:[]}))};state.routines.push(r);ui.bRoutine=r.id;commit();render();}, // Laid out as Build my own's (r55, the audit: three training days and no rest planned 7 sessions a week).
   rTemplate(){openModal({kind:'templates',from:'plan'});},
   rDup(){const src=curRoutineB();const r=JSON.parse(JSON.stringify(src));r.id=uid();r.name=src.name+' (copy)';r.days.forEach(d=>{d.id=uid();d.items.forEach(it=>it.uid=uid());});state.routines.push(r);ui.bRoutine=r.id;commit();render();},
   rDel(){const R=curRoutineB();if(state.routines.length<2)return;confirmBox('Delete routine?',`"${R.name}" will be removed. Logged sessions are kept${plainTemplate(R)?'; it can be added again from New from a template.':`, and the routine stays under Recently deleted in History for ${TRASH_DAYS} days.`}`,'Delete routine',()=>{const Rn=state.routines.find(r=>r.id===R.id);if(!Rn||state.routines.length<2){rerenderKeepScroll();return;}snapshot();toTrash('routine',Rn);state.routines=state.routines.filter(r=>r.id!==R.id);if(state.activeRoutineId===R.id)state.activeRoutineId=state.routines[0].id;ui.bRoutine=state.activeRoutineId;commit();render();toast('Routine deleted',true);},true);},
   exNew(){openModal({kind:'exEdit',isNew:true,e:{id:'c_'+uid(),name:'',primary:'chest',secondary:[],equip:'cable',bw:false,rare:false,note:'',custom:true,archived:false}});},
   exNewFromPicker(){const back=ui.modal;if(!back||back.kind!=='picker')return;openModal({kind:'exEdit',isNew:true,back,e:{id:'c_'+uid(),name:(back.q||'').trim(),primary:back.m||'',secondary:[],equip:'cable',bw:false,rare:false,note:'',custom:true,archived:false,incRaw:''}});},
-  exBack(){const m=ui.modal;if(m&&m.back)openModal(m.back);else closeModal();},
+  exBack(){const m=ui.modal;if(m&&m.back)openModal(m.back);else closeModal();}, // back to the sheet this one was opened from, else closed: the exercise editor's, and an account sheet's opened from a problem report (r55)
   exEdit(t){ui.exBody=false;const e=JSON.parse(JSON.stringify(EX(t.dataset.ex)));e.incRaw=e.inc!=null?fmtW(stepRead(e.inc)):'';e.bwfRaw=String(Math.round(bwShare(e)*100));e.maxRaw=e.maxLoad!=null?fmtW(e.maxLoad):'';e.barRaw=e.barKg!=null?fmtW(e.barKg):'';
     openModal({kind:'exEdit',isNew:false,e});},
   secToggle(t){const e=ui.modal.e;const k=t.dataset.m;e.secondary=e.secondary.includes(k)?e.secondary.filter(x=>x!==k):[...e.secondary,k];renderModal();},
@@ -1263,10 +1263,10 @@ m.err=`Could not read that. Try the pattern 225x5, 5, 4 ${rirScale()==='rpe'?'rp
   demoLoad(){confirmBox('Load demo data?','Adds 8 weeks of generated sessions tagged as demo, based on your active routine. Your own logs are not changed.','Load demo data',()=>{const first=demoFirstRun();demoKeep();
     // On a first run the targets fit the routine, as picking it would (r29);
     // demoRestore puts the settings back when the demo is cleared.
-    if(first)fitTargets(activeRoutine());makeDemo();ui.tab='dash';window.scrollTo(0,0);render();toast('Demo data loaded');});},
+    if(first)fitTargets(activeRoutine());if(!cloud.on)cloudStop(true);makeDemo();ui.tab='dash';window.scrollTo(0,0);render();toast('Demo data loaded');});},
   demoStart(){state.sessions=state.sessions.filter(s=>!s.demo);state.bodyweights=state.bodyweights.filter(b=>!b.demo);state.measurements=state.measurements.filter(m=>!m.demo);demoRestore();commit();ui.tab='today';ui.folds={};window.scrollTo(0,0);render();},
-  demoClear(){snapshot();state.sessions=state.sessions.filter(s=>!s.demo);state.bodyweights=state.bodyweights.filter(b=>!b.demo);state.measurements=state.measurements.filter(m=>!m.demo);demoRestore();commit();render();toast('Demo data cleared',true);},
-  resetAll(){confirmBox('Erase everything?',`All routines, sessions, custom exercises, and body data will be deleted${cloud.on?' on this device and in your cloud copy':' on this device'}. Export a backup first if you might want it.`,'Erase everything',()=>{snapshot();setState(normalize(null));commit();ui.tab='today';render();toast('Everything erased',true);},true);}
+  demoClear(){snapshot();stripDemo(state);demoRestore();commit();render();toast('Demo data cleared',true);},
+  resetAll(){confirmBox('Erase everything?',`All routines, sessions, custom exercises, and body data will be deleted${cloud.on?' on this device and in your cloud copy':' on this device'}. Export a backup first if you might want it.`,'Erase everything',()=>{snapshot();setState(normalize(null));if(!cloud.on)cloudStop(true);commit();ui.tab='today';render();toast('Everything erased',true);},true);}
 };
 
 /* A load far from last time's (under 60% or over 140% of it) is the usual

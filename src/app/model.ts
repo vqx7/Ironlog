@@ -24,14 +24,19 @@ export interface ExPoint {
   rq: number | null;
 }
 
+/** A missed set as the Last line lists it (r55): read as a working set is,
+    with 0 reps, and `at`, how many of the session's working sets came first. */
+export type MissedPoint = ExPoint & { at: number };
+
 /** One session of a lift (an exposure), with what IDX reads from it: its
     working sets, best estimates and their rep bands, the working load and the
     reps and RIR at it, the trend readings, and the marks the later steps set
     (`auto` and `keep` for a session read as lighter, `short` for one short
     of its usual, by its sets or its reading, `tag` for one labelled lighter
     or a deload but done at its usual load and reps, `tv` the trend's
-    reading, `progress` a PR or a heavier load), and `held`, a session held
-    for a flagged injury (r54). */
+    reading, `progress` a PR or a heavier load), `held`, a session held
+    for a flagged injury (r54), and `miss`, its missed sets, for the Last
+    line alone (r55; absent when there are none). */
 export interface Exposure {
   date: string;
   sid: string;
@@ -61,6 +66,7 @@ export interface Exposure {
   tag?: 'deload' | 'light';
   tv?: number | null;
   progress?: boolean;
+  miss?: MissedPoint[];
 }
 
 /** A change seen over a lift's last three sessions in range: the load it was
@@ -71,7 +77,11 @@ export interface Drift {
   to: number;
 }
 
-/** One lift's reading (idxLift): its trend, stall, signals and bests. */
+/** One lift's reading (idxLift): its trend, stall, signals and bests. `rrIn`
+    is the rep range its trend is read in when it is trained in more than
+    one, and `holdRR`, when it falls there, the other ranges in use where it
+    does not, and `quietRR` those with too few sessions to tell, so it is not
+    read as falling (r55, PENDING 319). */
 export interface ExStat {
   n: number;
   stalled: boolean;
@@ -80,6 +90,9 @@ export interface ExStat {
   slopeSe: number | null;
   moving: boolean;
   falling: boolean;
+  rrIn: [number, number] | null;
+  holdRR: [number, number][];
+  quietRR: [number, number][];
   pLo: number | null;
   pHi: number | null;
   spanW: number | null;
@@ -145,9 +158,10 @@ export interface DayMeta {
   novel: boolean;
 }
 
-/** Everything IDX() builds once per change. Two values are added after it is
-    built, by the readers that need them: rack steps (`_rack`, rackStep) and
-    the routine each past week was trained on (`weekRid`, weekRoutine). */
+/** Everything IDX() builds once per change. Three values are added after it is
+    built, by the readers that need them: rack steps (`_rack`, rackStep), the
+    routine each past week was trained on (`weekRid`, weekRoutine) and the
+    sessions a week it planned then, where its sessions recorded it (`weekPw`). */
 export interface Idx {
   byEx: Partial<Record<string, Exposure[]>>;
   exStats: Partial<Record<string, ExStat>>;
@@ -164,6 +178,7 @@ export interface Idx {
   rirCov: { logged: number; total: number };
   _rack?: Record<string, number | null>;
   weekRid?: Record<string, string | null>;
+  weekPw?: Record<string, number>;
 }
 
 /** The sessions on each date, in sessCmp order, and the count per week (dateIndex). */

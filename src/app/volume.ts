@@ -17,3 +17,11 @@ export function aboveMax(v: number | null | undefined, hi: number): boolean {
 
 /** A muscle's status reads low: under its minimum, or nothing logged against a minimum above 0. */
 export const lowSt = (x: { st: string; lo: number }): boolean => x.st === 'under' || (x.st === 'none' && x.lo > 0);
+
+/* Nothing logged meets a minimum of 0, so such a muscle counts as on target
+   wherever muscles are counted (r55, from the audit: the muscle map said 15 of
+   19 on target beside the coach's "Every muscle at target", the four short
+   being muscles a first-run fit had set to a minimum of 0). */
+/** A muscle's status reads on target: in its range, above it, or a minimum of 0 with nothing logged. */
+export const metSt = (x: { st: string; lo: number }): boolean =>
+  x.st === 'in' || x.st === 'over' || (x.st === 'none' && x.lo <= 0);

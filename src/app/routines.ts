@@ -231,6 +231,19 @@ export function plannedPerWeek(R: RoutineLike): number {
   return R.schedule === 'weekly' ? n : n ? Math.max(1, Math.floor(n * weekFactor(R) + 1e-9)) : 0;
 }
 
+/* What a session records at Finish of the routine it was logged against: the
+   sessions a week it planned then (r55, from the audit: deleting the routine
+   a month was trained on, or adding a day to it, rescored those weeks against
+   the routine as it is now, and a 5-week streak read 0). Absent for a
+   Freestyle session or a routine that plans none, and on sessions saved
+   before r55, which read the routine as it is now. */
+/** The sessions a week the routine with this id plans, for a session to record; undefined when it plans none or is gone. */
+export function pwOf(routines: readonly (RoutineLike & { id: string })[], id: string): number | undefined {
+  const R = routines.find(r => r.id === id);
+  const n = R ? plannedPerWeek(R) : 0;
+  return n > 0 ? n : undefined;
+}
+
 /* Sessions store the id of the day they were logged against, so reordering or
    removing cycle days never relinks history to the wrong workout. Sessions from
    before v3 have only a position, which is still correct because migration
@@ -246,6 +259,15 @@ export function sessDayIdx(R: RoutineLike, s: { dayId?: string | null; dayIdx: n
 /** The sets a day plans. */
 export function daySets(day: { items: { sets: number | string }[] }): number {
   return day.items.reduce((a, it) => a + +it.sets, 0);
+}
+
+/* A rest day an exercise is added to becomes a training day, and its name
+   goes with it when it is the name rest days are given (r55, from the audit:
+   a day of Build my own or New blank, given an exercise, read "Rest" on Today
+   and in the week bar with its exercises planned). A name typed stays. */
+/** What a day given an exercise becomes: a training day, named Training day when it was a rest day named Rest. */
+export function trainOn(d: { rest: boolean; name: string }): { rest: false; name: string } {
+  return { rest: false, name: d.rest && d.name === 'Rest' ? 'Training day' : d.name };
 }
 
 /* A superset is consecutive items sharing an id. Groups of one are not
@@ -341,6 +363,19 @@ export const routineSig = (
     r.days.map(d => [d.name, !!d.rest, d.items.map(i => [i.exId, +i.sets, +i.repMin, +i.repMax, +i.rir, +i.rest])])
   ]);
 
+/* A first-run choice (a ready-made routine, a routine from an import, or
+   Build my own since r55) replaces the starter a new install was given, as
+   long as it is untouched (its signature, `sigs`) and nothing was logged
+   against it: the audit of r54 found Build my own kept it beside My routine. */
+/** The routines less an untouched starter, by its signatures, that no session was logged against. */
+export function dropStarter<R extends Parameters<typeof routineSig>[0] & { id: string }>(
+  routines: readonly R[],
+  sessions: readonly { routineId: string }[],
+  sigs: readonly string[]
+): R[] {
+  return routines.filter(x => !sigs.includes(routineSig(x)) || sessions.some(q => q.routineId === x.id));
+}
+
 /* "Eight plans, 2 to 6 days a week", counted from the list (r30: the line
    said six after two were added). Every other day counts as about 3.5.
    Each key comes from TEMPLATES itself, so each copy is found (the !). */
@@ -406,14 +441,24 @@ export function defPlanIn(M: Model, exId: string, plain?: boolean): Plan {
    days with different ranges; null on no day of it. */
 /** A lift's plan in a routine, the day given first, or null when it is on no day of it. */
 export function routinePlanIn(M: Model, exId: string, R?: Routine | null, dayId?: string | null): Plan | null {
-  const Q = R || activeRoutineIn(M);
-  const days = dayId ? [...Q.days.filter(d => d.id === dayId), ...Q.days.filter(d => d.id !== dayId)] : Q.days;
-  for (const d of days)
-    for (const it of d.items)
-      if (it.exId === exId) {
-        const { uid: _u, ss: _s, ...p } = it;
-        return { ...DEFAULT_PLAN, ...p, ss: null };
-      }
+  const it = planItemOf(R || activeRoutineIn(M), exId, dayId);
+  if (!it) return null;
+  const { uid: _u, ss: _s, ...p } = it;
+  return { ...DEFAULT_PLAN, ...p, ss: null };
+}
+
+/* The item itself, so a change to it in Plan reaches the exercises of a
+   session that took their plan from it, by the one search order (r55, from
+   the audit: a range changed in Plan never reached the same lift in a blank
+   session, which took its plan from the first day with it). */
+/** The item a lift's plan in a routine comes from: on the day given first, else the first day with it; null on no day. */
+export function planItemOf<I extends { exId: string }>(
+  R: { days: readonly { id: string; items: readonly I[] }[] },
+  exId: string,
+  dayId?: string | null
+): I | null {
+  const days = dayId ? [...R.days.filter(d => d.id === dayId), ...R.days.filter(d => d.id !== dayId)] : R.days;
+  for (const d of days) for (const it of d.items) if (it.exId === exId) return it;
   return null;
 }
 

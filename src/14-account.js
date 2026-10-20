@@ -1,8 +1,8 @@
 /* ---------- account (standalone app) ---------- */
 const ACCT_LATER=KEY+'.acctLater';
-function cloudStop(){
-  clearTimeout(cloud.t);cloud.on=false;cloud.db=null;cloud.uid=null;cloud.acct=null;
-  cloud.meta={};cloud.editAt={};cloud.last=null;cloud.retry=0;saveMeta();setCloud('local');
+function cloudStop(forget){ // forget: the log or the account is gone; else the sync notes stay with the copy kept, so signing back in to that account merges against them, as a sync does (r55, the audit: a first link let the kept copy undo edits and bring back deletions made since on other phones). A log replaced while signed out (Erase everything, a backup restored, Copy my log in, demo data loaded) is no longer that copy, so each of those forgets them: the next sign-in is a first link, which removes nothing and leaves demo data out (r55, the second review: a restored backup deleted the account's other sessions on every phone)
+  clearTimeout(cloud.t);cloud.on=false;cloud.db=null;cloud.uid=null;if(forget){cloud.acct=null;cloud.meta={};cloud.editAt={};cloud.last=null;}
+  cloud.retry=0;saveMeta();setCloud('local');
 }
 function acctRerender(){if((ui.tab==='settings'||ui.tab==='today')&&!ui.modal)rerenderKeepScroll();else{const el=document.getElementById('syncInfo');if(el)el.innerHTML=syncInfo();}}
 /* ---------- problem reports (PENDING 58, reworked in r25) ----------
@@ -149,7 +149,7 @@ async function waitTry(manual){
   try{
     acct.user=await A.signIn(acctWait.email,acctWait.pw);waitStop();obOutClear();
     try{localStorage.removeItem(ACCT_LATER);}catch(e){/* nothing to clear */}
-    if(sheet())closeModal();
+    if(sheet())ACT.exBack();
     toast('Email confirmed. Signed in and syncing.');await cloudInit();acctRerender();
   }catch(e){
     const m=sheet();
@@ -167,7 +167,7 @@ async function acctInit(){
     acct.user=user;
     if(ev==='PASSWORD_RECOVERY'&&!(ui.modal&&ui.modal.kind==='account'))openModal({kind:'account',mode:'newpw',pw:''});
     // Signed in some other way while waiting for the confirmation (another tab sharing this storage): stop waiting.
-    if(ev==='SIGNED_IN'&&user&&acctWait.pw&&!acctWait.coding){waitStop();const m=ui.modal;if(m&&m.kind==='account'&&m.mode==='wait'){closeModal();toast('Email confirmed. Signed in and syncing.');}}
+    if(ev==='SIGNED_IN'&&user&&acctWait.pw&&!acctWait.coding){waitStop();const m=ui.modal;if(m&&m.kind==='account'&&m.mode==='wait'){ACT.exBack();toast('Email confirmed. Signed in and syncing.');}}
     if(ev==='SIGNED_IN'&&!cloud.on)cloudInit();
     if(ev==='SIGNED_OUT'&&cloud.on&&!window.claude)cloudStop();
     if(ev==='SIGNED_IN'||ev==='SIGNED_OUT')fbCheckReader();

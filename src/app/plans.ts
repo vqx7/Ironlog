@@ -73,7 +73,11 @@ export interface RoutineUpdate {
   dayId: string;
   dayName: string;
   add: { exId: string; plan: Partial<Plan> & { sets: number } }[];
-  swap: { from: string; to: string }[];
+  swap: {
+    from: string;
+    to: string;
+    plan: Partial<Pick<Plan, 'repMin' | 'repMax' | 'rir' | 'rest' | 'inc' | 'jump'>>;
+  }[];
   ss: string[][];
   text: string;
 }
@@ -102,8 +106,17 @@ export function routineUpdatesIn(M: Model, d: FinishedDraft): RoutineUpdate | nu
     seen.add(b.exId);
     // Limited-equipment swaps are for that session only.
     if (d.limited && b.swappedFrom) continue;
-    if (b.swappedFrom && have.has(b.swappedFrom)) swap.push({ from: b.swappedFrom, to: b.exId });
-    else {
+    /* A swap takes the range, effort, rest and step it was done at into the
+       day, its sets staying the slot's (r55, from the audit: the day kept the
+       old lift's plan, so the next session asked other reps than this one). */
+    if (b.swappedFrom && have.has(b.swappedFrom)) {
+      const plan: RoutineUpdate['swap'][number]['plan'] = {};
+      for (const k of ['repMin', 'repMax', 'rir', 'rest', 'inc', 'jump'] as const) {
+        const v = b.plan[k];
+        if (v != null) plan[k] = v;
+      }
+      swap.push({ from: b.swappedFrom, to: b.exId, plan });
+    } else {
       const { ss: _s, ...p } = b.plan;
       const sets = d.deload || d.light ? (b.full ?? planForIn(M, b.exId, R, d.dayId, false, d.date).sets) : p.sets;
       add.push({ exId: b.exId, plan: { ...p, sets: Math.max(1, +(sets || 0) || 3) } });

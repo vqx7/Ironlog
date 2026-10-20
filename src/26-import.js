@@ -76,14 +76,14 @@ function impFromText(text){
 /* Sets from text are read once the exercise is known, so a bodyweight lift
    may have reps alone. The unit is applied at the end. */
 function impTextSets(it,exo,conv){const out=[];let defW=null;
-  for(const t of it.setsText){let st=impSetsText(t);
+  for(const t of it.setsText){let st=impSetsText(t);const lu=/(?:\b|\d)kgs?(?![a-wyz])/i.test(t)?'kg':/(?:\b|\d)lbs?(?![a-wyz])|\d\s*#/i.test(t)?'lb':null;const cv=lu==='kg'?(v=>v):lu==='lb'?(v=>v*LB):conv; // a unit written on the line is that line's, glued to the x or as # for pounds too (r55, the audit: 100kg under an earlier 30lb was read as 100 lb; the second review: 100kgx8 and 225#)
     // On a bodyweight lift a bare "3x10" is sets of reps (no load to read); on a weighted lift it stays load x reps.
     if(exo.bw&&!exo.assist)st=st.replace(/(^|[\s,])(\d{1,2})x(\d{1,3})(?=$|[\s,])/g,(m,p,a,b)=>+a<=10&&!/@/.test(st)?p+Array(+a).fill('bwx'+b).join(' '):m);
     // On a weighted lift a bare "3x10" (up to 5 sets, no unit, no load anywhere on the line) is sets of reps with no load:
     // at the load carried from the line above, else asked for rather than read as 3 lb for 10 reps.
     else if(!exo.timed&&/^\s*[1-5]\s*[x×*]\s*\d{1,3}(\s*,?\s*[1-5]\s*[x×*]\s*\d{1,3})*\s*$/.test(String(t).toLowerCase())){if(defW==null)return null;
       for(const g of String(t).toLowerCase().matchAll(/([1-5])\s*[x×*]\s*(\d{1,3})/g))for(let k=0;k<+g[1];k++)out.push({w:defW,r:+g[2],rir:undefined,warm:false,drop:false});continue;}
-    const g=parseSets(st,{bw:!!exo.bw||!!exo.timed},defW,conv);if(!g)return null;
+    const g=parseSets(st,{bw:!!exo.bw||!!exo.timed},defW,cv);if(!g)return null;
     out.push(...g.map(x=>({w:x.w,r:x.r,rir:x.rir,warm:false,drop:false})));defW=g[g.length-1].w;}
   return out;}
 /* Reads the input and opens the preview. */
@@ -138,7 +138,7 @@ function impBuild(m){
       if(!exo.bw&&!exo.timed)for(const q of sets)if((q.w>0&&q.w<2.3)||q.r>30){odd.push(`${exo.name} ${fmtW(q.w)} ${U()} x ${q.r}${x.date?`, ${fmtDate(x.date)}`:''}`);break;}
       // A lift's sets across rows of the same exercise stay together.
       const prev=ex.find(b=>b.exId===exo.id);if(prev)prev.sets.push(...sets);else ex.push({exId:exo.id,note:it.note||'',rr:null,sets});}
-    if(ex.length)out.push({id:uid(),date,dayIdx:0,dayId:null,dayName:(x.name||'').slice(0,60)||'Imported',routineId:'',free:true,ex,notes:'',durMin:null,deload:!!x.deload,light:false});}
+    if(ex.length)out.push({id:uid(),date,dayIdx:0,dayId:null,dayName:(x.name||'').slice(0,60)||'Imported',routineId:'',free:true,ex,notes:x.note||'',durMin:x.durMin||null,deload:!!x.deload,light:false});} // the note and minutes the app's own file carries (r55)
   /* Date, lifts and reps, not loads (r31): the same file imported again with
      the other unit choice converted every load differently and added every
      session a second time. */
@@ -150,9 +150,9 @@ function impBuild(m){
      no time cannot be saved (minutes are required) and is counted instead.
      One already in the log (same date, kind and minutes) is skipped. */
   const cardio=[];let cardioNoTime=0;
-  for(const c of m.res.cardioRows||[]){const min=Math.round(c.secs/60);if(!(min>0)){cardioNoTime++;continue;}
+  for(const c of m.res.cardioRows||[]){const min=c.min||Math.round(c.secs/60);if(!(min>0)){cardioNoTime++;continue;}
     if(state.cardio.some(x=>x.date===c.date&&x.kind===c.kind&&x.min===min)){dup++;continue;}
-    cardio.push(cleanCardio({id:uid(),date:c.date,kind:c.kind,min,hr:null,when:'solo',note:'',dist:c.dist>0?(m.unit==='kg'?c.dist:c.dist*KM_MI):null}));}
+    cardio.push(cleanCardio({id:uid(),date:c.date,kind:c.kind,min,hr:c.hr||null,when:c.when||'solo',note:c.note||'',dist:c.km!=null?c.km:c.dist>0?(m.unit==='kg'?c.dist:c.dist*KM_MI):null}));} // the app's own file says the minutes, heart rate, when, note and km (r55)
   return {sessions:fresh,cardio,cardioNoTime,dup,bad,odd,timedOff,newEx:Object.values(newEx).filter(e=>fresh.some(ss=>ss.ex.some(b=>b.exId===e.id)))};
 }
 /* A routine from an import, on a first run (r31). Someone who brings their
@@ -258,7 +258,7 @@ function impSheet(m){
   ${unsure.length?`<p class="small" style="margin:12px 0 4px;font-weight:650">Check these exercises</p>${unsure.map(row).join('')}`:''}
   ${sure.length?`<details class="subsec" style="margin-top:8px"><summary>${sure.length} matched</summary>${sure.map(row).join('')}</details>`:''}
   ${r.unreadN||r.unread&&r.unread.length?`<details class="subsec" style="margin-top:8px"><summary>${r.unreadN||r.unread.length} line${(r.unreadN||r.unread.length)===1?'':'s'} not understood</summary><ul class="small" style="margin:6px 0 0;padding-left:18px">${r.unread.map(l=>`<li>${esc(l)}</li>`).join('')}</ul></details>`:''}
-  ${r.skipped?`<p class="small muted" style="margin:6px 0 0">${r.skipped} row${r.skipped===1?'':'s'} without an exercise, date, or reps were skipped.</p>`:''}${b.cardio.length?`<p class="small" style="margin:6px 0 0">Cardio: ${b.cardio.length} entr${b.cardio.length===1?'y':'ies'} (${esc(andList(b.cardio.slice(0,3).map(c=>`${CARDIOL[c.kind].toLowerCase()} ${fmtDate(c.date)}, ${c.min} min${c.dist?`, ${distShow(c.dist)} ${m.unit==='kg'?'km':'mi'}`:''}`),3))}${b.cardio.length>3?', and more':''}). Distances are read in ${m.unit==='kg'?'km':'miles'}, with the unit above.</p>`:''}${b.cardioNoTime?`<p class="small muted" style="margin:6px 0 0">${b.cardioNoTime} cardio entr${b.cardioNoTime===1?'y':'ies'} without a time left out: minutes are needed.</p>`:''}
+  ${r.skipped?`<p class="small muted" style="margin:6px 0 0">${r.skipped} row${r.skipped===1?'':'s'} without an exercise, date, or reps were skipped.</p>`:''}${b.cardio.length?`<p class="small" style="margin:6px 0 0">Cardio: ${b.cardio.length} entr${b.cardio.length===1?'y':'ies'} (${esc(andList(b.cardio.slice(0,3).map(c=>`${CARDIOL[c.kind].toLowerCase()} ${fmtDate(c.date)}, ${c.min} min${c.dist?`, ${distShow(c.dist)} ${distU()}`:''}`),3))}${b.cardio.length>3?', and more':''}). Distances are read in ${m.unit==='kg'?'km':'miles'}, with the unit above.</p>`:''}${b.cardioNoTime?`<p class="small muted" style="margin:6px 0 0">${b.cardioNoTime} cardio entr${b.cardioNoTime===1?'y':'ies'} without a time left out: minutes are needed.</p>`:''}
   ${b.bad.length?`<p class="small" style="margin:6px 0 0;color:var(--yellow)">Not imported, no weight given: ${esc(andList(b.bad,8))}. Write the load in, like 3x10 @ 60, and read it again.</p>`:''}
   ${b.odd.length?`<p class="small" id="impOdd" style="margin:6px 0 0;color:var(--yellow)">Check these, they look misread: ${esc(andList(b.odd,4))}. Fix the line and read it again if they are wrong.</p>`:''}
   ${b.timedOff?`<p class="small" style="margin:6px 0 0;color:var(--yellow)">${b.timedOff} timed set${b.timedOff===1?' was':'s were'} left out: the exercise chosen counts reps. Pick a timed one to keep them.</p>`:''}
@@ -297,7 +297,7 @@ function importData(text,after){
   const body=`This backup has ${clean.sessions.length} session${clean.sessions.length===1?'':'s'} and ${clean.routines.length} routine${clean.routines.length===1?'':'s'}.`
     +(dropped?` ${dropped} damaged record${dropped===1?' was':'s were'} skipped.`:'')
     +' It will replace everything currently in the app. You can step this back with Undo.';
-  confirmBox('Replace all data?',body,'Replace my data',()=>{snapshot();setState(clean);commit();closeModal();ui.tab='today';render();toast('Backup imported',true);if(after)after();},true);
+  confirmBox('Replace all data?',body,'Replace my data',()=>{snapshot();setState(clean);if(!cloud.on)cloudStop(true);commit();closeModal();ui.tab='today';render();toast('Backup imported',true);if(after)after();},true);
 }
 /* Demo data looked at before setting up (V, r28): whatever is changed while
    looking around (sections shown or hidden, their order, the timer, RIR,

@@ -5,11 +5,11 @@
    the log, the date or a cache takes the model as its first parameter
    (model.ts). */
 
-import type { Plan } from './types';
+import type { DraftBlock, Plan } from './types';
 import type { Drift, ExPoint, Exposure, ExerciseLike, Model, Suggestion } from './model';
 import type { LiftBests } from './analytics';
 import { EXIn, UIn, exInjuryIn } from './model';
-import { IDXIn, bwRefLoadIn, lastOf, statsUpToIn } from './analytics';
+import { IDXIn, bwLoadIn, bwRefLoadIn, lastOf, statsUpToIn } from './analytics';
 import { atCapOfIn, capOfIn, exBarKgIn, gymRackIn, gymStepIn, platesMode, rackGapIn, rackTolIn } from './gym';
 import {
   DEFAULT_STEP,
@@ -31,10 +31,12 @@ import {
   afterBreak,
   E1_MAX_RIR,
   LIGHTER_LOAD,
+  LIGHT_SHARE,
   atLoad,
   e1,
   e1inv,
   fitE,
+  isWork,
   jumpCap,
   jumpPct,
   lighter,
@@ -45,8 +47,8 @@ import {
   workLoad
 } from './formulas';
 import { KIN_UNI, RACK, injLabel, isCompound, loadMode, noE1, patternOf, rackKind } from './library';
-import { effAt, effScale, fmtDate, rangeWords, repSpan } from './format';
-import { overSets } from './session';
+import { LIGHT_RIR, effAt, effLeast, effScale, fmtDate, rangeWords, repSpan } from './format';
+import { effW, overSets } from './session';
 
 /** How a suggestion is asked for: for a past session's date (`before`), as a deload, or as a lighter day. */
 export type SuggestOpts = {
@@ -80,6 +82,8 @@ export interface SuggestCtx {
   atCap: boolean;
   capW: (w: number) => number;
   topPts: ExPoint[];
+  planPts: ExPoint[];
+  noHelp: boolean;
   lastR: number[];
   lastS: string;
   basis: string | null;
@@ -224,13 +228,13 @@ export function suggestIn(M: Model, exId: string, plan: Plan, opts?: SuggestOpts
     const ks =
       !gymRackIn(M, ex, plan) && rackKind(ex) && rackKind(EXIn(M, base.kin)) ? rackStepIn(M, EXIn(M, base.kin)) : null;
     const lw = ks
-      ? fromDIn(M, Math.floor(toDIn(M, base.w! * 0.9)! / toDIn(M, ks)! + 1e-9) * toDIn(M, ks)!)!
-      : lighterLoadIn(M, ex, plan, base.w!, base.w! * 0.9);
+      ? fromDIn(M, Math.floor(toDIn(M, base.w! * LIGHT_SHARE)! / toDIn(M, ks)! + 1e-9) * toDIn(M, ks)!)!
+      : lighterLoadIn(M, ex, plan, base.w!, base.w! * LIGHT_SHARE);
     return {
       ...base,
       w: lw,
       lastR: Array<number>(Math.max(1, +plan.sets || 1)).fill(+plan.repMin),
-      text: `First time, ${opts.deload ? 'deload' : 'Lighter day'}. About ${loadLabelIn(M, ex, lw)} ${UIn(M)}${loadNote(ex)} for ${repSpan(plan.repMin, plan.repMax, '-')} with 3 or more reps in reserve, from your ${EXIn(M, base.kin).name}. Half the usual sets, nothing to beat.`
+      text: `First time, ${opts.deload ? 'deload' : 'Lighter day'}. About ${loadLabelIn(M, ex, lw)} ${UIn(M)}${loadNote(ex)} for ${repSpan(plan.repMin, plan.repMax, '-')} with ${effLeast(effScale(M.s.settings.rirScale), LIGHT_RIR)}, from your ${EXIn(M, base.kin).name}. Half the usual sets, nothing to beat.`
     };
   }
   if (base.inj || !base.last || base.w == null) return base;
@@ -243,12 +247,12 @@ export function suggestIn(M: Model, exId: string, plan: Plan, opts?: SuggestOpts
   // Assisted: 90% of the lifted load means more help, rounded up to the machine's step so it never lands back on the full load.
   const hs = step > 0 ? toDIn(M, step)! : DEFAULT_STEP[UIn(M)];
   const dw = ex.assist
-    ? -fromDIn(M, Math.ceil(toDIn(M, bl > 0 ? bl - (w0 + bl) * 0.9 : -w0 * 1.1)! / hs - 1e-9) * hs)!
+    ? -fromDIn(M, Math.ceil(toDIn(M, bl > 0 ? bl - (w0 + bl) * LIGHT_SHARE : -w0 * 1.1)! / hs - 1e-9) * hs)!
     : ex.bw
-      ? (w0 + bl) * 0.9 - bl > 0
-        ? lighterLoadIn(M, ex, plan, w0, (w0 + bl) * 0.9 - bl)
+      ? (w0 + bl) * LIGHT_SHARE - bl > 0
+        ? lighterLoadIn(M, ex, plan, w0, (w0 + bl) * LIGHT_SHARE - bl)
         : 0
-      : lighterLoadIn(M, ex, plan, w0, w0 * 0.9);
+      : lighterLoadIn(M, ex, plan, w0, w0 * LIGHT_SHARE);
   const w = w0 > 0 || ex.assist ? dw : w0;
   // Grey reps at the bottom of the range: at about 90% of the load that is 3 or more in reserve for anyone in the range last time.
   const n = Math.max(1, (base.lastR || []).length || +plan.sets || 1);
@@ -282,7 +286,7 @@ export function suggestIn(M: Model, exId: string, plan: Plan, opts?: SuggestOpts
       prev: base.prev,
       prevOff: base.prevOff,
       w,
-      text: `${base.last} ${word}: about ${lbl(w)} for ${repSpan(plan.repMin, plan.repMax, '-')} with 3 or more reps in reserve. Half the usual sets, nothing to beat.`,
+      text: `${base.last} ${word}: about ${lbl(w)} for ${repSpan(plan.repMin, plan.repMax, '-')} with ${effLeast(effScale(M.s.settings.rirScale), LIGHT_RIR)}. Half the usual sets, nothing to beat.`,
       lastR: Array<number>(n).fill(+plan.repMin),
       basis: base.basis,
       last: base.last,
@@ -361,11 +365,19 @@ export function suggestCoreIn(M: Model, exId: string, plan: Plan, opts?: Suggest
   const abW = ['abs', 'obliques'].includes(ex.primary);
   // Heaviest available load (top of the stack or rack), if set.
   const cap = capOfIn(M, ex, plan, top);
-  const atCap = atCapOfIn(M, ex, plan, top, cap);
+  /* An assisted lift at no help is at the most the machine gives (r55, the
+     audit: at BW it asked to "take 2.5 kg of help off", BW+2.5): reps, as at
+     the heaviest load of a rack. */
+  const noHelp = !!ex.assist && top >= -1e-9;
+  const atCap = atCapOfIn(M, ex, plan, top, cap) || noHelp;
   const capW = (w: number): number => (cap != null ? Math.min(w, cap) : w);
   // Only the sets at the top load decide progression. Ramp-up sets at lighter
   // loads used to block every load increase unless they also reached repMax.
   const topPts = ws.filter(p => Math.abs(p.w - top) < 1e-6);
+  /* The planned sets among them decide a step, as they set the rep target
+     (tp, below): a set past the plan's count is left out (r55, the audit: 80
+     x 10 x 4 and a fifth set of 8 held the load and asked 41+ reps over 4). */
+  const planPts = topPts.slice(0, Math.max(1, +plan.sets || topPts.length));
   const L0 = lastOf(seen, last, p => `${loadLabelIn(M, ex, p.w)}×${p.r}`, +plan.repMin);
   const lastR = L0.lastR,
     lastS = L0.line,
@@ -381,7 +393,7 @@ export function suggestCoreIn(M: Model, exId: string, plan: Plan, opts?: Suggest
       prev: L0.prev,
       prevOff: L0.prevOff,
       w: top,
-      text: `${lastS} Injury flagged (${injLabel(injM)}): stay at or below ${lbl(top)}, keep 3 or more reps in reserve, stop on pain.`,
+      text: `${lastS} Injury flagged (${injLabel(injM)}): stay at or below ${lbl(top)}, keep ${effLeast(effScale(M.s.settings.rirScale), LIGHT_RIR)}, stop on pain.`,
       lastR,
       basis,
       last: lastS,
@@ -430,6 +442,8 @@ export function suggestCoreIn(M: Model, exId: string, plan: Plan, opts?: Suggest
     atCap,
     capW,
     topPts,
+    planPts,
+    noHelp,
     lastR,
     lastS,
     basis,
@@ -463,7 +477,7 @@ export function sgFirstIn(M: Model, ex: ExerciseLike, plan: Plan, T: string, inj
   if (injM)
     return {
       w: w0,
-      text: `Injury flagged (${injLabel(injM)}). Start light, keep 3 or more reps in reserve, and stop on pain.`,
+      text: `Injury flagged (${injLabel(injM)}). Start light, keep ${effLeast(effScale(M.s.settings.rirScale), LIGHT_RIR)}, and stop on pain.`,
       lastR: [],
       last: '',
       target: '',
@@ -505,14 +519,35 @@ export function sgFirstIn(M: Model, ex: ExerciseLike, plan: Plan, T: string, inj
 /* Every top set 2 or more over the target reserve: the load from the estimate.
    Every top set has a RIR here (the test below), as the ! say. */
 export function sgEasyIn(M: Model, C: SuggestCtx): Suggestion | null {
-  const { ex, plan, top, step, noAdd, atCap, capW, topPts, lastR, lastS, basis, lbl, prevBest, tgtRir, early } = C;
+  const {
+    ex,
+    plan,
+    top,
+    step,
+    noAdd,
+    atCap,
+    capW,
+    topPts,
+    planPts,
+    lastR,
+    lastS,
+    basis,
+    lbl,
+    prevBest,
+    tgtRir,
+    early
+  } = C;
+  /* A bodyweight lift with no weigh-in has no total load for the estimate to
+     read (r55, the audit: BW+5 x 10 was read as a 5 kg lift), so its load is
+     never set from one. */
   if (
     step > 0 &&
     !atCap &&
     !noAdd &&
     !noE1(ex) &&
-    topPts.length &&
-    topPts.every(p => p.rir != null && p.rir >= tgtRir + 2 && p.r >= plan.repMin)
+    !(ex.bw && !(bwRefLoadIn(M, ex) > 0)) &&
+    planPts.length &&
+    planPts.every(p => p.rir != null && p.rir >= tgtRir + 2 && p.r >= plan.repMin)
   ) {
     let est: number | null = null;
     for (const p of topPts) {
@@ -532,7 +567,7 @@ export function sgEasyIn(M: Model, C: SuggestCtx): Suggestion | null {
          is a floor, so at least one real step, even past the cap (r34.2, from
          the review: 20 lb curls at 5+ in reserve asked to build reps for
          weeks, a 5 lb dumbbell step being more than the cap allows). */
-      const easy5 = topPts.every(p => p.rir! >= 5);
+      const easy5 = planPts.every(p => p.rir! >= 5);
       if (k < 1 && easy5) k = 1;
       /* From a load off a rack read from its spacing (r54): the heaviest of
          its weights the estimate allows, the next one up at least when every
@@ -687,7 +722,7 @@ export function sgBelowRangeIn(M: Model, C: SuggestCtx): Suggestion | null {
 
 /* At the heaviest load available, a fixed load, or bodyweight never loaded: reps. */
 export function sgNoStep(C: SuggestCtx): Suggestion | null {
-  const { plan, top, step, noAdd, abW, atCap, topPts, lastR, lastS, basis, lbl, prevBest, tp } = C;
+  const { plan, top, step, noAdd, abW, atCap, noHelp, topPts, lastR, lastS, basis, lbl, prevBest, tp } = C;
   /* At the heaviest load available: keep adding reps past the top of the range.
      Once every set reaches about 40% past it, the next step is harder reps
      rather than more load. A load step of 0 means the load never changes (a
@@ -696,6 +731,9 @@ export function sgNoStep(C: SuggestCtx): Suggestion | null {
      history under a three-set plan read "26+ reps over your first 5 sets". */
   if (atCap || !(step > 0) || noAdd) {
     const where = atCap ? 'the heaviest load available' : noAdd ? 'your bodyweight' : 'a fixed load (load step 0)';
+    // An assisted lift at no help: the unassisted lift with added load is what comes after the reps (r55).
+    const at = noHelp ? 'with no help' : `at ${where}`,
+      lead = noHelp ? 'With no help left' : `That is ${where}`;
     const below = topPts.every(p => p.r < +plan.repMin);
     const total = tp.reduce((a, p) => a + p.r, 0);
     const nT = tp.length;
@@ -705,10 +743,10 @@ export function sgNoStep(C: SuggestCtx): Suggestion | null {
     const tip = maxed
       ? noAdd && !abW
         ? ` Every set reached ${ext}+ on bodyweight alone. Add a little load (a belt or a vest) by typing it, or make each rep harder: a 3 to 4 second lowering, a pause, or a harder version.`
-        : ` Every set reached ${ext}+ at ${where}, so make each rep harder instead: lower for 3 to 4 seconds and pause at the stretch, go one arm or one leg at a time, or finish with a drop set. Add a note when you change it so the numbers stay comparable.`
+        : ` Every set reached ${ext}+ ${at}, so make each rep harder instead: lower for 3 to 4 seconds and pause at the stretch, go one arm or one leg at a time, or finish with a drop set. Add a note when you change it so the numbers stay comparable.`
       : below
-        ? ` That is ${where}, so build the reps up to ${plan.repMin} or more.`
-        : ` That is ${where}, so keep adding reps past ${plan.repMax}.`;
+        ? ` ${lead}, so build the reps up to ${plan.repMin} or more.`
+        : ` ${lead}, so keep adding reps past ${plan.repMax}${noHelp ? '; the lift without the machine, with load added, comes after' : ''}.`;
     return {
       top,
       w: top,
@@ -716,10 +754,10 @@ export function sgNoStep(C: SuggestCtx): Suggestion | null {
       lastR,
       basis,
       last: lastS,
-      target: `${total + 1}+ reps ${over} at ${lbl(top)}${atCap ? ', the heaviest available' : ''}`,
+      target: `${total + 1}+ reps ${over} at ${lbl(top)}${noHelp ? '' : atCap ? ', the heaviest available' : ''}`,
       tgt: { kind: 'reps', w: top, total, n: nT, rs: tp.map(p => p.r), prevBest },
       easier: maxed
-        ? `Past ${ext} reps at ${atCap ? 'the heaviest load' : 'this load'}: slow the lowering to 3 to 4 seconds with a pause at the stretch, go one side at a time, or add a drop set.`
+        ? `Past ${ext} reps ${noHelp ? 'with no help' : atCap ? 'at the heaviest load' : 'at this load'}: slow the lowering to 3 to 4 seconds with a pause at the stretch, go one side at a time, or add a drop set.`
         : null,
       capped: atCap
     };
@@ -732,8 +770,8 @@ export function sgNoStep(C: SuggestCtx): Suggestion | null {
    there (no estimate) reads as 0 in the subtraction, which the casts let
    TypeScript accept. */
 export function sgTopOfRangeIn(M: Model, C: SuggestCtx): Suggestion | null {
-  const { ex, plan, top, cap, capW, topPts, lastR, lastS, basis, lbl, prevBest, tgtRir, tp } = C;
-  if (topPts.every(p => p.r >= plan.repMax)) {
+  const { ex, plan, top, cap, capW, topPts, planPts, lastR, lastS, basis, lbl, prevBest, tgtRir, tp } = C;
+  if (planPts.every(p => p.r >= plan.repMax)) {
     const nw = capW(top + progStepIn(M, ex, plan, top + bwRefLoadIn(M, ex), top));
     if (ex.assist) {
       const aw = top < 0 ? Math.min(0, nw) : nw;
@@ -764,7 +802,8 @@ export function sgTopOfRangeIn(M: Model, C: SuggestCtx): Suggestion | null {
     let aim = +plan.repMin;
     const q = Math.min(tgtRir, E1_MAX_RIR);
     const bwT = bwRefLoadIn(M, ex);
-    if (!noE1(ex)) {
+    // Not on a bodyweight lift with no weigh-in, which has no total load to read the step against (r55, as sgEasyIn).
+    if (!noE1(ex) && !(ex.bw && !(bwT > 0))) {
       let est: number | null = null;
       for (const p of topPts) {
         const v = fitE(p.load, p.r, p.rq);
@@ -868,22 +907,29 @@ export function sgRepsIn(M: Model, C: SuggestCtx): Suggestion {
   const { ex, plan, stx, top, topPts, lastR, lastS, basis, lbl, prevBest, tp } = C;
   /* The rep target covers the same number of sets as last time, so an extra
      set can never count as progress on its own. A set under the range that
-     counts as the bottom of it (repFloor) is said. */
-  const total = tp.reduce((a, p) => a + p.r, 0);
-  const nT = tp.length;
+     counts as the bottom of it (repFloor) is said. A set past the top counts
+     as the top (r55, a convention, from the audit: 70 x 11, 11, 9 and 10 on
+     6 to 10 asked 42+ reps over 4 sets, more than 10 a set can make, and 10
+     x 4 then read as missed while it moved the load up): every set at the
+     top is what moves the load, so reps past it make up for no short set. */
+  const hi = +plan.repMax;
+  const tc = tp.map(p => ({ ...p, r: Math.min(p.r, hi) }));
+  const total = tc.reduce((a, p) => a + p.r, 0);
+  const nT = tc.length;
   const over = overSets(nT, plan);
   const floored = tp.some((p, i) => topPts[i] && topPts[i].r < p.r)
     ? ` (a set under ${plan.repMin} counts as ${plan.repMin})`
     : '';
+  const topped = tp.some(p => p.r > hi) ? ` (a set past ${hi} counts as ${hi})` : '';
   return {
     top,
     w: top,
-    text: `${lastS} Beat ${total} reps ${over} at ${lbl(top)}${floored}. When every set at that load reaches ${plan.repMax}, ${ex.assist ? 'take some help off' : 'add load'}.`,
+    text: `${lastS} Beat ${total} reps ${over} at ${lbl(top)}${floored}${topped}. When every set at that load reaches ${plan.repMax}, ${ex.assist ? 'take some help off' : 'add load'}.`,
     lastR,
     basis,
     last: lastS,
     target: `${total + 1}+ reps ${over} at ${lbl(top)}`,
-    tgt: { kind: 'reps', w: top, total, n: nT, rs: tp.map(p => p.r), prevBest },
+    tgt: { kind: 'reps', w: top, total, n: nT, rs: tc.map(p => p.r), prevBest },
     easier: stx.easier ? easierTextIn(M, ex, stx.easier) : null
   };
 }
@@ -1059,6 +1105,25 @@ export function suggestTimedIn(
       target: '',
       tgt: null,
       easier: null
+    };
+  /* Back after a break, as any lift is (r55, from the audit: a plank seven
+     weeks off was asked to beat its last time): the same load, holds about
+     90% as long (the lighter day's 90%, r32, a convention), nothing to beat,
+     and the next session picks up from this one. */
+  const off = backDaysIn(M, ex.id, opts);
+  if (off > BACK_DAYS)
+    return {
+      prev: L0.prev,
+      prevOff: L0.prevOff,
+      w: top,
+      text: `${lastS} Back after ${Math.round(off / 7)} weeks: the same load, holds about 90% as long, stopping before shaking. Next time picks up from here.`,
+      lastR: lastR.map(r => Math.max(1, Math.round(r * LIGHT_SHARE))),
+      basis,
+      last: lastS,
+      target: '',
+      tgt: null,
+      easier: null,
+      back: Math.round(off / 7)
     };
   const step = incOfIn(M, ex, plan, top);
   const cap = capOfIn(M, ex, plan, top);
@@ -1380,4 +1445,57 @@ export function heavierLoadIn(
   if (!(step > 0)) return null;
   const k = Math.floor((to - from) / step + 1e-6);
   return k >= 1 ? from + k * step : null;
+}
+
+/* A load far off (r55, V 2026-10-19: 300 typed after two sets of 50, logged
+   without a word). Before a working set is logged the app asks, Log it or
+   Fix it, when its load is more than three times the heaviest set ticked in
+   the session, or under a third of it, or more than twice the heaviest ever
+   logged on the lift (or in the session, when that is heavier). Conventions,
+   set to catch a slipped digit or a load typed in the other unit and to
+   leave real training alone: a ramp of warm-ups not marked as such climbs
+   less than threefold a set (the bar and then a plate a side is three times,
+   which does not ask), a back-off set is rarely under half the top set, and
+   no lift doubles its best in a session. Loads are read as moved, a
+   bodyweight lift's share of the bodyweight added, so its first added load
+   is no jump from nothing; an assisted lift (its help typed) and a timed hold
+   are not asked about. Null when nothing is far off, else the reason. */
+export const ODD_SESSION = 3;
+/** How many times a lift's heaviest logged load a set may be before the app asks (r55, a convention, above). */
+export const ODD_BEST = 2;
+/** Why a working set's load is far off its session or the lift's log, or null (above). */
+export function oddLoadIn(M: Model, b: DraftBlock, si: number, date: string): string | null {
+  const s = b.sets[si];
+  if (!s || s.warm || s.drop) return null;
+  const ex = EXIn(M, b.exId);
+  const w = effW(b, si);
+  if (ex.assist || ex.timed || w == null) return null;
+  const bw = bwLoadIn(M, ex, date);
+  const load = bw + w;
+  if (!(load > 0)) return null;
+  const say = (x: number): string => `${loadLabelIn(M, ex, x)}${ex.bw ? '' : ' ' + UIn(M)}`;
+  let top = 0,
+    topW = 0;
+  b.sets.forEach((x, i) => {
+    if (i !== si && x.done && isWork(x) && !x.drop && x.w != null && bw + x.w > top) {
+      top = bw + x.w;
+      topW = x.w;
+    }
+  });
+  if (top > 0 && load > top * ODD_SESSION + 1e-9)
+    return `${say(w)} is more than three times your heaviest set today, ${say(topW)}.`;
+  if (top > 0 && load * ODD_SESSION < top - 1e-9)
+    return `${say(w)} is under a third of your heaviest set today, ${say(topW)}.`;
+  let best = 0,
+    bestW = 0;
+  for (const x of IDXIn(M).byEx[b.exId] || [])
+    if (x.date <= date)
+      for (const p of x.pts)
+        if (bw + p.w > best) {
+          best = bw + p.w;
+          bestW = p.w;
+        }
+  if (best > 0 && load > Math.max(best, top) * ODD_BEST + 1e-9)
+    return `${say(w)} is more than twice the heaviest you have logged on this exercise, ${say(bestW)}.`;
+  return null;
 }

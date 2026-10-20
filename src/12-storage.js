@@ -156,7 +156,7 @@ function cleanSess(ss,si){
       }))
     },KNOWN_SEX)).filter(b=>b.sets.length),
     // When the session started (r34): orders two sessions on one day. Absent on older ones, so their records hash as before.
-    t:Number.isFinite(+ss.t)&&+ss.t>0?Math.round(+ss.t):undefined
+    t:Number.isFinite(+ss.t)&&+ss.t>0?Math.round(+ss.t):undefined,pw:typeof ss.pw==='number'&&Number.isInteger(ss.pw)&&ss.pw>=1&&ss.pw<=7?ss.pw:undefined // pw (r55): the sessions a week its routine planned when saved (pwOf); absent unless recorded, so older records keep their hash.
   });
 }
 function normalize(s){

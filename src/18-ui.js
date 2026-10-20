@@ -102,7 +102,7 @@ function navSync(){
   }catch(e){/* history is best effort in a frame */}
 }
 window.addEventListener('popstate',()=>{
-  if(ui.modal){closeModal();return;}
+  if(ui.modal){if(ui.modal.dirty){modalPush();toast(DIRTY_SAID);return;}closeModal();return;} // Back is a tap outside too: a sheet with something typed stays (r55, the audit)
   const st=history.state;const t=st&&st.ilTab;
   if(t&&t!==ui.tab&&TABS_OK.has(t)){navFromPop=true;ui.tab=t;if(t==='program')ui.planView='routine';window.scrollTo(0,0);render();}
 });
@@ -205,20 +205,20 @@ function oddReps(b,s){
   const r=+s.r;if(!(r>30))return false;let best=0;for(const x of IDX().byEx[b.exId]||[])for(const p of x.pts)best=Math.max(best,p.r);
   return r>2*Math.max(+b.plan.repMax||0,best);
 }
-function setDone(bi,si,val){
-  const b=state.draft.ex[bi];const s=b&&b.sets[si];if(!s)return;
-  if(val&&oddReps(b,s)&&oddOk!==`${bi}:${si}:${s.r}`){const ex=EX(b.exId);
-    confirmBox(`${setShort(ex,effW(b,si),s.r)}${ex.bw?'':' '+U()}?`,`${s.r} reps is far past your ${rangeWords(b.plan)} and anything logged on this exercise. Log it as typed, or go back and fix it.`,'Log it',()=>{oddOk=`${bi}:${si}:${s.r}`;setDone(bi,si,true);saveNow();rerenderKeepScroll();});
+function setDone(bi,si,val,again){ /* again: the set was ticked before, and is ticked again after the far-off question, so its rest is not started over (r55, the second review) */
+  const b=state.draft.ex[bi];const s=b&&b.sets[si];if(!s)return;const okKey=`${bi}:${si}:${s.r}:${effW(b,si)}`;const far=val&&oddOk!==okKey&&!oddReps(b,s)?oddLoad(b,si,state.draft.date):null;
+  if(val&&oddOk!==okKey&&(far||oddReps(b,s))){const ex=EX(b.exId);const fix=far?'w':'r'; // a load far off asks too (r55, V), and Fix it goes back to the field
+    confirmBox(`${setShort(ex,effW(b,si),s.r)}${ex.bw?'':' '+U()}?`,`${far||`${s.r} ${ex.timed?'seconds':'reps'} is far past your ${rangeWords(b.plan)} and anything logged on this exercise.`} Log it as typed, or go back and fix it.`,'Log it',()=>{oddOk=okKey;setDone(bi,si,true,again);saveNow();rerenderKeepScroll();},false,{label:'Fix it',only:true,fn:()=>{if(again)ui.refix={b:blkRef(bi),s:si};const f=document.querySelector(`.sg input[data-f="${fix}"][data-b="${bi}"][data-s="${si}"]`);if(f){f.focus();if(f.select)f.select();}}});
     return;}
   if(val)settleLoad(b,si);
-  s.done=val;
+  s.done=val;if(val&&isMissed(s)&&!s.warm&&!s.drop)toast(MISSED_SAID); // a typed 0 (r55, V)
   afterSet(bi,si);
   const btn=document.querySelector(`[data-act="sDone"][data-b="${bi}"][data-s="${si}"]`);
-  if(btn){btn.classList.toggle('on',val);btn.setAttribute('aria-pressed',String(val));const row=btn.closest('.sg');if(row)row.classList.toggle('done',val);}
+  if(btn){btn.classList.toggle('on',val);btn.setAttribute('aria-pressed',String(val));btn.setAttribute('aria-label',`Set ${si+1} ${val&&isMissed(s)?'missed':'done'}`);const row=btn.closest('.sg');if(row)row.classList.toggle('done',val);}
   refreshPR(bi,si,true);
   const c=$('#doneCount');
   if(c){const n=state.draft.ex.reduce((a,x)=>a+x.sets.filter(y=>y.done&&!y.warm).length,0);c.textContent=String(n);const w=$('#doneWord');if(w)w.textContent=n===1?'set':'sets';}
-  let autoRest=val&&!s.warm&&!state.draft.editingId&&!state.draft.past&&+b.plan.rest>0&&state.settings.timerMode==='auto';
+  let autoRest=val&&!again&&!s.warm&&!state.draft.editingId&&!state.draft.past&&+b.plan.rest>0&&state.settings.timerMode==='auto';
   // In a superset the rest is taken after the last exercise of the group.
   /* No rest while a partner after this one still has a set to do; once the
      partners are through (a pair of 5 and 3 sets), every set rests (r34.2). */
@@ -299,7 +299,7 @@ function applyTheme(){const t=state.settings.theme;if(t==='system')delete docume
    and the browser then fires that field's change as if the lifter had left it.
    They did not, so that change must not tick a set. */
 let rebuilding=false;
-function render(){
+function render(){if(!state.draft){if(!$('#timer').hidden)stopTimer();wakeOff();} // no session, no rest timer or screen kept on: a session erased, restored over or finished on another phone left both running (r55, the audit)
   try{renderInner();}
   catch(e){log('render',e);renderCrash(e);}
   navSync();
@@ -343,7 +343,7 @@ function focusKey(el){
   return at.length?el.tagName.toLowerCase()+at.join(''):null;
 }
 function rerenderKeepScroll(){
-  const y=window.scrollY,el=document.activeElement,key=focusKey(el);
+  const y=window.scrollY,el=document.activeElement,key=focusKey(el),txt=el&&el.tagName==='INPUT'&&el.type==='text'?el.value:null; // the text as typed: "152." is 152 stored, and redrawn from the log it lost its point (r55, the audit)
   const ss=el&&typeof el.selectionStart==='number'?el.selectionStart:null;
   const se=el&&typeof el.selectionEnd==='number'?el.selectionEnd:null;
   render();
@@ -352,7 +352,7 @@ function rerenderKeepScroll(){
   let next=null;try{next=document.querySelector(key);}catch(e){/* selector from a stale element */}
   if(!next||typeof next.focus!=='function')return;
   try{
-    next.focus({preventScroll:true});
+    next.focus({preventScroll:true});if(txt!=null&&next.tagName==='INPUT'&&next.value!==txt&&numIn(next.value)===numIn(txt))next.value=txt;
     if(ss!=null&&typeof next.setSelectionRange==='function')next.setSelectionRange(ss,se);
   }catch(e){/* caret restore is best effort */}
   window.scrollTo(0,y);

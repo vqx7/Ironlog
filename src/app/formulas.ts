@@ -144,6 +144,12 @@ export function prSameLoad(w: number, earlier: ReadonlySet<number>): number {
 export const isWork = (s: { warm?: boolean | undefined; r: number | string | null }): boolean =>
   !s.warm && +(s.r as number) > 0;
 
+/** A missed set (r55, V 2026-10-19): reps typed as 0, a lift tried and not
+    made. Ticked, it is kept and shown as missed, and counts toward no volume,
+    PR, estimate or target, which isWork already gives, since it reads reps
+    above 0. A row with no reps typed (null, or '' in a field) is not one. */
+export const isMissed = (s: { r: number | string | null }): boolean => s.r !== null && s.r !== '' && +s.r === 0;
+
 /** A set's weight in a weekly count: a drop set counts half. */
 export const setCredit = (s: { drop?: boolean | undefined }): number => (s.drop ? 0.5 : 1);
 
@@ -217,6 +223,8 @@ export function repFloor(
 
 /** A lift's session reads lighter than its usual when its heaviest load is this share of the heaviest of its previous three or less (r30, a convention: a deload is usually about 10% off), and its strength reading LIGHTER_READING of theirs or less. */
 export const LIGHTER_LOAD = 0.9;
+/** The share of the normal load a lighter day, a deload or a lift back after a break asks for, and of the hold time on a timed hold back after one (r32, r55; a convention, the usual deload of about a tenth). */
+export const LIGHT_SHARE = 0.9;
 /** The strength reading, reps alone, at which a session with a load LIGHTER_LOAD or less under reads lighter (r30, a convention). */
 export const LIGHTER_READING = 0.93;
 

@@ -6,7 +6,7 @@
 // script (r52's 74, routineUpdates since r53, and since r54 plannedSets,
 // stallWeeks, stallWords, atRangeTop, avgFirstWeek, lastLighterWeek, muscleStatus,
 // weeksAvg, defBand, appBand, fitFloors, refit, avgWait, sessionWords, prFrame
-// and heavierLoad, read from live.ts) is called with the page's own arguments
+// and heavierLoad, and since r55 oddLoad, read from live.ts) is called with the page's own arguments
 // on a fresh model and must give the page's answer, then again on a second
 // fresh model; so is each of PLAIN, the engine's functions the legacy script
 // calls directly that take no model (since r53 avgWeeksTxt, whose lines no
@@ -32,8 +32,10 @@ const K = +process.env.ENGINE_N || 1000, BATCH = 100;
 // The engine's functions that take no model and that the digest calls (tests/wide.js), run in Node beside the adapters,
 // and since r54 the routine helpers the legacy script reads from routines.ts (EXTRA below calls them): when Finish's
 // offer and a lift's own plan moved to plans.ts (r54) the lines that ran went with them, and these keep routines.ts's share;
-// and musTrend, a muscle's strength trend in words, which Stats and the muscles sheet call and no adapter reaches (r54).
-const PLAIN = ['avgWeeksTxt', 'dayLabel', 'daySets', 'ssLetters', 'routineSig', 'tplCountLine', 'musTrend'];
+// and musTrend, a muscle's strength trend in words, which Stats and the muscles sheet call and no adapter reaches (r54);
+// and r55's routine helpers: what a session records of its routine (pwOf), a first-run choice replacing the starter
+// (dropStarter), a day given an exercise (trainOn) and the item a lift's plan comes from (planItemOf).
+const PLAIN = ['avgWeeksTxt', 'dayLabel', 'daySets', 'ssLetters', 'routineSig', 'tplCountLine', 'musTrend', 'pwOf', 'dropStarter', 'trainOn', 'planItemOf'];
 // Every adapter live.ts gives the legacy script, read from live.ts itself, so a new one cannot go uncalled.
 const ADAPTERS = [...fs.readFileSync(path.join(APP, 'live.ts'), 'utf8').matchAll(/^export const (\w+) = live\(\w+In\);$/gm)].map(m => m[1]);
 // The adapters added since r53, and the plain functions above the digest does not call: tests/wide.js is shared with
@@ -42,6 +44,15 @@ const EXTRA = {
   // Each routine's day labels (a cycle's Day N, a weekly one's weekday), planned sets a day, superset letters and signature, and the templates' line.
   dayLabel: (s) => s.routines.flatMap(r => [[r, 0], [r, 3], [{ ...r, schedule: 'weekly' }, 2]]), daySets: (s) => s.routines.flatMap(r => r.days.map(d => [d])),
   ssLetters: (s) => s.routines.flatMap(r => r.days.map(d => [d.items])), routineSig: (s) => s.routines.map(r => [r]), tplCountLine: () => [[]],
+  // r55: each routine's sessions a week by id (and an id no routine has), the routines less the first one's signature as a
+  // starter, each day given an exercise, and where each tagged lift's plan comes from, with and without a day to look at first.
+  pwOf: (s) => [[s.routines, s.activeRoutineId], [s.routines, 'none'], [[], '']],
+  dropStarter: (s) => [[s.routines, s.sessions, s.routines.slice(0, 1).map(r => window.__ironlog.routineSig(r))], [s.routines, [], []]],
+  trainOn: (s) => s.routines.flatMap(r => r.days.map(d => [d])),
+  planItemOf: (s, ids) => s.routines.slice(0, 2).flatMap(r => ids.slice(0, 6).flatMap(id => [[r, id], [r, id, r.days.length > 1 ? r.days[1].id : null]])),
+  // A lift's all-time bests, now and as of the log's middle session (a past workout's), and where the weeks are counted from.
+  allTimeBests: (s, ids) => ids.flatMap(id => [[id], [id, s.sessions.length ? s.sessions[Math.floor(s.sessions.length / 2)].date : '']]),
+  logBack: () => [[]], logStart: () => [[]],
   plannedSets: (s) => s.routines.map(r => [r]), stallWeeks: (s, ids) => ids.map(id => [id]), stallWords: (s, ids) => ids.map(id => [id]), atRangeTop: (s, ids) => ids.map(id => [id]), avgFirstWeek: () => [[]], lastLighterWeek: () => [[]],
   // A week's sets so far and a plain average; the weekly averages, which carry the muscles on plan, reach it through the coach and regionBalance.
   muscleStatus: () => [[{ chest: 5, quads: 22, biceps: 0, serratus: 3 }], [{ chest: 5, quads: 22, biceps: 0 }, true], [null]],
@@ -59,12 +70,16 @@ const EXTRA = {
   // A set being logged, as its PRs judge it (r54): each lift's newest set, the same weight typed in the other unit on its usual step, a blank load, and no date.
   prFrame: (s, ids) => ids.flatMap(id => { const ss = s.sessions.filter(x => x.ex.some(b => b.exId === id)); const last = ss[ss.length - 1]; if (!last) return [[id, { w: 20, r: 8 }, '']]; const set = last.ex.find(b => b.exId === id).sets[0], w = +set.w || 0; const other = Math.abs(w / 0.05 - Math.round(w / 0.05)) < 1e-6 ? Math.round(w / 0.45359237 / 5) * 5 * 0.45359237 : Math.round(w / 2.5) * 2.5; return [[id, set, last.date], [id, { ...set, w: other }, last.date], [id, { ...set, w: other, r: (+set.r || 0) + 1 }, last.date], [id, { w: '', r: 5 }, last.date], [id, set, '']]; }),
   heavierLoad: (s, ids) => ids.map(id => s.exercises.find(e => e.id === id)).filter(Boolean).flatMap(e => [[e, null, 20, 21], [e, null, 20, 40], [e, null, 5.443, 9], [e, { inc: 2.5 }, 50, 60]]),
+  // A set about to be logged, its load far off or not (r55): 300 after two 50s, 30 after 300, a first set at ten times the lift's best,
+  // one at its best, a blank load, no load, a row under a ticked set with its load grey, and a warm-up; on every lift, with the log's newest date.
+  oddLoad: (s, ids) => ids.flatMap(id => { const d = s.sessions.length ? s.sessions[s.sessions.length - 1].date : ''; const S = (w, r, done, o) => ({ w, r, done, warm: false, drop: false, ...(o || {}) }); const b = sets => ({ exId: id, sw: 40, sets }); return [[b([S(50, 6, true), S(50, 6, true), S(300, 1, false)]), 2, d], [b([S(300, 5, true), S(30, 5, false)]), 1, d], [b([S(1000, 5, false)]), 0, d], [b([S(60, 8, false)]), 0, d], [b([S(null, null, false)]), 0, d], [b([S(0, 10, false)]), 0, d], [b([S(50, 8, true), S(null, null, false)]), 1, d], [b([S(40, 5, false, { warm: true })]), 0, d]]; }),
   // Each muscle's score as the page reads it, and the shapes no history may hold: none measured, one, two, flat, rising and falling.
   musTrend: () => [...window.__ironlog.IDX().scores.map(x => [x]), [{ clear: false, n: 0, score: 0 }], [{ clear: false, n: 1, score: 0 }], [{ clear: false, n: 2, score: 0 }], [{ clear: true, n: 2, score: 1.5 }], [{ clear: true, n: 1, score: 4.2, wk: 5 }], [{ clear: true, n: 3, score: -6 }]]
 };
 // Hand-made histories beside the wide ones, for paths those never reach, each built on a wide history's settings,
-// exercises and routines (since r54): a lifter back this week after ten weeks away, which is not a break (something
-// is logged in the last 4 weeks) and has no average yet (the coach's "after a full week of training"); and Strength
+// exercises and routines (since r54): a lifter back this week after ten weeks away, whose weeks count from the
+// break since r55 (logStartIn), so the first week back waits as a first week does (the coach's "after your second
+// week back", BACK_WEEK_WHY; until r55 "after a full week of training"); and Strength
 // 5 x 5 done on Monday, Wednesday and Friday, every set as planned, whose last three full weeks hold four A days,
 // so chest and upper back are on plan under their minimum (weeks.ts, cycleMixIn; the coach's "Every muscle on plan");
 // a bench press changed from kilograms to pounds at the same weight (prSameLoad, r54); and three for coach lines the
@@ -138,14 +153,24 @@ const SCENARIOS = [
   // The same Strength 5 x 5 with each minimum brought down to half of what the plan gives a week: every muscle at
   // target, nothing stalled (the coach's last line, which no other history reached).
   (h, o) => str5Log(h, o, (lo, planned) => Math.min(lo, Math.floor(planned / 2))),
-  // Bench on a heavy day (3 to 5, a step heavier each week) and a light day (8 to 12 at one load, its reps falling), its
-  // targets at half the plan: stalled in one range only, so not stalled (312 A), while its trend reads the newest range,
-  // the light day's (PENDING 319), so chest strength is falling with every muscle at target (the coach's falling line).
-  (h, o) => heavyLight(h, o, i => [100 + 2.5 * i, 5], i => [70, [12, 11, 10, 9, 8, 8][i]], false),
+  // Bench on the light day only (8 to 12 at one load, its reps falling over six weeks), the last session opening with a
+  // single at a load never done before, its targets at half the plan: falling in the one range in use, not stalled (the
+  // single is a PR in the stall's last three sessions), with every muscle at target (the coach's falling line). Until r55
+  // a light day falling beside a heavy day rising reached it (PENDING 319: falling only when it falls in every range in
+  // use; the last history but one below).
+  (h, o) => { const x = heavyLight(h, o, i => [100 + 2.5 * i, 5], i => [70, [12, 11, 10, 9, 8, 8][i]], false); return { ...x, raw: { ...x.raw, sessions: x.raw.sessions.filter(q => q.id.startsWith('lt')).map(q => (q.id === 'lt5' ? { ...q, ex: [{ ...q.ex[0], sets: [{ w: 90, r: 3, rir: 1, done: true }, ...q.ex[0].sets] }] } : q)) } }; },
   // The same two days flat, 100 x 5 x 5 at the top of 3 to 5 and 70 x 10 x 4 in 8 to 12, the heavy day last: stalled in
   // both, and at the top of its range by the plan of the day it was last done on (the coach's top-of-range line, which
   // since r54 reads that day's plan, coach.ts's atRangeTopIn; no wide history reaches it).
-  (h, o) => heavyLight(h, o, () => [100, 5], () => [70, 10], true)
+  (h, o) => heavyLight(h, o, () => [100, 5], () => [70, 10], true),
+  // The heavy day a step heavier each week instead, the light day last: falling in the light day's range only, so not
+  // falling (r55, PENDING 319; until r55 the coach said chest strength was falling), the range it falls in named.
+  (h, o) => heavyLight(h, o, i => [100 + 2.5 * i, 5], i => [70, [12, 11, 10, 9, 8, 8][i]], false),
+  // Missed sets (r55, V): a bench session with a set tried and not made between two done and one after them, so the
+  // analytics keep them for the Last line in their places (missedTag), which no wide history reaches (their reps are 1 or more).
+  h => ({ ...h, raw: { ...h.raw, injuries: [], deloadWeek: null, draft: null, settings: { ...h.raw.settings, restWeeks: [] },
+    sessions: [[-9, [[100, 8], [100, 8]]], [-2, [[100, 8], [120, 0], [100, 7], [100, 0]]]].map(([n, sets], i) => ({ id: 'miss' + i, date: day(h.today, n), dayIdx: 0, dayId: null, dayName: 'Session', routineId: '', free: true, notes: '',
+      ex: [{ exId: 'bench', rr: [6, 10], sets: sets.map(([w, r]) => ({ w, r, rir: 1, done: true })) }] })) } })
 ];
 
 // The child: the bundle on the page's histories, under V8's coverage.
@@ -283,7 +308,7 @@ function lineCoverage(covDir, bundleFile, mapPayload) {
     histories.push({ seed: 52000 + i, today: h.today, state, calls });
     if (histories.length === BATCH || i === K + SCENARIOS.length - 1) { batches.push(path.join(tmp, `data-${batches.length}.json`)); fs.writeFileSync(batches[batches.length - 1], JSON.stringify({ histories })); histories.length = 0; }
   }
-  ok(/Volume advice appears here after a full week of training/.test(made[0] || '') && /Every muscle on plan, nothing stalled/.test(made[1] || '') && /Every muscle at target, nothing stalled/.test(made[3] || '') && /Chest strength is falling over \d+ weeks/.test(made[4] || '') && /is at the top of its range at [^:]+ and has stalled over the last \d+ weeks: it is due a step up/.test(made[5] || ''), 'the hand-made histories reach the coach lines they were made for', made);
+  ok(/Volume advice appears here after your second week back/.test(made[0] || '') && /Every muscle on plan, nothing stalled/.test(made[1] || '') && /Every muscle at target, nothing stalled/.test(made[3] || '') && /Chest strength is falling over \d+ weeks/.test(made[4] || '') && /is at the top of its range at [^:]+ and has stalled over the last \d+ weeks: it is due a step up/.test(made[5] || '') && /Every muscle at target, nothing stalled/.test(made[6] || ''), 'the hand-made histories reach the coach lines they were made for', made);
   ok(!B.errors.length, 'no page errors while the page answered', B.errors.slice(0, 3));
   await settle(browser.close(), 'closing the browser');
 

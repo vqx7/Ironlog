@@ -263,8 +263,10 @@ const clashes = r => r.stalls.filter(st => r.prs.some(p => p.name === st.name &&
     for (const [name, kind] of [['on plan', 'str5'], ['one set skipped', 'str5cut'], ['sets skipped', 'starter']]) {
       const r = await P.page.evaluate((kind) => {
         const L = window.__ironlog; const S = L.state; S.settings.onboarded = true; S.settings.hidden = [];
-        let R = L.activeRoutine();
-        if (kind !== 'starter') { R = S.routines.find(x => x.name === 'Strength, 5 x 5') || L.routineFromTemplate('str5'); if (!S.routines.includes(R)) S.routines.push(R); S.activeRoutineId = R.id; }
+        // The starter by name: the logs before it made Strength 5 x 5 active (until r55 the starter's log was made on it too).
+        let R = S.routines.find(x => x.name === 'Upper / lower, 4 days') || L.activeRoutine();
+        if (kind !== 'starter') { R = S.routines.find(x => x.name === 'Strength, 5 x 5') || L.routineFromTemplate('str5'); if (!S.routines.includes(R)) S.routines.push(R); }
+        S.activeRoutineId = R.id;
         S.settings.bands = Object.fromEntries(Object.entries(L.BANDS).map(([m, b]) => [m, b.slice()])); L.fitTargets(R);
         const tr = R.days.map((d, i) => i).filter(i => !R.days[i].rest && R.days[i].items.length);
         const out = []; let k = 0;
@@ -295,7 +297,11 @@ const clashes = r => r.stalls.filter(st => r.prs.some(p => p.name === st.name &&
         L.ui.tab = 'today'; L.ui.folds['today:map'] = true; L.ui.mapSrc = 'avg'; L.render();
         const legend = txt(document.querySelector('.bm-legend'));
         const chips = [...document.querySelectorAll('#view .row')].filter(e => /^Below target:/.test(txt(e))).flatMap(e => [...e.querySelectorAll('.chip')].map(x => txt(x))).sort();
-        return { under, plan, coach: c.text, why: c.why || '', flagged, rowsUnder, rowsPlan, vol, heads, legend, chips };
+        // The map's count on target, This week's planned sets, and Plan's header (r55, from the audit: 15 of 19 beside "Every muscle at target", and 46 beside 39).
+        const mapSub = txt(document.querySelector('[data-mkey="map"] .sec-s')); const wk = txt(document.getElementById('wkSets'));
+        const allHard = R.days.every(d => d.items.every(it => +it.rir <= 3));
+        L.ui.tab = 'program'; L.ui.bRoutine = R.id; L.render(); const head = txt(document.querySelector('#view .ph .meta'));
+        return { under, plan, coach: c.text, why: c.why || '', flagged, rowsUnder, rowsPlan, vol, heads, legend, chips, mapSub, wk, head, allHard };
       }, kind);
       const n = (re, s) => { const m = re.exec(s); return m ? +m[1] : 0; };
       const more = n(/(\d+) more below target/, r.coach);
@@ -307,6 +313,11 @@ const clashes = r => r.stalls.filter(st => r.prs.some(p => p.name === st.name &&
         `${name}: Volume's rows, the map's legend, the coach and Stats' summary name the same muscles on plan`, { plan: r.plan, rows: r.rowsPlan, legend: r.legend, coach: r.coach, why: r.why, vol: r.vol });
       ok(Object.entries(r.heads).every(([m, h]) => r.under.includes(m) ? / below your .* target\./.test(h) && !/on plan/.test(h) : r.plan.includes(m) ? / below your .* target, on plan\./.test(h) : !/ below your /.test(h)),
         `${name}: each muscle's own headline says below, on plan or neither, as the rest do`, r.heads);
+      const onT = /(\d+) of (\d+) on target/.exec(r.mapSub);
+      ok(onT && +onT[1] === +onT[2] - r.under.length - r.plan.length && (!/^Every muscle at target/.test(r.coach) || onT[1] === onT[2]),
+        `${name}: the map counts on target every muscle the others do not name below target or on plan, a minimum of 0 met by nothing included`, { map: r.mapSub, under: r.under.length, plan: r.plan.length, coach: r.coach });
+      const planHead = (/(\d+) planned sets a week/.exec(r.head) || [])[1], planWk = (/(\d+) hard sets planned|of (\d+) planned/.exec(r.wk) || []).slice(1).find(Boolean);
+      ok(!r.allHard || (planHead && planHead === planWk), `${name}: Plan's header plans the sets a week This week does, every planned set being hard`, { head: r.head, wk: r.wk });
     }
     ok(!P.errors.length, 'no page errors (a muscle against its target)', P.errors);
     await P.ctx.close();

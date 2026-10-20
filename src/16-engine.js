@@ -106,15 +106,14 @@ function blockProgress(b){
     if(!at.length)return {text:heavyTxt||`Nothing logged at ${loadLabel(ex,t.w)} yet`,beat:heavyBeat};
     // Only the first n sets at the target load count, n being last time's set count.
     const cnt=t.n>0?at.slice(0,t.n):at;
-    const n=cnt.reduce((a,s)=>a+ +s.r,0);
+    const hi=+(b.plan||{}).repMax,cap=hi>0&&t.total<hi*(t.n>0?t.n:cnt.length)?hi:Infinity;const n=cnt.reduce((a,s)=>a+Math.min(+s.r,cap),0); // reps past the top count as the top, as the target counted them (r55; not for a target set past the range on purpose)
     const sx=ex.timed?'s':'',u=ex.timed?'s':' reps';
-    const base=n>t.total?`Beaten: ${n}${u} at that load, last time ${t.total}${sx}`:`${n}${sx} of ${t.total+1}${u} so far at that load`;
-    return {text:heavyTxt?`${base}. ${heavyTxt}`:base,beat:n>t.total||heavyBeat};
+    const fewer=t!==t0,base=fewer&&n>t.total?`${n}${u} over ${t.n} set${t.n===1?'':'s'}, last time ${t.total}${sx} over those. Fewer sets than usual: the target stays for next time`:n>t.total?`Beaten: ${n}${u} at that load, last time ${t.total}${sx}`:`${n}${sx} of ${t.total+1}${u} so far at that load`; // with fewer sets than last time, nothing is beaten: the one rule repeats the target (r55, the audit: the recap said beaten, then the target repeated)
+    return {text:heavyTxt?`${base}. ${heavyTxt}`:base,beat:!fewer&&(n>t.total||heavyBeat)};
   }
-  const hit=done.filter(s=>(+s.w||0)>=t.w-1e-6&&+s.r>=t.repMin).length;
-  // Drop sets are extra work after the working sets, never part of the target.
-  const planned=b.sets.filter(s=>!s.warm&&!s.drop).length;
-  const base=`${hit} of ${planned} sets hit ${t.repMin}${ex.timed?'s':''}+ at the new load`;
+  // Drop sets are extra work after the working sets, never part of the target; nor a set past the plan's count, as the engine reads it (r55).
+  const rows=b.sets.filter(s=>!s.warm&&!s.drop),planned=Math.min(rows.length,+(b.plan||{}).sets||rows.length);
+  const hit=rows.slice(0,planned).filter(s=>s.done&&+s.r>0&&(+s.w||0)>=t.w-1e-6&&+s.r>=t.repMin).length;const base=`${hit} of ${planned} sets hit ${t.repMin}${ex.timed?'s':''}+ at that load`;
   return {text:heavyTxt?`${base}. ${heavyTxt}`:base,beat:(planned>0&&hit>=planned)||heavyBeat};
 }
 function progressLine(b,bi){const p=blockProgress(b);return p?`<span class="tp${p.beat?' beat':''}" id="tp-${bi}">${esc(p.text)}</span>`:'';}

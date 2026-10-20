@@ -133,7 +133,8 @@ export interface SessionEx {
 }
 
 /** A saved session (cleanSess in the storage part). `t` is when it started,
-    which orders two sessions on one day (r34); `chk` the check-in's answers. */
+    which orders two sessions on one day (r34); `chk` the check-in's answers;
+    `pw` the sessions a week its routine planned when it was saved (r55, pwOf). */
 export interface Session {
   id: string;
   date: string;
@@ -150,6 +151,7 @@ export interface Session {
   chk?: Record<string, number> | undefined;
   ex: SessionEx[];
   t?: number | undefined;
+  pw?: number | undefined;
 }
 
 /** A weigh-in, in kg. */
@@ -272,6 +274,7 @@ export interface DraftSet {
   done?: boolean | undefined;
   warm?: boolean | undefined;
   drop?: boolean | undefined;
+  cal?: RirCheck | null | undefined;
 }
 
 /** The target a block was given when the session started (cleanTgt keeps its numbers). */
@@ -290,12 +293,22 @@ export interface Target {
     last time's sets for the Last column (r44), and, for one added on a
     lighter day or in a deload with its sets halved, the count before
     (`full`, r54), for Finish's offer to the routine. `cut` marked it
-    trimmed until r53, and is neither written nor read since r54. */
+    trimmed until r53, and is neither written nor read since r54. An edit
+    from History keeps the saved range (`keepRR`); an exercise held for an
+    injury carries its key (`inj`, r54). */
 export interface DraftBlock {
   exId: string;
-  plan: { sets?: number | undefined; rest?: number | string | undefined; ss?: string | null | undefined };
+  plan: {
+    sets?: number | undefined;
+    rest?: number | string | undefined;
+    ss?: string | null | undefined;
+    repMin?: number | string | undefined;
+    repMax?: number | string | undefined;
+  };
   sets: DraftSet[];
   light?: boolean | undefined;
+  keepRR?: [number, number] | null | undefined;
+  inj?: string | null | undefined;
   note?: string | undefined;
   rr?: [number, number] | null | undefined;
   cut?: boolean | undefined;

@@ -72,7 +72,7 @@ document.addEventListener('click',e=>{
   if(tab){ui.tab=tab.dataset.tab;if(ui.tab==='program')ui.planView='routine';window.scrollTo(0,0);render();return;}
   /* A tap outside a sheet closes it, unless something was typed there: a
      half-filled new exercise or note is not thrown away by a stray tap. */
-  if(e.target.id==='modal'){if(ui.modal&&ui.modal.dirty){toast('Save or cancel first. Your changes are still here.');return;}closeModal();return;}
+  if(e.target.id==='modal'){if(ui.modal&&ui.modal.dirty){toast(DIRTY_SAID);return;}closeModal();return;}
   const t=e.target.closest('[data-act]');if(!t)return;
   // getAttribute rather than dataset: the muscle map's targets are SVG groups.
   const fn=ACT[t.getAttribute('data-act')];if(fn){e.preventDefault();fn(t,e);}
@@ -99,7 +99,7 @@ document.addEventListener('input',e=>{
     // not fought mid-keystroke, but history can never take a negative load or
     // an impossible rep count, which used to push session volume negative.
     if(t.dataset.f==='w'){const n=numIn(v);const bx=state.draft.ex[+t.dataset.b];const as=bx&&EX(bx.exId).assist;s.w=n==null?null:as?-fromD(Math.min(Math.abs(n),660)):fromD(Math.min(Math.max(n,0),20000));if(s.w===0)s.w=0;carried.delete(s);}
-    else if(t.dataset.f==='r'){const n=numIn(v);s.r=n==null?null:Math.min(Math.max(Math.round(n),0),1000);refreshGrey(+t.dataset.b);}
+    else if(t.dataset.f==='r'){const n=numIn(v);s.r=n==null?null:Math.min(Math.max(Math.floor(n+1e-9),0),1000);refreshGrey(+t.dataset.b);} // whole reps: 8.5 is 8, a partial rep not a rep (r55; r54 stored 9)
     else{const n=numIn(v);s.rir=n==null?null:Math.min(Math.max(n,0),10);if(t.tagName==='SELECT')t.classList.toggle('unset',v==='');}
     if(t.dataset.f!=='rir')updateProgress(+t.dataset.b);
     if(t.dataset.f==='w'){updatePlates(+t.dataset.b,+t.dataset.s);refreshGreyW(+t.dataset.b);}
@@ -110,7 +110,7 @@ document.addEventListener('input',e=>{
     const k=t.dataset.it;const cl=(x,lo,hi)=>Math.min(Math.max(x,lo),hi);
     if(k==='jump'){f.it.jump=Math.round(cl(n,0,20)*10)/10;saveSoon();invalidate();return;}
     if(k==='inc'){const e=state.exercises.find(x=>x.id===f.it.exId);const v=fromD(cl(n,0,500));f.it.inc=v;if(e)e.inc=v>0?v:null;saveSoon();invalidate();return;}
-    f.it[k]=k==='rir'?cl(n,0,10):k==='sets'?cl(Math.round(n),1,30):k==='rest'?cl(Math.round(n),0,1800):cl(Math.round(n),1,600);
+    f.it[k]=k==='rir'?cl(effIn(n),0,10):k==='sets'?cl(Math.round(n),1,30):k==='rest'?cl(Math.round(n),0,1800):cl(Math.round(n),1,600);
     saveSoon();invalidate();return;}
   if(t.dataset.band){const n=numIn(t.value);if(n==null)return;state.settings.bands[t.dataset.band][+t.dataset.bi]=Math.min(Math.max(Math.round(n*2)/2,0),100);saveSoon();return;}
   if(t.dataset.dayname!=null){curRoutineB().days[+t.dataset.dayname].name=t.value;saveSoon();return;}
@@ -149,7 +149,7 @@ document.addEventListener('change',e=>{
   if(t.dataset.band){const k=t.dataset.band;const b=state.settings.bands[k];if(b[0]>b[1])b.reverse();commit();rerenderKeepScroll();return;}
   if(t.dataset.dayname!=null){commit();rerenderKeepScroll();return;}
   if(t.dataset.dayrest!=null){const R=curRoutineB();const d=R.days[+t.dataset.dayrest];if(!d)return;snapshot();d.rest=t.checked;commit();rerenderKeepScroll();toast(t.checked?`${d.name||'Day'} is now a rest day. Its exercises are kept.`:`${d.name||'Day'} is a training day again`,true);return;}
-  if(t.dataset.moveto){const f=findItem(t.dataset.moveto);if(!f)return;const to=+t.value;if(to===f.di)return;f.r.days[f.di].items.splice(f.i,1);f.r.days[to].items.push(f.it);if(f.r.days[to].rest)f.r.days[to].rest=false;commit();rerenderKeepScroll();toast(`Moved to ${dayLabel(f.r,to)}`);return;}
+  if(t.dataset.moveto){const f=findItem(t.dataset.moveto);if(!f)return;const to=+t.value;if(to===f.di)return;f.r.days[f.di].items.splice(f.i,1);f.r.days[to].items.push(f.it);Object.assign(f.r.days[to],trainOn(f.r.days[to]));commit();rerenderKeepScroll();toast(`Moved to ${dayLabel(f.r,to)}`);return;}
   if(t.dataset.ebind&&ui.modal&&ui.modal.kind==='exEdit'){const k=t.dataset.ebind;ui.modal.e[k]=t.type==='checkbox'?t.checked:t.value;if(k==='primary'){ui.modal.e.secondary=ui.modal.e.secondary.filter(x=>x!==t.value);renderModal();}if(k==='bw'){if(t.checked&&!ui.modal.e.bwfRaw)ui.modal.e.bwfRaw=String(Math.round(bwShare(ui.modal.e)*100));renderModal();}if(k==='plates'&&t.value==='auto')delete ui.modal.e.plates;if(k==='timed'||k==='equip'||k==='plates')renderModal();return;}
   if(ui.modal&&ui.modal.kind==='imp'){const m=ui.modal;
     if(t.dataset.imppick!=null){m.pick[t.dataset.imppick]=t.value;renderModal();return;}
@@ -160,21 +160,21 @@ document.addEventListener('change',e=>{
   if(t.dataset.pbind==='date'&&ui.modal&&ui.modal.kind==='past'){if(isDate(t.value)&&t.value<=today())ui.modal.date=t.value;else toast('Pick today or an earlier date');renderModal();return;}
   if(t.dataset.cf&&state.draft&&state.draft.cardio){const c=state.draft.cardio[+t.dataset.c];if(c){const k=t.dataset.cf;if(k==='kind'&&CARDIOL[t.value])c.kind=t.value;else if(k==='when'&&CWHENL[t.value])c.when=t.value;saveNow();}return;}
   if(t.dataset.f==='r'&&state.draft){
-    const bi=+t.dataset.b,si=+t.dataset.s;const s=draftSet(t);if(!s)return;
+    const bi=+t.dataset.b,si=+t.dataset.s;const s=draftSet(t);if(!s)return;if(s.r!=null&&t.value.trim()!==String(s.r))t.value=String(s.r); // the field shows the reps stored (r55)
     // The typed value is already stored (the input handler). A done set whose
     // reps were cleared is still undone, once the new rows are in place.
-    if(rebuilding){if(s.done&&!(+s.r>0))queueMicrotask(()=>{const b2=state.draft&&state.draft.ex[bi];const s2=b2&&b2.sets[si];if(s2&&s2.done&&!(+s2.r>0))setDone(bi,si,false);});return;}
-    // A set with no reps cannot be a done set: finishing would save it as 0 reps.
-    if(s.done&&!(+s.r>0))setDone(bi,si,false);
-    else if((state.settings.autoDone||state.draft.past)&&!s.done&&+s.r>0){
-      const toRir=!state.draft.past&&lastDown.el&&Date.now()-lastDown.t<700&&lastDown.el.closest&&lastDown.el.closest(`.rirb[data-b="${bi}"][data-s="${si}"]`);
+    if(rebuilding){if(s.done&&s.r==null)queueMicrotask(()=>{const b2=state.draft&&state.draft.ex[bi];const s2=b2&&b2.sets[si];if(s2&&s2.done&&s2.r==null)setDone(bi,si,false);});return;}
+    // A set with no reps cannot be a done set; one typed as 0 is a missed set, ticked as typed (r55, V).
+    if(s.done&&s.r==null){setDone(bi,si,false);t.dataset.cleared='1';} // marked, so leaving the field does not tick it again at the grey reps (r55, the audit)
+    else if((state.settings.autoDone||state.draft.past)&&!s.done&&(+s.r>0||isMissed(s))){
+      const toRir=!state.draft.past&&lastDown.el&&Date.now()-lastDown.t<700&&lastDown.el.closest&&lastDown.el.closest(`.rirb[data-b="${bi}"][data-s="${si}"]`);const toW=!toRir&&!state.draft.past&&lastDown.el&&Date.now()-lastDown.t<700&&lastDown.el.closest&&lastDown.el.closest(`.sg input[data-f="w"][data-b="${bi}"][data-s="${si}"]`); // heading for this row's load: tick when it is left, so the load is never written into the field being typed in (r55, the audit: 105 typed there became 101050)
       // Heading for this row's RIR box: tick when its strip closes (or after 2 s if it never opened).
-      if(toRir){const p={b:blkRef(bi),s:si};pendAuto=p;setTimeout(()=>{if(pendAuto===p&&!document.querySelector('.rirstrip'))autoPending();},2000);} // by identity: a later tick must not run this one (r45)
+      if(toW)pendAuto={b:blkRef(bi),s:si};else if(toRir){const p={b:blkRef(bi),s:si};pendAuto=p;setTimeout(()=>{if(pendAuto===p&&!document.querySelector('.rirstrip'))autoPending();},2000);} // by identity: a later tick must not run this one (r45)
       else{lastAuto={b:blkRef(bi),s:si,t:Date.now()};setDone(bi,si,true);}}
-    else if(s.done){refreshPR(bi,si,false);afterSet(bi,si);}
+    else if(s.done){refreshPR(bi,si,false);afterSet(bi,si);if(isMissed(s))toast(MISSED_SAID);}
     saveSoon();return;}
   if(t.dataset.f){
-    if(t.dataset.f==='w'&&state.draft){const s=draftSet(t);if(!s)return;if(s.done){refreshPR(+t.dataset.b,+t.dataset.s,false);afterSet(+t.dataset.b,+t.dataset.s);}mixCheck(+t.dataset.b,+t.dataset.s);if(fillLoads())carryLoad(+t.dataset.b,+t.dataset.s);}
+    if(t.dataset.f==='w'&&state.draft){const s=draftSet(t);if(!s)return;const bi=+t.dataset.b,si=+t.dataset.s;const rf=!!ui.refix&&ui.refix.s===si&&blkIdx(ui.refix.b)===bi;if(rf)ui.refix=null;if(s.done&&oddLoad(state.draft.ex[bi],si,state.draft.date)){setDone(bi,si,false);setDone(bi,si,true,true);return;}/* a ticked set's load changed to one far off asks too, unticked until it is answered; Log it, or the load fixed after Fix it, ticks it again, its rest not started over (r55; the second review: after Fix it it stayed unticked, and Log it restarted the rest) */if(rf&&!s.done)setDone(bi,si,true,true);else if(s.done){refreshPR(bi,si,false);afterSet(bi,si);}mixCheck(bi,si);if(fillLoads())carryLoad(bi,si);}
     if(t.tagName==='SELECT'&&state.draft){
       const s=draftSet(t);if(!s)return;const n=numIn(t.value);
       s.rir=n==null?null:Math.min(Math.max(n,0),10);
@@ -284,7 +284,7 @@ function acceptGrey(bi,si){
 let lastDown={el:null,t:0};
 document.addEventListener('pointerdown',e=>{lastDown={el:e.target,t:Date.now()};},true);
 document.addEventListener('focusout',e=>{
-  const t=e.target;if(!t||!t.matches||!t.matches('.sg input[data-f="r"]')||t.value.trim())return;
+  const t=e.target;if(t&&t.matches&&t.matches('.sg input[data-f="w"]')&&pendAuto&&pendAuto.s===+t.dataset.s&&blkIdx(pendAuto.b)===+t.dataset.b){setTimeout(autoPending,0);return;}if(!t||!t.matches||!t.matches('.sg input[data-f="r"]')||t.value.trim())return;if(t.dataset.cleared){delete t.dataset.cleared;return;}
   if(rebuilding||!state.draft||!state.settings.autoDone)return;
   const bi=+t.dataset.b,si=+t.dataset.s;const to=e.relatedTarget;
   if(to&&to.dataset&&to.dataset.b===t.dataset.b&&to.dataset.s===t.dataset.s)return;

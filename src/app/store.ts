@@ -68,6 +68,8 @@ export interface Ui {
   folds: Record<string, unknown>;
   rng: Record<string, unknown>;
   eqLast: unknown;
+  /** A ticked set unticked to ask about a load far off, to tick again once Fix it's load is in (r55): its block, through blkRef, and its row. */
+  refix: { b: unknown; s: number } | null;
   [field: string]: unknown;
 }
 export const ui: Ui = {
@@ -99,7 +101,8 @@ export const ui: Ui = {
   modal: null,
   folds: {},
   rng: {},
-  eqLast: null
+  eqLast: null,
+  refix: null
 };
 
 /* Where the sync is: on or not, the provider (db, uid), its status, each

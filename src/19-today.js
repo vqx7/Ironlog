@@ -331,7 +331,7 @@ function obView(){
   <button class="btn primary block" data-act="acctOpen" data-mode="signup">Create account</button>
   <button class="btn block" data-act="acctOpen" data-mode="signin">I have an account</button></div>
   ${ENV==='preview'?'<button class="btn block" data-act="previewCopy">Copy my log in</button>':''}
-  <button class="linkbtn ob-later" data-act="obAcctLater">Continue without an account</button></div>`;
+  <button class="linkbtn ob-later" data-act="obAcctLater">Continue without an account</button>${undoStack.length?'<button class="linkbtn ob-skip" data-act="undo">Undo last delete or reset</button>':''}</div>`; // after Erase everything these pages are all there is, so its Undo is here too (r55, the audit)
   const imp=`<button class="ob-opt" data-act="impOpen"><b>Import my workouts</b><span>Notes, a spreadsheet, another app, a backup</span></button>`;
   return `<div class="ob welcome" id="obPage" data-step="start">
   ${acctStep&&!acct.user?'<button class="linkbtn ob-back" data-act="obAcctBack">‹ Account</button>':''}
@@ -346,7 +346,7 @@ function obView(){
   <button class="ob-opt" data-act="obFree"><b>Log a workout now</b><span>Add exercises as you go</span></button>
   <button class="ob-opt" data-act="obOwn"><b>Build my own routine</b><span>Your days, your exercises</span></button>
   ${imp}${ENV==='preview'?'<button class="ob-opt" data-act="previewCopy"><b>Copy my log in</b><span>Try this test version on your own log</span></button>':''}</div>
-  <button class="linkbtn ob-skip" data-act="demoLoad">Look around with sample data first</button>
+  <button class="linkbtn ob-skip" data-act="demoLoad">Look around with sample data first</button>${undoStack.length?'<button class="linkbtn ob-skip" data-act="undo">Undo last delete or reset</button>':''}
   <p class="small muted" id="obSafety" style="margin:10px 0 0;text-align:center"><span class="hastip" data-tip="${esc(SAFETY_TXT)}">Suggestions are estimates, not advice.</span></p></div>`;
 }
 /* First run with no sessions: three ways in. Shown only after the cloud check,
@@ -452,7 +452,7 @@ function exHeadline(exId){
   }
   const bw=state.bodyweights.length?bwAt(today()):null;const parts=[];const more=[];
   const sg=v=>(v>=0?'+':'')+r1(v)+'%';
-  const ns=`${st.wN} session${st.wN===1?'':'s'}`;const ow=`over ${st.spanW||6} weeks`;
+  const ns=`${st.wN} session${st.wN===1?'':'s'}`;const ow=`over ${st.spanW||6} weeks${st.rrIn?` in the ${repSpan(st.rrIn[0],st.rrIn[1])} range`:''}`; // the range named when it trains in more than one (r55)
   // A range only when it says something: perfectly steady numbers give one of zero width.
   /* The percentages are behind the i (r41, V asked whether they help: a lifter
      acts on loads and reps, so the line says those and the i keeps the
@@ -470,9 +470,9 @@ function exHeadline(exId){
     /* The span the stall test read, and its rule in the coach's words (r54, from the audit V asked for: "Stalled for 3 weeks" was fixed text, said of a lift flat for ten). */
     parts.push(atTopR?'Stalled at the top of the range: due a step up. The session\'s target says how.':`Stalled ${stallWords(exId)}. Try another rep range or a variation.`);
     more.push(STALL_WHY);
-  }else if(st.pct==null)parts.push('A trend needs 3 sessions spread over 2 weeks.');
+  }else if(st.pct==null)parts.push(ex.bw&&!(bwRef()>0)?'A trend needs a weigh-in: a bodyweight lift is read at your bodyweight.':'A trend needs 3 sessions spread over 2 weeks.'); // (r55, the audit: said of pull-ups with 8 sessions and no weigh-in)
   else if(st.moving)parts.push(`${liftChange(exId,'Up',ow)}.`);
-  else if(st.falling)parts.push(`${liftChange(exId,'Down',ow)}. Look at recovery before adding work.`);
+  else if(st.falling)parts.push(`${liftChange(exId,'Down',ow)}. Look at recovery before adding work.`);else if(st.holdRR.length||st.quietRR.length){const rs=a=>`the ${andList(a.map(r=>repSpan(r[0],r[1])))} range${a.length>1?'s':''}`;parts.push(`${liftChange(exId,'Down',ow)}${st.holdRR.length?`; not in ${rs(st.holdRR)}`:''}${st.quietRR.length?`; too few sessions in ${rs(st.quietRR)} to tell`:''}.`);more.push(FALL_WHY);} // one range down, another not (r55, V)
   /* A small change the interval still puts on one side of zero is said as
      slow, not as "no clear change" next to a range that excludes 0 (r31). */
   else if(st.pLo!=null&&(st.pLo>0||st.pHi<0)){parts.push((st.pct>0)===(st.pLo>0)?`${liftChange(exId,st.pLo>0?'Slowly up':'Slowly down',ow)}.`:`Slowly ${st.pLo>0?'up':'down'} ${ow}.`);more.push(`Under the 3% that counts as ${st.pLo>0?'moving':'falling'}.`);}
@@ -516,7 +516,7 @@ function exHistSheet(exId){
     <button class="btn block" style="margin-top:10px" data-act="goDash" data-sec="exercise" data-ex="${esc(exId)}">Open in Stats</button></div>`;
 }
 function bestSet(exId){
-  let b=null;for(const x of IDX().byEx[exId]||[])for(const p of x.pts){const v=trendE(p.load,p.r,0)||p.load;if(!b||v>b.v+1e-9)b={v,w:p.w,r:p.r,date:x.date};}
+  let b=null;for(const x of IDX().byEx[exId]||[])for(const p of x.pts){const v=trendE(p.load,p.r,0)||p.load;if(!b||v>b.v+1e-9||(v>b.v-1e-9&&p.r>b.r))b={v,w:p.w,r:p.r,date:x.date};} // at one score, more reps (r55, the audit: pull-ups with no weigh-in, all scored 0, showed the first session's 7 as the best set over a later 9)
   return b;
 }
 function muscleHeadline(m){

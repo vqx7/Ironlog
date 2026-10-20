@@ -4,7 +4,7 @@ function viewProgram(){
   const R=state.routines.find(r=>r.id===ui.bRoutine);const isActive=R.id===state.activeRoutineId;
   if(ui.bTarget>=R.days.length)ui.bTarget=0;
   const totSets=R.days.reduce((a,d)=>a+(d.rest?0:daySets(d)),0);const weekly=R.schedule==='weekly';
-  let h=pageHead(isActive?'Active routine':'Not active',`Plan`,(trainDaysOf(R)?`<b>${esc(R.name)}</b> · ${trainDaysOf(R)} training days${weekly?' a week':` in a ${R.days.length}-day cycle`} · ${weekly?totSets:Math.round(totSets*weekFactor(R))} planned sets a week`:`<b>${esc(R.name)}</b> · ${weekly?'fixed weekdays':`${R.days.length}-day cycle`} · no exercises yet`),helpBtn('plan'))
+  let h=pageHead(isActive?'Active routine':'Not active',`Plan`,(trainDaysOf(R)?`<b>${esc(R.name)}</b> · ${trainDaysOf(R)} training days${weekly?' a week':` in a ${R.days.length}-day cycle`} · ${Math.round(totSets*dayShare(R))} planned sets a week`:`<b>${esc(R.name)}</b> · ${weekly?'fixed weekdays':`${R.days.length}-day cycle`} · no exercises yet`),helpBtn('plan'))
   +helpText('plan','Drag the ⠿ handle to reorder or move exercises between days; the arrows and "Move to" do the same. Tap an exercise to edit sets, reps, RIR, rest, and load increment, or to superset it with the next exercise. The library button manages every exercise, including your own. In a numbered cycle, drag a day by the ⠿ beside its number to reorder days (or focus the ⠿ and use the arrow keys); they renumber from their new position. On every tab, the ⠿ beside a section title moves that section, and the order is remembered.');
   /* The library is one of the app's best parts (V, r28), so it gets a full
      width button of its own instead of a small one beside the ?. */
@@ -22,7 +22,7 @@ function viewProgram(){
   h+=sec({sk:'program:schedule',key:'schedule',title:'Schedule',sub:weekly?'Fixed weekdays':'Numbered cycle',body:`<div class="stack"><label class="field">Schedule<select data-bind="rSchedule">
     <option value="cycle" ${!weekly?'selected':''}>Numbered cycle: Day 1, 2, 3… in order</option>
     <option value="weekly" ${weekly?'selected':''}>Fixed weekdays: Monday to Sunday</option></select></label>
-    <p class="small muted hastip" style="margin:0" data-tip="${esc(weekly?'Each day is pinned to a weekday and Today opens on the calendar day.':`The cycle runs in order whatever the calendar says. Today opens on the day after your last session, so a missed workout waits instead of being skipped. Weekly numbers count each cycle day, rest days included, as one calendar day. 1 to ${MAX_DAYS} days.`)}">How this works</p></div>`});
+    <p class="small muted hastip" style="margin:0" data-tip="${esc(weekly?'Each day is pinned to a weekday and Today opens on the calendar day.':`The cycle runs in order whatever the calendar says. Today opens on the day after your last session, so a missed workout waits instead of being skipped. A week plans the whole sessions the cycle brings round in 7 days, ${plannedPerWeek(R)} here. 1 to ${MAX_DAYS} days.`)}">How this works</p></div>`});
   /* Days: inside it each day folds on its own chevron
      and, in a numbered cycle, drags by its ⠿ handle; labels renumber from
      position, so a day dragged to second place becomes Day 2. */
@@ -45,7 +45,7 @@ function viewProgram(){
   if(!weekly)db+=`<div class="row" style="margin-top:10px"><button class="btn sm" data-act="dAdd" ${R.days.length>=MAX_DAYS?'disabled':''}>+ Training day</button><button class="btn sm" data-act="dAddRest" ${R.days.length>=MAX_DAYS?'disabled':''}>+ Rest day</button></div>`;
   h+=sec({sk:'program:days',key:'days',title:'Days',sub:`${R.days.length} day${R.days.length===1?'':'s'}`,body:db});
   const pv=plannedSets(R);const bands=state.settings.bands;const pUnder=MK.filter(m=>!TRACK_ONLY.has(m)&&belowMin(pv[m],bands[m][0])).length;
-  h+=sec({sk:'program:pvol',key:'pvol',title:'Weekly volume',sub:pUnder?`<span class="pill yellow">${pUnder} under target</span>`:'<span class="pill green">all on target</span>',help:'pvol',helpBody:`Hard sets per muscle this routine plans for a week${weekly?'':`, scaled from a ${R.days.length}-day cycle to 7 days`}. Direct work counts 1 set, secondary involvement counts 0.5. The shaded zone is your weekly target (editable in Settings).`,body:volumeRows(pv)+planEvidenceNote(pv)});
+  h+=sec({sk:'program:pvol',key:'pvol',title:'Weekly volume',sub:pUnder?`<span class="pill yellow">${pUnder} under target</span>`:'<span class="pill green">all on target</span>',help:'pvol',helpBody:`Hard sets per muscle this routine plans for a week${weekly?'':`: ${plannedPerWeek(R)} sessions a week from its ${trainDaysOf(R)} training days`}. Direct work counts 1 set, secondary involvement counts 0.5. The shaded zone is your weekly target (editable in Settings).`,body:volumeRows(pv)+planEvidenceNote(pv)});
   h+=moreLine('program');
   return h;
 }
@@ -65,7 +65,7 @@ function itemHTML(R,di,it,ii){
     <label class="field">Sets<input type="text" inputmode="numeric" data-it="sets" data-uid="${it.uid}" value="${it.sets}"></label>
     <label class="field">${ex.timed?'Min seconds':'Rep min'}<input type="text" inputmode="numeric" data-it="repMin" data-uid="${it.uid}" value="${it.repMin}"></label>
     <label class="field">${ex.timed?'Max seconds':'Rep max'}<input type="text" inputmode="numeric" data-it="repMax" data-uid="${it.uid}" value="${it.repMax}"></label>
-    <label class="field"><span class="hastip" data-tip="${esc(RIR_TGT_TIP)}">Target RIR</span><input type="text" inputmode="decimal" data-it="rir" data-uid="${it.uid}" value="${it.rir}"></label>
+    <label class="field"><span class="hastip" data-tip="${esc(RIR_TGT_TIP)}">Target ${effName()}</span><input type="text" inputmode="decimal" data-it="rir" data-uid="${it.uid}" value="${esc(effShow(it.rir))}"></label>
     <label class="field">Rest (s)<input type="text" inputmode="numeric" data-it="rest" data-uid="${it.uid}" value="${it.rest}"></label>
     <label class="field">Load step (${U()})<input type="text" inputmode="decimal" data-it="inc" data-uid="${it.uid}" value="${fmtW(incOf(ex,it))}" data-tip="Applies to this exercise on every day and routine"></label>
     ${ex.timed?'':`<label class="field"><span class="hastip" data-tip="${esc(JUMP_TIP)}">Load jump %</span><input type="text" inputmode="decimal" data-it="jump" data-uid="${it.uid}" value="${it.jump!=null?it.jump:''}" placeholder="auto ${isCompound(ex)?'2.5':'5'}"></label>`}</div>
@@ -186,7 +186,7 @@ function viewDash(){
     const ws=addDays(cur,-7*k);if(!firstWk||ws<firstWk)break;if(isRestWeek(ws))continue;let n=0;wks4++;
     // Sessions, as the ring, This week, and the streak count them (r46: distinct days read a two-a-day as one).
     n=weekSessions(ws);
-    const wr=weekRoutine(ws);const nw=plannedPerWeek(wr);done4+=Math.min(n,nw);need4+=nw;
+    const nw=weekNeed(ws);done4+=Math.min(n,nw);need4+=nw; // what the week asked for, as the streak reads it (r55: the routine as recorded by its sessions)
   }
   const adher=planned&&wks4&&need4>0?Math.round(done4/need4*100):null;
   const thisWeek=I.weekSets[cur]||{};
@@ -223,7 +223,7 @@ ${extraKpis()}</div>`;
   h+=dsec('volume','Volume','Hard sets per muscle. Direct work counts 1, secondary counts 0.5. A set counts as hard when you logged RIR 3 or less. A blank RIR is read as your usual RIR on that lift once you have rated 3 of its sets in the last 12 weeks, and until then counts as hard, because most working sets are. Blank sets are shaded lighter so you can see how much of the bar is measured and how much is assumed. Amber is under your weekly target, green is inside it, blue is over. In This week, pale green is short of the minimum while the week is still going. Below and above are judged at the one decimal shown. By region measures each region against its minimum, so 100% is on target; it averages your last 4 full weeks unless you pick 2 or 8 above the chart (the radar only: flags and the coach always use 4). '+FIRST_WEEK_WHY+' Load is total weight × reps per week, comparable week to week but not session to session.',
     `${cov}
   <div class="chips">${VOL_MODES.map(([k,l])=>`<button class="chip ${ui.volMode===k?'on':''}" data-act="volMode" data-v="${k}">${l}</button>`).join('')}</div>
-  ${ui.volMode==='region'?regionBody():ui.volMode==='trend'?trendBody():ui.volMode==='load'?`<div class="card">${volHeadline()}${state.sessions.length?`${rangeChips('vol',weeksSpan(firstDate(state.sessions)),8)}<div class="chartbox"><canvas id="chVol"></canvas></div>${chartFallback()}`:'<p class="small muted">Log a session to start this chart.</p>'}</div>`:`<div class="card">${ui.volMode==='week'?(MK.some(m=>(thisWeek[m]||0)>0)?volumeRows(thisWeek,state.settings.rirMode==='off'?null:thisWeekConf,true):'<p class="muted" style="margin:0">Nothing logged this week yet.</p>'):(avg?`<p class="small muted" style="margin:0 0 6px">Averaged over ${avgWeeksTxt(avg)}. Weeks with no sessions are left out rather than counted as zero.</p>${volumeRows(avg,state.settings.rirMode==='off'?null:avg._conf)}`:(w=>`<p class="muted">${w.lead}An average ${w.kind==='back'?'comes back':'starts'} after ${w.after}.${w.kind==='second'?' '+tipi(FIRST_WEEK_WHY,'Your first week'):''}</p>`)(avgWait()))}</div>`}`,noLog()?'Nothing logged yet':`${wkHard} hard sets this week`);
+  ${ui.volMode==='region'?regionBody():ui.volMode==='trend'?trendBody():ui.volMode==='load'?`<div class="card">${volHeadline()}${state.sessions.length?`${rangeChips('vol',weeksSpan(firstDate(state.sessions)),8)}<div class="chartbox"><canvas id="chVol"></canvas></div>${chartFallback()}`:'<p class="small muted">Log a session to start this chart.</p>'}</div>`:`<div class="card">${ui.volMode==='week'?(MK.some(m=>(thisWeek[m]||0)>0)?volumeRows(thisWeek,state.settings.rirMode==='off'?null:thisWeekConf,true):'<p class="muted" style="margin:0">Nothing logged this week yet.</p>'):(avg?`<p class="small muted" style="margin:0 0 6px">Averaged over ${avgWeeksTxt(avg)}. Weeks with no sessions are left out rather than counted as zero.</p>${volumeRows(avg,state.settings.rirMode==='off'?null:avg._conf)}`:(w=>`<p class="muted">${w.lead}An average ${w.kind==='back'?'comes back':'starts'} after ${w.after}.${w.kind==='second'?' '+tipi(w.why,'Your first week'):''}</p>`)(avgWait()))}</div>`}`,noLog()?'Nothing logged yet':`${wkHard} hard sets this week`);
 
   // muscles: weak points, then return on volume folded beneath
   const inj=injuredSet();
@@ -322,7 +322,7 @@ ${extraKpis()}</div>`;
          call from no signal; a stalled lift is the one flat case stated. */
       /* Rising at its volume needs nothing done, so it says nothing (r34, V:
          "Rising: hold this volume" on every row read as filler). */
-      const read=!s.clear?(s.stall?'A lift has stalled: see Stalls under Lifts.':'Too early to tell: keep logging.'):s.score>=GROW_PCT?(sets<lo?'Rising, on fewer sets than your target.':'')
+      const read=!s.clear?(s.stall?'A lift has stalled: see Stalls under Lifts.':musTrend(s)+'.'):s.score>=GROW_PCT?(sets<lo?'Rising, on fewer sets than your target.':'')
         :s.score<=-GROW_PCT?'Falling: check recovery first.'
         :(sets>=hi?'Flat at high volume: change exercises or effort, not sets.':'Flat: try 2 more sets a week for 3 weeks.');
       return `<div style="padding:6px 0;border-bottom:1px solid var(--line)"><div class="mrow" style="border:0;padding:0"><span class="plate ${c}"></span><span>${ML[s.m]}${s.indirect?' <span class="tag" data-tip="No direct exercise for this muscle. Trend inferred from lifts where it assists.">indirect</span>':''}</span><div class="band"><div class="fill ${s.score>=0?'in':'down'}" style="width:${s.clear?Math.abs(s.score)/maxAbs*100:0}%"></div></div><span class="r small">${!s.clear?'unclear':s.score>=GROW_PCT?'rising':s.score<=-GROW_PCT?'falling':'flat'}</span></div><p class="small muted" style="margin:2px 0 0">${r1(sets)} sets a week${read?` · ${read}`:''}</p></div>`;}).join('');
@@ -403,16 +403,16 @@ function regionWk(){let v=ui.regionWk!=null?ui.regionWk:null;if(v==null)try{v=lo
 function regionSrc(){
   const n=regionWk();
   const avg=avgWeeks(n);
-  if(avg)return {src:avg,n,label:avg._missed||avg._light||avg._rest?`your average over ${avgWeeksTxt(avg)}`:avg._weeks<n&&avg._ff?avgWeeksTxt(avg):`your ${avg._weeks}-week average`};
+  if(avg)return {src:avg,n,back:avg._back,label:avg._missed||avg._light||avg._rest?`your average over ${avgWeeksTxt(avg)}`:avg._weeks<n&&avg._ff?avgWeeksTxt(avg):`your ${avg._weeks}-week average`};
   const I=IDX(),cur=weekStart(today());
   const wk=I.weekSets[cur]||{};
   if(MK.some(m=>(wk[m]||0)>0))return {src:wk,n,label:'this week so far',week:true,noFull:true};
   const has=w=>{const x=I.weekSets[w];return !!x&&MK.some(m=>(x[m]||0)>0);};
   const ff=avgFirstWeek();const all=Object.keys(I.weekSets).filter(w=>w<cur&&has(w)).sort();
-  const full=all.filter(w=>!ff||w>=ff);const wks=(full.length?full:all).slice(-n);
+  const full=all.filter(w=>!ff||w>=ff);const wks=(full.length?full:all.filter(w=>!ff||w>=addDays(ff,-7))).slice(-n); // with no full week, the first week (back, after a break: r55, logStart) alone, not weeks before the break
   if(wks.length){const out=weeksAvg(wks);
     const end=addDays(wks[wks.length-1],6);
-    return {src:out,n,label:full.length?`your last ${wks.length===1?'trained week':wks.length+' trained weeks'}, to ${fmtDate(end)}`:`your first week, to ${fmtDate(end)}`,old:!!full.length,first:!full.length,end};}
+    return {src:out,n,label:full.length?`your last ${wks.length===1?'trained week':wks.length+' trained weeks'}, to ${fmtDate(end)}`:`your first week${logBack()?' back':''}, to ${fmtDate(end)}`,old:!!full.length,first:!full.length,back:logBack(),end};}
   return {src:{},label:'',empty:true};
 }
 function regionBody(){
@@ -431,7 +431,7 @@ function regionBody(){
     :`<p class="headline">${on} of ${regs.length} regions on target. Furthest short: ${worst.label}, ${r1(worst.got)} of ${r1(worst.lo)} sets.</p>`;
   const note=(rs.old?`Nothing logged in the last ${rs.n||4} weeks, so this shows ${esc(balLabel)}. `:'')+(rs.noFull?'No full week to average yet, so this is this week so far. ':'')+(rs.week&&low.length?'The week is still going, so this fills in as you train.':'');
   const chips=`<div class="wkpick"><span class="small muted" id="wkpickL">Average of the last</span><div class="chips" role="group" aria-labelledby="wkpickL">${REGION_WKS.map(([k,l])=>`<button class="chip ${rs.n===k?'on':''}" data-act="regionWk" data-v="${k}" aria-pressed="${rs.n===k}">${l}</button>`).join('')}</div></div>`;
-  return `<div class="card">${rs.week?'':chips}${rh}<p class="small muted" style="margin:0 0 4px">Using ${esc(balLabel)}. ${tipi(`Hard sets per region against the minimum of your weekly targets. On or past the dashed ring is on target.${plan.length?' On plan: '+ON_PLAN_TIP:''}${rs.first||rs.src._ff?' '+FIRST_WEEK_WHY:''}`,'Reading the chart')}</p><div class="chartbox tall"><canvas id="chRadar"></canvas></div>${chartFallback()}
+  return `<div class="card">${rs.week?'':chips}${rh}<p class="small muted" style="margin:0 0 4px">Using ${esc(balLabel)}. ${tipi(`Hard sets per region against the minimum of your weekly targets. On or past the dashed ring is on target.${plan.length?' On plan: '+ON_PLAN_TIP:''}${rs.first||rs.src._ff?' '+(rs.back?BACK_WEEK_WHY:FIRST_WEEK_WHY):''}`,'Reading the chart')}</p><div class="chartbox tall"><canvas id="chRadar"></canvas></div>${chartFallback()}
   <table class="t" style="margin-top:8px"><tr><th>Region</th><th class="r">Sets</th><th class="r">Minimum</th><th class="r">Of minimum</th></tr>
   ${regs.map(rg=>{const c=rg.low?(rs.week?'part':'yellow'):rg.plan?'plan':rg.high?'blue':'green';return `<tr><td><span class="plate ${c}" style="height:12px;vertical-align:-1px"></span> ${rg.label}</td><td class="r num">${r1(rg.got)}</td><td class="r muted small">${r1(rg.lo)}</td><td class="r num">${rg.lo>0?Math.round(rg.pct)+'%':'<span class="muted small">no minimum</span>'}</td></tr>`;}).join('')}</table>
   ${note?`<p class="small muted" style="margin-top:6px">${note}</p>`:''}</div>`;
@@ -447,50 +447,23 @@ function dsec(key,title,explain,body,subTxt){
 }
 /* A fold inside a section: not persisted, opened by goDash when a tile or row
    points at it. */
-/* All-time bests (item 27): per lift, the best estimate and the heaviest set,
-   and inside, the rep records: for every load, the most reps, where no heavier
-   set did as many. The same rule makes a rep PR, so the board and the PR feed
-   agree. Each record carries the date it was first reached. Newest record
-   first, so the lifts that are moving sit at the top. */
-function allTimeBests(id){
-  const exps=IDX().byEx[id];if(!exps||!exps.length)return null;const ex=EX(id);
-  let est=null,heavy=null;const front=[];
-  for(const x of exps){
-    const fresh=[];
-    for(const p of x.pts){
-      const v=noE1(ex)?null:e1(p.load,p.r,p.rq);
-      if(v!=null&&(!est||v>est.v+1e-6))est={v,p,date:x.date};
-      // Heaviest and rep records at the PR load (prLoad, r32.1): on a bodyweight lift, by added load and reps, dated when first done.
-      if(!heavy||p.pl>heavy.p.pl+1e-6||(Math.abs(p.pl-heavy.p.pl)<1e-6&&p.r>heavy.p.r))heavy={p,date:x.date};
-      if(!front.some(q=>q.p.pl>=p.pl-1e-6&&q.p.r>=p.r))fresh.push(p);
-    }
-    for(const p of fresh){
-      if(front.some(q=>q.p.pl>=p.pl-1e-6&&q.p.r>=p.r))continue;
-      for(let k=front.length-1;k>=0;k--)if(p.pl>=front[k].p.pl-1e-6&&p.r>=front[k].p.r)front.splice(k,1);
-      front.push({p,date:x.date});
-    }
-  }
-  front.sort((a,b)=>b.p.pl-a.p.pl);
-  const last=[est&&est.date,heavy&&heavy.date,...front.map(f=>f.date)].filter(Boolean).sort().pop();
-  return {ex,est,heavy,front,last};
-}
 /* A lift's heaviest set, in the words the bests board uses, so nothing new is
    invented and the two always read alike (r48, V: "is it easy to see what your
    PR was during a today session"). It was two taps away, under the exercise's
    menu. "Heaviest" rather than "PR": in this app a PR is a record the moment
    it is set, while this is the standing best, which is what the question means. */
-function bestLine(exId){
-  const r=allTimeBests(exId);if(!r||!r.heavy)return '';
+function bestLine(exId,upTo){ // up to a past workout's date, read as of that day (r55, the audit)
+  const r=allTimeBests(exId,upTo);if(!r||!r.heavy)return '';
   const ex=r.ex;
   /* The date is dropped when the heaviest set was the lift's last session,
      since the Last line beside it already carries that date and the column
      shows those very sets. */
-  const exps=IDX().byEx[exId]||[];const newest=exps.length?exps[exps.length-1].date:null;
+  const exps=(IDX().byEx[exId]||[]).filter(x=>!upTo||x.date<=upTo);const newest=exps.length?exps[exps.length-1].date:null;
   const when=r.heavy.date===newest?'':`, ${fmtDate(r.heavy.date)}`;
   return `Heaviest ${setShort(ex,r.heavy.p.w,r.heavy.p.r)}${loadNote(ex)}${when}`;
 }
 function bestsBoard(){
-  const I=IDX();const rows=Object.keys(I.byEx).map(allTimeBests).filter(Boolean).sort((a,b)=>a.last<b.last?1:a.last>b.last?-1:a.ex.name.localeCompare(b.ex.name));
+  const I=IDX();const rows=Object.keys(I.byEx).map(id=>allTimeBests(id)).filter(Boolean).sort((a,b)=>a.last<b.last?1:a.last>b.last?-1:a.ex.name.localeCompare(b.ex.name));
   if(!rows.length)return {n:0,html:'<p class="muted">Your bests appear here after your first session.</p>'};
   // A bodyweight lift's estimate includes the body, so it says total; its sets read BW+x.
   const u=ex=>' '+U()+(ex.bw?' total':'');

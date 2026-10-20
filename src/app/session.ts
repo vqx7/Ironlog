@@ -4,25 +4,28 @@
    (phase 3a, r51; moved unchanged from the legacy script). What reads the log or the settings to fill a
    session (suggestions, adjustments) moves with the engine in 3b. */
 
-import type { DraftBlock, DraftSet, Target } from './types';
+import type { DraftBlock, DraftSet, Session, SessionEx, Target } from './types';
 import { uid, today } from './util';
-import { isWork } from './formulas';
+import { isMissed, isWork } from './formulas';
 import { fmtDate } from './format';
+import { cleanChk } from './records';
 
 /* ---------- loads and targets ---------- */
 
 /* The load a row shows in grey while its load field is empty (r25), and the
    load settleLoad writes in when the set is ticked or saved at Finish: the
    load of the nearest working set above that has one, else the block's
-   suggestion; none on a warm-up or a drop set. A row that exists means the
-   block does, which the ! on each b below says to TypeScript. */
+   suggestion; none on a warm-up or a drop set. A missed set's load (r55, a
+   lift tried and not made) is passed over, so the row under it shows the
+   last load done. A row that exists means the block does, which the ! on
+   each b below says to TypeScript. */
 export function greyW(b: DraftBlock | null | undefined, si: number): number | null {
   const s = b && b.sets[si];
   if (!s || s.warm || s.drop) return null;
   // After a set the app adjusted from (b.adj, r34), the rows under it carry the adjusted load.
   for (let i = si - 1; i >= 0; i--) {
     const x = b!.sets[i];
-    if (!x.warm && !x.drop && x.w != null) return b!.adj && b!.adj.at === i ? b!.adj.w : x.w;
+    if (!x.warm && !x.drop && x.w != null && !isMissed(x)) return b!.adj && b!.adj.at === i ? b!.adj.w : x.w;
   }
   return b!.sw == null ? null : b!.sw;
 }
@@ -198,6 +201,107 @@ export function joinRows(into: DraftBlock, from: DraftBlock): DraftSet[] {
   into.sets.push(...rows);
   into.plan = { ...into.plan, sets: into.sets.filter(x => !x.warm && !x.drop).length };
   return rows;
+}
+
+/* A block as Finish saves it (r55: one source for Finish and for a first
+   link keeping another device's workout): its ticked sets as typed, a blank
+   load 0, the range it was planned at (or, in an edit, the range it was
+   saved with), and its marks, the keys in the order Finish always wrote. */
+/** An exercise in the session in progress as Finish saves it; an exercise with no set ticked comes back with no sets. */
+export function savedEx(b: DraftBlock): SessionEx {
+  const rr: [number, number] | null =
+    b.keepRR !== undefined
+      ? b.keepRR
+      : b.plan && Number(b.plan.repMin) > 0 && Number(b.plan.repMax) > 0
+        ? [Number(b.plan.repMin), Number(b.plan.repMax)]
+        : null;
+  return {
+    exId: b.exId,
+    note: b.note || '',
+    rr,
+    light: b.light ? true : undefined,
+    ...(b.inj ? { inj: b.inj } : {}),
+    sets: b.sets
+      .filter(s => s.done)
+      .map(s => ({
+        w: s.w == null ? 0 : s.w,
+        r: Number(s.r),
+        rir: s.rir == null || s.rir === '' ? null : Number(s.rir),
+        warm: !!s.warm,
+        drop: !!s.drop && !s.warm,
+        cal: s.cal && !s.warm ? s.cal : undefined
+      }))
+  };
+}
+
+/** The parts of a session in progress a saved session is made from. */
+export interface DraftLike {
+  id: string;
+  date: string;
+  dayIdx: number;
+  dayId?: string | null | undefined;
+  dayName?: string | undefined;
+  routineId: string;
+  notes?: string | undefined;
+  deload?: boolean | undefined;
+  light?: boolean | undefined;
+  free?: boolean | undefined;
+  editingId?: string | null | undefined;
+  startedAt?: number | null | undefined;
+  chk?: Session['chk'] | null;
+  cardio?: readonly DraftCardio[] | undefined;
+  ex: DraftBlock[];
+}
+
+/** A cardio row inside a workout in progress: what `draftCardio` reads of it. */
+export interface DraftCardio {
+  id?: string | undefined;
+  min?: number | null | undefined;
+}
+
+/* Another device's workout in progress, kept as a session when a first link
+   keeps this device's own (r55, from the review: the merge kept one of the
+   two and the other's ticked sets were lost on every device). Only what was
+   ticked, as Finish would save it, with its check-in and the time it started
+   (the second review of r55: both were dropped), untimed; its cardio rows are
+   kept beside it through draftCardio, as Finish keeps them. An edit of a
+   saved session is not one (that session is already kept). Null when
+   nothing is ticked. */
+/** A workout in progress as a saved session of its ticked sets, or null when none is ticked or it is an edit. */
+export function draftSession(d: DraftLike): Session | null {
+  if (d.editingId) return null;
+  const ex = joinAdjacent(d.ex.map(savedEx).filter(b => b.sets.length));
+  if (!ex.length) return null;
+  const chk = cleanChk(d.chk);
+  return {
+    id: d.id,
+    date: d.date,
+    dayIdx: d.dayIdx,
+    dayId: d.dayId || null,
+    dayName: (d.dayName || '').trim() || 'Session',
+    routineId: d.routineId,
+    ex,
+    notes: d.notes || '',
+    durMin: null,
+    deload: !!d.deload,
+    light: !!d.light,
+    free: d.free ? true : undefined,
+    demo: false,
+    ...(chk ? { chk } : {}),
+    ...(d.startedAt && d.startedAt > 0 ? { t: d.startedAt } : {})
+  };
+}
+
+/* The cardio rows of a workout in progress that Finish saves: those with
+   minutes, dated the session's day. Finish and a first link's kept workout
+   read them here, so the two save the same entries under the same ids
+   (normalize then cleans each, as Finish's cleanCardio does). */
+/** A workout in progress's cardio rows with minutes, each dated the session's day. */
+export function draftCardio<C extends DraftCardio>(d: {
+  date: string;
+  cardio?: readonly C[] | undefined;
+}): (C & { date: string })[] {
+  return (d.cardio || []).filter(c => (c.min || 0) > 0).map(c => ({ ...c, date: d.date }));
 }
 
 /* Saved exercises side by side on the same lift become one, sets in order. */

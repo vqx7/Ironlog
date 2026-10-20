@@ -151,10 +151,14 @@ const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log
     // full session, and says so; grey reps follow today unless it was done
     // lighter or below its usual.
     const nx = await ev((sid) => { const L = window.__ironlog; const s = L.state.sessions.find(x => x.id === sid); const I = L.IDX();
-      return s.ex.map(b => { const x = (I.byEx[b.exId] || []).find(q => q.sid === sid); const nb = L.newBlock(b.exId, { sets: 3, repMin: 6, repMax: 10, rir: 1, rest: 120, inc: 2.27 }, {}); return { id: b.exId, word: L.sessionWord(x), off: L.offTarget(x), under: L.lighter(x) || x.short === 'reading', last: nb.last, basis: nb.basis || null, lastR: nb.lastR, saved: b.sets.filter(x => !x.warm && !x.drop).map(x => x.r) }; }); }, saved.id);
+      return s.ex.map(b => { const x = (I.byEx[b.exId] || []).find(q => q.sid === sid); const nb = L.newBlock(b.exId, { sets: 3, repMin: 6, repMax: 10, rir: 1, rest: 120, inc: 2.27 }, {}); return { id: b.exId, word: L.sessionWord(x), off: L.offTarget(x), under: L.lighter(x) || x.short === 'reading', last: nb.last, basis: nb.basis || null, lastR: nb.lastR, saved: b.sets.filter(x => !x.warm && !x.drop).map(x => x.r), topW: x.topW, base: (() => { if (!nb.basis) return null; const e = (I.byEx[b.exId] || []).filter(q => q.date === nb.basis && q.sid !== sid).pop(); return e ? { topW: e.topW, reps: e.pts.filter(p => Math.abs(p.w - e.topW) < 1e-6).map(p => p.r) } : null; })() }; }); }, saved.id);
     ok(nx.filter(x => x.off).every(x => x.word && new RegExp('^Last \\(Sep 20, ' + x.word + '\\)').test(x.last) && x.basis && x.basis < '2026-09-20'), T + 'an exercise short of its usual or done lighter shows today as Last, labelled so, and its target comes from an earlier full session', nx.filter(x => x.off).map(x => [x.word, x.last, x.basis]));
     ok(nx.filter(x => !x.off).every(x => /^Last \(Sep 20\):/.test(x.last) && !x.basis), T + 'an exercise done at its usual shows today as Last, with the target from today', nx.filter(x => !x.off).map(x => [x.last, x.basis]));
-    ok(nx.filter(x => !x.under).every(x => JSON.stringify(x.lastR) === JSON.stringify(x.saved)), T + 'grey reps next time are the reps logged today, set by set, where today was not done lighter or below its usual', nx.map(x => [x.lastR, x.saved]));
+    // Since r55 (the journey audit's B1), a session short of its usual sets at another load than the target's session greys
+    // that session's reps, at the load the target is at, not today's at a load it does not ask for.
+    const atBase = x => x.base && Math.abs(x.base.topW - x.topW) > 1e-6;
+    ok(nx.filter(x => !x.under).every(x => JSON.stringify(x.lastR) === JSON.stringify(atBase(x) ? x.base.reps : x.saved)),
+      T + 'grey reps next time are the reps logged today, set by set, where today was not done lighter or below its usual, and at another load than its target\'s session, that session\'s reps there', nx.map(x => [x.lastR, x.saved, x.base, x.topW]));
     ok(nx.some(x => !x.off) && nx.some(x => x.off), T + '(both kinds were present, so the checks above mean something)');
 
     ok(!errors.length, T + 'no page errors (' + errors.join(' | ') + ')');

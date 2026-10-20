@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="app-build" content="2026.10.18-r54">
+<meta name="app-build" content="2026.10.19-r55">
 <title>Ironlog</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -293,9 +293,13 @@ html[data-env="preview"] .tabs::before{content:"PREVIEW";position:absolute;top:-
 .hero+.sec,.ph+.sec,.jump+.sec,.sec:first-child{border-top:0}
 .sec>summary{list-style:none;cursor:pointer;display:flex;align-items:center;gap:10px;min-height:66px;padding:12px 0;-webkit-tap-highlight-color:transparent;user-select:none;-webkit-user-select:none}
 .sec>summary::-webkit-details-marker{display:none}
-.sec-t{font:700 21px/1.15 var(--font);letter-spacing:-.015em;white-space:nowrap;flex:none}
-/* The summary wraps to a second line instead of being cut off on a small phone. */
-.sec-s{flex:1 1 auto;min-width:0;text-align:right;font-size:12px;line-height:1.3;color:var(--muted);font-variant-numeric:tabular-nums;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+/* The title keeps its width and the summary takes the rest, wrapping to a
+   second line instead of being cut off; a title too long to leave the
+   summary its longest word wraps itself (r55, from the audit: at 320 px
+   "Rest timer and logging" left its summary 15 px, and Weekly volume's
+   "4 under target" was cut). */
+.sec-t{font:700 21px/1.15 var(--font);letter-spacing:-.015em;flex:0 1 auto}
+.sec-s{flex:1 1 0;min-width:min-content;text-align:right;font-size:12px;line-height:1.3;color:var(--muted);font-variant-numeric:tabular-nums;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 .chev{width:22px;height:28px;border-radius:0;background:transparent;flex:none;display:inline-flex;align-items:center;justify-content:center}
 .chev::before{content:"";width:8px;height:8px;border-right:2px solid var(--muted);border-bottom:2px solid var(--muted);transform:translateY(-2px) rotate(45deg);transition:transform .18s ease}
 details[open]>summary .chev::before{transform:translateY(2px) rotate(-135deg)}
@@ -369,7 +373,8 @@ label.field>input,label.field>select,label.field>textarea{margin-top:4px;color:v
 /* Settings pairs whose choices do not fit half of a 320 px screen stack instead. */
 @media (max-width:359px){.grid2.one-narrow{grid-template-columns:minmax(0,1fr)}}
 .grid3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
-.check-inline{display:flex;align-items:flex-start;gap:10px;font-size:15px;line-height:1.35}
+/* A whole row is the switch's 44 px touch target (r55, from the audit: Settings' rows were 20 px tall). */
+.check-inline{display:flex;align-items:center;gap:10px;font-size:15px;line-height:1.35;min-height:44px}
 .check-inline input{width:20px;height:20px;flex:none;margin:0;accent-color:var(--ink)}
 
 .tag{display:inline-block;font-size:11.5px;font-weight:650;letter-spacing:.02em;padding:3px 9px;border-radius:999px;background:var(--surface-2);color:var(--muted);white-space:nowrap;vertical-align:1px}
@@ -391,7 +396,7 @@ label.field>input,label.field>select,label.field>textarea{margin-top:4px;color:v
 .day.rest{opacity:.75}
 .dh{display:flex;gap:8px;align-items:center;padding:8px 8px 6px 10px}
 .dh .dlabel{font:700 20px var(--display);text-transform:uppercase;letter-spacing:.03em;white-space:nowrap;flex:none}
-.dh input[type=text]{font-weight:600;min-height:40px;background:var(--surface-2);border-color:transparent}
+.dh input[type=text]{font-weight:600;min-height:44px;background:var(--surface-2);border-color:transparent}
 .dmeta{padding:0 12px 4px;font-size:13.5px;color:var(--muted)}
 .dmeta.row{flex-wrap:nowrap;gap:8px}
 .dmeta .check-inline{flex:none;color:var(--ink);font-size:14px;align-items:center;min-height:44px;cursor:pointer}
@@ -949,6 +954,8 @@ details.more>summary .small{display:block;font-weight:400}
    version is noticed without covering anything. */
 #updbar{position:sticky;top:calc(var(--head-h) + env(safe-area-inset-top,0px));z-index:19;display:flex;align-items:center;gap:8px;padding:6px 16px;background:var(--glass);-webkit-backdrop-filter:saturate(170%) blur(18px);backdrop-filter:saturate(170%) blur(18px);border-bottom:1px solid var(--line-soft)}
 #updbar[hidden]{display:none}
+/* The first-run pages hide the header, so the bar stays at the top there (r55, from the audit: it sat 52 px down, over the wordmark and Set up's back link). */
+body.obmode #updbar{top:env(safe-area-inset-top,0px)}
 .acctbar+.acctbar{margin-top:-6px}
 /* On a phone each line keeps its bold half and its button (item 62). */
 @media (max-width:429px){.acctbar .ab-more{display:none}}
@@ -1038,8 +1045,8 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
   var PREVIEW_NAME = `${APP_NAME} Preview`;
   var PREVIEW_LABEL = "Preview";
   var WORDMARK = { mark: "I", strong: "ron", light: "log" };
-  var DISPLAY_VERSION = "2.5";
-  var APP_VERSION = "2026.10.18-r54";
+  var DISPLAY_VERSION = "2.6";
+  var APP_VERSION = "2026.10.19-r55";
   var VERSION_LINE = `${DISPLAY_VERSION} (build ${APP_VERSION})`;
   var SITE_HOST = "ironapp.org";
   var SITE_DIR_FALLBACK = "/Ironlog";
@@ -1148,6 +1155,13 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
       return ((t ^ t >>> 14) >>> 0) / 4294967296;
     };
+  }
+  function putById(list, items) {
+    for (const x of items) {
+      const i = list.findIndex((y) => y.id === x.id);
+      if (i >= 0) list.splice(i, 1);
+      list.push(x);
+    }
   }
 
   // src/app/library.ts
@@ -2008,6 +2022,11 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     const n = trainDaysOf(R);
     return R.schedule === "weekly" ? n : n ? Math.max(1, Math.floor(n * weekFactor(R) + 1e-9)) : 0;
   }
+  function pwOf(routines, id) {
+    const R = routines.find((r) => r.id === id);
+    const n = R ? plannedPerWeek(R) : 0;
+    return n > 0 ? n : void 0;
+  }
   function sessDayIdx(R, s) {
     if (s.dayId) {
       const i = R.days.findIndex((d) => d.id === s.dayId);
@@ -2017,6 +2036,9 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
   }
   function daySets(day) {
     return day.items.reduce((a, it) => a + +it.sets, 0);
+  }
+  function trainOn(d) {
+    return { rest: false, name: d.rest && d.name === "Rest" ? "Training day" : d.name };
   }
   function fixSupersets(items) {
     let i = 0;
@@ -2076,6 +2098,9 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     r.schedule,
     r.days.map((d) => [d.name, !!d.rest, d.items.map((i) => [i.exId, +i.sets, +i.repMin, +i.repMax, +i.rir, +i.rest])])
   ]);
+  function dropStarter(routines, sessions, sigs) {
+    return routines.filter((x) => !sigs.includes(routineSig(x)) || sessions.some((q) => q.routineId === x.id));
+  }
   function tplCountLine() {
     const T = TEMPLATES.filter((t) => !t.hidden);
     const n = T.map((t) => {
@@ -2103,14 +2128,14 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     return ex.timed ? { ...DEFAULT_PLAN, repMin: 30, repMax: 60, rest: 60 } : profPlanIn(M, ex, plain);
   }
   function routinePlanIn(M, exId, R, dayId) {
-    const Q = R || activeRoutineIn(M);
-    const days = dayId ? [...Q.days.filter((d) => d.id === dayId), ...Q.days.filter((d) => d.id !== dayId)] : Q.days;
-    for (const d of days)
-      for (const it of d.items)
-        if (it.exId === exId) {
-          const { uid: _u, ss: _s, ...p } = it;
-          return { ...DEFAULT_PLAN, ...p, ss: null };
-        }
+    const it = planItemOf(R || activeRoutineIn(M), exId, dayId);
+    if (!it) return null;
+    const { uid: _u, ss: _s, ...p } = it;
+    return { ...DEFAULT_PLAN, ...p, ss: null };
+  }
+  function planItemOf(R, exId, dayId) {
+    const days = dayId ? [...R.days.filter((d) => d.id === dayId), ...R.days.filter((d) => d.id !== dayId)] : R.days;
+    for (const d of days) for (const it of d.items) if (it.exId === exId) return it;
     return null;
   }
   function basePlanIn(M, exId, R, dayId, plain) {
@@ -2216,6 +2241,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     return best;
   }
   var isWork = (s) => !s.warm && +s.r > 0;
+  var isMissed = (s) => s.r !== null && s.r !== "" && +s.r === 0;
   var setCredit = (s) => s.drop ? 0.5 : 1;
   function sameRR(a, b) {
     return !a || !b || a[0] === b[0] && a[1] === b[1];
@@ -2247,6 +2273,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     return (r) => ok ? Math.max(r, m) : r;
   }
   var LIGHTER_LOAD = 0.9;
+  var LIGHT_SHARE = 0.9;
   var LIGHTER_READING = 0.93;
   var lighter = (x) => !!x && !!(x.deload || x.light || x.auto);
   var offTarget = (x) => lighter(x) || !!(x && x.short);
@@ -2355,6 +2382,9 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
   var min5 = (m) => m >= 10 ? Math.round(m / 5) * 5 : Math.max(1, Math.round(m));
   var estMin = (n) => `~${n} min`;
   var NIL = "–";
+  var missedTag = (s) => isMissed(s) ? " missed" : "";
+  var DIRTY_SAID = "Save or cancel first. Your changes are still here.";
+  var MISSED_SAID = "Logged as missed. It counts toward no volume, PRs, or targets.";
   var fmtG = (v) => String(Math.round(v * 1e3) / 1e3);
   var repSpan = (lo, hi, sep = " to ") => +lo === +hi ? `${+lo}` : `${+lo}${sep}${+hi}`;
   var rangeWords = (p) => +p.repMin === +p.repMax ? `target of ${+p.repMin}` : `${+p.repMin}-${+p.repMax} range`;
@@ -2371,6 +2401,9 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
   function effAt(scale, rir) {
     return scale === "rpe" ? String(Math.round((10 - rir) * 10) / 10) : String(Math.round(rir * 10) / 10);
   }
+  var LIGHT_RIR = 3;
+  var effLeast = (scale, rir) => scale === "rpe" ? `RPE ${effAt(scale, rir)} or less` : `${effAt(scale, rir)} or more reps in reserve`;
+  var effLeastShort = (scale, rir) => scale === "rpe" ? `RPE ${effAt(scale, rir)} or less` : `${effAt(scale, rir)}+ RIR`;
 
   // src/app/layout.ts
   var DSECS = [
@@ -2735,6 +2768,13 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     return [...m.values()];
   }
   var realCount = (st) => st.sessions.filter((x) => !x.demo).length;
+  function stripDemo(s) {
+    s.sessions = s.sessions.filter((x) => !x.demo);
+    s.bodyweights = s.bodyweights.filter((x) => !x.demo);
+    s.measurements = s.measurements.filter((x) => !x.demo);
+    s.cardio = (s.cardio || []).filter((x) => !x.demo);
+  }
+  var hasDemo = (s) => [s.sessions, s.bodyweights, s.measurements, s.cardio || []].some((a) => a.some((x) => x.demo));
   var CORE_ARR = ["routines", "exercises", "injuries", "trash"];
   var CORE_FIELDS = ["version", "activeRoutineId", "deloadWeek"];
   var isChunkId = (id) => id === "core" || id === "draft" || /^s-\d{4}-\d{2}-[12]$/.test(id) || /^b-\d{4}$/.test(id);
@@ -2832,7 +2872,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     if (!s || s.warm || s.drop) return null;
     for (let i = si - 1; i >= 0; i--) {
       const x = b.sets[i];
-      if (!x.warm && !x.drop && x.w != null) return b.adj && b.adj.at === i ? b.adj.w : x.w;
+      if (!x.warm && !x.drop && x.w != null && !isMissed(x)) return b.adj && b.adj.at === i ? b.adj.w : x.w;
     }
     return b.sw == null ? null : b.sw;
   }
@@ -2910,6 +2950,50 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     into.sets.push(...rows);
     into.plan = { ...into.plan, sets: into.sets.filter((x) => !x.warm && !x.drop).length };
     return rows;
+  }
+  function savedEx(b) {
+    const rr = b.keepRR !== void 0 ? b.keepRR : b.plan && Number(b.plan.repMin) > 0 && Number(b.plan.repMax) > 0 ? [Number(b.plan.repMin), Number(b.plan.repMax)] : null;
+    return {
+      exId: b.exId,
+      note: b.note || "",
+      rr,
+      light: b.light ? true : void 0,
+      ...b.inj ? { inj: b.inj } : {},
+      sets: b.sets.filter((s) => s.done).map((s) => ({
+        w: s.w == null ? 0 : s.w,
+        r: Number(s.r),
+        rir: s.rir == null || s.rir === "" ? null : Number(s.rir),
+        warm: !!s.warm,
+        drop: !!s.drop && !s.warm,
+        cal: s.cal && !s.warm ? s.cal : void 0
+      }))
+    };
+  }
+  function draftSession(d) {
+    if (d.editingId) return null;
+    const ex = joinAdjacent(d.ex.map(savedEx).filter((b) => b.sets.length));
+    if (!ex.length) return null;
+    const chk = cleanChk(d.chk);
+    return {
+      id: d.id,
+      date: d.date,
+      dayIdx: d.dayIdx,
+      dayId: d.dayId || null,
+      dayName: (d.dayName || "").trim() || "Session",
+      routineId: d.routineId,
+      ex,
+      notes: d.notes || "",
+      durMin: null,
+      deload: !!d.deload,
+      light: !!d.light,
+      free: d.free ? true : void 0,
+      demo: false,
+      ...chk ? { chk } : {},
+      ...d.startedAt && d.startedAt > 0 ? { t: d.startedAt } : {}
+    };
+  }
+  function draftCardio(d) {
+    return (d.cardio || []).filter((c) => (c.min || 0) > 0).map((c) => ({ ...c, date: d.date }));
   }
   function joinAdjacent(ex) {
     const out = [];
@@ -3098,6 +3182,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     return r1(v || 0) > hi;
   }
   var lowSt = (x) => x.st === "under" || x.st === "none" && x.lo > 0;
+  var metSt = (x) => x.st === "in" || x.st === "over" || x.st === "none" && x.lo <= 0;
 
   // src/app/goals.ts
   function goalOk(ex) {
@@ -3463,6 +3548,13 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     };
     if (!unit && map.unit != null) for (let i = 1; i < rows.length && !unit; i++) unit = rowUnit(rows[i]);
     const S = /* @__PURE__ */ new Map();
+    const heads = head.map(
+      (h) => String(h == null ? "" : h).trim().toLowerCase()
+    );
+    const ours = heads.some((h) => /^load_(lb|kg)$/.test(h)) && heads.includes("exercise_note");
+    const col = (n) => ours && heads.includes(n) ? heads.indexOf(n) : null;
+    const cNote = col("session_note"), cMin = col("session_minutes"), cHr = col("avg_hr"), cUnit = col("unit");
+    const at = (r, i) => i == null ? "" : String(r[i] == null ? "" : r[i]).trim();
     let lastDate = null, lastEx = null, lastName = "";
     let skipped = 0, cardio = 0;
     const bad = [];
@@ -3492,6 +3584,25 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
         skipped++;
         continue;
       }
+      if (ours && at(r, cUnit) === "minutes") {
+        cardio++;
+        const kind = (CARDIO.find(([, l]) => l === ex) || ["other"])[0];
+        const min = num(at(r, cMin)), hr = num(at(r, cHr));
+        const o = { date, kind, secs: min != null && min > 0 ? min * 60 : 0, dist: 0, name: ex };
+        if (min != null && min > 0) o.min = Math.round(min);
+        if (hr != null && hr > 0) o.hr = Math.round(hr);
+        const rest = [];
+        for (const part of cell("note").split("; ").filter(Boolean)) {
+          const wh = CWHEN.find(([, l]) => l === part);
+          const d = /^(\d+(?:\.\d+)?) (km|mi)$/.exec(part);
+          if (wh) o.when = wh[0];
+          else if (d) o.km = d[2] === "km" ? +d[1] : +d[1] * KM_MI;
+          else rest.push(part);
+        }
+        if (rest.length) o.note = rest.join("; ");
+        C.set(date + "|" + kind + "|" + C.size, o);
+        continue;
+      }
       const ck = impCardioKind(ex);
       const dist = num(cell("dist"));
       if (dist > 0 || ck && !(reps > 0)) {
@@ -3503,7 +3614,8 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
         C.set(k2, o);
         continue;
       }
-      if (!(reps > 0) && !(secs > 0)) {
+      const missed = ours && cell("r") !== "" && reps === 0;
+      if (!(reps > 0) && !(secs > 0) && !missed) {
         skipped++;
         continue;
       }
@@ -3520,12 +3632,15 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
         rir: rir != null && rir >= 0 && rir <= 10 ? rir : null,
         warm: ty === "w" || ty === "warmup" || ty === "warm-up" || code === "2" || yes(cell("warm")),
         drop: ty === "d" || ty === "dropset" || ty === "drop" || code === "3" || yes(cell("drop")),
-        timed: !(reps > 0),
+        timed: !(reps > 0) && !missed,
         u: rowUnit(r)
       };
       const k = date + "|" + name;
       if (!S.has(k)) S.set(k, { date, name, items: /* @__PURE__ */ new Map(), note: "" });
       const ss = S.get(k);
+      if (!ss.note && at(r, cNote)) ss.note = at(r, cNote);
+      const dm = num(at(r, cMin));
+      if (ss.durMin == null && dm != null && dm > 0) ss.durMin = Math.round(dm);
       if (/^(yes|true|1|y)$/i.test(String(cell("deload") || "").trim())) ss.deload = true;
       if (!ss.items.has(ex)) ss.items.set(ex, { name: ex, sets: [], note: cell("note") });
       const n = Math.min(Math.max(Math.round(num(cell("sets")) || 1), 1), 20);
@@ -3536,7 +3651,9 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
         date: x.date,
         name: x.name,
         items: [...x.items.values()],
-        deload: x.deload || void 0
+        deload: x.deload || void 0,
+        note: x.note || void 0,
+        durMin: x.durMin
       })),
       unit,
       skipped,
@@ -3662,7 +3779,8 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     modal: null,
     folds: {},
     rng: {},
-    eqLast: null
+    eqLast: null,
+    refix: null
   };
   var cloud = {
     on: false,
@@ -3901,7 +4019,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
         if (!work.length) continue;
         const main = work.filter((s) => !s.drop);
         const ptsSrc = main.length ? main : work;
-        const pts = ptsSrc.map((s) => {
+        const point = (s) => {
           const pl = prLoadIn(M, ex, s, ss.date);
           return {
             load: ex.bw ? pl : loadOfIn(M, ex, s, ss.date),
@@ -3911,7 +4029,13 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
             rir: rirEffIn(M, s, ex),
             rq: rirEstIn(M, s, ex)
           };
-        });
+        };
+        const pts = ptsSrc.map(point);
+        const miss = [];
+        let seen = 0;
+        for (const s of b.sets)
+          if (ptsSrc.includes(s)) seen++;
+          else if (!s.warm && !s.drop && isMissed(s)) miss.push({ ...point(s), at: seen });
         const topW = workLoad(pts, b.rr ? b.rr[0] : 0);
         const tr = pts.filter((p) => Math.abs(p.w - topW) < 1e-6 && p.rir != null);
         const atTop = atLoad(pts, topW);
@@ -3977,7 +4101,8 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
           tAdj,
           tRaw,
           topL,
-          rated
+          rated,
+          ...miss.length ? { miss } : {}
         });
       }
       sessVol.push({ date: ss.date, vol, id: ss.id, day: ss.dayName });
@@ -4207,7 +4332,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       }
       const pb = bestIn(i, bandJ);
       const e1PR = i > 0 && pbJ != null && pb != null && pbJ > pb + 1e-6;
-      const wJ = i > 0 && !ex.timed ? pts.filter((p) => p.r > 0 && p.w > prevMaxW + 1e-6).sort((a, b) => b.w - a.w || b.r - a.r)[0] : null;
+      const wJ = i > 0 && !ex.timed ? pts.filter((p) => p.r > 0 && p.w > prevMaxW + 1e-6).sort((a, b) => b.w - a.w || sc(b) - sc(a) || b.r - a.r)[0] : null;
       const wPR = wJ ? asLogged(wJ) : null;
       x.progress = i > 0 && (!!repPR || e1PR || !!wPR);
       const big = noE1(ex) || !!ex.timed || !!ex.bw && !pts.some((q) => q.pl > 0) || pts.some((q) => sc(q) > topSc + 1e-9);
@@ -4362,37 +4487,52 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       return withE1.length < 2 && inR.length >= 4 && inR.slice(-3).every((x) => !x.progress) && !offSince(inR[inR.length - 3].date).some((x) => x.progress);
     };
     if (!capped && current) stalled = stallScopesIn(M, id, sc).every((q) => stalledIn(q.rr, q.inR));
+    const trendOf = (w2) => {
+      let pct2 = null, slope2 = null, slopeSe2 = null, moving2 = false, falling2 = false, pLo2 = null, pHi2 = null, spanW2 = null, loadUp2 = false;
+      const spanD = w2.length ? daysBetween(w2[0].date, w2[w2.length - 1].date) : 0;
+      if (w2.length >= 3 && spanD >= 14 && !(exI.bw && !(bwRefIn(M) > 0))) {
+        spanW2 = Math.max(2, Math.round(spanD / 7));
+        const ends = trendEnds(w2);
+        pct2 = (ends.last.tv / ends.first.tv - 1) * 100;
+        const f = slopeOf(w2);
+        if (f) {
+          slope2 = f.b * 7 / f.my * 100;
+          slopeSe2 = f.se != null ? f.se * 7 / f.my * 100 : null;
+          const tq = t90(f.n - 2);
+          const lo = slopeSe2 != null ? slope2 - tq * slopeSe2 : slope2, hi = slopeSe2 != null ? slope2 + tq * slopeSe2 : slope2;
+          moving2 = pct2 >= GROW_PCT && lo > 0;
+          falling2 = pct2 <= -GROW_PCT && hi < 0;
+          if (slopeSe2 != null) {
+            pLo2 = lo;
+            pHi2 = hi;
+          }
+        }
+        const z = w2[w2.length - 1], a0 = w2[0];
+        const zr = z.pts.filter((p) => Math.abs(p.w - z.topW) < 1e-6).map((p) => p.r);
+        if (z.topW > a0.topW + 1e-6 && zr.length && Math.min(...zr) >= (z.rr ? +z.rr[0] : 1) && pct2 < 0) {
+          loadUp2 = true;
+          falling2 = false;
+          if (pHi2 != null && pHi2 < 0) {
+            pLo2 = null;
+            pHi2 = null;
+          }
+        }
+      }
+      return { pct: pct2, slope: slope2, slopeSe: slopeSe2, moving: moving2, falling: falling2, pLo: pLo2, pHi: pHi2, spanW: spanW2, loadUp: loadUp2 };
+    };
     const w = trendW(sc);
-    let pct = null, slope = null, slopeSe = null, moving = false, falling = false, pLo = null, pHi = null, spanW = null, loadUp = false;
-    const spanD = w.length ? daysBetween(w[0].date, w[w.length - 1].date) : 0;
-    if (w.length >= 3 && spanD >= 14) {
-      spanW = Math.max(2, Math.round(spanD / 7));
-      const ends = trendEnds(w);
-      pct = (ends.last.tv / ends.first.tv - 1) * 100;
-      const f = slopeOf(w);
-      if (f) {
-        slope = f.b * 7 / f.my * 100;
-        slopeSe = f.se != null ? f.se * 7 / f.my * 100 : null;
-        const tq = t90(f.n - 2);
-        const lo = slopeSe != null ? slope - tq * slopeSe : slope, hi = slopeSe != null ? slope + tq * slopeSe : slope;
-        moving = pct >= GROW_PCT && lo > 0;
-        falling = pct <= -GROW_PCT && hi < 0;
-        if (slopeSe != null) {
-          pLo = lo;
-          pHi = hi;
-        }
+    const t = trendOf(w);
+    const { pct, slope, slopeSe, moving, pLo, pHi, spanW, loadUp } = t;
+    const scopes = stallScopesIn(M, id, sc);
+    const rrIn = scopes.length > 1 ? curRR : null;
+    const holdRR = [], quietRR = [];
+    if (t.falling)
+      for (const q of scopes.slice(1)) {
+        const o = q.rr ? trendOf(trendW({ inRange: q.inR, exWin: sc.exWin })) : null;
+        if (q.rr && o && o.pct == null) quietRR.push(q.rr);
+        else if (q.rr && o && !o.falling) holdRR.push(q.rr);
       }
-      const z = w[w.length - 1], a0 = w[0];
-      const zr = z.pts.filter((p) => Math.abs(p.w - z.topW) < 1e-6).map((p) => p.r);
-      if (z.topW > a0.topW + 1e-6 && zr.length && Math.min(...zr) >= (z.rr ? +z.rr[0] : 1) && pct < 0) {
-        loadUp = true;
-        falling = false;
-        if (pHi != null && pHi < 0) {
-          pLo = null;
-          pHi = null;
-        }
-      }
-    }
+    const falling = t.falling && !holdRR.length && !quietRR.length;
     let easier = null;
     if (inRange.length >= 3) {
       const l3 = inRange.slice(-3);
@@ -4425,6 +4565,9 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       slopeSe,
       moving,
       falling,
+      rrIn,
+      holdRR,
+      quietRR,
       pLo,
       pHi,
       spanW,
@@ -4500,8 +4643,15 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
   function lastOf(all, base, fmt, repMin) {
     const rec = all && all.length ? all[all.length - 1] : base;
     const kind = sessionWord(rec);
-    const line = `Last (${fmtDate(rec.date)}${kind ? ", " + kind : ""}): ${rec.pts.map(fmt).join(", ")}.`;
-    const repsFrom = rec !== base && (lighter(rec) || rec.short === "reading") ? base : rec;
+    const miss = rec.miss || [];
+    const sets = [];
+    rec.pts.forEach((p, i) => {
+      for (const m of miss) if (m.at === i) sets.push(fmt(m) + missedTag(m));
+      sets.push(fmt(p));
+    });
+    for (const m of miss) if (m.at >= rec.pts.length) sets.push(fmt(m) + missedTag(m));
+    const line = `Last (${fmtDate(rec.date)}${kind ? ", " + kind : ""}): ${sets.join(", ")}.`;
+    const repsFrom = rec !== base && (lighter(rec) || rec.short === "reading" || Math.abs(rec.topW - base.topW) > 1e-6) ? base : rec;
     const wl = workLoad(repsFrom.pts, repMin || 0);
     const wp = atLoad(repsFrom.pts, wl);
     const fl = repFloor(wp.length ? wp : repsFrom.pts, repMin);
@@ -4511,7 +4661,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     return {
       line,
       prev: shown.map(fmt).slice(0, 30),
-      prevOff: shown.length < rec.pts.length || void 0,
+      prevOff: shown.length < rec.pts.length || miss.length > 0 || void 0,
       lastR: (wp.length ? wp : repsFrom.pts).map((p) => fl(p.r)),
       basis: rec !== base ? base.date : null
     };
@@ -4551,24 +4701,75 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     const st = exps.length < every.length ? statsUpToIn(M, exId, exps) : I.exStats[exId];
     return { ex, exps, st, heaviest, w, load: own + (w - typed), own };
   }
+  function allTimeBestsIn(M, id, upTo) {
+    const all = IDXIn(M).byEx[id];
+    const exps = all && upTo ? all.filter((x) => x.date <= upTo) : all;
+    if (!exps || !exps.length) return null;
+    const ex = EXIn(M, id);
+    let est = null, heavy = null;
+    const front = [];
+    const seen = /* @__PURE__ */ new Set();
+    for (const x of exps) {
+      const fresh = [];
+      for (const p of x.pts) {
+        const d = prSameLoad(p.w, seen) - p.w, j = p.pl + d;
+        const v = noE1(ex) ? null : e1(p.load + d, p.r, p.rq);
+        if (v != null && (!est || v > est.v + 1e-6)) est = { v, p, date: x.date };
+        if (!heavy || j > heavy.j + 1e-6 || Math.abs(j - heavy.j) < 1e-6 && p.r > heavy.p.r)
+          heavy = { p, j, date: x.date };
+        if (!front.some((q) => q.j >= j - 1e-6 && q.p.r >= p.r)) fresh.push({ p, j });
+      }
+      for (const { p, j } of fresh) {
+        if (front.some((q) => q.j >= j - 1e-6 && q.p.r >= p.r)) continue;
+        for (let k = front.length - 1; k >= 0; k--) if (j >= front[k].j - 1e-6 && p.r >= front[k].p.r) front.splice(k, 1);
+        front.push({ p, j, date: x.date });
+      }
+      for (const p of x.pts) seen.add(p.w);
+    }
+    front.sort((a, b) => b.j - a.j);
+    const dates = front.map((f) => f.date);
+    if (est) dates.push(est.date);
+    if (heavy) dates.push(heavy.date);
+    const last = dates.sort().pop();
+    return {
+      ex,
+      est,
+      heavy: heavy ? { p: heavy.p, date: heavy.date } : null,
+      front: front.map((f) => ({ p: f.p, date: f.date })),
+      last
+    };
+  }
 
   // src/app/weeks.ts
+  function logStartIn(M) {
+    let start = null, prev = null;
+    for (const d of Object.keys(dateIndexIn(M).byDate)) {
+      if (!prev || daysBetween(prev, d) > BACK_DAYS) start = d;
+      prev = d;
+    }
+    return start;
+  }
+  function logBackIn(M) {
+    const s = logStartIn(M);
+    return !!s && s !== firstDate(M.s.sessions);
+  }
   function firstFullWeekIn(M) {
-    const f = firstDate(M.s.sessions);
+    const f = logStartIn(M);
     if (!f) return null;
     const w = weekStart(f);
     return f > w ? addDays(w, 7) : w;
   }
   var FIRST_WEEK_REASON = "the week your loads are found, when sets usually end well short of failure";
   var FIRST_WEEK_WHY = `Your first week is left out of the weekly averages: it is ${FIRST_WEEK_REASON}.`;
+  var BACK_WEEK_WHY = `Your first week back after a break of more than 4 weeks is left out of the weekly averages: like a first week, it is ${FIRST_WEEK_REASON}.`;
   function avgFirstWeekIn(M) {
-    const f = firstDate(M.s.sessions);
+    const f = logStartIn(M);
     return f ? addDays(weekStart(f), 7) : null;
   }
   function avgWeeksTxt(avg) {
     const w = avg._weeks, m = avg._missed || 0, l = avg._light || 0, r = avg._rest || 0;
     if (!m && !l && !r)
-      return avg._ff && w < avg._n ? `the ${w} full week${w === 1 ? "" : "s"} after your first week` : `your last ${w} full week${w === 1 ? "" : "s"}`;
+      return avg._ff && w < avg._n ? `the ${w} full week${w === 1 ? "" : "s"} after your first week${avg._back ? " back" : ""}` : `your last ${w} full week${w === 1 ? "" : "s"}`;
     const out = [
       l ? `${l === 1 ? "a lighter week" : l + " lighter weeks"}` : "",
       r ? `${r === 1 ? "a rest week" : r + " rest weeks"}` : ""
@@ -4579,9 +4780,10 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     const ago = addDays(weekStart(M.today()), -28);
     const af = avgFirstWeekIn(M);
     if (M.s.sessions.some((x) => x.date < ago) && !M.s.sessions.some((x) => x.date >= ago))
-      return { kind: "back", lead: "Nothing logged in the last 4 weeks. ", after: "a full week of training" };
-    if (!af || weekStart(M.today()) <= af) return { kind: "second", lead: "", after: "your second week" };
-    return { kind: "full", lead: "", after: "a full week of training" };
+      return { kind: "back", lead: "Nothing logged in the last 4 weeks. ", after: "a full week of training", why: "" };
+    if (!af || weekStart(M.today()) <= af)
+      return logBackIn(M) ? { kind: "second", lead: "", after: "your second week back", why: BACK_WEEK_WHY } : { kind: "second", lead: "", after: "your second week", why: FIRST_WEEK_WHY };
+    return { kind: "full", lead: "", after: "a full week of training", why: "" };
   }
   function actualAvg4In(M, lightToo) {
     return avgWeeksIn(M, 4, lightToo);
@@ -4634,6 +4836,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     Object.defineProperty(out, "_light", { value: lightToo ? 0 : light, enumerable: false });
     Object.defineProperty(out, "_rest", { value: rest, enumerable: false });
     Object.defineProperty(out, "_ff", { value: ffHit, enumerable: false });
+    Object.defineProperty(out, "_back", { value: ffHit && logBackIn(M), enumerable: false });
     Object.defineProperty(out, "_conf", { value: conf, enumerable: false });
     Object.defineProperty(out, "_mix", { value: cycleMixIn(M, used, out), enumerable: false });
     return out;
@@ -4722,24 +4925,35 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     const I = IDXIn(M);
     if (!I.weekRid) {
       const by = {};
+      const rec = {};
       for (const x of M.s.sessions) {
         if (!x.routineId || x.free) continue;
         const w = weekStart(x.date);
         const c = by[w] || (by[w] = {});
         c[x.routineId] = (c[x.routineId] || 0) + 1;
+        const r = rec[w] || (rec[w] = {});
+        const was = r[x.routineId];
+        if (x.pw && (!was || sessCmp(x, was) > 0)) r[x.routineId] = x;
       }
       I.weekRid = {};
+      const pw = {};
       for (const w in by) {
         let id2 = null;
         for (const k in by[w]) if (id2 == null || by[w][k] > by[w][id2]) id2 = k;
         I.weekRid[w] = id2;
+        const s = id2 && rec[w] ? rec[w][id2] : void 0;
+        if (s && s.pw) pw[w] = s.pw;
       }
+      I.weekPw = pw;
     }
     const id = I.weekRid[ws];
     return id && M.s.routines.find((r) => r.id === id) || activeRoutineIn(M);
   }
   function weekNeedIn(M, ws) {
-    return freeModeIn(M) ? 1 : Math.max(1, plannedPerWeek(weekRoutineIn(M, ws)));
+    if (freeModeIn(M)) return 1;
+    const R = weekRoutineIn(M, ws);
+    const rec = IDXIn(M).weekPw;
+    return Math.max(1, rec && rec[ws] || plannedPerWeek(R));
   }
   function weekStreakIn(M) {
     const R = activeRoutineIn(M);
@@ -4864,8 +5078,14 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       if (have.has(b.exId) || seen.has(b.exId) || !b.sets.some((s) => s.done && !s.warm)) continue;
       seen.add(b.exId);
       if (d.limited && b.swappedFrom) continue;
-      if (b.swappedFrom && have.has(b.swappedFrom)) swap.push({ from: b.swappedFrom, to: b.exId });
-      else {
+      if (b.swappedFrom && have.has(b.swappedFrom)) {
+        const plan = {};
+        for (const k of ["repMin", "repMax", "rir", "rest", "inc", "jump"]) {
+          const v = b.plan[k];
+          if (v != null) plan[k] = v;
+        }
+        swap.push({ from: b.swappedFrom, to: b.exId, plan });
+      } else {
         const { ss: _s, ...p } = b.plan;
         const sets = d.deload || d.light ? b.full ?? planForIn(M, b.exId, R, d.dayId, false, d.date).sets : p.sets;
         add.push({ exId: b.exId, plan: { ...p, sets: Math.max(1, +(sets || 0) || 3) } });
@@ -4937,6 +5157,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     });
   }
   var STALL_WHY = "Flat or down over its last 6 sessions (or 3 weeks) in each rep range you train it in, leaving out ones done lighter; with no PR in the last 3 of them, nor a set stronger than any before it in a session left out since the third-last, no heavier load, and no more reps at the same load.";
+  var FALL_WHY = "A lift trained in more than one rep range reads as falling only when it falls in each, as for a stall.";
   function atRangeTopIn(M, id) {
     const st = IDXIn(M).exStats[id];
     if (!st || !st.last) return false;
@@ -5064,7 +5285,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     if (!avg) {
       const w = avgWaitIn(M);
       const text = `${w.lead}Volume advice ${w.kind === "back" ? "comes back" : "appears here"} after ${w.after}.`;
-      return w.kind === "second" ? { tone: "blue", text, why: FIRST_WEEK_WHY, wait: true, act: null } : { tone: "blue", text, wait: true, act: null };
+      return w.kind === "second" ? { tone: "blue", text, why: w.why, wait: true, act: null } : { tone: "blue", text, wait: true, act: null };
     }
     const onPlan = mst ? MK.filter((m) => !inj.has(m) && mst[m].st === "plan") : [];
     if (onPlan.length)
@@ -5235,12 +5456,12 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     const base = suggestCoreIn(M, exId, plan, { ...opts, deload: false, light: false });
     if (base.kin && base.w > 0) {
       const ks = !gymRackIn(M, ex, plan) && rackKind(ex) && rackKind(EXIn(M, base.kin)) ? rackStepIn(M, EXIn(M, base.kin)) : null;
-      const lw = ks ? fromDIn(M, Math.floor(toDIn(M, base.w * 0.9) / toDIn(M, ks) + 1e-9) * toDIn(M, ks)) : lighterLoadIn(M, ex, plan, base.w, base.w * 0.9);
+      const lw = ks ? fromDIn(M, Math.floor(toDIn(M, base.w * LIGHT_SHARE) / toDIn(M, ks) + 1e-9) * toDIn(M, ks)) : lighterLoadIn(M, ex, plan, base.w, base.w * LIGHT_SHARE);
       return {
         ...base,
         w: lw,
         lastR: Array(Math.max(1, +plan.sets || 1)).fill(+plan.repMin),
-        text: `First time, ${opts.deload ? "deload" : "Lighter day"}. About ${loadLabelIn(M, ex, lw)} ${UIn(M)}${loadNote(ex)} for ${repSpan(plan.repMin, plan.repMax, "-")} with 3 or more reps in reserve, from your ${EXIn(M, base.kin).name}. Half the usual sets, nothing to beat.`
+        text: `First time, ${opts.deload ? "deload" : "Lighter day"}. About ${loadLabelIn(M, ex, lw)} ${UIn(M)}${loadNote(ex)} for ${repSpan(plan.repMin, plan.repMax, "-")} with ${effLeast(effScale(M.s.settings.rirScale), LIGHT_RIR)}, from your ${EXIn(M, base.kin).name}. Half the usual sets, nothing to beat.`
       };
     }
     if (base.inj || !base.last || base.w == null) return base;
@@ -5250,7 +5471,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     const bl = bwRefLoadIn(M, ex);
     const lbl = (w2) => `${loadLabelIn(M, ex, w2)}${ex.bw ? "" : " " + UIn(M)}${loadNote(ex)}`;
     const hs = step > 0 ? toDIn(M, step) : DEFAULT_STEP[UIn(M)];
-    const dw = ex.assist ? -fromDIn(M, Math.ceil(toDIn(M, bl > 0 ? bl - (w0 + bl) * 0.9 : -w0 * 1.1) / hs - 1e-9) * hs) : ex.bw ? (w0 + bl) * 0.9 - bl > 0 ? lighterLoadIn(M, ex, plan, w0, (w0 + bl) * 0.9 - bl) : 0 : lighterLoadIn(M, ex, plan, w0, w0 * 0.9);
+    const dw = ex.assist ? -fromDIn(M, Math.ceil(toDIn(M, bl > 0 ? bl - (w0 + bl) * LIGHT_SHARE : -w0 * 1.1) / hs - 1e-9) * hs) : ex.bw ? (w0 + bl) * LIGHT_SHARE - bl > 0 ? lighterLoadIn(M, ex, plan, w0, (w0 + bl) * LIGHT_SHARE - bl) : 0 : lighterLoadIn(M, ex, plan, w0, w0 * LIGHT_SHARE);
     const w = w0 > 0 || ex.assist ? dw : w0;
     const n = Math.max(1, (base.lastR || []).length || +plan.sets || 1);
     if (back)
@@ -5283,7 +5504,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
         prev: base.prev,
         prevOff: base.prevOff,
         w,
-        text: `${base.last} ${word}: about ${lbl(w)} for ${repSpan(plan.repMin, plan.repMax, "-")} with 3 or more reps in reserve. Half the usual sets, nothing to beat.`,
+        text: `${base.last} ${word}: about ${lbl(w)} for ${repSpan(plan.repMin, plan.repMax, "-")} with ${effLeast(effScale(M.s.settings.rirScale), LIGHT_RIR)}. Half the usual sets, nothing to beat.`,
         lastR: Array(n).fill(+plan.repMin),
         basis: base.basis,
         last: base.last,
@@ -5319,9 +5540,11 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     const noAdd = !!ex.bw && !ex.assist && !all.some((x) => x.pts.some((p) => p.w > 1e-6));
     const abW = ["abs", "obliques"].includes(ex.primary);
     const cap = capOfIn(M, ex, plan, top);
-    const atCap = atCapOfIn(M, ex, plan, top, cap);
+    const noHelp = !!ex.assist && top >= -1e-9;
+    const atCap = atCapOfIn(M, ex, plan, top, cap) || noHelp;
     const capW = (w) => cap != null ? Math.min(w, cap) : w;
     const topPts = ws.filter((p) => Math.abs(p.w - top) < 1e-6);
+    const planPts = topPts.slice(0, Math.max(1, +plan.sets || topPts.length));
     const L0 = lastOf(seen, last, (p) => `${loadLabelIn(M, ex, p.w)}×${p.r}`, +plan.repMin);
     const lastR = L0.lastR, lastS = L0.line, basis = L0.basis;
     const lbl = (w) => `${loadLabelIn(M, ex, w)}${ex.bw ? "" : " " + UIn(M)}${loadNote(ex)}`;
@@ -5332,7 +5555,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
         prev: L0.prev,
         prevOff: L0.prevOff,
         w: top,
-        text: `${lastS} Injury flagged (${injLabel(injM)}): stay at or below ${lbl(top)}, keep 3 or more reps in reserve, stop on pain.`,
+        text: `${lastS} Injury flagged (${injLabel(injM)}): stay at or below ${lbl(top)}, keep ${effLeast(effScale(M.s.settings.rirScale), LIGHT_RIR)}, stop on pain.`,
         lastR,
         basis,
         last: lastS,
@@ -5369,6 +5592,8 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       atCap,
       capW,
       topPts,
+      planPts,
+      noHelp,
       lastR,
       lastS,
       basis,
@@ -5387,7 +5612,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     if (injM)
       return {
         w: w0,
-        text: `Injury flagged (${injLabel(injM)}). Start light, keep 3 or more reps in reserve, and stop on pain.`,
+        text: `Injury flagged (${injLabel(injM)}). Start light, keep ${effLeast(effScale(M.s.settings.rirScale), LIGHT_RIR)}, and stop on pain.`,
         lastR: [],
         last: "",
         target: "",
@@ -5413,8 +5638,25 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     return { w: w0, text, lastR: [], last: "", target: "", tgt: null };
   }
   function sgEasyIn(M, C) {
-    const { ex, plan, top, step, noAdd, atCap, capW, topPts, lastR, lastS, basis, lbl, prevBest, tgtRir, early } = C;
-    if (step > 0 && !atCap && !noAdd && !noE1(ex) && topPts.length && topPts.every((p) => p.rir != null && p.rir >= tgtRir + 2 && p.r >= plan.repMin)) {
+    const {
+      ex,
+      plan,
+      top,
+      step,
+      noAdd,
+      atCap,
+      capW,
+      topPts,
+      planPts,
+      lastR,
+      lastS,
+      basis,
+      lbl,
+      prevBest,
+      tgtRir,
+      early
+    } = C;
+    if (step > 0 && !atCap && !noAdd && !noE1(ex) && !(ex.bw && !(bwRefLoadIn(M, ex) > 0)) && planPts.length && planPts.every((p) => p.rir != null && p.rir >= tgtRir + 2 && p.r >= plan.repMin)) {
       let est = null;
       for (const p of topPts) {
         const v = fitE(p.load, p.r, Math.min(p.rir, E1_MAX_RIR));
@@ -5428,7 +5670,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
           topLoad * jumpCap(ex, topLoad, early)
         ) - bwNow;
         let k = Math.floor((want - top) / step + 1e-6);
-        const easy5 = topPts.every((p) => p.rir >= 5);
+        const easy5 = planPts.every((p) => p.rir >= 5);
         if (k < 1 && easy5) k = 1;
         const onR = offGrid(M, ex, plan, top) != null;
         const rk = onR ? heavierLoadIn(M, ex, plan, top, want) ?? (easy5 ? top + step : null) : null;
@@ -5541,16 +5783,17 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     return null;
   }
   function sgNoStep(C) {
-    const { plan, top, step, noAdd, abW, atCap, topPts, lastR, lastS, basis, lbl, prevBest, tp } = C;
+    const { plan, top, step, noAdd, abW, atCap, noHelp, topPts, lastR, lastS, basis, lbl, prevBest, tp } = C;
     if (atCap || !(step > 0) || noAdd) {
       const where = atCap ? "the heaviest load available" : noAdd ? "your bodyweight" : "a fixed load (load step 0)";
+      const at = noHelp ? "with no help" : `at ${where}`, lead = noHelp ? "With no help left" : `That is ${where}`;
       const below = topPts.every((p) => p.r < +plan.repMin);
       const total = tp.reduce((a, p) => a + p.r, 0);
       const nT = tp.length;
       const over = overSets(nT, plan);
       const ext = +plan.repMax + Math.max(3, Math.round(+plan.repMax * 0.4));
       const maxed = topPts.every((p) => p.r >= ext);
-      const tip = maxed ? noAdd && !abW ? ` Every set reached ${ext}+ on bodyweight alone. Add a little load (a belt or a vest) by typing it, or make each rep harder: a 3 to 4 second lowering, a pause, or a harder version.` : ` Every set reached ${ext}+ at ${where}, so make each rep harder instead: lower for 3 to 4 seconds and pause at the stretch, go one arm or one leg at a time, or finish with a drop set. Add a note when you change it so the numbers stay comparable.` : below ? ` That is ${where}, so build the reps up to ${plan.repMin} or more.` : ` That is ${where}, so keep adding reps past ${plan.repMax}.`;
+      const tip = maxed ? noAdd && !abW ? ` Every set reached ${ext}+ on bodyweight alone. Add a little load (a belt or a vest) by typing it, or make each rep harder: a 3 to 4 second lowering, a pause, or a harder version.` : ` Every set reached ${ext}+ ${at}, so make each rep harder instead: lower for 3 to 4 seconds and pause at the stretch, go one arm or one leg at a time, or finish with a drop set. Add a note when you change it so the numbers stay comparable.` : below ? ` ${lead}, so build the reps up to ${plan.repMin} or more.` : ` ${lead}, so keep adding reps past ${plan.repMax}${noHelp ? "; the lift without the machine, with load added, comes after" : ""}.`;
       return {
         top,
         w: top,
@@ -5558,17 +5801,17 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
         lastR,
         basis,
         last: lastS,
-        target: `${total + 1}+ reps ${over} at ${lbl(top)}${atCap ? ", the heaviest available" : ""}`,
+        target: `${total + 1}+ reps ${over} at ${lbl(top)}${noHelp ? "" : atCap ? ", the heaviest available" : ""}`,
         tgt: { kind: "reps", w: top, total, n: nT, rs: tp.map((p) => p.r), prevBest },
-        easier: maxed ? `Past ${ext} reps at ${atCap ? "the heaviest load" : "this load"}: slow the lowering to 3 to 4 seconds with a pause at the stretch, go one side at a time, or add a drop set.` : null,
+        easier: maxed ? `Past ${ext} reps ${noHelp ? "with no help" : atCap ? "at the heaviest load" : "at this load"}: slow the lowering to 3 to 4 seconds with a pause at the stretch, go one side at a time, or add a drop set.` : null,
         capped: atCap
       };
     }
     return null;
   }
   function sgTopOfRangeIn(M, C) {
-    const { ex, plan, top, cap, capW, topPts, lastR, lastS, basis, lbl, prevBest, tgtRir, tp } = C;
-    if (topPts.every((p) => p.r >= plan.repMax)) {
+    const { ex, plan, top, cap, capW, topPts, planPts, lastR, lastS, basis, lbl, prevBest, tgtRir, tp } = C;
+    if (planPts.every((p) => p.r >= plan.repMax)) {
       const nw = capW(top + progStepIn(M, ex, plan, top + bwRefLoadIn(M, ex), top));
       if (ex.assist) {
         const aw = top < 0 ? Math.min(0, nw) : nw;
@@ -5588,7 +5831,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       let aim = +plan.repMin;
       const q = Math.min(tgtRir, E1_MAX_RIR);
       const bwT = bwRefLoadIn(M, ex);
-      if (!noE1(ex)) {
+      if (!noE1(ex) && !(ex.bw && !(bwT > 0))) {
         let est = null;
         for (const p of topPts) {
           const v = fitE(p.load, p.r, p.rq);
@@ -5664,19 +5907,22 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
   }
   function sgRepsIn(M, C) {
     const { ex, plan, stx, top, topPts, lastR, lastS, basis, lbl, prevBest, tp } = C;
-    const total = tp.reduce((a, p) => a + p.r, 0);
-    const nT = tp.length;
+    const hi = +plan.repMax;
+    const tc = tp.map((p) => ({ ...p, r: Math.min(p.r, hi) }));
+    const total = tc.reduce((a, p) => a + p.r, 0);
+    const nT = tc.length;
     const over = overSets(nT, plan);
     const floored = tp.some((p, i) => topPts[i] && topPts[i].r < p.r) ? ` (a set under ${plan.repMin} counts as ${plan.repMin})` : "";
+    const topped = tp.some((p) => p.r > hi) ? ` (a set past ${hi} counts as ${hi})` : "";
     return {
       top,
       w: top,
-      text: `${lastS} Beat ${total} reps ${over} at ${lbl(top)}${floored}. When every set at that load reaches ${plan.repMax}, ${ex.assist ? "take some help off" : "add load"}.`,
+      text: `${lastS} Beat ${total} reps ${over} at ${lbl(top)}${floored}${topped}. When every set at that load reaches ${plan.repMax}, ${ex.assist ? "take some help off" : "add load"}.`,
       lastR,
       basis,
       last: lastS,
       target: `${total + 1}+ reps ${over} at ${lbl(top)}`,
-      tgt: { kind: "reps", w: top, total, n: nT, rs: tp.map((p) => p.r), prevBest },
+      tgt: { kind: "reps", w: top, total, n: nT, rs: tc.map((p) => p.r), prevBest },
       easier: stx.easier ? easierTextIn(M, ex, stx.easier) : null
     };
   }
@@ -5788,6 +6034,21 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
         target: "",
         tgt: null,
         easier: null
+      };
+    const off = backDaysIn(M, ex.id, opts);
+    if (off > BACK_DAYS)
+      return {
+        prev: L0.prev,
+        prevOff: L0.prevOff,
+        w: top,
+        text: `${lastS} Back after ${Math.round(off / 7)} weeks: the same load, holds about 90% as long, stopping before shaking. Next time picks up from here.`,
+        lastR: lastR.map((r) => Math.max(1, Math.round(r * LIGHT_SHARE))),
+        basis,
+        last: lastS,
+        target: "",
+        tgt: null,
+        easier: null,
+        back: Math.round(off / 7)
       };
     const step = incOfIn(M, ex, plan, top);
     const cap = capOfIn(M, ex, plan, top);
@@ -5970,6 +6231,42 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     const k = Math.floor((to - from) / step + 1e-6);
     return k >= 1 ? from + k * step : null;
   }
+  var ODD_SESSION = 3;
+  var ODD_BEST = 2;
+  function oddLoadIn(M, b, si, date) {
+    const s = b.sets[si];
+    if (!s || s.warm || s.drop) return null;
+    const ex = EXIn(M, b.exId);
+    const w = effW(b, si);
+    if (ex.assist || ex.timed || w == null) return null;
+    const bw = bwLoadIn(M, ex, date);
+    const load = bw + w;
+    if (!(load > 0)) return null;
+    const say = (x) => `${loadLabelIn(M, ex, x)}${ex.bw ? "" : " " + UIn(M)}`;
+    let top = 0, topW = 0;
+    b.sets.forEach((x, i) => {
+      if (i !== si && x.done && isWork(x) && !x.drop && x.w != null && bw + x.w > top) {
+        top = bw + x.w;
+        topW = x.w;
+      }
+    });
+    if (top > 0 && load > top * ODD_SESSION + 1e-9)
+      return `${say(w)} is more than three times your heaviest set today, ${say(topW)}.`;
+    if (top > 0 && load * ODD_SESSION < top - 1e-9)
+      return `${say(w)} is under a third of your heaviest set today, ${say(topW)}.`;
+    let best = 0, bestW = 0;
+    for (const x of IDXIn(M).byEx[b.exId] || [])
+      if (x.date <= date) {
+        for (const p of x.pts)
+          if (bw + p.w > best) {
+            best = bw + p.w;
+            bestW = p.w;
+          }
+      }
+    if (best > 0 && load > Math.max(best, top) * ODD_BEST + 1e-9)
+      return `${say(w)} is more than twice the heaviest you have logged on this exercise, ${say(bestW)}.`;
+    return null;
+  }
 
   // src/app/live.ts
   var LIVE = {
@@ -6019,6 +6316,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
   var fmtW = live(fmtWIn);
   var loadLabel = live(loadLabelIn);
   var IDX = live(IDXIn);
+  var allTimeBests = live(allTimeBestsIn);
   var bwAt = live(bwAtIn);
   var bwLoad = live(bwLoadIn);
   var bwRef = live(bwRefIn);
@@ -6049,6 +6347,8 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
   var avgWeeks = live(avgWeeksIn);
   var firstFullWeek = live(firstFullWeekIn);
   var lastLighterWeek = live(lastLighterWeekIn);
+  var logBack = live(logBackIn);
+  var logStart = live(logStartIn);
   var muscleStatus = live(muscleStatusIn);
   var recentLighter = live(recentLighterIn);
   var regionBalance = live(regionBalanceIn);
@@ -6068,6 +6368,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
   var easierText = live(easierTextIn);
   var incOf = live(incOfIn);
   var heavierLoad = live(heavierLoadIn);
+  var oddLoad = live(oddLoadIn);
   var lighterLoad = live(lighterLoadIn);
   var progStep = live(progStepIn);
   var rackStep = live(rackStepIn);
@@ -6086,6 +6387,10 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     if (!isFinite(n)) return "";
     return effAt(rirScale(), n);
   }
+  function effIn(n) {
+    return rirScale() === "rpe" ? 10 - n : n;
+  }
+  var effName = () => rirScale() === "rpe" ? "RPE" : "RIR";
   var halfLbl = () => {
     const k = rirScale();
     return k === "rpe" ? "RPE 5 to 6.5" : k === "half" ? "RIR 3.5 to 5" : "RIR 4 to 5";
@@ -6164,6 +6469,8 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
    <p><b>Grey reps</b> are last time's reps for that set, at today's load, and one set under the bottom of the range among the others shows the bottom of the range. When today's target is a new load, last time's reps were at the old load, so they are the reps of the set above instead, or the bottom of the range. On a lighter day or in a deload, they are the bottom of the range.</p>
    <p><b>Grey loads</b> are the set above, or today's suggested load. To have loads typed in for you: Settings, Rest timer and logging, Fill in suggested loads.</p>
    <p><b>Auto-mark</b> (Settings): a set ticks itself when you leave its reps field.</p>
+   <p><b>A missed set</b>: type 0 reps and tick it (auto-mark ticks it too). It is kept and shown as missed, and counts toward no volume, PR, estimate, or target; the next set's grey numbers come from the last set you completed.</p>
+   <p><b>A number far off</b> asks before the set is logged, Log it or Fix it: reps over 30 and more than twice the top of your range or your most ever, whichever is more, or a load more than three times, or under a third of, the heaviest set you ticked today, or more than twice the heaviest you have logged on the exercise (conventions, to catch a slipped digit or the other unit).</p>
    <p><b>RIR</b>, reps in reserve: how many more reps you could have done. Tap a set's RIR box for 0 to 5 (Settings can switch it to half reps or RPE; RPE 8 is RIR 2). ${off ? "RIR is off in Settings, so every working set counts as hard." : "It is optional: a blank reads as your usual RIR on that lift once you have rated 3 of its sets in 12 weeks, and until then as hard."}</p>
    <p><b>RIR check</b>: once you have 3 sessions, one machine or cable exercise may ask for one set to failure, to see how far your RIR calls are off. Not now, or finishing without it, waits 3 weeks.</p>
    <p><b>Last</b>, beside each set, is what you did on that set last time at your working load, from the session named above the sets; a top single or lighter sets stay in that line. <b>W and D</b>: tap a set's number once for a warm-up (kept, never analysed), twice for a drop set (counts half a set of volume, never as a PR or target). <b>+ Drop</b> beside + Set adds one at about 75% once a set is done; warm-ups are in the exercise's ⋯ menu.</p>
@@ -6187,15 +6494,15 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
    <p><b>The working load</b> is the load you did the most sets with (the heavier on a tie), leaving out loads under 60% of your heaviest. A heavy top set, or two, before your back-off sets counts for bests and PRs, while targets, grey reps, and trends build on the back-off sets.</p>
    <p><b>Every set at the top of the range</b>: add load, in whole steps of the exercise's load step, about 2.5% of the load on compound lifts and 5% on isolation lifts, at least one step. Plan, Load jump % sets a different share for one exercise (0: one step every time). When one step is large for the load (it costs 1.5 reps or more, as 5 lb on a 35 lb dumbbell does), on a range 3 or more reps wide, you first build a few reps past the top at this load, up to a quarter of the top of the range more, until your estimate says the new load allows the bottom of the range; then the load goes up. Past a quarter, the load goes up anyway, with the reps your estimate allows there as the target. A fixed-rep plan (5 x 5, 3 x 3-5) goes up a step every time all its sets are done.</p>
    <p><b>Dumbbells and kettlebells</b> step by what your rack has: with no load step set on the exercise, the step fits every load you logged on it (12, 14, and 16 kg is a rack in 2 kg steps; 12.5 and 15, one in 2.5).</p>
-   <p><b>Otherwise</b>: the same load; beat last time's total reps over the same number of sets. One set under the range among the others counts as the bottom of the range, so one bad set does not set the next target. A bad day, every set under the range at a load you did in it the time before, asks for the bottom of the range in every set again.</p>
+   <p><b>Otherwise</b>: the same load; beat last time's total reps over the same number of sets, a set past the top of the range counting as the top. One set under the range among the others counts as the bottom of the range, so one bad set does not set the next target. A session clearly below your usual repeats the last target (One rule for every session, below); a second in a row is your usual, and then every set under the range at a load you did in it the time before asks for the bottom of the range in every set again.</p>
    <p><b>Well past the range</b> (every set 2 or more reps over the top, as after moving the range down): the load your estimated 1RM gives for the middle of the range, at most 10% more (15% on isolation lifts under ${kg ? "20 kg" : "about 45 lb"}), in whole steps.</p>
-   <p><b>Below the range</b> (every set 2 or more reps short, or short two sessions running at the same load, or four running even with the reps creeping up, or the first time in a range you have not trained, as after an import): down to what your estimate says fits the range, in whole steps. Not just after one step up while you are 3 or fewer reps short, and not while your reps at that load are rising. The rep target counts as many sets as the plan has.</p>
+   <p><b>Below the range</b> (every set 2 or more reps short, or short two sessions running at the same load, or four running even with the reps creeping up, or the first time in a range you have not trained, as after an import): down to what your estimate says fits the range, in whole steps. Not just after one step up while you are 3 or fewer reps short, and not while your reps at that load are rising. The rep target counts as many sets as the plan has. A single session clearly below your usual is not read this way: it repeats the last target, and a second in a row becomes your usual.</p>
    <p><b>Too easy</b> (every top set logged 2 or more RIR above the target): the same estimate sets a heavier load, at most 10% more (15% on isolation lifts under ${kg ? "20 kg" : "about 45 lb"}), and at least one step when every set was rated 5 or more in reserve, where the estimate is only a floor.</p>
    <p><b>The first 3 sessions</b> of a lift find its load: there the most these two can add is 25%, so a cautious first guess is put right in a session or two. For picking a load only, sets past 12 reps to failure are read with Epley up to 30, so a set of 25 still moves the load the right amount (never shown as a 1RM). A convention.</p>
    <p><b>The first session of a close variation</b> (a hammer curl after DB curls, a front squat after back squats) starts from the related lift's last full session in the last 120 days, when both use the same equipment, load, main muscle, and movement, with both arms or both legs at once. About 90% of its estimate (80% on a compound lift), for the middle of the range with one more rep in reserve, rounded down. Machines and cables start fresh, since two machines' numbers do not compare.</p>
    <p><b>At the heaviest load available</b> (set on the exercise), or with a load step of 0: more reps, then harder reps.</p>
    <p><b>Assisted machines</b>: less help is progress. <b>Timed holds</b>: add seconds, then load. <b>Bodyweight lifts never done with added load</b> (push-ups, pull-ups, a hanging leg raise): more reps, then harder reps or a little added load when you type it; the app never adds load you did not use.</p>
-   <p><b>Back after more than 4 weeks off a lift</b>: about 90% of its last working load, with 2 or more reps in reserve (a convention: strength holds for about 4 weeks without training and falls faster after, Bosquet 2013). That first session back is the lift's new start. The next target picks up from it; its trend and stall test start again from it too, never drawn across the break. A Lighter day or a deload as the first session back sets no target, so the session after it is still back.</p>
+   <p><b>Back after more than 4 weeks off a lift</b>: about 90% of its last working load, with 2 or more reps in reserve (a convention: strength holds for about 4 weeks without training and falls faster after, Bosquet 2013). That first session back is the lift's new start. The next target picks up from it; its trend and stall test start again from it too, never drawn across the break. A Lighter day or a deload as the first session back sets no target, so the session after it is still back. A timed hold comes back the same way, at its load, holding about 90% as long.</p>
    <p><b>Your gym</b> (Settings): the dumbbells, kettlebells, plates, and stack steps you have. Suggestions stay on them, and a weight you type for a dumbbell counts as the nearest one.</p>
    <p><b>One rule for every session.</b> A session sets the lift's next target only at its usual load and reps for its usual sets. Its usual is the middle of that session and the two before it in the range (not counting ones done lighter); its usual sets are never more than the plan asks. A set counts toward them when its load is within a tenth of the session's working load, or at the usual load (a convention): a last set tried a step up, or sets lowered after a hard first one, still count, and a back-off set a tenth or more lighter does not. Sets past the usual count are left out when a session is compared with its usual. With fewer sets, or reps clearly under the usual at no heavier load (more than 3% by the strength reading, a convention), the target repeats, and the session still counts for its trend and PRs; two such sessions in a row are the new usual, and the app follows. A heavier load than the two before is a step up, never short of the usual by its reps. A session done lighter sets no target and no trend. The same holds on a lighter day or in a deload: a lift done there at its usual load and reps is read as on any day, and its own sets were cut by the day, so they never become its usual.</p>
    <p><b>Last</b> is the most recent session of the lift in that day's rep range (the most recent of all when the range is new), labelled fewer sets, below usual, lighter, or deload when it was. When it did not set the target, the next target comes from the last full session, and the i beside the target names its date; grey reps come from that session too after one below usual or done lighter.</p>
@@ -6216,13 +6523,13 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
    <p><b>Planned sets</b> count the same way: a set planned at RIR 4 or more is not a planned hard set, and in a deload week the target is halved.</p>
    <p><b>More than ${SESSION_CAP} sets</b> for one muscle in one workout is flagged. That line is a convention from one study not yet peer reviewed (Remmert 2025), which found no extra growth past it.</p>
    <p><b>Three different numbers.</b> The <b>suggested</b> load and reps (grey in a session) are today's target, from your last full session by the rules above. The <b>estimated 1RM</b> (best estimate) is what one all-out rep would be. It comes from a set's load and reps to failure: Brzycki up to 10 reps, Epley at 11 to 12, and no estimate above 12 reps or above RIR 4. It is a gauge of strength that varies 2 to 8% day to day, never a load to try. It is shown for compound lifts only; isolation lifts show their best set.</p>
-   <p><b>Trends</b> read each session's working sets the same way, averaged, up to 20 reps to failure (so high-rep work has a trend too, never shown as a 1RM). RIR is used in a trend only when it is rated on 80% or more of the lift's sets; otherwise loads and reps alone, so tapping RIR on some days and not others cannot bend it. The 6 weeks are counted back from the lift's own last session, and a trend needs 3 sessions spread over 2 weeks or more; it says how many weeks it covers. A muscle's trend counts a lift once it has 4 sessions over 3 weeks or more, and says the weeks too. A trend shows how many sessions it rests on and its weekly rate with the range an 80% interval allows (about +1.5% a week, likely +1.2% to +1.8%). <b>Weight lifted</b> is load times reps; it falls when the load goes up and reps come down, so it is shown as a number, not as progress.</p>
+   <p><b>Trends</b> read each session's working sets the same way, averaged, up to 20 reps to failure (so high-rep work has a trend too, never shown as a 1RM). RIR is used in a trend only when it is rated on 80% or more of the lift's sets; otherwise loads and reps alone, so tapping RIR on some days and not others cannot bend it. The 6 weeks are counted back from the lift's own last session, and a trend needs 3 sessions spread over 2 weeks or more (and, on a bodyweight lift, a weigh-in, since it is read at your bodyweight); it says how many weeks it covers. A muscle's trend counts a lift once it has 4 sessions over 3 weeks or more, and says the weeks too. A trend shows how many sessions it rests on and its weekly rate with the range an 80% interval allows (about +1.5% a week, likely +1.2% to +1.8%). <b>Weight lifted</b> is load times reps; it falls when the load goes up and reps come down, so it is shown as a number, not as progress.</p>
    <p><b>A lift on Stats</b> says its change in what was lifted: the change in its estimated 1RM on a compound lift you load as a total (a barbell, a plate-loaded machine), the top set at each end on anything else. A number shows only when it points the same way as the trend. The percentages are behind its i. <b>Next session</b> is the target its next workout will show; there are no predictions of where a lift will be.</p>
    <p><b>Goals</b>: on Stats, Lifts, set a goal for a lift as a load for a number of reps (100 x 5). It is reached when a working set matches it, that load or more for those reps or more. Until then it shows how close your best estimate from the last 12 weeks is to what the goal takes done to failure, and, on a compound lift you load as a total, about how much load is left for those reps. It gives no date: your session targets are the steps toward it. On a bodyweight lift the load is the added load.</p>
    <p><b>PRs</b>: a <b>weight PR</b> is more weight than any earlier set of the lift (less help on an assisted one); a <b>best estimate</b> beats every earlier estimate of the lift; a <b>best for its reps</b> beats the earlier best in the same band of reps to failure (1 to 5, 6 to 10, 11 to 12); a <b>rep PR</b> is more reps at a load than ever before, counted only when the set is at least 90% as strong as your strongest before it (a convention: 40 x 10 after 95 x 5 is not a PR). A set that is more than one shows the first of these. A load in the other unit, after a change of units or gyms, is read as the earlier load it stands for when it is the nearest load over it on its own spacing (a convention: 155 lb after 70 kg, which is 154.3 lb, is not a weight PR; 157.5 lb is). PRs count on any day, a lighter day, a deload, and an exercise made lighter included, and are announced as you log the set. Only a PR with a new best estimate is announced and counted (on a lift with no estimate, or a bodyweight lift before any weigh-in, any of them); a heavier set or more reps without one is kept in the list and named in the recap as heaviest yet. Counting them all made each load step a PR. On a bodyweight lift, PRs, estimates, trends, and charts are all read at your latest weigh-in for every session, so progress is more reps or more added load, never a change on the scale. Weight lifted uses each day's weigh-in, the work actually done.</p>
-   <p><b>Moving</b>: up 3% or more with a trend clearly above zero. <b>Stalled</b>: flat or falling over the last 6 sessions (by the middle of the changes between every pair of them, so one good or bad day does not decide it) in each rep range you train it in, or 3 weeks if that covers more (at least 4 sessions); a lift on a heavy day and a light day is stalled only when it is stalled in both. With no PR in the last 3 of them, nor, in a session of that range done lighter since the third-last, a set stronger than any before it, the load no heavier than at the start of that stretch, and no more reps at that load than any session before it in the stretch, and only while you still train the lift and no injury it loads is flagged (the app holds its load then). Adding load and dropping reps for a while, or adding reps to later sets, as double progression does, is not a stall. A deload is suggested when 3 or more main lifts (compound lifts with an estimate) stall together, and not within 4 weeks of a lighter week (more than half its sessions done lighter, counted once it ends or from the second, or a deload begun mid-week, once its last two or more deload sessions were done lighter), a rest week, or a week with nothing trained in it, a week marked as a deload included; isolation and core lifts are listed but not counted for it.</p>
-   <p><b>Weekly averages</b> are over the weeks you trained of the last 4, from the week after your first (${FIRST_WEEK_REASON}). A lighter week (${LIGHTER_WEEK_WORDS}) or a rest week is swapped for an earlier one. A week with no training is left out rather than counted as zero, and when 2 or more of the 4 were missed the Coach says so first.</p>
-   <p><b>Consistency</b>: weeks with at least as many sessions as the routine you trained that week plans (one session, when Today starts with a blank session). A cycle that is not a week long plans the whole number of sessions under its rate: every other day is 3.5 a week, so 3, for the streak, adherence, and This week alike. Rest weeks are skipped.</p>
+   <p><b>Moving</b>: up 3% or more with a trend clearly above zero. <b>Falling</b>: down 3% or more with a trend clearly below zero, in each rep range you train it in; a lift on a heavy day and a light day falls only when it falls in both, and its line says which range is down. <b>Stalled</b>: flat or falling over the last 6 sessions (by the middle of the changes between every pair of them, so one good or bad day does not decide it) in each rep range you train it in, or 3 weeks if that covers more (at least 4 sessions); a lift on a heavy day and a light day is stalled only when it is stalled in both. With no PR in the last 3 of them, nor, in a session of that range done lighter since the third-last, a set stronger than any before it, the load no heavier than at the start of that stretch, and no more reps at that load than any session before it in the stretch, and only while you still train the lift and no injury it loads is flagged (the app holds its load then). Adding load and dropping reps for a while, or adding reps to later sets, as double progression does, is not a stall. A deload is suggested when 3 or more main lifts (compound lifts with an estimate) stall together, and not within 4 weeks of a lighter week (more than half its sessions done lighter, counted once it ends or from the second, or a deload begun mid-week, once its last two or more deload sessions were done lighter), a rest week, or a week with nothing trained in it, a week marked as a deload included; isolation and core lifts are listed but not counted for it.</p>
+   <p><b>Weekly averages</b> are over the weeks you trained of the last 4, from the week after your first, or after your first back from a break of more than 4 weeks (${FIRST_WEEK_REASON}); the weeks before such a break are not counted as missed. A lighter week (${LIGHTER_WEEK_WORDS}) or a rest week is swapped for an earlier one. A week with no training is left out rather than counted as zero, and when 2 or more of the 4 were missed the Coach says so first.</p>
+   <p><b>Consistency</b>: weeks with at least as many sessions as the routine you trained that week planned (one session, when Today starts with a blank session). Each session records what its routine planned then, so changing or deleting the routine later does not rescore its weeks; sessions from before that record began read the routine as it is now. A cycle that is not a week long plans the whole number of sessions under its rate: every other day is 3.5 a week, so 3, for the streak, adherence, and This week alike. Rest weeks are skipped.</p>
    <p><b>Bodyweight</b> trends use 7-day averages. <b>Waist to height</b>: under 0.5 healthy, 0.5 to 0.59 increased, 0.6 or more high (NICE 2022).</p>`
       ],
       [
@@ -6244,8 +6551,8 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
         "data",
         "Your data",
         `${where}
-   <p><b>Deleted</b> sessions, cardio, and routines wait in History, Recently deleted: the ${TRASH_MAX} most recent, for ${TRASH_DAYS} days, or until you delete them for good there. A ready-made routine removed unchanged is not kept, since New from a template adds it again. Undo in Settings covers deletes, resets, and imports from the last 7 days.</p>
-   <p><b>Import workouts</b> reads notes, a spreadsheet, or an export from another app; you check everything before it is saved. On a first run, the import also makes your routine. Its days come from the workouts' names (or from the lifts in them when the names are all alike) and keep each day's latest sets and rep range. Your weekly targets then fit that routine.</p>
+   <p><b>Deleted</b> sessions, cardio, and routines wait in History, Recently deleted: the ${TRASH_MAX} most recent, for ${TRASH_DAYS} days, or until you delete them for good there. A ready-made routine removed unchanged is not kept, since New from a template adds it again. Undo in Settings covers deletes, resets, and imports from the last 7 days; after Erase everything, the first page offers it.</p>
+   <p><b>Import workouts</b> reads notes, a spreadsheet, or an export from another app; you check everything before it is saved. On a first run, an import whose workouts repeat (most of them twice or more in its last 8 weeks) also makes your routine; otherwise you pick the closest ready-made one. Its days come from the workouts' names (or from the lifts in them when the names are all alike) and keep each day's latest sets and rep range. Your weekly targets then fit that routine.</p>
    ${window.IRONLOG_APP ? '<p><b>Updates</b>: when "New version ready" shows, tap Reload.</p>' : ""}
    ${report}`
       ]
@@ -6549,7 +6856,9 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
           }))
         }, KNOWN_SEX)).filter((b) => b.sets.length),
         // When the session started (r34): orders two sessions on one day. Absent on older ones, so their records hash as before.
-        t: Number.isFinite(+ss.t) && +ss.t > 0 ? Math.round(+ss.t) : void 0
+        t: Number.isFinite(+ss.t) && +ss.t > 0 ? Math.round(+ss.t) : void 0,
+        pw: typeof ss.pw === "number" && Number.isInteger(ss.pw) && ss.pw >= 1 && ss.pw <= 7 ? ss.pw : void 0
+        // pw (r55): the sessions a week its routine planned when saved (pwOf); absent unless recorded, so older records keep their hash.
       });
     }
     function normalize(s) {
@@ -7411,26 +7720,38 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       }
       const rids = Object.keys(remote);
       if (!rids.length) {
+        if (!Object.keys(cloud.meta).length && hasDemo(state)) {
+          stripDemo(state);
+          demoRestore();
+          invalidate();
+          saveNow();
+          render();
+          toast("Demo data cleared. It never goes into an account.");
+        }
         await cloudFlush();
         return;
       }
       const local = chunksOf(state);
       const first = !Object.keys(cloud.meta).length;
-      let parts = null, merged = false, draftIn = false;
+      let parts = null, merged = false, draftIn = false, keptDraft = false;
       const stat = { conflicts: 0 };
       const adoptedIds = /* @__PURE__ */ new Set();
       const leg = { bodyweights: [], measurements: [] };
       const legB = legacyBodyBase();
       if (first) {
         const rState = assemble(Object.fromEntries(rids.map((k) => [k, remote[k].data])));
-        if (!bootHadLocal || !realCount(state) && !state.bodyweights.some((b) => !b.demo) && !state.measurements.some((x) => !x.demo) && !state.draft && !(state.cardio || []).length) {
+        const mine = { ...state };
+        stripDemo(mine);
+        if (!realCount(mine) && !mine.bodyweights.length && !mine.measurements.length && !state.draft && !mine.cardio.length && !mine.routines.some((r) => !plainTemplate(r) && !routineEmpty(r)) && !mine.exercises.some((e) => e.custom)) {
           parts = Object.fromEntries(rids.map((k) => [k, remote[k].data]));
           rids.forEach((k) => adoptedIds.add(k));
         } else {
-          snapshot();
           merged = true;
-          const base = realCount(state) > realCount(rState) ? state : rState, other = base === state ? rState : state;
-          setState(normalize({ ...base, exercises: unionById(base.exercises, other.exercises), routines: unionById(base.routines, other.routines), sessions: unionById(state.sessions, rState.sessions), bodyweights: unionById(state.bodyweights, rState.bodyweights), measurements: unionById(state.measurements, rState.measurements), cardio: unionById(state.cardio, rState.cardio), trash: unionById(state.trash, rState.trash), draft: state.draft || rState.draft }));
+          const base = realCount(mine) > realCount(rState) ? mine : rState, other = base === mine ? rState : mine;
+          const aside = state.draft && rState.draft && rState.draft.id !== state.draft.id ? rState.draft : null;
+          const kept = aside ? draftSession(aside) : null;
+          keptDraft = !!kept && ![...mine.sessions, ...rState.sessions].some((x) => x.id === kept.id);
+          setState(normalize({ ...base, exercises: unionById(base.exercises, other.exercises), routines: unionById(base.routines, other.routines), sessions: unionById(mine.sessions, keptDraft ? [...rState.sessions, kept] : rState.sessions), bodyweights: unionById(mine.bodyweights, rState.bodyweights), measurements: unionById(mine.measurements, rState.measurements), cardio: unionById(mine.cardio, aside ? [...rState.cardio, ...draftCardio(aside)] : rState.cardio), trash: unionById(state.trash, rState.trash), draft: state.draft || rState.draft }));
           for (const id of rids) {
             cloud.meta[id] = { h: remote[id].h, at: remote[id].at, b: baseOf(id, remote[id].data) };
             cloud.editAt[id] = Date.now();
@@ -7487,7 +7808,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
         }
         if (!ui.modal) rerenderKeepScroll();
         else render();
-        if (merged) toast("Merged this device with your cloud copy", true);
+        if (merged) toast(keptDraft ? "Merged this device with your cloud copy. The workout in progress on your other device is saved in History." : "Merged this device with your cloud copy");
         conflictNote(stat);
         if (draftIn) draftNote(dr0);
       } else if (first) {
@@ -7541,15 +7862,17 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       }
     }
     const ACCT_LATER = KEY + ".acctLater";
-    function cloudStop() {
+    function cloudStop(forget) {
       clearTimeout(cloud.t);
       cloud.on = false;
       cloud.db = null;
       cloud.uid = null;
-      cloud.acct = null;
-      cloud.meta = {};
-      cloud.editAt = {};
-      cloud.last = null;
+      if (forget) {
+        cloud.acct = null;
+        cloud.meta = {};
+        cloud.editAt = {};
+        cloud.last = null;
+      }
       cloud.retry = 0;
       saveMeta();
       setCloud("local");
@@ -7758,7 +8081,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
           localStorage.removeItem(ACCT_LATER);
         } catch (e) {
         }
-        if (sheet()) closeModal();
+        if (sheet()) ACT.exBack();
         toast("Email confirmed. Signed in and syncing.");
         await cloudInit();
         acctRerender();
@@ -7799,7 +8122,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
           waitStop();
           const m = ui.modal;
           if (m && m.kind === "account" && m.mode === "wait") {
-            closeModal();
+            ACT.exBack();
             toast("Email confirmed. Signed in and syncing.");
           }
         }
@@ -7969,7 +8292,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       return ex.timed ? `${loadLabel(ex, +w || 0)} for ${r}s` : `${loadLabel(ex, +w || 0)}×${r}`;
     }
     function setStr(ex, x) {
-      return `${x.warm ? "(W) " : x.drop ? "(D) " : ""}${setShort(ex, x.w, x.r)}${!ex.timed && x.rir != null && x.rir !== "" ? rirScale() === "rpe" ? " @RPE " + effShow(x.rir) : " @" + effShow(x.rir) : ""}${x.cal ? " (RIR check)" : ""}`;
+      return `${x.warm ? "(W) " : x.drop ? "(D) " : ""}${setShort(ex, x.w, x.r)}${missedTag(x)}${!ex.timed && x.rir != null && x.rir !== "" ? rirScale() === "rpe" ? " @RPE " + effShow(x.rir) : " @" + effShow(x.rir) : ""}${x.cal ? " (RIR check)" : ""}`;
     }
     function loadHead(ex) {
       const m = loadMode(ex), u = U().toUpperCase();
@@ -8216,14 +8539,15 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       if (t.kind === "reps") {
         if (!at.length) return { text: heavyTxt || `Nothing logged at ${loadLabel(ex, t.w)} yet`, beat: heavyBeat };
         const cnt = t.n > 0 ? at.slice(0, t.n) : at;
-        const n = cnt.reduce((a, s) => a + +s.r, 0);
+        const hi = +(b.plan || {}).repMax, cap = hi > 0 && t.total < hi * (t.n > 0 ? t.n : cnt.length) ? hi : Infinity;
+        const n = cnt.reduce((a, s) => a + Math.min(+s.r, cap), 0);
         const sx = ex.timed ? "s" : "", u = ex.timed ? "s" : " reps";
-        const base2 = n > t.total ? `Beaten: ${n}${u} at that load, last time ${t.total}${sx}` : `${n}${sx} of ${t.total + 1}${u} so far at that load`;
-        return { text: heavyTxt ? `${base2}. ${heavyTxt}` : base2, beat: n > t.total || heavyBeat };
+        const fewer = t !== t0, base2 = fewer && n > t.total ? `${n}${u} over ${t.n} set${t.n === 1 ? "" : "s"}, last time ${t.total}${sx} over those. Fewer sets than usual: the target stays for next time` : n > t.total ? `Beaten: ${n}${u} at that load, last time ${t.total}${sx}` : `${n}${sx} of ${t.total + 1}${u} so far at that load`;
+        return { text: heavyTxt ? `${base2}. ${heavyTxt}` : base2, beat: !fewer && (n > t.total || heavyBeat) };
       }
-      const hit = done.filter((s) => (+s.w || 0) >= t.w - 1e-6 && +s.r >= t.repMin).length;
-      const planned = b.sets.filter((s) => !s.warm && !s.drop).length;
-      const base = `${hit} of ${planned} sets hit ${t.repMin}${ex.timed ? "s" : ""}+ at the new load`;
+      const rows = b.sets.filter((s) => !s.warm && !s.drop), planned = Math.min(rows.length, +(b.plan || {}).sets || rows.length);
+      const hit = rows.slice(0, planned).filter((s) => s.done && +s.r > 0 && (+s.w || 0) >= t.w - 1e-6 && +s.r >= t.repMin).length;
+      const base = `${hit} of ${planned} sets hit ${t.repMin}${ex.timed ? "s" : ""}+ at that load`;
       return { text: heavyTxt ? `${base}. ${heavyTxt}` : base, beat: planned > 0 && hit >= planned || heavyBeat };
     }
     function progressLine(b, bi) {
@@ -8317,7 +8641,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       }
       const ex = EX(b.exId);
       const p = b.plan || {};
-      const off = !adjOn() || b.adjOff || !s.done || s.warm || s.drop || !(+s.r > 0) || s.w == null || !rest || d.past || d.editingId || d.deload || d.light || b.light || ex.timed || ex.assist || noE1(ex) || exInjury(ex) || !(+p.repMin > 0) || !(incOf(ex, p, s.w) > 0) || bwNoLoad(ex, b);
+      const off = !adjOn() || b.adjOff || !s.done || s.warm || s.drop || !(+s.r > 0) || s.w == null || !rest || d.past || d.editingId || d.deload || d.light || b.light || ex.timed || ex.assist || noE1(ex) || exInjury(ex) || !(+p.repMin > 0) || !(incOf(ex, p, s.w) > 0) || bwNoLoad(ex, b) || ex.bw && !(bwRefLoad(ex) > 0);
       if (!off) {
         const tgt = +p.rir || 0, lo = +p.repMin, hi = +p.repMax, r = +s.r;
         const q = s.rir == null || s.rir === "" ? null : +s.rir;
@@ -8628,6 +8952,11 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     }
     window.addEventListener("popstate", () => {
       if (ui.modal) {
+        if (ui.modal.dirty) {
+          modalPush();
+          toast(DIRTY_SAID);
+          return;
+        }
         closeModal();
         return;
       }
@@ -8830,27 +9159,39 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       for (const x of IDX().byEx[b.exId] || []) for (const p of x.pts) best = Math.max(best, p.r);
       return r > 2 * Math.max(+b.plan.repMax || 0, best);
     }
-    function setDone(bi, si, val) {
+    function setDone(bi, si, val, again) {
       const b = state.draft.ex[bi];
       const s = b && b.sets[si];
       if (!s) return;
-      if (val && oddReps(b, s) && oddOk !== `${bi}:${si}:${s.r}`) {
+      const okKey = `${bi}:${si}:${s.r}:${effW(b, si)}`;
+      const far = val && oddOk !== okKey && !oddReps(b, s) ? oddLoad(b, si, state.draft.date) : null;
+      if (val && oddOk !== okKey && (far || oddReps(b, s))) {
         const ex = EX(b.exId);
-        confirmBox(`${setShort(ex, effW(b, si), s.r)}${ex.bw ? "" : " " + U()}?`, `${s.r} reps is far past your ${rangeWords(b.plan)} and anything logged on this exercise. Log it as typed, or go back and fix it.`, "Log it", () => {
-          oddOk = `${bi}:${si}:${s.r}`;
-          setDone(bi, si, true);
+        const fix = far ? "w" : "r";
+        confirmBox(`${setShort(ex, effW(b, si), s.r)}${ex.bw ? "" : " " + U()}?`, `${far || `${s.r} ${ex.timed ? "seconds" : "reps"} is far past your ${rangeWords(b.plan)} and anything logged on this exercise.`} Log it as typed, or go back and fix it.`, "Log it", () => {
+          oddOk = okKey;
+          setDone(bi, si, true, again);
           saveNow();
           rerenderKeepScroll();
-        });
+        }, false, { label: "Fix it", only: true, fn: () => {
+          if (again) ui.refix = { b: blkRef(bi), s: si };
+          const f = document.querySelector(`.sg input[data-f="${fix}"][data-b="${bi}"][data-s="${si}"]`);
+          if (f) {
+            f.focus();
+            if (f.select) f.select();
+          }
+        } });
         return;
       }
       if (val) settleLoad(b, si);
       s.done = val;
+      if (val && isMissed(s) && !s.warm && !s.drop) toast(MISSED_SAID);
       afterSet(bi, si);
       const btn = document.querySelector(`[data-act="sDone"][data-b="${bi}"][data-s="${si}"]`);
       if (btn) {
         btn.classList.toggle("on", val);
         btn.setAttribute("aria-pressed", String(val));
+        btn.setAttribute("aria-label", `Set ${si + 1} ${val && isMissed(s) ? "missed" : "done"}`);
         const row = btn.closest(".sg");
         if (row) row.classList.toggle("done", val);
       }
@@ -8862,7 +9203,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
         const w = $("#doneWord");
         if (w) w.textContent = n === 1 ? "set" : "sets";
       }
-      let autoRest = val && !s.warm && !state.draft.editingId && !state.draft.past && +b.plan.rest > 0 && state.settings.timerMode === "auto";
+      let autoRest = val && !again && !s.warm && !state.draft.editingId && !state.draft.past && +b.plan.rest > 0 && state.settings.timerMode === "auto";
       if (autoRest && b.plan.ss) {
         const grp = state.draft.ex.filter((x) => x.plan && x.plan.ss === b.plan.ss);
         const k = grp.indexOf(b);
@@ -9006,6 +9347,10 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     }
     let rebuilding = false;
     function render() {
+      if (!state.draft) {
+        if (!$("#timer").hidden) stopTimer();
+        wakeOff();
+      }
       try {
         renderInner();
       } catch (e) {
@@ -9077,7 +9422,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       return at.length ? el.tagName.toLowerCase() + at.join("") : null;
     }
     function rerenderKeepScroll() {
-      const y = window.scrollY, el = document.activeElement, key = focusKey(el);
+      const y = window.scrollY, el = document.activeElement, key = focusKey(el), txt = el && el.tagName === "INPUT" && el.type === "text" ? el.value : null;
       const ss = el && typeof el.selectionStart === "number" ? el.selectionStart : null;
       const se = el && typeof el.selectionEnd === "number" ? el.selectionEnd : null;
       render();
@@ -9091,6 +9436,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       if (!next || typeof next.focus !== "function") return;
       try {
         next.focus({ preventScroll: true });
+        if (txt != null && next.tagName === "INPUT" && next.value !== txt && numIn(next.value) === numIn(txt)) next.value = txt;
         if (ss != null && typeof next.setSelectionRange === "function") next.setSelectionRange(ss, se);
       } catch (e) {
       }
@@ -9449,7 +9795,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
   <button class="btn primary block" data-act="acctOpen" data-mode="signup">Create account</button>
   <button class="btn block" data-act="acctOpen" data-mode="signin">I have an account</button></div>
   ${ENV === "preview" ? '<button class="btn block" data-act="previewCopy">Copy my log in</button>' : ""}
-  <button class="linkbtn ob-later" data-act="obAcctLater">Continue without an account</button></div>`;
+  <button class="linkbtn ob-later" data-act="obAcctLater">Continue without an account</button>${undoStack.length ? '<button class="linkbtn ob-skip" data-act="undo">Undo last delete or reset</button>' : ""}</div>`;
       const imp = `<button class="ob-opt" data-act="impOpen"><b>Import my workouts</b><span>Notes, a spreadsheet, another app, a backup</span></button>`;
       return `<div class="ob welcome" id="obPage" data-step="start">
   ${acctStep && !acct.user ? '<button class="linkbtn ob-back" data-act="obAcctBack">‹ Account</button>' : ""}
@@ -9467,7 +9813,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
   <button class="ob-opt" data-act="obFree"><b>Log a workout now</b><span>Add exercises as you go</span></button>
   <button class="ob-opt" data-act="obOwn"><b>Build my own routine</b><span>Your days, your exercises</span></button>
   ${imp}${ENV === "preview" ? '<button class="ob-opt" data-act="previewCopy"><b>Copy my log in</b><span>Try this test version on your own log</span></button>' : ""}</div>
-  <button class="linkbtn ob-skip" data-act="demoLoad">Look around with sample data first</button>
+  <button class="linkbtn ob-skip" data-act="demoLoad">Look around with sample data first</button>${undoStack.length ? '<button class="linkbtn ob-skip" data-act="undo">Undo last delete or reset</button>' : ""}
   <p class="small muted" id="obSafety" style="margin:10px 0 0;text-align:center"><span class="hastip" data-tip="${esc(SAFETY_TXT)}">Suggestions are estimates, not advice.</span></p></div>`;
     }
     function welcomeCard() {
@@ -9572,7 +9918,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       const more = [];
       const sg = (v) => (v >= 0 ? "+" : "") + r1(v) + "%";
       const ns = `${st.wN} session${st.wN === 1 ? "" : "s"}`;
-      const ow = `over ${st.spanW || 6} weeks`;
+      const ow = `over ${st.spanW || 6} weeks${st.rrIn ? ` in the ${repSpan(st.rrIn[0], st.rrIn[1])} range` : ""}`;
       if (st.pct != null) more.push(`Change ${sg(st.pct)} ${ow}.`);
       if (st.slope != null) more.push(st.pLo != null && st.pHi - st.pLo >= 0.1 ? `About ${sg(st.slope)} a week (likely ${sg(st.pLo)} to ${sg(st.pHi)}), from ${ns}.` : `About ${sg(st.slope)} a week, from ${ns}.`);
       if (!st.useAdj) more.push("Read from loads and reps; RIR is left out of the trend until it is rated on most sets.");
@@ -9581,10 +9927,14 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       if (st.stalled) {
         parts.push(atTopR ? "Stalled at the top of the range: due a step up. The session's target says how." : `Stalled ${stallWords(exId)}. Try another rep range or a variation.`);
         more.push(STALL_WHY);
-      } else if (st.pct == null) parts.push("A trend needs 3 sessions spread over 2 weeks.");
+      } else if (st.pct == null) parts.push(ex.bw && !(bwRef() > 0) ? "A trend needs a weigh-in: a bodyweight lift is read at your bodyweight." : "A trend needs 3 sessions spread over 2 weeks.");
       else if (st.moving) parts.push(`${liftChange(exId, "Up", ow)}.`);
       else if (st.falling) parts.push(`${liftChange(exId, "Down", ow)}. Look at recovery before adding work.`);
-      else if (st.pLo != null && (st.pLo > 0 || st.pHi < 0)) {
+      else if (st.holdRR.length || st.quietRR.length) {
+        const rs = (a) => `the ${andList(a.map((r) => repSpan(r[0], r[1])))} range${a.length > 1 ? "s" : ""}`;
+        parts.push(`${liftChange(exId, "Down", ow)}${st.holdRR.length ? `; not in ${rs(st.holdRR)}` : ""}${st.quietRR.length ? `; too few sessions in ${rs(st.quietRR)} to tell` : ""}.`);
+        more.push(FALL_WHY);
+      } else if (st.pLo != null && (st.pLo > 0 || st.pHi < 0)) {
         parts.push(st.pct > 0 === st.pLo > 0 ? `${liftChange(exId, st.pLo > 0 ? "Slowly up" : "Slowly down", ow)}.` : `Slowly ${st.pLo > 0 ? "up" : "down"} ${ow}.`);
         more.push(`Under the 3% that counts as ${st.pLo > 0 ? "moving" : "falling"}.`);
       } else if (st.loadUp) {
@@ -9649,7 +9999,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       let b = null;
       for (const x of IDX().byEx[exId] || []) for (const p of x.pts) {
         const v = trendE(p.load, p.r, 0) || p.load;
-        if (!b || v > b.v + 1e-9) b = { v, w: p.w, r: p.r, date: x.date };
+        if (!b || v > b.v + 1e-9 || v > b.v - 1e-9 && p.r > b.r) b = { v, w: p.w, r: p.r, date: x.date };
       }
       return b;
     }
@@ -10062,11 +10412,11 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       const msub = (() => {
         if (!avg) {
           if (!state.sessions.length) return "none logged yet";
-          const n = MK.filter((m) => !TRACK_ONLY.has(m) && (st[m].st === "in" || st[m].st === "over")).length;
+          const n = MK.filter((m) => !TRACK_ONLY.has(m) && metSt(st[m])).length;
           return `${n} of ${N} on target so far`;
         }
         const sa = muscleStatus(avg);
-        const inA = MK.filter((m) => !TRACK_ONLY.has(m) && (sa[m].st === "in" || sa[m].st === "over")).length;
+        const inA = MK.filter((m) => !TRACK_ONLY.has(m) && metSt(sa[m])).length;
         return `${inA} of ${N} on target`;
       })();
       const v3 = mapView() === "3d";
@@ -10614,7 +10964,8 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       const weekly = R.schedule === "weekly";
       const cByDate = {};
       for (const c of state.cardio) (cByDate[c.date] = cByDate[c.date] || []).push(c);
-      const plan = weekPlan(R);
+      const rw = isRestWeek(cur);
+      const plan = rw ? {} : weekPlan(R);
       let h = "";
       const hasLog = state.sessions.length > 0;
       for (let i = 0; i < 7; i++) {
@@ -10626,7 +10977,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
         const live2 = !!state.draft && !state.draft.editingId && d === state.draft.date;
         const cls = ["w", trained ? "on" : "", !trained && cd.length ? "cardio" : "", !trained && !cd.length && isPlan && d >= t ? "plan" : "", !trained && weekly && isPlan && d < t ? "miss" : "", !trained && !cd.length && isRest && d >= t ? "rest" : "", d === t ? "today" : "", live2 ? "live" : ""].filter(Boolean).join(" ");
         const name = trained ? ss[0].dayName + (ss.length > 1 ? ` +${ss.length - 1}` : "") : cd.length ? "Cardio" : p && d >= t ? isRest ? "Rest" : pd.name : weekly && isPlan && d < t ? pd.name : "";
-        const what = trained ? `${ss.map((x) => x.dayName).join(", ")}, logged` : live2 ? "session in progress" : isPlan ? d < t ? weekly ? `${pd.name}, missed` : "nothing logged" : `${pd.name}, planned` : isRest && d >= t ? "rest day" : "nothing logged";
+        const what = trained ? `${ss.map((x) => x.dayName).join(", ")}, logged` : live2 ? "session in progress" : isPlan ? d < t ? weekly ? `${pd.name}, missed` : "nothing logged" : `${pd.name}, planned` : isRest && d >= t ? "rest day" : rw ? "rest week" : "nothing logged";
         const label = `${DAYS[i]} ${fmtDate(d)}: ${what}${cd.length ? `, cardio ${cd.reduce((a, c) => a + c.min, 0)} min` : ""}`;
         const inner = `<span class="wd">${WD2[i]}</span><span class="dn">${+d.slice(8)}</span><span class="nm">${name ? esc(name) : "&nbsp;"}</span>`;
         if (live2 && d < t) h += `<button type="button" class="${cls}" data-act="wkGo" data-date="${d}" data-tip="${esc(label)}" aria-label="${esc(label)}. Open the session">${inner}</button>`;
@@ -10687,7 +11038,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
   ${helpText("wk", "Each set counts once; a set at RIR 4 or more is not hard and does not count. Muscle targets are on the Muscle map and in Stats.")}`;
       if (w.rest) return `${tog}<div class="hrow" style="margin:5px 0 0"><p class="small muted" style="margin:0" id="wkSets">Rest week. ${w.got ? `${r1(w.got)} hard sets logged.` : "Nothing planned."}</p>${helpBtn("wk")}</div>
   ${w.cardioMin ? `<p class="small" style="margin:5px 0 0">Cardio and mobility: ${w.cardioMin} min in ${w.cardioN} entr${w.cardioN === 1 ? "y" : "ies"}</p>` : ""}${liftedLine()}
-  ${helpText("wk", "A rest week you marked in Settings. It does not count as missed: your averages, streak, and adherence skip it.")}`;
+  ${helpText("wk", "A rest week you marked under More options on Today. It does not count as missed: your averages, streak, and adherence skip it.")}`;
       return `${tog}${w.weekly ? "" : cycleStrip(w.R)}
   <div class="band" data-tip="${noLog() ? `${w.tgt} hard sets planned` : `${w.got} hard sets logged of ${w.tgt} planned`}"><div class="fill prog" style="width:${w.pct}%"></div></div>
   ${w.cardioMin ? `<p class="small" style="margin:5px 0 0">Cardio and mobility: ${w.cardioMin} min in ${w.cardioN} entr${w.cardioN === 1 ? "y" : "ies"}</p>` : ""}
@@ -10722,10 +11073,10 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     function liftTrend(exId) {
       const ex = EX(exId);
       const st = IDX().exStats[exId];
-      const exps = (IDX().byEx[exId] || []).filter((x) => x.tv != null && !lighter(x)).slice(-3);
+      const exps = (IDX().byEx[exId] || []).filter((x) => x.tv != null && !lighter(x) && (!st || sameRR(x.rr, st.rr))).slice(-3);
       if (exps.length < 2) return "";
-      const ow = st && st.spanW ? ` over ${st.spanW} weeks` : "";
-      const dir = st && st.fresh && st.pct != null ? st.moving ? `up${ow}` : st.falling ? `down${ow}` : st.pLo != null && st.pLo > 0 ? `slowly up${ow}` : st.pHi != null && st.pHi < 0 ? `slowly down${ow}` : `no clear change over ${st.spanW || 2} weeks` : "";
+      const ow = st && st.spanW ? ` over ${st.spanW} weeks${st.rrIn ? ` in the ${repSpan(st.rrIn[0], st.rrIn[1])} range` : ""}` : "";
+      const dir = st && st.fresh && st.pct != null ? st.moving ? `up${ow}` : st.falling ? `down${ow}` : st.holdRR && (st.holdRR.length || st.quietRR.length) ? `down${ow}` : st.pLo != null && st.pLo > 0 ? `slowly up${ow}` : st.pHi != null && st.pHi < 0 ? `slowly down${ow}` : `no clear change over ${st.spanW || 2} weeks` : "";
       if (isCompound(ex) && exps.every((x) => x.best != null)) {
         const v = exps.map((x) => fmtE(x.best));
         const d2 = dir;
@@ -10858,7 +11209,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       const bi = blkIdx(p.b);
       if (bi < 0) return;
       const s = state.draft.ex[bi].sets[p.s];
-      if (!s || s.done || !(+s.r > 0)) return;
+      if (!s || s.done || !(+s.r > 0 || isMissed(s))) return;
       lastAuto = { b: blkRef(bi), s: p.s, t: Date.now() };
       setDone(bi, p.s, true);
     }
@@ -10922,14 +11273,14 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
         if (!d.editingId && blockDone(b) && !blkIsOpen(bi, b)) {
           const ws = b.sets.filter((x) => !x.warm);
           const prs = ws.filter((x) => livePR(b.exId, x, d.date)).length;
-          h += `<section class="block folded" id="blk-${bi}" data-bi="${bi}">${bgrip(bi, ex.name)}<button class="bfold" data-act="bOpen" data-b="${bi}" aria-expanded="false" aria-label="${esc(ex.name)}, done. Open to edit"><span class="bf-ck" aria-hidden="true">✓</span><span class="bf-t"><b>${esc(ex.name)}</b><span>${esc(ws.map((x) => setShort(ex, x.w, x.r)).join(", "))}</span></span>${prs ? `<span class="bf-pr">PR</span>` : ""}<span class="chev" aria-hidden="true"></span></button></section>`;
+          h += `<section class="block folded" id="blk-${bi}" data-bi="${bi}">${bgrip(bi, ex.name)}<button class="bfold" data-act="bOpen" data-b="${bi}" aria-expanded="false" aria-label="${esc(ex.name)}, done. Open to edit"><span class="bf-ck" aria-hidden="true">✓</span><span class="bf-t"><b>${esc(ex.name)}</b><span>${esc(ws.map((x) => setShort(ex, x.w, x.r) + missedTag(x)).join(", "))}</span></span>${prs ? `<span class="bf-pr">PR</span>` : ""}<span class="chev" aria-hidden="true"></span></button></section>`;
           return;
         }
         const partner = ss ? d.ex.filter((x) => x !== b && x.plan.ss === p.ss).map((x) => exName(x.exId)).join(" + ") : "";
-        h += `<section class="block${ss ? " ss" : ""}" id="blk-${bi}" data-bi="${bi}"><div class="bh">${bgrip(bi, ex.name)}<div class="bh-m"><h3 ${ex.note ? `aria-labelledby="bhn-${bi}"` : ""}><span id="bhn-${bi}">${esc(ex.name)}</span>${ex.note ? ` ${tipi(ex.note, "About " + ex.name)}` : ""}</h3><p class="small muted">${esc(ML[ex.primary])} · ${b.sets.filter((x) => !x.warm && !x.drop).length || p.sets}×${repSpan(p.repMin, p.repMax, "-")}${ex.timed ? "s" : ""}${ex.perSide ? "/side" : ""}${nr ? "" : ` @${effTgt(p.rir)}`} · ${p.rest}s${ss ? ` · <span class="tag blue">Superset ${ss}</span>` : ""}${b.inj ? ` · <span class="tag red">Injury: ${injLabel(b.inj)}</span>` : ""}</p>${lmChips(ex)}</div>
+        h += `<section class="block${ss ? " ss" : ""}" id="blk-${bi}" data-bi="${bi}"><div class="bh">${bgrip(bi, ex.name)}<div class="bh-m"><h3 ${ex.note ? `aria-labelledby="bhn-${bi}"` : ""}><span id="bhn-${bi}">${esc(ex.name)}</span>${ex.note ? ` ${tipi(ex.note, "About " + ex.name)}` : ""}</h3><p class="small muted">${esc(ML[ex.primary])} · ${b.sets.filter((x) => !x.warm && !x.drop).length || p.sets}×${repSpan(p.repMin, p.repMax, "-")}${ex.timed ? "s" : ""}${ex.perSide ? "/side" : ""}${nr ? "" : ` @${b.inj || (d.light || d.deload || b.light) && b.last ? effLeastShort(rirScale(), LIGHT_RIR) : effTgt(p.rir)}`} · ${p.rest}s${ss ? ` · <span class="tag blue">Superset ${ss}</span>` : ""}${b.inj ? ` · <span class="tag red">Injury: ${injLabel(b.inj)}</span>` : ""}</p>${lmChips(ex)}</div>
       <div class="bh-acts">${!d.editingId && blockDone(b) ? `<button class="ib" aria-label="Fold ${esc(ex.name)}" data-act="bFold" data-b="${bi}">▴</button>` : ""}<button class="ib" aria-label="Exercise options" data-act="bMenu" data-b="${bi}">⋯</button></div></div>
       ${b.target ? `<p class="hint"><b>Today: ${esc(targetText(b))}</b>${whyTarget(b) ? ` ${tipi(whyTarget(b), "Why this target")}` : ""}<span class="tp muted" style="display:block">${esc(lastHead(b, dupB))}</span>${(() => {
-          const bl = bestLine(b.exId);
+          const bl = bestLine(b.exId, d.past ? d.date : "");
           return bl ? `<span class="tp muted" style="display:block">${esc(bl)}</span>` : "";
         })()}${b.easier ? `<span class="tp ez">${esc(b.easier)}</span>` : ""}${progressLine(b, bi)}</p>` : `<p class="hint">${esc(hintOnce(b.hint || "", hintSeen))}</p>`}${bi === calIdx ? `<p class="small caldue">Due for an RIR check: take one set here to failure. <button class="linkbtn tall" data-act="bCal" data-b="${bi}">Calibration set</button> <button class="linkbtn tall" data-act="calSnooze">Not now</button></p>` : ""}
       ${ss && partner ? `<p class="small muted" style="margin:2px 0 0">Superset with ${esc(partner)}; rest after the pair.</p>` : ""}
@@ -10949,7 +11300,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
           })()}">
         <input type="text" inputmode="numeric" enterkeyhint="next" aria-label="${esc(ex.name)}, set ${si + 1} ${ex.timed ? "seconds" : "reps"}${ex.perSide ? " per side" : ""}" data-f="r" data-b="${bi}" data-s="${si}" value="${s.r == null ? "" : s.r}" placeholder="${ph}">
         ${nr ? "" : rirSelect(s.rir, bi, si, p.rir)}
-        <button class="cbtn ${s.done ? "on" : ""}" aria-label="Set ${si + 1} done" aria-pressed="${s.done ? "true" : "false"}" data-act="sDone" data-b="${bi}" data-s="${si}">✓</button></div>`;
+        <button class="cbtn ${s.done ? "on" : ""}" aria-label="Set ${si + 1} ${s.done && isMissed(s) ? "missed" : "done"}" aria-pressed="${s.done ? "true" : "false"}" data-act="sDone" data-b="${bi}" data-s="${si}">✓</button></div>`;
         });
         h += adjLine(b, bi);
         if (platesMode(ex) !== "none") h += `<p class="small muted" id="pl-${bi}" style="margin:6px 0 0">${esc(plateLine(b))}</p>`;
@@ -11022,7 +11373,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       if (ui.bTarget >= R.days.length) ui.bTarget = 0;
       const totSets = R.days.reduce((a, d) => a + (d.rest ? 0 : daySets(d)), 0);
       const weekly = R.schedule === "weekly";
-      let h = pageHead(isActive ? "Active routine" : "Not active", `Plan`, trainDaysOf(R) ? `<b>${esc(R.name)}</b> · ${trainDaysOf(R)} training days${weekly ? " a week" : ` in a ${R.days.length}-day cycle`} · ${weekly ? totSets : Math.round(totSets * weekFactor(R))} planned sets a week` : `<b>${esc(R.name)}</b> · ${weekly ? "fixed weekdays" : `${R.days.length}-day cycle`} · no exercises yet`, helpBtn("plan")) + helpText("plan", 'Drag the ⠿ handle to reorder or move exercises between days; the arrows and "Move to" do the same. Tap an exercise to edit sets, reps, RIR, rest, and load increment, or to superset it with the next exercise. The library button manages every exercise, including your own. In a numbered cycle, drag a day by the ⠿ beside its number to reorder days (or focus the ⠿ and use the arrow keys); they renumber from their new position. On every tab, the ⠿ beside a section title moves that section, and the order is remembered.');
+      let h = pageHead(isActive ? "Active routine" : "Not active", `Plan`, trainDaysOf(R) ? `<b>${esc(R.name)}</b> · ${trainDaysOf(R)} training days${weekly ? " a week" : ` in a ${R.days.length}-day cycle`} · ${Math.round(totSets * dayShare(R))} planned sets a week` : `<b>${esc(R.name)}</b> · ${weekly ? "fixed weekdays" : `${R.days.length}-day cycle`} · no exercises yet`, helpBtn("plan")) + helpText("plan", 'Drag the ⠿ handle to reorder or move exercises between days; the arrows and "Move to" do the same. Tap an exercise to edit sets, reps, RIR, rest, and load increment, or to superset it with the next exercise. The library button manages every exercise, including your own. In a numbered cycle, drag a day by the ⠿ beside its number to reorder days (or focus the ⠿ and use the arrow keys); they renumber from their new position. On every tab, the ⠿ beside a section title moves that section, and the order is remembered.');
       h += `<button type="button" class="libbtn" data-act="planLib"><span class="lb-i" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3" y="10" width="3" height="4" rx="1"/><rect x="6" y="7" width="3" height="10" rx="1.2"/><rect x="15" y="7" width="3" height="10" rx="1.2"/><rect x="18" y="10" width="3" height="4" rx="1"/><rect x="9" y="11" width="6" height="2"/></svg></span><span class="lb-t"><b>Exercise library</b></span><span class="lb-c" aria-hidden="true">›</span></button>`;
       h += sec({ sk: "program:routine", key: "routine", title: "Routine", sub: esc(R.name), body: `<div class="stack">
     <label class="field">Routine<select data-bind="bRoutine">${state.routines.map((r) => `<option value="${r.id}" ${r.id === R.id ? "selected" : ""}>${esc(r.name)}${r.id === state.activeRoutineId ? " (active)" : ""}${r.days.every((d) => !d.items.length) ? " (empty)" : ""}</option>`).join("")}</select></label>
@@ -11039,7 +11390,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       h += sec({ sk: "program:schedule", key: "schedule", title: "Schedule", sub: weekly ? "Fixed weekdays" : "Numbered cycle", body: `<div class="stack"><label class="field">Schedule<select data-bind="rSchedule">
     <option value="cycle" ${!weekly ? "selected" : ""}>Numbered cycle: Day 1, 2, 3… in order</option>
     <option value="weekly" ${weekly ? "selected" : ""}>Fixed weekdays: Monday to Sunday</option></select></label>
-    <p class="small muted hastip" style="margin:0" data-tip="${esc(weekly ? "Each day is pinned to a weekday and Today opens on the calendar day." : `The cycle runs in order whatever the calendar says. Today opens on the day after your last session, so a missed workout waits instead of being skipped. Weekly numbers count each cycle day, rest days included, as one calendar day. 1 to ${MAX_DAYS} days.`)}">How this works</p></div>` });
+    <p class="small muted hastip" style="margin:0" data-tip="${esc(weekly ? "Each day is pinned to a weekday and Today opens on the calendar day." : `The cycle runs in order whatever the calendar says. Today opens on the day after your last session, so a missed workout waits instead of being skipped. A week plans the whole sessions the cycle brings round in 7 days, ${plannedPerWeek(R)} here. 1 to ${MAX_DAYS} days.`)}">How this works</p></div>` });
       let db = `${!weekly && R.days.length !== 7 ? `<p class="muted small" style="margin:0 0 4px">${totSets} sets a ${R.days.length}-day cycle ${tipi("Drag the ⠿ beside a day number to reorder days; they renumber from their new position.", "About days")}</p>` : ""}<div id="dayList">`;
       const dnd = !!(window.__libs && window.__libs.sortable);
       const focus = dayFocusId(R);
@@ -11057,7 +11408,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       const pv = plannedSets(R);
       const bands = state.settings.bands;
       const pUnder = MK.filter((m) => !TRACK_ONLY.has(m) && belowMin(pv[m], bands[m][0])).length;
-      h += sec({ sk: "program:pvol", key: "pvol", title: "Weekly volume", sub: pUnder ? `<span class="pill yellow">${pUnder} under target</span>` : '<span class="pill green">all on target</span>', help: "pvol", helpBody: `Hard sets per muscle this routine plans for a week${weekly ? "" : `, scaled from a ${R.days.length}-day cycle to 7 days`}. Direct work counts 1 set, secondary involvement counts 0.5. The shaded zone is your weekly target (editable in Settings).`, body: volumeRows(pv) + planEvidenceNote(pv) });
+      h += sec({ sk: "program:pvol", key: "pvol", title: "Weekly volume", sub: pUnder ? `<span class="pill yellow">${pUnder} under target</span>` : '<span class="pill green">all on target</span>', help: "pvol", helpBody: `Hard sets per muscle this routine plans for a week${weekly ? "" : `: ${plannedPerWeek(R)} sessions a week from its ${trainDaysOf(R)} training days`}. Direct work counts 1 set, secondary involvement counts 0.5. The shaded zone is your weekly target (editable in Settings).`, body: volumeRows(pv) + planEvidenceNote(pv) });
       h += moreLine("program");
       return h;
     }
@@ -11080,7 +11431,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     <label class="field">Sets<input type="text" inputmode="numeric" data-it="sets" data-uid="${it.uid}" value="${it.sets}"></label>
     <label class="field">${ex.timed ? "Min seconds" : "Rep min"}<input type="text" inputmode="numeric" data-it="repMin" data-uid="${it.uid}" value="${it.repMin}"></label>
     <label class="field">${ex.timed ? "Max seconds" : "Rep max"}<input type="text" inputmode="numeric" data-it="repMax" data-uid="${it.uid}" value="${it.repMax}"></label>
-    <label class="field"><span class="hastip" data-tip="${esc(RIR_TGT_TIP)}">Target RIR</span><input type="text" inputmode="decimal" data-it="rir" data-uid="${it.uid}" value="${it.rir}"></label>
+    <label class="field"><span class="hastip" data-tip="${esc(RIR_TGT_TIP)}">Target ${effName()}</span><input type="text" inputmode="decimal" data-it="rir" data-uid="${it.uid}" value="${esc(effShow(it.rir))}"></label>
     <label class="field">Rest (s)<input type="text" inputmode="numeric" data-it="rest" data-uid="${it.uid}" value="${it.rest}"></label>
     <label class="field">Load step (${U()})<input type="text" inputmode="decimal" data-it="inc" data-uid="${it.uid}" value="${fmtW(incOf(ex, it))}" data-tip="Applies to this exercise on every day and routine"></label>
     ${ex.timed ? "" : `<label class="field"><span class="hastip" data-tip="${esc(JUMP_TIP)}">Load jump %</span><input type="text" inputmode="decimal" data-it="jump" data-uid="${it.uid}" value="${it.jump != null ? it.jump : ""}" placeholder="auto ${isCompound(ex) ? "2.5" : "5"}"></label>`}</div>
@@ -11206,8 +11557,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
         let n = 0;
         wks4++;
         n = weekSessions(ws);
-        const wr = weekRoutine(ws);
-        const nw = plannedPerWeek(wr);
+        const nw = weekNeed(ws);
         done4 += Math.min(n, nw);
         need4 += nw;
       }
@@ -11241,7 +11591,7 @@ ${extraKpis()}</div>`;
         "Hard sets per muscle. Direct work counts 1, secondary counts 0.5. A set counts as hard when you logged RIR 3 or less. A blank RIR is read as your usual RIR on that lift once you have rated 3 of its sets in the last 12 weeks, and until then counts as hard, because most working sets are. Blank sets are shaded lighter so you can see how much of the bar is measured and how much is assumed. Amber is under your weekly target, green is inside it, blue is over. In This week, pale green is short of the minimum while the week is still going. Below and above are judged at the one decimal shown. By region measures each region against its minimum, so 100% is on target; it averages your last 4 full weeks unless you pick 2 or 8 above the chart (the radar only: flags and the coach always use 4). " + FIRST_WEEK_WHY + " Load is total weight × reps per week, comparable week to week but not session to session.",
         `${cov}
   <div class="chips">${VOL_MODES.map(([k, l]) => `<button class="chip ${ui.volMode === k ? "on" : ""}" data-act="volMode" data-v="${k}">${l}</button>`).join("")}</div>
-  ${ui.volMode === "region" ? regionBody() : ui.volMode === "trend" ? trendBody() : ui.volMode === "load" ? `<div class="card">${volHeadline()}${state.sessions.length ? `${rangeChips("vol", weeksSpan(firstDate(state.sessions)), 8)}<div class="chartbox"><canvas id="chVol"></canvas></div>${chartFallback()}` : '<p class="small muted">Log a session to start this chart.</p>'}</div>` : `<div class="card">${ui.volMode === "week" ? MK.some((m) => (thisWeek[m] || 0) > 0) ? volumeRows(thisWeek, state.settings.rirMode === "off" ? null : thisWeekConf, true) : '<p class="muted" style="margin:0">Nothing logged this week yet.</p>' : avg ? `<p class="small muted" style="margin:0 0 6px">Averaged over ${avgWeeksTxt(avg)}. Weeks with no sessions are left out rather than counted as zero.</p>${volumeRows(avg, state.settings.rirMode === "off" ? null : avg._conf)}` : ((w) => `<p class="muted">${w.lead}An average ${w.kind === "back" ? "comes back" : "starts"} after ${w.after}.${w.kind === "second" ? " " + tipi(FIRST_WEEK_WHY, "Your first week") : ""}</p>`)(avgWait())}</div>`}`,
+  ${ui.volMode === "region" ? regionBody() : ui.volMode === "trend" ? trendBody() : ui.volMode === "load" ? `<div class="card">${volHeadline()}${state.sessions.length ? `${rangeChips("vol", weeksSpan(firstDate(state.sessions)), 8)}<div class="chartbox"><canvas id="chVol"></canvas></div>${chartFallback()}` : '<p class="small muted">Log a session to start this chart.</p>'}</div>` : `<div class="card">${ui.volMode === "week" ? MK.some((m) => (thisWeek[m] || 0) > 0) ? volumeRows(thisWeek, state.settings.rirMode === "off" ? null : thisWeekConf, true) : '<p class="muted" style="margin:0">Nothing logged this week yet.</p>' : avg ? `<p class="small muted" style="margin:0 0 6px">Averaged over ${avgWeeksTxt(avg)}. Weeks with no sessions are left out rather than counted as zero.</p>${volumeRows(avg, state.settings.rirMode === "off" ? null : avg._conf)}` : ((w) => `<p class="muted">${w.lead}An average ${w.kind === "back" ? "comes back" : "starts"} after ${w.after}.${w.kind === "second" ? " " + tipi(w.why, "Your first week") : ""}</p>`)(avgWait())}</div>`}`,
         noLog() ? "Nothing logged yet" : `${wkHard} hard sets this week`
       );
       const inj = injuredSet();
@@ -11331,7 +11681,7 @@ ${extraKpis()}</div>`;
           const c = s.label === "progressing" ? "green" : s.label === "lagging" ? "red" : "none";
           const sets = src[s.m] || 0;
           const [lo, hi] = bands[s.m];
-          const read = !s.clear ? s.stall ? "A lift has stalled: see Stalls under Lifts." : "Too early to tell: keep logging." : s.score >= GROW_PCT ? sets < lo ? "Rising, on fewer sets than your target." : "" : s.score <= -GROW_PCT ? "Falling: check recovery first." : sets >= hi ? "Flat at high volume: change exercises or effort, not sets." : "Flat: try 2 more sets a week for 3 weeks.";
+          const read = !s.clear ? s.stall ? "A lift has stalled: see Stalls under Lifts." : musTrend(s) + "." : s.score >= GROW_PCT ? sets < lo ? "Rising, on fewer sets than your target." : "" : s.score <= -GROW_PCT ? "Falling: check recovery first." : sets >= hi ? "Flat at high volume: change exercises or effort, not sets." : "Flat: try 2 more sets a week for 3 weeks.";
           return `<div style="padding:6px 0;border-bottom:1px solid var(--line)"><div class="mrow" style="border:0;padding:0"><span class="plate ${c}"></span><span>${ML[s.m]}${s.indirect ? ' <span class="tag" data-tip="No direct exercise for this muscle. Trend inferred from lifts where it assists.">indirect</span>' : ""}</span><div class="band"><div class="fill ${s.score >= 0 ? "in" : "down"}" style="width:${s.clear ? Math.abs(s.score) / maxAbs * 100 : 0}%"></div></div><span class="r small">${!s.clear ? "unclear" : s.score >= GROW_PCT ? "rising" : s.score <= -GROW_PCT ? "falling" : "flat"}</span></div><p class="small muted" style="margin:2px 0 0">${r1(sets)} sets a week${read ? ` · ${read}` : ""}</p></div>`;
         }).join("");
         if (fine.length) rank += `<p class="small muted" style="margin-top:8px">Rising at ${fine.length === 1 ? "its" : "their"} volume: ${esc(andList(fine.map((s) => ML[s.m]), 4))}. Keep the sets as they are.</p>`;
@@ -11431,7 +11781,7 @@ ${extraKpis()}</div>`;
     function regionSrc() {
       const n = regionWk();
       const avg = avgWeeks(n);
-      if (avg) return { src: avg, n, label: avg._missed || avg._light || avg._rest ? `your average over ${avgWeeksTxt(avg)}` : avg._weeks < n && avg._ff ? avgWeeksTxt(avg) : `your ${avg._weeks}-week average` };
+      if (avg) return { src: avg, n, back: avg._back, label: avg._missed || avg._light || avg._rest ? `your average over ${avgWeeksTxt(avg)}` : avg._weeks < n && avg._ff ? avgWeeksTxt(avg) : `your ${avg._weeks}-week average` };
       const I = IDX(), cur = weekStart(today());
       const wk = I.weekSets[cur] || {};
       if (MK.some((m) => (wk[m] || 0) > 0)) return { src: wk, n, label: "this week so far", week: true, noFull: true };
@@ -11442,11 +11792,11 @@ ${extraKpis()}</div>`;
       const ff = avgFirstWeek();
       const all = Object.keys(I.weekSets).filter((w) => w < cur && has(w)).sort();
       const full = all.filter((w) => !ff || w >= ff);
-      const wks = (full.length ? full : all).slice(-n);
+      const wks = (full.length ? full : all.filter((w) => !ff || w >= addDays(ff, -7))).slice(-n);
       if (wks.length) {
         const out = weeksAvg(wks);
         const end = addDays(wks[wks.length - 1], 6);
-        return { src: out, n, label: full.length ? `your last ${wks.length === 1 ? "trained week" : wks.length + " trained weeks"}, to ${fmtDate(end)}` : `your first week, to ${fmtDate(end)}`, old: !!full.length, first: !full.length, end };
+        return { src: out, n, label: full.length ? `your last ${wks.length === 1 ? "trained week" : wks.length + " trained weeks"}, to ${fmtDate(end)}` : `your first week${logBack() ? " back" : ""}, to ${fmtDate(end)}`, old: !!full.length, first: !full.length, back: logBack(), end };
       }
       return { src: {}, label: "", empty: true };
     }
@@ -11461,7 +11811,7 @@ ${extraKpis()}</div>`;
       const rh = rs.week ? `<p class="headline">This week so far: ${on} of ${regs.length} regions at their minimum.</p>` : !low.length ? plan.length ? '<p class="headline">Every region on plan.</p>' : `<p class="headline">Every region at or above its minimum${high.length ? "" : ", inside its target"}.</p>` : `<p class="headline">${on} of ${regs.length} regions on target. Furthest short: ${worst.label}, ${r1(worst.got)} of ${r1(worst.lo)} sets.</p>`;
       const note = (rs.old ? `Nothing logged in the last ${rs.n || 4} weeks, so this shows ${esc(balLabel)}. ` : "") + (rs.noFull ? "No full week to average yet, so this is this week so far. " : "") + (rs.week && low.length ? "The week is still going, so this fills in as you train." : "");
       const chips = `<div class="wkpick"><span class="small muted" id="wkpickL">Average of the last</span><div class="chips" role="group" aria-labelledby="wkpickL">${REGION_WKS.map(([k, l]) => `<button class="chip ${rs.n === k ? "on" : ""}" data-act="regionWk" data-v="${k}" aria-pressed="${rs.n === k}">${l}</button>`).join("")}</div></div>`;
-      return `<div class="card">${rs.week ? "" : chips}${rh}<p class="small muted" style="margin:0 0 4px">Using ${esc(balLabel)}. ${tipi(`Hard sets per region against the minimum of your weekly targets. On or past the dashed ring is on target.${plan.length ? " On plan: " + ON_PLAN_TIP : ""}${rs.first || rs.src._ff ? " " + FIRST_WEEK_WHY : ""}`, "Reading the chart")}</p><div class="chartbox tall"><canvas id="chRadar"></canvas></div>${chartFallback()}
+      return `<div class="card">${rs.week ? "" : chips}${rh}<p class="small muted" style="margin:0 0 4px">Using ${esc(balLabel)}. ${tipi(`Hard sets per region against the minimum of your weekly targets. On or past the dashed ring is on target.${plan.length ? " On plan: " + ON_PLAN_TIP : ""}${rs.first || rs.src._ff ? " " + (rs.back ? BACK_WEEK_WHY : FIRST_WEEK_WHY) : ""}`, "Reading the chart")}</p><div class="chartbox tall"><canvas id="chRadar"></canvas></div>${chartFallback()}
   <table class="t" style="margin-top:8px"><tr><th>Region</th><th class="r">Sets</th><th class="r">Minimum</th><th class="r">Of minimum</th></tr>
   ${regs.map((rg) => {
         const c = rg.low ? rs.week ? "part" : "yellow" : rg.plan ? "plan" : rg.high ? "blue" : "green";
@@ -11476,42 +11826,18 @@ ${extraKpis()}</div>`;
     function dsec(key, title, explain, body, subTxt) {
       return sec({ sk: "dash:" + key, key, id: "sec-" + key, title, sub: subTxt || "", help: explain ? "sec-" + key : null, helpBody: explain, body });
     }
-    function allTimeBests(id) {
-      const exps = IDX().byEx[id];
-      if (!exps || !exps.length) return null;
-      const ex = EX(id);
-      let est = null, heavy = null;
-      const front = [];
-      for (const x of exps) {
-        const fresh = [];
-        for (const p of x.pts) {
-          const v = noE1(ex) ? null : e1(p.load, p.r, p.rq);
-          if (v != null && (!est || v > est.v + 1e-6)) est = { v, p, date: x.date };
-          if (!heavy || p.pl > heavy.p.pl + 1e-6 || Math.abs(p.pl - heavy.p.pl) < 1e-6 && p.r > heavy.p.r) heavy = { p, date: x.date };
-          if (!front.some((q) => q.p.pl >= p.pl - 1e-6 && q.p.r >= p.r)) fresh.push(p);
-        }
-        for (const p of fresh) {
-          if (front.some((q) => q.p.pl >= p.pl - 1e-6 && q.p.r >= p.r)) continue;
-          for (let k = front.length - 1; k >= 0; k--) if (p.pl >= front[k].p.pl - 1e-6 && p.r >= front[k].p.r) front.splice(k, 1);
-          front.push({ p, date: x.date });
-        }
-      }
-      front.sort((a, b) => b.p.pl - a.p.pl);
-      const last = [est && est.date, heavy && heavy.date, ...front.map((f) => f.date)].filter(Boolean).sort().pop();
-      return { ex, est, heavy, front, last };
-    }
-    function bestLine(exId) {
-      const r = allTimeBests(exId);
+    function bestLine(exId, upTo) {
+      const r = allTimeBests(exId, upTo);
       if (!r || !r.heavy) return "";
       const ex = r.ex;
-      const exps = IDX().byEx[exId] || [];
+      const exps = (IDX().byEx[exId] || []).filter((x) => !upTo || x.date <= upTo);
       const newest = exps.length ? exps[exps.length - 1].date : null;
       const when = r.heavy.date === newest ? "" : `, ${fmtDate(r.heavy.date)}`;
       return `Heaviest ${setShort(ex, r.heavy.p.w, r.heavy.p.r)}${loadNote(ex)}${when}`;
     }
     function bestsBoard() {
       const I = IDX();
-      const rows = Object.keys(I.byEx).map(allTimeBests).filter(Boolean).sort((a, b) => a.last < b.last ? 1 : a.last > b.last ? -1 : a.ex.name.localeCompare(b.ex.name));
+      const rows = Object.keys(I.byEx).map((id) => allTimeBests(id)).filter(Boolean).sort((a, b) => a.last < b.last ? 1 : a.last > b.last ? -1 : a.ex.name.localeCompare(b.ex.name));
       if (!rows.length) return { n: 0, html: '<p class="muted">Your bests appear here after your first session.</p>' };
       const u = (ex) => " " + U() + (ex.bw ? " total" : "");
       const shown = ui.bestsAll ? rows : rows.slice(0, 6);
@@ -12075,8 +12401,8 @@ ${extraKpis()}</div>`;
     }
     function viewSettings() {
       const s = state.settings;
-      const hasDemo = state.sessions.some((x) => x.demo) || state.bodyweights.some((x) => x.demo);
-      const SUB = { help: "Guide, report a problem", gym: gymSub(), general: `${s.unit === "kg" ? "kg, cm" : "lb, in"} · ${s.theme === "system" ? "device theme" : s.theme}`, profile: profSub(), timer: s.timerMode === "off" ? "timer off" : s.timerMode + " timer", rir: { on: "on", cal: "corrected", off: "off" }[s.rirMode], layout: s.hidden.length ? `${s.hidden.length} hidden` : "everything shown", prio: s.priorities.length ? s.priorities.map((m) => ML[m]).join(", ") : "none", bands: "", data: cloud.on ? cloud.status === "synced" ? "synced" : "syncing" : "this device only", more: hasDemo ? "demo data loaded" : "demo data, diagnostics, erase" };
+      const hasDemo2 = state.sessions.some((x) => x.demo) || state.bodyweights.some((x) => x.demo);
+      const SUB = { help: "Guide, report a problem", gym: gymSub(), general: `${s.unit === "kg" ? "kg, cm" : "lb, in"} · ${s.theme === "system" ? "device theme" : s.theme}`, profile: profSub(), timer: s.timerMode === "off" ? "timer off" : s.timerMode + " timer", rir: { on: "on", cal: "corrected", off: "off" }[s.rirMode], layout: s.hidden.length ? `${s.hidden.length} hidden` : "everything shown", prio: s.priorities.length ? s.priorities.map((m) => ML[m]).join(", ") : "none", bands: "", data: cloud.on ? cloud.status === "synced" ? "synced" : "syncing" : "this device only", more: hasDemo2 ? "demo data loaded" : "demo data, version, erase" };
       const G = (k, title, help, id) => `<details class="sec" ${id ? `id="${id}"` : ""} data-sk="settings:${k}" data-mkey="${k}" ${isOpen("settings:" + k, false) ? "open" : ""}><summary>${sgrip(title)}<span class="sec-t">${esc(title)}</span><span class="sec-s">${esc(SUB[k] || "")}</span><span class="chev" aria-hidden="true"></span></summary><div class="sec-b">${help ? helpLink(help) : ""}`;
       return `${pageHead(ENV === "preview" ? `${PREVIEW_NAME} ${VERSION_LINE}` : "", "Settings", cloud.on ? window.claude ? "Saved to your Claude account and this device" : "Synced to your account and saved on this device" : "Saved on this device")}
   ${G("profile", "Your training")}<div class="card stack">${profSettings()}</div></div></details>
@@ -12134,10 +12460,11 @@ ${extraKpis()}</div>`;
       ""}
   ${G("more", "More")}<div class="card stack">
   <div><p class="small" style="margin:0 0 6px"><b>Demo data</b> ${tipi("8 weeks of generated sessions to preview Today and Stats. Everything demo is tagged and removed in one tap; your real logs are untouched.", "About demo data")}</p>
-  <div class="row"><button class="btn" data-act="demoLoad">Load demo data</button><button class="btn" data-act="demoClear" ${hasDemo ? "" : "disabled"}>Clear demo data</button></div></div>
-  <div><p class="small" style="margin:0 0 6px"><b>Diagnostics</b> <span class="muted">Version ${VERSION_LINE} · cloud ${cloud.on ? esc(cloud.status) : "off"} · ${logBuf.length} logged error${logBuf.length === 1 ? "" : "s"}</span></p>
+  <div class="row">${/* One button: Load, or Clear once loaded; the version, and the rest of Diagnostics only once an error is logged (r55, V). */
+      hasDemo2 ? '<button class="btn" data-act="demoClear">Clear demo data</button>' : '<button class="btn" data-act="demoLoad">Load demo data</button>'}</div></div>
+  <div><p class="small" style="margin:0 0 6px"><b>Version</b> ${VERSION_LINE}${logBuf.length ? ` <span class="muted">· cloud ${cloud.on ? esc(cloud.status) : "off"} · ${logBuf.length} logged error${logBuf.length === 1 ? "" : "s"}</span>` : ""}</p>
   ${logBuf.length ? `<ul class="clist">${logBuf.slice(-5).reverse().map((x) => `<li><span class="small"><b>${esc(x.a)}</b> ${esc(x.m)}</span><span class="small muted">${esc(x.t.slice(5, 16).replace("T", " "))}</span></li>`).join("")}</ul>` : ""}
-  <div class="row"><button class="btn sm" data-act="diagCopy">Copy diagnostics</button><button class="btn sm" data-act="diagClear" ${logBuf.length ? "" : "disabled"}>Clear log</button></div>${window.IRONLOG_APP ? '<p class="small" style="margin:8px 0 0"><a href="LICENSES.txt" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;min-height:44px">Open-source licenses</a></p>' : ""}</div>
+  ${logBuf.length ? '<div class="row"><button class="btn sm" data-act="diagCopy">Copy diagnostics</button><button class="btn sm" data-act="diagClear">Clear log</button></div>' : ""}${window.IRONLOG_APP ? '<p class="small" style="margin:8px 0 0"><a href="LICENSES.txt" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;min-height:44px">Open-source licenses</a></p>' : ""}</div>
   <div><button class="btn danger" data-act="resetAll">Erase everything</button></div></div></div></details>${moreLine("settings")}`;
     }
     function rirSettings() {
@@ -12247,7 +12574,7 @@ ${extraKpis()}</div>`;
         h = `<div class="sheet" role="dialog" aria-modal="true" aria-labelledby="dpH"><div class="sheet-h"><h3 id="dpH">${esc(fmtDate(m.date))}: ${ss.length} sessions</h3><button class="ib" aria-label="Close" data-act="mClose">✕</button></div>
     <div class="stack">${ss.map((x) => `<button class="btn block pastday" data-act="wkOpen" data-id="${x.id}"><span>${esc(x.dayName)}</span><small>${[tm(x), `${x.ex.length} exercise${x.ex.length === 1 ? "" : "s"}`].filter(Boolean).join(", ")}</small></button>`).join("")}</div></div>`;
       } else if (m.kind === "confirm") {
-        h = `<div class="sheet" role="dialog" aria-modal="true"><div class="sheet-h"><h3>${esc(m.title)}</h3></div><p>${esc(m.body)}</p><div class="row" style="margin-top:12px"><button class="btn ${m.danger ? "danger" : "primary"}" data-act="mOk">${esc(m.okLabel)}</button>${m.alt && !m.alt.quiet ? `<button class="btn" data-act="mAlt">${esc(m.alt.label)}</button>` : ""}<button class="btn" data-act="mClose">Cancel</button></div>${m.alt && m.alt.quiet ? `<button class="linkbtn alt-quiet" data-act="mAlt">${esc(m.alt.label)}</button>` : ""}</div>`;
+        h = `<div class="sheet" role="dialog" aria-modal="true"><div class="sheet-h"><h3>${esc(m.title)}</h3></div><p>${esc(m.body)}</p><div class="row" style="margin-top:12px"><button class="btn ${m.danger ? "danger" : "primary"}" data-act="mOk">${esc(m.okLabel)}</button>${m.alt && !m.alt.quiet ? `<button class="btn" data-act="mAlt">${esc(m.alt.label)}</button>` : ""}${m.alt && m.alt.only ? "" : '<button class="btn" data-act="mClose">Cancel</button>'}</div>${m.alt && m.alt.quiet ? `<button class="linkbtn alt-quiet" data-act="mAlt">${esc(m.alt.label)}</button>` : ""}</div>`;
       } else if (m.kind === "picker") {
         h = `<div class="sheet fixed" role="dialog" aria-modal="true"><div class="sheet-h"><h3>${esc(m.title)}</h3><button class="ib" aria-label="Close" data-act="mClose">✕</button></div>
     <div class="grid2"><input type="search" placeholder="Search" data-mbind="q" value="${esc(m.q)}" id="pickQ" enterkeyhint="search" autocomplete="off"><select data-mbind="m" aria-label="Muscle"><option value="">All muscles</option>${MUSCLES.map(([k, l]) => `<option value="${k}" ${m.m === k ? "selected" : ""}>${l}</option>`).join("")}</select></div>
@@ -12328,7 +12655,7 @@ ${extraKpis()}</div>`;
       } else if (m.kind === "routineNew") {
         h = `<div class="sheet" role="dialog" aria-modal="true"><div class="sheet-h"><h3>New routine</h3><button class="ib" aria-label="Close" data-act="mClose">✕</button></div>
     <label class="field">Name<input type="text" id="rNewName" placeholder="e.g. Upper focus, 6 days"></label>
-    <p class="small muted">Three empty training days. It is not active until you tap Make active.</p>
+    <p class="small muted">Three empty training days with rest days between. It is not active until you tap Make active.</p>
     <div class="row" style="margin-top:10px"><button class="btn primary" data-act="rNewSave">Create</button><button class="btn" data-act="mClose">Cancel</button></div></div>`;
       } else if (m.kind === "exMus") {
         const e = EX(m.exId);
@@ -12510,7 +12837,7 @@ ${extraKpis()}</div>`;
           return;
         }
         d2.items.push(newItem(id));
-        if (d2.rest) d2.rest = false;
+        Object.assign(d2, trainOn(d2));
         commit();
         rerenderKeepScroll();
         toast(`${exName(id)} added to ${dayLabel(R, m.day)}`);
@@ -12576,7 +12903,30 @@ ${extraKpis()}</div>`;
         const done = b.sets.filter((x) => !rowBlank(b, x));
         const left = b.sets.filter((x) => !x.warm && !x.drop && rowBlank(b, x)).length;
         const rows = b.sets.filter((x) => !x.warm && !x.drop).length;
-        const nb = newBlock(id, { ...swapPlan(b.plan, b.exId, id, null, d.dayId), sets: done.length ? Math.max(1, left) : Math.max(1, rows || +b.plan.sets || 1) }, { deload: !!d.deload, light: !!d.light, before: d.date });
+        if (done.length && !left && !m.all) {
+          const nn = EX(id).name;
+          confirmBox(`Every set of ${EX(b.exId).name} is logged`, `Logged on the wrong exercise? Move the sets to ${nn}. Or add ${nn} after it.`, "Move the sets", () => applyPick({ ...m, all: "move" }, id), false, { label: `Add ${nn}`, fn: () => applyPick({ ...m, all: "add" }, id) });
+          return;
+        }
+        const nb = newBlock(id, { ...swapPlan(b.plan, b.exId, id, null, d.dayId), sets: done.length && left ? left : Math.max(1, rows || +b.plan.sets || 1) }, { deload: !!d.deload, light: !!d.light, before: d.date });
+        if (m.all === "move") {
+          nb.sets = b.sets;
+          if (b.bid) nb.bid = b.bid;
+          snapshot(() => {
+            const dd = state.draft;
+            if (!dd || dd.id !== did2) return false;
+            const i = dd.ex.indexOf(nb);
+            if (i < 0) return false;
+            dd.ex[i] = orig;
+            return true;
+          });
+          d.ex[bi] = nb;
+          fixSupersets(d.ex.map((x) => x.plan));
+          saveNow();
+          rerenderKeepScroll();
+          toast(`Your sets are on ${EX(id).name} now`, true);
+          return;
+        }
         nb.swappedFrom = b.swappedFrom || b.exId;
         if (nb.swappedFrom === id) nb.swappedFrom = null;
         const ni = done.length ? joinable(d.ex[bi + 1], nb) ? bi + 1 : -1 : joinable(d.ex[bi - 1], nb) ? bi - 1 : joinable(d.ex[bi + 1], nb) ? bi + 1 : -1;
@@ -12629,7 +12979,7 @@ ${extraKpis()}</div>`;
         fixSupersets(d.ex.map((x) => x.plan));
         saveNow();
         rerenderKeepScroll();
-        toast(done.length ? `${EX(id).name} added for the sets left. Your sets so far stay with ${EX(orig.exId).name}.` : `Swapped to ${EX(id).name}`, true);
+        toast(done.length && left ? `${EX(id).name} added for the sets left. Your sets so far stay with ${EX(orig.exId).name}.` : done.length ? `${EX(id).name} added after ${EX(orig.exId).name}` : `Swapped to ${EX(id).name}`, true);
         return;
       }
       rerenderKeepScroll();
@@ -12841,7 +13191,7 @@ ${extraKpis()}</div>`;
         }
       }
       for (const c of [...state.cardio].sort((a, b) => a.date < b.date ? -1 : a.date > b.date ? 1 : 0))
-        rows.push([c.date, "Cardio", "no", CARDIOL[c.kind], "", 1, "no", "no", "no", "", "", "", "", "", "", [CWHENL[c.when], c.dist ? `${distShow(c.dist)} ${distU()}` : "", c.note].filter(Boolean).join("; "), c.min, c.hr == null ? "" : c.hr, "minutes", ""]);
+        rows.push([c.date, "Cardio", "no", CARDIOL[c.kind], "", 1, "no", "no", "no", "", "", "", "", "", "", [CWHENL[c.when], c.dist ? `${distShow(c.dist)} ${distU()}` : "", c.note].filter(Boolean).join("; "), "", c.min, c.hr == null ? "" : c.hr, "minutes", ""]);
       if (rows.length === 1) {
         toast("No sessions to export");
         return;
@@ -12994,13 +13344,15 @@ ${extraKpis()}</div>`;
       let defW = null;
       for (const t of it.setsText) {
         let st = impSetsText(t);
+        const lu = /(?:\b|\d)kgs?(?![a-wyz])/i.test(t) ? "kg" : /(?:\b|\d)lbs?(?![a-wyz])|\d\s*#/i.test(t) ? "lb" : null;
+        const cv = lu === "kg" ? ((v) => v) : lu === "lb" ? ((v) => v * LB) : conv;
         if (exo.bw && !exo.assist) st = st.replace(/(^|[\s,])(\d{1,2})x(\d{1,3})(?=$|[\s,])/g, (m, p, a, b) => +a <= 10 && !/@/.test(st) ? p + Array(+a).fill("bwx" + b).join(" ") : m);
         else if (!exo.timed && /^\s*[1-5]\s*[x×*]\s*\d{1,3}(\s*,?\s*[1-5]\s*[x×*]\s*\d{1,3})*\s*$/.test(String(t).toLowerCase())) {
           if (defW == null) return null;
           for (const g2 of String(t).toLowerCase().matchAll(/([1-5])\s*[x×*]\s*(\d{1,3})/g)) for (let k = 0; k < +g2[1]; k++) out.push({ w: defW, r: +g2[2], rir: void 0, warm: false, drop: false });
           continue;
         }
-        const g = parseSets(st, { bw: !!exo.bw || !!exo.timed }, defW, conv);
+        const g = parseSets(st, { bw: !!exo.bw || !!exo.timed }, defW, cv);
         if (!g) return null;
         out.push(...g.map((x) => ({ w: x.w, r: x.r, rir: x.rir, warm: false, drop: false })));
         defW = g[g.length - 1].w;
@@ -13111,7 +13463,7 @@ ${extraKpis()}</div>`;
           if (prev) prev.sets.push(...sets);
           else ex.push({ exId: exo.id, note: it.note || "", rr: null, sets });
         }
-        if (ex.length) out.push({ id: uid(), date, dayIdx: 0, dayId: null, dayName: (x.name || "").slice(0, 60) || "Imported", routineId: "", free: true, ex, notes: "", durMin: null, deload: !!x.deload, light: false });
+        if (ex.length) out.push({ id: uid(), date, dayIdx: 0, dayId: null, dayName: (x.name || "").slice(0, 60) || "Imported", routineId: "", free: true, ex, notes: x.note || "", durMin: x.durMin || null, deload: !!x.deload, light: false });
       }
       const fp = (ss) => ss.date + "|" + ss.ex.map((b) => b.exId + ":" + b.sets.map((q) => q.r).join(",")).sort().join(";");
       const have = new Set(state.sessions.map(fp));
@@ -13130,7 +13482,7 @@ ${extraKpis()}</div>`;
       const cardio = [];
       let cardioNoTime = 0;
       for (const c of m.res.cardioRows || []) {
-        const min = Math.round(c.secs / 60);
+        const min = c.min || Math.round(c.secs / 60);
         if (!(min > 0)) {
           cardioNoTime++;
           continue;
@@ -13139,7 +13491,7 @@ ${extraKpis()}</div>`;
           dup++;
           continue;
         }
-        cardio.push(cleanCardio({ id: uid(), date: c.date, kind: c.kind, min, hr: null, when: "solo", note: "", dist: c.dist > 0 ? m.unit === "kg" ? c.dist : c.dist * KM_MI : null }));
+        cardio.push(cleanCardio({ id: uid(), date: c.date, kind: c.kind, min, hr: c.hr || null, when: c.when || "solo", note: c.note || "", dist: c.km != null ? c.km : c.dist > 0 ? m.unit === "kg" ? c.dist : c.dist * KM_MI : null }));
       }
       return { sessions: fresh, cardio, cardioNoTime, dup, bad, odd, timedOff, newEx: Object.values(newEx).filter((e) => fresh.some((ss) => ss.ex.some((b) => b.exId === e.id))) };
     }
@@ -13327,7 +13679,7 @@ ${extraKpis()}</div>`;
   ${unsure.length ? `<p class="small" style="margin:12px 0 4px;font-weight:650">Check these exercises</p>${unsure.map(row).join("")}` : ""}
   ${sure.length ? `<details class="subsec" style="margin-top:8px"><summary>${sure.length} matched</summary>${sure.map(row).join("")}</details>` : ""}
   ${r.unreadN || r.unread && r.unread.length ? `<details class="subsec" style="margin-top:8px"><summary>${r.unreadN || r.unread.length} line${(r.unreadN || r.unread.length) === 1 ? "" : "s"} not understood</summary><ul class="small" style="margin:6px 0 0;padding-left:18px">${r.unread.map((l) => `<li>${esc(l)}</li>`).join("")}</ul></details>` : ""}
-  ${r.skipped ? `<p class="small muted" style="margin:6px 0 0">${r.skipped} row${r.skipped === 1 ? "" : "s"} without an exercise, date, or reps were skipped.</p>` : ""}${b.cardio.length ? `<p class="small" style="margin:6px 0 0">Cardio: ${b.cardio.length} entr${b.cardio.length === 1 ? "y" : "ies"} (${esc(andList(b.cardio.slice(0, 3).map((c) => `${CARDIOL[c.kind].toLowerCase()} ${fmtDate(c.date)}, ${c.min} min${c.dist ? `, ${distShow(c.dist)} ${m.unit === "kg" ? "km" : "mi"}` : ""}`), 3))}${b.cardio.length > 3 ? ", and more" : ""}). Distances are read in ${m.unit === "kg" ? "km" : "miles"}, with the unit above.</p>` : ""}${b.cardioNoTime ? `<p class="small muted" style="margin:6px 0 0">${b.cardioNoTime} cardio entr${b.cardioNoTime === 1 ? "y" : "ies"} without a time left out: minutes are needed.</p>` : ""}
+  ${r.skipped ? `<p class="small muted" style="margin:6px 0 0">${r.skipped} row${r.skipped === 1 ? "" : "s"} without an exercise, date, or reps were skipped.</p>` : ""}${b.cardio.length ? `<p class="small" style="margin:6px 0 0">Cardio: ${b.cardio.length} entr${b.cardio.length === 1 ? "y" : "ies"} (${esc(andList(b.cardio.slice(0, 3).map((c) => `${CARDIOL[c.kind].toLowerCase()} ${fmtDate(c.date)}, ${c.min} min${c.dist ? `, ${distShow(c.dist)} ${distU()}` : ""}`), 3))}${b.cardio.length > 3 ? ", and more" : ""}). Distances are read in ${m.unit === "kg" ? "km" : "miles"}, with the unit above.</p>` : ""}${b.cardioNoTime ? `<p class="small muted" style="margin:6px 0 0">${b.cardioNoTime} cardio entr${b.cardioNoTime === 1 ? "y" : "ies"} without a time left out: minutes are needed.</p>` : ""}
   ${b.bad.length ? `<p class="small" style="margin:6px 0 0;color:var(--yellow)">Not imported, no weight given: ${esc(andList(b.bad, 8))}. Write the load in, like 3x10 @ 60, and read it again.</p>` : ""}
   ${b.odd.length ? `<p class="small" id="impOdd" style="margin:6px 0 0;color:var(--yellow)">Check these, they look misread: ${esc(andList(b.odd, 4))}. Fix the line and read it again if they are wrong.</p>` : ""}
   ${b.timedOff ? `<p class="small" style="margin:6px 0 0;color:var(--yellow)">${b.timedOff} timed set${b.timedOff === 1 ? " was" : "s were"} left out: the exercise chosen counts reps. Pick a timed one to keep them.</p>` : ""}
@@ -13398,6 +13750,7 @@ ${extraKpis()}</div>`;
       confirmBox("Replace all data?", body, "Replace my data", () => {
         snapshot();
         setState(clean);
+        if (!cloud.on) cloudStop(true);
         commit();
         closeModal();
         ui.tab = "today";
@@ -13678,7 +14031,7 @@ ${extraKpis()}</div>`;
     }
     function syncDraftPlan(f) {
       const d = state.draft;
-      if (!d || !f || d.editingId || d.routineId !== f.r.id || d.dayId !== f.r.days[f.di].id) return;
+      if (!d || !f || d.editingId || f.r !== (state.routines.find((r) => r.id === d.routineId) || activeRoutine()) || planItemOf(f.r, f.it.exId, d.dayId) !== f.it) return;
       for (const b of d.ex) if (b.exId === f.it.exId && !b.sets.some((x) => x.done)) {
         for (const k of ["repMin", "repMax", "rir", "rest", "inc"]) b.plan[k] = f.it[k];
         if (f.it.jump != null) b.plan.jump = f.it.jump;
@@ -13861,8 +14214,9 @@ ${extraKpis()}</div>`;
         toast("Hidden. Settings > Your data has it.");
       },
       acctOpen(t) {
-        openModal({ kind: "account", mode: t.dataset.mode === "signup" ? "signup" : "signin", email: "", pw: "" });
+        openModal({ kind: "account", mode: t.dataset.mode === "signup" ? "signup" : "signin", email: "", pw: "", back: ui.modal && ui.modal.kind === "feedback" ? ui.modal : void 0 });
       },
+      // from a problem report, signing in goes back to it (r55, the audit: the report and what was typed in it were gone)
       acctMode(t) {
         const m = ui.modal;
         if (!m || m.kind !== "account") return;
@@ -13918,7 +14272,7 @@ ${extraKpis()}</div>`;
             localStorage.removeItem(ACCT_LATER);
           } catch (e) {
           }
-          if (ui.modal === m) closeModal();
+          if (ui.modal === m) ACT.exBack();
           toast("Email confirmed. Signed in and syncing.");
           if (!cloud.on) cloudInit();
           acctRerender();
@@ -14020,9 +14374,9 @@ ${extraKpis()}</div>`;
         const done = (next) => {
           if (ui.modal !== m) return;
           if (next) {
-            ui.modal = { kind: "account", ...next };
+            ui.modal = { kind: "account", back: m.back, ...next };
             renderModal();
-          } else closeModal();
+          } else ACT.exBack();
         };
         try {
           if (m.mode === "signin") {
@@ -14094,7 +14448,7 @@ ${extraKpis()}</div>`;
             return;
           }
           acct.user = null;
-          cloudStop();
+          cloudStop(true);
           rerenderKeepScroll();
           toast("Account deleted. Your log is still on this phone.");
         }, true);
@@ -14128,7 +14482,7 @@ ${extraKpis()}</div>`;
             return;
           }
           acct.user = null;
-          cloudStop();
+          cloudStop(remove);
           const mid2 = !remove && !!state.draft;
           if (!mid2) try {
             localStorage.setItem(OB_OUT, "1");
@@ -14456,8 +14810,7 @@ ${extraKpis()}</div>`;
         const inf = first && b.sessions.length ? routineFromLog(state.sessions) : null;
         if (inf) {
           const R = inf.routine;
-          const starter = starterSigs();
-          state.routines = state.routines.filter((x) => !starter.includes(routineSig(x)) || state.sessions.some((q) => q.routineId === x.id));
+          state.routines = dropStarter(state.routines, state.sessions, starterSigs());
           state.routines.push(R);
           state.activeRoutineId = R.id;
           for (const x of state.sessions) {
@@ -14514,6 +14867,7 @@ ${extraKpis()}</div>`;
         const go = () => {
           snapshot();
           setState(st);
+          if (!cloud.on) cloudStop(true);
           commit();
           closeModal();
           ui.tab = "today";
@@ -14718,19 +15072,20 @@ ${extraKpis()}</div>`;
         if (from === "welcome") {
           if (same) state.activeRoutineId = same.id;
           else {
-            const starter = starterSigs();
-            state.routines = state.routines.filter((x) => !starter.includes(routineSig(x)) || state.sessions.some((q) => q.routineId === x.id));
+            state.routines = dropStarter(state.routines, state.sessions, starterSigs());
             state.routines.push(r);
             state.activeRoutineId = r.id;
           }
           const fit = fitTargets(state.routines.find((x) => x.id === state.activeRoutineId));
+          const pa = profApplyList(activeRoutine());
+          for (const x of pa) Object.assign(x.it, x.ch);
           state.settings.onboarded = true;
           ui.todayDay = null;
           ui.tab = "today";
           commit();
           window.scrollTo(0, 0);
           render();
-          toast(fit ? `${r.name} is ready. Weekly set targets now match it; change them in Settings.` : `${r.name} is ready`, null, fit ? 6e3 : 0);
+          toast(`${r.name} is ready${pa.length ? ", set to Your training" : ""}${fit ? ". Weekly set targets now match it; change them in Settings." : ""}`, null, fit || pa.length ? 6e3 : 0);
           return;
         }
         if (same) {
@@ -14748,6 +15103,7 @@ ${extraKpis()}</div>`;
       obOwn() {
         state.settings.onboarded = true;
         const r = { id: uid(), name: "My routine", schedule: "cycle", days: [0, 1, 0, 1, 0, 1, 1].map((x) => ({ id: uid(), name: x ? "Rest" : "Training day", rest: !!x, items: [] })) };
+        state.routines = dropStarter(state.routines, state.sessions, starterSigs());
         state.routines.push(r);
         state.activeRoutineId = r.id;
         ui.bRoutine = r.id;
@@ -15070,7 +15426,13 @@ ${JSON.stringify(fb.context, null, 1)}`;
         snapshot();
         for (const x of u.swap) {
           const it = day.items.find((i) => i.exId === x.from);
-          if (it) it.exId = x.to;
+          if (it) {
+            it.exId = x.to;
+            if (x.plan) {
+              Object.assign(it, x.plan);
+              if (x.plan.jump == null) delete it.jump;
+            }
+          }
         }
         for (const x of u.add) if (!day.items.some((i) => i.exId === x.exId)) day.items.push({ ...x.plan, uid: uid(), exId: x.exId, ss: null });
         for (const ids of u.ss || []) {
@@ -15083,7 +15445,7 @@ ${JSON.stringify(fb.context, null, 1)}`;
           for (const i of its) i.ss = g;
         }
         fixSupersets(day.items);
-        if (day.rest && day.items.length) day.rest = false;
+        if (day.items.length) Object.assign(day, trainOn(day));
         commit();
         render();
         toast(`${day.name} updated`, true);
@@ -15420,7 +15782,7 @@ ${JSON.stringify(fb.context, null, 1)}`;
         let base = 0;
         for (let i = b.sets.length - 1; i >= 0; i--) {
           const s = b.sets[i];
-          if (s.warm || s.drop) continue;
+          if (s.warm || s.drop || isMissed(s)) continue;
           const w = +effW(b, i) || 0;
           if (w > 0) {
             base = w;
@@ -15509,7 +15871,7 @@ ${JSON.stringify(fb.context, null, 1)}`;
           lastAuto = null;
           return;
         }
-        if (!s.done && !(+s.r > 0)) {
+        if (!s.done && !(+s.r > 0) && !isMissed(s)) {
           const b = state.draft.ex[bi];
           const lr = b ? greyR(b, si) : null;
           if (!(lr > 0)) {
@@ -15520,7 +15882,21 @@ ${JSON.stringify(fb.context, null, 1)}`;
           const inp = document.querySelector(`.sg input[data-f="r"][data-b="${bi}"][data-s="${si}"]`);
           if (inp) inp.value = String(s.r);
         }
-        setDone(bi, si, !s.done);
+        const was = !!s.done;
+        setDone(bi, si, !was);
+        if (was) {
+          const b = state.draft.ex[bi];
+          if (s.r != null && +s.r === greyR(b, si)) s.r = null;
+          const gw = greyW(b, si);
+          if (!fillLoads() && s.w != null && gw != null && Math.abs(s.w - gw) < 1e-9) s.w = null;
+          const o = ui.ordBack && ui.ordBack.get(b);
+          if (o && !b.sets.some((x) => x.done) && Date.now() - o.t < 3e4) {
+            ui.ordBack.delete(b);
+            moveBlock(bi, Math.min(o.i, state.draft.ex.length - 1));
+          }
+          saveNow();
+          rerenderKeepScroll();
+        }
       },
       tStart(t) {
         const b = state.draft && state.draft.ex[+t.dataset.b];
@@ -15578,14 +15954,13 @@ ${JSON.stringify(fb.context, null, 1)}`;
       // The new working set copies the last working set's load, not a drop set's
       // (75%) or a warm-up's.
       sAdd(t) {
-        const b = state.draft.ex[+t.dataset.b];
-        let li = -1;
-        for (let i = b.sets.length - 1; i >= 0; i--) if (!b.sets[i].drop && !b.sets[i].warm) {
-          li = i;
-          break;
-        }
-        if (li < 0) li = b.sets.length - 1;
-        b.sets.push({ w: fillLoads() && li >= 0 ? effW(b, li) : null, r: null, rir: null, warm: false, drop: false, done: false });
+        const bi = +t.dataset.b;
+        const b = state.draft.ex[bi];
+        const ld = b.sets.reduce((k, x, i) => x.done && isWork(x) && !x.drop ? i : k, -1);
+        const row = { w: null, r: null, rir: null, warm: false, drop: false, done: false };
+        b.sets.push(row);
+        if (ld >= 0) assessSet(bi, ld);
+        if (fillLoads()) row.w = effW(b, b.sets.length - 1);
         saveNow();
         rerenderKeepScroll();
       },
@@ -16036,7 +16411,7 @@ ${JSON.stringify(fb.context, null, 1)}`;
         }
         const unchecked = [];
         for (const b of d.ex) {
-          const n = b.sets.filter((s) => !s.done && !s.warm && +s.r > 0).length;
+          const n = b.sets.filter((s) => !s.done && (+s.r > 0 || isMissed(s))).length;
           if (n) unchecked.push({ b, n, name: EX(b.exId).name });
         }
         if (unchecked.length) {
@@ -16049,15 +16424,19 @@ ${JSON.stringify(fb.context, null, 1)}`;
             () => {
               const dd = state.draft;
               if (!dd) return;
-              for (const b of dd.ex) b.sets.forEach((s, si) => {
-                if (!s.done && !s.warm && +s.r > 0) {
+              for (const [bi, b] of dd.ex.entries()) for (const [si, s] of b.sets.entries()) if (!s.done && (+s.r > 0 || isMissed(s))) {
+                if (oddReps(b, s) || oddLoad(b, si, dd.date)) {
+                  setDone(bi, si, true);
+                  if (!s.done) return;
+                } else {
                   settleLoad(b, si);
                   s.done = true;
                 }
-              });
+              }
               saveNow();
               ACT.finishNow();
             },
+            // reps or a load far off ask first, as when ticked (r55, the audit: 110 reps put off once was saved here)
             false,
             { label: "Save without them", fn: () => ACT.finishNow() }
           );
@@ -16068,14 +16447,14 @@ ${JSON.stringify(fb.context, null, 1)}`;
       finishNow() {
         const d = state.draft;
         if (!d) return;
-        const ex = d.ex.map((b) => ({ exId: b.exId, note: b.note || "", rr: b.keepRR !== void 0 ? b.keepRR : b.plan && +b.plan.repMin > 0 && +b.plan.repMax > 0 ? [+b.plan.repMin, +b.plan.repMax] : null, light: b.light ? true : void 0, ...b.inj ? { inj: b.inj } : {}, sets: b.sets.filter((s) => s.done).map((s) => ({ w: s.w == null ? 0 : s.w, r: +s.r, rir: s.rir == null || s.rir === "" ? null : +s.rir, warm: !!s.warm, drop: !!s.drop && !s.warm, cal: s.cal && !s.warm ? s.cal : void 0 })) })).filter((b) => b.sets.length);
+        const ex = d.ex.map(savedEx).filter((b) => b.sets.length);
         const exJ = joinAdjacent(ex);
         ex.length = 0;
         ex.push(...exJ);
-        const cardio = (d.cardio || []).filter((c) => c.min > 0).map((c) => cleanCardio({ ...c, date: d.date }));
+        const cardio = draftCardio(d).map((c) => cleanCardio(c));
         if (!ex.length) {
           if (cardio.length && !d.editingId) {
-            state.cardio.push(...cardio);
+            putById(state.cardio, cardio);
             state.draft = null;
             commit();
             stopTimer();
@@ -16093,7 +16472,7 @@ ${JSON.stringify(fb.context, null, 1)}`;
         for (const b of ex) {
           const e = EX(b.exId);
           if (e.bw) continue;
-          const n = b.sets.filter((s) => !(+s.w > 0)).length;
+          const n = b.sets.filter((s) => !(+s.w > 0) && isWork(s)).length;
           if (n) blanks.push(`${e.name} (${n} set${n > 1 ? "s" : ""})`);
         }
         const help = [];
@@ -16113,8 +16492,10 @@ ${JSON.stringify(fb.context, null, 1)}`;
             const was = d.editingId ? state.sessions.find((x) => x.id === d.editingId) : null;
             const t = was ? was.t : d.startedAt || Date.now();
             if (t) sess.t = t;
+            const pw = d.editingId || d.free ? void 0 : pwOf(state.routines, d.routineId);
+            if (pw) sess.pw = pw;
           }
-          if (!d.editingId) state.cardio.push(...cardio);
+          if (!d.editingId) putById(state.cardio, cardio);
           if (!d.editingId && calDueIdx(d) >= 0 && !d.ex.some((b) => b.sets.some((x) => x.cal && x.done))) state.settings.calSnooze = today();
           const upd2 = d.editingId ? null : routineUpdates(d);
           if (d.editingId) {
@@ -16133,18 +16514,15 @@ ${JSON.stringify(fb.context, null, 1)}`;
               });
               state.sessions[i] = sess;
             } else state.sessions.push(sess);
-          } else state.sessions.push(sess);
+          } else putById(state.sessions, [sess]);
           const demoGone = !d.editingId && (state.sessions.some((x) => x.demo) || state.bodyweights.some((x) => x.demo) || state.measurements.some((x) => x.demo));
           if (demoGone) {
-            state.sessions = state.sessions.filter((x) => !x.demo);
-            state.bodyweights = state.bodyweights.filter((x) => !x.demo);
-            state.measurements = state.measurements.filter((x) => !x.demo);
-            state.cardio = state.cardio.filter((x) => !x.demo);
+            stripDemo(state);
             demoRestore();
             invalidate();
           }
           state.trash = state.trash.filter((t) => !(t.kind === "session" && t.id === sess.id));
-          const tried = d.ex.filter((b) => b.tgt && b.sets.some((x) => x.done && !x.warm));
+          const tried = d.ex.filter((b) => b.tgt && b.sets.some((x) => x.done && !x.warm) && effTarget(b) === b.tgt);
           const targets = tried.length, beaten = tried.filter((b) => {
             const pr = blockProgress(b);
             return pr && pr.beat;
@@ -16168,7 +16546,7 @@ ${JSON.stringify(fb.context, null, 1)}`;
             const e = EX(p.exId);
             return `${e.name} ${setShort(e, p.w, p.r)}`;
           });
-          const work = ex.reduce((a, b) => a + b.sets.filter(isWork).length, 0), hard = r1(ex.reduce((a, b) => {
+          const work = ex.reduce((a, b) => a + b.sets.filter(isWork).length, 0), miss = ex.reduce((a, b) => a + b.sets.filter((q) => !q.warm && !q.drop && isMissed(q)).length, 0), hard = r1(ex.reduce((a, b) => {
             const e = EX(b.exId);
             return a + b.sets.reduce((c, q) => c + hardCredit(q, e), 0);
           }, 0));
@@ -16179,7 +16557,7 @@ ${JSON.stringify(fb.context, null, 1)}`;
             toast("Session updated");
             return;
           }
-          const lines = [`${work} working set${work === 1 ? "" : "s"}, ${hard} ${rirHalfOn() ? "counted toward the week" : "counted as hard"}`];
+          const lines = [`${work} working set${work === 1 ? "" : "s"}, ${hard} ${rirHalfOn() ? "counted toward the week" : "counted as hard"}${miss ? `, and ${miss} missed` : ""}`];
           if (sess.date !== today()) lines.unshift(`Saved under ${fmtDateLong(sess.date)}`);
           if (durMin) {
             const pm = pmDraft;
@@ -16315,12 +16693,15 @@ ${JSON.stringify(fb.context, null, 1)}`;
           toast("Enter at least one measurement");
           return;
         }
-        state.measurements = state.measurements.filter((x) => x.date !== m.date);
-        state.measurements.push(m);
+        snapshot();
+        const was = state.measurements.find((x) => x.date === m.date);
+        if (was) Object.assign(was, m, { id: was.id });
+        else state.measurements.push(m);
         commit();
         rerenderKeepScroll();
-        toast("Measurements saved");
+        toast("Measurements saved", true);
       },
+      // a second save the same day adds to it, keeping what it does not retype, with Undo (r55, the audit: it replaced the day's entry)
       delMeas(t) {
         const id = t.dataset.id;
         const x = state.measurements.find((m) => m.id === id);
@@ -16361,7 +16742,7 @@ ${JSON.stringify(fb.context, null, 1)}`;
         const R = curRoutineB();
         const d = R.days[ui.bTarget];
         d.items.push(newItem(t.dataset.ex));
-        if (d.rest) d.rest = false;
+        Object.assign(d, trainOn(d));
         commit();
         rerenderKeepScroll();
         toast(`Added to ${dayLabel(R, ui.bTarget)}`);
@@ -16415,12 +16796,13 @@ ${JSON.stringify(fb.context, null, 1)}`;
           toast("Reused your empty routine");
           return;
         }
-        const r = { id: uid(), name: nm || "New routine", schedule: "cycle", days: [1, 2, 3].map(() => ({ id: uid(), name: "Training day", rest: false, items: [] })) };
+        const r = { id: uid(), name: nm || "New routine", schedule: "cycle", days: [0, 1, 0, 1, 0, 1, 1].map((x) => ({ id: uid(), name: x ? "Rest" : "Training day", rest: !!x, items: [] })) };
         state.routines.push(r);
         ui.bRoutine = r.id;
         commit();
         render();
       },
+      // Laid out as Build my own's (r55, the audit: three training days and no rest planned 7 sessions a week).
       rTemplate() {
         openModal({ kind: "templates", from: "plan" });
       },
@@ -16470,6 +16852,7 @@ ${JSON.stringify(fb.context, null, 1)}`;
         if (m && m.back) openModal(m.back);
         else closeModal();
       },
+      // back to the sheet this one was opened from, else closed: the exercise editor's, and an account sheet's opened from a problem report (r55)
       exEdit(t) {
         ui.exBody = false;
         const e = JSON.parse(JSON.stringify(EX(t.dataset.ex)));
@@ -16889,6 +17272,7 @@ ${JSON.stringify(fb.context, null, 1)}`;
           const first = demoFirstRun();
           demoKeep();
           if (first) fitTargets(activeRoutine());
+          if (!cloud.on) cloudStop(true);
           makeDemo();
           ui.tab = "dash";
           window.scrollTo(0, 0);
@@ -16909,9 +17293,7 @@ ${JSON.stringify(fb.context, null, 1)}`;
       },
       demoClear() {
         snapshot();
-        state.sessions = state.sessions.filter((s) => !s.demo);
-        state.bodyweights = state.bodyweights.filter((b) => !b.demo);
-        state.measurements = state.measurements.filter((m) => !m.demo);
+        stripDemo(state);
         demoRestore();
         commit();
         render();
@@ -16921,6 +17303,7 @@ ${JSON.stringify(fb.context, null, 1)}`;
         confirmBox("Erase everything?", `All routines, sessions, custom exercises, and body data will be deleted${cloud.on ? " on this device and in your cloud copy" : " on this device"}. Export a backup first if you might want it.`, "Erase everything", () => {
           snapshot();
           setState(normalize(null));
+          if (!cloud.on) cloudStop(true);
           commit();
           ui.tab = "today";
           render();
@@ -17112,7 +17495,7 @@ ${JSON.stringify(fb.context, null, 1)}`;
       }
       if (e.target.id === "modal") {
         if (ui.modal && ui.modal.dirty) {
-          toast("Save or cancel first. Your changes are still here.");
+          toast(DIRTY_SAID);
           return;
         }
         closeModal();
@@ -17174,7 +17557,7 @@ ${JSON.stringify(fb.context, null, 1)}`;
           carried.delete(s);
         } else if (t.dataset.f === "r") {
           const n = numIn(v);
-          s.r = n == null ? null : Math.min(Math.max(Math.round(n), 0), 1e3);
+          s.r = n == null ? null : Math.min(Math.max(Math.floor(n + 1e-9), 0), 1e3);
           refreshGrey(+t.dataset.b);
         } else {
           const n = numIn(v);
@@ -17217,7 +17600,7 @@ ${JSON.stringify(fb.context, null, 1)}`;
           invalidate();
           return;
         }
-        f.it[k] = k === "rir" ? cl(n, 0, 10) : k === "sets" ? cl(Math.round(n), 1, 30) : k === "rest" ? cl(Math.round(n), 0, 1800) : cl(Math.round(n), 1, 600);
+        f.it[k] = k === "rir" ? cl(effIn(n), 0, 10) : k === "sets" ? cl(Math.round(n), 1, 30) : k === "rest" ? cl(Math.round(n), 0, 1800) : cl(Math.round(n), 1, 600);
         saveSoon();
         invalidate();
         return;
@@ -17402,7 +17785,7 @@ ${JSON.stringify(fb.context, null, 1)}`;
         if (to === f.di) return;
         f.r.days[f.di].items.splice(f.i, 1);
         f.r.days[to].items.push(f.it);
-        if (f.r.days[to].rest) f.r.days[to].rest = false;
+        Object.assign(f.r.days[to], trainOn(f.r.days[to]));
         commit();
         rerenderKeepScroll();
         toast(`Moved to ${dayLabel(f.r, to)}`);
@@ -17466,18 +17849,23 @@ ${JSON.stringify(fb.context, null, 1)}`;
         const bi = +t.dataset.b, si = +t.dataset.s;
         const s = draftSet(t);
         if (!s) return;
+        if (s.r != null && t.value.trim() !== String(s.r)) t.value = String(s.r);
         if (rebuilding) {
-          if (s.done && !(+s.r > 0)) queueMicrotask(() => {
+          if (s.done && s.r == null) queueMicrotask(() => {
             const b2 = state.draft && state.draft.ex[bi];
             const s2 = b2 && b2.sets[si];
-            if (s2 && s2.done && !(+s2.r > 0)) setDone(bi, si, false);
+            if (s2 && s2.done && s2.r == null) setDone(bi, si, false);
           });
           return;
         }
-        if (s.done && !(+s.r > 0)) setDone(bi, si, false);
-        else if ((state.settings.autoDone || state.draft.past) && !s.done && +s.r > 0) {
+        if (s.done && s.r == null) {
+          setDone(bi, si, false);
+          t.dataset.cleared = "1";
+        } else if ((state.settings.autoDone || state.draft.past) && !s.done && (+s.r > 0 || isMissed(s))) {
           const toRir = !state.draft.past && lastDown.el && Date.now() - lastDown.t < 700 && lastDown.el.closest && lastDown.el.closest(`.rirb[data-b="${bi}"][data-s="${si}"]`);
-          if (toRir) {
+          const toW = !toRir && !state.draft.past && lastDown.el && Date.now() - lastDown.t < 700 && lastDown.el.closest && lastDown.el.closest(`.sg input[data-f="w"][data-b="${bi}"][data-s="${si}"]`);
+          if (toW) pendAuto = { b: blkRef(bi), s: si };
+          else if (toRir) {
             const p = { b: blkRef(bi), s: si };
             pendAuto = p;
             setTimeout(() => {
@@ -17490,6 +17878,7 @@ ${JSON.stringify(fb.context, null, 1)}`;
         } else if (s.done) {
           refreshPR(bi, si, false);
           afterSet(bi, si);
+          if (isMissed(s)) toast(MISSED_SAID);
         }
         saveSoon();
         return;
@@ -17498,12 +17887,21 @@ ${JSON.stringify(fb.context, null, 1)}`;
         if (t.dataset.f === "w" && state.draft) {
           const s = draftSet(t);
           if (!s) return;
-          if (s.done) {
-            refreshPR(+t.dataset.b, +t.dataset.s, false);
-            afterSet(+t.dataset.b, +t.dataset.s);
+          const bi = +t.dataset.b, si = +t.dataset.s;
+          const rf = !!ui.refix && ui.refix.s === si && blkIdx(ui.refix.b) === bi;
+          if (rf) ui.refix = null;
+          if (s.done && oddLoad(state.draft.ex[bi], si, state.draft.date)) {
+            setDone(bi, si, false);
+            setDone(bi, si, true, true);
+            return;
           }
-          mixCheck(+t.dataset.b, +t.dataset.s);
-          if (fillLoads()) carryLoad(+t.dataset.b, +t.dataset.s);
+          if (rf && !s.done) setDone(bi, si, true, true);
+          else if (s.done) {
+            refreshPR(bi, si, false);
+            afterSet(bi, si);
+          }
+          mixCheck(bi, si);
+          if (fillLoads()) carryLoad(bi, si);
         }
         if (t.tagName === "SELECT" && state.draft) {
           const s = draftSet(t);
@@ -17815,7 +18213,15 @@ ${JSON.stringify(fb.context, null, 1)}`;
     }, true);
     document.addEventListener("focusout", (e) => {
       const t = e.target;
+      if (t && t.matches && t.matches('.sg input[data-f="w"]') && pendAuto && pendAuto.s === +t.dataset.s && blkIdx(pendAuto.b) === +t.dataset.b) {
+        setTimeout(autoPending, 0);
+        return;
+      }
       if (!t || !t.matches || !t.matches('.sg input[data-f="r"]') || t.value.trim()) return;
+      if (t.dataset.cleared) {
+        delete t.dataset.cleared;
+        return;
+      }
       if (rebuilding || !state.draft || !state.settings.autoDone) return;
       const bi = +t.dataset.b, si = +t.dataset.s;
       const to = e.relatedTarget;
@@ -17894,6 +18300,7 @@ ${JSON.stringify(fb.context, null, 1)}`;
         if (ae && ae.dataset && /^\d+$/.test(ae.dataset.b || "")) ae.dataset.b = String(mi(+ae.dataset.b));
         if (!moveBlock(bi, j)) continue;
         moved = true;
+        (ui.ordBack || (ui.ordBack = /* @__PURE__ */ new WeakMap())).set(b, { i: bi, t: Date.now() });
       }
       if (!moved || ui.tab !== "today") return;
       rerenderKeepScroll();
@@ -18156,7 +18563,7 @@ ${JSON.stringify(fb.context, null, 1)}`;
             const [it] = R.days[from].items.splice(evt.oldIndex, 1);
             if (it) {
               R.days[to].items.splice(evt.newIndex, 0, it);
-              if (R.days[to].rest) R.days[to].rest = false;
+              Object.assign(R.days[to], trainOn(R.days[to]));
             }
             commit();
             setTimeout(rerenderKeepScroll, 0);
@@ -18199,7 +18606,7 @@ ${JSON.stringify(fb.context, null, 1)}`;
           const R = curRoutineB();
           if (!isNaN(to) && exId && R.days[to]) {
             R.days[to].items.splice(evt.newIndex, 0, newItem(exId));
-            if (R.days[to].rest) R.days[to].rest = false;
+            Object.assign(R.days[to], trainOn(R.days[to]));
             commit();
             toast(`${exName(exId)} added to ${dayLabel(R, to)}`);
           }
@@ -18290,7 +18697,7 @@ ${JSON.stringify(fb.context, null, 1)}`;
       return state;
     }, set state(v) {
       setState(v);
-    }, fbContext, FB_CTX_MAX, logCut, logBuf, log, dateIndex, sessionsOn, bestLine, whyTarget, recent4w, weekSessions, fmtDate, fmtDateLong, fbShrink, orderAt, orderRun, dropOnlyLift, profHeavy, appBand, fitRecordOld, prof, profClean, profRule, profPlan, defPlan, defBand, profMoveBands, profApplyList, strengthPick, PROF_DAYS, FOCUS_MAX, estInLoad, keepExtra, EXTRA_MAX, draftPlanMin, pace, paceRatios, sessModelMin, PACE_N, PACE_DAYS, PACE_MIN, plainTemplate, trashTidy, ENV, KEY, COMMON, COMMON_TIP, isCommon, bwEvery, isRestWeek, sessCmp, avgWeeks, weekStreak, coach, noLog, afterSet, adjOn, bwAt, newBlock, cycleState, sortedSessions, addDays, loadIn, gymRack, gymClean, dbListOf, capOf, refreshEx, effShow, rirScale, setStr, libExercises, obGate, obTour, andList, belowMin, aboveMax, starterRoutine, starterSigs, plateList, exBarKg, VOL_MODES, liveLogFetch, regionSrc, fitTargets, firstFullWeek, moveBlock, BANDS, installSheet, siteHost, greyW, effW, greyR, lighterLoad, heavierLoad, incOf, swapPlan, planSetsPerWeek, weekNeed, stepRead, e1inv, rtfAt, rtfOf, rtfBand, calStats, rirEff, isHard, setCredit, tonnage, loadMode, loadWords, loadNote, progStep, jumpCap, setSecs, setupSecs, recovery, rolling7, rankDays, rankExercises, isCompound, patternOf, noE1, whtrLine, exHeadline, remainMin, shortPlan, weekPlan, cycleProjection, lastLighterWeek, avgFirstWeek, avgWait, stallWeeks, weeksAvg, fitFloors, refit, regionBalance, parseHeight, mixCheck, swapCands, eqPlan, exportCSV, importData, chunksOf, assemble, sessionMuscles, TRACK_ONLY, cloud, Hx, mergeChunk, baseOf, sync: () => cq(cloudPull), TEMPLATES, lastRFor, impDate, impRows, impNorm, impMatch, impFromText, impFromTable, impHeader, impBuild, impStart, impXlsx, parseSets, undoStack, undoRestore, undoForget, allTimeBests, bestsBoard, obActive, fmtW, rirUsual, rirEst, routineFromTemplate, plannedSets, map3d: () => ({ state: B3.state, fail: B3.fail, meshes: B3.meshes.length, yaw: B3.yaw, glow: Object.keys(B3.mats).filter((m) => B3.mats[m].emissiveIntensity > 0), canvas: !!document.querySelector("#bm3d canvas"), colors: Object.fromEntries(Object.entries(B3.mats).map(([m, mt]) => [m, "#" + mt.color.getHexString()])), pick: (x, y) => map3dPick(x, y), want: map3dColors() }), cloudState: () => ({ on: cloud.on, status: cloud.status, err: cloud.err, uid: cloud.uid, acct: cloud.acct }), acctUser: () => acct.user, acctWaiting: () => !!acctWait.pw, flush: () => cq(cloudFlush), backupDue, routineUpdates, planFor, platesMode, plateText, chunksOf, IDX, suggest, e1, render, ACT, ui, makeDemo, invalidate, normalize, snapshot, saveNow, timer, weekStats, weekStart, today, EX, blockProgress, dayMinutes, weekStreak, coach, tonnageNow, livePR, movers, stalledIds, muscleStatus, actualAvg4, plannedPerWeek, parseSets, fillSets, newBlock, lastNoteOf, sizeRows, sessionMuscleSets, sessionCapNote, routineClutter, rowBlank, dayReasons, impTextSets, liftTrend, prsWithin, activeRoutine, rackStep, repFloor, sessionLength, prBeat, exInjury, exJoints, openModal, EQUIP, HARD_EX, recentLighter, planEvidenceNote, howToUrl, editFp, toast, avgWeeks, regionWk, REGION_WKS, SAFETY_TXT, libFiltered, nameMatch, workLoad, fitE, lighter, offTarget, sessionWord, sessionWords, dayLabel, daySets, ssLetters, routineSig, tplCountLine, fatigueStalls, avgWeeksTxt, routineFromLog, repSpan, rangeWords, calDueIdx, readyCard, sameRR, hintOnce, overSets, rackTol, daysOff, BACK_DAYS, prName, sessTm, effTgt, bwDueCard, bwNoLoad, applyPick, joinAdjacent, sameExOnce, goalState, goalLine, bwRefLoad, ML, exMusParts, musTrend, U, toD, fromD, loadLabel, exName, planCredit, gymOf, isDeloadWeek, freeMode, injuredSet, prLoad, statsUpTo, readiness, bwRef, weekRoutine, easierText, barKg, suggestCore, loadOf, bwLoad, hardCredit, rirHalfOn, prFrame, stallWords, atRangeTop };
+    }, fbContext, FB_CTX_MAX, logCut, logBuf, log, dateIndex, sessionsOn, bestLine, whyTarget, recent4w, weekSessions, fmtDate, fmtDateLong, fbShrink, orderAt, orderRun, dropOnlyLift, profHeavy, appBand, fitRecordOld, prof, profClean, profRule, profPlan, defPlan, defBand, profMoveBands, profApplyList, strengthPick, PROF_DAYS, FOCUS_MAX, estInLoad, keepExtra, EXTRA_MAX, draftPlanMin, pace, paceRatios, sessModelMin, PACE_N, PACE_DAYS, PACE_MIN, plainTemplate, trashTidy, ENV, KEY, COMMON, COMMON_TIP, isCommon, bwEvery, isRestWeek, sessCmp, avgWeeks, weekStreak, coach, noLog, afterSet, adjOn, bwAt, newBlock, cycleState, sortedSessions, addDays, loadIn, gymRack, gymClean, dbListOf, capOf, refreshEx, effShow, rirScale, setStr, libExercises, obGate, obTour, andList, belowMin, aboveMax, starterRoutine, starterSigs, plateList, exBarKg, VOL_MODES, liveLogFetch, regionSrc, fitTargets, firstFullWeek, moveBlock, BANDS, installSheet, siteHost, greyW, effW, greyR, lighterLoad, heavierLoad, incOf, swapPlan, planSetsPerWeek, weekNeed, stepRead, e1inv, rtfAt, rtfOf, rtfBand, calStats, rirEff, isHard, setCredit, tonnage, loadMode, loadWords, loadNote, progStep, jumpCap, setSecs, setupSecs, recovery, rolling7, rankDays, rankExercises, isCompound, patternOf, noE1, whtrLine, exHeadline, remainMin, shortPlan, weekPlan, cycleProjection, lastLighterWeek, avgFirstWeek, avgWait, stallWeeks, weeksAvg, fitFloors, refit, regionBalance, parseHeight, mixCheck, swapCands, eqPlan, exportCSV, importData, chunksOf, assemble, sessionMuscles, TRACK_ONLY, cloud, Hx, mergeChunk, baseOf, sync: () => cq(cloudPull), TEMPLATES, lastRFor, impDate, impRows, impNorm, impMatch, impFromText, impFromTable, impHeader, impBuild, impStart, impXlsx, parseSets, undoStack, undoRestore, undoForget, allTimeBests, bestsBoard, obActive, fmtW, rirUsual, rirEst, routineFromTemplate, plannedSets, map3d: () => ({ state: B3.state, fail: B3.fail, meshes: B3.meshes.length, yaw: B3.yaw, glow: Object.keys(B3.mats).filter((m) => B3.mats[m].emissiveIntensity > 0), canvas: !!document.querySelector("#bm3d canvas"), colors: Object.fromEntries(Object.entries(B3.mats).map(([m, mt]) => [m, "#" + mt.color.getHexString()])), pick: (x, y) => map3dPick(x, y), want: map3dColors() }), cloudState: () => ({ on: cloud.on, status: cloud.status, err: cloud.err, uid: cloud.uid, acct: cloud.acct }), acctUser: () => acct.user, acctWaiting: () => !!acctWait.pw, flush: () => cq(cloudFlush), backupDue, routineUpdates, planFor, platesMode, plateText, chunksOf, IDX, suggest, e1, render, ACT, ui, makeDemo, invalidate, normalize, snapshot, saveNow, timer, weekStats, weekStart, today, EX, blockProgress, dayMinutes, weekStreak, coach, tonnageNow, livePR, movers, stalledIds, muscleStatus, actualAvg4, plannedPerWeek, parseSets, fillSets, newBlock, lastNoteOf, sizeRows, sessionMuscleSets, sessionCapNote, routineClutter, rowBlank, dayReasons, impTextSets, liftTrend, prsWithin, activeRoutine, rackStep, repFloor, sessionLength, prBeat, exInjury, exJoints, openModal, EQUIP, HARD_EX, recentLighter, planEvidenceNote, howToUrl, editFp, toast, avgWeeks, regionWk, REGION_WKS, SAFETY_TXT, libFiltered, nameMatch, workLoad, fitE, lighter, offTarget, sessionWord, sessionWords, dayLabel, daySets, ssLetters, routineSig, tplCountLine, pwOf, dropStarter, trainOn, planItemOf, fatigueStalls, avgWeeksTxt, routineFromLog, repSpan, rangeWords, calDueIdx, readyCard, sameRR, hintOnce, overSets, rackTol, daysOff, BACK_DAYS, prName, sessTm, effTgt, bwDueCard, bwNoLoad, applyPick, joinAdjacent, sameExOnce, savedEx, goalState, goalLine, bwRefLoad, ML, exMusParts, musTrend, U, toD, fromD, loadLabel, exName, planCredit, gymOf, isDeloadWeek, freeMode, injuredSet, prLoad, statsUpTo, readiness, bwRef, weekRoutine, logBack, logStart, easierText, barKg, suggestCore, loadOf, bwLoad, hardCredit, rirHalfOn, prFrame, stallWords, atRangeTop, oddLoad };
     render();
     wakeOn();
     timerResume();

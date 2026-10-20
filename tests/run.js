@@ -8,12 +8,12 @@
 //   node tests/run.js --browser webkit   the same suites in WebKit, the engine of every iPhone browser
 const {execFile,execFileSync}=require('child_process');const fs=require('fs');const os=require('os');const path=require('path');
 fs.mkdirSync('screenshots',{recursive:true});
-const suites=['unit-math','unit-analytics','dataflow','migration','acceptance','flows','charts-layout','cycle-create','fuzz','integrity','gym-ux','design','uat','essentials','comeback-removed','map3d','cleanup','ios-bar','pwa','update','accounts','install','r21','r22','r23','r24','r25','preview','owner-doc','sql','journey','progress','breach','custom','r27','r28','r29','r29b','r29c','r30','r31','r32','r32b','r33','r34','r34b','r35','r36','r38','r39','r40','r41','realism','r42','r43','r44','r45','r46','r47','r49','r52','r53','r53w','r54','r54b','engine','bests','coherence','seams','security','hygiene','perf'];
+const suites=['unit-math','unit-analytics','dataflow','migration','acceptance','flows','charts-layout','cycle-create','fuzz','integrity','gym-ux','design','uat','essentials','comeback-removed','map3d','cleanup','ios-bar','pwa','update','accounts','install','r21','r22','r23','r24','r25','preview','owner-doc','sql','journey','progress','breach','custom','r27','r28','r29','r29b','r29c','r30','r31','r32','r32b','r33','r34','r34b','r35','r36','r38','r39','r40','r41','realism','r42','r43','r44','r45','r46','r47','r49','r52','r53','r53w','r54','r54b','r55','r55b','lifter','engine','bests','coherence','seams','security','hygiene','perf'];
 // The standalone build (dist/) runs the user-facing suites again.
 // map3d is not among them: a file:// page cannot import a module, and pwa checks the 3D body in dist/ over http.
 // r39 is not either, for the same reason: most of it is the 3D body in a sheet.
 // r22 is not repeated on dist/: its first-run part checks the source file's no-account path, and the accounts suite covers the build's.
-const distSuites=['dataflow','acceptance','flows','gym-ux','design','uat','essentials','comeback-removed','r21','r24','r25','journey','progress','custom','r29c','r30','r31','r32','r32b','r33','r34','r34b','r35','r38','r40','r41','r42','r43','r44','r46','r49','coherence','security'];
+const distSuites=['dataflow','acceptance','flows','gym-ux','design','uat','essentials','comeback-removed','r21','r24','r25','journey','progress','custom','r29c','r30','r31','r32','r32b','r33','r34','r34b','r35','r38','r40','r41','r42','r43','r44','r46','r49','coherence','security','lifter'];
 /* Suites that lean on real time (rest timers, toasts, short waits, the clock)
    run one at a time after the others, so a busy machine cannot make them
    flaky (the r44 review). No retries: a retry would hide a real flake. */

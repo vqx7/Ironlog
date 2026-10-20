@@ -55,16 +55,16 @@ The current code is the **legacy script**: `src/10-*.js` to `src/29-*.js`, joine
 
 **The ratchet:** the legacy script may never grow. `tests/hygiene.js` fails when it has more top-level declarations or more lines than the numbers below, and also when it has fewer, until the numbers are lowered to match, so each phase locks in what it moved. A change that adds code adds it in `src/app/`.
 
-Legacy top-level declarations: 504
-Legacy lines: 7388
+Legacy top-level declarations: 503
+Legacy lines: 7360
 
-| Measured (scripts/depmap.js) | r49 | r50 | r51 | r52 | r53 | r54 |
-|---|---|---|---|---|---|---|
-| Legacy top-level declarations | 928 | 819 | 638 | 518 | 511 | 504 |
-| Pure, movable as they are | 324 | 215 (214 by r51's rule, which also counts browser-only APIs such as DOMParser) | 39 (each waits for its phase, below) | 34 (a call through `live.ts` counts as reading shared state) | 33 (since r53 a call to any module function that reads the store, the live model or the page counts too, `moduleReach`; by r52's rule 40, as effort.ts's `rirScale` reads the store) | 33 |
-| Shared mutable names | 61 (`ui` written from 12 files, `state` from 10) | 61 | 56 (`state`, `ui`, `cloud`, `acct` and `acctWait` are the store's) | 48 (the seven caches are the model's) | 48 | 48 |
-| Legacy lines | 10,452 | 9,863 | 9,134 | 7,585 | 7,436 | 7,388 |
-| In `src/app/` | `config.ts` | and `util`, `units`, `library`, `routines`, `formulas` (109 declarations) | and 18 more modules, the store among them (182 declarations: 176 moved, the four shared objects, `state` and `setState`) | and 7 more modules, five grown (the 120 moved as 113: 96 taking the model, 16 unchanged and `invalidateIn`, the caches given by `freshCaches`; with `modelOf`, `LIVE`, `live` and 74 adapters) | and 3 more modules, `guide`, `providers` and `effort` (7 declarations moved, `routineUpdates` and `whyTarget` among them to change, so 75 adapters; 4 added) | and 2 more modules, `plans` (the plan a lift is done at, moved from `routines` to layer 2) and `sheets` (the sign-in sheet's fields kept through a redraw); `plannedSets`, `effShow`, `lastLighterWeek`, `muscleStatus`, `heavierLoad`, `defBand` and `appBand` moved (`lastLighterWeek` rewritten, to the averages' reading of a lighter week), 91 adapters |
+| Measured (scripts/depmap.js) | r49 | r50 | r51 | r52 | r53 | r54 | r55 |
+|---|---|---|---|---|---|---|---|
+| Legacy top-level declarations | 928 | 819 | 638 | 518 | 511 | 504 | 503 (`allTimeBests` moved to `analytics.ts`) |
+| Pure, movable as they are | 324 | 215 (214 by r51's rule, which also counts browser-only APIs such as DOMParser) | 39 (each waits for its phase, below) | 34 (a call through `live.ts` counts as reading shared state) | 33 (since r53 a call to any module function that reads the store, the live model or the page counts too, `moduleReach`; by r52's rule 40, as effort.ts's `rirScale` reads the store) | 33 | 33 |
+| Shared mutable names | 61 (`ui` written from 12 files, `state` from 10) | 61 | 56 (`state`, `ui`, `cloud`, `acct` and `acctWait` are the store's) | 48 (the seven caches are the model's) | 48 | 48 | 48 |
+| Legacy lines | 10,452 | 9,863 | 9,134 | 7,585 | 7,436 | 7,388 | 7,360 |
+| In `src/app/` | `config.ts` | and `util`, `units`, `library`, `routines`, `formulas` (109 declarations) | and 18 more modules, the store among them (182 declarations: 176 moved, the four shared objects, `state` and `setState`) | and 7 more modules, five grown (the 120 moved as 113: 96 taking the model, 16 unchanged and `invalidateIn`, the caches given by `freshCaches`; with `modelOf`, `LIVE`, `live` and 74 adapters) | and 3 more modules, `guide`, `providers` and `effort` (7 declarations moved, `routineUpdates` and `whyTarget` among them to change, so 75 adapters; 4 added) | and 2 more modules, `plans` (the plan a lift is done at, moved from `routines` to layer 2) and `sheets` (the sign-in sheet's fields kept through a redraw); `plannedSets`, `effShow`, `lastLighterWeek`, `muscleStatus`, `heavierLoad`, `defBand` and `appBand` moved (`lastLighterWeek` rewritten, to the averages' reading of a lighter week), 91 adapters | the same modules, grown by r55's fixes (no module added) |
 
 ## The phases
 
@@ -228,7 +228,7 @@ Marks in r52's moved code (from baselines/r51.html): 21 casts, 77 non-null asser
 
 A mark counts against the move that moved its declaration, edited or not: 86 non-null assertions when r52 moved them, 85 since r53's edit of `recentLighterIn` took one out, 77 since r54's snap of a suggestion onto the step in the unit on screen (`snapUnitIn`, now `unitSnap` beside it) reads its loads with `inUnitIn` and `kgOfIn`, the conversions of a number, where `toDIn` and `fromDIn` needed a `!` to say a number gives a number; 22 casts when r52 moved them, 21 since r54's `loadFloorIn`, which took the empty-bar test out of `lighterLoadIn`, reads a lift with no bar of its own as 0 (`?? 0`) where the cast said an absent bar compares false.
 
-Engine coverage, lines run by tests/engine.js: model 100%, units 100%, routines 76.3%, gym 72.6%, format 60%, loads 66.6%, analytics 100%, time 100%, weeks 100%, coach 100%, engine 100%, plans 100%
+Engine coverage, lines run by tests/engine.js: model 100%, units 100%, routines 77.9%, gym 72.6%, format 64.3%, loads 66.6%, analytics 100%, time 100%, weeks 100%, coach 100%, engine 100%, plans 100%
 
 2. **Outside addresses, library versions and the font faces are defined once**, in `src/app/config.ts`: the Chart.js, SortableJS and three.js versions and the CDN addresses, the two faces and their weights, the fonts style sheet and its two origins, and the password check's origin. The markup and style sheet read them through `scripts/join.js`'s placeholders (a list only as a script array's items), `scripts/build.js` for its replacements, its fonts, its Content Security Policy and its license list, `scripts/cloud-supabase.js` through the build's placeholders, and the test fixtures directly. Each version equals the one `package.json` pins. `tests/hygiene.js` fails on any of them typed anywhere else in `src/`, `scripts/` (every script, not a list) or `tests/`, including a library's name with the first two parts of its version, and on any other outside address in `src/` or `scripts/` (https, http, wss or written from //) that is not config's or listed below with the phase that moves it. It reads the text as written and with a pattern's `\.` and `\/` undone (`https:\/\/api\.pwnedpasswords\.com` is the address), config's hosts with or without a scheme, faces in any case and the weights as a list of numbers in any spelling; other disguises (`[.]`, `\x2e`, a face written with hyphens) and anything assembled from pieces at run time are beyond a search of the text and are review's to catch.
 

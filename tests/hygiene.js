@@ -900,6 +900,21 @@ const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log
   const back = ['/*ai{', '/*}ai', 'debriefPrompt', 'aiDigest', 'AI_STYLE', 'exProjection', 'loadAskCard', 'SIMPLE_HIDE'].filter(w => src.includes(w));
   ok(back.length === 0, 'nothing the documents record as removed is back in the source', back);
 
+  // A comment added at the end of a line of the legacy script must end the line (r55, the review: one added after
+  // Build my own's first statements swallowed two more, so the Days section opened folded and a day picked on Today
+  // stayed picked). Code after a line comment reads as a statement end and an assignment or call inside the comment.
+  {
+    const swallowed = [];
+    for (const f of fs.readdirSync(path.join(ROOT, 'src')).filter(f => /^[12]\d-.+\.js$/.test(f)))
+      fs.readFileSync(path.join(ROOT, 'src', f), 'utf8').split('\n').forEach((l, i) => {
+        const at = [l.indexOf('; //'), l.indexOf('} //'), l.indexOf(') //'), l.indexOf(', //')].filter(p => p >= 0);
+        if (!at.length) return;
+        const tail = l.slice(Math.min(...at) + 3);
+        if (/[;{}]\s*[A-Za-z_$][\w$.\[\]']*\s*[=(]/.test(tail) || /\w\.\w+=\w/.test(tail) || /\w\(\);/.test(tail)) swallowed.push(`${f}:${i + 1}: ${tail.slice(0, 120)}`);
+      });
+    ok(swallowed.length === 0, 'no comment at the end of a legacy line hides code after it', swallowed);
+  }
+
   const cm = fs.readFileSync(path.join(ROOT, 'CLAUDE.md'), 'utf8');
   ok(!/ships two ways|as a Claude artifact \(a hosted/.test(cm), 'CLAUDE.md does not call the retired artifact a shipping channel');
   const ver = (cfg.APP_VERSION.match(/-r([0-9.]+)$/) || [])[1];

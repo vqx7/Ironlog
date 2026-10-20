@@ -5,6 +5,8 @@
    the save, which read the log, stay with the import screen. */
 
 import { today, isDate } from './util';
+import { CARDIO, CWHEN } from './library';
+import { KM_MI } from './units';
 
 /** One set read from a table row, in the row's unit (u) when the row says it. */
 type ImpSet = {
@@ -18,10 +20,28 @@ type ImpSet = {
 };
 /** An exercise of an imported session, in order of first appearance. */
 type ImpItem = { name: string; sets: ImpSet[]; note: string };
-/** An imported session: a date and a workout name, its exercises, and whether it was a deload. */
-type ImpSession = { date: string; name: string; items: Map<string, ImpItem>; note: string; deload?: boolean };
-/** Cardio read from a table, per date and kind, time and distance added up. */
-type ImpCardio = { date: string; kind: string; secs: number; dist: number; name: string };
+/** An imported session: a date and a workout name, its exercises, whether it was a deload, and from the app's own file its note and minutes (r55). */
+type ImpSession = {
+  date: string;
+  name: string;
+  items: Map<string, ImpItem>;
+  note: string;
+  deload?: boolean;
+  durMin?: number;
+};
+/** Cardio read from a table, per date and kind, time and distance added up; from the app's own file its exact minutes, heart rate, when, note and distance in km (r55). */
+type ImpCardio = {
+  date: string;
+  kind: string;
+  secs: number;
+  dist: number;
+  name: string;
+  min?: number;
+  hr?: number;
+  when?: string;
+  note?: string;
+  km?: number;
+};
 
 /** Rows read from a table at most; past this the preview says the file was cut. */
 export const IMP_MAX_ROWS = 50000;
@@ -498,6 +518,22 @@ export function impFromTable(rows: readonly (readonly unknown[])[], map: Record<
   };
   if (!unit && map.unit != null) for (let i = 1; i < rows.length && !unit; i++) unit = rowUnit(rows[i]);
   const S = new Map<string, ImpSession>();
+  /* The app's own file (r55, the audit: read back, it lost cardio, session
+     notes and the minutes a session took, and a missed set): its columns
+     past the ones every table has, by their names. */
+  const heads = head.map(h =>
+    String(h == null ? '' : h)
+      .trim()
+      .toLowerCase()
+  );
+  const ours = heads.some(h => /^load_(lb|kg)$/.test(h)) && heads.includes('exercise_note');
+  const col = (n: string): number | null => (ours && heads.includes(n) ? heads.indexOf(n) : null);
+  const cNote = col('session_note'),
+    cMin = col('session_minutes'),
+    cHr = col('avg_hr'),
+    cUnit = col('unit');
+  const at = (r: readonly unknown[], i: number | null): string =>
+    i == null ? '' : String(r[i] == null ? '' : r[i]).trim();
   let lastDate: string | null = null,
     lastEx: string | null = null,
     lastName = '';
@@ -536,6 +572,29 @@ export function impFromTable(rows: readonly (readonly unknown[])[], map: Record<
     /* A distance, or a cardio name with no reps, is cardio: kept as a
        cardio entry per date and kind, time and distance added up. A blank
        distance is null and reads as 0, as reps and seconds do above. */
+    /* The app's own cardio rows say minutes in their unit column, with the
+       kind's name, the minutes and heart rate in the session's columns, and
+       when, the distance and the note in the exercise note. */
+    if (ours && at(r, cUnit) === 'minutes') {
+      cardio++;
+      const kind = (CARDIO.find(([, l]) => l === ex) || ['other'])[0];
+      const min = num(at(r, cMin)),
+        hr = num(at(r, cHr));
+      const o: ImpCardio = { date, kind, secs: min != null && min > 0 ? min * 60 : 0, dist: 0, name: ex };
+      if (min != null && min > 0) o.min = Math.round(min);
+      if (hr != null && hr > 0) o.hr = Math.round(hr);
+      const rest: string[] = [];
+      for (const part of cell('note').split('; ').filter(Boolean)) {
+        const wh = CWHEN.find(([, l]) => l === part);
+        const d = /^(\d+(?:\.\d+)?) (km|mi)$/.exec(part);
+        if (wh) o.when = wh[0];
+        else if (d) o.km = d[2] === 'km' ? +d[1] : +d[1] * KM_MI;
+        else rest.push(part);
+      }
+      if (rest.length) o.note = rest.join('; ');
+      C.set(date + '|' + kind + '|' + C.size, o);
+      continue;
+    }
     const ck = impCardioKind(ex);
     // The cast lets TypeScript compare it: null > 0 is false, as for reps.
     const dist = num(cell('dist')) as number;
@@ -548,7 +607,9 @@ export function impFromTable(rows: readonly (readonly unknown[])[], map: Record<
       C.set(k, o);
       continue;
     }
-    if (!(reps > 0) && !(secs > 0)) {
+    // A set of 0 reps in the app's own file is a missed set (r55), kept as one; elsewhere, a row with nothing done.
+    const missed = ours && cell('r') !== '' && reps === 0;
+    if (!(reps > 0) && !(secs > 0) && !missed) {
       skipped++;
       continue;
     }
@@ -566,13 +627,16 @@ export function impFromTable(rows: readonly (readonly unknown[])[], map: Record<
       rir: rir != null && rir >= 0 && rir <= 10 ? rir : null,
       warm: ty === 'w' || ty === 'warmup' || ty === 'warm-up' || code === '2' || yes(cell('warm')),
       drop: ty === 'd' || ty === 'dropset' || ty === 'drop' || code === '3' || yes(cell('drop')),
-      timed: !(reps > 0),
+      timed: !(reps > 0) && !missed,
       u: rowUnit(r)
     };
     const k = date + '|' + name;
     if (!S.has(k)) S.set(k, { date, name, items: new Map<string, ImpItem>(), note: '' });
     // Made just above when it was missing, so it is there (the !).
     const ss = S.get(k)!;
+    if (!ss.note && at(r, cNote)) ss.note = at(r, cNote);
+    const dm = num(at(r, cMin));
+    if (ss.durMin == null && dm != null && dm > 0) ss.durMin = Math.round(dm);
     if (/^(yes|true|1|y)$/i.test(String(cell('deload') || '').trim())) ss.deload = true;
     if (!ss.items.has(ex)) ss.items.set(ex, { name: ex, sets: [], note: cell('note') });
     const n = Math.min(Math.max(Math.round(num(cell('sets')) || 1), 1), 20);
@@ -584,7 +648,9 @@ export function impFromTable(rows: readonly (readonly unknown[])[], map: Record<
       date: x.date,
       name: x.name,
       items: [...x.items.values()],
-      deload: x.deload || undefined
+      deload: x.deload || undefined,
+      note: x.note || undefined,
+      durMin: x.durMin
     })),
     unit,
     skipped,

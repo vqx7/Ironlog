@@ -22,6 +22,17 @@ export function effShow(v: number | string | null | undefined): string {
   return effAt(rirScale(), n);
 }
 
+/* A plan's effort is typed in the scale in use too (r55, from the audit: on
+   the RPE scale Plan's line read RPE 8 while its field, labelled Target RIR,
+   took the 8 as RIR 8, and the line then read RPE 2). */
+/** A number typed in the scale in use, as the RIR stored: RPE 8 is RIR 2. */
+export function effIn(n: number): number {
+  return rirScale() === 'rpe' ? 10 - n : n;
+}
+
+/** The name of the scale in use for a field's label: RPE, or RIR. */
+export const effName = (): string => (rirScale() === 'rpe' ? 'RPE' : 'RIR');
+
 /* RIR 4 to 5 as half a set (r40, a setting): hardCredit in
    src/app/analytics.ts counts it and says why. This names the range in the
    lifter's own effort scale: a half-rep scale allows 3.5, RPE reads 5 to 6.5. */

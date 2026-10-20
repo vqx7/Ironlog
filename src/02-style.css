@@ -282,9 +282,13 @@ html[data-env="preview"] .tabs::before{content:"PREVIEW";position:absolute;top:-
 .hero+.sec,.ph+.sec,.jump+.sec,.sec:first-child{border-top:0}
 .sec>summary{list-style:none;cursor:pointer;display:flex;align-items:center;gap:10px;min-height:66px;padding:12px 0;-webkit-tap-highlight-color:transparent;user-select:none;-webkit-user-select:none}
 .sec>summary::-webkit-details-marker{display:none}
-.sec-t{font:700 21px/1.15 var(--font);letter-spacing:-.015em;white-space:nowrap;flex:none}
-/* The summary wraps to a second line instead of being cut off on a small phone. */
-.sec-s{flex:1 1 auto;min-width:0;text-align:right;font-size:12px;line-height:1.3;color:var(--muted);font-variant-numeric:tabular-nums;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+/* The title keeps its width and the summary takes the rest, wrapping to a
+   second line instead of being cut off; a title too long to leave the
+   summary its longest word wraps itself (r55, from the audit: at 320 px
+   "Rest timer and logging" left its summary 15 px, and Weekly volume's
+   "4 under target" was cut). */
+.sec-t{font:700 21px/1.15 var(--font);letter-spacing:-.015em;flex:0 1 auto}
+.sec-s{flex:1 1 0;min-width:min-content;text-align:right;font-size:12px;line-height:1.3;color:var(--muted);font-variant-numeric:tabular-nums;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 .chev{width:22px;height:28px;border-radius:0;background:transparent;flex:none;display:inline-flex;align-items:center;justify-content:center}
 .chev::before{content:"";width:8px;height:8px;border-right:2px solid var(--muted);border-bottom:2px solid var(--muted);transform:translateY(-2px) rotate(45deg);transition:transform .18s ease}
 details[open]>summary .chev::before{transform:translateY(2px) rotate(-135deg)}
@@ -358,7 +362,8 @@ label.field>input,label.field>select,label.field>textarea{margin-top:4px;color:v
 /* Settings pairs whose choices do not fit half of a 320 px screen stack instead. */
 @media (max-width:359px){.grid2.one-narrow{grid-template-columns:minmax(0,1fr)}}
 .grid3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
-.check-inline{display:flex;align-items:flex-start;gap:10px;font-size:15px;line-height:1.35}
+/* A whole row is the switch's 44 px touch target (r55, from the audit: Settings' rows were 20 px tall). */
+.check-inline{display:flex;align-items:center;gap:10px;font-size:15px;line-height:1.35;min-height:44px}
 .check-inline input{width:20px;height:20px;flex:none;margin:0;accent-color:var(--ink)}
 
 .tag{display:inline-block;font-size:11.5px;font-weight:650;letter-spacing:.02em;padding:3px 9px;border-radius:999px;background:var(--surface-2);color:var(--muted);white-space:nowrap;vertical-align:1px}
@@ -380,7 +385,7 @@ label.field>input,label.field>select,label.field>textarea{margin-top:4px;color:v
 .day.rest{opacity:.75}
 .dh{display:flex;gap:8px;align-items:center;padding:8px 8px 6px 10px}
 .dh .dlabel{font:700 20px var(--display);text-transform:uppercase;letter-spacing:.03em;white-space:nowrap;flex:none}
-.dh input[type=text]{font-weight:600;min-height:40px;background:var(--surface-2);border-color:transparent}
+.dh input[type=text]{font-weight:600;min-height:44px;background:var(--surface-2);border-color:transparent}
 .dmeta{padding:0 12px 4px;font-size:13.5px;color:var(--muted)}
 .dmeta.row{flex-wrap:nowrap;gap:8px}
 .dmeta .check-inline{flex:none;color:var(--ink);font-size:14px;align-items:center;min-height:44px;cursor:pointer}
@@ -938,6 +943,8 @@ details.more>summary .small{display:block;font-weight:400}
    version is noticed without covering anything. */
 #updbar{position:sticky;top:calc(var(--head-h) + env(safe-area-inset-top,0px));z-index:19;display:flex;align-items:center;gap:8px;padding:6px 16px;background:var(--glass);-webkit-backdrop-filter:saturate(170%) blur(18px);backdrop-filter:saturate(170%) blur(18px);border-bottom:1px solid var(--line-soft)}
 #updbar[hidden]{display:none}
+/* The first-run pages hide the header, so the bar stays at the top there (r55, from the audit: it sat 52 px down, over the wordmark and Set up's back link). */
+body.obmode #updbar{top:env(safe-area-inset-top,0px)}
 .acctbar+.acctbar{margin-top:-6px}
 /* On a phone each line keeps its bold half and its button (item 62). */
 @media (max-width:429px){.acctbar .ab-more{display:none}}

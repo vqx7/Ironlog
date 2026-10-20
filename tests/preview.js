@@ -162,6 +162,38 @@ fs.cpSync(path.join(ROOT, 'dist-preview'), path.join(tmp, 'preview'), { recursiv
   ok(c3.n === n3 && !c3.ob && /Ironlog is unchanged/.test(c3.toast), 'signed out, it copies the live log kept on this phone, and the first-run pages end', { c3, n3 });
   await ctx3.close();
 
+  // Signed out keeping a copy, Copy my log in replaces the preview's log; signing back in then deletes nothing from the
+  // preview's table (r55, the second review: the restored log was merged against the sync notes kept with the old copy,
+  // so the sessions it did not hold were deleted, as a restored backup's were).
+  fake.addUser('w@example.com', 'pass word 1');
+  const ctx4 = await browser.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true, serviceWorkers: 'block' });
+  await quietHibp(ctx4);
+  const p4 = await ctx4.newPage();
+  const ready4 = () => p4.waitForFunction(() => window.__ironlog && window.__libs && window.__libs.chart, null, { timeout: 15000 });
+  await p4.goto(LIVE); await ready4();
+  await p4.evaluate(() => { const L = window.__ironlog; L.state.settings.onboarded = true; L.state.sessions.push({ id: 'lv1', date: '2026-09-20', dayIdx: 0, dayId: null, dayName: 'Live day', routineId: '', free: true, notes: '', ex: [{ exId: 'bench', sets: [{ w: 100, r: 5, rir: 2, warm: false, drop: false }] }] }); L.state = L.normalize(L.state); L.saveNow(); });
+  await p4.goto(PV); await ready4(); await wait(300);
+  await p4.evaluate(() => { const L = window.__ironlog; L.state.settings.onboarded = true; for (const id of ['pv1', 'pv2']) L.state.sessions.push({ id, date: '2026-09-2' + id.slice(2), dayIdx: 0, dayId: null, dayName: 'Preview day', routineId: '', free: true, notes: '', ex: [{ exId: 'bench', sets: [{ w: 100, r: 5, rir: 2, warm: false, drop: false }] }] }); L.state = L.normalize(L.state); L.saveNow(); L.render(); });
+  const signIn4 = async () => {
+    await p4.evaluate(() => window.__ironlog.ACT.acctOpen({ dataset: { mode: 'signin' } })); await wait(100);
+    await p4.fill('#modal [data-abind="email"]', 'w@example.com'); await p4.fill('#modal [data-abind="pw"]', 'pass word 1');
+    await p4.click('#modal [data-act="acctSubmit"]');
+    await p4.waitForFunction(() => { const m = window.__ironlog.ui.modal; return !m || !m.busy; }, null, { timeout: 10000 });
+    await p4.waitForFunction(() => { const c = window.__ironlog.cloudState(); return c.on && c.status === 'synced'; }, null, { timeout: 15000 }).catch(() => {}); await wait(1200);
+  };
+  await signIn4();
+  const pvBefore = sessIn(rowsOf(fake.rowsPreview, 'w@example.com')).sort().join();
+  await p4.evaluate(() => window.__ironlog.ACT.acctSignOut()); await wait(300);
+  await p4.evaluate(() => { const b = [...document.querySelectorAll('#modal button')].find(x => /keep a copy/i.test(x.innerText)); b.click(); }); await wait(1500);
+  await p4.evaluate(() => window.__ironlog.ACT.previewCopy()); await p4.waitForFunction(() => { const m = window.__ironlog.ui.modal; return m && m.kind === 'confirm'; }, null, { timeout: 10000 });
+  await p4.click('#modal [data-act="mOk"]'); await wait(800);
+  const copied = await p4.evaluate(() => window.__ironlog.state.sessions.map(x => x.id).sort().join());
+  await signIn4();
+  await p4.evaluate(() => window.__ironlog.flush()); await wait(1200);
+  const pvAfter = sessIn(rowsOf(fake.rowsPreview, 'w@example.com')).sort().join();
+  ok(pvBefore === 'pv1,pv2' && copied === 'lv1' && pvAfter === 'lv1,pv1,pv2', 'the preview signed out keeping a copy, Copy my log in, then signed back in: the preview\'s table keeps its sessions beside the copied log (r55 before the second review deleted them)', { pvBefore, copied, pvAfter });
+  await ctx4.close();
+
   ok(!errors.length, 'no page errors (' + errors.join(' | ') + ')');
   // What tests/h.js offlineLoad leaves out rests on the page itself seeing no rejection; this holds it to that.
   const rej = await page.evaluate(() => JSON.parse(sessionStorage.getItem('__ilRej') || '[]'));
