@@ -9,13 +9,16 @@
 //     (5 lb here; on assisted lifts, 5 lb less help), unless that step is large
 //     for the load: then more reps at the same load first (r32);
 //   - otherwise: same load, beat the rep total;
-//   - a trimmed exercise (Short on time) and a deload week never set the next
-//     target, but "Last" shows them, labelled, and grey reps follow a trimmed
-//     session (same loads) but not a deload (lighter loads); when the target is a
-//     new load, grey reps are the bottom of the range (r27);
+//   - V's one rule (r54): a session with fewer sets than usual (Short on time)
+//     or a reading clearly under its usual at no heavier load (a bad day), and
+//     a deload week done lighter, never set the next target, but "Last" shows
+//     them, labelled (fewer sets, below usual, deload), and grey reps follow
+//     one with fewer sets (same loads and reps) but not a deload or a bad day;
+//     when the target is a new load, grey reps are the bottom of the range (r27);
 //   - a deload week: half the sets, lighter loads on a real step;
 //   - two sessions in a row below the range at the same load: the load drops,
-//     on a real step, and never below zero.
+//     on a real step, and never below zero (the first of them a bad day, which
+//     repeats the target, since r54).
 // Nothing shown may read NaN or undefined, and what is saved is what was shown.
 const { open } = require('./h');
 const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log('FAIL', m, x !== undefined ? JSON.stringify(x) : ''); } else console.log('ok  ', m); };
@@ -55,8 +58,33 @@ const PLAN = [
     // (at least 2) past it; else the step, with the aim below.
     const est = (load, rt) => rt <= 10 ? load * 36 / (37 - rt) : load * (1 + rt / 30);
     const rtfAt = (E, load) => { const b = 37 - 36 * load / E; return b <= 10 ? b : 30 * (E / load - 1); };
+    /* V's one rule (r54), copied here: a session's reading is its strength reading by reps alone (Brzycki up to 10,
+       Epley to 20, at the load moved, bodyweight 180 lb on a pull-up), averaged over its sets; its usual is the
+       middle of it and the two sessions before it not done lighter (the higher of two). Fewer sets than usual
+       (never more than the plan's 3) is short by sets; at no heavier load than both before it, a reading more than
+       3% under the usual is short by its reading. A deload done at its usual load and reps is read the same way,
+       against the sessions before it alone; one done lighter is a deload. */
+    const moved = (e, w) => (e.kind === 'bw' || e.kind === 'assist' ? 180 + w : w);
+    const readOf = (e, h) => h.reps.reduce((a, r) => a + (r <= 10 ? est(moved(e, h.load), r) : moved(e, h.load) * (1 + r / 30)), 0) / h.reps.length;
+    const mid = v => [...v].sort((a, b) => a - b)[Math.floor(v.length / 2)];
+    const kindOf = (e, h, deload) => {
+      const prev = hist[e.id].filter(q => q.kind !== 'deload');
+      if (deload) {
+        const ref = prev.slice(-3);
+        const atUsual = ref.length && h.load >= Math.max(...ref.map(q => q.load)) - 1e-9 && readOf(e, h) >= Math.max(...ref.map(q => readOf(e, q))) * 0.97;
+        if (!atUsual) return 'deload';
+      }
+      const before = prev.filter(q => !(q.tag && q.kind !== 'full')).slice(-2);
+      if (!before.length) return 'full';
+      const usual = (v, own) => mid(deload ? v : [...v, own]);
+      const n = h.reps.length;
+      if (n < Math.min(usual(before.map(q => q.reps.length), n), deload ? Infinity : e.sets)) return 'sets';
+      if (h.load > Math.max(...before.map(q => q.load)) + 1e-9) return 'full';
+      return readOf(e, h) < usual(before.map(q => readOf(e, q)), readOf(e, h)) * 0.97 - 1e-9 ? 'reading' : 'full';
+    };
     const expectNext = (e) => {
       const full = hist[e.id].filter(h => h.kind === 'full'); const L = full[full.length - 1];
+      // (A session the model reads as short, by its sets or its reading, is not full.)
       if (!L.reps.every(r => r >= e.max)) return L.load;
       if (e.kind === 'assist') return Math.min(0, L.load + 5);
       const bw = e.kind === 'bw' ? 180 : 0; const from = L.load + bw, to = L.load + 5 + bw;
@@ -114,14 +142,14 @@ const PLAN = [
         }
         // "Last" is the most recent session, labelled; the target says where it comes from when that differs.
         const h = hist[e.id]; const recent = h[h.length - 1];
-        const lbl = recent.kind === 'trim' ? ', trimmed' : recent.kind === 'deload' ? ', deload' : '';
+        const lbl = recent.kind === 'sets' ? ', fewer sets' : recent.kind === 'reading' ? ', below usual' : recent.kind === 'deload' ? ', deload' : '';
         ok(new RegExp('^Last \\([A-Z][a-z]{2} \\d+' + lbl + '\\)').test(s.last), T + W + e.id + ' Last is the most recent session' + (lbl ? ' (' + lbl.slice(2) + ')' : ''), s.last);
         if (!step.deload) ok(!!s.basis === (recent.kind !== 'full'), T + W + e.id + (recent.kind !== 'full' ? ' target says it comes from the last full session' : ' target comes from Last itself'), s.basis);
         // Grey reps: the reps of Last, except after a deload, the last full session's.
         // When the target is a new load (r27), last time's reps were at the old load,
         // so every row shows the bottom of the range instead.
         const newLoad = !step.deload && exp !== h.filter(x => x.kind === 'full').slice(-1)[0].load;
-        const repsFrom = recent.kind === 'deload' ? h.filter(x => x.kind === 'full').slice(-1)[0] : recent;
+        const repsFrom = recent.kind === 'deload' || recent.kind === 'reading' ? h.filter(x => x.kind === 'full').slice(-1)[0] : recent;
         if (newLoad) {
           // r31.1, r32: after a step that is large for the load, the aim is what the estimate allows at 1 RIR
           // (Epley past 10 reps to failure, Brzycki up to 10, blank RIR read as 0 here).
@@ -141,14 +169,15 @@ const PLAN = [
           const okN = repsFrom.reps.length >= 2 && repsFrom.reps.filter(r => r < e.min).length === 1;
           const want = repsFrom.reps.map(r => okN ? Math.max(r, e.min) : r);
           const rph = s.rows.slice(0, want.length).map(r => +r.rph);
-          ok(JSON.stringify(rph) === JSON.stringify(want.slice(0, s.rows.length)), T + W + e.id + ' grey reps are ' + want.join(',') + ' (' + (recent.kind === 'deload' ? 'last full session' : 'Last') + ')', rph);
+          ok(JSON.stringify(rph) === JSON.stringify(want.slice(0, s.rows.length)), T + W + e.id + ' grey reps are ' + want.join(',') + ' (' + (repsFrom !== recent ? 'last full session' : 'Last') + ')', rph);
         }
       }
       // Short on time this week: trim first, then log what is left.
       let cut = {};
       if (step.trim) {
-        cut = await ev(() => { const L = window.__ironlog; L.ACT.shortOpen(); L.ui.modal.mins = 12; L.ACT.shortApply(); const d = L.state.draft; return Object.fromEntries(d.ex.filter(b => b.cut).map(b => [b.exId, b.sets.length])); });
+        cut = await ev((EXS) => { const L = window.__ironlog; L.ACT.shortOpen(); L.ui.modal.mins = 12; L.ACT.shortApply(); const d = L.state.draft; return Object.fromEntries(d.ex.filter(b => b.sets.length < EXS.find(e => e.id === b.exId).sets).map(b => [b.exId, b.sets.length])); }, EXS);
         ok(Object.keys(cut).length >= 1, T + W + 'Short on time trims at least one lift', cut);
+        ok(await ev(() => !window.__ironlog.state.draft.ex.some(b => b.cut)), T + W + 'and marks none (r54: the log says it)');
       }
       // Type the reps and tick every set through the screen.
       const plan = await ev(() => window.__ironlog.state.draft.ex.map(b => ({ id: b.exId, n: b.sets.length })));
@@ -174,7 +203,9 @@ const PLAN = [
         const p = pre.find(x => x.id === b.id);
         ok(JSON.stringify(b.w) === JSON.stringify(p.w) && JSON.stringify(b.r) === JSON.stringify(typed[b.id]), T + W + b.id + ' saved exactly the loads shown and the reps typed', { saved: b, pre: p.w, typed: typed[b.id] });
         const e = EXS.find(x => x.id === b.id);
-        hist[b.id].push({ load: b.w[0], reps: b.r, kind: saved.deload ? 'deload' : b.cut ? 'trim' : 'full', date });
+        const h = { load: b.w[0], reps: b.r, date, tag: saved.deload };
+        h.kind = kindOf(e, h, saved.deload);
+        hist[b.id].push(h);
       }
       ok(await ev(() => { window.__ironlog.ui.tab = 'history'; window.__ironlog.render(); const t = document.body.innerText; return !/NaN|undefined|Infinity/.test(t); }), T + W + 'nothing shown reads NaN, undefined or Infinity');
       if (step.deload) await ev(() => { const L = window.__ironlog; L.state.deloadWeek = null; L.saveNow(); });

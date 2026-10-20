@@ -1,6 +1,5 @@
 /* Weekly sets against a muscle's target, judged one way everywhere a flag is
-   decided (phase 3a, r51; moved unchanged from the legacy script,
-   tests/moved.js holds them to r50's code). */
+   decided (phase 3a, r51; moved unchanged from the legacy script). */
 
 import { r1 } from './util';
 

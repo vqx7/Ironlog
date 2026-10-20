@@ -1,5 +1,5 @@
 /* What a load number means, in words (phase 3a, r51; moved unchanged from
-   the legacy script, tests/moved.js holds them to r50's code). Every set
+   the legacy script). Every set
    stores the number as typed; its meaning is a property of the exercise
    (loadMode, in library.ts). */
 
@@ -8,7 +8,7 @@ import type { Model, Suggestion } from './model';
 import { loadMode, PLATE_SIDE_IDS, isCompound, noE1 } from './library';
 import { r1 } from './util';
 import { UIn } from './model';
-import { fromDIn, toDIn } from './units';
+import { DEFAULT_STEP, fromDIn, toDIn } from './units';
 
 /** The load meanings a lifter can choose in the exercise editor. */
 export const LOAD_MODES: readonly (readonly [string, string])[] = [
@@ -45,7 +45,15 @@ export function estInLoad(ex: Exercise): boolean {
   return isCompound(ex) && !ex.bw && !noE1(ex) && loadMode(ex) === 'total';
 }
 
-/* ---------- loads in words, in the unit on screen (phase 3b, r52; moved from the legacy script, tests/moved.js reads them back to r51's code) ---------- */
+/* What an empty load field shows when nothing is suggested: 0 on a
+   bodyweight lift, nothing added, and nothing on a loaded lift or an
+   assisted one, whose help is not known until it is typed (r54, PENDING
+   315 i: a first session showed 0 help, and ticked past it was saved at
+   full bodyweight, so the next normal session read lighter). */
+/** The grey text of an empty load field with no suggestion. */
+export const emptyLoad = (ex: Pick<Exercise, 'bw' | 'assist'>): string => (ex.bw && !ex.assist ? '0' : '');
+
+/* ---------- loads in words, in the unit on screen (phase 3b, r52; moved from the legacy script) ---------- */
 
 /** A load in kilograms as shown, rounded to a tenth; empty for none. toD of a number is a number, as the ! says. */
 export const fmtWIn = (M: Model, kg: number | null | undefined): string =>
@@ -79,7 +87,7 @@ export function swapWIn(M: Model, ex: Pick<Exercise, 'bw'>, res: Suggestion, nw:
    the full load (90% of 25 lb is 22.5, which rounded up to 25). toD of a
    number is a number, and so is fromD's, as the two ! say. */
 export function roundLoadIn(M: Model, kg: number, down?: boolean): number {
-  const step = UIn(M) === 'lb' ? 5 : 2.5;
+  const step = DEFAULT_STEP[UIn(M)];
   const d = toDIn(M, kg)!;
   return fromDIn(M, Math.max(step, (down ? Math.floor(d / step + 1e-9) : Math.round(d / step)) * step))!;
 }

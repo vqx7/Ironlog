@@ -1,13 +1,12 @@
 /* Your gym (r33, item 207): the plates on hand, the dumbbell rack, the
    stack step, and how a saved gym is cleaned; and how plates load on an
-   exercise (phase 3a, r51; moved unchanged from the legacy script,
-   tests/moved.js holds them to r50's code). The steps the engine reads from
+   exercise (phase 3a, r51; moved unchanged from the legacy script). The steps the engine reads from
    them move with the engine. */
 
 import type { DbRack, Exercise, Gym, Plan } from './types';
 import type { ExerciseLike, Model } from './model';
 import { isNum, r3 } from './util';
-import { LB, stepReadIn, unitStepIn } from './units';
+import { LB, PLATES_KG, PLATES_LB, stepReadIn, unitStepIn } from './units';
 import { ONE_DB, PLATE_SIDE_IDS, loadMode, rackKind } from './library';
 import { UIn, gymOfIn } from './model';
 
@@ -20,12 +19,13 @@ export const PLATE_MODES: readonly (readonly [string, string])[] = [
   ['none', 'None']
 ];
 
-/* The plates a gym may have, heaviest first, in its unit. A function, as it
-   has been since r33, when normalize() ran on the first load before the
-   constants of this part existed; in a module that no longer matters, and
-   the form is kept so the move changes no code. */
+/* The plates a gym may have, heaviest first, in its unit: the usual plates
+   (units.ts), as a new list on each call, as it always was, so no caller can
+   change the table. A function since r33, when normalize() ran on the first
+   load before the constants of its part existed; until r54 it typed the
+   lists a second time. */
 export function gymPlates(u: string): number[] {
-  return u === 'kg' ? [25, 20, 15, 10, 5, 2.5, 1.25] : [45, 35, 25, 10, 5, 2.5];
+  return [...(u === 'kg' ? PLATES_KG : PLATES_LB)];
 }
 
 /** A gym or a rack as it arrives, from a save, a backup, another device, or
@@ -116,7 +116,7 @@ export function platesMode(ex: Pick<Exercise, 'id' | 'bw' | 'equip' | 'plates'>)
   return 'none';
 }
 
-/* ---------- the steps the engine reads from Your gym (phase 3b, r52; moved from the legacy script, tests/moved.js reads them back to r51's code) ---------- */
+/* ---------- the steps the engine reads from Your gym (phase 3b, r52; moved from the legacy script) ---------- */
 
 /* The loads this lift can be done at, in kg, lightest first, or null: only
    dumbbell and kettlebell lifts, with no step of their own, logged as the

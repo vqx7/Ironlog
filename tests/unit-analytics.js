@@ -58,11 +58,11 @@ const res=await page.evaluate(()=>{
   L.state.settings.heightCm=180;
   const wh=w=>{L.state.measurements=[{id:'m',date:T,waist:w}];return L.whtrLine();};
   ok(/healthy/.test(wh(85))&&/increased/.test(wh(95))&&/high risk/.test(wh(110)),'waist to height 0.47 / 0.53 / 0.61');
-  // ---- lighter week counts sets once
+  // ---- a lighter week is read from what the lifts did (r54; until r54 by hard sets, counted once each, against a usual week)
   L.state.measurements=[];
   L.state.sessions=[];for(let k=1;k<=8;k++){const d=addDays(T,-7*k);L.state.sessions.push(S(d,'bench',[[100,8,1],[100,8,1],[100,8,1],[100,8,1]]));}
   L.state.sessions.push(S(addDays(T,-7*3),'bench',[[100,8,1]]));L.invalidate();
-  const lw=L.lastLighterWeek();ok(lw&&lw.norm===4,'usual week read as 4 sets, not muscle-weighted',lw);
+  const lw=L.lastLighterWeek();ok(lw&&lw.weeks===null&&!('norm' in lw),'a week with an extra short session is not a lighter week, and no usual week is counted in sets',lw);
   // ---- tracked-only muscles never drive the coach
   L.state.sessions=[];for(let k=1;k<=4;k++)L.state.sessions.push(S(addDays(T,-7*k),'bench',Array.from({length:12},()=>[100,8,1])));L.invalidate();
   const co=L.coach();ok(!/Serratus|Rotator/.test(co.text),'coach never leads with a tracked-only muscle',co.text);

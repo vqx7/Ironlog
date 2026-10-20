@@ -2,8 +2,7 @@
    bands, joints, equipment, cardio and tape kinds, the exercise library, and
    the rules read from an exercise alone (its movement pattern, whether it is a
    compound lift, its load meaning, its share of bodyweight). Phase 2, r50;
-   moved unchanged from the legacy script, tests/moved.js holds it to r49's
-   code. Nothing here reads the log or the settings. */
+   moved unchanged from the legacy script. Nothing here reads the log or the settings. */
 
 import type { Exercise, LibRow, LoadMode, MuscleKey } from './types';
 
@@ -657,12 +656,22 @@ export function loadMode(ex: Pick<Exercise, 'id' | 'bw' | 'load' | 'equip'> | nu
 // (Read by the engine's kinOf: a close variation's first session, r32.1.)
 export const KIN_UNI = /lunge|split squat|step-up|single[- ]|one[- ]arm|1-arm|pistol|bulgarian|cossack|unilateral/i;
 
+/** The spacings loads come in, per unit, largest first: plates in pairs
+    (2.5 kg and 5 lb, and with the small plates 1 kg and 2.5 lb) and dumbbell
+    racks (r32: 2.5, 2, 1 or 0.5 kg; 5 or 2.5 lb, never 1, r54, V's call: 12
+    lb went up to 13). */
+export const LOAD_STEPS: { readonly kg: readonly number[]; readonly lb: readonly number[] } = {
+  kg: [2.5, 2, 1, 0.5],
+  lb: [5, 2.5]
+};
+
 /** The spacings dumbbell and kettlebell racks come in, per unit, largest
-    first (r32). The engine's rackStep picks the largest one every load logged
-    on a lift fits. */
+    first (r32), dumbbells' those of any load. The engine's rackStep picks the
+    largest one every load logged on a lift fits, and a lb dumbbell no spacing
+    fits is read on the 5 lb rack (the engine's rackGrid). */
 export const RACK: Readonly<
   Record<'dumbbell' | 'kettlebell', { readonly kg: readonly number[]; readonly lb: readonly number[] }>
-> = { dumbbell: { kg: [2.5, 2, 1, 0.5], lb: [5, 2.5, 1] }, kettlebell: { kg: [4, 2, 1], lb: [5, 2.5] } };
+> = { dumbbell: LOAD_STEPS, kettlebell: { kg: [4, 2, 1], lb: [5, 2.5] } };
 
 // The library files kettlebell lifts under Other equipment, so they are found by name.
 export function rackKind(ex: Pick<Exercise, 'equip'> & { name?: string }): 'dumbbell' | 'kettlebell' | null {
@@ -729,7 +738,7 @@ export function profHeavy(
   );
 }
 
-/* ---------- finding exercises (phase 3a, r51; moved unchanged, tests/moved.js holds them to r50's code) ---------- */
+/* ---------- finding exercises (phase 3a, r51; moved unchanged) ---------- */
 
 /** The tip beside the library's Most common and Less common filter: where
     the list comes from, and what less common means. */

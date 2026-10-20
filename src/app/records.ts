@@ -2,7 +2,7 @@
    entries and kept unknown fields, the id checks, the cleaners for a
    calibration set, a check-in and a target, the order of sessions, and how
    long deleted things are kept (phase 3a, r51; moved unchanged from the
-   legacy script, tests/moved.js holds them to r50's code). normalize(),
+   legacy script). normalize(),
    which applies them to a whole save, moves with storage in phase 4. */
 
 import { hashStr, numOr, isNum, isDate } from './util';
@@ -87,10 +87,12 @@ export const EXTRA_MAX = 2000,
     letters, digits, or underscores, and no name Object already has. */
 export const okExtraKey = (k: string): boolean => /^[A-Za-z][\w]{0,39}$/.test(k) && !(k in Object.prototype);
 
-/** The fields of a plan item, a cardio entry and a tape entry that are written only when valid. */
+/** The fields of a plan item, a cardio entry, a tape entry and a saved session's exercise that are written only when valid. */
 export const KNOWN_ITEM: ReadonlySet<string> = new Set(['jump']),
   KNOWN_CARDIO: ReadonlySet<string> = new Set(['dist']),
-  KNOWN_MEAS: ReadonlySet<string> = new Set(MEAS.map(x => x[0]));
+  KNOWN_MEAS: ReadonlySet<string> = new Set(MEAS.map(x => x[0])),
+  // A saved session's exercise: the injury it was held for (r54).
+  KNOWN_SEX: ReadonlySet<string> = new Set(['inj']);
 
 /* ---------- cleaners ---------- */
 

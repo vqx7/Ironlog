@@ -60,8 +60,9 @@ const CLOCK = '2026-10-15T10:00:00';
       const tip = document.querySelector(`#blk-${i} .hint .tipi`);
       return b && b.basis ? { why: L.whyTarget(b), basis: b.basis, shown: tip && tip.getAttribute('data-tip') } : null;
     });
-    ok(r && /The target comes from your last full session/.test(r.why) && /a session where this lift was trimmed or done lighter than usual does not set one, nor, on a lighter day, in a deload, or on an exercise made lighter, one with fewer reps or sets than usual/.test(r.why) && r.shown === r.why,
-      'a target from an earlier full session names its date, and says a session where the lift was trimmed or done lighter than usual does not set one, nor, on a lighter day, in a deload, or on an exercise made lighter, one with fewer reps or sets (since r53 a lift done at its usual level in a deload does)', r);
+    // Since r54 the note gives V's one rule for every session: fewer sets or reps than usual, or done lighter, on any day.
+    ok(r && /The target comes from your last full session/.test(r.why) && /one with fewer sets or reps than usual, or done lighter, does not set one\./.test(r.why) && r.shown === r.why,
+      'a target from an earlier full session names its date, and says one with fewer sets or reps than usual, or done lighter, does not set one (V\'s one rule, r54)', r);
     ok(!P.errors.length, 'no page errors (basis)', P.errors);
     await P.ctx.close();
   }

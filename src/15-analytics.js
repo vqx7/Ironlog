@@ -45,27 +45,6 @@ function lmChips(ex){
   return `<p class="lmrow"><span class="lm" data-tip="${esc(long)}">${esc(loadWords(ex))}</span>${ex.perSide?`<span class="lm" data-tip="${esc(ex.timed?'Seconds for one side; do the same on the other.':'Reps for one side; do the same on the other. One set still counts as one set.')}">${ex.timed?'seconds':'reps'} per side</span>`:''}</p>`;
 }
 const sessionsOn=d=>dateIndex().byDate[d]||[];
-/* How long since a week that was clearly lighter than your norm, counting a
-   week off as lighter. Only completed weeks are considered. */
-function lastLighterWeek(){
-  const I=IDX();const cur=weekStart(today());
-  // Each set once, as on Today; summing per-muscle counts double counts.
-  const tot=wk=>I.weekHard[wk]||0;
-  const first=state.sessions.length?weekStart(sortedSessions()[0].date):null;
-  if(!first)return null;
-  const vals=[];for(let k=1;k<=12;k++){const wk=addDays(cur,-7*k);if(wk<first)break;vals.push(tot(wk));}
-  const trained=vals.filter(v=>v>0);
-  if(trained.length<4)return null;
-  // Two empty weeks just gone are a break, not a lighter week (r34.2: "Last lighter week: 1 week ago (a week off)" after 6 weeks away).
-  if(vals.length>=2&&vals[0]===0&&vals[1]===0)return null;
-  const norm=median(trained);
-  /* A week of lighter loads counts too (r30 audit): a deload marked, or read
-     from the loads (I.lightWk), keeps the sets and drops the weight, so by
-     sets alone this said "No lighter week" about a week the trends had just
-     set aside as one. */
-  for(let k=0;k<vals.length;k++){const wk=addDays(cur,-7*(k+1));if(vals[k]<=norm*0.65)return {weeks:k+1,sets:r1(vals[k]),norm:r1(norm)};if(I.lightWk[wk])return {weeks:k+1,sets:r1(vals[k]),norm:r1(norm),loads:true};}
-  return {weeks:null,norm:r1(norm)};
-}
 /* First run only (r29, V: "targets that can actually be met"): when a new
    person picks a ready-made routine and the weekly targets are still the
    defaults, each muscle's minimum comes down to what the routine plans
@@ -99,7 +78,6 @@ function fitTargets(R,actual){
   if(!same(D)&&![starterRoutine(),defaultRoutine()].some(r=>same(fitOf(r))))return false;
   const was=JSON.stringify(MK.map(m=>b[m]));
   for(const m of MK)b[m]=[D[m][0],D[m][1]];
-  const plan=plannedSets(R);
   /* actual (a routine made from an import, r31): no minimum above what the
      log itself averaged on a muscle the routine trains. A cycle's planned
      sets a week and the weeks as trained never match exactly (2 days
@@ -110,9 +88,9 @@ function fitTargets(R,actual){
   // Each floor is recorded (settings.bandsFit), so a later focus change knows which targets are the app's.
   /* A focus muscle's floor is recorded too, though not applied while it is a
      focus, so taking the focus off later brings it to the plan (the r44 review). */
-  const fit={};
-  for(const m of MK){if(TRACK_ONLY.has(m))continue;let lo=Math.floor(plan[m]||0);if(actual&&(plan[m]||0)>0)lo=Math.min(lo,Math.floor(actual[m]||0));
-    if(lo<BANDS[m][0]&&lo<b[m][0])fit[m]=lo;if(foc.has(m))continue;lo=Math.min(b[m][0],lo);if(lo!==b[m][0])b[m]=[lo,b[m][1]];}
+  // The floors are fitFloors' (src/app/profile.ts, r54), the one rule the refit of an older fit reads too.
+  const fit=fitFloors(R,actual);
+  for(const m in fit)if(!foc.has(m))b[m]=[fit[m],b[m][1]];
   if(Object.keys(fit).length)state.settings.bandsFit=fit;else delete state.settings.bandsFit;
   return JSON.stringify(MK.map(m=>b[m]))!==was;
 }
@@ -136,12 +114,6 @@ function planEvidenceNote(pv){
    the name). A custom exercise's name is searched as typed. */
 function howToUrl(e){return 'https://www.youtube.com/results?search_query='+encodeURIComponent(`${e.name} exercise form`);}
 function howToLink(e){return e&&e.name?`<a class="btn block" style="margin-top:6px" href="${esc(howToUrl(e))}" target="_blank" rel="noopener noreferrer" data-tip="Opens a YouTube search for ${esc(e.name)} in your browser. Only the exercise name is sent.">How-to videos</a>`:'';}
-function plannedSets(routine){
-  const out={};
-  const f=weekFactor(routine);
-  for(const d of routine.days){if(d.rest)continue;for(const it of d.items){const pc=planCredit(it);if(!pc)continue;const ex=EX(it.exId);out[ex.primary]=(out[ex.primary]||0)+it.sets*f*pc;for(const m of ex.secondary)out[m]=(out[m]||0)+0.5*it.sets*f*pc;}}
-  return out;
-}
 function sessionMuscleSets(day){
   const out={};
   for(const it of day.items){const ex=EX(it.exId);const n=+it.sets||0;out[ex.primary]=(out[ex.primary]||0)+n;for(const m of ex.secondary)out[m]=(out[m]||0)+0.5*n;}

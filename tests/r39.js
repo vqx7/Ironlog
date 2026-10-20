@@ -4,11 +4,14 @@
 // when 3D is chosen (the same switch and the same renderer as Today's map,
 // which takes the body back when the sheet closes). The exercise editor shows
 // the flat figures as the muscles are picked. Light and dark, 320 px, and a
-// blocked three.js leaving the flat view working.
+// blocked three.js leaving the flat view working. Since r54 (PENDING 314) a
+// turn is waited for until it ends, and the sheet closed mid-turn stops the
+// turn, so Today's body faces the way it did (on r53 it went on turning
+// Today's body, which failed a check now and then under a full run).
 const { open } = require('./h');
 const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log('FAIL', m, x !== undefined ? JSON.stringify(x) : ''); } else console.log('ok  ', m); };
 const wait = ms => new Promise(r => setTimeout(r, ms));
-const FILE = 'index.html';
+const FILE = process.argv[2] || 'index.html';
 // three.js mixes colours in linear light; the expected helper colour is worked out the same way.
 const lin = c => { c /= 255; return c <= 0.04045 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4); };
 const srgb = c => { const v = c <= 0.0031308 ? c * 12.92 : 1.055 * Math.pow(c, 1 / 2.4) - 0.055; return Math.round(Math.max(0, Math.min(1, v)) * 255); };
@@ -19,6 +22,28 @@ const near = (a, b) => a.every((x, i) => Math.abs(x - b[i]) <= 2);
 (async () => {
   const { engine } = require('./h');
   const browser = await engine.launch();
+  // ---------- 0. Closed while it turns (r54), on a page of its own first ----------
+  // Today's 3D map open, an exercise's muscles opened over it, Back tapped and the sheet closed at once: the
+  // turn stops with the sheet and Today's body faces the way it did (until r54 the turn went on, on Today's body).
+  {
+    const P = await open(FILE, { browser, touch: true, w: 390, h: 844, clock: '2026-10-11T12:00:00' });
+    const { page } = P; const ev = (f, a) => page.evaluate(f, a);
+    await ev(() => { const L = window.__ironlog; L.state.settings.onboarded = true; L.makeDemo(); L.ui.tab = 'today'; L.ui.folds['today:map'] = true; L.render(); });
+    await wait(300);
+    await ev(() => document.querySelector('#view [data-act="mapView"][data-v="3d"]').click());
+    await page.waitForFunction(() => window.__ironlog.map3d().state === 'ready' && !!document.querySelector('#bm3d canvas'), null, { timeout: 20000 }).catch(() => {});
+    await wait(300);
+    await ev(() => window.__ironlog.openModal({ kind: 'exMus', exId: 'backSquat' }));
+    await page.waitForFunction(() => !!document.querySelector('#bm3dx canvas'), null, { timeout: 10000 }).catch(() => {});
+    const y0 = await ev(() => window.__ironlog.map3d().yaw);
+    // Turned to face the other way from Today's body, so a turn that went on would show.
+    await ev((v) => { document.querySelector(`#modal [data-act="map3dTurn"][data-v="${v}"]`).click(); window.__ironlog.ACT.mClose(); }, Math.cos(y0) < 0 ? '0' : '2');
+    await wait(900);
+    const y1 = await ev(() => ({ yaw: window.__ironlog.map3d().yaw, today: !!document.querySelector('#bm3d canvas'), modal: !!window.__ironlog.ui.modal }));
+    ok(y1.today && !y1.modal && Math.abs(y1.yaw - y0) < 1e-6, 'closed while the body turns, Today\'s body still faces the way it did', { y0, y1 });
+    ok(!P.errors.length, 'no page errors closing mid-turn', P.errors);
+    await page.close();
+  }
   for (const dark of [false, true]) {
     const T = dark ? ' (dark)' : ' (light)';
     const P = await open(FILE, { browser, touch: true, dark, w: 390, h: 844, clock: '2026-10-11T12:00:00' });
@@ -67,9 +92,12 @@ const near = (a, b) => a.every((x, i) => Math.abs(x - b[i]) <= 2);
     const others = Object.keys(m3.colors).filter(k => k !== '_base' && k !== m3.primary && !m3.help.includes(k));
     ok(others.length >= 15 && others.every(k => near(rgbOf(m3.colors[k]), rgbOf(m3.want.none))) && near(rgbOf(m3.colors._base), rgbOf(m3.want.base)), 'every other muscle stays neutral' + T, others.filter(k => !near(rgbOf(m3.colors[k]), rgbOf(m3.want.none))));
     ok((await ev(() => window.__ironlog.map3d().glow.length)) === 0, 'nothing glows as selected' + T);
-    await ev(() => document.querySelector('#modal [data-act="map3dTurn"][data-v="2"]').click()); await wait(700);
+    // Each turn is waited for until it ends, the body facing the way asked, not for a time: under a full run the frames come late,
+    // and a sheet closed before the turn ended went on turning Today's body, which failed the check after it now and then (PENDING 314).
+    const faces = (back) => page.waitForFunction((back) => Math.abs(Math.cos(window.__ironlog.map3d().yaw) - (back ? -1 : 1)) < 1e-9, back, { timeout: 10000 }).catch(() => {});
+    await ev(() => document.querySelector('#modal [data-act="map3dTurn"][data-v="2"]').click()); await faces(true);
     ok(Math.abs(Math.cos(await ev(() => window.__ironlog.map3d().yaw)) + 1) < 0.01, 'Back turns the body in the sheet' + T);
-    await ev(() => document.querySelector('#modal [data-act="map3dTurn"][data-v="0"]').click()); await wait(700);
+    await ev(() => document.querySelector('#modal [data-act="map3dTurn"][data-v="0"]').click()); await faces(false);
     // A tap names the muscle and selects nothing on Today's map.
     const bb = await (await page.$('#bm3dx canvas')).boundingBox();
     let at = null, hit = null;
@@ -90,7 +118,7 @@ const near = (a, b) => a.every((x, i) => Math.abs(x - b[i]) <= 2);
     const over = await ev(() => { const x = window.__ironlog.map3d(); return { yaw: x.yaw, inSheet: !!document.querySelector('#bm3dx canvas'), inToday: !!document.querySelector('#bm3d canvas'), quads: x.colors.quads, want: x.want }; });
     ok(over.inSheet && !over.inToday && near(rgbOf(over.quads), rgbOf(over.want.ex)), 'opened over Today, the sheet shows the back squat\'s quads lit' + T, over);
     const yawBefore = over.yaw;
-    await ev(() => document.querySelector('#modal [data-act="map3dTurn"][data-v="2"]').click()); await wait(700);
+    await ev(() => document.querySelector('#modal [data-act="map3dTurn"][data-v="2"]').click()); await faces(true);
     await ev(() => window.__ironlog.ACT.mClose()); await wait(200);
     ok(Math.abs((await ev(() => window.__ironlog.map3d().yaw)) - yawBefore) < 1e-6, 'turned in the sheet, Today\'s body faces the way it did before' + T);
     const after = await ev(() => { const x = window.__ironlog.map3d(); return { inToday: !!document.querySelector('#bm3d canvas'), quads: x.colors.quads, want: x.want, ex: window.__ironlog.map3d && true }; });

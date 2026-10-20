@@ -26,7 +26,7 @@ const make = (seed) => {
   const odd = () => pick([undefined, null, '', 'x', -1, 0, 3.7, '8', NaN, { a: 1 }]);
   const st = JSON.parse(JSON.stringify(L.state));
   const set = () => ({ w: r() < 0.1 ? odd() : Math.round(r() * 120), r: r() < 0.1 ? odd() : 1 + Math.floor(r() * 15), rir: r() < 0.3 ? null : r() < 0.1 ? odd() : Math.floor(r() * 5), done: r() < 0.9, warm: r() < 0.1 || undefined, drop: r() < 0.05 || undefined, ...(r() < 0.05 ? { fut: { v: 1 } } : {}) });
-  const blk = () => ({ ...(r() < 0.8 ? { bid: 'b' + Math.floor(r() * 1e6).toString(36) } : {}), exId: pick(ids), rr: r() < 0.3 ? null : [6, 10], cut: r() < 0.1 || undefined, light: r() < 0.05 || undefined, ...(r() < 0.05 ? { fut: 'b' } : {}), sets: Array.from({ length: 1 + Math.floor(r() * 5) }, set) });
+  const blk = () => ({ ...(r() < 0.8 ? { bid: 'b' + Math.floor(r() * 1e6).toString(36) } : {}), exId: pick(ids), rr: r() < 0.3 ? null : [6, 10], cut: r() < 0.1 || undefined, light: r() < 0.05 || undefined, ...(r() < 0.1 ? { inj: pick(['chest', 'j_knee', 'xyz', '']) } : {}), ...(r() < 0.05 ? { fut: 'b' } : {}), sets: Array.from({ length: 1 + Math.floor(r() * 5) }, set) });
   st.sessions = Array.from({ length: Math.floor(r() * 40) }, (_, i) => ({ id: 's' + seed + '_' + i, date: day(Math.floor(r() * 300)), t: r() < 0.3 ? '0' + Math.floor(r() * 9) + ':30' : undefined, dayIdx: 0, dayName: pick(['A', 'B', '', 'Upper']), routineId: st.activeRoutineId, notes: r() < 0.2 ? 'n<b>"' : '', deload: r() < 0.05, light: r() < 0.05, durMin: r() < 0.5 ? Math.floor(r() * 90) : undefined, ...(r() < 0.05 ? { fut: [1, 'a'] } : {}), ex: Array.from({ length: 1 + Math.floor(r() * 5) }, blk) }));
   st.bodyweights = Array.from({ length: Math.floor(r() * 8) }, (_, i) => ({ id: 'bw' + i, date: day(Math.floor(r() * 400)), kg: r() < 0.1 ? odd() : 60 + r() * 40 }));
   st.measurements = Array.from({ length: Math.floor(r() * 3) }, (_, i) => ({ id: 'm' + i, date: day(Math.floor(r() * 400)), arm: 30 + r() * 10, ...(r() < 0.2 ? { fut: 1 } : {}) }));
@@ -41,7 +41,7 @@ const make = (seed) => {
   if (r() < 0.4) S.bandsFit = { chest: 8, quads: 9 };
   if (r() < 0.4) S.restWeeks = [day(70), day(140)];
   if (r() < 0.4) { const e = st.exercises.find(x => x.id === 'bench'); if (e) e.goal = { w: 100, r: 5 }; }
-  if (r() < 0.3) { const b = blk(); if (r() < 0.6) { b.prev = ['60 x 8', '60 x 7']; b.prevOff = r() < 0.5 || undefined; b.light = r() < 0.3 || undefined; b.adj = { at: 0, w: 62.5, from: 60, r: 8, up: true, why: 'set 1 went 12 reps, past your 10' }; } st.draft = { id: 'd' + seed, date: day(0), startedAt: Date.now() - 3600e3, dayIdx: 0, dayName: 'A', routineId: st.activeRoutineId, notes: '', ex: [b] }; } else st.draft = null;
+  if (r() < 0.3) { const b = blk(); if (r() < 0.6) { b.prev = ['60 x 8', '60 x 7']; b.prevOff = r() < 0.5 || undefined; b.light = r() < 0.3 || undefined; b.adj = { at: 0, w: 62.5, from: 60, r: 8, up: true, why: 'set 1 went 12 reps, past your 10' }; if (r() < 0.5) b.full = r() < 0.7 ? 1 + Math.floor(r() * 5) : odd(); } st.draft = { id: 'd' + seed, date: day(0), startedAt: Date.now() - 3600e3, dayIdx: 0, dayName: 'A', routineId: st.activeRoutineId, notes: '', ex: [b] }; } else st.draft = null;
   return st;
 };
 // Reassembling sync documents without a merge: what a device that has only

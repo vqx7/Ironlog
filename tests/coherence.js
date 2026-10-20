@@ -156,6 +156,45 @@ const clashes = r => r.stalls.filter(st => r.prs.some(p => p.name === st.name &&
     await P.ctx.close();
   }
 
+  // ---- A lighter week, wherever it is named (r54, from the audit V asked for: Stats read lighter weeks by hard sets, the weekly averages by
+  // the sessions' labels and the deload suggestion by what the lifts did, so one week could be lighter on one screen and not on the next).
+  // Bench press, back squat and Romanian deadlift flat at 100 x 8, 8, all three stalled, in two logs: a week with nothing trained two weeks
+  // ago, and four days a week with Deload week tapped on a Wednesday, its Thursday and Friday done at 90 for one set.
+  {
+    const lighterScreens = () => { const L = window.__ironlog;
+      L.ui.tab = 'dash'; L.ui.volMode = 'region'; L.render(); document.querySelectorAll('#view details').forEach(d => { d.open = true; });
+      L.render(); document.querySelectorAll('#view details').forEach(d => { d.open = true; });
+      // Each line of Stalls on its own, as it is shown: the lift rows end in dates, which run into the next line's number in the section's text.
+      const lines = [...document.querySelectorAll('#sub-stalls p')].map(e => e.textContent.replace(/\s+/g, ' ').trim());
+      const stalls = lines.join(' | ');
+      const lw = lines.map(t => /^Last lighter week: (\d+) weeks? ago( \(a (?:rest week|week off)\))?\./.exec(t)).find(Boolean);
+      const big = lines.map(t => /^(\d+) main lifts stalled at once/.exec(t)).find(Boolean);
+      const change = [...document.querySelectorAll('#dashSummary .srow')].map(e => e.textContent.replace(/\s+/g, ' ').trim()).find(t => /^Change/.test(t)) || '';
+      const radar = ([...document.querySelectorAll('#view p')].map(e => e.textContent).find(t => /^Using /.test(t)) || '').replace(/\s+/g, ' ');
+      return { lw: lw ? { weeks: +lw[1], kind: lw[2] || '' } : null, big: big ? +big[1] : 0, change, radar, none: /No lighter week in the last 12/.test(stalls) };
+    };
+    const logs = {
+      off: ['2026-09-03', '2026-09-10', '2026-09-17', '2026-09-24', '2026-10-08'].map(d => [d, 2, 100, '']),
+      mid: [].concat(...['2026-08-24', '2026-08-31', '2026-09-07', '2026-09-14', '2026-09-21', '2026-09-28', '2026-10-05'].map(mon => [0, 1, 3, 4].map(k => {
+        const d = new Date(Date.parse(mon + 'T12:00:00Z') + k * 864e5).toISOString().slice(0, 10); const dl = mon === '2026-10-05' && k >= 3; return [d, dl ? 1 : 2, dl ? 90 : 100, dl ? 'deload' : '']; })))
+    };
+    for (const [name, rows] of Object.entries(logs)) {
+      const P = await open(FILE, { browser, clock: '2026-10-15T10:00:00' });
+      await P.page.evaluate(rows => { const L = window.__ironlog; const s = L.state; s.settings.onboarded = true; s.settings.hidden = []; s.injuries = []; s.draft = null; s.deloadWeek = null;
+        s.sessions = rows.map(([date, n, w, tag], i) => ({ id: 'q' + i, date, dayIdx: 0, dayId: null, dayName: tag ? 'Session (deload)' : 'Session', routineId: '', free: true, deload: tag === 'deload', notes: '',
+          ex: ['bench', 'backSquat', 'rdl'].map(exId => ({ exId, rr: [6, 10], sets: Array.from({ length: n }, () => ({ w, r: 8, rir: tag ? 3 : 1, done: true })) })) }));
+        L.state = L.normalize(s); L.invalidate(); L.saveNow(); }, rows);
+      const r = await P.page.evaluate(lighterScreens);
+      const asks = /A deload week may help/.test(r.change);
+      ok(r.big >= 3 && (r.lw || r.none), `${name}: the log has three main lifts stalled at once and Stats says when the last lighter week was`, r);
+      ok(!(r.lw && r.lw.weeks <= 3 && asks), `${name}: no deload is suggested beside a lighter week Stats names in the last 3 weeks`, r);
+      ok(!(r.big >= 3 && !asks) || (r.lw && r.lw.weeks <= 4), `${name}: when three main lifts are stalled and no deload is suggested, Stats names the lighter week that holds it back`, r);
+      ok(!(r.lw && !r.lw.kind && r.lw.weeks <= 4) || /a lighter week left out/.test(r.radar), `${name}: a lighter week Stats names inside the radar's 4 weeks is one the radar says it left out`, r);
+      ok(!P.errors.length, `no page errors (lighter week, ${name})`, P.errors);
+      await P.ctx.close();
+    }
+  }
+
   // ---- Two sessions in a day: every screen counts a week the same way.
   {
     const P = await open(FILE, { browser, clock: '2026-10-14T10:00:00' });
@@ -212,6 +251,64 @@ const clashes = r => r.stalls.filter(st => r.prs.some(p => p.name === st.name &&
       return { out, checked }; });
     ok(bad.checked === 40 && bad.out.length === 0, 'This week\'s hard sets equal the rule written out, on 40 random logs with the half-set setting off and on and with RIR off', bad);
     ok(!P.errors.length, 'no page errors (hard sets)', P.errors);
+    await P.ctx.close();
+  }
+
+  // ---- A muscle against its target, wherever it is read (r54, from the review: the coach, Stats' summary, Muscles, Volume, the map and a
+  // muscle's own headline each judged it themselves, so a muscle on plan could read below target in one and not another). On three logs:
+  // Strength 5 x 5 on Monday, Wednesday and Friday followed set for set (muscles on plan), the same with a bench set skipped (one below),
+  // and the starter routine with its last set of every lift skipped (several below).
+  {
+    const P = await open(FILE, { browser, clock: '2026-10-15T10:00:00', realStarter: true });
+    for (const [name, kind] of [['on plan', 'str5'], ['one set skipped', 'str5cut'], ['sets skipped', 'starter']]) {
+      const r = await P.page.evaluate((kind) => {
+        const L = window.__ironlog; const S = L.state; S.settings.onboarded = true; S.settings.hidden = [];
+        let R = L.activeRoutine();
+        if (kind !== 'starter') { R = S.routines.find(x => x.name === 'Strength, 5 x 5') || L.routineFromTemplate('str5'); if (!S.routines.includes(R)) S.routines.push(R); S.activeRoutineId = R.id; }
+        S.settings.bands = Object.fromEntries(Object.entries(L.BANDS).map(([m, b]) => [m, b.slice()])); L.fitTargets(R);
+        const tr = R.days.map((d, i) => i).filter(i => !R.days[i].rest && R.days[i].items.length);
+        const out = []; let k = 0;
+        for (let t = Date.parse('2026-09-14T12:00:00Z'); ; t += 864e5) {
+          const date = new Date(t).toISOString().slice(0, 10); if (date >= '2026-10-15') break;
+          const wd = new Date(t).getUTCDay();
+          let di;
+          if (kind === 'starter') { di = (wd + 6) % 7; if (!tr.includes(di)) continue; } else { if (![1, 3, 5].includes(wd)) continue; di = tr[k % tr.length]; }
+          const day = R.days[di];
+          out.push({ id: 'h' + k, date, dayIdx: di, dayId: day.id, dayName: day.name, routineId: R.id, notes: '', ex: day.items.map(it => ({ exId: it.exId, rr: [+it.repMin, +it.repMax], sets: Array.from({ length: +it.sets - (kind === 'starter' && date >= '2026-09-21' ? 1 : kind === 'str5cut' && k === 4 && it.exId === 'bench' ? 1 : 0) }, () => ({ w: 40 + 2.5 * k, r: +it.repMin, rir: +it.rir, done: true })) })) });
+          k++;
+        }
+        S.sessions = out; S.draft = null; L.state = L.normalize(S); L.invalidate(); L.saveNow();
+        const txt = el => el ? el.textContent.replace(/\s+/g, ' ').trim() : '';
+        const ML = Object.fromEntries(L.BANDS ? Object.keys(L.BANDS).map(m => [m, (window.__ironlog.ML || {})[m] || m]) : []);
+        const a = L.actualAvg4(); const st = L.muscleStatus(a);
+        const under = Object.keys(st).filter(m => st[m].st === 'under').map(m => ML[m]).sort();
+        const plan = Object.keys(st).filter(m => st[m].st === 'plan').map(m => ML[m]).sort();
+        const c = L.coach();
+        L.ui.tab = 'dash'; L.ui.folds['dash:volume'] = true; L.ui.folds['dash:weak'] = true; L.ui.volMode = 'avg'; L.render();
+        const flagged = [...document.querySelectorAll('#view .tag')].filter(e => e.textContent === 'Below target').map(e => txt(e.closest('div[style]').querySelector('b'))).sort();
+        const rows = [...document.querySelectorAll('#view .mrow')];
+        const rowsUnder = rows.filter(e => e.querySelector('.fill.under')).map(e => txt(e.children[1])).sort();
+        const rowsPlan = rows.filter(e => e.querySelector('.fill.plan')).map(e => txt(e.children[1])).sort();
+        const vol = txt([...document.querySelectorAll('#dashSummary .srow')].find(e => /^Volume/.test(txt(e))));
+        const heads = {}; L.ui.volMode = 'trend';
+        for (const m of Object.keys(st)) { L.ui.dashMuscle = m; L.render(); heads[ML[m]] = txt([...document.querySelectorAll('#view p.headline')].find(e => /hard sets a week over/.test(e.textContent))); }
+        L.ui.tab = 'today'; L.ui.folds['today:map'] = true; L.ui.mapSrc = 'avg'; L.render();
+        const legend = txt(document.querySelector('.bm-legend'));
+        const chips = [...document.querySelectorAll('#view .row')].filter(e => /^Below target:/.test(txt(e))).flatMap(e => [...e.querySelectorAll('.chip')].map(x => txt(x))).sort();
+        return { under, plan, coach: c.text, why: c.why || '', flagged, rowsUnder, rowsPlan, vol, heads, legend, chips };
+      }, kind);
+      const n = (re, s) => { const m = re.exec(s); return m ? +m[1] : 0; };
+      const more = n(/(\d+) more below target/, r.coach);
+      const coachN = /^\S[^:]*: [\d.]+ hard sets? a week, target/.test(r.coach) ? 1 + more : 0;
+      ok(kind === 'starter' ? r.under.length > 1 : kind === 'str5' ? r.under.length === 0 && r.plan.length > 0 : r.under.length === 1 && r.plan.length > 0, `${name}: the log reads as meant (${r.under.length} below target, ${r.plan.length} on plan)`, { under: r.under, plan: r.plan });
+      ok(JSON.stringify(r.flagged) === JSON.stringify(r.under) && JSON.stringify(r.rowsUnder) === JSON.stringify(r.under) && r.chips.length === Math.min(8, r.under.length) && r.chips.every(m => r.under.includes(m)) && n(/Below target (\d+)/, r.legend) === r.under.length && coachN === r.under.length,
+        `${name}: Muscles' flags, Volume's rows, the map's chips and legend, and the coach name the same muscles below target`, { under: r.under, flagged: r.flagged, rows: r.rowsUnder, chips: r.chips, legend: r.legend, coach: coachN });
+      ok(JSON.stringify(r.rowsPlan) === JSON.stringify(r.plan) && n(/On plan (\d+)/, r.legend) === r.plan.length && (r.under.length || !r.plan.length || (r.coach === 'Every muscle on plan, nothing stalled.' && r.plan.every(m => r.why.includes(m)) && /Every muscle on plan\./.test(r.vol))),
+        `${name}: Volume's rows, the map's legend, the coach and Stats' summary name the same muscles on plan`, { plan: r.plan, rows: r.rowsPlan, legend: r.legend, coach: r.coach, why: r.why, vol: r.vol });
+      ok(Object.entries(r.heads).every(([m, h]) => r.under.includes(m) ? / below your .* target\./.test(h) && !/on plan/.test(h) : r.plan.includes(m) ? / below your .* target, on plan\./.test(h) : !/ below your /.test(h)),
+        `${name}: each muscle's own headline says below, on plan or neither, as the rest do`, r.heads);
+    }
+    ok(!P.errors.length, 'no page errors (a muscle against its target)', P.errors);
     await P.ctx.close();
   }
 

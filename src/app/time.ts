@@ -1,5 +1,4 @@
-/* How long a session takes (phase 3b, r52; moved from the legacy script,
-   tests/moved.js reads each back to r51's code): the time model for a day's
+/* How long a session takes (phase 3b, r52; moved from the legacy script): the time model for a day's
    plan, the same model for the sets a past session logged, and your pace,
    the median of how long your timed sessions took against that model. They
    call each other (a day's minutes scale by the pace, which reads past
@@ -10,7 +9,7 @@ import type { Model } from './model';
 import { EXIn, activeRoutineIn, sortedSessionsIn } from './model';
 import { PACE_DAYS, PACE_HI, PACE_LO, PACE_MIN, PACE_N, setSecs, setupSecs } from './formulas';
 import { isCompound } from './library';
-import { planForIn } from './routines';
+import { basePlanIn } from './routines';
 import { addDays } from './util';
 
 /** A planned exercise as the time model reads it: its sets, range, rest and superset link. */
@@ -60,7 +59,7 @@ export function sessModelMinIn(M: Model, ss: Session): number {
   // plain (r44 review): a goal set later must not change how long a past session is read to have taken.
   const items = ss.ex
     .map(b => {
-      const p = planForIn(M, b.exId, R, ss.dayId, true);
+      const p = basePlanIn(M, b.exId, R, ss.dayId, true);
       const rr = Array.isArray(b.rr) ? b.rr : [p.repMin, p.repMax];
       return {
         ...p,

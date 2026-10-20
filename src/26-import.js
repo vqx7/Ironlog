@@ -175,8 +175,8 @@ function routineFromLog(sessions){
   const all=sessions.filter(x=>!x.demo&&x.ex&&x.ex.length);if(!all.length)return null;
   const byDate=(a,b)=>a.date<b.date?-1:a.date>b.date?1:0;
   const newest=all.reduce((m,x)=>x.date>m?x.date:m,all[0].date);const rec=all.filter(x=>x.date>=addDays(newest,-55)).sort(byDate);
-  // A session is off (a deload, a lighter day) when it was tagged, or when most of its lifts read lighter.
-  const I=IDX();const tot={},off={};for(const id in I.byEx)for(const x of I.byEx[id]){tot[x.sid]=(tot[x.sid]||0)+1;if(offSession(x))off[x.sid]=(off[x.sid]||0)+1;}
+  // A session is off (a deload, a lighter day) when it was tagged, or when most of its lifts read lighter or short of their usual (r54, the one rule).
+  const I=IDX();const tot={},off={};for(const id in I.byEx)for(const x of I.byEx[id]){tot[x.sid]=(tot[x.sid]||0)+1;if(offTarget(x))off[x.sid]=(off[x.sid]||0)+1;}
   const offS=x=>x.deload||x.light||(tot[x.id]>0&&(off[x.id]||0)*2>=tot[x.id]);
   const lifts=x=>new Set(x.ex.filter(b=>b.sets.some(q=>!q.warm)).map(b=>b.exId));
   const jac=(a,b)=>{let n=0;for(const v of a)if(b.has(v))n++;const u=a.size+b.size-n;return u?n/u:0;};

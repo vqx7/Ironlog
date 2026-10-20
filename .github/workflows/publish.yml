@@ -38,8 +38,9 @@ jobs:
         run: |
           npm install --no-audit --no-fund
           npx playwright install --with-deps chromium
-      - name: The proof suites on their own, so a runner that dropped one could not hide it
-        run: node tests/hygiene.js && node tests/moved.js
+      # tests/moved.js ran here beside hygiene until it was retired in r54 (PENDING 316).
+      - name: The proof suite on its own, so a runner that dropped it could not hide it
+        run: node tests/hygiene.js
       - name: Every suite in shard ${{ matrix.shard }} of 4, source and standalone build
         run: node tests/run.js --shard ${{ matrix.shard }}/4 --jobs 1
       - name: Screenshots from the run

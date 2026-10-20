@@ -1,6 +1,5 @@
 /* Record fingerprints and the three-way merge (phase 3a, r51; moved
-   unchanged from the legacy script, tests/moved.js holds them to r50's
-   code). Each synced document remembers the per-record hashes of the
+   unchanged from the legacy script). Each synced document remembers the per-record hashes of the
    version both sides last agreed on, its base; on a conflict every record is
    judged on its own: changed on one side only, that side wins; changed on
    both, the newer side does (remoteWins), and the conflict is counted.

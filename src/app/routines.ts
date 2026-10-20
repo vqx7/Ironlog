@@ -1,17 +1,16 @@
 /* Routines as data: the weekday names, the default plan for an exercise, and
    the ready-made routines with the function that copies one (phase 2, r50;
-   moved unchanged from the legacy script, tests/moved.js holds them to r49's
-   code). Which routine a lifter starts on, and anything that reads the log,
-   stays with the app's state. */
+   moved unchanged from the legacy script); a lift's plan in a routine, and
+   a routine's planned sets. Which routine a lifter starts on stays with the
+   app's state, and what reads the analytics, a lift's plan from its own
+   sessions and Finish's offer to change the routine, is in plans.ts (r54). */
 
-import type { Day, Plan, PlanItem, Profile, Routine, Session, SessionEx } from './types';
+import type { Day, Plan, PlanItem, Profile, Routine } from './types';
 import type { ExerciseLike, Model } from './model';
-import { andList, uid } from './util';
+import { uid } from './util';
 import { LB } from './units';
-import { EXIn, activeRoutineIn, exNameIn, profIn, rirHalfOnIn } from './model';
+import { EXIn, activeRoutineIn, profIn, rirHalfOnIn } from './model';
 import { isCompound, profHeavy } from './library';
-import { isWork } from './formulas';
-import { sessCmp } from './records';
 
 /** A plan item as a routine is first made: normalize() adds its superset
     link (null) when the routine is saved. */
@@ -174,7 +173,7 @@ export function routineFromTemplate(key: string): NewRoutine | null {
   };
 }
 
-/* ---------- routine helpers (phase 3a, r51; moved unchanged, tests/moved.js holds them to r50's code) ---------- */
+/* ---------- routine helpers (phase 3a, r51; moved unchanged) ---------- */
 
 /** The parts of a routine these helpers read. */
 type RoutineLike = {
@@ -189,14 +188,47 @@ export function weekFactor(R: RoutineLike): number {
   return R.schedule === 'weekly' ? 1 : 7 / Math.max(1, R.days.length);
 }
 
-/** The days of a routine with something to train. */
-export function trainDaysOf(R: RoutineLike): number {
-  return R.days.filter(d => !d.rest && d.items.length > 0).length;
+/** Whether a routine day has something to train. */
+export function isTrainDay(d: RoutineLike['days'][number]): boolean {
+  return !d.rest && d.items.length > 0;
 }
 
+/** The days of a routine with something to train. */
+export function trainDaysOf(R: RoutineLike): number {
+  return R.days.filter(isTrainDay).length;
+}
+
+/* Where a cycle goes next (cycleState, on Today): the first training day
+   after the one last trained, so a missed day moves with the lifter instead
+   of being skipped, and the routine's first training day before any. The
+   weeks a cycle's days fell in are read by the same rule (weeks.ts,
+   cycleMixIn), so the two cannot disagree on which day was due. */
+/** A cycle's training day after day i (i below 0: before any), or i itself when it is the only one. */
+export function nextTrainIdx(R: RoutineLike, i: number): number {
+  const n = R.days.length;
+  if (i < 0) {
+    for (let k = 0; k < n; k++) if (isTrainDay(R.days[k])) return k;
+    return 0;
+  }
+  for (let k = 1; k <= n; k++) {
+    const j = (i + k) % n;
+    if (isTrainDay(R.days[j])) return j;
+  }
+  return i;
+}
+
+/* A cycle that is not 7 days long plans a fraction a week: an every-other-day
+   routine (5 x 5) 3.5, done in weeks of 4 and 3. The week counts as on plan at
+   the whole number below (r54, V's call of 2026-10-18 after the audit V asked
+   for: rounded to 4, a lifter doing exactly what the routine says never built a
+   streak, and the ring read 3 of 4 every other week). One rule for the ring,
+   This week, the streak and adherence. A routine that trains plans at least
+   one a week, however long its cycle: rounded down alone, a cycle of one
+   training day in nine would plan none and lose its ring. */
 /** Training days a week, for a weekly schedule or a cycle. */
 export function plannedPerWeek(R: RoutineLike): number {
-  return R.schedule === 'weekly' ? trainDaysOf(R) : Math.round(trainDaysOf(R) * weekFactor(R));
+  const n = trainDaysOf(R);
+  return R.schedule === 'weekly' ? n : n ? Math.max(1, Math.floor(n * weekFactor(R) + 1e-9)) : 0;
 }
 
 /* Sessions store the id of the day they were logged against, so reordering or
@@ -326,7 +358,7 @@ export function tplCountLine(): string {
 export const RIR_TGT_TIP =
   'Target RIR is 1 unless you change it, a convention: muscle growth improves as sets end closer to failure (Robinson 2024), but going all the way to failure grew muscle no more than stopping 1 to 2 reps short (Refalo 2024) and costs more fatigue. Some lifts in the ready-made routines use 0 or 2.';
 
-/* ---------- the plan a lift is trained at (phase 3b, r52; moved from the legacy script, tests/moved.js reads them back to r51's code) ---------- */
+/* ---------- the plan a lift is trained at (phase 3b, r52; moved from the legacy script) ---------- */
 
 /** What a profile changes in a plan item: the range and reserve, and on a heavy compound the rest. */
 type ProfChange = { repMin: number; repMax: number; rir: number; rest?: number };
@@ -369,37 +401,32 @@ export function defPlanIn(M: Model, exId: string, plain?: boolean): Plan {
   return ex.timed ? { ...DEFAULT_PLAN, repMin: 30, repMax: 60, rest: 60 } : profPlanIn(M, ex, plain);
 }
 
-/* An exercise added mid-session borrows its settings from wherever it already
-   sits in the active routine instead of a generic 3 x 8-12. */
-export function planForIn(M: Model, exId: string, R?: Routine | null, dayId?: string | null, plain?: boolean): Plan {
-  R = R || activeRoutineIn(M);
-  // The day being trained first: the same lift can sit on two days with different ranges.
-  const days = dayId ? [...R.days.filter(d => d.id === dayId), ...R.days.filter(d => d.id !== dayId)] : R.days;
+/* Where a lift sits in a routine (the active one unless given): its plan
+   there, the day being trained first, since the same lift can sit on two
+   days with different ranges; null on no day of it. */
+/** A lift's plan in a routine, the day given first, or null when it is on no day of it. */
+export function routinePlanIn(M: Model, exId: string, R?: Routine | null, dayId?: string | null): Plan | null {
+  const Q = R || activeRoutineIn(M);
+  const days = dayId ? [...Q.days.filter(d => d.id === dayId), ...Q.days.filter(d => d.id !== dayId)] : Q.days;
   for (const d of days)
     for (const it of d.items)
       if (it.exId === exId) {
         const { uid: _u, ss: _s, ...p } = it;
         return { ...DEFAULT_PLAN, ...p, ss: null };
       }
-  /* A lift on no day of the routine starts from its own last full session
-     (r53, V 2026-10-18: "tied at exercise level"; not a deload, a lighter
-     day, trimmed or sample): that session's number of working sets, and the
-     range it was planned at then where the training profile sets none for
-     the lift. Never logged, the default as before. plain (the pace model)
-     reads past sessions without this, as without the profile. */
-  const base = defPlanIn(M, exId, plain);
-  if (plain) return base;
-  const work = (q: { warm?: boolean; drop?: boolean; r: number | string | null }): boolean => isWork(q) && !q.drop;
-  let last: Session | null = null,
-    blk: SessionEx | null = null;
-  for (const x of M.s.sessions) {
-    if (x.demo || x.deload || x.light || (last && sessCmp(x, last) <= 0)) continue;
-    const b = x.ex.find(q => q.exId === exId && !q.cut && !q.light && q.sets.some(work));
-    if (b) [last, blk] = [x, b];
-  }
-  if (!blk) return base;
-  const range = blk.rr && !profRuleIn(M, EXIn(M, exId)) ? { repMin: blk.rr[0], repMax: blk.rr[1] } : {};
-  return { ...base, ...range, sets: blk.sets.filter(work).length };
+  return null;
+}
+
+/* A lift's plan as the routine has it, the day being trained first, else
+   its default (the profile's, unless plain): what the time model and the
+   analytics read, neither of which reads the lift's own sessions for it.
+   An exercise added mid-session, or a lift on no day of the routine, takes
+   the plan of plans.ts (planForIn), which adds the lift's own last full
+   session; until r54 this read it here, from the records, where the
+   analytics' reading of a session (done lighter, or short of its usual) is
+   not known (PENDING 313). */
+export function basePlanIn(M: Model, exId: string, R?: Routine | null, dayId?: string | null, plain?: boolean): Plan {
+  return routinePlanIn(M, exId, R, dayId) || defPlanIn(M, exId, plain);
 }
 
 /* Planned hard sets (r27). A planned set counts only if its target RIR
@@ -416,6 +443,55 @@ export function planCreditIn(M: Model, it: { rir: number | string }): number {
   return planHardIn(M, it) ? 1 : rirHalfOnIn(M) && +it.rir <= 5 ? 0.5 : 0;
 }
 
+/* How many times a week each training day of a routine comes round: once on
+   a weekly schedule; on a cycle, the whole sessions the week plans
+   (plannedPerWeek) shared over its training days (r54, V 2026-10-18: the
+   planned sets follow the sessions a week counts as on plan, so Strength
+   5 x 5, every other day, plans three sessions' worth, 39 hard sets, where
+   three and a half read 46 and a lifter on plan was told to do every
+   planned set; the review of r54 found that). */
+/** How many times a week each training day of a routine comes round. */
+export function dayShare(R: RoutineLike): number {
+  const n = trainDaysOf(R);
+  return R.schedule === 'weekly' ? 1 : n ? plannedPerWeek(R) / n : 0;
+}
+
+/* Adds one day's planned hard sets per muscle into `out`, each counted f
+   times: each planned set's credit (above), a helper muscle's at half. */
+function addDayCredit(M: Model, d: Day, f: number, out: Record<string, number>): void {
+  if (d.rest) return;
+  for (const it of d.items) {
+    const pc = planCreditIn(M, it);
+    if (!pc) continue;
+    const ex = EXIn(M, it.exId);
+    out[ex.primary] = (out[ex.primary] || 0) + it.sets * f * pc;
+    for (const m of ex.secondary) out[m] = (out[m] || 0) + 0.5 * it.sets * f * pc;
+  }
+}
+
+/* One day's planned hard sets per muscle, which the weeks a cycle's days
+   fell in are read from (weeks.ts, cycleMixIn, r54). */
+/** A routine day's planned hard sets per muscle. */
+export function dayCreditIn(M: Model, d: Day): Record<string, number> {
+  const out: Record<string, number> = {};
+  addDayCredit(M, d, 1, out);
+  return out;
+}
+
+/* A muscle's planned hard sets a week: each day's as often as it comes round
+   (dayShare). Moved from the legacy script in r54 so the coach can tell a
+   plan short of a muscle's target from one that already reaches it. `share`
+   reads the plan another way: before r54 each day of a cycle came round 7
+   divided by its length times a week (weekFactor), and the targets a
+   first-run pick fitted by that reading are refitted from it (refitIn). */
+/** Planned hard sets a week for each muscle, from a routine (each day `share` times a week, dayShare unless given). */
+export function plannedSetsIn(M: Model, routine: Routine, share?: number): Record<string, number> {
+  const out: Record<string, number> = {};
+  const f = share ?? dayShare(routine);
+  for (const d of routine.days) addDayCredit(M, d, f, out);
+  return out;
+}
+
 /** A routine's planned hard sets a week (a deload week's halved per exercise). */
 export function planSetsPerWeekIn(M: Model, R: Routine, deload?: boolean): number {
   const n = R.days.reduce(
@@ -429,97 +505,5 @@ export function planSetsPerWeekIn(M: Model, R: Routine, deload?: boolean): numbe
           )),
     0
   );
-  return R.schedule === 'weekly' ? n : Math.round(n * weekFactor(R));
-}
-
-/** The parts of a finished session that Finish's offer reads: the routine day
-    it was logged against, its marks, and each exercise's plan and sets. */
-export interface FinishedDraft {
-  routineId: string;
-  dayId: string | null;
-  limited?: boolean | undefined;
-  deload?: boolean | undefined;
-  light?: boolean | undefined;
-  ex: {
-    exId: string;
-    swappedFrom?: string | null | undefined;
-    plan: Partial<Plan> & { ss?: string | null | undefined };
-    sets: { done?: boolean | undefined; warm?: boolean | undefined }[];
-  }[];
-}
-
-/** Finish's offer to update the routine day: exercises to add, swaps, supersets, and the words for them. */
-export interface RoutineUpdate {
-  rid: string;
-  dayId: string;
-  dayName: string;
-  add: { exId: string; plan: Partial<Plan> & { sets: number } }[];
-  swap: { from: string; to: string }[];
-  ss: string[][];
-  text: string;
-}
-
-/* Exercises added or swapped in a session, relative to the routine day it was
-   logged against, so Finish can offer to make the change permanent. An
-   exercise added on a lighter day or in a deload had half its sets (r30), so
-   the day gets the sets it would have on a normal day, the count that was
-   halved (r53, V 2026-10-18: added after a lighter day, it came back with
-   half its sets every time after). */
-export function routineUpdatesIn(M: Model, d: FinishedDraft): RoutineUpdate | null {
-  const R = M.s.routines.find(r => r.id === d.routineId);
-  if (!R) return null;
-  const day = R.days.find(x => x.id === d.dayId);
-  if (!day) return null;
-  const have = new Set(day.items.map(i => i.exId));
-  const add: RoutineUpdate['add'] = [],
-    swap: RoutineUpdate['swap'] = [];
-  const seen = new Set<string>();
-  for (const b of d.ex) {
-    if (have.has(b.exId) || seen.has(b.exId) || !b.sets.some(s => s.done && !s.warm)) continue;
-    seen.add(b.exId);
-    // Limited-equipment swaps are for that session only.
-    if (d.limited && b.swappedFrom) continue;
-    if (b.swappedFrom && have.has(b.swappedFrom)) swap.push({ from: b.swappedFrom, to: b.exId });
-    else {
-      const { ss: _s, ...p } = b.plan;
-      const sets = d.deload || d.light ? planForIn(M, b.exId, R, d.dayId).sets : p.sets;
-      add.push({ exId: b.exId, plan: { ...p, sets: Math.max(1, +(sets || 0) || 3) } });
-    }
-  }
-  /* A superset made in the session (r35, V, as Strong and Hevy ask): pairs
-     of exercises done linked that the day has, or will have after the
-     change, but not linked there. */
-  const after = new Set([
-    ...day.items
-      .map(i => i.exId)
-      .map(id => {
-        const sw = swap.find(x => x.from === id);
-        return sw ? sw.to : id;
-      }),
-    ...add.map(x => x.exId)
-  ]);
-  const ss: string[][] = [];
-  const groups = new Map<string, string[]>();
-  for (const b of d.ex) {
-    const g = b.plan && b.plan.ss;
-    if (!g || !b.sets.some(x => x.done && !x.warm)) continue;
-    let list = groups.get(g);
-    if (!list) groups.set(g, (list = []));
-    list.push(b.exId);
-  }
-  for (const ids of groups.values()) {
-    const u = [...new Set(ids)].filter(id => after.has(id));
-    if (u.length < 2) continue;
-    const its = u.map(id => day.items.find(i => i.exId === id));
-    const first = its[0];
-    if (first && first.ss && its.every(i => !!i && i.ss === first.ss)) continue;
-    ss.push(u);
-  }
-  if (!add.length && !swap.length && !ss.length) return null;
-  const bits = [
-    ...swap.map(x => `${exNameIn(M, x.from)} → ${exNameIn(M, x.to)}`),
-    ...add.map(x => `add ${exNameIn(M, x.exId)}`),
-    ...ss.map(u => `superset ${andList(u.map(id => exNameIn(M, id)))}`)
-  ];
-  return { rid: R.id, dayId: day.id, dayName: day.name, add, swap, ss, text: bits.join(', ') };
+  return Math.round(n * dayShare(R));
 }

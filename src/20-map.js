@@ -71,7 +71,7 @@ const B3_PARTS=[
 function map3dColors(){
   const cs=getComputedStyle(document.documentElement);const v=n=>cs.getPropertyValue(n).trim();
   const dark=(document.documentElement.dataset.theme||(matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light'))==='dark';
-  return {base:dark?'#3b4048':'#d5d9de',none:dark?'#5d646d':'#a9b0b8',track:v('--muted'),under:v('--yellow'),part:v('--part'),in:v('--green'),over:v('--blue'),ex:v('--volt')};
+  return {base:dark?'#3b4048':'#d5d9de',none:dark?'#5d646d':'#a9b0b8',track:v('--muted'),under:v('--yellow'),part:v('--part'),plan:v('--part'),in:v('--green'),over:v('--blue'),ex:v('--volt')};
 }
 /* An exercise's muscles on the body (r39, item 172): the same flat figures and
    the same 3D body, lit by what the exercise trains instead of by the week's
@@ -205,18 +205,6 @@ function bmShape(x){
   if(x[0]==='r')return `<rect x="${x[1]}" y="${x[2]}" width="${x[3]}" height="${x[4]}" rx="${x[5]}"/>`;
   return `<polygon points="${x[1].map(q=>q.join(',')).join(' ')}"/>`;
 }
-/* soFar (r29): the week is still going, so a muscle short of its minimum is
-   under way ('part'), not below target; amber on a Tuesday read as behind
-   for training that had not happened yet. With no sets a muscle is 'none'
-   whatever its target: one whose minimum was brought down to 0 (a routine
-   that does not train it) showed green before a single set (V, r29).
-   On an average, a muscle with a minimum and no sets is below target, and
-   shows so on the map, in its legend and in the summary alike. */
-function muscleStatus(src,soFar){
-  const b=state.settings.bands;const out={};
-  for(const m of MK){const v=src?(src[m]||0):0;const [lo,hi]=b[m];out[m]={v,lo,hi,st:TRACK_ONLY.has(m)?'track':v<=0?(!soFar&&src&&lo>0?'under':'none'):belowMin(v,lo)?(soFar?'part':'under'):aboveMax(v,hi)?'over':'in'};}
-  return out;
-}
 function bodyMapCard(){
   const I=IDX();const avg=actualAvg4();
   const src=(ui.mapSrc==='week'||!avg)?'week':'avg';
@@ -225,15 +213,15 @@ function bodyMapCard(){
   const hsw=v=>`${r1(v)} hard set${r1(v)===1?'':'s'} a week`;const tgt=m=>TRACK_ONLY.has(m)?', tracked only':`, target ${st[m].lo} to ${st[m].hi}`;
   const lab=m=>noLog()?`${ML[m]}: nothing logged yet${tgt(m)}`:`${ML[m]}: ${hsw(st[m].v)}${tgt(m)}`;
   const fig=(view,label)=>`<figure class="bm"><svg viewBox="0 0 120 210" aria-label="${label} of body"><g class="bm-base">${BM_BASE}</g>${Object.entries(BM[view]).map(([m,sh])=>`<g class="mm st-${st[m].st}${ui.mapSel===m?' sel':''}" data-act="mapSel" data-m="${m}" role="button" tabindex="0" aria-label="${esc(lab(m))}"><title>${esc(lab(m))}</title>${sh.map(bmShape).join('')}</g>`).join('')}</svg><figcaption>${label}</figcaption></figure>`;
-  const counts={under:0,part:0,in:0,over:0,none:0,track:0};for(const m of MK)counts[st[m].st]++;
+  const counts={under:0,part:0,plan:0,in:0,over:0,none:0,track:0};for(const m of MK)counts[st[m].st]++;
   if(noLog())for(const k in counts)counts[k]=NIL;
   const sel=ui.mapSel&&st[ui.mapSel]?ui.mapSel:null;
   let detail;
   if(sel){
     const x=st[sel];const sc=I.scores.find(y=>y.m===sel);
-    const where=x.st==='none'?(src==='week'?'Not yet this week':'Not trained'):x.st==='track'?'Tracked only':x.st==='under'?`${r1(x.lo-x.v)} below target`:x.st==='part'?`${r1(x.lo-x.v)} to go`:x.st==='over'?`${r1(x.v-x.hi)} above target`:'On target';
+    const where=x.st==='none'?(src==='week'?'Not yet this week':'Not trained'):x.st==='track'?'Tracked only':x.st==='under'?`${r1(x.lo-x.v)} below target`:x.st==='part'?`${r1(x.lo-x.v)} to go`:x.st==='plan'?'On plan':x.st==='over'?`${r1(x.v-x.hi)} above target`:'On target';
     const tr=sc?`${musTrend(sc)}${sc.indirect?', read from exercises that train it indirectly':''}.`:'Not enough sessions yet for a strength trend.';
-    detail=`<div class="bm-detail"><div class="row spread"><b>${ML[sel]}</b><span class="tag ${x.st==='in'?'green':x.st==='under'?'yellow':x.st==='over'?'blue':''}">${where}</span></div><p class="small" style="margin:4px 0 6px">${src==='avg'?`${hsw(x.v)} on average over ${avgWeeksTxt(avg)}`:`${r1(x.v)} hard set${r1(x.v)===1?'':'s'} so far this week`}${tgt(sel)}. ${tr}</p><div class="row"><button class="btn sm" data-act="goDash" data-sec="volume" data-m="${sel}">Weekly trend</button><button class="btn sm" data-act="mapSel" data-m="${sel}">Close</button></div></div>`;
+    detail=`<div class="bm-detail"><div class="row spread"><b>${ML[sel]}</b><span class="tag ${x.st==='in'?'green':x.st==='under'?'yellow':x.st==='over'?'blue':x.st==='plan'?'hastip':''}"${x.st==='plan'?` data-tip="${esc(ON_PLAN_TIP)}"`:''}>${where}</span></div><p class="small" style="margin:4px 0 6px">${src==='avg'?`${hsw(x.v)} on average over ${avgWeeksTxt(avg)}`:`${r1(x.v)} hard set${r1(x.v)===1?'':'s'} so far this week`}${tgt(sel)}. ${tr}</p><div class="row"><button class="btn sm" data-act="goDash" data-sec="volume" data-m="${sel}">Weekly trend</button><button class="btn sm" data-act="mapSel" data-m="${sel}">Close</button></div></div>`;
   }else{
     const low=MK.filter(m=>!TRACK_ONLY.has(m)&&lowSt(st[m]));
     detail=`<p class="small muted" style="margin:6px 0 0">Tap a muscle ${tipi(`${mapView()==='3d'?'Drag sideways to turn it. ':''}Tap a muscle for its numbers.${src==='week'?' This is the week so far, so most muscles read low early in the week.':''}`,'About the map')}</p>${low.length&&src==='avg'?`<div class="row" style="margin-top:6px;gap:4px"><span class="small muted">Below target:</span>${low.slice(0,8).map(m=>`<button class="chip" data-act="mapSel" data-m="${m}">${ML[m]}</button>`).join('')}</div>`:''}`;
@@ -246,7 +234,7 @@ function bodyMapCard(){
   const stage=v3?`<div class="bm3d" id="bm3d"><div class="bm3d-stage" role="img" aria-label="3D body, shaded by hard sets a week. Drag sideways to turn it, tap a muscle for its numbers. The same numbers are in the flat view."></div><p class="bm3d-msg small muted" hidden></p><div class="seg bm3d-turn" role="group" aria-label="Turn the body"><button class="chip" data-act="map3dTurn" data-v="0">Front</button><button class="chip" data-act="map3dTurn" data-v="1">Side</button><button class="chip" data-act="map3dTurn" data-v="2">Back</button></div></div>`:`<div class="bm-wrap">${fig('f','Front')}${fig('b','Back')}</div>`;
   return sec({sk:'today:map',key:'map',title:'Muscle map',sub:msub,body:`<div class="row spread"><div class="seg" role="group" aria-label="View"><button class="chip ${v3?'':'on'}" data-act="mapView" data-v="flat" aria-pressed="${!v3}">Flat</button><button class="chip ${v3?'on':''}" data-act="mapView" data-v="3d" aria-pressed="${v3}">3D</button></div><div class="seg" role="group" aria-label="Time range">${avg?`<button class="chip ${src==='avg'?'on':''}" data-act="mapSrc" data-v="avg" aria-pressed="${src==='avg'}">4-week avg</button>`:''}<button class="chip ${src==='week'?'on':''}" data-act="mapSrc" data-v="week" aria-pressed="${src==='week'}">This week</button></div></div>
   ${stage}
-  <div class="bm-legend small">${src==='week'?`<span class="hastip" data-tip="The week is still going: short of the minimum so far, not behind."><i class="st-part"></i>Under way ${counts.part}</span>`:`<span><i class="st-under"></i>Below target ${counts.under}</span>`}<span><i class="st-in"></i>On target ${counts.in}</span><span><i class="st-over"></i>Above ${counts.over}</span><span><i class="st-none"></i>${src==='week'?'Not yet':'None'} ${counts.none}</span>${counts.track?`<span class="hastip" data-tip="Serratus, rotator cuff, neck, and tibialis: sets are counted, but no study sets a weekly dose, so they are never called under or over."><i class="st-track"></i>Tracked only ${counts.track}</span>`:''}</div>
+  <div class="bm-legend small">${src==='week'?`<span class="hastip" data-tip="The week is still going: short of the minimum so far, not behind."><i class="st-part"></i>Under way ${counts.part}</span>`:`<span><i class="st-under"></i>Below target ${counts.under}</span>${counts.plan?`<span class="hastip" data-tip="${esc(ON_PLAN_TIP)}"><i class="st-plan"></i>On plan ${counts.plan}</span>`:''}`}<span><i class="st-in"></i>On target ${counts.in}</span><span><i class="st-over"></i>Above ${counts.over}</span><span><i class="st-none"></i>${src==='week'?'Not yet':'None'} ${counts.none}</span>${counts.track?`<span class="hastip" data-tip="Serratus, rotator cuff, neck, and tibialis: sets are counted, but no study sets a weekly dose, so they are never called under or over."><i class="st-track"></i>Tracked only ${counts.track}</span>`:''}</div>
   ${detail}`});
 }
 /* Session length measured from Start to Finish. Sessions logged for a past date,
@@ -263,24 +251,22 @@ function sessionLength(){
 /* A set is a PR live if its estimate beats your best, or no earlier set matched
    it on both load and reps: the same two tests the PR list uses. Only sets
    logged up to the session's date count, so a past session entered late is
-   judged against what came before it. */
+   judged against what came before it, at its load as the list judges it (prFrame, r54: changing units or gyms is not a PR). */
 function livePR(exId,s,date){
   if(!s||s.warm||s.drop||!(+s.r>0))return null;
-  const I=IDX();const every=I.byEx[exId];if(!every||!every.length)return null;
-  const exps=date?every.filter(x=>x.date<=date):every;if(!exps.length)return null;
-  const ex=EX(exId);const load=prLoad(ex,s,date);
-  const st=exps.length<every.length?statsUpTo(exId,exps):I.exStats[exId];const q0=rirEst(s,ex);const v=noE1(ex)?null:e1(load,+s.r,q0);
+  const f=prFrame(exId,s,date);if(!f)return null;const {ex,exps,st,load}=f;const q0=rirEst(s,ex);const v=noE1(ex)?null:e1(load,+s.r,q0);
   /* Announced only when stronger than ever (r32, as the list's big): by the
      same score as the rep PR floor, against every earlier set. A lift with
-     no estimate (timed, joint rotation) or no load known keeps every kind. */
+     no estimate (timed, joint rotation) or no load known keeps every kind,
+     a bodyweight lift before any weigh-in by its reps alone (r54). */
   const scq=(l,r,q)=>e1(l,r,q)||l*(1+r/30);let top=0,dom=false;
   for(const x of exps)for(const q of x.pts){if(q.pl>=load-1e-6&&q.r>=+s.r)dom=true;top=Math.max(top,scq(q.pl,q.r,q.rq));}
   const judge=!noE1(ex)&&!ex.timed&&load>0;const stronger=!judge||scq(load,+s.r,q0)>top+1e-9;
   // More weight than any earlier working set comes first (r29), as in the PR
   // list, and before the load check: an assisted set with no bodyweight
   // logged has no load to estimate from, but less help is still a PR.
-  if(!ex.timed&&s.w!==''&&s.w!=null&&isNum(+s.w)){let mw=-Infinity;for(const x of exps)for(const q of x.pts)if(q.r>0)mw=Math.max(mw,q.w);if(+s.w>mw+1e-6&&stronger)return 'Weight PR';}
-  if(!(load>0)&&!ex.timed)return null;
+  if(!ex.timed&&s.w!==''&&s.w!=null&&isNum(+s.w)&&f.w>f.heaviest+1e-6&&stronger)return 'Weight PR';
+  if(!(load>0)&&!ex.timed&&!ex.bw)return null;
   // A new best is judged within the set's own band of reps to failure.
   if(v!=null&&st){const bd=st.byBand&&st.byBand[rtfBand(rtfOf(+s.r,q0))];if(bd!=null&&v>bd+1e-6)return 'Best';}
   if(dom||!stronger)return null;
@@ -291,10 +277,10 @@ function livePR(exId,s,date){
 function refreshPR(bi,si,announce){
   const d=state.draft;if(!d)return;const b=d.ex[bi];const s=b&&b.sets[si];if(!s)return;
   const btn=document.querySelector(`[data-act="sDone"][data-b="${bi}"][data-s="${si}"]`);const row=btn&&btn.closest('.sg');if(!row)return;
-  const was=row.classList.contains('pr');let pr=s.done&&!d.light&&!d.deload&&!b.light?livePR(b.exId,s,d.date):null;
+  const was=row.classList.contains('pr');let pr=s.done?livePR(b.exId,s,d.date):null;
   /* Not a PR when an earlier set in this session was as strong (r32, second
-     check: 100 x 10, then 100 x 9 announced as a new best). Lighter and
-     deload work is never one. */
+     check: 100 x 10, then 100 x 9 announced as a new best). On any day since
+     r54, as the list counts it since r53 (PENDING 311 a). */
   if(pr){const ex=EX(b.exId);const scq=x=>{const l=prLoad(ex,x,d.date);return e1(l,+x.r,rirEst(x,ex))||l*(1+(+x.r)/30);};const me=scq(s);
     if(b.sets.some((x,i)=>i<si&&x.done&&!x.warm&&!x.drop&&+x.r>0&&scq(x)>=me-1e-9))pr=null;}
   row.classList.toggle('pr',!!pr);
@@ -308,11 +294,9 @@ function refreshPR(bi,si,announce){
   }
 }
 /* What a live PR beat, as a short tail for the toast: the old best estimate in
-   the set's band, or the most reps done at this load or heavier. */
+   the set's band, or the most reps done at this load or heavier, judged as livePR judges it and shown as logged, as the PR list shows it (r54). */
 function prBeat(exId,s,date,pr){
-  const I=IDX();const every=I.byEx[exId];if(!every)return '';
-  const exps=date?every.filter(x=>x.date<=date):every;const ex=EX(exId);const load=prLoad(ex,s,date);
-  const st=exps.length<every.length?statsUpTo(exId,exps):I.exStats[exId];const q=rirEst(s,ex);const bd=st&&st.byBand&&st.byBand[rtfBand(rtfOf(+s.r,q))];const v=noE1(ex)?null:e1(load,+s.r,q);
+  const f=prFrame(exId,s,date);if(!f)return '';const {ex,exps,st,load}=f;const q=rirEst(s,ex);const bd=st&&st.byBand&&st.byBand[rtfBand(rtfOf(+s.r,q))];const v=noE1(ex)?null:e1(load,+s.r,q),shown=noE1(ex)?null:e1(f.own,+s.r,q);
   /* The estimate a set beats is the best from sets of a similar number of
      reps (its band), so the toast names the band (r30): "new best estimate
      279" read as wrong beside an overall best of 301 from heavier sets. */
@@ -321,10 +305,10 @@ function prBeat(exId,s,date,pr){
     // The overall best before this set, so "was" never names a band's best that reads as lower than the bests board (r34.2).
     let all=null;for(const x of exps)if(x.pb!=null&&!(date&&x.date===date))all=all==null?x.pb:Math.max(all,x.pb);
     if(!isCompound(ex))return ` (your best for ${bandW})`;
-    return all==null||v>all+1e-6?` (estimated 1RM ${fmtE(v)} ${U()}${all!=null?`; was ${fmtE(all)}`:''})`:` (your best for ${bandW}, ${fmtE(v)} ${U()})`;}
-  if(pr==='Weight PR'){let mw=-Infinity;for(const x of exps)for(const p of x.pts)if(p.r>0)mw=Math.max(mw,p.w);
+    return all==null||shown>all+1e-6?` (estimated 1RM ${fmtE(shown)} ${U()}${all!=null?`; was ${fmtE(all)}`:''})`:` (your best for ${bandW}, ${fmtE(shown)} ${U()})`;}
+  if(pr==='Weight PR'){const mw=f.heaviest;
     const was=ex.assist?`less help than ever`:`heaviest before ${ex.bw?loadLabel(ex,mw):fmtW(mw)+' '+U()}`;
-    return ` (${was}${isCompound(ex)&&bd!=null&&v!=null&&v>bd+1e-6?`; best estimate for ${bandW} now ${fmtE(v)}`:''})`;}
+    return ` (${was}${isCompound(ex)&&bd!=null&&v!=null&&v>bd+1e-6?`; best estimate for ${bandW} now ${fmtE(shown)}`:''})`;}
   let m=0;for(const x of exps)for(const p of x.pts)if(p.pl>=load-1e-6)m=Math.max(m,p.r);
   return m?` (was ${m} ${ex.timed?'s':'reps'})`:' (heaviest yet)';
 }

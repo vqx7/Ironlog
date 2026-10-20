@@ -4,7 +4,7 @@
    of it takes the model as its first parameter, `M`, so it reads nothing
    else: a test hands it a log and a date, and the app hands it the one live
    model (live.ts). The accessors here moved unchanged from the legacy script
-   but for that parameter; tests/moved.js reads them back to r51's code. */
+   but for that parameter. */
 
 import type { EngineState, Exercise, Gym, Profile, Routine, Session, Target } from './types';
 import { weekStart } from './util';
@@ -27,8 +27,11 @@ export interface ExPoint {
 /** One session of a lift (an exposure), with what IDX reads from it: its
     working sets, best estimates and their rep bands, the working load and the
     reps and RIR at it, the trend readings, and the marks the later steps set
-    (`auto` and `keep` for a session read as lighter, `tv` the trend's
-    reading, `progress` a PR or a heavier load). */
+    (`auto` and `keep` for a session read as lighter, `short` for one short
+    of its usual, by its sets or its reading, `tag` for one labelled lighter
+    or a deload but done at its usual load and reps, `tv` the trend's
+    reading, `progress` a PR or a heavier load), and `held`, a session held
+    for a flagged injury (r54). */
 export interface Exposure {
   date: string;
   sid: string;
@@ -45,15 +48,17 @@ export interface Exposure {
   drop: number | null;
   deload: boolean;
   light: boolean;
+  held: boolean;
   rr: [number, number] | null;
   topN: number;
-  cut: boolean;
   tAdj: number | null;
   tRaw: number | null;
   topL: number;
   rated: number;
   auto?: boolean;
   keep?: boolean;
+  short?: 'sets' | 'reading';
+  tag?: 'deload' | 'light';
   tv?: number | null;
   progress?: boolean;
 }

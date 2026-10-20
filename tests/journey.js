@@ -51,15 +51,16 @@ const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log
     await ev(() => { const L = window.__ironlog; L.ACT.shortOpen(); L.ui.modal.mins = 20; L.ACT.shortApply(); });
     const after4 = await D();
     ok(kept(after4) === kept(before4) && after4.ex[0].sets.filter(x => x.done).length === 2 && after4.ex[1].sets[0].r === 11, T + 'Short on time keeps every logged and typed set', { before: kept(before4), after: kept(after4) });
-    ok(after4.ex.some(b => b.cut), T + 'and trims something');
+    const n4 = id => (before4.ex.find(b => b.exId === id) || { sets: [] }).sets.length;
+    ok(after4.ex.some(b => b.sets.length < n4(b.exId)) && !after4.ex.some(b => b.cut), T + 'and trims something, marking nothing (since r54 a lift with fewer sets than usual is read so from the log)');
 
-    // 5. Swap an untouched trimmed exercise: its count and the trimmed mark stay.
-    const ti = after4.ex.findIndex(b => b.cut && b.sets.every(x => !x.done && x.r == null && x.rir == null));
+    // 5. Swap an untouched trimmed exercise: its count stays.
+    const ti = after4.ex.findIndex(b => b.sets.length < n4(b.exId) && b.sets.every(x => !x.done && x.r == null && x.rir == null));
     const swapTo = async (bi) => { await ev(b => window.__ironlog.ACT.bSwap({ dataset: { b: String(b) } }), bi); await page.waitForTimeout(80);
       const id = await ev(() => { const inS = new Set(window.__ironlog.state.draft.ex.map(b => b.exId)); const el = [...document.querySelectorAll('#pickList .pick[data-ex]')].find(p => !inS.has(p.dataset.ex)); el.click(); return el.dataset.ex; }); await page.waitForTimeout(150); return id; };
     if (ti >= 0) {
       const n5 = after4.ex[ti].sets.length; const id5 = await swapTo(ti); const b5 = (await D()).ex[ti];
-      ok(b5.exId === id5 && b5.sets.length === n5 && b5.cut, T + 'a swap on a trimmed exercise keeps its ' + n5 + ' sets and the trimmed mark', { n: b5.sets.length, cut: b5.cut });
+      ok(b5.exId === id5 && b5.sets.length === n5 && !b5.cut, T + 'a swap on a trimmed exercise keeps its ' + n5 + ' sets, with no mark', { n: b5.sets.length, cut: b5.cut });
     } else ok(true, T + '(no untouched trimmed exercise to swap this time)');
 
     // 6. Swap the second exercise, which has a set typed or logged: that set stays with it.
@@ -84,36 +85,46 @@ const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log
     ok(await ev((id) => { const d = window.__ironlog.state.draft; return d.ex[1].exId === id && !document.getElementById('blk-1').classList.contains('folded'); }, ex0), T + 'moved down, the first exercise keeps its sets and stays open');
     await ev(() => window.__ironlog.ACT.bUp({ dataset: { b: '1' } }));
 
-    // 8b. Add an exercise after the trim and log a set on it: it is not trimmed.
+    // 8b. Add an exercise after the trim and log a set on it: it is not trimmed. One never logged, so this session is its own
+    // usual and a full one (since r54 every lift Short on time left with fewer sets than usual reads as short of it).
     await ev(() => window.__ironlog.ACT.pickSession()); await page.waitForTimeout(80);
-    const added = await ev(() => { const inS = new Set(window.__ironlog.state.draft.ex.map(b => b.exId)); const el = [...document.querySelectorAll('#pickList .pick[data-ex]')].find(p => !inS.has(p.dataset.ex)); el.click(); return el.dataset.ex; });
+    const added = await ev(() => { const L = window.__ironlog; const inS = new Set(L.state.draft.ex.map(b => b.exId)); const el = [...document.querySelectorAll('#pickList .pick[data-ex]')].find(p => !inS.has(p.dataset.ex) && !(L.IDX().byEx[p.dataset.ex] || []).length); el.click(); return el.dataset.ex; });
     await page.waitForTimeout(150);
-    const ai = await ev((id) => window.__ironlog.state.draft.ex.findIndex(b => b.exId === id), added);
-    await type(W(ai, 0), '40'); await type(R(ai, 0), '12');
-    if (mode === 'grey') await page.click(`[data-act="sDone"][data-b="${ai}"][data-s="0"]`); else await blur();
+    const at = () => ev((id) => window.__ironlog.state.draft.ex.findIndex(b => b.exId === id), added);
+    const a0 = await at();
+    await type(W(a0, 0), '40'); await type(R(a0, 0), '12');
+    if (mode === 'grey') await page.click(`[data-act="sDone"][data-b="${a0}"][data-s="0"]`); else await blur();
     await page.waitForTimeout(120);
-    // A second set (r30): an exercise stopped with under half its sets done is saved as trimmed, which is not what this step checks.
+    // Its first tick, below exercises not yet touched, moves it up 0.9 s later (the auto-reorder, r45), as a lifter's next
+    // tap then finds it: wait for the move and find it again (on a busy machine the move landed mid-step, and the steps
+    // below typed into the exercise that had taken its place).
+    await page.waitForFunction(() => { const L = window.__ironlog; const d = L.state.draft; return !!d && d.ex.every(b => L.orderAt(b) < 0); }, null, { timeout: 10000 });
+    const ai = await at();
+    // A second set (r30), as before r54, when an exercise stopped with under half its sets done was saved as trimmed.
     await type(W(ai, 1), '40'); await type(R(ai, 1), '11');
     if (mode === 'grey') await page.click(`[data-act="sDone"][data-b="${ai}"][data-s="1"]`); else await blur();
     await page.waitForTimeout(120);
     ok(await ev((i) => { const b = window.__ironlog.state.draft.ex[i]; return b.sets[0].done && b.sets[0].r === 12 && !b.cut; }, ai), T + 'an exercise added after the trim is logged and not marked trimmed');
 
-    // 9. Reload mid-session: everything as it was.
+    // 9. Reload mid-session: everything as it was. No move of the auto-reorder still to come, so the snapshot is the
+    // session as it stays (before 8b waited for its move, on a busy machine the move landed between the snapshot and the
+    // reload, and the orders differed).
+    await page.waitForFunction(() => { const L = window.__ironlog; const d = L.state.draft; return !!d && d.ex.every(b => L.orderAt(b) < 0); }, null, { timeout: 10000 });
     const pre = sig(await D());
     await page.reload(); await page.waitForFunction(() => window.__libs && window.__libs.chart); await page.waitForTimeout(200);
     const post = sig(await D());
-    ok(JSON.stringify(pre) === JSON.stringify(post), T + 'a reload mid-session keeps every exercise, set, load, tick and trimmed mark', { pre: pre.slice(0, 2), post: post.slice(0, 2) });
+    ok(JSON.stringify(pre) === JSON.stringify(post), T + 'a reload mid-session keeps every exercise, set, load and tick', { pre: pre.slice(0, 2), post: post.slice(0, 2) });
 
     // 10. Finish. Typed, unticked sets are offered and kept; nothing is saved at load 0 that had a load.
-    // r30: an exercise stopped with fewer than half its sets done is saved as trimmed too.
-    const exp = await ev(() => { const L = window.__ironlog; const d = L.state.draft; return d.ex.map(b => { const n = b.sets.filter(x => x.done || (!x.warm && +x.r > 0)).length; const left = b.sets.filter(x => !x.warm && !x.done && !(+x.r > 0) && L.rowBlank(b, x)).length; return { id: b.exId, n, w: b.sets.map((x, i) => (x.done || +x.r > 0) ? L.effW(b, i) : null).filter(v => v != null), cut: !!b.cut || (n > 0 && left > 0 && n < Math.ceil((n + left) / 2)) }; }).filter(x => x.n); });
+    // Since r54 nothing is saved marked trimmed: an exercise with fewer sets than usual is read so from the log (step 13).
+    const exp = await ev(() => { const L = window.__ironlog; const d = L.state.draft; return d.ex.map(b => { const n = b.sets.filter(x => x.done || (!x.warm && +x.r > 0)).length; return { id: b.exId, n, w: b.sets.map((x, i) => (x.done || +x.r > 0) ? L.effW(b, i) : null).filter(v => v != null), cut: false }; }).filter(x => x.n); });
     const n0 = await ev(() => window.__ironlog.state.sessions.length);
     await ev(() => window.__ironlog.ACT.finish()); await page.waitForTimeout(150);
     for (let k = 0; k < 4; k++) { const m = await ev(() => { const m = window.__ironlog.ui.modal; return m && m.kind === 'confirm' ? document.getElementById('modal').innerText : null; }); if (!m) break; await ev(() => document.querySelector('#modal [data-act="mOk"]').click()); await page.waitForTimeout(150); }
     const saved = await ev(() => { const L = window.__ironlog; return L.state.sessions[L.state.sessions.length - 1]; });
     ok((await ev(() => window.__ironlog.state.sessions.length)) === n0 + 1 && !(await ev(() => window.__ironlog.state.draft)), T + 'Finish saves one session and closes it');
     const got = saved.ex.map(b => ({ id: b.exId, n: b.sets.length, w: b.sets.map(x => x.w), cut: !!b.cut }));
-    ok(JSON.stringify(got.map(x => [x.id, x.n, x.cut])) === JSON.stringify(exp.map(x => [x.id, x.n, x.cut])), T + 'the saved session has exactly the sets entered, on the right exercises, with the trimmed marks', { got: got.map(x => [x.id, x.n, x.cut]), exp: exp.map(x => [x.id, x.n, x.cut]) });
+    ok(JSON.stringify(got.map(x => [x.id, x.n, x.cut])) === JSON.stringify(exp.map(x => [x.id, x.n, x.cut])), T + 'the saved session has exactly the sets entered, on the right exercises, with no trimmed marks', { got: got.map(x => [x.id, x.n, x.cut]), exp: exp.map(x => [x.id, x.n, x.cut]) });
     ok(got.every((b, i) => b.w.every((w, j) => Math.abs(w - (exp[i] ? exp[i].w[j] : w)) < 1e-6)), T + 'every saved load is the one the field showed; none fell to 0', { got: got.map(x => x.w), exp: exp.map(x => x.w) });
     await closeModal();
 
@@ -134,14 +145,17 @@ const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log
     await closeModal();
 
     // 13. The next session reads this one (r26 rule). "Last" is always the
-    // most recent session, labelled when it was trimmed; the target of a
-    // trimmed exercise still comes from its last full session, and says so.
-    const nx = await ev((sid) => { const L = window.__ironlog; const s = L.state.sessions.find(x => x.id === sid);
-      return s.ex.map(b => { const nb = L.newBlock(b.exId, { sets: 3, repMin: 6, repMax: 10, rir: 1, rest: 120, inc: 2.27 }, {}); return { id: b.exId, cut: !!b.cut, last: nb.last, basis: nb.basis || null, lastR: nb.lastR, saved: b.sets.filter(x => !x.warm && !x.drop).map(x => x.r) }; }); }, saved.id);
-    ok(nx.filter(x => x.cut).every(x => /^Last \(Sep 20, trimmed\)/.test(x.last) && x.basis && x.basis < '2026-09-20'), T + 'a trimmed exercise shows today as Last (labelled trimmed), and its target comes from an earlier full session', nx.filter(x => x.cut).map(x => [x.last, x.basis]));
-    ok(nx.filter(x => !x.cut).every(x => /^Last \(Sep 20\):/.test(x.last) && !x.basis), T + 'an exercise not trimmed shows today as Last, with the target from today', nx.filter(x => !x.cut).map(x => [x.last, x.basis]));
-    ok(nx.every(x => JSON.stringify(x.lastR) === JSON.stringify(x.saved)), T + 'grey reps next time are the reps logged today, set by set', nx.map(x => [x.lastR, x.saved]));
-    ok(nx.some(x => !x.cut) && nx.some(x => x.cut), T + '(both kinds were present, so the checks above mean something)');
+    // most recent session, labelled for what it was; since r54 (V's one
+    // rule) that is read from the log: one short of its usual or done
+    // lighter is labelled so, and its target still comes from its last
+    // full session, and says so; grey reps follow today unless it was done
+    // lighter or below its usual.
+    const nx = await ev((sid) => { const L = window.__ironlog; const s = L.state.sessions.find(x => x.id === sid); const I = L.IDX();
+      return s.ex.map(b => { const x = (I.byEx[b.exId] || []).find(q => q.sid === sid); const nb = L.newBlock(b.exId, { sets: 3, repMin: 6, repMax: 10, rir: 1, rest: 120, inc: 2.27 }, {}); return { id: b.exId, word: L.sessionWord(x), off: L.offTarget(x), under: L.lighter(x) || x.short === 'reading', last: nb.last, basis: nb.basis || null, lastR: nb.lastR, saved: b.sets.filter(x => !x.warm && !x.drop).map(x => x.r) }; }); }, saved.id);
+    ok(nx.filter(x => x.off).every(x => x.word && new RegExp('^Last \\(Sep 20, ' + x.word + '\\)').test(x.last) && x.basis && x.basis < '2026-09-20'), T + 'an exercise short of its usual or done lighter shows today as Last, labelled so, and its target comes from an earlier full session', nx.filter(x => x.off).map(x => [x.word, x.last, x.basis]));
+    ok(nx.filter(x => !x.off).every(x => /^Last \(Sep 20\):/.test(x.last) && !x.basis), T + 'an exercise done at its usual shows today as Last, with the target from today', nx.filter(x => !x.off).map(x => [x.last, x.basis]));
+    ok(nx.filter(x => !x.under).every(x => JSON.stringify(x.lastR) === JSON.stringify(x.saved)), T + 'grey reps next time are the reps logged today, set by set, where today was not done lighter or below its usual', nx.map(x => [x.lastR, x.saved]));
+    ok(nx.some(x => !x.off) && nx.some(x => x.off), T + '(both kinds were present, so the checks above mean something)');
 
     ok(!errors.length, T + 'no page errors (' + errors.join(' | ') + ')');
     await browser.close();

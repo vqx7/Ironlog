@@ -464,11 +464,12 @@ function exHeadline(exId){
      different ways the reason sits behind the i, not as a line on screen (r40,
      V: the old note "Change and trend disagree" was confusing on its own). */
   if(st.pct!=null&&st.slope!=null&&(st.pct>0)!==(st.slope>0)&&Math.abs(st.pct)>0.5&&Math.abs(st.slope)>0.1)more.push(`The change (${sg(st.pct)}) compares ${st.wN>=4?'the better of your first two sessions with the better of your last two':'your first and last sessions'}; the weekly rate fits a line through all of them. They point different ways when one unusual session sits at an end, so the rate is the better guide.`);
-  const atTopR=(()=>{const lw=st.last?atLoad(st.last.pts,st.last.topW):[];return lw.length&&lw.every(q=>q.r>=+planFor(exId).repMax);})();
+  const atTopR=atRangeTop(exId);
   if(st.stalled){
     // At the top of the range, the advice is load, as on the Coach (r32).
-    parts.push(atTopR?'Stalled at the top of the range: due a step up. The session\'s target says how.':'Stalled for 3 weeks. Try another rep range or a variation.');
-    more.push('Stalled: flat for 3 weeks or more, with no PR in the last 3 sessions, no heavier load, and no more reps at the same load.');
+    /* The span the stall test read, and its rule in the coach's words (r54, from the audit V asked for: "Stalled for 3 weeks" was fixed text, said of a lift flat for ten). */
+    parts.push(atTopR?'Stalled at the top of the range: due a step up. The session\'s target says how.':`Stalled ${stallWords(exId)}. Try another rep range or a variation.`);
+    more.push(STALL_WHY);
   }else if(st.pct==null)parts.push('A trend needs 3 sessions spread over 2 weeks.');
   else if(st.moving)parts.push(`${liftChange(exId,'Up',ow)}.`);
   else if(st.falling)parts.push(`${liftChange(exId,'Down',ow)}. Look at recovery before adding work.`);
@@ -490,24 +491,24 @@ function prSet(exId,date){const x=(IDX().byEx[exId]||[]).find(q=>q.date===date);
 /* The strongest working set of a lift (by the trend reading), with its date. */
 /* A lift's history from inside a session (r32, from the third review: a
    Strong or Hevy user expects it a tap away, not only the Last line). The
-   recent sessions as logged, labelled when lighter, deload or trimmed, a
-   line of the strength reading (direction only, never a 1RM), the best,
+   recent sessions as logged, labelled as the Last line labels them
+   (sessionWord), a line of the strength reading (direction only), the best,
    and a link to the full view in Stats. */
 function exHistSheet(exId){
   const ex=EX(exId);const all=IDX().byEx[exId]||[];const st=IDX().exStats[exId]||{};
   const head=`<div class="sheet" role="dialog" aria-modal="true" aria-labelledby="exhH"><div class="sheet-h"><h3 id="exhH">${esc(ex.name)}</h3><button class="ib" aria-label="Close" data-act="mClose">✕</button></div>`;
   if(!all.length)return head+'<p class="muted">Not logged yet. Its history and chart start with this session.</p></div>';
-  const pts=all.filter(x=>x.tv!=null&&!offSession(x)).slice(-12);
+  const pts=all.filter(x=>x.tv!=null&&!lighter(x)).slice(-12);
   let chart='';
   if(pts.length>=2){const W=300,H=64,P=6;const v=pts.map(x=>x.tv);const lo=Math.min(...v),hi=Math.max(...v);const span=hi-lo||hi*0.02||1;
     const xy=pts.map((x,i)=>[P+i*(W-2*P)/(pts.length-1),H-P-(x.tv-lo)/span*(H-2*P)]);
     chart=`<figure class="exh-chart" style="margin:4px 0 0"><svg viewBox="0 0 ${W} ${H}" width="100%" height="${H}" role="img" aria-label="Strength reading over the last ${pts.length} full sessions"><polyline fill="none" stroke="var(--volt)" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round" points="${xy.map(p=>p.map(n=>n.toFixed(1)).join(',')).join(' ')}"/>${xy.map(p=>`<circle cx="${p[0].toFixed(1)}" cy="${p[1].toFixed(1)}" r="3" fill="var(--volt)"/>`).join('')}</svg>
-      <figcaption class="small muted row spread"><span>${fmtDate(pts[0].date)}</span><span class="hastip" data-tip="Each full session's working sets read as one number from loads, reps, and RIR when it is rated on most sets. It shows direction only and is not a 1RM. Lighter, deload, and trimmed sessions are left out.">Strength reading</span><span>${fmtDate(pts[pts.length-1].date)}</span></figcaption></figure>`;}
+      <figcaption class="small muted row spread"><span>${fmtDate(pts[0].date)}</span><span class="hastip" data-tip="Each full session's working sets read as one number from loads, reps, and RIR when it is rated on most sets. It shows direction only and is not a 1RM. Sessions where the lift was done lighter are left out.">Strength reading</span><span>${fmtDate(pts[pts.length-1].date)}</span></figcaption></figure>`;}
   const bs=bestSet(exId);
   const best=st.best!=null&&isCompound(ex)?`Best estimate ${fmtE(st.best)} ${U()}${loadNote(ex)}`:bs?`Best set ${setShort(ex,bs.w,bs.r)}${ex.bw?'':' '+U()}`:'';
   // The sets as logged (warm-ups and drops marked, RIR as typed), from the saved session.
   const setsOf=x=>{const ss=state.sessions.find(q=>q.id===x.sid);const bl=ss&&ss.ex.find(q=>q.exId===exId);return bl?bl.sets.map(q=>setStr(ex,q)).join(', '):x.pts.map(q=>setShort(ex,q.w,q.r)).join(', ');};
-  const rows=all.slice(-10).reverse().map(x=>{const kind=x.cut?'trimmed':x.light||x.auto?'lighter':x.deload?'deload':'';
+  const rows=all.slice(-10).reverse().map(x=>{const kind=sessionWord(x);
     return `<li style="padding:6px 0;border-bottom:1px solid var(--line)"><div class="row spread"><b>${fmtDate(x.date)}</b>${kind?`<span class="tag">${kind}</span>`:''}</div><span class="small">${esc(setsOf(x))}</span></li>`;}).join('');
   return head+`${best?`<p style="margin:0"><b>${esc(best)}</b></p>`:''}${liftTrend(exId)}${chart}
     <ul style="list-style:none;margin:8px 0 0;padding:0">${rows}</ul>
@@ -522,10 +523,13 @@ function muscleHeadline(m){
   const I=IDX();const avg=actualAvg4();const [lo,hi]=state.settings.bands[m];const sc=I.scores.find(x=>x.m===m);const parts=[];
   // Tracked-only muscles have no target to be above or below (r29).
   const tr=TRACK_ONLY.has(m);
-  if(avg){const v=avg[m]||0;parts.push(tr?`${r1(v)} hard sets a week over ${avgWeeksTxt(avg)}. Tracked only: no target.`:`${r1(v)} hard sets a week over ${avgWeeksTxt(avg)}, ${belowMin(v,lo)?`${r1(lo-v)} below`:aboveMax(v,hi)?`${r1(v-hi)} above`:'inside'} your ${lo} to ${hi} target.`);}
-  else parts.push(tr?'Tracked only: counted and shown, with no target.':`Target ${lo} to ${hi} hard sets a week. Finish a full week to compare against it.`);
+  // The status every screen reads (muscleStatus): on plan is said, with why behind an i (r54).
+  const st=avg?muscleStatus(avg)[m].st:null;
+  if(avg){const v=avg[m]||0;parts.push(tr?`${r1(v)} hard sets a week over ${avgWeeksTxt(avg)}. Tracked only: no target.`:`${r1(v)} hard sets a week over ${avgWeeksTxt(avg)}, ${st==='under'||st==='plan'?`${r1(lo-v)} below`:st==='over'?`${r1(v-hi)} above`:'inside'} your ${lo} to ${hi} target${st==='plan'?', on plan':''}.`);}
+  // With no average yet, what brings one, as the coach says it (avgWait, r54).
+  else{const w=avgWait();parts.push(tr?'Tracked only: counted and shown, with no target.':`Target ${lo} to ${hi} hard sets a week. ${w.lead}Compare against it after ${w.after}.`);}
   if(sc)parts.push(`${musTrend(sc)}${sc.indirect?', read from exercises that train it indirectly':''}${sc.label==='lagging'?', flagged as lagging':''}.`);
-  return `<p class="headline"><b>${esc(ML[m])}.</b> ${esc(parts.join(' '))}</p>`;
+  return `<p class="headline"><b>${esc(ML[m])}.</b> ${esc(parts.join(' '))}${st==='plan'?' '+tipi(ON_PLAN_TIP,'On plan'):''}</p>`;
 }
 function volHeadline(){
   if(!IDX().sessVol.length)return '';const tn=tonnageNow();
@@ -546,9 +550,12 @@ function extraKpis(){
 /* Up to four lines, each landing on the section that holds the detail. */
 function dashSummary(){
   const mvAll=movers(),mv=mvAll.slice(0,2);const stalled=stalledIds();
-  const avg=actualAvg4();const b=state.settings.bands;
+  const avg=actualAvg4();
   const inj=injuredSet();
-  const under=avg?MK.filter(m=>!inj.has(m)&&!TRACK_ONLY.has(m)&&belowMin(avg[m],b[m][0])):null,over=avg?MK.filter(m=>!TRACK_ONLY.has(m)&&aboveMax(avg[m],b[m][1])):null;
+  // Each muscle's status as every screen reads it (muscleStatus): a muscle on plan is not below target (r54).
+  const st=avg?muscleStatus(avg):null;
+  const under=st?MK.filter(m=>!inj.has(m)&&st[m].st==='under'):null,over=st?MK.filter(m=>st[m].st==='over'):null;
+  const onPlan=st?MK.filter(m=>!inj.has(m)&&st[m].st==='plan'):[];
   const c=coach();const list=(a,n)=>andList(a,n);
   const row=(tone,label,text,attrs)=>`<button class="srow" ${attrs}><i class="dot ${tone}"></i><span class="sl">${label}</span><span class="st">${text}</span><span class="chev2" aria-hidden="true">›</span></button>`;
   let h='<div class="card summary" id="dashSummary">';
@@ -563,10 +570,12 @@ function dashSummary(){
      estimate nobody lifts; the lift's own section says it in loads. */
   h+=row(mv.length?'green':'','Moving',mv.length?andList(mv.map(x=>`${esc(exName(x.id))}${one?'':` over ${x.wk} weeks`}`).concat(mvAll.length>2?[`${mvAll.length-2} more`]:[]))+(one?`, over ${mv[0].wk} weeks`:''):nTr?`No lift clearly rising yet: ${nTr} with a trend, each within day-to-day noise.`:'A trend needs 3 sessions of a lift over 2 weeks or more, within 6 weeks.',`data-act="goDash" data-sec="exercise"${mv.length?` data-ex="${mv[0].id}"`:''}`);
   h+=row(stalled.length?(fatigueStalls(stalled).length>=3?'red':'yellow'):'green','Stuck',stalled.length?esc(list(stalled.map(exName),3)):'Nothing stalled','data-act="goDash" data-sec="stalls"');
-  // When the coach's one change is the volume shortfall, the Volume line says it with the action and Change is not repeated (r41).
-  const cm=c.act&&c.act.sec==='volume'?c.act.m:null;const same=!!(cm&&under&&under.includes(cm));
+  // When the coach's one change is the volume shortfall, the Volume line says it with the action and Change is not repeated (r41);
+  // so too when the coach says why no average shows yet (r54: the two said different weeks), which the Volume line says otherwise.
+  const cm=c.act&&c.act.sec==='volume'?c.act.m:null;const same=!!(cm&&under&&under.includes(cm))||!!c.wait;
+  const w=under==null?avgWait():null;
   const above=over&&over.length?` Above: ${list(over.map(m=>ML[m]),2)}.`:'';
-  const vt=(same?c.text:under==null?'Finish a full week for a volume read.':under.length?`Below target: ${list(under.map(m=>ML[m]),3)}.`:'Every muscle at or above target.')+above;
+  const vt=(same?c.text:w?`${w.lead}A volume read comes${w.kind==='back'?' back':''} after ${w.after}.`:under.length?`Below target: ${list(under.map(m=>ML[m]),3)}.`:onPlan.length?'Every muscle on plan.':'Every muscle at or above target.')+above;
   h+=row(under==null?'':under.length?'yellow':'green','Volume',esc(vt),'data-act="goDash" data-sec="volume"');
   if(!same)h+=`<div class="srow static"><i class="dot ${c.tone}"></i><span class="sl">Change</span><span class="st">${esc(c.text)}</span></div>`;
   return h+'</div>';

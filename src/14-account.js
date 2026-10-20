@@ -228,7 +228,7 @@ function codeField(m){return `<label class="field">Code from the email<input typ
 function acctSheet(m){
   const f=(label,k,type,ac,extra)=>`<label class="field">${label}<input type="${type}" data-abind="${k}" value="${esc(m[k]||'')}" autocomplete="${ac}" ${extra||''}></label>`;
   const email=f('Email','email','email','email','autocapitalize="off" autocorrect="off" spellcheck="false" inputmode="email" enterkeyhint="next"');
-  const err=m.err?`<p class="small" role="alert" style="color:var(--red);margin:0">${esc(m.err)}</p>`:'';
+  const err=`<p class="small" role="alert" style="color:var(--red);margin:0"${m.err?'':' hidden'}>${esc(m.err||'')}</p>`;
   // What it is doing while busy, not "Working" (r34.2).
   const busyW={signin:'Signing in',signup:'Creating your account',forgot:'Sending the link',newpw:'Saving'}[m.mode]||'One moment';
   const go=(label)=>`<button type="submit" class="btn primary block" data-act="acctSubmit" ${m.busy?'disabled':''}>${m.busy?busyW:esc(label)}</button>`;

@@ -372,7 +372,7 @@ label.field>input,label.field>select,label.field>textarea{margin-top:4px;color:v
 .chip.on{background:var(--ink);color:var(--on-ink);border-color:transparent}
 
 .plate{display:inline-block;width:6px;height:22px;border-radius:2px;flex:none}
-.plate.green{background:var(--green)} .plate.yellow{background:var(--yellow)} .plate.red{background:var(--red)} .plate.blue{background:var(--blue)} .plate.none{background:var(--line)} .plate.part{background:var(--part)}
+.plate.green{background:var(--green)} .plate.yellow{background:var(--yellow)} .plate.red{background:var(--red)} .plate.blue{background:var(--blue)} .plate.none{background:var(--line)} .plate.part,.plate.plan{background:var(--part)}
 
 /* ---------- program: days ---------- */
 .day{background:var(--surface);border:1px solid var(--card-b);border-radius:var(--r-lg);margin:10px 0;overflow:hidden}
@@ -640,7 +640,7 @@ body.obmode main,body.obmode #view{padding-bottom:24px}
 .band .zone{position:absolute;top:0;bottom:0;background:var(--green-bg)}
 .band .fill{position:absolute;top:0;bottom:0;left:0;border-radius:6px}
 .band .fill.prog{background:var(--volt);box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--volt-line) 40%,transparent)}
-.band .fill.under{background:var(--yellow)} .band .fill.in{background:var(--green)} .band .fill.over{background:var(--blue)} .band .fill.part{background:var(--part)}
+.band .fill.under{background:var(--yellow)} .band .fill.in{background:var(--green)} .band .fill.over{background:var(--blue)} .band .fill.part,.band .fill.plan{background:var(--part)}
 .band .fill.down{background:var(--red)}
 .band .fill.track{background:var(--muted)}
 .band .fill.ghost{opacity:.35}
@@ -801,7 +801,7 @@ table.t .stick-r{position:sticky;right:0;background:var(--bg);padding-left:6px}
 .mm *{stroke:var(--bg);stroke-width:.8}
 .mm.st-none *{fill:var(--surface-3)}
 .mm.st-under *{fill:var(--yellow)}
-.mm.st-part *{fill:var(--part)}
+.mm.st-part *,.mm.st-plan *{fill:var(--part)}
 .mm.st-in *{fill:var(--green)}
 .mm.st-over *{fill:var(--blue)}
 .mm.st-track *{fill:var(--muted)}
@@ -816,7 +816,7 @@ table.t .stick-r{position:sticky;right:0;background:var(--bg);padding-left:6px}
 .mm:focus-visible *{stroke:var(--ink);stroke-width:2.2}
 .bm-legend{display:flex;flex-wrap:wrap;gap:4px 12px;margin-top:8px;color:var(--muted)}
 .bm-legend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:5px;vertical-align:-1px}
-.bm-legend i.st-none{background:var(--surface-3)}.bm-legend i.st-track{background:var(--muted)}.bm-legend i.st-under{background:var(--yellow)}.bm-legend i.st-part{background:var(--part)}.bm-legend i.st-in{background:var(--green)}.bm-legend i.st-over{background:var(--blue)}
+.bm-legend i.st-none{background:var(--surface-3)}.bm-legend i.st-track{background:var(--muted)}.bm-legend i.st-under{background:var(--yellow)}.bm-legend i.st-part,.bm-legend i.st-plan{background:var(--part)}.bm-legend i.st-in{background:var(--green)}.bm-legend i.st-over{background:var(--blue)}
 .tpl-list{display:flex;flex-direction:column;gap:8px}
 .tpl{-webkit-appearance:none;appearance:none;display:flex;flex-direction:column;gap:3px;text-align:left;width:100%;border:1px solid var(--btn-b);background:var(--surface-2);border-radius:var(--r-md);padding:13px 14px;cursor:pointer;color:var(--ink);font:inherit;min-height:44px}
 .tpl:active{transform:scale(.99)}
@@ -867,8 +867,24 @@ table.t .stick-r{position:sticky;right:0;background:var(--bg);padding-left:6px}
 .hitem.open{background:none}
 
 /* ---------- modal, toast, timer ---------- */
+/* Sheets do not follow the on-screen keyboard: iOS scrolls the field being
+   typed in into view itself. r54 tried twice, sizing sheets by the visual
+   viewport, and on V's iPhone the first showed the page under the sheet and
+   the second moved the page up and down as the keyboard came (PENDING 322). */
 #modal{position:fixed;inset:0;z-index:50;background:rgba(6,7,9,.55);-webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px);display:flex;align-items:flex-end;justify-content:center}
 .sheet{position:relative;background:var(--surface);width:100%;max-width:640px;max-height:88vh;overflow:auto;overscroll-behavior:contain;border-radius:28px 28px 0 0;padding:22px 18px calc(18px + env(safe-area-inset-bottom,0px))}
+/* A sheet you type in opens tall, from just under the status bar to the
+   bottom of the screen, its fields at the top (V on the r54 preview,
+   2026-10-19, PENDING 322). A field near the top is never under the
+   on-screen keyboard, so iOS has nothing to scroll and nothing moves, and the
+   sheet's own surface fills the screen below its fields, behind the keyboard
+   and Safari's glass bars, so no part of the page shows there. Safari on an
+   iPhone does not shrink the page for the keyboard (interactive-widget is
+   not shipped there), and code that followed the keyboard fought iOS (r54's
+   two tries). Read from the sheet's own fields, so no list of sheets is kept;
+   a sheet with nothing to type in, and the picker (its search already at its
+   top), are as before. Not where a mouse is the pointer: no keyboard there. */
+@media (max-width:699px),(pointer:coarse){.sheet:not(.fixed):has(textarea,input[type=text],input[type=search],input[type=email],input[type=password],input[type=number],input[type=tel],input[type=url],input:not([type])){height:calc(100% - env(safe-area-inset-top,0px) - 12px);max-height:none}}
 /* The grabber tells a phone user this slides up from the bottom. */
 .sheet::before{content:"";position:absolute;top:8px;left:50%;width:38px;height:5px;margin-left:-19px;border-radius:3px;background:var(--surface-3)}
 /* Pickers keep one height while you type, so the search box does not jump as

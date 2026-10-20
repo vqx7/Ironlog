@@ -141,11 +141,11 @@ function rankExercises(d){
     if(!best[m]||s>best[m].s||(s===best[m].s&&e.name<best[m].e.name))best[m]={e,s,m,def,inSess,st,n,rec:rec[m],r7:r7[m],sp};
   }
   return Object.values(best).sort((a,b)=>b.s-a.s).slice(0,3).map(x=>{
-    const plan=planFor(x.e.id,null,d.dayId);const cap=Math.max(1,SESSION_CAP-x.inSess);
+    const plan=planFor(x.e.id,null,d.dayId,false,d.date);const cap=Math.max(1,SESSION_CAP-x.inSess);
     let sets=Math.max(1,Math.min(cap,x.def>0?Math.min(+plan.sets||3,Math.max(2,Math.ceil(x.def))):2));
-    // A deload or lighter session halves its sets; what Pick for me adds to it does too (r27).
-    if(d.deload||d.light)sets=Math.max(1,Math.ceil(sets/2));
-    return {...x,plan:{...plan,sets}};
+    // A deload or lighter session halves its sets; what Pick for me adds to it does too (r27). full: the count before, for Finish's offer to the routine (r54).
+    const full=sets;if(d.deload||d.light)sets=Math.max(1,Math.ceil(sets/2));
+    return {...x,plan:{...plan,sets},full};
   });
 }
 function exReasons(x){
@@ -364,12 +364,12 @@ function liftTags(exId){
   return t.length?`<span class="chips">${t.join('')}</span>`:'';
 }
 function liftTrend(exId){
-  /* The last three full sessions only (r30): a deload or lighter day in the
-     list read as a drop. The word follows the numbers shown: within 1% is
-     flat, so "301 → 300.7 · up" cannot happen. Isolation lifts show their top
-     sets, not a 1RM. */
+  /* The sessions the trend reads (r30: a deload or lighter day in the list
+     read as a drop; since r54 one short of its usual is in). The word
+     follows the numbers shown: within 1% is flat, so "301 → 300.7 · up"
+     cannot happen. Isolation lifts show their top sets, not a 1RM. */
   const ex=EX(exId);const st=IDX().exStats[exId];
-  const exps=(IDX().byEx[exId]||[]).filter(x=>x.tv!=null&&!offSession(x)).slice(-3);
+  const exps=(IDX().byEx[exId]||[]).filter(x=>x.tv!=null&&!lighter(x)).slice(-3);
   if(exps.length<2)return '';
   /* The word follows the lift's trend when it has one (r32, from the third
      review: a press flat for 7 weeks read "67.5 → 69.7 → 69.7 · up" from its
@@ -416,24 +416,9 @@ function newBlock(exId,plan,opts){
   // still on the suggestion from one the lifter typed (refreshBlock).
   return {bid:uid(),exId,plan:{...plan},note:'',lastNote:lastNoteOf(exId,opts&&opts.before),inj:sg.inj||null,hint:sg.text,last:sg.last,prev:sg.prev||undefined,prevOff:sg.prevOff||undefined,target:sg.target,tgt:sg.tgt,easier:sg.easier||null,lastR:sg.lastR,basis:sg.basis||undefined,sw:sg.w==null?null:sg.w,sets:Array.from({length:+plan.sets||3},()=>({w:fillLoads()?sg.w:null,r:null,rir:null,warm:false,drop:false,done:false}))};
 }
-/* A muscle's weekly target with this profile (the defaults with no focus). */
-function defBand(m,p){
-  const b=BANDS[m];const f=(p||prof()).focus||[];
-  if(!f.length||TRACK_ONLY.has(m))return [b[0],b[1]];
-  if(f.includes(m))return [Math.round(b[0]*FOCUS_UP),Math.round(b[1]*FOCUS_UP)];
-  return [Math.ceil(b[0]*MAINT_SHARE),b[1]];
-}
-/* The app's own target for a muscle (r44): the profile's default, brought
-   down to the floor a first-run routine pick recorded (settings.bandsFit),
-   except on a focus muscle, whose raised target is the point. A target that
-   reads anything else was typed and never moves; typed back to this number,
-   it is the app's again. Nothing is guessed: the floors are the one fact
-   that cannot be worked out later, so fitTargets stores them (the r44
-   review found four bugs in inferring them). */
-function appBand(m,p){
-  p=p||prof();const d=defBand(m,p);const f=(state.settings.bandsFit||{})[m];
-  return f==null||TRACK_ONLY.has(m)||(p.focus||[]).includes(m)?d:[Math.min(d[0],f),d[1]];
-}
+/* A muscle's weekly target with a profile (defBand) and the app's own
+   target (appBand) are in src/app/profile.ts since r54, beside the floors a
+   first-run pick records (fitFloors) and their refit (refit). */
 /* Moves the app's own targets from the old profile's to the new one's.
    Returns {muscle: [from, to]} for what moved, as copies, since Weekly set
    targets edits the arrays in place. */
@@ -470,7 +455,6 @@ function strengthPick(e,st,rec,at){
 const effWord=()=>rirScale()==='rpe'?'RPE':'RIR';
 /* A plan's target effort as the lifter enters effort: "1 RIR", or "RPE 9" in RPE mode. */
 function effTgt(rir){return rirScale()==='rpe'?`RPE ${effShow(rir)}`:`${effShow(rir)} RIR`;}
-function effShow(v){if(v==null||v==='')return '';const n=+v;if(!isFinite(n))return '';return rirScale()==='rpe'?String(Math.round((10-n)*10)/10):String(Math.round(n*10)/10);}
 function effOpts(){const sc=rirScale();return sc==='whole'?RIR_OPTS.slice():['0','0.5','1','1.5','2','2.5','3','3.5','4','4.5','5'];}
 const effAria=si=>rirScale()==='rpe'?`RPE for set ${si+1}`:`Reps in reserve for set ${si+1}`;
 function rirSelect(val,bi,si,target){
@@ -559,7 +543,7 @@ function viewLogger(){
       // Last time's set for this row, beside this time's (r44, V): working sets only, by their order.
       const lt=s.warm||s.drop?'':lastCell(b,wn-1,dupB);
       h+=`<div class="sg${nr?' norir':''} ${s.done?'done':''}${pr?' pr':''}"${pr?` data-pr="${pr}"`:''}><button class="n wbtn${s.drop?' drop':s.warm?' warm':''}" aria-label="Set ${si+1} type: ${s.warm?'warm-up':s.drop?'drop set':'working set'}. Tap to change" data-act="sWarm" data-b="${bi}" data-s="${si}">${s.drop?'↓':s.warm?'W':wn}</button><span class="ls" aria-label="${lt?esc('Last time '+lt):'No set last time'}">${lt?esc(lt).replace('×','<wbr>×'):'–'}</span>
-        <input type="text" inputmode="decimal" enterkeyhint="next" aria-label="${esc(ex.name)}, set ${si+1} load" data-f="w" data-b="${bi}" data-s="${si}" value="${loadIn(ex,s.w)}" placeholder="${(()=>{const g=s.w==null?greyW(b,si):null;return g!=null?loadIn(ex,g):ex.bw?'0':'';})()}">
+        <input type="text" inputmode="decimal" enterkeyhint="next" aria-label="${esc(ex.name)}, set ${si+1} load" data-f="w" data-b="${bi}" data-s="${si}" value="${loadIn(ex,s.w)}" placeholder="${(()=>{const g=s.w==null?greyW(b,si):null;return g!=null?loadIn(ex,g):emptyLoad(ex);})()}">
         <input type="text" inputmode="numeric" enterkeyhint="next" aria-label="${esc(ex.name)}, set ${si+1} ${ex.timed?'seconds':'reps'}${ex.perSide?' per side':''}" data-f="r" data-b="${bi}" data-s="${si}" value="${s.r==null?'':s.r}" placeholder="${ph}">
         ${nr?'':rirSelect(s.rir,bi,si,p.rir)}
         <button class="cbtn ${s.done?'on':''}" aria-label="Set ${si+1} done" aria-pressed="${s.done?'true':'false'}" data-act="sDone" data-b="${bi}" data-s="${si}">✓</button></div>`;

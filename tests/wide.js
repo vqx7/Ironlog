@@ -349,7 +349,7 @@ function ser(v) {
   try { return JSON.stringify(enc(v, [])); } catch (e) { return 'SERR ' + e.message; }
 }
 // An error, by its kind and message, the message read back by the rules
-// tests/moved.js reads the code back by, where it quotes the code: a
+// tests/moved.js read the code back by until r54, where it quotes the code: a
 // function taking the model as its r51 name with the model left out of its
 // arguments, and M.s, M.c.X and M.today as state, X and today. An engine
 // words a TypeError from the source: V8 writes "IDXIn(...).byEx" for r51's

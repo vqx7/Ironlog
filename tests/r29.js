@@ -25,10 +25,10 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
     const b = await vol();
     ok(b.canvas && /this week so far/.test(b.text) && b.label === 'Your volume' && b.data.some(x => x > 0) && /This week so far: (\d of 8 regions at their minimum|[\d.]+ hard sets\. Each region fills in as you train)/.test(b.text) && !/Below target/.test(b.text), 'one session this week: the radar reads it, labelled as this week so far', b.text.slice(0, 220));
     ok(!/Planned (below|above)|routine's plan/.test(b.text), 'and the plan is not on it', b.text.slice(0, 220));
-    // Only older training (nothing in the last 4 weeks or this week): the last trained weeks, dated.
+    // Only older training (nothing in the last 4 weeks or this week): the last trained weeks, dated, the log's first week left out as the averages leave it (r54).
     const old = await ev(() => { const L = window.__ironlog; const R = L.state.routines[0]; const d = R.days.find(x => !x.rest); L.state.sessions = ['2026-07-06', '2026-07-08', '2026-07-14', '2026-07-21'].map((date, i) => ({ id: 'o' + i, date, dayIdx: 0, dayId: d.id, dayName: d.name, routineId: R.id, notes: '', ex: d.items.slice(0, 3).map(it => ({ exId: it.exId, sets: [{ w: 100, r: 8, rir: 2 }, { w: 100, r: 8, rir: 2 }] })) })); L.state = L.normalize(L.state); L.invalidate(); const rs = L.regionSrc(); return { label: rs.label, old: rs.old }; });
     const o = await vol();
-    ok(old.old && /your last 3 trained weeks, to Jul 26/.test(old.label) && o.canvas && o.data.some(x => x > 0) && /Nothing logged in the last 4 weeks, so this shows your last 3 trained weeks/.test(o.text), 'nothing in the last 4 weeks: the radar draws from your last trained weeks, dated, and says so', { old, t: o.text.slice(0, 260) });
+    ok(old.old && /your last 2 trained weeks, to Jul 26/.test(old.label) && o.canvas && o.data.some(x => x > 0) && /Nothing logged in the last 4 weeks, so this shows your last 2 trained weeks/.test(o.text), 'nothing in the last 4 weeks: the radar draws from your last trained weeks, dated, and says so', { old, t: o.text.slice(0, 260) });
     const cb = await ev(() => { const L = window.__ironlog; return L.coach().text; });
     ok(/Nothing logged in the last 4 weeks/.test(cb), 'back from a break, the coach says nothing was logged lately, not "after your first full week"', cb);
     // Weeks of data: the average.
@@ -236,7 +236,8 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
       return { one, two: { ff: L.firstFullWeek(), wk1: L.weekStart('2026-09-26'), weeks: L.actualAvg4()._weeks } };
     });
     ok(fw.one.ff === fw.one.wk2 && fw.one.weeks === 1, 'a log started mid-week averages from the first full week only', fw.one);
-    ok(fw.two.ff === fw.two.wk1 && fw.two.weeks === 2, 'a log started on the first day of a week counts that week', fw.two);
+    // Since r54 the weekly averages leave out a log's first week however it began (the week loads are found); adherence still counts it.
+    ok(fw.two.ff === fw.two.wk1 && fw.two.weeks === 1, 'a log started on the first day of a week: adherence counts that week, and the weekly averages start the week after', fw.two);
     // Tracked-only muscles in the volume rows and the weekly trend: no target shown.
     const tr = await ev(() => {
       const L = window.__ironlog; L.state.sessions = []; L.makeDemo(); L.invalidate();

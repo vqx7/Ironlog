@@ -18,12 +18,8 @@
    A rep or two lost per set is normal fatigue and changes nothing. Off for
    warm-ups, drops, timed holds, assisted lifts, a fixed load, an injury, a
    lighter day or deload, past workouts and edits, and when turned off in
-   Settings. "Keep" undoes it for that exercise for the rest of the session. */
-function heavierLoad(ex,plan,from,to){
-  const L=gymRack(ex,plan);
-  if(L){const tl=rackTol(),tf=rackTol(L,from);const c=L.filter(x=>x>from+tf&&x<=to+tl);return c.length?c[c.length-1]:null;}
-  const step=incOf(ex,plan,from);if(!(step>0))return null;const k=Math.floor((to-from)/step+1e-6);return k>=1?from+k*step:null;
-}
+   Settings. "Keep" undoes it for that exercise for the rest of the session.
+   The heavier load is the engine's heavierLoad (src/app/engine.ts since r54). */
 function adjOn(){return state.settings.autoAdj!==false;}
 /* A bodyweight lift never done with added load (r34.2, from the review:
    push-ups at BW x 20 were moved to BW+10 mid-session, a load the lifter
@@ -123,7 +119,7 @@ function settleLoad(b,si){
 /* A typed load changes the grey loads of the empty rows under it. */
 function refreshGreyW(bi){
   const b=state.draft&&state.draft.ex[bi];if(!b)return;const ex=EX(b.exId);
-  b.sets.forEach((x,si)=>{if(x.w!=null)return;const el=document.querySelector(`.sg input[data-f="w"][data-b="${bi}"][data-s="${si}"]`);if(!el)return;const g=greyW(b,si);const v=g==null?(ex.bw?'0':''):String(loadIn(ex,g));if(el.placeholder!==v)el.placeholder=v;});
+  b.sets.forEach((x,si)=>{if(x.w!=null)return;const el=document.querySelector(`.sg input[data-f="w"][data-b="${bi}"][data-s="${si}"]`);if(!el)return;const g=greyW(b,si);const v=g==null?emptyLoad(ex):String(loadIn(ex,g));if(el.placeholder!==v)el.placeholder=v;});
 }
 // Keyed by session too, so a block opened in one session is not open in the next.
 const blkKey=(bi,b)=>((state.draft&&state.draft.id)||'')+':'+bi+':'+b.exId;

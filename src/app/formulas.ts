@@ -1,13 +1,13 @@
 /* The numbers the engine and the analytics share: the 1RM estimate and its
    inverses, the working load of a session, set counting, the time model, and
    the thresholds behind trends, breaks and the per-session cap (phase 2, r50;
-   moved unchanged from the legacy script, tests/moved.js holds them to r49's
-   code). Each is a pure function of its arguments. Where a number comes from
+   moved unchanged from the legacy script). Each is a pure function of its arguments. Where a number comes from
    is said beside it; CLAUDE.md's Evidence base has the sources. */
 
 import type { Exercise, Point, Rir } from './types';
-import { isNum } from './util';
-import { isCompound } from './library';
+import { daysBetween, isNum } from './util';
+import { LB, TYPED_STEP, onStep } from './units';
+import { LOAD_STEPS, isCompound } from './library';
 
 /* ---------- the 1RM estimate ---------- */
 
@@ -89,6 +89,54 @@ export const rtfBand = (rtf: number): 1 | 2 | 3 => (rtf <= 5 ? 1 : rtf <= 10 ? 2
 /* A rep PR counts at 90% or more of the strongest set before it (r30, a convention). */
 export const REP_PR_SHARE = 0.9;
 
+/* The unit a load was typed in, read from the number kept (kilograms, every
+   set as typed): one typed in kilograms is a whole number of TYPED_STEP kg,
+   one typed in pounds a whole number of TYPED_STEP lb, and no other load is
+   both. 0, or a load on neither (a number not typed as such, as the engine
+   reads one too), says nothing. Help on an assisted lift is read by its
+   size. */
+/** The unit a load was typed in, from its number, or null when the number does not say. */
+export function typedUnit(w: number): 'kg' | 'lb' | null {
+  const a = Math.abs(w);
+  if (!(a > 0)) return null;
+  const kg = onStep(a, TYPED_STEP),
+    lb = onStep(a / LB, TYPED_STEP);
+  return kg === lb ? null : kg ? 'kg' : 'lb';
+}
+
+/* Half the largest spacing loads come in (LOAD_STEPS) that a load is a whole
+   number of, in the unit it was typed in, in kilograms: no weight is farther
+   than that from the nearest load on that spacing. 0 for a load on none. */
+function halfStep(a: number, u: 'kg' | 'lb'): number {
+  const k = u === 'lb' ? LB : 1;
+  const st = LOAD_STEPS[u].find(s => onStep(a / k, s));
+  return st ? (st / 2) * k : 0;
+}
+
+/* The load a set is judged at for its PRs against earlier sets (r54, from
+   the audit V asked for: 155 lb after 70 kg, which is 154.3 lb, logged a
+   weight PR, and a new best estimate with it, made of unit rounding, the
+   lifter having changed units or gyms). A load is read as the earlier load
+   it stands for when that was typed in the other unit and lies under it by
+   no more than half the load's own spacing, so it is that load on the
+   nearest step up (the nearest of them when there are two): 155 lb on 5 lb
+   steps is the nearest load over 70 kg. Any other load is itself. Only ever
+   lighter, so this takes away a PR made of rounding and never makes one:
+   more weight is a PR once past the step the old load meant (157.5 lb), and
+   more reps at the same weight are still more reps. A convention: on a
+   spacing finer than the load shows (70 kg on 1 kg plates), one step past
+   the nearest can read as the same load (70 kg after 152.5 lb, 69.2 kg). */
+/** A set's load for its PRs: the earlier load typed in the other unit that it stands for, else its own. */
+export function prSameLoad(w: number, earlier: ReadonlySet<number>): number {
+  const u = typedUnit(w);
+  if (!u) return w;
+  const lo = w - halfStep(Math.abs(w), u) - 1e-9;
+  let best = w;
+  for (const e of earlier)
+    if (e < w - 1e-9 && e >= lo && (best === w || e > best) && typedUnit(e) === (u === 'kg' ? 'lb' : 'kg')) best = e;
+  return best;
+}
+
 /* ---------- sets and sessions ---------- */
 
 /** A working set: not a warm-up, and reps done. Reps are null on a row with
@@ -167,16 +215,31 @@ export function repFloor(
   return r => (ok ? Math.max(r, m) : r);
 }
 
-/** The marks a session can carry that keep it from setting targets and trends. */
-type SessionMarks = { deload?: boolean; light?: boolean; cut?: boolean; auto?: boolean } | null | undefined;
+/** A lift's session reads lighter than its usual when its heaviest load is this share of the heaviest of its previous three or less (r30, a convention: a deload is usually about 10% off), and its strength reading LIGHTER_READING of theirs or less. */
+export const LIGHTER_LOAD = 0.9;
+/** The strength reading, reps alone, at which a session with a load LIGHTER_LOAD or less under reads lighter (r30, a convention). */
+export const LIGHTER_READING = 0.93;
 
-/* One test for a session that is lighter or shorter on purpose (tagged), or
-   also read as lighter from its loads (offSession): neither sets a target, a
-   trend or a stall (r31: written out by hand in six places, which could
-   drift). IDX uses tagged() while it is still deciding which are read as
-   lighter. */
-export const tagged = (x: SessionMarks): boolean => !!x && !!(x.deload || x.light || x.cut);
-export const offSession = (x: SessionMarks): boolean => tagged(x) || !!(x && x.auto);
+/** The marks a lift's session can carry that keep it from setting targets, or trends too. */
+type SessionMarks =
+  | { deload?: boolean; light?: boolean; auto?: boolean; short?: string | undefined }
+  | null
+  | undefined;
+
+/* One test for each (r31: written out by hand in six places, which could
+   drift; since r54, V's one rule for every session, PENDING 312 E). A lift's
+   session done lighter, tagged a deload or a lighter day or made lighter and
+   not done at its usual level there, or read lighter from its loads, sets no
+   target and no trend; its PRs count (r53). A session short of its usual,
+   fewer working sets than usual or a reading under it (analytics.ts,
+   idxShort), sets no target, so the target repeats, while its trend, stalls
+   and PRs count; two in a row make it the usual, and the app follows. Until
+   r54 a lift trimmed by Short on time, or stopped at under half its sets,
+   was marked trimmed and left out of trends too. */
+/** A lift's session done lighter: no target, no trend. */
+export const lighter = (x: SessionMarks): boolean => !!x && !!(x.deload || x.light || x.auto);
+/** A lift's session that sets no target: done lighter, or short of its usual. */
+export const offTarget = (x: SessionMarks): boolean => lighter(x) || !!(x && x.short);
 
 /* ---------- load steps ---------- */
 
@@ -207,9 +270,19 @@ export function jumpCap(ex: Parameters<typeof isCompound>[0], loadKg: number, ea
    time had passed). Strength holds for about 4 weeks without training and
    falls faster after (Bosquet 2013, a meta-analysis of training cessation),
    so the first session back is about 90% of the last working load, in whole
-   steps, like a Lighter day but with the usual sets; the session after it
-   picks up from the last full session. */
+   steps, like a Lighter day but with the usual sets. It is the lift's new
+   start (r54): the sessions before the break are not its usual any more, so
+   it is not read lighter than them, and its trend and stall test start from
+   it, and the session after it picks up from it. Until r54 it read lighter
+   than the sessions before the break, so the session after it asked for the
+   load from before the break again, and a trend across a five-week break
+   read as a fall. */
 export const BACK_DAYS = 28;
+
+/** Whether a lift's session on `date` comes after a break in it: more than BACK_DAYS after its session before, of any kind. */
+export function afterBreak(prev: { date: string } | null | undefined, date: string): boolean {
+  return !!prev && daysBetween(prev.date, date) > BACK_DAYS;
+}
 
 /* ---------- trends ---------- */
 
@@ -315,6 +388,6 @@ export const PACE_N = 8,
 export const SESSION_CAP = 11;
 
 /** The Plan editor's tip on the load jump (jumpPct above), r30; moved in
-    phase 3a (r51), tests/moved.js holds it to r50's code. */
+    phase 3a (r51). */
 export const JUMP_TIP =
   "When every set reaches the top of the rep range, the load goes up by about this share, in whole load steps and at least one step. Blank: 2.5% on compound lifts, 5% on isolation lifts, a convention. 0: one step every time. Until then the target is to beat last time's total reps at the same load. When the step is large for the load, a few more reps come first, so the new load starts inside the range.";

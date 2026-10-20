@@ -42,15 +42,15 @@ export const WORDMARK = { mark: 'I', strong: 'ron', light: 'log' } as const;
 
 /** The version people see (V, 2026-10-16): 2.0 from r49, the minor number up
     by one for each release merged, the major number for a large change. */
-export const DISPLAY_VERSION = '2.4';
+export const DISPLAY_VERSION = '2.5';
 
 /** The build: shown beside the version in Diagnostics, problem reports and
     backups, so a report is matched to the exact code; also names the service
-    worker's cache. Bump it for every published build (CLAUDE.md rule 8).
+    worker's cache. Bump it for every published build (CLAUDE.md, Releasing).
     Problem reports and Copy diagnostics carry it as `build` and the version
     people see as `version`; a backup keeps it under `version`, as every
     build before r49 wrote backups, so old and new backups read the same. */
-export const APP_VERSION = '2026.10.18-r53';
+export const APP_VERSION = '2026.10.18-r54';
 
 /** Version and build together, for Diagnostics and the recovery screen. */
 export const VERSION_LINE = `${DISPLAY_VERSION} (build ${APP_VERSION})`;

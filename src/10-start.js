@@ -22,14 +22,11 @@ window.ironlogUpdateReady=()=>{upd.ready=true;updRender();};
    which is what a past workout entered late was due to be. */
 function cycleState(R,asOf){
   const n=R.days.length;const T=asOf||today();
-  const isTrain=i=>!R.days[i].rest&&R.days[i].items.length>0;
-  let first=0;for(let i=0;i<n;i++)if(isTrain(i)){first=i;break;}
   const mine=state.sessions.filter(x=>x.routineId===R.id&&(!asOf||x.date<=asOf)).map(x=>({s:x,i:sessDayIdx(R,x)})).filter(x=>x.i>=0)
     .sort((a,b)=>sessCmp(a.s,b.s));
-  if(!mine.length)return {last:-1,lastDate:null,next:first,done:new Set(),restToday:false,restIdx:-1};
+  if(!mine.length)return {last:-1,lastDate:null,next:nextTrainIdx(R,-1),done:new Set(),restToday:false,restIdx:-1};
   const L=mine[mine.length-1];
-  let next=-1;for(let k=1;k<=n;k++){const j=(L.i+k)%n;if(isTrain(j)){next=j;break;}}
-  if(next<0)next=L.i;
+  const next=nextTrainIdx(R,L.i);
   const done=new Set();
   if(next>L.i){done.add(L.i);let prev=L.i;for(let k=mine.length-2;k>=0;k--){const i=mine[k].i;if(i<prev){done.add(i);prev=i;}else break;}}
   let run=0;for(let k=1;k<n;k++){if(R.days[(L.i+k)%n].rest)run++;else break;}

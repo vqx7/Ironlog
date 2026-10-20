@@ -1,31 +1,37 @@
 /* The sessions a lift's trend reads, and its two ends (r41), shared by the
    trend itself and by the screens that say its change, so the two cannot
-   disagree (phase 3a, r51; moved unchanged from the legacy script,
-   tests/moved.js holds them to r50's code). The trend's reading of each
+   disagree (phase 3a, r51; moved unchanged from the legacy script). The trend's reading of each
    session (tv) is set by the analytics (analytics.ts, idxLift), whose
    exposures these read (model.ts). */
 
 import type { Exposure } from './model';
 import { addDays } from './util';
-import { offSession, sameRR } from './formulas';
+import { afterBreak, lighter, sameRR } from './formulas';
 
 /** An exposure that has a trend reading. */
 type Read = { tv: number };
 
 /* The sessions a lift's trend reads, shared by the trend itself and by the
    screens that say its change in loads (r41), so the two cannot disagree.
-   Full sessions only; the current rep range only, since changing the range
-   restarts the baseline instead of drawing one line across two scales; and
-   the 6 weeks up to the lift's own last session (r30: it ended at the newest
-   session of any kind, so logging an upper day moved a split squat's trend
-   from +14% to +9% without a new split squat set). */
+   Sessions not done lighter (a session short of its usual counts since r54,
+   V's one rule); the current rep range only, since changing the range
+   restarts the baseline instead of drawing one line across two scales; the
+   sessions since the lift's last break only (afterBreak, r54), for the same
+   reason, as strength falls over a break (a five-week break read as a fall,
+   "look at recovery", while every session back was heavier than the one
+   before); and the 6 weeks up to the lift's own last session (r30: it ended
+   at the newest session of any kind, so logging an upper day moved a split
+   squat's trend from +14% to +9% without a new split squat set). The stall
+   test reads the same sessions (inRange). */
 export function trendScope<X extends Exposure>(exps: readonly X[], anchor: string) {
-  const real = exps.filter(x => !offSession(x));
+  const real = exps.filter(x => !lighter(x));
   const curRR = real.length ? real[real.length - 1].rr : null;
-  const inRange = real.filter(x => sameRR(x.rr, curRR));
+  let from = '';
+  for (let i = 1; i < exps.length; i++) if (afterBreak(exps[i - 1], exps[i].date)) from = exps[i].date;
+  const inRange = real.filter(x => sameRR(x.rr, curRR) && x.date >= from);
   const lastReal = real.length ? real[real.length - 1] : null;
   const exWin = addDays(lastReal ? lastReal.date : anchor, -42);
-  return { real, curRR, inRange, lastReal, exWin };
+  return { real, curRR, inRange, lastReal, exWin, from };
 }
 
 /* The sessions in that scope with a trend reading. Separate from trendScope

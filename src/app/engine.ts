@@ -1,5 +1,4 @@
-/* The load engine (phase 3b, r52; moved from the legacy script,
-   tests/moved.js reads each back to r51's code): what to lift next for one
+/* The load engine (phase 3b, r52; moved from the legacy script): what to lift next for one
    exercise (suggest and its cases), the steps a load moves in (racks, the
    gym's plates and stacks, the exercise's own step), lighter loads, a start
    borrowed from a close variation, and timed holds. Each function that reads
@@ -12,26 +11,41 @@ import type { LiftBests } from './analytics';
 import { EXIn, UIn, exInjuryIn } from './model';
 import { IDXIn, bwRefLoadIn, lastOf, statsUpToIn } from './analytics';
 import { atCapOfIn, capOfIn, exBarKgIn, gymRackIn, gymStepIn, platesMode, rackGapIn, rackTolIn } from './gym';
-import { STEP_LB, fromDIn, stepReadIn, toDIn, unitStepIn } from './units';
+import {
+  DEFAULT_STEP,
+  LB,
+  STEP_LB,
+  TYPED_STEP,
+  fromDIn,
+  inUnitIn,
+  kgOfIn,
+  onStep,
+  stepReadIn,
+  toDIn,
+  unitStepIn
+} from './units';
 import { fmtWIn, loadLabelIn, loadNote, roundLoadIn, swapWIn } from './loads';
 import { addDays, daysBetween, isDate, isNum, r1 } from './util';
 import {
   BACK_DAYS,
+  afterBreak,
   E1_MAX_RIR,
+  LIGHTER_LOAD,
   atLoad,
   e1,
   e1inv,
   fitE,
   jumpCap,
   jumpPct,
-  offSession,
+  lighter,
+  offTarget,
   repFloor,
   rtfAt,
   sameRR,
   workLoad
 } from './formulas';
 import { KIN_UNI, RACK, injLabel, isCompound, loadMode, noE1, patternOf, rackKind } from './library';
-import { fmtDate, rangeWords, repSpan } from './format';
+import { effAt, effScale, fmtDate, rangeWords, repSpan } from './format';
 import { overSets } from './session';
 
 /** How a suggestion is asked for: for a past session's date (`before`), as a deload, or as a lighter day. */
@@ -51,6 +65,7 @@ export interface SuggestCtx {
   all: Exposure[];
   every: Exposure[];
   exps: Exposure[];
+  done: Exposure[];
   seen: Exposure[];
   inRR: boolean;
   injM: string | null;
@@ -95,22 +110,73 @@ export interface SuggestCtx {
    dumbbell"): when the last working load is off the step in the unit on
    screen, the suggestion is put on the nearest step (down for a lighter
    day), and the words follow. Loads already on the step are untouched, so
-   a stack with odd pins keeps its whole steps. toD and fromD of a number
-   are numbers, as the ! say. */
+   a stack with odd pins keeps its whole steps. On a rack read from its
+   spacing the result then goes onto the rack (gridSnap, r54), as on a rack
+   from Your gym. */
 export function snapUnitIn(M: Model, ex: ExerciseLike, plan: Plan, res: Suggestion, down?: boolean): Suggestion {
+  return gridSnap(M, ex, plan, unitSnap(M, ex, plan, res, down));
+}
+
+/* The snap onto the step in the unit on screen (above). */
+function unitSnap(M: Model, ex: ExerciseLike, plan: Plan, res: Suggestion, down?: boolean): Suggestion {
   if (!res || res.w == null || res.top == null || ex.timed) return res;
   if (gymRackIn(M, ex, plan)) return rackSnapIn(M, ex, plan, res);
-  const st = toDIn(M, incOfIn(M, ex, plan))!;
+  const st = inUnitIn(M, incOfIn(M, ex, plan));
   if (!(st > 0)) return res;
   /* Off the step and not a number anyone types (220.462 from 100 kg): a
      custom step (185 lb on a 10 lb step) or microplates (101.25) are left as
-     they are. */
-  const off = (v: number): boolean => Math.abs(toDIn(M, v)! / st - Math.round(toDIn(M, v)! / st)) > 0.02;
-  const typed = (v: number): boolean => Math.abs(toDIn(M, v)! / 0.05 - Math.round(toDIn(M, v)! / 0.05)) < 0.1;
+     they are. Typed is exact in the unit on screen, as a number typed in it
+     reads back (r54, from the audit V asked for: within a tenth of 0.05, one
+     load in five converted from the other unit passed for typed, so 42.5 kg
+     shown as 93.7 lb was told to add 5 lb, to 98.7). */
+  const off = (v: number): boolean => Math.abs(inUnitIn(M, v) / st - Math.round(inUnitIn(M, v) / st)) > 0.02;
+  const typed = (v: number): boolean => onStep(inUnitIn(M, v), TYPED_STEP);
   if (!off(res.top) || !off(res.w) || typed(res.top)) return res;
-  const nw = fromDIn(M, (down ? Math.floor(toDIn(M, res.w)! / st + 1e-9) : Math.round(toDIn(M, res.w)! / st)) * st)!;
+  /* Which step (r54). A lighter day, a deload or a return after a break takes
+     the step below; anything else the nearest. Never under the floor (the
+     empty bar on a full-bar lift typed as the total, else one step on a
+     loaded lift), and, but on those lighter days, never a tenth or more under
+     the load last done (LIGHTER_LOAD): the next session would read as lighter
+     and set no target, so the same snap came back each time. The step above
+     then. From the review of r54's first fix, which rounded down under every
+     target of reps: 2 kg dumbbells read in lb went to 0 lb, the 20 kg bar to
+     40 lb, and 4 kg to 5 lb, three sessions running. */
+  const x = inUnitIn(M, res.w);
+  const lo = Math.floor(x / st + 1e-9) * st;
+  const loaded = !ex.bw && !ex.assist;
+  const fl = Math.max(inUnitIn(M, loadFloorIn(M, ex)), loaded ? st : 0);
+  let d = down ? lo : Math.round(x / st) * st;
+  if (!down && loaded && d < x * LIGHTER_LOAD - 1e-9) d = lo + st;
+  if (!ex.assist && d < fl - 1e-9) d = Math.ceil(fl / st - 1e-9) * st;
+  const nw = kgOfIn(M, d);
   if (Math.abs(nw - res.w) < 1e-9) return res;
-  return swapWIn(M, ex, res, nw);
+  const out = swapWIn(M, ex, res, nw);
+  /* A heavier load under a target of reps (r54, from the audit V asked for:
+     12.5 kg dumbbells read in lb went to 30 lb, 9% heavier, with the reps to
+     beat unchanged, and the lifter fell short): those reps were done lighter,
+     so the target is that load for the bottom of the range in every set, as
+     after any step up. */
+  if (nw > res.w + 1e-9 && res.tgt && res.tgt.kind === 'reps') {
+    const lbl = `${loadLabelIn(M, ex, nw)}${ex.bw ? '' : ' ' + UIn(M)}${loadNote(ex)}`;
+    return {
+      ...out,
+      text: `${res.last ? res.last + ' ' : ''}${lbl} is the nearest load in ${UIn(M)} to what you did: aim for ${plan.repMin}+ reps in every set.`,
+      target: `${lbl} for ${plan.repMin}+ reps in every set`,
+      tgt: { kind: 'load', w: nw, repMin: +plan.repMin, prevBest: res.tgt.prevBest }
+    };
+  }
+  /* The step the words name moves with the load, so they add up to what is
+     shown (r54, from the audit: "add 5 lb" to 93.7 lb beside 100 lb, and "take
+     5 lb of help off" beside help that moved by another amount). */
+  const was = fmtWIn(M, res.w - res.top),
+    now = fmtWIn(M, nw - res.top);
+  const say = (t: string): string =>
+    t
+      .replace(`add ${was} ${UIn(M)}`, `add ${now} ${UIn(M)}`)
+      .replace(`take ${was} ${UIn(M)} of help off`, `take ${now} ${UIn(M)} of help off`);
+  out.text =
+    out.last && out.text.startsWith(out.last) ? out.last + say(out.text.slice(out.last.length)) : say(out.text);
+  return out;
 }
 
 /* Days since a lift was last done, by its newest session of any kind up to
@@ -122,6 +188,23 @@ export function daysOffIn(M: Model, exId: string, opts?: SuggestOpts | null): nu
   return daysBetween(xs[xs.length - 1].date, T);
 }
 
+/* A lift is back after a break (BACK_DAYS) until a session since the break
+   sets its target: the length of the break, from its session before it to
+   the first after it, or to the date being logged when nothing came after;
+   else 0. The first session back is the lift's new start and sets the next
+   target (r54), so the lift stops being back once it is done, unless it was
+   done lighter (a Lighter day or a deload, tapped on coming back): until
+   r54 the session after that asked for the load from before the break. */
+function backDaysIn(M: Model, exId: string, opts: SuggestOpts): number {
+  const T = opts.before && isDate(opts.before) ? opts.before : M.today();
+  const xs = (IDXIn(M).byEx[exId] || []).filter(x => x.date <= T);
+  if (!xs.length) return 0;
+  if (afterBreak(xs[xs.length - 1], T)) return daysBetween(xs[xs.length - 1].date, T);
+  for (let i = xs.length - 1; i > 0 && offTarget(xs[i]); i--)
+    if (afterBreak(xs[i - 1], xs[i].date)) return daysBetween(xs[i - 1].date, xs[i].date);
+  return 0;
+}
+
 /* What to lift next for one exercise on a plan: the normal prescription
    (suggestCore), or a lighter day, a deload, or a lift back after a break
    worked out from it (above). A close variation's start, a lighter one, is
@@ -131,7 +214,7 @@ export function daysOffIn(M: Model, exId: string, opts?: SuggestOpts | null): nu
 export function suggestIn(M: Model, exId: string, plan: Plan, opts?: SuggestOpts | null): Suggestion {
   opts = opts || {};
   const ex = EXIn(M, exId);
-  const off = !(opts.deload || opts.light) && !ex.timed ? daysOffIn(M, exId, opts) : 0;
+  const off = !(opts.deload || opts.light) && !ex.timed ? backDaysIn(M, exId, opts) : 0;
   const back = off > BACK_DAYS;
   if (!(opts.deload || opts.light || back) || ex.timed)
     return snapUnitIn(M, ex, plan, suggestCoreIn(M, exId, plan, opts));
@@ -158,7 +241,7 @@ export function suggestIn(M: Model, exId: string, plan: Plan, opts?: SuggestOpts
   const bl = bwRefLoadIn(M, ex);
   const lbl = (w: number): string => `${loadLabelIn(M, ex, w)}${ex.bw ? '' : ' ' + UIn(M)}${loadNote(ex)}`;
   // Assisted: 90% of the lifted load means more help, rounded up to the machine's step so it never lands back on the full load.
-  const hs = step > 0 ? toDIn(M, step)! : UIn(M) === 'lb' ? 5 : 2.5;
+  const hs = step > 0 ? toDIn(M, step)! : DEFAULT_STEP[UIn(M)];
   const dw = ex.assist
     ? -fromDIn(M, Math.ceil(toDIn(M, bl > 0 ? bl - (w0 + bl) * 0.9 : -w0 * 1.1)! / hs - 1e-9) * hs)!
     : ex.bw
@@ -229,9 +312,8 @@ export function suggestCoreIn(M: Model, exId: string, plan: Plan, opts?: Suggest
   const all = every ? every.filter(x => x.date <= T) : every;
   const ex = EXIn(M, exId);
   const injM = exInjuryIn(M, ex);
-  // Deload and lighter sessions are short or light on purpose, so the last
-  // full session sets the target. If there is nothing else, use them.
-  const full = all ? all.filter(x => !offSession(x)) : [];
+  // The last full session sets the target: not one done lighter, nor one short of its usual (r54, V's one rule). If there is nothing else, use them.
+  const full = all ? all.filter(x => !offTarget(x)) : [];
   /* The same lift can sit on two days with different rep ranges (heavy 4-6,
      light 10-12). Each day progresses from its own sessions in its own range
      (r27). That holds while the range is in use: the newest session in it
@@ -246,6 +328,18 @@ export function suggestCoreIn(M: Model, exId: string, plan: Plan, opts?: Suggest
   const inRR = !!lastEx && lastEx.date >= addDays(full[full.length - 1].date, -42);
   const fullRR = inRR ? full.filter(x => sameRR(x.rr, want)) : [];
   const exps = all && all.length ? (fullRR.length ? fullRR : full.length ? full : all) : all;
+  /* The same sessions with those short of their usual (r54, V's one rule):
+     a short session sets no target, but it was done, so a case that reads
+     the session before last time's (two sessions under the range in a row,
+     reps rising after a step) reads it among these. */
+  const done =
+    all && all.length
+      ? fullRR.length
+        ? all.filter(x => !lighter(x) && sameRR(x.rr, want))
+        : full.length
+          ? all.filter(x => !lighter(x))
+          : all
+      : [];
   const seen = inRR ? all!.filter(x => sameRR(x.rr, want)) : all;
   if (ex.timed) return suggestTimedIn(M, ex, plan, exps, opts, injM, seen);
   if (!exps || !exps.length) return sgFirstIn(M, ex, plan, T, injM);
@@ -321,6 +415,7 @@ export function suggestCoreIn(M: Model, exId: string, plan: Plan, opts?: Suggest
     all: all!,
     every: every!,
     exps,
+    done,
     seen: seen!,
     inRR,
     injM,
@@ -359,9 +454,15 @@ export function suggestCoreIn(M: Model, exId: string, plan: Plan, opts?: Suggest
 
 /* No history yet: an injury note, a start from a close variation, or the first-time line. */
 export function sgFirstIn(M: Model, ex: ExerciseLike, plan: Plan, T: string, injM: string | null): Suggestion {
+  /* An assisted lift's help is the lifter's to set the first time (the text
+     says so): with none shown, a set ticked untyped is one Finish asks about,
+     where a help of 0 shown saved it at full bodyweight, and the next
+     session, with help typed, read as lighter (r54, from the audit V asked
+     for, PENDING 315 i). Bodyweight alone is a bodyweight lift's start. */
+  const w0 = ex.bw && !ex.assist ? 0 : null;
   if (injM)
     return {
-      w: ex.bw ? 0 : null,
+      w: w0,
       text: `Injury flagged (${injLabel(injM)}). Start light, keep 3 or more reps in reserve, and stop on pain.`,
       lastR: [],
       last: '',
@@ -398,7 +499,7 @@ export function sgFirstIn(M: Model, ex: ExerciseLike, plan: Plan, T: string, inj
     : ex.bw
       ? `First time: your bodyweight only. Do ${reps}, ${stop}. If ${plan.repMin} is out of reach, use an easier version; if it is easy past ${plan.repMax}, the next target says so.`
       : `First time: pick a load you think you could lift about ${can} times, erring light. Do ${reps}, ${stop}. Next time's load is worked out from this.`;
-  return { w: ex.bw ? 0 : null, text, lastR: [], last: '', target: '', tgt: null };
+  return { w: w0, text, lastR: [], last: '', target: '', tgt: null };
 }
 
 /* Every top set 2 or more over the target reserve: the load from the estimate.
@@ -431,14 +532,22 @@ export function sgEasyIn(M: Model, C: SuggestCtx): Suggestion | null {
          is a floor, so at least one real step, even past the cap (r34.2, from
          the review: 20 lb curls at 5+ in reserve asked to build reps for
          weeks, a 5 lb dumbbell step being more than the cap allows). */
-      if (k < 1 && topPts.every(p => p.rir! >= 5)) k = 1;
-      if (k >= 1) {
-        const nw = ex.assist && top < 0 ? Math.min(0, top + k * step) : capW(top + k * step);
+      const easy5 = topPts.every(p => p.rir! >= 5);
+      if (k < 1 && easy5) k = 1;
+      /* From a load off a rack read from its spacing (r54): the heaviest of
+         its weights the estimate allows, the next one up at least when every
+         set was 5 or more in reserve (12 lb to 15). */
+      const onR = offGrid(M, ex, plan, top) != null;
+      const rk = onR ? (heavierLoadIn(M, ex, plan, top, want) ?? (easy5 ? top + step : null)) : null;
+      if (onR ? rk != null : k >= 1) {
+        const nw = rk != null ? capW(rk) : ex.assist && top < 0 ? Math.min(0, top + k * step) : capW(top + k * step);
         const rr = r1(topPts.reduce((a, p) => a + p.rir!, 0) / topPts.length);
+        // In the lifter's effort scale (r54, from the audit V asked for: RPE lifters were told RIR).
+        const sc = effScale(M.s.settings.rirScale);
         return {
           top,
           w: nw,
-          text: `${lastS} RIR ${rr} at ${lbl(top)} against a target of ${tgtRir}, so that load was light. Try ${lbl(nw)} for ${repSpan(plan.repMin, plan.repMax, '-')} reps.`,
+          text: `${lastS} ${sc === 'rpe' ? 'RPE' : 'RIR'} ${effAt(sc, rr)} at ${lbl(top)} against a target of ${sc === 'rpe' ? 'RPE ' : ''}${effAt(sc, tgtRir)}, so that load was light. Try ${lbl(nw)} for ${repSpan(plan.repMin, plan.repMax, '-')} reps.`,
           lastR,
           basis,
           last: lastS,
@@ -478,8 +587,11 @@ export function sgPastRangeIn(M: Model, C: SuggestCtx): Suggestion | null {
         ) - bwNow;
       const k = Math.floor((want - top) / step + 1e-6);
       const one = progStepIn(M, ex, plan, topLoad, top);
-      if (k >= 1 && k * step > one + 1e-6) {
-        const nw = ex.assist && top < 0 ? Math.min(0, top + k * step) : capW(top + k * step);
+      // From a load off a rack read from its spacing (r54): the heaviest of its weights the estimate allows, when more than the usual step.
+      const onR = offGrid(M, ex, plan, top) != null;
+      const rk = onR ? heavierLoadIn(M, ex, plan, top, want) : null;
+      if (onR ? rk != null && rk - top > one + 1e-6 : k >= 1 && k * step > one + 1e-6) {
+        const nw = rk != null ? capW(rk) : ex.assist && top < 0 ? Math.min(0, top + k * step) : capW(top + k * step);
         const minR = Math.min(...topPts.map(p => p.r));
         return {
           top,
@@ -500,7 +612,7 @@ export function sgPastRangeIn(M: Model, C: SuggestCtx): Suggestion | null {
 
 /* Every top set under the range: drop to a load that fits it. */
 export function sgBelowRangeIn(M: Model, C: SuggestCtx): Suggestion | null {
-  const { ex, plan, exps, inRR, top, step, noAdd, topPts, lastR, lastS, basis, lbl, prevBest, tgtRir } = C;
+  const { ex, plan, last, done, inRR, top, step, noAdd, topPts, lastR, lastS, basis, lbl, prevBest, tgtRir } = C;
   /* Below the rep range. Every top set fell short of repMin, either by 2 or
      more reps, or by any amount two sessions running at the same load. Adding
      one rep a week from there never reaches the range, so drop the load to
@@ -508,7 +620,9 @@ export function sgBelowRangeIn(M: Model, C: SuggestCtx): Suggestion | null {
      steps down from the last load, so stacks stay on real pins. */
   if (step > 0 && !noAdd && topPts.length && topPts.every(p => p.r < +plan.repMin)) {
     const gap = +plan.repMin - Math.max(...topPts.map(p => p.r));
-    const prev = exps.length >= 2 ? exps[exps.length - 2] : null;
+    // The session before last time's, short of its usual or not (r54): last time's is one of done.
+    const at = done.indexOf(last);
+    const prev = at >= 1 ? done[at - 1] : null;
     /* Not a drop while the reps are coming up after a step up (r31): a big
        step for the load (a dumbbell, a small stack) starts below the range
        on purpose, and dropping back made the load swing between two
@@ -527,8 +641,8 @@ export function sgBelowRangeIn(M: Model, C: SuggestCtx): Suggestion | null {
        not (r32, second check: 5, 5, 4, 4 then 5, 5, 5, 4 then 5, 5, 5, 5
        kept the load for weeks, each "rising"). */
     let shortRun = 0;
-    for (let k = exps.length - 1; k >= 0; k--) {
-      const x = exps[k];
+    for (let k = at; k >= 0; k--) {
+      const x = done[k];
       if (Math.abs(x.topW - top) > 1e-6) break;
       const at = atLoad(x.pts, x.topW);
       if (!at.length || !at.every(p => p.r < +plan.repMin)) break;
@@ -548,8 +662,9 @@ export function sgBelowRangeIn(M: Model, C: SuggestCtx): Suggestion | null {
            sets were stopped early, not too heavy, so the usual rep target
            below applies instead of a forced drop. */
         const k = Math.ceil((top - want) / step - 1e-6);
-        const nw = top - k * step;
-        if (k >= 1 && (nw > 0 || (ex.bw && (nw >= 0 || ex.assist)))) {
+        // From a load off a rack read from its spacing (r54): the heaviest of its weights not past the estimate (12 lb to 10).
+        const nw = k >= 1 && offGrid(M, ex, plan, top) ? lighterLoadIn(M, ex, plan, top, want) : top - k * step;
+        if (k >= 1 && nw < top - 1e-6 && (nw > 0 || (ex.bw && (nw >= 0 || ex.assist)))) {
           const bestR = Math.max(...topPts.map(p => p.r));
           return {
             top,
@@ -721,14 +836,16 @@ export function sgTopOfRangeIn(M: Model, C: SuggestCtx): Suggestion | null {
 
 /* A bad day under the range at a load done in it before: the bottom of the range again. */
 export function sgBadDay(C: SuggestCtx): Suggestion | null {
-  const { plan, exps, top, topPts, lastR, lastS, basis, lbl, prevBest } = C;
+  const { plan, last, done, top, topPts, lastR, lastS, basis, lbl, prevBest } = C;
   /* A bad day at a load already done in the range (r32, second check: 7,
      7, 6, 6 then 5, 5, 4, 4 asked "19+ reps" and greyed 5, 5, 4, 4): every set
      under the range, the session before at this load in it. The target is
      the bottom of the range in every set again, not one rep more than the
      bad day. */
   {
-    const prv = exps.length >= 2 ? exps[exps.length - 2] : null;
+    // The session before, short of its usual or not (r54), as in sgBelowRangeIn.
+    const at = done.indexOf(last);
+    const prv = at >= 1 ? done[at - 1] : null;
     const pAt = prv && Math.abs(prv.topW - top) < 1e-6 ? atLoad(prv.pts, top) : [];
     if (topPts.length && topPts.every(p => p.r < +plan.repMin) && pAt.length && pAt.every(p => p.r >= +plan.repMin))
       return {
@@ -822,7 +939,7 @@ export function kinOfIn(
       patternOf(e) !== pat
     )
       continue;
-    const xs = I.byEx[id]!.filter(x => x.date <= T && !offSession(x) && !x.cut);
+    const xs = I.byEx[id]!.filter(x => x.date <= T && !offTarget(x));
     const x = xs[xs.length - 1];
     if (!x || x.date < from) continue;
     if (!best || x.date > best.x.date) best = { ex: e, x };
@@ -990,10 +1107,9 @@ export function incOfIn(
   if (ex && ex.inc == null && Math.abs(v - unitStepIn(M)) < 1e-6) {
     const L = gymRackIn(M, ex, plan);
     if (L) return rackGapIn(M, L, at);
-    if (rackKind(ex)) {
-      const g = rackStepIn(M, ex);
-      if (g) return g;
-    }
+    // On a rack read from its spacing (rackGridIn): the spacing, or from a load off its weights the way to the next one up.
+    const gr = rackGridIn(M, ex, plan, at);
+    if (gr) return at != null && at > 0 && offGrid(M, ex, plan, at) ? gridStep(M, gr, at, 1) - at : gr;
     const gs = gymStepIn(M, ex);
     if (gs) return gs;
   }
@@ -1006,8 +1122,9 @@ export function incOfIn(
    lifted. Engine steps are taken from the rack already, so this is the net
    for multi-step jumps on a rack whose spacing changes. */
 export function rackSnapIn(M: Model, ex: ExerciseLike, plan: Plan, res: Suggestion): Suggestion {
+  if (!res || res.w == null || ex.timed) return res;
   const L = gymRackIn(M, ex, plan);
-  if (!L || !res || res.w == null || ex.timed) return res;
+  if (!L) return gridSnap(M, ex, plan, res);
   const w = res.w,
     top = res.top,
     tl = rackTolIn(M),
@@ -1030,18 +1147,107 @@ export function rackSnapIn(M: Model, ex: ExerciseLike, plan: Plan, res: Suggesti
    read in the unit on screen, since that is what the rack is labelled in.
    It is asked only of a dumbbell or kettlebell lift (its callers test
    rackKind first), as the ! after rackKind says, and toD of a number is a
-   number, as the other ! says. */
-export function rackStepIn(M: Model, ex: ExerciseLike): number | null {
+   number, as the other ! says. With nothing logged yet, the load in hand
+   (`at`) is the one weight of the rack known, read the same way (r54, from
+   the audit V asked for: a first session's 6 kg dumbbells, done easily, were
+   stepped to 8.5 kg, which no rack has, and the 6, 8.5 and 11 kg logged after
+   read as a rack in 0.5 kg steps for the next twelve sessions); it is not
+   kept, since it changes with the load. */
+export function rackStepIn(M: Model, ex: ExerciseLike, at?: number | null): number | null {
   const I = IDXIn(M);
   I._rack = I._rack || {};
   const key = UIn(M) + ex.id;
-  if (I._rack[key] !== undefined) return I._rack[key];
-  const xs = (I.byEx[ex.id] || []).slice(-12);
-  const ws: number[] = [];
-  for (const x of xs) for (const p of x.pts) if (p.w > 0) ws.push(toDIn(M, p.w)!);
-  const fits = (g: number): boolean => ws.every(w => Math.abs(w / g - Math.round(w / g)) < 0.01);
-  const g = ws.length ? RACK[rackKind(ex)!][UIn(M)].find(fits) : null;
-  return (I._rack[key] = g ? fromDIn(M, g) : null);
+  const fit = (ws: readonly number[]): number | null => {
+    const fits = (g: number): boolean => ws.every(w => Math.abs(w / g - Math.round(w / g)) < 0.01);
+    const g = RACK[rackKind(ex)!][UIn(M)].find(fits);
+    return g ? fromDIn(M, g) : null;
+  };
+  if (I._rack[key] === undefined) {
+    const xs = (I.byEx[ex.id] || []).slice(-12);
+    const ws: number[] = [];
+    for (const x of xs) for (const p of x.pts) if (p.w > 0) ws.push(toDIn(M, p.w)!);
+    I._rack[key] = ws.length ? fit(ws) : null;
+  }
+  const logged = (I.byEx[ex.id] || []).some(x => x.pts.some(p => p.w > 0));
+  const d = logged || at == null || !(at > 0) ? null : toDIn(M, at);
+  return d == null ? I._rack[key] : fit([d]);
+}
+
+/* A rack read from its spacing (r54): a dumbbell or kettlebell lift with no
+   step of its own, whose bells Your gym does not list, has its weights at
+   the multiples of the spacing rackStepIn reads, so a weight off them steps
+   to the rack's next one rather than by the spacing from where it is. Lb
+   dumbbells are read on 5 lb, or 2.5 lb where the weights are on it, never
+   1 (V's call of 2026-10-18, after the review of r54: with nothing logged,
+   12 lb went up to 13, which no lb rack has): 12 lb steps to 15 and 8 to
+   10. Kettlebells, and dumbbells in kg, read on the spacing their weights
+   fit, as since r32. A load on the rack's weights steps by the spacing from
+   where it is, as since r32, to the same number; a load off them (offGrid)
+   steps to the rack's next weight in every path that steps a load: the step
+   (incOfIn), progression (progStepIn), lighter loads (lighterLoadIn),
+   heavier ones (heavierLoadIn), the engine's cases that take several steps
+   at once, and the snap of a suggestion onto the rack (rackSnapIn). */
+/** A dumbbell or kettlebell lift's rack spacing in kg when its weights are read from it, or null. */
+export function rackGridIn(
+  M: Model,
+  ex: ExerciseLike | null | undefined,
+  plan?: Pick<Plan, 'inc'> | null,
+  at?: number | null
+): number | null {
+  if (!ex || ex.assist || ex.inc != null || !rackKind(ex) || gymRackIn(M, ex, plan)) return null;
+  if (Math.abs(stepReadIn(M, plan && isNum(+plan.inc) ? +plan.inc : STEP_LB) - unitStepIn(M)) > 1e-6) return null;
+  return rackStepIn(M, ex, at) || (UIn(M) === 'lb' && rackKind(ex) === 'dumbbell' ? 5 * LB : null);
+}
+
+/* A rack's weights are counted in the unit it is labelled in, the unit on
+   screen, and each comes back as kg the way a load typed in that unit does,
+   so 10 lb from the rack is the 10 lb a lifter types (a multiple of the
+   spacing in kg carries the conversion's last digits). The spacing is read
+   to the precision its values have (5, 2.5, 2, 1, 0.5). */
+const gridD = (M: Model, g: number): number => Math.round(inUnitIn(M, g) * 1e6) / 1e6;
+
+/* The rack weight above (dir 1) or below (dir -1) a load on a spacing, in
+   kg: a load within half the last shown digit of a rack weight is that
+   weight (rackTolIn), so 15 lb shown from a kg number is 15. */
+function gridStep(M: Model, g: number, at: number, dir: 1 | -1): number {
+  const gd = gridD(M, g),
+    ad = inUnitIn(M, at),
+    t = inUnitIn(M, rackTolIn(M));
+  return kgOfIn(M, (dir > 0 ? Math.floor((ad + t) / gd) + 1 : Math.ceil((ad - t) / gd) - 1) * gd);
+}
+
+/* The heaviest rack weight on a spacing not past a load by more than `tol`, all in kg. */
+function gridFloor(M: Model, g: number, w: number, tol: number): number {
+  const gd = gridD(M, g);
+  return kgOfIn(M, Math.floor((inUnitIn(M, w) + inUnitIn(M, tol)) / gd) * gd);
+}
+
+/* The spacing of a rack read from its spacing when a load is off its
+   weights (12 lb on a 5 lb rack), else null: within half the last shown
+   digit of a multiple is on it. */
+function offGrid(M: Model, ex: ExerciseLike, plan: Pick<Plan, 'inc'> | null | undefined, at: number): number | null {
+  const g = rackGridIn(M, ex, plan, at);
+  if (g == null) return null;
+  const gd = gridD(M, g),
+    ad = inUnitIn(M, at);
+  return Math.abs(ad - Math.round(ad / gd) * gd) > inUnitIn(M, rackTolIn(M)) ? g : null;
+}
+
+/* A suggestion off a rack read from its spacing moves onto it, as on a rack
+   from Your gym (rackSnapIn): up, to the heaviest rack weight not past it
+   that is still above last time; down, to the heaviest not past it, at
+   least the lightest. A load equal to last time's is left, since it was
+   lifted. */
+function gridSnap(M: Model, ex: ExerciseLike, plan: Plan, res: Suggestion): Suggestion {
+  const w = res.w,
+    top = res.top;
+  const g = w == null || ex.timed ? null : rackGridIn(M, ex, plan, top);
+  if (w == null || g == null) return res;
+  const t = rackTolIn(M);
+  const dn = gridFloor(M, g, w, t);
+  if (Math.abs(dn - w) <= t || (top != null && Math.abs(w - top) < 1e-6)) return res;
+  const nw = top != null && w > top ? Math.max(dn, gridStep(M, g, top, 1)) : Math.max(dn, gridStep(M, g, 0, 1));
+  return Math.abs(nw - w) < 1e-9 ? res : swapWIn(M, ex, res, nw);
 }
 
 /* When every set reaches the top of the range, the load goes up by whole
@@ -1061,6 +1267,14 @@ export function progStepIn(M: Model, ex: ExerciseLike, plan: Plan, loadKg: numbe
     for (const x of up) if (x <= want + 1e-6) nw = x;
     return nw - at!;
   }
+  // From a load off a rack read from its spacing (offGrid, r54): the same, its weights the spacing's multiples.
+  if (at != null) {
+    const gr = offGrid(M, ex, plan, at);
+    if (gr)
+      return (
+        Math.max(gridStep(M, gr, at, 1), gridFloor(M, gr, at + jumpPct(ex, plan) * Math.max(0, loadKg), 1e-6)) - at
+      );
+  }
   const inc = incOfIn(M, ex, plan, at);
   if (!(inc > 0)) return inc;
   const pct = jumpPct(ex, plan);
@@ -1069,7 +1283,21 @@ export function progStepIn(M: Model, ex: ExerciseLike, plan: Plan, loadKg: numbe
 
 /** The note that a lift is getting easier at a load (RIR climbing at the same reps), for the session. */
 export function easierTextIn(M: Model, ex: ExerciseLike, e: Drift): string {
-  return `Getting easier at ${loadLabelIn(M, ex, e.w)}${ex.bw ? '' : ' ' + UIn(M)}: RIR ${e.from} → ${e.to} at the same reps. Adding load today is reasonable.`;
+  // In the lifter's effort scale (r54, from the audit V asked for).
+  const sc = effScale(M.s.settings.rirScale);
+  return `Getting easier at ${loadLabelIn(M, ex, e.w)}${ex.bw ? '' : ' ' + UIn(M)}: ${sc === 'rpe' ? 'RPE' : 'RIR'} ${effAt(sc, e.from)} → ${effAt(sc, e.to)} at the same reps. Adding load today is reasonable.`;
+}
+
+/* The lightest load a lift can be given (r27): the empty bar on a lift on the
+   full bar (bench, squat, rows) typed as the total. Curls and skull crushers
+   are often on an EZ or fixed bar lighter than the bar weight setting, and a
+   per-side number has no bar in it, so neither has one. An exercise with no
+   bar of its own set reads as none. */
+/** The lightest load a lift can be given: the empty bar where one applies, else 0. */
+export function loadFloorIn(M: Model, ex: ExerciseLike): number {
+  return platesMode(ex) === 'bar' && loadMode(ex) === 'total' && (isCompound(ex) || (ex.barKg ?? 0) > 0)
+    ? exBarKgIn(M, ex)
+    : 0;
 }
 
 /* A load at or below `to`, reached from `from` in whole steps of the
@@ -1079,8 +1307,7 @@ export function easierTextIn(M: Model, ex: ExerciseLike, e: Drift): string {
    15 lb cable raise deloaded to 10, a 150 lb stack with 10 lb pins to 135, a
    95 lb bench warmed up at 40, under the bar. With no step set, it rounds
    down to 5 lb or 2.5 kg as before. May return `from` when nothing lighter
-   exists (the bar itself). An exercise without its own bar has none, and an
-   absent bar compares false with 0, which the cast lets TypeScript accept. */
+   exists (the bar itself). */
 export function lighterLoadIn(
   M: Model,
   ex: ExerciseLike,
@@ -1098,21 +1325,59 @@ export function lighterLoadIn(
     const c = lo.filter(x => x <= to + tl);
     return c.length ? c[c.length - 1] : lo[0];
   }
+  // From a load off a rack read from its spacing (offGrid, r54): the same, its weights the spacing's multiples.
+  const og = offGrid(M, ex, plan, from);
+  if (og) {
+    const dn = gridStep(M, og, from, -1),
+      first = gridStep(M, og, 0, 1);
+    if (dn < first - 1e-6) return Math.max(0, from);
+    const c = gridFloor(M, og, to, rackTolIn(M));
+    return c >= first - 1e-6 ? Math.min(dn, c) : first;
+  }
   const step = incOfIn(M, ex, plan, from);
   let w: number;
   if (step > 0) {
     const k = Math.max(1, Math.ceil((from - to) / step - 1e-6));
     w = from - k * step;
   } else w = roundLoadIn(M, to, true);
-  /* The bar floor is for lifts on the full bar (bench, squat, rows), typed as
-     the total. Curls and skull crushers are often on an EZ or fixed bar
-     lighter than the bar weight setting, and a per-side number has no bar in
-     it, so neither is floored. At the bar itself nothing lighter exists, so
-     `from` comes back and a deload keeps the bar. */
-  const floor =
-    platesMode(ex) === 'bar' && loadMode(ex) === 'total' && (isCompound(ex) || (ex.barKg as number) > 0)
-      ? exBarKgIn(M, ex)
-      : 0;
+  // At the bar itself nothing lighter exists, so `from` comes back and a deload keeps the bar.
+  const floor = loadFloorIn(M, ex);
   if (w < floor - 1e-6) w = Math.min(floor, from);
+  /* Nor under the lightest of a rack's dumbbells or bells (r54): a Lighter
+     day on 5 lb lateral raises was "about 0 lb per dumbbell" until then, as a
+     2.5 lb, 2 kg or 1 kg one was. */
+  const gr = rackGridIn(M, ex, plan, from);
+  if (gr && w < gridStep(M, gr, 0, 1) - 1e-6) w = Math.min(gridStep(M, gr, 0, 1), from);
   return Math.max(0, w);
+}
+
+/* A load above `from` and not past `to`, or null when the next one is past
+   it (r34, for adjusting the next sets; moved from the legacy script in r54
+   to read the rack from its spacing): on a rack from Your gym, the heaviest
+   bell between them; on a rack read from its spacing, the heaviest of its
+   weights between them; else whole steps of the lift's step from `from`. */
+/** The heaviest load above `from` and not past `to` on the lift's rack or steps, or null. */
+export function heavierLoadIn(
+  M: Model,
+  ex: ExerciseLike,
+  plan: Pick<Plan, 'inc'> | null | undefined,
+  from: number,
+  to: number
+): number | null {
+  const L = gymRackIn(M, ex, plan);
+  if (L) {
+    const tl = rackTolIn(M),
+      tf = rackTolIn(M, L, from);
+    const c = L.filter(x => x > from + tf && x <= to + tl);
+    return c.length ? c[c.length - 1] : null;
+  }
+  const og = offGrid(M, ex, plan, from);
+  if (og) {
+    const c = gridFloor(M, og, to, rackTolIn(M));
+    return c >= gridStep(M, og, from, 1) - 1e-6 ? c : null;
+  }
+  const step = incOfIn(M, ex, plan, from);
+  if (!(step > 0)) return null;
+  const k = Math.floor((to - from) / step + 1e-6);
+  return k >= 1 ? from + k * step : null;
 }

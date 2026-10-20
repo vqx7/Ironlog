@@ -1,5 +1,4 @@
-/* Chart windows (phase 3a, r51; moved unchanged from the legacy script,
-   tests/moved.js holds them to r50's code). Charts start where the data
+/* Chart windows (phase 3a, r51; moved unchanged from the legacy script). Charts start where the data
    starts; the window chips widen them. */
 
 import { isDate, daysBetween, weekStart, today } from './util';

@@ -33,8 +33,8 @@ const appFiles = d => fs.readdirSync(path.join(ROOT, 'src', d), { withFileTypes:
 const SRC_CODE = [...fs.readdirSync(path.join(ROOT, 'src')).filter(f => f.endsWith('.js')), ...appFiles('app')];
 const cfg = require('../scripts/config');
 // The top-level declarations of the legacy script in a published build: the
-// function the bundle calls last (tests/moved.js finds it strictly, and holds
-// each move to it).
+// function the bundle calls last, found strictly (tests/moved.js held each
+// move to it until r54).
 function legacyNames(file) {
   const acorn = require('acorn');
   const html = fs.readFileSync(path.join(ROOT, file), 'utf8');
@@ -417,10 +417,10 @@ const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log
   // cover several casts in it; the count shows a new one in the diff.
   const appComments = new Map(); // module -> [pos, end] of every comment, from the syntax tree
   // No var in src/app/ (r53, the second review): a var declared inside a
-  // block belongs to the whole function, and the name reading that
-  // tests/moved.js holds edits to (scripts/depmap.js, freeNames) takes only a
-  // body's own statements as hoisted, so an edit adding one could change what
-  // a name means and pass. const and let mean what they say where they are.
+  // block belongs to the whole function, and the scope reading this suite's
+  // rules use (scripts/depmap.js, freeNames) takes only a body's own
+  // statements as hoisted, so a var could change what a name means and pass.
+  // const and let mean what they say where they are.
   {
     const vars = [];
     for (const f of SRC_CODE.filter(f => f.startsWith('app/') && f.endsWith('.ts'))) {
@@ -480,8 +480,8 @@ const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log
     // name (less the In of a function taking the model, M) that was a
     // declaration of the legacy script in the build the move started from:
     // read from that build itself, so a mark in new or changed code can never
-    // ride on a move (tests/moved.js holds what a move may change, and fixes
-    // each adapter's TypeScript text, so no mark can sit in one).
+    // ride on a move (until r54 tests/moved.js held what a move could change,
+    // and fixed each adapter's TypeScript text, so no mark could sit in one).
     const MOVE_MARKS = [...fs.readFileSync(path.join(ROOT, 'ARCHITECTURE.md'), 'utf8').matchAll(/^Marks in (r\d+)'s moved code \(from (baselines\/[\w.-]+\.html)\): (\d+) casts, (\d+) non-null assertions$/gm)].map(m => ({ release: m[1], baseline: m[2], casts: +m[3], bangs: +m[4], legacy: legacyNames(m[2]), nowCasts: 0, nowBangs: 0 }));
     const markMove = (sf, n) => {
       const st = sf.statements.find(x => x.pos <= n.pos && n.end <= x.end);
@@ -605,7 +605,7 @@ const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log
   }
   // Every module is laid out by Prettier from the committed .prettierrc.json,
   // so layout is never a matter of taste or of hand (layout never changes
-  // code, which tests/moved.js proves). A data table may keep its rows on
+  // code). A data table may keep its rows on
   // their own lines behind `// prettier-ignore`, only at a module's top
   // level and only with a comment directly above saying why; the check
   // prints each so a review sees them. Until r51 the r49 and r50 modules
@@ -884,6 +884,15 @@ const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log
     }
   }
   ok(missing.length === 0, 'every repo file the documents name exists', missing);
+
+  // What GitHub runs, too (r54): tests/moved.js was deleted in r54 and the workflow still ran it, so every Chromium shard of
+  // pull request #47 failed before a suite ran, while every suite passed here, where nothing runs the workflow file.
+  const wf = path.join(ROOT, '.github', 'workflows');
+  const runs = [];
+  for (const f of fs.readdirSync(wf).filter(f => /\.ya?ml$/.test(f)))
+    for (const m of fs.readFileSync(path.join(wf, f), 'utf8').matchAll(/\bnode\s+((?:tests|scripts)\/[A-Za-z0-9_.\-\/]+\.js)\b/g)) runs.push([f, m[1]]);
+  const gone = runs.filter(([, rel]) => !fs.existsSync(path.join(ROOT, rel))).map(([f, rel]) => `${f}: ${rel}`);
+  ok(runs.length >= 3 && gone.length === 0, 'every script a GitHub workflow runs exists (' + runs.length + ')', gone);
 
   // The source parts, not index.html: since r49 the page's script is bundled
   // and its comments are gone, and the /*ai{ markers were comments.

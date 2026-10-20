@@ -52,7 +52,8 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
     ok(g.kind === 'guide' && g.topics.join('|') === 'Today|Logging a session|How targets are set|Volume and Stats|Plan and your own exercises|Sections|Your data' && g.open === 0, 'the Guide has seven topics, all folded', g.topics);
     await page.click('#modal .gsec[data-g="rules"]>summary'); await wait(60);
     const rules = await ev(() => document.querySelector('#modal .gsec[data-g="rules"]').innerText);
-    ok(/last full session/.test(rules) && /trimmed, lighter, or deload/.test(rules) && /2\.5%/.test(rules) && /never under the empty bar/.test(rules) && /heavy day and a light day/.test(rules), 'How targets are set states the rules: last full session, Last labelled, step sizes, deload floor, per-day ranges', rules.slice(0, 120));
+    // Last's labels are r54's (V's one rule): fewer sets and below usual where r27 to r53 said trimmed.
+    ok(/last full session/.test(rules) && /fewer sets, below usual, lighter, or deload/.test(rules) && /2\.5%/.test(rules) && /never under the empty bar/.test(rules) && /heavy day and a light day/.test(rules), 'How targets are set states the rules: last full session, Last labelled, step sizes, deload floor, per-day ranges', rules.slice(0, 120));
     ok(!/[—]/.test(g.text) && !/!/.test(g.text.replace(/!=/g, '')), 'the Guide has no em dashes or exclamation marks');
     await ev(() => window.__ironlog.ACT.mClose());
 

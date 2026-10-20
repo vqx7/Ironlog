@@ -1,5 +1,5 @@
 /* What the analytics tell the lifter (phase 3b, r52; moved from the legacy
-   script, tests/moved.js reads each back to r51's code): the lifts moving and
+   script): the lifts moving and
    stalled, the stalls that point to fatigue, the coach's one line, a muscle's
    trend in words, the size check's sites, and the check-in against how
    sessions went (readiness). */
@@ -10,25 +10,29 @@ import {
   UIn,
   activeRoutineIn,
   exNameIn,
+  freeModeIn,
   injuredSetIn,
   isDeloadWeekIn,
   isRestWeekIn,
   sortedSessionsIn
 } from './model';
-import { IDXIn } from './analytics';
-import { actualAvg4In, recentLighterIn } from './weeks';
-import { GROW_PCT, atLoad, isWork, offSession } from './formulas';
-import { MK, ML, TRACK_ONLY, isCompound, noE1 } from './library';
-import { addDays, andList, r1, weekStart } from './util';
+import { IDXIn, stallWordsIn } from './analytics';
+import { FIRST_WEEK_WHY, ON_PLAN_TIP, actualAvg4In, avgWaitIn, muscleStatusIn, recentLighterIn } from './weeks';
+import { GROW_PCT, atLoad, isWork, lighter } from './formulas';
+import { MK, ML, isCompound, noE1 } from './library';
+import { andList, r1, weekStart } from './util';
+import { effScale } from './format';
 import { belowMin } from './volume';
-import { planForIn } from './routines';
+import { plannedSetsIn } from './routines';
+import { planForIn } from './plans';
 import { loadLabelIn } from './loads';
 
-/** The coach's one line: its colour, the advice, the reason behind an i, and the action it offers. */
+/** The coach's one line: its colour, the advice, the reason behind an i, the action it offers, and whether it says why no weekly average shows yet (`wait`, which Stats' summary shows once, as its Volume line). */
 export interface CoachLine {
   tone: string;
   text: string;
   why?: string;
+  wait?: boolean;
   act: { label: string; deload?: boolean; sec?: string; m?: string; ex?: string } | null;
 }
 
@@ -92,6 +96,39 @@ export function fatigueStallsIn(M: Model, ids: readonly string[]): string[] {
   });
 }
 
+/* What a stall is, in the words the coach's tip and a lift's headline on
+   Stats both use (r54: the headline's own words, "flat for 3 weeks or more,
+   with no PR in the last 3 sessions", fell behind the rule in r53). */
+/** The stall rule, as a lifter reads it. */
+export const STALL_WHY =
+  'Flat or down over its last 6 sessions (or 3 weeks) in each rep range you train it in, leaving out ones done lighter; with no PR in the last 3 of them, nor a set stronger than any before it in a session left out since the third-last, no heavier load, and no more reps at the same load.';
+
+/** Whether a lift's last session not done lighter had every set at its
+    working load at the top of its range: the range the routine plans for the
+    lift on the day that session was done on, found by the session's day, else
+    by the range the session was done at, else the lift's plan (r32: a lift
+    there is due a step up, not a new range). The plan as it is now, so a
+    range changed since reads as before. One test for the coach and the lift's
+    headline on Stats (r54: both read the lift's plan with no day, the first
+    day's on a lift on two days, so 60 x 12 on a light day of 12 to 15, its
+    bottom, read as the top of the heavy day's 6 to 10, "due a step up"). */
+export function atRangeTopIn(M: Model, id: string): boolean {
+  const st = IDXIn(M).exStats[id];
+  if (!st || !st.last) return false;
+  const x = st.last,
+    rr = x.rr;
+  const R = activeRoutineIn(M);
+  const sess = M.s.sessions.find(q => q.id === x.sid);
+  const day =
+    R.days.find(d => !!sess && d.id === sess.dayId && d.items.some(it => it.exId === id)) ||
+    (rr
+      ? R.days.find(d => d.items.some(it => it.exId === id && +it.repMin === rr[0] && +it.repMax === rr[1]))
+      : undefined);
+  const top = +planForIn(M, id, R, day ? day.id : null).repMax;
+  const lw = atLoad(x.pts, x.topW);
+  return lw.length > 0 && lw.every(q => q.r >= top);
+}
+
 /* The single most useful thing to change this week, in priority order. Each
    branch states the number it is based on, so the advice can be checked. */
 export function coachIn(M: Model): CoachLine {
@@ -147,12 +184,14 @@ export function coachIn(M: Model): CoachLine {
       act: null
     };
   }
-  if (avg) {
+  // Each muscle's status as every screen reads it (muscleStatusIn), so a muscle on plan is not below target here either.
+  const mst = avg ? muscleStatusIn(M, avg) : null;
+  if (avg && mst) {
     const lagSet = new Set(I.scores.filter(x => x.label === 'lagging').map(x => x.m));
     /* Largest shortfall in sets first. Sorting by the fraction of target put
        a small muscle at 0 of 2 sets ahead of a major one at 5 of 10, which is
        backwards for a hypertrophy-first plan. The fraction still breaks ties. */
-    const under = MK.filter(m => !inj.has(m) && !TRACK_ONLY.has(m) && belowMin(avg[m], bands[m][0]))
+    const under = MK.filter(m => !inj.has(m) && mst[m].st === 'under')
       .map(m => ({
         m,
         got: avg[m] || 0,
@@ -181,6 +220,24 @@ export function coachIn(M: Model): CoachLine {
         .filter(id => forM(id) && M.s.exercises.some(e => e.id === id && !e.archived))
         .sort((x, y) => I.byEx[y]![I.byEx[y]!.length - 1].date.localeCompare(I.byEx[x]![I.byEx[x]!.length - 1].date));
       const exId = inR.find(done) || logged[0] || inR[0] || null;
+      /* The plan already reaches the target (r54, from the audit V asked
+         for: a lifter doing every planned set was told for weeks to add
+         sets). The shortfall is then sets skipped, or ended 4 or more in
+         reserve, as a lift's first sessions are while its load is found, so
+         adding sets is not the fix. Not in Freestyle mode, where the plan is
+         not what the lifter follows. */
+      const planned = plannedSetsIn(M, R)[u.m] || 0;
+      // Hard and not, in the lifter's effort scale, as the engine's sentences say effort (format.ts, effScale).
+      const rpe = effScale(M.s.settings.rirScale) === 'rpe';
+      const hard = rpe ? 'RPE 7 or harder' : '3 or fewer reps in reserve',
+        easy = rpe ? 'at RPE 6 or easier' : 'with 4 or more in reserve';
+      if (!freeModeIn(M) && !belowMin(planned, u.lo))
+        return {
+          tone: 'yellow',
+          text: `${ML[u.m]}: ${r1(u.got)} hard set${r1(u.got) === 1 ? '' : 's'} a week, target ${u.lo}-${u.hi}. Your plan has ${r1(planned)}: do every planned set${M.s.settings.rirMode === 'off' ? '' : `, to ${hard}`}.${under.length > 1 ? ` ${under.length - 1} more below target.` : ''}`,
+          why: `Your average of hard sets per week over your recent full weeks. Your plan already reaches the target, so the gap is in how the sets are done, not how many are planned: ${M.s.settings.rirMode === 'off' ? 'a planned set skipped does not count.' : `a set counts as hard at ${hard}, so a planned set skipped, or ended ${easy} (as a lift's first sessions are while its load is found), does not.`}`,
+          act: { label: `See ${ML[u.m]}`, sec: 'volume', m: u.m }
+        };
       const how = exId
         ? `Add ${gap} set${gap > 1 ? 's' : ''} a week to ${exNameIn(M, exId)}.`
         : 'Add an exercise for it.';
@@ -198,20 +255,22 @@ export function coachIn(M: Model): CoachLine {
   if (stalled.length) {
     const id = stalled[0];
     const st = I.exStats[id];
-    const p = planForIn(M, id);
-    const lw = st && st.last ? atLoad(st.last.pts, st.last.topW) : [];
-    // A set at the top of the range means st was there to read it from, as the ! says.
-    if (lw.length && lw.every(q => q.r >= +p.repMax))
+    /* How long it has stalled, the span the stall test read (r54, from the
+       audit V asked for: "for 3 weeks" was said of a lift flat for ten, and
+       of its whole stretch at the top of the range, which nothing checks). */
+    const flat = stallWordsIn(M, id);
+    // A last session at the top of its range means st was there to read it from, as the ! says.
+    if (atRangeTopIn(M, id))
       return {
         tone: 'yellow',
-        text: `${exNameIn(M, id)} has been at the top of its range at ${loadLabelIn(M, EXIn(M, id), st!.last.topW)}${EXIn(M, id).bw ? '' : ' ' + UIn(M)} for 3 weeks: it is due a step up, not a new range. The session's target says how.`,
+        text: `${exNameIn(M, id)} is at the top of its range at ${loadLabelIn(M, EXIn(M, id), st!.last.topW)}${EXIn(M, id).bw ? '' : ' ' + UIn(M)} and has stalled ${flat}: it is due a step up, not a new range. The session's target says how.`,
         why: 'Every set reached the top of the range. The next step is more load, or, when one step is large for the load, a few more reps first.',
         act: { label: 'See the lift', sec: 'exercise', ex: id }
       };
     return {
       tone: 'yellow',
       text: `${exNameIn(M, id)} has stalled. Try another rep range or a close variation for a few weeks.`,
-      why: 'Flat or down over its last 6 sessions in this rep range (or 3 weeks), leaving out ones where it was trimmed or done lighter than usual, and, on a lighter day, in a deload, or on an exercise made lighter, ones with fewer reps or sets than usual; with no PR in the last 3 of them, nor a set stronger than any before it in a session left out since the third-last, no heavier load, and no more reps at the same load.',
+      why: STALL_WHY,
       act: { label: 'See the lift', sec: 'exercise', ex: id }
     };
   }
@@ -228,14 +287,28 @@ export function coachIn(M: Model): CoachLine {
   }
   // Someone back from a break (nothing since before the last 4 weeks) has
   // history but no recent weeks; "first full week" was wrong for them.
-  if (!avg)
+  /* Since r54 the averages start the week after the log's first
+     (avgFirstWeekIn), so until that week is over the advice waits for the
+     second week; any other time a full week of training brings it, which
+     r53 also called the first full week to a lifter months in. */
+  if (!avg) {
+    const w = avgWaitIn(M);
+    const text = `${w.lead}Volume advice ${w.kind === 'back' ? 'comes back' : 'appears here'} after ${w.after}.`;
+    return w.kind === 'second'
+      ? { tone: 'blue', text, why: FIRST_WEEK_WHY, wait: true, act: null }
+      : { tone: 'blue', text, wait: true, act: null };
+  }
+  /* Under the minimum only by which days of a cycle fell in the weeks
+     averaged (r54): on plan, so the line says that rather than at target. */
+  const onPlan = mst ? MK.filter(m => !inj.has(m) && mst[m].st === 'plan') : [];
+  if (onPlan.length)
     return {
-      tone: 'blue',
-      text:
-        M.s.sessions.some(x => x.date < addDays(weekStart(M.today()), -28)) &&
-        !M.s.sessions.some(x => x.date >= addDays(weekStart(M.today()), -28))
-          ? 'Nothing logged in the last 4 weeks. Volume advice comes back after a full week of training.'
-          : 'Volume advice appears here after your first full week.',
+      tone: 'green',
+      text: 'Every muscle on plan, nothing stalled.',
+      why: `Under the minimum over these weeks, on plan: ${andList(
+        onPlan.map(m => ML[m]),
+        4
+      )}. ${ON_PLAN_TIP}`,
       act: null
     };
   return { tone: 'green', text: 'Every muscle at target, nothing stalled.', act: null };
@@ -254,8 +327,9 @@ export function musTrend(sc: Pick<Score, 'clear' | 'n' | 'score' | 'wk'>): strin
 /* ---------- READINESS ----------
    The three check-in taps against how the session went: the share of lifts
    that set a PR (a new best estimate or a rep PR), per answer. First sessions
-   of a lift, and deload, lighter and trimmed work, are left out because they
-   cannot show progress. */
+   of a lift, and work done lighter, are left out because they cannot show
+   progress; a session short of its usual, a bad day or one cut short, is in
+   (r54), since how a session went after a poor night is what this reads. */
 /** A check-in answer in a sentence: lower case, except OK. */
 export const chkWord = (n: string): string => (n === 'OK' ? 'OK' : n.toLowerCase());
 
@@ -274,7 +348,7 @@ export function readinessIn(M: Model) {
   const bySid: Record<string, { n: number; p: number }> = {};
   for (const id in I.byEx)
     I.byEx[id]!.forEach((x, i) => {
-      if (i === 0 || offSession(x)) return;
+      if (i === 0 || lighter(x)) return;
       const o = bySid[x.sid] || (bySid[x.sid] = { n: 0, p: 0 });
       o.n++;
       if (x.progress) o.p++;

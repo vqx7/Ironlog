@@ -10,7 +10,7 @@
 // imported name counts as shared state when its module exports it with `let`
 // or the legacy script writes to it, so a store moved into a module in phase 3
 // does not make its readers look pure. `freeNames(node)` is the same
-// scope-aware reading for one declaration, which tests/moved.js uses.
+// scope-aware reading for one declaration, which tests/hygiene.js uses.
 //   node scripts/depmap.js            summary
 //   node scripts/depmap.js --json f   the full map written to f
 // tests/hygiene.js reads `count()` for the ratchet in ARCHITECTURE.md.
