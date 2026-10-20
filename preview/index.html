@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-N/mTXwFTBFccXJeXguQVUbWrTDOjfgCNUlJicBwRfWY=' 'sha256-tuSgXs5JTxAxl+0h6Mmbx/BgvpNDfjiq2RiZRPGtwkc=' 'sha256-YHdgjdaHPObo0ajgr78/3fg0b/g2KACx2Yivxr2AJEo=' 'sha256-Q57MRp0dtRn79q7xquEMcWHAbCyZmEvk/XKE1z/gBBc=' 'sha256-J4UrXwIeplIJZfkgJq3M75mmvlwXBomq0l+LhSwoEfI='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https://fqvupierxrvpoidtwlon.supabase.co wss://fqvupierxrvpoidtwlon.supabase.co https://api.pwnedpasswords.com; worker-src 'self'; manifest-src 'self'; media-src 'self'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-N/mTXwFTBFccXJeXguQVUbWrTDOjfgCNUlJicBwRfWY=' 'sha256-tuSgXs5JTxAxl+0h6Mmbx/BgvpNDfjiq2RiZRPGtwkc=' 'sha256-YHdgjdaHPObo0ajgr78/3fg0b/g2KACx2Yivxr2AJEo=' 'sha256-ONj9Lf/71wJnxK4up8Pn1ydlctCMZAStyt+V5G/3hYg=' 'sha256-J4UrXwIeplIJZfkgJq3M75mmvlwXBomq0l+LhSwoEfI='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https://fqvupierxrvpoidtwlon.supabase.co wss://fqvupierxrvpoidtwlon.supabase.co https://api.pwnedpasswords.com; worker-src 'self'; manifest-src 'self'; media-src 'self'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="app-build" content="2026.10.19-r55">
 <title>Ironlog Preview</title>
@@ -1170,6 +1170,13 @@ loadScript(['vendor/chart.umd.js','https://cdnjs.cloudflare.com/ajax/libs/Chart.
       t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
       return ((t ^ t >>> 14) >>> 0) / 4294967296;
     };
+  }
+  function putById(list, items) {
+    for (const x of items) {
+      const i = list.findIndex((y) => y.id === x.id);
+      if (i >= 0) list.splice(i, 1);
+      list.push(x);
+    }
   }
 
   // src/app/library.ts
@@ -2981,6 +2988,7 @@ loadScript(['vendor/chart.umd.js','https://cdnjs.cloudflare.com/ajax/libs/Chart.
     if (d.editingId) return null;
     const ex = joinAdjacent(d.ex.map(savedEx).filter((b) => b.sets.length));
     if (!ex.length) return null;
+    const chk = cleanChk(d.chk);
     return {
       id: d.id,
       date: d.date,
@@ -2994,8 +3002,13 @@ loadScript(['vendor/chart.umd.js','https://cdnjs.cloudflare.com/ajax/libs/Chart.
       deload: !!d.deload,
       light: !!d.light,
       free: d.free ? true : void 0,
-      demo: false
+      demo: false,
+      ...chk ? { chk } : {},
+      ...d.startedAt && d.startedAt > 0 ? { t: d.startedAt } : {}
     };
+  }
+  function draftCardio(d) {
+    return (d.cardio || []).filter((c) => (c.min || 0) > 0).map((c) => ({ ...c, date: d.date }));
   }
   function joinAdjacent(ex) {
     const out = [];
@@ -3781,7 +3794,8 @@ loadScript(['vendor/chart.umd.js','https://cdnjs.cloudflare.com/ajax/libs/Chart.
     modal: null,
     folds: {},
     rng: {},
-    eqLast: null
+    eqLast: null,
+    refix: null
   };
   var cloud = {
     on: false,
@@ -7749,9 +7763,10 @@ loadScript(['vendor/chart.umd.js','https://cdnjs.cloudflare.com/ajax/libs/Chart.
         } else {
           merged = true;
           const base = realCount(mine) > realCount(rState) ? mine : rState, other = base === mine ? rState : mine;
-          const kept = state.draft && rState.draft && rState.draft.id !== state.draft.id ? draftSession(rState.draft) : null;
+          const aside = state.draft && rState.draft && rState.draft.id !== state.draft.id ? rState.draft : null;
+          const kept = aside ? draftSession(aside) : null;
           keptDraft = !!kept && ![...mine.sessions, ...rState.sessions].some((x) => x.id === kept.id);
-          setState(normalize({ ...base, exercises: unionById(base.exercises, other.exercises), routines: unionById(base.routines, other.routines), sessions: unionById(mine.sessions, keptDraft ? [...rState.sessions, kept] : rState.sessions), bodyweights: unionById(mine.bodyweights, rState.bodyweights), measurements: unionById(mine.measurements, rState.measurements), cardio: unionById(mine.cardio, rState.cardio), trash: unionById(state.trash, rState.trash), draft: state.draft || rState.draft }));
+          setState(normalize({ ...base, exercises: unionById(base.exercises, other.exercises), routines: unionById(base.routines, other.routines), sessions: unionById(mine.sessions, keptDraft ? [...rState.sessions, kept] : rState.sessions), bodyweights: unionById(mine.bodyweights, rState.bodyweights), measurements: unionById(mine.measurements, rState.measurements), cardio: unionById(mine.cardio, aside ? [...rState.cardio, ...draftCardio(aside)] : rState.cardio), trash: unionById(state.trash, rState.trash), draft: state.draft || rState.draft }));
           for (const id of rids) {
             cloud.meta[id] = { h: remote[id].h, at: remote[id].at, b: baseOf(id, remote[id].data) };
             cloud.editAt[id] = Date.now();
@@ -9159,7 +9174,7 @@ loadScript(['vendor/chart.umd.js','https://cdnjs.cloudflare.com/ajax/libs/Chart.
       for (const x of IDX().byEx[b.exId] || []) for (const p of x.pts) best = Math.max(best, p.r);
       return r > 2 * Math.max(+b.plan.repMax || 0, best);
     }
-    function setDone(bi, si, val) {
+    function setDone(bi, si, val, again) {
       const b = state.draft.ex[bi];
       const s = b && b.sets[si];
       if (!s) return;
@@ -9170,10 +9185,11 @@ loadScript(['vendor/chart.umd.js','https://cdnjs.cloudflare.com/ajax/libs/Chart.
         const fix = far ? "w" : "r";
         confirmBox(`${setShort(ex, effW(b, si), s.r)}${ex.bw ? "" : " " + U()}?`, `${far || `${s.r} ${ex.timed ? "seconds" : "reps"} is far past your ${rangeWords(b.plan)} and anything logged on this exercise.`} Log it as typed, or go back and fix it.`, "Log it", () => {
           oddOk = okKey;
-          setDone(bi, si, true);
+          setDone(bi, si, true, again);
           saveNow();
           rerenderKeepScroll();
         }, false, { label: "Fix it", only: true, fn: () => {
+          if (again) ui.refix = { b: blkRef(bi), s: si };
           const f = document.querySelector(`.sg input[data-f="${fix}"][data-b="${bi}"][data-s="${si}"]`);
           if (f) {
             f.focus();
@@ -9202,7 +9218,7 @@ loadScript(['vendor/chart.umd.js','https://cdnjs.cloudflare.com/ajax/libs/Chart.
         const w = $("#doneWord");
         if (w) w.textContent = n === 1 ? "set" : "sets";
       }
-      let autoRest = val && !s.warm && !state.draft.editingId && !state.draft.past && +b.plan.rest > 0 && state.settings.timerMode === "auto";
+      let autoRest = val && !again && !s.warm && !state.draft.editingId && !state.draft.past && +b.plan.rest > 0 && state.settings.timerMode === "auto";
       if (autoRest && b.plan.ss) {
         const grp = state.draft.ex.filter((x) => x.plan && x.plan.ss === b.plan.ss);
         const k = grp.indexOf(b);
@@ -13343,7 +13359,7 @@ ${extraKpis()}</div>`;
       let defW = null;
       for (const t of it.setsText) {
         let st = impSetsText(t);
-        const lu = /\bkgs?\b|\dkgs?\b/i.test(t) ? "kg" : /\blbs?\b|\dlbs?\b/i.test(t) ? "lb" : null;
+        const lu = /(?:\b|\d)kgs?(?![a-wyz])/i.test(t) ? "kg" : /(?:\b|\d)lbs?(?![a-wyz])|\d\s*#/i.test(t) ? "lb" : null;
         const cv = lu === "kg" ? ((v) => v) : lu === "lb" ? ((v) => v * LB) : conv;
         if (exo.bw && !exo.assist) st = st.replace(/(^|[\s,])(\d{1,2})x(\d{1,3})(?=$|[\s,])/g, (m, p, a, b) => +a <= 10 && !/@/.test(st) ? p + Array(+a).fill("bwx" + b).join(" ") : m);
         else if (!exo.timed && /^\s*[1-5]\s*[x×*]\s*\d{1,3}(\s*,?\s*[1-5]\s*[x×*]\s*\d{1,3})*\s*$/.test(String(t).toLowerCase())) {
@@ -13749,6 +13765,7 @@ ${extraKpis()}</div>`;
       confirmBox("Replace all data?", body, "Replace my data", () => {
         snapshot();
         setState(clean);
+        if (!cloud.on) cloudStop(true);
         commit();
         closeModal();
         ui.tab = "today";
@@ -14865,6 +14882,7 @@ ${extraKpis()}</div>`;
         const go = () => {
           snapshot();
           setState(st);
+          if (!cloud.on) cloudStop(true);
           commit();
           closeModal();
           ui.tab = "today";
@@ -16448,10 +16466,10 @@ ${JSON.stringify(fb.context, null, 1)}`;
         const exJ = joinAdjacent(ex);
         ex.length = 0;
         ex.push(...exJ);
-        const cardio = (d.cardio || []).filter((c) => c.min > 0).map((c) => cleanCardio({ ...c, date: d.date }));
+        const cardio = draftCardio(d).map((c) => cleanCardio(c));
         if (!ex.length) {
           if (cardio.length && !d.editingId) {
-            state.cardio.push(...cardio);
+            putById(state.cardio, cardio);
             state.draft = null;
             commit();
             stopTimer();
@@ -16492,7 +16510,7 @@ ${JSON.stringify(fb.context, null, 1)}`;
             const pw = d.editingId || d.free ? void 0 : pwOf(state.routines, d.routineId);
             if (pw) sess.pw = pw;
           }
-          if (!d.editingId) state.cardio.push(...cardio);
+          if (!d.editingId) putById(state.cardio, cardio);
           if (!d.editingId && calDueIdx(d) >= 0 && !d.ex.some((b) => b.sets.some((x) => x.cal && x.done))) state.settings.calSnooze = today();
           const upd2 = d.editingId ? null : routineUpdates(d);
           if (d.editingId) {
@@ -16511,7 +16529,7 @@ ${JSON.stringify(fb.context, null, 1)}`;
               });
               state.sessions[i] = sess;
             } else state.sessions.push(sess);
-          } else state.sessions.push(sess);
+          } else putById(state.sessions, [sess]);
           const demoGone = !d.editingId && (state.sessions.some((x) => x.demo) || state.bodyweights.some((x) => x.demo) || state.measurements.some((x) => x.demo));
           if (demoGone) {
             stripDemo(state);
@@ -17269,6 +17287,7 @@ ${JSON.stringify(fb.context, null, 1)}`;
           const first = demoFirstRun();
           demoKeep();
           if (first) fitTargets(activeRoutine());
+          if (!cloud.on) cloudStop(true);
           makeDemo();
           ui.tab = "dash";
           window.scrollTo(0, 0);
@@ -17883,17 +17902,21 @@ ${JSON.stringify(fb.context, null, 1)}`;
         if (t.dataset.f === "w" && state.draft) {
           const s = draftSet(t);
           if (!s) return;
-          if (s.done && oddLoad(state.draft.ex[+t.dataset.b], +t.dataset.s, state.draft.date)) {
-            setDone(+t.dataset.b, +t.dataset.s, false);
-            setDone(+t.dataset.b, +t.dataset.s, true);
+          const bi = +t.dataset.b, si = +t.dataset.s;
+          const rf = !!ui.refix && ui.refix.s === si && blkIdx(ui.refix.b) === bi;
+          if (rf) ui.refix = null;
+          if (s.done && oddLoad(state.draft.ex[bi], si, state.draft.date)) {
+            setDone(bi, si, false);
+            setDone(bi, si, true, true);
             return;
           }
-          if (s.done) {
-            refreshPR(+t.dataset.b, +t.dataset.s, false);
-            afterSet(+t.dataset.b, +t.dataset.s);
+          if (rf && !s.done) setDone(bi, si, true, true);
+          else if (s.done) {
+            refreshPR(bi, si, false);
+            afterSet(bi, si);
           }
-          mixCheck(+t.dataset.b, +t.dataset.s);
-          if (fillLoads()) carryLoad(+t.dataset.b, +t.dataset.s);
+          mixCheck(bi, si);
+          if (fillLoads()) carryLoad(bi, si);
         }
         if (t.tagName === "SELECT" && state.draft) {
           const s = draftSet(t);
