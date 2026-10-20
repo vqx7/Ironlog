@@ -263,7 +263,7 @@ Each release adds here the names it made or changed and why, so the map stays se
 - **The screens, from the modules:** `fx` and `setFx` in `store.ts` (`render`, `rerenderKeepScroll`, `toast`, `setSaveState`, `syncLine`, `obGate`), filled by the first statement of the legacy script (`src/10-start.js`), then `storageStart()`, `syncStart()`. `syncLine` (`src/14-account.js`) is the sync line redrawn in place; `setSaveState` is in `src/18-ui.js`.
 - **Types:** `Settings`, `Measurement` (`types.ts`); `State` gained `version`, `settings: Settings`, `measurements`, `draft: DraftLike | null`; `Cloud` typed field by field, with `CloudDb`, `CloudRef`, `CloudSnap`, `SyncNote`, `Base` (`store.ts`); the page's services declared in `providers.ts` (`ironlogAuth` with `signOut`, `claude.use`, `ironlogCloud`), which is now layer 3.
 - **Helpers that read documents:** `merge3List` and `unionById` take their lists as they come (a list field that is no list reads as empty); `emptyChunk` returns a `Rec`; `bodyChunkOf` takes any value; `did` takes no position; `Dated.t` may be absent.
-- **Checks:** `tests/r56.js` (the moved code against `baselines/r55.html`); `tests/hygiene.js` rule 3 counts a logged catch as handled.
+- **Checks:** `tests/r56.js` (the moved code against `baselines/r55.html`); `tests/hygiene.js` rule 3 counts a logged catch as handled. `tests/r43.js`'s simulated next build changes `src/app/normalize.ts` now (the exercise record moved there): `scripts/join.js`'s `build({ override })` takes a module (`app/<name>.ts`) as well as a part, writing it into a copy of `src/` the bundle reads, since the synchronous bundle takes no plugin.
 
 ## PENDING.md's Done section, by release (r55 back)
 

@@ -14,10 +14,10 @@
 //   node scripts/join.js            writes index.html
 //   node scripts/join.js --stdout   prints the page instead
 //   node scripts/join.js --check    exits 1 when index.html is not what src/ builds to
-//   require('./join').build({ override: { '16-engine.js': text } })
-//                                   the page built with some parts replaced, for a
-//                                   suite that needs a different build (tests/r43.js)
-const fs = require('fs'); const path = require('path');
+//   require('./join').build({ override: { '16-engine.js': text, 'app/normalize.ts': text } })
+//                                   the page built with some parts or modules replaced, for
+//                                   a suite that needs a different build (tests/r43.js)
+const fs = require('fs'); const path = require('path'); const os = require('os');
 const esbuild = require('esbuild');
 const root = path.join(__dirname, '..'); const dir = path.join(root, 'src');
 const IMPORTS = '09-imports.js';
@@ -70,7 +70,12 @@ function fill(t) {
 
 function build({ override = {} } = {}) {
   const all = fs.readdirSync(dir).filter(f => /^\d\d-.+\.(html|css|js)$/.test(f)).sort();
-  for (const f of Object.keys(override)) if (!all.includes(f)) throw new Error(`join: no part ${f} to override`);
+  // A replaced module (app/<name>.ts, r56) is written into a copy of src/ that
+  // the bundle reads instead, because the bundler takes the modules from disk
+  // (its synchronous build, which the --check and the suites need, takes no plugin).
+  const mods = Object.keys(override).filter(f => /^app\/[\w-]+\.ts$/.test(f));
+  for (const f of Object.keys(override)) if (!mods.includes(f) && !all.includes(f)) throw new Error(`join: no part ${f} to override`);
+  for (const f of mods) if (!fs.existsSync(path.join(dir, f))) throw new Error(`join: no module ${f} to override`);
   const read = f => (f in override ? override[f] : fs.readFileSync(path.join(dir, f), 'utf8'));
   const legacy = all.filter(isLegacy);
   const page = all.filter(f => !isLegacy(f) && f !== IMPORTS);
@@ -82,23 +87,35 @@ function build({ override = {} } = {}) {
   // appended inside a part would otherwise ride along (the r51 mutation test).
   const parsed = require('acorn').parse(body, { ecmaVersion: 'latest', sourceType: 'script' });
   if (parsed.body.length !== 1) throw new Error(`join: the legacy parts must be one statement, the wrapper's call; they are ${parsed.body.length}`);
-  const out = esbuild.buildSync({
-    stdin: { contents: read(IMPORTS) + body, sourcefile: 'legacy.js', resolveDir: dir, loader: 'js' },
-    bundle: true, format: 'iife', target: 'esnext', platform: 'browser',
-    // An import resolves to a .ts or .js file by its path and nothing else:
-    // never a .tsx beside a module (the r51 mutation test put one there, and
-    // the bundle took it first while every check read the .ts).
-    resolveExtensions: ['.ts', '.js'],
-    // Nothing is removed beyond what bundling needs: the legacy code keeps
-    // every function, so window.__ironlog and the tests see it whole.
-    treeShaking: false, minify: false, charset: 'utf8', legalComments: 'none',
-    // ES modules always run in strict mode, and the legacy script declares it
-    // itself, but the wrapper esbuild puts around the bundle does not, so the
-    // modules' code would run in sloppy mode on the page (the r50 review).
-    // The directive at the top of the script makes all of it strict.
-    banner: { js: '"use strict";' },
-    write: false, logLevel: 'silent',
-  });
+  let srcDir = dir, copy = null;
+  if (mods.length) {
+    copy = fs.mkdtempSync(path.join(os.tmpdir(), 'join-'));
+    fs.cpSync(dir, copy, { recursive: true });
+    for (const f of mods) fs.writeFileSync(path.join(copy, f), override[f]);
+    srcDir = copy;
+  }
+  let out;
+  try {
+    out = esbuild.buildSync({
+      stdin: { contents: read(IMPORTS) + body, sourcefile: 'legacy.js', resolveDir: srcDir, loader: 'js' },
+      bundle: true, format: 'iife', target: 'esnext', platform: 'browser',
+      // An import resolves to a .ts or .js file by its path and nothing else:
+      // never a .tsx beside a module (the r51 mutation test put one there, and
+      // the bundle took it first while every check read the .ts).
+      resolveExtensions: ['.ts', '.js'],
+      // Nothing is removed beyond what bundling needs: the legacy code keeps
+      // every function, so window.__ironlog and the tests see it whole.
+      treeShaking: false, minify: false, charset: 'utf8', legalComments: 'none',
+      // ES modules always run in strict mode, and the legacy script declares it
+      // itself, but the wrapper esbuild puts around the bundle does not, so the
+      // modules' code would run in sloppy mode on the page (the r50 review).
+      // The directive at the top of the script makes all of it strict.
+      banner: { js: '"use strict";' },
+      write: false, logLevel: 'silent',
+    });
+  } finally {
+    if (copy) fs.rmSync(copy, { recursive: true, force: true });
+  }
   const script = escapeMarkup(out.outputFiles[0].text);
 
   const parts = [];
