@@ -243,6 +243,18 @@ Each release adds here the names it made or changed and why, so the map stays se
 
 - **The second review of r55 (328):** a log replaced while signed out (a backup restored, Copy my log in, demo data loaded, Erase everything) runs `cloudStop(true)` when `!cloud.on`, so the notes kept with the old copy are forgotten and the next sign-in is a first link. `draftSession` keeps a kept workout's check-in (`cleanChk`) and start (`t`); `draftCardio(d)` (`session.ts`) is the one reading of a workout's cardio rows, for Finish and for the first link's kept workout. `putById(list, items)` (`util.ts`) puts records in by id, replacing a copy under the same id: Finish puts its session and cardio in with it. `setDone(bi, si, val, again)`: `again` for a set the far-off question unticked, ticked again by Log it or by the load fixed after Fix it (`ui.refix`, `store.ts`), its rest not started over. `impTextSets` reads a unit glued to the x and # as pounds.
 
+### r55.1 (2026-10-20, version 2.7; PENDING 325 a, 327, 328 d and 330)
+
+- **A light 0 (325 a):** `lightZeroIn(M, b, si, date)` (`engine.ts`, beside `oddLoadIn`) is a ticked 0 at a load under `LIGHTER_LOAD` of the heavier of `b.sw` and today's heaviest working set, loads with the bodyweight share; `setDone` asks Log it as missed or Fix it for it, a ticked set's reps changed to 0 go through `setDone` again, and Finish's Mark it done reads it.
+- **Imports:** `IMP_COLS` reads `snote` (Workout Notes, description), `dur` (Strong's Duration, only with Strong's own columns), `end` (Hevy's end_time) and `ss` (superset_id); `impSpan(dur, start, end)` is the minutes; `impBuild` returns `ssOf` (each session's supersets by lift) and `routineFromLog(sessions, ssOf)` groups the day's items by its latest session's.
+- **A deleted account:** `scripts/cloud-supabase.js`'s `friendly` turns 23503 and `user_not_found` into the code `gone`; `cloudFail` signs out, forgets the notes and says so. `tests/fake-supabase.js` keeps a deleted account's other tokens valid, its writes refused with 23503 and its user with user_not_found.
+- **Quick entry:** `fillSets` ticks each set not far off in order and hands the first far one to `setDone`'s question.
+- **Units:** `prSameLoad` allows half the shown digit (`TYPED_STEP` in the typed unit); `blockProgress` judges a heavier set at that load.
+- **Plates:** `plateGridIn(M, ex, plan)` (`engine.ts`) is a bar lift's grid (bar, pair of the smallest plate) when Your gym's plates allow one; `plateSnap` replaces `unitSnap` and `gridSnap` for it in `snapUnitIn`; `incOfIn`, `lighterLoadIn` and `heavierLoadIn` step on it; `moveIn` is the shared tail of a moved suggestion (load, a reps target turned into a load target when heavier, the step named in the words).
+- **Breaks in two ranges:** `rangeInUse(full, want)` measures the 42-day window to the last session before a break; `suggestCoreIn` and `backDaysIn` read it.
+- **Undo:** `ACT.undo` merges the draft from the three versions normalized.
+- **Demo:** `ACT.demoLoad` does nothing but say why while `acct.user` is set.
+
 ## PENDING.md's Done section, by release (r55 back)
 
 #### r55, live since 2026-10-20 (pull request #48, merged by V; build 2026.10.19-r55)
