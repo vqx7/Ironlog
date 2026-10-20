@@ -5573,13 +5573,13 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
   function rangeInUse(full, want) {
     const last = full.filter((x) => !!x.rr && x.rr[0] === want[0] && x.rr[1] === want[1]).pop();
     if (!last) return false;
-    let end = last;
+    let prev = last, span = 0;
     for (const x of full) {
-      if (x.date <= end.date) continue;
-      if (afterBreak(end, x.date)) break;
-      end = x;
+      if (x.date <= last.date) continue;
+      if (!afterBreak(prev, x.date)) span += daysBetween(prev.date, x.date);
+      prev = x;
     }
-    return last.date >= addDays(end.date, -42);
+    return span <= 42;
   }
   function suggestCoreIn(M, exId, plan, opts) {
     opts = opts || {};

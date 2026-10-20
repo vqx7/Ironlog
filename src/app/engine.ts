@@ -386,27 +386,27 @@ export function suggestIn(M: Model, exId: string, plan: Plan, opts?: SuggestOpts
   );
 }
 
-/* Whether the plan's rep range is in use for a lift (r27): its newest full
-   session in that range lies within the trend window (42 days) of the lift's
-   newest full session before a break. A lift on two days at two ranges then
-   reads each from its own sessions; a range left for another while training
-   went on (a lift back on 8-12 after months on 5-8), or never logged, reads
-   them all. A break of more than four weeks (afterBreak) is no change of
-   range: the window is measured up to the last session before it, so a
-   range trained before a break is still its own after it (r55.1, the spec
-   review: with the window read to the session after the break, a heavy day
-   six weeks off read the light day's eased session as its start). The target
+/* Whether the plan's rep range is in use for a lift (r27): the lift was
+   trained for no more than the trend window (42 days) since the range's newest
+   full session. A lift on two days at two ranges then reads each from its own
+   sessions; a range left for another while training went on (a lift back on
+   8-12 after months on 5-8), or never logged, reads them all. A break of more
+   than four weeks (afterBreak) is time not trained, so it does not count
+   toward the window, and a range trained just before a break is still its
+   own after it (r55.1, the spec review: counting the break, a heavy day six
+   weeks off read the light day's eased session as its start). The target
    (suggestCoreIn) and the return after a break (backDaysIn) read it alike. */
 function rangeInUse(full: readonly Exposure[], want: readonly [number, number]): boolean {
   const last = full.filter(x => !!x.rr && x.rr[0] === want[0] && x.rr[1] === want[1]).pop();
   if (!last) return false;
-  let end: Exposure = last;
+  let prev: Exposure = last,
+    span = 0;
   for (const x of full) {
-    if (x.date <= end.date) continue;
-    if (afterBreak(end, x.date)) break;
-    end = x;
+    if (x.date <= last.date) continue;
+    if (!afterBreak(prev, x.date)) span += daysBetween(prev.date, x.date);
+    prev = x;
   }
-  return last.date >= addDays(end.date, -42);
+  return span <= 42;
 }
 
 /* The load engine's prescription for one lift (r36: the 250-line function cut
