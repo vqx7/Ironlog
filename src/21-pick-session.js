@@ -261,7 +261,7 @@ function weekPlan(R){
 function weekBar(){
   const R=activeRoutine();const cur=weekStart(today()),t=today();const weekly=R.schedule==='weekly';
   const cByDate={};for(const c of state.cardio)(cByDate[c.date]=cByDate[c.date]||[]).push(c);
-  const plan=weekPlan(R);let h='';
+  const rw=isRestWeek(cur);const plan=rw?{}:weekPlan(R);let h=''; // A rest week plans nothing, so no day in it reads planned or missed (r55, the audit: the bar said "Upper A, missed" under "Rest week. Nothing planned.").
   // The + on empty past days appears once there is a log to add to; a brand-new week bar stays clean (the days still open the sheet).
   const hasLog=state.sessions.length>0;
   for(let i=0;i<7;i++){
@@ -271,7 +271,7 @@ function weekBar(){
     const live=!!state.draft&&!state.draft.editingId&&d===state.draft.date;
     const cls=['w',trained?'on':'',!trained&&cd.length?'cardio':'',!trained&&!cd.length&&isPlan&&d>=t?'plan':'',!trained&&weekly&&isPlan&&d<t?'miss':'',!trained&&!cd.length&&isRest&&d>=t?'rest':'',d===t?'today':'',live?'live':''].filter(Boolean).join(' ');
     const name=trained?ss[0].dayName+(ss.length>1?` +${ss.length-1}`:''):cd.length?'Cardio':p&&d>=t?(isRest?'Rest':pd.name):(weekly&&isPlan&&d<t?pd.name:'');
-    const what=trained?`${ss.map(x=>x.dayName).join(', ')}, logged`:live?'session in progress':isPlan?(d<t?(weekly?`${pd.name}, missed`:'nothing logged'):`${pd.name}, planned`):isRest&&d>=t?'rest day':'nothing logged';
+    const what=trained?`${ss.map(x=>x.dayName).join(', ')}, logged`:live?'session in progress':isPlan?(d<t?(weekly?`${pd.name}, missed`:'nothing logged'):`${pd.name}, planned`):isRest&&d>=t?'rest day':rw?'rest week':'nothing logged';
     const label=`${DAYS[i]} ${fmtDate(d)}: ${what}${cd.length?`, cardio ${cd.reduce((a,c)=>a+c.min,0)} min`:''}`;
     const inner=`<span class="wd">${WD2[i]}</span><span class="dn">${+d.slice(8)}</span><span class="nm">${name?esc(name):'&nbsp;'}</span>`;
     if(live&&d<t)h+=`<button type="button" class="${cls}" data-act="wkGo" data-date="${d}" data-tip="${esc(label)}" aria-label="${esc(label)}. Open the session">${inner}</button>`;
@@ -332,7 +332,7 @@ function weekBody(w){
   ${helpText('wk','Each set counts once; a set at RIR 4 or more is not hard and does not count. Muscle targets are on the Muscle map and in Stats.')}`;
   if(w.rest)return `${tog}<div class="hrow" style="margin:5px 0 0"><p class="small muted" style="margin:0" id="wkSets">Rest week. ${w.got?`${r1(w.got)} hard sets logged.`:'Nothing planned.'}</p>${helpBtn('wk')}</div>
   ${w.cardioMin?`<p class="small" style="margin:5px 0 0">Cardio and mobility: ${w.cardioMin} min in ${w.cardioN} entr${w.cardioN===1?'y':'ies'}</p>`:''}${liftedLine()}
-  ${helpText('wk','A rest week you marked in Settings. It does not count as missed: your averages, streak, and adherence skip it.')}`;
+  ${helpText('wk','A rest week you marked under More options on Today. It does not count as missed: your averages, streak, and adherence skip it.')}`;
   return `${tog}${w.weekly?'':cycleStrip(w.R)}
   <div class="band" data-tip="${noLog()?`${w.tgt} hard sets planned`:`${w.got} hard sets logged of ${w.tgt} planned`}"><div class="fill prog" style="width:${w.pct}%"></div></div>
   ${w.cardioMin?`<p class="small" style="margin:5px 0 0">Cardio and mobility: ${w.cardioMin} min in ${w.cardioN} entr${w.cardioN===1?'y':'ies'}</p>`:''}
@@ -369,15 +369,15 @@ function liftTrend(exId){
      follows the numbers shown: within 1% is flat, so "301 → 300.7 · up"
      cannot happen. Isolation lifts show their top sets, not a 1RM. */
   const ex=EX(exId);const st=IDX().exStats[exId];
-  const exps=(IDX().byEx[exId]||[]).filter(x=>x.tv!=null&&!lighter(x)).slice(-3);
+  const exps=(IDX().byEx[exId]||[]).filter(x=>x.tv!=null&&!lighter(x)&&(!st||sameRR(x.rr,st.rr))).slice(-3); // in the trend's range, so a heavy and a light day are not read as one line (r55)
   if(exps.length<2)return '';
   /* The word follows the lift's trend when it has one (r32, from the third
      review: a press flat for 7 weeks read "67.5 → 69.7 → 69.7 · up" from its
      last three sessions). */
   // With no trend yet (under 3 sessions over 2 weeks), no word at all (r32, second check: "· up" from three sessions in a week).
   /* The word covers the trend's weeks, not just the three numbers shown (r34.2: "252 → 249 → 252 · up"), and says nothing for a lift weeks off. */
-  const ow=st&&st.spanW?` over ${st.spanW} weeks`:'';
-  const dir=st&&st.fresh&&st.pct!=null?(st.moving?`up${ow}`:st.falling?`down${ow}`:st.pLo!=null&&st.pLo>0?`slowly up${ow}`:st.pHi!=null&&st.pHi<0?`slowly down${ow}`:`no clear change over ${st.spanW||2} weeks`):'';
+  const ow=st&&st.spanW?` over ${st.spanW} weeks${st.rrIn?` in the ${repSpan(st.rrIn[0],st.rrIn[1])} range`:''}`:'';
+  const dir=st&&st.fresh&&st.pct!=null?(st.moving?`up${ow}`:st.falling?`down${ow}`:st.holdRR&&st.holdRR.length?`down${ow}`:st.pLo!=null&&st.pLo>0?`slowly up${ow}`:st.pHi!=null&&st.pHi<0?`slowly down${ow}`:`no clear change over ${st.spanW||2} weeks`):'';
   if(isCompound(ex)&&exps.every(x=>x.best!=null)){
     const v=exps.map(x=>fmtE(x.best));const d2=dir;
     return `<p class="small muted" style="margin:2px 0">Est. 1RM <span class="trend">${v.join(' → ')} ${U()}</span>${d2?' · '+d2:''}${st&&!st.useAdj?' '+tipi('Read from loads and reps alone: RIR is rated on too few of its sets to compare sessions fairly.','About this trend'):''}</p>`;
@@ -525,13 +525,13 @@ function viewLogger(){
     const ex=EX(b.exId);const p=b.plan;const ss=p.ss?letters[p.ss]:null;const nr=!rirShow(ex);const dupB=lastDup(d,bi);
     if(!d.editingId&&blockDone(b)&&!blkIsOpen(bi,b)){
       const ws=b.sets.filter(x=>!x.warm);const prs=ws.filter(x=>livePR(b.exId,x,d.date)).length;
-      h+=`<section class="block folded" id="blk-${bi}" data-bi="${bi}">${bgrip(bi,ex.name)}<button class="bfold" data-act="bOpen" data-b="${bi}" aria-expanded="false" aria-label="${esc(ex.name)}, done. Open to edit"><span class="bf-ck" aria-hidden="true">✓</span><span class="bf-t"><b>${esc(ex.name)}</b><span>${esc(ws.map(x=>setShort(ex,x.w,x.r)).join(', '))}</span></span>${prs?`<span class="bf-pr">PR</span>`:''}<span class="chev" aria-hidden="true"></span></button></section>`;
+      h+=`<section class="block folded" id="blk-${bi}" data-bi="${bi}">${bgrip(bi,ex.name)}<button class="bfold" data-act="bOpen" data-b="${bi}" aria-expanded="false" aria-label="${esc(ex.name)}, done. Open to edit"><span class="bf-ck" aria-hidden="true">✓</span><span class="bf-t"><b>${esc(ex.name)}</b><span>${esc(ws.map(x=>setShort(ex,x.w,x.r)+missedTag(x)).join(', '))}</span></span>${prs?`<span class="bf-pr">PR</span>`:''}<span class="chev" aria-hidden="true"></span></button></section>`;
       return;
     }
     const partner=ss?d.ex.filter(x=>x!==b&&x.plan.ss===p.ss).map(x=>exName(x.exId)).join(' + '):'';
-    h+=`<section class="block${ss?' ss':''}" id="blk-${bi}" data-bi="${bi}"><div class="bh">${bgrip(bi,ex.name)}<div class="bh-m"><h3 ${ex.note?`aria-labelledby="bhn-${bi}"`:''}><span id="bhn-${bi}">${esc(ex.name)}</span>${ex.note?` ${tipi(ex.note,'About '+ex.name)}`:''}</h3><p class="small muted">${esc(ML[ex.primary])} · ${b.sets.filter(x=>!x.warm&&!x.drop).length||p.sets}×${repSpan(p.repMin,p.repMax,'-')}${ex.timed?'s':''}${ex.perSide?'/side':''}${nr?'':` @${effTgt(p.rir)}`} · ${p.rest}s${ss?` · <span class="tag blue">Superset ${ss}</span>`:''}${b.inj?` · <span class="tag red">Injury: ${injLabel(b.inj)}</span>`:''}</p>${lmChips(ex)}</div>
+    h+=`<section class="block${ss?' ss':''}" id="blk-${bi}" data-bi="${bi}"><div class="bh">${bgrip(bi,ex.name)}<div class="bh-m"><h3 ${ex.note?`aria-labelledby="bhn-${bi}"`:''}><span id="bhn-${bi}">${esc(ex.name)}</span>${ex.note?` ${tipi(ex.note,'About '+ex.name)}`:''}</h3><p class="small muted">${esc(ML[ex.primary])} · ${b.sets.filter(x=>!x.warm&&!x.drop).length||p.sets}×${repSpan(p.repMin,p.repMax,'-')}${ex.timed?'s':''}${ex.perSide?'/side':''}${nr?'':` @${b.inj||(d.light||d.deload||b.light)&&b.last?effLeastShort(rirScale(),LIGHT_RIR):effTgt(p.rir)}`} · ${p.rest}s${ss?` · <span class="tag blue">Superset ${ss}</span>`:''}${b.inj?` · <span class="tag red">Injury: ${injLabel(b.inj)}</span>`:''}</p>${lmChips(ex)}</div>
       <div class="bh-acts">${!d.editingId&&blockDone(b)?`<button class="ib" aria-label="Fold ${esc(ex.name)}" data-act="bFold" data-b="${bi}">▴</button>`:''}<button class="ib" aria-label="Exercise options" data-act="bMenu" data-b="${bi}">⋯</button></div></div>
-      ${b.target?`<p class="hint"><b>Today: ${esc(targetText(b))}</b>${whyTarget(b)?` ${tipi(whyTarget(b),'Why this target')}`:''}<span class="tp muted" style="display:block">${esc(lastHead(b,dupB))}</span>${(()=>{const bl=bestLine(b.exId);return bl?`<span class="tp muted" style="display:block">${esc(bl)}</span>`:'';})()}${b.easier?`<span class="tp ez">${esc(b.easier)}</span>`:''}${progressLine(b,bi)}</p>`:`<p class="hint">${esc(hintOnce(b.hint||'',hintSeen))}</p>`}${bi===calIdx?`<p class="small caldue">Due for an RIR check: take one set here to failure. <button class="linkbtn tall" data-act="bCal" data-b="${bi}">Calibration set</button> <button class="linkbtn tall" data-act="calSnooze">Not now</button></p>`:''}
+      ${b.target?`<p class="hint"><b>Today: ${esc(targetText(b))}</b>${whyTarget(b)?` ${tipi(whyTarget(b),'Why this target')}`:''}<span class="tp muted" style="display:block">${esc(lastHead(b,dupB))}</span>${(()=>{const bl=bestLine(b.exId,d.past?d.date:'');return bl?`<span class="tp muted" style="display:block">${esc(bl)}</span>`:'';})()}${b.easier?`<span class="tp ez">${esc(b.easier)}</span>`:''}${progressLine(b,bi)}</p>`:`<p class="hint">${esc(hintOnce(b.hint||'',hintSeen))}</p>`}${bi===calIdx?`<p class="small caldue">Due for an RIR check: take one set here to failure. <button class="linkbtn tall" data-act="bCal" data-b="${bi}">Calibration set</button> <button class="linkbtn tall" data-act="calSnooze">Not now</button></p>`:''}
       ${ss&&partner?`<p class="small muted" style="margin:2px 0 0">Superset with ${esc(partner)}; rest after the pair.</p>`:''}
       ${b.lastNote&&!b.note?`<p class="small lnote">Your note, ${esc(fmtDate(b.lastNote.date))}: ${esc(b.lastNote.text)} <button class="linkbtn" data-act="noteReuse" data-b="${bi}">Use again</button></p>`:''}
       ${b.note?`<p class="small bnote" id="bn-${bi}">${esc(b.note)}</p>`:`<p class="small bnote" id="bn-${bi}" hidden></p>`}
@@ -546,7 +546,7 @@ function viewLogger(){
         <input type="text" inputmode="decimal" enterkeyhint="next" aria-label="${esc(ex.name)}, set ${si+1} load" data-f="w" data-b="${bi}" data-s="${si}" value="${loadIn(ex,s.w)}" placeholder="${(()=>{const g=s.w==null?greyW(b,si):null;return g!=null?loadIn(ex,g):emptyLoad(ex);})()}">
         <input type="text" inputmode="numeric" enterkeyhint="next" aria-label="${esc(ex.name)}, set ${si+1} ${ex.timed?'seconds':'reps'}${ex.perSide?' per side':''}" data-f="r" data-b="${bi}" data-s="${si}" value="${s.r==null?'':s.r}" placeholder="${ph}">
         ${nr?'':rirSelect(s.rir,bi,si,p.rir)}
-        <button class="cbtn ${s.done?'on':''}" aria-label="Set ${si+1} done" aria-pressed="${s.done?'true':'false'}" data-act="sDone" data-b="${bi}" data-s="${si}">✓</button></div>`;
+        <button class="cbtn ${s.done?'on':''}" aria-label="Set ${si+1} ${s.done&&isMissed(s)?'missed':'done'}" aria-pressed="${s.done?'true':'false'}" data-act="sDone" data-b="${bi}" data-s="${si}">✓</button></div>`;
     });
     h+=adjLine(b,bi);
     if(platesMode(ex)!=='none')h+=`<p class="small muted" id="pl-${bi}" style="margin:6px 0 0">${esc(plateLine(b))}</p>`;

@@ -72,8 +72,9 @@ const FILE = 'index.html';
     ok(setFill, 'Fill in suggested loads is still in Settings for anyone who wants it' + T);
 
     // ---------- 4. Settings: Demo data, Diagnostics and Erase in one More group at the bottom ----------
-    const st = await ev(() => { const keys = [...document.querySelectorAll('#view details.sec')].map(d => d.dataset.mkey); const more = document.querySelector('#view [data-mkey="more"]'); return { keys, last: keys[keys.length - 1], has: more ? ['demoLoad', 'demoClear', 'diagCopy', 'resetAll'].every(a => more.querySelector(`[data-act="${a}"]`)) : false, wide: document.documentElement.scrollWidth <= innerWidth }; });
-    ok(st.last === 'more' && !st.keys.some(k => ['demo', 'reset', 'diag'].includes(k)) && st.has && st.wide, 'Settings ends with one More group holding Demo data, Diagnostics and Erase everything' + T, st);
+    const st = await ev(() => { const keys = [...document.querySelectorAll('#view details.sec')].map(d => d.dataset.mkey); const more = document.querySelector('#view [data-mkey="more"]'); return { keys, last: keys[keys.length - 1], has: more ? more.querySelectorAll('[data-act="demoLoad"],[data-act="demoClear"]').length === 1 && /Version \d/.test(more.textContent) && !!more.querySelector('[data-act="resetAll"]') : false, wide: document.documentElement.scrollWidth <= innerWidth }; });
+    // Since r55 (V, 2026-10-19) Demo data is one button, Load or Clear, and Diagnostics shows the version until an error is logged (tests/r55.js).
+    ok(st.last === 'more' && !st.keys.some(k => ['demo', 'reset', 'diag'].includes(k)) && st.has && st.wide, 'Settings ends with one More group holding Demo data, the version and Erase everything' + T, st);
 
     // ---------- 5. An easy set with no heavier load that fits: more reps at the same load ----------
     const easy = await ev(async () => {

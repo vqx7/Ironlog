@@ -55,16 +55,16 @@ The current code is the **legacy script**: `src/10-*.js` to `src/29-*.js`, joine
 
 **The ratchet:** the legacy script may never grow. `tests/hygiene.js` fails when it has more top-level declarations or more lines than the numbers below, and also when it has fewer, until the numbers are lowered to match, so each phase locks in what it moved. A change that adds code adds it in `src/app/`.
 
-Legacy top-level declarations: 504
-Legacy lines: 7388
+Legacy top-level declarations: 503
+Legacy lines: 7360
 
-| Measured (scripts/depmap.js) | r49 | r50 | r51 | r52 | r53 | r54 |
-|---|---|---|---|---|---|---|
-| Legacy top-level declarations | 928 | 819 | 638 | 518 | 511 | 504 |
-| Pure, movable as they are | 324 | 215 (214 by r51's rule, which also counts browser-only APIs such as DOMParser) | 39 (each waits for its phase, below) | 34 (a call through `live.ts` counts as reading shared state) | 33 (since r53 a call to any module function that reads the store, the live model or the page counts too, `moduleReach`; by r52's rule 40, as effort.ts's `rirScale` reads the store) | 33 |
-| Shared mutable names | 61 (`ui` written from 12 files, `state` from 10) | 61 | 56 (`state`, `ui`, `cloud`, `acct` and `acctWait` are the store's) | 48 (the seven caches are the model's) | 48 | 48 |
-| Legacy lines | 10,452 | 9,863 | 9,134 | 7,585 | 7,436 | 7,388 |
-| In `src/app/` | `config.ts` | and `util`, `units`, `library`, `routines`, `formulas` (109 declarations) | and 18 more modules, the store among them (182 declarations: 176 moved, the four shared objects, `state` and `setState`) | and 7 more modules, five grown (the 120 moved as 113: 96 taking the model, 16 unchanged and `invalidateIn`, the caches given by `freshCaches`; with `modelOf`, `LIVE`, `live` and 74 adapters) | and 3 more modules, `guide`, `providers` and `effort` (7 declarations moved, `routineUpdates` and `whyTarget` among them to change, so 75 adapters; 4 added) | and 2 more modules, `plans` (the plan a lift is done at, moved from `routines` to layer 2) and `sheets` (the sign-in sheet's fields kept through a redraw); `plannedSets`, `effShow`, `lastLighterWeek`, `muscleStatus`, `heavierLoad`, `defBand` and `appBand` moved (`lastLighterWeek` rewritten, to the averages' reading of a lighter week), 91 adapters |
+| Measured (scripts/depmap.js) | r49 | r50 | r51 | r52 | r53 | r54 | r55 |
+|---|---|---|---|---|---|---|---|
+| Legacy top-level declarations | 928 | 819 | 638 | 518 | 511 | 504 | 503 (`allTimeBests` moved to `analytics.ts`) |
+| Pure, movable as they are | 324 | 215 (214 by r51's rule, which also counts browser-only APIs such as DOMParser) | 39 (each waits for its phase, below) | 34 (a call through `live.ts` counts as reading shared state) | 33 (since r53 a call to any module function that reads the store, the live model or the page counts too, `moduleReach`; by r52's rule 40, as effort.ts's `rirScale` reads the store) | 33 | 33 |
+| Shared mutable names | 61 (`ui` written from 12 files, `state` from 10) | 61 | 56 (`state`, `ui`, `cloud`, `acct` and `acctWait` are the store's) | 48 (the seven caches are the model's) | 48 | 48 | 48 |
+| Legacy lines | 10,452 | 9,863 | 9,134 | 7,585 | 7,436 | 7,388 | 7,360 |
+| In `src/app/` | `config.ts` | and `util`, `units`, `library`, `routines`, `formulas` (109 declarations) | and 18 more modules, the store among them (182 declarations: 176 moved, the four shared objects, `state` and `setState`) | and 7 more modules, five grown (the 120 moved as 113: 96 taking the model, 16 unchanged and `invalidateIn`, the caches given by `freshCaches`; with `modelOf`, `LIVE`, `live` and 74 adapters) | and 3 more modules, `guide`, `providers` and `effort` (7 declarations moved, `routineUpdates` and `whyTarget` among them to change, so 75 adapters; 4 added) | and 2 more modules, `plans` (the plan a lift is done at, moved from `routines` to layer 2) and `sheets` (the sign-in sheet's fields kept through a redraw); `plannedSets`, `effShow`, `lastLighterWeek`, `muscleStatus`, `heavierLoad`, `defBand` and `appBand` moved (`lastLighterWeek` rewritten, to the averages' reading of a lighter week), 91 adapters | the same modules, grown by r55's fixes (no module added) |
 
 ## The phases
 

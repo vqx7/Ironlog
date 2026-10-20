@@ -243,9 +243,9 @@ async function cloudFlush(){
 /* Pull what other devices wrote. Per document:
    - changed in the cloud only: take the cloud copy.
    - changed on both: merge record by record (see mergeChunk).
-   - first link of a device that already had its own data: merge sessions,
-     cardio and body logs from both, keep the side with more real sessions
-     for routines and settings, and offer Undo. */
+   - first link of a device that already had its own data: merge sessions, cardio and body logs from both (never demo data), keep the side
+     with more real sessions for settings, routines and exercises combined; no Undo since r55 (it put this device's copy back as the truth,
+     which deleted the account's own records everywhere). */
 async function cloudPull(){
   if(!cloud.on)return;
   if(trackT||cloud.pendAt)trackEdits();
@@ -259,17 +259,17 @@ async function cloudPull(){
   const local=chunksOf(state);const first=!Object.keys(cloud.meta).length;
   let parts=null,merged=false,draftIn=false;const stat={conflicts:0};const adoptedIds=new Set();const leg={bodyweights:[],measurements:[]};const legB=legacyBodyBase();
   if(first){
-    const rState=assemble(Object.fromEntries(rids.map(k=>[k,remote[k].data])));
-    if(!bootHadLocal||(!realCount(state)&&!state.bodyweights.some(b=>!b.demo)&&!state.measurements.some(x=>!x.demo)&&!state.draft&&!(state.cardio||[]).length)){
+    const rState=assemble(Object.fromEntries(rids.map(k=>[k,remote[k].data])));const mine={...state,sessions:state.sessions.filter(x=>!x.demo),bodyweights:state.bodyweights.filter(x=>!x.demo),measurements:state.measurements.filter(x=>!x.demo),cardio:(state.cardio||[]).filter(x=>!x.demo)}; // demo data never goes into an account (r55, the audit: it was merged and uploaded)
+    if(!realCount(mine)&&!mine.bodyweights.length&&!mine.measurements.length&&!state.draft&&!mine.cardio.length){ // by what is here, not by whether a save was found at start: a first run's workout was wiped by a sign-in before a reopen (r55, the audit)
       parts=Object.fromEntries(rids.map(k=>[k,remote[k].data]));rids.forEach(k=>adoptedIds.add(k));
     }else{
-      snapshot();merged=true;
-      const base=realCount(state)>realCount(rState)?state:rState,other=base===state?rState:state;
+      merged=true; // no Undo (r55, the audit): a merge only adds, and undoing it took the account's own sessions off every device
+      const base=realCount(mine)>realCount(rState)?mine:rState,other=base===mine?rState:mine;
       /* Settings come from the side with more sessions, but exercises and
          routines are combined by id (that side's copy wins a clash), so a
          custom exercise or routine made on the other device is not lost and
          its logged sets keep their name. */
-      setState(normalize({...base,exercises:unionById(base.exercises,other.exercises),routines:unionById(base.routines,other.routines),sessions:unionById(state.sessions,rState.sessions),bodyweights:unionById(state.bodyweights,rState.bodyweights),measurements:unionById(state.measurements,rState.measurements),cardio:unionById(state.cardio,rState.cardio),trash:unionById(state.trash,rState.trash),draft:state.draft||rState.draft}));
+      setState(normalize({...base,exercises:unionById(base.exercises,other.exercises),routines:unionById(base.routines,other.routines),sessions:unionById(mine.sessions,rState.sessions),bodyweights:unionById(mine.bodyweights,rState.bodyweights),measurements:unionById(mine.measurements,rState.measurements),cardio:unionById(mine.cardio,rState.cardio),trash:unionById(state.trash,rState.trash),draft:state.draft||rState.draft}));
       // The cloud copy becomes the agreed base, so the merged result is what
       // the flush writes, rather than being merged a second time.
       for(const id of rids){cloud.meta[id]={h:remote[id].h,at:remote[id].at,b:baseOf(id,remote[id].data)};cloud.editAt[id]=Date.now();}
@@ -305,7 +305,7 @@ async function cloudPull(){
     // and the cleared list goes back to the cloud (r34.1).
     {const n0=(state.trash||[]).length;state.trash=(state.trash||[]).filter(t=>!(t.kind==='routine'&&plainTemplate(t.data)));if(state.trash.length!==n0)saveNow();}
     if(!ui.modal)rerenderKeepScroll();else render();
-    if(merged)toast('Merged this device with your cloud copy',true);
+    if(merged)toast('Merged this device with your cloud copy');
     conflictNote(stat);if(draftIn)draftNote(dr0);
   }else if(first){
     for(const id of rids)cloud.meta[id]={h:'x',at:remote[id].at,b:null};
@@ -339,7 +339,7 @@ async function cloudInit(){
     const pv=await cloudProvider();if(!pv)return;
     const db=pv.db,id=pv.userId;
     /* Sync notes belong to one account. Signing in to a different account on
-       this device starts over as a first link (a merge with Undo), never as a
+       this device starts over as a first link (a merge, with no Undo since r55), never as a
        continuation that could judge the other account's records deleted.
        Notes saved before accounts existed have no owner and are kept. */
     if(cloud.acct&&cloud.acct!==id){cloud.meta={};cloud.editAt={};cloud.last=null;}

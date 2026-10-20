@@ -17,7 +17,7 @@ import {
   sortedSessionsIn
 } from './model';
 import { IDXIn, stallWordsIn } from './analytics';
-import { FIRST_WEEK_WHY, ON_PLAN_TIP, actualAvg4In, avgWaitIn, muscleStatusIn, recentLighterIn } from './weeks';
+import { ON_PLAN_TIP, actualAvg4In, avgWaitIn, muscleStatusIn, recentLighterIn } from './weeks';
 import { GROW_PCT, atLoad, isWork, lighter } from './formulas';
 import { MK, ML, isCompound, noE1 } from './library';
 import { andList, r1, weekStart } from './util';
@@ -102,6 +102,12 @@ export function fatigueStallsIn(M: Model, ids: readonly string[]): string[] {
 /** The stall rule, as a lifter reads it. */
 export const STALL_WHY =
   'Flat or down over its last 6 sessions (or 3 weeks) in each rep range you train it in, leaving out ones done lighter; with no PR in the last 3 of them, nor a set stronger than any before it in a session left out since the third-last, no heavier load, and no more reps at the same load.';
+
+/* A lift trained in more than one rep range falls only when it falls in
+   each (r55, V 2026-10-19, PENDING 319), said in a lift's headline tip. */
+/** The falling rule for a lift in two rep ranges, as a lifter reads it. */
+export const FALL_WHY =
+  'A lift trained in more than one rep range reads as falling only when it falls in each, as for a stall.';
 
 /** Whether a lift's last session not done lighter had every set at its
     working load at the top of its range: the range the routine plans for the
@@ -295,7 +301,7 @@ export function coachIn(M: Model): CoachLine {
     const w = avgWaitIn(M);
     const text = `${w.lead}Volume advice ${w.kind === 'back' ? 'comes back' : 'appears here'} after ${w.after}.`;
     return w.kind === 'second'
-      ? { tone: 'blue', text, why: FIRST_WEEK_WHY, wait: true, act: null }
+      ? { tone: 'blue', text, why: w.why, wait: true, act: null }
       : { tone: 'blue', text, wait: true, act: null };
   }
   /* Under the minimum only by which days of a cycle fell in the weeks

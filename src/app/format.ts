@@ -7,6 +7,7 @@
    greeting) and so may never be reached from the engine (tests/hygiene.js). */
 
 import { parse, today } from './util';
+import { isMissed } from './formulas';
 
 /* ---------- dates and times ---------- */
 
@@ -92,6 +93,16 @@ export const estMin = (n: number): string => `~${n} min`;
    once there is a log is real and stays a number. */
 export const NIL = '–';
 
+/** A missed set's mark after the set (r55, V: "300 × 0, missed"), in
+    History, the Last line and wherever a saved set is listed. */
+export const missedTag = (s: { r: number | string | null }): string => (isMissed(s) ? ' missed' : '');
+
+/** Said when a sheet with something typed in it is asked to close by a tap outside it or by Back (r55: Back closed it unasked). */
+export const DIRTY_SAID = 'Save or cancel first. Your changes are still here.';
+
+/** Said once when a set is ticked as missed (r55). */
+export const MISSED_SAID = 'Logged as missed. It counts toward no volume, PRs, or targets.';
+
 /** A number to at most three decimals, without trailing zeros. */
 export const fmtG = (v: number): string => String(Math.round(v * 1000) / 1000);
 
@@ -140,3 +151,18 @@ export function effScale(v: unknown): 'whole' | 'half' | 'rpe' {
 export function effAt(scale: 'whole' | 'half' | 'rpe', rir: number): string {
   return scale === 'rpe' ? String(Math.round((10 - rir) * 10) / 10) : String(Math.round(rir * 10) / 10);
 }
+
+/* A lighter day, a deload and a flagged injury ask for 3 or more reps in
+   reserve (r30, a convention), said here once and in the lifter's scale
+   (r55, from the audit: on a lighter day the session header said the plan's
+   1 RIR beside the engine's "3 or more reps in reserve"). */
+/** The reps in reserve a lighter day, a deload or an injury hold asks for at least. */
+export const LIGHT_RIR = 3;
+
+/** That effort or easier in a sentence: "3 or more reps in reserve", or "RPE 7 or less". */
+export const effLeast = (scale: 'whole' | 'half' | 'rpe', rir: number): string =>
+  scale === 'rpe' ? `RPE ${effAt(scale, rir)} or less` : `${effAt(scale, rir)} or more reps in reserve`;
+
+/** The same for a session header: "3+ RIR", or "RPE 7 or less". */
+export const effLeastShort = (scale: 'whole' | 'half' | 'rpe', rir: number): string =>
+  scale === 'rpe' ? `RPE ${effAt(scale, rir)} or less` : `${effAt(scale, rir)}+ RIR`;

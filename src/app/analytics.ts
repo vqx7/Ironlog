@@ -16,6 +16,7 @@ import type {
   Exposure,
   ExerciseLike,
   Idx,
+  MissedPoint,
   Model,
   Pr,
   Score
@@ -33,6 +34,7 @@ import {
   prSameLoad,
   atLoad,
   e1,
+  isMissed,
   isWork,
   lighter,
   repFloor,
@@ -48,7 +50,7 @@ import { sameExOnce } from './session';
 import { trendEnds, trendScope, trendW } from './trend';
 import { basePlanIn, routinePlanIn } from './routines';
 import { atCapOfIn, capOfIn } from './gym';
-import { fmtDate } from './format';
+import { fmtDate, missedTag } from './format';
 
 /** A set's effort as these read it: its RIR as typed, and whether it was a RIR check. */
 type Effort = { rir?: Rir; cal?: unknown };
@@ -420,7 +422,7 @@ export function idxSessionsIn(M: Model, sessions: readonly Session[]) {
          on the scale read as unchanged push-ups being 10% weaker, with
          "look at recovery". Weight lifted (tonnage) keeps each day's weigh-in:
          that is the work actually done. */
-      const pts = ptsSrc.map((s): ExPoint => {
+      const point = (s: (typeof b.sets)[number]): ExPoint => {
         const pl = prLoadIn(M, ex, s, ss.date);
         return {
           load: ex.bw ? pl : loadOfIn(M, ex, s, ss.date),
@@ -430,7 +432,17 @@ export function idxSessionsIn(M: Model, sessions: readonly Session[]) {
           rir: rirEffIn(M, s, ex),
           rq: rirEstIn(M, s, ex)
         };
-      });
+      };
+      const pts = ptsSrc.map(point);
+      /* Missed sets (r55, V): kept for the Last line alone, each with the
+         number of the session's sets read before it, so the line lists every
+         set in the order done. Nothing else reads them, and the field is
+         absent when there are none. */
+      const miss: MissedPoint[] = [];
+      let seen = 0;
+      for (const s of b.sets)
+        if (ptsSrc.includes(s)) seen++;
+        else if (!s.warm && !s.drop && isMissed(s)) miss.push({ ...point(s), at: seen });
       // Mean logged RIR on the sets at this session's top load, or null if none was logged.
       // The working load (r31): a heavy top single is not where reps are built.
       const topW = workLoad(pts, b.rr ? b.rr[0] : 0);
@@ -524,7 +536,8 @@ export function idxSessionsIn(M: Model, sessions: readonly Session[]) {
         tAdj,
         tRaw,
         topL,
-        rated
+        rated,
+        ...(miss.length ? { miss } : {})
       });
     }
     sessVol.push({ date: ss.date, vol, id: ss.id, day: ss.dayName });
@@ -989,10 +1002,13 @@ export function idxPRsIn(M: Model, id: string, exps: Exposure[], prs: Pr[]): num
        assisted one). It is also a rep PR by definition, so it used to show
        as one (V: "a new weight and rep PR in the same set marks it as a
        rep PR"). One label per lift and session, the biggest news first:
-       weight PR, then best estimate, then rep PR. */
+       weight PR, then best estimate, then rep PR. Of the sets at the new
+       weight, the strongest by the same score (r55, from the audit: the
+       recap named 82.5 x 11 beside the estimate of 82.5 x 10, the set the live
+       toast named, as reps alone had picked it). */
     const wJ =
       i > 0 && !ex.timed
-        ? pts.filter(p => p.r > 0 && p.w > prevMaxW + 1e-6).sort((a, b) => b.w - a.w || b.r - a.r)[0]
+        ? pts.filter(p => p.r > 0 && p.w > prevMaxW + 1e-6).sort((a, b) => b.w - a.w || sc(b) - sc(a) || b.r - a.r)[0]
         : null;
     const wPR = wJ ? asLogged(wJ) : null;
     x.progress = i > 0 && (!!repPR || e1PR || !!wPR);
@@ -1312,62 +1328,85 @@ export function idxLiftIn(
     );
   };
   if (!capped && current) stalled = stallScopesIn(M, id, sc).every(q => stalledIn(q.rr, q.inR));
+  /* The trend in one rep range, over its sessions with a reading in the
+     window (trendW): the change and the weekly rate, moving or falling, and
+     a heavier load read as no fall. */
+  const trendOf = (w: (Exposure & { tv: number })[]) => {
+    let pct: number | null = null,
+      slope: number | null = null,
+      slopeSe: number | null = null,
+      moving = false,
+      falling = false,
+      pLo: number | null = null,
+      pHi: number | null = null,
+      spanW: number | null = null,
+      loadUp = false;
+    /* A trend needs 3 sessions spread over 2 weeks or more (r31): three
+       sessions in nine days read as "+6.6% a week" from what was mostly one
+       good day. The text gives the weeks it really covers (spanW). */
+    const spanD = w.length ? daysBetween(w[0].date, w[w.length - 1].date) : 0;
+    if (w.length >= 3 && spanD >= 14) {
+      spanW = Math.max(2, Math.round(spanD / 7));
+      const ends = trendEnds(w);
+      pct = (ends.last.tv / ends.first.tv - 1) * 100;
+      // Slope in % of the mean per week, with its standard error. Moving or
+      // falling needs 3% or more and the slope's 80% interval clear of zero.
+      const f = slopeOf(w);
+      if (f) {
+        slope = ((f.b * 7) / f.my) * 100;
+        slopeSe = f.se != null ? ((f.se * 7) / f.my) * 100 : null;
+        const tq = t90(f.n - 2);
+        const lo = slopeSe != null ? slope - tq * slopeSe : slope,
+          hi = slopeSe != null ? slope + tq * slopeSe : slope;
+        moving = pct >= GROW_PCT && lo > 0;
+        falling = pct <= -GROW_PCT && hi < 0;
+        // The weekly rate the 80% interval allows (r30): "about 1.5% a week,
+        // likely 1.2 to 1.8" rather than one number stated as fact. It is
+        // given on the weekly rate the line measures; a range on the 6-week
+        // change beside an endpoint percentage could leave that percentage
+        // outside its own range.
+        if (slopeSe != null) {
+          pLo = lo;
+          pHi = hi;
+        }
+      }
+      /* A heavier working load with the reps still in the range is progress
+         that rep-max formulas disagree on, never a fall (r34.2, from the
+         review: a lat pulldown from 90 x 14 to 95 x 10, on plan, read "down
+         4%, look at recovery"; Brzycki says -10%, Lombardi +2%, all inside
+         the 2 to 8% day-to-day noise). */
+      const z = w[w.length - 1],
+        a0 = w[0];
+      const zr = z.pts.filter(p => Math.abs(p.w - z.topW) < 1e-6).map(p => p.r);
+      if (z.topW > a0.topW + 1e-6 && zr.length && Math.min(...zr) >= (z.rr ? +z.rr[0] : 1) && pct < 0) {
+        loadUp = true;
+        falling = false;
+        if (pHi != null && pHi < 0) {
+          pLo = null;
+          pHi = null;
+        }
+      }
+    }
+    return { pct, slope, slopeSe, moving, falling, pLo, pHi, spanW, loadUp };
+  };
   const w = trendW(sc);
-  let pct: number | null = null,
-    slope: number | null = null,
-    slopeSe: number | null = null,
-    moving = false,
-    falling = false,
-    pLo: number | null = null,
-    pHi: number | null = null,
-    spanW: number | null = null,
-    loadUp = false;
-  /* A trend needs 3 sessions spread over 2 weeks or more (r31): three
-     sessions in nine days read as "+6.6% a week" from what was mostly one
-     good day. The text gives the weeks it really covers (spanW). */
-  const spanD = w.length ? daysBetween(w[0].date, w[w.length - 1].date) : 0;
-  if (w.length >= 3 && spanD >= 14) {
-    spanW = Math.max(2, Math.round(spanD / 7));
-    const ends = trendEnds(w);
-    pct = (ends.last.tv / ends.first.tv - 1) * 100;
-    // Slope in % of the mean per week, with its standard error. Moving or
-    // falling needs 3% or more and the slope's 80% interval clear of zero.
-    const f = slopeOf(w);
-    if (f) {
-      slope = ((f.b * 7) / f.my) * 100;
-      slopeSe = f.se != null ? ((f.se * 7) / f.my) * 100 : null;
-      const tq = t90(f.n - 2);
-      const lo = slopeSe != null ? slope - tq * slopeSe : slope,
-        hi = slopeSe != null ? slope + tq * slopeSe : slope;
-      moving = pct >= GROW_PCT && lo > 0;
-      falling = pct <= -GROW_PCT && hi < 0;
-      // The weekly rate the 80% interval allows (r30): "about 1.5% a week,
-      // likely 1.2 to 1.8" rather than one number stated as fact. It is
-      // given on the weekly rate the line measures; a range on the 6-week
-      // change beside an endpoint percentage could leave that percentage
-      // outside its own range.
-      if (slopeSe != null) {
-        pLo = lo;
-        pHi = hi;
-      }
-    }
-    /* A heavier working load with the reps still in the range is progress
-       that rep-max formulas disagree on, never a fall (r34.2, from the
-       review: a lat pulldown from 90 x 14 to 95 x 10, on plan, read "down
-       4%, look at recovery"; Brzycki says -10%, Lombardi +2%, all inside
-       the 2 to 8% day-to-day noise). */
-    const z = w[w.length - 1],
-      a0 = w[0];
-    const zr = z.pts.filter(p => Math.abs(p.w - z.topW) < 1e-6).map(p => p.r);
-    if (z.topW > a0.topW + 1e-6 && zr.length && Math.min(...zr) >= (z.rr ? +z.rr[0] : 1) && pct < 0) {
-      loadUp = true;
-      falling = false;
-      if (pHi != null && pHi < 0) {
-        pLo = null;
-        pHi = null;
-      }
-    }
-  }
+  const t = trendOf(w);
+  const { pct, slope, slopeSe, moving, pLo, pHi, spanW, loadUp } = t;
+  /* A lift trained in two rep ranges, a heavy day and a light day, reads
+     falling only when it falls in each range in use, as it reads stalled
+     (r55, V 2026-10-19, PENDING 319): its trend is read in its newest
+     session's range, so until r55 Stats and the coach said "falling" after
+     the light day and "up" after the heavy one. rrIn is the range the trend
+     is read in when the lift is trained in more than one, so the screens
+     name it; holdRR, when the trend falls there, the other ranges in use
+     where it does not. */
+  const scopes = stallScopesIn(M, id, sc);
+  const rrIn = scopes.length > 1 ? curRR : null;
+  const holdRR: [number, number][] = [];
+  if (t.falling)
+    for (const q of scopes.slice(1))
+      if (q.rr && !trendOf(trendW({ inRange: q.inR, exWin: sc.exWin })).falling) holdRR.push(q.rr);
+  const falling = t.falling && !holdRR.length;
   /* RIR drift: the same load and at least the same reps across the last three
      exposures while logged RIR climbed by a full rep or more. e1RM cannot see
      this, but it is the clearest sign that the load is due to go up. */
@@ -1423,6 +1462,8 @@ export function idxLiftIn(
     slopeSe,
     moving,
     falling,
+    rrIn,
+    holdRR,
     pLo,
     pHi,
     spanW,
@@ -1586,8 +1627,20 @@ export function lastOf(
 ): { line: string; prev: string[]; prevOff: true | undefined; lastR: number[]; basis: string | null } {
   const rec = all && all.length ? all[all.length - 1] : base;
   const kind = sessionWord(rec);
-  const line = `Last (${fmtDate(rec.date)}${kind ? ', ' + kind : ''}): ${rec.pts.map(fmt).join(', ')}.`;
-  const repsFrom = rec !== base && (lighter(rec) || rec.short === 'reading') ? base : rec;
+  // Every set in the order done, a missed one in its place (r55).
+  const miss = rec.miss || [];
+  const sets: string[] = [];
+  rec.pts.forEach((p, i) => {
+    for (const m of miss) if (m.at === i) sets.push(fmt(m) + missedTag(m));
+    sets.push(fmt(p));
+  });
+  for (const m of miss) if (m.at >= rec.pts.length) sets.push(fmt(m) + missedTag(m));
+  const line = `Last (${fmtDate(rec.date)}${kind ? ', ' + kind : ''}): ${sets.join(', ')}.`;
+  /* A session short of its usual sets at another working load than the one
+     the target comes from gives no reps for it either (r55, the audit: after
+     85 x 6, 6 stopped short, the target went back to 80 kg with 6s in grey). */
+  const repsFrom =
+    rec !== base && (lighter(rec) || rec.short === 'reading' || Math.abs(rec.topW - base.topW) > 1e-6) ? base : rec;
   /* Grey reps are last time's reps at the working load only (r31): a top
      single before them is not a row to repeat, and in a pyramid the reps
      done at a lighter load are not reps due at this one (225 x 7, 205 x 8,
@@ -1604,14 +1657,15 @@ export function lastOf(
      column beside the sets (r44). The same rule as the grey reps, so row n of
      Last is the set row n repeats: a top single or a pyramid's other loads
      would push every set down a row (the r44 review). prevOff says some sets
-     are left out, so the line above the sets keeps listing them. */
+     are left out, a missed one too (r55), so the line above the sets keeps
+     listing them. */
   const rl = workLoad(rec.pts, repMin || 0);
   const rp = atLoad(rec.pts, rl);
   const shown = rp.length ? rp : rec.pts;
   return {
     line,
     prev: shown.map(fmt).slice(0, 30),
-    prevOff: shown.length < rec.pts.length || undefined,
+    prevOff: shown.length < rec.pts.length || miss.length > 0 || undefined,
     lastR: (wp.length ? wp : repsFrom.pts).map(p => fl(p.r)),
     basis: rec !== base ? base.date : null
   };
@@ -1688,4 +1742,72 @@ export function prFrameIn(M: Model, exId: string, s: LoadedSet, date: string): P
   const own = prLoadIn(M, ex, s, date);
   const st = exps.length < every.length ? statsUpToIn(M, exId, exps) : I.exStats[exId];
   return { ex, exps, st, heaviest, w, load: own + (w - typed), own };
+}
+
+/** One record on the bests board: the set and the day it was first reached. */
+export type BestAt = { p: ExPoint; date: string };
+
+/* All-time bests (item 27; moved from the legacy script in r55 to judge loads
+   as the PR list does): per lift, the best estimate and the heaviest set,
+   and the rep records, for every load the most reps where no heavier set did
+   as many. The same rule makes a rep PR, so the board and the PR feed agree,
+   and since r55 the same reading of a load typed in the other unit (the
+   audit: 155 lb after 70 kg was a new heaviest and a new best estimate on
+   the board, beside a PR list that rightly had none): each set is judged at
+   the earlier load it stands for (prSameLoad), and shown as logged. Each
+   record carries the date it was first reached; up to a date, the sessions
+   on or before it only (a past workout, r55: its Heaviest line named a set
+   from after its day). */
+/** A lift's best estimate, heaviest set and rep records, with the newest date among them, or null with nothing logged. */
+export function allTimeBestsIn(
+  M: Model,
+  id: string,
+  upTo?: string
+): {
+  ex: ExerciseLike;
+  est: (BestAt & { v: number }) | null;
+  heavy: BestAt | null;
+  front: BestAt[];
+  last: string | undefined;
+} | null {
+  const all = IDXIn(M).byEx[id];
+  const exps = all && upTo ? all.filter(x => x.date <= upTo) : all;
+  if (!exps || !exps.length) return null;
+  const ex = EXIn(M, id);
+  let est: (BestAt & { v: number }) | null = null,
+    heavy: (BestAt & { j: number }) | null = null;
+  const front: (BestAt & { j: number })[] = [];
+  const seen = new Set<number>();
+  for (const x of exps) {
+    const fresh: { p: ExPoint; j: number }[] = [];
+    for (const p of x.pts) {
+      // Judged at the load it stands for: the same weight in the other unit is no heavier.
+      const d = prSameLoad(p.w, seen) - p.w,
+        j = p.pl + d;
+      const v = noE1(ex) ? null : e1(p.load + d, p.r, p.rq);
+      if (v != null && (!est || v > est.v + 1e-6)) est = { v, p, date: x.date };
+      // Heaviest and rep records at the PR load (prLoad, r32.1): on a bodyweight lift, by added load and reps, dated when first done.
+      if (!heavy || j > heavy.j + 1e-6 || (Math.abs(j - heavy.j) < 1e-6 && p.r > heavy.p.r))
+        heavy = { p, j, date: x.date };
+      if (!front.some(q => q.j >= j - 1e-6 && q.p.r >= p.r)) fresh.push({ p, j });
+    }
+    for (const { p, j } of fresh) {
+      if (front.some(q => q.j >= j - 1e-6 && q.p.r >= p.r)) continue;
+      for (let k = front.length - 1; k >= 0; k--) if (j >= front[k].j - 1e-6 && p.r >= front[k].p.r) front.splice(k, 1);
+      front.push({ p, j, date: x.date });
+    }
+    for (const p of x.pts) seen.add(p.w);
+  }
+  front.sort((a, b) => b.j - a.j);
+  const dates: string[] = front.map(f => f.date);
+  if (est) dates.push(est.date);
+  if (heavy) dates.push(heavy.date);
+  const last = dates.sort().pop();
+  return {
+    ex,
+    est,
+    heavy: heavy ? { p: heavy.p, date: heavy.date } : null,
+    front: front.map(f => ({ p: f.p, date: f.date })),
+    last
+  };
 }

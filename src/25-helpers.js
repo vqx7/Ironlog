@@ -88,7 +88,7 @@ function exportCSV(){
     }
   }
   for(const c of [...state.cardio].sort((a,b)=>a.date<b.date?-1:a.date>b.date?1:0))
-    rows.push([c.date,'Cardio','no',CARDIOL[c.kind],'',1,'no','no','no','','','','','','',[CWHENL[c.when],c.dist?`${distShow(c.dist)} ${distU()}`:'',c.note].filter(Boolean).join('; '),c.min,c.hr==null?'':c.hr,'minutes','']);
+    rows.push([c.date,'Cardio','no',CARDIOL[c.kind],'',1,'no','no','no','','','','','','',[CWHENL[c.when],c.dist?`${distShow(c.dist)} ${distU()}`:'',c.note].filter(Boolean).join('; '),'',c.min,c.hr==null?'':c.hr,'minutes','']); // its minutes under session_minutes, as the header says (r55; r54 wrote them a column early)
   if(rows.length===1){toast('No sessions to export');return;}
   const data=rows.map(r=>r.map(q).join(',')).join('\r\n');
   return exportFile(data,`${FILE_PREFIX}-sets-${today()}.csv`,'text/csv','CSV saved',null,

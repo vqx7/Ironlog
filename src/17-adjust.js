@@ -42,7 +42,7 @@ function assessSet(bi,si){
   const rest=b.sets.some((x,i)=>i>si&&!x.done&&!x.warm&&!x.drop&&appL(x));
   if(b.adj&&b.adj.at>=si){delete b.adj;adjSrc.delete(b);}
   const ex=EX(b.exId);const p=b.plan||{};
-  const off=!adjOn()||b.adjOff||!s.done||s.warm||s.drop||!(+s.r>0)||s.w==null||!rest||d.past||d.editingId||d.deload||d.light||b.light||ex.timed||ex.assist||noE1(ex)||exInjury(ex)||!(+p.repMin>0)||!(incOf(ex,p,s.w)>0)||bwNoLoad(ex,b);
+  const off=!adjOn()||b.adjOff||!s.done||s.warm||s.drop||!(+s.r>0)||s.w==null||!rest||d.past||d.editingId||d.deload||d.light||b.light||ex.timed||ex.assist||noE1(ex)||exInjury(ex)||!(+p.repMin>0)||!(incOf(ex,p,s.w)>0)||bwNoLoad(ex,b)||(ex.bw&&!(bwRefLoad(ex)>0)); // nor a bodyweight lift with no weigh-in, which has no total load to estimate from (r55)
   if(!off){
     /* A blank effort is read as the lift's usual effort, as everywhere else
        (r34.2: a blank set was read as failure here only, and dropped further). */

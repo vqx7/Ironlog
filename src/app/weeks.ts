@@ -4,12 +4,14 @@
    routine a past week was trained on and what it asked for, the streak, the
    newest lighter session, and this week's numbers on Today. */
 
-import type { Routine } from './types';
+import type { Routine, Session } from './types';
 import type { Model } from './model';
 import { activeRoutineIn, freeModeIn, isDeloadWeekIn, isRestWeekIn, sortedSessionsIn } from './model';
-import { addDays, weekStart } from './util';
+import { addDays, daysBetween, weekStart } from './util';
+import { BACK_DAYS } from './formulas';
+import { sessCmp } from './records';
 import { firstDate } from './charts';
-import { IDXIn, lighterTally, weekSessionsIn } from './analytics';
+import { IDXIn, dateIndexIn, lighterTally, weekSessionsIn } from './analytics';
 import { MK, REGIONS, TRACK_ONLY } from './library';
 import { aboveMax, belowMin } from './volume';
 import { dayCreditIn, nextTrainIdx, planSetsPerWeekIn, plannedPerWeek, plannedSetsIn, sessDayIdx } from './routines';
@@ -28,6 +30,7 @@ export interface AvgMeta {
   _light: number;
   _rest: number;
   _ff: boolean;
+  _back: boolean;
   _conf: Record<string, number>;
   _mix: Record<string, boolean>;
 }
@@ -35,12 +38,38 @@ export interface AvgMeta {
 /** A weekly average: hard sets a week per muscle, with what it says about itself (AvgMeta). */
 export type WeeklyAvg = Record<string, number> & AvgMeta;
 
+/* Where the weeks are counted from: the log's first session, or the first
+   after its last break of more than BACK_DAYS with nothing logged (r55, from
+   the audit: a lifter who brought old bests in from June, as Today invites,
+   read "You trained in 2 of the last 4 weeks" and 50% adherence in the third
+   week of using the app, the weeks between counted as missed). A lift back
+   after such a break starts lighter, with reps in reserve (BACK_DAYS), so the
+   first week back is the week loads are found again, as a first week is. */
+/** The first session the weekly counts start from: the log's first, or the first after its last break of more than 4 weeks. */
+export function logStartIn(M: Model): string | null {
+  let start: string | null = null,
+    prev: string | null = null;
+  // The index's dates are in order: it is built from the sessions sorted.
+  for (const d of Object.keys(dateIndexIn(M).byDate)) {
+    if (!prev || daysBetween(prev, d) > BACK_DAYS) start = d;
+    prev = d;
+  }
+  return start;
+}
+
+/** Whether the weeks are counted from after a break, with sessions logged before it (logStartIn). */
+export function logBackIn(M: Model): boolean {
+  const s = logStartIn(M);
+  return !!s && s !== firstDate(M.s.sessions);
+}
+
 /* The first week adherence counts: the week the log started in counts only
    if it started on that week's first day (r29): someone who began on a
    Saturday with one session read as "19 flagged" and a "1-week average" the
-   following Monday. The weekly averages start a week later (avgFirstWeekIn). */
+   following Monday. The weekly averages start a week later (avgFirstWeekIn).
+   Since r55 the log starts after a break of more than 4 weeks (logStartIn). */
 export function firstFullWeekIn(M: Model): string | null {
-  const f = firstDate(M.s.sessions);
+  const f = logStartIn(M);
   if (!f) return null;
   const w = weekStart(f);
   return f > w ? addDays(w, 7) : w;
@@ -57,9 +86,12 @@ export const FIRST_WEEK_REASON = 'the week your loads are found, when sets usual
 /** The same, as the coach, the radar's tip and Volume say it. */
 export const FIRST_WEEK_WHY = `Your first week is left out of the weekly averages: it is ${FIRST_WEEK_REASON}.`;
 
+/** The same for a first week back after a break of more than 4 weeks (logStartIn). */
+export const BACK_WEEK_WHY = `Your first week back after a break of more than 4 weeks is left out of the weekly averages: like a first week, it is ${FIRST_WEEK_REASON}.`;
+
 /** The first week the weekly averages count, or null with nothing logged. */
 export function avgFirstWeekIn(M: Model): string | null {
-  const f = firstDate(M.s.sessions);
+  const f = logStartIn(M);
   return f ? addDays(weekStart(f), 7) : null;
 }
 
@@ -73,7 +105,7 @@ export function avgFirstWeekIn(M: Model): string | null {
    review of r54: Volume's Recent average said "the 1 week with training in
    the last 4" in a log's third week). */
 export function avgWeeksTxt(
-  avg: Pick<AvgMeta, '_weeks' | '_missed' | '_light' | '_rest' | '_span' | '_n' | '_ff'>
+  avg: Pick<AvgMeta, '_weeks' | '_missed' | '_light' | '_rest' | '_span' | '_n' | '_ff' | '_back'>
 ): string {
   const w = avg._weeks,
     m = avg._missed || 0,
@@ -81,7 +113,7 @@ export function avgWeeksTxt(
     r = avg._rest || 0;
   if (!m && !l && !r)
     return avg._ff && w < avg._n
-      ? `the ${w} full week${w === 1 ? '' : 's'} after your first week`
+      ? `the ${w} full week${w === 1 ? '' : 's'} after your first week${avg._back ? ' back' : ''}`
       : `your last ${w} full week${w === 1 ? '' : 's'}`;
   const out = [
     l ? `${l === 1 ? 'a lighter week' : l + ' lighter weeks'}` : '',
@@ -99,14 +131,18 @@ export function avgWeeksTxt(
    after it until it ends, since the averages leave the first week out
    (avgFirstWeekIn). Otherwise a full week of training brings one. Read
    only where there is no average. */
-/** What brings a weekly average where there is none yet, with a lead sentence for a lifter back from a break. */
-export function avgWaitIn(M: Model): { kind: 'back' | 'second' | 'full'; lead: string; after: string } {
+/** What brings a weekly average where there is none yet, with a lead sentence for a lifter back from a break, and why the first week waits. */
+export function avgWaitIn(M: Model): { kind: 'back' | 'second' | 'full'; lead: string; after: string; why: string } {
   const ago = addDays(weekStart(M.today()), -28);
   const af = avgFirstWeekIn(M);
   if (M.s.sessions.some(x => x.date < ago) && !M.s.sessions.some(x => x.date >= ago))
-    return { kind: 'back', lead: 'Nothing logged in the last 4 weeks. ', after: 'a full week of training' };
-  if (!af || weekStart(M.today()) <= af) return { kind: 'second', lead: '', after: 'your second week' };
-  return { kind: 'full', lead: '', after: 'a full week of training' };
+    return { kind: 'back', lead: 'Nothing logged in the last 4 weeks. ', after: 'a full week of training', why: '' };
+  // Back after a break, the week the averages wait for is the second week back (r55, logStartIn).
+  if (!af || weekStart(M.today()) <= af)
+    return logBackIn(M)
+      ? { kind: 'second', lead: '', after: 'your second week back', why: BACK_WEEK_WHY }
+      : { kind: 'second', lead: '', after: 'your second week', why: FIRST_WEEK_WHY };
+  return { kind: 'full', lead: '', after: 'a full week of training', why: '' };
 }
 
 /* The 4-week average every flag, the coach and Muscles read. The radar on
@@ -184,9 +220,11 @@ export function avgWeeksIn(M: Model, n: number, lightToo?: boolean): WeeklyAvg |
   Object.defineProperty(out, '_light', { value: lightToo ? 0 : light, enumerable: false });
   Object.defineProperty(out, '_rest', { value: rest, enumerable: false });
   Object.defineProperty(out, '_ff', { value: ffHit, enumerable: false });
+  // Cut short by a first week back after a break, not the log's first (r55).
+  Object.defineProperty(out, '_back', { value: ffHit && logBackIn(M), enumerable: false });
   Object.defineProperty(out, '_conf', { value: conf, enumerable: false });
   Object.defineProperty(out, '_mix', { value: cycleMixIn(M, used, out), enumerable: false });
-  // The nine defineProperty calls above add what an average says about itself, which TypeScript cannot see; the cast names them.
+  // The ten defineProperty calls above add what an average says about itself, which TypeScript cannot see; the cast names them.
   return out as WeeklyAvg;
 }
 
@@ -357,32 +395,46 @@ export function regionBalanceIn(
 /* What a past week asked for: the routine most of its sessions were logged
    against, so switching from a 3-day to a 6-day routine does not rescore the
    weeks done on the 3-day one (r27). A week without routine sessions reads
-   the active routine. */
+   the active routine. Since r55 a week also keeps the sessions a week that
+   routine planned, as its newest session recorded it (pwOf), so a routine
+   changed or deleted since does not rescore it either. */
 export function weekRoutineIn(M: Model, ws: string): Routine {
   // Built once per change and kept with the other analytics, so a streak over two years reads it, not every session per week.
   const I = IDXIn(M);
   if (!I.weekRid) {
     const by: Record<string, Record<string, number>> = {};
+    const rec: Record<string, Record<string, Session>> = {};
     for (const x of M.s.sessions) {
       if (!x.routineId || x.free) continue;
       const w = weekStart(x.date);
       const c = by[w] || (by[w] = {});
       c[x.routineId] = (c[x.routineId] || 0) + 1;
+      const r = rec[w] || (rec[w] = {});
+      const was = r[x.routineId];
+      if (x.pw && (!was || sessCmp(x, was) > 0)) r[x.routineId] = x;
     }
     I.weekRid = {};
+    const pw: Record<string, number> = {};
     for (const w in by) {
       let id: string | null = null;
       for (const k in by[w]) if (id == null || by[w][k] > by[w][id]) id = k;
       I.weekRid[w] = id;
+      const s = id && rec[w] ? rec[w][id] : undefined;
+      if (s && s.pw) pw[w] = s.pw;
     }
+    I.weekPw = pw;
   }
   const id = I.weekRid[ws];
   return (id && M.s.routines.find(r => r.id === id)) || activeRoutineIn(M);
 }
 
-/** The sessions a past week asked for: one in freestyle, else its routine's training days a week. */
+/** The sessions a past week asked for: one in freestyle, else what its routine planned a week, as its sessions recorded it, or as the routine is now. */
 export function weekNeedIn(M: Model, ws: string): number {
-  return freeModeIn(M) ? 1 : Math.max(1, plannedPerWeek(weekRoutineIn(M, ws)));
+  if (freeModeIn(M)) return 1;
+  const R = weekRoutineIn(M, ws);
+  // weekRoutineIn has just built the week marks, weekPw among them.
+  const rec = IDXIn(M).weekPw;
+  return Math.max(1, (rec && rec[ws]) || plannedPerWeek(R));
 }
 
 /* Consecutive weeks in which you trained at least as many days as the routine

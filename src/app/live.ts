@@ -36,6 +36,7 @@ import { barKgIn, capOfIn, exBarKgIn, gymRackIn, rackTolIn } from './gym';
 import { fmtWIn, loadLabelIn } from './loads';
 import {
   IDXIn,
+  allTimeBestsIn,
   bwAtIn,
   bwLoadIn,
   bwRefIn,
@@ -65,6 +66,8 @@ import {
   avgWeeksIn,
   firstFullWeekIn,
   lastLighterWeekIn,
+  logBackIn,
+  logStartIn,
   muscleStatusIn,
   recentLighterIn,
   regionBalanceIn,
@@ -81,6 +84,7 @@ import {
   heavierLoadIn,
   incOfIn,
   lighterLoadIn,
+  oddLoadIn,
   progStepIn,
   rackStepIn,
   suggestCoreIn,
@@ -141,6 +145,7 @@ export const rackTol = live(rackTolIn);
 export const fmtW = live(fmtWIn);
 export const loadLabel = live(loadLabelIn);
 export const IDX = live(IDXIn);
+export const allTimeBests = live(allTimeBestsIn);
 export const bwAt = live(bwAtIn);
 export const bwLoad = live(bwLoadIn);
 export const bwRef = live(bwRefIn);
@@ -171,6 +176,8 @@ export const avgWait = live(avgWaitIn);
 export const avgWeeks = live(avgWeeksIn);
 export const firstFullWeek = live(firstFullWeekIn);
 export const lastLighterWeek = live(lastLighterWeekIn);
+export const logBack = live(logBackIn);
+export const logStart = live(logStartIn);
 export const muscleStatus = live(muscleStatusIn);
 export const recentLighter = live(recentLighterIn);
 export const regionBalance = live(regionBalanceIn);
@@ -190,6 +197,7 @@ export const daysOff = live(daysOffIn);
 export const easierText = live(easierTextIn);
 export const incOf = live(incOfIn);
 export const heavierLoad = live(heavierLoadIn);
+export const oddLoad = live(oddLoadIn);
 export const lighterLoad = live(lighterLoadIn);
 export const progStep = live(progStepIn);
 export const rackStep = live(rackStepIn);

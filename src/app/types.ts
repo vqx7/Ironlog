@@ -133,7 +133,8 @@ export interface SessionEx {
 }
 
 /** A saved session (cleanSess in the storage part). `t` is when it started,
-    which orders two sessions on one day (r34); `chk` the check-in's answers. */
+    which orders two sessions on one day (r34); `chk` the check-in's answers;
+    `pw` the sessions a week its routine planned when it was saved (r55, pwOf). */
 export interface Session {
   id: string;
   date: string;
@@ -150,6 +151,7 @@ export interface Session {
   chk?: Record<string, number> | undefined;
   ex: SessionEx[];
   t?: number | undefined;
+  pw?: number | undefined;
 }
 
 /** A weigh-in, in kg. */

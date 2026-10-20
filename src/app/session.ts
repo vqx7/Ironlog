@@ -6,7 +6,7 @@
 
 import type { DraftBlock, DraftSet, Target } from './types';
 import { uid, today } from './util';
-import { isWork } from './formulas';
+import { isMissed, isWork } from './formulas';
 import { fmtDate } from './format';
 
 /* ---------- loads and targets ---------- */
@@ -14,15 +14,17 @@ import { fmtDate } from './format';
 /* The load a row shows in grey while its load field is empty (r25), and the
    load settleLoad writes in when the set is ticked or saved at Finish: the
    load of the nearest working set above that has one, else the block's
-   suggestion; none on a warm-up or a drop set. A row that exists means the
-   block does, which the ! on each b below says to TypeScript. */
+   suggestion; none on a warm-up or a drop set. A missed set's load (r55, a
+   lift tried and not made) is passed over, so the row under it shows the
+   last load done. A row that exists means the block does, which the ! on
+   each b below says to TypeScript. */
 export function greyW(b: DraftBlock | null | undefined, si: number): number | null {
   const s = b && b.sets[si];
   if (!s || s.warm || s.drop) return null;
   // After a set the app adjusted from (b.adj, r34), the rows under it carry the adjusted load.
   for (let i = si - 1; i >= 0; i--) {
     const x = b!.sets[i];
-    if (!x.warm && !x.drop && x.w != null) return b!.adj && b!.adj.at === i ? b!.adj.w : x.w;
+    if (!x.warm && !x.drop && x.w != null && !isMissed(x)) return b!.adj && b!.adj.at === i ? b!.adj.w : x.w;
   }
   return b!.sw == null ? null : b!.sw;
 }

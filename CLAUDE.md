@@ -3,7 +3,7 @@
 A hypertrophy and strength tracker for one lifter, V, used on a phone at the gym. It ships as a standalone
 installable web app: built from `src/` into one page, served by GitHub Pages at https://ironapp.org, working
 offline, with the log on the phone and an optional account that syncs it. Every pull request also publishes a
-preview app at https://ironapp.org/preview/ to try on the phone before merging. Build r54, version 2.5, state schema v5.
+preview app at https://ironapp.org/preview/ to try on the phone before merging. Build r55, version 2.6, state schema v5.
 
 The Claude artifact version was retired by V on 2026-09-27 (`OWNER.md` Done): never work on it or republish it.
 `cloudProvider()` still takes Claude's db when `window.claude` exists, because the sync suites use it as their
@@ -103,7 +103,9 @@ lines, then `ALL PASS` (the fuzz suite prints `fuzz clean`). Type check: `npx ts
   its usual load and reps for its usual sets; with fewer sets or a clearly weaker reading the target repeats and the
   session still counts for the trend, stalls and PRs; done lighter it sets no target or trend, and done in full on a
   lighter or deload day it is a full session (a day's label never overrides what a lift did). A break of more than
-  four weeks restarts a lift's readings. A PR is a PR on any day, and a change of units or gyms is never one.
+  four weeks restarts a lift's readings, and the weeks counted (averages and adherence) start after it. A ticked set
+  of 0 reps is a missed set: kept and shown, counted toward nothing. A past week is read against what its routine
+  planned then (each session records it, `pw`), never the routine as it is now. A PR is a PR on any day, and a change of units or gyms is never one.
 - **V's rulings on screen:** the Volume radar is drawn from what was logged, never the routine's plan, and always
   draws; no Planned chip on Stats; the plan's usual-range note is a quiet line on Plan, never a flag and never on
   Stats; no other app is named on screen; no wording about shared phones, someone else or another person; no
@@ -113,7 +115,8 @@ lines, then `ALL PASS` (the fuzz suite prints `fuzz clean`). Type check: `npx ts
   em dashes, hype or exclamation marks; the serial comma in any list of three; estimated minutes only through
   `estMin` ("~N min"); the first-run Set up page stays under 400 characters, in lines of 45 at most. Code comments
   explain why, not what, in full sentences.
-- **Phone:** 44 px touch targets, no sideways scroll at 320 px, light and dark both checked. No code follows the
+- **Phone:** 44 px touch targets, no sideways scroll at 320 px, light and dark both checked. Rows of seven (the
+  week bar, the calendar, Consistency) reach 44 px from 375 px phones up; at 320 px seven cannot. No code follows the
   on-screen keyboard (Safari does not shrink the page for it, and code that did fought iOS): a sheet you type in
   opens tall, its fields at the top, so they are never under it (PENDING 322). No browser here has an on-screen
   keyboard, so a change to how sheets meet it is tried on V's phone before a release carries it.

@@ -149,7 +149,7 @@ async function waitTry(manual){
   try{
     acct.user=await A.signIn(acctWait.email,acctWait.pw);waitStop();obOutClear();
     try{localStorage.removeItem(ACCT_LATER);}catch(e){/* nothing to clear */}
-    if(sheet())closeModal();
+    if(sheet())ACT.exBack();
     toast('Email confirmed. Signed in and syncing.');await cloudInit();acctRerender();
   }catch(e){
     const m=sheet();
@@ -167,7 +167,7 @@ async function acctInit(){
     acct.user=user;
     if(ev==='PASSWORD_RECOVERY'&&!(ui.modal&&ui.modal.kind==='account'))openModal({kind:'account',mode:'newpw',pw:''});
     // Signed in some other way while waiting for the confirmation (another tab sharing this storage): stop waiting.
-    if(ev==='SIGNED_IN'&&user&&acctWait.pw&&!acctWait.coding){waitStop();const m=ui.modal;if(m&&m.kind==='account'&&m.mode==='wait'){closeModal();toast('Email confirmed. Signed in and syncing.');}}
+    if(ev==='SIGNED_IN'&&user&&acctWait.pw&&!acctWait.coding){waitStop();const m=ui.modal;if(m&&m.kind==='account'&&m.mode==='wait'){ACT.exBack();toast('Email confirmed. Signed in and syncing.');}}
     if(ev==='SIGNED_IN'&&!cloud.on)cloudInit();
     if(ev==='SIGNED_OUT'&&cloud.on&&!window.claude)cloudStop();
     if(ev==='SIGNED_IN'||ev==='SIGNED_OUT')fbCheckReader();

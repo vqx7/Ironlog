@@ -228,7 +228,7 @@ function bodyMapCard(){
   }
   /* The summary is a count out of the muscles with a target (V, r42): "15 of 19 on target". Tracked-only muscles have no target, so they are in neither number. */
   const N=MK.filter(m=>!TRACK_ONLY.has(m)).length;
-  const msub=(()=>{if(!avg){if(!state.sessions.length)return 'none logged yet';const n=MK.filter(m=>!TRACK_ONLY.has(m)&&(st[m].st==='in'||st[m].st==='over')).length;return `${n} of ${N} on target so far`;}const sa=muscleStatus(avg);const inA=MK.filter(m=>!TRACK_ONLY.has(m)&&(sa[m].st==='in'||sa[m].st==='over')).length;return `${inA} of ${N} on target`;})();
+  const msub=(()=>{if(!avg){if(!state.sessions.length)return 'none logged yet';const n=MK.filter(m=>!TRACK_ONLY.has(m)&&metSt(st[m])).length;return `${n} of ${N} on target so far`;}const sa=muscleStatus(avg);const inA=MK.filter(m=>!TRACK_ONLY.has(m)&&metSt(sa[m])).length;return `${inA} of ${N} on target`;})();
   const v3=mapView()==='3d';
   B3.status=st;B3.sel=sel;
   const stage=v3?`<div class="bm3d" id="bm3d"><div class="bm3d-stage" role="img" aria-label="3D body, shaded by hard sets a week. Drag sideways to turn it, tap a muscle for its numbers. The same numbers are in the flat view."></div><p class="bm3d-msg small muted" hidden></p><div class="seg bm3d-turn" role="group" aria-label="Turn the body"><button class="chip" data-act="map3dTurn" data-v="0">Front</button><button class="chip" data-act="map3dTurn" data-v="1">Side</button><button class="chip" data-act="map3dTurn" data-v="2">Back</button></div></div>`:`<div class="bm-wrap">${fig('f','Front')}${fig('b','Back')}</div>`;

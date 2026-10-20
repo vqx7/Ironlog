@@ -138,7 +138,7 @@ function impBuild(m){
       if(!exo.bw&&!exo.timed)for(const q of sets)if((q.w>0&&q.w<2.3)||q.r>30){odd.push(`${exo.name} ${fmtW(q.w)} ${U()} x ${q.r}${x.date?`, ${fmtDate(x.date)}`:''}`);break;}
       // A lift's sets across rows of the same exercise stay together.
       const prev=ex.find(b=>b.exId===exo.id);if(prev)prev.sets.push(...sets);else ex.push({exId:exo.id,note:it.note||'',rr:null,sets});}
-    if(ex.length)out.push({id:uid(),date,dayIdx:0,dayId:null,dayName:(x.name||'').slice(0,60)||'Imported',routineId:'',free:true,ex,notes:'',durMin:null,deload:!!x.deload,light:false});}
+    if(ex.length)out.push({id:uid(),date,dayIdx:0,dayId:null,dayName:(x.name||'').slice(0,60)||'Imported',routineId:'',free:true,ex,notes:x.note||'',durMin:x.durMin||null,deload:!!x.deload,light:false});} // the note and minutes the app's own file carries (r55)
   /* Date, lifts and reps, not loads (r31): the same file imported again with
      the other unit choice converted every load differently and added every
      session a second time. */
@@ -150,9 +150,9 @@ function impBuild(m){
      no time cannot be saved (minutes are required) and is counted instead.
      One already in the log (same date, kind and minutes) is skipped. */
   const cardio=[];let cardioNoTime=0;
-  for(const c of m.res.cardioRows||[]){const min=Math.round(c.secs/60);if(!(min>0)){cardioNoTime++;continue;}
+  for(const c of m.res.cardioRows||[]){const min=c.min||Math.round(c.secs/60);if(!(min>0)){cardioNoTime++;continue;}
     if(state.cardio.some(x=>x.date===c.date&&x.kind===c.kind&&x.min===min)){dup++;continue;}
-    cardio.push(cleanCardio({id:uid(),date:c.date,kind:c.kind,min,hr:null,when:'solo',note:'',dist:c.dist>0?(m.unit==='kg'?c.dist:c.dist*KM_MI):null}));}
+    cardio.push(cleanCardio({id:uid(),date:c.date,kind:c.kind,min,hr:c.hr||null,when:c.when||'solo',note:c.note||'',dist:c.km!=null?c.km:c.dist>0?(m.unit==='kg'?c.dist:c.dist*KM_MI):null}));} // the app's own file says the minutes, heart rate, when, note and km (r55)
   return {sessions:fresh,cardio,cardioNoTime,dup,bad,odd,timedOff,newEx:Object.values(newEx).filter(e=>fresh.some(ss=>ss.ex.some(b=>b.exId===e.id)))};
 }
 /* A routine from an import, on a first run (r31). Someone who brings their

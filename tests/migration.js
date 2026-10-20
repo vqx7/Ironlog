@@ -1,8 +1,8 @@
-// Migration: saves made by the two previous builds load with nothing lost.
+// Migration: saves made by the previous builds load with nothing lost.
 const {open}=require('./h');const { engine } = require('./h');
 const fails=[];const ok=(c,m,x)=>{if(!c){fails.push(m);console.log('FAIL',m,JSON.stringify(x));}else console.log('ok  ',m,x!==undefined?JSON.stringify(x).slice(0,200):'');};
 (async()=>{const browser=await engine.launch();
-for(const [file,label] of [['baselines/r53.html','r53 (the build this one follows)'],['baselines/r52.html','r52'],['baselines/r51.html','r51'],['baselines/r50.html','r50'],['baselines/r49.html','r49'],['baselines/r48.html','r48'],['baselines/r47.html','r47'],['baselines/r46.html','r46'],['baselines/r45.html','r45'],['baselines/r44.html','r44'],['baselines/r43.html','r43'],['baselines/r42.html','r42'],['baselines/r41.html','r41'],['baselines/r40.html','r40'],['baselines/r39.html','r39'],['baselines/r38.html','r38'],['baselines/r37.html','r37'],['baselines/r36.html','r36'],['baselines/r35.html','r35'],['baselines/r34-2.html','r34.2'],['baselines/r34-1.html','r34.1'],['baselines/r34.html','r34'],['baselines/r32-1.html','r32.1'],['baselines/r32.html','r32'],['baselines/r31-3.html','r31.3'],['baselines/r31-2.html','r31.2'],['baselines/r31-1.html','r31.1'],['baselines/r31.html','r31'],['baselines/r30-2.html','r30.2'],['baselines/r30.html','r30'],['baselines/r29-5.html','r29.5'],['baselines/r29.html','r29.4'],['baselines/r28.html','r28'],['baselines/r27.html','r27'],['baselines/r26.html','r26'],['baselines/r25.html','r25'],['baselines/r24.html','r24'],['baselines/r23.html','r23'],['baselines/r22.html','r22'],['baselines/r21.html','r21'],['baselines/r20.html','r20'],['baselines/r19.html','r19'],['baselines/r18.html','r18'],['baselines/r17.html','r17'],['baselines/r16.html','r16'],['baselines/r15.html','r15'],['baselines/r14.html','r14'],['baselines/r13.html','r13'],['baselines/r12.html','r12'],['baselines/r11.html','r11']]){
+for(const [file,label] of [['baselines/r54.html','r54 (the build this one follows)'],['baselines/r53.html','r53'],['baselines/r52.html','r52'],['baselines/r51.html','r51'],['baselines/r50.html','r50'],['baselines/r49.html','r49'],['baselines/r48.html','r48'],['baselines/r47.html','r47'],['baselines/r46.html','r46'],['baselines/r45.html','r45'],['baselines/r44.html','r44'],['baselines/r43.html','r43'],['baselines/r42.html','r42'],['baselines/r41.html','r41'],['baselines/r40.html','r40'],['baselines/r39.html','r39'],['baselines/r38.html','r38'],['baselines/r37.html','r37'],['baselines/r36.html','r36'],['baselines/r35.html','r35'],['baselines/r34-2.html','r34.2'],['baselines/r34-1.html','r34.1'],['baselines/r34.html','r34'],['baselines/r32-1.html','r32.1'],['baselines/r32.html','r32'],['baselines/r31-3.html','r31.3'],['baselines/r31-2.html','r31.2'],['baselines/r31-1.html','r31.1'],['baselines/r31.html','r31'],['baselines/r30-2.html','r30.2'],['baselines/r30.html','r30'],['baselines/r29-5.html','r29.5'],['baselines/r29.html','r29.4'],['baselines/r28.html','r28'],['baselines/r27.html','r27'],['baselines/r26.html','r26'],['baselines/r25.html','r25'],['baselines/r24.html','r24'],['baselines/r23.html','r23'],['baselines/r22.html','r22'],['baselines/r21.html','r21'],['baselines/r20.html','r20'],['baselines/r19.html','r19'],['baselines/r18.html','r18'],['baselines/r17.html','r17'],['baselines/r16.html','r16'],['baselines/r15.html','r15'],['baselines/r14.html','r14'],['baselines/r13.html','r13'],['baselines/r12.html','r12'],['baselines/r11.html','r11']]){
   const P=await open(file,{browser,clock:'2026-09-26T10:00:00'});
   await P.page.evaluate(()=>{const L=window.__ironlog;const s=L.state;s.settings.onboarded=true;s.settings.priorities=['chest','biceps'];s.settings.heightCm=178;s.settings.bands.biceps=[12,22];
     s.exercises.push({id:'c_x',name:'My Curl',primary:'biceps',secondary:['forearms'],equip:'dumbbell',bw:false,custom:true,archived:false,note:'x'});
@@ -82,5 +82,29 @@ for(const [file,label] of [['baselines/r53.html','r53 (the build this one follow
   ok(r.short==='sets'&&r.light===false,'and the one rule reads the trimmed bench press: fewer sets than its usual four, so its target repeats while its trend counts',r);
   ok(!N.errors.length,'no console errors loading r53\'s trimmed sessions',N.errors);
   await N.ctx.close();
+}
+// r55 records on each session the sessions a week its routine planned (pw), read for that week after the routine changes. A valid
+// one is kept and an invalid one dropped on load; a phone still on r54 keeps it when it saves (keepExtra), in its place, so after
+// that phone's save this build still reads the weeks by it; and a save from r54, which has none, reads as r54 read it.
+{
+  const N=await open('index.html',{browser,clock:'2026-10-15T10:00:00',realStarter:true});
+  const mk=await N.page.evaluate(()=>{const L=window.__ironlog;const s=L.state;s.settings.onboarded=true;const R=L.activeRoutine();const days=R.days.filter(d=>!d.rest);
+    const dates=['2026-09-21','2026-09-22','2026-09-24','2026-09-25','2026-09-28','2026-09-29','2026-10-01','2026-10-02','2026-10-05','2026-10-06','2026-10-08','2026-10-09'];
+    s.sessions=dates.map((date,i)=>{const d=days[i%days.length];return {id:'pw'+i,date,dayIdx:R.days.indexOf(d),dayId:d.id,dayName:d.name,routineId:R.id,notes:'',pw:i===0?9:i===1?'4':4,ex:[{exId:'bench',rr:[6,10],sets:[{w:60,r:8,rir:2,warm:false,drop:false}]}]};});
+    L.state=L.normalize(s);L.invalidate();L.saveNow();
+    // A fifth training day, so the routine as it is now plans 5.
+    const di=R.days.findIndex(d=>d.rest);const R2=L.activeRoutine();R2.days[di].items.push({...R2.days[0].items[0],uid:'zz'});R2.days[di].rest=false;L.invalidate();L.saveNow();
+    return {pw:L.state.sessions.slice(0,3).map(x=>x.pw===undefined?'none':x.pw),streak:L.weekStreak().weeks};});
+  ok(JSON.stringify(mk.pw)==='["none","none",4]'&&mk.streak===3,'this build keeps a valid pw and drops 9 and "4"; three weeks of four read as a 3-week streak with a fifth day added since',mk);
+  const raw=await N.page.evaluate(()=>localStorage.getItem('ironlog.v1'));await N.ctx.close();
+  const O=await open('baselines/r54.html',{browser,state:JSON.parse(raw),clock:'2026-10-15T10:00:00',realStarter:true});
+  const o=await O.page.evaluate(()=>{const L=window.__ironlog;L.state.settings.userName='Phone two';L.saveNow();const ss=JSON.parse(localStorage.getItem('ironlog.v1')).sessions;return {pw:ss.map(x=>x.pw===undefined?'none':x.pw).join(),last:Object.keys(ss[5]).slice(-2).join()};});
+  const raw2=await O.page.evaluate(()=>localStorage.getItem('ironlog.v1'));await O.ctx.close();
+  ok(o.pw==='none,none,4,4,4,4,4,4,4,4,4,4'&&o.last==='ex,pw','r54 loads it and saves it with every pw kept, after the fields r54 knows',o);
+  const B=await open('index.html',{browser,state:JSON.parse(raw2),clock:'2026-10-15T10:00:00',realStarter:true});
+  const b=await B.page.evaluate(()=>{const L=window.__ironlog;return {name:L.state.settings.userName,streak:L.weekStreak().weeks,pw:L.state.sessions.filter(x=>x.pw===4).length};});
+  ok(b.name==='Phone two'&&b.pw===10&&b.streak===3,'and back on this build the weeks still read by it: a 3-week streak',b);
+  ok(!B.errors.length,'no console errors loading the pw records',B.errors);
+  await B.ctx.close();
 }
 console.log(fails.length?'FAILURES '+fails.length:'ALL PASS');await browser.close();})();
