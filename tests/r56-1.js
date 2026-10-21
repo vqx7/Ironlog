@@ -178,6 +178,29 @@ const setsOf = d => (d ? d.sets.filter(s => s.done).map(s => `${s.w}x${s.r}`).jo
     ok(/replaced by the one on another device/.test(await N.toast()), 'the new phone is told its workout was replaced', await N.toast());
   }
 
+  // ---- (1b) A workout whose rows have no ids (begun on a build before r56.1, or rows an older phone added):
+  // finished on one phone while the other ticked a row it had not; the join matches the rows without ids by what
+  // they hold, since a saved session keeps no unticked rows and a place means nothing there (PENDING 333: matched
+  // by place, the set ticked here took the place of the one finished there, and was lost on both phones).
+  {
+    const cloud = cloudOf();
+    const A = await phone(browser, cloud, 'u1'); pages.push(A);
+    await wait(900); await A.start();
+    await A.ev(() => { const L = window.__ironlog; const b = L.state.draft.ex[0]; b.sets.forEach(x => { delete x.rid; }); Object.assign(b.sets[0], { w: 100, r: 8, done: true }); L.saveNow(); });
+    await A.flush();
+    const B = await phone(browser, cloud, 'u1'); pages.push(B);
+    await wait(1200); await B.sync();
+    const id = (await A.draft()).id;
+    ok((await B.draft()) && (await B.draft()).id === id && (await B.ev(() => window.__ironlog.state.draft.ex[0].sets.every(x => x.rid === undefined))), 'set up: both phones hold one workout whose rows have no ids');
+    await A.tick(1, 100, 7);
+    await A.ev(() => { const L = window.__ironlog; L.state.draft._leftAsked = true; L.ACT.finishNow(); }); await wait(300);
+    await A.ev(() => { const L = window.__ironlog; if (L.ui.modal) L.ACT.mClose(); }); await A.flush();
+    await B.tick(2, 100, 6); await B.flush(); await wait(1600); await B.flush(); await B.sync(); await A.sync();
+    const sa = (await A.sessions()).find(s => s.id === id), sb = (await B.sessions()).find(s => s.id === id);
+    const all = x => (x ? x.sets.map(([w, r]) => `${w}x${r}`).join(',') : '-');
+    ok(sb && all(sb) === '100x8,100x7,100x6' && all(sa) === all(sb) && !(await B.draft()), 'finished on one phone while the other ticked a row it had not, rows without ids: the set joins the session, every set once, in order', { A: all(sa), B: all(sb) });
+  }
+
   // ---- (2) A phone holding another account's log asks before merging (328 b).
   {
     const cloud = cloudOf();
@@ -209,11 +232,12 @@ const setsOf = d => (d ? d.sets.filter(s => s.done).map(s => `${s.w}x${s.r}`).jo
     ok((await P.cloudState()).on && (await P.cloudState()).acct === 'acctB' && cloud.doc('acctB', 's-2026-10-2') && cloud.doc('acctB', 's-2026-10-2').sessions.some(s => s.id === 's-a1'), 'Add it: the log merges into account B as a first link', { state: await P.cloudState(), keys: [...cloud.store.keys()] });
     // No room to keep the log aside: nothing is replaced, and the sign-in is undone (the log stays, the notes still name B).
     await P.ev(() => window.__ironlog.cloudStop());
-    await P.ev(() => { window.__uid = 'acctG'; const o = Storage.prototype.setItem; window.__setItem0 = o; Storage.prototype.setItem = function (k, v) { if (String(k).includes('.aside.')) throw new Error('QuotaExceededError'); return o.call(this, k, v); }; });
+    // The log kept aside goes to IndexedDB (PENDING 333): its write refused there, as a full disk refuses it.
+    await P.ev(() => { window.__uid = 'acctG'; const o = IDBObjectStore.prototype.put; window.__put0 = o; IDBObjectStore.prototype.put = function (...a) { if (/-aside$/.test(this.transaction.db.name)) throw new DOMException('The quota has been exceeded.', 'QuotaExceededError'); return o.apply(this, a); }; });
     P.ev(() => { window.__ironlog.cloudInit(); }); await wait(700);
     await P.page.click('#modal [data-act="mAlt"]'); await wait(800);
     ok(!(await P.cloudState()).on && (await P.cloudState()).acct === 'acctB' && (await P.ev(() => window.__ironlog.state.sessions.length)) === 1 && /not enough room on this phone to keep the other log aside/.test(await P.toast()) && !(await P.ev(() => window.__ironlog.asideList())).length, 'with no room to keep the log aside, Use this account\'s log replaces nothing: the log and its notes stay, the sign-in is undone, and the phone says why', { state: await P.cloudState(), toast: await P.toast(), aside: await P.ev(() => window.__ironlog.asideList()) });
-    await P.ev(() => { Storage.prototype.setItem = window.__setItem0; });
+    await P.ev(() => { IDBObjectStore.prototype.put = window.__put0; });
     // Use this account's log: the phone's log is kept aside for B, account C's own (empty) log is used.
     await P.ev(() => window.__ironlog.cloudStop());
     await P.ev(() => { window.__uid = 'acctC'; });

@@ -49,18 +49,18 @@ stand-in cloud.
 ## What is in this repo
 
 - `src/app/`: the typed modules (TypeScript). `config.ts` is the one place for the app's name, the versions
-  (`DISPLAY_VERSION`, `APP_VERSION`), the site address, the library versions and the outside addresses.
-  `store.ts` owns the shared state (`state`, `ui`, `cloud`, `acct`, `acctWait`); the log is replaced only through
-  `setState`. The engine and the analytics are functions of a model (`model.ts`): each takes `M` (the log, the date
-  the engine reads as today, the caches) as its first parameter and its name ends in `In` (`suggestIn`, `IDXIn`,
-  `coachIn`). `live.ts` holds the one model the app runs on (`LIVE`) and the adapters through which the legacy
-  script calls those functions by their old names (`export const suggest = live(suggestIn);`). Storage and sync are
-  typed since r56: `normalize.ts` (the log as every build reads it), `storage.ts` (the keys, where the save stands
-  (`device`), the error log (`log`), Undo's steps, a log kept aside for another account) and `sync.ts` (every write
-  of the log, the account's documents, the sync notes, another tab, one workout open on two phones, the account
-  question); they reach the screens only through `fx` in `store.ts`, which the legacy script fills at start
-  (`render`, `toast`, `ask`), and run nothing on import (`storageStart()`, `syncStart()`). `yourdata.ts` writes the
-  lines a module adds to Your data.
+  (`DISPLAY_VERSION`, `APP_VERSION`), the site address, the library versions and the outside addresses. `store.ts`
+  owns the shared state (`state`, `ui`, `cloud`, `acct`, `acctWait`); the log is replaced only through `setState`.
+  The engine and the analytics are functions of a model (`model.ts`): each takes `M` (the log, the date the engine
+  reads as today, the caches) as its first parameter and its name ends in `In` (`suggestIn`, `IDXIn`, `coachIn`).
+  `live.ts` holds the one model the app runs on (`LIVE`) and the adapters through which the legacy script calls
+  those functions by their old names (`export const suggest = live(suggestIn);`). Storage and sync are typed since
+  r56: `normalize.ts` (the log as every build reads it), `storage.ts` (the keys, where the save stands (`device`),
+  the error log (`log`), Undo's steps, a log kept aside for another account, in IndexedDB as Undo's copies are) and
+  `sync.ts` (every write of the log, the account's documents, the sync notes, another tab, one workout open on two
+  phones, the account question); they reach the screens only through `fx` in `store.ts`, which the legacy script
+  fills at start (`render`, `toast`, `ask`), and run nothing on import (`storageStart()`, `syncStart()`).
+  `yourdata.ts` writes the lines a module adds to Your data.
 - `src/1*.js`, `src/2*.js`: the legacy script, cut into parts at its section headers (start-up, accounts, the
   screens, sheets, actions and events), one function scope. It reads `src/app/` only through the imports in
   `src/09-imports.js`. `src/01` to `src/03` are the page head, styles and markup.

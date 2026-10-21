@@ -2458,27 +2458,47 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     stat.conflicts++;
     return remoteWins ? b : a;
   }
+  var held = (r) => canon({ ...r, rid: void 0 });
   function rowKeys(sets) {
     let n = 0;
     return sets.map((r) => [typeof r.rid === "string" ? r.rid : "#" + n++, r]);
   }
-  function mergeRows(base, l, r, remoteWins, stat) {
-    const B = new Map(rowKeys(base)), L = new Map(rowKeys(l)), R = new Map(rowKeys(r));
+  function contentKeys(base, sets, side) {
+    const ids = new Set(sets.map((r) => r.rid));
+    const free = base.map(([k, r]) => ({ k, h: held(r), taken: ids.has(k) }));
+    let n = 0;
+    return sets.map((r) => {
+      if (typeof r.rid === "string") return [r.rid, r];
+      const h = held(r);
+      const b = free.find((x) => !x.taken && x.h === h);
+      if (b) {
+        b.taken = true;
+        return [b.k, r];
+      }
+      return [side + "#" + n++, r];
+    });
+  }
+  function mergeRows(base, l, r, remoteWins, stat, match) {
+    const bk = rowKeys(base);
+    const B = new Map(bk), L = new Map(match === "content" ? contentKeys(bk, l, "l") : rowKeys(l)), R = new Map(match === "content" ? contentKeys(bk, r, "r") : rowKeys(r));
+    const same = (x, y) => held(x) === held(y);
+    const either = (x, y) => typeof x.rid === "string" || typeof y.rid !== "string" ? x : y;
     const out = [];
-    for (const k of /* @__PURE__ */ new Set([...B.keys(), ...L.keys(), ...R.keys()])) {
+    const order = match === "content" ? [...B.keys(), ...R.keys(), ...L.keys()] : [...B.keys(), ...L.keys(), ...R.keys()];
+    for (const k of new Set(order)) {
       const b = B.get(k), a = L.get(k), c = R.get(k);
-      const bh = b ? canon(b) : null, ah = a ? canon(a) : null, ch = c ? canon(c) : null;
       if (a && c) {
-        if (ah === ch || ch === bh) out.push(a);
-        else if (ah === bh) out.push(c);
+        if (same(a, c)) out.push(either(a, c));
+        else if (b && same(c, b)) out.push(a);
+        else if (b && same(a, b)) out.push(c);
         else {
           stat.conflicts++;
           out.push(remoteWins ? c : a);
         }
       } else if (a) {
-        if (!(b && ah === bh)) out.push(a);
+        if (!(b && same(a, b))) out.push(a);
       } else if (c) {
-        if (!(b && ch === bh)) out.push(c);
+        if (!(b && same(c, b))) out.push(c);
       }
     }
     return out;
@@ -2495,7 +2515,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     const seen = {};
     return list.map((b) => [b.exId + "#" + (seen[b.exId] = (seen[b.exId] || 0) + 1), b]);
   }
-  function mergeExercises(base, local, remote, remoteWins, stat) {
+  function mergeExercises(base, local, remote, remoteWins, stat, match) {
     const B = new Map(blockKeys(base)), L = new Map(blockKeys(local)), R = new Map(blockKeys(remote));
     const bo = [...B.keys()].join("|"), lo = [...L.keys()].join("|"), ro = [...R.keys()].join("|");
     let order;
@@ -2510,7 +2530,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     for (const k of order) {
       const b = B.get(k), a = L.get(k), c = R.get(k);
       if (a && c) {
-        const x = { ...a, sets: mergeRows(b ? b.sets : [], a.sets, c.sets, remoteWins, stat) };
+        const x = { ...a, sets: mergeRows(b ? b.sets : [], a.sets, c.sets, remoteWins, stat, match) };
         mergeFields(rec(x) || {}, b ? rec(b) : null, rec(a) || {}, rec(c) || {}, ["sets"], remoteWins, stat);
         out.push(x);
       } else if (a) {
@@ -2530,7 +2550,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     return o;
   }
   function mergeWorkout(base, local, remote, remoteWins, stat) {
-    const out = { ...local, ex: mergeExercises(base.ex, local.ex, remote.ex, remoteWins, stat) };
+    const out = { ...local, ex: mergeExercises(base.ex, local.ex, remote.ex, remoteWins, stat, "place") };
     const O = rec(out) || {}, Bf = rec(base) || {}, Lf = rec(local) || {}, Rf = rec(remote) || {};
     mergeFields(O, Bf, Lf, Rf, ["ex", "id", "cardio"], remoteWins, stat);
     const cardio = merge3List(cardioBase(Bf.cardio), Lf.cardio, Rf.cardio, remoteWins, stat);
@@ -2538,7 +2558,10 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     return out;
   }
   function mergeSession(base, local, remote, remoteWins, stat) {
-    const out = { ...local, ex: mergeExercises(base ? base.ex : [], local.ex, remote.ex, remoteWins, stat) };
+    const out = {
+      ...local,
+      ex: mergeExercises(base ? base.ex : [], local.ex, remote.ex, remoteWins, stat, "content")
+    };
     mergeFields(
       rec(out) || {},
       base ? rec(base) : null,
@@ -3712,61 +3735,129 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     };
     state.settings = normalize({ ...state, settings: { ...S, ...keep } }).settings;
   }
-  var asideKey = (acct2) => ASIDE_KEY + fixId(acct2);
-  function keepAside(acct2, notes) {
-    try {
-      localStorage.setItem(
-        asideKey(acct2),
-        JSON.stringify({ at: Date.now(), state, meta: notes.meta, editAt: notes.editAt, last: notes.last })
-      );
-      return true;
-    } catch (e) {
-      log("aside", e);
-      return false;
-    }
+  var ASIDE_DB = ENV === "preview" ? `${STORAGE_ID}-preview-aside` : `${STORAGE_ID}-aside`;
+  var asideDbP = null;
+  var asideIdx = [];
+  function asideDb() {
+    if (!asideDbP)
+      asideDbP = new Promise((res) => {
+        try {
+          const r = indexedDB.open(ASIDE_DB, 1);
+          r.onupgradeneeded = () => r.result.createObjectStore("kv");
+          r.onsuccess = () => res(r.result);
+          r.onerror = () => res(null);
+        } catch (e) {
+          res(null);
+        }
+      });
+    return asideDbP;
   }
-  function takeAside(acct2) {
-    let A = null;
-    try {
-      const t = localStorage.getItem(asideKey(acct2));
-      A = t ? rec(parseJson(t)) : null;
-      if (A) localStorage.removeItem(asideKey(acct2));
-    } catch (e) {
-      log("aside", e);
+  async function asideWrite(run) {
+    const db = await asideDb();
+    if (!db) return false;
+    return new Promise((res) => {
+      try {
+        const tx = db.transaction("kv", "readwrite");
+        tx.oncomplete = () => res(true);
+        tx.onerror = () => res(false);
+        tx.onabort = () => {
+          log("aside", tx.error || new Error("the write was not kept"));
+          res(false);
+        };
+        run(tx.objectStore("kv"));
+      } catch (e) {
+        log("aside", e);
+        res(false);
+      }
+    });
+  }
+  async function asideAll() {
+    const db = await asideDb();
+    if (!db) return [];
+    return new Promise((res) => {
+      try {
+        const out = [];
+        const q = db.transaction("kv").objectStore("kv").openCursor();
+        const step = (c) => {
+          if (!c) return res(out);
+          const R = rec(c.value);
+          if (typeof c.key === "string" && R) out.push([c.key, R]);
+          c.continue();
+        };
+        q.onsuccess = () => step(q.result);
+        q.onerror = () => res(out);
+      } catch (e) {
+        log("aside", e);
+        res([]);
+      }
+    });
+  }
+  function indexAside(e) {
+    const i = asideIdx.findIndex((x) => x.acct === e.acct);
+    if (i >= 0) asideIdx.splice(i, 1);
+    asideIdx.push(e);
+  }
+  async function keepAside(acct2, text, notes) {
+    const id = fixId(acct2), at = Date.now(), noted = JSON.stringify(notes);
+    const S = rec(parseJson(text));
+    const sessions = S ? (arr(S.sessions) || []).length : 0;
+    const ok = await asideWrite((s) => {
+      s.put({ at, sessions, state: text, notes: noted }, id);
+    });
+    if (ok) indexAside({ acct: id, sessions, at });
+    return ok;
+  }
+  async function asideOf(acct2) {
+    const id = fixId(acct2);
+    const hit = (await asideAll()).find(([k]) => k === id);
+    const A = hit ? hit[1] : null;
+    if (!A || typeof A.state !== "string") return null;
+    const N = rec(typeof A.notes === "string" ? parseJson(A.notes) : null) || {};
+    return { at: Number(A.at) || 0, state: normalize(parseJson(A.state)), meta: N.meta, editAt: N.editAt, last: N.last };
+  }
+  async function dropAside(acct2) {
+    const id = fixId(acct2);
+    if (await asideWrite((s) => s.delete(id))) {
+      const i = asideIdx.findIndex((x) => x.acct === id);
+      if (i >= 0) asideIdx.splice(i, 1);
     }
-    if (!A) return null;
-    return { at: Number(A.at) || 0, state: normalize(A.state), meta: A.meta, editAt: A.editAt, last: A.last };
   }
   function asideList() {
-    const out = [];
-    try {
-      for (let i = 0; i < localStorage.length; i++) {
-        const k = localStorage.key(i);
-        if (!k || !k.startsWith(ASIDE_KEY)) continue;
-        const A = rec(parseJson(localStorage.getItem(k) || "null"));
-        const S = A ? rec(A.state) : null;
-        out.push({
-          acct: k.slice(ASIDE_KEY.length),
-          sessions: S ? (arr(S.sessions) || []).length : 0,
-          at: A ? Number(A.at) || 0 : 0
-        });
-      }
-    } catch (e) {
-      log("aside", e);
-    }
-    return out;
+    return asideIdx.map((e) => ({ ...e }));
   }
   function asideClear() {
+    asideIdx.length = 0;
+    void asideWrite((s) => s.clear());
+  }
+  async function asideStart() {
+    const old = [];
     try {
-      const gone = [];
       for (let i = 0; i < localStorage.length; i++) {
         const k = localStorage.key(i);
-        if (k && k.startsWith(ASIDE_KEY)) gone.push(k);
+        const v = k && k.startsWith(ASIDE_KEY) ? localStorage.getItem(k) : null;
+        if (k && v) old.push([k, v]);
       }
-      for (const k of gone) localStorage.removeItem(k);
     } catch (e) {
       log("aside", e);
     }
+    for (const [k, v] of old) {
+      const A = rec(parseJson(v));
+      if (!A || !A.state) continue;
+      const moved = await keepAside(k.slice(ASIDE_KEY.length), JSON.stringify(A.state), {
+        meta: A.meta,
+        editAt: A.editAt,
+        last: A.last
+      });
+      if (moved)
+        try {
+          localStorage.removeItem(k);
+        } catch (e) {
+          log("aside", e);
+        }
+    }
+    for (const [acct2, A] of await asideAll())
+      indexAside({ acct: acct2, sessions: Number(A.sessions) || 0, at: Number(A.at) || 0 });
+    if (asideIdx.length && ui.tab === "settings" && !ui.modal) fx.rerenderKeepScroll();
   }
   function backupDue() {
     if (!state.sessions.some((s) => !s.demo)) return false;
@@ -3816,6 +3907,9 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     window.addEventListener("error", (e) => log("uncaught", e.error || e.message));
     window.addEventListener("unhandledrejection", (e) => log("promise", e.reason));
     setState(load());
+    asideStart().catch((e) => {
+      log("aside", e);
+    });
     if (normalize.dropped)
       log(
         "load",
@@ -7885,9 +7979,23 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
           }
           use = a === "alt";
         }
+        const aside = await asideOf(id);
         if (use) {
-          if (!keepAside(from, { meta: cloud.meta, editAt: cloud.editAt, last: cloud.last })) {
-            fx.toast("There is not enough room on this phone to keep the other log aside. Export a backup of it first.");
+          const notes = { meta: cloud.meta, editAt: cloud.editAt, last: cloud.last };
+          let kept = "";
+          for (let i = 0; i < 10 && !kept; i++) {
+            const text = JSON.stringify(state);
+            if (!await keepAside(from, text, notes)) {
+              fx.toast(
+                "There is not enough room on this phone to keep the other log aside. Export a backup of it first."
+              );
+              undo();
+              return;
+            }
+            if (JSON.stringify(state) === text) kept = text;
+          }
+          if (!kept) {
+            log("aside", new Error("the log kept changing while it was being kept aside"));
             undo();
             return;
           }
@@ -7896,7 +8004,6 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
         cloud.meta = {};
         cloud.editAt = {};
         cloud.last = null;
-        const aside = takeAside(id);
         if (use) {
           setState(aside ? aside.state : normalize(null));
           if (aside) {
@@ -7910,6 +8017,10 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
           commit();
           resyncLocalH();
           fx.render();
+        }
+        if (aside) {
+          if (device.boot && device.ok) await dropAside(id);
+          else log("aside", new Error("kept aside still: the log in use could not be saved on this device"));
         }
       }
       cloud.acct = id;

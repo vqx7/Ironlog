@@ -45,7 +45,18 @@ import { invalidate } from './live';
 import { AUTH } from './providers';
 import { acct, cloud, fx, setState, state, ui } from './store';
 import type { Base, CloudDb, CloudRef, CloudStatus, State, SyncNote } from './store';
-import { KEY, capturePost, demoRestore, device, log, clearTimer, keepAside, takeAside, undoForget } from './storage';
+import {
+  KEY,
+  capturePost,
+  demoRestore,
+  device,
+  log,
+  clearTimer,
+  keepAside,
+  asideOf,
+  dropAside,
+  undoForget
+} from './storage';
 
 declare global {
   interface Window {
@@ -1196,10 +1207,29 @@ export async function cloudInit(): Promise<void> {
         }
         use = a === 'alt';
       }
+      // The log kept aside for this account, if any, is read first, so nothing waits between keeping the log here and replacing it.
+      const aside = await asideOf(id);
       if (use) {
-        // The log here is replaced only once it is kept: a phone with no room for the copy keeps what it has.
-        if (!keepAside(from, { meta: cloud.meta, editAt: cloud.editAt, last: cloud.last })) {
-          fx.toast('There is not enough room on this phone to keep the other log aside. Export a backup of it first.');
+        /* The log here is replaced only once it is kept, as it is when it is
+           replaced: the copy is written to IndexedDB, which takes a moment, so
+           a set ticked meanwhile is in a second copy. A phone with no room for
+           the copy keeps what it has. */
+        const notes = { meta: cloud.meta, editAt: cloud.editAt, last: cloud.last };
+        let kept = '';
+        for (let i = 0; i < 10 && !kept; i++) {
+          const text = JSON.stringify(state);
+          if (!(await keepAside(from, text, notes))) {
+            fx.toast(
+              'There is not enough room on this phone to keep the other log aside. Export a backup of it first.'
+            );
+            undo();
+            return;
+          }
+          if (JSON.stringify(state) === text) kept = text;
+        }
+        if (!kept) {
+          // Changed under every copy, which taps cannot do: the sign-in is undone as Cancel undoes it, and asked again next time.
+          log('aside', new Error('the log kept changing while it was being kept aside'));
           undo();
           return;
         }
@@ -1208,7 +1238,6 @@ export async function cloudInit(): Promise<void> {
       cloud.meta = {};
       cloud.editAt = {};
       cloud.last = null;
-      const aside = takeAside(id);
       if (use) {
         setState(aside ? aside.state : normalize(null));
         if (aside) {
@@ -1222,6 +1251,11 @@ export async function cloudInit(): Promise<void> {
         commit();
         resyncLocalH();
         fx.render();
+      }
+      // The copy kept for this account is the log in use now; it goes once that log is saved here, and stays as its only copy on the device until then.
+      if (aside) {
+        if (device.boot && device.ok) await dropAside(id);
+        else log('aside', new Error('kept aside still: the log in use could not be saved on this device'));
       }
     }
     cloud.acct = id;

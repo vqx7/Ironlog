@@ -126,22 +126,51 @@ export function merge3Val<V>(bh: string | undefined, a: V, b: V, remoteWins: boo
    alone goes, unless the other side changed it, since keeping data is the
    recoverable mistake; a row added on one side is kept after the base's
    rows, local's additions first. Rows are matched by their own ids (`rid`,
-   given since r56.1); rows without one (an older build's) by their place
-   among the rows without one. Exercises are keyed by exercise and
-   occurrence, as Undo keys them; the order of exercises follows the side that
-   changed it, both when neither did, and the later edit when both did; an
-   exercise's own fields, and the workout's, are merged value by value, and
-   the workout's cardio rows record by record, since they have ids. */
+   given since r56.1). A row without one (a build before r56.1 made it) is
+   matched by its place among the rows without one in a workout in progress,
+   whose rows all stay in place, ticked or not; in a saved session (a join,
+   below) the rows left unticked are gone, so a place means nothing there,
+   and such a row is matched by what it holds instead (`'content'`). Exercises
+   are keyed by exercise and occurrence, as Undo keys them; the order of
+   exercises follows the side that changed it, both when neither did, and
+   the later edit when both did; an exercise's own fields, and the workout's,
+   are merged value by value, and the workout's cardio rows record by record,
+   since they have ids. */
 
 /** A row a merge reads: its own id, if it has one. */
 type Rowed = { rid?: string | undefined };
 /** An exercise a merge reads: which lift, and its rows. */
 type Exercised<R extends Rowed> = { exId: string; sets: R[] };
+/** How rows without an id are matched: by their place (a workout in progress), or by what they hold (a saved session). */
+type RowMatch = 'place' | 'content';
 
+/** What a row holds, its id left out. */
+const held = (r: Rowed): string => canon({ ...r, rid: undefined });
 /** Each row by its key: its id, or its place among the rows without one ("#n"). */
 function rowKeys<R extends Rowed>(sets: readonly R[]): [string, R][] {
   let n = 0;
   return sets.map(r => [typeof r.rid === 'string' ? r.rid : '#' + n++, r]);
+}
+/* By content (a join): a row without an id takes the key of a base row that
+   holds the same and that no other row of its side has taken, so a set both
+   phones kept as it was is one set; any other row without an id is its own
+   side's ("l#n", "r#n"), so two sets typed alike on the two phones stay two. */
+/** One side's rows by key, matched to the base's rows by content (above). */
+function contentKeys<R extends Rowed>(base: readonly [string, R][], sets: readonly R[], side: string): [string, R][] {
+  // A base row this side still holds by its id is taken by it, so no row without an id can take its key as well.
+  const ids = new Set(sets.map(r => r.rid));
+  const free = base.map(([k, r]) => ({ k, h: held(r), taken: ids.has(k) }));
+  let n = 0;
+  return sets.map(r => {
+    if (typeof r.rid === 'string') return [r.rid, r];
+    const h = held(r);
+    const b = free.find(x => !x.taken && x.h === h);
+    if (b) {
+      b.taken = true;
+      return [b.k, r];
+    }
+    return [side + '#' + n++, r];
+  });
 }
 /** The rows of two copies of one exercise merged against the base's rows (above). */
 function mergeRows<R extends Rowed>(
@@ -149,32 +178,39 @@ function mergeRows<R extends Rowed>(
   l: readonly R[],
   r: readonly R[],
   remoteWins: boolean,
-  stat: Stat
+  stat: Stat,
+  match: RowMatch
 ): R[] {
-  const B = new Map(rowKeys(base)),
-    L = new Map(rowKeys(l)),
-    R = new Map(rowKeys(r));
+  const bk = rowKeys(base);
+  const B = new Map(bk),
+    L = new Map(match === 'content' ? contentKeys(bk, l, 'l') : rowKeys(l)),
+    R = new Map(match === 'content' ? contentKeys(bk, r, 'r') : rowKeys(r));
+  // Rows matched by content may differ in their ids alone, so rows are compared by what they hold; of two that hold the same, the one with an id is kept.
+  const same = (x: R, y: R): boolean => held(x) === held(y);
+  const either = (x: R, y: R): R => (typeof x.rid === 'string' || typeof y.rid !== 'string' ? x : y);
   const out: R[] = [];
-  // Every key the three copies hold, in order: the base's rows, then local's own, then remote's own.
-  for (const k of new Set([...B.keys(), ...L.keys(), ...R.keys()])) {
+  /* Every key the three copies hold, in order: the base's rows, then each
+     side's own. In a workout in progress local's own come first; in a join
+     the session saved on the other phone (remote) keeps its order and what
+     was done here since is added after it, as the lifter is told. */
+  const order = match === 'content' ? [...B.keys(), ...R.keys(), ...L.keys()] : [...B.keys(), ...L.keys(), ...R.keys()];
+  for (const k of new Set(order)) {
     const b = B.get(k),
       a = L.get(k),
       c = R.get(k);
-    const bh = b ? canon(b) : null,
-      ah = a ? canon(a) : null,
-      ch = c ? canon(c) : null;
     if (a && c) {
-      if (ah === ch || ch === bh) out.push(a);
-      else if (ah === bh) out.push(c);
+      if (same(a, c)) out.push(either(a, c));
+      else if (b && same(c, b)) out.push(a);
+      else if (b && same(a, b)) out.push(c);
       else {
         stat.conflicts++;
         out.push(remoteWins ? c : a);
       }
     } else if (a) {
       // Gone on remote: removed there, unless it changed here since the base (or was added here).
-      if (!(b && ah === bh)) out.push(a);
+      if (!(b && same(a, b))) out.push(a);
     } else if (c) {
-      if (!(b && ch === bh)) out.push(c);
+      if (!(b && same(c, b))) out.push(c);
     }
   }
   return out;
@@ -207,7 +243,8 @@ function mergeExercises<R extends Rowed, X extends Exercised<R>>(
   local: readonly X[],
   remote: readonly X[],
   remoteWins: boolean,
-  stat: Stat
+  stat: Stat,
+  match: RowMatch
 ): X[] {
   const B = new Map(blockKeys(base)),
     L = new Map(blockKeys(local)),
@@ -229,7 +266,7 @@ function mergeExercises<R extends Rowed, X extends Exercised<R>>(
       a = L.get(k),
       c = R.get(k);
     if (a && c) {
-      const x: X = { ...a, sets: mergeRows(b ? b.sets : [], a.sets, c.sets, remoteWins, stat) };
+      const x: X = { ...a, sets: mergeRows(b ? b.sets : [], a.sets, c.sets, remoteWins, stat, match) };
       // An exercise's fields read by name; the copies are records, so the readers always find them.
       mergeFields(rec(x) || {}, b ? rec(b) : null, rec(a) || {}, rec(c) || {}, ['sets'], remoteWins, stat);
       out.push(x);
@@ -258,7 +295,7 @@ export function mergeWorkout(
   remoteWins: boolean,
   stat: Stat
 ): DraftLike {
-  const out: DraftLike = { ...local, ex: mergeExercises(base.ex, local.ex, remote.ex, remoteWins, stat) };
+  const out: DraftLike = { ...local, ex: mergeExercises(base.ex, local.ex, remote.ex, remoteWins, stat, 'place') };
   const O = rec(out) || {},
     Bf = rec(base) || {},
     Lf = rec(local) || {},
@@ -277,7 +314,10 @@ export function mergeSession(
   remoteWins: boolean,
   stat: Stat
 ): Session {
-  const out: Session = { ...local, ex: mergeExercises(base ? base.ex : [], local.ex, remote.ex, remoteWins, stat) };
+  const out: Session = {
+    ...local,
+    ex: mergeExercises(base ? base.ex : [], local.ex, remote.ex, remoteWins, stat, 'content')
+  };
   mergeFields(
     rec(out) || {},
     base ? rec(base) : null,

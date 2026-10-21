@@ -2,7 +2,8 @@
    storage part, changing nothing it does): the keys every stored value lives
    under, whether storage can be written, reading the save at start, the error
    log Settings can copy, Undo's steps and their copy in IndexedDB, the
-   settings kept aside while the demo is loaded, and the two readings the
+   settings kept aside while the demo is loaded, a log kept aside for another
+   account (r56.1, in IndexedDB too), and the two readings the
    menu button makes of all that (backupDue, saveStateNow). Writing the save
    is in sync.ts (saveNow), since every write goes on to the account.
    Nothing here runs on import: storageStart() runs what the legacy part
@@ -38,7 +39,7 @@ export const LOGK = KEY + '.log';
 export const WKVIEW_KEY = KEY + '.wkView';
 /** The settings kept aside while the demo is loaded (demoKeep). */
 export const DEMOSET_KEY = KEY + '.demoSettings';
-/** The start of the keys a log kept aside for another account lives under (keepAside, r56.1). */
+/** The start of the keys a preview of r56.1 kept a log aside under, before it moved to IndexedDB (asideStart). */
 export const ASIDE_KEY = KEY + '.aside.';
 
 /* ---------- where the save stands ---------- */
@@ -321,9 +322,17 @@ export function demoRestore(): void {
 /* A phone signed in to one account that holds another account's log, told
    to use this account's log, keeps the other's aside first, whole, with the
    sync notes that go with it, so nothing only this phone holds is lost: the
-   next sign-in to that account on this phone starts from it (takeAside) and
+   next sign-in to that account on this phone starts from it (asideOf) and
    syncs as a continuation. Your data lists what is kept (asideList), and
-   Erase everything clears it with the rest (asideClear). */
+   Erase everything clears it with the rest (asideClear).
+   A log kept aside is a whole copy of a log, so it lives in IndexedDB, as
+   Undo's copies do: that room is separate from localStorage's and far
+   larger, so a log kept aside never crowds out the save of the log in use,
+   then or as that log grows (PENDING 333, tests/room.js: kept in
+   localStorage, a log of 40% of the room kept aside made the save of a log
+   of 62% of it fail, and every save after it). Your data's line reads a list
+   held in memory (asideIdx), read from the database at start and kept
+   current by every change here. */
 /** What is kept aside for an account: its log, its sync notes, and when. */
 export interface Aside {
   at: number;
@@ -332,66 +341,157 @@ export interface Aside {
   editAt: unknown;
   last: unknown;
 }
-/** The key the log of an account is kept aside under. */
-const asideKey = (acct: string): string => ASIDE_KEY + fixId(acct);
-/** Keeps the log on this device, and the notes given, aside for the account they belong to. */
-export function keepAside(acct: string, notes: { meta: unknown; editAt: unknown; last: unknown }): boolean {
-  try {
-    localStorage.setItem(
-      asideKey(acct),
-      JSON.stringify({ at: Date.now(), state, meta: notes.meta, editAt: notes.editAt, last: notes.last })
-    );
-    return true;
-  } catch (e) {
-    log('aside', e);
-    return false;
-  }
+/** A log kept aside, as Your data lists it: its account, its sessions, and when it was kept. */
+export interface AsideEntry {
+  acct: string;
+  sessions: number;
+  at: number;
 }
-/** The log kept aside for an account, read through normalize() and removed from the device, or null when there is none. */
-export function takeAside(acct: string): Aside | null {
-  let A: Rec | null = null;
-  try {
-    const t = localStorage.getItem(asideKey(acct));
-    A = t ? rec(parseJson(t)) : null;
-    if (A) localStorage.removeItem(asideKey(acct));
-  } catch (e) {
-    log('aside', e);
+const ASIDE_DB = ENV === 'preview' ? `${STORAGE_ID}-preview-aside` : `${STORAGE_ID}-aside`;
+let asideDbP: Promise<IDBDatabase | null> | null = null;
+/** The logs kept aside, as Your data lists them (above). */
+const asideIdx: AsideEntry[] = [];
+function asideDb(): Promise<IDBDatabase | null> {
+  if (!asideDbP)
+    asideDbP = new Promise(res => {
+      try {
+        const r = indexedDB.open(ASIDE_DB, 1);
+        r.onupgradeneeded = () => r.result.createObjectStore('kv');
+        r.onsuccess = () => res(r.result);
+        r.onerror = () => res(null);
+      } catch (e) {
+        // No IndexedDB here (an old browser): nothing can be kept aside, so the lifter is told there is no room.
+        res(null);
+      }
+    });
+  return asideDbP;
+}
+/** One write to the aside database, true once it is on the device (the transaction complete, not only the request). */
+async function asideWrite(run: (s: IDBObjectStore) => void): Promise<boolean> {
+  const db = await asideDb();
+  if (!db) return false;
+  return new Promise(res => {
+    try {
+      const tx = db.transaction('kv', 'readwrite');
+      tx.oncomplete = () => res(true);
+      tx.onerror = () => res(false);
+      tx.onabort = () => {
+        log('aside', tx.error || new Error('the write was not kept'));
+        res(false);
+      };
+      run(tx.objectStore('kv'));
+    } catch (e) {
+      log('aside', e);
+      res(false);
+    }
+  });
+}
+/** A cursor over the aside database as it is read: a stored value is unknown until checked (the browser types it any). */
+type AsideCursor = { key: IDBValidKey; value: unknown; continue(): void } | null;
+/** Every entry of the aside database, by account, or none when it cannot be read. */
+async function asideAll(): Promise<[string, Rec][]> {
+  const db = await asideDb();
+  if (!db) return [];
+  return new Promise(res => {
+    try {
+      const out: [string, Rec][] = [];
+      const q = db.transaction('kv').objectStore('kv').openCursor();
+      const step = (c: AsideCursor): void => {
+        if (!c) return res(out);
+        const R = rec(c.value);
+        if (typeof c.key === 'string' && R) out.push([c.key, R]);
+        c.continue();
+      };
+      q.onsuccess = () => step(q.result);
+      q.onerror = () => res(out);
+    } catch (e) {
+      log('aside', e);
+      res([]);
+    }
+  });
+}
+/** Notes in the list a log kept aside for an account, in place of any it had. */
+function indexAside(e: AsideEntry): void {
+  const i = asideIdx.findIndex(x => x.acct === e.acct);
+  if (i >= 0) asideIdx.splice(i, 1);
+  asideIdx.push(e);
+}
+/** Keeps a log (its text, as the caller took it) and the notes given aside for the account they belong to: true once it is on the device. */
+export async function keepAside(
+  acct: string,
+  text: string,
+  notes: { meta: unknown; editAt: unknown; last: unknown }
+): Promise<boolean> {
+  const id = fixId(acct),
+    at = Date.now(),
+    noted = JSON.stringify(notes);
+  const S = rec(parseJson(text));
+  const sessions = S ? (arr(S.sessions) || []).length : 0;
+  const ok = await asideWrite(s => {
+    s.put({ at, sessions, state: text, notes: noted }, id);
+  });
+  if (ok) indexAside({ acct: id, sessions, at });
+  return ok;
+}
+/** The log kept aside for an account, read through normalize(), or null when there is none; it stays kept until dropAside. */
+export async function asideOf(acct: string): Promise<Aside | null> {
+  const id = fixId(acct);
+  const hit = (await asideAll()).find(([k]) => k === id);
+  const A = hit ? hit[1] : null;
+  if (!A || typeof A.state !== 'string') return null;
+  const N = rec(typeof A.notes === 'string' ? parseJson(A.notes) : null) || {};
+  return { at: Number(A.at) || 0, state: normalize(parseJson(A.state)), meta: N.meta, editAt: N.editAt, last: N.last };
+}
+/** Removes the log kept aside for an account, once it is the log in use and saved on the device. */
+export async function dropAside(acct: string): Promise<void> {
+  const id = fixId(acct);
+  if (await asideWrite(s => s.delete(id))) {
+    const i = asideIdx.findIndex(x => x.acct === id);
+    if (i >= 0) asideIdx.splice(i, 1);
   }
-  if (!A) return null;
-  return { at: Number(A.at) || 0, state: normalize(A.state), meta: A.meta, editAt: A.editAt, last: A.last };
 }
 /** The logs kept aside on this device: each account, its sessions and when it was kept. */
-export function asideList(): { acct: string; sessions: number; at: number }[] {
-  const out: { acct: string; sessions: number; at: number }[] = [];
-  try {
-    for (let i = 0; i < localStorage.length; i++) {
-      const k = localStorage.key(i);
-      if (!k || !k.startsWith(ASIDE_KEY)) continue;
-      const A = rec(parseJson(localStorage.getItem(k) || 'null'));
-      const S = A ? rec(A.state) : null;
-      out.push({
-        acct: k.slice(ASIDE_KEY.length),
-        sessions: S ? (arr(S.sessions) || []).length : 0,
-        at: A ? Number(A.at) || 0 : 0
-      });
-    }
-  } catch (e) {
-    log('aside', e);
-  }
-  return out;
+export function asideList(): AsideEntry[] {
+  return asideIdx.map(e => ({ ...e }));
 }
 /** Removes every log kept aside (Erase everything). */
 export function asideClear(): void {
+  asideIdx.length = 0;
+  void asideWrite(s => s.clear());
+}
+/* A preview of r56.1 before PENDING 333 kept the log aside in localStorage,
+   under ASIDE_KEY and the account; such a copy is moved into the database at
+   start, then removed, so it is neither lost nor left taking the log's room. */
+/** Reads the list of logs kept aside at start, after moving any a preview kept in localStorage; Your data is redrawn if it is open. */
+async function asideStart(): Promise<void> {
+  const old: [string, string][] = [];
   try {
-    const gone: string[] = [];
     for (let i = 0; i < localStorage.length; i++) {
       const k = localStorage.key(i);
-      if (k && k.startsWith(ASIDE_KEY)) gone.push(k);
+      const v = k && k.startsWith(ASIDE_KEY) ? localStorage.getItem(k) : null;
+      if (k && v) old.push([k, v]);
     }
-    for (const k of gone) localStorage.removeItem(k);
   } catch (e) {
     log('aside', e);
   }
+  for (const [k, v] of old) {
+    const A = rec(parseJson(v));
+    if (!A || !A.state) continue;
+    const moved = await keepAside(k.slice(ASIDE_KEY.length), JSON.stringify(A.state), {
+      meta: A.meta,
+      editAt: A.editAt,
+      last: A.last
+    });
+    if (moved)
+      try {
+        localStorage.removeItem(k);
+      } catch (e) {
+        log('aside', e);
+      }
+  }
+  for (const [acct, A] of await asideAll())
+    indexAside({ acct, sessions: Number(A.sessions) || 0, at: Number(A.at) || 0 });
+  if (asideIdx.length && ui.tab === 'settings' && !ui.modal) fx.rerenderKeepScroll();
 }
 
 /* ---------- the menu button's two readings ---------- */
@@ -476,6 +576,10 @@ export function storageStart(): void {
   // The reason a promise was rejected with: the same cast.
   window.addEventListener('unhandledrejection', e => log('promise', e.reason as unknown));
   setState(load());
+  // The logs kept aside for other accounts, listed once read (Your data).
+  asideStart().catch((e: unknown) => {
+    log('aside', e);
+  });
   // Records the save held that this build could not read are gone at the next save (r45 review): say so in Diagnostics.
   if (normalize.dropped)
     log(
