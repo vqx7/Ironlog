@@ -13,7 +13,7 @@ import type { Exercise } from './types';
 import type { State } from './store';
 import { addDays, clampN, hashStr, isDate, isNum, numOr, today } from './util';
 import { LB } from './units';
-import { BANDS, CARDIOL, CWHENL, JK, MEAS, MK, NEW_MUSCLES_V5, TRACK_ONLY, libExercises } from './library';
+import { BANDS, CARDIO, CWHEN, JK, MEAS, MK, NEW_MUSCLES_V5, TRACK_ONLY, libExercises } from './library';
 import { DAYS, MAX_DAYS, TEMPLATES, defaultRoutine, fixSupersets, routineFromTemplate, routineSig } from './routines';
 import type { NewRoutine } from './routines';
 import {
@@ -75,6 +75,11 @@ const JK_SET: ReadonlySet<string> = new Set(JK);
 const isMuscle = (v: unknown): boolean => typeof v === 'string' && MK_SET.has(v);
 const isMuscleOrJoint = (v: unknown): boolean => typeof v === 'string' && (MK_SET.has(v) || JK_SET.has(v));
 const NEW_V5: ReadonlySet<string> = new Set(NEW_MUSCLES_V5);
+/** A cardio kind, and when it sat against the lifting: one of the lists' keys (r56.1; until then any key Object has, and a list, passed). */
+const CARDIO_KINDS: ReadonlySet<string> = new Set(CARDIO.map(c => c[0]));
+const CARDIO_WHENS: ReadonlySet<string> = new Set(CWHEN.map(c => c[0]));
+/** A time a Date can hold (r56.1, PENDING 308): a whole number of milliseconds after 1970, within what Date represents. */
+const isTime = (t: number): boolean => Number.isInteger(t) && t > 0 && t <= 8.64e15;
 
 /* ---------- fields a newer build added ---------- */
 
@@ -142,16 +147,15 @@ export function cleanCardio(c: unknown, draft?: boolean, i?: number): Rec {
   const m = numOr(C.min, NaN),
     hr = numOr(C.hr, NaN),
     dk = numOr(C.dist, NaN);
-  // A kind or a time is looked up by its text, as any value was a key before the move.
   return keepExtra(
     c,
     {
       id: typeof C.id === 'string' ? fixId(C.id) : did('c', c, i),
       date: isDate(C.date) ? C.date : today(),
-      kind: CARDIOL[String(C.kind)] ? C.kind : 'other',
+      kind: typeof C.kind === 'string' && CARDIO_KINDS.has(C.kind) ? C.kind : 'other',
       min: isNum(m) && m > 0 ? Math.min(Math.round(m), 600) : draft ? null : 1,
       hr: isNum(hr) && hr >= 30 && hr <= 230 ? Math.round(hr) : null,
-      when: CWHENL[String(C.when)] ? C.when : 'solo',
+      when: typeof C.when === 'string' && CARDIO_WHENS.has(C.when) ? C.when : 'solo',
       note: typeof C.note === 'string' ? C.note.slice(0, 200) : '',
       demo: !!C.demo,
       ...(isNum(dk) && dk > 0 ? { dist: Math.min(Math.round(dk * 1000) / 1000, 1000) } : {})
@@ -217,7 +221,9 @@ export function cleanSess(raw: unknown, si: number): Rec {
                   rir: x.rir == null || x.rir === '' ? null : clampN(x.rir, 0, 10, null),
                   warm: !!x.warm,
                   drop: !!x.drop && !x.warm,
-                  cal: x.warm ? undefined : cleanCal(rec(x.cal)) || undefined
+                  cal: x.warm ? undefined : cleanCal(rec(x.cal)) || undefined,
+                  // The row's own id (r56.1), last, where a build before it kept the unknown field.
+                  ...(typeof x.rid === 'string' ? { rid: fixId(x.rid) } : {})
                 });
               })
           },
@@ -225,8 +231,8 @@ export function cleanSess(raw: unknown, si: number): Rec {
         );
       })
       .filter(b => b.sets.length),
-    // When the session started (r34): orders two sessions on one day. Absent on older ones, so their records hash as before.
-    t: Number.isFinite(t) && t > 0 ? Math.round(t) : undefined,
+    // When the session started (r34): orders two sessions on one day. Absent on older ones, so their records hash as before; kept only as a time a Date can hold (r56.1).
+    t: isTime(Math.round(t)) ? Math.round(t) : undefined,
     // The sessions a week its routine planned when saved (r55, pwOf); absent unless recorded, so older records keep their hash.
     pw: typeof ss.pw === 'number' && Number.isInteger(ss.pw) && ss.pw >= 1 && ss.pw <= 7 ? ss.pw : undefined
   });
@@ -863,7 +869,7 @@ export function normalize(input: unknown): State {
     d.id = typeof d.id === 'string' ? fixId(d.id) : did('x', { date: d.date, dayName: d.dayName }, 0);
     d.dayIdx = clampN(d.dayIdx, 0, MAX_DAYS - 1, 0);
     d.dayId = typeof d.dayId === 'string' ? fixId(d.dayId) : null;
-    d.startedAt = Number.isFinite(startedAt) && startedAt > 0 ? startedAt : null;
+    d.startedAt = isTime(startedAt) ? startedAt : null;
     d.durMin = Number.isFinite(durMin) && durMin >= 1 ? Math.round(durMin) : null;
     d.dayName = typeof d.dayName === 'string' ? d.dayName : 'Session';
     d.routineId = typeof d.routineId === 'string' && d.routineId ? fixId(d.routineId) : '';
@@ -980,7 +986,9 @@ export function normalize(input: unknown): State {
                 warm: !!x.warm,
                 drop: !!x.drop && !x.warm,
                 done: !!x.done,
-                cal: x.warm ? undefined : cleanCal(rec(x.cal)) || undefined
+                cal: x.warm ? undefined : cleanCal(rec(x.cal)) || undefined,
+                // The row's own id (r56.1), last, where a build before it kept the unknown field.
+                ...(typeof x.rid === 'string' ? { rid: fixId(x.rid) } : {})
               });
             })
         });

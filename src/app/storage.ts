@@ -10,7 +10,9 @@
 
 import { APP_VERSION, STORAGE_ID } from './config';
 import { daysBetween, today } from './util';
-import { arr, parseJson, rec } from './records';
+import { arr, fixId, parseJson, rec } from './records';
+import type { Rec } from './records';
+import type { LogEntry } from './types';
 import { realCount } from './chunks';
 import { normalize } from './normalize';
 import { cloud, fx, setState, state, ui } from './store';
@@ -36,6 +38,8 @@ export const LOGK = KEY + '.log';
 export const WKVIEW_KEY = KEY + '.wkView';
 /** The settings kept aside while the demo is loaded (demoKeep). */
 export const DEMOSET_KEY = KEY + '.demoSettings';
+/** The start of the keys a log kept aside for another account lives under (keepAside, r56.1). */
+export const ASIDE_KEY = KEY + '.aside.';
 
 /* ---------- where the save stands ---------- */
 
@@ -66,7 +70,14 @@ export const clearTimer = (t: number | null): void => {
    at start from LOGK, with the entries as they were saved (r56.1 checks each,
    PENDING 305). */
 /** The last 60 errors on this device, oldest first. */
-export const logBuf: unknown[] = [];
+export const logBuf: LogEntry[] = [];
+/** An entry of the error log as saved, or null when it is not one (r56.1, PENDING 305). */
+const logEntryIn = (v: unknown): LogEntry | null => {
+  const E = rec(v);
+  if (!E || typeof E.t !== 'string' || typeof E.a !== 'string' || typeof E.m !== 'string' || typeof E.v !== 'string')
+    return null;
+  return { t: E.t, a: E.a, m: E.m, v: E.v, ...(typeof E.s === 'string' ? { s: E.s } : {}) };
+};
 /* A URL's query and fragment, cut from what the log keeps (r47). The log
    goes out with a problem report, and the page's own URL holds a reset
    link's token in its fragment for a moment after the link is opened; a stack
@@ -305,6 +316,84 @@ export function demoRestore(): void {
   state.settings = normalize({ ...state, settings: { ...S, ...keep } }).settings;
 }
 
+/* ---------- a log kept aside for another account (r56.1, PENDING 328 b) ---------- */
+
+/* A phone signed in to one account that holds another account's log, told
+   to use this account's log, keeps the other's aside first, whole, with the
+   sync notes that go with it, so nothing only this phone holds is lost: the
+   next sign-in to that account on this phone starts from it (takeAside) and
+   syncs as a continuation. Your data lists what is kept (asideList), and
+   Erase everything clears it with the rest (asideClear). */
+/** What is kept aside for an account: its log, its sync notes, and when. */
+export interface Aside {
+  at: number;
+  state: State;
+  meta: unknown;
+  editAt: unknown;
+  last: unknown;
+}
+/** The key the log of an account is kept aside under. */
+const asideKey = (acct: string): string => ASIDE_KEY + fixId(acct);
+/** Keeps the log on this device, and the notes given, aside for the account they belong to. */
+export function keepAside(acct: string, notes: { meta: unknown; editAt: unknown; last: unknown }): boolean {
+  try {
+    localStorage.setItem(
+      asideKey(acct),
+      JSON.stringify({ at: Date.now(), state, meta: notes.meta, editAt: notes.editAt, last: notes.last })
+    );
+    return true;
+  } catch (e) {
+    log('aside', e);
+    return false;
+  }
+}
+/** The log kept aside for an account, read through normalize() and removed from the device, or null when there is none. */
+export function takeAside(acct: string): Aside | null {
+  let A: Rec | null = null;
+  try {
+    const t = localStorage.getItem(asideKey(acct));
+    A = t ? rec(parseJson(t)) : null;
+    if (A) localStorage.removeItem(asideKey(acct));
+  } catch (e) {
+    log('aside', e);
+  }
+  if (!A) return null;
+  return { at: Number(A.at) || 0, state: normalize(A.state), meta: A.meta, editAt: A.editAt, last: A.last };
+}
+/** The logs kept aside on this device: each account, its sessions and when it was kept. */
+export function asideList(): { acct: string; sessions: number; at: number }[] {
+  const out: { acct: string; sessions: number; at: number }[] = [];
+  try {
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      if (!k || !k.startsWith(ASIDE_KEY)) continue;
+      const A = rec(parseJson(localStorage.getItem(k) || 'null'));
+      const S = A ? rec(A.state) : null;
+      out.push({
+        acct: k.slice(ASIDE_KEY.length),
+        sessions: S ? (arr(S.sessions) || []).length : 0,
+        at: A ? Number(A.at) || 0 : 0
+      });
+    }
+  } catch (e) {
+    log('aside', e);
+  }
+  return out;
+}
+/** Removes every log kept aside (Erase everything). */
+export function asideClear(): void {
+  try {
+    const gone: string[] = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      if (k && k.startsWith(ASIDE_KEY)) gone.push(k);
+    }
+    for (const k of gone) localStorage.removeItem(k);
+  } catch (e) {
+    log('aside', e);
+  }
+}
+
 /* ---------- the menu button's two readings ---------- */
 
 /* Everything lives in this one browser, so a backup is the only thing that
@@ -373,7 +462,12 @@ export function storageStart(): void {
   }
   try {
     const a = arr(parseJson(localStorage.getItem(LOGK) || '[]'));
-    if (a) logBuf.push(...a);
+    // Each entry checked (logEntryIn); one that is not an entry is left out.
+    if (a)
+      for (const e of a) {
+        const x = logEntryIn(e);
+        if (x) logBuf.push(x);
+      }
   } catch (e) {
     // No readable error log yet: the log starts empty.
   }

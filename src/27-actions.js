@@ -534,7 +534,7 @@ const ACT={
     };
     if(state.draft)confirmBox('Replace the session in progress?','You have an unsaved session open. Starting this one discards it.','Discard and start',go,true);else go();
   },
-  crashRetry(){ui.tab='today';ui.modal=null;ui.planView='routine';try{closeModal();}catch(e){log('render',e);}window.scrollTo(0,0);render();},
+  crashRetry(){ui.tab='today';ui.planView='routine';try{closeModal();}catch(e){log('render',e);}ui.modal=null;window.scrollTo(0,0);render();}, // the sheet closed first (r56.1): a question left open reads as Cancel, so the sync waiting on it does not wait forever
   fbOpen(t){
     const d=state.draft;const bi=t&&t.dataset&&t.dataset.b!=null?+t.dataset.b:null;const b=bi!=null&&d?d.ex[bi]:null;
     const from=ui.tab==='settings'?(ui.prevTab||'settings'):ui.tab;
@@ -733,7 +733,7 @@ const ACT={
     const b=state.draft.ex[+t.dataset.b];
     // The load the last working set was, or will be (a grey load counts); a missed set's is passed over (r55).
     let base=0;for(let i=b.sets.length-1;i>=0;i--){const s=b.sets[i];if(s.warm||s.drop||isMissed(s))continue;const w=+effW(b,i)||0;if(w>0){base=w;break;}}
-    b.sets.push({w:base>0?lighterLoad(EX(b.exId),b.plan,base,base*0.75):null,r:null,rir:null,warm:false,drop:true,done:false});
+    b.sets.push(newRow({w:base>0?lighterLoad(EX(b.exId),b.plan,base,base*0.75):null,drop:true}));
     saveNow();rerenderKeepScroll();toast('Drop set added');
   },
   // Once the rest is over, +15 counts from now (not from the old end, which
@@ -741,8 +741,8 @@ const ACT={
   tAdd(){const was=Math.max(0,(timer.end-Date.now())/1000);timer.total=was>0?Math.max(timer.total||0,was)+15:15;timer.end=Math.max(timer.end,Date.now())+15000;timer.fired=false;timerSave();if(!timer.iv)timer.iv=setInterval(tick,250);tick();},
   tStop(){stopTimer();},
   mClose(){closeModal();},
-  mOk(){const fn=ui.modal&&ui.modal.fn;closeModal();fn&&fn();},
-  mAlt(){const a=ui.modal&&ui.modal.alt;closeModal();a&&a.fn&&a.fn();},
+  mOk(){const m=ui.modal;const fn=m&&m.fn;if(m)m.answered=true;closeModal();fn&&fn();},
+  mAlt(){const m=ui.modal;const a=m&&m.alt;if(m)m.answered=true;closeModal();a&&a.fn&&a.fn();},
   startSession(t){
     if(ui.modal)closeModal();toastQuiet();
     const R=activeRoutine();const di=+t.dataset.day;const d=R.days[di];if(!d)return;
@@ -804,7 +804,7 @@ const ACT={
   goBackup(){if(ui.modal)closeModal();ui.tab='settings';ui.folds['settings:data']=true;window.scrollTo(0,0);render();const el=document.getElementById('dataSec');if(el)el.scrollIntoView({block:'start'});},
   // The new working set copies the last working set's load, not a drop set's
   // (75%) or a warm-up's.
-  sAdd(t){const bi=+t.dataset.b;const b=state.draft.ex[bi];const ld=b.sets.reduce((k,x,i)=>x.done&&isWork(x)&&!x.drop?i:k,-1);const row={w:null,r:null,rir:null,warm:false,drop:false,done:false};
+  sAdd(t){const bi=+t.dataset.b;const b=state.draft.ex[bi];const ld=b.sets.reduce((k,x,i)=>x.done&&isWork(x)&&!x.drop?i:k,-1);const row=newRow();
     // Grey by default: the new row shows the load above it, or what the last set ticked asks for, as a planned row under it would have (r55, V: after 300 x 1, + Set copied 300). Filled in, it takes that load.
     b.sets.push(row);if(ld>=0)assessSet(bi,ld);if(fillLoads())row.w=effW(b,b.sets.length-1);saveNow();rerenderKeepScroll();},
   /* Warm-ups were missing entirely, which is also why the planned time estimate
@@ -818,7 +818,7 @@ const ACT={
     const frac=[0.4,0.6,0.75,0.85][Math.min(n,3)];
     // Each new warm-up goes after the ones already there, so they climb to the working load (r27; they used to stack heaviest first).
     let at=0;while(at<b.sets.length&&b.sets[at].warm)at++;
-    b.sets.splice(at,0,{w:base>0?lighterLoad(EX(b.exId),b.plan,base,base*frac):null,r:null,rir:null,warm:true,drop:false,done:false});
+    b.sets.splice(at,0,newRow({w:base>0?lighterLoad(EX(b.exId),b.plan,base,base*frac):null,warm:true}));
     adjSync(b);saveNow();rerenderKeepScroll();toast('Warm-up set added');
   },
   bQuick(t){openModal({kind:'quick',b:+t.dataset.b,text:''});},
@@ -1246,7 +1246,7 @@ m.err=`Could not read that. Try the pattern 225x5, 5, 4 ${rirScale()==='rpe'?'rp
     const s=state.sessions.find(x=>x.id===t.dataset.id);if(!s)return;
     const go=()=>{const R=state.routines.find(r=>r.id===s.routineId)||activeRoutine();
       const dayItems=s.free?[]:((R.days[sessDayIdx(R,s)]||{items:[]}).items);
-      state.draft={id:uid(),editingId:s.id,deload:!!s.deload,light:!!s.light,free:s.free?true:undefined,chk:s.chk?{...s.chk}:undefined,startedAt:null,durMin:s.durMin||null,date:s.date,dayIdx:s.dayIdx,dayId:s.dayId||null,dayName:s.dayName,routineId:s.routineId,notes:s.notes||'',ex:s.ex.map(b=>{const it=dayItems.find(i=>i.exId===b.exId);const plan=it?{...it}:planFor(b.exId,null,null,false,s.date);return {bid:uid(),exId:b.exId,plan,note:b.note||'',keepRR:b.rr||null,light:b.light?true:undefined,hint:'Editing saved sets.',lastR:[],sets:b.sets.map(x=>({w:x.w,r:x.r,rir:x.rir,warm:!!x.warm,drop:!!x.drop,done:true,cal:x.cal?{...x.cal}:undefined}))};})};
+      state.draft={id:uid(),editingId:s.id,deload:!!s.deload,light:!!s.light,free:s.free?true:undefined,chk:s.chk?{...s.chk}:undefined,startedAt:null,durMin:s.durMin||null,date:s.date,dayIdx:s.dayIdx,dayId:s.dayId||null,dayName:s.dayName,routineId:s.routineId,notes:s.notes||'',ex:s.ex.map(b=>{const it=dayItems.find(i=>i.exId===b.exId);const plan=it?{...it}:planFor(b.exId,null,null,false,s.date);return {bid:uid(),exId:b.exId,plan,note:b.note||'',keepRR:b.rr||null,light:b.light?true:undefined,hint:'Editing saved sets.',lastR:[],sets:b.sets.map(x=>newRow({w:x.w,r:x.r,rir:x.rir,warm:!!x.warm,drop:!!x.drop,done:true,cal:x.cal?{...x.cal}:undefined}))};})};
       editFp0.set(state.draft.id,editFp(state.draft));
       saveNow();ui.tab='today';window.scrollTo(0,0);render();};
     if(state.draft)confirmBox('Replace the session in progress?','You have an unsaved session open. Editing this one will discard it.','Discard and edit',go,true);else go();
@@ -1266,7 +1266,7 @@ m.err=`Could not read that. Try the pattern 225x5, 5, 4 ${rirScale()==='rpe'?'rp
     if(first)fitTargets(activeRoutine());if(!cloud.on)cloudStop(true);makeDemo();ui.tab='dash';window.scrollTo(0,0);render();toast('Demo data loaded');});},
   demoStart(){state.sessions=state.sessions.filter(s=>!s.demo);state.bodyweights=state.bodyweights.filter(b=>!b.demo);state.measurements=state.measurements.filter(m=>!m.demo);demoRestore();commit();ui.tab='today';ui.folds={};window.scrollTo(0,0);render();},
   demoClear(){snapshot();stripDemo(state);demoRestore();commit();render();toast('Demo data cleared',true);},
-  resetAll(){confirmBox('Erase everything?',`All routines, sessions, custom exercises, and body data will be deleted${cloud.on?' on this device and in your cloud copy':' on this device'}. Export a backup first if you might want it.`,'Erase everything',()=>{snapshot();setState(normalize(null));if(!cloud.on)cloudStop(true);commit();ui.tab='today';render();toast('Everything erased',true);},true);}
+  resetAll(){confirmBox('Erase everything?',`All routines, sessions, custom exercises, and body data will be deleted${cloud.on?' on this device and in your cloud copy':' on this device'}. Export a backup first if you might want it.`,'Erase everything',()=>{snapshot();setState(normalize(null));if(!cloud.on)cloudStop(true);asideClear();commit();ui.tab='today';render();toast('Everything erased',true);},true);}
 };
 
 /* A load far from last time's (under 60% or over 140% of it) is the usual

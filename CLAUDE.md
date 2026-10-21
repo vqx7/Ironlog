@@ -3,7 +3,7 @@
 A hypertrophy and strength tracker for one lifter, V, used on a phone at the gym. It ships as a standalone
 installable web app: built from `src/` into one page, served by GitHub Pages at https://ironapp.org, working
 offline, with the log on the phone and an optional account that syncs it. Every pull request also publishes a
-preview app at https://ironapp.org/preview/ to try on the phone before merging. Build r56, version 2.8, state schema v5.
+preview app at https://ironapp.org/preview/ to try on the phone before merging. Build r56.1, version 2.9, state schema v5.
 
 The Claude artifact version was retired by V on 2026-09-27 (`OWNER.md` Done): never work on it or republish it.
 `cloudProvider()` still takes Claude's db when `window.claude` exists, because the sync suites use it as their
@@ -52,9 +52,11 @@ stand-in cloud.
   `coachIn`). `live.ts` holds the one model the app runs on (`LIVE`) and the adapters through which the legacy
   script calls those functions by their old names (`export const suggest = live(suggestIn);`). Storage and sync are
   typed since r56: `normalize.ts` (the log as every build reads it), `storage.ts` (the keys, where the save stands
-  (`device`), the error log (`log`), Undo's steps) and `sync.ts` (every write of the log, the account's documents,
-  the sync notes, another tab); they reach the screens only through `fx` in `store.ts`, which the legacy script
-  fills at start, and run nothing on import (`storageStart()`, `syncStart()`).
+  (`device`), the error log (`log`), Undo's steps, a log kept aside for another account) and `sync.ts` (every write
+  of the log, the account's documents, the sync notes, another tab, one workout open on two phones, the account
+  question); they reach the screens only through `fx` in `store.ts`, which the legacy script fills at start
+  (`render`, `toast`, `ask`), and run nothing on import (`storageStart()`, `syncStart()`). `yourdata.ts` writes the
+  lines a module adds to Your data.
 - `src/1*.js`, `src/2*.js`: the legacy script, cut into parts at its section headers (start-up, accounts, the
   screens, sheets, actions and events), one function scope. It reads `src/app/` only through the imports in
   `src/09-imports.js`. `src/01` to `src/03` are the page head, styles and markup.

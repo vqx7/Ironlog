@@ -14,12 +14,15 @@
 // with the wrong shape, duplicate ids, a broken session in progress, trash of
 // every kind), so the cleaning paths run as much as the ordinary ones.
 // A guard: it passes before the move as after. Run it on another pair with
-// `node tests/r56.js <old page> <new page>`.
+// `node tests/r56.js <old page> <new page>`. Pinned to r56 as published
+// (baselines/r56.html) since r56.1, which changes two of the answers on
+// purpose: a damaged cardio kind or time reads as other and solo, and a set
+// row's id is read (PENDING 305, 328); the comparison keeps proving the move.
 const { open } = require('./h');
 const { wide } = require('./wide');
 const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log('FAIL', m, x !== undefined ? JSON.stringify(x).slice(0, 900) : ''); } else console.log('ok  ', m); };
 const OLD = process.argv[2] || 'baselines/r55.html';
-const NEW = process.argv[3] || 'index.html';
+const NEW = process.argv[3] || 'baselines/r56.html';
 const N = 240;
 
 // A seeded hand that damages a raw log, the same way for both pages.

@@ -106,7 +106,9 @@ export interface RirCheck {
 }
 
 /** One logged set. `w` is the number as typed (below 0 only on an assisted lift),
-    `rir` what was called, null when left blank. */
+    `rir` what was called, null when left blank; `rid` the row's own id, kept
+    from the workout in progress since r56.1 (absent on sets saved before), so
+    a workout finished on one phone and ticked further on another joins row by row. */
 export interface LoggedSet {
   w: number;
   r: number;
@@ -114,6 +116,7 @@ export interface LoggedSet {
   warm: boolean;
   drop: boolean;
   cal?: RirCheck | undefined;
+  rid?: string | undefined;
 }
 
 /** One exercise in a saved session: its sets, the planned range at the time
@@ -314,7 +317,9 @@ export type LibRow = readonly [
 
 /** A set in the session in progress: the load as typed (null until typed or
     taken from the grey load), the reps as typed (text while being typed),
-    what was called, and its marks. */
+    what was called, its marks, and since r56.1 its own id (`rid`), so two
+    phones' copies of one workout are merged row by row; a row an older build
+    made has none and is matched by its place. */
 export interface DraftSet {
   w: number | null;
   r: number | string | null;
@@ -323,6 +328,16 @@ export interface DraftSet {
   warm?: boolean | undefined;
   drop?: boolean | undefined;
   cal?: RirCheck | null | undefined;
+  rid?: string | undefined;
+}
+
+/** One entry of the error log Settings can copy: when, the area, the message, the build, and the first lines of the stack. */
+export interface LogEntry {
+  t: string;
+  a: string;
+  m: string;
+  v: string;
+  s?: string | undefined;
 }
 
 /** The target a block was given when the session started (cleanTgt keeps its numbers). */

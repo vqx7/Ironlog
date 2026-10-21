@@ -133,13 +133,19 @@ export interface CloudDb {
 
 /** The merge base a sync note keeps for a document (baseOf, sync.ts): per
     record fingerprints by list (a), per field (f) and per setting (s) for
-    core, or the session in progress's fingerprint (d). */
+    core, or the session in progress's fingerprint (d) and, since r56.1, the
+    copy itself (draft), so two phones' copies of one workout are merged set
+    by set against it; a note an older build saved has the fingerprint alone. */
 export interface Base {
   a?: Record<string, Record<string, string>>;
   f?: Record<string, string>;
   s?: Record<string, string>;
   d?: string;
+  draft?: DraftLike | null | undefined;
 }
+
+/** Where the sync stands: off (local), reading the account (connecting), writing to it (saving), everything agreed (synced), or waiting for the network (offline). One function moves it (setCloud, sync.ts). */
+export type CloudStatus = 'local' | 'connecting' | 'saving' | 'synced' | 'offline';
 /** A sync note for one document: the fingerprint of the copy last agreed
     with the account, when that copy was written, and the merge base, absent
     on a note an older build saved (it is filled in on the next sync). */
@@ -159,7 +165,7 @@ export interface Cloud {
   on: boolean;
   db: CloudDb | null;
   uid: string | null;
-  status: string;
+  status: CloudStatus;
   last: number | null;
   meta: Record<string, SyncNote>;
   editAt: Record<string, number>;
@@ -205,6 +211,8 @@ export const cloud: Cloud = {
 export interface Fx {
   /** Redraws the page. */
   render(): void;
+  /** Asks a question with two answers and Cancel (the confirm sheet): the answer, 'cancel' when the sheet is closed without one. */
+  ask(title: string, body: string, ok: string, alt: string): Promise<'ok' | 'alt' | 'cancel'>;
   /** Redraws the page keeping the scroll position. */
   rerenderKeepScroll(): void;
   /** Shows a toast: the message, whether it offers Undo, for how long, and its kind. */
