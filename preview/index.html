@@ -2,9 +2,9 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-N/mTXwFTBFccXJeXguQVUbWrTDOjfgCNUlJicBwRfWY=' 'sha256-tuSgXs5JTxAxl+0h6Mmbx/BgvpNDfjiq2RiZRPGtwkc=' 'sha256-YHdgjdaHPObo0ajgr78/3fg0b/g2KACx2Yivxr2AJEo=' 'sha256-Qi4B8nnIWqYy04RlWYkXRb1y0ybeU0YNr0MGyVcTRLA=' 'sha256-J4UrXwIeplIJZfkgJq3M75mmvlwXBomq0l+LhSwoEfI='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https://fqvupierxrvpoidtwlon.supabase.co wss://fqvupierxrvpoidtwlon.supabase.co https://api.pwnedpasswords.com; worker-src 'self'; manifest-src 'self'; media-src 'self'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-N/mTXwFTBFccXJeXguQVUbWrTDOjfgCNUlJicBwRfWY=' 'sha256-tuSgXs5JTxAxl+0h6Mmbx/BgvpNDfjiq2RiZRPGtwkc=' 'sha256-YHdgjdaHPObo0ajgr78/3fg0b/g2KACx2Yivxr2AJEo=' 'sha256-OjfL2dfIPTahTCwKvu8tD4conObI61jTFw0QzK+7BCM=' 'sha256-J4UrXwIeplIJZfkgJq3M75mmvlwXBomq0l+LhSwoEfI='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https://fqvupierxrvpoidtwlon.supabase.co wss://fqvupierxrvpoidtwlon.supabase.co https://api.pwnedpasswords.com; worker-src 'self'; manifest-src 'self'; media-src 'self'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="app-build" content="2026.10.21-r56">
+<meta name="app-build" content="2026.10.21-r56.1">
 <title>Ironlog Preview</title>
 <script>window.IRONLOG_APP=true;window.IRONLOG_ENV='preview';window.__installEvt=null;
 window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();window.__installEvt=e;if(window.ironlogInstallReady)window.ironlogInstallReady();});
@@ -1060,8 +1060,8 @@ loadScript(['vendor/chart.umd.js','https://cdnjs.cloudflare.com/ajax/libs/Chart.
   var PREVIEW_NAME = `${APP_NAME} Preview`;
   var PREVIEW_LABEL = "Preview";
   var WORDMARK = { mark: "I", strong: "ron", light: "log" };
-  var DISPLAY_VERSION = "2.8";
-  var APP_VERSION = "2026.10.21-r56";
+  var DISPLAY_VERSION = "2.9";
+  var APP_VERSION = "2026.10.21-r56.1";
   var VERSION_LINE = `${DISPLAY_VERSION} (build ${APP_VERSION})`;
   var SITE_HOST = "ironapp.org";
   var SITE_DIR_FALLBACK = "/Ironlog";
@@ -2473,6 +2473,98 @@ loadScript(['vendor/chart.umd.js','https://cdnjs.cloudflare.com/ajax/libs/Chart.
     stat.conflicts++;
     return remoteWins ? b : a;
   }
+  function rowKeys(sets) {
+    let n = 0;
+    return sets.map((r) => [typeof r.rid === "string" ? r.rid : "#" + n++, r]);
+  }
+  function mergeRows(base, l, r, remoteWins, stat) {
+    const B = new Map(rowKeys(base)), L = new Map(rowKeys(l)), R = new Map(rowKeys(r));
+    const out = [];
+    for (const k of /* @__PURE__ */ new Set([...B.keys(), ...L.keys(), ...R.keys()])) {
+      const b = B.get(k), a = L.get(k), c = R.get(k);
+      const bh = b ? canon(b) : null, ah = a ? canon(a) : null, ch = c ? canon(c) : null;
+      if (a && c) {
+        if (ah === ch || ch === bh) out.push(a);
+        else if (ah === bh) out.push(c);
+        else {
+          stat.conflicts++;
+          out.push(remoteWins ? c : a);
+        }
+      } else if (a) {
+        if (!(b && ah === bh)) out.push(a);
+      } else if (c) {
+        if (!(b && ch === bh)) out.push(c);
+      }
+    }
+    return out;
+  }
+  function mergeFields(out, base, l, r, skip, remoteWins, stat) {
+    for (const f of /* @__PURE__ */ new Set([...Object.keys(l), ...Object.keys(r)])) {
+      if (skip.includes(f)) continue;
+      const v = merge3Val(base ? Hx(base[f]) : "?", l[f], r[f], remoteWins, stat);
+      if (v === void 0) delete out[f];
+      else out[f] = v;
+    }
+  }
+  function blockKeys(list) {
+    const seen = {};
+    return list.map((b) => [b.exId + "#" + (seen[b.exId] = (seen[b.exId] || 0) + 1), b]);
+  }
+  function mergeExercises(base, local, remote, remoteWins, stat) {
+    const B = new Map(blockKeys(base)), L = new Map(blockKeys(local)), R = new Map(blockKeys(remote));
+    const bo = [...B.keys()].join("|"), lo = [...L.keys()].join("|"), ro = [...R.keys()].join("|");
+    let order;
+    if (lo === ro || ro === bo) order = [...L.keys()];
+    else if (lo === bo) order = [...R.keys()];
+    else {
+      stat.conflicts++;
+      order = remoteWins ? [...R.keys()] : [...L.keys()];
+    }
+    for (const k of [...L.keys(), ...R.keys()]) if (!order.includes(k)) order.push(k);
+    const out = [];
+    for (const k of order) {
+      const b = B.get(k), a = L.get(k), c = R.get(k);
+      if (a && c) {
+        const x = { ...a, sets: mergeRows(b ? b.sets : [], a.sets, c.sets, remoteWins, stat) };
+        mergeFields(rec(x) || {}, b ? rec(b) : null, rec(a) || {}, rec(c) || {}, ["sets"], remoteWins, stat);
+        out.push(x);
+      } else if (a) {
+        if (!(b && canon(a) === canon(b))) out.push(a);
+      } else if (c) {
+        if (!(b && canon(c) === canon(b))) out.push(c);
+      }
+    }
+    return out;
+  }
+  function cardioBase(list) {
+    const o = {};
+    for (const x of arr(list) || []) {
+      const R = rec(x);
+      if (R && typeof R.id === "string") o[R.id] = Hx(x);
+    }
+    return o;
+  }
+  function mergeWorkout(base, local, remote, remoteWins, stat) {
+    const out = { ...local, ex: mergeExercises(base.ex, local.ex, remote.ex, remoteWins, stat) };
+    const O = rec(out) || {}, Bf = rec(base) || {}, Lf = rec(local) || {}, Rf = rec(remote) || {};
+    mergeFields(O, Bf, Lf, Rf, ["ex", "id", "cardio"], remoteWins, stat);
+    const cardio = merge3List(cardioBase(Bf.cardio), Lf.cardio, Rf.cardio, remoteWins, stat);
+    if (cardio.length || Lf.cardio !== void 0 || Rf.cardio !== void 0) O.cardio = cardio;
+    return out;
+  }
+  function mergeSession(base, local, remote, remoteWins, stat) {
+    const out = { ...local, ex: mergeExercises(base ? base.ex : [], local.ex, remote.ex, remoteWins, stat) };
+    mergeFields(
+      rec(out) || {},
+      base ? rec(base) : null,
+      rec(local) || {},
+      rec(remote) || {},
+      ["ex", "id"],
+      remoteWins,
+      stat
+    );
+    return out;
+  }
   function mergeDraft(base, cur, pre) {
     if (!pre || !cur || !base || pre.id !== cur.id || base.id !== cur.id) return cur === void 0 ? null : cur;
     const keyed = (list) => {
@@ -2547,7 +2639,7 @@ loadScript(['vendor/chart.umd.js','https://cdnjs.cloudflare.com/ajax/libs/Chart.
     today: ["session", "map", "week", "injuries", "coach", "tiles", "body"],
     dash: ["exercise", "volume", "weak", "consistency", "body"]
   };
-  var defaultOrder = () => JSON.parse(JSON.stringify(DEFAULT_ORDER));
+  var defaultOrder = () => parseJson(JSON.stringify(DEFAULT_ORDER));
   function orderKeys(saved, present) {
     const order = saved.filter((k) => present.includes(k));
     present.forEach((k, i) => {
@@ -2636,6 +2728,9 @@ loadScript(['vendor/chart.umd.js','https://cdnjs.cloudflare.com/ajax/libs/Chart.
   var isMuscle = (v) => typeof v === "string" && MK_SET.has(v);
   var isMuscleOrJoint = (v) => typeof v === "string" && (MK_SET.has(v) || JK_SET.has(v));
   var NEW_V5 = new Set(NEW_MUSCLES_V5);
+  var CARDIO_KINDS = new Set(CARDIO.map((c) => c[0]));
+  var CARDIO_WHENS = new Set(CWHEN.map((c) => c[0]));
+  var isTime = (t) => Number.isInteger(t) && t > 0 && t <= 864e13;
   function keepExtra(src, out, known) {
     const S = rec(src);
     if (!S || Array.isArray(src)) return out;
@@ -2679,10 +2774,10 @@ loadScript(['vendor/chart.umd.js','https://cdnjs.cloudflare.com/ajax/libs/Chart.
       {
         id: typeof C.id === "string" ? fixId(C.id) : did("c", c, i),
         date: isDate(C.date) ? C.date : today(),
-        kind: CARDIOL[String(C.kind)] ? C.kind : "other",
+        kind: typeof C.kind === "string" && CARDIO_KINDS.has(C.kind) ? C.kind : "other",
         min: isNum(m) && m > 0 ? Math.min(Math.round(m), 600) : draft ? null : 1,
         hr: isNum(hr) && hr >= 30 && hr <= 230 ? Math.round(hr) : null,
-        when: CWHENL[String(C.when)] ? C.when : "solo",
+        when: typeof C.when === "string" && CARDIO_WHENS.has(C.when) ? C.when : "solo",
         note: typeof C.note === "string" ? C.note.slice(0, 200) : "",
         demo: !!C.demo,
         ...isNum(dk) && dk > 0 ? { dist: Math.min(Math.round(dk * 1e3) / 1e3, 1e3) } : {}
@@ -2736,15 +2831,17 @@ loadScript(['vendor/chart.umd.js','https://cdnjs.cloudflare.com/ajax/libs/Chart.
                 rir: x.rir == null || x.rir === "" ? null : clampN(x.rir, 0, 10, null),
                 warm: !!x.warm,
                 drop: !!x.drop && !x.warm,
-                cal: x.warm ? void 0 : cleanCal(rec(x.cal)) || void 0
+                cal: x.warm ? void 0 : cleanCal(rec(x.cal)) || void 0,
+                // The row's own id (r56.1), last, where a build before it kept the unknown field.
+                ...typeof x.rid === "string" ? { rid: fixId(x.rid) } : {}
               });
             })
           },
           KNOWN_SEX
         );
       }).filter((b) => b.sets.length),
-      // When the session started (r34): orders two sessions on one day. Absent on older ones, so their records hash as before.
-      t: Number.isFinite(t) && t > 0 ? Math.round(t) : void 0,
+      // When the session started (r34): orders two sessions on one day. Absent on older ones, so their records hash as before; kept only as a time a Date can hold (r56.1).
+      t: isTime(Math.round(t)) ? Math.round(t) : void 0,
       // The sessions a week its routine planned when saved (r55, pwOf); absent unless recorded, so older records keep their hash.
       pw: typeof ss.pw === "number" && Number.isInteger(ss.pw) && ss.pw >= 1 && ss.pw <= 7 ? ss.pw : void 0
     });
@@ -3192,7 +3289,7 @@ loadScript(['vendor/chart.umd.js','https://cdnjs.cloudflare.com/ajax/libs/Chart.
       d.id = typeof d.id === "string" ? fixId(d.id) : did("x", { date: d.date, dayName: d.dayName }, 0);
       d.dayIdx = clampN(d.dayIdx, 0, MAX_DAYS - 1, 0);
       d.dayId = typeof d.dayId === "string" ? fixId(d.dayId) : null;
-      d.startedAt = Number.isFinite(startedAt) && startedAt > 0 ? startedAt : null;
+      d.startedAt = isTime(startedAt) ? startedAt : null;
       d.durMin = Number.isFinite(durMin) && durMin >= 1 ? Math.round(durMin) : null;
       d.dayName = typeof d.dayName === "string" ? d.dayName : "Session";
       d.routineId = typeof d.routineId === "string" && d.routineId ? fixId(d.routineId) : "";
@@ -3277,7 +3374,9 @@ loadScript(['vendor/chart.umd.js','https://cdnjs.cloudflare.com/ajax/libs/Chart.
               warm: !!x.warm,
               drop: !!x.drop && !x.warm,
               done: !!x.done,
-              cal: x.warm ? void 0 : cleanCal(rec(x.cal)) || void 0
+              cal: x.warm ? void 0 : cleanCal(rec(x.cal)) || void 0,
+              // The row's own id (r56.1), last, where a build before it kept the unknown field.
+              ...typeof x.rid === "string" ? { rid: fixId(x.rid) } : {}
             });
           })
         });
@@ -3448,11 +3547,18 @@ loadScript(['vendor/chart.umd.js','https://cdnjs.cloudflare.com/ajax/libs/Chart.
   var LOGK = KEY + ".log";
   var WKVIEW_KEY = KEY + ".wkView";
   var DEMOSET_KEY = KEY + ".demoSettings";
+  var ASIDE_KEY = KEY + ".aside.";
   var device = { ok: true, boot: true, hadLocal: false, hadLog: false, lastSaved: null };
   var clearTimer = (t) => {
     if (t != null) clearTimeout(t);
   };
   var logBuf = [];
+  var logEntryIn = (v) => {
+    const E = rec(v);
+    if (!E || typeof E.t !== "string" || typeof E.a !== "string" || typeof E.m !== "string" || typeof E.v !== "string")
+      return null;
+    return { t: E.t, a: E.a, m: E.m, v: E.v, ...typeof E.s === "string" ? { s: E.s } : {} };
+  };
   var logCut = (t) => String(t).replace(/([a-z][a-z0-9+.-]*:\/\/[^\s?#)]*)[?#](?:[^\s):]|:(?!\d))*/gi, "$1");
   function log(area, err) {
     try {
@@ -3621,6 +3727,62 @@ loadScript(['vendor/chart.umd.js','https://cdnjs.cloudflare.com/ajax/libs/Chart.
     };
     state.settings = normalize({ ...state, settings: { ...S, ...keep } }).settings;
   }
+  var asideKey = (acct2) => ASIDE_KEY + fixId(acct2);
+  function keepAside(acct2, notes) {
+    try {
+      localStorage.setItem(
+        asideKey(acct2),
+        JSON.stringify({ at: Date.now(), state, meta: notes.meta, editAt: notes.editAt, last: notes.last })
+      );
+      return true;
+    } catch (e) {
+      log("aside", e);
+      return false;
+    }
+  }
+  function takeAside(acct2) {
+    let A = null;
+    try {
+      const t = localStorage.getItem(asideKey(acct2));
+      A = t ? rec(parseJson(t)) : null;
+      if (A) localStorage.removeItem(asideKey(acct2));
+    } catch (e) {
+      log("aside", e);
+    }
+    if (!A) return null;
+    return { at: Number(A.at) || 0, state: normalize(A.state), meta: A.meta, editAt: A.editAt, last: A.last };
+  }
+  function asideList() {
+    const out = [];
+    try {
+      for (let i = 0; i < localStorage.length; i++) {
+        const k = localStorage.key(i);
+        if (!k || !k.startsWith(ASIDE_KEY)) continue;
+        const A = rec(parseJson(localStorage.getItem(k) || "null"));
+        const S = A ? rec(A.state) : null;
+        out.push({
+          acct: k.slice(ASIDE_KEY.length),
+          sessions: S ? (arr(S.sessions) || []).length : 0,
+          at: A ? Number(A.at) || 0 : 0
+        });
+      }
+    } catch (e) {
+      log("aside", e);
+    }
+    return out;
+  }
+  function asideClear() {
+    try {
+      const gone = [];
+      for (let i = 0; i < localStorage.length; i++) {
+        const k = localStorage.key(i);
+        if (k && k.startsWith(ASIDE_KEY)) gone.push(k);
+      }
+      for (const k of gone) localStorage.removeItem(k);
+    } catch (e) {
+      log("aside", e);
+    }
+  }
   function backupDue() {
     if (!state.sessions.some((s) => !s.demo)) return false;
     const synced = cloud.on && cloud.last && Date.now() - cloud.last < 7 * 864e5;
@@ -3659,7 +3821,11 @@ loadScript(['vendor/chart.umd.js','https://cdnjs.cloudflare.com/ajax/libs/Chart.
     }
     try {
       const a = arr(parseJson(localStorage.getItem(LOGK) || "[]"));
-      if (a) logBuf.push(...a);
+      if (a)
+        for (const e of a) {
+          const x = logEntryIn(e);
+          if (x) logBuf.push(x);
+        }
     } catch (e) {
     }
     window.addEventListener("error", (e) => log("uncaught", e.error || e.message));
@@ -3672,6 +3838,14 @@ loadScript(['vendor/chart.umd.js','https://cdnjs.cloudflare.com/ajax/libs/Chart.
           `${normalize.dropped} damaged record${normalize.dropped === 1 ? " was" : "s were"} skipped when the save was read`
         )
       );
+  }
+
+  // src/app/yourdata.ts
+  function asideLine() {
+    const kept = asideList();
+    if (!kept.length) return "";
+    const words = kept.map((a) => `${a.sessions} session${a.sessions === 1 ? "" : "s"}`).join(", ");
+    return `<p class="small" id="asideLine" style="margin:8px 0 0"><b>A log from another account is kept on this phone</b> (${esc(words)}). It is used again when that account signs in here. Erase everything removes it.</p>`;
   }
 
   // src/app/formulas.ts
@@ -3996,7 +4170,9 @@ loadScript(['vendor/chart.umd.js','https://cdnjs.cloudflare.com/ajax/libs/Chart.
         rir: s.rir == null || s.rir === "" ? null : Number(s.rir),
         warm: !!s.warm,
         drop: !!s.drop && !s.warm,
-        cal: s.cal && !s.warm ? s.cal : void 0
+        cal: s.cal && !s.warm ? s.cal : void 0,
+        // The row's own id (r56.1), last, where a build before it keeps the unknown field.
+        ...typeof s.rid === "string" ? { rid: s.rid } : {}
       }))
     };
   }
@@ -4058,6 +4234,18 @@ loadScript(['vendor/chart.umd.js','https://cdnjs.cloudflare.com/ajax/libs/Chart.
       else if (!a.rr && b.rr) a.rr = b.rr;
     }
     return out;
+  }
+  function newRow(over) {
+    return {
+      w: null,
+      r: null,
+      rir: null,
+      warm: false,
+      drop: false,
+      done: false,
+      ...over,
+      rid: over && typeof over.rid === "string" ? over.rid : uid()
+    };
   }
   function freeDraft(name, ex) {
     return {
@@ -6895,11 +7083,70 @@ loadScript(['vendor/chart.umd.js','https://cdnjs.cloudflare.com/ajax/libs/Chart.
     saveNow();
   }
   var SYNC_KEY = KEY + ".sync";
-  var notesIn = (m) => ({
-    meta: rec(m.meta),
-    editAt: rec(m.editAt),
-    last: m.last
-  });
+  var stringsIn = (v) => {
+    const R = rec(v);
+    if (!R) return null;
+    const o = {};
+    for (const k in R) {
+      const x = R[k];
+      if (typeof x !== "string") return null;
+      o[k] = x;
+    }
+    return o;
+  };
+  var baseIn = (v) => {
+    const R = rec(v);
+    if (!R) return null;
+    const b = {};
+    if (R.a !== void 0) {
+      const A = rec(R.a);
+      if (!A) return null;
+      const a = {};
+      for (const k in A) {
+        const l = stringsIn(A[k]);
+        if (!l) return null;
+        a[k] = l;
+      }
+      b.a = a;
+    }
+    for (const k of ["f", "s"]) {
+      if (R[k] === void 0) continue;
+      const l = stringsIn(R[k]);
+      if (!l) return null;
+      b[k] = l;
+    }
+    if (R.d !== void 0) {
+      if (typeof R.d !== "string") return null;
+      b.d = R.d;
+    }
+    if (R.draft != null) b.draft = draftOf(R);
+    return b;
+  };
+  var noteIn = (v) => {
+    const N = rec(v);
+    if (!N || typeof N.h !== "string" || typeof N.at !== "number") return null;
+    return { h: N.h, at: N.at, b: N.b == null ? null : baseIn(N.b) };
+  };
+  var notesIn = (m, from) => {
+    const M = rec(m.meta), E = rec(m.editAt);
+    let meta = null, editAt = null;
+    if (M) {
+      meta = {};
+      for (const k in M) {
+        const n = noteIn(M[k]);
+        if (n) meta[k] = n;
+        else log(from, new Error(`the sync note for ${k} was not readable and was dropped`));
+      }
+    }
+    if (E) {
+      editAt = {};
+      for (const k in E) {
+        const t = E[k];
+        if (typeof t === "number") editAt[k] = t;
+      }
+    }
+    return { meta, editAt, last: typeof m.last === "number" ? m.last : null };
+  };
   function saveMeta() {
     try {
       localStorage.setItem(
@@ -7039,6 +7286,7 @@ loadScript(['vendor/chart.umd.js','https://cdnjs.cloudflare.com/ajax/libs/Chart.
       return D;
     }
   }
+  var draftOf = (D) => normalize({ draft: D && D.draft || null }).draft;
   function baseOf(id, data) {
     if (!data) return null;
     const D = normChunk(id, data) || {};
@@ -7058,7 +7306,10 @@ loadScript(['vendor/chart.umd.js','https://cdnjs.cloudflare.com/ajax/libs/Chart.
       for (const k in S) b.s[k] = Hx(S[k]);
       return b;
     }
-    if (id === "draft") return { d: Hx(D.draft) };
+    if (id === "draft") {
+      const d = draftOf(D);
+      return { d: Hx(D.draft), draft: d ? draftOf({ draft: parseJson(JSON.stringify(d)) }) : null };
+    }
     if (id.startsWith("b-")) return { a: { bodyweights: hl(D.bodyweights), measurements: hl(D.measurements) } };
     return { a: { sessions: hl(D.sessions), cardio: hl(D.cardio) } };
   }
@@ -7083,6 +7334,10 @@ loadScript(['vendor/chart.umd.js','https://cdnjs.cloudflare.com/ajax/libs/Chart.
       return out2;
     }
     if (id === "draft") {
+      const ld = draftOf(l), rd = draftOf(r), bd = base && base.draft && !base.draft.editingId ? base.draft : null;
+      if (bd && ld && rd && ld.id === rd.id && bd.id === ld.id && !ld.editingId && !rd.editingId)
+        return { draft: mergeWorkout(bd, ld, rd, remoteWins, stat) };
+      if (bd && (!rd && ld && ld.id === bd.id || !ld && rd && rd.id === bd.id)) return { draft: null };
       const v = merge3Val(base ? base.d : "?", l.draft || null, r.draft || null, remoteWins, stat);
       return { draft: v === void 0 ? null : v };
     }
@@ -7175,7 +7430,7 @@ loadScript(['vendor/chart.umd.js','https://cdnjs.cloudflare.com/ajax/libs/Chart.
       log("sync-track", e);
     }
   }
-  function draftNote(prev) {
+  function draftNote(prev, kept) {
     const P = rec(prev);
     const d = state.draft;
     if (!P || d && d.id === P.id) return;
@@ -7189,10 +7444,63 @@ loadScript(['vendor/chart.umd.js','https://cdnjs.cloudflare.com/ajax/libs/Chart.
       } else fx.toast("The edit in progress was replaced by the workout on another device.");
       return;
     }
-    const sid = P.id;
+    const saved = state.sessions.some((s) => s.id === P.id);
     fx.toast(
-      state.sessions.some((s) => s.id === sid) ? "The workout in progress was saved on another device." : state.draft ? "The workout in progress was replaced by the one on another device." : "The workout in progress was closed on another device."
+      kept === "joined" ? "The workout in progress was saved on another device. What was done here since was added to it." : kept === "saved" ? state.draft ? "The workout in progress was replaced by the one on another device. Its ticked sets are saved in History." : "The workout in progress was closed on another device. Its ticked sets are saved in History." : state.draft ? saved ? "The workout in progress was replaced by the one on another device. Its ticked sets are in History." : "The workout in progress was replaced by the one on another device." : saved ? "The workout in progress was saved on another device." : "The workout in progress was closed on another device."
     );
+  }
+  function keepLost(lost, now, agreed, remoteWins) {
+    if (!lost || lost.editingId || now && now.id === lost.id) return null;
+    const kept = draftSession(lost);
+    if (!kept) return null;
+    const have = state.sessions.find((q) => q.id === lost.id);
+    if (have) {
+      const base = agreed && agreed.id === lost.id ? draftSession(agreed) : null;
+      const stat = { conflicts: 0 };
+      const joined = mergeSession(base, kept, have, base ? remoteWins : true, stat);
+      if (canon(joined) === canon(have)) return null;
+      setState(normalize({ ...state, sessions: state.sessions.map((q) => q.id === lost.id ? joined : q) }));
+      edited(joined.date);
+      conflictNote(stat);
+      return "joined";
+    }
+    setState(
+      normalize({
+        ...state,
+        sessions: [...state.sessions, kept],
+        cardio: unionById(state.cardio, draftCardio(lost))
+      })
+    );
+    edited(kept.date);
+    return "saved";
+  }
+  function edited(date) {
+    cloud.editAt[chunkOf(date)] = Date.now();
+    saveMeta();
+  }
+  function lostNote(kept) {
+    if (kept === "saved") fx.toast("Sets ticked on another device were saved in History.");
+    else if (kept === "joined") fx.toast("Sets ticked on another device were added to the session saved here.");
+  }
+  async function sessionFromCloud(d, legB) {
+    if (d.editingId || state.sessions.some((q) => q.id === d.id)) return;
+    const id = chunkOf(d.date);
+    const sn = await withTimeout(ref(id).get(), 2e4);
+    const sb = sn && sn.exists ? rec(sn.data()) : null;
+    if (!sb || typeof sb.json !== "string") return;
+    const data = parseJson(sb.json);
+    const m = cloud.meta[id], h = hashStr(sb.json);
+    if (m && m.h === h) return;
+    const mine = chunksOf(state)[id] || emptyChunk(id);
+    const localDirty = !m || hashStr(JSON.stringify(mine)) !== m.h;
+    const et = Number(sb.et) || Number(sb.at) || 0;
+    if (!localDirty) applyChunk(id, rec(data));
+    else {
+      applyChunk(id, mergeChunk(id, baseFor(id, m, legB), mine, data, et > (cloud.editAt[id] || 0), { conflicts: 0 }));
+      cloud.editAt[id] = Math.max(cloud.editAt[id] || 0, et);
+    }
+    cloud.meta[id] = { h, at: Number(sb.at), b: baseOf(id, data) };
+    saveMeta();
   }
   function conflictNote(stat) {
     if (stat.conflicts) {
@@ -7275,7 +7583,7 @@ loadScript(['vendor/chart.umd.js','https://cdnjs.cloudflare.com/ajax/libs/Chart.
         cloud.t = setTimeout(() => cq(cloudFlush), 2500);
         return;
       }
-      let adopted = false, moreBody = false;
+      let adopted = false, moreBody = false, again = false;
       const stat = { conflicts: 0 };
       let dn = null;
       const tooBig = [];
@@ -7294,18 +7602,21 @@ loadScript(['vendor/chart.umd.js','https://cdnjs.cloudflare.com/ajax/libs/Chart.
           }
           if (rd) {
             const ret = Number(b.et) || Number(b.at);
-            const merged = mergeChunk(
-              x.id,
-              baseFor(x.id, m, legB),
-              parseJson(json),
-              rd,
-              ret > (cloud.editAt[x.id] || 0),
-              stat
-            );
+            const remoteWins = ret > (cloud.editAt[x.id] || 0);
+            const merged = mergeChunk(x.id, baseFor(x.id, m, legB), parseJson(json), rd, remoteWins, stat);
             cloud.editAt[x.id] = Math.max(cloud.editAt[x.id] || 0, ret);
-            if (x.id === "draft") dn = { prev: state.draft };
+            if (x.id === "draft") dn = { prev: state.draft, sessions0: state.sessions, kept: null, lost: null };
+            const agreed = x.id === "draft" && m && m.b ? m.b.draft : null;
+            const mergedDraft = x.id === "draft" ? draftOf(merged) : null;
+            if (dn && dn.prev && (!mergedDraft || mergedDraft.id !== dn.prev.id)) await sessionFromCloud(dn.prev, legB);
             applyChunk(x.id, merged);
             adopted = true;
+            if (x.id === "draft" && dn) {
+              const prev = dn.prev, remoteDraft = draftOf(rec(rd));
+              dn.kept = keepLost(prev, mergedDraft, agreed, remoteWins);
+              dn.lost = keepLost(remoteDraft, mergedDraft, agreed, remoteWins);
+              if (dn.kept || dn.lost || canon(state.sessions) !== canon(dn.sessions0)) again = true;
+            }
             if (x.id === "core" && absorbLegacy(legacyBody(rec(rd)))) moreBody = true;
             json = JSON.stringify(chunksOf(state)[x.id] || emptyChunk(x.id));
             if (hashStr(json) === hashStr(b.json)) {
@@ -7335,10 +7646,13 @@ loadScript(['vendor/chart.umd.js','https://cdnjs.cloudflare.com/ajax/libs/Chart.
         resyncLocalH();
         if (!ui.modal) fx.rerenderKeepScroll();
         conflictNote(stat);
-        if (dn) draftNote(dn.prev);
+        if (dn) {
+          draftNote(dn.prev, dn.kept);
+          lostNote(dn.lost);
+        }
       }
       cloud.retry = 0;
-      if (moreBody) cloudSoon();
+      if (moreBody || again) cloudSoon();
       if (tooBig.length) {
         saveMeta();
         setCloud(
@@ -7399,6 +7713,8 @@ loadScript(['vendor/chart.umd.js','https://cdnjs.cloudflare.com/ajax/libs/Chart.
     }
     const local = chunksOf(state);
     const first = !Object.keys(cloud.meta).length;
+    const agreedDraft = cloud.meta.draft && cloud.meta.draft.b ? cloud.meta.draft.b.draft : null;
+    let draftMerged = false, draftRemoteWins = false;
     let parts = null, merged = false, draftIn = false, keptDraft = false;
     const stat = { conflicts: 0 };
     const adoptedIds = /* @__PURE__ */ new Set();
@@ -7408,21 +7724,21 @@ loadScript(['vendor/chart.umd.js','https://cdnjs.cloudflare.com/ajax/libs/Chart.
       const rState = assemble(Object.fromEntries(rids.map((k) => [k, rec(remote[k].data)])));
       const mine = { ...state };
       stripDemo(mine);
-      if (!realCount(mine) && !mine.bodyweights.length && !mine.measurements.length && !state.draft && !mine.cardio.length && !mine.routines.some((r) => !plainTemplate(r) && !routineEmpty(r)) && !mine.exercises.some((e) => e.custom)) {
+      if (!holdsLog()) {
         parts = Object.fromEntries(rids.map((k) => [k, rec(remote[k].data)]));
         rids.forEach((k) => adoptedIds.add(k));
       } else {
         merged = true;
         const base = realCount(mine) > realCount(rState) ? mine : rState, other = base === mine ? rState : mine;
         const aside = state.draft && rState.draft && rState.draft.id !== state.draft.id ? rState.draft : null;
-        const kept = aside ? draftSession(aside) : null;
-        keptDraft = !!kept && ![...mine.sessions, ...rState.sessions].some((x) => x.id === kept.id);
+        const kept2 = aside ? draftSession(aside) : null;
+        keptDraft = !!kept2 && ![...mine.sessions, ...rState.sessions].some((x) => x.id === kept2.id);
         setState(
           normalize({
             ...base,
             exercises: unionById(base.exercises, other.exercises),
             routines: unionById(base.routines, other.routines),
-            sessions: unionById(mine.sessions, keptDraft && kept ? [...rState.sessions, kept] : rState.sessions),
+            sessions: unionById(mine.sessions, keptDraft && kept2 ? [...rState.sessions, kept2] : rState.sessions),
             bodyweights: unionById(mine.bodyweights, rState.bodyweights),
             measurements: unionById(mine.measurements, rState.measurements),
             cardio: unionById(mine.cardio, aside ? [...rState.cardio, ...draftCardio(aside)] : rState.cardio),
@@ -7450,6 +7766,10 @@ loadScript(['vendor/chart.umd.js','https://cdnjs.cloudflare.com/ajax/libs/Chart.
           any = true;
           continue;
         }
+        if (id === "draft") {
+          draftMerged = true;
+          draftRemoteWins = r.et > (cloud.editAt[id] || 0);
+        }
         if (id === "core") {
           const L = legacyBody(rec(r.data));
           leg.bodyweights.push(...L.bodyweights);
@@ -7470,9 +7790,15 @@ loadScript(['vendor/chart.umd.js','https://cdnjs.cloudflare.com/ajax/libs/Chart.
       if (!any) parts = null;
     }
     const dr0 = state.draft;
+    let kept = null, lost = null;
     if (parts) {
       setState(assemble(parts));
       absorbLegacy(leg);
+      if (draftMerged) {
+        const remoteDraft = remote.draft ? draftOf(rec(remote.draft.data)) : null;
+        kept = keepLost(dr0, state.draft, agreedDraft, draftRemoteWins);
+        lost = keepLost(remoteDraft, state.draft, agreedDraft, draftRemoteWins);
+      }
     }
     if (parts || merged) {
       invalidate();
@@ -7502,7 +7828,8 @@ loadScript(['vendor/chart.umd.js','https://cdnjs.cloudflare.com/ajax/libs/Chart.
           keptDraft ? "Merged this device with your cloud copy. The workout in progress on your other device is saved in History." : "Merged this device with your cloud copy"
         );
       conflictNote(stat);
-      if (draftIn) draftNote(dr0);
+      if (draftIn) draftNote(dr0, kept);
+      lostNote(lost);
     } else if (first) {
       for (const id of rids) cloud.meta[id] = { h: "x", at: remote[id].at, b: null };
     }
@@ -7523,6 +7850,26 @@ loadScript(['vendor/chart.umd.js','https://cdnjs.cloudflare.com/ajax/libs/Chart.
     return null;
   }
   var cloudStarting = false;
+  function holdsLog() {
+    const mine = { ...state };
+    stripDemo(mine);
+    return !!(realCount(mine) || mine.bodyweights.length || mine.measurements.length || state.draft || mine.cardio.length || mine.routines.some((r) => !plainTemplate(r) && !routineEmpty(r)) || mine.exercises.some((e) => e.custom));
+  }
+  function joinLogs(base, other) {
+    const aside = base.draft && other.draft && other.draft.id !== base.draft.id ? other.draft : null;
+    const kept = aside ? draftSession(aside) : null;
+    return normalize({
+      ...base,
+      exercises: unionById(base.exercises, other.exercises),
+      routines: unionById(base.routines, other.routines),
+      sessions: unionById(base.sessions, kept ? [...other.sessions, kept] : other.sessions),
+      bodyweights: unionById(base.bodyweights, other.bodyweights),
+      measurements: unionById(base.measurements, other.measurements),
+      cardio: unionById(base.cardio, aside ? [...other.cardio, ...draftCardio(aside)] : other.cardio),
+      trash: unionById(arr(base.trash) || [], arr(other.trash) || []),
+      draft: base.draft || other.draft
+    });
+  }
   async function cloudInit() {
     if (cloud.on || cloudStarting) return;
     cloudStarting = true;
@@ -7531,9 +7878,54 @@ loadScript(['vendor/chart.umd.js','https://cdnjs.cloudflare.com/ajax/libs/Chart.
       if (!pv) return;
       const db = pv.db, id = pv.userId;
       if (cloud.acct && cloud.acct !== id) {
+        const from = cloud.acct;
+        let use = false;
+        const undo = () => {
+          const A = AUTH();
+          if (A)
+            A.signOut().catch((x) => {
+              log("auth", x);
+            });
+        };
+        if (holdsLog()) {
+          const a = await fx.ask(
+            "A log from another account is on this phone",
+            "Add it to this account, or use this account's log? Using this account's log keeps the other one on this phone until that account signs in here again.",
+            "Add it to this account",
+            "Use this account's log"
+          );
+          if (a === "cancel") {
+            undo();
+            return;
+          }
+          use = a === "alt";
+        }
+        if (use) {
+          if (!keepAside(from, { meta: cloud.meta, editAt: cloud.editAt, last: cloud.last })) {
+            fx.toast("There is not enough room on this phone to keep the other log aside. Export a backup of it first.");
+            undo();
+            return;
+          }
+          undoForget();
+        }
         cloud.meta = {};
         cloud.editAt = {};
         cloud.last = null;
+        const aside = takeAside(id);
+        if (use) {
+          setState(aside ? aside.state : normalize(null));
+          if (aside) {
+            const n = notesIn({ meta: aside.meta, editAt: aside.editAt, last: aside.last }, "aside");
+            cloud.meta = n.meta || {};
+            cloud.editAt = n.editAt || {};
+            cloud.last = n.last;
+          }
+        } else if (aside) setState(joinLogs(state, aside.state));
+        if (use || aside) {
+          commit();
+          resyncLocalH();
+          fx.render();
+        }
       }
       cloud.acct = id;
       saveMeta();
@@ -7574,7 +7966,7 @@ loadScript(['vendor/chart.umd.js','https://cdnjs.cloudflare.com/ajax/libs/Chart.
       try {
         const m = rec(parseJson(ev.newValue));
         if (m) {
-          const { meta, editAt, last } = notesIn(m);
+          const { meta, editAt, last } = notesIn(m, "tabs");
           if (meta) cloud.meta = meta;
           if (editAt) cloud.editAt = editAt;
           if (last) cloud.last = last;
@@ -7639,7 +8031,7 @@ loadScript(['vendor/chart.umd.js','https://cdnjs.cloudflare.com/ajax/libs/Chart.
     try {
       const m = rec(parseJson(localStorage.getItem(SYNC_KEY) || "null"));
       if (m) {
-        const { meta, editAt, last } = notesIn(m);
+        const { meta, editAt, last } = notesIn(m, "sync-meta");
         cloud.meta = meta || {};
         cloud.last = last || null;
         cloud.editAt = editAt || {};
@@ -8427,7 +8819,7 @@ loadScript(['vendor/chart.umd.js','https://cdnjs.cloudflare.com/ajax/libs/Chart.
   (function() {
     "use strict";
     const $ = (s, r = document) => r.querySelector(s);
-    setFx({ render, rerenderKeepScroll, toast, setSaveState, syncLine, obGate });
+    setFx({ render, rerenderKeepScroll, toast, setSaveState, syncLine, obGate, ask: (title, body, ok, alt) => new Promise((res) => confirmBox(title, body, ok, () => res("ok"), false, { label: alt, fn: () => res("alt") }, () => res("cancel"))) });
     storageStart();
     syncStart();
     const upd = { ready: false, later: false };
@@ -9515,7 +9907,9 @@ loadScript(['vendor/chart.umd.js','https://cdnjs.cloudflare.com/ajax/libs/Chart.
         modalReturn = document.activeElement;
         modalPush();
       }
+      const was = ui.modal;
       ui.modal = m;
+      if (was && was.kind === "confirm" && was.onClose && !was.answered) was.onClose();
       renderModal();
       const el = $("#modal");
       if (!el) return;
@@ -9545,6 +9939,7 @@ loadScript(['vendor/chart.umd.js','https://cdnjs.cloudflare.com/ajax/libs/Chart.
       }
       const was = ui.modal;
       ui.modal = null;
+      if (was && was.kind === "confirm" && was.onClose && !was.answered) was.onClose();
       if (was && was.kind === "account") {
         if (was.mode === "wait") waitStop();
         if (was.mode === "where" && !was.answered) {
@@ -9580,8 +9975,8 @@ loadScript(['vendor/chart.umd.js','https://cdnjs.cloudflare.com/ajax/libs/Chart.
       } catch (e) {
       }
     }
-    function confirmBox(title, body, okLabel, fn, danger, alt) {
-      openModal({ kind: "confirm", title, body, okLabel, fn, danger, alt });
+    function confirmBox(title, body, okLabel, fn, danger, alt, onClose) {
+      openModal({ kind: "confirm", title, body, okLabel, fn, danger, alt, onClose });
     }
     const timer = { end: 0, iv: null, fired: false };
     let actx = null;
@@ -11662,7 +12057,7 @@ loadScript(['vendor/chart.umd.js','https://cdnjs.cloudflare.com/ajax/libs/Chart.
     }
     function newBlock(exId, plan, opts) {
       const sg = suggest(exId, plan, opts);
-      return { bid: uid(), exId, plan: { ...plan }, note: "", lastNote: lastNoteOf(exId, opts && opts.before), inj: sg.inj || null, hint: sg.text, last: sg.last, prev: sg.prev || void 0, prevOff: sg.prevOff || void 0, target: sg.target, tgt: sg.tgt, easier: sg.easier || null, lastR: sg.lastR, basis: sg.basis || void 0, sw: sg.w == null ? null : sg.w, sets: Array.from({ length: +plan.sets || 3 }, () => ({ w: fillLoads() ? sg.w : null, r: null, rir: null, warm: false, drop: false, done: false })) };
+      return { bid: uid(), exId, plan: { ...plan }, note: "", lastNote: lastNoteOf(exId, opts && opts.before), inj: sg.inj || null, hint: sg.text, last: sg.last, prev: sg.prev || void 0, prevOff: sg.prevOff || void 0, target: sg.target, tgt: sg.tgt, easier: sg.easier || null, lastR: sg.lastR, basis: sg.basis || void 0, sw: sg.w == null ? null : sg.w, sets: Array.from({ length: +plan.sets || 3 }, () => newRow({ w: fillLoads() ? sg.w : null })) };
     }
     function profMoveBands(oldP, newP) {
       const b = state.settings.bands;
@@ -12986,7 +13381,7 @@ ${extraKpis()}</div>`;
       })()}
   ${canInstallHere() ? `<div class="panel row spread" id="installPanel" style="margin-top:8px"><p class="small" style="margin:0;flex:1 1 180px"><b>Install the app.</b> Full screen, offline, one tap from your home screen.</p><button class="btn sm primary" data-act="install">${/^ios/.test(installKind()) ? "Add to Home Screen" : "Install"}</button></div>` : ""}
   ${ENV === "preview" ? `<div class="panel row spread" style="margin-top:8px"><p class="small" style="margin:0;flex:1 1 180px"><b>Test version.</b> It keeps a separate log. Copy yours in to try it; your log in ${APP_NAME} stays as it is.</p>${previewCopyBtn("sm primary")}</div>` : ""}
-  ${privacyLine()}${safetyLine()}
+  ${asideLine()}${privacyLine()}${safetyLine()}
   ${backupDue() ? `<p class="callout yellow" style="margin:10px 0 0"><b>Backup due.</b> ${s.lastExport ? `Last backup file ${fmtDate(s.lastExport)}.` : "No backup file yet."} ${cloud.on ? "Your account has not synced this week. Export one below." : ""}</p>` : ""}
   ${device.ok ? "" : '<p class="small" style="color:var(--red)">This browser is blocking local storage, so this device keeps nothing between reloads without cloud sync.</p>'}
   ${unreadableRaw() ? `<div class="panel" id="unreadPanel" style="margin-top:8px"><p class="small" style="margin:0 0 6px"><b>A save on this device could not be read</b> by this build, and was kept aside. Restore tries it again, which a later build may read; Show its text to copy it out.</p><div class="row"><button class="btn sm primary" data-act="unreadRestore">Restore it</button><button class="btn sm" data-act="unreadShow">Show its text</button><button class="btn sm" data-act="unreadForget">Forget it</button></div></div>` : ""}
@@ -15694,16 +16089,17 @@ ${extraKpis()}</div>`;
       },
       crashRetry() {
         ui.tab = "today";
-        ui.modal = null;
         ui.planView = "routine";
         try {
           closeModal();
         } catch (e) {
           log("render", e);
         }
+        ui.modal = null;
         window.scrollTo(0, 0);
         render();
       },
+      // the sheet closed first (r56.1): a question left open reads as Cancel, so the sync waiting on it does not wait forever
       fbOpen(t) {
         const d = state.draft;
         const bi = t && t.dataset && t.dataset.b != null ? +t.dataset.b : null;
@@ -16313,7 +16709,7 @@ ${JSON.stringify(fb.context, null, 1)}`;
             break;
           }
         }
-        b.sets.push({ w: base > 0 ? lighterLoad(EX(b.exId), b.plan, base, base * 0.75) : null, r: null, rir: null, warm: false, drop: true, done: false });
+        b.sets.push(newRow({ w: base > 0 ? lighterLoad(EX(b.exId), b.plan, base, base * 0.75) : null, drop: true }));
         saveNow();
         rerenderKeepScroll();
         toast("Drop set added");
@@ -16336,12 +16732,16 @@ ${JSON.stringify(fb.context, null, 1)}`;
         closeModal();
       },
       mOk() {
-        const fn = ui.modal && ui.modal.fn;
+        const m = ui.modal;
+        const fn = m && m.fn;
+        if (m) m.answered = true;
         closeModal();
         fn && fn();
       },
       mAlt() {
-        const a = ui.modal && ui.modal.alt;
+        const m = ui.modal;
+        const a = m && m.alt;
+        if (m) m.answered = true;
         closeModal();
         a && a.fn && a.fn();
       },
@@ -16481,7 +16881,7 @@ ${JSON.stringify(fb.context, null, 1)}`;
         const bi = +t.dataset.b;
         const b = state.draft.ex[bi];
         const ld = b.sets.reduce((k, x, i) => x.done && isWork(x) && !x.drop ? i : k, -1);
-        const row = { w: null, r: null, rir: null, warm: false, drop: false, done: false };
+        const row = newRow();
         b.sets.push(row);
         if (ld >= 0) assessSet(bi, ld);
         if (fillLoads()) row.w = effW(b, b.sets.length - 1);
@@ -16508,7 +16908,7 @@ ${JSON.stringify(fb.context, null, 1)}`;
         const frac = [0.4, 0.6, 0.75, 0.85][Math.min(n, 3)];
         let at = 0;
         while (at < b.sets.length && b.sets[at].warm) at++;
-        b.sets.splice(at, 0, { w: base > 0 ? lighterLoad(EX(b.exId), b.plan, base, base * frac) : null, r: null, rir: null, warm: true, drop: false, done: false });
+        b.sets.splice(at, 0, newRow({ w: base > 0 ? lighterLoad(EX(b.exId), b.plan, base, base * frac) : null, warm: true }));
         adjSync(b);
         saveNow();
         rerenderKeepScroll();
@@ -17722,7 +18122,7 @@ ${JSON.stringify(fb.context, null, 1)}`;
           state.draft = { id: uid(), editingId: s.id, deload: !!s.deload, light: !!s.light, free: s.free ? true : void 0, chk: s.chk ? { ...s.chk } : void 0, startedAt: null, durMin: s.durMin || null, date: s.date, dayIdx: s.dayIdx, dayId: s.dayId || null, dayName: s.dayName, routineId: s.routineId, notes: s.notes || "", ex: s.ex.map((b) => {
             const it = dayItems.find((i) => i.exId === b.exId);
             const plan = it ? { ...it } : planFor(b.exId, null, null, false, s.date);
-            return { bid: uid(), exId: b.exId, plan, note: b.note || "", keepRR: b.rr || null, light: b.light ? true : void 0, hint: "Editing saved sets.", lastR: [], sets: b.sets.map((x) => ({ w: x.w, r: x.r, rir: x.rir, warm: !!x.warm, drop: !!x.drop, done: true, cal: x.cal ? { ...x.cal } : void 0 })) };
+            return { bid: uid(), exId: b.exId, plan, note: b.note || "", keepRR: b.rr || null, light: b.light ? true : void 0, hint: "Editing saved sets.", lastR: [], sets: b.sets.map((x) => newRow({ w: x.w, r: x.r, rir: x.rir, warm: !!x.warm, drop: !!x.drop, done: true, cal: x.cal ? { ...x.cal } : void 0, rid: x.rid })) };
           }) };
           editFp0.set(state.draft.id, editFp(state.draft));
           saveNow();
@@ -17834,6 +18234,7 @@ ${JSON.stringify(fb.context, null, 1)}`;
           snapshot();
           setState(normalize(null));
           if (!cloud.on) cloudStop(true);
+          asideClear();
           commit();
           ui.tab = "today";
           render();
@@ -19192,7 +19593,7 @@ ${JSON.stringify(fb.context, null, 1)}`;
       if (si < 0) si = b.sets.length;
       let far = -1;
       for (const p of list) {
-        if (si >= b.sets.length) b.sets.push({ w: null, r: null, rir: null, warm: false, drop: false, done: false });
+        if (si >= b.sets.length) b.sets.push(newRow());
         const x = b.sets[si];
         x.w = p.w;
         x.r = p.r;
@@ -19235,7 +19636,7 @@ ${JSON.stringify(fb.context, null, 1)}`;
       return state;
     }, set state(v) {
       setState(v);
-    }, fbContext, FB_CTX_MAX, logCut, logBuf, log, dateIndex, sessionsOn, bestLine, whyTarget, recent4w, weekSessions, fmtDate, fmtDateLong, fbShrink, orderAt, orderRun, dropOnlyLift, profHeavy, appBand, fitRecordOld, prof, profClean, profRule, profPlan, defPlan, defBand, profMoveBands, profApplyList, strengthPick, PROF_DAYS, FOCUS_MAX, estInLoad, keepExtra, EXTRA_MAX, draftPlanMin, pace, paceRatios, sessModelMin, PACE_N, PACE_DAYS, PACE_MIN, plainTemplate, trashTidy, ENV, KEY, COMMON, COMMON_TIP, isCommon, bwEvery, isRestWeek, sessCmp, avgWeeks, weekStreak, coach, noLog, afterSet, adjOn, bwAt, newBlock, cycleState, sortedSessions, addDays, loadIn, gymRack, gymClean, dbListOf, capOf, refreshEx, effShow, rirScale, setStr, libExercises, obGate, obTour, andList, belowMin, aboveMax, starterRoutine, starterSigs, plateList, exBarKg, VOL_MODES, liveLogFetch, regionSrc, fitTargets, firstFullWeek, moveBlock, BANDS, installSheet, siteHost, greyW, effW, greyR, lighterLoad, heavierLoad, incOf, swapPlan, planSetsPerWeek, weekNeed, stepRead, e1inv, rtfAt, rtfOf, rtfBand, calStats, rirEff, isHard, setCredit, tonnage, loadMode, loadWords, loadNote, progStep, jumpCap, setSecs, setupSecs, recovery, rolling7, rankDays, rankExercises, isCompound, patternOf, noE1, whtrLine, exHeadline, remainMin, shortPlan, weekPlan, cycleProjection, lastLighterWeek, avgFirstWeek, avgWait, stallWeeks, weeksAvg, fitFloors, refit, regionBalance, parseHeight, mixCheck, swapCands, eqPlan, exportCSV, importData, chunksOf, assemble, sessionMuscles, TRACK_ONLY, cloud, Hx, mergeChunk, baseOf, sync: () => cq(cloudPull), TEMPLATES, lastRFor, impDate, impRows, impNorm, impMatch, impFromText, impFromTable, impHeader, impBuild, impStart, impXlsx, parseSets, undoStack, undoRestore, undoForget, allTimeBests, bestsBoard, obActive, fmtW, rirUsual, rirEst, routineFromTemplate, plannedSets, map3d: () => ({ state: B3.state, fail: B3.fail, meshes: B3.meshes.length, yaw: B3.yaw, glow: Object.keys(B3.mats).filter((m) => B3.mats[m].emissiveIntensity > 0), canvas: !!document.querySelector("#bm3d canvas"), colors: Object.fromEntries(Object.entries(B3.mats).map(([m, mt]) => [m, "#" + mt.color.getHexString()])), pick: (x, y) => map3dPick(x, y), want: map3dColors() }), cloudState: () => ({ on: cloud.on, status: cloud.status, err: cloud.err, uid: cloud.uid, acct: cloud.acct }), acctUser: () => acct.user, acctWaiting: () => !!acctWait.pw, flush: () => cq(cloudFlush), backupDue, routineUpdates, planFor, platesMode, plateText, chunksOf, IDX, suggest, e1, render, ACT, ui, makeDemo, invalidate, normalize, snapshot, saveNow, timer, weekStats, weekStart, today, EX, blockProgress, dayMinutes, weekStreak, coach, tonnageNow, livePR, movers, stalledIds, muscleStatus, actualAvg4, plannedPerWeek, parseSets, fillSets, newBlock, lastNoteOf, sizeRows, sessionMuscleSets, sessionCapNote, routineClutter, rowBlank, dayReasons, impTextSets, liftTrend, prsWithin, activeRoutine, rackStep, repFloor, sessionLength, prBeat, exInjury, exJoints, openModal, EQUIP, HARD_EX, recentLighter, planEvidenceNote, howToUrl, editFp, toast, avgWeeks, regionWk, REGION_WKS, SAFETY_TXT, libFiltered, nameMatch, workLoad, fitE, lighter, offTarget, sessionWord, sessionWords, dayLabel, daySets, ssLetters, routineSig, tplCountLine, pwOf, dropStarter, trainOn, planItemOf, fatigueStalls, avgWeeksTxt, routineFromLog, repSpan, rangeWords, calDueIdx, readyCard, sameRR, hintOnce, overSets, rackTol, daysOff, BACK_DAYS, prName, sessTm, effTgt, bwDueCard, bwNoLoad, applyPick, joinAdjacent, sameExOnce, savedEx, goalState, goalLine, bwRefLoad, ML, exMusParts, musTrend, U, toD, fromD, loadLabel, exName, planCredit, gymOf, isDeloadWeek, freeMode, injuredSet, prLoad, statsUpTo, readiness, bwRef, weekRoutine, logBack, logStart, easierText, barKg, suggestCore, loadOf, bwLoad, hardCredit, rirHalfOn, prFrame, stallWords, atRangeTop, oddLoad, lightZero };
+    }, fbContext, FB_CTX_MAX, logCut, logBuf, log, dateIndex, sessionsOn, bestLine, whyTarget, recent4w, weekSessions, fmtDate, fmtDateLong, fbShrink, orderAt, orderRun, dropOnlyLift, profHeavy, appBand, fitRecordOld, prof, profClean, profRule, profPlan, defPlan, defBand, profMoveBands, profApplyList, strengthPick, PROF_DAYS, FOCUS_MAX, estInLoad, keepExtra, EXTRA_MAX, draftPlanMin, pace, paceRatios, sessModelMin, PACE_N, PACE_DAYS, PACE_MIN, plainTemplate, trashTidy, ENV, KEY, COMMON, COMMON_TIP, isCommon, bwEvery, isRestWeek, sessCmp, avgWeeks, weekStreak, coach, noLog, afterSet, adjOn, bwAt, newBlock, cycleState, sortedSessions, addDays, loadIn, gymRack, gymClean, dbListOf, capOf, refreshEx, effShow, rirScale, setStr, libExercises, obGate, obTour, andList, belowMin, aboveMax, starterRoutine, starterSigs, plateList, exBarKg, VOL_MODES, liveLogFetch, regionSrc, fitTargets, firstFullWeek, moveBlock, BANDS, installSheet, siteHost, greyW, effW, greyR, lighterLoad, heavierLoad, incOf, swapPlan, planSetsPerWeek, weekNeed, stepRead, e1inv, rtfAt, rtfOf, rtfBand, calStats, rirEff, isHard, setCredit, tonnage, loadMode, loadWords, loadNote, progStep, jumpCap, setSecs, setupSecs, recovery, rolling7, rankDays, rankExercises, isCompound, patternOf, noE1, whtrLine, exHeadline, remainMin, shortPlan, weekPlan, cycleProjection, lastLighterWeek, avgFirstWeek, avgWait, stallWeeks, weeksAvg, fitFloors, refit, regionBalance, parseHeight, mixCheck, swapCands, eqPlan, exportCSV, importData, chunksOf, assemble, sessionMuscles, TRACK_ONLY, cloud, Hx, mergeChunk, baseOf, sync: () => cq(cloudPull), TEMPLATES, lastRFor, impDate, impRows, impNorm, impMatch, impFromText, impFromTable, impHeader, impBuild, impStart, impXlsx, parseSets, undoStack, undoRestore, undoForget, allTimeBests, bestsBoard, obActive, fmtW, rirUsual, rirEst, routineFromTemplate, plannedSets, map3d: () => ({ state: B3.state, fail: B3.fail, meshes: B3.meshes.length, yaw: B3.yaw, glow: Object.keys(B3.mats).filter((m) => B3.mats[m].emissiveIntensity > 0), canvas: !!document.querySelector("#bm3d canvas"), colors: Object.fromEntries(Object.entries(B3.mats).map(([m, mt]) => [m, "#" + mt.color.getHexString()])), pick: (x, y) => map3dPick(x, y), want: map3dColors() }), cloudState: () => ({ on: cloud.on, status: cloud.status, err: cloud.err, uid: cloud.uid, acct: cloud.acct }), acctUser: () => acct.user, acctWaiting: () => !!acctWait.pw, flush: () => cq(cloudFlush), cloudInit, cloudStop, asideList, backupDue, routineUpdates, planFor, platesMode, plateText, chunksOf, IDX, suggest, e1, render, ACT, ui, makeDemo, invalidate, normalize, snapshot, saveNow, timer, weekStats, weekStart, today, EX, blockProgress, dayMinutes, weekStreak, coach, tonnageNow, livePR, movers, stalledIds, muscleStatus, actualAvg4, plannedPerWeek, parseSets, fillSets, newBlock, lastNoteOf, sizeRows, sessionMuscleSets, sessionCapNote, routineClutter, rowBlank, dayReasons, impTextSets, liftTrend, prsWithin, activeRoutine, rackStep, repFloor, sessionLength, prBeat, exInjury, exJoints, openModal, EQUIP, HARD_EX, recentLighter, planEvidenceNote, howToUrl, editFp, toast, avgWeeks, regionWk, REGION_WKS, SAFETY_TXT, libFiltered, nameMatch, workLoad, fitE, lighter, offTarget, sessionWord, sessionWords, dayLabel, daySets, ssLetters, routineSig, tplCountLine, pwOf, dropStarter, trainOn, planItemOf, fatigueStalls, avgWeeksTxt, routineFromLog, repSpan, rangeWords, calDueIdx, readyCard, sameRR, hintOnce, overSets, rackTol, daysOff, BACK_DAYS, prName, sessTm, effTgt, bwDueCard, bwNoLoad, applyPick, joinAdjacent, sameExOnce, savedEx, goalState, goalLine, bwRefLoad, ML, exMusParts, musTrend, U, toD, fromD, loadLabel, exName, planCredit, gymOf, isDeloadWeek, freeMode, injuredSet, prLoad, statsUpTo, readiness, bwRef, weekRoutine, logBack, logStart, easierText, barKg, suggestCore, loadOf, bwLoad, hardCredit, rirHalfOn, prFrame, stallWords, atRangeTop, oddLoad, lightZero };
     render();
     wakeOn();
     timerResume();
