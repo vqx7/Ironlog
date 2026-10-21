@@ -7583,11 +7583,12 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
             cloud.editAt[x.id] = Math.max(cloud.editAt[x.id] || 0, ret);
             if (x.id === "draft") dn = { prev: state.draft, sessions0: state.sessions, kept: null, lost: null };
             const agreed = x.id === "draft" && m && m.b ? m.b.draft : null;
+            const mergedDraft = x.id === "draft" ? draftOf(merged) : null;
+            if (dn && dn.prev && (!mergedDraft || mergedDraft.id !== dn.prev.id)) await sessionFromCloud(dn.prev, legB);
             applyChunk(x.id, merged);
             adopted = true;
             if (x.id === "draft" && dn) {
-              const prev = dn.prev, mergedDraft = draftOf(merged), remoteDraft = draftOf(rec(rd));
-              if (prev && (!mergedDraft || mergedDraft.id !== prev.id)) await sessionFromCloud(prev, legB);
+              const prev = dn.prev, remoteDraft = draftOf(rec(rd));
               dn.kept = keepLost(prev, mergedDraft, agreed, remoteWins);
               dn.lost = keepLost(remoteDraft, mergedDraft, agreed, remoteWins);
               if (dn.kept || dn.lost || canon(state.sessions) !== canon(dn.sessions0)) again = true;

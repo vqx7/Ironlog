@@ -36,7 +36,7 @@ function cloudOf() {
       window.__uid = u;
       window.claude = { use: async k => {
         if (k === 'user') return { id: async () => window.__uid };
-        if (k === 'db') return { doc: p => ({ get: async () => { const v = await window.__dbGet(p); return v == null ? { exists: false, data: () => null } : { exists: true, data: () => JSON.parse(v) }; }, set: async o => { await window.__dbSet(p, JSON.stringify(o)); return true; } }), collection: p => ({ get: async () => { const l = JSON.parse(await window.__dbList(p)); return { docs: l.map(([id, v]) => ({ id, exists: true, data: () => JSON.parse(v) })) }; } }) };
+        if (k === 'db') return { doc: p => ({ get: async () => { if (window.__dbFail && new RegExp(window.__dbFail).test(p)) { window.__dbFail = null; throw new Error('read failed'); } const v = await window.__dbGet(p); return v == null ? { exists: false, data: () => null } : { exists: true, data: () => JSON.parse(v) }; }, set: async o => { await window.__dbSet(p, JSON.stringify(o)); return true; } }), collection: p => ({ get: async () => { const l = JSON.parse(await window.__dbList(p)); return { docs: l.map(([id, v]) => ({ id, exists: true, data: () => JSON.parse(v) })) }; } }) };
         return null;
       } };
     }, uid);
@@ -137,6 +137,18 @@ const setsOf = d => (d ? d.sets.filter(s => s.done).map(s => `${s.w}x${s.r}`).jo
     await B.sync();
     const yb = (await B.sessions()).find(s => s.id === yid);
     ok(!(await B.draft()) && yb && yb.sets.length === 3 && /saved on another device/.test(await B.toast()), 'B then holds the saved session with all three sets and is told the workout was saved on another device', { draft: await B.draft(), session: yb, toast: await B.toast() });
+    // The connection gone mid-flush, after B finished and A ticked more: the read of the session's document fails, and
+    // A's workout stays as it was, its sets with it, for the retry (the join happening then).
+    await A.start(); await A.tick(0, 70, 10); await A.flush(); await B.sync();
+    const zid = (await A.draft()).id;
+    await B.ev(() => { const L = window.__ironlog; L.state.draft._leftAsked = true; L.ACT.finishNow(); }); await wait(300);
+    await B.ev(() => { const L = window.__ironlog; if (L.ui.modal) L.ACT.mClose(); }); await B.flush();
+    await A.tick(1, 70, 9);
+    await A.ev(() => { window.__dbFail = '/s-'; }); await A.flush(); await wait(300);
+    ok((await A.draft()) && (await A.draft()).id === zid && setsOf(await A.draft()) === '70x10,70x9' && !(await A.sessions()).some(s => s.id === zid), 'a read of the session\'s document that fails mid-flush leaves the workout here as it was, its sets with it', { draft: await A.draft(), sessions: await A.sessions(), cloud: await A.cloudState() });
+    await A.flush(); await wait(1600); await A.flush();
+    const zs = (await A.sessions()).find(s => s.id === zid);
+    ok(!(await A.draft()) && zs && zs.sets.length === 2, 'the retry joins the set to the saved session and closes the workout', { draft: await A.draft(), session: zs });
     // Two different workouts: the later edit stays in progress, the other's ticked sets are saved on both phones (328 a).
     await A.start(); await A.tick(0, 60, 12); await A.flush();
     const N = await phone(browser, cloud, 'u1', { state: { settings: { onboarded: true }, sessions: [], draft: null } }); pages.push(N);

@@ -813,16 +813,17 @@ export async function cloudFlush(): Promise<void> {
           cloud.editAt[x.id] = Math.max(cloud.editAt[x.id] || 0, ret);
           if (x.id === 'draft') dn = { prev: state.draft, sessions0: state.sessions, kept: null, lost: null };
           const agreed = x.id === 'draft' && m && m.b ? m.b.draft : null;
+          const mergedDraft = x.id === 'draft' ? draftOf(merged) : null;
+          // This copy lost (closed or replaced): the session it may have become on the other phone is read first,
+          // before anything here changes, so its sets join that session rather than making a second one of its id,
+          // and a read that fails (the connection gone mid-flush) leaves the workout here as it was, for the retry.
+          if (dn && dn.prev && (!mergedDraft || mergedDraft.id !== dn.prev.id)) await sessionFromCloud(dn.prev, legB);
           applyChunk(x.id, merged);
           adopted = true;
           if (x.id === 'draft' && dn) {
             // The copy that lost (this device's, dirty here, or the account's, which a later edit here replaced) keeps its sets.
             const prev = dn.prev,
-              mergedDraft = draftOf(merged),
               remoteDraft = draftOf(rec(rd));
-            // This copy lost (closed or replaced): the session it may have become on the other phone is read first,
-            // so its sets join that session rather than making a second one of its id.
-            if (prev && (!mergedDraft || mergedDraft.id !== prev.id)) await sessionFromCloud(prev, legB);
             dn.kept = keepLost(prev, mergedDraft, agreed, remoteWins);
             dn.lost = keepLost(remoteDraft, mergedDraft, agreed, remoteWins);
             if (dn.kept || dn.lost || canon(state.sessions) !== canon(dn.sessions0)) again = true;
