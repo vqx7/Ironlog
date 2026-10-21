@@ -36,12 +36,38 @@ export const BW_MAX_KG = 400,
   BW_MIN_KG = 20,
   MEAS_MAX_CM = 300;
 
+/* ---------- reading what came in ---------- */
+
+/* A save, a backup, a cloud document or a sync note arrives as JSON whose
+   shape nothing promises. The storage and sync code (phase 4, r56) reads
+   such a value through these readers alone, so the casts an unknown value
+   needs are here and nowhere else. */
+
+/** A record read by name: its fields are still unknown, each then checked. */
+export type Rec = Record<string, unknown>;
+
+/* The fields of a value, read by name: the value itself when it is an object
+   or an array, as the checks read both (`x && typeof x === 'object'`), else
+   null. The cast says only that the fields can be read by name. */
+export const rec = (v: unknown): Rec | null => (v && typeof v === 'object' ? (v as Rec) : null);
+
+/* A list of values, each still unknown, or null. Array.isArray turns an
+   unknown into any[]; the cast keeps each entry unknown, for the checks
+   that read it. */
+export const arr = (v: unknown): unknown[] | null => (Array.isArray(v) ? (v as unknown[]) : null);
+
+/** JSON text read as a value of no known shape (JSON.parse is typed any; the cast makes it unknown). It throws on text that is not JSON, as JSON.parse does. */
+export const parseJson = (text: string): unknown => JSON.parse(text) as unknown;
+
 /* ---------- ids ---------- */
 
 /* Stable id for a record that arrived without one. It used to be random, so two
    devices repairing the same record made two different ids and a merge kept
-   both. The position is included so identical records stay distinct. */
-export function did(tag: string, obj: unknown, i: number): string {
+   both. The position is included so identical records stay distinct. A
+   cleaner called on one record alone (a cardio entry typed in) gives no
+   position, and the id then carries "undefined" where the position goes, as
+   it did before the storage code moved (r56). */
+export function did(tag: string, obj: unknown, i: number | undefined): string {
   let j = '';
   try {
     j = JSON.stringify(obj);

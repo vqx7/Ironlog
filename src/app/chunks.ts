@@ -4,10 +4,11 @@
    (phase 3a, r51; moved unchanged from the legacy script). Sending, pulling and merging them moves with
    sync in phase 4. */
 
-import { sessCmp } from './records';
+import { rec, sessCmp } from './records';
+import type { Rec } from './records';
 
 /** A dated record a document holds: a session, a cardio entry, a weigh-in or a tape entry. */
-type Dated = { date: string; t?: number | null; id: string };
+type Dated = { date: string; t?: number | null | undefined; id: string };
 
 /** The parts of a save the documents are made from. */
 type Save = {
@@ -38,7 +39,7 @@ export const bySess = sessCmp;
    syncing. Builds before r22 read only core, draft and s- documents and never
    touch a b- document, so they cannot delete one; they still write weigh-ins
    into core, and those are picked up (legacyBody) and moved on the next sync. */
-export const bodyChunkOf = (date: string | null | undefined): string => 'b-' + String(date || '').slice(0, 4);
+export const bodyChunkOf = (date: unknown): string => 'b-' + String(date || '').slice(0, 4);
 
 /** One sync document: core's fields, the draft, or the lists of dated
     records a session or body document holds. */
@@ -100,7 +101,7 @@ export function chunksOf(st: Save): Record<string, Doc> {
 }
 
 /** A document with nothing in it: core has no empty form, so null. */
-export const emptyChunk = (id: string): object | null =>
+export const emptyChunk = (id: string): Rec | null =>
   id === 'core' ? null : id === 'draft' ? { draft: null } : id.startsWith('b-') ? {} : { sessions: [] };
 
 /** A document's merge base: the one it recorded, or for a body document never seen, the base core had before r22. */
@@ -119,14 +120,17 @@ export function legacyBody(raw: { bodyweights?: unknown; measurements?: unknown 
   };
 }
 
-/** Two lists of records by id, the first list's record winning where both have one. A record with no id is left out. */
-export function unionById<X extends { id?: unknown }>(
-  a: readonly X[] | null | undefined,
-  b: readonly X[] | null | undefined
-): X[] {
+/** Two lists of records by id, the first list's record winning where both
+    have one. A record with no id, or an entry that is no record (the lists
+    may come straight from a document), is left out. */
+export function unionById<X>(a: readonly X[] | null | undefined, b: readonly X[] | null | undefined): X[] {
   const m = new Map<unknown, X>();
-  for (const x of b || []) if (x && x.id) m.set(x.id, x);
-  for (const x of a || []) if (x && x.id) m.set(x.id, x);
+  const idOf = (x: X): unknown => {
+    const R = rec(x);
+    return R && R.id;
+  };
+  for (const x of b || []) if (idOf(x)) m.set(idOf(x), x);
+  for (const x of a || []) if (idOf(x)) m.set(idOf(x), x);
   return [...m.values()];
 }
 

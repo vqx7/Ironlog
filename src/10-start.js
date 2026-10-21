@@ -1,6 +1,14 @@
 (function(){
 'use strict';
 const $=(s,r=document)=>r.querySelector(s);
+/* The storage and sync modules (phase 4, r56) reach the screens through
+   this one object: filled first, before anything that could call an effect
+   runs (every function named here is declared below, hoisted). Then what the
+   storage and sync parts ran as the page loaded, in their order: the save
+   read into the store, the sync notes, the device id, the listeners. */
+setFx({render,rerenderKeepScroll,toast,setSaveState,syncLine,obGate});
+storageStart();
+syncStart();
 /* Update prompt (standalone app only). The build's boot script registers the
    service worker and calls ironlogUpdateReady() once a new version has been
    downloaded and is waiting. Nothing reloads by itself, because a reload in

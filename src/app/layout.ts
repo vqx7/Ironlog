@@ -130,3 +130,48 @@ export const BW_EVERY: readonly (readonly [number, string])[] = [
   [30, 'Every month'],
   [0, 'Off']
 ];
+
+/** The tabs whose sections keep an order and folds (phase 4, r56; moved from the legacy script). */
+export const SEC_TABS: readonly string[] = ['today', 'program', 'dash', 'history', 'settings'];
+
+/* Sections that can be hidden from Settings > Layout, as tab:key. Hidden
+   sections are simply not shown; nothing stops being tracked. The routine
+   days, the session list and Settings itself are never hideable, so there is
+   always a way back. */
+/** Each hideable section: its tab, its key and its name in Settings > Layout. */
+export const HIDEABLE: readonly (readonly [string, string, string])[] = [
+  ['today', 'week', 'This week'],
+  ['today', 'tiles', 'At a glance'],
+  ['today', 'coach', 'Coach'],
+  ['today', 'injuries', 'Injuries'],
+  ['today', 'map', 'Muscle map'],
+  ['today', 'session', 'Workout preview'],
+  ['today', 'body', 'Body'],
+  ['program', 'library', 'Add exercises'],
+  ['program', 'schedule', 'Schedule'],
+  ['program', 'pvol', 'Weekly volume'],
+  ['dash', 'volume', 'Volume'],
+  ['dash', 'exercise', 'Lifts'],
+  ['dash', 'weak', 'Muscles'],
+  ['dash', 'consistency', 'Consistency'],
+  ['dash', 'body', 'Body'],
+  ['history', 'cardio', 'Cardio and mobility'],
+  ['history', 'trash', 'Recently deleted'],
+  ['settings', 'timer', 'Rest timer and logging'],
+  ['settings', 'rir', 'Effort (RIR)'],
+  ['settings', 'prio', 'Priority muscles'],
+  ['settings', 'bands', 'Weekly set targets'],
+  ['settings', 'more', 'More']
+];
+/** The hideable sections as tab:key. */
+export const HIDEABLE_KEYS: ReadonlySet<string> = new Set(HIDEABLE.map(([t, k]) => t + ':' + k));
+/** The tabs in Settings > Layout, with their names. */
+export const HIDE_TABS: readonly (readonly [string, string])[] = [
+  ['today', 'Today'],
+  ['program', 'Plan'],
+  ['dash', 'Stats'],
+  ['history', 'History'],
+  ['settings', 'Settings']
+];
+/** The section a tab opens by itself: only History, whose Sessions are the tab's content. */
+export const MAIN_FIXED: Readonly<Record<string, string>> = { history: 'sessions' };

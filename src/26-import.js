@@ -306,24 +306,6 @@ function importData(text,after){
    default layout. Only a first run keeps this; someone with their own log
    who loads the demo from Settings keeps every change. Kept on the device,
    so it survives the app being closed while looking around. */
-const DEMOSET_KEY=KEY+'.demoSettings';
-// The settings are taken when the demo goes in (not again while it is still
-// loaded, which would keep what was changed while looking around), and are
-// put back only while this is still a first run: once a routine is picked,
-// a session is logged or an account brings a log, every setting is the
-// person's own, and a snapshot left from earlier is thrown away unused.
-const demoFirstRun=()=>!state.settings.onboarded&&!realCount(state)&&!state.draft;
-function demoKeep(){
-  if(!demoFirstRun()||state.sessions.some(x=>x.demo))return;
-  try{localStorage.setItem(DEMOSET_KEY,JSON.stringify(state.settings));}catch(e){log('demo',e);}
-}
-function demoRestore(){
-  let saved=null;try{const t=localStorage.getItem(DEMOSET_KEY);saved=t?JSON.parse(t):null;localStorage.removeItem(DEMOSET_KEY);}catch(e){log('demo',e);}
-  if(!saved||typeof saved!=='object'||!demoFirstRun())return;
-  // Facts about this device and its backups are not part of looking around.
-  const keep={onboarded:state.settings.onboarded,lastExport:state.settings.lastExport,calSnooze:state.settings.calSnooze};
-  state.settings=normalize({...state,settings:{...saved,...keep}}).settings;
-}
 /* Demo data (reworked in r29, V: the old demo "feels shitty and demotivates
    users"). It is a lifter who follows the active routine and the app's own
    double progression: every set adds a rep each session until all reach the

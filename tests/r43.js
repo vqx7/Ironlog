@@ -137,13 +137,13 @@ const PATHS = (s, k) => {
   // this build put it last, the next one put it back, and each pull rewrote the core document).
   {
     const fs = require('fs'), os = require('os'), path = require('path');
-    // Built as a real next build is (r49): the source part changed, then bundled by scripts/join.js.
-    const anchor = 'id:fixId(e.id),name:e.name,';
-    const part = fs.readdirSync(path.join(__dirname, '..', 'src')).filter(f => /^[12]\d-.+\.js$/.test(f)).find(f => fs.readFileSync(path.join(__dirname, '..', 'src', f), 'utf8').includes(anchor));
-    const partSrc = part ? fs.readFileSync(path.join(__dirname, '..', 'src', part), 'utf8') : '';
-    ok(part && partSrc.split(anchor).length === 2, 'the simulated next build finds the exercise record to change', part);
+    // Built as a real next build is (r49): the source changed, then bundled by scripts/join.js.
+    // The exercise record is read in src/app/normalize.ts (r56), where Prettier lays it out one field a line.
+    const part = 'app/normalize.ts', partSrc = fs.readFileSync(path.join(__dirname, '..', 'src', part), 'utf8');
+    const anchor = partSrc.match(/id: fixId\(e\.id\),\n( +)name: e\.name,\n/);
+    ok(anchor && partSrc.split(anchor[0]).length === 2, 'the simulated next build finds the exercise record to change', part);
     const next = path.join(os.tmpdir(), 'ironlog-next-r43test.html');
-    const nextHtml = require('../scripts/join').build({ override: { [part]: partSrc.replace(anchor, anchor + "zz:typeof e.zz==='string'?e.zz:undefined,") } }).html;
+    const nextHtml = require('../scripts/join').build({ override: { [part]: partSrc.replace(anchor[0], anchor[0] + anchor[1] + "zz: typeof e.zz === 'string' ? e.zz : undefined,\n") } }).html;
     ok(nextHtml.includes('zz: typeof e.zz') && nextHtml !== fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8'), 'and the next build carries the new field');
     fs.writeFileSync(next, nextHtml);
     store.clear(); const writes = {}; const set0 = store.set.bind(store); store.set = (k, v) => { const id = k.split('/').pop(); writes[id] = (writes[id] || 0) + 1; return set0(k, v); };
