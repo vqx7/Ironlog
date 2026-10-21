@@ -4221,7 +4221,16 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     return out;
   }
   function newRow(over) {
-    return { w: null, r: null, rir: null, warm: false, drop: false, done: false, ...over, rid: uid() };
+    return {
+      w: null,
+      r: null,
+      rir: null,
+      warm: false,
+      drop: false,
+      done: false,
+      ...over,
+      rid: over && typeof over.rid === "string" ? over.rid : uid()
+    };
   }
   function freeDraft(name, ex) {
     return {
@@ -18098,7 +18107,7 @@ ${JSON.stringify(fb.context, null, 1)}`;
           state.draft = { id: uid(), editingId: s.id, deload: !!s.deload, light: !!s.light, free: s.free ? true : void 0, chk: s.chk ? { ...s.chk } : void 0, startedAt: null, durMin: s.durMin || null, date: s.date, dayIdx: s.dayIdx, dayId: s.dayId || null, dayName: s.dayName, routineId: s.routineId, notes: s.notes || "", ex: s.ex.map((b) => {
             const it = dayItems.find((i) => i.exId === b.exId);
             const plan = it ? { ...it } : planFor(b.exId, null, null, false, s.date);
-            return { bid: uid(), exId: b.exId, plan, note: b.note || "", keepRR: b.rr || null, light: b.light ? true : void 0, hint: "Editing saved sets.", lastR: [], sets: b.sets.map((x) => newRow({ w: x.w, r: x.r, rir: x.rir, warm: !!x.warm, drop: !!x.drop, done: true, cal: x.cal ? { ...x.cal } : void 0 })) };
+            return { bid: uid(), exId: b.exId, plan, note: b.note || "", keepRR: b.rr || null, light: b.light ? true : void 0, hint: "Editing saved sets.", lastR: [], sets: b.sets.map((x) => newRow({ w: x.w, r: x.r, rir: x.rir, warm: !!x.warm, drop: !!x.drop, done: true, cal: x.cal ? { ...x.cal } : void 0, rid: x.rid })) };
           }) };
           editFp0.set(state.draft.id, editFp(state.draft));
           saveNow();

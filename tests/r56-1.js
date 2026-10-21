@@ -137,6 +137,15 @@ const setsOf = d => (d ? d.sets.filter(s => s.done).map(s => `${s.w}x${s.r}`).jo
     await B.sync();
     const yb = (await B.sessions()).find(s => s.id === yid);
     ok(!(await B.draft()) && yb && yb.sets.length === 3 && /saved on another device/.test(await B.toast()), 'B then holds the saved session with all three sets and is told the workout was saved on another device', { draft: await B.draft(), session: yb, toast: await B.toast() });
+    // A saved session opened for editing in History keeps its rows' ids, so a join after an edit still goes row by row.
+    const rids0 = await A.ev(id => window.__ironlog.state.sessions.find(s => s.id === id).ex[0].sets.map(x => x.rid), yid);
+    await A.ev(id => { const L = window.__ironlog; L.ui.tab = 'history'; L.render(); L.ACT.histEdit({ dataset: { id } }); }, yid); await wait(150);
+    const ridsEdit = await A.ev(() => window.__ironlog.state.draft.ex[0].sets.map(x => x.rid));
+    await A.ev(() => { const L = window.__ironlog; L.state.draft._rampAsked = true; L.state.draft._leftAsked = true; L.ACT.finishNow(); }); await wait(300);
+    await A.ev(() => { const L = window.__ironlog; if (L.ui.modal) L.ACT.mClose(); });
+    const rids1 = await A.ev(id => window.__ironlog.state.sessions.find(s => s.id === id).ex[0].sets.map(x => x.rid), yid);
+    ok(rids0.length === 3 && rids0.every(r => typeof r === 'string') && ridsEdit.join() === rids0.join() && rids1.join() === rids0.join() && !(await A.draft()), 'a saved session edited in History keeps its rows\' ids through the edit and the save', { rids0, ridsEdit, rids1 });
+    await A.flush();
     // The connection gone mid-flush, after B finished and A ticked more: the read of the session's document fails, and
     // A's workout stays as it was, its sets with it, for the retry (the join happening then).
     await A.start(); await A.tick(0, 70, 10); await A.flush(); await B.sync();

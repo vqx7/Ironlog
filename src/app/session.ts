@@ -348,9 +348,18 @@ export function sameExOnce<X extends Joinable>(ex: readonly X[]): X[] {
 
 /* ---------- a session as a whole ---------- */
 
-/** A new row of a workout in progress: blank, or with the fields given, and its own id (r56.1). */
+/** A new row of a workout in progress: blank, or with the fields given, and its own id (r56.1), kept when one is given (a saved set opened for editing keeps its row). */
 export function newRow(over?: Partial<DraftSet>): DraftSet {
-  return { w: null, r: null, rir: null, warm: false, drop: false, done: false, ...over, rid: uid() };
+  return {
+    w: null,
+    r: null,
+    rir: null,
+    warm: false,
+    drop: false,
+    done: false,
+    ...over,
+    rid: over && typeof over.rid === 'string' ? over.rid : uid()
+  };
 }
 
 /* Freestyle and Do again build a session that is not tied to a routine day:
