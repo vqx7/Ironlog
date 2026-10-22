@@ -8019,7 +8019,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
           fx.render();
         }
         if (aside) {
-          if (device.boot && device.ok) await dropAside(id);
+          if (device.boot && device.ok) void dropAside(id);
           else log("aside", new Error("kept aside still: the log in use could not be saved on this device"));
         }
       }

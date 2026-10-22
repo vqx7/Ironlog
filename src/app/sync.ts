@@ -1252,9 +1252,13 @@ export async function cloudInit(): Promise<void> {
         resyncLocalH();
         fx.render();
       }
-      // The copy kept for this account is the log in use now; it goes once that log is saved here, and stays as its only copy on the device until then.
+      /* The copy kept for this account is the log in use now; it goes once
+         that log is saved here, and stays as its only copy on the device
+         until then. Not waited for: the notes below name this account in the
+         same turn as the log is replaced, so a page closed in between never
+         holds this account's log under the other account's notes. */
       if (aside) {
-        if (device.boot && device.ok) await dropAside(id);
+        if (device.boot && device.ok) void dropAside(id);
         else log('aside', new Error('kept aside still: the log in use could not be saved on this device'));
       }
     }

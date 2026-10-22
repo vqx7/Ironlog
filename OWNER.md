@@ -6,7 +6,7 @@ Last updated: r54 live, r55 in pull request #48, 2026-10-20.
 
 ## Now, in this order
 
-1. A24 (the stack r55.1, r56 and r56.1, versions 2.7 to 2.9): pull requests #49, #50 and #51; the preview is r56.1, which carries all three. After the stack's review is clean (PENDING 333): export a backup on your phone, merge #49 on GitHub's website, wait for Claude to point #50 at `main`, merge #50, then #51 the same way. Then tap Reload on every phone when New version ready shows. A23 (r55): done 2026-10-20, merged by you, live as build 2026.10.19-r55.
+1. A24 (the stack r55.1, r56 and r56.1, versions 2.7 to 2.9): pull requests #49, #50 and #51; the preview is r56.1, which carries all three. After the stack's review is clean (PENDING 333): export a backup on your phone, merge #49 on GitHub's website, wait for Claude to point #50 at `main`, merge #50, then #51 the same way. Then tap Reload on every phone and computer when New version ready shows, and do that before using two devices on one workout: a device still on r55 can drop sets of a workout open on both, as r55 always could (PENDING 333). A23 (r55): done 2026-10-20, merged by you, live as build 2026.10.19-r55.
 2. B5, the trigger, then its check: Report a problem from the app and an issue appears in `ironlog-feedback` (steps below). Status: to do, unless you have done it (Claude cannot see Supabase from here).
 3. C6: add the code to the confirmation email (5 minutes, below). The app asks a new person for the code the email should carry. Status: to do, unless you have done it.
    D7, any time (with C6 is easiest): a 1 MB limit on each synced document (1 minute, below). Status: to do, unless you have done it.
