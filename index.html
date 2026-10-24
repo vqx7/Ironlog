@@ -2,9 +2,9 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-S8FAbJynVyMJIEwZhds89JF25agb/leVUlpcisPzucM=' 'sha256-tuSgXs5JTxAxl+0h6Mmbx/BgvpNDfjiq2RiZRPGtwkc=' 'sha256-YHdgjdaHPObo0ajgr78/3fg0b/g2KACx2Yivxr2AJEo=' 'sha256-mAnxOtBbCPhtMQJ0R6l82qUg4LZSEUqSg0vszJSHw9E=' 'sha256-J4UrXwIeplIJZfkgJq3M75mmvlwXBomq0l+LhSwoEfI='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https://fqvupierxrvpoidtwlon.supabase.co wss://fqvupierxrvpoidtwlon.supabase.co https://api.pwnedpasswords.com; worker-src 'self'; manifest-src 'self'; media-src 'self'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-S8FAbJynVyMJIEwZhds89JF25agb/leVUlpcisPzucM=' 'sha256-tuSgXs5JTxAxl+0h6Mmbx/BgvpNDfjiq2RiZRPGtwkc=' 'sha256-YHdgjdaHPObo0ajgr78/3fg0b/g2KACx2Yivxr2AJEo=' 'sha256-kWI/434lfk0y2viWpWwbGooMKUzQYKWKk8XOOLBuT/E=' 'sha256-J4UrXwIeplIJZfkgJq3M75mmvlwXBomq0l+LhSwoEfI='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https://fqvupierxrvpoidtwlon.supabase.co wss://fqvupierxrvpoidtwlon.supabase.co https://api.pwnedpasswords.com; worker-src 'self'; manifest-src 'self'; media-src 'self'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="app-build" content="2026.10.21-r56.1">
+<meta name="app-build" content="2026.10.24-r56.2">
 <title>Ironlog</title>
 <script>window.IRONLOG_APP=true;window.__installEvt=null;
 window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();window.__installEvt=e;if(window.ironlogInstallReady)window.ironlogInstallReady();});
@@ -1060,8 +1060,8 @@ loadScript(['vendor/chart.umd.js','https://cdnjs.cloudflare.com/ajax/libs/Chart.
   var PREVIEW_NAME = `${APP_NAME} Preview`;
   var PREVIEW_LABEL = "Preview";
   var WORDMARK = { mark: "I", strong: "ron", light: "log" };
-  var DISPLAY_VERSION = "2.9";
-  var APP_VERSION = "2026.10.21-r56.1";
+  var DISPLAY_VERSION = "2.10";
+  var APP_VERSION = "2026.10.24-r56.2";
   var VERSION_LINE = `${DISPLAY_VERSION} (build ${APP_VERSION})`;
   var SITE_HOST = "ironapp.org";
   var SITE_DIR_FALLBACK = "/Ironlog";
@@ -4790,7 +4790,7 @@ loadScript(['vendor/chart.umd.js','https://cdnjs.cloudflare.com/ajax/libs/Chart.
         const ref2 = prev.filter((q) => sameRR(q.rr, x.rr)).slice(-3);
         const k = weekStart(x.date);
         if (x.deload || x.light) {
-          if (!atUsualWork(x, ref2)) continue;
+          if (!atUsualWork(x, ref2.slice(-2))) continue;
           x.tag = x.deload ? "deload" : "light";
           x.deload = false;
           x.light = false;
@@ -4855,6 +4855,18 @@ loadScript(['vendor/chart.umd.js','https://cdnjs.cloudflare.com/ajax/libs/Chart.
     for (const p of q.pts)
       if (p.load >= tw * LIGHTER_LOAD - 1e-9 && (p.load * LIGHTER_LOAD <= tw + 1e-9 || p.w <= usualW + 1e-6)) n++;
     return n;
+  }
+  function triedAt(x, w) {
+    const at = (p) => Math.abs(p.w - w) < 1e-6;
+    const miss = (x.miss || []).filter(at);
+    const out = [];
+    let k = 0;
+    x.pts.forEach((p, i) => {
+      for (; k < miss.length && miss[k].at <= i; k++) out.push({ ...miss[k], missed: true });
+      if (at(p)) out.push(p);
+    });
+    for (; k < miss.length; k++) out.push({ ...miss[k], missed: true });
+    return out;
   }
   var usualSets = (ref2) => {
     const w = mid(ref2.map((q) => q.topW));
@@ -5705,6 +5717,8 @@ loadScript(['vendor/chart.umd.js','https://cdnjs.cloudflare.com/ajax/libs/Chart.
     const out = {}, conf = {};
     for (const m in tot) out[m] = tot[m] / weeks;
     for (const m in con) conf[m] = con[m] / weeks;
+    const sess = used.reduce((a, wk) => a + weekSessionsIn(M, wk), 0) / weeks;
+    Object.defineProperty(out, "_sess", { value: sess, enumerable: false });
     Object.defineProperty(out, "_weeks", { value: weeks, enumerable: false });
     Object.defineProperty(out, "_missed", { value: missed, enumerable: false });
     Object.defineProperty(out, "_n", { value: n, enumerable: false });
@@ -6028,6 +6042,14 @@ loadScript(['vendor/chart.umd.js','https://cdnjs.cloudflare.com/ajax/libs/Chart.
         pri: M.s.settings.priorities.includes(m) ? 1 : 0,
         lag: lagSet.has(m) ? 1 : 0
       })).sort((a, b) => b.pri - a.pri || b.lag - a.lag || b.lo - b.got - (a.lo - a.got) || a.got / a.lo - b.got / b.lo);
+      const per = plannedPerWeek(R);
+      if (under.length && !freeModeIn(M) && per > 0 && Math.round(avg._sess) < per)
+        return {
+          tone: "yellow",
+          text: `You made ${r1(avg._sess)} of ${per} planned sessions a week. Getting them in matters more than adding sets.`,
+          why: `Your plan's sets assume every planned session is done; over your recent full weeks you made ${r1(avg._sess)} a week of the ${per} it plans. A routine with fewer days fits fewer sessions.`,
+          act: null
+        };
       if (under.length) {
         const u = under[0];
         const gap = Math.max(1, Math.ceil(u.lo - u.got));
@@ -6331,7 +6353,7 @@ loadScript(['vendor/chart.umd.js','https://cdnjs.cloudflare.com/ajax/libs/Chart.
     const noHelp = !!ex.assist && top >= -1e-9;
     const atCap = atCapOfIn(M, ex, plan, top, cap) || noHelp;
     const capW = (w) => cap != null ? Math.min(w, cap) : w;
-    const topPts = ws.filter((p) => Math.abs(p.w - top) < 1e-6);
+    const topPts = triedAt(last, top);
     const planPts = topPts.slice(0, Math.max(1, +plan.sets || topPts.length));
     const L0 = lastOf(seen, last, (p) => `${loadLabelIn(M, ex, p.w)}×${p.r}`, +plan.repMin);
     const lastR = L0.lastR, lastS = L0.line, basis = L0.basis;
@@ -6354,8 +6376,11 @@ loadScript(['vendor/chart.umd.js','https://cdnjs.cloudflare.com/ajax/libs/Chart.
       };
     const tgtRir = +plan.rir || 0;
     const early = exps.length <= 3;
-    const fl = repFloor(topPts, plan.repMin);
-    const tp = topPts.slice(0, Math.max(1, +plan.sets || topPts.length)).map((p) => ({ ...p, r: fl(p.r) }));
+    const fl = repFloor(
+      topPts.filter((p) => !p.missed),
+      plan.repMin
+    );
+    const tp = topPts.slice(0, Math.max(1, +plan.sets || topPts.length)).map((p) => p.missed ? p : { ...p, r: fl(p.r) });
     const C = {
       ex,
       exId,
@@ -6910,10 +6935,21 @@ loadScript(['vendor/chart.umd.js','https://cdnjs.cloudflare.com/ajax/libs/Chart.
       return g ? fromDIn(M, g) : null;
     };
     if (I._rack[key] === void 0) {
-      const xs = (I.byEx[ex.id] || []).slice(-12);
-      const ws = [];
-      for (const x of xs) for (const p of x.pts) if (p.w > 0) ws.push(toDIn(M, p.w));
-      I._rack[key] = ws.length ? fit(ws) : null;
+      const steps = (a, b) => Math.abs(a / b - Math.round(a / b)) < 0.01;
+      let ws = [], g = null;
+      for (const x of (I.byEx[ex.id] || []).slice(-12).reverse()) {
+        const own = [];
+        for (const p of x.pts) if (p.w > 0) own.push(toDIn(M, p.w));
+        if (!own.length) continue;
+        const f = fit([...ws, ...own]);
+        if (ws.length && f !== g) {
+          const h = fit(own);
+          if (f == null || g == null || h == null || !(steps(g, h) || steps(h, g))) break;
+        }
+        ws = [...ws, ...own];
+        g = f;
+      }
+      I._rack[key] = g;
     }
     const logged = (I.byEx[ex.id] || []).some((x) => x.pts.some((p) => p.w > 0));
     const d = logged || at == null || !(at > 0) ? null : toDIn(M, at);
@@ -9007,7 +9043,7 @@ loadScript(['vendor/chart.umd.js','https://cdnjs.cloudflare.com/ajax/libs/Chart.
    <p><b>Well past the range</b> (every set 2 or more reps over the top, as after moving the range down): the load your estimated 1RM gives for the middle of the range, at most 10% more (15% on isolation lifts under ${kg ? "20 kg" : "about 45 lb"}), in whole steps.</p>
    <p><b>Below the range</b> (every set 2 or more reps short, or short two sessions running at the same load, or four running even with the reps creeping up, or the first time in a range you have not trained, as after an import): down to what your estimate says fits the range, in whole steps. Not just after one step up while you are 3 or fewer reps short, and not while your reps at that load are rising. The rep target counts as many sets as the plan has. A single session clearly below your usual is not read this way: it repeats the last target, and a second in a row becomes your usual.</p>
    <p><b>Too easy</b> (every top set logged 2 or more RIR above the target): the same estimate sets a heavier load, at most 10% more (15% on isolation lifts under ${kg ? "20 kg" : "about 45 lb"}), and at least one step when every set was rated 5 or more in reserve, where the estimate is only a floor.</p>
-   <p><b>The first 3 sessions</b> of a lift find its load: there the most these two can add is 25%, so a cautious first guess is put right in a session or two. For picking a load only, sets past 12 reps to failure are read with Epley up to 30, so a set of 25 still moves the load the right amount (never shown as a 1RM). A convention.</p>
+   <p><b>The first 3 sessions</b> of a lift find its load: there the most these two can add is 25%, so a first guess well under what you can do moves up by what your reps and reps in reserve allow, not a step at a time. A set rated 5 or more in reserve is read as 5, so from such sets the load moves about a step a session: rate the reps left as closely as you can. For picking a load only, sets past 12 reps to failure are read with Epley up to 30, so a set of 25 still moves the load the right amount (never shown as a 1RM). A convention.</p>
    <p><b>The first session of a close variation</b> (a hammer curl after DB curls, a front squat after back squats) starts from the related lift's last full session in the last 120 days, when both use the same equipment, load, main muscle, and movement, with both arms or both legs at once. About 90% of its estimate (80% on a compound lift), for the middle of the range with one more rep in reserve, rounded down. Machines and cables start fresh, since two machines' numbers do not compare.</p>
    <p><b>At the heaviest load available</b> (set on the exercise), or with a load step of 0: more reps, then harder reps.</p>
    <p><b>Assisted machines</b>: less help is progress. <b>Timed holds</b>: add seconds, then load. <b>Bodyweight lifts never done with added load</b> (push-ups, pull-ups, a hanging leg raise): more reps, then harder reps or a little added load when you type it; the app never adds load you did not use.</p>
@@ -11085,6 +11121,7 @@ loadScript(['vendor/chart.umd.js','https://cdnjs.cloudflare.com/ajax/libs/Chart.
       const st = I.exStats[exId];
       if (!st) return "";
       const ex = EX(exId);
+      const be = (allTimeBests(exId) || {}).est;
       const line = (t, tip) => `<p class="headline">${esc(t)}${tip ? " " + tipi(tip, "About this") : ""}</p>`;
       if (!st.fresh && st.last && st.last.date) {
         const wk = Math.max(1, Math.round(daysBetween(st.last.date, today()) / 7));
@@ -11132,8 +11169,8 @@ loadScript(['vendor/chart.umd.js','https://cdnjs.cloudflare.com/ajax/libs/Chart.
         more.push("Day to day swings of 2 to 8% hide small changes.");
       }
       if (st.capped) parts.push("At the heaviest load available: progress counts in reps.");
-      if (st.best != null && isCompound(ex) && bw && !ex.bw && loadMode(ex) === "total") parts.push(`${(st.best / bw).toFixed(2)}× bodyweight.`);
-      if (!(st.best != null && isCompound(ex))) {
+      if (be && isCompound(ex) && bw && !ex.bw && loadMode(ex) === "total") parts.push(`${(be.v / bw).toFixed(2)}× bodyweight.`);
+      if (!(be && isCompound(ex))) {
         const bs = bestSet(exId);
         if (bs) parts.unshift(`Best set ${setShort(ex, bs.w, bs.r)}.`);
       }
@@ -11153,6 +11190,7 @@ loadScript(['vendor/chart.umd.js','https://cdnjs.cloudflare.com/ajax/libs/Chart.
       const ex = EX(exId);
       const all = IDX().byEx[exId] || [];
       const st = IDX().exStats[exId] || {};
+      const be = (allTimeBests(exId) || {}).est;
       const head = `<div class="sheet" role="dialog" aria-modal="true" aria-labelledby="exhH"><div class="sheet-h"><h3 id="exhH">${esc(ex.name)}</h3><button class="ib" aria-label="Close" data-act="mClose">✕</button></div>`;
       if (!all.length) return head + '<p class="muted">Not logged yet. Its history and chart start with this session.</p></div>';
       const pts = all.filter((x) => x.tv != null && !lighter(x)).slice(-12);
@@ -11167,7 +11205,7 @@ loadScript(['vendor/chart.umd.js','https://cdnjs.cloudflare.com/ajax/libs/Chart.
       <figcaption class="small muted row spread"><span>${fmtDate(pts[0].date)}</span><span class="hastip" data-tip="Each full session's working sets read as one number from loads, reps, and RIR when it is rated on most sets. It shows direction only and is not a 1RM. Sessions where the lift was done lighter are left out.">Strength reading</span><span>${fmtDate(pts[pts.length - 1].date)}</span></figcaption></figure>`;
       }
       const bs = bestSet(exId);
-      const best = st.best != null && isCompound(ex) ? `Best estimate ${fmtE(st.best)} ${U()}${loadNote(ex)}` : bs ? `Best set ${setShort(ex, bs.w, bs.r)}${ex.bw ? "" : " " + U()}` : "";
+      const best = be && isCompound(ex) ? `Best estimate ${fmtE(be.v)} ${U()}${loadNote(ex)}` : bs ? `Best set ${setShort(ex, bs.w, bs.r)}${ex.bw ? "" : " " + U()}` : "";
       const setsOf = (x) => {
         const ss = state.sessions.find((q) => q.id === x.sid);
         const bl = ss && ss.ex.find((q) => q.exId === exId);
@@ -12817,17 +12855,18 @@ ${extraKpis()}</div>`;
         const st = I.exStats[ui.dashEx];
         const ex = EX(ui.dashEx);
         const exps = I.byEx[ui.dashEx];
+        const be = (allTimeBests(ui.dashEx) || {}).est;
         const e1Mode = isCompound(ex) && exps.some((x) => x.best != null);
         const bs = e1Mode ? null : bestSet(ui.dashEx);
         const tagOf = sessionWord;
         exh += `<select data-bind="dashEx" aria-label="Exercise">${withData.map((id) => `<option value="${id}" ${id === ui.dashEx ? "selected" : ""}>${esc(exName(id))}</option>`).join("")}</select>
-    <div style="margin-top:8px">${exHeadline(ui.dashEx)}</div>${nextLine(ui.dashEx)}${goalLine(ui.dashEx)}${noE1(ex) ? `<div class="kpis" style="margin-top:8px"><div class="kpi"><div class="v">${st.n}</div><div class="l">Sessions logged</div></div><div class="kpi"><div class="v">${st.stalled ? "Yes" : "No"}</div><div class="l">Stalled</div></div></div>` : ""}<div class="kpis" style="margin-top:8px${noE1(ex) ? ";display:none" : ""}">${e1Mode ? `<div class="kpi"><div class="v">${st.best ? (ex.bw ? "≈" : "") + fmtE(st.best) : "n/a"}</div><div class="l">Best e1RM (${U()}${loadNote(ex)})</div></div>` : `<div class="kpi"><div class="v">${bs ? esc(setShort(ex, bs.w, bs.r)) : "n/a"}</div><div class="l">Best set${loadNote(ex)}</div></div>`}<div class="kpi"><div class="v">${st.n}</div><div class="l">Sessions logged</div></div></div>
+    <div style="margin-top:8px">${exHeadline(ui.dashEx)}</div>${nextLine(ui.dashEx)}${goalLine(ui.dashEx)}${noE1(ex) ? `<div class="kpis" style="margin-top:8px"><div class="kpi"><div class="v">${st.n}</div><div class="l">Sessions logged</div></div><div class="kpi"><div class="v">${st.stalled ? "Yes" : "No"}</div><div class="l">Stalled</div></div></div>` : ""}<div class="kpis" style="margin-top:8px${noE1(ex) ? ";display:none" : ""}">${e1Mode ? `<div class="kpi"><div class="v">${be ? (ex.bw ? "≈" : "") + fmtE(be.v) : "n/a"}</div><div class="l">Best e1RM (${U()}${loadNote(ex)})</div></div>` : `<div class="kpi"><div class="v">${bs ? esc(setShort(ex, bs.w, bs.r)) : "n/a"}</div><div class="l">Best set${loadNote(ex)}</div></div>`}<div class="kpi"><div class="v">${st.n}</div><div class="l">Sessions logged</div></div></div>
     ${noE1(ex) ? "" : `${rangeChips("ex", weeksSpan(exps[0].date), 8, "all")}<div class="chartbox"><canvas id="chEx"></canvas></div>${chartFallback()}
     <p class="small muted hastip" style="margin:4px 0 0" data-tip="Filled diamond: a new best estimate (a weight PR that also set one is filled too). Hollow diamond: a rep PR or a weight PR that did not raise the estimate, which can sit below an earlier best. The thin dotted line is your RIR at the working load.">Reading the chart</p>`}
     ${st.easier ? `<p class="small" style="color:var(--blue);margin-top:6px"><b>${esc(easierText(ex, st.easier))}</b></p>` : ""}
     ${st.fade ? `<p class="small" style="color:var(--yellow);margin-top:6px"><b>Set-to-set drop-off is widening at ${esc(loadLabel(ex, st.fade.w))}${ex.bw ? "" : " " + U()}: ${st.fade.from} → ${st.fade.to} reps lost from first set to last across your last three sessions.</b> That usually means fatigue or shorter rest rather than lost strength.</p>` : ""}
     ${ex.bw && !state.bodyweights.length ? '<p class="small" style="color:var(--yellow)">Log your bodyweight on the Today tab so this bodyweight exercise can be trended.</p>' : bwBackfillNote(ui.dashEx)}
-    <div class="scroll-x"><table class="t" style="margin-top:8px"><tr><th>Date</th><th>Sets</th>${e1Mode ? '<th class="r">e1RM</th>' : ""}</tr>${exps.slice(-8).reverse().map((x) => `<tr><td>${fmtDate(x.date)}${x.progress ? ' <span class="tag green">PR</span>' : ""}${tagOf(x) ? ` <span class="tag">${tagOf(x)}</span>` : ""}</td><td>${x.pts.map((p) => setShort(ex, p.w, p.r)).join(", ")}</td>${e1Mode ? `<td class="r num">${x.best ? (ex.bw ? "≈" : "") + fmtE(x.best) : ""}</td>` : ""}</tr>`).join("")}</table></div>`;
+    <div class="scroll-x"><table class="t" style="margin-top:8px"><tr><th>Date</th><th>Sets</th>${e1Mode ? '<th class="r">e1RM</th>' : ""}</tr>${exps.slice(-8).reverse().map((x) => `<tr><td>${fmtDate(x.date)}${I.prs.some((p) => p.big && p.sid === x.sid && p.exId === ui.dashEx) ? ' <span class="tag green">PR</span>' : ""}${tagOf(x) ? ` <span class="tag">${tagOf(x)}</span>` : ""}</td><td>${x.pts.map((p) => setShort(ex, p.w, p.r)).join(", ")}</td>${e1Mode ? `<td class="r num">${x.best ? (ex.bw ? "≈" : "") + fmtE(x.best) : ""}</td>` : ""}</tr>`).join("")}</table></div>`;
       } else exh += '<p class="muted">Log a session to see exercise trends.</p>';
       exh += "</div>";
       const bestsBody = bestsBoard();
