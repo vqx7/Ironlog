@@ -52,18 +52,16 @@ function toast(msg,undo,ms,kind){
   const el=$('#toast');el.classList.toggle('pr',kind==='pr');el.innerHTML=`<span>${esc(msg)}</span>${undo?'<button data-act="undo">Undo</button>':''}`;el.hidden=false;
   clearTimeout(toastT);toastT=setTimeout(()=>{el.hidden=true;},ms||(undo?6000:2600));
 }
-/* inv, when given, reverses the action directly on the current state and
-   returns true, or returns false when things have moved on too far, in which
-   case Undo falls back to the merge. Used for the in-session actions, where
-   a set logged a second later touches the same record. */
-function snapshot(inv){
-  try{undoStack.push({pre:JSON.stringify(state),post:null,inv:typeof inv==='function'?inv:null,t:Date.now()});}catch(e){return;}
-  while(undoStack.length>UNDO_MAX)undoStack.shift();
-  undoPersist();
-}
-/* The first save after a snapshot is the action itself; remember the result,
-   so Undo can tell the action apart from anything logged after it. */
-function capturePost(){const e=undoStack[undoStack.length-1];if(e&&e.post==null){try{e.post=JSON.stringify(state);undoPersist();}catch(x){log('undo',x);}}}
+/* The menu button's dot and words (r27; the reading is saveStateNow, in
+   src/app/storage.ts): drawn in place on every save and sync change. */
+function setSaveState(){const el=$('#saveState');if(!el)return;
+  const {cls,txt}=saveStateNow();
+  el.className='ssb'+(cls?' '+cls:'');
+  el.innerHTML=`${MENU_ICON}<span class="sd" aria-hidden="true"></span><span class="sst">${esc(txt)}</span>`;
+  el.setAttribute('aria-label','Menu. '+txt);el.setAttribute('data-tip',txt);
+  // An open menu follows the state, but is only redrawn when it changed, so a tap is never lost to a redraw.
+  let who='';try{who=acct.user?acct.user.email:'';}catch(e){/* before accounts are set up */}const key=cls+'|'+txt+'|'+who;
+  if(setSaveState.last!==key){setSaveState.last=key;if(ui.modal&&ui.modal.kind==='menu'&&!$('#modal').hidden)renderModal();}}
 /* Focus used to stay behind the overlay, so keyboard and screen-reader users
    could tab through the page underneath a supposedly modal sheet. */
 let modalReturn=null;
@@ -109,7 +107,7 @@ window.addEventListener('popstate',()=>{
 function openModal(m){
   const fresh=!ui.modal;
   if(fresh){modalReturn=document.activeElement;modalPush();}
-  ui.modal=m;renderModal();
+  const was=ui.modal;ui.modal=m;if(was&&was.kind==='confirm'&&was.onClose&&!was.answered)was.onClose();renderModal(); // a question replaced unanswered (r56.1) reads as Cancel, as closeModal reads it: the sync waiting on it must not wait forever
   const el=$('#modal');if(!el)return;
   // A new name field (creating an exercise) is always focused, since typing
   // is the first thing to do there, even when it replaces another sheet.
@@ -125,7 +123,7 @@ function openModal(m){
 function closeModal(){
   if(AI.ctl){try{AI.ctl.abort();}catch(e){/* already finished */}AI.ctl=null;}
   const was=ui.modal;
-  ui.modal=null;
+  ui.modal=null;if(was&&was.kind==='confirm'&&was.onClose&&!was.answered)was.onClose();
   if(was&&was.kind==='account'){
     if(was.mode==='wait')waitStop();
     // No answer to "Where do you use Ironlog?": the safe choice, as before item 61.
@@ -142,7 +140,7 @@ function closeModal(){
 /* alt is an optional second action, {label, fn}. Some choices are genuinely
    three-way ("keep them", "drop them", "go back") and collapsing that into
    OK/Cancel is how data gets thrown away by accident. */
-function confirmBox(title,body,okLabel,fn,danger,alt){openModal({kind:'confirm',title,body,okLabel,fn,danger,alt});}
+function confirmBox(title,body,okLabel,fn,danger,alt,onClose){openModal({kind:'confirm',title,body,okLabel,fn,danger,alt,onClose});} // onClose (r56.1): the sheet closed without an answer, so a question the sync asked (fx.ask) can read it as Cancel.
 
 /* ---------- timer ---------- */
 const timer={end:0,iv:null,fired:false};
@@ -206,9 +204,9 @@ function oddReps(b,s){
   return r>2*Math.max(+b.plan.repMax||0,best);
 }
 function setDone(bi,si,val,again){ /* again: the set was ticked before, and is ticked again after the far-off question, so its rest is not started over (r55, the second review) */
-  const b=state.draft.ex[bi];const s=b&&b.sets[si];if(!s)return;const okKey=`${bi}:${si}:${s.r}:${effW(b,si)}`;const far=val&&oddOk!==okKey&&!oddReps(b,s)?oddLoad(b,si,state.draft.date):null;
-  if(val&&oddOk!==okKey&&(far||oddReps(b,s))){const ex=EX(b.exId);const fix=far?'w':'r'; // a load far off asks too (r55, V), and Fix it goes back to the field
-    confirmBox(`${setShort(ex,effW(b,si),s.r)}${ex.bw?'':' '+U()}?`,`${far||`${s.r} ${ex.timed?'seconds':'reps'} is far past your ${rangeWords(b.plan)} and anything logged on this exercise.`} Log it as typed, or go back and fix it.`,'Log it',()=>{oddOk=okKey;setDone(bi,si,true,again);saveNow();rerenderKeepScroll();},false,{label:'Fix it',only:true,fn:()=>{if(again)ui.refix={b:blkRef(bi),s:si};const f=document.querySelector(`.sg input[data-f="${fix}"][data-b="${bi}"][data-s="${si}"]`);if(f){f.focus();if(f.select)f.select();}}});
+  const b=state.draft.ex[bi];const s=b&&b.sets[si];if(!s)return;const okKey=`${bi}:${si}:${s.r}:${effW(b,si)}`;const far=val&&oddOk!==okKey&&!oddReps(b,s)?oddLoad(b,si,state.draft.date):null;const lz=val&&oddOk!==okKey&&!far&&lightZero(b,si,state.draft.date); /* a 0 at a light weight asks too (r55.1, V 2026-10-19) */
+  if(val&&oddOk!==okKey&&(far||oddReps(b,s)||lz)){const ex=EX(b.exId);const fix=far?'w':'r'; // a load far off asks too (r55, V), and Fix it goes back to the field
+    confirmBox(`${setShort(ex,effW(b,si),s.r)}${ex.bw?'':' '+U()}?`,lz?`0 ${ex.timed?'seconds':'reps'} at a weight well under today's working load. Log it as missed, or go back and fix it.`:`${far||`${s.r} ${ex.timed?'seconds':'reps'} is far past your ${rangeWords(b.plan)} and anything logged on this exercise.`} Log it as typed, or go back and fix it.`,lz?'Log it as missed':'Log it',()=>{oddOk=okKey;setDone(bi,si,true,again);saveNow();rerenderKeepScroll();},false,{label:'Fix it',only:true,fn:()=>{if(again)ui.refix={b:blkRef(bi),s:si};const f=document.querySelector(`.sg input[data-f="${fix}"][data-b="${bi}"][data-s="${si}"]`);if(f){f.focus();if(f.select)f.select();}}});
     return;}
   if(val)settleLoad(b,si);
   s.done=val;if(val&&isMissed(s)&&!s.warm&&!s.drop)toast(MISSED_SAID); // a typed 0 (r55, V)

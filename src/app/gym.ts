@@ -28,6 +28,23 @@ export function gymPlates(u: string): number[] {
   return [...(u === 'kg' ? PLATES_KG : PLATES_LB)];
 }
 
+/* A load typed as shown is the load it shows (PENDING 333): within tol of a
+   plate, the side takes that plate. 110.2 lb typed is 49.986 kg, the 50 kg of
+   15 kg a side, where a strict count gave 10, 2.5 and 1.25 kg with 1.24 kg
+   not loadable. The caller's tol is half the last shown digit, split across
+   the two sides. */
+/** The plates one side takes, heaviest first from list (sorted heaviest first), and the weight left over. */
+export function platesPerSide(list: readonly number[], side: number, tol: number): { plates: number[]; rest: number } {
+  const plates: number[] = [];
+  let rest = side;
+  for (const pl of list)
+    while (rest >= pl - tol) {
+      plates.push(pl);
+      rest -= pl;
+    }
+  return { plates, rest };
+}
+
 /** A gym or a rack as it arrives, from a save, a backup, another device, or
     the Settings form: any field may hold anything, so each is checked. */
 type Raw = Partial<Record<string, unknown>> | null | undefined;

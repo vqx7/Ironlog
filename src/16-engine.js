@@ -31,10 +31,10 @@ function plateText(kg,mode,ex){
   const load=inU(kg),bar=mode==='bar'?inU(exBarKg(ex)):0;
   if(!(load>0))return '';
   if(load<bar-1e-6)return `${fmtW(kg)} ${U()} is below the ${r1(bar)} ${pu} bar`;
-  let side=mode==='sleeve'?load:(load-bar)/2;const out=[];
-  for(const pl of plateList(pu))while(side>=pl-1e-6){out.push(pl);side-=pl;}
+  // A plate within half the load's last shown digit, split across the sides, is that plate (platesPerSide, PENDING 333).
+  const {plates:out,rest:left}=platesPerSide(plateList(pu),mode==='sleeve'?load:(load-bar)/2,Math.max(1e-6,inU(rackTol())/(mode==='sleeve'?1:2)));
   // Within a rounding of the shown load, not a plate short (a 60 kg load shown as 132.3 lb).
-  const rest=Math.round(side*100)/100;const tiny=pu!==U()&&rest<(pu==='kg'?0.1:0.25);
+  const rest=Math.round(left*100)/100;const tiny=pu!==U()&&rest<(pu==='kg'?0.1:0.25);
   const lead=mode==='sleeve'?`On the sleeve at ${fmtW(kg)}`:mode==='side'?`Per side at ${fmtW(kg)} (no bar)`:`Per side at ${fmtW(kg)}`;
   const tag=pu!==U()?` ${pu}`:'';
   return `${lead}: ${out.length?out.join(', ')+tag:'bar only'}${rest>0&&!tiny?` (${rest} ${pu} not loadable)`:''}`;
@@ -91,7 +91,7 @@ function blockProgress(b){
   const heavier=done.filter(s=>(+s.w||0)>t.w+1e-6);
   let heavyBeat=false,heavyTxt='';
   if(heavier.length&&t.prevBest!=null&&!ex.timed){
-    let best=null,bs=null;for(const s of heavier){const v=e1(bw+(+s.w||0),+s.r,rirEst(s,ex));if(v!=null&&(best==null||v>best)){best=v;bs=s;}}
+    let best=null,bs=null;const seen=new Set();for(const x of IDX().byEx[b.exId]||[])for(const p of x.pts)seen.add(p.w); /* each set at the load it stands for, as PRs are judged (prSameLoad): the same load in the other unit beats nothing (r55.1, the audit of r55: 220.5 lb after 100 kg read as beaten by load) */for(const s of heavier){const v=e1(bw+prSameLoad(+s.w||0,seen),+s.r,rirEst(s,ex));if(v!=null&&(best==null||v>best)){best=v;bs=s;}}
     if(best!=null){
       heavyBeat=best>t.prevBest+1e-6;
       /* Estimates in whole pounds, and on an isolation lift the set itself,

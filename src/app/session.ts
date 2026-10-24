@@ -229,7 +229,9 @@ export function savedEx(b: DraftBlock): SessionEx {
         rir: s.rir == null || s.rir === '' ? null : Number(s.rir),
         warm: !!s.warm,
         drop: !!s.drop && !s.warm,
-        cal: s.cal && !s.warm ? s.cal : undefined
+        cal: s.cal && !s.warm ? s.cal : undefined,
+        // The row's own id (r56.1), last, where a build before it keeps the unknown field.
+        ...(typeof s.rid === 'string' ? { rid: s.rid } : {})
       }))
   };
 }
@@ -268,10 +270,11 @@ export interface DraftCardio {
    saved session is not one (that session is already kept). Null when
    nothing is ticked. */
 /** A workout in progress as a saved session of its ticked sets, or null when none is ticked or it is an edit. */
-export function draftSession(d: DraftLike): Session | null {
+export function draftSession(d: DraftLike, empty?: boolean): Session | null {
   if (d.editingId) return null;
   const ex = joinAdjacent(d.ex.map(savedEx).filter(b => b.sets.length));
-  if (!ex.length) return null;
+  // A copy with nothing ticked is no session, unless asked for as the agreed copy of a join (keepLost), where it is the base with no sets.
+  if (!ex.length && !empty) return null;
   const chk = cleanChk(d.chk);
   return {
     id: d.id,
@@ -345,6 +348,20 @@ export function sameExOnce<X extends Joinable>(ex: readonly X[]): X[] {
 }
 
 /* ---------- a session as a whole ---------- */
+
+/** A new row of a workout in progress: blank, or with the fields given, and its own id (r56.1), kept when one is given (a saved set opened for editing keeps its row). */
+export function newRow(over?: Partial<DraftSet>): DraftSet {
+  return {
+    w: null,
+    r: null,
+    rir: null,
+    warm: false,
+    drop: false,
+    done: false,
+    ...over,
+    rid: over && typeof over.rid === 'string' ? over.rid : uid()
+  };
+}
 
 /* Freestyle and Do again build a session that is not tied to a routine day:
    no dayId and no routineId, so the cycle never advances on it. */

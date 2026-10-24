@@ -6,7 +6,7 @@ Last updated: r54 live, r55 in pull request #48, 2026-10-20.
 
 ## Now, in this order
 
-1. A23 (r55, version 2.6): pull request #48. When its checks pass on GitHub, the preview at https://ironapp.org/preview/ is r55: try it on your phone (what to look at is in the pull request and under Checks on your phone), then merge it on GitHub's website if you are happy. Then tap Reload on every phone when New version ready shows.
+1. A24 (the stack r55.1, r56 and r56.1, versions 2.7 to 2.9): pull requests #49, #50 and #51; the preview is r56.1, which carries all three. After the stack's review is clean (PENDING 333): export a backup on your phone, merge #49 on GitHub's website, wait for Claude to point #50 at `main`, merge #50, then #51 the same way. Then tap Reload on every phone and computer when New version ready shows, and do that before using two devices on one workout: a device still on r55 can drop sets of a workout open on both, as r55 always could (PENDING 333). A23 (r55): done 2026-10-20, merged by you, live as build 2026.10.19-r55.
 2. B5, the trigger, then its check: Report a problem from the app and an issue appears in `ironlog-feedback` (steps below). Status: to do, unless you have done it (Claude cannot see Supabase from here).
 3. C6: add the code to the confirmation email (5 minutes, below). The app asks a new person for the code the email should carry. Status: to do, unless you have done it.
    D7, any time (with C6 is easiest): a 1 MB limit on each synced document (1 minute, below). Status: to do, unless you have done it.
@@ -337,6 +337,7 @@ Status: to do whenever you are at the gym; tell Claude what you see.
 - From r54, in the preview (PENDING 311 f, 322; no browser here has an on-screen keyboard), in Safari and in the home-screen app: sign in with a wrong password, then tap the email field and change it without closing the sheet; the sheets you type in (sign in, create account, a problem report, a goal, a note) open tall with their fields at the top, so the field you tap stays in view with the keyboard up, nothing moves up and down as it comes, and nothing of the page shows under the sheet.
 - r55, in the preview (pull request #48): tick a set with 0 reps (it shows as missed); type 1000 on a bench set and tick it (it asks Log it or Fix it); change a ticked set's load to 1000, tap Fix it, type the right load (the set stays ticked); Settings > More shows one demo button and the version; save one tape measurement, then another the same day (one entry with both); in the preview, sign out with Keep on this phone, log a set or two, and sign back in (everything is still there, the new sets included).
 
+- r55.1, in the preview (pull request #49): tick a set at a light weight with 0 reps (it asks Log it as missed or Fix it); in Settings > Your gym, turn a small plate off and look at a barbell lift's next load and its warm-ups (all loadable with the plates left); after a set, type a load 10 times too heavy in Type or dictate sets (it asks); signed in, Settings > More > Load demo data (it says why it does not).
 ## Reminders
 - Renew the `ironlog-feedback` token (B3) before it expires, a year after you make it. Claude writes the date here when you say B3 is done.
 

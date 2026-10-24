@@ -12,12 +12,6 @@ import { AUTH, FB } from './providers';
 import { halfLbl } from './effort';
 import { FIRST_WEEK_REASON, LIGHTER_WEEK_WORDS } from './weeks';
 
-declare global {
-  interface Window {
-    claude?: { use?: unknown } | undefined;
-  }
-}
-
 /* The Guide (r27): how Ironlog works and the rules behind its numbers, in
    one place, opened from the menu. Screens keep the number and the action;
    the reasoning lives here, so it is findable on a phone where nothing can

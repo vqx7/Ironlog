@@ -25,7 +25,7 @@ function start(root) {
   const readers = new Set();    // user ids in public.feedback_readers
   let fbOn = true;              // false: the feedback tables are not created yet
   const log = [];
-  let tokenLife = 3600; let deny = false; let fnDeployed = false; const codeLife = 3600 * 1000;
+  let tokenLife = 3600; let deny = false; let fnDeployed = false; const gone = new Set(); const codeLife = 3600 * 1000;
   const now = () => Math.floor(Date.now() / 1000);
   const userJson = u => ({ id: u.id, aud: 'authenticated', role: 'authenticated', email: u.email,
     email_confirmed_at: u.confirmed ? u.created : null, confirmed_at: u.confirmed ? u.created : null,
@@ -46,7 +46,10 @@ function start(root) {
     const k = tokens.get(t);
     if (!k) return null;
     if (k.exp < now()) return { expired: true };
-    return byId(k.uid) || null;
+    /* An access token outlives its account until it expires, as a real JWT
+       does (r55.1): the account's rows are gone, its writes break the docs
+       table's foreign key, and the auth service says the user is not found. */
+    return byId(k.uid) || (gone.has(k.uid) ? { gone: true, id: k.uid } : null);
   }
   const send = (res, code, body, extra) => {
     res.writeHead(code, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*', ...(extra || {}) });
@@ -105,6 +108,7 @@ function start(root) {
       }
       if (p === '/auth/v1/user') {
         const c = caller(req); if (!c || c.expired) return authErr(res, 401, 'bad_jwt', 'invalid JWT');
+        if (c.gone) return authErr(res, 403, 'user_not_found', 'User from sub claim in JWT does not exist');
         if (req.method === 'PUT') { const b = json(); if (b.password) { if (b.password === c.password) return authErr(res, 422, 'same_password', 'New password should be different from the old password.'); c.password = b.password; } }
         return send(res, 200, userJson(c));
       }
@@ -129,7 +133,8 @@ function start(root) {
         if (!fnDeployed) return send(res, 404, { code: 'NOT_FOUND', message: 'Requested function was not found' });
         const c = caller(req); if (!c || c.expired) return send(res, 401, { error: 'Not signed in' });
         for (const [k, r] of [...rows]) if (r.user_id === c.id) rows.delete(k);
-        users.delete(c.email); for (const [t, v] of [...tokens]) if (v.uid === c.id) tokens.delete(t);
+        users.delete(c.email); gone.add(c.id); for (const [t, v] of [...tokens]) if (v.uid === c.id && t === (req.headers.authorization || '').replace(/^Bearer /, '')) tokens.delete(t);
+        for (const [rt, id] of [...refresh]) if (id === c.id) refresh.delete(rt);
         return send(res, 200, { deleted: true });
       }
       // ---- Data API: feedback (anyone adds; only listed readers read) ----
@@ -164,6 +169,7 @@ function start(root) {
         const c = caller(req);
         if (c && c.expired) return send(res, 401, { code: 'PGRST303', message: 'JWT expired' });
         if (!c) return send(res, 401, { code: '42501', message: 'permission denied for table docs' });
+        if (c.gone && req.method !== 'GET') return send(res, 409, { code: '23503', message: 'insert or update on table "docs" violates foreign key constraint "docs_user_id_fkey"', details: 'Key is not present in table "users".' });
         if (deny) return send(res, 401, { code: '42501', message: 'permission denied for table docs' });
         if (req.method === 'GET') {
           let list = [...rows.values()].filter(r => r.user_id === c.id);

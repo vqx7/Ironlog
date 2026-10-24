@@ -564,11 +564,12 @@ const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log
   // An error handled in a module carries a comment (r51, the outside review):
   // every `catch` block in src/app/, and every handler given to a promise
   // (`.catch(fn)`, `["catch"](fn)`, the second function of `.then`), ends in
-  // a throw or holds a comment, read from the syntax tree, saying why the
-  // error is expected and what the fallback is; a handler must be written in
-  // place, so it can be read. A `finally` may not return, which would swallow
-  // an error silently. Whether a comment says why is review's to judge. A
-  // module cannot log yet (`log` is legacy until phase 4).
+  // a throw, logs the error (a statement of its own calling `log`, the
+  // error log in src/app/storage.ts, since r56, when `log` moved) or holds a
+  // comment, read from the syntax tree, saying why the error is expected and
+  // what the fallback is; a handler must be written in place, so it can be
+  // read. A `finally` may not return, which would swallow an error silently.
+  // Whether a comment says why is review's to judge.
   {
     const silent = [];
     for (const id of MODS) {
@@ -582,14 +583,16 @@ const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log
       const hasComment = b => comments.some(([a, z]) => a >= b.getStart(sf) && z <= b.end && !nested.some(([p, q]) => p > b.getStart(sf) && a >= p && z <= q));
       // Ends in a throw: the block's own last statement, so a throw that only sometimes runs, or one in a nested function, does not count.
       const endsInThrow = b => ts.isBlock(b) && b.statements.length > 0 && ts.isThrowStatement(b.statements[b.statements.length - 1]);
+      // Logs it: a statement of the block's own that is a call to `log` (r56), so a log in a nested function, or one that only sometimes runs, does not count.
+      const logsIt = b => ts.isBlock(b) && b.statements.some(st => ts.isExpressionStatement(st) && ts.isCallExpression(st.expression) && ts.isIdentifier(st.expression.expression) && st.expression.expression.text === 'log');
       const handler = (fn, at) => {
         if (!fn || !ts.isFunctionLike(fn) || !fn.body) { silent.push(`${where(at)} (a handler not written in place)`); return; }
-        if (!hasComment(fn.body) && !endsInThrow(fn.body)) silent.push(where(at));
+        if (!hasComment(fn.body) && !endsInThrow(fn.body) && !logsIt(fn.body)) silent.push(where(at));
       };
       // A return, break or continue in a finally ends it early and drops an error in flight.
       const returnsIn = x => ts.isReturnStatement(x) || ts.isBreakStatement(x) || ts.isContinueStatement(x) || (!ts.isFunctionLike(x) && !!ts.forEachChild(x, c => returnsIn(c) || undefined));
       const visit = n => {
-        if (ts.isCatchClause(n) && !hasComment(n.block) && !endsInThrow(n.block)) silent.push(where(n));
+        if (ts.isCatchClause(n) && !hasComment(n.block) && !endsInThrow(n.block) && !logsIt(n.block)) silent.push(where(n));
         if (ts.isTryStatement(n) && n.finallyBlock && returnsIn(n.finallyBlock)) silent.push(`${where(n.finallyBlock)} (a return, break or continue in finally)`);
         if (ts.isCallExpression(n)) {
           const e = n.expression;
@@ -601,7 +604,28 @@ const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log
       };
       visit(sf);
     }
-    ok(silent.length === 0, 'every catch and promise handler in src/app/ ends in a throw or carries a comment saying why the error is expected, and no finally returns, breaks or continues', silent);
+    ok(silent.length === 0, 'every catch and promise handler in src/app/ ends in a throw, logs the error or carries a comment saying why the error is expected, and no finally returns, breaks or continues', silent);
+  }
+  // Every stored value is read in one place (r56.1, PENDING 305): localStorage
+  // and IndexedDB are named only in storage.ts and sync.ts, and JSON text is
+  // parsed only by records.ts's parseJson, so every raw value comes through
+  // the readers that check it. The legacy parts keep their account and
+  // screen keys until phase 5. Read from the syntax tree's identifiers, so a
+  // mention in a comment is not one.
+  {
+    const hits = [];
+    const ALLOWED = { localStorage: ['storage', 'sync'], indexedDB: ['storage'], sessionStorage: [] };
+    for (const id of MODS) {
+      const f = id + '.ts', txt = fs.readFileSync(path.join(APP, f), 'utf8');
+      const sf = ts.createSourceFile(f, txt, ts.ScriptTarget.Latest, true);
+      const walk = n => {
+        if (ts.isIdentifier(n) && Object.prototype.hasOwnProperty.call(ALLOWED, n.text) && !ALLOWED[n.text].includes(id) && !(n.parent && ts.isPropertyAccessExpression(n.parent) && n.parent.name === n)) hits.push(`${f}:${sf.getLineAndCharacterOfPosition(n.getStart(sf)).line + 1} ${n.text}`);
+        if (ts.isPropertyAccessExpression(n) && ts.isIdentifier(n.expression) && n.expression.text === 'JSON' && n.name.text === 'parse' && id !== 'records') hits.push(`${f}:${sf.getLineAndCharacterOfPosition(n.getStart(sf)).line + 1} JSON.parse`);
+        ts.forEachChild(n, walk);
+      };
+      walk(sf);
+    }
+    ok(hits.length === 0, 'localStorage and IndexedDB are named only in storage.ts and sync.ts, and JSON is parsed only by records.ts (every stored value comes through one reader)', hits);
   }
   // Every module is laid out by Prettier from the committed .prettierrc.json,
   // so layout is never a matter of taste or of hand (layout never changes

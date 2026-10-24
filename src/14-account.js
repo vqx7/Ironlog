@@ -1,10 +1,8 @@
 /* ---------- account (standalone app) ---------- */
 const ACCT_LATER=KEY+'.acctLater';
-function cloudStop(forget){ // forget: the log or the account is gone; else the sync notes stay with the copy kept, so signing back in to that account merges against them, as a sync does (r55, the audit: a first link let the kept copy undo edits and bring back deletions made since on other phones). A log replaced while signed out (Erase everything, a backup restored, Copy my log in, demo data loaded) is no longer that copy, so each of those forgets them: the next sign-in is a first link, which removes nothing and leaves demo data out (r55, the second review: a restored backup deleted the account's other sessions on every phone)
-  clearTimeout(cloud.t);cloud.on=false;cloud.db=null;cloud.uid=null;if(forget){cloud.acct=null;cloud.meta={};cloud.editAt={};cloud.last=null;}
-  cloud.retry=0;saveMeta();setCloud('local');
-}
-function acctRerender(){if((ui.tab==='settings'||ui.tab==='today')&&!ui.modal)rerenderKeepScroll();else{const el=document.getElementById('syncInfo');if(el)el.innerHTML=syncInfo();}}
+/* The sync line on Settings, redrawn in place when the sync's status changes (setCloud, through fx) and after an account change. */
+function syncLine(){const el=document.getElementById('syncInfo');if(el)el.innerHTML=syncInfo();}
+function acctRerender(){if((ui.tab==='settings'||ui.tab==='today')&&!ui.modal)rerenderKeepScroll();else syncLine();}
 /* ---------- problem reports (PENDING 58, reworked in r25) ----------
    The menu (top right) and an exercise's ⋯ menu open one sheet. Report a problem
    comes first; a question or a suggestion is the same sheet with another kind
@@ -273,41 +271,4 @@ function syncInfo(){
   return `<div class="sync-row">${st}<span class="small muted">Last synced ${when}</span><button class="btn sm" data-act="syncNow">Sync now</button></div>
   <p class="small hastip" style="margin:6px 0 0" data-tip="A new phone or a cleared browser loses nothing: sign in and your log comes back. Deleted items wait in History, Recently deleted, for ${TRASH_DAYS} days, and Undo in Settings covers the last 7 days.">${cloud.status!=='synced'?'Saved on this device. It reaches your account when you are back online.':window.claude?'Saved to your Claude account and this device.':'Saved to your account and this device.'}${cloud.err?` <b style="color:var(--red)">${esc(cloud.err)}</b>`:''}</p>`;
 }
-/* Two tabs (or the app and a second window) used to overwrite each other: each
-   wrote its whole state, so the one that saved last erased what the other had
-   saved. Now each tab hears the other's save and merges it into its own
-   state, record by record, with this tab's last save as the base: changes
-   made only there are taken, changes made only here are kept. Content is
-   compared with canon(), which ignores key order, so two tabs holding the
-   same data never keep rewriting it back and forth. */
-window.addEventListener('storage',ev=>{
-  if(ev.storageArea&&ev.storageArea!==localStorage)return;
-  if(ev.key===SYNC_KEY&&ev.newValue){
-    try{const m=JSON.parse(ev.newValue);if(m&&typeof m==='object'){if(m.meta&&typeof m.meta==='object')cloud.meta=m.meta;if(m.editAt&&typeof m.editAt==='object')cloud.editAt=m.editAt;if(m.last)cloud.last=m.last;}}catch(e){log('tabs',e);}
-    return;
-  }
-  if(ev.key!==KEY||ev.newValue==null||ev.newValue===lastSaved)return;
-  let incoming,base=null;
-  try{incoming=normalize(JSON.parse(ev.newValue));}catch(e){log('tabs',e);return;}
-  try{base=lastSaved?normalize(JSON.parse(lastSaved)):null;}catch(e){base=null;}
-  const stat={conflicts:0};
-  if(!base||canon(state)===canon(base))setState(incoming);
-  else{
-    const L=chunksOf(state),Rr=chunksOf(incoming),B=chunksOf(base),parts={};
-    for(const id of new Set([...Object.keys(L),...Object.keys(Rr),...Object.keys(B)]))
-      parts[id]=mergeChunk(id,baseOf(id,B[id]||emptyChunk(id)),L[id]||emptyChunk(id),Rr[id]||emptyChunk(id),true,stat);
-    setState(assemble(parts));
-  }
-  lastSaved=ev.newValue;clearTimeout(saveT);saveT=null;
-  invalidate();resyncLocalH();
-  // Anything that was only here goes back out, so the other tab has it too.
-  if(canon(state)!==canon(incoming))saveNow();
-  if(!ui.modal)rerenderKeepScroll();else render();
-  conflictNote(stat);
-});
-document.addEventListener('visibilitychange',()=>{
-  if(document.visibilityState==='hidden'){if(saveT)saveNow();if(cloud.on){clearTimeout(cloud.t);cq(cloudFlush);}}
-  else if(cloud.on&&Date.now()-cloud.lastPull>20000)cq(cloudPull);
-});
-window.addEventListener('pagehide',()=>{if(saveT)saveNow();if(trackT||cloud.pendAt)trackEdits();});
 

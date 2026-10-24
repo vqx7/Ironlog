@@ -121,10 +121,10 @@ function openPreview(res,tab){
 }
 /* Sessions as they would be saved, and which are already in the log. */
 function impBuild(m){
-  const conv=m.unit==='kg'?(v=>v):(v=>v*LB);const newEx=Object.create(null);const out=[];const bad=[];const odd=[];let timedOff=0;
+  const conv=m.unit==='kg'?(v=>v):(v=>v*LB);const newEx=Object.create(null);const out=[];const ssOf={}; /* each session's supersets from the file (Hevy's superset_id), by lift, for the routine an import makes; sessions keep none (r55.1) */const bad=[];const odd=[];let timedOff=0;
   const allTimed=n=>m.res.sessions.every(x=>x.items.every(i=>i.name!==n||(i.sets&&i.sets.length&&i.sets.every(q=>q.timed))));
   for(const n in m.pick)if(m.pick[n]==='new'){const g=m.guess[n];const e={id:'c_'+uid(),name:n.slice(0,60),primary:g.primary,secondary:[],equip:g.equip,bw:g.equip==='bodyweight'||!!g.assist,rare:false,note:'',custom:true,archived:false};if(g.assist)e.assist=true;if(!m.res.text&&allTimed(n))e.timed=true;newEx[n]=e;}
-  for(const x of m.res.sessions){const date=x.date||m.date;const ex=[];
+  for(const x of m.res.sessions){const date=x.date||m.date;const ex=[];const sid=uid(),grp={};
     for(const it of x.items){const exo=m.pick[it.name]==='new'?newEx[it.name]:EX(m.pick[it.name]);
       // A set timed in seconds on a lift that counts reps would turn seconds into reps: left out and counted.
       if(!it.setsText&&!exo.timed&&it.sets.some(q=>q.timed)){timedOff+=it.sets.filter(q=>q.timed).length;}
@@ -137,8 +137,8 @@ function impBuild(m){
          past 30 reps. Shown in the preview to check; nothing is changed. */
       if(!exo.bw&&!exo.timed)for(const q of sets)if((q.w>0&&q.w<2.3)||q.r>30){odd.push(`${exo.name} ${fmtW(q.w)} ${U()} x ${q.r}${x.date?`, ${fmtDate(x.date)}`:''}`);break;}
       // A lift's sets across rows of the same exercise stay together.
-      const prev=ex.find(b=>b.exId===exo.id);if(prev)prev.sets.push(...sets);else ex.push({exId:exo.id,note:it.note||'',rr:null,sets});}
-    if(ex.length)out.push({id:uid(),date,dayIdx:0,dayId:null,dayName:(x.name||'').slice(0,60)||'Imported',routineId:'',free:true,ex,notes:x.note||'',durMin:x.durMin||null,deload:!!x.deload,light:false});} // the note and minutes the app's own file carries (r55)
+      const prev=ex.find(b=>b.exId===exo.id);if(prev)prev.sets.push(...sets);else ex.push({exId:exo.id,note:it.note||'',rr:null,sets});if(it.ss)grp[exo.id]=it.ss;}
+    if(ex.length&&Object.keys(grp).length)ssOf[sid]=grp;if(ex.length)out.push({id:sid,date,dayIdx:0,dayId:null,dayName:(x.name||'').slice(0,60)||'Imported',routineId:'',free:true,ex,notes:x.note||'',durMin:x.durMin||null,deload:!!x.deload,light:false});} // the note and minutes the app's own file carries (r55)
   /* Date, lifts and reps, not loads (r31): the same file imported again with
      the other unit choice converted every load differently and added every
      session a second time. */
@@ -153,7 +153,7 @@ function impBuild(m){
   for(const c of m.res.cardioRows||[]){const min=c.min||Math.round(c.secs/60);if(!(min>0)){cardioNoTime++;continue;}
     if(state.cardio.some(x=>x.date===c.date&&x.kind===c.kind&&x.min===min)){dup++;continue;}
     cardio.push(cleanCardio({id:uid(),date:c.date,kind:c.kind,min,hr:c.hr||null,when:c.when||'solo',note:c.note||'',dist:c.km!=null?c.km:c.dist>0?(m.unit==='kg'?c.dist:c.dist*KM_MI):null}));} // the app's own file says the minutes, heart rate, when, note and km (r55)
-  return {sessions:fresh,cardio,cardioNoTime,dup,bad,odd,timedOff,newEx:Object.values(newEx).filter(e=>fresh.some(ss=>ss.ex.some(b=>b.exId===e.id)))};
+  return {sessions:fresh,ssOf,cardio,cardioNoTime,dup,bad,odd,timedOff,newEx:Object.values(newEx).filter(e=>fresh.some(ss=>ss.ex.some(b=>b.exId===e.id)))};
 }
 /* A routine from an import, on a first run (r31). Someone who brings their
    Strong or Hevy history has a routine already; measuring them against the
@@ -171,7 +171,7 @@ function impBuild(m){
    (the nearest common range, a convention) and its RIR from its latest full
    session there. Deload and lighter sessions are left out of that. Returns
    null when nothing repeats; the routine picker opens instead. */
-function routineFromLog(sessions){
+function routineFromLog(sessions,ssOf){
   const all=sessions.filter(x=>!x.demo&&x.ex&&x.ex.length);if(!all.length)return null;
   const byDate=(a,b)=>a.date<b.date?-1:a.date>b.date?1:0;
   const newest=all.reduce((m,x)=>x.date>m?x.date:m,all[0].date);const rec=all.filter(x=>x.date>=addDays(newest,-55)).sort(byDate);
@@ -207,7 +207,7 @@ function routineFromLog(sessions){
       // RIR only when most of the sets were rated: one failure set in a file (Strong's F) is not a plan to fail every set.
       const rt=ws.filter(x=>x.rir!=null);const q=rt.length*2>ws.length?med(rt.map(x=>+x.rir)):null;if(q!=null)it.rir=Math.min(4,Math.max(0,Math.round(q)));
       return it;});
-    return {g,day:{id:uid(),name:g.name,rest:false,items},ids:lifts(latest)};
+    {const sg=(ssOf&&ssOf[latest.id])||{};const gid={};for(const it of items){const k=sg[it.exId];if(k&&items.filter(o=>sg[o.exId]===k).length>1)it.ss=gid[k]||(gid[k]=uid());}} /* the file's supersets, from the day's latest session (r55.1) */return {g,day:{id:uid(),name:g.name,rest:false,items},ids:lifts(latest)};
   }).filter(d=>d.day.items.length);
   if(!days.length)return null;
   const span=Math.max(7,daysBetween(rec[0].date,newest)+1);const perWeek=Math.min(7,Math.max(1,Math.round(rec.length/(span/7))));
@@ -306,24 +306,6 @@ function importData(text,after){
    default layout. Only a first run keeps this; someone with their own log
    who loads the demo from Settings keeps every change. Kept on the device,
    so it survives the app being closed while looking around. */
-const DEMOSET_KEY=KEY+'.demoSettings';
-// The settings are taken when the demo goes in (not again while it is still
-// loaded, which would keep what was changed while looking around), and are
-// put back only while this is still a first run: once a routine is picked,
-// a session is logged or an account brings a log, every setting is the
-// person's own, and a snapshot left from earlier is thrown away unused.
-const demoFirstRun=()=>!state.settings.onboarded&&!realCount(state)&&!state.draft;
-function demoKeep(){
-  if(!demoFirstRun()||state.sessions.some(x=>x.demo))return;
-  try{localStorage.setItem(DEMOSET_KEY,JSON.stringify(state.settings));}catch(e){log('demo',e);}
-}
-function demoRestore(){
-  let saved=null;try{const t=localStorage.getItem(DEMOSET_KEY);saved=t?JSON.parse(t):null;localStorage.removeItem(DEMOSET_KEY);}catch(e){log('demo',e);}
-  if(!saved||typeof saved!=='object'||!demoFirstRun())return;
-  // Facts about this device and its backups are not part of looking around.
-  const keep={onboarded:state.settings.onboarded,lastExport:state.settings.lastExport,calSnooze:state.settings.calSnooze};
-  state.settings=normalize({...state,settings:{...saved,...keep}}).settings;
-}
 /* Demo data (reworked in r29, V: the old demo "feels shitty and demotivates
    users"). It is a lifter who follows the active routine and the app's own
    double progression: every set adds a rep each session until all reach the

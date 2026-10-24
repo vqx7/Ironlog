@@ -6,7 +6,7 @@
 // script (r52's 74, routineUpdates since r53, and since r54 plannedSets,
 // stallWeeks, stallWords, atRangeTop, avgFirstWeek, lastLighterWeek, muscleStatus,
 // weeksAvg, defBand, appBand, fitFloors, refit, avgWait, sessionWords, prFrame
-// and heavierLoad, and since r55 oddLoad, read from live.ts) is called with the page's own arguments
+// and heavierLoad, since r55 oddLoad, and since r55.1 lightZero, read from live.ts) is called with the page's own arguments
 // on a fresh model and must give the page's answer, then again on a second
 // fresh model; so is each of PLAIN, the engine's functions the legacy script
 // calls directly that take no model (since r53 avgWeeksTxt, whose lines no
@@ -35,7 +35,7 @@ const K = +process.env.ENGINE_N || 1000, BATCH = 100;
 // and musTrend, a muscle's strength trend in words, which Stats and the muscles sheet call and no adapter reaches (r54);
 // and r55's routine helpers: what a session records of its routine (pwOf), a first-run choice replacing the starter
 // (dropStarter), a day given an exercise (trainOn) and the item a lift's plan comes from (planItemOf).
-const PLAIN = ['avgWeeksTxt', 'dayLabel', 'daySets', 'ssLetters', 'routineSig', 'tplCountLine', 'musTrend', 'pwOf', 'dropStarter', 'trainOn', 'planItemOf'];
+const PLAIN = ['avgWeeksTxt', 'dayLabel', 'daySets', 'ssLetters', 'routineSig', 'tplCountLine', 'musTrend', 'pwOf', 'dropStarter', 'trainOn', 'planItemOf', 'platesPerSide'];
 // Every adapter live.ts gives the legacy script, read from live.ts itself, so a new one cannot go uncalled.
 const ADAPTERS = [...fs.readFileSync(path.join(APP, 'live.ts'), 'utf8').matchAll(/^export const (\w+) = live\(\w+In\);$/gm)].map(m => m[1]);
 // The adapters added since r53, and the plain functions above the digest does not call: tests/wide.js is shared with
@@ -53,6 +53,9 @@ const EXTRA = {
   // A lift's all-time bests, now and as of the log's middle session (a past workout's), and where the weeks are counted from.
   allTimeBests: (s, ids) => ids.flatMap(id => [[id], [id, s.sessions.length ? s.sessions[Math.floor(s.sessions.length / 2)].date : '']]),
   logBack: () => [[]], logStart: () => [[]],
+  // The plates one side takes (r56.1, PENDING 333): a load typed as shown in lb on kg plates (110.2 lb, 15 kg a side within
+  // its tolerance, and strictly), lb plates, the bar alone, and less than the smallest plate.
+  platesPerSide: () => [[[25, 20, 15, 10, 5, 2.5, 1.25], 14.993, 0.0113], [[25, 20, 15, 10, 5, 2.5, 1.25], 14.993, 1e-6], [[45, 35, 25, 10, 5, 2.5], 92.5, 0.025], [[45, 35, 25, 10, 5, 2.5], 0, 1e-6], [[25, 20, 15, 10, 5, 2.5, 1.25], 1.2, 1e-6]],
   plannedSets: (s) => s.routines.map(r => [r]), stallWeeks: (s, ids) => ids.map(id => [id]), stallWords: (s, ids) => ids.map(id => [id]), atRangeTop: (s, ids) => ids.map(id => [id]), avgFirstWeek: () => [[]], lastLighterWeek: () => [[]],
   // A week's sets so far and a plain average; the weekly averages, which carry the muscles on plan, reach it through the coach and regionBalance.
   muscleStatus: () => [[{ chest: 5, quads: 22, biceps: 0, serratus: 3 }], [{ chest: 5, quads: 22, biceps: 0 }, true], [null]],
@@ -73,6 +76,9 @@ const EXTRA = {
   // A set about to be logged, its load far off or not (r55): 300 after two 50s, 30 after 300, a first set at ten times the lift's best,
   // one at its best, a blank load, no load, a row under a ticked set with its load grey, and a warm-up; on every lift, with the log's newest date.
   oddLoad: (s, ids) => ids.flatMap(id => { const d = s.sessions.length ? s.sessions[s.sessions.length - 1].date : ''; const S = (w, r, done, o) => ({ w, r, done, warm: false, drop: false, ...(o || {}) }); const b = sets => ({ exId: id, sw: 40, sets }); return [[b([S(50, 6, true), S(50, 6, true), S(300, 1, false)]), 2, d], [b([S(300, 5, true), S(30, 5, false)]), 1, d], [b([S(1000, 5, false)]), 0, d], [b([S(60, 8, false)]), 0, d], [b([S(null, null, false)]), 0, d], [b([S(0, 10, false)]), 0, d], [b([S(50, 8, true), S(null, null, false)]), 1, d], [b([S(40, 5, false, { warm: true })]), 0, d]]; }),
+  // A set ticked with 0 reps (r55.1, V): at a light load after working sets, at the working load, under the suggested load with
+  // nothing done yet, at a load with no working load known, on a warm-up, and a set that is no 0; on every lift, with the log's newest date.
+  lightZero: (s, ids) => ids.flatMap(id => { const d = s.sessions.length ? s.sessions[s.sessions.length - 1].date : ''; const S = (w, r, done, o) => ({ w, r, done, warm: false, drop: false, ...(o || {}) }); const b = (sets, sw) => ({ exId: id, sw, sets }); return [[b([S(100, 8, true), S(60, 0, false)], 100), 1, d], [b([S(100, 8, true), S(100, 0, false)], 100), 1, d], [b([S(40, 0, false)], 100), 0, d], [b([S(40, 0, false)], null), 0, d], [b([S(40, 0, false, { warm: true })], 100), 0, d], [b([S(40, 8, false)], 100), 0, d]]; }),
   // Each muscle's score as the page reads it, and the shapes no history may hold: none measured, one, two, flat, rising and falling.
   musTrend: () => [...window.__ironlog.IDX().scores.map(x => [x]), [{ clear: false, n: 0, score: 0 }], [{ clear: false, n: 1, score: 0 }], [{ clear: false, n: 2, score: 0 }], [{ clear: true, n: 2, score: 1.5 }], [{ clear: true, n: 1, score: 4.2, wk: 5 }], [{ clear: true, n: 3, score: -6 }]]
 };

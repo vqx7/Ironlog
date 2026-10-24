@@ -62,6 +62,14 @@
     // A setup step still to do, shown in Your data like a table without
     // permissions ('denied'), while sync keeps retrying.
     if (PREVIEW && /docs_preview/.test(msg) && /PGRST205|42P01|does not exist|schema cache/i.test(msg + code)) return Object.assign(new Error('Preview sync is not set up yet. The preview keeps its log on this phone meanwhile.'), { code: 'denied' });
+    /* The account is gone (r55.1, V 2026-10-19: a phone still signed in to an
+       account deleted on another phone kept saying its log would sync): the
+       docs table's rows belong to the account (a foreign key, SUPABASE.md),
+       so a write after it is deleted fails with Postgres's foreign key
+       violation (23503), and the auth service says user_not_found (its
+       documented code: the user no longer exists). Told apart from an expired
+       sign-in, which is neither. */
+    if (code === '23503' || /user_not_found/i.test(code)) return Object.assign(new Error('This account no longer exists. Your log stays on this phone.'), { code: 'gone' });
     if (/invalid login credentials|invalid_credentials/i.test(msg + code)) text = 'Wrong email or password.';
     else if (/email not confirmed|email_not_confirmed/i.test(msg + code)) text = 'Confirm your email first: type the code from the email below, or open its link.';
     else if (/already registered|user_already_exists/i.test(msg + code)) text = 'An account with this email already exists. Sign in instead.';

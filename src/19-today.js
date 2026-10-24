@@ -160,7 +160,7 @@ const ICON_NOTE=KEY+'.icon25';
 function iconNoteDue(){
   try{if(localStorage.getItem(ICON_NOTE))return false;}catch(e){return false;}
   const ios=/^ios/.test(installKind());
-  if(!HAD_LOG||!isStandalone()||!ios){try{localStorage.setItem(ICON_NOTE,'1');}catch(e){/* shown again next time: harmless */}return false;}
+  if(!device.hadLog||!isStandalone()||!ios){try{localStorage.setItem(ICON_NOTE,'1');}catch(e){/* shown again next time: harmless */}return false;}
   return true;
 }
 function iconBar(){

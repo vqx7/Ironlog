@@ -106,7 +106,9 @@ export interface RirCheck {
 }
 
 /** One logged set. `w` is the number as typed (below 0 only on an assisted lift),
-    `rir` what was called, null when left blank. */
+    `rir` what was called, null when left blank; `rid` the row's own id, kept
+    from the workout in progress since r56.1 (absent on sets saved before), so
+    a workout finished on one phone and ticked further on another joins row by row. */
 export interface LoggedSet {
   w: number;
   r: number;
@@ -114,6 +116,7 @@ export interface LoggedSet {
   warm: boolean;
   drop: boolean;
   cal?: RirCheck | undefined;
+  rid?: string | undefined;
 }
 
 /** One exercise in a saved session: its sets, the planned range at the time
@@ -176,6 +179,20 @@ export interface CardioEntry {
   dist?: number | undefined;
 }
 
+/** A tape entry, in cm: the sites MEAS lists (library.ts), each absent unless measured. */
+export interface Measurement {
+  id: string;
+  date: string;
+  demo: boolean;
+  arm?: number | undefined;
+  forearm?: number | undefined;
+  chest?: number | undefined;
+  waist?: number | undefined;
+  thigh?: number | undefined;
+  calf?: number | undefined;
+  neck?: number | undefined;
+}
+
 /** An injury the lifter flagged: a muscle or a joint (`m`), since `date`. */
 export interface Injury {
   id: string;
@@ -229,6 +246,40 @@ export interface EngineSettings {
   todayStart?: 'free' | undefined;
 }
 
+/** Every setting as normalize() keeps it (r56): the engine's, and the rest
+    the screens and the storage read. A field absent unless set is optional;
+    the rest are always written. A setting a newer build saved is kept beside
+    these at run time (keepExtra does not run on the settings; normalize
+    spreads them), unread by this build. */
+export interface Settings extends EngineSettings {
+  theme: 'system' | 'dark' | 'light';
+  timerMode: 'auto' | 'manual' | 'off';
+  timerSound: boolean;
+  timerCompact: boolean;
+  autoDone: boolean;
+  accent?: 'blue' | 'volt' | 'ember' | 'pink' | undefined;
+  rirAsk?: true | undefined;
+  autoAdj?: false | undefined;
+  bwEvery?: 0 | 7 | 30 | undefined;
+  loadFill?: 'fill' | undefined;
+  userName?: string | undefined;
+  homeFolded: string[];
+  secOrder: Record<string, string[]>;
+  folds: string[];
+  wakeLock: boolean;
+  smallPlates?: true | undefined;
+  hidden: string[];
+  onboarded: boolean;
+  calSnooze: string | null;
+  tidyV: 0 | 1;
+  heightCm: number | null;
+  timeBudget: number | null;
+  dashFolded: string[];
+  lastExport: string | null;
+  removedLib: string[];
+  bwGoalPct: number | null;
+}
+
 /** The log as the engine and the analytics read it: these fields and no
     others, so the type checker refuses a read of any other (phase 3b). */
 export interface EngineState {
@@ -266,7 +317,9 @@ export type LibRow = readonly [
 
 /** A set in the session in progress: the load as typed (null until typed or
     taken from the grey load), the reps as typed (text while being typed),
-    what was called, and its marks. */
+    what was called, its marks, and since r56.1 its own id (`rid`), so two
+    phones' copies of one workout are merged row by row; a row an older build
+    made has none and is matched by its place. */
 export interface DraftSet {
   w: number | null;
   r: number | string | null;
@@ -275,6 +328,16 @@ export interface DraftSet {
   warm?: boolean | undefined;
   drop?: boolean | undefined;
   cal?: RirCheck | null | undefined;
+  rid?: string | undefined;
+}
+
+/** One entry of the error log Settings can copy: when, the area, the message, the build, and the first lines of the stack. */
+export interface LogEntry {
+  t: string;
+  a: string;
+  m: string;
+  v: string;
+  s?: string | undefined;
 }
 
 /** The target a block was given when the session started (cleanTgt keeps its numbers). */
@@ -315,7 +378,8 @@ export interface DraftBlock {
   full?: number | undefined;
   tgt?: Target | null | undefined;
   target?: string | undefined;
-  adj?: { at: number; w: number } | null | undefined;
+  /** The next sets adjusted from a set (r34): at the row it came from, whose id (`rid`, since PENDING 333) keeps it on that row when rows are added above. */
+  adj?: { at: number; w: number; rid?: string | undefined } | null | undefined;
   sw?: number | null | undefined;
   prev?: string[] | undefined;
   prevOff?: boolean | undefined;
