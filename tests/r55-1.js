@@ -21,7 +21,11 @@
 //     make, in lb and kg (327 c); with Your gym not set, as before (a guard);
 //   - Type or dictate sets asks before a set far off, as a tick does, the sets
 //     in range filled and ticked (327 a), and fills sets in range as before (a
-//     guard).
+//     guard);
+//   - from the stack's review (PENDING 333, F7): Your gym in one unit and the
+//     app in the other, a load typed as shown is the load the plates make, so
+//     its repeat, lighter day, step up and heavier load are as for that load;
+//     this one fails on r55.1 (`baselines/r55-1.html` once it is kept), not r55.
 const { open } = require('./h');
 const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log('FAIL', m, x !== undefined ? JSON.stringify(x) : ''); } else console.log('ok  ', m); };
 const wait = ms => new Promise(r => setTimeout(r, ms));
@@ -273,6 +277,29 @@ const ses = (id, date, exId, rr, sets, extra) => Object.assign({ id, date, dayId
     await ev(() => { const L = window.__ironlog; delete L.state.settings.gym; L.saveNow(); });
     const full = await ev(() => { const L = window.__ironlog; return L.suggest('bench', L.planFor('bench'), {}).w / 0.45359237; });
     ok(Math.abs(full - 235) < 0.01, 'a guard: with Your gym not set, 230 lb x 10 x 4 still goes to 235', { full });
+    await ev(() => { const L = window.__ironlog; delete L.state.settings.gym; L.state.settings.unit = 'kg'; L.saveNow(); L.render(); });
+  }
+
+  // ---- The stack review (PENDING 333, F7): Your gym in kg and the app in lb. 50 kg is shown as 110.2 lb, and a load typed as
+  // shown (110.2 lb, 49.986 kg) is the 50 kg the plates make, as a dumbbell typed as shown is that dumbbell (rackTol): a repeat
+  // stays at 110.2, the lighter day is the one 50 kg gives (99.2), every set at the top of the range steps up to 52.5 kg
+  // (115.7), and a heavier load mid-workout is a load above it. Off the plates by the rounding (a thousandth of a step was all
+  // plateAt allowed), r55.1 went a step down (104.7, lighter 93.7), held the top of the range at 110.2, and offered 50 kg as
+  // heavier than 49.986.
+  {
+    const run = (w, reps) => ev(([w, reps]) => {
+      const L = window.__ironlog; const s = L.state; s.settings.unit = 'lb'; s.settings.gym = { u: 'kg', plates: [25, 20, 15, 10, 5, 2.5, 1.25] }; delete s.settings.barKg;
+      const one = (id, date) => ({ id, date, dayIdx: 0, dayId: null, dayName: 'Session', routineId: '', free: true, notes: '', ex: [{ exId: 'bench', rr: [6, 10], sets: reps.map(r => ({ w, r, rir: 2, warm: false, drop: false })) }] });
+      s.sessions = [one('g1', '2026-10-01'), one('g2', '2026-10-08')]; s.draft = null; L.state = L.normalize(s); L.invalidate(); L.saveNow();
+      const plan = { sets: 3, repMin: 6, repMax: 10, rir: 2, rest: 150 };
+      const up = L.heavierLoad(L.EX('bench'), plan, w, w + 3), near = L.heavierLoad(L.EX('bench'), plan, w, w + 1);
+      return { next: L.fmtW(L.suggest('bench', plan, {}).w), lighter: L.fmtW(L.suggest('bench', plan, { light: true }).w), heavier: up == null ? null : L.fmtW(up), within1: near == null ? null : L.fmtW(near) };
+    }, [w, reps]);
+    const typed = await run(110.2 * LB, [8, 8, 7]), exact = await run(50, [8, 8, 7]);
+    ok(exact.next === '110.2' && exact.lighter === '99.2' && typed.next === exact.next && typed.lighter === exact.lighter, 'Your gym in kg, the app in lb: bench typed as shown, 110.2 lb (49.986 kg), is the 50 kg the plates make: a repeat stays at 110.2 and the lighter day is 99.2, as for 50 kg exactly (r55.1: 104.7 and 93.7)', { typed, exact });
+    ok(typed.heavier === '115.7' && exact.heavier === '115.7' && typed.within1 === null && exact.within1 === null, 'and a heavier load from it mid-workout is 52.5 kg (115.7 lb), the next the plates make, and with only 1 kg of room there is none (r55.1 offered the same 50 kg as heavier than 49.986)', { typed, exact });
+    const top = await run(110.2 * LB, [10, 10, 10]);
+    ok(top.next === '115.7', 'every set at the top of the range at 110.2 lb typed as shown steps up to 115.7 lb (52.5 kg), as 50 kg exactly does (r55.1 held it at 110.2)', top);
     await ev(() => { const L = window.__ironlog; delete L.state.settings.gym; L.state.settings.unit = 'kg'; L.saveNow(); L.render(); });
   }
 

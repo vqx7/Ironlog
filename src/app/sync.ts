@@ -55,6 +55,7 @@ import {
   keepAside,
   asideOf,
   dropAside,
+  load,
   undoForget
 } from './storage';
 
@@ -195,8 +196,8 @@ const notesIn = (
   }
   return { meta, editAt, last: typeof m.last === 'number' ? m.last : null };
 };
-/** Writes the sync notes to this device. */
-export function saveMeta(): void {
+/** Writes the sync notes to this device: whether they were written. */
+export function saveMeta(): boolean {
   try {
     localStorage.setItem(
       SYNC_KEY,
@@ -208,8 +209,10 @@ export function saveMeta(): void {
         acct: cloud.acct || undefined
       })
     );
+    return true;
   } catch (e) {
     log('sync-meta', e);
+    return false;
   }
 }
 
@@ -564,7 +567,7 @@ export function resyncLocalH(): void {
 /* The session in progress is one record, so another device finishing or
    discarding it replaces this one's (the later edit wins). Said in its own
    words rather than the generic note (r45, audit item 288). */
-function draftNote(prev: unknown, kept?: 'saved' | 'joined' | null): void {
+function draftNote(prev: unknown, kept?: Kept): void {
   const P = rec(prev);
   const d = state.draft;
   if (!P || (d && d.id === P.id)) return;
@@ -596,10 +599,8 @@ function draftNote(prev: unknown, kept?: 'saved' | 'joined' | null): void {
   fx.toast(
     kept === 'joined'
       ? 'The workout in progress was saved on another device. What was done here since was added to it.'
-      : kept === 'saved'
-        ? state.draft
-          ? 'The workout in progress was replaced by the one on another device. Its ticked sets are saved in History.'
-          : 'The workout in progress was closed on another device. Its ticked sets are saved in History.'
+      : kept === 'saved' || kept === 'cardio'
+        ? `The workout in progress was ${state.draft ? 'replaced by the one on' : 'closed on'} another device. Its ${kept === 'saved' ? 'ticked sets are' : 'cardio is'} saved in History.`
         : state.draft
           ? saved
             ? 'The workout in progress was replaced by the one on another device. Its ticked sets are in History.'
@@ -614,30 +615,44 @@ function draftNote(prev: unknown, kept?: 'saved' | 'joined' | null): void {
    with its cardio rows and check-in, as a first link keeps another phone's
    workout (draftSession, r55); when the same workout was finished on another
    phone (a session of its id is in the log), the sets join that session row
-   by row against the copy both agreed on. A copy that lost nothing (the same
-   workout, still open), an edit of a saved session, or one with nothing
-   ticked is left alone. Only a copy that carried changes the account did not
-   have is kept: the callers pass the local copy when it was dirty, and the
-   account's copy a later edit here replaced. */
-/** Keeps a losing copy's ticked sets (above); says what was done, for the toast. */
+   by row against the copy both agreed on, and its cardio rows join the log's
+   cardio, as Finish saves them (PENDING 333, F6: the join kept the sets
+   alone, and a copy with cardio and no ticked set was dropped whole). A copy
+   that lost nothing (the same workout, still open), an edit of a saved
+   session, or one with nothing ticked and no cardio is left alone. Only a
+   copy that carried changes the account did not have is kept: the callers
+   pass the local copy when it was dirty, and the account's copy a later edit
+   here replaced. */
+/** What became of a losing copy (keepLost): its sets saved as a session, joined to the one saved elsewhere, its cardio alone saved, or nothing. */
+type Kept = 'saved' | 'joined' | 'cardio' | null;
+/** Keeps a losing copy's ticked sets and cardio (above); says what was done, for the toast. */
 function keepLost(
   lost: DraftLike | null | undefined,
   now: DraftLike | null,
   agreed: DraftLike | null | undefined,
   remoteWins: boolean
-): 'saved' | 'joined' | null {
+): Kept {
   if (!lost || lost.editingId || (now && now.id === lost.id)) return null;
-  const kept = draftSession(lost);
-  if (!kept) return null;
+  const kept = draftSession(lost),
+    cardio = draftCardio(lost);
+  if (!kept && !cardio.length) return null;
+  // Cardio rows have ids, as Finish saves them: a row already in the log (saved with the session there) stays as it is.
+  const more = cardio.filter(c => !state.cardio.some(x => x.id === c.id));
   const have = state.sessions.find(q => q.id === lost.id);
   if (have) {
     const base = agreed && agreed.id === lost.id ? draftSession(agreed) : null;
     const stat = { conflicts: 0 };
     // With no agreed copy (a note from a build before r56.1) the saved session's values stand where the two differ,
     // and only the rows this copy has and it lacks are added: Finish's duration and plan are not this copy's to undo.
-    const joined = mergeSession(base, kept, have, base ? remoteWins : true, stat);
-    if (canon(joined) === canon(have)) return null;
-    setState(normalize({ ...state, sessions: state.sessions.map(q => (q.id === lost.id ? joined : q)) }));
+    const joined = kept ? mergeSession(base, kept, have, base ? remoteWins : true, stat) : have;
+    if (canon(joined) === canon(have) && !more.length) return null;
+    setState(
+      normalize({
+        ...state,
+        sessions: state.sessions.map(q => (q.id === lost.id ? joined : q)),
+        cardio: unionById(state.cardio, more)
+      })
+    );
     edited(joined.date);
     conflictNote(stat);
     return 'joined';
@@ -645,22 +660,23 @@ function keepLost(
   setState(
     normalize({
       ...state,
-      sessions: [...state.sessions, kept],
-      cardio: unionById(state.cardio, draftCardio(lost))
+      sessions: kept ? [...state.sessions, kept] : state.sessions,
+      cardio: unionById(state.cardio, more)
     })
   );
-  edited(kept.date);
-  return 'saved';
+  edited(lost.date);
+  return kept ? 'saved' : 'cardio';
 }
 /** Notes an edit of the half-month document of a date made here now (keepLost), so a later merge of it reads this device's change as the later one; the flush that follows carries it. */
 function edited(date: string): void {
   cloud.editAt[chunkOf(date)] = Date.now();
   saveMeta();
 }
-/** Says what became of the account's copy of a workout that lost a merge here (keepLost): the sets ticked on the other phone were saved, or joined to the session saved here. */
-function lostNote(kept: 'saved' | 'joined' | null): void {
+/** Says what became of the account's copy of a workout that lost a merge here (keepLost): the sets ticked on the other phone were saved, joined to the session saved here, or its cardio alone saved. */
+function lostNote(kept: Kept): void {
   if (kept === 'saved') fx.toast('Sets ticked on another device were saved in History.');
   else if (kept === 'joined') fx.toast('Sets ticked on another device were added to the session saved here.');
+  else if (kept === 'cardio') fx.toast('Cardio logged on another device was saved in History.');
 }
 /** The half-month document of a workout read from the account and taken in as a pull takes it (adopted, or merged with this device's changes to it), when this device has not pulled it since the workout was finished elsewhere (keepLost): the session is then here to join. */
 async function sessionFromCloud(d: DraftLike, legB: Base | null): Promise<void> {
@@ -792,8 +808,8 @@ export async function cloudFlush(): Promise<void> {
     let dn: {
       prev: DraftLike | null;
       sessions0: unknown;
-      kept: 'saved' | 'joined' | null;
-      lost: 'saved' | 'joined' | null;
+      kept: Kept;
+      lost: Kept;
     } | null = null;
     const tooBig: string[] = [];
     const legB = legacyBodyBase();
@@ -1043,8 +1059,8 @@ export async function cloudPull(): Promise<void> {
     if (!any) parts = null;
   }
   const dr0 = state.draft;
-  let kept: 'saved' | 'joined' | null = null,
-    lost: 'saved' | 'joined' | null = null;
+  let kept: Kept = null,
+    lost: Kept = null;
   if (parts) {
     setState(assemble(parts));
     absorbLegacy(leg);
@@ -1125,6 +1141,79 @@ async function cloudProvider(): Promise<{ db: CloudDb; userId: string } | null> 
   return null;
 }
 let cloudStarting = false;
+/* ---------- signing in: which log the phone holds (r56.1, PENDING 328 b and 333) ---------- */
+
+/* The sync notes belong to one account (cloud.acct), and the log on the
+   phone is the one they describe. Signing in to another account on this
+   phone (V's call of 2026-10-20) is settled here, before any sync, by one
+   rule for every path:
+   - The log kept aside for the account signed in to, if there is one, comes
+     back with its own notes, so it syncs as a continuation: what that account
+     changed or deleted meanwhile stands. Taken back without its notes it
+     synced as a first link, undoing edits and bringing back deletions on
+     every phone (PENDING 333, F4). It is looked for whenever the notes do not
+     name this account, also when they name none (Sign out, a restore, Copy
+     my log in, demo data and Erase everything forget them), which once left
+     it aside for good (F3).
+   - The log here: when the notes name another account and it holds
+     something of the lifter's, the question (Add it to this account, Use
+     this account's log, Cancel). Add it: the log here is added, as a first
+     link when nothing is kept aside for this account, else joined to the log
+     kept aside, whose records win a clash. Use this account's log: the log
+     here is kept aside for its account first, and a phone with no room for
+     the copy keeps what it has. Cancel: nothing changes and the sign-in is
+     undone. Notes that name no account have no one to ask about: the log here
+     is added, as a first link adds it, and notes saved before accounts
+     existed are kept.
+   - Nothing is left half done: the log is replaced and saved, then the notes
+     naming this account; a save the phone refuses puts both back as they
+     were and undoes the sign-in, so the next start never syncs one account's
+     log under the other's notes (F1). Undo is cleared once the log is
+     another account's: a step held the log before, and undoing it would sync
+     that log into this account.
+   - One tab at a time: every tab hears a sign-in, and each would ask and act
+     on the notes it read before (F2). The rule runs under a lock the browser
+     gives one tab at a time (Web Locks), and a tab that waited reads the
+     notes, and the log with them, as the other tab left them, so it finds the
+     switch made. A browser without Web Locks (Safari before 15.4) runs it at
+     once, as before. */
+/** Runs fn in one tab of this app at a time (above); at once where the browser has no Web Locks. */
+async function oneTab<T>(fn: () => Promise<T>): Promise<T> {
+  const L = typeof navigator !== 'undefined' ? navigator.locks : undefined;
+  if (L && typeof L.request === 'function') return await L.request(KEY + '.account', () => fn());
+  return fn();
+}
+/** The notes as stored now, and the log with them when another tab moved them to another account: a tab acts on what is stored, not on what it read before (above). */
+function readStored(): void {
+  let m: Rec | null = null;
+  try {
+    m = rec(parseJson(localStorage.getItem(SYNC_KEY) || 'null'));
+  } catch (e) {
+    log('tabs', e);
+  }
+  if (!m) return;
+  const now = typeof m.acct === 'string' ? m.acct : null;
+  if (now === cloud.acct) return;
+  const n = notesIn(m, 'tabs');
+  cloud.meta = n.meta || {};
+  cloud.editAt = n.editAt || {};
+  cloud.last = n.last;
+  cloud.acct = now;
+  setState(load());
+  invalidate();
+  resyncLocalH();
+  fx.render();
+}
+/** Undoes the sign-in through the account service alone, waited for, so a tab waiting its turn finds it signed out: the notes and the log stay as they were. */
+async function undoSignIn(): Promise<void> {
+  const A = AUTH();
+  if (!A) return;
+  try {
+    await A.signOut();
+  } catch (e) {
+    log('auth', e);
+  }
+}
 /** Whether the log on this device holds anything the lifter made, as a first link reads it: never demo data; a routine the lifter built or a custom exercise count. */
 function holdsLog(): boolean {
   const mine = { ...state };
@@ -1155,20 +1244,87 @@ function joinLogs(base: State, other: State): State {
     draft: base.draft || other.draft
   });
 }
-/* A phone holding another account's log (r56.1, PENDING 328 b; V's call of
-   2026-10-20): the sync notes belong to one account, and signing in to a
-   different one on this device used to merge the first account's log into
-   the second as a first link, so a deletion made in the second reached the
-   first at its next sign-in. Now, with a log of the lifter's here, nothing
-   merges until the lifter answers: Add it to this account (a first link, the
-   merge as it is), or Use this account's log (the log here is kept aside for
-   the account it belongs to, Undo is cleared, since a step held that log, and
-   the sync starts on this account's own log: the one kept aside for it, if
-   any, with its notes, else a new log the first pull fills from the account).
-   Cancel leaves the notes as they were and undoes the sign-in through the
-   account service alone. A device with nothing of the lifter's on it is not
-   asked, nor one whose notes were forgotten (a restore, Copy my log in, demo
-   data, Erase everything): those have no account to ask about. */
+/** Keeps the log here aside for its account, with its notes, as it stands once written (a set ticked while the copy is written makes a second copy): 'room' when the phone has no room for it. */
+async function keepHere(from: string): Promise<'kept' | 'room' | 'busy'> {
+  const notes = { meta: cloud.meta, editAt: cloud.editAt, last: cloud.last };
+  for (let i = 0; i < 10; i++) {
+    const text = JSON.stringify(state);
+    if (!(await keepAside(from, text, notes))) return 'room';
+    if (JSON.stringify(state) === text) return 'kept';
+  }
+  // Changed under every copy, which taps cannot do.
+  log('aside', new Error('the log kept changing while it was being kept aside'));
+  return 'busy';
+}
+/** Settles which log the phone holds for the account signed in to (above): false when the sync must not start. */
+async function takeAccount(id: string): Promise<boolean> {
+  readStored();
+  const from = cloud.acct;
+  if (from === id) return true;
+  const aside = await asideOf(id);
+  if (!from && !aside) return true;
+  let use = false;
+  if (from && holdsLog()) {
+    const a = await fx.ask(
+      'A log from another account is on this phone',
+      "Add it to this account, or use this account's log? Using this account's log keeps the other one on this phone until that account signs in here again.",
+      'Add it to this account',
+      "Use this account's log"
+    );
+    if (a === 'cancel') {
+      // Nothing merges without an answer.
+      await undoSignIn();
+      return false;
+    }
+    use = a === 'alt';
+  }
+  const before = { state, meta: cloud.meta, editAt: cloud.editAt, last: cloud.last, acct: cloud.acct };
+  if (use && from) {
+    const k = await keepHere(from);
+    if (k !== 'kept') {
+      if (k === 'room')
+        fx.toast('There is not enough room on this phone to keep the other log aside. Export a backup of it first.');
+      await undoSignIn();
+      return false;
+    }
+  }
+  // The log for this account and the notes it goes with: the one kept aside for it, with its own, or a first link's (none).
+  const n = aside ? notesIn({ meta: aside.meta, editAt: aside.editAt, last: aside.last }, 'aside') : null;
+  const next = use ? (aside ? aside.state : normalize(null)) : aside ? joinLogs(aside.state, state) : null;
+  cloud.meta = (n && n.meta) || {};
+  cloud.editAt = (n && n.editAt) || {};
+  cloud.last = n ? n.last : null;
+  if (next) {
+    setState(next);
+    commit();
+  }
+  cloud.acct = id;
+  // A device whose storage failed its check at start writes nothing, so there is nothing to keep in step there.
+  const written = !device.boot || ((!next || device.ok) && saveMeta());
+  if (!written) {
+    setState(before.state);
+    cloud.meta = before.meta;
+    cloud.editAt = before.editAt;
+    cloud.last = before.last;
+    cloud.acct = before.acct;
+    // The log as it was, which the phone held before, and the notes that go with it.
+    commit();
+    saveMeta();
+    if (use && from) await dropAside(from);
+    fx.render();
+    fx.toast("This phone could not save this account's log, so nothing was changed.");
+    await undoSignIn();
+    return false;
+  }
+  if (next) {
+    undoForget();
+    resyncLocalH();
+    fx.render();
+  }
+  // The copy kept for this account is the log in use now, saved here with its notes.
+  if (aside) await dropAside(id);
+  return true;
+}
 /** Starts the sync for the account signed in, if there is one: the first pull, then every save flushes. */
 export async function cloudInit(): Promise<void> {
   if (cloud.on || cloudStarting) return;
@@ -1178,90 +1334,12 @@ export async function cloudInit(): Promise<void> {
     if (!pv) return;
     const db = pv.db,
       id = pv.userId;
-    /* Sync notes belong to one account. Signing in to a different account on
-       this device starts over (above), never as a continuation that could
-       judge the other account's records deleted. Notes saved before accounts
-       existed have no owner and are kept. */
-    if (cloud.acct && cloud.acct !== id) {
-      const from = cloud.acct;
-      let use = false;
-      // The sign-in undone through the account service alone: the notes and the log stay as they were.
-      const undo = (): void => {
-        const A = AUTH();
-        if (A)
-          A.signOut().catch((x: unknown) => {
-            log('auth', x);
-          });
-      };
-      if (holdsLog()) {
-        const a = await fx.ask(
-          'A log from another account is on this phone',
-          "Add it to this account, or use this account's log? Using this account's log keeps the other one on this phone until that account signs in here again.",
-          'Add it to this account',
-          "Use this account's log"
-        );
-        if (a === 'cancel') {
-          // Nothing merges without an answer.
-          undo();
-          return;
-        }
-        use = a === 'alt';
-      }
-      // The log kept aside for this account, if any, is read first, so nothing waits between keeping the log here and replacing it.
-      const aside = await asideOf(id);
-      if (use) {
-        /* The log here is replaced only once it is kept, as it is when it is
-           replaced: the copy is written to IndexedDB, which takes a moment, so
-           a set ticked meanwhile is in a second copy. A phone with no room for
-           the copy keeps what it has. */
-        const notes = { meta: cloud.meta, editAt: cloud.editAt, last: cloud.last };
-        let kept = '';
-        for (let i = 0; i < 10 && !kept; i++) {
-          const text = JSON.stringify(state);
-          if (!(await keepAside(from, text, notes))) {
-            fx.toast(
-              'There is not enough room on this phone to keep the other log aside. Export a backup of it first.'
-            );
-            undo();
-            return;
-          }
-          if (JSON.stringify(state) === text) kept = text;
-        }
-        if (!kept) {
-          // Changed under every copy, which taps cannot do: the sign-in is undone as Cancel undoes it, and asked again next time.
-          log('aside', new Error('the log kept changing while it was being kept aside'));
-          undo();
-          return;
-        }
-        undoForget();
-      }
-      cloud.meta = {};
-      cloud.editAt = {};
-      cloud.last = null;
-      if (use) {
-        setState(aside ? aside.state : normalize(null));
-        if (aside) {
-          const n = notesIn({ meta: aside.meta, editAt: aside.editAt, last: aside.last }, 'aside');
-          cloud.meta = n.meta || {};
-          cloud.editAt = n.editAt || {};
-          cloud.last = n.last;
-        }
-      } else if (aside) setState(joinLogs(state, aside.state));
-      if (use || aside) {
-        commit();
-        resyncLocalH();
-        fx.render();
-      }
-      /* The copy kept for this account is the log in use now; it goes once
-         that log is saved here, and stays as its only copy on the device
-         until then. Not waited for: the notes below name this account in the
-         same turn as the log is replaced, so a page closed in between never
-         holds this account's log under the other account's notes. */
-      if (aside) {
-        if (device.boot && device.ok) void dropAside(id);
-        else log('aside', new Error('kept aside still: the log in use could not be saved on this device'));
-      }
-    }
+    // Settled one tab at a time (takeAccount); a tab that waited its turn checks the account is still the one signed in.
+    const go = await oneTab(async () => {
+      const now = await cloudProvider();
+      return !!now && now.userId === id && (await takeAccount(id));
+    });
+    if (!go) return;
     cloud.acct = id;
     saveMeta();
     cloud.db = db;
@@ -1328,6 +1406,8 @@ function onStorage(ev: StorageEvent): void {
         if (meta) cloud.meta = meta;
         if (editAt) cloud.editAt = editAt;
         if (last) cloud.last = last;
+        // The notes' account with them (PENDING 333, F2): a tab that kept the account it read before acted for it on another's log.
+        cloud.acct = typeof m.acct === 'string' ? m.acct : null;
       }
     } catch (e) {
       log('tabs', e);

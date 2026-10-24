@@ -2463,9 +2463,9 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     let n = 0;
     return sets.map((r) => [typeof r.rid === "string" ? r.rid : "#" + n++, r]);
   }
-  function contentKeys(base, sets, side) {
+  function contentKeys(to, sets, side) {
     const ids = new Set(sets.map((r) => r.rid));
-    const free = base.map(([k, r]) => ({ k, h: held(r), taken: ids.has(k) }));
+    const free = to.map(([k, r]) => ({ k, h: held(r), taken: ids.has(k) }));
     let n = 0;
     return sets.map((r) => {
       if (typeof r.rid === "string") return [r.rid, r];
@@ -2478,14 +2478,37 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       return [side + "#" + n++, r];
     });
   }
+  function weave(base, sides) {
+    const out = [...base];
+    for (const keys of sides) {
+      let at = -1;
+      for (const k of keys) {
+        const i = out.indexOf(k);
+        if (i >= 0) at = i;
+        else out.splice(++at, 0, k);
+      }
+    }
+    return out;
+  }
   function mergeRows(base, l, r, remoteWins, stat, match) {
-    const bk = rowKeys(base);
-    const B = new Map(bk), L = new Map(match === "content" ? contentKeys(bk, l, "l") : rowKeys(l)), R = new Map(match === "content" ? contentKeys(bk, r, "r") : rowKeys(r));
+    const bk = rowKeys(base || []);
+    let lk, rk;
+    if (match === "place") {
+      lk = rowKeys(l);
+      rk = rowKeys(r);
+    } else if (base) {
+      lk = contentKeys(bk, l, "l");
+      rk = contentKeys(bk, r, "r");
+    } else {
+      rk = contentKeys([], r, "r");
+      lk = contentKeys(rk, l, "l");
+    }
+    const B = new Map(bk), L = new Map(lk), R = new Map(rk);
     const same = (x, y) => held(x) === held(y);
     const either = (x, y) => typeof x.rid === "string" || typeof y.rid !== "string" ? x : y;
     const out = [];
-    const order = match === "content" ? [...B.keys(), ...R.keys(), ...L.keys()] : [...B.keys(), ...L.keys(), ...R.keys()];
-    for (const k of new Set(order)) {
+    const order = match === "place" ? weave([...B.keys()], [[...L.keys()], [...R.keys()]]) : [.../* @__PURE__ */ new Set([...B.keys(), ...R.keys(), ...L.keys()])];
+    for (const k of order) {
       const b = B.get(k), a = L.get(k), c = R.get(k);
       if (a && c) {
         if (same(a, c)) out.push(either(a, c));
@@ -2513,13 +2536,17 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
   }
   function blockKeys(list) {
     const seen = {};
-    return list.map((b) => [b.exId + "#" + (seen[b.exId] = (seen[b.exId] || 0) + 1), b]);
+    return list.map((b) => [
+      typeof b.bid === "string" && b.bid ? "b:" + b.bid : b.exId + "#" + (seen[b.exId] = (seen[b.exId] || 0) + 1),
+      b
+    ]);
   }
   function mergeExercises(base, local, remote, remoteWins, stat, match) {
-    const B = new Map(blockKeys(base)), L = new Map(blockKeys(local)), R = new Map(blockKeys(remote));
+    const B = new Map(blockKeys(base || [])), L = new Map(blockKeys(local)), R = new Map(blockKeys(remote));
     const bo = [...B.keys()].join("|"), lo = [...L.keys()].join("|"), ro = [...R.keys()].join("|");
     let order;
-    if (lo === ro || ro === bo) order = [...L.keys()];
+    if (!base) order = [...R.keys()];
+    else if (lo === ro || ro === bo) order = [...L.keys()];
     else if (lo === bo) order = [...R.keys()];
     else {
       stat.conflicts++;
@@ -2530,7 +2557,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     for (const k of order) {
       const b = B.get(k), a = L.get(k), c = R.get(k);
       if (a && c) {
-        const x = { ...a, sets: mergeRows(b ? b.sets : [], a.sets, c.sets, remoteWins, stat, match) };
+        const x = { ...a, sets: mergeRows(base ? b ? b.sets : [] : null, a.sets, c.sets, remoteWins, stat, match) };
         mergeFields(rec(x) || {}, b ? rec(b) : null, rec(a) || {}, rec(c) || {}, ["sets"], remoteWins, stat);
         out.push(x);
       } else if (a) {
@@ -2560,7 +2587,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
   function mergeSession(base, local, remote, remoteWins, stat) {
     const out = {
       ...local,
-      ex: mergeExercises(base ? base.ex : [], local.ex, remote.ex, remoteWins, stat, "content")
+      ex: mergeExercises(base ? base.ex : null, local.ex, remote.ex, remoteWins, stat, "content")
     };
     mergeFields(
       rec(out) || {},
@@ -6096,17 +6123,17 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     if (!g.plates.every((x) => Math.abs(x / mn - Math.round(x / mn)) < 1e-6)) return null;
     return { bar, step: gymK(g, 2 * mn) };
   }
-  function plateAt(G, w, dir) {
-    const k = (w - G.bar) / G.step;
-    const n = dir > 0 ? Math.ceil(k - 1e-3) : Math.floor(k + 1e-3);
+  function plateAt(G, w, dir, tol) {
+    const k = (w - G.bar) / G.step, e = Math.max(1e-3, tol / G.step);
+    const n = dir > 0 ? Math.ceil(k - e) : Math.floor(k + e);
     return G.bar + Math.max(0, n) * G.step;
   }
   function plateSnap(M, ex, plan, res, G, down) {
-    const w = res.w, top = res.top;
+    const w = res.w, top = res.top, t = rackTolIn(M);
     if (w == null) return res;
-    const dn = plateAt(G, w, -1);
-    if (Math.abs(dn - w) < 1e-6) return res;
-    const nw = !down && top != null && w > top + 1e-6 ? dn > top + 1e-6 ? dn : plateAt(G, top + 1e-6, 1) : dn;
+    const dn = plateAt(G, w, -1, t);
+    if (Math.abs(dn - w) <= t) return res;
+    const nw = !down && top != null && w > top + t ? dn > top + t ? dn : plateAt(G, top + t, 1, t) : dn;
     return moveIn(M, ex, plan, res, nw, "the nearest load your plates make");
   }
   function unitSnap(M, ex, plan, res, down) {
@@ -6820,7 +6847,8 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       const gr = rackGridIn(M, ex, plan, at);
       if (gr) return at != null && at > 0 && offGrid(M, ex, plan, at) ? gridStep(M, gr, at, 1) - at : gr;
       const G = plateGridIn(M, ex, plan);
-      if (G && at != null && at > 0 && Math.abs(plateAt(G, at, -1) - at) > 1e-6) return plateAt(G, at, 1) - at;
+      const t = rackTolIn(M);
+      if (G && at != null && at > 0 && Math.abs(plateAt(G, at, -1, t) - at) > t) return plateAt(G, at, 1, t) - at;
       const gs = gymStepIn(M, ex);
       if (gs) return gs;
     }
@@ -6934,8 +6962,10 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       return c >= first - 1e-6 ? Math.min(dn, c) : first;
     }
     const G = plateGridIn(M, ex, plan);
-    if (G)
-      return from <= G.bar + 1e-6 ? Math.max(0, from) : Math.min(plateAt(G, to, -1), plateAt(G, from - G.step / 2, -1));
+    if (G) {
+      const t = rackTolIn(M);
+      return from <= G.bar + t ? Math.max(0, from) : Math.min(plateAt(G, to, -1, t), plateAt(G, from - G.step / 2, -1, t));
+    }
     const step = incOfIn(M, ex, plan, from);
     let w;
     if (step > 0) {
@@ -6962,8 +6992,8 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     }
     const G = plateGridIn(M, ex, plan);
     if (G) {
-      const c = plateAt(G, to, -1);
-      return c > from + 1e-6 ? c : null;
+      const t = rackTolIn(M), c = plateAt(G, to, -1, t);
+      return c > from + t ? c : null;
     }
     const step = incOfIn(M, ex, plan, from);
     if (!(step > 0)) return null;
@@ -7238,8 +7268,10 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
           acct: cloud.acct || void 0
         })
       );
+      return true;
     } catch (e) {
       log("sync-meta", e);
+      return false;
     }
   }
   function assemble(parts) {
@@ -7525,20 +7557,27 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     }
     const saved = state.sessions.some((s) => s.id === P.id);
     fx.toast(
-      kept === "joined" ? "The workout in progress was saved on another device. What was done here since was added to it." : kept === "saved" ? state.draft ? "The workout in progress was replaced by the one on another device. Its ticked sets are saved in History." : "The workout in progress was closed on another device. Its ticked sets are saved in History." : state.draft ? saved ? "The workout in progress was replaced by the one on another device. Its ticked sets are in History." : "The workout in progress was replaced by the one on another device." : saved ? "The workout in progress was saved on another device." : "The workout in progress was closed on another device."
+      kept === "joined" ? "The workout in progress was saved on another device. What was done here since was added to it." : kept === "saved" || kept === "cardio" ? `The workout in progress was ${state.draft ? "replaced by the one on" : "closed on"} another device. Its ${kept === "saved" ? "ticked sets are" : "cardio is"} saved in History.` : state.draft ? saved ? "The workout in progress was replaced by the one on another device. Its ticked sets are in History." : "The workout in progress was replaced by the one on another device." : saved ? "The workout in progress was saved on another device." : "The workout in progress was closed on another device."
     );
   }
   function keepLost(lost, now, agreed, remoteWins) {
     if (!lost || lost.editingId || now && now.id === lost.id) return null;
-    const kept = draftSession(lost);
-    if (!kept) return null;
+    const kept = draftSession(lost), cardio = draftCardio(lost);
+    if (!kept && !cardio.length) return null;
+    const more = cardio.filter((c) => !state.cardio.some((x) => x.id === c.id));
     const have = state.sessions.find((q) => q.id === lost.id);
     if (have) {
       const base = agreed && agreed.id === lost.id ? draftSession(agreed) : null;
       const stat = { conflicts: 0 };
-      const joined = mergeSession(base, kept, have, base ? remoteWins : true, stat);
-      if (canon(joined) === canon(have)) return null;
-      setState(normalize({ ...state, sessions: state.sessions.map((q) => q.id === lost.id ? joined : q) }));
+      const joined = kept ? mergeSession(base, kept, have, base ? remoteWins : true, stat) : have;
+      if (canon(joined) === canon(have) && !more.length) return null;
+      setState(
+        normalize({
+          ...state,
+          sessions: state.sessions.map((q) => q.id === lost.id ? joined : q),
+          cardio: unionById(state.cardio, more)
+        })
+      );
       edited(joined.date);
       conflictNote(stat);
       return "joined";
@@ -7546,12 +7585,12 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     setState(
       normalize({
         ...state,
-        sessions: [...state.sessions, kept],
-        cardio: unionById(state.cardio, draftCardio(lost))
+        sessions: kept ? [...state.sessions, kept] : state.sessions,
+        cardio: unionById(state.cardio, more)
       })
     );
-    edited(kept.date);
-    return "saved";
+    edited(lost.date);
+    return kept ? "saved" : "cardio";
   }
   function edited(date) {
     cloud.editAt[chunkOf(date)] = Date.now();
@@ -7560,6 +7599,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
   function lostNote(kept) {
     if (kept === "saved") fx.toast("Sets ticked on another device were saved in History.");
     else if (kept === "joined") fx.toast("Sets ticked on another device were added to the session saved here.");
+    else if (kept === "cardio") fx.toast("Cardio logged on another device was saved in History.");
   }
   async function sessionFromCloud(d, legB) {
     if (d.editingId || state.sessions.some((q) => q.id === d.id)) return;
@@ -7929,6 +7969,40 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     return null;
   }
   var cloudStarting = false;
+  async function oneTab(fn) {
+    const L = typeof navigator !== "undefined" ? navigator.locks : void 0;
+    if (L && typeof L.request === "function") return await L.request(KEY + ".account", () => fn());
+    return fn();
+  }
+  function readStored() {
+    let m = null;
+    try {
+      m = rec(parseJson(localStorage.getItem(SYNC_KEY) || "null"));
+    } catch (e) {
+      log("tabs", e);
+    }
+    if (!m) return;
+    const now = typeof m.acct === "string" ? m.acct : null;
+    if (now === cloud.acct) return;
+    const n = notesIn(m, "tabs");
+    cloud.meta = n.meta || {};
+    cloud.editAt = n.editAt || {};
+    cloud.last = n.last;
+    cloud.acct = now;
+    setState(load());
+    invalidate();
+    resyncLocalH();
+    fx.render();
+  }
+  async function undoSignIn() {
+    const A = AUTH();
+    if (!A) return;
+    try {
+      await A.signOut();
+    } catch (e) {
+      log("auth", e);
+    }
+  }
   function holdsLog() {
     const mine = { ...state };
     stripDemo(mine);
@@ -7949,6 +8023,79 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       draft: base.draft || other.draft
     });
   }
+  async function keepHere(from) {
+    const notes = { meta: cloud.meta, editAt: cloud.editAt, last: cloud.last };
+    for (let i = 0; i < 10; i++) {
+      const text = JSON.stringify(state);
+      if (!await keepAside(from, text, notes)) return "room";
+      if (JSON.stringify(state) === text) return "kept";
+    }
+    log("aside", new Error("the log kept changing while it was being kept aside"));
+    return "busy";
+  }
+  async function takeAccount(id) {
+    readStored();
+    const from = cloud.acct;
+    if (from === id) return true;
+    const aside = await asideOf(id);
+    if (!from && !aside) return true;
+    let use = false;
+    if (from && holdsLog()) {
+      const a = await fx.ask(
+        "A log from another account is on this phone",
+        "Add it to this account, or use this account's log? Using this account's log keeps the other one on this phone until that account signs in here again.",
+        "Add it to this account",
+        "Use this account's log"
+      );
+      if (a === "cancel") {
+        await undoSignIn();
+        return false;
+      }
+      use = a === "alt";
+    }
+    const before = { state, meta: cloud.meta, editAt: cloud.editAt, last: cloud.last, acct: cloud.acct };
+    if (use && from) {
+      const k = await keepHere(from);
+      if (k !== "kept") {
+        if (k === "room")
+          fx.toast("There is not enough room on this phone to keep the other log aside. Export a backup of it first.");
+        await undoSignIn();
+        return false;
+      }
+    }
+    const n = aside ? notesIn({ meta: aside.meta, editAt: aside.editAt, last: aside.last }, "aside") : null;
+    const next = use ? aside ? aside.state : normalize(null) : aside ? joinLogs(aside.state, state) : null;
+    cloud.meta = n && n.meta || {};
+    cloud.editAt = n && n.editAt || {};
+    cloud.last = n ? n.last : null;
+    if (next) {
+      setState(next);
+      commit();
+    }
+    cloud.acct = id;
+    const written = !device.boot || (!next || device.ok) && saveMeta();
+    if (!written) {
+      setState(before.state);
+      cloud.meta = before.meta;
+      cloud.editAt = before.editAt;
+      cloud.last = before.last;
+      cloud.acct = before.acct;
+      commit();
+      saveMeta();
+      if (use && from) await dropAside(from);
+      fx.render();
+      fx.toast("This phone could not save this account's log, so nothing was changed.");
+      await undoSignIn();
+      return false;
+    }
+    if (next) {
+      undoForget();
+      resyncLocalH();
+      fx.render();
+    }
+    if (aside) await dropAside(id);
+    return true;
+  }
   async function cloudInit() {
     if (cloud.on || cloudStarting) return;
     cloudStarting = true;
@@ -7956,73 +8103,11 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       const pv = await cloudProvider();
       if (!pv) return;
       const db = pv.db, id = pv.userId;
-      if (cloud.acct && cloud.acct !== id) {
-        const from = cloud.acct;
-        let use = false;
-        const undo = () => {
-          const A = AUTH();
-          if (A)
-            A.signOut().catch((x) => {
-              log("auth", x);
-            });
-        };
-        if (holdsLog()) {
-          const a = await fx.ask(
-            "A log from another account is on this phone",
-            "Add it to this account, or use this account's log? Using this account's log keeps the other one on this phone until that account signs in here again.",
-            "Add it to this account",
-            "Use this account's log"
-          );
-          if (a === "cancel") {
-            undo();
-            return;
-          }
-          use = a === "alt";
-        }
-        const aside = await asideOf(id);
-        if (use) {
-          const notes = { meta: cloud.meta, editAt: cloud.editAt, last: cloud.last };
-          let kept = "";
-          for (let i = 0; i < 10 && !kept; i++) {
-            const text = JSON.stringify(state);
-            if (!await keepAside(from, text, notes)) {
-              fx.toast(
-                "There is not enough room on this phone to keep the other log aside. Export a backup of it first."
-              );
-              undo();
-              return;
-            }
-            if (JSON.stringify(state) === text) kept = text;
-          }
-          if (!kept) {
-            log("aside", new Error("the log kept changing while it was being kept aside"));
-            undo();
-            return;
-          }
-          undoForget();
-        }
-        cloud.meta = {};
-        cloud.editAt = {};
-        cloud.last = null;
-        if (use) {
-          setState(aside ? aside.state : normalize(null));
-          if (aside) {
-            const n = notesIn({ meta: aside.meta, editAt: aside.editAt, last: aside.last }, "aside");
-            cloud.meta = n.meta || {};
-            cloud.editAt = n.editAt || {};
-            cloud.last = n.last;
-          }
-        } else if (aside) setState(joinLogs(state, aside.state));
-        if (use || aside) {
-          commit();
-          resyncLocalH();
-          fx.render();
-        }
-        if (aside) {
-          if (device.boot && device.ok) void dropAside(id);
-          else log("aside", new Error("kept aside still: the log in use could not be saved on this device"));
-        }
-      }
+      const go = await oneTab(async () => {
+        const now = await cloudProvider();
+        return !!now && now.userId === id && await takeAccount(id);
+      });
+      if (!go) return;
       cloud.acct = id;
       saveMeta();
       cloud.db = db;
@@ -8066,6 +8151,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
           if (meta) cloud.meta = meta;
           if (editAt) cloud.editAt = editAt;
           if (last) cloud.last = last;
+          cloud.acct = typeof m.acct === "string" ? m.acct : null;
         }
       } catch (e) {
         log("tabs", e);
