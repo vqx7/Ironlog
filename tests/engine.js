@@ -35,7 +35,7 @@ const K = +process.env.ENGINE_N || 1000, BATCH = 100;
 // and musTrend, a muscle's strength trend in words, which Stats and the muscles sheet call and no adapter reaches (r54);
 // and r55's routine helpers: what a session records of its routine (pwOf), a first-run choice replacing the starter
 // (dropStarter), a day given an exercise (trainOn) and the item a lift's plan comes from (planItemOf).
-const PLAIN = ['avgWeeksTxt', 'dayLabel', 'daySets', 'ssLetters', 'routineSig', 'tplCountLine', 'musTrend', 'pwOf', 'dropStarter', 'trainOn', 'planItemOf'];
+const PLAIN = ['avgWeeksTxt', 'dayLabel', 'daySets', 'ssLetters', 'routineSig', 'tplCountLine', 'musTrend', 'pwOf', 'dropStarter', 'trainOn', 'planItemOf', 'platesPerSide'];
 // Every adapter live.ts gives the legacy script, read from live.ts itself, so a new one cannot go uncalled.
 const ADAPTERS = [...fs.readFileSync(path.join(APP, 'live.ts'), 'utf8').matchAll(/^export const (\w+) = live\(\w+In\);$/gm)].map(m => m[1]);
 // The adapters added since r53, and the plain functions above the digest does not call: tests/wide.js is shared with
@@ -53,6 +53,9 @@ const EXTRA = {
   // A lift's all-time bests, now and as of the log's middle session (a past workout's), and where the weeks are counted from.
   allTimeBests: (s, ids) => ids.flatMap(id => [[id], [id, s.sessions.length ? s.sessions[Math.floor(s.sessions.length / 2)].date : '']]),
   logBack: () => [[]], logStart: () => [[]],
+  // The plates one side takes (r56.1, PENDING 333): a load typed as shown in lb on kg plates (110.2 lb, 15 kg a side within
+  // its tolerance, and strictly), lb plates, the bar alone, and less than the smallest plate.
+  platesPerSide: () => [[[25, 20, 15, 10, 5, 2.5, 1.25], 14.993, 0.0113], [[25, 20, 15, 10, 5, 2.5, 1.25], 14.993, 1e-6], [[45, 35, 25, 10, 5, 2.5], 92.5, 0.025], [[45, 35, 25, 10, 5, 2.5], 0, 1e-6], [[25, 20, 15, 10, 5, 2.5, 1.25], 1.2, 1e-6]],
   plannedSets: (s) => s.routines.map(r => [r]), stallWeeks: (s, ids) => ids.map(id => [id]), stallWords: (s, ids) => ids.map(id => [id]), atRangeTop: (s, ids) => ids.map(id => [id]), avgFirstWeek: () => [[]], lastLighterWeek: () => [[]],
   // A week's sets so far and a plain average; the weekly averages, which carry the muscles on plan, reach it through the coach and regionBalance.
   muscleStatus: () => [[{ chest: 5, quads: 22, biceps: 0, serratus: 3 }], [{ chest: 5, quads: 22, biceps: 0 }, true], [null]],
