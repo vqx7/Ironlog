@@ -963,7 +963,9 @@ export function normalize(input: unknown): State {
                   from: clampN(adj.from, 0, 20000 * LB, 0),
                   r: Math.round(clampN(adj.r, 1, 1000, 1)),
                   up: adj.up === true,
-                  why: typeof adj.why === 'string' ? adj.why.slice(0, 160) : ''
+                  why: typeof adj.why === 'string' ? adj.why.slice(0, 160) : '',
+                  // The row it came from (PENDING 333), last, where a build before it kept no such field.
+                  ...(typeof adj.rid === 'string' ? { rid: fixId(adj.rid) } : {})
                 }
               : undefined,
           adjOff: b.adjOff === true ? true : undefined,

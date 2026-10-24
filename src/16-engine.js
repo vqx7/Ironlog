@@ -31,10 +31,10 @@ function plateText(kg,mode,ex){
   const load=inU(kg),bar=mode==='bar'?inU(exBarKg(ex)):0;
   if(!(load>0))return '';
   if(load<bar-1e-6)return `${fmtW(kg)} ${U()} is below the ${r1(bar)} ${pu} bar`;
-  let side=mode==='sleeve'?load:(load-bar)/2;const out=[];
-  for(const pl of plateList(pu))while(side>=pl-1e-6){out.push(pl);side-=pl;}
+  // A plate within half the load's last shown digit, split across the sides, is that plate (platesPerSide, PENDING 333).
+  const {plates:out,rest:left}=platesPerSide(plateList(pu),mode==='sleeve'?load:(load-bar)/2,Math.max(1e-6,inU(rackTol())/(mode==='sleeve'?1:2)));
   // Within a rounding of the shown load, not a plate short (a 60 kg load shown as 132.3 lb).
-  const rest=Math.round(side*100)/100;const tiny=pu!==U()&&rest<(pu==='kg'?0.1:0.25);
+  const rest=Math.round(left*100)/100;const tiny=pu!==U()&&rest<(pu==='kg'?0.1:0.25);
   const lead=mode==='sleeve'?`On the sleeve at ${fmtW(kg)}`:mode==='side'?`Per side at ${fmtW(kg)} (no bar)`:`Per side at ${fmtW(kg)}`;
   const tag=pu!==U()?` ${pu}`:'';
   return `${lead}: ${out.length?out.join(', ')+tag:'bar only'}${rest>0&&!tiny?` (${rest} ${pu} not loadable)`:''}`;

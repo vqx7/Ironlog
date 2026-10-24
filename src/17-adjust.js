@@ -26,10 +26,10 @@ function adjOn(){return state.settings.autoAdj!==false;}
    never had, and one tap logged it). It progresses by reps until the lifter
    types a load. */
 function bwNoLoad(ex,b){if(!ex||!ex.bw||ex.assist)return false;if(b&&b.sets.some(x=>+x.w>1e-6))return false;return !((IDX().byEx[ex.id]||[]).some(x=>x.pts.some(p=>p.w>1e-6)));}
-// The set an adjustment came from, by object, so a row added or removed above it cannot move it onto another set (r34.2).
+// The set an adjustment came from, by object, so a row added or removed above it cannot move it onto another set (r34.2); after a reload or a merge, by its row id (PENDING 333).
 const adjSrc=new WeakMap();
 function adjSync(b){
-  if(!b||!b.adj)return;const src=adjSrc.get(b);if(!src)return;const i=b.sets.indexOf(src);
+  if(!b||!b.adj)return;const src=adjSrc.get(b)||(typeof b.adj.rid==='string'&&b.sets.find(x=>x.rid===b.adj.rid));if(!src)return;adjSrc.set(b,src);const i=b.sets.indexOf(src);
   if(i<0||src.warm||src.drop||!src.done){const prev={...b.adj};delete b.adj;adjSrc.delete(b);adjRows(b,prev,null);return;}
   b.adj.at=i;
 }
@@ -65,7 +65,7 @@ function assessSet(bi,si){
           const f=rtfAt(est,nw+bw);const er=f==null?lo:Math.max(lo,Math.min(hi,Math.floor(f-Math.min(tgt,E1_MAX_RIR)-1+1e-9)));
           const n=b.sets.slice(0,si+1).filter(x=>!x.warm&&!x.drop).length;
           const why=light?(q!=null&&q>=tgt+2?(rirScale()==='rpe'?`set ${n} was RPE ${effShow(q)}, against a target of RPE ${effShow(tgt)}`:`set ${n} had ${effShow(q)} in reserve, against a target of ${effShow(tgt)}`):`set ${n} went ${r} reps, past your ${hi}`):`set ${n} stopped at ${r}, under your ${rangeWords(p)}`;
-          b.adj={at:si,w:nw,from:s.w,r:er,up:!!light,why};adjSrc.set(b,s);
+          b.adj={at:si,w:nw,from:s.w,r:er,up:!!light,why,rid:s.rid};adjSrc.set(b,s);
         }else if(light&&q!=null&&q>=tgt+2&&r<hi){
           /* No heavier load fits (the next step is more than the estimate
              allows): the same load for more reps, so a set this easy is not
@@ -73,7 +73,7 @@ function assessSet(bi,si){
              effort, up to the top of the range. */
           const f=rtfAt(est,Lt);const er=f==null?null:Math.min(hi,Math.floor(f-Math.min(tgt,E1_MAX_RIR)+1e-9));
           const n=b.sets.slice(0,si+1).filter(x=>!x.warm&&!x.drop).length;
-          if(er!=null&&er>r){b.adj={at:si,w:s.w,from:s.w,r:er,up:true,why:rirScale()==='rpe'?`set ${n} was RPE ${effShow(q)}, against a target of RPE ${effShow(tgt)}`:`set ${n} had ${effShow(q)} in reserve, against a target of ${effShow(tgt)}`};adjSrc.set(b,s);}
+          if(er!=null&&er>r){b.adj={at:si,w:s.w,from:s.w,r:er,up:true,why:rirScale()==='rpe'?`set ${n} was RPE ${effShow(q)}, against a target of RPE ${effShow(tgt)}`:`set ${n} had ${effShow(q)} in reserve, against a target of ${effShow(tgt)}`,rid:s.rid};adjSrc.set(b,s);}
         }
       }
     }

@@ -524,7 +524,13 @@ export function backupDue(): boolean {
 export function saveStateNow(): { cls: string; txt: string } {
   let cls = '',
     txt = 'Saved on this device';
-  if (cloud.on && cloud.status === 'synced') {
+  /* A save the phone refuses is said first, signed in or not (PENDING 336):
+     "Synced" or "Offline, saved on this device" said nothing of a log that was
+     not being saved here. */
+  if (!device.ok) {
+    cls = 'bad';
+    txt = 'Not saving: export a backup';
+  } else if (cloud.on && cloud.status === 'synced') {
     cls = 'ok';
     txt = 'Synced';
   } else if (cloud.on && (cloud.status === 'saving' || cloud.status === 'connecting')) {
@@ -533,9 +539,6 @@ export function saveStateNow(): { cls: string; txt: string } {
   } else if (cloud.on && cloud.status === 'offline') {
     cls = 'warn';
     txt = 'Offline, saved on this device';
-  } else if (!device.ok) {
-    cls = 'bad';
-    txt = 'Not saving: export a backup';
   }
   // Synced means your data is already off this device; the backup reminder
   // then waits in Your data instead of up here.

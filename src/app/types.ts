@@ -378,7 +378,8 @@ export interface DraftBlock {
   full?: number | undefined;
   tgt?: Target | null | undefined;
   target?: string | undefined;
-  adj?: { at: number; w: number } | null | undefined;
+  /** The next sets adjusted from a set (r34): at the row it came from, whose id (`rid`, since PENDING 333) keeps it on that row when rows are added above. */
+  adj?: { at: number; w: number; rid?: string | undefined } | null | undefined;
   sw?: number | null | undefined;
   prev?: string[] | undefined;
   prevOff?: boolean | undefined;

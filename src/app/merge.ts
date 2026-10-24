@@ -224,12 +224,13 @@ function mergeRows<R extends Rowed>(
   /* Every key the three copies hold, in order. In a workout in progress each
      side's own rows go after the row they follow on that side (weave). In a
      join the rows left unticked are gone, so where a row sat is not known:
-     the session saved on the other phone (remote) keeps its order and what
-     was done here since is added after it, as the lifter is told. */
+     the session saved on the other phone (remote) keeps its order, a warm-up
+     it added at the top included (PENDING 333, the review of the fix), and
+     what was done here since is added after it, as the lifter is told. */
   const order =
     match === 'place'
       ? weave([...B.keys()], [[...L.keys()], [...R.keys()]])
-      : [...new Set([...B.keys(), ...R.keys(), ...L.keys()])];
+      : [...new Set([...R.keys(), ...B.keys(), ...L.keys()])];
   for (const k of order) {
     const b = B.get(k),
       a = L.get(k),
@@ -337,6 +338,12 @@ export function mergeWorkout(
   stat: Stat
 ): DraftLike {
   const out: DraftLike = { ...local, ex: mergeExercises(base.ex, local.ex, remote.ex, remoteWins, stat, 'place') };
+  // The next sets adjusted from a set stay on the rows under it when rows were added above it (PENDING 333): its place follows its row.
+  for (const b of out.ex) {
+    const a = b.adj;
+    const i = a && typeof a.rid === 'string' ? b.sets.findIndex(x => x.rid === a.rid) : -1;
+    if (a && i >= 0 && i !== a.at) b.adj = { ...a, at: i };
+  }
   const O = rec(out) || {},
     Bf = rec(base) || {},
     Lf = rec(local) || {},

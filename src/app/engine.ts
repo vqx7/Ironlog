@@ -185,7 +185,12 @@ function plateSnap(
     t = rackTolIn(M);
   if (w == null) return res;
   const dn = plateAt(G, w, -1, t);
-  if (Math.abs(dn - w) <= t) return res;
+  /* Within the shown digit of a load the plates make, the suggestion is that
+     load itself (PENDING 333, the review of the fix): kept as the number
+     typed (52.486 kg for 52.5), the plate line under it came out a plate
+     short and the next step was taken from it, so it never reached the next
+     plates. The number on screen is the same, so nothing more is said. */
+  if (Math.abs(dn - w) <= t) return Math.abs(dn - w) < 1e-9 ? res : swapWIn(M, ex, res, dn);
   const nw = !down && top != null && w > top + t ? (dn > top + t ? dn : plateAt(G, top + t, 1, t)) : dn;
   return moveIn(M, ex, plan, res, nw, 'the nearest load your plates make');
 }

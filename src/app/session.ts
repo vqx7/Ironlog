@@ -270,10 +270,11 @@ export interface DraftCardio {
    saved session is not one (that session is already kept). Null when
    nothing is ticked. */
 /** A workout in progress as a saved session of its ticked sets, or null when none is ticked or it is an edit. */
-export function draftSession(d: DraftLike): Session | null {
+export function draftSession(d: DraftLike, empty?: boolean): Session | null {
   if (d.editingId) return null;
   const ex = joinAdjacent(d.ex.map(savedEx).filter(b => b.sets.length));
-  if (!ex.length) return null;
+  // A copy with nothing ticked is no session, unless asked for as the agreed copy of a join (keepLost), where it is the base with no sets.
+  if (!ex.length && !empty) return null;
   const chk = cleanChk(d.chk);
   return {
     id: d.id,

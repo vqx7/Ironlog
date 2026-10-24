@@ -2197,6 +2197,16 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
   function gymPlates(u) {
     return [...u === "kg" ? PLATES_KG : PLATES_LB];
   }
+  function platesPerSide(list, side, tol) {
+    const plates = [];
+    let rest = side;
+    for (const pl of list)
+      while (rest >= pl - tol) {
+        plates.push(pl);
+        rest -= pl;
+      }
+    return { plates, rest };
+  }
   function gymClean(g) {
     if (!g || typeof g !== "object" || g.u !== "lb" && g.u !== "kg") return null;
     const out = { u: g.u };
@@ -2507,7 +2517,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     const same = (x, y) => held(x) === held(y);
     const either = (x, y) => typeof x.rid === "string" || typeof y.rid !== "string" ? x : y;
     const out = [];
-    const order = match === "place" ? weave([...B.keys()], [[...L.keys()], [...R.keys()]]) : [.../* @__PURE__ */ new Set([...B.keys(), ...R.keys(), ...L.keys()])];
+    const order = match === "place" ? weave([...B.keys()], [[...L.keys()], [...R.keys()]]) : [.../* @__PURE__ */ new Set([...R.keys(), ...B.keys(), ...L.keys()])];
     for (const k of order) {
       const b = B.get(k), a = L.get(k), c = R.get(k);
       if (a && c) {
@@ -2578,6 +2588,11 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
   }
   function mergeWorkout(base, local, remote, remoteWins, stat) {
     const out = { ...local, ex: mergeExercises(base.ex, local.ex, remote.ex, remoteWins, stat, "place") };
+    for (const b of out.ex) {
+      const a = b.adj;
+      const i = a && typeof a.rid === "string" ? b.sets.findIndex((x) => x.rid === a.rid) : -1;
+      if (a && i >= 0 && i !== a.at) b.adj = { ...a, at: i };
+    }
     const O = rec(out) || {}, Bf = rec(base) || {}, Lf = rec(local) || {}, Rf = rec(remote) || {};
     mergeFields(O, Bf, Lf, Rf, ["ex", "id", "cardio"], remoteWins, stat);
     const cardio = merge3List(cardioBase(Bf.cardio), Lf.cardio, Rf.cardio, remoteWins, stat);
@@ -3394,7 +3409,9 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
             from: clampN(adj.from, 0, 2e4 * LB, 0),
             r: Math.round(clampN(adj.r, 1, 1e3, 1)),
             up: adj.up === true,
-            why: typeof adj.why === "string" ? adj.why.slice(0, 160) : ""
+            why: typeof adj.why === "string" ? adj.why.slice(0, 160) : "",
+            // The row it came from (PENDING 333), last, where a build before it kept no such field.
+            ...typeof adj.rid === "string" ? { rid: fixId(adj.rid) } : {}
           } : void 0,
           adjOff: b.adjOff === true ? true : void 0,
           // Editing a saved session keeps the rep range it was logged under.
@@ -3896,7 +3913,10 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
   }
   function saveStateNow() {
     let cls = "", txt = "Saved on this device";
-    if (cloud.on && cloud.status === "synced") {
+    if (!device.ok) {
+      cls = "bad";
+      txt = "Not saving: export a backup";
+    } else if (cloud.on && cloud.status === "synced") {
       cls = "ok";
       txt = "Synced";
     } else if (cloud.on && (cloud.status === "saving" || cloud.status === "connecting")) {
@@ -3905,9 +3925,6 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     } else if (cloud.on && cloud.status === "offline") {
       cls = "warn";
       txt = "Offline, saved on this device";
-    } else if (!device.ok) {
-      cls = "bad";
-      txt = "Not saving: export a backup";
     }
     if (!cls && backupDue()) {
       cls = "warn";
@@ -4282,10 +4299,10 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       }))
     };
   }
-  function draftSession(d) {
+  function draftSession(d, empty) {
     if (d.editingId) return null;
     const ex = joinAdjacent(d.ex.map(savedEx).filter((b) => b.sets.length));
-    if (!ex.length) return null;
+    if (!ex.length && !empty) return null;
     const chk = cleanChk(d.chk);
     return {
       id: d.id,
@@ -6132,7 +6149,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     const w = res.w, top = res.top, t = rackTolIn(M);
     if (w == null) return res;
     const dn = plateAt(G, w, -1, t);
-    if (Math.abs(dn - w) <= t) return res;
+    if (Math.abs(dn - w) <= t) return Math.abs(dn - w) < 1e-9 ? res : swapWIn(M, ex, res, dn);
     const nw = !down && top != null && w > top + t ? dn > top + t ? dn : plateAt(G, top + t, 1, t) : dn;
     return moveIn(M, ex, plan, res, nw, "the nearest load your plates make");
   }
@@ -7256,8 +7273,18 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     }
     return { meta, editAt, last: typeof m.last === "number" ? m.last : null };
   };
+  var notesEp = 0;
+  var newEp = () => {
+    notesEp = Math.max(Date.now(), notesEp + 1);
+  };
+  var epOf = (m) => m && typeof m.ep === "number" ? m.ep : 0;
   function saveMeta() {
+    if (device.boot && !device.ok) return false;
     try {
+      if (epOf(rec(parseJson(localStorage.getItem(SYNC_KEY) || "null"))) > notesEp) {
+        log("tabs", new Error("newer sync notes from another tab; not written over"));
+        return false;
+      }
       localStorage.setItem(
         SYNC_KEY,
         JSON.stringify({
@@ -7265,7 +7292,8 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
           last: cloud.last,
           editAt: cloud.editAt,
           devId: cloud.devId,
-          acct: cloud.acct || void 0
+          acct: cloud.acct || void 0,
+          ep: notesEp || void 0
         })
       );
       return true;
@@ -7557,36 +7585,42 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     }
     const saved = state.sessions.some((s) => s.id === P.id);
     fx.toast(
-      kept === "joined" ? "The workout in progress was saved on another device. What was done here since was added to it." : kept === "saved" || kept === "cardio" ? `The workout in progress was ${state.draft ? "replaced by the one on" : "closed on"} another device. Its ${kept === "saved" ? "ticked sets are" : "cardio is"} saved in History.` : state.draft ? saved ? "The workout in progress was replaced by the one on another device. Its ticked sets are in History." : "The workout in progress was replaced by the one on another device." : saved ? "The workout in progress was saved on another device." : "The workout in progress was closed on another device."
+      kept === "joined" || kept === "cardioJoined" ? "The workout in progress was saved on another device. What was done here since was added to it." : kept === "saved" || kept === "cardio" ? `The workout in progress was ${state.draft ? "replaced by the one on" : "closed on"} another device. Its ${kept === "saved" ? "ticked sets are" : "cardio is"} saved in History.` : state.draft ? saved ? "The workout in progress was replaced by the one on another device. Its ticked sets are in History." : "The workout in progress was replaced by the one on another device." : saved ? "The workout in progress was saved on another device." : "The workout in progress was closed on another device."
     );
   }
   function keepLost(lost, now, agreed, remoteWins) {
     if (!lost || lost.editingId || now && now.id === lost.id) return null;
     const kept = draftSession(lost), cardio = draftCardio(lost);
     if (!kept && !cardio.length) return null;
-    const more = cardio.filter((c) => !state.cardio.some((x) => x.id === c.id));
+    const was = agreed && agreed.id === lost.id ? agreed : null;
     const have = state.sessions.find((q) => q.id === lost.id);
     if (have) {
-      const base = agreed && agreed.id === lost.id ? draftSession(agreed) : null;
+      const base = was ? draftSession(was, true) : null;
       const stat = { conflicts: 0 };
       const joined = kept ? mergeSession(base, kept, have, base ? remoteWins : true, stat) : have;
-      if (canon(joined) === canon(have) && !more.length) return null;
+      const norm = (l) => l.map((c) => cleanCardio(c));
+      const ids = new Set(
+        [...was ? draftCardio(was) : [], ...cardio].map((c) => c.id).filter((x) => typeof x === "string")
+      );
+      const bh = {};
+      for (const c of norm(was ? draftCardio(was) : [])) if (typeof c.id === "string") bh[c.id] = Hx(c);
+      const theirs = state.cardio.filter((c) => ids.has(c.id));
+      const merged = merge3List(was ? bh : null, norm(cardio), theirs, base ? remoteWins : true, stat);
+      const cardioNow = [...state.cardio.filter((c) => !ids.has(c.id)), ...merged];
+      const sets = canon(joined) !== canon(have), rows = canon(normalize({ cardio: cardioNow }).cardio) !== canon(state.cardio);
+      if (!sets && !rows) return null;
       setState(
-        normalize({
-          ...state,
-          sessions: state.sessions.map((q) => q.id === lost.id ? joined : q),
-          cardio: unionById(state.cardio, more)
-        })
+        normalize({ ...state, sessions: state.sessions.map((q) => q.id === lost.id ? joined : q), cardio: cardioNow })
       );
       edited(joined.date);
       conflictNote(stat);
-      return "joined";
+      return sets ? "joined" : "cardioJoined";
     }
     setState(
       normalize({
         ...state,
         sessions: kept ? [...state.sessions, kept] : state.sessions,
-        cardio: unionById(state.cardio, more)
+        cardio: unionById(state.cardio, cardio)
       })
     );
     edited(lost.date);
@@ -7600,6 +7634,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     if (kept === "saved") fx.toast("Sets ticked on another device were saved in History.");
     else if (kept === "joined") fx.toast("Sets ticked on another device were added to the session saved here.");
     else if (kept === "cardio") fx.toast("Cardio logged on another device was saved in History.");
+    else if (kept === "cardioJoined") fx.toast("Cardio logged on another device was added to the session saved here.");
   }
   async function sessionFromCloud(d, legB) {
     if (d.editingId || state.sessions.some((q) => q.id === d.id)) return;
@@ -7983,6 +8018,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     }
     if (!m) return;
     const now = typeof m.acct === "string" ? m.acct : null;
+    notesEp = epOf(m);
     if (now === cloud.acct) return;
     const n = notesIn(m, "tabs");
     cloud.meta = n.meta || {};
@@ -8008,19 +8044,19 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     stripDemo(mine);
     return !!(realCount(mine) || mine.bodyweights.length || mine.measurements.length || state.draft || mine.cardio.length || mine.routines.some((r) => !plainTemplate(r) && !routineEmpty(r)) || mine.exercises.some((e) => e.custom));
   }
-  function joinLogs(base, other) {
-    const aside = base.draft && other.draft && other.draft.id !== base.draft.id ? other.draft : null;
-    const kept = aside ? draftSession(aside) : null;
+  function joinLogs(base, here) {
+    const away = base.draft && here.draft && here.draft.id !== base.draft.id ? base.draft : null;
+    const kept = away ? draftSession(away) : null;
     return normalize({
       ...base,
-      exercises: unionById(base.exercises, other.exercises),
-      routines: unionById(base.routines, other.routines),
-      sessions: unionById(base.sessions, kept ? [...other.sessions, kept] : other.sessions),
-      bodyweights: unionById(base.bodyweights, other.bodyweights),
-      measurements: unionById(base.measurements, other.measurements),
-      cardio: unionById(base.cardio, aside ? [...other.cardio, ...draftCardio(aside)] : other.cardio),
-      trash: unionById(arr(base.trash) || [], arr(other.trash) || []),
-      draft: base.draft || other.draft
+      exercises: unionById(base.exercises, here.exercises),
+      routines: unionById(base.routines, here.routines),
+      sessions: unionById(base.sessions, kept ? [...here.sessions, kept] : here.sessions),
+      bodyweights: unionById(base.bodyweights, here.bodyweights),
+      measurements: unionById(base.measurements, here.measurements),
+      cardio: unionById(base.cardio, away ? [...here.cardio, ...draftCardio(away)] : here.cardio),
+      trash: unionById(arr(base.trash) || [], arr(here.trash) || []),
+      draft: here.draft || base.draft
     });
   }
   async function keepHere(from) {
@@ -8038,9 +8074,15 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     const from = cloud.acct;
     if (from === id) return true;
     const aside = await asideOf(id);
-    if (!from && !aside) return true;
+    if (!from && !aside) {
+      cloud.meta = {};
+      cloud.editAt = {};
+      cloud.last = null;
+      return true;
+    }
+    const mine = holdsLog();
     let use = false;
-    if (from && holdsLog()) {
+    if (from && mine) {
       const a = await fx.ask(
         "A log from another account is on this phone",
         "Add it to this account, or use this account's log? Using this account's log keeps the other one on this phone until that account signs in here again.",
@@ -8053,7 +8095,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       }
       use = a === "alt";
     }
-    const before = { state, meta: cloud.meta, editAt: cloud.editAt, last: cloud.last, acct: cloud.acct };
+    const before = { state, meta: cloud.meta, editAt: cloud.editAt, last: cloud.last, acct: cloud.acct, ep: notesEp };
     if (use && from) {
       const k = await keepHere(from);
       if (k !== "kept") {
@@ -8064,7 +8106,13 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       }
     }
     const n = aside ? notesIn({ meta: aside.meta, editAt: aside.editAt, last: aside.last }, "aside") : null;
-    const next = use ? aside ? aside.state : normalize(null) : aside ? joinLogs(aside.state, state) : null;
+    const own = () => {
+      const o = { ...state, routines: state.routines.filter((r) => !plainTemplate(r) && !routineEmpty(r)) };
+      stripDemo(o);
+      return o;
+    };
+    const next = use ? aside ? aside.state : normalize(null) : aside ? mine ? joinLogs(aside.state, own()) : aside.state : null;
+    const both = !use && !!aside && mine && !!state.draft && !!aside.state.draft && aside.state.draft.id !== state.draft.id;
     cloud.meta = n && n.meta || {};
     cloud.editAt = n && n.editAt || {};
     cloud.last = n ? n.last : null;
@@ -8073,6 +8121,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       commit();
     }
     cloud.acct = id;
+    newEp();
     const written = !device.boot || (!next || device.ok) && saveMeta();
     if (!written) {
       setState(before.state);
@@ -8080,6 +8129,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       cloud.editAt = before.editAt;
       cloud.last = before.last;
       cloud.acct = before.acct;
+      notesEp = before.ep;
       commit();
       saveMeta();
       if (use && from) await dropAside(from);
@@ -8093,6 +8143,8 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       resyncLocalH();
       fx.render();
     }
+    if (both)
+      fx.toast("The workout in progress on this phone stays open. The one kept for this account is saved in History.");
     if (aside) await dropAside(id);
     return true;
   }
@@ -8108,6 +8160,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
         return !!now && now.userId === id && await takeAccount(id);
       });
       if (!go) return;
+      if (cloud.acct !== id) newEp();
       cloud.acct = id;
       saveMeta();
       cloud.db = db;
@@ -8136,6 +8189,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       cloud.meta = {};
       cloud.editAt = {};
       cloud.last = null;
+      newEp();
     }
     cloud.retry = 0;
     saveMeta();
@@ -8146,12 +8200,16 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     if (ev.key === SYNC_KEY && ev.newValue) {
       try {
         const m = rec(parseJson(ev.newValue));
-        if (m) {
+        if (m && epOf(m) < notesEp) {
+          log("tabs", new Error("older sync notes from another tab; this tab wrote its own back"));
+          saveMeta();
+        } else if (m) {
           const { meta, editAt, last } = notesIn(m, "tabs");
           if (meta) cloud.meta = meta;
           if (editAt) cloud.editAt = editAt;
-          if (last) cloud.last = last;
+          cloud.last = last;
           cloud.acct = typeof m.acct === "string" ? m.acct : null;
+          notesEp = epOf(m);
         }
       } catch (e) {
         log("tabs", e);
@@ -8219,6 +8277,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
         cloud.editAt = editAt || {};
         cloud.devId = typeof m.devId === "string" ? m.devId : null;
         cloud.acct = typeof m.acct === "string" ? m.acct : null;
+        notesEp = epOf(m);
       }
     } catch (e) {
       log("sync-meta", e);
@@ -9574,13 +9633,8 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       const load2 = inU(kg), bar = mode === "bar" ? inU(exBarKg(ex)) : 0;
       if (!(load2 > 0)) return "";
       if (load2 < bar - 1e-6) return `${fmtW(kg)} ${U()} is below the ${r1(bar)} ${pu} bar`;
-      let side = mode === "sleeve" ? load2 : (load2 - bar) / 2;
-      const out = [];
-      for (const pl of plateList(pu)) while (side >= pl - 1e-6) {
-        out.push(pl);
-        side -= pl;
-      }
-      const rest = Math.round(side * 100) / 100;
+      const { plates: out, rest: left } = platesPerSide(plateList(pu), mode === "sleeve" ? load2 : (load2 - bar) / 2, Math.max(1e-6, inU(rackTol()) / (mode === "sleeve" ? 1 : 2)));
+      const rest = Math.round(left * 100) / 100;
       const tiny = pu !== U() && rest < (pu === "kg" ? 0.1 : 0.25);
       const lead = mode === "sleeve" ? `On the sleeve at ${fmtW(kg)}` : mode === "side" ? `Per side at ${fmtW(kg)} (no bar)` : `Per side at ${fmtW(kg)}`;
       const tag = pu !== U() ? ` ${pu}` : "";
@@ -9728,8 +9782,9 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     const adjSrc = /* @__PURE__ */ new WeakMap();
     function adjSync(b) {
       if (!b || !b.adj) return;
-      const src = adjSrc.get(b);
+      const src = adjSrc.get(b) || typeof b.adj.rid === "string" && b.sets.find((x) => x.rid === b.adj.rid);
       if (!src) return;
+      adjSrc.set(b, src);
       const i = b.sets.indexOf(src);
       if (i < 0 || src.warm || src.drop || !src.done) {
         const prev = { ...b.adj };
@@ -9786,14 +9841,14 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
               const er = f == null ? lo : Math.max(lo, Math.min(hi, Math.floor(f - Math.min(tgt, E1_MAX_RIR) - 1 + 1e-9)));
               const n = b.sets.slice(0, si + 1).filter((x) => !x.warm && !x.drop).length;
               const why = light ? q != null && q >= tgt + 2 ? rirScale() === "rpe" ? `set ${n} was RPE ${effShow(q)}, against a target of RPE ${effShow(tgt)}` : `set ${n} had ${effShow(q)} in reserve, against a target of ${effShow(tgt)}` : `set ${n} went ${r} reps, past your ${hi}` : `set ${n} stopped at ${r}, under your ${rangeWords(p)}`;
-              b.adj = { at: si, w: nw, from: s.w, r: er, up: !!light, why };
+              b.adj = { at: si, w: nw, from: s.w, r: er, up: !!light, why, rid: s.rid };
               adjSrc.set(b, s);
             } else if (light && q != null && q >= tgt + 2 && r < hi) {
               const f = rtfAt(est, Lt);
               const er = f == null ? null : Math.min(hi, Math.floor(f - Math.min(tgt, E1_MAX_RIR) + 1e-9));
               const n = b.sets.slice(0, si + 1).filter((x) => !x.warm && !x.drop).length;
               if (er != null && er > r) {
-                b.adj = { at: si, w: s.w, from: s.w, r: er, up: true, why: rirScale() === "rpe" ? `set ${n} was RPE ${effShow(q)}, against a target of RPE ${effShow(tgt)}` : `set ${n} had ${effShow(q)} in reserve, against a target of ${effShow(tgt)}` };
+                b.adj = { at: si, w: s.w, from: s.w, r: er, up: true, why: rirScale() === "rpe" ? `set ${n} was RPE ${effShow(q)}, against a target of RPE ${effShow(tgt)}` : `set ${n} had ${effShow(q)} in reserve, against a target of ${effShow(tgt)}`, rid: s.rid };
                 adjSrc.set(b, s);
               }
             }

@@ -303,6 +303,44 @@ const ses = (id, date, exId, rr, sets, extra) => Object.assign({ id, date, dayId
     await ev(() => { const L = window.__ironlog; delete L.state.settings.gym; L.state.settings.unit = 'kg'; L.saveNow(); L.render(); });
   }
 
+  // ---- The review of the fix (PENDING 333, F7 again): a suggestion within the shown digit of a load the plates make is that
+  // load itself, so the plate line under it lists the plates for it, the step up is taken from it, and a step up typed back
+  // as shown repeats at it. With d04ec3b's fix the suggestion kept the typed number (52.486 kg for 52.5): the line under
+  // 115.7 lb read "15 kg (1.24 kg not loadable)", a plate short, and 115.7, 121.2, 115.7, 121.2 never progressed.
+  {
+    const lines = await ev(() => {
+      const L = window.__ironlog; const s = L.state; s.settings.unit = 'lb'; s.settings.gym = { u: 'kg', plates: [25, 20, 15, 10, 5, 2.5, 1.25] }; delete s.settings.barKg;
+      const plan = { sets: 3, repMin: 6, repMax: 10, rir: 2, rest: 150 };
+      const out = [];
+      for (const kg of [50, 52.5, 55, 57.5, 60, 62.5, 65, 67.5, 70, 72.5]) for (const reps of [[8, 8, 7], [10, 10, 10]]) {
+        const w = Number(L.fmtW(kg)) * 0.45359237;
+        const one = (id, date) => ({ id, date, dayIdx: 0, dayId: null, dayName: 'Session', routineId: '', free: true, notes: '', ex: [{ exId: 'bench', rr: [6, 10], sets: reps.map(r => ({ w, r, rir: 2, warm: false, drop: false })) }] });
+        s.sessions = [one('g1', '2026-10-01'), one('g2', '2026-10-08')]; s.draft = null; L.state = L.normalize(s); L.invalidate();
+        const g = L.suggest('bench', plan, {}); const line = L.plateText(g.w, 'bar', L.EX('bench'));
+        const m = /:\s*([\d., ]+?)\s*kg/.exec(line || ''); const side = m ? m[1].split(',').map(Number).reduce((a, b) => a + b, 0) : 0;
+        out.push({ typed: L.fmtW(w), reps: reps.join(','), next: g.w, shown: L.fmtW(g.w), line, onPlates: Math.abs((g.w - 20) / 2.5 - Math.round((g.w - 20) / 2.5)) < 1e-9, lineRight: Math.abs(20 + 2 * side - g.w) < 1e-6 && !/not loadable/.test(line) });
+      }
+      return out;
+    });
+    const off = lines.filter(x => !x.onPlates || !x.lineRight);
+    ok(!off.length, 'Your gym in kg, the app in lb, 20 loads typed as shown: every suggestion is a load the plates make, and the plate line under it lists exactly its plates (d04ec3b: 12 of 20 lines a plate short, "1.24 kg not loadable")', off.slice(0, 4));
+    const typedLine = await ev(() => { const L = window.__ironlog; return [110.2, 115.7].map(v => L.plateText(v * 0.45359237, 'bar', L.EX('bench'))); });
+    ok(typedLine[0] === 'Per side at 110.2: 15 kg' && typedLine[1] === 'Per side at 115.7: 15, 1.25 kg', 'a row typed as shown (110.2 and 115.7 lb) gets the plate line of the load it shows: 15 kg, then 15 and 1.25 kg a side (r55 and r55.1: 10, 2.5, 1.25 kg with 1.24 kg not loadable)', typedLine);
+    const run = await ev(() => {
+      const L = window.__ironlog; const s = L.state; const p = { sets: 3, repMin: 6, repMax: 10, rir: 2, rest: 150 };
+      const back = kg => Number(L.fmtW(kg)) * 0.45359237; let w = back(52.5); const out = []; s.sessions = []; s.draft = null;
+      const plan = [[10, 10, 10], [8, 8, 7], [10, 10, 10], [8, 8, 7], [10, 10, 10], [8, 8, 7]];
+      for (let i = 0; i < plan.length; i++) {
+        s.sessions.push({ id: 'q' + i, date: new Date(Date.UTC(2026, 9, 3 + i * 3)).toISOString().slice(0, 10), dayIdx: 0, dayId: null, dayName: 'Session', routineId: '', free: true, notes: '', ex: [{ exId: 'bench', rr: [6, 10], sets: plan[i].map(r => ({ w, r, rir: 2, warm: false, drop: false })) }] });
+        L.state = L.normalize(s); L.invalidate(); const g = L.suggest('bench', p, {});
+        out.push(`${L.fmtW(w)} x ${plan[i].join(',')} -> ${L.fmtW(g.w)}`); w = back(g.w);
+      }
+      return out;
+    });
+    ok(run.join(' | ') === '115.7 x 10,10,10 -> 121.3 | 121.3 x 8,8,7 -> 121.3 | 121.3 x 10,10,10 -> 126.8 | 126.8 x 8,8,7 -> 126.8 | 126.8 x 10,10,10 -> 132.3 | 132.3 x 8,8,7 -> 132.3', 'six sessions typed as shown: each step up lands on the plates (55, 57.5, 60 kg) and each repeat stays there (d04ec3b: 115.7, 121.2, 115.7, 121.2, never progressing)', run);
+    await ev(() => { const L = window.__ironlog; delete L.state.settings.gym; L.state.settings.unit = 'kg'; L.saveNow(); L.render(); });
+  }
+
   if (P.errors.length) ok(false, 'no page errors', P.errors);
   await P.browser.close();
   console.log(fails.length ? `${fails.length} FAILED` : 'ALL PASS');

@@ -16,6 +16,21 @@
 //   F9  the same lift twice, the first removed on one phone while the other
 //       ticks the second: one block, not two;
 //   F10 a warm-up added on one phone while the other ticks stays at the top.
+// Then the review of that fix (d04ec3b), each case failing on d04ec3b:
+//   G2  a join whose agreed copy has nothing ticked keeps both phones' sets;
+//   G4  a phone whose log stops saving keeps its sync notes in step with the
+//       log it holds, so reopening never deletes a synced workout, and the
+//       menu says the phone is not saving (PENDING 336);
+//   G5  a log kept aside comes back as it was when the phone holds nothing of
+//       the lifter's: no demo data or second starter routine in the account;
+//   G6  Add it with a workout open here and one in the log kept aside: this
+//       phone's stays open and the other's ticked sets are saved, said so;
+//   G7  cardio edited, or deleted, on either phone merges against the copy
+//       both agreed on, and a join of cardio alone says so;
+//   G9  the next sets' adjusted load stays on its rows when a merge adds a
+//       row above them;
+//   G10 a join keeps the order of the session saved on the other phone, a
+//       warm-up added there first included.
 const { open, engine } = require('./h');
 const path = require('path');
 const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log('FAIL', m, x !== undefined ? JSON.stringify(x).slice(0, 700) : ''); } else console.log('ok  ', m); };
@@ -60,6 +75,10 @@ async function phone(browser, cloud, uid, file = FILE) {
   P.start = n => P.ev(n => { const L = window.__ironlog; if (L.ui.modal) L.ACT.mClose(); L.ACT.startSession({ dataset: { day: '0', light: '0' } }); const d = L.state.draft; d.ex = d.ex.slice(0, 1); d.ex[0].sets.length = n; d._rampAsked = true; L.saveNow(); }, n);
   P.finish = async () => { await P.ev(() => { const L = window.__ironlog; L.state.draft._leftAsked = true; L.state.draft._rampAsked = true; L.ACT.finishNow(); }); await wait(300); await P.ev(() => { const L = window.__ironlog; if (L.ui.modal) L.ACT.mClose(); }); };
   P.toast = () => P.ev(() => { const el = document.getElementById('toast'); return el && !el.hidden ? el.innerText : ''; });
+  // Every toast shown since the page opened (or reopened), in order, once each.
+  P.watch = () => P.ev(() => { window.__toasts = []; const el = document.getElementById('toast'); if (el) new MutationObserver(() => { if (!el.hidden && el.innerText) window.__toasts.push(el.innerText.replace(/\s+/g, ' ')); }).observe(el, { childList: true, subtree: true, characterData: true, attributes: true }); });
+  P.toasts = () => P.ev(() => [...new Set(window.__toasts || [])]);
+  await P.watch();
   P.modal = () => P.ev(() => { const m = window.__ironlog.ui.modal; return m ? { kind: m.kind, title: m.title || '' } : null; });
   P.ids = () => P.ev(() => window.__ironlog.state.sessions.map(s => s.id).sort());
   // Signs out keeping the log (the notes kept), then signs in to uid, answering the question if it is asked.
@@ -71,7 +90,9 @@ async function phone(browser, cloud, uid, file = FILE) {
     if (m && m.kind === 'confirm' && answer) { await P.page.click(`#modal [data-act="${answer}"]`); await wait(1500); }
     return m && m.kind === 'confirm' ? m.title : null;
   };
-  P.reopen = async () => { await P.page.goto(P.page.url()); await P.page.waitForFunction(() => window.__ironlog && window.__libs && window.__libs.chart); await wait(2000); };
+  P.reopen = async () => { await P.page.goto(P.page.url()); await P.page.waitForFunction(() => window.__ironlog && window.__libs && window.__libs.chart); await P.watch(); await wait(2000); };
+  P.draftOf = () => P.ev(() => { const d = window.__ironlog.state.draft; return d ? { id: d.id, rows: d.ex[0].sets.map(s => (s.done ? `${s.w}x${s.r}` : s.w != null ? `typed ${s.w}x${s.r}` : '-')).join(' ') } : null; });
+  P.cardio = () => P.ev(() => { const L = window.__ironlog; return { draft: L.state.draft ? (L.state.draft.cardio || []).map(c => `${c.kind} ${c.min}`).join(',') : null, log: L.state.cardio.map(c => `${c.kind} ${c.min}`).join(',') }; });
   return P;
 }
 const session = (id, date, sets) => ({ id, date, dayIdx: 0, dayId: null, dayName: 'Session', routineId: '', notes: '', free: true, ex: [{ exId: 'bench', note: '', rr: null, sets: sets.map(([w, r]) => ({ w, r, rir: 1, warm: false, drop: false })) }] });
@@ -212,6 +233,160 @@ const refuseSave = P => P.ev(() => { const KEY = window.__ironlog.KEY; const o =
     await A.ev(() => { const L = window.__ironlog; const s = L.state.draft.ex[0].sets.find(x => x.warm); s.w = 40; s.r = 10; s.done = true; L.saveNow(); });
     await A.finish(); await A.flush();
     ok((await A.saved()).join() === 'W40x10 100x8', 'and the session is saved with the warm-up first', await A.saved());
+  }
+
+  // ---- G2: the agreed copy has nothing ticked (both phones on this build, the workout begun on r56, so rows without ids):
+  // one phone ticks the first set offline, the other the second and finishes. Both sets are kept (d04ec3b read the empty
+  // agreed copy as none and matched the two identical sets as one).
+  {
+    const cloud = cloudOf();
+    const A = await phone(browser, cloud, 'u1', OLD); pages.push(A);
+    await wait(900); await A.start(4); await A.flush();
+    const B = await phone(browser, cloud, 'u1', OLD); pages.push(B);
+    await wait(1500); await B.sync();
+    for (const P of [A, B]) { await P.page.goto('file://' + path.resolve(FILE)); await P.page.waitForFunction(() => window.__ironlog && window.__libs && window.__libs.chart); await P.watch(); await wait(1500); }
+    await A.ev(() => { const L = window.__ironlog; L.state.draft.ex[0].sets[0].w = 100; L.saveNow(); }); await A.flush(); await B.sync();
+    ok(await A.ev(() => { const m = window.__ironlog.cloud.meta.draft; return !!(m && m.b && m.b.draft && !m.b.draft.ex[0].sets.some(s => s.done)); }), 'set up: the agreed copy is on the phone and has nothing ticked');
+    await A.ev(() => { window.__offline = true; }); await A.tick(0, 100, 8); await wait(1500);
+    await B.tick(1, 100, 8); await B.finish(); await B.flush();
+    await A.ev(() => { window.__offline = false; }); await A.flush(); await wait(1600); await A.flush(); await B.sync();
+    const acct = cloud.sessionsIn('u1').map(s => s.ex[0].sets.map(x => `${x.w}x${x.r}`).join(' '));
+    ok(acct.join() === '100x8 100x8' && (await A.saved()).join() === '100x8 100x8' && (await B.saved()).join() === '100x8 100x8', 'a set ticked on each phone after an agreed copy with nothing ticked: both kept, on both phones and in the account (d04ec3b: one)', { acct, A: await A.saved(), B: await B.saved() });
+  }
+
+  // ---- G4: the phone's storage refuses the log's key (full) but not the notes'. A workout finished and synced, then the app
+  // reopened: the notes on the phone still describe the log on the phone, so the pull brings the workout back, and nothing is
+  // deleted from the account (r55 and d04ec3b saved the notes ahead of the log, and the reopened phone deleted it everywhere).
+  {
+    const cloud = cloudOf();
+    const P = await phone(browser, cloud, 'u1'); pages.push(P);
+    await wait(900);
+    await P.start(3); await P.tick(0, 100, 8); await P.finish(); await P.flush(); await wait(400);
+    ok(cloud.sessionsIn('u1').length === 1, 'set up: the first workout is in the account');
+    await refuseSave(P);
+    await P.start(3); await P.tick(0, 102.5, 8); await P.tick(1, 102.5, 8); await P.finish(); await P.flush(); await wait(1500); await P.flush();
+    const menu = await P.ev(() => { const el = document.getElementById('saveState'); return el ? el.getAttribute('aria-label') : ''; });
+    ok(cloud.sessionsIn('u1').length === 2 && /Not saving/.test(menu), 'the second workout reaches the account, and the menu says the phone is not saving, signed in or not (PENDING 336; d04ec3b: "Synced")', { menu, acct: cloud.sessionsIn('u1').length });
+    await P.ev(() => { window.__offline = true; window.__ironlog.state.settings.timeBudget = 70; window.__ironlog.saveNow(); }); await P.flush(); await wait(400);
+    ok(/Not saving/.test(await P.ev(() => { const el = document.getElementById('saveState'); return el ? el.getAttribute('aria-label') : ''; })), 'and offline it never says the log is saved on this device (r55 and d04ec3b: "Offline, saved on this device")');
+    await P.ev(() => { window.__offline = false; });
+    await P.reopen(); await P.sync(); await wait(1500); await P.flush(); await wait(500);
+    ok(cloud.sessionsIn('u1').length === 2 && (await P.ev(() => window.__ironlog.state.sessions.length)) === 2, 'reopened: both workouts are in the account and back on the phone (r55 and d04ec3b: the second was deleted everywhere)', { acct: cloud.sessionsIn('u1').length, phone: await P.ev(() => window.__ironlog.state.sessions.length) });
+  }
+
+  // ---- G5: a log kept aside for G comes back while the phone holds nothing of the lifter's (demo data, or the starter
+  // routine after the menu's Sign out): it comes back as it was, so no demo session or second routine reaches the account.
+  for (const how of ['demo', 'signout']) {
+    const cloud = cloudOf();
+    const P = await phone(browser, cloud, 'acctG'); pages.push(P);
+    await wait(900);
+    await addSession(P, session('s-g1', '2026-10-19', [[100, 8]])); await P.flush();
+    const routines = uid => { const v = cloud.store.get(`data/users/${uid}/core`); return v ? JSON.parse(JSON.parse(v).json).routines.map(r => r.name) : []; };
+    const before = routines('acctG').length;
+    await P.switchTo('acctH', 'mAlt'); await P.flush();
+    if (how === 'demo') { await P.ev(() => window.__ironlog.cloudStop()); await P.ev(() => window.__ironlog.ACT.demoLoad()); await wait(200); await P.ev(() => window.__ironlog.ACT.mOk()); await wait(500); }
+    else await P.ev(() => { const L = window.__ironlog; L.cloudStop(true); L.undoForget(); L.state = L.normalize(null); L.state.settings.onboarded = true; L.saveNow(); L.invalidate(); });
+    await P.ev(() => { window.__uid = 'acctG'; }); P.ev(() => window.__ironlog.cloudInit()).catch(() => {}); await wait(1500);
+    await P.flush(); await wait(1200); await P.flush();
+    const g = cloud.sessionsIn('acctG');
+    ok(!(await P.modal()) && g.map(s => s.id).join() === 's-g1' && !g.some(s => s.demo) && routines('acctG').length === before, `${how === 'demo' ? 'demo data loaded' : 'the menu\'s Sign out'}, then G again: G's log comes back as it was, with no demo session and no second routine in the account (d04ec3b: ${how === 'demo' ? '29 demo sessions' : 'two "Upper / lower, 4 days"'})`, { sessions: g.length, demo: g.filter(s => s.demo).length, routines: routines('acctG') });
+  }
+
+  // ---- G6: Add it, with a workout open on this phone (W_A) and one in the log kept aside for B (W_B): W_A stays open as it
+  // was, typed rows and all, and W_B's ticked set is saved in History, said so (d04ec3b opened W_B and closed W_A, unsaid).
+  for (const how of ['Add it', 'not asked']) {
+    const cloud = cloudOf();
+    const P = await phone(browser, cloud, 'acctB'); pages.push(P);
+    await wait(900);
+    await P.start(3); await P.tick(0, 100, 8); await P.flush();
+    const WB = await P.ev(() => window.__ironlog.state.draft.id);
+    await P.switchTo('acctA', 'mAlt'); await P.flush();
+    if (how === 'not asked') await P.ev(() => { const L = window.__ironlog; L.cloudStop(true); L.undoForget(); L.state = L.normalize(null); L.state.settings.onboarded = true; L.saveNow(); L.invalidate(); });
+    await P.start(3); await P.tick(0, 60, 10);
+    await P.ev(() => { const L = window.__ironlog; const s = L.state.draft.ex[0].sets[1]; s.w = 62.5; s.r = 9; L.saveNow(); });
+    await P.flush();
+    const WA = await P.ev(() => window.__ironlog.state.draft.id);
+    await P.switchTo('acctB', how === 'Add it' ? 'mOk' : null);
+    await P.flush(); await wait(1200); await P.flush(); await wait(400);
+    const d = await P.draftOf(), ss = await P.ev(() => window.__ironlog.state.sessions.map(s => ({ id: s.id, sets: s.ex.map(b => b.sets.map(x => `${x.w}x${x.r}`).join(' ')).join(' | ') })));
+    const t = (await P.toasts()).join(' / ');
+    ok(d && d.id === WA && d.rows === '60x10 typed 62.5x9 -' && ss.some(s => s.id === WB && s.sets === '100x8') && /kept for this account.*saved in History/.test(t), `${how}: this phone's workout stays open as it was, the one kept for B is saved in History, and the phone says so (d04ec3b: W_B opened, W_A closed, nothing said)`, { d, WA, WB, ss, t });
+  }
+
+  // ---- G7: cardio on a workout open on two phones, against the copy both agreed on (10 min of bike). Edited to 15 min on the
+  // phone whose copy loses, or deleted on the phone that finishes: the edit is kept, the deletion stands (d04ec3b: the edit
+  // lost, the deleted row back). Then cardio alone joined to a session saved here is said as cardio, not sets.
+  for (const how of ['edit', 'del']) {
+    const cloud = cloudOf();
+    const A = await phone(browser, cloud, 'u1'); pages.push(A);
+    await wait(900); await A.start(3); await A.tick(0, 100, 8);
+    await A.ev(() => { const L = window.__ironlog; L.ACT.cDraftAdd({ dataset: { when: 'post' } }); const c = L.state.draft.cardio[L.state.draft.cardio.length - 1]; c.kind = 'bike'; c.min = 10; L.saveNow(); });
+    await A.flush();
+    const B = await phone(browser, cloud, 'u1'); pages.push(B);
+    await wait(1500); await B.sync();
+    await A.ev(() => { window.__offline = true; });
+    if (how === 'edit') await A.ev(() => { const L = window.__ironlog; L.state.draft.cardio[0].min = 15; L.saveNow(); });
+    await A.tick(1, 100, 7);
+    if (how === 'del') await B.ev(() => { const L = window.__ironlog; L.state.draft.cardio = []; L.saveNow(); });
+    await wait(1500);
+    await B.finish(); await B.flush();
+    await A.ev(() => { window.__offline = false; }); await A.flush(); await wait(1600); await A.flush(); await B.sync();
+    const acct = cloud.cardioIn('u1').map(c => `${c.kind} ${c.min}`).join();
+    const want = how === 'edit' ? 'bike 15' : '';
+    ok(acct === want && (await A.cardio()).log === want && (await B.cardio()).log === want && (await A.saved()).join() === '100x8 100x7', how === 'edit' ? 'cardio edited on the phone whose copy lost (10 to 15 min): the edit is kept, on both phones and in the account (d04ec3b: 10)' : 'cardio deleted on the phone that finished: it stays deleted (d04ec3b: back from the other phone\'s copy)', { acct, A: await A.cardio(), B: await B.cardio() });
+  }
+  {
+    const cloud = cloudOf();
+    const A = await phone(browser, cloud, 'u1'); pages.push(A);
+    await wait(900); await A.start(3); await A.tick(0, 100, 8); await A.flush();
+    const B = await phone(browser, cloud, 'u1'); pages.push(B);
+    await wait(1500); await B.sync();
+    await A.ev(() => { window.__offline = true; }); await A.finish(); await wait(1500);
+    await B.ev(() => { const L = window.__ironlog; L.ACT.cDraftAdd({ dataset: { when: 'post' } }); const c = L.state.draft.cardio[L.state.draft.cardio.length - 1]; c.kind = 'bike'; c.min = 12; L.saveNow(); });
+    await B.flush();
+    await A.ev(() => { window.__offline = false; window.__toasts = []; }); await A.flush(); await wait(1600); await A.flush(); await B.sync();
+    const t = (await A.toasts()).join(' / ');
+    ok((await A.cardio()).log === 'bike 12' && /Cardio logged on another device was added to the session saved here/.test(t) && !/Sets ticked/.test(t), 'cardio alone, logged on the other phone, joined to the session saved here: kept, and said as cardio (d04ec3b: "Sets ticked on another device were added")', { cardio: await A.cardio(), t });
+  }
+
+  // ---- G9: a set two past the top of the range moves the next sets up (Next sets: 230.5 lb); then a warm-up added on the other
+  // phone lands above it in the merge. The adjusted load stays on the rows under the set it came from, and one tap logs it
+  // (d04ec3b: the rows showed 220.5 under "Next sets: 230.5 lb", and one tap logged 220.5).
+  {
+    const cloud = cloudOf();
+    const A = await phone(browser, cloud, 'u1'); pages.push(A);
+    await wait(900); await A.start(4);
+    await A.ev(() => { const L = window.__ironlog; L.state.settings.unit = 'lb'; const b = L.state.draft.ex[0]; b.plan = { ...b.plan, repMin: 8, repMax: 12, rir: 1 }; L.saveNow(); });
+    await A.flush();
+    const B = await phone(browser, cloud, 'u1'); pages.push(B);
+    await wait(1500); await B.sync();
+    await B.ev(() => { const L = window.__ironlog; const s = L.state.draft.ex[0].sets[0]; s.w = 100; s.r = 14; L.saveNow(); L.render(); });
+    await B.ev(() => window.__ironlog.ACT.sDone({ dataset: { b: '0', s: '0' } })); await wait(300);
+    const adjW = await B.ev(() => window.__ironlog.state.draft.ex[0].adj && window.__ironlog.state.draft.ex[0].adj.w);
+    await A.ev(() => window.__ironlog.ACT.wAdd({ dataset: { b: '0' } })); await wait(200);
+    await B.flush(); await A.flush(); await B.sync(); await A.sync();
+    await B.ev(() => window.__ironlog.render()); await wait(300);
+    const next = await B.ev(() => window.__ironlog.state.draft.ex[0].sets.findIndex(s => !s.warm && !s.done));
+    await B.ev(n => window.__ironlog.ACT.sDone({ dataset: { b: '0', s: String(n) } }), next); await wait(300);
+    const logged = await B.ev(n => window.__ironlog.state.draft.ex[0].sets[n].w, next);
+    ok(adjW > 100 && Math.abs(logged - adjW) < 1e-9 && (await B.rows()).startsWith('W:- 100x14'), 'the next sets moved up from a set of 14 keep that load when a merge adds a warm-up above: one tap logs it (d04ec3b: the old load)', { adjW, logged, rows: await B.rows() });
+  }
+
+  // ---- G10: a join keeps the saved session's order: a warm-up the finishing phone added at the top stays first, and the set
+  // this phone ticked since is added after (d04ec3b moved the warm-up below the agreed set).
+  {
+    const cloud = cloudOf();
+    const A = await phone(browser, cloud, 'u1'); pages.push(A);
+    await wait(900); await A.start(3); await A.tick(0, 100, 8); await A.flush();
+    const B = await phone(browser, cloud, 'u1'); pages.push(B);
+    await wait(1500); await B.sync();
+    await A.ev(() => { window.__offline = true; }); await A.tick(2, 100, 6); await wait(1200);
+    await B.ev(() => window.__ironlog.ACT.wAdd({ dataset: { b: '0' } })); await wait(200);
+    await B.ev(() => { const L = window.__ironlog; const s = L.state.draft.ex[0].sets[0]; s.w = 60; s.r = 5; s.done = true; L.saveNow(); });
+    await B.tick(2, 100, 7); await B.finish(); await B.flush();
+    await A.ev(() => { window.__offline = false; }); await A.flush(); await wait(1600); await A.flush(); await B.sync();
+    const acct = cloud.sessionsIn('u1').map(s => s.ex.map(b => b.sets.map(x => `${x.warm ? 'W' : ''}${x.w}x${x.r}`).join(' ')).join(' | '));
+    ok(acct.join() === 'W60x5 100x8 100x7 100x6' && (await A.saved()).join() === acct.join() && (await B.saved()).join() === acct.join(), 'a join after the other phone added a warm-up at the top and finished: its order stands, the set ticked here added after (d04ec3b: 100x8 W60x5 100x7 100x6)', { acct, A: await A.saved() });
   }
 
   const errors = pages.flatMap(P => P.errors).filter(e => !/quota has been exceeded/i.test(e));

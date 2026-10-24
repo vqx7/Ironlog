@@ -6,9 +6,10 @@
 // sheet, the auth callbacks, signOut), what tests/r56-1.js shows it does on
 // the mock cloud. Each case fails on a dist built from r56
 // (`node tests/r56-1b.js <that folder>`): r56 merged the log into the second
-// account at once, unasked. The last two cases are from the stack's review
+// account at once, unasked. The next two cases are from the stack's review
 // (PENDING 333, F2 and F3) and fail on a dist built from the stack as
-// reviewed (61f6b03).
+// reviewed (61f6b03). The last is from the review of the fix commit and fails
+// on a dist built from it (d04ec3b) and from 61f6b03: the race is older.
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
@@ -56,10 +57,22 @@ fs.cpSync(SRC, tmp, { recursive: true });
       await page.click(`#modal [data-act="${which}"]`);
       await page.waitForFunction(() => !window.__ironlog.acctUser() && !window.__ironlog.cloudState().on, null, { timeout: 15000 }); await wait(400);
     };
-    // A second tab of the app on the same phone (its storage shared), as a page of this device.
-    D.tab = async () => {
+    /* A second tab of the app on the same phone (its storage shared), as a page of this device. A slow one, as a tab in
+       the background can be, hears the sign-out 400 ms late and the other tab's sync notes 1500 ms late, and until it
+       hears them it reads the notes as it last wrote or heard them: a tab sees another's write only once it arrives. */
+    D.tab = async slow => {
       const p2 = await ctx.newPage();
       p2.on('pageerror', e => errors.push('page error: ' + e.message));
+      if (slow) await p2.addInitScript(() => {
+        const K = 'ironlog.v1.sync', get = Storage.prototype.getItem, set = Storage.prototype.setItem;
+        let seen;
+        Storage.prototype.getItem = function (k) { return k === K && seen !== undefined ? seen : get.call(this, k); };
+        Storage.prototype.setItem = function (k, v) { if (k === K) seen = String(v); return set.call(this, k, v); };
+        const add = window.addEventListener.bind(window);
+        window.addEventListener = (type, fn, o) => type !== 'storage' || typeof fn !== 'function' ? add(type, fn, o) : add(type, ev => { if (ev.key === K) setTimeout(() => { seen = ev.newValue == null ? undefined : ev.newValue; fn(ev); }, 1500); else fn(ev); }, o);
+        let auth;
+        Object.defineProperty(window, 'ironlogAuth', { configurable: true, get: () => auth, set: v => { const on = v.onChange.bind(v); v.onChange = cb => on((ev, u) => { if (ev === 'SIGNED_OUT') setTimeout(() => cb(ev, u), 400); else cb(ev, u); }); auth = v; } });
+      });
       await p2.goto(APP); await p2.waitForFunction(() => window.__ironlog && window.__libs && window.__libs.chart, null, { timeout: 15000 });
       return { page: p2, ev: (f, a) => p2.evaluate(f, a), question: () => p2.evaluate(() => { const m = window.__ironlog.ui.modal; return m && m.kind === 'confirm' ? m.title : null; }), cloud: () => p2.evaluate(() => { const L = window.__ironlog; const c = L.cloudState(); return { on: c.on, acct: c.acct, sessions: L.state.sessions.map(s => s.id) }; }) };
     };
@@ -161,6 +174,28 @@ fs.cpSync(SRC, tmp, { recursive: true });
     await P.signIn('g@example.com');
     const c = await P.cloud();
     ok(c.sessions.slice().sort().join() === 'own5,own6' && sessIn('g@example.com').includes('own6') && !c.aside.length, 'signing in to G again: its log comes back from aside, the session logged on this phone only with it, on the phone and in the account, and nothing is kept aside', { cloud: c, g: sessIn('g@example.com') });
+    await P.ctx.close();
+  }
+
+  // ---- The review of the fix commit (PENDING 333, its finding 1): two tabs signed in to one account, then the menu's Sign
+  // out in one (the log leaves the phone, the notes are forgotten). The other tab, slow to hear it, wrote its old notes back
+  // over the forgotten ones and the first tab took them from it, so the next sign-in read the empty log as every session
+  // deleted and emptied the account. It also arose unforced, about one run in fifteen.
+  {
+    fake.addUser('i@example.com', 'correct horse 9');
+    const P = await device();
+    await P.ev(ss => { const L = window.__ironlog; for (const s of ss) L.state.sessions.push(s); L.state = L.normalize(L.state); L.saveNow(); }, [0, 1, 2].map(i => ({ ...own('own' + (7 + i)), date: '2026-10-0' + (i + 1) })));
+    await P.signIn('i@example.com');
+    const T = await P.tab(true);
+    await T.page.waitForFunction(() => { const c = window.__ironlog.cloudState(); return c.on && c.status === 'synced'; }, null, { timeout: 15000 }).catch(() => {}); await wait(800);
+    ok(sessIn('i@example.com').length === 3 && (await T.cloud()).on, 'set up: two tabs signed in to I, its three sessions in the account', { i: sessIn('i@example.com'), t: await T.cloud() });
+    await P.signOutKeep('mOk'); await wait(3000);
+    const stored = await P.ev(() => { const n = JSON.parse(localStorage.getItem('ironlog.v1.sync') || 'null'); return { acct: n ? n.acct || null : null, docs: n ? Object.keys(n.meta || {}).length : 0 }; });
+    ok(!stored.acct && !stored.docs, 'the menu\'s Sign out in one tab: the notes stay forgotten; the slow tab\'s old notes, written before it heard, do not stand (d04ec3b: the notes named I again, with 3 documents)', stored);
+    await T.page.close();
+    await P.signIn('i@example.com');
+    const c = await P.cloud();
+    ok(sessIn('i@example.com').length === 3 && c.sessions.length === 3, 'signing in to I again: its three sessions are in the account and back on the phone (d04ec3b and 61f6b03: none, everywhere)', { cloud: c, i: sessIn('i@example.com') });
     await P.ctx.close();
   }
 

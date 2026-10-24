@@ -17,7 +17,7 @@ import { ACCENT0, ACCENTS, BW_EVERY, DEFAULT_HIDDEN, DSECS, DSEC_ALIAS, DSEC_KEY
 import { ADD_ICON, LOCKUP, MENU_ICON, SHARE_ICON } from './app/icons';
 import { FOCUS_MAX, PROF_DAYS, PROF_EXP, PROF_EXP_TIP, PROF_FOCUS_TIP, PROF_GOALS, PROF_GOAL_TIP, STR_NEAR, STR_REST, profClean } from './app/profile';
 import { BW_MAX_KG, BW_MIN_KG, EXTRA_MAX, MEAS_MAX_CM, TRASH_BYTES, TRASH_DAYS, TRASH_MAX, cleanChk, sessCmp } from './app/records';
-import { PLATE_MODES, dbListOf, gymClean, gymPlates, platesMode } from './app/gym';
+import { PLATE_MODES, dbListOf, gymClean, gymPlates, platesMode, platesPerSide } from './app/gym';
 import { chunksOf, emptyChunk, isChunkId, realCount, stripDemo } from './app/chunks';
 import { Hx, canon, mergeDraft } from './app/merge';
 import { RIR_OPTS, blockDone, blockRest, editFp, effTarget, effW, draftCardio, freeDraft, greyW, hintOnce, joinAdjacent, joinRows, joinable, lastCell, lastDup, lastHead, newRow, overSets, sameExOnce, savedEx, sessProgress, targetText, whyTarget } from './app/session';
