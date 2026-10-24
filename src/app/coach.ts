@@ -23,7 +23,7 @@ import { MK, ML, isCompound, noE1 } from './library';
 import { andList, r1, weekStart } from './util';
 import { effScale } from './format';
 import { belowMin } from './volume';
-import { plannedSetsIn } from './routines';
+import { plannedPerWeek, plannedSetsIn } from './routines';
 import { planForIn } from './plans';
 import { loadLabelIn } from './loads';
 
@@ -207,6 +207,19 @@ export function coachIn(M: Model): CoachLine {
         lag: lagSet.has(m) ? 1 : 0
       }))
       .sort((a, b) => b.pri - a.pri || b.lag - a.lag || b.lo - b.got - (a.lo - a.got) || a.got / a.lo - b.got / b.lo);
+    /* Sessions made against planned come before any set count (PENDING 338
+       D), as weeks trained do above: at 2 of 4 planned sessions a week,
+       every set done hard, the lifter was told to do every planned set, the
+       reason "how the sets are done". Rounded to a whole session, over the
+       weeks the average reads; not in Freestyle mode, which plans none. */
+    const per = plannedPerWeek(R);
+    if (under.length && !freeModeIn(M) && per > 0 && Math.round(avg._sess) < per)
+      return {
+        tone: 'yellow',
+        text: `You made ${r1(avg._sess)} of ${per} planned sessions a week. Getting them in matters more than adding sets.`,
+        why: `Your plan's sets assume every planned session is done; over your recent full weeks you made ${r1(avg._sess)} a week of the ${per} it plans. A routine with fewer days fits fewer sessions.`,
+        act: null
+      };
     if (under.length) {
       const u = under[0];
       const gap = Math.max(1, Math.ceil(u.lo - u.got));

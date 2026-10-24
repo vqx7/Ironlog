@@ -438,7 +438,7 @@ function exHeadline(exId){
   /* One line with the verdict and what to do; the numbers behind it (rates,
      ranges, sessions, how it was read) sit behind an i (r34, V: no walls of
      text). The tiles under it already show the best, the change and the rate. */
-  const I=IDX();const st=I.exStats[exId];if(!st)return '';const ex=EX(exId);
+  const I=IDX();const st=I.exStats[exId];if(!st)return '';const ex=EX(exId);const be=(allTimeBests(exId)||{}).est;
   const line=(t,tip)=>`<p class="headline">${esc(t)}${tip?' '+tipi(tip,'About this'):''}</p>`;
   // A lift weeks off says so instead of a trend from before the break (r34.2).
   if(!st.fresh&&st.last&&st.last.date){const wk=Math.max(1,Math.round(daysBetween(st.last.date,today())/7));return line(`Last done ${fmtDate(st.last.date)}, ${wk} week${wk===1?'':'s'} ago. Its trend picks up again after a few sessions.`);}
@@ -481,8 +481,8 @@ function exHeadline(exId){
   if(st.capped)parts.push('At the heaviest load available: progress counts in reps.');
   /* A 1RM is stated for compound lifts only (r30): a "42 lb 1RM" on a
      lateral raise means nothing anyone would lift. */
-  if(st.best!=null&&isCompound(ex)&&bw&&!ex.bw&&loadMode(ex)==='total')parts.push(`${(st.best/bw).toFixed(2)}× bodyweight.`);
-  if(!(st.best!=null&&isCompound(ex))){const bs=bestSet(exId);if(bs)parts.unshift(`Best set ${setShort(ex,bs.w,bs.r)}.`);}
+  if(be&&isCompound(ex)&&bw&&!ex.bw&&loadMode(ex)==='total')parts.push(`${(be.v/bw).toFixed(2)}× bodyweight.`);
+  if(!(be&&isCompound(ex))){const bs=bestSet(exId);if(bs)parts.unshift(`Best set ${setShort(ex,bs.w,bs.r)}.`);}
   return line(parts.join(' '),more.join(' '));
 }
 /* An isolation lift's best-estimate PR is shown as the set that set it, not
@@ -495,7 +495,7 @@ function prSet(exId,date){const x=(IDX().byEx[exId]||[]).find(q=>q.date===date);
    (sessionWord), a line of the strength reading (direction only), the best,
    and a link to the full view in Stats. */
 function exHistSheet(exId){
-  const ex=EX(exId);const all=IDX().byEx[exId]||[];const st=IDX().exStats[exId]||{};
+  const ex=EX(exId);const all=IDX().byEx[exId]||[];const st=IDX().exStats[exId]||{};const be=(allTimeBests(exId)||{}).est; // the best estimate All-time bests says (PENDING 338 1)
   const head=`<div class="sheet" role="dialog" aria-modal="true" aria-labelledby="exhH"><div class="sheet-h"><h3 id="exhH">${esc(ex.name)}</h3><button class="ib" aria-label="Close" data-act="mClose">✕</button></div>`;
   if(!all.length)return head+'<p class="muted">Not logged yet. Its history and chart start with this session.</p></div>';
   const pts=all.filter(x=>x.tv!=null&&!lighter(x)).slice(-12);
@@ -505,7 +505,7 @@ function exHistSheet(exId){
     chart=`<figure class="exh-chart" style="margin:4px 0 0"><svg viewBox="0 0 ${W} ${H}" width="100%" height="${H}" role="img" aria-label="Strength reading over the last ${pts.length} full sessions"><polyline fill="none" stroke="var(--volt)" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round" points="${xy.map(p=>p.map(n=>n.toFixed(1)).join(',')).join(' ')}"/>${xy.map(p=>`<circle cx="${p[0].toFixed(1)}" cy="${p[1].toFixed(1)}" r="3" fill="var(--volt)"/>`).join('')}</svg>
       <figcaption class="small muted row spread"><span>${fmtDate(pts[0].date)}</span><span class="hastip" data-tip="Each full session's working sets read as one number from loads, reps, and RIR when it is rated on most sets. It shows direction only and is not a 1RM. Sessions where the lift was done lighter are left out.">Strength reading</span><span>${fmtDate(pts[pts.length-1].date)}</span></figcaption></figure>`;}
   const bs=bestSet(exId);
-  const best=st.best!=null&&isCompound(ex)?`Best estimate ${fmtE(st.best)} ${U()}${loadNote(ex)}`:bs?`Best set ${setShort(ex,bs.w,bs.r)}${ex.bw?'':' '+U()}`:'';
+  const best=be&&isCompound(ex)?`Best estimate ${fmtE(be.v)} ${U()}${loadNote(ex)}`:bs?`Best set ${setShort(ex,bs.w,bs.r)}${ex.bw?'':' '+U()}`:'';
   // The sets as logged (warm-ups and drops marked, RIR as typed), from the saved session.
   const setsOf=x=>{const ss=state.sessions.find(q=>q.id===x.sid);const bl=ss&&ss.ex.find(q=>q.exId===exId);return bl?bl.sets.map(q=>setStr(ex,q)).join(', '):x.pts.map(q=>setShort(ex,q.w,q.r)).join(', ');};
   const rows=all.slice(-10).reverse().map(x=>{const kind=sessionWord(x);
