@@ -32,7 +32,7 @@ export function todayEye(): string {
 }
 
 /* A session's start time, for telling two sessions on one day apart. */
-export function sessTm(x: { t?: number | null }): string {
+export function sessTm(x: { t?: number | null | undefined }): string {
   try {
     return x.t ? new Date(x.t).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) : '';
   } catch (e) {

@@ -165,6 +165,17 @@ export const HIDEABLE: readonly (readonly [string, string, string])[] = [
   ['settings', 'bands', 'Weekly set targets'],
   ['settings', 'more', 'More']
 ];
+/** The hidden sections a tab's foot offers (r28): its hideable ones that are hidden, each that would show nothing now left out (`live` says which have something to show). */
+export function moreList(
+  tab: string,
+  hidden: readonly string[],
+  live: Readonly<Record<string, () => boolean>>
+): (readonly [string, string, string])[] {
+  return HIDEABLE.filter(([t, k]) => {
+    const has = live[t + ':' + k];
+    return t === tab && hidden.includes(t + ':' + k) && (!has || has());
+  });
+}
 /** The hideable sections as tab:key. */
 export const HIDEABLE_KEYS: ReadonlySet<string> = new Set(HIDEABLE.map(([t, k]) => t + ':' + k));
 /** The tabs in Settings > Layout, with their names. */

@@ -17,7 +17,6 @@ function helpText(key,text){return `<p class="ht" id="help-${key}" ${ui.help.has
    section starts closed too. Folds used to be saved to the synced
    settings, where one tap (or another device) could leave a section open or
    closed for good. */
-function isOpen(sk,def){return Object.prototype.hasOwnProperty.call(ui.folds,sk)?!!ui.folds[sk]:!!def;}
 /* o: {sk, key (movable id, optional), title, sub (HTML), help, helpBody, body, def, id} */
 function sec(o){
   const mk=o.key?` data-mkey="${o.key}"`:'';
@@ -73,7 +72,6 @@ function modalFocusables(){
 /* On a phone, focusing a search box the moment a picker opens throws up the
    keyboard over the list you came to scroll. Touch screens get the sheet
    focused instead; a tap on the search box brings the keyboard when wanted. */
-const coarse=()=>{try{return window.matchMedia('(pointer:coarse)').matches;}catch(e){return false;}};
 /* The phone's Back gesture used to leave the app with a sheet open. Opening a
    sheet adds one history entry, and Back closes the sheet instead. Closing
    a sheet with its own buttons leaves that entry in place and the next sheet
@@ -297,6 +295,9 @@ function applyTheme(){const t=state.settings.theme;if(t==='system')delete docume
    and the browser then fires that field's change as if the lifter had left it.
    They did not, so that change must not tick a set. */
 let rebuilding=false;
+// The tabs drawn by their modules (phase 5): each a template of the log and ui; the rest are the legacy script's markup.
+const LIT_TABS={history:viewHistory,settings:viewSettings};
+function litTab(){return LIT_TABS[ui.tab]||null;}
 function render(){if(!state.draft){if(!$('#timer').hidden)stopTimer();wakeOff();} // no session, no rest timer or screen kept on: a session erased, restored over or finished on another phone left both running (r55, the audit)
   try{renderInner();}
   catch(e){log('render',e);renderCrash(e);}
@@ -305,10 +306,10 @@ function render(){if(!state.draft){if(!$('#timer').hidden)stopTimer();wakeOff();
 function renderCrash(e){
   let txt='';try{txt=JSON.stringify({app:STORAGE_ID,version:APP_VERSION,exported:new Date().toISOString(),state});}catch(e2){txt='(could not serialise data: '+e2.message+')';}
   const v=document.getElementById('view');if(!v)return;
-  v.innerHTML=`<div class="card"><h2>Something broke on this screen</h2><p class="small">Your data is saved and was not changed. Tap Try again to go back to Today. Report this sends the error to the app owner. If it keeps happening, copy the backup text below and keep it somewhere safe.</p>
+  drawLegacy(v,`<div class="card"><h2>Something broke on this screen</h2><p class="small">Your data is saved and was not changed. Tap Try again to go back to Today. Report this sends the error to the app owner. If it keeps happening, copy the backup text below and keep it somewhere safe.</p>
   <p class="small muted">Error: ${esc(e&&e.message||String(e))} · version ${VERSION_LINE}</p>
   <div class="row"><button class="btn primary" data-act="crashRetry">Try again</button><button class="btn" data-act="fbOpen" data-cat="bug" data-crash="1">Report this</button></div>
-  <label class="field" style="margin-top:10px">Backup text<textarea readonly style="min-height:160px;font-size:12px">${esc(txt)}</textarea></label></div>`;
+  <label class="field" style="margin-top:10px">Backup text<textarea readonly style="min-height:160px;font-size:12px">${esc(txt)}</textarea></label></div>`);
 }
 function renderInner(){
   killDynamic();applyTheme();setSaveState();chartNoticeUsed=false;
@@ -319,9 +320,13 @@ function renderInner(){
   // The setup pages stand alone: no tabs or week bar until a way to start is picked.
   if(obActive()&&ui.tab!=='today')ui.tab='today';
   document.body.classList.toggle('obmode',obActive());
-  const v={today:viewToday,program:()=>ui.planView==='library'?viewLibrary():viewProgram(),dash:viewDash,history:viewHistory,settings:viewSettings}[ui.tab];
-  rebuilding=true;try{$('#view').innerHTML=v();}finally{rebuilding=false;}
-  applySecOrder();applyHidden();openMain();
+  /* One host draws every tab (r57): a moved screen's template, updated in
+     place, which places its sections itself; a legacy screen's markup, fresh
+     each draw, whose sections are then put in their saved order, the hidden
+     ones taken out and the tab's main section opened, as before. */
+  const moved=litTab();
+  rebuilding=true;try{if(moved)drawScreen($('#view'),moved());else drawLegacy($('#view'),{today:viewToday,program:()=>ui.planView==='library'?viewLibrary():viewProgram(),dash:viewDash}[ui.tab]());}finally{rebuilding=false;}
+  if(!moved){applySecOrder();applyHidden();openMain();}
   if(!(ui.tab==='today'&&state.draft)&&!(ui.tab==='program'&&ui.planView==='library'))mountSecSortable();
   if(ui.tab==='today'&&state.draft)mountBlockSortable();
   if(ui.tab==='program'&&ui.planView!=='library')mountSortable();

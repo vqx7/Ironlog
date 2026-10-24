@@ -1,7 +1,7 @@
 /* ---------- account (standalone app) ---------- */
 const ACCT_LATER=KEY+'.acctLater';
 /* The sync line on Settings, redrawn in place when the sync's status changes (setCloud, through fx) and after an account change. */
-function syncLine(){const el=document.getElementById('syncInfo');if(el)el.innerHTML=syncInfo();}
+function syncLine(){settingsSyncLine();}
 function acctRerender(){if((ui.tab==='settings'||ui.tab==='today')&&!ui.modal)rerenderKeepScroll();else syncLine();}
 /* ---------- problem reports (PENDING 58, reworked in r25) ----------
    The menu (top right) and an exercise's ⋯ menu open one sheet. Report a problem
@@ -205,18 +205,6 @@ document.addEventListener('visibilitychange',()=>{
   if(acctWait.pw){waitTry(false);return;}
   if(AUTH()&&!cloud.on)cloudInit();
 });
-function acctPanel(){
-  if(!AUTH()||(window.claude&&typeof window.claude.use==='function'))return '';
-  const u=acct.user;
-  // Signed in but not syncing: the sign-in could not be used (offline at
-  // launch, or refused). Say so and offer a retry rather than looking fine.
-  const stuck=u&&!cloud.on?`<div class="row spread" style="margin-top:6px"><p class="small" style="margin:0;color:var(--yellow)">Not syncing right now.</p><button class="btn sm" data-act="acctRetry">Try again</button></div>`:'';
-  return u
-    ?`<div class="panel" id="acctPanel"><div class="row spread"><p class="small" style="margin:0;min-width:0;overflow-wrap:anywhere">Signed in as <b>${esc(u.email)}</b></p><button class="btn sm" data-act="acctSignOut">Sign out</button></div>${stuck}${typeof AUTH().deleteAccount==='function'?`<button type="button" class="linkbtn" style="margin-top:8px;color:var(--red)" data-act="acctDelete">Delete my account</button>`:''}</div>`
-    /* Signed out, this one line says where the log is and what an account adds (r34.2): Your data
-       used to say it four times (this panel, the storage line, the privacy line, Backup due). */
-    :`<div class="panel" id="acctPanel"><p class="small hastip" style="margin:0 0 8px" data-tip="${esc(isStandalone()?'Deleting the app from the home screen deletes the log on this phone. An account keeps it, or save a backup file below.':'Clearing this browser\'s data deletes the log here. An account keeps it, or save a backup file below.')}"><b>Saved on this ${isStandalone()||coarse()?'phone':'device'} only.</b> Create an account to back it up and use it on any device.</p><div class="row"><button class="btn sm primary" data-act="acctOpen" data-mode="signup">Create account</button><button class="btn sm" data-act="acctOpen" data-mode="signin">Sign in</button></div></div>`;
-}
 const EMAIL_RE=/^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 /* The code from the confirmation email (r45), on the waiting sheet and, after
    "Confirm your email first", on sign-in: the code needs only the email, so
@@ -241,34 +229,5 @@ function acctSheet(m){
   else if(m.mode==='where')b=`<p style="margin:0">Where do you use ${APP_NAME}?</p><button type="button" class="btn primary block" data-act="acctWhere" data-v="app">The home-screen app</button><button type="button" class="btn block" data-act="acctWhere" data-v="here">Here in this browser</button>`;
   else b=`<p style="margin:0">${esc(m.msg||'')}</p><button type="button" class="btn primary block" data-act="mClose">OK</button>`;
   return `<div class="sheet" role="dialog" aria-modal="true" aria-label="${esc(T[m.mode]||'Account')}"><div class="sheet-h"><h3>${esc(T[m.mode]||'Account')}</h3><button class="ib" aria-label="Close" data-act="mClose">✕</button></div><form class="stack" id="acctForm" novalidate>${b}</form></div>`;
-}
-/* Says plainly where the data lives and what leaves the device. Inside Claude
-   the log is stored with the Claude account; anywhere else there is no server
-   at all. This must change when cloud sync for the standalone app arrives. */
-/* What the suggestions are, said once where people look (r31.1, V: a
-   subtle notice). The numbers come from published formulas and stated
-   conventions applied to the lifter's own log; they can be wrong, and the
-   app cannot see form, pain, or health. */
-const SAFETY_TXT=`${APP_NAME} works out suggested loads and reps from your own log with published formulas and the conventions stated in the Guide. They are estimates, not medical, physical therapy, or coaching advice, and they can be wrong. Use good technique, and safety bars or a spotter on heavy lifts. Stop on pain. Check with a doctor before starting or changing training, especially with an injury, a health condition, or a pregnancy. You train at your own risk.`;
-function safetyLine(){return `<p class="small muted" id="safety" style="margin:8px 0 0"><b>Suggestions:</b> estimates from your log, not medical or coaching advice. Train within your limits and stop on pain. ${tipi(SAFETY_TXT,'About suggestions')}</p>`;}
-function privacyLine(){
-  const inClaude=!!(window.claude&&typeof window.claude.use==='function');
-  if(!inClaude&&AUTH()&&acct.user)return `<p class="small muted" id="privacy" style="margin:8px 0 0"><b>Privacy:</b> no ads, no tracking. Your log syncs to your ${APP_NAME} account. Only you and the app's owner can see it. Reports you send go to the app owner. ${tipi('It is stored in a Supabase database. Database rules let each account read and write only its own data. The person who runs that database, the app owner, can see stored data and your email address, as with any app without end-to-end encryption. Your email is used only to sign in and reset your password, and nothing is shared or sold. A new password is checked against known breaches with only the first 5 characters of its hash; the password never leaves the phone. Backup files go only where you save them.','About privacy')}</p>`;
-  if(!inClaude&&AUTH())return `<p class="small muted" id="privacy" style="margin:8px 0 0"><b>Privacy:</b> no ads, no tracking, and nothing sent without an account. Reports you send go to the app owner. ${tipi('Opening or updating the app downloads it from GitHub Pages, which, like any website host, sees your IP address; after that it works offline. With an account, your log and email are stored in a Supabase database, readable by your account and by the app owner; the email is used only to sign in and reset your password. A new password is checked against known breaches with only the first 5 characters of its hash. Deleting the app or this site\'s data deletes the copy on this device, so keep a backup file or an account.','About privacy')}</p>`;
-  return inClaude
-    ?`<p class="small muted" id="privacy" style="margin:8px 0 0"><b>Privacy:</b> no ads, no tracking. Your log is stored with your Claude account. ${tipi('Export and CSV files go only where you save them.','About privacy')}</p>`
-    :`<p class="small muted" id="privacy" style="margin:8px 0 0"><b>Privacy:</b> no account, no ads, no tracking. Your log stays on this device and is sent nowhere. Reports you send go to the app owner. ${tipi(`${APP_NAME} has no server. Opening or updating the app downloads it from GitHub Pages, which, like any website host, sees your IP address; after that it works offline. Backup files go only where you save them. Deleting the app or this site's data deletes your log, so keep a backup file.`,'About privacy')}</p>`;
-}
-function syncInfo(){
-  if(!cloud.on)return isStandalone()
-    ?`<p class="small hastip" style="margin:0" data-tip="Without an account this app keeps your data on this phone only. Deleting the app from the home screen deletes it too. Sign in to keep a copy in your account, or save a backup file to Files or iCloud Drive; Import brings it back on any device."><b>Saved on this phone.</b> ${AUTH()?'Sign in to sync, or export a backup weekly.':'Export a backup weekly.'}</p>`
-    :AUTH()
-      ?`<p class="small hastip" style="margin:0" data-tip="Everything is saved in this browser only. Clearing its data deletes it. Sign in below to keep a copy in your account, or export a backup."><b>Saved in this browser only.</b> Sign in to sync, or export a backup.</p>`
-      :`<p class="small hastip" style="margin:0" data-tip="Sync turns on by itself when this page is opened inside Claude while signed in. Until then everything is saved in this browser only."><b>Cloud sync off in this view.</b> Saved in this browser only.</p>`;
-  const ago=cloud.last?Math.round((Date.now()-cloud.last)/60000):null;
-  const when=ago==null?'not yet':ago<1?'just now':ago<60?`${ago} min ago`:ago<1440?`${Math.round(ago/60)} h ago`:fmtDate(iso(new Date(cloud.last)));
-  const st=cloud.status==='synced'?'<span class="tag green">Synced</span>':cloud.status==='offline'?'<span class="tag yellow">Waiting to sync</span>':'<span class="tag blue">Syncing</span>';
-  return `<div class="sync-row">${st}<span class="small muted">Last synced ${when}</span><button class="btn sm" data-act="syncNow">Sync now</button></div>
-  <p class="small hastip" style="margin:6px 0 0" data-tip="A new phone or a cleared browser loses nothing: sign in and your log comes back. Deleted items wait in History, Recently deleted, for ${TRASH_DAYS} days, and Undo in Settings covers the last 7 days.">${cloud.status!=='synced'?'Saved on this device. It reaches your account when you are back online.':window.claude?'Saved to your Claude account and this device.':'Saved to your account and this device.'}${cloud.err?` <b style="color:var(--red)">${esc(cloud.err)}</b>`:''}</p>`;
 }
 

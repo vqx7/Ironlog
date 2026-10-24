@@ -21,6 +21,7 @@
     "acorn": "8.19.0",
     "chart.js": "4.4.1",
     "esbuild": "0.28.2",
+    "lit-html": "3.3.3",
     "playwright": "^1.56.0",
     "prettier": "3.3.3",
     "sortablejs": "1.15.2",

@@ -6,9 +6,6 @@
    (page titles, the Start card, notices) never move. Keys a tab does not
    show right now (Injuries with none flagged) keep their saved place.
    On the handle, the arrow keys do the same as dragging. */
-/* After a list of sets in History: what the load and reps mean, when it is
-   not a plain total. */
-function histUnits(ex){const bits=[];const n=loadNote(ex).trim();if(n)bits.push(n);if(ex.perSide)bits.push(ex.timed?'seconds per side':'reps per side');return bits.length?` <span class="muted">(${bits.join(', ')})</span>`:'';}
 /* A session's exercises move by dragging this handle too (V, r29), alongside
    the ⋯ menu's Move up and Move down, which do the same thing (bUp, bDown). */
 function bgrip(bi,name){return `<span class="bgrip" role="button" tabindex="0" data-b="${bi}" aria-label="Move ${esc(name)}: drag, or use the arrow keys" title="Drag to move">⠿</span>`;}
@@ -129,10 +126,9 @@ function applySecOrder(){
    finds the hidden sections without reading anything first. A tab with
    nothing hidden shows no line. A section that would show nothing right now (Injuries with none flagged, an empty
    Recently deleted) is not offered. */
-const MORE_LIVE={'today:session':()=>{const R=activeRoutine();const di=ui.todayDay!=null&&ui.todayDay<R.days.length?ui.todayDay:R.schedule==='weekly'?(new Date().getDay()+6)%7:cycleState(R).next;const d=R.days[di];return !!d&&!d.rest&&d.items.length>0;},'today:injuries':()=>(state.injuries||[]).length>0,'history:cardio':()=>state.cardio.length>0,'history:trash':()=>(state.trash||[]).length>0};
+const MORE_LIVE={'today:session':()=>{const R=activeRoutine();const di=ui.todayDay!=null&&ui.todayDay<R.days.length?ui.todayDay:R.schedule==='weekly'?(new Date().getDay()+6)%7:cycleState(R).next;const d=R.days[di];return !!d&&!d.rest&&d.items.length>0;},'today:injuries':()=>(state.injuries||[]).length>0,...MORE_OFFER};
 function moreLine(tab){
-  const h=state.settings.hidden;
-  const list=HIDEABLE.filter(([t,k])=>t===tab&&h.includes(t+':'+k)&&(!MORE_LIVE[t+':'+k]||MORE_LIVE[t+':'+k]()));
+  const list=moreList(tab,state.settings.hidden,MORE_LIVE);
   // Nothing to add: nothing shown. Layout stays one tap away in the menu.
   if(!list.length)return '';
   return `<div class="moreline" id="moreLine"><p class="small muted ml-h">Add to this tab</p><div class="chips">${list.map(([t,k,l])=>`<button type="button" class="chip add" data-act="secShow" data-k="${t}:${k}">+ ${esc(l)}</button>`).join('')}</div><button type="button" class="linkbtn ml-c" data-act="goLayout">Show, hide, or reorder sections</button></div>`;
@@ -143,24 +139,39 @@ function applyHidden(){
   const h=state.settings.hidden;if(!h||!h.length)return;
   keyedKids().forEach(e=>{if(h.includes(ui.tab+':'+e.dataset.mkey))e.remove();});
 }
-function saveSecOrder(){
-  const keys=keyedKids().map(e=>e.dataset.mkey);
+/* keys: the shown sections in their new order (read from the page when not
+   given); a section not shown keeps its place after the one it followed. */
+function saveSecOrder(keys){
+  keys=keys||keyedKids().map(e=>e.dataset.mkey);
   const old=state.settings.secOrder[ui.tab]||[];const out=keys.slice();
   old.forEach((k,i)=>{if(out.includes(k))return;const prev=old.slice(0,i).reverse().find(q=>out.includes(q));out.splice(prev?out.indexOf(prev)+1:0,0,k);});
-  state.settings.secOrder[ui.tab]=out;saveSoon();
+  act(()=>{state.settings.secOrder[ui.tab]=out;},{soon:true});
 }
+/* A moved screen (litTab) places its sections from the saved order itself,
+   and its drawn nodes may not be moved under it: a drag or an arrow key reads
+   the new order, puts the section back where it was drawn, saves the order
+   and draws the screen again, which moves it. A legacy screen keeps the move
+   as dragged, as before. */
 function mountSecSortable(){
   if(!window.Sortable)return;const v=$('#view');if(keyedKids().length<2)return;
+  let home=null;
   // Its own group, closed both ways: a section can only move among sections,
   // and no exercise or day can be dropped among them.
   sortables.push(window.Sortable.create(v,{group:{name:'sections',pull:false,put:false},handle:'.sgrip',draggable:'[data-mkey]',animation:150,fallbackOnBody:true,
-    onEnd:e=>{if(e.oldIndex!==e.newIndex)saveSecOrder();}}));
+    onStart:e=>{home={el:e.item,parent:e.item.parentNode,next:e.item.nextSibling};},
+    onEnd:e=>{const h=home;home=null;if(e.oldIndex===e.newIndex)return;
+      if(!litTab()){saveSecOrder();return;}
+      // After Sortable has finished with the drop, and in one task, so the old order is never painted.
+      const keys=keyedKids().map(x=>x.dataset.mkey);
+      setTimeout(()=>{if(h&&h.el.parentNode===h.parent)h.parent.insertBefore(h.el,h.next);saveSecOrder(keys);rerenderKeepScroll();},0);}}));
 }
 function moveSecKey(g,dir){
   const el=g.closest('[data-mkey]');if(!el||el.parentElement!==$('#view'))return;
   const kids=keyedKids();const i=kids.indexOf(el);const j=i+dir;if(j<0||j>=kids.length)return;
-  if(dir<0)kids[j].before(el);else kids[j].after(el);
-  saveSecOrder();g.focus();el.scrollIntoView({block:'nearest'});
+  const k=el.dataset.mkey;
+  if(litTab()){const keys=kids.map(x=>x.dataset.mkey);keys.splice(i,1);keys.splice(j,0,k);saveSecOrder(keys);rerenderKeepScroll();
+    const n=document.querySelector(`#view > [data-mkey="${k}"]`);const ng=n&&n.querySelector('.sgrip');if(ng)ng.focus();if(n)n.scrollIntoView({block:'nearest'});}
+  else{if(dir<0)kids[j].before(el);else kids[j].after(el);saveSecOrder();g.focus();el.scrollIntoView({block:'nearest'});}
   toast(`Moved ${dir<0?'up':'down'}`);
 }
 // A tap on the handle must never fold the section or fire a button under it.
@@ -268,7 +279,7 @@ trashTidy();
 try{if(fitRecordOld())saveNow();}catch(e){log('fitRecordOld',e);}
 // r54: targets fitted to a cycle by the reading of its plan before r54 follow r54's (refit, src/app/profile.ts), once, on this device's state.
 try{const rf=refit();if(rf){const b=state.settings.bands;for(const m in rf.bands)b[m]=rf.bands[m].slice();if(Object.keys(rf.fit).length)state.settings.bandsFit=rf.fit;else delete state.settings.bandsFit;saveNow();}}catch(e){log('refit',e);}
-window.__ironlog={B3_PARTS,THREE_URLS,platesPerSide,get state(){return state;},set state(v){setState(v);},fbContext,FB_CTX_MAX,logCut,logBuf,log,dateIndex,sessionsOn,bestLine,whyTarget,recent4w,weekSessions,fmtDate,fmtDateLong,fbShrink,orderAt,orderRun,dropOnlyLift,profHeavy,appBand,fitRecordOld,prof,profClean,profRule,profPlan,defPlan,defBand,profMoveBands,profApplyList,strengthPick,PROF_DAYS,FOCUS_MAX,estInLoad,keepExtra,EXTRA_MAX,draftPlanMin,pace,paceRatios,sessModelMin,PACE_N,PACE_DAYS,PACE_MIN,plainTemplate,trashTidy,ENV,KEY,COMMON,COMMON_TIP,isCommon,bwEvery,isRestWeek,sessCmp,avgWeeks,weekStreak,coach,noLog,afterSet,adjOn,bwAt,newBlock,cycleState,sortedSessions,addDays,loadIn,gymRack,gymClean,dbListOf,capOf,refreshEx,effShow,rirScale,setStr,libExercises,obGate,obTour,andList,belowMin,aboveMax,starterRoutine,starterSigs,plateList,exBarKg,VOL_MODES,liveLogFetch,regionSrc,fitTargets,firstFullWeek,moveBlock,BANDS,installSheet,siteHost,greyW,effW,greyR,lighterLoad,heavierLoad,incOf,swapPlan,planSetsPerWeek,weekNeed,stepRead,e1inv,rtfAt,rtfOf,rtfBand,calStats,rirEff,isHard,setCredit,tonnage,loadMode,loadWords,loadNote,progStep,jumpCap,setSecs,setupSecs,recovery,rolling7,rankDays,rankExercises,isCompound,patternOf,noE1,whtrLine,exHeadline,remainMin,shortPlan,weekPlan,cycleProjection,lastLighterWeek,avgFirstWeek,avgWait,stallWeeks,weeksAvg,fitFloors,refit,regionBalance,parseHeight,mixCheck,swapCands,eqPlan,exportCSV,importData,chunksOf,assemble,sessionMuscles,TRACK_ONLY,cloud,Hx,mergeChunk,baseOf,sync:()=>cq(cloudPull),TEMPLATES,lastRFor,impDate,impRows,impNorm,impMatch,impFromText,impFromTable,impHeader,impBuild,impStart,impXlsx,parseSets,undoStack,undoRestore,undoForget,allTimeBests,bestsBoard,obActive,fmtW,rirUsual,rirEst,routineFromTemplate,plannedSets,map3d:()=>({state:B3.state,fail:B3.fail,meshes:B3.meshes.length,yaw:B3.yaw,glow:Object.keys(B3.mats).filter(m=>B3.mats[m].emissiveIntensity>0),canvas:!!document.querySelector('#bm3d canvas'),colors:Object.fromEntries(Object.entries(B3.mats).map(([m,mt])=>[m,'#'+mt.color.getHexString()])),pick:(x,y)=>map3dPick(x,y),want:map3dColors()}),cloudState:()=>({on:cloud.on,status:cloud.status,err:cloud.err,uid:cloud.uid,acct:cloud.acct}),acctUser:()=>acct.user,acctWaiting:()=>!!acctWait.pw,flush:()=>cq(cloudFlush),cloudInit,cloudStop,asideList,backupDue,routineUpdates,planFor,platesMode,plateText,chunksOf,IDX,suggest,e1,render,ACT,ui,makeDemo,invalidate,normalize,snapshot,saveNow,timer,weekStats,weekStart,today,EX,blockProgress,dayMinutes,weekStreak,coach,tonnageNow,livePR,movers,stalledIds,muscleStatus,actualAvg4,plannedPerWeek,parseSets,fillSets,newBlock,lastNoteOf,sizeRows,sessionMuscleSets,sessionCapNote,routineClutter,rowBlank,dayReasons,impTextSets,liftTrend,prsWithin,activeRoutine,rackStep,repFloor,sessionLength,prBeat,exInjury,exJoints,openModal,EQUIP,HARD_EX,recentLighter,planEvidenceNote,howToUrl,editFp,toast,avgWeeks,regionWk,REGION_WKS,SAFETY_TXT,libFiltered,nameMatch,workLoad,fitE,lighter,offTarget,sessionWord,sessionWords,dayLabel,daySets,ssLetters,routineSig,tplCountLine,pwOf,dropStarter,trainOn,planItemOf,fatigueStalls,avgWeeksTxt,routineFromLog,repSpan,rangeWords,calDueIdx,readyCard,sameRR,hintOnce,overSets,rackTol,daysOff,BACK_DAYS,prName,sessTm,effTgt,bwDueCard,bwNoLoad,applyPick,joinAdjacent,sameExOnce,savedEx,goalState,goalLine,bwRefLoad,ML,exMusParts,musTrend,U,toD,fromD,loadLabel,exName,planCredit,gymOf,isDeloadWeek,freeMode,injuredSet,prLoad,statsUpTo,readiness,bwRef,weekRoutine,logBack,logStart,easierText,barKg,suggestCore,loadOf,bwLoad,hardCredit,rirHalfOn,prFrame,stallWords,atRangeTop,oddLoad,lightZero};
+window.__ironlog={act,B3_PARTS,THREE_URLS,platesPerSide,get state(){return state;},set state(v){setState(v);},fbContext,FB_CTX_MAX,logCut,logBuf,log,dateIndex,sessionsOn,bestLine,whyTarget,recent4w,weekSessions,fmtDate,fmtDateLong,fbShrink,orderAt,orderRun,dropOnlyLift,profHeavy,appBand,fitRecordOld,prof,profClean,profRule,profPlan,defPlan,defBand,profMoveBands,profApplyList,strengthPick,PROF_DAYS,FOCUS_MAX,estInLoad,keepExtra,EXTRA_MAX,draftPlanMin,pace,paceRatios,sessModelMin,PACE_N,PACE_DAYS,PACE_MIN,plainTemplate,trashTidy,ENV,KEY,COMMON,COMMON_TIP,isCommon,bwEvery,isRestWeek,sessCmp,avgWeeks,weekStreak,coach,noLog,afterSet,adjOn,bwAt,newBlock,cycleState,sortedSessions,addDays,loadIn,gymRack,gymClean,dbListOf,capOf,refreshEx,effShow,rirScale,setStr,libExercises,obGate,obTour,andList,belowMin,aboveMax,starterRoutine,starterSigs,plateList,exBarKg,VOL_MODES,liveLogFetch,regionSrc,fitTargets,firstFullWeek,moveBlock,BANDS,installSheet,siteHost,greyW,effW,greyR,lighterLoad,heavierLoad,incOf,swapPlan,planSetsPerWeek,weekNeed,stepRead,e1inv,rtfAt,rtfOf,rtfBand,calStats,rirEff,isHard,setCredit,tonnage,loadMode,loadWords,loadNote,progStep,jumpCap,setSecs,setupSecs,recovery,rolling7,rankDays,rankExercises,isCompound,patternOf,noE1,whtrLine,exHeadline,remainMin,shortPlan,weekPlan,cycleProjection,lastLighterWeek,avgFirstWeek,avgWait,stallWeeks,weeksAvg,fitFloors,refit,regionBalance,parseHeight,mixCheck,swapCands,eqPlan,exportCSV,importData,chunksOf,assemble,sessionMuscles,TRACK_ONLY,cloud,Hx,mergeChunk,baseOf,sync:()=>cq(cloudPull),TEMPLATES,lastRFor,impDate,impRows,impNorm,impMatch,impFromText,impFromTable,impHeader,impBuild,impStart,impXlsx,parseSets,undoStack,undoRestore,undoForget,allTimeBests,bestsBoard,obActive,fmtW,rirUsual,rirEst,routineFromTemplate,plannedSets,map3d:()=>({state:B3.state,fail:B3.fail,meshes:B3.meshes.length,yaw:B3.yaw,glow:Object.keys(B3.mats).filter(m=>B3.mats[m].emissiveIntensity>0),canvas:!!document.querySelector('#bm3d canvas'),colors:Object.fromEntries(Object.entries(B3.mats).map(([m,mt])=>[m,'#'+mt.color.getHexString()])),pick:(x,y)=>map3dPick(x,y),want:map3dColors()}),cloudState:()=>({on:cloud.on,status:cloud.status,err:cloud.err,uid:cloud.uid,acct:cloud.acct}),acctUser:()=>acct.user,acctWaiting:()=>!!acctWait.pw,flush:()=>cq(cloudFlush),cloudInit,cloudStop,asideList,backupDue,routineUpdates,planFor,platesMode,plateText,chunksOf,IDX,suggest,e1,render,ACT,ui,makeDemo,invalidate,normalize,snapshot,saveNow,timer,weekStats,weekStart,today,EX,blockProgress,dayMinutes,weekStreak,coach,tonnageNow,livePR,movers,stalledIds,muscleStatus,actualAvg4,plannedPerWeek,parseSets,fillSets,newBlock,lastNoteOf,sizeRows,sessionMuscleSets,sessionCapNote,routineClutter,rowBlank,dayReasons,impTextSets,liftTrend,prsWithin,activeRoutine,rackStep,repFloor,sessionLength,prBeat,exInjury,exJoints,openModal,EQUIP,HARD_EX,recentLighter,planEvidenceNote,howToUrl,editFp,toast,avgWeeks,regionWk,REGION_WKS,SAFETY_TXT,libFiltered,nameMatch,workLoad,fitE,lighter,offTarget,sessionWord,sessionWords,dayLabel,daySets,ssLetters,routineSig,tplCountLine,pwOf,dropStarter,trainOn,planItemOf,fatigueStalls,avgWeeksTxt,routineFromLog,repSpan,rangeWords,calDueIdx,readyCard,sameRR,hintOnce,overSets,rackTol,daysOff,BACK_DAYS,prName,sessTm,effTgt,bwDueCard,bwNoLoad,applyPick,joinAdjacent,sameExOnce,savedEx,goalState,goalLine,bwRefLoad,ML,exMusParts,musTrend,U,toD,fromD,loadLabel,exName,planCredit,gymOf,isDeloadWeek,freeMode,injuredSet,prLoad,statsUpTo,readiness,bwRef,weekRoutine,logBack,logStart,easierText,barKg,suggestCore,loadOf,bwLoad,hardCredit,rirHalfOn,prFrame,stallWords,atRangeTop,oddLoad,lightZero};
 render();
 wakeOn();
 timerResume();

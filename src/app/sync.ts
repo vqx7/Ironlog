@@ -1132,13 +1132,9 @@ export async function cloudPull(): Promise<void> {
     // Ready-made routines from earlier builds' Recently deleted leave here too,
     // and the cleared list goes back to the cloud (r34.1).
     {
-      const tr = arr(state.trash) || [];
-      const n0 = tr.length;
-      state.trash = tr.filter(t => {
-        const T = rec(t);
-        return !(T && T.kind === 'routine' && plainTemplate(T.data));
-      });
-      if ((arr(state.trash) || []).length !== n0) saveNow();
+      const n0 = state.trash.length;
+      state.trash = state.trash.filter(t => !(t.kind === 'routine' && plainTemplate(t.data)));
+      if (state.trash.length !== n0) saveNow();
     }
     if (!ui.modal) fx.rerenderKeepScroll();
     else fx.render();

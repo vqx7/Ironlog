@@ -270,12 +270,41 @@ export function load(): State {
     log('load', e);
     device.hadLocal = false;
     try {
-      if (raw) localStorage.setItem(KEY + '.unreadable', raw);
+      if (raw) localStorage.setItem(UNREAD_KEY, raw);
     } catch (e2) {
       log('load', e2);
     }
   }
   return normalize(null);
+}
+
+/** The key a save this build could not read is kept under (load, above), so a later build or the lifter can still recover it. */
+const UNREAD_KEY = KEY + '.unreadable';
+/** The save kept aside because it could not be read at start, as text, or '' when there is none. */
+export function unreadableRaw(): string {
+  try {
+    return localStorage.getItem(UNREAD_KEY) || '';
+  } catch (e) {
+    // Storage this browser refuses: nothing kept aside can be read, as before the move.
+    return '';
+  }
+}
+/** Deletes the save kept aside (Forget it, or once a restore has read it). */
+export function unreadableForget(): void {
+  try {
+    localStorage.removeItem(UNREAD_KEY);
+  } catch (e) {
+    // Storage this browser refuses: there is nothing kept aside to delete.
+  }
+}
+/** Empties the error log, here and on this device (Settings, Clear log). */
+export function logClear(): void {
+  logBuf.length = 0;
+  try {
+    localStorage.removeItem(LOGK);
+  } catch (e) {
+    log('diag', e);
+  }
 }
 
 /* ---------- the settings kept aside for the demo ---------- */

@@ -11,20 +11,22 @@
    typed field by field, written by sync.ts and a few account actions. The
    four objects moved unchanged. */
 
-import type { EngineState, Measurement, Settings } from './types';
+import type { DbRack, EngineState, Measurement, PlanItem, Routine, Settings } from './types';
 import type { DraftLike } from './session';
+import type { Trashed } from './records';
 
 /** The whole log as normalize() returns it: the fields the engine and the
     analytics read, typed field by field since 3b (EngineState), the settings
     as normalize() keeps every one of them, the tape entries and the session
-    in progress as the sync reads them (r56), and the rest (Recently deleted,
-    the schema version) still open until they are typed with the screens that
-    read them (phase 5). */
+    in progress as the sync reads them (r56), Recently deleted as History
+    reads it (r57), and the rest still open until they are typed with the
+    screens that read them (phase 5). */
 export type State = Omit<EngineState, 'settings'> & {
   version: number;
   settings: Settings;
   measurements: Measurement[];
   draft: DraftLike | null;
+  trash: Trashed[];
 } & { [field: string]: unknown };
 
 /* First set at start, from the save on this device (setState(load()) in the
@@ -75,6 +77,10 @@ export interface Ui {
   folds: Record<string, unknown>;
   rng: Record<string, unknown>;
   eqLast: unknown;
+  /** Your gym's dumbbell fields as typed, until they make a rack (r33). */
+  gymDb?: Partial<DbRack> | null | undefined;
+  /** The unit Your gym is labelled in, chosen before anything is saved there. */
+  gymU?: 'lb' | 'kg' | undefined;
   /** A ticked set unticked to ask about a load far off, to tick again once Fix it's load is in (r55): its block, through blkRef, and its row. */
   refix: { b: unknown; s: number } | null;
   [field: string]: unknown;
@@ -203,16 +209,20 @@ export const cloud: Cloud = {
 
 /* ---------- the screens, as the storage and sync code reaches them ---------- */
 
-/* The storage and sync modules (phase 4, r56) redraw the page, show a toast
-   and read the first page's state through this one object, which the legacy
-   script fills once at start (setFx) with its own functions, so the modules
-   import nothing from the screens. It goes when the screens move (phase 5). */
+/* The storage and sync modules (phase 4, r56) and the screens moved so far
+   (phase 5, r57 on) redraw the page, ask, show a toast and read the first
+   page's state through this one object, which the legacy script fills once
+   at start (setFx) with its own functions, so no module imports the legacy
+   script. Each effect moves into a module with the screen code it belongs
+   to, and the object goes with the last screen (r60). */
 /** The screens' effects the storage and sync code calls. */
 export interface Fx {
   /** Redraws the page. */
   render(): void;
   /** Asks a question with two answers and Cancel (the confirm sheet): the answer, 'cancel' when the sheet is closed without one. */
   ask(title: string, body: string, ok: string, alt: string): Promise<'ok' | 'alt' | 'cancel'>;
+  /** Asks before an action (the confirm sheet): the title, the question, the button's words, what the button does, and whether it deletes. */
+  confirm(title: string, body: string, okLabel: string, fn: () => void, danger?: boolean): void;
   /** Redraws the page keeping the scroll position. */
   rerenderKeepScroll(): void;
   /** Shows a toast: the message, whether it offers Undo, for how long, and its kind. */
@@ -223,6 +233,22 @@ export interface Fx {
   syncLine(): void;
   /** Whether the first page is held open on this device after a sign-out (Today's obGate). */
   obGate(): boolean;
+  /** The session's exercise given the loads a change of Your gym or a step makes (refreshEx; with the session screen, r60). */
+  refreshEx(exId: string): void;
+  /** A plan item's change carried into the session in progress (syncDraftPlan; with the session screen, r60). */
+  syncDraftPlan(f: { r: Routine; di: number; it: PlanItem }): void;
+  /** A session in progress worded again in the unit just chosen (unitWords; with the session screen, r60). */
+  unitWords(): void;
+  /** Stops the rest timer (with the session screen, r60). */
+  stopTimer(): void;
+  /** Readies the rest timer's sound, on a tap (with the session screen, r60). */
+  primeAudio(): void;
+  /** Draws the rest timer again in its current style, when it is showing (with the session screen, r60). */
+  timerRefresh(): void;
+  /** Keeps the screen on during a session, where the browser allows it (with the session screen, r60). */
+  wakeOn(): void;
+  /** Lets the screen sleep again (with the session screen, r60). */
+  wakeOff(): void;
 }
 /* Set once at the start of the legacy script, before anything that could
    call an effect runs (the ! says so), as state is set by load(). */

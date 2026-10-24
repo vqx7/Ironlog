@@ -3,7 +3,7 @@
 A hypertrophy and strength tracker for one lifter, V, used on a phone at the gym. It ships as a standalone
 installable web app: built from `src/` into one page, served by GitHub Pages at https://ironapp.org, working
 offline, with the log on the phone and an optional account that syncs it. Every pull request also publishes a
-preview app at https://ironapp.org/preview/ to try on the phone before merging. Build r56.2, version 2.10, state schema v5.
+preview app at https://ironapp.org/preview/ to try on the phone before merging. Build r57, version 2.11, state schema v5.
 
 The Claude artifact version was retired by V on 2026-09-27 (`OWNER.md` Done): never work on it or republish it.
 `cloudProvider()` still takes Claude's db when `window.claude` exists, because the sync suites use it as their
@@ -62,8 +62,10 @@ stand-in cloud.
   the error log (`log`), Undo's steps, a log kept aside for another account, in IndexedDB as Undo's copies are) and
   `sync.ts` (every write of the log, the account's documents, the sync notes, another tab, one workout open on two
   phones, the account question); they reach the screens only through `fx` in `store.ts`, which the legacy script
-  fills at start (`render`, `toast`, `ask`), and run nothing on import (`storageStart()`, `syncStart()`).
-  `yourdata.ts` writes the lines a module adds to Your data.
+  fills at start (`render`, `toast`, `ask`, `confirm`, and the session's effects a moved screen calls), and run
+  nothing on import (`storageStart()`, `syncStart()`). The screens move here from r57 (phase 5): `view.ts` (the
+  host that draws every tab into `#view`, and the parts the moved screens share), `act.ts` (the one way to change
+  the log), `history.ts` and `settings.ts`, with `display.ts` and `env.ts` for what more than one screen reads.
 - `src/1*.js`, `src/2*.js`: the legacy script, cut into parts at its section headers (start-up, accounts, the
   screens, sheets, actions and events), one function scope. It reads `src/app/` only through the imports in
   `src/09-imports.js`. `src/01` to `src/03` are the page head, styles and markup.
@@ -146,8 +148,11 @@ lines, then `ALL PASS` (the fuzz suite prints `fuzz clean`). Type check: `npx ts
 - **Modules:** new code goes in `src/app/` as strict TypeScript: no `any`, every cast and `!` with a comment saying
   why, every export with a comment saying what it is for, every `catch` logging the error or saying why it is
   expected, formatted by Prettier. A raw value (a save, a document, a note) is read through `rec`, `arr` and
-  `parseJson` in `records.ts`, never cast in place. `src/app/` imports only
-  `src/app/`, each module only from its own layer or below (`ARCHITECTURE.md`), never in a circle. A function of the
+  `parseJson` in `records.ts`, never cast in place. `src/app/` imports only `src/app/` and lit-html (pinned exactly
+  in package.json, bundled into the page by `scripts/join.js`, never loaded from an address), each module only from
+  its own layer or below (`ARCHITECTURE.md`), never in a circle. A moved screen draws with lit-html and writes to the
+  log only inside `act` (the check, the Undo step, the change, the caches dropped, the save and the sync, in that
+  order). A function of the
   model reads nothing but the model and its arguments: no clock, randomness, store, page or changing module value
   (new engine or analytics code takes `M` first; the legacy script reaches it through an adapter in `live.ts`).
   `tests/hygiene.js` checks these.

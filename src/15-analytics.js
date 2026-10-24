@@ -17,9 +17,6 @@ const loadIn=(ex,w)=>w==null?'':fmtW(ex&&ex.assist?-w:w);
    (analytics.ts, weeks.ts, time.ts, coach.ts); what stays here moves with the
    screens that call it (ARCHITECTURE.md, phase 5). */
 const rirShow=ex=>state.settings.rirMode!=='off'&&!(ex&&ex.timed);
-/* One set as text, for history, tables and the coach: 225×5, or 45 s for a timed hold. */
-function setShort(ex,w,r){return ex.timed?`${loadLabel(ex,+w||0)} for ${r}s`:`${loadLabel(ex,+w||0)}×${r}`;}
-function setStr(ex,x){return `${x.warm?'(W) ':x.drop?'(D) ':''}${setShort(ex,x.w,x.r)}${missedTag(x)}${!ex.timed&&x.rir!=null&&x.rir!==''?(rirScale()==='rpe'?' @RPE '+effShow(x.rir):' @'+effShow(x.rir)):''}${x.cal?' (RIR check)':''}`;}
 /* ---------- what the load number means ----------
    Every set stores the number you typed, as you typed it. What it means is a
    property of the exercise, shown on the exercise and above the load column:

@@ -20,7 +20,6 @@
    lighter day or deload, past workouts and edits, and when turned off in
    Settings. "Keep" undoes it for that exercise for the rest of the session.
    The heavier load is the engine's heavierLoad (src/app/engine.ts since r54). */
-function adjOn(){return state.settings.autoAdj!==false;}
 /* A bodyweight lift never done with added load (r34.2, from the review:
    push-ups at BW x 20 were moved to BW+10 mid-session, a load the lifter
    never had, and one tap logged it). It progresses by reps until the lifter
