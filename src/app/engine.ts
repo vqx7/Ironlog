@@ -9,7 +9,7 @@ import type { DraftBlock, Plan } from './types';
 import type { Drift, ExPoint, Exposure, ExerciseLike, Model, Suggestion } from './model';
 import type { LiftBests } from './analytics';
 import { EXIn, UIn, exInjuryIn, gymOfIn } from './model';
-import { IDXIn, bwLoadIn, bwRefLoadIn, lastOf, statsUpToIn } from './analytics';
+import { IDXIn, bwLoadIn, bwRefLoadIn, lastOf, statsUpToIn, triedAt } from './analytics';
 import { atCapOfIn, capOfIn, exBarKgIn, gymK, gymRackIn, gymStepIn, platesMode, rackGapIn, rackTolIn } from './gym';
 import {
   DEFAULT_STEP,
@@ -492,7 +492,8 @@ export function suggestCoreIn(M: Model, exId: string, plan: Plan, opts?: Suggest
   const capW = (w: number): number => (cap != null ? Math.min(w, cap) : w);
   // Only the sets at the top load decide progression. Ramp-up sets at lighter
   // loads used to block every load increase unless they also reached repMax.
-  const topPts = ws.filter(p => Math.abs(p.w - top) < 1e-6);
+  // As tried, a missed set among them with its 0 reps (triedAt, PENDING 338 A).
+  const topPts = triedAt(last, top);
   /* The planned sets among them decide a step, as they set the rep target
      (tp, below): a set past the plan's count is left out (r55, the audit: 80
      x 10 x 4 and a fifth set of 8 held the load and asked 41+ reps over 4). */
@@ -532,11 +533,17 @@ export function suggestCoreIn(M: Model, exId: string, plan: Plan, opts?: Suggest
      jumpCap). A set called past 4 RIR is read as 4 here only, which errs low. */
   const tgtRir = +plan.rir || 0;
   /* The first 3 sessions of a lift find its load (a convention, r31): the
-     cap on a jump is 25% there, so a first guess well under what the lifter
-     can do is corrected in a session or two, not a step at a time. */
+     cap on a jump is 25% there, so a first guess well under what the
+     lifter can do moves up by what the estimate allows, not a step at a
+     time; a set rated 5 or more in reserve is read as 5 (E1_MAX_RIR), so
+     from such sets it moves about a step a session (PENDING 338 E). */
   const early = exps.length <= 3;
-  const fl = repFloor(topPts, plan.repMin);
-  const tp = topPts.slice(0, Math.max(1, +plan.sets || topPts.length)).map(p => ({ ...p, r: fl(p.r) }));
+  // One set under the range among sets made reads as the bottom of it (repFloor); a missed set never does.
+  const fl = repFloor(
+    topPts.filter(p => !p.missed),
+    plan.repMin
+  );
+  const tp = topPts.slice(0, Math.max(1, +plan.sets || topPts.length)).map(p => (p.missed ? p : { ...p, r: fl(p.r) }));
   const C: SuggestCtx = {
     ex,
     exId,
@@ -1339,7 +1346,13 @@ export function rackSnapIn(M: Model, ex: ExerciseLike, plan: Plan, res: Suggesti
    the audit V asked for: a first session's 6 kg dumbbells, done easily, were
    stepped to 8.5 kg, which no rack has, and the 6, 8.5 and 11 kg logged after
    read as a rack in 0.5 kg steps for the next twelve sessions); it is not
-   kept, since it changes with the load. */
+   kept, since it changes with the load. The loads are read from the newest
+   session back (PENDING 338 C): an older session whose loads fit only a
+   spacing that is no step of the newer ones' (2.5 kg against 2) is another
+   gym's, so it and those before it are left out. Read all together, 22.5,
+   25 and 27.5 kg, then 24 at a gym in 2 kg steps, fit only 0.5 kg, and 24.5
+   was asked, which neither rack has. A spacing that is a step of the other
+   (5 lb and 2.5) is the same rack read more closely. */
 export function rackStepIn(M: Model, ex: ExerciseLike, at?: number | null): number | null {
   const I = IDXIn(M);
   I._rack = I._rack || {};
@@ -1350,10 +1363,22 @@ export function rackStepIn(M: Model, ex: ExerciseLike, at?: number | null): numb
     return g ? fromDIn(M, g) : null;
   };
   if (I._rack[key] === undefined) {
-    const xs = (I.byEx[ex.id] || []).slice(-12);
-    const ws: number[] = [];
-    for (const x of xs) for (const p of x.pts) if (p.w > 0) ws.push(toDIn(M, p.w)!);
-    I._rack[key] = ws.length ? fit(ws) : null;
+    const steps = (a: number, b: number): boolean => Math.abs(a / b - Math.round(a / b)) < 0.01;
+    let ws: number[] = [],
+      g: number | null = null;
+    for (const x of (I.byEx[ex.id] || []).slice(-12).reverse()) {
+      const own: number[] = [];
+      for (const p of x.pts) if (p.w > 0) own.push(toDIn(M, p.w)!);
+      if (!own.length) continue;
+      const f = fit([...ws, ...own]);
+      if (ws.length && f !== g) {
+        const h = fit(own);
+        if (f == null || g == null || h == null || !(steps(g, h) || steps(h, g))) break;
+      }
+      ws = [...ws, ...own];
+      g = f;
+    }
+    I._rack[key] = g;
   }
   const logged = (I.byEx[ex.id] || []).some(x => x.pts.some(p => p.w > 0));
   const d = logged || at == null || !(at > 0) ? null : toDIn(M, at);

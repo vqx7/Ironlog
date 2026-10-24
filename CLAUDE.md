@@ -3,7 +3,7 @@
 A hypertrophy and strength tracker for one lifter, V, used on a phone at the gym. It ships as a standalone
 installable web app: built from `src/` into one page, served by GitHub Pages at https://ironapp.org, working
 offline, with the log on the phone and an optional account that syncs it. Every pull request also publishes a
-preview app at https://ironapp.org/preview/ to try on the phone before merging. Build r56.1, version 2.9, state schema v5.
+preview app at https://ironapp.org/preview/ to try on the phone before merging. Build r56.2, version 2.10, state schema v5.
 
 The Claude artifact version was retired by V on 2026-09-27 (`OWNER.md` Done): never work on it or republish it.
 `cloudProvider()` still takes Claude's db when `window.claude` exists, because the sync suites use it as their
@@ -39,7 +39,10 @@ stand-in cloud.
    correctness and data-loss problems only, each with a reproduction run on the stack and on the build before it,
    report only. Rerun each reproduction before acting; fix what it confirms, with a test; record the rest in
    `PENDING.md`.
-6. Storage and sync keep the highest bar, because a lost log cannot be rebuilt (Invariants, Data and Sync).
+6. Storage and sync keep the highest bar, because a lost log cannot be rebuilt (Invariants, Data and Sync). The app has a
+   handful of users, each updating to the current build (V, 2026-10-24): devices several builds apart, three phones on
+   one workout and similar cases are deferred, not ruled out, and stay tracked in `PENDING.md` (337) until users or V
+   bring them back; one phone, one account and two tabs keep the bar.
 7. One simple rule over special cases: add a rule only when a lifter would notice it missing (V, 2026-10-18:
    "I dont want to add random complex rules if they are not necessarily going to aid things").
 8. The proper thing is done the first time (V, 2026-10-17): a type rather than a cast, one source for a value, a
@@ -117,7 +120,8 @@ lines, then `ALL PASS` (the fuzz suite prints `fuzz clean`). Type check: `npx ts
   session still counts for the trend, stalls and PRs; done lighter it sets no target or trend, and done in full on a
   lighter or deload day it is a full session (a day's label never overrides what a lift did). A break of more than
   four weeks restarts a lift's readings, and the weeks counted (averages and adherence) start after it. A ticked set
-  of 0 reps is a missed set: kept and shown, counted toward nothing, and asked about first when its load is well
+  of 0 reps is a missed set: kept and shown, counted toward no volume, PR, estimate or trend, read by the next target
+  as a set short of the range (so sets missed never step a load up, r56.2), and asked about first when its load is well
   under the session's working load (r55.1). With Your gym's plates set, a bar lift's loads are ones the bar and those
   plates make (r55.1). A past week is read against what its routine
   planned then (each session records it, `pw`), never the routine as it is now. A PR is a PR on any day, and a change of units or gyms is never one.

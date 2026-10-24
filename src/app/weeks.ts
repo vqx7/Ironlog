@@ -21,8 +21,9 @@ import { dayCreditIn, nextTrainIdx, planSetsPerWeekIn, plannedPerWeek, plannedSe
     the weeks asked for, how far back it reached, the lighter and rest weeks
     left out, whether the log's first week cut it short, the share of the
     sets whose RIR was logged, per muscle, and the muscles on plan though
-    under their minimum (cycleMixIn). */
+    under their minimum (cycleMixIn), and the sessions a week it averages. */
 export interface AvgMeta {
+  _sess: number;
   _weeks: number;
   _missed: number;
   _n: number;
@@ -212,6 +213,9 @@ export function avgWeeksIn(M: Model, n: number, lightToo?: boolean): WeeklyAvg |
     conf: Record<string, number> = {};
   for (const m in tot) out[m] = tot[m] / weeks;
   for (const m in con) conf[m] = con[m] / weeks;
+  // Sessions a week over the same weeks (PENDING 338 D): the coach reads them against the plan before it reads how sets were done.
+  const sess = used.reduce((a, wk) => a + weekSessionsIn(M, wk), 0) / weeks;
+  Object.defineProperty(out, '_sess', { value: sess, enumerable: false });
   Object.defineProperty(out, '_weeks', { value: weeks, enumerable: false });
   Object.defineProperty(out, '_missed', { value: missed, enumerable: false });
   Object.defineProperty(out, '_n', { value: n, enumerable: false });
@@ -224,7 +228,7 @@ export function avgWeeksIn(M: Model, n: number, lightToo?: boolean): WeeklyAvg |
   Object.defineProperty(out, '_back', { value: ffHit && logBackIn(M), enumerable: false });
   Object.defineProperty(out, '_conf', { value: conf, enumerable: false });
   Object.defineProperty(out, '_mix', { value: cycleMixIn(M, used, out), enumerable: false });
-  // The ten defineProperty calls above add what an average says about itself, which TypeScript cannot see; the cast names them.
+  // The eleven defineProperty calls above add what an average says about itself, which TypeScript cannot see; the cast names them.
   return out as WeeklyAvg;
 }
 

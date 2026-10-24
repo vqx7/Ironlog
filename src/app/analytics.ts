@@ -594,7 +594,12 @@ export function idxAutoLighter(byEx: Record<string, Exposure[]>): Record<string,
       const ref = prev.filter(q => sameRR(q.rr, x.rr)).slice(-3);
       const k = weekStart(x.date);
       if (x.deload || x.light) {
-        if (!atUsualWork(x, ref)) continue;
+        /* Its usual is the one V's rule reads a labelled session against
+           (idxShort): the two sessions before it, not done lighter (PENDING
+           338 2). Read against the best of three, 100 x 9 x 3 after 100 x
+           10 x 3 and two of 100 x 8 x 3 was lighter on a Lighter day and
+           set no target, where on any other day it set one. */
+        if (!atUsualWork(x, ref.slice(-2))) continue;
         x.tag = x.deload ? 'deload' : 'light';
         x.deload = false;
         x.light = false;
@@ -700,6 +705,27 @@ function setsAt(q: Exposure, usualW: number): number {
   for (const p of q.pts)
     if (p.load >= tw * LIGHTER_LOAD - 1e-9 && (p.load * LIGHTER_LOAD <= tw + 1e-9 || p.w <= usualW + 1e-6)) n++;
   return n;
+}
+
+/* The sets a lift's session tried at a load, in the order done, a missed
+   set (r55) among them with its 0 reps and marked as missed (PENDING 338 A).
+   A missed set counts toward no volume, PR, estimate or trend, but it is a
+   set of the session short of the range, which the next target reads: read
+   without it, a 5 x 5 with its last two sets missed twice running read as
+   three sets of 5, every set made, and stepped up, and a 4-set plan read
+   "over your first 2 sets". */
+/** A session's sets at load w as tried, in order, a missed one with its 0 reps and `missed` set. */
+export function triedAt(x: Exposure, w: number): (ExPoint & { missed?: true })[] {
+  const at = (p: ExPoint): boolean => Math.abs(p.w - w) < 1e-6;
+  const miss = (x.miss || []).filter(at);
+  const out: (ExPoint & { missed?: true })[] = [];
+  let k = 0;
+  x.pts.forEach((p, i) => {
+    for (; k < miss.length && miss[k].at <= i; k++) out.push({ ...miss[k], missed: true });
+    if (at(p)) out.push(p);
+  });
+  for (; k < miss.length; k++) out.push({ ...miss[k], missed: true });
+  return out;
 }
 
 /* The usual sets of the sessions a lift's session is read against: the

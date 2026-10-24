@@ -141,6 +141,13 @@ const brz = (load, rtf) => load * 36 / (37 - rtf);
     ok(/^Goal 50 lb × 12: \d+% there i Change$/.test(g.fly), 'an isolation goal shows how close, with no pounds of estimate', g.fly);
 
     // ---------- 6. Stats: no tile or line repeating another ----------
+    /* The routine planning what the log does, one session a week (r56.2: with the starter's six a week against the
+       log's one, the coach's change is the sessions made, PENDING 338 D, tests/r56-2.js), so the change is the volume
+       shortfall these checks are about. Put back after them. */
+    const routinesBefore = await ev(() => { const L = window.__ironlog; const s = L.state; const keep = JSON.parse(JSON.stringify({ routines: s.routines, active: s.activeRoutineId }));
+      const R0 = L.activeRoutine(); const d0 = JSON.parse(JSON.stringify(R0.days.find(d => !d.rest && d.items.length)));
+      s.routines = [...s.routines, { id: 'oneaweek', name: 'One a week', schedule: 'weekly', days: [d0, ...[1, 2, 3, 4, 5, 6].map(i => ({ id: 'oneaweek-r' + i, name: 'Rest', rest: true, items: [] }))] }];
+      s.activeRoutineId = 'oneaweek'; L.state = L.normalize(s); L.invalidate(); return keep; });
     const sum = await ev(() => {
       const L = window.__ironlog; L.ui.tab = 'dash'; L.render();
       const tiles = [...document.querySelectorAll('#view > .kpis .kpi .l, #view .kpis:first-of-type .kpi .l')].map(x => x.textContent);
@@ -162,6 +169,7 @@ const brz = (load, rtf) => load * 36 / (37 - rtf);
     ok(/Volume .*Above: Chest\./i.test(over.t), 'a muscle above its target is still named when the Volume line carries the coach\'s words', over.t);
     const ch2 = over.rows.find(r => /Change/i.test(r.l));
     ok(!(over.c.act && over.c.act.sec === 'volume') && ch2 && ch2.t === over.c.text, 'no shortfall: the coach\'s change keeps its own Change line (' + over.c.text + ')', over.rows);
+    await ev(k => { const L = window.__ironlog; const s = L.state; s.routines = k.routines; s.activeRoutineId = k.active; L.state = L.normalize(s); L.invalidate(); L.render(); }, routinesBefore);
 
     // ---------- 7. Muscles: rising at target in one line; words, not percentages ----------
     const mu = await ev(() => { const L = window.__ironlog; L.ui.tab = 'dash'; L.render(); document.querySelectorAll('#view details').forEach(d => d.open = true); const sub = [...document.querySelectorAll('#view .subsec')].find(x => /Strength return on volume/.test(x.innerText)); return sub ? sub.innerText : ''; });
