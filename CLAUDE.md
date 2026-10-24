@@ -41,7 +41,8 @@ stand-in cloud.
    `PENDING.md`.
 6. Storage and sync keep the highest bar, because a lost log cannot be rebuilt (Invariants, Data and Sync). The app has a
    handful of users, each updating to the current build (V, 2026-10-24): devices several builds apart, three phones on
-   one workout and similar cases are not built for; one phone, one account and two tabs keep the bar.
+   one workout and similar cases are deferred, not ruled out, and stay tracked in `PENDING.md` (337) until users or V
+   bring them back; one phone, one account and two tabs keep the bar.
 7. One simple rule over special cases: add a rule only when a lifter would notice it missing (V, 2026-10-18:
    "I dont want to add random complex rules if they are not necessarily going to aid things").
 8. The proper thing is done the first time (V, 2026-10-17): a type rather than a cast, one source for a value, a
