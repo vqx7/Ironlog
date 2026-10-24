@@ -36,15 +36,28 @@ import {
   stripDemo,
   unionById
 } from './chunks';
-import { Hx, canon, merge3List, merge3Val } from './merge';
+import { Hx, canon, merge3List, merge3Val, mergeSession, mergeWorkout } from './merge';
 import { draftCardio, draftSession } from './session';
+import type { DraftLike } from './session';
 import { routineEmpty } from './routines';
 import { normalize, plainTemplate } from './normalize';
 import { invalidate } from './live';
 import { AUTH } from './providers';
 import { acct, cloud, fx, setState, state, ui } from './store';
-import type { Base, CloudDb, CloudRef, State, SyncNote } from './store';
-import { KEY, capturePost, demoRestore, device, log, clearTimer } from './storage';
+import type { Base, CloudDb, CloudRef, CloudStatus, State, SyncNote } from './store';
+import {
+  KEY,
+  capturePost,
+  demoRestore,
+  device,
+  log,
+  clearTimer,
+  keepAside,
+  asideOf,
+  dropAside,
+  load,
+  undoForget
+} from './storage';
 
 declare global {
   interface Window {
@@ -104,19 +117,87 @@ export function commit(): void {
 
 /** The key the sync notes are saved under: each document's last agreed copy, the device id and the account. */
 export const SYNC_KEY = KEY + '.sync';
-/* The notes as they were saved, read as before the move: each entry is
-   trusted to be what a build wrote (r56.1 checks every entry, PENDING 305).
-   The casts say so; the two readers of the notes, at start and from another
-   tab, share them. */
+/* The notes as they were saved, each entry checked field by field (r56.1,
+   PENDING 305): a note that fails is dropped, with a line in the error log,
+   so a damaged note never reads as agreement with the account (its document
+   then merges as a first sync does, with nothing judged deleted); a damaged
+   merge base leaves its note with none, which reads the same way. The two
+   readers of the notes, at start and from another tab, share this. */
+/** A record of strings by key, or null when any value is not a string. */
+const stringsIn = (v: unknown): Record<string, string> | null => {
+  const R = rec(v);
+  if (!R) return null;
+  const o: Record<string, string> = {};
+  for (const k in R) {
+    const x = R[k];
+    if (typeof x !== 'string') return null;
+    o[k] = x;
+  }
+  return o;
+};
+/** A merge base as saved, or null when it is not one. */
+const baseIn = (v: unknown): Base | null => {
+  const R = rec(v);
+  if (!R) return null;
+  const b: Base = {};
+  if (R.a !== undefined) {
+    const A = rec(R.a);
+    if (!A) return null;
+    const a: Record<string, Record<string, string>> = {};
+    for (const k in A) {
+      const l = stringsIn(A[k]);
+      if (!l) return null;
+      a[k] = l;
+    }
+    b.a = a;
+  }
+  for (const k of ['f', 's'] as const) {
+    if (R[k] === undefined) continue;
+    const l = stringsIn(R[k]);
+    if (!l) return null;
+    b[k] = l;
+  }
+  if (R.d !== undefined) {
+    if (typeof R.d !== 'string') return null;
+    b.d = R.d;
+  }
+  if (R.draft != null) b.draft = draftOf(R);
+  return b;
+};
+/** A sync note as saved, or null when it is not one (no fingerprint, or no time). */
+const noteIn = (v: unknown): SyncNote | null => {
+  const N = rec(v);
+  if (!N || typeof N.h !== 'string' || typeof N.at !== 'number') return null;
+  return { h: N.h, at: N.at, b: N.b == null ? null : baseIn(N.b) };
+};
+/** The notes as saved: each document's note checked (noteIn), each edit time a number, the last sync a number. */
 const notesIn = (
-  m: Rec
-): { meta: Record<string, SyncNote> | null; editAt: Record<string, number> | null; last: number | null } => ({
-  meta: rec(m.meta) as Record<string, SyncNote> | null,
-  editAt: rec(m.editAt) as Record<string, number> | null,
-  last: m.last as number | null
-});
-/** Writes the sync notes to this device. */
-export function saveMeta(): void {
+  m: Rec,
+  from: string
+): { meta: Record<string, SyncNote> | null; editAt: Record<string, number> | null; last: number | null } => {
+  const M = rec(m.meta),
+    E = rec(m.editAt);
+  let meta: Record<string, SyncNote> | null = null,
+    editAt: Record<string, number> | null = null;
+  if (M) {
+    meta = {};
+    for (const k in M) {
+      const n = noteIn(M[k]);
+      if (n) meta[k] = n;
+      else log(from, new Error(`the sync note for ${k} was not readable and was dropped`));
+    }
+  }
+  if (E) {
+    editAt = {};
+    for (const k in E) {
+      const t = E[k];
+      if (typeof t === 'number') editAt[k] = t;
+    }
+  }
+  return { meta, editAt, last: typeof m.last === 'number' ? m.last : null };
+};
+/** Writes the sync notes to this device: whether they were written. */
+export function saveMeta(): boolean {
   try {
     localStorage.setItem(
       SYNC_KEY,
@@ -128,8 +209,10 @@ export function saveMeta(): void {
         acct: cloud.acct || undefined
       })
     );
+    return true;
   } catch (e) {
     log('sync-meta', e);
+    return false;
   }
 }
 
@@ -225,7 +308,7 @@ export function withTimeout<T>(pr: Promise<T>, ms: number): Promise<T> {
   ]);
 }
 /** Sets the sync's status and error, and redraws the save state's button and the sync line. */
-export function setCloud(st: string, err?: string | undefined): void {
+export function setCloud(st: CloudStatus, err?: string | undefined): void {
   cloud.status = st;
   cloud.err = err || null;
   fx.setSaveState();
@@ -297,7 +380,9 @@ function normChunk(id: string, data: unknown): Rec | null {
     return D;
   }
 }
-/** A document's merge base: the fingerprint of every record (by list), field and setting it holds. */
+/** The workout in progress a draft document holds, as normalize() keeps it, or null. */
+const draftOf = (D: Rec | null): DraftLike | null => normalize({ draft: (D && D.draft) || null }).draft;
+/** A document's merge base: the fingerprint of every record (by list), field and setting it holds; for the draft, the copy itself too (r56.1). */
 export function baseOf(id: string, data: unknown): Base | null {
   if (!data) return null;
   const D = normChunk(id, data) || {};
@@ -317,7 +402,12 @@ export function baseOf(id: string, data: unknown): Base | null {
     for (const k in S) b.s[k] = Hx(S[k]);
     return b;
   }
-  if (id === 'draft') return { d: Hx(D.draft) };
+  // The agreed copy is a copy of its own: normalize rebuilds a workout in place and the logger edits the one in
+  // progress in place, so the document's own object would change under the note as the lifter ticks sets.
+  if (id === 'draft') {
+    const d = draftOf(D);
+    return { d: Hx(D.draft), draft: d ? draftOf({ draft: parseJson(JSON.stringify(d)) }) : null };
+  }
   if (id.startsWith('b-')) return { a: { bodyweights: hl(D.bodyweights), measurements: hl(D.measurements) } };
   return { a: { sessions: hl(D.sessions), cardio: hl(D.cardio) } };
 }
@@ -357,7 +447,17 @@ export function mergeChunk(
     return out;
   }
   if (id === 'draft') {
-    // One session in progress is one record: it is not merged set by set.
+    // One workout open on two phones (r56.1): the same workout on both sides and in the base, neither an edit of a
+    // saved session, merges exercise by exercise and set by set against the copy both agreed on (mergeWorkout).
+    const ld = draftOf(l),
+      rd = draftOf(r),
+      bd = base && base.draft && !base.draft.editingId ? base.draft : null;
+    if (bd && ld && rd && ld.id === rd.id && bd.id === ld.id && !ld.editingId && !rd.editingId)
+      return { draft: mergeWorkout(bd, ld, rd, remoteWins, stat) };
+    // Closed on one side (finished or discarded) while the other ticked on: closed stays closed, whichever edit was
+    // later, since closing is the lifter's call; the sets ticked since are kept by keepLost (joined to the saved session).
+    if (bd && ((!rd && ld && ld.id === bd.id) || (!ld && rd && rd.id === bd.id))) return { draft: null };
+    // Otherwise one session in progress is one record: the later edit replaces the other (keepLost keeps the other's sets).
     const v = merge3Val(base ? base.d : '?', l.draft || null, r.draft || null, remoteWins, stat);
     return { draft: v === undefined ? null : v };
   }
@@ -467,7 +567,7 @@ export function resyncLocalH(): void {
 /* The session in progress is one record, so another device finishing or
    discarding it replaces this one's (the later edit wins). Said in its own
    words rather than the generic note (r45, audit item 288). */
-function draftNote(prev: unknown): void {
+function draftNote(prev: unknown, kept?: Kept): void {
   const P = rec(prev);
   const d = state.draft;
   if (!P || (d && d.id === P.id)) return;
@@ -492,14 +592,114 @@ function draftNote(prev: unknown): void {
     } else fx.toast('The edit in progress was replaced by the workout on another device.');
     return;
   }
-  const sid = P.id;
+  // What became of the sets ticked here (keepLost, r56.1) is said with it: joined to the session the other phone
+  // saved, or saved as a session of their own. A session of the workout's id with another workout now open was
+  // either finished there or kept there from this copy; either way its sets are in History, and that is what is said.
+  const saved = state.sessions.some(s => s.id === P.id);
   fx.toast(
-    state.sessions.some(s => s.id === sid)
-      ? 'The workout in progress was saved on another device.'
-      : state.draft
-        ? 'The workout in progress was replaced by the one on another device.'
-        : 'The workout in progress was closed on another device.'
+    kept === 'joined'
+      ? 'The workout in progress was saved on another device. What was done here since was added to it.'
+      : kept === 'saved' || kept === 'cardio'
+        ? `The workout in progress was ${state.draft ? 'replaced by the one on' : 'closed on'} another device. Its ${kept === 'saved' ? 'ticked sets are' : 'cardio is'} saved in History.`
+        : state.draft
+          ? saved
+            ? 'The workout in progress was replaced by the one on another device. Its ticked sets are in History.'
+            : 'The workout in progress was replaced by the one on another device.'
+          : saved
+            ? 'The workout in progress was saved on another device.'
+            : 'The workout in progress was closed on another device.'
   );
+}
+/* The copy of the workout in progress that loses a merge is never dropped
+   (r56.1, PENDING 328 a and c): its ticked sets go into the log as a session,
+   with its cardio rows and check-in, as a first link keeps another phone's
+   workout (draftSession, r55); when the same workout was finished on another
+   phone (a session of its id is in the log), the sets join that session row
+   by row against the copy both agreed on, and its cardio rows join the log's
+   cardio, as Finish saves them (PENDING 333, F6: the join kept the sets
+   alone, and a copy with cardio and no ticked set was dropped whole). A copy
+   that lost nothing (the same workout, still open), an edit of a saved
+   session, or one with nothing ticked and no cardio is left alone. Only a
+   copy that carried changes the account did not have is kept: the callers
+   pass the local copy when it was dirty, and the account's copy a later edit
+   here replaced. */
+/** What became of a losing copy (keepLost): its sets saved as a session, joined to the one saved elsewhere, its cardio alone saved, or nothing. */
+type Kept = 'saved' | 'joined' | 'cardio' | null;
+/** Keeps a losing copy's ticked sets and cardio (above); says what was done, for the toast. */
+function keepLost(
+  lost: DraftLike | null | undefined,
+  now: DraftLike | null,
+  agreed: DraftLike | null | undefined,
+  remoteWins: boolean
+): Kept {
+  if (!lost || lost.editingId || (now && now.id === lost.id)) return null;
+  const kept = draftSession(lost),
+    cardio = draftCardio(lost);
+  if (!kept && !cardio.length) return null;
+  // Cardio rows have ids, as Finish saves them: a row already in the log (saved with the session there) stays as it is.
+  const more = cardio.filter(c => !state.cardio.some(x => x.id === c.id));
+  const have = state.sessions.find(q => q.id === lost.id);
+  if (have) {
+    const base = agreed && agreed.id === lost.id ? draftSession(agreed) : null;
+    const stat = { conflicts: 0 };
+    // With no agreed copy (a note from a build before r56.1) the saved session's values stand where the two differ,
+    // and only the rows this copy has and it lacks are added: Finish's duration and plan are not this copy's to undo.
+    const joined = kept ? mergeSession(base, kept, have, base ? remoteWins : true, stat) : have;
+    if (canon(joined) === canon(have) && !more.length) return null;
+    setState(
+      normalize({
+        ...state,
+        sessions: state.sessions.map(q => (q.id === lost.id ? joined : q)),
+        cardio: unionById(state.cardio, more)
+      })
+    );
+    edited(joined.date);
+    conflictNote(stat);
+    return 'joined';
+  }
+  setState(
+    normalize({
+      ...state,
+      sessions: kept ? [...state.sessions, kept] : state.sessions,
+      cardio: unionById(state.cardio, more)
+    })
+  );
+  edited(lost.date);
+  return kept ? 'saved' : 'cardio';
+}
+/** Notes an edit of the half-month document of a date made here now (keepLost), so a later merge of it reads this device's change as the later one; the flush that follows carries it. */
+function edited(date: string): void {
+  cloud.editAt[chunkOf(date)] = Date.now();
+  saveMeta();
+}
+/** Says what became of the account's copy of a workout that lost a merge here (keepLost): the sets ticked on the other phone were saved, joined to the session saved here, or its cardio alone saved. */
+function lostNote(kept: Kept): void {
+  if (kept === 'saved') fx.toast('Sets ticked on another device were saved in History.');
+  else if (kept === 'joined') fx.toast('Sets ticked on another device were added to the session saved here.');
+  else if (kept === 'cardio') fx.toast('Cardio logged on another device was saved in History.');
+}
+/** The half-month document of a workout read from the account and taken in as a pull takes it (adopted, or merged with this device's changes to it), when this device has not pulled it since the workout was finished elsewhere (keepLost): the session is then here to join. */
+async function sessionFromCloud(d: DraftLike, legB: Base | null): Promise<void> {
+  if (d.editingId || state.sessions.some(q => q.id === d.id)) return;
+  const id = chunkOf(d.date);
+  const sn = await withTimeout(ref(id).get(), 20000);
+  const sb = sn && sn.exists ? rec(sn.data()) : null;
+  if (!sb || typeof sb.json !== 'string') return;
+  const data = parseJson(sb.json);
+  const m = cloud.meta[id],
+    h = hashStr(sb.json);
+  if (m && m.h === h) return;
+  const mine = chunksOf(state)[id] || emptyChunk(id);
+  const localDirty = !m || hashStr(JSON.stringify(mine)) !== m.h;
+  const et = Number(sb.et) || Number(sb.at) || 0;
+  if (!localDirty) applyChunk(id, rec(data));
+  else {
+    applyChunk(id, mergeChunk(id, baseFor(id, m, legB), mine, data, et > (cloud.editAt[id] || 0), { conflicts: 0 }));
+    cloud.editAt[id] = Math.max(cloud.editAt[id] || 0, et);
+  }
+  // The account's copy is now the agreed base, as after a pull; what this device adds to it is its own later edit.
+  cloud.meta[id] = { h, at: Number(sb.at), b: baseOf(id, data) };
+  saveMeta();
 }
 /** Says how many records were edited on two devices, if any (the later edit kept). */
 export function conflictNote(stat: { conflicts: number }): void {
@@ -602,9 +802,15 @@ export async function cloudFlush(): Promise<void> {
       return;
     }
     let adopted = false,
-      moreBody = false;
+      moreBody = false,
+      again = false;
     const stat = { conflicts: 0 };
-    let dn: { prev: unknown } | null = null;
+    let dn: {
+      prev: DraftLike | null;
+      sessions0: unknown;
+      kept: Kept;
+      lost: Kept;
+    } | null = null;
     const tooBig: string[] = [];
     const legB = legacyBodyBase();
     for (const x of todo) {
@@ -629,18 +835,26 @@ export async function cloudFlush(): Promise<void> {
         }
         if (rd) {
           const ret = Number(b.et) || Number(b.at);
-          const merged = mergeChunk(
-            x.id,
-            baseFor(x.id, m, legB),
-            parseJson(json),
-            rd,
-            ret > (cloud.editAt[x.id] || 0),
-            stat
-          );
+          const remoteWins = ret > (cloud.editAt[x.id] || 0);
+          const merged = mergeChunk(x.id, baseFor(x.id, m, legB), parseJson(json), rd, remoteWins, stat);
           cloud.editAt[x.id] = Math.max(cloud.editAt[x.id] || 0, ret);
-          if (x.id === 'draft') dn = { prev: state.draft };
+          if (x.id === 'draft') dn = { prev: state.draft, sessions0: state.sessions, kept: null, lost: null };
+          const agreed = x.id === 'draft' && m && m.b ? m.b.draft : null;
+          const mergedDraft = x.id === 'draft' ? draftOf(merged) : null;
+          // This copy lost (closed or replaced): the session it may have become on the other phone is read first,
+          // before anything here changes, so its sets join that session rather than making a second one of its id,
+          // and a read that fails (the connection gone mid-flush) leaves the workout here as it was, for the retry.
+          if (dn && dn.prev && (!mergedDraft || mergedDraft.id !== dn.prev.id)) await sessionFromCloud(dn.prev, legB);
           applyChunk(x.id, merged);
           adopted = true;
+          if (x.id === 'draft' && dn) {
+            // The copy that lost (this device's, dirty here, or the account's, which a later edit here replaced) keeps its sets.
+            const prev = dn.prev,
+              remoteDraft = draftOf(rec(rd));
+            dn.kept = keepLost(prev, mergedDraft, agreed, remoteWins);
+            dn.lost = keepLost(remoteDraft, mergedDraft, agreed, remoteWins);
+            if (dn.kept || dn.lost || canon(state.sessions) !== canon(dn.sessions0)) again = true;
+          }
           if (x.id === 'core' && absorbLegacy(legacyBody(rec(rd)))) moreBody = true;
           json = JSON.stringify(chunksOf(state)[x.id] || emptyChunk(x.id));
           if (hashStr(json) === hashStr(b.json)) {
@@ -671,11 +885,14 @@ export async function cloudFlush(): Promise<void> {
       resyncLocalH();
       if (!ui.modal) fx.rerenderKeepScroll();
       conflictNote(stat);
-      if (dn) draftNote(dn.prev);
+      if (dn) {
+        draftNote(dn.prev, dn.kept);
+        lostNote(dn.lost);
+      }
     }
     cloud.retry = 0;
-    // Weigh-ins found in an older core go to their body documents on the next pass.
-    if (moreBody) cloudSoon();
+    // Weigh-ins found in an older core go to their body documents on the next pass, as do the sets a losing copy kept.
+    if (moreBody || again) cloudSoon();
     if (tooBig.length) {
       saveMeta();
       setCloud(
@@ -748,6 +965,10 @@ export async function cloudPull(): Promise<void> {
   }
   const local = chunksOf(state);
   const first = !Object.keys(cloud.meta).length;
+  // For a workout merged below: the copy both agreed on, read before the notes take the account's copy, and whether the account's edit is later.
+  const agreedDraft = cloud.meta.draft && cloud.meta.draft.b ? cloud.meta.draft.b.draft : null;
+  let draftMerged = false,
+    draftRemoteWins = false;
   let parts: Record<string, Rec | null> | null = null,
     merged = false,
     draftIn = false,
@@ -760,15 +981,7 @@ export async function cloudPull(): Promise<void> {
     const rState = assemble(Object.fromEntries(rids.map(k => [k, rec(remote[k].data)])));
     const mine = { ...state };
     stripDemo(mine); // demo data never goes into an account (r55, the audit: it was merged and uploaded)
-    if (
-      !realCount(mine) &&
-      !mine.bodyweights.length &&
-      !mine.measurements.length &&
-      !state.draft &&
-      !mine.cardio.length &&
-      !mine.routines.some(r => !plainTemplate(r) && !routineEmpty(r)) &&
-      !mine.exercises.some(e => e.custom)
-    ) {
+    if (!holdsLog()) {
       // by what is here, not by whether a save was found at start: a first run's workout was wiped by a sign-in before a reopen (r55, the audit)
       parts = Object.fromEntries(rids.map(k => [k, rec(remote[k].data)]));
       rids.forEach(k => adoptedIds.add(k));
@@ -821,6 +1034,10 @@ export async function cloudPull(): Promise<void> {
         any = true;
         continue;
       }
+      if (id === 'draft') {
+        draftMerged = true;
+        draftRemoteWins = r.et > (cloud.editAt[id] || 0);
+      }
       if (id === 'core') {
         const L = legacyBody(rec(r.data));
         leg.bodyweights.push(...L.bodyweights);
@@ -842,9 +1059,17 @@ export async function cloudPull(): Promise<void> {
     if (!any) parts = null;
   }
   const dr0 = state.draft;
+  let kept: Kept = null,
+    lost: Kept = null;
   if (parts) {
     setState(assemble(parts));
     absorbLegacy(leg);
+    // A workout merged with the account's copy: the copy that lost keeps its sets (this device's, which held changes the account did not have, or the account's, which a later edit here replaced).
+    if (draftMerged) {
+      const remoteDraft = remote.draft ? draftOf(rec(remote.draft.data)) : null;
+      kept = keepLost(dr0, state.draft, agreedDraft, draftRemoteWins);
+      lost = keepLost(remoteDraft, state.draft, agreedDraft, draftRemoteWins);
+    }
   }
   if (parts || merged) {
     invalidate();
@@ -881,7 +1106,8 @@ export async function cloudPull(): Promise<void> {
           : 'Merged this device with your cloud copy'
       );
     conflictNote(stat);
-    if (draftIn) draftNote(dr0);
+    if (draftIn) draftNote(dr0, kept);
+    lostNote(lost);
   } else if (first) {
     for (const id of rids) cloud.meta[id] = { h: 'x', at: remote[id].at, b: null };
   }
@@ -915,6 +1141,190 @@ async function cloudProvider(): Promise<{ db: CloudDb; userId: string } | null> 
   return null;
 }
 let cloudStarting = false;
+/* ---------- signing in: which log the phone holds (r56.1, PENDING 328 b and 333) ---------- */
+
+/* The sync notes belong to one account (cloud.acct), and the log on the
+   phone is the one they describe. Signing in to another account on this
+   phone (V's call of 2026-10-20) is settled here, before any sync, by one
+   rule for every path:
+   - The log kept aside for the account signed in to, if there is one, comes
+     back with its own notes, so it syncs as a continuation: what that account
+     changed or deleted meanwhile stands. Taken back without its notes it
+     synced as a first link, undoing edits and bringing back deletions on
+     every phone (PENDING 333, F4). It is looked for whenever the notes do not
+     name this account, also when they name none (Sign out, a restore, Copy
+     my log in, demo data and Erase everything forget them), which once left
+     it aside for good (F3).
+   - The log here: when the notes name another account and it holds
+     something of the lifter's, the question (Add it to this account, Use
+     this account's log, Cancel). Add it: the log here is added, as a first
+     link when nothing is kept aside for this account, else joined to the log
+     kept aside, whose records win a clash. Use this account's log: the log
+     here is kept aside for its account first, and a phone with no room for
+     the copy keeps what it has. Cancel: nothing changes and the sign-in is
+     undone. Notes that name no account have no one to ask about: the log here
+     is added, as a first link adds it, and notes saved before accounts
+     existed are kept.
+   - Nothing is left half done: the log is replaced and saved, then the notes
+     naming this account; a save the phone refuses puts both back as they
+     were and undoes the sign-in, so the next start never syncs one account's
+     log under the other's notes (F1). Undo is cleared once the log is
+     another account's: a step held the log before, and undoing it would sync
+     that log into this account.
+   - One tab at a time: every tab hears a sign-in, and each would ask and act
+     on the notes it read before (F2). The rule runs under a lock the browser
+     gives one tab at a time (Web Locks), and a tab that waited reads the
+     notes, and the log with them, as the other tab left them, so it finds the
+     switch made. A browser without Web Locks (Safari before 15.4) runs it at
+     once, as before. */
+/** Runs fn in one tab of this app at a time (above); at once where the browser has no Web Locks. */
+async function oneTab<T>(fn: () => Promise<T>): Promise<T> {
+  const L = typeof navigator !== 'undefined' ? navigator.locks : undefined;
+  if (L && typeof L.request === 'function') return await L.request(KEY + '.account', () => fn());
+  return fn();
+}
+/** The notes as stored now, and the log with them when another tab moved them to another account: a tab acts on what is stored, not on what it read before (above). */
+function readStored(): void {
+  let m: Rec | null = null;
+  try {
+    m = rec(parseJson(localStorage.getItem(SYNC_KEY) || 'null'));
+  } catch (e) {
+    log('tabs', e);
+  }
+  if (!m) return;
+  const now = typeof m.acct === 'string' ? m.acct : null;
+  if (now === cloud.acct) return;
+  const n = notesIn(m, 'tabs');
+  cloud.meta = n.meta || {};
+  cloud.editAt = n.editAt || {};
+  cloud.last = n.last;
+  cloud.acct = now;
+  setState(load());
+  invalidate();
+  resyncLocalH();
+  fx.render();
+}
+/** Undoes the sign-in through the account service alone, waited for, so a tab waiting its turn finds it signed out: the notes and the log stay as they were. */
+async function undoSignIn(): Promise<void> {
+  const A = AUTH();
+  if (!A) return;
+  try {
+    await A.signOut();
+  } catch (e) {
+    log('auth', e);
+  }
+}
+/** Whether the log on this device holds anything the lifter made, as a first link reads it: never demo data; a routine the lifter built or a custom exercise count. */
+function holdsLog(): boolean {
+  const mine = { ...state };
+  stripDemo(mine);
+  return !!(
+    realCount(mine) ||
+    mine.bodyweights.length ||
+    mine.measurements.length ||
+    state.draft ||
+    mine.cardio.length ||
+    mine.routines.some(r => !plainTemplate(r) && !routineEmpty(r)) ||
+    mine.exercises.some(e => e.custom)
+  );
+}
+/** Two logs joined as a first link joins them: every record of both by id (the first log's copy winning a clash), the first log's settings, its workout in progress or else the other's, whose ticked sets are then saved. */
+function joinLogs(base: State, other: State): State {
+  const aside = base.draft && other.draft && other.draft.id !== base.draft.id ? other.draft : null;
+  const kept = aside ? draftSession(aside) : null;
+  return normalize({
+    ...base,
+    exercises: unionById(base.exercises, other.exercises),
+    routines: unionById(base.routines, other.routines),
+    sessions: unionById(base.sessions, kept ? [...other.sessions, kept] : other.sessions),
+    bodyweights: unionById(base.bodyweights, other.bodyweights),
+    measurements: unionById(base.measurements, other.measurements),
+    cardio: unionById(base.cardio, aside ? [...other.cardio, ...draftCardio(aside)] : other.cardio),
+    trash: unionById(arr(base.trash) || [], arr(other.trash) || []),
+    draft: base.draft || other.draft
+  });
+}
+/** Keeps the log here aside for its account, with its notes, as it stands once written (a set ticked while the copy is written makes a second copy): 'room' when the phone has no room for it. */
+async function keepHere(from: string): Promise<'kept' | 'room' | 'busy'> {
+  const notes = { meta: cloud.meta, editAt: cloud.editAt, last: cloud.last };
+  for (let i = 0; i < 10; i++) {
+    const text = JSON.stringify(state);
+    if (!(await keepAside(from, text, notes))) return 'room';
+    if (JSON.stringify(state) === text) return 'kept';
+  }
+  // Changed under every copy, which taps cannot do.
+  log('aside', new Error('the log kept changing while it was being kept aside'));
+  return 'busy';
+}
+/** Settles which log the phone holds for the account signed in to (above): false when the sync must not start. */
+async function takeAccount(id: string): Promise<boolean> {
+  readStored();
+  const from = cloud.acct;
+  if (from === id) return true;
+  const aside = await asideOf(id);
+  if (!from && !aside) return true;
+  let use = false;
+  if (from && holdsLog()) {
+    const a = await fx.ask(
+      'A log from another account is on this phone',
+      "Add it to this account, or use this account's log? Using this account's log keeps the other one on this phone until that account signs in here again.",
+      'Add it to this account',
+      "Use this account's log"
+    );
+    if (a === 'cancel') {
+      // Nothing merges without an answer.
+      await undoSignIn();
+      return false;
+    }
+    use = a === 'alt';
+  }
+  const before = { state, meta: cloud.meta, editAt: cloud.editAt, last: cloud.last, acct: cloud.acct };
+  if (use && from) {
+    const k = await keepHere(from);
+    if (k !== 'kept') {
+      if (k === 'room')
+        fx.toast('There is not enough room on this phone to keep the other log aside. Export a backup of it first.');
+      await undoSignIn();
+      return false;
+    }
+  }
+  // The log for this account and the notes it goes with: the one kept aside for it, with its own, or a first link's (none).
+  const n = aside ? notesIn({ meta: aside.meta, editAt: aside.editAt, last: aside.last }, 'aside') : null;
+  const next = use ? (aside ? aside.state : normalize(null)) : aside ? joinLogs(aside.state, state) : null;
+  cloud.meta = (n && n.meta) || {};
+  cloud.editAt = (n && n.editAt) || {};
+  cloud.last = n ? n.last : null;
+  if (next) {
+    setState(next);
+    commit();
+  }
+  cloud.acct = id;
+  // A device whose storage failed its check at start writes nothing, so there is nothing to keep in step there.
+  const written = !device.boot || ((!next || device.ok) && saveMeta());
+  if (!written) {
+    setState(before.state);
+    cloud.meta = before.meta;
+    cloud.editAt = before.editAt;
+    cloud.last = before.last;
+    cloud.acct = before.acct;
+    // The log as it was, which the phone held before, and the notes that go with it.
+    commit();
+    saveMeta();
+    if (use && from) await dropAside(from);
+    fx.render();
+    fx.toast("This phone could not save this account's log, so nothing was changed.");
+    await undoSignIn();
+    return false;
+  }
+  if (next) {
+    undoForget();
+    resyncLocalH();
+    fx.render();
+  }
+  // The copy kept for this account is the log in use now, saved here with its notes.
+  if (aside) await dropAside(id);
+  return true;
+}
 /** Starts the sync for the account signed in, if there is one: the first pull, then every save flushes. */
 export async function cloudInit(): Promise<void> {
   if (cloud.on || cloudStarting) return;
@@ -924,15 +1334,12 @@ export async function cloudInit(): Promise<void> {
     if (!pv) return;
     const db = pv.db,
       id = pv.userId;
-    /* Sync notes belong to one account. Signing in to a different account on
-       this device starts over as a first link (a merge, with no Undo since r55), never as a
-       continuation that could judge the other account's records deleted.
-       Notes saved before accounts existed have no owner and are kept. */
-    if (cloud.acct && cloud.acct !== id) {
-      cloud.meta = {};
-      cloud.editAt = {};
-      cloud.last = null;
-    }
+    // Settled one tab at a time (takeAccount); a tab that waited its turn checks the account is still the one signed in.
+    const go = await oneTab(async () => {
+      const now = await cloudProvider();
+      return !!now && now.userId === id && (await takeAccount(id));
+    });
+    if (!go) return;
     cloud.acct = id;
     saveMeta();
     cloud.db = db;
@@ -995,10 +1402,12 @@ function onStorage(ev: StorageEvent): void {
     try {
       const m = rec(parseJson(ev.newValue));
       if (m) {
-        const { meta, editAt, last } = notesIn(m);
+        const { meta, editAt, last } = notesIn(m, 'tabs');
         if (meta) cloud.meta = meta;
         if (editAt) cloud.editAt = editAt;
         if (last) cloud.last = last;
+        // The notes' account with them (PENDING 333, F2): a tab that kept the account it read before acted for it on another's log.
+        cloud.acct = typeof m.acct === 'string' ? m.acct : null;
       }
     } catch (e) {
       log('tabs', e);
@@ -1072,7 +1481,7 @@ export function syncStart(): void {
   try {
     const m = rec(parseJson(localStorage.getItem(SYNC_KEY) || 'null'));
     if (m) {
-      const { meta, editAt, last } = notesIn(m);
+      const { meta, editAt, last } = notesIn(m, 'sync-meta');
       cloud.meta = meta || {};
       cloud.last = last || null;
       cloud.editAt = editAt || {};

@@ -8,7 +8,8 @@ import { LB, IN, KM_MI, PLATES_LB, PLATES_KG } from './app/units';
 import { MUSCLES, MK, ML, TRACK_ONLY, BANDS, EQUIP, EQL, CARDIO, CARDIOL, CWHEN, CWHENL, MEAS, JOINTS, JK, JL, injLabel, exJoints, libExercises, COMMON, isCommon, patternOf, autoCompound, isCompound, noE1, BWF, bwShare, loadMode, rackKind, HARD_EX, LONG_TRIAL, LONG_IDS, profHeavy, COMMON_TIP, commonFirst, nameMatch } from './app/library';
 import { DAYS, MAX_DAYS, dayLabel, defaultRoutine, TEMPLATES, routineFromTemplate, RIR_TGT_TIP, daySets, fixSupersets, linkToggle, move, nextTrainIdx, plannedPerWeek, dropStarter, planItemOf, pwOf, trainOn, routineEmpty, routineSig, sessDayIdx, ssLetters, tplCountLine, trainDaysOf, weekFactor, dayShare } from './app/routines';
 import { keepExtra, cleanCardio, normalize, starterRoutine, starterSigs, plainTemplate } from './app/normalize';
-import { ENV, KEY, LOGK, WKVIEW_KEY, device, logBuf, logCut, log, undoStack, undoPersist, undoRestore, undoForget, snapshot, demoFirstRun, demoKeep, demoRestore, backupDue, saveStateNow, storageStart } from './app/storage';
+import { ENV, KEY, LOGK, WKVIEW_KEY, device, logBuf, logCut, log, undoStack, undoPersist, undoRestore, undoForget, snapshot, demoFirstRun, demoKeep, demoRestore, backupDue, saveStateNow, storageStart, asideClear, asideList } from './app/storage';
+import { asideLine } from './app/yourdata';
 import { saveNow, saveSoon, commit, assemble, cq, withTimeout, setCloud, baseOf, mergeChunk, hasUnsent, cloudFlush, cloudPull, cloudChecked, cloudInit, cloudStop, syncStart } from './app/sync';
 import { E1_MAX_RIR, rtfOf, e1, e1inv, rtfAt, trendE, fitE, rtfBand, REP_PR_SHARE, jumpCap, workLoad, repFloor, isWork, isMissed, prSameLoad, setCredit, lighter, offTarget, sameRR, setSecs, setupSecs, GROW_PCT, BACK_DAYS, SESSION_CAP, PACE_N, PACE_DAYS, PACE_MIN, JUMP_TIP } from './app/formulas';
 import { DIRTY_SAID, LIGHT_RIR, MISSED_SAID, effLeastShort, MONTHS, NIL, WD2, agoTxt, estMin, fmtDate, fmtDateRow, fmtG, fmtWith, greeting, min5, rangeWords, repSpan, sessTm, todayEye, missedTag } from './app/format';
@@ -19,7 +20,7 @@ import { BW_MAX_KG, BW_MIN_KG, EXTRA_MAX, MEAS_MAX_CM, TRASH_BYTES, TRASH_DAYS, 
 import { PLATE_MODES, dbListOf, gymClean, gymPlates, platesMode } from './app/gym';
 import { chunksOf, emptyChunk, isChunkId, realCount, stripDemo } from './app/chunks';
 import { Hx, canon, mergeDraft } from './app/merge';
-import { RIR_OPTS, blockDone, blockRest, editFp, effTarget, effW, draftCardio, freeDraft, greyW, hintOnce, joinAdjacent, joinRows, joinable, lastCell, lastDup, lastHead, overSets, sameExOnce, savedEx, sessProgress, targetText, whyTarget } from './app/session';
+import { RIR_OPTS, blockDone, blockRest, editFp, effTarget, effW, draftCardio, freeDraft, greyW, hintOnce, joinAdjacent, joinRows, joinable, lastCell, lastDup, lastHead, newRow, overSets, sameExOnce, savedEx, sessProgress, targetText, whyTarget } from './app/session';
 import { LOAD_MODES, emptyLoad, estInLoad, loadNote, loadWords } from './app/loads';
 import { BAND_WORDS, prName, prOverall } from './app/prs';
 import { trendEnds, trendScope, trendW } from './app/trend';

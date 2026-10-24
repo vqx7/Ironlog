@@ -107,7 +107,7 @@ window.addEventListener('popstate',()=>{
 function openModal(m){
   const fresh=!ui.modal;
   if(fresh){modalReturn=document.activeElement;modalPush();}
-  ui.modal=m;renderModal();
+  const was=ui.modal;ui.modal=m;if(was&&was.kind==='confirm'&&was.onClose&&!was.answered)was.onClose();renderModal(); // a question replaced unanswered (r56.1) reads as Cancel, as closeModal reads it: the sync waiting on it must not wait forever
   const el=$('#modal');if(!el)return;
   // A new name field (creating an exercise) is always focused, since typing
   // is the first thing to do there, even when it replaces another sheet.
@@ -123,7 +123,7 @@ function openModal(m){
 function closeModal(){
   if(AI.ctl){try{AI.ctl.abort();}catch(e){/* already finished */}AI.ctl=null;}
   const was=ui.modal;
-  ui.modal=null;
+  ui.modal=null;if(was&&was.kind==='confirm'&&was.onClose&&!was.answered)was.onClose();
   if(was&&was.kind==='account'){
     if(was.mode==='wait')waitStop();
     // No answer to "Where do you use Ironlog?": the safe choice, as before item 61.
@@ -140,7 +140,7 @@ function closeModal(){
 /* alt is an optional second action, {label, fn}. Some choices are genuinely
    three-way ("keep them", "drop them", "go back") and collapsing that into
    OK/Cancel is how data gets thrown away by accident. */
-function confirmBox(title,body,okLabel,fn,danger,alt){openModal({kind:'confirm',title,body,okLabel,fn,danger,alt});}
+function confirmBox(title,body,okLabel,fn,danger,alt,onClose){openModal({kind:'confirm',title,body,okLabel,fn,danger,alt,onClose});} // onClose (r56.1): the sheet closed without an answer, so a question the sync asked (fx.ask) can read it as Cancel.
 
 /* ---------- timer ---------- */
 const timer={end:0,iv:null,fired:false};

@@ -3,6 +3,8 @@
    the weigh-in cadence, the sheets that hold typed fields (phase 3a, r51;
    moved unchanged from the legacy script). */
 
+import { parseJson } from './records';
+
 // Dashboard sections, in display order. Keys are what the jump strip targets.
 export const DSECS: readonly (readonly [string, string])[] = [
   ['volume', 'Volume'],
@@ -57,11 +59,11 @@ export const DEFAULT_ORDER: Readonly<Record<string, readonly string[]>> = {
   dash: ['exercise', 'volume', 'weak', 'consistency', 'body']
 };
 
-/** A fresh copy of the default order, to store and edit. JSON.parse is typed
+/** A fresh copy of the default order, to store and edit. parseJson gives an unknown value;
     any, which would let anything through unchecked; the cast says what the
     copy is: DEFAULT_ORDER's shape, written out and read back. */
 export const defaultOrder = (): Record<string, string[]> =>
-  JSON.parse(JSON.stringify(DEFAULT_ORDER)) as Record<string, string[]>;
+  parseJson(JSON.stringify(DEFAULT_ORDER)) as Record<string, string[]>;
 
 /** A saved order kept for the sections still present, each missing one placed after the one it follows. */
 export function orderKeys(saved: readonly string[], present: readonly string[]): string[] {

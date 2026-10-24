@@ -3,7 +3,7 @@
 A hypertrophy and strength tracker for one lifter, V, used on a phone at the gym. It ships as a standalone
 installable web app: built from `src/` into one page, served by GitHub Pages at https://ironapp.org, working
 offline, with the log on the phone and an optional account that syncs it. Every pull request also publishes a
-preview app at https://ironapp.org/preview/ to try on the phone before merging. Build r56, version 2.8, state schema v5.
+preview app at https://ironapp.org/preview/ to try on the phone before merging. Build r56.1, version 2.9, state schema v5.
 
 The Claude artifact version was retired by V on 2026-09-27 (`OWNER.md` Done): never work on it or republish it.
 `cloudProvider()` still takes Claude's db when `window.claude` exists, because the sync suites use it as their
@@ -33,8 +33,12 @@ stand-in cloud.
 4. Old code in the legacy parts may be fixed in place, with the failing test first. A screen that is being changed
    substantially moves into `src/app/` instead. The legacy parts never grow: each build has no more top-level
    declarations and no more lines than the last (the ratchet in `ARCHITECTURE.md`, checked by `tests/hygiene.js`).
-5. One independent review a release, briefed to report correctness and data-loss problems only, each with a
-   reproduction. Fix what it confirms, with a test; record the rest in `PENDING.md`.
+5. Releases are stacked (each pull request on the one before), so the preview carries the whole stack and V tries
+   it once; V merges them in order. One independent review a stack, over all of it, before the first merge (V,
+   2026-10-21), on the strongest model at full effort when the stack touches storage or sync; briefed to report
+   correctness and data-loss problems only, each with a reproduction run on the stack and on the build before it,
+   report only. Rerun each reproduction before acting; fix what it confirms, with a test; record the rest in
+   `PENDING.md`.
 6. Storage and sync keep the highest bar, because a lost log cannot be rebuilt (Invariants, Data and Sync).
 7. One simple rule over special cases: add a rule only when a lifter would notice it missing (V, 2026-10-18:
    "I dont want to add random complex rules if they are not necessarily going to aid things").
@@ -45,16 +49,18 @@ stand-in cloud.
 ## What is in this repo
 
 - `src/app/`: the typed modules (TypeScript). `config.ts` is the one place for the app's name, the versions
-  (`DISPLAY_VERSION`, `APP_VERSION`), the site address, the library versions and the outside addresses.
-  `store.ts` owns the shared state (`state`, `ui`, `cloud`, `acct`, `acctWait`); the log is replaced only through
-  `setState`. The engine and the analytics are functions of a model (`model.ts`): each takes `M` (the log, the date
-  the engine reads as today, the caches) as its first parameter and its name ends in `In` (`suggestIn`, `IDXIn`,
-  `coachIn`). `live.ts` holds the one model the app runs on (`LIVE`) and the adapters through which the legacy
-  script calls those functions by their old names (`export const suggest = live(suggestIn);`). Storage and sync are
-  typed since r56: `normalize.ts` (the log as every build reads it), `storage.ts` (the keys, where the save stands
-  (`device`), the error log (`log`), Undo's steps) and `sync.ts` (every write of the log, the account's documents,
-  the sync notes, another tab); they reach the screens only through `fx` in `store.ts`, which the legacy script
-  fills at start, and run nothing on import (`storageStart()`, `syncStart()`).
+  (`DISPLAY_VERSION`, `APP_VERSION`), the site address, the library versions and the outside addresses. `store.ts`
+  owns the shared state (`state`, `ui`, `cloud`, `acct`, `acctWait`); the log is replaced only through `setState`.
+  The engine and the analytics are functions of a model (`model.ts`): each takes `M` (the log, the date the engine
+  reads as today, the caches) as its first parameter and its name ends in `In` (`suggestIn`, `IDXIn`, `coachIn`).
+  `live.ts` holds the one model the app runs on (`LIVE`) and the adapters through which the legacy script calls
+  those functions by their old names (`export const suggest = live(suggestIn);`). Storage and sync are typed since
+  r56: `normalize.ts` (the log as every build reads it), `storage.ts` (the keys, where the save stands (`device`),
+  the error log (`log`), Undo's steps, a log kept aside for another account, in IndexedDB as Undo's copies are) and
+  `sync.ts` (every write of the log, the account's documents, the sync notes, another tab, one workout open on two
+  phones, the account question); they reach the screens only through `fx` in `store.ts`, which the legacy script
+  fills at start (`render`, `toast`, `ask`), and run nothing on import (`storageStart()`, `syncStart()`).
+  `yourdata.ts` writes the lines a module adds to Your data.
 - `src/1*.js`, `src/2*.js`: the legacy script, cut into parts at its section headers (start-up, accounts, the
   screens, sheets, actions and events), one function scope. It reads `src/app/` only through the imports in
   `src/09-imports.js`. `src/01` to `src/03` are the page head, styles and markup.

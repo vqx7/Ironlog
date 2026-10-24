@@ -606,6 +606,27 @@ const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log
     }
     ok(silent.length === 0, 'every catch and promise handler in src/app/ ends in a throw, logs the error or carries a comment saying why the error is expected, and no finally returns, breaks or continues', silent);
   }
+  // Every stored value is read in one place (r56.1, PENDING 305): localStorage
+  // and IndexedDB are named only in storage.ts and sync.ts, and JSON text is
+  // parsed only by records.ts's parseJson, so every raw value comes through
+  // the readers that check it. The legacy parts keep their account and
+  // screen keys until phase 5. Read from the syntax tree's identifiers, so a
+  // mention in a comment is not one.
+  {
+    const hits = [];
+    const ALLOWED = { localStorage: ['storage', 'sync'], indexedDB: ['storage'], sessionStorage: [] };
+    for (const id of MODS) {
+      const f = id + '.ts', txt = fs.readFileSync(path.join(APP, f), 'utf8');
+      const sf = ts.createSourceFile(f, txt, ts.ScriptTarget.Latest, true);
+      const walk = n => {
+        if (ts.isIdentifier(n) && Object.prototype.hasOwnProperty.call(ALLOWED, n.text) && !ALLOWED[n.text].includes(id) && !(n.parent && ts.isPropertyAccessExpression(n.parent) && n.parent.name === n)) hits.push(`${f}:${sf.getLineAndCharacterOfPosition(n.getStart(sf)).line + 1} ${n.text}`);
+        if (ts.isPropertyAccessExpression(n) && ts.isIdentifier(n.expression) && n.expression.text === 'JSON' && n.name.text === 'parse' && id !== 'records') hits.push(`${f}:${sf.getLineAndCharacterOfPosition(n.getStart(sf)).line + 1} JSON.parse`);
+        ts.forEachChild(n, walk);
+      };
+      walk(sf);
+    }
+    ok(hits.length === 0, 'localStorage and IndexedDB are named only in storage.ts and sync.ts, and JSON is parsed only by records.ts (every stored value comes through one reader)', hits);
+  }
   // Every module is laid out by Prettier from the committed .prettierrc.json,
   // so layout is never a matter of taste or of hand (layout never changes
   // code). A data table may keep its rows on

@@ -152,11 +152,15 @@ export function plateGridIn(
 }
 
 /* The load the plates make at or under a load (dir -1) or at or over it (dir
-   1), never under the bar. A load within a thousandth of a step of one is
-   that load (the step is a converted number in the other unit). */
-function plateAt(G: { bar: number; step: number }, w: number, dir: 1 | -1): number {
-  const k = (w - G.bar) / G.step;
-  const n = dir > 0 ? Math.ceil(k - 1e-3) : Math.floor(k + 1e-3);
+   1), never under the bar. A load within `tol` of one is that load: half the
+   last digit the screens show (rackTolIn), so a load typed as shown is the
+   load it shows, as a bell typed as shown is that bell (PENDING 333: with Your
+   gym in kg and the app in lb, 50 kg is shown as 110.2 lb, and 110.2 typed is
+   49.986 kg, which a thousandth of a step read as off the plates). */
+function plateAt(G: { bar: number; step: number }, w: number, dir: 1 | -1, tol: number): number {
+  const k = (w - G.bar) / G.step,
+    e = Math.max(1e-3, tol / G.step);
+  const n = dir > 0 ? Math.ceil(k - e) : Math.floor(k + e);
   return G.bar + Math.max(0, n) * G.step;
 }
 
@@ -177,11 +181,12 @@ function plateSnap(
   down?: boolean
 ): Suggestion {
   const w = res.w,
-    top = res.top;
+    top = res.top,
+    t = rackTolIn(M);
   if (w == null) return res;
-  const dn = plateAt(G, w, -1);
-  if (Math.abs(dn - w) < 1e-6) return res;
-  const nw = !down && top != null && w > top + 1e-6 ? (dn > top + 1e-6 ? dn : plateAt(G, top + 1e-6, 1)) : dn;
+  const dn = plateAt(G, w, -1, t);
+  if (Math.abs(dn - w) <= t) return res;
+  const nw = !down && top != null && w > top + t ? (dn > top + t ? dn : plateAt(G, top + t, 1, t)) : dn;
   return moveIn(M, ex, plan, res, nw, 'the nearest load your plates make');
 }
 
@@ -1285,7 +1290,8 @@ export function incOfIn(
     const gr = rackGridIn(M, ex, plan, at);
     if (gr) return at != null && at > 0 && offGrid(M, ex, plan, at) ? gridStep(M, gr, at, 1) - at : gr;
     const G = plateGridIn(M, ex, plan);
-    if (G && at != null && at > 0 && Math.abs(plateAt(G, at, -1) - at) > 1e-6) return plateAt(G, at, 1) - at;
+    const t = rackTolIn(M);
+    if (G && at != null && at > 0 && Math.abs(plateAt(G, at, -1, t) - at) > t) return plateAt(G, at, 1, t) - at;
     const gs = gymStepIn(M, ex);
     if (gs) return gs;
   }
@@ -1512,8 +1518,12 @@ export function lighterLoadIn(
   }
   // On Your gym's plates (plateGridIn, r55.1): the heaviest load they make not past `to` and under `from`; the bar keeps the bar.
   const G = plateGridIn(M, ex, plan);
-  if (G)
-    return from <= G.bar + 1e-6 ? Math.max(0, from) : Math.min(plateAt(G, to, -1), plateAt(G, from - G.step / 2, -1));
+  if (G) {
+    const t = rackTolIn(M);
+    return from <= G.bar + t
+      ? Math.max(0, from)
+      : Math.min(plateAt(G, to, -1, t), plateAt(G, from - G.step / 2, -1, t));
+  }
   const step = incOfIn(M, ex, plan, from);
   let w: number;
   if (step > 0) {
@@ -1558,8 +1568,9 @@ export function heavierLoadIn(
   }
   const G = plateGridIn(M, ex, plan);
   if (G) {
-    const c = plateAt(G, to, -1);
-    return c > from + 1e-6 ? c : null;
+    const t = rackTolIn(M),
+      c = plateAt(G, to, -1, t);
+    return c > from + t ? c : null;
   }
   const step = incOfIn(M, ex, plan, from);
   if (!(step > 0)) return null;
