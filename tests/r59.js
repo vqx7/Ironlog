@@ -697,7 +697,14 @@ const SCREENS = [
         L.state.bodyweights = L.state.bodyweights.filter(b => b.date < '2026-10-22'); L.saveNow(); L.ui.tab = 'today'; L.render(); await w(100); await openAll();
         const f = document.getElementById('bwVal'); f.value = '181'; f.dispatchEvent(new Event('input', { bubbles: true }));
         document.querySelector('#view [data-act="addBW"]:not([data-in])').click(); await w(150); await openAll();
-        await (new Function('L', 'w', `return (async () => { ${between} })()`))(L, w);
+        // What happens between the evening and the morning, written here and not passed as code: the installed build's
+        // policy refuses a string run as script (new Function), as it should.
+        const next = () => { const T = '2026-10-25T07:30:00'; const R = Date; const off = new R(T).getTime() - R.now(); class D extends R { constructor(...a) { if (a.length) super(...a); else super(R.now() + off); } static now() { return R.now() + off; } } window.Date = D; };
+        if (between === 'sheet') {
+          document.querySelector('#view [data-act="delBW"]').click(); await w(100); next();
+          document.dispatchEvent(new Event('visibilitychange')); await w(150);
+          document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })); await w(150);
+        } else await w(70000);
         const de = document.getElementById('bwDate');
         const out = { modal: !!L.ui.modal, today: L.today(), date: de ? de.value : null, meas: (document.querySelector('#view [data-act="addMeas"]') || {}).textContent || '', eyebrow: (document.querySelector('#view .hero .eyebrow') || {}).textContent || '' };
         const f2 = document.getElementById('bwVal'); if (f2) { f2.value = '179.4'; f2.dispatchEvent(new Event('input', { bubbles: true })); }
@@ -710,13 +717,12 @@ const SCREENS = [
       ok(!Q.errors.length, `${name.slice(0, 3)} no page errors`, Q.errors);
       await Q.page.context().close();
     };
-    const NEXT = "(() => { const T = '2026-10-25T07:30:00'; const R = Date; const off = new R(T).getTime() - R.now(); class D extends R { constructor(...a) { if (a.length) super(...a); else super(R.now() + off); } static now() { return R.now() + off; } } window.Date = D; })();";
     // A sheet left open overnight (the question that deletes a weigh-in), the app brought back, the sheet closed with Escape.
     if (run(19)) await night('19. a sheet left open overnight and closed with Escape in the morning: Today is the new day\'s (its date line, Body\'s date, Save measurements), and a weigh-in typed at once is saved on it, the evening\'s kept',
-      `document.querySelector('#view [data-act="delBW"]').click(); await w(100); ${NEXT} document.dispatchEvent(new Event('visibilitychange')); await w(150); document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })); await w(150);`);
+      'sheet');
     // The screen kept on across midnight: the clock passes 00:00 by itself (40 s from 23:59:20), nothing tapped.
     if (run(20)) await night('20. the screen kept on across midnight, nothing tapped: within a minute Today is the new day\'s, and a weigh-in typed then is saved on it, the evening\'s kept',
-      `await w(70000);`);
+      'stayOn');
   }
 
   await browser.close();
