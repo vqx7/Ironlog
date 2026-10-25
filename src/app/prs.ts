@@ -12,8 +12,9 @@ export const BAND_WORDS: Readonly<Record<number, string>> = {
 
 /** An estimate PR (type e1RM, the only kind these are given): its value, the
     best before it of any band, and its band. The analytics record a band with
-    every estimate, so an estimate PR always has one. */
-type PrMark = { value?: number | null; prevAll?: number | null; bb: number };
+    every estimate (the PR's type says it may be null, so one without reads as
+    "its reps"). */
+type PrMark = { value?: number | null; prevAll?: number | null; bb: number | null };
 
 /** Whether an estimate PR beats every earlier estimate, not only its band's. */
 export function prOverall(p: Pick<PrMark, 'value' | 'prevAll'>): boolean {
@@ -27,5 +28,5 @@ export function prOverall(p: Pick<PrMark, 'value' | 'prevAll'>): boolean {
    the toast uses (until r54 a second table typed the same words). */
 /** An estimate PR's name: Best estimate, or the best for its band of reps. */
 export function prName(p: PrMark): string {
-  return prOverall(p) ? 'Best estimate' : `Best for ${BAND_WORDS[p.bb] || 'its reps'}`;
+  return prOverall(p) ? 'Best estimate' : `Best for ${(p.bb != null && BAND_WORDS[p.bb]) || 'its reps'}`;
 }

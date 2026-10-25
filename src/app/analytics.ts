@@ -532,6 +532,7 @@ export function idxSessionsIn(M: Model, sessions: readonly Session[]) {
         light: !!ss.light || !!b.light,
         held: !!b.inj,
         rr: b.rr || null,
+        ...(b.ps ? { ps: b.ps } : {}),
         topN: atTop.length,
         tAdj,
         tRaw,
@@ -817,10 +818,22 @@ export function atUsualWork(x: Exposure, ref: readonly Exposure[]): boolean {
    the range not done lighter (the higher of two with only one before it),
    so one session under it repeats the target and a second in a row is the
    usual, which the app then follows.
-   Its usual sets are never more than the routine plans for it (`planSets`,
-   the day it was done on first; null for a lift on no day of the routine),
-   so a lifter who does more sets than planned is not short when doing the
-   plan; on a lift labelled lighter or a deload but done at its usual load
+   On a lift the routine plans (`planSets`, the day it was done on first;
+   null for a lift on no day of the routine, which reads its own sessions),
+   its usual sets are never more than the plan's, so a lifter who does more
+   sets than planned is not short when doing the plan. A session saved on a
+   day of a routine keeps the sets its plan gave the lift then (`ps`, r58,
+   339 h); once a session of the lift in the range since its last break did
+   that many near its working load, those are the sets it must reach, so
+   fewer sets than planned never become the usual (a 5 x 5 done as 4 x 5
+   twice read as a 4-set lift, and its target asked for 4 sets the plan
+   never set). Each session is read by its own plan, so a plan changed
+   later never rereads the sessions before it (the r58 review: read by the
+   plan as it is now, a plan raised from 3 sets to 4 marked every session of
+   3 short and took the target back to the first of them). A session with
+   none recorded (Freestyle, a lift on no day of the routine, one saved
+   before r58) reads its own sets, as before. On a lift labelled
+   lighter or a deload but done at its usual load
    and reps (`tag`, step 2), the label cut the plan, so its usual sets are
    its own, and if it falls short it is not one of the sessions later ones
    are read against, so half the sets of a deload twice running never
@@ -837,8 +850,12 @@ export function idxShort(byEx: Record<string, Exposure[]>, planSets: (id: string
       if (afterBreak(last, x.date)) normal.length = 0;
       last = x;
       if (lighter(x)) continue;
-      const before = normal.filter(q => sameRR(q.rr, x.rr)).slice(-2);
-      const sh = before.length ? shortOf(x, before, x.tag ? null : planSets(id, x)) : undefined;
+      const prior = normal.filter(q => sameRR(q.rr, x.rr));
+      const before = prior.slice(-2);
+      const cap = before.length && !x.tag ? planSets(id, x) : null;
+      // The sets to reach (339 h, r58): those its plan gave it when saved (ps), once an earlier session did as many.
+      const hold = !x.tag && x.ps != null && prior.some(q => setsAt(q, q.topW) >= (x.ps || 0)) ? x.ps : null;
+      const sh = before.length ? shortOf(x, before, cap, hold) : undefined;
       if (sh) x.short = sh;
       if (!(x.tag && x.short)) normal.push(x);
     }
@@ -849,7 +866,12 @@ export function idxShort(byEx: Record<string, Exposure[]>, planSets: (id: string
      the label, so they are no sign of a new usual (the second review of
      r53: after a session stopped at two sets of four, a lighter day of two
      sets of 10 read as the usual and let half the work set the target). */
-  function shortOf(x: Exposure, before: readonly Exposure[], cap: number | null): Exposure['short'] {
+  function shortOf(
+    x: Exposure,
+    before: readonly Exposure[],
+    cap: number | null,
+    hold: number | null
+  ): Exposure['short'] {
     const usual = (v: readonly number[], own: number): number => mid(x.tag ? v : [...v, own]);
     /* Its sets near its working load (setsAt). At a heavier working load
        than both before it, a step up, its sets at or above their working
@@ -865,17 +887,22 @@ export function idxShort(byEx: Record<string, Exposure[]>, planSets: (id: string
       before.map(q => setsAt(q, usualW)),
       n
     );
-    const want = cap != null && cap > 0 ? Math.min(sets, cap) : sets;
+    // Its usual sets, never more than the plan's; the sets its plan gave it to reach once held (see above: 339 h, r58).
+    const usualN = cap != null && cap > 0 ? Math.min(sets, cap) : sets;
+    const want = hold != null ? hold : usualN;
     if (n < want) return 'sets';
     if (up) return undefined;
-    /* Read over as many sets at the working load as the usual (readingOf);
-       with a reading on it and on both before it, every one of them has
-       one, so the 0 is never read. */
-    const tr = (q: Exposure): number => readingOf(q, want) ?? 0;
+    /* Read over as many sets at the working load as the usual, and no more
+       than it had to reach (readingOf), so a set the sessions before it did
+       not do never counts against it (a fourth planned set after sessions
+       of three); with a reading on it and on both before it, every one of
+       them has one, so the 0 is never read. */
+    const k = Math.min(usualN, want);
+    const tr = (q: Exposure): number => readingOf(q, k) ?? 0;
     if (x.tRaw != null && before.every(q => q.tRaw != null))
       return tr(x) < usual(before.map(tr), tr(x)) * USUAL_SHARE - 1e-9 ? 'reading' : undefined;
     // Reps a set over those sets (seconds on a hold).
-    const per = (q: Exposure): number => repsOf(q, want);
+    const per = (q: Exposure): number => repsOf(q, k);
     const lighterW = x.topW < usualW - 1e-6;
     return lighterW || per(x) < usual(before.map(per), per(x)) * USUAL_SHARE - 1e-9 ? 'reading' : undefined;
   }
@@ -1037,6 +1064,7 @@ export function idxPRsIn(M: Model, id: string, exps: Exposure[], prs: Pr[]): num
         ? pts.filter(p => p.r > 0 && p.w > prevMaxW + 1e-6).sort((a, b) => b.w - a.w || sc(b) - sc(a) || b.r - a.r)[0]
         : null;
     const wPR = wJ ? asLogged(wJ) : null;
+    // Any record at all (heavier, a best for its reps, more reps at a load): the stall test's sign the lift moved. Since r58 (343 6) no screen calls it a PR; a PR is `big`.
     x.progress = i > 0 && (!!repPR || e1PR || !!wPR);
     // What it beat, for the recap: the old heaviest, the old best in the same band, or the most reps at this load or heavier (0: never this heavy).
     /* big: a PR that is counted and announced (r32, from the third review:

@@ -1,17 +1,4 @@
 /* ---------- actions ---------- */
-function routineClutter(){
-  const used=new Set(state.sessions.map(x=>x.routineId));const seen=new Set();const out=[];
-  for(const r of state.routines){
-    const sig=routineSig(r);const dup=seen.has(sig);seen.add(sig);
-    if(r.id===state.activeRoutineId||used.has(r.id))continue;
-    if(routineEmpty(r)||dup)out.push(r);
-  }
-  return out;
-}
-const nameTaken=(nm,exceptId)=>state.routines.some(r=>r.id!==exceptId&&r.name.trim().toLowerCase()===nm.trim().toLowerCase());
-function curRoutineB(){return state.routines.find(r=>r.id===ui.bRoutine)||activeRoutine();}
-function findItem(uidv){for(const r of state.routines)for(let di=0;di<r.days.length;di++){const i=r.days[di].items.findIndex(x=>x.uid===uidv);if(i>=0)return {r,di,i,it:r.days[di].items[i]};}return null;}
-function newItem(exId){return {uid:uid(),exId,...defPlan(exId)};}
 /* Null when the row is gone. Rebuilding the view removes a still-focused reps
    field, and the browser then fires its pending change for a set that − Set,
    Swap or Undo has just removed. */

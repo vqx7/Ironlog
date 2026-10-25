@@ -310,7 +310,7 @@ const sess = (id, date, exId, sets) => ({ id, date, dayIdx: 0, dayId: null, dayN
     await page.click('[data-act="sDone"][data-b="0"][data-s="0"]'); await wait(150);
     const bt = await ev(() => document.getElementById('toast').innerText);
     ok(/^Weight PR: Pull-up/.test(bt) && /heaviest before BW\b/.test(bt) && !/before 0/.test(bt), '6. a weighted pull-up past bodyweight says heaviest before BW, never 0 lb', bt);
-    // 5. The chart tooltip names a weight PR that did not raise the estimate.
+    // 5. A heavier set that did not raise the estimate is no PR (one PR on every screen, r58): no PR mark on the chart, a plain point.
     const tt = await ev(() => { const L = window.__ironlog; L.state.draft = null;
       const S = (id, d, w, r) => ({ id, date: d, dayIdx: 0, dayId: null, dayName: 'A', routineId: '', free: true, notes: '', ex: [{ exId: 'bench', sets: [{ w, r, rir: 0, warm: false }] }] });
       // 100x10 sets the estimate; 102.5x3 is heavier but a lower estimate in its own band... (band 1-5 has no earlier set, so it is a best there). Use 101x5 after 100x6 in the same band.
@@ -319,8 +319,8 @@ const sess = (id, date, exId, sets) => ({ id, date, dayIdx: 0, dayId: null, dayN
       L.ui.tab = 'dash'; L.ui.dashEx = 'bench'; L.ui.folds['dash:exercise'] = true; L.render();
       const ch = window.Chart.getChart(document.getElementById('chEx')); const i = ch.data.datasets[0].data.length - 1;
       const lab = ch.options.plugins.tooltip.callbacks.afterLabel({ datasetIndex: 0, dataIndex: i });
-      return { type: p && p.type, value: p && p.value, lab }; });
-    ok(tt.type === 'Weight PR' && tt.value == null && tt.lab === 'Weight PR: more weight than ever before', '5. a weight PR that did not raise the estimate is named so on the chart', tt);
+      return { type: p && p.type, value: p && p.value, big: p && p.big, lab, style: ch.data.datasets[0].pointStyle[i] }; });
+    ok(tt.type === 'Weight PR' && tt.value == null && tt.big === false && tt.lab === '' && tt.style === 'circle', '5. a heavier set that did not raise the estimate (Heaviest yet, no PR) has no PR mark or label on the chart', tt);
     // 9. The radar draws at most 200%; the tooltip and the table keep the real share.
     const rc = await ev(() => { const L = window.__ironlog; const b = L.state.settings.bands; b.abs = [1, 26]; b.obliques = [1, 10];
       const out = []; for (let k = 1; k <= 4; k++) { const d = new Date(2026, 9, 3 - 7 * k - 4).toISOString().slice(0, 10); out.push({ id: 'r' + k, date: d, dayIdx: 0, dayId: null, dayName: 'A', routineId: '', free: true, notes: '', ex: [{ exId: 'cableCrunch', sets: Array.from({ length: 10 }, () => ({ w: 50, r: 12, rir: 2, warm: false })) }] }); }

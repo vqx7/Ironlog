@@ -8,7 +8,7 @@
 import type { MuscleKey, Profile, Routine } from './types';
 import type { Model } from './model';
 import { activeRoutineIn, profIn } from './model';
-import { BANDS, MK, TRACK_ONLY } from './library';
+import { BANDS, MK, TARGETED, TRACK_ONLY } from './library';
 import { plannedSetsIn, weekFactor } from './routines';
 
 /* The profile (r44): its choices, read by normalize while the save loads. */
@@ -122,6 +122,28 @@ export function appBandIn(
   const f = (fit === undefined ? M.s.settings.bandsFit : fit) || {};
   const lo = f[m];
   return lo == null || TRACK_ONLY.has(m) || (q.focus || []).includes(m) ? d : [Math.min(d[0], lo), d[1]];
+}
+
+/* Whether a muscle has a weekly target (339 e, V 2026-10-24, r58): one of
+   TARGETED, which lifters train directly for size, or one the lifter gave a
+   target: with Set a target in Weekly set targets (settings.ownTargets), by
+   naming it a focus in Your training, or by a target typed before r58 (one
+   other than the app's own, appBandIn: r44's reading of a typed target, so
+   it counts as it did). Before r58 a target typed on one of TRACK_ONLY's
+   four never counted, so it does not now either. A muscle with none is
+   counted and shown, and never reads under or over. The one rule every
+   screen reads. */
+/** Whether a muscle has a weekly target, by its key; false for a key that is no muscle. */
+export function hasTargetIn(M: Model, m: string): boolean {
+  const k = MK.find(x => x === m);
+  if (!k) return false;
+  if (TARGETED.has(k)) return true;
+  const s = M.s.settings;
+  if ((s.ownTargets || []).includes(k) || (profIn(M).focus || []).includes(k)) return true;
+  if (TRACK_ONLY.has(k)) return false;
+  const a = appBandIn(M, k),
+    b = s.bands[k];
+  return b[0] !== a[0] || b[1] !== a[1];
 }
 
 /* The floors a first-run pick of a routine records (fitTargets, r29 and

@@ -14,7 +14,7 @@ import { live } from 'lit-html/directives/live.js';
 import { repeat } from 'lit-html/directives/repeat.js';
 import { APP_NAME, PREVIEW_NAME, VERSION_LINE } from './config';
 import { act } from './act';
-import { MK, ML, MUSCLES, TRACK_ONLY } from './library';
+import { MK, ML, MUSCLES, TARGETED, TRACK_ONLY } from './library';
 import { ACCENT0, ACCENTS, BW_EVERY, DEFAULT_HIDDEN, HIDEABLE, HIDEABLE_KEYS, HIDE_TABS, defaultOrder } from './layout';
 import {
   FOCUS_MAX,
@@ -59,6 +59,7 @@ import {
   fmtW,
   fromD,
   gymOf,
+  hasTarget,
   invalidate,
   prof,
   profRule
@@ -804,7 +805,7 @@ export function viewSettings(): TemplateResult {
       '',
       html`${howText(
         'bands',
-        'Fractional hard sets per week: direct work 1, helper muscles 0.5 (Pelland 2025). 10 to 20 for major muscles fits the dose-response data; the upper number is typical, not a ceiling, and more still helps a little at more cost. Smaller muscles are set lower because compound lifts hit them indirectly, and their numbers are convention: no study has tested a dose for them. Serratus, rotator cuff, neck, and tibialis are tracked only. Raise one or two muscles for a specialisation block, or set focus muscles in Your training. Default targets puts every one back.'
+        'Fractional hard sets per week: direct work 1, helper muscles 0.5 (Pelland 2025). 10 to 20 for major muscles fits the dose-response data; the upper number is typical, not a ceiling, and more still helps a little at more cost. The muscles lifters train directly for size have a target to start; glutes, rear delts, calves, and abs start lower, a convention, as compound lifts work them too. Every other muscle is tracked only, counted with no target, until you give it one with Set a target or name it a focus (any but serratus, rotator cuff, neck, and tibialis). Raise one or two muscles for a specialisation block, or set focus muscles in Your training. Default targets puts every one back.'
       )}
 <div class="card">
 <table class="t">
@@ -814,10 +815,18 @@ export function viewSettings(): TemplateResult {
 <th class="r">Min</th>
 <th class="r">Max</th>
 </tr>
-${MUSCLES.map(
-  ([k, l]) =>
-    html`<tr>
+${MUSCLES.map(([k, l]) =>
+  /* A muscle with no target (339 e, r58) offers one; one the lifter gave a
+     target (not by default and not a focus, which Your training sets) can go
+     back to tracked only. */
+  !hasTarget(k)
+    ? html`<tr>
 <td>${l}</td>
+<td class="r" colspan="2"><span class="small muted">Tracked only</span> <button type="button" class="btn sm" data-act="tgtSet" data-m=${k}>Set a target</button></td>
+</tr>
+`
+    : html`<tr>
+<td>${l}${TARGETED.has(k) || (prof().focus || []).includes(k) ? nothing : html`<br><button type="button" class="linkbtn tall" data-act="tgtOff" data-m=${k}>Track only</button>`}</td>
 <td class="r"><input style="width:70px" type="text" inputmode="numeric" aria-label=${`${l} minimum hard sets a week`} data-band=${k} data-bi="0" .value=${fieldValue(String(s.bands[k][0]))}/></td>
 <td class="r"><input style="width:70px" type="text" inputmode="numeric" aria-label=${`${l} maximum hard sets a week`} data-band=${k} data-bi="1" .value=${fieldValue(String(s.bands[k][1]))}/></td>
 </tr>
@@ -828,7 +837,9 @@ ${MUSCLES.map(
         MK.every(m => {
           const d = defBand(m);
           return s.bands[m][0] === d[0] && s.bands[m][1] === d[1];
-        }) && !s.bandsFit
+        }) &&
+        !s.bandsFit &&
+        !s.ownTargets
       }>Default targets</button></div>
 </div>
 `,
@@ -1126,10 +1137,11 @@ export const SETTINGS_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
       }
     );
   },
-  // Weekly set targets back to the defaults (r44), with Your training's focus; typed ones and a first-run fit go.
+  // Weekly set targets back to the defaults (r44), with Your training's focus; typed ones, those given with Set a target (r58) and a first-run fit go.
   bandsDefault() {
     const b = state.settings.bands;
     const fit = state.settings.bandsFit ? { ...state.settings.bandsFit } : null;
+    const own = state.settings.ownTargets ? [...state.settings.ownTargets] : null;
     const moved: Partial<Record<MuscleKey, [[number, number], [number, number]]>> = {};
     for (const m of MK) {
       const d = defBand(m);
@@ -1147,11 +1159,13 @@ export const SETTINGS_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
           if (x) b[m] = [x[1][0], x[1][1]];
         }
         delete state.settings.bandsFit;
+        delete state.settings.ownTargets;
       },
       {
         undo: (): boolean => {
           if (fit) state.settings.bandsFit = fit;
           else delete state.settings.bandsFit;
+          if (own) state.settings.ownTargets = own;
           for (const m of MK) {
             const x = moved[m];
             if (x && b[m][0] === x[1][0] && b[m][1] === x[1][1]) b[m] = [x[0][0], x[0][1]];
@@ -1162,6 +1176,33 @@ export const SETTINGS_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
     );
     fx.rerenderKeepScroll();
     fx.toast('Weekly set targets back to the defaults', true);
+  },
+  // A muscle with no target given one (339 e, r58): its numbers as they stand, now counted.
+  tgtSet(t) {
+    const m = MK.find(x => x === t.dataset.m);
+    if (!m || hasTarget(m)) return;
+    act(() => {
+      const o = state.settings.ownTargets || [];
+      state.settings.ownTargets = MK.filter(x => x === m || o.includes(x));
+    });
+    fx.rerenderKeepScroll();
+  },
+  // A target the lifter gave taken off: tracked only again, its numbers the app's, with an Undo step.
+  tgtOff(t) {
+    const m = MK.find(x => x === t.dataset.m);
+    if (!m || TARGETED.has(m) || (prof().focus || []).includes(m)) return;
+    act(
+      () => {
+        const o = (state.settings.ownTargets || []).filter(x => x !== m);
+        if (o.length) state.settings.ownTargets = o;
+        else delete state.settings.ownTargets;
+        const a = appBand(m);
+        state.settings.bands[m] = [a[0], a[1]];
+      },
+      { undo: true }
+    );
+    fx.rerenderKeepScroll();
+    fx.toast(`${ML[m]} is tracked only`, true);
   },
   unreadForget() {
     fx.confirm(

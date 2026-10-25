@@ -9,7 +9,7 @@ const r=await page.evaluate(()=>{
   // A stray quote in a template (r26 had one in This week's bar) leaves the
   // page readable but turns words into attribute names. Every attribute
   // outside SVG must be a data-, aria- or known HTML one.
-  const STD=new Set('accept autocomplete checked class disabled enterkeyhint height hidden id inputmode max maxlength min step open placeholder role selected style tabindex title type value width for name href target rel src alt readonly multiple pattern autofocus capture download draggable lang dir spellcheck autocapitalize autocorrect rows cols label'.split(' '));
+  const STD=new Set('accept autocomplete checked class disabled enterkeyhint height hidden id inputmode max maxlength min step open placeholder role selected style tabindex title type value width for name href target rel src alt readonly multiple pattern autofocus capture download draggable lang dir spellcheck autocapitalize autocorrect rows cols label colspan'.split(' ')); // colspan: Weekly set targets' row for a muscle with no target (r58)
   const attrs=(where)=>{for(const e of document.querySelectorAll('body *')){if(e.closest('svg'))continue;for(const a of e.attributes)if(!/^(data|aria)-[a-z0-9-]+$/.test(a.name)&&!STD.has(a.name)){bad.push('odd attribute "'+a.name+'" on '+e.tagName+' in '+where);return;}}};
   for(let round=0;round<25;round++){
     const ss=[];const n=5+Math.floor(rnd()*40);

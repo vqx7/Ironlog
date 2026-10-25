@@ -20,8 +20,18 @@ import { keyed } from 'lit-html/directives/keyed.js';
 import { live } from 'lit-html/directives/live.js';
 import { unsafeHTML } from 'lit-html/directives/unsafe-html.js';
 import { moreList, orderKeys } from './layout';
+import { estMin, min5 } from './format';
 import { numIn } from './util';
 import { state, ui } from './store';
+
+declare global {
+  interface Window {
+    /** Which of the page's two outside libraries loaded (03-body.html): the drag lists and the charts. */
+    __libs?: { sortable: boolean; chart: boolean } | undefined;
+    /** SortableJS, read here only for the copy a drag out of a list that copies (Plan's library) leaves in it. */
+    Sortable?: { clone?: Element | null | undefined } | undefined;
+  }
+}
 
 /** What a screen's template may hold where a part goes: a template, text, several of them, or nothing. */
 export type Part = TemplateResult | string | number | typeof nothing | readonly Part[];
@@ -36,6 +46,15 @@ export function drawLegacy(view: HTMLElement, markup: string): void {
 /** Draws a moved screen into the page's view, updating what is there in place. */
 export function drawScreen(view: HTMLElement, screen: TemplateResult): void {
   render(screen, view);
+}
+/* The suites read some parts as the markup the legacy script made of them
+   (tests/r44.js reads Plan's usual-range note): the part drawn into an
+   element of its own, lit-html's markers taken out. */
+/** A part as markup, for window.__ironlog. */
+export function markupOf(part: Part): string {
+  const box = document.createElement('div');
+  render(part, box);
+  return box.innerHTML.replace(/<!--[^]*?-->/g, '');
 }
 
 /* ---------- a field's value ---------- */
@@ -97,6 +116,9 @@ export function dragDrop(): boolean {
   const h = home;
   home = null;
   if (!h) return false;
+  // A drag out of a list that copies (Plan's library) leaves Sortable's copy where the element was: it goes, and the element comes back.
+  const copy = window.Sortable && window.Sortable.clone;
+  if (copy && copy !== h.el && copy.parentNode) copy.remove();
   h.el.classList.remove('sortable-ghost', 'sortable-chosen', 'sortable-drag');
   if (h.el.parentNode !== h.parent || h.el.nextSibling !== h.next) {
     if (h.next && h.next.parentNode !== h.parent) h.parent.appendChild(h.el);
@@ -110,6 +132,13 @@ export function dragDrop(): boolean {
 /** Whether a section is open: what was chosen on this visit, else its default (r28: folded unless it is the tab's content). */
 export function isOpen(sk: string, def?: boolean): boolean {
   return Object.prototype.hasOwnProperty.call(ui.folds, sk) ? !!ui.folds[sk] : !!def;
+}
+
+/** "~82 min", flagged when it runs past the lifting budget in Settings (minTxt in the legacy script). */
+export function minPart(m: number): Part {
+  const b = state.settings.timeBudget;
+  const r = min5(m);
+  return b && m > b ? html`<span class="overb">${estMin(r)}, over your ${b} min budget</span>` : estMin(r);
 }
 
 /** The ⠿ handle a section moves by. */
@@ -136,13 +165,7 @@ export function howText(key: string, text: string): TemplateResult {
 }
 
 /** The title at the top of a tab: a kicker, the title, a line under it and its buttons (a lone ? sits at the top right, r28). */
-export function pageTitle(
-  kick: string,
-  title: string,
-  meta: string,
-  actions?: Part,
-  onlyHelp?: boolean
-): TemplateResult {
+export function pageTitle(kick: string, title: string, meta: Part, actions?: Part, onlyHelp?: boolean): TemplateResult {
   return html`<div class=${onlyHelp ? 'ph q' : 'ph'}>
 <div>${
     kick
@@ -164,6 +187,16 @@ ${
     : nothing
 }</div>
 `;
+}
+
+/** The ? beside a tab's title that shows its explanation (helpBtn in the legacy script). */
+export function helpButton(key: string): TemplateResult {
+  return html`<button type="button" class="hb" data-act="help" data-h=${key} aria-expanded=${live(String(ui.help.has(key)))} aria-controls=${`help-${key}`} aria-label="What this shows">?</button>`;
+}
+
+/** A fold inside a section, its open state this visit's (subsec in the legacy script); `id` names it for a link that opens it. */
+export function subsection(sk: string, title: string, body: Part, sub?: Part, id?: string): TemplateResult {
+  return html`<details class="subsec" id=${id ?? nothing} data-sk=${sk} .open=${live(isOpen(sk, false))}><summary><span class="subsec-t">${title}</span><span class="sec-s">${sub ?? ''}</span><span class="chev" aria-hidden="true"></span></summary><div class="sec-b">${body}</div></details>`;
 }
 
 /** A section: its fold key, its movable key, title, the line beside it, its explanation (`help` alone gives the How this works line, the text placed in the body; with `helpBody`, the text follows the line), its body, whether it starts open, and its id. */
@@ -202,6 +235,32 @@ export function placed(
   const order = saved && saved.length && keys.length > 1 ? orderKeys(saved, keys) : keys;
   const hidden = state.settings.hidden;
   return order.flatMap(k => list.filter(x => x[0] === k && !hidden.includes(tab + ':' + k)));
+}
+
+/* A tab whose movable sections have other elements between them (Plan's
+   note about routines to remove sits between Routine and Add exercises):
+   the sections take, in their saved order, the places sections hold in the
+   code's order, and the elements between stay where they are, as the legacy
+   applySecOrder moved them; then the hidden sections go (applyHidden). */
+/** A tab's parts in order, each [its section's key, or null for a part that does not move, the part]. */
+export function slotted(tab: string, parts: readonly (readonly [string | null, Part])[]): Part[] {
+  const keyed = parts.flatMap(([key, part]) => (key == null ? [] : [[key, part] as const]));
+  const saved = state.settings.secOrder[tab];
+  const keys = keyed.map(x => x[0]);
+  const order = saved && saved.length && keys.length > 1 ? orderKeys(saved, keys) : keys;
+  const by = new Map(keyed);
+  const hidden = state.settings.hidden;
+  let k = 0;
+  const out: Part[] = [];
+  for (const [key, part] of parts) {
+    if (key == null) {
+      out.push(part);
+      continue;
+    }
+    const at = order[k++] ?? key;
+    if (!hidden.includes(tab + ':' + at)) out.push(by.get(at) ?? nothing);
+  }
+  return out;
 }
 
 /** Whether a hidden section of History has something to show (the legacy MORE_LIVE takes these): cardio logged, or something recently deleted. */

@@ -104,26 +104,15 @@ document.addEventListener('input',e=>{
     if(t.dataset.f!=='rir')updateProgress(+t.dataset.b);
     if(t.dataset.f==='w'){updatePlates(+t.dataset.b,+t.dataset.s);refreshGreyW(+t.dataset.b);}
     saveSoon();return;}
-  if(t.dataset.it){const f=findItem(t.dataset.uid);if(!f)return;
-    if(t.dataset.it==='jump'&&!String(t.value).trim()){delete f.it.jump;saveSoon();invalidate();return;}
-    const n=numIn(t.value);if(n==null)return;
-    const k=t.dataset.it;const cl=(x,lo,hi)=>Math.min(Math.max(x,lo),hi);
-    if(k==='jump'){f.it.jump=Math.round(cl(n,0,20)*10)/10;saveSoon();invalidate();return;}
-    if(k==='inc'){const e=state.exercises.find(x=>x.id===f.it.exId);const v=fromD(cl(n,0,500));f.it.inc=v;if(e)e.inc=v>0?v:null;saveSoon();invalidate();return;}
-    f.it[k]=k==='rir'?cl(effIn(n),0,10):k==='sets'?cl(Math.round(n),1,30):k==='rest'?cl(Math.round(n),0,1800):cl(Math.round(n),1,600);
-    saveSoon();invalidate();return;}
+  if(planInput(t))return; // Plan's fields (r58): an exercise's numbers, a day's name, the routine's name, the searches
   if(t.dataset.band){bandInput(t);return;}
-  if(t.dataset.dayname!=null){curRoutineB().days[+t.dataset.dayname].name=t.value;saveSoon();return;}
   if(t.dataset.fbind&&ui.modal&&ui.modal.kind==='feedback'){ui.modal[t.dataset.fbind]=t.value;ui.modal.dirty=true;const c=document.getElementById('fbCount');if(c&&t.dataset.fbind==='msg')c.textContent=`${t.value.length} / ${FB_MAX}`;return;}
   if(t.dataset.abind&&ui.modal&&ui.modal.kind==='account'){ui.modal[t.dataset.abind]=t.value;if(ui.modal.err){ui.modal.err='';}return;}
   if(t.dataset.ebind&&ui.modal&&ui.modal.kind==='exEdit'){const k=t.dataset.ebind;if(t.type==='checkbox')return;ui.modal.e[k]=t.value;return;}
   if(t.dataset.mbind&&ui.modal&&ui.modal.kind==='picker'){ui.modal[t.dataset.mbind]=t.value;const pl=$('#pickList');if(pl){pl.innerHTML=pickerBody(ui.modal);pl.scrollTop=0;}return;}
   const b=t.dataset.bind;
-  if(b==='routineName'){curRoutineB().name=t.value;saveSoon();return;}
   if(b==='draftNotes'){state.draft.notes=t.value;saveSoon();return;}
   if(b==='draftName'&&state.draft){state.draft.dayName=t.value.trim()?t.value.slice(0,40):'Freestyle';saveSoon();return;}
-  if(b==='libQ'){ui.libQ=t.value;const el=$('#libList');if(el)el.innerHTML=libCards();return;}
-  if(b==='bLibQ'){ui.bLibQ=t.value;const el=$('#bLib');if(el)el.innerHTML=bLibItems();return;}
 });
 document.addEventListener('change',e=>{
   const t=e.target;
@@ -134,22 +123,13 @@ document.addEventListener('change',e=>{
     fbShrink(f0).then(d=>{if(ui.modal!==m)return;if(!d){toast('That picture is too large');return;}m.shot=d;m.dirty=true;renderModal();},e=>{log('feedback',e);toast('Could not read that image. Try a screenshot (PNG or JPG).');});t.value='';return;}
   if(t.id==='impFile'&&t.files&&t.files[0]){const f=t.files[0];t.value='';impStart({file:f});return;}
   if(t.id==='importFile'&&t.files&&t.files[0]){const fr=new FileReader();fr.onload=()=>importData(String(fr.result));fr.onerror=()=>toast('Could not read that file');fr.readAsText(t.files[0]);t.value='';return;}
-  if(t.dataset.it){const f=findItem(t.dataset.uid);
-    /* Never a minimum above the maximum (r30: the editor saved "1 x 12-10",
-       which nothing can read). The field just changed wins: a minimum typed
-       above the maximum raises it, a maximum typed below the minimum lowers
-       it, so typing 12 then 15 into a 6 to 10 range gives 12 to 15. */
-    if(f&&(t.dataset.it==='repMin'||t.dataset.it==='repMax')&&+f.it.repMin>+f.it.repMax){if(t.dataset.it==='repMin')f.it.repMax=f.it.repMin;else f.it.repMin=f.it.repMax;toast(`Range set to ${repSpan(f.it.repMin,f.it.repMax,'-')}`);}
-    if(f&&t.dataset.it!=='sets'){invalidate();syncDraftPlan(f);if(t.dataset.it==='inc')refreshEx(f.it.exId);}commit();rerenderKeepScroll();return;}
+  if(planChange(t))return; // Plan's fields (r58): an exercise's numbers, a day's name and rest day, Move to
   if(t.dataset.gym){gymField(t);return;}
   // The Set up page's bodyweight (r34): today's weigh-in, replaced if typed again, removed if cleared.
   if(t.id==='obBw'){const v=numIn(t.value);state.bodyweights=state.bodyweights.filter(b=>b.date!==today());
     if(v!=null){const kg=fromD(v);if(kg<BW_MIN_KG||kg>BW_MAX_KG){toast(`Bodyweight must be between ${fmtW(BW_MIN_KG)} and ${fmtW(BW_MAX_KG)} ${U()}`);t.value='';}else state.bodyweights.push({id:uid(),date:today(),kg});}
     commit();return;}
   if(t.dataset.band){bandChange(t);return;}
-  if(t.dataset.dayname!=null){commit();rerenderKeepScroll();return;}
-  if(t.dataset.dayrest!=null){const R=curRoutineB();const d=R.days[+t.dataset.dayrest];if(!d)return;snapshot();d.rest=t.checked;commit();rerenderKeepScroll();toast(t.checked?`${d.name||'Day'} is now a rest day. Its exercises are kept.`:`${d.name||'Day'} is a training day again`,true);return;}
-  if(t.dataset.moveto){const f=findItem(t.dataset.moveto);if(!f)return;const to=+t.value;if(to===f.di)return;f.r.days[f.di].items.splice(f.i,1);f.r.days[to].items.push(f.it);Object.assign(f.r.days[to],trainOn(f.r.days[to]));commit();rerenderKeepScroll();toast(`Moved to ${dayLabel(f.r,to)}`);return;}
   if(t.dataset.ebind&&ui.modal&&ui.modal.kind==='exEdit'){const k=t.dataset.ebind;ui.modal.e[k]=t.type==='checkbox'?t.checked:t.value;if(k==='primary'){ui.modal.e.secondary=ui.modal.e.secondary.filter(x=>x!==t.value);renderModal();}if(k==='bw'){if(t.checked&&!ui.modal.e.bwfRaw)ui.modal.e.bwfRaw=String(Math.round(bwShare(ui.modal.e)*100));renderModal();}if(k==='plates'&&t.value==='auto')delete ui.modal.e.plates;if(k==='timed'||k==='equip'||k==='plates')renderModal();return;}
   if(ui.modal&&ui.modal.kind==='imp'){const m=ui.modal;
     if(t.dataset.imppick!=null){m.pick[t.dataset.imppick]=t.value;renderModal();return;}
@@ -186,8 +166,8 @@ document.addEventListener('change',e=>{
     }
     saveSoon();return;}
   const b=t.dataset.bind;if(!b)return;
-  // The moved screens' fields (History and Settings, r57): each change through act.
-  const own=HISTORY_BINDS[b]||SETTINGS_BINDS[b];if(own){own(t);return;}
+  // The moved screens' fields (History and Settings, r57; Plan and Stats, r58): each change through act.
+  const own=HISTORY_BINDS[b]||SETTINGS_BINDS[b]||PLAN_BINDS[b]||DASH_BINDS[b];if(own){own(t);return;}
   switch(b){
     case 'todayDay':ui.todayDay=+t.value;render();break;
     case 'draftDate':if(isDate(t.value)&&t.value<=today()){
@@ -196,20 +176,6 @@ document.addEventListener('change',e=>{
       const d=state.draft;const moved=d.date!==t.value;d.date=t.value;
       if(moved&&!d.editingId){for(const b of d.ex)refreshBlock(b);saveNow();rerenderKeepScroll();}else saveNow();
     }else{t.value=state.draft.date;toast('A session cannot be dated in the future');}break;
-    case 'bRoutine':ui.bRoutine=t.value;ui.openItem=null;render();break;
-    case 'routineName':{const R=curRoutineB();if(!R.name.trim())R.name='Routine';if(nameTaken(R.name,R.id))toast('Another routine has the same name');commit();render();break;}
-    case 'rSchedule':{
-      const R=curRoutineB();const v=t.value==='weekly'?'weekly':'cycle';if(v===R.schedule)break;
-      if(v==='weekly'&&R.days.length>7){toast(`Fixed weekdays needs exactly 7 days. Remove ${R.days.length-7} first.`);rerenderKeepScroll();break;}
-      snapshot();
-      if(v==='weekly')while(R.days.length<7)R.days.push({id:uid(),name:'Rest',rest:true,items:[]});
-      R.schedule=v;ui.todayDay=null;commit();rerenderKeepScroll();
-      toast(v==='weekly'?'Days are now pinned to Monday to Sunday':'Days are now a numbered cycle',true);break;}
-    case 'bLibM':ui.bLibM=t.value;rerenderKeepScroll();break;
-    case 'bTarget':ui.bTarget=+t.value;ui.dayFocus=undefined;rerenderKeepScroll();break;
-    case 'libM':case 'libE':ui[b]=t.value;rerenderKeepScroll();break;
-    case 'dashMuscle':ui.dashMuscle=t.value;rerenderKeepScroll();break;
-    case 'dashEx':ui.dashEx=t.value;rerenderKeepScroll();break;
     case 'loadFill':ACT.loadAsk({dataset:{v:t.checked?'fill':'grey'}});break;
     case 'height':{const v=t.value.trim();if(!v){state.settings.heightCm=null;commit();rerenderKeepScroll();break;}
       const cm=parseHeight(v);if(cm==null){toast(U()==='lb'?'Enter height like 5\'10 or 70 (inches)':'Enter height in cm, like 178');break;}

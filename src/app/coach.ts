@@ -360,17 +360,20 @@ export const CHK_Q: readonly (readonly [string, string, readonly string[]])[] = 
 ];
 
 /* For each check-in answer, the sessions given it and the share of their
-   lifts that progressed. The sessions read are those with a check-in, and
-   each id read from IDX's byEx comes from its own keys, as the ! say. */
+   lifts that set a PR, as Recent PRs counts one (r58, 343 6: it counted
+   any record, a heavier set that was no PR among them). The sessions read
+   are those with a check-in, and each id read from IDX's byEx comes from its
+   own keys, as the ! say. */
 export function readinessIn(M: Model) {
   const I = IDXIn(M);
   const bySid: Record<string, { n: number; p: number }> = {};
+  const pr = new Set(I.prs.filter(p => p.big).map(p => p.sid + '|' + p.exId));
   for (const id in I.byEx)
     I.byEx[id]!.forEach((x, i) => {
       if (i === 0 || lighter(x)) return;
       const o = bySid[x.sid] || (bySid[x.sid] = { n: 0, p: 0 });
       o.n++;
-      if (x.progress) o.p++;
+      if (pr.has(x.sid + '|' + id)) o.p++;
     });
   const sess = M.s.sessions.filter(s => !s.demo && s.chk && bySid[s.id]);
   const rows = CHK_Q.map(([k, l, names]) => ({

@@ -149,46 +149,9 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
   const OLD = 'baselines/r56-2.html';
   if (process.env.IRONLOG_FILE) console.log('note r57 section 4 compares source pages; it runs on the source build');
   else {
-  // Seeds a log in the page (by a script, so both builds take the same one) and reads one tab, every section open.
-  const shot = async (file, seed, tab, env) => {
-    const Q = await open(file, { browser, clock: '2026-10-24T10:00:00' });
-    if (env) { await Q.page.context().addInitScript(`window.IRONLOG_ENV=${JSON.stringify(env)};`); await Q.page.reload(); await wait(300); }
-    const out = await Q.page.evaluate(async ([seed, tab]) => {
-      const L = window.__ironlog;
-      (new Function('L', seed))(L);
-      L.ui.tab = tab; L.render(); await new Promise(r => setTimeout(r, 120));
-      document.querySelectorAll('#view details').forEach(d => { d.open = true; });
-      await new Promise(r => setTimeout(r, 120));
-      const view = document.getElementById('view');
-      // Field state is a property, not markup: written on each element as an attribute to compare.
-      for (const el of view.querySelectorAll('input,select,textarea,option,details')) {
-        if ('value' in el && el.tagName !== 'DETAILS' && el.tagName !== 'OPTION' && el.type !== 'file') el.setAttribute('p-value', el.value);
-        if (el.type === 'checkbox') el.setAttribute('p-checked', String(el.checked));
-        if (el.tagName === 'OPTION') el.setAttribute('p-selected', String(el.selected));
-        if (el.tagName === 'DETAILS') el.setAttribute('p-open', String(el.open));
-        if ('disabled' in el) el.setAttribute('p-disabled', String(el.disabled));
-      }
-      const byId = id => { const e = document.getElementById(id); return e ? e.textContent.trim() : '?'; };
-      // Record ids are made at random by each page's demo data, so each stands for its place in the order first met.
-      const ids = new Map(); const idOf = v => { if (!ids.has(v)) ids.set(v, '#' + ids.size); return ids.get(v); };
-      // Text split by lit-html's markers is one text, as the old page's was; a class is its set of names.
-      const kidsOf = n => { const out = []; let txt = '';
-        const flush = () => { const t = txt.replace(/\s+/g, ' ').trim(); if (t) out.push(JSON.stringify(t)); txt = ''; };
-        for (const c of n.childNodes) { if (c.nodeType === 3) txt += c.textContent; else if (c.nodeType === 1) { flush(); out.push(walk(c)); } }
-        flush(); return out; };
-      const walk = n => {
-        const at = [...n.attributes].filter(a => !['value', 'checked', 'selected', 'open', 'disabled'].includes(a.name) && !(a.name === 'class' && !a.value.trim()) && !(a.name === 'id' && /^lt/.test(a.value)))
-          .map(a => a.name === 'aria-labelledby' ? `${a.name}=>${byId(a.value)}` : a.name === 'class' ? `class=${JSON.stringify(a.value.trim().split(/\s+/).sort().join(' '))}` : a.name === 'data-id' ? `data-id=${idOf(a.value)}` : `${a.name}=${JSON.stringify(a.value)}`).sort();
-        return `<${n.tagName.toLowerCase()}${at.length ? ' ' + at.join(' ') : ''}>${kidsOf(n).join('')}</${n.tagName.toLowerCase()}>`;
-      };
-      // The build's own version line differs by design between the two builds.
-      const ver = t => t.replace(/\d+\.\d+ \(build \d{4}\.\d{2}\.\d{2}-r[\d.]+\)/gi, 'VERSION');
-      return { tree: kidsOf(view).map(ver), text: ver(view.innerText.replace(/[ \t]+/g, ' ').replace(/\s*\n\s*/g, '\n').trim()) };
-    }, [seed, tab]);
-    out.errors = Q.errors.slice();
-    await Q.page.context().close();
-    return out;
-  };
+  // Each tab read by the harness's screenOf (tests/h.js), the same reading for both builds.
+  const { screenOf, screenDiff } = require('./h');
+  const shot = (file, seed, tab, env) => screenOf(file, { browser, seed, tab, env });
   const SEEDS = [
     ['a new install', "L.state.settings.onboarded=true;L.saveNow();"],
     ['demo data, lb', "L.state.settings.onboarded=true;L.makeDemo();L.saveNow();"],
@@ -214,11 +177,24 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
       window.ironlogAuth={user(){return null;},signOut(){return Promise.resolve();},deleteAccount(){return Promise.resolve();}};
       L.cloud.on=true;L.cloud.status='synced';L.cloud.last=Date.now()-5*60000;L.saveNow();`]
   ];
+  /* Settings' Weekly set targets changed on purpose in r58 (339 e: a muscle tracked only offers Set a
+     target, one given a target can go back, and the section's how-text says so), held by tests/r58.js
+     section 9; that section is left out of both pages here, its elements and its text, and the rest of
+     Settings is still held to r56.2. */
+  const heldOut = shot => {
+    const i = shot.tree.findIndex(t => t.includes('data-mkey="bands"'));
+    if (i < 0) return shot;
+    const next = (shot.tree[i + 1] || '').match(/<span class="sec-t">"([^"]*)"/);
+    // A section's text starts with its grip and its title, as the tree orders them.
+    const from = shot.text.indexOf('⠿\nWeekly set targets\n'), to = next ? shot.text.indexOf('⠿\n' + next[1] + '\n', from) : -1;
+    return { ...shot, tree: shot.tree.map((t, j) => (j === i ? '(Weekly set targets)' : t)), text: from < 0 ? shot.text : shot.text.slice(0, from) + '(Weekly set targets)\n' + (to < 0 ? '' : shot.text.slice(to)) };
+  };
   const ENVS = [null, 'preview'];
   for (const [name, seed] of SEEDS) for (const tab of ['settings', 'history']) for (const env of ENVS) {
     if (env && name !== 'demo data, lb') continue;
-    const a = await shot(OLD, seed, tab, env), b = await shot(FILE, seed, tab, env);
-    const firstDiff = (() => { const n = Math.max(a.tree.length, b.tree.length); for (let i = 0; i < n; i++) if (a.tree[i] !== b.tree[i]) { const x = a.tree[i] || '', y = b.tree[i] || ''; let j = 0; while (j < x.length && x[j] === y[j]) j++; return { at: i, r56_2: x.slice(Math.max(0, j - 160), j + 200), now: y.slice(Math.max(0, j - 160), j + 200) }; } return null; })();
+    const a = heldOut(await shot(OLD, seed, tab, env)), b = heldOut(await shot(FILE, seed, tab, env));
+    const d = screenDiff({ tree: a.tree, text: '' }, { tree: b.tree, text: '' });
+    const firstDiff = d && { at: d.at, r56_2: d.before, now: d.now };
     ok(!firstDiff, `4. ${tab}, ${name}${env ? ', the preview' : ''}: the same elements, attributes and field values as r56.2`, firstDiff);
     ok(a.text === b.text, `4. ${tab}, ${name}${env ? ', the preview' : ''}: the same visible text as r56.2`, a.text === b.text ? '' : { r56_2: a.text.slice(0, 400), now: b.text.slice(0, 400) });
     ok(!b.errors.length, `4. ${tab}, ${name}${env ? ', the preview' : ''}: no page errors`, b.errors);

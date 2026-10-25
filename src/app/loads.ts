@@ -4,7 +4,7 @@
    (loadMode, in library.ts). */
 
 import type { Exercise } from './types';
-import type { Model, Suggestion } from './model';
+import type { ExerciseLike, Model, Suggestion } from './model';
 import { loadMode, PLATE_SIDE_IDS, isCompound, noE1 } from './library';
 import { r1 } from './util';
 import { UIn } from './model';
@@ -41,7 +41,7 @@ export function loadNote(ex: Parameters<typeof loadMode>[0]): string {
 }
 
 // An estimate is said as a load only where it is a load someone could put on the bar (a 1RM is shown for these lifts).
-export function estInLoad(ex: Exercise): boolean {
+export function estInLoad(ex: ExerciseLike): boolean {
   return isCompound(ex) && !ex.bw && !noE1(ex) && loadMode(ex) === 'total';
 }
 

@@ -3,7 +3,7 @@
 A hypertrophy and strength tracker for one lifter, V, used on a phone at the gym. It ships as a standalone
 installable web app: built from `src/` into one page, served by GitHub Pages at https://ironapp.org, working
 offline, with the log on the phone and an optional account that syncs it. Every pull request also publishes a
-preview app at https://ironapp.org/preview/ to try on the phone before merging. Build r57, version 2.11, state schema v5.
+preview app at https://ironapp.org/preview/ to try on the phone before merging. Build r58, version 2.12, state schema v5.
 
 The Claude artifact version was retired by V on 2026-09-27 (`OWNER.md` Done): never work on it or republish it.
 `cloudProvider()` still takes Claude's db when `window.claude` exists, because the sync suites use it as their
@@ -65,7 +65,8 @@ stand-in cloud.
   fills at start (`render`, `toast`, `ask`, `confirm`, and the session's effects a moved screen calls), and run
   nothing on import (`storageStart()`, `syncStart()`). The screens move here from r57 (phase 5): `view.ts` (the
   host that draws every tab into `#view`, and the parts the moved screens share), `act.ts` (the one way to change
-  the log), `history.ts` and `settings.ts`, with `display.ts` and `env.ts` for what more than one screen reads.
+  the log), `history.ts`, `settings.ts`, `plan.ts` and `stats.ts` (its charts in `graphs.ts`, r58), with
+  `display.ts` and `env.ts` for what more than one screen reads.
 - `src/1*.js`, `src/2*.js`: the legacy script, cut into parts at its section headers (start-up, accounts, the
   screens, sheets, actions and events), one function scope. It reads `src/app/` only through the imports in
   `src/09-imports.js`. `src/01` to `src/03` are the page head, styles and markup.
@@ -118,15 +119,19 @@ lines, then `ALL PASS` (the fuzz suite prints `fuzz clean`). Type check: `npx ts
   Trends are never shown as a 1RM; a muscle with no clear lift reads unclear, never 0%; weight lifted is never a
   percentage against last week; no projections. Deloads and lighter loads are whole steps, never under the bar on a
   barbell lift typed as the total. One rule for every session (V, 2026-10-18): a lift sets its next target only at
-  its usual load and reps for its usual sets; with fewer sets or a clearly weaker reading the target repeats and the
-  session still counts for the trend, stalls and PRs; done lighter it sets no target or trend, and done in full on a
+  its usual load and reps for its usual sets (in a session on a day of the routine, the sets its plan gave it that day, saved with it, once a session did them: r58); with fewer sets or a
+  clearly weaker reading the target repeats and the session still counts for the trend, stalls and PRs; done
+  lighter it sets no target or trend, and done in full on a
   lighter or deload day it is a full session (a day's label never overrides what a lift did). A break of more than
   four weeks restarts a lift's readings, and the weeks counted (averages and adherence) start after it. A ticked set
   of 0 reps is a missed set: kept and shown, counted toward no volume, PR, estimate or trend, read by the next target
   as a set short of the range (so sets missed never step a load up, r56.2), and asked about first when its load is well
   under the session's working load (r55.1). With Your gym's plates set, a bar lift's loads are ones the bar and those
   plates make (r55.1). A past week is read against what its routine
-  planned then (each session records it, `pw`), never the routine as it is now. A PR is a PR on any day, and a change of units or gyms is never one.
+  planned then (each session records it, `pw`), never the routine as it is now, and a lift's session by the sets its plan gave it then (`ps`, r58). A PR is a PR on any day, and a change of units or gyms is never one.
+  A PR is a set stronger than every earlier one, the same PR on every screen; a heavier set that is not one is
+  Heaviest yet (r58). A muscle has a weekly target by default only when lifters train it directly for size
+  (`TARGETED`); any other is tracked only until the lifter gives it one, which then counts everywhere (`hasTargetIn`, r58).
 - **V's rulings on screen:** the Volume radar is drawn from what was logged, never the routine's plan, and always
   draws; no Planned chip on Stats; the plan's usual-range note is a quiet line on Plan, never a flag and never on
   Stats; no other app is named on screen; no wording about shared phones, someone else or another person; no

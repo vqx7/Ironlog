@@ -135,4 +135,61 @@ function sourceFiles() {
   walk('src'); return out.sort();
 }
 function sourceTexts() { return sourceFiles().map(f => fs.readFileSync(path.join(__dirname, '..', f), 'utf8')); }
-module.exports = { open, cspFix, build, engine, ENGINE, touchDriver, offlineLoad, settle, sourceFiles, sourceTexts };
+/* A screen as a lifter sees it, to compare two builds (phase 5, r57 on: a
+   screen that moves into src/app/ must look exactly as it did). `seed` is a
+   script given the page's window.__ironlog as L (the same text on both
+   builds, so both read the same log); `prep`, run after the tab is drawn,
+   may open or pick things on it (a day, an item, a mode). Every section and
+   fold is opened, then the screen is read as a tree: each element with its
+   attributes (a class as its set of names; a record id as its place in the
+   order first met, since demo data makes ids at random; a field's state,
+   which is a property, as p- attributes; a label's id by the text it names;
+   a chart's canvas without the size Chart.js gives it), and the text in it,
+   lit-html's markers merged away; and the visible text. The build's own
+   version line is left out, as it differs by design. */
+async function screenOf(file, { browser, seed, tab, env, prep, clock }) {
+  const Q = await open(file, { browser, clock: clock || '2026-10-24T10:00:00' });
+  if (env) { await Q.page.context().addInitScript(`window.IRONLOG_ENV=${JSON.stringify(env)};`); await Q.page.reload(); await Q.page.waitForTimeout(300); }
+  const out = await Q.page.evaluate(async ([seed, tab, prep]) => {
+    const L = window.__ironlog; const wait = ms => new Promise(r => setTimeout(r, ms));
+    (new Function('L', seed))(L);
+    L.ui.tab = tab; L.render(); await wait(120);
+    if (prep) { await (new Function('L', 'return (async()=>{' + prep + '})()'))(L); await wait(150); }
+    document.querySelectorAll('#view details').forEach(d => { d.open = true; });
+    await wait(150);
+    const view = document.getElementById('view');
+    for (const el of view.querySelectorAll('input,select,textarea,option,details')) {
+      if ('value' in el && el.tagName !== 'DETAILS' && el.tagName !== 'OPTION' && el.type !== 'file') el.setAttribute('p-value', el.value);
+      if (el.type === 'checkbox') el.setAttribute('p-checked', String(el.checked));
+      if (el.tagName === 'OPTION') el.setAttribute('p-selected', String(el.selected));
+      if (el.tagName === 'DETAILS') el.setAttribute('p-open', String(el.open));
+      if ('disabled' in el) el.setAttribute('p-disabled', String(el.disabled));
+    }
+    const byId = id => { const e = document.getElementById(id); return e ? e.textContent.trim() : '?'; };
+    const ids = new Map(); const idOf = v => { if (!ids.has(v)) ids.set(v, '#' + ids.size); return ids.get(v); };
+    const RID = new Set(['data-id', 'data-uid', 'data-did', 'data-sid', 'data-moveto']);
+    const kidsOf = n => { const out = []; let txt = '';
+      const flush = () => { const t = txt.replace(/\s+/g, ' ').trim(); if (t) out.push(JSON.stringify(t)); txt = ''; };
+      for (const c of n.childNodes) { if (c.nodeType === 3) txt += c.textContent; else if (c.nodeType === 1) { flush(); out.push(walk(c)); } }
+      flush(); return out; };
+    const walk = n => {
+      const canvas = n.tagName === 'CANVAS';
+      const at = [...n.attributes].filter(a => !['value', 'checked', 'selected', 'open', 'disabled'].includes(a.name) && !(a.name === 'class' && !a.value.trim()) && !(a.name === 'id' && /^lt/.test(a.value)) && !(canvas && ['width', 'height', 'style'].includes(a.name)))
+        .map(a => a.name === 'aria-labelledby' ? `${a.name}=>${byId(a.value)}` : a.name === 'class' ? `class=${JSON.stringify(a.value.trim().split(/\s+/).sort().join(' '))}` : RID.has(a.name) ? `${a.name}=${idOf(a.value)}` : `${a.name}=${JSON.stringify(a.value)}`).sort();
+      return `<${n.tagName.toLowerCase()}${at.length ? ' ' + at.join(' ') : ''}>${canvas ? '' : kidsOf(n).join('')}</${n.tagName.toLowerCase()}>`;
+    };
+    const ver = t => t.replace(/\d+\.\d+ \(build \d{4}\.\d{2}\.\d{2}-r[\d.]+\)/gi, 'VERSION');
+    return { tree: kidsOf(view).map(ver), text: ver(view.innerText.replace(/[ \t]+/g, ' ').replace(/\s*\n\s*/g, '\n').trim()) };
+  }, [seed, tab, prep || '']);
+  out.errors = Q.errors.slice();
+  await Q.page.context().close();
+  return out;
+}
+/* The first place two screens read by screenOf differ, with the text around
+   it on each side, or null when they are the same. */
+function screenDiff(a, b) {
+  const n = Math.max(a.tree.length, b.tree.length);
+  for (let i = 0; i < n; i++) if (a.tree[i] !== b.tree[i]) { const x = a.tree[i] || '', y = b.tree[i] || ''; let j = 0; while (j < x.length && x[j] === y[j]) j++; return { at: i, before: x.slice(Math.max(0, j - 160), j + 200), now: y.slice(Math.max(0, j - 160), j + 200) }; }
+  return a.text === b.text ? null : { text: true, before: a.text.slice(0, 400), now: b.text.slice(0, 400) };
+}
+module.exports = { open, cspFix, build, engine, ENGINE, touchDriver, offlineLoad, settle, sourceFiles, sourceTexts, screenOf, screenDiff };

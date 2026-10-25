@@ -35,7 +35,7 @@ const K = +process.env.ENGINE_N || 1000, BATCH = 100;
 // and musTrend, a muscle's strength trend in words, which Stats and the muscles sheet call and no adapter reaches (r54);
 // and r55's routine helpers: what a session records of its routine (pwOf), a first-run choice replacing the starter
 // (dropStarter), a day given an exercise (trainOn) and the item a lift's plan comes from (planItemOf).
-const PLAIN = ['avgWeeksTxt', 'dayLabel', 'daySets', 'ssLetters', 'routineSig', 'tplCountLine', 'musTrend', 'pwOf', 'dropStarter', 'trainOn', 'planItemOf', 'platesPerSide'];
+const PLAIN = ['avgWeeksTxt', 'dayLabel', 'daySets', 'ssLetters', 'routineSig', 'tplCountLine', 'musTrend', 'pwOf', 'dropStarter', 'trainOn', 'planItemOf', 'platesPerSide', 'planSetsOf', 'withPlanSets'];
 // Every adapter live.ts gives the legacy script, read from live.ts itself, so a new one cannot go uncalled.
 const ADAPTERS = [...fs.readFileSync(path.join(APP, 'live.ts'), 'utf8').matchAll(/^export const (\w+) = live\(\w+In\);$/gm)].map(m => m[1]);
 // The adapters added since r53, and the plain functions above the digest does not call: tests/wide.js is shared with
@@ -49,6 +49,10 @@ const EXTRA = {
   pwOf: (s) => [[s.routines, s.activeRoutineId], [s.routines, 'none'], [[], '']],
   dropStarter: (s) => [[s.routines, s.sessions, s.routines.slice(0, 1).map(r => window.__ironlog.routineSig(r))], [s.routines, [], []]],
   trainOn: (s) => s.routines.flatMap(r => r.days.map(d => [d])),
+  // r58 (339 h): the sets a routine plans for a lift, a day first, in the routine in use and one that is gone; and Finish's
+  // exercises given them on a day of the routine, and not in Freestyle, with no day, or on an edit.
+  planSetsOf: (s, ids) => ids.slice(0, 4).flatMap(id => [[s.routines, s.activeRoutineId, null, id], [s.routines, s.activeRoutineId, ((s.routines.find(r => r.id === s.activeRoutineId) || { days: [] }).days[1] || {}).id || null, id], [s.routines, 'none', null, id]]),
+  withPlanSets: (s, ids) => { const day = ((s.routines.find(r => r.id === s.activeRoutineId) || { days: [] }).days[0] || {}).id || null; const ex = () => ids.slice(0, 4).map(id => ({ exId: id })); return [[ex(), { routineId: s.activeRoutineId, dayId: day }, s.routines], [ex(), { routineId: s.activeRoutineId, dayId: day, free: true }, s.routines], [ex(), { routineId: s.activeRoutineId, dayId: null }, s.routines], [ex(), { routineId: s.activeRoutineId, dayId: day, editingId: 'e1' }, s.routines]]; },
   planItemOf: (s, ids) => s.routines.slice(0, 2).flatMap(r => ids.slice(0, 6).flatMap(id => [[r, id], [r, id, r.days.length > 1 ? r.days[1].id : null]])),
   // A lift's all-time bests, now and as of the log's middle session (a past workout's), and where the weeks are counted from.
   allTimeBests: (s, ids) => ids.flatMap(id => [[id], [id, s.sessions.length ? s.sessions[Math.floor(s.sessions.length / 2)].date : '']]),
@@ -62,6 +66,8 @@ const EXTRA = {
   // The log's last three weeks trained, as the radar's fallback reads them (Monday-start weeks, as util's weekStart).
   weeksAvg: (s) => { const ws = d => { const t = new Date(d + 'T12:00:00Z'); return new Date(t.getTime() - ((t.getUTCDay() + 6) % 7) * 864e5).toISOString().slice(0, 10); }; const all = [...new Set(s.sessions.map(x => ws(x.date)))].sort(); return [[all.slice(-3)], [[]]]; },
   // The app's own targets (src/app/profile.ts since r54): with the log's own profile and floors, a focus, and floors given.
+  // Whether a muscle has a weekly target (r58, 339 e): one by default, one the app does not give one, and one tracked only.
+  hasTarget: () => [['chest'], ['traps'], ['serratus'], ['neck'], ['forearms']],
   defBand: () => [['chest'], ['serratus'], ['quads', { focus: ['quads'] }], ['biceps', { focus: ['quads'] }]],
   appBand: () => [['chest'], ['serratus'], ['quads', { focus: ['quads'] }], ['chest', null, { chest: 5 }], ['chest', null, null]],
   fitFloors: (s) => s.routines.flatMap(r => [[r], [r, { chest: 3, quads: 4 }], [r, null, 1.75]]),
@@ -172,6 +178,13 @@ const SCENARIOS = [
   // The heavy day a step heavier each week instead, the light day last: falling in the light day's range only, so not
   // falling (r55, PENDING 319; until r55 the coach said chest strength was falling), the range it falls in named.
   (h, o) => heavyLight(h, o, i => [100 + 2.5 * i, 5], i => [70, [12, 11, 10, 9, 8, 8][i]], false),
+  // A lift's sessions read by the sets their plan gave them (r58, 339 h, from its review): bench planned at 4 on a day of the
+  // routine, 100 x 8 x 4 done to a plan of 4, five weeks of 3 sets to a plan of 3 (a set taken off), then 3 sets and 4 to a plan
+  // of 4 again: only the session of 3 after the set went back is short (the hold the wide histories, saved without it, never reach).
+  h => { const R = { id: 'psR', name: 'Plan sets', schedule: 'cycle', days: [{ id: 'psD', name: 'Push', rest: false, items: [{ uid: 'ps1', exId: 'bench', sets: 4, repMin: 6, repMax: 10, rir: 1, rest: 120, inc: 2.5, ss: null }] }] };
+    return { ...h, raw: { ...h.raw, injuries: [], deloadWeek: null, draft: null, settings: { ...h.raw.settings, restWeeks: [] }, routines: [...h.raw.routines.filter(r => r.id !== R.id), R], activeRoutineId: R.id,
+      sessions: [[100, 4, 4], [102.5, 3, 3], [105, 3, 3], [107.5, 3, 3], [110, 3, 3], [112.5, 3, 4], [112.5, 4, 4]].map(([w, n, ps], i) => ({ id: 'ps' + i, date: day(h.today, -44 + 7 * i), dayIdx: 0, dayId: 'psD', dayName: 'Push', routineId: R.id, notes: '',
+        ex: [{ exId: 'bench', rr: [6, 10], sets: Array.from({ length: n }, () => ({ w, r: 8, rir: 1, done: true })), ps }] })) } }; },
   // Missed sets (r55, V): a bench session with a set tried and not made between two done and one after them, so the
   // analytics keep them for the Last line in their places (missedTag), which no wide history reaches (their reps are 1 or more).
   h => ({ ...h, raw: { ...h.raw, injuries: [], deloadWeek: null, draft: null, settings: { ...h.raw.settings, restWeeks: [] },

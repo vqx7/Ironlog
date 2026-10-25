@@ -124,7 +124,10 @@ export interface LoggedSet {
     lighter mid-session (r31), and the injury it was held for (`inj`, a muscle
     or a joint, r54: its load capped and no target while that was flagged).
     `cut` marked it trimmed from r24 to r53; since r54 it is neither written
-    nor read (V's one rule reads the log), and sessions saved before keep it. */
+    nor read (V's one rule reads the log), and sessions saved before keep it.
+    `ps` is the sets its routine's plan gave it when saved (r58, 339 h): on
+    a session saved on a day of a routine with the lift in it, absent on the
+    rest, on an edit's new exercises and on sessions saved before r58. */
 export interface SessionEx {
   exId: string;
   note: string;
@@ -133,6 +136,7 @@ export interface SessionEx {
   light?: true | undefined;
   inj?: string | undefined;
   sets: LoggedSet[];
+  ps?: number | undefined;
 }
 
 /** A saved session (cleanSess in the storage part). `t` is when it started,
@@ -241,6 +245,8 @@ export interface EngineSettings {
   bands: Record<MuscleKey, [number, number]>;
   // The floors a first-run routine pick recorded (r44), whole sets per muscle.
   bandsFit?: Partial<Record<MuscleKey, number>> | undefined;
+  // The muscles outside TARGETED the lifter gave a target with Set a target (r58), in muscle order; absent when none.
+  ownTargets?: MuscleKey[] | undefined;
   priorities: MuscleKey[];
   restWeeks?: string[] | undefined;
   todayStart?: 'free' | undefined;

@@ -52,7 +52,7 @@ const brz = (load, rtf) => load * 36 / (37 - rtf);
     ok(!/%/.test(b.head) && /Change \+8\.1% over 4 weeks\./.test(b.tip) && /About \+[\d.]+% a week/.test(b.tip), 'no percentage on the line; the change (+8.1%) and the weekly rate are behind the i', { head: b.head, tip: b.tip });
     ok(!/in 4 weeks|if it holds/.test(b.head + b.tip), 'no 4-week projection on the headline or its i');
     ok(b.charts && b.charts.length >= 1 && !b.charts.some(l => /trend holds/i.test(l)), 'the chart has no projected line', b.charts);
-    ok(b.tiles.length === 2 && /^Best e1RM/.test(b.tiles[0]) && b.tiles[1] === 'Sessions logged', 'two tiles: best estimate and sessions (no change tile repeating the line)', b.tiles);
+    ok(b.tiles.length === 2 && /^Best estimate/.test(b.tiles[0]) && b.tiles[1] === 'Sessions logged', 'two tiles: best estimate and sessions (no change tile repeating the line)', b.tiles);
 
     // ---------- 2. The next session, the same target the session will show ----------
     const nx = await ev(() => { const L = window.__ironlog; const sg = L.suggest('bench', L.planFor('bench')); return sg.target; });
