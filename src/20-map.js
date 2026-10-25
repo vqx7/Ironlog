@@ -267,8 +267,8 @@ function livePR(exId,s,date){
   // logged has no load to estimate from, but less help is still a PR.
   if(!ex.timed&&s.w!==''&&s.w!=null&&isNum(+s.w)&&f.w>f.heaviest+1e-6&&stronger)return 'Weight PR';
   if(!(load>0)&&!ex.timed&&!ex.bw)return null;
-  // A new best is judged within the set's own band of reps to failure.
-  if(v!=null&&st){const bd=st.byBand&&st.byBand[rtfBand(rtfOf(+s.r,q0))];if(bd!=null&&v>bd+1e-6)return 'Best';}
+  // A new best is judged within the set's own band of reps to failure, and only when stronger than ever, as the list's big (r58: a band's best alone was announced and never listed).
+  if(v!=null&&st&&stronger){const bd=st.byBand&&st.byBand[rtfBand(rtfOf(+s.r,q0))];if(bd!=null&&v>bd+1e-6)return 'Best';}
   if(dom||!stronger)return null;
   // At 90% or more of the strongest set before it, as in the PR list (r30).
   if(!ex.timed&&scq(load,+s.r,q0)<top*REP_PR_SHARE-1e-9)return null;

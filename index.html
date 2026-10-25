@@ -13558,7 +13558,7 @@ ${logBuf.length ? b`<ul class="clist">${logBuf.slice(-5).reverse().map(
       const stronger = !judge || scq(load2, +s3.r, q0) > top + 1e-9;
       if (!ex.timed && s3.w !== "" && s3.w != null && isNum(+s3.w) && f3.w > f3.heaviest + 1e-6 && stronger) return "Weight PR";
       if (!(load2 > 0) && !ex.timed && !ex.bw) return null;
-      if (v3 != null && st) {
+      if (v3 != null && st && stronger) {
         const bd = st.byBand && st.byBand[rtfBand(rtfOf(+s3.r, q0))];
         if (bd != null && v3 > bd + 1e-6) return "Best";
       }
