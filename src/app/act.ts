@@ -30,12 +30,37 @@ export interface ActOpts {
   inProgress?: boolean | undefined;
 }
 
-/** Changes the log with every step a change needs, in order; false when its check refused it. */
+/* A change made inside another one (a helper that changes the log, called
+   from an action's change: Settings' Apply re-plans the session's exercises
+   not started) is part of it. Its own Undo step, caches and save are the
+   outer change's: the log is saved once, when the whole change is made. Run
+   as its own change, it saved half the action, and Undo, which takes the
+   first save after its step as the action's result, kept the rest as if made
+   after it (r60's full run: tests/r44.js, Apply then Undo). Whether a change
+   inside drops the caches is kept for the outer one. */
+let depth = 0;
+let dropInside = false;
+
+/** Changes the log with every step a change needs, in order; false when its check refused it. Inside another change it is part of that one. */
 export function act(change: () => void, opts: ActOpts = {}): boolean {
   if (opts.check && !opts.check()) return false;
+  if (depth > 0) {
+    if (!opts.inProgress) dropInside = true;
+    change();
+    return true;
+  }
   if (opts.undo) snapshot(typeof opts.undo === 'function' ? opts.undo : null);
-  change();
-  if (!opts.inProgress) invalidate();
+  depth++;
+  let inside = false;
+  try {
+    change();
+  } finally {
+    // Read and cleared whether or not the change threw, so the next change starts clean.
+    depth--;
+    inside = dropInside;
+    dropInside = false;
+  }
+  if (!opts.inProgress || inside) invalidate();
   if (opts.soon) saveSoon();
   else saveNow();
   return true;

@@ -9262,11 +9262,26 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
   }
 
   // src/app/act.ts
+  var depth = 0;
+  var dropInside = false;
   function act(change, opts = {}) {
     if (opts.check && !opts.check()) return false;
+    if (depth > 0) {
+      if (!opts.inProgress) dropInside = true;
+      change();
+      return true;
+    }
     if (opts.undo) snapshot(typeof opts.undo === "function" ? opts.undo : null);
-    change();
-    if (!opts.inProgress) invalidate();
+    depth++;
+    let inside = false;
+    try {
+      change();
+    } finally {
+      depth--;
+      inside = dropInside;
+      dropInside = false;
+    }
+    if (!opts.inProgress || inside) invalidate();
     if (opts.soon) saveSoon();
     else saveNow();
     return true;

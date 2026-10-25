@@ -20,6 +20,11 @@
 //      focused and marked, "Add the weight first", and the tick is made once
 //      the weight is typed; a bodyweight lift, a timed hold and a row with a
 //      grey load tick as before (PENDING 344; fails on r59).
+//   5  a change made inside another change is part of it (act, re-entrant):
+//      one Undo step for the whole, the log saved once at its end, so Undo
+//      puts everything back; Settings' Apply with a session in progress, which
+//      also re-plans the exercises not started, is undone whole (the full run
+//      of r60 in progress: tests/r44.js; fails on r59 for a nested change).
 const { open, engine, screenOf, screenDiff } = require('./h');
 const FILE = process.argv[2] || 'index.html';
 const OLD = 'baselines/r59.html';
@@ -192,6 +197,27 @@ const SCREENS = [
       ok(x.done && !x.need && x.toast !== 'Add the weight first', `4. ${what} ticks with no load, as before`, x);
     }
     ok(!P.errors.length, '4. no page errors', P.errors);
+    await P.page.context().close();
+  }
+
+  // ---- 5. A change inside a change is one change (act).
+  if (run(5)) {
+    const P = await open(FILE, { browser, clock: '2026-10-24T10:00:00' });
+    const r = await P.page.evaluate(() => {
+      const L = window.__ironlog; const S = L.state;
+      S.settings.onboarded = true; L.makeDemo(); S.sessions.forEach(x => { delete x.demo; }); L.saveNow();
+      // Three settings the lifter can set, each to a value other than its own (checked below), so each change is real.
+      const read = () => JSON.stringify([L.state.settings.timeBudget, L.state.settings.rirScale, L.state.settings.timerMode]);
+      const before = read();
+      // Three fields changed in one action, the second through a change of its own, as a moved screen's helper makes one.
+      L.act(() => { L.state.settings.timeBudget = 33; L.act(() => { L.state.settings.rirScale = 'rpe'; }, { inProgress: true }); L.state.settings.timerMode = 'manual'; }, { undo: true });
+      const mid = read();
+      L.ACT.undo();
+      const after = read();
+      return { before, mid, after };
+    });
+    ok(r.before === '[null,null,"auto"]' && r.mid === '[33,"rpe","manual"]' && r.after === r.before, '5. Undo of a change with a change inside it puts all of it back', r);
+    ok(!P.errors.length, '5. no page errors', P.errors);
     await P.page.context().close();
   }
 
