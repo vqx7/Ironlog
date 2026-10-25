@@ -138,8 +138,12 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
 
   ok(P.errors.length === 0, 'no page errors', P.errors);
 
-  // ---- 4. The two screens against r56.2's.
+  // ---- 4. The two screens against r56.2's. A comparison of two pages built from src/: the standalone
+  // build (IRONLOG_FILE) is the built app, which shows what r56.2's source page never does (Install, the
+  // licenses), and no built copy of r56.2 is kept, so the standalone run leaves this section to the source run.
   const OLD = 'baselines/r56-2.html';
+  if (process.env.IRONLOG_FILE) console.log('note r57 section 4 compares source pages; it runs on the source build');
+  else {
   // Seeds a log in the page (by a script, so both builds take the same one) and reads one tab, every section open.
   const shot = async (file, seed, tab, env) => {
     const Q = await open(file, { browser, clock: '2026-10-24T10:00:00' });
@@ -213,6 +217,7 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
     ok(!firstDiff, `4. ${tab}, ${name}${env ? ', the preview' : ''}: the same elements, attributes and field values as r56.2`, firstDiff);
     ok(a.text === b.text, `4. ${tab}, ${name}${env ? ', the preview' : ''}: the same visible text as r56.2`, a.text === b.text ? '' : { r56_2: a.text.slice(0, 400), now: b.text.slice(0, 400) });
     ok(!b.errors.length, `4. ${tab}, ${name}${env ? ', the preview' : ''}: no page errors`, b.errors);
+  }
   }
   await browser.close();
   console.log(fails.length ? `${fails.length} FAILED` : 'ALL PASS');

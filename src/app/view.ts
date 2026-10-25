@@ -86,12 +86,14 @@ export function tipButton(text: string, label?: string): TemplateResult {
 /** A section's "How this works" line, which shows its explanation. */
 export function howLink(key: string): TemplateResult {
   const on = ui.help.has(key);
-  return html`<div class="sec-help"><button type="button" class="hlink" data-act="help" data-h=${key} aria-expanded=${live(String(on))} aria-controls=${`help-${key}`}><span class="hi" aria-hidden="true">i</span>How this works</button></div>`;
+  return html`<div class="sec-help"><button type="button" class="hlink" data-act="help" data-h=${key} aria-expanded=${live(String(on))} aria-controls=${`help-${key}`}><span class="hi" aria-hidden="true">i</span>How this works</button></div>
+`;
 }
 
 /** An explanation, hidden until its "How this works" is tapped. */
 export function howText(key: string, text: string): TemplateResult {
-  return html`<p class="ht" id=${`help-${key}`} ?hidden=${live(!ui.help.has(key))}>${text}</p>`;
+  return html`<p class="ht" id=${`help-${key}`} ?hidden=${live(!ui.help.has(key))}>${text}</p>
+`;
 }
 
 /** The title at the top of a tab: a kicker, the title, a line under it and its buttons (a lone ? sits at the top right, r28). */
@@ -102,7 +104,27 @@ export function pageTitle(
   actions?: Part,
   onlyHelp?: boolean
 ): TemplateResult {
-  return html`<div class=${onlyHelp ? 'ph q' : 'ph'}><div>${kick ? html`<p class="kick">${kick}</p>` : nothing}<h2>${title}</h2>${meta ? html`<p class="meta">${meta}</p>` : nothing}</div>${actions ? html`<div class="ph-a">${actions}</div>` : nothing}</div>`;
+  return html`<div class=${onlyHelp ? 'ph q' : 'ph'}>
+<div>${
+    kick
+      ? html`<p class="kick">${kick}</p>
+`
+      : nothing
+  }
+<h2>${title}</h2>
+${
+  meta
+    ? html`<p class="meta">${meta}</p>
+`
+    : nothing
+}</div>
+${
+  actions
+    ? html`<div class="ph-a">${actions}</div>
+`
+    : nothing
+}</div>
+`;
 }
 
 /** A section: its fold key, its movable key, title, the line beside it, its explanation (`help` alone gives the How this works line, the text placed in the body; with `helpBody`, the text follows the line), its body, whether it starts open, and its id. */
@@ -119,7 +141,11 @@ export interface SecOpts {
 }
 /** One foldable section, the one component every tab's sections are drawn with (r28). */
 export function section(o: SecOpts): TemplateResult {
-  return html`<details class="sec" data-sk=${o.sk} data-mkey=${o.key ?? nothing} id=${o.id ?? nothing} .open=${live(isOpen(o.sk, o.def))}><summary>${o.key ? grip(o.title) : nothing}<span class="sec-t">${o.title}</span><span class="sec-s">${o.sub ?? ''}</span><span class="chev" aria-hidden="true"></span></summary><div class="sec-b">${o.help ? howLink(o.help) : nothing}${o.help && o.helpBody ? howText(o.help, o.helpBody) : nothing}${o.body}</div></details>`;
+  return html`<details class="sec" data-sk=${o.sk} data-mkey=${o.key ?? nothing} id=${o.id ?? nothing} .open=${live(isOpen(o.sk, o.def))}>
+<summary>${o.key ? grip(o.title) : nothing}<span class="sec-t">${o.title}</span><span class="sec-s">${o.sub ?? ''}</span><span class="chev" aria-hidden="true"></span></summary>
+<div class="sec-b">${o.help ? howLink(o.help) : nothing}${o.help && o.helpBody ? howText(o.help, o.helpBody) : nothing}${o.body}</div>
+</details>
+`;
 }
 
 /** A label's words with the tip beside them: the i button and the field named by the words alone, as the page's tip pass makes a label it finds (tipLabels). */
@@ -149,7 +175,11 @@ export const MORE_OFFER: Readonly<Record<string, () => boolean>> = {
 export function tabFoot(tab: string): TemplateResult | typeof nothing {
   const list = moreList(tab, state.settings.hidden, MORE_OFFER);
   if (!list.length) return nothing;
-  return html`<div class="moreline" id="moreLine"><p class="small muted ml-h">Add to this tab</p><div class="chips">${list.map(
+  return html`<div class="moreline" id="moreLine">
+<p class="small muted ml-h">Add to this tab</p>
+<div class="chips">${list.map(
     ([t, k, l]) => html`<button type="button" class="chip add" data-act="secShow" data-k=${`${t}:${k}`}>+ ${l}</button>`
-  )}</div><button type="button" class="linkbtn ml-c" data-act="goLayout">Show, hide, or reorder sections</button></div>`;
+  )}</div>
+<button type="button" class="linkbtn ml-c" data-act="goLayout">Show, hide, or reorder sections</button></div>
+`;
 }

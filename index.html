@@ -9491,16 +9491,30 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
   }
   function howLink(key) {
     const on = ui.help.has(key);
-    return b`<div class="sec-help"><button type="button" class="hlink" data-act="help" data-h=${key} aria-expanded=${l3(String(on))} aria-controls=${`help-${key}`}><span class="hi" aria-hidden="true">i</span>How this works</button></div>`;
+    return b`<div class="sec-help"><button type="button" class="hlink" data-act="help" data-h=${key} aria-expanded=${l3(String(on))} aria-controls=${`help-${key}`}><span class="hi" aria-hidden="true">i</span>How this works</button></div>
+`;
   }
   function howText(key, text) {
-    return b`<p class="ht" id=${`help-${key}`} ?hidden=${l3(!ui.help.has(key))}>${text}</p>`;
+    return b`<p class="ht" id=${`help-${key}`} ?hidden=${l3(!ui.help.has(key))}>${text}</p>
+`;
   }
   function pageTitle(kick, title, meta, actions, onlyHelp) {
-    return b`<div class=${onlyHelp ? "ph q" : "ph"}><div>${kick ? b`<p class="kick">${kick}</p>` : A}<h2>${title}</h2>${meta ? b`<p class="meta">${meta}</p>` : A}</div>${actions ? b`<div class="ph-a">${actions}</div>` : A}</div>`;
+    return b`<div class=${onlyHelp ? "ph q" : "ph"}>
+<div>${kick ? b`<p class="kick">${kick}</p>
+` : A}
+<h2>${title}</h2>
+${meta ? b`<p class="meta">${meta}</p>
+` : A}</div>
+${actions ? b`<div class="ph-a">${actions}</div>
+` : A}</div>
+`;
   }
   function section(o3) {
-    return b`<details class="sec" data-sk=${o3.sk} data-mkey=${o3.key ?? A} id=${o3.id ?? A} .open=${l3(isOpen(o3.sk, o3.def))}><summary>${o3.key ? grip(o3.title) : A}<span class="sec-t">${o3.title}</span><span class="sec-s">${o3.sub ?? ""}</span><span class="chev" aria-hidden="true"></span></summary><div class="sec-b">${o3.help ? howLink(o3.help) : A}${o3.help && o3.helpBody ? howText(o3.help, o3.helpBody) : A}${o3.body}</div></details>`;
+    return b`<details class="sec" data-sk=${o3.sk} data-mkey=${o3.key ?? A} id=${o3.id ?? A} .open=${l3(isOpen(o3.sk, o3.def))}>
+<summary>${o3.key ? grip(o3.title) : A}<span class="sec-t">${o3.title}</span><span class="sec-s">${o3.sub ?? ""}</span><span class="chev" aria-hidden="true"></span></summary>
+<div class="sec-b">${o3.help ? howLink(o3.help) : A}${o3.help && o3.helpBody ? howText(o3.help, o3.helpBody) : A}${o3.body}</div>
+</details>
+`;
   }
   function labelTip(id, words, tip) {
     return b`<span id=${id}>${words}</span> <button type="button" class="tipi" data-tip=${tip} aria-label=${"About " + words}>i</button>`;
@@ -9519,9 +9533,13 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
   function tabFoot(tab) {
     const list = moreList(tab, state.settings.hidden, MORE_OFFER);
     if (!list.length) return A;
-    return b`<div class="moreline" id="moreLine"><p class="small muted ml-h">Add to this tab</p><div class="chips">${list.map(
+    return b`<div class="moreline" id="moreLine">
+<p class="small muted ml-h">Add to this tab</p>
+<div class="chips">${list.map(
       ([t4, k2, l4]) => b`<button type="button" class="chip add" data-act="secShow" data-k=${`${t4}:${k2}`}>+ ${l4}</button>`
-    )}</div><button type="button" class="linkbtn ml-c" data-act="goLayout">Show, hide, or reorder sections</button></div>`;
+    )}</div>
+<button type="button" class="linkbtn ml-c" data-act="goLayout">Show, hide, or reorder sections</button></div>
+`;
   }
 
   // src/app/display.ts
@@ -9649,14 +9667,19 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     if (cs.length) keyed.push(["cardio", cardioSec(cs)]);
     const tr = state.trash;
     if (tr.length) keyed.push(["trash", trashSec()]);
-    const impLine = b`<p class="small" style="margin:14px 0 0"><button class="linkbtn" style="min-height:44px" data-act="impOpen" data-tip=${IMPORT_TIP}>Import workouts</button></p>`;
+    const impLine = b`<p class="small" style="margin:14px 0 0"><button class="linkbtn" style="min-height:44px" data-act="impOpen" data-tip=${IMPORT_TIP}>Import workouts</button></p>
+`;
     const sections = (list) => b`${c3(
       placed("history", list),
       (x2) => x2[0],
       (x2) => x2[1]
     )}`;
     if (!ss.length)
-      return b`${head}${sections(keyed)}<div class="card"><p style="margin:0">No sessions yet. Start one on Today, or log one you did without the app with Log a past workout.</p></div>${impLine}${tabFoot("history")}`;
+      return b`${head}${sections(keyed)}
+<div class="card">
+<p style="margin:0">No sessions yet. Start one on Today, or log one you did without the app with Log a past workout.</p>
+</div>
+${impLine}${tabFoot("history")}`;
     keyed.push(["sessions", sessionsSec(ss, perDay)]);
     return b`${head}${sections(keyed)}${impLine}${tabFoot("history")}`;
   }
@@ -9667,8 +9690,11 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       title: "Cardio and mobility",
       sub: `${cs.length} entr${cs.length === 1 ? "y" : "ies"}`,
       body: b`<ul class="clist">${cs.slice(0, 40).map(
-        (c4) => b`<li><span><b>${CARDIOL[c4.kind]}</b> <span class="small muted">${fmtDate(c4.date)} · ${c4.min} min${c4.dist ? ` · ${distShow(c4.dist)} ${distU()}` : ""}${c4.hr ? ` · ${c4.hr} bpm` : ""}${c4.when !== "solo" ? " · " + (CWHENL[c4.when] || "").toLowerCase() : ""}${c4.note ? " · " + c4.note : ""}</span></span><button class="ib sm" data-act="cardioDel" data-id=${c4.id} aria-label=${`Delete ${fmtDate(c4.date)} cardio`}>✕</button></li>`
-      )}</ul>${cs.length > 40 ? b`<p class="small muted">${cs.length - 40} older entries are in the CSV export.</p>` : A}`
+        (c4) => b`<li><span><b>${CARDIOL[c4.kind]}</b> <span class="small muted">${fmtDate(c4.date)} · ${c4.min} min${c4.dist ? ` · ${distShow(c4.dist)} ${distU()}` : ""}${c4.hr ? ` · ${c4.hr} bpm` : ""}${c4.when !== "solo" ? " · " + (CWHENL[c4.when] || "").toLowerCase() : ""}${c4.note ? " · " + c4.note : ""}</span></span><button class="ib sm" data-act="cardioDel" data-id=${c4.id} aria-label=${`Delete ${fmtDate(c4.date)} cardio`}>✕</button></li>
+`
+      )}</ul>
+${cs.length > 40 ? b`<p class="small muted">${cs.length - 40} older entries are in the CSV export.</p>
+` : A}`
     });
   }
   function trashName(x2) {
@@ -9687,8 +9713,11 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       sub: b`<span class="hastip" data-tip=${`The ${TRASH_MAX} most recent deletions, each kept ${TRASH_DAYS} days`}>${tr.length}</span>`,
       body: b`<ul class="clist">${tr.map((x2) => {
         const nm = trashName(x2);
-        return b`<li><span>${nm} <span class="small muted">deleted ${fmtDate(x2.date)}</span></span><span class="row" style="gap:6px;flex:none"><button class="btn sm" data-act="restore" data-id=${x2.id} data-k=${x2.kind}>Restore</button><button class="ib sm" data-act="trashDel" data-id=${x2.id} data-k=${x2.kind} aria-label=${`Delete ${nm} for good`}>✕</button></span></li>`;
-      })}</ul><p class="small" style="margin:10px 0 0"><button class="linkbtn" style="min-height:44px" data-act="trashEmpty">Delete all for good</button></p>`
+        return b`<li><span>${nm} <span class="small muted">deleted ${fmtDate(x2.date)}</span></span><span class="row" style="gap:6px;flex:none"><button class="btn sm" data-act="restore" data-id=${x2.id} data-k=${x2.kind}>Restore</button><button class="ib sm" data-act="trashDel" data-id=${x2.id} data-k=${x2.kind} aria-label=${`Delete ${nm} for good`}>✕</button></span></li>
+`;
+      })}</ul>
+<p class="small" style="margin:10px 0 0"><button class="linkbtn" style="min-height:44px" data-act="trashEmpty">Delete all for good</button></p>
+`
     });
   }
   function sessionsSec(ss, perDay) {
@@ -9722,13 +9751,22 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
         const o3 = wkTot[wk] || { n: 0, sets: 0, vol: 0 };
         const lbl = wk === thisWk ? "This week" : wk === addDays(thisWk, -7) ? "Last week" : `Week of ${fmtDate(wk)}`;
         rows.push(
-          b`<div class="hweek"><span class="hw-t">${lbl}</span><span class="hw-s" data-tip=${`${o3.n} session${o3.n === 1 ? "" : "s"}, ${o3.sets} working sets, ${Math.round(toD(o3.vol) ?? 0).toLocaleString()} ${U()} lifted`}>${o3.sets} sets · ${fmtK(o3.vol)} ${U()}</span></div>`
+          b`<div class="hweek"><span class="hw-t">${lbl}</span><span class="hw-s" data-tip=${`${o3.n} session${o3.n === 1 ? "" : "s"}, ${o3.sets} working sets, ${Math.round(toD(o3.vol) ?? 0).toLocaleString()} ${U()} lifted`}>${o3.sets} sets · ${fmtK(o3.vol)} ${U()}</span></div>
+`
         );
       }
       rows.push(sessionRow(s3, perDay, nWork(s3), vol.get(s3.id) || 0, wd, wTag));
     }
     const more = shown.length > page.length ? b`<button class="btn block" style="margin-top:10px" data-act="histMore">Show ${Math.min(HIST_PAGE, shown.length - page.length)} more (${page.length} of ${shown.length})</button>` : A;
-    const body = b`<label class="field">Show sessions with<select data-bind="histEx"><option value="" .selected=${!ui.histEx}>Any exercise</option>${withData.map((id) => b`<option value=${id} .selected=${ui.histEx === id}>${exName(id)}</option>`)}</select></label><div style="margin-top:6px">${shown.length ? A : b`<p class="muted">No sessions with that exercise.</p>`}${rows}</div>${more}`;
+    const body = b`<label class="field">Show sessions with<select data-bind="histEx">
+<option value="" .selected=${!ui.histEx}>Any exercise</option>
+${withData.map(
+      (id) => b`<option value=${id} .selected=${ui.histEx === id}>${exName(id)}</option>
+`
+    )}</select></label>
+<div style="margin-top:6px">${shown.length ? A : b`<p class="muted">No sessions with that exercise.</p>
+`}${rows}</div>
+${more}`;
     const last = ss[ss.length - 1];
     return section({
       sk: "history:sessions",
@@ -9745,14 +9783,22 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     const tm = (perDay[s3.date] || 0) > 1 && sessTm(s3) ? `, ${sessTm(s3)}` : "";
     const filtered = ui.histEx && !open ? s3.ex.find((x2) => x2.exId === ui.histEx) : void 0;
     const fex = filtered ? EX(filtered.exId) : null;
-    return b`<div class=${open ? "hitem open" : "hitem"}><button class="pick" style="border:0;padding:0" data-act="histToggle" data-id=${s3.id} aria-expanded=${String(open)}><span style="min-width:0"><b>${name}</b>${s3.deload ? b` <span class="tag blue">deload</span>` : A}${s3.free && !/freestyle/i.test(s3.dayName || "") ? b` <span class="tag">freestyle</span>` : A}${Object.values(wd[s3.id] || {}).includes("fewer sets") ? b` <span class="tag">fewer sets</span>` : A}${s3.demo ? b` <span class="tag">demo</span>` : A}<br /><span class="small muted">${fmtDateRow(s3.date)}${tm}</span></span><span class="num small" style="text-align:right;flex:none">${nSets} sets<br /><span class="muted">${Math.round(toD(vol) ?? 0).toLocaleString()} ${U()}${s3.durMin ? ` · ${s3.durMin} min` : ""}</span></span></button>${filtered && fex ? b`<p class="small" style="margin:6px 0 0">${filtered.sets.map((x2) => setStr(fex, x2)).join(", ")}${histUnits(fex)}</p>` : A}${open ? sessionPanel(s3, wTag) : A}</div>`;
+    return b`<div class=${open ? "hitem open" : "hitem"}><button class="pick" style="border:0;padding:0" data-act="histToggle" data-id=${s3.id} aria-expanded=${String(open)}><span style="min-width:0"><b>${name}</b>${s3.deload ? b` <span class="tag blue">deload</span>` : A}${s3.free && !/freestyle/i.test(s3.dayName || "") ? b` <span class="tag">freestyle</span>` : A}${Object.values(wd[s3.id] || {}).includes("fewer sets") ? b` <span class="tag">fewer sets</span>` : A}${s3.demo ? b` <span class="tag">demo</span>` : A}<br /><span class="small muted">${fmtDateRow(s3.date)}${tm}</span></span><span class="num small" style="text-align:right;flex:none">${nSets} sets<br /><span class="muted">${Math.round(toD(vol) ?? 0).toLocaleString()} ${U()}${s3.durMin ? ` · ${s3.durMin} min` : ""}</span></span></button>${filtered && fex ? b`<p class="small" style="margin:6px 0 0">${filtered.sets.map((x2) => setStr(fex, x2)).join(", ")}${histUnits(fex)}</p>
+` : A}${open ? sessionPanel(s3, wTag) : A}</div>
+`;
   }
   function sessionPanel(s3, wTag) {
     const chk = s3.chk;
-    return b`<div class="panel" style="margin-top:10px">${chk ? b`<p class="small muted" style="margin:0 0 6px">Check-in: ${CHK_Q.filter(([k2]) => chk[k2]).map(([k2, l4, n3]) => `${l4.toLowerCase()} ${chkWord(n3[(chk[k2] || 1) - 1] || "")}`).join(", ")}</p>` : A}${s3.ex.map((b2) => {
+    return b`<div class="panel" style="margin-top:10px">${chk ? b`<p class="small muted" style="margin:0 0 6px">Check-in: ${CHK_Q.filter(([k2]) => chk[k2]).map(([k2, l4, n3]) => `${l4.toLowerCase()} ${chkWord(n3[(chk[k2] || 1) - 1] || "")}`).join(", ")}</p>
+` : A}${s3.ex.map((b2) => {
       const ex = EX(b2.exId);
-      return b`<p class="small" style="margin:0 0 6px"><b>${ex.name}</b>${wTag(s3, b2.exId)}: ${b2.sets.map((x2) => setStr(ex, x2)).join(", ")}${histUnits(ex)}${b2.note ? b`<br /><span class="muted">${b2.note}</span>` : A}</p>`;
-    })}${s3.notes ? b`<p class="small muted" style="margin:0 0 6px">${s3.notes}</p>` : A}<div class="row" style="margin-top:8px"><button class="btn sm" data-act="histEdit" data-id=${s3.id}>Edit</button><button class="btn sm" data-act="histRepeat" data-id=${s3.id} data-tip="Start a new session today with these exercises">Do again</button><button class="btn sm danger" data-act="histDel" data-id=${s3.id}>Delete</button></div></div>`;
+      return b`<p class="small" style="margin:0 0 6px"><b>${ex.name}</b>${wTag(s3, b2.exId)}: ${b2.sets.map((x2) => setStr(ex, x2)).join(", ")}${histUnits(ex)}${b2.note ? b`<br /><span class="muted">${b2.note}</span>` : A}</p>
+`;
+    })}${s3.notes ? b`<p class="small muted" style="margin:0 0 6px">${s3.notes}</p>
+` : A}
+<div class="row" style="margin-top:8px"><button class="btn sm" data-act="histEdit" data-id=${s3.id}>Edit</button><button class="btn sm" data-act="histRepeat" data-id=${s3.id} data-tip="Start a new session today with these exercises">Do again</button><button class="btn sm danger" data-act="histDel" data-id=${s3.id}>Delete</button></div>
+</div>
+`;
   }
   var HISTORY_ACTS = {
     histToggle(t4) {
@@ -9918,16 +9964,26 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
   function profChips(k2, opts, cur, label) {
     return b`<div class="ob-units" role="group" aria-label=${label}>${opts.map(
       ([v3, l4]) => b`<button class=${cur === v3 ? "chip on" : "chip"} data-act="profSet" data-k=${k2} data-v=${String(v3)} aria-pressed=${String(cur === v3)}>${l4}</button>`
-    )}</div>`;
+    )}</div>
+`;
   }
   function profFields() {
     const p3 = prof();
-    return b`<div><p class="small muted" style="margin:0 0 6px;font-weight:600"><span class="hastip" data-tip=${PROF_GOAL_TIP}>Goal</span></p>${profChips("goal", PROF_GOALS, p3.goal, "Goal")}</div><div><p class="small muted" style="margin:0 0 6px;font-weight:600"><span class="hastip" data-tip=${PROF_EXP_TIP}>Years lifting</span></p>${profChips("exp", PROF_EXP, p3.exp, "Years lifting")}</div><div><p class="small muted" style="margin:0 0 6px;font-weight:600"><span class="hastip" data-tip="Ready-made routines that fit are marked when you pick one. Every other day fits 3 or 4.">Days a week</span></p>${profChips(
+    return b`<div>
+<p class="small muted" style="margin:0 0 6px;font-weight:600"><span class="hastip" data-tip=${PROF_GOAL_TIP}>Goal</span></p>
+${profChips("goal", PROF_GOALS, p3.goal, "Goal")}</div>
+<div>
+<p class="small muted" style="margin:0 0 6px;font-weight:600"><span class="hastip" data-tip=${PROF_EXP_TIP}>Years lifting</span></p>
+${profChips("exp", PROF_EXP, p3.exp, "Years lifting")}</div>
+<div>
+<p class="small muted" style="margin:0 0 6px;font-weight:600"><span class="hastip" data-tip="Ready-made routines that fit are marked when you pick one. Every other day fits 3 or 4.">Days a week</span></p>
+${profChips(
       "days",
       PROF_DAYS.map((d3) => [d3, String(d3)]),
       p3.days,
       "Days a week"
-    )}</div>`;
+    )}</div>
+`;
   }
   function profSub() {
     const p3 = prof();
@@ -9948,11 +10004,17 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       "lt-timeBudget",
       "Lifting time budget (minutes)",
       "Planned days whose time estimate runs over it are flagged. Rest per exercise is set in Plan; 0 s means no timer."
-    )}<input type="text" inputmode="numeric" data-bind="timeBudget" aria-labelledby="lt-timeBudget" .value=${fieldValue(s3.timeBudget == null ? "" : String(s3.timeBudget))} placeholder="e.g. 70"/></label><div><p class="small muted" style="margin:0 0 6px;font-weight:600"><span class="hastip" data-tip=${PROF_FOCUS_TIP}>Focus muscles</span> <span class="muted" style="font-weight:400">${f3.length} of ${FOCUS_MAX}</span></p><div class="chips" role="group" aria-label="Focus muscles">${MUSCLES.filter(
-      ([k2]) => !TRACK_ONLY.has(k2)
-    ).map(
+    )}<input type="text" inputmode="numeric" data-bind="timeBudget" aria-labelledby="lt-timeBudget" .value=${fieldValue(s3.timeBudget == null ? "" : String(s3.timeBudget))} placeholder="e.g. 70"/></label>
+<div>
+<p class="small muted" style="margin:0 0 6px;font-weight:600"><span class="hastip" data-tip=${PROF_FOCUS_TIP}>Focus muscles</span> <span class="muted" style="font-weight:400">${f3.length} of ${FOCUS_MAX}</span></p>
+<div class="chips" role="group" aria-label="Focus muscles">${MUSCLES.filter(([k2]) => !TRACK_ONLY.has(k2)).map(
       ([k2, l4]) => b`<button class=${f3.includes(k2) ? "chip on" : "chip"} data-act="profSet" data-k="focus" data-v=${k2} aria-pressed=${String(f3.includes(k2))}>${l4}</button>`
-    )}</div></div>${ap.length ? b`<div class="panel row spread" id="profApply"><p class="small" style="margin:0;flex:1 1 180px"><b>${ap.length} exercise${ap.length === 1 ? "" : "s"}</b> in ${R2.name} differ from your profile.</p><button class="btn sm" data-act="profApply">Apply</button></div>` : A}`;
+    )}</div>
+</div>
+${ap.length ? b`<div class="panel row spread" id="profApply">
+<p class="small" style="margin:0;flex:1 1 180px"><b>${ap.length} exercise${ap.length === 1 ? "" : "s"}</b> in ${R2.name} differ from your profile.</p>
+<button class="btn sm" data-act="profApply">Apply</button></div>
+` : A}`;
   }
   var dbTyped = () => ui.gymDb ?? null;
   var asRack = (d3) => d3 && d3.lo != null && d3.hi != null && d3.st != null ? { ...d3, lo: d3.lo, hi: d3.hi, st: d3.st } : null;
@@ -10000,19 +10062,44 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     return b`${howText(
       "gym",
       "What your gym has, so suggested loads are ones you can pick up. Blank keeps the usual steps (5 lb or 2.5 kg, and dumbbells read from what you log). A step set on an exercise or in your plan still wins for that lift."
-    )}<div><p class="small muted" style="margin:0 0 6px;font-weight:600"><span class="hastip" data-tip="Type the weights as they are labelled in your gym. Suggestions show in the app's unit and land on these weights.">Labelled in</span></p><div class="ob-units" role="group" aria-label="Your gym's weights are labelled in">${["lb", "kg"].map(
+    )}
+<div>
+<p class="small muted" style="margin:0 0 6px;font-weight:600"><span class="hastip" data-tip="Type the weights as they are labelled in your gym. Suggestions show in the app's unit and land on these weights.">Labelled in</span></p>
+<div class="ob-units" role="group" aria-label="Your gym's weights are labelled in">${["lb", "kg"].map(
       (k2) => b`<button class=${u4 === k2 ? "chip on" : "chip"} data-act="gymUnit" data-v=${k2} aria-pressed=${String(u4 === k2)}>${k2}</button>`
-    )}</div></div>${u4 !== U() ? b`<p class="small" style="margin:0">Suggestions show in ${U()}, on the ${u4} weights below.</p>` : A} <label class="field">${labelTip("lt-barKg", `Bar weight (${U()})`, "Used by the plates-per-side line in the logger.")}<input type="text" inputmode="decimal" data-bind="barKg" aria-labelledby="lt-barKg" .value=${fieldValue(fmtW(barKg()))}/></label><div><p class="small muted" style="margin:0 0 6px;font-weight:600"><span class="hastip" data-tip="A barbell or a plate-loaded machine steps by two of the smallest plate you have, one a side; a landmine by one. Tap a plate your gym does not have.">Plates on hand (${u4})</span></p><div class="chips" role="group" aria-label="Plates on hand">${plates.map(
+    )}</div>
+</div>
+${u4 !== U() ? b`<p class="small" style="margin:0">Suggestions show in ${U()}, on the ${u4} weights below.</p>
+` : A} <label class="field">${labelTip("lt-barKg", `Bar weight (${U()})`, "Used by the plates-per-side line in the logger.")}<input type="text" inputmode="decimal" data-bind="barKg" aria-labelledby="lt-barKg" .value=${fieldValue(fmtW(barKg()))}/></label>
+<div>
+<p class="small muted" style="margin:0 0 6px;font-weight:600"><span class="hastip" data-tip="A barbell or a plate-loaded machine steps by two of the smallest plate you have, one a side; a landmine by one. Tap a plate your gym does not have.">Plates on hand (${u4})</span></p>
+<div class="chips" role="group" aria-label="Plates on hand">${plates.map(
       (p3) => b`<button class=${on.includes(p3) ? "chip on" : "chip"} data-act="gymPlate" data-v=${String(p3)} aria-pressed=${String(on.includes(p3))}>${fmtG(p3)}</button>`
-    )}</div></div><label class="check-inline"><input type="checkbox" data-bind="smallPlates" aria-labelledby="lt-smallPlates" .checked=${l3(!!state.settings.smallPlates)}/>${labelTip(
+    )}</div>
+</div>
+<label class="check-inline"><input type="checkbox" data-bind="smallPlates" aria-labelledby="lt-smallPlates" .checked=${l3(!!state.settings.smallPlates)}/>${labelTip(
       "lt-smallPlates",
       `Small plates (${small})`,
       "Adds them to the plates-per-side line. A lift's own bar, such as a trap or EZ bar, is set in its exercise editor."
-    )}</label><div><p class="small muted" style="margin:0 0 6px;font-weight:600">Dumbbells (${u4})</p><div class="grid3"><label class="field">From<input type="text" inputmode="decimal" data-gym="db.lo" .value=${fieldValue(v3("lo"))} placeholder=${lb ? "5" : "2"} /></label><label class="field">To<input type="text" inputmode="decimal" data-gym="db.hi" .value=${fieldValue(v3("hi"))} placeholder=${lb ? "120" : "50"} /></label><label class="field">Step<input type="text" inputmode="decimal" data-gym="db.st" .value=${fieldValue(v3("st"))} placeholder=${lb ? "5" : "2"}/></label></div><div class="grid2" style="margin-top:6px;align-items:end"><label class="field">${labelTip(
+    )}</label>
+<div>
+<p class="small muted" style="margin:0 0 6px;font-weight:600">Dumbbells (${u4})</p>
+<div class="grid3">
+<label class="field">From<input type="text" inputmode="decimal" data-gym="db.lo" .value=${fieldValue(v3("lo"))} placeholder=${lb ? "5" : "2"} /></label>
+<label class="field">To<input type="text" inputmode="decimal" data-gym="db.hi" .value=${fieldValue(v3("hi"))} placeholder=${lb ? "120" : "50"} /></label>
+<label class="field">Step<input type="text" inputmode="decimal" data-gym="db.st" .value=${fieldValue(v3("st"))} placeholder=${lb ? "5" : "2"}/></label>
+</div>
+<div class="grid2" style="margin-top:6px;align-items:end">
+<label class="field">${labelTip(
       "lt-dbFine",
       "Lighter end steps by",
       "Many racks go up in smaller steps at the light end, such as 2.5 lb up to 25, or 1 kg up to 10. Leave blank if yours does not."
-    )}<input type="text" inputmode="decimal" data-gym="db.fine" aria-labelledby="lt-dbFine" .value=${fieldValue(v3("fine"))} placeholder=${lb ? "2.5" : "1"} /></label><label class="field">Up to<input type="text" inputmode="decimal" data-gym="db.fineTo" .value=${fieldValue(v3("fineTo"))} placeholder=${lb ? "25" : "10"}/></label></div><p class=${half ? "small" : "small muted"} id="gymDbList" style="margin:6px 0 0">${half ? "Add From, To, and Step to use these." : L2 ? `${L2.length} pairs: ${listTxt(L2)} ${u4}${pair ? ". Add both smaller-step fields to use them." : ""}` : "Not set: dumbbell steps are read from what you log."}</p></div><label class="field">${labelTip("lt-kb", `Kettlebells (${u4})`, "The weights you have, any order, separated by commas.")}<input type="text" inputmode="decimal" data-gym="kb" aria-labelledby="lt-kb" .value=${fieldValue(g2 && g2.kb ? g2.kb.map(fmtG).join(", ") : "")} placeholder=${lb ? "18, 26, 35, 44, 53" : "8, 12, 16, 20, 24"}/></label> <label class="field">${labelTip(
+    )}<input type="text" inputmode="decimal" data-gym="db.fine" aria-labelledby="lt-dbFine" .value=${fieldValue(v3("fine"))} placeholder=${lb ? "2.5" : "1"} /></label>
+<label class="field">Up to<input type="text" inputmode="decimal" data-gym="db.fineTo" .value=${fieldValue(v3("fineTo"))} placeholder=${lb ? "25" : "10"}/></label>
+</div>
+<p class=${half ? "small" : "small muted"} id="gymDbList" style="margin:6px 0 0">${half ? "Add From, To, and Step to use these." : L2 ? `${L2.length} pairs: ${listTxt(L2)} ${u4}${pair ? ". Add both smaller-step fields to use them." : ""}` : "Not set: dumbbell steps are read from what you log."}</p>
+</div>
+<label class="field">${labelTip("lt-kb", `Kettlebells (${u4})`, "The weights you have, any order, separated by commas.")}<input type="text" inputmode="decimal" data-gym="kb" aria-labelledby="lt-kb" .value=${fieldValue(g2 && g2.kb ? g2.kb.map(fmtG).join(", ") : "")} placeholder=${lb ? "18, 26, 35, 44, 53" : "8, 12, 16, 20, 24"}/></label> <label class="field">${labelTip(
       "lt-stack",
       `Cable and machine stacks step by (${u4})`,
       "The usual step between pins on your cable and machine stacks. A machine that differs gets its own step in its exercise."
@@ -10086,11 +10173,21 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     const raw = c4.raw ?? 0;
     const sum = !c4.n ? "No calibration sets yet. Start one from a machine or cable exercise's ⋯ menu." : !c4.recent ? `${c4.n} calibration set${c4.n === 1 ? "" : "s"}, none in the last ${CAL_WEEKS} weeks.` : `${c4.recent} recent calibration set${c4.recent === 1 ? "" : "s"}: median miss ${raw > 0 ? "+" : ""}${r1(raw)} reps (${raw > 0 ? "you stop with more left than you call" : raw < 0 ? "closer to failure than you call" : "accurate"}). Correction applied: ${c4.bias > 0 ? "+" : ""}${c4.bias}.`;
     const sc = rirScale();
-    return b`<p class="small" style="margin:0"><b>RIR, reps in reserve:</b> reps you could still have done. RIR 3 or less is a hard set.</p><label class="field">Reps in reserve<select data-bind="rirMode"><option value="on" .selected=${l3(s3.rirMode === "on")}>On: log RIR and use it as logged</option><option value="cal" .selected=${l3(s3.rirMode === "cal")}>On, corrected by my calibration sets</option><option value="off" .selected=${l3(s3.rirMode === "off")}>Off: don't ask, count every working set as hard</option></select></label> ${s3.rirMode === "off" ? A : b`<label class="field">${labelTip(
+    return b`<p class="small" style="margin:0"><b>RIR, reps in reserve:</b> reps you could still have done. RIR 3 or less is a hard set.</p>
+<label class="field">Reps in reserve<select data-bind="rirMode">
+<option value="on" .selected=${l3(s3.rirMode === "on")}>On: log RIR and use it as logged</option>
+<option value="cal" .selected=${l3(s3.rirMode === "cal")}>On, corrected by my calibration sets</option>
+<option value="off" .selected=${l3(s3.rirMode === "off")}>Off: don't ask, count every working set as hard</option>
+</select></label> ${s3.rirMode === "off" ? A : b`<label class="field">${labelTip(
       "lt-rirScale",
       "Enter effort as",
       "How you enter and read effort. Stored as RIR either way (RPE 8 is RIR 2, RPE 8.5 is RIR 1.5), so switching changes nothing logged."
-    )}<select data-bind="rirScale" aria-labelledby="lt-rirScale"><option value="whole" .selected=${l3(sc === "whole")}>RIR, whole reps (0 to 5)</option><option value="half" .selected=${l3(sc === "half")}>RIR, half reps (0, 0.5, 1 … 5)</option><option value="rpe" .selected=${l3(sc === "rpe")}>RPE (5 to 10, in halves)</option></select></label>`}${s3.rirMode === "off" ? A : b`<label class="check-inline"><input type="checkbox" data-bind="rirAsk" aria-labelledby="lt-rirAsk" .checked=${l3(s3.rirAsk === true)}/>${labelTip(
+    )}<select data-bind="rirScale" aria-labelledby="lt-rirScale">
+<option value="whole" .selected=${l3(sc === "whole")}>RIR, whole reps (0 to 5)</option>
+<option value="half" .selected=${l3(sc === "half")}>RIR, half reps (0, 0.5, 1 … 5)</option>
+<option value="rpe" .selected=${l3(sc === "rpe")}>RPE (5 to 10, in halves)</option>
+</select></label>
+`}${s3.rirMode === "off" ? A : b`<label class="check-inline"><input type="checkbox" data-bind="rirAsk" aria-labelledby="lt-rirAsk" .checked=${l3(s3.rirAsk === true)}/>${labelTip(
       "lt-rirAsk",
       `Open the ${effName()} picker after each set`,
       "Off: tap a set's RIR box when you want to rate it. On: the picker opens by itself after each set you tick."
@@ -10098,7 +10195,12 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       "lt-rirHalf",
       `Count ${halfLbl()} as half a set`,
       "Off: a set counts toward your weekly sets at RIR 3 or less. On: a set past RIR 3 counts as half a set too, in your weekly sets, targets, and the plan's weekly sets. Growth rises as sets end closer to failure (Robinson 2024), so sets further away still do something; half is a convention. Estimates, PRs, and recovery are unchanged."
-    )}</label><p class="small muted hastip" style="margin:4px 0 0" data-tip="A blank RIR is read as your usual RIR on that lift: the middle value of the sets of it you rated in the last 12 weeks, once there are 3. That is a convention, so rating a set only sometimes cannot make it look stronger or weaker. Until there are 3, a blank set counts as hard and as 0 reps left for 1RM estimates, which errs low and never inflates a PR. Recovery, calibration, and the light-load check use only the RIR you entered.">Skipping RIR on some sets is fine.</p>`}${s3.rirMode === "cal" && c4.recent < 2 ? b`<p class="small" style="margin:0"><b>Needs 2 calibration sets from the last 12 weeks before any correction applies.</b></p>` : A}<p class="small hastip" style="margin:4px 0 0" data-tip="Off hides the RIR picker: every working set counts as hard and estimates use reps alone. Corrected shifts RIR you called at 4 or less by your typical error, shrunk toward zero while you have few calibration sets and capped at 2 reps; compound and isolation lifts use their own sets once each has 2. A set called at 0 is shifted too: unless a rep actually failed, 0 is still a call, and people under-call reps left by about 1 on average, only slightly less near failure (Halperin 2022). Your log never changes, so switching is reversible.">${sum}</p>`;
+    )}</label>
+<p class="small muted hastip" style="margin:4px 0 0" data-tip="A blank RIR is read as your usual RIR on that lift: the middle value of the sets of it you rated in the last 12 weeks, once there are 3. That is a convention, so rating a set only sometimes cannot make it look stronger or weaker. Until there are 3, a blank set counts as hard and as 0 reps left for 1RM estimates, which errs low and never inflates a PR. Recovery, calibration, and the light-load check use only the RIR you entered.">Skipping RIR on some sets is fine.</p>
+`}${s3.rirMode === "cal" && c4.recent < 2 ? b`<p class="small" style="margin:0"><b>Needs 2 calibration sets from the last 12 weeks before any correction applies.</b></p>
+` : A}
+<p class="small hastip" style="margin:4px 0 0" data-tip="Off hides the RIR picker: every working set counts as hard and estimates use reps alone. Corrected shifts RIR you called at 4 or less by your typical error, shrunk toward zero while you have few calibration sets and capped at 2 reps; compound and isolation lifts use their own sets once each has 2. A set called at 0 is shifted too: unless a rep actually failed, 0 is still a call, and people under-call reps left by about 1 on average, only slightly less near failure (Halperin 2022). Your log never changes, so switching is reversible.">${sum}</p>
+`;
   }
   function layoutSettings() {
     const h3 = state.settings.hidden;
@@ -10106,13 +10208,17 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     return b`<p class="small muted" style="margin:0">Tap to show or hide. ${tipButton(
       `Hidden sections are still tracked, and come back where they were. Each time ${APP_NAME} opens, every section starts folded except Sessions on History. Drag a section by its ⠿ to move it; each tab keeps its order.`,
       "About layout"
-    )}</p><div class="row"><button class=${dflt ? "btn sm noted" : "btn sm"} data-act="layoutDefault" aria-pressed=${String(dflt)} data-tip="The layout a new install starts with: At a glance, Coach, and Body hidden on Today, Schedule and Weekly volume hidden on Plan, and the default order.">Default layout</button><button class="btn sm" data-act="layoutAll" ?disabled=${!h3.length}>Show everything</button><button class="btn sm" data-act="layoutReset" data-tip="Puts the sections on every tab back in their default order. Shown or hidden stays as it is.">Reset section order</button></div>${HIDE_TABS.map(
-      ([t4, l4]) => b`<div class="hide-grp"><p class="small"><b>${l4}</b></p><div class="chips">${HIDEABLE.filter(
-        (x2) => x2[0] === t4
-      ).map(([, k2, lab]) => {
+    )}</p>
+<div class="row"><button class=${dflt ? "btn sm noted" : "btn sm"} data-act="layoutDefault" aria-pressed=${String(dflt)} data-tip="The layout a new install starts with: At a glance, Coach, and Body hidden on Today, Schedule and Weekly volume hidden on Plan, and the default order.">Default layout</button><button class="btn sm" data-act="layoutAll" ?disabled=${!h3.length}>Show everything</button><button class="btn sm" data-act="layoutReset" data-tip="Puts the sections on every tab back in their default order. Shown or hidden stays as it is.">Reset section order</button></div>
+${HIDE_TABS.map(
+      ([t4, l4]) => b`<div class="hide-grp">
+<p class="small"><b>${l4}</b></p>
+<div class="chips">${HIDEABLE.filter((x2) => x2[0] === t4).map(([, k2, lab]) => {
         const on = !h3.includes(t4 + ":" + k2);
         return b`<button class=${on ? "chip on" : "chip"} data-act="hideToggle" data-k=${`${t4}:${k2}`} aria-pressed=${String(on)}>${lab}</button>`;
-      })}</div></div>`
+      })}</div>
+</div>
+`
     )}`;
   }
   var inClaude = () => !!(window.claude && typeof window.claude.use === "function");
@@ -10120,19 +10226,37 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     const A2 = AUTH();
     if (!A2 || inClaude()) return A;
     const u4 = rec(acct.user);
-    const stuck = u4 && !cloud.on ? b`<div class="row spread" style="margin-top:6px"><p class="small" style="margin:0;color:var(--yellow)">Not syncing right now.</p><button class="btn sm" data-act="acctRetry">Try again</button></div>` : A;
-    return u4 ? b`<div class="panel" id="acctPanel"><div class="row spread"><p class="small" style="margin:0;min-width:0;overflow-wrap:anywhere">Signed in as <b>${typeof u4.email === "string" ? u4.email : ""}</b></p><button class="btn sm" data-act="acctSignOut">Sign out</button></div>${stuck}${typeof A2.deleteAccount === "function" ? b`<button type="button" class="linkbtn" style="margin-top:8px;color:var(--red)" data-act="acctDelete">Delete my account</button>` : A}</div>` : b`<div class="panel" id="acctPanel"><p class="small hastip" style="margin:0 0 8px" data-tip=${isStandalone() ? "Deleting the app from the home screen deletes the log on this phone. An account keeps it, or save a backup file below." : "Clearing this browser's data deletes the log here. An account keeps it, or save a backup file below."}><b>Saved on this ${isStandalone() || coarse() ? "phone" : "device"} only.</b> Create an account to back it up and use it on any device.</p><div class="row"><button class="btn sm primary" data-act="acctOpen" data-mode="signup">Create account</button><button class="btn sm" data-act="acctOpen" data-mode="signin">Sign in</button></div></div>`;
+    const stuck = u4 && !cloud.on ? b`<div class="row spread" style="margin-top:6px">
+<p class="small" style="margin:0;color:var(--yellow)">Not syncing right now.</p>
+<button class="btn sm" data-act="acctRetry">Try again</button></div>
+` : A;
+    return u4 ? b`<div class="panel" id="acctPanel">
+<div class="row spread">
+<p class="small" style="margin:0;min-width:0;overflow-wrap:anywhere">Signed in as <b>${typeof u4.email === "string" ? u4.email : ""}</b></p>
+<button class="btn sm" data-act="acctSignOut">Sign out</button></div>
+${stuck}${typeof A2.deleteAccount === "function" ? b`<button type="button" class="linkbtn" style="margin-top:8px;color:var(--red)" data-act="acctDelete">Delete my account</button>` : A}</div>
+` : b`<div class="panel" id="acctPanel">
+<p class="small hastip" style="margin:0 0 8px" data-tip=${isStandalone() ? "Deleting the app from the home screen deletes the log on this phone. An account keeps it, or save a backup file below." : "Clearing this browser's data deletes the log here. An account keeps it, or save a backup file below."}><b>Saved on this ${isStandalone() || coarse() ? "phone" : "device"} only.</b> Create an account to back it up and use it on any device.</p>
+<div class="row"><button class="btn sm primary" data-act="acctOpen" data-mode="signup">Create account</button><button class="btn sm" data-act="acctOpen" data-mode="signin">Sign in</button></div>
+</div>
+`;
   }
   function syncInfo() {
     if (!cloud.on)
-      return isStandalone() ? b`<p class="small hastip" style="margin:0" data-tip="Without an account this app keeps your data on this phone only. Deleting the app from the home screen deletes it too. Sign in to keep a copy in your account, or save a backup file to Files or iCloud Drive; Import brings it back on any device."><b>Saved on this phone.</b> ${AUTH() ? "Sign in to sync, or export a backup weekly." : "Export a backup weekly."}</p>` : AUTH() ? b`<p class="small hastip" style="margin:0" data-tip="Everything is saved in this browser only. Clearing its data deletes it. Sign in below to keep a copy in your account, or export a backup."><b>Saved in this browser only.</b> Sign in to sync, or export a backup.</p>` : b`<p class="small hastip" style="margin:0" data-tip="Sync turns on by itself when this page is opened inside Claude while signed in. Until then everything is saved in this browser only."><b>Cloud sync off in this view.</b> Saved in this browser only.</p>`;
+      return isStandalone() ? b`<p class="small hastip" style="margin:0" data-tip="Without an account this app keeps your data on this phone only. Deleting the app from the home screen deletes it too. Sign in to keep a copy in your account, or save a backup file to Files or iCloud Drive; Import brings it back on any device."><b>Saved on this phone.</b> ${AUTH() ? "Sign in to sync, or export a backup weekly." : "Export a backup weekly."}</p>
+` : AUTH() ? b`<p class="small hastip" style="margin:0" data-tip="Everything is saved in this browser only. Clearing its data deletes it. Sign in below to keep a copy in your account, or export a backup."><b>Saved in this browser only.</b> Sign in to sync, or export a backup.</p>
+` : b`<p class="small hastip" style="margin:0" data-tip="Sync turns on by itself when this page is opened inside Claude while signed in. Until then everything is saved in this browser only."><b>Cloud sync off in this view.</b> Saved in this browser only.</p>
+`;
     const ago = cloud.last ? Math.round((Date.now() - cloud.last) / 6e4) : null;
     const when = ago == null ? "not yet" : ago < 1 ? "just now" : ago < 60 ? `${ago} min ago` : ago < 1440 ? `${Math.round(ago / 60)} h ago` : fmtDate(iso(new Date(cloud.last ?? 0)));
     const st = cloud.status === "synced" ? b`<span class="tag green">Synced</span>` : cloud.status === "offline" ? b`<span class="tag yellow">Waiting to sync</span>` : b`<span class="tag blue">Syncing</span>`;
-    return b`<div class="sync-row">${st}<span class="small muted">Last synced ${when}</span><button class="btn sm" data-act="syncNow">Sync now</button></div><p class="small hastip" style="margin:6px 0 0" data-tip=${`A new phone or a cleared browser loses nothing: sign in and your log comes back. Deleted items wait in History, Recently deleted, for ${TRASH_DAYS} days, and Undo in Settings covers the last 7 days.`}>${cloud.status !== "synced" ? "Saved on this device. It reaches your account when you are back online." : window.claude ? "Saved to your Claude account and this device." : "Saved to your account and this device."}${cloud.err ? b` <b style="color:var(--red)">${cloud.err}</b>` : A}</p>`;
+    return b`<div class="sync-row">${st}<span class="small muted">Last synced ${when}</span><button class="btn sm" data-act="syncNow">Sync now</button></div>
+<p class="small hastip" style="margin:6px 0 0" data-tip=${`A new phone or a cleared browser loses nothing: sign in and your log comes back. Deleted items wait in History, Recently deleted, for ${TRASH_DAYS} days, and Undo in Settings covers the last 7 days.`}>${cloud.status !== "synced" ? "Saved on this device. It reaches your account when you are back online." : window.claude ? "Saved to your Claude account and this device." : "Saved to your account and this device."}${cloud.err ? b` <b style="color:var(--red)">${cloud.err}</b>` : A}</p>
+`;
   }
   function safetyLine() {
-    return b`<p class="small muted" id="safety" style="margin:8px 0 0"><b>Suggestions:</b> estimates from your log, not medical or coaching advice. Train within your limits and stop on pain. ${tipButton(SAFETY_TXT, "About suggestions")}</p>`;
+    return b`<p class="small muted" id="safety" style="margin:8px 0 0"><b>Suggestions:</b> estimates from your log, not medical or coaching advice. Train within your limits and stop on pain. ${tipButton(SAFETY_TXT, "About suggestions")}</p>
+`;
   }
   function privacyLine() {
     const claude = inClaude();
@@ -10140,28 +10264,52 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       return b`<p class="small muted" id="privacy" style="margin:8px 0 0"><b>Privacy:</b> no ads, no tracking. Your log syncs to your ${APP_NAME} account. Only you and the app's owner can see it. Reports you send go to the app owner. ${tipButton(
         "It is stored in a Supabase database. Database rules let each account read and write only its own data. The person who runs that database, the app owner, can see stored data and your email address, as with any app without end-to-end encryption. Your email is used only to sign in and reset your password, and nothing is shared or sold. A new password is checked against known breaches with only the first 5 characters of its hash; the password never leaves the phone. Backup files go only where you save them.",
         "About privacy"
-      )}</p>`;
+      )}</p>
+`;
     if (!claude && AUTH())
       return b`<p class="small muted" id="privacy" style="margin:8px 0 0"><b>Privacy:</b> no ads, no tracking, and nothing sent without an account. Reports you send go to the app owner. ${tipButton(
         "Opening or updating the app downloads it from GitHub Pages, which, like any website host, sees your IP address; after that it works offline. With an account, your log and email are stored in a Supabase database, readable by your account and by the app owner; the email is used only to sign in and reset your password. A new password is checked against known breaches with only the first 5 characters of its hash. Deleting the app or this site's data deletes the copy on this device, so keep a backup file or an account.",
         "About privacy"
-      )}</p>`;
-    return claude ? b`<p class="small muted" id="privacy" style="margin:8px 0 0"><b>Privacy:</b> no ads, no tracking. Your log is stored with your Claude account. ${tipButton("Export and CSV files go only where you save them.", "About privacy")}</p>` : b`<p class="small muted" id="privacy" style="margin:8px 0 0"><b>Privacy:</b> no account, no ads, no tracking. Your log stays on this device and is sent nowhere. Reports you send go to the app owner. ${tipButton(
+      )}</p>
+`;
+    return claude ? b`<p class="small muted" id="privacy" style="margin:8px 0 0"><b>Privacy:</b> no ads, no tracking. Your log is stored with your Claude account. ${tipButton("Export and CSV files go only where you save them.", "About privacy")}</p>
+` : b`<p class="small muted" id="privacy" style="margin:8px 0 0"><b>Privacy:</b> no account, no ads, no tracking. Your log stays on this device and is sent nowhere. Reports you send go to the app owner. ${tipButton(
       `${APP_NAME} has no server. Opening or updating the app downloads it from GitHub Pages, which, like any website host, sees your IP address; after that it works offline. Backup files go only where you save them. Deleting the app or this site's data deletes your log, so keep a backup file.`,
       "About privacy"
-    )}</p>`;
+    )}</p>
+`;
   }
   function asideLine() {
     const kept = asideList();
     if (!kept.length) return A;
     const words = kept.map((a2) => `${a2.sessions} session${a2.sessions === 1 ? "" : "s"}`).join(", ");
-    return b`<p class="small" id="asideLine" style="margin:8px 0 0"><b>A log from another account is kept on this phone</b> (${words}). It is used again when that account signs in here. Erase everything removes it.</p>`;
+    return b`<p class="small" id="asideLine" style="margin:8px 0 0"><b>A log from another account is kept on this phone</b> (${words}). It is used again when that account signs in here. Erase everything removes it.</p>
+`;
   }
   function dataBody() {
     const s3 = state.settings;
     const ap = acctPanel();
     const one = ap !== A && !acct.user;
-    return b`${ap}${one ? A : b`<div class="panel" id="syncInfo" style=${ap !== A ? "margin-top:8px" : A}>${syncInfo()}</div>`}${canInstallHere() ? b`<div class="panel row spread" id="installPanel" style="margin-top:8px"><p class="small" style="margin:0;flex:1 1 180px"><b>Install the app.</b> Full screen, offline, one tap from your home screen.</p><button class="btn sm primary" data-act="install">${/^ios/.test(installKind()) ? "Add to Home Screen" : "Install"}</button></div>` : A}${ENV === "preview" ? b`<div class="panel row spread" style="margin-top:8px"><p class="small" style="margin:0;flex:1 1 180px"><b>Test version.</b> It keeps a separate log. Copy yours in to try it; your log in ${APP_NAME} stays as it is.</p><button class="btn sm primary" data-act="previewCopy">Copy my log in</button></div>` : A}${asideLine()}${privacyLine()}${safetyLine()}${backupDue() ? b`<p class="callout yellow" style="margin:10px 0 0"><b>Backup due.</b> ${s3.lastExport ? `Last backup file ${fmtDate(s3.lastExport)}.` : "No backup file yet."}${cloud.on ? "Your account has not synced this week. Export one below." : ""}</p>` : A}${device.ok ? A : b`<p class="small" style="color:var(--red)">This browser is blocking local storage, so this device keeps nothing between reloads without cloud sync.</p>`}${unreadableRaw() ? b`<div class="panel" id="unreadPanel" style="margin-top:8px"><p class="small" style="margin:0 0 6px"><b>A save on this device could not be read</b> by this build, and was kept aside. Restore tries it again, which a later build may read; Show its text to copy it out.</p><div class="row"><button class="btn sm primary" data-act="unreadRestore">Restore it</button><button class="btn sm" data-act="unreadShow">Show its text</button><button class="btn sm" data-act="unreadForget">Forget it</button></div></div>` : A}<div class="card stack"><div class="row"><button class="btn primary" data-act="export" data-tip="The backup: restores everything, on any device.">Export backup (.json)</button><button class="btn" data-act="showBackup" data-tip="The same backup as text, to copy somewhere safe.">Show backup text</button><button class="btn" data-act="exportCsv" data-tip="One row per set for spreadsheets. Import workouts reads it back, but it is not a full backup: routines and settings are not in it.">Export sets (.csv)</button></div><button class="btn" data-act="impOpen" data-tip="Adds sessions from notes, a spreadsheet, or an export from another app. You check everything before it is saved.">Import workouts</button> <label class="field">Restore a backup file (replaces everything)<input type="file" accept=".json,application/json" id="importFile"/></label> <button class="btn" data-act="pasteImport">Paste backup text instead</button><div class="row"><button class="btn" data-act="undo" ?disabled=${!undoStack.length} data-tip=${`Deletes, resets, and imports from the last 7 days, kept after the app is closed. Edits are not undoable. Deleted sessions, cardio, and routines also wait in History for ${TRASH_DAYS} days.`}>Undo last delete or reset${undoStack.length ? ` (${undoStack.length} available)` : ""}</button></div></div>`;
+    return b`${ap}${one ? A : b`<div class="panel" id="syncInfo" style=${ap !== A ? "margin-top:8px" : A}>${syncInfo()}</div>
+`}${canInstallHere() ? b`<div class="panel row spread" id="installPanel" style="margin-top:8px">
+<p class="small" style="margin:0;flex:1 1 180px"><b>Install the app.</b> Full screen, offline, one tap from your home screen.</p>
+<button class="btn sm primary" data-act="install">${/^ios/.test(installKind()) ? "Add to Home Screen" : "Install"}</button></div>
+` : A}${ENV === "preview" ? b`<div class="panel row spread" style="margin-top:8px">
+<p class="small" style="margin:0;flex:1 1 180px"><b>Test version.</b> It keeps a separate log. Copy yours in to try it; your log in ${APP_NAME} stays as it is.</p>
+<button class="btn sm primary" data-act="previewCopy">Copy my log in</button></div>
+` : A}${asideLine()}${privacyLine()}${safetyLine()}${backupDue() ? b`<p class="callout yellow" style="margin:10px 0 0"><b>Backup due.</b> ${s3.lastExport ? `Last backup file ${fmtDate(s3.lastExport)}.` : "No backup file yet."}${cloud.on ? "Your account has not synced this week. Export one below." : ""}</p>
+` : A}${device.ok ? A : b`<p class="small" style="color:var(--red)">This browser is blocking local storage, so this device keeps nothing between reloads without cloud sync.</p>
+`}${unreadableRaw() ? b`<div class="panel" id="unreadPanel" style="margin-top:8px">
+<p class="small" style="margin:0 0 6px"><b>A save on this device could not be read</b> by this build, and was kept aside. Restore tries it again, which a later build may read; Show its text to copy it out.</p>
+<div class="row"><button class="btn sm primary" data-act="unreadRestore">Restore it</button><button class="btn sm" data-act="unreadShow">Show its text</button><button class="btn sm" data-act="unreadForget">Forget it</button></div>
+</div>
+` : A}
+<div class="card stack">
+<div class="row"><button class="btn primary" data-act="export" data-tip="The backup: restores everything, on any device.">Export backup (.json)</button><button class="btn" data-act="showBackup" data-tip="The same backup as text, to copy somewhere safe.">Show backup text</button><button class="btn" data-act="exportCsv" data-tip="One row per set for spreadsheets. Import workouts reads it back, but it is not a full backup: routines and settings are not in it.">Export sets (.csv)</button></div>
+<button class="btn" data-act="impOpen" data-tip="Adds sessions from notes, a spreadsheet, or an export from another app. You check everything before it is saved.">Import workouts</button> <label class="field">Restore a backup file (replaces everything)<input type="file" accept=".json,application/json" id="importFile"/></label> <button class="btn" data-act="pasteImport">Paste backup text instead</button>
+<div class="row"><button class="btn" data-act="undo" ?disabled=${!undoStack.length} data-tip=${`Deletes, resets, and imports from the last 7 days, kept after the app is closed. Edits are not undoable. Deleted sessions, cardio, and routines also wait in History for ${TRASH_DAYS} days.`}>Undo last delete or reset${undoStack.length ? ` (${undoStack.length} available)` : ""}</button></div>
+</div>
+`;
   }
   function viewSettings() {
     const s3 = state.settings;
@@ -10170,14 +10318,37 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     const kick = ENV === "preview" ? `${PREVIEW_NAME} ${VERSION_LINE}` : "";
     const meta = cloud.on ? window.claude ? "Saved to your Claude account and this device" : "Synced to your account and saved on this device" : "Saved on this device";
     const list = [
-      G("profile", "Your training", profSub(), b`<div class="card stack">${profSettings()}</div>`),
+      G(
+        "profile",
+        "Your training",
+        profSub(),
+        b`<div class="card stack">${profSettings()}</div>
+`
+      ),
       G(
         "general",
         "General",
         `${s3.unit === "kg" ? "kg, cm" : "lb, in"} · ${s3.theme === "system" ? "device theme" : s3.theme}`,
-        b`<div class="card stack"><div class="grid2"><label class="field">Units<select data-bind="unit"><option value="lb" .selected=${l3(s3.unit === "lb")}>lb and inches</option><option value="kg" .selected=${l3(s3.unit === "kg")}>kg and cm</option></select></label> <label class="field">Theme<select data-bind="theme"><option value="system" .selected=${l3(s3.theme === "system")}>Match device</option><option value="dark" .selected=${l3(s3.theme === "dark")}>Dark</option><option value="light" .selected=${l3(s3.theme === "light")}>Light</option></select></label></div><label class="field">Name (optional)<input type="text" data-bind="userName" .value=${fieldValue(s3.userName || "")} maxlength="40" autocomplete="given-name"/></label><div><p class="small muted" style="margin:0 0 6px;font-weight:600">Accent colour</p><div class="chips" role="group" aria-label="Accent colour">${ACCENTS.map(
+        b`<div class="card stack">
+<div class="grid2">
+<label class="field">Units<select data-bind="unit">
+<option value="lb" .selected=${l3(s3.unit === "lb")}>lb and inches</option>
+<option value="kg" .selected=${l3(s3.unit === "kg")}>kg and cm</option>
+</select></label> <label class="field">Theme<select data-bind="theme">
+<option value="system" .selected=${l3(s3.theme === "system")}>Match device</option>
+<option value="dark" .selected=${l3(s3.theme === "dark")}>Dark</option>
+<option value="light" .selected=${l3(s3.theme === "light")}>Light</option>
+</select></label>
+</div>
+<label class="field">Name (optional)<input type="text" data-bind="userName" .value=${fieldValue(s3.userName || "")} maxlength="40" autocomplete="given-name"/></label>
+<div>
+<p class="small muted" style="margin:0 0 6px;font-weight:600">Accent colour</p>
+<div class="chips" role="group" aria-label="Accent colour">${ACCENTS.map(
           ([k2, l4]) => b`<button class=${(s3.accent || ACCENT0) === k2 ? "chip acc on" : "chip acc"} data-act="accent" data-v=${k2} aria-pressed=${String((s3.accent || ACCENT0) === k2)}><i class=${`sw sw-${k2}`} aria-hidden="true"></i>${l4}</button>`
-        )}</div></div><div class="grid2 one-narrow"><label class="field">${labelTip(
+        )}</div>
+</div>
+<div class="grid2 one-narrow">
+<label class="field">${labelTip(
           "lt-bwGoalPct",
           "Bodyweight goal (%/wk)",
           "Compared with your 7-day-average bodyweight trend on Stats. Leave blank to track without a target."
@@ -10186,19 +10357,35 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
           "Weigh-in reminder",
           "A card on Today asks for your bodyweight when the last weigh-in is this old. Pull-ups, dips, and other bodyweight lifts use your latest weigh-in."
         )}<select data-bind="bwEvery" aria-labelledby="lt-bwEvery">${BW_EVERY.map(
-          ([v3, l4]) => b`<option value=${String(v3)} .selected=${l3(bwEvery() === v3)}>${l4}</option>`
-        )}</select></label></div></div>`
+          ([v3, l4]) => b`<option value=${String(v3)} .selected=${l3(bwEvery() === v3)}>${l4}</option>
+`
+        )}</select></label>
+</div>
+</div>
+`
       ),
-      G("gym", "Your gym", gymSub(), b`<div class="card stack">${gymSettings()}</div>`, "gym"),
+      G(
+        "gym",
+        "Your gym",
+        gymSub(),
+        b`<div class="card stack">${gymSettings()}</div>
+`,
+        "gym"
+      ),
       G(
         "timer",
         "Rest timer and logging",
         s3.timerMode === "off" ? "timer off" : s3.timerMode + " timer",
-        b` <div class="card stack"><label class="field">${labelTip(
+        b` <div class="card stack">
+<label class="field">${labelTip(
           "lt-timerMode",
           "Rest timer",
           "Auto starts the timer when a set is marked done. Manual starts it from Rest on the exercise."
-        )}<select data-bind="timerMode" aria-labelledby="lt-timerMode"><option value="auto" .selected=${l3(s3.timerMode === "auto")}>Auto, after each set</option><option value="manual" .selected=${l3(s3.timerMode === "manual")}>Manual, from Rest</option><option value="off" .selected=${l3(s3.timerMode === "off")}>Off</option></select></label> <label class="check-inline"><input type="checkbox" data-bind="timerSound" .checked=${l3(!!s3.timerSound)} ?disabled=${s3.timerMode === "off"}/>Sound and vibration when rest ends</label> <label class="check-inline"><input type="checkbox" data-bind="timerCompact" aria-labelledby="lt-timerCompact" .checked=${l3(!!s3.timerCompact)} ?disabled=${s3.timerMode === "off"}/>${labelTip(
+        )}<select data-bind="timerMode" aria-labelledby="lt-timerMode">
+<option value="auto" .selected=${l3(s3.timerMode === "auto")}>Auto, after each set</option>
+<option value="manual" .selected=${l3(s3.timerMode === "manual")}>Manual, from Rest</option>
+<option value="off" .selected=${l3(s3.timerMode === "off")}>Off</option>
+</select></label> <label class="check-inline"><input type="checkbox" data-bind="timerSound" .checked=${l3(!!s3.timerSound)} ?disabled=${s3.timerMode === "off"}/>Sound and vibration when rest ends</label> <label class="check-inline"><input type="checkbox" data-bind="timerCompact" aria-labelledby="lt-timerCompact" .checked=${l3(!!s3.timerCompact)} ?disabled=${s3.timerMode === "off"}/>${labelTip(
           "lt-timerCompact",
           "Compact timer",
           "A small pill in the corner instead of a bar across the screen."
@@ -10214,7 +10401,10 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
           "lt-todayStart",
           "Today starts with",
           "Blank: Today opens on an empty session, and you add exercises as you go; your plan's day is still one tap away. Each exercise still gets its suggested weight from your history."
-        )}<select data-bind="todayStart" aria-labelledby="lt-todayStart"><option value="plan" .selected=${l3(s3.todayStart !== "free")}>My plan's day</option><option value="free" .selected=${l3(s3.todayStart === "free")}>A blank session (freestyle)</option></select></label> <label class="check-inline"><input type="checkbox" data-bind="autoAdj" aria-labelledby="lt-autoAdj" .checked=${l3(adjOn())}/>${labelTip(
+        )}<select data-bind="todayStart" aria-labelledby="lt-todayStart">
+<option value="plan" .selected=${l3(s3.todayStart !== "free")}>My plan's day</option>
+<option value="free" .selected=${l3(s3.todayStart === "free")}>A blank session (freestyle)</option>
+</select></label> <label class="check-inline"><input type="checkbox" data-bind="autoAdj" aria-labelledby="lt-autoAdj" .checked=${l3(adjOn())}/>${labelTip(
           "lt-autoAdj",
           "Adjust the next sets from the last one",
           "After a set that was clearly easier or harder than planned, the sets after it that you have not typed a load for move up or down. A line says why, with Keep to undo it. Two reps or more in reserve over your target, or two past the top of the range, moves up; two or more under the range moves down. A rep or two lost per set is normal and changes nothing."
@@ -10222,27 +10412,33 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
           "lt-wakeLock",
           "Keep the screen on during a session",
           "A locked phone pauses this page, so the rest alert cannot sound until you unlock. Keeping the screen on avoids that, at some battery cost."
-        )}</label></div>`
+        )}</label>
+</div>
+`
       ),
       G(
         "rir",
         "Effort (RIR)",
         { on: "on", cal: "corrected", off: "off" }[s3.rirMode],
-        b`<div class="card stack">${rirSettings()}</div>`
+        b`<div class="card stack">${rirSettings()}</div>
+`
       ),
       G(
         "layout",
         "Layout",
         s3.hidden.length ? `${s3.hidden.length} hidden` : "everything shown",
-        b`<div class="card stack">${layoutSettings()}</div>`
+        b`<div class="card stack">${layoutSettings()}</div>
+`
       ),
       G(
         "prio",
         "Priority muscles",
         s3.priorities.length ? s3.priorities.map((m3) => ML[m3]).join(", ") : "none",
-        b`${howText("prio", "Flagged as Your priority under Muscles in Stats, and favoured by Pick for me.")}<div class="card chips">${MUSCLES.map(
+        b`${howText("prio", "Flagged as Your priority under Muscles in Stats, and favoured by Pick for me.")}
+<div class="card chips">${MUSCLES.map(
           ([k2, l4]) => b`<button class=${s3.priorities.includes(k2) ? "chip on" : "chip"} data-act="prio" data-m=${k2}>${l4}</button>`
-        )}</div>`,
+        )}</div>
+`,
         "prio"
       ),
       G(
@@ -10252,12 +10448,30 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
         b`${howText(
           "bands",
           "Fractional hard sets per week: direct work 1, helper muscles 0.5 (Pelland 2025). 10 to 20 for major muscles fits the dose-response data; the upper number is typical, not a ceiling, and more still helps a little at more cost. Smaller muscles are set lower because compound lifts hit them indirectly, and their numbers are convention: no study has tested a dose for them. Serratus, rotator cuff, neck, and tibialis are tracked only. Raise one or two muscles for a specialisation block, or set focus muscles in Your training. Default targets puts every one back."
-        )}<div class="card"><table class="t"><tbody><tr><th>Muscle</th><th class="r">Min</th><th class="r">Max</th></tr>${MUSCLES.map(
-          ([k2, l4]) => b`<tr><td>${l4}</td><td class="r"><input style="width:70px" type="text" inputmode="numeric" aria-label=${`${l4} minimum hard sets a week`} data-band=${k2} data-bi="0" .value=${fieldValue(String(s3.bands[k2][0]))}/></td><td class="r"><input style="width:70px" type="text" inputmode="numeric" aria-label=${`${l4} maximum hard sets a week`} data-band=${k2} data-bi="1" .value=${fieldValue(String(s3.bands[k2][1]))}/></td></tr>`
-        )}</tbody></table><div class="row" style="margin-top:8px"><button class="btn sm" data-act="bandsDefault" ?disabled=${MK.every((m3) => {
+        )}
+<div class="card">
+<table class="t">
+<tbody>
+<tr>
+<th>Muscle</th>
+<th class="r">Min</th>
+<th class="r">Max</th>
+</tr>
+${MUSCLES.map(
+          ([k2, l4]) => b`<tr>
+<td>${l4}</td>
+<td class="r"><input style="width:70px" type="text" inputmode="numeric" aria-label=${`${l4} minimum hard sets a week`} data-band=${k2} data-bi="0" .value=${fieldValue(String(s3.bands[k2][0]))}/></td>
+<td class="r"><input style="width:70px" type="text" inputmode="numeric" aria-label=${`${l4} maximum hard sets a week`} data-band=${k2} data-bi="1" .value=${fieldValue(String(s3.bands[k2][1]))}/></td>
+</tr>
+`
+        )}</tbody>
+</table>
+<div class="row" style="margin-top:8px"><button class="btn sm" data-act="bandsDefault" ?disabled=${MK.every((m3) => {
           const d3 = defBand(m3);
           return s3.bands[m3][0] === d3[0] && s3.bands[m3][1] === d3[1];
-        }) && !s3.bandsFit}>Default targets</button></div></div>`,
+        }) && !s3.bandsFit}>Default targets</button></div>
+</div>
+`,
         "bands"
       ),
       G(
@@ -10272,19 +10486,36 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
         "help",
         "Help",
         "Guide, report a problem",
-        b`<div class="card stack"><div class="row"><button class="btn" data-act="guideOpen">Guide</button><button class="btn" data-act="fbOpen" data-cat="bug" data-tip="Also for a question or a suggestion: the sheet asks which.">Report a problem</button>${acct.reader && FB() ? b`<button class="btn" data-act="fbInbox">Reports inbox</button>` : A}</div></div>`
+        b`<div class="card stack">
+<div class="row"><button class="btn" data-act="guideOpen">Guide</button><button class="btn" data-act="fbOpen" data-cat="bug" data-tip="Also for a question or a suggestion: the sheet asks which.">Report a problem</button>${acct.reader && FB() ? b`<button class="btn" data-act="fbInbox">Reports inbox</button>` : A}</div>
+</div>
+`
       ),
       // Demo data, Diagnostics and Erase everything (r35, V): one group at the bottom, not three in front of everyday settings.
       G(
         "more",
         "More",
         hasDemo2 ? "demo data loaded" : "demo data, version, erase",
-        b`<div class="card stack"><div><p class="small" style="margin:0 0 6px"><b>Demo data</b> ${tipButton(
+        b`<div class="card stack">
+<div>
+<p class="small" style="margin:0 0 6px"><b>Demo data</b> ${tipButton(
           "8 weeks of generated sessions to preview Today and Stats. Everything demo is tagged and removed in one tap; your real logs are untouched.",
           "About demo data"
-        )}</p><div class="row">${hasDemo2 ? b`<button class="btn" data-act="demoClear">Clear demo data</button>` : b`<button class="btn" data-act="demoLoad">Load demo data</button>`}</div></div><div><p class="small" style="margin:0 0 6px"><b>Version</b> ${VERSION_LINE}${logBuf.length ? b` <span class="muted">· cloud ${cloud.on ? cloud.status : "off"} · ${logBuf.length} logged error${logBuf.length === 1 ? "" : "s"}</span>` : A}</p>${logBuf.length ? b`<ul class="clist">${logBuf.slice(-5).reverse().map(
-          (x2) => b`<li><span class="small"><b>${x2.a}</b> ${x2.m}</span><span class="small muted">${x2.t.slice(5, 16).replace("T", " ")}</span></li>`
-        )}</ul>` : A}${logBuf.length ? b`<div class="row"><button class="btn sm" data-act="diagCopy">Copy diagnostics</button><button class="btn sm" data-act="diagClear">Clear log</button></div>` : A}${window.IRONLOG_APP ? b`<p class="small" style="margin:8px 0 0"><a href="LICENSES.txt" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;min-height:44px">Open-source licenses</a></p>` : A}</div><div><button class="btn danger" data-act="resetAll">Erase everything</button></div></div>`
+        )}</p>
+<div class="row">${hasDemo2 ? b`<button class="btn" data-act="demoClear">Clear demo data</button>` : b`<button class="btn" data-act="demoLoad">Load demo data</button>`}</div>
+</div>
+<div>
+<p class="small" style="margin:0 0 6px"><b>Version</b> ${VERSION_LINE}${logBuf.length ? b` <span class="muted">· cloud ${cloud.on ? cloud.status : "off"} · ${logBuf.length} logged error${logBuf.length === 1 ? "" : "s"}</span>` : A}</p>
+${logBuf.length ? b`<ul class="clist">${logBuf.slice(-5).reverse().map(
+          (x2) => b`<li><span class="small"><b>${x2.a}</b> ${x2.m}</span><span class="small muted">${x2.t.slice(5, 16).replace("T", " ")}</span></li>
+`
+        )}</ul>
+` : A}${logBuf.length ? b`<div class="row"><button class="btn sm" data-act="diagCopy">Copy diagnostics</button><button class="btn sm" data-act="diagClear">Clear log</button></div>
+` : A}${window.IRONLOG_APP ? b`<p class="small" style="margin:8px 0 0"><a href="LICENSES.txt" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;min-height:44px">Open-source licenses</a></p>
+` : A}</div>
+<div><button class="btn danger" data-act="resetAll">Erase everything</button></div>
+</div>
+`
       )
     ];
     return b`${pageTitle(kick, "Settings", meta)}${c3(
@@ -12190,6 +12421,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       }
     }
     let rebuilding = false;
+    let drawing = false, drawN = 0;
     const LIT_TABS = { history: viewHistory, settings: viewSettings };
     function litTab() {
       return LIT_TABS[ui.tab] || null;
@@ -12222,6 +12454,10 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
   <label class="field" style="margin-top:10px">Backup text<textarea readonly style="min-height:160px;font-size:12px">${esc(txt)}</textarea></label></div>`);
     }
     function renderInner() {
+      if (drawing) {
+        queueMicrotask(render);
+        return;
+      }
       killDynamic();
       applyTheme();
       setSaveState();
@@ -12245,12 +12481,24 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       if (obActive() && ui.tab !== "today") ui.tab = "today";
       document.body.classList.toggle("obmode", obActive());
       const moved = litTab();
+      const was = rebuilding;
       rebuilding = true;
       try {
-        if (moved) drawScreen($2("#view"), moved());
-        else drawLegacy($2("#view"), { today: viewToday, program: () => ui.planView === "library" ? viewLibrary() : viewProgram(), dash: viewDash }[ui.tab]());
+        if (!moved) {
+          const n0 = drawN, ae = document.activeElement, vw = $2("#view");
+          if (ae && ae !== document.body && vw && vw.contains(ae) && typeof ae.blur === "function") ae.blur();
+          if (drawN !== n0) return;
+        }
+        drawing = true;
+        drawN++;
+        try {
+          if (moved) drawScreen($2("#view"), moved());
+          else drawLegacy($2("#view"), { today: viewToday, program: () => ui.planView === "library" ? viewLibrary() : viewProgram(), dash: viewDash }[ui.tab]());
+        } finally {
+          drawing = false;
+        }
       } finally {
-        rebuilding = false;
+        rebuilding = was;
       }
       if (!moved) {
         applySecOrder();

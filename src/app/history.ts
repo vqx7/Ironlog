@@ -56,7 +56,8 @@ export function viewHistory(): TemplateResult {
   if (cs.length) keyed.push(['cardio', cardioSec(cs)]);
   const tr = state.trash;
   if (tr.length) keyed.push(['trash', trashSec()]);
-  const impLine = html`<p class="small" style="margin:14px 0 0"><button class="linkbtn" style="min-height:44px" data-act="impOpen" data-tip=${IMPORT_TIP}>Import workouts</button></p>`;
+  const impLine = html`<p class="small" style="margin:14px 0 0"><button class="linkbtn" style="min-height:44px" data-act="impOpen" data-tip=${IMPORT_TIP}>Import workouts</button></p>
+`;
   const sections = (list: readonly (readonly [string, TemplateResult])[]): TemplateResult =>
     html`${repeat(
       placed('history', list),
@@ -64,7 +65,11 @@ export function viewHistory(): TemplateResult {
       x => x[1]
     )}`;
   if (!ss.length)
-    return html`${head}${sections(keyed)}<div class="card"><p style="margin:0">No sessions yet. Start one on Today, or log one you did without the app with Log a past workout.</p></div>${impLine}${tabFoot('history')}`;
+    return html`${head}${sections(keyed)}
+<div class="card">
+<p style="margin:0">No sessions yet. Start one on Today, or log one you did without the app with Log a past workout.</p>
+</div>
+${impLine}${tabFoot('history')}`;
   keyed.push(['sessions', sessionsSec(ss, perDay)]);
   return html`${head}${sections(keyed)}${impLine}${tabFoot('history')}`;
 }
@@ -75,16 +80,19 @@ function cardioSec(cs: readonly CardioEntry[]): TemplateResult {
     key: 'cardio',
     title: 'Cardio and mobility',
     sub: `${cs.length} entr${cs.length === 1 ? 'y' : 'ies'}`,
-    body: html`<ul class="clist">${cs
-      .slice(0, 40)
-      .map(
-        c =>
-          html`<li><span><b>${CARDIOL[c.kind]}</b> <span class="small muted">${fmtDate(c.date)} · ${c.min} min${c.dist ? ` · ${distShow(c.dist)} ${distU()}` : ''}${c.hr ? ` · ${c.hr} bpm` : ''}${
-            c.when !== 'solo' ? ' · ' + (CWHENL[c.when] || '').toLowerCase() : ''
-          }${c.note ? ' · ' + c.note : ''}</span></span><button class="ib sm" data-act="cardioDel" data-id=${c.id} aria-label=${`Delete ${fmtDate(c.date)} cardio`}>✕</button></li>`
-      )}</ul>${
-      cs.length > 40 ? html`<p class="small muted">${cs.length - 40} older entries are in the CSV export.</p>` : nothing
-    }`
+    body: html`<ul class="clist">${cs.slice(0, 40).map(
+      c =>
+        html`<li><span><b>${CARDIOL[c.kind]}</b> <span class="small muted">${fmtDate(c.date)} · ${c.min} min${c.dist ? ` · ${distShow(c.dist)} ${distU()}` : ''}${c.hr ? ` · ${c.hr} bpm` : ''}${
+          c.when !== 'solo' ? ' · ' + (CWHENL[c.when] || '').toLowerCase() : ''
+        }${c.note ? ' · ' + c.note : ''}</span></span><button class="ib sm" data-act="cardioDel" data-id=${c.id} aria-label=${`Delete ${fmtDate(c.date)} cardio`}>✕</button></li>
+`
+    )}</ul>
+${
+  cs.length > 40
+    ? html`<p class="small muted">${cs.length - 40} older entries are in the CSV export.</p>
+`
+    : nothing
+}`
   });
 }
 
@@ -106,8 +114,11 @@ function trashSec(): TemplateResult {
     sub: html`<span class="hastip" data-tip=${`The ${TRASH_MAX} most recent deletions, each kept ${TRASH_DAYS} days`}>${tr.length}</span>`,
     body: html`<ul class="clist">${tr.map(x => {
       const nm = trashName(x);
-      return html`<li><span>${nm} <span class="small muted">deleted ${fmtDate(x.date)}</span></span><span class="row" style="gap:6px;flex:none"><button class="btn sm" data-act="restore" data-id=${x.id} data-k=${x.kind}>Restore</button><button class="ib sm" data-act="trashDel" data-id=${x.id} data-k=${x.kind} aria-label=${`Delete ${nm} for good`}>✕</button></span></li>`;
-    })}</ul><p class="small" style="margin:10px 0 0"><button class="linkbtn" style="min-height:44px" data-act="trashEmpty">Delete all for good</button></p>`
+      return html`<li><span>${nm} <span class="small muted">deleted ${fmtDate(x.date)}</span></span><span class="row" style="gap:6px;flex:none"><button class="btn sm" data-act="restore" data-id=${x.id} data-k=${x.kind}>Restore</button><button class="ib sm" data-act="trashDel" data-id=${x.id} data-k=${x.kind} aria-label=${`Delete ${nm} for good`}>✕</button></span></li>
+`;
+    })}</ul>
+<p class="small" style="margin:10px 0 0"><button class="linkbtn" style="min-height:44px" data-act="trashEmpty">Delete all for good</button></p>
+`
   });
 }
 
@@ -148,7 +159,8 @@ function sessionsSec(ss: readonly Session[], perDay: Record<string, number>): Te
       const o = wkTot[wk] || { n: 0, sets: 0, vol: 0 };
       const lbl = wk === thisWk ? 'This week' : wk === addDays(thisWk, -7) ? 'Last week' : `Week of ${fmtDate(wk)}`;
       rows.push(
-        html`<div class="hweek"><span class="hw-t">${lbl}</span><span class="hw-s" data-tip=${`${o.n} session${o.n === 1 ? '' : 's'}, ${o.sets} working sets, ${Math.round(toD(o.vol) ?? 0).toLocaleString()} ${U()} lifted`}>${o.sets} sets · ${fmtK(o.vol)} ${U()}</span></div>`
+        html`<div class="hweek"><span class="hw-t">${lbl}</span><span class="hw-s" data-tip=${`${o.n} session${o.n === 1 ? '' : 's'}, ${o.sets} working sets, ${Math.round(toD(o.vol) ?? 0).toLocaleString()} ${U()} lifted`}>${o.sets} sets · ${fmtK(o.vol)} ${U()}</span></div>
+`
       );
     }
     rows.push(sessionRow(s, perDay, nWork(s), vol.get(s.id) || 0, wd, wTag));
@@ -157,7 +169,19 @@ function sessionsSec(ss: readonly Session[], perDay: Record<string, number>): Te
     shown.length > page.length
       ? html`<button class="btn block" style="margin-top:10px" data-act="histMore">Show ${Math.min(HIST_PAGE, shown.length - page.length)} more (${page.length} of ${shown.length})</button>`
       : nothing;
-  const body = html`<label class="field">Show sessions with<select data-bind="histEx"><option value="" .selected=${!ui.histEx}>Any exercise</option>${withData.map(id => html`<option value=${id} .selected=${ui.histEx === id}>${exName(id)}</option>`)}</select></label><div style="margin-top:6px">${shown.length ? nothing : html`<p class="muted">No sessions with that exercise.</p>`}${rows}</div>${more}`;
+  const body = html`<label class="field">Show sessions with<select data-bind="histEx">
+<option value="" .selected=${!ui.histEx}>Any exercise</option>
+${withData.map(
+  id => html`<option value=${id} .selected=${ui.histEx === id}>${exName(id)}</option>
+`
+)}</select></label>
+<div style="margin-top:6px">${
+    shown.length
+      ? nothing
+      : html`<p class="muted">No sessions with that exercise.</p>
+`
+  }${rows}</div>
+${more}`;
   const last = ss[ss.length - 1];
   return section({
     sk: 'history:sessions',
@@ -189,9 +213,11 @@ function sessionRow(
     Object.values(wd[s.id] || {}).includes('fewer sets') ? html` <span class="tag">fewer sets</span>` : nothing
   }${s.demo ? html` <span class="tag">demo</span>` : nothing}<br /><span class="small muted">${fmtDateRow(s.date)}${tm}</span></span><span class="num small" style="text-align:right;flex:none">${nSets} sets<br /><span class="muted">${Math.round(toD(vol) ?? 0).toLocaleString()} ${U()}${s.durMin ? ` · ${s.durMin} min` : ''}</span></span></button>${
     filtered && fex
-      ? html`<p class="small" style="margin:6px 0 0">${filtered.sets.map(x => setStr(fex, x)).join(', ')}${histUnits(fex)}</p>`
+      ? html`<p class="small" style="margin:6px 0 0">${filtered.sets.map(x => setStr(fex, x)).join(', ')}${histUnits(fex)}</p>
+`
       : nothing
-  }${open ? sessionPanel(s, wTag) : nothing}</div>`;
+  }${open ? sessionPanel(s, wTag) : nothing}</div>
+`;
 }
 
 function sessionPanel(s: Session, wTag: (s: Session, exId: string) => TemplateResult | typeof nothing): TemplateResult {
@@ -200,14 +226,24 @@ function sessionPanel(s: Session, wTag: (s: Session, exId: string) => TemplateRe
     chk
       ? html`<p class="small muted" style="margin:0 0 6px">Check-in: ${CHK_Q.filter(([k]) => chk[k])
           .map(([k, l, n]) => `${l.toLowerCase()} ${chkWord(n[(chk[k] || 1) - 1] || '')}`)
-          .join(', ')}</p>`
+          .join(', ')}</p>
+`
       : nothing
   }${s.ex.map(b => {
     const ex = EX(b.exId);
     return html`<p class="small" style="margin:0 0 6px"><b>${ex.name}</b>${wTag(s, b.exId)}: ${b.sets.map(x => setStr(ex, x)).join(', ')}${histUnits(ex)}${
       b.note ? html`<br /><span class="muted">${b.note}</span>` : nothing
-    }</p>`;
-  })}${s.notes ? html`<p class="small muted" style="margin:0 0 6px">${s.notes}</p>` : nothing}<div class="row" style="margin-top:8px"><button class="btn sm" data-act="histEdit" data-id=${s.id}>Edit</button><button class="btn sm" data-act="histRepeat" data-id=${s.id} data-tip="Start a new session today with these exercises">Do again</button><button class="btn sm danger" data-act="histDel" data-id=${s.id}>Delete</button></div></div>`;
+    }</p>
+`;
+  })}${
+    s.notes
+      ? html`<p class="small muted" style="margin:0 0 6px">${s.notes}</p>
+`
+      : nothing
+  }
+<div class="row" style="margin-top:8px"><button class="btn sm" data-act="histEdit" data-id=${s.id}>Edit</button><button class="btn sm" data-act="histRepeat" data-id=${s.id} data-tip="Start a new session today with these exercises">Do again</button><button class="btn sm danger" data-act="histDel" data-id=${s.id}>Delete</button></div>
+</div>
+`;
 }
 
 /* ---------- what History does ---------- */

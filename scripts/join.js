@@ -103,6 +103,9 @@ function build({ override = {} } = {}) {
       // never a .tsx beside a module (the r51 mutation test put one there, and
       // the bundle took it first while every check read the .ts).
       resolveExtensions: ['.ts', '.js'],
+      // A package (lit-html, r57) resolves from the repo's node_modules, also
+      // when the bundle reads a copy of src/ (a suite's override, above).
+      nodePaths: [path.join(root, 'node_modules')],
       // Nothing is removed beyond what bundling needs: the legacy code keeps
       // every function, so window.__ironlog and the tests see it whole.
       treeShaking: false, minify: false, charset: 'utf8', legalComments: 'none',

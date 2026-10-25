@@ -162,16 +162,26 @@ function profChips(
   return html`<div class="ob-units" role="group" aria-label=${label}>${opts.map(
     ([v, l]) =>
       html`<button class=${cur === v ? 'chip on' : 'chip'} data-act="profSet" data-k=${k} data-v=${String(v)} aria-pressed=${String(cur === v)}>${l}</button>`
-  )}</div>`;
+  )}</div>
+`;
 }
 function profFields(): TemplateResult {
   const p = prof();
-  return html`<div><p class="small muted" style="margin:0 0 6px;font-weight:600"><span class="hastip" data-tip=${PROF_GOAL_TIP}>Goal</span></p>${profChips('goal', PROF_GOALS, p.goal, 'Goal')}</div><div><p class="small muted" style="margin:0 0 6px;font-weight:600"><span class="hastip" data-tip=${PROF_EXP_TIP}>Years lifting</span></p>${profChips('exp', PROF_EXP, p.exp, 'Years lifting')}</div><div><p class="small muted" style="margin:0 0 6px;font-weight:600"><span class="hastip" data-tip="Ready-made routines that fit are marked when you pick one. Every other day fits 3 or 4.">Days a week</span></p>${profChips(
-    'days',
-    PROF_DAYS.map(d => [d, String(d)] as const),
-    p.days,
-    'Days a week'
-  )}</div>`;
+  return html`<div>
+<p class="small muted" style="margin:0 0 6px;font-weight:600"><span class="hastip" data-tip=${PROF_GOAL_TIP}>Goal</span></p>
+${profChips('goal', PROF_GOALS, p.goal, 'Goal')}</div>
+<div>
+<p class="small muted" style="margin:0 0 6px;font-weight:600"><span class="hastip" data-tip=${PROF_EXP_TIP}>Years lifting</span></p>
+${profChips('exp', PROF_EXP, p.exp, 'Years lifting')}</div>
+<div>
+<p class="small muted" style="margin:0 0 6px;font-weight:600"><span class="hastip" data-tip="Ready-made routines that fit are marked when you pick one. Every other day fits 3 or 4.">Days a week</span></p>
+${profChips(
+  'days',
+  PROF_DAYS.map(d => [d, String(d)] as const),
+  p.days,
+  'Days a week'
+)}</div>
+`;
 }
 function profSub(): string {
   const p = prof();
@@ -192,16 +202,22 @@ function profSettings(): TemplateResult {
     'lt-timeBudget',
     'Lifting time budget (minutes)',
     'Planned days whose time estimate runs over it are flagged. Rest per exercise is set in Plan; 0 s means no timer.'
-  )}<input type="text" inputmode="numeric" data-bind="timeBudget" aria-labelledby="lt-timeBudget" .value=${fieldValue(s.timeBudget == null ? '' : String(s.timeBudget))} placeholder="e.g. 70"/></label><div><p class="small muted" style="margin:0 0 6px;font-weight:600"><span class="hastip" data-tip=${PROF_FOCUS_TIP}>Focus muscles</span> <span class="muted" style="font-weight:400">${f.length} of ${FOCUS_MAX}</span></p><div class="chips" role="group" aria-label="Focus muscles">${MUSCLES.filter(
-    ([k]) => !TRACK_ONLY.has(k)
-  ).map(
+  )}<input type="text" inputmode="numeric" data-bind="timeBudget" aria-labelledby="lt-timeBudget" .value=${fieldValue(s.timeBudget == null ? '' : String(s.timeBudget))} placeholder="e.g. 70"/></label>
+<div>
+<p class="small muted" style="margin:0 0 6px;font-weight:600"><span class="hastip" data-tip=${PROF_FOCUS_TIP}>Focus muscles</span> <span class="muted" style="font-weight:400">${f.length} of ${FOCUS_MAX}</span></p>
+<div class="chips" role="group" aria-label="Focus muscles">${MUSCLES.filter(([k]) => !TRACK_ONLY.has(k)).map(
     ([k, l]) =>
       html`<button class=${f.includes(k) ? 'chip on' : 'chip'} data-act="profSet" data-k="focus" data-v=${k} aria-pressed=${String(f.includes(k))}>${l}</button>`
-  )}</div></div>${
-    ap.length
-      ? html`<div class="panel row spread" id="profApply"><p class="small" style="margin:0;flex:1 1 180px"><b>${ap.length} exercise${ap.length === 1 ? '' : 's'}</b> in ${R.name} differ from your profile.</p><button class="btn sm" data-act="profApply">Apply</button></div>`
-      : nothing
-  }`;
+  )}</div>
+</div>
+${
+  ap.length
+    ? html`<div class="panel row spread" id="profApply">
+<p class="small" style="margin:0;flex:1 1 180px"><b>${ap.length} exercise${ap.length === 1 ? '' : 's'}</b> in ${R.name} differ from your profile.</p>
+<button class="btn sm" data-act="profApply">Apply</button></div>
+`
+    : nothing
+}`;
 }
 
 /* ---------- Your gym (r33, item 207) ---------- */
@@ -263,33 +279,56 @@ function gymSettings(): TemplateResult {
   return html`${howText(
     'gym',
     'What your gym has, so suggested loads are ones you can pick up. Blank keeps the usual steps (5 lb or 2.5 kg, and dumbbells read from what you log). A step set on an exercise or in your plan still wins for that lift.'
-  )}<div><p class="small muted" style="margin:0 0 6px;font-weight:600"><span class="hastip" data-tip="Type the weights as they are labelled in your gym. Suggestions show in the app's unit and land on these weights.">Labelled in</span></p><div class="ob-units" role="group" aria-label="Your gym's weights are labelled in">${(
-    ['lb', 'kg'] as const
-  ).map(
+  )}
+<div>
+<p class="small muted" style="margin:0 0 6px;font-weight:600"><span class="hastip" data-tip="Type the weights as they are labelled in your gym. Suggestions show in the app's unit and land on these weights.">Labelled in</span></p>
+<div class="ob-units" role="group" aria-label="Your gym's weights are labelled in">${(['lb', 'kg'] as const).map(
     k =>
       html`<button class=${u === k ? 'chip on' : 'chip'} data-act="gymUnit" data-v=${k} aria-pressed=${String(u === k)}>${k}</button>`
-  )}</div></div>${
-    u !== U()
-      ? html`<p class="small" style="margin:0">Suggestions show in ${U()}, on the ${u} weights below.</p>`
-      : nothing
-  } <label class="field">${labelTip('lt-barKg', `Bar weight (${U()})`, 'Used by the plates-per-side line in the logger.')}<input type="text" inputmode="decimal" data-bind="barKg" aria-labelledby="lt-barKg" .value=${fieldValue(fmtW(barKg()))}/></label><div><p class="small muted" style="margin:0 0 6px;font-weight:600"><span class="hastip" data-tip="A barbell or a plate-loaded machine steps by two of the smallest plate you have, one a side; a landmine by one. Tap a plate your gym does not have.">Plates on hand (${u})</span></p><div class="chips" role="group" aria-label="Plates on hand">${plates.map(
+  )}</div>
+</div>
+${
+  u !== U()
+    ? html`<p class="small" style="margin:0">Suggestions show in ${U()}, on the ${u} weights below.</p>
+`
+    : nothing
+} <label class="field">${labelTip('lt-barKg', `Bar weight (${U()})`, 'Used by the plates-per-side line in the logger.')}<input type="text" inputmode="decimal" data-bind="barKg" aria-labelledby="lt-barKg" .value=${fieldValue(fmtW(barKg()))}/></label>
+<div>
+<p class="small muted" style="margin:0 0 6px;font-weight:600"><span class="hastip" data-tip="A barbell or a plate-loaded machine steps by two of the smallest plate you have, one a side; a landmine by one. Tap a plate your gym does not have.">Plates on hand (${u})</span></p>
+<div class="chips" role="group" aria-label="Plates on hand">${plates.map(
     p =>
       html`<button class=${on.includes(p) ? 'chip on' : 'chip'} data-act="gymPlate" data-v=${String(p)} aria-pressed=${String(on.includes(p))}>${fmtG(p)}</button>`
-  )}</div></div><label class="check-inline"><input type="checkbox" data-bind="smallPlates" aria-labelledby="lt-smallPlates" .checked=${live(!!state.settings.smallPlates)}/>${labelTip(
+  )}</div>
+</div>
+<label class="check-inline"><input type="checkbox" data-bind="smallPlates" aria-labelledby="lt-smallPlates" .checked=${live(!!state.settings.smallPlates)}/>${labelTip(
     'lt-smallPlates',
     `Small plates (${small})`,
     "Adds them to the plates-per-side line. A lift's own bar, such as a trap or EZ bar, is set in its exercise editor."
-  )}</label><div><p class="small muted" style="margin:0 0 6px;font-weight:600">Dumbbells (${u})</p><div class="grid3"><label class="field">From<input type="text" inputmode="decimal" data-gym="db.lo" .value=${fieldValue(v('lo'))} placeholder=${lb ? '5' : '2'} /></label><label class="field">To<input type="text" inputmode="decimal" data-gym="db.hi" .value=${fieldValue(v('hi'))} placeholder=${lb ? '120' : '50'} /></label><label class="field">Step<input type="text" inputmode="decimal" data-gym="db.st" .value=${fieldValue(v('st'))} placeholder=${lb ? '5' : '2'}/></label></div><div class="grid2" style="margin-top:6px;align-items:end"><label class="field">${labelTip(
+  )}</label>
+<div>
+<p class="small muted" style="margin:0 0 6px;font-weight:600">Dumbbells (${u})</p>
+<div class="grid3">
+<label class="field">From<input type="text" inputmode="decimal" data-gym="db.lo" .value=${fieldValue(v('lo'))} placeholder=${lb ? '5' : '2'} /></label>
+<label class="field">To<input type="text" inputmode="decimal" data-gym="db.hi" .value=${fieldValue(v('hi'))} placeholder=${lb ? '120' : '50'} /></label>
+<label class="field">Step<input type="text" inputmode="decimal" data-gym="db.st" .value=${fieldValue(v('st'))} placeholder=${lb ? '5' : '2'}/></label>
+</div>
+<div class="grid2" style="margin-top:6px;align-items:end">
+<label class="field">${labelTip(
     'lt-dbFine',
     'Lighter end steps by',
     'Many racks go up in smaller steps at the light end, such as 2.5 lb up to 25, or 1 kg up to 10. Leave blank if yours does not.'
-  )}<input type="text" inputmode="decimal" data-gym="db.fine" aria-labelledby="lt-dbFine" .value=${fieldValue(v('fine'))} placeholder=${lb ? '2.5' : '1'} /></label><label class="field">Up to<input type="text" inputmode="decimal" data-gym="db.fineTo" .value=${fieldValue(v('fineTo'))} placeholder=${lb ? '25' : '10'}/></label></div><p class=${half ? 'small' : 'small muted'} id="gymDbList" style="margin:6px 0 0">${
+  )}<input type="text" inputmode="decimal" data-gym="db.fine" aria-labelledby="lt-dbFine" .value=${fieldValue(v('fine'))} placeholder=${lb ? '2.5' : '1'} /></label>
+<label class="field">Up to<input type="text" inputmode="decimal" data-gym="db.fineTo" .value=${fieldValue(v('fineTo'))} placeholder=${lb ? '25' : '10'}/></label>
+</div>
+<p class=${half ? 'small' : 'small muted'} id="gymDbList" style="margin:6px 0 0">${
     half
       ? 'Add From, To, and Step to use these.'
       : L
         ? `${L.length} pairs: ${listTxt(L)} ${u}${pair ? '. Add both smaller-step fields to use them.' : ''}`
         : 'Not set: dumbbell steps are read from what you log.'
-  }</p></div><label class="field">${labelTip('lt-kb', `Kettlebells (${u})`, 'The weights you have, any order, separated by commas.')}<input type="text" inputmode="decimal" data-gym="kb" aria-labelledby="lt-kb" .value=${fieldValue(g && g.kb ? g.kb.map(fmtG).join(', ') : '')} placeholder=${lb ? '18, 26, 35, 44, 53' : '8, 12, 16, 20, 24'}/></label> <label class="field">${labelTip(
+  }</p>
+</div>
+<label class="field">${labelTip('lt-kb', `Kettlebells (${u})`, 'The weights you have, any order, separated by commas.')}<input type="text" inputmode="decimal" data-gym="kb" aria-labelledby="lt-kb" .value=${fieldValue(g && g.kb ? g.kb.map(fmtG).join(', ') : '')} placeholder=${lb ? '18, 26, 35, 44, 53' : '8, 12, 16, 20, 24'}/></label> <label class="field">${labelTip(
     'lt-stack',
     `Cable and machine stacks step by (${u})`,
     'The usual step between pins on your cable and machine stacks. A machine that differs gets its own step in its exercise.'
@@ -376,14 +415,24 @@ function rirSettings(): TemplateResult {
       : `${c.recent} recent calibration set${c.recent === 1 ? '' : 's'}: median miss ${raw > 0 ? '+' : ''}${r1(raw)} reps (${raw > 0 ? 'you stop with more left than you call' : raw < 0 ? 'closer to failure than you call' : 'accurate'}). Correction applied: ${c.bias > 0 ? '+' : ''}${c.bias}.`;
   const sc = rirScale();
   // What RIR is stays on screen here (V, r27): this is where it is decided whether to use it.
-  return html`<p class="small" style="margin:0"><b>RIR, reps in reserve:</b> reps you could still have done. RIR 3 or less is a hard set.</p><label class="field">Reps in reserve<select data-bind="rirMode"><option value="on" .selected=${live(s.rirMode === 'on')}>On: log RIR and use it as logged</option><option value="cal" .selected=${live(s.rirMode === 'cal')}>On, corrected by my calibration sets</option><option value="off" .selected=${live(s.rirMode === 'off')}>Off: don't ask, count every working set as hard</option></select></label> ${
+  return html`<p class="small" style="margin:0"><b>RIR, reps in reserve:</b> reps you could still have done. RIR 3 or less is a hard set.</p>
+<label class="field">Reps in reserve<select data-bind="rirMode">
+<option value="on" .selected=${live(s.rirMode === 'on')}>On: log RIR and use it as logged</option>
+<option value="cal" .selected=${live(s.rirMode === 'cal')}>On, corrected by my calibration sets</option>
+<option value="off" .selected=${live(s.rirMode === 'off')}>Off: don't ask, count every working set as hard</option>
+</select></label> ${
     s.rirMode === 'off'
       ? nothing
       : html`<label class="field">${labelTip(
           'lt-rirScale',
           'Enter effort as',
           'How you enter and read effort. Stored as RIR either way (RPE 8 is RIR 2, RPE 8.5 is RIR 1.5), so switching changes nothing logged.'
-        )}<select data-bind="rirScale" aria-labelledby="lt-rirScale"><option value="whole" .selected=${live(sc === 'whole')}>RIR, whole reps (0 to 5)</option><option value="half" .selected=${live(sc === 'half')}>RIR, half reps (0, 0.5, 1 … 5)</option><option value="rpe" .selected=${live(sc === 'rpe')}>RPE (5 to 10, in halves)</option></select></label>`
+        )}<select data-bind="rirScale" aria-labelledby="lt-rirScale">
+<option value="whole" .selected=${live(sc === 'whole')}>RIR, whole reps (0 to 5)</option>
+<option value="half" .selected=${live(sc === 'half')}>RIR, half reps (0, 0.5, 1 … 5)</option>
+<option value="rpe" .selected=${live(sc === 'rpe')}>RPE (5 to 10, in halves)</option>
+</select></label>
+`
   }${
     s.rirMode === 'off'
       ? nothing
@@ -395,12 +444,17 @@ function rirSettings(): TemplateResult {
           'lt-rirHalf',
           `Count ${halfLbl()} as half a set`,
           "Off: a set counts toward your weekly sets at RIR 3 or less. On: a set past RIR 3 counts as half a set too, in your weekly sets, targets, and the plan's weekly sets. Growth rises as sets end closer to failure (Robinson 2024), so sets further away still do something; half is a convention. Estimates, PRs, and recovery are unchanged."
-        )}</label><p class="small muted hastip" style="margin:4px 0 0" data-tip="A blank RIR is read as your usual RIR on that lift: the middle value of the sets of it you rated in the last 12 weeks, once there are 3. That is a convention, so rating a set only sometimes cannot make it look stronger or weaker. Until there are 3, a blank set counts as hard and as 0 reps left for 1RM estimates, which errs low and never inflates a PR. Recovery, calibration, and the light-load check use only the RIR you entered.">Skipping RIR on some sets is fine.</p>`
+        )}</label>
+<p class="small muted hastip" style="margin:4px 0 0" data-tip="A blank RIR is read as your usual RIR on that lift: the middle value of the sets of it you rated in the last 12 weeks, once there are 3. That is a convention, so rating a set only sometimes cannot make it look stronger or weaker. Until there are 3, a blank set counts as hard and as 0 reps left for 1RM estimates, which errs low and never inflates a PR. Recovery, calibration, and the light-load check use only the RIR you entered.">Skipping RIR on some sets is fine.</p>
+`
   }${
     s.rirMode === 'cal' && c.recent < 2
-      ? html`<p class="small" style="margin:0"><b>Needs 2 calibration sets from the last 12 weeks before any correction applies.</b></p>`
+      ? html`<p class="small" style="margin:0"><b>Needs 2 calibration sets from the last 12 weeks before any correction applies.</b></p>
+`
       : nothing
-  }<p class="small hastip" style="margin:4px 0 0" data-tip="Off hides the RIR picker: every working set counts as hard and estimates use reps alone. Corrected shifts RIR you called at 4 or less by your typical error, shrunk toward zero while you have few calibration sets and capped at 2 reps; compound and isolation lifts use their own sets once each has 2. A set called at 0 is shifted too: unless a rep actually failed, 0 is still a call, and people under-call reps left by about 1 on average, only slightly less near failure (Halperin 2022). Your log never changes, so switching is reversible.">${sum}</p>`;
+  }
+<p class="small hastip" style="margin:4px 0 0" data-tip="Off hides the RIR picker: every working set counts as hard and estimates use reps alone. Corrected shifts RIR you called at 4 or less by your typical error, shrunk toward zero while you have few calibration sets and capped at 2 reps; compound and isolation lifts use their own sets once each has 2. A set called at 0 is shifted too: unless a rep actually failed, 0 is still a call, and people under-call reps left by about 1 on average, only slightly less near failure (Halperin 2022). Your log never changes, so switching is reversible.">${sum}</p>
+`;
 }
 
 function layoutSettings(): TemplateResult {
@@ -409,15 +463,19 @@ function layoutSettings(): TemplateResult {
   return html`<p class="small muted" style="margin:0">Tap to show or hide. ${tipButton(
     `Hidden sections are still tracked, and come back where they were. Each time ${APP_NAME} opens, every section starts folded except Sessions on History. Drag a section by its ⠿ to move it; each tab keeps its order.`,
     'About layout'
-  )}</p><div class="row"><button class=${dflt ? 'btn sm noted' : 'btn sm'} data-act="layoutDefault" aria-pressed=${String(dflt)} data-tip="The layout a new install starts with: At a glance, Coach, and Body hidden on Today, Schedule and Weekly volume hidden on Plan, and the default order.">Default layout</button><button class="btn sm" data-act="layoutAll" ?disabled=${!h.length}>Show everything</button><button class="btn sm" data-act="layoutReset" data-tip="Puts the sections on every tab back in their default order. Shown or hidden stays as it is.">Reset section order</button></div>${HIDE_TABS.map(
-    ([t, l]) =>
-      html`<div class="hide-grp"><p class="small"><b>${l}</b></p><div class="chips">${HIDEABLE.filter(
-        x => x[0] === t
-      ).map(([, k, lab]) => {
-        const on = !h.includes(t + ':' + k);
-        return html`<button class=${on ? 'chip on' : 'chip'} data-act="hideToggle" data-k=${`${t}:${k}`} aria-pressed=${String(on)}>${lab}</button>`;
-      })}</div></div>`
-  )}`;
+  )}</p>
+<div class="row"><button class=${dflt ? 'btn sm noted' : 'btn sm'} data-act="layoutDefault" aria-pressed=${String(dflt)} data-tip="The layout a new install starts with: At a glance, Coach, and Body hidden on Today, Schedule and Weekly volume hidden on Plan, and the default order.">Default layout</button><button class="btn sm" data-act="layoutAll" ?disabled=${!h.length}>Show everything</button><button class="btn sm" data-act="layoutReset" data-tip="Puts the sections on every tab back in their default order. Shown or hidden stays as it is.">Reset section order</button></div>
+${HIDE_TABS.map(
+  ([t, l]) =>
+    html`<div class="hide-grp">
+<p class="small"><b>${l}</b></p>
+<div class="chips">${HIDEABLE.filter(x => x[0] === t).map(([, k, lab]) => {
+      const on = !h.includes(t + ':' + k);
+      return html`<button class=${on ? 'chip on' : 'chip'} data-act="hideToggle" data-k=${`${t}:${k}`} aria-pressed=${String(on)}>${lab}</button>`;
+    })}</div>
+</div>
+`
+)}`;
 }
 
 /* ---------- Your data: the account, the sync and the lines about them ---------- */
@@ -432,21 +490,33 @@ function acctPanel(): TemplateResult | typeof nothing {
   // Signed in but not syncing: the sign-in could not be used (offline at launch, or refused). Said, with a retry, rather than looking fine.
   const stuck =
     u && !cloud.on
-      ? html`<div class="row spread" style="margin-top:6px"><p class="small" style="margin:0;color:var(--yellow)">Not syncing right now.</p><button class="btn sm" data-act="acctRetry">Try again</button></div>`
+      ? html`<div class="row spread" style="margin-top:6px">
+<p class="small" style="margin:0;color:var(--yellow)">Not syncing right now.</p>
+<button class="btn sm" data-act="acctRetry">Try again</button></div>
+`
       : nothing;
   /* Signed out, this one line says where the log is and what an account adds (r34.2): Your data
      used to say it four times (this panel, the storage line, the privacy line, Backup due). */
   return u
-    ? html`<div class="panel" id="acctPanel"><div class="row spread"><p class="small" style="margin:0;min-width:0;overflow-wrap:anywhere">Signed in as <b>${typeof u.email === 'string' ? u.email : ''}</b></p><button class="btn sm" data-act="acctSignOut">Sign out</button></div>${stuck}${
+    ? html`<div class="panel" id="acctPanel">
+<div class="row spread">
+<p class="small" style="margin:0;min-width:0;overflow-wrap:anywhere">Signed in as <b>${typeof u.email === 'string' ? u.email : ''}</b></p>
+<button class="btn sm" data-act="acctSignOut">Sign out</button></div>
+${stuck}${
         typeof A.deleteAccount === 'function'
           ? html`<button type="button" class="linkbtn" style="margin-top:8px;color:var(--red)" data-act="acctDelete">Delete my account</button>`
           : nothing
-      }</div>`
-    : html`<div class="panel" id="acctPanel"><p class="small hastip" style="margin:0 0 8px" data-tip=${
+      }</div>
+`
+    : html`<div class="panel" id="acctPanel">
+<p class="small hastip" style="margin:0 0 8px" data-tip=${
         isStandalone()
           ? 'Deleting the app from the home screen deletes the log on this phone. An account keeps it, or save a backup file below.'
           : "Clearing this browser's data deletes the log here. An account keeps it, or save a backup file below."
-      }><b>Saved on this ${isStandalone() || coarse() ? 'phone' : 'device'} only.</b> Create an account to back it up and use it on any device.</p><div class="row"><button class="btn sm primary" data-act="acctOpen" data-mode="signup">Create account</button><button class="btn sm" data-act="acctOpen" data-mode="signin">Sign in</button></div></div>`;
+      }><b>Saved on this ${isStandalone() || coarse() ? 'phone' : 'device'} only.</b> Create an account to back it up and use it on any device.</p>
+<div class="row"><button class="btn sm primary" data-act="acctOpen" data-mode="signup">Create account</button><button class="btn sm" data-act="acctOpen" data-mode="signin">Sign in</button></div>
+</div>
+`;
 }
 
 /** Where the log is saved and how the sync stands, with Sync now. */
@@ -455,10 +525,13 @@ function syncInfo(): TemplateResult {
     return isStandalone()
       ? html`<p class="small hastip" style="margin:0" data-tip="Without an account this app keeps your data on this phone only. Deleting the app from the home screen deletes it too. Sign in to keep a copy in your account, or save a backup file to Files or iCloud Drive; Import brings it back on any device."><b>Saved on this phone.</b> ${
           AUTH() ? 'Sign in to sync, or export a backup weekly.' : 'Export a backup weekly.'
-        }</p>`
+        }</p>
+`
       : AUTH()
-        ? html`<p class="small hastip" style="margin:0" data-tip="Everything is saved in this browser only. Clearing its data deletes it. Sign in below to keep a copy in your account, or export a backup."><b>Saved in this browser only.</b> Sign in to sync, or export a backup.</p>`
-        : html`<p class="small hastip" style="margin:0" data-tip="Sync turns on by itself when this page is opened inside Claude while signed in. Until then everything is saved in this browser only."><b>Cloud sync off in this view.</b> Saved in this browser only.</p>`;
+        ? html`<p class="small hastip" style="margin:0" data-tip="Everything is saved in this browser only. Clearing its data deletes it. Sign in below to keep a copy in your account, or export a backup."><b>Saved in this browser only.</b> Sign in to sync, or export a backup.</p>
+`
+        : html`<p class="small hastip" style="margin:0" data-tip="Sync turns on by itself when this page is opened inside Claude while signed in. Until then everything is saved in this browser only."><b>Cloud sync off in this view.</b> Saved in this browser only.</p>
+`;
   const ago = cloud.last ? Math.round((Date.now() - cloud.last) / 60000) : null;
   const when =
     ago == null
@@ -476,18 +549,21 @@ function syncInfo(): TemplateResult {
       : cloud.status === 'offline'
         ? html`<span class="tag yellow">Waiting to sync</span>`
         : html`<span class="tag blue">Syncing</span>`;
-  return html`<div class="sync-row">${st}<span class="small muted">Last synced ${when}</span><button class="btn sm" data-act="syncNow">Sync now</button></div><p class="small hastip" style="margin:6px 0 0" data-tip=${`A new phone or a cleared browser loses nothing: sign in and your log comes back. Deleted items wait in History, Recently deleted, for ${TRASH_DAYS} days, and Undo in Settings covers the last 7 days.`}>${
+  return html`<div class="sync-row">${st}<span class="small muted">Last synced ${when}</span><button class="btn sm" data-act="syncNow">Sync now</button></div>
+<p class="small hastip" style="margin:6px 0 0" data-tip=${`A new phone or a cleared browser loses nothing: sign in and your log comes back. Deleted items wait in History, Recently deleted, for ${TRASH_DAYS} days, and Undo in Settings covers the last 7 days.`}>${
     cloud.status !== 'synced'
       ? 'Saved on this device. It reaches your account when you are back online.'
       : window.claude
         ? 'Saved to your Claude account and this device.'
         : 'Saved to your account and this device.'
-  }${cloud.err ? html` <b style="color:var(--red)">${cloud.err}</b>` : nothing}</p>`;
+  }${cloud.err ? html` <b style="color:var(--red)">${cloud.err}</b>` : nothing}</p>
+`;
 }
 
 /** What the suggestions are, said once where people look (r31.1, V: a subtle notice). */
 function safetyLine(): TemplateResult {
-  return html`<p class="small muted" id="safety" style="margin:8px 0 0"><b>Suggestions:</b> estimates from your log, not medical or coaching advice. Train within your limits and stop on pain. ${tipButton(SAFETY_TXT, 'About suggestions')}</p>`;
+  return html`<p class="small muted" id="safety" style="margin:8px 0 0"><b>Suggestions:</b> estimates from your log, not medical or coaching advice. Train within your limits and stop on pain. ${tipButton(SAFETY_TXT, 'About suggestions')}</p>
+`;
 }
 
 /** Where the data lives and what leaves the device, plainly. */
@@ -497,18 +573,22 @@ function privacyLine(): TemplateResult {
     return html`<p class="small muted" id="privacy" style="margin:8px 0 0"><b>Privacy:</b> no ads, no tracking. Your log syncs to your ${APP_NAME} account. Only you and the app's owner can see it. Reports you send go to the app owner. ${tipButton(
       'It is stored in a Supabase database. Database rules let each account read and write only its own data. The person who runs that database, the app owner, can see stored data and your email address, as with any app without end-to-end encryption. Your email is used only to sign in and reset your password, and nothing is shared or sold. A new password is checked against known breaches with only the first 5 characters of its hash; the password never leaves the phone. Backup files go only where you save them.',
       'About privacy'
-    )}</p>`;
+    )}</p>
+`;
   if (!claude && AUTH())
     return html`<p class="small muted" id="privacy" style="margin:8px 0 0"><b>Privacy:</b> no ads, no tracking, and nothing sent without an account. Reports you send go to the app owner. ${tipButton(
       "Opening or updating the app downloads it from GitHub Pages, which, like any website host, sees your IP address; after that it works offline. With an account, your log and email are stored in a Supabase database, readable by your account and by the app owner; the email is used only to sign in and reset your password. A new password is checked against known breaches with only the first 5 characters of its hash. Deleting the app or this site's data deletes the copy on this device, so keep a backup file or an account.",
       'About privacy'
-    )}</p>`;
+    )}</p>
+`;
   return claude
-    ? html`<p class="small muted" id="privacy" style="margin:8px 0 0"><b>Privacy:</b> no ads, no tracking. Your log is stored with your Claude account. ${tipButton('Export and CSV files go only where you save them.', 'About privacy')}</p>`
+    ? html`<p class="small muted" id="privacy" style="margin:8px 0 0"><b>Privacy:</b> no ads, no tracking. Your log is stored with your Claude account. ${tipButton('Export and CSV files go only where you save them.', 'About privacy')}</p>
+`
     : html`<p class="small muted" id="privacy" style="margin:8px 0 0"><b>Privacy:</b> no account, no ads, no tracking. Your log stays on this device and is sent nowhere. Reports you send go to the app owner. ${tipButton(
         `${APP_NAME} has no server. Opening or updating the app downloads it from GitHub Pages, which, like any website host, sees your IP address; after that it works offline. Backup files go only where you save them. Deleting the app or this site's data deletes your log, so keep a backup file.`,
         'About privacy'
-      )}</p>`;
+      )}</p>
+`;
 }
 
 /** The line that says a log kept aside for another account is on this phone (r56.1, PENDING 328 b). */
@@ -516,7 +596,8 @@ function asideLine(): TemplateResult | typeof nothing {
   const kept = asideList();
   if (!kept.length) return nothing;
   const words = kept.map(a => `${a.sessions} session${a.sessions === 1 ? '' : 's'}`).join(', ');
-  return html`<p class="small" id="asideLine" style="margin:8px 0 0"><b>A log from another account is kept on this phone</b> (${words}). It is used again when that account signs in here. Erase everything removes it.</p>`;
+  return html`<p class="small" id="asideLine" style="margin:8px 0 0"><b>A log from another account is kept on this phone</b> (${words}). It is used again when that account signs in here. Erase everything removes it.</p>
+`;
 }
 
 function dataBody(): TemplateResult {
@@ -526,28 +607,47 @@ function dataBody(): TemplateResult {
   return html`${ap}${
     one
       ? nothing
-      : html`<div class="panel" id="syncInfo" style=${ap !== nothing ? 'margin-top:8px' : nothing}>${syncInfo()}</div>`
+      : html`<div class="panel" id="syncInfo" style=${ap !== nothing ? 'margin-top:8px' : nothing}>${syncInfo()}</div>
+`
   }${
     canInstallHere()
-      ? html`<div class="panel row spread" id="installPanel" style="margin-top:8px"><p class="small" style="margin:0;flex:1 1 180px"><b>Install the app.</b> Full screen, offline, one tap from your home screen.</p><button class="btn sm primary" data-act="install">${/^ios/.test(installKind()) ? 'Add to Home Screen' : 'Install'}</button></div>`
+      ? html`<div class="panel row spread" id="installPanel" style="margin-top:8px">
+<p class="small" style="margin:0;flex:1 1 180px"><b>Install the app.</b> Full screen, offline, one tap from your home screen.</p>
+<button class="btn sm primary" data-act="install">${/^ios/.test(installKind()) ? 'Add to Home Screen' : 'Install'}</button></div>
+`
       : nothing
   }${
     ENV === 'preview'
-      ? html`<div class="panel row spread" style="margin-top:8px"><p class="small" style="margin:0;flex:1 1 180px"><b>Test version.</b> It keeps a separate log. Copy yours in to try it; your log in ${APP_NAME} stays as it is.</p><button class="btn sm primary" data-act="previewCopy">Copy my log in</button></div>`
+      ? html`<div class="panel row spread" style="margin-top:8px">
+<p class="small" style="margin:0;flex:1 1 180px"><b>Test version.</b> It keeps a separate log. Copy yours in to try it; your log in ${APP_NAME} stays as it is.</p>
+<button class="btn sm primary" data-act="previewCopy">Copy my log in</button></div>
+`
       : nothing
   }${asideLine()}${privacyLine()}${safetyLine()}${
     backupDue()
-      ? html`<p class="callout yellow" style="margin:10px 0 0"><b>Backup due.</b> ${s.lastExport ? `Last backup file ${fmtDate(s.lastExport)}.` : 'No backup file yet.'}${cloud.on ? 'Your account has not synced this week. Export one below.' : ''}</p>`
+      ? html`<p class="callout yellow" style="margin:10px 0 0"><b>Backup due.</b> ${s.lastExport ? `Last backup file ${fmtDate(s.lastExport)}.` : 'No backup file yet.'}${cloud.on ? 'Your account has not synced this week. Export one below.' : ''}</p>
+`
       : nothing
   }${
     device.ok
       ? nothing
-      : html`<p class="small" style="color:var(--red)">This browser is blocking local storage, so this device keeps nothing between reloads without cloud sync.</p>`
+      : html`<p class="small" style="color:var(--red)">This browser is blocking local storage, so this device keeps nothing between reloads without cloud sync.</p>
+`
   }${
     unreadableRaw()
-      ? html`<div class="panel" id="unreadPanel" style="margin-top:8px"><p class="small" style="margin:0 0 6px"><b>A save on this device could not be read</b> by this build, and was kept aside. Restore tries it again, which a later build may read; Show its text to copy it out.</p><div class="row"><button class="btn sm primary" data-act="unreadRestore">Restore it</button><button class="btn sm" data-act="unreadShow">Show its text</button><button class="btn sm" data-act="unreadForget">Forget it</button></div></div>`
+      ? html`<div class="panel" id="unreadPanel" style="margin-top:8px">
+<p class="small" style="margin:0 0 6px"><b>A save on this device could not be read</b> by this build, and was kept aside. Restore tries it again, which a later build may read; Show its text to copy it out.</p>
+<div class="row"><button class="btn sm primary" data-act="unreadRestore">Restore it</button><button class="btn sm" data-act="unreadShow">Show its text</button><button class="btn sm" data-act="unreadForget">Forget it</button></div>
+</div>
+`
       : nothing
-  }<div class="card stack"><div class="row"><button class="btn primary" data-act="export" data-tip="The backup: restores everything, on any device.">Export backup (.json)</button><button class="btn" data-act="showBackup" data-tip="The same backup as text, to copy somewhere safe.">Show backup text</button><button class="btn" data-act="exportCsv" data-tip="One row per set for spreadsheets. Import workouts reads it back, but it is not a full backup: routines and settings are not in it.">Export sets (.csv)</button></div><button class="btn" data-act="impOpen" data-tip="Adds sessions from notes, a spreadsheet, or an export from another app. You check everything before it is saved.">Import workouts</button> <label class="field">Restore a backup file (replaces everything)<input type="file" accept=".json,application/json" id="importFile"/></label> <button class="btn" data-act="pasteImport">Paste backup text instead</button><div class="row"><button class="btn" data-act="undo" ?disabled=${!undoStack.length} data-tip=${`Deletes, resets, and imports from the last 7 days, kept after the app is closed. Edits are not undoable. Deleted sessions, cardio, and routines also wait in History for ${TRASH_DAYS} days.`}>Undo last delete or reset${undoStack.length ? ` (${undoStack.length} available)` : ''}</button></div></div>`;
+  }
+<div class="card stack">
+<div class="row"><button class="btn primary" data-act="export" data-tip="The backup: restores everything, on any device.">Export backup (.json)</button><button class="btn" data-act="showBackup" data-tip="The same backup as text, to copy somewhere safe.">Show backup text</button><button class="btn" data-act="exportCsv" data-tip="One row per set for spreadsheets. Import workouts reads it back, but it is not a full backup: routines and settings are not in it.">Export sets (.csv)</button></div>
+<button class="btn" data-act="impOpen" data-tip="Adds sessions from notes, a spreadsheet, or an export from another app. You check everything before it is saved.">Import workouts</button> <label class="field">Restore a backup file (replaces everything)<input type="file" accept=".json,application/json" id="importFile"/></label> <button class="btn" data-act="pasteImport">Paste backup text instead</button>
+<div class="row"><button class="btn" data-act="undo" ?disabled=${!undoStack.length} data-tip=${`Deletes, resets, and imports from the last 7 days, kept after the app is closed. Edits are not undoable. Deleted sessions, cardio, and routines also wait in History for ${TRASH_DAYS} days.`}>Undo last delete or reset${undoStack.length ? ` (${undoStack.length} available)` : ''}</button></div>
+</div>
+`;
 }
 
 /* ---------- the screen ---------- */
@@ -573,15 +673,38 @@ export function viewSettings(): TemplateResult {
       : 'Synced to your account and saved on this device'
     : 'Saved on this device';
   const list = [
-    G('profile', 'Your training', profSub(), html`<div class="card stack">${profSettings()}</div>`),
+    G(
+      'profile',
+      'Your training',
+      profSub(),
+      html`<div class="card stack">${profSettings()}</div>
+`
+    ),
     G(
       'general',
       'General',
       `${s.unit === 'kg' ? 'kg, cm' : 'lb, in'} · ${s.theme === 'system' ? 'device theme' : s.theme}`,
-      html`<div class="card stack"><div class="grid2"><label class="field">Units<select data-bind="unit"><option value="lb" .selected=${live(s.unit === 'lb')}>lb and inches</option><option value="kg" .selected=${live(s.unit === 'kg')}>kg and cm</option></select></label> <label class="field">Theme<select data-bind="theme"><option value="system" .selected=${live(s.theme === 'system')}>Match device</option><option value="dark" .selected=${live(s.theme === 'dark')}>Dark</option><option value="light" .selected=${live(s.theme === 'light')}>Light</option></select></label></div><label class="field">Name (optional)<input type="text" data-bind="userName" .value=${fieldValue(s.userName || '')} maxlength="40" autocomplete="given-name"/></label><div><p class="small muted" style="margin:0 0 6px;font-weight:600">Accent colour</p><div class="chips" role="group" aria-label="Accent colour">${ACCENTS.map(
+      html`<div class="card stack">
+<div class="grid2">
+<label class="field">Units<select data-bind="unit">
+<option value="lb" .selected=${live(s.unit === 'lb')}>lb and inches</option>
+<option value="kg" .selected=${live(s.unit === 'kg')}>kg and cm</option>
+</select></label> <label class="field">Theme<select data-bind="theme">
+<option value="system" .selected=${live(s.theme === 'system')}>Match device</option>
+<option value="dark" .selected=${live(s.theme === 'dark')}>Dark</option>
+<option value="light" .selected=${live(s.theme === 'light')}>Light</option>
+</select></label>
+</div>
+<label class="field">Name (optional)<input type="text" data-bind="userName" .value=${fieldValue(s.userName || '')} maxlength="40" autocomplete="given-name"/></label>
+<div>
+<p class="small muted" style="margin:0 0 6px;font-weight:600">Accent colour</p>
+<div class="chips" role="group" aria-label="Accent colour">${ACCENTS.map(
         ([k, l]) =>
           html`<button class=${(s.accent || ACCENT0) === k ? 'chip acc on' : 'chip acc'} data-act="accent" data-v=${k} aria-pressed=${String((s.accent || ACCENT0) === k)}><i class=${`sw sw-${k}`} aria-hidden="true"></i>${l}</button>`
-      )}</div></div><div class="grid2 one-narrow"><label class="field">${labelTip(
+      )}</div>
+</div>
+<div class="grid2 one-narrow">
+<label class="field">${labelTip(
         'lt-bwGoalPct',
         'Bodyweight goal (%/wk)',
         'Compared with your 7-day-average bodyweight trend on Stats. Leave blank to track without a target.'
@@ -590,19 +713,35 @@ export function viewSettings(): TemplateResult {
         'Weigh-in reminder',
         'A card on Today asks for your bodyweight when the last weigh-in is this old. Pull-ups, dips, and other bodyweight lifts use your latest weigh-in.'
       )}<select data-bind="bwEvery" aria-labelledby="lt-bwEvery">${BW_EVERY.map(
-        ([v, l]) => html`<option value=${String(v)} .selected=${live(bwEvery() === v)}>${l}</option>`
-      )}</select></label></div></div>`
+        ([v, l]) => html`<option value=${String(v)} .selected=${live(bwEvery() === v)}>${l}</option>
+`
+      )}</select></label>
+</div>
+</div>
+`
     ),
-    G('gym', 'Your gym', gymSub(), html`<div class="card stack">${gymSettings()}</div>`, 'gym'),
+    G(
+      'gym',
+      'Your gym',
+      gymSub(),
+      html`<div class="card stack">${gymSettings()}</div>
+`,
+      'gym'
+    ),
     G(
       'timer',
       'Rest timer and logging',
       s.timerMode === 'off' ? 'timer off' : s.timerMode + ' timer',
-      html` <div class="card stack"><label class="field">${labelTip(
+      html` <div class="card stack">
+<label class="field">${labelTip(
         'lt-timerMode',
         'Rest timer',
         'Auto starts the timer when a set is marked done. Manual starts it from Rest on the exercise.'
-      )}<select data-bind="timerMode" aria-labelledby="lt-timerMode"><option value="auto" .selected=${live(s.timerMode === 'auto')}>Auto, after each set</option><option value="manual" .selected=${live(s.timerMode === 'manual')}>Manual, from Rest</option><option value="off" .selected=${live(s.timerMode === 'off')}>Off</option></select></label> <label class="check-inline"><input type="checkbox" data-bind="timerSound" .checked=${live(!!s.timerSound)} ?disabled=${s.timerMode === 'off'}/>Sound and vibration when rest ends</label> <label class="check-inline"><input type="checkbox" data-bind="timerCompact" aria-labelledby="lt-timerCompact" .checked=${live(!!s.timerCompact)} ?disabled=${s.timerMode === 'off'}/>${labelTip(
+      )}<select data-bind="timerMode" aria-labelledby="lt-timerMode">
+<option value="auto" .selected=${live(s.timerMode === 'auto')}>Auto, after each set</option>
+<option value="manual" .selected=${live(s.timerMode === 'manual')}>Manual, from Rest</option>
+<option value="off" .selected=${live(s.timerMode === 'off')}>Off</option>
+</select></label> <label class="check-inline"><input type="checkbox" data-bind="timerSound" .checked=${live(!!s.timerSound)} ?disabled=${s.timerMode === 'off'}/>Sound and vibration when rest ends</label> <label class="check-inline"><input type="checkbox" data-bind="timerCompact" aria-labelledby="lt-timerCompact" .checked=${live(!!s.timerCompact)} ?disabled=${s.timerMode === 'off'}/>${labelTip(
         'lt-timerCompact',
         'Compact timer',
         'A small pill in the corner instead of a bar across the screen.'
@@ -618,7 +757,10 @@ export function viewSettings(): TemplateResult {
         'lt-todayStart',
         'Today starts with',
         "Blank: Today opens on an empty session, and you add exercises as you go; your plan's day is still one tap away. Each exercise still gets its suggested weight from your history."
-      )}<select data-bind="todayStart" aria-labelledby="lt-todayStart"><option value="plan" .selected=${live(s.todayStart !== 'free')}>My plan's day</option><option value="free" .selected=${live(s.todayStart === 'free')}>A blank session (freestyle)</option></select></label> <label class="check-inline"><input type="checkbox" data-bind="autoAdj" aria-labelledby="lt-autoAdj" .checked=${live(adjOn())}/>${labelTip(
+      )}<select data-bind="todayStart" aria-labelledby="lt-todayStart">
+<option value="plan" .selected=${live(s.todayStart !== 'free')}>My plan's day</option>
+<option value="free" .selected=${live(s.todayStart === 'free')}>A blank session (freestyle)</option>
+</select></label> <label class="check-inline"><input type="checkbox" data-bind="autoAdj" aria-labelledby="lt-autoAdj" .checked=${live(adjOn())}/>${labelTip(
         'lt-autoAdj',
         'Adjust the next sets from the last one',
         'After a set that was clearly easier or harder than planned, the sets after it that you have not typed a load for move up or down. A line says why, with Keep to undo it. Two reps or more in reserve over your target, or two past the top of the range, moves up; two or more under the range moves down. A rep or two lost per set is normal and changes nothing.'
@@ -626,28 +768,34 @@ export function viewSettings(): TemplateResult {
         'lt-wakeLock',
         'Keep the screen on during a session',
         'A locked phone pauses this page, so the rest alert cannot sound until you unlock. Keeping the screen on avoids that, at some battery cost.'
-      )}</label></div>`
+      )}</label>
+</div>
+`
     ),
     G(
       'rir',
       'Effort (RIR)',
       { on: 'on', cal: 'corrected', off: 'off' }[s.rirMode],
-      html`<div class="card stack">${rirSettings()}</div>`
+      html`<div class="card stack">${rirSettings()}</div>
+`
     ),
     G(
       'layout',
       'Layout',
       s.hidden.length ? `${s.hidden.length} hidden` : 'everything shown',
-      html`<div class="card stack">${layoutSettings()}</div>`
+      html`<div class="card stack">${layoutSettings()}</div>
+`
     ),
     G(
       'prio',
       'Priority muscles',
       s.priorities.length ? s.priorities.map(m => ML[m]).join(', ') : 'none',
-      html`${howText('prio', 'Flagged as Your priority under Muscles in Stats, and favoured by Pick for me.')}<div class="card chips">${MUSCLES.map(
+      html`${howText('prio', 'Flagged as Your priority under Muscles in Stats, and favoured by Pick for me.')}
+<div class="card chips">${MUSCLES.map(
         ([k, l]) =>
           html`<button class=${s.priorities.includes(k) ? 'chip on' : 'chip'} data-act="prio" data-m=${k}>${l}</button>`
-      )}</div>`,
+      )}</div>
+`,
       'prio'
     ),
     G(
@@ -657,15 +805,33 @@ export function viewSettings(): TemplateResult {
       html`${howText(
         'bands',
         'Fractional hard sets per week: direct work 1, helper muscles 0.5 (Pelland 2025). 10 to 20 for major muscles fits the dose-response data; the upper number is typical, not a ceiling, and more still helps a little at more cost. Smaller muscles are set lower because compound lifts hit them indirectly, and their numbers are convention: no study has tested a dose for them. Serratus, rotator cuff, neck, and tibialis are tracked only. Raise one or two muscles for a specialisation block, or set focus muscles in Your training. Default targets puts every one back.'
-      )}<div class="card"><table class="t"><tbody><tr><th>Muscle</th><th class="r">Min</th><th class="r">Max</th></tr>${MUSCLES.map(
-        ([k, l]) =>
-          html`<tr><td>${l}</td><td class="r"><input style="width:70px" type="text" inputmode="numeric" aria-label=${`${l} minimum hard sets a week`} data-band=${k} data-bi="0" .value=${fieldValue(String(s.bands[k][0]))}/></td><td class="r"><input style="width:70px" type="text" inputmode="numeric" aria-label=${`${l} maximum hard sets a week`} data-band=${k} data-bi="1" .value=${fieldValue(String(s.bands[k][1]))}/></td></tr>`
-      )}</tbody></table><div class="row" style="margin-top:8px"><button class="btn sm" data-act="bandsDefault" ?disabled=${
+      )}
+<div class="card">
+<table class="t">
+<tbody>
+<tr>
+<th>Muscle</th>
+<th class="r">Min</th>
+<th class="r">Max</th>
+</tr>
+${MUSCLES.map(
+  ([k, l]) =>
+    html`<tr>
+<td>${l}</td>
+<td class="r"><input style="width:70px" type="text" inputmode="numeric" aria-label=${`${l} minimum hard sets a week`} data-band=${k} data-bi="0" .value=${fieldValue(String(s.bands[k][0]))}/></td>
+<td class="r"><input style="width:70px" type="text" inputmode="numeric" aria-label=${`${l} maximum hard sets a week`} data-band=${k} data-bi="1" .value=${fieldValue(String(s.bands[k][1]))}/></td>
+</tr>
+`
+)}</tbody>
+</table>
+<div class="row" style="margin-top:8px"><button class="btn sm" data-act="bandsDefault" ?disabled=${
         MK.every(m => {
           const d = defBand(m);
           return s.bands[m][0] === d[0] && s.bands[m][1] === d[1];
         }) && !s.bandsFit
-      }>Default targets</button></div></div>`,
+      }>Default targets</button></div>
+</div>
+`,
       'bands'
     ),
     G(
@@ -680,43 +846,60 @@ export function viewSettings(): TemplateResult {
       'help',
       'Help',
       'Guide, report a problem',
-      html`<div class="card stack"><div class="row"><button class="btn" data-act="guideOpen">Guide</button><button class="btn" data-act="fbOpen" data-cat="bug" data-tip="Also for a question or a suggestion: the sheet asks which.">Report a problem</button>${acct.reader && FB() ? html`<button class="btn" data-act="fbInbox">Reports inbox</button>` : nothing}</div></div>`
+      html`<div class="card stack">
+<div class="row"><button class="btn" data-act="guideOpen">Guide</button><button class="btn" data-act="fbOpen" data-cat="bug" data-tip="Also for a question or a suggestion: the sheet asks which.">Report a problem</button>${acct.reader && FB() ? html`<button class="btn" data-act="fbInbox">Reports inbox</button>` : nothing}</div>
+</div>
+`
     ),
     // Demo data, Diagnostics and Erase everything (r35, V): one group at the bottom, not three in front of everyday settings.
     G(
       'more',
       'More',
       hasDemo ? 'demo data loaded' : 'demo data, version, erase',
-      html`<div class="card stack"><div><p class="small" style="margin:0 0 6px"><b>Demo data</b> ${tipButton(
+      html`<div class="card stack">
+<div>
+<p class="small" style="margin:0 0 6px"><b>Demo data</b> ${tipButton(
         '8 weeks of generated sessions to preview Today and Stats. Everything demo is tagged and removed in one tap; your real logs are untouched.',
         'About demo data'
-      )}</p><div class="row">${
+      )}</p>
+<div class="row">${
         hasDemo
           ? html`<button class="btn" data-act="demoClear">Clear demo data</button>`
           : html`<button class="btn" data-act="demoLoad">Load demo data</button>`
-      }</div></div><div><p class="small" style="margin:0 0 6px"><b>Version</b> ${VERSION_LINE}${
+      }</div>
+</div>
+<div>
+<p class="small" style="margin:0 0 6px"><b>Version</b> ${VERSION_LINE}${
         logBuf.length
           ? html` <span class="muted">· cloud ${cloud.on ? cloud.status : 'off'} · ${logBuf.length} logged error${logBuf.length === 1 ? '' : 's'}</span>`
           : nothing
-      }</p>${
+      }</p>
+${
+  logBuf.length
+    ? html`<ul class="clist">${logBuf
+        .slice(-5)
+        .reverse()
+        .map(
+          x =>
+            html`<li><span class="small"><b>${x.a}</b> ${x.m}</span><span class="small muted">${x.t.slice(5, 16).replace('T', ' ')}</span></li>
+`
+        )}</ul>
+`
+    : nothing
+}${
         logBuf.length
-          ? html`<ul class="clist">${logBuf
-              .slice(-5)
-              .reverse()
-              .map(
-                x =>
-                  html`<li><span class="small"><b>${x.a}</b> ${x.m}</span><span class="small muted">${x.t.slice(5, 16).replace('T', ' ')}</span></li>`
-              )}</ul>`
-          : nothing
-      }${
-        logBuf.length
-          ? html`<div class="row"><button class="btn sm" data-act="diagCopy">Copy diagnostics</button><button class="btn sm" data-act="diagClear">Clear log</button></div>`
+          ? html`<div class="row"><button class="btn sm" data-act="diagCopy">Copy diagnostics</button><button class="btn sm" data-act="diagClear">Clear log</button></div>
+`
           : nothing
       }${
         window.IRONLOG_APP
-          ? html`<p class="small" style="margin:8px 0 0"><a href="LICENSES.txt" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;min-height:44px">Open-source licenses</a></p>`
+          ? html`<p class="small" style="margin:8px 0 0"><a href="LICENSES.txt" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;min-height:44px">Open-source licenses</a></p>
+`
           : nothing
-      }</div><div><button class="btn danger" data-act="resetAll">Erase everything</button></div></div>`
+      }</div>
+<div><button class="btn danger" data-act="resetAll">Erase everything</button></div>
+</div>
+`
     )
   ];
   return html`${pageTitle(kick, 'Settings', meta)}${repeat(

@@ -295,6 +295,8 @@ function applyTheme(){const t=state.settings.theme;if(t==='system')delete docume
    and the browser then fires that field's change as if the lifter had left it.
    They did not, so that change must not tick a set. */
 let rebuilding=false;
+// True while lit-html is putting a tab into #view, and how many draws have begun (r57).
+let drawing=false,drawN=0;
 // The tabs drawn by their modules (phase 5): each a template of the log and ui; the rest are the legacy script's markup.
 const LIT_TABS={history:viewHistory,settings:viewSettings};
 function litTab(){return LIT_TABS[ui.tab]||null;}
@@ -312,6 +314,7 @@ function renderCrash(e){
   <label class="field" style="margin-top:10px">Backup text<textarea readonly style="min-height:160px;font-size:12px">${esc(txt)}</textarea></label></div>`);
 }
 function renderInner(){
+  if(drawing){queueMicrotask(render);return;} // asked for mid-draw: once this draw is done (below)
   killDynamic();applyTheme();setSaveState();chartNoticeUsed=false;
   document.querySelectorAll('#tabs button').forEach(b=>{if(b.dataset.tab===ui.tab)b.setAttribute('aria-current','page');else b.removeAttribute('aria-current');});
   {const tb=document.querySelector('#tabs button[data-tab="today"]');if(tb){const live=!!state.draft;tb.classList.toggle('live',live);const sp=tb.querySelector('span');if(sp)sp.textContent=live?'Session':'Today';tb.setAttribute('aria-label',live?(state.draft.editingId?'Session being edited':'Session in progress'):'Today');}}
@@ -325,7 +328,18 @@ function renderInner(){
      each draw, whose sections are then put in their saved order, the hidden
      ones taken out and the tab's main section opened, as before. */
   const moved=litTab();
-  rebuilding=true;try{if(moved)drawScreen($('#view'),moved());else drawLegacy($('#view'),{today:viewToday,program:()=>ui.planView==='library'?viewLibrary():viewProgram(),dash:viewDash}[ui.tab]());}finally{rebuilding=false;}
+  /* A draw asked for while lit-html is drawing (an event a removed field fires
+     mid-draw) runs once this one is done: lit-html takes nodes away one by one,
+     and a draw inside that would find them gone. A legacy screen's field still
+     focused is left before its markup is read, so the change it fires runs
+     first, while rebuilding (so it ticks nothing), and the draw reads the log
+     that change left; innerHTML fired it during its own replacement. */
+  const was=rebuilding;rebuilding=true;
+  try{
+    // A change that drew the page itself (from the blur) has drawn it with the log as it now is: nothing more to draw.
+    if(!moved){const n0=drawN,ae=document.activeElement,vw=$('#view');if(ae&&ae!==document.body&&vw&&vw.contains(ae)&&typeof ae.blur==='function')ae.blur();if(drawN!==n0)return;}
+    drawing=true;drawN++;try{if(moved)drawScreen($('#view'),moved());else drawLegacy($('#view'),{today:viewToday,program:()=>ui.planView==='library'?viewLibrary():viewProgram(),dash:viewDash}[ui.tab]());}finally{drawing=false;}
+  }finally{rebuilding=was;}
   if(!moved){applySecOrder();applyHidden();openMain();}
   if(!(ui.tab==='today'&&state.draft)&&!(ui.tab==='program'&&ui.planView==='library'))mountSecSortable();
   if(ui.tab==='today'&&state.draft)mountBlockSortable();
