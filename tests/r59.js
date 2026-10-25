@@ -154,6 +154,8 @@ const SCREENS = [
     if (prep) (new Function('L', prep))(L);
     L.saveNow(); await new Promise(r => setTimeout(r, 950));
     L.render(); await new Promise(r => setTimeout(r, 60));
+    // The installed build asks about an account before Set up (it has an account service): passed as a lifter passes it.
+    const later = document.querySelector('#view [data-act="obAcctLater"]'); if (later) { later.click(); await new Promise(r => setTimeout(r, 80)); }
     document.querySelectorAll('#view details').forEach(d => { d.open = true; });
     await new Promise(r => setTimeout(r, 60));
     for (const [s, v] of Object.entries(typed || {})) { const f = document.querySelector(s); if (f) f.value = v; }
@@ -423,7 +425,11 @@ const SCREENS = [
     const loads = r.logged.filter(e => e.a === 'load');
     ok(r.state === 'fail' && /could not load/.test(r.msg), '10. with every address for three.js failing, the 3D view says it could not load', r);
     ok(loads.length === r.urls.length && r.urls.every((u, i) => loads[i] && loads[i].m.startsWith(u + ': ') && loads[i].m.length > u.length + 2), '10. the error log has one line for each address tried, in order, each with its address and its own error', r);
-    ok(!Q.errors.length, '10. no page errors', Q.errors);
+    // The browser's own lines about the loads this case blocks (the standalone build's file page and its policy refuse
+    // them before the route does) are the case itself; anything else is a page error.
+    const own = Q.errors.filter(e => !/three\.module\.min\.js/.test(e));
+    ok(!own.length, '10. no page errors', own);
+    if (process.env.IRONLOG_FILE) ok(r.urls.length === 1 && r.urls[0] === './vendor/three.module.min.js', '10. the installed build tries only its own copy of three.js, as its policy allows no other', r.urls);
     await Q.page.context().close();
   }
 
@@ -490,7 +496,8 @@ const SCREENS = [
 
   // ---- 13. Copy my log in (the preview) says in the error log what it could not read: a month of the account's log that
   // would not read was left out of the copy with nothing said (fails on r58 and 2f6a50d).
-  if (run(13)) {
+  if (run(13) && process.env.IRONLOG_FILE) console.log('note r59 section 13 gives the page an account service; the standalone build brings its own, so it runs on the source build');
+  else if (run(13)) {
     const C = await open(FILE, { browser, clock: '2026-10-24T10:00:00', setup: async ctx => ctx.addInitScript(() => {
       window.ironlogAuth = { onChange() {}, user() { return Promise.resolve({ id: 'u59', email: 'v@example.com' }); }, signOut() { return Promise.resolve(); }, deleteAccount() { return Promise.resolve(); } };
       window.ironlogLiveDocs = async () => [{ id: 's-2026-10-2', data: { json: '{not json' } }];

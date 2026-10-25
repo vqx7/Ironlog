@@ -112,12 +112,15 @@ export const FONTS_CSS = `${FONTS_ORIGIN}/css2?family=${FONT_DISPLAY.replace(/ /
 export const HIBP_ORIGIN = 'https://api.pwnedpasswords.com';
 
 /** three.js for the 3D body (r20). The installed app ships its own copy and
-    tries it first; the public CDNs stay as fallbacks. This was a text edit in
-    scripts/build.js until r49, which broke once the script was bundled. */
+    loads only that: its Content Security Policy allows script from this site
+    alone (scripts/build.js), so the public CDNs, tried after it until r59,
+    could never load there and only added failures to the error log. The
+    source page loads from the CDNs. This was a text edit in scripts/build.js
+    until r49, which broke once the script was bundled. */
 const THREE_CDN = [
   `${JSDELIVR}/three@${THREE_VERSION}/build/three.module.min.js`,
   `${UNPKG}/three@${THREE_VERSION}/build/three.module.min.js`
 ];
-/** The addresses map3dLoad tries in turn, the installed app's own copy first. */
+/** The addresses map3dLoad tries in turn: the installed app's own copy, or the CDNs. */
 export const THREE_URLS: readonly string[] =
-  typeof window !== 'undefined' && window.IRONLOG_APP ? ['./vendor/three.module.min.js', ...THREE_CDN] : THREE_CDN;
+  typeof window !== 'undefined' && window.IRONLOG_APP ? ['./vendor/three.module.min.js'] : THREE_CDN;

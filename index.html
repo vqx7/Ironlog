@@ -1078,7 +1078,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     `${JSDELIVR}/three@${THREE_VERSION}/build/three.module.min.js`,
     `${UNPKG}/three@${THREE_VERSION}/build/three.module.min.js`
   ];
-  var THREE_URLS = typeof window !== "undefined" && window.IRONLOG_APP ? ["./vendor/three.module.min.js", ...THREE_CDN] : THREE_CDN;
+  var THREE_URLS = typeof window !== "undefined" && window.IRONLOG_APP ? ["./vendor/three.module.min.js"] : THREE_CDN;
 
   // src/app/util.ts
   function andList(a2, max) {
