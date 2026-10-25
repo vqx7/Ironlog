@@ -185,6 +185,10 @@ const orderQ: DraftBlock[] = [];
 let lastAuto: { b: BlkRef | null; s: number; t: number } | null = null;
 let pendAuto: { b: BlkRef | null; s: number } | null = null;
 let oddOk: string | null = null;
+/* The row whose tick waits for its weight (344) or whose load Finish asked
+   for: its load field is marked until a load is typed into it or the screen
+   is drawn afresh. */
+let needAt: { b: BlkRef | null; s: number } | null = null;
 // Where the last touch landed, for the blur a phone fires before the tap it leads to (auto-mark's routes).
 let lastDown: { el: Element | null; t: number } = { el: null, t: 0 };
 // Loads far from last time's, said once per exercise per session (mixCheck).
@@ -1103,7 +1107,7 @@ function setRow(
   const lt = s.warm || s.drop ? '' : lastCell(b, wn - 1, dupB);
   const gw = s.w == null ? greyW(b, si) : null;
   return html`<div class=${`sg${nr ? ' norir' : ''} ${s.done ? 'done' : ''}${pr ? ' pr' : ''}`} data-pr=${pr || nothing}><button class=${'n wbtn' + (s.drop ? ' drop' : s.warm ? ' warm' : '')} aria-label=${`Set ${si + 1} type: ${s.warm ? 'warm-up' : s.drop ? 'drop set' : 'working set'}. Tap to change`} data-act="sWarm" data-b=${bi} data-s=${si}>${s.drop ? '↓' : s.warm ? 'W' : wn}</button><span class="ls" aria-label=${lt ? 'Last time ' + lt : 'No set last time'}>${lt ? lastText(lt) : '–'}</span>
-        <input type="text" inputmode="decimal" enterkeyhint="next" aria-label=${`${ex.name}, set ${si + 1} load`} data-f="w" data-b=${bi} data-s=${si} .value=${fieldValue(loadIn(ex, s.w))} placeholder=${gw != null ? loadIn(ex, gw) : emptyLoad(ex)}>
+        <input type="text" inputmode="decimal" enterkeyhint="next" aria-label=${`${ex.name}, set ${si + 1} load`} data-f="w" data-b=${bi} data-s=${si} class=${needHere(bi, si) ? 'need' : nothing} .value=${fieldValue(loadIn(ex, s.w))} placeholder=${gw != null ? loadIn(ex, gw) : emptyLoad(ex)}>
         <input type="text" inputmode="numeric" enterkeyhint="next" aria-label=${`${ex.name}, set ${si + 1} ${ex.timed ? 'seconds' : 'reps'}${ex.perSide ? ' per side' : ''}`} data-f="r" data-b=${bi} data-s=${si} .value=${fieldValue(s.r == null ? '' : String(s.r))} placeholder=${ph}>
         ${nr ? '' : rirButton(s.rir, bi, si, p.rir)}
         <button class=${'cbtn ' + (s.done ? 'on' : '')} aria-label=${`Set ${si + 1} ${s.done && isMissed(s) ? 'missed' : 'done'}`} aria-pressed=${s.done ? 'true' : 'false'} data-act="sDone" data-b=${bi} data-s=${si}>✓</button></div>${stripIs(bi, si) ? rirStrip(bi, si, s.rir == null ? '' : String(s.rir)) : nothing}`;
@@ -1217,6 +1221,7 @@ export function viewWorkout(d: Draft): TemplateResult {
    them, as the legacy page's patches did. */
 /** Puts back what a full draw of the page resets on the session screen. */
 export function workoutFullDraw(): void {
+  needAt = null;
   stripAt = null;
   platesAt = null;
   foldWait = new WeakSet();
@@ -1248,6 +1253,23 @@ export function oddReps(b: DraftBlock, s: DraftSet): boolean {
   for (const x of IDX().byEx[b.exId] || []) for (const p of x.pts) best = Math.max(best, p.r);
   return r > 2 * Math.max(+b.plan.repMax || 0, best);
 }
+/** Whether row si's load field is the one marked as needing a load. */
+function needHere(bi: number, si: number): boolean {
+  return !!needAt && needAt.s === si && blkIdx(needAt.b) === bi;
+}
+/* A saved set never has an empty load (the invariant; V on the r57 preview,
+   PENDING 344: a barbell squat set with no weight could be ticked and sat at
+   0 lb through the workout). A lift that takes a load has none for a row
+   when nothing is typed and nothing shows in grey (a first session of the
+   lift, with no suggestion yet). A bodyweight lift (its load is the added
+   weight, often none), an assisted lift (the help, which Finish asks about)
+   and a timed hold keep their rules. */
+/** Whether row si of a lift that takes a load has no load typed and none in grey, so it cannot be ticked yet. */
+export function noLoadYet(b: DraftBlock, si: number): boolean {
+  const s = b.sets[si];
+  const ex = EX(b.exId);
+  return !!s && !ex.bw && !ex.timed && s.w == null && greyW(b, si) == null;
+}
 /* A set being ticked takes its grey load, so a saved set never has an empty
    load that would be stored as 0. Called inside a change given to act. */
 /** A row about to be ticked takes the load it shows in grey. */
@@ -1268,13 +1290,24 @@ export function settleLoad(b: DraftBlock | null | undefined, si: number): void {
    partner after this one still has a set to do; once the partners are
    through (a pair of 5 and 3 sets), every set rests (r34.2). The effort strip
    opens by itself only if asked for in Settings > Effort. The first set
-   ticked on an exercise below untouched ones moves it up (r45). */
+   ticked on an exercise below untouched ones moves it up (r45). A set with no
+   load to take (noLoadYet) is not ticked, whichever way the tick came (the
+   checkmark, auto-mark, the grey reps): its load field is focused and marked,
+   and the tick is made when a weight is typed there (workoutChange). */
 /** Marks a set done or not done, with every effect a tick has. */
 export function setDone(bi: number, si: number, val: boolean, again?: boolean): void {
   const d = state.draft;
   const b = d && d.ex[bi];
   const s = b && b.sets[si];
   if (!d || !b || !s) return;
+  if (val && noLoadYet(b, si)) {
+    needAt = { b: blkRef(bi), s: si };
+    redraw();
+    fx.toast('Add the weight first');
+    const f = document.querySelector<HTMLInputElement>(`.sg input[data-f="w"][data-b="${bi}"][data-s="${si}"]`);
+    if (f) f.focus();
+    return;
+  }
   const okKey = `${bi}:${si}:${s.r}:${effW(b, si)}`;
   const far = val && oddOk !== okKey && !oddReps(b, s) ? oddLoad(b, si, d.date) : null;
   const lz = val && oddOk !== okKey && !far && lightZero(b, si, d.date);
@@ -2495,11 +2528,12 @@ function finishNow(): void {
           if (si < 0) continue;
           blkOpen(bi, b);
           fx.render();
+          needAt = { b: blkRef(bi), s: si };
+          redraw();
           const f = document.querySelector<HTMLElement>(`[data-f="w"][data-b="${bi}"][data-s="${si}"]`);
           if (f) {
             f.scrollIntoView({ block: 'center' });
             f.focus();
-            f.classList.add('need');
           }
           return;
         }
@@ -2864,13 +2898,19 @@ export function workoutChange(t: HTMLInputElement): boolean {
     const refix = ui.refix;
     const rf = !!refix && refix.s === si && blkIdx(refix.b) === bi;
     if (rf) ui.refix = null;
+    // A tick that waited for its weight (344) is made once one is typed; the checkmark tapped next keeps it, as after auto-mark.
+    const need = needHere(bi, si) && s.w != null;
+    if (need) needAt = null;
     if (s.done && oddLoad(d.ex[bi], si, d.date)) {
       setDone(bi, si, false);
       setDone(bi, si, true, true);
       return true;
     }
     if (rf && !s.done) setDone(bi, si, true, true);
-    else if (s.done) act(() => assessSet(bi, si), { inProgress: true });
+    else if (need && !s.done) {
+      lastAuto = { b: blkRef(bi), s: si, t: Date.now() };
+      setDone(bi, si, true);
+    } else if (s.done) act(() => assessSet(bi, si), { inProgress: true });
     mixCheck(bi, si);
     if (fillLoads()) act(() => carryLoad(d.ex[bi], si), { inProgress: true });
     redraw();

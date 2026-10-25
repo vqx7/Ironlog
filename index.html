@@ -3432,7 +3432,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
           exId: fixId(b2.exId),
           plan,
           note: typeof b2.note === "string" ? b2.note : "",
-          inj: isMuscleOrJoint(b2.inj) ? b2.inj : null,
+          inj: typeof b2.inj === "string" && isMuscleOrJoint(b2.inj) ? b2.inj : null,
           hint: typeof b2.hint === "string" ? b2.hint : "",
           last: typeof b2.last === "string" ? b2.last : "",
           // Last time's sets as shown in the Last column (r44): short strings, absent in older drafts.
@@ -3452,7 +3452,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
           full: typeof b2.full === "number" && Number.isInteger(b2.full) && b2.full >= 1 && b2.full <= 30 ? b2.full : void 0,
           light: b2.light === true ? true : void 0,
           // The date the target came from, when "Last" is a newer session short of its usual, lighter, or a deload (r26).
-          basis: isDate(b2.basis) ? b2.basis : void 0,
+          basis: typeof b2.basis === "string" && isDate(b2.basis) ? b2.basis : void 0,
           // The suggested load the rows started from (r24); absent in older drafts.
           sw: b2.sw === null ? null : b2.sw === void 0 || !isNum(sw) ? void 0 : clampN(b2.sw, -300, 2e4 * LB, 0),
           // The next sets adjusted from a set (r34), and Keep for the rest of the session.
@@ -3468,8 +3468,8 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
           } : void 0,
           adjOff: b2.adjOff === true ? true : void 0,
           // Editing a saved session keeps the rep range it was logged under.
-          keepRR: b2.keepRR === void 0 ? void 0 : keepRR && keepRR.length === 2 ? keepRR.map((v3) => Math.round(Number(v3)) || 1) : null,
-          lastNote: ln && typeof ln.text === "string" && isDate(ln.date) ? { date: ln.date, text: ln.text } : null,
+          keepRR: b2.keepRR === void 0 ? void 0 : keepRR && keepRR.length === 2 ? [Math.round(Number(keepRR[0])) || 1, Math.round(Number(keepRR[1])) || 1] : null,
+          lastNote: ln && typeof ln.text === "string" && typeof ln.date === "string" && isDate(ln.date) ? { date: ln.date, text: ln.text } : null,
           sets: (arr(b2.sets) || []).filter((x2) => !!x2 && typeof x2 === "object").map((x0) => {
             const x2 = rec(x0) || {};
             return keepExtra(x0, {
@@ -9641,6 +9641,11 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     if (e5.type === "input") unconfirmed.add(t4);
     else unconfirmed.delete(t4);
   }
+  function viewStart() {
+    document.addEventListener("input", fieldTyped);
+    document.addEventListener("change", fieldTyped);
+    document.addEventListener("focusout", fieldTyped);
+  }
   var FieldValue = class extends i2 {
     constructor(info) {
       super(info);
@@ -9653,7 +9658,8 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       const el = part.element;
       const now = el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement ? el.value : null;
       if (now === v3) return E;
-      if (el === document.activeElement && now != null && (unconfirmed.has(el) || numIn(now) === numIn(v3))) return E;
+      if (el === document.activeElement && now != null && (unconfirmed.has(el) || numIn(now) === numIn(v3)))
+        return E;
       p2(part);
       return v3;
     }
@@ -15131,6 +15137,7 @@ ${ms.length ? b`<div class="scroll-x" style="margin-top:10px"><table class="t"><
   var lastAuto = null;
   var pendAuto = null;
   var oddOk = null;
+  var needAt = null;
   var lastDown = { el: null, t: 0 };
   var mixSeen = /* @__PURE__ */ new Set();
   var ordBack = /* @__PURE__ */ new WeakMap();
@@ -15707,7 +15714,7 @@ ${ms.length ? b`<div class="scroll-x" style="margin-top:10px"><table class="t"><
     const lt = s3.warm || s3.drop ? "" : lastCell(b2, wn - 1, dupB);
     const gw = s3.w == null ? greyW(b2, si) : null;
     return b`<div class=${`sg${nr ? " norir" : ""} ${s3.done ? "done" : ""}${pr ? " pr" : ""}`} data-pr=${pr || A}><button class=${"n wbtn" + (s3.drop ? " drop" : s3.warm ? " warm" : "")} aria-label=${`Set ${si + 1} type: ${s3.warm ? "warm-up" : s3.drop ? "drop set" : "working set"}. Tap to change`} data-act="sWarm" data-b=${bi} data-s=${si}>${s3.drop ? "↓" : s3.warm ? "W" : wn}</button><span class="ls" aria-label=${lt ? "Last time " + lt : "No set last time"}>${lt ? lastText(lt) : "–"}</span>
-        <input type="text" inputmode="decimal" enterkeyhint="next" aria-label=${`${ex.name}, set ${si + 1} load`} data-f="w" data-b=${bi} data-s=${si} .value=${fieldValue(loadIn(ex, s3.w))} placeholder=${gw != null ? loadIn(ex, gw) : emptyLoad(ex)}>
+        <input type="text" inputmode="decimal" enterkeyhint="next" aria-label=${`${ex.name}, set ${si + 1} load`} data-f="w" data-b=${bi} data-s=${si} class=${needHere(bi, si) ? "need" : A} .value=${fieldValue(loadIn(ex, s3.w))} placeholder=${gw != null ? loadIn(ex, gw) : emptyLoad(ex)}>
         <input type="text" inputmode="numeric" enterkeyhint="next" aria-label=${`${ex.name}, set ${si + 1} ${ex.timed ? "seconds" : "reps"}${ex.perSide ? " per side" : ""}`} data-f="r" data-b=${bi} data-s=${si} .value=${fieldValue(s3.r == null ? "" : String(s3.r))} placeholder=${ph}>
         ${nr ? "" : rirButton(s3.rir, bi, si, p3.rir)}
         <button class=${"cbtn " + (s3.done ? "on" : "")} aria-label=${`Set ${si + 1} ${s3.done && isMissed(s3) ? "missed" : "done"}`} aria-pressed=${s3.done ? "true" : "false"} data-act="sDone" data-b=${bi} data-s=${si}>✓</button></div>${stripIs(bi, si) ? rirStrip(bi, si, s3.rir == null ? "" : String(s3.rir)) : A}`;
@@ -15765,6 +15772,7 @@ ${ms.length ? b`<div class="scroll-x" style="margin-top:10px"><table class="t"><
   <div class="row fin-row" style="margin-top:12px"><button class="btn danger" data-act="discard">${d3.editingId ? "Cancel edit" : "Discard"}</button><button class="btn primary" style="flex:1" data-act="finish" data-tip="Only sets marked done are saved; you are asked about any with reps but no checkmark.">${d3.editingId ? "Save changes" : "Finish and save"}</button></div>`;
   }
   function workoutFullDraw() {
+    needAt = null;
     stripAt = null;
     platesAt = null;
     foldWait = /* @__PURE__ */ new WeakSet();
@@ -15787,6 +15795,14 @@ ${ms.length ? b`<div class="scroll-x" style="margin-top:10px"><table class="t"><
     for (const x2 of IDX().byEx[b2.exId] || []) for (const p3 of x2.pts) best = Math.max(best, p3.r);
     return r4 > 2 * Math.max(+b2.plan.repMax || 0, best);
   }
+  function needHere(bi, si) {
+    return !!needAt && needAt.s === si && blkIdx(needAt.b) === bi;
+  }
+  function noLoadYet(b2, si) {
+    const s3 = b2.sets[si];
+    const ex = EX(b2.exId);
+    return !!s3 && !ex.bw && !ex.timed && s3.w == null && greyW(b2, si) == null;
+  }
   function settleLoad(b2, si) {
     const s3 = b2 && b2.sets[si];
     if (!s3 || s3.w != null) return;
@@ -15799,6 +15815,14 @@ ${ms.length ? b`<div class="scroll-x" style="margin-top:10px"><table class="t"><
     const b2 = d3 && d3.ex[bi];
     const s3 = b2 && b2.sets[si];
     if (!d3 || !b2 || !s3) return;
+    if (val && noLoadYet(b2, si)) {
+      needAt = { b: blkRef(bi), s: si };
+      redraw();
+      fx.toast("Add the weight first");
+      const f3 = document.querySelector(`.sg input[data-f="w"][data-b="${bi}"][data-s="${si}"]`);
+      if (f3) f3.focus();
+      return;
+    }
     const okKey = `${bi}:${si}:${s3.r}:${effW(b2, si)}`;
     const far = val && oddOk !== okKey && !oddReps(b2, s3) ? oddLoad(b2, si, d3.date) : null;
     const lz = val && oddOk !== okKey && !far && lightZero(b2, si, d3.date);
@@ -16845,11 +16869,12 @@ ${ms.length ? b`<div class="scroll-x" style="margin-top:10px"><table class="t"><
             if (si < 0) continue;
             blkOpen(bi, b2);
             fx.render();
+            needAt = { b: blkRef(bi), s: si };
+            redraw();
             const f3 = document.querySelector(`[data-f="w"][data-b="${bi}"][data-s="${si}"]`);
             if (f3) {
               f3.scrollIntoView({ block: "center" });
               f3.focus();
-              f3.classList.add("need");
             }
             return;
           }
@@ -16880,7 +16905,7 @@ ${ms.length ? b`<div class="scroll-x" style="margin-top:10px"><table class="t"><
       free: d3.free ? true : void 0,
       chk: cleanChk(d3.chk) || void 0
     };
-    let upd = null, demoGone = false, targets = 0, beaten = 0, pmDraft = 0;
+    let upd2 = null, demoGone = false, targets = 0, beaten = 0, pmDraft = 0;
     const editing = !!d3.editingId;
     act(() => {
       const was = d3.editingId ? state.sessions.find((x2) => x2.id === d3.editingId) : null;
@@ -16891,7 +16916,7 @@ ${ms.length ? b`<div class="scroll-x" style="margin-top:10px"><table class="t"><
       if (!d3.editingId) putById(state.cardio, cardio);
       if (!d3.editingId && calDueIdx(d3) >= 0 && !d3.ex.some((b2) => b2.sets.some((x2) => x2.cal && x2.done)))
         state.settings.calSnooze = today();
-      upd = d3.editingId ? null : routineUpdates(d3);
+      upd2 = d3.editingId ? null : routineUpdates(d3);
       if (d3.editingId) {
         const i5 = state.sessions.findIndex((s3) => s3.id === d3.editingId);
         if (i5 >= 0) {
@@ -16984,7 +17009,7 @@ ${ms.length ? b`<div class="scroll-x" style="margin-top:10px"><table class="t"><
       lines,
       prs: prList,
       note: prs.length ? "" : state.sessions.filter((x2) => !x2.demo).length <= 1 ? "Your first session: these are your starting numbers." : "No PRs this time.",
-      upd,
+      upd: upd2,
       sid: sess.id
     });
   }
@@ -17123,13 +17148,18 @@ ${ms.length ? b`<div class="scroll-x" style="margin-top:10px"><table class="t"><
       const refix = ui.refix;
       const rf = !!refix && refix.s === si && blkIdx(refix.b) === bi;
       if (rf) ui.refix = null;
+      const need = needHere(bi, si) && s3.w != null;
+      if (need) needAt = null;
       if (s3.done && oddLoad(d3.ex[bi], si, d3.date)) {
         setDone(bi, si, false);
         setDone(bi, si, true, true);
         return true;
       }
       if (rf && !s3.done) setDone(bi, si, true, true);
-      else if (s3.done) act(() => assessSet(bi, si), { inProgress: true });
+      else if (need && !s3.done) {
+        lastAuto = { b: blkRef(bi), s: si, t: Date.now() };
+        setDone(bi, si, true);
+      } else if (s3.done) act(() => assessSet(bi, si), { inProgress: true });
       mixCheck(bi, si);
       if (fillLoads()) act(() => carryLoad(d3.ex[bi], si), { inProgress: true });
       redraw();
@@ -17328,6 +17358,43 @@ ${ms.length ? b`<div class="scroll-x" style="margin-top:10px"><table class="t"><
     });
   }
 
+  // src/app/update.ts
+  var upd = { ready: false, later: false };
+  function updRender() {
+    const el = document.getElementById("updbar");
+    if (!el) return;
+    const show = upd.ready && !upd.later;
+    el.hidden = !show;
+    D(
+      show ? b`<span class="ut">Update ready</span><button type="button" class="btn sm primary" data-act="appUpdate">Update</button><button type="button" class="btn sm" data-act="appUpdateLater">Later</button>` : A,
+      el
+    );
+  }
+  function updateStart() {
+    window.ironlogUpdateReady = () => {
+      upd.ready = true;
+      updRender();
+    };
+  }
+  var UPDATE_ACTS = {
+    appUpdate() {
+      const m3 = rec(ui.modal);
+      if (m3 && m3.dirty) {
+        fx.toast("Save or cancel first. Your changes are still here.");
+        return;
+      }
+      saveNow();
+      upd.ready = false;
+      updRender();
+      if (typeof window.ironlogApplyUpdate === "function") window.ironlogApplyUpdate();
+      else location.reload();
+    },
+    appUpdateLater() {
+      upd.later = true;
+      updRender();
+    }
+  };
+
   // src/legacy.js
   (function() {
     "use strict";
@@ -17343,18 +17410,8 @@ ${ms.length ? b`<div class="scroll-x" style="margin-top:10px"><table class="t"><
     }, wakeOn, wakeOff, ask: (title, body, ok, alt) => new Promise((res) => confirmBox(title, body, ok, () => res("ok"), false, { label: alt, fn: () => res("alt") }, () => res("cancel"))) });
     storageStart();
     syncStart();
-    const upd = { ready: false, later: false };
-    function updRender() {
-      const el = document.getElementById("updbar");
-      if (!el) return;
-      const show = upd.ready && !upd.later;
-      el.hidden = !show;
-      if (show && !el.firstChild) el.innerHTML = '<span class="ut">Update ready</span><button type="button" class="btn sm primary" data-act="appUpdate">Update</button><button type="button" class="btn sm" data-act="appUpdateLater">Later</button>';
-    }
-    window.ironlogUpdateReady = () => {
-      upd.ready = true;
-      updRender();
-    };
+    viewStart();
+    updateStart();
     const exTags = (e5, skip) => `${isCommon(e5) && skip !== "common" ? '<span class="tag common">Most common</span>' : ""}${e5.rare && skip !== "rare" ? '<span class="tag rare">Less common</span>' : ""}`;
     function syncLine() {
       settingsSyncLine();
@@ -20145,21 +20202,7 @@ ${ms.length ? b`<div class="scroll-x" style="margin-top:10px"><table class="t"><
       ...TODAY_ACTS,
       ...MAP_ACTS,
       ...WORKOUT_ACTS,
-      appUpdate() {
-        if (ui.modal && ui.modal.dirty) {
-          toast("Save or cancel first. Your changes are still here.");
-          return;
-        }
-        saveNow();
-        upd.ready = false;
-        updRender();
-        if (typeof window.ironlogApplyUpdate === "function") window.ironlogApplyUpdate();
-        else location.reload();
-      },
-      appUpdateLater() {
-        upd.later = true;
-        updRender();
-      },
+      ...UPDATE_ACTS,
       async acctRetry() {
         await cloudInit();
         acctRerender();
@@ -22106,7 +22149,6 @@ ${JSON.stringify(fb.context, null, 1)}`;
       }
     });
     document.addEventListener("input", (e5) => {
-      fieldTyped(e5);
       const t4 = e5.target;
       if (ui.modal && FORM_SHEETS.has(ui.modal.kind) && t4 && t4.closest && t4.closest("#modal")) ui.modal.dirty = true;
       if (t4.id === "incVal" && ui.modal && ui.modal.kind === "inc") ui.modal.typed = true;
@@ -22147,7 +22189,6 @@ ${JSON.stringify(fb.context, null, 1)}`;
       }
     });
     document.addEventListener("change", (e5) => {
-      fieldTyped(e5);
       const t4 = e5.target;
       if (ui.modal && FORM_SHEETS.has(ui.modal.kind) && t4 && t4.closest && t4.closest("#modal")) ui.modal.dirty = true;
       if (t4.id === "fbShot" && t4.files && t4.files[0] && ui.modal && ui.modal.kind === "feedback") {
@@ -22300,7 +22341,6 @@ ${JSON.stringify(fb.context, null, 1)}`;
     });
     document.addEventListener("pointerdown", noteDown, true);
     document.addEventListener("focusout", workoutBlur);
-    document.addEventListener("focusout", fieldTyped);
     function keyedKids() {
       const v3 = $2("#view");
       return v3 ? [...v3.children].filter((e5) => e5.dataset && e5.dataset.mkey) : [];

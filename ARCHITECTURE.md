@@ -49,7 +49,7 @@ Layer 0, config and record shapes: config, types
 Layer 1, data: util, units, library, routines, formulas, records, gym, profile, model, layout
 Layer 2, engine and analytics: session, loads, prs, trend, volume, goals, importing, format, charts, analytics, time, weeks, coach, engine, plans
 Layer 3, storage and sync: chunks, merge, store, live, providers, normalize, storage, sync, act
-Layer 4, screens: icons, feedback, effort, guide, sheets, env, outside, display, view, history, settings, graphs, plan, stats, calendar, week, map, today, workout
+Layer 4, screens: icons, feedback, effort, guide, sheets, env, outside, display, view, update, history, settings, graphs, plan, stats, calendar, week, map, today, workout
 
 - **Screens as components**, one per tab, reading copy and labels from one place.
 
@@ -61,8 +61,8 @@ The current code is the **legacy script**: `src/10-*.js` to `src/29-*.js`, joine
 
 **The ratchet:** the legacy script may never grow. `tests/hygiene.js` fails when it has more top-level declarations or more lines than the numbers below, and also when it has fewer, until the numbers are lowered to match, so each phase locks in what it moved. A change that adds code adds it in `src/app/`.
 
-Legacy top-level declarations: 137
-Legacy lines: 2786
+Legacy top-level declarations: 135
+Legacy lines: 2770
 
 | Measured (scripts/depmap.js) | r49 | r50 | r51 | r52 | r53 | r54 | r55 | r56 | r57 | r58 | r59 |
 |---|---|---|---|---|---|---|---|---|---|---|---|
@@ -114,7 +114,7 @@ V brought two lists of engineering practice from another assistant (Gemini) and 
 
 Casts: 87
 Non-null assertions: 26
-Open types: 16
+Open types: 14
 
 Marks in r52's moved code (from baselines/r51.html): 21 casts, 77 non-null assertions
 Marks in r56's moved code (from baselines/r55.html): 4 casts, 2 non-null assertions

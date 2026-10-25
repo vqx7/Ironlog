@@ -125,12 +125,18 @@ export function markup(fixed: string): Part {
    each time, as lit's `live` does, so a value typed over and left is put
    back even when the log still holds the value drawn last. */
 const unconfirmed = new WeakSet<EventTarget>();
-/** Notes a field typed in and not yet confirmed (the page's input events), or confirmed or left (its change and focusout). */
-export function fieldTyped(e: Event): void {
+// Notes a field typed in and not yet confirmed (the page's input events), or confirmed or left (its change and focusout).
+function fieldTyped(e: Event): void {
   const t = e.target;
   if (!t) return;
   if (e.type === 'input') unconfirmed.add(t);
   else unconfirmed.delete(t);
+}
+/** Starts noting fields typed in, before the page's own handlers run (they are added after it), so a draw they cause keeps the text. Called once at start. */
+export function viewStart(): void {
+  document.addEventListener('input', fieldTyped);
+  document.addEventListener('change', fieldTyped);
+  document.addEventListener('focusout', fieldTyped);
 }
 class FieldValue extends Directive {
   constructor(info: PartInfo) {
@@ -144,7 +150,8 @@ class FieldValue extends Directive {
     const el = part.element;
     const now = el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement ? el.value : null;
     if (now === v) return noChange;
-    if (el === document.activeElement && now != null && (unconfirmed.has(el) || numIn(now) === numIn(v))) return noChange;
+    if (el === document.activeElement && now != null && (unconfirmed.has(el) || numIn(now) === numIn(v)))
+      return noChange;
     setCommittedValue(part);
     return v;
   }

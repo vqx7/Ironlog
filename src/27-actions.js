@@ -34,13 +34,7 @@ function pastSheet(m){
 /* The page's actions by data-act: the moved screens' (History and Settings,
    r57; Plan and Stats, r58; Today, r59; the session screen, r60; each change
    to the log through act) and the legacy script's own, the sheets'. */
-const ACT={...HISTORY_ACTS,...SETTINGS_ACTS,...PLAN_ACTS,...DASH_ACTS,...TODAY_ACTS,...MAP_ACTS,...WORKOUT_ACTS,
-  appUpdate(){
-    if(ui.modal&&ui.modal.dirty){toast('Save or cancel first. Your changes are still here.');return;}
-    saveNow();upd.ready=false;updRender();
-    if(typeof window.ironlogApplyUpdate==='function')window.ironlogApplyUpdate();else location.reload();
-  },
-  appUpdateLater(){upd.later=true;updRender();},
+const ACT={...HISTORY_ACTS,...SETTINGS_ACTS,...PLAN_ACTS,...DASH_ACTS,...TODAY_ACTS,...MAP_ACTS,...WORKOUT_ACTS,...UPDATE_ACTS,
   async acctRetry(){await cloudInit();acctRerender();if(!cloud.on)toast('Still not syncing. Check your connection, or sign out and in again.');},
   iconHow(){openModal({kind:'icon'});},
   guideOpen(t){const k=t&&t.dataset&&t.dataset.g;if(ui.modal)closeModal();openModal({kind:'guide',open:k||''});},

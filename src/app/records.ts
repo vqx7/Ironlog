@@ -7,6 +7,7 @@
 
 import { hashStr, numOr, isNum, isDate } from './util';
 import { MEAS } from './library';
+import type { Target } from './types';
 
 /* Bumped to 2 when per-side exercises and deleted-built-in tracking arrived.
    normalize() migrates v1 saves in place; nothing the user edited is touched. */
@@ -159,10 +160,10 @@ export function cleanChk(c: Raw): Record<string, number> | null {
 
 /* The load or reps target set when the session started. Only its numbers are
    read, so only numbers survive. */
-export function cleanTgt(t: Raw): Record<string, unknown> | null {
+export function cleanTgt(t: Raw): Target | null {
   if (!t || typeof t !== 'object' || (t.kind !== 'load' && t.kind !== 'reps')) return null;
-  const o: Record<string, unknown> = { kind: t.kind };
-  for (const k of ['w', 'repMin', 'total', 'n', 'prevBest']) {
+  const o: Target = { kind: t.kind };
+  for (const k of ['w', 'repMin', 'total', 'n', 'prevBest'] as const) {
     if (!(k in t)) continue;
     const v = t[k];
     o[k] = v == null ? null : isNum(numOr(v, NaN)) ? numOr(v, 0) : null;

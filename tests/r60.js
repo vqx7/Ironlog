@@ -15,6 +15,11 @@
 //   3  the update bar says "Update ready" with Update (V, PENDING 335);
 //      held by tests/update.js on the installed build, here on the page
 //      (fails on r59).
+//   4  a set of a lift that takes a load, with no load typed and none in grey,
+//      is not ticked by its checkmark or by auto-mark: the load field is
+//      focused and marked, "Add the weight first", and the tick is made once
+//      the weight is typed; a bodyweight lift, a timed hold and a row with a
+//      grey load tick as before (PENDING 344; fails on r59).
 const { open, engine, screenOf, screenDiff } = require('./h');
 const FILE = process.argv[2] || 'index.html';
 const OLD = 'baselines/r59.html';
@@ -140,6 +145,53 @@ const SCREENS = [
     // The installed app's Guide, Your data (the line shows only in the installed app); read whole, folded or not.
     const guide = await P.page.evaluate(() => { window.IRONLOG_APP = true; window.__ironlog.ACT.guideOpen({ dataset: { g: 'data' } }); const m = document.getElementById('modal'); return m ? m.textContent.replace(/\s+/g, ' ') : ''; });
     ok(guide.includes('Updates: when "Update ready" shows, tap Update.') && !/New version ready|tap Reload/.test(guide), '3. the Guide says to tap Update when "Update ready" shows', (guide.match(/Updates[^.]*\./) || [guide.slice(0, 200)])[0]);
+    await P.page.context().close();
+  }
+
+  // ---- 4. A tick waits for the weight on a lift that takes one (PENDING 344).
+  if (run(4)) {
+    const P = await open(FILE, { browser, clock: '2026-10-24T10:00:00' });
+    const ev = (f, a) => P.page.evaluate(f, a);
+    const sel = (f, b, s) => `#view .sg input[data-f="${f}"][data-b="${b}"][data-s="${s}"]`;
+    const tick = (b, s) => P.page.click(`#view [data-act="sDone"][data-b="${b}"][data-s="${s}"]`);
+    const typeIn = async (q, text) => { await P.page.focus(q); await P.page.keyboard.type(text); };
+    const leave = () => ev(() => { if (document.activeElement) document.activeElement.blur(); });
+    // A toast from the case before is put away first, so each case reads its own.
+    const quiet = () => ev(() => { const t = document.getElementById('toast'); if (t) t.hidden = true; });
+    const row = (b, s) => ev(([b, s, q]) => { const x = window.__ironlog.state.draft.ex[b].sets[s]; const f = document.querySelector(q); const t = document.getElementById('toast'); return { done: !!x.done, w: x.w, r: x.r, focused: document.activeElement === f, need: !!f && f.classList.contains('need'), grey: f ? f.placeholder : null, toast: t && !t.hidden ? t.innerText.trim() : '' }; }, [b, s, sel('w', b, s)]);
+    // A new install's first session: no lift has a history, so no load is suggested.
+    await ev(new Function('L', `{const L=window.__ironlog;L.state.settings.onboarded=true;L.state.settings.autoDone=false;L.saveNow();${FREE(['backSquat', 'legPress', 'pullup', 'plank', 'farmerHold'])}L.render();}`));
+    await wait(150);
+    const pre = await row(0, 0);
+    ok(!pre.done && pre.w == null && !/\d/.test(pre.grey), '4. the first squat set has no load typed and none in grey', pre);
+    await typeIn(sel('r', 0, 0), '5');
+    await quiet(); await tick(0, 0); await wait(120);
+    const a = await row(0, 0);
+    ok(!a.done && a.toast === 'Add the weight first' && a.focused && a.need, '4. its checkmark does not tick it: the load field is focused and marked, "Add the weight first"', a);
+    await P.page.keyboard.type('135'); await leave(); await wait(120);
+    const b = await row(0, 0);
+    ok(b.done && Math.abs(b.w / 0.45359237 - 135) < 1e-6 && b.r === 5 && !b.need, '4. the weight typed and the field left, the set is ticked at 135 lb x 5, unmarked', b);
+    // The set below shows a load in grey (135, or the next sets' adjustment after 5 reps), and ticks with it as before.
+    const g = Number((await row(0, 1)).grey);
+    await typeIn(sel('r', 0, 1), '5'); await quiet(); await tick(0, 1); await wait(120);
+    const c = await row(0, 1);
+    ok(g > 0 && c.done && Math.abs(c.w / 0.45359237 - g) < 1e-6 && c.toast !== 'Add the weight first', `4. a row with a grey load (${g} lb) ticks with it, as before`, c);
+    // Auto-mark: reps typed and the field left on a lift with no load anywhere.
+    await ev(() => { const L = window.__ironlog; L.state.settings.autoDone = true; L.saveNow(); });
+    await typeIn(sel('r', 1, 0), '10'); await quiet(); await leave(); await wait(150);
+    const d = await row(1, 0);
+    ok(!d.done && d.toast === 'Add the weight first' && d.focused && d.need, '4. auto-mark does not tick it either: the load field is focused and marked', d);
+    await P.page.keyboard.type('200'); await leave(); await wait(120);
+    const e = await row(1, 0);
+    ok(e.done && Math.abs(e.w / 0.45359237 - 200) < 1e-6 && !e.need, '4. auto-mark: the weight typed, the set is ticked', e);
+    // A bodyweight lift, a bodyweight timed hold and a loaded timed hold keep their rules (no load needed to tick).
+    await ev(() => { const L = window.__ironlog; L.state.settings.autoDone = false; L.saveNow(); });
+    for (const [bi, n, what] of [[2, '8', 'pull-ups (bodyweight)'], [3, '30', 'a plank (timed)'], [4, '30', 'a farmer hold (timed)']]) {
+      await typeIn(sel('r', bi, 0), n); await quiet(); await tick(bi, 0); await wait(120);
+      const x = await row(bi, 0);
+      ok(x.done && !x.need && x.toast !== 'Add the weight first', `4. ${what} ticks with no load, as before`, x);
+    }
+    ok(!P.errors.length, '4. no page errors', P.errors);
     await P.page.context().close();
   }
 
