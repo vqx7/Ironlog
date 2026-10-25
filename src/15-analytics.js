@@ -1,10 +1,4 @@
 /* ---------- units ---------- */
-const LU=()=>U()==='lb'?'in':'cm';
-/* Estimates (1RM, PR toasts, the bests board) are good to a few percent at best, so they
-   show whole pounds or half kilos (r34): 293.8 next to 294 and 301 read as
-   precision the numbers do not have. Loads keep their decimals. */
-const fmtE=kg=>{if(kg==null||isNaN(kg))return '';const v=toD(kg);return String(U()==='lb'?Math.round(v):Math.round(v*2)/2);};
-const lenD=cm=>cm==null?'':String(r1(U()==='lb'?cm/IN:cm));
 const lenFrom=v=>U()==='lb'?v*IN:v;
 
 /* An assisted lift keeps its sets as bodyweight minus the help, below 0, so
@@ -16,7 +10,6 @@ const loadIn=(ex,w)=>w==null?'':fmtW(ex&&ex.assist?-w:w);
    The index (IDX), its readers and the RIR reading are in src/app/ since r52
    (analytics.ts, weeks.ts, time.ts, coach.ts); what stays here moves with the
    screens that call it (ARCHITECTURE.md, phase 5). */
-const rirShow=ex=>state.settings.rirMode!=='off'&&!(ex&&ex.timed);
 /* ---------- what the load number means ----------
    Every set stores the number you typed, as you typed it. What it means is a
    property of the exercise, shown on the exercise and above the load column:
@@ -30,8 +23,6 @@ const rirShow=ex=>state.settings.rirMode!=='off'&&!(ex&&ex.timed);
    so progress compares like with like. Weight lifted counts what actually
    moved: both dumbbells, both sides of the plates, both limbs when reps are
    logged per side. Changing an exercise's setting does not convert past sets. */
-/* Load column heading in the logger. */
-function loadHead(ex){const m=loadMode(ex),u=U().toUpperCase();if(ex&&ex.assist)return 'Help '+u;return m==='each'?u+' each':m==='side'?u+'/side':m==='stack'?'Stack':m==='bw'?'+'+u:u;}
 /* On the exercise, always visible: what the load number is, and reps per
    side when that applies. Tap or hold for the longer version. */
 function lmChips(ex){
@@ -91,71 +82,9 @@ function fitTargets(R,actual){
   if(Object.keys(fit).length)state.settings.bandsFit=fit;else delete state.settings.bandsFit;
   return JSON.stringify(MK.map(m=>b[m]))!==was;
 }
-/* Plan against the usual ranges (r30, V's choice). Picking a routine on a
-   first run brings the weekly minimums down to what it plans, so following
-   it reads as on target (r29); measured against those, the plan always
-   passes. This one quiet line, on Plan only, names the muscles the plan
-   puts under the usual range where the target was brought down to meet it.
-   No colour and no flag anywhere else: the targets stay the lifter's. */
-function planEvidenceNote(pv){
-  const b=state.settings.bands;
-  // Major muscles only (a default minimum of 8 or more): the usual range is about them; smaller ones have lower, softer defaults.
-  // Brought down below the profile's own default too (r44): a focus's maintenance targets were not lowered to meet the plan.
-  const low=MK.filter(m=>!TRACK_ONLY.has(m)&&BANDS[m][0]>=8&&b[m][0]<Math.min(BANDS[m][0],defBand(m)[0])&&belowMin(pv[m]||0,BANDS[m][0]));
-  if(!low.length)return '';
-  return `<p class="small muted" id="planUsual" style="margin:8px 0 0">Under the usual range in this plan: ${esc(andList(low.map(m=>`${ML[m]} ${r1(pv[m]||0)} of ${BANDS[m][0]}`),12))}. ${tipi('The usual weekly range is 10 to 20 hard sets for most major muscles (typical in studies, not a ceiling); smaller muscles have lower ones. Your targets were set to this plan when you picked it, so Stats measures you against the plan. Fewer sets still build muscle, more slowly; add a set at a time when it feels easy.','About the usual range')}</p>`;
-}
 /* How to do it (r30, from the review: no exercise videos). A search on
    YouTube for the exercise's name, opened in the browser: no list of videos
    to keep current, and nothing leaves the app until it is tapped (then only
    the name). A custom exercise's name is searched as typed. */
 function howToUrl(e){return 'https://www.youtube.com/results?search_query='+encodeURIComponent(`${e.name} exercise form`);}
 function howToLink(e){return e&&e.name?`<a class="btn block" style="margin-top:6px" href="${esc(howToUrl(e))}" target="_blank" rel="noopener noreferrer" data-tip="Opens a YouTube search for ${esc(e.name)} in your browser. Only the exercise name is sent.">How-to videos</a>`:'';}
-function sessionMuscleSets(day){
-  const out={};
-  for(const it of day.items){const ex=EX(it.exId);const n=+it.sets||0;out[ex.primary]=(out[ex.primary]||0)+n;for(const m of ex.secondary)out[m]=(out[m]||0)+0.5*n;}
-  return out;
-}
-function sessionCapNote(day){
-  if(day.rest||!day.items.length)return '';
-  const ms=sessionMuscleSets(day);
-  const over=Object.entries(ms).filter(([,v])=>v>SESSION_CAP).sort((a,b)=>b[1]-a[1]);
-  if(!over.length)return '';
-  const list=over.map(([m,v])=>`${ML[m]} ${r1(v)}`);
-  const who=andList(list);
-  return `<p class="small" style="margin:4px 12px 0"><span class="flag hastip" data-tip="More than ${SESSION_CAP} sets for one muscle in one workout. That line is a convention from one study not yet peer reviewed (Remmert 2025), which found no extra growth past it. Consider moving some to another day. Helper-muscle sets count as half.">Heavy for one workout: ${who} sets</span></p>`;
-}
-function sizeRows(){
-  const ms=[...state.measurements].sort((a,b)=>a.date<b.date?-1:a.date>b.date?1:0);
-  const I=IDX();const out=[];
-  const pair=k=>{const has=ms.filter(m=>m[k]>0);if(has.length<2)return null;const L=has[has.length-1];
-    const b=has.find(m=>daysBetween(m.date,L.date)>=21&&daysBetween(m.date,L.date)<=84);return b?{b,L}:null;};
-  for(const [k,mus] of SIZE_MAP){
-    const pr=pair(k);if(!pr)continue;const {b,L}=pr;
-    let weeks=0,sum=0;
-    for(let wk=weekStart(b.date);wk<=weekStart(L.date);wk=addDays(wk,7)){const ws=I.weekSets[wk];if(!ws)continue;const v=mus.reduce((a,m)=>a+(ws[m]||0),0);weeks++;sum+=v;}
-    out.push({k,mus,from:b.date,to:L.date,d:L[k]-b[k],sets:weeks?sum/weeks:0,weeks});
-  }
-  return out;
-}
-function sizeBody(){
-  const rows=sizeRows();const ML2=Object.fromEntries(MEAS);
-  if(!rows.length)return '<p class="muted">Log tape measurements at least 3 weeks apart on the Today tab, under Body, then Tape measurements. Arm, chest, thigh, and calf are read against the hard sets their muscles got in between.</p>';
-  const ms=[...state.measurements].sort((a,b)=>a.date<b.date?-1:1);
-  const ctx=r=>{const w=ms.filter(m=>m.waist>0&&m.date>=r.from&&m.date<=r.to);const wd=w.length>=2?w[w.length-1].waist-w[0].waist:null;
-    const b0=bwAt(r.from),b1=bwAt(r.to);const bd=b0!=null&&b1!=null&&state.bodyweights.length>=2?b1-b0:null;
-    const bits=[];if(wd!=null)bits.push(`waist ${wd>=0?'+':''}${lenD(wd)} ${LU()}`);if(bd!=null)bits.push(`bodyweight ${bd>=0?'+':''}${fmtW(bd)} ${U()}`);return bits.length?` Same stretch: ${bits.join(', ')}.`:'';};
-  const sgn=v=>(v>=0?'+':'')+lenD(v);
-  // Under about 1 cm on a limb or the neck (1.5 cm on the chest) is within
-  // what a tape repeats to (typical minimum detectable change 5 to 15 mm).
-  const mdc=k=>k==='chest'?1.5:1;
-  /* Rows measured on the same days share their stretch, waist, and
-     bodyweight, so those are said once above them (r34, V: the same sentence
-     under every row). */
-  const span=r=>`${fmtDate(r.from)} to ${fmtDate(r.to)}`;
-  const one=rows.every(r=>span(r)===span(rows[0])&&ctx(r)===ctx(rows[0]));
-  const c0=ctx(rows[0]);const top=one?`<p class="small muted" style="margin:0 0 4px">${span(rows[0])}${c0?c0.replace(/^ Same stretch: /,': '):'.'}</p>`:'';
-  const what=r=>r.weeks?`${r1(r.sets)} hard sets a week for ${andList(r.mus.map(m=>ML[m]))}`:'no logged training in between';
-  return top+rows.map(r=>`<div style="padding:6px 0;border-bottom:1px solid var(--line)"><div class="row spread"><b>${esc(ML2[r.k])}</b><span class="num">${Math.abs(r.d)<mdc(r.k)?'<span class="tag">within tape error</span> ':''}${sgn(r.d)} ${LU()}</span></div><p class="small muted" style="margin:2px 0 0">${one?'':`${span(r)}, `}${what(r)}.${one?'':ctx(r)}</p></div>`).join('')
-    +'<p class="small muted hastip" style="margin-top:8px" data-tip="Same spot, same time of day, before training, relaxed or flexed the same way each time. Under about 1 cm on arms, thighs, calves, and neck (1.5 cm on the chest) is within what a tape repeats to.">How to measure</p>';
-}

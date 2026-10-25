@@ -285,7 +285,6 @@ function weekBar(){
   return h;
 }
 function renderWeekBar(){const el=document.getElementById('wkbar');if(!el)return;try{el.innerHTML=weekBar();}catch(e){log('weekbar',e);el.innerHTML='';}}
-const nz=v=>noLog()?NIL:v;
 /* The week at a glance, beside the day's name: sessions done against the
    sessions the routine plans this week, the same two numbers as This week's
    title. V (2026-10-13): the headline counts what was done, not planned
@@ -383,8 +382,6 @@ function liftTrend(exId){
   }
   return `<p class="small muted" style="margin:2px 0">Top sets <span class="trend">${exps.map(x=>topSetOf(ex,x)).join(' → ')}</span>${dir?' · '+dir:''}</p>`;
 }
-// A session's strongest set by reps alone (v, its score) and as typed (txt).
-function topSetPt(ex,x){let q=null;for(const p of x.pts){const v=trendE(p.load,p.r,0)||0;if(!q||v>q.v)q={v,p};}return {v:q.v,txt:setShort(ex,q.p.w,q.p.r)};}
 function topSetOf(ex,x){return topSetPt(ex,x).txt;}
 function bodyCard(){
   const bws=[...state.bodyweights].sort((a,b)=>a.date<b.date?1:-1);
@@ -398,7 +395,7 @@ function bodyCard(){
   ${bws.length?`<ul class="bw-list" aria-label="Recent bodyweights">${bws.slice(0,5).map(b=>`<li><span class="d">${fmtDate(b.date)}</span><span class="num">${fmtW(b.kg)} ${U()}</span><button class="ib sm" data-act="delBW" data-id="${b.id}" aria-label="Delete ${fmtDate(b.date)} entry">✕</button></li>`).join('')}</ul>${bws.length>5?`<p class="small muted" style="margin:4px 0 0">${bws.length-5} older on Stats.</p>`:''}`:''}
   ${subsec('today:tape',`Tape measurements (${LU()})`,`<div class="grid2" style="align-items:end">${heightField()}<span></span></div>
     <div class="grid3" style="margin-top:10px">${MEAS.map(([k,l])=>`<label class="field">${l}<input type="text" inputmode="decimal" id="ms_${k}"></label>`).join('')}</div>
-    ${whtrLine(true)}
+    ${markupOf(whtrLine(true))}
     <button class="btn" style="margin-top:8px" data-act="addMeas">Save measurements for ${fmtDate(today())}</button>
     ${ms.length?`<div class="scroll-x" style="margin-top:10px"><table class="t"><tr><th>Date</th>${MEAS.map(m=>`<th class="r">${m[1]}</th>`).join('')}<th class="stick-r"><span class="vh">Delete</span></th></tr>${ms.map(m=>`<tr><td>${fmtDate(m.date)}</td>${MEAS.map(([k])=>`<td class="r">${lenD(m[k])}</td>`).join('')}<td class="stick-r"><button class="ib sm" data-act="delMeas" data-id="${m.id}" aria-label="Delete ${fmtDate(m.date)} measurements">✕</button></td></tr>`).join('')}</table></div>`:''}`,ms.length?`last ${fmtDate(ms[0].date)}`:'')}`});
 }
@@ -424,8 +421,6 @@ function strengthPick(e,st,rec,at){
   const near=st.bestAll>0&&st.last.best>=st.bestAll*STR_NEAR;
   return st.stalled?'stalled':near?'near':null;
 }
-/* A plan's target effort as the lifter enters effort: "1 RIR", or "RPE 9" in RPE mode. */
-function effTgt(rir){return rirScale()==='rpe'?`RPE ${effShow(rir)}`:`${effShow(rir)} RIR`;}
 function effOpts(){const sc=rirScale();return sc==='whole'?RIR_OPTS.slice():['0','0.5','1','1.5','2','2.5','3','3.5','4','4.5','5'];}
 const effAria=si=>rirScale()==='rpe'?`RPE for set ${si+1}`:`Reps in reserve for set ${si+1}`;
 function rirSelect(val,bi,si,target){

@@ -112,7 +112,7 @@ function refreshBlock(b){
 }
 /* The page's actions by data-act: the moved screens' (History and Settings,
    r57, each change to the log through act) and the legacy script's own. */
-const ACT={...HISTORY_ACTS,...SETTINGS_ACTS,
+const ACT={...HISTORY_ACTS,...SETTINGS_ACTS,...PLAN_ACTS,...DASH_ACTS,
   appUpdate(){
     if(ui.modal&&ui.modal.dirty){toast('Save or cancel first. Your changes are still here.');return;}
     saveNow();upd.ready=false;updRender();
@@ -420,7 +420,6 @@ const ACT={...HISTORY_ACTS,...SETTINGS_ACTS,
     if(first&&b.sessions.length){openModal({kind:'templates',from:'welcome',imported:true});toast(`${msg}. Now pick the routine you follow, or the closest one.`,true,8000);return;}
     toast(msg,true);
   },
-  bestsAll(){ui.bestsAll=true;rerenderKeepScroll();},
   async previewCopy(){
     if(ENV!=='preview')return;
     toast(`Looking for your ${APP_NAME} log`);
@@ -585,8 +584,6 @@ const ACT={...HISTORY_ACTS,...SETTINGS_ACTS,
       // A ? outside a section (the Start card, a page title) may point into a closed section, so open it.
       const d=on&&el.closest('details');if(d&&!d.open)d.open=true;}
     document.querySelectorAll(`[data-act="help"][data-h="${k}"]`).forEach(b=>b.setAttribute('aria-expanded',String(on)));},
-  planLib(){ui.planView='library';window.scrollTo(0,0);render();},
-  planBack(){ui.planView='routine';window.scrollTo(0,0);render();},
   applyUpd(){
     const u=ui.modal&&ui.modal.upd;closeModal();if(!u)return;
     const R=state.routines.find(r=>r.id===u.rid);const day=R&&R.days.find(x=>x.id===u.dayId);if(!day){toast('That routine day no longer exists');return;}
@@ -671,8 +668,6 @@ const ACT={...HISTORY_ACTS,...SETTINGS_ACTS,
       // A superset made here is this session's; Plan keeps one (r34.2, from the review: it was gone next time without a word).
       const b=state.draft.ex[bi];if(b&&b.plan.ss)toast(state.draft.dayId?'Superset. Finish offers to keep it in your plan.':'Superset for this session.');}return;}
     const f=ACT[op];if(f)f(t);},
-  ssToggle(t){const f=findItem(t.dataset.uid);if(!f)return;const items=f.r.days[f.di].items;
-    if(linkToggle(items,f.i,x=>x)){commit();rerenderKeepScroll();}},
   dropAdd(t){
     const b=state.draft.ex[+t.dataset.b];
     // The load the last working set was, or will be (a grey load counts); a missed set's is passed over (r55).
@@ -739,11 +734,6 @@ const ACT={...HISTORY_ACTS,...SETTINGS_ACTS,
     b.sets.forEach((s,i)=>{const lr=lastRFor(b,i);if(!s.done&&!s.warm&&!s.drop&&s.r==null&&lr!=null){s.r=lr;n++;}});
     if(!n){toast('Nothing to fill');return;}
     saveNow();rerenderKeepScroll();toast(`${n} set${n===1?'':'s'} filled with last time's reps`);
-  },
-  dashJump(t){
-    const el=document.getElementById('sec-'+t.dataset.sec);if(!el)return;
-    if(!el.open)el.open=true;
-    el.scrollIntoView({block:'start',behavior:'smooth'});
   },
   goBackup(){if(ui.modal)closeModal();ui.tab='settings';ui.folds['settings:data']=true;window.scrollTo(0,0);render();const el=document.getElementById('dataSec');if(el)el.scrollIntoView({block:'start'});},
   // The new working set copies the last working set's load, not a drop set's
@@ -1063,22 +1053,13 @@ m.err=`Could not read that. Try the pattern 225x5, 5, 4 ${rirScale()==='rpe'?'rp
   addMeas(){const m={id:uid(),date:today()};let any=false;for(const [k,lab] of MEAS){const v=numIn($('#ms_'+k).value);if(v!=null&&v>0){const cm=lenFrom(v);if(!(cm<=MEAS_MAX_CM)){toast(`${lab} looks too large. Check the number.`);return;}m[k]=cm;any=true;}}if(!any){toast('Enter at least one measurement');return;}snapshot();const was=state.measurements.find(x=>x.date===m.date);if(was)Object.assign(was,m,{id:was.id});else state.measurements.push(m);commit();rerenderKeepScroll();toast('Measurements saved',true);}, // a second save the same day adds to it, keeping what it does not retype, with Undo (r55, the audit: it replaced the day's entry)
   delMeas(t){const id=t.dataset.id;const x=state.measurements.find(m=>m.id===id);if(!x)return;
     confirmBox('Delete measurements?',`The tape entry from ${fmtDate(x.date)}. Undo is offered right after.`,'Delete',()=>{snapshot();state.measurements=state.measurements.filter(m=>m.id!==id);commit();rerenderKeepScroll();toast('Entry deleted',true);},true);},
-  toggleItem(t){ui.openItem=ui.openItem===t.dataset.uid?null:t.dataset.uid;rerenderKeepScroll();},
-  iUp(t){const R=curRoutineB();move(R.days[+t.dataset.day].items,+t.dataset.i,+t.dataset.i-1);commit();rerenderKeepScroll();},
-  iDown(t){const R=curRoutineB();move(R.days[+t.dataset.day].items,+t.dataset.i,+t.dataset.i+1);commit();rerenderKeepScroll();},
-  iDel(t){snapshot();const R=curRoutineB();const [x]=R.days[+t.dataset.day].items.splice(+t.dataset.i,1);commit();rerenderKeepScroll();toast(`${exName(x.exId)} removed`,true);},
-  libAdd(t){const R=curRoutineB();const d=R.days[ui.bTarget];d.items.push(newItem(t.dataset.ex));Object.assign(d,trainOn(d));commit();rerenderKeepScroll();toast(`Added to ${dayLabel(R,ui.bTarget)}`);},
-  rActive(){state.activeRoutineId=ui.bRoutine;ui.todayDay=null;commit();render();toast('Active routine changed');},
   rNew(){openModal({kind:'routineNew'});},
   rNewSave(){const nm=(($('#rNewName')||{}).value||'').trim();if(!nm){toast('Give the routine a name');return;}if(nameTaken(nm)){toast('A routine already has that name. Pick another.');return;}closeModal();ACT.rNewDo(nm);},
-  rClean(){const c=routineClutter();if(!c.length)return;confirmBox(`Remove ${c.length} routine${c.length>1?'s':''}?`,`${c.map(r=>r.name).join(', ')}. ${c.every(plainTemplate)?'Ready-made ones can be added again from New from a template.':`Any you changed stay under Recently deleted in History for ${TRASH_DAYS} days.`}`,'Remove',()=>{const cc=routineClutter();if(!cc.length)return;snapshot();const ids=new Set(cc.map(r=>r.id));for(const r of cc)toTrash('routine',r);state.routines=state.routines.filter(r=>!ids.has(r.id));if(!state.routines.find(r=>r.id===ui.bRoutine))ui.bRoutine=state.activeRoutineId;commit();render();toast(`${cc.length} routine${cc.length>1?'s':''} removed`,true);},true);},
   rNewDo(nm){
     // An existing empty routine is reused rather than stacking another blank one.
     const blank=state.routines.find(r=>routineEmpty(r)&&r.id!==state.activeRoutineId);
     if(blank){blank.name=nm||blank.name;ui.bRoutine=blank.id;commit();render();toast('Reused your empty routine');return;}const r={id:uid(),name:nm||'New routine',schedule:'cycle',days:[0,1,0,1,0,1,1].map(x=>({id:uid(),name:x?'Rest':'Training day',rest:!!x,items:[]}))};state.routines.push(r);ui.bRoutine=r.id;commit();render();}, // Laid out as Build my own's (r55, the audit: three training days and no rest planned 7 sessions a week).
   rTemplate(){openModal({kind:'templates',from:'plan'});},
-  rDup(){const src=curRoutineB();const r=JSON.parse(JSON.stringify(src));r.id=uid();r.name=src.name+' (copy)';r.days.forEach(d=>{d.id=uid();d.items.forEach(it=>it.uid=uid());});state.routines.push(r);ui.bRoutine=r.id;commit();render();},
-  rDel(){const R=curRoutineB();if(state.routines.length<2)return;confirmBox('Delete routine?',`"${R.name}" will be removed. Logged sessions are kept${plainTemplate(R)?'; it can be added again from New from a template.':`, and the routine stays under Recently deleted in History for ${TRASH_DAYS} days.`}`,'Delete routine',()=>{const Rn=state.routines.find(r=>r.id===R.id);if(!Rn||state.routines.length<2){rerenderKeepScroll();return;}snapshot();toTrash('routine',Rn);state.routines=state.routines.filter(r=>r.id!==R.id);if(state.activeRoutineId===R.id)state.activeRoutineId=state.routines[0].id;ui.bRoutine=state.activeRoutineId;commit();render();toast('Routine deleted',true);},true);},
   exNew(){openModal({kind:'exEdit',isNew:true,e:{id:'c_'+uid(),name:'',primary:'chest',secondary:[],equip:'cable',bw:false,rare:false,note:'',custom:true,archived:false}});},
   exNewFromPicker(){const back=ui.modal;if(!back||back.kind!=='picker')return;openModal({kind:'exEdit',isNew:true,back,e:{id:'c_'+uid(),name:(back.q||'').trim(),primary:back.m||'',secondary:[],equip:'cable',bw:false,rare:false,note:'',custom:true,archived:false,incRaw:''}});},
   exBack(){const m=ui.modal;if(m&&m.back)openModal(m.back);else closeModal();}, // back to the sheet this one was opened from, else closed: the exercise editor's, and an account sheet's opened from a problem report (r55)
@@ -1113,26 +1094,6 @@ m.err=`Could not read that. Try the pattern 225x5, 5, 4 ${rirScale()==='rpe'?'rp
     if(m.back){const back=m.back;back.q=e.name;openModal(back);}else closeModal();
     rerenderKeepScroll();toast(m.isNew?'Exercise created':'Exercise saved');
   },
-  exDel(t){
-    const id=t.dataset.ex;const e=EX(id);
-    const used=state.routines.some(r=>r.days.some(d=>d.items.some(i=>i.exId===id)))||state.sessions.some(s=>s.ex.some(b=>b.exId===id))||(state.draft&&state.draft.ex.some(b=>b.exId===id));
-    confirmBox('Delete exercise?',used?`${e.name} is used in your routines or history. It will be hidden from the library, and past data stays intact.`:`${e.name} will be removed.`,'Delete',()=>{
-      snapshot();
-      const cur=state.exercises.find(x=>x.id===id);if(!cur){rerenderKeepScroll();return;}
-      if(used)cur.archived=true;
-      else{
-        state.exercises=state.exercises.filter(x=>x.id!==id);
-        // Built-ins are re-added from the library on every load, so without
-        // this the deletion silently reversed itself on the next reload.
-        if(!e.custom&&!state.settings.removedLib.includes(id))state.settings.removedLib.push(id);
-      }
-      commit();rerenderKeepScroll();toast('Exercise deleted',true);
-    },true);
-  },
-  libKind(t){const v=t.dataset.v||'';if(!['','common','rare'].includes(v))return;ui.libKind=v;rerenderKeepScroll();},
-  regionWk(t){const v=+t.dataset.v;if(!REGION_WKS.some(x=>x[0]===v))return;try{localStorage.setItem(REGION_KEY,String(v));}catch(e){/* kept for this visit only */}ui.regionWk=v;rerenderKeepScroll();},
-  volMode(t){const v=t.dataset.v;if(!VOL_MODES.some(x=>x[0]===v))return;ui.volMode=v;rerenderKeepScroll();},
-  chartRange(t){ui.rng=ui.rng||{};ui.rng[t.dataset.id]=t.dataset.v;rerenderKeepScroll();},
   mapSel(t){const m=t.getAttribute('data-m');ui.mapSel=ui.mapSel===m?null:m;rerenderKeepScroll();},
   mapSrc(t){ui.mapSrc=t.getAttribute('data-v');rerenderKeepScroll();},
   mapView(t){try{localStorage.setItem(MAPVIEW_KEY,t.getAttribute('data-v')==='3d'?'3d':'flat');}catch(e){/* remembered for this visit only */}B3.viewMem=t.getAttribute('data-v')==='3d'?'3d':'flat';rerenderKeepScroll();},
@@ -1161,26 +1122,6 @@ m.err=`Could not read that. Try the pattern 225x5, 5, 4 ${rirScale()==='rpe'?'rp
     const at=[...state.sessions].sort((a,b)=>sessCmp(b,a)).findIndex(x=>x.id===id);ui.histLimit=Math.max(HIST_PAGE,at+1);
     window.scrollTo(0,0);render();
     try{const el=document.querySelector(`[data-act="histToggle"][data-id="${id}"]`);if(el&&el.scrollIntoView)el.scrollIntoView({block:'start'});}catch(e){/* scroll is best effort */}
-  },
-  dAdd(){const R=curRoutineB();if(R.schedule==='weekly'||R.days.length>=MAX_DAYS)return;R.days.push({id:uid(),name:'Training day',rest:false,items:[]});ui.bTarget=R.days.length-1;ui.dayFocus=undefined;commit();rerenderKeepScroll();toast(`Day ${R.days.length} added`);},
-  dAddRest(){const R=curRoutineB();if(R.schedule==='weekly'||R.days.length>=MAX_DAYS)return;R.days.push({id:uid(),name:'Rest',rest:true,items:[]});commit();rerenderKeepScroll();toast(`Day ${R.days.length} added as rest`);},
-  dFold(t){const R=curRoutineB();const id=t.dataset.id;const open=dayFocusId(R)===id;
-    ui.dayFocus=open?'':id;if(!open){const i=R.days.findIndex(d=>d.id===id);if(i>=0)ui.bTarget=i;}
-    rerenderKeepScroll();
-    if(!open){const el=document.querySelector(`.day[data-did="${CSS.escape(id)}"]`);if(el)try{el.scrollIntoView({block:'start',behavior:'smooth'});}catch(e){/* scroll is best effort */}}},
-  dUp(t){const R=curRoutineB();const i=+t.dataset.day;if(i<1)return;move(R.days,i,i-1);ui.todayDay=null;commit();rerenderKeepScroll();},
-  dDown(t){const R=curRoutineB();const i=+t.dataset.day;if(i>=R.days.length-1)return;move(R.days,i,i+1);ui.todayDay=null;commit();rerenderKeepScroll();},
-  dDel(t){
-    const R=curRoutineB();const i=+t.dataset.day;
-    if(R.schedule==='weekly')return;
-    if(R.days.length<2){toast('A cycle needs at least one day');return;}
-    const d=R.days[i];const rid=R.id,did=d.id;
-    /* Resolved again by id when confirmed: a cloud refresh while the dialog is
-       open replaces state, and editing the old objects would be lost. */
-    const go=()=>{const R2=state.routines.find(r=>r.id===rid);const j=R2?R2.days.findIndex(x=>x.id===did):-1;if(j<0||R2.days.length<2){toast('That day changed on another device. Nothing was removed.');rerenderKeepScroll();return;}
-      snapshot();R2.days.splice(j,1);if(ui.bTarget>=R2.days.length)ui.bTarget=R2.days.length-1;ui.todayDay=null;commit();rerenderKeepScroll();toast(`${d.name} removed`,true);};
-    if(d.items.length)confirmBox('Remove this day?',`${dayLabel(R,i)}: ${d.name} and its ${d.items.length} exercise${d.items.length>1?'s':''} will be removed from the routine. Sessions you already logged are not affected.`,'Remove day',go,true);
-    else go();
   },
   histEdit(t){
     const s=state.sessions.find(x=>x.id===t.dataset.id);if(!s)return;

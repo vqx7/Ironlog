@@ -37,6 +37,8 @@ export const KEY = ENV === 'preview' ? `${STORAGE_ID}-preview.v1` : `${STORAGE_I
 export const LOGK = KEY + '.log';
 /** Week or Month in This week on Today (r26), per device. */
 export const WKVIEW_KEY = KEY + '.wkView';
+/** How many weeks Stats' By region averages (r31), per device. */
+export const REGION_KEY = KEY + '.regionWk';
 /** The settings kept aside while the demo is loaded (demoKeep). */
 export const DEMOSET_KEY = KEY + '.demoSettings';
 /** The start of the keys a preview of r56.1 kept a log aside under, before it moved to IndexedDB (asideStart). */
@@ -241,6 +243,27 @@ export function capturePost(): void {
 /* ---------- reading the save ---------- */
 
 /** Whether localStorage can be written at all. */
+/* A screen's small choice kept on this phone only (By region's weeks): read
+   and written here, as every stored value is. */
+/** A choice kept on this phone, as saved, or null. */
+export function prefGet(key: string): string | null {
+  try {
+    return localStorage.getItem(key);
+  } catch (e) {
+    // Private mode or blocked storage refuses the read: the screen's default.
+    return null;
+  }
+}
+/** Keeps a choice on this phone; false when storage refused it (it then lasts this visit only). */
+export function prefSet(key: string, v: string): boolean {
+  try {
+    localStorage.setItem(key, v);
+    return true;
+  } catch (e) {
+    // Private mode or a full store refuses the write: the screen keeps the choice for this visit.
+    return false;
+  }
+}
 export function storageTest(): boolean {
   try {
     localStorage.setItem('__il', '1');

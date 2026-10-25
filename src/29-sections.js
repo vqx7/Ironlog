@@ -177,13 +177,7 @@ function moveSecKey(g,dir){
 document.addEventListener('click',e=>{if(e.target&&e.target.closest&&e.target.closest('.sgrip,.bgrip')){e.preventDefault();e.stopPropagation();}},true);
 document.addEventListener('keydown',e=>{
   const dg=e.target&&e.target.closest&&e.target.closest('.dgrip');
-  if(dg&&(e.key==='ArrowUp'||e.key==='ArrowDown')){
-    e.preventDefault();const R=curRoutineB();const i=+dg.dataset.di;const j=i+(e.key==='ArrowUp'?-1:1);
-    if(R.schedule==='weekly'||!R.days[i]||j<0||j>=R.days.length)return;
-    move(R.days,i,j);ui.todayDay=null;ui.bTarget=0;commit();rerenderKeepScroll();
-    const n=document.querySelector(`.dgrip[data-di="${j}"]`);if(n)n.focus();
-    toast(`${R.days[j].name||'Day'} is now ${dayLabel(R,j)}`);return;
-  }
+  if(dg&&(e.key==='ArrowUp'||e.key==='ArrowDown')){e.preventDefault();dayKey(dg,e.key==='ArrowUp');return;}
   const bg=e.target&&e.target.closest&&e.target.closest('.bgrip');
   if(bg&&(e.key==='ArrowUp'||e.key==='ArrowDown')&&state.draft){
     e.preventDefault();const i=+bg.dataset.b;const j=i+(e.key==='ArrowUp'?-1:1);if(j<0||j>=state.draft.ex.length)return;
@@ -196,36 +190,14 @@ document.addEventListener('keydown',e=>{
 /* ---------- drag and drop ---------- */
 function mountSortable(){
   if(!window.Sortable)return;
-  document.querySelectorAll('ul.items').forEach(el=>{
-    sortables.push(window.Sortable.create(el,{group:{name:'days',pull:true,put:['days']},handle:'.grip',animation:150,fallbackOnBody:true,
-      onEnd:evt=>{
-        const from=+evt.from.dataset.day,to=+evt.to.dataset.day;
-        if(evt.to.id==='bLib'||isNaN(to)){setTimeout(rerenderKeepScroll,0);return;}
-        if(from===to&&evt.oldIndex===evt.newIndex)return;
-        const R=curRoutineB();if(!R.days[from]||!R.days[to]){setTimeout(rerenderKeepScroll,0);return;}
-        const [it]=R.days[from].items.splice(evt.oldIndex,1);
-        if(it){R.days[to].items.splice(evt.newIndex,0,it);Object.assign(R.days[to],trainOn(R.days[to]));}
-        commit();setTimeout(rerenderKeepScroll,0);
-      }}));
-  });
-  // Days reorder by their ⠿ handle in a numbered cycle. Labels come from
-  // position, so the renumbering is automatic; same effect as the ↑/↓ Day buttons.
+  // Plan is drawn by lit-html (r58): each drag ends in src/app/plan.ts, which puts the element back where it was drawn and changes the log.
+  const opts={animation:150,fallbackOnBody:true,onStart:e=>dragStart(e.item)};
+  document.querySelectorAll('ul.items').forEach(el=>sortables.push(window.Sortable.create(el,{...opts,group:{name:'days',pull:true,put:['days']},handle:'.grip',onEnd:dropItem})));
+  // Days reorder by their ⠿ handle in a numbered cycle; labels come from position, so they renumber as the ↑/↓ Day buttons do.
   const dl=$('#dayList');
-  if(dl&&curRoutineB().schedule!=='weekly')sortables.push(window.Sortable.create(dl,{group:{name:'dayorder',pull:false,put:false},handle:'.dgrip',draggable:'section.day',animation:150,fallbackOnBody:true,
-    onEnd:evt=>{
-      if(evt.oldIndex===evt.newIndex)return;
-      const R=curRoutineB();if(!R.days[evt.oldIndex]||evt.newIndex<0||evt.newIndex>=R.days.length){setTimeout(rerenderKeepScroll,0);return;}
-      move(R.days,evt.oldIndex,evt.newIndex);ui.todayDay=null;ui.bTarget=0;commit();setTimeout(rerenderKeepScroll,0);
-      toast(`${R.days[evt.newIndex].name||'Day'} is now ${dayLabel(R,evt.newIndex)}`);
-    }}));
+  if(dl&&curRoutineB().schedule!=='weekly')sortables.push(window.Sortable.create(dl,{...opts,group:{name:'dayorder',pull:false,put:false},handle:'.dgrip',draggable:'section.day',onEnd:dropDay}));
   const lib=$('#bLib');
-  if(lib)sortables.push(window.Sortable.create(lib,{group:{name:'days',pull:'clone',put:false},sort:false,handle:'.grip',animation:150,fallbackOnBody:true,
-    onEnd:evt=>{
-      if(evt.to===evt.from)return;
-      const to=+evt.to.dataset.day;const exId=evt.item.dataset.ex;const R=curRoutineB();
-      if(!isNaN(to)&&exId&&R.days[to]){R.days[to].items.splice(evt.newIndex,0,newItem(exId));Object.assign(R.days[to],trainOn(R.days[to]));commit();toast(`${exName(exId)} added to ${dayLabel(R,to)}`);}
-      setTimeout(rerenderKeepScroll,0);
-    }}));
+  if(lib)sortables.push(window.Sortable.create(lib,{...opts,group:{name:'days',pull:'clone',put:false},sort:false,handle:'.grip',onEnd:dropLib}));
 }
 
 
@@ -278,7 +250,7 @@ trashTidy();
 try{if(fitRecordOld())saveNow();}catch(e){log('fitRecordOld',e);}
 // r54: targets fitted to a cycle by the reading of its plan before r54 follow r54's (refit, src/app/profile.ts), once, on this device's state.
 try{const rf=refit();if(rf){const b=state.settings.bands;for(const m in rf.bands)b[m]=rf.bands[m].slice();if(Object.keys(rf.fit).length)state.settings.bandsFit=rf.fit;else delete state.settings.bandsFit;saveNow();}}catch(e){log('refit',e);}
-window.__ironlog={act,B3_PARTS,THREE_URLS,platesPerSide,get state(){return state;},set state(v){setState(v);},fbContext,FB_CTX_MAX,logCut,logBuf,log,dateIndex,sessionsOn,bestLine,whyTarget,recent4w,weekSessions,fmtDate,fmtDateLong,fbShrink,orderAt,orderRun,dropOnlyLift,profHeavy,appBand,fitRecordOld,prof,profClean,profRule,profPlan,defPlan,defBand,profMoveBands,profApplyList,strengthPick,PROF_DAYS,FOCUS_MAX,estInLoad,keepExtra,EXTRA_MAX,draftPlanMin,pace,paceRatios,sessModelMin,PACE_N,PACE_DAYS,PACE_MIN,plainTemplate,trashTidy,ENV,KEY,COMMON,COMMON_TIP,isCommon,bwEvery,isRestWeek,sessCmp,avgWeeks,weekStreak,coach,noLog,afterSet,adjOn,bwAt,newBlock,cycleState,sortedSessions,addDays,loadIn,gymRack,gymClean,dbListOf,capOf,refreshEx,effShow,rirScale,setStr,libExercises,obGate,obTour,andList,belowMin,aboveMax,starterRoutine,starterSigs,plateList,exBarKg,VOL_MODES,liveLogFetch,regionSrc,fitTargets,firstFullWeek,moveBlock,BANDS,installSheet,siteHost,greyW,effW,greyR,lighterLoad,heavierLoad,incOf,swapPlan,planSetsPerWeek,weekNeed,stepRead,e1inv,rtfAt,rtfOf,rtfBand,calStats,rirEff,isHard,setCredit,tonnage,loadMode,loadWords,loadNote,progStep,jumpCap,setSecs,setupSecs,recovery,rolling7,rankDays,rankExercises,isCompound,patternOf,noE1,whtrLine,exHeadline,remainMin,shortPlan,weekPlan,cycleProjection,lastLighterWeek,avgFirstWeek,avgWait,stallWeeks,weeksAvg,fitFloors,refit,regionBalance,parseHeight,mixCheck,swapCands,eqPlan,exportCSV,importData,chunksOf,assemble,sessionMuscles,TRACK_ONLY,cloud,Hx,mergeChunk,baseOf,sync:()=>cq(cloudPull),TEMPLATES,lastRFor,impDate,impRows,impNorm,impMatch,impFromText,impFromTable,impHeader,impBuild,impStart,impXlsx,parseSets,undoStack,undoRestore,undoForget,allTimeBests,bestsBoard,obActive,fmtW,rirUsual,rirEst,routineFromTemplate,plannedSets,map3d:()=>({state:B3.state,fail:B3.fail,meshes:B3.meshes.length,yaw:B3.yaw,glow:Object.keys(B3.mats).filter(m=>B3.mats[m].emissiveIntensity>0),canvas:!!document.querySelector('#bm3d canvas'),colors:Object.fromEntries(Object.entries(B3.mats).map(([m,mt])=>[m,'#'+mt.color.getHexString()])),pick:(x,y)=>map3dPick(x,y),want:map3dColors()}),cloudState:()=>({on:cloud.on,status:cloud.status,err:cloud.err,uid:cloud.uid,acct:cloud.acct}),acctUser:()=>acct.user,acctWaiting:()=>!!acctWait.pw,flush:()=>cq(cloudFlush),cloudInit,cloudStop,asideList,backupDue,routineUpdates,planFor,platesMode,plateText,chunksOf,IDX,suggest,e1,render,ACT,ui,makeDemo,invalidate,normalize,snapshot,saveNow,timer,weekStats,weekStart,today,EX,blockProgress,dayMinutes,weekStreak,coach,tonnageNow,livePR,movers,stalledIds,muscleStatus,actualAvg4,plannedPerWeek,parseSets,fillSets,newBlock,lastNoteOf,sizeRows,sessionMuscleSets,sessionCapNote,routineClutter,rowBlank,dayReasons,impTextSets,liftTrend,prsWithin,activeRoutine,rackStep,repFloor,sessionLength,prBeat,exInjury,exJoints,openModal,EQUIP,HARD_EX,recentLighter,planEvidenceNote,howToUrl,editFp,toast,avgWeeks,regionWk,REGION_WKS,SAFETY_TXT,libFiltered,nameMatch,workLoad,fitE,lighter,offTarget,sessionWord,sessionWords,dayLabel,daySets,ssLetters,routineSig,tplCountLine,pwOf,dropStarter,trainOn,planItemOf,fatigueStalls,avgWeeksTxt,routineFromLog,repSpan,rangeWords,calDueIdx,readyCard,sameRR,hintOnce,overSets,rackTol,daysOff,BACK_DAYS,prName,sessTm,effTgt,bwDueCard,bwNoLoad,applyPick,joinAdjacent,sameExOnce,savedEx,goalState,goalLine,bwRefLoad,ML,exMusParts,musTrend,U,toD,fromD,loadLabel,exName,planCredit,gymOf,isDeloadWeek,freeMode,injuredSet,prLoad,statsUpTo,readiness,bwRef,weekRoutine,logBack,logStart,easierText,barKg,suggestCore,loadOf,bwLoad,hardCredit,rirHalfOn,prFrame,stallWords,atRangeTop,oddLoad,lightZero};
+window.__ironlog={act,B3_PARTS,THREE_URLS,platesPerSide,get state(){return state;},set state(v){setState(v);},fbContext,FB_CTX_MAX,logCut,logBuf,log,dateIndex,sessionsOn,bestLine,whyTarget,recent4w,weekSessions,fmtDate,fmtDateLong,fbShrink,orderAt,orderRun,dropOnlyLift,profHeavy,appBand,fitRecordOld,prof,profClean,profRule,profPlan,defPlan,defBand,profMoveBands,profApplyList,strengthPick,PROF_DAYS,FOCUS_MAX,estInLoad,keepExtra,EXTRA_MAX,draftPlanMin,pace,paceRatios,sessModelMin,PACE_N,PACE_DAYS,PACE_MIN,plainTemplate,trashTidy,ENV,KEY,COMMON,COMMON_TIP,isCommon,bwEvery,isRestWeek,sessCmp,avgWeeks,weekStreak,coach,noLog,afterSet,adjOn,bwAt,newBlock,cycleState,sortedSessions,addDays,loadIn,gymRack,gymClean,dbListOf,capOf,refreshEx,effShow,rirScale,setStr,libExercises,obGate,obTour,andList,belowMin,aboveMax,starterRoutine,starterSigs,plateList,exBarKg,VOL_MODES,liveLogFetch,regionSrc,fitTargets,firstFullWeek,moveBlock,BANDS,installSheet,siteHost,greyW,effW,greyR,lighterLoad,heavierLoad,incOf,swapPlan,planSetsPerWeek,weekNeed,stepRead,e1inv,rtfAt,rtfOf,rtfBand,calStats,rirEff,isHard,setCredit,tonnage,loadMode,loadWords,loadNote,progStep,jumpCap,setSecs,setupSecs,recovery,rolling7,rankDays,rankExercises,isCompound,patternOf,noE1,whtrLine:p=>markupOf(whtrLine(p)),exHeadline:id=>markupOf(exHeadline(id)),remainMin,shortPlan,weekPlan,cycleProjection,lastLighterWeek,avgFirstWeek,avgWait,stallWeeks,weeksAvg,fitFloors,refit,regionBalance,parseHeight,mixCheck,swapCands,eqPlan,exportCSV,importData,chunksOf,assemble,sessionMuscles,TRACK_ONLY,cloud,Hx,mergeChunk,baseOf,sync:()=>cq(cloudPull),TEMPLATES,lastRFor,impDate,impRows,impNorm,impMatch,impFromText,impFromTable,impHeader,impBuild,impStart,impXlsx,parseSets,undoStack,undoRestore,undoForget,allTimeBests,bestsBoard:()=>{const b=bestsBoard();return {n:b.n,html:markupOf(b.html)};},obActive,fmtW,rirUsual,rirEst,routineFromTemplate,plannedSets,map3d:()=>({state:B3.state,fail:B3.fail,meshes:B3.meshes.length,yaw:B3.yaw,glow:Object.keys(B3.mats).filter(m=>B3.mats[m].emissiveIntensity>0),canvas:!!document.querySelector('#bm3d canvas'),colors:Object.fromEntries(Object.entries(B3.mats).map(([m,mt])=>[m,'#'+mt.color.getHexString()])),pick:(x,y)=>map3dPick(x,y),want:map3dColors()}),cloudState:()=>({on:cloud.on,status:cloud.status,err:cloud.err,uid:cloud.uid,acct:cloud.acct}),acctUser:()=>acct.user,acctWaiting:()=>!!acctWait.pw,flush:()=>cq(cloudFlush),cloudInit,cloudStop,asideList,backupDue,routineUpdates,planFor,platesMode,plateText,chunksOf,IDX,suggest,e1,render,ACT,ui,makeDemo,invalidate,normalize,snapshot,saveNow,timer,weekStats,weekStart,today,EX,blockProgress,dayMinutes,weekStreak,coach,tonnageNow,livePR,movers,stalledIds,muscleStatus,actualAvg4,plannedPerWeek,parseSets,fillSets,newBlock,lastNoteOf,sizeRows,sessionMuscleSets,sessionCapNote:d=>markupOf(sessionCapNote(d)),routineClutter,rowBlank,dayReasons,impTextSets,liftTrend,prsWithin,activeRoutine,rackStep,repFloor,sessionLength,prBeat,exInjury,exJoints,openModal,EQUIP,HARD_EX,recentLighter,planEvidenceNote:pv=>markupOf(planEvidenceNote(pv)),howToUrl,editFp,toast,avgWeeks,regionWk,REGION_WKS,SAFETY_TXT,libFiltered,nameMatch,workLoad,fitE,lighter,offTarget,sessionWord,sessionWords,dayLabel,daySets,ssLetters,routineSig,tplCountLine,pwOf,dropStarter,trainOn,planItemOf,fatigueStalls,avgWeeksTxt,routineFromLog,repSpan,rangeWords,calDueIdx,readyCard,sameRR,hintOnce,overSets,rackTol,daysOff,BACK_DAYS,prName,sessTm,effTgt,bwDueCard,bwNoLoad,applyPick,joinAdjacent,sameExOnce,savedEx,goalState,goalLine:id=>markupOf(goalLine(id)),bwRefLoad,ML,exMusParts,musTrend,U,toD,fromD,loadLabel,exName,planCredit,gymOf,isDeloadWeek,freeMode,injuredSet,prLoad,statsUpTo,readiness,bwRef,weekRoutine,logBack,logStart,easierText,barKg,suggestCore,loadOf,bwLoad,hardCredit,rirHalfOn,prFrame,stallWords,atRangeTop,oddLoad,lightZero};
 render();
 wakeOn();
 timerResume();

@@ -371,7 +371,7 @@ const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log
     for (const m of mods) visit(m, []);
     ok(cycles.length === 0, 'no import in src/app/ goes round in a circle', cycles);
     // One way to change the log (r57, ARCHITECTURE.md Phase 5 design, item 2):
-    // a moved screen (History and Settings, and every screen module that
+    // a moved screen (History, Settings, Plan and Stats, and every screen module that
     // imports act) writes to the log only inside a function it hands to act,
     // as the change or as its Undo, and never saves, keeps an Undo step or
     // replaces the log by itself. Read from the syntax tree: an assignment,
@@ -379,9 +379,9 @@ const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log
     // at `state`. A write through a name that holds part of the log (const b =
     // state.settings.bands) is beyond a reading of the code, and review's.
     {
-      const MOVED = ['history', 'settings'];
+      const MOVED = ['history', 'settings', 'plan', 'stats'];
       const screens = mods.filter(m => LAYER[m] === 4 && (MOVED.includes(m) || EDGES.get(m).some(e => e.to === 'act')));
-      ok(MOVED.every(m => screens.includes(m)), 'History and Settings are screen modules in src/app/ (r57)', screens);
+      ok(MOVED.every(m => screens.includes(m)), 'History and Settings (r57), Plan and Stats (r58) are screen modules in src/app/', screens);
       const MUT = new Set(['push', 'pop', 'shift', 'unshift', 'splice', 'sort', 'reverse', 'fill', 'copyWithin']);
       const NO = new Set(['saveNow', 'saveSoon', 'commit', 'snapshot', 'capturePost']);
       const bad = [];

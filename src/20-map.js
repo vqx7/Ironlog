@@ -237,17 +237,6 @@ function bodyMapCard(){
   <div class="bm-legend small">${src==='week'?`<span class="hastip" data-tip="The week is still going: short of the minimum so far, not behind."><i class="st-part"></i>Under way ${counts.part}</span>`:`<span><i class="st-under"></i>Below target ${counts.under}</span>${counts.plan?`<span class="hastip" data-tip="${esc(ON_PLAN_TIP)}"><i class="st-plan"></i>On plan ${counts.plan}</span>`:''}`}<span><i class="st-in"></i>On target ${counts.in}</span><span><i class="st-over"></i>Above ${counts.over}</span><span><i class="st-none"></i>${src==='week'?'Not yet':'None'} ${counts.none}</span>${counts.track?`<span class="hastip" data-tip="Serratus, rotator cuff, neck, and tibialis: sets are counted, but no study sets a weekly dose, so they are never called under or over."><i class="st-track"></i>Tracked only ${counts.track}</span>`:''}</div>
   ${detail}`});
 }
-/* Session length measured from Start to Finish. Sessions logged for a past date,
-   left open over six hours, or shorter than a minute are not timed. */
-function sessionLength(){
-  const from=addDays(today(),-28);const R=activeRoutine();
-  const ss=state.sessions.filter(x=>x.date>=from&&x.durMin);
-  // An average of one is not an average (r30): shown from 3 timed sessions.
-  if(ss.length<3)return null;
-  const avg=Math.round(ss.reduce((a,x)=>a+x.durMin,0)/ss.length);
-  const pl=ss.filter(x=>x.routineId===R.id).map(x=>{const i=sessDayIdx(R,x);return i>=0?dayMinutes(R.days[i],x.light||x.deload):0;}).filter(x=>x>0);
-  return {avg,n:ss.length,plan:pl.length?Math.round(pl.reduce((a,b)=>a+b,0)/pl.length):null};
-}
 /* A set is a PR live if its estimate beats your best, or no earlier set matched
    it on both load and reps: the same two tests the PR list uses. Only sets
    logged up to the session's date count, so a past session entered late is
@@ -312,15 +301,9 @@ function prBeat(exId,s,date,pr){
   let m=0;for(const x of exps)for(const p of x.pts)if(p.pl>=load-1e-6)m=Math.max(m,p.r);
   return m?` (was ${m} ${ex.timed?'s':'reps'})`:' (heaviest yet)';
 }
-/* ---------- READINESS ----------
-   The check-in against how sessions went: readiness and its words are in
-   src/app/coach.ts since r52; this draws them. */
-function readinessBody(){
-  const r=readiness();
-  if(r.n<6)return `<p class="small muted hastip" style="margin:0" data-tip="Answer the three check-in taps at the start of a session (sleep, energy, aches). After 6 sessions with answers, this shows whether they line up with how your lifts go.">Needs 6 sessions with a check-in${r.n?`; ${r.n} so far`:''}.</p>`;
-  return r.rows.map(q=>`<p class="small" style="margin:6px 0"><b>${q.l}.</b> ${q.groups.map(g=>g.sessions>=2&&g.rate!=null?`${chkWord(g.name)}: ${Math.round(g.rate)}% of lifts set a PR (${g.sessions} sessions)`:`${chkWord(g.name)}: ${g.sessions?`${g.sessions} session${g.sessions===1?'':'s'}, too few`:'none yet'}`).join('; ')}.</p>`).join('')
-    +`<p class="small muted hastip" style="margin:6px 0 0" data-tip="A pattern in your own log, not proof of cause. A gap of a few points is noise.">From ${r.n} sessions</p>`;
-}
+/* ---------- CHECK-IN ----------
+   The three taps at the start of a session; how they line up with the
+   sessions is Stats' Readiness and performance (src/app/stats.ts). */
 function checkinCard(d){
   const c=d.chk||{};
   const sum=CHK_Q.filter(([k])=>c[k]).map(([k,l,n])=>`${l.toLowerCase()} ${chkWord(n[c[k]-1])}`).join(', ');

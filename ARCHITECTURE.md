@@ -49,7 +49,7 @@ Layer 0, config and record shapes: config, types
 Layer 1, data: util, units, library, routines, formulas, records, gym, profile, model, layout
 Layer 2, engine and analytics: session, loads, prs, trend, volume, goals, importing, format, charts, analytics, time, weeks, coach, engine, plans
 Layer 3, storage and sync: chunks, merge, store, live, providers, normalize, storage, sync, act
-Layer 4, screens: icons, feedback, effort, guide, sheets, env, display, view, history, settings
+Layer 4, screens: icons, feedback, effort, guide, sheets, env, display, view, history, settings, graphs, plan, stats
 
 - **Screens as components**, one per tab, reading copy and labels from one place.
 
@@ -61,16 +61,16 @@ The current code is the **legacy script**: `src/10-*.js` to `src/29-*.js`, joine
 
 **The ratchet:** the legacy script may never grow. `tests/hygiene.js` fails when it has more top-level declarations or more lines than the numbers below, and also when it has fewer, until the numbers are lowered to match, so each phase locks in what it moved. A change that adds code adds it in `src/app/`.
 
-Legacy top-level declarations: 390
-Legacy lines: 6010
+Legacy top-level declarations: 312
+Legacy lines: 4905
 
-| Measured (scripts/depmap.js) | r49 | r50 | r51 | r52 | r53 | r54 | r55 | r56 | r57 |
-|---|---|---|---|---|---|---|---|---|---|
-| Legacy top-level declarations | 928 | 819 | 638 | 518 | 511 | 504 | 503 (`allTimeBests` moved to `analytics.ts`) | 424 (storage and sync moved; `setSaveState` and `syncLine`, the two screen functions the moved code calls, stay) | 390 (History and Settings moved, with the account panel and the helpers only they read; `unitWords` stays with the session) |
-| Pure, movable as they are | 324 | 215 (214 by r51's rule, which also counts browser-only APIs such as DOMParser) | 39 (each waits for its phase, below) | 34 (a call through `live.ts` counts as reading shared state) | 33 (since r53 a call to any module function that reads the store, the live model or the page counts too, `moduleReach`; by r52's rule 40, as effort.ts's `rirScale` reads the store) | 33 | 33 | 30 | 27 |
-| Shared mutable names | 61 (`ui` written from 12 files, `state` from 10) | 61 | 56 (`state`, `ui`, `cloud`, `acct` and `acctWait` are the store's) | 48 (the seven caches are the model's) | 48 | 48 | 48 | 33 (`cloud`'s writers are sync.ts's and four account actions) | 33 |
-| Legacy lines | 10,452 | 9,863 | 9,134 | 7,585 | 7,436 | 7,388 | 7,360 | 6,366 | 6,010 |
-| In `src/app/` | `config.ts` | and `util`, `units`, `library`, `routines`, `formulas` (109 declarations) | and 18 more modules, the store among them (182 declarations: 176 moved, the four shared objects, `state` and `setState`) | and 7 more modules, five grown (the 120 moved as 113: 96 taking the model, 16 unchanged and `invalidateIn`, the caches given by `freshCaches`; with `modelOf`, `LIVE`, `live` and 74 adapters) | and 3 more modules, `guide`, `providers` and `effort` (7 declarations moved, `routineUpdates` and `whyTarget` among them to change, so 75 adapters; 4 added) | and 2 more modules, `plans` (the plan a lift is done at, moved from `routines` to layer 2) and `sheets` (the sign-in sheet's fields kept through a redraw); `plannedSets`, `effShow`, `lastLighterWeek`, `muscleStatus`, `heavierLoad`, `defBand` and `appBand` moved (`lastLighterWeek` rewritten, to the averages' reading of a lighter week), 91 adapters | the same modules, grown by r55's fixes (no module added) | and 3 more modules, `normalize`, `storage` and `sync` (phase 4) | and 6 more modules, `act`, `view`, `display`, `env`, `history` and `settings` (phase 5); `yourdata` gone into `settings` |
+| Measured (scripts/depmap.js) | r49 | r50 | r51 | r52 | r53 | r54 | r55 | r56 | r57 | r58 |
+|---|---|---|---|---|---|---|---|---|---|---|
+| Legacy top-level declarations | 928 | 819 | 638 | 518 | 511 | 504 | 503 (`allTimeBests` moved to `analytics.ts`) | 424 (storage and sync moved; `setSaveState` and `syncLine`, the two screen functions the moved code calls, stay) | 390 (History and Settings moved, with the account panel and the helpers only they read; `unitWords` stays with the session) | 312 (Plan, the library and Stats moved, with their charts and the helpers only they read; `minTxt` and `heightField` stay with Today) |
+| Pure, movable as they are | 324 | 215 (214 by r51's rule, which also counts browser-only APIs such as DOMParser) | 39 (each waits for its phase, below) | 34 (a call through `live.ts` counts as reading shared state) | 33 (since r53 a call to any module function that reads the store, the live model or the page counts too, `moduleReach`; by r52's rule 40, as effort.ts's `rirScale` reads the store) | 33 | 33 | 30 | 27 | 24 |
+| Shared mutable names | 61 (`ui` written from 12 files, `state` from 10) | 61 | 56 (`state`, `ui`, `cloud`, `acct` and `acctWait` are the store's) | 48 (the seven caches are the model's) | 48 | 48 | 48 | 33 (`cloud`'s writers are sync.ts's and four account actions) | 33 | 33 |
+| Legacy lines | 10,452 | 9,863 | 9,134 | 7,585 | 7,436 | 7,388 | 7,360 | 6,366 | 6,010 | 4,905 |
+| In `src/app/` | `config.ts` | and `util`, `units`, `library`, `routines`, `formulas` (109 declarations) | and 18 more modules, the store among them (182 declarations: 176 moved, the four shared objects, `state` and `setState`) | and 7 more modules, five grown (the 120 moved as 113: 96 taking the model, 16 unchanged and `invalidateIn`, the caches given by `freshCaches`; with `modelOf`, `LIVE`, `live` and 74 adapters) | and 3 more modules, `guide`, `providers` and `effort` (7 declarations moved, `routineUpdates` and `whyTarget` among them to change, so 75 adapters; 4 added) | and 2 more modules, `plans` (the plan a lift is done at, moved from `routines` to layer 2) and `sheets` (the sign-in sheet's fields kept through a redraw); `plannedSets`, `effShow`, `lastLighterWeek`, `muscleStatus`, `heavierLoad`, `defBand` and `appBand` moved (`lastLighterWeek` rewritten, to the averages' reading of a lighter week), 91 adapters | the same modules, grown by r55's fixes (no module added) | and 3 more modules, `normalize`, `storage` and `sync` (phase 4) | and 6 more modules, `act`, `view`, `display`, `env`, `history` and `settings` (phase 5); `yourdata` gone into `settings` | and 3 more modules, `plan`, `stats` and `graphs` (phase 5), `display` grown with what Today, the sheets and Stats share |
 
 ## The phases
 
