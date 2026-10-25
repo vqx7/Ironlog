@@ -177,10 +177,22 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
       window.ironlogAuth={user(){return null;},signOut(){return Promise.resolve();},deleteAccount(){return Promise.resolve();}};
       L.cloud.on=true;L.cloud.status='synced';L.cloud.last=Date.now()-5*60000;L.saveNow();`]
   ];
+  /* Settings' Weekly set targets changed on purpose in r58 (339 e: a muscle tracked only offers Set a
+     target, one given a target can go back, and the section's how-text says so), held by tests/r58.js
+     section 9; that section is left out of both pages here, its elements and its text, and the rest of
+     Settings is still held to r56.2. */
+  const heldOut = shot => {
+    const i = shot.tree.findIndex(t => t.includes('data-mkey="bands"'));
+    if (i < 0) return shot;
+    const next = (shot.tree[i + 1] || '').match(/<span class="sec-t">"([^"]*)"/);
+    // A section's text starts with its grip and its title, as the tree orders them.
+    const from = shot.text.indexOf('⠿\nWeekly set targets\n'), to = next ? shot.text.indexOf('⠿\n' + next[1] + '\n', from) : -1;
+    return { ...shot, tree: shot.tree.map((t, j) => (j === i ? '(Weekly set targets)' : t)), text: from < 0 ? shot.text : shot.text.slice(0, from) + '(Weekly set targets)\n' + (to < 0 ? '' : shot.text.slice(to)) };
+  };
   const ENVS = [null, 'preview'];
   for (const [name, seed] of SEEDS) for (const tab of ['settings', 'history']) for (const env of ENVS) {
     if (env && name !== 'demo data, lb') continue;
-    const a = await shot(OLD, seed, tab, env), b = await shot(FILE, seed, tab, env);
+    const a = heldOut(await shot(OLD, seed, tab, env)), b = heldOut(await shot(FILE, seed, tab, env));
     const d = screenDiff({ tree: a.tree, text: '' }, { tree: b.tree, text: '' });
     const firstDiff = d && { at: d.at, r56_2: d.before, now: d.now };
     ok(!firstDiff, `4. ${tab}, ${name}${env ? ', the preview' : ''}: the same elements, attributes and field values as r56.2`, firstDiff);

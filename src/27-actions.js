@@ -956,7 +956,7 @@ m.err=`Could not read that. Try the pattern 225x5, 5, 4 ${rirScale()==='rpe'?'rp
        idxShort), so it sets no target and still counts toward its trend. */
     const ex=d.ex.map(savedEx).filter(b=>b.sets.length); // savedEx (session.ts): one source with a first link keeping another device's workout (r55)
     // Side by side, the same lift is saved as one exercise (r34.2, V); apart, each stays where it was done.
-    const exJ=joinAdjacent(ex);ex.length=0;ex.push(...exJ);
+    const exJ=withPlanSets(joinAdjacent(ex),d,state.routines);ex.length=0;ex.push(...exJ);
     const cardio=draftCardio(d).map(c=>cleanCardio(c));
     if(!ex.length){
       if(cardio.length&&!d.editingId){putById(state.cardio,cardio);state.draft=null;commit();stopTimer();wakeOff();ui.todayDay=null;window.scrollTo(0,0);render();toast('Cardio saved. No lifting session was recorded.');return;}

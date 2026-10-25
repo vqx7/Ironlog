@@ -15,13 +15,13 @@ const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log
       const c = await ev(() => {
         const L = window.__ironlog;
         return { eye: document.querySelector('.hero .eyebrow').textContent, meta: document.querySelector('.hero .muted').textContent,
-          map: document.querySelector('[data-sk="today:map"] .sec-s').textContent.trim(), track: L.TRACK_ONLY.size,
+          map: document.querySelector('[data-sk="today:map"] .sec-s').textContent.trim(), track: Object.keys(L.state.settings.bands).filter(m => !L.hasTarget(m)).length,
           view: document.getElementById('view').innerText, over: document.documentElement.scrollWidth > window.innerWidth };
       });
       ok(/^Mon Oct 12 · /.test(c.eye), 'Today\'s date has no comma: Mon Oct 12' + T, c.eye);
       ok(/· ~\d+ min$/.test(c.meta) && !/about/.test(c.meta), 'the day\'s minutes read ~N min' + T, c.meta);
       ok(!/about \d+ min/.test(c.view), 'nothing on Today says "about N min"' + T);
-      // 23 muscle groups (tests/map3d.js), less the tracked-only ones, which have no target.
+      // 23 muscle groups (tests/map3d.js), less the ones with no target (hasTargetIn, r58).
       const m = c.map.match(/^(\d+) of (\d+) on target$/);
       ok(m && +m[2] === 23 - c.track && +m[1] <= +m[2], 'the Muscle map summary is a count out of the muscles with a target' + T, c.map);
       ok(!c.over, 'no horizontal overflow on Today' + T);

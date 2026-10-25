@@ -128,8 +128,8 @@ export const okExtraKey = (k: string): boolean => /^[A-Za-z][\w]{0,39}$/.test(k)
 export const KNOWN_ITEM: ReadonlySet<string> = new Set(['jump']),
   KNOWN_CARDIO: ReadonlySet<string> = new Set(['dist']),
   KNOWN_MEAS: ReadonlySet<string> = new Set(MEAS.map(x => x[0])),
-  // A saved session's exercise: the injury it was held for (r54).
-  KNOWN_SEX: ReadonlySet<string> = new Set(['inj']);
+  // A saved session's exercise: the injury it was held for (r54), and the sets its plan gave it (r58).
+  KNOWN_SEX: ReadonlySet<string> = new Set(['inj', 'ps']);
 
 /* ---------- cleaners ---------- */
 

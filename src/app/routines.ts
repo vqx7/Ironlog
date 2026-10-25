@@ -244,6 +244,51 @@ export function pwOf(routines: readonly (RoutineLike & { id: string })[], id: st
   return n > 0 ? n : undefined;
 }
 
+/* The sets a routine's plan gives a lift, for a session saved on one of its
+   days to record with the lift (SessionEx.ps, r58, 339 h): the day's item
+   first, else the routine's first day with it (planItemOf, the order every
+   plan of a lift is read in). Undefined for a lift on no day of it, or a
+   routine gone. A session keeps the plan it was done to, so a plan changed
+   later never rereads the sessions before it (the r58 review: a plan raised
+   from 3 sets to 4 read every session of 3 as short). */
+/** The sets the routine with this id plans for a lift, the given day first; undefined when it plans none or is gone. */
+export function planSetsOf(
+  routines: readonly {
+    id: string;
+    days: readonly { id: string; items: readonly { exId: string; sets: number }[] }[];
+  }[],
+  id: string,
+  dayId: string | null | undefined,
+  exId: string
+): number | undefined {
+  const R = routines.find(r => r.id === id);
+  const it = R ? planItemOf(R, exId, dayId) : null;
+  return it && Number.isInteger(it.sets) && it.sets >= 1 ? it.sets : undefined;
+}
+
+/* A workout's exercises as Finish saves them, each lift on a day of a
+   routine given the sets its plan gives it (planSetsOf), last, as normalize
+   writes it. None in Freestyle or with no day, and none on an edit, which
+   keeps the sets saved with the session (Finish carries them over with the
+   fields it does not rebuild, keepExtra). */
+/** The exercises given, each with its plan's sets where the workout is on a day of a routine, as new records (the ones given are not changed). */
+export function withPlanSets<B extends { exId: string; ps?: number | undefined }>(
+  ex: readonly B[],
+  d: {
+    editingId?: string | null | undefined;
+    free?: boolean | undefined;
+    dayId?: string | null | undefined;
+    routineId: string;
+  },
+  routines: Parameters<typeof planSetsOf>[0]
+): B[] {
+  if (d.editingId || d.free || !d.dayId) return [...ex];
+  return ex.map(b => {
+    const n = planSetsOf(routines, d.routineId, d.dayId, b.exId);
+    return n ? { ...b, ps: n } : b;
+  });
+}
+
 /* Sessions store the id of the day they were logged against, so reordering or
    removing cycle days never relinks history to the wrong workout. Sessions from
    before v3 have only a position, which is still correct because migration

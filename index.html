@@ -1747,7 +1747,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
   var safeKey = (k2) => typeof k2 === "string" && !/["'<>&`]/.test(k2);
   var EXTRA_MAX = 2e3, EXTRA_KEYS = 20;
   var okExtraKey = (k2) => /^[A-Za-z][\w]{0,39}$/.test(k2) && !(k2 in Object.prototype);
-  var KNOWN_ITEM = /* @__PURE__ */ new Set(["jump"]), KNOWN_CARDIO = /* @__PURE__ */ new Set(["dist"]), KNOWN_MEAS = new Set(MEAS.map((x2) => x2[0])), KNOWN_SEX = /* @__PURE__ */ new Set(["inj"]);
+  var KNOWN_ITEM = /* @__PURE__ */ new Set(["jump"]), KNOWN_CARDIO = /* @__PURE__ */ new Set(["dist"]), KNOWN_MEAS = new Set(MEAS.map((x2) => x2[0])), KNOWN_SEX = /* @__PURE__ */ new Set(["inj", "ps"]);
   function cleanCal(c4) {
     if (!c4 || typeof c4 !== "object") return null;
     const at = numOr(c4.at, NaN), pred = numOr(c4.pred, NaN);
@@ -2044,6 +2044,18 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     const R2 = routines.find((r4) => r4.id === id);
     const n3 = R2 ? plannedPerWeek(R2) : 0;
     return n3 > 0 ? n3 : void 0;
+  }
+  function planSetsOf(routines, id, dayId, exId) {
+    const R2 = routines.find((r4) => r4.id === id);
+    const it = R2 ? planItemOf(R2, exId, dayId) : null;
+    return it && Number.isInteger(it.sets) && it.sets >= 1 ? it.sets : void 0;
+  }
+  function withPlanSets(ex, d3, routines) {
+    if (d3.editingId || d3.free || !d3.dayId) return [...ex];
+    return ex.map((b2) => {
+      const n3 = planSetsOf(routines, d3.routineId, d3.dayId, b2.exId);
+      return n3 ? { ...b2, ps: n3 } : b2;
+    });
   }
   function sessDayIdx(R2, s3) {
     if (s3.dayId) {
@@ -2403,6 +2415,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     if (TARGETED.has(k2)) return true;
     const s3 = M3.s.settings;
     if ((s3.ownTargets || []).includes(k2) || (profIn(M3).focus || []).includes(k2)) return true;
+    if (TRACK_ONLY.has(k2)) return false;
     const a2 = appBandIn(M3, k2), b2 = s3.bands[k2];
     return b2[0] !== a2[0] || b2[1] !== a2[1];
   }
@@ -2915,7 +2928,9 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
                 // The row's own id (r56.1), last, where a build before it kept the unknown field.
                 ...typeof x2.rid === "string" ? { rid: fixId(x2.rid) } : {}
               });
-            })
+            }),
+            // The sets its routine's plan gave it when saved (r58, 339 h), last, as Finish writes it; absent unless recorded, so older records keep their hash.
+            ...typeof b2.ps === "number" && Number.isInteger(b2.ps) && b2.ps >= 1 && b2.ps <= 30 ? { ps: b2.ps } : {}
           },
           KNOWN_SEX
         );
@@ -4814,6 +4829,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
           light: !!ss.light || !!b2.light,
           held: !!b2.inj,
           rr: b2.rr || null,
+          ...b2.ps ? { ps: b2.ps } : {},
           topN: atTop.length,
           tAdj,
           tRaw,
@@ -4959,13 +4975,16 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
         if (afterBreak(last, x2.date)) normal.length = 0;
         last = x2;
         if (lighter(x2)) continue;
-        const before = normal.filter((q) => sameRR(q.rr, x2.rr)).slice(-2);
-        const sh = before.length ? shortOf(x2, before, x2.tag ? null : planSets(id, x2)) : void 0;
+        const prior = normal.filter((q) => sameRR(q.rr, x2.rr));
+        const before = prior.slice(-2);
+        const cap = before.length && !x2.tag ? planSets(id, x2) : null;
+        const hold = !x2.tag && x2.ps != null && prior.some((q) => setsAt(q, q.topW) >= (x2.ps || 0)) ? x2.ps : null;
+        const sh = before.length ? shortOf(x2, before, cap, hold) : void 0;
         if (sh) x2.short = sh;
         if (!(x2.tag && x2.short)) normal.push(x2);
       }
     }
-    function shortOf(x2, before, cap) {
+    function shortOf(x2, before, cap, hold) {
       const usual = (v3, own) => mid(x2.tag ? v3 : [...v3, own]);
       const loads = before.map((q) => q.topW);
       const was = Math.max(...loads), usualW = usual(loads, x2.topW);
@@ -4975,13 +4994,15 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
         before.map((q) => setsAt(q, usualW)),
         n3
       );
-      const want = cap != null && cap > 0 ? cap : sets;
+      const usualN = cap != null && cap > 0 ? Math.min(sets, cap) : sets;
+      const want = hold != null ? hold : usualN;
       if (n3 < want) return "sets";
       if (up) return void 0;
-      const tr = (q) => readingOf(q, want) ?? 0;
+      const k2 = Math.min(usualN, want);
+      const tr = (q) => readingOf(q, k2) ?? 0;
       if (x2.tRaw != null && before.every((q) => q.tRaw != null))
         return tr(x2) < usual(before.map(tr), tr(x2)) * USUAL_SHARE - 1e-9 ? "reading" : void 0;
-      const per = (q) => repsOf(q, want);
+      const per = (q) => repsOf(q, k2);
       const lighterW = x2.topW < usualW - 1e-6;
       return lighterW || per(x2) < usual(before.map(per), per(x2)) * USUAL_SHARE - 1e-9 ? "reading" : void 0;
     }
@@ -9091,7 +9112,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
    <p><b>Assisted machines</b>: less help is progress. <b>Timed holds</b>: add seconds, then load. <b>Bodyweight lifts never done with added load</b> (push-ups, pull-ups, a hanging leg raise): more reps, then harder reps or a little added load when you type it; the app never adds load you did not use.</p>
    <p><b>Back after more than 4 weeks off a lift</b>: about 90% of its last working load, with 2 or more reps in reserve (a convention: strength holds for about 4 weeks without training and falls faster after, Bosquet 2013). That first session back is the lift's new start. The next target picks up from it; its trend and stall test start again from it too, never drawn across the break. A Lighter day or a deload as the first session back sets no target, so the session after it is still back. A timed hold comes back the same way, at its load, holding about 90% as long.</p>
    <p><b>Your gym</b> (Settings): the dumbbells, kettlebells, plates, and stack steps you have. Suggestions stay on them, and a weight you type for a dumbbell counts as the nearest one.</p>
-   <p><b>One rule for every session.</b> A session sets the lift's next target only at its usual load and reps for its usual sets. Its usual is the middle of that session and the two before it in the range (not counting ones done lighter); on a lift your routine plans, its usual sets are the plan's, so fewer sets than planned never become the usual. A set counts toward them when its load is within a tenth of the session's working load, or at the usual load (a convention): a last set tried a step up, or sets lowered after a hard first one, still count, and a back-off set a tenth or more lighter does not. Sets past the usual count are left out when a session is compared with its usual. With fewer sets, or reps clearly under the usual at no heavier load (more than 3% by the strength reading, a convention), the target repeats, and the session still counts for its trend and PRs; two such sessions in a row are the new usual, and the app follows, except that fewer sets than the plan asks stay short. A heavier load than the two before is a step up, never short of the usual by its reps. A session done lighter sets no target and no trend. The same holds on a lighter day or in a deload: a lift done there at its usual load and reps is read as on any day, and its own sets were cut by the day, so they never become its usual.</p>
+   <p><b>One rule for every session.</b> A session sets the lift's next target only at its usual load and reps for its usual sets. Its usual is the middle of that session and the two before it in the range (not counting ones done lighter); its usual sets are never more than the plan asks, and in a session on a day of your routine they are the sets the plan gave the lift that day, once a session has done that many, so fewer sets than planned never become the usual there. Each session keeps the plan it was done to, so a plan changed later never rereads the sessions before it; sessions saved before version 2.12 read their own sets. A set counts toward them when its load is within a tenth of the session's working load, or at the usual load (a convention): a last set tried a step up, or sets lowered after a hard first one, still count, and a back-off set a tenth or more lighter does not. Sets past the usual count are left out when a session is compared with its usual. With fewer sets, or reps clearly under the usual at no heavier load (more than 3% by the strength reading, a convention), the target repeats, and the session still counts for its trend and PRs; two such sessions in a row are the new usual, and the app follows, except that fewer sets than the plan asks stay short. A heavier load than the two before is a step up, never short of the usual by its reps. A session done lighter sets no target and no trend. The same holds on a lighter day or in a deload: a lift done there at its usual load and reps is read as on any day, and its own sets were cut by the day, so they never become its usual.</p>
    <p><b>Last</b> is the most recent session of the lift in that day's rep range (the most recent of all when the range is new), labelled fewer sets, below usual, lighter, or deload when it was. When it did not set the target, the next target comes from the last full session, and the i beside the target names its date; grey reps come from that session too after one below usual or done lighter.</p>
    <p><b>Deload week</b>: half the sets (rounded up), about 90% of the load the normal day would ask for (or of last time's, if lower), in whole steps down (never under the empty bar on a full-bar lift), the bottom of the range, 3 or more reps in reserve. A week with ${LIGHTER_WEEK_WORDS}, stays out of the weekly volume average (a lift done there at its usual load with fewer sets than usual counts as done lighter for this, the sets cut on purpose); each lift done lighter stays out of its trend. A <b>lighter day</b> is the same for one day.</p>
    <p><b>Lighter sessions nobody marked</b> (an imported deload, say) are read from the numbers: a lift's heaviest load at least 10% under its previous three sessions and its strength reading at least 7% under. They are kept in history and, like a deload, set no target or trend. A session with half or more of its lifts done lighter, marked or read, is a lighter session, and a week with more than half its sessions lighter is left out of the weekly averages. Lighter sessions in a row for 2 weeks or more are a new level, not a deload, and count again. A convention.</p>
@@ -9104,7 +9125,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
         "stats",
         "Volume and Stats",
         `<p><b>A hard set</b> is a working set at RIR 3 or less${off ? " (with RIR off, every working set)" : ""}. Helper muscles count half a set (Pelland 2025); which muscles are helpers on each lift is the library's own call, a convention. With Settings, Count ${halfLbl()} as half a set on, a working set past RIR 3 counts half toward your weekly sets and targets, planned ones too (a convention); estimates, PRs, recovery, and the per-workout flag still count hard sets only.</p>
-   <p><b>Weekly targets</b> are per muscle in Settings, Weekly set targets. 10 to 20 hard sets a week for major muscles is typical, not a ceiling. The muscles lifters train directly for size (chest, lats, upper back, side and rear delts, biceps, triceps, quads, hamstrings, glutes, calves, and abs) have a target to start, since the dose-response studies measure such muscles. Every other muscle (traps, forearms, front delts, lower back, obliques, adductors, abductors, serratus, rotator cuff, neck, and tibialis) is tracked only: counted and shown, with no target, until you give it one with Set a target in Weekly set targets, type one, or name it a focus; then it counts everywhere a target counts. A target starting at 0 is met with no sets. A muscle is below target when its weekly average, to one decimal as shown, is under the minimum. On a routine run as a cycle, weeks can differ in which of its days fall in them (two days in turn, three times a week). A muscle under its minimum only because fewer of the days that train it fell in the weeks averaged reads <b>on plan</b> when every session and set the cycle had due in those weeks was done and the plan reaches the target over the whole cycle. The radar on Stats measures each region against its minimum, so on or past the ring is on target. It averages your last 4 full weeks, from the week after your first; the chips above it switch to 2 or 8 weeks, for the radar only. During the week, short of the minimum shows as under way, not below.</p>
+   <p><b>Weekly targets</b> are per muscle in Settings, Weekly set targets. 10 to 20 hard sets a week for major muscles is typical, not a ceiling. The muscles lifters train directly for size (chest, lats, upper back, side delts, rear delts, biceps, triceps, quads, hamstrings, glutes, calves, and abs) have a target to start, since the dose-response studies measure such muscles. Every other muscle (traps, forearms, front delts, lower back, obliques, adductors, abductors, serratus, rotator cuff, neck, and tibialis) is tracked only: counted and shown, with no target, until you give it one with Set a target in Weekly set targets or name it a focus (any but serratus, rotator cuff, neck, and tibialis); then it counts everywhere a target counts. A target starting at 0 is met with no sets. A muscle is below target when its weekly average, to one decimal as shown, is under the minimum. On a routine run as a cycle, weeks can differ in which of its days fall in them (two days in turn, three times a week). A muscle under its minimum only because fewer of the days that train it fell in the weeks averaged reads <b>on plan</b> when every session and set the cycle had due in those weeks was done and the plan reaches the target over the whole cycle. The radar on Stats measures each region against its minimum, so on or past the ring is on target. It averages your last 4 full weeks, from the week after your first; the chips above it switch to 2 or 8 weeks, for the radar only. During the week, short of the minimum shows as under way, not below.</p>
    <p><b>Lagging strength</b> is a muscle whose lifts are falling, or flat with one of them stalled (a convention); with no clear trend, a stalled lift reads <b>A lift stalled</b>. A muscle whose lifts are all within day-to-day noise reads <b>unclear</b>, never 0%.</p>
    <p><b>Your target and the usual range</b>: picking a ready-made routine sets your minimums to what it plans, so Stats measures you against your plan. Plan, Weekly volume names the muscles that plan puts under the usual range.</p>
    <p><b>Planned sets</b> count the same way: a set planned at RIR 4 or more is not a planned hard set, and in a deload week the target is halved.</p>
@@ -10848,7 +10869,7 @@ ${stuck}${typeof A2.deleteAccount === "function" ? b`<button type="button" class
         "",
         b`${howText(
           "bands",
-          "Fractional hard sets per week: direct work 1, helper muscles 0.5 (Pelland 2025). 10 to 20 for major muscles fits the dose-response data; the upper number is typical, not a ceiling, and more still helps a little at more cost. The muscles lifters train directly for size have a target to start; glutes, rear delts, calves, and abs start lower, a convention, as compound lifts work them too. Every other muscle is tracked only, counted with no target, until you give it one with Set a target or name it a focus. Raise one or two muscles for a specialisation block, or set focus muscles in Your training. Default targets puts every one back."
+          "Fractional hard sets per week: direct work 1, helper muscles 0.5 (Pelland 2025). 10 to 20 for major muscles fits the dose-response data; the upper number is typical, not a ceiling, and more still helps a little at more cost. The muscles lifters train directly for size have a target to start; glutes, rear delts, calves, and abs start lower, a convention, as compound lifts work them too. Every other muscle is tracked only, counted with no target, until you give it one with Set a target or name it a focus (any but serratus, rotator cuff, neck, and tibialis). Raise one or two muscles for a specialisation block, or set focus muscles in Your training. Default targets puts every one back."
         )}
 <div class="card">
 <table class="t">
@@ -13219,7 +13240,7 @@ ${extraKpis()}</div>${nS ? dashSummary() : A}`;
       ["body", bodySec]
     ])}${tabFoot("dash")}`;
   }
-  var BEST_EST_TIP = "Your best estimated one-rep max (e1RM): the most one of your sets says you could lift once, from its load and its reps plus RIR. An estimate, not a tested max.";
+  var BEST_EST_TIP = "Your best estimated one-rep max (e1RM): the most that one of your sets says you could lift for a single rep, worked out from its load, its reps, and its RIR. An estimate, not a tested max.";
   function liftCard(exId, withData) {
     const I2 = IDX();
     const st = I2.exStats[exId];
@@ -15516,7 +15537,7 @@ ${extraKpis()}</div>${nS ? dashSummary() : A}`;
       const stage = v3 ? `<div class="bm3d" id="bm3d"><div class="bm3d-stage" role="img" aria-label="3D body, shaded by hard sets a week. Drag sideways to turn it, tap a muscle for its numbers. The same numbers are in the flat view."></div><p class="bm3d-msg small muted" hidden></p><div class="seg bm3d-turn" role="group" aria-label="Turn the body"><button class="chip" data-act="map3dTurn" data-v="0">Front</button><button class="chip" data-act="map3dTurn" data-v="1">Side</button><button class="chip" data-act="map3dTurn" data-v="2">Back</button></div></div>` : `<div class="bm-wrap">${fig("f", "Front")}${fig("b", "Back")}</div>`;
       return sec({ sk: "today:map", key: "map", title: "Muscle map", sub: msub, body: `<div class="row spread"><div class="seg" role="group" aria-label="View"><button class="chip ${v3 ? "" : "on"}" data-act="mapView" data-v="flat" aria-pressed="${!v3}">Flat</button><button class="chip ${v3 ? "on" : ""}" data-act="mapView" data-v="3d" aria-pressed="${v3}">3D</button></div><div class="seg" role="group" aria-label="Time range">${avg ? `<button class="chip ${src === "avg" ? "on" : ""}" data-act="mapSrc" data-v="avg" aria-pressed="${src === "avg"}">4-week avg</button>` : ""}<button class="chip ${src === "week" ? "on" : ""}" data-act="mapSrc" data-v="week" aria-pressed="${src === "week"}">This week</button></div></div>
   ${stage}
-  <div class="bm-legend small">${src === "week" ? `<span class="hastip" data-tip="The week is still going: short of the minimum so far, not behind."><i class="st-part"></i>Under way ${counts.part}</span>` : `<span><i class="st-under"></i>Below target ${counts.under}</span>${counts.plan ? `<span class="hastip" data-tip="${esc(ON_PLAN_TIP)}"><i class="st-plan"></i>On plan ${counts.plan}</span>` : ""}`}<span><i class="st-in"></i>On target ${counts.in}</span><span><i class="st-over"></i>Above ${counts.over}</span><span><i class="st-none"></i>${src === "week" ? "Not yet" : "None"} ${counts.none}</span>${counts.track ? `<span class="hastip" data-tip="Serratus, rotator cuff, neck, and tibialis: sets are counted, but no study sets a weekly dose, so they are never called under or over."><i class="st-track"></i>Tracked only ${counts.track}</span>` : ""}</div>
+  <div class="bm-legend small">${src === "week" ? `<span class="hastip" data-tip="The week is still going: short of the minimum so far, not behind."><i class="st-part"></i>Under way ${counts.part}</span>` : `<span><i class="st-under"></i>Below target ${counts.under}</span>${counts.plan ? `<span class="hastip" data-tip="${esc(ON_PLAN_TIP)}"><i class="st-plan"></i>On plan ${counts.plan}</span>` : ""}`}<span><i class="st-in"></i>On target ${counts.in}</span><span><i class="st-over"></i>Above ${counts.over}</span><span><i class="st-none"></i>${src === "week" ? "Not yet" : "None"} ${counts.none}</span>${counts.track ? `<span class="hastip" data-tip="Counted, with no weekly target, so never called under or over. Give one a target in Settings, Weekly set targets."><i class="st-track"></i>Tracked only ${counts.track}</span>` : ""}</div>
   ${detail}` });
     }
     function livePR(exId, s3, date) {
@@ -20084,7 +20105,7 @@ ${JSON.stringify(fb.context, null, 1)}`;
         const d3 = state.draft;
         if (!d3) return;
         const ex = d3.ex.map(savedEx).filter((b2) => b2.sets.length);
-        const exJ = joinAdjacent(ex);
+        const exJ = withPlanSets(joinAdjacent(ex), d3, state.routines);
         ex.length = 0;
         ex.push(...exJ);
         const cardio = draftCardio(d3).map((c4) => cleanCardio(c4));
@@ -21729,10 +21750,10 @@ ${JSON.stringify(fb.context, null, 1)}`;
       return state;
     }, set state(v3) {
       setState(v3);
-    }, fbContext, FB_CTX_MAX, logCut, logBuf, log, dateIndex, sessionsOn, bestLine, whyTarget, recent4w, weekSessions, fmtDate, fmtDateLong, fbShrink, orderAt, orderRun, dropOnlyLift, profHeavy, appBand, fitRecordOld, prof, profClean, profRule, profPlan, defPlan, defBand, profMoveBands, profApplyList, strengthPick, PROF_DAYS, FOCUS_MAX, estInLoad, keepExtra, EXTRA_MAX, draftPlanMin, pace, paceRatios, sessModelMin, PACE_N, PACE_DAYS, PACE_MIN, plainTemplate, trashTidy, ENV, KEY, COMMON, COMMON_TIP, isCommon, bwEvery, isRestWeek, sessCmp, avgWeeks, weekStreak, coach, noLog, afterSet, adjOn, bwAt, newBlock, cycleState, sortedSessions, addDays, loadIn, gymRack, gymClean, dbListOf, capOf, refreshEx, effShow, rirScale, setStr, libExercises, obGate, obTour, andList, belowMin, aboveMax, starterRoutine, starterSigs, plateList, exBarKg, VOL_MODES, liveLogFetch, regionSrc, fitTargets, firstFullWeek, moveBlock, BANDS, installSheet, siteHost, greyW, effW, greyR, lighterLoad, heavierLoad, incOf, swapPlan, planSetsPerWeek, weekNeed, stepRead, e1inv, rtfAt, rtfOf, rtfBand, calStats, rirEff, isHard, setCredit, tonnage, loadMode, loadWords, loadNote, progStep, jumpCap, setSecs, setupSecs, recovery, rolling7, rankDays, rankExercises, isCompound, patternOf, noE1, whtrLine: (p3) => markupOf(whtrLine(p3)), exHeadline: (id) => markupOf(exHeadline(id)), remainMin, shortPlan, weekPlan, cycleProjection, lastLighterWeek, avgFirstWeek, avgWait, stallWeeks, weeksAvg, fitFloors, refit, regionBalance, parseHeight, mixCheck, swapCands, eqPlan, exportCSV, importData, chunksOf, assemble, sessionMuscles, TRACK_ONLY, cloud, Hx, mergeChunk, baseOf, sync: () => cq(cloudPull), TEMPLATES, lastRFor, impDate, impRows, impNorm, impMatch, impFromText, impFromTable, impHeader, impBuild, impStart, impXlsx, parseSets, undoStack, undoRestore, undoForget, allTimeBests, bestsBoard: () => {
+    }, fbContext, FB_CTX_MAX, logCut, logBuf, log, dateIndex, sessionsOn, bestLine, whyTarget, recent4w, weekSessions, fmtDate, fmtDateLong, fbShrink, orderAt, orderRun, dropOnlyLift, profHeavy, appBand, fitRecordOld, prof, profClean, profRule, profPlan, defPlan, defBand, profMoveBands, profApplyList, strengthPick, PROF_DAYS, FOCUS_MAX, estInLoad, keepExtra, EXTRA_MAX, draftPlanMin, pace, paceRatios, sessModelMin, PACE_N, PACE_DAYS, PACE_MIN, plainTemplate, trashTidy, ENV, KEY, COMMON, COMMON_TIP, isCommon, bwEvery, isRestWeek, sessCmp, avgWeeks, weekStreak, coach, noLog, afterSet, adjOn, bwAt, newBlock, cycleState, sortedSessions, addDays, loadIn, gymRack, gymClean, dbListOf, capOf, refreshEx, effShow, rirScale, setStr, libExercises, obGate, obTour, andList, belowMin, aboveMax, starterRoutine, starterSigs, plateList, exBarKg, VOL_MODES, liveLogFetch, regionSrc, fitTargets, firstFullWeek, moveBlock, BANDS, installSheet, siteHost, greyW, effW, greyR, lighterLoad, heavierLoad, incOf, swapPlan, planSetsPerWeek, weekNeed, stepRead, e1inv, rtfAt, rtfOf, rtfBand, calStats, rirEff, isHard, setCredit, tonnage, loadMode, loadWords, loadNote, progStep, jumpCap, setSecs, setupSecs, recovery, rolling7, rankDays, rankExercises, isCompound, patternOf, noE1, whtrLine: (p3) => markupOf(whtrLine(p3)), exHeadline: (id) => markupOf(exHeadline(id)), remainMin, shortPlan, weekPlan, cycleProjection, lastLighterWeek, avgFirstWeek, avgWait, stallWeeks, weeksAvg, fitFloors, refit, regionBalance, parseHeight, mixCheck, swapCands, eqPlan, exportCSV, importData, chunksOf, assemble, sessionMuscles, TRACK_ONLY, hasTarget, cloud, Hx, mergeChunk, baseOf, sync: () => cq(cloudPull), TEMPLATES, lastRFor, impDate, impRows, impNorm, impMatch, impFromText, impFromTable, impHeader, impBuild, impStart, impXlsx, parseSets, undoStack, undoRestore, undoForget, allTimeBests, bestsBoard: () => {
       const b2 = bestsBoard();
       return { n: b2.n, html: markupOf(b2.html) };
-    }, obActive, fmtW, rirUsual, rirEst, routineFromTemplate, plannedSets, map3d: () => ({ state: B3.state, fail: B3.fail, meshes: B3.meshes.length, yaw: B3.yaw, glow: Object.keys(B3.mats).filter((m3) => B3.mats[m3].emissiveIntensity > 0), canvas: !!document.querySelector("#bm3d canvas"), colors: Object.fromEntries(Object.entries(B3.mats).map(([m3, mt]) => [m3, "#" + mt.color.getHexString()])), pick: (x2, y2) => map3dPick(x2, y2), want: map3dColors() }), cloudState: () => ({ on: cloud.on, status: cloud.status, err: cloud.err, uid: cloud.uid, acct: cloud.acct }), acctUser: () => acct.user, acctWaiting: () => !!acctWait.pw, flush: () => cq(cloudFlush), cloudInit, cloudStop, asideList, backupDue, routineUpdates, planFor, platesMode, plateText, chunksOf, IDX, suggest, e1, render, ACT, ui, makeDemo, invalidate, normalize, snapshot, saveNow, timer, weekStats, weekStart, today, EX, blockProgress, dayMinutes, weekStreak, coach, tonnageNow, livePR, movers, stalledIds, muscleStatus, actualAvg4, plannedPerWeek, parseSets, fillSets, newBlock, lastNoteOf, sizeRows, sessionMuscleSets, sessionCapNote: (d3) => markupOf(sessionCapNote(d3)), routineClutter, rowBlank, dayReasons, impTextSets, liftTrend, prsWithin, activeRoutine, rackStep, repFloor, sessionLength, prBeat, exInjury, exJoints, openModal, EQUIP, HARD_EX, recentLighter, planEvidenceNote: (pv) => markupOf(planEvidenceNote(pv)), howToUrl, editFp, toast, avgWeeks, regionWk, REGION_WKS, SAFETY_TXT, libFiltered, nameMatch, workLoad, fitE, lighter, offTarget, sessionWord, sessionWords, dayLabel, daySets, ssLetters, routineSig, tplCountLine, pwOf, dropStarter, trainOn, planItemOf, fatigueStalls, avgWeeksTxt, routineFromLog, repSpan, rangeWords, calDueIdx, readyCard, sameRR, hintOnce, overSets, rackTol, daysOff, BACK_DAYS, prName, sessTm, effTgt, bwDueCard, bwNoLoad, applyPick, joinAdjacent, sameExOnce, savedEx, goalState, goalLine: (id) => markupOf(goalLine(id)), bwRefLoad, ML, exMusParts, musTrend, U, toD, fromD, loadLabel, exName, planCredit, gymOf, isDeloadWeek, freeMode, injuredSet, prLoad, statsUpTo, readiness, bwRef, weekRoutine, logBack, logStart, easierText, barKg, suggestCore, loadOf, bwLoad, hardCredit, rirHalfOn, prFrame, stallWords, atRangeTop, oddLoad, lightZero };
+    }, obActive, fmtW, rirUsual, rirEst, routineFromTemplate, plannedSets, map3d: () => ({ state: B3.state, fail: B3.fail, meshes: B3.meshes.length, yaw: B3.yaw, glow: Object.keys(B3.mats).filter((m3) => B3.mats[m3].emissiveIntensity > 0), canvas: !!document.querySelector("#bm3d canvas"), colors: Object.fromEntries(Object.entries(B3.mats).map(([m3, mt]) => [m3, "#" + mt.color.getHexString()])), pick: (x2, y2) => map3dPick(x2, y2), want: map3dColors() }), cloudState: () => ({ on: cloud.on, status: cloud.status, err: cloud.err, uid: cloud.uid, acct: cloud.acct }), acctUser: () => acct.user, acctWaiting: () => !!acctWait.pw, flush: () => cq(cloudFlush), cloudInit, cloudStop, asideList, backupDue, routineUpdates, planFor, platesMode, plateText, chunksOf, IDX, suggest, e1, render, ACT, ui, makeDemo, invalidate, normalize, snapshot, saveNow, timer, weekStats, weekStart, today, EX, blockProgress, dayMinutes, weekStreak, coach, tonnageNow, livePR, movers, stalledIds, muscleStatus, actualAvg4, plannedPerWeek, parseSets, fillSets, newBlock, lastNoteOf, sizeRows, sessionMuscleSets, sessionCapNote: (d3) => markupOf(sessionCapNote(d3)), routineClutter, rowBlank, dayReasons, impTextSets, liftTrend, prsWithin, activeRoutine, rackStep, repFloor, sessionLength, prBeat, exInjury, exJoints, openModal, EQUIP, HARD_EX, recentLighter, planEvidenceNote: (pv) => markupOf(planEvidenceNote(pv)), howToUrl, editFp, toast, avgWeeks, regionWk, REGION_WKS, SAFETY_TXT, libFiltered, nameMatch, workLoad, fitE, lighter, offTarget, sessionWord, sessionWords, dayLabel, daySets, ssLetters, routineSig, tplCountLine, pwOf, planSetsOf, withPlanSets, dropStarter, trainOn, planItemOf, fatigueStalls, avgWeeksTxt, routineFromLog, repSpan, rangeWords, calDueIdx, readyCard, sameRR, hintOnce, overSets, rackTol, daysOff, BACK_DAYS, prName, sessTm, effTgt, bwDueCard, bwNoLoad, applyPick, joinAdjacent, sameExOnce, savedEx, goalState, goalLine: (id) => markupOf(goalLine(id)), bwRefLoad, ML, exMusParts, musTrend, U, toD, fromD, loadLabel, exName, planCredit, gymOf, isDeloadWeek, freeMode, injuredSet, prLoad, statsUpTo, readiness, bwRef, weekRoutine, logBack, logStart, easierText, barKg, suggestCore, loadOf, bwLoad, hardCredit, rirHalfOn, prFrame, stallWords, atRangeTop, oddLoad, lightZero };
     render();
     wakeOn();
     timerResume();

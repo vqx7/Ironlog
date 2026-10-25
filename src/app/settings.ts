@@ -805,7 +805,7 @@ export function viewSettings(): TemplateResult {
       '',
       html`${howText(
         'bands',
-        'Fractional hard sets per week: direct work 1, helper muscles 0.5 (Pelland 2025). 10 to 20 for major muscles fits the dose-response data; the upper number is typical, not a ceiling, and more still helps a little at more cost. The muscles lifters train directly for size have a target to start; glutes, rear delts, calves, and abs start lower, a convention, as compound lifts work them too. Every other muscle is tracked only, counted with no target, until you give it one with Set a target or name it a focus. Raise one or two muscles for a specialisation block, or set focus muscles in Your training. Default targets puts every one back.'
+        'Fractional hard sets per week: direct work 1, helper muscles 0.5 (Pelland 2025). 10 to 20 for major muscles fits the dose-response data; the upper number is typical, not a ceiling, and more still helps a little at more cost. The muscles lifters train directly for size have a target to start; glutes, rear delts, calves, and abs start lower, a convention, as compound lifts work them too. Every other muscle is tracked only, counted with no target, until you give it one with Set a target or name it a focus (any but serratus, rotator cuff, neck, and tibialis). Raise one or two muscles for a specialisation block, or set focus muscles in Your training. Default targets puts every one back.'
       )}
 <div class="card">
 <table class="t">

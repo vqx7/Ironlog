@@ -226,7 +226,9 @@ export function cleanSess(raw: unknown, si: number): Rec {
                   // The row's own id (r56.1), last, where a build before it kept the unknown field.
                   ...(typeof x.rid === 'string' ? { rid: fixId(x.rid) } : {})
                 });
-              })
+              }),
+            // The sets its routine's plan gave it when saved (r58, 339 h), last, as Finish writes it; absent unless recorded, so older records keep their hash.
+            ...(typeof b.ps === 'number' && Number.isInteger(b.ps) && b.ps >= 1 && b.ps <= 30 ? { ps: b.ps } : {})
           },
           KNOWN_SEX
         );

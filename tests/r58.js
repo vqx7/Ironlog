@@ -29,8 +29,9 @@
 //      first, was read as a muscle), and the waist-to-height tip says all it
 //      says (r57 cut it at the height's inch mark, 5'10");
 //   6  339 (i): Stats says Best estimate, never e1RM, its tip naming it;
-//   7  339 (h): on a lift the routine plans, its usual sets are the plan's, so
-//      fewer sets never become the usual; a lift it does not plan reads its own;
+//   7  339 (h): in a session on a day of the routine, a lift's usual sets are
+//      the plan's, so fewer sets never become the usual; a lift it does not
+//      plan, or one done in Freestyle, reads its own as before;
 //   8  one PR (343 6): a heavier set that is no PR is no PR in the toast, the
 //      row's mark, the Lifts chart, the preview's PR last time and Readiness;
 //   9  339 (e): a default target only on the muscles lifters train directly
@@ -104,7 +105,7 @@ const SCREENS = [
      tracked only says how to give it a target, and r57's "e1RM" reads as section 6 says (339 i). The
      rest of a difference fails. */
   const KEEP = "L.state.settings.ownTargets=['traps','lowerBack','frontDelts','forearms','obliques','adductors','abductors'];L.saveNow();";
-  const TIP = 'Your best estimated one-rep max (e1RM): the most one of your sets says you could lift once, from its load and its reps plus RIR. An estimate, not a tested max.';
+  const TIP = 'Your best estimated one-rep max (e1RM): the most that one of your sets says you could lift for a single rep, worked out from its load, its reps, and its RIR. An estimate, not a tested max.';
   const asNow = shot => ({
     ...shot,
     tree: shot.tree.map(t => t.replace(/Tracked only: no study sets a weekly dose for it\./g, 'Tracked only: counted, with no target. Give it one in Settings, Weekly set targets.').replace(/<div class="l">"Best e1RM \(([^)]*)\)"<\/div>/g, (_, u) => `<div class="l">"Best estimate (${u})"<button aria-label="About the best estimate" class="tipi" data-tip=${JSON.stringify(TIP)} type="button">"i"</button></div>`).replace(/<th class="r">"e1RM"<\/th>/g, '<th class="r">"Best estimate"</th>')),
@@ -361,17 +362,20 @@ const SCREENS = [
     await Q.page.context().close();
   }
 
-  // ---- 7. 339 (h): on a lift the routine plans, its usual sets are the plan's, so fewer sets never become the usual.
+  // ---- 7. 339 (h): in a session on a day of the routine, a lift's usual sets are the plan's, so fewer sets never become the usual.
+  // Since the review of r58, each such session keeps the sets its plan gave the lift then (`ps`), written by Finish, and is read by them.
   if (run(7)) {
     const Q = await open(FILE, { browser, clock: '2026-10-15T10:00:00' });
     const q = (f, a) => Q.page.evaluate(f, a);
-    // A routine of one day, bench press planned at 4 sets of 6 to 10, and the sessions given (sets as [load, reps]).
+    // A routine of one day, bench press planned at 4 sets of 6 to 10, and the sessions given (sets as [load, reps], then
+    // the sets the plan gave it then, as Finish saves them on a day of the routine: 4 unless given).
     const log = (planned, sets) => q(([planned, sets]) => {
       const L = window.__ironlog; const s = L.state; s.settings.onboarded = true; s.settings.unit = 'kg';
       const R = { id: 'R58', name: 'R58', schedule: 'cycle', days: [{ id: 'D58', name: 'Push', rest: false, items: [{ uid: 'i58', exId: 'bench', sets: 4, repMin: 6, repMax: 10, rir: 1, rest: 120, inc: 2.5, ss: null }] }] };
       s.routines = [R]; s.activeRoutineId = 'R58'; s.draft = null; s.deloadWeek = null; s.injuries = [];
-      const exId = planned ? 'bench' : 'floorPress';
-      s.sessions = sets.map(([id, date, w, reps]) => ({ id, date, dayIdx: 0, dayId: planned ? 'D58' : null, dayName: planned ? 'Push' : 'Session', routineId: planned ? 'R58' : '', free: !planned, notes: '', ex: [{ exId, rr: [6, 10], sets: reps.map(r => ({ w, r, rir: 1, warm: false, drop: false })) }] }));
+      // planned: bench on the routine's day; 'free': bench in Freestyle sessions; false: floor press, on no day of the routine, in Freestyle.
+      const exId = planned ? 'bench' : 'floorPress'; const day = planned === true;
+      s.sessions = sets.map(([id, date, w, reps, ps]) => ({ id, date, dayIdx: 0, dayId: day ? 'D58' : null, dayName: day ? 'Push' : 'Session', routineId: day ? 'R58' : '', free: !day, notes: '', ex: [{ exId, rr: [6, 10], sets: reps.map(r => ({ w, r, rir: 1, warm: false, drop: false })), ...(day ? { ps: ps || 4 } : {}) }] }));
       L.state = L.normalize(s); L.invalidate(); L.saveNow();
       const I = L.IDX(); const xs = I.byEx[exId] || [];
       const g = L.suggest(exId, { sets: 4, repMin: 6, repMax: 10, rir: 1, rest: 120, inc: 2.5 }, {});
@@ -381,9 +385,50 @@ const SCREENS = [
     const pl = await log(true, S);
     ok(pl.short[1] === 'sets' && pl.short[2] === 'sets' && pl.basis === '2026-10-01' && /fewer sets/.test(pl.text || '') && pl.n === 3 && pl.prs.includes('h2'),
       '7. bench planned at 4 sets, 100 x 8 x 4 then 100 x 9 x 3 twice: both short of the plan\'s 4 sets, so the target still comes from the 4-set session, Last says fewer sets, and the trend and the PR read them', pl);
-    // A guard: a lift on no day of the routine reads its own sessions, as before, so two of 3 sets in a row are its usual.
+    // Guards: a lift on no day of the routine reads its own sessions, as before, so two of 3 sets in a row are its usual; so does a planned lift done in Freestyle.
     const fr = await log(false, S);
     ok(fr.short[1] === 'sets' && !fr.short[2] && fr.basis == null, '7. a lift the routine does not plan (floor press, freestyle) reads its own sessions as before: two of 3 sets in a row are its usual, and the target comes from the last', fr);
+    const fb = await log('free', S);
+    ok(fb.short[1] === 'sets' && !fb.short[2] && fb.basis == null, '7. bench, planned at 4, done in Freestyle sessions the same way reads its own sessions too, as before', fb);
+    // From the review of r58 (fails on 5eb8d03, passes on r57; the next case fails on both): six weeks of 3 sets, 100 to 112.5, done to a plan of 3,
+    // then the plan raised to 4. Each session is read by its own plan, so none is short and the target comes from the last.
+    const WK = ['2026-09-03', '2026-09-10', '2026-09-17', '2026-09-24', '2026-10-01', '2026-10-08'];
+    const up = await log(true, [100, 102.5, 105, 107.5, 110, 112.5].map((w, i) => ['u' + i, WK[i], w, [8, 8, 8], 3]));
+    ok(up.short.every(x => x === null) && up.basis == null && !/fewer sets/.test(up.text || '') && /at 112\.5 kg$/.test(up.target || ''),
+      '7. a plan raised from 3 sets to 4 after six sessions of 3 done to a plan of 3: none of them is short, and the target comes from the last (112.5), not the first', up);
+    // The coach's two ways: a set taken off (4 to 3, after 100 x 8 x 4), five weeks of 3 to 110, then the set put back and a
+    // session of 3 at 112.5: only that one is short of its plan's 4, which a session has done, so the target stays at 110.
+    const back = await log(true, [[100, 4, 4], [102.5, 3, 3], [105, 3, 3], [107.5, 3, 3], [110, 3, 3], [112.5, 3, 4]].map(([w, n, ps], i) => ['b' + i, WK[i], w, Array(n).fill(8), ps]));
+    ok(back.short.slice(0, 5).every(x => x === null) && back.short[5] === 'sets' && back.basis === '2026-10-01' && /at 110 kg$/.test(back.target || ''),
+      '7. a set taken off and put back: the sessions of 3 done to a plan of 3 stay as they were, and only the session of 3 after it went back to 4 is short (the target from 110, not 100)', back);
+    // Finish saves the sets the plan gave each lift on a day of the routine, and nothing in Freestyle; an edit from History
+    // keeps the sets saved with it, whatever the plan says by then.
+    const fin = await q(async () => {
+      const L = window.__ironlog; const s = L.state; s.settings.onboarded = true; s.settings.autoDone = true; s.sessions = []; s.draft = null; L.makeDemo();
+      for (const k of ['sessions', 'bodyweights', 'measurements']) for (const x of s[k]) delete x.demo; L.invalidate();
+      L.ui.tab = 'today'; L.render(); await new Promise(r => setTimeout(r, 100));
+      document.querySelector('.hero [data-act="startSession"]').click(); await new Promise(r => setTimeout(r, 150));
+      const d = s.draft; const R = s.routines.find(r => r.id === d.routineId);
+      for (const b of d.ex) Object.assign(b.sets[0], { w: b.sets[0].w || 20, r: 8, done: true });
+      d._rampAsked = true; d._leftAsked = true; L.ACT.finishNow(); await new Promise(r => setTimeout(r, 300));
+      const sv = L.sortedSessions().slice(-1)[0];
+      const planned = sv.ex.map(b => [b.ps, L.planItemOf(R, b.exId, d.dayId).sets]);
+      const it = L.planItemOf(R, sv.ex[0].exId, d.dayId); const was = it.sets; it.sets = was + 1;
+      L.ui.tab = 'history'; L.render(); L.ACT.histEdit({ dataset: { id: sv.id } }); await new Promise(r => setTimeout(r, 100));
+      s.draft.ex[0].sets[0].r = 9; s.draft._rampAsked = true; L.ACT.finishNow(); await new Promise(r => setTimeout(r, 300));
+      const ed = s.sessions.find(x => x.id === sv.id); const edited = !s.draft && ed.ex[0].sets[0].r === 9;
+      it.sets = was;
+      L.ui.tab = 'today'; L.render(); await new Promise(r => setTimeout(r, 100));
+      // Freestyle: a lift the routine plans, added to a blank session, saved with no plan's sets.
+      L.ACT.startFree(); await new Promise(r => setTimeout(r, 150));
+      const f = s.draft; const exId = it.exId; f.ex.push(L.newBlock(exId, L.planFor(exId, null, null, false, f.date), {})); Object.assign(f.ex[f.ex.length - 1].sets[0], { w: 20, r: 8, done: true });
+      f._rampAsked = true; f._leftAsked = true; L.ACT.finishNow(); await new Promise(r => setTimeout(r, 300));
+      const fs = s.sessions.find(x => x.id === f.id) || { ex: [] };
+      return { planned, edited, kept: [ed.ex[0].ps, was], free: { free: !!fs.free, ex: fs.ex.map(b => [b.exId, 'ps' in b]) }, saved: JSON.parse(localStorage.getItem(L.KEY)).sessions.find(x => x.id === sv.id).ex.map(b => b.ps) };
+    });
+    ok(fin.planned.length > 0 && fin.planned.every(([a, b]) => a === b) && fin.saved.every(x => typeof x === 'number'), '7. Finish on a day of the routine saves, with each lift, the sets its plan gives it', fin);
+    ok(fin.edited && fin.kept[0] === fin.kept[1], '7. an edit from History keeps the sets saved with the session, after the plan changed', fin);
+    ok(fin.free.free && fin.free.ex.length === 1 && fin.free.ex[0][1] === false, '7. a Freestyle session saves no plan\'s sets, so it reads its own, as before', fin.free);
     await Q.page.context().close();
   }
 
@@ -440,8 +485,8 @@ const SCREENS = [
   }
 
   // ---- 9. 339 (e): a muscle has a default weekly target when lifters train it directly for size; any
-  // other is tracked only until the lifter gives it a target (typed, Set a target, or a focus), which then
-  // counts everywhere a target counts.
+  // other is tracked only until the lifter gives it a target (Set a target, a focus, or one typed before
+  // r58 on a muscle that counted it then), which then counts everywhere a target counts.
   if (run(9)) {
     const Q = await open(FILE, { browser, clock: '2026-10-24T10:00:00' });
     const q = (f, a) => Q.page.evaluate(f, a);
@@ -461,11 +506,17 @@ const SCREENS = [
     ok(/tracked$/.test(traps.stats || '') && /tracked$/.test(traps.plan || '') && traps.st === 'track', '9. traps, given no target, is tracked only on Stats and Plan, with no target', traps);
     ok(/\/10-20$/.test(chest.stats || '') && chest.st !== 'track', '9. chest keeps its default target, 10 to 20', chest);
     ok(/of 12 on target/.test(traps.map), '9. the muscle map counts the 12 muscles with a target', traps.map);
-    // A target typed for traps and one for serratus (before r58 its boxes did nothing): both count.
+    // A target typed before r58 for traps counts as it did on r57; one typed for serratus does not, as r57
+    // never counted one on the four tracked since r29 (a log from before r29 can hold their old numbers),
+    // until Set a target gives it one, with those numbers.
     await q(() => { const L = window.__ironlog; L.state.settings.bands.traps = [8, 14]; L.state.settings.bands.serratus = [3, 6]; L.saveNow(); L.invalidate(); });
     const tt = await look('traps'), ts = await look('serratus');
-    ok(/\/8-14$/.test(tt.stats || '') && /\/8-14$/.test(tt.plan || '') && tt.st !== 'track' && /\/3-6$/.test(ts.stats || '') && ts.st !== 'track' && /of 14 on target/.test(ts.map),
-      '9. a target typed for traps (8 to 14) and for serratus (3 to 6) counts on Stats, Plan and the map', { tt, ts });
+    ok(/\/8-14$/.test(tt.stats || '') && /\/8-14$/.test(tt.plan || '') && tt.st !== 'track' && /tracked$/.test(ts.stats || '') && ts.st === 'track' && /of 13 on target/.test(ts.map),
+      '9. a target typed for traps (8 to 14) counts on Stats, Plan and the map; one typed for serratus before r58, which r57 never counted, does not', { tt, ts });
+    await q(() => { const L = window.__ironlog; L.state.settings.ownTargets = ['serratus']; L.saveNow(); L.invalidate(); });
+    const ts2 = await look('serratus');
+    ok(/\/3-6$/.test(ts2.stats || '') && ts2.st !== 'track' && /of 14 on target/.test(ts2.map), '9. given a target (Set a target), serratus counts with the numbers it had, 3 to 6', ts2);
+    await q(() => { const L = window.__ironlog; delete L.state.settings.ownTargets; L.saveNow(); L.invalidate(); });
     // Settings: a muscle with no target offers Set a target; with it set, the boxes and Track only.
     const ui1 = await q(async () => {
       const L = window.__ironlog; L.state.settings.bands.traps = L.appBand('traps'); L.state.settings.bands.serratus = L.appBand('serratus'); L.saveNow(); L.invalidate();
@@ -498,6 +549,12 @@ const SCREENS = [
       return { after, back: (L.state.settings.ownTargets || []).join() };
     });
     ok(def.after == null && def.back === 'forearms,neck', '9. Default targets takes the targets given back off, and Undo puts them back', def);
+    // The muscle map's legend says what Tracked only means for every such muscle, not only the four tracked since r29 (the review of r58).
+    const tip = await q(async () => {
+      const L = window.__ironlog; L.ui.tab = 'today'; L.render(); await new Promise(r => setTimeout(r, 150));
+      const i = document.querySelector('#view .bm-legend .st-track'); return i && i.parentElement.dataset.tip;
+    });
+    ok(tip === 'Counted, with no weekly target, so never called under or over. Give one a target in Settings, Weekly set targets.', '9. the map\'s Tracked only tip covers every muscle with no target and says how to give one', tip);
     ok(!Q.errors.length, '9. no page errors', Q.errors);
     await Q.page.context().close();
   }

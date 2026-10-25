@@ -36,11 +36,11 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
     const c = await vol();
     ok(c.canvas && /week average|weeks you trained of the last \d+, a lighter week left out/.test(c.text) && !/so far/.test(c.text), 'with full weeks logged it reads your average', c.text.slice(0, 200));
     // Neck and tibialis: tracked only, never flagged, no target in their region.
-    const t = await ev(() => { const L = window.__ironlog; const reg = L.regionBalance({ abs: 6, obliques: 3, neck: 50, calves: 8, tibialis: 40 }); const core = reg.find(x => x.label === 'Core'), calves = reg.find(x => x.label === 'Calves'); const b = L.state.settings.bands; L.ui.tab = 'dash'; L.ui.folds['dash:weak'] = true; L.render(); const w = document.querySelector('#view > [data-mkey="weak"]').innerText; return { track: ['neck', 'tibialis', 'serratus', 'rotatorCuff'].every(m => L.TRACK_ONLY.has(m)), coreLo: core.lo, coreGot: core.got, want: b.abs[0] + b.obliques[0], calvesLo: calves.lo, calvesWant: b.calves[0], calvesGot: calves.got, flagged: /\bNeck\b|\bTibialis\b/.test(w) }; });
-    ok(t.track && t.coreLo === t.want && t.coreGot === 9 && t.calvesLo === t.calvesWant && t.calvesGot === 8 && !t.flagged, 'neck and tibialis are tracked only: never flagged, and left out of their region on both sides', t);
+    const t = await ev(() => { const L = window.__ironlog; const reg = L.regionBalance({ abs: 6, obliques: 3, neck: 50, calves: 8, tibialis: 40 }); const core = reg.find(x => x.label === 'Core'), calves = reg.find(x => x.label === 'Calves'); const b = L.state.settings.bands; L.ui.tab = 'dash'; L.ui.folds['dash:weak'] = true; L.render(); const w = document.querySelector('#view > [data-mkey="weak"]').innerText; return { track: ['neck', 'tibialis', 'serratus', 'rotatorCuff'].every(m => L.TRACK_ONLY.has(m)), coreLo: core.lo, coreGot: core.got, want: b.abs[0], calvesLo: calves.lo, calvesWant: b.calves[0], calvesGot: calves.got, flagged: /\bNeck\b|\bTibialis\b/.test(w) }; });
+    ok(t.track && t.coreLo === t.want && t.coreGot === 6 && t.calvesLo === t.calvesWant && t.calvesGot === 8 && !t.flagged, 'neck and tibialis are tracked only: never flagged, and left out of their region on both sides (and obliques since r58, given no target)', t);
     await ev(() => { const L = window.__ironlog; L.ACT.guideOpen(); });
     const g = await ev(() => document.querySelector('#modal .gsec[data-g="stats"] .gbody').textContent);
-    ok(/Serratus, rotator cuff, neck, and tibialis are tracked only/.test(g), 'the Guide says which muscles are tracked only, and why', g.slice(g.indexOf('Serratus'), g.indexOf('Serratus') + 120));
+    ok(/Every other muscle \(traps[^)]*serratus, rotator cuff, neck, and tibialis\) is tracked only/.test(g) && /since the dose-response studies measure such muscles/.test(g), 'the Guide says which muscles are tracked only, and why', g.slice(g.indexOf('Every other muscle'), g.indexOf('Every other muscle') + 160));
     await ev(() => window.__ironlog.ACT.mClose());
     ok(!P.errors.length, 'no page errors (radar)', P.errors);
     await P.browser.close();
@@ -255,9 +255,12 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
     });
     ok(/tracked/.test(tr.neckTxt) && !tr.neckZone && /\/\d+-\d+/.test(tr.chestTxt) && tr.chestZone, 'volume rows: a tracked-only muscle shows "tracked" and no target zone; others keep theirs', tr);
     ok(tr.neckLines === 0 && tr.chestLines > 0, 'the weekly trend draws target lines only for muscles with a target', tr);
-    // Pick for me never chases a tracked-only muscle's "deficit".
-    const px = await ev(() => { const L = window.__ironlog; const s = L.state.settings; const keep = s.bands.neck; s.bands.neck = [30, 40]; L.invalidate(); const R = L.state.routines.find(r => r.id === L.state.activeRoutineId); const d = R.days.find(x => !x.rest); const a = L.rankExercises({ ex: [], date: L.today(), dayId: d.id }).map(x => x.m); s.bands.neck = keep; L.invalidate(); return a; });
-    ok(Array.isArray(px) && !px.includes('neck'), 'Pick for me does not chase a tracked-only muscle even with a high target', px);
+    // Pick for me never chases a "deficit" on a muscle with no target; one the lifter gives a target counts there too (339 e, r58).
+    const px = await ev(() => { const L = window.__ironlog; const s = L.state.settings; const R = L.state.routines.find(r => r.id === L.state.activeRoutineId); const d = R.days.find(x => !x.rest); const pick = () => L.rankExercises({ ex: [], date: L.today(), dayId: d.id }).map(x => x.m);
+      const none = pick(); const keep = s.bands.neck; s.bands.neck = [30, 40]; L.invalidate(); const typed = pick(); s.ownTargets = ['neck']; L.invalidate(); const given = pick();
+      s.bands.neck = keep; delete s.ownTargets; L.invalidate(); return { none, typed, given }; });
+    ok(Array.isArray(px.none) && !px.none.includes('neck') && Array.isArray(px.typed) && !px.typed.includes('neck'), 'Pick for me does not chase a muscle with no target (neck), nor one whose boxes were typed before r58, which never counted for the four tracked since r29', px);
+    ok(Array.isArray(px.given) && px.given.includes('neck'), 'Pick for me chases it once the lifter gives it a target (Set a target) of 30 to 40, which counts since r58', px.given);
     ok(!P.errors.length, 'no page errors (review fixes, numbers)', P.errors);
     await P.browser.close();
   }

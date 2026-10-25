@@ -1059,7 +1059,7 @@ ${extraKpis()}</div>${nS ? dashSummary() : nothing}`;
 /* "e1RM" is a lifter's word few new lifters know, so Stats says "Best
    estimate" and the tip names it (339 i, r58). */
 const BEST_EST_TIP =
-  'Your best estimated one-rep max (e1RM): the most one of your sets says you could lift once, from its load and its reps plus RIR. An estimate, not a tested max.';
+  'Your best estimated one-rep max (e1RM): the most that one of your sets says you could lift for a single rep, worked out from its load, its reps, and its RIR. An estimate, not a tested max.';
 
 /* The lift picked in Lifts: its headline, next target, goal, tiles, chart,
    notes and its last sessions. 1RM figures only where a 1RM is stated (r30):

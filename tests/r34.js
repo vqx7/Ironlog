@@ -486,7 +486,7 @@ const LB = 0.45359237;
       const headTip = !!view.querySelector('.headline .tipi');
       const radar = [...view.querySelectorAll('p.small.muted')].map(p => p.innerText).find(x => /^Using /.test(x)) || '';
       const radarTip = [...view.querySelectorAll('.tipi')].some(b => /dashed ring/.test(b.dataset.tip));
-      const et = [...view.querySelectorAll('table.t')].find(tb => [...tb.querySelectorAll('th')].some(th => /Best estimate/.test(th.innerText)));
+      const et = [...view.querySelectorAll('table.t')].find(tb => [...tb.querySelectorAll('th')].some(th => /best estimate/i.test(th.innerText)));
       const e1 = et ? [...et.querySelectorAll('tr')].slice(1).map(tr => tr.lastElementChild.innerText.trim()) : [];
       L.ui.tab = 'settings'; L.render(); document.querySelectorAll('#view details').forEach(d => d.open = true);
       const set = document.getElementById('view').innerText;

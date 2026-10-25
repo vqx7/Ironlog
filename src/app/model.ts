@@ -55,6 +55,8 @@ export interface Exposure {
   light: boolean;
   held: boolean;
   rr: [number, number] | null;
+  /** The sets its routine's plan gave it when saved (SessionEx.ps, r58); absent when none was recorded. */
+  ps?: number;
   topN: number;
   tAdj: number | null;
   tRaw: number | null;

@@ -119,7 +119,7 @@ lines, then `ALL PASS` (the fuzz suite prints `fuzz clean`). Type check: `npx ts
   Trends are never shown as a 1RM; a muscle with no clear lift reads unclear, never 0%; weight lifted is never a
   percentage against last week; no projections. Deloads and lighter loads are whole steps, never under the bar on a
   barbell lift typed as the total. One rule for every session (V, 2026-10-18): a lift sets its next target only at
-  its usual load and reps for its usual sets (on a lift the routine plans, the plan's: r58); with fewer sets or a
+  its usual load and reps for its usual sets (in a session on a day of the routine, the sets its plan gave it that day, saved with it, once a session did them: r58); with fewer sets or a
   clearly weaker reading the target repeats and the session still counts for the trend, stalls and PRs; done
   lighter it sets no target or trend, and done in full on a
   lighter or deload day it is a full session (a day's label never overrides what a lift did). A break of more than
@@ -128,7 +128,7 @@ lines, then `ALL PASS` (the fuzz suite prints `fuzz clean`). Type check: `npx ts
   as a set short of the range (so sets missed never step a load up, r56.2), and asked about first when its load is well
   under the session's working load (r55.1). With Your gym's plates set, a bar lift's loads are ones the bar and those
   plates make (r55.1). A past week is read against what its routine
-  planned then (each session records it, `pw`), never the routine as it is now. A PR is a PR on any day, and a change of units or gyms is never one.
+  planned then (each session records it, `pw`), never the routine as it is now, and a lift's session by the sets its plan gave it then (`ps`, r58). A PR is a PR on any day, and a change of units or gyms is never one.
   A PR is a set stronger than every earlier one, the same PR on every screen; a heavier set that is not one is
   Heaviest yet (r58). A muscle has a weekly target by default only when lifters train it directly for size
   (`TARGETED`); any other is tracked only until the lifter gives it one, which then counts everywhere (`hasTargetIn`, r58).

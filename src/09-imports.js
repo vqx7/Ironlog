@@ -6,7 +6,7 @@ import { STORAGE_ID, APP_NAME, FILE_PREFIX, PREVIEW_NAME, DISPLAY_VERSION, APP_V
 import { esc, uid, pad, parse, addDays, weekStart, daysBetween, today, isNum, isDate, median, r1, andList, numIn, mulberry, putById } from './app/util';
 import { LB, IN, KM_MI, PLATES_LB, PLATES_KG } from './app/units';
 import { MUSCLES, MK, ML, TRACK_ONLY, BANDS, EQUIP, EQL, CARDIO, CARDIOL, CWHEN, CWHENL, MEAS, JOINTS, JK, JL, injLabel, exJoints, libExercises, COMMON, isCommon, patternOf, autoCompound, isCompound, noE1, BWF, bwShare, loadMode, rackKind, HARD_EX, LONG_TRIAL, LONG_IDS, profHeavy, COMMON_TIP, commonFirst, nameMatch } from './app/library';
-import { DAYS, dayLabel, defaultRoutine, TEMPLATES, routineFromTemplate, daySets, fixSupersets, linkToggle, move, plannedPerWeek, dropStarter, planItemOf, pwOf, trainOn, routineEmpty, routineSig, sessDayIdx, ssLetters, tplCountLine, weekFactor } from './app/routines';
+import { DAYS, dayLabel, defaultRoutine, TEMPLATES, routineFromTemplate, daySets, fixSupersets, linkToggle, move, plannedPerWeek, dropStarter, planItemOf, pwOf, planSetsOf, withPlanSets, trainOn, routineEmpty, routineSig, sessDayIdx, ssLetters, tplCountLine, weekFactor } from './app/routines';
 import { keepExtra, cleanCardio, normalize, starterRoutine, starterSigs, plainTemplate } from './app/normalize';
 import { ENV, KEY, WKVIEW_KEY, device, logBuf, logCut, log, unreadableRaw, unreadableForget, undoStack, undoPersist, undoRestore, undoForget, snapshot, demoFirstRun, demoKeep, demoRestore, backupDue, saveStateNow, storageStart, asideList } from './app/storage';
 import { saveNow, saveSoon, commit, assemble, cq, withTimeout, baseOf, mergeChunk, hasUnsent, cloudFlush, cloudPull, cloudChecked, cloudInit, cloudStop, syncStart } from './app/sync';
