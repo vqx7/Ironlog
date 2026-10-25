@@ -20,6 +20,7 @@ import { keyed } from 'lit-html/directives/keyed.js';
 import { live } from 'lit-html/directives/live.js';
 import { unsafeHTML } from 'lit-html/directives/unsafe-html.js';
 import { moreList, orderKeys } from './layout';
+import { numIn } from './util';
 import { state, ui } from './store';
 
 /** What a screen's template may hold where a part goes: a template, text, several of them, or nothing. */
@@ -39,13 +40,15 @@ export function drawScreen(view: HTMLElement, screen: TemplateResult): void {
 
 /* ---------- a field's value ---------- */
 
-/* A field shows the value the log holds, except while it is being typed in:
-   then the text under the lifter's fingers is never replaced, and the saved
-   value shows once the field is left. Before r57 a draw replaced the field
-   and with it the text (rerenderKeepScroll put back only a number it could
-   read the same). The part is told its value is stale each time, as lit's
-   `live` does, so a value typed over and left is put back even when the log
-   still holds the value drawn last. */
+/* A field shows the value the log holds. While it is being typed in, the text
+   under the lifter's fingers stays when it reads as the value saved ("152."
+   for 152, a name with its spaces, half a number not saved yet), as
+   rerenderKeepScroll kept it before r57; text the log saved as something else
+   (150 typed as a maximum of 100, confirmed with Enter) is replaced by what
+   was saved at once (the review of r57: it showed 150 until the page drew
+   again). The part is told its value is stale each time, as lit's `live`
+   does, so a value typed over and left is put back even when the log still
+   holds the value drawn last. */
 class FieldValue extends Directive {
   constructor(info: PartInfo) {
     super(info);
@@ -56,15 +59,51 @@ class FieldValue extends Directive {
   }
   override update(part: AttributePart, [v]: [string]): string | typeof noChange {
     const el = part.element;
-    if (el === document.activeElement) return noChange;
     const now = el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement ? el.value : null;
     if (now === v) return noChange;
+    if (el === document.activeElement && now != null && numIn(now) === numIn(v)) return noChange;
     setCommittedValue(part);
     return v;
   }
 }
 /** A field's `.value`: the log's value, never over the text of a field being typed in. */
 export const fieldValue = directive(FieldValue);
+
+/* ---------- a drag on a drawn screen ---------- */
+
+/* Sortable moves the element being dragged among its neighbours. On a moved
+   screen lit-html owns those nodes, so the element goes back where it was
+   drawn before the screen draws the new order (or, when the page draws in the
+   middle of the drag, a sync bringing another phone's change, the drag is
+   dropped, as r56.2's fresh page dropped it); left where the finger had it,
+   it sat outside what lit-html drew, and the next taps saved its section
+   several times (the review of r57). */
+interface Home {
+  el: Element;
+  parent: Node;
+  next: Node | null;
+}
+let home: Home | null = null;
+/** Notes where the element a drag picked up was drawn. */
+export function dragStart(el: Element): void {
+  home = el.parentNode ? { el, parent: el.parentNode, next: el.nextSibling } : null;
+}
+/** Forgets the drag: it ended where the page keeps it (a legacy screen, drawn fresh). */
+export function dragDone(): void {
+  home = null;
+}
+/** Puts the dragged element back where it was drawn, its drag marks taken off; whether a drag was under way. */
+export function dragDrop(): boolean {
+  const h = home;
+  home = null;
+  if (!h) return false;
+  h.el.classList.remove('sortable-ghost', 'sortable-chosen', 'sortable-drag');
+  if (h.el.parentNode !== h.parent || h.el.nextSibling !== h.next) {
+    if (h.next && h.next.parentNode !== h.parent) h.parent.appendChild(h.el);
+    else h.parent.insertBefore(h.el, h.next);
+  }
+  return true;
+}
 
 /* ---------- the shared parts ---------- */
 

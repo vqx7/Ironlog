@@ -67,7 +67,8 @@ export const defaultOrder = (): Record<string, string[]> =>
 
 /** A saved order kept for the sections still present, each missing one placed after the one it follows. */
 export function orderKeys(saved: readonly string[], present: readonly string[]): string[] {
-  const order = saved.filter(k => present.includes(k));
+  // Each key once, at its first place: r57 as first built could save one twice (its review).
+  const order = saved.filter((k, i) => present.includes(k) && saved.indexOf(k) === i);
   present.forEach((k, i) => {
     if (order.includes(k)) return;
     const prev = present

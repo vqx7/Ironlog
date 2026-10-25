@@ -284,7 +284,7 @@ function killDynamic(){
   // A re-render in the middle of a drag (a cloud refresh) would leave Sortable's
   // floating copy of the block on the page; it goes with the old list.
   blockDrag=false;if(document.body.classList.contains('blkdrag')){document.body.classList.remove('blkdrag');const v=document.getElementById('view');if(v)v.style.paddingBottom='';}if(typeof edgeScroll!=='undefined')edgeScroll.stop();document.querySelectorAll('.sortable-fallback,.sortable-ghost').forEach(e=>{if(!e.closest('#view'))e.remove();});
-  while(charts.length){try{charts.pop().destroy();}catch(e){/* chart already gone */}}sortables.forEach(s=>{try{s.destroy();}catch(e){/* list already gone */}});sortables=[];}
+  while(charts.length){try{charts.pop().destroy();}catch(e){/* chart already gone */}}dragDrop();sortables.forEach(s=>{try{s.destroy();}catch(e){/* list already gone */}});sortables=[];}
 function applyTheme(){const t=state.settings.theme;if(t==='system')delete document.documentElement.dataset.theme;else document.documentElement.dataset.theme=t;
   document.documentElement.dataset.accent=state.settings.accent||ACCENT0;
   // The installed app's status bar takes this colour, so it follows the theme.

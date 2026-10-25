@@ -142,7 +142,7 @@ function applyHidden(){
 /* keys: the shown sections in their new order (read from the page when not
    given); a section not shown keeps its place after the one it followed. */
 function saveSecOrder(keys){
-  keys=keys||keyedKids().map(e=>e.dataset.mkey);
+  keys=[...new Set(keys||keyedKids().map(e=>e.dataset.mkey))];
   const old=state.settings.secOrder[ui.tab]||[];const out=keys.slice();
   old.forEach((k,i)=>{if(out.includes(k))return;const prev=old.slice(0,i).reverse().find(q=>out.includes(q));out.splice(prev?out.indexOf(prev)+1:0,0,k);});
   act(()=>{state.settings.secOrder[ui.tab]=out;},{soon:true});
@@ -154,16 +154,15 @@ function saveSecOrder(keys){
    as dragged, as before. */
 function mountSecSortable(){
   if(!window.Sortable)return;const v=$('#view');if(keyedKids().length<2)return;
-  let home=null;
   // Its own group, closed both ways: a section can only move among sections,
   // and no exercise or day can be dropped among them.
   sortables.push(window.Sortable.create(v,{group:{name:'sections',pull:false,put:false},handle:'.sgrip',draggable:'[data-mkey]',animation:150,fallbackOnBody:true,
-    onStart:e=>{home={el:e.item,parent:e.item.parentNode,next:e.item.nextSibling};},
-    onEnd:e=>{const h=home;home=null;if(e.oldIndex===e.newIndex)return;
-      if(!litTab()){saveSecOrder();return;}
+    onStart:e=>dragStart(e.item),
+    onEnd:e=>{if(!litTab()){dragDone();if(e.oldIndex!==e.newIndex)saveSecOrder();return;}
+      if(e.oldIndex===e.newIndex){dragDrop();return;}
       // After Sortable has finished with the drop, and in one task, so the old order is never painted.
       const keys=keyedKids().map(x=>x.dataset.mkey);
-      setTimeout(()=>{if(h&&h.el.parentNode===h.parent)h.parent.insertBefore(h.el,h.next);saveSecOrder(keys);rerenderKeepScroll();},0);}}));
+      setTimeout(()=>{dragDrop();saveSecOrder(keys);rerenderKeepScroll();},0);}}));
 }
 function moveSecKey(g,dir){
   const el=g.closest('[data-mkey]');if(!el||el.parentElement!==$('#view'))return;

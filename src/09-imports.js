@@ -38,7 +38,7 @@ import { effIn, effName, effShow, rirScale } from './app/effort';
 import { morphInto } from './app/sheets';
 import { guideSheet } from './app/guide';
 import { act, toTrash } from './app/act';
-import { drawLegacy, drawScreen, isOpen, MORE_OFFER } from './app/view';
+import { drawLegacy, drawScreen, isOpen, MORE_OFFER, dragStart, dragDrop, dragDone } from './app/view';
 import { noLog, distU, distShow, setShort, setStr } from './app/display';
 import { isStandalone, coarse, canInstallHere, installKind } from './app/env';
 import { viewHistory, HISTORY_ACTS, HISTORY_BINDS } from './app/history';

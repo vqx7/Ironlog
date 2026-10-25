@@ -16,6 +16,11 @@
 //      same elements, attributes, field values and visible text on this build
 //      as on r56.2 (baselines/r56-2.html), read after the page's tip pass, with
 //      lit-html's markers and the label ids it draws left out.
+//   5  from the review of r57, each a guard that also passes on r56.2 (5b
+//      fails there too: r56.2 lost two sections from such an order) and failed
+//      on r57 as first built: a draw mid-drag drops the drag, an order with a
+//      section twice shows it once, and a number typed out of range and
+//      confirmed with Enter shows the number saved.
 const { open, engine } = require('./h');
 const FILE = process.argv[2] || 'index.html';
 const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log('FAIL', m, x !== undefined ? JSON.stringify(x).slice(0, 600) : ''); } else console.log('ok  ', m); };
@@ -218,6 +223,68 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
     ok(a.text === b.text, `4. ${tab}, ${name}${env ? ', the preview' : ''}: the same visible text as r56.2`, a.text === b.text ? '' : { r56_2: a.text.slice(0, 400), now: b.text.slice(0, 400) });
     ok(!b.errors.length, `4. ${tab}, ${name}${env ? ', the preview' : ''}: no page errors`, b.errors);
   }
+  }
+
+  // ---- 5. From the review of r57 (each also passes on r56.2, failed on r57 as first built).
+  // 5a. A draw while a finger is dragging a section (a sync bringing another phone's change redraws the
+  // page) drops the drag, as r56.2's fresh page did: the section is back where it was drawn, with no
+  // ghost left, nothing saved, and later moves save each section once. r57 as first built left the
+  // dragged section where the finger had it, outside what lit-html drew, and the next taps saved
+  // Effort (RIR) three times in the order.
+  for (const tab of ['settings', 'history']) {
+    const Q = await open(FILE, { browser, clock: '2026-10-24T10:00:00', touch: true });
+    const { touchDriver } = require('./h'); const tp = await touchDriver(Q.page);
+    const q = (f, a) => Q.page.evaluate(f, a);
+    await q(tab => { const L = window.__ironlog; const s = L.state; s.settings.onboarded = true; L.makeDemo();
+      s.cardio.push({ id: 'c1', date: '2026-10-20', kind: 'walk', min: 30, hr: null, when: 'solo', note: '', demo: false });
+      s.trash = [{ id: 't1', kind: 'cardio', date: '2026-10-22', data: { id: 't1', date: '2026-10-18', kind: 'walk' } }];
+      L.saveNow(); L.ui.tab = tab; L.render(); }, tab);
+    await wait(300);
+    const read = () => q(tab => ({ dom: [...document.querySelectorAll('#view > [data-mkey]')].map(e => e.dataset.mkey), saved: (window.__ironlog.state.settings.secOrder[tab] || []).slice(), ghost: document.querySelectorAll('#view .sortable-ghost,#view .sortable-chosen').length }), tab);
+    const before = await read();
+    const [a, b] = tab === 'settings' ? ['rir', 'general'] : [before.dom[before.dom.length - 1], before.dom[0]];
+    const gb = await Q.page.locator(`#view > [data-mkey="${a}"] .sgrip`).boundingBox();
+    const tb = await Q.page.locator(`#view > [data-mkey="${b}"]`).boundingBox();
+    const x0 = gb.x + gb.width / 2, y0 = gb.y + gb.height / 2, y1 = tb.y + 5;
+    await tp('touchStart', x0, y0); await wait(50);
+    for (let k = 1; k <= 14; k++) { await tp('touchMove', x0, y0 + (y1 - y0) * k / 20); await wait(25); }
+    await q(() => window.__ironlog.render()); await wait(50);
+    await tp('touchEnd', x0, y0 + (y1 - y0) * 14 / 20); await wait(500);
+    const after = await read();
+    ok(after.dom.join() === before.dom.join() && !after.ghost && after.saved.join() === before.saved.join(), `5a. ${tab}: a draw mid-drag puts the section back where it was drawn, with no ghost and nothing saved`, { before, after });
+    // Then a move by the arrow keys saves each section once.
+    const k0 = after.dom[1];
+    await Q.page.locator(`#view > [data-mkey="${k0}"] .sgrip`).focus(); await Q.page.keyboard.press('ArrowUp'); await wait(250);
+    const moved = await read();
+    ok(new Set(moved.saved).size === moved.saved.length && moved.dom.length === before.dom.length && moved.dom[0] === k0, `5a. ${tab}: a move after it saves and shows each section once`, moved);
+    ok(!Q.errors.length, `5a. ${tab}: no page errors`, Q.errors);
+    await Q.page.context().close();
+  }
+  // 5b. An order saved with a section in it twice (by r57 as first built) shows that section once.
+  {
+    const Q = await open(FILE, { browser, clock: '2026-10-24T10:00:00' });
+    const dom = await Q.page.evaluate(() => { const L = window.__ironlog; L.state.settings.onboarded = true; L.makeDemo();
+      L.state.settings.secOrder.settings = ['general', 'profile', 'rir', 'timer', 'rir', 'gym', 'rir', 'layout', 'prio', 'bands', 'data', 'help', 'more'];
+      L.saveNow(); L.ui.tab = 'settings'; L.render(); return [...document.querySelectorAll('#view > [data-mkey]')].map(e => e.dataset.mkey); });
+    ok(dom.join() === 'general,profile,rir,timer,gym,layout,prio,bands,data,help,more', '5b. a saved order with a section twice shows it once, at its first place', dom);
+    await Q.page.context().close();
+  }
+  // 5c. A number typed out of range and confirmed with Enter shows the number saved, at once and after
+  // leaving the field, as r56.2 did (r57 as first built kept the typed 150 while 100 was saved). Text
+  // that reads as the number saved (or as no number, as a name does) stays as typed.
+  {
+    const Q = await open(FILE, { browser, clock: '2026-10-24T10:00:00' });
+    const q = (f, a) => Q.page.evaluate(f, a);
+    await q(() => { const L = window.__ironlog; L.state.settings.onboarded = true; L.makeDemo(); L.saveNow(); L.ui.tab = 'settings'; L.render(); document.querySelectorAll('#view details').forEach(d => { d.open = true; }); });
+    await wait(300);
+    for (const [name, sel, typed, want] of [['chest max', 'input[data-band="chest"][data-bi="1"]', '150', '100'], ['bar weight', 'input[data-bind="barKg"]', '500', '110'], ['name', 'input[data-bind="userName"]', '  V   x ', '  V   x ']]) {
+      const loc = Q.page.locator(sel).first(); await loc.click(); await loc.fill(typed); await loc.press('Enter'); await wait(300);
+      const now = await q(sel => document.querySelector(sel).value, sel);
+      await Q.page.locator('#view h2').first().click(); await wait(300);
+      const left = await q(sel => document.querySelector(sel).value, sel);
+      ok(now === want && left === want, `5c. ${name}: ${JSON.stringify(typed)} and Enter shows ${JSON.stringify(want)}, then and after leaving`, { now, left });
+    }
+    await Q.page.context().close();
   }
   await browser.close();
   console.log(fails.length ? `${fails.length} FAILED` : 'ALL PASS');
