@@ -294,6 +294,10 @@ const SCREENS = [
       const x0 = gb.x + gb.width / 2, y0 = gb.y + gb.height / 2, x1 = tb.x + 24, y1 = below ? tb.y + tb.height - 4 : tb.y + 4;
       await tp('touchStart', x0, y0); await wait(60);
       for (let k = 1; k <= 20; k++) { await tp('touchMove', x0 + (x1 - x0) * k / 20, y0 + (y1 - y0) * k / 20); await wait(25); if (mid && k === 12) { await q(() => window.__ironlog.render()); await wait(40); } }
+      /* The finger rests where it drops, as a finger does: SortableJS reads where a touch drag is every 50 ms
+         (_emulateDragOver), so a touch lifted 25 ms after its last move could end before the drag reached the day,
+         and on a busy machine it did (r59: once in five here, and on GitHub's WebKit run of 93b20b2, on r58 too). */
+      await wait(150);
       await tp('touchEnd', x1, y1); await wait(500);
     };
     const s0 = await read();
