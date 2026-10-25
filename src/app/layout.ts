@@ -67,7 +67,8 @@ export const defaultOrder = (): Record<string, string[]> =>
 
 /** A saved order kept for the sections still present, each missing one placed after the one it follows. */
 export function orderKeys(saved: readonly string[], present: readonly string[]): string[] {
-  const order = saved.filter(k => present.includes(k));
+  // Each key once, at its first place: r57 as first built could save one twice (its review).
+  const order = saved.filter((k, i) => present.includes(k) && saved.indexOf(k) === i);
   present.forEach((k, i) => {
     if (order.includes(k)) return;
     const prev = present
@@ -165,6 +166,17 @@ export const HIDEABLE: readonly (readonly [string, string, string])[] = [
   ['settings', 'bands', 'Weekly set targets'],
   ['settings', 'more', 'More']
 ];
+/** The hidden sections a tab's foot offers (r28): its hideable ones that are hidden, each that would show nothing now left out (`live` says which have something to show). */
+export function moreList(
+  tab: string,
+  hidden: readonly string[],
+  live: Readonly<Record<string, () => boolean>>
+): (readonly [string, string, string])[] {
+  return HIDEABLE.filter(([t, k]) => {
+    const has = live[t + ':' + k];
+    return t === tab && hidden.includes(t + ':' + k) && (!has || has());
+  });
+}
 /** The hideable sections as tab:key. */
 export const HIDEABLE_KEYS: ReadonlySet<string> = new Set(HIDEABLE.map(([t, k]) => t + ':' + k));
 /** The tabs in Settings > Layout, with their names. */

@@ -270,7 +270,8 @@ self.addEventListener('fetch',e=>{
 `;
 fs.writeFileSync(path.join(DIST, 'sw.js'), sw);
 // The libraries and fonts copied above are MIT and SIL Open Font License
-// works, and both licenses ask for their notice to travel with every copy.
+// works, and lit-html, bundled into the page, a BSD-3-Clause one; each
+// license asks for its notice to travel with every copy.
 // The page built from src/ loads them from their CDNs, which carry the
 // notices; this build serves its own copies, so their license texts are
 // served beside them.
@@ -279,6 +280,8 @@ fs.writeFileSync(path.join(DIST, 'sw.js'), sw);
     [`Chart.js ${cfg.CHART_VERSION}`, 'chart.js/LICENSE.md'],
     [`SortableJS ${cfg.SORTABLE_VERSION}`, 'sortablejs/LICENSE'],
     [`three.js ${cfg.THREE_VERSION}`, 'three/LICENSE'],
+    // Bundled into the page itself (r57), so its notice travels with the page too.
+    [`lit-html ${require('../package.json').devDependencies['lit-html']}`, 'lit-html/LICENSE'],
     ...(cloudCfg ? [['supabase-js', '@supabase/supabase-js/LICENSE'], ['@supabase/auth-js', '@supabase/auth-js/LICENSE'], ['@supabase/functions-js', '@supabase/functions-js/LICENSE'], ['@supabase/postgrest-js', '@supabase/postgrest-js/LICENSE'], ['@supabase/realtime-js', '@supabase/realtime-js/LICENSE'], ['@supabase/storage-js', '@supabase/storage-js/LICENSE'], ['@supabase/phoenix', '@supabase/phoenix/LICENSE.md'], ['iceberg-js', 'iceberg-js/LICENSE']] : []),
     ...FONTS.map(([family, dir]) => [`${family} (font)`, `@fontsource/${dir}/LICENSE`]),
   ];

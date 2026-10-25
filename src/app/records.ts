@@ -46,6 +46,17 @@ export const BW_MAX_KG = 400,
 /** A record read by name: its fields are still unknown, each then checked. */
 export type Rec = Record<string, unknown>;
 
+/** What Recently deleted holds: a copy in it, of a session, a routine or a cardio entry, with the day it was deleted. The copy is kept as it was saved, read field by field where it is shown (normalize checks the item, not the copy). */
+export interface Trashed {
+  id: string;
+  kind: 'session' | 'routine' | 'cardio';
+  date: string;
+  data: Rec;
+}
+/** The kind of copy Recently deleted holds that a value names, or null. */
+export const trashKind = (v: unknown): Trashed['kind'] | null =>
+  v === 'session' || v === 'routine' || v === 'cardio' ? v : null;
+
 /* The fields of a value, read by name: the value itself when it is an object
    or an array, as the checks read both (`x && typeof x === 'object'`), else
    null. The cast says only that the fields can be read by name. */

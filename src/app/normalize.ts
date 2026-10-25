@@ -38,10 +38,11 @@ import {
   okSess,
   safeKey,
   arr,
+  trashKind,
   parseJson,
   rec
 } from './records';
-import type { Rec } from './records';
+import type { Rec, Trashed } from './records';
 import { gymClean } from './gym';
 import { profClean } from './profile';
 import { canon } from './merge';
@@ -694,21 +695,19 @@ export function normalize(input: unknown): State {
     });
 
   const cutoff = addDays(today(), -TRASH_DAYS);
-  /** A copy in Recently deleted: a session, a routine or a cardio entry, with the day it was deleted. */
-  type Trashed = { id: string; kind: string; date: string; data: Rec };
   let trash: Trashed[] = list('trash')
     .flatMap(t0 => {
       const t = rec(t0);
       const data = t ? rec(t.data) : null;
+      const kind = t ? trashKind(t.kind) : null;
       return t &&
         typeof t.id === 'string' &&
-        oneOf(t.kind, ['session', 'routine', 'cardio']) &&
-        typeof t.kind === 'string' &&
+        kind &&
         typeof t.date === 'string' &&
         isDate(t.date) &&
         t.date >= cutoff &&
         data
-        ? [{ id: fixId(t.id), kind: t.kind, date: t.date, data }]
+        ? [{ id: fixId(t.id), kind, date: t.date, data }]
         : [];
     })
     .sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0))

@@ -18,19 +18,10 @@ function newItem(exId){return {uid:uid(),exId,...defPlan(exId)};}
 function draftSet(t){const b=state.draft&&state.draft.ex[+t.dataset.b];return b&&b.sets[+t.dataset.s]||null;}
 /* Distance (r30) is stored in km, shown in miles to someone logging in lb.
    Optional and absent unless given, so older entries keep their hashes. */
-const distU=()=>U()==='kg'?'km':'mi';
-const distShow=km=>Math.round((U()==='kg'?km:km/KM_MI)*100)/100;
 const distIn=v=>{const n=numIn(v);return n!=null&&n>0?Math.min(Math.round((U()==='kg'?n:n*KM_MI)*1000)/1000,1000):null;};
 /* Clears what earlier builds put there. Runs once at start, after every
    definition it reads exists. */
 function trashTidy(){const tr=state.trash||[];const keep=tr.filter(t=>!(t.kind==='routine'&&plainTemplate(t.data)));if(keep.length!==tr.length){state.trash=keep;commit();}}
-function toTrash(kind,data){
-  if(kind==='routine'&&plainTemplate(data))return;
-  state.trash=[{id:data.id,kind,date:today(),data:JSON.parse(JSON.stringify(data))},...(state.trash||[]).filter(t=>!(t.id===data.id&&t.kind===kind))].slice(0,TRASH_MAX);
-  while(state.trash.length>1&&JSON.stringify(state.trash).length>TRASH_BYTES)state.trash.pop();
-}
-/* Running as an installed app (home screen), not in a browser tab or inside Claude. */
-function isStandalone(){try{return window.matchMedia('(display-mode: standalone)').matches||navigator.standalone===true;}catch(e){return false;}}
 function markExported(){state.settings.lastExport=today();saveNow();}
 /* Everything in this app lives in one browser, so "did the backup actually
    land" is the single question that matters. The downloads capability confirms

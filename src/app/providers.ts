@@ -14,7 +14,9 @@ export interface ClaudeUse {
 declare global {
   interface Window {
     /** The account service: who is signed in, and signing out (the rest of its calls are the account flow's, phase 5). */
-    ironlogAuth?: { user?: unknown; signOut: () => Promise<unknown> } | undefined;
+    ironlogAuth?:
+      | { user?: unknown; signOut: () => Promise<unknown>; deleteAccount?: (() => Promise<unknown>) | undefined }
+      | undefined;
     ironlogFeedback?: { send?: unknown } | undefined;
     /** Claude's artifact services, where the page runs inside Claude (retired, OWNER.md); the sync suites use them as their stand-in cloud. */
     claude?: { use?: ClaudeUse | undefined } | undefined;

@@ -1,7 +1,7 @@
 // r56.2: the audit before the screens are rebuilt (PENDING 333 step 3, 338),
 // each wrong number as its reproduction showed it on the page. Each case fails
-// on r56.1 (`node tests/r56-2.js baselines/r56-1.html` once it is kept; until
-// then a page built from r56.1) and on r55, unless it says it guards:
+// on r56.1 (`node tests/r56-2.js baselines/r56-1.html`) and on r55, unless it
+// says it guards:
 //   A  sets tried and missed at the working load are sets short of the range
 //      for the next target: a 5 x 5 with sets 4 and 5 missed twice repeats
 //      its load, and a 4-set plan with two missed twice still reads 4 sets;

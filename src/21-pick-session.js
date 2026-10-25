@@ -285,7 +285,6 @@ function weekBar(){
   return h;
 }
 function renderWeekBar(){const el=document.getElementById('wkbar');if(!el)return;try{el.innerHTML=weekBar();}catch(e){log('weekbar',e);el.innerHTML='';}}
-function noLog(){return !state.sessions.length;}
 const nz=v=>noLog()?NIL:v;
 /* The week at a glance, beside the day's name: sessions done against the
    sessions the routine plans this week, the same two numbers as This week's
@@ -419,47 +418,19 @@ function newBlock(exId,plan,opts){
 /* A muscle's weekly target with a profile (defBand) and the app's own
    target (appBand) are in src/app/profile.ts since r54, beside the floors a
    first-run pick records (fitFloors) and their refit (refit). */
-/* Moves the app's own targets from the old profile's to the new one's.
-   Returns {muscle: [from, to]} for what moved, as copies, since Weekly set
-   targets edits the arrays in place. */
-function profMoveBands(oldP,newP){
-  const b=state.settings.bands;const moved={};
-  for(const m of MK){if(TRACK_ONLY.has(m))continue;const o=appBand(m,oldP);if(b[m][0]!==o[0]||b[m][1]!==o[1])continue;
-    const to=appBand(m,newP);if(b[m][0]===to[0]&&b[m][1]===to[1])continue;moved[m]=[b[m].slice(),to.slice()];b[m]=to.slice();}
-  return moved;
-}
-/* Apply (V's answer 1): the profile's rules on the routine in use, only the
-   fields a rule sets, on items where they differ. Rest is only raised, and a
-   rest of 0 (no timer, on purpose) is left alone. Under a year, Apply only
-   raises reps in reserve and keeps the routine's ranges: a ready-made
-   routine's 5 x 5 or 10 to 15 was chosen on purpose, and 8 to 12 is where new
-   exercises start (the r44 review). Returns what would change. */
-function profApplyList(R){
-  const out=[];if(!R)return out;const nw=prof().exp==='new';
-  R.days.forEach((d,di)=>d.items.forEach(it=>{const r=profRule(EX(it.exId));if(!r)return;
-    const ch={};for(const k in r){
-      if(k==='rest'){if(+it.rest!==0&&!(+it.rest>=r.rest))ch.rest=r.rest;}
-      else if(nw){if(k==='rir'&&!(+it.rir>=r.rir))ch.rir=r.rir;}
-      else if(it[k]!==r[k])ch[k]=r[k];}
-    if(Object.keys(ch).length)out.push({di,it,ch});}));
-  return out;
-}
-// What Apply changes, said in its question.
-function profApplyWhat(){const p=prof();return p.exp==='new'?'Reps in reserve go up to 3 on compounds and 2 on isolation; rep ranges stay.':p.goal==='both'?'Heavy compounds go to 5 to 8 reps, 2 in reserve, and at least 3 minutes\' rest.':'Heavy compounds go to 3 to 6 reps, 2 in reserve, and at least 3 minutes\' rest.';}
 function strengthPick(e,st,rec,at){
   if(prof().goal!=='strength'||!profHeavy(e)||!st||!st.last||rec.r<1)return null;
   if(!(daysOff(e.id,{before:at})>=STR_REST))return null;
   const near=st.bestAll>0&&st.last.best>=st.bestAll*STR_NEAR;
   return st.stalled?'stalled':near?'near':null;
 }
-const effWord=()=>rirScale()==='rpe'?'RPE':'RIR';
 /* A plan's target effort as the lifter enters effort: "1 RIR", or "RPE 9" in RPE mode. */
 function effTgt(rir){return rirScale()==='rpe'?`RPE ${effShow(rir)}`:`${effShow(rir)} RIR`;}
 function effOpts(){const sc=rirScale();return sc==='whole'?RIR_OPTS.slice():['0','0.5','1','1.5','2','2.5','3','3.5','4','4.5','5'];}
 const effAria=si=>rirScale()==='rpe'?`RPE for set ${si+1}`:`Reps in reserve for set ${si+1}`;
 function rirSelect(val,bi,si,target){
   const cur=effShow(val);
-  return `<button type="button" class="rirb${cur===''?' unset':''}" data-act="rirOpen" data-f="rir" data-b="${bi}" data-s="${si}" aria-haspopup="true" aria-expanded="false" aria-label="${effAria(si)}: ${cur===''?'not set':cur}">${cur===''?(target!=null?'–':effWord()):esc(cur)}</button>`;
+  return `<button type="button" class="rirb${cur===''?' unset':''}" data-act="rirOpen" data-f="rir" data-b="${bi}" data-s="${si}" aria-haspopup="true" aria-expanded="false" aria-label="${effAria(si)}: ${cur===''?'not set':cur}">${cur===''?(target!=null?'–':effName()):esc(cur)}</button>`;
 }
 /* Whole RIR is one row of 0 to 5. Half points and RPE are a grid under the
    label: whole numbers on top, each half between the two it sits between,
@@ -473,7 +444,7 @@ function rirStripHTML(bi,si,cur){
   // RPE reads up from 5 to 10, as RPE charts do; RIR from 0 up.
   const ord=sc==='rpe'?opts.slice().reverse():opts;
   const body=two?`<div class="rs-g">${ord.filter(o=>Number.isInteger(+o)).map(btn).join('')}${ord.filter(o=>!Number.isInteger(+o)).map(btn).join('')}</div>`:opts.map(btn).join('');
-  return `<div class="rirstrip${two?' two':''}" role="group" aria-label="${effAria(si)}" data-b="${bi}" data-s="${si}"><span class="rs-l">${effWord()}</span>${body}<button type="button" class="rs-x" data-act="rirPick" data-b="${bi}" data-s="${si}" data-v="" aria-label="Clear ${effWord()}">✕</button></div>`;
+  return `<div class="rirstrip${two?' two':''}" role="group" aria-label="${effAria(si)}" data-b="${bi}" data-s="${si}"><span class="rs-l">${effName()}</span>${body}<button type="button" class="rs-x" data-act="rirPick" data-b="${bi}" data-s="${si}" data-v="" aria-label="Clear ${effName()}">✕</button></div>`;
 }
 function rirClose(){const el=document.querySelector('.rirstrip');if(!el)return;const b=document.querySelector(`.rirb[data-b="${el.dataset.b}"][data-s="${el.dataset.s}"]`);if(b)b.setAttribute('aria-expanded','false');el.remove();autoPending();}
 /* Typed reps, then a tap on the same row's RIR box (r30): auto-mark waits
@@ -535,7 +506,7 @@ function viewLogger(){
       ${ss&&partner?`<p class="small muted" style="margin:2px 0 0">Superset with ${esc(partner)}; rest after the pair.</p>`:''}
       ${b.lastNote&&!b.note?`<p class="small lnote">Your note, ${esc(fmtDate(b.lastNote.date))}: ${esc(b.lastNote.text)} <button class="linkbtn" data-act="noteReuse" data-b="${bi}">Use again</button></p>`:''}
       ${b.note?`<p class="small bnote" id="bn-${bi}">${esc(b.note)}</p>`:`<p class="small bnote" id="bn-${bi}" hidden></p>`}
-      <div class="sg head${nr?' norir':''}"><span data-tip="Tap a set's number to mark it a warm-up or a drop set.">#</span><span class="lsh">Last</span><span class="lh" data-tip="${esc('Load: '+loadWords(ex))}">${loadHead(ex)}</span><span>${ex.timed?(ex.perSide?'Sec/side':'Sec'):ex.perSide?'Reps/side':'Reps'}</span>${nr?'':`<span>${effWord()}</span>`}<span>Done</span></div>`;
+      <div class="sg head${nr?' norir':''}"><span data-tip="Tap a set's number to mark it a warm-up or a drop set.">#</span><span class="lsh">Last</span><span class="lh" data-tip="${esc('Load: '+loadWords(ex))}">${loadHead(ex)}</span><span>${ex.timed?(ex.perSide?'Sec/side':'Sec'):ex.perSide?'Reps/side':'Reps'}</span>${nr?'':`<span>${effName()}</span>`}<span>Done</span></div>`;
     b.sets.forEach((s,si)=>{
       const g=greyR(b,si);const ph=g==null?'':g;
       const pr=s.done?livePR(b.exId,s,d.date):null;
@@ -568,7 +539,6 @@ function viewLogger(){
    like a weigh-in on Today; Not now is kept per device. */
 const BWASK_KEY=KEY+'.bwAsk';
 const BWSNOOZE_KEY=KEY+'.bwSnooze';
-function bwEvery(){const v=state.settings.bwEvery;return v===0||v===7||v===30?v:14;}
 function bwLast(){let b=null;for(const x of state.bodyweights)if(!b||x.date>b.date)b=x;return b;}
 function bwDueCard(){
   const n=bwEvery();if(!n||noLog())return '';const last=bwLast();const ago=last?daysBetween(last.date,today()):null;

@@ -89,6 +89,17 @@ function pastSheet(m){
    range or heaviest load shows at once instead of next session. Exercises with
    a set done keep what they started with, and typed loads are never touched. */
 function refreshEx(exId){if(state.draft&&!state.draft.editingId)for(const b of state.draft.ex)if(b.exId===exId&&!b.sets.some(x=>x.done))refreshBlock(b);}
+/* After a unit change, a session in progress says its targets and last time
+   in the new unit (r34.2, from the review: "at 60 kg" beside fields in lb).
+   Only the words: the loads are stored in kg and stay as they are, and a
+   suggestion is re-read without the unit's rounding so it names the same
+   load the rows hold. */
+function unitWords(){
+  const d=state.draft;if(!d)return;invalidate();
+  for(const b of d.ex){if(d.deload||d.light||b.light||b.inj)continue;const sg=suggestCore(b.exId,b.plan,{before:d.date});
+    if(b.sw!=null&&sg.w!=null&&Math.abs(sg.w-b.sw)>1e-6)continue;Object.assign(b,{hint:sg.text,last:sg.last,prev:sg.prev||undefined,prevOff:sg.prevOff||undefined,target:sg.target,easier:sg.easier||null});}
+  saveNow();
+}
 function syncDraftPlan(f){
   const d=state.draft;if(!d||!f||d.editingId||f.r!==(state.routines.find(r=>r.id===d.routineId)||activeRoutine())||planItemOf(f.r,f.it.exId,d.dayId)!==f.it)return; // the item the session's lift took its plan from (planFor's order), so a blank session's follows it too (r55, the audit)
   for(const b of d.ex)if(b.exId===f.it.exId&&!b.sets.some(x=>x.done)){for(const k of ['repMin','repMax','rir','rest','inc'])b.plan[k]=f.it[k];if(f.it.jump!=null)b.plan.jump=f.it.jump;else delete b.plan.jump;refreshBlock(b);}
@@ -99,7 +110,9 @@ function refreshBlock(b){
   Object.assign(b,{inj:sg.inj||null,hint:sg.text,last:sg.last,prev:sg.prev||undefined,prevOff:sg.prevOff||undefined,target:sg.target,tgt:sg.tgt,easier:sg.easier||null,lastR:sg.lastR,basis:sg.basis||undefined,lastNote:lastNoteOf(b.exId,d.date),sw:sg.w==null?null:sg.w});
   for(const x of b.sets)if(!x.done&&!x.warm&&!x.drop&&x.r==null&&x.w===oldW&&!carried.has(x))x.w=sg.w;
 }
-const ACT={
+/* The page's actions by data-act: the moved screens' (History and Settings,
+   r57, each change to the log through act) and the legacy script's own. */
+const ACT={...HISTORY_ACTS,...SETTINGS_ACTS,
   appUpdate(){
     if(ui.modal&&ui.modal.dirty){toast('Save or cancel first. Your changes are still here.');return;}
     saveNow();upd.ready=false;updRender();
@@ -373,11 +386,6 @@ const ACT={
     refreshEx(e.id);
     saveNow();rerenderKeepScroll();toast(e.maxLoad!=null?`Heaviest available for ${e.name}: ${fmtW(e.maxLoad)} ${U()}`:`No limit for ${e.name}`);
   },
-  hideToggle(t){
-    const k=t.dataset.k;if(!HIDEABLE_KEYS.has(k))return;const h=state.settings.hidden;
-    state.settings.hidden=h.includes(k)?h.filter(x=>x!==k):[...h,k];commit();rerenderKeepScroll();
-  },
-  layoutDefault(){snapshot();state.settings.hidden=DEFAULT_HIDDEN.slice();state.settings.secOrder=defaultOrder();commit();rerenderKeepScroll();toast('Default layout on every tab',true);},
   secShow(t){
     const k=t.dataset.k;if(!HIDEABLE_KEYS.has(k))return;
     state.settings.hidden=state.settings.hidden.filter(x=>x!==k);ui.folds[k]=true;commit();rerenderKeepScroll();
@@ -386,7 +394,6 @@ const ACT={
     toast(`${lab} added. Hide it again in Settings, Layout.`);
   },
   goLayout(){if(ui.modal)closeModal();ui.tab='settings';ui.folds['settings:layout']=true;window.scrollTo(0,0);render();const el=document.querySelector('#view > [data-mkey="layout"]');if(el)el.scrollIntoView({block:'start'});},
-  layoutAll(){state.settings.hidden=[];commit();rerenderKeepScroll();toast('Every section shown');},
   impOpen(){openModal({kind:'imp',step:'input',text:'',err:''});},
   impRead(){const el=$('#impText');const text=el?el.value:'';if(ui.modal)ui.modal.text=text;impStart({text});},
   impUnit(t){const m=ui.modal;if(!m||m.kind!=='imp'||!['lb','kg'].includes(t.dataset.v))return;m.unit=t.dataset.v;renderModal();},
@@ -427,62 +434,14 @@ const ACT={
     else go();
   },
   obSample(){openModal({kind:'templates',from:'welcome'});},
-  gymUnit(t){
-    const v=t.dataset.v==='kg'?'kg':'lb';if(v===gymUnit())return;
-    const go=()=>{ui.gymDb=null;ui.gymU=v;if(gymOf()){snapshot();delete state.settings.gym;gymRefresh();commit();}rerenderKeepScroll();};
-    // Weights typed in one unit mean nothing in the other, so they are cleared, with Undo, rather than converted to odd numbers.
-    if(gymOf()||ui.gymDb)confirmBox(`Switch to ${v}?`,`The weights typed here are in ${gymUnit()} and are cleared. Type them again in ${v}.`,`Switch to ${v}`,()=>{go();toast(`Your gym in ${v}`,true);});else go();},
-  gymPlate(t){const g=gymNext();const all=gymPlates(g.u);const v=+t.dataset.v;let on=Array.isArray(g.plates)?g.plates.slice():all.slice();
-    on=on.includes(v)?on.filter(x=>x!==v):[...on,v];if(!on.length){toast('Keep at least one plate');return;}
-    if(on.length===all.length)delete g.plates;else g.plates=all.filter(x=>on.includes(x));gymSave(g);},
-  gymClear(){ui.gymDb=null;snapshot();delete state.settings.gym;gymRefresh();commit();rerenderKeepScroll();toast('Your gym cleared: the usual steps apply',true);},
   obTourPick(t){obTour.user=true;obTourStop();obTourGo(+t.dataset.i,true);},
   obAcctLater(){try{localStorage.setItem(OB_ACCT,'later');}catch(e){/* per device only */}obOutClear();window.scrollTo(0,0);render();},
   obAcctBack(){try{localStorage.removeItem(OB_ACCT);}catch(e){/* nothing to clear */}window.scrollTo(0,0);render();},
-  /* Your training (r44): a tap on a choice sets it, a tap on the one set
-     clears it. Focus moves only the app's own weekly targets, with Undo. */
-  profSet(t){
-    const k=t.dataset.k;const raw=t.dataset.v;const v=k==='days'?+raw:raw;
-    const old=prof();const p={...old,focus:(old.focus||[]).slice()};
-    if(k==='focus'){const i=p.focus.indexOf(v);if(i>=0)p.focus.splice(i,1);else{if(p.focus.length>=FOCUS_MAX){toast('Two at most. Tap one to take it off.');return;}p.focus.push(v);}}
-    else if(k==='goal'||k==='exp'||k==='days')p[k]=p[k]===v?undefined:v;else return;
-    const np=profClean(p);const was=state.settings.profile?JSON.parse(JSON.stringify(state.settings.profile)):null;let moved={};
-    /* Undo puts the profile back and each target this moved that still reads
-       what it was moved to (the r44 review: the merge lost them when a target
-       was typed in between). */
-    snapshot(()=>{if(was)state.settings.profile=was;else delete state.settings.profile;const b=state.settings.bands;
-      for(const m in moved)if(b[m]&&b[m][0]===moved[m][1][0]&&b[m][1]===moved[m][1][1])b[m]=moved[m][0].slice();return true;});
-    if(np)state.settings.profile=np;else delete state.settings.profile;
-    if(k==='focus')moved=profMoveBands(old,np||{});
-    commit();rerenderKeepScroll();
-    const n=Object.keys(moved).length;
-    // A focus whose own target was typed does nothing to it; say so rather than nothing (the r44 review).
-    const kept=k==='focus'&&np&&(np.focus||[]).includes(v)&&!moved[v];
-    if(kept)toast(`Your ${ML[v]} target is one you set, so it stays. Default targets in Weekly set targets puts the app's back.`,n>0,8000);
-    else if(n)toast(`Weekly targets moved for ${n} muscle${n===1?'':'s'}. Ones you typed stay.`,true);
-  },
-  // The save kept aside at start (r45): restored through the import's checks, shown as text, or let go.
-  unreadRestore(){const raw=unreadableRaw();if(!raw)return;importData(raw,()=>{try{localStorage.removeItem(KEY+'.unreadable');}catch(e){/* nothing to clear */}});},
+  // The save kept aside at start (r45): restored through the import's checks, or shown as text (Forget it is Settings', src/app/settings.ts).
+  unreadRestore(){const raw=unreadableRaw();if(!raw)return;importData(raw,unreadableForget);},
   unreadShow(){const raw=unreadableRaw();if(raw)openModal({kind:'text',title:'Save kept aside',help:'Select all and copy it somewhere safe.',text:raw,readonly:true});},
-  unreadForget(){confirmBox('Forget the save kept aside?','It is deleted for good. Export or copy it first if you might want it.','Forget it',()=>{try{localStorage.removeItem(KEY+'.unreadable');}catch(e){/* nothing to clear */}rerenderKeepScroll();toast('Forgotten');},true);},
-  // Weekly set targets back to the defaults (r44), with Your training's focus; typed ones and a first-run fit go.
-  bandsDefault(){
-    const b=state.settings.bands;const fit=state.settings.bandsFit?{...state.settings.bandsFit}:null;const moved={};
-    for(const m of MK){const d=defBand(m);if(b[m][0]!==d[0]||b[m][1]!==d[1])moved[m]=[b[m].slice(),d.slice()];}
-    // Undo puts back the floors and each target that still reads the default it was set to (the r44 review: the merge kept the floors and lost the targets).
-    snapshot(()=>{if(fit)state.settings.bandsFit=fit;else delete state.settings.bandsFit;for(const m in moved)if(b[m][0]===moved[m][1][0]&&b[m][1]===moved[m][1][1])b[m]=moved[m][0].slice();return true;});
-    for(const m in moved)b[m]=moved[m][1].slice();delete state.settings.bandsFit;commit();rerenderKeepScroll();toast('Weekly set targets back to the defaults',true);},
   // The fold in the first-run routine picker (r44): its own state, so a re-render keeps it open.
   obProfTog(){ui.obProf=!ui.obProf;rerenderKeepScroll();},
-  profApply(){
-    const R=activeRoutine();const list=profApplyList(R);if(!list.length)return;
-    confirmBox(`Apply to ${R.name}?`,`${list.length} exercise${list.length===1?'':'s'}. ${profApplyWhat()} Sets and exercises stay as they are.`,'Apply',()=>{
-      const live=activeRoutine();if(!live||live.id!==R.id)return;
-      snapshot();const L=profApplyList(live);
-      for(const x of L){Object.assign(x.it,x.ch);syncDraftPlan({r:live,di:x.di,it:x.it});}
-      commit();rerenderKeepScroll();toast(`${live.name}: ${L.length} exercise${L.length===1?'':'s'} updated`,true);
-    });
-  },
   obUnit(t){const v=t.dataset.v;if(v!=='lb'&&v!=='kg')return;state.settings.unit=v;commit();render();},
   tplPick(t){
     const m=ui.modal;const from=m&&m.kind==='templates'?m.from:'plan';const k=t.getAttribute('data-k');
@@ -593,7 +552,6 @@ const ACT={
     try{const it=await F.inbox(50);if(ui.modal===m){m.items=it;renderModal();}}catch(e){log('feedback',e);if(ui.modal===m){m.err=(e&&e.message)||'Could not load feedback.';renderModal();}}
   },
   diagCopy(){const t=JSON.stringify({build:APP_VERSION,version:DISPLAY_VERSION,cloud:{on:cloud.on,status:cloud.status,err:cloud.err,last:cloud.last},log:logBuf},null,1);openModal({kind:'text',title:'Diagnostics',help:'Copy this and paste it into a bug report. It holds errors and sync status, not your workouts.',text:t,readonly:true});},
-  diagClear(){logBuf.length=0;try{localStorage.removeItem(LOGK);}catch(e){log('diag',e);}rerenderKeepScroll();toast('Log cleared');},
   undo(){
     if(!undoStack.length){toast('Nothing left to undo');return;}
     /* Undo used to put back the whole state from before the action, which
@@ -667,8 +625,6 @@ const ACT={
     state.cardio.push(cleanCardio({id:uid(),date:isDate(date)?date:today(),kind:$('#cKind').value,min,hr:numIn($('#cHr').value),when:'solo',note:($('#cNote').value||'').trim(),dist:distIn($('#cDist').value)}));
     closeModal();commit();rerenderKeepScroll();toast('Cardio logged');
   },
-  cardioDel(t){const c=state.cardio.find(x=>x.id===t.dataset.id);if(!c)return;const id=c.id;
-    confirmBox('Delete cardio entry?',`${CARDIOL[c.kind]||'Cardio'}, ${fmtDate(c.date)}, ${c.min} min. It stays under Recently deleted for ${TRASH_DAYS} days.`,'Delete',()=>{const c2=state.cardio.find(x=>x.id===id);if(!c2)return;toTrash('cardio',c2);state.cardio=state.cardio.filter(x=>x.id!==id);commit();rerenderKeepScroll();toast('Cardio entry moved to Recently deleted');},true);},
   cDraftAdd(t){const d=state.draft;(d.cardio||(d.cardio=[])).push(cleanCardio({id:uid(),kind:'walk',when:t.dataset.when},true));saveNow();rerenderKeepScroll();},
   /* A filled cardio entry goes with an Undo, like a set with reps; an empty one goes quietly. */
   cDraftDel(t){const d=state.draft;const list=d&&d.cardio;const i=+t.dataset.c;const c=list&&list[i];if(!c)return;
@@ -677,18 +633,6 @@ const ACT={
         snapshot(()=>{const d3=state.draft;if(!d3||d3.id!==did)return false;(d3.cardio||(d3.cardio=[])).splice(Math.min(j,d3.cardio.length),0,c);return true;});
         l2.splice(j,1);saveNow();rerenderKeepScroll();toast(`${CARDIOL[c.kind]||'Entry'} removed`,true);},true);return;}
     list.splice(i,1);saveNow();rerenderKeepScroll();},
-  /* Recently deleted is already deleted, so one item goes on a tap with Undo;
-     all of them ask first (r34.1, V: no way to clear it). */
-  trashDel(t){const x=(state.trash||[]).find(y=>y.id===t.dataset.id&&y.kind===t.dataset.k);if(!x)return;snapshot();state.trash=state.trash.filter(y=>y!==x);commit();rerenderKeepScroll();toast('Deleted for good',true);},
-  trashEmpty(){const n=(state.trash||[]).length;if(!n)return;confirmBox(`Empty Recently deleted (${n} item${n>1?'s':''})?`,`Undo in Settings can still bring ${n>1?'them':'it'} back for 7 days.`,'Delete all',()=>{snapshot();state.trash=[];commit();render();toast('Recently deleted cleared',true);},true);},
-  restore(t){
-    const x=state.trash.find(y=>y.id===t.dataset.id&&y.kind===t.dataset.k);if(!x)return;
-    state.trash=state.trash.filter(y=>y!==x);
-    if(x.kind==='session'&&!state.sessions.some(s=>s.id===x.id))state.sessions.push(x.data);
-    else if(x.kind==='cardio'&&!state.cardio.some(c=>c.id===x.id))state.cardio.push(x.data);
-    else if(x.kind==='routine'&&!state.routines.some(r=>r.id===x.id))state.routines.push(x.data);
-    setState(normalize(state));commit();render();toast('Restored');
-  },
   restWkOpen(){openModal({kind:'restwk'});},
   restWk(t){const ws=t.dataset.w;if(!isDate(ws))return;snapshot();const r=(state.settings.restWeeks||[]).slice();const on=r.includes(ws);
     state.settings.restWeeks=on?r.filter(x=>x!==ws):[...r,ws].sort();if(!state.settings.restWeeks.length)delete state.settings.restWeeks;
@@ -710,7 +654,7 @@ const ACT={
     const bi=+t.dataset.b,si=+t.dataset.s;const d=state.draft;const b=d&&d.ex[bi];const s=b&&b.sets[si];if(!s)return;
     const n=numIn(t.dataset.v);s.rir=n==null?null:Math.min(Math.max(n,0),10);
     const btn=document.querySelector(`.rirb[data-b="${bi}"][data-s="${si}"]`);
-    if(btn){const cur=effShow(s.rir);btn.textContent=cur===''?(b.plan&&b.plan.rir!=null?'–':effWord()):cur;btn.classList.toggle('unset',cur==='');btn.setAttribute('aria-label',`${effAria(si)}: ${cur===''?'not set':cur}`);}
+    if(btn){const cur=effShow(s.rir);btn.textContent=cur===''?(b.plan&&b.plan.rir!=null?'–':effName()):cur;btn.classList.toggle('unset',cur==='');btn.setAttribute('aria-label',`${effAria(si)}: ${cur===''?'not set':cur}`);}
     rirClose();if(btn)try{btn.focus({preventScroll:true});}catch(e){/* focus is best effort */}
     if(s.done){refreshPR(bi,si,false);afterSet(bi,si);}updateProgress(bi);
     // The fold waits for the effort of the last set, then goes.
@@ -1189,9 +1133,7 @@ m.err=`Could not read that. Try the pattern 225x5, 5, 4 ${rirScale()==='rpe'?'rp
   regionWk(t){const v=+t.dataset.v;if(!REGION_WKS.some(x=>x[0]===v))return;try{localStorage.setItem(REGION_KEY,String(v));}catch(e){/* kept for this visit only */}ui.regionWk=v;rerenderKeepScroll();},
   volMode(t){const v=t.dataset.v;if(!VOL_MODES.some(x=>x[0]===v))return;ui.volMode=v;rerenderKeepScroll();},
   chartRange(t){ui.rng=ui.rng||{};ui.rng[t.dataset.id]=t.dataset.v;rerenderKeepScroll();},
-  histMore(){ui.histLimit+=HIST_PAGE;rerenderKeepScroll();},
   mapSel(t){const m=t.getAttribute('data-m');ui.mapSel=ui.mapSel===m?null:m;rerenderKeepScroll();},
-  accent(t){const v=t.getAttribute('data-v');if(!ACCENTS.some(([k])=>k===v))return;if(v===ACCENT0)delete state.settings.accent;else state.settings.accent=v;commit();rerenderKeepScroll();},
   mapSrc(t){ui.mapSrc=t.getAttribute('data-v');rerenderKeepScroll();},
   mapView(t){try{localStorage.setItem(MAPVIEW_KEY,t.getAttribute('data-v')==='3d'?'3d':'flat');}catch(e){/* remembered for this visit only */}B3.viewMem=t.getAttribute('data-v')==='3d'?'3d':'flat';rerenderKeepScroll();},
   map3dTurn(t){map3dTurnTo([0,Math.PI/2,Math.PI][+t.getAttribute('data-v')]||0);},
@@ -1226,7 +1168,6 @@ m.err=`Could not read that. Try the pattern 225x5, 5, 4 ${rirScale()==='rpe'?'rp
     ui.dayFocus=open?'':id;if(!open){const i=R.days.findIndex(d=>d.id===id);if(i>=0)ui.bTarget=i;}
     rerenderKeepScroll();
     if(!open){const el=document.querySelector(`.day[data-did="${CSS.escape(id)}"]`);if(el)try{el.scrollIntoView({block:'start',behavior:'smooth'});}catch(e){/* scroll is best effort */}}},
-  layoutReset(){snapshot();state.settings.secOrder=defaultOrder();commit();rerenderKeepScroll();toast('Section order reset on every tab',true);},
   dUp(t){const R=curRoutineB();const i=+t.dataset.day;if(i<1)return;move(R.days,i,i-1);ui.todayDay=null;commit();rerenderKeepScroll();},
   dDown(t){const R=curRoutineB();const i=+t.dataset.day;if(i>=R.days.length-1)return;move(R.days,i,i+1);ui.todayDay=null;commit();rerenderKeepScroll();},
   dDel(t){
@@ -1241,7 +1182,6 @@ m.err=`Could not read that. Try the pattern 225x5, 5, 4 ${rirScale()==='rpe'?'rp
     if(d.items.length)confirmBox('Remove this day?',`${dayLabel(R,i)}: ${d.name} and its ${d.items.length} exercise${d.items.length>1?'s':''} will be removed from the routine. Sessions you already logged are not affected.`,'Remove day',go,true);
     else go();
   },
-  histToggle(t){ui.histOpen=ui.histOpen===t.dataset.id?null:t.dataset.id;rerenderKeepScroll();},
   histEdit(t){
     const s=state.sessions.find(x=>x.id===t.dataset.id);if(!s)return;
     const go=()=>{const R=state.routines.find(r=>r.id===s.routineId)||activeRoutine();
@@ -1251,10 +1191,7 @@ m.err=`Could not read that. Try the pattern 225x5, 5, 4 ${rirScale()==='rpe'?'rp
       saveNow();ui.tab='today';window.scrollTo(0,0);render();};
     if(state.draft)confirmBox('Replace the session in progress?','You have an unsaved session open. Editing this one will discard it.','Discard and edit',go,true);else go();
   },
-  histDel(t){confirmBox('Delete session?',`This removes it from history and all analytics. It stays under Recently deleted for ${TRASH_DAYS} days (the ${TRASH_MAX} most recent items are kept).`,'Delete session',()=>{snapshot();const s=state.sessions.find(x=>x.id===t.dataset.id);if(s&&!s.demo)toTrash('session',s);state.sessions=state.sessions.filter(x=>x.id!==t.dataset.id);commit();render();toast('Session deleted',true);},true);},
-  prio(t){const p=state.settings.priorities;const k=t.dataset.m;state.settings.priorities=p.includes(k)?p.filter(x=>x!==k):[...p,k];commit();rerenderKeepScroll();},
   export(){exportBackup();},
-  syncNow(){if(!cloud.on)return;cloud.retry=0;setCloud('connecting');cq(cloudPull).then(()=>{if(cloud.status==='synced')toast('Synced');});},
   exportCsv(){exportCSV();},
   showBackup(){openModal({kind:'text',title:'Backup text',help:'Select all and copy. Paste it into Import on any device to restore.',text:JSON.stringify({app:STORAGE_ID,exported:new Date().toISOString(),state}),readonly:true});},
   copyText(){const ta=$('#mText');ta.select();let ok=false;try{if(navigator.clipboard){navigator.clipboard.writeText(ta.value).then(()=>{markExported();toast('Copied');},()=>toast('Select the text and copy it manually'));return;}ok=document.execCommand('copy');}catch(e){log('copy',e);}if(ok)markExported();toast(ok?'Copied':'Select the text and copy it manually');},
@@ -1265,8 +1202,6 @@ m.err=`Could not read that. Try the pattern 225x5, 5, 4 ${rirScale()==='rpe'?'rp
     // demoRestore puts the settings back when the demo is cleared.
     if(first)fitTargets(activeRoutine());if(!cloud.on)cloudStop(true);makeDemo();ui.tab='dash';window.scrollTo(0,0);render();toast('Demo data loaded');});},
   demoStart(){state.sessions=state.sessions.filter(s=>!s.demo);state.bodyweights=state.bodyweights.filter(b=>!b.demo);state.measurements=state.measurements.filter(m=>!m.demo);demoRestore();commit();ui.tab='today';ui.folds={};window.scrollTo(0,0);render();},
-  demoClear(){snapshot();stripDemo(state);demoRestore();commit();render();toast('Demo data cleared',true);},
-  resetAll(){confirmBox('Erase everything?',`All routines, sessions, custom exercises, and body data will be deleted${cloud.on?' on this device and in your cloud copy':' on this device'}. Export a backup first if you might want it.`,'Erase everything',()=>{snapshot();setState(normalize(null));if(!cloud.on)cloudStop(true);asideClear();commit();ui.tab='today';render();toast('Everything erased',true);},true);}
 };
 
 /* A load far from last time's (under 60% or over 140% of it) is the usual

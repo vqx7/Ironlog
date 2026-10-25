@@ -144,7 +144,8 @@ const PATHS = (s, k) => {
     ok(anchor && partSrc.split(anchor[0]).length === 2, 'the simulated next build finds the exercise record to change', part);
     const next = path.join(os.tmpdir(), 'ironlog-next-r43test.html');
     const nextHtml = require('../scripts/join').build({ override: { [part]: partSrc.replace(anchor[0], anchor[0] + anchor[1] + "zz: typeof e.zz === 'string' ? e.zz : undefined,\n") } }).html;
-    ok(nextHtml.includes('zz: typeof e.zz') && nextHtml !== fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8'), 'and the next build carries the new field');
+    // As the bundle prints it: the record's parameter may be renamed (e5 since r57, when lit-html's own one-letter names joined the page), and undefined is void 0.
+    ok(/zz: typeof (\w+)\.zz === "string" \? \1\.zz : void 0/.test(nextHtml) && nextHtml !== fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8'), 'and the next build carries the new field');
     fs.writeFileSync(next, nextHtml);
     store.clear(); const writes = {}; const set0 = store.set.bind(store); store.set = (k, v) => { const id = k.split('/').pop(); writes[id] = (writes[id] || 0) + 1; return set0(k, v); };
     const X = await open('index.html', { browser, clock: CLOCK, setup: cloudSetup });

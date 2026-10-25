@@ -229,6 +229,17 @@ const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log
   const ts = require('typescript');
   // The modules by id: the path from src/app/ without `.ts`, at any depth.
   const MODS = SRC_CODE.filter(f => f.startsWith('app/')).map(f => f.slice(4, -3));
+  // The package screens draw with (r57): lit-html itself or one of its own
+  // modules by file, nothing else from node_modules. It is pinned to one exact
+  // version in package.json, so the page built is the same on every machine,
+  // and it reaches the page only through the bundle: no address loads it.
+  const LIT = /^lit-html(\/(directive|directive-helpers|directives\/[a-z-]+)\.js)?$/;
+  {
+    const pin = require('../package.json').devDependencies['lit-html'];
+    ok(typeof pin === 'string' && /^\d+\.\d+\.\d+$/.test(pin), 'lit-html is pinned to one exact version in package.json', pin);
+    const page = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
+    ok(!/<script[^>]+src=[^>]*lit/i.test(page) && !/['"`]https?:\/\/[^'"`]*lit-html/.test(page), 'lit-html is bundled into the page, never loaded from an address');
+  }
   // Every place a module names another file, read from the syntax tree, so a
   // comment that mentions an import is not one (the r51 mutation test found
   // the text scan over-broad): import and export-from statements, type-only
@@ -245,12 +256,16 @@ const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log
       else if (ts.isCallExpression(n) && (n.expression.kind === ts.SyntaxKind.ImportKeyword || (ts.isIdentifier(n.expression) && /^(require|__require)$/.test(n.expression.text))) && n.arguments.length) out.push({ spec: spec(n.arguments[0]), typeOnly: false });
       ts.forEachChild(n, walk);
     })(sf);
-    return out.map(e => { const abs = path.resolve(path.dirname(path.join(APP, id + '.ts')), e.spec); const rel = path.relative(APP, abs).split(path.sep).join('/'); return { ...e, to: rel, inside: e.spec.startsWith('.') && !rel.startsWith('..') && fs.existsSync(abs + '.ts') }; });
+    return out.map(e => {
+      // lit-html (r57, ARCHITECTURE.md Phase 5 design): the one package a module may import, bundled into the page by scripts/join.js.
+      if (LIT.test(e.spec)) return { ...e, to: null, inside: true, pkg: true };
+      const abs = path.resolve(path.dirname(path.join(APP, id + '.ts')), e.spec); const rel = path.relative(APP, abs).split(path.sep).join('/'); return { ...e, to: rel, inside: e.spec.startsWith('.') && !rel.startsWith('..') && fs.existsSync(abs + '.ts') };
+    });
   };
   const EDGES = new Map(MODS.map(id => [id, edgesOf(id)]));
   const out = [];
   for (const [id, es] of EDGES) for (const e of es) if (!e.inside) out.push(`${id}: ${e.spec}`);
-  ok(out.length === 0, 'the modules in src/app/ import only each other, never the legacy parts or anything outside', out);
+  ok(out.length === 0, 'the modules in src/app/ import only each other and lit-html, never the legacy parts or anything else outside', out);
   const legacyImports = fs.readdirSync(path.join(ROOT, 'src')).filter(f => /^[12]\d-.+\.js$/.test(f)).filter(f => /^\s*import[\s('"{*]/m.test(fs.readFileSync(path.join(ROOT, 'src', f), 'utf8')));
   ok(legacyImports.length === 0, 'the legacy parts import only through src/09-imports.js', legacyImports);
   // The ratchet (ARCHITECTURE.md): the legacy script never grows, in declarations or in lines.
@@ -343,7 +358,7 @@ const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log
     // that leave no code too, since a layer is about what a module may know.
     const deps = new Map(), up = [];
     for (const m of mods) {
-      const to = EDGES.get(m).map(e => e.to);
+      const to = EDGES.get(m).filter(e => !e.pkg).map(e => e.to);
       deps.set(m, to);
       for (const t of to) if (!(LAYER[t] <= LAYER[m])) up.push(`${m} (layer ${LAYER[m]}) imports ${t} (layer ${LAYER[t]})`);
     }
@@ -355,6 +370,48 @@ const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log
     };
     for (const m of mods) visit(m, []);
     ok(cycles.length === 0, 'no import in src/app/ goes round in a circle', cycles);
+    // One way to change the log (r57, ARCHITECTURE.md Phase 5 design, item 2):
+    // a moved screen (History and Settings, and every screen module that
+    // imports act) writes to the log only inside a function it hands to act,
+    // as the change or as its Undo, and never saves, keeps an Undo step or
+    // replaces the log by itself. Read from the syntax tree: an assignment,
+    // delete, ++ or --, a mutating array call or setState whose target starts
+    // at `state`. A write through a name that holds part of the log (const b =
+    // state.settings.bands) is beyond a reading of the code, and review's.
+    {
+      const MOVED = ['history', 'settings'];
+      const screens = mods.filter(m => LAYER[m] === 4 && (MOVED.includes(m) || EDGES.get(m).some(e => e.to === 'act')));
+      ok(MOVED.every(m => screens.includes(m)), 'History and Settings are screen modules in src/app/ (r57)', screens);
+      const MUT = new Set(['push', 'pop', 'shift', 'unshift', 'splice', 'sort', 'reverse', 'fill', 'copyWithin']);
+      const NO = new Set(['saveNow', 'saveSoon', 'commit', 'snapshot', 'capturePost']);
+      const bad = [];
+      const rootOf = n => { while (n && (ts.isPropertyAccessExpression(n) || ts.isElementAccessExpression(n) || ts.isNonNullExpression(n) || ts.isParenthesizedExpression(n))) n = n.expression; return n && ts.isIdentifier(n) ? n.text : null; };
+      const inAct = n => {
+        for (let p = n.parent, c = n; p; c = p, p = p.parent) {
+          if ((ts.isArrowFunction(c) || ts.isFunctionExpression(c)) && ts.isCallExpression(p) && ts.isIdentifier(p.expression) && p.expression.text === 'act' && p.arguments.includes(c)) return true;
+          if ((ts.isArrowFunction(c) || ts.isFunctionExpression(c)) && ts.isPropertyAssignment(p) && ts.isIdentifier(p.name) && p.name.text === 'undo' && ts.isObjectLiteralExpression(p.parent) && ts.isCallExpression(p.parent.parent) && ts.isIdentifier(p.parent.parent.expression) && p.parent.parent.expression.text === 'act') return true;
+        }
+        return false;
+      };
+      for (const m of screens) {
+        const txt = fs.readFileSync(path.join(APP, m + '.ts'), 'utf8');
+        const sf = ts.createSourceFile(m, txt, ts.ScriptTarget.Latest, true);
+        const at = n => `${m}.ts:${sf.getLineAndCharacterOfPosition(n.getStart(sf)).line + 1}`;
+        (function walk(n) {
+          if (ts.isImportDeclaration(n) && n.importClause && n.importClause.namedBindings && ts.isNamedImports(n.importClause.namedBindings))
+            for (const el of n.importClause.namedBindings.elements) if (NO.has((el.propertyName || el.name).text)) bad.push(`${at(n)} imports ${(el.propertyName || el.name).text}`);
+          let w = null;
+          if (ts.isBinaryExpression(n) && n.operatorToken.kind >= ts.SyntaxKind.FirstAssignment && n.operatorToken.kind <= ts.SyntaxKind.LastAssignment && rootOf(n.left) === 'state' && n.left !== null && !ts.isIdentifier(n.left)) w = n;
+          else if (ts.isDeleteExpression(n) && rootOf(n.expression) === 'state') w = n;
+          else if ((ts.isPrefixUnaryExpression(n) || ts.isPostfixUnaryExpression(n)) && (n.operator === ts.SyntaxKind.PlusPlusToken || n.operator === ts.SyntaxKind.MinusMinusToken) && rootOf(n.operand) === 'state') w = n;
+          else if (ts.isCallExpression(n) && ts.isPropertyAccessExpression(n.expression) && MUT.has(n.expression.name.text) && rootOf(n.expression.expression) === 'state') w = n;
+          else if (ts.isCallExpression(n) && ts.isIdentifier(n.expression) && n.expression.text === 'setState') w = n;
+          if (w && !inAct(w)) bad.push(`${at(w)} ${w.getText(sf).slice(0, 60)}`);
+          ts.forEachChild(n, walk);
+        })(sf);
+      }
+      ok(bad.length === 0, 'a moved screen changes the log only inside act, and never saves or keeps an Undo step by itself', bad);
+    }
   }
   // The checker is never switched off: no @ts-nocheck or @ts-ignore, and an
   // expected error only where listed with its reason (the second r51 review

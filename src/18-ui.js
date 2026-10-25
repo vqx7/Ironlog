@@ -17,7 +17,6 @@ function helpText(key,text){return `<p class="ht" id="help-${key}" ${ui.help.has
    section starts closed too. Folds used to be saved to the synced
    settings, where one tap (or another device) could leave a section open or
    closed for good. */
-function isOpen(sk,def){return Object.prototype.hasOwnProperty.call(ui.folds,sk)?!!ui.folds[sk]:!!def;}
 /* o: {sk, key (movable id, optional), title, sub (HTML), help, helpBody, body, def, id} */
 function sec(o){
   const mk=o.key?` data-mkey="${o.key}"`:'';
@@ -73,7 +72,6 @@ function modalFocusables(){
 /* On a phone, focusing a search box the moment a picker opens throws up the
    keyboard over the list you came to scroll. Touch screens get the sheet
    focused instead; a tap on the search box brings the keyboard when wanted. */
-const coarse=()=>{try{return window.matchMedia('(pointer:coarse)').matches;}catch(e){return false;}};
 /* The phone's Back gesture used to leave the app with a sheet open. Opening a
    sheet adds one history entry, and Back closes the sheet instead. Closing
    a sheet with its own buttons leaves that entry in place and the next sheet
@@ -286,7 +284,7 @@ function killDynamic(){
   // A re-render in the middle of a drag (a cloud refresh) would leave Sortable's
   // floating copy of the block on the page; it goes with the old list.
   blockDrag=false;if(document.body.classList.contains('blkdrag')){document.body.classList.remove('blkdrag');const v=document.getElementById('view');if(v)v.style.paddingBottom='';}if(typeof edgeScroll!=='undefined')edgeScroll.stop();document.querySelectorAll('.sortable-fallback,.sortable-ghost').forEach(e=>{if(!e.closest('#view'))e.remove();});
-  while(charts.length){try{charts.pop().destroy();}catch(e){/* chart already gone */}}sortables.forEach(s=>{try{s.destroy();}catch(e){/* list already gone */}});sortables=[];}
+  while(charts.length){try{charts.pop().destroy();}catch(e){/* chart already gone */}}dragDrop();sortables.forEach(s=>{try{s.destroy();}catch(e){/* list already gone */}});sortables=[];}
 function applyTheme(){const t=state.settings.theme;if(t==='system')delete document.documentElement.dataset.theme;else document.documentElement.dataset.theme=t;
   document.documentElement.dataset.accent=state.settings.accent||ACCENT0;
   // The installed app's status bar takes this colour, so it follows the theme.
@@ -297,6 +295,11 @@ function applyTheme(){const t=state.settings.theme;if(t==='system')delete docume
    and the browser then fires that field's change as if the lifter had left it.
    They did not, so that change must not tick a set. */
 let rebuilding=false;
+// True while lit-html is putting a tab into #view, and how many draws have begun (r57).
+let drawing=false,drawN=0;
+// The tabs drawn by their modules (phase 5): each a template of the log and ui; the rest are the legacy script's markup.
+const LIT_TABS={history:viewHistory,settings:viewSettings};
+function litTab(){return LIT_TABS[ui.tab]||null;}
 function render(){if(!state.draft){if(!$('#timer').hidden)stopTimer();wakeOff();} // no session, no rest timer or screen kept on: a session erased, restored over or finished on another phone left both running (r55, the audit)
   try{renderInner();}
   catch(e){log('render',e);renderCrash(e);}
@@ -305,12 +308,13 @@ function render(){if(!state.draft){if(!$('#timer').hidden)stopTimer();wakeOff();
 function renderCrash(e){
   let txt='';try{txt=JSON.stringify({app:STORAGE_ID,version:APP_VERSION,exported:new Date().toISOString(),state});}catch(e2){txt='(could not serialise data: '+e2.message+')';}
   const v=document.getElementById('view');if(!v)return;
-  v.innerHTML=`<div class="card"><h2>Something broke on this screen</h2><p class="small">Your data is saved and was not changed. Tap Try again to go back to Today. Report this sends the error to the app owner. If it keeps happening, copy the backup text below and keep it somewhere safe.</p>
+  drawLegacy(v,`<div class="card"><h2>Something broke on this screen</h2><p class="small">Your data is saved and was not changed. Tap Try again to go back to Today. Report this sends the error to the app owner. If it keeps happening, copy the backup text below and keep it somewhere safe.</p>
   <p class="small muted">Error: ${esc(e&&e.message||String(e))} · version ${VERSION_LINE}</p>
   <div class="row"><button class="btn primary" data-act="crashRetry">Try again</button><button class="btn" data-act="fbOpen" data-cat="bug" data-crash="1">Report this</button></div>
-  <label class="field" style="margin-top:10px">Backup text<textarea readonly style="min-height:160px;font-size:12px">${esc(txt)}</textarea></label></div>`;
+  <label class="field" style="margin-top:10px">Backup text<textarea readonly style="min-height:160px;font-size:12px">${esc(txt)}</textarea></label></div>`);
 }
 function renderInner(){
+  if(drawing){queueMicrotask(render);return;} // asked for mid-draw: once this draw is done (below)
   killDynamic();applyTheme();setSaveState();chartNoticeUsed=false;
   document.querySelectorAll('#tabs button').forEach(b=>{if(b.dataset.tab===ui.tab)b.setAttribute('aria-current','page');else b.removeAttribute('aria-current');});
   {const tb=document.querySelector('#tabs button[data-tab="today"]');if(tb){const live=!!state.draft;tb.classList.toggle('live',live);const sp=tb.querySelector('span');if(sp)sp.textContent=live?'Session':'Today';tb.setAttribute('aria-label',live?(state.draft.editingId?'Session being edited':'Session in progress'):'Today');}}
@@ -319,9 +323,24 @@ function renderInner(){
   // The setup pages stand alone: no tabs or week bar until a way to start is picked.
   if(obActive()&&ui.tab!=='today')ui.tab='today';
   document.body.classList.toggle('obmode',obActive());
-  const v={today:viewToday,program:()=>ui.planView==='library'?viewLibrary():viewProgram(),dash:viewDash,history:viewHistory,settings:viewSettings}[ui.tab];
-  rebuilding=true;try{$('#view').innerHTML=v();}finally{rebuilding=false;}
-  applySecOrder();applyHidden();openMain();
+  /* One host draws every tab (r57): a moved screen's template, updated in
+     place, which places its sections itself; a legacy screen's markup, fresh
+     each draw, whose sections are then put in their saved order, the hidden
+     ones taken out and the tab's main section opened, as before. */
+  const moved=litTab();
+  /* A draw asked for while lit-html is drawing (an event a removed field fires
+     mid-draw) runs once this one is done: lit-html takes nodes away one by one,
+     and a draw inside that would find them gone. A legacy screen's field still
+     focused is left before its markup is read, so the change it fires runs
+     first, while rebuilding (so it ticks nothing), and the draw reads the log
+     that change left; innerHTML fired it during its own replacement. */
+  const was=rebuilding;rebuilding=true;
+  try{
+    // A change that drew the page itself (from the blur) has drawn it with the log as it now is: nothing more to draw.
+    if(!moved){const n0=drawN,ae=document.activeElement,vw=$('#view');if(ae&&ae!==document.body&&vw&&vw.contains(ae)&&typeof ae.blur==='function')ae.blur();if(drawN!==n0)return;}
+    drawing=true;drawN++;try{if(moved)drawScreen($('#view'),moved());else drawLegacy($('#view'),{today:viewToday,program:()=>ui.planView==='library'?viewLibrary():viewProgram(),dash:viewDash}[ui.tab]());}finally{drawing=false;}
+  }finally{rebuilding=was;}
+  if(!moved){applySecOrder();applyHidden();openMain();}
   if(!(ui.tab==='today'&&state.draft)&&!(ui.tab==='program'&&ui.planView==='library'))mountSecSortable();
   if(ui.tab==='today'&&state.draft)mountBlockSortable();
   if(ui.tab==='program'&&ui.planView!=='library')mountSortable();

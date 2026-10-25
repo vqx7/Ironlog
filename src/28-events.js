@@ -112,7 +112,7 @@ document.addEventListener('input',e=>{
     if(k==='inc'){const e=state.exercises.find(x=>x.id===f.it.exId);const v=fromD(cl(n,0,500));f.it.inc=v;if(e)e.inc=v>0?v:null;saveSoon();invalidate();return;}
     f.it[k]=k==='rir'?cl(effIn(n),0,10):k==='sets'?cl(Math.round(n),1,30):k==='rest'?cl(Math.round(n),0,1800):cl(Math.round(n),1,600);
     saveSoon();invalidate();return;}
-  if(t.dataset.band){const n=numIn(t.value);if(n==null)return;state.settings.bands[t.dataset.band][+t.dataset.bi]=Math.min(Math.max(Math.round(n*2)/2,0),100);saveSoon();return;}
+  if(t.dataset.band){bandInput(t);return;}
   if(t.dataset.dayname!=null){curRoutineB().days[+t.dataset.dayname].name=t.value;saveSoon();return;}
   if(t.dataset.fbind&&ui.modal&&ui.modal.kind==='feedback'){ui.modal[t.dataset.fbind]=t.value;ui.modal.dirty=true;const c=document.getElementById('fbCount');if(c&&t.dataset.fbind==='msg')c.textContent=`${t.value.length} / ${FB_MAX}`;return;}
   if(t.dataset.abind&&ui.modal&&ui.modal.kind==='account'){ui.modal[t.dataset.abind]=t.value;if(ui.modal.err){ui.modal.err='';}return;}
@@ -141,12 +141,12 @@ document.addEventListener('change',e=>{
        it, so typing 12 then 15 into a 6 to 10 range gives 12 to 15. */
     if(f&&(t.dataset.it==='repMin'||t.dataset.it==='repMax')&&+f.it.repMin>+f.it.repMax){if(t.dataset.it==='repMin')f.it.repMax=f.it.repMin;else f.it.repMin=f.it.repMax;toast(`Range set to ${repSpan(f.it.repMin,f.it.repMax,'-')}`);}
     if(f&&t.dataset.it!=='sets'){invalidate();syncDraftPlan(f);if(t.dataset.it==='inc')refreshEx(f.it.exId);}commit();rerenderKeepScroll();return;}
-  if(t.dataset.gym){gymInput(t);return;}
+  if(t.dataset.gym){gymField(t);return;}
   // The Set up page's bodyweight (r34): today's weigh-in, replaced if typed again, removed if cleared.
   if(t.id==='obBw'){const v=numIn(t.value);state.bodyweights=state.bodyweights.filter(b=>b.date!==today());
     if(v!=null){const kg=fromD(v);if(kg<BW_MIN_KG||kg>BW_MAX_KG){toast(`Bodyweight must be between ${fmtW(BW_MIN_KG)} and ${fmtW(BW_MAX_KG)} ${U()}`);t.value='';}else state.bodyweights.push({id:uid(),date:today(),kg});}
     commit();return;}
-  if(t.dataset.band){const k=t.dataset.band;const b=state.settings.bands[k];if(b[0]>b[1])b.reverse();commit();rerenderKeepScroll();return;}
+  if(t.dataset.band){bandChange(t);return;}
   if(t.dataset.dayname!=null){commit();rerenderKeepScroll();return;}
   if(t.dataset.dayrest!=null){const R=curRoutineB();const d=R.days[+t.dataset.dayrest];if(!d)return;snapshot();d.rest=t.checked;commit();rerenderKeepScroll();toast(t.checked?`${d.name||'Day'} is now a rest day. Its exercises are kept.`:`${d.name||'Day'} is a training day again`,true);return;}
   if(t.dataset.moveto){const f=findItem(t.dataset.moveto);if(!f)return;const to=+t.value;if(to===f.di)return;f.r.days[f.di].items.splice(f.i,1);f.r.days[to].items.push(f.it);Object.assign(f.r.days[to],trainOn(f.r.days[to]));commit();rerenderKeepScroll();toast(`Moved to ${dayLabel(f.r,to)}`);return;}
@@ -186,6 +186,8 @@ document.addEventListener('change',e=>{
     }
     saveSoon();return;}
   const b=t.dataset.bind;if(!b)return;
+  // The moved screens' fields (History and Settings, r57): each change through act.
+  const own=HISTORY_BINDS[b]||SETTINGS_BINDS[b];if(own){own(t);return;}
   switch(b){
     case 'todayDay':ui.todayDay=+t.value;render();break;
     case 'draftDate':if(isDate(t.value)&&t.value<=today()){
@@ -208,30 +210,10 @@ document.addEventListener('change',e=>{
     case 'libM':case 'libE':ui[b]=t.value;rerenderKeepScroll();break;
     case 'dashMuscle':ui.dashMuscle=t.value;rerenderKeepScroll();break;
     case 'dashEx':ui.dashEx=t.value;rerenderKeepScroll();break;
-    case 'unit':state.settings.unit=t.value;commit();unitWords();render();break;
-    case 'rirMode':state.settings.rirMode=['on','off','cal'].includes(t.value)?t.value:'on';commit();rerenderKeepScroll();toast(t.value==='off'?'RIR off: every working set counts as hard':t.value==='cal'?'RIR corrected by your calibration sets':'RIR on, used as logged');break;
-    case 'theme':state.settings.theme=t.value;commit();render();break;
-    case 'timerMode':state.settings.timerMode=t.value;if(t.value==='off')stopTimer();commit();rerenderKeepScroll();break;
-    case 'timerSound':state.settings.timerSound=t.checked;if(t.checked)primeAudio();commit();break;
-    case 'timerCompact':state.settings.timerCompact=t.checked;commit();if(!$('#timer').hidden)tick();break;
-    case 'autoDone':state.settings.autoDone=t.checked;commit();rerenderKeepScroll();break;
     case 'loadFill':ACT.loadAsk({dataset:{v:t.checked?'fill':'grey'}});break;
-    case 'rirScale':if(t.value==='half'||t.value==='rpe')state.settings.rirScale=t.value;else delete state.settings.rirScale;commit();rerenderKeepScroll();break;
-    case 'rirAsk':if(t.checked)state.settings.rirAsk=true;else delete state.settings.rirAsk;commit();rerenderKeepScroll();break;
-    case 'rirHalf':snapshot();if(t.checked)state.settings.rirHalf=true;else delete state.settings.rirHalf;invalidate();commit();rerenderKeepScroll();toast(t.checked?`${halfLbl()} now counts as half a set`:`Only ${effWord()} ${effShow(3)} ${rirScale()==='rpe'?'or more':'or less'} counts`,true);break;
-    case 'smallPlates':if(t.checked)state.settings.smallPlates=true;else delete state.settings.smallPlates;commit();break;
-    case 'bwEvery':{const v=+t.value;if(v===14||![0,7,30].includes(v))delete state.settings.bwEvery;else state.settings.bwEvery=v;commit();rerenderKeepScroll();break;}
-    case 'todayStart':if(t.value==='free')state.settings.todayStart='free';else delete state.settings.todayStart;commit();rerenderKeepScroll();break;
-    case 'autoAdj':if(t.checked)delete state.settings.autoAdj;else state.settings.autoAdj=false;commit();break;
-    case 'wakeLock':state.settings.wakeLock=t.checked;commit();if(t.checked&&state.draft)wakeOn();else if(!t.checked)wakeOff();break;
-    case 'timeBudget':{const n=numIn(t.value);state.settings.timeBudget=n==null||n<10?null:Math.min(Math.round(n),300);commit();break;}
     case 'height':{const v=t.value.trim();if(!v){state.settings.heightCm=null;commit();rerenderKeepScroll();break;}
       const cm=parseHeight(v);if(cm==null){toast(U()==='lb'?'Enter height like 5\'10 or 70 (inches)':'Enter height in cm, like 178');break;}
       state.settings.heightCm=cm;commit();rerenderKeepScroll();toast(`Height ${heightTxt(cm)}`);break;}
-    case 'barKg':{const n=numIn(t.value);state.settings.barKg=n==null||n<=0?null:fromD(Math.min(n,U()==='lb'?110:50));commit();rerenderKeepScroll();break;}
-    case 'userName':{const n=t.value.replace(/\s+/g,' ').trim().slice(0,40);if(n)state.settings.userName=n;else delete state.settings.userName;commit();break;}
-    case 'bwGoalPct':{const n=numIn(t.value);state.settings.bwGoalPct=n==null?null:Math.min(Math.max(n,-2),2);commit();break;}
-    case 'histEx':ui.histEx=t.value;ui.histLimit=HIST_PAGE;rerenderKeepScroll();break;
   }
 });
 document.addEventListener('toggle',e=>{

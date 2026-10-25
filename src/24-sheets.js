@@ -21,6 +21,16 @@ function renderModal(){
     if(n&&typeof n.focus==='function')try{n.focus({preventScroll:true});if(ss!=null&&typeof n.setSelectionRange==='function')n.setSelectionRange(ss,se);}catch(e){/* caret restore is best effort */}}
 }
 renderModal.last=null;
+/* Your training's fields on the first page's routine picker (r44): each
+   choice taps on and off; nothing here is needed. Settings draws the same
+   fields from src/app/settings.ts. */
+function profChips(k,opts,cur,label){return `<div class="ob-units" role="group" aria-label="${label}">${opts.map(([v,l])=>`<button class="chip ${cur===v?'on':''}" data-act="profSet" data-k="${k}" data-v="${v}" aria-pressed="${cur===v}">${l}</button>`).join('')}</div>`;}
+function profFields(){
+  const p=prof();
+  return `<div><p class="small muted" style="margin:0 0 6px;font-weight:600"><span class="hastip" data-tip="${esc(PROF_GOAL_TIP)}">Goal</span></p>${profChips('goal',PROF_GOALS,p.goal,'Goal')}</div>
+  <div><p class="small muted" style="margin:0 0 6px;font-weight:600"><span class="hastip" data-tip="${esc(PROF_EXP_TIP)}">Years lifting</span></p>${profChips('exp',PROF_EXP,p.exp,'Years lifting')}</div>
+  <div><p class="small muted" style="margin:0 0 6px;font-weight:600"><span class="hastip" data-tip="Ready-made routines that fit are marked when you pick one. Every other day fits 3 or 4.">Days a week</span></p>${profChips('days',PROF_DAYS.map(d=>[d,String(d)]),p.days,'Days a week')}</div>`;
+}
 function renderModalBody(keep){
   const m=ui.modal;const el=$('#modal');if(!m){el.hidden=true;return;}
   let h='';
@@ -147,7 +157,7 @@ function renderModalBody(keep){
     const kg=U()==='kg';const rp=rirScale()==='rpe';const tail=rp?'rpe 9':'rir 1';const eg1=kg?`100x5, 5, 4 ${tail}`:`235x5, 5, 4 ${tail}`,eg2=rp?(kg?'80x8@8 90x6@9':'185x8@8 205x6@9'):(kg?'80x8@2 90x6@1':'185x8@2 205x6@1'),ph=kg?`100x5, 5, 4 ${tail}`:`225x5, 5, 4 ${tail}`;
     h=`<div class="sheet" role="dialog" aria-modal="true"><div class="sheet-h"><h3>${esc(ex.name)}: type sets</h3><button class="ib" aria-label="Close" data-act="mClose">✕</button></div>
     ${ex.timed?'<p class="small muted" style="margin:0">Timed hold: the number after x is seconds, for example <b>25x45, 40</b> or <b>bw x 60, 50</b>.</p>':''}
-    <p class="small muted">Loads in ${U()}${loadNote(ex)}${ex.bw?', added to bodyweight (bw or bw+25)':''}. <b>${eg1}</b> or <b>${eg2}</b>. <span class="hastip" data-tip="Type or use the keyboard's dictation mic. ${rp?'rpe':'rir'} at the end applies to every set; @ gives ${effWord()} per set. A bare number repeats the last load. Sets fill from the first one not done and are marked done.${aiOn()?' Anything this cannot read is passed to Claude.':''}">More</span></p>
+    <p class="small muted">Loads in ${U()}${loadNote(ex)}${ex.bw?', added to bodyweight (bw or bw+25)':''}. <b>${eg1}</b> or <b>${eg2}</b>. <span class="hastip" data-tip="Type or use the keyboard's dictation mic. ${rp?'rpe':'rir'} at the end applies to every set; @ gives ${effName()} per set. A bare number repeats the last load. Sets fill from the first one not done and are marked done.${aiOn()?' Anything this cannot read is passed to Claude.':''}">More</span></p>
     <input type="text" id="qTxt" autocomplete="off" autocapitalize="off" spellcheck="false" value="${esc(m.text||'')}" placeholder="${ex.bw?'bw x 10, 8, 7':ph}" enterkeyhint="done">
     ${m.err?`<p class="small" style="color:var(--red);margin:8px 0 0">${esc(m.err)}</p>`:''}${''}
     <div class="row" style="margin-top:10px"><button class="btn primary" data-act="qFill" ${m.busy?'disabled':''}>Fill sets</button>${m.busy?'<button class="btn" data-act="aiStop">Stop</button>':''}<button class="btn" data-act="mClose">Cancel</button></div></div>`;

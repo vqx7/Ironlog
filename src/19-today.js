@@ -134,21 +134,10 @@ function acctBar(){
    short picture guide for the browser in use. Nothing shows once installed,
    inside Claude, or in the plain source file. */
 const INSTALL_LATER=KEY+'.installLater';
-function canInstallHere(){return !!window.IRONLOG_APP&&!isStandalone()&&!(window.claude&&typeof window.claude.use==='function');}
 /* Where this copy of the app lives, for the install pictures and steps, so
    they stay right when the app moves to its own domain (r27). */
 function siteHost(){return location.host&&/^https?:$/.test(location.protocol)?location.host:SITE_HOST;}
 function siteDir(){const p=location.pathname.replace(/[^/]*$/,'').replace(/\/$/,'');return /^https?:$/.test(location.protocol)?p:SITE_DIR_FALLBACK;}
-function installKind(){
-  const ua=navigator.userAgent||'';
-  const ios=/iPhone|iPad|iPod/.test(ua)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
-  if(window.__installEvt)return 'prompt';
-  /* Safari 26 (iOS 26) hides Share behind the ⋯ button beside the address
-     in its default compact bar. Its user agent keeps the OS number frozen,
-     but Version/ is Safari's own. */
-  if(ios){if(/CriOS/.test(ua))return 'ios-chrome';if(/FxiOS|EdgiOS|OPiOS/.test(ua))return 'ios-other';const v=+((ua.match(/Version\/(\d+)/)||[])[1]||0);return v>=26?'ios-safari26':'ios-safari';}
-  return 'menu';
-}
 window.ironlogInstallReady=()=>{if(ui.tab==='today'||ui.tab==='settings')rerenderKeepScroll();};
 /* The new icon (r25). iPhone keeps a home-screen icon exactly as it was when
    added and never refreshes it, so an app installed before r25 shows the old
@@ -375,7 +364,6 @@ function injuryCard(){
    disagree. This layer only decides what to say, never how to calculate. */
 const fmtBig=kg=>Math.round(toD(kg)).toLocaleString();
 // Tile subtitles only: 295,403 becomes 295k so it fits a small phone.
-const fmtK=kg=>{const v=Math.round(toD(kg));return v>=10000?Math.round(v/1000)+'k':v.toLocaleString();};
 function weekVolume(ws,upto){const end=addDays(ws,upto==null?6:upto);let v=0;for(const x of IDX().sessVol)if(x.date>=ws&&x.date<=end)v+=x.vol;return v;}
 /* This week so far against last week at the same point, so a Tuesday is never
    compared with a whole finished week. */
