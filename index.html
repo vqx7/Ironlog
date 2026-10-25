@@ -6510,8 +6510,47 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       fl,
       tp
     };
-    const res = sgEasyIn(M3, C2) || sgPastRangeIn(M3, C2) || sgBelowRangeIn(M3, C2) || sgNoStep(C2) || sgTopOfRangeIn(M3, C2) || sgBadDay(C2) || sgRepsIn(M3, C2);
+    const res = sgAfterReturnIn(M3, C2) || sgEasyIn(M3, C2) || sgPastRangeIn(M3, C2) || sgBelowRangeIn(M3, C2) || sgNoStep(C2) || sgTopOfRangeIn(M3, C2) || sgBadDay(C2) || sgRepsIn(M3, C2);
     return res && res.last ? { ...res, prev: L0.prev, prevOff: L0.prevOff } : res;
+  }
+  function sgAfterReturnIn(M3, C2) {
+    const { ex, plan, all, exps, last, top, cap, planPts, lastR, lastS, basis, lbl, prevBest, tgtRir } = C2;
+    if (C2.injM || C2.noAdd || ex.assist || noE1(ex) || !(top > 0)) return null;
+    const i5 = all.indexOf(last);
+    if (i5 < 1 || !afterBreak(all[i5 - 1], last.date)) return null;
+    const k2 = exps.indexOf(last);
+    const pre = k2 > 0 ? exps[k2 - 1] : null;
+    if (!pre || !afterBreak(pre, last.date)) return null;
+    const preTop = workLoad(pre.pts, +plan.repMin);
+    if (!(preTop > top + 1e-6)) return null;
+    const n3 = Math.max(1, +plan.sets || planPts.length);
+    if (planPts.length < Math.min(n3, triedAt(last, top).length) || triedAt(last, top).some((p3) => p3.missed || p3.r < +plan.repMin))
+      return null;
+    const bw = bwRefLoadIn(M3, ex);
+    if (ex.bw && !(bw > 0)) return null;
+    let est = 0;
+    for (const p3 of planPts) {
+      const v3 = fitE(p3.load, p3.r, p3.rir == null ? 2 : Math.min(p3.rir, E1_MAX_RIR));
+      if (v3 != null && v3 > est) est = v3;
+    }
+    if (!(est > 0)) return null;
+    const rs = pre.pts.filter((p3) => Math.abs(p3.w - preTop) < 1e-6).map((p3) => p3.r).sort((a2, b2) => a2 - b2);
+    if (!rs.length) return null;
+    const preR = Math.max(+plan.repMin, Math.min(+plan.repMax, rs[Math.floor((rs.length - 1) / 2)]));
+    const want = Math.min(e1inv(est, preR + Math.min(tgtRir, E1_MAX_RIR)) - bw, preTop);
+    const nw = heavierLoadIn(M3, ex, plan, top, cap != null ? Math.min(want, cap) : want);
+    if (nw == null) return null;
+    return {
+      top,
+      w: nw,
+      text: `${lastS} Back from the break: those sets say ${lbl(nw)} fits your usual ${preR} reps, so ${lbl(nw)} next${nw < preTop - 1e-6 ? `, on the way back to ${lbl(preTop)}` : ""}. Aim for ${plan.repMin}+ reps in every set.`,
+      lastR,
+      basis,
+      last: lastS,
+      target: `${lbl(nw)} for ${plan.repMin}+ reps in every set`,
+      tgt: { kind: "load", w: nw, repMin: +plan.repMin, prevBest },
+      easier: null
+    };
   }
   function sgFirstIn(M3, ex, plan, T2, injM) {
     const w0 = ex.bw && !ex.assist ? 0 : null;
@@ -7210,6 +7249,19 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       return `${say(w2)} is more than twice the heaviest you have logged on this exercise, ${say(bestW)}.`;
     return null;
   }
+  function stretchTopIn(M3, exId, plan) {
+    const T2 = M3.today();
+    const xs = (IDXIn(M3).byEx[exId] || []).filter((x2) => x2.date <= T2);
+    if (!xs.length) return null;
+    let i5 = xs.length - 1;
+    while (i5 > 0 && !afterBreak(xs[i5 - 1], xs[i5].date)) i5--;
+    let t4 = null;
+    for (const x2 of xs.slice(i5)) {
+      const w2 = workLoad(x2.pts, +plan.repMin);
+      if (t4 == null || w2 > t4) t4 = w2;
+    }
+    return t4;
+  }
   function bwNoLoadIn(M3, ex, b2) {
     if (!ex || !ex.bw || ex.assist) return false;
     if (b2 && b2.sets.some((x2) => +(x2.w ?? 0) > 1e-6)) return false;
@@ -7233,11 +7285,19 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     if (!(Lt > 0) || !(light || heavy)) return null;
     const est = fitE(Lt, r4, qe == null ? 0 : Math.min(qe, E1_MAX_RIR));
     if (!est) return null;
+    const back = backDaysIn(M3, b2.exId, p3, {}) > BACK_DAYS;
+    const pre = back ? suggestCoreIn(M3, b2.exId, p3, {}) : null;
+    const preTop = pre && pre.top != null && pre.top > 0 ? pre.top : null;
+    const resUp = back ? Math.max(2, Math.min(tgt, E1_MAX_RIR)) : Math.min(tgt, E1_MAX_RIR) + 1;
+    const resDown = back ? Math.max(2, Math.min(tgt, E1_MAX_RIR) + 1) : Math.min(tgt, E1_MAX_RIR) + 1;
     const n3 = b2.sets.slice(0, si + 1).filter((x2) => !x2.warm && !x2.drop).length;
     const easy = () => sc === "rpe" ? `set ${n3} was RPE ${effAt(sc, q ?? 0)}, against a target of RPE ${effAt(sc, tgt)}` : `set ${n3} had ${effAt(sc, q ?? 0)} in reserve, against a target of ${effAt(sc, tgt)}`;
     let nw = null;
     if (light) {
-      const want = Math.min(e1inv(est, Math.round((lo + hi) / 2) + Math.min(tgt, E1_MAX_RIR) + 1), Lt * jumpCap(ex, Lt, false)) - bw;
+      const byEst = e1inv(est, back ? lo + resUp : Math.round((lo + hi) / 2) + resUp) - bw;
+      const done = back ? preTop : stretchTopIn(M3, b2.exId, p3);
+      const lim = back && done != null ? done : Math.max(done ?? -Infinity, Lt * jumpCap(ex, Lt, false) - bw);
+      const want = Math.min(byEst, lim);
       const cap = capOfIn(M3, ex, p3);
       nw = heavierLoadIn(M3, ex, p3, s3.w, cap != null ? Math.min(want, cap) : want);
       if (nw == null && q != null && q >= 5) {
@@ -7245,20 +7305,20 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
         nw = heavierLoadIn(M3, ex, p3, s3.w, cap != null ? Math.min(one, cap) : one);
       }
     } else {
-      const want = e1inv(est, lo + Math.min(tgt, E1_MAX_RIR) + 1) - bw;
+      const want = e1inv(est, lo + resDown) - bw;
       const w2 = lighterLoadIn(M3, ex, p3, s3.w, Math.max(0, want));
       nw = w2 < s3.w - 1e-6 ? w2 : null;
       if (nw != null && ex.bw && nw < 0) nw = 0;
     }
     if (nw != null) {
       const f3 = rtfAt(est, nw + bw);
-      const er = f3 == null ? lo : Math.max(lo, Math.min(hi, Math.floor(f3 - Math.min(tgt, E1_MAX_RIR) - 1 + 1e-9)));
+      const er = f3 == null ? lo : Math.max(lo, Math.min(hi, Math.floor(f3 - (light ? resUp : resDown) + 1e-9)));
       const why = light ? q != null && q >= tgt + 2 ? easy() : `set ${n3} went ${r4} reps, past your ${hi}` : `set ${n3} stopped at ${r4}, under your ${rangeWords(p3)}`;
       return { at: si, w: nw, from: s3.w, r: er, up: light, why, ...typeof s3.rid === "string" ? { rid: s3.rid } : {} };
     }
     if (light && q != null && q >= tgt + 2 && r4 < hi) {
       const f3 = rtfAt(est, Lt);
-      const er = f3 == null ? null : Math.min(hi, Math.floor(f3 - Math.min(tgt, E1_MAX_RIR) + 1e-9));
+      const er = f3 == null ? null : Math.min(hi, Math.floor(f3 - (back ? resUp : Math.min(tgt, E1_MAX_RIR)) + 1e-9));
       if (er != null && er > r4)
         return {
           at: si,
@@ -22531,7 +22591,7 @@ ${JSON.stringify(fb.context, null, 1)}`;
     } catch (e5) {
       log("refit", e5);
     }
-    window.__ironlog = { act, withTimeout, B3_PARTS, THREE_URLS, platesPerSide, get state() {
+    window.__ironlog = { act, nextSets, bwNoLoad, withTimeout, B3_PARTS, THREE_URLS, platesPerSide, get state() {
       return state;
     }, set state(v3) {
       setState(v3);
