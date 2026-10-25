@@ -118,11 +118,11 @@ export function log(area: string, err: unknown): void {
     const st = E && typeof E.stack === 'string' ? logCut(E.stack.split('\n').slice(0, 4).join('\n')).slice(0, 400) : '';
     const t = new Date().toISOString(),
       msg = logCut(m).slice(0, 300);
-    /* The same error again, straight after itself, is counted on its line (n) with the time it last came, so one that
+    /* The same error again (its area, message, build and place in the code), straight after itself, is counted on its line (n) with the time it last came, so one that
        repeats (a sign-in tried each time the app comes back to the screen, offline) cannot push an earlier one out of
        the 60 kept or the 10 a problem report carries (the second review of r59). */
     const last = logBuf[logBuf.length - 1];
-    if (last && last.a === area && last.m === msg && last.v === APP_VERSION) {
+    if (last && last.a === area && last.m === msg && last.v === APP_VERSION && (last.s || '') === st) {
       last.t = t;
       last.n = (last.n || 1) + 1;
     } else logBuf.push({ t, a: area, m: msg, v: APP_VERSION, ...(st ? { s: st } : {}) });

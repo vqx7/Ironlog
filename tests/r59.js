@@ -51,7 +51,11 @@
 //      so it cannot push an earlier one out (fails on 93b20b2 and before);
 //  18  the app brought back to the screen on a new day draws Today again,
 //      so a weigh-in typed at once is saved on the new day (fails on r58
-//      and every r59 commit to ed972d2).
+//      and every r59 commit to ed972d2);
+//  19  found by the third review: a sheet left open overnight and closed
+//      without an action draws Today for the new day;
+//  20  a screen kept on across midnight is drawn for the new day within a
+//      minute (both fail on r58 and every r59 commit to 531b458).
 const { open, engine, screenOf, screenDiff } = require('./h');
 const FILE = process.argv[2] || 'index.html';
 const OLD = 'baselines/r58.html';
@@ -633,10 +637,16 @@ const SCREENS = [
       for (let i = 0; i < 70; i++) L.log('auth', new Error('Network request failed'));
       L.log('sync-pull', new Error('Timed out'));
       L.log('auth', new Error('Network request failed'));
-      return { log: L.logBuf.map(e => [e.a, e.m, e.n || 1]), report: L.fbContext({ cat: 'bug', msg: '' }).errors.map(e => e.a) };
+      // The same words from two places in the code are two lines, each with its own place (the third review).
+      const at = (where) => ({ message: 'Timed out', stack: `Error: Timed out\n    at ${where} (index.html:1:1)` });
+      const n0 = L.logBuf.length; L.log('sync-read', at('placeA')); L.log('sync-read', at('placeB'));
+      const two = L.logBuf.slice(n0).map(e => [e.a, (e.s || '').includes('placeA') ? 'A' : (e.s || '').includes('placeB') ? 'B' : '?', e.n || 1]);
+      L.logBuf.length = n0;
+      return { two, log: L.logBuf.map(e => [e.a, e.m, e.n || 1]), report: L.fbContext({ cat: 'bug', msg: '' }).errors.map(e => e.a) };
     });
     ok(r.log.length === 4 && r.log[0][0] === 'render' && r.log[1][0] === 'auth' && r.log[1][2] === 70 && r.log[2][0] === 'sync-pull' && r.log[3][2] === 1, '17. seventy of one error in a row are one line saying 70; the crash before them stays, and the same error after another starts a line of its own', r.log);
     ok(r.report.includes('render'), '17. a problem report still carries the crash', r.report);
+    ok(JSON.stringify(r.two) === JSON.stringify([['sync-read', 'A', 1], ['sync-read', 'B', 1]]), '17. the same words from two places in the code are two lines, each with its own place', r.two);
     await Q.page.context().close();
   }
 
@@ -671,6 +681,42 @@ const SCREENS = [
     ok(JSON.stringify(r.list) === JSON.stringify([['2026-10-24', '181'], ['2026-10-25', '179.4']]), '18. a weigh-in typed at once is saved on the morning, the evening\'s kept', r.list);
     ok(!Q.errors.length, '18. no page errors', Q.errors);
     await Q.page.context().close();
+  }
+
+  // ---- 19 and 20. Found by the third review: the new-day draw of section 18 waited out a sheet left open overnight, and
+  // closing it (Escape, Back, a tap outside, ✕) drew nothing, so Today stayed yesterday's and a weigh-in typed at once
+  // went over the evening's (19); and a screen kept on across midnight, never leaving the app, was never drawn for the
+  // new day (20). Both fail on r58 and every r59 commit to 531b458.
+  if (run(19) || run(20)) {
+    const night = async (name, between) => {
+      const Q = await open(FILE, { browser, clock: '2026-10-24T23:59:20' });
+      const r = await Q.page.evaluate(async between => {
+        const L = window.__ironlog; const w = ms => new Promise(r => setTimeout(r, ms));
+        const openAll = async () => { for (const d of document.querySelectorAll('#view details:not([open])')) d.querySelector('summary').click(); await w(80); };
+        L.state.settings.onboarded = true; L.makeDemo(); L.state.settings.hidden = [];
+        L.state.bodyweights = L.state.bodyweights.filter(b => b.date < '2026-10-22'); L.saveNow(); L.ui.tab = 'today'; L.render(); await w(100); await openAll();
+        const f = document.getElementById('bwVal'); f.value = '181'; f.dispatchEvent(new Event('input', { bubbles: true }));
+        document.querySelector('#view [data-act="addBW"]:not([data-in])').click(); await w(150); await openAll();
+        await (new Function('L', 'w', `return (async () => { ${between} })()`))(L, w);
+        const de = document.getElementById('bwDate');
+        const out = { modal: !!L.ui.modal, today: L.today(), date: de ? de.value : null, meas: (document.querySelector('#view [data-act="addMeas"]') || {}).textContent || '', eyebrow: (document.querySelector('#view .hero .eyebrow') || {}).textContent || '' };
+        const f2 = document.getElementById('bwVal'); if (f2) { f2.value = '179.4'; f2.dispatchEvent(new Event('input', { bubbles: true })); }
+        const log = document.querySelector('#view [data-act="addBW"]:not([data-in])'); if (log) log.click(); await w(150);
+        out.list = L.state.bodyweights.filter(b => b.date >= '2026-10-22').map(b => [b.date, L.fmtW(b.kg)]).sort();
+        return out;
+      }, between);
+      const ok2 = !r.modal && r.today === '2026-10-25' && r.date === '2026-10-25' && /Oct 25/.test(r.meas) && /Sun/.test(r.eyebrow) && JSON.stringify(r.list) === JSON.stringify([['2026-10-24', '181'], ['2026-10-25', '179.4']]);
+      ok(ok2, name, r);
+      ok(!Q.errors.length, `${name.slice(0, 3)} no page errors`, Q.errors);
+      await Q.page.context().close();
+    };
+    const NEXT = "(() => { const T = '2026-10-25T07:30:00'; const R = Date; const off = new R(T).getTime() - R.now(); class D extends R { constructor(...a) { if (a.length) super(...a); else super(R.now() + off); } static now() { return R.now() + off; } } window.Date = D; })();";
+    // A sheet left open overnight (the question that deletes a weigh-in), the app brought back, the sheet closed with Escape.
+    if (run(19)) await night('19. a sheet left open overnight and closed with Escape in the morning: Today is the new day\'s (its date line, Body\'s date, Save measurements), and a weigh-in typed at once is saved on it, the evening\'s kept',
+      `document.querySelector('#view [data-act="delBW"]').click(); await w(100); ${NEXT} document.dispatchEvent(new Event('visibilitychange')); await w(150); document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })); await w(150);`);
+    // The screen kept on across midnight: the clock passes 00:00 by itself (40 s from 23:59:20), nothing tapped.
+    if (run(20)) await night('20. the screen kept on across midnight, nothing tapped: within a minute Today is the new day\'s, and a weigh-in typed then is saved on it, the evening\'s kept',
+      `await w(70000);`);
   }
 
   await browser.close();

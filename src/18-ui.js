@@ -132,7 +132,7 @@ function closeModal(){
   // The 3D body goes back to Today's map, coloured by the week again.
   // Turned in the sheet, the body goes back to Today facing the way it was, a turn still running stopped first (r54: it went on, on Today's body).
   if(was&&was.kind==='exMus'){cancelAnimationFrame(B3.anim);B3.ex=null;if(B3.yawKeep!=null){B3.yaw=B3.yawKeep;B3.yawKeep=null;}if(document.getElementById('bm3d'))mount3D();}
-  const r=modalReturn;modalReturn=null;
+  if(drawnBeforeToday())rerenderKeepScroll();const r=modalReturn;modalReturn=null; // A sheet open since yesterday leaves today's screen when it closes (drawnBeforeToday, r59).
   if(r&&document.contains(r)&&typeof r.focus==='function')try{r.focus({preventScroll:true});}catch(e){/* focus is best effort */}
 }
 /* alt is an optional second action, {label, fn}. Some choices are genuinely
@@ -242,7 +242,7 @@ async function wakeOn(){
   catch(e){wakeSentinel=null;if(!wakeOn.warned){wakeOn.warned=true;toast('This browser would not keep the screen on');}}
 }
 function wakeOff(){try{if(wakeSentinel)wakeSentinel.release();}catch(e){/* already released */}wakeSentinel=null;}
-document.addEventListener('visibilitychange',()=>{if(document.visibilityState!=='visible')return;wakeOn();if(!ui.modal&&drawnBeforeToday())rerenderKeepScroll();}); // Back on a new day, the screen is drawn again for it (drawnBeforeToday, r59).
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState!=='visible')return;wakeOn();if(!ui.modal&&drawnBeforeToday())rerenderKeepScroll();});setInterval(()=>{if(document.visibilityState==='visible'&&!ui.modal&&drawnBeforeToday())rerenderKeepScroll();},30000); // Back on a new day, or on the screen as one begins, the screen is drawn again for it (drawnBeforeToday, r59).
 function stopTimer(){clearInterval(timer.iv);timer.iv=null;timer.fired=false;$('#timer').hidden=true;document.body.classList.remove('timer-on');timerSave();}
 /* The bar is built once per start (or when its style setting changes) and
    each tick only rewrites the time. Rebuilding its buttons four times a
