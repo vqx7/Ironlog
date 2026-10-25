@@ -110,15 +110,20 @@ const SCREENS = [
     ...shot,
     tree: shot.tree.map(t => t.replace(/Tracked only: no study sets a weekly dose for it\./g, 'Tracked only: counted, with no target. Give it one in Settings, Weekly set targets.').replace(/<div class="l">"Best e1RM \(([^)]*)\)"<\/div>/g, (_, u) => `<div class="l">"Best estimate (${u})"<button aria-label="About the best estimate" class="tipi" data-tip=${JSON.stringify(TIP)} type="button">"i"</button></div>`).replace(/<th class="r">"e1RM"<\/th>/g, '<th class="r">"Best estimate"</th>')),
     // A table's heading is in capitals on screen (its style), so its words are too.
-    text: shot.text.replace(/Best e1RM \(([^)]*)\)/g, 'Best estimate ($1) i').replace(/\bE1RM\b/g, 'BEST ESTIMATE').replace(/\be1RM\b/g, 'Best estimate')
+    text: tipless(shot.text.replace(/Best e1RM \(([^)]*)\)/g, 'Best estimate ($1)').replace(/\bE1RM\b/g, 'BEST ESTIMATE').replace(/\be1RM\b/g, 'Best estimate'))
   });
+  /* The tile's new tip button, held in the elements above, is left out of the visible text on both pages:
+     how a button beside text reads as text differs by engine (WebKit's CI run, 2026-10-25). */
+  function tipless(t) { return t.replace(/(Best estimate \([^)]*\))\s*i(?![\w])/g, '$1'); }
+  // Where two texts first differ, with some of each around it.
+  const textDiff = (a, b) => { let i = 0; while (i < a.length && a[i] === b[i]) i++; return { at: i, r57: a.slice(Math.max(0, i - 80), i + 160), now: b.slice(Math.max(0, i - 80), i + 160) }; };
   if (!run(1));
   else if (process.env.IRONLOG_FILE) console.log('note r58 section 1 compares source pages; it runs on the source build');
   else for (const [tab, name, seed, prep, env] of SCREENS) {
-    const a = asNow(await screenOf(OLD, { browser, seed: seed + FIX + KEEP, tab, prep, env })), b = await screenOf(FILE, { browser, seed: seed + FIX + KEEP, tab, prep, env });
+    const a = asNow(await screenOf(OLD, { browser, seed: seed + FIX + KEEP, tab, prep, env })), b0 = await screenOf(FILE, { browser, seed: seed + FIX + KEEP, tab, prep, env }), b = { ...b0, text: tipless(b0.text) };
     const d = screenDiff({ tree: a.tree, text: '' }, { tree: b.tree, text: '' });
     ok(!d, `1. ${name}: the same elements, attributes and field values as r57`, d && { at: d.at, r57: d.before, now: d.now });
-    ok(a.text === b.text, `1. ${name}: the same visible text as r57`, a.text === b.text ? '' : { r57: a.text.slice(0, 400), now: b.text.slice(0, 400) });
+    ok(a.text === b.text, `1. ${name}: the same visible text as r57`, a.text === b.text ? '' : textDiff(a.text, b.text));
     ok(!b.errors.length, `1. ${name}: no page errors`, b.errors);
   }
 
