@@ -112,9 +112,12 @@ const SCREENS = [
     // A table's heading is in capitals on screen (its style), so its words are too.
     text: tipless(shot.text.replace(/Best e1RM \(([^)]*)\)/g, 'Best estimate ($1)').replace(/\bE1RM\b/g, 'BEST ESTIMATE').replace(/\be1RM\b/g, 'Best estimate'))
   });
-  /* The tile's new tip button, held in the elements above, is left out of the visible text on both pages:
-     how a button beside text reads as text differs by engine (WebKit's CI run, 2026-10-25). */
-  function tipless(t) { return t.replace(/(Best estimate \([^)]*\))\s*i(?![\w])/g, '$1'); }
+  /* The visible text is read with its spaces and line breaks left out, on both pages, and the tile's new tip
+     button (held in the elements above) with them: every text node is held exactly by the elements, and how
+     text reads at a line wrap differs by engine. WebKit's CI run (2026-10-25) read "Oct 23PR" where a date
+     and its PR tag wrap in Lifts' table, whose first column the longer "Best estimate" heading narrows
+     (98 to 88 px at 390 wide), and where r57's fit on one line. */
+  function tipless(t) { return t.replace(/(Best estimate \([^)]*\))\s*i(?![\w])/g, '$1').replace(/\s+/g, ''); }
   // Where two texts first differ, with some of each around it.
   const textDiff = (a, b) => { let i = 0; while (i < a.length && a[i] === b[i]) i++; return { at: i, r57: a.slice(Math.max(0, i - 80), i + 160), now: b.slice(Math.max(0, i - 80), i + 160) }; };
   if (!run(1));
