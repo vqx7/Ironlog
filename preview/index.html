@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-N/mTXwFTBFccXJeXguQVUbWrTDOjfgCNUlJicBwRfWY=' 'sha256-tuSgXs5JTxAxl+0h6Mmbx/BgvpNDfjiq2RiZRPGtwkc=' 'sha256-YHdgjdaHPObo0ajgr78/3fg0b/g2KACx2Yivxr2AJEo=' 'sha256-cxnKYAf/c9qpisP4hAZqJVAZbjDnoiHFedsNGelSSWs=' 'sha256-J4UrXwIeplIJZfkgJq3M75mmvlwXBomq0l+LhSwoEfI='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https://fqvupierxrvpoidtwlon.supabase.co wss://fqvupierxrvpoidtwlon.supabase.co https://api.pwnedpasswords.com; worker-src 'self'; manifest-src 'self'; media-src 'self'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-N/mTXwFTBFccXJeXguQVUbWrTDOjfgCNUlJicBwRfWY=' 'sha256-tuSgXs5JTxAxl+0h6Mmbx/BgvpNDfjiq2RiZRPGtwkc=' 'sha256-YHdgjdaHPObo0ajgr78/3fg0b/g2KACx2Yivxr2AJEo=' 'sha256-1Q8hzLnJ7B6yDDNmnmPWU0Fp4snkuYXlrkRlgsqyaFY=' 'sha256-J4UrXwIeplIJZfkgJq3M75mmvlwXBomq0l+LhSwoEfI='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https://fqvupierxrvpoidtwlon.supabase.co wss://fqvupierxrvpoidtwlon.supabase.co https://api.pwnedpasswords.com; worker-src 'self'; manifest-src 'self'; media-src 'self'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="app-build" content="2026.10.25-r59">
 <title>Ironlog Preview</title>
@@ -3699,7 +3699,7 @@ loadScript(['vendor/chart.umd.js','https://cdnjs.cloudflare.com/ajax/libs/Chart.
       const st = E2 && typeof E2.stack === "string" ? logCut(E2.stack.split("\n").slice(0, 4).join("\n")).slice(0, 400) : "";
       const t4 = (/* @__PURE__ */ new Date()).toISOString(), msg = logCut(m3).slice(0, 300);
       const last = logBuf[logBuf.length - 1];
-      if (last && last.a === area && last.m === msg && last.v === APP_VERSION) {
+      if (last && last.a === area && last.m === msg && last.v === APP_VERSION && (last.s || "") === st) {
         last.t = t4;
         last.n = (last.n || 1) + 1;
       } else logBuf.push({ t: t4, a: area, m: msg, v: APP_VERSION, ...st ? { s: st } : {} });
@@ -9558,10 +9558,16 @@ loadScript(['vendor/chart.umd.js','https://cdnjs.cloudflare.com/ajax/libs/Chart.
 
   // src/app/view.ts
   var legacyDraws = 0;
+  var drawnFor = "";
+  function drawnBeforeToday() {
+    return drawnFor !== "" && drawnFor !== today();
+  }
   function drawLegacy(view, markup2) {
+    drawnFor = today();
     D(i4(++legacyDraws, o2(markup2)), view);
   }
   function drawScreen(view, screen) {
+    drawnFor = today();
     D(screen, view);
   }
   function markupOf(part) {
@@ -16018,6 +16024,7 @@ ${ms.length ? b`<div class="scroll-x" style="margin-top:10px"><table class="t"><
         }
         if (document.getElementById("bm3d")) mount3D();
       }
+      if (drawnBeforeToday()) rerenderKeepScroll();
       const r4 = modalReturn;
       modalReturn = null;
       if (r4 && document.contains(r4) && typeof r4.focus === "function") try {
@@ -16236,8 +16243,13 @@ ${ms.length ? b`<div class="scroll-x" style="margin-top:10px"><table class="t"><
       wakeSentinel = null;
     }
     document.addEventListener("visibilitychange", () => {
-      if (document.visibilityState === "visible") wakeOn();
+      if (document.visibilityState !== "visible") return;
+      wakeOn();
+      if (!ui.modal && drawnBeforeToday()) rerenderKeepScroll();
     });
+    setInterval(() => {
+      if (document.visibilityState === "visible" && !ui.modal && drawnBeforeToday()) rerenderKeepScroll();
+    }, 3e4);
     function stopTimer() {
       clearInterval(timer.iv);
       timer.iv = null;
