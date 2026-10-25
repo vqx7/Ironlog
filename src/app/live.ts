@@ -86,6 +86,8 @@ import {
   lighterLoadIn,
   oddLoadIn,
   lightZeroIn,
+  nextSetsIn,
+  bwNoLoadIn,
   progStepIn,
   rackStepIn,
   suggestCoreIn,
@@ -201,6 +203,8 @@ export const incOf = live(incOfIn);
 export const heavierLoad = live(heavierLoadIn);
 export const oddLoad = live(oddLoadIn);
 export const lightZero = live(lightZeroIn);
+export const nextSets = live(nextSetsIn);
+export const bwNoLoad = live(bwNoLoadIn);
 export const lighterLoad = live(lighterLoadIn);
 export const progStep = live(progStepIn);
 export const rackStep = live(rackStepIn);

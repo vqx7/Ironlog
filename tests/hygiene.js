@@ -327,7 +327,8 @@ const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log
   // only when its line ran. A new global the code really needs goes on this list.
   const GLOBALS = new Set(['Array', 'Blob', 'Boolean', 'CSS', 'DOMParser', 'DataView', 'Date', 'DecompressionStream', 'Error', 'File', 'FileReader', 'Image', 'Infinity', 'Intl', 'JSON', 'Map', 'Math', 'MouseEvent', 'MutationObserver', 'NaN', 'Number', 'Object', 'Promise', 'Response', 'Set', 'String', 'TextDecoder', 'TextEncoder', 'URL', 'Uint8Array', 'WeakMap', 'WeakSet', 'cancelAnimationFrame', 'clearInterval', 'clearTimeout', 'document', 'encodeURIComponent', 'getComputedStyle', 'history', 'indexedDB', 'isFinite', 'isNaN', 'localStorage', 'location', 'matchMedia', 'navigator', 'parseFloat', 'parseInt', 'performance', 'queueMicrotask', 'requestAnimationFrame', 'setInterval', 'setTimeout', 'undefined', 'window']);
   const unknown = dm.free.filter(n => !GLOBALS.has(n));
-  ok(dm.free.length > 40 && unknown.length === 0, 'every name the legacy script reads without declaring or importing it is a known browser or JavaScript global', unknown);
+  // The count only shows the map read the script at all: the script shrinks phase by phase (37 globals at r60, from over 40).
+  ok(dm.free.length > 20 && unknown.length === 0, 'every name the legacy script reads without declaring or importing it is a known browser or JavaScript global', unknown);
   // src/09-imports.js holds named imports from src/app/ and nothing else: an
   // import with no names (`import './x'`, `import {} from './x'`) or a
   // re-export (`export * from './x'`) runs a module for its effects alone,

@@ -306,6 +306,6 @@ function afterAdd(bi){
   const el=document.getElementById('blk-'+bi);if(!el)return;
   let calm=false;try{calm=window.matchMedia('(prefers-reduced-motion: reduce)').matches;}catch(e){/* no media queries */}
   try{el.scrollIntoView({block:'start',behavior:calm?'auto':'smooth'});}catch(e){el.scrollIntoView();}
-  el.classList.remove('flash');void el.offsetWidth;el.classList.add('flash');
+  el.classList.remove('flash');void el.offsetWidth;el.classList.add('flash');el.addEventListener('animationend',()=>el.classList.remove('flash'),{once:true}); // the screen keeps the block between draws (r60), so the mark goes when the flash ends
 }
 

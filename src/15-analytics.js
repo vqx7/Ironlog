@@ -1,34 +1,7 @@
-/* An assisted lift keeps its sets as bodyweight minus the help, below 0, so
-   every estimate, target and record works unchanged; the field shows and
-   takes the help as a plain number, since phone number pads have no minus. */
-const loadIn=(ex,w)=>w==null?'':fmtW(ex&&ex.assist?-w:w);
-
 /* ---------- analytics ----------
    The index (IDX), its readers and the RIR reading are in src/app/ since r52
    (analytics.ts, weeks.ts, time.ts, coach.ts); what stays here moves with the
    screens that call it (ARCHITECTURE.md, phase 5). */
-/* ---------- what the load number means ----------
-   Every set stores the number you typed, as you typed it. What it means is a
-   property of the exercise, shown on the exercise and above the load column:
-   - each:  per dumbbell, two dumbbells (DB bench, curls, lunges)
-   - total: everything on one implement (a barbell with its bar, one dumbbell,
-            plates on a landmine or a plate-loaded machine)
-   - side:  plates on one side of a plate-loaded machine
-   - stack: the pin setting on a cable or selectorized machine
-   - bw:    added to bodyweight (pull-ups, dips)
-   Estimated 1RM and targets stay in that same frame (per dumbbell, per side),
-   so progress compares like with like. Weight lifted counts what actually
-   moved: both dumbbells, both sides of the plates, both limbs when reps are
-   logged per side. Changing an exercise's setting does not convert past sets. */
-/* On the exercise, always visible: what the load number is, and reps per
-   side when that applies. Tap or hold for the longer version. */
-function lmChips(ex){
-  if(ex.timed&&!ex.bw&&loadMode(ex)!=='each')return ex.perSide?'<p class="lmrow"><span class="lm">seconds per side</span></p>':'';
-  const m=loadMode(ex);
-  if(ex.assist)return `<p class="lmrow"><span class="lm" data-tip="Enter the help the machine gives, as on its pin. Less help is progress; your logged bodyweight minus the help is what counts.">machine help</span></p>`;
-  const long={each:'Enter the weight of one dumbbell. Weight lifted counts both.',side:'Enter the plates on one side. Weight lifted counts both sides.',stack:'Enter the pin setting. It is not comparable across machines.',bw:'Enter only what you add (belt, vest, dumbbell); 0 for bodyweight. Your logged bodyweight is added for estimates.'}[m]||(ex.equip==='barbell'?'Enter everything on the bar, the bar included.':ex.equip==='dumbbell'?'Enter the weight of the one dumbbell you hold.':'Enter the total load.');
-  return `<p class="lmrow"><span class="lm" data-tip="${esc(long)}">${esc(loadWords(ex))}</span>${ex.perSide?`<span class="lm" data-tip="${esc(ex.timed?'Seconds for one side; do the same on the other.':'Reps for one side; do the same on the other. One set still counts as one set.')}">${ex.timed?'seconds':'reps'} per side</span>`:''}</p>`;
-}
 /* First run only (r29, V: "targets that can actually be met"): when a new
    person picks a ready-made routine and the weekly targets are still the
    defaults, each muscle's minimum comes down to what the routine plans

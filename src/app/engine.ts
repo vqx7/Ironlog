@@ -5,11 +5,11 @@
    the log, the date or a cache takes the model as its first parameter
    (model.ts). */
 
-import type { DraftBlock, Plan } from './types';
+import type { DraftBlock, NextSetsAdj, Plan } from './types';
 import type { Drift, ExPoint, Exposure, ExerciseLike, Model, Suggestion } from './model';
 import type { LiftBests } from './analytics';
 import { EXIn, UIn, exInjuryIn, gymOfIn } from './model';
-import { IDXIn, bwLoadIn, bwRefLoadIn, lastOf, statsUpToIn, triedAt } from './analytics';
+import { IDXIn, bwLoadIn, bwRefLoadIn, lastOf, rirEstIn, statsUpToIn, triedAt } from './analytics';
 import { atCapOfIn, capOfIn, exBarKgIn, gymK, gymRackIn, gymStepIn, platesMode, rackGapIn, rackTolIn } from './gym';
 import {
   DEFAULT_STEP,
@@ -1684,5 +1684,124 @@ export function oddLoadIn(M: Model, b: DraftBlock, si: number, date: string): st
         }
   if (best > 0 && load > Math.max(best, top) * ODD_BEST + 1e-9)
     return `${say(w)} is more than twice the heaviest you have logged on this exercise, ${say(bestW)}.`;
+  return null;
+}
+
+/* ---------- Adjusting the next sets (r34, V; moved from src/17-adjust.js in r60) ----------
+   Coaches who program by effort move the next set from how the last one
+   went. After a ticked working set, when it was clearly off, the rows below
+   that are still the app's (nothing typed) take a new load:
+   - lighter than planned: 2 or more reps in reserve over the target with the
+     reps in the range, or 2 or more reps past the top of the range (the
+     same 2 that moves the next session's load from the estimate, r27;
+     3 until r45, V: 14 reps on a 10 to 12 range left the load alone);
+   - heavier than planned: 2 or more reps under both the bottom of the range
+     and what this session expected of the set (last time's reps at this
+     load, or the target's minimum after a new load), not stopped early (no
+     reserve over the target). A lift building reps up from under the range
+     (a large step, r31) is expected there and is left alone.
+   The new load is what the set's own estimate says allows the middle of the
+   range (up) or the bottom of it (down) at the target RIR with one rep more
+   in reserve for fatigue, at most 10% up (15% on light isolation lifts,
+   jumpCap), in whole steps or on the rack. Conventions, meant to err light.
+   A rep or two lost per set is normal fatigue and changes nothing. What the
+   session decides (adjusting off in Settings, Keep, a warm-up, a drop, an
+   unticked set, no row left to move, a past workout, an edit, a lighter day
+   or deload) is the session screen's (workout.ts); what the lift decides is
+   here: a timed hold, an assisted lift, a lift with no estimate, an injury,
+   no range or step, and a bodyweight lift with no load or no weigh-in. */
+
+/* A bodyweight lift never done with added load (r34.2, from the review:
+   push-ups at BW x 20 were moved to BW+10 mid-session, a load the lifter
+   never had, and one tap logged it). It progresses by reps until the lifter
+   types a load. */
+/** Whether a bodyweight lift has never had added load, in this session or its log, and so moves by reps alone. */
+export function bwNoLoadIn(M: Model, ex: ExerciseLike | null | undefined, b?: DraftBlock | null): boolean {
+  if (!ex || !ex.bw || ex.assist) return false;
+  if (b && b.sets.some(x => +(x.w ?? 0) > 1e-6)) return false;
+  return !(IDXIn(M).byEx[ex.id] || []).some(x => x.pts.some(p => p.w > 1e-6));
+}
+
+/** The next sets after ticked set `si` of a block, or null when it was not clearly off or the lift does not take an adjustment (above); `lastR` is last time's reps for that row (the Last column's), or null. */
+export function nextSetsIn(M: Model, b: DraftBlock, si: number, lastR: number | null): NextSetsAdj | null {
+  const s = b.sets[si];
+  if (!s || !(+(s.r ?? 0) > 0) || s.w == null) return null;
+  const ex = EXIn(M, b.exId);
+  const p = b.plan;
+  if (ex.timed || ex.assist || noE1(ex) || exInjuryIn(M, ex) || !(+p.repMin > 0)) return null;
+  if (!(incOfIn(M, ex, p, s.w) > 0) || bwNoLoadIn(M, ex, b)) return null;
+  // Nor a bodyweight lift with no weigh-in, which has no total load to estimate from (r55).
+  if (ex.bw && !(bwRefLoadIn(M, ex) > 0)) return null;
+  const sc = effScale(M.s.settings.rirScale);
+  /* A blank effort is read as the lift's usual effort, as everywhere else
+     (r34.2: a blank set was read as failure here only, and dropped further). */
+  const tgt = +p.rir || 0,
+    lo = +p.repMin,
+    hi = +p.repMax,
+    r = +(s.r ?? 0);
+  const q = s.rir == null || s.rir === '' ? null : +s.rir;
+  const qe = q != null ? q : rirEstIn(M, s, ex);
+  const bw = bwRefLoadIn(M, ex),
+    Lt = s.w + bw;
+  const expR =
+    b.tgt && b.tgt.kind === 'load' && +(b.tgt.repMin ?? 0) > 0 ? +(b.tgt.repMin ?? 0) : lastR != null ? lastR : lo;
+  const light = (q != null && q >= tgt + 2 && r >= lo) || r >= hi + 2,
+    heavy = r <= Math.min(lo, expR) - 2 && (q == null || q <= tgt);
+  if (!(Lt > 0) || !(light || heavy)) return null;
+  const est = fitE(Lt, r, qe == null ? 0 : Math.min(qe, E1_MAX_RIR));
+  if (!est) return null;
+  const n = b.sets.slice(0, si + 1).filter(x => !x.warm && !x.drop).length;
+  const easy = (): string =>
+    sc === 'rpe'
+      ? `set ${n} was RPE ${effAt(sc, q ?? 0)}, against a target of RPE ${effAt(sc, tgt)}`
+      : `set ${n} had ${effAt(sc, q ?? 0)} in reserve, against a target of ${effAt(sc, tgt)}`;
+  let nw: number | null = null;
+  if (light) {
+    const want =
+      Math.min(e1inv(est, Math.round((lo + hi) / 2) + Math.min(tgt, E1_MAX_RIR) + 1), Lt * jumpCap(ex, Lt, false)) - bw;
+    const cap = capOfIn(M, ex, p);
+    nw = heavierLoadIn(M, ex, p, s.w, cap != null ? Math.min(want, cap) : want);
+    /* Rated 5 or more in reserve, the top of the scale, the estimate is
+       only a floor, so one real step is always right even where it is
+       more than the cap allows (r34.2, from the review: 20 lb curls at
+       5+ in reserve never moved, a 5 lb step being 25% of the load). */
+    if (nw == null && q != null && q >= 5) {
+      const one = s.w + incOfIn(M, ex, p, s.w);
+      nw = heavierLoadIn(M, ex, p, s.w, cap != null ? Math.min(one, cap) : one);
+    }
+  } else {
+    const want = e1inv(est, lo + Math.min(tgt, E1_MAX_RIR) + 1) - bw;
+    const w = lighterLoadIn(M, ex, p, s.w, Math.max(0, want));
+    nw = w < s.w - 1e-6 ? w : null;
+    if (nw != null && ex.bw && nw < 0) nw = 0;
+  }
+  if (nw != null) {
+    const f = rtfAt(est, nw + bw);
+    const er = f == null ? lo : Math.max(lo, Math.min(hi, Math.floor(f - Math.min(tgt, E1_MAX_RIR) - 1 + 1e-9)));
+    const why = light
+      ? q != null && q >= tgt + 2
+        ? easy()
+        : `set ${n} went ${r} reps, past your ${hi}`
+      : `set ${n} stopped at ${r}, under your ${rangeWords(p)}`;
+    return { at: si, w: nw, from: s.w, r: er, up: light, why, ...(typeof s.rid === 'string' ? { rid: s.rid } : {}) };
+  }
+  if (light && q != null && q >= tgt + 2 && r < hi) {
+    /* No heavier load fits (the next step is more than the estimate
+       allows): the same load for more reps, so a set this easy is not
+       met with silence (r35, V). Reps the estimate gives at the target
+       effort, up to the top of the range. */
+    const f = rtfAt(est, Lt);
+    const er = f == null ? null : Math.min(hi, Math.floor(f - Math.min(tgt, E1_MAX_RIR) + 1e-9));
+    if (er != null && er > r)
+      return {
+        at: si,
+        w: s.w,
+        from: s.w,
+        r: er,
+        up: true,
+        why: easy(),
+        ...(typeof s.rid === 'string' ? { rid: s.rid } : {})
+      };
+  }
   return null;
 }

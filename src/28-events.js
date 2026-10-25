@@ -88,31 +88,13 @@ document.addEventListener('input',e=>{
   const t=e.target;
   if(ui.modal&&FORM_SHEETS.has(ui.modal.kind)&&t&&t.closest&&t.closest('#modal'))ui.modal.dirty=true;
   if(t.id==='incVal'&&ui.modal&&ui.modal.kind==='inc')ui.modal.typed=true;
-  if(t.dataset.cf&&state.draft&&state.draft.cardio){const c=state.draft.cardio[+t.dataset.c];if(!c)return;const k=t.dataset.cf;
-    if(k==='min'){const n=numIn(t.value);c.min=n==null||n<=0?null:Math.min(Math.round(n),600);}
-    else if(k==='hr'){const n=numIn(t.value);c.hr=n!=null&&n>=30&&n<=230?Math.round(n):null;}
-    else if(k==='dist'){const v=distIn(t.value);if(v==null)delete c.dist;else c.dist=v;}
-    else if(k==='kind'&&CARDIOL[t.value])c.kind=t.value;else if(k==='when'&&CWHENL[t.value])c.when=t.value;
-    saveSoon();return;}
-  if(t.dataset.f&&state.draft){const s=draftSet(t);if(!s)return;const v=t.value;
-    // Clamp what gets stored. The field keeps whatever was typed so the user is
-    // not fought mid-keystroke, but history can never take a negative load or
-    // an impossible rep count, which used to push session volume negative.
-    if(t.dataset.f==='w'){const n=numIn(v);const bx=state.draft.ex[+t.dataset.b];const as=bx&&EX(bx.exId).assist;s.w=n==null?null:as?-fromD(Math.min(Math.abs(n),660)):fromD(Math.min(Math.max(n,0),20000));if(s.w===0)s.w=0;carried.delete(s);}
-    else if(t.dataset.f==='r'){const n=numIn(v);s.r=n==null?null:Math.min(Math.max(Math.floor(n+1e-9),0),1000);refreshGrey(+t.dataset.b);} // whole reps: 8.5 is 8, a partial rep not a rep (r55; r54 stored 9)
-    else{const n=numIn(v);s.rir=n==null?null:Math.min(Math.max(n,0),10);if(t.tagName==='SELECT')t.classList.toggle('unset',v==='');}
-    if(t.dataset.f!=='rir')updateProgress(+t.dataset.b);
-    if(t.dataset.f==='w'){updatePlates(+t.dataset.b,+t.dataset.s);refreshGreyW(+t.dataset.b);}
-    saveSoon();return;}
+  if(workoutInput(t))return; // the session screen's (r60): a set's load and reps, cardio, the name, the notes
   if(planInput(t))return; // Plan's fields (r58): an exercise's numbers, a day's name, the routine's name, the searches
   if(t.dataset.band){bandInput(t);return;}
   if(t.dataset.fbind&&ui.modal&&ui.modal.kind==='feedback'){ui.modal[t.dataset.fbind]=t.value;ui.modal.dirty=true;const c=document.getElementById('fbCount');if(c&&t.dataset.fbind==='msg')c.textContent=`${t.value.length} / ${FB_MAX}`;return;}
   if(t.dataset.abind&&ui.modal&&ui.modal.kind==='account'){ui.modal[t.dataset.abind]=t.value;if(ui.modal.err){ui.modal.err='';}return;}
   if(t.dataset.ebind&&ui.modal&&ui.modal.kind==='exEdit'){const k=t.dataset.ebind;if(t.type==='checkbox')return;ui.modal.e[k]=t.value;return;}
   if(t.dataset.mbind&&ui.modal&&ui.modal.kind==='picker'){ui.modal[t.dataset.mbind]=t.value;const pl=$('#pickList');if(pl){pl.innerHTML=pickerBody(ui.modal);pl.scrollTop=0;}return;}
-  const b=t.dataset.bind;
-  if(b==='draftNotes'){state.draft.notes=t.value;saveSoon();return;}
-  if(b==='draftName'&&state.draft){state.draft.dayName=t.value.trim()?t.value.slice(0,40):'Freestyle';saveSoon();return;}
 });
 document.addEventListener('change',e=>{
   const t=e.target;
@@ -135,45 +117,11 @@ document.addEventListener('change',e=>{
     if(t.dataset.mapf!=null){m.tab.map[t.dataset.mapf]=t.value===''?undefined:+t.value;return;}}
   if(t.dataset.mbind)return;
   if(t.dataset.pbind==='date'&&ui.modal&&ui.modal.kind==='past'){if(isDate(t.value)&&t.value<=today())ui.modal.date=t.value;else toast('Pick today or an earlier date');renderModal();return;}
-  if(t.dataset.cf&&state.draft&&state.draft.cardio){const c=state.draft.cardio[+t.dataset.c];if(c){const k=t.dataset.cf;if(k==='kind'&&CARDIOL[t.value])c.kind=t.value;else if(k==='when'&&CWHENL[t.value])c.when=t.value;saveNow();}return;}
-  if(t.dataset.f==='r'&&state.draft){
-    const bi=+t.dataset.b,si=+t.dataset.s;const s=draftSet(t);if(!s)return;if(s.r!=null&&t.value.trim()!==String(s.r))t.value=String(s.r); // the field shows the reps stored (r55)
-    // The typed value is already stored (the input handler). A done set whose
-    // reps were cleared is still undone, once the new rows are in place.
-    if(rebuilding){if(s.done&&s.r==null)queueMicrotask(()=>{const b2=state.draft&&state.draft.ex[bi];const s2=b2&&b2.sets[si];if(s2&&s2.done&&s2.r==null)setDone(bi,si,false);});return;}
-    // A set with no reps cannot be a done set; one typed as 0 is a missed set, ticked as typed (r55, V).
-    if(s.done&&s.r==null){setDone(bi,si,false);t.dataset.cleared='1';} // marked, so leaving the field does not tick it again at the grey reps (r55, the audit)
-    else if((state.settings.autoDone||state.draft.past)&&!s.done&&(+s.r>0||isMissed(s))){
-      const toRir=!state.draft.past&&lastDown.el&&Date.now()-lastDown.t<700&&lastDown.el.closest&&lastDown.el.closest(`.rirb[data-b="${bi}"][data-s="${si}"]`);const toW=!toRir&&!state.draft.past&&lastDown.el&&Date.now()-lastDown.t<700&&lastDown.el.closest&&lastDown.el.closest(`.sg input[data-f="w"][data-b="${bi}"][data-s="${si}"]`); // heading for this row's load: tick when it is left, so the load is never written into the field being typed in (r55, the audit: 105 typed there became 101050)
-      // Heading for this row's RIR box: tick when its strip closes (or after 2 s if it never opened).
-      if(toW)pendAuto={b:blkRef(bi),s:si};else if(toRir){const p={b:blkRef(bi),s:si};pendAuto=p;setTimeout(()=>{if(pendAuto===p&&!document.querySelector('.rirstrip'))autoPending();},2000);} // by identity: a later tick must not run this one (r45)
-      else{lastAuto={b:blkRef(bi),s:si,t:Date.now()};setDone(bi,si,true);}}
-    else if(s.done&&isMissed(s)){setDone(bi,si,false);setDone(bi,si,true,true);} /* a ticked set changed to 0 asks, as a tick does, when its load is light (r55.1, the spec review) */else if(s.done){refreshPR(bi,si,false);afterSet(bi,si);}
-    saveSoon();return;}
-  if(t.dataset.f){
-    if(t.dataset.f==='w'&&state.draft){const s=draftSet(t);if(!s)return;const bi=+t.dataset.b,si=+t.dataset.s;const rf=!!ui.refix&&ui.refix.s===si&&blkIdx(ui.refix.b)===bi;if(rf)ui.refix=null;if(s.done&&oddLoad(state.draft.ex[bi],si,state.draft.date)){setDone(bi,si,false);setDone(bi,si,true,true);return;}/* a ticked set's load changed to one far off asks too, unticked until it is answered; Log it, or the load fixed after Fix it, ticks it again, its rest not started over (r55; the second review: after Fix it it stayed unticked, and Log it restarted the rest) */if(rf&&!s.done)setDone(bi,si,true,true);else if(s.done){refreshPR(bi,si,false);afterSet(bi,si);}mixCheck(bi,si);if(fillLoads())carryLoad(bi,si);}
-    if(t.tagName==='SELECT'&&state.draft){
-      const s=draftSet(t);if(!s)return;const n=numIn(t.value);
-      s.rir=n==null?null:Math.min(Math.max(n,0),10);
-      t.classList.toggle('unset',t.value==='');
-      // No invalidate() here. The draft is not part of IDX, so this only threw
-      // away a cached index that every later read then had to rebuild, and
-      // saveNow() stringified the entire state on every single tap.
-      updateProgress(+t.dataset.b);
-    }
-    saveSoon();return;}
+  if(workoutChange(t))return; // the session screen's (r60): a set's reps and load, cardio, the date
   const b=t.dataset.bind;if(!b)return;
   // The moved screens' fields (History and Settings, r57; Plan and Stats, r58; Today, r59): each change through act.
   const own=HISTORY_BINDS[b]||SETTINGS_BINDS[b]||PLAN_BINDS[b]||DASH_BINDS[b]||TODAY_BINDS[b];if(own){own(t);return;}
-  switch(b){
-    case 'draftDate':if(isDate(t.value)&&t.value<=today()){
-      /* Last time and the targets are read as of the session's date, so a
-         new date re-reads them; typed and ticked sets are left alone. */
-      const d=state.draft;const moved=d.date!==t.value;d.date=t.value;
-      if(moved&&!d.editingId){for(const b of d.ex)refreshBlock(b);saveNow();rerenderKeepScroll();}else saveNow();
-    }else{t.value=state.draft.date;toast('A session cannot be dated in the future');}break;
-    case 'loadFill':ACT.loadAsk({dataset:{v:t.checked?'fill':'grey'}});break;
-  }
+  if(b==='loadFill')ACT.loadAsk({dataset:{v:t.checked?'fill':'grey'}});
 });
 document.addEventListener('toggle',e=>{
   const el=e.target;
@@ -187,16 +135,7 @@ document.addEventListener('toggle',e=>{
 },true);
 document.addEventListener('keydown',e=>{
   if(e.key==='Enter'&&e.target&&e.target.id==='bwVal'){e.preventDefault();ACT.addBW();return;}
-  // In a set row, Enter (the keyboard's Next) goes load, reps, then the next
-  // set's load, which is the order sets are typed in.
-  if(e.key==='Enter'&&e.target&&e.target.matches&&e.target.matches('.sg input[data-f]')){
-    e.preventDefault();
-    // Next on an empty reps field accepts the grey number (see acceptGrey).
-    const t=e.target;
-    if(t.dataset.f==='r'&&!t.value.trim())acceptGrey(+t.dataset.b,+t.dataset.s);
-    const all=[...document.querySelectorAll('.sg input[data-f]')];const i=all.indexOf(e.target);
-    const nx=all[i+1];if(nx){try{nx.focus();nx.select&&nx.select();}catch(x){/* focus is best effort */}}else e.target.blur();return;}
-  if(e.key==='Escape'&&document.querySelector('.rirstrip')){rirClose();return;}
+  if(workoutKey(e))return; // the session screen's (r60): Next through a set's fields, Escape on the effort strip, the arrows on an exercise's handle
   if(e.key==='Escape'&&ui.modal){closeModal();return;}
   if(e.key!=='Tab'||!ui.modal)return;
   const f=modalFocusables();if(!f.length)return;
@@ -205,34 +144,6 @@ document.addEventListener('keydown',e=>{
   else if(!e.shiftKey&&(a===last||!$('#modal').contains(a))){e.preventDefault();first.focus();}
 });
 
-/* Auto-mark and the grey reps. With auto-mark on, typing reps and leaving the
-   field ticks the set (the change handler). Leaving an empty field whose grey
-   number is last time's reps is the same confirmation without the typing, so
-   it ticks the set with that number, like tapping the checkmark. The iPhone
-   number pad has no Next key; its keyboard Done or a tap elsewhere is how a
-   field is left there, so both routes land here. Moving to the same row's load
-   or RIR is not leaving the set, a tap on a button does that button's job
-   instead (the row's own checkmark already takes the grey number), and a
-   locked or backgrounded phone blurs fields without the lifter doing anything. */
-function acceptGrey(bi,si){
-  if(!state.draft||!state.settings.autoDone||rebuilding)return false;
-  const b=state.draft.ex[bi];const x=b&&b.sets[si];
-  if(!x||x.done||x.warm||x.drop||+x.r>0)return false;
-  const lr=greyR(b,si);if(!(lr>0))return false;
-  x.r=Math.round(lr);const inp=document.querySelector(`.sg input[data-f="r"][data-b="${bi}"][data-s="${si}"]`);if(inp)inp.value=String(x.r);
-  lastAuto={b:blkRef(bi),s:si,t:Date.now()};setDone(bi,si,true);return true;
-}
-let lastDown={el:null,t:0};
-document.addEventListener('pointerdown',e=>{lastDown={el:e.target,t:Date.now()};},true);
-document.addEventListener('focusout',e=>{
-  const t=e.target;if(t&&t.matches&&t.matches('.sg input[data-f="w"]')&&pendAuto&&pendAuto.s===+t.dataset.s&&blkIdx(pendAuto.b)===+t.dataset.b){setTimeout(autoPending,0);return;}if(!t||!t.matches||!t.matches('.sg input[data-f="r"]')||t.value.trim())return;if(t.dataset.cleared){delete t.dataset.cleared;return;}
-  if(rebuilding||!state.draft||!state.settings.autoDone)return;
-  const bi=+t.dataset.b,si=+t.dataset.s;const to=e.relatedTarget;
-  if(to&&to.dataset&&to.dataset.b===t.dataset.b&&to.dataset.s===t.dataset.s)return;
-  // Where the lifter went: the newly focused element, or on an iPhone (where
-  // buttons never take focus) whatever was just touched.
-  const d=lastDown;const dest=to||(Date.now()-d.t<700&&d.el!==t?d.el:null);
-  if(dest&&dest.closest&&!dest.closest('.sg input[data-f]')&&dest.closest('button,a,select,label,input,textarea,summary,[data-act],[role="button"]'))return;
-  setTimeout(()=>{if(document.visibilityState!=='visible'||!document.hasFocus())return;acceptGrey(bi,si);},0);
-});
-
+// Where a touch lands, and a field of the session screen left: auto-mark's routes (workout.ts, r60).
+document.addEventListener('pointerdown',noteDown,true);
+document.addEventListener('focusout',workoutBlur);

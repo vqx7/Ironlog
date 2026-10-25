@@ -1,152 +1,32 @@
 /* ---------- movable, foldable sections ----------
    Every section a tab shows carries data-mkey and a ⠿ handle in its header.
    Dragging the handle reorders sections; the order is saved per tab in
-   settings.secOrder and applied after each render by moving the keyed
-   elements into the slots the keyed elements occupied, so unkeyed elements
-   (page titles, the Start card, notices) never move. Keys a tab does not
-   show right now (Injuries with none flagged) keep their saved place.
-   On the handle, the arrow keys do the same as dragging. */
-/* A session's exercises move by dragging this handle too (V, r29), alongside
-   the ⋯ menu's Move up and Move down, which do the same thing (bUp, bDown). */
-function bgrip(bi,name){return `<span class="bgrip" role="button" tabindex="0" data-b="${bi}" aria-label="Move ${esc(name)}: drag, or use the arrow keys" title="Drag to move">⠿</span>`;}
-/* One way to move an exercise in a session: the drag, the arrow keys on its
-   handle and the ⋯ menu's Move up and Move down all come here. A superset
-   split by the move is undone (its members are no longer next to each
-   other, so the rest timer would never start), and a pending fold is dropped
-   because the lifter is rearranging and should not have an exercise fold
-   under them (r29). Nothing here goes stale any more: since r46 the fold,
-   the confirm window and the pending auto-mark hold the exercise itself. */
-function moveBlock(a,b){
-  const d=state.draft;if(!d||b<0||b>=d.ex.length||a===b)return false;
-  clearTimeout(foldT);foldT=null;
-  keepOpen(()=>{move(d.ex,a,b);fixSupersets(d.ex.map(x=>x.plan).filter(Boolean));});
-  saveNow();return true;
-}
-/* Starting an exercise ahead of ones not yet touched moves it up, to just
-   after the last one touched (V, 2026-10-13: a lift done out of order stayed
-   below empty ones). It waits until no field is being typed in, no effort
-   strip or sheet is open, and a pending fold has run, so a rebuild never
-   takes a field from under the thumb; the moved exercise stays where it is
-   on the screen, and the untouched ones go below it. The block itself is
-   remembered, not its place. Never in a superset, a past workout, or an
-   edit from History, and never past the same lift (Last and grey reps read
-   repeats of a lift by order). */
-const blockUntouched=b=>!!b&&!b.sets.some(x=>x.done)&&b.sets.every(x=>rowBlank(b,x));
-function orderAt(b){
-  const d=state.draft;if(!d||d.editingId||d.past||!b||b.plan&&b.plan.ss)return -1;
-  const bi=d.ex.indexOf(b);if(bi<1||!b.sets.some(x=>x.done))return -1;
-  let j=bi;while(j>0&&blockUntouched(d.ex[j-1])&&d.ex[j-1].exId!==b.exId)j--;
-  // Never between two halves of a superset.
-  while(j<bi&&j>0&&d.ex[j].plan&&d.ex[j].plan.ss&&d.ex[j-1].plan&&d.ex[j-1].plan.ss===d.ex[j].plan.ss)j++;
-  return j<bi?j:-1;
-}
-// Blocks waiting to move, in the order their first set was ticked (two ticked inside the wait both move, r45 review).
-let orderT=null;const orderQ=[];
-function orderSoon(b){if(!orderQ.includes(b))orderQ.push(b);clearTimeout(orderT);orderT=setTimeout(orderRun,900);}
-function orderRun(){
-  orderT=null;const d=state.draft;if(!d){orderQ.length=0;return;}
-  const ae=document.activeElement;const typing=!!ae&&(/^(INPUT|TEXTAREA|SELECT)$/.test(ae.tagName)||ae.isContentEditable);
-  if(ui.tab==='today'&&(typing||blockDrag||rebuilding||ui.modal||foldT!=null||document.querySelector('.rirstrip'))){orderT=setTimeout(orderRun,1500);return;}
-  const q=orderQ.splice(0).filter(b=>d.ex.includes(b));if(!q.length)return;
-  // The last one ticked stays where it is on the screen.
-  const anchor=q[q.length-1];const el0=document.getElementById('blk-'+d.ex.indexOf(anchor));const top0=ui.tab==='today'&&el0?el0.getBoundingClientRect().top:null;
-  let moved=false;
-  for(const b of q){
-    const bi=d.ex.indexOf(b),j=orderAt(b);if(j<0)continue;
-    /* Only the focused field still carries a number, since it is markup; the
-       set waiting to be confirmed, the pending auto-mark and the fold timer
-       all hold the exercise itself now (r46), so the move leaves them alone. */
-    const mi=i=>i===bi?j:(i>=j&&i<bi?i+1:i);
-    if(ae&&ae.dataset&&/^\d+$/.test(ae.dataset.b||''))ae.dataset.b=String(mi(+ae.dataset.b));
-    if(!moveBlock(bi,j))continue;
-    moved=true;(ui.ordBack||(ui.ordBack=new WeakMap())).set(b,{i:bi,t:Date.now()}); // its place, for an untick (r55)
-  }
-  if(!moved||ui.tab!=='today')return;
-  rerenderKeepScroll();
-  const el1=document.getElementById('blk-'+d.ex.indexOf(anchor));if(el1&&top0!=null)window.scrollBy(0,el1.getBoundingClientRect().top-top0);
-}
-/* While an exercise is dragged, a finger near the top or bottom of the space
-   between the header and the tab bar (or the rest timer) scrolls the page,
-   faster the closer it is. Sortable's own scrolling did not run for a touch
-   drag on the window. Sortable re-reads the target every 50 ms on its own, so
-   a finger held still keeps moving the exercise as the page scrolls.
-   A var, so killDynamic (which can run before this line on the first render)
-   reads it as undefined instead of throwing. */
-var edgeScroll=(()=>{let y=null,raf=0;
-  const mv=e=>{const t=e.touches?e.touches[0]:e;if(t)y=t.clientY;};
-  // Both bars are position:fixed, whose offsetParent is always null, so
-  // getClientRects is what tells a shown bar from a hidden one.
-  const zone=()=>{const h=document.querySelector('header.top');const top=h?h.getBoundingClientRect().bottom:0;let bot=window.innerHeight;
-    for(const el of [document.getElementById('tabs'),document.getElementById('timer')]){if(el&&!el.hidden&&el.getClientRects().length){const r=el.getBoundingClientRect();if(r.height)bot=Math.min(bot,r.top);}}return [top,bot];};
-  const step=()=>{raf=0;if(!blockDrag)return;if(y!=null){const [top,bot]=zone();const edge=56;let v=0;
-      if(y<top+edge)v=-Math.ceil((top+edge-y)/edge*14);else if(y>bot-edge)v=Math.ceil((y-(bot-edge))/edge*14);
-      if(v)window.scrollBy(0,Math.max(-20,Math.min(20,v)));}
-    raf=requestAnimationFrame(step);};
-  return {start(){y=null;document.addEventListener('touchmove',mv,{passive:true});document.addEventListener('pointermove',mv,{passive:true});if(!raf)raf=requestAnimationFrame(step);},
-    stop(){document.removeEventListener('touchmove',mv);document.removeEventListener('pointermove',mv);if(raf)cancelAnimationFrame(raf);raf=0;y=null;}};})();
-/* The exercises open again at the drop. The scroll is moved with them, so
-   the one just dropped stays where the finger left it instead of the page
-   going back to a position measured on the one-line list (r29 review). */
-function dragOpenUp(it){
-  const t0=it&&it.isConnected?it.getBoundingClientRect().top:null;
-  document.body.classList.remove('blkdrag');const v=$('#view');if(v)v.style.paddingBottom='';
-  if(t0!=null){const t1=it.getBoundingClientRect().top;if(t1!==t0)window.scrollBy(0,t1-t0);}
-}
-function mountBlockSortable(){
-  if(!window.Sortable||!state.draft)return;const v=$('#view');if(!v||v.querySelectorAll('section.block').length<2)return;
-  sortables.push(window.Sortable.create(v,{group:{name:'blocks',pull:false,put:false},handle:'.bgrip',draggable:'section.block',animation:150,fallbackOnBody:true,
-    // A field still focused when the drag starts would get its focus back by
-    // position after the move, on whichever exercise landed there.
-    onStart:e=>{blockDrag=true;clearTimeout(foldT);foldT=null;const f=document.activeElement;if(f&&f.matches&&f.matches('#view input,#view textarea')){try{f.blur();}catch(x){/* focus is best effort */}}
-      // An open exercise is taller than the screen, so the next one started
-      // off-screen and a drag could only move one place (r29 review). While
-      // dragging, every exercise shows only its title line; the page is
-      // scrolled so the one held stays under the finger.
-      // When the shorter page cannot scroll that far, room is added below the
-      // list for the drag, or the held one would leave the finger.
-      const it=e.item,t0=it.getBoundingClientRect().top;document.body.classList.add('blkdrag');
-      const want=window.scrollY+it.getBoundingClientRect().top-t0,se=document.scrollingElement,room=want-(se.scrollHeight-window.innerHeight);
-      if(room>0){const v=$('#view');if(v)v.style.paddingBottom=Math.ceil(room)+'px';}
-      window.scrollTo(0,want);edgeScroll.start();},
-    onEnd:e=>{blockDrag=false;edgeScroll.stop();dragOpenUp(e.item);const a=e.oldDraggableIndex,b=e.newDraggableIndex;if(a==null||b==null||a===b||!state.draft){rerenderKeepScroll();return;}
-      moveBlock(a,b);rerenderKeepScroll();toast(`Moved to position ${b+1}`);}}));
-}
-function sgrip(label){return `<span class="sgrip" role="button" tabindex="0" aria-label="Move ${esc(label)}: drag, or use the arrow keys" title="Drag to move">⠿</span>`;}
+   settings.secOrder, and each screen draws its sections in it (view.ts,
+   placed and slotted), into the places keyed sections hold, so unkeyed
+   elements (page titles, the Start card, notices) never move. Keys a tab
+   does not show right now (Injuries with none flagged) keep their saved
+   place. On the handle, the arrow keys do the same as dragging. A session's
+   exercises are dragged by workout.ts (r60). */
 function keyedKids(){const v=$('#view');return v?[...v.children].filter(e=>e.dataset&&e.dataset.mkey):[];}
-function applySecOrder(){
-  const saved=state.settings.secOrder[ui.tab];if(!saved||!saved.length)return;
-  const kids=keyedKids();if(kids.length<2)return;
-  const order=orderKeys(saved,kids.map(e=>e.dataset.mkey));
-  const byK={};kids.forEach(e=>{byK[e.dataset.mkey]=e;});
-  const marks=kids.map(e=>{const c=document.createComment('slot');e.replaceWith(c);return c;});
-  marks.forEach((c,i)=>c.replaceWith(byK[order[i]]));
-}
-/* Sections hidden in Settings > Layout are taken out after rendering. Their
-   saved position is kept, so showing one again puts it back where it was. */
-function applyHidden(){
-  const h=state.settings.hidden;if(!h||!h.length)return;
-  keyedKids().forEach(e=>{if(h.includes(ui.tab+':'+e.dataset.mkey))e.remove();});
-}
-/* keys: the shown sections in their new order (read from the page when not
-   given); a section not shown keeps its place after the one it followed. */
+/* keys: the shown sections in their new order; a section not shown keeps its
+   place after the one it followed. */
 function saveSecOrder(keys){
-  keys=[...new Set(keys||keyedKids().map(e=>e.dataset.mkey))];
+  keys=[...new Set(keys)];
   const old=state.settings.secOrder[ui.tab]||[];const out=keys.slice();
   old.forEach((k,i)=>{if(out.includes(k))return;const prev=old.slice(0,i).reverse().find(q=>out.includes(q));out.splice(prev?out.indexOf(prev)+1:0,0,k);});
   act(()=>{state.settings.secOrder[ui.tab]=out;},{soon:true});
 }
-/* A moved screen (litTab) places its sections from the saved order itself,
-   and its drawn nodes may not be moved under it: a drag or an arrow key reads
-   the new order, puts the section back where it was drawn, saves the order
-   and draws the screen again, which moves it. A legacy screen keeps the move
-   as dragged, as before. */
+/* A screen places its sections from the saved order itself (every tab is a
+   module's screen since r60), and its drawn nodes may not be moved under it:
+   a drag or an arrow key reads the new order, puts the section back where it
+   was drawn, saves the order and draws the screen again, which moves it. */
 function mountSecSortable(){
   if(!window.Sortable)return;const v=$('#view');if(keyedKids().length<2)return;
   // Its own group, closed both ways: a section can only move among sections,
   // and no exercise or day can be dropped among them.
   sortables.push(window.Sortable.create(v,{group:{name:'sections',pull:false,put:false},handle:'.sgrip',draggable:'[data-mkey]',animation:150,fallbackOnBody:true,
     onStart:e=>dragStart(e.item),
-    onEnd:e=>{if(!litTab()){dragDone();if(e.oldIndex!==e.newIndex)saveSecOrder();return;}
+    onEnd:e=>{
       if(e.oldIndex===e.newIndex){dragDrop();return;}
       // After Sortable has finished with the drop, and in one task, so the old order is never painted.
       const keys=keyedKids().map(x=>x.dataset.mkey);
@@ -156,9 +36,8 @@ function moveSecKey(g,dir){
   const el=g.closest('[data-mkey]');if(!el||el.parentElement!==$('#view'))return;
   const kids=keyedKids();const i=kids.indexOf(el);const j=i+dir;if(j<0||j>=kids.length)return;
   const k=el.dataset.mkey;
-  if(litTab()){const keys=kids.map(x=>x.dataset.mkey);keys.splice(i,1);keys.splice(j,0,k);saveSecOrder(keys);rerenderKeepScroll();
-    const n=document.querySelector(`#view > [data-mkey="${k}"]`);const ng=n&&n.querySelector('.sgrip');if(ng)ng.focus();if(n)n.scrollIntoView({block:'nearest'});}
-  else{if(dir<0)kids[j].before(el);else kids[j].after(el);saveSecOrder();g.focus();el.scrollIntoView({block:'nearest'});}
+  const keys=kids.map(x=>x.dataset.mkey);keys.splice(i,1);keys.splice(j,0,k);saveSecOrder(keys);rerenderKeepScroll();
+  const n=document.querySelector(`#view > [data-mkey="${k}"]`);const ng=n&&n.querySelector('.sgrip');if(ng)ng.focus();if(n)n.scrollIntoView({block:'nearest'});
   toast(`Moved ${dir<0?'up':'down'}`);
 }
 // A tap on the handle must never fold the section or fire a button under it.
@@ -166,11 +45,6 @@ document.addEventListener('click',e=>{if(e.target&&e.target.closest&&e.target.cl
 document.addEventListener('keydown',e=>{
   const dg=e.target&&e.target.closest&&e.target.closest('.dgrip');
   if(dg&&(e.key==='ArrowUp'||e.key==='ArrowDown')){e.preventDefault();dayKey(dg,e.key==='ArrowUp');return;}
-  const bg=e.target&&e.target.closest&&e.target.closest('.bgrip');
-  if(bg&&(e.key==='ArrowUp'||e.key==='ArrowDown')&&state.draft){
-    e.preventDefault();const i=+bg.dataset.b;const j=i+(e.key==='ArrowUp'?-1:1);if(j<0||j>=state.draft.ex.length)return;
-    moveBlock(i,j);rerenderKeepScroll();const n=document.querySelector(`.bgrip[data-b="${j}"]`);if(n)n.focus();toast(`Moved to position ${j+1}`);return;
-  }
   const g=e.target&&e.target.closest&&e.target.closest('.sgrip');if(!g)return;
   if(e.key==='ArrowUp'||e.key==='ArrowDown'){e.preventDefault();moveSecKey(g,e.key==='ArrowUp'?-1:1);}
   else if(e.key===' '||e.key==='Enter')e.preventDefault();
@@ -238,7 +112,7 @@ trashTidy();
 try{if(fitRecordOld())saveNow();}catch(e){log('fitRecordOld',e);}
 // r54: targets fitted to a cycle by the reading of its plan before r54 follow r54's (refit, src/app/profile.ts), once, on this device's state.
 try{const rf=refit();if(rf){const b=state.settings.bands;for(const m in rf.bands)b[m]=rf.bands[m].slice();if(Object.keys(rf.fit).length)state.settings.bandsFit=rf.fit;else delete state.settings.bandsFit;saveNow();}}catch(e){log('refit',e);}
-window.__ironlog={act,withTimeout,B3_PARTS,THREE_URLS,platesPerSide,get state(){return state;},set state(v){setState(v);},fbContext,FB_CTX_MAX,logCut,logBuf,log,dateIndex,sessionsOn,bestLine,whyTarget,recent4w,weekSessions,fmtDate,fmtDateLong,fbShrink,orderAt,orderRun,dropOnlyLift,profHeavy,appBand,fitRecordOld,prof,profClean,profRule,profPlan,defPlan,defBand,profMoveBands,profApplyList,strengthPick,PROF_DAYS,FOCUS_MAX,estInLoad,keepExtra,EXTRA_MAX,draftPlanMin,pace,paceRatios,sessModelMin,PACE_N,PACE_DAYS,PACE_MIN,plainTemplate,trashTidy,ENV,KEY,COMMON,COMMON_TIP,isCommon,bwEvery,isRestWeek,sessCmp,avgWeeks,weekStreak,coach,noLog,afterSet,adjOn,bwAt,newBlock,cycleState,sortedSessions,addDays,loadIn,gymRack,gymClean,dbListOf,capOf,refreshEx,effShow,rirScale,setStr,libExercises,obGate,obTour,andList,belowMin,aboveMax,starterRoutine,starterSigs,plateList,exBarKg,VOL_MODES,liveLogFetch,regionSrc,fitTargets,firstFullWeek,moveBlock,BANDS,installSheet,siteHost,greyW,effW,greyR,lighterLoad,heavierLoad,incOf,swapPlan,planSetsPerWeek,weekNeed,stepRead,e1inv,rtfAt,rtfOf,rtfBand,calStats,rirEff,isHard,setCredit,tonnage,loadMode,loadWords,loadNote,progStep,jumpCap,setSecs,setupSecs,recovery,rolling7,rankDays,rankExercises,isCompound,patternOf,noE1,whtrLine:p=>markupOf(whtrLine(p)),exHeadline:id=>markupOf(exHeadline(id)),remainMin,shortPlan,weekPlan,cycleProjection,lastLighterWeek,avgFirstWeek,avgWait,stallWeeks,weeksAvg,fitFloors,refit,regionBalance,parseHeight,mixCheck,swapCands,eqPlan,exportCSV,importData,chunksOf,assemble,sessionMuscles,TRACK_ONLY,hasTarget,cloud,Hx,mergeChunk,baseOf,sync:()=>cq(cloudPull),TEMPLATES,lastRFor,impDate,impRows,impNorm,impMatch,impFromText,impFromTable,impHeader,impBuild,impStart,impXlsx,parseSets,undoStack,undoRestore,undoForget,allTimeBests,bestsBoard:()=>{const b=bestsBoard();return {n:b.n,html:markupOf(b.html)};},obActive,fmtW,rirUsual,rirEst,routineFromTemplate,plannedSets,map3d:()=>({state:B3.state,fail:B3.fail,meshes:B3.meshes.length,yaw:B3.yaw,glow:Object.keys(B3.mats).filter(m=>B3.mats[m].emissiveIntensity>0),canvas:!!document.querySelector('#bm3d canvas'),colors:Object.fromEntries(Object.entries(B3.mats).map(([m,mt])=>[m,'#'+mt.color.getHexString()])),pick:(x,y)=>map3dPick(x,y),want:map3dColors()}),cloudState:()=>({on:cloud.on,status:cloud.status,err:cloud.err,uid:cloud.uid,acct:cloud.acct}),acctUser:()=>acct.user,acctWaiting:()=>!!acctWait.pw,flush:()=>cq(cloudFlush),cloudInit,cloudStop,asideList,backupDue,routineUpdates,planFor,platesMode,plateText,chunksOf,IDX,suggest,e1,render,ACT,ui,makeDemo,invalidate,normalize,snapshot,saveNow,timer,weekStats,weekStart,today,EX,blockProgress,dayMinutes,weekStreak,coach,tonnageNow,livePR,movers,stalledIds,muscleStatus,actualAvg4,plannedPerWeek,parseSets,fillSets,newBlock,lastNoteOf,sizeRows,sessionMuscleSets,sessionCapNote:d=>markupOf(sessionCapNote(d)),routineClutter,rowBlank,dayReasons,impTextSets,liftTrend,prsWithin,activeRoutine,rackStep,repFloor,sessionLength,prBeat,exInjury,exJoints,openModal,EQUIP,HARD_EX,recentLighter,planEvidenceNote:pv=>markupOf(planEvidenceNote(pv)),howToUrl,editFp,toast,avgWeeks,regionWk,REGION_WKS,SAFETY_TXT,libFiltered,nameMatch,workLoad,fitE,lighter,offTarget,sessionWord,sessionWords,dayLabel,daySets,ssLetters,routineSig,tplCountLine,pwOf,planSetsOf,withPlanSets,dropStarter,trainOn,planItemOf,fatigueStalls,avgWeeksTxt,routineFromLog,repSpan,rangeWords,calDueIdx,readyCard,sameRR,hintOnce,overSets,rackTol,daysOff,BACK_DAYS,prName,sessTm,effTgt,bwDueCard:()=>markupOf(bwDueCard()),bwNoLoad,applyPick,joinAdjacent,sameExOnce,savedEx,goalState,goalLine:id=>markupOf(goalLine(id)),bwRefLoad,ML,exMusParts,musTrend,U,toD,fromD,loadLabel,exName,planCredit,gymOf,isDeloadWeek,freeMode,injuredSet,prLoad,statsUpTo,readiness,bwRef,weekRoutine,logBack,logStart,easierText,barKg,suggestCore,loadOf,bwLoad,hardCredit,rirHalfOn,prFrame,stallWords,atRangeTop,oddLoad,lightZero};
+window.__ironlog={act,withTimeout,B3_PARTS,THREE_URLS,platesPerSide,get state(){return state;},set state(v){setState(v);},fbContext,FB_CTX_MAX,logCut,logBuf,log,dateIndex,sessionsOn,bestLine,whyTarget,recent4w,weekSessions,fmtDate,fmtDateLong,fbShrink,orderAt,orderRun,dropOnlyLift,profHeavy,appBand,fitRecordOld,prof,profClean,profRule,profPlan,defPlan,defBand,profMoveBands,profApplyList,strengthPick,PROF_DAYS,FOCUS_MAX,estInLoad,keepExtra,EXTRA_MAX,draftPlanMin,pace,paceRatios,sessModelMin,PACE_N,PACE_DAYS,PACE_MIN,plainTemplate,trashTidy,ENV,KEY,COMMON,COMMON_TIP,isCommon,bwEvery,isRestWeek,sessCmp,avgWeeks,weekStreak,coach,noLog,adjOn,bwAt,newBlock,cycleState,sortedSessions,addDays,loadIn,gymRack,gymClean,dbListOf,capOf,refreshEx,effShow,rirScale,setStr,libExercises,obGate,obTour,andList,belowMin,aboveMax,starterRoutine,starterSigs,plateList,exBarKg,VOL_MODES,liveLogFetch,regionSrc,fitTargets,firstFullWeek,moveBlock,BANDS,installSheet,siteHost,greyW,effW,greyR,lighterLoad,heavierLoad,incOf,swapPlan,planSetsPerWeek,weekNeed,stepRead,e1inv,rtfAt,rtfOf,rtfBand,calStats,rirEff,isHard,setCredit,tonnage,loadMode,loadWords,loadNote,progStep,jumpCap,setSecs,setupSecs,recovery,rolling7,rankDays,rankExercises,isCompound,patternOf,noE1,whtrLine:p=>markupOf(whtrLine(p)),exHeadline:id=>markupOf(exHeadline(id)),remainMin,shortPlan,weekPlan,cycleProjection,lastLighterWeek,avgFirstWeek,avgWait,stallWeeks,weeksAvg,fitFloors,refit,regionBalance,parseHeight,mixCheck,swapCands,eqPlan,exportCSV,importData,chunksOf,assemble,sessionMuscles,TRACK_ONLY,hasTarget,cloud,Hx,mergeChunk,baseOf,sync:()=>cq(cloudPull),TEMPLATES,lastRFor,impDate,impRows,impNorm,impMatch,impFromText,impFromTable,impHeader,impBuild,impStart,impXlsx,parseSets,undoStack,undoRestore,undoForget,allTimeBests,bestsBoard:()=>{const b=bestsBoard();return {n:b.n,html:markupOf(b.html)};},obActive,fmtW,rirUsual,rirEst,routineFromTemplate,plannedSets,map3d:()=>({state:B3.state,fail:B3.fail,meshes:B3.meshes.length,yaw:B3.yaw,glow:Object.keys(B3.mats).filter(m=>B3.mats[m].emissiveIntensity>0),canvas:!!document.querySelector('#bm3d canvas'),colors:Object.fromEntries(Object.entries(B3.mats).map(([m,mt])=>[m,'#'+mt.color.getHexString()])),pick:(x,y)=>map3dPick(x,y),want:map3dColors()}),cloudState:()=>({on:cloud.on,status:cloud.status,err:cloud.err,uid:cloud.uid,acct:cloud.acct}),acctUser:()=>acct.user,acctWaiting:()=>!!acctWait.pw,flush:()=>cq(cloudFlush),cloudInit,cloudStop,asideList,backupDue,routineUpdates,planFor,platesMode,plateText,chunksOf,IDX,suggest,e1,render,ACT,ui,makeDemo,invalidate,normalize,snapshot,saveNow,timer,weekStats,weekStart,today,EX,blockProgress,dayMinutes,weekStreak,coach,tonnageNow,livePR,movers,stalledIds,muscleStatus,actualAvg4,plannedPerWeek,parseSets,fillSets,newBlock,lastNoteOf,sizeRows,sessionMuscleSets,sessionCapNote:d=>markupOf(sessionCapNote(d)),routineClutter,rowBlank,dayReasons,impTextSets,liftTrend,prsWithin,activeRoutine,rackStep,repFloor,sessionLength,prBeat,exInjury,exJoints,openModal,EQUIP,HARD_EX,recentLighter,planEvidenceNote:pv=>markupOf(planEvidenceNote(pv)),howToUrl,editFp,toast,avgWeeks,regionWk,REGION_WKS,SAFETY_TXT,libFiltered,nameMatch,workLoad,fitE,lighter,offTarget,sessionWord,sessionWords,dayLabel,daySets,ssLetters,routineSig,tplCountLine,pwOf,planSetsOf,withPlanSets,dropStarter,trainOn,planItemOf,fatigueStalls,avgWeeksTxt,routineFromLog,repSpan,rangeWords,calDueIdx,readyCard,sameRR,hintOnce,overSets,rackTol,daysOff,BACK_DAYS,prName,sessTm,effTgt,bwDueCard:()=>markupOf(bwDueCard()),bwNoLoad,applyPick,joinAdjacent,sameExOnce,savedEx,goalState,goalLine:id=>markupOf(goalLine(id)),bwRefLoad,ML,exMusParts,musTrend,U,toD,fromD,loadLabel,exName,planCredit,gymOf,isDeloadWeek,freeMode,injuredSet,prLoad,statsUpTo,readiness,bwRef,weekRoutine,logBack,logStart,easierText,barKg,suggestCore,loadOf,bwLoad,hardCredit,rirHalfOn,prFrame,stallWords,atRangeTop,oddLoad,lightZero};
 render();
 wakeOn();
 timerResume();

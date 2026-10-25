@@ -236,12 +236,25 @@ export function savedEx(b: DraftBlock): SessionEx {
   };
 }
 
+/* A block in the session over time (r46). Neither handle on its own
+   survives: a place changes whenever exercises move, and the object is
+   replaced by normalize, which runs on every sync, Undo, cross-tab write and
+   restore. The id made with the exercise survives both, so it leads, with
+   the object and then the place behind it for a session started on a build
+   before r46, which has no id. */
+/** A block of the session, held so a move or a redraw finds it again. */
+export interface BlkRef {
+  bid: string | null;
+  b: DraftBlock;
+  i: number;
+}
+
 /** The parts of a session in progress a saved session is made from. */
 export interface DraftLike {
   id: string;
   date: string;
   dayIdx: number;
-  dayId?: string | null | undefined;
+  dayId: string | null;
   dayName?: string | undefined;
   routineId: string;
   notes?: string | undefined;
@@ -251,14 +264,30 @@ export interface DraftLike {
   editingId?: string | null | undefined;
   startedAt?: number | null | undefined;
   chk?: Session['chk'] | null;
-  cardio?: readonly DraftCardio[] | undefined;
+  cardio?: DraftCardio[] | undefined;
   ex: DraftBlock[];
+  /** A past workout typed in afterwards: no rest timer, no clock, no check-in. */
+  past?: boolean | undefined;
+  /** The notes the app wrote when it started, so Discard can tell them from the lifter's. */
+  note0?: string | undefined;
+  /** Started with Limited equipment. */
+  limited?: boolean | undefined;
+  /** An edit's measured minutes, kept as the saved session had them. */
+  durMin?: number | null | undefined;
+  /** Finish has asked about the sets left, or the ramp-up sets, once (this visit). */
+  _leftAsked?: boolean | undefined;
+  _rampAsked?: boolean | undefined;
 }
 
-/** A cardio row inside a workout in progress: what `draftCardio` reads of it. */
+/** A cardio row inside a workout in progress: what `draftCardio` reads of it, and what its card shows. */
 export interface DraftCardio {
   id?: string | undefined;
   min?: number | null | undefined;
+  kind?: string | undefined;
+  hr?: number | null | undefined;
+  dist?: number | undefined;
+  when?: string | undefined;
+  note?: string | undefined;
 }
 
 /* Another device's workout in progress, kept as a session when a first link
@@ -387,9 +416,9 @@ export function freeDraft(name: string, ex?: DraftBlock[] | null) {
 /** What an edit from History is compared by, to tell whether anything changed: the date, notes, sets and cardio. */
 export function editFp(d: {
   date: string;
-  notes?: string | null;
+  notes?: string | null | undefined;
   ex: DraftBlock[];
-  cardio?: { kind: string; min: unknown; hr: unknown; dist?: unknown }[] | null;
+  cardio?: { kind?: string | undefined; min?: unknown; hr?: unknown; dist?: unknown }[] | null | undefined;
 }): string {
   return JSON.stringify({
     date: d.date,

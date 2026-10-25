@@ -26,6 +26,8 @@ export interface ActOpts {
   undo?: boolean | (() => boolean) | undefined;
   /** Saves once the typing pauses (400 ms, saveSoon), for a change made on every keystroke; the caches are still dropped at once. */
   soon?: boolean | undefined;
+  /** The change touches only the session in progress, which nothing cached reads (the index, the bests, the pace are built from saved sessions): the caches stay, as the legacy session screen left them on every keystroke and tick (r60). */
+  inProgress?: boolean | undefined;
 }
 
 /** Changes the log with every step a change needs, in order; false when its check refused it. */
@@ -33,7 +35,7 @@ export function act(change: () => void, opts: ActOpts = {}): boolean {
   if (opts.check && !opts.check()) return false;
   if (opts.undo) snapshot(typeof opts.undo === 'function' ? opts.undo : null);
   change();
-  invalidate();
+  if (!opts.inProgress) invalidate();
   if (opts.soon) saveSoon();
   else saveNow();
   return true;

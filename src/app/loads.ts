@@ -19,7 +19,7 @@ export const LOAD_MODES: readonly (readonly [string, string])[] = [
 ];
 
 /* Short words for the load: shown next to numbers and on the exercise. */
-export function loadWords(ex: Exercise) {
+export function loadWords(ex: ExerciseLike) {
   const m = loadMode(ex);
   if (ex && ex.assist) return 'machine help';
   if (m === 'each') return 'per dumbbell';

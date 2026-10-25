@@ -1,7 +1,8 @@
 /* ---------- TODAY'S SHEETS ----------
-   Today is drawn by src/app/today.ts since r59. What it opens stays here
-   until the session screen moves (r60): Change, the install steps, the new
-   icon's steps, and a lift's history. */
+   Today is drawn by src/app/today.ts since r59, and the session screen by
+   src/app/workout.ts since r60. What they open stays here until the sheets
+   move (r61): Change, the install steps, the new icon's steps, and a lift's
+   history. */
 /* Change, on either card: one sheet with every other way to start. */
 function startAltSheet(m){
   const R=activeRoutine();const di=Math.min(+m.di||0,R.days.length-1);const day=R.days[di];
