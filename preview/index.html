@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-N/mTXwFTBFccXJeXguQVUbWrTDOjfgCNUlJicBwRfWY=' 'sha256-tuSgXs5JTxAxl+0h6Mmbx/BgvpNDfjiq2RiZRPGtwkc=' 'sha256-YHdgjdaHPObo0ajgr78/3fg0b/g2KACx2Yivxr2AJEo=' 'sha256-qTH35zVV8oW7hZXOwzvjRtRT9ONUqg4p05uiy02jUeE=' 'sha256-J4UrXwIeplIJZfkgJq3M75mmvlwXBomq0l+LhSwoEfI='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https://fqvupierxrvpoidtwlon.supabase.co wss://fqvupierxrvpoidtwlon.supabase.co https://api.pwnedpasswords.com; worker-src 'self'; manifest-src 'self'; media-src 'self'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-N/mTXwFTBFccXJeXguQVUbWrTDOjfgCNUlJicBwRfWY=' 'sha256-tuSgXs5JTxAxl+0h6Mmbx/BgvpNDfjiq2RiZRPGtwkc=' 'sha256-YHdgjdaHPObo0ajgr78/3fg0b/g2KACx2Yivxr2AJEo=' 'sha256-akMs9Bq41O3IfrkSG7LlGhEpDiJKa5JabcbmnWJlOyc=' 'sha256-J4UrXwIeplIJZfkgJq3M75mmvlwXBomq0l+LhSwoEfI='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https://fqvupierxrvpoidtwlon.supabase.co wss://fqvupierxrvpoidtwlon.supabase.co https://api.pwnedpasswords.com; worker-src 'self'; manifest-src 'self'; media-src 'self'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="app-build" content="2026.10.24-r57">
 <title>Ironlog Preview</title>
@@ -2707,7 +2707,7 @@ loadScript(['vendor/chart.umd.js','https://cdnjs.cloudflare.com/ajax/libs/Chart.
   };
   var defaultOrder = () => parseJson(JSON.stringify(DEFAULT_ORDER));
   function orderKeys(saved, present) {
-    const order = saved.filter((k2) => present.includes(k2));
+    const order = saved.filter((k2, i5) => present.includes(k2) && saved.indexOf(k2) === i5);
     present.forEach((k2, i5) => {
       if (order.includes(k2)) return;
       const prev = present.slice(0, i5).reverse().find((q) => order.includes(q));
@@ -9487,14 +9487,32 @@ loadScript(['vendor/chart.umd.js','https://cdnjs.cloudflare.com/ajax/libs/Chart.
     }
     update(part, [v3]) {
       const el = part.element;
-      if (el === document.activeElement) return E;
       const now = el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement ? el.value : null;
       if (now === v3) return E;
+      if (el === document.activeElement && now != null && numIn(now) === numIn(v3)) return E;
       p2(part);
       return v3;
     }
   };
   var fieldValue = e2(FieldValue);
+  var home = null;
+  function dragStart(el) {
+    home = el.parentNode ? { el, parent: el.parentNode, next: el.nextSibling } : null;
+  }
+  function dragDone() {
+    home = null;
+  }
+  function dragDrop() {
+    const h3 = home;
+    home = null;
+    if (!h3) return false;
+    h3.el.classList.remove("sortable-ghost", "sortable-chosen", "sortable-drag");
+    if (h3.el.parentNode !== h3.parent || h3.el.nextSibling !== h3.next) {
+      if (h3.next && h3.next.parentNode !== h3.parent) h3.parent.appendChild(h3.el);
+      else h3.parent.insertBefore(h3.el, h3.next);
+    }
+    return true;
+  }
   function isOpen(sk, def) {
     return Object.prototype.hasOwnProperty.call(ui.folds, sk) ? !!ui.folds[sk] : !!def;
   }
@@ -12416,6 +12434,7 @@ ${logBuf.length ? b`<ul class="clist">${logBuf.slice(-5).reverse().map(
         } catch (e5) {
         }
       }
+      dragDrop();
       sortables.forEach((s3) => {
         try {
           s3.destroy();
@@ -20782,7 +20801,7 @@ ${JSON.stringify(fb.context, null, 1)}`;
       });
     }
     function saveSecOrder(keys) {
-      keys = keys || keyedKids().map((e5) => e5.dataset.mkey);
+      keys = [...new Set(keys || keyedKids().map((e5) => e5.dataset.mkey))];
       const old = state.settings.secOrder[ui.tab] || [];
       const out = keys.slice();
       old.forEach((k2, i5) => {
@@ -20798,27 +20817,26 @@ ${JSON.stringify(fb.context, null, 1)}`;
       if (!window.Sortable) return;
       const v3 = $2("#view");
       if (keyedKids().length < 2) return;
-      let home = null;
       sortables.push(window.Sortable.create(v3, {
         group: { name: "sections", pull: false, put: false },
         handle: ".sgrip",
         draggable: "[data-mkey]",
         animation: 150,
         fallbackOnBody: true,
-        onStart: (e5) => {
-          home = { el: e5.item, parent: e5.item.parentNode, next: e5.item.nextSibling };
-        },
+        onStart: (e5) => dragStart(e5.item),
         onEnd: (e5) => {
-          const h3 = home;
-          home = null;
-          if (e5.oldIndex === e5.newIndex) return;
           if (!litTab()) {
-            saveSecOrder();
+            dragDone();
+            if (e5.oldIndex !== e5.newIndex) saveSecOrder();
+            return;
+          }
+          if (e5.oldIndex === e5.newIndex) {
+            dragDrop();
             return;
           }
           const keys = keyedKids().map((x2) => x2.dataset.mkey);
           setTimeout(() => {
-            if (h3 && h3.el.parentNode === h3.parent) h3.parent.insertBefore(h3.el, h3.next);
+            dragDrop();
             saveSecOrder(keys);
             rerenderKeepScroll();
           }, 0);
