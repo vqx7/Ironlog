@@ -1,6 +1,3 @@
-/* ---------- units ---------- */
-const lenFrom=v=>U()==='lb'?v*IN:v;
-
 /* An assisted lift keeps its sets as bodyweight minus the help, below 0, so
    every estimate, target and record works unchanged; the field shows and
    takes the help as a plain number, since phone number pads have no minus. */
@@ -32,7 +29,6 @@ function lmChips(ex){
   const long={each:'Enter the weight of one dumbbell. Weight lifted counts both.',side:'Enter the plates on one side. Weight lifted counts both sides.',stack:'Enter the pin setting. It is not comparable across machines.',bw:'Enter only what you add (belt, vest, dumbbell); 0 for bodyweight. Your logged bodyweight is added for estimates.'}[m]||(ex.equip==='barbell'?'Enter everything on the bar, the bar included.':ex.equip==='dumbbell'?'Enter the weight of the one dumbbell you hold.':'Enter the total load.');
   return `<p class="lmrow"><span class="lm" data-tip="${esc(long)}">${esc(loadWords(ex))}</span>${ex.perSide?`<span class="lm" data-tip="${esc(ex.timed?'Seconds for one side; do the same on the other.':'Reps for one side; do the same on the other. One set still counts as one set.')}">${ex.timed?'seconds':'reps'} per side</span>`:''}</p>`;
 }
-const sessionsOn=d=>dateIndex().byDate[d]||[];
 /* First run only (r29, V: "targets that can actually be met"): when a new
    person picks a ready-made routine and the weekly targets are still the
    defaults, each muscle's minimum comes down to what the routine plans

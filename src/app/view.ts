@@ -14,7 +14,7 @@
 import { html, nothing, render, noChange } from 'lit-html';
 import type { TemplateResult, AttributePart } from 'lit-html';
 import { Directive, directive, PartType } from 'lit-html/directive.js';
-import type { PartInfo } from 'lit-html/directive.js';
+import type { DirectiveResult, PartInfo } from 'lit-html/directive.js';
 import { setCommittedValue } from 'lit-html/directive-helpers.js';
 import { keyed } from 'lit-html/directives/keyed.js';
 import { live } from 'lit-html/directives/live.js';
@@ -34,7 +34,7 @@ declare global {
 }
 
 /** What a screen's template may hold where a part goes: a template, text, several of them, or nothing. */
-export type Part = TemplateResult | string | number | typeof nothing | readonly Part[];
+export type Part = TemplateResult | DirectiveResult | string | number | typeof nothing | readonly Part[];
 
 /* ---------- the host ---------- */
 
@@ -55,6 +55,15 @@ export function markupOf(part: Part): string {
   const box = document.createElement('div');
   render(part, box);
   return box.innerHTML.replace(/<!--[^]*?-->/g, '');
+}
+
+/* The app's own fixed markup (icons.ts: the logo, the icons drawn in its
+   sheets), written once in the source as markup, so it is drawn as such.
+   Never anything from the log or typed by a lifter: those are text, which
+   lit-html escapes. */
+/** A piece of the app's own fixed markup, drawn. */
+export function markup(fixed: string): Part {
+  return unsafeHTML(fixed);
 }
 
 /* ---------- a field's value ---------- */
@@ -158,8 +167,8 @@ export function howLink(key: string): TemplateResult {
 `;
 }
 
-/** An explanation, hidden until its "How this works" is tapped. */
-export function howText(key: string, text: string): TemplateResult {
+/** An explanation, hidden until its "How this works" is tapped: words, or a part with the words it marks bold. */
+export function howText(key: string, text: Part): TemplateResult {
   return html`<p class="ht" id=${`help-${key}`} ?hidden=${live(!ui.help.has(key))}>${text}</p>
 `;
 }
@@ -269,9 +278,9 @@ export const MORE_OFFER: Readonly<Record<string, () => boolean>> = {
   'history:trash': () => state.trash.length > 0
 };
 
-/** The foot of a tab: the hidden sections it can show, one tap each, and the way to Layout (r28). */
-export function tabFoot(tab: string): TemplateResult | typeof nothing {
-  const list = moreList(tab, state.settings.hidden, MORE_OFFER);
+/** The foot of a tab: the hidden sections it can show, one tap each (with what the tab says of its own, `offer`), and the way to Layout (r28). */
+export function tabFoot(tab: string, offer?: Readonly<Record<string, () => boolean>>): TemplateResult | typeof nothing {
+  const list = moreList(tab, state.settings.hidden, offer ? { ...MORE_OFFER, ...offer } : MORE_OFFER);
   if (!list.length) return nothing;
   return html`<div class="moreline" id="moreLine">
 <p class="small muted ml-h">Add to this tab</p>

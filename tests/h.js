@@ -147,17 +147,19 @@ function sourceTexts() { return sourceFiles().map(f => fs.readFileSync(path.join
    a chart's canvas without the size Chart.js gives it), and the text in it,
    lit-html's markers merged away; and the visible text. The build's own
    version line is left out, as it differs by design. */
-async function screenOf(file, { browser, seed, tab, env, prep, clock }) {
+async function screenOf(file, { browser, seed, tab, env, prep, clock, root, init }) {
   const Q = await open(file, { browser, clock: clock || '2026-10-24T10:00:00' });
-  if (env) { await Q.page.context().addInitScript(`window.IRONLOG_ENV=${JSON.stringify(env)};`); await Q.page.reload(); await Q.page.waitForTimeout(300); }
-  const out = await Q.page.evaluate(async ([seed, tab, prep]) => {
+  // A preview build (env), or a script run before the page's own (init, r59: an account service), takes a reload.
+  if (env || init) { await Q.page.context().addInitScript(`${env ? `window.IRONLOG_ENV=${JSON.stringify(env)};` : ''}${init || ''}`); await Q.page.reload(); await Q.page.waitForTimeout(300); }
+  const out = await Q.page.evaluate(async ([seed, tab, prep, rootId]) => {
     const L = window.__ironlog; const wait = ms => new Promise(r => setTimeout(r, ms));
     (new Function('L', seed))(L);
     L.ui.tab = tab; L.render(); await wait(120);
     if (prep) { await (new Function('L', 'return (async()=>{' + prep + '})()'))(L); await wait(150); }
     document.querySelectorAll('#view details').forEach(d => { d.open = true; });
     await wait(150);
-    const view = document.getElementById('view');
+    // The part of the page read: the tab (#view) unless another is named (r59: the week bar, a sheet).
+    const view = document.getElementById(rootId || 'view');
     for (const el of view.querySelectorAll('input,select,textarea,option,details')) {
       if ('value' in el && el.tagName !== 'DETAILS' && el.tagName !== 'OPTION' && el.type !== 'file') el.setAttribute('p-value', el.value);
       if (el.type === 'checkbox') el.setAttribute('p-checked', String(el.checked));
@@ -180,7 +182,7 @@ async function screenOf(file, { browser, seed, tab, env, prep, clock }) {
     };
     const ver = t => t.replace(/\d+\.\d+ \(build \d{4}\.\d{2}\.\d{2}-r[\d.]+\)/gi, 'VERSION');
     return { tree: kidsOf(view).map(ver), text: ver(view.innerText.replace(/[ \t]+/g, ' ').replace(/\s*\n\s*/g, '\n').trim()) };
-  }, [seed, tab, prep || '']);
+  }, [seed, tab, prep || '', root || '']);
   out.errors = Q.errors.slice();
   await Q.page.context().close();
   return out;

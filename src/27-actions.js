@@ -35,38 +35,6 @@ function draftEntered(d){
   const n=(d.notes||'').trim();if(!n)return false;
   return typeof d.note0==='string'?n!==d.note0.trim():true;
 }
-/* The month calendar: any date one tap away. A day with a session opens it
-   in History; an empty past day logs a workout for it (as in the week bar);
-   today opens Today. It sits inline in This week on Today (Week or Month,
-   r26), and opens as a sheet from History's Calendar button and a
-   Consistency square. The pull-down on the week bar (r25) is gone: the
-   calendar rose from the bottom of the screen while the finger pulled down
-   from the top. */
-function calBounds(){
-  const t=today().slice(0,7);const f=firstDate([...state.sessions,...state.cardio]);
-  return {min:f&&f.slice(0,7)<t?f.slice(0,7):t,max:t};
-}
-// The month header and grid, for the sheet (inline false) and This week (inline true).
-function calBody(ym,inline){
-  const [y,mo]=ym.split('-').map(Number);const dim=new Date(y,mo,0).getDate();const lead=(new Date(y,mo-1,1).getDay()+6)%7;
-  const t=today();
-  const cd={};for(const c of state.cardio)cd[c.date]=(cd[c.date]||0)+c.min;
-  const {min,max}=calBounds();
-  let g=DAYS.map(d=>`<span class="wd">${d.slice(0,2)}</span>`).join('')+'<span></span>'.repeat(lead);let n=0;
-  for(let i=1;i<=dim;i++){
-    const d=`${ym}-${String(i).padStart(2,'0')}`;const ss=sessionsOn(d);const c=cd[d]||0;if(ss.length)n+=ss.length;
-    const cls=['cd',ss.length?'on':'',!ss.length&&c?'cardio':'',d===t?'today':'',d>t?'fut':''].filter(Boolean).join(' ');
-    const what=ss.length?ss.map(x=>x.dayName||'Session').join(', '):c?`cardio ${c} min`:d>t?'':'nothing logged';
-    const inner=`<span class="n">${i}</span><span class="x">${ss.length>1?'×'+ss.length:''}</span>`;
-    g+=d>t?`<span class="${cls}" aria-hidden="true">${inner}</span>`
-      :`<button type="button" class="${cls}" data-act="calDay" data-date="${d}" aria-label="${esc(fmtDateLong(d)+': '+what)}"${what&&what!=='nothing logged'?` data-tip="${esc(what)}"`:''}>${inner}</button>`;
-  }
-  const nav=v=>`data-act="calMonth" data-v="${v}"${inline?' data-inline="1"':''}`;
-  return `<div class="cal-h"><button class="ib" ${nav(-1)} aria-label="Previous month" ${ym<=min?'disabled':''}>‹</button><${inline?'h4':'h3'} id="calH${inline?'i':''}">${MONTHS[mo-1]} ${y}</${inline?'h4':'h3'}><button class="ib" ${nav(1)} aria-label="Next month" ${ym>=max?'disabled':''}>›</button>${inline?'':'<button class="ib" aria-label="Close" data-act="mClose">✕</button>'}</div>
-  <div class="cal-g">${g}</div>
-  <div class="row spread" style="margin-top:10px"><p class="small muted" style="margin:0">${n?`${n} session${n===1?'':'s'}`:'No sessions'}${ym===max?' so far':''}</p>${ym!==max?`<button class="btn sm" ${nav('now')}>This month</button>`:''}</div>`;
-}
-function calSheet(m){return `<div class="sheet" role="dialog" aria-modal="true" aria-labelledby="calH">${calBody(m.ym,false)}</div>`;}
 function pastSheet(m){
   const R=activeRoutine();const due=pastDue(R,m.date);
   const on=sessionsOn(m.date).map(x=>x.dayName||'Session');
@@ -112,7 +80,7 @@ function refreshBlock(b){
 }
 /* The page's actions by data-act: the moved screens' (History and Settings,
    r57, each change to the log through act) and the legacy script's own. */
-const ACT={...HISTORY_ACTS,...SETTINGS_ACTS,...PLAN_ACTS,...DASH_ACTS,
+const ACT={...HISTORY_ACTS,...SETTINGS_ACTS,...PLAN_ACTS,...DASH_ACTS,...TODAY_ACTS,...MAP_ACTS,
   appUpdate(){
     if(ui.modal&&ui.modal.dirty){toast('Save or cancel first. Your changes are still here.');return;}
     saveNow();upd.ready=false;updRender();
@@ -134,17 +102,15 @@ const ACT={...HISTORY_ACTS,...SETTINGS_ACTS,...PLAN_ACTS,...DASH_ACTS,
       else if(!fill&&(x.w===b.sw||carried.has(x))){x.w=null;carried.delete(x);}});
     commit();rerenderKeepScroll();toast(fill?'Loads filled in':'Loads in grey');
   },
-  calOpen(t){const ym=t&&t.dataset&&/^\d{4}-\d{2}$/.test(t.dataset.ym||'')?t.dataset.ym:today().slice(0,7);if(ui.modal)closeModal();openModal({kind:'cal',ym});},
+  calOpen(t){const ym=t&&t.dataset&&/^\d{4}-\d{2}$/.test(t.dataset.ym||'')?t.dataset.ym:today().slice(0,7);if(ui.modal)closeModal();openModal({kind:'calendar',ym});}, // 'calendar', not 'cal', the calibration set's sheet (r59: from r25 a calibration set opened the calendar and threw)
   calMonth(t){
     const inline=t.dataset.inline==='1';const m=ui.modal;
-    if(!inline&&(!m||m.kind!=='cal'))return;
+    if(!inline&&(!m||m.kind!=='calendar'))return;
     const cur=inline?(ui.calYm||today().slice(0,7)):m.ym;const {min,max}=calBounds();let ym;
     if(t.dataset.v==='now')ym=max;
     else{const [y,mo]=cur.split('-').map(Number);const d=new Date(y,mo-1+(+t.dataset.v||0),1);ym=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;}
     if(ym<min||ym>max)return;
     if(inline){ui.calYm=ym;rerenderKeepScroll();}else{m.ym=ym;renderModal();}},
-  // This week on Today: the week, or the month (remembered on this device).
-  wkView(t){const v=t.dataset.v==='month'?'month':'week';ui.wkView=v;if(v==='month')ui.calYm=today().slice(0,7);try{localStorage.setItem(WKVIEW_KEY,v);}catch(e){/* this visit only */}rerenderKeepScroll();},
   calDay(t){
     const d=t.dataset.date;if(!isDate(d)||d>today())return;
     if(ui.modal)closeModal();
@@ -155,7 +121,6 @@ const ACT={...HISTORY_ACTS,...SETTINGS_ACTS,...PLAN_ACTS,...DASH_ACTS,
     if(d===today()){ACT.wkGo({dataset:{date:d}});return;}
     ACT.pastOpen({dataset:{date:d}});
   },
-  iconLater(){try{localStorage.setItem(ICON_NOTE,'1');}catch(e){log('storage',e);}if(ui.modal&&ui.modal.kind==='icon')closeModal();rerenderKeepScroll();},
   install(){
     const how=installKind();
     if(how==='prompt'){
@@ -166,8 +131,6 @@ const ACT={...HISTORY_ACTS,...SETTINGS_ACTS,...PLAN_ACTS,...DASH_ACTS,
     }
     openModal({kind:'install',how});
   },
-  installLater(){try{localStorage.setItem(INSTALL_LATER,'1');}catch(e){log('storage',e);}rerenderKeepScroll();toast('Hidden. Settings > Your data has it.');},
-  acctLater(){try{localStorage.setItem(ACCT_LATER,'1');}catch(e){log('storage',e);}rerenderKeepScroll();toast('Hidden. Settings > Your data has it.');},
   acctOpen(t){openModal({kind:'account',mode:t.dataset.mode==='signup'?'signup':'signin',email:'',pw:'',back:ui.modal&&ui.modal.kind==='feedback'?ui.modal:undefined});}, // from a problem report, signing in goes back to it (r55, the audit: the report and what was typed in it were gone)
   acctMode(t){const m=ui.modal;if(!m||m.kind!=='account')return;if(m.mode==='wait')waitStop();m.mode=t.dataset.mode;m.err='';m.pw='';renderModal();},
   acctWaitNow(){waitTry(true);},
@@ -433,15 +396,11 @@ const ACT={...HISTORY_ACTS,...SETTINGS_ACTS,...PLAN_ACTS,...DASH_ACTS,
     else go();
   },
   obSample(){openModal({kind:'templates',from:'welcome'});},
-  obTourPick(t){obTour.user=true;obTourStop();obTourGo(+t.dataset.i,true);},
-  obAcctLater(){try{localStorage.setItem(OB_ACCT,'later');}catch(e){/* per device only */}obOutClear();window.scrollTo(0,0);render();},
-  obAcctBack(){try{localStorage.removeItem(OB_ACCT);}catch(e){/* nothing to clear */}window.scrollTo(0,0);render();},
   // The save kept aside at start (r45): restored through the import's checks, or shown as text (Forget it is Settings', src/app/settings.ts).
   unreadRestore(){const raw=unreadableRaw();if(!raw)return;importData(raw,unreadableForget);},
   unreadShow(){const raw=unreadableRaw();if(raw)openModal({kind:'text',title:'Save kept aside',help:'Select all and copy it somewhere safe.',text:raw,readonly:true});},
   // The fold in the first-run routine picker (r44): its own state, so a re-render keeps it open.
   obProfTog(){ui.obProf=!ui.obProf;rerenderKeepScroll();},
-  obUnit(t){const v=t.dataset.v;if(v!=='lb'&&v!=='kg')return;state.settings.unit=v;commit();render();},
   tplPick(t){
     const m=ui.modal;const from=m&&m.kind==='templates'?m.from:'plan';const k=t.getAttribute('data-k');
     const r=routineFromTemplate(k);if(!r)return;closeModal();
@@ -458,14 +417,6 @@ const ACT={...HISTORY_ACTS,...SETTINGS_ACTS,...PLAN_ACTS,...DASH_ACTS,
     }
     if(same){ui.bRoutine=same.id;render();toast('You already have this routine unchanged. Opened it instead.');return;}
     state.routines.push(r);ui.bRoutine=r.id;commit();render();toast(`${r.name} added. Tap Make active to use it.`);
-  },
-  obOwn(){
-    state.settings.onboarded=true;
-    // Three training days with rest days between, as the ready-made 3-day routines are laid out (r54, the audit: three days and no rest planned 7 sessions a week).
-    const r={id:uid(),name:'My routine',schedule:'cycle',days:[0,1,0,1,0,1,1].map(x=>({id:uid(),name:x?'Rest':'Training day',rest:!!x,items:[]}))};
-    state.routines=dropStarter(state.routines,state.sessions,starterSigs());state.routines.push(r);state.activeRoutineId=r.id;ui.bRoutine=r.id;ui.bTarget=0;ui.folds['program:library']=true;ui.folds['program:days']=true;ui.todayDay=null; // replacing the untouched starter, as a ready-made pick does (r55, the audit)
-    ui.tab='program';ui.planView='routine';commit();window.scrollTo(0,0);render();
-    toast('Name your days, then add exercises with + or by dragging.',false,7000);
   },
   // Log a workout now keeps the starter routine, so its targets fit it the
   // same way a routine picked on this page does (decision 114, r29).
@@ -634,16 +585,10 @@ const ACT={...HISTORY_ACTS,...SETTINGS_ACTS,...PLAN_ACTS,...DASH_ACTS,
   restWk(t){const ws=t.dataset.w;if(!isDate(ws))return;snapshot();const r=(state.settings.restWeeks||[]).slice();const on=r.includes(ws);
     state.settings.restWeeks=on?r.filter(x=>x!==ws):[...r,ws].sort();if(!state.settings.restWeeks.length)delete state.settings.restWeeks;
     invalidate();commit();renderModal();rerenderKeepScroll();toast(on?'Rest week cleared':'Rest week marked',true);},
-  deloadToggle(){
-    if(isDeloadWeek()){state.deloadWeek=null;commit();render();toast('Deload week off');return;}
-    state.deloadWeek=weekStart(today());commit();ui.tab='today';window.scrollTo(0,0);render();
-    toast('Deload week on until Sunday: half sets, about 90% loads. It clears fatigue; it does not add growth.',false,6000);
-  },
   injAdd(){openModal({kind:'injury'});},
   injSave(){const m=$('#injM').value;const note=($('#injNote').value||'').trim();
     if(!MK.includes(m)&&!JK.includes(m))return;state.injuries=(state.injuries||[]).filter(x=>x.m!==m);state.injuries.push({id:uid(),m,note,date:today()});
     closeModal();commit();render();toast(`${injLabel(m)} flagged`);},
-  injClear(t){snapshot();const x=(state.injuries||[]).find(i=>i.id===t.dataset.id);state.injuries=(state.injuries||[]).filter(i=>i.id!==t.dataset.id);commit();render();toast(`${x?injLabel(x.m):'Injury'} cleared`,true);},
   bMenu(t){openModal({kind:'bmenu',b:+t.dataset.b});},
   rirOpen(t){const bi=+t.dataset.b,si=+t.dataset.s;const open=document.querySelector(`.rirstrip[data-b="${bi}"][data-s="${si}"]`);if(open){rirClose();return;}rirShowStrip(bi,si);
     const f=document.querySelector('.rirstrip button.on')||document.querySelector('.rirstrip button');if(f&&!coarse())try{f.focus({preventScroll:true});}catch(e){/* focus is best effort */}},
@@ -769,7 +714,6 @@ const ACT={...HISTORY_ACTS,...SETTINGS_ACTS,...PLAN_ACTS,...DASH_ACTS,
     if(got){finish(got);return;}
 m.err=`Could not read that. Try the pattern 225x5, 5, 4 ${rirScale()==='rpe'?'rpe 9':'rir 1'}.`;renderModal();  },
   aiStop(){if(AI.ctl){try{AI.ctl.abort();}catch(e){/* already finished */}}},
-  heroMore(){ui.heroMore=!ui.heroMore;rerenderKeepScroll();},
   startAltOpen(t){openModal({kind:'startAlt',di:+t.dataset.day,free:t.dataset.free==='1'});},
   // A choice in Change: the sheet closes first, then the start it names runs as the card's button did.
   altGo(t){const go=t.dataset.go;closeModal();if(ACT[go])ACT[go](t);},
@@ -1044,15 +988,7 @@ m.err=`Could not read that. Try the pattern 225x5, 5, 4 ${rirScale()==='rpe'?'rp
     if(d.editingId&&editFp0.get(d.id)===editFp(d)){out();toast('No changes made');return;}
     confirmBox('Discard this session?',d.editingId?'Your edits will be lost. The saved session stays as it was.':'Sets and cardio logged in this session will not be saved.','Discard',out,true);
   },
-  // A grey number in the field is what Save takes, as everywhere in the app (r34.2: the weigh-in card showed the last weight and refused it).
-  addBW(t){const inp=document.getElementById((t&&t.dataset&&t.dataset.in)||'bwVal');const v=numIn(inp?(inp.value||(inp.dataset.grey||'')):'');const de=t&&t.dataset&&t.dataset.in?null:$('#bwDate');const date=(de&&de.value)||today();if(v==null||v<=0){toast('Enter a bodyweight');return;}{const kg=fromD(v);if(kg<BW_MIN_KG||kg>BW_MAX_KG){toast(`Bodyweight must be between ${fmtW(BW_MIN_KG)} and ${fmtW(BW_MAX_KG)} ${U()}`);return;}}state.bodyweights=state.bodyweights.filter(b=>b.date!==date);state.bodyweights.push({id:uid(),date,kg:fromD(v)});commit();rerenderKeepScroll();toast('Bodyweight logged');},
-  bwLater(){try{localStorage.setItem(BWSNOOZE_KEY,addDays(today(),2));}catch(e){/* per device only */}rerenderKeepScroll();},
   bwAskNo(){try{localStorage.setItem(BWASK_KEY,'1');}catch(e){/* per device only */}rerenderKeepScroll();},
-  delBW(t){const id=t.dataset.id;const x=state.bodyweights.find(b=>b.id===id);if(!x)return;
-    confirmBox('Delete weigh-in?',`${fmtDate(x.date)}: ${fmtW(x.kg)} ${U()}. Undo is offered right after.`,'Delete',()=>{snapshot();state.bodyweights=state.bodyweights.filter(b=>b.id!==id);commit();rerenderKeepScroll();toast('Entry deleted',true);},true);},
-  addMeas(){const m={id:uid(),date:today()};let any=false;for(const [k,lab] of MEAS){const v=numIn($('#ms_'+k).value);if(v!=null&&v>0){const cm=lenFrom(v);if(!(cm<=MEAS_MAX_CM)){toast(`${lab} looks too large. Check the number.`);return;}m[k]=cm;any=true;}}if(!any){toast('Enter at least one measurement');return;}snapshot();const was=state.measurements.find(x=>x.date===m.date);if(was)Object.assign(was,m,{id:was.id});else state.measurements.push(m);commit();rerenderKeepScroll();toast('Measurements saved',true);}, // a second save the same day adds to it, keeping what it does not retype, with Undo (r55, the audit: it replaced the day's entry)
-  delMeas(t){const id=t.dataset.id;const x=state.measurements.find(m=>m.id===id);if(!x)return;
-    confirmBox('Delete measurements?',`The tape entry from ${fmtDate(x.date)}. Undo is offered right after.`,'Delete',()=>{snapshot();state.measurements=state.measurements.filter(m=>m.id!==id);commit();rerenderKeepScroll();toast('Entry deleted',true);},true);},
   rNew(){openModal({kind:'routineNew'});},
   rNewSave(){const nm=(($('#rNewName')||{}).value||'').trim();if(!nm){toast('Give the routine a name');return;}if(nameTaken(nm)){toast('A routine already has that name. Pick another.');return;}closeModal();ACT.rNewDo(nm);},
   rNewDo(nm){
@@ -1094,14 +1030,9 @@ m.err=`Could not read that. Try the pattern 225x5, 5, 4 ${rirScale()==='rpe'?'rp
     if(m.back){const back=m.back;back.q=e.name;openModal(back);}else closeModal();
     rerenderKeepScroll();toast(m.isNew?'Exercise created':'Exercise saved');
   },
-  mapSel(t){const m=t.getAttribute('data-m');ui.mapSel=ui.mapSel===m?null:m;rerenderKeepScroll();},
-  mapSrc(t){ui.mapSrc=t.getAttribute('data-v');rerenderKeepScroll();},
-  mapView(t){try{localStorage.setItem(MAPVIEW_KEY,t.getAttribute('data-v')==='3d'?'3d':'flat');}catch(e){/* remembered for this visit only */}B3.viewMem=t.getAttribute('data-v')==='3d'?'3d':'flat';rerenderKeepScroll();},
-  map3dTurn(t){map3dTurnTo([0,Math.PI/2,Math.PI][+t.getAttribute('data-v')]||0);},
   /* Every tile, summary row and map detail lands on the matching dashboard
      section, opened even if you had folded it, with the relevant muscle or
      exercise already selected. */
-  goWeek(){ui.folds['today:week']=true;render();try{const el=document.querySelector('[data-sk="today:week"]');if(el){el.open=true;el.scrollIntoView({block:'start',behavior:'smooth'});}}catch(e){/* scroll is best effort */}},
   goDash(t){
     const raw=t.getAttribute('data-sec'),m=t.getAttribute('data-m'),ex=t.getAttribute('data-ex');
     const sec=raw&&DSEC_ALIAS[raw]?DSEC_ALIAS[raw]:raw;
@@ -1142,7 +1073,6 @@ m.err=`Could not read that. Try the pattern 225x5, 5, 4 ${rirScale()==='rpe'?'rp
     // On a first run the targets fit the routine, as picking it would (r29);
     // demoRestore puts the settings back when the demo is cleared.
     if(first)fitTargets(activeRoutine());if(!cloud.on)cloudStop(true);makeDemo();ui.tab='dash';window.scrollTo(0,0);render();toast('Demo data loaded');});},
-  demoStart(){state.sessions=state.sessions.filter(s=>!s.demo);state.bodyweights=state.bodyweights.filter(b=>!b.demo);state.measurements=state.measurements.filter(m=>!m.demo);demoRestore();commit();ui.tab='today';ui.folds={};window.scrollTo(0,0);render();},
 };
 
 /* A load far from last time's (under 60% or over 140% of it) is the usual

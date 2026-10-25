@@ -6,7 +6,7 @@ const $=(s,r=document)=>r.querySelector(s);
    runs (every function named here is declared below, hoisted). Then what the
    storage and sync parts ran as the page loaded, in their order: the save
    read into the store, the sync notes, the device id, the listeners. */
-setFx({render,rerenderKeepScroll,toast,setSaveState,syncLine,obGate,confirm:(title,body,okLabel,fn,danger)=>confirmBox(title,body,okLabel,fn,danger),refreshEx,syncDraftPlan,unitWords,stopTimer,primeAudio,timerRefresh:()=>{if(!$('#timer').hidden)tick();},wakeOn,wakeOff,ask:(title,body,ok,alt)=>new Promise(res=>confirmBox(title,body,ok,()=>res('ok'),false,{label:alt,fn:()=>res('alt')},()=>res('cancel')))});
+setFx({render,rerenderKeepScroll,closeModal,toast,setSaveState,syncLine,obGate,confirm:(title,body,okLabel,fn,danger)=>confirmBox(title,body,okLabel,fn,danger),refreshEx,syncDraftPlan,unitWords,stopTimer,primeAudio,timerRefresh:()=>{if(!$('#timer').hidden)tick();},wakeOn,wakeOff,ask:(title,body,ok,alt)=>new Promise(res=>confirmBox(title,body,ok,()=>res('ok'),false,{label:alt,fn:()=>res('alt')},()=>res('cancel')))});
 storageStart();
 syncStart();
 /* Update prompt (standalone app only). The build's boot script registers the

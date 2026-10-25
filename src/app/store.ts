@@ -225,6 +225,8 @@ export interface Fx {
   confirm(title: string, body: string, okLabel: string, fn: () => void, danger?: boolean): void;
   /** Redraws the page keeping the scroll position. */
   rerenderKeepScroll(): void;
+  /** Closes the sheet that is open (the sheets are the legacy script's until r60). */
+  closeModal(): void;
   /** Shows a toast: the message, whether it offers Undo, for how long, and its kind. */
   toast(msg: string, undo?: boolean | null, ms?: number | null, kind?: string): void;
   /** Draws the save state's button (the menu button's dot and words). */

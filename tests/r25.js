@@ -147,7 +147,7 @@ const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log
   const C = await open('index.html', { browser, touch: true, w: 390, h: 844, clock: '2026-09-30T18:00:00' });
   const cev = (f, a) => C.page.evaluate(f, a);
   await cev(() => { const L = window.__ironlog; L.state.settings.onboarded = true; L.makeDemo(); /* r30: history here, not sample data */ for (const k of ['sessions', 'bodyweights', 'measurements']) for (const x of (L.state[k] || [])) delete x.demo; L.invalidate && L.invalidate(); L.ui.tab = 'history'; L.render(); localStorage.setItem('ironlog.v1.tipWake', '1'); });
-  const cal = () => cev(() => { const m = window.__ironlog.ui.modal; return m && m.kind === 'cal' ? { ym: m.ym, title: document.getElementById('calH').textContent, on: document.querySelectorAll('#modal .cd.on').length, fut: document.querySelectorAll('#modal span.cd.fut').length, futBtn: document.querySelectorAll('#modal button.cd.fut').length } : null; });
+  const cal = () => cev(() => { const m = window.__ironlog.ui.modal; return m && (m.kind === 'calendar' || m.kind === 'cal') ? { ym: m.ym, title: document.getElementById('calH').textContent, on: document.querySelectorAll('#modal .cd.on').length, fut: document.querySelectorAll('#modal span.cd.fut').length, futBtn: document.querySelectorAll('#modal button.cd.fut').length } : null; });
   await C.page.click('#view .ph [data-act="calOpen"]'); await C.page.waitForTimeout(100);
   let c1 = await cal();
   ok(c1 && c1.ym === '2026-09' && c1.title === 'September 2026' && c1.on > 0 && c1.futBtn === 0, 'History > Calendar opens this month, lifted days marked, days ahead not tappable', c1);

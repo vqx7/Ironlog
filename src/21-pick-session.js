@@ -231,136 +231,6 @@ function pickerBody(m){
   const rowG=e=>pickRow(e,used,true);
   return h+(com.length?grp(`Most common (${com.length})`)+com.map(rowG).join(''):'')+grp(com.length?`All other exercises (${rest.length})`:`All exercises (${all.length})`)+rest.map(row).join('');
 }
-/* Week at a glance, in the bar at the top of every tab. Each cell is a day of
-   this calendar week: filled green when you lifted, a green outline for
-   cardio only, dashed for a planned workout still ahead, dashed red for a
-   fixed-weekday workout that was missed. A trained day opens that session in
-   History; today or a day ahead opens Today on the workout planned for it.
-   Numbered cycles are projected forward from where you are in the rotation,
-   the same rule Today uses, so the week shows what is coming. */
-/* The cycle day that falls on each date from today on. After a session the
-   calendar walks the cycle one day per day, rest days included; a missed day
-   waits (Today offers the next training day, whatever the date). */
-function cycleProjection(R,days){
-  const n=R.days.length;const t=today();const cs=cycleState(R);const out={};
-  let idx,start;
-  if(cs.lastDate===t){idx=(cs.last+1)%n;start=addDays(t,1);}
-  else if(cs.restToday){idx=cs.restIdx;start=t;}
-  else{idx=cs.next;start=t;}
-  for(let k=0;k<(days||7);k++){out[addDays(start,k)]=idx;idx=(idx+1)%n;}
-  return out;
-}
-/* What is planned on each date of this week: {di, day} or null. */
-function weekPlan(R){
-  const cur=weekStart(today());const out={};
-  if(R.schedule==='weekly'){for(let i=0;i<7;i++)out[addDays(cur,i)]={di:i,day:R.days[i]};return out;}
-  const pj=cycleProjection(R,8);
-  for(let i=0;i<7;i++){const d=addDays(cur,i);if(d in pj)out[d]={di:pj[d],day:R.days[pj[d]]};}
-  return out;
-}
-function weekBar(){
-  const R=activeRoutine();const cur=weekStart(today()),t=today();const weekly=R.schedule==='weekly';
-  const cByDate={};for(const c of state.cardio)(cByDate[c.date]=cByDate[c.date]||[]).push(c);
-  const rw=isRestWeek(cur);const plan=rw?{}:weekPlan(R);let h=''; // A rest week plans nothing, so no day in it reads planned or missed (r55, the audit: the bar said "Upper A, missed" under "Rest week. Nothing planned.").
-  // The + on empty past days appears once there is a log to add to; a brand-new week bar stays clean (the days still open the sheet).
-  const hasLog=state.sessions.length>0;
-  for(let i=0;i<7;i++){
-    const d=addDays(cur,i),ss=sessionsOn(d),trained=ss.length>0,cd=cByDate[d]||[];
-    const p=plan[d];const pd=p?p.day:null;const isPlan=!!pd&&!pd.rest&&pd.items.length>0;const isRest=!!pd&&pd.rest;
-    // The session in progress sits on its own date, which for a past workout is not today.
-    const live=!!state.draft&&!state.draft.editingId&&d===state.draft.date;
-    const cls=['w',trained?'on':'',!trained&&cd.length?'cardio':'',!trained&&!cd.length&&isPlan&&d>=t?'plan':'',!trained&&weekly&&isPlan&&d<t?'miss':'',!trained&&!cd.length&&isRest&&d>=t?'rest':'',d===t?'today':'',live?'live':''].filter(Boolean).join(' ');
-    const name=trained?ss[0].dayName+(ss.length>1?` +${ss.length-1}`:''):cd.length?'Cardio':p&&d>=t?(isRest?'Rest':pd.name):(weekly&&isPlan&&d<t?pd.name:'');
-    const what=trained?`${ss.map(x=>x.dayName).join(', ')}, logged`:live?'session in progress':isPlan?(d<t?(weekly?`${pd.name}, missed`:'nothing logged'):`${pd.name}, planned`):isRest&&d>=t?'rest day':rw?'rest week':'nothing logged';
-    const label=`${DAYS[i]} ${fmtDate(d)}: ${what}${cd.length?`, cardio ${cd.reduce((a,c)=>a+c.min,0)} min`:''}`;
-    const inner=`<span class="wd">${WD2[i]}</span><span class="dn">${+d.slice(8)}</span><span class="nm">${name?esc(name):'&nbsp;'}</span>`;
-    if(live&&d<t)h+=`<button type="button" class="${cls}" data-act="wkGo" data-date="${d}" data-tip="${esc(label)}" aria-label="${esc(label)}. Open the session">${inner}</button>`;
-    // A day with two sessions asks which, as the calendar does (r47): both go through calDay. Until r47 the bar opened one of them without asking.
-    else if(trained&&ss.length>1)h+=`<button type="button" class="${cls}" data-act="calDay" data-date="${d}" data-tip="${esc(label)}" aria-label="${esc(label)}. Choose one to open">${inner}</button>`;
-    else if(trained)h+=`<button type="button" class="${cls}" data-act="wkOpen" data-id="${ss[0].id}" data-tip="${esc(label)}" aria-label="${esc(label)}. Open in History">${inner}</button>`;
-    else if(d>=t)h+=`<button type="button" class="${cls}" data-act="wkGo" data-date="${d}"${p?` data-day="${p.di}"`:''} data-tip="${esc(label)}" aria-label="${esc(label)}. Open on Today">${inner}</button>`;
-    // An empty past day logs a workout for that date (item 53): every day in the bar does something.
-    else h+=`<button type="button" class="${cls}${hasLog?' add':''}" data-act="pastOpen" data-date="${d}" data-tip="${esc(label+'. Tap to log it')}" aria-label="${esc(label)}. Log a workout for this day">${inner}</button>`;
-  }
-  return h;
-}
-function renderWeekBar(){const el=document.getElementById('wkbar');if(!el)return;try{el.innerHTML=weekBar();}catch(e){log('weekbar',e);el.innerHTML='';}}
-/* The week at a glance, beside the day's name: sessions done against the
-   sessions the routine plans this week, the same two numbers as This week's
-   title. V (2026-10-13): the headline counts what was done, not planned
-   sets; hard sets against the plan stay inside This week. A ring fills,
-   which reads faster than a sentence. Tapping it opens This week. */
-function heroRing(w){
-  if(!(w.planDays>0))return '';
-  const r=26,c=2*Math.PI*r,p=Math.max(0,Math.min(1,w.doneDays/w.planDays));
-  const pd=`${w.weekly||weekFactor(w.R)===1?'':'about '}${w.planDays}`;
-  const lbl=noLog()?`No sessions logged yet; ${pd} planned this week`:`${w.doneDays} of ${pd} sessions this week`;
-  return `<button type="button" class="ring" data-act="goWeek" aria-label="${esc(lbl)}. Open This week" data-tip="${esc(lbl)}"><svg viewBox="0 0 64 64" aria-hidden="true"><circle cx="32" cy="32" r="${r}" class="rt"/><circle cx="32" cy="32" r="${r}" class="rp" stroke-dasharray="${(c*p).toFixed(2)} ${c.toFixed(2)}" transform="rotate(-90 32 32)"/></svg><span class="rv">${noLog()?NIL:`${w.doneDays}<small>/${w.planDays}</small>`}</span><span class="rl">week</span></button>`;
-}
-function cycleStrip(R){
-  const cs=cycleState(R);
-  return `<div class="cyc" role="list" aria-label="Your cycle">${R.days.map((d,i)=>{
-    const st=d.rest?'rest':i===cs.next?'next':cs.done.has(i)?'done':'';
-    const what=st==='next'?', next up':st==='done'?', done this round':d.rest?', rest':'';
-    return `<span role="listitem" class="c ${st}" data-tip="${esc(dayLabel(R,i)+': '+d.name+what)}"><b>${i+1}</b>${esc(d.rest?'Rest':d.name)}</span>`;
-  }).join('')}</div>`;
-}
-/* Weight lifted this week, against last week to this point. It moved here from
-   At a glance in r23 (item 32): This week owns everything about this week,
-   At a glance the longer view. */
-function liftedLine(){
-  const tn=tonnageNow();if(!tn.now&&!tn.prevFull)return '';
-  /* No percentage against last week (r30): weight lifted falls when loads
-     go up and reps come down, so as a headline it read progress as decline
-     ("−5%" on a week of PRs). The number stays; the detail is in Stats. */
-  return `<button class="linkbtn wklift" data-act="goDash" data-sec="svol" style="margin:6px 0 0;text-decoration:none;text-align:left"><b>${tn.now?fmtBig(tn.now):0} ${U()}</b> lifted</button>`;
-}
-function weekBody(w){
-  /* The two numbers are counted differently on purpose and the label has to
-     say so: the denominator is every hard set the routine plans (RIR 3 or
-     less, halved in a deload week; r27), the numerator is
-     only the sets that counted as hard. You cannot reach 100% on a week where
-     you left RIR at 4 or above. The day-by-day week is the bar at the top. */
-  if(ui.wkView===undefined){try{ui.wkView=localStorage.getItem(WKVIEW_KEY)==='month'?'month':'week';}catch(e){ui.wkView='week';}}
-  const month=ui.wkView==='month';
-  const tog=`<div class="wkview" role="group" aria-label="Show"><button type="button" data-act="wkView" data-v="week" aria-pressed="${!month}"${month?'':' class="on"'}>Week</button><button type="button" data-act="wkView" data-v="month" aria-pressed="${month}"${month?' class="on"':''}>Month</button></div>`;
-  if(month)return tog+`<div class="cal-inline">${calBody(ui.calYm&&ui.calYm<=today().slice(0,7)?ui.calYm:today().slice(0,7),true)}</div>`;
-  if(freeMode())return `${tog}<div class="hrow" style="margin:5px 0 0"><p class="small muted" style="margin:0" id="wkSets">${noLog()?'Nothing logged yet.':`${r1(w.got)} hard sets this week.`}</p>${helpBtn('wk')}</div>
-  ${w.cardioMin?`<p class="small" style="margin:5px 0 0">Cardio and mobility: ${w.cardioMin} min in ${w.cardioN} entr${w.cardioN===1?'y':'ies'}</p>`:''}${liftedLine()}
-  ${helpText('wk','Each set counts once; a set at RIR 4 or more is not hard and does not count. Muscle targets are on the Muscle map and in Stats.')}`;
-  if(w.rest)return `${tog}<div class="hrow" style="margin:5px 0 0"><p class="small muted" style="margin:0" id="wkSets">Rest week. ${w.got?`${r1(w.got)} hard sets logged.`:'Nothing planned.'}</p>${helpBtn('wk')}</div>
-  ${w.cardioMin?`<p class="small" style="margin:5px 0 0">Cardio and mobility: ${w.cardioMin} min in ${w.cardioN} entr${w.cardioN===1?'y':'ies'}</p>`:''}${liftedLine()}
-  ${helpText('wk','A rest week you marked under More options on Today. It does not count as missed: your averages, streak, and adherence skip it.')}`;
-  return `${tog}${w.weekly?'':cycleStrip(w.R)}
-  <div class="band" data-tip="${noLog()?`${w.tgt} hard sets planned`:`${w.got} hard sets logged of ${w.tgt} planned`}"><div class="fill prog" style="width:${w.pct}%"></div></div>
-  ${w.cardioMin?`<p class="small" style="margin:5px 0 0">Cardio and mobility: ${w.cardioMin} min in ${w.cardioN} entr${w.cardioN===1?'y':'ies'}</p>`:''}
-  <div class="hrow" style="margin:5px 0 0"><p class="small muted" style="margin:0" id="wkSets">${noLog()?`${w.tgt} hard sets planned this week.`:`${w.got} hard sets logged of ${w.tgt} planned${w.tgt>0?` (${Math.round(w.pct)}%)`:''}.`}</p>${helpBtn('wk')}</div>
-  ${liftedLine()}
-  ${helpText('wk',`Each set counts once; a set at RIR 4 or more is not hard and does not count. The bar at the top of every tab is this calendar week: filled is a day you lifted, a coloured outline is cardio only, a grey ring is a workout planned ahead${w.weekly?', a red ring is a planned workout that was missed':''}. Tap a filled day to open it in History; tap today or a day ahead to see its workout here; tap an empty past day (marked +) to log a workout for it.${w.weekly?'':' The row above the bar is your cycle: green is done this round, outlined is next.'}`)}`;
-}
-function weekCard(){
-  const w=weekStats();const body=weekBody(w);
-  /* The title follows the view (V, r28): This week, or This month (the
-     month's name for an earlier one) with that month's session count. */
-  if(ui.wkView==='month'){
-    const cur=today().slice(0,7);const ym=ui.calYm&&ui.calYm<=cur?ui.calYm:cur;
-    const n=Object.keys(dateIndex().byDate).filter(d=>d.slice(0,7)===ym).reduce((a,d)=>a+sessionsOn(d).length,0);
-    const title=ym===cur?'This month':new Date(ym+'-15T12:00:00').toLocaleDateString(undefined,{month:'long',year:'numeric'});
-    return sec({sk:'today:week',key:'week',title,sub:`${n} session${n===1?'':'s'}`,body});
-  }
-  if(freeMode())return sec({sk:'today:week',key:'week',title:'This week',sub:w.rest?`Rest week${w.doneDays?`, ${w.doneDays} session${w.doneDays===1?'':'s'}`:''}`:noLog()?'Nothing logged yet':`${w.doneDays} session${w.doneDays===1?'':'s'}`,body});
-  if(w.rest)return sec({sk:'today:week',key:'week',title:'This week',sub:`Rest week${w.doneDays?`, ${w.doneDays} session${w.doneDays===1?'':'s'}`:''}`,body});
-  return sec({sk:'today:week',key:'week',title:'This week',sub:noLog()?`${w.weekly||weekFactor(w.R)===1?'':'~'}${w.planDays} sessions planned`:`${w.doneDays} of ${w.weekly||weekFactor(w.R)===1?'':'~'}${w.planDays} sessions`,body});
-}
-/* Quick answers before a session starts: is this lift moving, and what to do. */
-function liftTags(exId){
-  const st=IDX().exStats[exId];if(!st)return '';const t=[];
-  if(st.last&&st.fresh&&IDX().prs.some(p=>p.big&&p.sid===st.last.sid&&p.exId===exId))t.push('<span class="tag green">PR last time</span>'); // a PR as Recent PRs counts it (r58)
-  if(st.easier)t.push('<span class="tag blue">Load due</span>');
-  if(st.stalled)t.push('<span class="tag yellow">Stalled</span>');
-  if(st.capped)t.push('<span class="tag blue">At max load</span>');
-  return t.length?`<span class="chips">${t.join('')}</span>`:'';
-}
 function liftTrend(exId){
   /* The sessions the trend reads (r30: a deload or lighter day in the list
      read as a drop; since r54 one short of its usual is in). The word
@@ -383,22 +253,6 @@ function liftTrend(exId){
   return `<p class="small muted" style="margin:2px 0">Top sets <span class="trend">${exps.map(x=>topSetOf(ex,x)).join(' → ')}</span>${dir?' · '+dir:''}</p>`;
 }
 function topSetOf(ex,x){return topSetPt(ex,x).txt;}
-function bodyCard(){
-  const bws=[...state.bodyweights].sort((a,b)=>a.date<b.date?1:-1);
-  const ms=[...state.measurements].sort((a,b)=>a.date<b.date?1:-1).slice(0,3);
-  const last=bws[0];const r=bwRate();const loggedToday=last&&last.date===today();
-  const sub=last?`${fmtW(last.kg)} ${U()}${r?` · ${bwWeekTxt(r)}`:''}`:'Not logged yet';
-  // "−0 vs previous" read as a loss; a change that rounds to nothing says so (r41).
-  const chg=bws.length>1?last.kg-bws[1].kg:null;const chgTxt=chg==null?'':+fmtW(Math.abs(chg))===0?', same as previous':`, ${chg>0?'+':'−'}${fmtW(Math.abs(chg))} vs previous`;
-  return sec({sk:'today:body',key:'body',title:'Body',sub:esc(sub),body:`${last?`<div class="body-sum"><div><div class="v">${fmtW(last.kg)}<span class="small"> ${U()}</span></div><div class="l">Latest, ${fmtDate(last.date)}${chgTxt}</div></div>${r?`<div><div class="v">${esc(bwWeekTxt(r).replace(' a week',''))}</div><div class="l">weekly change, from 7-day averages</div></div>`:''}</div>`:''}
-  <div class="bw-entry"><label class="field">Date<input type="date" id="bwDate" value="${today()}" max="${today()}"></label><label class="field">Weight (${U()})<input type="text" inputmode="decimal" id="bwVal" placeholder="${last?fmtW(last.kg):''}" enterkeyhint="done"></label><button class="btn primary" data-act="addBW" data-tip="Also used for pull-ups, dips, and other bodyweight lifts.">${loggedToday?'Update':'Log'}</button></div>
-  ${bws.length?`<ul class="bw-list" aria-label="Recent bodyweights">${bws.slice(0,5).map(b=>`<li><span class="d">${fmtDate(b.date)}</span><span class="num">${fmtW(b.kg)} ${U()}</span><button class="ib sm" data-act="delBW" data-id="${b.id}" aria-label="Delete ${fmtDate(b.date)} entry">✕</button></li>`).join('')}</ul>${bws.length>5?`<p class="small muted" style="margin:4px 0 0">${bws.length-5} older on Stats.</p>`:''}`:''}
-  ${subsec('today:tape',`Tape measurements (${LU()})`,`<div class="grid2" style="align-items:end">${heightField()}<span></span></div>
-    <div class="grid3" style="margin-top:10px">${MEAS.map(([k,l])=>`<label class="field">${l}<input type="text" inputmode="decimal" id="ms_${k}"></label>`).join('')}</div>
-    ${markupOf(whtrLine(true))}
-    <button class="btn" style="margin-top:8px" data-act="addMeas">Save measurements for ${fmtDate(today())}</button>
-    ${ms.length?`<div class="scroll-x" style="margin-top:10px"><table class="t"><tr><th>Date</th>${MEAS.map(m=>`<th class="r">${m[1]}</th>`).join('')}<th class="stick-r"><span class="vh">Delete</span></th></tr>${ms.map(m=>`<tr><td>${fmtDate(m.date)}</td>${MEAS.map(([k])=>`<td class="r">${lenD(m[k])}</td>`).join('')}<td class="stick-r"><button class="ib sm" data-act="delMeas" data-id="${m.id}" aria-label="Delete ${fmtDate(m.date)} measurements">✕</button></td></tr>`).join('')}</table></div>`:''}`,ms.length?`last ${fmtDate(ms[0].date)}`:'')}`});
-}
 /* The most recent non-empty note you left on this exercise in a saved session:
    seat height, pin, grip, which station. Shown when the exercise comes up again. */
 function lastNoteOf(exId,before){
@@ -527,25 +381,10 @@ function viewLogger(){
   <div class="row fin-row" style="margin-top:12px"><button class="btn danger" data-act="discard">${d.editingId?'Cancel edit':'Discard'}</button><button class="btn primary" style="flex:1" data-act="finish" data-tip="Only sets marked done are saved; you are asked about any with reps but no checkmark.">${d.editingId?'Save changes':'Finish and save'}</button></div>`;
   return h;
 }
-
 /* Bodyweight, asked once in the first session with a bodyweight lift when
    none is logged (r32, from the third review: pull-ups and leg raises added
    nothing to weight lifted, and had no estimate, with no weigh-in). Saved
    like a weigh-in on Today; Not now is kept per device. */
-const BWASK_KEY=KEY+'.bwAsk';
-const BWSNOOZE_KEY=KEY+'.bwSnooze';
-function bwLast(){let b=null;for(const x of state.bodyweights)if(!b||x.date>b.date)b=x;return b;}
-function bwDueCard(){
-  const n=bwEvery();if(!n||noLog())return '';const last=bwLast();const ago=last?daysBetween(last.date,today()):null;
-  if(last&&ago<n)return '';
-  /* Never weighed in: only for someone who logs bodyweight lifts, where it
-     changes the numbers (r34.2, from the review: it asked every 2 days of a
-     lifter who skipped the optional weigh-in and does none). */
-  if(!last&&!state.sessions.some(x=>!x.demo&&x.ex.some(b=>{const e=EX(b.exId);return e&&e.bw;})))return '';
-  try{const z=localStorage.getItem(BWSNOOZE_KEY);if(z&&z>today())return '';}catch(e){/* show it */}
-  return `<div class="card" id="bwDue"><p class="small" style="margin:0 0 8px"><b>Weigh-in due.</b> ${last?`Last ${fmtW(last.kg)} ${U()}, ${ago} days ago.`:'Pull-ups, dips, and push-ups count it.'} ${tipi('Bodyweight lifts use your latest weigh-in for weight lifted and estimates. How often to ask is in Settings > General.','About weigh-ins')}</p>
-  <div class="row"><label class="field" style="flex:1;margin:0"><span class="vh">Bodyweight (${U()})</span><input type="text" inputmode="decimal" id="bwDueVal" placeholder="${last?fmtW(last.kg):`Weight (${U()})`}"${last?` data-grey="${fmtW(last.kg)}"`:''} aria-label="Bodyweight (${U()})" enterkeyhint="done"></label><button class="btn sm primary" data-act="addBW" data-in="bwDueVal">Save</button><button class="btn sm" data-act="bwLater">Later</button></div></div>`;
-}
 function bwAskCard(d){
   if(d.editingId||d.past||state.bodyweights.length||!d.ex.some(b=>EX(b.exId).bw))return '';
   try{if(localStorage.getItem(BWASK_KEY))return '';}catch(e){return '';}

@@ -1,5 +1,4 @@
 /* ---------- account (standalone app) ---------- */
-const ACCT_LATER=KEY+'.acctLater';
 /* The sync line on Settings, redrawn in place when the sync's status changes (setCloud, through fx) and after an account change. */
 function syncLine(){settingsSyncLine();}
 function acctRerender(){if((ui.tab==='settings'||ui.tab==='today')&&!ui.modal)rerenderKeepScroll();else syncLine();}

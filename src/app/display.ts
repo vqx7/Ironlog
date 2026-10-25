@@ -27,6 +27,7 @@ import {
   avgWeeks,
   bwRef,
   bwRefLoad,
+  dateIndex,
   dayMinutes,
   defPlan,
   loadLabel,
@@ -37,12 +38,15 @@ import {
 } from './live';
 import { state, ui } from './store';
 import type { ExPoint, Exposure, ExerciseLike, Pr } from './model';
-import type { Exercise, LoggedSet, Measurement, PlanItem, Routine } from './types';
+import type { Exercise, LoggedSet, Measurement, PlanItem, Routine, Session } from './types';
 
 /** Whether nothing is logged yet. */
 export function noLog(): boolean {
   return !state.sessions.length;
 }
+
+/** The sessions logged on a date, in the order done. */
+export const sessionsOn = (d: string): Session[] => dateIndex().byDate[d] || [];
 
 /** A load lifted, in the unit on screen: whole, and in thousands from 10,000 (12k). */
 export function fmtK(kg: number): string {
@@ -102,6 +106,13 @@ export function fmtE(kg: number | null | undefined): string {
 
 /** The unit tape measurements are shown in: inches with lb, cm with kg. */
 export const LU = (): 'in' | 'cm' => (U() === 'lb' ? 'in' : 'cm');
+/** A tape entry's site in cm, or undefined when it was not measured. */
+export function measAt(m: Measurement, k: string): number | undefined {
+  const v = rec(m)?.[k];
+  return typeof v === 'number' ? v : undefined;
+}
+/** A length as typed in the unit on screen, in cm. */
+export const lenFrom = (v: number): number => (U() === 'lb' ? v * IN : v);
 
 /** A length kept in cm, in the unit on screen, to one place, or '' for none. */
 export const lenD = (cm: number | null | undefined): string =>

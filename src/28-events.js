@@ -125,10 +125,7 @@ document.addEventListener('change',e=>{
   if(t.id==='importFile'&&t.files&&t.files[0]){const fr=new FileReader();fr.onload=()=>importData(String(fr.result));fr.onerror=()=>toast('Could not read that file');fr.readAsText(t.files[0]);t.value='';return;}
   if(planChange(t))return; // Plan's fields (r58): an exercise's numbers, a day's name and rest day, Move to
   if(t.dataset.gym){gymField(t);return;}
-  // The Set up page's bodyweight (r34): today's weigh-in, replaced if typed again, removed if cleared.
-  if(t.id==='obBw'){const v=numIn(t.value);state.bodyweights=state.bodyweights.filter(b=>b.date!==today());
-    if(v!=null){const kg=fromD(v);if(kg<BW_MIN_KG||kg>BW_MAX_KG){toast(`Bodyweight must be between ${fmtW(BW_MIN_KG)} and ${fmtW(BW_MAX_KG)} ${U()}`);t.value='';}else state.bodyweights.push({id:uid(),date:today(),kg});}
-    commit();return;}
+  if(todayChange(t))return; // Today's (r59): the Set up page's bodyweight
   if(t.dataset.band){bandChange(t);return;}
   if(t.dataset.ebind&&ui.modal&&ui.modal.kind==='exEdit'){const k=t.dataset.ebind;ui.modal.e[k]=t.type==='checkbox'?t.checked:t.value;if(k==='primary'){ui.modal.e.secondary=ui.modal.e.secondary.filter(x=>x!==t.value);renderModal();}if(k==='bw'){if(t.checked&&!ui.modal.e.bwfRaw)ui.modal.e.bwfRaw=String(Math.round(bwShare(ui.modal.e)*100));renderModal();}if(k==='plates'&&t.value==='auto')delete ui.modal.e.plates;if(k==='timed'||k==='equip'||k==='plates')renderModal();return;}
   if(ui.modal&&ui.modal.kind==='imp'){const m=ui.modal;
@@ -166,10 +163,9 @@ document.addEventListener('change',e=>{
     }
     saveSoon();return;}
   const b=t.dataset.bind;if(!b)return;
-  // The moved screens' fields (History and Settings, r57; Plan and Stats, r58): each change through act.
-  const own=HISTORY_BINDS[b]||SETTINGS_BINDS[b]||PLAN_BINDS[b]||DASH_BINDS[b];if(own){own(t);return;}
+  // The moved screens' fields (History and Settings, r57; Plan and Stats, r58; Today, r59): each change through act.
+  const own=HISTORY_BINDS[b]||SETTINGS_BINDS[b]||PLAN_BINDS[b]||DASH_BINDS[b]||TODAY_BINDS[b];if(own){own(t);return;}
   switch(b){
-    case 'todayDay':ui.todayDay=+t.value;render();break;
     case 'draftDate':if(isDate(t.value)&&t.value<=today()){
       /* Last time and the targets are read as of the session's date, so a
          new date re-reads them; typed and ticked sets are left alone. */
@@ -177,9 +173,6 @@ document.addEventListener('change',e=>{
       if(moved&&!d.editingId){for(const b of d.ex)refreshBlock(b);saveNow();rerenderKeepScroll();}else saveNow();
     }else{t.value=state.draft.date;toast('A session cannot be dated in the future');}break;
     case 'loadFill':ACT.loadAsk({dataset:{v:t.checked?'fill':'grey'}});break;
-    case 'height':{const v=t.value.trim();if(!v){state.settings.heightCm=null;commit();rerenderKeepScroll();break;}
-      const cm=parseHeight(v);if(cm==null){toast(U()==='lb'?'Enter height like 5\'10 or 70 (inches)':'Enter height in cm, like 178');break;}
-      state.settings.heightCm=cm;commit();rerenderKeepScroll();toast(`Height ${heightTxt(cm)}`);break;}
   }
 });
 document.addEventListener('toggle',e=>{

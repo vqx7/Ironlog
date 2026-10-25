@@ -264,8 +264,11 @@ const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log
   };
   const EDGES = new Map(MODS.map(id => [id, edgesOf(id)]));
   const out = [];
-  for (const [id, es] of EDGES) for (const e of es) if (!e.inside) out.push(`${id}: ${e.spec}`);
-  ok(out.length === 0, 'the modules in src/app/ import only each other and lit-html, never the legacy parts or anything else outside', out);
+  // The one exception (r59, ARCHITECTURE.md): outside.ts loads a library at run time by the addresses config.ts lists (three.js, for the 3D body), with import() of a computed address, and nothing else.
+  const runtime = (id, e) => id === 'outside' && e.spec === '(computed)';
+  for (const [id, es] of EDGES) for (const e of es) if (!e.inside && !runtime(id, e)) out.push(`${id}: ${e.spec}`);
+  ok(out.length === 0, 'the modules in src/app/ import only each other and lit-html, never the legacy parts or anything else outside (outside.ts alone loads a library by address at run time)', out);
+  ok((EDGES.get('outside') || []).length === 1 && (EDGES.get('outside') || []).every(e => runtime('outside', e)), 'outside.ts loads by address in one place and imports nothing', EDGES.get('outside'));
   const legacyImports = fs.readdirSync(path.join(ROOT, 'src')).filter(f => /^[12]\d-.+\.js$/.test(f)).filter(f => /^\s*import[\s('"{*]/m.test(fs.readFileSync(path.join(ROOT, 'src', f), 'utf8')));
   ok(legacyImports.length === 0, 'the legacy parts import only through src/09-imports.js', legacyImports);
   // The ratchet (ARCHITECTURE.md): the legacy script never grows, in declarations or in lines.
@@ -358,7 +361,8 @@ const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log
     // that leave no code too, since a layer is about what a module may know.
     const deps = new Map(), up = [];
     for (const m of mods) {
-      const to = EDGES.get(m).filter(e => !e.pkg).map(e => e.to);
+      // outside.ts's address is no module of the app (above): no layer to be under.
+      const to = EDGES.get(m).filter(e => !e.pkg && !runtime(m, e)).map(e => e.to);
       deps.set(m, to);
       for (const t of to) if (!(LAYER[t] <= LAYER[m])) up.push(`${m} (layer ${LAYER[m]}) imports ${t} (layer ${LAYER[t]})`);
     }

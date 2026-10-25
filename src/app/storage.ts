@@ -39,6 +39,18 @@ export const LOGK = KEY + '.log';
 export const WKVIEW_KEY = KEY + '.wkView';
 /** How many weeks Stats' By region averages (r31), per device. */
 export const REGION_KEY = KEY + '.regionWk';
+/** The muscle map's view, flat or 3D (r27), per device. */
+export const MAPVIEW_KEY = KEY + '.mapView';
+/** Today's lines dismissed on this device: Set up sync (acctBar), Get the app (installBar), the new icon (r25). */
+export const ACCT_LATER = KEY + '.acctLater',
+  INSTALL_LATER = KEY + '.installLater',
+  ICON_NOTE = KEY + '.icon25';
+/** The first pages on this device: the account page passed (Continue without an account), and held open after a sign-out (r33). */
+export const OB_ACCT = KEY + '.obAcct',
+  OB_OUT = KEY + '.signedOut';
+/** A weigh-in asked about on this device: snoozed until a date (Later), and the session's first ask answered (Not now). */
+export const BWSNOOZE_KEY = KEY + '.bwSnooze',
+  BWASK_KEY = KEY + '.bwAsk';
 /** The settings kept aside while the demo is loaded (demoKeep). */
 export const DEMOSET_KEY = KEY + '.demoSettings';
 /** The start of the keys a preview of r56.1 kept a log aside under, before it moved to IndexedDB (asideStart). */
@@ -242,9 +254,9 @@ export function capturePost(): void {
 
 /* ---------- reading the save ---------- */
 
-/** Whether localStorage can be written at all. */
-/* A screen's small choice kept on this phone only (By region's weeks): read
-   and written here, as every stored value is. */
+/* A screen's small choice kept on this phone only (By region's weeks, the
+   map's view, a line dismissed on Today): read and written here, as every
+   stored value is. */
 /** A choice kept on this phone, as saved, or null. */
 export function prefGet(key: string): string | null {
   try {
@@ -264,6 +276,15 @@ export function prefSet(key: string, v: string): boolean {
     return false;
   }
 }
+/** Forgets a choice kept on this phone. */
+export function prefDel(key: string): void {
+  try {
+    localStorage.removeItem(key);
+  } catch (e) {
+    // Blocked storage keeps nothing to forget.
+  }
+}
+/** Whether localStorage can be written at all. */
 export function storageTest(): boolean {
   try {
     localStorage.setItem('__il', '1');
