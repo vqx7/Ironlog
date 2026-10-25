@@ -122,6 +122,8 @@ const SCREENS = [
     ok(!b.errors.length, `1. ${name}: no page errors`, b.errors);
   }
 
+  // Plan with a day of three or more exercises open, and Add exercises aimed at it (sections 2 and 4).
+  const OPEN = "const R=L.state.routines.find(r=>r.id===L.state.activeRoutineId);const d=R.days.find(d=>d.items.length>2);L.ui.dayFocus=d.id;L.ui.bTarget=R.days.indexOf(d);";
   if (run(2) || run(3)) {
   const P = await open(FILE, { browser, clock: '2026-10-24T10:00:00' });
   const ev = (f, a) => P.page.evaluate(f, a);
@@ -146,7 +148,6 @@ const SCREENS = [
     const s1 = JSON.stringify(L.state);
     return { name, changed: s1 !== s0, saved: localStorage.getItem(KEY) === s1, undo: L.undoStack.length - u0, wantUndo: undo, dropped: L.IDX() !== idx0, noted: JSON.stringify(L.cloud.editAt) !== e0 };
   }, [name, sel, undo, prep || '']);
-  const OPEN = "const R=L.state.routines.find(r=>r.id===L.state.activeRoutineId);const d=R.days.find(d=>d.items.length>2);L.ui.dayFocus=d.id;L.ui.bTarget=R.days.indexOf(d);";
   const cases = [
     ['iUp', '#view .day:not(.rest) .dbody:not([hidden]) [data-act="iUp"]:not([disabled])', 0, OPEN],
     ['iDown', '#view .dbody:not([hidden]) [data-act="iDown"]:not([disabled])', 0, OPEN],
