@@ -14,68 +14,11 @@ import { addDays, r1, today, weekStart } from './util';
 import { U, activeRoutine, dateIndex, freeMode, isRestWeek, weekStats } from './live';
 import { state, ui } from './store';
 import { WKVIEW_KEY, log, prefGet } from './storage';
-import { cycleState, fmtBig, noLog, sessionsOn, tonnageNow } from './display';
+import { cycleState, fmtBig, noLog, sessionsOn, tonnageNow, weekPlan } from './display';
 import { helpButton, howText, section } from './view';
 import type { Part } from './view';
-import { calBody, calNow } from './calendar';
-import type { Day, Routine } from './types';
-
-/* ---------- what is planned on a date ---------- */
-
-/* The cycle day that falls on each date from today on. After a session the
-   calendar walks the cycle one day per day, rest days included; a missed day
-   waits (Today offers the next training day, whatever the date). */
-/** The cycle's day index on each of the next `days` dates (a cycle routine). */
-export function cycleProjection(R: Routine, days?: number): Record<string, number> {
-  const n = R.days.length;
-  const t = today();
-  const cs = cycleState(R);
-  const out: Record<string, number> = {};
-  let idx: number, start: string;
-  if (cs.lastDate === t) {
-    idx = (cs.last + 1) % n;
-    start = addDays(t, 1);
-  } else if (cs.restToday) {
-    idx = cs.restIdx;
-    start = t;
-  } else {
-    idx = cs.next;
-    start = t;
-  }
-  for (let k = 0; k < (days || 7); k++) {
-    out[addDays(start, k)] = idx;
-    idx = (idx + 1) % n;
-  }
-  return out;
-}
-
-/** A routine's day planned on a date: its index and the day. */
-export interface PlannedDay {
-  di: number;
-  day: Day;
-}
-/* What is planned on each date of this week: {di, day}, or nothing for a
-   past day of a cycle. */
-/** This week's planned day on each of its dates. */
-export function weekPlan(R: Routine): Record<string, PlannedDay> {
-  const cur = weekStart(today());
-  const out: Record<string, PlannedDay> = {};
-  if (R.schedule === 'weekly') {
-    for (let i = 0; i < 7; i++) {
-      const day = R.days[i];
-      if (day) out[addDays(cur, i)] = { di: i, day };
-    }
-    return out;
-  }
-  const pj = cycleProjection(R, 8);
-  for (let i = 0; i < 7; i++) {
-    const d = addDays(cur, i);
-    const di = pj[d];
-    const day = di == null ? undefined : R.days[di];
-    if (di != null && day) out[d] = { di, day };
-  }
-  return out;
-}
+import { calBody, calNow, monthPlanned, planWords } from './calendar';
+import type { Routine } from './types';
 
 /* ---------- the bar ----------
    Week at a glance, in the bar at the top of every tab. Each cell is a day of
@@ -287,7 +230,9 @@ export function weekCard(): TemplateResult {
       ym === cur
         ? 'This month'
         : new Date(ym + '-15T12:00:00').toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
-    return section({ sk: 'today:week', key: 'week', title, sub: `${n} session${n === 1 ? '' : 's'}`, body });
+    // A month ahead counts what is planned in it (329, r59).
+    const sub = ym > cur ? planWords(monthPlanned(ym)) : `${n} session${n === 1 ? '' : 's'}`;
+    return section({ sk: 'today:week', key: 'week', title, sub, body });
   }
   const done = `${w.doneDays} session${w.doneDays === 1 ? '' : 's'}`;
   if (freeMode())

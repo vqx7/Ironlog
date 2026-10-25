@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="app-build" content="2026.10.24-r58">
+<meta name="app-build" content="2026.10.25-r59">
 <title>Ironlog</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -177,6 +177,7 @@ body::before{content:"";position:fixed;left:0;right:0;top:0;height:env(safe-area
 .cal-g .cd.fut{cursor:default;color:var(--muted)}.cal-g .cd.fut .n{background:transparent}
 .cal-g .cd .x{font:700 9px/1 var(--font);color:var(--muted);height:9px}
 .cal-g .cd:active:not(.fut) .n{transform:scale(.92)}
+.cal-g .cd.plan{cursor:pointer}.cal-g .cd.plan .n{box-shadow:inset 0 0 0 1.5px var(--muted)}.cal-g .cd.plan:active .n{transform:scale(.92)}
 /* This week, Week or Month (r26): the month sits inline on Today. */
 .wkview{display:grid;grid-template-columns:1fr 1fr;gap:4px;padding:4px;border-radius:14px;background:var(--field);margin:0 0 10px}
 .wkview button{min-height:44px;border:0;border-radius:10px;background:none;color:var(--muted);font:650 14px var(--font);cursor:pointer}
@@ -1045,8 +1046,8 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
   var PREVIEW_NAME = `${APP_NAME} Preview`;
   var PREVIEW_LABEL = "Preview";
   var WORDMARK = { mark: "I", strong: "ron", light: "log" };
-  var DISPLAY_VERSION = "2.12";
-  var APP_VERSION = "2026.10.24-r58";
+  var DISPLAY_VERSION = "2.13";
+  var APP_VERSION = "2026.10.25-r59";
   var VERSION_LINE = `${DISPLAY_VERSION} (build ${APP_VERSION})`;
   var SITE_HOST = "ironapp.org";
   var SITE_DIR_FALLBACK = "/Ironlog";
@@ -9078,7 +9079,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
    <p><b>More options</b>: Deload week, Limited equipment (each exercise your gym cannot do swapped for the closest match), Rest week (a week off on purpose: averages, the streak, and adherence skip it), Flag an injury, and Log cardio.</p>
    <p><b>Two sessions in a day</b> are kept in the order you started them; the next targets come from the later one, and a calendar day with two asks which to open.</p>
    <p><b>Weigh-in</b>: a card asks for your bodyweight every 2 weeks once you have weighed in or log bodyweight lifts (Settings, General, Weigh-in reminder: every week, 2 weeks, month, or off). Pull-ups, dips, and push-ups are read at your latest weigh-in.</p>
-   <p><b>This week</b> counts hard sets logged against hard sets planned; Month shows the calendar instead, and the title becomes This month. The bar at the top of every tab is this week: filled is a day you lifted, a coloured outline is cardio only, a grey ring is a workout planned ahead, and with fixed weekdays a red ring is one missed. Tap an empty past day to log a workout for it.</p>`
+   <p><b>This week</b> counts hard sets logged against hard sets planned; Month shows the calendar instead, and the title becomes This month. The bar at the top of every tab is this week: filled is a day you lifted, a coloured outline is cardio only, a grey ring is a workout planned ahead, and with fixed weekdays a red ring is one missed. Tap an empty past day to log a workout for it. The calendar shows the workouts planned ahead the same way, for a year: tap one to see it on Today; a numbered cycle is counted on from where you are, one day at a time, and a rest week planned ahead plans nothing.</p>`
       ],
       [
         "log",
@@ -9996,6 +9997,63 @@ ${actions ? b`<div class="ph-a">${actions}</div>
         sum += v3;
       }
       out.push({ k: k2, mus, from: b2.date, to: L2.date, d: at(L2, k2) - at(b2, k2), sets: weeks ? sum / weeks : 0, weeks });
+    }
+    return out;
+  }
+  function cycleProjection(R2, days) {
+    const n3 = R2.days.length;
+    const t4 = today();
+    const cs = cycleState(R2);
+    const out = {};
+    let idx, start;
+    if (cs.lastDate === t4) {
+      idx = (cs.last + 1) % n3;
+      start = addDays(t4, 1);
+    } else if (cs.restToday) {
+      idx = cs.restIdx;
+      start = t4;
+    } else {
+      idx = cs.next;
+      start = t4;
+    }
+    for (let k2 = 0; k2 < (days || 7); k2++) {
+      out[addDays(start, k2)] = idx;
+      idx = (idx + 1) % n3;
+    }
+    return out;
+  }
+  function weekPlan(R2) {
+    const cur = weekStart(today());
+    const out = {};
+    if (R2.schedule === "weekly") {
+      for (let i5 = 0; i5 < 7; i5++) {
+        const day = R2.days[i5];
+        if (day) out[addDays(cur, i5)] = { di: i5, day };
+      }
+      return out;
+    }
+    const pj = cycleProjection(R2, 8);
+    for (let i5 = 0; i5 < 7; i5++) {
+      const d3 = addDays(cur, i5);
+      const di = pj[d3];
+      const day = di == null ? void 0 : R2.days[di];
+      if (di != null && day) out[d3] = { di, day };
+    }
+    return out;
+  }
+  function planAhead(to) {
+    const R2 = activeRoutine();
+    const t4 = today();
+    const out = {};
+    const n3 = to > t4 ? daysBetween(t4, to) : 0;
+    if (!n3 || !R2.days.length) return out;
+    const pj = R2.schedule === "weekly" ? null : cycleProjection(R2, n3 + 2);
+    for (let k2 = 1; k2 <= n3; k2++) {
+      const d3 = addDays(t4, k2);
+      if (isRestWeek(weekStart(d3))) continue;
+      const di = pj ? pj[d3] : ((/* @__PURE__ */ new Date(d3 + "T12:00:00")).getDay() + 6) % 7;
+      const day = di == null ? void 0 : R2.days[di];
+      if (di != null && day) out[d3] = { di, day };
     }
     return out;
   }
@@ -13342,15 +13400,34 @@ ${extraKpis()}</div>${nS ? dashSummary() : A}`;
   };
 
   // src/app/calendar.ts
+  var AHEAD_MONTHS = 12;
+  function monthPlus(ym, k2) {
+    const [y2 = 0, mo = 1] = ym.split("-").map(Number);
+    const d3 = new Date(y2, mo - 1 + k2, 1);
+    return `${d3.getFullYear()}-${String(d3.getMonth() + 1).padStart(2, "0")}`;
+  }
   function calBounds() {
     const t4 = today().slice(0, 7);
     const f3 = firstDate([...state.sessions, ...state.cardio]);
-    return { min: f3 && f3.slice(0, 7) < t4 ? f3.slice(0, 7) : t4, max: t4 };
+    return { min: f3 && f3.slice(0, 7) < t4 ? f3.slice(0, 7) : t4, max: monthPlus(t4, AHEAD_MONTHS) };
   }
   function calNow() {
-    const cur = today().slice(0, 7);
     const ym = ui["calYm"];
-    return typeof ym === "string" && ym <= cur ? ym : cur;
+    const { min, max } = calBounds();
+    return typeof ym === "string" && ym >= min && ym <= max ? ym : today().slice(0, 7);
+  }
+  function monthEnd(ym) {
+    const [y2 = 0, mo = 1] = ym.split("-").map(Number);
+    return `${ym}-${String(new Date(y2, mo, 0).getDate()).padStart(2, "0")}`;
+  }
+  function plannedIn(ym) {
+    const out = {};
+    for (const [d3, p3] of Object.entries(planAhead(monthEnd(ym))))
+      if (d3.startsWith(ym) && !p3.day.rest && p3.day.items.length) out[d3] = p3;
+    return out;
+  }
+  function monthPlanned(ym) {
+    return Object.keys(plannedIn(ym)).length;
   }
   function calBody(ym, inline) {
     const [y2 = 0, mo = 1] = ym.split("-").map(Number);
@@ -13360,6 +13437,8 @@ ${extraKpis()}</div>${nS ? dashSummary() : A}`;
     const cd = {};
     for (const c4 of state.cardio) cd[c4.date] = (cd[c4.date] || 0) + c4.min;
     const { min, max } = calBounds();
+    const cur = t4.slice(0, 7);
+    const plan = ym >= cur ? plannedIn(ym) : {};
     const cells = [];
     let n3 = 0;
     for (let i5 = 1; i5 <= dim; i5++) {
@@ -13376,62 +13455,25 @@ ${extraKpis()}</div>${nS ? dashSummary() : A}`;
       ].filter(Boolean).join(" ");
       const what = ss.length ? ss.map((x2) => x2.dayName || "Session").join(", ") : c4 ? `cardio ${c4} min` : d3 > t4 ? "" : "nothing logged";
       const inner = b`<span class="n">${i5}</span><span class="x">${ss.length > 1 ? "×" + ss.length : ""}</span>`;
+      const p3 = d3 > t4 ? plan[d3] : void 0;
       cells.push(
-        d3 > t4 ? b`<span class=${cls} aria-hidden="true">${inner}</span>` : b`<button type="button" class=${cls} data-act="calDay" data-date=${d3} aria-label=${fmtDateLong(d3) + ": " + what} data-tip=${what && what !== "nothing logged" ? what : A}>${inner}</button>`
+        p3 ? b`<button type="button" class=${cls + " plan"} data-act="wkGo" data-date=${d3} data-day=${p3.di} aria-label=${`${fmtDateLong(d3)}: ${p3.day.name}, planned. Open on Today`} data-tip=${p3.day.name}>${inner}</button>` : d3 > t4 ? b`<span class=${cls} aria-hidden="true">${inner}</span>` : b`<button type="button" class=${cls} data-act="calDay" data-date=${d3} aria-label=${fmtDateLong(d3) + ": " + what} data-tip=${what && what !== "nothing logged" ? what : A}>${inner}</button>`
       );
     }
     const inl = inline ? "1" : A;
     const title = `${MONTHS[mo - 1]} ${y2}`;
     return b`<div class="cal-h"><button class="ib" data-act="calMonth" data-v="-1" data-inline=${inl} aria-label="Previous month" ?disabled=${ym <= min}>‹</button>${inline ? b`<h4 id="calHi">${title}</h4>` : b`<h3 id="calH">${title}</h3>`}<button class="ib" data-act="calMonth" data-v="1" data-inline=${inl} aria-label="Next month" ?disabled=${ym >= max}>›</button>${inline ? "" : b`<button class="ib" aria-label="Close" data-act="mClose">✕</button>`}</div>
 <div class="cal-g">${DAYS.map((d3) => b`<span class="wd">${d3.slice(0, 2)}</span>`)}${Array.from({ length: lead }, () => b`<span></span>`)}${cells}</div>
-<div class="row spread" style="margin-top:10px"><p class="small muted" style="margin:0">${n3 ? `${n3} session${n3 === 1 ? "" : "s"}` : "No sessions"}${ym === max ? " so far" : ""}</p>${ym !== max ? b`<button class="btn sm" data-act="calMonth" data-v="now" data-inline=${inl}>This month</button>` : ""}</div>`;
+<div class="row spread" style="margin-top:10px"><p class="small muted" style="margin:0">${ym > cur ? planWords(Object.keys(plan).length) : `${n3 ? `${n3} session${n3 === 1 ? "" : "s"}` : "No sessions"}${ym === cur ? " so far" : ""}`}</p>${ym !== cur ? b`<button class="btn sm" data-act="calMonth" data-v="now" data-inline=${inl}>This month</button>` : ""}</div>`;
+  }
+  function planWords(k2) {
+    return k2 ? `${k2} planned` : "Nothing planned";
   }
   function calSheet(m3) {
     return b`<div class="sheet" role="dialog" aria-modal="true" aria-labelledby="calH">${calBody(m3.ym, false)}</div>`;
   }
 
   // src/app/week.ts
-  function cycleProjection(R2, days) {
-    const n3 = R2.days.length;
-    const t4 = today();
-    const cs = cycleState(R2);
-    const out = {};
-    let idx, start;
-    if (cs.lastDate === t4) {
-      idx = (cs.last + 1) % n3;
-      start = addDays(t4, 1);
-    } else if (cs.restToday) {
-      idx = cs.restIdx;
-      start = t4;
-    } else {
-      idx = cs.next;
-      start = t4;
-    }
-    for (let k2 = 0; k2 < (days || 7); k2++) {
-      out[addDays(start, k2)] = idx;
-      idx = (idx + 1) % n3;
-    }
-    return out;
-  }
-  function weekPlan(R2) {
-    const cur = weekStart(today());
-    const out = {};
-    if (R2.schedule === "weekly") {
-      for (let i5 = 0; i5 < 7; i5++) {
-        const day = R2.days[i5];
-        if (day) out[addDays(cur, i5)] = { di: i5, day };
-      }
-      return out;
-    }
-    const pj = cycleProjection(R2, 8);
-    for (let i5 = 0; i5 < 7; i5++) {
-      const d3 = addDays(cur, i5);
-      const di = pj[d3];
-      const day = di == null ? void 0 : R2.days[di];
-      if (di != null && day) out[d3] = { di, day };
-    }
-    return out;
-  }
   function weekBar() {
     const R2 = activeRoutine();
     const cur = weekStart(today()), t4 = today();
@@ -13551,7 +13593,8 @@ ${howText("wk", `Each set counts once; a set at RIR 4 or more is not hard and do
       const cur = today().slice(0, 7);
       const n3 = Object.keys(dateIndex().byDate).filter((d3) => d3.slice(0, 7) === ym).reduce((a2, d3) => a2 + sessionsOn(d3).length, 0);
       const title = ym === cur ? "This month" : (/* @__PURE__ */ new Date(ym + "-15T12:00:00")).toLocaleDateString(void 0, { month: "long", year: "numeric" });
-      return section({ sk: "today:week", key: "week", title, sub: `${n3} session${n3 === 1 ? "" : "s"}`, body });
+      const sub = ym > cur ? planWords(monthPlanned(ym)) : `${n3} session${n3 === 1 ? "" : "s"}`;
+      return section({ sk: "today:week", key: "week", title, sub, body });
     }
     const done = `${w2.doneDays} session${w2.doneDays === 1 ? "" : "s"}`;
     if (freeMode())
@@ -14442,7 +14485,9 @@ ${acctStep && !acct.user ? b`<button class="linkbtn ob-back" data-act="obAcctBac
     const di = chosen == null ? weekly ? wd : cs ? cs.next : 0 : chosen;
     const day = R2.days[di] || { id: "", name: "", rest: true, items: [] };
     const t4 = today();
-    const eyebrow = weekly ? di === wd ? "Today" : `Viewing ${DAYS[di]}` : `${cs && cs.restToday && chosen == null ? "Next: " : ""}${dayLabel(R2, di)}`;
+    const at = ui["todayAt"];
+    const ahead = chosen != null && at && typeof at === "object" && "d" in at && "di" in at && at.di === chosen && typeof at.d === "string" && at.d > addDays(weekStart(t4), 6) ? at.d : null;
+    const eyebrow = ahead ? weekly ? `Viewing ${DAYS[di]}, ${fmtDate(ahead)}` : `Viewing ${fmtDate(ahead)} · ${dayLabel(R2, di)}` : weekly ? di === wd ? "Today" : `Viewing ${DAYS[di]}` : `${cs && cs.restToday && chosen == null ? "Next: " : ""}${dayLabel(R2, di)}`;
     let note = A;
     if (cs && chosen == null) {
       if (cs.lastDate === t4) note = `${dayLabel(R2, cs.last)} done today.`;
@@ -18700,7 +18745,7 @@ ${ms.length ? b`<div class="scroll-x" style="margin-top:10px"><table class="t"><
         const cur = inline ? ui.calYm || today().slice(0, 7) : m3.ym;
         const { min, max } = calBounds();
         let ym;
-        if (t4.dataset.v === "now") ym = max;
+        if (t4.dataset.v === "now") ym = today().slice(0, 7);
         else {
           const [y2, mo] = cur.split("-").map(Number);
           const d3 = new Date(y2, mo - 1 + (+t4.dataset.v || 0), 1);
@@ -20291,6 +20336,7 @@ ${JSON.stringify(fb.context, null, 1)}`;
         const i5 = +t4.dataset.i;
         closeModal();
         ui.todayDay = i5;
+        ui.todayAt = null;
         window.scrollTo(0, 0);
         render();
       },
@@ -20550,6 +20596,7 @@ ${JSON.stringify(fb.context, null, 1)}`;
           const R2 = activeRoutine();
           const di = t4.dataset.day != null ? +t4.dataset.day : null;
           ui.todayDay = d3 === today() || di == null || !R2.days[di] ? null : di;
+          ui.todayAt = ui.todayDay == null ? null : { d: d3, di };
         }
         if (ui.modal) closeModal();
         window.scrollTo(0, 0);

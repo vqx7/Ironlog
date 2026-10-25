@@ -107,7 +107,7 @@ const ACT={...HISTORY_ACTS,...SETTINGS_ACTS,...PLAN_ACTS,...DASH_ACTS,...TODAY_A
     const inline=t.dataset.inline==='1';const m=ui.modal;
     if(!inline&&(!m||m.kind!=='calendar'))return;
     const cur=inline?(ui.calYm||today().slice(0,7)):m.ym;const {min,max}=calBounds();let ym;
-    if(t.dataset.v==='now')ym=max;
+    if(t.dataset.v==='now')ym=today().slice(0,7); // this month, now the calendar goes a year ahead (329, r59)
     else{const [y,mo]=cur.split('-').map(Number);const d=new Date(y,mo-1+(+t.dataset.v||0),1);ym=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;}
     if(ym<min||ym>max)return;
     if(inline){ui.calYm=ym;rerenderKeepScroll();}else{m.ym=ym;renderModal();}},
@@ -718,7 +718,7 @@ m.err=`Could not read that. Try the pattern 225x5, 5, 4 ${rirScale()==='rpe'?'rp
   // A choice in Change: the sheet closes first, then the start it names runs as the card's button did.
   altGo(t){const go=t.dataset.go;closeModal();if(ACT[go])ACT[go](t);},
   // Another day of the plan on the card (the old Change day list); in a blank-session Today it shows that day's card.
-  dayPick(t){const i=+t.dataset.i;closeModal();ui.todayDay=i;window.scrollTo(0,0);render();},
+  dayPick(t){const i=+t.dataset.i;closeModal();ui.todayDay=i;ui.todayAt=null;window.scrollTo(0,0);render();},
   noteReuse(t){const b=state.draft&&state.draft.ex[+t.dataset.b];if(!b||!b.lastNote)return;b.note=b.lastNote.text;saveNow();rerenderKeepScroll();toast('Note carried into this session');},
   bNote(t){const bi=+t.dataset.b;openModal({kind:'note',bi,title:`Note: ${exName(state.draft.ex[bi].exId)}`,text:state.draft.ex[bi].note||''});},
   noteSave(){
@@ -817,7 +817,7 @@ m.err=`Could not read that. Try the pattern 225x5, 5, 4 ${rirScale()==='rpe'?'rp
   /* A day in the top bar: today or ahead opens Today on it. */
   wkGo(t){
     const d=t.dataset.date;ui.tab='today';
-    if(!state.draft){const R=activeRoutine();const di=t.dataset.day!=null?+t.dataset.day:null;ui.todayDay=d===today()||di==null||!R.days[di]?null:di;}
+    if(!state.draft){const R=activeRoutine();const di=t.dataset.day!=null?+t.dataset.day:null;ui.todayDay=d===today()||di==null||!R.days[di]?null:di;ui.todayAt=ui.todayDay==null?null:{d,di};} // the date it was opened for, said on the card when past this week (329, r59)
     if(ui.modal)closeModal();window.scrollTo(0,0);render();
   },
   finish(){

@@ -496,11 +496,29 @@ export function viewToday(): TemplateResult {
   // "Next up" is said once, in Change day below (r28): on the card it made the
   // date line wrap and leave "UP" on a line of its own on a phone.
   // On a scheduled rest day the card shows the next training day, and says so (r30: "Day 1 of 7" beside "rest today, Day 7").
-  const eyebrow = weekly
-    ? di === wd
-      ? 'Today'
-      : `Viewing ${DAYS[di]}`
-    : `${cs && cs.restToday && chosen == null ? 'Next: ' : ''}${dayLabel(R, di)}`;
+  /* A day opened from a date past this week (the calendar's days ahead, 329)
+     says that date, so a Wednesday weeks ahead does not read as this one. */
+  const at = ui['todayAt'];
+  const ahead =
+    chosen != null &&
+    at &&
+    typeof at === 'object' &&
+    'd' in at &&
+    'di' in at &&
+    at.di === chosen &&
+    typeof at.d === 'string' &&
+    at.d > addDays(weekStart(t), 6)
+      ? at.d
+      : null;
+  const eyebrow = ahead
+    ? weekly
+      ? `Viewing ${DAYS[di]}, ${fmtDate(ahead)}`
+      : `Viewing ${fmtDate(ahead)} · ${dayLabel(R, di)}`
+    : weekly
+      ? di === wd
+        ? 'Today'
+        : `Viewing ${DAYS[di]}`
+      : `${cs && cs.restToday && chosen == null ? 'Next: ' : ''}${dayLabel(R, di)}`;
   let note: Part = nothing;
   if (cs && chosen == null) {
     if (cs.lastDate === t) note = `${dayLabel(R, cs.last)} done today.`;

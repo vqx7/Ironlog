@@ -29,6 +29,7 @@ import {
   bwRefLoad,
   dateIndex,
   dayMinutes,
+  isRestWeek,
   defPlan,
   loadLabel,
   logBack,
@@ -38,7 +39,7 @@ import {
 } from './live';
 import { state, ui } from './store';
 import type { ExPoint, Exposure, ExerciseLike, Pr } from './model';
-import type { Exercise, LoggedSet, Measurement, PlanItem, Routine, Session } from './types';
+import type { Day, Exercise, LoggedSet, Measurement, PlanItem, Routine, Session } from './types';
 
 /** Whether nothing is logged yet. */
 export function noLog(): boolean {
@@ -570,6 +571,87 @@ export function sizeRows(): {
       sum += v;
     }
     out.push({ k, mus, from: b.date, to: L.date, d: at(L, k) - at(b, k), sets: weeks ? sum / weeks : 0, weeks });
+  }
+  return out;
+}
+
+/* ---------- what is planned on a date (Today, the week bar and the calendar, r59) ---------- */
+
+/* The cycle day that falls on each date from today on. After a session the
+   calendar walks the cycle one day per day, rest days included; a missed day
+   waits (Today offers the next training day, whatever the date). */
+/** The cycle's day index on each of the next `days` dates (a cycle routine). */
+export function cycleProjection(R: Routine, days?: number): Record<string, number> {
+  const n = R.days.length;
+  const t = today();
+  const cs = cycleState(R);
+  const out: Record<string, number> = {};
+  let idx: number, start: string;
+  if (cs.lastDate === t) {
+    idx = (cs.last + 1) % n;
+    start = addDays(t, 1);
+  } else if (cs.restToday) {
+    idx = cs.restIdx;
+    start = t;
+  } else {
+    idx = cs.next;
+    start = t;
+  }
+  for (let k = 0; k < (days || 7); k++) {
+    out[addDays(start, k)] = idx;
+    idx = (idx + 1) % n;
+  }
+  return out;
+}
+
+/** A routine's day planned on a date: its index and the day. */
+export interface PlannedDay {
+  di: number;
+  day: Day;
+}
+/* What is planned on each date of this week: {di, day}, or nothing for a
+   past day of a cycle. */
+/** This week's planned day on each of its dates. */
+export function weekPlan(R: Routine): Record<string, PlannedDay> {
+  const cur = weekStart(today());
+  const out: Record<string, PlannedDay> = {};
+  if (R.schedule === 'weekly') {
+    for (let i = 0; i < 7; i++) {
+      const day = R.days[i];
+      if (day) out[addDays(cur, i)] = { di: i, day };
+    }
+    return out;
+  }
+  const pj = cycleProjection(R, 8);
+  for (let i = 0; i < 7; i++) {
+    const d = addDays(cur, i);
+    const di = pj[d];
+    const day = di == null ? undefined : R.days[di];
+    if (di != null && day) out[d] = { di, day };
+  }
+  return out;
+}
+
+/* Looking ahead (329, V 2026-10-20: "future days, and the coming weeks and
+   months, show the planned workout, and a tap opens it"): what the routine
+   in use plans on each date after today up to a date, by weekday on a weekly
+   routine, and on a cycle by walking it from today as the week bar does
+   (cycleProjection: every day in turn, rest days included, as if each were
+   done). A rest week marked ahead plans nothing. */
+/** The routine in use's planned day on each date from tomorrow to `to`, a rest week's dates left out. */
+export function planAhead(to: string): Record<string, PlannedDay> {
+  const R = activeRoutine();
+  const t = today();
+  const out: Record<string, PlannedDay> = {};
+  const n = to > t ? daysBetween(t, to) : 0;
+  if (!n || !R.days.length) return out;
+  const pj = R.schedule === 'weekly' ? null : cycleProjection(R, n + 2);
+  for (let k = 1; k <= n; k++) {
+    const d = addDays(t, k);
+    if (isRestWeek(weekStart(d))) continue;
+    const di = pj ? pj[d] : (new Date(d + 'T12:00:00').getDay() + 6) % 7;
+    const day = di == null ? undefined : R.days[di];
+    if (di != null && day) out[d] = { di, day };
   }
   return out;
 }

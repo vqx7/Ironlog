@@ -366,6 +366,28 @@ const clashes = r => r.stalls.filter(st => r.prs.some(p => p.name === st.name &&
     await P.ctx.close();
   }
 
+  // ---- What is planned ahead (329, r59): the week bar's days ahead and the calendar's are one plan, on a weekly
+  // routine and on a cycle, and Today opened on one of them shows that day's workout.
+  for (const sched of ['weekly', 'cycle']) {
+    const P = await open(FILE, { browser, clock: '2026-10-21T10:00:00' });
+    const r = await P.page.evaluate(async sched => { const L = window.__ironlog; const s = L.state; s.settings.onboarded = true; L.makeDemo();
+      const R = L.activeRoutine(); R.schedule = sched; L.state = L.normalize(s); L.invalidate(); L.saveNow();
+      L.ui.tab = 'today'; L.ui.todayDay = null; L.render(); await new Promise(res => setTimeout(res, 60));
+      const t = L.today();
+      const bar = [...document.querySelectorAll('#wkbar button[data-act="wkGo"]')].filter(b => b.dataset.date > t && b.classList.contains('plan')).map(b => b.dataset.date + ':' + b.dataset.day);
+      L.ACT.calOpen({ dataset: { ym: t.slice(0, 7) } }); await new Promise(res => setTimeout(res, 100));
+      const we = L.addDays(L.weekStart(t), 6);
+      const cal = [...document.querySelectorAll('#modal .cd.plan')].filter(b => b.dataset.date <= we).map(b => b.dataset.date + ':' + b.dataset.day);
+      const one = document.querySelector('#modal .cd.plan'); const di = one ? +one.dataset.day : -1;
+      if (one) one.click(); await new Promise(res => setTimeout(res, 120));
+      return { bar, cal, name: (document.querySelector('#view .hero h2') || {}).textContent, want: R.days[di] ? R.days[di].name : null };
+    }, sched);
+    ok(r.bar.length > 0 && r.bar.join() === r.cal.join(), `the week bar's planned days ahead are the calendar's (${sched})`, r);
+    ok(r.name === r.want, `a planned day ahead on the calendar opens Today on the workout the bar names for it (${sched})`, r);
+    ok(!P.errors.length, `no page errors (planned ahead, ${sched})`, P.errors);
+    await P.ctx.close();
+  }
+
   await browser.close();
   console.log(fails.length ? `${fails.length} FAILED` : 'ALL PASS'); process.exit(fails.length ? 1 : 0);
 })().catch(e => { console.log('FAIL crashed:', e && e.stack || e); process.exit(1); });

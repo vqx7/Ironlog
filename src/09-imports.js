@@ -36,7 +36,7 @@ import { morphInto } from './app/sheets';
 import { guideSheet } from './app/guide';
 import { act } from './app/act';
 import { drawLegacy, drawScreen, isOpen, dragStart, dragDrop, dragDone, markupOf } from './app/view';
-import { noLog, sessionsOn, distU, distShow, setShort, setStr, curRoutineB, findItem, newItem, nameTaken, routineClutter, sessionMuscleSets, libFiltered, rirShow, effTgt, fmtE, loadHead, fmtDateLong, topSetPt, bestSet, prSet, recent4w, tonnageNow, cycleState, sessionLength, bestLine, goalState, goalWords, regionWk, regionSrc, sizeRows } from './app/display';
+import { noLog, weekPlan, cycleProjection, sessionsOn, distU, distShow, setShort, setStr, curRoutineB, findItem, newItem, nameTaken, routineClutter, sessionMuscleSets, libFiltered, rirShow, effTgt, fmtE, loadHead, fmtDateLong, topSetPt, bestSet, prSet, recent4w, tonnageNow, cycleState, sessionLength, bestLine, goalState, goalWords, regionWk, regionSrc, sizeRows } from './app/display';
 import { isStandalone, coarse, installKind } from './app/env';
 import { viewHistory, HISTORY_ACTS, HISTORY_BINDS } from './app/history';
 import { viewSettings, SETTINGS_ACTS, SETTINGS_BINDS, bandInput, bandChange, gymField, settingsSyncLine, bwEvery, adjOn, profApplyList, profMoveBands, SAFETY_TXT } from './app/settings';
@@ -44,6 +44,6 @@ import { viewProgram, viewLibrary, PLAN_ACTS, PLAN_BINDS, planInput, planChange,
 import { viewDash, DASH_ACTS, DASH_BINDS, exHeadline, goalLine, bestsBoard, whtrLine } from './app/stats';
 import { mountCharts, killCharts } from './app/graphs';
 import { viewToday, TODAY_ACTS, TODAY_BINDS, todayChange, obActive, obGate, obOutClear, obTour, obTourStop, mountObTour, bwDueCard, parseHeight } from './app/today';
-import { drawWeekBar, weekPlan, cycleProjection } from './app/week';
+import { drawWeekBar } from './app/week';
 import { MAP_ACTS, B3, B3_PARTS, mapView, mount3D, map3dPick, map3dColors, exMusParts, exBodyFlat, exMusWords, exMusLegend } from './app/map';
 import { calBounds, calSheet } from './app/calendar';
