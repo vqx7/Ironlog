@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="app-build" content="2026.10.24-r57">
+<meta name="app-build" content="2026.10.24-r58">
 <title>Ironlog</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -1045,8 +1045,8 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
   var PREVIEW_NAME = `${APP_NAME} Preview`;
   var PREVIEW_LABEL = "Preview";
   var WORDMARK = { mark: "I", strong: "ron", light: "log" };
-  var DISPLAY_VERSION = "2.11";
-  var APP_VERSION = "2026.10.24-r57";
+  var DISPLAY_VERSION = "2.12";
+  var APP_VERSION = "2026.10.24-r58";
   var VERSION_LINE = `${DISPLAY_VERSION} (build ${APP_VERSION})`;
   var SITE_HOST = "ironapp.org";
   var SITE_DIR_FALLBACK = "/Ironlog";
@@ -1194,6 +1194,20 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
   var ML = Object.fromEntries(MUSCLES);
   var NEW_MUSCLES_V5 = ["serratus", "rotatorCuff"];
   var TRACK_ONLY = /* @__PURE__ */ new Set(["serratus", "rotatorCuff", "neck", "tibialis"]);
+  var TARGETED = /* @__PURE__ */ new Set([
+    "chest",
+    "lats",
+    "upperBack",
+    "sideDelts",
+    "rearDelts",
+    "biceps",
+    "triceps",
+    "quads",
+    "hamstrings",
+    "glutes",
+    "calves",
+    "abs"
+  ]);
   var BANDS = {
     chest: [10, 20],
     serratus: [2, 8],
@@ -2383,6 +2397,15 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     const lo = f3[m3];
     return lo == null || TRACK_ONLY.has(m3) || (q.focus || []).includes(m3) ? d3 : [Math.min(d3[0], lo), d3[1]];
   }
+  function hasTargetIn(M3, m3) {
+    const k2 = MK.find((x2) => x2 === m3);
+    if (!k2) return false;
+    if (TARGETED.has(k2)) return true;
+    const s3 = M3.s.settings;
+    if ((s3.ownTargets || []).includes(k2) || (profIn(M3).focus || []).includes(k2)) return true;
+    const a2 = appBandIn(M3, k2), b2 = s3.bands[k2];
+    return b2[0] !== a2[0] || b2[1] !== a2[1];
+  }
   function fitFloorsIn(M3, R2, actual, share) {
     const plan = plannedSetsIn(M3, R2, share);
     const fit = {};
@@ -3043,6 +3066,12 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
         }
       if (Object.keys(o3).length) st.bandsFit = o3;
       else delete st.bandsFit;
+    }
+    {
+      const o3 = arr(st.ownTargets);
+      const k2 = o3 ? MK.filter((m3) => !TARGETED.has(m3) && o3.includes(m3)) : [];
+      if (k2.length) st.ownTargets = k2;
+      else delete st.ownTargets;
     }
     st.rirMode = oneOf(st.rirMode, ["on", "off", "cal"]) ? st.rirMode : "on";
     {
@@ -4946,7 +4975,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
         before.map((q) => setsAt(q, usualW)),
         n3
       );
-      const want = cap != null && cap > 0 ? Math.min(sets, cap) : sets;
+      const want = cap != null && cap > 0 ? cap : sets;
       if (n3 < want) return "sets";
       if (up) return void 0;
       const tr = (q) => readingOf(q, want) ?? 0;
@@ -5761,7 +5790,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     if (!weeks.length || R2.schedule === "weekly" || freeModeIn(M3) || !need) return out;
     const bands = M3.s.settings.bands;
     const plan = plannedSetsIn(M3, R2);
-    const short = MK.filter((m3) => !TRACK_ONLY.has(m3) && belowMin(avg[m3], bands[m3][0]) && !belowMin(plan[m3], bands[m3][0]));
+    const short = MK.filter((m3) => hasTargetIn(M3, m3) && belowMin(avg[m3], bands[m3][0]) && !belowMin(plan[m3], bands[m3][0]));
     if (!short.length) return out;
     const wk = new Set(weeks);
     const per = {}, due = {};
@@ -5804,7 +5833,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
         v: v3,
         lo,
         hi,
-        st: TRACK_ONLY.has(m3) ? "track" : mix[m3] ? "plan" : v3 <= 0 ? !soFar && src && lo > 0 ? "under" : "none" : belowMin(v3, lo) ? soFar ? "part" : "under" : aboveMax(v3, hi) ? "over" : "in"
+        st: !hasTargetIn(M3, m3) ? "track" : mix[m3] ? "plan" : v3 <= 0 ? !soFar && src && lo > 0 ? "under" : "none" : belowMin(v3, lo) ? soFar ? "part" : "under" : aboveMax(v3, hi) ? "over" : "in"
       };
     }
     return out;
@@ -5813,7 +5842,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     const bands = M3.s.settings.bands;
     const st = muscleStatusIn(M3, sets);
     return REGIONS.map(([label, all]) => {
-      const ms = all.filter((m3) => !TRACK_ONLY.has(m3));
+      const ms = all.filter((m3) => hasTargetIn(M3, m3));
       const got = ms.reduce((a2, m3) => a2 + (sets[m3] || 0), 0);
       const mid2 = ms.reduce((a2, m3) => a2 + (bands[m3][0] + bands[m3][1]) / 2, 0);
       const lo = ms.reduce((a2, m3) => a2 + bands[m3][0], 0);
@@ -6163,12 +6192,13 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
   function readinessIn(M3) {
     const I2 = IDXIn(M3);
     const bySid = {};
+    const pr = new Set(I2.prs.filter((p3) => p3.big).map((p3) => p3.sid + "|" + p3.exId));
     for (const id in I2.byEx)
       I2.byEx[id].forEach((x2, i5) => {
         if (i5 === 0 || lighter(x2)) return;
         const o3 = bySid[x2.sid] || (bySid[x2.sid] = { n: 0, p: 0 });
         o3.n++;
-        if (x2.progress) o3.p++;
+        if (pr.has(x2.sid + "|" + id)) o3.p++;
       });
     const sess = M3.s.sessions.filter((s3) => !s3.demo && s3.chk && bySid[s3.id]);
     const rows = CHK_Q.map(([k2, l4, names]) => ({
@@ -7178,6 +7208,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
   var profRule = live(profRuleIn);
   var routineUpdates = live(routineUpdatesIn);
   var appBand = live(appBandIn);
+  var hasTarget = live(hasTargetIn);
   var defBand = live(defBandIn);
   var fitFloors = live(fitFloorsIn);
   var refit = live(refitIn);
@@ -9060,7 +9091,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
    <p><b>Assisted machines</b>: less help is progress. <b>Timed holds</b>: add seconds, then load. <b>Bodyweight lifts never done with added load</b> (push-ups, pull-ups, a hanging leg raise): more reps, then harder reps or a little added load when you type it; the app never adds load you did not use.</p>
    <p><b>Back after more than 4 weeks off a lift</b>: about 90% of its last working load, with 2 or more reps in reserve (a convention: strength holds for about 4 weeks without training and falls faster after, Bosquet 2013). That first session back is the lift's new start. The next target picks up from it; its trend and stall test start again from it too, never drawn across the break. A Lighter day or a deload as the first session back sets no target, so the session after it is still back. A timed hold comes back the same way, at its load, holding about 90% as long.</p>
    <p><b>Your gym</b> (Settings): the dumbbells, kettlebells, plates, and stack steps you have. Suggestions stay on them, and a weight you type for a dumbbell counts as the nearest one.</p>
-   <p><b>One rule for every session.</b> A session sets the lift's next target only at its usual load and reps for its usual sets. Its usual is the middle of that session and the two before it in the range (not counting ones done lighter); its usual sets are never more than the plan asks. A set counts toward them when its load is within a tenth of the session's working load, or at the usual load (a convention): a last set tried a step up, or sets lowered after a hard first one, still count, and a back-off set a tenth or more lighter does not. Sets past the usual count are left out when a session is compared with its usual. With fewer sets, or reps clearly under the usual at no heavier load (more than 3% by the strength reading, a convention), the target repeats, and the session still counts for its trend and PRs; two such sessions in a row are the new usual, and the app follows. A heavier load than the two before is a step up, never short of the usual by its reps. A session done lighter sets no target and no trend. The same holds on a lighter day or in a deload: a lift done there at its usual load and reps is read as on any day, and its own sets were cut by the day, so they never become its usual.</p>
+   <p><b>One rule for every session.</b> A session sets the lift's next target only at its usual load and reps for its usual sets. Its usual is the middle of that session and the two before it in the range (not counting ones done lighter); on a lift your routine plans, its usual sets are the plan's, so fewer sets than planned never become the usual. A set counts toward them when its load is within a tenth of the session's working load, or at the usual load (a convention): a last set tried a step up, or sets lowered after a hard first one, still count, and a back-off set a tenth or more lighter does not. Sets past the usual count are left out when a session is compared with its usual. With fewer sets, or reps clearly under the usual at no heavier load (more than 3% by the strength reading, a convention), the target repeats, and the session still counts for its trend and PRs; two such sessions in a row are the new usual, and the app follows, except that fewer sets than the plan asks stay short. A heavier load than the two before is a step up, never short of the usual by its reps. A session done lighter sets no target and no trend. The same holds on a lighter day or in a deload: a lift done there at its usual load and reps is read as on any day, and its own sets were cut by the day, so they never become its usual.</p>
    <p><b>Last</b> is the most recent session of the lift in that day's rep range (the most recent of all when the range is new), labelled fewer sets, below usual, lighter, or deload when it was. When it did not set the target, the next target comes from the last full session, and the i beside the target names its date; grey reps come from that session too after one below usual or done lighter.</p>
    <p><b>Deload week</b>: half the sets (rounded up), about 90% of the load the normal day would ask for (or of last time's, if lower), in whole steps down (never under the empty bar on a full-bar lift), the bottom of the range, 3 or more reps in reserve. A week with ${LIGHTER_WEEK_WORDS}, stays out of the weekly volume average (a lift done there at its usual load with fewer sets than usual counts as done lighter for this, the sets cut on purpose); each lift done lighter stays out of its trend. A <b>lighter day</b> is the same for one day.</p>
    <p><b>Lighter sessions nobody marked</b> (an imported deload, say) are read from the numbers: a lift's heaviest load at least 10% under its previous three sessions and its strength reading at least 7% under. They are kept in history and, like a deload, set no target or trend. A session with half or more of its lifts done lighter, marked or read, is a lighter session, and a week with more than half its sessions lighter is left out of the weekly averages. Lighter sessions in a row for 2 weeks or more are a new level, not a deload, and count again. A convention.</p>
@@ -9073,7 +9104,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
         "stats",
         "Volume and Stats",
         `<p><b>A hard set</b> is a working set at RIR 3 or less${off ? " (with RIR off, every working set)" : ""}. Helper muscles count half a set (Pelland 2025); which muscles are helpers on each lift is the library's own call, a convention. With Settings, Count ${halfLbl()} as half a set on, a working set past RIR 3 counts half toward your weekly sets and targets, planned ones too (a convention); estimates, PRs, recovery, and the per-workout flag still count hard sets only.</p>
-   <p><b>Weekly targets</b> are per muscle in Settings, Weekly set targets. 10 to 20 hard sets a week for major muscles is typical, not a ceiling. Serratus, rotator cuff, neck, and tibialis are tracked only: counted and shown, with no target, since no study sets a dose for them and most routines leave them to indirect work. A target starting at 0 is met with no sets. A muscle is below target when its weekly average, to one decimal as shown, is under the minimum. On a routine run as a cycle, weeks can differ in which of its days fall in them (two days in turn, three times a week). A muscle under its minimum only because fewer of the days that train it fell in the weeks averaged reads <b>on plan</b> when every session and set the cycle had due in those weeks was done and the plan reaches the target over the whole cycle. The radar on Stats measures each region against its minimum, so on or past the ring is on target. It averages your last 4 full weeks, from the week after your first; the chips above it switch to 2 or 8 weeks, for the radar only. During the week, short of the minimum shows as under way, not below.</p>
+   <p><b>Weekly targets</b> are per muscle in Settings, Weekly set targets. 10 to 20 hard sets a week for major muscles is typical, not a ceiling. The muscles lifters train directly for size (chest, lats, upper back, side and rear delts, biceps, triceps, quads, hamstrings, glutes, calves, and abs) have a target to start, since the dose-response studies measure such muscles. Every other muscle (traps, forearms, front delts, lower back, obliques, adductors, abductors, serratus, rotator cuff, neck, and tibialis) is tracked only: counted and shown, with no target, until you give it one with Set a target in Weekly set targets, type one, or name it a focus; then it counts everywhere a target counts. A target starting at 0 is met with no sets. A muscle is below target when its weekly average, to one decimal as shown, is under the minimum. On a routine run as a cycle, weeks can differ in which of its days fall in them (two days in turn, three times a week). A muscle under its minimum only because fewer of the days that train it fell in the weeks averaged reads <b>on plan</b> when every session and set the cycle had due in those weeks was done and the plan reaches the target over the whole cycle. The radar on Stats measures each region against its minimum, so on or past the ring is on target. It averages your last 4 full weeks, from the week after your first; the chips above it switch to 2 or 8 weeks, for the radar only. During the week, short of the minimum shows as under way, not below.</p>
    <p><b>Lagging strength</b> is a muscle whose lifts are falling, or flat with one of them stalled (a convention); with no clear trend, a stalled lift reads <b>A lift stalled</b>. A muscle whose lifts are all within day-to-day noise reads <b>unclear</b>, never 0%.</p>
    <p><b>Your target and the usual range</b>: picking a ready-made routine sets your minimums to what it plans, so Stats measures you against your plan. Plan, Weekly volume names the muscles that plan puts under the usual range.</p>
    <p><b>Planned sets</b> count the same way: a set planned at RIR 4 or more is not a planned hard set, and in a deload week the target is halved.</p>
@@ -10817,7 +10848,7 @@ ${stuck}${typeof A2.deleteAccount === "function" ? b`<button type="button" class
         "",
         b`${howText(
           "bands",
-          "Fractional hard sets per week: direct work 1, helper muscles 0.5 (Pelland 2025). 10 to 20 for major muscles fits the dose-response data; the upper number is typical, not a ceiling, and more still helps a little at more cost. Smaller muscles are set lower because compound lifts hit them indirectly, and their numbers are convention: no study has tested a dose for them. Serratus, rotator cuff, neck, and tibialis are tracked only. Raise one or two muscles for a specialisation block, or set focus muscles in Your training. Default targets puts every one back."
+          "Fractional hard sets per week: direct work 1, helper muscles 0.5 (Pelland 2025). 10 to 20 for major muscles fits the dose-response data; the upper number is typical, not a ceiling, and more still helps a little at more cost. The muscles lifters train directly for size have a target to start; glutes, rear delts, calves, and abs start lower, a convention, as compound lifts work them too. Every other muscle is tracked only, counted with no target, until you give it one with Set a target or name it a focus. Raise one or two muscles for a specialisation block, or set focus muscles in Your training. Default targets puts every one back."
         )}
 <div class="card">
 <table class="t">
@@ -10828,18 +10859,27 @@ ${stuck}${typeof A2.deleteAccount === "function" ? b`<button type="button" class
 <th class="r">Max</th>
 </tr>
 ${MUSCLES.map(
-          ([k2, l4]) => b`<tr>
+          ([k2, l4]) => (
+            /* A muscle with no target (339 e, r58) offers one; one the lifter gave a
+               target (not by default and not a focus, which Your training sets) can go
+               back to tracked only. */
+            !hasTarget(k2) ? b`<tr>
 <td>${l4}</td>
+<td class="r" colspan="2"><span class="small muted">Tracked only</span> <button type="button" class="btn sm" data-act="tgtSet" data-m=${k2}>Set a target</button></td>
+</tr>
+` : b`<tr>
+<td>${l4}${TARGETED.has(k2) || (prof().focus || []).includes(k2) ? A : b`<br><button type="button" class="linkbtn tall" data-act="tgtOff" data-m=${k2}>Track only</button>`}</td>
 <td class="r"><input style="width:70px" type="text" inputmode="numeric" aria-label=${`${l4} minimum hard sets a week`} data-band=${k2} data-bi="0" .value=${fieldValue(String(s3.bands[k2][0]))}/></td>
 <td class="r"><input style="width:70px" type="text" inputmode="numeric" aria-label=${`${l4} maximum hard sets a week`} data-band=${k2} data-bi="1" .value=${fieldValue(String(s3.bands[k2][1]))}/></td>
 </tr>
 `
+          )
         )}</tbody>
 </table>
 <div class="row" style="margin-top:8px"><button class="btn sm" data-act="bandsDefault" ?disabled=${MK.every((m3) => {
           const d3 = defBand(m3);
           return s3.bands[m3][0] === d3[0] && s3.bands[m3][1] === d3[1];
-        }) && !s3.bandsFit}>Default targets</button></div>
+        }) && !s3.bandsFit && !s3.ownTargets}>Default targets</button></div>
 </div>
 `,
         "bands"
@@ -11098,10 +11138,11 @@ ${logBuf.length ? b`<ul class="clist">${logBuf.slice(-5).reverse().map(
         }
       );
     },
-    // Weekly set targets back to the defaults (r44), with Your training's focus; typed ones and a first-run fit go.
+    // Weekly set targets back to the defaults (r44), with Your training's focus; typed ones, those given with Set a target (r58) and a first-run fit go.
     bandsDefault() {
       const b2 = state.settings.bands;
       const fit = state.settings.bandsFit ? { ...state.settings.bandsFit } : null;
+      const own = state.settings.ownTargets ? [...state.settings.ownTargets] : null;
       const moved = {};
       for (const m3 of MK) {
         const d3 = defBand(m3);
@@ -11118,11 +11159,13 @@ ${logBuf.length ? b`<ul class="clist">${logBuf.slice(-5).reverse().map(
             if (x2) b2[m3] = [x2[1][0], x2[1][1]];
           }
           delete state.settings.bandsFit;
+          delete state.settings.ownTargets;
         },
         {
           undo: () => {
             if (fit) state.settings.bandsFit = fit;
             else delete state.settings.bandsFit;
+            if (own) state.settings.ownTargets = own;
             for (const m3 of MK) {
               const x2 = moved[m3];
               if (x2 && b2[m3][0] === x2[1][0] && b2[m3][1] === x2[1][1]) b2[m3] = [x2[0][0], x2[0][1]];
@@ -11133,6 +11176,33 @@ ${logBuf.length ? b`<ul class="clist">${logBuf.slice(-5).reverse().map(
       );
       fx.rerenderKeepScroll();
       fx.toast("Weekly set targets back to the defaults", true);
+    },
+    // A muscle with no target given one (339 e, r58): its numbers as they stand, now counted.
+    tgtSet(t4) {
+      const m3 = MK.find((x2) => x2 === t4.dataset.m);
+      if (!m3 || hasTarget(m3)) return;
+      act(() => {
+        const o3 = state.settings.ownTargets || [];
+        state.settings.ownTargets = MK.filter((x2) => x2 === m3 || o3.includes(x2));
+      });
+      fx.rerenderKeepScroll();
+    },
+    // A target the lifter gave taken off: tracked only again, its numbers the app's, with an Undo step.
+    tgtOff(t4) {
+      const m3 = MK.find((x2) => x2 === t4.dataset.m);
+      if (!m3 || TARGETED.has(m3) || (prof().focus || []).includes(m3)) return;
+      act(
+        () => {
+          const o3 = (state.settings.ownTargets || []).filter((x2) => x2 !== m3);
+          if (o3.length) state.settings.ownTargets = o3;
+          else delete state.settings.ownTargets;
+          const a2 = appBand(m3);
+          state.settings.bands[m3] = [a2[0], a2[1]];
+        },
+        { undo: true }
+      );
+      fx.rerenderKeepScroll();
+      fx.toast(`${ML[m3]} is tracked only`, true);
     },
     unreadForget() {
       fx.confirm(
@@ -11372,6 +11442,7 @@ ${logBuf.length ? b`<ul class="clist">${logBuf.slice(-5).reverse().map(
   }
 
   // src/app/plan.ts
+  var TRACKED_TIP = "Tracked only: counted, with no target. Give it one in Settings, Weekly set targets.";
   function exTagParts(e5, skip) {
     return b`${isCommon(e5) && skip !== "common" ? b`<span class="tag common">Most common</span>` : A}${e5.rare && skip !== "rare" ? b`<span class="tag rare">Less common</span>` : A}`;
   }
@@ -11386,7 +11457,7 @@ ${logBuf.length ? b`<ul class="clist">${logBuf.slice(-5).reverse().map(
   function planEvidenceNote(pv) {
     const b2 = state.settings.bands;
     const low = MK.filter(
-      (m3) => !TRACK_ONLY.has(m3) && BANDS[m3][0] >= 8 && b2[m3][0] < Math.min(BANDS[m3][0], defBand(m3)[0]) && belowMin(pv[m3] || 0, BANDS[m3][0])
+      (m3) => hasTarget(m3) && BANDS[m3][0] >= 8 && b2[m3][0] < Math.min(BANDS[m3][0], defBand(m3)[0]) && belowMin(pv[m3] || 0, BANDS[m3][0])
     );
     if (!low.length) return A;
     return b`<p class="small muted" id="planUsual" style="margin:8px 0 0">Under the usual range in this plan: ${andList(
@@ -11412,11 +11483,11 @@ ${logBuf.length ? b`<ul class="clist">${logBuf.slice(-5).reverse().map(
     return b`${head}${MK.map((m3) => {
       const v3 = sets[m3] || 0;
       const [lo, hi] = bands[m3];
-      const tr = TRACK_ONLY.has(m3);
       const cls = st[m3].st;
+      const tr = cls === "track";
       const plate = plates[cls];
       const c4 = hasConf && conf ? Math.min(conf[m3] || 0, v3) : 0;
-      const tip = `${ML[m3]}: ${r1(v3)} hard sets${hasConf ? `, ${r1(c4)} with RIR logged, ${r1(v3 - c4)} assumed` : ""}. ${tr ? "Tracked only: no study sets a weekly dose for it." : `Target ${lo} to ${hi}; the upper number is typical, not a ceiling.${cls === "plan" ? ` On plan: ${ON_PLAN_TIP}` : ""}`}`;
+      const tip = `${ML[m3]}: ${r1(v3)} hard sets${hasConf ? `, ${r1(c4)} with RIR logged, ${r1(v3 - c4)} assumed` : ""}. ${tr ? TRACKED_TIP : `Target ${lo} to ${hi}; the upper number is typical, not a ceiling.${cls === "plan" ? ` On plan: ${ON_PLAN_TIP}` : ""}`}`;
       return b`<div class="mrow"><span class=${`plate ${plate}`}></span><span>${ML[m3]}</span><div class="band" data-tip=${tip}>${tr ? A : b`<div class="zone" style=${`left:${lo / maxScale * 100}%;width:${(hi - lo) / maxScale * 100}%`}></div>`}<div class=${`fill ${cls}${hasConf ? " ghost" : ""}`} style=${`width:${Math.min(100, v3 / maxScale * 100)}%`}></div>${hasConf && c4 > 0 ? b`<div class="fill conf" style=${`width:${Math.min(100, c4 / maxScale * 100)}%`}></div>` : A}</div><span class="r num">${r1(v3)}<span class="muted small">${tr ? " tracked" : ` /${lo}-${hi}`}</span></span></div>`;
     })}`;
   }
@@ -11521,7 +11592,7 @@ ${logBuf.length ? b`<ul class="clist">${logBuf.slice(-5).reverse().map(
     });
     const pv = plannedSets(R2);
     const bands = state.settings.bands;
-    const pUnder = MK.filter((m3) => !TRACK_ONLY.has(m3) && belowMin(pv[m3], bands[m3][0])).length;
+    const pUnder = MK.filter((m3) => hasTarget(m3) && belowMin(pv[m3], bands[m3][0])).length;
     const pvolSec = section({
       sk: "program:pvol",
       key: "pvol",
@@ -12319,8 +12390,8 @@ ${logBuf.length ? b`<ul class="clist">${logBuf.slice(-5).reverse().map(
                 yAxisID: "y"
               },
               { label: "Assumed hard", data: assumV, backgroundColor: blue + "55", yAxisID: "y" },
-              // No target lines for a tracked-only muscle (r29).
-              ...TRACK_ONLY.has(m3) ? [] : [
+              // No target lines for a muscle with no target (r29; hasTargetIn since r58).
+              ...!hasTarget(m3) ? [] : [
                 {
                   type: "line",
                   label: "_bandLo",
@@ -12395,16 +12466,13 @@ ${logBuf.length ? b`<ul class="clist">${logBuf.slice(-5).reverse().map(
         const xs = exps.map((x2) => daysBetween(base, x2.date));
         const lastX = xs[xs.length - 1] ?? 0;
         const vals = exps.map((x2) => e1Mode ? +fmtE(x2.best) : r1(toD(x2.topW ?? 0) ?? 0));
-        const isPR = exps.map((x2) => !!x2.progress);
-        const prType = exps.map((x2) => {
-          if (!x2.progress) return null;
-          const p3 = I2.prs.find((q) => q.exId === exId && q.date === x2.date);
-          return p3 ? p3.type === "Weight PR" && p3.value != null ? "WeightE1" : p3.type : "Rep PR";
-        });
+        const prOf = exps.map((x2) => I2.prs.find((q) => q.big && q.exId === exId && q.sid === x2.sid) || null);
+        const isPR = prOf.map((p3) => !!p3);
+        const prType = prOf.map((p3) => p3 ? p3.type === "Weight PR" && p3.value != null ? "WeightE1" : p3.type : null);
         const surf = cssv("--surface");
         const ds = [
           {
-            label: e1Mode ? `Best e1RM (${U()})` : `Top set load (${U()}${loadNote(exE)})`,
+            label: e1Mode ? `Best estimate (${U()})` : `Top set load (${U()}${loadNote(exE)})`,
             data: vals.map((v3, i5) => ({ x: xs[i5], y: v3 })),
             borderColor: blue,
             backgroundColor: blue + "1f",
@@ -12712,7 +12780,7 @@ ${logBuf.length ? b`<ul class="clist">${logBuf.slice(-5).reverse().map(
     const [lo, hi] = bandOf(m3);
     const sc = I2.scores.find((x2) => x2.m === m3);
     const parts = [];
-    const tr = TRACK_ONLY.has(m3);
+    const tr = !hasTarget(m3);
     const st = avg ? (muscleStatus(avg)[m3] || { st: null }).st : null;
     if (avg) {
       const v3 = avg[m3] || 0;
@@ -13039,7 +13107,7 @@ ${extraKpis()}</div>${nS ? dashSummary() : A}`;
         add(s3.m, s3.clear ? s3.indirect ? "Lagging strength (indirect)" : "Lagging strength" : "A lift stalled", "red");
     for (const m3 of MK) {
       if (inj.has(m3)) continue;
-      if (TRACK_ONLY.has(m3)) continue;
+      if (!hasTarget(m3)) continue;
       if (avgSt && avgSt[m3] && avgSt[m3].st === "under") add(m3, "Below target", "yellow");
     }
     for (const m3 of state.settings.priorities) add(m3, "Your priority", "blue");
@@ -13151,6 +13219,7 @@ ${extraKpis()}</div>${nS ? dashSummary() : A}`;
       ["body", bodySec]
     ])}${tabFoot("dash")}`;
   }
+  var BEST_EST_TIP = "Your best estimated one-rep max (e1RM): the most one of your sets says you could lift once, from its load and its reps plus RIR. An estimate, not a tested max.";
   function liftCard(exId, withData) {
     const I2 = IDX();
     const st = I2.exStats[exId];
@@ -13163,13 +13232,13 @@ ${extraKpis()}</div>${nS ? dashSummary() : A}`;
     const nSess = st ? st.n : 0;
     const f0 = exps[0];
     return b`<select data-bind="dashEx" aria-label="Exercise">${withData.map((id) => b`<option value=${id} .selected=${l3(id === exId)}>${exName(id)}</option>`)}</select>
-    <div style="margin-top:8px">${exHeadline(exId)}</div>${nextLine(exId)}${goalLine(exId)}${n0 ? b`<div class="kpis" style="margin-top:8px"><div class="kpi"><div class="v">${nSess}</div><div class="l">Sessions logged</div></div><div class="kpi"><div class="v">${st && st.stalled ? "Yes" : "No"}</div><div class="l">Stalled</div></div></div>` : A}<div class="kpis" style=${`margin-top:8px${n0 ? ";display:none" : ""}`}>${e1Mode ? b`<div class="kpi"><div class="v">${be ? (ex.bw ? "≈" : "") + fmtE(be.v) : "n/a"}</div><div class="l">Best e1RM (${U()}${loadNote(ex)})</div></div>` : b`<div class="kpi"><div class="v">${bs ? setShort(ex, bs.w, bs.r) : "n/a"}</div><div class="l">Best set${loadNote(ex)}</div></div>`}<div class="kpi"><div class="v">${nSess}</div><div class="l">Sessions logged</div></div></div>
+    <div style="margin-top:8px">${exHeadline(exId)}</div>${nextLine(exId)}${goalLine(exId)}${n0 ? b`<div class="kpis" style="margin-top:8px"><div class="kpi"><div class="v">${nSess}</div><div class="l">Sessions logged</div></div><div class="kpi"><div class="v">${st && st.stalled ? "Yes" : "No"}</div><div class="l">Stalled</div></div></div>` : A}<div class="kpis" style=${`margin-top:8px${n0 ? ";display:none" : ""}`}>${e1Mode ? b`<div class="kpi"><div class="v">${be ? (ex.bw ? "≈" : "") + fmtE(be.v) : "n/a"}</div><div class="l">Best estimate (${U()}${loadNote(ex)}) ${tipButton(BEST_EST_TIP, "About the best estimate")}</div></div>` : b`<div class="kpi"><div class="v">${bs ? setShort(ex, bs.w, bs.r) : "n/a"}</div><div class="l">Best set${loadNote(ex)}</div></div>`}<div class="kpi"><div class="v">${nSess}</div><div class="l">Sessions logged</div></div></div>
     ${n0 || !f0 ? "" : b`${rangeChips("ex", weeksSpan(f0.date), 8, "all")}<div class="chartbox"><canvas id="chEx"></canvas></div>${chartFallback()}
     <p class="small muted hastip" style="margin:4px 0 0" data-tip="Filled diamond: a new best estimate (a weight PR that also set one is filled too). Hollow diamond: a rep PR or a weight PR that did not raise the estimate, which can sit below an earlier best. The thin dotted line is your RIR at the working load.">Reading the chart</p>`}
     ${st && st.easier ? b`<p class="small" style="color:var(--blue);margin-top:6px"><b>${easierText(ex, st.easier)}</b></p>` : ""}
     ${st && st.fade ? b`<p class="small" style="color:var(--yellow);margin-top:6px"><b>Set-to-set drop-off is widening at ${loadLabel(ex, st.fade.w)}${ex.bw ? "" : " " + U()}: ${st.fade.from} → ${st.fade.to} reps lost from first set to last across your last three sessions.</b> That usually means fatigue or shorter rest rather than lost strength.</p>` : ""}
     ${ex.bw && !state.bodyweights.length ? b`<p class="small" style="color:var(--yellow)">Log your bodyweight on the Today tab so this bodyweight exercise can be trended.</p>` : bwBackfillNote(exId)}
-    <div class="scroll-x"><table class="t" style="margin-top:8px"><tr><th>Date</th><th>Sets</th>${e1Mode ? b`<th class="r">e1RM</th>` : A}</tr>${exps.slice(-8).reverse().map((x2) => {
+    <div class="scroll-x"><table class="t" style="margin-top:8px"><tr><th>Date</th><th>Sets</th>${e1Mode ? b`<th class="r">Best estimate</th>` : A}</tr>${exps.slice(-8).reverse().map((x2) => {
       const tag = sessionWord(x2);
       return b`<tr><td>${fmtDate(x2.date)}${I2.prs.some((p3) => p3.big && p3.sid === x2.sid && p3.exId === exId) ? b` <span class="tag green">PR</span>` : A}${tag ? b` <span class="tag">${tag}</span>` : A}</td><td>${x2.pts.map((p3) => setShort(ex, p3.w, p3.r)).join(", ")}</td>${e1Mode ? b`<td class="r num">${x2.best ? (ex.bw ? "≈" : "") + fmtE(x2.best) : ""}</td>` : A}</tr>`;
     })}</table></div>`;
@@ -15412,7 +15481,7 @@ ${extraKpis()}</div>${nS ? dashSummary() : A}`;
       const src = ui.mapSrc === "week" || !avg ? "week" : "avg";
       const st = muscleStatus(src === "avg" ? avg : I2.weekSets[weekStart(today())] || {}, src === "week");
       const hsw = (v4) => `${r1(v4)} hard set${r1(v4) === 1 ? "" : "s"} a week`;
-      const tgt = (m3) => TRACK_ONLY.has(m3) ? ", tracked only" : `, target ${st[m3].lo} to ${st[m3].hi}`;
+      const tgt = (m3) => !hasTarget(m3) ? ", tracked only" : `, target ${st[m3].lo} to ${st[m3].hi}`;
       const lab = (m3) => noLog() ? `${ML[m3]}: nothing logged yet${tgt(m3)}` : `${ML[m3]}: ${hsw(st[m3].v)}${tgt(m3)}`;
       const fig = (view, label) => `<figure class="bm"><svg viewBox="0 0 120 210" aria-label="${label} of body"><g class="bm-base">${BM_BASE}</g>${Object.entries(BM[view]).map(([m3, sh]) => `<g class="mm st-${st[m3].st}${ui.mapSel === m3 ? " sel" : ""}" data-act="mapSel" data-m="${m3}" role="button" tabindex="0" aria-label="${esc(lab(m3))}"><title>${esc(lab(m3))}</title>${sh.map(bmShape).join("")}</g>`).join("")}</svg><figcaption>${label}</figcaption></figure>`;
       const counts = { under: 0, part: 0, plan: 0, in: 0, over: 0, none: 0, track: 0 };
@@ -15427,18 +15496,18 @@ ${extraKpis()}</div>${nS ? dashSummary() : A}`;
         const tr = sc ? `${musTrend(sc)}${sc.indirect ? ", read from exercises that train it indirectly" : ""}.` : "Not enough sessions yet for a strength trend.";
         detail = `<div class="bm-detail"><div class="row spread"><b>${ML[sel]}</b><span class="tag ${x2.st === "in" ? "green" : x2.st === "under" ? "yellow" : x2.st === "over" ? "blue" : x2.st === "plan" ? "hastip" : ""}"${x2.st === "plan" ? ` data-tip="${esc(ON_PLAN_TIP)}"` : ""}>${where}</span></div><p class="small" style="margin:4px 0 6px">${src === "avg" ? `${hsw(x2.v)} on average over ${avgWeeksTxt(avg)}` : `${r1(x2.v)} hard set${r1(x2.v) === 1 ? "" : "s"} so far this week`}${tgt(sel)}. ${tr}</p><div class="row"><button class="btn sm" data-act="goDash" data-sec="volume" data-m="${sel}">Weekly trend</button><button class="btn sm" data-act="mapSel" data-m="${sel}">Close</button></div></div>`;
       } else {
-        const low = MK.filter((m3) => !TRACK_ONLY.has(m3) && lowSt(st[m3]));
+        const low = MK.filter((m3) => hasTarget(m3) && lowSt(st[m3]));
         detail = `<p class="small muted" style="margin:6px 0 0">Tap a muscle ${tipi(`${mapView() === "3d" ? "Drag sideways to turn it. " : ""}Tap a muscle for its numbers.${src === "week" ? " This is the week so far, so most muscles read low early in the week." : ""}`, "About the map")}</p>${low.length && src === "avg" ? `<div class="row" style="margin-top:6px;gap:4px"><span class="small muted">Below target:</span>${low.slice(0, 8).map((m3) => `<button class="chip" data-act="mapSel" data-m="${m3}">${ML[m3]}</button>`).join("")}</div>` : ""}`;
       }
-      const N2 = MK.filter((m3) => !TRACK_ONLY.has(m3)).length;
+      const N2 = MK.filter((m3) => hasTarget(m3)).length;
       const msub = (() => {
         if (!avg) {
           if (!state.sessions.length) return "none logged yet";
-          const n3 = MK.filter((m3) => !TRACK_ONLY.has(m3) && metSt(st[m3])).length;
+          const n3 = MK.filter((m3) => hasTarget(m3) && metSt(st[m3])).length;
           return `${n3} of ${N2} on target so far`;
         }
         const sa = muscleStatus(avg);
-        const inA = MK.filter((m3) => !TRACK_ONLY.has(m3) && metSt(sa[m3])).length;
+        const inA = MK.filter((m3) => hasTarget(m3) && metSt(sa[m3])).length;
         return `${inA} of ${N2} on target`;
       })();
       const v3 = mapView() === "3d";
@@ -15467,7 +15536,7 @@ ${extraKpis()}</div>${nS ? dashSummary() : A}`;
       const stronger = !judge || scq(load2, +s3.r, q0) > top + 1e-9;
       if (!ex.timed && s3.w !== "" && s3.w != null && isNum(+s3.w) && f3.w > f3.heaviest + 1e-6 && stronger) return "Weight PR";
       if (!(load2 > 0) && !ex.timed && !ex.bw) return null;
-      if (v3 != null && st) {
+      if (v3 != null && st && stronger) {
         const bd = st.byBand && st.byBand[rtfBand(rtfOf(+s3.r, q0))];
         if (bd != null && v3 > bd + 1e-6) return "Best";
       }
@@ -15689,10 +15758,10 @@ ${extraKpis()}</div>${nS ? dashSummary() : A}`;
             injS += w2;
             continue;
           }
-          const def = TRACK_ONLY.has(m3) ? 0 : Math.max(0, bands[m3][0] - r7[m3]);
+          const def = !hasTarget(m3) ? 0 : Math.max(0, bands[m3][0] - r7[m3]);
           fill += Math.min(w2, def) * (pri.has(m3) || lag.has(m3) ? 1.5 : 1);
           fat += w2 * (1 - rc.r);
-          if (!TRACK_ONLY.has(m3)) over += Math.max(0, r7[m3] + w2 - bands[m3][1]);
+          if (hasTarget(m3)) over += Math.max(0, r7[m3] + w2 - bands[m3][1]);
         }
         for (const [m3, w2] of Object.entries(dir)) {
           if (inj.has(m3)) continue;
@@ -15763,10 +15832,10 @@ ${extraKpis()}</div>${nS ? dashSummary() : A}`;
         if (e5.archived || inS.has(e5.id) || exInjury(e5)) continue;
         const m3 = e5.primary;
         const [lo, hi] = bands[m3];
-        const def = TRACK_ONLY.has(m3) ? 0 : Math.max(0, lo - r7[m3]);
+        const def = !hasTarget(m3) ? 0 : Math.max(0, lo - r7[m3]);
         const inSess = sess[m3] || 0;
         let s3 = Math.min(def, 6) * 0.6;
-        if (def <= 0 && !TRACK_ONLY.has(m3)) s3 -= r7[m3] >= hi ? 3 : 1 - Math.min(hi - r7[m3], 4) * 0.15;
+        if (def <= 0 && hasTarget(m3)) s3 -= r7[m3] >= hi ? 3 : 1 - Math.min(hi - r7[m3], 4) * 0.15;
         if (inSess >= SESSION_CAP) s3 -= 6;
         else if (inSess >= 7) s3 -= 1.5;
         s3 -= (1 - rec2[m3].r) * 3;
@@ -15777,7 +15846,7 @@ ${extraKpis()}</div>${nS ? dashSummary() : A}`;
         {
           let sb = 0;
           for (const m22 of e5.secondary) {
-            const d22 = TRACK_ONLY.has(m22) ? 0 : Math.max(0, bands[m22][0] - r7[m22]);
+            const d22 = !hasTarget(m22) ? 0 : Math.max(0, bands[m22][0] - r7[m22]);
             sb += Math.min(d22, 3) * 0.15;
             s3 -= (1 - rec2[m22].r) * 0.5;
             if ((sess[m22] || 0) >= SESSION_CAP) s3 -= 0.5;
@@ -15813,7 +15882,7 @@ ${extraKpis()}</div>${nS ? dashSummary() : A}`;
     function exReasons(x2) {
       const [lo, hi] = state.settings.bands[x2.m];
       const out = [];
-      out.push(TRACK_ONLY.has(x2.m) ? `${ML[x2.m]}: ${r1(x2.r7)} hard sets in the last 7 days, counting this session (tracked only, no target).` : `${ML[x2.m]}: ${r1(x2.r7)} of ${lo}-${hi} hard sets in the last 7 days, counting this session${x2.def > 0 ? `, ${r1(x2.def)} short of target` : ", at or above target"}.`);
+      out.push(!hasTarget(x2.m) ? `${ML[x2.m]}: ${r1(x2.r7)} hard sets in the last 7 days, counting this session (tracked only, no target).` : `${ML[x2.m]}: ${r1(x2.r7)} of ${lo}-${hi} hard sets in the last 7 days, counting this session${x2.def > 0 ? `, ${r1(x2.def)} short of target` : ", at or above target"}.`);
       out.push(x2.rec.days == null ? "Not trained hard in the last 3 weeks." : x2.rec.r < 1 ? `Last trained hard ${agoTxt(x2.rec.days)} (${r1(x2.rec.sets)} sets), so it may still be recovering.` : `Last trained hard ${agoTxt(x2.rec.days)}, recovered.`);
       if (x2.inSess > 0) out.push(`${r1(x2.inSess)} set${r1(x2.inSess) === 1 ? "" : "s"} for it already in this session${x2.inSess >= SESSION_CAP ? `, past the ${SESSION_CAP}-set line for one workout` : ""}.`);
       if (x2.n) {
@@ -16065,7 +16134,7 @@ ${extraKpis()}</div>${nS ? dashSummary() : A}`;
       const st = IDX().exStats[exId];
       if (!st) return "";
       const t4 = [];
-      if (st.last && st.last.progress && st.fresh) t4.push('<span class="tag green">PR last time</span>');
+      if (st.last && st.fresh && IDX().prs.some((p3) => p3.big && p3.sid === st.last.sid && p3.exId === exId)) t4.push('<span class="tag green">PR last time</span>');
       if (st.easier) t4.push('<span class="tag blue">Load due</span>');
       if (st.stalled) t4.push('<span class="tag yellow">Stalled</span>');
       if (st.capped) t4.push('<span class="tag blue">At max load</span>');

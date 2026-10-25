@@ -10,7 +10,7 @@
 import { html, nothing } from 'lit-html';
 import type { TemplateResult } from 'lit-html';
 import { live } from 'lit-html/directives/live.js';
-import { MEAS, MK, ML, MUSCLES, TRACK_ONLY, injLabel, isCompound, loadMode, noE1 } from './library';
+import { MEAS, MK, ML, MUSCLES, injLabel, isCompound, loadMode, noE1 } from './library';
 import { DAYS, sessDayIdx, trainDaysOf, weekFactor } from './routines';
 import { GROW_PCT } from './formulas';
 import { estMin, fmtDate, repSpan } from './format';
@@ -46,6 +46,7 @@ import {
   firstFullWeek,
   fmtW,
   freeMode,
+  hasTarget,
   injuredSet,
   isDeloadWeek,
   isRestWeek,
@@ -312,8 +313,8 @@ export function muscleHeadline(m: string): TemplateResult {
   const [lo, hi] = bandOf(m);
   const sc = I.scores.find(x => x.m === m);
   const parts: string[] = [];
-  // Tracked-only muscles have no target to be above or below (r29).
-  const tr = TRACK_ONLY.has(m);
+  // A muscle with no target has none to be above or below (r29; the one rule since r58, hasTargetIn).
+  const tr = !hasTarget(m);
   // The status every screen reads (muscleStatus): on plan is said, with why behind an i (r54).
   const st = avg ? (muscleStatus(avg)[m] || { st: null }).st : null;
   if (avg) {
@@ -865,7 +866,7 @@ ${extraKpis()}</div>${nS ? dashSummary() : nothing}`;
   // logging a set. Plan's Weekly volume shows the plan against the targets.
   for (const m of MK) {
     if (inj.has(m)) continue;
-    if (TRACK_ONLY.has(m)) continue;
+    if (!hasTarget(m)) continue;
     // One tag since r29; the routine's plan, when it is the reason, is in the line below.
     // The status every screen reads (muscleStatus): a muscle on plan is not flagged (r54).
     if (avgSt && avgSt[m] && avgSt[m].st === 'under') add(m, 'Below target', 'yellow');
@@ -1055,6 +1056,11 @@ ${extraKpis()}</div>${nS ? dashSummary() : nothing}`;
   ])}${tabFoot('dash')}`;
 }
 
+/* "e1RM" is a lifter's word few new lifters know, so Stats says "Best
+   estimate" and the tip names it (339 i, r58). */
+const BEST_EST_TIP =
+  'Your best estimated one-rep max (e1RM): the most one of your sets says you could lift once, from its load and its reps plus RIR. An estimate, not a tested max.';
+
 /* The lift picked in Lifts: its headline, next target, goal, tiles, chart,
    notes and its last sessions. 1RM figures only where a 1RM is stated (r30):
    a compound lift with sets of 12 reps to failure or fewer. Isolation lifts,
@@ -1080,7 +1086,7 @@ function liftCard(exId: string, withData: readonly string[]): TemplateResult {
         : nothing
     }<div class="kpis" style=${`margin-top:8px${n0 ? ';display:none' : ''}`}>${
       e1Mode
-        ? html`<div class="kpi"><div class="v">${be ? (ex.bw ? '≈' : '') + fmtE(be.v) : 'n/a'}</div><div class="l">Best e1RM (${U()}${loadNote(ex)})</div></div>`
+        ? html`<div class="kpi"><div class="v">${be ? (ex.bw ? '≈' : '') + fmtE(be.v) : 'n/a'}</div><div class="l">Best estimate (${U()}${loadNote(ex)}) ${tipButton(BEST_EST_TIP, 'About the best estimate')}</div></div>`
         : html`<div class="kpi"><div class="v">${bs ? setShort(ex, bs.w, bs.r) : 'n/a'}</div><div class="l">Best set${loadNote(ex)}</div></div>`
     }<div class="kpi"><div class="v">${nSess}</div><div class="l">Sessions logged</div></div></div>
     ${
@@ -1096,7 +1102,7 @@ function liftCard(exId: string, withData: readonly string[]): TemplateResult {
         : ''
     }
     ${ex.bw && !state.bodyweights.length ? html`<p class="small" style="color:var(--yellow)">Log your bodyweight on the Today tab so this bodyweight exercise can be trended.</p>` : bwBackfillNote(exId)}
-    <div class="scroll-x"><table class="t" style="margin-top:8px"><tr><th>Date</th><th>Sets</th>${e1Mode ? html`<th class="r">e1RM</th>` : nothing}</tr>${exps
+    <div class="scroll-x"><table class="t" style="margin-top:8px"><tr><th>Date</th><th>Sets</th>${e1Mode ? html`<th class="r">Best estimate</th>` : nothing}</tr>${exps
       .slice(-8)
       .reverse()
       .map(x => {

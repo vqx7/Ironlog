@@ -241,6 +241,8 @@ export interface EngineSettings {
   bands: Record<MuscleKey, [number, number]>;
   // The floors a first-run routine pick recorded (r44), whole sets per muscle.
   bandsFit?: Partial<Record<MuscleKey, number>> | undefined;
+  // The muscles outside TARGETED the lifter gave a target with Set a target (r58), in muscle order; absent when none.
+  ownTargets?: MuscleKey[] | undefined;
   priorities: MuscleKey[];
   restWeeks?: string[] | undefined;
   todayStart?: 'free' | undefined;

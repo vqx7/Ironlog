@@ -7,7 +7,7 @@
 //      its load, and a 4-set plan with two missed twice still reads 4 sets;
 //   2  a lift done in full on a Lighter day is read against the same usual as
 //      any other day, so it sets its target (untagged: a guard);
-//   1  one best estimate everywhere it is named (Stats' Best e1RM, the
+//   1  one best estimate everywhere it is named (Stats' Best estimate, the
 //      exercise sheet, All-time bests), also after a change of units, and a
 //      history row says PR only for a PR that Recent PRs lists;
 //   D  the coach says when the lifter made fewer sessions than the plan has,
@@ -84,13 +84,13 @@ const ses = (id, date, exId, rr, sets, x, bx) => Object.assign({ id, date, dayId
       const sheet = (document.querySelector('#modal .sheet') || {}).innerText || '';
       L.ACT.mClose(); L.ui.tab = 'dash'; L.ui.dashEx = 'bench'; L.render(); await pause();
       const view = document.getElementById('view');
-      const tile = [...view.querySelectorAll('.kpi')].find(k => /Best e1RM/.test(k.textContent));
+      const tile = [...view.querySelectorAll('.kpi')].find(k => /Best estimate/.test(k.textContent));
       const rows = [...view.querySelectorAll('table.t tr')].filter(tr => tr.querySelector('.tag.green') && /PR/.test(tr.querySelector('.tag.green').textContent)).map(tr => tr.cells[0].textContent.replace(/\s*PR.*$/s, '').trim());
       const listed = L.IDX().prs.filter(p => p.big && p.exId === 'bench').map(p => L.fmtDate(p.date));
       return { sheet: (sheet.match(/Best estimate ([\d.]+)/) || [])[1] || null, tile: tile ? tile.querySelector('.v').textContent.replace(/[^\d.]/g, '') : null, board: (view.textContent.match(/best est ([\d.]+)/) || [])[1] || null, rows, listed };
     });
     const r = await read();
-    ok(r.board === '135' && r.tile === r.board && r.sheet === r.board, 'one best estimate: Stats\' Best e1RM, the exercise sheet and All-time bests all say 135 kg (r56.1 and r55: 126 on the tile and the sheet)', r);
+    ok(r.board === '135' && r.tile === r.board && r.sheet === r.board, 'one best estimate: Stats\' Best estimate, the exercise sheet and All-time bests all say 135 kg (r56.1 and r55: 126 on the tile and the sheet)', r);
     ok(r.rows.join() === r.listed.join(), 'a history row says PR only for a PR Recent PRs lists (r56.1 and r55: "Sep 8 PR" and "Sep 1 PR" beside "No PRs yet")', r);
     // 70 kg x 8 x 3 twice, then the units set to lb and 155 lb x 8 x 3 twice.
     await log([0, 1, 2, 3].map(i => ses('u' + i, add('2026-08-20', 7 * i), 'bench', [6, 10], [0, 1, 2].map(() => [i < 2 ? 70 : 155 * LB, 8]))));

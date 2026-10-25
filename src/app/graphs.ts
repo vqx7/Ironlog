@@ -6,13 +6,13 @@
    the page (03-body.html); without it nothing is drawn and every number on
    the page still reads, as Stats says. */
 
-import { MK, TRACK_ONLY, isCompound, noE1 } from './library';
+import { MK, isCompound, noE1 } from './library';
 import { RANGES, firstDate, rangeWeeks, weeksSpan } from './charts';
 import { fmtDate } from './format';
 import { loadNote } from './loads';
 import { addDays, daysBetween, r1, today, weekStart } from './util';
 import { log } from './storage';
-import { EX, IDX, U, regionBalance, toD } from './live';
+import { EX, IDX, U, hasTarget, regionBalance, toD } from './live';
 import { state, ui } from './store';
 import { fmtDateLong, fmtE, regionSrc } from './display';
 
@@ -389,8 +389,8 @@ export function mountCharts(): void {
               yAxisID: 'y'
             },
             { label: 'Assumed hard', data: assumV, backgroundColor: blue + '55', yAxisID: 'y' },
-            // No target lines for a tracked-only muscle (r29).
-            ...(TRACK_ONLY.has(m)
+            // No target lines for a muscle with no target (r29; hasTargetIn since r58).
+            ...(!hasTarget(m)
               ? []
               : [
                   {
@@ -477,20 +477,18 @@ export function mountCharts(): void {
          bests, so their numbers agree; the headline says when the trend itself
          is read from loads and reps alone. */
       const vals = exps.map(x => (e1Mode ? +fmtE(x.best) : r1(toD(x.topW ?? 0) ?? 0)));
-      const isPR = exps.map(x => !!x.progress);
+      // A PR as Recent PRs counts it (r58, 343 6): a session with a set stronger than every earlier one.
+      const prOf = exps.map(x => I.prs.find(q => q.big && q.exId === exId && q.sid === x.sid) || null);
+      const isPR = prOf.map(p => !!p);
       // A rep PR can land below an earlier best estimate, which read as a mistake
       // when every PR looked the same. New-best sessions are filled, rep PRs hollow.
-      const prType = exps.map(x => {
-        if (!x.progress) return null;
-        const p = I.prs.find(q => q.exId === exId && q.date === x.date);
-        return p ? (p.type === 'Weight PR' && p.value != null ? 'WeightE1' : p.type) : 'Rep PR';
-      });
+      const prType = prOf.map(p => (p ? (p.type === 'Weight PR' && p.value != null ? 'WeightE1' : p.type) : null));
       const surf = cssv('--surface');
       // Monotone interpolation: a smoothed curve must never draw a value above or
       // below what was actually logged between two sessions.
       const ds: unknown[] = [
         {
-          label: e1Mode ? `Best e1RM (${U()})` : `Top set load (${U()}${loadNote(exE)})`,
+          label: e1Mode ? `Best estimate (${U()})` : `Top set load (${U()}${loadNote(exE)})`,
           data: vals.map((v, i) => ({ x: xs[i], y: v })),
           borderColor: blue,
           backgroundColor: blue + '1f',

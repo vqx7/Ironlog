@@ -31,7 +31,7 @@ import {
 import { fromDIn, stepReadIn, toDIn } from './units';
 import { defPlanIn, planCreditIn, planSetsPerWeekIn, plannedSetsIn, profPlanIn, profRuleIn } from './routines';
 import { planForIn, routineUpdatesIn } from './plans';
-import { appBandIn, defBandIn, fitFloorsIn, refitIn } from './profile';
+import { appBandIn, defBandIn, fitFloorsIn, hasTargetIn, refitIn } from './profile';
 import { barKgIn, capOfIn, exBarKgIn, gymRackIn, rackTolIn } from './gym';
 import { fmtWIn, loadLabelIn } from './loads';
 import {
@@ -135,6 +135,7 @@ export const profPlan = live(profPlanIn);
 export const profRule = live(profRuleIn);
 export const routineUpdates = live(routineUpdatesIn);
 export const appBand = live(appBandIn);
+export const hasTarget = live(hasTargetIn);
 export const defBand = live(defBandIn);
 export const fitFloors = live(fitFloorsIn);
 export const refit = live(refitIn);

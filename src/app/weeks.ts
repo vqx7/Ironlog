@@ -12,7 +12,8 @@ import { BACK_DAYS } from './formulas';
 import { sessCmp } from './records';
 import { firstDate } from './charts';
 import { IDXIn, dateIndexIn, lighterTally, weekSessionsIn } from './analytics';
-import { MK, REGIONS, TRACK_ONLY } from './library';
+import { MK, REGIONS } from './library';
+import { hasTargetIn } from './profile';
 import { aboveMax, belowMin } from './volume';
 import { dayCreditIn, nextTrainIdx, planSetsPerWeekIn, plannedPerWeek, plannedSetsIn, sessDayIdx } from './routines';
 
@@ -258,7 +259,7 @@ export function cycleMixIn(
   if (!weeks.length || R.schedule === 'weekly' || freeModeIn(M) || !need) return out;
   const bands = M.s.settings.bands;
   const plan = plannedSetsIn(M, R);
-  const short = MK.filter(m => !TRACK_ONLY.has(m) && belowMin(avg[m], bands[m][0]) && !belowMin(plan[m], bands[m][0]));
+  const short = MK.filter(m => hasTargetIn(M, m) && belowMin(avg[m], bands[m][0]) && !belowMin(plan[m], bands[m][0]));
   if (!short.length) return out;
   const wk = new Set(weeks);
   const per: Record<string, number> = {},
@@ -310,7 +311,8 @@ export interface MuscleStatus {
   st: 'track' | 'none' | 'under' | 'part' | 'plan' | 'over' | 'in';
 }
 
-/* soFar (r29): the week is still going, so a muscle short of its minimum is
+/* A muscle with no target (hasTargetIn, r58) is tracked ('track').
+   soFar (r29): the week is still going, so a muscle short of its minimum is
    under way ('part'), not below target; amber on a Tuesday read as behind
    for training that had not happened yet. With no sets a muscle is 'none'
    whatever its target: one whose minimum was brought down to 0 (a routine
@@ -338,7 +340,7 @@ export function muscleStatusIn(
       v,
       lo,
       hi,
-      st: TRACK_ONLY.has(m)
+      st: !hasTargetIn(M, m)
         ? 'track'
         : mix[m]
           ? 'plan'
@@ -369,9 +371,9 @@ export function regionBalanceIn(
 ) {
   const bands = M.s.settings.bands;
   const st = muscleStatusIn(M, sets);
-  // Tracked-only muscles have no target, so they count toward neither side (r29).
+  // A muscle with no target counts toward neither side (r29; since r58 the one rule, hasTargetIn).
   return REGIONS.map(([label, all]) => {
-    const ms = all.filter(m => !TRACK_ONLY.has(m));
+    const ms = all.filter(m => hasTargetIn(M, m));
     const got = ms.reduce((a, m) => a + (sets[m] || 0), 0);
     const mid = ms.reduce((a, m) => a + (bands[m][0] + bands[m][1]) / 2, 0);
     const lo = ms.reduce((a, m) => a + bands[m][0], 0);

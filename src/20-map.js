@@ -210,7 +210,7 @@ function bodyMapCard(){
   const src=(ui.mapSrc==='week'||!avg)?'week':'avg';
   const st=muscleStatus(src==='avg'?avg:(I.weekSets[weekStart(today())]||{}),src==='week');
   // "1 hard set", and no target for a tracked-only muscle (r34.2, from the review).
-  const hsw=v=>`${r1(v)} hard set${r1(v)===1?'':'s'} a week`;const tgt=m=>TRACK_ONLY.has(m)?', tracked only':`, target ${st[m].lo} to ${st[m].hi}`;
+  const hsw=v=>`${r1(v)} hard set${r1(v)===1?'':'s'} a week`;const tgt=m=>!hasTarget(m)?', tracked only':`, target ${st[m].lo} to ${st[m].hi}`;
   const lab=m=>noLog()?`${ML[m]}: nothing logged yet${tgt(m)}`:`${ML[m]}: ${hsw(st[m].v)}${tgt(m)}`;
   const fig=(view,label)=>`<figure class="bm"><svg viewBox="0 0 120 210" aria-label="${label} of body"><g class="bm-base">${BM_BASE}</g>${Object.entries(BM[view]).map(([m,sh])=>`<g class="mm st-${st[m].st}${ui.mapSel===m?' sel':''}" data-act="mapSel" data-m="${m}" role="button" tabindex="0" aria-label="${esc(lab(m))}"><title>${esc(lab(m))}</title>${sh.map(bmShape).join('')}</g>`).join('')}</svg><figcaption>${label}</figcaption></figure>`;
   const counts={under:0,part:0,plan:0,in:0,over:0,none:0,track:0};for(const m of MK)counts[st[m].st]++;
@@ -223,12 +223,12 @@ function bodyMapCard(){
     const tr=sc?`${musTrend(sc)}${sc.indirect?', read from exercises that train it indirectly':''}.`:'Not enough sessions yet for a strength trend.';
     detail=`<div class="bm-detail"><div class="row spread"><b>${ML[sel]}</b><span class="tag ${x.st==='in'?'green':x.st==='under'?'yellow':x.st==='over'?'blue':x.st==='plan'?'hastip':''}"${x.st==='plan'?` data-tip="${esc(ON_PLAN_TIP)}"`:''}>${where}</span></div><p class="small" style="margin:4px 0 6px">${src==='avg'?`${hsw(x.v)} on average over ${avgWeeksTxt(avg)}`:`${r1(x.v)} hard set${r1(x.v)===1?'':'s'} so far this week`}${tgt(sel)}. ${tr}</p><div class="row"><button class="btn sm" data-act="goDash" data-sec="volume" data-m="${sel}">Weekly trend</button><button class="btn sm" data-act="mapSel" data-m="${sel}">Close</button></div></div>`;
   }else{
-    const low=MK.filter(m=>!TRACK_ONLY.has(m)&&lowSt(st[m]));
+    const low=MK.filter(m=>hasTarget(m)&&lowSt(st[m]));
     detail=`<p class="small muted" style="margin:6px 0 0">Tap a muscle ${tipi(`${mapView()==='3d'?'Drag sideways to turn it. ':''}Tap a muscle for its numbers.${src==='week'?' This is the week so far, so most muscles read low early in the week.':''}`,'About the map')}</p>${low.length&&src==='avg'?`<div class="row" style="margin-top:6px;gap:4px"><span class="small muted">Below target:</span>${low.slice(0,8).map(m=>`<button class="chip" data-act="mapSel" data-m="${m}">${ML[m]}</button>`).join('')}</div>`:''}`;
   }
   /* The summary is a count out of the muscles with a target (V, r42): "15 of 19 on target". Tracked-only muscles have no target, so they are in neither number. */
-  const N=MK.filter(m=>!TRACK_ONLY.has(m)).length;
-  const msub=(()=>{if(!avg){if(!state.sessions.length)return 'none logged yet';const n=MK.filter(m=>!TRACK_ONLY.has(m)&&metSt(st[m])).length;return `${n} of ${N} on target so far`;}const sa=muscleStatus(avg);const inA=MK.filter(m=>!TRACK_ONLY.has(m)&&metSt(sa[m])).length;return `${inA} of ${N} on target`;})();
+  const N=MK.filter(m=>hasTarget(m)).length;
+  const msub=(()=>{if(!avg){if(!state.sessions.length)return 'none logged yet';const n=MK.filter(m=>hasTarget(m)&&metSt(st[m])).length;return `${n} of ${N} on target so far`;}const sa=muscleStatus(avg);const inA=MK.filter(m=>hasTarget(m)&&metSt(sa[m])).length;return `${inA} of ${N} on target`;})();
   const v3=mapView()==='3d';
   B3.status=st;B3.sel=sel;
   const stage=v3?`<div class="bm3d" id="bm3d"><div class="bm3d-stage" role="img" aria-label="3D body, shaded by hard sets a week. Drag sideways to turn it, tap a muscle for its numbers. The same numbers are in the flat view."></div><p class="bm3d-msg small muted" hidden></p><div class="seg bm3d-turn" role="group" aria-label="Turn the body"><button class="chip" data-act="map3dTurn" data-v="0">Front</button><button class="chip" data-act="map3dTurn" data-v="1">Side</button><button class="chip" data-act="map3dTurn" data-v="2">Back</button></div></div>`:`<div class="bm-wrap">${fig('f','Front')}${fig('b','Back')}</div>`;
@@ -256,8 +256,8 @@ function livePR(exId,s,date){
   // logged has no load to estimate from, but less help is still a PR.
   if(!ex.timed&&s.w!==''&&s.w!=null&&isNum(+s.w)&&f.w>f.heaviest+1e-6&&stronger)return 'Weight PR';
   if(!(load>0)&&!ex.timed&&!ex.bw)return null;
-  // A new best is judged within the set's own band of reps to failure.
-  if(v!=null&&st){const bd=st.byBand&&st.byBand[rtfBand(rtfOf(+s.r,q0))];if(bd!=null&&v>bd+1e-6)return 'Best';}
+  // A new best is judged within the set's own band of reps to failure, and is a PR only when stronger than ever, as every PR is (r58, 343 6).
+  if(v!=null&&st&&stronger){const bd=st.byBand&&st.byBand[rtfBand(rtfOf(+s.r,q0))];if(bd!=null&&v>bd+1e-6)return 'Best';}
   if(dom||!stronger)return null;
   // At 90% or more of the strongest set before it, as in the PR list (r30).
   if(!ex.timed&&scq(load,+s.r,q0)<top*REP_PR_SHARE-1e-9)return null;

@@ -817,10 +817,13 @@ export function atUsualWork(x: Exposure, ref: readonly Exposure[]): boolean {
    the range not done lighter (the higher of two with only one before it),
    so one session under it repeats the target and a second in a row is the
    usual, which the app then follows.
-   Its usual sets are never more than the routine plans for it (`planSets`,
-   the day it was done on first; null for a lift on no day of the routine),
-   so a lifter who does more sets than planned is not short when doing the
-   plan; on a lift labelled lighter or a deload but done at its usual load
+   On a lift the routine plans, its usual sets are the plan's (`planSets`,
+   the day it was done on first; null for a lift on no day of the routine,
+   which reads its own sessions): a lifter who does more sets than planned is
+   not short when doing the plan, and fewer sets than planned never become
+   the usual (339 h, r58: a 5 x 5 done as 4 x 5 twice read as a 4-set lift,
+   and its target asked for 4 sets the plan never set); on a lift labelled
+   lighter or a deload but done at its usual load
    and reps (`tag`, step 2), the label cut the plan, so its usual sets are
    its own, and if it falls short it is not one of the sessions later ones
    are read against, so half the sets of a deload twice running never
@@ -865,7 +868,8 @@ export function idxShort(byEx: Record<string, Exposure[]>, planSets: (id: string
       before.map(q => setsAt(q, usualW)),
       n
     );
-    const want = cap != null && cap > 0 ? Math.min(sets, cap) : sets;
+    // On a lift the routine plans, the plan's sets (339 h, r58); a lift on no day of it, its own usual.
+    const want = cap != null && cap > 0 ? cap : sets;
     if (n < want) return 'sets';
     if (up) return undefined;
     /* Read over as many sets at the working load as the usual (readingOf);
@@ -1037,6 +1041,7 @@ export function idxPRsIn(M: Model, id: string, exps: Exposure[], prs: Pr[]): num
         ? pts.filter(p => p.r > 0 && p.w > prevMaxW + 1e-6).sort((a, b) => b.w - a.w || sc(b) - sc(a) || b.r - a.r)[0]
         : null;
     const wPR = wJ ? asLogged(wJ) : null;
+    // Any record at all (heavier, a best for its reps, more reps at a load): the stall test's sign the lift moved. Since r58 (343 6) no screen calls it a PR; a PR is `big`.
     x.progress = i > 0 && (!!repPR || e1PR || !!wPR);
     // What it beat, for the recap: the old heaviest, the old best in the same band, or the most reps at this load or heavier (0: never this heavy).
     /* big: a PR that is counted and announced (r32, from the third review:

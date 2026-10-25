@@ -51,12 +51,36 @@ export const ML = Object.fromEntries(MUSCLES);
     library exercises whose library entry now lists them. */
 export const NEW_MUSCLES_V5: readonly MuscleKey[] = ['serratus', 'rotatorCuff'];
 
-/* Tracked only: sets are counted and shown, but these never read as under
-   or over target, never drive advice, and are drawn in neutral grey. Their
-   bands have no dose-response data behind them. Neck and tibialis joined in
-   r29 (V): no ready-made routine trains them directly, and as targets they
-   made every routine read as short. A convention, said so in the Guide. */
+/* The four muscles no ready-made routine trains directly (neck and tibialis
+   joined in r29, V: as targets they made every routine read as short):
+   never a focus, never fitted to a routine, and, as every muscle outside
+   TARGETED below since r58, with no target until the lifter gives one
+   (hasTargetIn). Their bands have no dose-response data behind them. A
+   convention, said so in the Guide. */
 export const TRACK_ONLY: ReadonlySet<string> = new Set(['serratus', 'rotatorCuff', 'neck', 'tibialis']);
+
+/* The muscles with a weekly target by default (339 e, V 2026-10-24, r58):
+   those lifters train directly for size, which the dose-response research
+   measures (Pelland 2025; docs/EVIDENCE.md). Every other muscle, the four
+   above and traps, forearms, front delts, lower back, obliques, adductors
+   and abductors, is counted and shown with no target until the lifter gives
+   it one (hasTargetIn, profile.ts); before r58 the seven had targets nobody
+   set, unsourced, that read almost every routine as short. */
+/** The muscles with a default weekly target. */
+export const TARGETED: ReadonlySet<MuscleKey> = new Set<MuscleKey>([
+  'chest',
+  'lats',
+  'upperBack',
+  'sideDelts',
+  'rearDelts',
+  'biceps',
+  'triceps',
+  'quads',
+  'hamstrings',
+  'glutes',
+  'calves',
+  'abs'
+]);
 
 /** The default weekly hard-set band for each muscle, [minimum, maximum]
     (CLAUDE.md, Evidence base: 10 to 20 for the major muscles is typical, not

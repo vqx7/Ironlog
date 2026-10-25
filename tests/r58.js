@@ -1,12 +1,15 @@
 // r58 (PENDING 343, phase 5 of ARCHITECTURE.md): Plan, the exercise library
 // and Stats move into src/app/ as lit-html screens (plan.ts, stats.ts, their
-// charts in graphs.ts), every change Plan makes to the log through `act`.
-// Run on r57 (`node tests/r58.js baselines/r57.html`), sections 3 (Stats) and
-// 5 fail there; the rest are guards that pass on both builds:
+// charts in graphs.ts), every change Plan makes to the log through `act`; and
+// four decisions of V's (339 e, h, i and the PR notions). Run on r57 (`node
+// tests/r58.js baselines/r57.html`, R58_ONLY=n for one section), sections 3
+// (Stats) and 5 to 9 fail there; the rest are guards that pass on both builds:
 //   1  (a guard, the source build) they look as they did: Plan, the library
 //      and Stats in 36 logs, settings and modes, every section open, give the
 //      same elements, attributes, field values and visible text as r57
-//      (baselines/r57.html);
+//      (baselines/r57.html), but for the changes below held on purpose (the
+//      muscles with a target on r57 given one, r57's e1RM read as Best
+//      estimate);
 //   2  (a guard: r57 placed these steps by hand) every Plan action and field
 //      that changes the log does act's steps, read on the page after a tap or
 //      a typed value (changed, saved, the caches dropped, the edit noted for
@@ -21,15 +24,28 @@
 //      day dragged in a cycle and a day moved by the arrow keys each change the
 //      log once and leave the page as the log says; a draw mid-drag drops the
 //      drag;
-//   5  found in the move, each failing on r57: Stats draws with a joint
-//      flagged as injured (r57 failed to draw the screen: the joint, which the
-//      injury sheet lists first, was read as a muscle), and the waist-to-height
-//      tip says all it says (r57 cut it at the height's inch mark, 5'10").
+//   5  found in the move: Stats draws with a joint flagged as injured (r57
+//      failed to draw the screen: the joint, which the injury sheet lists
+//      first, was read as a muscle), and the waist-to-height tip says all it
+//      says (r57 cut it at the height's inch mark, 5'10");
+//   6  339 (i): Stats says Best estimate, never e1RM, its tip naming it;
+//   7  339 (h): on a lift the routine plans, its usual sets are the plan's, so
+//      fewer sets never become the usual; a lift it does not plan reads its own;
+//   8  one PR (343 6): a heavier set that is no PR is no PR in the toast, the
+//      row's mark, the Lifts chart, the preview's PR last time and Readiness;
+//   9  339 (e): a default target only on the muscles lifters train directly
+//      for size; any other tracked only until given one (typed, Set a target,
+//      a focus), which then counts on Stats, Plan and the map; Weekly set
+//      targets offers Set a target and Track only; Default targets takes them
+//      off, with Undo.
 const { open, engine, screenOf, screenDiff, touchDriver } = require('./h');
 const FILE = process.argv[2] || 'index.html';
 const OLD = 'baselines/r57.html';
 const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log('FAIL', m, x !== undefined ? JSON.stringify(x).slice(0, 700) : ''); } else console.log('ok  ', m); };
 const wait = ms => new Promise(r => setTimeout(r, ms));
+// R58_ONLY=5,6 runs those sections alone (to show a case failing on r57 without the rest).
+const ONLY = process.env.R58_ONLY ? process.env.R58_ONLY.split(',') : null;
+const run = n => !ONLY || ONLY.includes(String(n));
 
 // The starter routine's ids are made at random, so both builds are given the same ones.
 const FIX = "const m={};L.state.routines.forEach((r,i)=>{m[r.id]='R'+i;r.id='R'+i;});L.state.activeRoutineId=m[L.state.activeRoutineId]||L.state.activeRoutineId;L.state.sessions.forEach(s=>{if(m[s.routineId])s.routineId=m[s.routineId];});L.saveNow();";
@@ -83,15 +99,29 @@ const SCREENS = [
   const browser = await engine.launch();
 
   // ---- 1. The screens against r57's (both pages built from src/; the standalone build is left to the source run, as r57's section 4 is).
-  if (process.env.IRONLOG_FILE) console.log('note r58 section 1 compares source pages; it runs on the source build');
+  /* The release's changes on purpose are held here, so the comparison reads the move alone: every
+     muscle that has a target on r57 is given one (KEEP, 339 e: the field is unknown to r57), a muscle
+     tracked only says how to give it a target, and r57's "e1RM" reads as section 6 says (339 i). The
+     rest of a difference fails. */
+  const KEEP = "L.state.settings.ownTargets=['traps','lowerBack','frontDelts','forearms','obliques','adductors','abductors'];L.saveNow();";
+  const TIP = 'Your best estimated one-rep max (e1RM): the most one of your sets says you could lift once, from its load and its reps plus RIR. An estimate, not a tested max.';
+  const asNow = shot => ({
+    ...shot,
+    tree: shot.tree.map(t => t.replace(/Tracked only: no study sets a weekly dose for it\./g, 'Tracked only: counted, with no target. Give it one in Settings, Weekly set targets.').replace(/<div class="l">"Best e1RM \(([^)]*)\)"<\/div>/g, (_, u) => `<div class="l">"Best estimate (${u})"<button aria-label="About the best estimate" class="tipi" data-tip=${JSON.stringify(TIP)} type="button">"i"</button></div>`).replace(/<th class="r">"e1RM"<\/th>/g, '<th class="r">"Best estimate"</th>')),
+    // A table's heading is in capitals on screen (its style), so its words are too.
+    text: shot.text.replace(/Best e1RM \(([^)]*)\)/g, 'Best estimate ($1) i').replace(/\bE1RM\b/g, 'BEST ESTIMATE').replace(/\be1RM\b/g, 'Best estimate')
+  });
+  if (!run(1));
+  else if (process.env.IRONLOG_FILE) console.log('note r58 section 1 compares source pages; it runs on the source build');
   else for (const [tab, name, seed, prep, env] of SCREENS) {
-    const a = await screenOf(OLD, { browser, seed: seed + FIX, tab, prep, env }), b = await screenOf(FILE, { browser, seed: seed + FIX, tab, prep, env });
+    const a = asNow(await screenOf(OLD, { browser, seed: seed + FIX + KEEP, tab, prep, env })), b = await screenOf(FILE, { browser, seed: seed + FIX + KEEP, tab, prep, env });
     const d = screenDiff({ tree: a.tree, text: '' }, { tree: b.tree, text: '' });
     ok(!d, `1. ${name}: the same elements, attributes and field values as r57`, d && { at: d.at, r57: d.before, now: d.now });
     ok(a.text === b.text, `1. ${name}: the same visible text as r57`, a.text === b.text ? '' : { r57: a.text.slice(0, 400), now: b.text.slice(0, 400) });
     ok(!b.errors.length, `1. ${name}: no page errors`, b.errors);
   }
 
+  if (run(2) || run(3)) {
   const P = await open(FILE, { browser, clock: '2026-10-24T10:00:00' });
   const ev = (f, a) => P.page.evaluate(f, a);
   await ev(() => { const L = window.__ironlog; L.state.settings.onboarded = true; L.makeDemo(); L.saveNow(); L.render(); });
@@ -219,9 +249,10 @@ const SCREENS = [
   }
   ok(P.errors.length === 0, 'no page errors', P.errors);
   await P.page.context().close();
+  }
 
   // ---- 4. Drags on Plan (guards: each passes on r57, whose page was drawn fresh).
-  {
+  if (run(4)) {
     const Q = await open(FILE, { browser, clock: '2026-10-24T10:00:00', touch: true });
     // Tall enough that a drag from Add exercises reaches the day without the page scrolling under the finger.
     await Q.page.setViewportSize({ width: 390, height: 3000 });
@@ -285,7 +316,7 @@ const SCREENS = [
   }
 
   // ---- 5. Found in the move (each fails on r57).
-  {
+  if (run(5)) {
     const Q = await open(FILE, { browser, clock: '2026-10-24T10:00:00' });
     const r = await Q.page.evaluate(async () => {
       const L = window.__ironlog; L.state.settings.onboarded = true; L.makeDemo();
@@ -308,6 +339,149 @@ const SCREENS = [
     ok(tips.stats && /height 5'10"\. Under 0\.50 healthy/.test(tips.stats) && /Unlike BMI it does not count muscle against you\.$/.test(tips.stats), '5. the waist-to-height tip says the height with its inch mark and all that follows it', tips.stats);
     const today = await Q.page.evaluate(() => { const d = document.createElement('div'); d.innerHTML = window.__ironlog.whtrLine(true); const t = d.querySelector('.hastip'); return t ? t.dataset.tip : null; });
     ok(today && /height 5'10"\. Under 0\.50/.test(today), '5. the same line on Today\'s tape measurements says it all too', today);
+    await Q.page.context().close();
+  }
+
+  // ---- 6. 339 (i): Stats says "Best estimate", not "e1RM", with a tip that it is an estimated one-rep max.
+  if (run(6)) {
+    const Q = await open(FILE, { browser, clock: '2026-10-24T10:00:00' });
+    const r = await Q.page.evaluate(async () => {
+      const L = window.__ironlog; L.state.settings.onboarded = true; L.makeDemo(); L.saveNow();
+      L.ui.tab = 'dash'; L.ui.dashEx = 'bench'; L.render(); await new Promise(r => setTimeout(r, 200));
+      document.querySelectorAll('#view details').forEach(d => { d.open = true; });
+      const sec = document.querySelector('#view [data-mkey="exercise"]');
+      const tile = [...sec.querySelectorAll('.kpi')].find(k => /Best/.test(k.textContent));
+      const tip = tile && tile.querySelector('[data-tip]');
+      const head = [...sec.querySelectorAll('table.t th')].map(t => t.textContent);
+      const ch = window.Chart && window.Chart.getChart(document.getElementById('chEx'));
+      return { text: /e1RM/.test(sec.innerText), tile: tile ? tile.querySelector('.l').textContent : null, tip: tip ? tip.dataset.tip : null, head, chart: ch ? ch.data.datasets[0].label : null };
+    });
+    ok(!r.text && r.tile && /^Best estimate \(lb\)/.test(r.tile) && r.tip && /estimated one-rep max \(e1RM\)/.test(r.tip) && r.head.includes('Best estimate') && r.chart === 'Best estimate (lb)',
+      '6. Lifts says Best estimate on its tile, its table and its chart, never e1RM, the tile\'s tip saying it is an estimated one-rep max (e1RM)', r);
+    await Q.page.context().close();
+  }
+
+  // ---- 7. 339 (h): on a lift the routine plans, its usual sets are the plan's, so fewer sets never become the usual.
+  if (run(7)) {
+    const Q = await open(FILE, { browser, clock: '2026-10-15T10:00:00' });
+    const q = (f, a) => Q.page.evaluate(f, a);
+    // A routine of one day, bench press planned at 4 sets of 6 to 10, and the sessions given (sets as [load, reps]).
+    const log = (planned, sets) => q(([planned, sets]) => {
+      const L = window.__ironlog; const s = L.state; s.settings.onboarded = true; s.settings.unit = 'kg';
+      const R = { id: 'R58', name: 'R58', schedule: 'cycle', days: [{ id: 'D58', name: 'Push', rest: false, items: [{ uid: 'i58', exId: 'bench', sets: 4, repMin: 6, repMax: 10, rir: 1, rest: 120, inc: 2.5, ss: null }] }] };
+      s.routines = [R]; s.activeRoutineId = 'R58'; s.draft = null; s.deloadWeek = null; s.injuries = [];
+      const exId = planned ? 'bench' : 'floorPress';
+      s.sessions = sets.map(([id, date, w, reps]) => ({ id, date, dayIdx: 0, dayId: planned ? 'D58' : null, dayName: planned ? 'Push' : 'Session', routineId: planned ? 'R58' : '', free: !planned, notes: '', ex: [{ exId, rr: [6, 10], sets: reps.map(r => ({ w, r, rir: 1, warm: false, drop: false })) }] }));
+      L.state = L.normalize(s); L.invalidate(); L.saveNow();
+      const I = L.IDX(); const xs = I.byEx[exId] || [];
+      const g = L.suggest(exId, { sets: 4, repMin: 6, repMax: 10, rir: 1, rest: 120, inc: 2.5 }, {});
+      return { short: xs.map(x => x.short || null), basis: g.basis || null, target: g.target, text: g.text, n: (I.exStats[exId] || {}).wN, prs: I.prs.filter(p => p.exId === exId && p.big).map(p => p.sid) };
+    }, [planned, sets]);
+    const S = [['h1', '2026-10-01', 100, [8, 8, 8, 8]], ['h2', '2026-10-08', 100, [9, 9, 9]], ['h3', '2026-10-12', 100, [9, 9, 9]]];
+    const pl = await log(true, S);
+    ok(pl.short[1] === 'sets' && pl.short[2] === 'sets' && pl.basis === '2026-10-01' && /fewer sets/.test(pl.text || '') && pl.n === 3 && pl.prs.includes('h2'),
+      '7. bench planned at 4 sets, 100 x 8 x 4 then 100 x 9 x 3 twice: both short of the plan\'s 4 sets, so the target still comes from the 4-set session, Last says fewer sets, and the trend and the PR read them', pl);
+    // A guard: a lift on no day of the routine reads its own sessions, as before, so two of 3 sets in a row are its usual.
+    const fr = await log(false, S);
+    ok(fr.short[1] === 'sets' && !fr.short[2] && fr.basis == null, '7. a lift the routine does not plan (floor press, freestyle) reads its own sessions as before: two of 3 sets in a row are its usual, and the target comes from the last', fr);
+    await Q.page.context().close();
+  }
+
+  // ---- 8. Two PR notions, not three (343 6): a PR is a set stronger than every earlier one, the counted
+  // PR of Recent PRs and the recap; a heavier set that is not one is Heaviest yet. The toast, the row's
+  // mark, the Lifts chart's diamonds, the preview's PR last time and Readiness read that one PR.
+  if (run(8)) {
+    const Q = await open(FILE, { browser, clock: '2026-10-15T10:00:00' });
+    const r = await Q.page.evaluate(async () => {
+      const L = window.__ironlog; const s = L.state; s.settings.onboarded = true; s.settings.unit = 'kg';
+      const R = { id: 'R58', name: 'R58', schedule: 'cycle', days: [{ id: 'D58', name: 'Push', rest: false, items: [{ uid: 'i58', exId: 'bench', sets: 1, repMin: 3, repMax: 10, rir: 1, rest: 120, inc: 2.5, ss: null }] }] };
+      s.routines = [R]; s.activeRoutineId = 'R58'; s.draft = null; s.deloadWeek = null; s.injuries = [];
+      // 100 x 10 to failure (an estimate of about 133), then 120 x 3 to failure: heavier than ever, but weaker (about 127).
+      const ses = (id, date, w, r, chk) => ({ id, date, dayIdx: 0, dayId: 'D58', dayName: 'Push', routineId: 'R58', free: false, notes: '', chk, ex: [{ exId: 'bench', rr: [3, 10], sets: [{ w, r, rir: 0, warm: false, drop: false }] }] });
+      s.sessions = [ses('p1', '2026-09-20', 100, 10, { sleep: 3, energy: 3, joints: 3 }), ses('p2', '2026-09-27', 120, 3, { sleep: 3, energy: 3, joints: 3 })];
+      L.state = L.normalize(s); L.invalidate(); L.saveNow();
+      const I = L.IDX();
+      const list = I.prs.filter(p => p.sid === 'p2').map(p => ({ type: p.type, big: p.big }));
+      // The live toast's reading of a set of 122 x 3 to failure: a best for 1 to 5 reps, weaker than 100 x 10.
+      const live = L.livePR('bench', { w: 122, r: 3, rir: 0, warm: false, drop: false, done: true }, '2026-10-15');
+      L.ui.tab = 'dash'; L.ui.dashEx = 'bench'; L.render(); await new Promise(r => setTimeout(r, 300));
+      const ch = window.Chart && window.Chart.getChart(document.getElementById('chEx'));
+      const styles = ch ? ch.data.datasets[0].pointStyle : null;
+      L.ui.tab = 'today'; L.render(); await new Promise(r => setTimeout(r, 200));
+      document.querySelectorAll('#view details').forEach(d => { d.open = true; });
+      const pv = document.querySelector('#view [data-mkey="session"]');
+      const tag = pv && /Barbell Bench Press/.test(pv.innerText) ? /PR last time/.test(pv.innerText) : 'no preview';
+      const rd = L.readiness().rows.find(x => x.k === 'sleep').groups.find(g => g.v === 3);
+      return { list, live, styles, tag, rate: rd.rate };
+    });
+    ok(r.list.length === 1 && r.list[0].type === 'Weight PR' && !r.list[0].big, '8. the setup: 120 x 3 after 100 x 10 is a heavier set, not a PR (Heaviest yet)', r.list);
+    ok(r.live == null, '8. the toast and the row\'s PR mark: a best for its reps that is weaker than an earlier set is no PR (r57 announced it as a new best estimate)', r.live);
+    ok(Array.isArray(r.styles) && r.styles[1] === 'circle', '8. the Lifts chart marks no PR on the heavier set that was not one (r57 drew it as a PR diamond)', r.styles);
+    ok(r.tag === false, '8. the workout preview says no PR last time after it (r57 did)', r.tag);
+    ok(r.rate === 0, '8. Readiness counts it as no PR (r57: 100% of lifts set a PR)', r.rate);
+    await Q.page.context().close();
+  }
+
+  // ---- 9. 339 (e): a muscle has a default weekly target when lifters train it directly for size; any
+  // other is tracked only until the lifter gives it a target (typed, Set a target, or a focus), which then
+  // counts everywhere a target counts.
+  if (run(9)) {
+    const Q = await open(FILE, { browser, clock: '2026-10-24T10:00:00' });
+    const q = (f, a) => Q.page.evaluate(f, a);
+    await q(() => { const L = window.__ironlog; L.state.settings.onboarded = true; L.makeDemo(); L.state.settings.hidden = []; L.saveNow(); });
+    // How Stats' Recent average and Plan's Weekly volume show a muscle, the map's count, and the muscle's status.
+    const look = m => q(async m => {
+      const L = window.__ironlog; const row = sel => { const r = [...document.querySelectorAll(sel + ' .mrow')].find(e => e.children[1] && e.children[1].textContent === L.ML[m]); return r ? r.querySelector('.r').textContent : null; };
+      L.ui.tab = 'dash'; L.ui.volMode = 'avg'; L.render(); await new Promise(r => setTimeout(r, 100)); document.querySelectorAll('#view details').forEach(d => { d.open = true; });
+      const stats = row('#view [data-mkey="volume"]');
+      L.ui.tab = 'program'; L.ui.planView = 'routine'; L.render(); await new Promise(r => setTimeout(r, 100)); document.querySelectorAll('#view details').forEach(d => { d.open = true; });
+      const plan = row('#view [data-mkey="pvol"]');
+      L.ui.tab = 'today'; L.render(); await new Promise(r => setTimeout(r, 100));
+      const map = (document.querySelector('#view [data-mkey="map"] .sec-s') || {}).textContent || '';
+      return { stats, plan, map, st: L.muscleStatus(L.actualAvg4())[m].st };
+    }, m);
+    const traps = await look('traps'), chest = await look('chest');
+    ok(/tracked$/.test(traps.stats || '') && /tracked$/.test(traps.plan || '') && traps.st === 'track', '9. traps, given no target, is tracked only on Stats and Plan, with no target', traps);
+    ok(/\/10-20$/.test(chest.stats || '') && chest.st !== 'track', '9. chest keeps its default target, 10 to 20', chest);
+    ok(/of 12 on target/.test(traps.map), '9. the muscle map counts the 12 muscles with a target', traps.map);
+    // A target typed for traps and one for serratus (before r58 its boxes did nothing): both count.
+    await q(() => { const L = window.__ironlog; L.state.settings.bands.traps = [8, 14]; L.state.settings.bands.serratus = [3, 6]; L.saveNow(); L.invalidate(); });
+    const tt = await look('traps'), ts = await look('serratus');
+    ok(/\/8-14$/.test(tt.stats || '') && /\/8-14$/.test(tt.plan || '') && tt.st !== 'track' && /\/3-6$/.test(ts.stats || '') && ts.st !== 'track' && /of 14 on target/.test(ts.map),
+      '9. a target typed for traps (8 to 14) and for serratus (3 to 6) counts on Stats, Plan and the map', { tt, ts });
+    // Settings: a muscle with no target offers Set a target; with it set, the boxes and Track only.
+    const ui1 = await q(async () => {
+      const L = window.__ironlog; L.state.settings.bands.traps = L.appBand('traps'); L.state.settings.bands.serratus = L.appBand('serratus'); L.saveNow(); L.invalidate();
+      L.ui.tab = 'settings'; L.render(); await new Promise(r => setTimeout(r, 100)); document.querySelectorAll('#view details').forEach(d => { d.open = true; });
+      const rowOf = m => [...document.querySelectorAll('#view [data-sk="settings:bands"] tr')].find(tr => tr.firstElementChild && tr.firstElementChild.textContent.startsWith(L.ML[m]));
+      const r0 = rowOf('forearms'), c0 = rowOf('chest');
+      const out = { offer: !!(r0 && r0.querySelector('[data-act="tgtSet"]')), boxes: !!(r0 && r0.querySelector('input[data-band]')), chestOffer: !!(c0 && c0.querySelector('[data-act="tgtSet"],[data-act="tgtOff"]')), chestBoxes: !!(c0 && c0.querySelector('input[data-band]')) };
+      const b0 = r0 && r0.querySelector('[data-act="tgtSet"]'); if (!b0) return out;
+      b0.click(); await new Promise(r => setTimeout(r, 200));
+      const r1 = rowOf('forearms');
+      out.after = { boxes: r1.querySelectorAll('input[data-band]').length, off: !!r1.querySelector('[data-act="tgtOff"]'), own: (L.state.settings.ownTargets || []).slice(), saved: (JSON.parse(localStorage.getItem(L.KEY)).settings.ownTargets || []).slice(), st: L.muscleStatus({ forearms: 0 })['forearms'].st };
+      const box = r1.querySelector('input[data-band][data-bi="0"]'); box.value = '9'; box.dispatchEvent(new Event('input', { bubbles: true })); box.dispatchEvent(new Event('change', { bubbles: true }));
+      await new Promise(r => setTimeout(r, 200));
+      out.typed = L.state.settings.bands.forearms.slice();
+      const u0 = L.undoStack.length;
+      rowOf('forearms').querySelector('[data-act="tgtOff"]').click(); await new Promise(r => setTimeout(r, 300));
+      out.off = { own: L.state.settings.ownTargets || null, band: L.state.settings.bands.forearms.slice(), app: L.appBand('forearms'), undo: L.undoStack.length - u0, offer: !!rowOf('forearms').querySelector('[data-act="tgtSet"]') };
+      return out;
+    });
+    ok(ui1.offer && !ui1.boxes && !ui1.chestOffer && ui1.chestBoxes, '9. Weekly set targets: forearms, with no target, offers Set a target and no boxes; chest has its boxes and no such choice', ui1);
+    ok(!!ui1.after && ui1.after.boxes === 2 && ui1.after.off && ui1.after.own.join() === 'forearms' && ui1.after.saved.join() === 'forearms' && ui1.after.st === 'under', '9. Set a target gives forearms its boxes, at once, saved, and its target counts (no sets reads under it)', ui1.after);
+    ok(!!ui1.off && ui1.typed[0] === 9 && ui1.off.own == null && ui1.off.band.join() === ui1.off.app.join() && ui1.off.undo === 1 && ui1.off.offer, '9. Track only takes the target off (back to the app\'s numbers, the setting gone), with an Undo step', ui1);
+    // Default targets takes every target the lifter gave back off, with an Undo step.
+    const def = await q(async () => {
+      const L = window.__ironlog; L.state.settings.ownTargets = ['forearms', 'neck']; L.saveNow(); L.invalidate();
+      L.ui.tab = 'settings'; L.render(); await new Promise(r => setTimeout(r, 100)); document.querySelectorAll('#view details').forEach(d => { d.open = true; });
+      const bd = document.querySelector('#view [data-act="bandsDefault"]'); if (bd.disabled) return { disabled: true };
+      bd.click(); await new Promise(r => setTimeout(r, 300));
+      const after = L.state.settings.ownTargets || null; L.ACT.undo(); await new Promise(r => setTimeout(r, 300));
+      return { after, back: (L.state.settings.ownTargets || []).join() };
+    });
+    ok(def.after == null && def.back === 'forearms,neck', '9. Default targets takes the targets given back off, and Undo puts them back', def);
+    ok(!Q.errors.length, '9. no page errors', Q.errors);
     await Q.page.context().close();
   }
 

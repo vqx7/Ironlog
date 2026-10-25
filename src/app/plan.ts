@@ -12,19 +12,7 @@ import { html, nothing } from 'lit-html';
 import type { TemplateResult } from 'lit-html';
 import { live } from 'lit-html/directives/live.js';
 import { act, toTrash } from './act';
-import {
-  BANDS,
-  COMMON_TIP,
-  EQL,
-  EQUIP,
-  MK,
-  ML,
-  MUSCLES,
-  TRACK_ONLY,
-  commonFirst,
-  isCommon,
-  isCompound
-} from './library';
+import { BANDS, COMMON_TIP, EQL, EQUIP, MK, ML, MUSCLES, commonFirst, isCommon, isCompound } from './library';
 import {
   MAX_DAYS,
   RIR_TGT_TIP,
@@ -49,7 +37,20 @@ import { TRASH_DAYS } from './records';
 import { andList, numIn, r1, uid } from './util';
 import { plainTemplate } from './normalize';
 import { effIn, effName, effShow } from './effort';
-import { EX, U, defBand, dayMinutes, exName, fmtW, fromD, incOf, invalidate, muscleStatus, plannedSets } from './live';
+import {
+  EX,
+  U,
+  defBand,
+  dayMinutes,
+  exName,
+  fmtW,
+  fromD,
+  hasTarget,
+  incOf,
+  invalidate,
+  muscleStatus,
+  plannedSets
+} from './live';
 import { fx, state, ui } from './store';
 import {
   curRoutineB,
@@ -78,6 +79,9 @@ import type { Part } from './view';
 import type { Day, Exercise, PlanItem, Routine } from './types';
 
 /* ---------- small parts ---------- */
+
+/** What a muscle with no weekly target says where its target would be (r58: any muscle may be given one). */
+export const TRACKED_TIP = 'Tracked only: counted, with no target. Give it one in Settings, Weekly set targets.';
 
 /** An exercise's library tags (exTags): Most common and Less common, but not the one the list is filtered to. */
 export function exTagParts(e: Exercise, skip?: string): Part {
@@ -111,7 +115,7 @@ export function planEvidenceNote(pv: Readonly<Record<string, number>>): Part {
   // Brought down below the profile's own default too (r44): a focus's maintenance targets were not lowered to meet the plan.
   const low = MK.filter(
     m =>
-      !TRACK_ONLY.has(m) &&
+      hasTarget(m) &&
       BANDS[m][0] >= 8 &&
       b[m][0] < Math.min(BANDS[m][0], defBand(m)[0]) &&
       belowMin(pv[m] || 0, BANDS[m][0])
@@ -153,11 +157,12 @@ export function volumeRows(
   return html`${head}${MK.map(m => {
     const v = sets[m] || 0;
     const [lo, hi] = bands[m];
-    const tr = TRACK_ONLY.has(m);
     const cls = st[m].st;
+    // No target (hasTargetIn, r58): counted, with no zone and no target said.
+    const tr = cls === 'track';
     const plate = plates[cls];
     const c = hasConf && conf ? Math.min(conf[m] || 0, v) : 0;
-    const tip = `${ML[m]}: ${r1(v)} hard sets${hasConf ? `, ${r1(c)} with RIR logged, ${r1(v - c)} assumed` : ''}. ${tr ? 'Tracked only: no study sets a weekly dose for it.' : `Target ${lo} to ${hi}; the upper number is typical, not a ceiling.${cls === 'plan' ? ` On plan: ${ON_PLAN_TIP}` : ''}`}`;
+    const tip = `${ML[m]}: ${r1(v)} hard sets${hasConf ? `, ${r1(c)} with RIR logged, ${r1(v - c)} assumed` : ''}. ${tr ? TRACKED_TIP : `Target ${lo} to ${hi}; the upper number is typical, not a ceiling.${cls === 'plan' ? ` On plan: ${ON_PLAN_TIP}` : ''}`}`;
     return html`<div class="mrow"><span class=${`plate ${plate}`}></span><span>${ML[m]}</span><div class="band" data-tip=${tip}>${tr ? nothing : html`<div class="zone" style=${`left:${(lo / maxScale) * 100}%;width:${((hi - lo) / maxScale) * 100}%`}></div>`}<div class=${`fill ${cls}${hasConf ? ' ghost' : ''}`} style=${`width:${Math.min(100, (v / maxScale) * 100)}%`}></div>${hasConf && c > 0 ? html`<div class="fill conf" style=${`width:${Math.min(100, (c / maxScale) * 100)}%`}></div>` : nothing}</div><span class="r num">${r1(v)}<span class="muted small">${tr ? ' tracked' : ` /${lo}-${hi}`}</span></span></div>`;
   })}`;
 }
@@ -283,7 +288,7 @@ export function viewProgram(): TemplateResult {
   });
   const pv = plannedSets(R);
   const bands = state.settings.bands;
-  const pUnder = MK.filter(m => !TRACK_ONLY.has(m) && belowMin(pv[m], bands[m][0])).length;
+  const pUnder = MK.filter(m => hasTarget(m) && belowMin(pv[m], bands[m][0])).length;
   const pvolSec = section({
     sk: 'program:pvol',
     key: 'pvol',

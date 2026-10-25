@@ -13,7 +13,7 @@ import type { Exercise } from './types';
 import type { State } from './store';
 import { addDays, clampN, hashStr, isDate, isNum, numOr, today } from './util';
 import { LB } from './units';
-import { BANDS, CARDIO, CWHEN, JK, MEAS, MK, NEW_MUSCLES_V5, TRACK_ONLY, libExercises } from './library';
+import { BANDS, CARDIO, CWHEN, JK, MEAS, MK, NEW_MUSCLES_V5, TARGETED, TRACK_ONLY, libExercises } from './library';
 import { DAYS, MAX_DAYS, TEMPLATES, defaultRoutine, fixSupersets, routineFromTemplate, routineSig } from './routines';
 import type { NewRoutine } from './routines';
 import {
@@ -468,6 +468,13 @@ export function normalize(input: unknown): State {
       }
     if (Object.keys(o).length) st.bandsFit = o;
     else delete st.bandsFit;
+  }
+  // The muscles the lifter gave a target with Set a target (r58): absent unless set, in muscle order, never one with a target by default.
+  {
+    const o = arr(st.ownTargets);
+    const k = o ? MK.filter(m => !TARGETED.has(m) && o.includes(m)) : [];
+    if (k.length) st.ownTargets = k;
+    else delete st.ownTargets;
   }
   // RIR: on (as logged), cal (on, shifted by your calibration sets), off.
   st.rirMode = oneOf(st.rirMode, ['on', 'off', 'cal']) ? st.rirMode : 'on';

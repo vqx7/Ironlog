@@ -64,8 +64,8 @@ function rankDays(){
     for(const [m,w0] of Object.entries(ms)){
       const w=w0*f;const rc=recovery(m);
       if(inj.has(m)){injS+=w;continue;}
-      const def=TRACK_ONLY.has(m)?0:Math.max(0,bands[m][0]-r7[m]);fill+=Math.min(w,def)*(pri.has(m)||lag.has(m)?1.5:1);
-      fat+=w*(1-rc.r);if(!TRACK_ONLY.has(m))over+=Math.max(0,r7[m]+w-bands[m][1]);
+      const def=!hasTarget(m)?0:Math.max(0,bands[m][0]-r7[m]);fill+=Math.min(w,def)*(pri.has(m)||lag.has(m)?1.5:1);
+      fat+=w*(1-rc.r);if(hasTarget(m))over+=Math.max(0,r7[m]+w-bands[m][1]);
     }
     for(const [m,w] of Object.entries(dir)){if(inj.has(m))continue;wR+=w*recovery(m).r;wT+=w;}
     /* A flagged joint counts like a flagged muscle (r30): each set of an
@@ -116,11 +116,11 @@ function rankExercises(d){
   const best={};
   for(const e of state.exercises){
     if(e.archived||inS.has(e.id)||exInjury(e))continue;
-    const m=e.primary;const [lo,hi]=bands[m];const def=TRACK_ONLY.has(m)?0:Math.max(0,lo-r7[m]);const inSess=sess[m]||0;
+    const m=e.primary;const [lo,hi]=bands[m];const def=!hasTarget(m)?0:Math.max(0,lo-r7[m]);const inSess=sess[m]||0;
     let s=Math.min(def,6)*0.6;
     // At target already: optional, and better where the week has room left.
     // Tracked-only muscles have no target, so no "already at target" penalty either (r29).
-    if(def<=0&&!TRACK_ONLY.has(m))s-=r7[m]>=hi?3:1-Math.min(hi-r7[m],4)*0.15;
+    if(def<=0&&hasTarget(m))s-=r7[m]>=hi?3:1-Math.min(hi-r7[m],4)*0.15;
     if(inSess>=SESSION_CAP)s-=6;else if(inSess>=7)s-=1.5;
     // The session itself is not fatigue to recover from; earlier days are.
     s-=(1-rec[m].r)*3;
@@ -130,7 +130,7 @@ function rankExercises(d){
     if(same.length)s+=same.some(x=>(pe&&patternOf(x)===pe)||x.equip===e.equip)?-0.8:0.3;
     // Helper muscles count a little, capped, so a lift is not picked just for
     // touching many muscles; tired or maxed helpers still count against it.
-    {let sb=0;for(const m2 of e.secondary){const d2=TRACK_ONLY.has(m2)?0:Math.max(0,bands[m2][0]-r7[m2]);sb+=Math.min(d2,3)*0.15;s-=(1-rec[m2].r)*0.5;if((sess[m2]||0)>=SESSION_CAP)s-=0.5;}s+=Math.min(sb,0.6);}
+    {let sb=0;for(const m2 of e.secondary){const d2=!hasTarget(m2)?0:Math.max(0,bands[m2][0]-r7[m2]);sb+=Math.min(d2,3)*0.15;s-=(1-rec[m2].r)*0.5;if((sess[m2]||0)>=SESSION_CAP)s-=0.5;}s+=Math.min(sb,0.6);}
     const st=I.exStats[e.id];const n=(I.byEx[e.id]||[]).length;
     if(n){s+=0.8;if(st&&st.moving&&!st.stalled)s+=0.4;if(st&&st.stalled)s-=0.8;}else{if(e.rare)s-=0.4;if(!inR.has(e.id))s-=0.3;}
     if(inR.has(e.id))s+=0.5;
@@ -150,7 +150,7 @@ function rankExercises(d){
 }
 function exReasons(x){
   const [lo,hi]=state.settings.bands[x.m];const out=[];
-  out.push(TRACK_ONLY.has(x.m)?`${ML[x.m]}: ${r1(x.r7)} hard sets in the last 7 days, counting this session (tracked only, no target).`:`${ML[x.m]}: ${r1(x.r7)} of ${lo}-${hi} hard sets in the last 7 days, counting this session${x.def>0?`, ${r1(x.def)} short of target`:', at or above target'}.`);
+  out.push(!hasTarget(x.m)?`${ML[x.m]}: ${r1(x.r7)} hard sets in the last 7 days, counting this session (tracked only, no target).`:`${ML[x.m]}: ${r1(x.r7)} of ${lo}-${hi} hard sets in the last 7 days, counting this session${x.def>0?`, ${r1(x.def)} short of target`:', at or above target'}.`);
   out.push(x.rec.days==null?'Not trained hard in the last 3 weeks.':x.rec.r<1?`Last trained hard ${agoTxt(x.rec.days)} (${r1(x.rec.sets)} sets), so it may still be recovering.`:`Last trained hard ${agoTxt(x.rec.days)}, recovered.`);
   if(x.inSess>0)out.push(`${r1(x.inSess)} set${r1(x.inSess)===1?'':'s'} for it already in this session${x.inSess>=SESSION_CAP?`, past the ${SESSION_CAP}-set line for one workout`:''}.`);
   if(x.n){const p=x.st&&x.st.pct!=null?`, ${x.st.pct>=0?'+':''}${r1(x.st.pct)}% over ${x.st.spanW||6} weeks`:'';out.push(`You have logged it ${x.n} time${x.n===1?'':'s'}${p}${x.st&&x.st.stalled?', stalled lately':''}.`);}
@@ -355,7 +355,7 @@ function weekCard(){
 /* Quick answers before a session starts: is this lift moving, and what to do. */
 function liftTags(exId){
   const st=IDX().exStats[exId];if(!st)return '';const t=[];
-  if(st.last&&st.last.progress&&st.fresh)t.push('<span class="tag green">PR last time</span>');
+  if(st.last&&st.fresh&&IDX().prs.some(p=>p.big&&p.sid===st.last.sid&&p.exId===exId))t.push('<span class="tag green">PR last time</span>'); // a PR as Recent PRs counts it (r58)
   if(st.easier)t.push('<span class="tag blue">Load due</span>');
   if(st.stalled)t.push('<span class="tag yellow">Stalled</span>');
   if(st.capped)t.push('<span class="tag blue">At max load</span>');
