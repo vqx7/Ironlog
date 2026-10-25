@@ -419,6 +419,23 @@ const SCREENS = [
     ok(Array.isArray(r.styles) && r.styles[1] === 'circle', '8. the Lifts chart marks no PR on the heavier set that was not one (r57 drew it as a PR diamond)', r.styles);
     ok(r.tag === false, '8. the workout preview says no PR last time after it (r57 did)', r.tag);
     ok(r.rate === 0, '8. Readiness counts it as no PR (r57: 100% of lifts set a PR)', r.rate);
+    // The toast and the list read one rule, set by set: a best within its band of reps, weaker than an earlier set, is neither; one stronger than every earlier set is both (a guard).
+    const pr = await Q.page.evaluate(() => {
+      const L = window.__ironlog; const s = L.state;
+      const ses = (id, date, sets) => ({ id, date, dayIdx: 0, dayId: null, dayName: 'S', routineId: '', free: true, notes: '', ex: [{ exId: 'bench', rr: [6, 10], sets: sets.map(([w, r, rir]) => ({ w, r, rir, warm: false, drop: false })) }] });
+      s.routines[0].days[0].items = []; s.sessions = [ses('a', '2026-10-01', [[120, 3, 0]]), ses('b', '2026-10-08', [[90, 8, 1], [90, 8, 1]])];
+      s.draft = null; L.state = L.normalize(s); L.invalidate();
+      const one = (w, r, rir) => {
+        const live = L.livePR('bench', { w, r, rir, done: true }, '2026-10-15');
+        const st = L.normalize(JSON.parse(JSON.stringify(L.state))); st.sessions.push(ses('x', '2026-10-15', [[w, r, rir]]));
+        const was = L.state; L.state = L.normalize(st); L.invalidate();
+        const listed = L.IDX().prs.filter(p => p.sid === 'x' && p.big).map(p => p.type); L.state = was; L.invalidate();
+        return { live, listed };
+      };
+      return { band: one(92.5, 8, 1), stronger: one(110, 8, 1) };
+    });
+    ok(pr.band.live === null && !pr.band.listed.length, '8. 92.5 x 8 after 120 x 3 to failure and 90 x 8: a best for 6 to 10 reps, weaker than 120 x 3, is neither announced nor listed (r57 announced it)', pr.band);
+    ok(!!pr.stronger.live && pr.stronger.listed.length === 1, '8. 110 x 8, stronger than every earlier set, is announced and listed alike (a guard)', pr.stronger);
     await Q.page.context().close();
   }
 
