@@ -242,7 +242,7 @@ async function wakeOn(){
   catch(e){wakeSentinel=null;if(!wakeOn.warned){wakeOn.warned=true;toast('This browser would not keep the screen on');}}
 }
 function wakeOff(){try{if(wakeSentinel)wakeSentinel.release();}catch(e){/* already released */}wakeSentinel=null;}
-document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')wakeOn();});
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState!=='visible')return;wakeOn();if(!ui.modal&&drawnBeforeToday())rerenderKeepScroll();}); // Back on a new day, the screen is drawn again for it (drawnBeforeToday, r59).
 function stopTimer(){clearInterval(timer.iv);timer.iv=null;timer.fired=false;$('#timer').hidden=true;document.body.classList.remove('timer-on');timerSave();}
 /* The bar is built once per start (or when its style setting changes) and
    each tick only rewrites the time. Rebuilding its buttons four times a

@@ -9543,10 +9543,16 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
 
   // src/app/view.ts
   var legacyDraws = 0;
+  var drawnFor = "";
+  function drawnBeforeToday() {
+    return drawnFor !== "" && drawnFor !== today();
+  }
   function drawLegacy(view, markup2) {
+    drawnFor = today();
     D(i4(++legacyDraws, o2(markup2)), view);
   }
   function drawScreen(view, screen) {
+    drawnFor = today();
     D(screen, view);
   }
   function markupOf(part) {
@@ -16221,7 +16227,9 @@ ${ms.length ? b`<div class="scroll-x" style="margin-top:10px"><table class="t"><
       wakeSentinel = null;
     }
     document.addEventListener("visibilitychange", () => {
-      if (document.visibilityState === "visible") wakeOn();
+      if (document.visibilityState !== "visible") return;
+      wakeOn();
+      if (!ui.modal && drawnBeforeToday()) rerenderKeepScroll();
     });
     function stopTimer() {
       clearInterval(timer.iv);

@@ -21,7 +21,7 @@ import { live } from 'lit-html/directives/live.js';
 import { unsafeHTML } from 'lit-html/directives/unsafe-html.js';
 import { moreList, orderKeys } from './layout';
 import { estMin, min5 } from './format';
-import { numIn } from './util';
+import { numIn, today } from './util';
 import { state, ui } from './store';
 
 declare global {
@@ -39,12 +39,24 @@ export type Part = TemplateResult | DirectiveResult | string | number | typeof n
 /* ---------- the host ---------- */
 
 let legacyDraws = 0;
+/* The day the screen was last drawn for (r59). A phone keeps the app open
+   overnight, and nothing draws it again when it comes back to the screen
+   without an account, so the next morning Today was yesterday's: its date
+   line, the week bar, and Body's date, which a weigh-in typed at once was
+   saved on, over the evening's (the second review of r59; r58 too). */
+let drawnFor = '';
+/** Whether the screen was last drawn on an earlier day than today, as when the app is brought back the next morning. */
+export function drawnBeforeToday(): boolean {
+  return drawnFor !== '' && drawnFor !== today();
+}
 /** Draws a legacy screen's markup into the page's view: fresh nodes each time, as innerHTML made them (its markup was escaped by hand, `esc`, as before r57). */
 export function drawLegacy(view: HTMLElement, markup: string): void {
+  drawnFor = today();
   render(keyed(++legacyDraws, unsafeHTML(markup)), view);
 }
 /** Draws a moved screen into the page's view, updating what is there in place. */
 export function drawScreen(view: HTMLElement, screen: TemplateResult): void {
+  drawnFor = today();
   render(screen, view);
 }
 /* The suites read some parts as the markup the legacy script made of them

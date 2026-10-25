@@ -35,7 +35,7 @@ import { effName, effShow, rirScale } from './app/effort';
 import { morphInto } from './app/sheets';
 import { guideSheet } from './app/guide';
 import { act } from './app/act';
-import { drawLegacy, drawScreen, isOpen, dragStart, dragDrop, dragDone, markupOf } from './app/view';
+import { drawLegacy, drawScreen, drawnBeforeToday, isOpen, dragStart, dragDrop, dragDone, markupOf } from './app/view';
 import { noLog, weekPlan, cycleProjection, sessionsOn, distU, distShow, setShort, setStr, curRoutineB, findItem, newItem, nameTaken, routineClutter, sessionMuscleSets, libFiltered, rirShow, effTgt, fmtE, loadHead, fmtDateLong, topSetPt, bestSet, prSet, recent4w, tonnageNow, cycleState, sessionLength, bestLine, goalState, goalWords, regionWk, regionSrc, sizeRows } from './app/display';
 import { isStandalone, coarse, installKind } from './app/env';
 import { viewHistory, HISTORY_ACTS, HISTORY_BINDS } from './app/history';
