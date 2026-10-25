@@ -416,11 +416,12 @@ const SCREENS = [
   // (r58 and 2f6a50d kept none, so the only sign was "could not load": fails on both).
   if (run(10)) {
     const Q = await open(FILE, { browser, clock: '2026-10-24T10:00:00' });
-    // The first address answers "not found", the second is refused, as a blocked or offline phone sees them. The installed
+    // The first address answers "not found" (with the header a server sends, so WebKit reads it as that, not as a refused
+    // origin), the second is refused, as a blocked or offline phone sees them. The installed
     // build's own copy (./vendor/) is caught too: WebKit is served the build's files (tests/h.js), so without this it
     // loaded three.js and the case read nothing (GitHub's WebKit run of 93b20b2; Chromium refuses a file page's import).
     let n = 0;
-    await Q.page.route(/three(@[\d.]+)?\/build\/three\.module\.min\.js|\/vendor\/three\.module\.min\.js/, r => (n++ === 0 ? r.fulfill({ status: 404, body: 'not found' }) : r.abort('connectionrefused')));
+    await Q.page.route(/three(@[\d.]+)?\/build\/three\.module\.min\.js|\/vendor\/three\.module\.min\.js/, r => (n++ === 0 ? r.fulfill({ status: 404, headers: { 'Access-Control-Allow-Origin': '*' }, body: 'not found' }) : r.abort('connectionrefused')));
     const r = await Q.page.evaluate(async () => {
       const L = window.__ironlog; const w = ms => new Promise(r => setTimeout(r, ms));
       L.state.settings.onboarded = true; L.makeDemo(); L.state.settings.hidden = []; L.saveNow(); L.ui.tab = 'today'; L.render(); await w(100);
