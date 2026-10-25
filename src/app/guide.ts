@@ -137,7 +137,7 @@ export function guideSheet(m: { open?: string | undefined }): string {
       `${where}
    <p><b>Deleted</b> sessions, cardio, and routines wait in History, Recently deleted: the ${TRASH_MAX} most recent, for ${TRASH_DAYS} days, or until you delete them for good there. A ready-made routine removed unchanged is not kept, since New from a template adds it again. Undo in Settings covers deletes, resets, and imports from the last 7 days; after Erase everything, the first page offers it.</p>
    <p><b>Import workouts</b> reads notes, a spreadsheet, or an export from another app; you check everything before it is saved. On a first run, an import whose workouts repeat (most of them twice or more in its last 8 weeks) also makes your routine; otherwise you pick the closest ready-made one. Its days come from the workouts' names (or from the lifts in them when the names are all alike) and keep each day's latest sets and rep range. Your weekly targets then fit that routine.</p>
-   ${window.IRONLOG_APP ? '<p><b>Updates</b>: when "New version ready" shows, tap Reload.</p>' : ''}
+   ${window.IRONLOG_APP ? '<p><b>Updates</b>: when "Update ready" shows, tap Update.</p>' : ''}
    ${report}`
     ]
   ];

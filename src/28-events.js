@@ -85,6 +85,7 @@ document.addEventListener('keydown',e=>{
   if(g&&(e.key==='Enter'||e.key===' ')){e.preventDefault();g.dispatchEvent(new MouseEvent('click',{bubbles:true}));}
 });
 document.addEventListener('input',e=>{
+  fieldTyped(e); // typed and not yet confirmed: a draw keeps the text (view.ts, r60)
   const t=e.target;
   if(ui.modal&&FORM_SHEETS.has(ui.modal.kind)&&t&&t.closest&&t.closest('#modal'))ui.modal.dirty=true;
   if(t.id==='incVal'&&ui.modal&&ui.modal.kind==='inc')ui.modal.typed=true;
@@ -97,6 +98,7 @@ document.addEventListener('input',e=>{
   if(t.dataset.mbind&&ui.modal&&ui.modal.kind==='picker'){ui.modal[t.dataset.mbind]=t.value;const pl=$('#pickList');if(pl){pl.innerHTML=pickerBody(ui.modal);pl.scrollTop=0;}return;}
 });
 document.addEventListener('change',e=>{
+  fieldTyped(e); // confirmed: the field shows what the log saved again
   const t=e.target;
   if(ui.modal&&FORM_SHEETS.has(ui.modal.kind)&&t&&t.closest&&t.closest('#modal'))ui.modal.dirty=true;
   if(t.id==='fbShot'&&t.files&&t.files[0]&&ui.modal&&ui.modal.kind==='feedback'){const m=ui.modal;const f0=t.files[0];
@@ -147,3 +149,4 @@ document.addEventListener('keydown',e=>{
 // Where a touch lands, and a field of the session screen left: auto-mark's routes (workout.ts, r60).
 document.addEventListener('pointerdown',noteDown,true);
 document.addEventListener('focusout',workoutBlur);
+document.addEventListener('focusout',fieldTyped);

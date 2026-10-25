@@ -113,13 +113,25 @@ export function markup(fixed: string): Part {
 
 /* A field shows the value the log holds. While it is being typed in, the text
    under the lifter's fingers stays when it reads as the value saved ("152."
-   for 152, a name with its spaces, half a number not saved yet), as
-   rerenderKeepScroll kept it before r57; text the log saved as something else
-   (150 typed as a maximum of 100, confirmed with Enter) is replaced by what
-   was saved at once (the review of r57: it showed 150 until the page drew
-   again). The part is told its value is stale each time, as lit's `live`
-   does, so a value typed over and left is put back even when the log still
-   holds the value drawn last. */
+   for 152, a name with its spaces), as rerenderKeepScroll kept it before r57,
+   and so does text typed and not yet confirmed (r60, PENDING 345 item 11: a
+   field saved only when left, as Settings' numbers, Plan's step and the Set
+   up page's bodyweight are, lost a half-typed number whenever anything drew
+   the page meanwhile, a sync taking in another phone's change, or the new
+   day's draw, since the log still held the old value). Text the log saved as
+   something else once confirmed (150 typed as a maximum of 100, confirmed
+   with Enter) is replaced by what was saved at once (the review of r57: it
+   showed 150 until the page drew again). The part is told its value is stale
+   each time, as lit's `live` does, so a value typed over and left is put
+   back even when the log still holds the value drawn last. */
+const unconfirmed = new WeakSet<EventTarget>();
+/** Notes a field typed in and not yet confirmed (the page's input events), or confirmed or left (its change and focusout). */
+export function fieldTyped(e: Event): void {
+  const t = e.target;
+  if (!t) return;
+  if (e.type === 'input') unconfirmed.add(t);
+  else unconfirmed.delete(t);
+}
 class FieldValue extends Directive {
   constructor(info: PartInfo) {
     super(info);
@@ -132,7 +144,7 @@ class FieldValue extends Directive {
     const el = part.element;
     const now = el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement ? el.value : null;
     if (now === v) return noChange;
-    if (el === document.activeElement && now != null && numIn(now) === numIn(v)) return noChange;
+    if (el === document.activeElement && now != null && (unconfirmed.has(el) || numIn(now) === numIn(v))) return noChange;
     setCommittedValue(part);
     return v;
   }

@@ -8,6 +8,13 @@
 //      its sessions, settings and modes gives the same elements, attributes,
 //      field values and visible text as r59 (baselines/r59.html), but for the
 //      changes held on purpose by the sections after it.
+//   2  a number typed into a field the log saves when it is left (Settings'
+//      time budget, the Set up page's bodyweight) and not yet left keeps
+//      its text when the page draws meanwhile; once confirmed, the field
+//      shows what was saved (fails on r59, PENDING 345 item 11);
+//   3  the update bar says "Update ready" with Update (V, PENDING 335);
+//      held by tests/update.js on the installed build, here on the page
+//      (fails on r59).
 const { open, engine, screenOf, screenDiff } = require('./h');
 const FILE = process.argv[2] || 'index.html';
 const OLD = 'baselines/r59.html';
@@ -92,6 +99,48 @@ const SCREENS = [
     ok(/Finish and save|Save changes/.test(b.text), `1. ${name}: the session screen drawn`, b.text.slice(0, 120));
     // The case is the state it names (a seed that missed it would compare two screens of something else).
     if (want) ok(want.test(b.tree.join('') + b.text), `1. ${name}: the screen is in that state`, String(want));
+  }
+
+  // ---- 2. Text typed and not yet confirmed survives a draw (PENDING 345 item 11).
+  if (run(2)) {
+    const P = await open(FILE, { browser, clock: '2026-10-24T10:00:00' });
+    const ev = (f, a) => P.page.evaluate(f, a);
+    const typed = async (sel, text) => { await P.page.focus(sel); await P.page.keyboard.type(text); };
+    // Settings' time budget, saved when the field is left.
+    await ev(() => { const L = window.__ironlog; L.state.settings.onboarded = true; L.state.settings.timeBudget = null; L.saveNow(); L.ui.tab = 'settings'; L.render(); document.querySelectorAll('#view details').forEach(d => { d.open = true; }); });
+    await wait(200);
+    await typed('#view [data-bind="timeBudget"]', '4');
+    await ev(() => { window.__ironlog.render(); });
+    await wait(80);
+    const tb = await ev(() => { const f = document.querySelector('#view [data-bind="timeBudget"]'); return { v: f.value, focused: document.activeElement === f, saved: window.__ironlog.state.settings.timeBudget }; });
+    ok(tb.v === '4' && tb.focused && tb.saved == null, '2. Settings: a time budget half typed keeps its text and focus through a draw, saved nothing yet', tb);
+    await P.page.keyboard.type('5'); await P.page.keyboard.press('Enter'); await wait(120);
+    await ev(() => { window.__ironlog.render(); }); await wait(80);
+    const tb2 = await ev(() => { const f = document.querySelector('#view [data-bind="timeBudget"]'); return { v: f.value, saved: window.__ironlog.state.settings.timeBudget }; });
+    ok(tb2.v === '45' && tb2.saved === 45, '2. Settings: confirmed, it is saved and the field shows what was saved', tb2);
+    // The Set up page's bodyweight on a new install, saved when left.
+    await ev(() => { const L = window.__ironlog; L.state.sessions = []; L.state.bodyweights = []; L.state.settings.onboarded = false; L.saveNow(); L.ui.tab = 'today'; L.render(); });
+    await wait(200);
+    const later = await ev(() => { const b = document.querySelector('#view [data-act="obAcctLater"]'); if (b) b.click(); return !!b; });
+    if (later) await wait(150);
+    await typed('#obBw', '18');
+    await ev(() => { window.__ironlog.render(); });
+    await wait(80);
+    const bw = await ev(() => { const f = document.getElementById('obBw'); return { v: f && f.value, focused: document.activeElement === f, saved: window.__ironlog.state.bodyweights.length }; });
+    ok(bw.v === '18' && bw.focused && bw.saved === 0, '2. Set up: a bodyweight half typed keeps its text and focus through a draw', bw);
+    ok(!P.errors.length, '2. no page errors', P.errors);
+    await P.page.context().close();
+  }
+
+  // ---- 3. The update bar's words (PENDING 335).
+  if (run(3)) {
+    const P = await open(FILE, { browser, clock: '2026-10-24T10:00:00' });
+    const txt = await P.page.evaluate(() => { window.ironlogUpdateReady(); const b = document.getElementById('updbar'); return b && !b.hidden ? b.innerText.replace(/\s+/g, ' ').trim() : null; });
+    ok(txt === 'Update ready Update Later', '3. the update bar reads "Update ready", with Update and Later', txt);
+    // The installed app's Guide, Your data (the line shows only in the installed app); read whole, folded or not.
+    const guide = await P.page.evaluate(() => { window.IRONLOG_APP = true; window.__ironlog.ACT.guideOpen({ dataset: { g: 'data' } }); const m = document.getElementById('modal'); return m ? m.textContent.replace(/\s+/g, ' ') : ''; });
+    ok(guide.includes('Updates: when "Update ready" shows, tap Update.') && !/New version ready|tap Reload/.test(guide), '3. the Guide says to tap Update when "Update ready" shows', (guide.match(/Updates[^.]*\./) || [guide.slice(0, 200)])[0]);
+    await P.page.context().close();
   }
 
   await browser.close();

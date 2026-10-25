@@ -14,11 +14,13 @@ syncStart();
    downloaded and is waiting. Nothing reloads by itself, because a reload in
    the middle of a set is jarring: the lifter picks the moment, and the
    session in progress is saved first, so it comes back as it was. "Later"
-   hides the bar until the next launch. */
+   hides the bar until the next launch. The words say what the button does
+   (V, 2026-10-25, PENDING 335): "Update ready" and Update, where it said "New
+   version ready" and Reload. */
 const upd={ready:false,later:false};
 function updRender(){
   const el=document.getElementById('updbar');if(!el)return;
   const show=upd.ready&&!upd.later;el.hidden=!show;
-  if(show&&!el.firstChild)el.innerHTML='<span class="ut">New version ready</span><button type="button" class="btn sm primary" data-act="appUpdate">Reload</button><button type="button" class="btn sm" data-act="appUpdateLater">Later</button>';
+  if(show&&!el.firstChild)el.innerHTML='<span class="ut">Update ready</span><button type="button" class="btn sm primary" data-act="appUpdate">Update</button><button type="button" class="btn sm" data-act="appUpdateLater">Later</button>';
 }
 window.ironlogUpdateReady=()=>{upd.ready=true;updRender();};

@@ -1,9 +1,9 @@
 // The update prompt in the standalone app (dist/). Serves one build, lets it
 // install, then swaps in a second build the way GitHub Pages would after a
 // publish, and checks: the first install shows no prompt; the new version
-// downloads in the background and waits; "New version ready" appears without
+// downloads in the background and waits; "Update ready" appears without
 // the page changing under the lifter; Later hides it; it comes back after a
-// relaunch; Reload switches to the new version once, with the session in
+// relaunch; Update switches to the new version once, with the session in
 // progress intact and the old cache gone. Also checks the privacy line.
 const http = require('http');
 const fs = require('fs');
@@ -68,10 +68,11 @@ const server = http.createServer((req, res) => {
   root = V2;
   await page.evaluate(() => document.dispatchEvent(new Event('visibilitychange')));
   await page.waitForFunction(() => { const b = document.getElementById('updbar'); return b && !b.hidden; }, null, { timeout: 15000 }).catch(() => {});
-  ok(await bar(), 'after a publish, "New version ready" appears');
+  ok(await bar(), 'after a publish, "Update ready" appears');
   ok((await ver()) === v1, 'the page does not change by itself (still ' + (await ver()) + ')');
   const txt = await page.evaluate(() => document.getElementById('updbar').innerText.replace(/\s+/g, ' '));
-  ok(/New version ready/.test(txt) && /Reload/.test(txt) && /Later/.test(txt), 'the bar reads: ' + txt);
+  // The words say what the button does (V, 2026-10-25, PENDING 335): Update ready, Update and Later, nothing else.
+  ok(txt.trim() === 'Update ready Update Later', 'the bar reads: ' + txt);
   const sizes = await page.evaluate(() => [...document.querySelectorAll('#updbar button')].map(b => Math.round(b.getBoundingClientRect().height)));
   ok(sizes.length === 2 && sizes.every(h => h >= 44), 'both buttons are 44 px tall or more (' + sizes.join(', ') + ')');
   const layout = await page.evaluate(() => { const b = document.getElementById('updbar').getBoundingClientRect(); const h = document.querySelector('header.top').getBoundingClientRect();
@@ -83,17 +84,17 @@ const server = http.createServer((req, res) => {
   await page.click('#updbar [data-act="appUpdateLater"]'); await page.waitForTimeout(100);
   ok(!(await bar()), 'Later hides the bar');
 
-  // A relaunch without tapping Reload: still the old version, and the bar is back.
+  // A relaunch without tapping Update: still the old version, and the bar is back.
   await page.reload(); await ready(); await page.waitForTimeout(800);
   ok((await ver()) === v1, 'a relaunch alone does not swap versions mid-use');
   ok(await bar(), 'the bar comes back on the next launch');
 
-  // Reload: one switch to the new version, session intact.
+  // Update: one switch to the new version, session intact.
   const navsBefore = navs;
   await page.click('#updbar [data-act="appUpdate"]');
   await page.waitForFunction(v => (document.querySelector('meta[name="app-build"]') || {}).content === v && window.__ironlog, v2, { timeout: 15000 }).catch(() => {});
   await ready().catch(() => {}); await page.waitForTimeout(1500);
-  ok((await ver()) === v2, 'Reload switches to the new version (' + (await ver()) + ')');
+  ok((await ver()) === v2, 'Update switches to the new version (' + (await ver()) + ')');
   ok(navs - navsBefore === 1, 'it reloads exactly once (' + (navs - navsBefore) + ')');
   ok(!(await bar()), 'no prompt after updating');
   const kept = await page.evaluate(() => { const d = window.__ironlog.state.draft; return !!(d && d.ex[0].sets[0].done && d.ex[0].sets[0].rir === 2); });
