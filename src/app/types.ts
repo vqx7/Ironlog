@@ -344,6 +344,8 @@ export interface LogEntry {
   m: string;
   v: string;
   s?: string | undefined;
+  /** How many times it came in a row, when more than once (r59); the time is the last one's. */
+  n?: number | undefined;
 }
 
 /** The target a block was given when the session started (cleanTgt keeps its numbers). */

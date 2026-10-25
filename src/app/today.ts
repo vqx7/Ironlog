@@ -431,6 +431,11 @@ function installBar(): Part {
    would be saved as that (180 lb as 180 kg). Typed in the unit shown, it goes
    with it (the review of r59's keeping of fields). */
 const inUnit = (u: string, field: TemplateResult): DirectiveResult => keyed(u, field);
+/* Body's weigh-in date (bodyCard) is keyed by the day, for the same reason:
+   a date field the lifter or a save has set no longer follows its value
+   attribute, so kept from one day into the next it said yesterday, and a
+   morning weigh-in went over the evening's (the second review of r59). Within
+   a day it keeps the date chosen through a draw. */
 
 /* A weigh-in due (Settings > General, how often): the last one and Save,
    or Later for two days. Never weighed in: only for someone who logs
@@ -765,7 +770,7 @@ function bodyCard(): TemplateResult {
           }</div>`
         : nothing
     }
-<div class="bw-entry"><label class="field">Date<input type="date" id="bwDate" value=${t} max=${t}></label><label class="field">Weight (${U()})${inUnit(
+<div class="bw-entry"><label class="field">Date${keyed(t, html`<input type="date" id="bwDate" value=${t} max=${t}>`)}</label><label class="field">Weight (${U()})${inUnit(
       U(),
       html`<input type="text" inputmode="decimal" id="bwVal" placeholder=${last ? fmtW(last.kg) : ''} enterkeyhint="done">`
     )}</label><button class="btn primary" data-act="addBW" data-tip="Also used for pull-ups, dips, and other bodyweight lifts.">${loggedToday ? 'Update' : 'Log'}</button></div>

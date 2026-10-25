@@ -3667,7 +3667,14 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     const E2 = rec(v3);
     if (!E2 || typeof E2.t !== "string" || typeof E2.a !== "string" || typeof E2.m !== "string" || typeof E2.v !== "string")
       return null;
-    return { t: E2.t, a: E2.a, m: E2.m, v: E2.v, ...typeof E2.s === "string" ? { s: E2.s } : {} };
+    return {
+      t: E2.t,
+      a: E2.a,
+      m: E2.m,
+      v: E2.v,
+      ...typeof E2.s === "string" ? { s: E2.s } : {},
+      ...typeof E2.n === "number" && Number.isInteger(E2.n) && E2.n > 1 ? { n: E2.n } : {}
+    };
   };
   var logCut = (t4) => String(t4).replace(/([a-z][a-z0-9+.-]*:\/\/[^\s?#)]*)[?#](?:[^\s):]|:(?!\d))*/gi, "$1");
   function log(area, err) {
@@ -3675,13 +3682,12 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       const E2 = rec(err);
       const m3 = E2 && E2.message ? E2.message : E2 ? JSON.stringify(err) : String(err);
       const st = E2 && typeof E2.stack === "string" ? logCut(E2.stack.split("\n").slice(0, 4).join("\n")).slice(0, 400) : "";
-      logBuf.push({
-        t: (/* @__PURE__ */ new Date()).toISOString(),
-        a: area,
-        m: logCut(m3).slice(0, 300),
-        v: APP_VERSION,
-        ...st ? { s: st } : {}
-      });
+      const t4 = (/* @__PURE__ */ new Date()).toISOString(), msg = logCut(m3).slice(0, 300);
+      const last = logBuf[logBuf.length - 1];
+      if (last && last.a === area && last.m === msg && last.v === APP_VERSION) {
+        last.t = t4;
+        last.n = (last.n || 1) + 1;
+      } else logBuf.push({ t: t4, a: area, m: msg, v: APP_VERSION, ...st ? { s: st } : {} });
       while (logBuf.length > 60) logBuf.shift();
       localStorage.setItem(LOGK, JSON.stringify(logBuf));
     } catch (e5) {
@@ -11028,7 +11034,7 @@ ${MUSCLES.map(
 <div>
 <p class="small" style="margin:0 0 6px"><b>Version</b> ${VERSION_LINE}${logBuf.length ? b` <span class="muted">· cloud ${cloud.on ? cloud.status : "off"} · ${logBuf.length} logged error${logBuf.length === 1 ? "" : "s"}</span>` : A}</p>
 ${logBuf.length ? b`<ul class="clist">${logBuf.slice(-5).reverse().map(
-          (x2) => b`<li><span class="small"><b>${x2.a}</b> ${x2.m}</span><span class="small muted">${x2.t.slice(5, 16).replace("T", " ")}</span></li>
+          (x2) => b`<li><span class="small"><b>${x2.a}</b> ${x2.m}${x2.n ? ` (${x2.n} times)` : ""}</span><span class="small muted">${x2.t.slice(5, 16).replace("T", " ")}</span></li>
 `
         )}</ul>
 ` : A}${logBuf.length ? b`<div class="row"><button class="btn sm" data-act="diagCopy">Copy diagnostics</button><button class="btn sm" data-act="diagClear">Clear log</button></div>
@@ -14650,7 +14656,7 @@ ${howText("starts", STARTS_HELP)}${moreRow(deload, playable, di)}</section>${bwD
       title: "Body",
       sub,
       body: b`${last ? b`<div class="body-sum"><div><div class="v">${fmtW(last.kg)}<span class="small"> ${U()}</span></div><div class="l">Latest, ${fmtDate(last.date)}${chgTxt}</div></div>${r4 ? b`<div><div class="v">${bwWeekTxt(r4).replace(" a week", "")}</div><div class="l">weekly change, from 7-day averages</div></div>` : A}</div>` : A}
-<div class="bw-entry"><label class="field">Date<input type="date" id="bwDate" value=${t4} max=${t4}></label><label class="field">Weight (${U()})${inUnit(
+<div class="bw-entry"><label class="field">Date${i4(t4, b`<input type="date" id="bwDate" value=${t4} max=${t4}>`)}</label><label class="field">Weight (${U()})${inUnit(
         U(),
         b`<input type="text" inputmode="decimal" id="bwVal" placeholder=${last ? fmtW(last.kg) : ""} enterkeyhint="done">`
       )}</label><button class="btn primary" data-act="addBW" data-tip="Also used for pull-ups, dips, and other bodyweight lifts.">${loggedToday ? "Update" : "Log"}</button></div>

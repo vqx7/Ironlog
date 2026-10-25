@@ -43,7 +43,12 @@
 //  14  a cycle's days ahead against dates worked out by hand, not the app's
 //      own projection (fails on r58, which plans none);
 //  15  a weigh-in or measurement being typed is dropped when the unit
-//      changes under it, never saved in the wrong unit (fails on eb28bd8).
+//      changes under it, never saved in the wrong unit (fails on eb28bd8);
+//  16  found by the second review: Body's date moves to the new day at
+//      midnight, so a morning weigh-in never lands over the evening's
+//      (fails on eb28bd8 to 93b20b2);
+//  17  the same error in a row is one line in the error log, with its count,
+//      so it cannot push an earlier one out (fails on 93b20b2 and before).
 const { open, engine, screenOf, screenDiff } = require('./h');
 const FILE = process.argv[2] || 'index.html';
 const OLD = 'baselines/r58.html';
@@ -581,6 +586,53 @@ const SCREENS = [
     ok(r.had.bw && r.had.arm && r.had.due, '15. Body and the weigh-in due card were on the page, typed in', r.had);
     ok(r.after.bw === '' && r.after.arm === '' && r.after.due === '' && r.saved === 0 && r.meas === 0, '15. a change of unit while typing leaves the fields empty in the new unit, and nothing is saved in the wrong unit', r);
     ok(!Q.errors.length, '15. no page errors', Q.errors);
+    await Q.page.context().close();
+  }
+
+  // ---- 16. Found by the second review: Body's date field moves to the new day at midnight. eb28bd8 kept the date as an
+  // attribute, which a field once set no longer follows, so the morning after an evening weigh-in it still said
+  // yesterday, and Log put the morning's weight over yesterday's, with no Undo (fails on eb28bd8 to 93b20b2; 2f6a50d and
+  // r58 redrew the date). A date chosen and not saved is kept through a draw (section 7) but not into a new day.
+  if (run(16)) {
+    const Q = await open(FILE, { browser, clock: '2026-10-24T23:50:00' });
+    const r = await Q.page.evaluate(async () => {
+      const L = window.__ironlog; const w = ms => new Promise(r => setTimeout(r, ms));
+      const openAll = async () => { for (const d of document.querySelectorAll('#view details:not([open])')) d.querySelector('summary').click(); await w(80); };
+      L.state.settings.onboarded = true; L.makeDemo(); L.state.settings.hidden = [];
+      L.state.bodyweights = L.state.bodyweights.filter(b => b.date < '2026-10-22'); L.saveNow(); L.ui.tab = 'today'; L.render(); await w(100); await openAll();
+      // The evening weigh-in, 181, on today, Oct 24; then Oct 22 chosen for another and left unsaved.
+      const f = document.getElementById('bwVal'); f.value = '181'; f.dispatchEvent(new Event('input', { bubbles: true }));
+      document.querySelector('#view [data-act="addBW"]:not([data-in])').click(); await w(150); await openAll();
+      const de = document.getElementById('bwDate'); de.value = '2026-10-22'; de.dispatchEvent(new Event('change', { bubbles: true }));
+      // The next morning, the page left open; it draws again (More options).
+      (() => { const T = '2026-10-25T07:30:00'; const R = Date; const off = new R(T).getTime() - R.now(); class D extends R { constructor(...a) { if (a.length) super(...a); else super(R.now() + off); } static now() { return R.now() + off; } } window.Date = D; })();
+      document.querySelector('#view [data-act="heroMore"]').click(); await w(120); await openAll();
+      const morning = document.getElementById('bwDate').value;
+      const f2 = document.getElementById('bwVal'); f2.value = '179.4'; f2.dispatchEvent(new Event('input', { bubbles: true }));
+      document.querySelector('#view [data-act="addBW"]:not([data-in])').click(); await w(150);
+      return { morning, list: L.state.bodyweights.filter(b => b.date >= '2026-10-22').map(b => [b.date, L.fmtW(b.kg)]).sort() };
+    });
+    ok(r.morning === '2026-10-25', '16. the morning after, Body\'s date reads the new day, not yesterday nor a date chosen last night', r);
+    ok(JSON.stringify(r.list) === JSON.stringify([['2026-10-24', '181'], ['2026-10-25', '179.4']]), '16. the morning\'s weigh-in is saved on the morning, and the evening\'s stays as it was', r.list);
+    ok(!Q.errors.length, '16. no page errors', Q.errors);
+    await Q.page.context().close();
+  }
+
+  // ---- 17. The same error over and over is one line in the error log, with how many times it came, so it cannot push an
+  // earlier one out (the log keeps 60, a problem report the last 10). The second review: a sign-in that cannot start,
+  // now logged (section 12), is tried each time the app comes back to the screen. Fails on 93b20b2 and before.
+  if (run(17)) {
+    const Q = await open(FILE, { browser, clock: '2026-10-24T10:00:00' });
+    const r = await Q.page.evaluate(async () => {
+      const L = window.__ironlog; L.logBuf.length = 0;
+      L.log('render', new Error('Cannot read properties of undefined'));
+      for (let i = 0; i < 70; i++) L.log('auth', new Error('Network request failed'));
+      L.log('sync-pull', new Error('Timed out'));
+      L.log('auth', new Error('Network request failed'));
+      return { log: L.logBuf.map(e => [e.a, e.m, e.n || 1]), report: L.fbContext({ cat: 'bug', msg: '' }).errors.map(e => e.a) };
+    });
+    ok(r.log.length === 4 && r.log[0][0] === 'render' && r.log[1][0] === 'auth' && r.log[1][2] === 70 && r.log[2][0] === 'sync-pull' && r.log[3][2] === 1, '17. seventy of one error in a row are one line saying 70; the crash before them stays, and the same error after another starts a line of its own', r.log);
+    ok(r.report.includes('render'), '17. a problem report still carries the crash', r.report);
     await Q.page.context().close();
   }
 

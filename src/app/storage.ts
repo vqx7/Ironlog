@@ -91,7 +91,14 @@ const logEntryIn = (v: unknown): LogEntry | null => {
   const E = rec(v);
   if (!E || typeof E.t !== 'string' || typeof E.a !== 'string' || typeof E.m !== 'string' || typeof E.v !== 'string')
     return null;
-  return { t: E.t, a: E.a, m: E.m, v: E.v, ...(typeof E.s === 'string' ? { s: E.s } : {}) };
+  return {
+    t: E.t,
+    a: E.a,
+    m: E.m,
+    v: E.v,
+    ...(typeof E.s === 'string' ? { s: E.s } : {}),
+    ...(typeof E.n === 'number' && Number.isInteger(E.n) && E.n > 1 ? { n: E.n } : {})
+  };
 };
 /* A URL's query and fragment, cut from what the log keeps (r47). The log
    goes out with a problem report, and the page's own URL holds a reset
@@ -109,13 +116,16 @@ export function log(area: string, err: unknown): void {
     const m = E && E.message ? E.message : E ? JSON.stringify(err) : String(err);
     // Where it broke, not only what it said (r47): the first lines of the stack travel with a problem report, so a crash can be found in the code without the phone.
     const st = E && typeof E.stack === 'string' ? logCut(E.stack.split('\n').slice(0, 4).join('\n')).slice(0, 400) : '';
-    logBuf.push({
-      t: new Date().toISOString(),
-      a: area,
-      m: logCut(m).slice(0, 300),
-      v: APP_VERSION,
-      ...(st ? { s: st } : {})
-    });
+    const t = new Date().toISOString(),
+      msg = logCut(m).slice(0, 300);
+    /* The same error again, straight after itself, is counted on its line (n) with the time it last came, so one that
+       repeats (a sign-in tried each time the app comes back to the screen, offline) cannot push an earlier one out of
+       the 60 kept or the 10 a problem report carries (the second review of r59). */
+    const last = logBuf[logBuf.length - 1];
+    if (last && last.a === area && last.m === msg && last.v === APP_VERSION) {
+      last.t = t;
+      last.n = (last.n || 1) + 1;
+    } else logBuf.push({ t, a: area, m: msg, v: APP_VERSION, ...(st ? { s: st } : {}) });
     while (logBuf.length > 60) logBuf.shift();
     localStorage.setItem(LOGK, JSON.stringify(logBuf));
   } catch (e) {
