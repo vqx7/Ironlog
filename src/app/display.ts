@@ -130,6 +130,13 @@ export function loadHead(ex: ExerciseLike | null | undefined): string {
   return m === 'each' ? u + ' each' : m === 'side' ? u + '/side' : m === 'stack' ? 'Stack' : m === 'bw' ? '+' + u : u;
 }
 
+/* Here, not in format.ts beside fmtDate: only the screens use it, and format.ts is one of the engine's modules, whose share of lines run is a ratchet (tests/engine.js). */
+/** A date as "Oct 17", with its year when it is not this one ("Mar 1, 2027"): a date a year ahead is not read as one this year. */
+export const fmtDateYr = (s: string): string =>
+  s.slice(0, 4) === today().slice(0, 4)
+    ? fmtDate(s)
+    : fmtWith('dy', { month: 'short', day: 'numeric', year: 'numeric' }, s);
+
 /** A date written out: "Sat, Oct 24, 2026". */
 export const fmtDateLong = (s: string): string =>
   fmtWith('l', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' }, s);
@@ -579,9 +586,13 @@ export function sizeRows(): {
 
 /* The cycle day that falls on each date from today on. After a session the
    calendar walks the cycle one day per day, rest days included; a missed day
-   waits (Today offers the next training day, whatever the date). */
-/** The cycle's day index on each of the next `days` dates (a cycle routine). */
-export function cycleProjection(R: Routine, days?: number): Record<string, number> {
+   waits (Today offers the next training day, whatever the date). With
+   `restWeeks`, a rest week marked ahead holds the cycle where it is: its
+   dates have no day, and the week after it starts where the cycle stood, as
+   the lifter's next session will (329's look-ahead, V 2026-10-25: "do what is
+   sensible"). */
+/** The cycle's day index on each of the next `days` dates (a cycle routine); with `restWeeks`, none on a rest week's dates, the cycle held through them. */
+export function cycleProjection(R: Routine, days?: number, restWeeks?: boolean): Record<string, number> {
   const n = R.days.length;
   const t = today();
   const cs = cycleState(R);
@@ -598,7 +609,9 @@ export function cycleProjection(R: Routine, days?: number): Record<string, numbe
     start = t;
   }
   for (let k = 0; k < (days || 7); k++) {
-    out[addDays(start, k)] = idx;
+    const d = addDays(start, k);
+    if (restWeeks && isRestWeek(weekStart(d))) continue;
+    out[d] = idx;
     idx = (idx + 1) % n;
   }
   return out;
@@ -637,7 +650,8 @@ export function weekPlan(R: Routine): Record<string, PlannedDay> {
    in use plans on each date after today up to a date, by weekday on a weekly
    routine, and on a cycle by walking it from today as the week bar does
    (cycleProjection: every day in turn, rest days included, as if each were
-   done). A rest week marked ahead plans nothing. */
+   done). A rest week marked ahead plans nothing, and a cycle waits through
+   it. */
 /** The routine in use's planned day on each date from tomorrow to `to`, a rest week's dates left out. */
 export function planAhead(to: string): Record<string, PlannedDay> {
   const R = activeRoutine();
@@ -645,7 +659,7 @@ export function planAhead(to: string): Record<string, PlannedDay> {
   const out: Record<string, PlannedDay> = {};
   const n = to > t ? daysBetween(t, to) : 0;
   if (!n || !R.days.length) return out;
-  const pj = R.schedule === 'weekly' ? null : cycleProjection(R, n + 2);
+  const pj = R.schedule === 'weekly' ? null : cycleProjection(R, n + 2, true);
   for (let k = 1; k <= n; k++) {
     const d = addDays(t, k);
     if (isRestWeek(weekStart(d))) continue;

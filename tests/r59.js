@@ -41,7 +41,9 @@
 //  13  Copy my log in names in the error log a month of the account's log
 //      it could not read (fails on 2f6a50d and r58);
 //  14  a cycle's days ahead against dates worked out by hand, not the app's
-//      own projection (fails on r58, which plans none).
+//      own projection (fails on r58, which plans none);
+//  15  a weigh-in or measurement being typed is dropped when the unit
+//      changes under it, never saved in the wrong unit (fails on eb28bd8).
 const { open, engine, screenOf, screenDiff } = require('./h');
 const FILE = process.argv[2] || 'index.html';
 const OLD = 'baselines/r58.html';
@@ -445,6 +447,7 @@ const SCREENS = [
     ok(!r.none && r.slow.err && r.slow.err.code === 'timeout', '11. a request with no answer in time fails as a timeout', r);
     ok(!r.none && r.logged.some(([a, m]) => a === 'sync-write' && /The copy is full/.test(m)), '11. its own failure, after the timeout, is in the error log under its area', r);
     ok(!r.none && r.quick.err && r.quick.err.code === 'denied' && r.fine.ok === 'done' && !r.logged.some(([a]) => a === 'sync-read' || a === 'sync-pull'), '11. one that fails in time is passed on as it came, one that answers in time logs nothing', r);
+    ok(!r.none && !r.logged.some(([a]) => a === 'promise'), '11. and nothing is left as an unhandled failure (the late one is caught where it is logged)', r.logged);
     ok(!Q.errors.length, '11. no page errors', Q.errors);
     await Q.page.context().close();
     // The same through the sync itself: an account whose writes get no answer for 21 s and then fail as a full copy.
@@ -504,19 +507,25 @@ const SCREENS = [
 
   // ---- 14. A cycle's days ahead, worked out by hand (section 4 and tests/coherence.js read them against the app's own
   // projection, which would agree with itself if it were wrong). A cycle of A, B and a rest day: with A done today,
-  // November starts on the rest day, then A, B; resting today after B yesterday, it starts on B, then the rest day, A.
-  // Fails on r58, which plans no day ahead on the calendar.
+  // November starts on the rest day, then A, B; resting today after B yesterday, it starts on B, then the rest day, A;
+  // and a rest week marked ahead holds the cycle where it stands (the next session will start there). Fails on r58,
+  // which plans no day ahead on the calendar, and the rest week's case on eb28bd8, which walked the cycle through it.
   if (run(14)) {
     const Q = await open(FILE, { browser, clock: '2026-10-24T10:00:00' });
     const nov = first => { const out = []; for (let d = 1; d <= 30; d++) { const i = (first + d - 1) % 3; if (i !== 2) out.push([`2026-11-${String(d).padStart(2, '0')}`, i]); } return out; };
+    // With the week of Nov 2 a rest week: Nov 1 is the rest day (as above), the cycle waits through Nov 2 to 8, and Nov 9
+    // takes the day Nov 2 would have had, A; then B, the rest day, A... (V, 2026-10-25: a cycle is held through a rest week).
+    const held = [];
+    for (let d = 9; d <= 30; d++) { const i = (d - 9) % 3; if (i !== 2) held.push([`2026-11-${String(d).padStart(2, '0')}`, i]); }
     const cases = [
       // Done A (0) today: tomorrow, Oct 25, is B (1); Nov 1 is 8 days on, (1 + 7) % 3 = 2, the rest day, so Nov 1 is index 2.
       ['A done today', '2026-10-24', 0, nov(2)],
       // B (1) yesterday and the rest day today: Oct 25 is A (0); Nov 1 is 7 days on, 7 % 3 = 1, B.
-      ['B yesterday, resting today', '2026-10-23', 1, nov(1)]
+      ['B yesterday, resting today', '2026-10-23', 1, nov(1)],
+      ['A done today, the week of Nov 2 a rest week', '2026-10-24', 0, held, ['2026-11-02']]
     ];
-    for (const [name, date, di, want] of cases) {
-      const r = await Q.page.evaluate(async ([date, di]) => {
+    for (const [name, date, di, want, rest] of cases) {
+      const r = await Q.page.evaluate(async ([date, di, rest]) => {
         const L = window.__ironlog; const w = ms => new Promise(r => setTimeout(r, ms));
         L.state.settings.onboarded = true; L.makeDemo();
         const R = L.state.routines.find(r => r.id === L.state.activeRoutineId);
@@ -524,16 +533,45 @@ const SCREENS = [
         R.days = [A, B, { id: 'rest59', name: 'Rest', rest: true, items: [] }]; R.schedule = 'cycle';
         const one = JSON.parse(JSON.stringify(L.state.sessions[L.state.sessions.length - 1]));
         Object.assign(one, { id: 'cyc59', date, routineId: R.id, dayId: R.days[di].id, dayIdx: di, dayName: R.days[di].name });
-        L.state.sessions = [one]; L.state = L.normalize(L.state); L.invalidate(); L.saveNow();
+        L.state.sessions = [one]; if (rest) L.state.settings.restWeeks = rest; else delete L.state.settings.restWeeks;
+        L.state = L.normalize(L.state); L.invalidate(); L.saveNow();
         L.ui.modal = null; L.ui.tab = 'history'; L.render(); await w(60);
         L.ACT.calOpen({ dataset: { ym: '2026-11' } }); await w(100);
         const got = [...document.querySelectorAll('#modal .cd[data-act="wkGo"]')].map(e => [e.dataset.date, +e.dataset.day]);
         L.ACT.mClose(); await w(50);
         return got;
-      }, [date, di]);
+      }, [date, di, rest || null]);
       ok(JSON.stringify(r) === JSON.stringify(want), `14. a cycle of A, B and a rest day, ${name}: November's planned days, worked out by hand`, { got: r.slice(0, 6), want: want.slice(0, 6), n: [r.length, want.length] });
     }
     ok(!Q.errors.length, '14. no page errors', Q.errors);
+    await Q.page.context().close();
+  }
+
+  // ---- 15. A weigh-in or measurement being typed is dropped when the unit changes under it (a sync from another device,
+  // which redraws Today): kept, "180" typed in lb was saved as 180 kg (eb28bd8, the first build that keeps Today's fields;
+  // r58 drew them fresh, so it passes there). The number goes; the field is empty in the new unit.
+  if (run(15)) {
+    const Q = await open(FILE, { browser, clock: '2026-10-24T10:00:00' });
+    const r = await Q.page.evaluate(async () => {
+      const L = window.__ironlog; const w = ms => new Promise(r => setTimeout(r, ms));
+      L.state.settings.onboarded = true; L.makeDemo(); L.state.settings.hidden = []; L.state.settings.unit = 'lb';
+      // The last weigh-in a week ago, asked for weekly, so the weigh-in due card shows too.
+      L.state.bodyweights = L.state.bodyweights.filter(b => b.date <= '2026-10-17'); L.state.settings.bwEvery = 7; L.saveNow(); L.ui.tab = 'today'; L.render(); await w(100);
+      for (const d of document.querySelectorAll('#view details:not([open])')) d.querySelector('summary').click();
+      await w(60);
+      const set = (id, v) => { const f = document.getElementById(id); if (f) { f.value = v; f.dispatchEvent(new Event('input', { bubbles: true })); } return !!f; };
+      const had = { bw: set('bwVal', '180'), due: set('bwDueVal', '181'), arm: set('ms_arm', '15') };
+      const n0 = L.state.bodyweights.length, m0 = L.state.measurements.length;
+      // Another device switched to kilograms: the pull takes it in and draws Today again.
+      L.state.settings.unit = 'kg'; L.invalidate(); L.render(); await w(100);
+      const after = { bw: (document.getElementById('bwVal') || {}).value, due: (document.getElementById('bwDueVal') || {}).value, arm: (document.getElementById('ms_arm') || {}).value };
+      document.querySelector('#view [data-act="addBW"]:not([data-in])').click(); await w(120);
+      document.querySelector('#view [data-act="addMeas"]').click(); await w(120);
+      return { had, after, saved: L.state.bodyweights.length - n0, meas: L.state.measurements.length - m0, kg: L.state.bodyweights.filter(b => b.date === '2026-10-24').map(b => b.kg) };
+    });
+    ok(r.had.bw && r.had.arm && r.had.due, '15. Body and the weigh-in due card were on the page, typed in', r.had);
+    ok(r.after.bw === '' && r.after.arm === '' && r.after.due === '' && r.saved === 0 && r.meas === 0, '15. a change of unit while typing leaves the fields empty in the new unit, and nothing is saved in the wrong unit', r);
+    ok(!Q.errors.length, '15. no page errors', Q.errors);
     await Q.page.context().close();
   }
 

@@ -4279,7 +4279,6 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     return isNaN(+d3) ? "" : dtf(k2, o3).format(d3);
   };
   var fmtDate = (s3) => fmtWith("d", { month: "short", day: "numeric" }, s3);
-  var fmtDateYr = (s3) => s3.slice(0, 4) === today().slice(0, 4) ? fmtDate(s3) : fmtWith("dy", { month: "short", day: "numeric", year: "numeric" }, s3);
   function effScale(v3) {
     return v3 === "half" || v3 === "rpe" ? v3 : "whole";
   }
@@ -9090,7 +9089,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
    <p><b>More options</b>: Deload week, Limited equipment (each exercise your gym cannot do swapped for the closest match), Rest week (a week off on purpose: averages, the streak, and adherence skip it), Flag an injury, and Log cardio.</p>
    <p><b>Two sessions in a day</b> are kept in the order you started them; the next targets come from the later one, and a calendar day with two asks which to open.</p>
    <p><b>Weigh-in</b>: a card asks for your bodyweight every 2 weeks once you have weighed in or log bodyweight lifts (Settings, General, Weigh-in reminder: every week, 2 weeks, month, or off). Pull-ups, dips, and push-ups are read at your latest weigh-in.</p>
-   <p><b>This week</b> counts hard sets logged against hard sets planned; Month shows the calendar instead, and the title becomes This month. The bar at the top of every tab is this week: filled is a day you lifted, a coloured outline is cardio only, a grey ring is a workout planned ahead, and with fixed weekdays a red ring is one missed. Tap an empty past day to log a workout for it. The calendar shows the workouts planned ahead the same way, for a year: tap one to see it on Today; a numbered cycle is counted on from where you are, one day at a time, and a rest week planned ahead plans nothing.</p>`
+   <p><b>This week</b> counts hard sets logged against hard sets planned; Month shows the calendar instead, and the title becomes This month. The bar at the top of every tab is this week: filled is a day you lifted, a coloured outline is cardio only, a grey ring is a workout planned ahead, and with fixed weekdays a red ring is one missed. Tap an empty past day to log a workout for it. The calendar shows the workouts planned ahead the same way, for a year: tap one to see it on Today; a numbered cycle is counted on from where you are, one day at a time, and a rest week planned ahead plans nothing and holds the cycle where it is.</p>`
       ],
       [
         "log",
@@ -9730,6 +9729,7 @@ ${actions ? b`<div class="ph-a">${actions}</div>
     if (ex && ex.assist) return "Help " + u4;
     return m3 === "each" ? u4 + " each" : m3 === "side" ? u4 + "/side" : m3 === "stack" ? "Stack" : m3 === "bw" ? "+" + u4 : u4;
   }
+  var fmtDateYr = (s3) => s3.slice(0, 4) === today().slice(0, 4) ? fmtDate(s3) : fmtWith("dy", { month: "short", day: "numeric", year: "numeric" }, s3);
   var fmtDateLong = (s3) => fmtWith("l", { weekday: "short", month: "short", day: "numeric", year: "numeric" }, s3);
   function topSetPt(ex, x2) {
     let q = null;
@@ -10011,7 +10011,7 @@ ${actions ? b`<div class="ph-a">${actions}</div>
     }
     return out;
   }
-  function cycleProjection(R2, days) {
+  function cycleProjection(R2, days, restWeeks) {
     const n3 = R2.days.length;
     const t4 = today();
     const cs = cycleState(R2);
@@ -10028,7 +10028,9 @@ ${actions ? b`<div class="ph-a">${actions}</div>
       start = t4;
     }
     for (let k2 = 0; k2 < (days || 7); k2++) {
-      out[addDays(start, k2)] = idx;
+      const d3 = addDays(start, k2);
+      if (restWeeks && isRestWeek(weekStart(d3))) continue;
+      out[d3] = idx;
       idx = (idx + 1) % n3;
     }
     return out;
@@ -10058,7 +10060,7 @@ ${actions ? b`<div class="ph-a">${actions}</div>
     const out = {};
     const n3 = to > t4 ? daysBetween(t4, to) : 0;
     if (!n3 || !R2.days.length) return out;
-    const pj = R2.schedule === "weekly" ? null : cycleProjection(R2, n3 + 2);
+    const pj = R2.schedule === "weekly" ? null : cycleProjection(R2, n3 + 2, true);
     for (let k2 = 1; k2 <= n3; k2++) {
       const d3 = addDays(t4, k2);
       if (isRestWeek(weekStart(d3))) continue;
@@ -14457,6 +14459,7 @@ ${acctStep && !acct.user ? b`<button class="linkbtn ob-back" data-act="obAcctBac
     const ios = /^ios/.test(installKind());
     return b`<div class="acctbar" id="installBar"><span class="small"><b>Get the app.</b>${ios ? A : b`<span class="ab-more"> Install ${APP_NAME} on your home screen.</span>`}</span><button class="btn sm primary" data-act="install">${ios ? "Add to Home Screen" : "Install"}</button><button class="ib" aria-label="Not now" data-act="installLater">✕</button></div>`;
   }
+  var inUnit = (u4, field2) => i4(u4, field2);
   function bwDueCard() {
     const n3 = bwEvery();
     if (!n3 || noLog()) return A;
@@ -14475,7 +14478,10 @@ ${acctStep && !acct.user ? b`<button class="linkbtn ob-back" data-act="obAcctBac
     const z2 = prefGet(BWSNOOZE_KEY);
     if (z2 && z2 > t4) return A;
     return b`<div class="card" id="bwDue"><p class="small" style="margin:0 0 8px"><b>Weigh-in due.</b> ${last ? `Last ${fmtW(last.kg)} ${U()}, ${ago} days ago.` : "Pull-ups, dips, and push-ups count it."} ${tipButton("Bodyweight lifts use your latest weigh-in for weight lifted and estimates. How often to ask is in Settings > General.", "About weigh-ins")}</p>
-<div class="row"><label class="field" style="flex:1;margin:0"><span class="vh">Bodyweight (${U()})</span><input type="text" inputmode="decimal" id="bwDueVal" placeholder=${last ? fmtW(last.kg) : `Weight (${U()})`} data-grey=${last ? fmtW(last.kg) : A} aria-label=${`Bodyweight (${U()})`} enterkeyhint="done"></label><button class="btn sm primary" data-act="addBW" data-in="bwDueVal">Save</button><button class="btn sm" data-act="bwLater">Later</button></div></div>`;
+<div class="row"><label class="field" style="flex:1;margin:0"><span class="vh">Bodyweight (${U()})</span>${inUnit(
+      U(),
+      b`<input type="text" inputmode="decimal" id="bwDueVal" placeholder=${last ? fmtW(last.kg) : `Weight (${U()})`} data-grey=${last ? fmtW(last.kg) : A} aria-label=${`Bodyweight (${U()})`} enterkeyhint="done">`
+    )}</label><button class="btn sm primary" data-act="addBW" data-in="bwDueVal">Save</button><button class="btn sm" data-act="bwLater">Later</button></div></div>`;
   }
   function changeBtn(di, free) {
     return b`<button class="btn sm" data-act="startAltOpen" data-day=${di} data-free=${free ? "1" : A}>Change</button>`;
@@ -14644,7 +14650,10 @@ ${howText("starts", STARTS_HELP)}${moreRow(deload, playable, di)}</section>${bwD
       title: "Body",
       sub,
       body: b`${last ? b`<div class="body-sum"><div><div class="v">${fmtW(last.kg)}<span class="small"> ${U()}</span></div><div class="l">Latest, ${fmtDate(last.date)}${chgTxt}</div></div>${r4 ? b`<div><div class="v">${bwWeekTxt(r4).replace(" a week", "")}</div><div class="l">weekly change, from 7-day averages</div></div>` : A}</div>` : A}
-<div class="bw-entry"><label class="field">Date<input type="date" id="bwDate" value=${t4} max=${t4}></label><label class="field">Weight (${U()})<input type="text" inputmode="decimal" id="bwVal" placeholder=${last ? fmtW(last.kg) : ""} enterkeyhint="done"></label><button class="btn primary" data-act="addBW" data-tip="Also used for pull-ups, dips, and other bodyweight lifts.">${loggedToday ? "Update" : "Log"}</button></div>
+<div class="bw-entry"><label class="field">Date<input type="date" id="bwDate" value=${t4} max=${t4}></label><label class="field">Weight (${U()})${inUnit(
+        U(),
+        b`<input type="text" inputmode="decimal" id="bwVal" placeholder=${last ? fmtW(last.kg) : ""} enterkeyhint="done">`
+      )}</label><button class="btn primary" data-act="addBW" data-tip="Also used for pull-ups, dips, and other bodyweight lifts.">${loggedToday ? "Update" : "Log"}</button></div>
 ${bws.length ? b`<ul class="bw-list" aria-label="Recent bodyweights">${bws.slice(0, 5).map(
         (b2) => b`<li><span class="d">${fmtDate(b2.date)}</span><span class="num">${fmtW(b2.kg)} ${U()}</span><button class="ib sm" data-act="delBW" data-id=${b2.id} aria-label=${`Delete ${fmtDate(b2.date)} entry`}>✕</button></li>`
       )}</ul>${bws.length > 5 ? b`<p class="small muted" style="margin:4px 0 0">${bws.length - 5} older on Stats.</p>` : A}` : A}
@@ -14652,7 +14661,7 @@ ${subsection(
         "today:tape",
         `Tape measurements (${LU()})`,
         b`<div class="grid2" style="align-items:end">${heightField()}<span></span></div>
-<div class="grid3" style="margin-top:10px">${MEAS.map(([k2, l4]) => b`<label class="field">${l4}<input type="text" inputmode="decimal" id=${"ms_" + k2}></label>`)}</div>
+<div class="grid3" style="margin-top:10px">${MEAS.map(([k2, l4]) => b`<label class="field">${l4}${inUnit(LU(), b`<input type="text" inputmode="decimal" id=${"ms_" + k2}>`)}</label>`)}</div>
 ${whtrLine(true)}
 <button class="btn" style="margin-top:8px" data-act="addMeas">Save measurements for ${fmtDate(t4)}</button>
 ${ms.length ? b`<div class="scroll-x" style="margin-top:10px"><table class="t"><tr><th>Date</th>${MEAS.map((m3) => b`<th class="r">${m3[1]}</th>`)}<th class="stick-r"><span class="vh">Delete</span></th></tr>${ms.map(

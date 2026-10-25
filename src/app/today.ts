@@ -14,13 +14,15 @@
 
 import { html, nothing } from 'lit-html';
 import type { TemplateResult } from 'lit-html';
+import { keyed } from 'lit-html/directives/keyed.js';
+import type { DirectiveResult } from 'lit-html/directive.js';
 import { act } from './act';
 import { APP_NAME } from './config';
 import { LOCKUP } from './icons';
 import { MEAS, injLabel } from './library';
 import { DAYS, dayLabel, daySets, dropStarter, ssLetters, tplCountLine } from './routines';
 import { starterSigs } from './normalize';
-import { fmtDate, fmtDateYr, greeting, repSpan, todayEye } from './format';
+import { fmtDate, greeting, repSpan, todayEye } from './format';
 import { BW_MAX_KG, BW_MIN_KG, MEAS_MAX_CM } from './records';
 import { addDays, daysBetween, numIn, r1, today, uid, weekStart } from './util';
 import { IN } from './units';
@@ -68,6 +70,7 @@ import {
   bwWeekTxt,
   cycleState,
   effTgt,
+  fmtDateYr,
   heightTxt,
   lenD,
   lenFrom,
@@ -422,6 +425,13 @@ function installBar(): Part {
     ios ? nothing : html`<span class="ab-more"> Install ${APP_NAME} on your home screen.</span>`
   }</span><button class="btn sm primary" data-act="install">${ios ? 'Add to Home Screen' : 'Install'}</button><button class="ib" aria-label="Not now" data-act="installLater">✕</button></div>`;
 }
+/* A field for a new weigh-in or tape measurement, made again when the unit
+   changes: these fields keep what is typed through a draw (r59), and a number
+   typed in pounds or inches left in place under kilograms or centimetres
+   would be saved as that (180 lb as 180 kg). Typed in the unit shown, it goes
+   with it (the review of r59's keeping of fields). */
+const inUnit = (u: string, field: TemplateResult): DirectiveResult => keyed(u, field);
+
 /* A weigh-in due (Settings > General, how often): the last one and Save,
    or Later for two days. Never weighed in: only for someone who logs
    bodyweight lifts, where it changes the numbers (r34.2, from the review: it
@@ -453,9 +463,10 @@ export function bwDueCard(): Part {
   return html`<div class="card" id="bwDue"><p class="small" style="margin:0 0 8px"><b>Weigh-in due.</b> ${
     last ? `Last ${fmtW(last.kg)} ${U()}, ${ago} days ago.` : 'Pull-ups, dips, and push-ups count it.'
   } ${tipButton('Bodyweight lifts use your latest weigh-in for weight lifted and estimates. How often to ask is in Settings > General.', 'About weigh-ins')}</p>
-<div class="row"><label class="field" style="flex:1;margin:0"><span class="vh">Bodyweight (${U()})</span><input type="text" inputmode="decimal" id="bwDueVal" placeholder=${
-    last ? fmtW(last.kg) : `Weight (${U()})`
-  } data-grey=${last ? fmtW(last.kg) : nothing} aria-label=${`Bodyweight (${U()})`} enterkeyhint="done"></label><button class="btn sm primary" data-act="addBW" data-in="bwDueVal">Save</button><button class="btn sm" data-act="bwLater">Later</button></div></div>`;
+<div class="row"><label class="field" style="flex:1;margin:0"><span class="vh">Bodyweight (${U()})</span>${inUnit(
+    U(),
+    html`<input type="text" inputmode="decimal" id="bwDueVal" placeholder=${last ? fmtW(last.kg) : `Weight (${U()})`} data-grey=${last ? fmtW(last.kg) : nothing} aria-label=${`Bodyweight (${U()})`} enterkeyhint="done">`
+  )}</label><button class="btn sm primary" data-act="addBW" data-in="bwDueVal">Save</button><button class="btn sm" data-act="bwLater">Later</button></div></div>`;
 }
 
 /* ---------- the start card ---------- */
@@ -754,9 +765,10 @@ function bodyCard(): TemplateResult {
           }</div>`
         : nothing
     }
-<div class="bw-entry"><label class="field">Date<input type="date" id="bwDate" value=${t} max=${t}></label><label class="field">Weight (${U()})<input type="text" inputmode="decimal" id="bwVal" placeholder=${
-      last ? fmtW(last.kg) : ''
-    } enterkeyhint="done"></label><button class="btn primary" data-act="addBW" data-tip="Also used for pull-ups, dips, and other bodyweight lifts.">${loggedToday ? 'Update' : 'Log'}</button></div>
+<div class="bw-entry"><label class="field">Date<input type="date" id="bwDate" value=${t} max=${t}></label><label class="field">Weight (${U()})${inUnit(
+      U(),
+      html`<input type="text" inputmode="decimal" id="bwVal" placeholder=${last ? fmtW(last.kg) : ''} enterkeyhint="done">`
+    )}</label><button class="btn primary" data-act="addBW" data-tip="Also used for pull-ups, dips, and other bodyweight lifts.">${loggedToday ? 'Update' : 'Log'}</button></div>
 ${
   bws.length
     ? html`<ul class="bw-list" aria-label="Recent bodyweights">${bws
@@ -771,7 +783,7 @@ ${subsection(
   'today:tape',
   `Tape measurements (${LU()})`,
   html`<div class="grid2" style="align-items:end">${heightField()}<span></span></div>
-<div class="grid3" style="margin-top:10px">${MEAS.map(([k, l]) => html`<label class="field">${l}<input type="text" inputmode="decimal" id=${'ms_' + k}></label>`)}</div>
+<div class="grid3" style="margin-top:10px">${MEAS.map(([k, l]) => html`<label class="field">${l}${inUnit(LU(), html`<input type="text" inputmode="decimal" id=${'ms_' + k}>`)}</label>`)}</div>
 ${whtrLine(true)}
 <button class="btn" style="margin-top:8px" data-act="addMeas">Save measurements for ${fmtDate(t)}</button>
 ${

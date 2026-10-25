@@ -133,12 +133,6 @@ export const fmtWith = (k: string, o: Intl.DateTimeFormatOptions, s: string): st
 /** A date as "Oct 17". */
 export const fmtDate = (s: string): string => fmtWith('d', { month: 'short', day: 'numeric' }, s);
 
-/** A date as "Oct 17", with its year when it is not this one ("Mar 1, 2027"): a date a year ahead is not read as one this year. */
-export const fmtDateYr = (s: string): string =>
-  s.slice(0, 4) === today().slice(0, 4)
-    ? fmtDate(s)
-    : fmtWith('dy', { month: 'short', day: 'numeric', year: 'numeric' }, s);
-
 /* ---------- effort ---------- */
 
 /* The effort scale a setting names: half points or RPE, else whole RIR

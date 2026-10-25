@@ -348,14 +348,16 @@ function lineCoverage(covDir, bundleFile, mapPayload) {
   // The page's language and time zone, so dates are worded as the page words them.
   const lang = intl.locale.replace('-', '_') + '.UTF-8';
   const t0 = Date.now();
-  // The batches run side by side, one Node process each, on the cores the machine has spare.
+  // The batches run side by side, one Node process each, on every core the machine has (up to four): the browser is
+  // closed by now and this process only waits, so leaving a core for it, as until r59, ran one batch at a time on a
+  // two-core machine and took the suite to its 15 minutes there (r59: 838 s alone, 650 of them here).
   const runOne = dataFile => new Promise(done => {
     const c = spawn(process.execPath, [__filename, '--child', dataFile, js.path], { env: { ...process.env, NODE_V8_COVERAGE: covDir, TZ: intl.timeZone, LANG: lang, LC_ALL: lang } });
     let out = '', errText = ''; c.stdout.on('data', d => { out += d; }); c.stderr.on('data', d => { errText += d; });
     c.on('close', () => { try { done(JSON.parse(out)); } catch (e) { done({ crash: (errText || out).slice(0, 1500) }); } });
   });
   const results = []; let next = 0;
-  await Promise.all(Array.from({ length: Math.max(1, Math.min(4, os.cpus().length - 1)) }, async () => { while (next < batches.length) { const i = next++; results[i] = await runOne(batches[i]); } }));
+  await Promise.all(Array.from({ length: Math.max(1, Math.min(4, os.cpus().length)) }, async () => { while (next < batches.length) { const i = next++; results[i] = await runOne(batches[i]); } }));
   let res = null;
   const crash = results.find(r => r.crash);
   if (crash) ok(false, 'the engine ran in Node', crash.crash);

@@ -16,8 +16,12 @@ const suites=['unit-math','unit-analytics','dataflow','migration','acceptance','
 const distSuites=['dataflow','acceptance','flows','gym-ux','design','uat','essentials','comeback-removed','r21','r24','r25','journey','progress','custom','r29c','r30','r31','r32','r32b','r33','r34','r34b','r35','r38','r40','r41','r42','r43','r44','r46','r49','coherence','security','lifter','r55-1','r56-2','r56-1','r57','r58','r59'];
 /* Suites that lean on real time (rest timers, toasts, short waits, the clock)
    run one at a time after the others, so a busy machine cannot make them
-   flaky (the r44 review). No retries: a retry would hide a real flake. */
-const SERIAL=new Set(['gym-ux','r25','r33','update','journey','realism','r21','integrity']);
+   flaky (the r44 review). No retries: a retry would hide a real flake.
+   The engine suite runs alone too (r59): it spreads its own batches over
+   every core, so beside another suite on a two-core machine it reached its
+   15 minutes (838 s alone on one core for its batches, 548 s on both); on
+   GitHub each shard runs one suite at a time already (--jobs 1). */
+const SERIAL=new Set(['gym-ux','r25','r33','update','journey','realism','r21','integrity','engine']);
 /* WebKit (2026-10-14): every browser on an iPhone is WebKit, Safari and the
    home-screen app included, and until then nothing ran there. --browser webkit
    runs the same suites and the same standalone-build reruns in WebKit
