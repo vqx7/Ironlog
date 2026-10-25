@@ -20,7 +20,7 @@ const FB_SENT=KEY+'.fbSent';
 function fbRecent(){try{const a=JSON.parse(localStorage.getItem(FB_SENT)||'[]');const cut=Date.now()-864e5;return Array.isArray(a)?a.filter(t=>+t>cut):[];}catch(e){return [];}}
 async function fbCheckReader(){
   const F=FB();const was=!!acct.reader;
-  try{acct.reader=!!(F&&acct.user&&typeof F.isReader==='function'&&await F.isReader());}catch(e){acct.reader=false;}
+  try{acct.reader=!!(F&&acct.user&&typeof F.isReader==='function'&&await F.isReader());}catch(e){log('feedback',e);acct.reader=false;}
   if(was!==acct.reader&&ui.tab==='settings'&&!ui.modal)rerenderKeepScroll();
 }
 function fbContext(m){

@@ -419,8 +419,10 @@ function map3dLoad(cb: () => void): void {
   if (B3.state === 'loading') return;
   B3.state = 'loading';
   // three.js as a module, from each address in turn: this build's own copy first where there is one.
-  void loadModule(THREE_URLS).then(mod => {
-    if (isThree(mod)) window.THREE = mod;
+  void loadModule(THREE_URLS).then(got => {
+    if (got && isThree(got.mod)) window.THREE = got.mod;
+    // A file that loaded but is not three.js is said too, or the 3D view would fail with nothing in the log to say why.
+    else if (got) log('map3d', new Error(`${got.url} loaded, but it is not three.js`));
     if (!window.THREE) {
       B3.state = 'fail';
       B3.fail = 'The 3D view could not load. Check your connection; the flat view still works.';

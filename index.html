@@ -3729,6 +3729,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
         q.onsuccess = () => res(q.result || []);
         q.onerror = () => res([]);
       } catch (e5) {
+        log("undo-read", e5);
         res([]);
       }
     });
@@ -3762,6 +3763,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
         t: Date.now()
       });
     } catch (e5) {
+      log("undo-step", e5);
       return;
     }
     while (undoStack.length > UNDO_MAX) undoStack.shift();
@@ -4277,6 +4279,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     return isNaN(+d3) ? "" : dtf(k2, o3).format(d3);
   };
   var fmtDate = (s3) => fmtWith("d", { month: "short", day: "numeric" }, s3);
+  var fmtDateYr = (s3) => s3.slice(0, 4) === today().slice(0, 4) ? fmtDate(s3) : fmtWith("dy", { month: "short", day: "numeric", year: "numeric" }, s3);
   function effScale(v3) {
     return v3 === "half" || v3 === "rpe" ? v3 : "whole";
   }
@@ -7498,14 +7501,20 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
   var cq = (fn) => cloud.chain = cloud.chain.then(fn, () => {
     return fn();
   });
-  function withTimeout(pr, ms) {
+  function withTimeout(pr, ms, area = "sync-late") {
+    let t4;
     return Promise.race([
-      pr,
-      new Promise(
-        (_2, rej) => setTimeout(() => {
-          rej({ code: "timeout" });
-        }, ms)
-      )
+      pr.finally(() => {
+        clearTimeout(t4);
+      }),
+      new Promise((_2, rej) => {
+        t4 = setTimeout(() => {
+          pr.catch((e5) => {
+            log(area, e5);
+          });
+          rej({ code: "timeout", message: `Timed out: no answer in ${ms / 1e3} s` });
+        }, ms);
+      })
     ]);
   }
   function setCloud(st, err) {
@@ -7776,7 +7785,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
   async function sessionFromCloud(d3, legB) {
     if (d3.editingId || state.sessions.some((q) => q.id === d3.id)) return;
     const id = chunkOf(d3.date);
-    const sn = await withTimeout(ref(id).get(), 2e4);
+    const sn = await withTimeout(ref(id).get(), 2e4, "sync-read");
     const sb = sn && sn.exists ? rec(sn.data()) : null;
     if (!sb || typeof sb.json !== "string") return;
     const data = parseJson(sb.json);
@@ -7805,7 +7814,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     try {
       const r4 = ref("lock");
       if (typeof r4.acquire !== "function") return true;
-      const res = await withTimeout(r4.acquire({ holder: cloud.devId, ttlMs: 3e4 }), 1e4);
+      const res = await withTimeout(r4.acquire({ holder: cloud.devId, ttlMs: 3e4 }), 1e4, "sync-lease");
       const R2 = rec(res);
       return !(R2 && R2.acquired === false);
     } catch (e5) {
@@ -7881,7 +7890,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       const legB = legacyBodyBase();
       for (const x2 of todo) {
         const m3 = cloud.meta[x2.id];
-        const snap = await withTimeout(ref(x2.id).get(), 2e4);
+        const snap = await withTimeout(ref(x2.id).get(), 2e4, "sync-read");
         let json = JSON.stringify(chunksOf(state)[x2.id] || emptyChunk(x2.id));
         const b2 = snap && snap.exists ? rec(snap.data()) : null;
         if (b2 && typeof b2.json === "string" && (!m3 || hashStr(b2.json) !== m3.h)) {
@@ -7923,7 +7932,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
           continue;
         }
         const at = Date.now();
-        await withTimeout(ref(x2.id).set({ v: 1, at, et: cloud.editAt[x2.id] || at, json }), 2e4);
+        await withTimeout(ref(x2.id).set({ v: 1, at, et: cloud.editAt[x2.id] || at, json }), 2e4, "sync-write");
         cloud.meta[x2.id] = { h: hashStr(json), at, b: baseOf(x2.id, parseJson(json)) };
         saveMeta();
       }
@@ -7966,7 +7975,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     setCloud("connecting");
     let snap;
     try {
-      snap = await withTimeout(cloud.db.collection(`data/users/${cloud.uid}`).get(), 2e4);
+      snap = await withTimeout(cloud.db.collection(`data/users/${cloud.uid}`).get(), 2e4, "sync-pull");
     } catch (e5) {
       log("sync-pull", e5);
       cloudFail(e5);
@@ -8303,6 +8312,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       if (ui.tab === "settings") fx.render();
       await cq(cloudPull);
     } catch (e5) {
+      log("auth", e5);
       cloud.on = false;
       setCloud("local");
     } finally {
@@ -8360,6 +8370,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     try {
       base = device.lastSaved ? normalize(parseJson(device.lastSaved)) : null;
     } catch (e5) {
+      log("tabs", e5);
       base = null;
     }
     const stat = { conflicts: 0 };
@@ -13627,8 +13638,12 @@ ${howText("wk", `Each set counts once; a set at RIR 4 or more is not hard and do
   async function loadModule(urls) {
     for (const url of urls) {
       try {
-        return await import(url) ?? null;
+        return { url, mod: await import(url) };
       } catch (e5) {
+        log("load", {
+          message: `${url}: ${e5 instanceof Error ? e5.message : String(e5)}`,
+          stack: e5 instanceof Error ? e5.stack : void 0
+        });
       }
     }
     return null;
@@ -13875,8 +13890,9 @@ ${howText("wk", `Each set counts once; a set at RIR 4 or more is not hard and do
     B3.wait.push(cb);
     if (B3.state === "loading") return;
     B3.state = "loading";
-    void loadModule(THREE_URLS).then((mod) => {
-      if (isThree(mod)) window.THREE = mod;
+    void loadModule(THREE_URLS).then((got) => {
+      if (got && isThree(got.mod)) window.THREE = got.mod;
+      else if (got) log("map3d", new Error(`${got.url} loaded, but it is not three.js`));
       if (!window.THREE) {
         B3.state = "fail";
         B3.fail = "The 3D view could not load. Check your connection; the flat view still works.";
@@ -14487,7 +14503,7 @@ ${acctStep && !acct.user ? b`<button class="linkbtn ob-back" data-act="obAcctBac
     const t4 = today();
     const at = ui["todayAt"];
     const ahead = chosen != null && at && typeof at === "object" && "d" in at && "di" in at && at.di === chosen && typeof at.d === "string" && at.d > addDays(weekStart(t4), 6) ? at.d : null;
-    const eyebrow = ahead ? weekly ? `Viewing ${DAYS[di]}, ${fmtDate(ahead)}` : `Viewing ${fmtDate(ahead)} · ${dayLabel(R2, di)}` : weekly ? di === wd ? "Today" : `Viewing ${DAYS[di]}` : `${cs && cs.restToday && chosen == null ? "Next: " : ""}${dayLabel(R2, di)}`;
+    const eyebrow = ahead ? weekly ? `Viewing ${DAYS[di]}, ${fmtDateYr(ahead)}` : `Viewing ${fmtDateYr(ahead)} · ${dayLabel(R2, di)}` : weekly ? di === wd ? "Today" : `Viewing ${DAYS[di]}` : `${cs && cs.restToday && chosen == null ? "Next: " : ""}${dayLabel(R2, di)}`;
     let note = A;
     if (cs && chosen == null) {
       if (cs.lastDate === t4) note = `${dayLabel(R2, cs.last)} done today.`;
@@ -14628,7 +14644,7 @@ ${howText("starts", STARTS_HELP)}${moreRow(deload, playable, di)}</section>${bwD
       title: "Body",
       sub,
       body: b`${last ? b`<div class="body-sum"><div><div class="v">${fmtW(last.kg)}<span class="small"> ${U()}</span></div><div class="l">Latest, ${fmtDate(last.date)}${chgTxt}</div></div>${r4 ? b`<div><div class="v">${bwWeekTxt(r4).replace(" a week", "")}</div><div class="l">weekly change, from 7-day averages</div></div>` : A}</div>` : A}
-<div class="bw-entry"><label class="field">Date<input type="date" id="bwDate" .value=${fieldValue(t4)} max=${t4}></label><label class="field">Weight (${U()})<input type="text" inputmode="decimal" id="bwVal" placeholder=${last ? fmtW(last.kg) : ""} enterkeyhint="done"></label><button class="btn primary" data-act="addBW" data-tip="Also used for pull-ups, dips, and other bodyweight lifts.">${loggedToday ? "Update" : "Log"}</button></div>
+<div class="bw-entry"><label class="field">Date<input type="date" id="bwDate" value=${t4} max=${t4}></label><label class="field">Weight (${U()})<input type="text" inputmode="decimal" id="bwVal" placeholder=${last ? fmtW(last.kg) : ""} enterkeyhint="done"></label><button class="btn primary" data-act="addBW" data-tip="Also used for pull-ups, dips, and other bodyweight lifts.">${loggedToday ? "Update" : "Log"}</button></div>
 ${bws.length ? b`<ul class="bw-list" aria-label="Recent bodyweights">${bws.slice(0, 5).map(
         (b2) => b`<li><span class="d">${fmtDate(b2.date)}</span><span class="num">${fmtW(b2.kg)} ${U()}</span><button class="ib sm" data-act="delBW" data-id=${b2.id} aria-label=${`Delete ${fmtDate(b2.date)} entry`}>✕</button></li>`
       )}</ul>${bws.length > 5 ? b`<p class="small muted" style="margin:4px 0 0">${bws.length - 5} older on Stats.</p>` : A}` : A}
@@ -15030,6 +15046,7 @@ ${ms.length ? b`<div class="scroll-x" style="margin-top:10px"><table class="t"><
       try {
         acct.reader = !!(F && acct.user && typeof F.isReader === "function" && await F.isReader());
       } catch (e5) {
+        log("feedback", e5);
         acct.reader = false;
       }
       if (was !== acct.reader && ui.tab === "settings" && !ui.modal) rerenderKeepScroll();
@@ -18358,6 +18375,7 @@ ${ms.length ? b`<div class="scroll-x" style="margin-top:10px"><table class="t"><
         const raw = localStorage.getItem(`${STORAGE_ID}.v1`);
         if (raw) local = normalize(JSON.parse(raw));
       } catch (e5) {
+        log("preview-copy", e5);
         local = null;
       }
       let remote = null, err = null;
@@ -18369,6 +18387,7 @@ ${ms.length ? b`<div class="scroll-x" style="margin-top:10px"><table class="t"><
             try {
               parts[d3.id] = JSON.parse(d3.data.json);
             } catch (e5) {
+              log("preview-copy", { message: `${d3.id} could not be read and is left out`, stack: e5 && e5.stack });
             }
           }
           if (Object.keys(parts).length) remote = assemble(parts);
@@ -20485,6 +20504,7 @@ ${JSON.stringify(fb.context, null, 1)}`;
       pickView(t4) {
         closeModal();
         ui.todayDay = +t4.dataset.day;
+        ui.todayAt = null;
         ui.tab = "today";
         window.scrollTo(0, 0);
         render();
@@ -22193,7 +22213,7 @@ ${JSON.stringify(fb.context, null, 1)}`;
     } catch (e5) {
       log("refit", e5);
     }
-    window.__ironlog = { act, B3_PARTS, THREE_URLS, platesPerSide, get state() {
+    window.__ironlog = { act, withTimeout, B3_PARTS, THREE_URLS, platesPerSide, get state() {
       return state;
     }, set state(v3) {
       setState(v3);

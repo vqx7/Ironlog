@@ -770,7 +770,7 @@ m.err=`Could not read that. Try the pattern 225x5, 5, 4 ${rirScale()==='rpe'?'rp
   pickDo(t){applyPick(ui.modal,t.dataset.ex);},
   /* Pick for me, before a session: rank the routine's days for today. */
   pickToday(){openModal({kind:'pickToday'});},
-  pickView(t){closeModal();ui.todayDay=+t.dataset.day;ui.tab='today';window.scrollTo(0,0);render();},
+  pickView(t){closeModal();ui.todayDay=+t.dataset.day;ui.todayAt=null;ui.tab='today';window.scrollTo(0,0);render();},
   /* Pick for me, inside a session: what to add next. */
   pickEx(){if(!state.draft)return;openModal({kind:'pickEx'});},
   pickExAdd(t){

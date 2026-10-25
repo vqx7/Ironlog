@@ -275,10 +275,10 @@ function impSheet(m){
    more sessions wins. The live app and its table are never written. */
 async function liveLogFetch(){
   let local=null;
-  try{const raw=localStorage.getItem(`${STORAGE_ID}.v1`);if(raw)local=normalize(JSON.parse(raw));}catch(e){local=null;}
+  try{const raw=localStorage.getItem(`${STORAGE_ID}.v1`);if(raw)local=normalize(JSON.parse(raw));}catch(e){log('preview-copy',e);local=null;}
   let remote=null,err=null;
   if(typeof window.ironlogLiveDocs==='function'&&acct.user){
-    try{const parts={};for(const d of await window.ironlogLiveDocs()){if(!isChunkId(d.id)||!d.data||typeof d.data.json!=='string')continue;try{parts[d.id]=JSON.parse(d.data.json);}catch(e){/* an unreadable chunk is skipped */}}
+    try{const parts={};for(const d of await window.ironlogLiveDocs()){if(!isChunkId(d.id)||!d.data||typeof d.data.json!=='string')continue;try{parts[d.id]=JSON.parse(d.data.json);}catch(e){log('preview-copy',{message:`${d.id} could not be read and is left out`,stack:e&&e.stack});}}
       if(Object.keys(parts).length)remote=assemble(parts);}catch(e){err=e;}
   }
   const best=[local,remote].filter(Boolean).sort((a,b)=>realCount(b)-realCount(a))[0]||null;

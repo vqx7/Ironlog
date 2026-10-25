@@ -20,7 +20,7 @@ import { LOCKUP } from './icons';
 import { MEAS, injLabel } from './library';
 import { DAYS, dayLabel, daySets, dropStarter, ssLetters, tplCountLine } from './routines';
 import { starterSigs } from './normalize';
-import { fmtDate, greeting, repSpan, todayEye } from './format';
+import { fmtDate, fmtDateYr, greeting, repSpan, todayEye } from './format';
 import { BW_MAX_KG, BW_MIN_KG, MEAS_MAX_CM } from './records';
 import { addDays, daysBetween, numIn, r1, today, uid, weekStart } from './util';
 import { IN } from './units';
@@ -512,8 +512,8 @@ export function viewToday(): TemplateResult {
       : null;
   const eyebrow = ahead
     ? weekly
-      ? `Viewing ${DAYS[di]}, ${fmtDate(ahead)}`
-      : `Viewing ${fmtDate(ahead)} · ${dayLabel(R, di)}`
+      ? `Viewing ${DAYS[di]}, ${fmtDateYr(ahead)}`
+      : `Viewing ${fmtDateYr(ahead)} · ${dayLabel(R, di)}`
     : weekly
       ? di === wd
         ? 'Today'
@@ -754,7 +754,7 @@ function bodyCard(): TemplateResult {
           }</div>`
         : nothing
     }
-<div class="bw-entry"><label class="field">Date<input type="date" id="bwDate" .value=${fieldValue(t)} max=${t}></label><label class="field">Weight (${U()})<input type="text" inputmode="decimal" id="bwVal" placeholder=${
+<div class="bw-entry"><label class="field">Date<input type="date" id="bwDate" value=${t} max=${t}></label><label class="field">Weight (${U()})<input type="text" inputmode="decimal" id="bwVal" placeholder=${
       last ? fmtW(last.kg) : ''
     } enterkeyhint="done"></label><button class="btn primary" data-act="addBW" data-tip="Also used for pull-ups, dips, and other bodyweight lifts.">${loggedToday ? 'Update' : 'Log'}</button></div>
 ${

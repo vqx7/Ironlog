@@ -191,7 +191,8 @@ export async function undoRestore(): Promise<void> {
       q.onsuccess = () => res(q.result || []);
       q.onerror = () => res([]);
     } catch (e) {
-      // The store cannot be read (a database another build made): no steps to restore.
+      // The store cannot be read (a database another build made): no steps to restore, and the reason is kept.
+      log('undo-read', e);
       res([]);
     }
   });
@@ -231,7 +232,8 @@ export function snapshot(inv?: (() => boolean) | null): void {
       t: Date.now()
     });
   } catch (e) {
-    // A log JSON cannot write is not kept as a step: the action goes ahead without Undo, as before the move.
+    // A log JSON cannot write is not kept as a step: the action goes ahead without Undo, as before the move, and the reason is kept.
+    log('undo-step', e);
     return;
   }
   while (undoStack.length > UNDO_MAX) undoStack.shift();

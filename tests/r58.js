@@ -113,17 +113,21 @@ const SCREENS = [
     text: tipless(shot.text.replace(/Best e1RM \(([^)]*)\)/g, 'Best estimate ($1)').replace(/\bE1RM\b/g, 'BEST ESTIMATE').replace(/\be1RM\b/g, 'Best estimate'))
   });
   /* The visible text is read with its spaces and line breaks left out, on both pages, and the tile's new tip
-     button (held in the elements above) with them: every text node is held exactly by the elements, and how
-     text reads at a line wrap differs by engine. WebKit's CI run (2026-10-25) read "Oct 23PR" where a date
+     button (held in the elements above) with them: the words of every text node are held by the elements (each
+     run trimmed, so not a space at its ends: tests/r59.js reads those), and how text reads at a line wrap
+     differs by engine. WebKit's CI run (2026-10-25) read "Oct 23PR" where a date
      and its PR tag wrap in Lifts' table, whose first column the longer "Best estimate" heading narrows
      (98 to 88 px at 390 wide), and where r57's fit on one line. */
+  /* The spaces drawn between elements are read too (screenOf's spaces, since r59), but for the one r58 adds on
+     purpose: before the tile's new tip button, after "Best estimate (lb)". */
+  function tipSpace(t) { return t.replace(/("Best estimate \([a-z]+\)) "(<button aria-label="About the best estimate")/g, '$1"$2'); }
   function tipless(t) { return t.replace(/(Best estimate \([^)]*\))\s*i(?![\w])/g, '$1').replace(/\s+/g, ''); }
   // Where two texts first differ, with some of each around it.
   const textDiff = (a, b) => { let i = 0; while (i < a.length && a[i] === b[i]) i++; return { at: i, r57: a.slice(Math.max(0, i - 80), i + 160), now: b.slice(Math.max(0, i - 80), i + 160) }; };
   if (!run(1));
   else if (process.env.IRONLOG_FILE) console.log('note r58 section 1 compares source pages; it runs on the source build');
   else for (const [tab, name, seed, prep, env] of SCREENS) {
-    const a = asNow(await screenOf(OLD, { browser, seed: seed + FIX + KEEP, tab, prep, env })), b0 = await screenOf(FILE, { browser, seed: seed + FIX + KEEP, tab, prep, env }), b = { ...b0, text: tipless(b0.text) };
+    const a = asNow(await screenOf(OLD, { browser, seed: seed + FIX + KEEP, tab, prep, env, spaces: true })), b1 = await screenOf(FILE, { browser, seed: seed + FIX + KEEP, tab, prep, env, spaces: true }), b0 = { ...b1, tree: b1.tree.map(tipSpace) }, b = { ...b0, text: tipless(b0.text) };
     const d = screenDiff({ tree: a.tree, text: '' }, { tree: b.tree, text: '' });
     ok(!d, `1. ${name}: the same elements, attributes and field values as r57`, d && { at: d.at, r57: d.before, now: d.now });
     ok(a.text === b.text, `1. ${name}: the same visible text as r57`, a.text === b.text ? '' : textDiff(a.text, b.text));

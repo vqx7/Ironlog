@@ -268,7 +268,9 @@ const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log
   const runtime = (id, e) => id === 'outside' && e.spec === '(computed)';
   for (const [id, es] of EDGES) for (const e of es) if (!e.inside && !runtime(id, e)) out.push(`${id}: ${e.spec}`);
   ok(out.length === 0, 'the modules in src/app/ import only each other and lit-html, never the legacy parts or anything else outside (outside.ts alone loads a library by address at run time)', out);
-  ok((EDGES.get('outside') || []).length === 1 && (EDGES.get('outside') || []).every(e => runtime('outside', e)), 'outside.ts loads by address in one place and imports nothing', EDGES.get('outside'));
+  // Since the r59 review it also imports storage.ts, for the error log each failed address is written to (log), and nothing else.
+  { const E = EDGES.get('outside') || []; const R = E.filter(e => runtime('outside', e)), I = E.filter(e => !runtime('outside', e));
+    ok(R.length === 1 && I.length === 1 && I[0].to === 'storage' && !I[0].typeOnly, 'outside.ts loads by address in one place and imports only storage.ts (its error log)', E); }
   const legacyImports = fs.readdirSync(path.join(ROOT, 'src')).filter(f => /^[12]\d-.+\.js$/.test(f)).filter(f => /^\s*import[\s('"{*]/m.test(fs.readFileSync(path.join(ROOT, 'src', f), 'utf8')));
   ok(legacyImports.length === 0, 'the legacy parts import only through src/09-imports.js', legacyImports);
   // The ratchet (ARCHITECTURE.md): the legacy script never grows, in declarations or in lines.

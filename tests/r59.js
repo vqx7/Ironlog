@@ -25,7 +25,23 @@
 //      opens its sheet (the calendar took its sheet's name in r25, so the tap
 //      threw: fails on r58);
 //   6  (a guard) a weigh-in and a measurement saved from Body leave their
-//      fields as a fresh card shows them, now that the fields are kept.
+//      fields as a fresh card shows them, now that the fields are kept;
+//   7  found by the review: a weigh-in's date is kept between draws as its
+//      weight is, so Log saves it on the date chosen (2f6a50d saved it on
+//      today; fails there and on r58);
+//   8  found by the review: a day chosen another way drops the date a day
+//      ahead put on the card (fails on 2f6a50d and r58);
+//   9  a day ahead in another year says its year (fails on 2f6a50d and r58);
+//  10  when three.js cannot load, the error log says why for each address
+//      (fails on 2f6a50d and r58, which kept no reason);
+//  11  a sync request that times out and then fails keeps its own reason
+//      in the error log (fails on 2f6a50d and r58);
+//  12  a sign-in the account service refuses keeps its reason in the error
+//      log (fails on 2f6a50d and r58);
+//  13  Copy my log in names in the error log a month of the account's log
+//      it could not read (fails on 2f6a50d and r58);
+//  14  a cycle's days ahead against dates worked out by hand, not the app's
+//      own projection (fails on r58, which plans none).
 const { open, engine, screenOf, screenDiff } = require('./h');
 const FILE = process.argv[2] || 'index.html';
 const OLD = 'baselines/r58.html';
@@ -95,19 +111,21 @@ const SCREENS = [
   const browser = await engine.launch();
 
   // ---- 1. The screens against r58's (both pages built from src/; the standalone build is left to the source run, as r58's section 1 is).
-  /* The visible text is read with its spaces and line breaks left out (every text node is held exactly by the
-     elements): how text reads at a line wrap differs by engine (r58's WebKit run). */
+  /* The elements are read with the spaces at the ends of each run of text (screenOf's spaces), so a space lost
+     or added between a date and a tag reads as a difference. The visible text has each run of spaces and line
+     breaks read as one space: how text breaks at a wrap differs by engine (r58's WebKit run), not whether it is
+     there. */
   /* The 3D body's loading line, hidden once it has loaded, is left out of both: r58 drew the card fresh, so
      its hidden line kept "Loading the 3D body" until the next draw, and r59 keeps the card and clears it. */
   /* The calendar's days ahead and its Next month (329, held by section 4) are left out of both: r58 left days
      ahead blank and stopped at this month. The days before them are held exactly. */
   const ahead = t => t.replace(/<(span|button)[^>]*class="cd fut[^"]*"[^>]*><span class="n">"\d+"<\/span><span class="x"><\/span><\/\1>/g, '(a day ahead)').replace(/(aria-label="Next month"[^>]*) p-disabled="(true|false)"/g, '$1');
-  const flat = s => ({ ...s, tree: s.tree.map(t => ahead(t.replace(/(<p class="bm3d-msg muted small" hidden="">)"Loading the 3D body"(<\/p>)/g, '$1$2'))), text: s.text.replace(/\s+/g, '') });
+  const flat = s => ({ ...s, tree: s.tree.map(t => ahead(t.replace(/(<p class="bm3d-msg muted small" hidden="">)"Loading the 3D body"(<\/p>)/g, '$1$2'))), text: s.text.replace(/\s+/g, ' ') });
   const textDiff = (a, b) => { let i = 0; while (i < a.length && a[i] === b[i]) i++; return { at: i, r58: a.slice(Math.max(0, i - 80), i + 160), now: b.slice(Math.max(0, i - 80), i + 160) }; };
   if (!run(1));
   else if (process.env.IRONLOG_FILE) console.log('note r59 section 1 compares source pages; it runs on the source build');
   else for (const [tab, name, seed, prep, env, init, root] of SCREENS) {
-    const o = { browser, seed: seed + FIX, tab, prep, env, init, root };
+    const o = { browser, seed: seed + FIX, tab, prep, env, init, root, spaces: true };
     const a = flat(await screenOf(OLD, o)), b0 = await screenOf(FILE, o), b = flat(b0);
     const d = screenDiff({ tree: a.tree, text: '' }, { tree: b.tree, text: '' });
     ok(!d, `1. ${name}: the same elements, attributes and field values as r58`, d && { at: d.at, r58: d.before, now: d.now });
@@ -193,10 +211,12 @@ const SCREENS = [
   }
 
   // ---- 3. Today, the week bar and the calendar are drawn by lit-html and kept between draws (r58 drew them fresh: fails there).
+  // The sections are opened as a lifter opens them, by a tap on each heading: opened by script, the next draw closed them
+  // again before the browser said they had opened (the r59 review), and the case failed on r59 for that, not for the app.
   if (run(3)) {
     const r = await ev(async () => {
       const L = window.__ironlog; L.ui.tab = 'today'; L.render(); await new Promise(r => setTimeout(r, 60));
-      document.querySelectorAll('#view details').forEach(d => { d.open = true; });
+      for (const d of document.querySelectorAll('#view details:not([open])')) d.querySelector('summary').click(); await new Promise(r => setTimeout(r, 60));
       const hero = document.querySelector('#view .hero'), day = document.querySelector('#wkbar .w'), f = document.getElementById('bwVal');
       f.focus(); f.value = '18';
       L.render(); await new Promise(r => setTimeout(r, 60));
@@ -210,11 +230,11 @@ const SCREENS = [
   if (run(6)) {
     const r = await ev(async () => {
       const L = window.__ironlog; L.ui.tab = 'today'; L.render(); await new Promise(r => setTimeout(r, 60));
-      document.querySelectorAll('#view details').forEach(d => { d.open = true; });
+      for (const d of document.querySelectorAll('#view details:not([open])')) d.querySelector('summary').click(); await new Promise(r => setTimeout(r, 60));
       document.getElementById('bwDate').value = '2026-10-20'; document.getElementById('bwVal').value = '179.6';
       document.querySelector('#view [data-act="addBW"]:not([data-in])').click(); await new Promise(r => setTimeout(r, 120));
       const bw = { val: document.getElementById('bwVal').value, date: document.getElementById('bwDate').value, saved: L.state.bodyweights.some(b => b.date === '2026-10-20' && Math.abs(L.fmtW(b.kg) - 179.6) < 0.05) };
-      document.querySelectorAll('#view details').forEach(d => { d.open = true; });
+      for (const d of document.querySelectorAll('#view details:not([open])')) d.querySelector('summary').click(); await new Promise(r => setTimeout(r, 60));
       document.getElementById('ms_arm').value = '15';
       document.querySelector('#view [data-act="addMeas"]').click(); await new Promise(r => setTimeout(r, 120));
       return { bw, arm: document.getElementById('ms_arm').value };
@@ -300,6 +320,220 @@ const SCREENS = [
     });
     ok(r.kind === 'cal' && r.shown && /^Calibration set: /.test(r.head) && r.save, '5. Calibration set (RIR check) in an exercise\'s menu opens the calibration sheet, with its Save', r);
     ok(!Q.errors.length, '5. no page errors', Q.errors);
+    await Q.page.context().close();
+  }
+
+  // ---- 7. Found by the r59 review: Body's weigh-in date is kept between draws as its weight is. The first r59 commit (2f6a50d)
+  // put the date back to today on every draw and kept the weight, so Log saved it on today, over today's weigh-in, and said
+  // nothing; r58 lost both, so it refused the save (fails on both).
+  if (run(7)) {
+    const Q = await open(FILE, { browser, clock: '2026-10-24T10:00:00' });
+    const r = await Q.page.evaluate(async () => {
+      const L = window.__ironlog; const w = ms => new Promise(r => setTimeout(r, ms));
+      L.state.settings.onboarded = true; L.makeDemo(); L.state.settings.hidden = []; L.saveNow(); L.ui.tab = 'today'; L.render(); await w(100);
+      const out = {};
+      const cases = [
+        ['More options tapped', () => document.querySelector('#view [data-act="heroMore"]').click()],
+        ['a muscle tapped on the map', () => document.querySelector('#view [data-act="mapSel"][data-m="chest"]').dispatchEvent(new MouseEvent('click', { bubbles: true }))],
+        ['Today drawn again (as a sync pull does)', () => L.render()]
+      ];
+      for (const [name, redraw] of cases) {
+        // Today's weigh-in is 181, none on Oct 22.
+        L.state.bodyweights = L.state.bodyweights.filter(b => b.date !== '2026-10-22' && b.date !== '2026-10-24');
+        L.state.bodyweights.push({ id: 'T' + name.length, date: '2026-10-24', kg: L.fromD(181), demo: false }); L.saveNow(); L.render(); await w(60);
+        // Body opened as a lifter opens it, by its heading.
+        for (const d of document.querySelectorAll('#view details:not([open])')) d.querySelector('summary').click();
+        await w(60);
+        const de = document.getElementById('bwDate'); de.value = '2026-10-22'; de.dispatchEvent(new Event('input', { bubbles: true })); de.dispatchEvent(new Event('change', { bubbles: true }));
+        const f = document.getElementById('bwVal'); f.value = '180.2'; f.dispatchEvent(new Event('input', { bubbles: true }));
+        redraw(); await w(100);
+        const date = document.getElementById('bwDate').value;
+        document.querySelector('#view [data-act="addBW"]:not([data-in])').click(); await w(150);
+        out[name] = { date, oct22: L.state.bodyweights.filter(b => b.date === '2026-10-22').map(b => L.fmtW(b.kg)), oct24: L.state.bodyweights.filter(b => b.date === '2026-10-24').map(b => L.fmtW(b.kg)) };
+      }
+      return out;
+    });
+    for (const [name, x] of Object.entries(r))
+      ok(x.date === '2026-10-22' && x.oct22.join() === '180.2' && x.oct24.join() === '181', `7. a weigh-in for Oct 22 being typed, then ${name}: the date stays Oct 22 and Log saves it there, today's weigh-in left as it was`, x);
+    ok(Object.keys(r).length === 3, '7. all three draws tried', Object.keys(r));
+    ok(!Q.errors.length, '7. no page errors', Q.errors);
+    await Q.page.context().close();
+  }
+
+  // ---- 8. Found by the r59 review: a date said on the card goes when the day is chosen another way. After a day far ahead
+  // was opened from the calendar, Change, Pick for me, Preview of the same day kept "Viewing Mon, Mar 1" (2f6a50d; r58 has
+  // no days ahead on its calendar, so this fails there too).
+  // ---- 9. A day ahead in another year says its year: "Viewing Sat, Oct 23" a year ahead read as yesterday beside today's
+  // "Sat Oct 24" (2f6a50d; r58 has no days ahead on its calendar: fails there too). A day ahead this year says none.
+  if (run(8) || run(9)) {
+    const Q = await open(FILE, { browser, clock: '2026-10-24T10:00:00' });
+    const q = (f, a) => Q.page.evaluate(f, a);
+    await q(() => { const L = window.__ironlog; L.state.settings.onboarded = true; L.makeDemo(); const R = L.state.routines.find(r => r.id === L.state.activeRoutineId); R.schedule = 'weekly'; L.state = L.normalize(L.state); L.invalidate(); L.saveNow(); L.ui.tab = 'today'; L.render(); });
+    await wait(150);
+    // A planned day in a month ahead (its first, or its last), tapped on the calendar sheet: what the card says.
+    const openDay = (ym, first) => q(async ([ym, first]) => {
+      const L = window.__ironlog; const w = ms => new Promise(r => setTimeout(r, ms));
+      L.ui.todayDay = null; L.ui.todayAt = null; L.ui.tab = 'today'; L.render(); await w(60);
+      L.ACT.calOpen({ dataset: { ym } }); await w(100);
+      const cells = [...document.querySelectorAll('#modal .cd[data-act="wkGo"]')]; const cell = first ? cells[0] : cells.pop();
+      if (!cell) return { none: true };
+      const d = cell.dataset.date, di = +cell.dataset.day; cell.click(); await w(150);
+      return { d, di, eye: (document.querySelector('#view .hero .eyebrow') || {}).textContent || '', h2: (document.querySelector('#view .hero h2') || {}).textContent || '' };
+    }, [ym, first]);
+    if (run(8)) {
+      const a = await openDay('2027-03', true);
+      const r = a.none ? a : await q(async di => {
+        const L = window.__ironlog; const w = ms => new Promise(r => setTimeout(r, ms));
+        document.querySelector('#view [data-act="startAltOpen"]').click(); await w(100);
+        const pick = document.querySelector('#modal [data-act="altGo"][data-go="pickToday"]'); if (!pick) return { noPick: true };
+        pick.click(); await w(150);
+        const pv = document.querySelector(`#modal [data-act="pickView"][data-day="${di}"]`); if (!pv) return { noPreview: true };
+        pv.click(); await w(150);
+        return { eye: (document.querySelector('#view .hero .eyebrow') || {}).textContent || '', h2: (document.querySelector('#view .hero h2') || {}).textContent || '', want: L.activeRoutine().days[di].name, at: L.ui.todayAt || null };
+      }, a.di);
+      ok(!a.none && a.eye.includes('Mar'), '8. a planned day in March tapped on the calendar says its date', a);
+      ok(!r.none && !r.noPick && !r.noPreview && r.h2 === r.want && !r.eye.includes('Mar') && r.at === null, '8. then Change, Pick for me, Preview of the same day: the card shows that day for this week, the March date gone', r);
+    }
+    if (run(9)) {
+      const far = await openDay('2027-10', false), near = await openDay('2026-11', false);
+      ok(!far.none && far.eye.includes('2027'), '9. a planned day a year ahead (October 2027) says its year on the card', far);
+      ok(!near.none && !near.eye.includes('2026') && /Nov/.test(near.eye), '9. a planned day ahead this year (November) says its date without the year', near);
+    }
+    ok(!Q.errors.length, '8, 9. no page errors', Q.errors);
+    await Q.page.context().close();
+  }
+
+  // ---- 10. When the 3D body cannot load, the error log says why for each address tried: its address and its own error
+  // (r58 and 2f6a50d kept none, so the only sign was "could not load": fails on both).
+  if (run(10)) {
+    const Q = await open(FILE, { browser, clock: '2026-10-24T10:00:00' });
+    // The first address answers "not found", the second is refused, as a blocked or offline phone sees them.
+    let n = 0;
+    await Q.page.route(/three(@[\d.]+)?\/build\/three\.module\.min\.js/, r => (n++ === 0 ? r.fulfill({ status: 404, body: 'not found' }) : r.abort('connectionrefused')));
+    const r = await Q.page.evaluate(async () => {
+      const L = window.__ironlog; const w = ms => new Promise(r => setTimeout(r, ms));
+      L.state.settings.onboarded = true; L.makeDemo(); L.state.settings.hidden = []; L.saveNow(); L.ui.tab = 'today'; L.render(); await w(100);
+      const before = L.logBuf.length;
+      document.querySelector('#view [data-act="mapView"][data-v="3d"]').click();
+      for (let i = 0; i < 100 && L.map3d().state !== 'fail'; i++) await w(50);
+      return { state: L.map3d().state, urls: L.THREE_URLS, logged: L.logBuf.slice(before).map(e => ({ a: e.a, m: e.m, s: !!e.s })), msg: (document.querySelector('#view .bm3d-msg') || {}).textContent || '' };
+    });
+    const loads = r.logged.filter(e => e.a === 'load');
+    ok(r.state === 'fail' && /could not load/.test(r.msg), '10. with every address for three.js failing, the 3D view says it could not load', r);
+    ok(loads.length === r.urls.length && r.urls.every((u, i) => loads[i] && loads[i].m.startsWith(u + ': ') && loads[i].m.length > u.length + 2), '10. the error log has one line for each address tried, in order, each with its address and its own error', r);
+    ok(!Q.errors.length, '10. no page errors', Q.errors);
+    await Q.page.context().close();
+  }
+
+  // ---- 11. A sync request that times out and then fails keeps its own reason in the error log (withTimeout dropped it, so
+  // a refused or full copy read only as no answer; r58 and 2f6a50d keep none: fails on both). One that fails in time is
+  // passed on as it came, and one that answers in time is not logged.
+  if (run(11)) {
+    const Q = await open(FILE, { browser, clock: '2026-10-24T10:00:00' });
+    const r = await Q.page.evaluate(async () => {
+      const L = window.__ironlog; const w = ms => new Promise(r => setTimeout(r, ms));
+      if (typeof L.withTimeout !== 'function') return { none: true };
+      const later = (ms, v, bad) => new Promise((res, rej) => setTimeout(() => (bad ? rej(v) : res(v)), ms));
+      const settle = p => p.then(v => ({ ok: v }), e => ({ err: e }));
+      const before = L.logBuf.length;
+      const slow = await settle(L.withTimeout(later(300, { code: 'quota_exceeded', message: 'The copy is full' }, true), 100, 'sync-write'));
+      const quick = await settle(L.withTimeout(later(20, { code: 'denied', message: 'Refused' }, true), 200, 'sync-read'));
+      const fine = await settle(L.withTimeout(later(20, 'done'), 200, 'sync-pull'));
+      await w(400);
+      return { slow, quick, fine, logged: L.logBuf.slice(before).map(e => [e.a, e.m]) };
+    });
+    ok(!r.none && r.slow.err && r.slow.err.code === 'timeout', '11. a request with no answer in time fails as a timeout', r);
+    ok(!r.none && r.logged.some(([a, m]) => a === 'sync-write' && /The copy is full/.test(m)), '11. its own failure, after the timeout, is in the error log under its area', r);
+    ok(!r.none && r.quick.err && r.quick.err.code === 'denied' && r.fine.ok === 'done' && !r.logged.some(([a]) => a === 'sync-read' || a === 'sync-pull'), '11. one that fails in time is passed on as it came, one that answers in time logs nothing', r);
+    ok(!Q.errors.length, '11. no page errors', Q.errors);
+    await Q.page.context().close();
+    // The same through the sync itself: an account whose writes get no answer for 21 s and then fail as a full copy.
+    // The flush gives up at 20 s, as before; the reason that comes after is in the error log (r58 and 2f6a50d lose it).
+    const C = await open(FILE, { browser, clock: '2026-10-24T10:00:00', setup: async ctx => ctx.addInitScript(() => {
+      window.claude = { use: async k => {
+        if (k === 'user') return { id: async () => 'u59' };
+        if (k === 'db') return {
+          doc: () => ({ get: async () => ({ exists: false, data: () => null }), set: () => new Promise((_, rej) => setTimeout(() => rej({ code: 'quota_exceeded', message: 'The copy is full' }), 21000)) }),
+          collection: () => ({ get: async () => ({ docs: [] }) })
+        };
+        return null;
+      } };
+    }) });
+    const f = await C.page.evaluate(async () => {
+      const L = window.__ironlog; const w = ms => new Promise(r => setTimeout(r, ms));
+      for (let i = 0; i < 100 && !L.cloudState().on; i++) await w(50);
+      L.state.settings.onboarded = true; L.makeDemo(); L.saveNow();
+      const t0 = Date.now(); await L.flush(); const took = Date.now() - t0;
+      await w(2500);
+      return { on: L.cloudState().on, took, status: L.cloudState().status, logged: L.logBuf.map(e => [e.a, e.m]) };
+    });
+    ok(f.on && f.took >= 19000 && f.logged.some(([a, m]) => a === 'sync-flush' && /timeout|Timed out/.test(m)), '11. the sync, its write unanswered, gives up at 20 s and logs a timeout, as before', { on: f.on, took: f.took, logged: f.logged });
+    ok(f.logged.some(([a, m]) => a === 'sync-write' && /The copy is full/.test(m)), '11. and the write\'s own failure, a full copy, is in the error log', f.logged);
+    await C.page.context().close();
+  }
+
+  // ---- 12. A sign-in the account service refuses keeps its reason in the error log (cloudInit dropped it: the app went on
+  // without an account, as it should, with nothing to say why; fails on r58 and 2f6a50d).
+  if (run(12)) {
+    const C = await open(FILE, { browser, clock: '2026-10-24T10:00:00', setup: async ctx => ctx.addInitScript(() => {
+      window.claude = { use: async k => { if (k === 'db') throw new Error('The account service refused the sign-in'); return k === 'user' ? { id: async () => 'u59' } : null; } };
+    }) });
+    await wait(1500);
+    const r = await C.page.evaluate(() => { const L = window.__ironlog; return { on: L.cloudState().on, status: L.cloudState().status, logged: L.logBuf.map(e => [e.a, e.m]) }; });
+    ok(!r.on && r.status === 'local', '12. a refused sign-in leaves the app on this phone alone, as before', r);
+    ok(r.logged.some(([a, m]) => a === 'auth' && /refused the sign-in/.test(m)), '12. and its reason is in the error log', r);
+    await C.page.context().close();
+  }
+
+  // ---- 13. Copy my log in (the preview) says in the error log what it could not read: a month of the account's log that
+  // would not read was left out of the copy with nothing said (fails on r58 and 2f6a50d).
+  if (run(13)) {
+    const C = await open(FILE, { browser, clock: '2026-10-24T10:00:00', setup: async ctx => ctx.addInitScript(() => {
+      window.ironlogAuth = { onChange() {}, user() { return Promise.resolve({ id: 'u59', email: 'v@example.com' }); }, signOut() { return Promise.resolve(); }, deleteAccount() { return Promise.resolve(); } };
+      window.ironlogLiveDocs = async () => [{ id: 's-2026-10-2', data: { json: '{not json' } }];
+    }) });
+    await wait(800);
+    const r = await C.page.evaluate(async () => {
+      const L = window.__ironlog; const before = L.logBuf.length;
+      const got = await L.liveLogFetch();
+      return { signedIn: !!L.acctUser(), err: got.err ? String(got.err) : null, logged: L.logBuf.slice(before).map(e => [e.a, e.m]) };
+    });
+    ok(r.signedIn && r.logged.some(([a, m]) => a === 'preview-copy' && m.includes('s-2026-10-2')), '13. a month of the account\'s log that will not read is named in the error log, not left out unsaid', r);
+    await C.page.context().close();
+  }
+
+  // ---- 14. A cycle's days ahead, worked out by hand (section 4 and tests/coherence.js read them against the app's own
+  // projection, which would agree with itself if it were wrong). A cycle of A, B and a rest day: with A done today,
+  // November starts on the rest day, then A, B; resting today after B yesterday, it starts on B, then the rest day, A.
+  // Fails on r58, which plans no day ahead on the calendar.
+  if (run(14)) {
+    const Q = await open(FILE, { browser, clock: '2026-10-24T10:00:00' });
+    const nov = first => { const out = []; for (let d = 1; d <= 30; d++) { const i = (first + d - 1) % 3; if (i !== 2) out.push([`2026-11-${String(d).padStart(2, '0')}`, i]); } return out; };
+    const cases = [
+      // Done A (0) today: tomorrow, Oct 25, is B (1); Nov 1 is 8 days on, (1 + 7) % 3 = 2, the rest day, so Nov 1 is index 2.
+      ['A done today', '2026-10-24', 0, nov(2)],
+      // B (1) yesterday and the rest day today: Oct 25 is A (0); Nov 1 is 7 days on, 7 % 3 = 1, B.
+      ['B yesterday, resting today', '2026-10-23', 1, nov(1)]
+    ];
+    for (const [name, date, di, want] of cases) {
+      const r = await Q.page.evaluate(async ([date, di]) => {
+        const L = window.__ironlog; const w = ms => new Promise(r => setTimeout(r, ms));
+        L.state.settings.onboarded = true; L.makeDemo();
+        const R = L.state.routines.find(r => r.id === L.state.activeRoutineId);
+        const [A, B] = R.days.filter(d => !d.rest && d.items.length);
+        R.days = [A, B, { id: 'rest59', name: 'Rest', rest: true, items: [] }]; R.schedule = 'cycle';
+        const one = JSON.parse(JSON.stringify(L.state.sessions[L.state.sessions.length - 1]));
+        Object.assign(one, { id: 'cyc59', date, routineId: R.id, dayId: R.days[di].id, dayIdx: di, dayName: R.days[di].name });
+        L.state.sessions = [one]; L.state = L.normalize(L.state); L.invalidate(); L.saveNow();
+        L.ui.modal = null; L.ui.tab = 'history'; L.render(); await w(60);
+        L.ACT.calOpen({ dataset: { ym: '2026-11' } }); await w(100);
+        const got = [...document.querySelectorAll('#modal .cd[data-act="wkGo"]')].map(e => [e.dataset.date, +e.dataset.day]);
+        L.ACT.mClose(); await w(50);
+        return got;
+      }, [date, di]);
+      ok(JSON.stringify(r) === JSON.stringify(want), `14. a cycle of A, B and a rest day, ${name}: November's planned days, worked out by hand`, { got: r.slice(0, 6), want: want.slice(0, 6), n: [r.length, want.length] });
+    }
+    ok(!Q.errors.length, '14. no page errors', Q.errors);
     await Q.page.context().close();
   }
 

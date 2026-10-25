@@ -147,11 +147,12 @@ const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log
   const C = await open('index.html', { browser, touch: true, w: 390, h: 844, clock: '2026-09-30T18:00:00' });
   const cev = (f, a) => C.page.evaluate(f, a);
   await cev(() => { const L = window.__ironlog; L.state.settings.onboarded = true; L.makeDemo(); /* r30: history here, not sample data */ for (const k of ['sessions', 'bodyweights', 'measurements']) for (const x of (L.state[k] || [])) delete x.demo; L.invalidate && L.invalidate(); L.ui.tab = 'history'; L.render(); localStorage.setItem('ironlog.v1.tipWake', '1'); });
-  const cal = () => cev(() => { const m = window.__ironlog.ui.modal; return m && (m.kind === 'calendar' || m.kind === 'cal') ? { ym: m.ym, title: document.getElementById('calH').textContent, on: document.querySelectorAll('#modal .cd.on').length, fut: document.querySelectorAll('#modal span.cd.fut').length, futBtn: document.querySelectorAll('#modal button.cd.fut').length } : null; });
+  const cal = () => cev(() => { const m = window.__ironlog.ui.modal; return m && m.kind === 'calendar' ? { ym: m.ym, title: document.getElementById('calH').textContent, on: document.querySelectorAll('#modal .cd.on').length, fut: document.querySelectorAll('#modal span.cd.fut').length, futBtn: document.querySelectorAll('#modal button.cd.fut').length } : null; });
   await C.page.click('#view .ph [data-act="calOpen"]'); await C.page.waitForTimeout(100);
   let c1 = await cal();
-  ok(c1 && c1.ym === '2026-09' && c1.title === 'September 2026' && c1.on > 0 && c1.futBtn === 0, 'History > Calendar opens this month, lifted days marked, days ahead not tappable', c1);
-  ok(await cev(() => document.querySelector('#modal [data-act="calMonth"][data-v="1"]').disabled), 'no months after this one');
+  ok(c1 && c1.ym === '2026-09' && c1.title === 'September 2026' && c1.on > 0 && c1.futBtn === 0, 'History > Calendar opens this month, lifted days marked, no day ahead to tap on its last day (days ahead with a workout planned are tappable since r59: tests/r59.js section 4)', c1);
+  // Until r59 the months stopped at this one; since 329 (r59) they go on a year ahead, to the workouts planned (tests/r59.js section 4).
+  ok(await cev(() => !document.querySelector('#modal [data-act="calMonth"][data-v="1"]').disabled), 'the months go on past this one, to the days planned ahead (329, r59)');
   const min = await cev(() => { const L = window.__ironlog; const f = L.state.sessions.map(s => s.date).sort()[0]; return f.slice(0, 7); });
   for (let k = 0; k < 6; k++) { const dis = await cev(() => document.querySelector('#modal [data-act="calMonth"][data-v="-1"]').disabled); if (dis) break; await C.page.click('#modal [data-act="calMonth"][data-v="-1"]'); await C.page.waitForTimeout(50); }
   c1 = await cal();
@@ -183,7 +184,7 @@ const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log
     const o = (yy) => ({ bubbles: true, cancelable: true, pointerType: 'touch', clientX: x, clientY: yy, pointerId: 11, isPrimary: true, button: 0 });
     btn.dispatchEvent(new PointerEvent('pointerdown', o(y))); for (let k = 1; k <= 5; k++) { document.dispatchEvent(new PointerEvent('pointermove', o(y + 12 * k))); await new Promise(r => setTimeout(r, 16)); }
     btn.dispatchEvent(new PointerEvent('pointerup', o(y + 60))); await new Promise(r => setTimeout(r, 120)); const L = window.__ironlog; return { modal: L.ui.modal && L.ui.modal.kind }; });
-  ok(drag.modal !== 'cal', 'a pull on the week bar no longer opens a calendar', drag);
+  ok(drag.modal !== 'calendar', 'a pull on the week bar no longer opens a calendar', drag);
   // This week starts folded (r28): open it.
   await cev(() => { const L = window.__ironlog; L.ACT.mClose(); L.ui.tab = 'today'; L.ui.folds['today:week'] = true; L.render(); });
   const wk = await cev(() => { const v = document.querySelector('.wkview'); return v ? [...v.querySelectorAll('button')].map(b => b.textContent + (b.classList.contains('on') ? '*' : '')) : null; });

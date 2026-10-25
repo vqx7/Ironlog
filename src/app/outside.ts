@@ -5,14 +5,28 @@
    place a module loads code by address; every other import is a module in
    src/app/ or lit-html (tests/hygiene.js). */
 
-/** The module at the first address that loads, in order, or null when none does. */
-export async function loadModule(urls: readonly string[]): Promise<unknown> {
+import { log } from './storage';
+
+/** A module loaded by address, with the address it came from (so a caller that finds it is not what it wanted can say which). */
+export interface Loaded {
+  url: string;
+  mod: unknown;
+}
+
+/** The module at the first address that loads, in order, or null when none does; each address that fails is logged with its own error. */
+export async function loadModule(urls: readonly string[]): Promise<Loaded | null> {
   for (const url of urls) {
     try {
       // The cast says what an address can give: a module of no known shape, which the caller checks.
-      return (await (import(url) as Promise<unknown>)) ?? null;
+      return { url, mod: await (import(url) as Promise<unknown>) };
     } catch (e) {
-      // This address did not load (offline, blocked, or gone): the next one is tried.
+      /* Each failure is kept with its address and the browser's own message and stack, not only that 3D did not
+         load; the next address is tried. A file that would not fetch reads the same whether it was missing or
+         refused (an import is not told the reply's status), but one that fetched and would not run says why. */
+      log('load', {
+        message: `${url}: ${e instanceof Error ? e.message : String(e)}`,
+        stack: e instanceof Error ? e.stack : undefined
+      });
     }
   }
   return null;
