@@ -35,8 +35,10 @@ export interface WorkState {
      once its effort is picked), not on the tick: the lifter sees the tick and
      the effort strip first. Until then it is drawn open. */
   foldWait: WeakSet<DraftBlock>;
-  // The field whose selection is made again once the tap is over, until something is typed in it.
+  // The load field a tap just focused, whose selection is made again when the tap is released.
   selAgain: HTMLInputElement | null;
+  // The load field just focused whose number the first key replaces (and backspace clears), until a key, a tap on it or leaving it.
+  replaceNext: HTMLInputElement | null;
 }
 /** The session screen's state between draws (WorkState). */
 export const W: WorkState = {
@@ -51,7 +53,8 @@ export const W: WorkState = {
   stripAt: null,
   platesAt: null,
   foldWait: new WeakSet<DraftBlock>(),
-  selAgain: null
+  selAgain: null,
+  replaceNext: null
 };
 
 /** A tap's element as the page's handler gives it: its data attributes. */

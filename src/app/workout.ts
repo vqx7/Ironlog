@@ -31,7 +31,7 @@ import { platesMode } from './gym';
 import { loadWords, loadNote, emptyLoad } from './loads';
 import { CHK_Q, chkWord } from './coach';
 import { rirScale, effShow, effName } from './effort';
-import { prefGet, BWASK_KEY, prefSet } from './storage';
+import { prefGet, BWASK_KEY, prefSet, log } from './storage';
 import { EX, exBarKg, loadLabel, U, exName, lighterLoad, fromD, oddLoad } from './live';
 import { state, ui, fx } from './store';
 import {
@@ -1120,9 +1120,14 @@ export const WORKOUT_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
 
 /* ---------- the screen's fields ---------- */
 
-// Where the last touch landed, for the routes auto-mark reads (the page's pointerdown, capture phase).
+/* Where the last touch landed, for the routes auto-mark reads and for a load
+   field's selection (the page's pointerdown, capture phase). A tap on a load
+   field that already has focus places the caret, as any tap does, so the next
+   key no longer replaces the number. */
 function noteDown(e: Event): void {
   W.lastDown = { el: e.target instanceof Element ? e.target : null, t: Date.now() };
+  W.selAgain = null;
+  if (W.replaceNext && e.target === W.replaceNext && document.activeElement === W.replaceNext) W.replaceNext = null;
 }
 
 /* What a field of the session screen typed changes, on every keystroke:
@@ -1165,6 +1170,7 @@ export function workoutInput(t: HTMLInputElement): boolean {
     if (!s) return true;
     greyTyped(t);
     if (W.selAgain === t) W.selAgain = null;
+    if (W.replaceNext === t) W.replaceNext = null;
     const bi = Number(t.dataset.b),
       si = Number(t.dataset.s);
     const n = numIn(t.value);
@@ -1385,12 +1391,15 @@ export function workoutKey(e: KeyboardEvent): boolean {
    field to be typed over: a digit replaces it, backspace clears it, and left
    untouched it goes back to grey, so it still follows the next sets'
    adjustment and one tap on the checkmark still logs it. A filled load is
-   selected the same way. The selection is made at once, so a digit typed
-   right away replaces it, and again once the tap is over (the tap's own
-   release can place the caret, on an iPhone as in Chrome) unless something
-   was typed meanwhile; a second tap on the focused field places the caret as
-   any tap does. iPhone selection behaviour is to be tried on V's phone
-   before this ships. */
+   selected the same way. The selection is made on focus, and made again when
+   the tap that focused the field is released, whose default would place the
+   caret where the finger landed (in WebKit, the engine of every iPhone
+   browser, it did: GitHub's run of r60 typed 1135 over a selected 135, and
+   152.5 over a grey 135 as 1152.535). The first key does what the selection
+   says whatever the screen shows (workoutBeforeInput), so a release that
+   still moves the caret cannot splice a digit into the number. A second tap
+   on the focused field places the caret as any tap does. iPhone selection
+   behaviour is to be tried on V's phone before this ships. */
 // A field of the session screen focused (focusin): a load field's number selected, a grey one put in to be typed over.
 function workoutFocus(e: FocusEvent): void {
   const t = e.target;
@@ -1401,11 +1410,42 @@ function workoutFocus(e: FocusEvent): void {
     fieldShown(t, true);
   }
   t.select();
-  W.selAgain = t;
-  setTimeout(() => {
-    if (W.selAgain === t && document.activeElement === t) t.select();
-    if (W.selAgain === t) W.selAgain = null;
-  }, 0);
+  W.replaceNext = t;
+  // Focused by a touch on it just now (noteDown ran first): its release is still to come.
+  W.selAgain = W.lastDown.el === t ? t : null;
+}
+
+// A tap released (mouseup, capture phase): on the load field it just focused, the selection kept rather than the caret placed.
+function workoutUp(e: MouseEvent): void {
+  const t = W.selAgain;
+  if (!t || e.target !== t) return;
+  W.selAgain = null;
+  if (document.activeElement !== t) return;
+  e.preventDefault();
+  t.select();
+}
+
+/* The first key in a load field just focused replaces its number, and a
+   backspace or delete clears it, as the selection on it says (above). The
+   whole number is selected and the key's edit made over it as the browser's
+   own editing (execCommand), so the field's input, and its change when it is
+   left, follow as for any key: a value set by code fires neither, and the
+   change is what checks a load far from last time's (tests/acceptance.js).
+   Any other edit (a paste) goes ahead as the browser does it. */
+// A key about to change a field (beforeinput).
+function workoutBeforeInput(e: InputEvent): void {
+  const t = e.target;
+  if (!(t instanceof HTMLInputElement) || W.replaceNext !== t) return;
+  W.replaceNext = null;
+  const put = e.inputType === 'insertText' ? (e.data ?? '') : e.inputType.startsWith('delete') ? '' : null;
+  if (put === null) return;
+  e.preventDefault();
+  t.select();
+  // The browser's editing commands; the edit made below fires this listener again, which replaceNext, now null, passes by.
+  if (document.execCommand(put ? 'insertText' : 'delete', false, put)) return;
+  log('workout', 'the browser refused an edit over a selected load; it was made by setting the value');
+  t.value = put;
+  t.dispatchEvent(new Event('input', { bubbles: true }));
 }
 
 // A grey load put in a field and typed over is the lifter's own from then on (workoutInput).
@@ -1426,6 +1466,8 @@ function greyTyped(t: HTMLInputElement): void {
 function workoutBlur(e: FocusEvent): void {
   const t = e.target;
   if (!(t instanceof HTMLInputElement)) return;
+  if (W.replaceNext === t) W.replaceNext = null;
+  if (W.selAgain === t) W.selAgain = null;
   // A grey load left untouched goes back to grey: nothing was typed.
   if (greyIn.has(t)) {
     greyTyped(t);
@@ -1464,10 +1506,12 @@ function workoutBlur(e: FocusEvent): void {
   }, 0);
 }
 
-/** Adds the session screen's listeners to the page: where a touch lands (capture), a field left, and a field focused. Called once at start, after the page's own. */
+/** Adds the session screen's listeners to the page: where a touch lands and is released (capture), a field left, a field focused, and a key about to change one. Called once at start, after the page's own. */
 export function workoutStart(): void {
   onRedraw(drawNow);
   document.addEventListener('pointerdown', noteDown, true);
+  document.addEventListener('mouseup', workoutUp, true);
   document.addEventListener('focusout', workoutBlur);
   document.addEventListener('focusin', workoutFocus);
+  document.addEventListener('beforeinput', workoutBeforeInput);
 }

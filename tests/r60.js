@@ -36,7 +36,7 @@
 const { open, engine, screenOf, screenDiff } = require('./h');
 const FILE = process.argv[2] || 'index.html';
 const OLD = 'baselines/r59.html';
-const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log('FAIL', m, x !== undefined ? JSON.stringify(x).slice(0, 900) : ''); } else console.log('ok  ', m); };
+const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log('FAIL', m, x !== undefined ? JSON.stringify(x).slice(0, 900) : ''); } else console.log('ok  ', m); return !!c; };
 const wait = ms => new Promise(r => setTimeout(r, ms));
 // R60_ONLY=2,3 runs those sections alone (to show a case failing on r59 without the rest).
 const ONLY = process.env.R60_ONLY ? process.env.R60_ONLY.split(',') : null;
@@ -277,6 +277,50 @@ const SCREENS = [
     await P.page.click('#view [data-act="sDone"][data-b="0"][data-s="2"]'); await wait(120);
     const s3 = await ev(() => { const x = window.__ironlog.state.draft.ex[0].sets[2]; return { w: x.w, done: x.done }; });
     ok(s3.done && Math.abs(s3.w / 0.45359237 - Number(g3.ph)) < 0.06, '6. the field tapped, then the checkmark: the set logs on its grey load', { s3, grey: g3.ph });
+    /* Whatever the tap's release does to the selection, the first key does what
+       the selection said (GitHub's WebKit run of r60, the engine of every
+       iPhone browser: the release put the caret where the tap landed, so 135
+       then 1 gave 1135, and 152.5 typed over a grey 135 gave 1152.535). The
+       caret is put inside the number after the tap here, as that release did. */
+    await ev(() => document.activeElement && document.activeElement.blur()); await wait(60);
+    const gq = await ev(() => { const f = [...document.querySelectorAll('#view .sg input[data-f="w"]')].find(x => x.value === '' && /\d{2}/.test(x.placeholder)); return f && `#view .sg input[data-f="w"][data-b="${f.dataset.b}"][data-s="${f.dataset.s}"]`; });
+    const g5 = gq && await field(gq);
+    if (ok(!!gq, '6. a row with a grey load to type over is on screen')) {
+      await P.page.click(gq); await wait(60);
+      await ev(q => document.querySelector(q).setSelectionRange(1, 1), gq);
+      await P.page.keyboard.type('152.5'); await wait(40);
+      f = await field(gq);
+      const sg = await ev(q => { const e = document.querySelector(q); return window.__ironlog.state.draft.ex[+e.dataset.b].sets[+e.dataset.s].w; }, gq);
+      ok(f.v === '152.5' && Math.abs(sg / 0.45359237 - 152.5) < 1e-6, '6. 152.5 typed over a grey load is 152.5, with the caret moved inside it after the tap', { f, w: sg, grey: g5.ph });
+    }
+    await ev(() => document.activeElement && document.activeElement.blur()); await wait(60);
+    await P.page.click(W(0, 0)); await wait(60);
+    await ev(q => document.querySelector(q).setSelectionRange(1, 1), W(0, 0));
+    await P.page.keyboard.type('9'); await wait(40);
+    f = await field(W(0, 0));
+    ok(f.v === '9', '6. a digit typed over a filled load replaces it, with the caret moved inside it after the tap', f);
+    await P.page.keyboard.press('Backspace'); await P.page.keyboard.type('140'); await wait(40);
+    // A second tap places the caret: the key after it goes there, as in any field.
+    await P.page.click(W(0, 0)); await wait(60);
+    await ev(q => document.querySelector(q).setSelectionRange(3, 3), W(0, 0));
+    await P.page.keyboard.type('5'); await wait(40);
+    f = await field(W(0, 0));
+    ok(f.v === '1405', '6. after a second tap, a digit goes where the caret is', f);
+    // One digit typed over a load is an edit like any: leaving the field sends its change, which checks a load far from last time's.
+    await ev(() => document.activeElement && document.activeElement.blur()); await wait(60);
+    await ev(() => { window.__chg = []; document.addEventListener('change', e => { if (e.target.matches && e.target.matches('.sg input[data-f="w"]')) window.__chg.push(e.target.value); }, true); });
+    await P.page.click(W(0, 0)); await wait(60);
+    await P.page.keyboard.type('7'); await wait(40);
+    await ev(() => document.activeElement && document.activeElement.blur()); await wait(80);
+    const chg = await ev(() => window.__chg);
+    ok(chg.length === 1 && chg[0] === '7', '6. one digit typed over a load, then the field left: its change is sent once', chg);
+    // Backspace as the first key clears a filled load (as it does a selected one).
+    await ev(() => document.activeElement && document.activeElement.blur()); await wait(60);
+    await P.page.click(W(0, 0)); await wait(60);
+    await ev(q => document.querySelector(q).setSelectionRange(2, 2), W(0, 0));
+    await P.page.keyboard.press('Backspace'); await wait(40);
+    f = await field(W(0, 0));
+    ok(f.v === '', '6. backspace as the first key clears a filled load, wherever the caret is', f);
     ok(!P.errors.length, '6. no page errors', P.errors);
     await P.page.context().close();
   }

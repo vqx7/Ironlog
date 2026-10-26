@@ -15200,7 +15200,8 @@ ${ms.length ? b`<div class="scroll-x" style="margin-top:10px"><table class="t"><
     stripAt: null,
     platesAt: null,
     foldWait: /* @__PURE__ */ new WeakSet(),
-    selAgain: null
+    selAgain: null,
+    replaceNext: null
   };
   var carried = /* @__PURE__ */ new WeakSet();
   var adjSrc = /* @__PURE__ */ new WeakMap();
@@ -17113,6 +17114,8 @@ ${ms.length ? b`<div class="scroll-x" style="margin-top:10px"><table class="t"><
   };
   function noteDown(e5) {
     W.lastDown = { el: e5.target instanceof Element ? e5.target : null, t: Date.now() };
+    W.selAgain = null;
+    if (W.replaceNext && e5.target === W.replaceNext && document.activeElement === W.replaceNext) W.replaceNext = null;
   }
   function workoutInput(t4) {
     const d3 = state.draft;
@@ -17145,6 +17148,7 @@ ${ms.length ? b`<div class="scroll-x" style="margin-top:10px"><table class="t"><
       if (!s3) return true;
       greyTyped(t4);
       if (W.selAgain === t4) W.selAgain = null;
+      if (W.replaceNext === t4) W.replaceNext = null;
       const bi = Number(t4.dataset.b), si = Number(t4.dataset.s);
       const n3 = numIn(t4.value);
       act(
@@ -17330,11 +17334,29 @@ ${ms.length ? b`<div class="scroll-x" style="margin-top:10px"><table class="t"><
       fieldShown(t4, true);
     }
     t4.select();
-    W.selAgain = t4;
-    setTimeout(() => {
-      if (W.selAgain === t4 && document.activeElement === t4) t4.select();
-      if (W.selAgain === t4) W.selAgain = null;
-    }, 0);
+    W.replaceNext = t4;
+    W.selAgain = W.lastDown.el === t4 ? t4 : null;
+  }
+  function workoutUp(e5) {
+    const t4 = W.selAgain;
+    if (!t4 || e5.target !== t4) return;
+    W.selAgain = null;
+    if (document.activeElement !== t4) return;
+    e5.preventDefault();
+    t4.select();
+  }
+  function workoutBeforeInput(e5) {
+    const t4 = e5.target;
+    if (!(t4 instanceof HTMLInputElement) || W.replaceNext !== t4) return;
+    W.replaceNext = null;
+    const put = e5.inputType === "insertText" ? e5.data ?? "" : e5.inputType.startsWith("delete") ? "" : null;
+    if (put === null) return;
+    e5.preventDefault();
+    t4.select();
+    if (document.execCommand(put ? "insertText" : "delete", false, put)) return;
+    log("workout", "the browser refused an edit over a selected load; it was made by setting the value");
+    t4.value = put;
+    t4.dispatchEvent(new Event("input", { bubbles: true }));
   }
   function greyTyped(t4) {
     if (!greyIn.has(t4)) return;
@@ -17344,6 +17366,8 @@ ${ms.length ? b`<div class="scroll-x" style="margin-top:10px"><table class="t"><
   function workoutBlur(e5) {
     const t4 = e5.target;
     if (!(t4 instanceof HTMLInputElement)) return;
+    if (W.replaceNext === t4) W.replaceNext = null;
+    if (W.selAgain === t4) W.selAgain = null;
     if (greyIn.has(t4)) {
       greyTyped(t4);
       t4.value = "";
@@ -17373,8 +17397,10 @@ ${ms.length ? b`<div class="scroll-x" style="margin-top:10px"><table class="t"><
   function workoutStart() {
     onRedraw(drawNow);
     document.addEventListener("pointerdown", noteDown, true);
+    document.addEventListener("mouseup", workoutUp, true);
     document.addEventListener("focusout", workoutBlur);
     document.addEventListener("focusin", workoutFocus);
+    document.addEventListener("beforeinput", workoutBeforeInput);
   }
 
   // src/app/workdrag.ts
