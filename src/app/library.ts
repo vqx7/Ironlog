@@ -516,8 +516,9 @@ export const COMMON: ReadonlySet<string> = new Set([
 
 /** Shown as Most common: a library lift in COMMON that the lifter has not
     marked less common (a custom exercise never is). */
-export const isCommon = (e: Pick<Exercise, 'id' | 'custom' | 'rare'> | null | undefined): boolean =>
-  !!e && !e.custom && !e.rare && COMMON.has(e.id);
+export const isCommon = (
+  e: (Pick<Exercise, 'id'> & Partial<Pick<Exercise, 'custom' | 'rare'>>) | null | undefined
+): boolean => !!e && !e.custom && !e.rare && COMMON.has(e.id);
 
 /** The library as exercise records, fresh objects on every call. */
 export function libExercises(): Exercise[] {

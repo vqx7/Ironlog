@@ -55,7 +55,8 @@ import {
   isRestWeek,
   suggest,
   weekStats,
-  weekStreak
+  weekStreak,
+  cycleState
 } from './live';
 import { acct, cloud, fx, state, ui } from './store';
 import {
@@ -82,7 +83,6 @@ import { whtrLine } from './stats';
 import {
   bwRate,
   bwWeekTxt,
-  cycleState,
   effTgt,
   fmtDateYr,
   heightTxt,

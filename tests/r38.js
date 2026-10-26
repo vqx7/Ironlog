@@ -34,7 +34,8 @@ const brz = (load, rtf) => load * 36 / (37 - rtf);
     let v = await lifts('bench');
     ok(v.set && v.setText === 'Set a goal' && v.line === null, 'Stats > Lifts offers Set a goal on a lift with none' + T, v);
     await ev(() => document.querySelector('#view [data-act="goalOpen"]').click()); await wait(80);
-    const sh = await ev(() => { const m = document.getElementById('modal'); return { h: m.querySelector('h3').textContent, labels: [...m.querySelectorAll('label.field')].map(l => l.firstChild.textContent.trim()), remove: !!m.querySelector('[data-act="goalClear"]'), wide: document.documentElement.scrollWidth <= innerWidth, minH: Math.min(...[...m.querySelectorAll('button.btn')].map(b => b.getBoundingClientRect().height)) }; });
+    // A label's words are its own text, read past lit-html's markers (since r62 the sheet is drawn by lit-html, whose first child in a label is a marker).
+    const sh = await ev(() => { const m = document.getElementById('modal'); return { h: m.querySelector('h3').textContent, labels: [...m.querySelectorAll('label.field')].map(l => [...l.childNodes].filter(n => n.nodeType === 3).map(n => n.textContent).join('').trim()), remove: !!m.querySelector('[data-act="goalClear"]'), wide: document.documentElement.scrollWidth <= innerWidth, minH: Math.min(...[...m.querySelectorAll('button.btn')].map(b => b.getBoundingClientRect().height)) }; });
     ok(sh.h === 'Goal: Barbell Bench Press' && sh.labels[0] === 'Load (lb)' && sh.labels[1] === 'Reps' && !sh.remove, 'the goal sheet asks a load and reps, with no Remove before a goal exists' + T, sh);
     ok(sh.wide && sh.minH >= 44, 'the goal sheet fits 375 px with 44 px buttons' + T, sh);
     // Reps out of range and a missing load are refused, nothing saved.
@@ -111,7 +112,7 @@ const brz = (load, rtf) => load * 36 / (37 - rtf);
       s.sessions.push(...[0, 1, 2].map(i => ({ id: 'p' + i, date: L.addDays('2026-09-20', i * 7), dayIdx: 0, dayId: null, dayName: 'T', routineId: '', notes: '', ex: [{ exId: 'pullup', rr: [6, 10], sets: [0, 1].map(() => ({ w: 10 * LB, r: 8, rir: 1, done: true })) }] })));
       L.state = L.normalize(s); L.invalidate(); L.ui.tab = 'dash'; L.ui.dashEx = 'pullup'; L.render(); document.querySelectorAll('#view details').forEach(d => d.open = true);
       document.querySelector('#view [data-act="goalOpen"]').click(); await new Promise(r => setTimeout(r, 80));
-      const label = document.querySelector('#modal label.field').firstChild.textContent.trim();
+      const label = [...document.querySelector('#modal label.field').childNodes].filter(n => n.nodeType === 3).map(n => n.textContent).join('').trim();
       document.getElementById('goalW').value = '45'; document.getElementById('goalR').value = '5'; L.ACT.goalSave(); await new Promise(r => setTimeout(r, 80));
       const a = { label, line: document.getElementById('goalLine').innerText.replace(/\s+/g, ' ').trim(), gs: L.goalState('pullup'), bwl: L.bwRefLoad(L.EX('pullup')) };
       document.querySelector('#goalLine [data-act="goalOpen"]').click(); await new Promise(r => setTimeout(r, 80));

@@ -35,6 +35,22 @@ import { appBandIn, defBandIn, fitFloorsIn, hasTargetIn, refitIn } from './profi
 import { barKgIn, capOfIn, exBarKgIn, gymRackIn, rackTolIn } from './gym';
 import { fmtWIn, loadLabelIn } from './loads';
 import {
+  cycleStateIn,
+  dayReasonsIn,
+  eqPlanIn,
+  exReasonsIn,
+  rankDaysIn,
+  rankExercisesIn,
+  recentExIdsIn,
+  recoveryIn,
+  rolling7In,
+  sessionMuscleSetsIn,
+  sessionMusclesIn,
+  shortPlanIn,
+  strengthPickIn,
+  swapCandsIn
+} from './pick';
+import {
   IDXIn,
   allTimeBestsIn,
   bwAtIn,
@@ -160,6 +176,20 @@ export const dateIndex = live(dateIndexIn);
 export const hardCredit = live(hardCreditIn);
 export const isHard = live(isHardIn);
 export const liftRead = live(liftReadIn);
+export const cycleState = live(cycleStateIn);
+export const sessionMuscleSets = live(sessionMuscleSetsIn);
+export const rolling7 = live(rolling7In);
+export const recovery = live(recoveryIn);
+export const rankDays = live(rankDaysIn);
+export const dayReasons = live(dayReasonsIn);
+export const sessionMuscles = live(sessionMusclesIn);
+export const rankExercises = live(rankExercisesIn);
+export const exReasons = live(exReasonsIn);
+export const strengthPick = live(strengthPickIn);
+export const swapCands = live(swapCandsIn);
+export const eqPlan = live(eqPlanIn);
+export const recentExIds = live(recentExIdsIn);
+export const shortPlanWith = live(shortPlanIn);
 export const loadOf = live(loadOfIn);
 export const prFrame = live(prFrameIn);
 export const prLoad = live(prLoadIn);

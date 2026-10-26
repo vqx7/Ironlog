@@ -52,7 +52,8 @@ import {
   nextSets,
   oddLoad,
   lightZero,
-  exName
+  exName,
+  shortPlanWith
 } from './live';
 import { state, fx, ui } from './store';
 import { lastDup, effTarget, blockRest, newRow, greyW, effW, blockDone } from './session';
@@ -123,6 +124,15 @@ export function appLoad(b: DraftBlock | null | undefined, x: DraftSet): boolean 
 /** Whether a row holds nothing of the lifter's. */
 export function rowBlank(b: DraftBlock | null | undefined, x: DraftSet): boolean {
   return !x.done && x.r == null && x.rir == null && appLoad(b, x);
+}
+
+/** Short on time's trim of the session in progress to so many minutes, taking only blank rows (pick.ts, shortPlanIn). */
+export function shortPlan(d: { ex: DraftBlock[] }, mins: number): ReturnType<typeof shortPlanWith> {
+  return shortPlanWith(
+    d,
+    mins,
+    d.ex.map(b => b.sets.map(x => rowBlank(b, x)))
+  );
 }
 
 /* Last time's reps for row si. lastR lists last session's working sets in

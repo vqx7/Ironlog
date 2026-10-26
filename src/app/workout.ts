@@ -1346,6 +1346,19 @@ export function workoutChange(t: HTMLInputElement): boolean {
     if (!s) return true;
     const bi = Number(t.dataset.b),
       si = Number(t.dataset.s);
+    /* A ticked set's load cleared is unticked, as a ticked set's reps
+       cleared are (V on r61's preview, 2026-10-26: set 2 ticked on its grey
+       225, its load then cleared, stayed ticked with no weight, and the
+       recap read it as 0 x 8). Ticked again it takes its grey load or waits
+       for one (setDone), so a ticked set of a lift that takes a load always
+       has one. A bodyweight lift's added load and a timed hold's may be
+       none, as noLoadYet says. */
+    const lift = EX(d.ex[bi] ? d.ex[bi].exId : '');
+    if (s.done && s.w == null && !lift.bw && !lift.timed) {
+      setDone(bi, si, false);
+      redraw();
+      return true;
+    }
     const refix = ui.refix;
     const rf = !!refix && refix.s === si && blkIdx(refix.b) === bi;
     if (rf) ui.refix = null;

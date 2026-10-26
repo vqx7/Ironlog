@@ -8,8 +8,8 @@
 import { html, nothing } from 'lit-html';
 import type { TemplateResult } from 'lit-html';
 import { TEMPLATES, dayLabel, routineFromTemplate } from './routines';
-import { activeRoutine, dayMinutes, isDeloadWeek, prof } from './live';
-import { cycleState } from './display';
+import { activeRoutine, dayMinutes, isDeloadWeek, prof, cycleState } from './live';
+import {} from './display';
 import { estMin, min5 } from './format';
 import { WEEK_DAYS } from './util';
 import { ui } from './store';

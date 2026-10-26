@@ -5,13 +5,30 @@
 //      in the states a lifter meets it in, has the same elements,
 //      attributes, field values and visible text as r61's
 //      (baselines/r61.html), in light and dark, pounds and kilograms.
-const { engine, screenOf, screenDiff } = require('./h');
+//   2  (a guard, the source build) Pick for me, Swap's closest matches,
+//      Limited equipment and Short on time, moved from the legacy script
+//      into src/app/pick.ts as functions of the model, give r61's answers
+//      on N wide histories (R62_N, 1,000 by default): the cycle, a day's
+//      sets, each muscle's week and recovery, the days ranked and why, the
+//      session's sets, the exercises ranked to add, the swaps, a day under
+//      three sets of equipment, the trim to four budgets, and the Pick for
+//      me sheets' words, call for call.
+//   3  a ticked set's load cleared (V on r61's preview, 2026-10-26: set 2
+//      ticked on its grey 225, its load then cleared, stayed ticked with no
+//      weight, and the recap read it as 0 x 8): the set is unticked, as a
+//      ticked set's reps cleared already untick it; ticked again it takes
+//      the grey load; Finish saves 225 x 8 on every set and the recap has
+//      no 0. A bodyweight lift's added load cleared keeps its tick (its load
+//      may be none). Fails on r61.
+const { engine, screenOf, screenDiff, open } = require('./h');
+const { wide, specOf } = require('./wide');
 const FILE = process.argv[2] || 'index.html';
 const OLD = 'baselines/r61.html';
 const fails = [];
 const ok = (c, m, x) => { if (!c) { fails.push(m); console.log('FAIL', m, x !== undefined ? JSON.stringify(x).slice(0, 1500) : ''); } else console.log('ok  ', m); return !!c; };
 const ONLY = process.env.R62_ONLY ? process.env.R62_ONLY.split(',') : null;
 const run = n => !ONLY || ONLY.includes(String(n));
+const N = +process.env.R62_N || 1000;
 
 // The starter routine's ids are made at random, so both builds are given the same ones (as tests/r60.js does).
 const FIX = "const m={};L.state.routines.forEach((r,i)=>{m[r.id]='R'+i;r.id='R'+i;});L.state.activeRoutineId=m[L.state.activeRoutineId]||L.state.activeRoutineId;L.state.sessions.forEach(s=>{if(m[s.routineId])s.routineId=m[s.routineId];});L.saveNow();";
@@ -99,6 +116,19 @@ const SHEETS = [
   ['an exercise edited: a helper muscle added, the primary changed', DEMO, "L.openModal({kind:'exEdit',isNew:false,e:{...L.EX('bench'),incRaw:'',maxRaw:'',barRaw:'',bwfRaw:''}});" + "L.ACT.secToggle({dataset:{m:'biceps'}});{const p=document.querySelector('[data-ebind=\"primary\"]');p.value='shoulders';p.dispatchEvent(new Event('change',{bubbles:true}));}", /Helper muscles/],
   ['a new exercise with no muscle picked', DEMO, "L.openModal({kind:'exEdit',isNew:true,e:{id:'',name:'',primary:'',secondary:[],equip:'machine',bw:false,rare:false,perSide:false,note:'',custom:true,archived:false,incRaw:'',maxRaw:'',barRaw:'',bwfRaw:''}});", /Pick one/],
   ['the muscles of a lift in 3D', DEMO + "L.ACT.mapView({dataset:{v:'3d'}});", OPEN({ kind: 'exMus', exId: 'bench' }), /Muscles: /],
+  // The choosing sheets' states.
+  ['Limited equipment, all on', DEMO, "L.ACT.eqOpen({dataset:{day:String(L.state.routines.find(r=>r.id===L.state.activeRoutineId).days.findIndex(x=>!x.rest&&x.items.length))}});", /Limited equipment/],
+  ['Limited equipment, bodyweight only', DEMO, "L.ACT.eqOpen({dataset:{day:String(L.state.routines.find(r=>r.id===L.state.activeRoutineId).days.findIndex(x=>!x.rest&&x.items.length))}});['barbell','dumbbell','machine','cable','smith','kettlebell','band','landmine','other'].forEach(k=>{const b=document.querySelector('#modal [data-act=\"eqToggle\"][data-k=\"'+k+'\"]');if(b&&b.getAttribute('aria-pressed')==='true')b.click();});", /Limited equipment/],
+  ['short on time, 15 minutes picked', DEMO + START, TAP('shortOpen', {}) + TAP('shortPick', { v: '15' }), /Short on time/],
+  ['pick for me, in a deload week', DEMO + "L.state.deloadWeek=(()=>{const d=new Date();const g=(d.getDay()+6)%7;d.setDate(d.getDate()-g);return d.toISOString().slice(0,10);})();L.invalidate();L.saveNow();", OPEN({ kind: 'pickToday' }), /Pick for me/],
+  ['the picker, swap in a session, one muscle', DEMO + START, TAP('bMenuDo', { op: 'bSwap', b: '0' }) + "{const sel=document.querySelector('#modal select[data-mbind=\"m\"]');sel.value=L.EX(L.state.draft.ex[0].exId).primary;sel.dispatchEvent(new Event('input',{bubbles:true}));}", /Swap exercise/],
+  ['the picker, a search typed', DEMO + START, OPEN({ kind: 'picker', mode: 'addBlock', title: 'Add exercise to session', q: '', m: '' }) + "{const q=document.querySelector('#pickQ');q.value='row';q.dispatchEvent(new Event('input',{bubbles:true}));}", /Row/],
+  // The app's own sheets: install in each browser's steps, and a past workout on a day already logged.
+  ['install, Safari 26', DEMO, OPEN({ kind: 'install', how: 'ios-safari26' }), /Add to Home Screen/],
+  ['install, older Safari', DEMO, OPEN({ kind: 'install', how: 'ios-safari' }), /Add to Home Screen/],
+  ['install, Chrome on an iPhone', DEMO, OPEN({ kind: 'install', how: 'ios-chrome' }), /Add to Home Screen/],
+  ['install, another iPhone browser', DEMO, OPEN({ kind: 'install', how: 'ios-other' }), /in Safari/],
+  ['a past workout on a day logged', DEMO + SAVED, SAVED + "L.ACT.pastOpen({dataset:{date:sv.date}});", /Already logged that day/],
   ['the exercise menu of the last lift', DEMO + START, "L.ACT.bMenu({dataset:{b:String(L.state.draft.ex.length-1)}});", /Remove from session/]
 ];
 
@@ -123,6 +153,123 @@ const SHEETS = [
     ok(want.test(b.text), `1. ${name}: the sheet is open and in that state`, b.text.slice(0, 160));
     // and of a lift in the log (an id not in it reads as a deleted exercise in both builds alike).
     ok(!/Deleted exercise/.test(b.text), `1. ${name}: of a lift in the log`, b.text.slice(0, 160));
+  }
+
+  // ---- 2. The ranking and the trim, moved into pick.ts, against r61's, call for call.
+  if (run(2) && !process.env.IRONLOG_FILE) {
+    const digest = spec => {
+      const L = window.__ironlog;
+      const ser = new Function(`return (${spec.ser})`)(), err = new Function(`return (${spec.err})`)();
+      const out = [];
+      const call = (name, ...args) => { let r; try { r = L[name](...args); } catch (e) { r = err(e); } out.push(name + '\t' + ser(args) + '\t' + ser(r)); return r; };
+      const raw = JSON.parse(spec.raw);
+      const week = (() => { const d = new Date(); const g = (d.getDay() + 6) % 7; d.setDate(d.getDate() - g); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; })();
+      if (Array.isArray(raw.settings.restWeeks)) raw.settings.restWeeks = raw.settings.restWeeks.map(w => (w === 'THIS_WEEK' ? week : w));
+      if (raw.deloadWeek === 'THIS_WEEK') raw.deloadWeek = week;
+      L.state = L.normalize(raw); L.invalidate();
+      const s = L.state;
+      const dates = s.sessions.map(x => x.date).sort();
+      const mid = dates.length ? dates[Math.floor(dates.length / 2)] : spec.today;
+      const MK = Object.keys(s.settings.bands);
+      const R = L.activeRoutine();
+      for (const r of s.routines) { call('cycleState', r); call('cycleState', r, mid); }
+      for (const d of R.days) call('sessionMuscleSets', d);
+      for (const m of MK) { call('rolling7', m); call('rolling7', m, { [m]: 3 }, mid); call('recovery', m); call('recovery', m, mid); }
+      const rk = call('rankDays');
+      for (const row of rk.rows) call('dayReasons', row, rk.r7);
+      const EQS = [['barbell', 'dumbbell', 'bodyweight'], ['bodyweight'], ['machine', 'cable', 'smith']];
+      for (const id of spec.ids) { call('swapCands', id); call('swapCands', id, new Set(EQS[0]), new Set(spec.ids.slice(0, 2)), 8); }
+      for (const d of R.days) for (const eq of EQS) call('eqPlan', d, new Set(eq));
+      // A session on each training day (and one with none), some sets done, on the day itself and on a past one, full, deload and lighter.
+      const days = R.days.map((d, i) => [d, i]).filter(([d]) => !d.rest && d.items.length).slice(0, 3);
+      const drafts = [];
+      for (const [d, i] of days) {
+        const ex = d.items.map((it, bi) => ({ exId: it.exId, plan: { sets: +it.sets || 1, rest: +it.rest || 0, ss: it.ss || null, repMin: it.repMin, repMax: it.repMax, rir: it.rir, inc: it.inc }, sets: Array.from({ length: +it.sets || 1 }, (_, k) => { const on = k < bi % 3; return { w: on ? 50 + bi : null, r: on ? 8 - k : null, rir: on ? k % 3 : null, done: on, warm: false, drop: false }; }) }));
+        drafts.push({ id: 'd' + i, date: spec.today, dayIdx: i, dayId: d.id, routineId: R.id, ex });
+        drafts.push({ id: 'p' + i, date: mid, dayIdx: i, dayId: d.id, routineId: R.id, ex, deload: i % 2 === 0, light: i % 2 === 1 });
+      }
+      drafts.push({ id: 'f', date: spec.today, dayIdx: -1, dayId: null, routineId: R.id, ex: [] });
+      const sheet = () => { const t = document.getElementById('modal').innerText; L.ACT.mClose(); return t.replace(/\s+/g, ' '); };
+      for (const d of drafts) {
+        call('sessionMuscles', d);
+        call('rankExercises', d);
+        for (const mins of [15, 30, 45, 75]) call('shortPlan', d, mins);
+        L.state.draft = JSON.parse(JSON.stringify(d)); L.invalidate();
+        L.openModal({ kind: 'pickEx' }); out.push('pickEx sheet\t' + sheet());
+        L.openModal({ kind: 'picker', mode: 'addBlock', title: 'Add exercise to session', q: '', m: '' }); out.push('picker sheet\t' + sheet());
+        L.state.draft = null; L.invalidate();
+      }
+      // Strength as the goal, with priorities: the strength focus and the priority muscles in the ranking.
+      s.settings.profile = { ...(s.settings.profile || {}), goal: 'strength' }; s.settings.priorities = MK.slice(0, 2); L.invalidate();
+      for (const d of drafts) call('rankExercises', d);
+      L.openModal({ kind: 'pickToday' }); out.push('pickToday sheet\t' + sheet());
+      return out.join('\n');
+    };
+    const T0 = new Date('2026-10-11T12:00:00');
+    const setup = async (ctx, page) => { await page.clock.setFixedTime(T0); };
+    const A = await open(OLD, { browser, setup });
+    const B = await open(FILE, { browser, setup });
+    const LIB = await B.page.evaluate(() => window.__ironlog.libExercises());
+    let same = 0, first = null, calls = 0;
+    const t0 = Date.now();
+    for (let i = 0; i < N; i++) {
+      const h = wide(62000 + i, LIB);
+      const when = new Date(h.today + 'T12:00:00');
+      await Promise.all([A.page.clock.setFixedTime(when), B.page.clock.setFixedTime(when)]);
+      const spec = specOf(h);
+      const [a, b] = await Promise.all([A.page.evaluate(digest, spec), B.page.evaluate(digest, spec)]);
+      calls += b.split('\n').length;
+      if (a === b) same++;
+      else if (!first) { const la = a.split('\n'), lb = b.split('\n'); let k = 0; while (k < la.length && la[k] === lb[k]) k++; first = { seed: 62000 + i, line: k, r61: (la[k] || '').slice(0, 900), now: (lb[k] || '').slice(0, 900) }; }
+    }
+    ok(same === N, `2. Pick for me, the swaps, Limited equipment and Short on time give r61's answers on all ${N} wide histories (${same} identical, ${calls} calls and sheets, ${Math.round((Date.now() - t0) / 1000)} s)`, first);
+    ok(!A.errors.length && !B.errors.length, '2. no page errors', { r61: A.errors.slice(0, 3), now: B.errors.slice(0, 3) });
+    await A.ctx.close(); await B.ctx.close();
+  }
+
+  // ---- 3. A ticked set's load cleared is unticked (V on r61's preview, 2026-10-26).
+  if (run(3)) {
+    const P = await open(FILE, { browser, setup: async (ctx, page) => { await page.clock.setFixedTime(new Date('2026-10-26T10:00:00')); } });
+    const { page } = P; const ev = (f, a) => page.evaluate(f, a); const wait = ms => new Promise(r => setTimeout(r, ms));
+    await ev(() => { const L = window.__ironlog; const S = L.state; S.settings.onboarded = true; S.settings.unit = 'lb'; S.settings.autoDone = false;
+      S.routines = [{ id: 'R1', name: 'Mine', schedule: 'weekly', days: [0, 1, 2, 3, 4, 5, 6].map(i => ({ id: 'D' + i, name: 'Push', rest: false, items: [{ uid: 'u' + i, exId: 'bench', sets: 3, repMin: 6, repMax: 10, rir: 2, rest: 150, inc: 2.5, ss: null }, { uid: 'p' + i, exId: 'pullup', sets: 1, repMin: 6, repMax: 10, rir: 2, rest: 120, inc: 2.5, ss: null }] })) }];
+      S.activeRoutineId = 'R1'; S.sessions = []; L.state = L.normalize(S); L.invalidate(); L.saveNow(); L.ui.tab = 'today'; L.render(); });
+    await wait(200);
+    await page.click('#view .hero [data-act="startSession"]:not([data-light="1"])'); await wait(300);
+    const q = (f, b, s) => `#view [data-f="${f}"][data-b="${b}"][data-s="${s}"]`;
+    const type = async (f, b, s, v) => { await page.click(q(f, b, s)); await page.keyboard.press('Control+A'); await page.keyboard.type(String(v)); await ev(() => document.activeElement && document.activeElement.blur()); await wait(150); };
+    const clear = async (f, b, s) => { await page.click(q(f, b, s)); await page.keyboard.press('Control+A'); await page.keyboard.press('Backspace'); await ev(() => document.activeElement && document.activeElement.blur()); await wait(200); };
+    const tick = async (b, s) => { await page.click(`#view [data-act="sDone"][data-b="${b}"][data-s="${s}"]`); await wait(200); };
+    const sets = b => ev(b => window.__ironlog.state.draft.ex[b].sets.map(x => ({ lb: x.w == null ? null : Math.round(x.w / 0.45359237), r: x.r, done: !!x.done })), b);
+    await type('w', 0, 0, 225); await type('r', 0, 0, 8); await tick(0, 0);
+    await type('r', 0, 1, 8); await tick(0, 1);
+    const before = await sets(0);
+    ok(before[1].done && before[1].lb === 225, '3. set 2 ticked on its grey 225 is 225 x 8', before);
+    await clear('w', 0, 1);
+    const after = await sets(0);
+    ok(!after[1].done && after[1].lb == null && after[1].r === 8, '3. its load cleared, set 2 is unticked, its reps kept (r61 kept it ticked with no weight)', after);
+    const grey = await ev(s => document.querySelector(s).placeholder, q('w', 0, 1));
+    ok(grey === '225', '3. the row shows the grey 225 again', grey);
+    await tick(0, 1);
+    const again = await sets(0);
+    ok(again[1].done && again[1].lb === 225, '3. ticked again, it takes the grey 225', again);
+    await type('w', 0, 2, 225); await type('r', 0, 2, 5); await tick(0, 2);
+    // A bodyweight lift's added load: cleared, the set keeps its tick (none added is a load it may have).
+    await type('w', 1, 0, 25); await type('r', 1, 0, 8); await tick(1, 0);
+    await clear('w', 1, 0);
+    const pu = await sets(1);
+    ok(pu[0].done && pu[0].lb == null, '3. a pull-up\'s added load cleared keeps its tick', pu);
+    await page.click('#view [data-act="finish"]');
+    const asked = [];
+    for (let k = 0; k < 6; k++) { await wait(150); const m = await ev(() => { const m = window.__ironlog.ui.modal; return m ? { kind: m.kind, title: m.title || '' } : null; }); if (!m || m.kind !== 'confirm') break; asked.push(m.title); await page.click('#modal [data-act="mAlt"]'); }
+    await wait(250);
+    const recap = await ev(() => (document.getElementById('modal').innerText || '').replace(/\s+/g, ' '));
+    const saved = await ev(() => { const s = window.__ironlog.state.sessions.slice(-1)[0]; return s ? s.ex.map(b => ({ exId: b.exId, sets: b.sets.map(x => [x.w == null ? null : Math.round(x.w / 0.45359237), x.r]) })) : null; });
+    const bench = saved && saved.find(b => b.exId === 'bench');
+    ok(!asked.length && bench && JSON.stringify(bench.sets) === '[[225,8],[225,8],[225,5]]', '3. Finish asks nothing and saves the bench as 225 x 8, 225 x 8, 225 x 5', { asked, saved });
+    ok(/Session saved/.test(recap) && !/\b0 ?[x×] ?\d/.test(recap), '3. the recap has no 0 x reps', recap.slice(0, 400));
+    ok(!P.errors.length, '3. no page errors', P.errors);
+    await P.ctx.close();
   }
 
   await browser.close();
