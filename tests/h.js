@@ -208,7 +208,8 @@ async function screenOf(file, { browser, seed, tab, env, prep, clock, root, init
         .map(a => a.name === 'aria-labelledby' ? `${a.name}=>${byId(a.value)}` : a.name === 'class' ? `class=${JSON.stringify(a.value.trim().split(/\s+/).sort().join(' '))}` : RID.has(a.name) ? `${a.name}=${idOf(a.value)}` : `${a.name}=${JSON.stringify(a.value)}`).sort();
       return `<${n.tagName.toLowerCase()}${at.length ? ' ' + at.join(' ') : ''}>${canvas ? '' : kidsOf(n).join('')}</${n.tagName.toLowerCase()}>`;
     };
-    const ver = t => t.replace(/\d+\.\d+ \(build \d{4}\.\d{2}\.\d{2}-r[\d.]+\)/gi, 'VERSION');
+    // The version with its build (Settings, Diagnostics), and the menu's own line, "Version 2.16" (r62's sheets are compared with r61's).
+    const ver = t => t.replace(/\d+\.\d+ \(build \d{4}\.\d{2}\.\d{2}-r[\d.]+\)/gi, 'VERSION').replace(/\bVersion \d+\.\d+\b/g, 'Version VERSION');
     return { tree: kidsOf(view).map(ver), text: ver(view.innerText.replace(/[ \t]+/g, ' ').replace(/\s*\n\s*/g, '\n').trim()) };
   }, [seed, tab, prep || '', root || '', !!spaces]);
   out.errors = Q.errors.slice();
