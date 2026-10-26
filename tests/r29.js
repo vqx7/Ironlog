@@ -173,7 +173,7 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
     await tp('touchStart', x0, y0); await wait(60);
     for (let k = 1; k <= 15; k++) { await tp('touchMove', x0, y0 + (560 - y0) * k / 15); await wait(30); }
     const mid = await ev(() => ({ cls: document.body.classList.contains('blkdrag'), gap: (() => { const bs = [...document.querySelectorAll('#view section.block')].filter(b => !b.classList.contains('sortable-chosen')); return Math.round(bs[1].getBoundingClientRect().top - bs[0].getBoundingClientRect().top); })() }));
-    await tp('touchEnd', x0, 560); await wait(400);
+    /* The finger rests where it drops, as a finger does (PENDING 346 b; tests/r58.js): SortableJS reads where a touch drag is every 50 ms, so a touch lifted 30 ms after its last move races it. */ await wait(150); await tp('touchEnd', x0, 560); await wait(400);
     const a1 = await ids();
     ok(tall > 0 && mid.cls && mid.gap < 70 && a1.indexOf(a0[0]) >= 2, 'a long drag down: each exercise shows one line while dragging, so the first moves past ones that started off-screen', { belowScreen: tall, mid, to: a1.indexOf(a0[0]) });
     ok(!(await ev(() => document.body.classList.contains('blkdrag'))) && (await ev(() => !!document.querySelector('#view section.block:not(.folded) .sg'))), 'after the drop every exercise opens again', null);
@@ -200,7 +200,7 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
     await tp('touchStart', x0, y0); await wait(60); await tp('touchMove', x0, y0 + 3); await wait(150);
     const y4 = await ev(() => { const bs = [...document.querySelectorAll('#view section.block')].filter(b => !b.classList.contains('sortable-chosen')); return Math.round(bs[4].getBoundingClientRect().top + 30); });
     for (let k = 1; k <= 10; k++) { await tp('touchMove', x0, y0 + (y4 - y0) * k / 10); await wait(30); }
-    await tp('touchEnd', x0, y4); await wait(400);
+    /* The finger rests where it drops, as a finger does (PENDING 346 b; tests/r58.js): SortableJS reads where a touch drag is every 50 ms, so a touch lifted 30 ms after its last move races it. */ await wait(150); await tp('touchEnd', x0, y4); await wait(400);
     const drop = await ev((id) => { const i = window.__ironlog.state.draft.ex.findIndex(b => b.exId === id); const r = document.querySelector(`#view section.block[data-bi="${i}"]`).getBoundingClientRect(); return { i, top: Math.round(r.top), bottom: Math.round(r.bottom), vh: window.innerHeight }; }, b0[3]);
     ok(drop.i >= 4 && drop.top < drop.vh && drop.bottom > 52, 'after a drop the exercise moved is on screen, not back at the top of the session', drop);
     // The bottom edge sits above the rest timer when it shows.

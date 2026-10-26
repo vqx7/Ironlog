@@ -29,6 +29,10 @@
 //      digit replaces it, backspace clears it, a second tap places the caret;
 //      a grey load tapped and left untouched stays grey; one tap on the
 //      checkmark still logs the grey load (V, PENDING 341 a; fails on r59).
+//   7  the installed build tries only its own copies of SortableJS and
+//      Chart.js, as its policy allows no other address (PENDING 346 c; read
+//      from the standalone build, IRONLOG_FILE=dist/index.html; fails on a
+//      build made before r60).
 const { open, engine, screenOf, screenDiff } = require('./h');
 const FILE = process.argv[2] || 'index.html';
 const OLD = 'baselines/r59.html';
@@ -275,6 +279,21 @@ const SCREENS = [
     ok(s3.done && Math.abs(s3.w / 0.45359237 - Number(g3.ph)) < 0.06, '6. the field tapped, then the checkmark: the set logs on its grey load', { s3, grey: g3.ph });
     ok(!P.errors.length, '6. no page errors', P.errors);
     await P.page.context().close();
+  }
+
+  // ---- 7. The installed build's library addresses (346 c).
+  if (run(7)) {
+    if (!process.env.IRONLOG_FILE) console.log('note r60 section 7 reads the standalone build; it runs with IRONLOG_FILE');
+    else {
+      const page = require('fs').readFileSync(process.env.IRONLOG_FILE, 'utf8');
+      const list = lib => { const m = page.match(new RegExp(`loadScript\\(\\[([^\\]]*)\\],ok=>\\{window\\.__libs\\.${lib}=`)); return m ? m[1].split(',').map(x => x.trim().replace(/^'|'$/g, '')) : null; };
+      const so = list('sortable'), ch = list('chart');
+      ok(JSON.stringify(so) === '["vendor/Sortable.min.js"]' && JSON.stringify(ch) === '["vendor/chart.umd.js"]', '7. the installed build loads SortableJS and Chart.js from its own copies alone', { so, ch });
+      const P = await open(FILE, { browser, clock: '2026-10-24T10:00:00' });
+      const libs = await P.page.evaluate(() => ({ ...window.__libs, sortable: !!window.Sortable, chart: !!window.Chart }));
+      ok(libs.sortable && libs.chart, '7. and both load there', libs);
+      await P.page.context().close();
+    }
   }
 
   await browser.close();

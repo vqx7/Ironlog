@@ -116,10 +116,12 @@ html = replaceOnce(html, `<link href="${cfg.FONTS_CSS}" rel="stylesheet">`, '<li
     .toLowerCase();
   must(![cfg.FONTS_ORIGIN, cfg.FONT_FILES_ORIGIN].some(o => outside.includes(o.toLowerCase().replace(/^https:/, ''))), 'Google Fonts link still present');
 }
-// Libraries: the local copy first. The CDNs after it stay in the list, but this build's policy (below) refuses
-// script from anywhere else, so they never load here; the local copy is what loads (PENDING 346 c).
-html = replaceOnce(html, `loadScript(['${cfg.SORTABLE_URLS[0]}',`, `loadScript(['vendor/Sortable.min.js','${cfg.SORTABLE_URLS[0]}',`, 'Sortable loader');
-html = replaceOnce(html, `loadScript(['${cfg.CHART_URLS[0]}',`, `loadScript(['vendor/chart.umd.js','${cfg.CHART_URLS[0]}',`, 'Chart.js loader');
+// Libraries: this build's own copy alone. Its policy (below) refuses script from anywhere else, so a CDN listed
+// after the copy could never load here, and a failed copy tried two refused addresses after it (r60, PENDING 346 c;
+// three.js the same since r59).
+const urlList = urls => urls.map(u => `'${u}'`).join(',');
+html = replaceOnce(html, `loadScript([${urlList(cfg.SORTABLE_URLS)}],`, `loadScript(['vendor/Sortable.min.js'],`, 'Sortable loader');
+html = replaceOnce(html, `loadScript([${urlList(cfg.CHART_URLS)}],`, `loadScript(['vendor/chart.umd.js'],`, 'Chart.js loader');
 // three.js needs no edit here since r49: src/app/config.ts lists the
 // installed app's own copy, and since r59 only it, whenever IRONLOG_APP is set (head script).
 /* The Claude artifact was retired on 2026-09-27 (OWNER.md), so in r46 the
