@@ -617,12 +617,8 @@ function sgAfterReturnIn(M: Model, C: SuggestCtx): Suggestion | null {
   if (!pre || !afterBreak(pre, last.date)) return null;
   const preTop = workLoad(pre.pts, +plan.repMin);
   if (!(preTop > top + 1e-6)) return null;
-  const n = Math.max(1, +plan.sets || planPts.length);
-  if (
-    planPts.length < Math.min(n, triedAt(last, top).length) ||
-    triedAt(last, top).some(p => p.missed || p.r < +plan.repMin)
-  )
-    return null;
+  // Done as asked: every set at its load reached the bottom of the range (a return with fewer sets is short, so it is not in exps).
+  if (triedAt(last, top).some(p => p.missed || p.r < +plan.repMin)) return null;
   const bw = bwRefLoadIn(M, ex);
   if (ex.bw && !(bw > 0)) return null;
   let est = 0;
