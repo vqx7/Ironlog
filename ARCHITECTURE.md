@@ -49,7 +49,7 @@ Layer 0, config and record shapes: config, types
 Layer 1, data: util, units, library, routines, formulas, records, gym, profile, model, layout
 Layer 2, engine and analytics: session, loads, prs, trend, volume, goals, importing, format, charts, analytics, time, weeks, coach, engine, plans
 Layer 3, storage and sync: chunks, merge, store, live, providers, normalize, storage, sync, act
-Layer 4, screens: icons, feedback, effort, guide, sheets, sheetsmisc, env, outside, display, view, update, history, settings, graphs, plan, stats, calendar, week, map, today, workstate, worksets, workfinish, workdrag, workout
+Layer 4, screens: icons, feedback, effort, guide, sheets, sheetsmisc, sheetslift, env, outside, display, view, update, history, settings, graphs, plan, stats, calendar, week, map, today, workstate, worksets, workfinish, workdrag, workout
 
 - **Screens as components**, one per tab, reading copy and labels from one place.
 
@@ -61,8 +61,8 @@ The current code is the **legacy script**: `src/10-*.js` to `src/29-*.js`, joine
 
 **The ratchet:** the legacy script may never grow. `tests/hygiene.js` fails when it has more top-level declarations or more lines than the numbers below, and also when it has fewer, until the numbers are lowered to match, so each phase locks in what it moved. A change that adds code adds it in `src/app/`.
 
-Legacy top-level declarations: 135
-Legacy lines: 2750
+Legacy top-level declarations: 130
+Legacy lines: 2695
 
 | Measured (scripts/depmap.js) | r49 | r50 | r51 | r52 | r53 | r54 | r55 | r56 | r57 | r58 | r59 | r60 |
 |---|---|---|---|---|---|---|---|---|---|---|---| --- |
@@ -130,7 +130,7 @@ Engine coverage, lines run by tests/engine.js: model 100%, units 100%, routines 
 
 2. **Outside addresses, library versions and the font faces are defined once**, in `src/app/config.ts`: the Chart.js, SortableJS and three.js versions and the CDN addresses, the two faces and their weights, the fonts style sheet and its two origins, and the password check's origin. The markup and style sheet read them through `scripts/join.js`'s placeholders (a list only as a script array's items), `scripts/build.js` for its replacements, its fonts, its Content Security Policy and its license list, `scripts/cloud-supabase.js` through the build's placeholders, and the test fixtures directly. Each version equals the one `package.json` pins. `tests/hygiene.js` fails on any of them typed anywhere else in `src/`, `scripts/` (every script, not a list) or `tests/`, including a library's name with the first two parts of its version, and on any other outside address in `src/` or `scripts/` (https, http, wss or written from //) that is not config's or listed below with the phase that moves it. It reads the text as written and with a pattern's `\.` and `\/` undone (`https:\/\/api\.pwnedpasswords\.com` is the address), config's hosts with or without a scheme, faces in any case and the weights as a list of numbers in any spelling; other disguises (`[.]`, `\x2e`, a face written with hyphens) and anything assembled from pieces at run time are beyond a search of the text and are review's to catch.
 
-Addresses waiting for their phase: www.youtube.com (howToUrl, phase 5), github.com (the Inbox's test for a ticket link, fbInboxSheet, phase 5)
+Addresses waiting for their phase: github.com (the Inbox's test for a ticket link, fbInboxSheet, phase 5)
 
 3. **An error handled in a module is logged, or carries a comment.** Every `catch` block in `src/app/`, and every handler given to a promise (`.catch(fn)`, `["catch"](fn)`, the second function of `.then`), ends in a throw (its own last statement, so not a throw that only sometimes runs or one in a nested function), logs the error (a statement of its own calling `log`, the error log in `storage.ts`, since r56, when `log` moved: not one in a nested function or that only sometimes runs) or holds a comment of its own (not one inside a function nested in it), read from the syntax tree, saying why the error is expected and what the fallback is; a handler must be written in place, so it can be read (one reached through `.call` or `.bind` is not read, and `cq`'s second handler is written out for it), and a `finally` may not return, break or continue, which would drop an error in flight. Whether the comment says why is review's to judge. Until r56 a module could not log, and the rule was a throw or a comment.
 4. **Nothing builds up as the screens redraw** (`tests/cleanup.js`): through eight rounds of every tab, a session, a sheet and the 3D body, the live charts equal the charts on screen, the live drag lists equal the lists on screen after the first round and the last, intervals do not accumulate, the 3D body settles (ready or failed, never left loading) and makes one WebGL context.

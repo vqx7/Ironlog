@@ -74,7 +74,19 @@ const SHEETS = [
   ['a past workout', DEMO, TAP('pastOpen', { date: '2026-10-20' }), /Log a past workout/],
   ['report a problem', DEMO, TAP('fbOpen', {}), /Report|problem/i],
   ['sign in', DEMO, "L.openModal({kind:'account',mode:'signin',email:'',pw:''});", /Sign in/],
-  ['the menu, dark', DEMO + DARK, OPEN({ kind: 'menu' }), /Your data and backups/]
+  ['the menu, dark', DEMO + DARK, OPEN({ kind: 'menu' }), /Your data and backups/],
+  // r62's second pass: the lift sheets in the states their actions leave them in.
+  ['typed sets not read', DEMO + START, TAP('bMenuDo', { op: 'bQuick', b: '0' }) + "document.querySelector('#qTxt').value='zz';L.ACT.qFill();", /Could not read that/],
+  ['typed sets, nothing typed', DEMO + START, TAP('bMenuDo', { op: 'bQuick', b: '0' }) + 'L.ACT.qFill();', /Type at least one set/],
+  ['typed sets for a timed hold', DEMO + START + "{const b=L.state.draft.ex[0];b.exId='plank';}", OPEN({ kind: 'quick', b: 0, text: '' }), /Timed hold/],
+  ['typed sets for a bodyweight lift', DEMO + START + "{const b=L.state.draft.ex[0];b.exId='pullup';}", OPEN({ kind: 'quick', b: 0, text: '' }), /added to bodyweight/],
+  ['a calibration set not filled in', DEMO + START, TAP('bMenuDo', { op: 'bCal', b: '0' }) + "document.querySelector('#calPred').value='3';L.ACT.calSave();", /Calibration set/],
+  ['a load step following the dumbbell rack', DEMO + "L.state.settings.gym={u:'lb',db:{lo:5,hi:100,st:5,fine:2.5,fineTo:25}};L.state=L.normalize(L.state);L.invalidate();delete L.EX('dbLateral').inc;L.saveNow();", OPEN({ kind: 'inc', exId: 'dbLateral' }), /Following the dumbbells/],
+  ['a bodyweight lift\'s goal', DEMO, OPEN({ kind: 'goal', exId: 'pullup' }), /Added load/],
+  ['the heaviest load of a bodyweight lift', DEMO, OPEN({ kind: 'max', exId: 'pullup' }), /added to bodyweight/],
+  ['a note with text', DEMO + START, "L.openModal({kind:'note',bi:0,title:'Note: Bench',text:'Left shoulder <tight> & sore'});", /Note: Bench/],
+  ['one lift\'s goal opened over another\'s, typed in', DEMO, OPEN({ kind: 'goal', exId: 'bench' }) + "document.querySelector('#goalW').value='999';" + OPEN({ kind: 'goal', exId: 'backSquat' }), /Goal: (?!Deleted)/],
+  ['the exercise menu of the last lift', DEMO + START, "L.ACT.bMenu({dataset:{b:String(L.state.draft.ex.length-1)}});", /Remove from session/]
 ];
 
 (async () => {
@@ -96,6 +108,8 @@ const SHEETS = [
     ok(!b0.errors.length, `1. ${name}: no page errors`, b0.errors);
     // The case is the sheet it names (a prep that missed it would compare two empty sheets).
     ok(want.test(b.text), `1. ${name}: the sheet is open and in that state`, b.text.slice(0, 160));
+    // and of a lift in the log (an id not in it reads as a deleted exercise in both builds alike).
+    ok(!/Deleted exercise/.test(b.text), `1. ${name}: of a lift in the log`, b.text.slice(0, 160));
   }
 
   await browser.close();

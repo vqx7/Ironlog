@@ -63,7 +63,6 @@ function mountSortable(){
 }
 
 
-const AI={fn:null,ready:false,off:true,ctl:null};function aiInit(){}const aiOn=()=>false;
 
 /* Typed or dictated sets. Examples it reads:
    "235x5, 5, 4 rir 1"   three sets at 235, RIR 1 on each
@@ -118,6 +117,5 @@ wakeOn();
 timerResume();
 cloudInit();
 acctInit().catch(e=>log('auth',e));
-aiInit();
 undoRestore().catch(e=>log('undo-load',e));
 })();

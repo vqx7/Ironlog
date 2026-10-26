@@ -106,6 +106,10 @@ export const FONTS_ORIGIN = 'https://fonts.googleapis.com';
 export const FONT_FILES_ORIGIN = 'https://fonts.gstatic.com';
 export const FONTS_CSS = `${FONTS_ORIGIN}/css2?family=${FONT_DISPLAY.replace(/ /g, '+')}:wght@${FONT_DISPLAY_WEIGHTS}&family=${FONT_BODY.replace(/ /g, '+')}:wght@${FONT_BODY_WEIGHTS}&display=swap`;
 
+/** The How-to videos link of a lift: a YouTube search, to which only the
+    lift's name is added (src/app/sheetslift.ts). */
+export const HOWTO_SEARCH = 'https://www.youtube.com/results?search_query=';
+
 /** Have I Been Pwned's password range service (r26), which the account
     script asks before an account takes a password; the installed app's
     Content Security Policy allows it. */

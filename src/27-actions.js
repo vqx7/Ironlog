@@ -533,7 +533,6 @@ const ACT={...HISTORY_ACTS,...SETTINGS_ACTS,...PLAN_ACTS,...DASH_ACTS,...TODAY_A
     const finish=list=>{const n=fillSets(m.b,list);if(!(ui.modal&&ui.modal.kind==='confirm')){closeModal();rerenderKeepScroll();toast(`${n} set${n===1?'':'s'} filled and marked done`);}};
     if(got){finish(got);return;}
 m.err=`Could not read that. Try the pattern 225x5, 5, 4 ${rirScale()==='rpe'?'rpe 9':'rir 1'}.`;renderModal();  },
-  aiStop(){if(AI.ctl){try{AI.ctl.abort();}catch(e){/* already finished */}}},
   startAltOpen(t){openModal({kind:'startAlt',di:+t.dataset.day,free:t.dataset.free==='1'});},
   // A choice in Change: the sheet closes first, then the start it names runs as the card's button did.
   altGo(t){const go=t.dataset.go;closeModal();if(ACT[go])ACT[go](t);},

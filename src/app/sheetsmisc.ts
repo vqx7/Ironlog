@@ -14,7 +14,7 @@ import { isRestWeek } from './live';
 import { distU, sessionsOn } from './display';
 
 /** The close button every sheet has in its header. */
-const closeX = (): TemplateResult => html`<button class="ib" aria-label="Close" data-act="mClose">✕</button>`;
+export const closeX = (): TemplateResult => html`<button class="ib" aria-label="Close" data-act="mClose">✕</button>`;
 
 /** A question: what it asks, its answer, and a second answer when it has one. */
 export interface ConfirmSheet {

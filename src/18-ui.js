@@ -78,7 +78,6 @@ function openModal(m){
   if(target)try{target.focus({preventScroll:true});}catch(e){/* focus is best effort */}
 }
 function closeModal(){
-  if(AI.ctl){try{AI.ctl.abort();}catch(e){/* already finished */}AI.ctl=null;}
   const was=ui.modal;
   ui.modal=null;if(was&&was.kind==='confirm'&&was.onClose&&!was.answered)was.onClose();
   if(was&&was.kind==='account'){
