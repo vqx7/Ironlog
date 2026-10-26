@@ -576,5 +576,65 @@ async function finish() {
     await H.P.ctx.close();
   }
 
+  // ---- 10. Pick for me, Limited equipment and Short on time (r62: their sheets and rules moved, pick.ts).
+  if (run(10)) {
+    const T0 = '2026-10-19'; // a Monday: the plan says Push
+    const H = await phone(T0);
+    const { ev, page } = H;
+    // Push on Mondays, Pull on Tuesdays. Push was trained hard on Saturday (12 hard sets for chest, two days ago:
+    // a dose that needs 3 days); Pull last five weeks ago, so the back has had nothing for over three weeks.
+    const push = [['bench', [[185, 8, 1], [185, 8, 1], [185, 7, 0], [185, 7, 0], [185, 6, 0], [185, 6, 0]]], ['dbBench', [[60, 10, 1], [60, 9, 1], [60, 9, 0], [60, 8, 0], [60, 8, 0], [60, 8, 0]]]];
+    const pull = [['bbRow', [[135, 10, 2], [135, 10, 2], [135, 9, 2]]], ['latPulldown', [[120, 10, 2], [120, 10, 2], [120, 9, 2]]]];
+    await seed(H, { unit: 'lb', days: [{ id: 'Dp', name: 'Push', items: [['bench', 3, 6, 10, 1, 150, 5], ['dbBench', 3, 8, 12, 1, 120, 5]] }, { id: 'Dl', name: 'Pull', items: [['bbRow', 3, 6, 12, 1, 150, 5], ['latPulldown', 3, 8, 12, 1, 120, 5]] }, ...[3, 4, 5, 6, 7].map(n => ({ id: 'Dr' + n, name: 'Rest', items: [] }))],
+      sessions: [{ date: addD(T0, -35), day: 'Dl', ex: pull }, { date: addD(T0, -2), day: 'Dp', ex: push }] });
+    // Pick for me from Change, by taps: the back's day beats the plan's, which leans on a chest still recovering.
+    await page.click('#view [data-act="startAltOpen"]'); await wait(150);
+    await page.click('#modal [data-act="altGo"][data-go="pickToday"]'); await wait(200);
+    const pt = await ev(() => document.getElementById('modal').innerText.replace(/\s+/g, ' '));
+    ok(/Pull fits today better than Push, next in your plan: Push leans on muscles that may still be recovering\./.test(pt), '10. Pick for me: Pull fits today better than the plan\'s Push, whose chest is still recovering', pt.slice(0, 300));
+    const first = await ev(() => { const c = document.querySelector('#modal .pcard.best'); return c ? c.innerText.replace(/\s+/g, ' ') : ''; });
+    ok(/Pull/.test(first) && /Best fit/.test(first) && /not trained hard in 3 weeks|Last done 35 days ago/.test(first), '10. the best fit is Pull, and it says the back has had nothing for weeks', first.slice(0, 300));
+    // Start from the Pull card: the session is the Pull day.
+    await page.click('#modal .pcard.best [data-act="startSession"]:not([data-light])'); await wait(250);
+    const d = await H.draft();
+    ok(d && d.dayName === 'Pull' && d.ex.map(b => b.exId).join() === 'bbRow,latPulldown', '10. Start on the best fit begins the Pull day', d && { day: d.dayName, ex: d.ex.map(b => b.exId) });
+    // Short on time at 15 minutes with one set done: the trim keeps that set, and what is left fits or says it is still over.
+    await H.type('w', 0, 0, 135); await H.type('r', 0, 0, 10); if (!(await H.draft()).ex[0].sets[0].done) await H.tick(0, 0);
+    await page.click('#view [data-act="shortOpen"]'); await wait(150);
+    await page.click('#modal [data-act="shortPick"][data-v="15"]'); await wait(150);
+    const st = await ev(() => document.getElementById('modal').innerText.replace(/\s+/g, ' '));
+    const est = +((st.match(/~(\d+) min after the change/) || [])[1] || NaN);
+    ok(/→ \d+ sets?/.test(st) && /Done sets are never touched/.test(st) && (est <= 15 || /Still over/.test(st)), '10. Short on time at 15 minutes lists the sets it takes off and fits 15 minutes', st.slice(0, 300));
+    await page.click('#modal [data-act="shortApply"]'); await wait(200);
+    const dt = await H.draft();
+    ok(dt.ex[0].sets[0].done && dt.ex[0].sets[0].r === 10 && dt.ex.every(b => b.sets.filter(x => !x.warm).length >= 2), '10. Trim the session keeps the set done and at least 2 sets of each lift (SHORT_MIN_SETS)', dt.ex.map(b => [b.exId, b.sets.length, b.sets[0].done]));
+    // Every set left done, then Pick for me inside the session: never a chest lift (recovering, and already at its target this week).
+    for (let b = 0; b < dt.ex.length; b++) for (let s = 0; s < dt.ex[b].sets.length; s++) { if (dt.ex[b].sets[s].done) continue; await H.type('w', b, s, b === 0 ? 135 : 120); await H.type('r', b, s, 10); const now = await H.draft(); if (!now.ex[b].sets[s].done) await H.tick(b, s); }
+    await ev(() => window.__ironlog.ACT.pickEx({ dataset: {} })); await wait(200);
+    const picks = await ev(() => [...document.querySelectorAll('#modal .pcard')].map(c => ({ name: c.querySelector('b').textContent, text: c.innerText.replace(/\s+/g, ' '), ex: c.querySelector('[data-act="pickExAdd"]').dataset.ex, sets: +c.querySelector('[data-act="pickExAdd"]').dataset.sets })));
+    const prim = await ev(ids => ids.map(id => window.__ironlog.EX(id).primary), picks.map(p => p.ex));
+    ok(picks.length === 3 && !prim.includes('chest'), '10. in the session, Pick for me offers three lifts and none for the chest', { picks: picks.map(p => p.name), prim });
+    ok(picks.every(p => /hard sets in the last 7 days, counting this session/.test(p.text) && /× /.test(p.text)), '10. each pick says its muscle\'s week and its sets', picks.map(p => p.text.slice(0, 160)));
+    // Add the best fit: it joins the session with the sets the card shows.
+    await page.click('#modal .pcard.best [data-act="pickExAdd"]'); await wait(250);
+    const d2 = await H.draft();
+    const added = d2.ex[d2.ex.length - 1];
+    ok(added.exId === picks[0].ex && added.sets.filter(x => !x.warm).length === picks[0].sets, '10. Add to session adds the first pick with the sets its card shows', { added: added.exId, sets: added.sets.length, card: picks[0] });
+    await H.finish();
+    // Limited equipment the week after, from Today, by taps: no barbell, so the bench becomes a chest lift on other equipment.
+    await H.day(addD(T0, 7));
+    if (!(await page.$('#view [data-act="eqOpen"]'))) { await page.click('#view [data-act="heroMore"]'); await wait(150); }
+    await page.click('#view [data-act="eqOpen"]'); await wait(150);
+    const on = await ev(() => document.querySelector('#modal [data-act="eqToggle"][data-k="barbell"]').getAttribute('aria-pressed'));
+    if (on === 'true') { await page.click('#modal [data-act="eqToggle"][data-k="barbell"]'); await wait(150); }
+    const sw = await ev(() => document.querySelector('#modal .eqsw') ? document.querySelector('#modal .eqsw').innerText : '');
+    await page.click('#modal [data-act="eqStart"]'); await wait(250);
+    const d4 = await H.draft();
+    const lifts = await ev(ids => ids.map(id => { const e = window.__ironlog.EX(id); return { id, primary: e.primary, equip: e.equip }; }), d4.ex.map(b => b.exId));
+    ok(/Barbell Bench Press →/.test(sw) && !lifts.some(e => e.equip === 'barbell') && lifts.some(e => e.primary === 'chest') && d4.ex[0].sets.filter(x => !x.warm).length === 3, '10. Limited equipment without a barbell swaps the bench for a chest lift on other equipment, its 3 planned sets kept', { sw, lifts });
+    ok(!H.P.errors.length, '10. no page errors', H.P.errors);
+    await H.P.ctx.close();
+  }
+
   return finish();
 })().catch(e => { console.error(e); process.exit(1); });
