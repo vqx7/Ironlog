@@ -10,6 +10,8 @@
    inside Claude, or in the plain source file. */
 
 import { html, svg } from 'lit-html';
+/* The date field follows the date in use even when the lifter's pick was refused (a future date): drawn again in place, an attribute would leave the refused date showing (the independent review of r62). */
+import { live } from 'lit-html/directives/live.js';
 import type { TemplateResult } from 'lit-html';
 import { APP_NAME, SITE_DIR_FALLBACK, SITE_HOST } from './config';
 import { ADD_ICON, SHARE_ICON } from './icons';
@@ -126,7 +128,7 @@ export function pastSheet(m: { date: string }): TemplateResult {
     .filter(x => !x.d.rest && x.d.items.length > 0)
     .sort((a, b) => +(b.i === due) - +(a.i === due));
   return html`<div class="sheet" role="dialog" aria-modal="true" aria-labelledby="pastH"><div class="sheet-h"><h3 id="pastH">Log a past workout</h3>${closeX()}</div>
-  <label class="field">Date<input type="date" data-pbind="date" value=${m.date} max=${today()}></label>
+  <label class="field">Date<input type="date" data-pbind="date" .value=${live(m.date)} max=${today()}></label>
   ${on.length ? html`<p class="small muted" style="margin:6px 0 0">Already logged that day: ${on.join(', ')}.</p>` : ''}
   <div class="stack" style="margin-top:12px">${opts.map(({ d, i }) => html`<button class=${'btn block' + (i === due ? ' primary' : '') + ' pastday'} data-act="pastGo" data-day=${String(i)}><span>${dayLabel(R, i)}: ${d.name}</span>${i === due ? html`<small>due then</small>` : html`<small>${d.items.length} exercises</small>`}</button>`)}<button class="btn block pastday" data-act="pastGo" data-day="free"><span>Freestyle</span><small>any exercises</small></button></div>
   <p class="small muted" style="margin:10px 0 0">Quick entry: type each set. ${tipButton('No rest timer or clock. A set counts as done once its reps are typed. Last time, targets, and PRs are read as of that date.', 'About quick entry')}</p></div>`;

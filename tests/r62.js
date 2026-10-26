@@ -272,6 +272,80 @@ const SHEETS = [
     await P.ctx.close();
   }
 
+  // ---- 4. A load typed into a set its cleared load unticked is ticked again (the independent review of r62).
+  if (run(4)) {
+    const ROUTINE = "S.routines=[{id:'R1',name:'Mine',schedule:'weekly',days:[0,1,2,3,4,5,6].map(i=>({id:'D'+i,name:'Push',rest:false,items:[{uid:'u'+i,exId:'bench',sets:3,repMin:6,repMax:10,rir:2,rest:150,inc:2.5,ss:null}]}))}];S.activeRoutineId='R1';";
+    for (const mode of ['live', 'live, auto-mark', 'past', 'History edit']) {
+      const P = await open(FILE, { browser, setup: async (ctx, page) => { await page.clock.setFixedTime(new Date('2026-10-26T10:00:00')); } });
+      const { page } = P; const ev = (f, a) => page.evaluate(f, a); const wait = ms => new Promise(r => setTimeout(r, ms));
+      await ev(([mode, ROUTINE]) => { const L = window.__ironlog; const S = L.state; S.settings.onboarded = true; S.settings.unit = 'lb'; S.settings.autoDone = mode === 'live, auto-mark'; S.settings.timerMode = 'auto';
+        eval(ROUTINE); S.sessions = [];
+        if (mode === 'History edit') S.sessions = [{ id: 'S1', date: '2026-10-24', routineId: 'R1', dayId: 'D5', dayIdx: 5, dayName: 'Push', ex: [{ exId: 'bench', sets: [[225, 8], [225, 8], [225, 6]].map(([w, r]) => ({ w: w * 0.45359237, r, rir: 2 })) }] }];
+        L.state = L.normalize(S); L.invalidate(); L.saveNow(); L.ui.tab = mode === 'History edit' ? 'history' : 'today'; L.render(); }, [mode, ROUTINE]);
+      await wait(250);
+      const q = (f, b, s) => `#view [data-f="${f}"][data-b="${b}"][data-s="${s}"]`;
+      const type = async (f, b, s, v) => { await page.click(q(f, b, s)); await page.keyboard.press('Control+A'); await page.keyboard.type(String(v)); await ev(() => document.activeElement && document.activeElement.blur()); await wait(200); };
+      const clear = async (f, b, s) => { await page.click(q(f, b, s)); await page.keyboard.press('Control+A'); await page.keyboard.press('Backspace'); await ev(() => document.activeElement && document.activeElement.blur()); await wait(200); };
+      const tick = async (b, s) => { await page.click(`#view [data-act="sDone"][data-b="${b}"][data-s="${s}"]`); await wait(200); };
+      const set = k => ev(k => { const x = window.__ironlog.state.draft.ex[0].sets[k]; return { lb: x.w == null ? null : Math.round(x.w / 0.45359237), r: x.r, done: !!x.done }; }, k);
+      const left = () => ev(() => { const t = window.__ironlog.timer; return t && t.end ? Math.round((t.end - Date.now()) / 1000) : null; });
+      if (mode === 'History edit') {
+        await ev(() => window.__ironlog.ACT.histEdit({ dataset: { id: 'S1' } })); await wait(300);
+        if (await ev(() => window.__ironlog.ui.modal && window.__ironlog.ui.modal.kind === 'confirm')) { await page.click('#modal [data-act="mOk"]'); await wait(300); }
+      } else if (mode === 'past') {
+        await ev(() => window.__ironlog.ACT.pastOpen({ dataset: { date: '2026-10-24' } })); await wait(250);
+        await page.click('#modal [data-act="pastGo"]'); await wait(300);
+        await type('w', 0, 0, 225); await type('r', 0, 0, 8);
+      } else {
+        await page.click('#view .hero [data-act="startSession"]:not([data-light="1"])'); await wait(300);
+        await type('w', 0, 0, 225); await type('r', 0, 0, 8);
+        if (!(await set(0)).done) await tick(0, 0);
+        await type('r', 0, 1, 8); if (!(await set(1)).done) await tick(0, 1);
+        await page.clock.setFixedTime(new Date('2026-10-26T10:01:40')); await wait(300);
+      }
+      const rest0 = mode.startsWith('live') ? await left() : null;
+      await clear('w', 0, 0);
+      const cleared = await set(0);
+      await type('w', 0, 0, 230);
+      const after = await set(0);
+      ok(!cleared.done && after.done && after.lb === 230 && after.r === 8, `4. ${mode}: cleared it is unticked, and 230 typed ticks it again as 230 x 8`, { cleared, after });
+      if (mode.startsWith('live')) { const rest1 = await left(); ok(rest0 != null && rest1 != null && Math.abs(rest1 - rest0) <= 2, `4. ${mode}: the rest under way goes on (${rest0} s left before, ${rest1} s after)`, { rest0, rest1 }); }
+      if (mode === 'History edit' || mode === 'past') {
+        await page.click('#view [data-act="finish"]');
+        const asked = [];
+        for (let k = 0; k < 6; k++) { await wait(200); const m = await ev(() => { const m = window.__ironlog.ui.modal; return m ? { kind: m.kind, title: m.title || '' } : null; }); if (!m || m.kind !== 'confirm') break; asked.push(m.title); await page.click('#modal [data-act="mAlt"]'); }
+        await wait(300);
+        const saved = await ev(() => { const s = [...window.__ironlog.state.sessions].sort((a, b) => a.date < b.date ? 1 : -1)[0]; return s ? s.ex[0].sets.map(x => [Math.round(x.w / 0.45359237), x.r]) : null; });
+        const want = mode === 'past' ? [[230, 8]] : [[230, 8], [225, 8], [225, 6]];
+        ok(!asked.length && JSON.stringify(saved) === JSON.stringify(want), `4. ${mode}: Finish asks nothing and saves ${JSON.stringify(want)}`, { asked, saved });
+      }
+      ok(!P.errors.length, `4. ${mode}: no page errors`, P.errors);
+      await P.ctx.close();
+    }
+  }
+
+  // ---- 5. A past workout's date refused goes back to the date in use (the independent review of r62).
+  if (run(5)) {
+    const P = await open(FILE, { browser, setup: async (ctx, page) => { await page.clock.setFixedTime(new Date('2026-10-26T10:00:00')); } });
+    const { page } = P; const ev = (f, a) => page.evaluate(f, a); const wait = ms => new Promise(r => setTimeout(r, ms));
+    await ev(() => { const L = window.__ironlog; L.state.settings.onboarded = true; L.makeDemo(); L.saveNow(); L.ui.tab = 'history'; L.render(); });
+    await wait(300);
+    await ev(() => window.__ironlog.ACT.pastOpen({ dataset: {} })); await wait(300);
+    const field = '#modal input[data-pbind="date"]';
+    const read = () => ev(f => ({ field: document.querySelector(f).value, date: window.__ironlog.ui.modal && window.__ironlog.ui.modal.date }), field);
+    await page.fill(field, '2026-10-20'); await wait(300);
+    const a = await read();
+    await page.fill(field, '2026-10-29'); await wait(300);
+    const b = await read();
+    ok(a.field === '2026-10-20' && a.date === '2026-10-20', '5. a past date picked is the one in use', a);
+    ok(b.field === '2026-10-20' && b.date === '2026-10-20', '5. a future date is refused and the field goes back to 2026-10-20, the date in use', b);
+    await page.click('#modal [data-act="pastGo"]'); await wait(400);
+    const d = await ev(() => window.__ironlog.state.draft && window.__ironlog.state.draft.date);
+    ok(d === '2026-10-20', '5. the workout is logged under the date shown', d);
+    ok(!P.errors.length, '5. no page errors', P.errors);
+    await P.ctx.close();
+  }
+
   await browser.close();
   console.log(fails.length ? `\n${fails.length} FAILED` : '\nALL PASS');
   process.exit(fails.length ? 1 : 0);

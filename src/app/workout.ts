@@ -73,7 +73,8 @@ import {
   onRedraw,
   ordBack,
   redraw,
-  FOLD_MS
+  FOLD_MS,
+  unloaded
 } from './workstate';
 import type { Draft, Tap } from './workstate';
 import {
@@ -1349,13 +1350,19 @@ export function workoutChange(t: HTMLInputElement): boolean {
     /* A ticked set's load cleared is unticked, as a ticked set's reps
        cleared are (V on r61's preview, 2026-10-26: set 2 ticked on its grey
        225, its load then cleared, stayed ticked with no weight, and the
-       recap read it as 0 x 8). Ticked again it takes its grey load or waits
-       for one (setDone), so a ticked set of a lift that takes a load always
-       has one. A bodyweight lift's added load and a timed hold's may be
-       none, as noLoadYet says. */
+       recap read it as 0 x 8). It then waits for its weight, as a tick made
+       before one is typed does (344): a load typed ticks it again (the
+       independent review of r62: typing 230 left it unticked, and Finish
+       offered to save without it), and so does the checkmark on its grey
+       load, as the same set, its rest not started over (unloaded, setDone).
+       So a ticked set of a lift that takes a load always has one. A
+       bodyweight lift's added load and a timed hold's may be none, as
+       noLoadYet says. */
     const lift = EX(d.ex[bi] ? d.ex[bi].exId : '');
     if (s.done && s.w == null && !lift.bw && !lift.timed) {
       setDone(bi, si, false);
+      unloaded.add(s);
+      W.needAt = { b: blkRef(bi), s: si };
       redraw();
       return true;
     }

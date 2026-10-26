@@ -11979,7 +11979,7 @@ ${detail}`
     const on = sessionsOn(m3.date).map((x2) => x2.dayName || "Session");
     const opts = R2.days.map((d3, i5) => ({ d: d3, i: i5 })).filter((x2) => !x2.d.rest && x2.d.items.length > 0).sort((a2, b2) => +(b2.i === due) - +(a2.i === due));
     return b`<div class="sheet" role="dialog" aria-modal="true" aria-labelledby="pastH"><div class="sheet-h"><h3 id="pastH">Log a past workout</h3>${closeX()}</div>
-  <label class="field">Date<input type="date" data-pbind="date" value=${m3.date} max=${today()}></label>
+  <label class="field">Date<input type="date" data-pbind="date" .value=${l3(m3.date)} max=${today()}></label>
   ${on.length ? b`<p class="small muted" style="margin:6px 0 0">Already logged that day: ${on.join(", ")}.</p>` : ""}
   <div class="stack" style="margin-top:12px">${opts.map(({ d: d3, i: i5 }) => b`<button class=${"btn block" + (i5 === due ? " primary" : "") + " pastday"} data-act="pastGo" data-day=${String(i5)}><span>${dayLabel(R2, i5)}: ${d3.name}</span>${i5 === due ? b`<small>due then</small>` : b`<small>${d3.items.length} exercises</small>`}</button>`)}<button class="btn block pastday" data-act="pastGo" data-day="free"><span>Freestyle</span><small>any exercises</small></button></div>
   <p class="small muted" style="margin:10px 0 0">Quick entry: type each set. ${tipButton("No rest timer or clock. A set counts as done once its reps are typed. Last time, targets, and PRs are read as of that date.", "About quick entry")}</p></div>`;
@@ -13267,6 +13267,7 @@ ${logBuf.length ? b`<ul class="clist">${logBuf.slice(-LOG_SHOWN).reverse().map(
     replaceNext: null
   };
   var carried = /* @__PURE__ */ new WeakSet();
+  var unloaded = /* @__PURE__ */ new WeakSet();
   var adjSrc = /* @__PURE__ */ new WeakMap();
   var blkOpenObj = /* @__PURE__ */ new WeakSet();
   var editFp0 = /* @__PURE__ */ new Map();
@@ -13774,6 +13775,10 @@ ${logBuf.length ? b`<ul class="clist">${logBuf.slice(-LOG_SHOWN).reverse().map(
       const f3 = document.querySelector(`.sg input[data-f="w"][data-b="${bi}"][data-s="${si}"]`);
       if (f3) f3.focus();
       return;
+    }
+    if (val && unloaded.has(s3)) {
+      unloaded.delete(s3);
+      again = true;
     }
     const okKey = `${bi}:${si}:${s3.r}:${effW(b2, si)}`;
     const far = val && W.oddOk !== okKey && !oddReps(b2, s3) ? oddLoad(b2, si, d3.date) : null;
@@ -18893,6 +18898,8 @@ ${ms.length ? b`<div class="scroll-x" style="margin-top:10px"><table class="t"><
       const lift = EX(d3.ex[bi] ? d3.ex[bi].exId : "");
       if (s3.done && s3.w == null && !lift.bw && !lift.timed) {
         setDone(bi, si, false);
+        unloaded.add(s3);
+        W.needAt = { b: blkRef(bi), s: si };
         redraw();
         return true;
       }

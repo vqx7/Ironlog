@@ -75,7 +75,8 @@ import {
   ordBack,
   orderQ,
   redraw,
-  FOLD_MS
+  FOLD_MS,
+  unloaded
 } from './workstate';
 import type { Draft } from './workstate';
 
@@ -828,6 +829,11 @@ export function setDone(bi: number, si: number, val: boolean, again?: boolean): 
     const f = document.querySelector<HTMLInputElement>(`.sg input[data-f="w"][data-b="${bi}"][data-s="${si}"]`);
     if (f) f.focus();
     return;
+  }
+  // A set its cleared load unticked is ticked again as the same set: its rest is not started over (356).
+  if (val && unloaded.has(s)) {
+    unloaded.delete(s);
+    again = true;
   }
   const okKey = `${bi}:${si}:${s.r}:${effW(b, si)}`;
   const far = val && W.oddOk !== okKey && !oddReps(b, s) ? oddLoad(b, si, d.date) : null;
