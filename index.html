@@ -10386,98 +10386,6 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     <div class="row" style="margin-top:10px"><button class="btn primary" data-act="cardioSave">Save</button><button class="btn" data-act="mClose">Cancel</button></div></div>`;
   }
 
-  // src/app/sheetslift.ts
-  var CAL_CALLS = [0, 1, 2, 3, 4, 5];
-  var howToUrl = (e5) => HOWTO_SEARCH + encodeURIComponent(`${e5.name} exercise form`);
-  function howToLink(e5) {
-    const name = e5 && e5.name;
-    return name ? b`<a class="btn block" style="margin-top:6px" href=${howToUrl({ name })} target="_blank" rel="noopener noreferrer" data-tip=${`Opens a YouTube search for ${name} in your browser. Only the exercise name is sent.`}>How-to videos</a>` : "";
-  }
-  var blockAt = (i5) => {
-    const d3 = state.draft;
-    return d3 && d3.ex[i5] || null;
-  };
-  function bmenuSheet(m3) {
-    const d3 = state.draft;
-    const b2 = blockAt(m3.b);
-    if (!d3 || !b2) return null;
-    const nx = blockAt(m3.b + 1);
-    const linked = !!(nx && b2.plan.ss && nx.plan.ss === b2.plan.ss);
-    const e5 = EX(b2.exId);
-    const op = (o3, l4, dis, cls) => b`<button class=${"btn block " + (cls || "")} style="margin-top:6px" data-act="bMenuDo" data-op=${o3} data-b=${String(m3.b)} ?disabled=${!!dis}>${l4}</button>`;
-    return b`<div class="sheet" role="dialog" aria-modal="true"><div class="sheet-h"><h3>${exName(b2.exId)}</h3>${closeX()}</div>
-    ${op("bHist", "History and chart")}${op("bMus", "Muscles worked")}${op("wAdd", "Add a warm-up set")}${op("dropAdd", "Add a drop set (about 75% load)")}${op("bQuick", "Type or dictate sets")}${op("bNote", b2.note ? "Edit note" : "Add note")}${op("bSwap", "Swap exercise")}${op("bNew", markedNew(d3, b2.exId) ? "Same machine as before" : "New machine or gym")}${howToLink(e5)}${op("bInc", `Load step: ${fmtW(incOf(e5, b2.plan))} ${U()}`)}${op("bMax", `Heaviest available: ${e5.maxLoad != null ? fmtW(e5.maxLoad) + " " + U() : "no limit"}`)}${rirShow(e5) ? op("bCal", "Calibration set (RIR check)") : ""}${nx ? op("bSs", linked ? "Unlink superset" : `Superset with ${exName(nx.exId)}`) : ""}${op("bUp", "Move up", m3.b === 0)}${op("bDown", "Move down", !nx)}${op("fbOpen", "Report a problem")}${op("bDel", "Remove from session", false, "danger")}</div>`;
-  }
-  function injurySheet() {
-    return b`<div class="sheet" role="dialog" aria-modal="true"><div class="sheet-h"><h3>Flag an injury</h3>${closeX()}</div>
-    <p class="small muted hastip" data-tip="Every exercise that loads this muscle (directly or as a helper) or this joint is marked in your sessions: its target pauses, loads cap at last time, and it is left out of below-target advice until cleared.">Training aid, not medical advice: sharp, worsening, or lasting pain needs a clinician.</p>
-    <div class="stack"><label class="field">Area<select id="injM"><optgroup label="Joints">${JOINTS.map(([k2, l4]) => b`<option value=${k2}>${l4}</option>`)}</optgroup><optgroup label="Muscles">${MUSCLES.map(([k2, l4]) => b`<option value=${k2}>${l4}</option>`)}</optgroup></select></label>
-    <p class="small muted hastip" style="margin:0" data-tip="Knee: squats, lunges, leg press, leg extensions, and curls. Hip: squats, hinges, hip thrusts, adductors, and abductors. Shoulder: presses, flyes, raises, pull-downs, pull-ups, dips. Elbow: curls, extensions, rows, pull-downs, dips. Wrist: curls, barbell and dumbbell presses, push-ups, front squats. A judgment from the movement, not a measurement.">Which exercises a joint flag marks</p>
-    <label class="field">Note (optional)<input type="text" id="injNote" placeholder="e.g. left elbow, pressing only"></label>
-    <div class="row"><button class="btn primary" data-act="injSave">Flag it</button><button class="btn" data-act="mClose">Cancel</button></div></div></div>`;
-  }
-  function goalSheet(m3) {
-    const e5 = EX(m3.exId);
-    const g2 = e5.goal;
-    return b`<div class="sheet" role="dialog" aria-modal="true" aria-labelledby="goalH"><div class="sheet-h"><h3 id="goalH">Goal: ${e5.name}</h3>${closeX()}</div>
-    <div class="grid2"><label class="field">${e5.bw ? `Added load (${U()})` : `Load (${U()}${loadNote(e5)})`}<input type="text" inputmode="decimal" id="goalW" value=${g2 ? fmtW(g2.w) : ""} placeholder=${e5.bw ? "0" : ""}></label>
-    <label class="field">Reps<input type="text" inputmode="numeric" id="goalR" value=${g2 ? String(g2.r) : ""}></label></div>
-    <div class="row" style="margin-top:12px"><button class="btn primary" data-act="goalSave">Save</button>${g2 ? b`<button class="btn danger" data-act="goalClear">Remove goal</button>` : ""}<button class="btn" data-act="mClose">Cancel</button></div></div>`;
-  }
-  function incSheet(m3) {
-    const e5 = EX(m3.exId);
-    return b`<div class="sheet" role="dialog" aria-modal="true"><div class="sheet-h"><h3>Load step: ${e5.name}</h3>${closeX()}</div>
-    <label class="field">Step (${U()})<input type="text" inputmode="decimal" id="incVal" value=${fmtW(incOf(e5, m3.plan))}></label>
-    <p class="small muted">The smallest jump the machine or dumbbells allow. Earned increases are whole multiples of it.</p>
-    ${e5.inc == null && gymRack(e5, m3.plan) ? b`<p class="small" style="margin:0">Following the ${rackKind(e5) === "dumbbell" ? "dumbbells" : "kettlebells"} in Settings > Your gym. A step saved here replaces them for this lift.</p>` : ""}
-    <div class="row" style="margin-top:10px"><button class="btn primary" data-act="incSave">Save</button><button class="btn" data-act="mClose">Cancel</button></div></div>`;
-  }
-  function maxSheet(m3) {
-    const e5 = EX(m3.exId);
-    return b`<div class="sheet" role="dialog" aria-modal="true"><div class="sheet-h"><h3>Heaviest available: ${e5.name}</h3>${closeX()}</div>
-    <label class="field">Load (${U()}${e5.bw ? ", added to bodyweight" : ""})<input type="text" inputmode="decimal" id="maxVal" value=${e5.maxLoad != null ? fmtW(e5.maxLoad) : ""} placeholder="No limit"></label>
-    <p class="small muted">Top of the stack or biggest dumbbell. Blank for no limit.</p>
-    <div class="row" style="margin-top:10px"><button class="btn primary" data-act="maxSave">Save</button><button class="btn" data-act="mClose">Cancel</button></div></div>`;
-  }
-  function noteSheet(m3) {
-    return b`<div class="sheet" role="dialog" aria-modal="true"><div class="sheet-h"><h3>${m3.title}</h3>${closeX()}</div>
-    <p class="small muted">Saved with this session and shown next time: a cue, a niggle, which machine.</p>
-    <textarea id="mNote" aria-label="Note" style="min-height:110px">${m3.text || ""}</textarea>
-    <div class="row" style="margin-top:10px"><button class="btn primary" data-act="noteSave">Save note</button><button class="btn" data-act="mClose">Cancel</button></div></div>`;
-  }
-  function quickSheet(m3) {
-    const b2 = blockAt(m3.b);
-    if (!b2) return null;
-    const ex = EX(b2.exId);
-    const kg = U() === "kg";
-    const rp = rirScale() === "rpe";
-    const tail = rp ? "rpe 9" : "rir 1";
-    const eg1 = kg ? `100x5, 5, 4 ${tail}` : `235x5, 5, 4 ${tail}`;
-    const eg2 = rp ? kg ? "80x8@8 90x6@9" : "185x8@8 205x6@9" : kg ? "80x8@2 90x6@1" : "185x8@2 205x6@1";
-    const ph = kg ? `100x5, 5, 4 ${tail}` : `225x5, 5, 4 ${tail}`;
-    return b`<div class="sheet" role="dialog" aria-modal="true"><div class="sheet-h"><h3>${ex.name}: type sets</h3>${closeX()}</div>
-    ${ex.timed ? b`<p class="small muted" style="margin:0">Timed hold: the number after x is seconds, for example <b>25x45, 40</b> or <b>bw x 60, 50</b>.</p>` : ""}
-    <p class="small muted">Loads in ${U()}${loadNote(ex)}${ex.bw ? ", added to bodyweight (bw or bw+25)" : ""}. <b>${eg1}</b> or <b>${eg2}</b>. <span class="hastip" data-tip=${`Type or use the keyboard's dictation mic. ${rp ? "rpe" : "rir"} at the end applies to every set; @ gives ${effName()} per set. A bare number repeats the last load. Sets fill from the first one not done and are marked done.`}>More</span></p>
-    <input type="text" id="qTxt" autocomplete="off" autocapitalize="off" spellcheck="false" value=${m3.text || ""} placeholder=${ex.bw ? "bw x 10, 8, 7" : ph} enterkeyhint="done">
-    ${m3.err ? b`<p class="small" style="color:var(--red);margin:8px 0 0">${m3.err}</p>` : ""}
-    <div class="row" style="margin-top:10px"><button class="btn primary" data-act="qFill">Fill sets</button><button class="btn" data-act="mClose">Cancel</button></div></div>`;
-  }
-  function calibrationSheet(m3) {
-    const b2 = blockAt(m3.b);
-    if (!b2) return null;
-    const ex = EX(b2.exId);
-    return b`<div class="sheet" role="dialog" aria-modal="true"><div class="sheet-h"><h3>Calibration set: ${ex.name}</h3>${closeX()}</div>
-    <p class="small muted" style="margin:0">Checks how well you call reps in reserve. Only take a set to failure where it is safe: a machine or cable, or with a spotter.</p>
-    <ol class="steps"><li>Use your normal working load.</li><li>At the rep where you would usually stop, note that rep and how many you think are left.</li><li>Keep going until you cannot complete a rep with good form.</li></ol>
-    <div class="grid2"><label class="field">Load (${ex.bw ? "+" + U() : U()})<input type="text" inputmode="decimal" id="calW" value=${m3.w != null ? String(m3.w) : ""}></label>
-    <label class="field">Usual stop rep<input type="text" inputmode="numeric" id="calAt" value=${m3.at || ""}></label>
-    <label class="field">Reps left, your call<select id="calPred">${CAL_CALLS.map((v3) => b`<option value=${String(v3)} ?selected=${Number(m3.pred) === v3}>${v3}</option>`)}</select></label>
-    <label class="field">Reps to failure<input type="text" inputmode="numeric" id="calTot" value=${m3.total || ""}></label></div>
-    ${m3.err ? b`<p class="small" style="color:var(--red);margin:8px 0 0">${m3.err}</p>` : ""}
-    <div class="row" style="margin-top:10px"><button class="btn primary" data-act="calSave">Save set</button><button class="btn" data-act="mClose">Cancel</button></div>
-    <p class="small muted" style="margin:8px 0 0">It is saved as a done set at 0 RIR, marked as a check. With RIR set to Corrected in Settings, your typical miss is applied to the RIR you log.</p></div>`;
-  }
-
   // ../ironlog/node_modules/lit-html/directives/live.js
   var l3 = e2(class extends i2 {
     constructor(r4) {
@@ -10496,6 +10404,58 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
         if (!!t4 === o3.hasAttribute(l4)) return E;
       } else if (i5.type === t2.ATTRIBUTE && o3.getAttribute(l4) === t4 + "") return E;
       return p2(i5), t4;
+    }
+  });
+
+  // ../ironlog/node_modules/lit-html/directives/repeat.js
+  var u3 = (e5, s3, t4) => {
+    const r4 = /* @__PURE__ */ new Map();
+    for (let l4 = s3; l4 <= t4; l4++) r4.set(e5[l4], l4);
+    return r4;
+  }, c3 = e2(class extends i2 {
+    constructor(e5) {
+      if (super(e5), e5.type !== t2.CHILD) throw Error("repeat() can only be used in text expressions");
+    }
+    dt(e5, s3, t4) {
+      let r4;
+      void 0 === t4 ? t4 = s3 : void 0 !== s3 && (r4 = s3);
+      const l4 = [], o3 = [];
+      let i5 = 0;
+      for (const s4 of e5) l4[i5] = r4 ? r4(s4, i5) : i5, o3[i5] = t4(s4, i5), i5++;
+      return { values: o3, keys: l4 };
+    }
+    render(e5, s3, t4) {
+      return this.dt(e5, s3, t4).values;
+    }
+    update(s3, [t4, r4, c4]) {
+      const d3 = M2(s3), { values: p3, keys: a2 } = this.dt(t4, r4, c4);
+      if (!Array.isArray(d3)) return this.ut = a2, p3;
+      const h3 = this.ut ??= [], v3 = [];
+      let m3, y2, x2 = 0, j3 = d3.length - 1, k2 = 0, w2 = p3.length - 1;
+      for (; x2 <= j3 && k2 <= w2; ) if (null === d3[x2]) x2++;
+      else if (null === d3[j3]) j3--;
+      else if (h3[x2] === a2[k2]) v3[k2] = u2(d3[x2], p3[k2]), x2++, k2++;
+      else if (h3[j3] === a2[w2]) v3[w2] = u2(d3[j3], p3[w2]), j3--, w2--;
+      else if (h3[x2] === a2[w2]) v3[w2] = u2(d3[x2], p3[w2]), v2(s3, v3[w2 + 1], d3[x2]), x2++, w2--;
+      else if (h3[j3] === a2[k2]) v3[k2] = u2(d3[j3], p3[k2]), v2(s3, d3[x2], d3[j3]), j3--, k2++;
+      else if (void 0 === m3 && (m3 = u3(a2, k2, w2), y2 = u3(h3, x2, j3)), m3.has(h3[x2])) if (m3.has(h3[j3])) {
+        const e5 = y2.get(a2[k2]), t5 = void 0 !== e5 ? d3[e5] : null;
+        if (null === t5) {
+          const e6 = v2(s3, d3[x2]);
+          u2(e6, p3[k2]), v3[k2] = e6;
+        } else v3[k2] = u2(t5, p3[k2]), v2(s3, d3[x2], t5), d3[e5] = null;
+        k2++;
+      } else h2(d3[j3]), j3--;
+      else h2(d3[x2]), x2++;
+      for (; k2 <= w2; ) {
+        const e5 = v2(s3, v3[w2 + 1]);
+        u2(e5, p3[k2]), v3[k2++] = e5;
+      }
+      for (; x2 <= j3; ) {
+        const e5 = d3[x2++];
+        null !== e5 && h2(e5);
+      }
+      return this.ut = a2, p2(s3, v3), E;
     }
   });
 
@@ -10535,6 +10495,38 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       ...state.trash.filter((t4) => !(t4.id === data.id && t4.kind === kind))
     ].slice(0, TRASH_MAX);
     while (state.trash.length > 1 && JSON.stringify(state.trash).length > TRASH_BYTES) state.trash.pop();
+  }
+
+  // src/app/env.ts
+  function isStandalone() {
+    try {
+      return window.matchMedia("(display-mode: standalone)").matches || navigator.standalone === true;
+    } catch (e5) {
+      return false;
+    }
+  }
+  var coarse = () => {
+    try {
+      return window.matchMedia("(pointer:coarse)").matches;
+    } catch (e5) {
+      return false;
+    }
+  };
+  function canInstallHere() {
+    return !!window.IRONLOG_APP && !isStandalone() && !(window.claude && typeof window.claude.use === "function");
+  }
+  var IOS_COMPACT_BAR = 26;
+  function installKind() {
+    const ua = navigator.userAgent || "";
+    const ios = /iPhone|iPad|iPod/.test(ua) || navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1;
+    if (window.__installEvt) return "prompt";
+    if (ios) {
+      if (/CriOS/.test(ua)) return "ios-chrome";
+      if (/FxiOS|EdgiOS|OPiOS/.test(ua)) return "ios-other";
+      const v3 = +((ua.match(/Version\/(\d+)/) || [])[1] || 0);
+      return v3 >= IOS_COMPACT_BAR ? "ios-safari26" : "ios-safari";
+    }
+    return "menu";
   }
 
   // src/app/view.ts
@@ -10712,6 +10704,1273 @@ ${actions ? b`<div class="ph-a">${actions}</div>
     )}</div>
 <button type="button" class="linkbtn ml-c" data-act="goLayout">Show, hide, or reorder sections</button></div>
 `;
+  }
+
+  // src/app/settings.ts
+  var DB_EXAMPLE = {
+    lb: { lo: 5, hi: 120, st: 5, fine: 2.5, fineTo: 25 },
+    kg: { lo: 2, hi: 50, st: 2, fine: 1, fineTo: 10 }
+  };
+  var RACK_LIST = { whole: 9, head: 5, tail: 2 };
+  var LOG_SHOWN = 5;
+  var KEPT_TOAST_MS = 8e3;
+  function bwEvery() {
+    const v3 = bwEveryKept(state.settings.bwEvery);
+    return v3 === void 0 ? BW_EVERY_DEFAULT : v3;
+  }
+  function adjOn() {
+    return state.settings.autoAdj !== false;
+  }
+  var SAFETY_TXT = `${APP_NAME} works out suggested loads and reps from your own log with published formulas and the conventions stated in the Guide. They are estimates, not medical, physical therapy, or coaching advice, and they can be wrong. Use good technique, and safety bars or a spotter on heavy lifts. Stop on pain. Check with a doctor before starting or changing training, especially with an injury, a health condition, or a pregnancy. You train at your own risk.`;
+  function profApplyList(R2) {
+    const out = [];
+    if (!R2) return out;
+    const nw = prof().exp === "new";
+    R2.days.forEach(
+      (d3, di) => d3.items.forEach((it) => {
+        const r4 = profRule(EX(it.exId));
+        if (!r4) return;
+        const ch = {};
+        if (r4.rest != null && +it.rest !== 0 && !(+it.rest >= r4.rest)) ch.rest = r4.rest;
+        if (nw) {
+          if (!(+it.rir >= r4.rir)) ch.rir = r4.rir;
+        } else {
+          if (it.repMin !== r4.repMin) ch.repMin = r4.repMin;
+          if (it.repMax !== r4.repMax) ch.repMax = r4.repMax;
+          if (it.rir !== r4.rir) ch.rir = r4.rir;
+        }
+        if (Object.keys(ch).length) out.push({ di, it, ch });
+      })
+    );
+    return out;
+  }
+  function profApplyWhat() {
+    const p3 = prof();
+    const P2 = PROFILE_PLAN;
+    const heavy = p3.goal === "both" ? P2.both : P2.strength;
+    return p3.exp === "new" ? `Reps in reserve go up to ${P2.first.rirCompound} on compounds and ${P2.first.rirIsolation} on isolation; rep ranges stay.` : `Heavy compounds go to ${heavy.repMin} to ${heavy.repMax} reps, ${heavy.rir} in reserve, and at least ${heavy.rest / MINUTE_S} minutes' rest.`;
+  }
+  function profMoveBands(oldP, newP) {
+    const b2 = state.settings.bands;
+    const moved = {};
+    for (const m3 of MK) {
+      if (TRACK_ONLY.has(m3)) continue;
+      const o3 = appBand(m3, oldP);
+      if (b2[m3][0] !== o3[0] || b2[m3][1] !== o3[1]) continue;
+      const to = appBand(m3, newP);
+      if (b2[m3][0] === to[0] && b2[m3][1] === to[1]) continue;
+      moved[m3] = [
+        [b2[m3][0], b2[m3][1]],
+        [to[0], to[1]]
+      ];
+      b2[m3] = [to[0], to[1]];
+    }
+    return moved;
+  }
+  function profChips(k2, opts, cur, label) {
+    return b`<div class="ob-units" role="group" aria-label=${label}>${opts.map(
+      ([v3, l4]) => b`<button class=${cur === v3 ? "chip on" : "chip"} data-act="profSet" data-k=${k2} data-v=${String(v3)} aria-pressed=${String(cur === v3)}>${l4}</button>`
+    )}</div>
+`;
+  }
+  function profFields() {
+    const p3 = prof();
+    return b`<div>
+<p class="small muted" style="margin:0 0 6px;font-weight:600"><span class="hastip" data-tip=${PROF_GOAL_TIP}>Goal</span></p>
+${profChips("goal", PROF_GOALS, p3.goal, "Goal")}</div>
+<div>
+<p class="small muted" style="margin:0 0 6px;font-weight:600"><span class="hastip" data-tip=${PROF_EXP_TIP}>Years lifting</span></p>
+${profChips("exp", PROF_EXP, p3.exp, "Years lifting")}</div>
+<div>
+<p class="small muted" style="margin:0 0 6px;font-weight:600"><span class="hastip" data-tip="Ready-made routines that fit are marked when you pick one. Every other day fits 3 or 4.">Days a week</span></p>
+${profChips(
+      "days",
+      PROF_DAYS.map((d3) => [d3, String(d3)]),
+      p3.days,
+      "Days a week"
+    )}</div>
+`;
+  }
+  function profSub() {
+    const p3 = prof();
+    const a2 = [];
+    const goal = p3.goal ? PROF_GOALS.find((g2) => g2[0] === p3.goal) : void 0;
+    if (goal) a2.push(goal[1]);
+    if (p3.days) a2.push(`${p3.days} days`);
+    if (p3.focus) a2.push(p3.focus.map((m3) => ML[m3]).join(", "));
+    if (state.settings.timeBudget) a2.push(`${state.settings.timeBudget} min`);
+    return a2.join(" · ") || "optional";
+  }
+  function profSettings() {
+    const s3 = state.settings;
+    const f3 = prof().focus || [];
+    const R2 = activeRoutine();
+    const ap = profApplyList(R2);
+    return b`${profFields()} <label class="field">${labelTip(
+      "lt-timeBudget",
+      "Lifting time budget (minutes)",
+      "Planned days whose time estimate runs over it are flagged. Rest per exercise is set in Plan; 0 s means no timer."
+    )}<input type="text" inputmode="numeric" data-bind="timeBudget" aria-labelledby="lt-timeBudget" .value=${fieldValue(s3.timeBudget == null ? "" : String(s3.timeBudget))} placeholder="e.g. 70"/></label>
+<div>
+<p class="small muted" style="margin:0 0 6px;font-weight:600"><span class="hastip" data-tip=${PROF_FOCUS_TIP}>Focus muscles</span> <span class="muted" style="font-weight:400">${f3.length} of ${FOCUS_MAX}</span></p>
+<div class="chips" role="group" aria-label="Focus muscles">${MUSCLES.filter(([k2]) => !TRACK_ONLY.has(k2)).map(
+      ([k2, l4]) => b`<button class=${f3.includes(k2) ? "chip on" : "chip"} data-act="profSet" data-k="focus" data-v=${k2} aria-pressed=${String(f3.includes(k2))}>${l4}</button>`
+    )}</div>
+</div>
+${ap.length ? b`<div class="panel row spread" id="profApply">
+<p class="small" style="margin:0;flex:1 1 180px"><b>${ap.length} exercise${ap.length === 1 ? "" : "s"}</b> in ${R2.name} differ from your profile.</p>
+<button class="btn sm" data-act="profApply">Apply</button></div>
+` : A}`;
+  }
+  var dbTyped = () => ui.gymDb ?? null;
+  var asRack = (d3) => d3 && d3.lo != null && d3.hi != null && d3.st != null ? { ...d3, lo: d3.lo, hi: d3.hi, st: d3.st } : null;
+  function gymSub() {
+    const g2 = gymOf();
+    if (!g2) return "usual steps";
+    const L2 = dbListOf(g2.db);
+    const parts = [];
+    if (L2) parts.push(`dumbbells ${fmtG(L2[0] ?? 0)} to ${fmtG(L2[L2.length - 1] ?? 0)} ${g2.u}`);
+    if (g2.kb) parts.push(`${g2.kb.length} kettlebell${g2.kb.length === 1 ? "" : "s"}`);
+    if (g2.plates) parts.push("plates");
+    if (g2.stack) parts.push(`stacks by ${fmtG(g2.stack)}`);
+    return parts.join(", ") || "usual steps";
+  }
+  function gymUnit() {
+    const g2 = gymOf();
+    return g2 ? g2.u : ui.gymU || U();
+  }
+  function gymNext() {
+    const g2 = gymOf();
+    return g2 ? {
+      ...g2,
+      ...g2.db ? { db: { ...g2.db } } : {},
+      ...g2.kb ? { kb: g2.kb.slice() } : {},
+      ...g2.plates ? { plates: g2.plates.slice() } : {}
+    } : { u: gymUnit() };
+  }
+  function gymSettings() {
+    const g2 = gymOf();
+    const u4 = gymUnit();
+    const typed = dbTyped();
+    const d3 = typed || g2 && g2.db || {};
+    const v3 = (k2) => {
+      const x2 = d3[k2];
+      return x2 == null || !isFinite(x2) ? "" : fmtG(x2);
+    };
+    const lb = u4 === "lb";
+    const L2 = dbListOf(g2 && g2.db);
+    const plates = gymPlates(u4);
+    const on = g2 && g2.plates ? g2.plates : plates;
+    const listTxt = (a2) => a2.length > RACK_LIST.whole ? `${a2.slice(0, RACK_LIST.head).map(fmtG).join(", ")} … ${a2.slice(-RACK_LIST.tail).map(fmtG).join(", ")}` : a2.map(fmtG).join(", ");
+    const half = !!typed && !dbListOf(asRack(typed));
+    const pair2 = !!typed && !half && typed.fine == null !== (typed.fineTo == null);
+    const su = (gymOf() || { u: U() }).u === "kg" ? "kg" : "lb";
+    const small = `${SMALL_PLATE[su]} ${su}`;
+    return b`${howText(
+      "gym",
+      `What your gym has, so suggested loads are ones you can pick up. Blank keeps the usual steps (${DEFAULT_STEP.lb} lb or ${DEFAULT_STEP.kg} kg, and dumbbells read from what you log). A step set on an exercise or in your plan still wins for that lift.`
+    )}
+<div>
+<p class="small muted" style="margin:0 0 6px;font-weight:600"><span class="hastip" data-tip="Type the weights as they are labelled in your gym. Suggestions show in the app's unit and land on these weights.">Labelled in</span></p>
+<div class="ob-units" role="group" aria-label="Your gym's weights are labelled in">${["lb", "kg"].map(
+      (k2) => b`<button class=${u4 === k2 ? "chip on" : "chip"} data-act="gymUnit" data-v=${k2} aria-pressed=${String(u4 === k2)}>${k2}</button>`
+    )}</div>
+</div>
+${u4 !== U() ? b`<p class="small" style="margin:0">Suggestions show in ${U()}, on the ${u4} weights below.</p>
+` : A} <label class="field">${labelTip("lt-barKg", `Bar weight (${U()})`, "Used by the plates-per-side line in the logger.")}<input type="text" inputmode="decimal" data-bind="barKg" aria-labelledby="lt-barKg" .value=${fieldValue(fmtW(barKg()))}/></label>
+<div>
+<p class="small muted" style="margin:0 0 6px;font-weight:600"><span class="hastip" data-tip="A barbell or a plate-loaded machine steps by two of the smallest plate you have, one a side; a landmine by one. Tap a plate your gym does not have.">Plates on hand (${u4})</span></p>
+<div class="chips" role="group" aria-label="Plates on hand">${plates.map(
+      (p3) => b`<button class=${on.includes(p3) ? "chip on" : "chip"} data-act="gymPlate" data-v=${String(p3)} aria-pressed=${String(on.includes(p3))}>${fmtG(p3)}</button>`
+    )}</div>
+</div>
+<label class="check-inline"><input type="checkbox" data-bind="smallPlates" aria-labelledby="lt-smallPlates" .checked=${l3(!!state.settings.smallPlates)}/>${labelTip(
+      "lt-smallPlates",
+      `Small plates (${small})`,
+      "Adds them to the plates-per-side line. A lift's own bar, such as a trap or EZ bar, is set in its exercise editor."
+    )}</label>
+<div>
+<p class="small muted" style="margin:0 0 6px;font-weight:600">Dumbbells (${u4})</p>
+<div class="grid3">
+<label class="field">From<input type="text" inputmode="decimal" data-gym="db.lo" .value=${fieldValue(v3("lo"))} placeholder=${String(DB_EXAMPLE[u4].lo)} /></label>
+<label class="field">To<input type="text" inputmode="decimal" data-gym="db.hi" .value=${fieldValue(v3("hi"))} placeholder=${String(DB_EXAMPLE[u4].hi)} /></label>
+<label class="field">Step<input type="text" inputmode="decimal" data-gym="db.st" .value=${fieldValue(v3("st"))} placeholder=${String(DB_EXAMPLE[u4].st)}/></label>
+</div>
+<div class="grid2" style="margin-top:6px;align-items:end">
+<label class="field">${labelTip(
+      "lt-dbFine",
+      "Lighter end steps by",
+      `Many racks go up in smaller steps at the light end, such as ${DB_EXAMPLE.lb.fine} lb up to ${DB_EXAMPLE.lb.fineTo}, or ${DB_EXAMPLE.kg.fine} kg up to ${DB_EXAMPLE.kg.fineTo}. Leave blank if yours does not.`
+    )}<input type="text" inputmode="decimal" data-gym="db.fine" aria-labelledby="lt-dbFine" .value=${fieldValue(v3("fine"))} placeholder=${String(DB_EXAMPLE[u4].fine)} /></label>
+<label class="field">Up to<input type="text" inputmode="decimal" data-gym="db.fineTo" .value=${fieldValue(v3("fineTo"))} placeholder=${String(DB_EXAMPLE[u4].fineTo)}/></label>
+</div>
+<p class=${half ? "small" : "small muted"} id="gymDbList" style="margin:6px 0 0">${half ? "Add From, To, and Step to use these." : L2 ? `${L2.length} pairs: ${listTxt(L2)} ${u4}${pair2 ? ". Add both smaller-step fields to use them." : ""}` : "Not set: dumbbell steps are read from what you log."}</p>
+</div>
+<label class="field">${labelTip("lt-kb", `Kettlebells (${u4})`, "The weights you have, any order, separated by commas.")}<input type="text" inputmode="decimal" data-gym="kb" aria-labelledby="lt-kb" .value=${fieldValue(g2 && g2.kb ? g2.kb.map(fmtG).join(", ") : "")} placeholder=${lb ? "18, 26, 35, 44, 53" : "8, 12, 16, 20, 24"}/></label> <label class="field">${labelTip(
+      "lt-stack",
+      `Cable and machine stacks step by (${u4})`,
+      "The usual step between pins on your cable and machine stacks. A machine that differs gets its own step in its exercise."
+    )}<input type="text" inputmode="decimal" data-gym="stack" aria-labelledby="lt-stack" .value=${fieldValue(g2 && g2.stack ? fmtG(g2.stack) : "")} placeholder=${lb ? "5" : "2.5"}/></label> ${g2 ? b`<button class="btn sm" data-act="gymClear">Clear my gym</button>` : A}`;
+  }
+  function gymRefresh() {
+    invalidate();
+    const d3 = state.draft;
+    if (d3) for (const id of new Set(d3.ex.map((b2) => b2.exId))) fx.refreshEx(id);
+  }
+  function gymSave(g2) {
+    const c4 = gymClean({ ...g2 });
+    if (JSON.stringify(c4 || null) === JSON.stringify(gymOf() || null)) {
+      fx.rerenderKeepScroll();
+      return;
+    }
+    act(
+      () => {
+        if (c4) state.settings.gym = c4;
+        else delete state.settings.gym;
+        gymRefresh();
+      },
+      { undo: true }
+    );
+    fx.rerenderKeepScroll();
+  }
+  function gymInput(t4) {
+    const k2 = t4.dataset.gym || "";
+    const v3 = t4.value.trim();
+    const g2 = gymNext();
+    if (k2 === "kb") {
+      g2.kb = v3 ? v3.split(/[;,\s]+/).flatMap((x2) => numIn(x2) == null ? [] : [numIn(x2) ?? 0]) : [];
+      gymSave(g2);
+      return;
+    }
+    if (k2 === "stack") {
+      const n4 = numIn(v3);
+      if (n4 == null) delete g2.stack;
+      else g2.stack = n4;
+      gymSave(g2);
+      return;
+    }
+    const f3 = k2.slice("db.".length);
+    if (f3 !== "lo" && f3 !== "hi" && f3 !== "st" && f3 !== "fine" && f3 !== "fineTo") return;
+    const d3 = { ...dbTyped() || g2.db || {} };
+    const n3 = numIn(v3);
+    if (n3 == null) delete d3[f3];
+    else d3[f3] = n3;
+    if (!Object.keys(d3).length) {
+      ui.gymDb = null;
+      delete g2.db;
+      gymSave(g2);
+      return;
+    }
+    const rack = asRack(d3);
+    if (rack && dbListOf(rack)) {
+      g2.db = rack;
+      ui.gymDb = d3.fine == null !== (d3.fineTo == null) ? d3 : null;
+      gymSave(g2);
+      return;
+    }
+    ui.gymDb = d3;
+    if (g2.db) {
+      delete g2.db;
+      gymSave(g2);
+    } else fx.rerenderKeepScroll();
+  }
+  function rirSettings() {
+    const s3 = state.settings;
+    const c4 = calStats();
+    const raw = c4.raw ?? 0;
+    const sum = !c4.n ? "No calibration sets yet. Start one from a machine or cable exercise's ⋯ menu." : !c4.recent ? `${c4.n} calibration set${c4.n === 1 ? "" : "s"}, none in the last ${CAL_WEEKS} weeks.` : `${c4.recent} recent calibration set${c4.recent === 1 ? "" : "s"}: median miss ${raw > 0 ? "+" : ""}${r1(raw)} reps (${raw > 0 ? "you stop with more left than you call" : raw < 0 ? "closer to failure than you call" : "accurate"}). Correction applied: ${c4.bias > 0 ? "+" : ""}${c4.bias}.`;
+    const sc = rirScale();
+    return b`<p class="small" style="margin:0"><b>RIR, reps in reserve:</b> reps you could still have done. RIR 3 or less is a hard set.</p>
+<label class="field">Reps in reserve<select data-bind="rirMode">
+<option value="on" .selected=${l3(s3.rirMode === "on")}>On: log RIR and use it as logged</option>
+<option value="cal" .selected=${l3(s3.rirMode === "cal")}>On, corrected by my calibration sets</option>
+<option value="off" .selected=${l3(s3.rirMode === "off")}>Off: don't ask, count every working set as hard</option>
+</select></label> ${s3.rirMode === "off" ? A : b`<label class="field">${labelTip(
+      "lt-rirScale",
+      "Enter effort as",
+      "How you enter and read effort. Stored as RIR either way (RPE 8 is RIR 2, RPE 8.5 is RIR 1.5), so switching changes nothing logged."
+    )}<select data-bind="rirScale" aria-labelledby="lt-rirScale">
+<option value="whole" .selected=${l3(sc === "whole")}>RIR, whole reps (0 to 5)</option>
+<option value="half" .selected=${l3(sc === "half")}>RIR, half reps (0, 0.5, 1 … 5)</option>
+<option value="rpe" .selected=${l3(sc === "rpe")}>RPE (5 to 10, in halves)</option>
+</select></label>
+`}${s3.rirMode === "off" ? A : b`<label class="check-inline"><input type="checkbox" data-bind="rirAsk" aria-labelledby="lt-rirAsk" .checked=${l3(s3.rirAsk === true)}/>${labelTip(
+      "lt-rirAsk",
+      `Open the ${effName()} picker after each set`,
+      "Off: tap a set's RIR box when you want to rate it. On: the picker opens by itself after each set you tick."
+    )}</label> <label class="check-inline"><input type="checkbox" data-bind="rirHalf" aria-labelledby="lt-rirHalf" .checked=${l3(s3.rirHalf === true)}/>${labelTip(
+      "lt-rirHalf",
+      `Count ${halfLbl()} as half a set`,
+      "Off: a set counts toward your weekly sets at RIR 3 or less. On: a set past RIR 3 counts as half a set too, in your weekly sets, targets, and the plan's weekly sets. Growth rises as sets end closer to failure (Robinson 2024), so sets further away still do something; half is a convention. Estimates, PRs, and recovery are unchanged."
+    )}</label>
+<p class="small muted hastip" style="margin:4px 0 0" data-tip="A blank RIR is read as your usual RIR on that lift: the middle value of the sets of it you rated in the last 12 weeks, once there are 3. That is a convention, so rating a set only sometimes cannot make it look stronger or weaker. Until there are 3, a blank set counts as hard and as 0 reps left for 1RM estimates, which errs low and never inflates a PR. Recovery, calibration, and the light-load check use only the RIR you entered.">Skipping RIR on some sets is fine.</p>
+`}${s3.rirMode === "cal" && c4.recent < 2 ? b`<p class="small" style="margin:0"><b>Needs ${CAL_MIN} calibration sets from the last ${CAL_WEEKS} weeks before any correction applies.</b></p>
+` : A}
+<p class="small hastip" style="margin:4px 0 0" data-tip="Off hides the RIR picker: every working set counts as hard and estimates use reps alone. Corrected shifts RIR you called at 4 or less by your typical error, shrunk toward zero while you have few calibration sets and capped at 2 reps; compound and isolation lifts use their own sets once each has 2. A set called at 0 is shifted too: unless a rep actually failed, 0 is still a call, and people under-call reps left by about 1 on average, only slightly less near failure (Halperin 2022). Your log never changes, so switching is reversible.">${sum}</p>
+`;
+  }
+  function layoutSettings() {
+    const h3 = state.settings.hidden;
+    const dflt = DEFAULT_HIDDEN.length === h3.length && DEFAULT_HIDDEN.every((k2) => h3.includes(k2));
+    return b`<p class="small muted" style="margin:0">Tap to show or hide. ${tipButton(
+      `Hidden sections are still tracked, and come back where they were. Each time ${APP_NAME} opens, every section starts folded except Sessions on History. Drag a section by its ⠿ to move it; each tab keeps its order.`,
+      "About layout"
+    )}</p>
+<div class="row"><button class=${dflt ? "btn sm noted" : "btn sm"} data-act="layoutDefault" aria-pressed=${String(dflt)} data-tip="The layout a new install starts with: At a glance, Coach, and Body hidden on Today, Schedule and Weekly volume hidden on Plan, and the default order.">Default layout</button><button class="btn sm" data-act="layoutAll" ?disabled=${!h3.length}>Show everything</button><button class="btn sm" data-act="layoutReset" data-tip="Puts the sections on every tab back in their default order. Shown or hidden stays as it is.">Reset section order</button></div>
+${HIDE_TABS.map(
+      ([t4, l4]) => b`<div class="hide-grp">
+<p class="small"><b>${l4}</b></p>
+<div class="chips">${HIDEABLE.filter((x2) => x2[0] === t4).map(([, k2, lab]) => {
+        const on = !h3.includes(t4 + ":" + k2);
+        return b`<button class=${on ? "chip on" : "chip"} data-act="hideToggle" data-k=${`${t4}:${k2}`} aria-pressed=${String(on)}>${lab}</button>`;
+      })}</div>
+</div>
+`
+    )}`;
+  }
+  var inClaude = () => !!(window.claude && typeof window.claude.use === "function");
+  function acctPanel() {
+    const A2 = AUTH();
+    if (!A2 || inClaude()) return A;
+    const u4 = rec(acct.user);
+    const stuck = u4 && !cloud.on ? b`<div class="row spread" style="margin-top:6px">
+<p class="small" style="margin:0;color:var(--yellow)">Not syncing right now.</p>
+<button class="btn sm" data-act="acctRetry">Try again</button></div>
+` : A;
+    return u4 ? b`<div class="panel" id="acctPanel">
+<div class="row spread">
+<p class="small" style="margin:0;min-width:0;overflow-wrap:anywhere">Signed in as <b>${typeof u4.email === "string" ? u4.email : ""}</b></p>
+<button class="btn sm" data-act="acctSignOut">Sign out</button></div>
+${stuck}${typeof A2.deleteAccount === "function" ? b`<button type="button" class="linkbtn" style="margin-top:8px;color:var(--red)" data-act="acctDelete">Delete my account</button>` : A}</div>
+` : b`<div class="panel" id="acctPanel">
+<p class="small hastip" style="margin:0 0 8px" data-tip=${isStandalone() ? "Deleting the app from the home screen deletes the log on this phone. An account keeps it, or save a backup file below." : "Clearing this browser's data deletes the log here. An account keeps it, or save a backup file below."}><b>Saved on this ${isStandalone() || coarse() ? "phone" : "device"} only.</b> Create an account to back it up and use it on any device.</p>
+<div class="row"><button class="btn sm primary" data-act="acctOpen" data-mode="signup">Create account</button><button class="btn sm" data-act="acctOpen" data-mode="signin">Sign in</button></div>
+</div>
+`;
+  }
+  function syncInfo() {
+    if (!cloud.on)
+      return isStandalone() ? b`<p class="small hastip" style="margin:0" data-tip="Without an account this app keeps your data on this phone only. Deleting the app from the home screen deletes it too. Sign in to keep a copy in your account, or save a backup file to Files or iCloud Drive; Import brings it back on any device."><b>Saved on this phone.</b> ${AUTH() ? "Sign in to sync, or export a backup weekly." : "Export a backup weekly."}</p>
+` : AUTH() ? b`<p class="small hastip" style="margin:0" data-tip="Everything is saved in this browser only. Clearing its data deletes it. Sign in below to keep a copy in your account, or export a backup."><b>Saved in this browser only.</b> Sign in to sync, or export a backup.</p>
+` : b`<p class="small hastip" style="margin:0" data-tip="Sync turns on by itself when this page is opened inside Claude while signed in. Until then everything is saved in this browser only."><b>Cloud sync off in this view.</b> Saved in this browser only.</p>
+`;
+    const ago = cloud.last ? Math.round((Date.now() - cloud.last) / (MINUTE_S * SECOND_MS)) : null;
+    const when = ago == null ? "not yet" : ago < 1 ? "just now" : ago < HOUR_MIN ? `${ago} min ago` : ago < DAY_MIN ? `${Math.round(ago / HOUR_MIN)} h ago` : fmtDate(iso(new Date(cloud.last ?? 0)));
+    const st = cloud.status === "synced" ? b`<span class="tag green">Synced</span>` : cloud.status === "offline" ? b`<span class="tag yellow">Waiting to sync</span>` : b`<span class="tag blue">Syncing</span>`;
+    return b`<div class="sync-row">${st}<span class="small muted">Last synced ${when}</span><button class="btn sm" data-act="syncNow">Sync now</button></div>
+<p class="small hastip" style="margin:6px 0 0" data-tip=${`A new phone or a cleared browser loses nothing: sign in and your log comes back. Deleted items wait in History, Recently deleted, for ${TRASH_DAYS} days, and Undo in Settings covers the last ${UNDO_DAYS} days.`}>${cloud.status !== "synced" ? "Saved on this device. It reaches your account when you are back online." : window.claude ? "Saved to your Claude account and this device." : "Saved to your account and this device."}${cloud.err ? b` <b style="color:var(--red)">${cloud.err}</b>` : A}</p>
+`;
+  }
+  function safetyLine() {
+    return b`<p class="small muted" id="safety" style="margin:8px 0 0"><b>Suggestions:</b> estimates from your log, not medical or coaching advice. Train within your limits and stop on pain. ${tipButton(SAFETY_TXT, "About suggestions")}</p>
+`;
+  }
+  function privacyLine() {
+    const claude = inClaude();
+    if (!claude && AUTH() && acct.user)
+      return b`<p class="small muted" id="privacy" style="margin:8px 0 0"><b>Privacy:</b> no ads, no tracking. Your log syncs to your ${APP_NAME} account. Only you and the app's owner can see it. Reports you send go to the app owner. ${tipButton(
+        "It is stored in a Supabase database. Database rules let each account read and write only its own data. The person who runs that database, the app owner, can see stored data and your email address, as with any app without end-to-end encryption. Your email is used only to sign in and reset your password, and nothing is shared or sold. A new password is checked against known breaches with only the first 5 characters of its hash; the password never leaves the phone. Backup files go only where you save them.",
+        "About privacy"
+      )}</p>
+`;
+    if (!claude && AUTH())
+      return b`<p class="small muted" id="privacy" style="margin:8px 0 0"><b>Privacy:</b> no ads, no tracking, and nothing sent without an account. Reports you send go to the app owner. ${tipButton(
+        "Opening or updating the app downloads it from GitHub Pages, which, like any website host, sees your IP address; after that it works offline. With an account, your log and email are stored in a Supabase database, readable by your account and by the app owner; the email is used only to sign in and reset your password. A new password is checked against known breaches with only the first 5 characters of its hash. Deleting the app or this site's data deletes the copy on this device, so keep a backup file or an account.",
+        "About privacy"
+      )}</p>
+`;
+    return claude ? b`<p class="small muted" id="privacy" style="margin:8px 0 0"><b>Privacy:</b> no ads, no tracking. Your log is stored with your Claude account. ${tipButton("Export and CSV files go only where you save them.", "About privacy")}</p>
+` : b`<p class="small muted" id="privacy" style="margin:8px 0 0"><b>Privacy:</b> no account, no ads, no tracking. Your log stays on this device and is sent nowhere. Reports you send go to the app owner. ${tipButton(
+      `${APP_NAME} has no server. Opening or updating the app downloads it from GitHub Pages, which, like any website host, sees your IP address; after that it works offline. Backup files go only where you save them. Deleting the app or this site's data deletes your log, so keep a backup file.`,
+      "About privacy"
+    )}</p>
+`;
+  }
+  function asideLine() {
+    const kept = asideList();
+    if (!kept.length) return A;
+    const words = kept.map((a2) => `${a2.sessions} session${a2.sessions === 1 ? "" : "s"}`).join(", ");
+    return b`<p class="small" id="asideLine" style="margin:8px 0 0"><b>A log from another account is kept on this phone</b> (${words}). It is used again when that account signs in here. Erase everything removes it.</p>
+`;
+  }
+  function dataBody() {
+    const s3 = state.settings;
+    const ap = acctPanel();
+    const one = ap !== A && !acct.user;
+    return b`${ap}${one ? A : b`<div class="panel" id="syncInfo" style=${ap !== A ? "margin-top:8px" : A}>${syncInfo()}</div>
+`}${canInstallHere() ? b`<div class="panel row spread" id="installPanel" style="margin-top:8px">
+<p class="small" style="margin:0;flex:1 1 180px"><b>Install the app.</b> Full screen, offline, one tap from your home screen.</p>
+<button class="btn sm primary" data-act="install">${/^ios/.test(installKind()) ? "Add to Home Screen" : "Install"}</button></div>
+` : A}${ENV === "preview" ? b`<div class="panel row spread" style="margin-top:8px">
+<p class="small" style="margin:0;flex:1 1 180px"><b>Test version.</b> It keeps a separate log. Copy yours in to try it; your log in ${APP_NAME} stays as it is.</p>
+<button class="btn sm primary" data-act="previewCopy">Copy my log in</button></div>
+` : A}${asideLine()}${privacyLine()}${safetyLine()}${backupDue() ? b`<p class="callout yellow" style="margin:10px 0 0"><b>Backup due.</b> ${s3.lastExport ? `Last backup file ${fmtDate(s3.lastExport)}.` : "No backup file yet."}${cloud.on ? "Your account has not synced this week. Export one below." : ""}</p>
+` : A}${device.ok ? A : b`<p class="small" style="color:var(--red)">This browser is blocking local storage, so this device keeps nothing between reloads without cloud sync.</p>
+`}${unreadableRaw() ? b`<div class="panel" id="unreadPanel" style="margin-top:8px">
+<p class="small" style="margin:0 0 6px"><b>A save on this device could not be read</b> by this build, and was kept aside. Restore tries it again, which a later build may read; Show its text to copy it out.</p>
+<div class="row"><button class="btn sm primary" data-act="unreadRestore">Restore it</button><button class="btn sm" data-act="unreadShow">Show its text</button><button class="btn sm" data-act="unreadForget">Forget it</button></div>
+</div>
+` : A}
+<div class="card stack">
+<div class="row"><button class="btn primary" data-act="export" data-tip="The backup: restores everything, on any device.">Export backup (.json)</button><button class="btn" data-act="showBackup" data-tip="The same backup as text, to copy somewhere safe.">Show backup text</button><button class="btn" data-act="exportCsv" data-tip="One row per set for spreadsheets. Import workouts reads it back, but it is not a full backup: routines and settings are not in it.">Export sets (.csv)</button></div>
+<button class="btn" data-act="impOpen" data-tip="Adds sessions from notes, a spreadsheet, or an export from another app. You check everything before it is saved.">Import workouts</button> <label class="field">Restore a backup file (replaces everything)<input type="file" accept=".json,application/json" id="importFile"/></label> <button class="btn" data-act="pasteImport">Paste backup text instead</button>
+<div class="row"><button class="btn" data-act="undo" ?disabled=${!undoStack.length} data-tip=${`Deletes, resets, and imports from the last ${UNDO_DAYS} days, kept after the app is closed. Edits are not undoable. Deleted sessions, cardio, and routines also wait in History for ${TRASH_DAYS} days.`}>Undo last delete or reset${undoStack.length ? ` (${undoStack.length} available)` : ""}</button></div>
+</div>
+`;
+  }
+  function viewSettings() {
+    const s3 = state.settings;
+    const hasDemo2 = state.sessions.some((x2) => x2.demo) || state.bodyweights.some((x2) => x2.demo);
+    const G = (k2, title, sub, body, help, id) => [k2, section({ sk: "settings:" + k2, key: k2, title, sub, help, body, id })];
+    const kick = ENV === "preview" ? `${PREVIEW_NAME} ${VERSION_LINE}` : "";
+    const meta = cloud.on ? window.claude ? "Saved to your Claude account and this device" : "Synced to your account and saved on this device" : "Saved on this device";
+    const list = [
+      G(
+        "profile",
+        "Your training",
+        profSub(),
+        b`<div class="card stack">${profSettings()}</div>
+`
+      ),
+      G(
+        "general",
+        "General",
+        `${s3.unit === "kg" ? "kg, cm" : "lb, in"} · ${s3.theme === "system" ? "device theme" : s3.theme}`,
+        b`<div class="card stack">
+<div class="grid2">
+<label class="field">Units<select data-bind="unit">
+<option value="lb" .selected=${l3(s3.unit === "lb")}>lb and inches</option>
+<option value="kg" .selected=${l3(s3.unit === "kg")}>kg and cm</option>
+</select></label> <label class="field">Theme<select data-bind="theme">
+<option value="system" .selected=${l3(s3.theme === "system")}>Match device</option>
+<option value="dark" .selected=${l3(s3.theme === "dark")}>Dark</option>
+<option value="light" .selected=${l3(s3.theme === "light")}>Light</option>
+</select></label>
+</div>
+<label class="field">Name (optional)<input type="text" data-bind="userName" .value=${fieldValue(s3.userName || "")} maxlength="40" autocomplete="given-name"/></label>
+<div>
+<p class="small muted" style="margin:0 0 6px;font-weight:600">Accent colour</p>
+<div class="chips" role="group" aria-label="Accent colour">${ACCENTS.map(
+          ([k2, l4]) => b`<button class=${(s3.accent || ACCENT0) === k2 ? "chip acc on" : "chip acc"} data-act="accent" data-v=${k2} aria-pressed=${String((s3.accent || ACCENT0) === k2)}><i class=${`sw sw-${k2}`} aria-hidden="true"></i>${l4}</button>`
+        )}</div>
+</div>
+<div class="grid2 one-narrow">
+<label class="field">${labelTip(
+          "lt-bwGoalPct",
+          "Bodyweight goal (%/wk)",
+          "Compared with your 7-day-average bodyweight trend on Stats. Leave blank to track without a target."
+        )}<input type="text" inputmode="decimal" data-bind="bwGoalPct" aria-labelledby="lt-bwGoalPct" .value=${fieldValue(s3.bwGoalPct == null ? "" : String(s3.bwGoalPct))} placeholder="e.g. 0.3 or -0.5"/></label> <label class="field">${labelTip(
+          "lt-bwEvery",
+          "Weigh-in reminder",
+          "A card on Today asks for your bodyweight when the last weigh-in is this old. Pull-ups, dips, and other bodyweight lifts use your latest weigh-in."
+        )}<select data-bind="bwEvery" aria-labelledby="lt-bwEvery">${BW_EVERY.map(
+          ([v3, l4]) => b`<option value=${String(v3)} .selected=${l3(bwEvery() === v3)}>${l4}</option>
+`
+        )}</select></label>
+</div>
+</div>
+`
+      ),
+      G(
+        "gym",
+        "Your gym",
+        gymSub(),
+        b`<div class="card stack">${gymSettings()}</div>
+`,
+        "gym"
+      ),
+      G(
+        "timer",
+        "Rest timer and logging",
+        s3.timerMode === "off" ? "timer off" : s3.timerMode + " timer",
+        b` <div class="card stack">
+<label class="field">${labelTip(
+          "lt-timerMode",
+          "Rest timer",
+          "Auto starts the timer when a set is marked done. Manual starts it from Rest on the exercise."
+        )}<select data-bind="timerMode" aria-labelledby="lt-timerMode">
+<option value="auto" .selected=${l3(s3.timerMode === "auto")}>Auto, after each set</option>
+<option value="manual" .selected=${l3(s3.timerMode === "manual")}>Manual, from Rest</option>
+<option value="off" .selected=${l3(s3.timerMode === "off")}>Off</option>
+</select></label> <label class="check-inline"><input type="checkbox" data-bind="timerSound" .checked=${l3(!!s3.timerSound)} ?disabled=${s3.timerMode === "off"}/>Sound and vibration when rest ends</label> <label class="check-inline"><input type="checkbox" data-bind="timerCompact" aria-labelledby="lt-timerCompact" .checked=${l3(!!s3.timerCompact)} ?disabled=${s3.timerMode === "off"}/>${labelTip(
+          "lt-timerCompact",
+          "Compact timer",
+          "A small pill in the corner instead of a bar across the screen."
+        )}</label> <label class="check-inline"><input type="checkbox" data-bind="autoDone" aria-labelledby="lt-autoDone" .checked=${l3(!!s3.autoDone)}/>${labelTip(
+          "lt-autoDone",
+          "Auto-mark a set done after its reps",
+          "A mistyped rep count is then saved without a tap to confirm, so check the row. A tap on the checkmark right after only confirms it; tap again to undo."
+        )}</label> <label class="check-inline"><input type="checkbox" data-bind="loadFill" aria-labelledby="lt-loadFill" .checked=${l3(s3.loadFill === "fill")}/>${labelTip(
+          "lt-loadFill",
+          "Fill in suggested loads",
+          "Off: a set's load shows in grey until you type one, and ticking the set takes it. On: the suggested load is typed into every row for you. Either way, a load you type is never changed."
+        )}</label> <label class="field">${labelTip(
+          "lt-todayStart",
+          "Today starts with",
+          "Blank: Today opens on an empty session, and you add exercises as you go; your plan's day is still one tap away. Each exercise still gets its suggested weight from your history."
+        )}<select data-bind="todayStart" aria-labelledby="lt-todayStart">
+<option value="plan" .selected=${l3(s3.todayStart !== "free")}>My plan's day</option>
+<option value="free" .selected=${l3(s3.todayStart === "free")}>A blank session (freestyle)</option>
+</select></label> <label class="check-inline"><input type="checkbox" data-bind="autoAdj" aria-labelledby="lt-autoAdj" .checked=${l3(adjOn())}/>${labelTip(
+          "lt-autoAdj",
+          "Adjust the next sets from the last one",
+          "After a set that was clearly easier or harder than planned, the sets after it that you have not typed a load for move up or down. A line says why, with Keep to undo it. Two reps or more in reserve over your target, or two past the top of the range, moves up; two or more under the range moves down. A rep or two lost per set is normal and changes nothing."
+        )}</label> <label class="check-inline"><input type="checkbox" data-bind="wakeLock" aria-labelledby="lt-wakeLock" .checked=${l3(!!s3.wakeLock)}/>${labelTip(
+          "lt-wakeLock",
+          "Keep the screen on during a session",
+          "A locked phone pauses this page, so the rest alert cannot sound until you unlock. Keeping the screen on avoids that, at some battery cost."
+        )}</label>
+</div>
+`
+      ),
+      G(
+        "rir",
+        "Effort (RIR)",
+        { on: "on", cal: "corrected", off: "off" }[s3.rirMode],
+        b`<div class="card stack">${rirSettings()}</div>
+`
+      ),
+      G(
+        "layout",
+        "Layout",
+        s3.hidden.length ? `${s3.hidden.length} hidden` : "everything shown",
+        b`<div class="card stack">${layoutSettings()}</div>
+`
+      ),
+      G(
+        "prio",
+        "Priority muscles",
+        s3.priorities.length ? s3.priorities.map((m3) => ML[m3]).join(", ") : "none",
+        b`${howText("prio", "Flagged as Your priority under Muscles in Stats, and favoured by Pick for me.")}
+<div class="card chips">${MUSCLES.map(
+          ([k2, l4]) => b`<button class=${s3.priorities.includes(k2) ? "chip on" : "chip"} data-act="prio" data-m=${k2}>${l4}</button>`
+        )}</div>
+`,
+        "prio"
+      ),
+      G(
+        "bands",
+        "Weekly set targets",
+        "",
+        b`${howText(
+          "bands",
+          "Fractional hard sets per week: direct work 1, helper muscles 0.5 (Pelland 2025). 10 to 20 for major muscles fits the dose-response data; the upper number is typical, not a ceiling, and more still helps a little at more cost. The muscles lifters train directly for size have a target to start; glutes, rear delts, calves, and abs start lower, a convention, as compound lifts work them too. Every other muscle is tracked only, counted with no target, until you give it one with Set a target or name it a focus (any but serratus, rotator cuff, neck, and tibialis). Raise one or two muscles for a specialisation block, or set focus muscles in Your training. Default targets puts every one back."
+        )}
+<div class="card">
+<table class="t">
+<tbody>
+<tr>
+<th>Muscle</th>
+<th class="r">Min</th>
+<th class="r">Max</th>
+</tr>
+${MUSCLES.map(
+          ([k2, l4]) => (
+            /* A muscle with no target (339 e, r58) offers one; one the lifter gave a
+               target (not by default and not a focus, which Your training sets) can go
+               back to tracked only. */
+            !hasTarget(k2) ? b`<tr>
+<td>${l4}</td>
+<td class="r" colspan="2"><span class="small muted">Tracked only</span> <button type="button" class="btn sm" data-act="tgtSet" data-m=${k2}>Set a target</button></td>
+</tr>
+` : b`<tr>
+<td>${l4}${TARGETED.has(k2) || (prof().focus || []).includes(k2) ? A : b`<br><button type="button" class="linkbtn tall" data-act="tgtOff" data-m=${k2}>Track only</button>`}</td>
+<td class="r"><input style="width:70px" type="text" inputmode="numeric" aria-label=${`${l4} minimum hard sets a week`} data-band=${k2} data-bi="0" .value=${fieldValue(String(s3.bands[k2][0]))}/></td>
+<td class="r"><input style="width:70px" type="text" inputmode="numeric" aria-label=${`${l4} maximum hard sets a week`} data-band=${k2} data-bi="1" .value=${fieldValue(String(s3.bands[k2][1]))}/></td>
+</tr>
+`
+          )
+        )}</tbody>
+</table>
+<div class="row" style="margin-top:8px"><button class="btn sm" data-act="bandsDefault" ?disabled=${MK.every((m3) => {
+          const d3 = defBand(m3);
+          return s3.bands[m3][0] === d3[0] && s3.bands[m3][1] === d3[1];
+        }) && !s3.bandsFit && !s3.ownTargets}>Default targets</button></div>
+</div>
+`,
+        "bands"
+      ),
+      G(
+        "data",
+        "Your data",
+        cloud.on ? cloud.status === "synced" ? "synced" : "syncing" : "this device only",
+        dataBody(),
+        "",
+        "dataSec"
+      ),
+      G(
+        "help",
+        "Help",
+        "Guide, report a problem",
+        b`<div class="card stack">
+<div class="row"><button class="btn" data-act="guideOpen">Guide</button><button class="btn" data-act="fbOpen" data-cat="bug" data-tip="Also for a question or a suggestion: the sheet asks which.">Report a problem</button>${acct.reader && FB() ? b`<button class="btn" data-act="fbInbox">Reports inbox</button>` : A}</div>
+</div>
+`
+      ),
+      // Demo data, Diagnostics and Erase everything (r35, V): one group at the bottom, not three in front of everyday settings.
+      G(
+        "more",
+        "More",
+        hasDemo2 ? "demo data loaded" : "demo data, version, erase",
+        b`<div class="card stack">
+<div>
+<p class="small" style="margin:0 0 6px"><b>Demo data</b> ${tipButton(
+          `${DEMO_WEEKS} weeks of generated sessions to preview Today and Stats. Everything demo is tagged and removed in one tap; your real logs are untouched.`,
+          "About demo data"
+        )}</p>
+<div class="row">${hasDemo2 ? b`<button class="btn" data-act="demoClear">Clear demo data</button>` : b`<button class="btn" data-act="demoLoad">Load demo data</button>`}</div>
+</div>
+<div>
+<p class="small" style="margin:0 0 6px"><b>Version</b> ${VERSION_LINE}${logBuf.length ? b` <span class="muted">· cloud ${cloud.on ? cloud.status : "off"} · ${logBuf.length} logged error${logBuf.length === 1 ? "" : "s"}</span>` : A}</p>
+${logBuf.length ? b`<ul class="clist">${logBuf.slice(-LOG_SHOWN).reverse().map(
+          (x2) => b`<li><span class="small"><b>${x2.a}</b> ${x2.m}${x2.n ? ` (${x2.n} times)` : ""}</span><span class="small muted">${stampShort(x2.t)}</span></li>
+`
+        )}</ul>
+` : A}${logBuf.length ? b`<div class="row"><button class="btn sm" data-act="diagCopy">Copy diagnostics</button><button class="btn sm" data-act="diagClear">Clear log</button></div>
+` : A}${window.IRONLOG_APP ? b`<p class="small" style="margin:8px 0 0"><a href="LICENSES.txt" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;min-height:44px">Open-source licenses</a></p>
+` : A}</div>
+<div><button class="btn danger" data-act="resetAll">Erase everything</button></div>
+</div>
+`
+      )
+    ];
+    return b`${pageTitle(kick, "Settings", meta)}${c3(
+      placed("settings", list),
+      (x2) => x2[0],
+      (x2) => x2[1]
+    )}${tabFoot("settings")}`;
+  }
+  function settingsSyncLine() {
+    const v3 = document.getElementById("view");
+    if (v3 && ui.tab === "settings" && document.getElementById("syncInfo")) drawScreen(v3, viewSettings());
+  }
+  var SETTINGS_ACTS = {
+    accent(t4) {
+      const v3 = t4.dataset.v;
+      const a2 = v3 === "blue" || v3 === "volt" || v3 === "ember" || v3 === "pink" ? v3 : null;
+      if (!a2 || !ACCENTS.some(([k2]) => k2 === a2)) return;
+      act(() => {
+        if (a2 === ACCENT0) delete state.settings.accent;
+        else state.settings.accent = a2;
+      });
+      fx.rerenderKeepScroll();
+    },
+    prio(t4) {
+      const k2 = t4.dataset.m;
+      const m3 = MK.find((x2) => x2 === k2);
+      if (!m3) return;
+      act(() => {
+        const p3 = state.settings.priorities;
+        state.settings.priorities = p3.includes(m3) ? p3.filter((x2) => x2 !== m3) : [...p3, m3];
+      });
+      fx.rerenderKeepScroll();
+    },
+    hideToggle(t4) {
+      const k2 = t4.dataset.k || "";
+      if (!HIDEABLE_KEYS.has(k2)) return;
+      act(() => {
+        const h3 = state.settings.hidden;
+        state.settings.hidden = h3.includes(k2) ? h3.filter((x2) => x2 !== k2) : [...h3, k2];
+      });
+      fx.rerenderKeepScroll();
+    },
+    layoutDefault() {
+      act(
+        () => {
+          state.settings.hidden = DEFAULT_HIDDEN.slice();
+          state.settings.secOrder = defaultOrder();
+        },
+        { undo: true }
+      );
+      fx.rerenderKeepScroll();
+      fx.toast("Default layout on every tab", true);
+    },
+    layoutAll() {
+      act(() => {
+        state.settings.hidden = [];
+      });
+      fx.rerenderKeepScroll();
+      fx.toast("Every section shown");
+    },
+    layoutReset() {
+      act(
+        () => {
+          state.settings.secOrder = defaultOrder();
+        },
+        { undo: true }
+      );
+      fx.rerenderKeepScroll();
+      fx.toast("Section order reset on every tab", true);
+    },
+    gymUnit(t4) {
+      const v3 = t4.dataset.v === "kg" ? "kg" : "lb";
+      if (v3 === gymUnit()) return;
+      const go = () => {
+        ui.gymDb = null;
+        ui.gymU = v3;
+        if (gymOf())
+          act(
+            () => {
+              delete state.settings.gym;
+              gymRefresh();
+            },
+            { undo: true }
+          );
+        fx.rerenderKeepScroll();
+      };
+      if (gymOf() || ui.gymDb)
+        fx.confirm(
+          `Switch to ${v3}?`,
+          `The weights typed here are in ${gymUnit()} and are cleared. Type them again in ${v3}.`,
+          `Switch to ${v3}`,
+          () => {
+            go();
+            fx.toast(`Your gym in ${v3}`, true);
+          }
+        );
+      else go();
+    },
+    gymPlate(t4) {
+      const g2 = gymNext();
+      const all = gymPlates(g2.u);
+      const v3 = +(t4.dataset.v || "");
+      let on = Array.isArray(g2.plates) ? g2.plates.slice() : all.slice();
+      on = on.includes(v3) ? on.filter((x2) => x2 !== v3) : [...on, v3];
+      if (!on.length) {
+        fx.toast("Keep at least one plate");
+        return;
+      }
+      if (on.length === all.length) delete g2.plates;
+      else g2.plates = all.filter((x2) => on.includes(x2));
+      gymSave(g2);
+    },
+    gymClear() {
+      ui.gymDb = null;
+      act(
+        () => {
+          delete state.settings.gym;
+          gymRefresh();
+        },
+        { undo: true }
+      );
+      fx.rerenderKeepScroll();
+      fx.toast("Your gym cleared: the usual steps apply", true);
+    },
+    /* Your training (r44): a tap on a choice sets it, a tap on the one set
+       clears it. Focus moves only the app's own weekly targets, with Undo. */
+    profSet(t4) {
+      const k2 = t4.dataset.k;
+      const raw = t4.dataset.v || "";
+      const old = prof();
+      const p3 = { ...old, focus: (old.focus || []).slice() };
+      const focus = p3.focus || [];
+      if (k2 === "focus") {
+        const i5 = focus.indexOf(raw);
+        if (i5 >= 0) focus.splice(i5, 1);
+        else {
+          if (focus.length >= FOCUS_MAX) {
+            fx.toast("Two at most. Tap one to take it off.");
+            return;
+          }
+          focus.push(raw);
+        }
+      } else if (k2 === "goal" || k2 === "exp") {
+        if (p3[k2] === raw) delete p3[k2];
+        else p3[k2] = raw;
+      } else if (k2 === "days") {
+        if (p3.days === +raw) delete p3.days;
+        else p3.days = +raw;
+      } else return;
+      const np = profClean({ ...p3 });
+      const cur = state.settings.profile;
+      const was = cur ? { ...cur, ...cur.focus ? { focus: cur.focus.slice() } : {} } : null;
+      let moved = {};
+      act(
+        () => {
+          if (np) state.settings.profile = np;
+          else delete state.settings.profile;
+          if (k2 === "focus") moved = profMoveBands(old, np || {});
+        },
+        {
+          undo: () => {
+            if (was) state.settings.profile = was;
+            else delete state.settings.profile;
+            const b2 = state.settings.bands;
+            for (const m3 of MK) {
+              const x2 = moved[m3];
+              if (x2 && b2[m3][0] === x2[1][0] && b2[m3][1] === x2[1][1]) b2[m3] = [x2[0][0], x2[0][1]];
+            }
+            return true;
+          }
+        }
+      );
+      fx.rerenderKeepScroll();
+      const n3 = Object.keys(moved).length;
+      const fm = MK.find((m3) => m3 === raw);
+      const kept = k2 === "focus" && !!np && (np.focus || []).includes(raw) && !!fm && !moved[fm];
+      if (kept)
+        fx.toast(
+          `Your ${ML[raw]} target is one you set, so it stays. Default targets in Weekly set targets puts the app's back.`,
+          n3 > 0,
+          KEPT_TOAST_MS
+        );
+      else if (n3) fx.toast(`Weekly targets moved for ${n3} muscle${n3 === 1 ? "" : "s"}. Ones you typed stay.`, true);
+    },
+    profApply() {
+      const R2 = activeRoutine();
+      const list = profApplyList(R2);
+      if (!list.length) return;
+      fx.confirm(
+        `Apply to ${R2.name}?`,
+        `${list.length} exercise${list.length === 1 ? "" : "s"}. ${profApplyWhat()} Sets and exercises stay as they are.`,
+        "Apply",
+        () => {
+          const now = activeRoutine();
+          let n3 = 0;
+          const done = act(
+            () => {
+              const L2 = profApplyList(now);
+              n3 = L2.length;
+              for (const x2 of L2) {
+                Object.assign(x2.it, x2.ch);
+                fx.syncDraftPlan({ r: now, di: x2.di, it: x2.it });
+              }
+            },
+            { check: () => !!now && now.id === R2.id, undo: true }
+          );
+          if (!done) return;
+          fx.rerenderKeepScroll();
+          fx.toast(`${now.name}: ${n3} exercise${n3 === 1 ? "" : "s"} updated`, true);
+        }
+      );
+    },
+    // Weekly set targets back to the defaults (r44), with Your training's focus; typed ones, those given with Set a target (r58) and a first-run fit go.
+    bandsDefault() {
+      const b2 = state.settings.bands;
+      const fit = state.settings.bandsFit ? { ...state.settings.bandsFit } : null;
+      const own = state.settings.ownTargets ? [...state.settings.ownTargets] : null;
+      const moved = {};
+      for (const m3 of MK) {
+        const d3 = defBand(m3);
+        if (b2[m3][0] !== d3[0] || b2[m3][1] !== d3[1])
+          moved[m3] = [
+            [b2[m3][0], b2[m3][1]],
+            [d3[0], d3[1]]
+          ];
+      }
+      act(
+        () => {
+          for (const m3 of MK) {
+            const x2 = moved[m3];
+            if (x2) b2[m3] = [x2[1][0], x2[1][1]];
+          }
+          delete state.settings.bandsFit;
+          delete state.settings.ownTargets;
+        },
+        {
+          undo: () => {
+            if (fit) state.settings.bandsFit = fit;
+            else delete state.settings.bandsFit;
+            if (own) state.settings.ownTargets = own;
+            for (const m3 of MK) {
+              const x2 = moved[m3];
+              if (x2 && b2[m3][0] === x2[1][0] && b2[m3][1] === x2[1][1]) b2[m3] = [x2[0][0], x2[0][1]];
+            }
+            return true;
+          }
+        }
+      );
+      fx.rerenderKeepScroll();
+      fx.toast("Weekly set targets back to the defaults", true);
+    },
+    // A muscle with no target given one (339 e, r58): its numbers as they stand, now counted.
+    tgtSet(t4) {
+      const m3 = MK.find((x2) => x2 === t4.dataset.m);
+      if (!m3 || hasTarget(m3)) return;
+      act(() => {
+        const o3 = state.settings.ownTargets || [];
+        state.settings.ownTargets = MK.filter((x2) => x2 === m3 || o3.includes(x2));
+      });
+      fx.rerenderKeepScroll();
+    },
+    // A target the lifter gave taken off: tracked only again, its numbers the app's, with an Undo step.
+    tgtOff(t4) {
+      const m3 = MK.find((x2) => x2 === t4.dataset.m);
+      if (!m3 || TARGETED.has(m3) || (prof().focus || []).includes(m3)) return;
+      act(
+        () => {
+          const o3 = (state.settings.ownTargets || []).filter((x2) => x2 !== m3);
+          if (o3.length) state.settings.ownTargets = o3;
+          else delete state.settings.ownTargets;
+          const a2 = appBand(m3);
+          state.settings.bands[m3] = [a2[0], a2[1]];
+        },
+        { undo: true }
+      );
+      fx.rerenderKeepScroll();
+      fx.toast(`${ML[m3]} is tracked only`, true);
+    },
+    unreadForget() {
+      fx.confirm(
+        "Forget the save kept aside?",
+        "It is deleted for good. Export or copy it first if you might want it.",
+        "Forget it",
+        () => {
+          unreadableForget();
+          fx.rerenderKeepScroll();
+          fx.toast("Forgotten");
+        },
+        true
+      );
+    },
+    diagClear() {
+      logClear();
+      fx.rerenderKeepScroll();
+      fx.toast("Log cleared");
+    },
+    syncNow() {
+      if (!cloud.on) return;
+      cloud.retry = 0;
+      setCloud("connecting");
+      void cq(cloudPull).then(() => {
+        if (cloud.status === "synced") fx.toast("Synced");
+      });
+    },
+    demoClear() {
+      act(
+        () => {
+          stripDemo(state);
+          demoRestore();
+        },
+        { undo: true }
+      );
+      fx.render();
+      fx.toast("Demo data cleared", true);
+    },
+    resetAll() {
+      fx.confirm(
+        "Erase everything?",
+        `All routines, sessions, custom exercises, and body data will be deleted${cloud.on ? " on this device and in your cloud copy" : " on this device"}. Export a backup first if you might want it.`,
+        "Erase everything",
+        () => {
+          act(
+            () => {
+              setState(normalize(null));
+              if (!cloud.on) cloudStop(true);
+              asideClear();
+            },
+            { undo: true }
+          );
+          ui.tab = "today";
+          fx.render();
+          fx.toast("Everything erased", true);
+        },
+        true
+      );
+    }
+  };
+  var checked = (t4) => t4 instanceof HTMLInputElement && t4.checked;
+  var SETTINGS_BINDS = {
+    unit(t4) {
+      const u4 = t4.value === "kg" ? "kg" : "lb";
+      act(() => {
+        state.settings.unit = u4;
+      });
+      fx.unitWords();
+      fx.render();
+    },
+    theme(t4) {
+      const v3 = t4.value;
+      if (v3 !== "system" && v3 !== "dark" && v3 !== "light") return;
+      act(() => {
+        state.settings.theme = v3;
+      });
+      fx.render();
+    },
+    rirMode(t4) {
+      const v3 = t4.value === "off" || t4.value === "cal" ? t4.value : "on";
+      act(() => {
+        state.settings.rirMode = v3;
+      });
+      fx.rerenderKeepScroll();
+      fx.toast(
+        v3 === "off" ? "RIR off: every working set counts as hard" : v3 === "cal" ? "RIR corrected by your calibration sets" : "RIR on, used as logged"
+      );
+    },
+    rirScale(t4) {
+      const v3 = t4.value;
+      act(() => {
+        if (v3 === "half" || v3 === "rpe") state.settings.rirScale = v3;
+        else delete state.settings.rirScale;
+      });
+      fx.rerenderKeepScroll();
+    },
+    rirAsk(t4) {
+      const on = checked(t4);
+      act(() => {
+        if (on) state.settings.rirAsk = true;
+        else delete state.settings.rirAsk;
+      });
+      fx.rerenderKeepScroll();
+    },
+    rirHalf(t4) {
+      const on = checked(t4);
+      act(
+        () => {
+          if (on) state.settings.rirHalf = true;
+          else delete state.settings.rirHalf;
+        },
+        { undo: true }
+      );
+      fx.rerenderKeepScroll();
+      fx.toast(
+        on ? `${halfLbl()} now counts as half a set` : `Only ${effName()} ${effShow(HARD_RIR)} ${rirScale() === "rpe" ? "or more" : "or less"} counts`,
+        true
+      );
+    },
+    timerMode(t4) {
+      const v3 = t4.value === "manual" || t4.value === "off" ? t4.value : "auto";
+      act(() => {
+        state.settings.timerMode = v3;
+      });
+      if (v3 === "off") fx.stopTimer();
+      fx.rerenderKeepScroll();
+    },
+    timerSound(t4) {
+      const on = checked(t4);
+      act(() => {
+        state.settings.timerSound = on;
+      });
+      if (on) fx.primeAudio();
+    },
+    timerCompact(t4) {
+      const on = checked(t4);
+      act(() => {
+        state.settings.timerCompact = on;
+      });
+      fx.timerRefresh();
+    },
+    autoDone(t4) {
+      const on = checked(t4);
+      act(() => {
+        state.settings.autoDone = on;
+      });
+      fx.rerenderKeepScroll();
+    },
+    smallPlates(t4) {
+      const on = checked(t4);
+      act(() => {
+        if (on) state.settings.smallPlates = true;
+        else delete state.settings.smallPlates;
+      });
+    },
+    bwEvery(t4) {
+      const v3 = +t4.value;
+      act(() => {
+        const k2 = bwEveryKept(v3);
+        if (k2 !== void 0) state.settings.bwEvery = k2;
+        else delete state.settings.bwEvery;
+      });
+      fx.rerenderKeepScroll();
+    },
+    todayStart(t4) {
+      const free = t4.value === "free";
+      act(() => {
+        if (free) state.settings.todayStart = "free";
+        else delete state.settings.todayStart;
+      });
+      fx.rerenderKeepScroll();
+    },
+    autoAdj(t4) {
+      const on = checked(t4);
+      act(() => {
+        if (on) delete state.settings.autoAdj;
+        else state.settings.autoAdj = false;
+      });
+    },
+    wakeLock(t4) {
+      const on = checked(t4);
+      act(() => {
+        state.settings.wakeLock = on;
+      });
+      if (on && state.draft) fx.wakeOn();
+      else if (!on) fx.wakeOff();
+    },
+    timeBudget(t4) {
+      const n3 = numIn(t4.value);
+      act(() => {
+        state.settings.timeBudget = n3 == null || n3 < LIMITS.budgetMin[0] ? null : Math.min(Math.round(n3), LIMITS.budgetMin[1]);
+      });
+    },
+    barKg(t4) {
+      const n3 = numIn(t4.value);
+      act(() => {
+        state.settings.barKg = n3 == null || n3 <= 0 ? null : Math.min(fromD(n3) ?? 0, LIMITS.barKg);
+      });
+      fx.rerenderKeepScroll();
+    },
+    userName(t4) {
+      const n3 = t4.value.replace(/\s+/g, " ").trim().slice(0, LIMITS.name);
+      act(() => {
+        if (n3) state.settings.userName = n3;
+        else delete state.settings.userName;
+      });
+    },
+    bwGoalPct(t4) {
+      const n3 = numIn(t4.value);
+      act(() => {
+        state.settings.bwGoalPct = n3 == null ? null : Math.min(Math.max(n3, -LIMITS.bwRatePct), LIMITS.bwRatePct);
+      });
+    }
+  };
+  function bandInput(t4) {
+    const m3 = MK.find((x2) => x2 === t4.dataset.band);
+    const n3 = numIn(t4.value);
+    if (!m3 || n3 == null) return;
+    const i5 = t4.dataset.bi === "1" ? 1 : 0;
+    act(
+      () => {
+        state.settings.bands[m3][i5] = Math.min(Math.max(Math.round(n3 * 2) / 2, 0), LIMITS.weeklySets);
+      },
+      { soon: true }
+    );
+  }
+  function bandChange(t4) {
+    const m3 = MK.find((x2) => x2 === t4.dataset.band);
+    if (!m3) return;
+    act(() => {
+      const b2 = state.settings.bands[m3];
+      if (b2[0] > b2[1]) b2.reverse();
+    });
+    fx.rerenderKeepScroll();
+  }
+  function gymField(t4) {
+    gymInput(t4);
+  }
+
+  // src/app/sheetsplan.ts
+  var FIT_DAYS = 0.5;
+  function templatesSheet(m3) {
+    const pd = prof().days;
+    return b`<div class="sheet" role="dialog" aria-modal="true"><div class="sheet-h"><h3>Pick a routine</h3>${closeX()}</div>
+    
+    ${m3.from === "welcome" ? b`<div class="ob-prof" id="obProf"><button class="ob-prof-h" data-act="obProfTog" aria-expanded=${String(!!ui.obProf)}>Your training <span class="muted">(optional)</span></button>${ui.obProf ? b`<div class="stack">${profFields()}</div>` : ""}</div>` : ""}
+    <p class="small muted" style="margin:0 0 8px">${m3.imported ? "Your workouts are in. The names in the file did not say which days they were, so pick the routine you follow, or the closest; your targets and the next workout come from it. Change anything later in Plan." : "A starting point with sets, reps, and rest worked out. Change anything later in Plan."}</p>
+    <div class="tpl-list">${TEMPLATES.filter((t4) => !t4.hidden).map((t4) => {
+      const r4 = routineFromTemplate(t4.key);
+      if (!r4) return "";
+      const tr = r4.days.filter((d3) => !d3.rest);
+      const mins = tr.map((d3) => min5(dayMinutes(d3)));
+      const lo = Math.min(...mins), hi = Math.max(...mins);
+      const min = lo === hi ? estMin(lo) : `${lo} to ${hi} min`;
+      const fits = !!pd && Math.abs(tr.length * WEEK_DAYS / r4.days.length - pd) <= FIT_DAYS;
+      return b`<button class="tpl" data-act="tplPick" data-k=${t4.key}><span class="tpl-t">${t4.name}${fits ? b` <span class="pill">Fits your days</span>` : ""}</span><span class="tpl-w">${t4.who}</span><span class="tpl-m">${t4.meta} · ${min} · ${tr.map((d3) => d3.name).join(", ")}</span></button>`;
+    })}</div></div>`;
+  }
+  function routineNewSheet() {
+    return b`<div class="sheet" role="dialog" aria-modal="true"><div class="sheet-h"><h3>New routine</h3>${closeX()}</div>
+    <label class="field">Name<input type="text" id="rNewName" placeholder="e.g. Upper focus, 6 days"></label>
+    <p class="small muted">Three empty training days with rest days between. It is not active until you tap Make active.</p>
+    <div class="row" style="margin-top:10px"><button class="btn primary" data-act="rNewSave">Create</button><button class="btn" data-act="mClose">Cancel</button></div></div>`;
+  }
+  function recapSheet(m3) {
+    const u4 = m3.upd;
+    const prs = m3.prs || [];
+    return b`<div class="sheet" role="dialog" aria-modal="true"><div class="sheet-h"><h3>${m3.title}</h3>${closeX()}</div>${prs.length ? b`<div class="prblk" id="recapPR"><h4>${prs.length === 1 ? "New PR" : `${prs.length} new PRs`}</h4><ul>${prs.map((p3) => b`<li><b>${p3.name}</b>: ${p3.what}${p3.was ? b` <span class="was">(${p3.was})</span>` : ""}</li>`)}</ul></div>` : ""}<ul class="recap">${m3.lines.map((l4) => b`<li>${l4}</li>`)}</ul>${m3.note ? b`<p class="small muted">${m3.note}</p>` : ""}
+    ${u4 ? b`<div class="hint"><b>Update ${u4.dayName} in your routine?</b><br>${u4.text}. Next time this day starts with the change.</div><button class="btn block" data-act="applyUpd">Update ${u4.dayName}</button>` : ""}
+    <button class="btn primary block" style="margin-top:10px" data-act="mClose">${u4 ? "Not now" : "Done"}</button></div>`;
+  }
+
+  // src/app/sheetslift.ts
+  var CAL_CALLS = [0, 1, 2, 3, 4, 5];
+  var howToUrl = (e5) => HOWTO_SEARCH + encodeURIComponent(`${e5.name} exercise form`);
+  function howToLink(e5) {
+    const name = e5 && e5.name;
+    return name ? b`<a class="btn block" style="margin-top:6px" href=${howToUrl({ name })} target="_blank" rel="noopener noreferrer" data-tip=${`Opens a YouTube search for ${name} in your browser. Only the exercise name is sent.`}>How-to videos</a>` : "";
+  }
+  var blockAt = (i5) => {
+    const d3 = state.draft;
+    return d3 && d3.ex[i5] || null;
+  };
+  function bmenuSheet(m3) {
+    const d3 = state.draft;
+    const b2 = blockAt(m3.b);
+    if (!d3 || !b2) return null;
+    const nx = blockAt(m3.b + 1);
+    const linked = !!(nx && b2.plan.ss && nx.plan.ss === b2.plan.ss);
+    const e5 = EX(b2.exId);
+    const op = (o3, l4, dis, cls) => b`<button class=${"btn block " + (cls || "")} style="margin-top:6px" data-act="bMenuDo" data-op=${o3} data-b=${String(m3.b)} ?disabled=${!!dis}>${l4}</button>`;
+    return b`<div class="sheet" role="dialog" aria-modal="true"><div class="sheet-h"><h3>${exName(b2.exId)}</h3>${closeX()}</div>
+    ${op("bHist", "History and chart")}${op("bMus", "Muscles worked")}${op("wAdd", "Add a warm-up set")}${op("dropAdd", "Add a drop set (about 75% load)")}${op("bQuick", "Type or dictate sets")}${op("bNote", b2.note ? "Edit note" : "Add note")}${op("bSwap", "Swap exercise")}${op("bNew", markedNew(d3, b2.exId) ? "Same machine as before" : "New machine or gym")}${howToLink(e5)}${op("bInc", `Load step: ${fmtW(incOf(e5, b2.plan))} ${U()}`)}${op("bMax", `Heaviest available: ${e5.maxLoad != null ? fmtW(e5.maxLoad) + " " + U() : "no limit"}`)}${rirShow(e5) ? op("bCal", "Calibration set (RIR check)") : ""}${nx ? op("bSs", linked ? "Unlink superset" : `Superset with ${exName(nx.exId)}`) : ""}${op("bUp", "Move up", m3.b === 0)}${op("bDown", "Move down", !nx)}${op("fbOpen", "Report a problem")}${op("bDel", "Remove from session", false, "danger")}</div>`;
+  }
+  function injurySheet() {
+    return b`<div class="sheet" role="dialog" aria-modal="true"><div class="sheet-h"><h3>Flag an injury</h3>${closeX()}</div>
+    <p class="small muted hastip" data-tip="Every exercise that loads this muscle (directly or as a helper) or this joint is marked in your sessions: its target pauses, loads cap at last time, and it is left out of below-target advice until cleared.">Training aid, not medical advice: sharp, worsening, or lasting pain needs a clinician.</p>
+    <div class="stack"><label class="field">Area<select id="injM"><optgroup label="Joints">${JOINTS.map(([k2, l4]) => b`<option value=${k2}>${l4}</option>`)}</optgroup><optgroup label="Muscles">${MUSCLES.map(([k2, l4]) => b`<option value=${k2}>${l4}</option>`)}</optgroup></select></label>
+    <p class="small muted hastip" style="margin:0" data-tip="Knee: squats, lunges, leg press, leg extensions, and curls. Hip: squats, hinges, hip thrusts, adductors, and abductors. Shoulder: presses, flyes, raises, pull-downs, pull-ups, dips. Elbow: curls, extensions, rows, pull-downs, dips. Wrist: curls, barbell and dumbbell presses, push-ups, front squats. A judgment from the movement, not a measurement.">Which exercises a joint flag marks</p>
+    <label class="field">Note (optional)<input type="text" id="injNote" placeholder="e.g. left elbow, pressing only"></label>
+    <div class="row"><button class="btn primary" data-act="injSave">Flag it</button><button class="btn" data-act="mClose">Cancel</button></div></div></div>`;
+  }
+  function goalSheet(m3) {
+    const e5 = EX(m3.exId);
+    const g2 = e5.goal;
+    return b`<div class="sheet" role="dialog" aria-modal="true" aria-labelledby="goalH"><div class="sheet-h"><h3 id="goalH">Goal: ${e5.name}</h3>${closeX()}</div>
+    <div class="grid2"><label class="field">${e5.bw ? `Added load (${U()})` : `Load (${U()}${loadNote(e5)})`}<input type="text" inputmode="decimal" id="goalW" value=${g2 ? fmtW(g2.w) : ""} placeholder=${e5.bw ? "0" : ""}></label>
+    <label class="field">Reps<input type="text" inputmode="numeric" id="goalR" value=${g2 ? String(g2.r) : ""}></label></div>
+    <div class="row" style="margin-top:12px"><button class="btn primary" data-act="goalSave">Save</button>${g2 ? b`<button class="btn danger" data-act="goalClear">Remove goal</button>` : ""}<button class="btn" data-act="mClose">Cancel</button></div></div>`;
+  }
+  function incSheet(m3) {
+    const e5 = EX(m3.exId);
+    return b`<div class="sheet" role="dialog" aria-modal="true"><div class="sheet-h"><h3>Load step: ${e5.name}</h3>${closeX()}</div>
+    <label class="field">Step (${U()})<input type="text" inputmode="decimal" id="incVal" value=${fmtW(incOf(e5, m3.plan))}></label>
+    <p class="small muted">The smallest jump the machine or dumbbells allow. Earned increases are whole multiples of it.</p>
+    ${e5.inc == null && gymRack(e5, m3.plan) ? b`<p class="small" style="margin:0">Following the ${rackKind(e5) === "dumbbell" ? "dumbbells" : "kettlebells"} in Settings > Your gym. A step saved here replaces them for this lift.</p>` : ""}
+    <div class="row" style="margin-top:10px"><button class="btn primary" data-act="incSave">Save</button><button class="btn" data-act="mClose">Cancel</button></div></div>`;
+  }
+  function maxSheet(m3) {
+    const e5 = EX(m3.exId);
+    return b`<div class="sheet" role="dialog" aria-modal="true"><div class="sheet-h"><h3>Heaviest available: ${e5.name}</h3>${closeX()}</div>
+    <label class="field">Load (${U()}${e5.bw ? ", added to bodyweight" : ""})<input type="text" inputmode="decimal" id="maxVal" value=${e5.maxLoad != null ? fmtW(e5.maxLoad) : ""} placeholder="No limit"></label>
+    <p class="small muted">Top of the stack or biggest dumbbell. Blank for no limit.</p>
+    <div class="row" style="margin-top:10px"><button class="btn primary" data-act="maxSave">Save</button><button class="btn" data-act="mClose">Cancel</button></div></div>`;
+  }
+  function noteSheet(m3) {
+    return b`<div class="sheet" role="dialog" aria-modal="true"><div class="sheet-h"><h3>${m3.title}</h3>${closeX()}</div>
+    <p class="small muted">Saved with this session and shown next time: a cue, a niggle, which machine.</p>
+    <textarea id="mNote" aria-label="Note" style="min-height:110px">${m3.text || ""}</textarea>
+    <div class="row" style="margin-top:10px"><button class="btn primary" data-act="noteSave">Save note</button><button class="btn" data-act="mClose">Cancel</button></div></div>`;
+  }
+  function quickSheet(m3) {
+    const b2 = blockAt(m3.b);
+    if (!b2) return null;
+    const ex = EX(b2.exId);
+    const kg = U() === "kg";
+    const rp = rirScale() === "rpe";
+    const tail = rp ? "rpe 9" : "rir 1";
+    const eg1 = kg ? `100x5, 5, 4 ${tail}` : `235x5, 5, 4 ${tail}`;
+    const eg2 = rp ? kg ? "80x8@8 90x6@9" : "185x8@8 205x6@9" : kg ? "80x8@2 90x6@1" : "185x8@2 205x6@1";
+    const ph = kg ? `100x5, 5, 4 ${tail}` : `225x5, 5, 4 ${tail}`;
+    return b`<div class="sheet" role="dialog" aria-modal="true"><div class="sheet-h"><h3>${ex.name}: type sets</h3>${closeX()}</div>
+    ${ex.timed ? b`<p class="small muted" style="margin:0">Timed hold: the number after x is seconds, for example <b>25x45, 40</b> or <b>bw x 60, 50</b>.</p>` : ""}
+    <p class="small muted">Loads in ${U()}${loadNote(ex)}${ex.bw ? ", added to bodyweight (bw or bw+25)" : ""}. <b>${eg1}</b> or <b>${eg2}</b>. <span class="hastip" data-tip=${`Type or use the keyboard's dictation mic. ${rp ? "rpe" : "rir"} at the end applies to every set; @ gives ${effName()} per set. A bare number repeats the last load. Sets fill from the first one not done and are marked done.`}>More</span></p>
+    <input type="text" id="qTxt" autocomplete="off" autocapitalize="off" spellcheck="false" value=${m3.text || ""} placeholder=${ex.bw ? "bw x 10, 8, 7" : ph} enterkeyhint="done">
+    ${m3.err ? b`<p class="small" style="color:var(--red);margin:8px 0 0">${m3.err}</p>` : ""}
+    <div class="row" style="margin-top:10px"><button class="btn primary" data-act="qFill">Fill sets</button><button class="btn" data-act="mClose">Cancel</button></div></div>`;
+  }
+  function calibrationSheet(m3) {
+    const b2 = blockAt(m3.b);
+    if (!b2) return null;
+    const ex = EX(b2.exId);
+    return b`<div class="sheet" role="dialog" aria-modal="true"><div class="sheet-h"><h3>Calibration set: ${ex.name}</h3>${closeX()}</div>
+    <p class="small muted" style="margin:0">Checks how well you call reps in reserve. Only take a set to failure where it is safe: a machine or cable, or with a spotter.</p>
+    <ol class="steps"><li>Use your normal working load.</li><li>At the rep where you would usually stop, note that rep and how many you think are left.</li><li>Keep going until you cannot complete a rep with good form.</li></ol>
+    <div class="grid2"><label class="field">Load (${ex.bw ? "+" + U() : U()})<input type="text" inputmode="decimal" id="calW" value=${m3.w != null ? String(m3.w) : ""}></label>
+    <label class="field">Usual stop rep<input type="text" inputmode="numeric" id="calAt" value=${m3.at || ""}></label>
+    <label class="field">Reps left, your call<select id="calPred">${CAL_CALLS.map((v3) => b`<option value=${String(v3)} ?selected=${Number(m3.pred) === v3}>${v3}</option>`)}</select></label>
+    <label class="field">Reps to failure<input type="text" inputmode="numeric" id="calTot" value=${m3.total || ""}></label></div>
+    ${m3.err ? b`<p class="small" style="color:var(--red);margin:8px 0 0">${m3.err}</p>` : ""}
+    <div class="row" style="margin-top:10px"><button class="btn primary" data-act="calSave">Save set</button><button class="btn" data-act="mClose">Cancel</button></div>
+    <p class="small muted" style="margin:8px 0 0">It is saved as a done set at 0 RIR, marked as a check. With RIR set to Corrected in Settings, your typical miss is applied to the RIR you log.</p></div>`;
   }
 
   // src/app/plan.ts
@@ -12628,1232 +13887,6 @@ ${extraKpis()}</div>${nS ? dashSummary() : A}`;
       fx.rerenderKeepScroll();
     }
   };
-
-  // ../ironlog/node_modules/lit-html/directives/repeat.js
-  var u3 = (e5, s3, t4) => {
-    const r4 = /* @__PURE__ */ new Map();
-    for (let l4 = s3; l4 <= t4; l4++) r4.set(e5[l4], l4);
-    return r4;
-  }, c3 = e2(class extends i2 {
-    constructor(e5) {
-      if (super(e5), e5.type !== t2.CHILD) throw Error("repeat() can only be used in text expressions");
-    }
-    dt(e5, s3, t4) {
-      let r4;
-      void 0 === t4 ? t4 = s3 : void 0 !== s3 && (r4 = s3);
-      const l4 = [], o3 = [];
-      let i5 = 0;
-      for (const s4 of e5) l4[i5] = r4 ? r4(s4, i5) : i5, o3[i5] = t4(s4, i5), i5++;
-      return { values: o3, keys: l4 };
-    }
-    render(e5, s3, t4) {
-      return this.dt(e5, s3, t4).values;
-    }
-    update(s3, [t4, r4, c4]) {
-      const d3 = M2(s3), { values: p3, keys: a2 } = this.dt(t4, r4, c4);
-      if (!Array.isArray(d3)) return this.ut = a2, p3;
-      const h3 = this.ut ??= [], v3 = [];
-      let m3, y2, x2 = 0, j3 = d3.length - 1, k2 = 0, w2 = p3.length - 1;
-      for (; x2 <= j3 && k2 <= w2; ) if (null === d3[x2]) x2++;
-      else if (null === d3[j3]) j3--;
-      else if (h3[x2] === a2[k2]) v3[k2] = u2(d3[x2], p3[k2]), x2++, k2++;
-      else if (h3[j3] === a2[w2]) v3[w2] = u2(d3[j3], p3[w2]), j3--, w2--;
-      else if (h3[x2] === a2[w2]) v3[w2] = u2(d3[x2], p3[w2]), v2(s3, v3[w2 + 1], d3[x2]), x2++, w2--;
-      else if (h3[j3] === a2[k2]) v3[k2] = u2(d3[j3], p3[k2]), v2(s3, d3[x2], d3[j3]), j3--, k2++;
-      else if (void 0 === m3 && (m3 = u3(a2, k2, w2), y2 = u3(h3, x2, j3)), m3.has(h3[x2])) if (m3.has(h3[j3])) {
-        const e5 = y2.get(a2[k2]), t5 = void 0 !== e5 ? d3[e5] : null;
-        if (null === t5) {
-          const e6 = v2(s3, d3[x2]);
-          u2(e6, p3[k2]), v3[k2] = e6;
-        } else v3[k2] = u2(t5, p3[k2]), v2(s3, d3[x2], t5), d3[e5] = null;
-        k2++;
-      } else h2(d3[j3]), j3--;
-      else h2(d3[x2]), x2++;
-      for (; k2 <= w2; ) {
-        const e5 = v2(s3, v3[w2 + 1]);
-        u2(e5, p3[k2]), v3[k2++] = e5;
-      }
-      for (; x2 <= j3; ) {
-        const e5 = d3[x2++];
-        null !== e5 && h2(e5);
-      }
-      return this.ut = a2, p2(s3, v3), E;
-    }
-  });
-
-  // src/app/env.ts
-  function isStandalone() {
-    try {
-      return window.matchMedia("(display-mode: standalone)").matches || navigator.standalone === true;
-    } catch (e5) {
-      return false;
-    }
-  }
-  var coarse = () => {
-    try {
-      return window.matchMedia("(pointer:coarse)").matches;
-    } catch (e5) {
-      return false;
-    }
-  };
-  function canInstallHere() {
-    return !!window.IRONLOG_APP && !isStandalone() && !(window.claude && typeof window.claude.use === "function");
-  }
-  var IOS_COMPACT_BAR = 26;
-  function installKind() {
-    const ua = navigator.userAgent || "";
-    const ios = /iPhone|iPad|iPod/.test(ua) || navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1;
-    if (window.__installEvt) return "prompt";
-    if (ios) {
-      if (/CriOS/.test(ua)) return "ios-chrome";
-      if (/FxiOS|EdgiOS|OPiOS/.test(ua)) return "ios-other";
-      const v3 = +((ua.match(/Version\/(\d+)/) || [])[1] || 0);
-      return v3 >= IOS_COMPACT_BAR ? "ios-safari26" : "ios-safari";
-    }
-    return "menu";
-  }
-
-  // src/app/settings.ts
-  var DB_EXAMPLE = {
-    lb: { lo: 5, hi: 120, st: 5, fine: 2.5, fineTo: 25 },
-    kg: { lo: 2, hi: 50, st: 2, fine: 1, fineTo: 10 }
-  };
-  var RACK_LIST = { whole: 9, head: 5, tail: 2 };
-  var LOG_SHOWN = 5;
-  var KEPT_TOAST_MS = 8e3;
-  function bwEvery() {
-    const v3 = bwEveryKept(state.settings.bwEvery);
-    return v3 === void 0 ? BW_EVERY_DEFAULT : v3;
-  }
-  function adjOn() {
-    return state.settings.autoAdj !== false;
-  }
-  var SAFETY_TXT = `${APP_NAME} works out suggested loads and reps from your own log with published formulas and the conventions stated in the Guide. They are estimates, not medical, physical therapy, or coaching advice, and they can be wrong. Use good technique, and safety bars or a spotter on heavy lifts. Stop on pain. Check with a doctor before starting or changing training, especially with an injury, a health condition, or a pregnancy. You train at your own risk.`;
-  function profApplyList(R2) {
-    const out = [];
-    if (!R2) return out;
-    const nw = prof().exp === "new";
-    R2.days.forEach(
-      (d3, di) => d3.items.forEach((it) => {
-        const r4 = profRule(EX(it.exId));
-        if (!r4) return;
-        const ch = {};
-        if (r4.rest != null && +it.rest !== 0 && !(+it.rest >= r4.rest)) ch.rest = r4.rest;
-        if (nw) {
-          if (!(+it.rir >= r4.rir)) ch.rir = r4.rir;
-        } else {
-          if (it.repMin !== r4.repMin) ch.repMin = r4.repMin;
-          if (it.repMax !== r4.repMax) ch.repMax = r4.repMax;
-          if (it.rir !== r4.rir) ch.rir = r4.rir;
-        }
-        if (Object.keys(ch).length) out.push({ di, it, ch });
-      })
-    );
-    return out;
-  }
-  function profApplyWhat() {
-    const p3 = prof();
-    const P2 = PROFILE_PLAN;
-    const heavy = p3.goal === "both" ? P2.both : P2.strength;
-    return p3.exp === "new" ? `Reps in reserve go up to ${P2.first.rirCompound} on compounds and ${P2.first.rirIsolation} on isolation; rep ranges stay.` : `Heavy compounds go to ${heavy.repMin} to ${heavy.repMax} reps, ${heavy.rir} in reserve, and at least ${heavy.rest / MINUTE_S} minutes' rest.`;
-  }
-  function profMoveBands(oldP, newP) {
-    const b2 = state.settings.bands;
-    const moved = {};
-    for (const m3 of MK) {
-      if (TRACK_ONLY.has(m3)) continue;
-      const o3 = appBand(m3, oldP);
-      if (b2[m3][0] !== o3[0] || b2[m3][1] !== o3[1]) continue;
-      const to = appBand(m3, newP);
-      if (b2[m3][0] === to[0] && b2[m3][1] === to[1]) continue;
-      moved[m3] = [
-        [b2[m3][0], b2[m3][1]],
-        [to[0], to[1]]
-      ];
-      b2[m3] = [to[0], to[1]];
-    }
-    return moved;
-  }
-  function profChips(k2, opts, cur, label) {
-    return b`<div class="ob-units" role="group" aria-label=${label}>${opts.map(
-      ([v3, l4]) => b`<button class=${cur === v3 ? "chip on" : "chip"} data-act="profSet" data-k=${k2} data-v=${String(v3)} aria-pressed=${String(cur === v3)}>${l4}</button>`
-    )}</div>
-`;
-  }
-  function profFields() {
-    const p3 = prof();
-    return b`<div>
-<p class="small muted" style="margin:0 0 6px;font-weight:600"><span class="hastip" data-tip=${PROF_GOAL_TIP}>Goal</span></p>
-${profChips("goal", PROF_GOALS, p3.goal, "Goal")}</div>
-<div>
-<p class="small muted" style="margin:0 0 6px;font-weight:600"><span class="hastip" data-tip=${PROF_EXP_TIP}>Years lifting</span></p>
-${profChips("exp", PROF_EXP, p3.exp, "Years lifting")}</div>
-<div>
-<p class="small muted" style="margin:0 0 6px;font-weight:600"><span class="hastip" data-tip="Ready-made routines that fit are marked when you pick one. Every other day fits 3 or 4.">Days a week</span></p>
-${profChips(
-      "days",
-      PROF_DAYS.map((d3) => [d3, String(d3)]),
-      p3.days,
-      "Days a week"
-    )}</div>
-`;
-  }
-  function profSub() {
-    const p3 = prof();
-    const a2 = [];
-    const goal = p3.goal ? PROF_GOALS.find((g2) => g2[0] === p3.goal) : void 0;
-    if (goal) a2.push(goal[1]);
-    if (p3.days) a2.push(`${p3.days} days`);
-    if (p3.focus) a2.push(p3.focus.map((m3) => ML[m3]).join(", "));
-    if (state.settings.timeBudget) a2.push(`${state.settings.timeBudget} min`);
-    return a2.join(" · ") || "optional";
-  }
-  function profSettings() {
-    const s3 = state.settings;
-    const f3 = prof().focus || [];
-    const R2 = activeRoutine();
-    const ap = profApplyList(R2);
-    return b`${profFields()} <label class="field">${labelTip(
-      "lt-timeBudget",
-      "Lifting time budget (minutes)",
-      "Planned days whose time estimate runs over it are flagged. Rest per exercise is set in Plan; 0 s means no timer."
-    )}<input type="text" inputmode="numeric" data-bind="timeBudget" aria-labelledby="lt-timeBudget" .value=${fieldValue(s3.timeBudget == null ? "" : String(s3.timeBudget))} placeholder="e.g. 70"/></label>
-<div>
-<p class="small muted" style="margin:0 0 6px;font-weight:600"><span class="hastip" data-tip=${PROF_FOCUS_TIP}>Focus muscles</span> <span class="muted" style="font-weight:400">${f3.length} of ${FOCUS_MAX}</span></p>
-<div class="chips" role="group" aria-label="Focus muscles">${MUSCLES.filter(([k2]) => !TRACK_ONLY.has(k2)).map(
-      ([k2, l4]) => b`<button class=${f3.includes(k2) ? "chip on" : "chip"} data-act="profSet" data-k="focus" data-v=${k2} aria-pressed=${String(f3.includes(k2))}>${l4}</button>`
-    )}</div>
-</div>
-${ap.length ? b`<div class="panel row spread" id="profApply">
-<p class="small" style="margin:0;flex:1 1 180px"><b>${ap.length} exercise${ap.length === 1 ? "" : "s"}</b> in ${R2.name} differ from your profile.</p>
-<button class="btn sm" data-act="profApply">Apply</button></div>
-` : A}`;
-  }
-  var dbTyped = () => ui.gymDb ?? null;
-  var asRack = (d3) => d3 && d3.lo != null && d3.hi != null && d3.st != null ? { ...d3, lo: d3.lo, hi: d3.hi, st: d3.st } : null;
-  function gymSub() {
-    const g2 = gymOf();
-    if (!g2) return "usual steps";
-    const L2 = dbListOf(g2.db);
-    const parts = [];
-    if (L2) parts.push(`dumbbells ${fmtG(L2[0] ?? 0)} to ${fmtG(L2[L2.length - 1] ?? 0)} ${g2.u}`);
-    if (g2.kb) parts.push(`${g2.kb.length} kettlebell${g2.kb.length === 1 ? "" : "s"}`);
-    if (g2.plates) parts.push("plates");
-    if (g2.stack) parts.push(`stacks by ${fmtG(g2.stack)}`);
-    return parts.join(", ") || "usual steps";
-  }
-  function gymUnit() {
-    const g2 = gymOf();
-    return g2 ? g2.u : ui.gymU || U();
-  }
-  function gymNext() {
-    const g2 = gymOf();
-    return g2 ? {
-      ...g2,
-      ...g2.db ? { db: { ...g2.db } } : {},
-      ...g2.kb ? { kb: g2.kb.slice() } : {},
-      ...g2.plates ? { plates: g2.plates.slice() } : {}
-    } : { u: gymUnit() };
-  }
-  function gymSettings() {
-    const g2 = gymOf();
-    const u4 = gymUnit();
-    const typed = dbTyped();
-    const d3 = typed || g2 && g2.db || {};
-    const v3 = (k2) => {
-      const x2 = d3[k2];
-      return x2 == null || !isFinite(x2) ? "" : fmtG(x2);
-    };
-    const lb = u4 === "lb";
-    const L2 = dbListOf(g2 && g2.db);
-    const plates = gymPlates(u4);
-    const on = g2 && g2.plates ? g2.plates : plates;
-    const listTxt = (a2) => a2.length > RACK_LIST.whole ? `${a2.slice(0, RACK_LIST.head).map(fmtG).join(", ")} … ${a2.slice(-RACK_LIST.tail).map(fmtG).join(", ")}` : a2.map(fmtG).join(", ");
-    const half = !!typed && !dbListOf(asRack(typed));
-    const pair2 = !!typed && !half && typed.fine == null !== (typed.fineTo == null);
-    const su = (gymOf() || { u: U() }).u === "kg" ? "kg" : "lb";
-    const small = `${SMALL_PLATE[su]} ${su}`;
-    return b`${howText(
-      "gym",
-      `What your gym has, so suggested loads are ones you can pick up. Blank keeps the usual steps (${DEFAULT_STEP.lb} lb or ${DEFAULT_STEP.kg} kg, and dumbbells read from what you log). A step set on an exercise or in your plan still wins for that lift.`
-    )}
-<div>
-<p class="small muted" style="margin:0 0 6px;font-weight:600"><span class="hastip" data-tip="Type the weights as they are labelled in your gym. Suggestions show in the app's unit and land on these weights.">Labelled in</span></p>
-<div class="ob-units" role="group" aria-label="Your gym's weights are labelled in">${["lb", "kg"].map(
-      (k2) => b`<button class=${u4 === k2 ? "chip on" : "chip"} data-act="gymUnit" data-v=${k2} aria-pressed=${String(u4 === k2)}>${k2}</button>`
-    )}</div>
-</div>
-${u4 !== U() ? b`<p class="small" style="margin:0">Suggestions show in ${U()}, on the ${u4} weights below.</p>
-` : A} <label class="field">${labelTip("lt-barKg", `Bar weight (${U()})`, "Used by the plates-per-side line in the logger.")}<input type="text" inputmode="decimal" data-bind="barKg" aria-labelledby="lt-barKg" .value=${fieldValue(fmtW(barKg()))}/></label>
-<div>
-<p class="small muted" style="margin:0 0 6px;font-weight:600"><span class="hastip" data-tip="A barbell or a plate-loaded machine steps by two of the smallest plate you have, one a side; a landmine by one. Tap a plate your gym does not have.">Plates on hand (${u4})</span></p>
-<div class="chips" role="group" aria-label="Plates on hand">${plates.map(
-      (p3) => b`<button class=${on.includes(p3) ? "chip on" : "chip"} data-act="gymPlate" data-v=${String(p3)} aria-pressed=${String(on.includes(p3))}>${fmtG(p3)}</button>`
-    )}</div>
-</div>
-<label class="check-inline"><input type="checkbox" data-bind="smallPlates" aria-labelledby="lt-smallPlates" .checked=${l3(!!state.settings.smallPlates)}/>${labelTip(
-      "lt-smallPlates",
-      `Small plates (${small})`,
-      "Adds them to the plates-per-side line. A lift's own bar, such as a trap or EZ bar, is set in its exercise editor."
-    )}</label>
-<div>
-<p class="small muted" style="margin:0 0 6px;font-weight:600">Dumbbells (${u4})</p>
-<div class="grid3">
-<label class="field">From<input type="text" inputmode="decimal" data-gym="db.lo" .value=${fieldValue(v3("lo"))} placeholder=${String(DB_EXAMPLE[u4].lo)} /></label>
-<label class="field">To<input type="text" inputmode="decimal" data-gym="db.hi" .value=${fieldValue(v3("hi"))} placeholder=${String(DB_EXAMPLE[u4].hi)} /></label>
-<label class="field">Step<input type="text" inputmode="decimal" data-gym="db.st" .value=${fieldValue(v3("st"))} placeholder=${String(DB_EXAMPLE[u4].st)}/></label>
-</div>
-<div class="grid2" style="margin-top:6px;align-items:end">
-<label class="field">${labelTip(
-      "lt-dbFine",
-      "Lighter end steps by",
-      `Many racks go up in smaller steps at the light end, such as ${DB_EXAMPLE.lb.fine} lb up to ${DB_EXAMPLE.lb.fineTo}, or ${DB_EXAMPLE.kg.fine} kg up to ${DB_EXAMPLE.kg.fineTo}. Leave blank if yours does not.`
-    )}<input type="text" inputmode="decimal" data-gym="db.fine" aria-labelledby="lt-dbFine" .value=${fieldValue(v3("fine"))} placeholder=${String(DB_EXAMPLE[u4].fine)} /></label>
-<label class="field">Up to<input type="text" inputmode="decimal" data-gym="db.fineTo" .value=${fieldValue(v3("fineTo"))} placeholder=${String(DB_EXAMPLE[u4].fineTo)}/></label>
-</div>
-<p class=${half ? "small" : "small muted"} id="gymDbList" style="margin:6px 0 0">${half ? "Add From, To, and Step to use these." : L2 ? `${L2.length} pairs: ${listTxt(L2)} ${u4}${pair2 ? ". Add both smaller-step fields to use them." : ""}` : "Not set: dumbbell steps are read from what you log."}</p>
-</div>
-<label class="field">${labelTip("lt-kb", `Kettlebells (${u4})`, "The weights you have, any order, separated by commas.")}<input type="text" inputmode="decimal" data-gym="kb" aria-labelledby="lt-kb" .value=${fieldValue(g2 && g2.kb ? g2.kb.map(fmtG).join(", ") : "")} placeholder=${lb ? "18, 26, 35, 44, 53" : "8, 12, 16, 20, 24"}/></label> <label class="field">${labelTip(
-      "lt-stack",
-      `Cable and machine stacks step by (${u4})`,
-      "The usual step between pins on your cable and machine stacks. A machine that differs gets its own step in its exercise."
-    )}<input type="text" inputmode="decimal" data-gym="stack" aria-labelledby="lt-stack" .value=${fieldValue(g2 && g2.stack ? fmtG(g2.stack) : "")} placeholder=${lb ? "5" : "2.5"}/></label> ${g2 ? b`<button class="btn sm" data-act="gymClear">Clear my gym</button>` : A}`;
-  }
-  function gymRefresh() {
-    invalidate();
-    const d3 = state.draft;
-    if (d3) for (const id of new Set(d3.ex.map((b2) => b2.exId))) fx.refreshEx(id);
-  }
-  function gymSave(g2) {
-    const c4 = gymClean({ ...g2 });
-    if (JSON.stringify(c4 || null) === JSON.stringify(gymOf() || null)) {
-      fx.rerenderKeepScroll();
-      return;
-    }
-    act(
-      () => {
-        if (c4) state.settings.gym = c4;
-        else delete state.settings.gym;
-        gymRefresh();
-      },
-      { undo: true }
-    );
-    fx.rerenderKeepScroll();
-  }
-  function gymInput(t4) {
-    const k2 = t4.dataset.gym || "";
-    const v3 = t4.value.trim();
-    const g2 = gymNext();
-    if (k2 === "kb") {
-      g2.kb = v3 ? v3.split(/[;,\s]+/).flatMap((x2) => numIn(x2) == null ? [] : [numIn(x2) ?? 0]) : [];
-      gymSave(g2);
-      return;
-    }
-    if (k2 === "stack") {
-      const n4 = numIn(v3);
-      if (n4 == null) delete g2.stack;
-      else g2.stack = n4;
-      gymSave(g2);
-      return;
-    }
-    const f3 = k2.slice("db.".length);
-    if (f3 !== "lo" && f3 !== "hi" && f3 !== "st" && f3 !== "fine" && f3 !== "fineTo") return;
-    const d3 = { ...dbTyped() || g2.db || {} };
-    const n3 = numIn(v3);
-    if (n3 == null) delete d3[f3];
-    else d3[f3] = n3;
-    if (!Object.keys(d3).length) {
-      ui.gymDb = null;
-      delete g2.db;
-      gymSave(g2);
-      return;
-    }
-    const rack = asRack(d3);
-    if (rack && dbListOf(rack)) {
-      g2.db = rack;
-      ui.gymDb = d3.fine == null !== (d3.fineTo == null) ? d3 : null;
-      gymSave(g2);
-      return;
-    }
-    ui.gymDb = d3;
-    if (g2.db) {
-      delete g2.db;
-      gymSave(g2);
-    } else fx.rerenderKeepScroll();
-  }
-  function rirSettings() {
-    const s3 = state.settings;
-    const c4 = calStats();
-    const raw = c4.raw ?? 0;
-    const sum = !c4.n ? "No calibration sets yet. Start one from a machine or cable exercise's ⋯ menu." : !c4.recent ? `${c4.n} calibration set${c4.n === 1 ? "" : "s"}, none in the last ${CAL_WEEKS} weeks.` : `${c4.recent} recent calibration set${c4.recent === 1 ? "" : "s"}: median miss ${raw > 0 ? "+" : ""}${r1(raw)} reps (${raw > 0 ? "you stop with more left than you call" : raw < 0 ? "closer to failure than you call" : "accurate"}). Correction applied: ${c4.bias > 0 ? "+" : ""}${c4.bias}.`;
-    const sc = rirScale();
-    return b`<p class="small" style="margin:0"><b>RIR, reps in reserve:</b> reps you could still have done. RIR 3 or less is a hard set.</p>
-<label class="field">Reps in reserve<select data-bind="rirMode">
-<option value="on" .selected=${l3(s3.rirMode === "on")}>On: log RIR and use it as logged</option>
-<option value="cal" .selected=${l3(s3.rirMode === "cal")}>On, corrected by my calibration sets</option>
-<option value="off" .selected=${l3(s3.rirMode === "off")}>Off: don't ask, count every working set as hard</option>
-</select></label> ${s3.rirMode === "off" ? A : b`<label class="field">${labelTip(
-      "lt-rirScale",
-      "Enter effort as",
-      "How you enter and read effort. Stored as RIR either way (RPE 8 is RIR 2, RPE 8.5 is RIR 1.5), so switching changes nothing logged."
-    )}<select data-bind="rirScale" aria-labelledby="lt-rirScale">
-<option value="whole" .selected=${l3(sc === "whole")}>RIR, whole reps (0 to 5)</option>
-<option value="half" .selected=${l3(sc === "half")}>RIR, half reps (0, 0.5, 1 … 5)</option>
-<option value="rpe" .selected=${l3(sc === "rpe")}>RPE (5 to 10, in halves)</option>
-</select></label>
-`}${s3.rirMode === "off" ? A : b`<label class="check-inline"><input type="checkbox" data-bind="rirAsk" aria-labelledby="lt-rirAsk" .checked=${l3(s3.rirAsk === true)}/>${labelTip(
-      "lt-rirAsk",
-      `Open the ${effName()} picker after each set`,
-      "Off: tap a set's RIR box when you want to rate it. On: the picker opens by itself after each set you tick."
-    )}</label> <label class="check-inline"><input type="checkbox" data-bind="rirHalf" aria-labelledby="lt-rirHalf" .checked=${l3(s3.rirHalf === true)}/>${labelTip(
-      "lt-rirHalf",
-      `Count ${halfLbl()} as half a set`,
-      "Off: a set counts toward your weekly sets at RIR 3 or less. On: a set past RIR 3 counts as half a set too, in your weekly sets, targets, and the plan's weekly sets. Growth rises as sets end closer to failure (Robinson 2024), so sets further away still do something; half is a convention. Estimates, PRs, and recovery are unchanged."
-    )}</label>
-<p class="small muted hastip" style="margin:4px 0 0" data-tip="A blank RIR is read as your usual RIR on that lift: the middle value of the sets of it you rated in the last 12 weeks, once there are 3. That is a convention, so rating a set only sometimes cannot make it look stronger or weaker. Until there are 3, a blank set counts as hard and as 0 reps left for 1RM estimates, which errs low and never inflates a PR. Recovery, calibration, and the light-load check use only the RIR you entered.">Skipping RIR on some sets is fine.</p>
-`}${s3.rirMode === "cal" && c4.recent < 2 ? b`<p class="small" style="margin:0"><b>Needs ${CAL_MIN} calibration sets from the last ${CAL_WEEKS} weeks before any correction applies.</b></p>
-` : A}
-<p class="small hastip" style="margin:4px 0 0" data-tip="Off hides the RIR picker: every working set counts as hard and estimates use reps alone. Corrected shifts RIR you called at 4 or less by your typical error, shrunk toward zero while you have few calibration sets and capped at 2 reps; compound and isolation lifts use their own sets once each has 2. A set called at 0 is shifted too: unless a rep actually failed, 0 is still a call, and people under-call reps left by about 1 on average, only slightly less near failure (Halperin 2022). Your log never changes, so switching is reversible.">${sum}</p>
-`;
-  }
-  function layoutSettings() {
-    const h3 = state.settings.hidden;
-    const dflt = DEFAULT_HIDDEN.length === h3.length && DEFAULT_HIDDEN.every((k2) => h3.includes(k2));
-    return b`<p class="small muted" style="margin:0">Tap to show or hide. ${tipButton(
-      `Hidden sections are still tracked, and come back where they were. Each time ${APP_NAME} opens, every section starts folded except Sessions on History. Drag a section by its ⠿ to move it; each tab keeps its order.`,
-      "About layout"
-    )}</p>
-<div class="row"><button class=${dflt ? "btn sm noted" : "btn sm"} data-act="layoutDefault" aria-pressed=${String(dflt)} data-tip="The layout a new install starts with: At a glance, Coach, and Body hidden on Today, Schedule and Weekly volume hidden on Plan, and the default order.">Default layout</button><button class="btn sm" data-act="layoutAll" ?disabled=${!h3.length}>Show everything</button><button class="btn sm" data-act="layoutReset" data-tip="Puts the sections on every tab back in their default order. Shown or hidden stays as it is.">Reset section order</button></div>
-${HIDE_TABS.map(
-      ([t4, l4]) => b`<div class="hide-grp">
-<p class="small"><b>${l4}</b></p>
-<div class="chips">${HIDEABLE.filter((x2) => x2[0] === t4).map(([, k2, lab]) => {
-        const on = !h3.includes(t4 + ":" + k2);
-        return b`<button class=${on ? "chip on" : "chip"} data-act="hideToggle" data-k=${`${t4}:${k2}`} aria-pressed=${String(on)}>${lab}</button>`;
-      })}</div>
-</div>
-`
-    )}`;
-  }
-  var inClaude = () => !!(window.claude && typeof window.claude.use === "function");
-  function acctPanel() {
-    const A2 = AUTH();
-    if (!A2 || inClaude()) return A;
-    const u4 = rec(acct.user);
-    const stuck = u4 && !cloud.on ? b`<div class="row spread" style="margin-top:6px">
-<p class="small" style="margin:0;color:var(--yellow)">Not syncing right now.</p>
-<button class="btn sm" data-act="acctRetry">Try again</button></div>
-` : A;
-    return u4 ? b`<div class="panel" id="acctPanel">
-<div class="row spread">
-<p class="small" style="margin:0;min-width:0;overflow-wrap:anywhere">Signed in as <b>${typeof u4.email === "string" ? u4.email : ""}</b></p>
-<button class="btn sm" data-act="acctSignOut">Sign out</button></div>
-${stuck}${typeof A2.deleteAccount === "function" ? b`<button type="button" class="linkbtn" style="margin-top:8px;color:var(--red)" data-act="acctDelete">Delete my account</button>` : A}</div>
-` : b`<div class="panel" id="acctPanel">
-<p class="small hastip" style="margin:0 0 8px" data-tip=${isStandalone() ? "Deleting the app from the home screen deletes the log on this phone. An account keeps it, or save a backup file below." : "Clearing this browser's data deletes the log here. An account keeps it, or save a backup file below."}><b>Saved on this ${isStandalone() || coarse() ? "phone" : "device"} only.</b> Create an account to back it up and use it on any device.</p>
-<div class="row"><button class="btn sm primary" data-act="acctOpen" data-mode="signup">Create account</button><button class="btn sm" data-act="acctOpen" data-mode="signin">Sign in</button></div>
-</div>
-`;
-  }
-  function syncInfo() {
-    if (!cloud.on)
-      return isStandalone() ? b`<p class="small hastip" style="margin:0" data-tip="Without an account this app keeps your data on this phone only. Deleting the app from the home screen deletes it too. Sign in to keep a copy in your account, or save a backup file to Files or iCloud Drive; Import brings it back on any device."><b>Saved on this phone.</b> ${AUTH() ? "Sign in to sync, or export a backup weekly." : "Export a backup weekly."}</p>
-` : AUTH() ? b`<p class="small hastip" style="margin:0" data-tip="Everything is saved in this browser only. Clearing its data deletes it. Sign in below to keep a copy in your account, or export a backup."><b>Saved in this browser only.</b> Sign in to sync, or export a backup.</p>
-` : b`<p class="small hastip" style="margin:0" data-tip="Sync turns on by itself when this page is opened inside Claude while signed in. Until then everything is saved in this browser only."><b>Cloud sync off in this view.</b> Saved in this browser only.</p>
-`;
-    const ago = cloud.last ? Math.round((Date.now() - cloud.last) / (MINUTE_S * SECOND_MS)) : null;
-    const when = ago == null ? "not yet" : ago < 1 ? "just now" : ago < HOUR_MIN ? `${ago} min ago` : ago < DAY_MIN ? `${Math.round(ago / HOUR_MIN)} h ago` : fmtDate(iso(new Date(cloud.last ?? 0)));
-    const st = cloud.status === "synced" ? b`<span class="tag green">Synced</span>` : cloud.status === "offline" ? b`<span class="tag yellow">Waiting to sync</span>` : b`<span class="tag blue">Syncing</span>`;
-    return b`<div class="sync-row">${st}<span class="small muted">Last synced ${when}</span><button class="btn sm" data-act="syncNow">Sync now</button></div>
-<p class="small hastip" style="margin:6px 0 0" data-tip=${`A new phone or a cleared browser loses nothing: sign in and your log comes back. Deleted items wait in History, Recently deleted, for ${TRASH_DAYS} days, and Undo in Settings covers the last ${UNDO_DAYS} days.`}>${cloud.status !== "synced" ? "Saved on this device. It reaches your account when you are back online." : window.claude ? "Saved to your Claude account and this device." : "Saved to your account and this device."}${cloud.err ? b` <b style="color:var(--red)">${cloud.err}</b>` : A}</p>
-`;
-  }
-  function safetyLine() {
-    return b`<p class="small muted" id="safety" style="margin:8px 0 0"><b>Suggestions:</b> estimates from your log, not medical or coaching advice. Train within your limits and stop on pain. ${tipButton(SAFETY_TXT, "About suggestions")}</p>
-`;
-  }
-  function privacyLine() {
-    const claude = inClaude();
-    if (!claude && AUTH() && acct.user)
-      return b`<p class="small muted" id="privacy" style="margin:8px 0 0"><b>Privacy:</b> no ads, no tracking. Your log syncs to your ${APP_NAME} account. Only you and the app's owner can see it. Reports you send go to the app owner. ${tipButton(
-        "It is stored in a Supabase database. Database rules let each account read and write only its own data. The person who runs that database, the app owner, can see stored data and your email address, as with any app without end-to-end encryption. Your email is used only to sign in and reset your password, and nothing is shared or sold. A new password is checked against known breaches with only the first 5 characters of its hash; the password never leaves the phone. Backup files go only where you save them.",
-        "About privacy"
-      )}</p>
-`;
-    if (!claude && AUTH())
-      return b`<p class="small muted" id="privacy" style="margin:8px 0 0"><b>Privacy:</b> no ads, no tracking, and nothing sent without an account. Reports you send go to the app owner. ${tipButton(
-        "Opening or updating the app downloads it from GitHub Pages, which, like any website host, sees your IP address; after that it works offline. With an account, your log and email are stored in a Supabase database, readable by your account and by the app owner; the email is used only to sign in and reset your password. A new password is checked against known breaches with only the first 5 characters of its hash. Deleting the app or this site's data deletes the copy on this device, so keep a backup file or an account.",
-        "About privacy"
-      )}</p>
-`;
-    return claude ? b`<p class="small muted" id="privacy" style="margin:8px 0 0"><b>Privacy:</b> no ads, no tracking. Your log is stored with your Claude account. ${tipButton("Export and CSV files go only where you save them.", "About privacy")}</p>
-` : b`<p class="small muted" id="privacy" style="margin:8px 0 0"><b>Privacy:</b> no account, no ads, no tracking. Your log stays on this device and is sent nowhere. Reports you send go to the app owner. ${tipButton(
-      `${APP_NAME} has no server. Opening or updating the app downloads it from GitHub Pages, which, like any website host, sees your IP address; after that it works offline. Backup files go only where you save them. Deleting the app or this site's data deletes your log, so keep a backup file.`,
-      "About privacy"
-    )}</p>
-`;
-  }
-  function asideLine() {
-    const kept = asideList();
-    if (!kept.length) return A;
-    const words = kept.map((a2) => `${a2.sessions} session${a2.sessions === 1 ? "" : "s"}`).join(", ");
-    return b`<p class="small" id="asideLine" style="margin:8px 0 0"><b>A log from another account is kept on this phone</b> (${words}). It is used again when that account signs in here. Erase everything removes it.</p>
-`;
-  }
-  function dataBody() {
-    const s3 = state.settings;
-    const ap = acctPanel();
-    const one = ap !== A && !acct.user;
-    return b`${ap}${one ? A : b`<div class="panel" id="syncInfo" style=${ap !== A ? "margin-top:8px" : A}>${syncInfo()}</div>
-`}${canInstallHere() ? b`<div class="panel row spread" id="installPanel" style="margin-top:8px">
-<p class="small" style="margin:0;flex:1 1 180px"><b>Install the app.</b> Full screen, offline, one tap from your home screen.</p>
-<button class="btn sm primary" data-act="install">${/^ios/.test(installKind()) ? "Add to Home Screen" : "Install"}</button></div>
-` : A}${ENV === "preview" ? b`<div class="panel row spread" style="margin-top:8px">
-<p class="small" style="margin:0;flex:1 1 180px"><b>Test version.</b> It keeps a separate log. Copy yours in to try it; your log in ${APP_NAME} stays as it is.</p>
-<button class="btn sm primary" data-act="previewCopy">Copy my log in</button></div>
-` : A}${asideLine()}${privacyLine()}${safetyLine()}${backupDue() ? b`<p class="callout yellow" style="margin:10px 0 0"><b>Backup due.</b> ${s3.lastExport ? `Last backup file ${fmtDate(s3.lastExport)}.` : "No backup file yet."}${cloud.on ? "Your account has not synced this week. Export one below." : ""}</p>
-` : A}${device.ok ? A : b`<p class="small" style="color:var(--red)">This browser is blocking local storage, so this device keeps nothing between reloads without cloud sync.</p>
-`}${unreadableRaw() ? b`<div class="panel" id="unreadPanel" style="margin-top:8px">
-<p class="small" style="margin:0 0 6px"><b>A save on this device could not be read</b> by this build, and was kept aside. Restore tries it again, which a later build may read; Show its text to copy it out.</p>
-<div class="row"><button class="btn sm primary" data-act="unreadRestore">Restore it</button><button class="btn sm" data-act="unreadShow">Show its text</button><button class="btn sm" data-act="unreadForget">Forget it</button></div>
-</div>
-` : A}
-<div class="card stack">
-<div class="row"><button class="btn primary" data-act="export" data-tip="The backup: restores everything, on any device.">Export backup (.json)</button><button class="btn" data-act="showBackup" data-tip="The same backup as text, to copy somewhere safe.">Show backup text</button><button class="btn" data-act="exportCsv" data-tip="One row per set for spreadsheets. Import workouts reads it back, but it is not a full backup: routines and settings are not in it.">Export sets (.csv)</button></div>
-<button class="btn" data-act="impOpen" data-tip="Adds sessions from notes, a spreadsheet, or an export from another app. You check everything before it is saved.">Import workouts</button> <label class="field">Restore a backup file (replaces everything)<input type="file" accept=".json,application/json" id="importFile"/></label> <button class="btn" data-act="pasteImport">Paste backup text instead</button>
-<div class="row"><button class="btn" data-act="undo" ?disabled=${!undoStack.length} data-tip=${`Deletes, resets, and imports from the last ${UNDO_DAYS} days, kept after the app is closed. Edits are not undoable. Deleted sessions, cardio, and routines also wait in History for ${TRASH_DAYS} days.`}>Undo last delete or reset${undoStack.length ? ` (${undoStack.length} available)` : ""}</button></div>
-</div>
-`;
-  }
-  function viewSettings() {
-    const s3 = state.settings;
-    const hasDemo2 = state.sessions.some((x2) => x2.demo) || state.bodyweights.some((x2) => x2.demo);
-    const G = (k2, title, sub, body, help, id) => [k2, section({ sk: "settings:" + k2, key: k2, title, sub, help, body, id })];
-    const kick = ENV === "preview" ? `${PREVIEW_NAME} ${VERSION_LINE}` : "";
-    const meta = cloud.on ? window.claude ? "Saved to your Claude account and this device" : "Synced to your account and saved on this device" : "Saved on this device";
-    const list = [
-      G(
-        "profile",
-        "Your training",
-        profSub(),
-        b`<div class="card stack">${profSettings()}</div>
-`
-      ),
-      G(
-        "general",
-        "General",
-        `${s3.unit === "kg" ? "kg, cm" : "lb, in"} · ${s3.theme === "system" ? "device theme" : s3.theme}`,
-        b`<div class="card stack">
-<div class="grid2">
-<label class="field">Units<select data-bind="unit">
-<option value="lb" .selected=${l3(s3.unit === "lb")}>lb and inches</option>
-<option value="kg" .selected=${l3(s3.unit === "kg")}>kg and cm</option>
-</select></label> <label class="field">Theme<select data-bind="theme">
-<option value="system" .selected=${l3(s3.theme === "system")}>Match device</option>
-<option value="dark" .selected=${l3(s3.theme === "dark")}>Dark</option>
-<option value="light" .selected=${l3(s3.theme === "light")}>Light</option>
-</select></label>
-</div>
-<label class="field">Name (optional)<input type="text" data-bind="userName" .value=${fieldValue(s3.userName || "")} maxlength="40" autocomplete="given-name"/></label>
-<div>
-<p class="small muted" style="margin:0 0 6px;font-weight:600">Accent colour</p>
-<div class="chips" role="group" aria-label="Accent colour">${ACCENTS.map(
-          ([k2, l4]) => b`<button class=${(s3.accent || ACCENT0) === k2 ? "chip acc on" : "chip acc"} data-act="accent" data-v=${k2} aria-pressed=${String((s3.accent || ACCENT0) === k2)}><i class=${`sw sw-${k2}`} aria-hidden="true"></i>${l4}</button>`
-        )}</div>
-</div>
-<div class="grid2 one-narrow">
-<label class="field">${labelTip(
-          "lt-bwGoalPct",
-          "Bodyweight goal (%/wk)",
-          "Compared with your 7-day-average bodyweight trend on Stats. Leave blank to track without a target."
-        )}<input type="text" inputmode="decimal" data-bind="bwGoalPct" aria-labelledby="lt-bwGoalPct" .value=${fieldValue(s3.bwGoalPct == null ? "" : String(s3.bwGoalPct))} placeholder="e.g. 0.3 or -0.5"/></label> <label class="field">${labelTip(
-          "lt-bwEvery",
-          "Weigh-in reminder",
-          "A card on Today asks for your bodyweight when the last weigh-in is this old. Pull-ups, dips, and other bodyweight lifts use your latest weigh-in."
-        )}<select data-bind="bwEvery" aria-labelledby="lt-bwEvery">${BW_EVERY.map(
-          ([v3, l4]) => b`<option value=${String(v3)} .selected=${l3(bwEvery() === v3)}>${l4}</option>
-`
-        )}</select></label>
-</div>
-</div>
-`
-      ),
-      G(
-        "gym",
-        "Your gym",
-        gymSub(),
-        b`<div class="card stack">${gymSettings()}</div>
-`,
-        "gym"
-      ),
-      G(
-        "timer",
-        "Rest timer and logging",
-        s3.timerMode === "off" ? "timer off" : s3.timerMode + " timer",
-        b` <div class="card stack">
-<label class="field">${labelTip(
-          "lt-timerMode",
-          "Rest timer",
-          "Auto starts the timer when a set is marked done. Manual starts it from Rest on the exercise."
-        )}<select data-bind="timerMode" aria-labelledby="lt-timerMode">
-<option value="auto" .selected=${l3(s3.timerMode === "auto")}>Auto, after each set</option>
-<option value="manual" .selected=${l3(s3.timerMode === "manual")}>Manual, from Rest</option>
-<option value="off" .selected=${l3(s3.timerMode === "off")}>Off</option>
-</select></label> <label class="check-inline"><input type="checkbox" data-bind="timerSound" .checked=${l3(!!s3.timerSound)} ?disabled=${s3.timerMode === "off"}/>Sound and vibration when rest ends</label> <label class="check-inline"><input type="checkbox" data-bind="timerCompact" aria-labelledby="lt-timerCompact" .checked=${l3(!!s3.timerCompact)} ?disabled=${s3.timerMode === "off"}/>${labelTip(
-          "lt-timerCompact",
-          "Compact timer",
-          "A small pill in the corner instead of a bar across the screen."
-        )}</label> <label class="check-inline"><input type="checkbox" data-bind="autoDone" aria-labelledby="lt-autoDone" .checked=${l3(!!s3.autoDone)}/>${labelTip(
-          "lt-autoDone",
-          "Auto-mark a set done after its reps",
-          "A mistyped rep count is then saved without a tap to confirm, so check the row. A tap on the checkmark right after only confirms it; tap again to undo."
-        )}</label> <label class="check-inline"><input type="checkbox" data-bind="loadFill" aria-labelledby="lt-loadFill" .checked=${l3(s3.loadFill === "fill")}/>${labelTip(
-          "lt-loadFill",
-          "Fill in suggested loads",
-          "Off: a set's load shows in grey until you type one, and ticking the set takes it. On: the suggested load is typed into every row for you. Either way, a load you type is never changed."
-        )}</label> <label class="field">${labelTip(
-          "lt-todayStart",
-          "Today starts with",
-          "Blank: Today opens on an empty session, and you add exercises as you go; your plan's day is still one tap away. Each exercise still gets its suggested weight from your history."
-        )}<select data-bind="todayStart" aria-labelledby="lt-todayStart">
-<option value="plan" .selected=${l3(s3.todayStart !== "free")}>My plan's day</option>
-<option value="free" .selected=${l3(s3.todayStart === "free")}>A blank session (freestyle)</option>
-</select></label> <label class="check-inline"><input type="checkbox" data-bind="autoAdj" aria-labelledby="lt-autoAdj" .checked=${l3(adjOn())}/>${labelTip(
-          "lt-autoAdj",
-          "Adjust the next sets from the last one",
-          "After a set that was clearly easier or harder than planned, the sets after it that you have not typed a load for move up or down. A line says why, with Keep to undo it. Two reps or more in reserve over your target, or two past the top of the range, moves up; two or more under the range moves down. A rep or two lost per set is normal and changes nothing."
-        )}</label> <label class="check-inline"><input type="checkbox" data-bind="wakeLock" aria-labelledby="lt-wakeLock" .checked=${l3(!!s3.wakeLock)}/>${labelTip(
-          "lt-wakeLock",
-          "Keep the screen on during a session",
-          "A locked phone pauses this page, so the rest alert cannot sound until you unlock. Keeping the screen on avoids that, at some battery cost."
-        )}</label>
-</div>
-`
-      ),
-      G(
-        "rir",
-        "Effort (RIR)",
-        { on: "on", cal: "corrected", off: "off" }[s3.rirMode],
-        b`<div class="card stack">${rirSettings()}</div>
-`
-      ),
-      G(
-        "layout",
-        "Layout",
-        s3.hidden.length ? `${s3.hidden.length} hidden` : "everything shown",
-        b`<div class="card stack">${layoutSettings()}</div>
-`
-      ),
-      G(
-        "prio",
-        "Priority muscles",
-        s3.priorities.length ? s3.priorities.map((m3) => ML[m3]).join(", ") : "none",
-        b`${howText("prio", "Flagged as Your priority under Muscles in Stats, and favoured by Pick for me.")}
-<div class="card chips">${MUSCLES.map(
-          ([k2, l4]) => b`<button class=${s3.priorities.includes(k2) ? "chip on" : "chip"} data-act="prio" data-m=${k2}>${l4}</button>`
-        )}</div>
-`,
-        "prio"
-      ),
-      G(
-        "bands",
-        "Weekly set targets",
-        "",
-        b`${howText(
-          "bands",
-          "Fractional hard sets per week: direct work 1, helper muscles 0.5 (Pelland 2025). 10 to 20 for major muscles fits the dose-response data; the upper number is typical, not a ceiling, and more still helps a little at more cost. The muscles lifters train directly for size have a target to start; glutes, rear delts, calves, and abs start lower, a convention, as compound lifts work them too. Every other muscle is tracked only, counted with no target, until you give it one with Set a target or name it a focus (any but serratus, rotator cuff, neck, and tibialis). Raise one or two muscles for a specialisation block, or set focus muscles in Your training. Default targets puts every one back."
-        )}
-<div class="card">
-<table class="t">
-<tbody>
-<tr>
-<th>Muscle</th>
-<th class="r">Min</th>
-<th class="r">Max</th>
-</tr>
-${MUSCLES.map(
-          ([k2, l4]) => (
-            /* A muscle with no target (339 e, r58) offers one; one the lifter gave a
-               target (not by default and not a focus, which Your training sets) can go
-               back to tracked only. */
-            !hasTarget(k2) ? b`<tr>
-<td>${l4}</td>
-<td class="r" colspan="2"><span class="small muted">Tracked only</span> <button type="button" class="btn sm" data-act="tgtSet" data-m=${k2}>Set a target</button></td>
-</tr>
-` : b`<tr>
-<td>${l4}${TARGETED.has(k2) || (prof().focus || []).includes(k2) ? A : b`<br><button type="button" class="linkbtn tall" data-act="tgtOff" data-m=${k2}>Track only</button>`}</td>
-<td class="r"><input style="width:70px" type="text" inputmode="numeric" aria-label=${`${l4} minimum hard sets a week`} data-band=${k2} data-bi="0" .value=${fieldValue(String(s3.bands[k2][0]))}/></td>
-<td class="r"><input style="width:70px" type="text" inputmode="numeric" aria-label=${`${l4} maximum hard sets a week`} data-band=${k2} data-bi="1" .value=${fieldValue(String(s3.bands[k2][1]))}/></td>
-</tr>
-`
-          )
-        )}</tbody>
-</table>
-<div class="row" style="margin-top:8px"><button class="btn sm" data-act="bandsDefault" ?disabled=${MK.every((m3) => {
-          const d3 = defBand(m3);
-          return s3.bands[m3][0] === d3[0] && s3.bands[m3][1] === d3[1];
-        }) && !s3.bandsFit && !s3.ownTargets}>Default targets</button></div>
-</div>
-`,
-        "bands"
-      ),
-      G(
-        "data",
-        "Your data",
-        cloud.on ? cloud.status === "synced" ? "synced" : "syncing" : "this device only",
-        dataBody(),
-        "",
-        "dataSec"
-      ),
-      G(
-        "help",
-        "Help",
-        "Guide, report a problem",
-        b`<div class="card stack">
-<div class="row"><button class="btn" data-act="guideOpen">Guide</button><button class="btn" data-act="fbOpen" data-cat="bug" data-tip="Also for a question or a suggestion: the sheet asks which.">Report a problem</button>${acct.reader && FB() ? b`<button class="btn" data-act="fbInbox">Reports inbox</button>` : A}</div>
-</div>
-`
-      ),
-      // Demo data, Diagnostics and Erase everything (r35, V): one group at the bottom, not three in front of everyday settings.
-      G(
-        "more",
-        "More",
-        hasDemo2 ? "demo data loaded" : "demo data, version, erase",
-        b`<div class="card stack">
-<div>
-<p class="small" style="margin:0 0 6px"><b>Demo data</b> ${tipButton(
-          `${DEMO_WEEKS} weeks of generated sessions to preview Today and Stats. Everything demo is tagged and removed in one tap; your real logs are untouched.`,
-          "About demo data"
-        )}</p>
-<div class="row">${hasDemo2 ? b`<button class="btn" data-act="demoClear">Clear demo data</button>` : b`<button class="btn" data-act="demoLoad">Load demo data</button>`}</div>
-</div>
-<div>
-<p class="small" style="margin:0 0 6px"><b>Version</b> ${VERSION_LINE}${logBuf.length ? b` <span class="muted">· cloud ${cloud.on ? cloud.status : "off"} · ${logBuf.length} logged error${logBuf.length === 1 ? "" : "s"}</span>` : A}</p>
-${logBuf.length ? b`<ul class="clist">${logBuf.slice(-LOG_SHOWN).reverse().map(
-          (x2) => b`<li><span class="small"><b>${x2.a}</b> ${x2.m}${x2.n ? ` (${x2.n} times)` : ""}</span><span class="small muted">${stampShort(x2.t)}</span></li>
-`
-        )}</ul>
-` : A}${logBuf.length ? b`<div class="row"><button class="btn sm" data-act="diagCopy">Copy diagnostics</button><button class="btn sm" data-act="diagClear">Clear log</button></div>
-` : A}${window.IRONLOG_APP ? b`<p class="small" style="margin:8px 0 0"><a href="LICENSES.txt" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;min-height:44px">Open-source licenses</a></p>
-` : A}</div>
-<div><button class="btn danger" data-act="resetAll">Erase everything</button></div>
-</div>
-`
-      )
-    ];
-    return b`${pageTitle(kick, "Settings", meta)}${c3(
-      placed("settings", list),
-      (x2) => x2[0],
-      (x2) => x2[1]
-    )}${tabFoot("settings")}`;
-  }
-  function settingsSyncLine() {
-    const v3 = document.getElementById("view");
-    if (v3 && ui.tab === "settings" && document.getElementById("syncInfo")) drawScreen(v3, viewSettings());
-  }
-  var SETTINGS_ACTS = {
-    accent(t4) {
-      const v3 = t4.dataset.v;
-      const a2 = v3 === "blue" || v3 === "volt" || v3 === "ember" || v3 === "pink" ? v3 : null;
-      if (!a2 || !ACCENTS.some(([k2]) => k2 === a2)) return;
-      act(() => {
-        if (a2 === ACCENT0) delete state.settings.accent;
-        else state.settings.accent = a2;
-      });
-      fx.rerenderKeepScroll();
-    },
-    prio(t4) {
-      const k2 = t4.dataset.m;
-      const m3 = MK.find((x2) => x2 === k2);
-      if (!m3) return;
-      act(() => {
-        const p3 = state.settings.priorities;
-        state.settings.priorities = p3.includes(m3) ? p3.filter((x2) => x2 !== m3) : [...p3, m3];
-      });
-      fx.rerenderKeepScroll();
-    },
-    hideToggle(t4) {
-      const k2 = t4.dataset.k || "";
-      if (!HIDEABLE_KEYS.has(k2)) return;
-      act(() => {
-        const h3 = state.settings.hidden;
-        state.settings.hidden = h3.includes(k2) ? h3.filter((x2) => x2 !== k2) : [...h3, k2];
-      });
-      fx.rerenderKeepScroll();
-    },
-    layoutDefault() {
-      act(
-        () => {
-          state.settings.hidden = DEFAULT_HIDDEN.slice();
-          state.settings.secOrder = defaultOrder();
-        },
-        { undo: true }
-      );
-      fx.rerenderKeepScroll();
-      fx.toast("Default layout on every tab", true);
-    },
-    layoutAll() {
-      act(() => {
-        state.settings.hidden = [];
-      });
-      fx.rerenderKeepScroll();
-      fx.toast("Every section shown");
-    },
-    layoutReset() {
-      act(
-        () => {
-          state.settings.secOrder = defaultOrder();
-        },
-        { undo: true }
-      );
-      fx.rerenderKeepScroll();
-      fx.toast("Section order reset on every tab", true);
-    },
-    gymUnit(t4) {
-      const v3 = t4.dataset.v === "kg" ? "kg" : "lb";
-      if (v3 === gymUnit()) return;
-      const go = () => {
-        ui.gymDb = null;
-        ui.gymU = v3;
-        if (gymOf())
-          act(
-            () => {
-              delete state.settings.gym;
-              gymRefresh();
-            },
-            { undo: true }
-          );
-        fx.rerenderKeepScroll();
-      };
-      if (gymOf() || ui.gymDb)
-        fx.confirm(
-          `Switch to ${v3}?`,
-          `The weights typed here are in ${gymUnit()} and are cleared. Type them again in ${v3}.`,
-          `Switch to ${v3}`,
-          () => {
-            go();
-            fx.toast(`Your gym in ${v3}`, true);
-          }
-        );
-      else go();
-    },
-    gymPlate(t4) {
-      const g2 = gymNext();
-      const all = gymPlates(g2.u);
-      const v3 = +(t4.dataset.v || "");
-      let on = Array.isArray(g2.plates) ? g2.plates.slice() : all.slice();
-      on = on.includes(v3) ? on.filter((x2) => x2 !== v3) : [...on, v3];
-      if (!on.length) {
-        fx.toast("Keep at least one plate");
-        return;
-      }
-      if (on.length === all.length) delete g2.plates;
-      else g2.plates = all.filter((x2) => on.includes(x2));
-      gymSave(g2);
-    },
-    gymClear() {
-      ui.gymDb = null;
-      act(
-        () => {
-          delete state.settings.gym;
-          gymRefresh();
-        },
-        { undo: true }
-      );
-      fx.rerenderKeepScroll();
-      fx.toast("Your gym cleared: the usual steps apply", true);
-    },
-    /* Your training (r44): a tap on a choice sets it, a tap on the one set
-       clears it. Focus moves only the app's own weekly targets, with Undo. */
-    profSet(t4) {
-      const k2 = t4.dataset.k;
-      const raw = t4.dataset.v || "";
-      const old = prof();
-      const p3 = { ...old, focus: (old.focus || []).slice() };
-      const focus = p3.focus || [];
-      if (k2 === "focus") {
-        const i5 = focus.indexOf(raw);
-        if (i5 >= 0) focus.splice(i5, 1);
-        else {
-          if (focus.length >= FOCUS_MAX) {
-            fx.toast("Two at most. Tap one to take it off.");
-            return;
-          }
-          focus.push(raw);
-        }
-      } else if (k2 === "goal" || k2 === "exp") {
-        if (p3[k2] === raw) delete p3[k2];
-        else p3[k2] = raw;
-      } else if (k2 === "days") {
-        if (p3.days === +raw) delete p3.days;
-        else p3.days = +raw;
-      } else return;
-      const np = profClean({ ...p3 });
-      const cur = state.settings.profile;
-      const was = cur ? { ...cur, ...cur.focus ? { focus: cur.focus.slice() } : {} } : null;
-      let moved = {};
-      act(
-        () => {
-          if (np) state.settings.profile = np;
-          else delete state.settings.profile;
-          if (k2 === "focus") moved = profMoveBands(old, np || {});
-        },
-        {
-          undo: () => {
-            if (was) state.settings.profile = was;
-            else delete state.settings.profile;
-            const b2 = state.settings.bands;
-            for (const m3 of MK) {
-              const x2 = moved[m3];
-              if (x2 && b2[m3][0] === x2[1][0] && b2[m3][1] === x2[1][1]) b2[m3] = [x2[0][0], x2[0][1]];
-            }
-            return true;
-          }
-        }
-      );
-      fx.rerenderKeepScroll();
-      const n3 = Object.keys(moved).length;
-      const fm = MK.find((m3) => m3 === raw);
-      const kept = k2 === "focus" && !!np && (np.focus || []).includes(raw) && !!fm && !moved[fm];
-      if (kept)
-        fx.toast(
-          `Your ${ML[raw]} target is one you set, so it stays. Default targets in Weekly set targets puts the app's back.`,
-          n3 > 0,
-          KEPT_TOAST_MS
-        );
-      else if (n3) fx.toast(`Weekly targets moved for ${n3} muscle${n3 === 1 ? "" : "s"}. Ones you typed stay.`, true);
-    },
-    profApply() {
-      const R2 = activeRoutine();
-      const list = profApplyList(R2);
-      if (!list.length) return;
-      fx.confirm(
-        `Apply to ${R2.name}?`,
-        `${list.length} exercise${list.length === 1 ? "" : "s"}. ${profApplyWhat()} Sets and exercises stay as they are.`,
-        "Apply",
-        () => {
-          const now = activeRoutine();
-          let n3 = 0;
-          const done = act(
-            () => {
-              const L2 = profApplyList(now);
-              n3 = L2.length;
-              for (const x2 of L2) {
-                Object.assign(x2.it, x2.ch);
-                fx.syncDraftPlan({ r: now, di: x2.di, it: x2.it });
-              }
-            },
-            { check: () => !!now && now.id === R2.id, undo: true }
-          );
-          if (!done) return;
-          fx.rerenderKeepScroll();
-          fx.toast(`${now.name}: ${n3} exercise${n3 === 1 ? "" : "s"} updated`, true);
-        }
-      );
-    },
-    // Weekly set targets back to the defaults (r44), with Your training's focus; typed ones, those given with Set a target (r58) and a first-run fit go.
-    bandsDefault() {
-      const b2 = state.settings.bands;
-      const fit = state.settings.bandsFit ? { ...state.settings.bandsFit } : null;
-      const own = state.settings.ownTargets ? [...state.settings.ownTargets] : null;
-      const moved = {};
-      for (const m3 of MK) {
-        const d3 = defBand(m3);
-        if (b2[m3][0] !== d3[0] || b2[m3][1] !== d3[1])
-          moved[m3] = [
-            [b2[m3][0], b2[m3][1]],
-            [d3[0], d3[1]]
-          ];
-      }
-      act(
-        () => {
-          for (const m3 of MK) {
-            const x2 = moved[m3];
-            if (x2) b2[m3] = [x2[1][0], x2[1][1]];
-          }
-          delete state.settings.bandsFit;
-          delete state.settings.ownTargets;
-        },
-        {
-          undo: () => {
-            if (fit) state.settings.bandsFit = fit;
-            else delete state.settings.bandsFit;
-            if (own) state.settings.ownTargets = own;
-            for (const m3 of MK) {
-              const x2 = moved[m3];
-              if (x2 && b2[m3][0] === x2[1][0] && b2[m3][1] === x2[1][1]) b2[m3] = [x2[0][0], x2[0][1]];
-            }
-            return true;
-          }
-        }
-      );
-      fx.rerenderKeepScroll();
-      fx.toast("Weekly set targets back to the defaults", true);
-    },
-    // A muscle with no target given one (339 e, r58): its numbers as they stand, now counted.
-    tgtSet(t4) {
-      const m3 = MK.find((x2) => x2 === t4.dataset.m);
-      if (!m3 || hasTarget(m3)) return;
-      act(() => {
-        const o3 = state.settings.ownTargets || [];
-        state.settings.ownTargets = MK.filter((x2) => x2 === m3 || o3.includes(x2));
-      });
-      fx.rerenderKeepScroll();
-    },
-    // A target the lifter gave taken off: tracked only again, its numbers the app's, with an Undo step.
-    tgtOff(t4) {
-      const m3 = MK.find((x2) => x2 === t4.dataset.m);
-      if (!m3 || TARGETED.has(m3) || (prof().focus || []).includes(m3)) return;
-      act(
-        () => {
-          const o3 = (state.settings.ownTargets || []).filter((x2) => x2 !== m3);
-          if (o3.length) state.settings.ownTargets = o3;
-          else delete state.settings.ownTargets;
-          const a2 = appBand(m3);
-          state.settings.bands[m3] = [a2[0], a2[1]];
-        },
-        { undo: true }
-      );
-      fx.rerenderKeepScroll();
-      fx.toast(`${ML[m3]} is tracked only`, true);
-    },
-    unreadForget() {
-      fx.confirm(
-        "Forget the save kept aside?",
-        "It is deleted for good. Export or copy it first if you might want it.",
-        "Forget it",
-        () => {
-          unreadableForget();
-          fx.rerenderKeepScroll();
-          fx.toast("Forgotten");
-        },
-        true
-      );
-    },
-    diagClear() {
-      logClear();
-      fx.rerenderKeepScroll();
-      fx.toast("Log cleared");
-    },
-    syncNow() {
-      if (!cloud.on) return;
-      cloud.retry = 0;
-      setCloud("connecting");
-      void cq(cloudPull).then(() => {
-        if (cloud.status === "synced") fx.toast("Synced");
-      });
-    },
-    demoClear() {
-      act(
-        () => {
-          stripDemo(state);
-          demoRestore();
-        },
-        { undo: true }
-      );
-      fx.render();
-      fx.toast("Demo data cleared", true);
-    },
-    resetAll() {
-      fx.confirm(
-        "Erase everything?",
-        `All routines, sessions, custom exercises, and body data will be deleted${cloud.on ? " on this device and in your cloud copy" : " on this device"}. Export a backup first if you might want it.`,
-        "Erase everything",
-        () => {
-          act(
-            () => {
-              setState(normalize(null));
-              if (!cloud.on) cloudStop(true);
-              asideClear();
-            },
-            { undo: true }
-          );
-          ui.tab = "today";
-          fx.render();
-          fx.toast("Everything erased", true);
-        },
-        true
-      );
-    }
-  };
-  var checked = (t4) => t4 instanceof HTMLInputElement && t4.checked;
-  var SETTINGS_BINDS = {
-    unit(t4) {
-      const u4 = t4.value === "kg" ? "kg" : "lb";
-      act(() => {
-        state.settings.unit = u4;
-      });
-      fx.unitWords();
-      fx.render();
-    },
-    theme(t4) {
-      const v3 = t4.value;
-      if (v3 !== "system" && v3 !== "dark" && v3 !== "light") return;
-      act(() => {
-        state.settings.theme = v3;
-      });
-      fx.render();
-    },
-    rirMode(t4) {
-      const v3 = t4.value === "off" || t4.value === "cal" ? t4.value : "on";
-      act(() => {
-        state.settings.rirMode = v3;
-      });
-      fx.rerenderKeepScroll();
-      fx.toast(
-        v3 === "off" ? "RIR off: every working set counts as hard" : v3 === "cal" ? "RIR corrected by your calibration sets" : "RIR on, used as logged"
-      );
-    },
-    rirScale(t4) {
-      const v3 = t4.value;
-      act(() => {
-        if (v3 === "half" || v3 === "rpe") state.settings.rirScale = v3;
-        else delete state.settings.rirScale;
-      });
-      fx.rerenderKeepScroll();
-    },
-    rirAsk(t4) {
-      const on = checked(t4);
-      act(() => {
-        if (on) state.settings.rirAsk = true;
-        else delete state.settings.rirAsk;
-      });
-      fx.rerenderKeepScroll();
-    },
-    rirHalf(t4) {
-      const on = checked(t4);
-      act(
-        () => {
-          if (on) state.settings.rirHalf = true;
-          else delete state.settings.rirHalf;
-        },
-        { undo: true }
-      );
-      fx.rerenderKeepScroll();
-      fx.toast(
-        on ? `${halfLbl()} now counts as half a set` : `Only ${effName()} ${effShow(HARD_RIR)} ${rirScale() === "rpe" ? "or more" : "or less"} counts`,
-        true
-      );
-    },
-    timerMode(t4) {
-      const v3 = t4.value === "manual" || t4.value === "off" ? t4.value : "auto";
-      act(() => {
-        state.settings.timerMode = v3;
-      });
-      if (v3 === "off") fx.stopTimer();
-      fx.rerenderKeepScroll();
-    },
-    timerSound(t4) {
-      const on = checked(t4);
-      act(() => {
-        state.settings.timerSound = on;
-      });
-      if (on) fx.primeAudio();
-    },
-    timerCompact(t4) {
-      const on = checked(t4);
-      act(() => {
-        state.settings.timerCompact = on;
-      });
-      fx.timerRefresh();
-    },
-    autoDone(t4) {
-      const on = checked(t4);
-      act(() => {
-        state.settings.autoDone = on;
-      });
-      fx.rerenderKeepScroll();
-    },
-    smallPlates(t4) {
-      const on = checked(t4);
-      act(() => {
-        if (on) state.settings.smallPlates = true;
-        else delete state.settings.smallPlates;
-      });
-    },
-    bwEvery(t4) {
-      const v3 = +t4.value;
-      act(() => {
-        const k2 = bwEveryKept(v3);
-        if (k2 !== void 0) state.settings.bwEvery = k2;
-        else delete state.settings.bwEvery;
-      });
-      fx.rerenderKeepScroll();
-    },
-    todayStart(t4) {
-      const free = t4.value === "free";
-      act(() => {
-        if (free) state.settings.todayStart = "free";
-        else delete state.settings.todayStart;
-      });
-      fx.rerenderKeepScroll();
-    },
-    autoAdj(t4) {
-      const on = checked(t4);
-      act(() => {
-        if (on) delete state.settings.autoAdj;
-        else state.settings.autoAdj = false;
-      });
-    },
-    wakeLock(t4) {
-      const on = checked(t4);
-      act(() => {
-        state.settings.wakeLock = on;
-      });
-      if (on && state.draft) fx.wakeOn();
-      else if (!on) fx.wakeOff();
-    },
-    timeBudget(t4) {
-      const n3 = numIn(t4.value);
-      act(() => {
-        state.settings.timeBudget = n3 == null || n3 < LIMITS.budgetMin[0] ? null : Math.min(Math.round(n3), LIMITS.budgetMin[1]);
-      });
-    },
-    barKg(t4) {
-      const n3 = numIn(t4.value);
-      act(() => {
-        state.settings.barKg = n3 == null || n3 <= 0 ? null : Math.min(fromD(n3) ?? 0, LIMITS.barKg);
-      });
-      fx.rerenderKeepScroll();
-    },
-    userName(t4) {
-      const n3 = t4.value.replace(/\s+/g, " ").trim().slice(0, LIMITS.name);
-      act(() => {
-        if (n3) state.settings.userName = n3;
-        else delete state.settings.userName;
-      });
-    },
-    bwGoalPct(t4) {
-      const n3 = numIn(t4.value);
-      act(() => {
-        state.settings.bwGoalPct = n3 == null ? null : Math.min(Math.max(n3, -LIMITS.bwRatePct), LIMITS.bwRatePct);
-      });
-    }
-  };
-  function bandInput(t4) {
-    const m3 = MK.find((x2) => x2 === t4.dataset.band);
-    const n3 = numIn(t4.value);
-    if (!m3 || n3 == null) return;
-    const i5 = t4.dataset.bi === "1" ? 1 : 0;
-    act(
-      () => {
-        state.settings.bands[m3][i5] = Math.min(Math.max(Math.round(n3 * 2) / 2, 0), LIMITS.weeklySets);
-      },
-      { soon: true }
-    );
-  }
-  function bandChange(t4) {
-    const m3 = MK.find((x2) => x2 === t4.dataset.band);
-    if (!m3) return;
-    act(() => {
-      const b2 = state.settings.bands[m3];
-      if (b2[0] > b2[1]) b2.reverse();
-    });
-    fx.rerenderKeepScroll();
-  }
-  function gymField(t4) {
-    gymInput(t4);
-  }
 
   // src/app/workstate.ts
   var FOLD_MS = { tick: 1200, effort: 900, strip: 1500 };
@@ -19713,15 +19746,6 @@ ${ms.length ? b`<div class="scroll-x" style="margin-top:10px"><table class="t"><
       }
     }
     renderModal.last = null;
-    function profChips2(k2, opts, cur, label) {
-      return `<div class="ob-units" role="group" aria-label="${label}">${opts.map(([v3, l4]) => `<button class="chip ${cur === v3 ? "on" : ""}" data-act="profSet" data-k="${k2}" data-v="${v3}" aria-pressed="${cur === v3}">${l4}</button>`).join("")}</div>`;
-    }
-    function profFields2() {
-      const p3 = prof();
-      return `<div><p class="small muted" style="margin:0 0 6px;font-weight:600"><span class="hastip" data-tip="${esc(PROF_GOAL_TIP)}">Goal</span></p>${profChips2("goal", PROF_GOALS, p3.goal, "Goal")}</div>
-  <div><p class="small muted" style="margin:0 0 6px;font-weight:600"><span class="hastip" data-tip="${esc(PROF_EXP_TIP)}">Years lifting</span></p>${profChips2("exp", PROF_EXP, p3.exp, "Years lifting")}</div>
-  <div><p class="small muted" style="margin:0 0 6px;font-weight:600"><span class="hastip" data-tip="Ready-made routines that fit are marked when you pick one. Every other day fits 3 or 4.">Days a week</span></p>${profChips2("days", PROF_DAYS.map((d3) => [d3, String(d3)]), p3.days, "Days a week")}</div>`;
-    }
     function renderModalBody(keep) {
       const m3 = ui.modal;
       const el = $2("#modal");
@@ -19798,33 +19822,13 @@ ${ms.length ? b`<div class="scroll-x" style="margin-top:10px"><table class="t"><
       } else if (m3.kind === "injury") {
         h3 = injurySheet();
       } else if (m3.kind === "recap") {
-        const u4 = m3.upd;
-        h3 = `<div class="sheet" role="dialog" aria-modal="true"><div class="sheet-h"><h3>${esc(m3.title)}</h3><button class="ib" aria-label="Close" data-act="mClose">✕</button></div>${m3.prs && m3.prs.length ? `<div class="prblk" id="recapPR"><h4>${m3.prs.length === 1 ? "New PR" : `${m3.prs.length} new PRs`}</h4><ul>${m3.prs.map((p3) => `<li><b>${esc(p3.name)}</b>: ${esc(p3.what)}${p3.was ? ` <span class="was">(${esc(p3.was)})</span>` : ""}</li>`).join("")}</ul></div>` : ""}<ul class="recap">${m3.lines.map((l4) => `<li>${esc(l4)}</li>`).join("")}</ul>${m3.note ? `<p class="small muted">${esc(m3.note)}</p>` : ""}${""}
-    ${u4 ? `<div class="hint"><b>Update ${esc(u4.dayName)} in your routine?</b><br>${esc(u4.text)}. Next time this day starts with the change.</div><button class="btn block" data-act="applyUpd">Update ${esc(u4.dayName)}</button>` : ""}
-    <button class="btn primary block" style="margin-top:10px" data-act="mClose">${u4 ? "Not now" : "Done"}</button></div>`;
+        h3 = recapSheet(m3);
       } else if (m3.kind === "imp") {
         h3 = impSheet(m3);
       } else if (m3.kind === "templates") {
-        h3 = `<div class="sheet" role="dialog" aria-modal="true"><div class="sheet-h"><h3>Pick a routine</h3><button class="ib" aria-label="Close" data-act="mClose">✕</button></div>
-    ${/* Your training on a first run (r44, V's answer 3): folded, optional, here rather than on Set up, which stays as short as r21 made it; the days mark the routines below. */
-        ""}
-    ${m3.from === "welcome" ? `<div class="ob-prof" id="obProf"><button class="ob-prof-h" data-act="obProfTog" aria-expanded="${!!ui.obProf}">Your training <span class="muted">(optional)</span></button>${ui.obProf ? `<div class="stack">${profFields2()}</div>` : ""}</div>` : ""}
-    <p class="small muted" style="margin:0 0 8px">${m3.imported ? "Your workouts are in. The names in the file did not say which days they were, so pick the routine you follow, or the closest; your targets and the next workout come from it. Change anything later in Plan." : "A starting point with sets, reps, and rest worked out. Change anything later in Plan."}</p>
-    <div class="tpl-list">${TEMPLATES.filter((t4) => !t4.hidden).map((t4) => {
-          const r4 = routineFromTemplate(t4.key);
-          const tr = r4.days.filter((d3) => !d3.rest);
-          const mins = tr.map((d3) => Math.round(dayMinutes(d3) / 5) * 5);
-          const lo = Math.min(...mins), hi = Math.max(...mins);
-          const min = lo === hi ? estMin(lo) : `${lo} to ${hi} min`;
-          const pd = prof().days;
-          const fits = pd && Math.abs(tr.length * 7 / r4.days.length - pd) <= 0.5;
-          return `<button class="tpl" data-act="tplPick" data-k="${t4.key}"><span class="tpl-t">${esc(t4.name)}${fits ? ' <span class="pill">Fits your days</span>' : ""}</span><span class="tpl-w">${esc(t4.who)}</span><span class="tpl-m">${esc(t4.meta)} · ${min} · ${tr.map((d3) => esc(d3.name)).join(", ")}</span></button>`;
-        }).join("")}</div></div>`;
+        h3 = templatesSheet(m3);
       } else if (m3.kind === "routineNew") {
-        h3 = `<div class="sheet" role="dialog" aria-modal="true"><div class="sheet-h"><h3>New routine</h3><button class="ib" aria-label="Close" data-act="mClose">✕</button></div>
-    <label class="field">Name<input type="text" id="rNewName" placeholder="e.g. Upper focus, 6 days"></label>
-    <p class="small muted">Three empty training days with rest days between. It is not active until you tap Make active.</p>
-    <div class="row" style="margin-top:10px"><button class="btn primary" data-act="rNewSave">Create</button><button class="btn" data-act="mClose">Cancel</button></div></div>`;
+        h3 = routineNewSheet();
       } else if (m3.kind === "exMus") {
         const e5 = EX(m3.exId);
         const v3 = mapView() === "3d";

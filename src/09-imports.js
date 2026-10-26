@@ -14,7 +14,7 @@ import { rtfOf, e1, e1inv, rtfAt, fitE, rtfBand, jumpCap, workLoad, repFloor, is
 import { DIRTY_SAID, agoTxt, estMin, fmtDate, min5, rangeWords, repSpan, sessTm } from './app/format';
 import { ACCENT0, DSEC_ALIAS, FORM_SHEETS, REGION_WKS, VOL_MODES, HIDEABLE, HIDEABLE_KEYS } from './app/layout';
 import { ADD_ICON, MENU_ICON, SHARE_ICON } from './app/icons';
-import { FOCUS_MAX, PROF_DAYS, PROF_EXP, PROF_EXP_TIP, PROF_GOALS, PROF_GOAL_TIP, STR_NEAR, STR_REST, profClean } from './app/profile';
+import { FOCUS_MAX, PROF_DAYS, STR_NEAR, STR_REST, profClean } from './app/profile';
 import { EXTRA_MAX, LIMITS, sessCmp } from './app/records';
 import { PLATE_MODES, dbListOf, gymClean, platesMode, platesPerSide } from './app/gym';
 import { chunksOf, emptyChunk, isChunkId, realCount } from './app/chunks';
@@ -34,6 +34,7 @@ import { AUTH, FB } from './app/providers';
 import { effShow, rirScale } from './app/effort';
 import { sheetDraw, sheetClear } from './app/sheets';
 import { cardioSheet, confirmSheet, dayPickSheet, restWeekSheet, textSheet } from './app/sheetsmisc';
+import { recapSheet, routineNewSheet, templatesSheet } from './app/sheetsplan';
 import { bmenuSheet, calibrationSheet, goalSheet, howToLink, howToUrl, incSheet, injurySheet, maxSheet, noteSheet, quickSheet } from './app/sheetslift';
 import { guideSheet } from './app/guide';
 import { act } from './app/act';

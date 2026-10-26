@@ -86,6 +86,11 @@ const SHEETS = [
   ['the heaviest load of a bodyweight lift', DEMO, OPEN({ kind: 'max', exId: 'pullup' }), /added to bodyweight/],
   ['a note with text', DEMO + START, "L.openModal({kind:'note',bi:0,title:'Note: Bench',text:'Left shoulder <tight> & sore'});", /Note: Bench/],
   ['one lift\'s goal opened over another\'s, typed in', DEMO, OPEN({ kind: 'goal', exId: 'bench' }) + "document.querySelector('#goalW').value='999';" + OPEN({ kind: 'goal', exId: 'backSquat' }), /Goal: (?!Deleted)/],
+  // The plan sheets' states.
+  ['the routine templates on a first run, Your training open', "L.state.settings.profile={goal:'size',days:4};L.saveNow();L.ui.obProf=true;", OPEN({ kind: 'templates', from: 'welcome' }), /Fits your days/],
+  ['the routine templates, three days a week', DEMO + "L.state.settings.profile={days:3};L.saveNow();", OPEN({ kind: 'templates', from: 'plan' }), /Fits your days/],
+  ['the recap with PRs and an update offer', DEMO, "L.openModal({kind:'recap',title:'Session saved',lines:['5 exercises, 18 working sets','Bench <b> & co'],prs:[{name:'Barbell Bench Press',what:'Rep PR, 185 x 9',was:'was 8 reps'},{name:'Back Squat',what:'Heaviest yet',was:''}],note:'',upd:{dayName:'Push',text:'Add Cable Fly'},sid:'x'});", /2 new PRs[\s\S]*Update Push/i],
+  ['the recap with one PR', DEMO, "L.openModal({kind:'recap',title:'Session saved',lines:['1 exercise'],prs:[{name:'Bench',what:'Rep PR',was:'was 8'}],note:'',upd:null,sid:'x'});", /New PR/i],
   ['the exercise menu of the last lift', DEMO + START, "L.ACT.bMenu({dataset:{b:String(L.state.draft.ex.length-1)}});", /Remove from session/]
 ];
 

@@ -21,16 +21,6 @@ function renderModal(){
     if(n&&typeof n.focus==='function')try{n.focus({preventScroll:true});if(ss!=null&&typeof n.setSelectionRange==='function')n.setSelectionRange(ss,se);}catch(e){/* caret restore is best effort */}}
 }
 renderModal.last=null;
-/* Your training's fields on the first page's routine picker (r44): each
-   choice taps on and off; nothing here is needed. Settings draws the same
-   fields from src/app/settings.ts. */
-function profChips(k,opts,cur,label){return `<div class="ob-units" role="group" aria-label="${label}">${opts.map(([v,l])=>`<button class="chip ${cur===v?'on':''}" data-act="profSet" data-k="${k}" data-v="${v}" aria-pressed="${cur===v}">${l}</button>`).join('')}</div>`;}
-function profFields(){
-  const p=prof();
-  return `<div><p class="small muted" style="margin:0 0 6px;font-weight:600"><span class="hastip" data-tip="${esc(PROF_GOAL_TIP)}">Goal</span></p>${profChips('goal',PROF_GOALS,p.goal,'Goal')}</div>
-  <div><p class="small muted" style="margin:0 0 6px;font-weight:600"><span class="hastip" data-tip="${esc(PROF_EXP_TIP)}">Years lifting</span></p>${profChips('exp',PROF_EXP,p.exp,'Years lifting')}</div>
-  <div><p class="small muted" style="margin:0 0 6px;font-weight:600"><span class="hastip" data-tip="Ready-made routines that fit are marked when you pick one. Every other day fits 3 or 4.">Days a week</span></p>${profChips('days',PROF_DAYS.map(d=>[d,String(d)]),p.days,'Days a week')}</div>`;
-}
 function renderModalBody(keep){
   const m=ui.modal;const el=$('#modal');if(!m){el.hidden=true;return;}
   let h='';
@@ -80,29 +70,10 @@ function renderModalBody(keep){
   }else if(m.kind==='bmenu'){
     h=bmenuSheet(m);if(!h){ui.modal=null;el.hidden=true;return;}
   }else if(m.kind==='injury'){h=injurySheet();
-  }else if(m.kind==='recap'){
-    const u=m.upd;
-    h=`<div class="sheet" role="dialog" aria-modal="true"><div class="sheet-h"><h3>${esc(m.title)}</h3><button class="ib" aria-label="Close" data-act="mClose">✕</button></div>${m.prs&&m.prs.length?`<div class="prblk" id="recapPR"><h4>${m.prs.length===1?'New PR':`${m.prs.length} new PRs`}</h4><ul>${m.prs.map(p=>`<li><b>${esc(p.name)}</b>: ${esc(p.what)}${p.was?` <span class="was">(${esc(p.was)})</span>`:''}</li>`).join('')}</ul></div>`:''}<ul class="recap">${m.lines.map(l=>`<li>${esc(l)}</li>`).join('')}</ul>${m.note?`<p class="small muted">${esc(m.note)}</p>`:''}${''}
-    ${u?`<div class="hint"><b>Update ${esc(u.dayName)} in your routine?</b><br>${esc(u.text)}. Next time this day starts with the change.</div><button class="btn block" data-act="applyUpd">Update ${esc(u.dayName)}</button>`:''}
-    <button class="btn primary block" style="margin-top:10px" data-act="mClose">${u?'Not now':'Done'}</button></div>`;
+  }else if(m.kind==='recap'){h=recapSheet(m);
   }else if(m.kind==='imp'){h=impSheet(m);
-  }else if(m.kind==='templates'){
-    h=`<div class="sheet" role="dialog" aria-modal="true"><div class="sheet-h"><h3>Pick a routine</h3><button class="ib" aria-label="Close" data-act="mClose">✕</button></div>
-    ${/* Your training on a first run (r44, V's answer 3): folded, optional, here rather than on Set up, which stays as short as r21 made it; the days mark the routines below. */''}
-    ${m.from==='welcome'?`<div class="ob-prof" id="obProf"><button class="ob-prof-h" data-act="obProfTog" aria-expanded="${!!ui.obProf}">Your training <span class="muted">(optional)</span></button>${ui.obProf?`<div class="stack">${profFields()}</div>`:''}</div>`:''}
-    <p class="small muted" style="margin:0 0 8px">${m.imported?'Your workouts are in. The names in the file did not say which days they were, so pick the routine you follow, or the closest; your targets and the next workout come from it. Change anything later in Plan.':'A starting point with sets, reps, and rest worked out. Change anything later in Plan.'}</p>
-    <div class="tpl-list">${TEMPLATES.filter(t=>!t.hidden).map(t=>{
-      // Minutes come from the same time model as Plan, so the list and the plan agree.
-      // A range (r28): an average read as a promise, and Today then showed a longer first day.
-      const r=routineFromTemplate(t.key);const tr=r.days.filter(d=>!d.rest);const mins=tr.map(d=>Math.round(dayMinutes(d)/5)*5);const lo=Math.min(...mins),hi=Math.max(...mins);const min=lo===hi?estMin(lo):`${lo} to ${hi} min`;
-      // The days a week in Your training (r44) mark the routines that fit; every other day counts as about 3.5.
-      const pd=prof().days;const fits=pd&&Math.abs(tr.length*7/r.days.length-pd)<=0.5;
-      return `<button class="tpl" data-act="tplPick" data-k="${t.key}"><span class="tpl-t">${esc(t.name)}${fits?' <span class="pill">Fits your days</span>':''}</span><span class="tpl-w">${esc(t.who)}</span><span class="tpl-m">${esc(t.meta)} · ${min} · ${tr.map(d=>esc(d.name)).join(', ')}</span></button>`;}).join('')}</div></div>`;
-  }else if(m.kind==='routineNew'){
-    h=`<div class="sheet" role="dialog" aria-modal="true"><div class="sheet-h"><h3>New routine</h3><button class="ib" aria-label="Close" data-act="mClose">✕</button></div>
-    <label class="field">Name<input type="text" id="rNewName" placeholder="e.g. Upper focus, 6 days"></label>
-    <p class="small muted">Three empty training days with rest days between. It is not active until you tap Make active.</p>
-    <div class="row" style="margin-top:10px"><button class="btn primary" data-act="rNewSave">Create</button><button class="btn" data-act="mClose">Cancel</button></div></div>`;
+  }else if(m.kind==='templates'){h=templatesSheet(m);
+  }else if(m.kind==='routineNew'){h=routineNewSheet();
   }else if(m.kind==='exMus'){
     const e=EX(m.exId);const v3=mapView()==='3d';const pm=exMusParts(e);B3.ex={main:pm.main,help:pm.help};if(B3.yawKeep==null)B3.yawKeep=B3.yaw;
     h=`<div class="sheet exmus" role="dialog" aria-modal="true" aria-labelledby="exMusH"><div class="sheet-h"><h3 id="exMusH">Muscles: ${esc(e.name)}</h3><button class="ib" aria-label="Close" data-act="mClose">✕</button></div>
