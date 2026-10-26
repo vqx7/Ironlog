@@ -151,7 +151,8 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
   else {
   // Each tab read by the harness's screenOf (tests/h.js), the same reading for both builds.
   const { screenOf, screenDiff } = require('./h');
-  const shot = (file, seed, tab, env) => screenOf(file, { browser, seed, tab, env });
+  // The spaces drawn between elements are read too (screenOf's spaces, since r59), so a space lost or added there shows.
+  const shot = (file, seed, tab, env) => screenOf(file, { browser, seed, tab, env, spaces: true });
   const SEEDS = [
     ['a new install', "L.state.settings.onboarded=true;L.saveNow();"],
     ['demo data, lb', "L.state.settings.onboarded=true;L.makeDemo();L.saveNow();"],

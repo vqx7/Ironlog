@@ -14,14 +14,14 @@
 import { html, nothing, render, noChange } from 'lit-html';
 import type { TemplateResult, AttributePart } from 'lit-html';
 import { Directive, directive, PartType } from 'lit-html/directive.js';
-import type { PartInfo } from 'lit-html/directive.js';
+import type { DirectiveResult, PartInfo } from 'lit-html/directive.js';
 import { setCommittedValue } from 'lit-html/directive-helpers.js';
 import { keyed } from 'lit-html/directives/keyed.js';
 import { live } from 'lit-html/directives/live.js';
 import { unsafeHTML } from 'lit-html/directives/unsafe-html.js';
 import { moreList, orderKeys } from './layout';
 import { estMin, min5 } from './format';
-import { numIn } from './util';
+import { numIn, today } from './util';
 import { state, ui } from './store';
 
 declare global {
@@ -34,17 +34,29 @@ declare global {
 }
 
 /** What a screen's template may hold where a part goes: a template, text, several of them, or nothing. */
-export type Part = TemplateResult | string | number | typeof nothing | readonly Part[];
+export type Part = TemplateResult | DirectiveResult | string | number | typeof nothing | readonly Part[];
 
 /* ---------- the host ---------- */
 
 let legacyDraws = 0;
+/* The day the screen was last drawn for (r59). A phone keeps the app open
+   overnight, and nothing draws it again when it comes back to the screen
+   without an account, so the next morning Today was yesterday's: its date
+   line, the week bar, and Body's date, which a weigh-in typed at once was
+   saved on, over the evening's (the second review of r59; r58 too). */
+let drawnFor = '';
+/** Whether the screen was last drawn on an earlier day than today, as when the app is brought back the next morning. */
+export function drawnBeforeToday(): boolean {
+  return drawnFor !== '' && drawnFor !== today();
+}
 /** Draws a legacy screen's markup into the page's view: fresh nodes each time, as innerHTML made them (its markup was escaped by hand, `esc`, as before r57). */
 export function drawLegacy(view: HTMLElement, markup: string): void {
+  drawnFor = today();
   render(keyed(++legacyDraws, unsafeHTML(markup)), view);
 }
 /** Draws a moved screen into the page's view, updating what is there in place. */
 export function drawScreen(view: HTMLElement, screen: TemplateResult): void {
+  drawnFor = today();
   render(screen, view);
 }
 /* The suites read some parts as the markup the legacy script made of them
@@ -55,6 +67,15 @@ export function markupOf(part: Part): string {
   const box = document.createElement('div');
   render(part, box);
   return box.innerHTML.replace(/<!--[^]*?-->/g, '');
+}
+
+/* The app's own fixed markup (icons.ts: the logo, the icons drawn in its
+   sheets), written once in the source as markup, so it is drawn as such.
+   Never anything from the log or typed by a lifter: those are text, which
+   lit-html escapes. */
+/** A piece of the app's own fixed markup, drawn. */
+export function markup(fixed: string): Part {
+  return unsafeHTML(fixed);
 }
 
 /* ---------- a field's value ---------- */
@@ -158,8 +179,8 @@ export function howLink(key: string): TemplateResult {
 `;
 }
 
-/** An explanation, hidden until its "How this works" is tapped. */
-export function howText(key: string, text: string): TemplateResult {
+/** An explanation, hidden until its "How this works" is tapped: words, or a part with the words it marks bold. */
+export function howText(key: string, text: Part): TemplateResult {
   return html`<p class="ht" id=${`help-${key}`} ?hidden=${live(!ui.help.has(key))}>${text}</p>
 `;
 }
@@ -269,9 +290,9 @@ export const MORE_OFFER: Readonly<Record<string, () => boolean>> = {
   'history:trash': () => state.trash.length > 0
 };
 
-/** The foot of a tab: the hidden sections it can show, one tap each, and the way to Layout (r28). */
-export function tabFoot(tab: string): TemplateResult | typeof nothing {
-  const list = moreList(tab, state.settings.hidden, MORE_OFFER);
+/** The foot of a tab: the hidden sections it can show, one tap each (with what the tab says of its own, `offer`), and the way to Layout (r28). */
+export function tabFoot(tab: string, offer?: Readonly<Record<string, () => boolean>>): TemplateResult | typeof nothing {
+  const list = moreList(tab, state.settings.hidden, offer ? { ...MORE_OFFER, ...offer } : MORE_OFFER);
   if (!list.length) return nothing;
   return html`<div class="moreline" id="moreLine">
 <p class="small muted ml-h">Add to this tab</p>

@@ -146,18 +146,27 @@ function sourceTexts() { return sourceFiles().map(f => fs.readFileSync(path.join
    which is a property, as p- attributes; a label's id by the text it names;
    a chart's canvas without the size Chart.js gives it), and the text in it,
    lit-html's markers merged away; and the visible text. The build's own
-   version line is left out, as it differs by design. */
-async function screenOf(file, { browser, seed, tab, env, prep, clock }) {
+   version line is left out, as it differs by design. Each run of text has
+   its spaces collapsed to one and is trimmed, so a space at either end of
+   it, as between a date and a tag after it, is not read; `spaces` (r59)
+   keeps that one space at an end beside an element laid out inline, and a
+   run of spaces alone between two of them, which is where a browser draws
+   a space, so a space lost or added between a date and a tag reads as a
+   difference (text set to keep its spaces, as pre does, is read the same
+   way). */
+async function screenOf(file, { browser, seed, tab, env, prep, clock, root, init, spaces }) {
   const Q = await open(file, { browser, clock: clock || '2026-10-24T10:00:00' });
-  if (env) { await Q.page.context().addInitScript(`window.IRONLOG_ENV=${JSON.stringify(env)};`); await Q.page.reload(); await Q.page.waitForTimeout(300); }
-  const out = await Q.page.evaluate(async ([seed, tab, prep]) => {
+  // A preview build (env), or a script run before the page's own (init, r59: an account service), takes a reload.
+  if (env || init) { await Q.page.context().addInitScript(`${env ? `window.IRONLOG_ENV=${JSON.stringify(env)};` : ''}${init || ''}`); await Q.page.reload(); await Q.page.waitForTimeout(300); }
+  const out = await Q.page.evaluate(async ([seed, tab, prep, rootId, spaces]) => {
     const L = window.__ironlog; const wait = ms => new Promise(r => setTimeout(r, ms));
     (new Function('L', seed))(L);
     L.ui.tab = tab; L.render(); await wait(120);
     if (prep) { await (new Function('L', 'return (async()=>{' + prep + '})()'))(L); await wait(150); }
     document.querySelectorAll('#view details').forEach(d => { d.open = true; });
     await wait(150);
-    const view = document.getElementById('view');
+    // The part of the page read: the tab (#view) unless another is named (r59: the week bar, a sheet).
+    const view = document.getElementById(rootId || 'view');
     for (const el of view.querySelectorAll('input,select,textarea,option,details')) {
       if ('value' in el && el.tagName !== 'DETAILS' && el.tagName !== 'OPTION' && el.type !== 'file') el.setAttribute('p-value', el.value);
       if (el.type === 'checkbox') el.setAttribute('p-checked', String(el.checked));
@@ -168,10 +177,16 @@ async function screenOf(file, { browser, seed, tab, env, prep, clock }) {
     const byId = id => { const e = document.getElementById(id); return e ? e.textContent.trim() : '?'; };
     const ids = new Map(); const idOf = v => { if (!ids.has(v)) ids.set(v, '#' + ids.size); return ids.get(v); };
     const RID = new Set(['data-id', 'data-uid', 'data-did', 'data-sid', 'data-moveto']);
-    const kidsOf = n => { const out = []; let txt = '';
-      const flush = () => { const t = txt.replace(/\s+/g, ' ').trim(); if (t) out.push(JSON.stringify(t)); txt = ''; };
-      for (const c of n.childNodes) { if (c.nodeType === 3) txt += c.textContent; else if (c.nodeType === 1) { flush(); out.push(walk(c)); } }
-      flush(); return out; };
+    // An element beside which a space shows: one laid out inline (a space beside a block, or at a block's edge, is not drawn; at an inline element's edge it is).
+    const inl = e => !!e && getComputedStyle(e).display.startsWith('inline');
+    const kidsOf = n => { const out = []; let txt = '', prev = null;
+      const flush = next => {
+        let t = txt.replace(/\s+/g, ' ');
+        if (!spaces) t = t.trim();
+        else { const lead = t.startsWith(' ') && (prev ? inl(prev) : inl(n)), trail = t.endsWith(' ') && (next ? inl(next) : inl(n)); t = t.trim(); t = t ? (lead ? ' ' : '') + t + (trail ? ' ' : '') : lead && trail ? ' ' : ''; }
+        if (t) out.push(JSON.stringify(t)); txt = ''; };
+      for (const c of n.childNodes) { if (c.nodeType === 3) txt += c.textContent; else if (c.nodeType === 1) { flush(c); out.push(walk(c)); prev = c; } }
+      flush(null); return out; };
     const walk = n => {
       const canvas = n.tagName === 'CANVAS';
       const at = [...n.attributes].filter(a => !['value', 'checked', 'selected', 'open', 'disabled'].includes(a.name) && !(a.name === 'class' && !a.value.trim()) && !(a.name === 'id' && /^lt/.test(a.value)) && !(canvas && ['width', 'height', 'style'].includes(a.name)))
@@ -180,7 +195,7 @@ async function screenOf(file, { browser, seed, tab, env, prep, clock }) {
     };
     const ver = t => t.replace(/\d+\.\d+ \(build \d{4}\.\d{2}\.\d{2}-r[\d.]+\)/gi, 'VERSION');
     return { tree: kidsOf(view).map(ver), text: ver(view.innerText.replace(/[ \t]+/g, ' ').replace(/\s*\n\s*/g, '\n').trim()) };
-  }, [seed, tab, prep || '']);
+  }, [seed, tab, prep || '', root || '', !!spaces]);
   out.errors = Q.errors.slice();
   await Q.page.context().close();
   return out;

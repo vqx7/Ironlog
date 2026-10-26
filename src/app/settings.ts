@@ -892,7 +892,7 @@ ${
         .reverse()
         .map(
           x =>
-            html`<li><span class="small"><b>${x.a}</b> ${x.m}</span><span class="small muted">${x.t.slice(5, 16).replace('T', ' ')}</span></li>
+            html`<li><span class="small"><b>${x.a}</b> ${x.m}${x.n ? ` (${x.n} times)` : ''}</span><span class="small muted">${x.t.slice(5, 16).replace('T', ' ')}</span></li>
 `
         )}</ul>
 `

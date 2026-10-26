@@ -166,6 +166,7 @@ body::before{content:"";position:fixed;left:0;right:0;top:0;height:env(safe-area
 .cal-g .cd.fut{cursor:default;color:var(--muted)}.cal-g .cd.fut .n{background:transparent}
 .cal-g .cd .x{font:700 9px/1 var(--font);color:var(--muted);height:9px}
 .cal-g .cd:active:not(.fut) .n{transform:scale(.92)}
+.cal-g .cd.plan{cursor:pointer}.cal-g .cd.plan .n{box-shadow:inset 0 0 0 1.5px var(--muted)}.cal-g .cd.plan:active .n{transform:scale(.92)}
 /* This week, Week or Month (r26): the month sits inline on Today. */
 .wkview{display:grid;grid-template-columns:1fr 1fr;gap:4px;padding:4px;border-radius:14px;background:var(--field);margin:0 0 10px}
 .wkview button{min-height:44px;border:0;border-radius:10px;background:none;color:var(--muted);font:650 14px var(--font);cursor:pointer}

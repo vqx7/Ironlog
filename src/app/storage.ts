@@ -39,6 +39,18 @@ export const LOGK = KEY + '.log';
 export const WKVIEW_KEY = KEY + '.wkView';
 /** How many weeks Stats' By region averages (r31), per device. */
 export const REGION_KEY = KEY + '.regionWk';
+/** The muscle map's view, flat or 3D (r27), per device. */
+export const MAPVIEW_KEY = KEY + '.mapView';
+/** Today's lines dismissed on this device: Set up sync (acctBar), Get the app (installBar), the new icon (r25). */
+export const ACCT_LATER = KEY + '.acctLater',
+  INSTALL_LATER = KEY + '.installLater',
+  ICON_NOTE = KEY + '.icon25';
+/** The first pages on this device: the account page passed (Continue without an account), and held open after a sign-out (r33). */
+export const OB_ACCT = KEY + '.obAcct',
+  OB_OUT = KEY + '.signedOut';
+/** A weigh-in asked about on this device: snoozed until a date (Later), and the session's first ask answered (Not now). */
+export const BWSNOOZE_KEY = KEY + '.bwSnooze',
+  BWASK_KEY = KEY + '.bwAsk';
 /** The settings kept aside while the demo is loaded (demoKeep). */
 export const DEMOSET_KEY = KEY + '.demoSettings';
 /** The start of the keys a preview of r56.1 kept a log aside under, before it moved to IndexedDB (asideStart). */
@@ -79,7 +91,14 @@ const logEntryIn = (v: unknown): LogEntry | null => {
   const E = rec(v);
   if (!E || typeof E.t !== 'string' || typeof E.a !== 'string' || typeof E.m !== 'string' || typeof E.v !== 'string')
     return null;
-  return { t: E.t, a: E.a, m: E.m, v: E.v, ...(typeof E.s === 'string' ? { s: E.s } : {}) };
+  return {
+    t: E.t,
+    a: E.a,
+    m: E.m,
+    v: E.v,
+    ...(typeof E.s === 'string' ? { s: E.s } : {}),
+    ...(typeof E.n === 'number' && Number.isInteger(E.n) && E.n > 1 ? { n: E.n } : {})
+  };
 };
 /* A URL's query and fragment, cut from what the log keeps (r47). The log
    goes out with a problem report, and the page's own URL holds a reset
@@ -97,13 +116,16 @@ export function log(area: string, err: unknown): void {
     const m = E && E.message ? E.message : E ? JSON.stringify(err) : String(err);
     // Where it broke, not only what it said (r47): the first lines of the stack travel with a problem report, so a crash can be found in the code without the phone.
     const st = E && typeof E.stack === 'string' ? logCut(E.stack.split('\n').slice(0, 4).join('\n')).slice(0, 400) : '';
-    logBuf.push({
-      t: new Date().toISOString(),
-      a: area,
-      m: logCut(m).slice(0, 300),
-      v: APP_VERSION,
-      ...(st ? { s: st } : {})
-    });
+    const t = new Date().toISOString(),
+      msg = logCut(m).slice(0, 300);
+    /* The same error again (its area, message, build and place in the code), straight after itself, is counted on its line (n) with the time it last came, so one that
+       repeats (a sign-in tried each time the app comes back to the screen, offline) cannot push an earlier one out of
+       the 60 kept or the 10 a problem report carries (the second review of r59). */
+    const last = logBuf[logBuf.length - 1];
+    if (last && last.a === area && last.m === msg && last.v === APP_VERSION && (last.s || '') === st) {
+      last.t = t;
+      last.n = (last.n || 1) + 1;
+    } else logBuf.push({ t, a: area, m: msg, v: APP_VERSION, ...(st ? { s: st } : {}) });
     while (logBuf.length > 60) logBuf.shift();
     localStorage.setItem(LOGK, JSON.stringify(logBuf));
   } catch (e) {
@@ -179,7 +201,8 @@ export async function undoRestore(): Promise<void> {
       q.onsuccess = () => res(q.result || []);
       q.onerror = () => res([]);
     } catch (e) {
-      // The store cannot be read (a database another build made): no steps to restore.
+      // The store cannot be read (a database another build made): no steps to restore, and the reason is kept.
+      log('undo-read', e);
       res([]);
     }
   });
@@ -219,7 +242,8 @@ export function snapshot(inv?: (() => boolean) | null): void {
       t: Date.now()
     });
   } catch (e) {
-    // A log JSON cannot write is not kept as a step: the action goes ahead without Undo, as before the move.
+    // A log JSON cannot write is not kept as a step: the action goes ahead without Undo, as before the move, and the reason is kept.
+    log('undo-step', e);
     return;
   }
   while (undoStack.length > UNDO_MAX) undoStack.shift();
@@ -242,9 +266,9 @@ export function capturePost(): void {
 
 /* ---------- reading the save ---------- */
 
-/** Whether localStorage can be written at all. */
-/* A screen's small choice kept on this phone only (By region's weeks): read
-   and written here, as every stored value is. */
+/* A screen's small choice kept on this phone only (By region's weeks, the
+   map's view, a line dismissed on Today): read and written here, as every
+   stored value is. */
 /** A choice kept on this phone, as saved, or null. */
 export function prefGet(key: string): string | null {
   try {
@@ -264,6 +288,15 @@ export function prefSet(key: string, v: string): boolean {
     return false;
   }
 }
+/** Forgets a choice kept on this phone. */
+export function prefDel(key: string): void {
+  try {
+    localStorage.removeItem(key);
+  } catch (e) {
+    // Blocked storage keeps nothing to forget.
+  }
+}
+/** Whether localStorage can be written at all. */
 export function storageTest(): boolean {
   try {
     localStorage.setItem('__il', '1');

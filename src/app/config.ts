@@ -42,7 +42,7 @@ export const WORDMARK = { mark: 'I', strong: 'ron', light: 'log' } as const;
 
 /** The version people see (V, 2026-10-16): 2.0 from r49, the minor number up
     by one for each release merged, the major number for a large change. */
-export const DISPLAY_VERSION = '2.12';
+export const DISPLAY_VERSION = '2.13';
 
 /** The build: shown beside the version in Diagnostics, problem reports and
     backups, so a report is matched to the exact code; also names the service
@@ -50,7 +50,7 @@ export const DISPLAY_VERSION = '2.12';
     Problem reports and Copy diagnostics carry it as `build` and the version
     people see as `version`; a backup keeps it under `version`, as every
     build before r49 wrote backups, so old and new backups read the same. */
-export const APP_VERSION = '2026.10.24-r58';
+export const APP_VERSION = '2026.10.25-r59';
 
 /** Version and build together, for Diagnostics and the recovery screen. */
 export const VERSION_LINE = `${DISPLAY_VERSION} (build ${APP_VERSION})`;
@@ -112,12 +112,15 @@ export const FONTS_CSS = `${FONTS_ORIGIN}/css2?family=${FONT_DISPLAY.replace(/ /
 export const HIBP_ORIGIN = 'https://api.pwnedpasswords.com';
 
 /** three.js for the 3D body (r20). The installed app ships its own copy and
-    tries it first; the public CDNs stay as fallbacks. This was a text edit in
-    scripts/build.js until r49, which broke once the script was bundled. */
+    loads only that: its Content Security Policy allows script from this site
+    alone (scripts/build.js), so the public CDNs, tried after it until r59,
+    could never load there and only added failures to the error log. The
+    source page loads from the CDNs. This was a text edit in scripts/build.js
+    until r49, which broke once the script was bundled. */
 const THREE_CDN = [
   `${JSDELIVR}/three@${THREE_VERSION}/build/three.module.min.js`,
   `${UNPKG}/three@${THREE_VERSION}/build/three.module.min.js`
 ];
-/** The addresses map3dLoad tries in turn, the installed app's own copy first. */
+/** The addresses map3dLoad tries in turn: the installed app's own copy, or the CDNs. */
 export const THREE_URLS: readonly string[] =
-  typeof window !== 'undefined' && window.IRONLOG_APP ? ['./vendor/three.module.min.js', ...THREE_CDN] : THREE_CDN;
+  typeof window !== 'undefined' && window.IRONLOG_APP ? ['./vendor/three.module.min.js'] : THREE_CDN;

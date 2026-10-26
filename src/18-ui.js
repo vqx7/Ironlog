@@ -132,7 +132,7 @@ function closeModal(){
   // The 3D body goes back to Today's map, coloured by the week again.
   // Turned in the sheet, the body goes back to Today facing the way it was, a turn still running stopped first (r54: it went on, on Today's body).
   if(was&&was.kind==='exMus'){cancelAnimationFrame(B3.anim);B3.ex=null;if(B3.yawKeep!=null){B3.yaw=B3.yawKeep;B3.yawKeep=null;}if(document.getElementById('bm3d'))mount3D();}
-  const r=modalReturn;modalReturn=null;
+  if(drawnBeforeToday())rerenderKeepScroll();const r=modalReturn;modalReturn=null; // A sheet open since yesterday leaves today's screen when it closes (drawnBeforeToday, r59).
   if(r&&document.contains(r)&&typeof r.focus==='function')try{r.focus({preventScroll:true});}catch(e){/* focus is best effort */}
 }
 /* alt is an optional second action, {label, fn}. Some choices are genuinely
@@ -242,7 +242,7 @@ async function wakeOn(){
   catch(e){wakeSentinel=null;if(!wakeOn.warned){wakeOn.warned=true;toast('This browser would not keep the screen on');}}
 }
 function wakeOff(){try{if(wakeSentinel)wakeSentinel.release();}catch(e){/* already released */}wakeSentinel=null;}
-document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')wakeOn();});
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState!=='visible')return;wakeOn();if(!ui.modal&&drawnBeforeToday())rerenderKeepScroll();});setInterval(()=>{if(document.visibilityState==='visible'&&!ui.modal&&drawnBeforeToday())rerenderKeepScroll();},30000); // Back on a new day, or on the screen as one begins, the screen is drawn again for it (drawnBeforeToday, r59).
 function stopTimer(){clearInterval(timer.iv);timer.iv=null;timer.fired=false;$('#timer').hidden=true;document.body.classList.remove('timer-on');timerSave();}
 /* The bar is built once per start (or when its style setting changes) and
    each tick only rewrites the time. Rebuilding its buttons four times a
@@ -280,7 +280,7 @@ document.addEventListener('visibilitychange',()=>{if(document.visibilityState===
 /* ---------- render ---------- */
 let sortables=[];
 function killDynamic(){
-  if(typeof obTourStop==='function')obTourStop();
+  obTourStop();
   // A re-render in the middle of a drag (a cloud refresh) would leave Sortable's
   // floating copy of the block on the page; it goes with the old list.
   blockDrag=false;if(document.body.classList.contains('blkdrag')){document.body.classList.remove('blkdrag');const v=document.getElementById('view');if(v)v.style.paddingBottom='';}if(typeof edgeScroll!=='undefined')edgeScroll.stop();document.querySelectorAll('.sortable-fallback,.sortable-ghost').forEach(e=>{if(!e.closest('#view'))e.remove();});
@@ -297,9 +297,9 @@ function applyTheme(){const t=state.settings.theme;if(t==='system')delete docume
 let rebuilding=false;
 // True while lit-html is putting a tab into #view, and how many draws have begun (r57).
 let drawing=false,drawN=0;
-// The tabs drawn by their modules (phase 5): each a template of the log and ui; Today is still the legacy script's markup (r59 moves it).
-const LIT_TABS={history:viewHistory,settings:viewSettings,program:()=>ui.planView==='library'?viewLibrary():viewProgram(),dash:viewDash};
-function litTab(){return LIT_TABS[ui.tab]||null;}
+// The tabs drawn by their modules (phase 5): each a template of the log and ui. Today with a session in progress is the session screen, still the legacy script's markup (r60 moves it).
+const LIT_TABS={today:viewToday,history:viewHistory,settings:viewSettings,program:()=>ui.planView==='library'?viewLibrary():viewProgram(),dash:viewDash};
+function litTab(){return ui.tab==='today'&&state.draft?null:LIT_TABS[ui.tab]||null;}
 function render(){if(!state.draft){if(!$('#timer').hidden)stopTimer();wakeOff();} // no session, no rest timer or screen kept on: a session erased, restored over or finished on another phone left both running (r55, the audit)
   try{renderInner();}
   catch(e){log('render',e);renderCrash(e);}
@@ -318,7 +318,7 @@ function renderInner(){
   killDynamic();applyTheme();setSaveState();
   document.querySelectorAll('#tabs button').forEach(b=>{if(b.dataset.tab===ui.tab)b.setAttribute('aria-current','page');else b.removeAttribute('aria-current');});
   {const tb=document.querySelector('#tabs button[data-tab="today"]');if(tb){const live=!!state.draft;tb.classList.toggle('live',live);const sp=tb.querySelector('span');if(sp)sp.textContent=live?'Session':'Today';tb.setAttribute('aria-label',live?(state.draft.editingId?'Session being edited':'Session in progress'):'Today');}}
-  renderWeekBar();
+  drawWeekBar();
   if(ui.tab==='library')ui.tab='program';
   // The setup pages stand alone: no tabs or week bar until a way to start is picked.
   if(obActive()&&ui.tab!=='today')ui.tab='today';
@@ -338,7 +338,7 @@ function renderInner(){
   try{
     // A change that drew the page itself (from the blur) has drawn it with the log as it now is: nothing more to draw.
     if(!moved){const n0=drawN,ae=document.activeElement,vw=$('#view');if(ae&&ae!==document.body&&vw&&vw.contains(ae)&&typeof ae.blur==='function')ae.blur();if(drawN!==n0)return;}
-    drawing=true;drawN++;try{if(moved)drawScreen($('#view'),moved());else drawLegacy($('#view'),viewToday());}finally{drawing=false;}
+    drawing=true;drawN++;try{if(moved)drawScreen($('#view'),moved());else drawLegacy($('#view'),viewLogger());}finally{drawing=false;}
   }finally{rebuilding=was;}
   if(!moved){applySecOrder();applyHidden();openMain();}
   if(!(ui.tab==='today'&&state.draft)&&!(ui.tab==='program'&&ui.planView==='library'))mountSecSortable();

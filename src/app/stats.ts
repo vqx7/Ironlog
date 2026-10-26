@@ -83,6 +83,7 @@ import {
   heightTxt,
   lenD,
   loadHead,
+  measAt,
   noLog,
   nz,
   prSet,
@@ -97,8 +98,7 @@ import {
 import { volumeRows } from './plan';
 import { pageTitle, helpButton, howText, section, slotted, subsection, tabFoot, tipButton } from './view';
 import type { Part } from './view';
-import type { Measurement, Routine } from './types';
-import { rec } from './records';
+import type { Routine } from './types';
 import { rangeKey, weekWindow } from './graphs';
 
 /* ---------- the parts more than one section, or another screen, reads ---------- */
@@ -722,10 +722,7 @@ function measTable(): TemplateResult {
     last = ms[ms.length - 1];
   if (!first || !last) return html`<p class="small muted">No tape measurements yet.</p>`;
   // A site read by its key; one not measured is blank.
-  const at = (m: Measurement, k: string): number | undefined => {
-    const v = rec(m)?.[k];
-    return typeof v === 'number' ? v : undefined;
-  };
+  const at = measAt;
   return html`${whtrLine()}<div class="scroll-x"><table class="t" style="margin-top:8px"><tr><th>Site (${LU()})</th><th class="r">${fmtDate(first.date)}</th><th class="r">${fmtDate(last.date)}</th><th class="r">Change</th></tr>${MEAS.map(
     ([k, l]) => {
       const a = at(first, k),

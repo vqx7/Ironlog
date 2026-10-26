@@ -324,15 +324,23 @@ export const cq = (fn: () => unknown): Promise<unknown> =>
     // A step that failed does not stop the queue: the next step runs anyway, and each reports its own errors (cloudFail).
     return fn();
   }));
-/** A promise, or a timeout error after ms. */
-export function withTimeout<T>(pr: Promise<T>, ms: number): Promise<T> {
+/** A promise, or a timeout error after ms; a failure that comes after the timeout is logged under `area`, so a slow one keeps its own reason. */
+export function withTimeout<T>(pr: Promise<T>, ms: number, area = 'sync-late'): Promise<T> {
+  let t: ReturnType<typeof setTimeout> | undefined;
   return Promise.race([
-    pr,
-    new Promise<never>((_, rej) =>
-      setTimeout(() => {
-        rej({ code: 'timeout' });
-      }, ms)
-    )
+    pr.finally(() => {
+      clearTimeout(t);
+    }),
+    new Promise<never>((_, rej) => {
+      t = setTimeout(() => {
+        /* The sync goes on as for a dropped connection (cloudFail retries), but the request may still fail with
+           a reason of its own (refused, the copy full), which a timeout alone would hide. */
+        pr.catch((e: unknown) => {
+          log(area, e);
+        });
+        rej({ code: 'timeout', message: `Timed out: no answer in ${ms / 1000} s` });
+      }, ms);
+    })
   ]);
 }
 /** Sets the sync's status and error, and redraws the save state's button and the sync line. */
@@ -725,7 +733,7 @@ function lostNote(kept: Kept): void {
 async function sessionFromCloud(d: DraftLike, legB: Base | null): Promise<void> {
   if (d.editingId || state.sessions.some(q => q.id === d.id)) return;
   const id = chunkOf(d.date);
-  const sn = await withTimeout(ref(id).get(), 20000);
+  const sn = await withTimeout(ref(id).get(), 20000, 'sync-read');
   const sb = sn && sn.exists ? rec(sn.data()) : null;
   if (!sb || typeof sb.json !== 'string') return;
   const data = parseJson(sb.json);
@@ -762,7 +770,7 @@ async function takeLease(): Promise<boolean> {
     const r = ref('lock');
     if (typeof r.acquire !== 'function') return true;
     // The device id is set before any sync starts (syncStart), the !.
-    const res = await withTimeout(r.acquire({ holder: cloud.devId!, ttlMs: 30000 }), 10000);
+    const res = await withTimeout(r.acquire({ holder: cloud.devId!, ttlMs: 30000 }), 10000, 'sync-lease');
     const R = rec(res);
     return !(R && R.acquired === false);
   } catch (e) {
@@ -860,7 +868,7 @@ export async function cloudFlush(): Promise<void> {
       /* Read before write. If another device changed this document since we
          last agreed on it, merge record by record instead of overwriting. */
       const m = cloud.meta[x.id];
-      const snap = await withTimeout(ref(x.id).get(), 20000);
+      const snap = await withTimeout(ref(x.id).get(), 20000, 'sync-read');
       /* Sets logged while that read was in flight are in state, not in the
          copy taken before it. Work from the current document, or the merge
          below would write the older copy back and lose them. */
@@ -914,7 +922,7 @@ export async function cloudFlush(): Promise<void> {
         continue;
       }
       const at = Date.now();
-      await withTimeout(ref(x.id).set({ v: 1, at, et: cloud.editAt[x.id] || at, json }), 20000);
+      await withTimeout(ref(x.id).set({ v: 1, at, et: cloud.editAt[x.id] || at, json }), 20000, 'sync-write');
       cloud.meta[x.id] = { h: hashStr(json), at, b: baseOf(x.id, parseJson(json)) };
       saveMeta();
     }
@@ -969,7 +977,7 @@ export async function cloudPull(): Promise<void> {
   setCloud('connecting');
   let snap: Awaited<ReturnType<ReturnType<CloudDb['collection']>['get']>>;
   try {
-    snap = await withTimeout(cloud.db.collection(`data/users/${cloud.uid}`).get(), 20000);
+    snap = await withTimeout(cloud.db.collection(`data/users/${cloud.uid}`).get(), 20000, 'sync-pull');
   } catch (e) {
     log('sync-pull', e);
     cloudFail(e);
@@ -1427,7 +1435,8 @@ export async function cloudInit(): Promise<void> {
     if (ui.tab === 'settings') fx.render();
     await cq(cloudPull);
   } catch (e) {
-    // The backend could not be reached or refused the sign-in: the app stays on this device alone, and the account panel offers a retry.
+    // The backend could not be reached or refused the sign-in: the app stays on this device alone, and the account panel offers a retry. Its reason is kept.
+    log('auth', e);
     cloud.on = false;
     setCloud('local');
   } finally {
@@ -1510,7 +1519,8 @@ function onStorage(ev: StorageEvent): void {
   try {
     base = device.lastSaved ? normalize(parseJson(device.lastSaved)) : null;
   } catch (e) {
-    // This tab's own last save cannot be read back: the other tab's copy is taken whole, as with no base.
+    // This tab's own last save cannot be read back: the other tab's copy is taken whole, as with no base. Its reason is kept.
+    log('tabs', e);
     base = null;
   }
   const stat = { conflicts: 0 };

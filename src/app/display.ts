@@ -27,7 +27,9 @@ import {
   avgWeeks,
   bwRef,
   bwRefLoad,
+  dateIndex,
   dayMinutes,
+  isRestWeek,
   defPlan,
   loadLabel,
   logBack,
@@ -37,12 +39,15 @@ import {
 } from './live';
 import { state, ui } from './store';
 import type { ExPoint, Exposure, ExerciseLike, Pr } from './model';
-import type { Exercise, LoggedSet, Measurement, PlanItem, Routine } from './types';
+import type { Day, Exercise, LoggedSet, Measurement, PlanItem, Routine, Session } from './types';
 
 /** Whether nothing is logged yet. */
 export function noLog(): boolean {
   return !state.sessions.length;
 }
+
+/** The sessions logged on a date, in the order done. */
+export const sessionsOn = (d: string): Session[] => dateIndex().byDate[d] || [];
 
 /** A load lifted, in the unit on screen: whole, and in thousands from 10,000 (12k). */
 export function fmtK(kg: number): string {
@@ -102,6 +107,13 @@ export function fmtE(kg: number | null | undefined): string {
 
 /** The unit tape measurements are shown in: inches with lb, cm with kg. */
 export const LU = (): 'in' | 'cm' => (U() === 'lb' ? 'in' : 'cm');
+/** A tape entry's site in cm, or undefined when it was not measured. */
+export function measAt(m: Measurement, k: string): number | undefined {
+  const v = rec(m)?.[k];
+  return typeof v === 'number' ? v : undefined;
+}
+/** A length as typed in the unit on screen, in cm. */
+export const lenFrom = (v: number): number => (U() === 'lb' ? v * IN : v);
 
 /** A length kept in cm, in the unit on screen, to one place, or '' for none. */
 export const lenD = (cm: number | null | undefined): string =>
@@ -117,6 +129,13 @@ export function loadHead(ex: ExerciseLike | null | undefined): string {
   if (ex && ex.assist) return 'Help ' + u;
   return m === 'each' ? u + ' each' : m === 'side' ? u + '/side' : m === 'stack' ? 'Stack' : m === 'bw' ? '+' + u : u;
 }
+
+/* Here, not in format.ts beside fmtDate: only the screens use it, and format.ts is one of the engine's modules, whose share of lines run is a ratchet (tests/engine.js). */
+/** A date as "Oct 17", with its year when it is not this one ("Mar 1, 2027"): a date a year ahead is not read as one this year. */
+export const fmtDateYr = (s: string): string =>
+  s.slice(0, 4) === today().slice(0, 4)
+    ? fmtDate(s)
+    : fmtWith('dy', { month: 'short', day: 'numeric', year: 'numeric' }, s);
 
 /** A date written out: "Sat, Oct 24, 2026". */
 export const fmtDateLong = (s: string): string =>
@@ -559,6 +578,94 @@ export function sizeRows(): {
       sum += v;
     }
     out.push({ k, mus, from: b.date, to: L.date, d: at(L, k) - at(b, k), sets: weeks ? sum / weeks : 0, weeks });
+  }
+  return out;
+}
+
+/* ---------- what is planned on a date (Today, the week bar and the calendar, r59) ---------- */
+
+/* The cycle day that falls on each date from today on. After a session the
+   calendar walks the cycle one day per day, rest days included; a missed day
+   waits (Today offers the next training day, whatever the date). With
+   `restWeeks`, a rest week marked ahead holds the cycle where it is: its
+   dates have no day, and the week after it starts where the cycle stood, as
+   the lifter's next session will (329's look-ahead, V 2026-10-25: "do what is
+   sensible"). */
+/** The cycle's day index on each of the next `days` dates (a cycle routine); with `restWeeks`, none on a rest week's dates, the cycle held through them. */
+export function cycleProjection(R: Routine, days?: number, restWeeks?: boolean): Record<string, number> {
+  const n = R.days.length;
+  const t = today();
+  const cs = cycleState(R);
+  const out: Record<string, number> = {};
+  let idx: number, start: string;
+  if (cs.lastDate === t) {
+    idx = (cs.last + 1) % n;
+    start = addDays(t, 1);
+  } else if (cs.restToday) {
+    idx = cs.restIdx;
+    start = t;
+  } else {
+    idx = cs.next;
+    start = t;
+  }
+  for (let k = 0; k < (days || 7); k++) {
+    const d = addDays(start, k);
+    if (restWeeks && isRestWeek(weekStart(d))) continue;
+    out[d] = idx;
+    idx = (idx + 1) % n;
+  }
+  return out;
+}
+
+/** A routine's day planned on a date: its index and the day. */
+export interface PlannedDay {
+  di: number;
+  day: Day;
+}
+/* What is planned on each date of this week: {di, day}, or nothing for a
+   past day of a cycle. */
+/** This week's planned day on each of its dates. */
+export function weekPlan(R: Routine): Record<string, PlannedDay> {
+  const cur = weekStart(today());
+  const out: Record<string, PlannedDay> = {};
+  if (R.schedule === 'weekly') {
+    for (let i = 0; i < 7; i++) {
+      const day = R.days[i];
+      if (day) out[addDays(cur, i)] = { di: i, day };
+    }
+    return out;
+  }
+  const pj = cycleProjection(R, 8);
+  for (let i = 0; i < 7; i++) {
+    const d = addDays(cur, i);
+    const di = pj[d];
+    const day = di == null ? undefined : R.days[di];
+    if (di != null && day) out[d] = { di, day };
+  }
+  return out;
+}
+
+/* Looking ahead (329, V 2026-10-20: "future days, and the coming weeks and
+   months, show the planned workout, and a tap opens it"): what the routine
+   in use plans on each date after today up to a date, by weekday on a weekly
+   routine, and on a cycle by walking it from today as the week bar does
+   (cycleProjection: every day in turn, rest days included, as if each were
+   done). A rest week marked ahead plans nothing, and a cycle waits through
+   it. */
+/** The routine in use's planned day on each date from tomorrow to `to`, a rest week's dates left out. */
+export function planAhead(to: string): Record<string, PlannedDay> {
+  const R = activeRoutine();
+  const t = today();
+  const out: Record<string, PlannedDay> = {};
+  const n = to > t ? daysBetween(t, to) : 0;
+  if (!n || !R.days.length) return out;
+  const pj = R.schedule === 'weekly' ? null : cycleProjection(R, n + 2, true);
+  for (let k = 1; k <= n; k++) {
+    const d = addDays(t, k);
+    if (isRestWeek(weekStart(d))) continue;
+    const di = pj ? pj[d] : (new Date(d + 'T12:00:00').getDay() + 6) % 7;
+    const day = di == null ? undefined : R.days[di];
+    if (di != null && day) out[d] = { di, day };
   }
   return out;
 }
