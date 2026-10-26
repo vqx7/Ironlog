@@ -5,9 +5,9 @@
    session (suggestions, adjustments) moves with the engine in 3b. */
 
 import type { DraftBlock, DraftSet, Session, SessionEx, Target } from './types';
-import { uid, today, PERCENT } from './util';
-import { isMissed, isWork } from './formulas';
-import { fmtDate } from './format';
+import { uid, today, PERCENT, pctOf, shareWords } from './util';
+import { isMissed, isWork, LIGHTER_SET_SHARE, LIGHT_SHARE, RIR_CALL_TOP } from './formulas';
+import { fmtDate, LIGHT_RIR } from './format';
 import { cleanChk } from './records';
 
 /* ---------- loads and targets ---------- */
@@ -444,11 +444,22 @@ export function editFp(d: {
    mid-set. Almost nobody does that, so almost every set came through blank and
    the volume bands silently counted it as hard anyway. A native picker is one
    tap, which is the difference between measuring and assuming. */
-/* RIR is picked from a strip of 0 to 5 instead of the phone's dropdown wheel
-   (open, spin, confirm on every set). The cell shows the value; tapping it
-   opens the strip under that set, and ticking a set done with no RIR yet
-   opens it by itself, so logging effort is one tap. */
-export const RIR_OPTS: readonly string[] = ['0', '1', '2', '3', '4', '5'];
+/* The note a deload or a lighter session starts with, saved in its notes as
+   the rules stood when it began: the share of the sets, the load and the
+   reserve its lifts are given (lighterSets, LIGHT_SHARE, LIGHT_RIR). */
+/** A deload session's opening note. */
+export const DELOAD_NOTE = `Deload: ${shareWords(LIGHTER_SET_SHARE)} sets, about ${pctOf(LIGHT_SHARE)}% loads, ${LIGHT_RIR}+ RIR.`;
+/** A lighter session's opening note. */
+export const LIGHTER_NOTE = `Lighter session: ${shareWords(LIGHTER_SET_SHARE)} sets, about ${pctOf(LIGHT_SHARE)}% loads, ${LIGHT_RIR}+ RIR.`;
+
+/* RIR is picked from a strip of 0 to RIR_CALL_TOP instead of the phone's
+   dropdown wheel (open, spin, confirm on every set). The cell shows the
+   value; tapping it opens the strip under that set, and ticking a set done
+   with no RIR yet opens it by itself, so logging effort is one tap. */
+/** The effort strip's choices in whole reps: 0 to RIR_CALL_TOP. */
+export const RIR_OPTS: readonly string[] = Array.from({ length: RIR_CALL_TOP + 1 }, (_, i) => String(i));
+/** The effort strip's choices in half reps (Settings, Effort): every half from 0 to RIR_CALL_TOP. */
+export const RIR_HALF_OPTS: readonly string[] = Array.from({ length: 2 * RIR_CALL_TOP + 1 }, (_, i) => String(i / 2));
 
 /* A line said on every exercise is said once (r34.2, from the review: the
    first-time paragraph on all 8 exercises, "Half the usual sets, nothing to

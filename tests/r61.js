@@ -10,7 +10,18 @@
 //      elements, attributes, field values and visible text as r60's; and the
 //      Guide, every topic open, in pounds and kilograms with RIR on and off,
 //      the same markup and text as r60's (its numbers now read from the
-//      constants their rules apply).
+//      constants their rules apply), but for the sentences section 2 corrects.
+//   2  the Guide says what the code does where it did not: a set rated 5 or
+//      more in reserve is read as 4, reps built past the top before a large
+//      step are a quarter of the top of the range with two at least, and a new
+//      level is three or more lighter sessions in a row over 2 weeks or more
+//      (fails on r60).
+//   3  a number typed past its bound shows at once the bound a save keeps,
+//      one bound in kilograms whatever the unit: a bar up to 50 kg (110.2 lb),
+//      a load step up to 500 kg (1102.3 lb), a load up to 20,000 lb (9071.8 kg),
+//      and the log opened again holds what the fields showed (fails on r60:
+//      the bar and the step were bounded in the unit typed, 110 and 500 lb,
+//      and 20000 kg typed showed 20000 until the app was opened again).
 const { open, engine, screenOf, screenDiff } = require('./h');
 const { wide, digest, specOf } = require('./wide');
 const FILE = process.argv[2] || 'index.html';
@@ -28,6 +39,13 @@ const SET = o => `Object.assign(L.state.settings,${JSON.stringify(o)});L.saveNow
 const START = "{const R=L.state.routines.find(r=>r.id===L.state.activeRoutineId);const di=String(R.days.findIndex(x=>!x.rest&&x.items.length));L.ACT.startSession({dataset:{day:di}});}";
 const VARIANTS = [['lb, RIR, light', {}], ['kg, RPE, dark', { unit: 'kg', rirScale: 'rpe', theme: 'dark' }], ['lb, half points, RIR off', { rirScale: 'half', rirMode: 'off' }]];
 const TABS = ['today', 'program', 'dash', 'history', 'settings'];
+// The Guide's sentences r61 corrects to say what the code does (section 2): r60's words, then r61's.
+const GUIDE_FIXED = [
+  ['in reserve is read as 5, so from such sets', 'in reserve is read as 4, so from such sets'],
+  ['of the top of the range more, until your estimate', 'of the top of the range more (two at least), until your estimate'],
+  ['Past a quarter, the load goes up anyway', 'Past that, the load goes up anyway'],
+  ['Lighter sessions in a row for 2 weeks or more are a new level', 'Lighter sessions in a row, three or more over 2 weeks or more, are a new level']
+];
 
 (async () => {
   const browser = await engine.launch();
@@ -82,12 +100,81 @@ const TABS = ['today', 'program', 'dash', 'history', 'settings'];
       return { ...g, errors };
     };
     for (const unit of ['lb', 'kg']) for (const rir of ['on', 'off']) {
-      const [a, b] = [await guideOf(OLD, unit, rir), await guideOf(FILE, unit, rir)];
+      const [a0, b] = [await guideOf(OLD, unit, rir), await guideOf(FILE, unit, rir)];
+      // r60's Guide with the sentences section 2 corrects on purpose put as r61 words them; each must be there to correct.
+      const missing = GUIDE_FIXED.filter(([was]) => !a0.html.includes(was) || !a0.text.includes(was)).map(([was]) => was);
+      ok(!missing.length, `1. the Guide in ${unit} with RIR ${rir}: r60 has each sentence section 2 corrects`, missing);
+      const fix = t => GUIDE_FIXED.reduce((x, [was, now]) => x.replace(was, now), t);
+      const a = { html: fix(a0.html), text: fix(a0.text) };
       let k = 0; while (k < a.html.length && a.html[k] === b.html[k]) k++;
       ok(a.html === b.html && a.text === b.text, `1. the Guide in ${unit} with RIR ${rir}: the same markup and text as r60 (${b.text.length} characters)`, a.html === b.html ? { r60: a.text.slice(0, 300), now: b.text.slice(0, 300) } : { at: k, r60: a.html.slice(Math.max(0, k - 120), k + 200), now: b.html.slice(Math.max(0, k - 120), k + 200) });
       ok(!b.errors.length, `1. the Guide in ${unit} with RIR ${rir}: no page errors`, b.errors);
     }
   } else if (run(1)) console.log('note r61 section 1 compares source pages; it runs on the source build');
+
+  // ---- 2. The Guide says what the code does (found by the numbers pass: three sentences r56.2 and r32 wrote did not).
+  if (run(2)) {
+    const P = await open(FILE, { browser });
+    const text = await P.page.evaluate(() => {
+      const L = window.__ironlog;
+      L.state.settings.onboarded = true; L.render();
+      L.openModal({ kind: 'guide', open: '' });
+      const m = document.getElementById('modal');
+      m.querySelectorAll('details').forEach(d => { d.open = true; });
+      const t = m.innerText; L.ACT.mClose(); return t.replace(/\s+/g, ' ');
+    });
+    // The engine reads a set rated 5 or more in reserve as 4 (E1_MAX_RIR, since r49; the estimate errs low), not 5.
+    ok(text.includes('A set rated 5 or more in reserve is read as 4, so from such sets the load moves about a step a session'), '2. the Guide: a set rated 5 or more in reserve is read as 4, as the engine reads it', text.match(/A set rated 5[^.]*\./));
+    // Reps built past the top before a large step: a quarter of the top of the range, two at least (BUILD_PAST, r32).
+    ok(text.includes('up to a quarter of the top of the range more (two at least), until your estimate says the new load allows the bottom of the range; then the load goes up. Past that, the load goes up anyway'), '2. the Guide: reps built past the top are a quarter of the top of the range, two at least', text.match(/you first build[^.]*\.[^.]*\./));
+    // A new level needs three lighter sessions in a row as well as two weeks (NEW_LEVEL, r31).
+    ok(text.includes('Lighter sessions in a row, three or more over 2 weeks or more, are a new level, not a deload'), '2. the Guide: a new level is three or more lighter sessions in a row over 2 weeks or more', text.match(/Lighter sessions in a row[^.]*\./));
+    ok(!P.errors.length, '2. no page errors', P.errors);
+    await P.ctx.close();
+  }
+
+  // ---- 3. A number typed past its bound shows the bound a save keeps (r61: one bound, in kilograms).
+  if (run(3)) {
+    const LB = 0.45359237;
+    for (const unit of ['lb', 'kg']) {
+      const P = await open(FILE, { browser, clock: '2026-10-24T10:00:00' });
+      const ev = (f, a) => P.page.evaluate(f, a);
+      const wait = ms => new Promise(r => setTimeout(r, ms));
+      await ev(u => { const L = window.__ironlog; const S = L.state; S.settings.onboarded = true; S.settings.unit = u; S.settings.autoDone = false; L.state = L.normalize(S); L.saveNow(); L.ui.tab = 'settings'; L.render(); }, unit);
+      await wait(100);
+      // A field typed into and left, in a folded section or not: its text, then its input and change events, as the keyboard sends them.
+      const typeIn = async (q, v) => { await ev(([q, v]) => { const e = document.querySelector(q); e.value = v; e.dispatchEvent(new Event('input', { bubbles: true })); e.dispatchEvent(new Event('change', { bubbles: true })); }, [q, String(v)]); await wait(100); };
+      const fieldOf = q => ev(q => (document.querySelector(q) || {}).value, q);
+      const R = await ev(() => { const L = window.__ironlog; const R = L.state.routines.find(r => r.id === L.state.activeRoutineId); const di = R.days.findIndex(x => !x.rest && x.items.length); return { di, uid: R.days[di].items[0].uid }; });
+      const itemOf = uid => ev(uid => window.__ironlog.state.routines.flatMap(r => r.days).flatMap(d => d.items).find(i => i.uid === uid).inc, uid);
+      // The bar in Settings: 120 lb or 60 kg typed; a bar is kept up to 50 kg.
+      const barQ = '#view input[data-bind="barKg"]';
+      await typeIn(barQ, unit === 'lb' ? 120 : 60);
+      const bar = { field: await fieldOf(barQ), kg: await ev(() => window.__ironlog.state.settings.barKg) };
+      // The first lift's load step on Plan: 1200 lb or 600 kg typed; a step is kept up to 500 kg.
+      await ev(uid => { const L = window.__ironlog; L.ui.tab = 'program'; L.ui.openItem = uid; L.render(); }, R.uid);
+      await wait(150);
+      const stepQ = `#view input[data-it="inc"][data-uid="${R.uid}"]`;
+      await typeIn(stepQ, unit === 'lb' ? 1200 : 600);
+      const step = { field: await fieldOf(stepQ), kg: await itemOf(R.uid) };
+      // A set's load in a session: 30000 lb or 20000 kg typed; a load is kept up to 20,000 lb (9,071.8 kg).
+      await ev(di => { const L = window.__ironlog; L.ui.tab = 'today'; L.render(); L.ACT.startSession({ dataset: { day: String(di) } }); }, R.di);
+      await wait(200);
+      const wQ = '#view .sg input[data-f="w"][data-b="0"][data-s="0"]';
+      await typeIn(wQ, unit === 'lb' ? 30000 : 20000);
+      const load = { field: await fieldOf(wQ), kg: await ev(() => window.__ironlog.state.draft.ex[0].sets[0].w) };
+      const want = unit === 'lb' ? { bar: '110.2', step: '1102.3', load: '20000' } : { bar: '50', step: '500', load: '9071.8' };
+      ok(bar.field === want.bar && Math.abs(bar.kg - 50) < 1e-9, `3. ${unit}: a bar typed past 50 kg shows ${want.bar}, the bound a save keeps`, bar);
+      ok(step.field === want.step && Math.abs(step.kg - 500) < 1e-9, `3. ${unit}: a load step typed past 500 kg shows ${want.step}`, step);
+      ok(load.field === want.load && Math.abs(load.kg - 20000 * LB) < 1e-6, `3. ${unit}: a load typed past 20,000 lb shows ${want.load}`, load);
+      // Opened again, the log holds what the fields showed.
+      await P.page.reload(); await wait(400);
+      const after = await ev(([q, uid]) => { const L = window.__ironlog; const it = L.state.routines.flatMap(r => r.days).flatMap(d => d.items).find(i => i.uid === uid); return { bar: L.state.settings.barKg, step: it.inc, load: L.state.draft.ex[0].sets[0].w, field: (document.querySelector(q) || {}).value }; }, [wQ, R.uid]);
+      ok(Math.abs(after.bar - bar.kg) < 1e-9 && Math.abs(after.step - step.kg) < 1e-9 && Math.abs(after.load - load.kg) < 1e-9 && after.field === load.field, `3. ${unit}: opened again, the bar, the step and the load are what the fields showed`, after);
+      ok(!P.errors.length, `3. ${unit}: no page errors`, P.errors);
+      await P.ctx.close();
+    }
+  }
 
   await browser.close();
   console.log(fails.length ? `\n${fails.length} FAILED` : '\nALL PASS');

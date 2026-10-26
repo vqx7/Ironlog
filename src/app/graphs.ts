@@ -32,6 +32,9 @@ const CS = {
   radarLegendBox: 12,
   radarStep: 50,
   radarMin: 150,
+  /* The radar is drawn up to 200% (r29): a minimum brought down to 2 sets read 8 sets as 400%, and the ring and every
+     other spoke shrank to a quarter. The real share is in the table and the tooltip. */
+  radarMax: 200,
   radarPoint: 3,
   font: 11,
   tickFont: 10,
@@ -471,12 +474,9 @@ export function mountCharts(): void {
   }
   // balance radar, built from the same source the table on screen uses
   const regs = regionBalance(regionSrc().src);
-  /* Drawn up to 200% (r29): a minimum brought down to 2 sets read 8 sets as
-     400%, and the ring and every other spoke shrank to a quarter. The real
-     share is in the table and the tooltip. */
-  const RCAP = 200;
+  // Drawn up to CS.radarMax (r29), the real share in the table and the tooltip.
   const rMax = Math.min(
-    RCAP,
+    CS.radarMax,
     Math.max(CS.radarMin, Math.ceil(Math.max(...regs.map(x => x.pct)) / CS.radarStep) * CS.radarStep)
   );
   const realPct = regs.map(x => Math.round(x.pct));
@@ -488,7 +488,7 @@ export function mountCharts(): void {
         {
           label: 'Your volume',
           real: realPct,
-          data: realPct.map(v => Math.min(v, RCAP)),
+          data: realPct.map(v => Math.min(v, CS.radarMax)),
           borderColor: blue,
           backgroundColor: blue + '33',
           pointBackgroundColor: blue,

@@ -15,11 +15,11 @@ import { DIRTY_SAID, agoTxt, estMin, fmtDate, min5, rangeWords, repSpan, sessTm 
 import { ACCENT0, DSEC_ALIAS, FORM_SHEETS, REGION_WKS, VOL_MODES, HIDEABLE, HIDEABLE_KEYS } from './app/layout';
 import { ADD_ICON, MENU_ICON, SHARE_ICON } from './app/icons';
 import { FOCUS_MAX, PROF_DAYS, PROF_EXP, PROF_EXP_TIP, PROF_GOALS, PROF_GOAL_TIP, STR_NEAR, STR_REST, profClean } from './app/profile';
-import { EXTRA_MAX, sessCmp } from './app/records';
+import { EXTRA_MAX, LIMITS, sessCmp } from './app/records';
 import { PLATE_MODES, dbListOf, gymClean, platesMode, platesPerSide } from './app/gym';
 import { chunksOf, emptyChunk, isChunkId, realCount } from './app/chunks';
 import { Hx, canon, mergeDraft } from './app/merge';
-import { blockRest, editFp, effW, freeDraft, greyW, hintOnce, joinAdjacent, joinRows, joinable, newRow, overSets, sameExOnce, savedEx, whyTarget } from './app/session';
+import { DELOAD_NOTE, LIGHTER_NOTE, blockRest, editFp, effW, freeDraft, greyW, hintOnce, joinAdjacent, joinRows, joinable, newRow, overSets, sameExOnce, savedEx, whyTarget } from './app/session';
 import { LOAD_MODES, estInLoad, loadNote, loadWords } from './app/loads';
 import { prName } from './app/prs';
 import { aboveMax, belowMin } from './app/volume';

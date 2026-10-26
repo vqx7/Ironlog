@@ -36,7 +36,8 @@ import {
   WEEK_DAYS,
   SUNDAY,
   dayOfWeek,
-  pctOf
+  pctOf,
+  shareWords
 } from './util';
 import { IN, FT_IN } from './units';
 import {
@@ -137,7 +138,7 @@ const BODY_SHOWN = { weights: 5, tape: 3 } as const;
 /** How long the deload week's toast and the build-your-own toast stay, in milliseconds: long enough for their two sentences. */
 const DELOAD_TOAST_MS = 6000,
   BUILD_TOAST_MS = 7000;
-import { LIGHT_SHARE, RECENT_WEEKS } from './formulas';
+import { LIGHTER_SET_SHARE, LIGHT_SHARE, RECENT_WEEKS } from './formulas';
 import { PICK_DAYS } from './analytics';
 import { DEMO_WEEKS } from './importing';
 
@@ -948,7 +949,7 @@ export const TODAY_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
     window.scrollTo(0, 0);
     fx.render();
     fx.toast(
-      `Deload week on until Sunday: half sets, about ${pctOf(LIGHT_SHARE)}% loads. It clears fatigue; it does not add growth.`,
+      `Deload week on until Sunday: ${shareWords(LIGHTER_SET_SHARE)} sets, about ${pctOf(LIGHT_SHARE)}% loads. It clears fatigue; it does not add growth.`,
       false,
       DELOAD_TOAST_MS
     );

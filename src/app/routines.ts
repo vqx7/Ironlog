@@ -28,11 +28,8 @@ export interface TemplateDay {
   rest?: boolean;
 }
 
-/** A ready-made routine: its days, or (the hidden legacy one) a function that builds it. */
-export type Template = { key: string; name: string; who: string; meta: string; hidden?: boolean } & (
-  | { days: TemplateDay[]; build?: undefined }
-  | { build: () => NewRoutine; days?: undefined }
-);
+/** A ready-made routine: its name, its lines, and its days. */
+export type Template = { key: string; name: string; who: string; meta: string; hidden?: boolean; days: TemplateDay[] };
 
 /** The weekday names, Monday first, in the order a weekly routine's days are kept. */
 export const DAYS: readonly string[] = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
@@ -51,7 +48,7 @@ export function dayLabel(R: Pick<Routine, 'schedule'> | null | undefined, i: num
     default load step (5 lb, read as 2.5 kg by a lifter in kg; STEP_LB). */
 export const DEFAULT_PLAN: Readonly<Plan> = { sets: 3, repMin: 8, repMax: 12, rir: 1, rest: 90, inc: STEP_LB };
 
-/** The routine installs started with before r29 (the template marked legacy): each day's name, its lifts as [exercise, sets, rep range low and high, RIR, rest in seconds], and whether it is a rest day. */
+/** The routine installs started with before r29 (the template keyed legacy): each day's name, its lifts as [exercise, sets, rep range low and high, RIR, rest in seconds], and whether it is a rest day. */
 // A table, one day a line, so a day's exercises can be read and checked whole; the formatter would spread each set over its own line.
 // prettier-ignore
 const LEGACY_DAYS: readonly (readonly [string, readonly (readonly [string, number, number, number, number, number])[], boolean?])[] = [
@@ -64,28 +61,31 @@ const LEGACY_DAYS: readonly (readonly [string, readonly (readonly [string, numbe
   ['Rest',[],true],
 ];
 
-/** The routine installs started with before r29, with ids of its own. */
+/* The routine installs started with before r29, as a hidden template (kept
+   for the suites written on it, tests/h.js, and to recognise it; never
+   offered), its days in the shape the other templates' are. */
+const LEGACY: Template = {
+  key: 'legacy',
+  hidden: true,
+  name: 'One muscle a day, high volume',
+  who: '',
+  meta: '',
+  days: LEGACY_DAYS.map(([name, items, rest]) =>
+    rest
+      ? { name, items: [], rest: true }
+      : {
+          name,
+          items: items.map(([exId, sets, repMin, repMax, rir, r]) => ({ exId, sets, repMin, repMax, rir, rest: r }))
+        }
+  )
+};
+
+/* The routine installs started with before r29, with ids of its own, built
+   as every template's routine is (r61: by a copy of that code of its own
+   until then), so its key order is theirs. */
+/** The routine installs started with before r29. */
 export function defaultRoutine(): NewRoutine {
-  return {
-    id: uid(),
-    name: 'One muscle a day, high volume',
-    schedule: 'cycle',
-    days: LEGACY_DAYS.map(([name, items, rest]) => ({
-      id: uid(),
-      name,
-      rest: !!rest,
-      items: items.map(([exId, sets, repMin, repMax, rir, restS]) => ({
-        uid: uid(),
-        exId,
-        sets,
-        repMin,
-        repMax,
-        rir,
-        rest: restS,
-        inc: STEP_LB
-      }))
-    }))
-  };
+  return routineOf(LEGACY);
 }
 
 /* Ready-made routines, so nobody has to build one from scratch. Most land
@@ -173,16 +173,18 @@ export const TEMPLATES: readonly Template[] = (() => {
       D('Legs B: posterior',[I('sldl',4,6,10,2,180),I('seatedCurl',3,8,12,1,90),I('nordic',2,3,8,1,120),I('hyperext',3,10,15,1,75),I('abductor',4,12,20,1,60),I('seatedCalf',4,10,15,0,60),I('abWheel',3,8,15,1,60)]),
       D('Arms',[I('ohCableExt',4,8,12,1,75),I('jmPress',3,6,10,1,120),I('pressdown',3,10,15,0,60),I('inclineCurl',4,8,12,1,75),I('bayesianCurl',3,10,15,1,60),I('preacher',3,8,12,0,60),I('wristCurl',2,12,20,1,45),I('revWristCurl',2,12,20,1,45),I('woodchop',3,10,15,1,45)]),
       R()]}),
-    // The routine installs started with before r29, kept for the suites written on it (tests/h.js) and to recognise it; never offered.
-    {key:'legacy',hidden:true,name:'One muscle a day, high volume',who:'',meta:'',build:()=>defaultRoutine()}
+    LEGACY
   ];
 })();
 
 /* A routine from a template, with its own ids so it is independent of the template. */
 export function routineFromTemplate(key: string): NewRoutine | null {
   const t = TEMPLATES.find(x => x.key === key);
-  if (!t) return null;
-  if (t.build) return t.build();
+  return t ? routineOf(t) : null;
+}
+
+/** A template's routine, with ids of its own. */
+function routineOf(t: Template): NewRoutine {
   return {
     id: uid(),
     name: t.name,

@@ -70,8 +70,10 @@ const OFF_STEP = 0.02;
 export const JUST_UP = { steps: 1.5, short: 3 } as const;
 /** Sessions in a row under the range at one load that drop it, rising or not (r32). */
 export const SHORT_RUN = 4;
-/** Well past the range: the top plus PAST_RANGE.share of it, at least PAST_RANGE.min reps (r27). */
-const PAST_RANGE = { min: 3, share: 0.4 } as const;
+/** Reps maxed where the load cannot go up (the heaviest load available, a fixed load, bodyweight alone): every set past the top by REPS_MAXED.share of it, at least REPS_MAXED.min reps, is told to make each rep harder instead (r27). */
+const REPS_MAXED = { min: 3, share: 0.4 } as const;
+/** The slower lowering suggested then, in seconds: a lifting convention, not a number the app reads back (r27). */
+const SLOW_LOWER_S = [3, 4] as const;
 /** A rep range narrower than this is a fixed-rep plan (5 x 5): the load steps up whatever the step costs (r32). */
 export const FIXED_RANGE = 3;
 /** A step costing this many reps or more is large for the load: reps build first (r32). */
@@ -575,8 +577,9 @@ export function suggestCoreIn(M: Model, exId: string, plan: Plan, opts?: Suggest
   /* The first 3 sessions of a lift find its load (a convention, r31): the
      cap on a jump is 25% there, so a first guess well under what the
      lifter can do moves up by what the estimate allows, not a step at a
-     time; a set rated 5 or more in reserve is read as 5 (E1_MAX_RIR), so
-     from such sets it moves about a step a session (PENDING 338 E). */
+     time; a set rated RIR_CALL_TOP or more in reserve is read as
+     E1_MAX_RIR, which errs low, so from such sets it moves about a step a
+     session (PENDING 338 E; the Guide said 5 until r61). */
   const early = exps.length <= EARLY_SESSIONS;
   // One set under the range among sets made reads as the bottom of it (repFloor); a missed set never does.
   const fl = repFloor(
@@ -969,12 +972,12 @@ export function sgNoStep(C: SuggestCtx): Suggestion | null {
     const total = tp.reduce((a, p) => a + p.r, 0);
     const nT = tp.length;
     const over = overSets(nT, plan);
-    const ext = +plan.repMax + Math.max(PAST_RANGE.min, Math.round(+plan.repMax * PAST_RANGE.share));
+    const ext = +plan.repMax + Math.max(REPS_MAXED.min, Math.round(+plan.repMax * REPS_MAXED.share));
     const maxed = topPts.every(p => p.r >= ext);
     const tip = maxed
       ? noAdd && !abW
-        ? ` Every set reached ${ext}+ on bodyweight alone. Add a little load (a belt or a vest) by typing it, or make each rep harder: a 3 to 4 second lowering, a pause, or a harder version.`
-        : ` Every set reached ${ext}+ ${at}, so make each rep harder instead: lower for 3 to 4 seconds and pause at the stretch, go one arm or one leg at a time, or finish with a drop set. Add a note when you change it so the numbers stay comparable.`
+        ? ` Every set reached ${ext}+ on bodyweight alone. Add a little load (a belt or a vest) by typing it, or make each rep harder: a ${SLOW_LOWER_S[0]} to ${SLOW_LOWER_S[1]} second lowering, a pause, or a harder version.`
+        : ` Every set reached ${ext}+ ${at}, so make each rep harder instead: lower for ${SLOW_LOWER_S[0]} to ${SLOW_LOWER_S[1]} seconds and pause at the stretch, go one arm or one leg at a time, or finish with a drop set. Add a note when you change it so the numbers stay comparable.`
       : below
         ? ` ${lead}, so build the reps up to ${plan.repMin} or more.`
         : ` ${lead}, so keep adding reps past ${plan.repMax}${noHelp ? '; the lift without the machine, with load added, comes after' : ''}.`;
@@ -988,7 +991,7 @@ export function sgNoStep(C: SuggestCtx): Suggestion | null {
       target: `${total + 1}+ reps ${over} at ${lbl(top)}${noHelp ? '' : atCap ? ', the heaviest available' : ''}`,
       tgt: { kind: 'reps', w: top, total, n: nT, rs: tp.map(p => p.r), prevBest },
       easier: maxed
-        ? `Past ${ext} reps ${noHelp ? 'with no help' : atCap ? 'at the heaviest load' : 'at this load'}: slow the lowering to 3 to 4 seconds with a pause at the stretch, go one side at a time, or add a drop set.`
+        ? `Past ${ext} reps ${noHelp ? 'with no help' : atCap ? 'at the heaviest load' : 'at this load'}: slow the lowering to ${SLOW_LOWER_S[0]} to ${SLOW_LOWER_S[1]} seconds with a pause at the stretch, go one side at a time, or add a drop set.`
         : null,
       capped: atCap
     };

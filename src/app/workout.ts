@@ -37,6 +37,7 @@ import { state, ui, fx } from './store';
 import {
   effW,
   RIR_OPTS,
+  RIR_HALF_OPTS,
   lastCell,
   greyW,
   lastDup,
@@ -237,7 +238,7 @@ function adjLine(b: DraftBlock, bi: number): Part {
    320 px. The buttons carry RIR; RPE only changes what they say. */
 function effOpts(): string[] {
   const sc = rirScale();
-  return sc === 'whole' ? RIR_OPTS.slice() : ['0', '0.5', '1', '1.5', '2', '2.5', '3', '3.5', '4', '4.5', '5'];
+  return (sc === 'whole' ? RIR_OPTS : RIR_HALF_OPTS).slice();
 }
 
 const effAria = (si: number): string =>

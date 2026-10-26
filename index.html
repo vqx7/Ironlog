@@ -2207,27 +2207,21 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     ["Arms", [["ohCableExt", 4, 8, 12, 0, 75], ["jmPress", 3, 6, 10, 1, 120], ["pressdown", 3, 10, 15, 0, 60], ["inclineCurl", 4, 8, 12, 0, 75], ["bayesianCurl", 3, 10, 15, 0, 60], ["preacher", 3, 8, 12, 0, 60], ["hammer", 2, 10, 12, 1, 60], ["wristCurl", 2, 12, 20, 0, 45], ["revWristCurl", 2, 12, 20, 0, 45], ["woodchop", 3, 10, 15, 1, 45]]],
     ["Rest", [], true]
   ];
-  function defaultRoutine() {
-    return {
-      id: uid(),
-      name: "One muscle a day, high volume",
-      schedule: "cycle",
-      days: LEGACY_DAYS.map(([name, items, rest]) => ({
-        id: uid(),
+  var LEGACY = {
+    key: "legacy",
+    hidden: true,
+    name: "One muscle a day, high volume",
+    who: "",
+    meta: "",
+    days: LEGACY_DAYS.map(
+      ([name, items, rest]) => rest ? { name, items: [], rest: true } : {
         name,
-        rest: !!rest,
-        items: items.map(([exId, sets, repMin, repMax, rir, restS]) => ({
-          uid: uid(),
-          exId,
-          sets,
-          repMin,
-          repMax,
-          rir,
-          rest: restS,
-          inc: STEP_LB
-        }))
-      }))
-    };
+        items: items.map(([exId, sets, repMin, repMax, rir, r4]) => ({ exId, sets, repMin, repMax, rir, rest: r4 }))
+      }
+    )
+  };
+  function defaultRoutine() {
+    return routineOf(LEGACY);
   }
   var TEMPLATES = (() => {
     const I2 = (exId, sets, repMin, repMax, rir, rest) => ({ exId, sets, repMin, repMax, rir, rest });
@@ -2336,14 +2330,14 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
         D2("Arms", [I2("ohCableExt", 4, 8, 12, 1, 75), I2("jmPress", 3, 6, 10, 1, 120), I2("pressdown", 3, 10, 15, 0, 60), I2("inclineCurl", 4, 8, 12, 1, 75), I2("bayesianCurl", 3, 10, 15, 1, 60), I2("preacher", 3, 8, 12, 0, 60), I2("wristCurl", 2, 12, 20, 1, 45), I2("revWristCurl", 2, 12, 20, 1, 45), I2("woodchop", 3, 10, 15, 1, 45)]),
         R2()
       ] }),
-      // The routine installs started with before r29, kept for the suites written on it (tests/h.js) and to recognise it; never offered.
-      { key: "legacy", hidden: true, name: "One muscle a day, high volume", who: "", meta: "", build: () => defaultRoutine() }
+      LEGACY
     ];
   })();
   function routineFromTemplate(key) {
     const t4 = TEMPLATES.find((x2) => x2.key === key);
-    if (!t4) return null;
-    if (t4.build) return t4.build();
+    return t4 ? routineOf(t4) : null;
+  }
+  function routineOf(t4) {
     return {
       id: uid(),
       name: t4.name,
@@ -4724,7 +4718,10 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       c: (d3.cardio || []).map((c4) => [c4.kind, c4.min, c4.hr, c4.dist || null])
     });
   }
-  var RIR_OPTS = ["0", "1", "2", "3", "4", "5"];
+  var DELOAD_NOTE = `Deload: ${shareWords(LIGHTER_SET_SHARE)} sets, about ${pctOf(LIGHT_SHARE)}% loads, ${LIGHT_RIR}+ RIR.`;
+  var LIGHTER_NOTE = `Lighter session: ${shareWords(LIGHTER_SET_SHARE)} sets, about ${pctOf(LIGHT_SHARE)}% loads, ${LIGHT_RIR}+ RIR.`;
+  var RIR_OPTS = Array.from({ length: RIR_CALL_TOP + 1 }, (_2, i5) => String(i5));
+  var RIR_HALF_OPTS = Array.from({ length: 2 * RIR_CALL_TOP + 1 }, (_2, i5) => String(i5 / 2));
   var HINT_ONCE = [
     "Half the usual sets, nothing to beat.",
     "Next time's load is worked out from this.",
@@ -6497,7 +6494,8 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
   var OFF_STEP = 0.02;
   var JUST_UP = { steps: 1.5, short: 3 };
   var SHORT_RUN = 4;
-  var PAST_RANGE = { min: 3, share: 0.4 };
+  var REPS_MAXED = { min: 3, share: 0.4 };
+  var SLOW_LOWER_S = [3, 4];
   var FIXED_RANGE = 3;
   var BIG_STEP_REPS = 1.5;
   var BUILD_PAST = { min: 2, share: 0.25 };
@@ -6987,9 +6985,9 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       const total = tp.reduce((a2, p3) => a2 + p3.r, 0);
       const nT = tp.length;
       const over = overSets(nT, plan);
-      const ext = +plan.repMax + Math.max(PAST_RANGE.min, Math.round(+plan.repMax * PAST_RANGE.share));
+      const ext = +plan.repMax + Math.max(REPS_MAXED.min, Math.round(+plan.repMax * REPS_MAXED.share));
       const maxed = topPts.every((p3) => p3.r >= ext);
-      const tip = maxed ? noAdd && !abW ? ` Every set reached ${ext}+ on bodyweight alone. Add a little load (a belt or a vest) by typing it, or make each rep harder: a 3 to 4 second lowering, a pause, or a harder version.` : ` Every set reached ${ext}+ ${at}, so make each rep harder instead: lower for 3 to 4 seconds and pause at the stretch, go one arm or one leg at a time, or finish with a drop set. Add a note when you change it so the numbers stay comparable.` : below ? ` ${lead}, so build the reps up to ${plan.repMin} or more.` : ` ${lead}, so keep adding reps past ${plan.repMax}${noHelp ? "; the lift without the machine, with load added, comes after" : ""}.`;
+      const tip = maxed ? noAdd && !abW ? ` Every set reached ${ext}+ on bodyweight alone. Add a little load (a belt or a vest) by typing it, or make each rep harder: a ${SLOW_LOWER_S[0]} to ${SLOW_LOWER_S[1]} second lowering, a pause, or a harder version.` : ` Every set reached ${ext}+ ${at}, so make each rep harder instead: lower for ${SLOW_LOWER_S[0]} to ${SLOW_LOWER_S[1]} seconds and pause at the stretch, go one arm or one leg at a time, or finish with a drop set. Add a note when you change it so the numbers stay comparable.` : below ? ` ${lead}, so build the reps up to ${plan.repMin} or more.` : ` ${lead}, so keep adding reps past ${plan.repMax}${noHelp ? "; the lift without the machine, with load added, comes after" : ""}.`;
       return {
         top,
         w: top,
@@ -6999,7 +6997,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
         last: lastS,
         target: `${total + 1}+ reps ${over} at ${lbl(top)}${noHelp ? "" : atCap ? ", the heaviest available" : ""}`,
         tgt: { kind: "reps", w: top, total, n: nT, rs: tp.map((p3) => p3.r), prevBest },
-        easier: maxed ? `Past ${ext} reps ${noHelp ? "with no help" : atCap ? "at the heaviest load" : "at this load"}: slow the lowering to 3 to 4 seconds with a pause at the stretch, go one side at a time, or add a drop set.` : null,
+        easier: maxed ? `Past ${ext} reps ${noHelp ? "with no help" : atCap ? "at the heaviest load" : "at this load"}: slow the lowering to ${SLOW_LOWER_S[0]} to ${SLOW_LOWER_S[1]} seconds with a pause at the stretch, go one side at a time, or add a drop set.` : null,
         capped: atCap
       };
     }
@@ -11237,6 +11235,9 @@ ${actions ? b`<div class="ph-a">${actions}</div>
     radarLegendBox: 12,
     radarStep: 50,
     radarMin: 150,
+    /* The radar is drawn up to 200% (r29): a minimum brought down to 2 sets read 8 sets as 400%, and the ring and every
+       other spoke shrank to a quarter. The real share is in the table and the tooltip. */
+    radarMax: 200,
     radarPoint: 3,
     font: 11,
     tickFont: 10,
@@ -11511,9 +11512,8 @@ ${actions ? b`<div class="ph-a">${actions}</div>
       }
     }
     const regs = regionBalance(regionSrc().src);
-    const RCAP = 200;
     const rMax = Math.min(
-      RCAP,
+      CS.radarMax,
       Math.max(CS.radarMin, Math.ceil(Math.max(...regs.map((x2) => x2.pct)) / CS.radarStep) * CS.radarStep)
     );
     const realPct = regs.map((x2) => Math.round(x2.pct));
@@ -11525,7 +11525,7 @@ ${actions ? b`<div class="ph-a">${actions}</div>
           {
             label: "Your volume",
             real: realPct,
-            data: realPct.map((v3) => Math.min(v3, RCAP)),
+            data: realPct.map((v3) => Math.min(v3, CS.radarMax)),
             borderColor: blue,
             backgroundColor: blue + "33",
             pointBackgroundColor: blue,
@@ -14482,13 +14482,13 @@ ${logBuf.length ? b`<ul class="clist">${logBuf.slice(-LOG_SHOWN).reverse().map(
    <p><b>A target is not a record.</b> The target is what to beat in today's session, worked out from your last full session of that lift. A record is the best you have ever done: the heaviest set of a lift shows while you train it, and every record is under Stats, Lifts, All-time bests. A PR is the moment you set one, and it is announced as you log the set, on any day. Lifts you did before this app count the same way once they are in: History, Log a past workout.</p>
    <p>Each exercise progresses from its <b>last full session in the rep range you plan for it that day</b>, so the same lift on a heavy day and a light day progresses on each separately. A range not used within ${TREND_WEEKS} weeks of your latest session of the lift starts from that latest session instead.</p>
    <p><b>The working load</b> is the load you did the most sets with (the heavier on a tie), leaving out loads under ${pctOf(WORK_FLOOR)}% of your heaviest. A heavy top set, or two, before your back-off sets counts for bests and PRs, while targets, grey reps, and trends build on the back-off sets.</p>
-   <p><b>Every set at the top of the range</b>: add load, in whole steps of the exercise's load step, about ${pct1(JUMP_COMPOUND)}% of the load on compound lifts and ${pct1(JUMP_ISOLATION)}% on isolation lifts, at least one step. Plan, Load jump % sets a different share for one exercise (0: one step every time). When one step is large for the load (it costs ${BIG_STEP_REPS} reps or more, as 5 lb on a 35 lb dumbbell does), on a range ${FIXED_RANGE} or more reps wide, you first build a few reps past the top at this load, up to ${shareWords(BUILD_PAST.share)} of the top of the range more, until your estimate says the new load allows the bottom of the range; then the load goes up. Past ${shareWords(BUILD_PAST.share)}, the load goes up anyway, with the reps your estimate allows there as the target. A fixed-rep plan (5 x 5, 3 x 3-5) goes up a step every time all its sets are done.</p>
+   <p><b>Every set at the top of the range</b>: add load, in whole steps of the exercise's load step, about ${pct1(JUMP_COMPOUND)}% of the load on compound lifts and ${pct1(JUMP_ISOLATION)}% on isolation lifts, at least one step. Plan, Load jump % sets a different share for one exercise (0: one step every time). When one step is large for the load (it costs ${BIG_STEP_REPS} reps or more, as 5 lb on a 35 lb dumbbell does), on a range ${FIXED_RANGE} or more reps wide, you first build a few reps past the top at this load, up to ${shareWords(BUILD_PAST.share)} of the top of the range more (${numWord(BUILD_PAST.min)} at least), until your estimate says the new load allows the bottom of the range; then the load goes up. Past that, the load goes up anyway, with the reps your estimate allows there as the target. A fixed-rep plan (5 x 5, 3 x 3-5) goes up a step every time all its sets are done.</p>
    <p><b>Dumbbells and kettlebells</b> step by what your rack has: with no load step set on the exercise, the step fits every load you logged on it (12, 14, and 16 kg is a rack in 2 kg steps; 12.5 and 15, one in 2.5).</p>
    <p><b>Otherwise</b>: the same load; beat last time's total reps over the same number of sets, a set past the top of the range counting as the top. One set under the range among the others counts as the bottom of the range, so one bad set does not set the next target. A session clearly below your usual repeats the last target (One rule for every session, below); a second in a row is your usual, and then every set under the range at a load you did in it the time before asks for the bottom of the range in every set again.</p>
    <p><b>Well past the range</b> (every set ${CLEARLY_OFF} or more reps over the top, as after moving the range down): the load your estimated 1RM gives for the middle of the range, at most ${CAP}% more (${CAP_LIGHT}% on isolation lifts under ${lightLift(kg)}), in whole steps.</p>
    <p><b>Below the range</b> (every set ${CLEARLY_OFF} or more reps short, or short two sessions running at the same load, or ${numWord(SHORT_RUN)} running even with the reps creeping up, or the first time in a range you have not trained, as after an import): down to what your estimate says fits the range, in whole steps. Not just after one step up while you are ${JUST_UP.short} or fewer reps short, and not while your reps at that load are rising. The rep target counts as many sets as the plan has. A single session clearly below your usual is not read this way: it repeats the last target, and a second in a row becomes your usual.</p>
    <p><b>Too easy</b> (every top set logged ${CLEARLY_OFF} or more RIR above the target): the same estimate sets a heavier load, at most ${CAP}% more (${CAP_LIGHT}% on isolation lifts under ${lightLift(kg)}), and at least one step when every set was rated ${RIR_CALL_TOP} or more in reserve, where the estimate is only a floor.</p>
-   <p><b>The first ${EARLY_SESSIONS} sessions</b> of a lift find its load: there the most these two can add is ${CAP_EARLY}%, so a first guess well under what you can do moves up by what your reps and reps in reserve allow, not a step at a time. A set rated ${RIR_CALL_TOP} or more in reserve is read as 5, so from such sets the load moves about a step a session: rate the reps left as closely as you can. For picking a load only, sets past ${E1_MAX_REPS} reps to failure are read with Epley up to ${FIT_MAX_RTF}, so a set of 25 still moves the load the right amount (never shown as a 1RM). A convention.</p>
+   <p><b>The first ${EARLY_SESSIONS} sessions</b> of a lift find its load: there the most these two can add is ${CAP_EARLY}%, so a first guess well under what you can do moves up by what your reps and reps in reserve allow, not a step at a time. A set rated ${RIR_CALL_TOP} or more in reserve is read as ${E1_MAX_RIR}, so from such sets the load moves about a step a session: rate the reps left as closely as you can. For picking a load only, sets past ${E1_MAX_REPS} reps to failure are read with Epley up to ${FIT_MAX_RTF}, so a set of 25 still moves the load the right amount (never shown as a 1RM). A convention.</p>
    <p><b>The first session of a close variation</b> (a hammer curl after DB curls, a front squat after back squats) starts from the related lift's last full session in the last ${KIN.days} days, when both use the same equipment, load, main muscle, and movement, with both arms or both legs at once. About ${pctOf(KIN.isolation)}% of its estimate (${pctOf(KIN.compound)}% on a compound lift), for the middle of the range with ${numWord(FATIGUE_RIR)} more rep in reserve, rounded down. Machines and cables start fresh, since two machines' numbers do not compare.</p>
    <p><b>At the heaviest load available</b> (set on the exercise), or with a load step of 0: more reps, then harder reps.</p>
    <p><b>Assisted machines</b>: less help is progress. <b>Timed holds</b>: add seconds, then load. <b>Bodyweight lifts never done with added load</b> (push-ups, pull-ups, a hanging leg raise): more reps, then harder reps or a little added load when you type it; the app never adds load you did not use.</p>
@@ -14497,7 +14497,7 @@ ${logBuf.length ? b`<ul class="clist">${logBuf.slice(-LOG_SHOWN).reverse().map(
    <p><b>One rule for every session.</b> A session sets the lift's next target only at its usual load and reps for its usual sets. Its usual is the middle of that session and the ${numWord(USUAL_BEFORE)} before it in the range (not counting ones done lighter); its usual sets are never more than the plan asks, and in a session on a day of your routine they are the sets the plan gave the lift that day, once a session has done that many, so fewer sets than planned never become the usual there. Each session keeps the plan it was done to, so a plan changed later never rereads the sessions before it; sessions saved before version 2.12 read their own sets. A set counts toward them when its load is within ${shareWords(1 - LIGHTER_LOAD)} of the session's working load, or at the usual load (a convention): a last set tried a step up, or sets lowered after a hard first one, still count, and a back-off set ${shareWords(1 - LIGHTER_LOAD)} or more lighter does not. Sets past the usual count are left out when a session is compared with its usual. With fewer sets, or reps clearly under the usual at no heavier load (more than ${pctOf(1 - USUAL_SHARE)}% by the strength reading, a convention), the target repeats, and the session still counts for its trend and PRs; two such sessions in a row are the new usual, and the app follows, except that fewer sets than the plan asks stay short. A heavier load than the ${numWord(USUAL_BEFORE)} before is a step up, never short of the usual by its reps. A session done lighter sets no target and no trend. The same holds on a lighter day or in a deload: a lift done there at its usual load and reps is read as on any day, and its own sets were cut by the day, so they never become its usual.</p>
    <p><b>Last</b> is the most recent session of the lift in that day's rep range (the most recent of all when the range is new), labelled fewer sets, below usual, lighter, or deload when it was. When it did not set the target, the next target comes from the last full session, and the i beside the target names its date; grey reps come from that session too after one below usual or done lighter.</p>
    <p><b>Deload week</b>: ${shareWords(LIGHTER_SET_SHARE)} the sets (rounded up), about ${pctOf(LIGHT_SHARE)}% of the load the normal day would ask for (or of last time's, if lower), in whole steps down (never under the empty bar on a full-bar lift), the bottom of the range, ${LIGHT_RIR} or more reps in reserve. A week with ${LIGHTER_WEEK_WORDS}, stays out of the weekly volume average (a lift done there at its usual load with fewer sets than usual counts as done lighter for this, the sets cut on purpose); each lift done lighter stays out of its trend. A <b>lighter day</b> is the same for one day.</p>
-   <p><b>Lighter sessions nobody marked</b> (an imported deload, say) are read from the numbers: a lift's heaviest load at least ${pctOf(1 - LIGHTER_LOAD)}% under its previous ${numWord(LIGHTER_REF)} sessions and its strength reading at least ${pctOf(1 - LIGHTER_READING)}% under. They are kept in history and, like a deload, set no target or trend. A session with half or more of its lifts done lighter, marked or read, is a lighter session, and a week with more than half its sessions lighter is left out of the weekly averages. Lighter sessions in a row for ${NEW_LEVEL.days / WEEK_DAYS} weeks or more are a new level, not a deload, and count again. A convention.</p>
+   <p><b>Lighter sessions nobody marked</b> (an imported deload, say) are read from the numbers: a lift's heaviest load at least ${pctOf(1 - LIGHTER_LOAD)}% under its previous ${numWord(LIGHTER_REF)} sessions and its strength reading at least ${pctOf(1 - LIGHTER_READING)}% under. They are kept in history and, like a deload, set no target or trend. A session with half or more of its lifts done lighter, marked or read, is a lighter session, and a week with more than half its sessions lighter is left out of the weekly averages. Lighter sessions in a row, ${numWord(NEW_LEVEL.sessions)} or more over ${NEW_LEVEL.days / WEEK_DAYS} weeks or more, are a new level, not a deload, and count again. A convention.</p>
    <p><b>An exercise stopped early</b>, or cut by Short on time, is read by the rule above: with fewer sets than usual it sets no target, and still counts toward its trend. Finish asks first when sets are left.</p>
    <p><b>Make it lighter</b>, after a low check-in, changes only the exercises not started yet. What you already did at full effort still sets next time's target.</p>
    <p><b>An injury</b> flagged on a muscle or a joint (knee, hip, shoulder, elbow, wrist) pauses targets for exercises that load it and caps their load at last time.</p>
@@ -16209,7 +16209,7 @@ ${ms.length ? b`<div class="scroll-x" style="margin-top:10px"><table class="t"><
       window.scrollTo(0, 0);
       fx.render();
       fx.toast(
-        `Deload week on until Sunday: half sets, about ${pctOf(LIGHT_SHARE)}% loads. It clears fatigue; it does not add growth.`,
+        `Deload week on until Sunday: ${shareWords(LIGHTER_SET_SHARE)} sets, about ${pctOf(LIGHT_SHARE)}% loads. It clears fatigue; it does not add growth.`,
         false,
         DELOAD_TOAST_MS
       );
@@ -16890,7 +16890,7 @@ ${ms.length ? b`<div class="scroll-x" style="margin-top:10px"><table class="t"><
   }
   function effOpts() {
     const sc = rirScale();
-    return sc === "whole" ? RIR_OPTS.slice() : ["0", "0.5", "1", "1.5", "2", "2.5", "3", "3.5", "4", "4.5", "5"];
+    return (sc === "whole" ? RIR_OPTS : RIR_HALF_OPTS).slice();
   }
   var effAria = (si) => rirScale() === "rpe" ? `RPE for set ${si + 1}` : `Reps in reserve for set ${si + 1}`;
   function stripIs(bi, si) {
@@ -20800,7 +20800,7 @@ ${ms.length ? b`<div class="scroll-x" style="margin-top:10px"><table class="t"><
             const w2 = e5.assist ? g2.w - (progStep(e5, it, BW * LB) || 5 * LB) : g2.w > 0 ? lighterLoad(e5, it, g2.w, g2.w * 0.9) : g2.w;
             return { exId: it.exId, sets: Array.from({ length: n3 }, () => ({ w: w2, r: lo, rir: 3, warm: false })) };
           });
-          state.sessions.push({ id: uid(), date, dayIdx: di, dayId: d3.id, dayName: d3.name + " (deload)", routineId: R2.id, ex: ex2, notes: "Deload: half sets, about 90% loads, 3+ RIR.", deload: true, demo: true });
+          state.sessions.push({ id: uid(), date, dayIdx: di, dayId: d3.id, dayName: d3.name + " (deload)", routineId: R2.id, ex: ex2, notes: DELOAD_NOTE, deload: true, demo: true });
           continue;
         }
         const ex = d3.items.map((it) => {
@@ -21294,7 +21294,7 @@ ${ms.length ? b`<div class="scroll-x" style="margin-top:10px"><table class="t"><
           return;
         }
         const dl = isDeloadWeek();
-        state.draft = { ...freeDraft(dl ? "Freestyle (deload)" : "Freestyle"), deload: dl, notes: dl ? "Deload: half sets, about 90% loads, 3+ RIR." : "" };
+        state.draft = { ...freeDraft(dl ? "Freestyle (deload)" : "Freestyle"), deload: dl, notes: dl ? DELOAD_NOTE : "" };
         ui.tab = "today";
         state.draft.note0 = state.draft.notes || "";
         saveNow();
@@ -21671,7 +21671,7 @@ ${ms.length ? b`<div class="scroll-x" style="margin-top:10px"><table class="t"><
             if (deload && n3 && !(day && day.items.some((i5) => i5.exId === b2.exId))) nb.full = Math.min(n3, 30);
             return nb;
           });
-          state.draft = day ? { id: uid(), startedAt: Date.now(), date: today(), dayIdx: R2.days.indexOf(day), dayId: day.id, dayName: day.name + (deload ? " (deload)" : ""), routineId: R2.id, deload, light: false, cardio: [], notes: deload ? "Deload: half sets, about 90% loads, 3+ RIR." : "", editingId: null, ex } : { ...freeDraft(s3.free ? s3.dayName : `Again: ${s3.dayName}`.slice(0, 40), ex), deload };
+          state.draft = day ? { id: uid(), startedAt: Date.now(), date: today(), dayIdx: R2.days.indexOf(day), dayId: day.id, dayName: day.name + (deload ? " (deload)" : ""), routineId: R2.id, deload, light: false, cardio: [], notes: deload ? DELOAD_NOTE : "", editingId: null, ex } : { ...freeDraft(s3.free ? s3.dayName : `Again: ${s3.dayName}`.slice(0, 40), ex), deload };
           if (state.draft) state.draft.note0 = state.draft.notes || "";
           ui.tab = "today";
           saveNow();
@@ -21957,8 +21957,8 @@ ${JSON.stringify(fb.context, null, 1)}`;
           return;
         }
         const w2 = numIn(($2("#goalW") || {}).value), r4 = Math.round(numIn(($2("#goalR") || {}).value));
-        if (!(r4 >= 1 && r4 <= 30)) {
-          toast("Reps from 1 to 30");
+        if (!(r4 >= 1 && r4 <= LIMITS.goalReps)) {
+          toast(`Reps from 1 to ${LIMITS.goalReps}`);
           return;
         }
         if (w2 == null && !e5.bw) {
@@ -22010,7 +22010,7 @@ ${JSON.stringify(fb.context, null, 1)}`;
           closeModal();
           return;
         }
-        e5.inc = fromD(Math.min(n3, U() === "lb" ? 1100 : 500));
+        e5.inc = Math.min(fromD(n3), LIMITS.step);
         closeModal();
         commit();
         refreshEx(e5.id);
@@ -22116,7 +22116,7 @@ ${JSON.stringify(fb.context, null, 1)}`;
         const light = t4.dataset.light === "1";
         const deload = !light && isDeloadWeek();
         const items = d3.rest ? [] : d3.items.map((it) => light || deload ? { ...it, sets: Math.max(1, Math.ceil(it.sets / 2)) } : it);
-        state.draft = { id: uid(), startedAt: Date.now(), date: today(), dayIdx: di, dayId: d3.id, dayName: d3.name + (light ? " (lighter)" : deload ? " (deload)" : ""), routineId: R2.id, deload, light, cardio: [], notes: light ? "Lighter session: half sets, about 90% loads, 3+ RIR." : deload ? "Deload: half sets, about 90% loads, 3+ RIR." : "", editingId: null, ex: items.map((it) => newBlock(it.exId, it, { deload, light })) };
+        state.draft = { id: uid(), startedAt: Date.now(), date: today(), dayIdx: di, dayId: d3.id, dayName: d3.name + (light ? " (lighter)" : deload ? " (deload)" : ""), routineId: R2.id, deload, light, cardio: [], notes: light ? LIGHTER_NOTE : deload ? DELOAD_NOTE : "", editingId: null, ex: items.map((it) => newBlock(it.exId, it, { deload, light })) };
         state.draft.note0 = state.draft.notes || "";
         saveNow();
         window.scrollTo(0, 0);
@@ -22315,7 +22315,7 @@ ${JSON.stringify(fb.context, null, 1)}`;
         });
         const sw = eqPlan(day, eq).filter((x2) => x2.from);
         const note = sw.length ? "Limited equipment: " + sw.map((x2) => `${exName(x2.from)} → ${x2.to ? exName(x2.to) : "left out"}`).join("; ") + "." : "";
-        state.draft = { id: uid(), startedAt: Date.now(), date: today(), dayIdx: m3.day, dayId: day.id, dayName: day.name + (deload ? " (deload)" : ""), routineId: R2.id, deload, light: false, limited: true, cardio: [], notes: [deload ? "Deload: half sets, about 90% loads, 3+ RIR." : "", note].filter(Boolean).join(" "), editingId: null, ex };
+        state.draft = { id: uid(), startedAt: Date.now(), date: today(), dayIdx: m3.day, dayId: day.id, dayName: day.name + (deload ? " (deload)" : ""), routineId: R2.id, deload, light: false, limited: true, cardio: [], notes: [deload ? DELOAD_NOTE : "", note].filter(Boolean).join(" "), editingId: null, ex };
         state.draft.note0 = state.draft.notes || "";
         saveNow();
         window.scrollTo(0, 0);
@@ -22447,7 +22447,7 @@ ${JSON.stringify(fb.context, null, 1)}`;
         e5.secondary = e5.secondary.filter((k2) => k2 !== e5.primary);
         {
           const n3 = numIn(e5.incRaw);
-          e5.inc = n3 != null && n3 > 0 ? fromD(Math.min(n3, U() === "lb" ? 1100 : 500)) : null;
+          e5.inc = n3 != null && n3 > 0 ? Math.min(fromD(n3), LIMITS.step) : null;
           delete e5.incRaw;
         }
         {
@@ -22458,7 +22458,7 @@ ${JSON.stringify(fb.context, null, 1)}`;
         }
         {
           const n3 = numIn(e5.barRaw);
-          if (n3 != null && n3 > 0 && platesMode(e5) === "bar") e5.barKg = fromD(Math.min(n3, U() === "lb" ? 110 : 50));
+          if (n3 != null && n3 > 0 && platesMode(e5) === "bar") e5.barKg = Math.min(fromD(n3), LIMITS.barKg);
           else delete e5.barKg;
           delete e5.barRaw;
         }

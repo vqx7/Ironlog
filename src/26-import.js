@@ -367,7 +367,7 @@ function makeDemo(){
         const n=Math.max(1,Math.ceil(it.sets/2));const lo=+it.repMin||8;
         const w=e.assist?g.w-(progStep(e,it,BW*LB)||5*LB):g.w>0?lighterLoad(e,it,g.w,g.w*0.9):g.w;
         return {exId:it.exId,sets:Array.from({length:n},()=>({w,r:lo,rir:3,warm:false}))};});
-      state.sessions.push({id:uid(),date,dayIdx:di,dayId:d.id,dayName:d.name+' (deload)',routineId:R.id,ex,notes:'Deload: half sets, about 90% loads, 3+ RIR.',deload:true,demo:true});
+      state.sessions.push({id:uid(),date,dayIdx:di,dayId:d.id,dayName:d.name+' (deload)',routineId:R.id,ex,notes:DELOAD_NOTE,deload:true,demo:true});
       continue;
     }
     const ex=d.items.map(it=>{
