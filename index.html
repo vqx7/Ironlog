@@ -19519,7 +19519,7 @@ ${ms.length ? b`<div class="scroll-x" style="margin-top:10px"><table class="t"><
     function liftTrend(exId) {
       const ex = EX(exId);
       const st = IDX().exStats[exId];
-      const exps = (IDX().byEx[exId] || []).filter((x2) => x2.tv != null && !lighter(x2) && (!st || sameRR(x2.rr, st.rr))).slice(-3);
+      const exps = liftRead(exId).filter((x2) => x2.tv != null && !lighter(x2) && (!st || sameRR(x2.rr, st.rr))).slice(-3);
       if (exps.length < 2) return "";
       const ow = st && st.spanW ? ` over ${st.spanW} weeks${st.rrIn ? ` in the ${repSpan(st.rrIn[0], st.rrIn[1])} range` : ""}` : "";
       const dir = st && st.fresh && st.pct != null ? st.moving ? `up${ow}` : st.falling ? `down${ow}` : st.holdRR && (st.holdRR.length || st.quietRR.length) ? `down${ow}` : st.pLo != null && st.pLo > 0 ? `slowly up${ow}` : st.pHi != null && st.pHi < 0 ? `slowly down${ow}` : `no clear change over ${st.spanW || 2} weeks` : "";

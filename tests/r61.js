@@ -356,11 +356,12 @@ const GUIDE_ADDED_TEXT = ["New machine or gym (in an exercise's ⋯ menu during 
       const sg = L.suggest('legPress', { sets: 3, repMin: 8, repMax: 12, rir: 2, rest: 120, inc: 5 }, {});
       const bests = L.allTimeBests('legPress');
       return { keys: sv ? Object.keys(sv.ex[0]) : null, nw: sv && sv.ex[0].nw, prs: I.prs.filter(p => p.exId === 'legPress' && p.sid === (sv && sv.id)).length, oldPrs: I.prs.filter(p => p.exId === 'legPress').length,
-        n: st.n, best: st.bestAll, pct: st.pct, stalled: st.stalled, bestDate: bests && bests.est && bests.est.date, heavy: L.bestLine('legPress'), target: sg.target, w: sg.w, exps: I.byEx.legPress.length, hist: L.state.sessions.length };
+        n: st.n, best: st.bestAll, pct: st.pct, stalled: st.stalled, line: L.liftTrend('legPress'), bestDate: bests && bests.est && bests.est.date, heavy: L.bestLine('legPress'), target: sg.target, w: sg.w, exps: I.byEx.legPress.length, hist: L.state.sessions.length };
     });
     ok(fin.nw === true && fin.keys && fin.keys.slice(-2).join() === 'ps,nw', '5. Finish saves the mark on the exercise, last, after the sets its plan gave it', fin);
     ok(fin.prs === 0 && fin.bestDate === '2026-10-15' && /280/.test(fin.heavy) && fin.n === 7 && fin.exps === 7 && fin.hist === 7,
       '5. saved: no PR, its bests are the new machine\'s (the best estimate and heaviest set from today), and its seven sessions are all kept and counted', fin);
+    ok(fin.line === '', '5. the lift\'s history sheet shows no trend line from the old gym\'s sessions: one session at the new machine is none yet (the independent review of r61)', fin.line);
     ok(fin.pct == null && fin.stalled === false, '5. its trend starts over too: one session at the new machine is no trend yet (the old gym\'s 200 to 225 read with 280 would be a rise)', fin);
     ok(fin.w != null && fin.w >= 280 && !/225/.test(fin.target), '5. the next target comes from the new machine\'s 280 x 11, not the old gym\'s loads', fin);
     // Opened again, the log reads the same (each session's fingerprint, as the sync compares it), and the exercise's fields in Finish's order.
