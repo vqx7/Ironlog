@@ -7213,15 +7213,25 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     });
     return work > 0 && bw + w2 >= 0 && bw + w2 < work * LIGHTER_LOAD - 1e-9;
   }
+  function underBarIn(M3, b2, si) {
+    const ex = EXIn(M3, b2.exId);
+    const w2 = effW(b2, si);
+    if (!b2.sets[si] || ex.assist || ex.timed || w2 == null) return null;
+    const bar = loadFloorIn(M3, ex);
+    if (!(bar > 0) || w2 >= bar - rackTolIn(M3)) return null;
+    const say = (x2) => `${loadLabelIn(M3, ex, x2)} ${UIn(M3)}`;
+    return (ex.barKg ?? 0) > 0 ? `${say(w2)} is under this lift's ${say(bar)} bar.` : `${say(w2)} is under the ${say(bar)} bar set in Settings.`;
+  }
   function oddLoadIn(M3, b2, si, date) {
     const s3 = b2.sets[si];
-    if (!s3 || s3.warm || s3.drop) return null;
+    const under = underBarIn(M3, b2, si);
+    if (!s3 || s3.warm || s3.drop) return under;
     const ex = EXIn(M3, b2.exId);
     const w2 = effW(b2, si);
     if (ex.assist || ex.timed || w2 == null) return null;
     const bw = bwLoadIn(M3, ex, date);
     const load2 = bw + w2;
-    if (!(load2 > 0)) return null;
+    if (!(load2 > 0)) return under;
     const say = (x2) => `${loadLabelIn(M3, ex, x2)}${ex.bw ? "" : " " + UIn(M3)}`;
     let top = 0, topW = 0;
     b2.sets.forEach((x2, i5) => {
@@ -7245,7 +7255,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       }
     if (best > 0 && load2 > Math.max(best, top) * ODD_BEST + 1e-9)
       return `${say(w2)} is more than twice the heaviest you have logged on this exercise, ${say(bestW)}.`;
-    return null;
+    return under;
   }
   function stretchTopIn(M3, exId, plan) {
     const T2 = M3.today();
@@ -9266,7 +9276,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
    <p><b>Grey loads</b> are the set above, or today's suggested load. To have loads typed in for you: Settings, Rest timer and logging, Fill in suggested loads.</p>
    <p><b>Auto-mark</b> (Settings): a set ticks itself when you leave its reps field.</p>
    <p><b>A missed set</b>: type 0 reps and tick it (auto-mark ticks it too). It is kept and shown as missed, and counts toward no volume, PR, estimate, or target; the next set's grey numbers come from the last set you completed.</p>
-   <p><b>A number far off</b> asks before the set is logged, Log it or Fix it: reps over 30 and more than twice the top of your range or your most ever, whichever is more, or a load more than three times, or under a third of, the heaviest set you ticked today, or more than twice the heaviest you have logged on the exercise (conventions, to catch a slipped digit or the other unit).</p>
+   <p><b>A number far off</b> asks before the set is logged, Log it or Fix it: reps over 30 and more than twice the top of your range or your most ever, whichever is more, or a load more than three times, or under a third of, the heaviest set you ticked today, or more than twice the heaviest you have logged on the exercise (conventions, to catch a slipped digit or the other unit). So does a load under the empty bar, on any set of a lift on the full bar typed as the total (the bar in Settings, or the exercise's own).</p>
    <p><b>RIR</b>, reps in reserve: how many more reps you could have done. Tap a set's RIR box for 0 to 5 (Settings can switch it to half reps or RPE; RPE 8 is RIR 2). ${off ? "RIR is off in Settings, so every working set counts as hard." : "It is optional: a blank reads as your usual RIR on that lift once you have rated 3 of its sets in 12 weeks, and until then as hard."}</p>
    <p><b>RIR check</b>: once you have 3 sessions, one machine or cable exercise may ask for one set to failure, to see how far your RIR calls are off. Not now, or finishing without it, waits 3 weeks.</p>
    <p><b>Last</b>, beside each set, is what you did on that set last time at your working load, from the session named above the sets; a top single or lighter sets stay in that line. <b>W and D</b>: tap a set's number once for a warm-up (kept, never analysed), twice for a drop set (counts half a set of volume, never as a PR or target). <b>+ Drop</b> beside + Set adds one at about 75% once a set is done; warm-ups are in the exercise's ⋯ menu.</p>

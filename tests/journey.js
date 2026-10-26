@@ -92,7 +92,8 @@ const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log
     await page.waitForTimeout(150);
     const at = () => ev((id) => window.__ironlog.state.draft.ex.findIndex(b => b.exId === id), added);
     const a0 = await at();
-    await type(W(a0, 0), '40'); await type(R(a0, 0), '12');
+    // 50, not 40 as before r60: the lift picked can be a barbell lift, and r60 asks about a load under its 45 lb bar (353).
+    await type(W(a0, 0), '50'); await type(R(a0, 0), '12');
     if (mode === 'grey') await page.click(`[data-act="sDone"][data-b="${a0}"][data-s="0"]`); else await blur();
     await page.waitForTimeout(120);
     // Its first tick, below exercises not yet touched, moves it up 0.9 s later (the auto-reorder, r45), as a lifter's next
@@ -101,7 +102,7 @@ const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log
     await page.waitForFunction(() => { const L = window.__ironlog; const d = L.state.draft; return !!d && d.ex.every(b => L.orderAt(b) < 0); }, null, { timeout: 10000 });
     const ai = await at();
     // A second set (r30), as before r54, when an exercise stopped with under half its sets done was saved as trimmed.
-    await type(W(ai, 1), '40'); await type(R(ai, 1), '11');
+    await type(W(ai, 1), '50'); await type(R(ai, 1), '11');
     if (mode === 'grey') await page.click(`[data-act="sDone"][data-b="${ai}"][data-s="1"]`); else await blur();
     await page.waitForTimeout(120);
     ok(await ev((i) => { const b = window.__ironlog.state.draft.ex[i]; return b.sets[0].done && b.sets[0].r === 12 && !b.cut; }, ai), T + 'an exercise added after the trim is logged and not marked trimmed');

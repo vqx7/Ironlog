@@ -21,11 +21,11 @@
 //   5  at home with bodyweight work: the bodyweight question, pull-ups with
 //      no load moving by reps, an assisted lift moving by less help, a plank
 //      in seconds;
-//   6  the lifter who slips: a load with a digit too many and reps typed as
-//      105 are asked about and fixed in place, − Set and Undo, a change of
-//      units mid-session (nothing stored changes, no PR made of it), an edit
-//      from History that the next session reads, a session deleted and
-//      restored;
+//   6  the lifter who slips: a load of 0 on the bench (under the bar), a load
+//      with a digit too many and reps typed as 105 are asked about and fixed
+//      in place, − Set and Undo, a change of units mid-session (nothing
+//      stored changes, no PR made of it), an edit from History that the next
+//      session reads, a session deleted and restored;
 //   7  a deload week with a superset and cardio: half the sets at about 90%
 //      in whole steps, the rest timer after the pair, cardio saved, and the
 //      week after reading its target from before the deload;
@@ -376,9 +376,17 @@ const effortByLabel = async (H, b, s, label) => { await H.page.click(`#view [dat
     await page.click('#toast [data-act="undo"]'); await wait(150);
     const d4 = await H.draft();
     ok(!!asked && n3 === n2 - 1 && d4.ex[0].sets.length === n2 && d4.ex[0].sets[n2 - 1].r === 7, '6. with every row holding reps, − Set asks first, and Undo brings the row back with its reps', { asked, n: [n2, n3, d4.ex[0].sets.length], last: d4.ex[0].sets[n2 - 1] });
+    // A load under the bar: 0 lb on the bench (the thumb meant 135), bench pressing air. Asked first; Fix it goes back to the load (V, 2026-10-25).
+    await H.type('w', 0, 0, 0); await H.type('r', 0, 0, 8); await H.tick(0, 0);
+    let q = await ev(() => { const m = window.__ironlog.ui.modal; return m && m.kind === 'confirm' ? m.body : null; });
+    ok(!!q && /^0 lb is under the 45 lb bar/.test(q) && !(await H.draft()).ex[0].sets[0].done, '6. 0 lb on the bench is asked about, not logged: under the 45 lb bar', q);
+    if (q) await page.click('#modal [data-act="mAlt"]');
+    await wait(120);
+    const f0 = await ev(() => { const a = document.activeElement; return a && a.dataset ? a.dataset.f + a.dataset.b + a.dataset.s : null; });
+    ok(f0 === 'w00', '6. Fix it puts the cursor back in that load', f0);
     // A digit too many: 1350 for 135. Asked first; Fix it goes back to the load, and 135 then logs.
-    await H.type('w', 0, 0, 1350); await H.type('r', 0, 0, 8); await H.tick(0, 0);
-    let q = await ev(() => { const m = window.__ironlog.ui.modal; return m && m.kind === 'confirm' ? m.title : null; });
+    await H.type('w', 0, 0, 1350); await H.tick(0, 0);
+    q = await ev(() => { const m = window.__ironlog.ui.modal; return m && m.kind === 'confirm' ? m.title : null; });
     ok(!!q && /1350/.test(q), '6. 1350 lb is asked about before it is logged', q);
     await page.click('#modal [data-act="mAlt"]'); await wait(120);
     const f1 = await ev(() => { const a = document.activeElement; return a && a.dataset ? a.dataset.f + a.dataset.b + a.dataset.s : null; });

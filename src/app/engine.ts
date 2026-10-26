@@ -1708,16 +1708,42 @@ export function lightZeroIn(M: Model, b: DraftBlock, si: number, date: string): 
   return work > 0 && bw + w >= 0 && bw + w < work * LIGHTER_LOAD - 1e-9;
 }
 
-/** Why a working set's load is far off its session or the lift's log, or null (above). */
+/* A load under the bar (V on the r59 preview, 2026-10-25: a set of barbell
+   bench could be logged at 0 lb, "unless you're bench pressing air"). On a
+   lift on the full bar typed as the total (loadFloorIn), no set, a warm-up
+   or a drop included, is lighter than the empty bar: a load under it is a
+   slip, or a lighter bar not yet set, so it is asked about as a load far off
+   is, naming the bar where it is set (the exercise's own, else Settings'). A
+   load within half the last digit shown of the bar is the bar (rackTolIn). A
+   barbell curl or skull crusher has no floor (an EZ or fixed bar is often
+   lighter), nor a load typed per side. */
+function underBarIn(M: Model, b: DraftBlock, si: number): string | null {
+  const ex = EXIn(M, b.exId);
+  const w = effW(b, si);
+  if (!b.sets[si] || ex.assist || ex.timed || w == null) return null;
+  const bar = loadFloorIn(M, ex);
+  if (!(bar > 0) || w >= bar - rackTolIn(M)) return null;
+  const say = (x: number): string => `${loadLabelIn(M, ex, x)} ${UIn(M)}`;
+  return (ex.barKg ?? 0) > 0
+    ? `${say(w)} is under this lift's ${say(bar)} bar.`
+    : `${say(w)} is under the ${say(bar)} bar set in Settings.`;
+}
+
+/* Why a set's load is far off its session or the lift's log (a working set
+   only, above), or under the bar (any set, underBarIn), or null. The
+   comparisons with the session and the log come first, as the more specific;
+   the bar answers when they do not. */
+/** Why a set's load is far off its session or the lift's log, or under the bar, or null (above). */
 export function oddLoadIn(M: Model, b: DraftBlock, si: number, date: string): string | null {
   const s = b.sets[si];
-  if (!s || s.warm || s.drop) return null;
+  const under = underBarIn(M, b, si);
+  if (!s || s.warm || s.drop) return under;
   const ex = EXIn(M, b.exId);
   const w = effW(b, si);
   if (ex.assist || ex.timed || w == null) return null;
   const bw = bwLoadIn(M, ex, date);
   const load = bw + w;
-  if (!(load > 0)) return null;
+  if (!(load > 0)) return under;
   const say = (x: number): string => `${loadLabelIn(M, ex, x)}${ex.bw ? '' : ' ' + UIn(M)}`;
   let top = 0,
     topW = 0;
@@ -1742,7 +1768,7 @@ export function oddLoadIn(M: Model, b: DraftBlock, si: number, date: string): st
         }
   if (best > 0 && load > Math.max(best, top) * ODD_BEST + 1e-9)
     return `${say(w)} is more than twice the heaviest you have logged on this exercise, ${say(bestW)}.`;
-  return null;
+  return under;
 }
 
 /* ---------- Adjusting the next sets (r34, V; moved from src/17-adjust.js in r60) ----------

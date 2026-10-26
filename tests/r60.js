@@ -39,6 +39,12 @@
 //      not yet heard merges it rather than replacing it; a field focused by
 //      code keeps its caret, so the next digit goes there; and a caret moved
 //      by an arrow key or End after a tap takes the next digit where it is.
+//   9  a load under the empty bar on a lift on the full bar typed as the total
+//      (the bench at 0 or 20 lb) is asked about first, Fix it or Log it, on any
+//      set, a warm-up included, and when a ticked set is changed to it; the bar
+//      is the one in Settings or the exercise's own, in lb and kg; the bar
+//      itself and a barbell curl at 20 lb tick at once (V on the r59 preview,
+//      2026-10-25, PENDING 353; fails on f4e3a8d and on r59).
 //   7  the installed build tries only its own copies of SortableJS and
 //      Chart.js, as its policy allows no other address (PENDING 346 c; read
 //      from the standalone build, IRONLOG_FILE=dist/index.html; fails on a
@@ -429,6 +435,76 @@ const SCREENS = [
       ok(!A.errors.length && !B.errors.length, `8. two tabs (${mode}): no page errors`, [...A.errors, ...B.errors]);
       await A.ctx.close();
     }
+  }
+
+  // ---- 9. A load under the bar is asked about first (V on the r59 preview, 2026-10-25).
+  if (run(9)) {
+    const LB = 0.45359237;
+    const P = await open(FILE, { browser, clock: '2026-10-24T10:00:00' });
+    const ev = (f, a) => P.page.evaluate(f, a);
+    const sel = (f, b, s) => `#view .sg input[data-f="${f}"][data-b="${b}"][data-s="${s}"]`;
+    const tick = async (b, s) => { await P.page.click(`#view [data-act="sDone"][data-b="${b}"][data-s="${s}"]`); await wait(120); };
+    // Typed as a thumb does: the field tapped, its text replaced, then left.
+    const type = async (f, b, s, v) => { const q = sel(f, b, s); await P.page.click(q); await P.page.fill(q, ''); await P.page.keyboard.type(String(v)); await ev(() => { if (document.activeElement) document.activeElement.blur(); }); await wait(80); };
+    // A set as stored, the question open (its words), and whether its load field has the focus.
+    const now = (b, s) => ev(([b, s, q]) => { const L = window.__ironlog; const x = L.state.draft.ex[b].sets[s]; const m = L.ui.modal; return { done: !!x.done, w: x.w, r: x.r, asked: m && m.kind === 'confirm' ? m.body : null, focused: document.activeElement === document.querySelector(q) }; }, [b, s, sel('w', b, s)]);
+    // The question answered; on a build that does not ask, there is nothing to answer, and the checks say so.
+    const answer = async act => { const q = `#modal [data-act="${act}"]`; if (await P.page.$(q)) await P.page.click(q); await wait(120); };
+    const lb = (x, v) => x.w != null && Math.abs(x.w / LB - v) < 1e-9;
+    // A barbell bench (on the full bar, typed as the total), a barbell curl, and two more bench blocks.
+    await ev(new Function('L', `{const L=window.__ironlog;L.state.settings.onboarded=true;L.state.settings.autoDone=false;L.state.settings.unit='lb';L.state.settings.barKg=null;L.saveNow();${FREE(['bench', 'bbCurl', 'bench', 'bench'])}L.render();}`));
+    await wait(150);
+    // 0 lb: asked, not ticked; Fix it goes back to the load, the 0 kept as typed.
+    await type('w', 0, 0, 0); await type('r', 0, 0, 8); await tick(0, 0);
+    let x = await now(0, 0);
+    ok(!x.done && /^0 lb is under the 45 lb bar set in Settings\. Log it as typed, or go back and fix it\.$/.test(x.asked || ''), '9. 0 lb on a barbell bench is asked about, not ticked: "0 lb is under the 45 lb bar set in Settings."', x);
+    await answer('mAlt'); x = await now(0, 0);
+    ok(!x.done && x.focused && x.w === 0 && x.r === 8, '9. Fix it goes back to the load field, the set not ticked, 0 x 8 kept as typed', x);
+    // 20 lb (a slip, or a lighter bar not set): asked; Log it logs it as typed.
+    await type('w', 0, 0, 20); await tick(0, 0); x = await now(0, 0);
+    ok(!x.done && /^20 lb is under the 45 lb bar set in Settings\./.test(x.asked || ''), '9. 20 lb is asked about too', x);
+    await answer('mOk'); x = await now(0, 0);
+    ok(x.done && lb(x, 20) && x.r === 8, '9. Log it ticks it as typed, 20 lb x 8', x);
+    // The bar itself ticks at once.
+    await type('w', 0, 1, 45); await type('r', 0, 1, 8); await tick(0, 1); x = await now(0, 1);
+    ok(x.done && !x.asked && lb(x, 45), '9. 45 lb, the bar, ticks at once', x);
+    // A ticked set whose load is changed to under the bar is asked about again.
+    await type('w', 0, 1, 0); x = await now(0, 1);
+    ok(/^0 lb is under the 45 lb bar/.test(x.asked || ''), '9. a ticked set changed to 0 lb is asked about', x);
+    // Fix it, and the load typed again: the set unticked for the question is ticked again by the fixed load (r55's review).
+    await answer('mAlt'); await type('w', 0, 1, 45); x = await now(0, 1);
+    ok(x.done && lb(x, 45) && x.r === 8 && !x.asked, '9. Fix it and 45 lb typed again: the set is ticked again, 45 lb x 8', x);
+    // A warm-up on the full bar is never lighter than the bar either (on the last bench, whose working sets are all still to do, so it stays open).
+    await ev(() => { const L = window.__ironlog; L.state.draft.ex[3].sets[2].warm = true; L.saveNow(); L.render(); }); await wait(100);
+    await type('w', 3, 2, 0); await type('r', 3, 2, 10); await tick(3, 2); x = await now(3, 2);
+    ok(!x.done && /^0 lb is under the 45 lb bar/.test(x.asked || ''), '9. a warm-up at 0 lb on the bench is asked about', x);
+    await answer('mAlt');
+    // A barbell curl is often on an EZ or fixed bar lighter than the one in Settings: 20 lb ticks at once.
+    await type('w', 1, 0, 20); await type('r', 1, 0, 10); await tick(1, 0); x = await now(1, 0);
+    ok(x.done && !x.asked && lb(x, 20), '9. a barbell curl at 20 lb ticks at once (an EZ or fixed bar is often lighter)', x);
+    // A lighter bar set in Settings is the one read: 35 lb ticks, 30 is asked about.
+    await ev(() => { const L = window.__ironlog; L.state.settings.barKg = 35 * 0.45359237; L.saveNow(); L.render(); }); await wait(100);
+    await type('w', 2, 0, 35); await type('r', 2, 0, 8); await tick(2, 0); x = await now(2, 0);
+    ok(x.done && !x.asked && lb(x, 35), '9. with a 35 lb bar in Settings, 35 lb ticks at once', x);
+    await type('w', 2, 1, 30); await type('r', 2, 1, 8); await tick(2, 1); x = await now(2, 1);
+    ok(!x.done && /^30 lb is under the 35 lb bar set in Settings\./.test(x.asked || ''), '9. and 30 lb is asked about: "30 lb is under the 35 lb bar"', x);
+    await answer('mAlt');
+    // In kilograms with no bar set, the bar is 20 kg: 15 is asked about, 20 ticks.
+    await ev(() => { const L = window.__ironlog; L.state.settings.unit = 'kg'; L.state.settings.barKg = null; L.saveNow(); L.render(); }); await wait(100);
+    await type('w', 3, 0, 15); await type('r', 3, 0, 8); await tick(3, 0); x = await now(3, 0);
+    ok(!x.done && /^15 kg is under the 20 kg bar set in Settings\./.test(x.asked || ''), '9. in kilograms, 15 kg is asked about: "15 kg is under the 20 kg bar"', x);
+    await answer('mAlt');
+    await type('w', 3, 0, 20); await tick(3, 0); x = await now(3, 0);
+    ok(x.done && !x.asked && Math.abs(x.w - 20) < 1e-9, '9. and 20 kg ticks at once', x);
+    // A bar of its own set on the exercise (its editor's Bar for this lift) is the one read, and named as its own.
+    await ev(() => { const L = window.__ironlog; const e = L.state.exercises.find(e => e.id === 'bench'); e.barKg = 15; L.invalidate(); L.saveNow(); L.render(); }); await wait(100);
+    await type('w', 3, 1, 10); await type('r', 3, 1, 8); await tick(3, 1); x = await now(3, 1);
+    ok(!x.done && /^10 kg is under this lift's 15 kg bar\./.test(x.asked || ''), "9. with a 15 kg bar on the exercise, 10 kg is asked about: \"10 kg is under this lift's 15 kg bar\"", x);
+    await answer('mAlt');
+    await type('w', 3, 1, 15); await tick(3, 1); x = await now(3, 1);
+    ok(x.done && !x.asked && Math.abs(x.w - 15) < 1e-9, '9. and 15 kg, its bar, ticks at once', x);
+    ok(!P.errors.length, '9. no page errors', P.errors);
+    await P.page.context().close();
   }
 
   // ---- 7. The installed build's library addresses (346 c).

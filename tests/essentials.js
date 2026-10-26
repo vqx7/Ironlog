@@ -194,6 +194,9 @@ const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log
   await F.page.fill(W(2), '95'); await F.page.dispatchEvent(W(2), 'change'); await F.page.waitForTimeout(80);
   await F.page.fill(W(1), '8'); await F.page.dispatchEvent(W(1), 'change'); await F.page.fill(W(1), '8'); await F.page.waitForTimeout(40);
   await F.page.fill(`.sg input[data-f="r"][data-b="0"][data-s="1"]`, '8'); await F.page.dispatchEvent(`.sg input[data-f="r"][data-b="0"][data-s="1"]`, 'change');
+  // 8 is under the empty bar of the day's first lift, a barbell lift, so since r60 its tick (auto-mark, as the reps are left) asks first (353): the lifter means it, Log it.
+  await F.page.waitForTimeout(80);
+  if (await F.page.$('#modal [data-act="mOk"]')) { await F.page.click('#modal [data-act="mOk"]'); await F.page.waitForTimeout(120); }
   await F.page.click('[data-act="sDone"][data-b="0"][data-s="1"]'); await F.page.waitForTimeout(120);
   await F.page.fill(W(0), '105'); await F.page.dispatchEvent(W(0), 'change'); await F.page.waitForTimeout(80);
   const L3 = await loads();
