@@ -23,13 +23,21 @@ jobs:
   # time on each (the same conditions as before, so nothing new can flake),
   # about a quarter of the old 19 minutes plus each runner's setup.
   # The hour a job had went to the install on a slow runner (r61, 2026-10-26:
-  # five shards of three runs spent 40 to 60 minutes installing, and those
-  # it took past the hour were stopped before their suites finished; every
-  # shard's suites took 12 to 20 minutes). So the install and the suites each have their own limit, the
-  # install says how long each part took, and a shard stopped at the install
-  # is one to run again.
+  # in four runs six WebKit shards spent 30 to 60 minutes installing the
+  # browser's system packages, and those past their limit were stopped
+  # before their suites ran; every shard's suites took 12 to 20 minutes, and
+  # Chromium's install at most 13). Since r62 every shard runs in
+  # Playwright's own image for the version package-lock.json pins, which
+  # holds both browsers and the packages they need, so nothing is installed
+  # from the system's mirrors; `playwright install` is kept, which does
+  # nothing when the image's browser is the one the lock wants and fetches
+  # only the browser when it is not. The install and the suites keep their
+  # own limits, and the install says how long each part took.
   suites:
     runs-on: ubuntu-latest
+    container:
+      image: mcr.microsoft.com/playwright:v1.64.0-noble
+      options: --ipc=host
     timeout-minutes: 80
     strategy:
       fail-fast: false
@@ -44,7 +52,7 @@ jobs:
         timeout-minutes: 30
         run: |
           t=$SECONDS; npm install --no-audit --no-fund; n=$((SECONDS-t))
-          t=$SECONDS; npx playwright install --with-deps chromium; echo "::notice title=install::npm $n s, chromium $((SECONDS-t)) s"
+          t=$SECONDS; npx playwright install chromium; echo "::notice title=install::npm $n s, chromium $((SECONDS-t)) s"
       # tests/moved.js ran here beside hygiene until it was retired in r54 (PENDING 316).
       - name: The proof suite on its own, so a runner that dropped it could not hide it
         run: node tests/hygiene.js
@@ -65,6 +73,9 @@ jobs:
   # caught here before it reaches the phone.
   webkit:
     runs-on: ubuntu-latest
+    container:
+      image: mcr.microsoft.com/playwright:v1.64.0-noble
+      options: --ipc=host
     timeout-minutes: 80
     strategy:
       fail-fast: false
@@ -79,7 +90,7 @@ jobs:
         timeout-minutes: 30
         run: |
           t=$SECONDS; npm install --no-audit --no-fund; n=$((SECONDS-t))
-          t=$SECONDS; npx playwright install --with-deps webkit; echo "::notice title=install::npm $n s, webkit $((SECONDS-t)) s"
+          t=$SECONDS; npx playwright install webkit; echo "::notice title=install::npm $n s, webkit $((SECONDS-t)) s"
       - name: Every suite in shard ${{ matrix.shard }} of 4 in WebKit, source and standalone build
         timeout-minutes: 40
         run: node tests/run.js --browser webkit --shard ${{ matrix.shard }}/4 --jobs 1
