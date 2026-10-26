@@ -3,7 +3,7 @@
    legacy parts (10 to 29) read these names as they read their own. Each phase
    of ARCHITECTURE.md moves more code into src/app/ and out of those parts. */
 import { STORAGE_ID, APP_NAME, FILE_PREFIX, PREVIEW_NAME, DISPLAY_VERSION, APP_VERSION, VERSION_LINE, SITE_HOST, SITE_DIR_FALLBACK, THREE_URLS } from './app/config';
-import { esc, uid, pad, parse, addDays, weekStart, daysBetween, today, isNum, isDate, median, r1, andList, numIn, mulberry } from './app/util';
+import { esc, uid, pad, parse, addDays, weekStart, daysBetween, today, isNum, isDate, median, r1, andList, numIn, mulberry, WEEK_DAYS } from './app/util';
 import { LB, IN, KM_MI } from './app/units';
 import { MUSCLES, MK, ML, TRACK_ONLY, BANDS, EQUIP, EQL, CARDIO, CARDIOL, CWHENL, JOINTS, JK, JL, injLabel, exJoints, libExercises, COMMON, isCommon, patternOf, autoCompound, isCompound, noE1, BWF, bwShare, loadMode, rackKind, HARD_EX, LONG_TRIAL, LONG_IDS, profHeavy, COMMON_TIP, commonFirst, nameMatch } from './app/library';
 import { dayLabel, defaultRoutine, TEMPLATES, routineFromTemplate, daySets, fixSupersets, plannedPerWeek, dropStarter, planItemOf, pwOf, planSetsOf, withPlanSets, trainOn, routineEmpty, routineSig, sessDayIdx, ssLetters, tplCountLine } from './app/routines';
@@ -23,7 +23,7 @@ import { DELOAD_NOTE, LIGHTER_NOTE, blockRest, editFp, effW, freeDraft, greyW, h
 import { LOAD_MODES, estInLoad, loadNote, loadWords } from './app/loads';
 import { prName } from './app/prs';
 import { aboveMax, belowMin } from './app/volume';
-import { GENERIC_WORKOUT, IMP_ALIAS, IMP_MAX_ROWS, IMPORT_DAYS, IMPORT_REPEATS, impDate, impFromTable, impGuess, impHeader, impNorm, impRows, impSetsText, impXlsx } from './app/importing';
+import { DEMO_WEEKS, GENERIC_WORKOUT, IMP_ALIAS, IMP_MAX_ROWS, IMPORT_DAYS, IMPORT_REPEATS, impDate, impFromTable, impGuess, impHeader, impNorm, impRows, impSetsText, impXlsx } from './app/importing';
 import { FB_ASK, FB_CATS, FB_CTX_MAX, FB_DAY, FB_HINT, FB_IMG_MB, FB_MAX, FB_MIN, FB_SHOT_RE, FB_TITLE, FB_WHAT } from './app/feedback';
 import { state, setState, ui, cloud, acct, acctWait, HIST_PAGE, setFx } from './app/store';
 import { sessionWord, PICK_DAYS } from './app/analytics';

@@ -20759,12 +20759,12 @@ ${ms.length ? b`<div class="scroll-x" style="margin-top:10px"><table class="t"><
       const realBW = new Set(state.bodyweights.map((x2) => x2.date)), realMeas = new Set(state.measurements.map((x2) => x2.date));
       const slots = [];
       if (R2.schedule === "weekly") {
-        for (let k2 = 0; k2 < 8; k2++) {
-          const ws = addDays(cur, -7 * (7 - k2));
+        for (let k2 = 0; k2 < DEMO_WEEKS; k2++) {
+          const ws = addDays(cur, -WEEK_DAYS * (DEMO_WEEKS - 1 - k2));
           R2.days.forEach((d3, di) => slots.push({ date: addDays(ws, di), di }));
         }
       } else {
-        const start = addDays(cur, -49);
+        const start = addDays(cur, -WEEK_DAYS * (DEMO_WEEKS - 1));
         for (let p3 = 0; ; p3++) {
           const date = addDays(start, p3);
           if (date > t4) break;
@@ -20837,7 +20837,7 @@ ${ms.length ? b`<div class="scroll-x" style="margin-top:10px"><table class="t"><
         if (realBW.has(date)) continue;
         state.bodyweights.push({ id: uid(), date, kg: (BW - 1.5 + (56 - i5) * 0.03 + (rnd() - 0.5) * 1.2) * LB, demo: true });
       }
-      if (!realMeas.has(addDays(t4, -56))) state.measurements.push({ id: uid(), date: addDays(t4, -56), arm: 16 * IN, forearm: 13.1 * IN, chest: 44 * IN, waist: 33.5 * IN, thigh: 24 * IN, calf: 15 * IN, neck: 16 * IN, demo: true });
+      if (!realMeas.has(addDays(t4, -WEEK_DAYS * DEMO_WEEKS))) state.measurements.push({ id: uid(), date: addDays(t4, -WEEK_DAYS * DEMO_WEEKS), arm: 16 * IN, forearm: 13.1 * IN, chest: 44 * IN, waist: 33.5 * IN, thigh: 24 * IN, calf: 15 * IN, neck: 16 * IN, demo: true });
       if (!realMeas.has(addDays(t4, -1))) state.measurements.push({ id: uid(), date: addDays(t4, -1), arm: 16.3 * IN, forearm: 13.2 * IN, chest: 44.4 * IN, waist: 33.4 * IN, thigh: 24.4 * IN, calf: 15.1 * IN, neck: 16.2 * IN, demo: true });
       commit();
     }
