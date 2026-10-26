@@ -116,23 +116,30 @@ export const ACCENT0 = 'ember';
    balance): the last 2, 4 or 8 full weeks, 4 unless changed, kept per
    device. Fewer full weeks logged than chosen: those, said so; none yet:
    this week so far, said so. This week on its own is Volume's This week. */
-export const REGION_WKS: readonly (readonly [number, string])[] = [
-  [2, '2 wk'],
-  [4, '4 wk'],
-  [8, '8 wk']
-];
+export const REGION_WKS: readonly (readonly [number, string])[] = [2, 4, 8].map(n => [n, `${n} wk`] as const);
+/** The weeks the radar averages until another is picked. */
+export const REGION_WK_DEFAULT = 4;
 
 /* Weigh-ins on a cadence (r34, V: at the start, then every two weeks or so,
    the time frame the lifter's to set). Bodyweight lifts use the latest
    weigh-in, so an old one keeps counting until a new one comes in. Every 7,
    14 (the default) or 30 days, or off (Settings > General); Later waits 2
    days on this device. A new install is asked on the Set up page instead. */
-export const BW_EVERY: readonly (readonly [number, string])[] = [
+/** The weigh-in reminder's choices, in days, with their names; the default, BW_EVERY_DEFAULT, is kept absent, so saves from before r34 hash as before. */
+export const BW_EVERY: readonly (readonly [0 | 7 | 14 | 30, string])[] = [
   [7, 'Every week'],
   [14, 'Every 2 weeks'],
   [30, 'Every month'],
   [0, 'Off']
 ];
+/** How often the weigh-in reminder asks when it is unset, in days. */
+export const BW_EVERY_DEFAULT = 14;
+/** The choice a stored or chosen number of days names, kept only when it is not the default; undefined for the default or anything else. */
+export function bwEveryKept(v: unknown): 0 | 7 | 30 | undefined {
+  const c = BW_EVERY.find(([d]) => d === v);
+  const d = c ? c[0] : undefined;
+  return d === BW_EVERY_DEFAULT ? undefined : d;
+}
 
 /** The tabs whose sections keep an order and folds (phase 4, r56; moved from the legacy script). */
 export const SEC_TABS: readonly string[] = ['today', 'program', 'dash', 'history', 'settings'];

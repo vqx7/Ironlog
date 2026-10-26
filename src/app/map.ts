@@ -40,6 +40,9 @@ import { section, tipButton } from './view';
 /** The body under the muscles: head, torso, arms, hands, legs, feet. */
 export const BM_BASE = svg`<circle cx="60" cy="16" r="11"></circle><rect x="38" y="35" width="44" height="72" rx="12"></rect><rect x="23" y="39" width="14" height="42" rx="7"></rect><rect x="83" y="39" width="14" height="42" rx="7"></rect><rect x="21" y="78" width="11" height="36" rx="5.5"></rect><rect x="88" y="78" width="11" height="36" rx="5.5"></rect><circle cx="26" cy="118" r="5"></circle><circle cx="94" cy="118" r="5"></circle><rect x="37" y="102" width="21" height="54" rx="9"></rect><rect x="62" y="102" width="21" height="54" rx="9"></rect><rect x="40" y="152" width="14" height="46" rx="7"></rect><rect x="66" y="152" width="14" height="46" rx="7"></rect><ellipse cx="47" cy="202" rx="8" ry="4"></ellipse><ellipse cx="73" cy="202" rx="8" ry="4"></ellipse>`;
 
+/** The flat body's width in its drawing's units: a shape on the left is mirrored about it to the right. */
+const FLAT_W = 120;
+
 /** One shape of a muscle: an ellipse (cx, cy, rx, ry), a rounded rect (x, y, w, h, r), or a polygon's points. */
 export type BmShape =
   | readonly ['e', number, number, number, number]
@@ -52,15 +55,15 @@ export const BM: {
 } = (() => {
   const E = (cx: number, cy: number, rx: number, ry: number): BmShape[] => [
     ['e', cx, cy, rx, ry],
-    ['e', 120 - cx, cy, rx, ry]
+    ['e', FLAT_W - cx, cy, rx, ry]
   ];
   const Rr = (x: number, y: number, w: number, h: number, r: number): BmShape[] => [
     ['r', x, y, w, h, r],
-    ['r', 120 - x - w, y, w, h, r]
+    ['r', FLAT_W - x - w, y, w, h, r]
   ];
   const P = (pts: [number, number][]): BmShape[] => [
     ['p', pts],
-    ['p', pts.map(([x, y]): [number, number] => [120 - x, y])]
+    ['p', pts.map(([x, y]): [number, number] => [FLAT_W - x, y])]
   ];
   return {
     f: {
@@ -119,8 +122,14 @@ export const BM: {
 })();
 /** One shape, drawn. */
 export function bmShape(x: BmShape): SVGTemplateResult {
-  if (x[0] === 'e') return svg`<ellipse cx=${x[1]} cy=${x[2]} rx=${x[3]} ry=${x[4]}></ellipse>`;
-  if (x[0] === 'r') return svg`<rect x=${x[1]} y=${x[2]} width=${x[3]} height=${x[4]} rx=${x[5]}></rect>`;
+  if (x[0] === 'e') {
+    const [, cx, cy, rx, ry] = x;
+    return svg`<ellipse cx=${cx} cy=${cy} rx=${rx} ry=${ry}></ellipse>`;
+  }
+  if (x[0] === 'r') {
+    const [, left, top, w, h, r] = x;
+    return svg`<rect x=${left} y=${top} width=${w} height=${h} rx=${r}></rect>`;
+  }
   return svg`<polygon points=${x[1].map(q => q.join(',')).join(' ')}></polygon>`;
 }
 
@@ -460,26 +469,72 @@ function isThree(m: unknown): m is Three {
     typeof r['Raycaster'] === 'function'
   );
 }
+/** The 3D body's scene, set by eye: the camera's angle, near and far
+    planes, place and aim; the sky and ground light and their strength; the
+    key and rim lights' strength and places; the segments round and down a
+    sphere, lathe or capsule, and a capsule's cap; the material; the floor
+    shadow's texture, size and height; a drag's start in pixels and its turn
+    per pixel; a turn's length and its easing power; the stage's least,
+    usual and greatest size and its height to width; a helper muscle's mix
+    toward the body; and a tapped muscle's glow on each theme. */
+const SCENE = {
+  fov: 28,
+  near: 0.1,
+  far: 20,
+  camAt: [0, 0.93, 3.8],
+  lookAt: [0, 0.9, 0],
+  white: 0xffffff,
+  sky: 0xffffff,
+  ground: 0x40444a,
+  hemi: 1.15,
+  key: 1.7,
+  keyAt: [1.6, 2.6, 3],
+  rim: 1.1,
+  rimAt: [-2.2, 1.6, -2.6],
+  around: 40,
+  down: 28,
+  capSegs: 10,
+  rough: 0.55,
+  metal: 0.05,
+  shadowPx: 64,
+  shadow: [0.7, 0.34],
+  shadowY: 0.002,
+  dragPx: 4,
+  turnPerPx: 0.012,
+  turnMs: 420,
+  ease: 3,
+  minW: 200,
+  defW: 320,
+  maxH: 440,
+  tall: 1.12,
+  helpMix: 0.5,
+  glowLight: 0.45,
+  glowDark: 0.28
+} as const;
+/** The muscles below target the map's line names. */
+const LOW_SHOWN = 8;
+
 function map3dBuild(T: Three): void {
   const r = new T.WebGLRenderer({ antialias: true, alpha: true, powerPreference: 'low-power' });
   r.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
   const scene = new T.Scene();
-  const cam = new T.PerspectiveCamera(28, 1, 0.1, 20);
-  cam.position.set(0, 0.93, 3.8);
-  cam.lookAt(0, 0.9, 0);
-  scene.add(new T.HemisphereLight(0xffffff, 0x40444a, 1.15));
-  const key = new T.DirectionalLight(0xffffff, 1.7);
-  key.position.set(1.6, 2.6, 3);
+  const S = SCENE;
+  const cam = new T.PerspectiveCamera(S.fov, 1, S.near, S.far);
+  cam.position.set(...S.camAt);
+  cam.lookAt(...S.lookAt);
+  scene.add(new T.HemisphereLight(S.sky, S.ground, S.hemi));
+  const key = new T.DirectionalLight(S.white, S.key);
+  key.position.set(...S.keyAt);
   scene.add(key);
-  const rim = new T.DirectionalLight(0xffffff, 1.1);
-  rim.position.set(-2.2, 1.6, -2.6);
+  const rim = new T.DirectionalLight(S.white, S.rim);
+  rim.position.set(...S.rimAt);
   scene.add(rim);
   const root = new T.Group();
   scene.add(root);
-  const sph = new T.SphereGeometry(1, 40, 28);
+  const sph = new T.SphereGeometry(1, S.around, S.down);
   const caps: Record<string, T3Geometry> = {};
   const mat = (m: string): T3Material =>
-    B3.mats[m] || (B3.mats[m] = new T.MeshStandardMaterial({ roughness: 0.55, metalness: 0.05 }));
+    B3.mats[m] || (B3.mats[m] = new T.MeshStandardMaterial({ roughness: S.rough, metalness: S.metal }));
   const add = (pt: B3Part, side: number): void => {
     const d = pt.d || [0, 0];
     const g =
@@ -488,9 +543,9 @@ function map3dBuild(T: Three): void {
         : pt.g === 'l'
           ? new T.LatheGeometry(
               (pt.prof || []).map(([rr, y]) => new T.Vector2(rr, y)),
-              40
+              S.around
             )
-          : caps[d.join()] || (caps[d.join()] = new T.CapsuleGeometry(d[0], d[1], 10, 28));
+          : caps[d.join()] || (caps[d.join()] = new T.CapsuleGeometry(d[0], d[1], S.capSegs, S.down));
     const me = new T.Mesh(g, mat(pt.m || '_base'));
     me.position.set(pt.p[0] * side, pt.p[1], pt.p[2]);
     if (pt.k) me.scale.set(pt.k[0], pt.k[1], pt.k[2]);
@@ -507,21 +562,23 @@ function map3dBuild(T: Three): void {
   // A soft shadow on the floor grounds the figure.
   {
     const cv = document.createElement('canvas');
-    cv.width = cv.height = 64;
+    const px = S.shadowPx,
+      mid = px / 2;
+    cv.width = cv.height = px;
     const x = cv.getContext('2d');
     if (x) {
-      const gr = x.createRadialGradient(32, 32, 2, 32, 32, 32);
+      const gr = x.createRadialGradient(mid, mid, 2, mid, mid, mid);
       gr.addColorStop(0, 'rgba(0,0,0,.45)');
       gr.addColorStop(1, 'rgba(0,0,0,0)');
       x.fillStyle = gr;
-      x.fillRect(0, 0, 64, 64);
+      x.fillRect(0, 0, px, px);
     }
     const sh = new T.Mesh(
-      new T.PlaneGeometry(0.7, 0.34),
+      new T.PlaneGeometry(...S.shadow),
       new T.MeshBasicMaterial({ map: new T.CanvasTexture(cv), transparent: true, depthWrite: false })
     );
     sh.rotation.x = -Math.PI / 2;
-    sh.position.y = 0.002;
+    sh.position.y = S.shadowY;
     scene.add(sh);
   }
   const c = r.domElement;
@@ -535,9 +592,9 @@ function map3dBuild(T: Three): void {
     const d = B3.drag;
     if (!d) return;
     const dx = e.clientX - d.x;
-    if (Math.abs(dx) > 4) d.moved = true;
+    if (Math.abs(dx) > S.dragPx) d.moved = true;
     if (d.moved) {
-      B3.yaw = d.yaw + dx * 0.012;
+      B3.yaw = d.yaw + dx * S.turnPerPx;
       map3dDraw();
     }
   });
@@ -597,10 +654,11 @@ export function map3dTurnTo(to: number): void {
     return;
   }
   const t0 = performance.now(),
-    dur = 420;
+    dur = SCENE.turnMs;
   const step = (t: number): void => {
     const k = Math.min(1, (t - t0) / dur);
-    const e = 1 - Math.pow(1 - k, 3);
+    // Eased out, cubic: fast at first, settling at the end.
+    const e = 1 - Math.pow(1 - k, SCENE.ease);
     B3.yaw = from + d * e;
     map3dDraw();
     if (k < 1) B3.anim = requestAnimationFrame(step);
@@ -611,8 +669,8 @@ function map3dDraw(): void {
   const hb = b3Host();
   const host = hb && hb.querySelector<HTMLElement>('.bm3d-stage');
   if (!B3.r || !host || !B3.cam || !B3.root || !B3.scene) return;
-  const w = Math.max(200, host.clientWidth || 320),
-    h = Math.round(Math.min(440, w * 1.12));
+  const w = Math.max(SCENE.minW, host.clientWidth || SCENE.defW),
+    h = Math.round(Math.min(SCENE.maxH, w * SCENE.tall));
   const c = B3.r.domElement;
   if (c.parentNode !== host) host.appendChild(c);
   if (B3.w !== w || B3.h !== h) {
@@ -666,7 +724,7 @@ export function mount3D(): void {
     if (exm) {
       // Helpers halfway between the accent and the body, so they read as the same colour, lighter, on both themes.
       if (m === exm.main) mt.color.set(C('ex'));
-      else if (exm.help.includes(m)) mt.color.set(C('ex')).lerp(new T.Color(C('base')), 0.5);
+      else if (exm.help.includes(m)) mt.color.set(C('ex')).lerp(new T.Color(C('base')), SCENE.helpMix);
       else mt.color.set(m === '_base' ? C('base') : C('none'));
       em.set('#000000');
       mt.emissiveIntensity = 0;
@@ -680,7 +738,7 @@ export function mount3D(): void {
       if (lightUI) em.copy(mt.color);
       else em.set('#ffffff');
     } else em.set('#000000');
-    mt.emissiveIntensity = m === B3.sel ? (lightUI ? 0.45 : 0.28) : 0;
+    mt.emissiveIntensity = m === B3.sel ? (lightUI ? SCENE.glowLight : SCENE.glowDark) : 0;
   }
   map3dDraw();
 }
@@ -755,7 +813,7 @@ export function mapCard(): TemplateResult {
       'About the map'
     )}</p>${
       low.length && src === 'avg'
-        ? html`<div class="row" style="margin-top:6px;gap:4px"><span class="small muted">Below target:</span>${low.slice(0, 8).map(m => html`<button class="chip" data-act="mapSel" data-m=${m}>${ML[m]}</button>`)}</div>`
+        ? html`<div class="row" style="margin-top:6px;gap:4px"><span class="small muted">Below target:</span>${low.slice(0, LOW_SHOWN).map(m => html`<button class="chip" data-act="mapSel" data-m=${m}>${ML[m]}</button>`)}</div>`
         : nothing
     }`;
   }

@@ -9,7 +9,8 @@ import type { MuscleKey, Profile, Routine } from './types';
 import type { Model } from './model';
 import { activeRoutineIn, profIn } from './model';
 import { BANDS, MK, TARGETED, TRACK_ONLY } from './library';
-import { plannedSetsIn, weekFactor } from './routines';
+import { plannedSetsIn, weekFactor, PROFILE_PLAN } from './routines';
+import { MINUTE_S, numWord, pctOf, shareWords } from './util';
 
 /* The profile (r44): its choices, read by normalize while the save loads. */
 
@@ -83,14 +84,16 @@ export function profClean(p: Partial<Record<string, unknown>> | null | undefined
 export const STR_REST = 5,
   STR_NEAR = 0.97;
 
+/** The profile's plans the tips below state: Strength's, Both's and a first year's. */
+const S = PROFILE_PLAN.strength,
+  B = PROFILE_PLAN.both,
+  F = PROFILE_PLAN.first;
+
 /** The tips beside the profile's Goal and Years lifting (in Settings and in
     the routine picker on a first run) and Focus muscles (in Settings). */
-export const PROF_GOAL_TIP =
-  "Size keeps the app's defaults. Strength: new barbell, Smith, and machine compounds start at 3 to 6 reps, 2 in reserve, 3 minutes' rest. Heavier loads gave more strength for similar growth (Schoenfeld 2017; ACSM 2009), and 3 minutes' rest beat 1 (Schoenfeld 2016). Both starts them at 5 to 8; that and the 2 in reserve are conventions. Strength also favours stalled or near-best compounds in Pick for me. Your routine changes only with Apply.";
-export const PROF_EXP_TIP =
-  'Under 1 year, whatever the goal: new exercises start at 8 to 12 reps (ACSM 2009). Compounds stop 3 reps short and isolation lifts 2, as in the beginner plan, a convention: easier to judge, further from failure. Apply raises reps in reserve to that and keeps your ranges.';
-export const PROF_FOCUS_TIP =
-  'Up to two. Their weekly targets go up about 30% and the other major muscles drop to maintenance, a third of the usual minimum (size and strength held on a third of the volume: Bickel 2011, Spiering 2021). Only targets you have not typed move, and taking a focus off puts them back. Pick for me favours them.';
+export const PROF_GOAL_TIP = `Size keeps the app's defaults. Strength: new barbell, Smith, and machine compounds start at ${S.repMin} to ${S.repMax} reps, ${S.rir} in reserve, ${S.rest / MINUTE_S} minutes' rest. Heavier loads gave more strength for similar growth (Schoenfeld 2017; ACSM 2009), and 3 minutes' rest beat 1 (Schoenfeld 2016). Both starts them at ${B.repMin} to ${B.repMax}; that and the ${B.rir} in reserve are conventions. Strength also favours stalled or near-best compounds in Pick for me. Your routine changes only with Apply.`;
+export const PROF_EXP_TIP = `Under 1 year, whatever the goal: new exercises start at ${F.repMin} to ${F.repMax} reps (ACSM 2009). Compounds stop ${F.rirCompound} reps short and isolation lifts ${F.rirIsolation}, as in the beginner plan, a convention: easier to judge, further from failure. Apply raises reps in reserve to that and keeps your ranges.`;
+export const PROF_FOCUS_TIP = `Up to ${numWord(FOCUS_MAX)}. Their weekly targets go up about ${pctOf(FOCUS_UP - 1)}% and the other major muscles drop to maintenance, ${shareWords(MAINT_SHARE)} of the usual minimum (size and strength held on a third of the volume: Bickel 2011, Spiering 2021). Only targets you have not typed move, and taking a focus off puts them back. Pick for me favours them.`;
 
 /* ---------- The app's own weekly targets (r44; moved from the legacy script in r54) ---------- */
 

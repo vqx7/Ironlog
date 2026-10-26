@@ -21,7 +21,7 @@ import type { Trashed } from './records';
     in progress as the sync reads them (r56), Recently deleted as History
     reads it (r57), and the rest still open until they are typed with the
     screens that read them (phase 5). */
-export type State = Omit<EngineState, 'settings'> & {
+export type State = Omit<EngineState, 'settings' | 'draft'> & {
   version: number;
   settings: Settings;
   measurements: Measurement[];

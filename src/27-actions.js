@@ -200,7 +200,7 @@ const ACT={...HISTORY_ACTS,...SETTINGS_ACTS,...PLAN_ACTS,...DASH_ACTS,...TODAY_A
   startFree(){
     if(state.draft){ui.tab='today';render();return;}
     // In a week marked as a deload, a blank session is one too, as a routine day and Do again are (r54, PENDING 311 c: it started at full sets).
-    const dl=isDeloadWeek();state.draft={...freeDraft(dl?'Freestyle (deload)':'Freestyle'),deload:dl,notes:dl?'Deload: half sets, about 90% loads, 3+ RIR.':''};ui.tab='today';
+    const dl=isDeloadWeek();state.draft={...freeDraft(dl?'Freestyle (deload)':'Freestyle'),deload:dl,notes:dl?DELOAD_NOTE:''};ui.tab='today';
     state.draft.note0=state.draft.notes||'';saveNow();window.scrollTo(0,0);render();wakeOn();
     openModal({kind:'picker',mode:'addBlock',title:'Add exercise to session',q:'',m:''});
   },
@@ -353,7 +353,7 @@ const ACT={...HISTORY_ACTS,...SETTINGS_ACTS,...PLAN_ACTS,...DASH_ACTS,...TODAY_A
         const p=planFor(b.exId);if(b.rr){p.repMin=b.rr[0];p.repMax=Math.max(b.rr[0],b.rr[1]);}
         const n=b.sets.filter(isWork).length;if(n)p.sets=deload?Math.max(1,Math.ceil(n/2)):n;return p;};
       const ex=s.ex.map(b=>{const nb=newBlock(b.exId,plan(b),{deload});const n=b.sets.filter(isWork).length;if(deload&&n&&!(day&&day.items.some(i=>i.exId===b.exId)))nb.full=Math.min(n,30);return nb;});
-      state.draft=day?{id:uid(),startedAt:Date.now(),date:today(),dayIdx:R.days.indexOf(day),dayId:day.id,dayName:day.name+(deload?' (deload)':''),routineId:R.id,deload,light:false,cardio:[],notes:deload?'Deload: half sets, about 90% loads, 3+ RIR.':'',editingId:null,ex}
+      state.draft=day?{id:uid(),startedAt:Date.now(),date:today(),dayIdx:R.days.indexOf(day),dayId:day.id,dayName:day.name+(deload?' (deload)':''),routineId:R.id,deload,light:false,cardio:[],notes:deload?DELOAD_NOTE:'',editingId:null,ex}
         :{...freeDraft(s.free?s.dayName:`Again: ${s.dayName}`.slice(0,40),ex),deload};
       if(state.draft)state.draft.note0=state.draft.notes||'';ui.tab='today';saveNow();window.scrollTo(0,0);render();wakeOn();
       toast(day?`${day.name} started with the same exercises`:'Started as a freestyle session');
@@ -469,7 +469,7 @@ const ACT={...HISTORY_ACTS,...SETTINGS_ACTS,...PLAN_ACTS,...DASH_ACTS,...TODAY_A
   goalOpen(t){openModal({kind:'goal',exId:t.dataset.ex});},
   goalSave(){const m=ui.modal;const e=state.exercises.find(x=>x.id===m.exId);if(!e){closeModal();return;}
     const w=numIn(($('#goalW')||{}).value),r=Math.round(numIn(($('#goalR')||{}).value));
-    if(!(r>=1&&r<=30)){toast('Reps from 1 to 30');return;}
+    if(!(r>=1&&r<=LIMITS.goalReps)){toast(`Reps from 1 to ${LIMITS.goalReps}`);return;}
     if(w==null&&!e.bw){toast('Enter a load');return;}
     if(w!=null&&w<0){toast('Enter a load of 0 or more');return;}
     snapshot();e.goal={w:fromD(w||0),r};closeModal();commit();rerenderKeepScroll();toast(`Goal set: ${goalWords(e,e.goal)}`,true);},
@@ -481,7 +481,7 @@ const ACT={...HISTORY_ACTS,...SETTINGS_ACTS,...PLAN_ACTS,...DASH_ACTS,...TODAY_A
     // Saved without typing, a lift with no step of its own keeps following its default (Your gym's rack, say) (r33).
     // A number typed is saved, even the one shown (review: typing 5 on a 5 and 2.5 rack did nothing); so is any other number.
     if(e.inc==null&&!m.typed&&String(numIn(fmtW(incOf(e,m.plan))))===String(n)){closeModal();return;}
-    e.inc=fromD(Math.min(n,U()==='lb'?1100:500));closeModal();commit();refreshEx(e.id);saveNow();rerenderKeepScroll();toast(`Load step for ${e.name}: ${fmtW(e.inc)} ${U()}`);
+    e.inc=Math.min(fromD(n),LIMITS.step);closeModal();commit();refreshEx(e.id);saveNow();rerenderKeepScroll();toast(`Load step for ${e.name}: ${fmtW(e.inc)} ${U()}`);
   },
   cardioNew(){openModal({kind:'cardio'});},
   cardioSave(){
@@ -516,7 +516,7 @@ const ACT={...HISTORY_ACTS,...SETTINGS_ACTS,...PLAN_ACTS,...DASH_ACTS,...TODAY_A
     // at about 90% loads for a whole week, and flagged so it never counts
     // against a lift's trend or stall read.
     const items=d.rest?[]:d.items.map(it=>(light||deload)?{...it,sets:Math.max(1,Math.ceil(it.sets/2))}:it);
-    state.draft={id:uid(),startedAt:Date.now(),date:today(),dayIdx:di,dayId:d.id,dayName:d.name+(light?' (lighter)':deload?' (deload)':''),routineId:R.id,deload,light,cardio:[],notes:light?'Lighter session: half sets, about 90% loads, 3+ RIR.':deload?'Deload: half sets, about 90% loads, 3+ RIR.':'',editingId:null,ex:items.map(it=>newBlock(it.exId,it,{deload,light}))};
+    state.draft={id:uid(),startedAt:Date.now(),date:today(),dayIdx:di,dayId:d.id,dayName:d.name+(light?' (lighter)':deload?' (deload)':''),routineId:R.id,deload,light,cardio:[],notes:light?LIGHTER_NOTE:deload?DELOAD_NOTE:'',editingId:null,ex:items.map(it=>newBlock(it.exId,it,{deload,light}))};
     state.draft.note0=state.draft.notes||'';saveNow();window.scrollTo(0,0);render();wakeOn();
   },
   goBackup(){if(ui.modal)closeModal();ui.tab='settings';ui.folds['settings:data']=true;window.scrollTo(0,0);render();const el=document.getElementById('dataSec');if(el)el.scrollIntoView({block:'start'});},
@@ -574,7 +574,7 @@ m.err=`Could not read that. Try the pattern 225x5, 5, 4 ${rirScale()==='rpe'?'rp
       const b=newBlock(x.to,sp,{deload});if(x.from)b.swappedFrom=x.from;return b;});
     const sw=eqPlan(day,eq).filter(x=>x.from);
     const note=sw.length?'Limited equipment: '+sw.map(x=>`${exName(x.from)} → ${x.to?exName(x.to):'left out'}`).join('; ')+'.':'';
-    state.draft={id:uid(),startedAt:Date.now(),date:today(),dayIdx:m.day,dayId:day.id,dayName:day.name+(deload?' (deload)':''),routineId:R.id,deload,light:false,limited:true,cardio:[],notes:[deload?'Deload: half sets, about 90% loads, 3+ RIR.':'',note].filter(Boolean).join(' '),editingId:null,ex};
+    state.draft={id:uid(),startedAt:Date.now(),date:today(),dayIdx:m.day,dayId:day.id,dayName:day.name+(deload?' (deload)':''),routineId:R.id,deload,light:false,limited:true,cardio:[],notes:[deload?DELOAD_NOTE:'',note].filter(Boolean).join(' '),editingId:null,ex};
     state.draft.note0=state.draft.notes||'';saveNow();window.scrollTo(0,0);render();wakeOn();
   },
   /* Log a past workout: from an empty past day in the top bar (that date),
@@ -621,9 +621,9 @@ m.err=`Could not read that. Try the pattern 225x5, 5, 4 ${rirScale()==='rpe'?'rp
     // hurry was counted as chest work from then on.
     if(!MK.includes(e.primary)){toast('Pick the main muscle it trains');const el=document.querySelector('[data-ebind="primary"]');if(el)try{el.focus();}catch(x){/* focus is best effort */}return;}
     e.secondary=e.secondary.filter(k=>k!==e.primary);
-    {const n=numIn(e.incRaw);e.inc=n!=null&&n>0?fromD(Math.min(n,U()==='lb'?1100:500)):null;delete e.incRaw;}
+    {const n=numIn(e.incRaw);e.inc=n!=null&&n>0?Math.min(fromD(n),LIMITS.step):null;delete e.incRaw;}
     {const n=numIn(e.maxRaw);if(n!=null&&n>0)e.maxLoad=fromD(Math.min(n,U()==='lb'?4000:2000));else delete e.maxLoad;delete e.maxRaw;}
-    {const n=numIn(e.barRaw);if(n!=null&&n>0&&platesMode(e)==='bar')e.barKg=fromD(Math.min(n,U()==='lb'?110:50));else delete e.barKg;delete e.barRaw;}
+    {const n=numIn(e.barRaw);if(n!=null&&n>0&&platesMode(e)==='bar')e.barKg=Math.min(fromD(n),LIMITS.barKg);else delete e.barKg;delete e.barRaw;}
     {const n=numIn(e.bwfRaw);delete e.bwfRaw;const def=BWF[e.id]!=null?BWF[e.id]:1;
      if(e.bw&&n!=null&&n>0&&n<=150&&Math.abs(n/100-def)>0.005)e.bwf=Math.round(n)/100;else delete e.bwf;}
     if(e.timed!==true)delete e.timed;
@@ -671,7 +671,7 @@ m.err=`Could not read that. Try the pattern 225x5, 5, 4 ${rirScale()==='rpe'?'rp
     const s=state.sessions.find(x=>x.id===t.dataset.id);if(!s)return;
     const go=()=>{const R=state.routines.find(r=>r.id===s.routineId)||activeRoutine();
       const dayItems=s.free?[]:((R.days[sessDayIdx(R,s)]||{items:[]}).items);
-      state.draft={id:uid(),editingId:s.id,deload:!!s.deload,light:!!s.light,free:s.free?true:undefined,chk:s.chk?{...s.chk}:undefined,startedAt:null,durMin:s.durMin||null,date:s.date,dayIdx:s.dayIdx,dayId:s.dayId||null,dayName:s.dayName,routineId:s.routineId,notes:s.notes||'',ex:s.ex.map(b=>{const it=dayItems.find(i=>i.exId===b.exId);const plan=it?{...it}:planFor(b.exId,null,null,false,s.date);return {bid:uid(),exId:b.exId,plan,note:b.note||'',keepRR:b.rr||null,light:b.light?true:undefined,hint:'Editing saved sets.',lastR:[],sets:b.sets.map(x=>newRow({w:x.w,r:x.r,rir:x.rir,warm:!!x.warm,drop:!!x.drop,done:true,cal:x.cal?{...x.cal}:undefined,rid:x.rid}))};})};
+      state.draft={id:uid(),editingId:s.id,deload:!!s.deload,light:!!s.light,free:s.free?true:undefined,chk:s.chk?{...s.chk}:undefined,startedAt:null,durMin:s.durMin||null,date:s.date,dayIdx:s.dayIdx,dayId:s.dayId||null,dayName:s.dayName,routineId:s.routineId,notes:s.notes||'',ex:s.ex.map(b=>{const it=dayItems.find(i=>i.exId===b.exId);const plan=it?{...it}:planFor(b.exId,null,null,false,s.date);return {bid:uid(),exId:b.exId,plan,note:b.note||'',keepRR:b.rr||null,light:b.light?true:undefined,hint:'Editing saved sets.',lastR:[],sets:b.sets.map(x=>newRow({w:x.w,r:x.r,rir:x.rir,warm:!!x.warm,drop:!!x.drop,done:true,cal:x.cal?{...x.cal}:undefined,rid:x.rid})),...(b.nw?{nw:true}:{})};})};
       editFp0.set(state.draft.id,editFp(state.draft));
       saveNow();ui.tab='today';window.scrollTo(0,0);render();};
     if(state.draft)confirmBox('Replace the session in progress?','You have an unsaved session open. Editing this one will discard it.','Discard and edit',go,true);else go();

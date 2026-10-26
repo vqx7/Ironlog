@@ -15,7 +15,7 @@ import { fmtDate, fmtDateRow, sessTm } from './format';
 import { isWork } from './formulas';
 import { TRASH_DAYS, TRASH_MAX, sessCmp } from './records';
 import { CHK_Q, chkWord } from './coach';
-import { addDays, today, weekStart } from './util';
+import { addDays, today, weekStart, WEEK_DAYS } from './util';
 import { EX, IDX, U, exName, sessionWords, toD } from './live';
 import { loadNote } from './loads';
 import { normalize } from './normalize';
@@ -24,6 +24,10 @@ import { distShow, distU, fmtK, noLog, setStr } from './display';
 import { pageTitle, placed, section, tabFoot } from './view';
 import type { CardioEntry, Session } from './types';
 import type { ExerciseLike } from './model';
+import { UNDO_DAYS } from './storage';
+
+/** The cardio entries History lists; older ones are in the CSV export. */
+const CARDIO_SHOWN = 40;
 
 /** After a list of sets: what the load and reps mean, when not a plain total. */
 function histUnits(ex: ExerciseLike): TemplateResult | typeof nothing {
@@ -80,7 +84,7 @@ function cardioSec(cs: readonly CardioEntry[]): TemplateResult {
     key: 'cardio',
     title: 'Cardio and mobility',
     sub: `${cs.length} entr${cs.length === 1 ? 'y' : 'ies'}`,
-    body: html`<ul class="clist">${cs.slice(0, 40).map(
+    body: html`<ul class="clist">${cs.slice(0, CARDIO_SHOWN).map(
       c =>
         html`<li><span><b>${CARDIOL[c.kind]}</b> <span class="small muted">${fmtDate(c.date)} · ${c.min} min${c.dist ? ` · ${distShow(c.dist)} ${distU()}` : ''}${c.hr ? ` · ${c.hr} bpm` : ''}${
           c.when !== 'solo' ? ' · ' + (CWHENL[c.when] || '').toLowerCase() : ''
@@ -88,8 +92,8 @@ function cardioSec(cs: readonly CardioEntry[]): TemplateResult {
 `
     )}</ul>
 ${
-  cs.length > 40
-    ? html`<p class="small muted">${cs.length - 40} older entries are in the CSV export.</p>
+  cs.length > CARDIO_SHOWN
+    ? html`<p class="small muted">${cs.length - CARDIO_SHOWN} older entries are in the CSV export.</p>
 `
     : nothing
 }`
@@ -157,7 +161,8 @@ function sessionsSec(ss: readonly Session[], perDay: Record<string, number>): Te
     if (wk !== lastWk) {
       lastWk = wk;
       const o = wkTot[wk] || { n: 0, sets: 0, vol: 0 };
-      const lbl = wk === thisWk ? 'This week' : wk === addDays(thisWk, -7) ? 'Last week' : `Week of ${fmtDate(wk)}`;
+      const lbl =
+        wk === thisWk ? 'This week' : wk === addDays(thisWk, -WEEK_DAYS) ? 'Last week' : `Week of ${fmtDate(wk)}`;
       rows.push(
         html`<div class="hweek"><span class="hw-t">${lbl}</span><span class="hw-s" data-tip=${`${o.n} session${o.n === 1 ? '' : 's'}, ${o.sets} working sets, ${Math.round(toD(o.vol) ?? 0).toLocaleString()} ${U()} lifted`}>${o.sets} sets · ${fmtK(o.vol)} ${U()}</span></div>
 `
@@ -304,7 +309,7 @@ export const HISTORY_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
     if (!n) return;
     fx.confirm(
       `Empty Recently deleted (${n} item${n > 1 ? 's' : ''})?`,
-      `Undo in Settings can still bring ${n > 1 ? 'them' : 'it'} back for 7 days.`,
+      `Undo in Settings can still bring ${n > 1 ? 'them' : 'it'} back for ${UNDO_DAYS} days.`,
       'Delete all',
       () => {
         act(

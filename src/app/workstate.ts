@@ -31,15 +31,18 @@ export interface WorkState {
   stripAt: StripAt | null;
   // The row whose load is being typed, whose plates the line under the exercise shows (r29), until the next tick or full draw.
   platesAt: { b: BlkRef | null; s: number } | null;
-  /* A block done this visit folds a moment after its last tick (1.2 s, or
-     once its effort is picked), not on the tick: the lifter sees the tick and
-     the effort strip first. Until then it is drawn open. */
+  /* A block done this visit folds a moment after its last tick (FOLD_MS.tick,
+     or FOLD_MS.effort once its effort is picked), not on the tick: the lifter
+     sees the tick and the effort strip first. Until then it is drawn open. */
   foldWait: WeakSet<DraftBlock>;
   // The load field a tap just focused, whose selection is made again when the tap is released.
   selAgain: HTMLInputElement | null;
   // The load field just focused whose number the first key replaces (and backspace clears), until a key, a tap on it or leaving it.
   replaceNext: HTMLInputElement | null;
 }
+/** How long a block done this visit waits to fold, in milliseconds: after its last tick, after its effort is picked, and again while an effort strip is open. */
+export const FOLD_MS = { tick: 1200, effort: 900, strip: 1500 } as const;
+
 /** The session screen's state between draws (WorkState). */
 export const W: WorkState = {
   foldT: null,

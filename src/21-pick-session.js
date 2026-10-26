@@ -16,7 +16,7 @@
    None of this is a fixed rule of physiology: it is a transparent ranking. */
 function rolling7(m,extra,at){
   const dm=IDX().dayMus;const t=at||today();let v=0;
-  for(let k=0;k<7;k++){const x=dm[addDays(t,-k)];if(x&&x[m])v+=x[m];}
+  for(let k=0;k<PICK_DAYS;k++){const x=dm[addDays(t,-k)];if(x&&x[m])v+=x[m];}
   return v+(extra&&extra[m]||0);
 }
 /* Days a muscle needs after a dose: 1 under 4 hard sets, 2 for 4 to 7, 3 for
@@ -51,7 +51,7 @@ function dayDirect(day){const out={};for(const it of day.items){const ex=EX(it.e
 function rankDays(){
   const R=activeRoutine();const t=today();const I=IDX();const bands=state.settings.bands;const inj=injuredSet();
   const pri=new Set(state.settings.priorities);const lag=new Set(I.scores.filter(x=>x.label==='lagging').map(x=>x.m));
-  const deload=isDeloadWeek();const f=deload?0.5:1;
+  const deload=isDeloadWeek();const f=deload?LIGHTER_SET_SHARE:1;
   const weekly=R.schedule==='weekly';const cs=weekly?null:cycleState(R);
   const planIdx=weekly?(new Date().getDay()+6)%7:cs.next;
   const lastDone={};for(const x of state.sessions)if(x.routineId===R.id&&x.dayId&&(!lastDone[x.dayId]||x.date>lastDone[x.dayId]))lastDone[x.dayId]=x.date;
@@ -237,7 +237,7 @@ function liftTrend(exId){
      follows the numbers shown: within 1% is flat, so "301 → 300.7 · up"
      cannot happen. Isolation lifts show their top sets, not a 1RM. */
   const ex=EX(exId);const st=IDX().exStats[exId];
-  const exps=(IDX().byEx[exId]||[]).filter(x=>x.tv!=null&&!lighter(x)&&(!st||sameRR(x.rr,st.rr))).slice(-3); // in the trend's range, so a heavy and a light day are not read as one line (r55)
+  const exps=liftRead(exId).filter(x=>x.tv!=null&&!lighter(x)&&(!st||sameRR(x.rr,st.rr))).slice(-3); // in the trend's range, so a heavy and a light day are not read as one line (r55), and since a new machine or gym (liftRead, r61)
   if(exps.length<2)return '';
   /* The word follows the lift's trend when it has one (r32, from the third
      review: a press flat for 7 weeks read "67.5 → 69.7 → 69.7 · up" from its

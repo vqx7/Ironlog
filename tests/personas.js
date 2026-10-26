@@ -30,7 +30,12 @@
 //      in whole steps, the rest timer after the pair, cardio saved, and the
 //      week after reading its target from before the deload;
 //   8  short on time: Short on time trims sets, nothing typed is lost, and a
-//      lift done with fewer sets than usual repeats its target.
+//      lift done with fewer sets than usual repeats its target;
+//   9  a gym change (r61, 343 7): the leg press marked New machine or gym
+//      from its menu reads as a first session (no grey load from the old
+//      gym), the new gym's heavier numbers are no PR while the squat, the
+//      same bar at either gym, keeps its target and its PR, and the week
+//      after the leg press asks from the new gym's own session.
 // Run on r59 (`node tests/personas.js baselines/r59.html`) to see which of
 // these the build before already got wrong. PERSONAS=1,3 runs some of them.
 const { open, engine } = require('./h');
@@ -107,6 +112,13 @@ const seed = (H, o) => H.ev(o => {
 const lastCell = (H, b, s) => H.ev(([b, s]) => { const btn = document.querySelector(`#view [data-act="sDone"][data-b="${b}"][data-s="${s}"]`); const ls = btn && btn.closest('.sg') && btn.closest('.sg').querySelector('.ls'); return ls ? ls.innerText.replace(/\s+/g, '') : null; }, [b, s]);
 // The effort strip opened on a row and a number tapped by its label (an RPE on the RPE scale).
 const effortByLabel = async (H, b, s, label) => { await H.page.click(`#view [data-act="rirOpen"][data-b="${b}"][data-s="${s}"]`); await wait(80); const v = await H.ev(([b, s, label]) => { const x = [...document.querySelectorAll(`#view [data-act="rirPick"][data-b="${b}"][data-s="${s}"]`)].find(e => e.textContent.trim() === label); if (x) x.click(); return x ? x.dataset.v : null; }, [b, s, String(label)]); await wait(80); return v; };
+
+// The end of the run: the browser closed and the count said.
+async function finish() {
+  await browser.close();
+  console.log(fails.length ? `\n${fails.length} FAILED` : '\nALL PASS');
+  process.exit(fails.length ? 1 : 0);
+}
 
 (async () => {
   browser = await engine.launch();
@@ -523,7 +535,46 @@ const effortByLabel = async (H, b, s, label) => { await H.page.click(`#view [dat
     await H.P.ctx.close();
   }
 
-  await browser.close();
-  console.log(fails.length ? `\n${fails.length} FAILED` : '\nALL PASS');
-  process.exit(fails.length ? 1 : 0);
+  // ---- 9. A gym change (r61, 343 7): a new leg press, the same barbell.
+  if (run(9)) {
+    const T0 = '2026-10-19';
+    const H = await phone(T0);
+    // Four Mondays at the old gym: leg press 3 x 10 from 360 to 390 lb, back squat 3 x 6 from 225 to 240 lb, each at 2 in reserve.
+    await seed(H, { unit: 'lb', days: [{ id: 'Dg', name: 'Legs', items: [['legPress', 3, 8, 12, 2, 120, 10], ['backSquat', 3, 5, 8, 2, 180, 5]] }],
+      sessions: [0, 1, 2, 3].map(i => ({ day: 'Dg', date: addD(T0, -7 * (4 - i)), ex: [['legPress', [0, 1, 2].map(() => [360 + 10 * i, 10, 2])], ['backSquat', [0, 1, 2].map(() => [225 + 5 * i, 6, 2])]] })) });
+    await H.start();
+    const b0 = await H.draft();
+    const lp = b0.ex.findIndex(b => b.exId === 'legPress'), sq = b0.ex.findIndex(b => b.exId === 'backSquat');
+    const sqGrey = (await H.row(sq, 0)).w;
+    ok(Number((await H.row(lp, 0)).w) >= 390 && Number(sqGrey) >= 240, '9. at the new gym, before marking: both lifts suggest from the old gym (leg press 390 or more, squat 240 or more)', { lp: await H.row(lp, 0), sq: sqGrey });
+    // The leg press's menu, as a thumb opens it.
+    await H.page.click(`#view [data-act="bMenu"][data-b="${lp}"]`); await wait(100);
+    if (!ok(!!(await H.page.$('#modal [data-op="bNew"]')), '9. the leg press\'s menu offers New machine or gym')) { await H.P.ctx.close(); return finish(); }
+    await H.page.click('#modal [data-op="bNew"]'); await wait(150);
+    const b1 = await H.draft();
+    const lpRow = await H.row(lp, 0);
+    ok(b1.ex[lp].nw === true && b1.ex[lp].sw == null && !/^\d/.test(lpRow.w || '') && /First time/.test(await H.text()) && (await H.row(sq, 0)).w === sqGrey,
+      '9. marked New machine or gym: the leg press has no grey load and reads as a first session; the squat is as it was', { lpRow, nw: b1.ex[lp].nw });
+    // The new gym's leg press reads heavier: 500 x 10 at 2 in reserve. The squat at its grey load, 6 reps at 2 in reserve.
+    for (const s of [0, 1, 2]) { await H.type('w', lp, s, 500); await H.type('r', lp, s, 10); await H.effort(lp, s, 2); await H.quiet(); await H.tick(lp, s); }
+    for (const s of [0, 1, 2]) { await H.type('r', sq, s, 6); await H.effort(sq, s, 2); await H.quiet(); await H.tick(sq, s); }
+    const prs = await H.ev(([lp, sq]) => { const n = bi => [...document.querySelectorAll(`#view [data-act="sDone"][data-b="${bi}"]`)].filter(b => b.closest('.sg') && b.closest('.sg').dataset.pr).length; return { lp: n(lp), sq: n(sq) }; }, [lp, sq]);
+    ok(prs.lp === 0, '9. 500 x 10 on the new leg press is no PR (the old gym\'s 390 x 10 is another machine)', prs);
+    const fin = await H.finish();
+    // The squat matched its last (240 x 6 at 2 in reserve), so the recap has no PR at all, and one target, the squat's: the leg press had none to beat.
+    ok(/No PRs this time/.test(fin.recap.text || '') && /of 1 exercise target/.test(fin.recap.text || ''), '9. the recap: no PRs, and one target (the squat\'s), the new leg press having none', fin.recap.text);
+    // A week later: the leg press asks from 500 x 10 (the new gym's session), the squat from its own last.
+    await H.day(addD(T0, 7));
+    await H.start();
+    const b2 = await H.draft();
+    const lp2 = b2.ex.findIndex(b => b.exId === 'legPress');
+    const g2 = Number((await H.row(lp2, 0)).w);
+    const saved = await H.ev(() => { const L = window.__ironlog; return { n: L.state.sessions.filter(x => x.ex.some(b => b.exId === 'legPress')).length, nw: L.state.sessions.filter(x => x.ex.some(b => b.exId === 'legPress' && b.nw)).length }; });
+    ok(g2 >= 500 && !b2.ex[lp2].nw, '9. the week after: the leg press asks from the new gym\'s 500 x 10, unmarked', { grey: g2, tgt: b2.ex[lp2].tgt });
+    ok(saved.n === 5 && saved.nw === 1, '9. History keeps all five leg press sessions, the new gym\'s marked', saved);
+    ok(!H.P.errors.length, '9. no page errors', H.P.errors);
+    await H.P.ctx.close();
+  }
+
+  return finish();
 })().catch(e => { console.error(e); process.exit(1); });

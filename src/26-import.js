@@ -174,7 +174,7 @@ function impBuild(m){
 function routineFromLog(sessions,ssOf){
   const all=sessions.filter(x=>!x.demo&&x.ex&&x.ex.length);if(!all.length)return null;
   const byDate=(a,b)=>a.date<b.date?-1:a.date>b.date?1:0;
-  const newest=all.reduce((m,x)=>x.date>m?x.date:m,all[0].date);const rec=all.filter(x=>x.date>=addDays(newest,-55)).sort(byDate);
+  const newest=all.reduce((m,x)=>x.date>m?x.date:m,all[0].date);const rec=all.filter(x=>x.date>=addDays(newest,1-IMPORT_DAYS)).sort(byDate);
   // A session is off (a deload, a lighter day) when it was tagged, or when most of its lifts read lighter or short of their usual (r54, the one rule).
   const I=IDX();const tot={},off={};for(const id in I.byEx)for(const x of I.byEx[id]){tot[x.sid]=(tot[x.sid]||0)+1;if(offTarget(x))off[x.sid]=(off[x.sid]||0)+1;}
   const offS=x=>x.deload||x.light||(tot[x.id]>0&&(off[x.id]||0)*2>=tot[x.id]);
@@ -187,7 +187,7 @@ function routineFromLog(sessions,ssOf){
   else{pop=rec.filter(x=>!offS(x));
     for(const x of pop){const L=lifts(x);let g=null,bj=0;for(const q of groups){const j=jac(L,q.ids);if(j>=0.5&&j>bj){g=q;bj=j;}}
       if(!g){g={list:[],ids:L};groups.push(g);}g.list.push(x);g.ids=L;}}
-  groups=groups.filter(g=>g.list.length>=2);
+  groups=groups.filter(g=>g.list.length>=IMPORT_REPEATS);
   if(!groups.length||groups.length>7||groups.reduce((a,g)=>a+g.list.length,0)<pop.length*0.8)return null;
   groups.sort((a,b)=>byDate(a.list[a.list.length-1],b.list[b.list.length-1]));
   if(!named)groups.forEach((g,i)=>{g.name='Day '+String.fromCharCode(65+i);});
@@ -333,8 +333,8 @@ function makeDemo(){
   // Weekly routines land on their weekdays; cycles run in order, one cycle
   // day per calendar day, across the same eight weeks.
   const slots=[];
-  if(R.schedule==='weekly'){for(let k=0;k<8;k++){const ws=addDays(cur,-7*(7-k));R.days.forEach((d,di)=>slots.push({date:addDays(ws,di),di}));}}
-  else{const start=addDays(cur,-49);for(let p=0;;p++){const date=addDays(start,p);if(date>t)break;slots.push({date,di:p%R.days.length});}}
+  if(R.schedule==='weekly'){for(let k=0;k<DEMO_WEEKS;k++){const ws=addDays(cur,-WEEK_DAYS*(DEMO_WEEKS-1-k));R.days.forEach((d,di)=>slots.push({date:addDays(ws,di),di}));}}
+  else{const start=addDays(cur,-WEEK_DAYS*(DEMO_WEEKS-1));for(let p=0;;p++){const date=addDays(start,p);if(date>t)break;slots.push({date,di:p%R.days.length});}}
   // One progression per lift and rep range, like the app's own targets.
   const prog={};
   const startOf=(e,it)=>{
@@ -367,7 +367,7 @@ function makeDemo(){
         const n=Math.max(1,Math.ceil(it.sets/2));const lo=+it.repMin||8;
         const w=e.assist?g.w-(progStep(e,it,BW*LB)||5*LB):g.w>0?lighterLoad(e,it,g.w,g.w*0.9):g.w;
         return {exId:it.exId,sets:Array.from({length:n},()=>({w,r:lo,rir:3,warm:false}))};});
-      state.sessions.push({id:uid(),date,dayIdx:di,dayId:d.id,dayName:d.name+' (deload)',routineId:R.id,ex,notes:'Deload: half sets, about 90% loads, 3+ RIR.',deload:true,demo:true});
+      state.sessions.push({id:uid(),date,dayIdx:di,dayId:d.id,dayName:d.name+' (deload)',routineId:R.id,ex,notes:DELOAD_NOTE,deload:true,demo:true});
       continue;
     }
     const ex=d.items.map(it=>{
@@ -408,7 +408,7 @@ function makeDemo(){
     state.sessions.push({id:uid(),date,dayIdx:di,dayId:d.id,dayName:d.name,routineId:R.id,ex,notes:'',demo:true});
   }
   for(let i=56;i>=1;i-=2){const date=addDays(t,-i);if(realBW.has(date))continue;state.bodyweights.push({id:uid(),date,kg:(BW-1.5+(56-i)*0.03+(rnd()-0.5)*1.2)*LB,demo:true});}
-  if(!realMeas.has(addDays(t,-56)))state.measurements.push({id:uid(),date:addDays(t,-56),arm:16.0*IN,forearm:13.1*IN,chest:44.0*IN,waist:33.5*IN,thigh:24.0*IN,calf:15.0*IN,neck:16.0*IN,demo:true});
+  if(!realMeas.has(addDays(t,-WEEK_DAYS*DEMO_WEEKS)))state.measurements.push({id:uid(),date:addDays(t,-WEEK_DAYS*DEMO_WEEKS),arm:16.0*IN,forearm:13.1*IN,chest:44.0*IN,waist:33.5*IN,thigh:24.0*IN,calf:15.0*IN,neck:16.0*IN,demo:true});
   if(!realMeas.has(addDays(t,-1)))state.measurements.push({id:uid(),date:addDays(t,-1),arm:16.3*IN,forearm:13.2*IN,chest:44.4*IN,waist:33.4*IN,thigh:24.4*IN,calf:15.1*IN,neck:16.2*IN,demo:true});
   commit();
 }

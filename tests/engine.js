@@ -68,6 +68,8 @@ const EXTRA = {
   // The app's own targets (src/app/profile.ts since r54): with the log's own profile and floors, a focus, and floors given.
   // Whether a muscle has a weekly target (r58, 339 e): one by default, one the app does not give one, and one tracked only.
   hasTarget: () => [['chest'], ['traps'], ['serratus'], ['neck'], ['forearms']],
+  // A lift's sessions as its rules read them (r61, 343 7): all of them, up to the log's middle session, and up to today.
+  liftRead: (s, ids) => ids.flatMap(id => [[id], [id, s.sessions.length ? s.sessions[Math.floor(s.sessions.length / 2)].date : ''], [id, '9999-12-31']]),
   defBand: () => [['chest'], ['serratus'], ['quads', { focus: ['quads'] }], ['biceps', { focus: ['quads'] }]],
   appBand: () => [['chest'], ['serratus'], ['quads', { focus: ['quads'] }], ['chest', null, { chest: 5 }], ['chest', null, null]],
   fitFloors: (s) => s.routines.flatMap(r => [[r], [r, { chest: 3, quads: 4 }], [r, null, 1.75]]),
@@ -203,7 +205,13 @@ const SCENARIOS = [
   // analytics keep them for the Last line in their places (missedTag), which no wide history reaches (their reps are 1 or more).
   h => ({ ...h, raw: { ...h.raw, injuries: [], deloadWeek: null, draft: null, settings: { ...h.raw.settings, restWeeks: [] },
     sessions: [[-9, [[100, 8], [100, 8]]], [-2, [[100, 8], [120, 0], [100, 7], [100, 0]]]].map(([n, sets], i) => ({ id: 'miss' + i, date: day(h.today, n), dayIdx: 0, dayId: null, dayName: 'Session', routineId: '', free: true, notes: '',
-      ex: [{ exId: 'bench', rr: [6, 10], sets: sets.map(([w, r]) => ({ w, r, rir: 1, done: true })) }] })) } })
+      ex: [{ exId: 'bench', rr: [6, 10], sets: sets.map(([w, r]) => ({ w, r, rir: 1, done: true })) }] })) } }),
+  // New machine or gym (r61, 343 7): leg press at the old gym, then a session marked new, heavier, and one after it; and a
+  // workout in progress marking the bench, which the rules read as starting over now (liftReadIn), which no wide history reaches.
+  h => ({ ...h, ids: ['legPress', 'bench', ...h.ids], raw: { ...h.raw, injuries: [], deloadWeek: null, settings: { ...h.raw.settings, restWeeks: [] },
+    sessions: [[-28, 'legPress', 160, false], [-21, 'legPress', 165, false], [-14, 'legPress', 230, true], [-7, 'legPress', 235, false], [-7, 'bench', 80, false]].map(([n, exId, w, nw], i) => ({ id: 'nw' + i, date: day(h.today, n), dayIdx: 0, dayId: null, dayName: 'Session', routineId: '', free: true, notes: '',
+      ex: [{ exId, rr: [8, 12], sets: [0, 1, 2].map(() => ({ w, r: 10, rir: 2, done: true })), ...(nw ? { nw: true } : {}) }] })),
+    draft: { id: 'nwd', date: h.today, dayIdx: 0, dayId: null, dayName: 'Session', routineId: '', free: true, notes: '', ex: [{ exId: 'bench', sets: [{ w: null, r: null }], nw: true }] } } })
 ];
 
 // The child: the bundle on the page's histories, under V8's coverage.

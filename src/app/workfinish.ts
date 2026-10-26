@@ -6,10 +6,10 @@ import { act } from './act';
 import { isCompound, noE1 } from './library';
 import { withPlanSets, pwOf } from './routines';
 import { estMin } from './format';
-import { rtfAt, isMissed, isWork } from './formulas';
-import { putById, andList, today, r1 } from './util';
+import { rtfAt, isMissed, isWork, RIR_CALL_TOP } from './formulas';
+import { putById, andList, today, r1, EPS_SAME, MINUTE_S, SECOND_MS } from './util';
 import { cleanCardio, keepExtra } from './normalize';
-import { cleanChk } from './records';
+import { KNOWN_BLOCK, cleanChk } from './records';
 import type { Rec } from './records';
 import { loadNote } from './loads';
 import { prName, prOverall } from './prs';
@@ -31,12 +31,19 @@ import {
   fmtW
 } from './live';
 import { state, fx, ui } from './store';
-import { joinAdjacent, savedEx, draftCardio, effTarget } from './session';
+import { joinAdjacent, savedEx, draftCardio, effTarget, withNew } from './session';
 import type { DraftSet, CardioEntry, SessionEx, Session } from './types';
 import { setShort, fmtDateLong, fmtE, prSet } from './display';
 import { W, blkOpen, blkRef, redraw } from './workstate';
 import type { Draft } from './workstate';
 import { blockProgress, calDueIdx, draftPlanMin, oddReps, rowBlank, setDone, settleLoad } from './worksets';
+
+/** An unmarked set lighter than a session's first top set reads as a warm-up at Finish under this share of the top load, when neither its RIR nor the best estimate says (a convention, r56.2). */
+const WARM_SHARE = { compound: 0.75, isolation: 0.8 } as const;
+/** A session open longer than this many minutes was left open, so it is not timed. */
+const TIMED_MAX_MIN = 360;
+/** The lifts the recap's Heaviest yet line names before "and N more". */
+const HEAVIEST_SHOWN = 4;
 
 /* ---------- Finish ---------- */
 
@@ -96,24 +103,24 @@ export function finish(): void {
       const top = Math.max(...wk.map(L));
       if (!(top > 0)) continue;
       const firstTop = b.sets.findIndex(
-        x => x.done && !x.warm && !x.drop && +(x.r ?? 0) > 0 && Math.abs(L(x) - top) < 1e-6
+        x => x.done && !x.warm && !x.drop && +(x.r ?? 0) > 0 && Math.abs(L(x) - top) < EPS_SAME
       );
       const bi = d.ex.indexOf(b);
       const st = IDX().exStats[b.exId];
       const est = st ? st.bestAll : undefined;
-      const thr = isCompound(e) ? 0.75 : 0.8;
+      const thr = isCompound(e) ? WARM_SHARE.compound : WARM_SHARE.isolation;
       const easy = (x: DraftSet): boolean => {
-        if (!(L(x) < top - 1e-6)) return false;
+        if (!(L(x) < top - EPS_SAME)) return false;
         const q = rirEff(x, e);
-        if (q != null) return q >= 5;
+        if (q != null) return q >= RIR_CALL_TOP;
         if (est && !noE1(e)) {
           const rtf = rtfAt(est, L(x));
-          if (rtf != null) return rtf - +(x.r ?? 0) >= 5;
+          if (rtf != null) return rtf - +(x.r ?? 0) >= RIR_CALL_TOP;
         }
         return L(x) < top * thr;
       };
       const appSet = (x: DraftSet, si: number): boolean =>
-        (b.sw != null && Math.abs((+(x.w ?? 0) || 0) - b.sw) < 1e-6) || (!!b.adj && b.adj.up && si <= b.adj.at);
+        (b.sw != null && Math.abs((+(x.w ?? 0) || 0) - b.sw) < EPS_SAME) || (!!b.adj && b.adj.up && si <= b.adj.at);
       b.sets.forEach((x, si) => {
         if (
           si < firstTop &&
@@ -229,9 +236,8 @@ export function finish(): void {
 export function finishNow(): void {
   const d = state.draft;
   if (!d) return;
-  const ex = withPlanSets(joinAdjacent(d.ex.map(savedEx).filter(b => b.sets.length)), d, state.routines);
-  // cast: cleanCardio builds each entry field by field (its kind and time checked, its minutes over 0 by draftCardio), a saved cardio entry.
-  const cardio = draftCardio(d).map(c => cleanCardio(c)) as unknown as CardioEntry[];
+  const ex = withNew(withPlanSets(joinAdjacent(d.ex.map(savedEx).filter(b => b.sets.length)), d, state.routines), d);
+  const cardio = draftCardio(d).map(c => cleanCardio(c));
   if (!ex.length) {
     if (cardio.length && !d.editingId) {
       act(() => {
@@ -329,8 +335,8 @@ function saveSession(d: Draft, ex: ReturnType<typeof savedEx>[], cardio: CardioE
     ? d.durMin || null
     : d.startedAt && d.date === today()
       ? ((): number | null => {
-          const m = Math.round((Date.now() - (d.startedAt || 0)) / 60000);
-          return m >= 1 && m <= 360 ? m : null;
+          const m = Math.round((Date.now() - (d.startedAt || 0)) / (MINUTE_S * SECOND_MS));
+          return m >= 1 && m <= TIMED_MAX_MIN ? m : null;
         })()
       : null;
   // Records carrying fields a newer build stored (keepExtra) are plain objects of their fields, as normalize builds them.
@@ -378,7 +384,8 @@ function saveSession(d: Draft, ex: ReturnType<typeof savedEx>[], cardio: CardioE
           const ob = o.ex.find(x => x.exId === b.exId && !used.has(x));
           if (ob) {
             used.add(ob);
-            keepExtra(ob, b);
+            // Its own new-machine mark is the edit's to keep or take off (r61), so it is not carried from the copy saved before.
+            keepExtra(ob, b, KNOWN_BLOCK);
           }
         });
         state.sessions[i] = sess;
@@ -437,7 +444,7 @@ function saveSession(d: Draft, ex: ReturnType<typeof savedEx>[], cardio: CardioE
   if (sess.date !== today()) lines.unshift(`Saved under ${fmtDateLong(sess.date)}`);
   if (durMin) lines.push(`${durMin} minutes${pmDraft && !sess.free ? `, planned ${estMin(pmDraft)}` : ''}`);
   if (targets) lines.push(`${beaten} of ${targets} exercise target${targets === 1 ? '' : 's'} beaten`);
-  if (heavier.length) lines.push(`Heaviest yet: ${andList(heavier, 4)}`);
+  if (heavier.length) lines.push(`Heaviest yet: ${andList(heavier, HEAVIEST_SHOWN)}`);
   const prList = prs.map(pr => {
     const e = EX(pr.exId);
     if (pr.type === 'Weight PR')

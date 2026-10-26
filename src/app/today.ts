@@ -22,10 +22,24 @@ import { LOCKUP } from './icons';
 import { MEAS, injLabel } from './library';
 import { DAYS, dayLabel, daySets, dropStarter, ssLetters, tplCountLine } from './routines';
 import { starterSigs } from './normalize';
-import { fmtDate, greeting, repSpan, todayEye } from './format';
-import { BW_MAX_KG, BW_MIN_KG, MEAS_MAX_CM } from './records';
-import { addDays, daysBetween, numIn, r1, today, uid, weekStart } from './util';
-import { IN } from './units';
+import { fmtDate, greeting, repSpan, todayEye, LIGHT_RIR } from './format';
+import { BW_MAX_KG, BW_MIN_KG, MEAS_MAX_CM, LIMITS } from './records';
+import {
+  addDays,
+  daysBetween,
+  numIn,
+  r1,
+  today,
+  uid,
+  weekStart,
+  monthOf,
+  WEEK_DAYS,
+  SUNDAY,
+  dayOfWeek,
+  pctOf,
+  shareWords
+} from './util';
+import { IN, FT_IN } from './units';
 import {
   EX,
   IDX,
@@ -98,6 +112,36 @@ import { heroRing, weekCard } from './week';
 import { mapCard } from './map';
 import type { Day } from './types';
 
+/** The first-run tour's sample numbers (r34), chosen to follow the app's own
+    rules: last time, this time and the next sets' loads per unit (65 for 10,
+    10 and 10 at the top of 8 to 10 means 70 next; a first set with 4 in
+    reserve moves the next ones up), a best estimate going from one number to
+    the other, and its chart: the line's heights, where it starts and its
+    spacing, and the grid, in the drawing's units; then how long a swipe
+    settles before the slide is read, and how long a slide shows. */
+const TOUR = {
+  loads: { kg: [30, 32.5, 35], lb: [65, 70, 75] },
+  e1: { kg: [102, 110], lb: [225, 242] },
+  line: [70, 64, 66, 57, 54, 48, 43, 34, 31, 22],
+  x0: 8,
+  dx: 30,
+  grid: [24, 48, 72],
+  settleMs: 90,
+  advanceMs: 4000
+} as const;
+/** A height typed as one number up to HEIGHT_READ.feet in lb is feet, and under HEIGHT_READ.metres in kg is metres. */
+const HEIGHT_READ = { feet: 8, metres: 3 } as const;
+/** Centimetres in a metre. */
+const CM_M = 100;
+/** The body card lists the newest BODY_SHOWN.weights weigh-ins and BODY_SHOWN.tape tape entries. */
+const BODY_SHOWN = { weights: 5, tape: 3 } as const;
+/** How long the deload week's toast and the build-your-own toast stay, in milliseconds: long enough for their two sentences. */
+const DELOAD_TOAST_MS = 6000,
+  BUILD_TOAST_MS = 7000;
+import { LIGHTER_SET_SHARE, LIGHT_SHARE, RECENT_WEEKS } from './formulas';
+import { PICK_DAYS } from './analytics';
+import { DEMO_WEEKS } from './importing';
+
 declare global {
   interface Window {
     /** A suite's switch that lets the first page's tour move on by itself in a test browser (tests/r33.js). */
@@ -168,7 +212,7 @@ function obTourSlides(): (readonly [TemplateResult, string])[] {
      means 70 next; a first set with 4 in reserve moves the next ones up. */
   const kg = U() === 'kg';
   const u = U();
-  const w = kg ? [30, 32.5, 35] : [65, 70, 75];
+  const w = TOUR.loads[kg ? 'kg' : 'lb'];
   const f = (v: number | undefined): string => fmtW(fromD(v || 0));
   const log = html`<div class="obv" aria-hidden="true"><div class="row spread"><b>Incline DB Press</b><span class="mu">Last ${f(w[0])} × 10, 10, 10</span></div>
 <div class="obv-row"><b class="mu">1</b><span>${f(w[1])}</span><span>10</span><i class="on"></i></div>
@@ -192,12 +236,11 @@ function obTourSlides(): (readonly [TemplateResult, string])[] {
   ];
   const plan = html`<div class="obv" aria-hidden="true"><div class="obv-week">${days.map(([d, t]) => html`<div class=${t ? 't' : nothing}><b></b>${d}</div>`)}</div>
 <div class="obv-plan"><div><b>Bench Press</b><span class="mu">3 × 6-10</span></div><div><b>Chest-Supported Row</b><span class="mu">3 × 8-12</span></div><div class="free"><b>Freestyle</b><span class="mu">add as you go</span></div></div></div>`;
-  const ys = [70, 64, 66, 57, 54, 48, 43, 34, 31, 22];
-  const pts = ys.map((y, i): [number, number] => [8 + i * 30, y]);
-  const e1 = kg ? [102, 110] : [225, 242];
-  const end = pts[9] || [0, 0];
+  const pts = TOUR.line.map((y, i): [number, number] => [TOUR.x0 + i * TOUR.dx, y]);
+  const e1 = TOUR.e1[kg ? 'kg' : 'lb'];
+  const end = pts[pts.length - 1] || [0, 0];
   const prog = html`<div class="obv" aria-hidden="true"><b>Bench Press</b> <span class="mu">est. 1RM ${e1[0]} to ${e1[1]} ${u}</span><span class="obv-chip">PR</span>
-<svg viewBox="0 0 290 80" style="margin-top:6px">${[24, 48, 72].map(y => html`<line class="gl" x1="0" x2="290" y1=${y} y2=${y}></line>`)}
+<svg viewBox="0 0 290 80" style="margin-top:6px">${TOUR.grid.map(y => html`<line class="gl" x1="0" x2="290" y1=${y} y2=${y}></line>`)}
 <polyline class="ln" points=${pts.map(p => p.join(',')).join(' ')}></polyline>${pts.slice(0, -1).map(([x, y]) => html`<circle class="pt" cx=${x} cy=${y} r="3.2"></circle>`)}<circle class="pr" cx=${end[0]} cy=${end[1]} r="5.5"></circle></svg></div>`;
   return [
     [log, 'Log a set in one tap'],
@@ -271,7 +314,7 @@ export function mountObTour(): void {
             if (b && Math.abs(el.offsetLeft - x0 - x) < Math.abs(b.offsetLeft - x0 - x)) best = k;
           });
           if (best !== obTour.i) obTourSet(best);
-        }, 90);
+        }, TOUR.settleMs);
       },
       { passive: true }
     );
@@ -308,7 +351,7 @@ export function mountObTour(): void {
       return;
     }
     obTourGo(obTour.i + 1, true);
-  }, 4000);
+  }, TOUR.advanceMs);
 }
 function obView(): TemplateResult {
   // Still finding out whether this device is signed in, or pulling its log: show nothing that could flash away.
@@ -373,7 +416,7 @@ ${acctStep && !acct.user ? html`<button class="linkbtn ob-back" data-act="obAcct
 function welcomeCard(): Part {
   if (state.settings.onboarded || !cloudChecked || state.draft || state.sessions.some(s => !s.demo)) return nothing;
   if (state.sessions.some(s => s.demo))
-    return html`<div class="card welcome" id="demoNote"><p class="small" style="margin:0 0 8px"><b>You are looking at demo data.</b> 8 weeks of generated sessions to look around; none of it is yours.</p><button class="btn sm primary" data-act="demoStart">Clear demo and set up</button></div>`;
+    return html`<div class="card welcome" id="demoNote"><p class="small" style="margin:0 0 8px"><b>You are looking at demo data.</b> ${DEMO_WEEKS} weeks of generated sessions to look around; none of it is yours.</p><button class="btn sm primary" data-act="demoStart">Clear demo and set up</button></div>`;
   return nothing;
 }
 /* Signed out: one slim line on Today, because a log that lives only on the
@@ -490,18 +533,18 @@ function moreBtn(deload: boolean): Part {
 function moreRow(deload: boolean, playable: boolean, di: number): Part {
   if (!ui['heroMore']) return nothing;
   const t = today();
-  const rw = isRestWeek(weekStart(t)) || isRestWeek(addDays(weekStart(t), -7));
+  const rw = isRestWeek(weekStart(t)) || isRestWeek(addDays(weekStart(t), -WEEK_DAYS));
   return html`<div class="row" style="margin-top:8px"><button class=${`btn sm ${deload ? 'noted' : ''}`} data-act="deloadToggle" aria-pressed=${String(deload)}>${
     deload ? 'Deload week: on' : 'Deload week'
   }</button>${playable ? html`<button class="btn sm" data-act="eqOpen" data-day=${di}>Limited equipment</button>` : nothing}<button class=${`btn sm ${rw ? 'noted' : ''}`} data-act="restWkOpen">Rest week</button><button class="btn sm" data-act="injAdd">Flag an injury</button><button class="btn sm" data-act="cardioNew">Log cardio</button></div>`;
 }
-const STARTS_HELP = html`In <b>Change</b>: <b>Lighter day</b>: every exercise on the day, half the sets (rounded up), about 90% of the loads, 3 or more reps in reserve, and no target to beat: a one-day deload. For a day you are run down or sore, or slept badly. It does not count against your trends. <b>Short on time</b>: tell it your minutes; it keeps priority and lagging muscles and your main lifts at full effort and trims the rest. <b>Pick for me</b>: ranks your routine's days for today from what each muscle got in the last 7 days, how recently it was trained hard, injuries, and where you are in the cycle, then says why. <b>Blank session</b>: log anything; your cycle stays put. <b>Deload week</b> (More options): a whole week of half sets at about 90% loads. <b>Limited equipment</b> (More options): today's workout with each exercise your gym cannot do swapped for the closest match it can.`;
+const STARTS_HELP = html`In <b>Change</b>: <b>Lighter day</b>: every exercise on the day, half the sets (rounded up), about ${pctOf(LIGHT_SHARE)}% of the loads, ${LIGHT_RIR} or more reps in reserve, and no target to beat: a one-day deload. For a day you are run down or sore, or slept badly. It does not count against your trends. <b>Short on time</b>: tell it your minutes; it keeps priority and lagging muscles and your main lifts at full effort and trims the rest. <b>Pick for me</b>: ranks your routine's days for today from what each muscle got in the last ${PICK_DAYS} days, how recently it was trained hard, injuries, and where you are in the cycle, then says why. <b>Blank session</b>: log anything; your cycle stays put. <b>Deload week</b> (More options): a whole week of half sets at about ${pctOf(LIGHT_SHARE)}% loads. <b>Limited equipment</b> (More options): today's workout with each exercise your gym cannot do swapped for the closest match it can.`;
 
 /** Today, with no session in progress: the first pages of a new install, or the start card and everything under it. */
 export function viewToday(): TemplateResult {
   if (obActive()) return obView();
   const R = activeRoutine();
-  const wd = (new Date().getDay() + 6) % 7;
+  const wd = dayOfWeek(today());
   const weekly = R.schedule === 'weekly';
   const cs = weekly ? null : cycleState(R);
   if (typeof ui.todayDay === 'number' && ui.todayDay >= R.days.length) ui.todayDay = null;
@@ -523,7 +566,7 @@ export function viewToday(): TemplateResult {
     'di' in at &&
     at.di === chosen &&
     typeof at.d === 'string' &&
-    at.d > addDays(weekStart(t), 6)
+    at.d > addDays(weekStart(t), SUNDAY)
       ? at.d
       : null;
   const eyebrow = ahead
@@ -611,7 +654,7 @@ function homeTiles(): TemplateResult {
         ? 'This week done'
         : `Weeks with ${sk.need}+ sessions`
   }${sk.best > sk.weeks ? ` · best ${sk.best}` : ''}</div></button>
-<button class="tile" data-act="goDash" data-sec="bests" aria-label=${`${noLog() ? 'No PRs yet' : pr.length + ' PRs in the last 4 weeks'}. Open all-time bests`}><div class="tv">${nz(pr.length)}</div><div class="tl">PRs, last 4 weeks</div><div class="ts">${
+<button class="tile" data-act="goDash" data-sec="bests" aria-label=${`${noLog() ? 'No PRs yet' : `${pr.length} PRs in the last ${RECENT_WEEKS} weeks`}. Open all-time bests`}><div class="tv">${nz(pr.length)}</div><div class="tl">PRs, last ${RECENT_WEEKS} weeks</div><div class="ts">${
     last
       ? `Latest: ${exName(last.exId)}, ${ago === 0 ? 'today' : ago === 1 ? 'yesterday' : ago + ' days ago'}`
       : 'None yet'
@@ -709,7 +752,7 @@ function previewCard(day: Day, deload: boolean): TemplateResult {
 }
 /* Height parses 5'10, 5 10, 70 (inches) or 5.9 (feet) in lb mode, and cm or
    metres in kg mode. Stored in cm. */
-/** A height as typed, in cm (100 to 250), or null when it reads as none. */
+/** A height as typed, in cm (within LIMITS.heightCm), or null when it reads as none. */
 export function parseHeight(v: string): number | null {
   const t = String(v || '')
     .trim()
@@ -720,16 +763,16 @@ export function parseHeight(v: string): number | null {
   let cm: number | null = null;
   if (U() === 'lb') {
     const m = t.match(/^(\d+(?:\.\d+)?)\s*(?:'|’|ft|feet|\s)\s*(\d+(?:\.\d+)?)?$/);
-    if (m) cm = (+(m[1] || 0) * 12 + (m[2] ? +m[2] : 0)) * IN;
+    if (m) cm = (+(m[1] || 0) * FT_IN + (m[2] ? +m[2] : 0)) * IN;
     else {
       const n = numIn(t);
-      if (n != null) cm = (n <= 8 ? n * 12 : n) * IN;
+      if (n != null) cm = (n <= HEIGHT_READ.feet ? n * FT_IN : n) * IN;
     }
   } else {
     const n = numIn(t);
-    if (n != null) cm = n < 3 ? n * 100 : n;
+    if (n != null) cm = n < HEIGHT_READ.metres ? n * CM_M : n;
   }
-  return cm != null && cm >= 100 && cm <= 250 ? Math.round(cm * 10) / 10 : null;
+  return cm != null && cm >= LIMITS.heightCm[0] && cm <= LIMITS.heightCm[1] ? r1(cm) : null;
 }
 function heightField(): TemplateResult {
   return html`<label class="field"><span class="hastip" data-tip="Set once. With a waist measurement it gives waist to height.">Height</span><input type="text" data-bind="height" .value=${fieldValue(
@@ -741,7 +784,7 @@ function heightField(): TemplateResult {
    previous" read as a loss; a change that rounds to nothing says so (r41). */
 function bodyCard(): TemplateResult {
   const bws = [...state.bodyweights].sort((a, b) => (a.date < b.date ? 1 : -1));
-  const ms = [...state.measurements].sort((a, b) => (a.date < b.date ? 1 : -1)).slice(0, 3);
+  const ms = [...state.measurements].sort((a, b) => (a.date < b.date ? 1 : -1)).slice(0, BODY_SHOWN.tape);
   const last = bws[0];
   const prev = bws[1];
   const r = bwRate();
@@ -777,11 +820,11 @@ function bodyCard(): TemplateResult {
 ${
   bws.length
     ? html`<ul class="bw-list" aria-label="Recent bodyweights">${bws
-        .slice(0, 5)
+        .slice(0, BODY_SHOWN.weights)
         .map(
           b =>
             html`<li><span class="d">${fmtDate(b.date)}</span><span class="num">${fmtW(b.kg)} ${U()}</span><button class="ib sm" data-act="delBW" data-id=${b.id} aria-label=${`Delete ${fmtDate(b.date)} entry`}>✕</button></li>`
-        )}</ul>${bws.length > 5 ? html`<p class="small muted" style="margin:4px 0 0">${bws.length - 5} older on Stats.</p>` : nothing}`
+        )}</ul>${bws.length > BODY_SHOWN.weights ? html`<p class="small muted" style="margin:4px 0 0">${bws.length - BODY_SHOWN.weights} older on Stats.</p>` : nothing}`
     : nothing
 }
 ${subsection(
@@ -813,7 +856,7 @@ const TODAY_OFFER: Readonly<Record<string, () => boolean>> = {
       typeof ui.todayDay === 'number' && ui.todayDay < R.days.length
         ? ui.todayDay
         : R.schedule === 'weekly'
-          ? (new Date().getDay() + 6) % 7
+          ? dayOfWeek(today())
           : cycleState(R).next;
     const d = R.days[di];
     return !!d && !d.rest && d.items.length > 0;
@@ -906,9 +949,9 @@ export const TODAY_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
     window.scrollTo(0, 0);
     fx.render();
     fx.toast(
-      'Deload week on until Sunday: half sets, about 90% loads. It clears fatigue; it does not add growth.',
+      `Deload week on until Sunday: ${shareWords(LIGHTER_SET_SHARE)} sets, about ${pctOf(LIGHT_SHARE)}% loads. It clears fatigue; it does not add growth.`,
       false,
-      6000
+      DELOAD_TOAST_MS
     );
   },
   /* Every tile, summary row and map detail lands on its section, opened even if it was folded. */
@@ -926,7 +969,7 @@ export const TODAY_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
   wkView(t) {
     const v = t.dataset['v'] === 'month' ? 'month' : 'week';
     ui['wkView'] = v;
-    if (v === 'month') ui['calYm'] = today().slice(0, 7);
+    if (v === 'month') ui['calYm'] = monthOf(today());
     prefSet(WKVIEW_KEY, v);
     fx.rerenderKeepScroll();
   },
@@ -1120,7 +1163,7 @@ export const TODAY_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
     ui.planView = 'routine';
     window.scrollTo(0, 0);
     fx.render();
-    fx.toast('Name your days, then add exercises with + or by dragging.', false, 7000);
+    fx.toast('Name your days, then add exercises with + or by dragging.', false, BUILD_TOAST_MS);
   },
   // Clear demo and set up: the demo goes, and the settings it changed come back.
   demoStart() {

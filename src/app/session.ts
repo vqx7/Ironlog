@@ -5,9 +5,9 @@
    session (suggestions, adjustments) moves with the engine in 3b. */
 
 import type { DraftBlock, DraftSet, Session, SessionEx, Target } from './types';
-import { uid, today } from './util';
-import { isMissed, isWork } from './formulas';
-import { fmtDate } from './format';
+import { uid, today, PERCENT, pctOf, shareWords } from './util';
+import { isMissed, isWork, LIGHTER_SET_SHARE, LIGHT_SHARE, RIR_CALL_TOP } from './formulas';
+import { fmtDate, LIGHT_RIR } from './format';
 import { cleanChk } from './records';
 
 /* ---------- loads and targets ---------- */
@@ -95,9 +95,10 @@ export function targetText(b: DraftBlock): string | undefined {
     /^(\d+)(s?)\+ (reps )?(?:in one set|over (?:your first )?\d+ sets|in one hold|over (?:your first )?\d+ holds)( at .*)$/
   );
   if (!m) return b.target;
-  const hold = m[2] === 's';
+  const [, , s, reps, at] = m;
+  const hold = s === 's';
   const over = e.n === 1 ? (hold ? 'in one hold' : 'in one set') : `over ${e.n} ${hold ? 'holds' : 'sets'}`;
-  return `${(e.total as number) + 1}${m[2]}+ ${m[3] || ''}${over}${m[4]}`;
+  return `${(e.total as number) + 1}${s}+ ${reps || ''}${over}${at}`;
 }
 
 /* "Over your first 3 sets" only when the plan has more sets than that, so
@@ -128,7 +129,7 @@ export function sessProgress(d: { ex: DraftBlock[] }): { n: number; k: number; p
         n++;
         if (x.done) k++;
       }
-  return { n, k, pct: n ? (k / n) * 100 : 0 };
+  return { n, k, pct: n ? (k / n) * PERCENT : 0 };
 }
 
 /** The rest after an exercise: none before the next one of the same superset, else its plan's.
@@ -179,6 +180,7 @@ export function lastHead(b: DraftBlock, dup?: boolean): string {
 type Joinable = {
   exId: string;
   light?: boolean | undefined;
+  nw?: true | undefined;
   sets: DraftSet[];
   note?: string | undefined;
   rr?: [number, number] | null | undefined;
@@ -301,7 +303,7 @@ export interface DraftCardio {
 /** A workout in progress as a saved session of its ticked sets, or null when none is ticked or it is an edit. */
 export function draftSession(d: DraftLike, empty?: boolean): Session | null {
   if (d.editingId) return null;
-  const ex = joinAdjacent(d.ex.map(savedEx).filter(b => b.sets.length));
+  const ex = withNew(joinAdjacent(d.ex.map(savedEx).filter(b => b.sets.length)), d);
   // A copy with nothing ticked is no session, unless asked for as the agreed copy of a join (keepLost), where it is the base with no sets.
   if (!ex.length && !empty) return null;
   const chk = cleanChk(d.chk);
@@ -370,10 +372,30 @@ export function sameExOnce<X extends Joinable>(ex: readonly X[]): X[] {
     const wa = a.sets.filter(isWork).length,
       wb = b.sets.filter(isWork).length;
     a.sets.push(...b.sets);
+    // A new machine or gym marks the lift in the session, so its one exposure carries the mark when any block does (r61).
+    if (b.nw) a.nw = true;
     if (wb > wa && b.rr) a.rr = b.rr;
     else if (!a.rr && b.rr) a.rr = b.rr;
   }
   return out;
+}
+
+/* ---------- a new machine or gym (r61, PENDING 343 7) ---------- */
+
+/* "New machine or gym" in an exercise's menu marks the lift in the session
+   in progress: every block of it then carries nw, and the rules read the
+   lift as starting over from this session (liftReadIn), so a block of it
+   added after the mark reads so too. Finish saves the mark on each of the
+   lift's exercises, last, after the sets its plan gave it (withPlanSets),
+   where normalize writes it. */
+/** Whether the session in progress marks a lift as done at a new machine or gym. */
+export function markedNew(d: { ex: readonly { exId: string; nw?: true | undefined }[] }, exId: string): boolean {
+  return d.ex.some(b => b.exId === exId && !!b.nw);
+}
+
+/** Saved exercises with the mark on each lift the session marks, last. */
+export function withNew<B extends { exId: string }>(ex: readonly B[], d: Parameters<typeof markedNew>[0]): B[] {
+  return ex.map(b => (markedNew(d, b.exId) ? { ...b, nw: true as const } : b));
 }
 
 /* ---------- a session as a whole ---------- */
@@ -426,6 +448,8 @@ export function editFp(d: {
     ex: d.ex.map(b => [
       b.exId,
       (b.note || '').trim(),
+      // A new machine or gym marked or taken off is an edit too (r61).
+      !!b.nw,
       b.sets.map(x => [
         x.w == null ? null : +x.w,
         x.r == null || x.r === '' ? null : +x.r,
@@ -443,11 +467,22 @@ export function editFp(d: {
    mid-set. Almost nobody does that, so almost every set came through blank and
    the volume bands silently counted it as hard anyway. A native picker is one
    tap, which is the difference between measuring and assuming. */
-/* RIR is picked from a strip of 0 to 5 instead of the phone's dropdown wheel
-   (open, spin, confirm on every set). The cell shows the value; tapping it
-   opens the strip under that set, and ticking a set done with no RIR yet
-   opens it by itself, so logging effort is one tap. */
-export const RIR_OPTS: readonly string[] = ['0', '1', '2', '3', '4', '5'];
+/* The note a deload or a lighter session starts with, saved in its notes as
+   the rules stood when it began: the share of the sets, the load and the
+   reserve its lifts are given (lighterSets, LIGHT_SHARE, LIGHT_RIR). */
+/** A deload session's opening note. */
+export const DELOAD_NOTE = `Deload: ${shareWords(LIGHTER_SET_SHARE)} sets, about ${pctOf(LIGHT_SHARE)}% loads, ${LIGHT_RIR}+ RIR.`;
+/** A lighter session's opening note. */
+export const LIGHTER_NOTE = `Lighter session: ${shareWords(LIGHTER_SET_SHARE)} sets, about ${pctOf(LIGHT_SHARE)}% loads, ${LIGHT_RIR}+ RIR.`;
+
+/* RIR is picked from a strip of 0 to RIR_CALL_TOP instead of the phone's
+   dropdown wheel (open, spin, confirm on every set). The cell shows the
+   value; tapping it opens the strip under that set, and ticking a set done
+   with no RIR yet opens it by itself, so logging effort is one tap. */
+/** The effort strip's choices in whole reps: 0 to RIR_CALL_TOP. */
+export const RIR_OPTS: readonly string[] = Array.from({ length: RIR_CALL_TOP + 1 }, (_, i) => String(i));
+/** The effort strip's choices in half reps (Settings, Effort): every half from 0 to RIR_CALL_TOP. */
+export const RIR_HALF_OPTS: readonly string[] = Array.from({ length: 2 * RIR_CALL_TOP + 1 }, (_, i) => String(i / 2));
 
 /* A line said on every exercise is said once (r34.2, from the review: the
    first-time paragraph on all 8 exercises, "Half the usual sets, nothing to

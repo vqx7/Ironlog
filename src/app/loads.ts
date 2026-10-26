@@ -6,7 +6,7 @@
 import type { Exercise } from './types';
 import type { ExerciseLike, Model, Suggestion } from './model';
 import { loadMode, PLATE_SIDE_IDS, isCompound, noE1 } from './library';
-import { r1 } from './util';
+import { r1, EPS } from './util';
 import { UIn } from './model';
 import { DEFAULT_STEP, fromDIn, toDIn } from './units';
 
@@ -89,5 +89,5 @@ export function swapWIn(M: Model, ex: Pick<Exercise, 'bw'>, res: Suggestion, nw:
 export function roundLoadIn(M: Model, kg: number, down?: boolean): number {
   const step = DEFAULT_STEP[UIn(M)];
   const d = toDIn(M, kg)!;
-  return fromDIn(M, Math.max(step, (down ? Math.floor(d / step + 1e-9) : Math.round(d / step)) * step))!;
+  return fromDIn(M, Math.max(step, (down ? Math.floor(d / step + EPS) : Math.round(d / step)) * step))!;
 }

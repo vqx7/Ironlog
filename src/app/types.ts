@@ -127,7 +127,9 @@ export interface LoggedSet {
     nor read (V's one rule reads the log), and sessions saved before keep it.
     `ps` is the sets its routine's plan gave it when saved (r58, 339 h): on
     a session saved on a day of a routine with the lift in it, absent on the
-    rest, on an edit's new exercises and on sessions saved before r58. */
+    rest, on an edit's new exercises and on sessions saved before r58.
+    `nw` marks it done at a new machine or gym (r61, 343 7): the lift starts
+    over from this session (sinceNew), absent unless marked. */
 export interface SessionEx {
   exId: string;
   note: string;
@@ -137,6 +139,7 @@ export interface SessionEx {
   inj?: string | undefined;
   sets: LoggedSet[];
   ps?: number | undefined;
+  nw?: true | undefined;
 }
 
 /** A saved session (cleanSess in the storage part). `t` is when it started,
@@ -299,6 +302,8 @@ export interface EngineState {
   injuries: Injury[];
   deloadWeek: string | null;
   settings: EngineSettings;
+  /** The session in progress as the rules read it: its day, and the lifts it marks as done at a new machine or gym (r61, liftReadIn); absent or null with none. */
+  draft?: { date: string; ex: readonly { exId: string; nw?: true | undefined }[] } | null | undefined;
 }
 
 /** One set as the analytics read it (a point in IDX's byEx): the load as typed,
@@ -413,6 +418,8 @@ export interface DraftBlock {
   lastNote?: { date: string; text: string } | null | undefined;
   /** The exercise it was swapped from, for Finish's offer to the routine. */
   swappedFrom?: string | null | undefined;
+  /** Done at a new machine or gym (r61, 343 7): every block of the lift in the session carries it, its suggestion read as a first session's; absent unless marked. */
+  nw?: true | undefined;
 }
 
 /** The next sets adjusted from a ticked set (r34): see DraftBlock's `adj`. */

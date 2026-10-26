@@ -24,9 +24,9 @@ import { act } from './act';
 import { loadMode, CARDIO, CWHEN, ML, injLabel, CARDIOL, CWHENL } from './library';
 import { ssLetters, fixSupersets, linkToggle } from './routines';
 import { missedTag, repSpan, effLeastShort, LIGHT_RIR, fmtDate, estMin } from './format';
-import { isMissed, isWork } from './formulas';
-import { today, numIn, uid, isDate } from './util';
-import { cleanCardio } from './normalize';
+import { isMissed, isWork, DROP_START, WARM_RAMP, LIGHT_SHARE } from './formulas';
+import { today, numIn, uid, isDate, EPS, pctOf } from './util';
+import { cleanDraftCardio, LOAD_MAX, LOAD_MIN } from './normalize';
 import { platesMode } from './gym';
 import { loadWords, loadNote, emptyLoad } from './loads';
 import { CHK_Q, chkWord } from './coach';
@@ -37,6 +37,7 @@ import { state, ui, fx } from './store';
 import {
   effW,
   RIR_OPTS,
+  RIR_HALF_OPTS,
   lastCell,
   greyW,
   lastDup,
@@ -47,9 +48,9 @@ import {
   hintOnce,
   sessProgress,
   newRow,
-  editFp
+  editFp,
+  markedNew
 } from './session';
-import type { DraftCardio } from './session';
 import type { DraftBlock, DraftSet } from './types';
 import type { ExerciseLike } from './model';
 import { distU, distShow, rirShow, setShort, bestLine, effTgt, loadHead, fmtDateLong } from './display';
@@ -71,7 +72,8 @@ import {
   needHere,
   onRedraw,
   ordBack,
-  redraw
+  redraw,
+  FOLD_MS
 } from './workstate';
 import type { Draft, Tap } from './workstate';
 import {
@@ -100,9 +102,26 @@ import {
   rirShowStrip,
   rowBlank,
   rowPR,
-  setDone
+  setDone,
+  CAL_OFFER
 } from './worksets';
 import { finish, finishNow } from './workfinish';
+import { LIMITS, EFFORT_TOP } from './records';
+import { PICK_DAYS } from './analytics';
+
+/** What the New machine tag on an exercise says, tapped (r61). */
+const NEW_TIP =
+  'A new machine or gym: its targets, trend, stalls, PRs and bests start over from this session. Earlier sessions stay in History. Take it off in the ⋯ menu.';
+/** The gap above the cardio buttons when there are entries, in pixels. */
+const CARDIO_ADD_GAP_PX = 10;
+/** After an auto-mark, a tap on that set's checkmark within this many milliseconds confirms it rather than undoing it (r28). */
+const AUTO_CONFIRM_MS = 15000;
+/** An exercise a tick moved up goes back when its sets are all unticked within this many milliseconds (r55). */
+const REORDER_BACK_MS = 30000;
+/** A touch this many milliseconds ago is where the lifter went (an iPhone's buttons never take focus). */
+const TOUCH_MS = 700;
+/** With the effort strip about to open, an auto-mark waits this long for it before it marks the set. */
+const STRIP_WAIT_MS = 2000;
 
 /* lit-html moves an exercise's nodes, or a row's, with it when the order
    changes (a reorder, a warm-up added above), so the field being typed in
@@ -206,7 +225,7 @@ function adjLine(b: DraftBlock, bi: number): Part {
   if (!a || !b.sets.some((x, i) => i > a.at && !x.done && !x.warm && !x.drop)) return '';
   const ex = EX(b.exId);
   const lb = (w: number): string => `${loadLabel(ex, w)}${ex.bw ? '' : ' ' + U()}${loadNote(ex)}`;
-  if (Math.abs(a.w - a.from) < 1e-9)
+  if (Math.abs(a.w - a.from) < EPS)
     return html`<p class="adjline small" id=${`adj-${bi}`}><span><b>Next sets: ${a.r} reps at ${lb(a.w)}</b>, because ${a.why}.</span><button class="linkbtn" data-act="adjKeep" data-b=${bi}>Keep as it was</button></p>`;
   return html`<p class="adjline small" id=${`adj-${bi}`}><span><b>Next sets: ${lb(a.w)}</b>, ${a.up ? 'up' : 'down'} because ${a.why}.</span><button class="linkbtn" data-act="adjKeep" data-b=${bi}>Keep ${lb(a.from)}</button></p>`;
 }
@@ -222,7 +241,7 @@ function adjLine(b: DraftBlock, bi: number): Part {
    320 px. The buttons carry RIR; RPE only changes what they say. */
 function effOpts(): string[] {
   const sc = rirScale();
-  return sc === 'whole' ? RIR_OPTS.slice() : ['0', '0.5', '1', '1.5', '2', '2.5', '3', '3.5', '4', '4.5', '5'];
+  return (sc === 'whole' ? RIR_OPTS : RIR_HALF_OPTS).slice();
 }
 
 const effAria = (si: number): string =>
@@ -288,10 +307,10 @@ export function readyCard(d: Draft, low: number): Part {
   const open = d.ex.some(b => !b.light && !b.sets.some(x => !x.warm && !rowBlank(b, x)));
   const left = remainMin(d);
   if (low >= 2 && !open && d.ex.some(b => b.light))
-    return html`<p class="callout" style="margin:8px 0 0" id="readyCard">Made lighter: the exercises not started are half the sets at about 90% loads.</p>`;
+    return html`<p class="callout" style="margin:8px 0 0" id="readyCard">Made lighter: the exercises not started are half the sets at about ${pctOf(LIGHT_SHARE)}% loads.</p>`;
   if (low < 2)
     return html`<p class="callout" style="margin:8px 0 0" id="readyCard">One low answer: keep the loads and leave a rep more in reserve than planned if it feels heavy.</p>`;
-  return html`<div class="callout yellow" style="margin:8px 0 0" id="readyCard"><p style="margin:0">Low readiness today. ${tipButton('A lighter or shorter session fits a low day better than pushing. Make it lighter changes only the exercises not started: half the sets, about 90% loads, nothing to beat.')}</p><div class="row" style="margin-top:8px">${open ? html`<button class="btn sm" data-act="makeLight">Make it lighter</button>` : ''}${left > 0 ? html`<button class="btn sm" data-act="shortOpen">Short on time</button>` : ''}</div></div>`;
+  return html`<div class="callout yellow" style="margin:8px 0 0" id="readyCard"><p style="margin:0">Low readiness today. ${tipButton(`A lighter or shorter session fits a low day better than pushing. Make it lighter changes only the exercises not started: half the sets, about ${pctOf(LIGHT_SHARE)}% loads, nothing to beat.`)}</p><div class="row" style="margin-top:8px">${open ? html`<button class="btn sm" data-act="makeLight">Make it lighter</button>` : ''}${left > 0 ? html`<button class="btn sm" data-act="shortOpen">Short on time</button>` : ''}</div></div>`;
 }
 
 /* Bodyweight, asked once in the first session with a bodyweight lift when
@@ -326,7 +345,7 @@ function cardioDraftCard(d: Draft): TemplateResult {
     title: 'Cardio and mobility',
     sub: n ? `${n} entr${n === 1 ? 'y' : 'ies'}${mins ? `, ${mins} min` : ''}` : 'optional',
     body: html`${rows}
-  <div class="row" style=${`margin-top:${n ? 10 : 0}px`}><button class="btn sm" data-act="cDraftAdd" data-when="pre">+ Before lifting</button><button class="btn sm" data-act="cDraftAdd" data-when="post">+ After lifting</button></div>`
+  <div class="row" style=${`margin-top:${n ? CARDIO_ADD_GAP_PX : 0}px`}><button class="btn sm" data-act="cDraftAdd" data-when="pre">+ Before lifting</button><button class="btn sm" data-act="cDraftAdd" data-when="post">+ After lifting</button></div>`
   });
 }
 
@@ -403,7 +422,7 @@ function blockPart(
     !!b.lastR &&
     b.lastR.some(r => r != null) &&
     b.sets.some((s, i) => !s.done && !s.warm && !s.drop && s.r == null && lastRFor(b, i) != null);
-  return html`<section class=${'block' + (ss ? ' ss' : '')} id=${`blk-${bi}`} data-bi=${bi}><div class="bh">${bgrip(bi, ex.name)}<div class="bh-m"><h3 aria-labelledby=${ex.note ? `bhn-${bi}` : nothing}><span id=${`bhn-${bi}`}>${ex.name}</span>${ex.note ? html` ${tipButton(ex.note, 'About ' + ex.name)}` : ''}</h3><p class="small muted">${ML[ex.primary]} · ${work || p.sets}×${repSpan(p.repMin, p.repMax, '-')}${ex.timed ? 's' : ''}${ex.perSide ? '/side' : ''}${nr ? '' : ` @${b.inj || ((d.light || d.deload || b.light) && b.last) ? effLeastShort(rirScale(), LIGHT_RIR) : effTgt(p.rir)}`} · ${p.rest}s${ss ? html` · <span class="tag blue">Superset ${ss}</span>` : ''}${b.inj ? html` · <span class="tag red">Injury: ${injLabel(b.inj)}</span>` : ''}</p>${lmChips(ex)}</div>
+  return html`<section class=${'block' + (ss ? ' ss' : '')} id=${`blk-${bi}`} data-bi=${bi}><div class="bh">${bgrip(bi, ex.name)}<div class="bh-m"><h3 aria-labelledby=${ex.note ? `bhn-${bi}` : nothing}><span id=${`bhn-${bi}`}>${ex.name}</span>${ex.note ? html` ${tipButton(ex.note, 'About ' + ex.name)}` : ''}</h3><p class="small muted">${ML[ex.primary]} · ${work || p.sets}×${repSpan(p.repMin, p.repMax, '-')}${ex.timed ? 's' : ''}${ex.perSide ? '/side' : ''}${nr ? '' : ` @${b.inj || ((d.light || d.deload || b.light) && b.last) ? effLeastShort(rirScale(), LIGHT_RIR) : effTgt(p.rir)}`} · ${p.rest}s${ss ? html` · <span class="tag blue">Superset ${ss}</span>` : ''}${b.inj ? html` · <span class="tag red">Injury: ${injLabel(b.inj)}</span>` : ''}${markedNew(d, b.exId) ? html` · <span class="tag" data-tip=${NEW_TIP}>New machine</span>` : ''}</p>${lmChips(ex)}</div>
       <div class="bh-acts">${!d.editingId && blockDone(b) ? html`<button class="ib" aria-label=${`Fold ${ex.name}`} data-act="bFold" data-b=${bi}>▴</button>` : ''}<button class="ib" aria-label="Exercise options" data-act="bMenu" data-b=${bi}>⋯</button></div></div>
       ${
         b.target
@@ -423,7 +442,7 @@ function blockPart(
           : ''
       }<div class="row" style="margin-top:8px">${canFill ? html`<button class="btn sm" data-act="fillLast" data-b=${bi} aria-label="Copy last session's reps" data-tip="Fill empty rows with last session's reps.">Copy last</button>` : ''}<button class="btn sm" data-act="sAdd" data-b=${bi} aria-label="Add a set" data-tip="Add a working set at the last load.">+ Set</button><button class="btn sm" data-act="sDel" data-b=${bi} aria-label="Remove a set" data-tip="Removes the last set not yet done." ?disabled=${!b.sets.length}>− Set</button>${
         !ex.timed && b.sets.some(x => x.done && !x.warm && !x.drop)
-          ? html`<button class="btn sm" data-act="dropAdd" data-b=${bi} aria-label="Add a drop set" data-tip="About 75% of the last working load, in your steps. Counts as half a set and never sets a target.">+ Drop</button>`
+          ? html`<button class="btn sm" data-act="dropAdd" data-b=${bi} aria-label="Add a drop set" data-tip=${`About ${pctOf(DROP_START)}% of the last working load, in your steps. Counts as half a set and never sets a target.`}>+ Drop</button>`
           : ''
       }${
         state.settings.timerMode !== 'off' && +p.rest > 0 && !d.past
@@ -461,7 +480,7 @@ export function viewWorkout(d: Draft): TemplateResult {
   }
   ${d.past ? '' : checkinCard(d)}${bwAskCard(d)}${
     !d.ex.length
-      ? html`<div class="card"><p class="small" style="margin:0">No exercises yet. Tap + Add exercise below${d.editingId ? '' : ', or Pick for me for a suggestion based on your last 7 days,'} and log as you go.</p></div>`
+      ? html`<div class="card"><p class="small" style="margin:0">No exercises yet. Tap + Add exercise below${d.editingId ? '' : `, or Pick for me for a suggestion based on your last ${PICK_DAYS} days,`} and log as you go.</p></div>`
       : ''
   }${repeatKeyed(
     d.ex,
@@ -693,7 +712,7 @@ export const WORKOUT_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
      phone that blur happens a moment before the tap on the checkmark lands.
      Without this guard the tap would immediately undo the auto-mark. Since
      r28 (auto-mark on for new installs) the first tap on that set's
-     checkmark confirms it for 15 s, until another set is touched: typing
+     checkmark confirms it for AUTO_CONFIRM_MS, until another set is touched: typing
      reps, picking RIR and then tapping the checkmark is the natural order,
      and it used to untick the set. A second tap undoes it. Tapping done on
      an empty reps field logs the grey number in it (see greyR), like the
@@ -702,7 +721,7 @@ export const WORKOUT_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
      numbers that are what the row shows in grey go back to grey, so a tap by
      mistake leaves nothing typed for Finish to offer to save, and an
      exercise the tick moved up goes back if it has no set left ticked,
-     within half a minute. */
+     within REORDER_BACK_MS. */
   sDone(t) {
     const bi = Number(t.dataset.b),
       si = Number(t.dataset.s);
@@ -710,7 +729,7 @@ export const WORKOUT_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
     const d = state.draft;
     if (!s || !d) return;
     if (W.lastAuto && (blkIdx(W.lastAuto.b) !== bi || W.lastAuto.s !== si)) W.lastAuto = null;
-    if (W.lastAuto && Date.now() - W.lastAuto.t < 15000 && s.done) {
+    if (W.lastAuto && Date.now() - W.lastAuto.t < AUTO_CONFIRM_MS && s.done) {
       W.lastAuto = null;
       return;
     }
@@ -734,9 +753,9 @@ export const WORKOUT_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
         if (!was || !b) return;
         if (s.r != null && +s.r === greyR(b, si)) s.r = null;
         const gw = greyW(b, si);
-        if (!fillLoads() && s.w != null && gw != null && Math.abs(s.w - gw) < 1e-9) s.w = null;
+        if (!fillLoads() && s.w != null && gw != null && Math.abs(s.w - gw) < EPS) s.w = null;
         const o = ordBack.get(b);
-        if (o && !b.sets.some(x => x.done) && Date.now() - o.t < 30000) {
+        if (o && !b.sets.some(x => x.done) && Date.now() - o.t < REORDER_BACK_MS) {
           ordBack.delete(b);
           moveBlock(bi, Math.min(o.i, d.ex.length - 1));
         }
@@ -783,7 +802,7 @@ export const WORKOUT_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
     fx.toast(`${todo.length} set${todo.length === 1 ? '' : 's'} filled with last time's reps`);
   },
   /* The new working set copies the last working set's load, not a drop set's
-     (75%) or a warm-up's. Grey by default: the new row shows the load above
+     (DROP_START) or a warm-up's. Grey by default: the new row shows the load above
      it, or what the last set ticked asks for, as a planned row under it would
      have (r55, V: after 300 x 1, + Set copied 300). Filled in, it takes that load. */
   sAdd(t) {
@@ -821,7 +840,7 @@ export const WORKOUT_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
     }
     if (!base) base = Math.max(0, ...b.sets.map((_, i) => +(effW(b, i) ?? 0) || 0));
     const n = b.sets.filter(s => s.warm).length;
-    const frac = [0.4, 0.6, 0.75, 0.85][Math.min(n, 3)];
+    const frac = WARM_RAMP[Math.min(n, WARM_RAMP.length - 1)];
     let at = 0;
     while (at < b.sets.length && b.sets[at].warm) at++;
     const w = base > 0 ? lighterLoad(EX(b.exId), b.plan, base, base * frac) : null;
@@ -849,7 +868,7 @@ export const WORKOUT_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
         break;
       }
     }
-    const w = base > 0 ? lighterLoad(EX(b.exId), b.plan, base, base * 0.75) : null;
+    const w = base > 0 ? lighterLoad(EX(b.exId), b.plan, base, base * DROP_START) : null;
     act(
       () => {
         b.sets.push(newRow({ w, drop: true }));
@@ -903,7 +922,7 @@ export const WORKOUT_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
     const n = numIn(t.dataset.v || '');
     act(
       () => {
-        s.rir = n == null ? null : Math.min(Math.max(n, 0), 10);
+        s.rir = n == null ? null : Math.min(Math.max(n, 0), EFFORT_TOP);
         if (s.done) assessSet(bi, si);
       },
       { inProgress: true, soon: true }
@@ -920,7 +939,7 @@ export const WORKOUT_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
     if (!d.editingId && blockDone(b)) {
       if (W.foldT) clearTimeout(W.foldT);
       const rf = blkRef(bi);
-      W.foldT = setTimeout(() => autoFold(rf), 900);
+      W.foldT = setTimeout(() => autoFold(rf), FOLD_MS.effort);
     }
   },
   bOpen(t) {
@@ -954,6 +973,36 @@ export const WORKOUT_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
     if (moveBlock(Number(t.dataset.b), Number(t.dataset.b) + 1)) fx.rerenderKeepScroll();
   },
   bDel: blockRemove,
+  /* New machine or gym (r61, PENDING 343 7, V's decision of 2026-10-24): the
+     lift starts over from this session, every block of it marked and its
+     suggestion read again as a first session's; tapped again, it reads its
+     history again. Rows typed are kept; rows still on the suggestion take
+     the new one (refreshBlock). In an edit from History it marks the saved
+     session, or takes the mark off, when the edit is saved. */
+  bNew(t) {
+    const d = state.draft;
+    const b0 = d && d.ex[Number(t.dataset.b)];
+    if (!d || !b0) return;
+    const on = !markedNew(d, b0.exId);
+    act(
+      () => {
+        for (const b of d.ex)
+          if (b.exId === b0.exId) {
+            if (on) b.nw = true;
+            else delete b.nw;
+          }
+        // An edit's sets are saved ones, its words "Editing saved sets.": nothing is suggested there to read again.
+        if (!d.editingId) for (const b of d.ex) if (b.exId === b0.exId) refreshBlock(b);
+      },
+      { inProgress: true }
+    );
+    fx.rerenderKeepScroll();
+    fx.toast(
+      on
+        ? `${exName(b0.exId)} starts over from this session. Its history stays.`
+        : `${exName(b0.exId)} reads its history again.`
+    );
+  },
   // A superset made here is this session's; Finish offers to keep it in the plan (r34.2, from the review: it was gone next time without a word).
   bSs(t) {
     const d = state.draft;
@@ -992,10 +1041,7 @@ export const WORKOUT_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
     if (!d) return;
     act(
       () => {
-        // cast: cleanCardio builds the row field by field (its kind and time checked, its minutes left blank in a session), the shape of a session's cardio row.
-        (d.cardio || (d.cardio = [])).push(
-          cleanCardio({ id: uid(), kind: 'walk', when: t.dataset.when }, true) as DraftCardio
-        );
+        (d.cardio || (d.cardio = [])).push(cleanDraftCardio({ id: uid(), kind: 'walk', when: t.dataset.when }));
       },
       { inProgress: true }
     );
@@ -1037,7 +1083,8 @@ export const WORKOUT_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
     act(
       () => {
         if ((d.notes || '') === (d.note0 || ''))
-          d.notes = d.note0 = 'Made lighter after the check-in: exercises not started, half sets at about 90% loads.';
+          d.notes =
+            d.note0 = `Made lighter after the check-in: exercises not started, half sets at about ${pctOf(LIGHT_SHARE)}% loads.`;
         for (const b of todo) {
           b.light = true;
           const work = b.sets.filter(x => !x.warm);
@@ -1055,7 +1102,7 @@ export const WORKOUT_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
     );
     fx.rerenderKeepScroll();
     fx.toast(
-      `Lighter: ${todo.length} exercise${todo.length === 1 ? '' : 's'} not started now half the sets at about 90% loads`,
+      `Lighter: ${todo.length} exercise${todo.length === 1 ? '' : 's'} not started now half the sets at about ${pctOf(LIGHT_SHARE)}% loads`,
       true
     );
   },
@@ -1064,7 +1111,7 @@ export const WORKOUT_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
       state.settings.calSnooze = today();
     });
     fx.rerenderKeepScroll();
-    fx.toast('The RIR check will come back in 3 weeks');
+    fx.toast(`The RIR check will come back in ${CAL_OFFER.weeks} weeks`);
   },
   bwAskNo() {
     prefSet(BWASK_KEY, '1');
@@ -1148,10 +1195,10 @@ export function workoutInput(t: HTMLInputElement): boolean {
       () => {
         if (k === 'min') {
           const n = numIn(t.value);
-          c.min = n == null || n <= 0 ? null : Math.min(Math.round(n), 600);
+          c.min = n == null || n <= 0 ? null : Math.min(Math.round(n), LIMITS.minutes);
         } else if (k === 'hr') {
           const n = numIn(t.value);
-          c.hr = n != null && n >= 30 && n <= 230 ? Math.round(n) : null;
+          c.hr = n != null && n >= LIMITS.hr[0] && n <= LIMITS.hr[1] ? Math.round(n) : null;
         } else if (k === 'dist') {
           const v = distIn(t.value);
           if (v == null) delete c.dist;
@@ -1177,16 +1224,18 @@ export function workoutInput(t: HTMLInputElement): boolean {
         if (t.dataset.f === 'w') {
           const bx = d.ex[bi];
           const as = !!bx && !!EX(bx.exId).assist;
-          // fromD of a number is a number (null only for no number), so 0 never stands in.
+          /* fromD of a number is a number (null only for no number), so 0 never
+             stands in. Within the bounds a save keeps, in kilograms (r61; until
+             then 660 of help and 20000 in the unit typed). */
           s.w =
             n == null
               ? null
               : as
-                ? -(fromD(Math.min(Math.abs(n), 660)) ?? 0)
-                : (fromD(Math.min(Math.max(n, 0), 20000)) ?? 0);
+                ? -Math.min(fromD(Math.abs(n)) ?? 0, -LOAD_MIN)
+                : Math.min(fromD(Math.max(n, 0)) ?? 0, LOAD_MAX);
           if (s.w === 0) s.w = 0;
           carried.delete(s);
-        } else s.r = n == null ? null : Math.min(Math.max(Math.floor(n + 1e-9), 0), 1000);
+        } else s.r = n == null ? null : Math.min(Math.max(Math.floor(n + EPS), 0), LIMITS.reps);
       },
       { inProgress: true, soon: true }
     );
@@ -1207,7 +1256,7 @@ export function workoutInput(t: HTMLInputElement): boolean {
   if (b === 'draftName') {
     act(
       () => {
-        d.dayName = t.value.trim() ? t.value.slice(0, 40) : 'Freestyle';
+        d.dayName = t.value.trim() ? t.value.slice(0, LIMITS.name) : 'Freestyle';
       },
       { inProgress: true, soon: true }
     );
@@ -1265,7 +1314,7 @@ export function workoutChange(t: HTMLInputElement): boolean {
       return true;
     }
     const near = (sel: string): boolean =>
-      !d.past && !!W.lastDown.el && Date.now() - W.lastDown.t < 700 && !!W.lastDown.el.closest(sel);
+      !d.past && !!W.lastDown.el && Date.now() - W.lastDown.t < TOUCH_MS && !!W.lastDown.el.closest(sel);
     if (s.done && s.r == null) {
       setDone(bi, si, false);
       t.dataset.cleared = '1';
@@ -1278,7 +1327,7 @@ export function workoutChange(t: HTMLInputElement): boolean {
         W.pendAuto = p;
         setTimeout(() => {
           if (W.pendAuto === p && !document.querySelector('.rirstrip')) autoPending();
-        }, 2000);
+        }, STRIP_WAIT_MS);
       } else {
         W.lastAuto = { b: blkRef(bi), s: si, t: Date.now() };
         setDone(bi, si, true);
@@ -1421,7 +1470,7 @@ function workoutFocus(e: FocusEvent): void {
   const t = e.target;
   if (!(t instanceof HTMLInputElement) || !t.matches('.sg input[data-f="w"]')) return;
   // Focused by a touch on it just now (noteDown ran first): its release is still to come.
-  if (W.lastDown.el !== t || Date.now() - W.lastDown.t > 700) return;
+  if (W.lastDown.el !== t || Date.now() - W.lastDown.t > TOUCH_MS) return;
   armLoad(t);
   W.selAgain = t;
 }
@@ -1515,7 +1564,7 @@ function workoutBlur(e: FocusEvent): void {
   const to = e.relatedTarget;
   if (to instanceof HTMLElement && to.dataset.b === t.dataset.b && to.dataset.s === t.dataset.s) return;
   const dn = W.lastDown;
-  const dest = to instanceof Element ? to : Date.now() - dn.t < 700 && dn.el !== t ? dn.el : null;
+  const dest = to instanceof Element ? to : Date.now() - dn.t < TOUCH_MS && dn.el !== t ? dn.el : null;
   if (
     dest &&
     !dest.closest('.sg input[data-f]') &&

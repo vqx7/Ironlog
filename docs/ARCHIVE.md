@@ -286,6 +286,13 @@ Not written here as each shipped; what each moved and changed, with its names, i
 - **Elsewhere:** the update bar in `update.ts` (`updateStart`, `UPDATE_ACTS`; "Update ready" with Update); normalize's draft blocks built against `DraftBlock` (`satisfies`), `cleanTgt` returning a `Target`; the installed build's library loaders list its own copies alone (`scripts/build.js`).
 - **Checks:** `tests/r60.js` (section 1 holds the screen to r59 in 35 sessions and modes; sections 2 to 7 fail on r59 or on a build before r60), `tests/inflight.js`, `tests/personas.js`, `tests/loadrules.js`; `tests/engine.js` calls `nextSets` and `bwNoLoad` in Node, with two return histories.
 
+### r61 (2026-10-26, version 2.15; PENDING 350, 351 and 343 7)
+
+- **The numbers pass (350):** every policy number in `src/app/` past 0, 1 and 2 named once, beside its source in `docs/EVIDENCE.md` (its index of named numbers), the copy and the Guide built from the same constants; held by `tests/hygiene.js` section 7.
+- **normalize typed (351):** `cleanSettings` (the settings merged over the defaults, each field written back in the merged copy's order, `OPTIONAL_SETTINGS` taken out when unset), `cleanExercise`, `cleanRoutine`, `cleanSess`, `cleanCardio` with `cleanDraftCardio` (`cardioOf`, `CardioRow`), `cleanDraft` (in place, `Object.assign` in the order the rebuild always wrote), the weigh-ins, tape entries and injuries, and `normalize` returning the fields it built with the save's own unknown ones after them; `keepExtra` takes any object (`Object.assign`, `Reflect.deleteProperty`); the readers `pick`, `strings` and `muscles`.
+- **New machine or gym (343 7):** `DraftBlock.nw` and `SessionEx.nw` (types.ts); `sinceNew` and `stretchesOf` (model.ts); `liftReadIn` (analytics.ts), the one way the rules read a lift's sessions, which also reads the session in progress's marks (`EngineState.draft`); the PR list judged per stretch (`IDXIn`), a lift's bests from its newest stretch (`idxLiftIn`'s `cur`), `trendScope` from it; `markedNew` and `withNew` (session.ts); `bNew` in `WORKOUT_ACTS` with the New machine tag (`NEW_TIP`); `KNOWN_BLOCK` (records.ts), kept out of an edit's `keepExtra`; the menu's button in `src/24-sheets.js` and an edit's blocks in `src/27-actions.js`.
+- **Checks:** `tests/r61.js` sections 1 to 5; `tests/seams.js` gives an exercise `nw`.
+
 ## PENDING.md's Done section, by release (r55 back)
 
 #### r55, live since 2026-10-20 (pull request #48, merged by V; build 2026.10.19-r55)

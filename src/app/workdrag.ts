@@ -7,6 +7,9 @@ import { dragStart, dragDrop } from './view';
 import { W } from './workstate';
 import { moveBlock } from './worksets';
 
+/** Dragging an exercise: the band at the top and bottom of the screen that scrolls it, how fast at the edge, the fastest step, in pixels a frame, and the slide of the others. */
+const DRAG = { edgePx: 56, speedPx: 14, maxPx: 20, animMs: 150 } as const;
+
 /* ---------- an exercise dragged ---------- */
 
 /* While an exercise is dragged, a finger near the top or bottom of the space
@@ -40,11 +43,11 @@ const edgeScroll = ((): { start(): void; stop(): void } => {
     if (!W.blockDrag) return;
     if (y != null) {
       const [top, bot] = zone();
-      const edge = 56;
+      const edge = DRAG.edgePx;
       let v = 0;
-      if (y < top + edge) v = -Math.ceil(((top + edge - y) / edge) * 14);
-      else if (y > bot - edge) v = Math.ceil(((y - (bot - edge)) / edge) * 14);
-      if (v) window.scrollBy(0, Math.max(-20, Math.min(20, v)));
+      if (y < top + edge) v = -Math.ceil(((top + edge - y) / edge) * DRAG.speedPx);
+      else if (y > bot - edge) v = Math.ceil(((y - (bot - edge)) / edge) * DRAG.speedPx);
+      if (v) window.scrollBy(0, Math.max(-DRAG.maxPx, Math.min(DRAG.maxPx, v)));
     }
     raf = requestAnimationFrame(step);
   };
@@ -110,7 +113,7 @@ export function mountBlockDrag(): { destroy(): void } | null {
     group: { name: 'blocks', pull: false, put: false },
     handle: '.bgrip',
     draggable: 'section.block',
-    animation: 150,
+    animation: DRAG.animMs,
     fallbackOnBody: true,
     onStart: (e: { item: HTMLElement }) => {
       dragStart(e.item);

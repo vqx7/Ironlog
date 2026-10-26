@@ -10,7 +10,7 @@ import { EXIn, activeRoutineIn, sortedSessionsIn } from './model';
 import { PACE_DAYS, PACE_HI, PACE_LO, PACE_MIN, PACE_N, setSecs, setupSecs } from './formulas';
 import { isCompound } from './library';
 import { basePlanIn } from './routines';
-import { addDays } from './util';
+import { addDays, MINUTE_S } from './util';
 
 /** A planned exercise as the time model reads it: its sets, range, rest and superset link. */
 type TimedItem = Pick<PlanItem, 'exId' | 'sets' | 'repMin' | 'repMax' | 'rest'> & { ss?: string | null | undefined };
@@ -31,7 +31,7 @@ export function dayMinutesIn(M: Model, day: { items: readonly TimedItem[] }, hal
     if (isCompound(ex)) cN++;
   });
   const lastRest = +day.items[day.items.length - 1].rest || 0;
-  return Math.round((Math.max(0, s - lastRest) * (raw ? 1 : paceIn(M))) / 60);
+  return Math.round((Math.max(0, s - lastRest) * (raw ? 1 : paceIn(M))) / MINUTE_S);
 }
 
 /* Your own pace (r43, V): how long your sessions take against the time model,
