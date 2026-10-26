@@ -2907,13 +2907,13 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       rk = contentKeys([], r4, "r");
       lk = contentKeys(rk, l4, "l");
     }
-    const B4 = new Map(bk), L2 = new Map(lk), R2 = new Map(rk);
+    const B5 = new Map(bk), L2 = new Map(lk), R2 = new Map(rk);
     const same = (x2, y2) => held(x2) === held(y2);
     const either = (x2, y2) => typeof x2.rid === "string" || typeof y2.rid !== "string" ? x2 : y2;
     const out = [];
-    const order = match === "place" ? weave([...B4.keys()], [[...L2.keys()], [...R2.keys()]]) : [.../* @__PURE__ */ new Set([...R2.keys(), ...B4.keys(), ...L2.keys()])];
+    const order = match === "place" ? weave([...B5.keys()], [[...L2.keys()], [...R2.keys()]]) : [.../* @__PURE__ */ new Set([...R2.keys(), ...B5.keys(), ...L2.keys()])];
     for (const k2 of order) {
-      const b2 = B4.get(k2), a2 = L2.get(k2), c4 = R2.get(k2);
+      const b2 = B5.get(k2), a2 = L2.get(k2), c4 = R2.get(k2);
       if (a2 && c4) {
         if (same(a2, c4)) out.push(either(a2, c4));
         else if (b2 && same(c4, b2)) out.push(a2);
@@ -2946,8 +2946,8 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     ]);
   }
   function mergeExercises(base, local, remote, remoteWins, stat, match) {
-    const B4 = new Map(blockKeys(base || [])), L2 = new Map(blockKeys(local)), R2 = new Map(blockKeys(remote));
-    const bo = [...B4.keys()].join("|"), lo = [...L2.keys()].join("|"), ro = [...R2.keys()].join("|");
+    const B5 = new Map(blockKeys(base || [])), L2 = new Map(blockKeys(local)), R2 = new Map(blockKeys(remote));
+    const bo = [...B5.keys()].join("|"), lo = [...L2.keys()].join("|"), ro = [...R2.keys()].join("|");
     let order;
     if (!base) order = [...R2.keys()];
     else if (lo === ro || ro === bo) order = [...L2.keys()];
@@ -2959,7 +2959,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     for (const k2 of [...L2.keys(), ...R2.keys()]) if (!order.includes(k2)) order.push(k2);
     const out = [];
     for (const k2 of order) {
-      const b2 = B4.get(k2), a2 = L2.get(k2), c4 = R2.get(k2);
+      const b2 = B5.get(k2), a2 = L2.get(k2), c4 = R2.get(k2);
       if (a2 && c4) {
         const x2 = { ...a2, sets: mergeRows(base ? b2 ? b2.sets : [] : null, a2.sets, c4.sets, remoteWins, stat, match) };
         mergeFields(rec(x2) || {}, b2 ? rec(b2) : null, rec(a2) || {}, rec(c4) || {}, ["sets"], remoteWins, stat);
@@ -3018,10 +3018,10 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
         return [k2, b2];
       });
     };
-    const B4 = new Map(keyed(base.ex)), C2 = keyed(cur.ex), P2 = keyed(pre.ex);
+    const B5 = new Map(keyed(base.ex)), C2 = keyed(cur.ex), P2 = keyed(pre.ex);
     const Cm = new Map(C2);
     const pick2 = (k2) => {
-      const b2 = B4.get(k2), c4 = Cm.get(k2), p3 = P2.find((x2) => x2[0] === k2);
+      const b2 = B5.get(k2), c4 = Cm.get(k2), p3 = P2.find((x2) => x2[0] === k2);
       const pv = p3 ? p3[1] : void 0;
       const bh = b2 ? canon(b2) : null, ch = c4 ? canon(c4) : null, ph = pv ? canon(pv) : null;
       if (ch === bh) return pv;
@@ -5034,10 +5034,10 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
         ];
         for (const s3 of b2.sets) {
           if (!isWork(s3)) continue;
-          const logged = M3.s.settings.rirMode === "off" || !(s3.rir == null || s3.rir === "");
+          const logged2 = M3.s.settings.rirMode === "off" || !(s3.rir == null || s3.rir === "");
           if (ss.date >= recentFrom) {
             rirTotal++;
-            if (logged) rirLogged++;
+            if (logged2) rirLogged++;
           }
           const hard = isHardIn(M3, s3, ex);
           const cr = hard ? setCredit(s3) : hardCreditIn(M3, s3, ex);
@@ -5046,7 +5046,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
           weekHard[wk] = (weekHard[wk] || 0) + cr;
           for (const [m3, f3] of mus) {
             ws[m3] = (ws[m3] || 0) + f3 * cr;
-            if (logged) wc[m3] = (wc[m3] || 0) + f3 * cr;
+            if (logged2) wc[m3] = (wc[m3] || 0) + f3 * cr;
             if (!hard) continue;
             dm[m3] = (dm[m3] || 0) + f3 * cr;
             const o3 = dx[m3] || (dx[m3] = { fail: 0, easy: 0, hard: 0, slow: false, novel: false });
@@ -6461,8 +6461,8 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
         };
         const inR = [];
         for (const d3 of R2.days) for (const it of d3.items) if (forM(it.exId) && !inR.includes(it.exId)) inR.push(it.exId);
-        const logged = Object.keys(I2.byEx).filter((id) => forM(id) && M3.s.exercises.some((e5) => e5.id === id && !e5.archived)).sort((x2, y2) => I2.byEx[y2][I2.byEx[y2].length - 1].date.localeCompare(I2.byEx[x2][I2.byEx[x2].length - 1].date));
-        const exId = inR.find(done) || logged[0] || inR[0] || null;
+        const logged2 = Object.keys(I2.byEx).filter((id) => forM(id) && M3.s.exercises.some((e5) => e5.id === id && !e5.archived)).sort((x2, y2) => I2.byEx[y2][I2.byEx[y2].length - 1].date.localeCompare(I2.byEx[x2][I2.byEx[x2].length - 1].date));
+        const exId = inR.find(done) || logged2[0] || inR[0] || null;
         const planned = plannedSetsIn(M3, R2)[u4.m] || 0;
         const rpe = effScale(M3.s.settings.rirScale) === "rpe";
         const hard = rpe ? "RPE 7 or harder" : "3 or fewer reps in reserve", easy = rpe ? "at RPE 6 or easier" : "with 4 or more in reserve";
@@ -7407,8 +7407,8 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       }
       I2._rack[key] = g2;
     }
-    const logged = xs.some((x2) => x2.pts.some((p3) => p3.w > 0));
-    const d3 = logged || at == null || !(at > 0) ? null : toDIn(M3, at);
+    const logged2 = xs.some((x2) => x2.pts.some((p3) => p3.w > 0));
+    const d3 = logged2 || at == null || !(at > 0) ? null : toDIn(M3, at);
     return d3 == null ? I2._rack[key] : fit([d3]);
   }
   function rackGridIn(M3, ex, plan, at) {
@@ -8894,11 +8894,11 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     const stat = { conflicts: 0 };
     if (!base || canon(state) === canon(base)) setState(incoming);
     else {
-      const L2 = chunksOf(state), Rr = chunksOf(incoming), B4 = chunksOf(base), parts = {};
-      for (const id of /* @__PURE__ */ new Set([...Object.keys(L2), ...Object.keys(Rr), ...Object.keys(B4)]))
+      const L2 = chunksOf(state), Rr = chunksOf(incoming), B5 = chunksOf(base), parts = {};
+      for (const id of /* @__PURE__ */ new Set([...Object.keys(L2), ...Object.keys(Rr), ...Object.keys(B5)]))
         parts[id] = mergeChunk(
           id,
-          baseOf(id, B4[id] || emptyChunk(id)),
+          baseOf(id, B5[id] || emptyChunk(id)),
           L2[id] || emptyChunk(id),
           Rr[id] || emptyChunk(id),
           true,
@@ -10386,6 +10386,21 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     <div class="row" style="margin-top:10px"><button class="btn primary" data-act="cardioSave">Save</button><button class="btn" data-act="mClose">Cancel</button></div></div>`;
   }
 
+  // src/app/outside.ts
+  async function loadModule(urls) {
+    for (const url of urls) {
+      try {
+        return { url, mod: await import(url) };
+      } catch (e5) {
+        log("load", {
+          message: `${url}: ${e5 instanceof Error ? e5.message : String(e5)}`,
+          stack: e5 instanceof Error ? e5.stack : void 0
+        });
+      }
+    }
+    return null;
+  }
+
   // ../ironlog/node_modules/lit-html/directives/live.js
   var l3 = e2(class extends i2 {
     constructor(r4) {
@@ -10406,128 +10421,6 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       return p2(i5), t4;
     }
   });
-
-  // ../ironlog/node_modules/lit-html/directives/repeat.js
-  var u3 = (e5, s3, t4) => {
-    const r4 = /* @__PURE__ */ new Map();
-    for (let l4 = s3; l4 <= t4; l4++) r4.set(e5[l4], l4);
-    return r4;
-  }, c3 = e2(class extends i2 {
-    constructor(e5) {
-      if (super(e5), e5.type !== t2.CHILD) throw Error("repeat() can only be used in text expressions");
-    }
-    dt(e5, s3, t4) {
-      let r4;
-      void 0 === t4 ? t4 = s3 : void 0 !== s3 && (r4 = s3);
-      const l4 = [], o3 = [];
-      let i5 = 0;
-      for (const s4 of e5) l4[i5] = r4 ? r4(s4, i5) : i5, o3[i5] = t4(s4, i5), i5++;
-      return { values: o3, keys: l4 };
-    }
-    render(e5, s3, t4) {
-      return this.dt(e5, s3, t4).values;
-    }
-    update(s3, [t4, r4, c4]) {
-      const d3 = M2(s3), { values: p3, keys: a2 } = this.dt(t4, r4, c4);
-      if (!Array.isArray(d3)) return this.ut = a2, p3;
-      const h3 = this.ut ??= [], v3 = [];
-      let m3, y2, x2 = 0, j3 = d3.length - 1, k2 = 0, w2 = p3.length - 1;
-      for (; x2 <= j3 && k2 <= w2; ) if (null === d3[x2]) x2++;
-      else if (null === d3[j3]) j3--;
-      else if (h3[x2] === a2[k2]) v3[k2] = u2(d3[x2], p3[k2]), x2++, k2++;
-      else if (h3[j3] === a2[w2]) v3[w2] = u2(d3[j3], p3[w2]), j3--, w2--;
-      else if (h3[x2] === a2[w2]) v3[w2] = u2(d3[x2], p3[w2]), v2(s3, v3[w2 + 1], d3[x2]), x2++, w2--;
-      else if (h3[j3] === a2[k2]) v3[k2] = u2(d3[j3], p3[k2]), v2(s3, d3[x2], d3[j3]), j3--, k2++;
-      else if (void 0 === m3 && (m3 = u3(a2, k2, w2), y2 = u3(h3, x2, j3)), m3.has(h3[x2])) if (m3.has(h3[j3])) {
-        const e5 = y2.get(a2[k2]), t5 = void 0 !== e5 ? d3[e5] : null;
-        if (null === t5) {
-          const e6 = v2(s3, d3[x2]);
-          u2(e6, p3[k2]), v3[k2] = e6;
-        } else v3[k2] = u2(t5, p3[k2]), v2(s3, d3[x2], t5), d3[e5] = null;
-        k2++;
-      } else h2(d3[j3]), j3--;
-      else h2(d3[x2]), x2++;
-      for (; k2 <= w2; ) {
-        const e5 = v2(s3, v3[w2 + 1]);
-        u2(e5, p3[k2]), v3[k2++] = e5;
-      }
-      for (; x2 <= j3; ) {
-        const e5 = d3[x2++];
-        null !== e5 && h2(e5);
-      }
-      return this.ut = a2, p2(s3, v3), E;
-    }
-  });
-
-  // src/app/act.ts
-  var depth = 0;
-  var dropInside = false;
-  var outerUndo = false;
-  function act(change, opts = {}) {
-    if (opts.check && !opts.check()) return false;
-    if (depth > 0) {
-      if (!opts.inProgress) dropInside = true;
-      if (opts.undo && !outerUndo) log("act", "an Undo step was asked inside a change that keeps none");
-      change();
-      return true;
-    }
-    if (opts.undo) snapshot(typeof opts.undo === "function" ? opts.undo : null);
-    outerUndo = !!opts.undo;
-    depth++;
-    let inside = false;
-    try {
-      change();
-    } finally {
-      depth--;
-      inside = dropInside;
-      dropInside = false;
-    }
-    if (!opts.inProgress || inside) invalidate();
-    if (opts.soon) saveSoon();
-    else saveNow();
-    return true;
-  }
-  function toTrash(kind, data) {
-    if (kind === "routine" && plainTemplate(data)) return;
-    const copy = rec(parseJson(JSON.stringify(data))) ?? {};
-    state.trash = [
-      { id: data.id, kind, date: today(), data: copy },
-      ...state.trash.filter((t4) => !(t4.id === data.id && t4.kind === kind))
-    ].slice(0, TRASH_MAX);
-    while (state.trash.length > 1 && JSON.stringify(state.trash).length > TRASH_BYTES) state.trash.pop();
-  }
-
-  // src/app/env.ts
-  function isStandalone() {
-    try {
-      return window.matchMedia("(display-mode: standalone)").matches || navigator.standalone === true;
-    } catch (e5) {
-      return false;
-    }
-  }
-  var coarse = () => {
-    try {
-      return window.matchMedia("(pointer:coarse)").matches;
-    } catch (e5) {
-      return false;
-    }
-  };
-  function canInstallHere() {
-    return !!window.IRONLOG_APP && !isStandalone() && !(window.claude && typeof window.claude.use === "function");
-  }
-  var IOS_COMPACT_BAR = 26;
-  function installKind() {
-    const ua = navigator.userAgent || "";
-    const ios = /iPhone|iPad|iPod/.test(ua) || navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1;
-    if (window.__installEvt) return "prompt";
-    if (ios) {
-      if (/CriOS/.test(ua)) return "ios-chrome";
-      if (/FxiOS|EdgiOS|OPiOS/.test(ua)) return "ios-other";
-      const v3 = +((ua.match(/Version\/(\d+)/) || [])[1] || 0);
-      return v3 >= IOS_COMPACT_BAR ? "ios-safari26" : "ios-safari";
-    }
-    return "menu";
-  }
 
   // src/app/view.ts
   var legacyDraws = 0;
@@ -10704,6 +10597,910 @@ ${actions ? b`<div class="ph-a">${actions}</div>
     )}</div>
 <button type="button" class="linkbtn ml-c" data-act="goLayout">Show, hide, or reorder sections</button></div>
 `;
+  }
+
+  // src/app/map.ts
+  var BM_BASE = w`<circle cx="60" cy="16" r="11"></circle><rect x="38" y="35" width="44" height="72" rx="12"></rect><rect x="23" y="39" width="14" height="42" rx="7"></rect><rect x="83" y="39" width="14" height="42" rx="7"></rect><rect x="21" y="78" width="11" height="36" rx="5.5"></rect><rect x="88" y="78" width="11" height="36" rx="5.5"></rect><circle cx="26" cy="118" r="5"></circle><circle cx="94" cy="118" r="5"></circle><rect x="37" y="102" width="21" height="54" rx="9"></rect><rect x="62" y="102" width="21" height="54" rx="9"></rect><rect x="40" y="152" width="14" height="46" rx="7"></rect><rect x="66" y="152" width="14" height="46" rx="7"></rect><ellipse cx="47" cy="202" rx="8" ry="4"></ellipse><ellipse cx="73" cy="202" rx="8" ry="4"></ellipse>`;
+  var FLAT_W = 120;
+  var BM = (() => {
+    const E2 = (cx, cy, rx, ry) => [
+      ["e", cx, cy, rx, ry],
+      ["e", FLAT_W - cx, cy, rx, ry]
+    ];
+    const Rr = (x2, y2, w2, h3, r4) => [
+      ["r", x2, y2, w2, h3, r4],
+      ["r", FLAT_W - x2 - w2, y2, w2, h3, r4]
+    ];
+    const P2 = (pts) => [
+      ["p", pts],
+      ["p", pts.map(([x2, y2]) => [FLAT_W - x2, y2])]
+    ];
+    return {
+      f: {
+        neck: [["r", 54, 27, 12, 9, 3]],
+        traps: P2([
+          [45, 38],
+          [54, 31],
+          [55, 39]
+        ]),
+        sideDelts: E2(29, 47, 4, 8),
+        frontDelts: E2(36, 45, 7, 8),
+        serratus: E2(40.5, 60, 2.4, 4.6),
+        chest: Rr(41, 40, 18, 17, 7),
+        biceps: E2(30, 66, 5, 11),
+        forearms: E2(27, 93, 4.5, 13),
+        abs: [["r", 51, 59, 18, 35, 6]],
+        obliques: Rr(43, 61, 7, 28, 3),
+        abductors: E2(40, 106, 4, 7),
+        quads: E2(47, 131, 8, 23),
+        adductors: Rr(54, 108, 5, 22, 2.5),
+        tibialis: E2(46, 176, 3.5, 15)
+      },
+      b: {
+        neck: [["r", 54, 27, 12, 9, 3]],
+        upperBack: [["r", 44, 44, 32, 21, 7]],
+        traps: [
+          [
+            "p",
+            [
+              [60, 30],
+              [75, 40],
+              [60, 60],
+              [45, 40]
+            ]
+          ]
+        ],
+        rotatorCuff: E2(48.5, 52, 3.6, 4.2),
+        sideDelts: E2(29, 47, 4, 8),
+        rearDelts: E2(36, 45, 7, 8),
+        lats: P2([
+          [40, 62],
+          [51, 66],
+          [54, 88],
+          [44, 82]
+        ]),
+        triceps: E2(30, 66, 5, 11),
+        forearms: E2(27, 93, 4.5, 13),
+        lowerBack: [["r", 52, 84, 16, 18, 5]],
+        abductors: E2(41, 103, 4, 6),
+        glutes: E2(51, 112, 9, 9),
+        hamstrings: E2(47, 138, 8, 17),
+        adductors: Rr(55, 118, 4, 18, 2),
+        calves: E2(47, 174, 6, 13)
+      }
+    };
+  })();
+  function bmShape(x2) {
+    if (x2[0] === "e") {
+      const [, cx, cy, rx, ry] = x2;
+      return w`<ellipse cx=${cx} cy=${cy} rx=${rx} ry=${ry}></ellipse>`;
+    }
+    if (x2[0] === "r") {
+      const [, left, top, w2, h3, r4] = x2;
+      return w`<rect x=${left} y=${top} width=${w2} height=${h3} rx=${r4}></rect>`;
+    }
+    return w`<polygon points=${x2[1].map((q) => q.join(",")).join(" ")}></polygon>`;
+  }
+  var B3_PARTS = [
+    /* Proportions (r29, V: "still looks fat"): an athletic build, not a
+       mannequin. Shoulders well outside the ribs, a narrow waist and pelvis, a
+       torso flatter front to back, long lean legs that do not touch, slimmer
+       arms, and muscles that sit close on the body instead of bulging. */
+    // neutral body
+    {
+      g: "l",
+      prof: [
+        [0, 0.86],
+        [0.094, 0.87],
+        [0.11, 0.9],
+        [0.112, 0.94],
+        [0.1, 1],
+        [0.092, 1.06],
+        [0.1, 1.13],
+        [0.126, 1.21],
+        [0.156, 1.3],
+        [0.168, 1.38],
+        [0.15, 1.445],
+        [0.085, 1.495],
+        [0, 1.512]
+      ],
+      p: [0, 0, 0],
+      kz: 0.52,
+      one: 1
+    },
+    { g: "c", d: [0.042, 0.1], p: [0, 1.55, -5e-3], one: 1 },
+    { g: "s", p: [0, 1.69, 5e-3], k: [0.084, 0.106, 0.096], one: 1 },
+    { g: "s", p: [0.188, 1.428, 0], k: [0.052, 0.052, 0.052] },
+    {
+      g: "l",
+      prof: [
+        [0, 0],
+        [0.031, 0.01],
+        [0.034, 0.07],
+        [0.038, 0.17],
+        [0.041, 0.25],
+        [0.039, 0.3],
+        [0, 0.31]
+      ],
+      p: [0.228, 1.13, 0],
+      r: [0, 0, 0.1]
+    },
+    { g: "s", p: [0.228, 1.13, 0], k: [0.031, 0.031, 0.031] },
+    { g: "s", p: [0.252, 0.815, 0.01], k: [0.026, 0.058, 0.017] },
+    {
+      g: "l",
+      prof: [
+        [0, 0],
+        [0.042, 0.01],
+        [0.048, 0.1],
+        [0.06, 0.24],
+        [0.068, 0.33],
+        [0.062, 0.38],
+        [0, 0.39]
+      ],
+      p: [0.09, 0.49, 0]
+    },
+    { g: "s", p: [0.09, 0.47, 6e-3], k: [0.043, 0.043, 0.043] },
+    {
+      g: "l",
+      prof: [
+        [0, 0],
+        [0.027, 0.02],
+        [0.03, 0.1],
+        [0.041, 0.25],
+        [0.038, 0.34],
+        [0, 0.35]
+      ],
+      p: [0.09, 0.08, -4e-3]
+    },
+    { g: "s", p: [0.092, 0.045, 0.04], k: [0.038, 0.034, 0.098] },
+    // muscle groups
+    { m: "neck", g: "c", d: [0.047, 0.07], p: [0, 1.56, -4e-3], one: 1 },
+    { m: "traps", g: "s", p: [0.068, 1.47, -0.02], k: [0.076, 0.03, 0.044], r: [0, 0, -0.42] },
+    { m: "traps", g: "s", p: [0, 1.38, -0.07], k: [0.06, 0.085, 0.03], one: 1 },
+    { m: "frontDelts", g: "s", p: [0.19, 1.42, 0.03], k: [0.046, 0.066, 0.04] },
+    { m: "sideDelts", g: "s", p: [0.212, 1.422, 0], k: [0.04, 0.07, 0.044] },
+    { m: "rearDelts", g: "s", p: [0.19, 1.42, -0.031], k: [0.046, 0.066, 0.04] },
+    { m: "rotatorCuff", g: "s", p: [0.096, 1.35, -0.072], k: [0.032, 0.026, 0.016] },
+    { m: "chest", g: "s", p: [0.072, 1.34, 0.07], k: [0.076, 0.058, 0.026], r: [0, 0, -0.08] },
+    { m: "serratus", g: "s", p: [0.124, 1.25, 0.036], k: [0.02, 0.044, 0.022] },
+    { m: "upperBack", g: "s", p: [0, 1.3, -0.066], k: [0.084, 0.07, 0.026], one: 1 },
+    { m: "lats", g: "s", p: [0.118, 1.24, -0.034], k: [0.044, 0.12, 0.03], r: [0, 0, -0.3] },
+    { m: "lowerBack", g: "s", p: [0.028, 1.03, -0.046], k: [0.024, 0.075, 0.018] },
+    { m: "abs", g: "s", p: [0, 1.12, 0.044], k: [0.042, 0.14, 0.017], one: 1 },
+    { m: "obliques", g: "s", p: [0.08, 1.08, 0.03], k: [0.024, 0.07, 0.03] },
+    { m: "biceps", g: "s", p: [0.211, 1.28, 0.026], k: [0.031, 0.092, 0.03], r: [0, 0, 0.1] },
+    { m: "triceps", g: "s", p: [0.213, 1.29, -0.026], k: [0.034, 0.1, 0.032], r: [0, 0, 0.1] },
+    {
+      m: "forearms",
+      g: "l",
+      prof: [
+        [0, 0],
+        [0.024, 0.01],
+        [0.027, 0.08],
+        [0.035, 0.2],
+        [0.034, 0.25],
+        [0, 0.26]
+      ],
+      p: [0.252, 0.87, 5e-3],
+      r: [0, 0, 0.09]
+    },
+    { m: "glutes", g: "s", p: [0.056, 0.9, -0.044], k: [0.054, 0.058, 0.034] },
+    { m: "abductors", g: "s", p: [0.106, 0.95, -0.012], k: [0.024, 0.048, 0.03] },
+    { m: "quads", g: "s", p: [0.092, 0.705, 0.03], k: [0.05, 0.165, 0.036] },
+    { m: "hamstrings", g: "s", p: [0.09, 0.68, -0.028], k: [0.046, 0.145, 0.036] },
+    { m: "adductors", g: "s", p: [0.05, 0.72, 2e-3], k: [0.024, 0.125, 0.036] },
+    { m: "calves", g: "s", p: [0.09, 0.32, -0.02], k: [0.036, 0.095, 0.034] },
+    { m: "tibialis", g: "s", p: [0.094, 0.29, 0.024], k: [0.019, 0.095, 0.019] }
+  ];
+  var B3 = {
+    state: "idle",
+    wait: [],
+    r: null,
+    scene: null,
+    cam: null,
+    root: null,
+    meshes: [],
+    mats: {},
+    yaw: 0.35,
+    anim: 0,
+    status: null,
+    sel: null,
+    fail: "",
+    viewMem: null,
+    drag: null,
+    ex: null,
+    yawKeep: null
+  };
+  function mapView() {
+    if (B3.viewMem) return B3.viewMem;
+    B3.viewMem = prefGet(MAPVIEW_KEY) === "3d" ? "3d" : "flat";
+    return B3.viewMem;
+  }
+  function darkTheme() {
+    return (document.documentElement.dataset["theme"] || (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light")) === "dark";
+  }
+  function map3dColors() {
+    const cs = getComputedStyle(document.documentElement);
+    const v3 = (n3) => cs.getPropertyValue(n3).trim();
+    const dark = darkTheme();
+    return {
+      base: dark ? "#3b4048" : "#d5d9de",
+      none: dark ? "#5d646d" : "#a9b0b8",
+      track: v3("--muted"),
+      under: v3("--yellow"),
+      part: v3("--part"),
+      plan: v3("--part"),
+      in: v3("--green"),
+      over: v3("--blue"),
+      ex: v3("--volt")
+    };
+  }
+  function b3Host() {
+    return document.getElementById("bm3dx") || document.getElementById("bm3d");
+  }
+  function map3dLoad(cb) {
+    if (B3.state === "ready" || B3.state === "fail") {
+      cb();
+      return;
+    }
+    B3.wait.push(cb);
+    if (B3.state === "loading") return;
+    B3.state = "loading";
+    void loadModule(THREE_URLS).then((got) => {
+      if (got && isThree(got.mod)) window.THREE = got.mod;
+      else if (got) log("map3d", new Error(`${got.url} loaded, but it is not three.js`));
+      if (!window.THREE) {
+        B3.state = "fail";
+        B3.fail = "The 3D view could not load. Check your connection; the flat view still works.";
+      } else {
+        try {
+          map3dBuild(window.THREE);
+          B3.state = "ready";
+        } catch (e5) {
+          log("map3d", e5);
+          B3.state = "fail";
+          B3.fail = "This phone or browser cannot draw 3D here. The flat view shows the same numbers.";
+        }
+      }
+      const w2 = B3.wait;
+      B3.wait = [];
+      w2.forEach((f3) => {
+        try {
+          f3();
+        } catch (e5) {
+          log("map3d", e5);
+        }
+      });
+    });
+  }
+  function isThree(m3) {
+    const r4 = rec(m3);
+    return !!r4 && typeof r4["WebGLRenderer"] === "function" && typeof r4["Scene"] === "function" && typeof r4["Raycaster"] === "function";
+  }
+  var SCENE = {
+    fov: 28,
+    near: 0.1,
+    far: 20,
+    camAt: [0, 0.93, 3.8],
+    lookAt: [0, 0.9, 0],
+    white: 16777215,
+    sky: 16777215,
+    ground: 4211786,
+    hemi: 1.15,
+    key: 1.7,
+    keyAt: [1.6, 2.6, 3],
+    rim: 1.1,
+    rimAt: [-2.2, 1.6, -2.6],
+    around: 40,
+    down: 28,
+    capSegs: 10,
+    rough: 0.55,
+    metal: 0.05,
+    shadowPx: 64,
+    shadow: [0.7, 0.34],
+    shadowY: 2e-3,
+    dragPx: 4,
+    turnPerPx: 0.012,
+    turnMs: 420,
+    ease: 3,
+    minW: 200,
+    defW: 320,
+    maxH: 440,
+    tall: 1.12,
+    helpMix: 0.5,
+    glowLight: 0.45,
+    glowDark: 0.28
+  };
+  var LOW_SHOWN = 8;
+  function map3dBuild(T2) {
+    const r4 = new T2.WebGLRenderer({ antialias: true, alpha: true, powerPreference: "low-power" });
+    r4.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
+    const scene = new T2.Scene();
+    const S4 = SCENE;
+    const cam = new T2.PerspectiveCamera(S4.fov, 1, S4.near, S4.far);
+    cam.position.set(...S4.camAt);
+    cam.lookAt(...S4.lookAt);
+    scene.add(new T2.HemisphereLight(S4.sky, S4.ground, S4.hemi));
+    const key = new T2.DirectionalLight(S4.white, S4.key);
+    key.position.set(...S4.keyAt);
+    scene.add(key);
+    const rim = new T2.DirectionalLight(S4.white, S4.rim);
+    rim.position.set(...S4.rimAt);
+    scene.add(rim);
+    const root = new T2.Group();
+    scene.add(root);
+    const sph = new T2.SphereGeometry(1, S4.around, S4.down);
+    const caps = {};
+    const mat = (m3) => B3.mats[m3] || (B3.mats[m3] = new T2.MeshStandardMaterial({ roughness: S4.rough, metalness: S4.metal }));
+    const add = (pt, side) => {
+      const d3 = pt.d || [0, 0];
+      const g2 = pt.g === "s" ? sph : pt.g === "l" ? new T2.LatheGeometry(
+        (pt.prof || []).map(([rr, y2]) => new T2.Vector2(rr, y2)),
+        S4.around
+      ) : caps[d3.join()] || (caps[d3.join()] = new T2.CapsuleGeometry(d3[0], d3[1], S4.capSegs, S4.down));
+      const me = new T2.Mesh(g2, mat(pt.m || "_base"));
+      me.position.set(pt.p[0] * side, pt.p[1], pt.p[2]);
+      if (pt.k) me.scale.set(pt.k[0], pt.k[1], pt.k[2]);
+      if (pt.kz) me.scale.set(1, 1, pt.kz);
+      if (pt.r) me.rotation.set(pt.r[0], pt.r[1], pt.r[2] * side);
+      me.userData.m = pt.m || null;
+      root.add(me);
+      B3.meshes.push(me);
+    };
+    for (const pt of B3_PARTS) {
+      add(pt, 1);
+      if (!pt.one) add(pt, -1);
+    }
+    {
+      const cv = document.createElement("canvas");
+      const px = S4.shadowPx, mid2 = px / 2;
+      cv.width = cv.height = px;
+      const x2 = cv.getContext("2d");
+      if (x2) {
+        const gr = x2.createRadialGradient(mid2, mid2, 2, mid2, mid2, mid2);
+        gr.addColorStop(0, "rgba(0,0,0,.45)");
+        gr.addColorStop(1, "rgba(0,0,0,0)");
+        x2.fillStyle = gr;
+        x2.fillRect(0, 0, px, px);
+      }
+      const sh = new T2.Mesh(
+        new T2.PlaneGeometry(...S4.shadow),
+        new T2.MeshBasicMaterial({ map: new T2.CanvasTexture(cv), transparent: true, depthWrite: false })
+      );
+      sh.rotation.x = -Math.PI / 2;
+      sh.position.y = S4.shadowY;
+      scene.add(sh);
+    }
+    const c4 = r4.domElement;
+    c4.className = "bm3d-canvas";
+    c4.addEventListener("pointerdown", (e5) => {
+      B3.drag = { x: e5.clientX, y: e5.clientY, yaw: B3.yaw, moved: false };
+      cancelAnimationFrame(B3.anim);
+    });
+    c4.addEventListener("pointermove", (e5) => {
+      const d3 = B3.drag;
+      if (!d3) return;
+      const dx = e5.clientX - d3.x;
+      if (Math.abs(dx) > S4.dragPx) d3.moved = true;
+      if (d3.moved) {
+        B3.yaw = d3.yaw + dx * S4.turnPerPx;
+        map3dDraw();
+      }
+    });
+    const end = (e5) => {
+      const d3 = B3.drag;
+      B3.drag = null;
+      if (d3 && !d3.moved && e5.type === "pointerup") map3dTap(e5.clientX, e5.clientY);
+    };
+    c4.addEventListener("pointerup", end);
+    c4.addEventListener("pointercancel", end);
+    c4.addEventListener("pointerleave", () => {
+      B3.drag = null;
+    });
+    Object.assign(B3, { r: r4, scene, cam, root });
+  }
+  function map3dPick(cx, cy) {
+    const T2 = window.THREE;
+    if (!T2 || !B3.r || !B3.cam || !B3.root) return null;
+    const rc = B3.r.domElement.getBoundingClientRect();
+    const v3 = new T2.Vector2((cx - rc.left) / rc.width * 2 - 1, -((cy - rc.top) / rc.height) * 2 + 1);
+    const ray = new T2.Raycaster();
+    ray.setFromCamera(v3, B3.cam);
+    const hit = ray.intersectObjects(B3.root.children, false).find((h3) => h3.object.userData.m);
+    return hit ? hit.object.userData.m || null : null;
+  }
+  function map3dTap(cx, cy) {
+    const m3 = map3dPick(cx, cy);
+    if (!m3) return;
+    const hb = b3Host();
+    if (hb && hb.id === "bm3dx" && B3.ex) {
+      fx.toast(`${ML[m3] || m3}${m3 === B3.ex.main ? ": main" : B3.ex.help.includes(m3) ? ": helper" : ""}`);
+      return;
+    }
+    ui.mapSel = ui.mapSel === m3 ? null : m3;
+    fx.rerenderKeepScroll();
+  }
+  function map3dTurnTo(to) {
+    if (!B3.r) return;
+    cancelAnimationFrame(B3.anim);
+    const tau = Math.PI * 2;
+    const from = (B3.yaw % tau + tau) % tau;
+    let d3 = to - from;
+    if (d3 > Math.PI) d3 -= tau;
+    if (d3 < -Math.PI) d3 += tau;
+    let reduce = false;
+    try {
+      reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+    } catch (e5) {
+    }
+    if (reduce) {
+      B3.yaw = to;
+      map3dDraw();
+      return;
+    }
+    const t0 = performance.now(), dur = SCENE.turnMs;
+    const step = (t4) => {
+      const k2 = Math.min(1, (t4 - t0) / dur);
+      const e5 = 1 - Math.pow(1 - k2, SCENE.ease);
+      B3.yaw = from + d3 * e5;
+      map3dDraw();
+      if (k2 < 1) B3.anim = requestAnimationFrame(step);
+    };
+    B3.anim = requestAnimationFrame(step);
+  }
+  function map3dDraw() {
+    const hb = b3Host();
+    const host = hb && hb.querySelector(".bm3d-stage");
+    if (!B3.r || !host || !B3.cam || !B3.root || !B3.scene) return;
+    const w2 = Math.max(SCENE.minW, host.clientWidth || SCENE.defW), h3 = Math.round(Math.min(SCENE.maxH, w2 * SCENE.tall));
+    const c4 = B3.r.domElement;
+    if (c4.parentNode !== host) host.appendChild(c4);
+    if (B3.w !== w2 || B3.h !== h3) {
+      B3.r.setSize(w2, h3, false);
+      c4.style.width = "100%";
+      c4.style.height = h3 + "px";
+      B3.cam.aspect = w2 / h3;
+      B3.cam.updateProjectionMatrix();
+      B3.w = w2;
+      B3.h = h3;
+    }
+    B3.root.rotation.y = B3.yaw;
+    B3.r.render(B3.scene, B3.cam);
+  }
+  function mount3D() {
+    const host = b3Host();
+    if (!host) return;
+    const exm = host.id === "bm3dx" ? B3.ex : null;
+    const msg = host.querySelector(".bm3d-msg");
+    if (B3.state !== "ready") {
+      if (B3.state === "fail") {
+        if (msg) {
+          msg.hidden = false;
+          msg.textContent = B3.fail;
+        }
+        const turn = host.querySelector(".bm3d-turn");
+        if (turn) turn.hidden = true;
+        return;
+      }
+      if (msg) {
+        msg.hidden = false;
+        msg.textContent = "Loading the 3D body";
+      }
+      map3dLoad(() => {
+        if (b3Host()) mount3D();
+      });
+      return;
+    }
+    if (msg) {
+      msg.hidden = true;
+      msg.textContent = "";
+    }
+    const col = map3dColors();
+    const T2 = window.THREE;
+    if (!T2) return;
+    const C2 = (k2) => col[k2] || col["none"] || "";
+    for (const [m3, mt] of Object.entries(B3.mats)) {
+      const em = mt.emissive || (mt.emissive = new T2.Color(0, 0, 0));
+      if (exm) {
+        if (m3 === exm.main) mt.color.set(C2("ex"));
+        else if (exm.help.includes(m3)) mt.color.set(C2("ex")).lerp(new T2.Color(C2("base")), SCENE.helpMix);
+        else mt.color.set(m3 === "_base" ? C2("base") : C2("none"));
+        em.set("#000000");
+        mt.emissiveIntensity = 0;
+        continue;
+      }
+      const st = m3 === "_base" ? null : B3.status && B3.status[m3];
+      mt.color.set(m3 === "_base" ? C2("base") : st ? C2(st.st) : C2("none"));
+      const lightUI = !darkTheme();
+      if (m3 === B3.sel) {
+        if (lightUI) em.copy(mt.color);
+        else em.set("#ffffff");
+      } else em.set("#000000");
+      mt.emissiveIntensity = m3 === B3.sel ? lightUI ? SCENE.glowLight : SCENE.glowDark : 0;
+    }
+    map3dDraw();
+  }
+  function mapCard() {
+    const I2 = IDX();
+    const avg = actualAvg4();
+    const src = ui.mapSrc === "week" || !avg ? "week" : "avg";
+    const st = muscleStatus(src === "avg" ? avg : I2.weekSets[weekStart(today())] || {}, src === "week");
+    const S4 = (m3) => st[m3] || { v: 0, lo: 0, hi: 0, st: "none" };
+    const hsw = (v4) => `${r1(v4)} hard set${r1(v4) === 1 ? "" : "s"} a week`;
+    const tgt = (m3) => !hasTarget(m3) ? ", tracked only" : `, target ${S4(m3).lo} to ${S4(m3).hi}`;
+    const lab = (m3) => noLog() ? `${ML[m3]}: nothing logged yet${tgt(m3)}` : `${ML[m3]}: ${hsw(S4(m3).v)}${tgt(m3)}`;
+    const fig = (view, label) => b`<figure class="bm"><svg viewBox="0 0 120 210" aria-label=${`${label} of body`}><g class="bm-base">${BM_BASE}</g>${Object.entries(
+      BM[view]
+    ).map(
+      ([m3, sh]) => w`<g class=${`mm st-${S4(m3).st}${ui.mapSel === m3 ? " sel" : ""}`} data-act="mapSel" data-m=${m3} role="button" tabindex="0" aria-label=${lab(m3)}><title>${lab(m3)}</title>${sh.map(bmShape)}</g>`
+    )}</svg><figcaption>${label}</figcaption></figure>`;
+    const counts = { under: 0, part: 0, plan: 0, in: 0, over: 0, none: 0, track: 0 };
+    for (const m3 of MK) counts[S4(m3).st] = +(counts[S4(m3).st] || 0) + 1;
+    if (noLog()) for (const k2 in counts) counts[k2] = NIL;
+    const sel = typeof ui.mapSel === "string" && st[ui.mapSel] ? ui.mapSel : null;
+    let detail;
+    if (sel) {
+      const x2 = S4(sel);
+      const sc = I2.scores.find((y2) => y2.m === sel);
+      const where = x2.st === "none" ? src === "week" ? "Not yet this week" : "Not trained" : x2.st === "track" ? "Tracked only" : x2.st === "under" ? `${r1(x2.lo - x2.v)} below target` : x2.st === "part" ? `${r1(x2.lo - x2.v)} to go` : x2.st === "plan" ? "On plan" : x2.st === "over" ? `${r1(x2.v - x2.hi)} above target` : "On target";
+      const tr = sc ? `${musTrend(sc)}${sc.indirect ? ", read from exercises that train it indirectly" : ""}.` : "Not enough sessions yet for a strength trend.";
+      const tagCls = x2.st === "in" ? "green" : x2.st === "under" ? "yellow" : x2.st === "over" ? "blue" : x2.st === "plan" ? "hastip" : "";
+      detail = b`<div class="bm-detail"><div class="row spread"><b>${ML[sel]}</b><span class=${`tag ${tagCls}`} data-tip=${x2.st === "plan" ? ON_PLAN_TIP : A}>${where}</span></div><p class="small" style="margin:4px 0 6px">${src === "avg" && avg ? `${hsw(x2.v)} on average over ${avgWeeksTxt(avg)}` : `${r1(x2.v)} hard set${r1(x2.v) === 1 ? "" : "s"} so far this week`}${tgt(sel)}. ${tr}</p><div class="row"><button class="btn sm" data-act="goDash" data-sec="volume" data-m=${sel}>Weekly trend</button><button class="btn sm" data-act="mapSel" data-m=${sel}>Close</button></div></div>`;
+    } else {
+      const low = MK.filter((m3) => hasTarget(m3) && lowSt(S4(m3)));
+      detail = b`<p class="small muted" style="margin:6px 0 0">Tap a muscle ${tipButton(
+        `${mapView() === "3d" ? "Drag sideways to turn it. " : ""}Tap a muscle for its numbers.${src === "week" ? " This is the week so far, so most muscles read low early in the week." : ""}`,
+        "About the map"
+      )}</p>${low.length && src === "avg" ? b`<div class="row" style="margin-top:6px;gap:4px"><span class="small muted">Below target:</span>${low.slice(0, LOW_SHOWN).map((m3) => b`<button class="chip" data-act="mapSel" data-m=${m3}>${ML[m3]}</button>`)}</div>` : A}`;
+    }
+    const N2 = MK.filter((m3) => hasTarget(m3)).length;
+    const msub = (() => {
+      if (!avg) {
+        if (!state.sessions.length) return "none logged yet";
+        const n3 = MK.filter((m3) => hasTarget(m3) && metSt(S4(m3))).length;
+        return `${n3} of ${N2} on target so far`;
+      }
+      const sa = muscleStatus(avg);
+      const inA = MK.filter((m3) => {
+        const q = sa[m3];
+        return hasTarget(m3) && !!q && metSt(q);
+      }).length;
+      return `${inA} of ${N2} on target`;
+    })();
+    const v3 = mapView() === "3d";
+    B3.status = st;
+    B3.sel = sel;
+    const stage = v3 ? b`<div class="bm3d" id="bm3d"><div class="bm3d-stage" role="img" aria-label="3D body, shaded by hard sets a week. Drag sideways to turn it, tap a muscle for its numbers. The same numbers are in the flat view."></div><p class="bm3d-msg small muted" hidden></p><div class="seg bm3d-turn" role="group" aria-label="Turn the body"><button class="chip" data-act="map3dTurn" data-v="0">Front</button><button class="chip" data-act="map3dTurn" data-v="1">Side</button><button class="chip" data-act="map3dTurn" data-v="2">Back</button></div></div>` : b`<div class="bm-wrap">${fig("f", "Front")}${fig("b", "Back")}</div>`;
+    const on = (x2) => `chip ${x2 ? "on" : ""}`;
+    return section({
+      sk: "today:map",
+      key: "map",
+      title: "Muscle map",
+      sub: msub,
+      body: b`<div class="row spread"><div class="seg" role="group" aria-label="View"><button class=${on(!v3)} data-act="mapView" data-v="flat" aria-pressed=${String(!v3)}>Flat</button><button class=${on(v3)} data-act="mapView" data-v="3d" aria-pressed=${String(v3)}>3D</button></div><div class="seg" role="group" aria-label="Time range">${avg ? b`<button class=${on(src === "avg")} data-act="mapSrc" data-v="avg" aria-pressed=${String(src === "avg")}>4-week avg</button>` : A}<button class=${on(src === "week")} data-act="mapSrc" data-v="week" aria-pressed=${String(src === "week")}>This week</button></div></div>
+${stage}
+<div class="bm-legend small">${src === "week" ? b`<span class="hastip" data-tip="The week is still going: short of the minimum so far, not behind."><i class="st-part"></i>Under way ${counts["part"]}</span>` : b`<span><i class="st-under"></i>Below target ${counts["under"]}</span>${counts["plan"] ? b`<span class="hastip" data-tip=${ON_PLAN_TIP}><i class="st-plan"></i>On plan ${counts["plan"]}</span>` : A}`}<span><i class="st-in"></i>On target ${counts["in"]}</span><span><i class="st-over"></i>Above ${counts["over"]}</span><span><i class="st-none"></i>${src === "week" ? "Not yet" : "None"} ${counts["none"]}</span>${counts["track"] ? b`<span class="hastip" data-tip="Counted, with no weekly target, so never called under or over. Give one a target in Settings, Weekly set targets."><i class="st-track"></i>Tracked only ${counts["track"]}</span>` : A}</div>
+${detail}`
+    });
+  }
+  var MAP_ACTS = {
+    mapSel(t4) {
+      const m3 = t4.dataset["m"] ?? null;
+      ui.mapSel = ui.mapSel === m3 ? null : m3;
+      fx.rerenderKeepScroll();
+    },
+    mapSrc(t4) {
+      ui.mapSrc = t4.dataset["v"] ?? null;
+      fx.rerenderKeepScroll();
+    },
+    mapView(t4) {
+      const v3 = t4.dataset["v"] === "3d" ? "3d" : "flat";
+      prefSet(MAPVIEW_KEY, v3);
+      B3.viewMem = v3;
+      fx.rerenderKeepScroll();
+    },
+    map3dTurn(t4) {
+      map3dTurnTo([0, Math.PI / 2, Math.PI][+(t4.dataset["v"] || 0)] || 0);
+    }
+  };
+  function exMusParts(e5) {
+    const help = (e5.secondary || []).filter((k2) => k2 !== e5.primary);
+    return { main: e5.primary, help };
+  }
+  function exBodyFlat(e5, small) {
+    const { main, help } = exMusParts(e5);
+    const fig = (view, label) => b`<figure class="bm"><svg viewBox="0 0 120 210" aria-hidden="true"><g class="bm-base">${BM_BASE}</g>${Object.entries(
+      BM[view]
+    ).map(
+      ([k2, sh]) => w`<g class=${`mx ${k2 === main ? "ex-main" : help.includes(k2) ? "ex-help" : ""}`}>${sh.map(bmShape)}</g>`
+    )}</svg><figcaption>${label}</figcaption></figure>`;
+    return b`<div class=${small ? "bm-wrap bm-small" : "bm-wrap"}>${fig("f", "Front")}${fig("b", "Back")}</div>`;
+  }
+  function exMusWords(e5) {
+    const { main, help } = exMusParts(e5);
+    return b`<p class="small" style="margin:0"><b>Main</b>: ${ML[main] || main}${help.length ? b`. <b>Helpers</b>: ${andList(help.map((k2) => ML[k2] || k2))} ${tipButton(
+      "A helper muscle counts half a set toward its weekly total (Pelland 2025). Which muscles are helpers on a lift is the library's own call, including grip and holding muscles such as the forearms and traps on a deadlift, which the study behind the half credit did not measure.",
+      "About helper muscles"
+    )}` : A}</p>`;
+  }
+  function exMusLegend(e5) {
+    return b`<div class="bm-legend small"><span><i class="ex-main"></i>Main</span>${exMusParts(e5).help.length ? b`<span><i class="ex-help"></i>Helper</span>` : A}</div>`;
+  }
+
+  // src/app/sheetslift.ts
+  var CAL_CALLS = [0, 1, 2, 3, 4, 5];
+  var howToUrl = (e5) => HOWTO_SEARCH + encodeURIComponent(`${e5.name} exercise form`);
+  function howToLink(e5) {
+    const name = e5 && e5.name;
+    return name ? b`<a class="btn block" style="margin-top:6px" href=${howToUrl({ name })} target="_blank" rel="noopener noreferrer" data-tip=${`Opens a YouTube search for ${name} in your browser. Only the exercise name is sent.`}>How-to videos</a>` : "";
+  }
+  var blockAt = (i5) => {
+    const d3 = state.draft;
+    return d3 && d3.ex[i5] || null;
+  };
+  function bmenuSheet(m3) {
+    const d3 = state.draft;
+    const b2 = blockAt(m3.b);
+    if (!d3 || !b2) return null;
+    const nx = blockAt(m3.b + 1);
+    const linked = !!(nx && b2.plan.ss && nx.plan.ss === b2.plan.ss);
+    const e5 = EX(b2.exId);
+    const op = (o3, l4, dis, cls) => b`<button class=${"btn block " + (cls || "")} style="margin-top:6px" data-act="bMenuDo" data-op=${o3} data-b=${String(m3.b)} ?disabled=${!!dis}>${l4}</button>`;
+    return b`<div class="sheet" role="dialog" aria-modal="true"><div class="sheet-h"><h3>${exName(b2.exId)}</h3>${closeX()}</div>
+    ${op("bHist", "History and chart")}${op("bMus", "Muscles worked")}${op("wAdd", "Add a warm-up set")}${op("dropAdd", "Add a drop set (about 75% load)")}${op("bQuick", "Type or dictate sets")}${op("bNote", b2.note ? "Edit note" : "Add note")}${op("bSwap", "Swap exercise")}${op("bNew", markedNew(d3, b2.exId) ? "Same machine as before" : "New machine or gym")}${howToLink(e5)}${op("bInc", `Load step: ${fmtW(incOf(e5, b2.plan))} ${U()}`)}${op("bMax", `Heaviest available: ${e5.maxLoad != null ? fmtW(e5.maxLoad) + " " + U() : "no limit"}`)}${rirShow(e5) ? op("bCal", "Calibration set (RIR check)") : ""}${nx ? op("bSs", linked ? "Unlink superset" : `Superset with ${exName(nx.exId)}`) : ""}${op("bUp", "Move up", m3.b === 0)}${op("bDown", "Move down", !nx)}${op("fbOpen", "Report a problem")}${op("bDel", "Remove from session", false, "danger")}</div>`;
+  }
+  function injurySheet() {
+    return b`<div class="sheet" role="dialog" aria-modal="true"><div class="sheet-h"><h3>Flag an injury</h3>${closeX()}</div>
+    <p class="small muted hastip" data-tip="Every exercise that loads this muscle (directly or as a helper) or this joint is marked in your sessions: its target pauses, loads cap at last time, and it is left out of below-target advice until cleared.">Training aid, not medical advice: sharp, worsening, or lasting pain needs a clinician.</p>
+    <div class="stack"><label class="field">Area<select id="injM"><optgroup label="Joints">${JOINTS.map(([k2, l4]) => b`<option value=${k2}>${l4}</option>`)}</optgroup><optgroup label="Muscles">${MUSCLES.map(([k2, l4]) => b`<option value=${k2}>${l4}</option>`)}</optgroup></select></label>
+    <p class="small muted hastip" style="margin:0" data-tip="Knee: squats, lunges, leg press, leg extensions, and curls. Hip: squats, hinges, hip thrusts, adductors, and abductors. Shoulder: presses, flyes, raises, pull-downs, pull-ups, dips. Elbow: curls, extensions, rows, pull-downs, dips. Wrist: curls, barbell and dumbbell presses, push-ups, front squats. A judgment from the movement, not a measurement.">Which exercises a joint flag marks</p>
+    <label class="field">Note (optional)<input type="text" id="injNote" placeholder="e.g. left elbow, pressing only"></label>
+    <div class="row"><button class="btn primary" data-act="injSave">Flag it</button><button class="btn" data-act="mClose">Cancel</button></div></div></div>`;
+  }
+  function goalSheet(m3) {
+    const e5 = EX(m3.exId);
+    const g2 = e5.goal;
+    return b`<div class="sheet" role="dialog" aria-modal="true" aria-labelledby="goalH"><div class="sheet-h"><h3 id="goalH">Goal: ${e5.name}</h3>${closeX()}</div>
+    <div class="grid2"><label class="field">${e5.bw ? `Added load (${U()})` : `Load (${U()}${loadNote(e5)})`}<input type="text" inputmode="decimal" id="goalW" value=${g2 ? fmtW(g2.w) : ""} placeholder=${e5.bw ? "0" : ""}></label>
+    <label class="field">Reps<input type="text" inputmode="numeric" id="goalR" value=${g2 ? String(g2.r) : ""}></label></div>
+    <div class="row" style="margin-top:12px"><button class="btn primary" data-act="goalSave">Save</button>${g2 ? b`<button class="btn danger" data-act="goalClear">Remove goal</button>` : ""}<button class="btn" data-act="mClose">Cancel</button></div></div>`;
+  }
+  function incSheet(m3) {
+    const e5 = EX(m3.exId);
+    return b`<div class="sheet" role="dialog" aria-modal="true"><div class="sheet-h"><h3>Load step: ${e5.name}</h3>${closeX()}</div>
+    <label class="field">Step (${U()})<input type="text" inputmode="decimal" id="incVal" value=${fmtW(incOf(e5, m3.plan))}></label>
+    <p class="small muted">The smallest jump the machine or dumbbells allow. Earned increases are whole multiples of it.</p>
+    ${e5.inc == null && gymRack(e5, m3.plan) ? b`<p class="small" style="margin:0">Following the ${rackKind(e5) === "dumbbell" ? "dumbbells" : "kettlebells"} in Settings > Your gym. A step saved here replaces them for this lift.</p>` : ""}
+    <div class="row" style="margin-top:10px"><button class="btn primary" data-act="incSave">Save</button><button class="btn" data-act="mClose">Cancel</button></div></div>`;
+  }
+  function maxSheet(m3) {
+    const e5 = EX(m3.exId);
+    return b`<div class="sheet" role="dialog" aria-modal="true"><div class="sheet-h"><h3>Heaviest available: ${e5.name}</h3>${closeX()}</div>
+    <label class="field">Load (${U()}${e5.bw ? ", added to bodyweight" : ""})<input type="text" inputmode="decimal" id="maxVal" value=${e5.maxLoad != null ? fmtW(e5.maxLoad) : ""} placeholder="No limit"></label>
+    <p class="small muted">Top of the stack or biggest dumbbell. Blank for no limit.</p>
+    <div class="row" style="margin-top:10px"><button class="btn primary" data-act="maxSave">Save</button><button class="btn" data-act="mClose">Cancel</button></div></div>`;
+  }
+  function noteSheet(m3) {
+    return b`<div class="sheet" role="dialog" aria-modal="true"><div class="sheet-h"><h3>${m3.title}</h3>${closeX()}</div>
+    <p class="small muted">Saved with this session and shown next time: a cue, a niggle, which machine.</p>
+    <textarea id="mNote" aria-label="Note" style="min-height:110px">${m3.text || ""}</textarea>
+    <div class="row" style="margin-top:10px"><button class="btn primary" data-act="noteSave">Save note</button><button class="btn" data-act="mClose">Cancel</button></div></div>`;
+  }
+  function quickSheet(m3) {
+    const b2 = blockAt(m3.b);
+    if (!b2) return null;
+    const ex = EX(b2.exId);
+    const kg = U() === "kg";
+    const rp = rirScale() === "rpe";
+    const tail = rp ? "rpe 9" : "rir 1";
+    const eg1 = kg ? `100x5, 5, 4 ${tail}` : `235x5, 5, 4 ${tail}`;
+    const eg2 = rp ? kg ? "80x8@8 90x6@9" : "185x8@8 205x6@9" : kg ? "80x8@2 90x6@1" : "185x8@2 205x6@1";
+    const ph = kg ? `100x5, 5, 4 ${tail}` : `225x5, 5, 4 ${tail}`;
+    return b`<div class="sheet" role="dialog" aria-modal="true"><div class="sheet-h"><h3>${ex.name}: type sets</h3>${closeX()}</div>
+    ${ex.timed ? b`<p class="small muted" style="margin:0">Timed hold: the number after x is seconds, for example <b>25x45, 40</b> or <b>bw x 60, 50</b>.</p>` : ""}
+    <p class="small muted">Loads in ${U()}${loadNote(ex)}${ex.bw ? ", added to bodyweight (bw or bw+25)" : ""}. <b>${eg1}</b> or <b>${eg2}</b>. <span class="hastip" data-tip=${`Type or use the keyboard's dictation mic. ${rp ? "rpe" : "rir"} at the end applies to every set; @ gives ${effName()} per set. A bare number repeats the last load. Sets fill from the first one not done and are marked done.`}>More</span></p>
+    <input type="text" id="qTxt" autocomplete="off" autocapitalize="off" spellcheck="false" value=${m3.text || ""} placeholder=${ex.bw ? "bw x 10, 8, 7" : ph} enterkeyhint="done">
+    ${m3.err ? b`<p class="small" style="color:var(--red);margin:8px 0 0">${m3.err}</p>` : ""}
+    <div class="row" style="margin-top:10px"><button class="btn primary" data-act="qFill">Fill sets</button><button class="btn" data-act="mClose">Cancel</button></div></div>`;
+  }
+  function calibrationSheet(m3) {
+    const b2 = blockAt(m3.b);
+    if (!b2) return null;
+    const ex = EX(b2.exId);
+    return b`<div class="sheet" role="dialog" aria-modal="true"><div class="sheet-h"><h3>Calibration set: ${ex.name}</h3>${closeX()}</div>
+    <p class="small muted" style="margin:0">Checks how well you call reps in reserve. Only take a set to failure where it is safe: a machine or cable, or with a spotter.</p>
+    <ol class="steps"><li>Use your normal working load.</li><li>At the rep where you would usually stop, note that rep and how many you think are left.</li><li>Keep going until you cannot complete a rep with good form.</li></ol>
+    <div class="grid2"><label class="field">Load (${ex.bw ? "+" + U() : U()})<input type="text" inputmode="decimal" id="calW" value=${m3.w != null ? String(m3.w) : ""}></label>
+    <label class="field">Usual stop rep<input type="text" inputmode="numeric" id="calAt" value=${m3.at || ""}></label>
+    <label class="field">Reps left, your call<select id="calPred">${CAL_CALLS.map((v3) => b`<option value=${String(v3)} ?selected=${Number(m3.pred) === v3}>${v3}</option>`)}</select></label>
+    <label class="field">Reps to failure<input type="text" inputmode="numeric" id="calTot" value=${m3.total || ""}></label></div>
+    ${m3.err ? b`<p class="small" style="color:var(--red);margin:8px 0 0">${m3.err}</p>` : ""}
+    <div class="row" style="margin-top:10px"><button class="btn primary" data-act="calSave">Save set</button><button class="btn" data-act="mClose">Cancel</button></div>
+    <p class="small muted" style="margin:8px 0 0">It is saved as a done set at 0 RIR, marked as a check. With RIR set to Corrected in Settings, your typical miss is applied to the RIR you log.</p></div>`;
+  }
+
+  // src/app/sheetsexercise.ts
+  var SAVE_INTO = {
+    addBlock: "Create and add to session",
+    addDay: "Create and add to day",
+    swapBlock: "Create and swap in",
+    swapItem: "Create and swap in"
+  };
+  var logged = (m3) => !m3.isNew && state.sessions.some((s3) => s3.ex.some((b2) => b2.exId === m3.e.id));
+  function exEditSheet(m3) {
+    const e5 = m3.e;
+    const has = logged(m3);
+    const loadField = () => {
+      if (e5.bw) return "";
+      const def = loadWords({
+        id: e5.id,
+        name: e5.name,
+        primary: e5.primary,
+        secondary: e5.secondary,
+        equip: e5.equip,
+        bw: e5.bw,
+        archived: e5.archived,
+        assist: e5.assist || void 0
+      });
+      return b`<label class="field">${labelTip("lt-ex-load", "Weight is entered as", "What the number you type means. Estimates and targets stay in this frame; weight lifted counts both dumbbells or both sides." + (has ? " Changing it does not convert sets already logged." : ""))}<select data-ebind="load" aria-labelledby="lt-ex-load"><option value="auto" ?selected=${!e5.load}>Default for this equipment: ${def}</option>${LOAD_MODES.map(([k2, l4]) => b`<option value=${k2} ?selected=${e5.load === k2}>${l4}</option>`)}</select></label>`;
+    };
+    const save = m3.isNew && m3.back && m3.back.kind === "picker" ? SAVE_INTO[m3.back.mode || ""] || "Save exercise" : "Save exercise";
+    return b`<div class="sheet" role="dialog" aria-modal="true"><div class="sheet-h"><h3>${m3.isNew ? "New exercise" : "Edit exercise"}</h3>${closeX()}</div><div class="stack">
+    <label class="field">Name<input type="text" data-ebind="name" value=${e5.name}></label>
+    <div class="grid2"><label class="field">Primary muscle<select data-ebind="primary">${e5.primary ? "" : b`<option value="" selected disabled>Pick one</option>`}${MUSCLES.map(([k2, l4]) => b`<option value=${k2} ?selected=${e5.primary === k2}>${l4}</option>`)}</select></label>
+    <label class="field">Equipment<select data-ebind="equip">${EQUIP.map(([k2, l4]) => b`<option value=${k2} ?selected=${e5.equip === k2}>${l4}</option>`)}</select></label></div>
+    <label class="field"><span>Movement</span> ${tipButton("Compound: a press, row, pull-up, squat, or hinge. Isolation: one joint, like a curl or a raise. It sets the size of load increases (about 2.5% of the load on compound lifts, 5% on isolation), the setup time in estimates, which RIR calibration group the lift joins, and what Short on time keeps.", "About movement")}<select data-ebind="kind"><option value="" ?selected=${!e5.kind}>Automatic (${autoCompound({ name: e5.name, primary: e5.primary, timed: e5.timed || void 0 }) ? "compound" : "isolation"})</option><option value="compound" ?selected=${e5.kind === "compound"}>Compound</option><option value="iso" ?selected=${e5.kind === "iso"}>Isolation</option></select></label>
+    ${loadField()}
+    <div><p class="small muted">Helper muscles (count as half a set)</p><div class="chips">${MUSCLES.filter(([k2]) => k2 !== e5.primary).map(([k2, l4]) => b`<button class=${"chip " + (e5.secondary.includes(k2) ? "on" : "")} data-act="secToggle" data-m=${k2}>${l4}</button>`)}</div></div>
+    ${MUSCLES.some(([k2]) => k2 === e5.primary) ? b`<div class="exbody"><button type="button" class="linkbtn tall" data-act="exBodyTog" aria-expanded=${String(!!ui.exBody)}>${ui.exBody ? "Hide body" : "Show on body"}</button>${ui.exBody ? b`${exBodyFlat(e5, true)}${exMusLegend(e5)}` : ""}</div>` : ""}
+    <label class="check-inline"><input type="checkbox" data-ebind="bw" aria-labelledby="lt-ex-bw" ?checked=${!!e5.bw}>${labelTip("lt-ex-bw", "Bodyweight exercise", "Log only what you add (0 for bodyweight). Your logged bodyweight is added for estimates and weight lifted.")}</label>
+    ${e5.bw ? b`<label class="check-inline"><input type="checkbox" data-ebind="assist" aria-labelledby="lt-ex-assist" ?checked=${!!e5.assist}>${labelTip("lt-ex-assist", "Assisted (a machine takes weight off)", "For an assisted machine: you type the help it gives, and less help is progress.")}</label>` : ""}
+    ${e5.bw ? b`<label class="field">${labelTip("lt-ex-bwfRaw", "Share of bodyweight moved (%)", "Measured only for push-ups (64%, force plates). Pull-ups and dips count all of it; the rest are segment-mass estimates.")}<input type="text" inputmode="numeric" data-ebind="bwfRaw" aria-labelledby="lt-ex-bwfRaw" value=${e5.bwfRaw || ""}></label>` : ""}
+    <label class="check-inline"><input type="checkbox" data-ebind="perSide" aria-labelledby="lt-ex-perSide" ?checked=${!!e5.perSide}>${labelTip("lt-ex-perSide", "One side at a time (reps per side)", "Reps are logged for one side. One set still counts as one set; weight lifted counts both sides.")}</label>
+    <label class="check-inline"><input type="checkbox" data-ebind="timed" aria-labelledby="lt-ex-timed" ?checked=${!!e5.timed}>${labelTip("lt-ex-timed", "Timed hold (log seconds)", has ? "This exercise has logged sets: switching changes how those numbers read." : "The reps column holds seconds.")}</label>
+    <details class="more" ?open=${!m3.back || !!m3.moreOpen}><summary>More options<span class="small muted">less common, load step, plates, heaviest, notes</span></summary><div class="stack">
+    <label class="check-inline"><input type="checkbox" data-ebind="rare" ?checked=${!!e5.rare}>Mark as less common</label>
+    <div class="grid2"><label class="field">${labelTip("lt-ex-incRaw", `Load step (${U()})`, "The smallest jump you can make on this exercise, everywhere it appears. Earned increases are whole multiples of it, about 2.5% of the load on compound lifts and 5% on isolation work. Blank uses each routine's setting.")}<input type="text" inputmode="decimal" data-ebind="incRaw" aria-labelledby="lt-ex-incRaw" value=${e5.incRaw} placeholder="Routine setting"></label>
+    <label class="field">${labelTip("lt-ex-plates", "Plate helper", "What to load, shown under the sets in a session.")}<select data-ebind="plates" aria-labelledby="lt-ex-plates">${PLATE_MODES.map(([k2, l4]) => b`<option value=${k2} ?selected=${(e5.plates || "auto") === k2}>${l4}</option>`)}</select></label></div>
+    ${platesMode(e5) === "bar" ? b`<label class="field">${labelTip("lt-ex-barRaw", `Bar for this lift (${U()})`, "A trap bar, EZ bar, or any bar other than the one in Settings. Used for the plates line and so a deload never goes under it.")}<input type="text" inputmode="decimal" data-ebind="barRaw" aria-labelledby="lt-ex-barRaw" value=${e5.barRaw || ""} placeholder=${`Settings bar, ${fmtW(barKg())}`}></label>` : ""}
+    <label class="field">${labelTip("lt-ex-maxRaw", `Heaviest available (${U()}${e5.bw ? ", added" : ""})`, "The top of the stack or the biggest dumbbell. At that load, targets move to more reps and then harder reps, and the lift is not called stalled.")}<input type="text" inputmode="decimal" data-ebind="maxRaw" aria-labelledby="lt-ex-maxRaw" value=${e5.maxRaw || ""} placeholder="No limit"></label>
+    <label class="field">Notes and cues<textarea data-ebind="note">${e5.note || ""}</textarea></label></div></details>
+    <div class="row"><button class="btn primary" data-act="exSave">${save}</button><button class="btn" data-act=${m3.back ? "exBack" : "mClose"}>${m3.back ? "Back" : "Cancel"}</button></div>${m3.isNew ? "" : howToLink(e5)}${!m3.isNew && e5.custom && !window.claude ? b`<button class="linkbtn" style="min-height:44px" data-act="exSuggest" data-tip="Your exercises are only in your log. This sends it to the app's owner, who can add it to the library for everyone.">Suggest for the library</button>` : ""}</div></div>`;
+  }
+  function exMusSheet(m3) {
+    const e5 = EX(m3.exId);
+    const v3 = mapView() === "3d";
+    const pm = exMusParts(e5);
+    B3.ex = { main: pm.main, help: pm.help };
+    if (B3.yawKeep == null) B3.yawKeep = B3.yaw;
+    return b`<div class="sheet exmus" role="dialog" aria-modal="true" aria-labelledby="exMusH"><div class="sheet-h"><h3 id="exMusH">Muscles: ${e5.name}</h3>${closeX()}</div>
+    ${exMusWords(e5)}
+    <div class="seg" role="group" aria-label="View" style="margin-top:8px"><button class=${"chip " + (v3 ? "" : "on")} data-act="mapView" data-v="flat" aria-pressed=${String(!v3)}>Flat</button><button class=${"chip " + (v3 ? "on" : "")} data-act="mapView" data-v="3d" aria-pressed=${String(v3)}>3D</button></div>
+    ${v3 ? b`<div class="bm3d" id="bm3dx"><div class="bm3d-stage" role="img" aria-label=${`3D body with ${ML[pm.main] || pm.main} lit${pm.help.length ? ", helpers lighter" : ""}. Drag sideways to turn it.`}></div><p class="bm3d-msg small muted" hidden></p><div class="seg bm3d-turn" role="group" aria-label="Turn the body"><button class="chip" data-act="map3dTurn" data-v="0">Front</button><button class="chip" data-act="map3dTurn" data-v="1">Side</button><button class="chip" data-act="map3dTurn" data-v="2">Back</button></div></div>` : exBodyFlat(e5)}
+    ${exMusLegend(e5)}</div>`;
+  }
+
+  // ../ironlog/node_modules/lit-html/directives/repeat.js
+  var u3 = (e5, s3, t4) => {
+    const r4 = /* @__PURE__ */ new Map();
+    for (let l4 = s3; l4 <= t4; l4++) r4.set(e5[l4], l4);
+    return r4;
+  }, c3 = e2(class extends i2 {
+    constructor(e5) {
+      if (super(e5), e5.type !== t2.CHILD) throw Error("repeat() can only be used in text expressions");
+    }
+    dt(e5, s3, t4) {
+      let r4;
+      void 0 === t4 ? t4 = s3 : void 0 !== s3 && (r4 = s3);
+      const l4 = [], o3 = [];
+      let i5 = 0;
+      for (const s4 of e5) l4[i5] = r4 ? r4(s4, i5) : i5, o3[i5] = t4(s4, i5), i5++;
+      return { values: o3, keys: l4 };
+    }
+    render(e5, s3, t4) {
+      return this.dt(e5, s3, t4).values;
+    }
+    update(s3, [t4, r4, c4]) {
+      const d3 = M2(s3), { values: p3, keys: a2 } = this.dt(t4, r4, c4);
+      if (!Array.isArray(d3)) return this.ut = a2, p3;
+      const h3 = this.ut ??= [], v3 = [];
+      let m3, y2, x2 = 0, j3 = d3.length - 1, k2 = 0, w2 = p3.length - 1;
+      for (; x2 <= j3 && k2 <= w2; ) if (null === d3[x2]) x2++;
+      else if (null === d3[j3]) j3--;
+      else if (h3[x2] === a2[k2]) v3[k2] = u2(d3[x2], p3[k2]), x2++, k2++;
+      else if (h3[j3] === a2[w2]) v3[w2] = u2(d3[j3], p3[w2]), j3--, w2--;
+      else if (h3[x2] === a2[w2]) v3[w2] = u2(d3[x2], p3[w2]), v2(s3, v3[w2 + 1], d3[x2]), x2++, w2--;
+      else if (h3[j3] === a2[k2]) v3[k2] = u2(d3[j3], p3[k2]), v2(s3, d3[x2], d3[j3]), j3--, k2++;
+      else if (void 0 === m3 && (m3 = u3(a2, k2, w2), y2 = u3(h3, x2, j3)), m3.has(h3[x2])) if (m3.has(h3[j3])) {
+        const e5 = y2.get(a2[k2]), t5 = void 0 !== e5 ? d3[e5] : null;
+        if (null === t5) {
+          const e6 = v2(s3, d3[x2]);
+          u2(e6, p3[k2]), v3[k2] = e6;
+        } else v3[k2] = u2(t5, p3[k2]), v2(s3, d3[x2], t5), d3[e5] = null;
+        k2++;
+      } else h2(d3[j3]), j3--;
+      else h2(d3[x2]), x2++;
+      for (; k2 <= w2; ) {
+        const e5 = v2(s3, v3[w2 + 1]);
+        u2(e5, p3[k2]), v3[k2++] = e5;
+      }
+      for (; x2 <= j3; ) {
+        const e5 = d3[x2++];
+        null !== e5 && h2(e5);
+      }
+      return this.ut = a2, p2(s3, v3), E;
+    }
+  });
+
+  // src/app/act.ts
+  var depth = 0;
+  var dropInside = false;
+  var outerUndo = false;
+  function act(change, opts = {}) {
+    if (opts.check && !opts.check()) return false;
+    if (depth > 0) {
+      if (!opts.inProgress) dropInside = true;
+      if (opts.undo && !outerUndo) log("act", "an Undo step was asked inside a change that keeps none");
+      change();
+      return true;
+    }
+    if (opts.undo) snapshot(typeof opts.undo === "function" ? opts.undo : null);
+    outerUndo = !!opts.undo;
+    depth++;
+    let inside = false;
+    try {
+      change();
+    } finally {
+      depth--;
+      inside = dropInside;
+      dropInside = false;
+    }
+    if (!opts.inProgress || inside) invalidate();
+    if (opts.soon) saveSoon();
+    else saveNow();
+    return true;
+  }
+  function toTrash(kind, data) {
+    if (kind === "routine" && plainTemplate(data)) return;
+    const copy = rec(parseJson(JSON.stringify(data))) ?? {};
+    state.trash = [
+      { id: data.id, kind, date: today(), data: copy },
+      ...state.trash.filter((t4) => !(t4.id === data.id && t4.kind === kind))
+    ].slice(0, TRASH_MAX);
+    while (state.trash.length > 1 && JSON.stringify(state.trash).length > TRASH_BYTES) state.trash.pop();
+  }
+
+  // src/app/env.ts
+  function isStandalone() {
+    try {
+      return window.matchMedia("(display-mode: standalone)").matches || navigator.standalone === true;
+    } catch (e5) {
+      return false;
+    }
+  }
+  var coarse = () => {
+    try {
+      return window.matchMedia("(pointer:coarse)").matches;
+    } catch (e5) {
+      return false;
+    }
+  };
+  function canInstallHere() {
+    return !!window.IRONLOG_APP && !isStandalone() && !(window.claude && typeof window.claude.use === "function");
+  }
+  var IOS_COMPACT_BAR = 26;
+  function installKind() {
+    const ua = navigator.userAgent || "";
+    const ios = /iPhone|iPad|iPod/.test(ua) || navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1;
+    if (window.__installEvt) return "prompt";
+    if (ios) {
+      if (/CriOS/.test(ua)) return "ios-chrome";
+      if (/FxiOS|EdgiOS|OPiOS/.test(ua)) return "ios-other";
+      const v3 = +((ua.match(/Version\/(\d+)/) || [])[1] || 0);
+      return v3 >= IOS_COMPACT_BAR ? "ios-safari26" : "ios-safari";
+    }
+    return "menu";
   }
 
   // src/app/settings.ts
@@ -11879,98 +12676,6 @@ ${logBuf.length ? b`<ul class="clist">${logBuf.slice(-LOG_SHOWN).reverse().map(
     return b`<div class="sheet" role="dialog" aria-modal="true"><div class="sheet-h"><h3>${m3.title}</h3>${closeX()}</div>${prs.length ? b`<div class="prblk" id="recapPR"><h4>${prs.length === 1 ? "New PR" : `${prs.length} new PRs`}</h4><ul>${prs.map((p3) => b`<li><b>${p3.name}</b>: ${p3.what}${p3.was ? b` <span class="was">(${p3.was})</span>` : ""}</li>`)}</ul></div>` : ""}<ul class="recap">${m3.lines.map((l4) => b`<li>${l4}</li>`)}</ul>${m3.note ? b`<p class="small muted">${m3.note}</p>` : ""}
     ${u4 ? b`<div class="hint"><b>Update ${u4.dayName} in your routine?</b><br>${u4.text}. Next time this day starts with the change.</div><button class="btn block" data-act="applyUpd">Update ${u4.dayName}</button>` : ""}
     <button class="btn primary block" style="margin-top:10px" data-act="mClose">${u4 ? "Not now" : "Done"}</button></div>`;
-  }
-
-  // src/app/sheetslift.ts
-  var CAL_CALLS = [0, 1, 2, 3, 4, 5];
-  var howToUrl = (e5) => HOWTO_SEARCH + encodeURIComponent(`${e5.name} exercise form`);
-  function howToLink(e5) {
-    const name = e5 && e5.name;
-    return name ? b`<a class="btn block" style="margin-top:6px" href=${howToUrl({ name })} target="_blank" rel="noopener noreferrer" data-tip=${`Opens a YouTube search for ${name} in your browser. Only the exercise name is sent.`}>How-to videos</a>` : "";
-  }
-  var blockAt = (i5) => {
-    const d3 = state.draft;
-    return d3 && d3.ex[i5] || null;
-  };
-  function bmenuSheet(m3) {
-    const d3 = state.draft;
-    const b2 = blockAt(m3.b);
-    if (!d3 || !b2) return null;
-    const nx = blockAt(m3.b + 1);
-    const linked = !!(nx && b2.plan.ss && nx.plan.ss === b2.plan.ss);
-    const e5 = EX(b2.exId);
-    const op = (o3, l4, dis, cls) => b`<button class=${"btn block " + (cls || "")} style="margin-top:6px" data-act="bMenuDo" data-op=${o3} data-b=${String(m3.b)} ?disabled=${!!dis}>${l4}</button>`;
-    return b`<div class="sheet" role="dialog" aria-modal="true"><div class="sheet-h"><h3>${exName(b2.exId)}</h3>${closeX()}</div>
-    ${op("bHist", "History and chart")}${op("bMus", "Muscles worked")}${op("wAdd", "Add a warm-up set")}${op("dropAdd", "Add a drop set (about 75% load)")}${op("bQuick", "Type or dictate sets")}${op("bNote", b2.note ? "Edit note" : "Add note")}${op("bSwap", "Swap exercise")}${op("bNew", markedNew(d3, b2.exId) ? "Same machine as before" : "New machine or gym")}${howToLink(e5)}${op("bInc", `Load step: ${fmtW(incOf(e5, b2.plan))} ${U()}`)}${op("bMax", `Heaviest available: ${e5.maxLoad != null ? fmtW(e5.maxLoad) + " " + U() : "no limit"}`)}${rirShow(e5) ? op("bCal", "Calibration set (RIR check)") : ""}${nx ? op("bSs", linked ? "Unlink superset" : `Superset with ${exName(nx.exId)}`) : ""}${op("bUp", "Move up", m3.b === 0)}${op("bDown", "Move down", !nx)}${op("fbOpen", "Report a problem")}${op("bDel", "Remove from session", false, "danger")}</div>`;
-  }
-  function injurySheet() {
-    return b`<div class="sheet" role="dialog" aria-modal="true"><div class="sheet-h"><h3>Flag an injury</h3>${closeX()}</div>
-    <p class="small muted hastip" data-tip="Every exercise that loads this muscle (directly or as a helper) or this joint is marked in your sessions: its target pauses, loads cap at last time, and it is left out of below-target advice until cleared.">Training aid, not medical advice: sharp, worsening, or lasting pain needs a clinician.</p>
-    <div class="stack"><label class="field">Area<select id="injM"><optgroup label="Joints">${JOINTS.map(([k2, l4]) => b`<option value=${k2}>${l4}</option>`)}</optgroup><optgroup label="Muscles">${MUSCLES.map(([k2, l4]) => b`<option value=${k2}>${l4}</option>`)}</optgroup></select></label>
-    <p class="small muted hastip" style="margin:0" data-tip="Knee: squats, lunges, leg press, leg extensions, and curls. Hip: squats, hinges, hip thrusts, adductors, and abductors. Shoulder: presses, flyes, raises, pull-downs, pull-ups, dips. Elbow: curls, extensions, rows, pull-downs, dips. Wrist: curls, barbell and dumbbell presses, push-ups, front squats. A judgment from the movement, not a measurement.">Which exercises a joint flag marks</p>
-    <label class="field">Note (optional)<input type="text" id="injNote" placeholder="e.g. left elbow, pressing only"></label>
-    <div class="row"><button class="btn primary" data-act="injSave">Flag it</button><button class="btn" data-act="mClose">Cancel</button></div></div></div>`;
-  }
-  function goalSheet(m3) {
-    const e5 = EX(m3.exId);
-    const g2 = e5.goal;
-    return b`<div class="sheet" role="dialog" aria-modal="true" aria-labelledby="goalH"><div class="sheet-h"><h3 id="goalH">Goal: ${e5.name}</h3>${closeX()}</div>
-    <div class="grid2"><label class="field">${e5.bw ? `Added load (${U()})` : `Load (${U()}${loadNote(e5)})`}<input type="text" inputmode="decimal" id="goalW" value=${g2 ? fmtW(g2.w) : ""} placeholder=${e5.bw ? "0" : ""}></label>
-    <label class="field">Reps<input type="text" inputmode="numeric" id="goalR" value=${g2 ? String(g2.r) : ""}></label></div>
-    <div class="row" style="margin-top:12px"><button class="btn primary" data-act="goalSave">Save</button>${g2 ? b`<button class="btn danger" data-act="goalClear">Remove goal</button>` : ""}<button class="btn" data-act="mClose">Cancel</button></div></div>`;
-  }
-  function incSheet(m3) {
-    const e5 = EX(m3.exId);
-    return b`<div class="sheet" role="dialog" aria-modal="true"><div class="sheet-h"><h3>Load step: ${e5.name}</h3>${closeX()}</div>
-    <label class="field">Step (${U()})<input type="text" inputmode="decimal" id="incVal" value=${fmtW(incOf(e5, m3.plan))}></label>
-    <p class="small muted">The smallest jump the machine or dumbbells allow. Earned increases are whole multiples of it.</p>
-    ${e5.inc == null && gymRack(e5, m3.plan) ? b`<p class="small" style="margin:0">Following the ${rackKind(e5) === "dumbbell" ? "dumbbells" : "kettlebells"} in Settings > Your gym. A step saved here replaces them for this lift.</p>` : ""}
-    <div class="row" style="margin-top:10px"><button class="btn primary" data-act="incSave">Save</button><button class="btn" data-act="mClose">Cancel</button></div></div>`;
-  }
-  function maxSheet(m3) {
-    const e5 = EX(m3.exId);
-    return b`<div class="sheet" role="dialog" aria-modal="true"><div class="sheet-h"><h3>Heaviest available: ${e5.name}</h3>${closeX()}</div>
-    <label class="field">Load (${U()}${e5.bw ? ", added to bodyweight" : ""})<input type="text" inputmode="decimal" id="maxVal" value=${e5.maxLoad != null ? fmtW(e5.maxLoad) : ""} placeholder="No limit"></label>
-    <p class="small muted">Top of the stack or biggest dumbbell. Blank for no limit.</p>
-    <div class="row" style="margin-top:10px"><button class="btn primary" data-act="maxSave">Save</button><button class="btn" data-act="mClose">Cancel</button></div></div>`;
-  }
-  function noteSheet(m3) {
-    return b`<div class="sheet" role="dialog" aria-modal="true"><div class="sheet-h"><h3>${m3.title}</h3>${closeX()}</div>
-    <p class="small muted">Saved with this session and shown next time: a cue, a niggle, which machine.</p>
-    <textarea id="mNote" aria-label="Note" style="min-height:110px">${m3.text || ""}</textarea>
-    <div class="row" style="margin-top:10px"><button class="btn primary" data-act="noteSave">Save note</button><button class="btn" data-act="mClose">Cancel</button></div></div>`;
-  }
-  function quickSheet(m3) {
-    const b2 = blockAt(m3.b);
-    if (!b2) return null;
-    const ex = EX(b2.exId);
-    const kg = U() === "kg";
-    const rp = rirScale() === "rpe";
-    const tail = rp ? "rpe 9" : "rir 1";
-    const eg1 = kg ? `100x5, 5, 4 ${tail}` : `235x5, 5, 4 ${tail}`;
-    const eg2 = rp ? kg ? "80x8@8 90x6@9" : "185x8@8 205x6@9" : kg ? "80x8@2 90x6@1" : "185x8@2 205x6@1";
-    const ph = kg ? `100x5, 5, 4 ${tail}` : `225x5, 5, 4 ${tail}`;
-    return b`<div class="sheet" role="dialog" aria-modal="true"><div class="sheet-h"><h3>${ex.name}: type sets</h3>${closeX()}</div>
-    ${ex.timed ? b`<p class="small muted" style="margin:0">Timed hold: the number after x is seconds, for example <b>25x45, 40</b> or <b>bw x 60, 50</b>.</p>` : ""}
-    <p class="small muted">Loads in ${U()}${loadNote(ex)}${ex.bw ? ", added to bodyweight (bw or bw+25)" : ""}. <b>${eg1}</b> or <b>${eg2}</b>. <span class="hastip" data-tip=${`Type or use the keyboard's dictation mic. ${rp ? "rpe" : "rir"} at the end applies to every set; @ gives ${effName()} per set. A bare number repeats the last load. Sets fill from the first one not done and are marked done.`}>More</span></p>
-    <input type="text" id="qTxt" autocomplete="off" autocapitalize="off" spellcheck="false" value=${m3.text || ""} placeholder=${ex.bw ? "bw x 10, 8, 7" : ph} enterkeyhint="done">
-    ${m3.err ? b`<p class="small" style="color:var(--red);margin:8px 0 0">${m3.err}</p>` : ""}
-    <div class="row" style="margin-top:10px"><button class="btn primary" data-act="qFill">Fill sets</button><button class="btn" data-act="mClose">Cancel</button></div></div>`;
-  }
-  function calibrationSheet(m3) {
-    const b2 = blockAt(m3.b);
-    if (!b2) return null;
-    const ex = EX(b2.exId);
-    return b`<div class="sheet" role="dialog" aria-modal="true"><div class="sheet-h"><h3>Calibration set: ${ex.name}</h3>${closeX()}</div>
-    <p class="small muted" style="margin:0">Checks how well you call reps in reserve. Only take a set to failure where it is safe: a machine or cable, or with a spotter.</p>
-    <ol class="steps"><li>Use your normal working load.</li><li>At the rep where you would usually stop, note that rep and how many you think are left.</li><li>Keep going until you cannot complete a rep with good form.</li></ol>
-    <div class="grid2"><label class="field">Load (${ex.bw ? "+" + U() : U()})<input type="text" inputmode="decimal" id="calW" value=${m3.w != null ? String(m3.w) : ""}></label>
-    <label class="field">Usual stop rep<input type="text" inputmode="numeric" id="calAt" value=${m3.at || ""}></label>
-    <label class="field">Reps left, your call<select id="calPred">${CAL_CALLS.map((v3) => b`<option value=${String(v3)} ?selected=${Number(m3.pred) === v3}>${v3}</option>`)}</select></label>
-    <label class="field">Reps to failure<input type="text" inputmode="numeric" id="calTot" value=${m3.total || ""}></label></div>
-    ${m3.err ? b`<p class="small" style="color:var(--red);margin:8px 0 0">${m3.err}</p>` : ""}
-    <div class="row" style="margin-top:10px"><button class="btn primary" data-act="calSave">Save set</button><button class="btn" data-act="mClose">Cancel</button></div>
-    <p class="small muted" style="margin:8px 0 0">It is saved as a done set at 0 RIR, marked as a check. With RIR set to Corrected in Settings, your typical miss is applied to the RIR you log.</p></div>`;
   }
 
   // src/app/plan.ts
@@ -14680,7 +15385,7 @@ ${extraKpis()}</div>${nS ? dashSummary() : A}`;
   };
 
   // src/app/guide.ts
-  var S3 = PROFILE_PLAN.strength, B3 = PROFILE_PLAN.both, F2 = PROFILE_PLAN.first;
+  var S3 = PROFILE_PLAN.strength, B4 = PROFILE_PLAN.both, F2 = PROFILE_PLAN.first;
   var CAP = pctOf(JUMP_CAP - 1), CAP_LIGHT = pctOf(JUMP_CAP_LIGHT - 1), CAP_EARLY = pctOf(JUMP_CAP_EARLY - 1);
   var lightLift = (kg) => kg ? `${LIGHT_LIFT_KG} kg` : `about ${Math.round(LIGHT_LIFT_KG / LB / DEFAULT_STEP.lb) * DEFAULT_STEP.lb} lb`;
   var OTHER_WKS = orList(REGION_WKS.map(([n3]) => n3).filter((n3) => n3 !== REGION_WK_DEFAULT));
@@ -14783,7 +15488,7 @@ ${extraKpis()}</div>${nS ? dashSummary() : A}`;
         "Plan and your own exercises",
         `<p>A routine has days, and each exercise has sets, a rep range, a target RIR, rest, and a load step. The <b>target RIR</b> is ${DEFAULT_PLAN.rir} unless you change it, a convention: muscle growth improves as sets end closer to failure (Robinson 2024), but going all the way to failure grew muscle no more than stopping 1 to 2 reps short (Refalo 2024) and costs more fatigue. Some lifts in the ready-made routines use 0 or 2. A <b>numbered cycle</b> runs Day 1, 2, 3 in order, so a missed day waits; <b>fixed weekdays</b> pin each day to a weekday.</p>
    <p><b>Your own exercise</b>: Plan, Exercise library, New exercise, or + New exercise when adding one. Set the primary and helper muscles, the equipment, what the number you type means (per dumbbell, total, per side, or stack), bodyweight or assisted, one side at a time, timed, Movement (compound or isolation), the load step, and the heaviest load available. Every number above uses them.</p>
-   <p><b>Your training</b> (Settings, and the routine picker on a first run) is optional. Strength starts new barbell, Smith, and machine compounds at ${S3.repMin} to ${S3.repMax} reps, ${S3.rir} in reserve, ${S3.rest / MINUTE_S} minutes' rest: heavier loads gave more strength for similar growth (Schoenfeld 2017; ACSM 2009), and 3 minutes' rest beat 1 (Schoenfeld 2016). Both starts them at ${B3.repMin} to ${B3.repMax}; that and the ${B3.rir} in reserve are conventions. Under 1 year, whatever the goal, new exercises start at ${F2.repMin} to ${F2.repMax} reps (ACSM 2009); compounds stop ${F2.rirCompound} reps short and isolation lifts ${F2.rirIsolation}, a convention. Size keeps the defaults. Your routine changes only when you tap Apply, which raises rest but never turns a timer of 0 on; under 1 year it raises reps in reserve and keeps your ranges. Focus muscles, up to ${numWord(FOCUS_MAX)}, get weekly targets about ${pctOf(FOCUS_UP - 1)}% higher and the others drop to maintenance, ${shareWords(MAINT_SHARE)} of the usual minimum (Bickel 2011, Spiering 2021); ${pctOf(FOCUS_UP - 1)}% is a convention, and targets you typed stay. With Strength, Pick for me favours a heavy compound that is stalled or within ${pctOf(1 - STR_NEAR)}% of your best, rested, and not done for ${STR_REST} days (both numbers conventions). Days a week marks the ready-made routines that fit; every other day fits 3 or 4.</p>
+   <p><b>Your training</b> (Settings, and the routine picker on a first run) is optional. Strength starts new barbell, Smith, and machine compounds at ${S3.repMin} to ${S3.repMax} reps, ${S3.rir} in reserve, ${S3.rest / MINUTE_S} minutes' rest: heavier loads gave more strength for similar growth (Schoenfeld 2017; ACSM 2009), and 3 minutes' rest beat 1 (Schoenfeld 2016). Both starts them at ${B4.repMin} to ${B4.repMax}; that and the ${B4.rir} in reserve are conventions. Under 1 year, whatever the goal, new exercises start at ${F2.repMin} to ${F2.repMax} reps (ACSM 2009); compounds stop ${F2.rirCompound} reps short and isolation lifts ${F2.rirIsolation}, a convention. Size keeps the defaults. Your routine changes only when you tap Apply, which raises rest but never turns a timer of 0 on; under 1 year it raises reps in reserve and keeps your ranges. Focus muscles, up to ${numWord(FOCUS_MAX)}, get weekly targets about ${pctOf(FOCUS_UP - 1)}% higher and the others drop to maintenance, ${shareWords(MAINT_SHARE)} of the usual minimum (Bickel 2011, Spiering 2021); ${pctOf(FOCUS_UP - 1)}% is a convention, and targets you typed stay. With Strength, Pick for me favours a heavy compound that is stalled or within ${pctOf(1 - STR_NEAR)}% of your best, rested, and not done for ${STR_REST} days (both numbers conventions). Days a week marks the ready-made routines that fit; every other day fits 3 or 4.</p>
    <p>Drag ⠿ to reorder exercises or move them between days, and to reorder days.</p>`
       ],
       [
@@ -15299,650 +16004,6 @@ ${howText("wk", `Each set counts once; a set at RIR 4 or more is not hard and do
       sub: noLog() ? `${about}${w2.planDays} sessions planned` : `${w2.doneDays} of ${about}${w2.planDays} sessions`,
       body
     });
-  }
-
-  // src/app/outside.ts
-  async function loadModule(urls) {
-    for (const url of urls) {
-      try {
-        return { url, mod: await import(url) };
-      } catch (e5) {
-        log("load", {
-          message: `${url}: ${e5 instanceof Error ? e5.message : String(e5)}`,
-          stack: e5 instanceof Error ? e5.stack : void 0
-        });
-      }
-    }
-    return null;
-  }
-
-  // src/app/map.ts
-  var BM_BASE = w`<circle cx="60" cy="16" r="11"></circle><rect x="38" y="35" width="44" height="72" rx="12"></rect><rect x="23" y="39" width="14" height="42" rx="7"></rect><rect x="83" y="39" width="14" height="42" rx="7"></rect><rect x="21" y="78" width="11" height="36" rx="5.5"></rect><rect x="88" y="78" width="11" height="36" rx="5.5"></rect><circle cx="26" cy="118" r="5"></circle><circle cx="94" cy="118" r="5"></circle><rect x="37" y="102" width="21" height="54" rx="9"></rect><rect x="62" y="102" width="21" height="54" rx="9"></rect><rect x="40" y="152" width="14" height="46" rx="7"></rect><rect x="66" y="152" width="14" height="46" rx="7"></rect><ellipse cx="47" cy="202" rx="8" ry="4"></ellipse><ellipse cx="73" cy="202" rx="8" ry="4"></ellipse>`;
-  var FLAT_W = 120;
-  var BM = (() => {
-    const E2 = (cx, cy, rx, ry) => [
-      ["e", cx, cy, rx, ry],
-      ["e", FLAT_W - cx, cy, rx, ry]
-    ];
-    const Rr = (x2, y2, w2, h3, r4) => [
-      ["r", x2, y2, w2, h3, r4],
-      ["r", FLAT_W - x2 - w2, y2, w2, h3, r4]
-    ];
-    const P2 = (pts) => [
-      ["p", pts],
-      ["p", pts.map(([x2, y2]) => [FLAT_W - x2, y2])]
-    ];
-    return {
-      f: {
-        neck: [["r", 54, 27, 12, 9, 3]],
-        traps: P2([
-          [45, 38],
-          [54, 31],
-          [55, 39]
-        ]),
-        sideDelts: E2(29, 47, 4, 8),
-        frontDelts: E2(36, 45, 7, 8),
-        serratus: E2(40.5, 60, 2.4, 4.6),
-        chest: Rr(41, 40, 18, 17, 7),
-        biceps: E2(30, 66, 5, 11),
-        forearms: E2(27, 93, 4.5, 13),
-        abs: [["r", 51, 59, 18, 35, 6]],
-        obliques: Rr(43, 61, 7, 28, 3),
-        abductors: E2(40, 106, 4, 7),
-        quads: E2(47, 131, 8, 23),
-        adductors: Rr(54, 108, 5, 22, 2.5),
-        tibialis: E2(46, 176, 3.5, 15)
-      },
-      b: {
-        neck: [["r", 54, 27, 12, 9, 3]],
-        upperBack: [["r", 44, 44, 32, 21, 7]],
-        traps: [
-          [
-            "p",
-            [
-              [60, 30],
-              [75, 40],
-              [60, 60],
-              [45, 40]
-            ]
-          ]
-        ],
-        rotatorCuff: E2(48.5, 52, 3.6, 4.2),
-        sideDelts: E2(29, 47, 4, 8),
-        rearDelts: E2(36, 45, 7, 8),
-        lats: P2([
-          [40, 62],
-          [51, 66],
-          [54, 88],
-          [44, 82]
-        ]),
-        triceps: E2(30, 66, 5, 11),
-        forearms: E2(27, 93, 4.5, 13),
-        lowerBack: [["r", 52, 84, 16, 18, 5]],
-        abductors: E2(41, 103, 4, 6),
-        glutes: E2(51, 112, 9, 9),
-        hamstrings: E2(47, 138, 8, 17),
-        adductors: Rr(55, 118, 4, 18, 2),
-        calves: E2(47, 174, 6, 13)
-      }
-    };
-  })();
-  function bmShape(x2) {
-    if (x2[0] === "e") {
-      const [, cx, cy, rx, ry] = x2;
-      return w`<ellipse cx=${cx} cy=${cy} rx=${rx} ry=${ry}></ellipse>`;
-    }
-    if (x2[0] === "r") {
-      const [, left, top, w2, h3, r4] = x2;
-      return w`<rect x=${left} y=${top} width=${w2} height=${h3} rx=${r4}></rect>`;
-    }
-    return w`<polygon points=${x2[1].map((q) => q.join(",")).join(" ")}></polygon>`;
-  }
-  var B3_PARTS = [
-    /* Proportions (r29, V: "still looks fat"): an athletic build, not a
-       mannequin. Shoulders well outside the ribs, a narrow waist and pelvis, a
-       torso flatter front to back, long lean legs that do not touch, slimmer
-       arms, and muscles that sit close on the body instead of bulging. */
-    // neutral body
-    {
-      g: "l",
-      prof: [
-        [0, 0.86],
-        [0.094, 0.87],
-        [0.11, 0.9],
-        [0.112, 0.94],
-        [0.1, 1],
-        [0.092, 1.06],
-        [0.1, 1.13],
-        [0.126, 1.21],
-        [0.156, 1.3],
-        [0.168, 1.38],
-        [0.15, 1.445],
-        [0.085, 1.495],
-        [0, 1.512]
-      ],
-      p: [0, 0, 0],
-      kz: 0.52,
-      one: 1
-    },
-    { g: "c", d: [0.042, 0.1], p: [0, 1.55, -5e-3], one: 1 },
-    { g: "s", p: [0, 1.69, 5e-3], k: [0.084, 0.106, 0.096], one: 1 },
-    { g: "s", p: [0.188, 1.428, 0], k: [0.052, 0.052, 0.052] },
-    {
-      g: "l",
-      prof: [
-        [0, 0],
-        [0.031, 0.01],
-        [0.034, 0.07],
-        [0.038, 0.17],
-        [0.041, 0.25],
-        [0.039, 0.3],
-        [0, 0.31]
-      ],
-      p: [0.228, 1.13, 0],
-      r: [0, 0, 0.1]
-    },
-    { g: "s", p: [0.228, 1.13, 0], k: [0.031, 0.031, 0.031] },
-    { g: "s", p: [0.252, 0.815, 0.01], k: [0.026, 0.058, 0.017] },
-    {
-      g: "l",
-      prof: [
-        [0, 0],
-        [0.042, 0.01],
-        [0.048, 0.1],
-        [0.06, 0.24],
-        [0.068, 0.33],
-        [0.062, 0.38],
-        [0, 0.39]
-      ],
-      p: [0.09, 0.49, 0]
-    },
-    { g: "s", p: [0.09, 0.47, 6e-3], k: [0.043, 0.043, 0.043] },
-    {
-      g: "l",
-      prof: [
-        [0, 0],
-        [0.027, 0.02],
-        [0.03, 0.1],
-        [0.041, 0.25],
-        [0.038, 0.34],
-        [0, 0.35]
-      ],
-      p: [0.09, 0.08, -4e-3]
-    },
-    { g: "s", p: [0.092, 0.045, 0.04], k: [0.038, 0.034, 0.098] },
-    // muscle groups
-    { m: "neck", g: "c", d: [0.047, 0.07], p: [0, 1.56, -4e-3], one: 1 },
-    { m: "traps", g: "s", p: [0.068, 1.47, -0.02], k: [0.076, 0.03, 0.044], r: [0, 0, -0.42] },
-    { m: "traps", g: "s", p: [0, 1.38, -0.07], k: [0.06, 0.085, 0.03], one: 1 },
-    { m: "frontDelts", g: "s", p: [0.19, 1.42, 0.03], k: [0.046, 0.066, 0.04] },
-    { m: "sideDelts", g: "s", p: [0.212, 1.422, 0], k: [0.04, 0.07, 0.044] },
-    { m: "rearDelts", g: "s", p: [0.19, 1.42, -0.031], k: [0.046, 0.066, 0.04] },
-    { m: "rotatorCuff", g: "s", p: [0.096, 1.35, -0.072], k: [0.032, 0.026, 0.016] },
-    { m: "chest", g: "s", p: [0.072, 1.34, 0.07], k: [0.076, 0.058, 0.026], r: [0, 0, -0.08] },
-    { m: "serratus", g: "s", p: [0.124, 1.25, 0.036], k: [0.02, 0.044, 0.022] },
-    { m: "upperBack", g: "s", p: [0, 1.3, -0.066], k: [0.084, 0.07, 0.026], one: 1 },
-    { m: "lats", g: "s", p: [0.118, 1.24, -0.034], k: [0.044, 0.12, 0.03], r: [0, 0, -0.3] },
-    { m: "lowerBack", g: "s", p: [0.028, 1.03, -0.046], k: [0.024, 0.075, 0.018] },
-    { m: "abs", g: "s", p: [0, 1.12, 0.044], k: [0.042, 0.14, 0.017], one: 1 },
-    { m: "obliques", g: "s", p: [0.08, 1.08, 0.03], k: [0.024, 0.07, 0.03] },
-    { m: "biceps", g: "s", p: [0.211, 1.28, 0.026], k: [0.031, 0.092, 0.03], r: [0, 0, 0.1] },
-    { m: "triceps", g: "s", p: [0.213, 1.29, -0.026], k: [0.034, 0.1, 0.032], r: [0, 0, 0.1] },
-    {
-      m: "forearms",
-      g: "l",
-      prof: [
-        [0, 0],
-        [0.024, 0.01],
-        [0.027, 0.08],
-        [0.035, 0.2],
-        [0.034, 0.25],
-        [0, 0.26]
-      ],
-      p: [0.252, 0.87, 5e-3],
-      r: [0, 0, 0.09]
-    },
-    { m: "glutes", g: "s", p: [0.056, 0.9, -0.044], k: [0.054, 0.058, 0.034] },
-    { m: "abductors", g: "s", p: [0.106, 0.95, -0.012], k: [0.024, 0.048, 0.03] },
-    { m: "quads", g: "s", p: [0.092, 0.705, 0.03], k: [0.05, 0.165, 0.036] },
-    { m: "hamstrings", g: "s", p: [0.09, 0.68, -0.028], k: [0.046, 0.145, 0.036] },
-    { m: "adductors", g: "s", p: [0.05, 0.72, 2e-3], k: [0.024, 0.125, 0.036] },
-    { m: "calves", g: "s", p: [0.09, 0.32, -0.02], k: [0.036, 0.095, 0.034] },
-    { m: "tibialis", g: "s", p: [0.094, 0.29, 0.024], k: [0.019, 0.095, 0.019] }
-  ];
-  var B32 = {
-    state: "idle",
-    wait: [],
-    r: null,
-    scene: null,
-    cam: null,
-    root: null,
-    meshes: [],
-    mats: {},
-    yaw: 0.35,
-    anim: 0,
-    status: null,
-    sel: null,
-    fail: "",
-    viewMem: null,
-    drag: null,
-    ex: null,
-    yawKeep: null
-  };
-  function mapView() {
-    if (B32.viewMem) return B32.viewMem;
-    B32.viewMem = prefGet(MAPVIEW_KEY) === "3d" ? "3d" : "flat";
-    return B32.viewMem;
-  }
-  function darkTheme() {
-    return (document.documentElement.dataset["theme"] || (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light")) === "dark";
-  }
-  function map3dColors() {
-    const cs = getComputedStyle(document.documentElement);
-    const v3 = (n3) => cs.getPropertyValue(n3).trim();
-    const dark = darkTheme();
-    return {
-      base: dark ? "#3b4048" : "#d5d9de",
-      none: dark ? "#5d646d" : "#a9b0b8",
-      track: v3("--muted"),
-      under: v3("--yellow"),
-      part: v3("--part"),
-      plan: v3("--part"),
-      in: v3("--green"),
-      over: v3("--blue"),
-      ex: v3("--volt")
-    };
-  }
-  function b3Host() {
-    return document.getElementById("bm3dx") || document.getElementById("bm3d");
-  }
-  function map3dLoad(cb) {
-    if (B32.state === "ready" || B32.state === "fail") {
-      cb();
-      return;
-    }
-    B32.wait.push(cb);
-    if (B32.state === "loading") return;
-    B32.state = "loading";
-    void loadModule(THREE_URLS).then((got) => {
-      if (got && isThree(got.mod)) window.THREE = got.mod;
-      else if (got) log("map3d", new Error(`${got.url} loaded, but it is not three.js`));
-      if (!window.THREE) {
-        B32.state = "fail";
-        B32.fail = "The 3D view could not load. Check your connection; the flat view still works.";
-      } else {
-        try {
-          map3dBuild(window.THREE);
-          B32.state = "ready";
-        } catch (e5) {
-          log("map3d", e5);
-          B32.state = "fail";
-          B32.fail = "This phone or browser cannot draw 3D here. The flat view shows the same numbers.";
-        }
-      }
-      const w2 = B32.wait;
-      B32.wait = [];
-      w2.forEach((f3) => {
-        try {
-          f3();
-        } catch (e5) {
-          log("map3d", e5);
-        }
-      });
-    });
-  }
-  function isThree(m3) {
-    const r4 = rec(m3);
-    return !!r4 && typeof r4["WebGLRenderer"] === "function" && typeof r4["Scene"] === "function" && typeof r4["Raycaster"] === "function";
-  }
-  var SCENE = {
-    fov: 28,
-    near: 0.1,
-    far: 20,
-    camAt: [0, 0.93, 3.8],
-    lookAt: [0, 0.9, 0],
-    white: 16777215,
-    sky: 16777215,
-    ground: 4211786,
-    hemi: 1.15,
-    key: 1.7,
-    keyAt: [1.6, 2.6, 3],
-    rim: 1.1,
-    rimAt: [-2.2, 1.6, -2.6],
-    around: 40,
-    down: 28,
-    capSegs: 10,
-    rough: 0.55,
-    metal: 0.05,
-    shadowPx: 64,
-    shadow: [0.7, 0.34],
-    shadowY: 2e-3,
-    dragPx: 4,
-    turnPerPx: 0.012,
-    turnMs: 420,
-    ease: 3,
-    minW: 200,
-    defW: 320,
-    maxH: 440,
-    tall: 1.12,
-    helpMix: 0.5,
-    glowLight: 0.45,
-    glowDark: 0.28
-  };
-  var LOW_SHOWN = 8;
-  function map3dBuild(T2) {
-    const r4 = new T2.WebGLRenderer({ antialias: true, alpha: true, powerPreference: "low-power" });
-    r4.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
-    const scene = new T2.Scene();
-    const S4 = SCENE;
-    const cam = new T2.PerspectiveCamera(S4.fov, 1, S4.near, S4.far);
-    cam.position.set(...S4.camAt);
-    cam.lookAt(...S4.lookAt);
-    scene.add(new T2.HemisphereLight(S4.sky, S4.ground, S4.hemi));
-    const key = new T2.DirectionalLight(S4.white, S4.key);
-    key.position.set(...S4.keyAt);
-    scene.add(key);
-    const rim = new T2.DirectionalLight(S4.white, S4.rim);
-    rim.position.set(...S4.rimAt);
-    scene.add(rim);
-    const root = new T2.Group();
-    scene.add(root);
-    const sph = new T2.SphereGeometry(1, S4.around, S4.down);
-    const caps = {};
-    const mat = (m3) => B32.mats[m3] || (B32.mats[m3] = new T2.MeshStandardMaterial({ roughness: S4.rough, metalness: S4.metal }));
-    const add = (pt, side) => {
-      const d3 = pt.d || [0, 0];
-      const g2 = pt.g === "s" ? sph : pt.g === "l" ? new T2.LatheGeometry(
-        (pt.prof || []).map(([rr, y2]) => new T2.Vector2(rr, y2)),
-        S4.around
-      ) : caps[d3.join()] || (caps[d3.join()] = new T2.CapsuleGeometry(d3[0], d3[1], S4.capSegs, S4.down));
-      const me = new T2.Mesh(g2, mat(pt.m || "_base"));
-      me.position.set(pt.p[0] * side, pt.p[1], pt.p[2]);
-      if (pt.k) me.scale.set(pt.k[0], pt.k[1], pt.k[2]);
-      if (pt.kz) me.scale.set(1, 1, pt.kz);
-      if (pt.r) me.rotation.set(pt.r[0], pt.r[1], pt.r[2] * side);
-      me.userData.m = pt.m || null;
-      root.add(me);
-      B32.meshes.push(me);
-    };
-    for (const pt of B3_PARTS) {
-      add(pt, 1);
-      if (!pt.one) add(pt, -1);
-    }
-    {
-      const cv = document.createElement("canvas");
-      const px = S4.shadowPx, mid2 = px / 2;
-      cv.width = cv.height = px;
-      const x2 = cv.getContext("2d");
-      if (x2) {
-        const gr = x2.createRadialGradient(mid2, mid2, 2, mid2, mid2, mid2);
-        gr.addColorStop(0, "rgba(0,0,0,.45)");
-        gr.addColorStop(1, "rgba(0,0,0,0)");
-        x2.fillStyle = gr;
-        x2.fillRect(0, 0, px, px);
-      }
-      const sh = new T2.Mesh(
-        new T2.PlaneGeometry(...S4.shadow),
-        new T2.MeshBasicMaterial({ map: new T2.CanvasTexture(cv), transparent: true, depthWrite: false })
-      );
-      sh.rotation.x = -Math.PI / 2;
-      sh.position.y = S4.shadowY;
-      scene.add(sh);
-    }
-    const c4 = r4.domElement;
-    c4.className = "bm3d-canvas";
-    c4.addEventListener("pointerdown", (e5) => {
-      B32.drag = { x: e5.clientX, y: e5.clientY, yaw: B32.yaw, moved: false };
-      cancelAnimationFrame(B32.anim);
-    });
-    c4.addEventListener("pointermove", (e5) => {
-      const d3 = B32.drag;
-      if (!d3) return;
-      const dx = e5.clientX - d3.x;
-      if (Math.abs(dx) > S4.dragPx) d3.moved = true;
-      if (d3.moved) {
-        B32.yaw = d3.yaw + dx * S4.turnPerPx;
-        map3dDraw();
-      }
-    });
-    const end = (e5) => {
-      const d3 = B32.drag;
-      B32.drag = null;
-      if (d3 && !d3.moved && e5.type === "pointerup") map3dTap(e5.clientX, e5.clientY);
-    };
-    c4.addEventListener("pointerup", end);
-    c4.addEventListener("pointercancel", end);
-    c4.addEventListener("pointerleave", () => {
-      B32.drag = null;
-    });
-    Object.assign(B32, { r: r4, scene, cam, root });
-  }
-  function map3dPick(cx, cy) {
-    const T2 = window.THREE;
-    if (!T2 || !B32.r || !B32.cam || !B32.root) return null;
-    const rc = B32.r.domElement.getBoundingClientRect();
-    const v3 = new T2.Vector2((cx - rc.left) / rc.width * 2 - 1, -((cy - rc.top) / rc.height) * 2 + 1);
-    const ray = new T2.Raycaster();
-    ray.setFromCamera(v3, B32.cam);
-    const hit = ray.intersectObjects(B32.root.children, false).find((h3) => h3.object.userData.m);
-    return hit ? hit.object.userData.m || null : null;
-  }
-  function map3dTap(cx, cy) {
-    const m3 = map3dPick(cx, cy);
-    if (!m3) return;
-    const hb = b3Host();
-    if (hb && hb.id === "bm3dx" && B32.ex) {
-      fx.toast(`${ML[m3] || m3}${m3 === B32.ex.main ? ": main" : B32.ex.help.includes(m3) ? ": helper" : ""}`);
-      return;
-    }
-    ui.mapSel = ui.mapSel === m3 ? null : m3;
-    fx.rerenderKeepScroll();
-  }
-  function map3dTurnTo(to) {
-    if (!B32.r) return;
-    cancelAnimationFrame(B32.anim);
-    const tau = Math.PI * 2;
-    const from = (B32.yaw % tau + tau) % tau;
-    let d3 = to - from;
-    if (d3 > Math.PI) d3 -= tau;
-    if (d3 < -Math.PI) d3 += tau;
-    let reduce = false;
-    try {
-      reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
-    } catch (e5) {
-    }
-    if (reduce) {
-      B32.yaw = to;
-      map3dDraw();
-      return;
-    }
-    const t0 = performance.now(), dur = SCENE.turnMs;
-    const step = (t4) => {
-      const k2 = Math.min(1, (t4 - t0) / dur);
-      const e5 = 1 - Math.pow(1 - k2, SCENE.ease);
-      B32.yaw = from + d3 * e5;
-      map3dDraw();
-      if (k2 < 1) B32.anim = requestAnimationFrame(step);
-    };
-    B32.anim = requestAnimationFrame(step);
-  }
-  function map3dDraw() {
-    const hb = b3Host();
-    const host = hb && hb.querySelector(".bm3d-stage");
-    if (!B32.r || !host || !B32.cam || !B32.root || !B32.scene) return;
-    const w2 = Math.max(SCENE.minW, host.clientWidth || SCENE.defW), h3 = Math.round(Math.min(SCENE.maxH, w2 * SCENE.tall));
-    const c4 = B32.r.domElement;
-    if (c4.parentNode !== host) host.appendChild(c4);
-    if (B32.w !== w2 || B32.h !== h3) {
-      B32.r.setSize(w2, h3, false);
-      c4.style.width = "100%";
-      c4.style.height = h3 + "px";
-      B32.cam.aspect = w2 / h3;
-      B32.cam.updateProjectionMatrix();
-      B32.w = w2;
-      B32.h = h3;
-    }
-    B32.root.rotation.y = B32.yaw;
-    B32.r.render(B32.scene, B32.cam);
-  }
-  function mount3D() {
-    const host = b3Host();
-    if (!host) return;
-    const exm = host.id === "bm3dx" ? B32.ex : null;
-    const msg = host.querySelector(".bm3d-msg");
-    if (B32.state !== "ready") {
-      if (B32.state === "fail") {
-        if (msg) {
-          msg.hidden = false;
-          msg.textContent = B32.fail;
-        }
-        const turn = host.querySelector(".bm3d-turn");
-        if (turn) turn.hidden = true;
-        return;
-      }
-      if (msg) {
-        msg.hidden = false;
-        msg.textContent = "Loading the 3D body";
-      }
-      map3dLoad(() => {
-        if (b3Host()) mount3D();
-      });
-      return;
-    }
-    if (msg) {
-      msg.hidden = true;
-      msg.textContent = "";
-    }
-    const col = map3dColors();
-    const T2 = window.THREE;
-    if (!T2) return;
-    const C2 = (k2) => col[k2] || col["none"] || "";
-    for (const [m3, mt] of Object.entries(B32.mats)) {
-      const em = mt.emissive || (mt.emissive = new T2.Color(0, 0, 0));
-      if (exm) {
-        if (m3 === exm.main) mt.color.set(C2("ex"));
-        else if (exm.help.includes(m3)) mt.color.set(C2("ex")).lerp(new T2.Color(C2("base")), SCENE.helpMix);
-        else mt.color.set(m3 === "_base" ? C2("base") : C2("none"));
-        em.set("#000000");
-        mt.emissiveIntensity = 0;
-        continue;
-      }
-      const st = m3 === "_base" ? null : B32.status && B32.status[m3];
-      mt.color.set(m3 === "_base" ? C2("base") : st ? C2(st.st) : C2("none"));
-      const lightUI = !darkTheme();
-      if (m3 === B32.sel) {
-        if (lightUI) em.copy(mt.color);
-        else em.set("#ffffff");
-      } else em.set("#000000");
-      mt.emissiveIntensity = m3 === B32.sel ? lightUI ? SCENE.glowLight : SCENE.glowDark : 0;
-    }
-    map3dDraw();
-  }
-  function mapCard() {
-    const I2 = IDX();
-    const avg = actualAvg4();
-    const src = ui.mapSrc === "week" || !avg ? "week" : "avg";
-    const st = muscleStatus(src === "avg" ? avg : I2.weekSets[weekStart(today())] || {}, src === "week");
-    const S4 = (m3) => st[m3] || { v: 0, lo: 0, hi: 0, st: "none" };
-    const hsw = (v4) => `${r1(v4)} hard set${r1(v4) === 1 ? "" : "s"} a week`;
-    const tgt = (m3) => !hasTarget(m3) ? ", tracked only" : `, target ${S4(m3).lo} to ${S4(m3).hi}`;
-    const lab = (m3) => noLog() ? `${ML[m3]}: nothing logged yet${tgt(m3)}` : `${ML[m3]}: ${hsw(S4(m3).v)}${tgt(m3)}`;
-    const fig = (view, label) => b`<figure class="bm"><svg viewBox="0 0 120 210" aria-label=${`${label} of body`}><g class="bm-base">${BM_BASE}</g>${Object.entries(
-      BM[view]
-    ).map(
-      ([m3, sh]) => w`<g class=${`mm st-${S4(m3).st}${ui.mapSel === m3 ? " sel" : ""}`} data-act="mapSel" data-m=${m3} role="button" tabindex="0" aria-label=${lab(m3)}><title>${lab(m3)}</title>${sh.map(bmShape)}</g>`
-    )}</svg><figcaption>${label}</figcaption></figure>`;
-    const counts = { under: 0, part: 0, plan: 0, in: 0, over: 0, none: 0, track: 0 };
-    for (const m3 of MK) counts[S4(m3).st] = +(counts[S4(m3).st] || 0) + 1;
-    if (noLog()) for (const k2 in counts) counts[k2] = NIL;
-    const sel = typeof ui.mapSel === "string" && st[ui.mapSel] ? ui.mapSel : null;
-    let detail;
-    if (sel) {
-      const x2 = S4(sel);
-      const sc = I2.scores.find((y2) => y2.m === sel);
-      const where = x2.st === "none" ? src === "week" ? "Not yet this week" : "Not trained" : x2.st === "track" ? "Tracked only" : x2.st === "under" ? `${r1(x2.lo - x2.v)} below target` : x2.st === "part" ? `${r1(x2.lo - x2.v)} to go` : x2.st === "plan" ? "On plan" : x2.st === "over" ? `${r1(x2.v - x2.hi)} above target` : "On target";
-      const tr = sc ? `${musTrend(sc)}${sc.indirect ? ", read from exercises that train it indirectly" : ""}.` : "Not enough sessions yet for a strength trend.";
-      const tagCls = x2.st === "in" ? "green" : x2.st === "under" ? "yellow" : x2.st === "over" ? "blue" : x2.st === "plan" ? "hastip" : "";
-      detail = b`<div class="bm-detail"><div class="row spread"><b>${ML[sel]}</b><span class=${`tag ${tagCls}`} data-tip=${x2.st === "plan" ? ON_PLAN_TIP : A}>${where}</span></div><p class="small" style="margin:4px 0 6px">${src === "avg" && avg ? `${hsw(x2.v)} on average over ${avgWeeksTxt(avg)}` : `${r1(x2.v)} hard set${r1(x2.v) === 1 ? "" : "s"} so far this week`}${tgt(sel)}. ${tr}</p><div class="row"><button class="btn sm" data-act="goDash" data-sec="volume" data-m=${sel}>Weekly trend</button><button class="btn sm" data-act="mapSel" data-m=${sel}>Close</button></div></div>`;
-    } else {
-      const low = MK.filter((m3) => hasTarget(m3) && lowSt(S4(m3)));
-      detail = b`<p class="small muted" style="margin:6px 0 0">Tap a muscle ${tipButton(
-        `${mapView() === "3d" ? "Drag sideways to turn it. " : ""}Tap a muscle for its numbers.${src === "week" ? " This is the week so far, so most muscles read low early in the week." : ""}`,
-        "About the map"
-      )}</p>${low.length && src === "avg" ? b`<div class="row" style="margin-top:6px;gap:4px"><span class="small muted">Below target:</span>${low.slice(0, LOW_SHOWN).map((m3) => b`<button class="chip" data-act="mapSel" data-m=${m3}>${ML[m3]}</button>`)}</div>` : A}`;
-    }
-    const N2 = MK.filter((m3) => hasTarget(m3)).length;
-    const msub = (() => {
-      if (!avg) {
-        if (!state.sessions.length) return "none logged yet";
-        const n3 = MK.filter((m3) => hasTarget(m3) && metSt(S4(m3))).length;
-        return `${n3} of ${N2} on target so far`;
-      }
-      const sa = muscleStatus(avg);
-      const inA = MK.filter((m3) => {
-        const q = sa[m3];
-        return hasTarget(m3) && !!q && metSt(q);
-      }).length;
-      return `${inA} of ${N2} on target`;
-    })();
-    const v3 = mapView() === "3d";
-    B32.status = st;
-    B32.sel = sel;
-    const stage = v3 ? b`<div class="bm3d" id="bm3d"><div class="bm3d-stage" role="img" aria-label="3D body, shaded by hard sets a week. Drag sideways to turn it, tap a muscle for its numbers. The same numbers are in the flat view."></div><p class="bm3d-msg small muted" hidden></p><div class="seg bm3d-turn" role="group" aria-label="Turn the body"><button class="chip" data-act="map3dTurn" data-v="0">Front</button><button class="chip" data-act="map3dTurn" data-v="1">Side</button><button class="chip" data-act="map3dTurn" data-v="2">Back</button></div></div>` : b`<div class="bm-wrap">${fig("f", "Front")}${fig("b", "Back")}</div>`;
-    const on = (x2) => `chip ${x2 ? "on" : ""}`;
-    return section({
-      sk: "today:map",
-      key: "map",
-      title: "Muscle map",
-      sub: msub,
-      body: b`<div class="row spread"><div class="seg" role="group" aria-label="View"><button class=${on(!v3)} data-act="mapView" data-v="flat" aria-pressed=${String(!v3)}>Flat</button><button class=${on(v3)} data-act="mapView" data-v="3d" aria-pressed=${String(v3)}>3D</button></div><div class="seg" role="group" aria-label="Time range">${avg ? b`<button class=${on(src === "avg")} data-act="mapSrc" data-v="avg" aria-pressed=${String(src === "avg")}>4-week avg</button>` : A}<button class=${on(src === "week")} data-act="mapSrc" data-v="week" aria-pressed=${String(src === "week")}>This week</button></div></div>
-${stage}
-<div class="bm-legend small">${src === "week" ? b`<span class="hastip" data-tip="The week is still going: short of the minimum so far, not behind."><i class="st-part"></i>Under way ${counts["part"]}</span>` : b`<span><i class="st-under"></i>Below target ${counts["under"]}</span>${counts["plan"] ? b`<span class="hastip" data-tip=${ON_PLAN_TIP}><i class="st-plan"></i>On plan ${counts["plan"]}</span>` : A}`}<span><i class="st-in"></i>On target ${counts["in"]}</span><span><i class="st-over"></i>Above ${counts["over"]}</span><span><i class="st-none"></i>${src === "week" ? "Not yet" : "None"} ${counts["none"]}</span>${counts["track"] ? b`<span class="hastip" data-tip="Counted, with no weekly target, so never called under or over. Give one a target in Settings, Weekly set targets."><i class="st-track"></i>Tracked only ${counts["track"]}</span>` : A}</div>
-${detail}`
-    });
-  }
-  var MAP_ACTS = {
-    mapSel(t4) {
-      const m3 = t4.dataset["m"] ?? null;
-      ui.mapSel = ui.mapSel === m3 ? null : m3;
-      fx.rerenderKeepScroll();
-    },
-    mapSrc(t4) {
-      ui.mapSrc = t4.dataset["v"] ?? null;
-      fx.rerenderKeepScroll();
-    },
-    mapView(t4) {
-      const v3 = t4.dataset["v"] === "3d" ? "3d" : "flat";
-      prefSet(MAPVIEW_KEY, v3);
-      B32.viewMem = v3;
-      fx.rerenderKeepScroll();
-    },
-    map3dTurn(t4) {
-      map3dTurnTo([0, Math.PI / 2, Math.PI][+(t4.dataset["v"] || 0)] || 0);
-    }
-  };
-  function exMusParts(e5) {
-    const help = (e5.secondary || []).filter((k2) => k2 !== e5.primary);
-    return { main: e5.primary, help };
-  }
-  function exBodyFlat(e5, small) {
-    const { main, help } = exMusParts(e5);
-    const fig = (view, label) => b`<figure class="bm"><svg viewBox="0 0 120 210" aria-hidden="true"><g class="bm-base">${BM_BASE}</g>${Object.entries(
-      BM[view]
-    ).map(
-      ([k2, sh]) => w`<g class=${`mx ${k2 === main ? "ex-main" : help.includes(k2) ? "ex-help" : ""}`}>${sh.map(bmShape)}</g>`
-    )}</svg><figcaption>${label}</figcaption></figure>`;
-    return b`<div class=${small ? "bm-wrap bm-small" : "bm-wrap"}>${fig("f", "Front")}${fig("b", "Back")}</div>`;
-  }
-  function exMusWords(e5) {
-    const { main, help } = exMusParts(e5);
-    return b`<p class="small" style="margin:0"><b>Main</b>: ${ML[main] || main}${help.length ? b`. <b>Helpers</b>: ${andList(help.map((k2) => ML[k2] || k2))} ${tipButton(
-      "A helper muscle counts half a set toward its weekly total (Pelland 2025). Which muscles are helpers on a lift is the library's own call, including grip and holding muscles such as the forearms and traps on a deadlift, which the study behind the half credit did not measure.",
-      "About helper muscles"
-    )}` : A}</p>`;
-  }
-  function exMusLegend(e5) {
-    return b`<div class="bm-legend small"><span><i class="ex-main"></i>Main</span>${exMusParts(e5).help.length ? b`<span><i class="ex-help"></i>Helper</span>` : A}</div>`;
   }
 
   // src/app/today.ts
@@ -17408,12 +17469,12 @@ ${ms.length ? b`<div class="scroll-x" style="margin-top:10px"><table class="t"><
       fx.rerenderKeepScroll();
       fx.toast("Exercise removed", true);
     };
-    const logged = blk.sets.filter((x2) => x2.done).length, typed = blk.sets.filter((x2) => !x2.done && (+(x2.r ?? 0) > 0 || x2.rir != null)).length;
-    if (logged || typed) {
+    const logged2 = blk.sets.filter((x2) => x2.done).length, typed = blk.sets.filter((x2) => !x2.done && (+(x2.r ?? 0) > 0 || x2.rir != null)).length;
+    if (logged2 || typed) {
       if (ui.modal) fx.closeModal();
       fx.confirm(
         `Remove ${EX(blk.exId).name}?`,
-        `${logged ? `${logged} logged set${logged === 1 ? "" : "s"}` : ""}${logged && typed ? " and " : ""}${typed ? `${typed} typed set${typed === 1 ? "" : "s"}` : ""} go with it. Undo is offered right after.`,
+        `${logged2 ? `${logged2} logged set${logged2 === 1 ? "" : "s"}` : ""}${logged2 && typed ? " and " : ""}${typed ? `${typed} typed set${typed === 1 ? "" : "s"}` : ""} go with it. Undo is offered right after.`,
         "Remove exercise",
         go,
         true
@@ -18889,11 +18950,11 @@ ${ms.length ? b`<div class="scroll-x" style="margin-top:10px"><table class="t"><
       document.body.classList.remove("modal-open");
       renderModal.last = null;
       if (was && was.kind === "exMus") {
-        cancelAnimationFrame(B32.anim);
-        B32.ex = null;
-        if (B32.yawKeep != null) {
-          B32.yaw = B32.yawKeep;
-          B32.yawKeep = null;
+        cancelAnimationFrame(B3.anim);
+        B3.ex = null;
+        if (B3.yawKeep != null) {
+          B3.yaw = B3.yawKeep;
+          B3.yawKeep = null;
         }
         if (document.getElementById("bm3d")) mount3D();
       }
@@ -19784,32 +19845,7 @@ ${ms.length ? b`<div class="scroll-x" style="margin-top:10px"><table class="t"><
     <div class="row" style="margin-top:8px"><button class="btn sm" data-act="exNewFromPicker">+ New exercise</button>${m3.mode === "addBlock" && state.draft && !state.draft.editingId ? '<button class="btn sm" data-act="pickEx">Pick for me</button>' : ""}</div>
     <div class="sheet-scroll" id="pickList">${pickerBody(m3)}</div></div>`;
       } else if (m3.kind === "exEdit") {
-        const e5 = m3.e;
-        h3 = `<div class="sheet" role="dialog" aria-modal="true"><div class="sheet-h"><h3>${m3.isNew ? "New exercise" : "Edit exercise"}</h3><button class="ib" aria-label="Close" data-act="mClose">✕</button></div><div class="stack">
-    <label class="field">Name<input type="text" data-ebind="name" value="${esc(e5.name)}"></label>
-    <div class="grid2"><label class="field">Primary muscle<select data-ebind="primary">${e5.primary ? "" : '<option value="" selected disabled>Pick one</option>'}${MUSCLES.map(([k2, l4]) => `<option value="${k2}" ${e5.primary === k2 ? "selected" : ""}>${l4}</option>`).join("")}</select></label>
-    <label class="field">Equipment<select data-ebind="equip">${EQUIP.map(([k2, l4]) => `<option value="${k2}" ${e5.equip === k2 ? "selected" : ""}>${l4}</option>`).join("")}</select></label></div>
-    <label class="field"><span>Movement</span> ${tipi("Compound: a press, row, pull-up, squat, or hinge. Isolation: one joint, like a curl or a raise. It sets the size of load increases (about 2.5% of the load on compound lifts, 5% on isolation), the setup time in estimates, which RIR calibration group the lift joins, and what Short on time keeps.", "About movement")}<select data-ebind="kind"><option value="" ${e5.kind ? "" : "selected"}>Automatic (${autoCompound({ ...e5, kind: void 0 }) ? "compound" : "isolation"})</option><option value="compound" ${e5.kind === "compound" ? "selected" : ""}>Compound</option><option value="iso" ${e5.kind === "iso" ? "selected" : ""}>Isolation</option></select></label>
-    ${e5.bw ? "" : (() => {
-          const def = loadWords({ ...e5, load: void 0 });
-          const has = !m3.isNew && state.sessions.some((s3) => s3.ex.some((b2) => b2.exId === e5.id));
-          return `<label class="field"><span class="hastip" data-tip="${esc("What the number you type means. Estimates and targets stay in this frame; weight lifted counts both dumbbells or both sides." + (has ? " Changing it does not convert sets already logged." : ""))}">Weight is entered as</span><select data-ebind="load"><option value="auto" ${!e5.load ? "selected" : ""}>Default for this equipment: ${esc(def)}</option>${LOAD_MODES.map(([k2, l4]) => `<option value="${k2}" ${e5.load === k2 ? "selected" : ""}>${l4}</option>`).join("")}</select></label>`;
-        })()}
-    <div><p class="small muted">Helper muscles (count as half a set)</p><div class="chips">${MUSCLES.filter(([k2]) => k2 !== e5.primary).map(([k2, l4]) => `<button class="chip ${e5.secondary.includes(k2) ? "on" : ""}" data-act="secToggle" data-m="${k2}">${l4}</button>`).join("")}</div></div>
-    ${MK.includes(e5.primary) ? `<div class="exbody"><button type="button" class="linkbtn tall" data-act="exBodyTog" aria-expanded="${!!ui.exBody}">${ui.exBody ? "Hide body" : "Show on body"}</button>${ui.exBody ? markupOf(exBodyFlat(e5, true)) + markupOf(exMusLegend(e5)) : ""}</div>` : ""}
-    <label class="check-inline"><input type="checkbox" data-ebind="bw" ${e5.bw ? "checked" : ""}><span class="hastip" data-tip="Log only what you add (0 for bodyweight). Your logged bodyweight is added for estimates and weight lifted.">Bodyweight exercise</span></label>
-    ${e5.bw ? `<label class="check-inline"><input type="checkbox" data-ebind="assist" ${e5.assist ? "checked" : ""}><span class="hastip" data-tip="For an assisted machine: you type the help it gives, and less help is progress.">Assisted (a machine takes weight off)</span></label>` : ""}
-    ${e5.bw ? `<label class="field"><span class="hastip" data-tip="Measured only for push-ups (64%, force plates). Pull-ups and dips count all of it; the rest are segment-mass estimates.">Share of bodyweight moved (%)</span><input type="text" inputmode="numeric" data-ebind="bwfRaw" value="${esc(e5.bwfRaw || "")}"></label>` : ""}
-    <label class="check-inline"><input type="checkbox" data-ebind="perSide" ${e5.perSide ? "checked" : ""}><span class="hastip" data-tip="Reps are logged for one side. One set still counts as one set; weight lifted counts both sides.">One side at a time (reps per side)</span></label>
-    <label class="check-inline"><input type="checkbox" data-ebind="timed" ${e5.timed ? "checked" : ""}><span class="hastip" data-tip="${!m3.isNew && state.sessions.some((s3) => s3.ex.some((b2) => b2.exId === e5.id)) ? "This exercise has logged sets: switching changes how those numbers read." : "The reps column holds seconds."}">Timed hold (log seconds)</span></label>
-    <details class="more" ${!m3.back || m3.moreOpen ? "open" : ""}><summary>More options<span class="small muted">less common, load step, plates, heaviest, notes</span></summary><div class="stack">
-    <label class="check-inline"><input type="checkbox" data-ebind="rare" ${e5.rare ? "checked" : ""}>Mark as less common</label>
-    <div class="grid2"><label class="field"><span class="hastip" data-tip="The smallest jump you can make on this exercise, everywhere it appears. Earned increases are whole multiples of it, about 2.5% of the load on compound lifts and 5% on isolation work. Blank uses each routine's setting.">Load step (${U()})</span><input type="text" inputmode="decimal" data-ebind="incRaw" value="${esc(e5.incRaw)}" placeholder="Routine setting"></label>
-    <label class="field"><span class="hastip" data-tip="What to load, shown under the sets in a session.">Plate helper</span><select data-ebind="plates">${PLATE_MODES.map(([k2, l4]) => `<option value="${k2}" ${(e5.plates || "auto") === k2 ? "selected" : ""}>${l4}</option>`).join("")}</select></label></div>
-    ${platesMode(e5) === "bar" ? `<label class="field"><span class="hastip" data-tip="A trap bar, EZ bar, or any bar other than the one in Settings. Used for the plates line and so a deload never goes under it.">Bar for this lift (${U()})</span><input type="text" inputmode="decimal" data-ebind="barRaw" value="${esc(e5.barRaw || "")}" placeholder="Settings bar, ${fmtW(barKg())}"></label>` : ""}
-    <label class="field"><span class="hastip" data-tip="The top of the stack or the biggest dumbbell. At that load, targets move to more reps and then harder reps, and the lift is not called stalled.">Heaviest available (${U()}${e5.bw ? ", added" : ""})</span><input type="text" inputmode="decimal" data-ebind="maxRaw" value="${esc(e5.maxRaw || "")}" placeholder="No limit"></label>
-    <label class="field">Notes and cues<textarea data-ebind="note">${esc(e5.note || "")}</textarea></label></div></details>
-    <div class="row"><button class="btn primary" data-act="exSave">${m3.isNew && m3.back && m3.back.kind === "picker" ? { addBlock: "Create and add to session", addDay: "Create and add to day", swapBlock: "Create and swap in", swapItem: "Create and swap in" }[m3.back.mode] || "Save exercise" : "Save exercise"}</button><button class="btn" data-act="${m3.back ? "exBack" : "mClose"}">${m3.back ? "Back" : "Cancel"}</button></div>${m3.isNew ? "" : markupOf(howToLink(m3.e))}${!m3.isNew && m3.e.custom && !window.claude ? `<button class="linkbtn" style="min-height:44px" data-act="exSuggest" data-tip="Your exercises are only in your log. This sends it to the app's owner, who can add it to the library for everyone.">Suggest for the library</button>` : ""}</div></div>`;
+        h3 = exEditSheet(m3);
       } else if (m3.kind === "exhist") {
         h3 = exHistSheet(m3.exId);
       } else if (m3.kind === "bmenu") {
@@ -19830,16 +19866,7 @@ ${ms.length ? b`<div class="scroll-x" style="margin-top:10px"><table class="t"><
       } else if (m3.kind === "routineNew") {
         h3 = routineNewSheet();
       } else if (m3.kind === "exMus") {
-        const e5 = EX(m3.exId);
-        const v3 = mapView() === "3d";
-        const pm = exMusParts(e5);
-        B32.ex = { main: pm.main, help: pm.help };
-        if (B32.yawKeep == null) B32.yawKeep = B32.yaw;
-        h3 = `<div class="sheet exmus" role="dialog" aria-modal="true" aria-labelledby="exMusH"><div class="sheet-h"><h3 id="exMusH">Muscles: ${esc(e5.name)}</h3><button class="ib" aria-label="Close" data-act="mClose">✕</button></div>
-    ${markupOf(exMusWords(e5))}
-    <div class="seg" role="group" aria-label="View" style="margin-top:8px"><button class="chip ${v3 ? "" : "on"}" data-act="mapView" data-v="flat" aria-pressed="${!v3}">Flat</button><button class="chip ${v3 ? "on" : ""}" data-act="mapView" data-v="3d" aria-pressed="${v3}">3D</button></div>
-    ${v3 ? `<div class="bm3d" id="bm3dx"><div class="bm3d-stage" role="img" aria-label="${esc(`3D body with ${ML[pm.main] || pm.main} lit${pm.help.length ? ", helpers lighter" : ""}. Drag sideways to turn it.`)}"></div><p class="bm3d-msg small muted" hidden></p><div class="seg bm3d-turn" role="group" aria-label="Turn the body"><button class="chip" data-act="map3dTurn" data-v="0">Front</button><button class="chip" data-act="map3dTurn" data-v="1">Side</button><button class="chip" data-act="map3dTurn" data-v="2">Back</button></div></div>` : markupOf(exBodyFlat(e5))}
-    ${markupOf(exMusLegend(e5))}</div>`;
+        h3 = exMusSheet(m3);
       } else if (m3.kind === "goal") {
         h3 = goalSheet(m3);
       } else if (m3.kind === "inc") {
@@ -23358,7 +23385,7 @@ ${JSON.stringify(fb.context, null, 1)}`;
     }, fbContext, FB_CTX_MAX, logCut, logBuf, log, dateIndex, sessionsOn, bestLine, whyTarget, recent4w, weekSessions, fmtDate, fmtDateLong, fbShrink, orderAt, orderRun, dropOnlyLift, profHeavy, appBand, fitRecordOld, prof, profClean, profRule, profPlan, defPlan, defBand, profMoveBands, profApplyList, strengthPick, PROF_DAYS, FOCUS_MAX, estInLoad, keepExtra, EXTRA_MAX, draftPlanMin, pace, paceRatios, sessModelMin, PACE_N, PACE_DAYS, PACE_MIN, plainTemplate, trashTidy, ENV, KEY, COMMON, COMMON_TIP, isCommon, bwEvery, isRestWeek, sessCmp, avgWeeks, weekStreak, coach, noLog, adjOn, bwAt, newBlock, cycleState, sortedSessions, addDays, loadIn, gymRack, gymClean, dbListOf, capOf, refreshEx, effShow, rirScale, setStr, libExercises, obGate, obTour, andList, belowMin, aboveMax, starterRoutine, starterSigs, plateList, exBarKg, VOL_MODES, liveLogFetch, regionSrc, fitTargets, firstFullWeek, moveBlock, BANDS, installSheet, siteHost, greyW, effW, greyR, lighterLoad, heavierLoad, incOf, swapPlan, planSetsPerWeek, weekNeed, stepRead, e1inv, rtfAt, rtfOf, rtfBand, calStats, rirEff, isHard, setCredit, tonnage, loadMode, loadWords, loadNote, progStep, jumpCap, setSecs, setupSecs, recovery, rolling7, rankDays, rankExercises, isCompound, patternOf, noE1, whtrLine: (p3) => markupOf(whtrLine(p3)), exHeadline: (id) => markupOf(exHeadline(id)), remainMin, shortPlan, weekPlan, cycleProjection, lastLighterWeek, avgFirstWeek, avgWait, stallWeeks, weeksAvg, fitFloors, refit, regionBalance, parseHeight, mixCheck, swapCands, eqPlan, exportCSV, importData, chunksOf, assemble, sessionMuscles, TRACK_ONLY, hasTarget, cloud, Hx, mergeChunk, baseOf, sync: () => cq(cloudPull), TEMPLATES, lastRFor, impDate, impRows, impNorm, impMatch, impFromText, impFromTable, impHeader, impBuild, impStart, impXlsx, parseSets, undoStack, undoRestore, undoForget, allTimeBests, bestsBoard: () => {
       const b2 = bestsBoard();
       return { n: b2.n, html: markupOf(b2.html) };
-    }, obActive, fmtW, rirUsual, rirEst, routineFromTemplate, plannedSets, map3d: () => ({ state: B32.state, fail: B32.fail, meshes: B32.meshes.length, yaw: B32.yaw, glow: Object.keys(B32.mats).filter((m3) => B32.mats[m3].emissiveIntensity > 0), canvas: !!document.querySelector("#bm3d canvas"), colors: Object.fromEntries(Object.entries(B32.mats).map(([m3, mt]) => [m3, "#" + mt.color.getHexString()])), pick: (x2, y2) => map3dPick(x2, y2), want: map3dColors() }), cloudState: () => ({ on: cloud.on, status: cloud.status, err: cloud.err, uid: cloud.uid, acct: cloud.acct }), acctUser: () => acct.user, acctWaiting: () => !!acctWait.pw, flush: () => cq(cloudFlush), cloudInit, cloudStop, asideList, backupDue, routineUpdates, planFor, platesMode, plateText, chunksOf, IDX, suggest, e1, render, ACT, ui, makeDemo, invalidate, normalize, snapshot, saveNow, timer, weekStats, weekStart, today, EX, blockProgress, dayMinutes, weekStreak, coach, tonnageNow, livePR, movers, stalledIds, muscleStatus, actualAvg4, plannedPerWeek, parseSets, fillSets, newBlock, lastNoteOf, sizeRows, sessionMuscleSets, sessionCapNote: (d3) => markupOf(sessionCapNote(d3)), routineClutter, rowBlank, dayReasons, impTextSets, liftTrend, prsWithin, activeRoutine, rackStep, repFloor, sessionLength, prBeat, exInjury, exJoints, openModal, EQUIP, HARD_EX, recentLighter, planEvidenceNote: (pv) => markupOf(planEvidenceNote(pv)), howToUrl, editFp, toast, avgWeeks, regionWk, REGION_WKS, SAFETY_TXT, libFiltered, nameMatch, workLoad, fitE, lighter, offTarget, sessionWord, sessionWords, dayLabel, daySets, ssLetters, routineSig, tplCountLine, pwOf, planSetsOf, withPlanSets, dropStarter, trainOn, planItemOf, fatigueStalls, avgWeeksTxt, routineFromLog, repSpan, rangeWords, calDueIdx, readyCard, sameRR, hintOnce, overSets, rackTol, daysOff, BACK_DAYS, prName, sessTm, effTgt, bwDueCard: () => markupOf(bwDueCard()), bwNoLoad, applyPick, joinAdjacent, sameExOnce, savedEx, goalState, goalLine: (id) => markupOf(goalLine(id)), bwRefLoad, ML, exMusParts, musTrend, U, toD, fromD, loadLabel, exName, planCredit, gymOf, isDeloadWeek, freeMode, injuredSet, prLoad, statsUpTo, readiness, bwRef, weekRoutine, logBack, logStart, easierText, barKg, suggestCore, loadOf, bwLoad, hardCredit, rirHalfOn, prFrame, stallWords, atRangeTop, oddLoad, lightZero };
+    }, obActive, fmtW, rirUsual, rirEst, routineFromTemplate, plannedSets, map3d: () => ({ state: B3.state, fail: B3.fail, meshes: B3.meshes.length, yaw: B3.yaw, glow: Object.keys(B3.mats).filter((m3) => B3.mats[m3].emissiveIntensity > 0), canvas: !!document.querySelector("#bm3d canvas"), colors: Object.fromEntries(Object.entries(B3.mats).map(([m3, mt]) => [m3, "#" + mt.color.getHexString()])), pick: (x2, y2) => map3dPick(x2, y2), want: map3dColors() }), cloudState: () => ({ on: cloud.on, status: cloud.status, err: cloud.err, uid: cloud.uid, acct: cloud.acct }), acctUser: () => acct.user, acctWaiting: () => !!acctWait.pw, flush: () => cq(cloudFlush), cloudInit, cloudStop, asideList, backupDue, routineUpdates, planFor, platesMode, plateText, chunksOf, IDX, suggest, e1, render, ACT, ui, makeDemo, invalidate, normalize, snapshot, saveNow, timer, weekStats, weekStart, today, EX, blockProgress, dayMinutes, weekStreak, coach, tonnageNow, livePR, movers, stalledIds, muscleStatus, actualAvg4, plannedPerWeek, parseSets, fillSets, newBlock, lastNoteOf, sizeRows, sessionMuscleSets, sessionCapNote: (d3) => markupOf(sessionCapNote(d3)), routineClutter, rowBlank, dayReasons, impTextSets, liftTrend, prsWithin, activeRoutine, rackStep, repFloor, sessionLength, prBeat, exInjury, exJoints, openModal, EQUIP, HARD_EX, recentLighter, planEvidenceNote: (pv) => markupOf(planEvidenceNote(pv)), howToUrl, editFp, toast, avgWeeks, regionWk, REGION_WKS, SAFETY_TXT, libFiltered, nameMatch, workLoad, fitE, lighter, offTarget, sessionWord, sessionWords, dayLabel, daySets, ssLetters, routineSig, tplCountLine, pwOf, planSetsOf, withPlanSets, dropStarter, trainOn, planItemOf, fatigueStalls, avgWeeksTxt, routineFromLog, repSpan, rangeWords, calDueIdx, readyCard, sameRR, hintOnce, overSets, rackTol, daysOff, BACK_DAYS, prName, sessTm, effTgt, bwDueCard: () => markupOf(bwDueCard()), bwNoLoad, applyPick, joinAdjacent, sameExOnce, savedEx, goalState, goalLine: (id) => markupOf(goalLine(id)), bwRefLoad, ML, exMusParts, musTrend, U, toD, fromD, loadLabel, exName, planCredit, gymOf, isDeloadWeek, freeMode, injuredSet, prLoad, statsUpTo, readiness, bwRef, weekRoutine, logBack, logStart, easierText, barKg, suggestCore, loadOf, bwLoad, hardCredit, rirHalfOn, prFrame, stallWords, atRangeTop, oddLoad, lightZero };
     render();
     wakeOn();
     timerResume();

@@ -91,6 +91,14 @@ const SHEETS = [
   ['the routine templates, three days a week', DEMO + "L.state.settings.profile={days:3};L.saveNow();", OPEN({ kind: 'templates', from: 'plan' }), /Fits your days/],
   ['the recap with PRs and an update offer', DEMO, "L.openModal({kind:'recap',title:'Session saved',lines:['5 exercises, 18 working sets','Bench <b> & co'],prs:[{name:'Barbell Bench Press',what:'Rep PR, 185 x 9',was:'was 8 reps'},{name:'Back Squat',what:'Heaviest yet',was:''}],note:'',upd:{dayName:'Push',text:'Add Cable Fly'},sid:'x'});", /2 new PRs[\s\S]*Update Push/i],
   ['the recap with one PR', DEMO, "L.openModal({kind:'recap',title:'Session saved',lines:['1 exercise'],prs:[{name:'Bench',what:'Rep PR',was:'was 8'}],note:'',upd:null,sid:'x'});", /New PR/i],
+  // The exercise sheets' states.
+  ['a new exercise from the picker in a session', DEMO + START, OPEN({ kind: 'picker', mode: 'addBlock', title: 'Add exercise to session', q: '', m: '' }) + "L.ACT.exNewFromPicker({dataset:{}});", /Create and add to session/],
+  ['an exercise edited, shown on the body', DEMO + 'L.ui.exBody=true;', "L.openModal({kind:'exEdit',isNew:false,e:{...L.EX('bench'),incRaw:'',maxRaw:'',barRaw:'',bwfRaw:''}});", /Hide body/],
+  ['a custom exercise edited', DEMO, "L.openModal({kind:'exEdit',isNew:false,e:{...L.EX('bench'),custom:true,incRaw:'2.5',maxRaw:'300',barRaw:'',bwfRaw:'',note:'Pause <1s> & go'}});", /Edit exercise/],
+  ['an exercise edited: renamed, then made bodyweight', DEMO, "L.openModal({kind:'exEdit',isNew:false,e:{...L.EX('bench'),incRaw:'',maxRaw:'',barRaw:'',bwfRaw:''}});" + "{const n=document.querySelector('[data-ebind=\"name\"]');n.value='My bench';n.dispatchEvent(new Event('input',{bubbles:true}));const c=document.querySelector('[data-ebind=\"bw\"]');c.checked=true;c.dispatchEvent(new Event('change',{bubbles:true}));}", /Share of bodyweight/],
+  ['an exercise edited: a helper muscle added, the primary changed', DEMO, "L.openModal({kind:'exEdit',isNew:false,e:{...L.EX('bench'),incRaw:'',maxRaw:'',barRaw:'',bwfRaw:''}});" + "L.ACT.secToggle({dataset:{m:'biceps'}});{const p=document.querySelector('[data-ebind=\"primary\"]');p.value='shoulders';p.dispatchEvent(new Event('change',{bubbles:true}));}", /Helper muscles/],
+  ['a new exercise with no muscle picked', DEMO, "L.openModal({kind:'exEdit',isNew:true,e:{id:'',name:'',primary:'',secondary:[],equip:'machine',bw:false,rare:false,perSide:false,note:'',custom:true,archived:false,incRaw:'',maxRaw:'',barRaw:'',bwfRaw:''}});", /Pick one/],
+  ['the muscles of a lift in 3D', DEMO + "L.ACT.mapView({dataset:{v:'3d'}});", OPEN({ kind: 'exMus', exId: 'bench' }), /Muscles: /],
   ['the exercise menu of the last lift', DEMO + START, "L.ACT.bMenu({dataset:{b:String(L.state.draft.ex.length-1)}});", /Remove from session/]
 ];
 
