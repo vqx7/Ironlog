@@ -310,6 +310,14 @@ const SHEETS = [
       const after = await set(0);
       ok(!cleared.done && after.done && after.lb === 230 && after.r === 8, `4. ${mode}: cleared it is unticked, and 230 typed ticks it again as 230 x 8`, { cleared, after });
       if (mode.startsWith('live')) { const rest1 = await left(); ok(rest0 != null && rest1 != null && Math.abs(rest1 - rest0) <= 2, `4. ${mode}: the rest under way goes on (${rest0} s left before, ${rest1} s after)`, { rest0, rest1 }); }
+      // Set 2's load cleared and its checkmark tapped on the grey load (230, from set 1): the same set again, the rest still going on.
+      if (mode.startsWith('live')) {
+        await clear('w', 0, 1);
+        const off = await set(1);
+        await tick(0, 1);
+        const again = await set(1), rest2 = await left();
+        ok(!off.done && again.done && again.lb === 230 && rest2 != null && Math.abs(rest2 - rest0) <= 2, `4. ${mode}: set 2 cleared and ticked on its grey 230 is 230 x 8, the rest going on (${rest2} s left)`, { off, again, rest0, rest2 });
+      }
       if (mode === 'History edit' || mode === 'past') {
         await page.click('#view [data-act="finish"]');
         const asked = [];
