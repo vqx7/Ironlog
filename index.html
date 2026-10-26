@@ -6523,9 +6523,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     if (!pre || !afterBreak(pre, last.date)) return null;
     const preTop = workLoad(pre.pts, +plan.repMin);
     if (!(preTop > top + 1e-6)) return null;
-    const n3 = Math.max(1, +plan.sets || planPts.length);
-    if (planPts.length < Math.min(n3, triedAt(last, top).length) || triedAt(last, top).some((p3) => p3.missed || p3.r < +plan.repMin))
-      return null;
+    if (triedAt(last, top).some((p3) => p3.missed || p3.r < +plan.repMin)) return null;
     const bw = bwRefLoadIn(M3, ex);
     if (ex.bw && !(bw > 0)) return null;
     let est = 0;
@@ -9324,14 +9322,17 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
   // src/app/act.ts
   var depth = 0;
   var dropInside = false;
+  var outerUndo = false;
   function act(change, opts = {}) {
     if (opts.check && !opts.check()) return false;
     if (depth > 0) {
       if (!opts.inProgress) dropInside = true;
+      if (opts.undo && !outerUndo) log("act", "an Undo step was asked inside a change that keeps none");
       change();
       return true;
     }
     if (opts.undo) snapshot(typeof opts.undo === "function" ? opts.undo : null);
+    outerUndo = !!opts.undo;
     depth++;
     let inside = false;
     try {
