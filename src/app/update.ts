@@ -9,7 +9,6 @@
    and Reload. */
 
 import { html, nothing, render } from 'lit-html';
-import { rec } from './records';
 import { fx, ui } from './store';
 import { saveNow } from './sync';
 
@@ -49,9 +48,7 @@ export function updateStart(): void {
 /** The bar's two buttons, by data-act. A sheet with unsaved changes keeps the page until it is saved or cancelled. */
 export const UPDATE_ACTS = {
   appUpdate(): void {
-    // The open sheet is the legacy script's until the sheets move (r61), read as a raw record.
-    const m = rec(ui.modal);
-    if (m && m.dirty) {
+    if (ui.modal && ui.modal.dirty) {
       fx.toast('Save or cancel first. Your changes are still here.');
       return;
     }

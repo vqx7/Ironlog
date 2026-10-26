@@ -20,6 +20,7 @@ src/app/            TypeScript modules, the whole app when this is done
   routines.ts       the default plan, the ready-made routines, routine helpers (r50)
   formulas.ts       the 1RM estimate, working load, set counting, time (r50)
   store.ts          the shared state: state (replaced by setState), ui, cloud, acct (r51)
+  modals.ts         the open sheet: one type for every sheet, each kind with its fields (r63)
   records.ts        the schema version, limits, id checks, record cleaners (r51)
   chunks.ts         the sync documents; merge.ts, the three-way merge (r51)
   session.ts        a session in progress: grey loads, live targets, the Last column (r51)
@@ -48,7 +49,7 @@ src/01-03, 99       the page's markup and styles
 Layer 0, config and record shapes: config, types
 Layer 1, data: util, units, library, routines, formulas, records, gym, profile, model, layout
 Layer 2, engine and analytics: session, loads, prs, trend, volume, goals, importing, format, charts, analytics, time, weeks, coach, engine, plans, pick
-Layer 3, storage and sync: chunks, merge, store, live, providers, normalize, storage, sync, act
+Layer 3, storage and sync: chunks, merge, modals, store, live, providers, normalize, storage, sync, act
 Layer 4, screens: icons, feedback, effort, guide, sheets, sheetsmisc, sheetslift, sheetsplan, sheetsexercise, sheetspicker, sheetsapp, env, outside, display, view, update, history, settings, graphs, plan, stats, calendar, week, map, today, workstate, worksets, workfinish, workdrag, workout
 
 - **Screens as components**, one per tab, reading copy and labels from one place.

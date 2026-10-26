@@ -44,6 +44,39 @@ type ImpCardio = {
   km?: number;
 };
 
+/** An exercise as the reader found it: its sets from a table, or the text of its sets from notes, read once the exercise is known (the import screen's impTextSets). */
+export interface ImpReadItem {
+  name: string;
+  sets?: ImpSet[] | undefined;
+  setsText?: string[] | undefined;
+  note?: string | undefined;
+  ss?: string | undefined;
+}
+/** A session as the reader found it: no date when the notes gave none (the preview asks for one). */
+export interface ImpReadSession {
+  date: string | null;
+  name: string;
+  items: ImpReadItem[];
+  deload?: boolean | undefined;
+  note?: string | undefined;
+  durMin?: number | undefined;
+}
+/** What a file or pasted text was read as, before the preview: the sessions, the unit when it says one, what was skipped or not understood, cardio from a table, and whether it came from notes or still needs its columns named. */
+export interface ImpRead {
+  sessions: ImpReadSession[];
+  unit: 'kg' | 'lb' | null;
+  skipped: number;
+  cardio: number;
+  cardioRows?: ImpCardio[] | undefined;
+  unread?: string[] | undefined;
+  unreadN?: number | undefined;
+  cut?: boolean | undefined;
+  text?: boolean | undefined;
+  needMap?: boolean | undefined;
+}
+/** A table's columns as read or as chosen in the preview: the column index of each field. */
+export type ImpMap = Record<string, number | undefined>;
+
 /** The weeks of sessions the demo log makes (Settings, Load demo data). */
 export const DEMO_WEEKS = 8;
 
@@ -600,7 +633,7 @@ export function impCardioKind(name: unknown): string | null {
    one above (sheets often write the date once). Rest timer rows, and rows
    with neither reps nor seconds that are not cardio, are skipped and
    counted; cardio rows become cardio entries (r30). */
-export function impFromTable(rows: readonly (readonly unknown[])[], map: Record<string, number>) {
+export function impFromTable(rows: readonly (readonly unknown[])[], map: Record<string, number>): ImpRead {
   const head = rows[0];
   let unit = impUnitOf(head, map);
   // Strong's Set Order is the set's number (W, D and F mark types); only Hevy's set_type uses numbers as types.

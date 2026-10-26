@@ -14,6 +14,7 @@
 import type { DbRack, EngineState, Measurement, PlanItem, Routine, Settings } from './types';
 import type { BlkRef, DraftLike } from './session';
 import type { Trashed } from './records';
+import type { Modal } from './modals';
 
 /** The whole log as normalize() returns it: the fields the engine and the
     analytics read, typed field by field since 3b (EngineState), the settings
@@ -73,7 +74,7 @@ export interface Ui {
   dashMuscle: string;
   volMode: string;
   histOpen: unknown;
-  modal: unknown;
+  modal: Modal | null;
   folds: Record<string, unknown>;
   rng: Record<string, unknown>;
   eqLast: unknown;

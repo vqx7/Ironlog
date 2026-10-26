@@ -17477,7 +17477,7 @@ ${ms.length ? b`<div class="scroll-x" style="margin-top:10px"><table class="t"><
     },
     iconLater() {
       prefSet(ICON_NOTE, "1");
-      if (ui.modal && typeof ui.modal === "object" && "kind" in ui.modal && ui.modal.kind === "icon") fx.closeModal();
+      if (ui.modal && ui.modal.kind === "icon") fx.closeModal();
       fx.rerenderKeepScroll();
     },
     obAcctLater() {
@@ -19200,8 +19200,7 @@ ${ms.length ? b`<div class="scroll-x" style="margin-top:10px"><table class="t"><
   }
   var UPDATE_ACTS = {
     appUpdate() {
-      const m3 = rec(ui.modal);
-      if (m3 && m3.dirty) {
+      if (ui.modal && ui.modal.dirty) {
         fx.toast("Save or cancel first. Your changes are still here.");
         return;
       }

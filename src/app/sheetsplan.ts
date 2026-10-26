@@ -15,6 +15,7 @@ import { WEEK_DAYS } from './util';
 import { ui } from './store';
 import { profFields } from './settings';
 import { closeX } from './sheetsmisc';
+import type { RecapSheet } from './modals';
 
 /** How far a routine's training days a week may be from Your training's and still fit (every other day counts as about 3.5). */
 const FIT_DAYS = 0.5;
@@ -49,15 +50,6 @@ export function routineNewSheet(): TemplateResult {
     <label class="field">Name<input type="text" id="rNewName" placeholder="e.g. Upper focus, 6 days"></label>
     <p class="small muted">Three empty training days with rest days between. It is not active until you tap Make active.</p>
     <div class="row" style="margin-top:10px"><button class="btn primary" data-act="rNewSave">Create</button><button class="btn" data-act="mClose">Cancel</button></div></div>`;
-}
-
-/** What the recap after Finish shows: its lines, the PRs, a note, and the routine's update when the session changed the day. */
-export interface RecapSheet {
-  title: string;
-  lines: readonly string[];
-  prs?: readonly { name: string; what: string; was?: string | undefined }[] | undefined;
-  note?: string | undefined;
-  upd?: { dayName: string; text: string } | null | undefined;
 }
 
 /** The recap after Finish. */

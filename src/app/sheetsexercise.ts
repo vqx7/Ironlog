@@ -20,35 +20,11 @@ import { bestSet, fmtE, setShort, setStr, topSetPt } from './display';
 import { sessionWord } from './analytics';
 import { PLATE_MODES, platesMode } from './gym';
 import { B3, exBodyFlat, exMusLegend, exMusParts, exMusWords, mapView } from './map';
-import type { Exercise } from './types';
 import { state, ui } from './store';
 import { labelTip, tipButton } from './view';
 import { closeX } from './sheetsmisc';
 import { howToLink } from './sheetslift';
-
-/** The exercise being edited: its saved fields, and what the sheet's fields
-    hold as typed (a select writes its option's value, '' or 'auto' for the
-    default; a checkbox writes true or false). */
-export interface ExEdit extends Omit<Exercise, 'kind' | 'load' | 'timed' | 'assist'> {
-  kind?: Exercise['kind'] | '' | undefined;
-  load?: Exercise['load'] | 'auto' | undefined;
-  timed?: boolean | undefined;
-  assist?: boolean | undefined;
-  incRaw: string;
-  maxRaw?: string | undefined;
-  barRaw?: string | undefined;
-  bwfRaw?: string | undefined;
-}
-
-/** The editor sheet: new from the library or a picker, or a saved exercise. */
-export interface ExEditSheet {
-  isNew: boolean;
-  e: ExEdit;
-  /** The picker it was opened from, which Back returns to and Save adds to. */
-  back?: { kind: string; mode?: string | undefined } | null | undefined;
-  /** More options opened or closed by hand. */
-  moreOpen?: boolean | undefined;
-}
+import type { ExEditSheet } from './modals';
 
 /** What Save says when a new exercise goes straight into what the picker was adding to. */
 const SAVE_INTO: Readonly<Record<string, string>> = {

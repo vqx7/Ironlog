@@ -37,6 +37,7 @@ import { exTagParts } from './plan';
 import type { ExerciseLike } from './model';
 import { state } from './store';
 import { closeX } from './sheetsmisc';
+import type { PickerSheet } from './modals';
 
 /** The lifts logged last the picker lists, newest first. */
 const RECENT_PICKS = 8;
@@ -48,20 +49,6 @@ const DAY_PICKS = 3;
 const READY = { rest: 0.5, lighter: 0.85 } as const;
 /** The minutes Short on time offers. */
 const SHORT_CHOICES = [15, 20, 30, 45, 60, 75] as const;
-
-/** The picker as it is open: what it adds to or swaps, its search and muscle, and its title. */
-export interface PickerSheet {
-  mode: string;
-  title: string;
-  q?: string | undefined;
-  m?: string | undefined;
-  /** The day of the routine shown in Plan (addDay). */
-  day?: number | undefined;
-  /** The routine item swapped (swapItem). */
-  uid?: string | undefined;
-  /** The session's exercise swapped (swapBlock). */
-  b?: number | undefined;
-}
 
 /** The lifts already where the picker adds, and the tag that says so. */
 function pickerUsed(m: PickerSheet): { set: Set<string>; label: string } {

@@ -1110,7 +1110,7 @@ export const TODAY_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
   },
   iconLater() {
     prefSet(ICON_NOTE, '1');
-    if (ui.modal && typeof ui.modal === 'object' && 'kind' in ui.modal && ui.modal.kind === 'icon') fx.closeModal();
+    if (ui.modal && ui.modal.kind === 'icon') fx.closeModal();
     fx.rerenderKeepScroll();
   },
   obAcctLater() {
