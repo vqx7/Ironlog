@@ -22,6 +22,17 @@
 //      and the log opened again holds what the fields showed (fails on r60:
 //      the bar and the step were bounded in the unit typed, 110 and 500 lb,
 //      and 20000 kg typed showed 20000 until the app was opened again).
+//   4  the log read through its types end to end (351): normalize gives
+//      r60's answer, key order included, with the same records dropped and
+//      unknown fields kept, on 240 wide histories, each damaged three ways,
+//      and the sync's documents, but for two inputs no build writes, each
+//      read now as any other (both fail on r60): a workout in progress saved
+//      as false, 0 or an empty string reads as none, where r60 kept it as it
+//      came, and a log with no routine gets the starter read as any routine
+//      is (its items with their superset field), where r60 gave it unread
+//      until the next load; and the workout in progress is still cleaned in
+//      place, the very object given, its own fields first in their order.
+//      (On r60 the first check fails too, by exactly those two inputs.)
 const { open, engine, screenOf, screenDiff } = require('./h');
 const { wide, digest, specOf } = require('./wide');
 const FILE = process.argv[2] || 'index.html';
@@ -174,6 +185,96 @@ const GUIDE_FIXED = [
       ok(!P.errors.length, `3. ${unit}: no page errors`, P.errors);
       await P.ctx.close();
     }
+  }
+
+  // ---- 4. The log read through its types (351): r60's answer for every raw log, but for the two inputs no build writes.
+  if (run(4)) {
+    const A = await open(OLD, { browser, clock: '2026-10-20T10:00:00', realStarter: true });
+    const B = await open(FILE, { browser, clock: '2026-10-20T10:00:00', realStarter: true });
+    const LIB = await B.page.evaluate(() => window.__ironlog.libExercises());
+    // Each raw log normalized with the same ids for a new routine in both pages (the clock and Math.random held), and,
+    // where asked, the answer read once more; with the damaged records dropped and the unknown fields kept.
+    const norm = (P, list) => P.page.evaluate(list => {
+      const L = window.__ironlog, R = Math.random, N = Date.now;
+      const one = (raw, again) => {
+        let s = 1;
+        Math.random = () => { s = (s * 1664525 + 1013904223) >>> 0; return s / 4294967296; };
+        Date.now = () => 1792000000000;
+        try {
+          L.keepExtra.n = 0;
+          const out = L.normalize(raw === undefined ? undefined : JSON.parse(raw));
+          const res = { j: JSON.stringify(out), d: L.normalize.dropped, k: L.keepExtra.n };
+          if (again) { s = 1; res.j2 = JSON.stringify(L.normalize(JSON.parse(res.j))); }
+          return res;
+        } catch (e) { return { j: 'throws ' + e.message }; } finally { Math.random = R; Date.now = N; }
+      };
+      return list.map(([raw, again]) => one(raw, again));
+    }, list);
+    const damage = (raw, seed) => {
+      let a = seed >>> 0; const r = () => { a = (a * 1664525 + 1013904223) >>> 0; return a / 4294967296; };
+      const pick = xs => xs[Math.floor(r() * xs.length)];
+      const odd = () => pick([null, '', 'x', -1, 0, 3.7, '8', 1e20, -1e20, true, false, [], {}, [1, 2], { a: 1 }, 'NaN', '2026-13-40', 'constructor', 'chest', 'j_knee', '2026-10-01']);
+      const s = JSON.parse(JSON.stringify(raw));
+      const poke = (o, depth) => {
+        if (!o || typeof o !== 'object' || depth > 6) return;
+        for (const k of Object.keys(o)) { if (r() < 0.05) o[k] = odd(); else if (o[k] && typeof o[k] === 'object') poke(o[k], depth + 1); }
+        if (!Array.isArray(o) && r() < 0.06) o['zz' + Math.floor(r() * 9)] = pick([1, 'two', { three: 3 }, [4], null]);
+      };
+      poke(s, 0);
+      if (r() < 0.3 && Array.isArray(s.sessions) && s.sessions.length) s.sessions.push(JSON.parse(JSON.stringify(s.sessions[0])));
+      if (r() < 0.2 && Array.isArray(s.sessions) && s.sessions.length && s.sessions[0] && typeof s.sessions[0] === 'object') s.sessions.push({ ...JSON.parse(JSON.stringify(s.sessions[0])), date: '2025-01-02' });
+      if (r() < 0.25) s.draft = pick([{}, null, { ex: 'x', date: '2026-10-01' }, { ex: [{ exId: 'bench', sets: [null, {}, { w: 'x', r: '' }, []] }, { exId: 'squat', sets: [], plan: { sets: 'x', repMin: 12, repMax: 5, ss: 'A', jump: '7' }, adj: { at: 0, w: 100, from: 90, r: 5, rid: 'q' }, keepRR: [5], prev: ['a', 1], lastR: [1, 'x', -1, 99999] }], date: '2026-10-01', zz: 1, cardio: [{ min: 'x' }, null, { id: 'c', kind: 'run', min: 0 }] }, { date: '2026-10-01', ex: [], startedAt: 1e20, durMin: '30', past: true, extra: { a: 1 } }]);
+      if (r() < 0.2) s.trash = [{ id: 't1', kind: 'session', date: '2026-10-10', data: { id: 't1', date: '2026-10-01', ex: [] } }, { id: 't2', kind: 'zz', date: 'x', data: null }, null, { id: 't3', kind: 'cardio', date: '2026-10-11', data: { id: 't3', date: '2026-10-01', min: 20 } }];
+      if (r() < 0.15) s.version = pick([1, 2, 3, 4, 'x', null]);
+      if (r() < 0.1) s.settings = pick([null, 'x', [], {}, { unit: 'kg', zz: 1, bwEvery: 14, bands: { chest: [30, 2], lats: 'x' }, secOrder: { today: ['a', 1] }, ownTargets: ['traps', 'chest'], bandsFit: { chest: 5, neck: 3 }, restWeeks: ['2026-10-05', 'x', '2026-10-05'], userName: '  a   b  ', accent: 'red' }]);
+      if (r() < 0.1) s.routines = pick([[], null, [{ days: 'x' }], [{ id: 'q', days: [null, { items: 'x' }, { items: [null, { exId: 'bench', sets: 'x' }] }] }]]);
+      return s;
+    };
+    // Whether a raw log keeps no routine (r60 then adds the starter as made, read as any routine on the next load).
+    const noRoutine = s => !(s && Array.isArray(s.routines) && s.routines.some(r => r && typeof r === 'object' && !Array.isArray(r) && Array.isArray(r.days)));
+    // Whether a raw log's workout in progress is falsy other than null (r60 kept it as it came).
+    const falsyDraft = s => !!s && typeof s === 'object' && !Array.isArray(s) && s.draft !== null && s.draft !== undefined && !s.draft;
+    const N4 = +process.env.R61_N4 || 240;
+    let n = 0, same = 0, routineCases = 0, draftCases = 0; const off = [];
+    for (let seed = 1; seed <= N4; seed++) {
+      const h = wide(seed, LIB);
+      const raws = [h.raw, damage(h.raw, seed * 31 + 1), damage(h.raw, seed * 31 + 2), damage(h.raw, seed * 31 + 3)];
+      const docs = [{ draft: h.raw.draft || null }, { sessions: h.raw.sessions, cardio: h.raw.cardio }, { bodyweights: h.raw.bodyweights || [], measurements: h.raw.measurements || [] }];
+      const list = [...raws, ...docs].map(s => [JSON.stringify(s), noRoutine(s)]);
+      const [ra, rb] = await Promise.all([norm(A, list), norm(B, list)]);
+      list.forEach(([raw, none], i) => {
+        n++;
+        const s = JSON.parse(raw), a = ra[i], b = rb[i];
+        // Where no routine is kept, r60's starter as its next load reads it; a falsy workout as none; the rest as r60 gave it.
+        let want = a.j;
+        if (none && a.j2) { routineCases++; const w = JSON.parse(a.j); w.routines = JSON.parse(a.j2).routines; want = JSON.stringify(w); }
+        if (falsyDraft(s)) { draftCases++; const w = JSON.parse(want); w.draft = null; want = JSON.stringify(w); }
+        if (b.j === want && a.d === b.d && a.k === b.k) same++;
+        else if (off.length < 5) { let at = 0; while (at < want.length && want[at] === b.j[at]) at++; off.push({ seed, i, none, want: want.slice(Math.max(0, at - 150), at + 150), b: b.j.slice(Math.max(0, at - 150), at + 150), d: [a.d, b.d], k: [a.k, b.k] }); }
+      });
+    }
+    ok(same === n && n > N4 * 6, `4. normalize gives r60's answer, key order included, with the records dropped and the fields kept, on ${n} raw logs (${N4} wide histories, each damaged three ways, and the sync's documents), but for the two inputs below (${routineCases} with no routine, ${draftCases} with a falsy workout)`, off);
+    // The two inputs no build writes, read as any other (each fails on r60).
+    const named = await B.page.evaluate(() => {
+      const L = window.__ironlog;
+      const drafts = [false, 0, ''].map(v => L.normalize({ ...L.normalize(null), draft: v }).draft);
+      const none = L.normalize({ ...L.normalize(null), routines: [] });
+      const r = none.routines[0];
+      const again = L.normalize(JSON.parse(JSON.stringify(none)));
+      return { drafts, items: r.days.flatMap(d => d.items).length, ss: r.days.flatMap(d => d.items).every(it => 'ss' in it && it.ss === null), active: none.activeRoutineId === r.id, stable: JSON.stringify(again.routines) === JSON.stringify(none.routines) };
+    });
+    ok(named.drafts.every(d => d === null), '4. a workout in progress saved as false, 0 or an empty string reads as none (r60 kept it as it came)', named.drafts);
+    ok(named.items > 0 && named.ss && named.active && named.stable, '4. a log with no routine gets the starter read as any routine is: every item with its superset field, the routine in use, the same when read again (r60 gave it unread, its items without the field)', named);
+    // The workout in progress is cleaned in place, as every build since r56 cleans it: the log holds the very object it was given, its fields in their order.
+    const kept = await B.page.evaluate(() => {
+      const L = window.__ironlog;
+      const d = { zz: 1, date: '2026-10-20', ex: [{ exId: 'bench', sets: [{ w: 60, r: 8 }] }], dayName: 'Upper A' };
+      const out = L.normalize({ ...L.normalize(null), draft: d });
+      return { same: out.draft === d, keys: Object.keys(out.draft).slice(0, 4) };
+    });
+    ok(kept.same && kept.keys.join() === 'zz,date,ex,dayName', '4. the workout in progress comes back as the object given, cleaned in place, its own fields first in their order', kept);
+    ok(!A.errors.length && !B.errors.length, '4. no page errors', [A.errors, B.errors]);
+    await A.ctx.close(); await B.ctx.close();
   }
 
   await browser.close();

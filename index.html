@@ -3007,7 +3007,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     };
     const B4 = new Map(keyed(base.ex)), C2 = keyed(cur.ex), P2 = keyed(pre.ex);
     const Cm = new Map(C2);
-    const pick = (k2) => {
+    const pick2 = (k2) => {
       const b2 = B4.get(k2), c4 = Cm.get(k2), p3 = P2.find((x2) => x2[0] === k2);
       const pv = p3 ? p3[1] : void 0;
       const bh = b2 ? canon(b2) : null, ch = c4 ? canon(c4) : null, ph = pv ? canon(pv) : null;
@@ -3019,12 +3019,12 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     const ord = (l4) => l4.map((x2) => x2[0]).join("|");
     const keep = ord(keyed(base.ex)) === ord(P2);
     for (const [k2] of keep ? C2 : P2) {
-      const v3 = pick(k2);
+      const v3 = pick2(k2);
       if (v3) out.push(v3);
     }
     for (const [k2, _c] of C2) {
       if (!P2.some((x2) => x2[0] === k2)) {
-        const v3 = pick(k2);
+        const v3 = pick2(k2);
         if (v3 && !out.includes(v3)) out.push(v3);
       }
     }
@@ -3193,11 +3193,10 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
   function keepExtra(src, out, known) {
     const S4 = rec(src);
     if (!S4 || Array.isArray(src)) return out;
-    const o3 = out;
     let room = EXTRA_MAX, n3 = 0;
     for (const k2 of Object.keys(S4)) {
       if (n3 >= EXTRA_KEYS) break;
-      if (k2 in o3 || known && known.has(k2) || !okExtraKey(k2)) continue;
+      if (k2 in out || known && known.has(k2) || !okExtraKey(k2)) continue;
       const v3 = S4[k2];
       if (v3 === void 0 || typeof v3 === "function") continue;
       let j3;
@@ -3210,31 +3209,30 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       if (j3 === void 0 || cost > room) continue;
       room -= cost;
       n3++;
-      o3[k2] = parseJson(j3);
+      Object.assign(out, { [k2]: parseJson(j3) });
       keepExtra.n++;
     }
     if (n3) {
-      const own = (k2) => Object.prototype.hasOwnProperty.call(o3, k2);
-      const ks = Object.keys(S4).filter(own);
-      for (const k2 of [...ks, ...Object.keys(o3).filter((k3) => !ks.includes(k3))]) {
-        const v3 = o3[k2];
-        delete o3[k2];
-        o3[k2] = v3;
+      const was = { ...rec(out) };
+      const ks = Object.keys(S4).filter((k2) => Object.prototype.hasOwnProperty.call(was, k2));
+      for (const k2 of [...ks, ...Object.keys(was).filter((k3) => !ks.includes(k3))]) {
+        Reflect.deleteProperty(out, k2);
+        Object.assign(out, { [k2]: was[k2] });
       }
     }
     return out;
   }
   keepExtra.n = 0;
-  function cleanCardio(c4, draft, i5) {
+  function cardioOf(c4, none, i5) {
     const C2 = rec(c4) || {};
     const m3 = numOr(C2.min, NaN), hr = numOr(C2.hr, NaN), dk = numOr(C2.dist, NaN);
     return keepExtra(
       c4,
       {
         id: typeof C2.id === "string" ? fixId(C2.id) : did("c", c4, i5),
-        date: isDate(C2.date) ? C2.date : today(),
+        date: typeof C2.date === "string" && isDate(C2.date) ? C2.date : today(),
         kind: typeof C2.kind === "string" && CARDIO_KINDS.has(C2.kind) ? C2.kind : "other",
-        min: isNum(m3) && m3 > 0 ? Math.min(Math.round(m3), LIMITS.minutes) : draft ? null : 1,
+        min: isNum(m3) && m3 > 0 ? Math.min(Math.round(m3), LIMITS.minutes) : none,
         hr: isNum(hr) && hr >= LIMITS.hr[0] && hr <= LIMITS.hr[1] ? Math.round(hr) : null,
         when: typeof C2.when === "string" && CARDIO_WHENS.has(C2.when) ? C2.when : "solo",
         note: typeof C2.note === "string" ? C2.note.slice(0, LIMITS.cardioNote) : "",
@@ -3244,12 +3242,15 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       KNOWN_CARDIO
     );
   }
+  var cleanCardio = (c4, i5) => cardioOf(c4, 1, i5);
+  var cleanDraftCardio = (c4, i5) => cardioOf(c4, null, i5);
+  var pair = (a2, b2) => [a2, b2];
   function cleanSess(raw, si) {
     const ss = rec(raw) || {};
     const durMin = Number(ss.durMin), t4 = Number(ss.t);
     return keepExtra(raw, {
       id: typeof ss.id === "string" ? fixId(ss.id) : did("s", raw, si),
-      date: ss.date,
+      date: typeof ss.date === "string" ? ss.date : "",
       dayIdx: clampN(ss.dayIdx, 0, MAX_DAYS - 1, 0),
       dayId: typeof ss.dayId === "string" ? fixId(ss.dayId) : null,
       durMin: Number.isFinite(durMin) && durMin >= 1 && durMin <= LIMITS.minutes ? Math.round(durMin) : null,
@@ -3262,44 +3263,47 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       // Freestyle: not tied to a routine day. Check-in: the three pre-session taps.
       free: ss.free === true ? true : void 0,
       chk: cleanChk(rec(ss.chk)) || void 0,
-      ex: (arr(ss.ex) || []).filter((b2) => {
-        const B4 = rec(b2);
-        return !!B4 && typeof B4.exId === "string" && Array.isArray(B4.sets);
-      }).map((b0) => {
-        const b2 = rec(b0) || {};
+      ex: (arr(ss.ex) || []).flatMap((b0) => {
+        const b2 = rec(b0);
+        if (!b2 || typeof b2.exId !== "string" || !arr(b2.sets)) return [];
         const rr = arr(b2.rr);
-        return keepExtra(
-          b0,
-          {
-            exId: fixId(b2.exId),
-            note: typeof b2.note === "string" ? b2.note : "",
-            // Planned rep range at the time, [min,max]. Older sessions have none.
-            rr: rr && rr.length === 2 && rr.every((v3) => Number.isFinite(Number(v3)) && Number(v3) > 0) ? [Math.round(Number(rr[0])), Math.round(Number(rr[1]))] : null,
-            // Marked trimmed (Short on time, under half its sets) until r53. Neither written nor read since r54 (V's one rule reads the log); kept, here and in drafts, so a record saved before keeps its shape and hash.
-            cut: b2.cut === true ? true : void 0,
-            // One exercise made lighter mid-session (r31, Make it lighter): out of trends and targets, the rest of the session counts.
-            light: b2.light === true ? true : void 0,
-            // Held for a flagged injury, its key (r54): left out of the stall test. Absent unless held, so earlier records keep their hash.
-            ...isMuscleOrJoint(b2.inj) ? { inj: b2.inj } : {},
-            sets: (arr(b2.sets) || []).filter((x2) => !!x2 && typeof x2 === "object").map((x0) => {
-              const x2 = rec(x0) || {};
-              return keepExtra(x0, {
-                // Below 0 only for assisted sets (bodyweight minus the machine's help).
-                w: clampN(x2.w, LOAD_MIN, LOAD_MAX, 0),
-                r: Math.round(clampN(x2.r, 0, LIMITS.reps, 0)),
-                rir: x2.rir == null || x2.rir === "" ? null : clampN(x2.rir, 0, EFFORT_TOP, null),
-                warm: !!x2.warm,
-                drop: !!x2.drop && !x2.warm,
-                cal: x2.warm ? void 0 : cleanCal(rec(x2.cal)) || void 0,
-                // The row's own id (r56.1), last, where a build before it kept the unknown field.
-                ...typeof x2.rid === "string" ? { rid: fixId(x2.rid) } : {}
-              });
-            }),
-            // The sets its routine's plan gave it when saved (r58, 339 h), last, as Finish writes it; absent unless recorded, so older records keep their hash.
-            ...typeof b2.ps === "number" && Number.isInteger(b2.ps) && b2.ps >= 1 && b2.ps <= LIMITS.sets ? { ps: b2.ps } : {}
-          },
-          KNOWN_SEX
-        );
+        return [
+          keepExtra(
+            b0,
+            {
+              exId: fixId(b2.exId),
+              note: typeof b2.note === "string" ? b2.note : "",
+              // Planned rep range at the time, [min,max]. Older sessions have none.
+              rr: rr && rr.length === 2 && rr.every((v3) => Number.isFinite(Number(v3)) && Number(v3) > 0) ? pair(Math.round(Number(rr[0])), Math.round(Number(rr[1]))) : null,
+              // Marked trimmed (Short on time, under half its sets) until r53. Neither written nor read since r54 (V's one rule reads the log); kept, here and in drafts, so a record saved before keeps its shape and hash.
+              cut: b2.cut === true ? true : void 0,
+              // One exercise made lighter mid-session (r31, Make it lighter): out of trends and targets, the rest of the session counts.
+              light: b2.light === true ? true : void 0,
+              // Held for a flagged injury, its key (r54): left out of the stall test. Absent unless held, so earlier records keep their hash.
+              ...typeof b2.inj === "string" && isMuscleOrJoint(b2.inj) ? { inj: b2.inj } : {},
+              sets: (arr(b2.sets) || []).flatMap((x0) => {
+                const x2 = rec(x0);
+                if (!x2) return [];
+                return [
+                  keepExtra(x0, {
+                    // Below 0 only for assisted sets (bodyweight minus the machine's help).
+                    w: clampN(x2.w, LOAD_MIN, LOAD_MAX, 0),
+                    r: Math.round(clampN(x2.r, 0, LIMITS.reps, 0)),
+                    rir: x2.rir == null || x2.rir === "" ? null : clampN(x2.rir, 0, EFFORT_TOP, null),
+                    warm: !!x2.warm,
+                    drop: !!x2.drop && !x2.warm,
+                    cal: x2.warm ? void 0 : cleanCal(rec(x2.cal)) || void 0,
+                    // The row's own id (r56.1), last, where a build before it kept the unknown field.
+                    ...typeof x2.rid === "string" ? { rid: fixId(x2.rid) } : {}
+                  })
+                ];
+              }),
+              // The sets its routine's plan gave it when saved (r58, 339 h), last, as Finish writes it; absent unless recorded, so older records keep their hash.
+              ...typeof b2.ps === "number" && Number.isInteger(b2.ps) && b2.ps >= 1 && b2.ps <= LIMITS.sets ? { ps: b2.ps } : {}
+            },
+            KNOWN_SEX
+          )
+        ];
       }).filter((b2) => b2.sets.length),
       // When the session started (r34): orders two sessions on one day. Absent on older ones, so their records hash as before; kept only as a time a Date can hold (r56.1).
       t: isTime(Math.round(t4)) ? Math.round(t4) : void 0,
@@ -3368,76 +3372,39 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       trash: []
     };
   }
-  function normalize(input) {
-    const f3 = freshState();
-    normalize.dropped = 0;
-    const s3 = rec(input) || f3;
-    const drop = (n3) => {
-      normalize.dropped += n3 == null ? 1 : Math.max(0, n3);
-    };
-    const out = { ...f3, ...s3 };
+  var pick = (v3, list) => list.find((w2) => w2 === v3);
+  var strings = (l4, ok) => l4.flatMap((k2) => typeof k2 === "string" && ok(k2) ? [k2] : []);
+  var muscles = (l4) => l4.flatMap((k2) => {
+    const m3 = MK.find((x2) => x2 === k2);
+    return m3 ? [m3] : [];
+  });
+  function cleanSettings(s3, f3) {
     const fresh = s3 === f3;
     const base = fresh ? f3.settings : { ...f3.settings, autoDone: false, hidden: [] };
     const st = { ...base, ...spread(s3.settings || {}) };
-    out.settings = st;
-    st.unit = st.unit === "kg" ? "kg" : "lb";
-    st.theme = oneOf(st.theme, ["system", "dark", "light"]) ? st.theme : "system";
-    st.timerMode = oneOf(st.timerMode, ["auto", "manual", "off"]) ? st.timerMode : "auto";
-    st.timerSound = st.timerSound !== false;
-    st.timerCompact = st.timerCompact === true;
-    st.autoDone = st.autoDone === true;
-    if (!oneOf(st.accent, ["blue", "volt", "ember", "pink"])) delete st.accent;
-    if (st.rirAsk !== true) delete st.rirAsk;
-    if (st.rirHalf !== true) delete st.rirHalf;
-    if (st.autoAdj !== false) delete st.autoAdj;
-    if (bwEveryKept(st.bwEvery) === void 0) delete st.bwEvery;
-    if (st.todayStart !== "free") delete st.todayStart;
-    {
+    const sIn = rec(s3.settings) || {};
+    const accent = pick(st.accent, ["blue", "volt", "ember", "pink"]);
+    const bwEvery2 = bwEveryKept(st.bwEvery);
+    const restWeeks = (() => {
       const rw = arr(st.restWeeks);
-      const r4 = rw ? [...new Set(rw.filter(isDate))].sort().slice(-LIMITS.restWeeks) : [];
-      if (r4.length) st.restWeeks = r4;
-      else delete st.restWeeks;
-    }
-    if (st.rirScale !== "half" && st.rirScale !== "rpe") delete st.rirScale;
-    if (st.loadFill !== "fill") delete st.loadFill;
-    {
-      const n3 = typeof st.userName === "string" ? st.userName.replace(/\s+/g, " ").trim().slice(0, LIMITS.name) : "";
-      if (n3) st.userName = n3;
-      else delete st.userName;
-    }
-    {
-      const hf = arr(st.homeFolded);
-      st.homeFolded = hf ? hf.filter((k2) => oneOf(k2, ["map", "body", "week", "tiles", "coach", "injuries"])) : [];
-    }
-    {
+      return rw ? [...new Set(strings(rw, isDate))].sort().slice(-LIMITS.restWeeks) : [];
+    })();
+    const rirScale2 = pick(st.rirScale, ["half", "rpe"]);
+    const userName = typeof st.userName === "string" ? st.userName.replace(/\s+/g, " ").trim().slice(0, LIMITS.name) : "";
+    const secOrder = (() => {
       const so = st.secOrder === void 0 && fresh ? defaultOrder() : st.secOrder;
       const clean = {};
       const O = rec(so);
       if (O)
         for (const t4 of SEC_TABS) {
           const l4 = arr(O[t4]);
-          if (l4)
-            clean[t4] = l4.filter((k2) => typeof k2 === "string").filter((k2) => safeKey(k2) && k2.length < LIMITS.secKey).slice(0, LIMITS.secKey);
+          if (l4) clean[t4] = strings(l4, (k2) => safeKey(k2) && k2.length < LIMITS.secKey).slice(0, LIMITS.secKey);
         }
-      st.secOrder = clean;
-    }
-    {
-      const fl = arr(st.folds);
-      st.folds = fl ? fl.filter((k2) => typeof k2 === "string" && safeKey(k2) && k2.length < LIMITS.foldKey).slice(0, LIMITS.folds) : [];
-    }
-    st.wakeLock = st.wakeLock === true;
-    if (st.smallPlates !== true) delete st.smallPlates;
-    {
-      const g2 = gymClean(rec(st.gym));
-      if (g2) st.gym = g2;
-      else delete st.gym;
-    }
-    {
-      const p3 = profClean(rec(st.profile));
-      if (p3) st.profile = p3;
-      else delete st.profile;
-    }
-    {
+      return clean;
+    })();
+    const gym = gymClean(rec(st.gym));
+    const profile = profClean(rec(st.profile));
+    const bandsFit = (() => {
       const F3 = rec(st.bandsFit);
       const o3 = {};
       if (F3 && !Array.isArray(F3))
@@ -3446,126 +3413,324 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
           if (!TRACK_ONLY.has(m3) && typeof v3 === "number" && Number.isInteger(v3) && v3 >= 0 && v3 <= LIMITS.weeklySets)
             o3[m3] = v3;
         }
-      if (Object.keys(o3).length) st.bandsFit = o3;
-      else delete st.bandsFit;
-    }
-    {
+      return o3;
+    })();
+    const ownTargets = (() => {
       const o3 = arr(st.ownTargets);
-      const k2 = o3 ? MK.filter((m3) => !TARGETED.has(m3) && o3.includes(m3)) : [];
-      if (k2.length) st.ownTargets = k2;
-      else delete st.ownTargets;
-    }
-    st.rirMode = oneOf(st.rirMode, ["on", "off", "cal"]) ? st.rirMode : "on";
-    {
-      const h3 = arr(st.hidden);
-      st.hidden = h3 ? [...new Set(h3.filter((k2) => typeof k2 === "string" && HIDEABLE_KEYS.has(k2)))] : [];
-    }
-    st.onboarded = st.onboarded === true;
-    st.calSnooze = isDate(st.calSnooze) ? st.calSnooze : null;
-    st.tidyV = numOr(st.tidyV, 0) >= 1 ? 1 : 0;
-    {
-      const hc = numOr(st.heightCm, NaN);
-      st.heightCm = isNum(hc) && hc >= LIMITS.heightCm[0] && hc <= LIMITS.heightCm[1] ? r1(hc) : null;
-    }
-    {
-      const tb = numOr(st.timeBudget, NaN);
-      st.timeBudget = isNum(tb) && tb >= LIMITS.budgetMin[0] ? Math.min(Math.round(tb), LIMITS.budgetMin[1]) : null;
-    }
-    {
-      const pr = arr(st.priorities);
-      st.priorities = pr ? pr.filter(isMuscle) : [];
-    }
-    const sIn = rec(s3.settings) || {};
-    {
-      const df = arr(sIn.dashFolded);
-      st.dashFolded = df ? df.filter((k2) => oneOf(k2, DSEC_KEYS)) : DSEC_FOLDED.slice();
-    }
-    st.lastExport = isDate(st.lastExport) ? st.lastExport : null;
+      return o3 ? MK.filter((m3) => !TARGETED.has(m3) && o3.includes(m3)) : [];
+    })();
+    const hf = arr(st.homeFolded), fl = arr(st.folds), h3 = arr(st.hidden), pr = arr(st.priorities), df = arr(sIn.dashFolded);
+    const hc = numOr(st.heightCm, NaN), tb = numOr(st.timeBudget, NaN), bk = numOr(st.barKg, NaN), bg = numOr(st.bwGoalPct, NaN);
     const removedLib = (arr(sIn.removedLib) || []).filter((x2) => typeof x2 === "string").map(fixId);
-    st.removedLib = removedLib;
-    const bk = numOr(st.barKg, NaN);
-    st.barKg = isNum(bk) && bk > 0 ? Math.min(bk, LIMITS.barKg) : null;
-    const bg = numOr(st.bwGoalPct, NaN);
-    st.bwGoalPct = isNum(bg) ? Math.min(Math.max(bg, -LIMITS.bwRatePct), LIMITS.bwRatePct) : null;
     const inBands = spread(sIn.bands || {});
-    const bands = {};
-    st.bands = bands;
-    for (const m3 of MK) {
+    const band = (m3) => {
       const b2 = arr(inBands[m3]);
-      let lo = b2 ? clampN(b2[0], 0, LIMITS.weeklySets, BANDS[m3][0]) : BANDS[m3][0];
-      let hi = b2 ? clampN(b2[1], 0, LIMITS.weeklySets, BANDS[m3][1]) : BANDS[m3][1];
-      if (lo > hi) {
-        const t4 = lo;
-        lo = hi;
-        hi = t4;
-      }
-      bands[m3] = [lo, hi];
-    }
-    for (const k2 of ["exercises", "routines", "sessions", "bodyweights", "measurements", "cardio", "trash"])
-      if (!Array.isArray(out[k2])) out[k2] = [];
-    const list = (k2) => arr(out[k2]) || [];
-    const exercises = list("exercises").filter((e0) => {
-      const e5 = rec(e0);
-      return !!e5 && typeof e5.id === "string" && typeof e5.name === "string";
-    }).map((e0) => {
-      const e5 = rec(e0) || {};
-      const sc = arr(e5.secondary);
-      const g2 = rec(e5.goal);
-      const inc = numOr(e5.inc, NaN), bwf = numOr(e5.bwf, NaN), ml = numOr(e5.maxLoad, NaN), bar = numOr(e5.barKg, NaN);
-      const gw = g2 ? numOr(g2.w, NaN) : NaN, gr = g2 ? Math.round(numOr(g2.r, NaN)) : NaN;
-      return keepExtra(e0, {
-        id: fixId(e5.id),
-        name: e5.name,
-        primary: isMuscle(e5.primary) ? e5.primary : "chest",
-        secondary: sc ? sc.filter((m3) => isMuscle(m3) && m3 !== e5.primary) : [],
-        equip: typeof e5.equip === "string" ? e5.equip : "other",
-        bw: !!e5.bw,
-        rare: !!e5.rare,
-        perSide: !!e5.perSide,
-        note: typeof e5.note === "string" ? e5.note : "",
-        custom: !!e5.custom,
-        archived: !!e5.archived,
-        // Load step for this exercise everywhere it appears; null falls back to the routine item.
-        inc: isNum(inc) && inc > 0 ? Math.min(inc, LIMITS.step) : null,
-        plates: oneOf(e5.plates, ["bar", "side", "sleeve", "none"]) ? e5.plates : null,
-        // How the load number reads; absent means the exercise's default.
-        load: oneOf(e5.load, ["each", "total", "side", "stack"]) ? e5.load : void 0,
-        // Timed: the reps column holds seconds. Heaviest available: the top of the
-        // stack or rack, past which progression moves to reps. Absent when unset,
-        // so records saved before these existed hash exactly as before.
-        timed: e5.timed === true ? true : void 0,
-        // Compound or isolation, when set in the editor (r27); absent reads it from the name.
-        kind: e5.kind === "compound" || e5.kind === "iso" ? e5.kind : void 0,
-        // Assisted (item 45): the load number is the machine's help, stored below 0.
-        assist: e5.assist === true && !!e5.bw ? true : void 0,
-        bwf: isNum(bwf) && bwf > 0 && bwf <= LIMITS.bwShare ? Math.round(bwf * HUNDREDTHS) / HUNDREDTHS : void 0,
-        maxLoad: isNum(ml) && ml > 0 ? Math.min(ml, LOAD_MAX) : void 0,
-        // This lift's own bar (r29, item 98): a trap or EZ bar instead of the bar in Settings. Absent when unset.
-        barKg: isNum(bar) && bar > 0 ? Math.min(bar, LIMITS.barKg) : void 0,
-        // A lift goal (r38, item 188): a load (added load on a bodyweight lift) for a number of reps. Absent when unset.
-        goal: g2 && isNum(gw) && gw >= 0 && gw <= LOAD_MAX && gr >= 1 && gr <= LIMITS.goalReps && !e5.timed && !e5.assist ? { w: gw, r: gr } : void 0
-      });
+      const lo = b2 ? clampN(b2[0], 0, LIMITS.weeklySets, BANDS[m3][0]) : BANDS[m3][0];
+      const hi = b2 ? clampN(b2[1], 0, LIMITS.weeklySets, BANDS[m3][1]) : BANDS[m3][1];
+      return lo > hi ? [hi, lo] : [lo, hi];
+    };
+    const bands = {};
+    for (const m3 of MK) bands[m3] = band(m3);
+    const vals = {
+      unit: st.unit === "kg" ? "kg" : "lb",
+      theme: pick(st.theme, ["system", "dark", "light"]) ?? "system",
+      // Timer and logging preferences. Older saves have none of these, so each falls back to exactly how the app behaved before they existed.
+      timerMode: pick(st.timerMode, ["auto", "manual", "off"]) ?? "auto",
+      timerSound: st.timerSound !== false,
+      timerCompact: st.timerCompact === true,
+      autoDone: st.autoDone === true,
+      // Optional settings added in r20 stay undefined unless set.
+      ...accent ? { accent } : {},
+      ...st.rirAsk === true ? { rirAsk: true } : {},
+      // Count RIR 4 to 5 as half a set (r40): absent unless on.
+      ...st.rirHalf === true ? { rirHalf: true } : {},
+      // r34: adjusting the next sets is on unless turned off; only false is stored, so older saves hash as before.
+      ...st.autoAdj === false ? { autoAdj: false } : {},
+      // r34: weigh-in reminder in days (0 off); absent is every BW_EVERY_DEFAULT days.
+      ...bwEvery2 !== void 0 ? { bwEvery: bwEvery2 } : {},
+      // r34: Today opens on a blank session; absent is the plan's day.
+      ...st.todayStart === "free" ? { todayStart: "free" } : {},
+      // r34: rest weeks, week-start dates; the last two years kept.
+      ...restWeeks.length ? { restWeeks } : {},
+      // r33 (item 206): effort in half points or RPE; absent is whole RIR, so older saves hash as before.
+      ...rirScale2 ? { rirScale: rirScale2 } : {},
+      // r25: suggested loads show grey until typed; 'fill' puts them in the rows as before. Unset means grey (V's choice).
+      ...st.loadFill === "fill" ? { loadFill: "fill" } : {},
+      ...userName ? { userName } : {},
+      homeFolded: hf ? strings(hf, (k2) => oneOf(k2, ["map", "body", "week", "tiles", "coach", "injuries"])) : [],
+      // Section order per tab (drag the ⠿ in a section header): a new install starts in the default order (r28).
+      secOrder,
+      folds: fl ? strings(fl, (k2) => safeKey(k2) && k2.length < LIMITS.foldKey).slice(0, LIMITS.folds) : [],
+      wakeLock: st.wakeLock === true,
+      // Small change plates (r29, item 98): absent unless on, so saves without it hash as before.
+      ...st.smallPlates === true ? { smallPlates: true } : {},
+      // Your gym (r33, item 207) and the profile (r44, item 271): absent unless set, rebuilt in one key order.
+      ...gym ? { gym } : {},
+      ...profile ? { profile } : {},
+      ...Object.keys(bandsFit).length ? { bandsFit } : {},
+      ...ownTargets.length ? { ownTargets } : {},
+      // RIR: on (as logged), cal (on, shifted by your calibration sets), off.
+      rirMode: pick(st.rirMode, ["on", "off", "cal"]) ?? "on",
+      hidden: h3 ? [...new Set(strings(h3, (k2) => HIDEABLE_KEYS.has(k2)))] : [],
+      onboarded: st.onboarded === true,
+      calSnooze: typeof st.calSnooze === "string" && isDate(st.calSnooze) ? st.calSnooze : null,
+      // Legacy fold flag from older builds; unused, kept so old saves round-trip.
+      tidyV: numOr(st.tidyV, 0) >= 1 ? 1 : 0,
+      // Height in cm for waist-to-height; the one body measure that does not change.
+      heightCm: isNum(hc) && hc >= LIMITS.heightCm[0] && hc <= LIMITS.heightCm[1] ? r1(hc) : null,
+      timeBudget: isNum(tb) && tb >= LIMITS.budgetMin[0] ? Math.min(Math.round(tb), LIMITS.budgetMin[1]) : null,
+      priorities: pr ? muscles(pr) : [],
+      // Absent (older saves) means the defaults apply once; after that the user's folds win.
+      dashFolded: df ? strings(df, (k2) => oneOf(k2, DSEC_KEYS)) : DSEC_FOLDED.slice(),
+      lastExport: typeof st.lastExport === "string" && isDate(st.lastExport) ? st.lastExport : null,
+      removedLib,
+      barKg: isNum(bk) && bk > 0 ? Math.min(bk, LIMITS.barKg) : null,
+      bwGoalPct: isNum(bg) ? Math.min(Math.max(bg, -LIMITS.bwRatePct), LIMITS.bwRatePct) : null,
+      bands
+    };
+    for (const k2 of OPTIONAL_SETTINGS) if (!(k2 in vals)) delete st[k2];
+    return Object.assign(st, vals);
+  }
+  var OPTIONAL_SETTINGS = [
+    "accent",
+    "rirAsk",
+    "rirHalf",
+    "autoAdj",
+    "bwEvery",
+    "todayStart",
+    "restWeeks",
+    "rirScale",
+    "loadFill",
+    "userName",
+    "smallPlates",
+    "gym",
+    "profile",
+    "bandsFit",
+    "ownTargets"
+  ];
+  function cleanExercise(e0, e5, name) {
+    const sc = arr(e5.secondary);
+    const g2 = rec(e5.goal);
+    const inc = numOr(e5.inc, NaN), bwf = numOr(e5.bwf, NaN), ml = numOr(e5.maxLoad, NaN), bar = numOr(e5.barKg, NaN);
+    const gw = g2 ? numOr(g2.w, NaN) : NaN, gr = g2 ? Math.round(numOr(g2.r, NaN)) : NaN;
+    return keepExtra(e0, {
+      id: fixId(e5.id),
+      name,
+      primary: typeof e5.primary === "string" && isMuscle(e5.primary) ? e5.primary : "chest",
+      secondary: sc ? strings(sc, (m3) => isMuscle(m3) && m3 !== e5.primary) : [],
+      equip: typeof e5.equip === "string" ? e5.equip : "other",
+      bw: !!e5.bw,
+      rare: !!e5.rare,
+      perSide: !!e5.perSide,
+      note: typeof e5.note === "string" ? e5.note : "",
+      custom: !!e5.custom,
+      archived: !!e5.archived,
+      // Load step for this exercise everywhere it appears; null falls back to the routine item.
+      inc: isNum(inc) && inc > 0 ? Math.min(inc, LIMITS.step) : null,
+      plates: pick(e5.plates, ["bar", "side", "sleeve", "none"]) ?? null,
+      // How the load number reads; absent means the exercise's default.
+      load: pick(e5.load, ["each", "total", "side", "stack"]),
+      // Timed: the reps column holds seconds. Heaviest available: the top of the
+      // stack or rack, past which progression moves to reps. Absent when unset,
+      // so records saved before these existed hash exactly as before.
+      timed: e5.timed === true ? true : void 0,
+      // Compound or isolation, when set in the editor (r27); absent reads it from the name.
+      kind: e5.kind === "compound" || e5.kind === "iso" ? e5.kind : void 0,
+      // Assisted (item 45): the load number is the machine's help, stored below 0.
+      assist: e5.assist === true && !!e5.bw ? true : void 0,
+      bwf: isNum(bwf) && bwf > 0 && bwf <= LIMITS.bwShare ? Math.round(bwf * HUNDREDTHS) / HUNDREDTHS : void 0,
+      maxLoad: isNum(ml) && ml > 0 ? Math.min(ml, LOAD_MAX) : void 0,
+      // This lift's own bar (r29, item 98): a trap or EZ bar instead of the bar in Settings. Absent when unset.
+      barKg: isNum(bar) && bar > 0 ? Math.min(bar, LIMITS.barKg) : void 0,
+      // A lift goal (r38, item 188): a load (added load on a bodyweight lift) for a number of reps. Absent when unset.
+      goal: g2 && isNum(gw) && gw >= 0 && gw <= LOAD_MAX && gr >= 1 && gr <= LIMITS.goalReps && !e5.timed && !e5.assist ? { w: gw, r: gr } : void 0
     });
-    out.exercises = exercises;
+  }
+  function cleanRoutine(r0, ri) {
+    const r4 = rec(r0) || {};
+    const rid = typeof r4.id === "string" ? fixId(r4.id) : did("r", r0, ri);
+    const rdays = arr(r4.days) || [];
+    const schedule = r4.schedule === "weekly" && rdays.length <= WEEK_DAYS ? "weekly" : "cycle";
+    const src = rdays.slice(0, MAX_DAYS);
+    const count = schedule === "weekly" ? WEEK_DAYS : Math.max(1, src.length);
+    const days = [];
+    const seen = /* @__PURE__ */ new Set();
+    for (let i5 = 0; i5 < count; i5++) {
+      const d0 = src[i5];
+      const d3 = rec(d0);
+      if (!d3) {
+        days.push(
+          schedule === "weekly" ? { id: rid + "-w" + i5, name: i5 === SUNDAY ? "Rest" : "Training day", rest: i5 === SUNDAY, items: [] } : { id: rid + "-p" + i5, name: "Training day", rest: false, items: [] }
+        );
+        continue;
+      }
+      const dbase = typeof d3.id === "string" ? fixId(d3.id) : rid + "-d" + i5;
+      const items = (arr(d3.items) || []).filter((it0) => {
+        const it = rec(it0);
+        return !!it && typeof it.exId === "string";
+      }).map((it0, ii) => {
+        const it = rec(it0) || {};
+        return keepExtra(
+          it0,
+          {
+            uid: typeof it.uid === "string" ? fixId(it.uid) : dbase + "-i" + ii,
+            exId: fixId(it.exId),
+            ...planNums(it),
+            ss: typeof it.ss === "string" && it.ss ? fixId(it.ss) : null,
+            ...jumpOf(it)
+          },
+          KNOWN_ITEM
+        );
+      }).map((it) => it.repMax < it.repMin ? { ...it, repMax: it.repMin } : it);
+      fixSupersets(items);
+      let id = dbase;
+      if (seen.has(id)) id = id + "-" + i5;
+      seen.add(id);
+      days.push(
+        keepExtra(d0, {
+          id,
+          name: typeof d3.name === "string" ? d3.name : schedule === "weekly" ? DAYS[i5] : `Day ${i5 + 1}`,
+          rest: !!d3.rest,
+          items
+        })
+      );
+    }
+    return keepExtra(r0, { id: rid, name: typeof r4.name === "string" ? r4.name : "Routine", schedule, days });
+  }
+  function cleanDraft(d3, date) {
+    const startedAt = Number(d3.startedAt), durMin = Number(d3.durMin);
+    return Object.assign(d3, {
+      date,
+      id: typeof d3.id === "string" ? fixId(d3.id) : did("x", { date: d3.date, dayName: d3.dayName }, 0),
+      dayIdx: clampN(d3.dayIdx, 0, MAX_DAYS - 1, 0),
+      dayId: typeof d3.dayId === "string" ? fixId(d3.dayId) : null,
+      startedAt: isTime(startedAt) ? startedAt : null,
+      durMin: Number.isFinite(durMin) && durMin >= 1 ? Math.round(durMin) : null,
+      dayName: typeof d3.dayName === "string" ? d3.dayName : "Session",
+      routineId: typeof d3.routineId === "string" && d3.routineId ? fixId(d3.routineId) : "",
+      notes: typeof d3.notes === "string" ? d3.notes : "",
+      editingId: typeof d3.editingId === "string" ? fixId(d3.editingId) : null,
+      deload: !!d3.deload,
+      light: !!d3.light,
+      limited: d3.limited === true ? true : void 0,
+      free: d3.free === true ? true : void 0,
+      // A past workout typed in after the fact: no rest timer, no clock, no check-in.
+      past: d3.past === true ? true : void 0,
+      // The notes the app wrote when the session started, so Discard can tell them from yours.
+      note0: typeof d3.note0 === "string" ? d3.note0.slice(0, LIMITS.startNote) : void 0,
+      chk: cleanChk(rec(d3.chk)) || void 0,
+      cardio: (arr(d3.cardio) || []).filter((c4) => !!c4 && typeof c4 === "object").map((c4, ci) => cleanDraftCardio(c4, ci)),
+      ex: (arr(d3.ex) || []).flatMap((b0) => {
+        const b2 = rec(b0);
+        if (!b2 || typeof b2.exId !== "string" || !arr(b2.sets)) return [];
+        const pl = rec(b2.plan) || {};
+        const plan = {
+          ...planNums(pl),
+          ss: typeof pl.ss === "string" && pl.ss ? fixId(pl.ss) : null,
+          ...jumpOf(pl)
+        };
+        if (plan.repMax < plan.repMin) plan.repMax = plan.repMin;
+        const adj = rec(b2.adj);
+        const adjW = adj ? Number(adj.w) : NaN, adjFrom = adj ? Number(adj.from) : NaN, sw = Number(b2.sw);
+        const prev = arr(b2.prev), lastR = arr(b2.lastR), keepRR = arr(b2.keepRR), ln = rec(b2.lastNote);
+        return [
+          keepExtra(b0, {
+            ...typeof b2.bid === "string" && b2.bid ? { bid: fixId(b2.bid) } : {},
+            exId: fixId(b2.exId),
+            plan,
+            note: typeof b2.note === "string" ? b2.note : "",
+            inj: typeof b2.inj === "string" && isMuscleOrJoint(b2.inj) ? b2.inj : null,
+            hint: typeof b2.hint === "string" ? b2.hint : "",
+            last: typeof b2.last === "string" ? b2.last : "",
+            // Last time's sets as shown in the Last column (r44): short strings, absent in older drafts.
+            prev: prev ? strings(prev, () => true).slice(0, LIMITS.sets).map((x2) => x2.slice(0, LIMITS.lastText)) : void 0,
+            prevOff: b2.prevOff === true ? true : void 0,
+            target: typeof b2.target === "string" ? b2.target : "",
+            easier: typeof b2.easier === "string" ? b2.easier : null,
+            tgt: cleanTgt(rec(b2.tgt)),
+            // Last time's reps per set: shown as placeholders, so numbers only.
+            lastR: lastR ? lastR.slice(0, LIMITS.sets).map((v3) => {
+              const n3 = numOr(v3, NaN);
+              return isNum(n3) && n3 >= 0 ? Math.min(n3, LIMITS.reps) : null;
+            }) : [],
+            swappedFrom: typeof b2.swappedFrom === "string" ? fixId(b2.swappedFrom) : null,
+            cut: b2.cut === true ? true : void 0,
+            // Added on a lighter day or in a deload, the sets before they were halved, for Finish's offer to the routine (r54); absent otherwise.
+            full: typeof b2.full === "number" && Number.isInteger(b2.full) && b2.full >= 1 && b2.full <= LIMITS.sets ? b2.full : void 0,
+            light: b2.light === true ? true : void 0,
+            // The date the target came from, when "Last" is a newer session short of its usual, lighter, or a deload (r26).
+            basis: typeof b2.basis === "string" && isDate(b2.basis) ? b2.basis : void 0,
+            // The suggested load the rows started from (r24); absent in older drafts.
+            sw: b2.sw === null ? null : b2.sw === void 0 || !isNum(sw) ? void 0 : clampN(b2.sw, LOAD_MIN, LOAD_MAX, 0),
+            // The next sets adjusted from a set (r34), and Keep for the rest of the session.
+            adj: adj && typeof adj.at === "number" && Number.isInteger(adj.at) && adj.at >= 0 && isNum(adjW) && isNum(adjFrom) ? {
+              at: adj.at,
+              w: clampN(adj.w, 0, LOAD_MAX, 0),
+              from: clampN(adj.from, 0, LOAD_MAX, 0),
+              r: Math.round(clampN(adj.r, 1, LIMITS.reps, 1)),
+              up: adj.up === true,
+              why: typeof adj.why === "string" ? adj.why.slice(0, LIMITS.why) : "",
+              // The row it came from (PENDING 333), last, where a build before it kept no such field.
+              ...typeof adj.rid === "string" ? { rid: fixId(adj.rid) } : {}
+            } : void 0,
+            adjOff: b2.adjOff === true ? true : void 0,
+            // Editing a saved session keeps the rep range it was logged under.
+            keepRR: b2.keepRR === void 0 ? void 0 : keepRR && keepRR.length === 2 ? pair(Math.round(Number(keepRR[0])) || 1, Math.round(Number(keepRR[1])) || 1) : null,
+            lastNote: ln && typeof ln.text === "string" && typeof ln.date === "string" && isDate(ln.date) ? { date: ln.date, text: ln.text } : null,
+            sets: (arr(b2.sets) || []).flatMap((x0) => {
+              const x2 = rec(x0);
+              if (!x2) return [];
+              return [
+                keepExtra(x0, {
+                  w: x2.w == null ? null : clampN(x2.w, LOAD_MIN, LOAD_MAX, 0),
+                  r: x2.r == null || x2.r === "" ? null : Math.round(clampN(x2.r, 0, LIMITS.reps, 0)),
+                  rir: x2.rir == null || x2.rir === "" ? null : clampN(x2.rir, 0, EFFORT_TOP, null),
+                  warm: !!x2.warm,
+                  drop: !!x2.drop && !x2.warm,
+                  done: !!x2.done,
+                  cal: x2.warm ? void 0 : cleanCal(rec(x2.cal)) || void 0,
+                  // The row's own id (r56.1), last, where a build before it kept the unknown field.
+                  ...typeof x2.rid === "string" ? { rid: fixId(x2.rid) } : {}
+                })
+              ];
+            })
+          })
+        ];
+      })
+    });
+  }
+  function normalize(input) {
+    const f3 = freshState();
+    normalize.dropped = 0;
+    const s3 = rec(input) || f3;
+    const drop = (n3) => {
+      normalize.dropped += n3 == null ? 1 : Math.max(0, n3);
+    };
+    const raw = { ...f3, ...s3 };
+    const settings = cleanSettings(s3, f3);
+    const list = (k2) => arr(raw[k2]) || [];
+    const removedLib = settings.removedLib;
+    const exercises = list("exercises").flatMap((e0) => {
+      const e5 = rec(e0);
+      return e5 && typeof e5.id === "string" && typeof e5.name === "string" ? [cleanExercise(e0, e5, e5.name)] : [];
+    });
     const have = new Set(exercises.map((e5) => e5.id));
     const gone = new Set(removedLib);
     const lib = libExercises();
     for (const e5 of lib) if (!have.has(e5.id) && !gone.has(e5.id)) exercises.push(e5);
     if (numOr(s3.version, 1) < V_PER_SIDE) {
-      const libMap = {};
-      for (const e5 of lib) libMap[e5.id] = e5;
+      const libMap = new Map(lib.map((e5) => [e5.id, e5]));
       for (const e5 of exercises) {
-        const L2 = !e5.custom && libMap[String(e5.id)];
+        const L2 = !e5.custom && libMap.get(e5.id);
         if (L2) e5.perSide = L2.perSide;
       }
     }
     if (numOr(s3.version, 1) < V_NEW_MUSCLES) {
-      const libMap = {};
-      for (const e5 of lib) libMap[e5.id] = e5;
+      const libMap = new Map(lib.map((e5) => [e5.id, e5]));
       for (const e5 of exercises) {
-        const L2 = !e5.custom && libMap[String(e5.id)];
+        const L2 = !e5.custom && libMap.get(e5.id);
         if (!L2) continue;
-        let sec = arr(e5.secondary) || [];
+        let sec = e5.secondary;
         if (NEW_V5.has(L2.primary) && e5.primary === "chest") {
           e5.primary = L2.primary;
           sec = sec.filter((m3) => m3 !== L2.primary);
@@ -3575,60 +3740,11 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
         for (const m3 of NEW_MUSCLES_V5) if (L2.secondary.includes(m3) && e5.primary !== m3 && !sec.includes(m3)) sec.push(m3);
       }
     }
-    out.routines = list("routines").filter((r0) => {
+    const kept = list("routines").filter((r0) => {
       const r4 = rec(r0);
       return !!r4 && Array.isArray(r4.days);
-    }).map((r0, ri) => {
-      const r4 = rec(r0) || {};
-      const rid = typeof r4.id === "string" ? fixId(r4.id) : did("r", r0, ri);
-      const rdays = arr(r4.days) || [];
-      const schedule = r4.schedule === "weekly" && rdays.length <= WEEK_DAYS ? "weekly" : "cycle";
-      const src = rdays.slice(0, MAX_DAYS);
-      const count = schedule === "weekly" ? WEEK_DAYS : Math.max(1, src.length);
-      const days = [];
-      const seen = /* @__PURE__ */ new Set();
-      for (let i5 = 0; i5 < count; i5++) {
-        const d0 = src[i5];
-        const d4 = rec(d0);
-        if (!d4) {
-          days.push(
-            schedule === "weekly" ? { id: rid + "-w" + i5, name: i5 === SUNDAY ? "Rest" : "Training day", rest: i5 === SUNDAY, items: [] } : { id: rid + "-p" + i5, name: "Training day", rest: false, items: [] }
-          );
-          continue;
-        }
-        const dbase = typeof d4.id === "string" ? fixId(d4.id) : rid + "-d" + i5;
-        const items = (arr(d4.items) || []).filter((it0) => {
-          const it = rec(it0);
-          return !!it && typeof it.exId === "string";
-        }).map((it0, ii) => {
-          const it = rec(it0) || {};
-          return keepExtra(
-            it0,
-            {
-              uid: typeof it.uid === "string" ? fixId(it.uid) : dbase + "-i" + ii,
-              exId: fixId(it.exId),
-              ...planNums(it),
-              ss: typeof it.ss === "string" && it.ss ? fixId(it.ss) : null,
-              ...jumpOf(it)
-            },
-            KNOWN_ITEM
-          );
-        }).map((it) => it.repMax < it.repMin ? { ...it, repMax: it.repMin } : it);
-        fixSupersets(items);
-        let id = dbase;
-        if (seen.has(id)) id = id + "-" + i5;
-        seen.add(id);
-        days.push(
-          keepExtra(d0, {
-            id,
-            name: typeof d4.name === "string" ? d4.name : schedule === "weekly" ? DAYS[i5] : `Day ${i5 + 1}`,
-            rest: !!d4.rest,
-            items
-          })
-        );
-      }
-      return keepExtra(r0, { id: rid, name: typeof r4.name === "string" ? r4.name : "Routine", schedule, days });
-    });
+    }).map((r0, ri) => cleanRoutine(r0, ri));
+    const routines = kept.length ? kept : [cleanRoutine(starterRoutine(), 0)];
     const cutoff = addDays(today(), -TRASH_DAYS);
     let trash = list("trash").flatMap((t0) => {
       const t4 = rec(t0);
@@ -3638,7 +3754,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     }).sort((a2, b2) => a2.date < b2.date ? 1 : a2.date > b2.date ? -1 : 0).slice(0, TRASH_MAX);
     while (trash.length > 1 && JSON.stringify(trash).length > TRASH_BYTES) trash.pop();
     const before = list("sessions").length;
-    let sessions = list("sessions").filter((x2) => okSess(rec(x2))).map((x2, i5) => cleanSess(x2, i5)).filter((ss) => (arr(ss.ex) || []).length);
+    let sessions = list("sessions").filter((x2) => okSess(rec(x2))).map((x2, i5) => cleanSess(x2, i5)).filter((ss) => ss.ex.length);
     drop(before - sessions.length);
     let cardio;
     {
@@ -3648,19 +3764,19 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
         else if (t4.kind === "cardio") tC.set(t4.id, t4);
       }
       const revived = /* @__PURE__ */ new Set();
-      const same = (cur, t4, clean, ok) => {
+      const same = (cur, data, clean, ok) => {
         try {
-          return !ok(t4.data) || canon(clean(t4.data, 0)) === canon(cur);
+          return !ok(data) || canon(clean(data, 0)) === canon(cur);
         } catch (e5) {
           return true;
         }
       };
       sessions = sessions.filter((ss) => {
-        const t4 = tS.get(String(ss.id));
+        const t4 = tS.get(ss.id);
         if (!t4) return true;
         if (same(
           { ...ss, id: ss.id },
-          { data: { ...t4.data, id: ss.id } },
+          { ...t4.data, id: ss.id },
           (x2, i5) => cleanSess(x2, i5),
           (x2) => okSess(rec(x2))
         ))
@@ -3671,13 +3787,13 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       cardio = list("cardio").filter((c0) => {
         const c4 = rec(c0);
         return !!c4 && isDate(c4.date) && isNum(numOr(c4.min, NaN)) && numOr(c4.min, 0) > 0;
-      }).map((c4, ci) => cleanCardio(c4, false, ci)).filter((c4) => {
-        const t4 = tC.get(String(c4.id));
+      }).map((c4, ci) => cleanCardio(c4, ci)).filter((c4) => {
+        const t4 = tC.get(c4.id);
         if (!t4) return true;
         if (same(
           c4,
-          { data: { ...t4.data, id: c4.id } },
-          (x2, i5) => cleanCardio(x2, false, i5),
+          { ...t4.data, id: c4.id },
+          (x2, i5) => cleanCardio(x2, i5),
           (x2) => !!x2 && typeof x2 === "object"
         ))
           return false;
@@ -3686,181 +3802,97 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       });
       if (revived.size) trash = trash.filter((t4) => t4.kind === "routine" || !revived.has(t4.id));
     }
-    for (const [key, kind] of [
-      ["sessions", "session"],
-      ["cardio", "cardio"]
-    ]) {
-      const byId = /* @__PURE__ */ new Map(), extra = [];
-      const size = (x2) => kind === "session" ? (arr(x2.ex) || []).reduce((a2, b2) => a2 + (arr((rec(b2) || {}).sets) || []).length, 0) : Number(x2.min);
-      const date = (x2) => String(x2.date);
-      for (const x2 of key === "sessions" ? sessions : cardio) {
+    const dedupe = (list0, kind, size) => {
+      const byId = /* @__PURE__ */ new Map(), extra2 = [];
+      for (const x2 of list0) {
         const o3 = byId.get(x2.id);
         if (!o3) {
           byId.set(x2.id, x2);
           continue;
         }
         if (canon(o3) === canon(x2)) continue;
-        const keepNew = size(x2) > size(o3) || size(x2) === size(o3) && (date(x2) > date(o3) || x2.date === o3.date && canon(x2) > canon(o3));
+        const keepNew = size(x2) > size(o3) || size(x2) === size(o3) && (x2.date > o3.date || x2.date === o3.date && canon(x2) > canon(o3));
         byId.set(x2.id, keepNew ? x2 : o3);
-        extra.push(keepNew ? o3 : x2);
+        extra2.push(keepNew ? o3 : x2);
       }
-      if (extra.length) {
-        if (key === "sessions") sessions = [...byId.values()];
-        else cardio = [...byId.values()];
-        for (const x2 of extra) {
-          const id = fixId(x2.id + "-dup" + hashStr(canon(x2)).slice(0, DUP_HASH));
-          if (!trash.some((t4) => t4.id === id)) trash.unshift({ id, kind, date: today(), data: { ...x2, id } });
-        }
+      if (!extra2.length) return list0;
+      for (const x2 of extra2) {
+        const id = fixId(x2.id + "-dup" + hashStr(canon(x2)).slice(0, DUP_HASH));
+        if (!trash.some((t4) => t4.id === id)) trash.unshift({ id, kind, date: today(), data: { ...rec(x2), id } });
       }
-    }
-    out.trash = trash;
-    out.sessions = sessions;
-    out.cardio = cardio;
+      return [...byId.values()];
+    };
+    sessions = dedupe(sessions, "session", (x2) => x2.ex.reduce((a2, b2) => a2 + b2.sets.length, 0));
+    cardio = dedupe(cardio, "cardio", (x2) => x2.min);
     const bBefore = list("bodyweights").length;
-    out.bodyweights = list("bodyweights").filter((b0) => {
+    const bodyweights = list("bodyweights").filter((b0) => {
       const b2 = rec(b0);
       return !!b2 && isDate(b2.date) && isNum(numOr(b2.kg, NaN)) && numOr(b2.kg, 0) > 0;
     }).map((b0, bi) => {
       const b2 = rec(b0) || {};
       return keepExtra(b0, {
         id: typeof b2.id === "string" ? fixId(b2.id) : did("b", b0, bi),
-        date: b2.date,
+        date: typeof b2.date === "string" ? b2.date : "",
         kg: Math.min(numOr(b2.kg, 0), BW_MAX_KG),
         demo: !!b2.demo
       });
     });
-    drop(bBefore - list("bodyweights").length);
+    drop(bBefore - bodyweights.length);
     const mBefore = list("measurements").length;
-    out.measurements = list("measurements").filter((m0) => {
+    const measurements = list("measurements").filter((m0) => {
       const m3 = rec(m0);
       return !!m3 && isDate(m3.date);
     }).map((m0, mi) => {
       const m3 = rec(m0) || {};
-      const o3 = { id: typeof m3.id === "string" ? fixId(m3.id) : did("m", m0, mi), date: m3.date, demo: !!m3.demo };
+      const o3 = {
+        id: typeof m3.id === "string" ? fixId(m3.id) : did("m", m0, mi),
+        date: typeof m3.date === "string" ? m3.date : "",
+        demo: !!m3.demo
+      };
       for (const [k2] of MEAS) {
         const v3 = numOr(m3[k2], NaN);
-        if (isNum(v3) && v3 > 0) o3[k2] = Math.min(v3, MEAS_MAX_CM);
+        if (isNum(v3) && v3 > 0) Object.assign(o3, { [k2]: Math.min(v3, MEAS_MAX_CM) });
       }
       return keepExtra(m0, o3, KNOWN_MEAS);
     });
-    drop(mBefore - list("measurements").length);
-    const d3 = rec(out.draft);
-    if (out.draft && (!d3 || !Array.isArray(d3.ex) || !isDate(d3.date))) out.draft = null;
-    if (out.draft && d3) {
-      const startedAt = Number(d3.startedAt), durMin = Number(d3.durMin);
-      d3.id = typeof d3.id === "string" ? fixId(d3.id) : did("x", { date: d3.date, dayName: d3.dayName }, 0);
-      d3.dayIdx = clampN(d3.dayIdx, 0, MAX_DAYS - 1, 0);
-      d3.dayId = typeof d3.dayId === "string" ? fixId(d3.dayId) : null;
-      d3.startedAt = isTime(startedAt) ? startedAt : null;
-      d3.durMin = Number.isFinite(durMin) && durMin >= 1 ? Math.round(durMin) : null;
-      d3.dayName = typeof d3.dayName === "string" ? d3.dayName : "Session";
-      d3.routineId = typeof d3.routineId === "string" && d3.routineId ? fixId(d3.routineId) : "";
-      d3.notes = typeof d3.notes === "string" ? d3.notes : "";
-      d3.editingId = typeof d3.editingId === "string" ? fixId(d3.editingId) : null;
-      d3.deload = !!d3.deload;
-      d3.light = !!d3.light;
-      d3.limited = d3.limited === true ? true : void 0;
-      d3.free = d3.free === true ? true : void 0;
-      d3.past = d3.past === true ? true : void 0;
-      d3.note0 = typeof d3.note0 === "string" ? d3.note0.slice(0, LIMITS.startNote) : void 0;
-      d3.chk = cleanChk(rec(d3.chk)) || void 0;
-      d3.cardio = (arr(d3.cardio) || []).filter((c4) => !!c4 && typeof c4 === "object").map((c4, ci) => cleanCardio(c4, true, ci));
-      d3.ex = (arr(d3.ex) || []).filter((b0) => {
-        const b2 = rec(b0);
-        return !!b2 && typeof b2.exId === "string" && Array.isArray(b2.sets);
-      }).map((b0) => {
-        const b2 = rec(b0) || {};
-        const pl = rec(b2.plan) || {};
-        const plan = {
-          ...planNums(pl),
-          ss: typeof pl.ss === "string" && pl.ss ? fixId(pl.ss) : null,
-          ...jumpOf(pl)
-        };
-        if (Number(plan.repMax) < Number(plan.repMin)) plan.repMax = plan.repMin;
-        const adj = rec(b2.adj);
-        const adjW = adj ? Number(adj.w) : NaN, adjFrom = adj ? Number(adj.from) : NaN, sw = Number(b2.sw);
-        const prev = arr(b2.prev), lastR = arr(b2.lastR), keepRR = arr(b2.keepRR), ln = rec(b2.lastNote);
-        return keepExtra(b0, {
-          ...typeof b2.bid === "string" && b2.bid ? { bid: fixId(b2.bid) } : {},
-          exId: fixId(b2.exId),
-          plan,
-          note: typeof b2.note === "string" ? b2.note : "",
-          inj: typeof b2.inj === "string" && isMuscleOrJoint(b2.inj) ? b2.inj : null,
-          hint: typeof b2.hint === "string" ? b2.hint : "",
-          last: typeof b2.last === "string" ? b2.last : "",
-          // Last time's sets as shown in the Last column (r44): short strings, absent in older drafts.
-          prev: prev ? prev.filter((x2) => typeof x2 === "string").slice(0, LIMITS.sets).map((x2) => x2.slice(0, LIMITS.lastText)) : void 0,
-          prevOff: b2.prevOff === true ? true : void 0,
-          target: typeof b2.target === "string" ? b2.target : "",
-          easier: typeof b2.easier === "string" ? b2.easier : null,
-          tgt: cleanTgt(rec(b2.tgt)),
-          // Last time's reps per set: shown as placeholders, so numbers only.
-          lastR: lastR ? lastR.slice(0, LIMITS.sets).map((v3) => {
-            const n3 = numOr(v3, NaN);
-            return isNum(n3) && n3 >= 0 ? Math.min(n3, LIMITS.reps) : null;
-          }) : [],
-          swappedFrom: typeof b2.swappedFrom === "string" ? fixId(b2.swappedFrom) : null,
-          cut: b2.cut === true ? true : void 0,
-          // Added on a lighter day or in a deload, the sets before they were halved, for Finish's offer to the routine (r54); absent otherwise.
-          full: typeof b2.full === "number" && Number.isInteger(b2.full) && b2.full >= 1 && b2.full <= LIMITS.sets ? b2.full : void 0,
-          light: b2.light === true ? true : void 0,
-          // The date the target came from, when "Last" is a newer session short of its usual, lighter, or a deload (r26).
-          basis: typeof b2.basis === "string" && isDate(b2.basis) ? b2.basis : void 0,
-          // The suggested load the rows started from (r24); absent in older drafts.
-          sw: b2.sw === null ? null : b2.sw === void 0 || !isNum(sw) ? void 0 : clampN(b2.sw, LOAD_MIN, LOAD_MAX, 0),
-          // The next sets adjusted from a set (r34), and Keep for the rest of the session.
-          adj: adj && typeof adj.at === "number" && Number.isInteger(adj.at) && adj.at >= 0 && isNum(adjW) && isNum(adjFrom) ? {
-            at: adj.at,
-            w: clampN(adj.w, 0, LOAD_MAX, 0),
-            from: clampN(adj.from, 0, LOAD_MAX, 0),
-            r: Math.round(clampN(adj.r, 1, LIMITS.reps, 1)),
-            up: adj.up === true,
-            why: typeof adj.why === "string" ? adj.why.slice(0, LIMITS.why) : "",
-            // The row it came from (PENDING 333), last, where a build before it kept no such field.
-            ...typeof adj.rid === "string" ? { rid: fixId(adj.rid) } : {}
-          } : void 0,
-          adjOff: b2.adjOff === true ? true : void 0,
-          // Editing a saved session keeps the rep range it was logged under.
-          keepRR: b2.keepRR === void 0 ? void 0 : keepRR && keepRR.length === 2 ? [Math.round(Number(keepRR[0])) || 1, Math.round(Number(keepRR[1])) || 1] : null,
-          lastNote: ln && typeof ln.text === "string" && typeof ln.date === "string" && isDate(ln.date) ? { date: ln.date, text: ln.text } : null,
-          sets: (arr(b2.sets) || []).filter((x2) => !!x2 && typeof x2 === "object").map((x0) => {
-            const x2 = rec(x0) || {};
-            return keepExtra(x0, {
-              w: x2.w == null ? null : clampN(x2.w, LOAD_MIN, LOAD_MAX, 0),
-              r: x2.r == null || x2.r === "" ? null : Math.round(clampN(x2.r, 0, LIMITS.reps, 0)),
-              rir: x2.rir == null || x2.rir === "" ? null : clampN(x2.rir, 0, EFFORT_TOP, null),
-              warm: !!x2.warm,
-              drop: !!x2.drop && !x2.warm,
-              done: !!x2.done,
-              cal: x2.warm ? void 0 : cleanCal(rec(x2.cal)) || void 0,
-              // The row's own id (r56.1), last, where a build before it kept the unknown field.
-              ...typeof x2.rid === "string" ? { rid: fixId(x2.rid) } : {}
-            });
-          })
-        });
-      });
-    }
-    out.deloadWeek = isDate(out.deloadWeek) ? out.deloadWeek : null;
-    out.injuries = (arr(out.injuries) || []).filter((x0) => {
+    drop(mBefore - measurements.length);
+    const d3 = rec(raw.draft);
+    const draft = d3 && Array.isArray(d3.ex) && typeof d3.date === "string" && isDate(d3.date) ? cleanDraft(d3, d3.date) : null;
+    const dw = raw.deloadWeek;
+    const injuries = (arr(raw.injuries) || []).filter((x0) => {
       const x2 = rec(x0);
       return !!x2 && isMuscleOrJoint(x2.m);
     }).map((x0, xi) => {
       const x2 = rec(x0) || {};
       return keepExtra(x0, {
         id: typeof x2.id === "string" ? fixId(x2.id) : did("j", x0, xi),
-        m: x2.m,
+        m: typeof x2.m === "string" ? x2.m : "",
         note: typeof x2.note === "string" ? x2.note : "",
-        date: isDate(x2.date) ? x2.date : today()
+        date: typeof x2.date === "string" && isDate(x2.date) ? x2.date : today()
       });
     });
-    delete out.priors;
-    const routines = arr(out.routines) || [];
-    if (!routines.length) out.routines = [starterRoutine()];
-    if (typeof out.activeRoutineId === "string") out.activeRoutineId = fixId(out.activeRoutineId);
-    const rs = (arr(out.routines) || []).map((r4) => rec(r4) || {});
-    if (!rs.find((r4) => r4.id === out.activeRoutineId)) out.activeRoutineId = rs[0].id;
-    out.version = STATE_VERSION;
-    return out;
+    const ar = raw.activeRoutineId;
+    const want = typeof ar === "string" ? fixId(ar) : null;
+    const activeRoutineId = want != null && routines.some((r4) => r4.id === want) ? want : routines[0].id;
+    const extra = { ...s3 };
+    for (const k2 of Object.keys(f3)) delete extra[k2];
+    delete extra.priors;
+    return {
+      version: STATE_VERSION,
+      settings,
+      exercises,
+      routines,
+      activeRoutineId,
+      sessions,
+      bodyweights,
+      measurements,
+      draft,
+      deloadWeek: typeof dw === "string" && isDate(dw) ? dw : null,
+      injuries,
+      cardio,
+      trash,
+      ...extra
+    };
   }
   normalize.dropped = 0;
 
@@ -10161,7 +10193,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       const v3 = rec(m3)?.[k2];
       return typeof v3 === "number" ? v3 : 0;
     };
-    const pair = (k2) => {
+    const pair2 = (k2) => {
       const has = ms.filter((m3) => at(m3, k2) > 0);
       const L2 = has[has.length - 1];
       if (has.length < 2 || !L2) return null;
@@ -10171,7 +10203,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       return b2 ? { b: b2, L: L2 } : null;
     };
     for (const [k2, mus] of SIZE_MAP) {
-      const pr = pair(k2);
+      const pr = pair2(k2);
       if (!pr) continue;
       const { b: b2, L: L2 } = pr;
       let weeks = 0, sum = 0;
@@ -12648,7 +12680,7 @@ ${ap.length ? b`<div class="panel row spread" id="profApply">
     const on = g2 && g2.plates ? g2.plates : plates;
     const listTxt = (a2) => a2.length > RACK_LIST.whole ? `${a2.slice(0, RACK_LIST.head).map(fmtG).join(", ")} … ${a2.slice(-RACK_LIST.tail).map(fmtG).join(", ")}` : a2.map(fmtG).join(", ");
     const half = !!typed && !dbListOf(asRack(typed));
-    const pair = !!typed && !half && typed.fine == null !== (typed.fineTo == null);
+    const pair2 = !!typed && !half && typed.fine == null !== (typed.fineTo == null);
     const su = (gymOf() || { u: U() }).u === "kg" ? "kg" : "lb";
     const small = `${SMALL_PLATE[su]} ${su}`;
     return b`${howText(
@@ -12689,7 +12721,7 @@ ${u4 !== U() ? b`<p class="small" style="margin:0">Suggestions show in ${U()}, o
     )}<input type="text" inputmode="decimal" data-gym="db.fine" aria-labelledby="lt-dbFine" .value=${fieldValue(v3("fine"))} placeholder=${String(DB_EXAMPLE[u4].fine)} /></label>
 <label class="field">Up to<input type="text" inputmode="decimal" data-gym="db.fineTo" .value=${fieldValue(v3("fineTo"))} placeholder=${String(DB_EXAMPLE[u4].fineTo)}/></label>
 </div>
-<p class=${half ? "small" : "small muted"} id="gymDbList" style="margin:6px 0 0">${half ? "Add From, To, and Step to use these." : L2 ? `${L2.length} pairs: ${listTxt(L2)} ${u4}${pair ? ". Add both smaller-step fields to use them." : ""}` : "Not set: dumbbell steps are read from what you log."}</p>
+<p class=${half ? "small" : "small muted"} id="gymDbList" style="margin:6px 0 0">${half ? "Add From, To, and Step to use these." : L2 ? `${L2.length} pairs: ${listTxt(L2)} ${u4}${pair2 ? ". Add both smaller-step fields to use them." : ""}` : "Not set: dumbbell steps are read from what you log."}</p>
 </div>
 <label class="field">${labelTip("lt-kb", `Kettlebells (${u4})`, "The weights you have, any order, separated by commas.")}<input type="text" inputmode="decimal" data-gym="kb" aria-labelledby="lt-kb" .value=${fieldValue(g2 && g2.kb ? g2.kb.map(fmtG).join(", ") : "")} placeholder=${lb ? "18, 26, 35, 44, 53" : "8, 12, 16, 20, 24"}/></label> <label class="field">${labelTip(
       "lt-stack",
@@ -17502,9 +17534,7 @@ ${ms.length ? b`<div class="scroll-x" style="margin-top:10px"><table class="t"><
       if (!d3) return;
       act(
         () => {
-          (d3.cardio || (d3.cardio = [])).push(
-            cleanCardio({ id: uid(), kind: "walk", when: t4.dataset.when }, true)
-          );
+          (d3.cardio || (d3.cardio = [])).push(cleanDraftCardio({ id: uid(), kind: "walk", when: t4.dataset.when }));
         },
         { inProgress: true }
       );
@@ -20306,18 +20336,18 @@ ${ms.length ? b`<div class="scroll-x" style="margin-top:10px"><table class="t"><
     }
     function openPreview(res, tab) {
       const names = [...new Set(res.sessions.flatMap((x2) => x2.items.map((i5) => i5.name)))];
-      const pick = /* @__PURE__ */ Object.create(null), guess = /* @__PURE__ */ Object.create(null);
+      const pick2 = /* @__PURE__ */ Object.create(null), guess = /* @__PURE__ */ Object.create(null);
       const ASSISTED = { pullup: "assistPullup", chinup: "assistPullup", dips: "assistDip", triDips: "assistDip" };
       for (const n3 of names) {
         const c4 = impMatch(n3);
         let id = c4[0] && c4[0].sc >= 0.6 ? c4[0].id : "new";
         const neg = res.sessions.some((x2) => x2.items.some((i5) => i5.name === n3 && i5.sets && i5.sets.some((q) => q.w < 0)));
         if (neg && id !== "new" && !EX(id).assist) id = ASSISTED[id] && state.exercises.some((e5) => e5.id === ASSISTED[id]) ? ASSISTED[id] : "new";
-        pick[n3] = id;
+        pick2[n3] = id;
         guess[n3] = impGuess(n3);
         if (neg && id === "new") guess[n3] = { ...guess[n3], assist: true, equip: "machine" };
       }
-      openModal({ kind: "imp", step: "preview", res, tab, pick, guess, unit: res.unit || U(), unitKnown: !!res.unit, date: today(), showAll: false });
+      openModal({ kind: "imp", step: "preview", res, tab, pick: pick2, guess, unit: res.unit || U(), unitKnown: !!res.unit, date: today(), showAll: false });
     }
     function impBuild(m3) {
       const conv = m3.unit === "kg" ? ((v3) => v3) : ((v3) => v3 * LB);

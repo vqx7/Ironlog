@@ -39,6 +39,7 @@ import {
 import { Hx, canon, merge3List, merge3Val, mergeSession, mergeWorkout } from './merge';
 import { draftCardio, draftSession } from './session';
 import type { DraftLike } from './session';
+import type { CardioEntry } from './types';
 import { routineEmpty } from './routines';
 import { cleanCardio, normalize, plainTemplate } from './normalize';
 import { invalidate } from './live';
@@ -745,7 +746,7 @@ function keepLost(
        its sets do: an edit made here is kept, a row the other phone deleted
        stays deleted (the review of the fix: a row in the log stood as it was,
        so an edit here was lost and a deletion there came back). */
-    const norm = (l: readonly unknown[]): Rec[] => l.map(c => cleanCardio(c));
+    const norm = (l: readonly unknown[]): CardioEntry[] => l.map(c => cleanCardio(c));
     const ids = new Set(
       [...(was ? draftCardio(was) : []), ...cardio].map(c => c.id).filter(x => typeof x === 'string')
     );

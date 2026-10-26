@@ -237,8 +237,7 @@ export function finishNow(): void {
   const d = state.draft;
   if (!d) return;
   const ex = withPlanSets(joinAdjacent(d.ex.map(savedEx).filter(b => b.sets.length)), d, state.routines);
-  // cast: cleanCardio builds each entry field by field (its kind and time checked, its minutes over 0 by draftCardio), a saved cardio entry.
-  const cardio = draftCardio(d).map(c => cleanCardio(c)) as unknown as CardioEntry[];
+  const cardio = draftCardio(d).map(c => cleanCardio(c));
   if (!ex.length) {
     if (cardio.length && !d.editingId) {
       act(() => {

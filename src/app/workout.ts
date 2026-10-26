@@ -26,7 +26,7 @@ import { ssLetters, fixSupersets, linkToggle } from './routines';
 import { missedTag, repSpan, effLeastShort, LIGHT_RIR, fmtDate, estMin } from './format';
 import { isMissed, isWork, DROP_START, WARM_RAMP, LIGHT_SHARE } from './formulas';
 import { today, numIn, uid, isDate, EPS, pctOf } from './util';
-import { cleanCardio, LOAD_MAX, LOAD_MIN } from './normalize';
+import { cleanDraftCardio, LOAD_MAX, LOAD_MIN } from './normalize';
 import { platesMode } from './gym';
 import { loadWords, loadNote, emptyLoad } from './loads';
 import { CHK_Q, chkWord } from './coach';
@@ -50,7 +50,6 @@ import {
   newRow,
   editFp
 } from './session';
-import type { DraftCardio } from './session';
 import type { DraftBlock, DraftSet } from './types';
 import type { ExerciseLike } from './model';
 import { distU, distShow, rirShow, setShort, bestLine, effTgt, loadHead, fmtDateLong } from './display';
@@ -1008,10 +1007,7 @@ export const WORKOUT_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
     if (!d) return;
     act(
       () => {
-        // cast: cleanCardio builds the row field by field (its kind and time checked, its minutes left blank in a session), the shape of a session's cardio row.
-        (d.cardio || (d.cardio = [])).push(
-          cleanCardio({ id: uid(), kind: 'walk', when: t.dataset.when }, true) as DraftCardio
-        );
+        (d.cardio || (d.cardio = [])).push(cleanDraftCardio({ id: uid(), kind: 'walk', when: t.dataset.when }));
       },
       { inProgress: true }
     );

@@ -9,7 +9,25 @@
    signatures that tell a ready-made routine from one of the lifter's own,
    live here too, since the log's fresh state is made from them. */
 
-import type { DraftBlock, Exercise, Plan } from './types';
+import type {
+  Bodyweight,
+  CardioEntry,
+  Day,
+  DraftBlock,
+  DraftSet,
+  Exercise,
+  Injury,
+  LoggedSet,
+  Measurement,
+  MuscleKey,
+  Plan,
+  PlanItem,
+  Routine,
+  Session,
+  SessionEx,
+  Settings
+} from './types';
+import type { DraftLike } from './session';
 import type { State } from './store';
 import { addDays, clampN, hashStr, isDate, isNum, numOr, today, r1, r3, HUNDREDTHS, WEEK_DAYS, SUNDAY } from './util';
 import { LB } from './units';
@@ -144,16 +162,14 @@ function jumpOf(p: Rec): { jump?: number } {
    r21 and r28's settings). A record with nothing unknown comes out exactly as
    before, so its fingerprint and the sync are unchanged. */
 /** A record with the unknown fields its source carried kept (above); `keepExtra.n` counts the fields kept, for the suites. */
-export function keepExtra<O extends Rec>(src: unknown, out: O, known?: ReadonlySet<string>): O {
+export function keepExtra<O extends object>(src: unknown, out: O, known?: ReadonlySet<string>): O {
   const S = rec(src);
   if (!S || Array.isArray(src)) return out;
-  // The record being built, its fields written by name; out is that record, typed as the caller made it.
-  const o: Rec = out;
   let room = EXTRA_MAX,
     n = 0;
   for (const k of Object.keys(S)) {
     if (n >= EXTRA_KEYS) break;
-    if (k in o || (known && known.has(k)) || !okExtraKey(k)) continue;
+    if (k in out || (known && known.has(k)) || !okExtraKey(k)) continue;
     const v = S[k];
     if (v === undefined || typeof v === 'function') continue;
     let j: string | undefined;
@@ -167,16 +183,19 @@ export function keepExtra<O extends Rec>(src: unknown, out: O, known?: ReadonlyS
     if (j === undefined || cost > room) continue;
     room -= cost;
     n++;
-    o[k] = parseJson(j);
+    // Written as an assignment writes it, under a name okExtraKey allowed.
+    Object.assign(out, { [k]: parseJson(j) });
     keepExtra.n++;
   }
   if (n) {
-    const own = (k: string): boolean => Object.prototype.hasOwnProperty.call(o, k);
-    const ks = Object.keys(S).filter(own);
-    for (const k of [...ks, ...Object.keys(o).filter(k => !ks.includes(k))]) {
-      const v = o[k];
-      delete o[k];
-      o[k] = v;
+    /* The record's fields read once, then each taken out and written back,
+       those the source has in its order first: a field written again stays
+       where it stood, so taking it out first is what moves it. */
+    const was: Rec = { ...rec(out) };
+    const ks = Object.keys(S).filter(k => Object.prototype.hasOwnProperty.call(was, k));
+    for (const k of [...ks, ...Object.keys(was).filter(k => !ks.includes(k))]) {
+      Reflect.deleteProperty(out, k);
+      Object.assign(out, { [k]: was[k] });
     }
   }
   return out;
@@ -185,8 +204,17 @@ keepExtra.n = 0;
 
 /* ---------- records ---------- */
 
-/** One cardio or mobility entry, cleaned. In a draft the minutes may still be blank. */
-export function cleanCardio(c: unknown, draft?: boolean, i?: number): Rec {
+/** A cardio row of a workout in progress: a saved entry's fields, its minutes blank until typed. */
+export type CardioRow = Omit<CardioEntry, 'min'> & { min: number | null };
+
+/* One cardio or mobility entry, cleaned, its minutes the one field a saved
+   entry and a workout's row read differently: a saved one's are 1 at the
+   least (`none` 1), a row's may still be blank (`none` null). */
+function cardioOf<M extends number | null>(
+  c: unknown,
+  none: M,
+  i?: number
+): Omit<CardioEntry, 'min'> & { min: number | M } {
   const C = rec(c) || {};
   const m = numOr(C.min, NaN),
     hr = numOr(C.hr, NaN),
@@ -195,9 +223,9 @@ export function cleanCardio(c: unknown, draft?: boolean, i?: number): Rec {
     c,
     {
       id: typeof C.id === 'string' ? fixId(C.id) : did('c', c, i),
-      date: isDate(C.date) ? C.date : today(),
+      date: typeof C.date === 'string' && isDate(C.date) ? C.date : today(),
       kind: typeof C.kind === 'string' && CARDIO_KINDS.has(C.kind) ? C.kind : 'other',
-      min: isNum(m) && m > 0 ? Math.min(Math.round(m), LIMITS.minutes) : draft ? null : 1,
+      min: isNum(m) && m > 0 ? Math.min(Math.round(m), LIMITS.minutes) : none,
       hr: isNum(hr) && hr >= LIMITS.hr[0] && hr <= LIMITS.hr[1] ? Math.round(hr) : null,
       when: typeof C.when === 'string' && CARDIO_WHENS.has(C.when) ? C.when : 'solo',
       note: typeof C.note === 'string' ? C.note.slice(0, LIMITS.cardioNote) : '',
@@ -207,16 +235,25 @@ export function cleanCardio(c: unknown, draft?: boolean, i?: number): Rec {
     KNOWN_CARDIO
   );
 }
+/** One saved cardio or mobility entry, cleaned. */
+export const cleanCardio = (c: unknown, i?: number): CardioEntry => cardioOf(c, 1, i);
+/** One cardio row of a workout in progress, cleaned: its minutes may still be blank. */
+export const cleanDraftCardio = (c: unknown, i?: number): CardioRow => cardioOf(c, null, i);
+
+/** A pair of numbers, as a rep range is kept. */
+const pair = (a: number, b: number): [number, number] => [a, b];
 
 /* A saved session, cleaned: called only on one okSess accepted (a record with
-   a date and a list of exercises), which the reader of its exercises relies on. */
-export function cleanSess(raw: unknown, si: number): Rec {
+   a date and a list of exercises), which the reader of its exercises relies
+   on; so its date is that string (the '' after it is never reached). */
+/** A saved session, cleaned field by field. */
+export function cleanSess(raw: unknown, si: number): Session {
   const ss = rec(raw) || {};
   const durMin = Number(ss.durMin),
     t = Number(ss.t);
   return keepExtra(raw, {
     id: typeof ss.id === 'string' ? fixId(ss.id) : did('s', raw, si),
-    date: ss.date,
+    date: typeof ss.date === 'string' ? ss.date : '',
     dayIdx: clampN(ss.dayIdx, 0, MAX_DAYS - 1, 0),
     dayId: typeof ss.dayId === 'string' ? fixId(ss.dayId) : null,
     durMin: Number.isFinite(durMin) && durMin >= 1 && durMin <= LIMITS.minutes ? Math.round(durMin) : null,
@@ -231,52 +268,52 @@ export function cleanSess(raw: unknown, si: number): Rec {
     free: ss.free === true ? true : undefined,
     chk: cleanChk(rec(ss.chk)) || undefined,
     ex: (arr(ss.ex) || [])
-      .filter(b => {
-        const B = rec(b);
-        return !!B && typeof B.exId === 'string' && Array.isArray(B.sets);
-      })
-      .map(b0 => {
-        const b = rec(b0) || {};
+      .flatMap((b0): SessionEx[] => {
+        const b = rec(b0);
+        if (!b || typeof b.exId !== 'string' || !arr(b.sets)) return [];
         const rr = arr(b.rr);
-        return keepExtra(
-          b0,
-          {
-            exId: fixId(b.exId),
-            note: typeof b.note === 'string' ? b.note : '',
-            // Planned rep range at the time, [min,max]. Older sessions have none.
-            rr:
-              rr && rr.length === 2 && rr.every(v => Number.isFinite(Number(v)) && Number(v) > 0)
-                ? [Math.round(Number(rr[0])), Math.round(Number(rr[1]))]
-                : null,
-            // Marked trimmed (Short on time, under half its sets) until r53. Neither written nor read since r54 (V's one rule reads the log); kept, here and in drafts, so a record saved before keeps its shape and hash.
-            cut: b.cut === true ? true : undefined,
-            // One exercise made lighter mid-session (r31, Make it lighter): out of trends and targets, the rest of the session counts.
-            light: b.light === true ? true : undefined,
-            // Held for a flagged injury, its key (r54): left out of the stall test. Absent unless held, so earlier records keep their hash.
-            ...(isMuscleOrJoint(b.inj) ? { inj: b.inj } : {}),
-            sets: (arr(b.sets) || [])
-              .filter(x => !!x && typeof x === 'object')
-              .map(x0 => {
-                const x = rec(x0) || {};
-                return keepExtra(x0, {
-                  // Below 0 only for assisted sets (bodyweight minus the machine's help).
-                  w: clampN(x.w, LOAD_MIN, LOAD_MAX, 0),
-                  r: Math.round(clampN(x.r, 0, LIMITS.reps, 0)),
-                  rir: x.rir == null || x.rir === '' ? null : clampN(x.rir, 0, EFFORT_TOP, null),
-                  warm: !!x.warm,
-                  drop: !!x.drop && !x.warm,
-                  cal: x.warm ? undefined : cleanCal(rec(x.cal)) || undefined,
-                  // The row's own id (r56.1), last, where a build before it kept the unknown field.
-                  ...(typeof x.rid === 'string' ? { rid: fixId(x.rid) } : {})
-                });
+        return [
+          keepExtra(
+            b0,
+            {
+              exId: fixId(b.exId),
+              note: typeof b.note === 'string' ? b.note : '',
+              // Planned rep range at the time, [min,max]. Older sessions have none.
+              rr:
+                rr && rr.length === 2 && rr.every(v => Number.isFinite(Number(v)) && Number(v) > 0)
+                  ? pair(Math.round(Number(rr[0])), Math.round(Number(rr[1])))
+                  : null,
+              // Marked trimmed (Short on time, under half its sets) until r53. Neither written nor read since r54 (V's one rule reads the log); kept, here and in drafts, so a record saved before keeps its shape and hash.
+              cut: b.cut === true ? true : undefined,
+              // One exercise made lighter mid-session (r31, Make it lighter): out of trends and targets, the rest of the session counts.
+              light: b.light === true ? true : undefined,
+              // Held for a flagged injury, its key (r54): left out of the stall test. Absent unless held, so earlier records keep their hash.
+              ...(typeof b.inj === 'string' && isMuscleOrJoint(b.inj) ? { inj: b.inj } : {}),
+              sets: (arr(b.sets) || []).flatMap((x0): LoggedSet[] => {
+                const x = rec(x0);
+                if (!x) return [];
+                return [
+                  keepExtra(x0, {
+                    // Below 0 only for assisted sets (bodyweight minus the machine's help).
+                    w: clampN(x.w, LOAD_MIN, LOAD_MAX, 0),
+                    r: Math.round(clampN(x.r, 0, LIMITS.reps, 0)),
+                    rir: x.rir == null || x.rir === '' ? null : clampN(x.rir, 0, EFFORT_TOP, null),
+                    warm: !!x.warm,
+                    drop: !!x.drop && !x.warm,
+                    cal: x.warm ? undefined : cleanCal(rec(x.cal)) || undefined,
+                    // The row's own id (r56.1), last, where a build before it kept the unknown field.
+                    ...(typeof x.rid === 'string' ? { rid: fixId(x.rid) } : {})
+                  })
+                ];
               }),
-            // The sets its routine's plan gave it when saved (r58, 339 h), last, as Finish writes it; absent unless recorded, so older records keep their hash.
-            ...(typeof b.ps === 'number' && Number.isInteger(b.ps) && b.ps >= 1 && b.ps <= LIMITS.sets
-              ? { ps: b.ps }
-              : {})
-          },
-          KNOWN_SEX
-        );
+              // The sets its routine's plan gave it when saved (r58, 339 h), last, as Finish writes it; absent unless recorded, so older records keep their hash.
+              ...(typeof b.ps === 'number' && Number.isInteger(b.ps) && b.ps >= 1 && b.ps <= LIMITS.sets
+                ? { ps: b.ps }
+                : {})
+            },
+            KNOWN_SEX
+          )
+        ];
       })
       .filter(b => b.sets.length),
     // When the session started (r34): orders two sessions on one day. Absent on older ones, so their records hash as before; kept only as a time a Date can hold (r56.1).
@@ -392,575 +429,345 @@ export function freshState(): Fresh {
   };
 }
 
-/* Every field below is validated rather than trusted. The old version only
-   checked that five keys were arrays, so a backup containing sessions:[{}]
-   imported cleanly and then threw inside IDX() on the first render, leaving
-   the app unusable with no obvious way back. normalize() runs on both load
-   and import, so this also protects against a half-written localStorage
-   record. Anything unusable is dropped; the count is reported to the caller
-   via normalize.dropped. The log it returns is built field by field from
-   those checks, which TypeScript cannot follow, so it is typed as the State
-   once, at the end. */
-/** A save read as every build reads it (above); `normalize.dropped` counts the damaged records the last call left out. */
-export function normalize(input: unknown): State {
-  const f = freshState();
-  normalize.dropped = 0;
-  // A new device and Erase everything both start here, fully normalized:
-  // the raw fresh state lacks fields (section order, folds) every view reads.
-  const s: Rec = rec(input) || f;
-  // drop() is one record; drop(n) is n, and drop(0) is none (it used to count 1).
-  const drop = (n?: number): void => {
-    normalize.dropped += n == null ? 1 : Math.max(0, n);
-  };
-  const out: Rec = { ...f, ...s };
+/** A word from a list, as the list holds it, or undefined when the value is none of them. */
+const pick = <W extends string>(v: unknown, list: readonly W[]): W | undefined => list.find(w => w === v);
+/** The strings of a list that pass a test, in their order. */
+const strings = (l: readonly unknown[], ok: (s: string) => boolean): string[] =>
+  l.flatMap(k => (typeof k === 'string' && ok(k) ? [k] : []));
+/** The muscle keys of a list, in its order (a key twice is kept twice). */
+const muscles = (l: readonly unknown[]): MuscleKey[] =>
+  l.flatMap(k => {
+    const m = MK.find(x => x === k);
+    return m ? [m] : [];
+  });
 
-  /* A save from before a setting existed reads it as the app behaved then,
-     not as a new install starts (r28): auto-mark off, nothing hidden, the
-     code's own section order. Only a new device or Erase everything (s is
-     the fresh state itself) gets the new-install layout and auto-mark on. */
+/* The settings, merged over the defaults (a save from before a setting
+   existed reads it as the app behaved then, not as a new install starts,
+   r28: auto-mark off, nothing hidden, the code's own section order; only a
+   new device or Erase everything, s the fresh state itself, gets the
+   new-install layout and auto-mark on). Each field is worked out from the
+   merged copy and written back into it, the copy's own order kept: a field
+   it has stays where it stands, and the four a build added after the others
+   (the section order, the folds, the fold flag and the height) go last when
+   it lacks them, as every build since r28 has put them, so the synced
+   settings keep one key order across builds and no build rewrites another's.
+   A setting a newer build saved is kept beside these, unread. Optional
+   settings stay absent unless set, so older records keep their fingerprints
+   and sync does not see them as edited. */
+/** The settings of a save, cleaned (above). */
+function cleanSettings(s: Rec, f: Fresh): Settings {
   const fresh = s === f;
   const base = fresh ? f.settings : { ...f.settings, autoDone: false, hidden: [] };
   const st: Rec = { ...base, ...spread(s.settings || {}) };
-  out.settings = st;
-  st.unit = st.unit === 'kg' ? 'kg' : 'lb';
-  st.theme = oneOf(st.theme, ['system', 'dark', 'light']) ? st.theme : 'system';
-  // Timer and logging preferences. Older saves have none of these, so each
-  // falls back to exactly how the app behaved before they existed.
-  st.timerMode = oneOf(st.timerMode, ['auto', 'manual', 'off']) ? st.timerMode : 'auto';
-  st.timerSound = st.timerSound !== false;
-  st.timerCompact = st.timerCompact === true;
-  st.autoDone = st.autoDone === true;
-  // Optional settings added in r20 stay undefined unless set, so older
-  // records keep their fingerprints and sync does not see them as edited.
-  if (!oneOf(st.accent, ['blue', 'volt', 'ember', 'pink'])) delete st.accent;
-  if (st.rirAsk !== true) delete st.rirAsk;
-  // Count RIR 4 to 5 as half a set (r40): absent unless on.
-  if (st.rirHalf !== true) delete st.rirHalf;
-  // r34: adjusting the next sets is on unless turned off; only false is stored, so older saves hash as before.
-  if (st.autoAdj !== false) delete st.autoAdj;
-  // r34: weigh-in reminder in days (0 off); absent is every 14 days.
-  if (bwEveryKept(st.bwEvery) === undefined) delete st.bwEvery;
-  // r34: Today opens on a blank session; absent is the plan's day.
-  if (st.todayStart !== 'free') delete st.todayStart;
-  // r34: rest weeks, week-start dates; the last two years kept.
-  {
+  // The settings as they came, read beside the merged ones for the two fields whose absence means something (the folds, the removed built-ins).
+  const sIn = rec(s.settings) || {};
+  const accent = pick(st.accent, ['blue', 'volt', 'ember', 'pink'] as const);
+  const bwEvery = bwEveryKept(st.bwEvery);
+  const restWeeks = (() => {
     const rw = arr(st.restWeeks);
-    const r = rw ? [...new Set(rw.filter(isDate))].sort().slice(-LIMITS.restWeeks) : [];
-    if (r.length) st.restWeeks = r;
-    else delete st.restWeeks;
-  }
-  // r33 (item 206): effort in half points or RPE; absent is whole RIR, so older saves hash as before.
-  if (st.rirScale !== 'half' && st.rirScale !== 'rpe') delete st.rirScale;
-  // r25: suggested loads show grey until typed; 'fill' puts them in the rows
-  // as before. Unset means grey (V's choice), so older saves change nothing
-  // stored.
-  if (st.loadFill !== 'fill') delete st.loadFill;
-  {
-    const n = typeof st.userName === 'string' ? st.userName.replace(/\s+/g, ' ').trim().slice(0, LIMITS.name) : '';
-    if (n) st.userName = n;
-    else delete st.userName;
-  }
-  {
-    const hf = arr(st.homeFolded);
-    st.homeFolded = hf ? hf.filter(k => oneOf(k, ['map', 'body', 'week', 'tiles', 'coach', 'injuries'])) : [];
-  }
-  // Section order per tab (drag the ⠿ in a section header) and the folded
-  // state of sections that older builds had no fold for. Absent means the
-  // default order with everything open, exactly as before.
-  // A new install starts in the default order (r28). The key is added here,
-  // after the others, as every build before r28 adds it, so the synced
-  // settings keep one key order across builds and no build rewrites another's.
-  {
+    return rw ? [...new Set(strings(rw, isDate))].sort().slice(-LIMITS.restWeeks) : [];
+  })();
+  const rirScale = pick(st.rirScale, ['half', 'rpe'] as const);
+  const userName = typeof st.userName === 'string' ? st.userName.replace(/\s+/g, ' ').trim().slice(0, LIMITS.name) : '';
+  const secOrder = (() => {
     const so = st.secOrder === undefined && fresh ? defaultOrder() : st.secOrder;
     const clean: Record<string, string[]> = {};
     const O = rec(so);
     if (O)
       for (const t of SEC_TABS) {
         const l = arr(O[t]);
-        if (l)
-          clean[t] = l
-            .filter(k => typeof k === 'string')
-            .filter(k => safeKey(k) && k.length < LIMITS.secKey)
-            .slice(0, LIMITS.secKey);
+        if (l) clean[t] = strings(l, k => safeKey(k) && k.length < LIMITS.secKey).slice(0, LIMITS.secKey);
       }
-    st.secOrder = clean;
-  }
-  {
-    const fl = arr(st.folds);
-    st.folds = fl
-      ? fl.filter(k => typeof k === 'string' && safeKey(k) && k.length < LIMITS.foldKey).slice(0, LIMITS.folds)
-      : [];
-  }
-  st.wakeLock = st.wakeLock === true;
-  // Small change plates (r29, item 98): absent unless on, so saves without it hash as before.
-  if (st.smallPlates !== true) delete st.smallPlates;
-  // Your gym (r33, item 207): absent unless set; rebuilt in one key order so a save hashes the same every time.
-  {
-    const g = gymClean(rec(st.gym));
-    if (g) st.gym = g;
-    else delete st.gym;
-  }
-  // The profile (r44, item 271): absent unless set, rebuilt in one key order.
-  {
-    const p = profClean(rec(st.profile));
-    if (p) st.profile = p;
-    else delete st.profile;
-  }
-  // The floors a first-run routine pick set (r44): absent unless set, whole sets 0 to 100, in muscle order.
-  {
+    return clean;
+  })();
+  const gym = gymClean(rec(st.gym));
+  const profile = profClean(rec(st.profile));
+  // The floors a first-run routine pick set (r44): whole sets 0 to 100, in muscle order.
+  const bandsFit = (() => {
     const F = rec(st.bandsFit);
-    const o: Record<string, number> = {};
+    const o: Partial<Record<MuscleKey, number>> = {};
     if (F && !Array.isArray(F))
       for (const m of MK) {
         const v = F[m];
         if (!TRACK_ONLY.has(m) && typeof v === 'number' && Number.isInteger(v) && v >= 0 && v <= LIMITS.weeklySets)
           o[m] = v;
       }
-    if (Object.keys(o).length) st.bandsFit = o;
-    else delete st.bandsFit;
-  }
-  // The muscles the lifter gave a target with Set a target (r58): absent unless set, in muscle order, never one with a target by default.
-  {
+    return o;
+  })();
+  // The muscles the lifter gave a target with Set a target (r58): in muscle order, never one with a target by default.
+  const ownTargets = (() => {
     const o = arr(st.ownTargets);
-    const k = o ? MK.filter(m => !TARGETED.has(m) && o.includes(m)) : [];
-    if (k.length) st.ownTargets = k;
-    else delete st.ownTargets;
-  }
-  // RIR: on (as logged), cal (on, shifted by your calibration sets), off.
-  st.rirMode = oneOf(st.rirMode, ['on', 'off', 'cal']) ? st.rirMode : 'on';
-  {
-    const h = arr(st.hidden);
-    st.hidden = h ? [...new Set(h.filter(k => typeof k === 'string' && HIDEABLE_KEYS.has(k)))] : [];
-  }
-  st.onboarded = st.onboarded === true;
-  st.calSnooze = isDate(st.calSnooze) ? st.calSnooze : null;
-  // Legacy fold flag from older builds; unused, kept so old saves round-trip.
-  st.tidyV = numOr(st.tidyV, 0) >= 1 ? 1 : 0;
-  // Height in cm for waist-to-height; the one body measure that does not change.
-  {
-    const hc = numOr(st.heightCm, NaN);
-    st.heightCm = isNum(hc) && hc >= LIMITS.heightCm[0] && hc <= LIMITS.heightCm[1] ? r1(hc) : null;
-  }
-  {
-    const tb = numOr(st.timeBudget, NaN);
-    st.timeBudget = isNum(tb) && tb >= LIMITS.budgetMin[0] ? Math.min(Math.round(tb), LIMITS.budgetMin[1]) : null;
-  }
-  {
-    const pr = arr(st.priorities);
-    st.priorities = pr ? pr.filter(isMuscle) : [];
-  }
-  // The settings as they came, read beside the merged ones for the two fields
-  // whose absence means something (the folds, the removed built-ins).
-  const sIn = rec(s.settings) || {};
-  // Absent (older saves) means the defaults apply once; after that the user's folds win.
-  {
-    const df = arr(sIn.dashFolded);
-    st.dashFolded = df ? df.filter(k => oneOf(k, DSEC_KEYS)) : DSEC_FOLDED.slice();
-  }
-  st.lastExport = isDate(st.lastExport) ? st.lastExport : null;
-  // Built-in exercises the user deleted. Without this the library list below
-  // silently puts every one of them back on the next load.
-  const removedLib: string[] = (arr(sIn.removedLib) || []).filter(x => typeof x === 'string').map(fixId);
-  st.removedLib = removedLib;
-  const bk = numOr(st.barKg, NaN);
-  st.barKg = isNum(bk) && bk > 0 ? Math.min(bk, LIMITS.barKg) : null;
-  const bg = numOr(st.bwGoalPct, NaN);
-  st.bwGoalPct = isNum(bg) ? Math.min(Math.max(bg, -LIMITS.bwRatePct), LIMITS.bwRatePct) : null;
+    return o ? MK.filter(m => !TARGETED.has(m) && o.includes(m)) : [];
+  })();
+  const hf = arr(st.homeFolded),
+    fl = arr(st.folds),
+    h = arr(st.hidden),
+    pr = arr(st.priorities),
+    df = arr(sIn.dashFolded);
+  const hc = numOr(st.heightCm, NaN),
+    tb = numOr(st.timeBudget, NaN),
+    bk = numOr(st.barKg, NaN),
+    bg = numOr(st.bwGoalPct, NaN);
+  // Built-in exercises the user deleted. Without this the library list silently puts every one of them back on the next load.
+  const removedLib = (arr(sIn.removedLib) || []).filter(x => typeof x === 'string').map(fixId);
   const inBands = spread(sIn.bands || {});
-  const bands: Record<string, [number, number]> = {};
-  st.bands = bands;
-  for (const m of MK) {
+  const band = (m: MuscleKey): [number, number] => {
     const b = arr(inBands[m]);
-    let lo = b ? clampN(b[0], 0, LIMITS.weeklySets, BANDS[m][0]) : BANDS[m][0];
-    let hi = b ? clampN(b[1], 0, LIMITS.weeklySets, BANDS[m][1]) : BANDS[m][1];
-    if (lo > hi) {
-      const t = lo;
-      lo = hi;
-      hi = t;
-    }
-    bands[m] = [lo, hi];
-  }
+    const lo = b ? clampN(b[0], 0, LIMITS.weeklySets, BANDS[m][0]) : BANDS[m][0];
+    const hi = b ? clampN(b[1], 0, LIMITS.weeklySets, BANDS[m][1]) : BANDS[m][1];
+    return lo > hi ? [hi, lo] : [lo, hi];
+  };
+  /* Every muscle's band, in muscle order. Built over an empty record of the
+     bands' type and filled for every muscle key just after, which is what the
+     cast says: MK is MUSCLES' keys, and MUSCLES names every MuscleKey. */
+  const bands = {} as Record<MuscleKey, [number, number]>;
+  for (const m of MK) bands[m] = band(m);
+  // Each optional setting absent unless set (each kept below is one the merged copy has, so it stays where it stands).
+  const vals: Settings = {
+    unit: st.unit === 'kg' ? 'kg' : 'lb',
+    theme: pick(st.theme, ['system', 'dark', 'light'] as const) ?? 'system',
+    // Timer and logging preferences. Older saves have none of these, so each falls back to exactly how the app behaved before they existed.
+    timerMode: pick(st.timerMode, ['auto', 'manual', 'off'] as const) ?? 'auto',
+    timerSound: st.timerSound !== false,
+    timerCompact: st.timerCompact === true,
+    autoDone: st.autoDone === true,
+    // Optional settings added in r20 stay undefined unless set.
+    ...(accent ? { accent } : {}),
+    ...(st.rirAsk === true ? { rirAsk: true } : {}),
+    // Count RIR 4 to 5 as half a set (r40): absent unless on.
+    ...(st.rirHalf === true ? { rirHalf: true } : {}),
+    // r34: adjusting the next sets is on unless turned off; only false is stored, so older saves hash as before.
+    ...(st.autoAdj === false ? { autoAdj: false } : {}),
+    // r34: weigh-in reminder in days (0 off); absent is every BW_EVERY_DEFAULT days.
+    ...(bwEvery !== undefined ? { bwEvery } : {}),
+    // r34: Today opens on a blank session; absent is the plan's day.
+    ...(st.todayStart === 'free' ? { todayStart: 'free' } : {}),
+    // r34: rest weeks, week-start dates; the last two years kept.
+    ...(restWeeks.length ? { restWeeks } : {}),
+    // r33 (item 206): effort in half points or RPE; absent is whole RIR, so older saves hash as before.
+    ...(rirScale ? { rirScale } : {}),
+    // r25: suggested loads show grey until typed; 'fill' puts them in the rows as before. Unset means grey (V's choice).
+    ...(st.loadFill === 'fill' ? { loadFill: 'fill' } : {}),
+    ...(userName ? { userName } : {}),
+    homeFolded: hf ? strings(hf, k => oneOf(k, ['map', 'body', 'week', 'tiles', 'coach', 'injuries'])) : [],
+    // Section order per tab (drag the ⠿ in a section header): a new install starts in the default order (r28).
+    secOrder,
+    folds: fl ? strings(fl, k => safeKey(k) && k.length < LIMITS.foldKey).slice(0, LIMITS.folds) : [],
+    wakeLock: st.wakeLock === true,
+    // Small change plates (r29, item 98): absent unless on, so saves without it hash as before.
+    ...(st.smallPlates === true ? { smallPlates: true } : {}),
+    // Your gym (r33, item 207) and the profile (r44, item 271): absent unless set, rebuilt in one key order.
+    ...(gym ? { gym } : {}),
+    ...(profile ? { profile } : {}),
+    ...(Object.keys(bandsFit).length ? { bandsFit } : {}),
+    ...(ownTargets.length ? { ownTargets } : {}),
+    // RIR: on (as logged), cal (on, shifted by your calibration sets), off.
+    rirMode: pick(st.rirMode, ['on', 'off', 'cal'] as const) ?? 'on',
+    hidden: h ? [...new Set(strings(h, k => HIDEABLE_KEYS.has(k)))] : [],
+    onboarded: st.onboarded === true,
+    calSnooze: typeof st.calSnooze === 'string' && isDate(st.calSnooze) ? st.calSnooze : null,
+    // Legacy fold flag from older builds; unused, kept so old saves round-trip.
+    tidyV: numOr(st.tidyV, 0) >= 1 ? 1 : 0,
+    // Height in cm for waist-to-height; the one body measure that does not change.
+    heightCm: isNum(hc) && hc >= LIMITS.heightCm[0] && hc <= LIMITS.heightCm[1] ? r1(hc) : null,
+    timeBudget: isNum(tb) && tb >= LIMITS.budgetMin[0] ? Math.min(Math.round(tb), LIMITS.budgetMin[1]) : null,
+    priorities: pr ? muscles(pr) : [],
+    // Absent (older saves) means the defaults apply once; after that the user's folds win.
+    dashFolded: df ? strings(df, k => oneOf(k, DSEC_KEYS)) : DSEC_FOLDED.slice(),
+    lastExport: typeof st.lastExport === 'string' && isDate(st.lastExport) ? st.lastExport : null,
+    removedLib,
+    barKg: isNum(bk) && bk > 0 ? Math.min(bk, LIMITS.barKg) : null,
+    bwGoalPct: isNum(bg) ? Math.min(Math.max(bg, -LIMITS.bwRatePct), LIMITS.bwRatePct) : null,
+    bands
+  };
+  for (const k of OPTIONAL_SETTINGS) if (!(k in vals)) delete st[k];
+  return Object.assign(st, vals);
+}
+/** The settings absent unless set: each is taken out of the merged copy when it is not (cleanSettings). */
+const OPTIONAL_SETTINGS = [
+  'accent',
+  'rirAsk',
+  'rirHalf',
+  'autoAdj',
+  'bwEvery',
+  'todayStart',
+  'restWeeks',
+  'rirScale',
+  'loadFill',
+  'userName',
+  'smallPlates',
+  'gym',
+  'profile',
+  'bandsFit',
+  'ownTargets'
+] as const satisfies readonly (keyof Settings)[];
 
-  for (const k of ['exercises', 'routines', 'sessions', 'bodyweights', 'measurements', 'cardio', 'trash'])
-    if (!Array.isArray(out[k])) out[k] = [];
-  // Each is a list from here on (the line above).
-  const list = (k: string): unknown[] => arr(out[k]) || [];
+/* An exercise, cleaned: called only on one whose id and name are strings
+   (the reader above), so its name is given as read. */
+/** One exercise of the log, cleaned field by field. */
+function cleanExercise(e0: unknown, e: Rec, name: string): Exercise {
+  const sc = arr(e.secondary);
+  const g = rec(e.goal);
+  const inc = numOr(e.inc, NaN),
+    bwf = numOr(e.bwf, NaN),
+    ml = numOr(e.maxLoad, NaN),
+    bar = numOr(e.barKg, NaN);
+  const gw = g ? numOr(g.w, NaN) : NaN,
+    gr = g ? Math.round(numOr(g.r, NaN)) : NaN;
+  return keepExtra(e0, {
+    id: fixId(e.id),
+    name,
+    primary: typeof e.primary === 'string' && isMuscle(e.primary) ? e.primary : 'chest',
+    secondary: sc ? strings(sc, m => isMuscle(m) && m !== e.primary) : [],
+    equip: typeof e.equip === 'string' ? e.equip : 'other',
+    bw: !!e.bw,
+    rare: !!e.rare,
+    perSide: !!e.perSide,
+    note: typeof e.note === 'string' ? e.note : '',
+    custom: !!e.custom,
+    archived: !!e.archived,
+    // Load step for this exercise everywhere it appears; null falls back to the routine item.
+    inc: isNum(inc) && inc > 0 ? Math.min(inc, LIMITS.step) : null,
+    plates: pick(e.plates, ['bar', 'side', 'sleeve', 'none'] as const) ?? null,
+    // How the load number reads; absent means the exercise's default.
+    load: pick(e.load, ['each', 'total', 'side', 'stack'] as const),
+    // Timed: the reps column holds seconds. Heaviest available: the top of the
+    // stack or rack, past which progression moves to reps. Absent when unset,
+    // so records saved before these existed hash exactly as before.
+    timed: e.timed === true ? true : undefined,
+    // Compound or isolation, when set in the editor (r27); absent reads it from the name.
+    kind: e.kind === 'compound' || e.kind === 'iso' ? e.kind : undefined,
+    // Assisted (item 45): the load number is the machine's help, stored below 0.
+    assist: e.assist === true && !!e.bw ? true : undefined,
+    bwf: isNum(bwf) && bwf > 0 && bwf <= LIMITS.bwShare ? Math.round(bwf * HUNDREDTHS) / HUNDREDTHS : undefined,
+    maxLoad: isNum(ml) && ml > 0 ? Math.min(ml, LOAD_MAX) : undefined,
+    // This lift's own bar (r29, item 98): a trap or EZ bar instead of the bar in Settings. Absent when unset.
+    barKg: isNum(bar) && bar > 0 ? Math.min(bar, LIMITS.barKg) : undefined,
+    // A lift goal (r38, item 188): a load (added load on a bodyweight lift) for a number of reps. Absent when unset.
+    goal:
+      g && isNum(gw) && gw >= 0 && gw <= LOAD_MAX && gr >= 1 && gr <= LIMITS.goalReps && !e.timed && !e.assist
+        ? { w: gw, r: gr }
+        : undefined
+  });
+}
 
-  // The library's own records go in beside the lifter's (below), so the list holds both shapes.
-  const exercises: (Rec | Exercise)[] = list('exercises')
-    .filter(e0 => {
-      const e = rec(e0);
-      return !!e && typeof e.id === 'string' && typeof e.name === 'string';
-    })
-    .map(e0 => {
-      const e = rec(e0) || {};
-      const sc = arr(e.secondary);
-      const g = rec(e.goal);
-      const inc = numOr(e.inc, NaN),
-        bwf = numOr(e.bwf, NaN),
-        ml = numOr(e.maxLoad, NaN),
-        bar = numOr(e.barKg, NaN);
-      const gw = g ? numOr(g.w, NaN) : NaN,
-        gr = g ? Math.round(numOr(g.r, NaN)) : NaN;
-      return keepExtra(e0, {
-        id: fixId(e.id),
-        name: e.name,
-        primary: isMuscle(e.primary) ? e.primary : 'chest',
-        secondary: sc ? sc.filter(m => isMuscle(m) && m !== e.primary) : [],
-        equip: typeof e.equip === 'string' ? e.equip : 'other',
-        bw: !!e.bw,
-        rare: !!e.rare,
-        perSide: !!e.perSide,
-        note: typeof e.note === 'string' ? e.note : '',
-        custom: !!e.custom,
-        archived: !!e.archived,
-        // Load step for this exercise everywhere it appears; null falls back to the routine item.
-        inc: isNum(inc) && inc > 0 ? Math.min(inc, LIMITS.step) : null,
-        plates: oneOf(e.plates, ['bar', 'side', 'sleeve', 'none']) ? e.plates : null,
-        // How the load number reads; absent means the exercise's default.
-        load: oneOf(e.load, ['each', 'total', 'side', 'stack']) ? e.load : undefined,
-        // Timed: the reps column holds seconds. Heaviest available: the top of the
-        // stack or rack, past which progression moves to reps. Absent when unset,
-        // so records saved before these existed hash exactly as before.
-        timed: e.timed === true ? true : undefined,
-        // Compound or isolation, when set in the editor (r27); absent reads it from the name.
-        kind: e.kind === 'compound' || e.kind === 'iso' ? e.kind : undefined,
-        // Assisted (item 45): the load number is the machine's help, stored below 0.
-        assist: e.assist === true && !!e.bw ? true : undefined,
-        bwf: isNum(bwf) && bwf > 0 && bwf <= LIMITS.bwShare ? Math.round(bwf * HUNDREDTHS) / HUNDREDTHS : undefined,
-        maxLoad: isNum(ml) && ml > 0 ? Math.min(ml, LOAD_MAX) : undefined,
-        // This lift's own bar (r29, item 98): a trap or EZ bar instead of the bar in Settings. Absent when unset.
-        barKg: isNum(bar) && bar > 0 ? Math.min(bar, LIMITS.barKg) : undefined,
-        // A lift goal (r38, item 188): a load (added load on a bodyweight lift) for a number of reps. Absent when unset.
-        goal:
-          g && isNum(gw) && gw >= 0 && gw <= LOAD_MAX && gr >= 1 && gr <= LIMITS.goalReps && !e.timed && !e.assist
-            ? { w: gw, r: gr }
-            : undefined
-      });
-    });
-  out.exercises = exercises;
-  const have = new Set(exercises.map(e => e.id));
-  const gone = new Set(removedLib);
-  const lib = libExercises();
-  for (const e of lib) if (!have.has(e.id) && !gone.has(e.id)) exercises.push(e);
-  // v1 saves predate the per-side flag, so the built-ins in them all carry
-  // perSide:false. Backfill it from the library by id, and only that one
-  // field, so any other edit the user made to a built-in survives.
-  if (numOr(s.version, 1) < V_PER_SIDE) {
-    const libMap: Record<string, Exercise> = {};
-    for (const e of lib) libMap[e.id] = e;
-    for (const e of exercises) {
-      const L = !e.custom && libMap[String(e.id)];
-      if (L) e.perSide = L.perSide;
+/* A routine, cleaned: called only on one whose days are a list (the reader
+   above), numbered ri among those kept. Anything that is not explicitly
+   fixed-weekday becomes a cycle, which is how every pre-v3 routine migrates.
+   A "weekly" routine with more than 7 days cannot exist through the UI; if
+   one arrives, all its days are kept as a cycle rather than any cut off. */
+/** One routine of the log, cleaned field by field. */
+function cleanRoutine(r0: unknown, ri: number): Routine {
+  const r = rec(r0) || {};
+  const rid = typeof r.id === 'string' ? fixId(r.id) : did('r', r0, ri);
+  const rdays = arr(r.days) || [];
+  const schedule = r.schedule === 'weekly' && rdays.length <= WEEK_DAYS ? 'weekly' : 'cycle';
+  const src = rdays.slice(0, MAX_DAYS);
+  const count = schedule === 'weekly' ? WEEK_DAYS : Math.max(1, src.length);
+  const days: Day[] = [];
+  const seen = new Set<string>();
+  for (let i = 0; i < count; i++) {
+    const d0 = src[i];
+    const d = rec(d0);
+    if (!d) {
+      days.push(
+        schedule === 'weekly'
+          ? { id: rid + '-w' + i, name: i === SUNDAY ? 'Rest' : 'Training day', rest: i === SUNDAY, items: [] }
+          : { id: rid + '-p' + i, name: 'Training day', rest: false, items: [] }
+      );
+      continue;
     }
-  }
-  /* v5: add serratus and rotator cuff where the library now lists them as
-     secondary. Only those two keys are added, so any other edit survives. A
-     built-in whose primary is one of them and reads Chest here was reset by
-     an older build that did not know the muscle (its fallback is Chest), so
-     it goes back to the library's primary. */
-  if (numOr(s.version, 1) < V_NEW_MUSCLES) {
-    const libMap: Record<string, Exercise> = {};
-    for (const e of lib) libMap[e.id] = e;
-    for (const e of exercises) {
-      const L = !e.custom && libMap[String(e.id)];
-      if (!L) continue;
-      // Every exercise's secondary is a list of muscle keys from the build above, or the library's own (the cast).
-      let sec = (arr(e.secondary) || []) as string[];
-      if (NEW_V5.has(L.primary) && e.primary === 'chest') {
-        e.primary = L.primary;
-        sec = sec.filter(m => m !== L.primary);
-        e.secondary = sec;
-        for (const m of L.secondary) if (!sec.includes(m)) sec.push(m);
-      }
-      for (const m of NEW_MUSCLES_V5) if (L.secondary.includes(m) && e.primary !== m && !sec.includes(m)) sec.push(m);
-    }
-  }
-
-  out.routines = list('routines')
-    .filter(r0 => {
-      const r = rec(r0);
-      return !!r && Array.isArray(r.days);
-    })
-    .map((r0, ri) => {
-      const r = rec(r0) || {};
-      const rid = typeof r.id === 'string' ? fixId(r.id) : did('r', r0, ri);
-      // The days were checked to be a list just above.
-      const rdays = arr(r.days) || [];
-      // Anything that is not explicitly fixed-weekday becomes a cycle, which is
-      // how every pre-v3 routine migrates. A "weekly" routine with more than 7
-      // days cannot exist through the UI; if one arrives, keep all its days as a
-      // cycle rather than silently cutting any off.
-      const schedule = r.schedule === 'weekly' && rdays.length <= WEEK_DAYS ? 'weekly' : 'cycle';
-      const src = rdays.slice(0, MAX_DAYS);
-      const count = schedule === 'weekly' ? WEEK_DAYS : Math.max(1, src.length);
-      const days: Rec[] = [];
-      const seen = new Set<string>();
-      for (let i = 0; i < count; i++) {
-        const d0 = src[i];
-        const d = rec(d0);
-        if (!d) {
-          days.push(
-            schedule === 'weekly'
-              ? { id: rid + '-w' + i, name: i === SUNDAY ? 'Rest' : 'Training day', rest: i === SUNDAY, items: [] }
-              : { id: rid + '-p' + i, name: 'Training day', rest: false, items: [] }
-          );
-          continue;
-        }
-        const dbase = typeof d.id === 'string' ? fixId(d.id) : rid + '-d' + i;
-        const items = (arr(d.items) || [])
-          .filter(it0 => {
-            const it = rec(it0);
-            return !!it && typeof it.exId === 'string';
-          })
-          .map((it0, ii) => {
-            const it = rec(it0) || {};
-            return keepExtra(
-              it0,
-              {
-                uid: typeof it.uid === 'string' ? fixId(it.uid) : dbase + '-i' + ii,
-                exId: fixId(it.exId),
-                ...planNums(it),
-                ss: typeof it.ss === 'string' && it.ss ? fixId(it.ss) : null,
-                ...jumpOf(it)
-              },
-              KNOWN_ITEM
-            );
-          })
-          .map(it => (it.repMax < it.repMin ? { ...it, repMax: it.repMin } : it));
-        fixSupersets(items);
-        let id = dbase;
-        if (seen.has(id)) id = id + '-' + i;
-        seen.add(id);
-        days.push(
-          keepExtra(d0, {
-            id,
-            name: typeof d.name === 'string' ? d.name : schedule === 'weekly' ? DAYS[i] : `Day ${i + 1}`,
-            rest: !!d.rest,
-            items
-          })
+    const dbase = typeof d.id === 'string' ? fixId(d.id) : rid + '-d' + i;
+    const items: PlanItem[] = (arr(d.items) || [])
+      .filter(it0 => {
+        const it = rec(it0);
+        return !!it && typeof it.exId === 'string';
+      })
+      .map((it0, ii) => {
+        const it = rec(it0) || {};
+        return keepExtra(
+          it0,
+          {
+            uid: typeof it.uid === 'string' ? fixId(it.uid) : dbase + '-i' + ii,
+            exId: fixId(it.exId),
+            ...planNums(it),
+            ss: typeof it.ss === 'string' && it.ss ? fixId(it.ss) : null,
+            ...jumpOf(it)
+          },
+          KNOWN_ITEM
         );
-      }
-      return keepExtra(r0, { id: rid, name: typeof r.name === 'string' ? r.name : 'Routine', schedule, days });
-    });
-
-  const cutoff = addDays(today(), -TRASH_DAYS);
-  let trash: Trashed[] = list('trash')
-    .flatMap(t0 => {
-      const t = rec(t0);
-      const data = t ? rec(t.data) : null;
-      const kind = t ? trashKind(t.kind) : null;
-      return t &&
-        typeof t.id === 'string' &&
-        kind &&
-        typeof t.date === 'string' &&
-        isDate(t.date) &&
-        t.date >= cutoff &&
-        data
-        ? [{ id: fixId(t.id), kind, date: t.date, data }]
-        : [];
-    })
-    .sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0))
-    .slice(0, TRASH_MAX);
-  while (trash.length > 1 && JSON.stringify(trash).length > TRASH_BYTES) trash.pop();
-  const before = list('sessions').length;
-  let sessions = list('sessions')
-    .filter(x => okSess(rec(x)))
-    .map((x, i) => cleanSess(x, i))
-    .filter(ss => (arr(ss.ex) || []).length);
-  drop(before - sessions.length);
-  /* A trashed id is a tombstone, but only for the copy that was deleted. If
-     the same session was edited afterwards (on another device, or in an edit
-     that was open while it was deleted), the edit is newer than the delete:
-     keep it and retire the tombstone, because keeping data is the mistake
-     that can be undone. Sessions are compared in their cleaned form, so
-     field order and defaults added by newer builds do not count as edits. */
-  let cardio: Rec[];
-  {
-    const tS = new Map<string, Trashed>(),
-      tC = new Map<string, Trashed>();
-    for (const t of trash) {
-      if (t.kind === 'session') tS.set(t.id, t);
-      else if (t.kind === 'cardio') tC.set(t.id, t);
-    }
-    const revived = new Set<string>();
-    const same = (cur: Rec, t: { data: Rec }, clean: (x: unknown, i: number) => Rec, ok: (x: unknown) => boolean) => {
-      try {
-        return !ok(t.data) || canon(clean(t.data, 0)) === canon(cur);
-      } catch (e) {
-        // A copy that cannot be cleaned is read as the same record, so the deletion stands, as before the move.
-        return true;
-      }
-    };
-    sessions = sessions.filter(ss => {
-      const t = tS.get(String(ss.id));
-      if (!t) return true;
-      if (
-        same(
-          { ...ss, id: ss.id },
-          { data: { ...t.data, id: ss.id } },
-          (x, i) => cleanSess(x, i),
-          x => okSess(rec(x))
-        )
-      )
-        return false;
-      revived.add(t.id);
-      return true;
-    });
-    cardio = list('cardio')
-      .filter(c0 => {
-        const c = rec(c0);
-        return !!c && isDate(c.date) && isNum(numOr(c.min, NaN)) && numOr(c.min, 0) > 0;
       })
-      .map((c, ci) => cleanCardio(c, false, ci))
-      .filter(c => {
-        const t = tC.get(String(c.id));
-        if (!t) return true;
-        if (
-          same(
-            c,
-            { data: { ...t.data, id: c.id } },
-            (x, i) => cleanCardio(x, false, i),
-            x => !!x && typeof x === 'object'
-          )
-        )
-          return false;
-        revived.add(t.id);
-        return true;
-      });
-    if (revived.size) trash = trash.filter(t => t.kind === 'routine' || !revived.has(t.id));
+      .map(it => (it.repMax < it.repMin ? { ...it, repMax: it.repMin } : it));
+    fixSupersets(items);
+    let id = dbase;
+    if (seen.has(id)) id = id + '-' + i;
+    seen.add(id);
+    days.push(
+      keepExtra(d0, {
+        id,
+        name: typeof d.name === 'string' ? d.name : schedule === 'weekly' ? DAYS[i] : `Day ${i + 1}`,
+        rest: !!d.rest,
+        items
+      })
+    );
   }
-  /* One id, two different copies: a session moved to a date in another
-     half-month on one device while it was edited on another. Both used to be
-     kept and counted twice. Keep the copy with more logged sets (then the
-     later date) and put the other in Recently deleted under its own id, so
-     nothing is lost. Every device resolves it the same way. */
-  for (const [key, kind] of [
-    ['sessions', 'session'],
-    ['cardio', 'cardio']
-  ] as const) {
-    const byId = new Map<unknown, Rec>(),
-      extra: Rec[] = [];
-    // A cleaned session's exercises and sets, and a cleaned cardio entry's minutes, are what cleanSess and cleanCardio made them.
-    const size = (x: Rec): number =>
-      kind === 'session'
-        ? (arr(x.ex) || []).reduce<number>((a, b) => a + (arr((rec(b) || {}).sets) || []).length, 0)
-        : Number(x.min);
-    const date = (x: Rec): string => String(x.date);
-    for (const x of key === 'sessions' ? sessions : cardio) {
-      const o = byId.get(x.id);
-      if (!o) {
-        byId.set(x.id, x);
-        continue;
-      }
-      if (canon(o) === canon(x)) continue;
-      const keepNew =
-        size(x) > size(o) || (size(x) === size(o) && (date(x) > date(o) || (x.date === o.date && canon(x) > canon(o))));
-      byId.set(x.id, keepNew ? x : o);
-      extra.push(keepNew ? o : x);
-    }
-    if (extra.length) {
-      if (key === 'sessions') sessions = [...byId.values()];
-      else cardio = [...byId.values()];
-      for (const x of extra) {
-        const id = fixId(x.id + '-dup' + hashStr(canon(x)).slice(0, DUP_HASH));
-        if (!trash.some(t => t.id === id)) trash.unshift({ id, kind, date: today(), data: { ...x, id } });
-      }
-    }
-  }
-  out.trash = trash;
-  out.sessions = sessions;
-  out.cardio = cardio;
+  return keepExtra(r0, { id: rid, name: typeof r.name === 'string' ? r.name : 'Routine', schedule, days });
+}
 
-  const bBefore = list('bodyweights').length;
-  out.bodyweights = list('bodyweights')
-    .filter(b0 => {
-      const b = rec(b0);
-      return !!b && isDate(b.date) && isNum(numOr(b.kg, NaN)) && numOr(b.kg, 0) > 0;
-    })
-    .map((b0, bi) => {
-      const b = rec(b0) || {};
-      return keepExtra(b0, {
-        id: typeof b.id === 'string' ? fixId(b.id) : did('b', b0, bi),
-        date: b.date,
-        kg: Math.min(numOr(b.kg, 0), BW_MAX_KG),
-        demo: !!b.demo
-      });
-    });
-  drop(bBefore - list('bodyweights').length);
-
-  const mBefore = list('measurements').length;
-  out.measurements = list('measurements')
-    .filter(m0 => {
-      const m = rec(m0);
-      return !!m && isDate(m.date);
-    })
-    .map((m0, mi) => {
-      const m = rec(m0) || {};
-      const o: Rec = { id: typeof m.id === 'string' ? fixId(m.id) : did('m', m0, mi), date: m.date, demo: !!m.demo };
-      for (const [k] of MEAS) {
-        const v = numOr(m[k], NaN);
-        if (isNum(v) && v > 0) o[k] = Math.min(v, MEAS_MAX_CM);
-      }
-      return keepExtra(m0, o, KNOWN_MEAS);
-    });
-  drop(mBefore - list('measurements').length);
-
-  /* The draft is rendered by the logger, which reads plan, lastR and every set
-     field directly. The old check only confirmed that ex was an array, so an
-     imported backup carrying a half-written draft threw on first paint with no
-     way back. Rebuild it field by field instead. */
-  const d = rec(out.draft);
-  if (out.draft && (!d || !Array.isArray(d.ex) || !isDate(d.date))) out.draft = null;
-  if (out.draft && d) {
-    const startedAt = Number(d.startedAt),
-      durMin = Number(d.durMin);
-    d.id = typeof d.id === 'string' ? fixId(d.id) : did('x', { date: d.date, dayName: d.dayName }, 0);
-    d.dayIdx = clampN(d.dayIdx, 0, MAX_DAYS - 1, 0);
-    d.dayId = typeof d.dayId === 'string' ? fixId(d.dayId) : null;
-    d.startedAt = isTime(startedAt) ? startedAt : null;
-    d.durMin = Number.isFinite(durMin) && durMin >= 1 ? Math.round(durMin) : null;
-    d.dayName = typeof d.dayName === 'string' ? d.dayName : 'Session';
-    d.routineId = typeof d.routineId === 'string' && d.routineId ? fixId(d.routineId) : '';
-    d.notes = typeof d.notes === 'string' ? d.notes : '';
-    d.editingId = typeof d.editingId === 'string' ? fixId(d.editingId) : null;
-    d.deload = !!d.deload;
-    d.light = !!d.light;
-    d.limited = d.limited === true ? true : undefined;
-    d.free = d.free === true ? true : undefined;
+/* The workout in progress, cleaned: called only on one whose exercises are a
+   list and whose date is a date (normalize), rebuilt field by field in place,
+   as every build since r56 has rebuilt it. The logger reads plan, lastR and
+   every set field directly; the old check only confirmed that ex was a list,
+   so an imported backup carrying a half-written draft threw on first paint
+   with no way back. The fields are written in the order the in-place rebuild
+   wrote them, so a field the draft lacks is added where it always was, and
+   one it has (a field a newer build saved among them) stays where it
+   stands: the draft keeps the key order and the very object it came as. */
+/** A workout in progress, cleaned field by field (above). */
+function cleanDraft(d: Rec, date: string): DraftLike {
+  const startedAt = Number(d.startedAt),
+    durMin = Number(d.durMin);
+  return Object.assign(d, {
+    date,
+    id: typeof d.id === 'string' ? fixId(d.id) : did('x', { date: d.date, dayName: d.dayName }, 0),
+    dayIdx: clampN(d.dayIdx, 0, MAX_DAYS - 1, 0),
+    dayId: typeof d.dayId === 'string' ? fixId(d.dayId) : null,
+    startedAt: isTime(startedAt) ? startedAt : null,
+    durMin: Number.isFinite(durMin) && durMin >= 1 ? Math.round(durMin) : null,
+    dayName: typeof d.dayName === 'string' ? d.dayName : 'Session',
+    routineId: typeof d.routineId === 'string' && d.routineId ? fixId(d.routineId) : '',
+    notes: typeof d.notes === 'string' ? d.notes : '',
+    editingId: typeof d.editingId === 'string' ? fixId(d.editingId) : null,
+    deload: !!d.deload,
+    light: !!d.light,
+    limited: d.limited === true ? true : undefined,
+    free: d.free === true ? true : undefined,
     // A past workout typed in after the fact: no rest timer, no clock, no check-in.
-    d.past = d.past === true ? true : undefined;
+    past: d.past === true ? true : undefined,
     // The notes the app wrote when the session started, so Discard can tell them from yours.
-    d.note0 = typeof d.note0 === 'string' ? d.note0.slice(0, LIMITS.startNote) : undefined;
-    d.chk = cleanChk(rec(d.chk)) || undefined;
-    d.cardio = (arr(d.cardio) || []).filter(c => !!c && typeof c === 'object').map((c, ci) => cleanCardio(c, true, ci));
-    d.ex = (arr(d.ex) || [])
-      .filter(b0 => {
-        const b = rec(b0);
-        return !!b && typeof b.exId === 'string' && Array.isArray(b.sets);
-      })
-      .map(b0 => {
-        const b = rec(b0) || {};
-        const pl = rec(b.plan) || {};
-        const plan: DraftBlock['plan'] = {
-          ...planNums(pl),
-          ss: typeof pl.ss === 'string' && pl.ss ? fixId(pl.ss) : null,
-          ...jumpOf(pl)
-        };
-        if (Number(plan.repMax) < Number(plan.repMin)) plan.repMax = plan.repMin;
-        const adj = rec(b.adj);
-        const adjW = adj ? Number(adj.w) : NaN,
-          adjFrom = adj ? Number(adj.from) : NaN,
-          sw = Number(b.sw);
-        const prev = arr(b.prev),
-          lastR = arr(b.lastR),
-          keepRR = arr(b.keepRR),
-          ln = rec(b.lastNote);
-        /* Checked by the compiler against the block type the session screen
-           reads (satisfies): a field that type requires (the plan, every
-           number in it) is one this builder writes, so the screen reads it
-           without a check of its own (r60). */
-        return keepExtra(b0, {
+    note0: typeof d.note0 === 'string' ? d.note0.slice(0, LIMITS.startNote) : undefined,
+    chk: cleanChk(rec(d.chk)) || undefined,
+    cardio: (arr(d.cardio) || []).filter(c => !!c && typeof c === 'object').map((c, ci) => cleanDraftCardio(c, ci)),
+    ex: (arr(d.ex) || []).flatMap((b0): DraftBlock[] => {
+      const b = rec(b0);
+      if (!b || typeof b.exId !== 'string' || !arr(b.sets)) return [];
+      const pl = rec(b.plan) || {};
+      const plan: DraftBlock['plan'] = {
+        ...planNums(pl),
+        ss: typeof pl.ss === 'string' && pl.ss ? fixId(pl.ss) : null,
+        ...jumpOf(pl)
+      };
+      if (plan.repMax < plan.repMin) plan.repMax = plan.repMin;
+      const adj = rec(b.adj);
+      const adjW = adj ? Number(adj.w) : NaN,
+        adjFrom = adj ? Number(adj.from) : NaN,
+        sw = Number(b.sw);
+      const prev = arr(b.prev),
+        lastR = arr(b.lastR),
+        keepRR = arr(b.keepRR),
+        ln = rec(b.lastNote);
+      return [
+        keepExtra(b0, {
           ...(typeof b.bid === 'string' && b.bid ? { bid: fixId(b.bid) } : {}),
           exId: fixId(b.exId),
           plan,
@@ -970,8 +777,7 @@ export function normalize(input: unknown): State {
           last: typeof b.last === 'string' ? b.last : '',
           // Last time's sets as shown in the Last column (r44): short strings, absent in older drafts.
           prev: prev
-            ? prev
-                .filter(x => typeof x === 'string')
+            ? strings(prev, () => true)
                 .slice(0, LIMITS.sets)
                 .map(x => x.slice(0, LIMITS.lastText))
             : undefined,
@@ -1023,17 +829,17 @@ export function normalize(input: unknown): State {
             b.keepRR === undefined
               ? undefined
               : keepRR && keepRR.length === 2
-                ? [Math.round(Number(keepRR[0])) || 1, Math.round(Number(keepRR[1])) || 1]
+                ? pair(Math.round(Number(keepRR[0])) || 1, Math.round(Number(keepRR[1])) || 1)
                 : null,
           lastNote:
             ln && typeof ln.text === 'string' && typeof ln.date === 'string' && isDate(ln.date)
               ? { date: ln.date, text: ln.text }
               : null,
-          sets: (arr(b.sets) || [])
-            .filter(x => !!x && typeof x === 'object')
-            .map(x0 => {
-              const x = rec(x0) || {};
-              return keepExtra(x0, {
+          sets: (arr(b.sets) || []).flatMap((x0): DraftSet[] => {
+            const x = rec(x0);
+            if (!x) return [];
+            return [
+              keepExtra(x0, {
                 w: x.w == null ? null : clampN(x.w, LOAD_MIN, LOAD_MAX, 0),
                 r: x.r == null || x.r === '' ? null : Math.round(clampN(x.r, 0, LIMITS.reps, 0)),
                 rir: x.rir == null || x.rir === '' ? null : clampN(x.rir, 0, EFFORT_TOP, null),
@@ -1043,14 +849,266 @@ export function normalize(input: unknown): State {
                 cal: x.warm ? undefined : cleanCal(rec(x.cal)) || undefined,
                 // The row's own id (r56.1), last, where a build before it kept the unknown field.
                 ...(typeof x.rid === 'string' ? { rid: fixId(x.rid) } : {})
-              });
-            })
-        } satisfies DraftBlock);
-      });
+              })
+            ];
+          })
+        } satisfies DraftBlock)
+      ];
+    })
+  });
+}
+
+/* Every field below is validated rather than trusted. The old version only
+   checked that five keys were arrays, so a backup containing sessions:[{}]
+   imported cleanly and then threw inside IDX() on the first render, leaving
+   the app unusable with no obvious way back. normalize() runs on both load
+   and import, so this also protects against a half-written localStorage
+   record. Anything unusable is dropped; the count is reported to the caller
+   via normalize.dropped. Each record is built against its type, so the
+   compiler checks every field a reader relies on (r61, PENDING 351: until
+   then the log was typed as the State once, at the end, by a cast). */
+/** A save read as every build reads it (above); `normalize.dropped` counts the damaged records the last call left out. */
+export function normalize(input: unknown): State {
+  const f = freshState();
+  normalize.dropped = 0;
+  // A new device and Erase everything both start here, fully normalized:
+  // the raw fresh state lacks fields (section order, folds) every view reads.
+  const s: Rec = rec(input) || f;
+  // drop() is one record; drop(n) is n, and drop(0) is none (it used to count 1).
+  const drop = (n?: number): void => {
+    normalize.dropped += n == null ? 1 : Math.max(0, n);
+  };
+  // The save as it came over the fresh log: each field read from here, and those this build does not know kept as they came.
+  const raw: Rec = { ...f, ...s };
+  const settings = cleanSettings(s, f);
+  // Each list as it came, or none.
+  const list = (k: string): unknown[] => arr(raw[k]) || [];
+
+  const removedLib = settings.removedLib;
+  // The library's own records go in beside the lifter's (below).
+  const exercises: Exercise[] = list('exercises').flatMap(e0 => {
+    const e = rec(e0);
+    return e && typeof e.id === 'string' && typeof e.name === 'string' ? [cleanExercise(e0, e, e.name)] : [];
+  });
+  const have = new Set(exercises.map(e => e.id));
+  const gone = new Set(removedLib);
+  const lib = libExercises();
+  for (const e of lib) if (!have.has(e.id) && !gone.has(e.id)) exercises.push(e);
+  // v1 saves predate the per-side flag, so the built-ins in them all carry
+  // perSide:false. Backfill it from the library by id, and only that one
+  // field, so any other edit the user made to a built-in survives.
+  if (numOr(s.version, 1) < V_PER_SIDE) {
+    const libMap = new Map(lib.map(e => [e.id, e]));
+    for (const e of exercises) {
+      const L = !e.custom && libMap.get(e.id);
+      if (L) e.perSide = L.perSide;
+    }
+  }
+  /* v5: add serratus and rotator cuff where the library now lists them as
+     secondary. Only those two keys are added, so any other edit survives. A
+     built-in whose primary is one of them and reads Chest here was reset by
+     an older build that did not know the muscle (its fallback is Chest), so
+     it goes back to the library's primary. */
+  if (numOr(s.version, 1) < V_NEW_MUSCLES) {
+    const libMap = new Map(lib.map(e => [e.id, e]));
+    for (const e of exercises) {
+      const L = !e.custom && libMap.get(e.id);
+      if (!L) continue;
+      let sec = e.secondary;
+      if (NEW_V5.has(L.primary) && e.primary === 'chest') {
+        e.primary = L.primary;
+        sec = sec.filter(m => m !== L.primary);
+        e.secondary = sec;
+        for (const m of L.secondary) if (!sec.includes(m)) sec.push(m);
+      }
+      for (const m of NEW_MUSCLES_V5) if (L.secondary.includes(m) && e.primary !== m && !sec.includes(m)) sec.push(m);
+    }
   }
 
-  out.deloadWeek = isDate(out.deloadWeek) ? out.deloadWeek : null;
-  out.injuries = (arr(out.injuries) || [])
+  // Numbered among the routines kept, as each one with no id of its own is named by its place (did).
+  const kept: Routine[] = list('routines')
+    .filter(r0 => {
+      const r = rec(r0);
+      return !!r && Array.isArray(r.days);
+    })
+    .map((r0, ri) => cleanRoutine(r0, ri));
+  /* A save with no routine left gets the one a new install starts with, read
+     as any routine is (r61: added as made until then, its items without the
+     superset field the next load gave them). */
+  const routines: Routine[] = kept.length ? kept : [cleanRoutine(starterRoutine(), 0)];
+
+  const cutoff = addDays(today(), -TRASH_DAYS);
+  let trash: Trashed[] = list('trash')
+    .flatMap(t0 => {
+      const t = rec(t0);
+      const data = t ? rec(t.data) : null;
+      const kind = t ? trashKind(t.kind) : null;
+      return t &&
+        typeof t.id === 'string' &&
+        kind &&
+        typeof t.date === 'string' &&
+        isDate(t.date) &&
+        t.date >= cutoff &&
+        data
+        ? [{ id: fixId(t.id), kind, date: t.date, data }]
+        : [];
+    })
+    .sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0))
+    .slice(0, TRASH_MAX);
+  while (trash.length > 1 && JSON.stringify(trash).length > TRASH_BYTES) trash.pop();
+  const before = list('sessions').length;
+  let sessions: Session[] = list('sessions')
+    .filter(x => okSess(rec(x)))
+    .map((x, i) => cleanSess(x, i))
+    .filter(ss => ss.ex.length);
+  drop(before - sessions.length);
+  /* A trashed id is a tombstone, but only for the copy that was deleted. If
+     the same session was edited afterwards (on another device, or in an edit
+     that was open while it was deleted), the edit is newer than the delete:
+     keep it and retire the tombstone, because keeping data is the mistake
+     that can be undone. Sessions are compared in their cleaned form, so
+     field order and defaults added by newer builds do not count as edits. */
+  let cardio: CardioEntry[];
+  {
+    const tS = new Map<string, Trashed>(),
+      tC = new Map<string, Trashed>();
+    for (const t of trash) {
+      if (t.kind === 'session') tS.set(t.id, t);
+      else if (t.kind === 'cardio') tC.set(t.id, t);
+    }
+    const revived = new Set<string>();
+    const same = (cur: unknown, data: Rec, clean: (x: unknown, i: number) => unknown, ok: (x: unknown) => boolean) => {
+      try {
+        return !ok(data) || canon(clean(data, 0)) === canon(cur);
+      } catch (e) {
+        // A copy that cannot be cleaned is read as the same record, so the deletion stands, as before the move.
+        return true;
+      }
+    };
+    sessions = sessions.filter(ss => {
+      const t = tS.get(ss.id);
+      if (!t) return true;
+      if (
+        same(
+          { ...ss, id: ss.id },
+          { ...t.data, id: ss.id },
+          (x, i) => cleanSess(x, i),
+          x => okSess(rec(x))
+        )
+      )
+        return false;
+      revived.add(t.id);
+      return true;
+    });
+    cardio = list('cardio')
+      .filter(c0 => {
+        const c = rec(c0);
+        return !!c && isDate(c.date) && isNum(numOr(c.min, NaN)) && numOr(c.min, 0) > 0;
+      })
+      .map((c, ci) => cleanCardio(c, ci))
+      .filter(c => {
+        const t = tC.get(c.id);
+        if (!t) return true;
+        if (
+          same(
+            c,
+            { ...t.data, id: c.id },
+            (x, i) => cleanCardio(x, i),
+            x => !!x && typeof x === 'object'
+          )
+        )
+          return false;
+        revived.add(t.id);
+        return true;
+      });
+    if (revived.size) trash = trash.filter(t => t.kind === 'routine' || !revived.has(t.id));
+  }
+  /* One id, two different copies: a session moved to a date in another
+     half-month on one device while it was edited on another. Both used to be
+     kept and counted twice. Keep the copy with more logged sets (then the
+     later date) and put the other in Recently deleted under its own id, so
+     nothing is lost. Every device resolves it the same way. */
+  const dedupe = <T extends { id: string; date: string }>(
+    list0: T[],
+    kind: 'session' | 'cardio',
+    size: (x: T) => number
+  ): T[] => {
+    const byId = new Map<string, T>(),
+      extra: T[] = [];
+    for (const x of list0) {
+      const o = byId.get(x.id);
+      if (!o) {
+        byId.set(x.id, x);
+        continue;
+      }
+      if (canon(o) === canon(x)) continue;
+      const keepNew =
+        size(x) > size(o) || (size(x) === size(o) && (x.date > o.date || (x.date === o.date && canon(x) > canon(o))));
+      byId.set(x.id, keepNew ? x : o);
+      extra.push(keepNew ? o : x);
+    }
+    if (!extra.length) return list0;
+    for (const x of extra) {
+      const id = fixId(x.id + '-dup' + hashStr(canon(x)).slice(0, DUP_HASH));
+      if (!trash.some(t => t.id === id)) trash.unshift({ id, kind, date: today(), data: { ...rec(x), id } });
+    }
+    return [...byId.values()];
+  };
+  sessions = dedupe(sessions, 'session', x => x.ex.reduce((a, b) => a + b.sets.length, 0));
+  cardio = dedupe(cardio, 'cardio', x => x.min);
+
+  const bBefore = list('bodyweights').length;
+  // Numbered among those kept, as one with no id is named by its place (did); each has a date (the filter), the '' never reached.
+  const bodyweights: Bodyweight[] = list('bodyweights')
+    .filter(b0 => {
+      const b = rec(b0);
+      return !!b && isDate(b.date) && isNum(numOr(b.kg, NaN)) && numOr(b.kg, 0) > 0;
+    })
+    .map((b0, bi) => {
+      const b = rec(b0) || {};
+      return keepExtra(b0, {
+        id: typeof b.id === 'string' ? fixId(b.id) : did('b', b0, bi),
+        date: typeof b.date === 'string' ? b.date : '',
+        kg: Math.min(numOr(b.kg, 0), BW_MAX_KG),
+        demo: !!b.demo
+      });
+    });
+  drop(bBefore - bodyweights.length);
+
+  const mBefore = list('measurements').length;
+  // As the weigh-ins: numbered among those kept, each with a date.
+  const measurements: Measurement[] = list('measurements')
+    .filter(m0 => {
+      const m = rec(m0);
+      return !!m && isDate(m.date);
+    })
+    .map((m0, mi) => {
+      const m = rec(m0) || {};
+      const o: Measurement = {
+        id: typeof m.id === 'string' ? fixId(m.id) : did('m', m0, mi),
+        date: typeof m.date === 'string' ? m.date : '',
+        demo: !!m.demo
+      };
+      for (const [k] of MEAS) {
+        const v = numOr(m[k], NaN);
+        // A site MEAS lists, written as an assignment writes it, in MEAS order.
+        if (isNum(v) && v > 0) Object.assign(o, { [k]: Math.min(v, MEAS_MAX_CM) });
+      }
+      return keepExtra(m0, o, KNOWN_MEAS);
+    });
+  drop(mBefore - measurements.length);
+
+  /* The draft is rendered by the logger, which reads plan, lastR and every set
+     field directly. The old check only confirmed that ex was an array, so an
+     imported backup carrying a half-written draft threw on first paint with no
+     way back. Rebuilt field by field instead (cleanDraft); anything else is
+     no workout in progress (r61: a false, a 0 or an empty string no build
+     writes was kept as it came until then). */
+  const d = rec(raw.draft);
+  const draft = d && Array.isArray(d.ex) && typeof d.date === 'string' && isDate(d.date) ? cleanDraft(d, d.date) : null;
+  const dw = raw.deloadWeek;
+  // As the weigh-ins: numbered among those kept, each a muscle or a joint (the filter), the '' never reached.
+  const injuries: Injury[] = (arr(raw.injuries) || [])
     .filter(x0 => {
       const x = rec(x0);
       return !!x && isMuscleOrJoint(x.m);
@@ -1059,23 +1117,38 @@ export function normalize(input: unknown): State {
       const x = rec(x0) || {};
       return keepExtra(x0, {
         id: typeof x.id === 'string' ? fixId(x.id) : did('j', x0, xi),
-        m: x.m,
+        m: typeof x.m === 'string' ? x.m : '',
         note: typeof x.note === 'string' ? x.note : '',
-        date: isDate(x.date) ? x.date : today()
+        date: typeof x.date === 'string' && isDate(x.date) ? x.date : today()
       });
     });
-  /* Former bests belonged to the Comeback tracker, removed at the owner's
-     request in r19 together with any that were saved. Older saves, backups
-     and cloud copies still carry them, so they are dropped here on every
-     load, import and merge. */
-  delete out.priors;
-  const routines = arr(out.routines) || [];
-  if (!routines.length) out.routines = [starterRoutine()];
-  if (typeof out.activeRoutineId === 'string') out.activeRoutineId = fixId(out.activeRoutineId);
-  const rs = (arr(out.routines) || []).map(r => rec(r) || {});
-  if (!rs.find(r => r.id === out.activeRoutineId)) out.activeRoutineId = rs[0].id;
-  out.version = STATE_VERSION;
-  // Built field by field from the checks above, which TypeScript cannot follow (see above): the cast.
-  return out as State;
+  const ar = raw.activeRoutineId;
+  const want = typeof ar === 'string' ? fixId(ar) : null;
+  const activeRoutineId = want != null && routines.some(r => r.id === want) ? want : routines[0].id;
+  /* The fields this build does not know, kept as they came and after its own,
+     as a spread of the save over the fresh log puts them. Former bests
+     belonged to the Comeback tracker, removed at the owner's request in r19
+     together with any that were saved. Older saves, backups and cloud copies
+     still carry them, so they are dropped here on every load, import and
+     merge. */
+  const extra: Rec = { ...s };
+  for (const k of Object.keys(f)) delete extra[k];
+  delete extra.priors;
+  return {
+    version: STATE_VERSION,
+    settings,
+    exercises,
+    routines,
+    activeRoutineId,
+    sessions,
+    bodyweights,
+    measurements,
+    draft,
+    deloadWeek: typeof dw === 'string' && isDate(dw) ? dw : null,
+    injuries,
+    cardio,
+    trash,
+    ...extra
+  };
 }
 normalize.dropped = 0;
