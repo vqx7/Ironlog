@@ -29,11 +29,21 @@
 //      digit replaces it, backspace clears it, a second tap places the caret;
 //      a grey load tapped and left untouched stays grey; one tap on the
 //      checkmark still logs the grey load (V, PENDING 341 a; fails on r59).
+//   8  the independent review of r59 and r60 (each fails on r60 as reviewed,
+//      f4e3a8d): a tick that waited for its weight is dropped when its reps
+//      were cleared meanwhile, never saved as a missed set; Next on a set
+//      waiting for its weight keeps the focus on its load field; each tap of
+//      the checkmark, and Next taking the grey reps, saves the log once; two
+//      tabs on one workout, a load typed in one while the other ticks or
+//      unticks a set, both keep both; a save made while another tab's save is
+//      not yet heard merges it rather than replacing it; a field focused by
+//      code keeps its caret, so the next digit goes there; and a caret moved
+//      by an arrow key or End after a tap takes the next digit where it is.
 //   7  the installed build tries only its own copies of SortableJS and
 //      Chart.js, as its policy allows no other address (PENDING 346 c; read
 //      from the standalone build, IRONLOG_FILE=dist/index.html; fails on a
 //      build made before r60).
-const { open, engine, screenOf, screenDiff } = require('./h');
+const { open, tab, engine, screenOf, screenDiff } = require('./h');
 const FILE = process.argv[2] || 'index.html';
 const OLD = 'baselines/r59.html';
 const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log('FAIL', m, x !== undefined ? JSON.stringify(x).slice(0, 900) : ''); } else console.log('ok  ', m); return !!c; };
@@ -323,6 +333,102 @@ const SCREENS = [
     ok(f.v === '', '6. backspace as the first key clears a filled load, wherever the caret is', f);
     ok(!P.errors.length, '6. no page errors', P.errors);
     await P.page.context().close();
+  }
+
+  // ---- 8. The independent review of r59 and r60 (each fails on f4e3a8d).
+  if (run(8)) {
+    const P = await open(FILE, { browser, clock: '2026-10-24T10:00:00' });
+    const ev = (f, a) => P.page.evaluate(f, a);
+    const sel = (f, b, s) => `#view .sg input[data-f="${f}"][data-b="${b}"][data-s="${s}"]`;
+    const tick = (b, s) => P.page.click(`#view [data-act="sDone"][data-b="${b}"][data-s="${s}"]`);
+    const leave = () => ev(() => { if (document.activeElement) document.activeElement.blur(); });
+    const set = (b, s) => ev(([b, s]) => { const x = window.__ironlog.state.draft.ex[b].sets[s]; return { done: !!x.done, w: x.w, r: x.r }; }, [b, s]);
+    const focusOn = () => ev(() => { const a = document.activeElement; return a && a.dataset ? `${a.dataset.f}:${a.dataset.b}:${a.dataset.s}` : ''; });
+    // A first session, so no load is suggested; the reps are in grey from the plan.
+    await ev(new Function('L', `{const L=window.__ironlog;L.state.settings.onboarded=true;L.state.settings.autoDone=false;L.saveNow();${FREE(['backSquat', 'legPress'])}L.render();}`));
+    await wait(150);
+    // (a) The checkmark waits for the weight and writes the grey reps; the reps cleared, then a weight typed: no tick.
+    await tick(0, 0); await wait(120);
+    await P.page.click(sel('r', 0, 0)); await P.page.fill(sel('r', 0, 0), ''); await leave(); await wait(80);
+    await P.page.click(sel('w', 0, 0)); await P.page.keyboard.type('135'); await leave(); await wait(150);
+    const a = await set(0, 0);
+    ok(!a.done && a.r == null && Math.abs(a.w / 0.45359237 - 135) < 1e-6, '8. a tick that waited for its weight, its reps cleared meanwhile: the weight typed does not tick the set (never 135 x 0 as missed)', a);
+    // (b) Next on the empty reps of a set with no weight: the focus stays on that set's load.
+    await ev(() => { const L = window.__ironlog; L.state.settings.autoDone = true; L.saveNow(); });
+    await P.page.click(sel('r', 1, 0)); await P.page.keyboard.press('Enter'); await wait(150);
+    const fb = await focusOn();
+    await P.page.keyboard.type('200'); await leave(); await wait(150);
+    const b0 = await set(1, 0), b1 = await set(1, 1);
+    ok(fb === 'w:1:0' && b0.done && Math.abs(b0.w / 0.45359237 - 200) < 1e-6 && b1.w == null, '8. Next on a set waiting for its weight keeps the focus on its load, and the weight typed goes to it', { focus: fb, b0, b1 });
+    // (f) A field focused by code (a draw giving the focus back) keeps its caret: the next digit goes there.
+    await leave(); await wait(60);
+    await ev(q => { const f = document.querySelector(q); f.value = '13'; f.dispatchEvent(new Event('input', { bubbles: true })); f.focus(); f.setSelectionRange(2, 2); }, sel('w', 0, 1));
+    await P.page.keyboard.type('5'); await wait(60);
+    const ff = await ev(q => document.querySelector(q).value, sel('w', 0, 1));
+    ok(ff === '135', '8. a load field focused by code keeps its caret: 13, then 5, is 135', ff);
+    // (g) A tap, then End or an arrow key: the next digit goes where the caret went.
+    await leave(); await wait(60);
+    await P.page.click(sel('w', 0, 1)); await wait(60); await P.page.keyboard.press('End'); await P.page.keyboard.type('0'); await wait(60);
+    const g1 = await ev(q => document.querySelector(q).value, sel('w', 0, 1));
+    await leave(); await wait(60);
+    await P.page.click(sel('w', 0, 1)); await wait(60); await P.page.keyboard.press('ArrowRight'); await P.page.keyboard.press('End'); await P.page.keyboard.type('5'); await wait(60);
+    const g2 = await ev(q => document.querySelector(q).value, sel('w', 0, 1));
+    ok(g1 === '1350' && g2 === '13505', '8. after a tap, End or an arrow key moves the caret, and the digit goes there', { g1, g2 });
+    // (e) A save while another tab's save is not yet heard: merged, not replaced.
+    await leave(); await wait(60);
+    const e = await ev(() => {
+      const L = window.__ironlog;
+      const other = JSON.parse(localStorage.getItem('ironlog.v1'));
+      other.draft.notes = 'from the other tab';
+      // The other tab's save, written where this tab has not heard it yet (a storage event comes a task later, and never to the tab that wrote).
+      localStorage.setItem('ironlog.v1', JSON.stringify(other));
+      L.state.draft.ex[0].sets[2].w = 100 * 0.45359237;
+      L.saveNow();
+      return new Promise(res => setTimeout(() => { const s = JSON.parse(localStorage.getItem('ironlog.v1')); res({ notes: s.draft.notes, w: s.draft.ex[0].sets[2].w, mem: L.state.draft.notes }); }, 50));
+    });
+    ok(e.notes === 'from the other tab' && e.mem === 'from the other tab' && Math.abs(e.w / 0.45359237 - 100) < 1e-6, '8. a save made while another tab\'s save is not yet heard keeps both', e);
+    ok(!P.errors.length, '8. no page errors', P.errors);
+    await P.ctx.close();
+    // (c) Saves per tap, on a workout with history (grey numbers in every row): the checkmark on grey numbers, Next taking the grey reps, an untick.
+    {
+      const C = await open(FILE, { browser, clock: '2026-10-24T10:00:00' });
+      await C.page.evaluate(new Function('L', `{const L=window.__ironlog;L.state.settings.onboarded=true;L.state.settings.autoDone=false;L.state.settings.timerMode='off';L.makeDemo();${REAL}${START()}L.render();}`));
+      await wait(300);
+      const evC = (f, x) => C.page.evaluate(f, x);
+      await evC(() => { window.__n = 0; const s = Storage.prototype.setItem; Storage.prototype.setItem = function (k, v) { if (k === 'ironlog.v1') window.__n++; return s.call(this, k, v); }; });
+      const saves = async f => { await evC(() => { window.__n = 0; }); await f(); await wait(700); return evC(() => window.__n); };
+      const n1 = await saves(() => C.page.click('#view [data-act="sDone"][data-b="0"][data-s="0"]'));
+      await evC(() => { const L = window.__ironlog; L.state.settings.autoDone = true; L.saveNow(); });
+      const n2 = await saves(async () => { await C.page.click(sel('r', 0, 1)); await C.page.keyboard.press('Enter'); });
+      await evC(() => { if (document.activeElement) document.activeElement.blur(); });
+      const n3 = await saves(() => C.page.click('#view [data-act="sDone"][data-b="0"][data-s="0"]'));
+      const st = await evC(() => window.__ironlog.state.draft.ex[0].sets.slice(0, 2).map(x => !!x.done));
+      ok(n1 === 1 && n2 === 1 && n3 === 1 && JSON.stringify(st) === '[false,true]', '8. one save for the checkmark on grey numbers, for Next taking the grey reps, and for an untick', { tick: n1, next: n2, untick: n3, done: st });
+      ok(!C.errors.length, '8. saves per tap: no page errors', C.errors);
+      await C.ctx.close();
+    }
+    // (d) Two tabs on one workout: a load typed in one while the other ticks, or unticks, a set; both keep both, and so does storage.
+    for (const mode of ['tick', 'untick']) {
+      const A = await open(FILE, { browser, clock: '2026-10-24T10:00:00' });
+      await A.page.evaluate(new Function('L', `{const L=window.__ironlog;L.state.settings.onboarded=true;L.state.settings.autoDone=false;L.state.settings.timerMode='off';L.makeDemo();${REAL}${START()}L.render();}`));
+      await wait(300);
+      const B = await tab(A, FILE);
+      await B.page.evaluate(() => { const L = window.__ironlog; L.ui.tab = 'today'; L.render(); });
+      await wait(300);
+      if (mode === 'untick') { await B.page.click('#view [data-act="sDone"][data-b="0"][data-s="0"]'); await wait(2500); }
+      await A.page.click(`#view .sg input[data-f="w"][data-b="1"][data-s="1"]`); await A.page.keyboard.type('70');
+      await B.page.click('#view [data-act="sDone"][data-b="0"][data-s="0"]');
+      await wait(900);
+      await A.page.evaluate(() => document.activeElement.blur()); await wait(900);
+      const pick = s => s && s.draft ? [s.draft.ex[1].sets[1].w == null ? null : Math.round(s.draft.ex[1].sets[1].w / 0.45359237), !!s.draft.ex[0].sets[0].done] : null;
+      const nowOf = pg => pg.evaluate(() => ({ mem: window.__ironlog.state, sto: JSON.parse(localStorage.getItem('ironlog.v1')) }));
+      const na = await nowOf(A.page), nb = await nowOf(B.page);
+      const want = JSON.stringify([70, mode === 'tick']);
+      const got = { A: pick(na.mem), B: pick(nb.mem), stored: pick(na.sto) };
+      ok(JSON.stringify(got.A) === want && JSON.stringify(got.B) === want && JSON.stringify(got.stored) === want, `8. two tabs, a load typed in one while the other ${mode}s a set: both tabs and the save keep both`, got);
+      ok(!A.errors.length && !B.errors.length, `8. two tabs (${mode}): no page errors`, [...A.errors, ...B.errors]);
+      await A.ctx.close();
+    }
   }
 
   // ---- 7. The installed build's library addresses (346 c).

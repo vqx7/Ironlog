@@ -1117,14 +1117,15 @@ export function acceptGrey(bi: number, si: number): boolean {
   if (!b || !x || x.done || x.warm || x.drop || +(x.r ?? 0) > 0) return false;
   const lr = greyR(b, si);
   if (lr == null || !(lr > 0)) return false;
+  // The grey reps and the tick are one change, saved once (as sDone's, from the independent review of r60).
   act(
     () => {
       x.r = Math.round(lr);
+      W.lastAuto = { b: blkRef(bi), s: si, t: Date.now() };
+      setDone(bi, si, true);
     },
     { inProgress: true }
   );
-  W.lastAuto = { b: blkRef(bi), s: si, t: Date.now() };
-  setDone(bi, si, true);
   return true;
 }
 

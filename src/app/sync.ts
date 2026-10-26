@@ -78,20 +78,55 @@ interface ClaudeUse {
 /* ---------- the save on this device ---------- */
 
 let saveT: number | null = null;
+/** Writes the log's text to this device and notes it as the last saved, the base another tab's write is merged against (onStorage); throws as setItem does. */
+function writeLocal(j: string): void {
+  localStorage.setItem(KEY, j);
+  device.lastSaved = j;
+}
+/* Whether another tab wrote the log since this one last saved or heard it:
+   the save there is not yet heard here (a storage event comes a task later),
+   so writing now would replace it (from the independent review of r60: a
+   tick in one tab and a load typed in another, each tab saving what it had,
+   lost one of them). A log never saved or read here has nothing to compare. */
+function storedElsewhere(): string | null {
+  if (!device.boot || device.lastSaved == null) return null;
+  try {
+    const cur = localStorage.getItem(KEY);
+    return cur != null && cur !== device.lastSaved ? cur : null;
+  } catch (e) {
+    // Storage that cannot be read now cannot be written either; the save below says so.
+    log('storage', e);
+    return null;
+  }
+}
+let mergeDue = false;
 /** Writes the log to this device now, notes the edit for the sync and schedules the flush. */
 export function saveNow(): void {
   clearTimer(saveT);
   saveT = null;
   capturePost();
+  /* Another tab's save not yet heard here is merged in first, once the
+     change being made has run to its end (a microtask: the change may go on
+     with the records it holds after this save), and the merge then saves. */
+  if (storedElsewhere() != null) {
+    if (!mergeDue) {
+      mergeDue = true;
+      queueMicrotask(() => {
+        mergeDue = false;
+        const cur = storedElsewhere();
+        if (cur != null) mergeIn(cur, true);
+        else saveNow();
+      });
+    }
+    return;
+  }
   /* Storage that failed its check at startup stays off: its old contents were
      never read, so writing now could overwrite them. A write that fails later
      (storage full) is tried again on every save, and saving resumes as soon
      as one succeeds, rather than stopping for the rest of the visit. */
   if (device.boot) {
     try {
-      const j = JSON.stringify(state);
-      localStorage.setItem(KEY, j);
-      device.lastSaved = j;
+      writeLocal(JSON.stringify(state));
       device.ok = true;
     } catch (e) {
       device.ok = false;
@@ -929,7 +964,7 @@ export async function cloudFlush(): Promise<void> {
     if (adopted) {
       invalidate();
       try {
-        localStorage.setItem(KEY, JSON.stringify(state));
+        writeLocal(JSON.stringify(state));
       } catch (e) {
         log('storage', e);
       }
@@ -1125,7 +1160,7 @@ export async function cloudPull(): Promise<void> {
   if (parts || merged) {
     invalidate();
     try {
-      localStorage.setItem(KEY, JSON.stringify(state));
+      writeLocal(JSON.stringify(state));
     } catch (e) {
       log('storage', e);
     }
@@ -1508,12 +1543,35 @@ function onStorage(ev: StorageEvent): void {
     return;
   }
   if (ev.key !== KEY || ev.newValue == null || ev.newValue === device.lastSaved) return;
+  /* A write since replaced: by this tab, which merged what was stored before
+     it wrote (saveNow), or by another, whose own event follows. */
+  try {
+    if (localStorage.getItem(KEY) !== ev.newValue) return;
+  } catch (e) {
+    // Storage unreadable now: the write is read from the event, as before.
+    log('tabs', e);
+  }
+  mergeIn(ev.newValue, false);
+}
+/* Another tab's save merged into this tab's log: taken whole when this tab
+   has nothing unsaved, else three ways against this tab's last save; what
+   was only here is saved back so the other tab has it too. own: the merge is
+   this tab's own save's (saveNow), which then saves whatever it holds. */
+function mergeIn(text: string, own: boolean): void {
   let incoming: State,
     base: State | null = null;
   try {
-    incoming = normalize(parseJson(ev.newValue));
+    const raw = parseJson(text);
+    // A save is a record; anything else (null, a number) would read as an empty log, every record in it deleted.
+    if (!rec(raw)) throw new Error('another tab saved something that is not a log');
+    incoming = normalize(raw);
   } catch (e) {
     log('tabs', e);
+    // Not merged. This tab's own save goes ahead over it, as every save did before r60.
+    if (own) {
+      device.lastSaved = text;
+      saveNow();
+    }
     return;
   }
   try {
@@ -1541,13 +1599,13 @@ function onStorage(ev: StorageEvent): void {
       );
     setState(assemble(parts));
   }
-  device.lastSaved = ev.newValue;
+  device.lastSaved = text;
   clearTimer(saveT);
   saveT = null;
   invalidate();
   resyncLocalH();
-  // Anything that was only here goes back out, so the other tab has it too.
-  if (canon(state) !== canon(incoming)) saveNow();
+  // Anything that was only here goes back out, so the other tab has it too (and this tab's own save, made, is noted for the sync).
+  if (own || canon(state) !== canon(incoming)) saveNow();
   if (!ui.modal) fx.rerenderKeepScroll();
   else fx.render();
   conflictNote(stat);

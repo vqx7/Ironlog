@@ -714,38 +714,36 @@ export const WORKOUT_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
       W.lastAuto = null;
       return;
     }
-    if (!s.done && !(+(s.r ?? 0) > 0) && !isMissed(s)) {
-      const b = d.ex[bi];
-      const lr = b ? greyR(b, si) : null;
-      if (lr == null || !(lr > 0)) {
-        fx.toast('Enter reps first');
-        return;
-      }
-      act(
-        () => {
-          s.r = Math.round(lr);
-        },
-        { inProgress: true }
-      );
+    const b = d.ex[bi];
+    const noReps = !s.done && !(+(s.r ?? 0) > 0) && !isMissed(s);
+    const lr = noReps && b ? greyR(b, si) : null;
+    if (noReps && (lr == null || !(lr > 0))) {
+      fx.toast('Enter reps first');
+      return;
     }
     const was = !!s.done;
-    setDone(bi, si, !was);
-    if (!was) return;
-    const b = d.ex[bi];
-    const o = ordBack.get(b);
+    /* The whole tap is one change, saved once (act runs the changes made
+       inside it as its own): the grey reps taken, the tick, and on an untick
+       the numbers put back to grey and the exercise moved back. From the
+       independent review of r60: written in two saves, a second tab's merge
+       of the first could lose the second, the tick. */
     act(
       () => {
+        if (lr != null) s.r = Math.round(lr);
+        setDone(bi, si, !was);
+        if (!was || !b) return;
         if (s.r != null && +s.r === greyR(b, si)) s.r = null;
         const gw = greyW(b, si);
         if (!fillLoads() && s.w != null && gw != null && Math.abs(s.w - gw) < 1e-9) s.w = null;
+        const o = ordBack.get(b);
+        if (o && !b.sets.some(x => x.done) && Date.now() - o.t < 30000) {
+          ordBack.delete(b);
+          moveBlock(bi, Math.min(o.i, d.ex.length - 1));
+        }
       },
       { inProgress: true }
     );
-    if (o && !b.sets.some(x => x.done) && Date.now() - o.t < 30000) {
-      ordBack.delete(b);
-      moveBlock(bi, Math.min(o.i, d.ex.length - 1));
-    }
-    fx.rerenderKeepScroll();
+    if (was) fx.rerenderKeepScroll();
   },
   // Numbers, placeholders and the progress bar all depend on which rows are working sets, so the block is drawn again.
   sWarm(t) {
@@ -1302,9 +1300,14 @@ export function workoutChange(t: HTMLInputElement): boolean {
     const refix = ui.refix;
     const rf = !!refix && refix.s === si && blkIdx(refix.b) === bi;
     if (rf) ui.refix = null;
-    // A tick that waited for its weight (344) is made once one is typed; the checkmark tapped next keeps it, as after auto-mark.
-    const need = needHere(bi, si) && s.w != null;
-    if (need) W.needAt = null;
+    /* A tick that waited for its weight (344) is made once one is typed; the
+       checkmark tapped next keeps it, as after auto-mark. Only while the set
+       still has its reps (or a 0 typed, a missed set): reps cleared since,
+       the tick has nothing to log and is dropped (the independent review of
+       r60: 135 x 0 was saved as a missed set the lifter never logged). */
+    const typed = needHere(bi, si) && s.w != null;
+    if (typed) W.needAt = null;
+    const need = typed && (+(s.r ?? 0) > 0 || isMissed(s));
     if (s.done && oddLoad(d.ex[bi], si, d.date)) {
       setDone(bi, si, false);
       setDone(bi, si, true, true);
@@ -1348,15 +1351,24 @@ export function workoutChange(t: HTMLInputElement): boolean {
 export function workoutKey(e: KeyboardEvent): boolean {
   const t = e.target;
   if (!(t instanceof Element)) return false;
+  // A key that moves the caret leaves it where it went: the next key goes there.
+  if (W.replaceNext === t && /^(Arrow|Home$|End$)/.test(e.key)) W.replaceNext = null;
   if (e.key === 'Enter' && t instanceof HTMLInputElement && t.matches('.sg input[data-f]')) {
     e.preventDefault();
-    if (t.dataset.f === 'r' && !t.value.trim()) acceptGrey(Number(t.dataset.b), Number(t.dataset.s));
+    const bi = Number(t.dataset.b),
+      si = Number(t.dataset.s);
+    if (t.dataset.f === 'r' && !t.value.trim()) acceptGrey(bi, si);
+    /* A set whose tick waits for its weight (344) keeps the focus on its
+       load field, which setDone gave it (from the independent review of r60:
+       Next moved on, and the weight typed next went to the set after). */
+    if (needHere(bi, si)) return true;
     const all = [...document.querySelectorAll<HTMLInputElement>('.sg input[data-f]')];
     const nx = all[all.indexOf(t) + 1];
     if (nx)
       try {
         nx.focus();
-        nx.select();
+        if (nx.dataset.f === 'w') armLoad(nx);
+        else nx.select();
       } catch (x) {
         // Focus is best effort; the set is typed either way.
       }
@@ -1398,12 +1410,24 @@ export function workoutKey(e: KeyboardEvent): boolean {
    152.5 over a grey 135 as 1152.535). The first key does what the selection
    says whatever the screen shows (workoutBeforeInput), so a release that
    still moves the caret cannot splice a digit into the number. A second tap
-   on the focused field places the caret as any tap does. iPhone selection
+   on the focused field places the caret as any tap does, and so does an
+   arrow key, Home or End. Only a tap or Next does this: a field focused
+   again by a redraw keeps its caret and its text (from the independent
+   review of r60: a field remade mid-number, its focus given back, took the
+   next digit as a new number, 13 then 5 giving 5). iPhone selection
    behaviour is to be tried on V's phone before this ships. */
-// A field of the session screen focused (focusin): a load field's number selected, a grey one put in to be typed over.
+// A field of the session screen focused (focusin): on a tap, a load field's number selected, a grey one put in to be typed over.
 function workoutFocus(e: FocusEvent): void {
   const t = e.target;
   if (!(t instanceof HTMLInputElement) || !t.matches('.sg input[data-f="w"]')) return;
+  // Focused by a touch on it just now (noteDown ran first): its release is still to come.
+  if (W.lastDown.el !== t || Date.now() - W.lastDown.t > 700) return;
+  armLoad(t);
+  W.selAgain = t;
+}
+
+// A load field made ready to be typed over, on a tap or Next: a grey load put in, the number selected, and the first key replacing it.
+function armLoad(t: HTMLInputElement): void {
   if (!t.value && /\d/.test(t.placeholder)) {
     t.value = t.placeholder;
     greyIn.add(t);
@@ -1411,8 +1435,6 @@ function workoutFocus(e: FocusEvent): void {
   }
   t.select();
   W.replaceNext = t;
-  // Focused by a touch on it just now (noteDown ran first): its release is still to come.
-  W.selAgain = W.lastDown.el === t ? t : null;
 }
 
 // A tap released (mouseup, capture phase): on the load field it just focused, the selection kept rather than the caret placed.

@@ -7448,15 +7448,40 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
 
   // src/app/sync.ts
   var saveT = null;
+  function writeLocal(j3) {
+    localStorage.setItem(KEY, j3);
+    device.lastSaved = j3;
+  }
+  function storedElsewhere() {
+    if (!device.boot || device.lastSaved == null) return null;
+    try {
+      const cur = localStorage.getItem(KEY);
+      return cur != null && cur !== device.lastSaved ? cur : null;
+    } catch (e5) {
+      log("storage", e5);
+      return null;
+    }
+  }
+  var mergeDue = false;
   function saveNow() {
     clearTimer(saveT);
     saveT = null;
     capturePost();
+    if (storedElsewhere() != null) {
+      if (!mergeDue) {
+        mergeDue = true;
+        queueMicrotask(() => {
+          mergeDue = false;
+          const cur = storedElsewhere();
+          if (cur != null) mergeIn(cur, true);
+          else saveNow();
+        });
+      }
+      return;
+    }
     if (device.boot) {
       try {
-        const j3 = JSON.stringify(state);
-        localStorage.setItem(KEY, j3);
-        device.lastSaved = j3;
+        writeLocal(JSON.stringify(state));
         device.ok = true;
       } catch (e5) {
         device.ok = false;
@@ -8066,7 +8091,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       if (adopted) {
         invalidate();
         try {
-          localStorage.setItem(KEY, JSON.stringify(state));
+          writeLocal(JSON.stringify(state));
         } catch (e5) {
           log("storage", e5);
         }
@@ -8230,7 +8255,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     if (parts || merged) {
       invalidate();
       try {
-        localStorage.setItem(KEY, JSON.stringify(state));
+        writeLocal(JSON.stringify(state));
       } catch (e5) {
         log("storage", e5);
       }
@@ -8487,11 +8512,25 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       return;
     }
     if (ev.key !== KEY || ev.newValue == null || ev.newValue === device.lastSaved) return;
-    let incoming, base = null;
     try {
-      incoming = normalize(parseJson(ev.newValue));
+      if (localStorage.getItem(KEY) !== ev.newValue) return;
     } catch (e5) {
       log("tabs", e5);
+    }
+    mergeIn(ev.newValue, false);
+  }
+  function mergeIn(text, own) {
+    let incoming, base = null;
+    try {
+      const raw = parseJson(text);
+      if (!rec(raw)) throw new Error("another tab saved something that is not a log");
+      incoming = normalize(raw);
+    } catch (e5) {
+      log("tabs", e5);
+      if (own) {
+        device.lastSaved = text;
+        saveNow();
+      }
       return;
     }
     try {
@@ -8515,12 +8554,12 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
         );
       setState(assemble(parts));
     }
-    device.lastSaved = ev.newValue;
+    device.lastSaved = text;
     clearTimer(saveT);
     saveT = null;
     invalidate();
     resyncLocalH();
-    if (canon(state) !== canon(incoming)) saveNow();
+    if (own || canon(state) !== canon(incoming)) saveNow();
     if (!ui.modal) fx.rerenderKeepScroll();
     else fx.render();
     conflictNote(stat);
@@ -15956,11 +15995,11 @@ ${ms.length ? b`<div class="scroll-x" style="margin-top:10px"><table class="t"><
     act(
       () => {
         x2.r = Math.round(lr);
+        W.lastAuto = { b: blkRef(bi), s: si, t: Date.now() };
+        setDone(bi, si, true);
       },
       { inProgress: true }
     );
-    W.lastAuto = { b: blkRef(bi), s: si, t: Date.now() };
-    setDone(bi, si, true);
     return true;
   }
   var distIn = (v3) => {
@@ -16725,38 +16764,31 @@ ${ms.length ? b`<div class="scroll-x" style="margin-top:10px"><table class="t"><
         W.lastAuto = null;
         return;
       }
-      if (!s3.done && !(+(s3.r ?? 0) > 0) && !isMissed(s3)) {
-        const b3 = d3.ex[bi];
-        const lr = b3 ? greyR(b3, si) : null;
-        if (lr == null || !(lr > 0)) {
-          fx.toast("Enter reps first");
-          return;
-        }
-        act(
-          () => {
-            s3.r = Math.round(lr);
-          },
-          { inProgress: true }
-        );
+      const b2 = d3.ex[bi];
+      const noReps = !s3.done && !(+(s3.r ?? 0) > 0) && !isMissed(s3);
+      const lr = noReps && b2 ? greyR(b2, si) : null;
+      if (noReps && (lr == null || !(lr > 0))) {
+        fx.toast("Enter reps first");
+        return;
       }
       const was = !!s3.done;
-      setDone(bi, si, !was);
-      if (!was) return;
-      const b2 = d3.ex[bi];
-      const o3 = ordBack.get(b2);
       act(
         () => {
+          if (lr != null) s3.r = Math.round(lr);
+          setDone(bi, si, !was);
+          if (!was || !b2) return;
           if (s3.r != null && +s3.r === greyR(b2, si)) s3.r = null;
           const gw = greyW(b2, si);
           if (!fillLoads() && s3.w != null && gw != null && Math.abs(s3.w - gw) < 1e-9) s3.w = null;
+          const o3 = ordBack.get(b2);
+          if (o3 && !b2.sets.some((x2) => x2.done) && Date.now() - o3.t < 3e4) {
+            ordBack.delete(b2);
+            moveBlock(bi, Math.min(o3.i, d3.ex.length - 1));
+          }
         },
         { inProgress: true }
       );
-      if (o3 && !b2.sets.some((x2) => x2.done) && Date.now() - o3.t < 3e4) {
-        ordBack.delete(b2);
-        moveBlock(bi, Math.min(o3.i, d3.ex.length - 1));
-      }
-      fx.rerenderKeepScroll();
+      if (was) fx.rerenderKeepScroll();
     },
     // Numbers, placeholders and the progress bar all depend on which rows are working sets, so the block is drawn again.
     sWarm(t4) {
@@ -17252,8 +17284,9 @@ ${ms.length ? b`<div class="scroll-x" style="margin-top:10px"><table class="t"><
       const refix = ui.refix;
       const rf = !!refix && refix.s === si && blkIdx(refix.b) === bi;
       if (rf) ui.refix = null;
-      const need = needHere(bi, si) && s3.w != null;
-      if (need) W.needAt = null;
+      const typed = needHere(bi, si) && s3.w != null;
+      if (typed) W.needAt = null;
+      const need = typed && (+(s3.r ?? 0) > 0 || isMissed(s3));
       if (s3.done && oddLoad(d3.ex[bi], si, d3.date)) {
         setDone(bi, si, false);
         setDone(bi, si, true, true);
@@ -17291,15 +17324,19 @@ ${ms.length ? b`<div class="scroll-x" style="margin-top:10px"><table class="t"><
   function workoutKey(e5) {
     const t4 = e5.target;
     if (!(t4 instanceof Element)) return false;
+    if (W.replaceNext === t4 && /^(Arrow|Home$|End$)/.test(e5.key)) W.replaceNext = null;
     if (e5.key === "Enter" && t4 instanceof HTMLInputElement && t4.matches(".sg input[data-f]")) {
       e5.preventDefault();
-      if (t4.dataset.f === "r" && !t4.value.trim()) acceptGrey(Number(t4.dataset.b), Number(t4.dataset.s));
+      const bi = Number(t4.dataset.b), si = Number(t4.dataset.s);
+      if (t4.dataset.f === "r" && !t4.value.trim()) acceptGrey(bi, si);
+      if (needHere(bi, si)) return true;
       const all = [...document.querySelectorAll(".sg input[data-f]")];
       const nx = all[all.indexOf(t4) + 1];
       if (nx)
         try {
           nx.focus();
-          nx.select();
+          if (nx.dataset.f === "w") armLoad(nx);
+          else nx.select();
         } catch (x2) {
         }
       else t4.blur();
@@ -17328,6 +17365,11 @@ ${ms.length ? b`<div class="scroll-x" style="margin-top:10px"><table class="t"><
   function workoutFocus(e5) {
     const t4 = e5.target;
     if (!(t4 instanceof HTMLInputElement) || !t4.matches('.sg input[data-f="w"]')) return;
+    if (W.lastDown.el !== t4 || Date.now() - W.lastDown.t > 700) return;
+    armLoad(t4);
+    W.selAgain = t4;
+  }
+  function armLoad(t4) {
     if (!t4.value && /\d/.test(t4.placeholder)) {
       t4.value = t4.placeholder;
       greyIn.add(t4);
@@ -17335,7 +17377,6 @@ ${ms.length ? b`<div class="scroll-x" style="margin-top:10px"><table class="t"><
     }
     t4.select();
     W.replaceNext = t4;
-    W.selAgain = W.lastDown.el === t4 ? t4 : null;
   }
   function workoutUp(e5) {
     const t4 = W.selAgain;
