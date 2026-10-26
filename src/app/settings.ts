@@ -76,7 +76,7 @@ import {
   prof,
   profRule
 } from './live';
-import { acct, cloud, fx, setState, state, ui } from './store';
+import { acct, cloud, setState, state, ui } from './store';
 import { effName, effShow, halfLbl, rirScale } from './effort';
 import { canInstallHere, coarse, installKind, isStandalone } from './env';
 import { drawScreen, fieldValue, howText, labelTip, pageTitle, placed, section, tabFoot, tipButton } from './view';
@@ -97,6 +97,10 @@ import { HARD_RIR } from './formulas';
 import { PROFILE_PLAN } from './routines';
 import { SMALL_PLATE, DEFAULT_STEP } from './units';
 import { DEMO_WEEKS } from './importing';
+import { adjOn, refreshEx, syncDraftPlan, unitWords } from './worksets';
+import { confirmBox, render, rerenderKeepScroll } from './page';
+import { toast } from './toast';
+import { primeAudio, stopTimer, timerRefresh, wakeOff, wakeOn } from './timer';
 
 /* ---------- settings other screens read ---------- */
 
@@ -104,11 +108,6 @@ import { DEMO_WEEKS } from './importing';
 export function bwEvery(): 0 | 7 | 14 | 30 {
   const v = bwEveryKept(state.settings.bwEvery);
   return v === undefined ? BW_EVERY_DEFAULT : v;
-}
-
-/** Whether the next sets move after a set clearly off its plan (r34; on unless turned off). */
-export function adjOn(): boolean {
-  return state.settings.autoAdj !== false;
 }
 
 /** What the suggestions are and are not, in full: the tip on Your data's line, and the first page's. */
@@ -370,12 +369,12 @@ ${
 function gymRefresh(): void {
   invalidate();
   const d = state.draft;
-  if (d) for (const id of new Set(d.ex.map(b => b.exId))) fx.refreshEx(id);
+  if (d) for (const id of new Set(d.ex.map(b => b.exId))) refreshEx(id);
 }
 function gymSave(g: Gym): void {
   const c = gymClean({ ...g });
   if (JSON.stringify(c || null) === JSON.stringify(gymOf() || null)) {
-    fx.rerenderKeepScroll();
+    rerenderKeepScroll();
     return;
   }
   act(
@@ -386,7 +385,7 @@ function gymSave(g: Gym): void {
     },
     { undo: true }
   );
-  fx.rerenderKeepScroll();
+  rerenderKeepScroll();
 }
 function gymInput(t: HTMLInputElement): void {
   const k = t.dataset.gym || '';
@@ -430,7 +429,7 @@ function gymInput(t: HTMLInputElement): void {
   if (g.db) {
     delete g.db;
     gymSave(g);
-  } else fx.rerenderKeepScroll();
+  } else rerenderKeepScroll();
 }
 
 /* ---------- Effort and Layout ---------- */
@@ -972,7 +971,7 @@ export const SETTINGS_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
       if (a === ACCENT0) delete state.settings.accent;
       else state.settings.accent = a;
     });
-    fx.rerenderKeepScroll();
+    rerenderKeepScroll();
   },
   prio(t) {
     const k = t.dataset.m;
@@ -982,7 +981,7 @@ export const SETTINGS_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
       const p = state.settings.priorities;
       state.settings.priorities = p.includes(m) ? p.filter(x => x !== m) : [...p, m];
     });
-    fx.rerenderKeepScroll();
+    rerenderKeepScroll();
   },
   hideToggle(t) {
     const k = t.dataset.k || '';
@@ -991,7 +990,7 @@ export const SETTINGS_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
       const h = state.settings.hidden;
       state.settings.hidden = h.includes(k) ? h.filter(x => x !== k) : [...h, k];
     });
-    fx.rerenderKeepScroll();
+    rerenderKeepScroll();
   },
   layoutDefault() {
     act(
@@ -1001,15 +1000,15 @@ export const SETTINGS_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
       },
       { undo: true }
     );
-    fx.rerenderKeepScroll();
-    fx.toast('Default layout on every tab', true);
+    rerenderKeepScroll();
+    toast('Default layout on every tab', true);
   },
   layoutAll() {
     act(() => {
       state.settings.hidden = [];
     });
-    fx.rerenderKeepScroll();
-    fx.toast('Every section shown');
+    rerenderKeepScroll();
+    toast('Every section shown');
   },
   layoutReset() {
     act(
@@ -1018,8 +1017,8 @@ export const SETTINGS_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
       },
       { undo: true }
     );
-    fx.rerenderKeepScroll();
-    fx.toast('Section order reset on every tab', true);
+    rerenderKeepScroll();
+    toast('Section order reset on every tab', true);
   },
   gymUnit(t) {
     const v: 'lb' | 'kg' = t.dataset.v === 'kg' ? 'kg' : 'lb';
@@ -1035,17 +1034,17 @@ export const SETTINGS_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
           },
           { undo: true }
         );
-      fx.rerenderKeepScroll();
+      rerenderKeepScroll();
     };
     // Weights typed in one unit mean nothing in the other, so they are cleared, with Undo, rather than converted to odd numbers.
     if (gymOf() || ui.gymDb)
-      fx.confirm(
+      confirmBox(
         `Switch to ${v}?`,
         `The weights typed here are in ${gymUnit()} and are cleared. Type them again in ${v}.`,
         `Switch to ${v}`,
         () => {
           go();
-          fx.toast(`Your gym in ${v}`, true);
+          toast(`Your gym in ${v}`, true);
         }
       );
     else go();
@@ -1057,7 +1056,7 @@ export const SETTINGS_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
     let on = Array.isArray(g.plates) ? g.plates.slice() : all.slice();
     on = on.includes(v) ? on.filter(x => x !== v) : [...on, v];
     if (!on.length) {
-      fx.toast('Keep at least one plate');
+      toast('Keep at least one plate');
       return;
     }
     if (on.length === all.length) delete g.plates;
@@ -1073,8 +1072,8 @@ export const SETTINGS_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
       },
       { undo: true }
     );
-    fx.rerenderKeepScroll();
-    fx.toast('Your gym cleared: the usual steps apply', true);
+    rerenderKeepScroll();
+    toast('Your gym cleared: the usual steps apply', true);
   },
   /* Your training (r44): a tap on a choice sets it, a tap on the one set
      clears it. Focus moves only the app's own weekly targets, with Undo. */
@@ -1089,7 +1088,7 @@ export const SETTINGS_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
       if (i >= 0) focus.splice(i, 1);
       else {
         if (focus.length >= FOCUS_MAX) {
-          fx.toast('Two at most. Tap one to take it off.');
+          toast('Two at most. Tap one to take it off.');
           return;
         }
         focus.push(raw);
@@ -1127,24 +1126,24 @@ export const SETTINGS_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
         }
       }
     );
-    fx.rerenderKeepScroll();
+    rerenderKeepScroll();
     const n = Object.keys(moved).length;
     // A focus whose own target was typed does nothing to it; say so rather than nothing (the r44 review).
     const fm = MK.find(m => m === raw);
     const kept = k === 'focus' && !!np && (np.focus || []).includes(raw) && !!fm && !moved[fm];
     if (kept)
-      fx.toast(
+      toast(
         `Your ${ML[raw]} target is one you set, so it stays. Default targets in Weekly set targets puts the app's back.`,
         n > 0,
         KEPT_TOAST_MS
       );
-    else if (n) fx.toast(`Weekly targets moved for ${n} muscle${n === 1 ? '' : 's'}. Ones you typed stay.`, true);
+    else if (n) toast(`Weekly targets moved for ${n} muscle${n === 1 ? '' : 's'}. Ones you typed stay.`, true);
   },
   profApply() {
     const R = activeRoutine();
     const list = profApplyList(R);
     if (!list.length) return;
-    fx.confirm(
+    confirmBox(
       `Apply to ${R.name}?`,
       `${list.length} exercise${list.length === 1 ? '' : 's'}. ${profApplyWhat()} Sets and exercises stay as they are.`,
       'Apply',
@@ -1157,14 +1156,14 @@ export const SETTINGS_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
             n = L.length;
             for (const x of L) {
               Object.assign(x.it, x.ch);
-              fx.syncDraftPlan({ r: now, di: x.di, it: x.it });
+              syncDraftPlan({ r: now, di: x.di, it: x.it });
             }
           },
           { check: () => !!now && now.id === R.id, undo: true }
         );
         if (!done) return;
-        fx.rerenderKeepScroll();
-        fx.toast(`${now.name}: ${n} exercise${n === 1 ? '' : 's'} updated`, true);
+        rerenderKeepScroll();
+        toast(`${now.name}: ${n} exercise${n === 1 ? '' : 's'} updated`, true);
       }
     );
   },
@@ -1205,8 +1204,8 @@ export const SETTINGS_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
         }
       }
     );
-    fx.rerenderKeepScroll();
-    fx.toast('Weekly set targets back to the defaults', true);
+    rerenderKeepScroll();
+    toast('Weekly set targets back to the defaults', true);
   },
   // A muscle with no target given one (339 e, r58): its numbers as they stand, now counted.
   tgtSet(t) {
@@ -1216,7 +1215,7 @@ export const SETTINGS_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
       const o = state.settings.ownTargets || [];
       state.settings.ownTargets = MK.filter(x => x === m || o.includes(x));
     });
-    fx.rerenderKeepScroll();
+    rerenderKeepScroll();
   },
   // A target the lifter gave taken off: tracked only again, its numbers the app's, with an Undo step.
   tgtOff(t) {
@@ -1232,33 +1231,33 @@ export const SETTINGS_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
       },
       { undo: true }
     );
-    fx.rerenderKeepScroll();
-    fx.toast(`${ML[m]} is tracked only`, true);
+    rerenderKeepScroll();
+    toast(`${ML[m]} is tracked only`, true);
   },
   unreadForget() {
-    fx.confirm(
+    confirmBox(
       'Forget the save kept aside?',
       'It is deleted for good. Export or copy it first if you might want it.',
       'Forget it',
       () => {
         unreadableForget();
-        fx.rerenderKeepScroll();
-        fx.toast('Forgotten');
+        rerenderKeepScroll();
+        toast('Forgotten');
       },
       true
     );
   },
   diagClear() {
     logClear();
-    fx.rerenderKeepScroll();
-    fx.toast('Log cleared');
+    rerenderKeepScroll();
+    toast('Log cleared');
   },
   syncNow() {
     if (!cloud.on) return;
     cloud.retry = 0;
     setCloud('connecting');
     void cq(cloudPull).then(() => {
-      if (cloud.status === 'synced') fx.toast('Synced');
+      if (cloud.status === 'synced') toast('Synced');
     });
   },
   demoClear() {
@@ -1269,11 +1268,11 @@ export const SETTINGS_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
       },
       { undo: true }
     );
-    fx.render();
-    fx.toast('Demo data cleared', true);
+    render();
+    toast('Demo data cleared', true);
   },
   resetAll() {
-    fx.confirm(
+    confirmBox(
       'Erase everything?',
       `All routines, sessions, custom exercises, and body data will be deleted${cloud.on ? ' on this device and in your cloud copy' : ' on this device'}. Export a backup first if you might want it.`,
       'Erase everything',
@@ -1287,8 +1286,8 @@ export const SETTINGS_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
           { undo: true }
         );
         ui.tab = 'today';
-        fx.render();
-        fx.toast('Everything erased', true);
+        render();
+        toast('Everything erased', true);
       },
       true
     );
@@ -1308,8 +1307,8 @@ export const SETTINGS_BINDS: Readonly<Record<string, (t: Field) => void>> = {
     act(() => {
       state.settings.unit = u;
     });
-    fx.unitWords();
-    fx.render();
+    unitWords();
+    render();
   },
   theme(t) {
     const v = t.value;
@@ -1317,15 +1316,15 @@ export const SETTINGS_BINDS: Readonly<Record<string, (t: Field) => void>> = {
     act(() => {
       state.settings.theme = v;
     });
-    fx.render();
+    render();
   },
   rirMode(t) {
     const v = t.value === 'off' || t.value === 'cal' ? t.value : 'on';
     act(() => {
       state.settings.rirMode = v;
     });
-    fx.rerenderKeepScroll();
-    fx.toast(
+    rerenderKeepScroll();
+    toast(
       v === 'off'
         ? 'RIR off: every working set counts as hard'
         : v === 'cal'
@@ -1339,7 +1338,7 @@ export const SETTINGS_BINDS: Readonly<Record<string, (t: Field) => void>> = {
       if (v === 'half' || v === 'rpe') state.settings.rirScale = v;
       else delete state.settings.rirScale;
     });
-    fx.rerenderKeepScroll();
+    rerenderKeepScroll();
   },
   rirAsk(t) {
     const on = checked(t);
@@ -1347,7 +1346,7 @@ export const SETTINGS_BINDS: Readonly<Record<string, (t: Field) => void>> = {
       if (on) state.settings.rirAsk = true;
       else delete state.settings.rirAsk;
     });
-    fx.rerenderKeepScroll();
+    rerenderKeepScroll();
   },
   rirHalf(t) {
     const on = checked(t);
@@ -1358,8 +1357,8 @@ export const SETTINGS_BINDS: Readonly<Record<string, (t: Field) => void>> = {
       },
       { undo: true }
     );
-    fx.rerenderKeepScroll();
-    fx.toast(
+    rerenderKeepScroll();
+    toast(
       on
         ? `${halfLbl()} now counts as half a set`
         : `Only ${effName()} ${effShow(HARD_RIR)} ${rirScale() === 'rpe' ? 'or more' : 'or less'} counts`,
@@ -1371,29 +1370,29 @@ export const SETTINGS_BINDS: Readonly<Record<string, (t: Field) => void>> = {
     act(() => {
       state.settings.timerMode = v;
     });
-    if (v === 'off') fx.stopTimer();
-    fx.rerenderKeepScroll();
+    if (v === 'off') stopTimer();
+    rerenderKeepScroll();
   },
   timerSound(t) {
     const on = checked(t);
     act(() => {
       state.settings.timerSound = on;
     });
-    if (on) fx.primeAudio();
+    if (on) primeAudio();
   },
   timerCompact(t) {
     const on = checked(t);
     act(() => {
       state.settings.timerCompact = on;
     });
-    fx.timerRefresh();
+    timerRefresh();
   },
   autoDone(t) {
     const on = checked(t);
     act(() => {
       state.settings.autoDone = on;
     });
-    fx.rerenderKeepScroll();
+    rerenderKeepScroll();
   },
   smallPlates(t) {
     const on = checked(t);
@@ -1409,7 +1408,7 @@ export const SETTINGS_BINDS: Readonly<Record<string, (t: Field) => void>> = {
       if (k !== undefined) state.settings.bwEvery = k;
       else delete state.settings.bwEvery;
     });
-    fx.rerenderKeepScroll();
+    rerenderKeepScroll();
   },
   todayStart(t) {
     const free = t.value === 'free';
@@ -1417,7 +1416,7 @@ export const SETTINGS_BINDS: Readonly<Record<string, (t: Field) => void>> = {
       if (free) state.settings.todayStart = 'free';
       else delete state.settings.todayStart;
     });
-    fx.rerenderKeepScroll();
+    rerenderKeepScroll();
   },
   autoAdj(t) {
     const on = checked(t);
@@ -1431,8 +1430,8 @@ export const SETTINGS_BINDS: Readonly<Record<string, (t: Field) => void>> = {
     act(() => {
       state.settings.wakeLock = on;
     });
-    if (on && state.draft) fx.wakeOn();
-    else if (!on) fx.wakeOff();
+    if (on && state.draft) wakeOn();
+    else if (!on) wakeOff();
   },
   timeBudget(t) {
     const n = numIn(t.value);
@@ -1447,7 +1446,7 @@ export const SETTINGS_BINDS: Readonly<Record<string, (t: Field) => void>> = {
       // Within the bar's bound in kilograms, the one a save keeps (r61; until then 110 in lb and 50 in kg, typed).
       state.settings.barKg = n == null || n <= 0 ? null : Math.min(fromD(n) ?? 0, LIMITS.barKg);
     });
-    fx.rerenderKeepScroll();
+    rerenderKeepScroll();
   },
   userName(t) {
     const n = t.value.replace(/\s+/g, ' ').trim().slice(0, LIMITS.name);
@@ -1485,7 +1484,7 @@ export function bandChange(t: HTMLInputElement): void {
     const b = state.settings.bands[m];
     if (b[0] > b[1]) b.reverse();
   });
-  fx.rerenderKeepScroll();
+  rerenderKeepScroll();
 }
 /** A Your gym field left (data-gym, on change). */
 export function gymField(t: HTMLInputElement): void {

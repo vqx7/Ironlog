@@ -1,64 +1,9 @@
 /* ---------- tips ----------
-   Any element with data-tip shows it: after a short hover with a mouse, on
-   keyboard focus, or when held for about half a second on a touch screen.
-   A hold never also fires the tap underneath. The small i buttons show their
-   tip on a plain tap too. */
+   An i button's markup for the legacy sheets still written as markup (the
+   problem report's, until it moves in r63). */
 function tipi(text,label){return `<button type="button" class="tipi" data-tip="${esc(text)}" aria-label="${esc(label||'More')}">i</button>`;}
-const TIP={el:null,t:null,hold:null,x:0,y:0,swallow:false};
-function tipShow(el){
-  const box=$('#tip');const txt=el&&el.getAttribute('data-tip');if(!box||!txt)return;
-  TIP.el=el;box.textContent=txt;box.hidden=false;
-  const r=el.getBoundingClientRect(),b=box.getBoundingClientRect(),vw=window.innerWidth,vh=window.innerHeight;
-  let top=r.top-b.height-8;if(top<8)top=r.bottom+8;if(top+b.height>vh-8)top=Math.max(8,vh-b.height-8);
-  let left=r.left+r.width/2-b.width/2;left=Math.max(12,Math.min(left,vw-b.width-12));
-  box.style.top=top+'px';box.style.left=left+'px';
-  el.setAttribute('aria-describedby','tip');
-}
-function tipHide(){clearTimeout(TIP.t);clearTimeout(TIP.hold);TIP.hold=null;const box=$('#tip');if(box)box.hidden=true;if(TIP.el){TIP.el.removeAttribute('aria-describedby');TIP.el=null;}}
-document.addEventListener('pointerover',e=>{if(e.pointerType!=='mouse')return;const el=e.target.closest&&e.target.closest('[data-tip]');if(!el||el===TIP.el)return;clearTimeout(TIP.t);TIP.t=setTimeout(()=>tipShow(el),350);});
-document.addEventListener('pointerout',e=>{if(e.pointerType!=='mouse')return;const el=e.target.closest&&e.target.closest('[data-tip]');if(el&&(!e.relatedTarget||!el.contains(e.relatedTarget)))tipHide();});
-document.addEventListener('pointerdown',e=>{
-  TIP.swallow=false;
-  if(TIP.el&&!(e.target.closest&&(e.target.closest('.tipi')===TIP.el||e.target.closest('.hastip')===TIP.el)))tipHide();
-  if(e.pointerType==='mouse')return;
-  const el=e.target.closest&&e.target.closest('[data-tip]');if(!el)return;
-  TIP.x=e.clientX;TIP.y=e.clientY;clearTimeout(TIP.hold);
-  TIP.hold=setTimeout(()=>{TIP.hold=null;TIP.swallow=true;tipShow(el);try{navigator.vibrate&&navigator.vibrate(8);}catch(err){/* optional */}},480);
-},true);
-document.addEventListener('pointermove',e=>{if(TIP.hold&&(Math.abs(e.clientX-TIP.x)>10||Math.abs(e.clientY-TIP.y)>10)){clearTimeout(TIP.hold);TIP.hold=null;}},true);
-document.addEventListener('pointerup',()=>{if(TIP.hold){clearTimeout(TIP.hold);TIP.hold=null;}},true);
-document.addEventListener('pointercancel',()=>{clearTimeout(TIP.hold);TIP.hold=null;},true);
-document.addEventListener('contextmenu',e=>{if(e.target.closest&&e.target.closest('[data-tip]'))e.preventDefault();});
-/* On a phone nothing can be hovered, and a press and hold is not something
-   anyone finds (r27). An explanation on a control's label gets a visible i
-   button beside the label instead (a tap on the label still works the
-   control), and dotted-underlined text shows its explanation on a tap. */
-function tipLabels(root){
-  if(!root||!root.querySelectorAll)return;
-  const list=root.matches&&root.matches('label .hastip')?[root]:root.querySelectorAll('label .hastip');
-  for(const sp of list){const t=sp.getAttribute('data-tip');if(!t)continue;
-    const b=document.createElement('button');b.type='button';b.className='tipi';b.setAttribute('data-tip',t);b.setAttribute('aria-label','About '+(sp.textContent||'this').trim());b.textContent='i';
-    sp.classList.remove('hastip');sp.removeAttribute('data-tip');sp.after(' ',b);}
-  // A button inside a label spoils the control's spoken name (it read "About
-  // Auto-mark..." twice, or fell back to the placeholder), so the control is
-  // named by its label text alone.
-  const labs=root.matches&&root.matches('label')?[root]:root.querySelectorAll('label');
-  for(const lb of labs){if(!lb.querySelector(':scope > .tipi, :scope > span + .tipi'))continue;const c=lb.querySelector('input,select,textarea');if(!c||c.hasAttribute('aria-labelledby')||c.hasAttribute('aria-label'))continue;
-    const sp=[...lb.children].find(x=>x.tagName==='SPAN'&&!x.classList.contains('tipi')&&x.textContent.trim());if(!sp)continue;
-    if(!sp.id)sp.id='lt'+(++tipLabels.n);c.setAttribute('aria-labelledby',sp.id);}
-}
-tipLabels.n=0;
-new MutationObserver(ms=>{for(const m of ms)for(const n of m.addedNodes)if(n.nodeType===1)tipLabels(n);}).observe(document.body,{childList:true,subtree:true});
-tipLabels(document.body);
-document.addEventListener('click',e=>{
-  if(TIP.swallow){TIP.swallow=false;e.preventDefault();e.stopPropagation();return;}
-  const i=e.target.closest&&(e.target.closest('.tipi')||((e.target.closest('.hastip')&&!e.target.closest('label,button,a,summary,[data-act]'))?e.target.closest('.hastip'):null));
-  if(i){e.preventDefault();e.stopPropagation();if(TIP.el===i)tipHide();else tipShow(i);}
-},true);
-document.addEventListener('focusin',e=>{const el=e.target;if(el&&el.matches&&el.matches('[data-tip]')){try{if(el.matches(':focus-visible'))tipShow(el);}catch(err){/* old browsers */}}});
-document.addEventListener('focusout',()=>tipHide());
-window.addEventListener('scroll',()=>{if(TIP.el)tipHide();},{passive:true});
-document.addEventListener('keydown',e=>{if(e.key==='Escape'&&TIP.el)tipHide();});
+// The tips' listeners (src/app/tips.ts since r63), added here as they always were, before the page's own.
+tipsStart();
 
 /* ---------- events ---------- */
 /* The sign-in sheet is a real form so the phone offers to save and fill the

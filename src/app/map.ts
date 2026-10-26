@@ -30,10 +30,12 @@ import { musTrend } from './coach';
 import { NIL } from './format';
 import { andList, r1, today, weekStart } from './util';
 import { IDX, actualAvg4, hasTarget, muscleStatus } from './live';
-import { fx, state, ui } from './store';
+import { state, ui } from './store';
 import { MAPVIEW_KEY, log, prefGet, prefSet } from './storage';
 import { noLog } from './display';
 import { section, tipButton } from './view';
+import { toast } from './toast';
+import { rerenderKeepScroll } from './page';
 
 /* ---------- the flat figures ---------- */
 
@@ -627,11 +629,11 @@ function map3dTap(cx: number, cy: number): void {
   // On an exercise's body a tap names the muscle; the week's numbers are on Today.
   const hb = b3Host();
   if (hb && hb.id === 'bm3dx' && B3.ex) {
-    fx.toast(`${ML[m] || m}${m === B3.ex.main ? ': main' : B3.ex.help.includes(m) ? ': helper' : ''}`);
+    toast(`${ML[m] || m}${m === B3.ex.main ? ': main' : B3.ex.help.includes(m) ? ': helper' : ''}`);
     return;
   }
   ui.mapSel = ui.mapSel === m ? null : m;
-  fx.rerenderKeepScroll();
+  rerenderKeepScroll();
 }
 /** Turns the 3D body to face a way (radians), the shorter way round, eased unless motion is reduced. */
 export function map3dTurnTo(to: number): void {
@@ -871,18 +873,18 @@ export const MAP_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
   mapSel(t) {
     const m = t.dataset['m'] ?? null;
     ui.mapSel = ui.mapSel === m ? null : m;
-    fx.rerenderKeepScroll();
+    rerenderKeepScroll();
   },
   mapSrc(t) {
     ui.mapSrc = t.dataset['v'] ?? null;
-    fx.rerenderKeepScroll();
+    rerenderKeepScroll();
   },
   mapView(t) {
     const v = t.dataset['v'] === '3d' ? '3d' : 'flat';
     // Remembered for this visit only when the device keeps no preferences.
     prefSet(MAPVIEW_KEY, v);
     B3.viewMem = v;
-    fx.rerenderKeepScroll();
+    rerenderKeepScroll();
   },
   map3dTurn(t) {
     map3dTurnTo([0, Math.PI / 2, Math.PI][+(t.dataset['v'] || 0)] || 0);

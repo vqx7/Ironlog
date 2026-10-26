@@ -58,7 +58,7 @@ import {
   weekStreak,
   cycleState
 } from './live';
-import { acct, cloud, fx, state, ui } from './store';
+import { acct, cloud, state, ui } from './store';
 import {
   ACCT_LATER,
   BWSNOOZE_KEY,
@@ -141,6 +141,8 @@ const DELOAD_TOAST_MS = 6000,
 import { LIGHTER_SET_SHARE, LIGHT_SHARE, RECENT_WEEKS } from './formulas';
 import { PICK_DAYS } from './analytics';
 import { DEMO_WEEKS } from './importing';
+import { closeModal, confirmBox, render, rerenderKeepScroll } from './page';
+import { toast } from './toast';
 
 declare global {
   interface Window {
@@ -931,15 +933,15 @@ function field(id: string): HTMLInputElement | null {
 export const TODAY_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
   heroMore() {
     ui['heroMore'] = !ui['heroMore'];
-    fx.rerenderKeepScroll();
+    rerenderKeepScroll();
   },
   deloadToggle() {
     if (isDeloadWeek()) {
       act(() => {
         state.deloadWeek = null;
       });
-      fx.render();
-      fx.toast('Deload week off');
+      render();
+      toast('Deload week off');
       return;
     }
     act(() => {
@@ -947,8 +949,8 @@ export const TODAY_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
     });
     ui.tab = 'today';
     window.scrollTo(0, 0);
-    fx.render();
-    fx.toast(
+    render();
+    toast(
       `Deload week on until Sunday: ${shareWords(LIGHTER_SET_SHARE)} sets, about ${pctOf(LIGHT_SHARE)}% loads. It clears fatigue; it does not add growth.`,
       false,
       DELOAD_TOAST_MS
@@ -957,7 +959,7 @@ export const TODAY_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
   /* Every tile, summary row and map detail lands on its section, opened even if it was folded. */
   goWeek() {
     ui.folds['today:week'] = true;
-    fx.render();
+    render();
     const el = document.querySelector('[data-sk="today:week"]');
     if (el instanceof HTMLDetailsElement) {
       el.open = true;
@@ -971,7 +973,7 @@ export const TODAY_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
     ui['wkView'] = v;
     if (v === 'month') ui['calYm'] = monthOf(today());
     prefSet(WKVIEW_KEY, v);
-    fx.rerenderKeepScroll();
+    rerenderKeepScroll();
   },
   /* A weigh-in for the date given (Today's Body), or for today (the weigh-in
      due card, data-in). A grey number in the field is what Save takes, as
@@ -984,12 +986,12 @@ export const TODAY_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
     const de = own ? null : field('bwDate');
     const date = (de && de.value) || today();
     if (v == null || v <= 0) {
-      fx.toast('Enter a bodyweight');
+      toast('Enter a bodyweight');
       return;
     }
     const kg = fromD(v);
     if (kg == null || kg < BW_MIN_KG || kg > BW_MAX_KG) {
-      fx.toast(`Bodyweight must be between ${fmtW(BW_MIN_KG)} and ${fmtW(BW_MAX_KG)} ${U()}`);
+      toast(`Bodyweight must be between ${fmtW(BW_MIN_KG)} and ${fmtW(BW_MAX_KG)} ${U()}`);
       return;
     }
     act(() => {
@@ -999,18 +1001,18 @@ export const TODAY_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
     // The fields are kept between draws now (lit-html): the weigh-in logged leaves them as a fresh card shows them.
     if (inp) inp.value = '';
     if (de) de.value = today();
-    fx.rerenderKeepScroll();
-    fx.toast('Bodyweight logged');
+    rerenderKeepScroll();
+    toast('Bodyweight logged');
   },
   bwLater() {
     prefSet(BWSNOOZE_KEY, addDays(today(), 2));
-    fx.rerenderKeepScroll();
+    rerenderKeepScroll();
   },
   delBW(t) {
     const id = t.dataset['id'];
     const x = state.bodyweights.find(b => b.id === id);
     if (!x) return;
-    fx.confirm(
+    confirmBox(
       'Delete weigh-in?',
       `${fmtDate(x.date)}: ${fmtW(x.kg)} ${U()}. Undo is offered right after.`,
       'Delete',
@@ -1021,8 +1023,8 @@ export const TODAY_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
           },
           { undo: true }
         );
-        fx.rerenderKeepScroll();
-        fx.toast('Entry deleted', true);
+        rerenderKeepScroll();
+        toast('Entry deleted', true);
       },
       true
     );
@@ -1038,7 +1040,7 @@ export const TODAY_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
       if (v != null && v > 0) {
         const cm = lenFrom(v);
         if (!(cm <= MEAS_MAX_CM)) {
-          fx.toast(`${lab} looks too large. Check the number.`);
+          toast(`${lab} looks too large. Check the number.`);
           return;
         }
         m[k] = cm;
@@ -1046,7 +1048,7 @@ export const TODAY_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
       }
     }
     if (!any) {
-      fx.toast('Enter at least one measurement');
+      toast('Enter at least one measurement');
       return;
     }
     const date = today();
@@ -1062,14 +1064,14 @@ export const TODAY_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
       const inp = field('ms_' + k);
       if (inp) inp.value = '';
     }
-    fx.rerenderKeepScroll();
-    fx.toast('Measurements saved', true);
+    rerenderKeepScroll();
+    toast('Measurements saved', true);
   },
   delMeas(t) {
     const id = t.dataset['id'];
     const x = state.measurements.find(m => m.id === id);
     if (!x) return;
-    fx.confirm(
+    confirmBox(
       'Delete measurements?',
       `The tape entry from ${fmtDate(x.date)}. Undo is offered right after.`,
       'Delete',
@@ -1080,8 +1082,8 @@ export const TODAY_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
           },
           { undo: true }
         );
-        fx.rerenderKeepScroll();
-        fx.toast('Entry deleted', true);
+        rerenderKeepScroll();
+        toast('Entry deleted', true);
       },
       true
     );
@@ -1095,34 +1097,34 @@ export const TODAY_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
       },
       { undo: true }
     );
-    fx.render();
-    fx.toast(`${x ? injLabel(x.m) : 'Injury'} cleared`, true);
+    render();
+    toast(`${x ? injLabel(x.m) : 'Injury'} cleared`, true);
   },
   acctLater() {
     prefSet(ACCT_LATER, '1');
-    fx.rerenderKeepScroll();
-    fx.toast('Hidden. Settings > Your data has it.');
+    rerenderKeepScroll();
+    toast('Hidden. Settings > Your data has it.');
   },
   installLater() {
     prefSet(INSTALL_LATER, '1');
-    fx.rerenderKeepScroll();
-    fx.toast('Hidden. Settings > Your data has it.');
+    rerenderKeepScroll();
+    toast('Hidden. Settings > Your data has it.');
   },
   iconLater() {
     prefSet(ICON_NOTE, '1');
-    if (ui.modal && ui.modal.kind === 'icon') fx.closeModal();
-    fx.rerenderKeepScroll();
+    if (ui.modal && ui.modal.kind === 'icon') closeModal();
+    rerenderKeepScroll();
   },
   obAcctLater() {
     prefSet(OB_ACCT, 'later');
     obOutClear();
     window.scrollTo(0, 0);
-    fx.render();
+    render();
   },
   obAcctBack() {
     prefDel(OB_ACCT);
     window.scrollTo(0, 0);
-    fx.render();
+    render();
   },
   obTourPick(t) {
     obTour.user = true;
@@ -1135,7 +1137,7 @@ export const TODAY_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
     act(() => {
       state.settings.unit = v;
     });
-    fx.render();
+    render();
   },
   /* Build my own routine: three training days with rest days between, as the
      ready-made 3-day routines are laid out (r54, the audit: three days and no
@@ -1162,8 +1164,8 @@ export const TODAY_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
     ui.tab = 'program';
     ui.planView = 'routine';
     window.scrollTo(0, 0);
-    fx.render();
-    fx.toast('Name your days, then add exercises with + or by dragging.', false, BUILD_TOAST_MS);
+    render();
+    toast('Name your days, then add exercises with + or by dragging.', false, BUILD_TOAST_MS);
   },
   // Clear demo and set up: the demo goes, and the settings it changed come back.
   demoStart() {
@@ -1176,7 +1178,7 @@ export const TODAY_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
     ui.tab = 'today';
     ui.folds = {};
     window.scrollTo(0, 0);
-    fx.render();
+    render();
   }
 };
 /** Today's fields kept by data-bind: the height (Tape measurements). */
@@ -1187,19 +1189,19 @@ export const TODAY_BINDS: Readonly<Record<string, (t: HTMLInputElement) => void>
       act(() => {
         state.settings.heightCm = null;
       });
-      fx.rerenderKeepScroll();
+      rerenderKeepScroll();
       return;
     }
     const cm = parseHeight(v);
     if (cm == null) {
-      fx.toast(U() === 'lb' ? "Enter height like 5'10 or 70 (inches)" : 'Enter height in cm, like 178');
+      toast(U() === 'lb' ? "Enter height like 5'10 or 70 (inches)" : 'Enter height in cm, like 178');
       return;
     }
     act(() => {
       state.settings.heightCm = cm;
     });
-    fx.rerenderKeepScroll();
-    fx.toast(`Height ${heightTxt(cm)}`);
+    rerenderKeepScroll();
+    toast(`Height ${heightTxt(cm)}`);
   }
 };
 /** A field of Today changed (on change): the Set up page's bodyweight, today's weigh-in, replaced if typed again and removed if cleared (r34); whether it was Today's. */
@@ -1209,7 +1211,7 @@ export function todayChange(t: HTMLInputElement): boolean {
   const kg = v == null ? null : fromD(v);
   const okKg = kg != null && kg >= BW_MIN_KG && kg <= BW_MAX_KG ? kg : null;
   if (kg != null && okKg == null) {
-    fx.toast(`Bodyweight must be between ${fmtW(BW_MIN_KG)} and ${fmtW(BW_MAX_KG)} ${U()}`);
+    toast(`Bodyweight must be between ${fmtW(BW_MIN_KG)} and ${fmtW(BW_MAX_KG)} ${U()}`);
     t.value = '';
   }
   const date = today();

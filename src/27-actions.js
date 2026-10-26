@@ -429,7 +429,7 @@ const ACT={...HISTORY_ACTS,...SETTINGS_ACTS,...PLAN_ACTS,...DASH_ACTS,...TODAY_A
     // If the step below never saw a save of its own, its result is the state
     // before the step just undone, not what this undo is about to save.
     const below=undoStack[undoStack.length-1];if(below&&below.post==null)below.post=e.pre;
-    commit();$('#toast').hidden=true;render();
+    commit();toastHide();render();
     toast(`Undone. ${undoStack.length} step${undoStack.length===1?'':'s'} left`);
   },
   help(t){const k=t.dataset.h;const on=!ui.help.has(k);if(on)ui.help.add(k);else ui.help.delete(k);
@@ -486,9 +486,7 @@ const ACT={...HISTORY_ACTS,...SETTINGS_ACTS,...PLAN_ACTS,...DASH_ACTS,...TODAY_A
   bMenu(t){openModal({kind:'bmenu',b:+t.dataset.b});},
   // A choice in the exercise menu: the sheet closes, then the session screen's action it names runs (workout.ts).
   bMenuDo(t){const op=t.dataset.op;closeModal();const f=ACT[op];if(f)f(t);},
-  // Once the rest is over, +15 counts from now (not from the old end, which
-  // left it at 0:00) and the alert is armed again.
-  tAdd(){const was=Math.max(0,(timer.end-Date.now())/1000);timer.total=was>0?Math.max(timer.total||0,was)+15:15;timer.end=Math.max(timer.end,Date.now())+15000;timer.fired=false;timerSave();if(!timer.iv)timer.iv=setInterval(tick,250);tick();},
+  tAdd(){timerAdd();},
   tStop(){stopTimer();},
   mClose(){closeModal();},
   mOk(){const m=ui.modal;const fn=m&&m.fn;if(m)m.answered=true;closeModal();fn&&fn();},

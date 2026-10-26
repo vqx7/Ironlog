@@ -2,10 +2,12 @@
    the page scrolled near the edges, a folded exercise opened under the
    finger, and the order kept through act (moveBlock). */
 
-import { state, fx } from './store';
+import { state } from './store';
 import { dragStart, dragDrop } from './view';
 import { W } from './workstate';
 import { moveBlock } from './worksets';
+import { rerenderKeepScroll } from './page';
+import { toast } from './toast';
 
 /** Dragging an exercise: the band at the top and bottom of the screen that scrolls it, how fast at the edge, the fastest step, in pixels a frame, and the slide of the others. */
 const DRAG = { edgePx: 56, speedPx: 14, maxPx: 20, animMs: 150 } as const;
@@ -145,12 +147,12 @@ export function mountBlockDrag(): { destroy(): void } | null {
         b = e.newDraggableIndex;
       dragDrop();
       if (a == null || b == null || a === b || !state.draft) {
-        fx.rerenderKeepScroll();
+        rerenderKeepScroll();
         return;
       }
       moveBlock(a, b);
-      fx.rerenderKeepScroll();
-      fx.toast(`Moved to position ${b + 1}`);
+      rerenderKeepScroll();
+      toast(`Moved to position ${b + 1}`);
     }
   });
 }

@@ -9,8 +9,9 @@
    and Reload. */
 
 import { html, nothing, render } from 'lit-html';
-import { fx, ui } from './store';
+import { ui } from './store';
 import { saveNow } from './sync';
+import { toast } from './toast';
 
 declare global {
   interface Window {
@@ -49,7 +50,7 @@ export function updateStart(): void {
 export const UPDATE_ACTS = {
   appUpdate(): void {
     if (ui.modal && ui.modal.dirty) {
-      fx.toast('Save or cancel first. Your changes are still here.');
+      toast('Save or cancel first. Your changes are still here.');
       return;
     }
     saveNow();

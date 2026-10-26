@@ -55,13 +55,12 @@ import {
   exName,
   trimPlan
 } from './live';
-import { state, fx, ui } from './store';
+import { state, ui } from './store';
 import { lastDup, effTarget, blockRest, newRow, greyW, effW, blockDone } from './session';
 import type { BlkRef } from './session';
 import type { DraftBlock, DraftSet, Routine, PlanItem, NextSetsAdj } from './types';
 import type { ExerciseLike } from './model';
 import { fmtE, setShort, rirShow } from './display';
-import { adjOn } from './settings';
 import { drawing } from './view';
 import {
   W,
@@ -99,6 +98,9 @@ const MIX_TOAST_MS = 7000;
 /** A ticked exercise moves up this many milliseconds after the tick, and tries again after ORDER_MS.again while something is being typed or open. */
 const ORDER_MS = { soon: 900, again: 1500 } as const;
 import { LIMITS } from './records';
+import { toast } from './toast';
+import { confirmBox, rerenderKeepScroll } from './page';
+import { startTimer } from './timer';
 
 /* ---------- rows and blocks ---------- */
 
@@ -112,6 +114,11 @@ import { LIMITS } from './records';
    rows as before. Warm-up and drop rows get their loads when added. */
 /** Whether suggested loads are filled into the rows (a setting), rather than shown in grey. */
 export const fillLoads = (): boolean => state.settings.loadFill === 'fill';
+
+/** Whether the next sets move after a set clearly off its plan (r34; on unless turned off in Settings). */
+export function adjOn(): boolean {
+  return state.settings.autoAdj !== false;
+}
 
 /** A row's load is the app's, not the lifter's: empty (grey), the suggestion, carried down from a typed load above, or put there by the adjustment (r34). */
 export function appLoad(b: DraftBlock | null | undefined, x: DraftSet): boolean {
@@ -825,7 +832,7 @@ export function setDone(bi: number, si: number, val: boolean, again?: boolean): 
   if (val && noLoadYet(b, si)) {
     W.needAt = { b: blkRef(bi), s: si };
     redraw();
-    fx.toast('Add the weight first');
+    toast('Add the weight first');
     const f = document.querySelector<HTMLInputElement>(`.sg input[data-f="w"][data-b="${bi}"][data-s="${si}"]`);
     if (f) f.focus();
     return;
@@ -841,7 +848,7 @@ export function setDone(bi: number, si: number, val: boolean, again?: boolean): 
   if (val && W.oddOk !== okKey && (far || oddReps(b, s) || lz)) {
     const ex = EX(b.exId);
     const fix = far ? 'w' : 'r';
-    fx.confirm(
+    confirmBox(
       `${setShort(ex, effW(b, si), s.r)}${ex.bw ? '' : ' ' + U()}?`,
       lz
         ? `0 ${ex.timed ? 'seconds' : 'reps'} at a weight well under today's working load. Log it as missed, or go back and fix it.`
@@ -850,7 +857,7 @@ export function setDone(bi: number, si: number, val: boolean, again?: boolean): 
       () => {
         W.oddOk = okKey;
         setDone(bi, si, true, again);
-        fx.rerenderKeepScroll();
+        rerenderKeepScroll();
       },
       false,
       {
@@ -879,14 +886,14 @@ export function setDone(bi: number, si: number, val: boolean, again?: boolean): 
     },
     { inProgress: true }
   );
-  if (val && isMissed(s) && !s.warm && !s.drop) fx.toast(MISSED_SAID);
+  if (val && isMissed(s) && !s.warm && !s.drop) toast(MISSED_SAID);
   W.platesAt = null;
   if (val && !d.editingId && blockDone(b) && !blkIsOpen(bi, b)) W.foldWait.add(b);
   redraw();
   const pr = rowPR(b, si, d.date);
   if (pr && !wasPR) {
     const ex = EX(b.exId);
-    fx.toast(
+    toast(
       `${pr === 'Best' ? (isCompound(ex) ? 'New best estimate' : 'PR') : pr}: ${exName(b.exId)}, ${setShort(ex, +(s.w ?? 0) || 0, s.r)}${prBeat(b.exId, s, d.date, pr)}`,
       false,
       PR_TOAST_MS,
@@ -916,7 +923,7 @@ export function setDone(bi: number, si: number, val: boolean, again?: boolean): 
     const k = grp.indexOf(b);
     if (grp.slice(k + 1).some(x => x.sets.some(y => !y.done && !y.warm && !y.drop))) autoRest = false;
   }
-  if (autoRest) fx.startTimer(+b.plan.rest);
+  if (autoRest) startTimer(+b.plan.rest);
   if (W.foldT) clearTimeout(W.foldT);
   W.foldT = null;
   const askRir =
@@ -1004,7 +1011,7 @@ export function mixCheck(bi: number, si: number): void {
   const key = d.id + ':' + bi;
   if (mixSeen.has(key)) return;
   mixSeen.add(key);
-  fx.toast(
+  toast(
     `${fmtW(+(s.w ?? 0))} ${U()} is ${r > 1 ? 'well above' : 'well below'} last time's ${fmtW(last)}. This one is logged as ${loadWords(ex)}.`,
     false,
     MIX_TOAST_MS
@@ -1044,7 +1051,7 @@ export function autoFold(ref: BlkRef | null): void {
   if (nx < 0) nx = d.ex.findIndex(x => !blockDone(x));
   const a0 = nx >= 0 ? document.getElementById('blk-' + nx) : null;
   const top0 = a0 ? a0.getBoundingClientRect().top : null;
-  fx.rerenderKeepScroll();
+  rerenderKeepScroll();
   const a1 = nx >= 0 ? document.getElementById('blk-' + nx) : null;
   if (a1 && top0 != null) {
     window.scrollBy(0, a1.getBoundingClientRect().top - top0);
@@ -1155,7 +1162,7 @@ export function orderRun(): void {
     ordBack.set(b, { i: bi, t: Date.now() });
   }
   if (!moved || ui.tab !== 'today') return;
-  fx.rerenderKeepScroll();
+  rerenderKeepScroll();
   const el1 = document.getElementById('blk-' + d.ex.indexOf(anchor));
   if (el1 && top0 != null) window.scrollBy(0, el1.getBoundingClientRect().top - top0);
 }

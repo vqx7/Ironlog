@@ -101,7 +101,7 @@ import {
   weekStreak,
   cycleState
 } from './live';
-import { fx, state, ui } from './store';
+import { state, ui } from './store';
 import {
   LU,
   bestSet,
@@ -132,6 +132,7 @@ import { pageTitle, helpButton, howText, section, slotted, subsection, tabFoot, 
 import type { Part } from './view';
 import type { Routine } from './types';
 import { rangeKey, weekWindow } from './graphs';
+import { rerenderKeepScroll } from './page';
 
 /** The smallest change the percentages show (one decimal): a likely range narrower than it is not said. */
 const PCT_SHOWN = 0.1;
@@ -1236,24 +1237,24 @@ export const DASH_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
     // Kept for this visit whether or not the phone could store it.
     prefSet(REGION_KEY, String(v));
     ui.regionWk = v;
-    fx.rerenderKeepScroll();
+    rerenderKeepScroll();
   },
   volMode(t) {
     const v = t.dataset.v;
     if (!VOL_MODES.some(x => x[0] === v) || v == null) return;
     ui.volMode = v;
-    fx.rerenderKeepScroll();
+    rerenderKeepScroll();
   },
   chartRange(t) {
     const id = t.dataset.id,
       v = t.dataset.v;
     if (!id || !v || !RANGES.some(r => r[0] === v)) return;
     ui.rng[id] = v;
-    fx.rerenderKeepScroll();
+    rerenderKeepScroll();
   },
   bestsAll() {
     ui.bestsAll = true;
-    fx.rerenderKeepScroll();
+    rerenderKeepScroll();
   },
   dashJump(t) {
     const el = document.getElementById('sec-' + (t.dataset.sec || ''));
@@ -1267,10 +1268,10 @@ export const DASH_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
 export const DASH_BINDS: Readonly<Record<string, (t: HTMLInputElement | HTMLSelectElement) => void>> = {
   dashEx(t) {
     ui.dashEx = t.value;
-    fx.rerenderKeepScroll();
+    rerenderKeepScroll();
   },
   dashMuscle(t) {
     ui.dashMuscle = t.value;
-    fx.rerenderKeepScroll();
+    rerenderKeepScroll();
   }
 };

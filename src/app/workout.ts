@@ -33,7 +33,7 @@ import { CHK_Q, chkWord } from './coach';
 import { rirScale, effShow, effName } from './effort';
 import { prefGet, BWASK_KEY, prefSet, log } from './storage';
 import { EX, exBarKg, loadLabel, U, exName, lighterLoad, fromD, oddLoad } from './live';
-import { state, ui, fx } from './store';
+import { state, ui } from './store';
 import {
   effW,
   RIR_OPTS,
@@ -109,6 +109,9 @@ import {
 import { finish, finishNow } from './workfinish';
 import { LIMITS, EFFORT_TOP } from './records';
 import { PICK_DAYS } from './analytics';
+import { closeModal, confirmBox, render, rerenderKeepScroll } from './page';
+import { toast } from './toast';
+import { startTimer, stopTimer, wakeOff } from './timer';
 
 /** What the New machine tag on an exercise says, tapped (r61). */
 const NEW_TIP =
@@ -547,7 +550,7 @@ function setRemove(t: Tap): void {
       },
       { inProgress: true }
     );
-    fx.rerenderKeepScroll();
+    rerenderKeepScroll();
     return;
   }
   for (let k = b.sets.length - 1; k >= 0; k--)
@@ -569,7 +572,7 @@ function setRemove(t: Tap): void {
         ? loadLabel(ex, x.w) + (ex.bw ? '' : ' ' + U())
         : '';
   const at = i;
-  fx.confirm(
+  confirmBox(
     `Remove ${what.toLowerCase()}?`,
     `${ex.name}${val ? `: ${val}` : ''}, ${x.done ? 'logged' : 'typed, not ticked'}. Undo is offered right after.`,
     'Remove set',
@@ -578,8 +581,8 @@ function setRemove(t: Tap): void {
       const bb = dd && dd.id === did ? dd.ex[bi] : null;
       const xx = bb && bb.exId === exId ? bb.sets[at] : null;
       if (!bb || !xx || xx.done !== x.done || xx.r !== x.r || xx.w !== x.w) {
-        fx.toast('That set changed. Nothing was removed.');
-        fx.rerenderKeepScroll();
+        toast('That set changed. Nothing was removed.');
+        rerenderKeepScroll();
         return;
       }
       act(
@@ -598,8 +601,8 @@ function setRemove(t: Tap): void {
           }
         }
       );
-      fx.rerenderKeepScroll();
-      fx.toast(xx.done ? 'Logged set removed' : 'Set removed', true);
+      rerenderKeepScroll();
+      toast(xx.done ? 'Logged set removed' : 'Set removed', true);
     },
     true
   );
@@ -618,9 +621,9 @@ function blockRemove(t: Tap): void {
   const go = (): void => {
     const dd = state.draft;
     if (!dd || dd.id !== did || dd.ex[bi] !== blk) {
-      if (ui.modal) fx.closeModal();
-      fx.toast('That exercise changed. Nothing was removed.');
-      fx.rerenderKeepScroll();
+      if (ui.modal) closeModal();
+      toast('That exercise changed. Nothing was removed.');
+      rerenderKeepScroll();
       return;
     }
     const prevBlk = bi > 0 ? dd.ex[bi - 1] : null;
@@ -635,14 +638,14 @@ function blockRemove(t: Tap): void {
         return true;
       }
     });
-    fx.rerenderKeepScroll();
-    fx.toast('Exercise removed', true);
+    rerenderKeepScroll();
+    toast('Exercise removed', true);
   };
   const logged = blk.sets.filter(x => x.done).length,
     typed = blk.sets.filter(x => !x.done && (+(x.r ?? 0) > 0 || x.rir != null)).length;
   if (logged || typed) {
-    if (ui.modal) fx.closeModal();
-    fx.confirm(
+    if (ui.modal) closeModal();
+    confirmBox(
       `Remove ${EX(blk.exId).name}?`,
       `${logged ? `${logged} logged set${logged === 1 ? '' : 's'}` : ''}${logged && typed ? ' and ' : ''}${typed ? `${typed} typed set${typed === 1 ? '' : 's'}` : ''} go with it. Undo is offered right after.`,
       'Remove exercise',
@@ -663,7 +666,7 @@ function cardioRemove(t: Tap): void {
   if (!d || !list || !c) return;
   if ((c.min || 0) > 0 || (c.hr || 0) > 0 || (c.note || '').trim()) {
     const did = d.id;
-    fx.confirm(
+    confirmBox(
       `Remove ${(CARDIOL[c.kind || ''] || 'entry').toLowerCase()}?`,
       `${c.min ? c.min + ' min' : 'An entry with your notes'}. Undo is offered right after.`,
       'Remove',
@@ -672,8 +675,8 @@ function cardioRemove(t: Tap): void {
         const l2 = dd && dd.id === did ? dd.cardio : null;
         const j = l2 ? l2.indexOf(c) : -1;
         if (!l2 || j < 0) {
-          fx.toast('That entry changed. Nothing was removed.');
-          fx.rerenderKeepScroll();
+          toast('That entry changed. Nothing was removed.');
+          rerenderKeepScroll();
           return;
         }
         act(
@@ -691,8 +694,8 @@ function cardioRemove(t: Tap): void {
             }
           }
         );
-        fx.rerenderKeepScroll();
-        fx.toast(`${CARDIOL[c.kind || ''] || 'Entry'} removed`, true);
+        rerenderKeepScroll();
+        toast(`${CARDIOL[c.kind || ''] || 'Entry'} removed`, true);
       },
       true
     );
@@ -704,7 +707,7 @@ function cardioRemove(t: Tap): void {
     },
     { inProgress: true }
   );
-  fx.rerenderKeepScroll();
+  rerenderKeepScroll();
 }
 
 /** The session screen's taps, by data-act: each change to the session in progress through act. */
@@ -738,7 +741,7 @@ export const WORKOUT_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
     const noReps = !s.done && !(+(s.r ?? 0) > 0) && !isMissed(s);
     const lr = noReps && b ? greyR(b, si) : null;
     if (noReps && (lr == null || !(lr > 0))) {
-      fx.toast('Enter reps first');
+      toast('Enter reps first');
       return;
     }
     const was = !!s.done;
@@ -763,7 +766,7 @@ export const WORKOUT_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
       },
       { inProgress: true }
     );
-    if (was) fx.rerenderKeepScroll();
+    if (was) rerenderKeepScroll();
   },
   // Numbers, placeholders and the progress bar all depend on which rows are working sets, so the block is drawn again.
   sWarm(t) {
@@ -781,7 +784,7 @@ export const WORKOUT_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
       },
       { inProgress: true }
     );
-    fx.rerenderKeepScroll();
+    rerenderKeepScroll();
   },
   fillLast(t) {
     const b = tapBlock(t);
@@ -790,7 +793,7 @@ export const WORKOUT_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
       .map((s, i) => [s, lastRFor(b, i)] as const)
       .filter(([s, lr]) => !s.done && !s.warm && !s.drop && s.r == null && lr != null);
     if (!todo.length) {
-      fx.toast('Nothing to fill');
+      toast('Nothing to fill');
       return;
     }
     act(
@@ -799,8 +802,8 @@ export const WORKOUT_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
       },
       { inProgress: true }
     );
-    fx.rerenderKeepScroll();
-    fx.toast(`${todo.length} set${todo.length === 1 ? '' : 's'} filled with last time's reps`);
+    rerenderKeepScroll();
+    toast(`${todo.length} set${todo.length === 1 ? '' : 's'} filled with last time's reps`);
   },
   /* The new working set copies the last working set's load, not a drop set's
      (DROP_START) or a warm-up's. Grey by default: the new row shows the load above
@@ -820,7 +823,7 @@ export const WORKOUT_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
       },
       { inProgress: true }
     );
-    fx.rerenderKeepScroll();
+    rerenderKeepScroll();
   },
   sDel: setRemove,
   /* Warm-ups go in at the top, already flagged, so they stay out of every
@@ -852,8 +855,8 @@ export const WORKOUT_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
       },
       { inProgress: true }
     );
-    fx.rerenderKeepScroll();
-    fx.toast('Warm-up set added');
+    rerenderKeepScroll();
+    toast('Warm-up set added');
   },
   // The load the last working set was, or will be (a grey load counts); a missed set's is passed over (r55).
   dropAdd(t) {
@@ -876,8 +879,8 @@ export const WORKOUT_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
       },
       { inProgress: true }
     );
-    fx.rerenderKeepScroll();
-    fx.toast('Drop set added');
+    rerenderKeepScroll();
+    toast('Drop set added');
   },
   // Keep: no adjustment for this exercise for the rest of the session.
   adjKeep(t) {
@@ -948,7 +951,7 @@ export const WORKOUT_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
     const b = tapBlock(t);
     if (!b) return;
     blkOpen(bi, b);
-    fx.rerenderKeepScroll();
+    rerenderKeepScroll();
     const el = document.getElementById('blk-' + bi);
     if (el)
       try {
@@ -965,13 +968,13 @@ export const WORKOUT_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
     for (const k of [...ui.blkOpen])
       if (typeof k === 'string' && k.startsWith(pre) && k.endsWith(':' + b.exId)) ui.blkOpen.delete(k);
     blkOpenObj.delete(b);
-    fx.rerenderKeepScroll();
+    rerenderKeepScroll();
   },
   bUp(t) {
-    if (moveBlock(Number(t.dataset.b), Number(t.dataset.b) - 1)) fx.rerenderKeepScroll();
+    if (moveBlock(Number(t.dataset.b), Number(t.dataset.b) - 1)) rerenderKeepScroll();
   },
   bDown(t) {
-    if (moveBlock(Number(t.dataset.b), Number(t.dataset.b) + 1)) fx.rerenderKeepScroll();
+    if (moveBlock(Number(t.dataset.b), Number(t.dataset.b) + 1)) rerenderKeepScroll();
   },
   bDel: blockRemove,
   /* New machine or gym (r61, PENDING 343 7, V's decision of 2026-10-24): the
@@ -997,8 +1000,8 @@ export const WORKOUT_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
       },
       { inProgress: true }
     );
-    fx.rerenderKeepScroll();
-    fx.toast(
+    rerenderKeepScroll();
+    toast(
       on
         ? `${exName(b0.exId)} starts over from this session. Its history stays.`
         : `${exName(b0.exId)} reads its history again.`
@@ -1019,10 +1022,10 @@ export const WORKOUT_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
       )
     )
       return;
-    fx.rerenderKeepScroll();
+    rerenderKeepScroll();
     const b = d.ex[bi];
     if (b && b.plan.ss)
-      fx.toast(d.dayId ? 'Superset. Finish offers to keep it in your plan.' : 'Superset for this session.');
+      toast(d.dayId ? 'Superset. Finish offers to keep it in your plan.' : 'Superset for this session.');
   },
   noteReuse(t) {
     const b = tapBlock(t);
@@ -1034,8 +1037,8 @@ export const WORKOUT_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
       },
       { inProgress: true }
     );
-    fx.rerenderKeepScroll();
-    fx.toast('Note carried into this session');
+    rerenderKeepScroll();
+    toast('Note carried into this session');
   },
   cDraftAdd(t) {
     const d = state.draft;
@@ -1046,7 +1049,7 @@ export const WORKOUT_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
       },
       { inProgress: true }
     );
-    fx.rerenderKeepScroll();
+    rerenderKeepScroll();
   },
   cDraftDel: cardioRemove,
   /* The check-in: answering the last of the three folds it away. */
@@ -1066,7 +1069,7 @@ export const WORKOUT_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
       { inProgress: true }
     );
     if (!was && CHK_Q.every(([q]) => c[q])) ui.folds['logger:checkin'] = false;
-    fx.rerenderKeepScroll();
+    rerenderKeepScroll();
   },
   /* The check-in's lighter session (r30, r31): only the exercises not
      started become lighter (b.light: half their sets, about 90% loads, 3+
@@ -1078,7 +1081,7 @@ export const WORKOUT_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
     if (!d || d.light || d.deload) return;
     const todo = d.ex.filter(b => !b.light && !b.sets.some(x => !x.warm && !rowBlank(b, x)));
     if (!todo.length) {
-      fx.toast('Every exercise is started, so nothing changed');
+      toast('Every exercise is started, so nothing changed');
       return;
     }
     act(
@@ -1101,8 +1104,8 @@ export const WORKOUT_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
       },
       { inProgress: true, undo: true }
     );
-    fx.rerenderKeepScroll();
-    fx.toast(
+    rerenderKeepScroll();
+    toast(
       `Lighter: ${todo.length} exercise${todo.length === 1 ? '' : 's'} not started now half the sets at about ${pctOf(LIGHT_SHARE)}% loads`,
       true
     );
@@ -1111,16 +1114,16 @@ export const WORKOUT_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
     act(() => {
       state.settings.calSnooze = today();
     });
-    fx.rerenderKeepScroll();
-    fx.toast(`The RIR check will come back in ${CAL_OFFER.weeks} weeks`);
+    rerenderKeepScroll();
+    toast(`The RIR check will come back in ${CAL_OFFER.weeks} weeks`);
   },
   bwAskNo() {
     prefSet(BWASK_KEY, '1');
-    fx.rerenderKeepScroll();
+    rerenderKeepScroll();
   },
   tStart(t) {
     const b = tapBlock(t);
-    if (b && +b.plan.rest > 0) fx.startTimer(+b.plan.rest);
+    if (b && +b.plan.rest > 0) startTimer(+b.plan.rest);
   },
   /* A session with nothing in it goes at once; one with anything entered
      (sets, reps, cardio, a note) asks first. An edit always asks, since the
@@ -1135,22 +1138,22 @@ export const WORKOUT_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
         },
         { inProgress: true }
       );
-      fx.stopTimer();
-      fx.wakeOff();
+      stopTimer();
+      wakeOff();
       window.scrollTo(0, 0);
-      fx.render();
+      render();
     };
     if (!d.editingId && !draftEntered(d)) {
       out();
-      fx.toast('Session discarded');
+      toast('Session discarded');
       return;
     }
     if (d.editingId && editFp0.get(d.id) === editFp(d)) {
       out();
-      fx.toast('No changes made');
+      toast('No changes made');
       return;
     }
-    fx.confirm(
+    confirmBox(
       'Discard this session?',
       d.editingId
         ? 'Your edits will be lost. The saved session stays as it was.'
@@ -1402,10 +1405,10 @@ export function workoutChange(t: HTMLInputElement): boolean {
         },
         { inProgress: true }
       );
-      if (moved && !d.editingId) fx.rerenderKeepScroll();
+      if (moved && !d.editingId) rerenderKeepScroll();
     } else {
       t.value = d.date;
-      fx.toast('A session cannot be dated in the future');
+      toast('A session cannot be dated in the future');
     }
     return true;
   }
@@ -1456,10 +1459,10 @@ export function workoutKey(e: KeyboardEvent): boolean {
     const j = i + (e.key === 'ArrowUp' ? -1 : 1);
     if (j < 0 || j >= d.ex.length) return true;
     moveBlock(i, j);
-    fx.rerenderKeepScroll();
+    rerenderKeepScroll();
     const n = document.querySelector<HTMLElement>(`.bgrip[data-b="${j}"]`);
     if (n) n.focus();
-    fx.toast(`Moved to position ${j + 1}`);
+    toast(`Moved to position ${j + 1}`);
     return true;
   }
   return false;
