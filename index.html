@@ -9356,7 +9356,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     while (state.trash.length > 1 && JSON.stringify(state.trash).length > TRASH_BYTES) state.trash.pop();
   }
 
-  // ../ironlog/node_modules/lit-html/lit-html.js
+  // node_modules/lit-html/lit-html.js
   var t = globalThis, i = (t4) => t4, s = t.trustedTypes, e = s ? s.createPolicy("lit-html", { createHTML: (t4) => t4 }) : void 0, h = "$lit$", o = `lit$${Math.random().toFixed(9).slice(2)}$`, n = "?" + o, r = `<${n}>`, l = document, c = () => l.createComment(""), a = (t4) => null === t4 || "object" != typeof t4 && "function" != typeof t4, u = Array.isArray, d = (t4) => u(t4) || "function" == typeof t4?.[Symbol.iterator], f = "[ 	\n\f\r]", v = /<(?:(!--|\/[^a-zA-Z])|(\/?[a-zA-Z][^>\s]*)|(\/?$))/g, _ = /-->/g, m = />/g, p = RegExp(`>|${f}(?:([^\\s"'>=/]+)(${f}*=${f}*(?:[^ 	
 \f\r"'\`<>=]|("|')|))|$)`, "g"), g = /'/g, $ = /"/g, y = /^(?:script|style|textarea|title)$/i, x = (t4) => (i5, ...s3) => ({ _$litType$: t4, strings: i5, values: s3 }), b = x(1), w = x(2), T = x(3), E = /* @__PURE__ */ Symbol.for("lit-noChange"), A = /* @__PURE__ */ Symbol.for("lit-nothing"), C = /* @__PURE__ */ new WeakMap(), P = l.createTreeWalker(l, 129);
   function V(t4, i5) {
@@ -9582,7 +9582,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     return h3._$AI(t4), h3;
   };
 
-  // ../ironlog/node_modules/lit-html/directive.js
+  // node_modules/lit-html/directive.js
   var t2 = { ATTRIBUTE: 1, CHILD: 2, PROPERTY: 3, BOOLEAN_ATTRIBUTE: 4, EVENT: 5, ELEMENT: 6 }, e2 = (t4) => (...e5) => ({ _$litDirective$: t4, values: e5 });
   var i2 = class {
     constructor(t4) {
@@ -9601,7 +9601,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     }
   };
 
-  // ../ironlog/node_modules/lit-html/directive-helpers.js
+  // node_modules/lit-html/directive-helpers.js
   var { I: t3 } = j, i3 = (o3) => o3, n2 = (o3) => null === o3 || "object" != typeof o3 && "function" != typeof o3, e3 = { HTML: 1, SVG: 2, MATHML: 3 }, l2 = (o3, t4) => void 0 === t4 ? void 0 !== o3?._$litType$ : o3?._$litType$ === t4, d2 = (o3) => null != o3?._$litType$?.h, c2 = (o3) => void 0 !== o3?._$litDirective$, f2 = (o3) => o3?._$litDirective$, r2 = (o3) => void 0 === o3.strings, s2 = () => document.createComment(""), v2 = (o3, n3, e5) => {
     const l4 = o3._$AA.parentNode, d3 = void 0 === n3 ? o3._$AB : n3._$AA;
     if (void 0 === e5) {
@@ -9628,7 +9628,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     o3._$AR();
   };
 
-  // ../ironlog/node_modules/lit-html/directives/keyed.js
+  // node_modules/lit-html/directives/keyed.js
   var i4 = e2(class extends i2 {
     constructor() {
       super(...arguments), this.key = A;
@@ -9641,7 +9641,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     }
   });
 
-  // ../ironlog/node_modules/lit-html/directives/live.js
+  // node_modules/lit-html/directives/live.js
   var l3 = e2(class extends i2 {
     constructor(r4) {
       if (super(r4), r4.type !== t2.PROPERTY && r4.type !== t2.ATTRIBUTE && r4.type !== t2.BOOLEAN_ATTRIBUTE) throw Error("The `live` directive is not allowed on child or event bindings");
@@ -9662,7 +9662,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     }
   });
 
-  // ../ironlog/node_modules/lit-html/directives/unsafe-html.js
+  // node_modules/lit-html/directives/unsafe-html.js
   var e4 = class extends i2 {
     constructor(i5) {
       if (super(i5), this.it = A, i5.type !== t2.CHILD) throw Error(this.constructor.directiveName + "() can only be used in child bindings");
@@ -10278,7 +10278,7 @@ ${actions ? b`<div class="ph-a">${actions}</div>
     return "menu";
   }
 
-  // ../ironlog/node_modules/lit-html/directives/repeat.js
+  // node_modules/lit-html/directives/repeat.js
   var u3 = (e5, s3, t4) => {
     const r4 = /* @__PURE__ */ new Map();
     for (let l4 = s3; l4 <= t4; l4++) r4.set(e5[l4], l4);
