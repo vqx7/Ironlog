@@ -256,7 +256,8 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
     const q = (f, a) => Q.page.evaluate(f, a);
     await q(() => { const L = window.__ironlog; L.state.settings.onboarded = true; L.makeDemo(); L.saveNow(); L.ui.tab = 'settings'; L.render(); document.querySelectorAll('#view details').forEach(d => { d.open = true; }); });
     await wait(300);
-    for (const [name, sel, typed, want] of [['chest max', 'input[data-band="chest"][data-bi="1"]', '150', '100'], ['bar weight', 'input[data-bind="barKg"]', '500', '110'], ['name', 'input[data-bind="userName"]', '  V   x ', '  V   x ']]) {
+    // The bar's bound is 50 kg whatever the unit since r61 (PENDING 354, tests/r61.js section 3), 110.2 in pounds; it was 110 lb before.
+    for (const [name, sel, typed, want] of [['chest max', 'input[data-band="chest"][data-bi="1"]', '150', '100'], ['bar weight', 'input[data-bind="barKg"]', '500', '110.2'], ['name', 'input[data-bind="userName"]', '  V   x ', '  V   x ']]) {
       const loc = Q.page.locator(sel).first(); await loc.click(); await loc.fill(typed); await loc.press('Enter'); await wait(300);
       const now = await q(sel => document.querySelector(sel).value, sel);
       await Q.page.locator('#view h2').first().click(); await wait(300);
