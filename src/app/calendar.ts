@@ -14,7 +14,7 @@ import { html, nothing } from 'lit-html';
 import type { TemplateResult } from 'lit-html';
 import { DAYS } from './routines';
 import { MONTHS } from './format';
-import { today } from './util';
+import { today, monthOf, dayOfWeek } from './util';
 import { firstDate } from './charts';
 import { state, ui } from './store';
 import { fmtDateLong, planAhead, sessionsOn } from './display';
@@ -31,16 +31,16 @@ function monthPlus(ym: string, k: number): string {
 }
 /** The months the calendar moves between: from the first month with a session or cardio, to a year ahead. */
 export function calBounds(): { min: string; max: string } {
-  const t = today().slice(0, 7);
+  const t = monthOf(today());
   const f = firstDate([...state.sessions, ...state.cardio]);
-  return { min: f && f.slice(0, 7) < t ? f.slice(0, 7) : t, max: monthPlus(t, AHEAD_MONTHS) };
+  return { min: f && monthOf(f) < t ? monthOf(f) : t, max: monthPlus(t, AHEAD_MONTHS) };
 }
 
 /** The month This week shows: the one moved to, while it is within the calendar's months, else this month. */
 export function calNow(): string {
   const ym = ui['calYm'];
   const { min, max } = calBounds();
-  return typeof ym === 'string' && ym >= min && ym <= max ? ym : today().slice(0, 7);
+  return typeof ym === 'string' && ym >= min && ym <= max ? ym : monthOf(today());
 }
 
 /** The month's last date (YYYY-MM-DD). */
@@ -64,12 +64,12 @@ export function monthPlanned(ym: string): number {
 export function calBody(ym: string, inline: boolean): TemplateResult {
   const [y = 0, mo = 1] = ym.split('-').map(Number);
   const dim = new Date(y, mo, 0).getDate();
-  const lead = (new Date(y, mo - 1, 1).getDay() + 6) % 7;
+  const lead = dayOfWeek(`${ym}-01`);
   const t = today();
   const cd: Record<string, number> = {};
   for (const c of state.cardio) cd[c.date] = (cd[c.date] || 0) + c.min;
   const { min, max } = calBounds();
-  const cur = t.slice(0, 7);
+  const cur = monthOf(t);
   // The days ahead show the workout planned on them, a tap away on Today (wkGo, as the week bar's days ahead).
   const plan = ym >= cur ? plannedIn(ym) : {};
   const cells: TemplateResult[] = [];

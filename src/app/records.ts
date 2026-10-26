@@ -21,6 +21,74 @@ import type { Target } from './types';
    them secondarily get the new muscle added; nothing else a user set is
    touched, because those keys could not exist before v5. */
 export const STATE_VERSION = 5;
+/** The versions whose changes normalize() makes to a save from before them: the per-side flag (2) and the two new muscles (5). */
+export const V_PER_SIDE = 2,
+  V_NEW_MUSCLES = 5;
+
+/** The effort scale's top: RIR is stored from 0 to EFFORT_TOP, and RPE is EFFORT_TOP less it (RPE 10 is RIR 0). */
+export const EFFORT_TOP = 10;
+
+/** The bounds a stored value is kept within, by the cleaners here and by
+    normalize(): past them a number is a slip or damage, not training, and is
+    brought back to the bound (or, where normalize says so, dropped). */
+export const LIMITS = {
+  /** Reps in a set, and the reps a calibration set stopped at. */
+  reps: 1000,
+  /** Sets of one lift, in a plan, a session or a target. */
+  sets: 30,
+  /** Either end of a planned rep range (seconds, on a timed hold). */
+  repRange: 600,
+  /** Rest between sets, in seconds. */
+  restS: 1800,
+  /** A load step, in kilograms. */
+  step: 500,
+  /** A plan's load jump, in percent. */
+  jumpPct: 20,
+  /** A session's or a cardio entry's minutes. */
+  minutes: 600,
+  /** A cardio entry's heart rate, lowest and highest. */
+  hr: [30, 230],
+  /** A cardio entry's distance, in kilometres. */
+  distKm: 1000,
+  /** A cardio entry's note, in characters. */
+  cardioNote: 200,
+  /** The notes the app wrote at a session's start, in characters. */
+  startNote: 2000,
+  /** Why the next sets were adjusted, in characters. */
+  why: 160,
+  /** The lifter's name, and a session's, in characters. */
+  name: 40,
+  /** A section key, in characters, and how many a tab's order keeps. */
+  secKey: 40,
+  /** A folded section's key, in characters, and how many are kept. */
+  foldKey: 80,
+  folds: 200,
+  /** Rest weeks kept: two years of them. */
+  restWeeks: 104,
+  /** A muscle's weekly sets, in a target or a first-run floor. */
+  weeklySets: 100,
+  /** Height, in centimetres, lowest and highest. */
+  heightCm: [100, 250],
+  /** The session time budget, in minutes, lowest and highest. */
+  budgetMin: [10, 300],
+  /** A bar, in kilograms. */
+  barKg: 50,
+  /** The share of bodyweight a bodyweight lift moves. */
+  bwShare: 1.5,
+  /** The reps of a lift goal. */
+  goalReps: 30,
+  /** A Last column entry, in characters. */
+  lastText: 40,
+  /** A bodyweight goal, in percent a week either way. */
+  bwRatePct: 2,
+  /** Help on an assisted lift, in kilograms (stored below 0). */
+  assistKg: 300,
+  /** The heaviest load, in pounds. */
+  loadLb: 20000
+} as const;
+
+/** A check-in answer: 1 poor, 2 OK, CHECKIN_TOP good. */
+export const CHECKIN_TOP = 3;
 
 /* Deleted sessions, cardio entries and routines are kept for 30 days so a
    mistaken delete can be restored after the tab is closed. Their ids also act
@@ -144,7 +212,7 @@ export function cleanCal(c: Raw): { at: number; pred: number } | null {
   const at = numOr(c.at, NaN),
     pred = numOr(c.pred, NaN);
   if (!isNum(at) || !isNum(pred) || at < 1 || pred < 0) return null;
-  return { at: Math.min(Math.round(at), 1000), pred: Math.min(Math.round(pred * 2) / 2, 10) };
+  return { at: Math.min(Math.round(at), LIMITS.reps), pred: Math.min(Math.round(pred * 2) / 2, EFFORT_TOP) };
 }
 
 /* Pre-session check-in: 1 poor, 2 OK, 3 good, per question. */
@@ -153,7 +221,7 @@ export function cleanChk(c: Raw): Record<string, number> | null {
   const o: Record<string, number> = {};
   for (const k of ['sleep', 'energy', 'joints']) {
     const v = Math.round(numOr(c[k], NaN));
-    if (v >= 1 && v <= 3) o[k] = v;
+    if (v >= 1 && v <= CHECKIN_TOP) o[k] = v;
   }
   return Object.keys(o).length ? o : null;
 }
@@ -170,9 +238,9 @@ export function cleanTgt(t: Raw): Target | null {
   }
   // Array.isArray turns an unknown into any[]; the cast keeps each entry unknown, for the checks below.
   if (Array.isArray(t.rs))
-    o.rs = (t.rs as unknown[]).slice(0, 30).map((v: unknown) => {
+    o.rs = (t.rs as unknown[]).slice(0, LIMITS.sets).map((v: unknown) => {
       const n = numOr(v, NaN);
-      return isNum(n) && n >= 0 ? Math.min(n, 1000) : 0;
+      return isNum(n) && n >= 0 ? Math.min(n, LIMITS.reps) : 0;
     });
   return o;
 }

@@ -7,7 +7,10 @@
 //      through every function the screens call, the same answers as r60
 //      (baselines/r60.html), call for call; and every tab, in light and dark,
 //      in pounds and kilograms, with effort as RIR and as RPE, the same
-//      elements, attributes, field values and visible text as r60's.
+//      elements, attributes, field values and visible text as r60's; and the
+//      Guide, every topic open, in pounds and kilograms with RIR on and off,
+//      the same markup and text as r60's (its numbers now read from the
+//      constants their rules apply).
 const { open, engine, screenOf, screenDiff } = require('./h');
 const { wide, digest, specOf } = require('./wide');
 const FILE = process.argv[2] || 'index.html';
@@ -58,6 +61,31 @@ const TABS = ['today', 'program', 'dash', 'history', 'settings'];
       const d = screenDiff({ tree: a.tree, text: '' }, { tree: b.tree, text: '' });
       ok(!d && a.text === b.text, `1. ${tab}, ${vn}: the same elements, attributes, field values and text as r60`, d ? { at: d.at, r60: d.before, now: d.now } : a.text === b.text ? '' : { r60: a.text.slice(0, 300), now: b.text.slice(0, 300) });
       ok(!b0.errors.length, `1. ${tab}, ${vn}: no page errors`, b0.errors);
+    }
+    // The Guide, every topic open, as each build draws it in each unit with RIR on and off.
+    const guideOf = async (file, unit, rir) => {
+      const P = await open(file, { browser, setup });
+      const g = await P.page.evaluate(([unit, rir]) => {
+        const L = window.__ironlog, S = L.state.settings;
+        S.onboarded = true; S.unit = unit;
+        if (rir === 'off') S.rirMode = 'off'; else delete S.rirMode;
+        L.state = L.normalize(L.state); L.invalidate(); L.render();
+        L.openModal({ kind: 'guide', open: '' });
+        const m = document.getElementById('modal');
+        m.querySelectorAll('details').forEach(d => { d.open = true; });
+        const out = { html: m.innerHTML, text: m.innerText };
+        L.ACT.mClose();
+        return out;
+      }, [unit, rir]);
+      const errors = P.errors.slice();
+      await P.ctx.close();
+      return { ...g, errors };
+    };
+    for (const unit of ['lb', 'kg']) for (const rir of ['on', 'off']) {
+      const [a, b] = [await guideOf(OLD, unit, rir), await guideOf(FILE, unit, rir)];
+      let k = 0; while (k < a.html.length && a.html[k] === b.html[k]) k++;
+      ok(a.html === b.html && a.text === b.text, `1. the Guide in ${unit} with RIR ${rir}: the same markup and text as r60 (${b.text.length} characters)`, a.html === b.html ? { r60: a.text.slice(0, 300), now: b.text.slice(0, 300) } : { at: k, r60: a.html.slice(Math.max(0, k - 120), k + 200), now: b.html.slice(Math.max(0, k - 120), k + 200) });
+      ok(!b.errors.length, `1. the Guide in ${unit} with RIR ${rir}: no page errors`, b.errors);
     }
   } else if (run(1)) console.log('note r61 section 1 compares source pages; it runs on the source build');
 

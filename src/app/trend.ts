@@ -6,7 +6,7 @@
 
 import type { Exposure } from './model';
 import { addDays } from './util';
-import { afterBreak, lighter, sameRR } from './formulas';
+import { afterBreak, lighter, sameRR, TREND_DAYS } from './formulas';
 
 /** An exposure that has a trend reading. */
 type Read = { tv: number };
@@ -30,7 +30,7 @@ export function trendScope<X extends Exposure>(exps: readonly X[], anchor: strin
   for (let i = 1; i < exps.length; i++) if (afterBreak(exps[i - 1], exps[i].date)) from = exps[i].date;
   const inRange = real.filter(x => sameRR(x.rr, curRR) && x.date >= from);
   const lastReal = real.length ? real[real.length - 1] : null;
-  const exWin = addDays(lastReal ? lastReal.date : anchor, -42);
+  const exWin = addDays(lastReal ? lastReal.date : anchor, -TREND_DAYS);
   return { real, curRR, inRange, lastReal, exWin, from };
 }
 
@@ -43,6 +43,9 @@ export function trendW(sc: { inRange: readonly Exposure[]; exWin: string }): (Ex
   return sc.inRange.filter((x): x is Exposure & Read => x.date >= sc.exWin && x.tv != null);
 }
 
+/** From this many sessions a trend's two ends are each the better of two; under it, single sessions (three would count the middle one twice). */
+export const ENDS_PAIRED_FROM = 4;
+
 /* Both ends of the trend are the better of two sessions, to damp a single
    fluky one. With exactly three, best-of-two at each end counts the middle
    one twice (100, 120, 110 came out as 0% instead of +10%), so three use
@@ -51,7 +54,7 @@ export function trendW(sc: { inRange: readonly Exposure[]; exWin: string }): (Ex
    Both callers pass trendW's sessions, three or more, so every one has a
    reading. */
 export function trendEnds<X extends Read>(w: readonly X[]): { first: X; last: X } {
-  const k = w.length >= 4 ? 2 : 1;
+  const k = w.length >= ENDS_PAIRED_FROM ? 2 : 1;
   const best = (a: readonly X[]): X => a.reduce((m, x) => (x.tv > m.tv ? x : m));
   return { first: best(w.slice(0, k)), last: best(w.slice(w.length - k)) };
 }

@@ -9,12 +9,21 @@
    signatures that tell a ready-made routine from one of the lifter's own,
    live here too, since the log's fresh state is made from them. */
 
-import type { DraftBlock, Exercise } from './types';
+import type { DraftBlock, Exercise, Plan } from './types';
 import type { State } from './store';
-import { addDays, clampN, hashStr, isDate, isNum, numOr, today } from './util';
+import { addDays, clampN, hashStr, isDate, isNum, numOr, today, r1, r3, HUNDREDTHS, WEEK_DAYS, SUNDAY } from './util';
 import { LB } from './units';
 import { BANDS, CARDIO, CWHEN, JK, MEAS, MK, NEW_MUSCLES_V5, TARGETED, TRACK_ONLY, libExercises } from './library';
-import { DAYS, MAX_DAYS, TEMPLATES, defaultRoutine, fixSupersets, routineFromTemplate, routineSig } from './routines';
+import {
+  DAYS,
+  MAX_DAYS,
+  TEMPLATES,
+  defaultRoutine,
+  fixSupersets,
+  routineFromTemplate,
+  routineSig,
+  DEFAULT_PLAN
+} from './routines';
 import type { NewRoutine } from './routines';
 import {
   BW_MAX_KG,
@@ -40,13 +49,17 @@ import {
   arr,
   trashKind,
   parseJson,
-  rec
+  rec,
+  LIMITS,
+  EFFORT_TOP,
+  V_PER_SIDE,
+  V_NEW_MUSCLES
 } from './records';
 import type { Rec, Trashed } from './records';
 import { gymClean } from './gym';
 import { profClean } from './profile';
 import { canon } from './merge';
-import { DEFAULT_HIDDEN, DSEC_FOLDED, DSEC_KEYS, HIDEABLE_KEYS, SEC_TABS, defaultOrder } from './layout';
+import { DEFAULT_HIDDEN, DSEC_FOLDED, DSEC_KEYS, HIDEABLE_KEYS, SEC_TABS, defaultOrder, bwEveryKept } from './layout';
 
 declare global {
   interface Window {
@@ -80,7 +93,37 @@ const NEW_V5: ReadonlySet<string> = new Set(NEW_MUSCLES_V5);
 const CARDIO_KINDS: ReadonlySet<string> = new Set(CARDIO.map(c => c[0]));
 const CARDIO_WHENS: ReadonlySet<string> = new Set(CWHEN.map(c => c[0]));
 /** A time a Date can hold (r56.1, PENDING 308): a whole number of milliseconds after 1970, within what Date represents. */
-const isTime = (t: number): boolean => Number.isInteger(t) && t > 0 && t <= 8.64e15;
+const isTime = (t: number): boolean => Number.isInteger(t) && t > 0 && t <= MAX_TIME;
+/** The latest time a Date can hold, in milliseconds after 1970 (ECMAScript: 10^8 days). */
+const MAX_TIME = 8.64e15;
+/** The heaviest load and the most help on an assisted lift, in kilograms as loads are kept; a load typed is kept within them too. */
+export const LOAD_MAX = LIMITS.loadLb * LB,
+  LOAD_MIN = -LIMITS.assistKg;
+/** What a kept unknown field adds to the saved text beside its key and value: two quotes, a colon and a comma. */
+const EXTRA_KEY_COST = 4;
+/** The characters of a content hash that tell a duplicate's id apart. */
+const DUP_HASH = 6;
+
+/** A plan's numbers, routine item or a workout's block alike: each within its
+    bound, the default plan's where it is missing or not a number, in the one
+    key order both have always been written in. */
+function planNums(p: Rec): Pick<Plan, 'sets' | 'repMin' | 'repMax' | 'rir' | 'rest' | 'inc'> {
+  const D = DEFAULT_PLAN;
+  return {
+    sets: clampN(p.sets, 1, LIMITS.sets, D.sets),
+    repMin: clampN(p.repMin, 1, LIMITS.repRange, D.repMin),
+    repMax: clampN(p.repMax, 1, LIMITS.repRange, D.repMax),
+    rir: clampN(p.rir, 0, EFFORT_TOP, D.rir),
+    rest: clampN(p.rest, 0, LIMITS.restS, D.rest),
+    inc: clampN(p.inc, 0, LIMITS.step, D.inc)
+  };
+}
+
+/** A plan's load jump in percent, within its bound, absent unless set (r30), so older plans keep their hash. */
+function jumpOf(p: Rec): { jump?: number } {
+  const jump = Number(p.jump);
+  return p.jump != null && p.jump !== '' && isNum(jump) ? { jump: Math.min(Math.max(jump, 0), LIMITS.jumpPct) } : {};
+}
 
 /* ---------- fields a newer build added ---------- */
 
@@ -120,7 +163,7 @@ export function keepExtra<O extends Rec>(src: unknown, out: O, known?: ReadonlyS
       // A value JSON cannot write (a cycle, a BigInt) is not plain data, so it is not kept.
       continue;
     }
-    const cost = j === undefined ? 0 : k.length + j.length + 4;
+    const cost = j === undefined ? 0 : k.length + j.length + EXTRA_KEY_COST;
     if (j === undefined || cost > room) continue;
     room -= cost;
     n++;
@@ -154,12 +197,12 @@ export function cleanCardio(c: unknown, draft?: boolean, i?: number): Rec {
       id: typeof C.id === 'string' ? fixId(C.id) : did('c', c, i),
       date: isDate(C.date) ? C.date : today(),
       kind: typeof C.kind === 'string' && CARDIO_KINDS.has(C.kind) ? C.kind : 'other',
-      min: isNum(m) && m > 0 ? Math.min(Math.round(m), 600) : draft ? null : 1,
-      hr: isNum(hr) && hr >= 30 && hr <= 230 ? Math.round(hr) : null,
+      min: isNum(m) && m > 0 ? Math.min(Math.round(m), LIMITS.minutes) : draft ? null : 1,
+      hr: isNum(hr) && hr >= LIMITS.hr[0] && hr <= LIMITS.hr[1] ? Math.round(hr) : null,
       when: typeof C.when === 'string' && CARDIO_WHENS.has(C.when) ? C.when : 'solo',
-      note: typeof C.note === 'string' ? C.note.slice(0, 200) : '',
+      note: typeof C.note === 'string' ? C.note.slice(0, LIMITS.cardioNote) : '',
       demo: !!C.demo,
-      ...(isNum(dk) && dk > 0 ? { dist: Math.min(Math.round(dk * 1000) / 1000, 1000) } : {})
+      ...(isNum(dk) && dk > 0 ? { dist: Math.min(r3(dk), LIMITS.distKm) } : {})
     },
     KNOWN_CARDIO
   );
@@ -176,7 +219,7 @@ export function cleanSess(raw: unknown, si: number): Rec {
     date: ss.date,
     dayIdx: clampN(ss.dayIdx, 0, MAX_DAYS - 1, 0),
     dayId: typeof ss.dayId === 'string' ? fixId(ss.dayId) : null,
-    durMin: Number.isFinite(durMin) && durMin >= 1 && durMin <= 600 ? Math.round(durMin) : null,
+    durMin: Number.isFinite(durMin) && durMin >= 1 && durMin <= LIMITS.minutes ? Math.round(durMin) : null,
     dayName: typeof ss.dayName === 'string' ? ss.dayName : 'Session',
     routineId: typeof ss.routineId === 'string' && ss.routineId ? fixId(ss.routineId) : '',
     notes: typeof ss.notes === 'string' ? ss.notes : '',
@@ -217,9 +260,9 @@ export function cleanSess(raw: unknown, si: number): Rec {
                 const x = rec(x0) || {};
                 return keepExtra(x0, {
                   // Below 0 only for assisted sets (bodyweight minus the machine's help).
-                  w: clampN(x.w, -300, 20000 * LB, 0),
-                  r: Math.round(clampN(x.r, 0, 1000, 0)),
-                  rir: x.rir == null || x.rir === '' ? null : clampN(x.rir, 0, 10, null),
+                  w: clampN(x.w, LOAD_MIN, LOAD_MAX, 0),
+                  r: Math.round(clampN(x.r, 0, LIMITS.reps, 0)),
+                  rir: x.rir == null || x.rir === '' ? null : clampN(x.rir, 0, EFFORT_TOP, null),
                   warm: !!x.warm,
                   drop: !!x.drop && !x.warm,
                   cal: x.warm ? undefined : cleanCal(rec(x.cal)) || undefined,
@@ -228,7 +271,9 @@ export function cleanSess(raw: unknown, si: number): Rec {
                 });
               }),
             // The sets its routine's plan gave it when saved (r58, 339 h), last, as Finish writes it; absent unless recorded, so older records keep their hash.
-            ...(typeof b.ps === 'number' && Number.isInteger(b.ps) && b.ps >= 1 && b.ps <= 30 ? { ps: b.ps } : {})
+            ...(typeof b.ps === 'number' && Number.isInteger(b.ps) && b.ps >= 1 && b.ps <= LIMITS.sets
+              ? { ps: b.ps }
+              : {})
           },
           KNOWN_SEX
         );
@@ -237,7 +282,7 @@ export function cleanSess(raw: unknown, si: number): Rec {
     // When the session started (r34): orders two sessions on one day. Absent on older ones, so their records hash as before; kept only as a time a Date can hold (r56.1).
     t: isTime(Math.round(t)) ? Math.round(t) : undefined,
     // The sessions a week its routine planned when saved (r55, pwOf); absent unless recorded, so older records keep their hash.
-    pw: typeof ss.pw === 'number' && Number.isInteger(ss.pw) && ss.pw >= 1 && ss.pw <= 7 ? ss.pw : undefined
+    pw: typeof ss.pw === 'number' && Number.isInteger(ss.pw) && ss.pw >= 1 && ss.pw <= WEEK_DAYS ? ss.pw : undefined
   });
 }
 
@@ -394,13 +439,13 @@ export function normalize(input: unknown): State {
   // r34: adjusting the next sets is on unless turned off; only false is stored, so older saves hash as before.
   if (st.autoAdj !== false) delete st.autoAdj;
   // r34: weigh-in reminder in days (0 off); absent is every 14 days.
-  if (!(st.bwEvery === 0 || st.bwEvery === 7 || st.bwEvery === 30)) delete st.bwEvery;
+  if (bwEveryKept(st.bwEvery) === undefined) delete st.bwEvery;
   // r34: Today opens on a blank session; absent is the plan's day.
   if (st.todayStart !== 'free') delete st.todayStart;
   // r34: rest weeks, week-start dates; the last two years kept.
   {
     const rw = arr(st.restWeeks);
-    const r = rw ? [...new Set(rw.filter(isDate))].sort().slice(-104) : [];
+    const r = rw ? [...new Set(rw.filter(isDate))].sort().slice(-LIMITS.restWeeks) : [];
     if (r.length) st.restWeeks = r;
     else delete st.restWeeks;
   }
@@ -411,7 +456,7 @@ export function normalize(input: unknown): State {
   // stored.
   if (st.loadFill !== 'fill') delete st.loadFill;
   {
-    const n = typeof st.userName === 'string' ? st.userName.replace(/\s+/g, ' ').trim().slice(0, 40) : '';
+    const n = typeof st.userName === 'string' ? st.userName.replace(/\s+/g, ' ').trim().slice(0, LIMITS.name) : '';
     if (n) st.userName = n;
     else delete st.userName;
   }
@@ -435,14 +480,16 @@ export function normalize(input: unknown): State {
         if (l)
           clean[t] = l
             .filter(k => typeof k === 'string')
-            .filter(k => safeKey(k) && k.length < 40)
-            .slice(0, 40);
+            .filter(k => safeKey(k) && k.length < LIMITS.secKey)
+            .slice(0, LIMITS.secKey);
       }
     st.secOrder = clean;
   }
   {
     const fl = arr(st.folds);
-    st.folds = fl ? fl.filter(k => typeof k === 'string' && safeKey(k) && k.length < 80).slice(0, 200) : [];
+    st.folds = fl
+      ? fl.filter(k => typeof k === 'string' && safeKey(k) && k.length < LIMITS.foldKey).slice(0, LIMITS.folds)
+      : [];
   }
   st.wakeLock = st.wakeLock === true;
   // Small change plates (r29, item 98): absent unless on, so saves without it hash as before.
@@ -466,7 +513,8 @@ export function normalize(input: unknown): State {
     if (F && !Array.isArray(F))
       for (const m of MK) {
         const v = F[m];
-        if (!TRACK_ONLY.has(m) && typeof v === 'number' && Number.isInteger(v) && v >= 0 && v <= 100) o[m] = v;
+        if (!TRACK_ONLY.has(m) && typeof v === 'number' && Number.isInteger(v) && v >= 0 && v <= LIMITS.weeklySets)
+          o[m] = v;
       }
     if (Object.keys(o).length) st.bandsFit = o;
     else delete st.bandsFit;
@@ -491,11 +539,11 @@ export function normalize(input: unknown): State {
   // Height in cm for waist-to-height; the one body measure that does not change.
   {
     const hc = numOr(st.heightCm, NaN);
-    st.heightCm = isNum(hc) && hc >= 100 && hc <= 250 ? Math.round(hc * 10) / 10 : null;
+    st.heightCm = isNum(hc) && hc >= LIMITS.heightCm[0] && hc <= LIMITS.heightCm[1] ? r1(hc) : null;
   }
   {
     const tb = numOr(st.timeBudget, NaN);
-    st.timeBudget = isNum(tb) && tb >= 10 ? Math.min(Math.round(tb), 300) : null;
+    st.timeBudget = isNum(tb) && tb >= LIMITS.budgetMin[0] ? Math.min(Math.round(tb), LIMITS.budgetMin[1]) : null;
   }
   {
     const pr = arr(st.priorities);
@@ -515,16 +563,16 @@ export function normalize(input: unknown): State {
   const removedLib: string[] = (arr(sIn.removedLib) || []).filter(x => typeof x === 'string').map(fixId);
   st.removedLib = removedLib;
   const bk = numOr(st.barKg, NaN);
-  st.barKg = isNum(bk) && bk > 0 ? Math.min(bk, 50) : null;
+  st.barKg = isNum(bk) && bk > 0 ? Math.min(bk, LIMITS.barKg) : null;
   const bg = numOr(st.bwGoalPct, NaN);
-  st.bwGoalPct = isNum(bg) ? Math.min(Math.max(bg, -2), 2) : null;
+  st.bwGoalPct = isNum(bg) ? Math.min(Math.max(bg, -LIMITS.bwRatePct), LIMITS.bwRatePct) : null;
   const inBands = spread(sIn.bands || {});
   const bands: Record<string, [number, number]> = {};
   st.bands = bands;
   for (const m of MK) {
     const b = arr(inBands[m]);
-    let lo = b ? clampN(b[0], 0, 100, BANDS[m][0]) : BANDS[m][0];
-    let hi = b ? clampN(b[1], 0, 100, BANDS[m][1]) : BANDS[m][1];
+    let lo = b ? clampN(b[0], 0, LIMITS.weeklySets, BANDS[m][0]) : BANDS[m][0];
+    let hi = b ? clampN(b[1], 0, LIMITS.weeklySets, BANDS[m][1]) : BANDS[m][1];
     if (lo > hi) {
       const t = lo;
       lo = hi;
@@ -567,7 +615,7 @@ export function normalize(input: unknown): State {
         custom: !!e.custom,
         archived: !!e.archived,
         // Load step for this exercise everywhere it appears; null falls back to the routine item.
-        inc: isNum(inc) && inc > 0 ? Math.min(inc, 500) : null,
+        inc: isNum(inc) && inc > 0 ? Math.min(inc, LIMITS.step) : null,
         plates: oneOf(e.plates, ['bar', 'side', 'sleeve', 'none']) ? e.plates : null,
         // How the load number reads; absent means the exercise's default.
         load: oneOf(e.load, ['each', 'total', 'side', 'stack']) ? e.load : undefined,
@@ -579,13 +627,13 @@ export function normalize(input: unknown): State {
         kind: e.kind === 'compound' || e.kind === 'iso' ? e.kind : undefined,
         // Assisted (item 45): the load number is the machine's help, stored below 0.
         assist: e.assist === true && !!e.bw ? true : undefined,
-        bwf: isNum(bwf) && bwf > 0 && bwf <= 1.5 ? Math.round(bwf * 100) / 100 : undefined,
-        maxLoad: isNum(ml) && ml > 0 ? Math.min(ml, 20000 * LB) : undefined,
+        bwf: isNum(bwf) && bwf > 0 && bwf <= LIMITS.bwShare ? Math.round(bwf * HUNDREDTHS) / HUNDREDTHS : undefined,
+        maxLoad: isNum(ml) && ml > 0 ? Math.min(ml, LOAD_MAX) : undefined,
         // This lift's own bar (r29, item 98): a trap or EZ bar instead of the bar in Settings. Absent when unset.
-        barKg: isNum(bar) && bar > 0 ? Math.min(bar, 50) : undefined,
+        barKg: isNum(bar) && bar > 0 ? Math.min(bar, LIMITS.barKg) : undefined,
         // A lift goal (r38, item 188): a load (added load on a bodyweight lift) for a number of reps. Absent when unset.
         goal:
-          g && isNum(gw) && gw >= 0 && gw <= 20000 * LB && gr >= 1 && gr <= 30 && !e.timed && !e.assist
+          g && isNum(gw) && gw >= 0 && gw <= LOAD_MAX && gr >= 1 && gr <= LIMITS.goalReps && !e.timed && !e.assist
             ? { w: gw, r: gr }
             : undefined
       });
@@ -598,7 +646,7 @@ export function normalize(input: unknown): State {
   // v1 saves predate the per-side flag, so the built-ins in them all carry
   // perSide:false. Backfill it from the library by id, and only that one
   // field, so any other edit the user made to a built-in survives.
-  if (numOr(s.version, 1) < 2) {
+  if (numOr(s.version, 1) < V_PER_SIDE) {
     const libMap: Record<string, Exercise> = {};
     for (const e of lib) libMap[e.id] = e;
     for (const e of exercises) {
@@ -611,7 +659,7 @@ export function normalize(input: unknown): State {
      built-in whose primary is one of them and reads Chest here was reset by
      an older build that did not know the muscle (its fallback is Chest), so
      it goes back to the library's primary. */
-  if (numOr(s.version, 1) < 5) {
+  if (numOr(s.version, 1) < V_NEW_MUSCLES) {
     const libMap: Record<string, Exercise> = {};
     for (const e of lib) libMap[e.id] = e;
     for (const e of exercises) {
@@ -643,9 +691,9 @@ export function normalize(input: unknown): State {
       // how every pre-v3 routine migrates. A "weekly" routine with more than 7
       // days cannot exist through the UI; if one arrives, keep all its days as a
       // cycle rather than silently cutting any off.
-      const schedule = r.schedule === 'weekly' && rdays.length <= 7 ? 'weekly' : 'cycle';
+      const schedule = r.schedule === 'weekly' && rdays.length <= WEEK_DAYS ? 'weekly' : 'cycle';
       const src = rdays.slice(0, MAX_DAYS);
-      const count = schedule === 'weekly' ? 7 : Math.max(1, src.length);
+      const count = schedule === 'weekly' ? WEEK_DAYS : Math.max(1, src.length);
       const days: Rec[] = [];
       const seen = new Set<string>();
       for (let i = 0; i < count; i++) {
@@ -654,7 +702,7 @@ export function normalize(input: unknown): State {
         if (!d) {
           days.push(
             schedule === 'weekly'
-              ? { id: rid + '-w' + i, name: i === 6 ? 'Rest' : 'Training day', rest: i === 6, items: [] }
+              ? { id: rid + '-w' + i, name: i === SUNDAY ? 'Rest' : 'Training day', rest: i === SUNDAY, items: [] }
               : { id: rid + '-p' + i, name: 'Training day', rest: false, items: [] }
           );
           continue;
@@ -667,21 +715,14 @@ export function normalize(input: unknown): State {
           })
           .map((it0, ii) => {
             const it = rec(it0) || {};
-            const jump = Number(it.jump);
             return keepExtra(
               it0,
               {
                 uid: typeof it.uid === 'string' ? fixId(it.uid) : dbase + '-i' + ii,
                 exId: fixId(it.exId),
-                sets: clampN(it.sets, 1, 30, 3),
-                repMin: clampN(it.repMin, 1, 600, 8),
-                repMax: clampN(it.repMax, 1, 600, 12),
-                rir: clampN(it.rir, 0, 10, 1),
-                rest: clampN(it.rest, 0, 1800, 90),
-                inc: clampN(it.inc, 0, 500, 5 * LB),
+                ...planNums(it),
                 ss: typeof it.ss === 'string' && it.ss ? fixId(it.ss) : null,
-                // r30: the load jump in percent, absent unless set (so older items keep their hash).
-                ...(it.jump != null && it.jump !== '' && isNum(jump) ? { jump: Math.min(Math.max(jump, 0), 20) } : {})
+                ...jumpOf(it)
               },
               KNOWN_ITEM
             );
@@ -822,7 +863,7 @@ export function normalize(input: unknown): State {
       if (key === 'sessions') sessions = [...byId.values()];
       else cardio = [...byId.values()];
       for (const x of extra) {
-        const id = fixId(x.id + '-dup' + hashStr(canon(x)).slice(0, 6));
+        const id = fixId(x.id + '-dup' + hashStr(canon(x)).slice(0, DUP_HASH));
         if (!trash.some(t => t.id === id)) trash.unshift({ id, kind, date: today(), data: { ...x, id } });
       }
     }
@@ -890,7 +931,7 @@ export function normalize(input: unknown): State {
     // A past workout typed in after the fact: no rest timer, no clock, no check-in.
     d.past = d.past === true ? true : undefined;
     // The notes the app wrote when the session started, so Discard can tell them from yours.
-    d.note0 = typeof d.note0 === 'string' ? d.note0.slice(0, 2000) : undefined;
+    d.note0 = typeof d.note0 === 'string' ? d.note0.slice(0, LIMITS.startNote) : undefined;
     d.chk = cleanChk(rec(d.chk)) || undefined;
     d.cardio = (arr(d.cardio) || []).filter(c => !!c && typeof c === 'object').map((c, ci) => cleanCardio(c, true, ci));
     d.ex = (arr(d.ex) || [])
@@ -901,16 +942,10 @@ export function normalize(input: unknown): State {
       .map(b0 => {
         const b = rec(b0) || {};
         const pl = rec(b.plan) || {};
-        const jump = Number(pl.jump);
         const plan: DraftBlock['plan'] = {
-          sets: clampN(pl.sets, 1, 30, 3),
-          repMin: clampN(pl.repMin, 1, 600, 8),
-          repMax: clampN(pl.repMax, 1, 600, 12),
-          rir: clampN(pl.rir, 0, 10, 1),
-          rest: clampN(pl.rest, 0, 1800, 90),
-          inc: clampN(pl.inc, 0, 500, 5 * LB),
+          ...planNums(pl),
           ss: typeof pl.ss === 'string' && pl.ss ? fixId(pl.ss) : null,
-          ...(pl.jump != null && pl.jump !== '' && isNum(jump) ? { jump: Math.min(Math.max(jump, 0), 20) } : {})
+          ...jumpOf(pl)
         };
         if (Number(plan.repMax) < Number(plan.repMin)) plan.repMax = plan.repMin;
         const adj = rec(b.adj);
@@ -937,8 +972,8 @@ export function normalize(input: unknown): State {
           prev: prev
             ? prev
                 .filter(x => typeof x === 'string')
-                .slice(0, 30)
-                .map(x => x.slice(0, 40))
+                .slice(0, LIMITS.sets)
+                .map(x => x.slice(0, LIMITS.lastText))
             : undefined,
           prevOff: b.prevOff === true ? true : undefined,
           target: typeof b.target === 'string' ? b.target : '',
@@ -946,21 +981,23 @@ export function normalize(input: unknown): State {
           tgt: cleanTgt(rec(b.tgt)),
           // Last time's reps per set: shown as placeholders, so numbers only.
           lastR: lastR
-            ? lastR.slice(0, 30).map(v => {
+            ? lastR.slice(0, LIMITS.sets).map(v => {
                 const n = numOr(v, NaN);
-                return isNum(n) && n >= 0 ? Math.min(n, 1000) : null;
+                return isNum(n) && n >= 0 ? Math.min(n, LIMITS.reps) : null;
               })
             : [],
           swappedFrom: typeof b.swappedFrom === 'string' ? fixId(b.swappedFrom) : null,
           cut: b.cut === true ? true : undefined,
           // Added on a lighter day or in a deload, the sets before they were halved, for Finish's offer to the routine (r54); absent otherwise.
           full:
-            typeof b.full === 'number' && Number.isInteger(b.full) && b.full >= 1 && b.full <= 30 ? b.full : undefined,
+            typeof b.full === 'number' && Number.isInteger(b.full) && b.full >= 1 && b.full <= LIMITS.sets
+              ? b.full
+              : undefined,
           light: b.light === true ? true : undefined,
           // The date the target came from, when "Last" is a newer session short of its usual, lighter, or a deload (r26).
           basis: typeof b.basis === 'string' && isDate(b.basis) ? b.basis : undefined,
           // The suggested load the rows started from (r24); absent in older drafts.
-          sw: b.sw === null ? null : b.sw === undefined || !isNum(sw) ? undefined : clampN(b.sw, -300, 20000 * LB, 0),
+          sw: b.sw === null ? null : b.sw === undefined || !isNum(sw) ? undefined : clampN(b.sw, LOAD_MIN, LOAD_MAX, 0),
           // The next sets adjusted from a set (r34), and Keep for the rest of the session.
           adj:
             adj &&
@@ -971,11 +1008,11 @@ export function normalize(input: unknown): State {
             isNum(adjFrom)
               ? {
                   at: adj.at,
-                  w: clampN(adj.w, 0, 20000 * LB, 0),
-                  from: clampN(adj.from, 0, 20000 * LB, 0),
-                  r: Math.round(clampN(adj.r, 1, 1000, 1)),
+                  w: clampN(adj.w, 0, LOAD_MAX, 0),
+                  from: clampN(adj.from, 0, LOAD_MAX, 0),
+                  r: Math.round(clampN(adj.r, 1, LIMITS.reps, 1)),
                   up: adj.up === true,
-                  why: typeof adj.why === 'string' ? adj.why.slice(0, 160) : '',
+                  why: typeof adj.why === 'string' ? adj.why.slice(0, LIMITS.why) : '',
                   // The row it came from (PENDING 333), last, where a build before it kept no such field.
                   ...(typeof adj.rid === 'string' ? { rid: fixId(adj.rid) } : {})
                 }
@@ -997,9 +1034,9 @@ export function normalize(input: unknown): State {
             .map(x0 => {
               const x = rec(x0) || {};
               return keepExtra(x0, {
-                w: x.w == null ? null : clampN(x.w, -300, 20000 * LB, 0),
-                r: x.r == null || x.r === '' ? null : Math.round(clampN(x.r, 0, 1000, 0)),
-                rir: x.rir == null || x.rir === '' ? null : clampN(x.rir, 0, 10, null),
+                w: x.w == null ? null : clampN(x.w, LOAD_MIN, LOAD_MAX, 0),
+                r: x.r == null || x.r === '' ? null : Math.round(clampN(x.r, 0, LIMITS.reps, 0)),
+                rir: x.rir == null || x.rir === '' ? null : clampN(x.rir, 0, EFFORT_TOP, null),
                 warm: !!x.warm,
                 drop: !!x.drop && !x.warm,
                 done: !!x.done,

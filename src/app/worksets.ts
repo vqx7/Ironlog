@@ -8,11 +8,22 @@
 
 import { act } from './act';
 import { noE1, isCompound } from './library';
-import { planItemOf, move, fixSupersets } from './routines';
+import { planItemOf, move, fixSupersets, DEFAULT_PLAN } from './routines';
 import { min5, rangeWords, MISSED_SAID } from './format';
-import { e1, rtfOf, rtfBand, REP_PR_SHARE, prSameLoad, setupSecs, setSecs, BACK_DAYS, isMissed } from './formulas';
-import { PLATES_LB, PLATES_KG, LB, KM_MI } from './units';
-import { isNum, r1, addDays, today, uid, numIn } from './util';
+import {
+  e1,
+  rtfOf,
+  rtfBand,
+  REP_PR_SHARE,
+  prSameLoad,
+  setupSecs,
+  setSecs,
+  BACK_DAYS,
+  isMissed,
+  epley
+} from './formulas';
+import { PLATES_LB, PLATES_KG, LB, KM_MI, SMALL_PLATE } from './units';
+import { isNum, r1, addDays, today, uid, numIn, EPS, EPS_SAME, HUNDREDTHS, MINUTE_S, WEEK_DAYS, r3 } from './util';
 import { platesPerSide } from './gym';
 import { loadWords } from './loads';
 import { BAND_WORDS } from './prs';
@@ -50,8 +61,41 @@ import type { ExerciseLike } from './model';
 import { fmtE, setShort, rirShow } from './display';
 import { adjOn } from './settings';
 import { drawing } from './view';
-import { W, adjSrc, blkIdx, blkIsOpen, blkRef, carried, keepOpen, mixSeen, ordBack, orderQ, redraw } from './workstate';
+import {
+  W,
+  adjSrc,
+  blkIdx,
+  blkIsOpen,
+  blkRef,
+  carried,
+  keepOpen,
+  mixSeen,
+  ordBack,
+  orderQ,
+  redraw,
+  FOLD_MS
+} from './workstate';
 import type { Draft } from './workstate';
+
+/** A remainder of plates this light, per unit of the gym's plates, is conversion dust when the app shows the other unit: not said. */
+const PLATE_DUST: Readonly<Record<'kg' | 'lb', number>> = { kg: 0.1, lb: 0.25 };
+/** The calibration set is offered once CAL_OFFER.sessions sessions are logged, and again CAL_OFFER.weeks weeks after the last (or after Later). */
+export const CAL_OFFER = { sessions: 3, weeks: 3 } as const;
+/** Reps past ODD_REPS, and more than ODD_REPS_TIMES the top of the range and anything logged on the lift, are asked about first: a slipped digit (r32, a convention). */
+export const ODD_REPS = 30,
+  ODD_REPS_TIMES = 2;
+/** A PR's toast stays this many milliseconds, and the phone buzzes this pattern where it can. */
+const PR_TOAST_MS = 4200,
+  PR_BUZZ = [30, 50, 30];
+/** The effort strip is scrolled into view when its bottom is within STRIP_ROOM_PX.edge of what covers the screen, leaving STRIP_ROOM_PX.gap. */
+const STRIP_ROOM_PX = { edge: 8, gap: 16 } as const;
+/** A load under MIX_RANGE[0] or over MIX_RANGE[1] of last time's is asked about once: a per-dumbbell or per-side mix-up (a convention). */
+const MIX_RANGE = [0.6, 1.4] as const;
+/** The mix-up toast stays this many milliseconds: it has two sentences. */
+const MIX_TOAST_MS = 7000;
+/** A ticked exercise moves up this many milliseconds after the tick, and tries again after ORDER_MS.again while something is being typed or open. */
+const ORDER_MS = { soon: 900, again: 1500 } as const;
+import { LIMITS } from './records';
 
 /* ---------- rows and blocks ---------- */
 
@@ -68,7 +112,7 @@ export const fillLoads = (): boolean => state.settings.loadFill === 'fill';
 
 /** A row's load is the app's, not the lifter's: empty (grey), the suggestion, carried down from a typed load above, or put there by the adjustment (r34). */
 export function appLoad(b: DraftBlock | null | undefined, x: DraftSet): boolean {
-  return x.w == null || (!!b && x.w === b.sw) || carried.has(x) || !!(b && b.adj && Math.abs(x.w - b.adj.w) < 1e-9);
+  return x.w == null || (!!b && x.w === b.sw) || carried.has(x) || !!(b && b.adj && Math.abs(x.w - b.adj.w) < EPS);
 }
 
 /* A row that holds nothing of the lifter's: not ticked, no reps, no RIR, and
@@ -178,25 +222,25 @@ export function livePR(exId: string, s: DraftSet | null | undefined, date: strin
   const q0 = rirEst(s, ex);
   const r = +(s.r ?? 0);
   const v = noE1(ex) ? null : e1(load, r, q0);
-  const scq = (l: number, rr: number, q: number | null): number => e1(l, rr, q) || l * (1 + rr / 30);
+  const scq = (l: number, rr: number, q: number | null): number => e1(l, rr, q) || epley(l, rr);
   let top = 0,
     dom = false;
   for (const x of exps)
     for (const q of x.pts) {
-      if (q.pl >= load - 1e-6 && q.r >= r) dom = true;
+      if (q.pl >= load - EPS_SAME && q.r >= r) dom = true;
       top = Math.max(top, scq(q.pl, q.r, q.rq));
     }
   const judge = !noE1(ex) && !ex.timed && load > 0;
-  const stronger = !judge || scq(load, r, q0) > top + 1e-9;
-  if (!ex.timed && s.w != null && isNum(+s.w) && f.w > f.heaviest + 1e-6 && stronger) return 'Weight PR';
+  const stronger = !judge || scq(load, r, q0) > top + EPS;
+  if (!ex.timed && s.w != null && isNum(+s.w) && f.w > f.heaviest + EPS_SAME && stronger) return 'Weight PR';
   if (!(load > 0) && !ex.timed && !ex.bw) return null;
   if (v != null && st && stronger) {
     const rtf = rtfOf(r, q0);
     const bd = rtf == null ? undefined : st.byBand && st.byBand[rtfBand(rtf)];
-    if (bd != null && v > bd + 1e-6) return 'Best';
+    if (bd != null && v > bd + EPS_SAME) return 'Best';
   }
   if (dom || !stronger) return null;
-  if (!ex.timed && scq(load, r, q0) < top * REP_PR_SHARE - 1e-9) return null;
+  if (!ex.timed && scq(load, r, q0) < top * REP_PR_SHARE - EPS) return null;
   return ex.timed ? 'Time PR' : 'Rep PR';
 }
 
@@ -216,10 +260,10 @@ export function rowPR(b: DraftBlock, si: number, date: string): string | null {
   const scq = (x: DraftSet): number => {
     const l = prLoad(ex, x, date);
     const r = +(x.r ?? 0);
-    return e1(l, r, rirEst(x, ex)) || l * (1 + r / 30);
+    return e1(l, r, rirEst(x, ex)) || epley(l, r);
   };
   const me = scq(s);
-  return b.sets.some((x, i) => i < si && x.done && !x.warm && !x.drop && +(x.r ?? 0) > 0 && scq(x) >= me - 1e-9)
+  return b.sets.some((x, i) => i < si && x.done && !x.warm && !x.drop && +(x.r ?? 0) > 0 && scq(x) >= me - EPS)
     ? null
     : pr;
 }
@@ -251,7 +295,7 @@ export function prBeat(exId: string, s: DraftSet, date: string, pr: string): str
     for (const x of exps)
       if (x.pb != null && !(date && x.date === date)) all = all == null ? x.pb : Math.max(all, x.pb);
     if (!isCompound(ex)) return ` (your best for ${bandW})`;
-    return all == null || (shown ?? 0) > all + 1e-6
+    return all == null || (shown ?? 0) > all + EPS_SAME
       ? ` (estimated 1RM ${fmtE(shown)} ${U()}${all != null ? `; was ${fmtE(all)}` : ''})`
       : ` (your best for ${bandW}, ${fmtE(shown)} ${U()})`;
   }
@@ -260,10 +304,10 @@ export function prBeat(exId: string, s: DraftSet, date: string, pr: string): str
     const was = ex.assist
       ? `less help than ever`
       : `heaviest before ${ex.bw ? loadLabel(ex, mw) : fmtW(mw) + ' ' + U()}`;
-    return ` (${was}${isCompound(ex) && bd != null && v != null && v > bd + 1e-6 ? `; best estimate for ${bandW} now ${fmtE(shown)}` : ''})`;
+    return ` (${was}${isCompound(ex) && bd != null && v != null && v > bd + EPS_SAME ? `; best estimate for ${bandW} now ${fmtE(shown)}` : ''})`;
   }
   let m = 0;
-  for (const x of exps) for (const p of x.pts) if (p.pl >= load - 1e-6) m = Math.max(m, p.r);
+  for (const x of exps) for (const p of x.pts) if (p.pl >= load - EPS_SAME) m = Math.max(m, p.r);
   return m ? ` (was ${m} ${ex.timed ? 's' : 'reps'})` : ' (heaviest yet)';
 }
 
@@ -288,7 +332,7 @@ export function plateList(u?: 'lb' | 'kg'): number[] {
       ? g.plates.slice().sort((a, b) => b - a)
       : null;
   const b = own || (unit === 'lb' ? PLATES_LB : PLATES_KG);
-  return state.settings.smallPlates ? [...b, unit === 'lb' ? 1.25 : 0.5] : b.slice();
+  return state.settings.smallPlates ? [...b, SMALL_PLATE[unit]] : b.slice();
 }
 
 /* Plates per side for a barbell load, greedy from the biggest plate down.
@@ -308,14 +352,14 @@ export function plateText(kg: number, mode?: string, ex?: ExerciseLike | null): 
   const load = inU(kg),
     bar = md === 'bar' ? inU(exBarKg(ex)) : 0;
   if (!(load > 0)) return '';
-  if (load < bar - 1e-6) return `${fmtW(kg)} ${U()} is below the ${r1(bar)} ${pu} bar`;
+  if (load < bar - EPS_SAME) return `${fmtW(kg)} ${U()} is below the ${r1(bar)} ${pu} bar`;
   const { plates: out, rest: left } = platesPerSide(
     plateList(pu),
     md === 'sleeve' ? load : (load - bar) / 2,
-    Math.max(1e-6, inU(rackTol()) / (md === 'sleeve' ? 1 : 2))
+    Math.max(EPS_SAME, inU(rackTol()) / (md === 'sleeve' ? 1 : 2))
   );
-  const rest = Math.round(left * 100) / 100;
-  const tiny = pu !== U() && rest < (pu === 'kg' ? 0.1 : 0.25);
+  const rest = Math.round(left * HUNDREDTHS) / HUNDREDTHS;
+  const tiny = pu !== U() && rest < PLATE_DUST[pu];
   const lead =
     md === 'sleeve'
       ? `On the sleeve at ${fmtW(kg)}`
@@ -350,8 +394,8 @@ export function blockProgress(b: DraftBlock): { text: string; beat: boolean } | 
   const done = b.sets.filter(s => s.done && !s.warm && !s.drop && +(s.r ?? 0) > 0);
   if (!done.length) return { text: '', beat: false };
   const tw = t.w ?? 0;
-  const at = done.filter(s => Math.abs((+(s.w ?? 0) || 0) - tw) < 1e-6);
-  const heavier = done.filter(s => (+(s.w ?? 0) || 0) > tw + 1e-6);
+  const at = done.filter(s => Math.abs((+(s.w ?? 0) || 0) - tw) < EPS_SAME);
+  const heavier = done.filter(s => (+(s.w ?? 0) || 0) > tw + EPS_SAME);
   let heavyBeat = false,
     heavyTxt = '';
   if (heavier.length && t.prevBest != null && !ex.timed) {
@@ -367,7 +411,7 @@ export function blockProgress(b: DraftBlock): { text: string; beat: boolean } | 
       }
     }
     if (best != null) {
-      heavyBeat = best > t.prevBest + 1e-6;
+      heavyBeat = best > t.prevBest + EPS_SAME;
       const iso = !isCompound(ex);
       const setW = bs ? setShort(ex, +(bs.w ?? 0) || 0, +(bs.r ?? 0)) : '';
       heavyTxt = iso
@@ -403,7 +447,7 @@ export function blockProgress(b: DraftBlock): { text: string; beat: boolean } | 
   const rm = t.repMin ?? 0;
   const hit = rows
     .slice(0, planned)
-    .filter(s => s.done && +(s.r ?? 0) > 0 && (+(s.w ?? 0) || 0) >= tw - 1e-6 && +(s.r ?? 0) >= rm).length;
+    .filter(s => s.done && +(s.r ?? 0) > 0 && (+(s.w ?? 0) || 0) >= tw - EPS_SAME && +(s.r ?? 0) >= rm).length;
   const base = `${hit} of ${planned} sets hit ${rm}${ex.timed ? 's' : ''}+ at that load`;
   return { text: heavyTxt ? `${base}. ${heavyTxt}` : base, beat: (planned > 0 && hit >= planned) || heavyBeat };
 }
@@ -427,7 +471,7 @@ export function remainMin(d: Draft): number {
     s += n * (setSecs(ex, b.plan) + r) + (b.sets.some(x => x.done) ? 0 : su);
     lastRest = r;
   });
-  return Math.round((Math.max(0, s - lastRest) * pace()) / 60);
+  return Math.round((Math.max(0, s - lastRest) * pace()) / MINUTE_S);
 }
 
 /* Minutes left for the header: none once every set is done (min5 shows at least 1, so 0 left read "about 1 min left"). */
@@ -465,8 +509,8 @@ export function draftPlanMin(d: Draft | null | undefined): number {
 /** The block offered a calibration set, or -1. */
 export function calDueIdx(d: Draft): number {
   if (state.settings.rirMode === 'off') return -1;
-  if (state.sessions.filter(s => !s.demo).length < 3) return -1;
-  const cut = addDays(today(), -21);
+  if (state.sessions.filter(s => !s.demo).length < CAL_OFFER.sessions) return -1;
+  const cut = addDays(today(), -WEEK_DAYS * CAL_OFFER.weeks);
   if (state.settings.calSnooze && state.settings.calSnooze > cut) return -1;
   const c = calStats();
   if (c.lastDate && c.lastDate > cut) return -1;
@@ -527,7 +571,7 @@ export function newBlock(
     lastR: sg.lastR,
     basis: sg.basis || undefined,
     sw: sg.w == null ? null : sg.w,
-    sets: Array.from({ length: +plan.sets || 3 }, () => newRow({ w: fillLoads() ? sg.w : null }))
+    sets: Array.from({ length: +plan.sets || DEFAULT_PLAN.sets }, () => newRow({ w: fillLoads() ? sg.w : null }))
   };
 }
 
@@ -618,7 +662,7 @@ export function unitWords(): void {
       for (const b of d.ex) {
         if (d.deload || d.light || b.light || b.inj) continue;
         const sg = suggestCore(b.exId, b.plan, { before: d.date });
-        if (b.sw != null && sg.w != null && Math.abs(sg.w - b.sw) > 1e-6) continue;
+        if (b.sw != null && sg.w != null && Math.abs(sg.w - b.sw) > EPS_SAME) continue;
         Object.assign(b, {
           hint: sg.text,
           last: sg.last,
@@ -663,11 +707,11 @@ export function adjRows(b: DraftBlock, prev: NextSetsAdj | null, next: NextSetsA
     });
   if (prev && (!next || next.at !== prev.at || next.w !== prev.w))
     rows(prev.at, x => {
-      if (x.w != null && Math.abs(x.w - prev.w) < 1e-9) x.w = prev.from;
+      if (x.w != null && Math.abs(x.w - prev.w) < EPS) x.w = prev.from;
     });
   if (next)
     rows(next.at, x => {
-      if (x.w != null && Math.abs(x.w - next.from) < 1e-9 && (x.w === b.sw || carried.has(x))) x.w = next.w;
+      if (x.w != null && Math.abs(x.w - next.from) < EPS && (x.w === b.sw || carried.has(x))) x.w = next.w;
     });
 }
 
@@ -682,7 +726,7 @@ export function assessSet(bi: number, si: number): void {
   const s = b && b.sets[si];
   if (!d || !b || !s) return;
   const prev = b.adj ? { ...b.adj } : null;
-  const appL = (x: DraftSet): boolean => appLoad(b, x) || (!!prev && x.w != null && Math.abs(x.w - prev.w) < 1e-9);
+  const appL = (x: DraftSet): boolean => appLoad(b, x) || (!!prev && x.w != null && Math.abs(x.w - prev.w) < EPS);
   const rest = b.sets.some((x, i) => i > si && !x.done && !x.warm && !x.drop && appL(x));
   if (b.adj && b.adj.at >= si) {
     delete b.adj;
@@ -715,10 +759,10 @@ export function assessSet(bi: number, si: number): void {
 /** Whether reps are far past anything logged on the lift and its range (a typo: 105 for 10), asked about before they count (r32, second check: 100 x 105 was saved with a gold "Rep PR" and next time asked to beat 124 reps). */
 export function oddReps(b: DraftBlock, s: DraftSet): boolean {
   const r = +(s.r ?? 0);
-  if (!(r > 30)) return false;
+  if (!(r > ODD_REPS)) return false;
   let best = 0;
   for (const x of IDX().byEx[b.exId] || []) for (const p of x.pts) best = Math.max(best, p.r);
-  return r > 2 * Math.max(+b.plan.repMax || 0, best);
+  return r > ODD_REPS_TIMES * Math.max(+b.plan.repMax || 0, best);
 }
 
 /* A saved set never has an empty load (the invariant; V on the r57 preview,
@@ -828,7 +872,7 @@ export function setDone(bi: number, si: number, val: boolean, again?: boolean): 
     fx.toast(
       `${pr === 'Best' ? (isCompound(ex) ? 'New best estimate' : 'PR') : pr}: ${exName(b.exId)}, ${setShort(ex, +(s.w ?? 0) || 0, s.r)}${prBeat(b.exId, s, d.date, pr)}`,
       false,
-      4200,
+      PR_TOAST_MS,
       'pr'
     );
     /* The PR moment (item 28): a short gold pulse on the row, and a buzz where
@@ -843,7 +887,7 @@ export function setDone(bi: number, si: number, val: boolean, again?: boolean): 
       row.addEventListener('animationend', () => row.classList.remove('prflash'), { once: true });
     }
     try {
-      if (navigator.vibrate) navigator.vibrate([30, 50, 30]);
+      if (navigator.vibrate) navigator.vibrate(PR_BUZZ);
     } catch (e) {
       // Vibration is optional; a browser that refuses it changes nothing.
     }
@@ -869,7 +913,7 @@ export function setDone(bi: number, si: number, val: boolean, again?: boolean): 
   else if (!val) rirClose();
   if (val && !askRir && !d.editingId && blockDone(b)) {
     const rf = blkRef(bi);
-    W.foldT = setTimeout(() => autoFold(rf), 1200);
+    W.foldT = setTimeout(() => autoFold(rf), FOLD_MS.tick);
   }
   if (val && b.sets.filter(x => x.done).length === 1 && orderAt(b) >= 0) orderSoon(b);
 }
@@ -912,7 +956,8 @@ export function rirShowStrip(bi: number, si: number): void {
       }
     }
     const r = st.getBoundingClientRect();
-    if (r.bottom > lim - 8) window.scrollBy({ top: r.bottom - lim + 16, behavior: 'smooth' });
+    if (r.bottom > lim - STRIP_ROOM_PX.edge)
+      window.scrollBy({ top: r.bottom - lim + STRIP_ROOM_PX.gap, behavior: 'smooth' });
   });
 }
 
@@ -924,7 +969,7 @@ export function rirClose(): void {
   autoPending();
 }
 
-/* A load far from last time's (under 60% or over 140% of it) is the usual
+/* A load far from last time's (under MIX_RANGE[0] or over MIX_RANGE[1] of it) is the usual
    sign of a per-dumbbell or per-side mix-up. Said once per exercise per
    session, never blocking. Warm-ups and drop sets are expected to be lighter. */
 /** Says once when a typed load is far from last time's, the usual sign of a per-dumbbell or per-side mix-up. */
@@ -938,14 +983,14 @@ export function mixCheck(bi: number, si: number): void {
   const last = st && st.last ? st.last.topW : 0;
   if (!(last > 0)) return;
   const r = +(s.w ?? 0) / last;
-  if (r >= 0.6 && r <= 1.4) return;
+  if (r >= MIX_RANGE[0] && r <= MIX_RANGE[1]) return;
   const key = d.id + ':' + bi;
   if (mixSeen.has(key)) return;
   mixSeen.add(key);
   fx.toast(
     `${fmtW(+(s.w ?? 0))} ${U()} is ${r > 1 ? 'well above' : 'well below'} last time's ${fmtW(last)}. This one is logged as ${loadWords(ex)}.`,
     false,
-    7000
+    MIX_TOAST_MS
   );
 }
 
@@ -975,7 +1020,7 @@ export function autoFold(ref: BlkRef | null): void {
   if (!b || !blockDone(b) || blkIsOpen(bi, b)) return;
   // Any open effort strip waits the fold, not only this exercise's (r34.2: the rebuild closed a strip just opened on the next one).
   if (document.querySelector('.rirstrip')) {
-    W.foldT = setTimeout(() => autoFold(ref), 1500);
+    W.foldT = setTimeout(() => autoFold(ref), FOLD_MS.strip);
     return;
   }
   let nx = d.ex.findIndex((x, i) => i > bi && !blockDone(x));
@@ -1054,7 +1099,7 @@ export function orderAt(b: DraftBlock): number {
 function orderSoon(b: DraftBlock): void {
   if (!orderQ.includes(b)) orderQ.push(b);
   if (W.orderT) clearTimeout(W.orderT);
-  W.orderT = setTimeout(orderRun, 900);
+  W.orderT = setTimeout(orderRun, ORDER_MS.soon);
 }
 
 /** Moves up the blocks waiting to (orderSoon), once nothing is being typed or open; the last one ticked stays where it is on the screen. */
@@ -1072,7 +1117,7 @@ export function orderRun(): void {
     ui.tab === 'today' &&
     (typing || W.blockDrag || drawing() || ui.modal || W.foldT != null || document.querySelector('.rirstrip'))
   ) {
-    W.orderT = setTimeout(orderRun, 1500);
+    W.orderT = setTimeout(orderRun, ORDER_MS.again);
     return;
   }
   const q = orderQ.splice(0).filter(b => d.ex.includes(b));
@@ -1134,5 +1179,5 @@ export function acceptGrey(bi: number, si: number): boolean {
 /** Distance as typed, in the unit shown (miles to someone logging in lb), as kept: km, absent when none (r30). */
 export const distIn = (v: string): number | null => {
   const n = numIn(v);
-  return n != null && n > 0 ? Math.min(Math.round((U() === 'kg' ? n : n * KM_MI) * 1000) / 1000, 1000) : null;
+  return n != null && n > 0 ? Math.min(r3(U() === 'kg' ? n : n * KM_MI), LIMITS.distKm) : null;
 };

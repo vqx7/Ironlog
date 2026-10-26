@@ -4,9 +4,10 @@
    legacy script). The preview and
    the save, which read the log, stay with the import screen. */
 
-import { today, isDate } from './util';
+import { today, isDate, yearOf, DAY_MS, isoDateOf, HOUR_MIN, MINUTE_S, SECOND_MS, LETTERS, WEEK_DAYS } from './util';
 import { CARDIO, CWHEN } from './library';
 import { KM_MI } from './units';
+import { EFFORT_TOP, LIMITS } from './records';
 
 /** One set read from a table row, in the row's unit (u) when the row says it. */
 type ImpSet = {
@@ -43,8 +44,27 @@ type ImpCardio = {
   km?: number;
 };
 
+/** The weeks of sessions the demo log makes (Settings, Load demo data). */
+export const DEMO_WEEKS = 8;
+
+/** A first run's import makes the routine (routineFromLog, in the import screen) from its last
+    IMPORT_WEEKS weeks, counted back from its newest workout, when its workouts repeat: each day kept
+    is a workout done IMPORT_REPEATS times or more there (a convention). */
+export const IMPORT_WEEKS = 8,
+  IMPORT_REPEATS = 2;
+/** The days those weeks span, the newest workout's day among them. */
+export const IMPORT_DAYS = IMPORT_WEEKS * WEEK_DAYS;
+
 /** Rows read from a table at most; past this the preview says the file was cut. */
 export const IMP_MAX_ROWS = 50000;
+/** The rows a file's preview lists as not read, and the characters of each. */
+const BAD_ROWS = { shown: 8, chars: 80 } as const;
+/** The sets one row of a table may stand for (its Sets column). */
+const ROW_SETS = 20;
+/** The most sets a written line like 3x8 is read as standing for; with more, the line is read as written. */
+const TEXT_SETS = 10;
+/** An RPE is read from RPE_LOW to EFFORT_TOP; a lower number is left out. */
+const RPE_LOW = 5;
 
 /** Month names and their numbers, for dates written in words. */
 export const MON: Readonly<Record<string, number>> = {
@@ -62,6 +82,20 @@ export const MON: Readonly<Record<string, number>> = {
   nov: 11,
   dec: 12
 };
+/** The lengths of MON's keys: three letters, and four for Sept. */
+const MON_SHORT = 3,
+  MON_LONG = 4;
+/** A month word's number, by its first four letters (Sept) or else its first three, or undefined. */
+const monthNum = (w: string): number | undefined => MON[w.slice(0, MON_LONG)] || MON[w.slice(0, MON_SHORT)];
+
+/** Dates: the months, the most days a month has, two-digit years read as 2000 and on, and how far back a date counts (a date more than IMPORT_YEARS back is not a training log: 10/10/10 is three sets of 10). */
+const MONTHS = 12,
+  MONTH_DAYS = 31,
+  CENTURY = 100,
+  Y2K = 2000,
+  IMPORT_YEARS = 20;
+/** Spreadsheet day numbers count days since 30 Dec 1899 (day 0 in Excel and Sheets), read only between SERIAL.min (1954) and SERIAL.max (2119). */
+const SERIAL = { epoch: Date.UTC(1899, 11, 30), min: 20000, max: 80000 } as const;
 
 /* A date written any common way. Without a year it is the latest such day not
    after today. Numbers are month first unless the first is over 12. */
@@ -72,9 +106,9 @@ export function impDate(str: unknown, ref?: string): string | null {
     .trim();
   if (!s) return null;
   const t = ref || today();
-  const ty = +t.slice(0, 4);
+  const ty = +yearOf(t);
   const mk = (y: number, m: number, d: number): string | null => {
-    if (!(m >= 1 && m <= 12 && d >= 1 && d <= 31)) return null;
+    if (!(m >= 1 && m <= MONTHS && d >= 1 && d <= MONTH_DAYS)) return null;
     const iso = `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
     return isDate(iso) && new Date(y, m - 1, d).getDate() === d ? iso : null;
   };
@@ -83,32 +117,38 @@ export function impDate(str: unknown, ref?: string): string | null {
     if (x && x > t) x = mk(ty - 1, m, d);
     return x;
   };
-  const yy = (y: number) => (y < 100 ? 2000 + y : y);
+  const yy = (y: number) => (y < CENTURY ? Y2K + y : y);
   let g = s.match(/(?<!\d)(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})(?!\d)/);
-  if (g) return mk(+g[1], +g[2], +g[3]);
-  g = s.match(/\b(\d{1,2})[/.-](\d{1,2})(?:[/.-](\d{2,4}))?\b/);
-  // A date more than 20 years back is not a training log (10/10/10 is three sets of 10).
   if (g) {
-    let a = +g[1],
-      b = +g[2];
+    const [, y, mo, d] = g;
+    return mk(+y, +mo, +d);
+  }
+  g = s.match(/\b(\d{1,2})[/.-](\d{1,2})(?:[/.-](\d{2,4}))?\b/);
+  // A date more than IMPORT_YEARS back is not a training log (10/10/10 is three sets of 10).
+  if (g) {
+    const [, ga, gb, gy] = g;
+    let a = +ga,
+      b = +gb;
     let m = a,
       d = b;
-    if (a > 12 && b <= 12) {
+    if (a > MONTHS && b <= MONTHS) {
       m = b;
       d = a;
     }
-    const x = g[3] ? mk(yy(+g[3]), m, d) : noYear(m, d);
-    return x && +x.slice(0, 4) >= ty - 20 ? x : null;
+    const x = gy ? mk(yy(+gy), m, d) : noYear(m, d);
+    return x && +yearOf(x) >= ty - IMPORT_YEARS ? x : null;
   }
   g = s.match(/\b(\d{1,2})\s+([a-z]{3,9})\.?,?\s*(\d{4})?\b/);
-  if ((g && MON[g[2].slice(0, 4)]) || (g && MON[g[2].slice(0, 3)])) {
-    const m = MON[g[2].slice(0, 4)] || MON[g[2].slice(0, 3)];
-    return g[3] ? mk(+g[3], m, +g[1]) : noYear(m, +g[1]);
+  let mw = g ? monthNum(g[2]) : undefined;
+  if (g && mw) {
+    const [, d, , y] = g;
+    return y ? mk(+y, mw, +d) : noYear(mw, +d);
   }
   g = s.match(/\b([a-z]{3,9})\.?\s+(\d{1,2})(?:,?\s*(\d{4}))?\b/);
-  if (g && (MON[g[1].slice(0, 4)] || MON[g[1].slice(0, 3)])) {
-    const m = MON[g[1].slice(0, 4)] || MON[g[1].slice(0, 3)];
-    return g[3] ? mk(+g[3], m, +g[2]) : noYear(m, +g[2]);
+  mw = g ? monthNum(g[1]) : undefined;
+  if (g && mw) {
+    const [, , d, y] = g;
+    return y ? mk(+y, mw, +d) : noYear(mw, +d);
   }
   return null;
 }
@@ -117,9 +157,9 @@ export function impDate(str: unknown, ref?: string): string | null {
    which compares as 0 and so fails the range check; the casts say that to
    TypeScript, and past the check the number is real, as the ! says. */
 export function impSerial(n: number | null): string | null {
-  if (!((n as number) > 20000 && (n as number) < 80000)) return null;
-  const d = new Date(Date.UTC(1899, 11, 30) + Math.floor(n!) * 864e5);
-  return d.toISOString().slice(0, 10);
+  if (!((n as number) > SERIAL.min && (n as number) < SERIAL.max)) return null;
+  const d = new Date(SERIAL.epoch + Math.floor(n!) * DAY_MS);
+  return isoDateOf(d.toISOString());
 }
 
 /* Rows from CSV or tab-separated text, quotes respected. The separator is the
@@ -170,6 +210,31 @@ export function impRows(text: string): string[][] | null {
   return rows.length >= 2 ? rows : null;
 }
 
+/** The fixed parts of a zip file the reader uses (PKWARE's APPNOTE): the end
+    record's signature, its least size, how far from the end it can sit (its
+    comment is at most 65535 bytes), and where its entry count and directory
+    offset are; in each directory entry, where its method, compressed size,
+    name, extra and comment lengths and local header offset are, and its
+    size before the name; in each local header, where its name and extra
+    lengths are, and its size before the name. */
+const ZIP = {
+  endSig: 0x06054b50,
+  endSize: 22,
+  endScan: 70000,
+  endCount: 10,
+  endDir: 16,
+  dirMethod: 10,
+  dirSize: 20,
+  dirName: 28,
+  dirExtra: 30,
+  dirComment: 32,
+  dirLocal: 42,
+  dirHead: 46,
+  localName: 26,
+  localExtra: 28,
+  localHead: 30
+} as const;
+
 /* An .xlsx file is a zip of XML. Read the first sheet with the browser's own
    decompressor (Safari 16.4 and later), so no library is needed. */
 export async function impXlsx(buf: ArrayBuffer): Promise<string[][]> {
@@ -177,32 +242,33 @@ export async function impXlsx(buf: ArrayBuffer): Promise<string[][]> {
   const u = new Uint8Array(buf),
     dv = new DataView(buf);
   let eo = -1;
-  for (let i = u.length - 22; i >= 0 && i > u.length - 70000; i--)
-    if (dv.getUint32(i, true) === 0x06054b50) {
+  for (let i = u.length - ZIP.endSize; i >= 0 && i > u.length - ZIP.endScan; i--)
+    if (dv.getUint32(i, true) === ZIP.endSig) {
       eo = i;
       break;
     }
   if (eo < 0) throw new Error('zip');
-  const n = dv.getUint16(eo + 10, true);
-  let p = dv.getUint32(eo + 16, true);
+  const n = dv.getUint16(eo + ZIP.endCount, true);
+  let p = dv.getUint32(eo + ZIP.endDir, true);
   const files: Record<string, { meth: number; cs: number; lo: number }> = {};
   for (let k = 0; k < n; k++) {
-    const meth = dv.getUint16(p + 10, true),
-      cs = dv.getUint32(p + 20, true),
-      nl = dv.getUint16(p + 28, true),
-      el = dv.getUint16(p + 30, true),
-      cl = dv.getUint16(p + 32, true),
-      lo = dv.getUint32(p + 42, true);
-    const name = new TextDecoder().decode(u.subarray(p + 46, p + 46 + nl));
+    const meth = dv.getUint16(p + ZIP.dirMethod, true),
+      cs = dv.getUint32(p + ZIP.dirSize, true),
+      nl = dv.getUint16(p + ZIP.dirName, true),
+      el = dv.getUint16(p + ZIP.dirExtra, true),
+      cl = dv.getUint16(p + ZIP.dirComment, true),
+      lo = dv.getUint32(p + ZIP.dirLocal, true);
+    const name = new TextDecoder().decode(u.subarray(p + ZIP.dirHead, p + ZIP.dirHead + nl));
     files[name] = { meth, cs, lo };
-    p += 46 + nl + el + cl;
+    p += ZIP.dirHead + nl + el + cl;
   }
   const read = async (name: string): Promise<string | null> => {
     const f = files[name];
     if (!f) return null;
-    const ln = dv.getUint16(f.lo + 26, true),
-      le = dv.getUint16(f.lo + 28, true);
-    const data = u.subarray(f.lo + 30 + ln + le, f.lo + 30 + ln + le + f.cs);
+    const ln = dv.getUint16(f.lo + ZIP.localName, true),
+      le = dv.getUint16(f.lo + ZIP.localExtra, true);
+    const at = f.lo + ZIP.localHead + ln + le;
+    const data = u.subarray(at, at + f.cs);
     if (f.meth === 0) return new TextDecoder().decode(data);
     const out = await new Response(
       new Blob([data]).stream().pipeThrough(new DecompressionStream('deflate-raw'))
@@ -224,7 +290,8 @@ export async function impXlsx(buf: ArrayBuffer): Promise<string[][]> {
   const rows: string[][] = [];
   const col = (r: string) => {
     let c = 0;
-    for (const ch of r.replace(/\d+/g, '')) c = c * 26 + (ch.charCodeAt(0) - 64);
+    // A is 1: its code less the code before it.
+    for (const ch of r.replace(/\d+/g, '')) c = c * LETTERS + (ch.charCodeAt(0) - ('A'.charCodeAt(0) - 1));
     return c - 1;
   };
   // The sheet's name came from the zip's own list of files, so read finds it (the !).
@@ -415,11 +482,13 @@ export function impSpan(dur: string, start: string, end: string): number | null 
   const d = String(dur || '').toLowerCase();
   const h = d.match(/(\d+(?:\.\d+)?)\s*h/),
     m = d.match(/(\d+)\s*m(?!s)/);
-  if (h || m) return (h ? +h[1] * 60 : 0) + (m ? +m[1] : 0);
+  if (h || m) return (h ? +h[1] * HOUR_MIN : 0) + (m ? +m[1] : 0);
   const at = (x: string): number | null => {
     const day = impDate(x),
       t = String(x || '').match(/(\d{1,2}):(\d{2})(?!.*\d:\d)/);
-    return day && t ? Date.parse(`${day}T00:00:00Z`) / 60000 + +t[1] * 60 + +t[2] : null;
+    if (!day || !t) return null;
+    const [, hh, mm] = t;
+    return Date.parse(`${day}T00:00:00Z`) / (MINUTE_S * SECOND_MS) + +hh * HOUR_MIN + +mm;
   };
   const a = at(start),
     b = at(end);
@@ -582,7 +651,7 @@ export function impFromTable(rows: readonly (readonly unknown[])[], map: Record<
     const ex: string | null = cell('ex') || lastEx;
     if (!date || !ex) {
       skipped++;
-      if (bad.length < 8) bad.push(r.join(', ').slice(0, 80));
+      if (bad.length < BAD_ROWS.shown) bad.push(r.join(', ').slice(0, BAD_ROWS.chars));
       continue;
     }
     lastDate = date;
@@ -609,7 +678,7 @@ export function impFromTable(rows: readonly (readonly unknown[])[], map: Record<
       const kind = (CARDIO.find(([, l]) => l === ex) || ['other'])[0];
       const min = num(at(r, cMin)),
         hr = num(at(r, cHr));
-      const o: ImpCardio = { date, kind, secs: min != null && min > 0 ? min * 60 : 0, dist: 0, name: ex };
+      const o: ImpCardio = { date, kind, secs: min != null && min > 0 ? min * MINUTE_S : 0, dist: 0, name: ex };
       if (min != null && min > 0) o.min = Math.round(min);
       if (hr != null && hr > 0) o.hr = Math.round(hr);
       const rest: string[] = [];
@@ -646,14 +715,14 @@ export function impFromTable(rows: readonly (readonly unknown[])[], map: Record<
     const yes = (v: string) => /^(1|true|yes|y|x)$/i.test(v);
     const rpe = num(cell('rpe'));
     let rir = num(cell('rir'));
-    // RPE 10 is no reps left, so RIR is taken as 10 minus RPE (the usual RIR-based RPE scale).
-    if (rir == null && rpe != null && rpe >= 5 && rpe <= 10) rir = Math.max(0, 10 - rpe);
+    // RPE 10 is no reps left, so RIR is taken as EFFORT_TOP minus RPE (the usual RIR-based RPE scale).
+    if (rir == null && rpe != null && rpe >= RPE_LOW && rpe <= EFFORT_TOP) rir = Math.max(0, EFFORT_TOP - rpe);
     const code = numTypes ? ty : '';
     if (ty === 'f' || ty === 'failure' || code === '4') rir = 0;
     const set = {
       w,
       r: reps > 0 ? Math.round(reps) : Math.round(secs),
-      rir: rir != null && rir >= 0 && rir <= 10 ? rir : null,
+      rir: rir != null && rir >= 0 && rir <= EFFORT_TOP ? rir : null,
       warm: ty === 'w' || ty === 'warmup' || ty === 'warm-up' || code === '2' || yes(cell('warm')),
       drop: ty === 'd' || ty === 'dropset' || ty === 'drop' || code === '3' || yes(cell('drop')),
       timed: !(reps > 0) && !missed,
@@ -666,11 +735,11 @@ export function impFromTable(rows: readonly (readonly unknown[])[], map: Record<
     const sn = ours ? at(r, cNote) : cell('snote');
     if (!ss.note && sn) ss.note = sn;
     const dm = ours ? num(at(r, cMin)) : impSpan(strong ? cell('dur') : '', cell('date'), cell('end'));
-    if (ss.durMin == null && dm != null && dm >= 1 && dm <= 600) ss.durMin = Math.round(dm);
+    if (ss.durMin == null && dm != null && dm >= 1 && dm <= LIMITS.minutes) ss.durMin = Math.round(dm);
     if (/^(yes|true|1|y)$/i.test(String(cell('deload') || '').trim())) ss.deload = true;
     if (!ss.items.has(ex))
       ss.items.set(ex, { name: ex, sets: [], note: cell('note'), ...(cell('ss') ? { ss: cell('ss') } : {}) });
-    const n = Math.min(Math.max(Math.round(num(cell('sets')) || 1), 1), 20);
+    const n = Math.min(Math.max(Math.round(num(cell('sets')) || 1), 1), ROW_SETS);
     // The item was added above when it was missing (the !).
     for (let j = 0; j < n; j++) ss.items.get(ex)!.sets.push({ ...set });
   }
@@ -722,43 +791,44 @@ export function impSetsText(t: unknown): string {
         // One of the two groups matched, digits and all, so a || b is a number's
         // text; the cast says so, since TypeScript refuses + on undefined.
         const v = +((a || b) as string);
-        if (v >= 5 && v <= 10) rpe = v;
+        if (v >= RPE_LOW && v <= EFFORT_TOP) rpe = v;
         return ' ';
       }
     );
-    if (rpe != null) s = s.trim() + ' rir ' + (10 - rpe) + ' ';
+    if (rpe != null) s = s.trim() + ' rir ' + (EFFORT_TOP - rpe) + ' ';
   }
   s = s.replace(
     /(^|\s)(?:bw\s*)?\+\s*(\d+(?:\.\d+)?)\s+(\d{1,2})\s*[x×*]\s*(\d{1,3})(?=\s|,|$)/g,
     (m: string, p: string, w: string, a: string, r: string) =>
-      +a <= 10 ? p + Array<string>(+a).fill(`bw+${w}x${r}`).join(' ') : m
+      +a <= TEXT_SETS ? p + Array<string>(+a).fill(`bw+${w}x${r}`).join(' ') : m
   );
   s = s.replace(
     /(^|\s)(?:bw\s*)?\+\s*(\d+(?:\.\d+)?)\s*[x×*]\s*(\d{1,3})(?=\s|,|$)/g,
     (_m: string, p: string, w: string, r: string) => `${p}bw+${w}x${r}`
   );
   s = s.replace(/(^|\s)bw\s+(\d{1,2})\s*[x×*]\s*(\d{1,3})(?=\s|,|$)/g, (m: string, p: string, a: string, r: string) =>
-    +a <= 10 ? p + Array<string>(+a).fill(`bwx${r}`).join(' ') : m
+    +a <= TEXT_SETS ? p + Array<string>(+a).fill(`bwx${r}`).join(' ') : m
   );
   // sets x reps @ load, and "3 sets of 10 at 60"
   s = s.replace(
     /\b(\d{1,2})\s*(?:x|×|\*|sets? of)\s*(\d{1,3})\s*(?:@|at)\s*(\d+(?:\.\d+)?)\b/g,
     (m: string, a: string, b: string, c: string) =>
-      +a <= 10 && +c > +a ? Array<string>(+a).fill(`${c}x${b}`).join(' ') : m
+      +a <= TEXT_SETS && +c > +a ? Array<string>(+a).fill(`${c}x${b}`).join(' ') : m
   );
   /* sets x reps then a load at the end: "OHP 3x8 40" is 3 sets of 8 at 40
-     (r30, from the review: it read as 3 x 8 and 3 x 40). Only up to 10 sets,
+     (r30, from the review: it read as 3 x 8 and 3 x 40). Only up to TEXT_SETS sets,
      and only a last number larger than the set count, so "185x8 8" (a load
      for 8, then 8 more reps) still reads as before. */
   s = s.replace(
     /(^|\s)(\d{1,2})\s*[x×*]\s*(\d{1,3})\s+(\d+(?:\.\d+)?)\s*$/,
     (m: string, p: string, a: string, b: string, c: string) =>
-      +a <= 10 && +c > +b && +c > +a ? p + Array<string>(+a).fill(`${c}x${b}`).join(' ') : m
+      +a <= TEXT_SETS && +c > +b && +c > +a ? p + Array<string>(+a).fill(`${c}x${b}`).join(' ') : m
   );
   // load x reps x sets
   s = s.replace(
     /\b(\d+(?:\.\d+)?)\s*[x×*]\s*(\d{1,3})\s*[x×*]\s*(\d{1,2})\b/g,
-    (m: string, a: string, b: string, c: string) => (+c <= 10 ? Array<string>(+c).fill(`${a}x${b}`).join(' ') : m)
+    (m: string, a: string, b: string, c: string) =>
+      +c <= TEXT_SETS ? Array<string>(+c).fill(`${a}x${b}`).join(' ') : m
   );
   // A load then a list of reps: "185: 10/8/8" or "185 - 10, 8, 8" is each rep count at 185.
   s = s.replace(
@@ -774,7 +844,7 @@ export function impSetsText(t: unknown): string {
   s = s.replace(
     /(^|\s)(\d{2,}(?:\.\d+)?)\s+(\d{1,2})\s*[x×*]\s*(\d{1,3})(?=\s|,|$)/g,
     (m: string, p: string, a: string, b: string, c: string) =>
-      +b <= 10 ? p + Array<string>(+b).fill(`${a}x${c}`).join(' ') : m
+      +b <= TEXT_SETS ? p + Array<string>(+b).fill(`${a}x${c}`).join(' ') : m
   );
   return s.trim();
 }

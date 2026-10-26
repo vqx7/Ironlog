@@ -17,15 +17,16 @@ import {
   sortedSessionsIn
 } from './model';
 import { IDXIn, stallWordsIn } from './analytics';
-import { ON_PLAN_TIP, actualAvg4In, avgWaitIn, muscleStatusIn, recentLighterIn } from './weeks';
-import { GROW_PCT, atLoad, isWork, lighter } from './formulas';
+import { ON_PLAN_TIP, actualAvg4In, avgWaitIn, muscleStatusIn, recentLighterIn, AVG_WEEKS } from './weeks';
+import { GROW_PCT, atLoad, isWork, lighter, STALL, LIGHT_SHARE, DELOAD_GAP_DAYS, TREND_WEEKS } from './formulas';
 import { MK, ML, isCompound, noE1 } from './library';
-import { andList, r1, weekStart } from './util';
-import { effScale } from './format';
+import { andList, r1, weekStart, PERCENT, pctOf, WEEK_DAYS } from './util';
+import { effScale, LIGHT_RIR } from './format';
 import { belowMin } from './volume';
 import { plannedPerWeek, plannedSetsIn } from './routines';
 import { planForIn } from './plans';
 import { loadLabelIn } from './loads';
+import { CHECKIN_TOP } from './records';
 
 /** The coach's one line: its colour, the advice, the reason behind an i, the action it offers, and whether it says why no weekly average shows yet (`wait`, which Stats' summary shows once, as its Volume line). */
 export interface CoachLine {
@@ -68,7 +69,14 @@ export function stalledIdsIn(M: Model): string[] {
     .map(([id]) => id);
 }
 
-/* A lift whose last 6 sessions logged drop sets and no main sets is read
+/** Main lifts stalled at once that suggest a deload week, and the names the line lists. */
+export const FATIGUE_STALLS = 3;
+/** The muscles the on-plan line names before "and N more". */
+const ON_PLAN_SHOWN = 4;
+/** Weeks of the last AVG_WEEKS with no training at which the Coach says so first, before any set count (r31, a convention). */
+export const MISSED_WEEKS_SAID = 2;
+
+/* A lift whose last STALL.sessions sessions logged drop sets and no main sets is read
    from drop sets alone (IDX uses them when there is nothing else); it can
    show as stalled, but it says nothing about fatigue, so it never counts
    toward "stalled at once" (r45, audit item 289). Read from the log here,
@@ -76,7 +84,7 @@ export function stalledIdsIn(M: Model): string[] {
 export function dropOnlyLiftIn(M: Model, id: string): boolean {
   const ss = sortedSessionsIn(M);
   let n = 0;
-  for (let i = ss.length - 1; i >= 0 && n < 6; i--) {
+  for (let i = ss.length - 1; i >= 0 && n < STALL.sessions; i--) {
     const bs = ss[i].ex.filter(b => b.exId === id);
     if (!bs.length) continue;
     n++;
@@ -100,8 +108,7 @@ export function fatigueStallsIn(M: Model, ids: readonly string[]): string[] {
    Stats both use (r54: the headline's own words, "flat for 3 weeks or more,
    with no PR in the last 3 sessions", fell behind the rule in r53). */
 /** The stall rule, as a lifter reads it. */
-export const STALL_WHY =
-  'Flat or down over its last 6 sessions (or 3 weeks) in each rep range you train it in, leaving out ones done lighter; with no PR in the last 3 of them, nor a set stronger than any before it in a session left out since the third-last, no heavier load, and no more reps at the same load.';
+export const STALL_WHY = `Flat or down over its last ${STALL.sessions} sessions (or ${STALL.days / WEEK_DAYS} weeks) in each rep range you train it in, leaving out ones done lighter; with no PR in the last ${STALL.noProgress} of them, nor a set stronger than any before it in a session left out since the third-last, no heavier load, and no more reps at the same load.`;
 
 /* A lift trained in more than one rep range falls only when it falls in
    each (r55, V 2026-10-19, PENDING 319), said in a lift's headline tip. */
@@ -153,36 +160,36 @@ export function coachIn(M: Model): CoachLine {
     return {
       tone: 'blue',
       text: `Deload week. It ends Sunday.`,
-      why: 'Half the sets, about 90% loads, 3 or more reps in reserve. Your targets pick up where they were.',
+      why: `Half the sets, about ${pctOf(LIGHT_SHARE)}% loads, ${LIGHT_RIR} or more reps in reserve. Your targets pick up where they were.`,
       act: null
     };
   const stalled = stalledIdsIn(M);
-  /* A deload is not suggested within 4 weeks of a lighter week (r30): the
+  /* A deload is not suggested within DELOAD_GAP_DAYS of a lighter week (r30): the
      review saw "6 lifts stalled, a deload week may help" three weeks after
      one. Since r53 the week is read from what the lifts did, not the labels,
      and a week marked as a deload with nothing trained in it counts too, as
      a rest week has since r34 (recentLighterIn). */
-  const rl = recentLighterIn(M, 28);
+  const rl = recentLighterIn(M, DELOAD_GAP_DAYS);
   const big = fatigueStallsIn(M, stalled);
-  if (big.length >= 3 && !rl)
+  if (big.length >= FATIGUE_STALLS && !rl)
     return {
       tone: 'red',
       text: `${big.length} main lifts stalled at once: ${andList(
         big.map(id => exNameIn(M, id)),
-        3
+        FATIGUE_STALLS
       )}. A deload week may help.`,
-      why: 'Several main lifts flat together often points to fatigue. Check sleep, food, and stress. A deload week is half the sets at about 90% loads. Isolation and core lifts are not counted.',
+      why: `Several main lifts flat together often points to fatigue. Check sleep, food, and stress. A deload week is half the sets at about ${pctOf(LIGHT_SHARE)}% loads. Isolation and core lifts are not counted.`,
       act: { label: 'Start a deload week', deload: true }
     };
   const inj = injuredSetIn(M);
   const avg = actualAvg4In(M);
   const bands = M.s.settings.bands;
-  /* Two or more of the last 4 weeks with no training (r31): the averages are
+  /* MISSED_WEEKS_SAID or more of the last AVG_WEEKS weeks with no training (r31): the averages are
      per week trained, so they can look fine while most weeks are missed.
      Turning up comes before any set count. */
-  if (avg && avg._missed >= 2) {
+  if (avg && avg._missed >= MISSED_WEEKS_SAID) {
     const w = avg._weeks,
-      n = Math.min(4, w + avg._missed);
+      n = Math.min(AVG_WEEKS, w + avg._missed);
     return {
       tone: 'yellow',
       text: `You trained in ${w} of the last ${n} weeks. Getting the weeks in matters more than adding sets.`,
@@ -300,7 +307,7 @@ export function coachIn(M: Model): CoachLine {
     const x = lag[lag.length - 1];
     return {
       tone: 'yellow',
-      text: `${ML[x.m]} strength is falling over ${x.wk || 6} weeks. Check sleep and recovery before adding sets.`,
+      text: `${ML[x.m]} strength is falling over ${x.wk || TREND_WEEKS} weeks. Check sleep and recovery before adding sets.`,
       act: { label: `See ${ML[x.m]}`, sec: 'rank', m: x.m }
     };
   }
@@ -326,7 +333,7 @@ export function coachIn(M: Model): CoachLine {
       text: 'Every muscle on plan, nothing stalled.',
       why: `Under the minimum over these weeks, on plan: ${andList(
         onPlan.map(m => ML[m]),
-        4
+        ON_PLAN_SHOWN
       )}. ${ON_PLAN_TIP}`,
       act: null
     };
@@ -339,8 +346,8 @@ export function musTrend(sc: Pick<Score, 'clear' | 'n' | 'score' | 'wk'>): strin
   if (!sc.clear)
     return `Strength trend unclear: ${sc.n ? `${sc.n} lift${sc.n === 1 ? '' : 's'} measured, changes within day-to-day noise` : 'not enough sessions'}`;
   return Math.abs(sc.score) < GROW_PCT
-    ? `No clear strength change over ${sc.wk || 6} weeks`
-    : `Strength ${sc.score >= 0 ? 'rising' : 'falling'} over ${sc.wk || 6} weeks`;
+    ? `No clear strength change over ${sc.wk || TREND_WEEKS} weeks`
+    : `Strength ${sc.score >= 0 ? 'rising' : 'falling'} over ${sc.wk || TREND_WEEKS} weeks`;
 }
 
 /* ---------- READINESS ----------
@@ -358,6 +365,9 @@ export const CHK_Q: readonly (readonly [string, string, readonly string[]])[] = 
   ['energy', 'Energy', ['Low', 'OK', 'High']],
   ['joints', 'Aches', ['Sore', 'A little', 'None']]
 ];
+
+/** Readiness and performance shows once this many sessions have check-in answers. */
+export const READINESS_MIN = 6;
 
 /* For each check-in answer, the sessions given it and the share of their
    lifts that set a PR, as Recent PRs counts one (r58, 343 6: it counted
@@ -379,11 +389,11 @@ export function readinessIn(M: Model) {
   const rows = CHK_Q.map(([k, l, names]) => ({
     k,
     l,
-    groups: [3, 2, 1].map(v => {
+    groups: Array.from({ length: CHECKIN_TOP }, (_, i) => CHECKIN_TOP - i).map(v => {
       const g = sess.filter(s => s.chk![k] === v);
       const n = g.reduce((a, s) => a + bySid[s.id].n, 0),
         p = g.reduce((a, s) => a + bySid[s.id].p, 0);
-      return { v, name: names[v - 1], sessions: g.length, rate: n ? (p / n) * 100 : null };
+      return { v, name: names[v - 1], sessions: g.length, rate: n ? (p / n) * PERCENT : null };
     })
   }));
   return { n: sess.length, rows };

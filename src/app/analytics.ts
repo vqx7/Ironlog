@@ -22,7 +22,7 @@ import type {
   Score
 } from './model';
 import { MK, SLOW_RECOVERY, bwShare, isCompound, loadMode, noE1 } from './library';
-import { addDays, daysBetween, median, r1, weekStart } from './util';
+import { addDays, daysBetween, median, r1, weekStart, EPS, EPS_SAME, WEEK_DAYS, PERCENT } from './util';
 import { EXIn, activeRoutineIn, exInjuryIn, rirHalfOnIn, sortedSessionsIn } from './model';
 import {
   BACK_DAYS,
@@ -44,13 +44,30 @@ import {
   setCredit,
   t90,
   trendE,
-  workLoad
+  workLoad,
+  E1_MAX_RIR,
+  HARD_RIR,
+  HALF_SET,
+  HELPER_CREDIT,
+  TREND_DAYS,
+  RECENT_DAYS,
+  TREND_MIN,
+  MUSCLE_TREND_MIN,
+  FLAT_PCT_WEEK,
+  STALL,
+  LIGHTER_REF,
+  USUAL_BEFORE,
+  NEW_LEVEL,
+  RIR_TREND,
+  DRIFT_N,
+  epley
 } from './formulas';
 import { sameExOnce } from './session';
 import { trendEnds, trendScope, trendW } from './trend';
 import { basePlanIn, routinePlanIn } from './routines';
 import { atCapOfIn, capOfIn } from './gym';
 import { fmtDate, missedTag } from './format';
+import { EFFORT_TOP, LIMITS } from './records';
 
 /** A set's effort as these read it: its RIR as typed, and whether it was a RIR check. */
 type Effort = { rir?: Rir; cal?: unknown };
@@ -99,11 +116,11 @@ export function rirEffIn(M: Model, s: Effort, ex?: ExerciseLike | null): number 
   if (s.rir == null || s.rir === '') return null;
   const v = +s.rir;
   if (!isFinite(v)) return null;
-  if (m === 'cal' && !s.cal && v <= 4) {
+  if (m === 'cal' && !s.cal && v <= E1_MAX_RIR) {
     const c = calStatsIn(M);
     const k = ex ? (isCompound(ex) ? 'c' : 'i') : null;
-    const src = k && c.cls[k].recent >= 2 ? c.cls[k] : c;
-    if (src.recent >= 2 && src.bias) return Math.min(10, Math.max(0, v + src.bias));
+    const src = k && c.cls[k].recent >= CAL_MIN ? c.cls[k] : c;
+    if (src.recent >= CAL_MIN && src.bias) return Math.min(EFFORT_TOP, Math.max(0, v + src.bias));
   }
   return v;
 }
@@ -111,23 +128,30 @@ export function rirEffIn(M: Model, s: Effort, ex?: ExerciseLike | null): number 
 /* Calibration sets across your real sessions. err is reps actually left at the
    stopping point minus reps you called: positive means you stop with more in
    the tank than you think. People mostly under-call it by about a rep
-   (Halperin 2022). The correction is the median of the last 8 from the past
-   12 weeks, shrunk toward zero while there are few (x n/(n+3): 40% at 2 sets,
-   73% at 8), rounded to half a rep and capped at 2 reps either way. */
-export const CAL_WEEKS = 12;
+   (Halperin 2022). The correction is the median of the last CAL_N from the
+   past CAL_WEEKS weeks, shrunk toward zero while there are few (x
+   n/(n+CAL_SHRINK): 40% at 2 sets, 73% at 8), rounded to half a rep and capped
+   at CAL_CAP reps either way; it applies once CAL_MIN checks are in, to sets
+   called at E1_MAX_RIR or less, where the checks measure the error. Conventions. */
+/** The RIR calibration's numbers, above. */
+export const CAL_WEEKS = 12,
+  CAL_N = 8,
+  CAL_SHRINK = 3,
+  CAL_CAP = 2,
+  CAL_MIN = 2;
 
 /** The RIR checks of a list summed up: how many, their median error, the correction, the mean error. */
 export function calSummary(list: readonly { err: number }[]): CalSummary {
-  const last = list.slice(-8);
+  const last = list.slice(-CAL_N);
   const n = last.length;
   const med = n ? median(last.map(p => p.err)) : null;
-  const shr = med == null ? 0 : (med * n) / (n + 3);
+  const shr = med == null ? 0 : (med * n) / (n + CAL_SHRINK);
   // Rounded to the nearest half rep symmetrically: Math.round sends x.5 up,
   // which made +1.5 and -1.5 shrink to +1 and -0.5.
   return {
     recent: n,
     raw: med,
-    bias: Math.max(-2, Math.min(2, (Math.sign(shr) * Math.round(Math.abs(shr) * 2)) / 2)),
+    bias: Math.max(-CAL_CAP, Math.min(CAL_CAP, (Math.sign(shr) * Math.round(Math.abs(shr) * 2)) / 2)),
     mae: n ? last.reduce((a, p) => a + Math.abs(p.err), 0) / n : null
   };
 }
@@ -145,7 +169,7 @@ export function calStatsIn(M: Model): CalStats {
     }
   }
   pts.sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
-  const cut = addDays(M.today(), -7 * CAL_WEEKS);
+  const cut = addDays(M.today(), -WEEK_DAYS * CAL_WEEKS);
   const rec = pts.filter(p => p.date >= cut);
   M.c._cal = {
     ...calSummary(rec),
@@ -155,6 +179,9 @@ export function calStatsIn(M: Model): CalStats {
   };
   return M.c._cal;
 }
+
+/** A lift's usual RIR is read once it has RIR_USUAL_MIN rated working sets in the last CAL_WEEKS weeks (r20, a convention). */
+export const RIR_USUAL_MIN = 3;
 
 /* A blank RIR, for estimates and the hard-set count. RIR is optional and
    opened with a tap, so most logs mix rated and blank sets. Reading every
@@ -173,7 +200,7 @@ export function rirUsualIn(M: Model, exId: string): number | null {
   if (M.s.settings.rirMode === 'off') return null;
   if (!M.c._rirUse) {
     M.c._rirUse = Object.create(null) as Record<string, number>;
-    const cut = addDays(M.today(), -7 * CAL_WEEKS);
+    const cut = addDays(M.today(), -WEEK_DAYS * CAL_WEEKS);
     const by = Object.create(null) as Record<string, number[]>;
     for (const ss of M.s.sessions) {
       if (ss.date < cut) continue;
@@ -187,7 +214,7 @@ export function rirUsualIn(M: Model, exId: string): number | null {
         }
       }
     }
-    for (const k in by) if (by[k].length >= 3) M.c._rirUse[k] = median(by[k])!;
+    for (const k in by) if (by[k].length >= RIR_USUAL_MIN) M.c._rirUse[k] = median(by[k])!;
   }
   const v = M.c._rirUse[exId];
   return v == null ? null : v;
@@ -199,14 +226,14 @@ export const rirEstIn = (M: Model, s: Effort, ex?: ExerciseLike | null): number 
   return q != null ? q : ex ? rirUsualIn(M, ex.id) : null;
 };
 
-/* Hard set: RIR 3 or less (Robinson 2024, Refalo 2023: growth rises as sets
+/* Hard set: RIR HARD_RIR or less (Robinson 2024, Refalo 2023: growth rises as sets
    end closer to failure; the exact cut-off is a convention). A blank RIR is
    read as above and shown as assumed. A drop set is half a set: one heavy
    set with three drops is not four sets of work. */
 export const isHardIn = (M: Model, s: CountedSet, ex?: ExerciseLike | null): boolean => {
   if (!isWork(s)) return false;
   const q = rirEstIn(M, s, ex);
-  return q == null || q <= 3;
+  return q == null || q <= HARD_RIR;
 };
 
 /* Count RIR 4 to 5 as half a set (r40, item 41; a setting, off by default).
@@ -224,7 +251,7 @@ export function hardCreditIn(M: Model, s: CountedSet, ex?: ExerciseLike | null):
   if (isHardIn(M, s, ex)) return setCredit(s);
   if (!rirHalfOnIn(M) || !isWork(s)) return 0;
   const q = rirEstIn(M, s, ex);
-  return q != null && q > 3 ? setCredit(s) * 0.5 : 0;
+  return q != null && q > HARD_RIR ? setCredit(s) * HALF_SET : 0;
 }
 
 /** The bodyweight part of a bodyweight lift's load on a date (0 on any other lift). */
@@ -295,6 +322,12 @@ export function dateIndexIn(M: Model): DateIndex {
   return (M.c._dix = { byDate, weekN });
 }
 
+/** Pick for me reads what each muscle got in the last PICK_DAYS days. */
+export const PICK_DAYS = 7;
+
+/** Recovery's rule of thumb (used only for ranking, by Pick for me) takes a day off when every hard set of a muscle stopped at RECOVERY_EASY_RIR or more in reserve. */
+export const RECOVERY_EASY_RIR = 3;
+
 /* IDX() is everything the screens read, built once per change (r36: the
    one 420-line function split into its steps, each below, with no change to
    what comes out; tests/r36.js compares every number with r35 on random
@@ -305,7 +338,7 @@ export function IDXIn(M: Model): Idx {
   const V = idxSessionsIn(M, sessions);
   const byEx = V.byEx;
   const anchor = sessions.length ? sessions[sessions.length - 1].date : M.today();
-  const winStart = addDays(anchor, -42);
+  const winStart = addDays(anchor, -TREND_DAYS);
   idxAutoLighter(byEx);
   // Each session's day, for the plan of a lift on it (idxShort's cap on its usual sets).
   const dayOf: Record<string, string | null | undefined> = {};
@@ -354,7 +387,7 @@ export function idxSessionsIn(M: Model, sessions: readonly Session[]) {
   // dayMus: hard sets per muscle per date, counted like weekSets. Pick for me
   // reads recovery and the last 7 days from it.
   // dayMeta: per date and muscle, what changes recovery time: sets taken to
-  // failure, sets all left at 3+ RIR, slow-recovery lifts, a first exposure.
+  // failure, sets all left at RECOVERY_EASY_RIR+ RIR, slow-recovery lifts, a first exposure.
   const byEx: Record<string, Exposure[]> = {},
     sessVol: Idx['sessVol'] = [],
     weekSets: Record<string, Record<string, number>> = {},
@@ -362,7 +395,7 @@ export function idxSessionsIn(M: Model, sessions: readonly Session[]) {
     dayMus: Record<string, Record<string, number>> = {},
     dayMeta: Record<string, Record<string, DayMeta>> = {},
     weekHard: Record<string, number> = {};
-  const recentFrom = addDays(M.today(), -28);
+  const recentFrom = addDays(M.today(), -RECENT_DAYS);
   const seenEx = new Set<string>();
   let rirLogged = 0,
     rirTotal = 0;
@@ -376,7 +409,10 @@ export function idxSessionsIn(M: Model, sessions: readonly Session[]) {
     for (const b of sameExOnce(ss.ex)) {
       const ex = EXIn(M, b.exId);
       const novel = !seenEx.has(b.exId);
-      const mus: [string, number][] = [[ex.primary, 1], ...ex.secondary.map((m): [string, number] => [m, 0.5])];
+      const mus: [string, number][] = [
+        [ex.primary, 1],
+        ...ex.secondary.map((m): [string, number] => [m, HELPER_CREDIT])
+      ];
       for (const s of b.sets) {
         if (!isWork(s)) continue;
         // A saved set's RIR is a number or null, never '' (normalize), so the
@@ -401,7 +437,7 @@ export function idxSessionsIn(M: Model, sessions: readonly Session[]) {
           const o = dx[m] || (dx[m] = { fail: 0, easy: 0, hard: 0, slow: false, novel: false });
           o.hard++;
           if (q === 0) o.fail++;
-          if (q != null && q >= 3) o.easy++;
+          if (q != null && q >= RECOVERY_EASY_RIR) o.easy++;
           if (SLOW_RECOVERY.has(ex.id)) o.slow = true;
           if (novel) o.novel = true;
         }
@@ -446,7 +482,7 @@ export function idxSessionsIn(M: Model, sessions: readonly Session[]) {
       // Mean logged RIR on the sets at this session's top load, or null if none was logged.
       // The working load (r31): a heavy top single is not where reps are built.
       const topW = workLoad(pts, b.rr ? b.rr[0] : 0);
-      const tr = pts.filter(p => Math.abs(p.w - topW) < 1e-6 && p.rir != null);
+      const tr = pts.filter(p => Math.abs(p.w - topW) < EPS_SAME && p.rir != null);
       const atTop = atLoad(pts, topW);
       // tr keeps only sets with a RIR, as the ! says.
       const topRir = tr.length ? tr.reduce((a, p) => a + p.rir!, 0) / tr.length : null;
@@ -592,7 +628,7 @@ export function idxAutoLighter(byEx: Record<string, Exposure[]>): Record<string,
         run = [];
       }
       before = x;
-      const ref = prev.filter(q => sameRR(q.rr, x.rr)).slice(-3);
+      const ref = prev.filter(q => sameRR(q.rr, x.rr)).slice(-LIGHTER_REF);
       const k = weekStart(x.date);
       if (x.deload || x.light) {
         /* Its usual is the one V's rule reads a labelled session against
@@ -600,7 +636,7 @@ export function idxAutoLighter(byEx: Record<string, Exposure[]>): Record<string,
            338 2). Read against the best of three, 100 x 9 x 3 after 100 x
            10 x 3 and two of 100 x 8 x 3 was lighter on a Lighter day and
            set no target, where on any other day it set one. */
-        if (!atUsualWork(x, ref.slice(-2))) continue;
+        if (!atUsualWork(x, ref.slice(-USUAL_BEFORE))) continue;
         x.tag = x.deload ? 'deload' : 'light';
         x.deload = false;
         x.light = false;
@@ -615,8 +651,8 @@ export function idxAutoLighter(byEx: Record<string, Exposure[]>): Record<string,
           mT = Math.max(...ref.map(q => (q.tRaw == null ? -Infinity : q.tRaw)));
         if (
           mL > 0 &&
-          x.topL <= mL * LIGHTER_LOAD + 1e-9 &&
-          (x.tRaw == null || !isFinite(mT) || x.tRaw <= mT * LIGHTER_READING + 1e-9)
+          x.topL <= mL * LIGHTER_LOAD + EPS &&
+          (x.tRaw == null || !isFinite(mT) || x.tRaw <= mT * LIGHTER_READING + EPS)
         ) {
           x.auto = true;
           o.l++;
@@ -627,7 +663,10 @@ export function idxAutoLighter(byEx: Record<string, Exposure[]>): Record<string,
              alone (three in a row) read a deload week on a lift trained three
              times a week as a new level, then as a 16% fall and a stall
              (r31, from the review). */
-          if (run.length >= 3 && daysBetween(run[0].date, run[run.length - 1].date) >= 14) {
+          if (
+            run.length >= NEW_LEVEL.sessions &&
+            daysBetween(run[0].date, run[run.length - 1].date) >= NEW_LEVEL.days
+          ) {
             for (const q of run) {
               q.auto = false;
               q.keep = true;
@@ -660,7 +699,7 @@ export function idxAutoLighter(byEx: Record<string, Exposure[]>): Record<string,
         continue;
       }
       const o = wkAuto[weekStart(x.date)];
-      const ref = prev.filter(q => sameRR(q.rr, x.rr)).slice(-3);
+      const ref = prev.filter(q => sameRR(q.rr, x.rr)).slice(-LIGHTER_REF);
       if (o && o.l >= 2 && o.l * 2 >= o.n && ref.length && !atUsualLoad(x, ref)) {
         x.auto = true;
         continue;
@@ -700,11 +739,11 @@ const mid = (v: readonly number[]): number => [...v].sort((a, b) => a - b)[Math.
    nothing added, an assisted one before any weigh-in), every working set. */
 function setsAt(q: Exposure, usualW: number): number {
   let tw = -Infinity;
-  for (const p of q.pts) if (Math.abs(p.w - q.topW) < 1e-6) tw = Math.max(tw, p.load);
+  for (const p of q.pts) if (Math.abs(p.w - q.topW) < EPS_SAME) tw = Math.max(tw, p.load);
   if (!(tw > 0)) return q.pts.length;
   let n = 0;
   for (const p of q.pts)
-    if (p.load >= tw * LIGHTER_LOAD - 1e-9 && (p.load * LIGHTER_LOAD <= tw + 1e-9 || p.w <= usualW + 1e-6)) n++;
+    if (p.load >= tw * LIGHTER_LOAD - EPS && (p.load * LIGHTER_LOAD <= tw + EPS || p.w <= usualW + EPS_SAME)) n++;
   return n;
 }
 
@@ -717,7 +756,7 @@ function setsAt(q: Exposure, usualW: number): number {
    "over your first 2 sets". */
 /** A session's sets at load w as tried, in order, a missed one with its 0 reps and `missed` set. */
 export function triedAt(x: Exposure, w: number): (ExPoint & { missed?: true })[] {
-  const at = (p: ExPoint): boolean => Math.abs(p.w - w) < 1e-6;
+  const at = (p: ExPoint): boolean => Math.abs(p.w - w) < EPS_SAME;
   const miss = (x.miss || []).filter(at);
   const out: (ExPoint & { missed?: true })[] = [];
   let k = 0;
@@ -776,7 +815,7 @@ export function atUsualLoad(x: Exposure, ref: readonly Exposure[]): boolean {
   const mW = Math.max(...ref.map(q => q.topW)),
     mT = Math.max(...ref.map(q => readingOf(q, k) ?? -Infinity)),
     t = readingOf(x, k);
-  return !(x.topW < mW - 1e-6 || (t != null && isFinite(mT) && t < mT * USUAL_SHARE));
+  return !(x.topW < mW - EPS_SAME || (t != null && isFinite(mT) && t < mT * USUAL_SHARE));
 }
 
 /** Whether a lift's session on a deload or lighter day was at its usual
@@ -797,7 +836,7 @@ export function atUsualWork(x: Exposure, ref: readonly Exposure[]): boolean {
   if (!ref.length) return false;
   if (x.tRaw != null && ref.some(q => q.tRaw != null)) return atUsualLoad(x, ref);
   const k = usualSets(ref);
-  return ref.every(q => x.topW >= q.topW - 1e-6 && repsOf(x, k) >= repsOf(q, k) * USUAL_SHARE);
+  return ref.every(q => x.topW >= q.topW - EPS_SAME && repsOf(x, k) >= repsOf(q, k) * USUAL_SHARE);
 }
 
 /* Step 2b (r54, V's one rule for every session, PENDING 312 E: "a lift
@@ -851,7 +890,7 @@ export function idxShort(byEx: Record<string, Exposure[]>, planSets: (id: string
       last = x;
       if (lighter(x)) continue;
       const prior = normal.filter(q => sameRR(q.rr, x.rr));
-      const before = prior.slice(-2);
+      const before = prior.slice(-USUAL_BEFORE);
       const cap = before.length && !x.tag ? planSets(id, x) : null;
       // The sets to reach (339 h, r58): those its plan gave it when saved (ps), once an earlier session did as many.
       const hold = !x.tag && x.ps != null && prior.some(q => setsAt(q, q.topW) >= (x.ps || 0)) ? x.ps : null;
@@ -881,8 +920,8 @@ export function idxShort(byEx: Record<string, Exposure[]>, planSets: (id: string
     const loads = before.map(q => q.topW);
     const was = Math.max(...loads),
       usualW = usual(loads, x.topW);
-    const up = x.topW > was + 1e-6;
-    const n = up ? Math.max(setsAt(x, usualW), x.pts.filter(p => p.w >= was - 1e-6).length) : setsAt(x, usualW);
+    const up = x.topW > was + EPS_SAME;
+    const n = up ? Math.max(setsAt(x, usualW), x.pts.filter(p => p.w >= was - EPS_SAME).length) : setsAt(x, usualW);
     const sets = usual(
       before.map(q => setsAt(q, usualW)),
       n
@@ -900,11 +939,11 @@ export function idxShort(byEx: Record<string, Exposure[]>, planSets: (id: string
     const k = Math.min(usualN, want);
     const tr = (q: Exposure): number => readingOf(q, k) ?? 0;
     if (x.tRaw != null && before.every(q => q.tRaw != null))
-      return tr(x) < usual(before.map(tr), tr(x)) * USUAL_SHARE - 1e-9 ? 'reading' : undefined;
+      return tr(x) < usual(before.map(tr), tr(x)) * USUAL_SHARE - EPS ? 'reading' : undefined;
     // Reps a set over those sets (seconds on a hold).
     const per = (q: Exposure): number => repsOf(q, k);
-    const lighterW = x.topW < usualW - 1e-6;
-    return lighterW || per(x) < usual(before.map(per), per(x)) * USUAL_SHARE - 1e-9 ? 'reading' : undefined;
+    const lighterW = x.topW < usualW - EPS_SAME;
+    return lighterW || per(x) < usual(before.map(per), per(x)) * USUAL_SHARE - EPS ? 'reading' : undefined;
   }
 }
 
@@ -997,10 +1036,11 @@ export function idxPRsIn(M: Model, id: string, exps: Exposure[], prs: Pr[]): num
     }
     return m;
   };
-  const dominated = (p: ExPoint): boolean => front.some(q => q.pl >= p.pl - 1e-6 && q.r >= p.r);
+  const dominated = (p: ExPoint): boolean => front.some(q => q.pl >= p.pl - EPS_SAME && q.r >= p.r);
   const addFront = (p: ExPoint): void => {
     if (dominated(p)) return;
-    for (let k = front.length - 1; k >= 0; k--) if (p.pl >= front[k].pl - 1e-6 && p.r >= front[k].r) front.splice(k, 1);
+    for (let k = front.length - 1; k >= 0; k--)
+      if (p.pl >= front[k].pl - EPS_SAME && p.r >= front[k].r) front.splice(k, 1);
     front.push(p);
   };
   // Every load logged in the sessions before, for prSameLoad (r54).
@@ -1009,7 +1049,7 @@ export function idxPRsIn(M: Model, id: string, exps: Exposure[], prs: Pr[]): num
     let repPR: ExPoint | null = null;
     // Every set in this exposure is judged against the frontier as it stood
     // before the exposure, so sets within one session cannot cancel each other.
-    const sc = (q: ExPoint): number => e1(q.pl, q.r, q.rq) || q.pl * (1 + q.r / 30);
+    const sc = (q: ExPoint): number => e1(q.pl, q.r, q.rq) || epley(q.pl, q.r);
     /* Each set at the load its PRs judge it at (prSameLoad, r54: changing
        units or gyms is not a PR), and as logged (at), which the PR list
        shows. The earlier sets stay as logged: a set is only ever judged
@@ -1027,7 +1067,7 @@ export function idxPRsIn(M: Model, id: string, exps: Exposure[], prs: Pr[]): num
     const floor = front.reduce((a, q) => Math.max(a, sc(q)), 0) * REP_PR_SHARE;
     if (i > 0) {
       for (const p of pts) {
-        if (!dominated(p) && sc(p) >= floor - 1e-9 && (!repPR || sc(p) > sc(repPR))) repPR = p;
+        if (!dominated(p) && sc(p) >= floor - EPS && (!repPR || sc(p) > sc(repPR))) repPR = p;
       }
     }
     /* Its best estimate and the band it is in, at the loads it is judged at,
@@ -1049,7 +1089,7 @@ export function idxPRsIn(M: Model, id: string, exps: Exposure[], prs: Pr[]): num
       }
     }
     const pb = bestIn(i, bandJ);
-    const e1PR = i > 0 && pbJ != null && pb != null && pbJ > pb + 1e-6;
+    const e1PR = i > 0 && pbJ != null && pb != null && pbJ > pb + EPS_SAME;
     /* A weight PR (r29): more weight than any earlier working set of the
        lift, as logged (added load on a bodyweight lift, less help on an
        assisted one). It is also a rep PR by definition, so it used to show
@@ -1061,7 +1101,9 @@ export function idxPRsIn(M: Model, id: string, exps: Exposure[], prs: Pr[]): num
        toast named, as reps alone had picked it). */
     const wJ =
       i > 0 && !ex.timed
-        ? pts.filter(p => p.r > 0 && p.w > prevMaxW + 1e-6).sort((a, b) => b.w - a.w || sc(b) - sc(a) || b.r - a.r)[0]
+        ? pts
+            .filter(p => p.r > 0 && p.w > prevMaxW + EPS_SAME)
+            .sort((a, b) => b.w - a.w || sc(b) - sc(a) || b.r - a.r)[0]
         : null;
     const wPR = wJ ? asLogged(wJ) : null;
     // Any record at all (heavier, a best for its reps, more reps at a load): the stall test's sign the lift moved. Since r58 (343 6) no screen calls it a PR; a PR is `big`.
@@ -1082,7 +1124,7 @@ export function idxPRsIn(M: Model, id: string, exps: Exposure[], prs: Pr[]): num
        review: triceps 80 x 10 after 75 x 15 was announced as a PR though the
        set was weaker; sets past 12 reps have no estimate, so it was the
        band's first). Only stronger than ever, as the r32 rule says. */
-    const big = noE1(ex) || !!ex.timed || (!!ex.bw && !pts.some(q => q.pl > 0)) || pts.some(q => sc(q) > topSc + 1e-9);
+    const big = noE1(ex) || !!ex.timed || (!!ex.bw && !pts.some(q => q.pl > 0)) || pts.some(q => sc(q) > topSc + EPS);
     /* A PR is a PR whatever the day is called (r53, V 2026-10-18: a set
        stronger than any before it, logged on a Lighter day, was not
        counted). r32 kept every PR off deload and lighter days after a weaker
@@ -1126,7 +1168,7 @@ export function idxPRsIn(M: Model, id: string, exps: Exposure[], prs: Pr[]): num
         type: 'Rep PR',
         w: asLogged(repPR).w,
         r: repPR.r,
-        prevR: front.filter(q => q.pl >= repPR.pl - 1e-6).reduce((a, q) => Math.max(a, q.r), 0),
+        prevR: front.filter(q => q.pl >= repPR.pl - EPS_SAME).reduce((a, q) => Math.max(a, q.r), 0),
         big
       });
     if (x.pb != null) maxPb = maxPb == null ? x.pb : Math.max(maxPb, x.pb);
@@ -1146,12 +1188,12 @@ export function idxPRsIn(M: Model, id: string, exps: Exposure[], prs: Pr[]): num
    asked for: "for 3 weeks" was said of a lift flat for ten). */
 /** The stretch of sessions a stall is read over, or null when there is none. */
 export function stallStretch<X extends { date: string }>(wE: readonly X[]): X[] | null {
-  if (wE.length < 4) return null;
+  if (wE.length < STALL.min) return null;
   const lastE = wE[wE.length - 1].date;
   let i0 = wE.length - 1;
-  while (i0 > 0 && (wE.length - i0 < 6 || daysBetween(wE[i0].date, lastE) < 21)) i0--;
+  while (i0 > 0 && (wE.length - i0 < STALL.sessions || daysBetween(wE[i0].date, lastE) < STALL.days)) i0--;
   const l = wE.slice(i0);
-  return daysBetween(l[0].date, lastE) >= 21 ? l : null;
+  return daysBetween(l[0].date, lastE) >= STALL.days ? l : null;
 }
 
 /* The sessions in a range the stall test reads a strength reading over: those
@@ -1171,7 +1213,7 @@ function stallSpans(M: Model, id: string): { weeks: number; last: boolean }[] {
     const l = stallStretch(stallReads(q.inR));
     if (l)
       out.push({
-        weeks: Math.round(daysBetween(l[0].date, l[l.length - 1].date) / 7),
+        weeks: Math.round(daysBetween(l[0].date, l[l.length - 1].date) / WEEK_DAYS),
         last: l[l.length - 1] === q.inR[q.inR.length - 1]
       });
   }
@@ -1198,7 +1240,7 @@ export function stallWeeksIn(M: Model, id: string): number | null {
 /** The span a lift's stall was read over, in words. */
 export function stallWordsIn(M: Model, id: string): string {
   const s = stallSpans(M, id);
-  if (!s.length) return 'over its last 3 sessions';
+  if (!s.length) return `over its last ${STALL.noProgress} sessions`;
   const q = s.reduce((a, b) => (b.weeks < a.weeks ? b : a));
   return q.last ? `over the last ${q.weeks} weeks` : `over ${q.weeks} weeks`;
 }
@@ -1226,7 +1268,7 @@ export function stallScopesIn(
       const rr: [number, number] = [+it.repMin, +it.repMax];
       if (out.some(q => q.rr && exact(q.rr, rr))) continue;
       const inR = sc.real.filter(x => sameRR(x.rr, rr) && x.date >= sc.from);
-      if (inR.some(x => exact(x.rr, rr) && x.date >= addDays(last.date, -42))) out.push({ rr, inR });
+      if (inR.some(x => exact(x.rr, rr) && x.date >= addDays(last.date, -TREND_DAYS))) out.push({ rr, inR });
     }
   return out;
 }
@@ -1263,10 +1305,10 @@ export function idxLiftIn(
      RIR 3 read as strong as 270 x 5 called RIR 1, so the load going up
      15 lb showed as a stall. Otherwise the trend reads reps alone, the same
      way for every session. Bests, PRs and targets keep RIR as before. */
-  const recent = inRange.slice(-8);
+  const recent = inRange.slice(-RIR_TREND.sessions);
   const nPts = recent.reduce((a, x) => a + x.pts.length, 0),
     nRated = recent.reduce((a, x) => a + x.rated, 0);
-  const useAdj = M.s.settings.rirMode !== 'off' && nPts > 0 && nRated / nPts >= 0.8;
+  const useAdj = M.s.settings.rirMode !== 'off' && nPts > 0 && nRated / nPts >= RIR_TREND.share;
   for (const x of exps) x.tv = useAdj ? x.tAdj : x.tRaw;
   /* Stalled: the fitted strength line over the last 6 real sessions (4 at
      least, widened to cover 21 days when 6 do not) in the current rep range,
@@ -1308,7 +1350,7 @@ export function idxLiftIn(
   const current =
     !!lastReal &&
     lastReal.date >= winStart &&
-    lastReal.date >= addDays(M.today(), -42) &&
+    lastReal.date >= addDays(M.today(), -TREND_DAYS) &&
     !exI.archived &&
     M.s.exercises.some(e => e.id === id) &&
     !exInjuryIn(M, exI);
@@ -1345,12 +1387,12 @@ export function idxLiftIn(
            5, 4 at one load for 7 weeks "moved" every other week. */
       const z = l[l.length - 1],
         a0 = l[0];
-      const same = l.slice(0, -1).filter(x => Math.abs(x.topW - z.topW) < 1e-6 && x.topN >= z.topN);
+      const same = l.slice(0, -1).filter(x => Math.abs(x.topW - z.topW) < EPS_SAME && x.topN >= z.topN);
       const moved =
-        l.slice(-3).some(x => x.progress) ||
-        offSince(l[l.length - 3].date).some(listed) ||
-        z.topL > a0.topL + 1e-6 ||
-        z.topW > a0.topW + 1e-6 ||
+        l.slice(-STALL.noProgress).some(x => x.progress) ||
+        offSince(l[l.length - STALL.noProgress].date).some(listed) ||
+        z.topL > a0.topL + EPS_SAME ||
+        z.topW > a0.topW + EPS_SAME ||
         (same.length > 0 && z.topReps > Math.max(...same.map(x => x.topReps)));
       /* Flat is under 0.1% a week (r31): averaging working sets leaves
            rounding dust, and identical sessions came out at +1e-32 a
@@ -1372,13 +1414,13 @@ export function idxLiftIn(
       })();
       // Every session in l has a reading (withE1), as the ! says.
       const my = l.reduce((a, x) => a + x.tv!, 0) / l.length;
-      return sen != null && my > 0 && ((sen * 7) / my) * 100 < 0.1 && !moved;
+      return sen != null && my > 0 && ((sen * WEEK_DAYS) / my) * PERCENT < FLAT_PCT_WEEK && !moved;
     }
     return (
       withE1.length < 2 &&
-      inR.length >= 4 &&
-      inR.slice(-3).every(x => !x.progress) &&
-      !offSince(inR[inR.length - 3].date).some(x => x.progress)
+      inR.length >= STALL.min &&
+      inR.slice(-STALL.noProgress).every(x => !x.progress) &&
+      !offSince(inR[inR.length - STALL.noProgress].date).some(x => x.progress)
     );
   };
   if (!capped && current) stalled = stallScopesIn(M, id, sc).every(q => stalledIn(q.rr, q.inR));
@@ -1403,16 +1445,16 @@ export function idxLiftIn(
        pull-ups from BW+10 to BW+17.5 read as 40% stronger, where at an 80 kg
        weigh-in they are 5%. Goals have said so since r40 (goalState). */
     const spanD = w.length ? daysBetween(w[0].date, w[w.length - 1].date) : 0;
-    if (w.length >= 3 && spanD >= 14 && !(exI.bw && !(bwRefIn(M) > 0))) {
-      spanW = Math.max(2, Math.round(spanD / 7));
+    if (w.length >= TREND_MIN.sessions && spanD >= TREND_MIN.days && !(exI.bw && !(bwRefIn(M) > 0))) {
+      spanW = Math.max(2, Math.round(spanD / WEEK_DAYS));
       const ends = trendEnds(w);
-      pct = (ends.last.tv / ends.first.tv - 1) * 100;
+      pct = (ends.last.tv / ends.first.tv - 1) * PERCENT;
       // Slope in % of the mean per week, with its standard error. Moving or
       // falling needs 3% or more and the slope's 80% interval clear of zero.
       const f = slopeOf(w);
       if (f) {
-        slope = ((f.b * 7) / f.my) * 100;
-        slopeSe = f.se != null ? ((f.se * 7) / f.my) * 100 : null;
+        slope = ((f.b * WEEK_DAYS) / f.my) * PERCENT;
+        slopeSe = f.se != null ? ((f.se * WEEK_DAYS) / f.my) * PERCENT : null;
         const tq = t90(f.n - 2);
         const lo = slopeSe != null ? slope - tq * slopeSe : slope,
           hi = slopeSe != null ? slope + tq * slopeSe : slope;
@@ -1435,8 +1477,8 @@ export function idxLiftIn(
          the 2 to 8% day-to-day noise). */
       const z = w[w.length - 1],
         a0 = w[0];
-      const zr = z.pts.filter(p => Math.abs(p.w - z.topW) < 1e-6).map(p => p.r);
-      if (z.topW > a0.topW + 1e-6 && zr.length && Math.min(...zr) >= (z.rr ? +z.rr[0] : 1) && pct < 0) {
+      const zr = z.pts.filter(p => Math.abs(p.w - z.topW) < EPS_SAME).map(p => p.r);
+      if (z.topW > a0.topW + EPS_SAME && zr.length && Math.min(...zr) >= (z.rr ? +z.rr[0] : 1) && pct < 0) {
         loadUp = true;
         falling = false;
         if (pHi != null && pHi < 0) {
@@ -1476,9 +1518,9 @@ export function idxLiftIn(
      exposures while logged RIR climbed by a full rep or more. e1RM cannot see
      this, but it is the clearest sign that the load is due to go up. */
   let easier: ExStat['easier'] = null;
-  if (inRange.length >= 3) {
-    const l3 = inRange.slice(-3);
-    const sameW = l3.every(x => Math.abs(x.topW - l3[0].topW) < 1e-6);
+  if (inRange.length >= DRIFT_N) {
+    const l3 = inRange.slice(-DRIFT_N);
+    const sameW = l3.every(x => Math.abs(x.topW - l3[0].topW) < EPS_SAME);
     const allRir = l3.every(x => x.topRir != null);
     const repsHeld = l3.every(x => x.topReps >= l3[0].topReps);
     // Worked out before allRir is tested, so a missing top RIR compares as 0
@@ -1496,11 +1538,11 @@ export function idxLiftIn(
      up but the back sets fall away. That is a fatigue or rest-length signal,
      not lost strength, and no other number here shows it. */
   let fade: ExStat['fade'] = null;
-  if (inRange.length >= 3) {
-    const l3 = inRange.slice(-3);
+  if (inRange.length >= DRIFT_N) {
+    const l3 = inRange.slice(-DRIFT_N);
     // Each drop is read only once all three are known, as the ! say.
     if (
-      l3.every(x => Math.abs(x.topW - l3[0].topW) < 1e-6) &&
+      l3.every(x => Math.abs(x.topW - l3[0].topW) < EPS_SAME) &&
       l3.every(x => x.drop != null) &&
       l3[2].drop! - l3[0].drop! >= 2
     )
@@ -1583,7 +1625,7 @@ export function idxScoresIn(M: Model, exStats: Record<string, ExStat>): Score[] 
        review: "Chest +4%, rising: hold this volume" after 3 sessions, off one
        extra rep): its lifts count once they have 4 sessions over 3 weeks or
        more in the window. */
-    if (st.wN < 4 || st.wSpan < 21) continue;
+    if (st.wN < MUSCLE_TREND_MIN.sessions || st.wSpan < MUSCLE_TREND_MIN.days) continue;
     seenP[ex.primary] = (seenP[ex.primary] || 0) + 1;
     for (const m of ex.secondary) seenS[m] = (seenS[m] || 0) + 1;
     if (!(st.moving || st.falling)) continue;
@@ -1706,7 +1748,7 @@ export function lastOf(
      the target comes from gives no reps for it either (r55, the audit: after
      85 x 6, 6 stopped short, the target went back to 80 kg with 6s in grey). */
   const repsFrom =
-    rec !== base && (lighter(rec) || rec.short === 'reading' || Math.abs(rec.topW - base.topW) > 1e-6) ? base : rec;
+    rec !== base && (lighter(rec) || rec.short === 'reading' || Math.abs(rec.topW - base.topW) > EPS_SAME) ? base : rec;
   /* Grey reps are last time's reps at the working load only (r31): a top
      single before them is not a row to repeat, and in a pyramid the reps
      done at a lighter load are not reps due at this one (225 x 7, 205 x 8,
@@ -1730,7 +1772,7 @@ export function lastOf(
   const shown = rp.length ? rp : rec.pts;
   return {
     line,
-    prev: shown.map(fmt).slice(0, 30),
+    prev: shown.map(fmt).slice(0, LIMITS.sets),
     prevOff: shown.length < rec.pts.length || miss.length > 0 || undefined,
     lastR: (wp.length ? wp : repsFrom.pts).map(p => fl(p.r)),
     basis: rec !== base ? base.date : null
@@ -1851,15 +1893,16 @@ export function allTimeBestsIn(
       const d = prSameLoad(p.w, seen) - p.w,
         j = p.pl + d;
       const v = noE1(ex) ? null : e1(p.load + d, p.r, p.rq);
-      if (v != null && (!est || v > est.v + 1e-6)) est = { v, p, date: x.date };
+      if (v != null && (!est || v > est.v + EPS_SAME)) est = { v, p, date: x.date };
       // Heaviest and rep records at the PR load (prLoad, r32.1): on a bodyweight lift, by added load and reps, dated when first done.
-      if (!heavy || j > heavy.j + 1e-6 || (Math.abs(j - heavy.j) < 1e-6 && p.r > heavy.p.r))
+      if (!heavy || j > heavy.j + EPS_SAME || (Math.abs(j - heavy.j) < EPS_SAME && p.r > heavy.p.r))
         heavy = { p, j, date: x.date };
-      if (!front.some(q => q.j >= j - 1e-6 && q.p.r >= p.r)) fresh.push({ p, j });
+      if (!front.some(q => q.j >= j - EPS_SAME && q.p.r >= p.r)) fresh.push({ p, j });
     }
     for (const { p, j } of fresh) {
-      if (front.some(q => q.j >= j - 1e-6 && q.p.r >= p.r)) continue;
-      for (let k = front.length - 1; k >= 0; k--) if (j >= front[k].j - 1e-6 && p.r >= front[k].p.r) front.splice(k, 1);
+      if (front.some(q => q.j >= j - EPS_SAME && q.p.r >= p.r)) continue;
+      for (let k = front.length - 1; k >= 0; k--)
+        if (j >= front[k].j - EPS_SAME && p.r >= front[k].p.r) front.splice(k, 1);
       front.push({ p, j, date: x.date });
     }
     for (const p of x.pts) seen.add(p.w);

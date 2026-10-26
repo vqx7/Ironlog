@@ -174,7 +174,7 @@ function impBuild(m){
 function routineFromLog(sessions,ssOf){
   const all=sessions.filter(x=>!x.demo&&x.ex&&x.ex.length);if(!all.length)return null;
   const byDate=(a,b)=>a.date<b.date?-1:a.date>b.date?1:0;
-  const newest=all.reduce((m,x)=>x.date>m?x.date:m,all[0].date);const rec=all.filter(x=>x.date>=addDays(newest,-55)).sort(byDate);
+  const newest=all.reduce((m,x)=>x.date>m?x.date:m,all[0].date);const rec=all.filter(x=>x.date>=addDays(newest,1-IMPORT_DAYS)).sort(byDate);
   // A session is off (a deload, a lighter day) when it was tagged, or when most of its lifts read lighter or short of their usual (r54, the one rule).
   const I=IDX();const tot={},off={};for(const id in I.byEx)for(const x of I.byEx[id]){tot[x.sid]=(tot[x.sid]||0)+1;if(offTarget(x))off[x.sid]=(off[x.sid]||0)+1;}
   const offS=x=>x.deload||x.light||(tot[x.id]>0&&(off[x.id]||0)*2>=tot[x.id]);
@@ -187,7 +187,7 @@ function routineFromLog(sessions,ssOf){
   else{pop=rec.filter(x=>!offS(x));
     for(const x of pop){const L=lifts(x);let g=null,bj=0;for(const q of groups){const j=jac(L,q.ids);if(j>=0.5&&j>bj){g=q;bj=j;}}
       if(!g){g={list:[],ids:L};groups.push(g);}g.list.push(x);g.ids=L;}}
-  groups=groups.filter(g=>g.list.length>=2);
+  groups=groups.filter(g=>g.list.length>=IMPORT_REPEATS);
   if(!groups.length||groups.length>7||groups.reduce((a,g)=>a+g.list.length,0)<pop.length*0.8)return null;
   groups.sort((a,b)=>byDate(a.list[a.list.length-1],b.list[b.list.length-1]));
   if(!named)groups.forEach((g,i)=>{g.name='Day '+String.fromCharCode(65+i);});

@@ -10,7 +10,7 @@ import { dayLabel, defaultRoutine, TEMPLATES, routineFromTemplate, daySets, fixS
 import { keepExtra, cleanCardio, normalize, starterRoutine, starterSigs, plainTemplate } from './app/normalize';
 import { ENV, KEY, ACCT_LATER, OB_ACCT, OB_OUT, logBuf, logCut, log, unreadableRaw, unreadableForget, undoStack, undoPersist, undoRestore, undoForget, snapshot, demoFirstRun, demoKeep, backupDue, saveStateNow, storageStart, asideList } from './app/storage';
 import { saveNow, commit, assemble, cq, withTimeout, baseOf, mergeChunk, hasUnsent, cloudFlush, cloudPull, cloudInit, cloudStop, syncStart } from './app/sync';
-import { rtfOf, e1, e1inv, rtfAt, fitE, rtfBand, jumpCap, workLoad, repFloor, isWork, setCredit, lighter, offTarget, sameRR, setSecs, setupSecs, BACK_DAYS, SESSION_CAP, PACE_N, PACE_DAYS, PACE_MIN } from './app/formulas';
+import { rtfOf, e1, e1inv, rtfAt, fitE, rtfBand, jumpCap, workLoad, repFloor, isWork, setCredit, lighter, offTarget, sameRR, setSecs, setupSecs, BACK_DAYS, SESSION_CAP, PACE_N, PACE_DAYS, PACE_MIN, SHORT_MIN_SETS, LIGHTER_SET_SHARE } from './app/formulas';
 import { DIRTY_SAID, agoTxt, estMin, fmtDate, min5, rangeWords, repSpan, sessTm } from './app/format';
 import { ACCENT0, DSEC_ALIAS, FORM_SHEETS, REGION_WKS, VOL_MODES, HIDEABLE, HIDEABLE_KEYS } from './app/layout';
 import { ADD_ICON, MENU_ICON, SHARE_ICON } from './app/icons';
@@ -23,10 +23,10 @@ import { blockRest, editFp, effW, freeDraft, greyW, hintOnce, joinAdjacent, join
 import { LOAD_MODES, estInLoad, loadNote, loadWords } from './app/loads';
 import { prName } from './app/prs';
 import { aboveMax, belowMin } from './app/volume';
-import { GENERIC_WORKOUT, IMP_ALIAS, IMP_MAX_ROWS, impDate, impFromTable, impGuess, impHeader, impNorm, impRows, impSetsText, impXlsx } from './app/importing';
+import { GENERIC_WORKOUT, IMP_ALIAS, IMP_MAX_ROWS, IMPORT_DAYS, IMPORT_REPEATS, impDate, impFromTable, impGuess, impHeader, impNorm, impRows, impSetsText, impXlsx } from './app/importing';
 import { FB_ASK, FB_CATS, FB_CTX_MAX, FB_DAY, FB_HINT, FB_IMG_MB, FB_MAX, FB_MIN, FB_SHOT_RE, FB_TITLE, FB_WHAT } from './app/feedback';
 import { state, setState, ui, cloud, acct, acctWait, HIST_PAGE, setFx } from './app/store';
-import { sessionWord } from './app/analytics';
+import { sessionWord, PICK_DAYS } from './app/analytics';
 import { avgWeeksTxt } from './app/weeks';
 import { musTrend } from './app/coach';
 import { EX, U, activeRoutine, bwNoLoad, nextSets, exInjury, exName, freeMode, gymOf, injuredSet, invalidate, isDeloadWeek, isRestWeek, prof, rirHalfOn, sortedSessions, fromD, stepRead, toD, defPlan, planCredit, planFor, planSetsPerWeek, profPlan, profRule, routineUpdates, appBand, defBand, fitFloors, refit, plannedSets, stallWeeks, stallWords, barKg, capOf, exBarKg, gymRack, rackTol, fmtW, loadLabel, IDX, allTimeBests, sessionWords, bwAt, bwLoad, bwRef, bwRefLoad, calStats, dateIndex, hardCredit, isHard, loadOf, prFrame, prLoad, rirEff, rirEst, rirUsual, statsUpTo, tonnage, weekSessions, dayMinutes, pace, paceRatios, sessModelMin, actualAvg4, avgFirstWeek, avgWait, avgWeeks, firstFullWeek, lastLighterWeek, logBack, logStart, muscleStatus, recentLighter, regionBalance, weekNeed, weekRoutine, weekStats, weekStreak, weeksAvg, atRangeTop, coach, dropOnlyLift, fatigueStalls, movers, readiness, stalledIds, daysOff, easierText, heavierLoad, oddLoad, lightZero, incOf, lighterLoad, progStep, rackStep, suggestCore, suggest, hasTarget } from './app/live';

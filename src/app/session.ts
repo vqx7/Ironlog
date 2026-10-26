@@ -5,7 +5,7 @@
    session (suggestions, adjustments) moves with the engine in 3b. */
 
 import type { DraftBlock, DraftSet, Session, SessionEx, Target } from './types';
-import { uid, today } from './util';
+import { uid, today, PERCENT } from './util';
 import { isMissed, isWork } from './formulas';
 import { fmtDate } from './format';
 import { cleanChk } from './records';
@@ -95,9 +95,10 @@ export function targetText(b: DraftBlock): string | undefined {
     /^(\d+)(s?)\+ (reps )?(?:in one set|over (?:your first )?\d+ sets|in one hold|over (?:your first )?\d+ holds)( at .*)$/
   );
   if (!m) return b.target;
-  const hold = m[2] === 's';
+  const [, , s, reps, at] = m;
+  const hold = s === 's';
   const over = e.n === 1 ? (hold ? 'in one hold' : 'in one set') : `over ${e.n} ${hold ? 'holds' : 'sets'}`;
-  return `${(e.total as number) + 1}${m[2]}+ ${m[3] || ''}${over}${m[4]}`;
+  return `${(e.total as number) + 1}${s}+ ${reps || ''}${over}${at}`;
 }
 
 /* "Over your first 3 sets" only when the plan has more sets than that, so
@@ -128,7 +129,7 @@ export function sessProgress(d: { ex: DraftBlock[] }): { n: number; k: number; p
         n++;
         if (x.done) k++;
       }
-  return { n, k, pct: n ? (k / n) * 100 : 0 };
+  return { n, k, pct: n ? (k / n) * PERCENT : 0 };
 }
 
 /** The rest after an exercise: none before the next one of the same superset, else its plan's.

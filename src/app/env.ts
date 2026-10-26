@@ -39,6 +39,9 @@ export function canInstallHere(): boolean {
   return !!window.IRONLOG_APP && !isStandalone() && !(window.claude && typeof window.claude.use === 'function');
 }
 
+/** The Safari version from which iOS shows its compact bar, where Share sits in the ⋯ menu. */
+const IOS_COMPACT_BAR = 26;
+
 /** How this browser installs the app: its own prompt, the steps for Safari (26 or before), Chrome or another browser on an iPhone, or a menu. */
 export function installKind(): 'prompt' | 'ios-chrome' | 'ios-other' | 'ios-safari26' | 'ios-safari' | 'menu' {
   const ua = navigator.userAgent || '';
@@ -51,7 +54,7 @@ export function installKind(): 'prompt' | 'ios-chrome' | 'ios-other' | 'ios-safa
     if (/CriOS/.test(ua)) return 'ios-chrome';
     if (/FxiOS|EdgiOS|OPiOS/.test(ua)) return 'ios-other';
     const v = +((ua.match(/Version\/(\d+)/) || [])[1] || 0);
-    return v >= 26 ? 'ios-safari26' : 'ios-safari';
+    return v >= IOS_COMPACT_BAR ? 'ios-safari26' : 'ios-safari';
   }
   return 'menu';
 }

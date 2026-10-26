@@ -7,14 +7,52 @@
    the page still reads, as Stats says. */
 
 import { MK, isCompound, noE1 } from './library';
-import { RANGES, firstDate, rangeWeeks, weeksSpan } from './charts';
+import { RANGES, firstDate, rangeWeeks, weeksSpan, CHART_WEEKS } from './charts';
 import { fmtDate } from './format';
 import { loadNote } from './loads';
-import { addDays, daysBetween, r1, today, weekStart } from './util';
+import { addDays, daysBetween, r1, today, weekStart, WEEK_DAYS, PERCENT } from './util';
 import { log } from './storage';
 import { EX, IDX, U, hasTarget, regionBalance, toD } from './live';
 import { state, ui } from './store';
 import { fmtDateLong, fmtE, regionSrc } from './display';
+
+/** How Stats' charts are drawn (Chart.js settings, set by eye): the legend's
+    boxes and gap, the most ticks on each axis, about how many ticks a day
+    axis gets, the radar's legend box, ring step and least reach, the fonts,
+    the tooltip, bars, lines and points, the dashes of a target band, the
+    radar's minimum and the RIR line, the room over the tallest bar and the
+    step its scale rounds to, and the days a lift's chart and the bodyweight
+    chart show at least. */
+const CS = {
+  legendBox: 10,
+  legendGap: 12,
+  xTicks: 7,
+  yTicks: 6,
+  dayTicks: 6,
+  radarLegendBox: 12,
+  radarStep: 50,
+  radarMin: 150,
+  radarPoint: 3,
+  font: 11,
+  tickFont: 10,
+  tipPad: 9,
+  tipRadius: 8,
+  barRadius: 4,
+  lineWidth: 2.5,
+  hoverRadius: 6,
+  prRadius: 5.5,
+  pointRadius: 2.5,
+  bandDash: [3, 3],
+  minDash: [5, 4],
+  rirDash: [2, 3],
+  rirWidth: 1.5,
+  tension: 0.3,
+  yHead: 1.1,
+  yRound: 5,
+  exDays: 42,
+  bwDays: 28
+};
+import { RIR_CALL_TOP } from './formulas';
 
 /* ---------- chart windows ----------
    Charts start where your data starts. A weekly chart used to open eight
@@ -35,18 +73,18 @@ export function rangeKey(id: string, def?: string): string {
 }
 /** A weekly chart's weeks, oldest first, each marked when it is still ahead. */
 export function weekWindow(first: string | null, id: string, base?: number): { wk: string; fut: boolean }[] {
-  const b = base || 8;
+  const b = base || CHART_WEEKS;
   const cur = weekStart(today());
   if (!first) return [];
   const fw = weekStart(first);
   const n = weeksSpan(first);
   if (n <= b)
     return Array.from({ length: b }, (_, k) => {
-      const wk = addDays(fw, 7 * k);
+      const wk = addDays(fw, WEEK_DAYS * k);
       return { wk, fut: wk > cur };
     });
   const span = Math.min(n, Math.max(b, rangeWeeks(rangeKey(id), b)));
-  return Array.from({ length: span }, (_, k) => ({ wk: addDays(cur, -7 * (span - 1 - k)), fut: false }));
+  return Array.from({ length: span }, (_, k) => ({ wk: addDays(cur, -WEEK_DAYS * (span - 1 - k)), fut: false }));
 }
 /* Linear date axis: day numbers from a base date, labelled as dates. The
    window follows the same rule as the weekly one, and minSpan days of room
@@ -60,8 +98,8 @@ function dayWindow(
 ): { min: number; max: number } {
   const todayN = daysBetween(base, today());
   let right = Math.max(lastDay, todayN);
-  const w = rangeWeeks(rangeKey(id, def), 8);
-  const left = w === Infinity ? 0 : Math.max(0, right - w * 7 + 1);
+  const w = rangeWeeks(rangeKey(id, def), CHART_WEEKS);
+  const left = w === Infinity ? 0 : Math.max(0, right - w * WEEK_DAYS + 1);
   if (right - left < minSpan) right = left + minSpan;
   return { min: left, max: right };
 }
@@ -202,20 +240,26 @@ function baseOpts(): Opts {
     maintainAspectRatio: false,
     animation: false,
     interaction: { mode: 'index', intersect: false },
-    plugins: { legend: { position: 'bottom', labels: { color: ink, boxWidth: 10, boxHeight: 10, padding: 12 } } },
+    plugins: {
+      legend: {
+        position: 'bottom',
+        labels: { color: ink, boxWidth: CS.legendBox, boxHeight: CS.legendBox, padding: CS.legendGap }
+      }
+    },
     scales: {
       x: {
-        ticks: { color: ink, maxRotation: 0, autoSkip: true, maxTicksLimit: 7 },
+        ticks: { color: ink, maxRotation: 0, autoSkip: true, maxTicksLimit: CS.xTicks },
         grid: { display: false },
         border: { color: line }
       },
-      y: { ticks: { color: ink, maxTicksLimit: 6 }, grid: { color: line + '99' }, border: { display: false } }
+      y: { ticks: { color: ink, maxTicksLimit: CS.yTicks }, grid: { color: line + '99' }, border: { display: false } }
     }
   };
 }
 function dayAxis(base: string, win: { min: number; max: number }): Axis {
   const span = win.max - win.min;
-  const step = Math.max(7, Math.ceil(span / 6 / 7) * 7);
+  // Whole weeks a tick, about CS.dayTicks of them.
+  const step = Math.max(WEEK_DAYS, Math.ceil(span / CS.dayTicks / WEEK_DAYS) * WEEK_DAYS);
   return {
     type: 'linear',
     min: win.min,
@@ -250,7 +294,7 @@ function radarOpts(max: number): unknown {
     maintainAspectRatio: false,
     animation: false,
     plugins: {
-      legend: { labels: { color: ink, boxWidth: 12 } },
+      legend: { labels: { color: ink, boxWidth: CS.radarLegendBox } },
       tooltip: {
         callbacks: {
           label: (it: TipItem) =>
@@ -267,16 +311,16 @@ function radarOpts(max: number): unknown {
         // runs through the "100" label.
         ticks: {
           color: ink,
-          stepSize: 50,
+          stepSize: CS.radarStep,
           showLabelBackdrop: true,
           backdropColor: surf,
           backdropPadding: 2,
-          font: { size: 10 },
+          font: { size: CS.tickFont },
           z: 1
         },
         grid: { color: line },
         angleLines: { color: line },
-        pointLabels: { color: ink, font: { size: 11 } }
+        pointLabels: { color: ink, font: { size: CS.font } }
       }
     }
   };
@@ -294,20 +338,20 @@ export function mountCharts(): void {
   try {
     const D = C.defaults;
     D.font.family = getComputedStyle(document.body).fontFamily || 'system-ui, sans-serif';
-    D.font.size = 11;
+    D.font.size = CS.font;
     D.color = muted;
     const tt = D.plugins.tooltip;
     tt.backgroundColor = cssv('--ink');
     tt.titleColor = cssv('--surface');
     tt.bodyColor = cssv('--surface');
-    tt.padding = 9;
-    tt.cornerRadius = 8;
+    tt.padding = CS.tipPad;
+    tt.cornerRadius = CS.tipRadius;
     tt.displayColors = false;
     tt.titleFont = { weight: '600' };
-    D.elements.bar.borderRadius = 4;
+    D.elements.bar.borderRadius = CS.barRadius;
     D.elements.bar.borderSkipped = false;
-    D.elements.line.borderWidth = 2.5;
-    D.elements.point.hoverRadius = 6;
+    D.elements.line.borderWidth = CS.lineWidth;
+    D.elements.point.hoverRadius = CS.hoverRadius;
   } catch (e) {
     log('chart', e);
   }
@@ -320,9 +364,9 @@ export function mountCharts(): void {
     const faded = ink + '80';
     o.scales.x.ticks = {
       ...o.scales.x.ticks,
-      autoSkip: win.length > 8,
-      maxTicksLimit: win.length > 8 ? 7 : undefined,
-      font: { size: 10 },
+      autoSkip: win.length > CHART_WEEKS,
+      maxTicksLimit: win.length > CHART_WEEKS ? CS.xTicks : undefined,
+      font: { size: CS.tickFont },
       color: c => {
         const w = win[c.tick ? c.tick.value : c.index];
         return w && w.fut ? faded : ink;
@@ -332,7 +376,7 @@ export function mountCharts(): void {
   };
   // muscle weekly
   {
-    const win = weekWindow(sFirst, 'muscle', 8);
+    const win = weekWindow(sFirst, 'muscle', CHART_WEEKS);
     const m = MK.find(x => x === ui.dashMuscle);
     if (win.length && m) {
       const confV: (number | null)[] = [],
@@ -352,7 +396,9 @@ export function mountCharts(): void {
       // The band lines sit on a second, hidden axis so that turning on stacking
       // for the bars cannot stack them on top of each other. Both axes are pinned
       // to the same explicit range so the lines land where they should.
-      const yMax = Math.ceil((Math.max(hi + 2, ...confV.map((v, i) => (v || 0) + (assumV[i] || 0))) * 1.1) / 5) * 5;
+      const yMax =
+        Math.ceil((Math.max(hi + 2, ...confV.map((v, i) => (v || 0) + (assumV[i] || 0))) * CS.yHead) / CS.yRound) *
+        CS.yRound;
       const mOpts = baseOpts();
       mOpts.scales.x.stacked = true;
       mOpts.scales.y.stacked = true;
@@ -399,7 +445,7 @@ export function mountCharts(): void {
                     data: labels.map(() => lo),
                     borderColor: green + 'aa',
                     borderWidth: 1,
-                    borderDash: [3, 3],
+                    borderDash: CS.bandDash,
                     pointRadius: 0,
                     yAxisID: 'y1',
                     fill: false
@@ -410,7 +456,7 @@ export function mountCharts(): void {
                     data: labels.map(() => hi),
                     borderColor: green + 'aa',
                     borderWidth: 1,
-                    borderDash: [3, 3],
+                    borderDash: CS.bandDash,
                     backgroundColor: green + '22',
                     pointRadius: 0,
                     yAxisID: 'y1',
@@ -429,7 +475,10 @@ export function mountCharts(): void {
      400%, and the ring and every other spoke shrank to a quarter. The real
      share is in the table and the tooltip. */
   const RCAP = 200;
-  const rMax = Math.min(RCAP, Math.max(150, Math.ceil(Math.max(...regs.map(x => x.pct)) / 50) * 50));
+  const rMax = Math.min(
+    RCAP,
+    Math.max(CS.radarMin, Math.ceil(Math.max(...regs.map(x => x.pct)) / CS.radarStep) * CS.radarStep)
+  );
   const realPct = regs.map(x => Math.round(x.pct));
   mkChart('chRadar', {
     type: 'radar',
@@ -443,14 +492,14 @@ export function mountCharts(): void {
           borderColor: blue,
           backgroundColor: blue + '33',
           pointBackgroundColor: blue,
-          pointRadius: 3,
+          pointRadius: CS.radarPoint,
           borderWidth: 2
         },
         {
-          label: 'Minimum (100%)',
-          data: regs.map(() => 100),
+          label: `Minimum (${PERCENT}%)`,
+          data: regs.map(() => PERCENT),
           borderColor: green,
-          borderDash: [5, 4],
+          borderDash: CS.minDash,
           pointRadius: 0,
           borderWidth: 2,
           fill: false
@@ -495,7 +544,7 @@ export function mountCharts(): void {
           fill: 'start',
           cubicInterpolationMode: 'monotone',
           yAxisID: 'y',
-          pointRadius: isPR.map(x => (x ? 5.5 : 2.5)),
+          pointRadius: isPR.map(x => (x ? CS.prRadius : CS.pointRadius)),
           pointStyle: isPR.map(x => (x ? 'rectRot' : 'circle')),
           pointBorderWidth: isPR.map(x => (x ? 2 : 1)),
           pointBackgroundColor: prType.map(t => (t === 'e1RM' || t === 'WeightE1' ? green : t ? surf : blue)),
@@ -503,7 +552,7 @@ export function mountCharts(): void {
         }
       ];
       const eo = baseOpts();
-      const win = dayWindow(base, lastX, 'ex', 42, 'all');
+      const win = dayWindow(base, lastX, 'ex', CS.exDays, 'all');
       const ax = dayAxis(base, win);
       eo.scales.x = { ...eo.scales.x, ...ax, ticks: { ...eo.scales.x.ticks, ...ax.ticks } };
       eo.interaction = { mode: 'nearest', axis: 'x', intersect: false };
@@ -527,8 +576,8 @@ export function mountCharts(): void {
           data: exps.map((x, i) => ({ x: xs[i], y: x.topRir == null ? null : r1(x.topRir) })),
           borderColor: yellow,
           backgroundColor: yellow,
-          borderDash: [2, 3],
-          borderWidth: 1.5,
+          borderDash: CS.rirDash,
+          borderWidth: CS.rirWidth,
           pointRadius: 2,
           spanGaps: true,
           fill: false,
@@ -537,7 +586,7 @@ export function mountCharts(): void {
         eo.scales.y1 = {
           position: 'right',
           min: 0,
-          max: 5,
+          max: RIR_CALL_TOP,
           ticks: { color: cssv('--muted'), stepSize: 1 },
           grid: { drawOnChartArea: false },
           border: { display: false },
@@ -551,7 +600,7 @@ export function mountCharts(): void {
      bars alternated chest days with leg days, which are not comparable; weeks
      are. The unfinished current week is labelled as such. */
   {
-    const win = weekWindow(sFirst, 'vol', 8);
+    const win = weekWindow(sFirst, 'vol', CHART_WEEKS);
     const wks = win.map(w => w.wk);
     if (win.length) {
       const baseName = (n: string | null | undefined): string =>
@@ -611,13 +660,13 @@ export function mountCharts(): void {
   const b0 = bw[0];
   if (b0) {
     const avg = bw.map(b => {
-      const from = addDays(b.date, -6);
+      const from = addDays(b.date, -(WEEK_DAYS - 1));
       const w = bw.filter(x => x.date >= from && x.date <= b.date);
       return r1(toD(w.reduce((a, x) => a + x.kg, 0) / w.length) ?? 0);
     });
     const base = b0.date;
     const xs = bw.map(b => daysBetween(base, b.date));
-    const win = dayWindow(base, xs[xs.length - 1] ?? 0, 'bw', 28, 'all');
+    const win = dayWindow(base, xs[xs.length - 1] ?? 0, 'bw', CS.bwDays, 'all');
     const ax = dayAxis(base, win);
     const bo = baseOpts();
     bo.scales.x = { ...bo.scales.x, ...ax, ticks: { ...bo.scales.x.ticks, ...ax.ticks } };
@@ -638,11 +687,11 @@ export function mountCharts(): void {
             showLine: false
           },
           {
-            label: '7-day average',
+            label: `${WEEK_DAYS}-day average`,
             data: avg.map((v, i) => ({ x: xs[i], y: v })),
             borderColor: blue,
             pointRadius: 0,
-            tension: 0.3,
+            tension: CS.tension,
             borderWidth: 2
           }
         ]

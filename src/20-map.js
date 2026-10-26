@@ -23,7 +23,7 @@ function shortPlan(d,mins){
   const cost=()=>bl.reduce((a,x)=>a+(x.keep?x.keep*(x.per+x.rest)+(x.started?0:x.su):0),0)*pc/60;
   const byLow=arr=>arr.slice().sort((a,b)=>a.score-b.score);
   let guard=0;
-  while(cost()>mins&&guard++<500){const c=byLow(bl.filter(x=>x.keep>0&&x.done+x.keep>2));if(!c.length)break;c[0].keep--;}
+  while(cost()>mins&&guard++<500){const c=byLow(bl.filter(x=>x.keep>0&&x.done+x.keep>SHORT_MIN_SETS));if(!c.length)break;c[0].keep--;}
   const kept=x=>x.keep>0||x.done>0;
   // A fly does not cover a bench press: only a compound covers a compound.
   const covered=x=>bl.some(y=>y!==x&&kept(y)&&y.ex.primary===x.ex.primary&&(isCompound(y.ex)||!isCompound(x.ex)));
