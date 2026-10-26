@@ -219,8 +219,10 @@ const sess = (id, date, exId, sets) => ({ id, date, dayIdx: 0, dayId: null, dayN
     const { page } = P; const ev = (f, a) => page.evaluate(f, a);
     await ev(() => { const L = window.__ironlog; L.state.settings.onboarded = true; L.ui.tab = 'today'; L.render(); document.querySelector('.hero [data-act="startSession"]').click(); });
     await wait(200);
-    await ev(() => { const L = window.__ironlog; const b = L.state.draft.ex[0]; b.sets[0].w = null; b.sw = null; b.sets[0].r = 8; L.render(); });
-    await page.click('[data-act="sDone"][data-b="0"][data-s="0"]'); await wait(100);
+    /* A set ticked with no weight, as a build before r60 or another phone left it: since r60 a tick on this screen
+       waits for the weight (PENDING 344; tests/r60.js section 4), and Finish's question stays the net for such a set. */
+    await ev(() => { const L = window.__ironlog; const b = L.state.draft.ex[0]; b.sets[0].w = null; b.sw = null; b.sets[0].r = 8; b.sets[0].done = true; L.saveNow(); L.render(); });
+    await wait(100);
     await ev(() => window.__ironlog.ACT.finishNow()); await wait(100);
     const m = await ev(() => { const x = window.__ironlog.ui.modal; return x && { title: x.title, ok: x.okLabel, alt: x.alt && x.alt.label, body: x.body }; });
     ok(m && m.title === 'Add the missing loads?' && m.ok === 'Add loads' && m.alt === 'Save anyway' && /reps but no weight/.test(m.body), 'Finish with a set ticked and no weight asks to add it first', m);
