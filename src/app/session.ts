@@ -180,6 +180,7 @@ export function lastHead(b: DraftBlock, dup?: boolean): string {
 type Joinable = {
   exId: string;
   light?: boolean | undefined;
+  nw?: true | undefined;
   sets: DraftSet[];
   note?: string | undefined;
   rr?: [number, number] | null | undefined;
@@ -302,7 +303,7 @@ export interface DraftCardio {
 /** A workout in progress as a saved session of its ticked sets, or null when none is ticked or it is an edit. */
 export function draftSession(d: DraftLike, empty?: boolean): Session | null {
   if (d.editingId) return null;
-  const ex = joinAdjacent(d.ex.map(savedEx).filter(b => b.sets.length));
+  const ex = withNew(joinAdjacent(d.ex.map(savedEx).filter(b => b.sets.length)), d);
   // A copy with nothing ticked is no session, unless asked for as the agreed copy of a join (keepLost), where it is the base with no sets.
   if (!ex.length && !empty) return null;
   const chk = cleanChk(d.chk);
@@ -371,10 +372,30 @@ export function sameExOnce<X extends Joinable>(ex: readonly X[]): X[] {
     const wa = a.sets.filter(isWork).length,
       wb = b.sets.filter(isWork).length;
     a.sets.push(...b.sets);
+    // A new machine or gym marks the lift in the session, so its one exposure carries the mark when any block does (r61).
+    if (b.nw) a.nw = true;
     if (wb > wa && b.rr) a.rr = b.rr;
     else if (!a.rr && b.rr) a.rr = b.rr;
   }
   return out;
+}
+
+/* ---------- a new machine or gym (r61, PENDING 343 7) ---------- */
+
+/* "New machine or gym" in an exercise's menu marks the lift in the session
+   in progress: every block of it then carries nw, and the rules read the
+   lift as starting over from this session (liftReadIn), so a block of it
+   added after the mark reads so too. Finish saves the mark on each of the
+   lift's exercises, last, after the sets its plan gave it (withPlanSets),
+   where normalize writes it. */
+/** Whether the session in progress marks a lift as done at a new machine or gym. */
+export function markedNew(d: { ex: readonly { exId: string; nw?: true | undefined }[] }, exId: string): boolean {
+  return d.ex.some(b => b.exId === exId && !!b.nw);
+}
+
+/** Saved exercises with the mark on each lift the session marks, last. */
+export function withNew<B extends { exId: string }>(ex: readonly B[], d: Parameters<typeof markedNew>[0]): B[] {
+  return ex.map(b => (markedNew(d, b.exId) ? { ...b, nw: true as const } : b));
 }
 
 /* ---------- a session as a whole ---------- */
@@ -427,6 +448,8 @@ export function editFp(d: {
     ex: d.ex.map(b => [
       b.exId,
       (b.note || '').trim(),
+      // A new machine or gym marked or taken off is an edit too (r61).
+      !!b.nw,
       b.sets.map(x => [
         x.w == null ? null : +x.w,
         x.r == null || x.r === '' ? null : +x.r,

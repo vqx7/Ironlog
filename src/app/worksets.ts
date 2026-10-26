@@ -40,6 +40,7 @@ import {
   rackTol,
   bwRefLoad,
   IDX,
+  liftRead,
   pace,
   dayMinutes,
   calStats,
@@ -402,7 +403,7 @@ export function blockProgress(b: DraftBlock): { text: string; beat: boolean } | 
     let best: number | null = null,
       bs: DraftSet | null = null;
     const seen = new Set<number>();
-    for (const x of IDX().byEx[b.exId] || []) for (const p of x.pts) seen.add(p.w);
+    for (const x of liftRead(b.exId)) for (const p of x.pts) seen.add(p.w);
     for (const s of heavier) {
       const v = e1(bw + prSameLoad(+(s.w ?? 0) || 0, seen), +(s.r ?? 0), rirEst(s, ex));
       if (v != null && (best == null || v > best)) {

@@ -9,7 +9,7 @@ import type { DraftBlock, NextSetsAdj, Plan } from './types';
 import type { Drift, ExPoint, Exposure, ExerciseLike, Model, Suggestion } from './model';
 import type { LiftBests } from './analytics';
 import { EXIn, UIn, exInjuryIn, gymOfIn } from './model';
-import { IDXIn, bwLoadIn, bwRefLoadIn, lastOf, rirEstIn, statsUpToIn, triedAt } from './analytics';
+import { IDXIn, bwLoadIn, bwRefLoadIn, lastOf, liftReadIn, rirEstIn, statsUpToIn, triedAt } from './analytics';
 import { atCapOfIn, capOfIn, exBarKgIn, gymK, gymRackIn, gymStepIn, platesMode, rackGapIn, rackTolIn } from './gym';
 import {
   DEFAULT_STEP,
@@ -322,7 +322,7 @@ export function daysOffIn(M: Model, exId: string, opts?: SuggestOpts | null): nu
    r54 the session after that asked for the load from before the break. */
 function backDaysIn(M: Model, exId: string, plan: Plan, opts: SuggestOpts): number {
   const T = opts.before && isDate(opts.before) ? opts.before : M.today();
-  const all = (IDXIn(M).byEx[exId] || []).filter(x => x.date <= T);
+  const all = liftReadIn(M, exId, T);
   /* A lift trained in two rep ranges restarts each on its own first session
      back (r55.1, from the audit of r55: a light day eased after a break ended
      the heavy day's return too, so the heavy day's first session back asked
@@ -476,7 +476,8 @@ export function suggestCoreIn(M: Model, exId: string, plan: Plan, opts?: Suggest
      gets the target and "Last" it would have had on the day. */
   const T = opts.before && isDate(opts.before) ? opts.before : M.today();
   const every = IDXIn(M).byEx[exId];
-  const all = every ? every.filter(x => x.date <= T) : every;
+  // Since a new machine or gym, if one is marked (liftReadIn, r61): with none since, it is a first session.
+  const all = every ? liftReadIn(M, exId, T) : every;
   const ex = EXIn(M, exId);
   const injM = exInjuryIn(M, ex);
   // The last full session sets the target: not one done lighter, nor one short of its usual (r54, V's one rule). If there is nothing else, use them.
@@ -1464,7 +1465,9 @@ export function rackSnapIn(M: Model, ex: ExerciseLike, plan: Plan, res: Suggesti
 export function rackStepIn(M: Model, ex: ExerciseLike, at?: number | null): number | null {
   const I = IDXIn(M);
   I._rack = I._rack || {};
-  const key = UIn(M) + ex.id;
+  // Read since a new machine or gym (liftReadIn, r61), its rack another gym's before: kept by where that stretch starts.
+  const xs = liftReadIn(M, ex.id);
+  const key = UIn(M) + ex.id + '|' + (xs.length ? xs[0].sid : '');
   const fit = (ws: readonly number[]): number | null => {
     const fits = (g: number): boolean => ws.every(w => Math.abs(w / g - Math.round(w / g)) < RACK_FIT);
     const g = RACK[rackKind(ex)!][UIn(M)].find(fits);
@@ -1474,7 +1477,7 @@ export function rackStepIn(M: Model, ex: ExerciseLike, at?: number | null): numb
     const steps = (a: number, b: number): boolean => Math.abs(a / b - Math.round(a / b)) < RACK_FIT;
     let ws: number[] = [],
       g: number | null = null;
-    for (const x of (I.byEx[ex.id] || []).slice(-RACK_READ_N).reverse()) {
+    for (const x of xs.slice(-RACK_READ_N).reverse()) {
       const own: number[] = [];
       for (const p of x.pts) if (p.w > 0) own.push(toDIn(M, p.w)!);
       if (!own.length) continue;
@@ -1488,7 +1491,7 @@ export function rackStepIn(M: Model, ex: ExerciseLike, at?: number | null): numb
     }
     I._rack[key] = g;
   }
-  const logged = (I.byEx[ex.id] || []).some(x => x.pts.some(p => p.w > 0));
+  const logged = xs.some(x => x.pts.some(p => p.w > 0));
   const d = logged || at == null || !(at > 0) ? null : toDIn(M, at);
   return d == null ? I._rack[key] : fit([d]);
 }
@@ -1809,13 +1812,12 @@ export function oddLoadIn(M: Model, b: DraftBlock, si: number, date: string): st
     return `${say(w)} is under a third of your heaviest set today, ${say(topW)}.`;
   let best = 0,
     bestW = 0;
-  for (const x of IDXIn(M).byEx[b.exId] || [])
-    if (x.date <= date)
-      for (const p of x.pts)
-        if (bw + p.w > best) {
-          best = bw + p.w;
-          bestW = p.w;
-        }
+  for (const x of liftReadIn(M, b.exId, date))
+    for (const p of x.pts)
+      if (bw + p.w > best) {
+        best = bw + p.w;
+        bestW = p.w;
+      }
   if (best > 0 && load > Math.max(best, top) * ODD_BEST + EPS)
     return `${say(w)} is more than twice the heaviest you have logged on this exercise, ${say(bestW)}.`;
   return under;
@@ -1858,8 +1860,7 @@ export function oddLoadIn(M: Model, b: DraftBlock, si: number, date: string): st
    re-approaches without the 10% cap (341 b, rule 3). Read only when the lift
    is not back after a break, so its last session is in today's stretch. */
 function stretchTopIn(M: Model, exId: string, plan: Plan): number | null {
-  const T = M.today();
-  const xs = (IDXIn(M).byEx[exId] || []).filter(x => x.date <= T);
+  const xs = liftReadIn(M, exId, M.today());
   if (!xs.length) return null;
   let i = xs.length - 1;
   while (i > 0 && !afterBreak(xs[i - 1], xs[i].date)) i--;

@@ -45,6 +45,7 @@ import {
   dateIndexIn,
   hardCreditIn,
   isHardIn,
+  liftReadIn,
   loadOfIn,
   prFrameIn,
   prLoadIn,
@@ -158,6 +159,7 @@ export const calStats = live(calStatsIn);
 export const dateIndex = live(dateIndexIn);
 export const hardCredit = live(hardCreditIn);
 export const isHard = live(isHardIn);
+export const liftRead = live(liftReadIn);
 export const loadOf = live(loadOfIn);
 export const prFrame = live(prFrameIn);
 export const prLoad = live(prLoadIn);

@@ -33,6 +33,16 @@
 //      until the next load; and the workout in progress is still cleaned in
 //      place, the very object given, its own fields first in their order.
 //      (On r60 the first check fails too, by exactly those two inputs.)
+//   5  New machine or gym (343 7, 339 g, 338 B): the exercise menu marks a
+//      lift as done at a new machine or gym, and tapped again takes it off;
+//      marked, the lift reads as a first session (no target or grey load
+//      from the old gym, no PR while logged: the new gym's leg press at 280 x
+//      11 after 225 x 10), Finish saves the mark last on the exercise, and
+//      the lift starts over from that session (its bests and next target the
+//      new machine's, its dumbbell spacing read from it alone) with every
+//      session kept and counted; the log reopens as the same bytes, r60 keeps
+//      the mark it does not know, an edit from History can take it off, and
+//      normalize keeps it only as true (fails on r60: no such choice).
 const { open, engine, screenOf, screenDiff } = require('./h');
 const { wide, digest, specOf } = require('./wide');
 const FILE = process.argv[2] || 'index.html';
@@ -58,6 +68,10 @@ const GUIDE_FIXED = [
   ['Lighter sessions in a row for 2 weeks or more are a new level', 'Lighter sessions in a row, three or more over 2 weeks or more, are a new level']
 ];
 
+// The Guide's paragraph r61 adds (343 7): its markup, and its text as the page shows it.
+const GUIDE_ADDED = ["\n   <p><b>New machine or gym</b> (in an exercise's ⋯ menu during a session): the lift starts over from that session, as from a first one, so another machine's loads give no target, PR, or best. Its trend, stalls, and dumbbell steps read from that session on; earlier sessions stay in History and its chart. Tap it again before Finish to take it off.</p>"];
+const GUIDE_ADDED_TEXT = ["New machine or gym (in an exercise's ⋯ menu during a session): the lift starts over from that session, as from a first one, so another machine's loads give no target, PR, or best. Its trend, stalls, and dumbbell steps read from that session on; earlier sessions stay in History and its chart. Tap it again before Finish to take it off."];
+
 (async () => {
   const browser = await engine.launch();
 
@@ -77,8 +91,17 @@ const GUIDE_FIXED = [
       const spec = specOf(h);
       const [a, b] = await Promise.all([A.page.evaluate(digest, spec), B.page.evaluate(digest, spec)]);
       calls += b.split('\n').length;
-      if (a === b) same++;
-      else if (!first) { const la = a.split('\n'), lb = b.split('\n'); let k = 0; while (k < la.length && la[k] === lb[k]) k++; first = { seed: 61000 + i, line: k, r60: (la[k] || '').slice(0, 700), now: (lb[k] || '').slice(0, 700) }; }
+      /* A call tagged ~ (an id such as "constructor", which finds Object's
+         own field in the index) throws in both builds (wide.js): the two
+         must both throw, whatever words the error is put in, since those
+         name the expression that failed and r61 reads a lift's sessions
+         through one function (liftReadIn, 343 7). Every other line is
+         compared whole. */
+      const la = a.split('\n'), lb = b.split('\n');
+      const thrown = l => /\t"ERR [^"]*"$/.test(l);
+      const alike = (x, y) => x === y || (x[0] === '~' && y[0] === '~' && x.split('\t').slice(0, 2).join('\t') === y.split('\t').slice(0, 2).join('\t') && thrown(x) && thrown(y));
+      if (la.length === lb.length && la.every((l, k) => alike(l, lb[k]))) same++;
+      else if (!first) { let k = 0; while (k < la.length && alike(la[k], lb[k] || '')) k++; first = { seed: 61000 + i, line: k, r60: (la[k] || '').slice(0, 700), now: (lb[k] || '').slice(0, 700) }; }
     }
     ok(same === N, `1. the same answers as r60 on all ${N} wide histories (${same} identical, ${calls} calls, ${Math.round((Date.now() - t0) / 1000)} s)`, first);
     await A.ctx.close(); await B.ctx.close();
@@ -117,6 +140,12 @@ const GUIDE_FIXED = [
       ok(!missing.length, `1. the Guide in ${unit} with RIR ${rir}: r60 has each sentence section 2 corrects`, missing);
       const fix = t => GUIDE_FIXED.reduce((x, [was, now]) => x.replace(was, now), t);
       const a = { html: fix(a0.html), text: fix(a0.text) };
+      // The paragraph r61 adds (343 7, section 5), each there once, then left out so the rest is compared with r60's.
+      const added = GUIDE_ADDED.filter(p => b.html.split(p).length !== 2);
+      ok(!added.length, `1. the Guide in ${unit} with RIR ${rir}: the New machine or gym paragraph, once`, added);
+      b.html = GUIDE_ADDED.reduce((x, p) => x.replace(p, ''), b.html);
+      b.text = GUIDE_ADDED_TEXT.reduce((x, p) => x.replace(p, ''), b.text).replace(/\n{3,}/g, '\n\n');
+      a.text = a.text.replace(/\n{3,}/g, '\n\n');
       let k = 0; while (k < a.html.length && a.html[k] === b.html[k]) k++;
       ok(a.html === b.html && a.text === b.text, `1. the Guide in ${unit} with RIR ${rir}: the same markup and text as r60 (${b.text.length} characters)`, a.html === b.html ? { r60: a.text.slice(0, 300), now: b.text.slice(0, 300) } : { at: k, r60: a.html.slice(Math.max(0, k - 120), k + 200), now: b.html.slice(Math.max(0, k - 120), k + 200) });
       ok(!b.errors.length, `1. the Guide in ${unit} with RIR ${rir}: no page errors`, b.errors);
@@ -275,6 +304,117 @@ const GUIDE_FIXED = [
     ok(kept.same && kept.keys.join() === 'zz,date,ex,dayName', '4. the workout in progress comes back as the object given, cleaned in place, its own fields first in their order', kept);
     ok(!A.errors.length && !B.errors.length, '4. no page errors', [A.errors, B.errors]);
     await A.ctx.close(); await B.ctx.close();
+  }
+
+  // ---- 5. New machine or gym (343 7, 339 g, 338 B): a lift starts over from a session the menu marks, its history kept.
+  if (run(5)) {
+    const P = await open(FILE, { browser, clock: '2026-10-15T10:00:00' });
+    const ev = (f, a) => P.page.evaluate(f, a);
+    const wait = ms => new Promise(r => setTimeout(r, ms));
+    // Leg press at the old gym: six weekly sessions of 3 x 10, 200 to 225 kg, on a routine's one day, saved as Finish saves them.
+    await ev(() => {
+      const L = window.__ironlog; const s = L.state; s.settings.onboarded = true; s.settings.unit = 'kg'; s.settings.autoDone = false;
+      const R = { id: 'R61', name: 'R61', schedule: 'cycle', days: [{ id: 'D61', name: 'Legs', rest: false, items: [{ uid: 'i61', exId: 'legPress', sets: 3, repMin: 8, repMax: 12, rir: 2, rest: 120, inc: 5, ss: null }] }] };
+      s.routines = [R]; s.activeRoutineId = 'R61'; s.draft = null; s.injuries = [];
+      const days = ['2026-09-01', '2026-09-08', '2026-09-15', '2026-09-22', '2026-09-29', '2026-10-06'];
+      s.sessions = days.map((date, i) => ({ id: 'g' + i, date, dayIdx: 0, dayId: 'D61', dayName: 'Legs', routineId: 'R61', notes: '', ex: [{ exId: 'legPress', note: '', rr: [8, 12], sets: [0, 1, 2].map(() => ({ w: 200 + 5 * i, r: 10, rir: 2, warm: false, drop: false })), ps: 3 }] }));
+      L.state = L.normalize(s); L.invalidate(); L.saveNow(); L.ui.tab = 'today'; L.render();
+      L.ACT.startSession({ dataset: { day: '0' } });
+    });
+    await wait(200);
+    const block = () => ev(() => {
+      const L = window.__ironlog; const b = L.state.draft.ex[0]; const el = document.getElementById('blk-0');
+      return { target: b.target, hint: b.hint, sw: b.sw, w: b.sets.map(x => x.w), nw: b.nw === true, tag: !!el && !!el.querySelector('.bh') && /New machine/.test(el.querySelector('.bh').innerText), prs: el ? el.querySelectorAll('[data-pr], .bf-pr').length : -1 };
+    });
+    // The menu as a lifter opens it: the ⋯ on the exercise, then the option by its words.
+    const menu = async words => {
+      await P.page.click('#blk-0 [data-act="bMenu"]'); await wait(100);
+      const label = await ev(() => [...document.querySelectorAll('#modal [data-op="bNew"]')].map(x => x.textContent.trim()).join('|'));
+      if (words && label) { await P.page.click(`#modal [data-op="bNew"]`); await wait(150); }
+      else await ev(() => window.__ironlog.ACT.mClose());
+      return label;
+    };
+    const before = await block();
+    const label0 = await menu(true);
+    const marked = await block();
+    const label1 = await menu(false);
+    ok(label0 === 'New machine or gym' && label1 === 'Same machine as before', '5. the exercise menu offers New machine or gym, and once tapped, Same machine as before', [label0, label1]);
+    ok(before.target && /225/.test(before.target) && marked.nw && marked.target === '' && /^First time/.test(marked.hint) && marked.sw == null && marked.w.every(w => w == null) && marked.tag,
+      '5. marked, leg press reads as a first session at the new machine: no target from 225 kg, no grey load, the first-time hint, and a New machine tag on the exercise', { before, marked });
+    await menu(true);
+    const unmarked = await block();
+    ok(!unmarked.nw && unmarked.target === before.target && unmarked.sw === before.sw && !unmarked.tag, '5. tapped again, it reads its history again: the target and load it had before', { before, unmarked });
+    // The new gym's leg press reads heavier (338 B: 280 x 11 read as a weight PR, best estimate 392): marked, it sets no PR.
+    await menu(true);
+    await ev(() => { const L = window.__ironlog; const d = L.state.draft; for (const x of d.ex[0].sets) Object.assign(x, { w: 280, r: 11, rir: 1, done: true }); L.render(); });
+    await wait(100);
+    const live = await block();
+    ok(live.prs === 0, '5. sets of 280 x 11 at the new machine show no PR while logged', live);
+    const fin = await ev(async () => {
+      const L = window.__ironlog; const d = L.state.draft; d._rampAsked = true; d._leftAsked = true; L.ACT.finishNow(); await new Promise(r => setTimeout(r, 300)); if (L.ui.modal) L.ACT.mClose();
+      const sv = L.state.sessions.find(x => x.date === '2026-10-15'); const I = L.IDX(); const st = I.exStats.legPress;
+      const sg = L.suggest('legPress', { sets: 3, repMin: 8, repMax: 12, rir: 2, rest: 120, inc: 5 }, {});
+      const bests = L.allTimeBests('legPress');
+      return { keys: sv ? Object.keys(sv.ex[0]) : null, nw: sv && sv.ex[0].nw, prs: I.prs.filter(p => p.exId === 'legPress' && p.sid === (sv && sv.id)).length, oldPrs: I.prs.filter(p => p.exId === 'legPress').length,
+        n: st.n, best: st.bestAll, pct: st.pct, stalled: st.stalled, bestDate: bests && bests.est && bests.est.date, heavy: L.bestLine('legPress'), target: sg.target, w: sg.w, exps: I.byEx.legPress.length, hist: L.state.sessions.length };
+    });
+    ok(fin.nw === true && fin.keys && fin.keys.slice(-2).join() === 'ps,nw', '5. Finish saves the mark on the exercise, last, after the sets its plan gave it', fin);
+    ok(fin.prs === 0 && fin.bestDate === '2026-10-15' && /280/.test(fin.heavy) && fin.n === 7 && fin.exps === 7 && fin.hist === 7,
+      '5. saved: no PR, its bests are the new machine\'s (the best estimate and heaviest set from today), and its seven sessions are all kept and counted', fin);
+    ok(fin.pct == null && fin.stalled === false, '5. its trend starts over too: one session at the new machine is no trend yet (the old gym\'s 200 to 225 read with 280 would be a rise)', fin);
+    ok(fin.w != null && fin.w >= 280 && !/225/.test(fin.target), '5. the next target comes from the new machine\'s 280 x 11, not the old gym\'s loads', fin);
+    // Opened again, the log reads the same (each session's fingerprint, as the sync compares it), and the exercise's fields in Finish's order.
+    // (A session just saved is read with demo false from the next load on, as since r55; so both are read through normalize.)
+    const read = () => ev(() => { const L = window.__ironlog; const S = L.normalize(JSON.parse(JSON.stringify(L.state))); const sv = S.sessions.find(x => x.date === '2026-10-15'); return { h: S.sessions.map(x => L.Hx(x)).join(), keys: Object.keys(JSON.parse(JSON.stringify(sv.ex[0]))).join() }; });
+    const j0 = await read();
+    await P.page.reload(); await wait(400);
+    const j1 = await read();
+    ok(j0.h === j1.h && j0.keys === j1.keys, '5. opened again, every session reads the same, the mark where Finish put it', [j0, j1]);
+    const jNew = await ev(() => JSON.stringify(window.__ironlog.state.sessions));
+    // The way back: r60 (what a revert of r61 republishes) keeps the mark it does not know, in place, and r61 reads it again.
+    const raw = await ev(() => localStorage.getItem('ironlog.v1'));
+    const O = await open(OLD, { browser, clock: '2026-10-15T10:00:00', state: JSON.parse(raw) });
+    const jOld = await O.page.evaluate(() => JSON.stringify(window.__ironlog.state.sessions));
+    ok(jOld === jNew, '5. r60 opens the log with the mark kept as it came, every session the same bytes', [jOld.length, jNew.length]);
+    await O.ctx.close();
+    // An edit from History keeps the mark, and can take it off: then 280 x 11 reads against the old gym, a PR.
+    const ed = await ev(async () => {
+      const L = window.__ironlog; const sv = L.state.sessions.find(x => x.date === '2026-10-15');
+      L.ui.tab = 'history'; L.render(); L.ACT.histEdit({ dataset: { id: sv.id } }); await new Promise(r => setTimeout(r, 150));
+      return { nw: L.state.draft.ex[0].nw === true, id: sv.id };
+    });
+    const label2 = await menu(true);
+    const ed2 = await ev(async id => {
+      const L = window.__ironlog; const d = L.state.draft; d._rampAsked = true; d._leftAsked = true; L.ACT.finishNow(); await new Promise(r => setTimeout(r, 300)); if (L.ui.modal) L.ACT.mClose();
+      const sv = L.state.sessions.find(x => x.id === id);
+      return { draft: !!L.state.draft, nw: 'nw' in sv.ex[0], prs: L.IDX().prs.filter(p => p.exId === 'legPress' && p.sid === id).length };
+    }, ed.id);
+    ok(ed.nw && label2 === 'Same machine as before' && !ed2.draft && !ed2.nw && ed2.prs > 0, '5. an edit from History opens with the mark, and saved with it taken off, the session reads against the old gym again (a PR)', { ed, label2, ed2 });
+    // A mark only as true: anything else a damaged save carries is dropped, on a saved exercise and in a workout.
+    const clean = await ev(() => {
+      const L = window.__ironlog; const f = L.normalize(null);
+      const one = nw => L.normalize({ ...f, sessions: [{ id: 's', date: '2026-10-01', dayIdx: 0, dayId: null, dayName: 'S', routineId: '', ex: [{ exId: 'bench', rr: null, sets: [{ w: 60, r: 8 }], nw }] }], draft: { date: '2026-10-15', ex: [{ exId: 'bench', sets: [], nw }] } });
+      return [true, 1, 'yes', false].map(v => { const o = one(v); const a = o.sessions[0].ex[0], b = o.draft.ex[0]; return [a.nw === true, 'nw' in a, b.nw === true, 'nw' in b]; });
+    });
+    ok(JSON.stringify(clean) === JSON.stringify([[true, true, true, true], [false, false, false, false], [false, false, false, false], [false, false, false, false]]),
+      '5. normalize keeps a mark only as true, and drops 1, "yes" or false, on a saved exercise and in a workout', clean);
+    ok(!P.errors.length, '5. no page errors', P.errors);
+    await P.ctx.close();
+    // The new gym's dumbbells: in 5 lb steps where the old gym's went in 2.5, read alone once marked (the old ones would make it 2.5).
+    const Q = await open(FILE, { browser, clock: '2026-10-15T10:00:00' });
+    const rk = await Q.page.evaluate(() => {
+      const L = window.__ironlog; const s = L.state; s.settings.onboarded = true; s.settings.unit = 'lb';
+      const LB = 0.45359237; const S = (id, date, ws, nw) => ({ id, date, dayIdx: 0, dayId: null, dayName: 'S', routineId: '', free: true, notes: '', ex: [{ exId: 'dbBench', note: '', rr: [8, 12], sets: ws.map(w => ({ w: w * LB, r: 10, rir: 2, warm: false, drop: false })), ...(nw ? { nw: true } : {}) }] });
+      const old = [S('a', '2026-09-20', [42.5, 47.5]), S('b', '2026-09-27', [42.5, 47.5])];
+      s.sessions = [...old, S('c', '2026-10-04', [45, 50], false), S('d', '2026-10-11', [45, 50], false)];
+      L.state = L.normalize(s); L.invalidate(); const unmarked = L.rackStep(L.EX('dbBench')) / LB;
+      s.sessions = [...old, S('c', '2026-10-04', [45, 50], true), S('d', '2026-10-11', [45, 50], false)];
+      L.state = L.normalize(s); L.invalidate(); const marked = L.rackStep(L.EX('dbBench')) / LB;
+      return { unmarked: Math.round(unmarked * 100) / 100, marked: Math.round(marked * 100) / 100 };
+    });
+    ok(rk.unmarked === 2.5 && rk.marked === 5, '5. dumbbells read from the new gym alone once marked: 5 lb steps, where reading the old gym too gave 2.5', rk);
+    ok(!Q.errors.length, '5. no page errors (the rack)', Q.errors);
+    await Q.ctx.close();
   }
 
   await browser.close();

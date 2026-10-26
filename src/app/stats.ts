@@ -61,6 +61,7 @@ import {
 import {
   EX,
   IDX,
+  liftRead,
   U,
   activeRoutine,
   actualAvg4,
@@ -260,7 +261,7 @@ export function exHeadline(exId: string): Part {
   }
   if (ex.timed) {
     let best: { pl: number; r: number; w: number } | null = null;
-    for (const x of I.byEx[exId] || [])
+    for (const x of liftRead(exId))
       for (const p of x.pts)
         if (!best || p.pl > best.pl + EPS_SAME || (Math.abs(p.pl - best.pl) < EPS_SAME && p.r > best.r)) best = p;
     return line(
@@ -269,7 +270,7 @@ export function exHeadline(exId: string): Part {
   }
   if (noE1(ex)) {
     let best: { r: number; w: number } | null = null;
-    for (const x of I.byEx[exId] || [])
+    for (const x of liftRead(exId))
       for (const p of x.pts)
         if (!best || p.w > best.w + EPS_SAME || (Math.abs(p.w - best.w) < EPS_SAME && p.r > best.r)) best = p;
     return line(

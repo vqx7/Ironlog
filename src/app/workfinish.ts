@@ -9,7 +9,7 @@ import { estMin } from './format';
 import { rtfAt, isMissed, isWork, RIR_CALL_TOP } from './formulas';
 import { putById, andList, today, r1, EPS_SAME, MINUTE_S, SECOND_MS } from './util';
 import { cleanCardio, keepExtra } from './normalize';
-import { cleanChk } from './records';
+import { KNOWN_BLOCK, cleanChk } from './records';
 import type { Rec } from './records';
 import { loadNote } from './loads';
 import { prName, prOverall } from './prs';
@@ -31,7 +31,7 @@ import {
   fmtW
 } from './live';
 import { state, fx, ui } from './store';
-import { joinAdjacent, savedEx, draftCardio, effTarget } from './session';
+import { joinAdjacent, savedEx, draftCardio, effTarget, withNew } from './session';
 import type { DraftSet, CardioEntry, SessionEx, Session } from './types';
 import { setShort, fmtDateLong, fmtE, prSet } from './display';
 import { W, blkOpen, blkRef, redraw } from './workstate';
@@ -236,7 +236,7 @@ export function finish(): void {
 export function finishNow(): void {
   const d = state.draft;
   if (!d) return;
-  const ex = withPlanSets(joinAdjacent(d.ex.map(savedEx).filter(b => b.sets.length)), d, state.routines);
+  const ex = withNew(withPlanSets(joinAdjacent(d.ex.map(savedEx).filter(b => b.sets.length)), d, state.routines), d);
   const cardio = draftCardio(d).map(c => cleanCardio(c));
   if (!ex.length) {
     if (cardio.length && !d.editingId) {
@@ -384,7 +384,8 @@ function saveSession(d: Draft, ex: ReturnType<typeof savedEx>[], cardio: CardioE
           const ob = o.ex.find(x => x.exId === b.exId && !used.has(x));
           if (ob) {
             used.add(ob);
-            keepExtra(ob, b);
+            // Its own new-machine mark is the edit's to keep or take off (r61), so it is not carried from the copy saved before.
+            keepExtra(ob, b, KNOWN_BLOCK);
           }
         });
         state.sessions[i] = sess;

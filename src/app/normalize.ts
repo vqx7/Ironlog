@@ -50,6 +50,7 @@ import {
   KNOWN_CARDIO,
   KNOWN_ITEM,
   KNOWN_MEAS,
+  KNOWN_BLOCK,
   KNOWN_SEX,
   MEAS_MAX_CM,
   STATE_VERSION,
@@ -309,7 +310,9 @@ export function cleanSess(raw: unknown, si: number): Session {
               // The sets its routine's plan gave it when saved (r58, 339 h), last, as Finish writes it; absent unless recorded, so older records keep their hash.
               ...(typeof b.ps === 'number' && Number.isInteger(b.ps) && b.ps >= 1 && b.ps <= LIMITS.sets
                 ? { ps: b.ps }
-                : {})
+                : {}),
+              // Done at a new machine or gym (r61, 343 7), last, as Finish writes it; absent unless marked, so older records keep their hash.
+              ...(b.nw === true ? { nw: true as const } : {})
             },
             KNOWN_SEX
           )
@@ -767,92 +770,99 @@ function cleanDraft(d: Rec, date: string): DraftLike {
         keepRR = arr(b.keepRR),
         ln = rec(b.lastNote);
       return [
-        keepExtra(b0, {
-          ...(typeof b.bid === 'string' && b.bid ? { bid: fixId(b.bid) } : {}),
-          exId: fixId(b.exId),
-          plan,
-          note: typeof b.note === 'string' ? b.note : '',
-          inj: typeof b.inj === 'string' && isMuscleOrJoint(b.inj) ? b.inj : null,
-          hint: typeof b.hint === 'string' ? b.hint : '',
-          last: typeof b.last === 'string' ? b.last : '',
-          // Last time's sets as shown in the Last column (r44): short strings, absent in older drafts.
-          prev: prev
-            ? strings(prev, () => true)
-                .slice(0, LIMITS.sets)
-                .map(x => x.slice(0, LIMITS.lastText))
-            : undefined,
-          prevOff: b.prevOff === true ? true : undefined,
-          target: typeof b.target === 'string' ? b.target : '',
-          easier: typeof b.easier === 'string' ? b.easier : null,
-          tgt: cleanTgt(rec(b.tgt)),
-          // Last time's reps per set: shown as placeholders, so numbers only.
-          lastR: lastR
-            ? lastR.slice(0, LIMITS.sets).map(v => {
-                const n = numOr(v, NaN);
-                return isNum(n) && n >= 0 ? Math.min(n, LIMITS.reps) : null;
-              })
-            : [],
-          swappedFrom: typeof b.swappedFrom === 'string' ? fixId(b.swappedFrom) : null,
-          cut: b.cut === true ? true : undefined,
-          // Added on a lighter day or in a deload, the sets before they were halved, for Finish's offer to the routine (r54); absent otherwise.
-          full:
-            typeof b.full === 'number' && Number.isInteger(b.full) && b.full >= 1 && b.full <= LIMITS.sets
-              ? b.full
+        keepExtra(
+          b0,
+          {
+            ...(typeof b.bid === 'string' && b.bid ? { bid: fixId(b.bid) } : {}),
+            exId: fixId(b.exId),
+            plan,
+            note: typeof b.note === 'string' ? b.note : '',
+            inj: typeof b.inj === 'string' && isMuscleOrJoint(b.inj) ? b.inj : null,
+            hint: typeof b.hint === 'string' ? b.hint : '',
+            last: typeof b.last === 'string' ? b.last : '',
+            // Last time's sets as shown in the Last column (r44): short strings, absent in older drafts.
+            prev: prev
+              ? strings(prev, () => true)
+                  .slice(0, LIMITS.sets)
+                  .map(x => x.slice(0, LIMITS.lastText))
               : undefined,
-          light: b.light === true ? true : undefined,
-          // The date the target came from, when "Last" is a newer session short of its usual, lighter, or a deload (r26).
-          basis: typeof b.basis === 'string' && isDate(b.basis) ? b.basis : undefined,
-          // The suggested load the rows started from (r24); absent in older drafts.
-          sw: b.sw === null ? null : b.sw === undefined || !isNum(sw) ? undefined : clampN(b.sw, LOAD_MIN, LOAD_MAX, 0),
-          // The next sets adjusted from a set (r34), and Keep for the rest of the session.
-          adj:
-            adj &&
-            typeof adj.at === 'number' &&
-            Number.isInteger(adj.at) &&
-            adj.at >= 0 &&
-            isNum(adjW) &&
-            isNum(adjFrom)
-              ? {
-                  at: adj.at,
-                  w: clampN(adj.w, 0, LOAD_MAX, 0),
-                  from: clampN(adj.from, 0, LOAD_MAX, 0),
-                  r: Math.round(clampN(adj.r, 1, LIMITS.reps, 1)),
-                  up: adj.up === true,
-                  why: typeof adj.why === 'string' ? adj.why.slice(0, LIMITS.why) : '',
-                  // The row it came from (PENDING 333), last, where a build before it kept no such field.
-                  ...(typeof adj.rid === 'string' ? { rid: fixId(adj.rid) } : {})
-                }
-              : undefined,
-          adjOff: b.adjOff === true ? true : undefined,
-          // Editing a saved session keeps the rep range it was logged under.
-          keepRR:
-            b.keepRR === undefined
-              ? undefined
-              : keepRR && keepRR.length === 2
-                ? pair(Math.round(Number(keepRR[0])) || 1, Math.round(Number(keepRR[1])) || 1)
+            prevOff: b.prevOff === true ? true : undefined,
+            target: typeof b.target === 'string' ? b.target : '',
+            easier: typeof b.easier === 'string' ? b.easier : null,
+            tgt: cleanTgt(rec(b.tgt)),
+            // Last time's reps per set: shown as placeholders, so numbers only.
+            lastR: lastR
+              ? lastR.slice(0, LIMITS.sets).map(v => {
+                  const n = numOr(v, NaN);
+                  return isNum(n) && n >= 0 ? Math.min(n, LIMITS.reps) : null;
+                })
+              : [],
+            swappedFrom: typeof b.swappedFrom === 'string' ? fixId(b.swappedFrom) : null,
+            cut: b.cut === true ? true : undefined,
+            // Added on a lighter day or in a deload, the sets before they were halved, for Finish's offer to the routine (r54); absent otherwise.
+            full:
+              typeof b.full === 'number' && Number.isInteger(b.full) && b.full >= 1 && b.full <= LIMITS.sets
+                ? b.full
+                : undefined,
+            light: b.light === true ? true : undefined,
+            // The date the target came from, when "Last" is a newer session short of its usual, lighter, or a deload (r26).
+            basis: typeof b.basis === 'string' && isDate(b.basis) ? b.basis : undefined,
+            // The suggested load the rows started from (r24); absent in older drafts.
+            sw:
+              b.sw === null ? null : b.sw === undefined || !isNum(sw) ? undefined : clampN(b.sw, LOAD_MIN, LOAD_MAX, 0),
+            // The next sets adjusted from a set (r34), and Keep for the rest of the session.
+            adj:
+              adj &&
+              typeof adj.at === 'number' &&
+              Number.isInteger(adj.at) &&
+              adj.at >= 0 &&
+              isNum(adjW) &&
+              isNum(adjFrom)
+                ? {
+                    at: adj.at,
+                    w: clampN(adj.w, 0, LOAD_MAX, 0),
+                    from: clampN(adj.from, 0, LOAD_MAX, 0),
+                    r: Math.round(clampN(adj.r, 1, LIMITS.reps, 1)),
+                    up: adj.up === true,
+                    why: typeof adj.why === 'string' ? adj.why.slice(0, LIMITS.why) : '',
+                    // The row it came from (PENDING 333), last, where a build before it kept no such field.
+                    ...(typeof adj.rid === 'string' ? { rid: fixId(adj.rid) } : {})
+                  }
+                : undefined,
+            adjOff: b.adjOff === true ? true : undefined,
+            // Editing a saved session keeps the rep range it was logged under.
+            keepRR:
+              b.keepRR === undefined
+                ? undefined
+                : keepRR && keepRR.length === 2
+                  ? pair(Math.round(Number(keepRR[0])) || 1, Math.round(Number(keepRR[1])) || 1)
+                  : null,
+            lastNote:
+              ln && typeof ln.text === 'string' && typeof ln.date === 'string' && isDate(ln.date)
+                ? { date: ln.date, text: ln.text }
                 : null,
-          lastNote:
-            ln && typeof ln.text === 'string' && typeof ln.date === 'string' && isDate(ln.date)
-              ? { date: ln.date, text: ln.text }
-              : null,
-          sets: (arr(b.sets) || []).flatMap((x0): DraftSet[] => {
-            const x = rec(x0);
-            if (!x) return [];
-            return [
-              keepExtra(x0, {
-                w: x.w == null ? null : clampN(x.w, LOAD_MIN, LOAD_MAX, 0),
-                r: x.r == null || x.r === '' ? null : Math.round(clampN(x.r, 0, LIMITS.reps, 0)),
-                rir: x.rir == null || x.rir === '' ? null : clampN(x.rir, 0, EFFORT_TOP, null),
-                warm: !!x.warm,
-                drop: !!x.drop && !x.warm,
-                done: !!x.done,
-                cal: x.warm ? undefined : cleanCal(rec(x.cal)) || undefined,
-                // The row's own id (r56.1), last, where a build before it kept the unknown field.
-                ...(typeof x.rid === 'string' ? { rid: fixId(x.rid) } : {})
-              })
-            ];
-          })
-        } satisfies DraftBlock)
+            sets: (arr(b.sets) || []).flatMap((x0): DraftSet[] => {
+              const x = rec(x0);
+              if (!x) return [];
+              return [
+                keepExtra(x0, {
+                  w: x.w == null ? null : clampN(x.w, LOAD_MIN, LOAD_MAX, 0),
+                  r: x.r == null || x.r === '' ? null : Math.round(clampN(x.r, 0, LIMITS.reps, 0)),
+                  rir: x.rir == null || x.rir === '' ? null : clampN(x.rir, 0, EFFORT_TOP, null),
+                  warm: !!x.warm,
+                  drop: !!x.drop && !x.warm,
+                  done: !!x.done,
+                  cal: x.warm ? undefined : cleanCal(rec(x.cal)) || undefined,
+                  // The row's own id (r56.1), last, where a build before it kept the unknown field.
+                  ...(typeof x.rid === 'string' ? { rid: fixId(x.rid) } : {})
+                })
+              ];
+            }),
+            // Done at a new machine or gym (r61, 343 7), last, where the menu adds it; absent unless marked.
+            ...(b.nw === true ? { nw: true as const } : {})
+          } satisfies DraftBlock,
+          KNOWN_BLOCK
+        )
       ];
     })
   });

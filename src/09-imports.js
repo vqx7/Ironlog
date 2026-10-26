@@ -19,7 +19,7 @@ import { EXTRA_MAX, LIMITS, sessCmp } from './app/records';
 import { PLATE_MODES, dbListOf, gymClean, platesMode, platesPerSide } from './app/gym';
 import { chunksOf, emptyChunk, isChunkId, realCount } from './app/chunks';
 import { Hx, canon, mergeDraft } from './app/merge';
-import { DELOAD_NOTE, LIGHTER_NOTE, blockRest, editFp, effW, freeDraft, greyW, hintOnce, joinAdjacent, joinRows, joinable, newRow, overSets, sameExOnce, savedEx, whyTarget } from './app/session';
+import { DELOAD_NOTE, LIGHTER_NOTE, blockRest, editFp, effW, freeDraft, greyW, hintOnce, joinAdjacent, joinRows, joinable, markedNew, newRow, overSets, sameExOnce, savedEx, whyTarget } from './app/session';
 import { LOAD_MODES, estInLoad, loadNote, loadWords } from './app/loads';
 import { prName } from './app/prs';
 import { aboveMax, belowMin } from './app/volume';

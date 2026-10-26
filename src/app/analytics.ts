@@ -23,7 +23,7 @@ import type {
 } from './model';
 import { MK, SLOW_RECOVERY, bwShare, isCompound, loadMode, noE1 } from './library';
 import { addDays, daysBetween, median, r1, weekStart, EPS, EPS_SAME, WEEK_DAYS, PERCENT } from './util';
-import { EXIn, activeRoutineIn, exInjuryIn, rirHalfOnIn, sortedSessionsIn } from './model';
+import { EXIn, activeRoutineIn, exInjuryIn, rirHalfOnIn, sinceNew, sortedSessionsIn, stretchesOf } from './model';
 import {
   BACK_DAYS,
   GROW_PCT,
@@ -351,7 +351,11 @@ export function IDXIn(M: Model): Idx {
   const prs: Pr[] = [];
   const exStats: Record<string, ExStat> = {};
   for (const id of Object.keys(byEx)) {
-    const maxBest = idxPRsIn(M, id, byEx[id], prs);
+    /* Each stretch's PRs judged against that stretch alone (a new machine
+       or gym starts the lift over, r61), the list keeping every stretch's;
+       the lift's bests are its newest stretch's. */
+    let maxBest: number | null = null;
+    for (const part of stretchesOf(byEx[id])) maxBest = idxPRsIn(M, id, part, prs);
     exStats[id] = idxLiftIn(M, id, byEx[id], maxBest, anchor, winStart, prs);
   }
   const scores = idxScoresIn(M, exStats);
@@ -372,6 +376,22 @@ export function IDXIn(M: Model): Idx {
     rirCov: { logged: V.rirLogged, total: V.rirTotal }
   };
   return M.c._idx;
+}
+
+/* The sessions of a lift its rules read up to a date (r61, PENDING 343 7):
+   those since its newest New machine or gym mark (sinceNew), and, while the
+   session in progress marks the lift (a block's nw), only those after that
+   session's day, since it starts the lift over: none until one is logged
+   after it. The target, the return after a break, the next sets, the rack's
+   spacing, a load far off and the live PR read a lift through this. */
+/** A lift's sessions up to a date (all of them with none) as its rules read them: since a new machine or gym. */
+export function liftReadIn(M: Model, exId: string, T?: string): Exposure[] {
+  const every = IDXIn(M).byEx[exId] || [];
+  const all = T === undefined ? every : every.filter(x => x.date <= T);
+  const d = M.s.draft;
+  if (d && (T === undefined || d.date <= T) && d.ex.some(b => b.exId === exId && b.nw))
+    return sinceNew(all.filter(x => x.date > d.date));
+  return sinceNew(all);
 }
 
 /* Step 1: every session in date order. Hard sets per week, per day and per
@@ -569,6 +589,7 @@ export function idxSessionsIn(M: Model, sessions: readonly Session[]) {
         held: !!b.inj,
         rr: b.rr || null,
         ...(b.ps ? { ps: b.ps } : {}),
+        ...(b.nw ? { nw: true as const } : {}),
         topN: atTop.length,
         tAdj,
         tRaw,
@@ -623,7 +644,8 @@ export function idxAutoLighter(byEx: Record<string, Exposure[]>): Record<string,
     let run: Exposure[] = [];
     let before: Exposure | null = null;
     for (const x of exps) {
-      if (afterBreak(before, x.date)) {
+      // A new machine or gym starts the lift over as a break does (r61).
+      if (afterBreak(before, x.date) || x.nw) {
         prev.length = 0;
         run = [];
       }
@@ -691,7 +713,7 @@ export function idxAutoLighter(byEx: Record<string, Exposure[]>): Record<string,
     const prev: Exposure[] = [];
     let before: Exposure | null = null;
     for (const x of byEx[id]) {
-      if (afterBreak(before, x.date)) prev.length = 0;
+      if (afterBreak(before, x.date) || x.nw) prev.length = 0;
       before = x;
       if (x.deload || x.light) continue;
       if (x.auto || x.keep) {
@@ -886,7 +908,7 @@ export function idxShort(byEx: Record<string, Exposure[]>, planSets: (id: string
     const normal: Exposure[] = [];
     let last: Exposure | null = null;
     for (const x of byEx[id]) {
-      if (afterBreak(last, x.date)) normal.length = 0;
+      if (afterBreak(last, x.date) || x.nw) normal.length = 0;
       last = x;
       if (lighter(x)) continue;
       const prior = normal.filter(q => sameRR(q.rr, x.rr));
@@ -1291,6 +1313,8 @@ export function idxLiftIn(
      purpose is not evidence of a stall. */
   const sc = trendScope(exps, anchor);
   const { real, curRR, inRange, lastReal } = sc;
+  // The lift as it is now: its sessions since a new machine or gym (sinceNew, r61), which its bests and readings come from; its count is every session.
+  const cur = sinceNew(exps);
   /* At the heaviest load the machine or rack has, progress moves to reps and
      then to harder reps (tempo, pauses, one side), which the load-based PR
      tests cannot see. Such a lift is marked capped rather than stalled. */
@@ -1376,7 +1400,7 @@ export function idxLiftIn(
     const inR = all.filter(x => !x.held);
     const withE1 = stallReads(all);
     const offSince = (from: string): Exposure[] =>
-      exps.filter(x => (lighter(x) || x.held) && sameRR(x.rr, rr) && x.date >= from);
+      cur.filter(x => (lighter(x) || x.held) && sameRR(x.rr, rr) && x.date >= from);
     const l = stallStretch(withE1);
     if (l) {
       /* More reps at the same working load over no more sets is progress
@@ -1552,12 +1576,12 @@ export function idxLiftIn(
   // the live PR badge compare against. bestAll ignores rep range.
   let bestCur: number | null = null;
   const byBand: Record<number, number> = {};
-  for (const x of exps) {
+  for (const x of cur) {
     if (x.best == null) continue;
     if (sameRR(x.rr, curRR)) bestCur = bestCur == null ? x.best : Math.max(bestCur, x.best);
   }
   // A session with an estimate at the PR load has its band, as the ! say.
-  for (const x of exps) if (x.pb != null) byBand[x.pbb!] = Math.max(byBand[x.pbb!] || 0, x.pb);
+  for (const x of cur) if (x.pb != null) byBand[x.pbb!] = Math.max(byBand[x.pbb!] || 0, x.pb);
   // fresh: trained in the last 42 days, so its trend still says something about the muscle now.
   // Done within the last 4 weeks (r34.2: 42 days let a lift 6 weeks off still read "up" and project ahead after a break).
   const fresh = !!lastReal && lastReal.date >= addDays(M.today(), -BACK_DAYS);
@@ -1581,7 +1605,7 @@ export function idxLiftIn(
     byBand,
     wN: w.length,
     wSpan: w.length ? daysBetween(w[0].date, w[w.length - 1].date) : 0,
-    last: real.length ? real[real.length - 1] : exps[exps.length - 1],
+    last: real.length ? real[real.length - 1] : cur[cur.length - 1],
     best: bestCur,
     bestAll: maxBest,
     rr: curRR,
@@ -1835,7 +1859,7 @@ export function prFrameIn(M: Model, exId: string, s: LoadedSet, date: string): P
   const I = IDXIn(M);
   const every = I.byEx[exId];
   if (!every || !every.length) return null;
-  const exps = date ? every.filter(x => x.date <= date) : every;
+  const exps = date ? liftReadIn(M, exId, date) : sinceNew(every);
   if (!exps.length) return null;
   const ex = EXIn(M, exId);
   const seen = new Set<number>();
@@ -1879,7 +1903,8 @@ export function allTimeBestsIn(
   last: string | undefined;
 } | null {
   const all = IDXIn(M).byEx[id];
-  const exps = all && upTo ? all.filter(x => x.date <= upTo) : all;
+  // Since a new machine or gym, if one is marked (r61): another machine's loads are no record here.
+  const exps = all ? sinceNew(upTo ? all.filter(x => x.date <= upTo) : all) : all;
   if (!exps || !exps.length) return null;
   const ex = EXIn(M, id);
   let est: (BestAt & { v: number }) | null = null,

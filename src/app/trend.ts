@@ -5,6 +5,7 @@
    exposures these read (model.ts). */
 
 import type { Exposure } from './model';
+import { sinceNew } from './model';
 import { addDays } from './util';
 import { afterBreak, lighter, sameRR, TREND_DAYS } from './formulas';
 
@@ -21,9 +22,12 @@ type Read = { tv: number };
    "look at recovery", while every session back was heavier than the one
    before); and the 6 weeks up to the lift's own last session (r30: it ended
    at the newest session of any kind, so logging an upper day moved a split
-   squat's trend from +14% to +9% without a new split squat set). The stall
-   test reads the same sessions (inRange). */
-export function trendScope<X extends Exposure>(exps: readonly X[], anchor: string) {
+   squat's trend from +14% to +9% without a new split squat set). A new
+   machine or gym starts the lift over (r61, sinceNew): its sessions before
+   it are another machine's, read by none of these. The stall test reads
+   the same sessions (inRange). */
+export function trendScope<X extends Exposure>(every: readonly X[], anchor: string) {
+  const exps = sinceNew(every);
   const real = exps.filter(x => !lighter(x));
   const curRR = real.length ? real[real.length - 1].rr : null;
   let from = '';

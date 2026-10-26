@@ -35,6 +35,7 @@ import { effShow, rirScale } from './effort';
 import {
   EX,
   IDX,
+  liftRead,
   U,
   activeRoutine,
   allTimeBests,
@@ -170,7 +171,7 @@ export function topSetPt(ex: ExerciseLike, x: Exposure): { v: number; txt: strin
 /** A lift's strongest working set by reps alone, with its date; at one score, the one with more reps (r55). */
 export function bestSet(exId: string): { v: number; w: number; r: number; date: string } | null {
   let b: { v: number; w: number; r: number; date: string } | null = null;
-  for (const x of IDX().byEx[exId] || [])
+  for (const x of liftRead(exId))
     for (const p of x.pts) {
       const v = trendE(p.load, p.r, 0) || p.load;
       if (!b || v > b.v + EPS || (v > b.v - EPS && p.r > b.r)) b = { v, w: p.w, r: p.r, date: x.date };
@@ -460,7 +461,8 @@ export function goalState(exId: string): {
   const ex = EX(exId);
   const g = ex && ex.goal;
   if (!g || !goalOk(ex)) return null;
-  const exps = IDX().byEx[exId] || [];
+  // Since a new machine or gym (liftRead, r61): a goal reached at another machine is not reached here.
+  const exps = liftRead(exId);
   const bw = bwRefLoad(ex);
   // With no weigh-in a bodyweight lift has no load to compare: say so rather than a number read from the added load alone (the review of r40).
   const noBw = !!ex.bw && !((bwRef() ?? 0) > 0);

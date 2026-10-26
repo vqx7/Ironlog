@@ -48,7 +48,8 @@ import {
   hintOnce,
   sessProgress,
   newRow,
-  editFp
+  editFp,
+  markedNew
 } from './session';
 import type { DraftBlock, DraftSet } from './types';
 import type { ExerciseLike } from './model';
@@ -108,6 +109,9 @@ import { finish, finishNow } from './workfinish';
 import { LIMITS, EFFORT_TOP } from './records';
 import { PICK_DAYS } from './analytics';
 
+/** What the New machine tag on an exercise says, tapped (r61). */
+const NEW_TIP =
+  'A new machine or gym: its targets, trend, stalls, PRs and bests start over from this session. Earlier sessions stay in History. Take it off in the ⋯ menu.';
 /** The gap above the cardio buttons when there are entries, in pixels. */
 const CARDIO_ADD_GAP_PX = 10;
 /** After an auto-mark, a tap on that set's checkmark within this many milliseconds confirms it rather than undoing it (r28). */
@@ -418,7 +422,7 @@ function blockPart(
     !!b.lastR &&
     b.lastR.some(r => r != null) &&
     b.sets.some((s, i) => !s.done && !s.warm && !s.drop && s.r == null && lastRFor(b, i) != null);
-  return html`<section class=${'block' + (ss ? ' ss' : '')} id=${`blk-${bi}`} data-bi=${bi}><div class="bh">${bgrip(bi, ex.name)}<div class="bh-m"><h3 aria-labelledby=${ex.note ? `bhn-${bi}` : nothing}><span id=${`bhn-${bi}`}>${ex.name}</span>${ex.note ? html` ${tipButton(ex.note, 'About ' + ex.name)}` : ''}</h3><p class="small muted">${ML[ex.primary]} · ${work || p.sets}×${repSpan(p.repMin, p.repMax, '-')}${ex.timed ? 's' : ''}${ex.perSide ? '/side' : ''}${nr ? '' : ` @${b.inj || ((d.light || d.deload || b.light) && b.last) ? effLeastShort(rirScale(), LIGHT_RIR) : effTgt(p.rir)}`} · ${p.rest}s${ss ? html` · <span class="tag blue">Superset ${ss}</span>` : ''}${b.inj ? html` · <span class="tag red">Injury: ${injLabel(b.inj)}</span>` : ''}</p>${lmChips(ex)}</div>
+  return html`<section class=${'block' + (ss ? ' ss' : '')} id=${`blk-${bi}`} data-bi=${bi}><div class="bh">${bgrip(bi, ex.name)}<div class="bh-m"><h3 aria-labelledby=${ex.note ? `bhn-${bi}` : nothing}><span id=${`bhn-${bi}`}>${ex.name}</span>${ex.note ? html` ${tipButton(ex.note, 'About ' + ex.name)}` : ''}</h3><p class="small muted">${ML[ex.primary]} · ${work || p.sets}×${repSpan(p.repMin, p.repMax, '-')}${ex.timed ? 's' : ''}${ex.perSide ? '/side' : ''}${nr ? '' : ` @${b.inj || ((d.light || d.deload || b.light) && b.last) ? effLeastShort(rirScale(), LIGHT_RIR) : effTgt(p.rir)}`} · ${p.rest}s${ss ? html` · <span class="tag blue">Superset ${ss}</span>` : ''}${b.inj ? html` · <span class="tag red">Injury: ${injLabel(b.inj)}</span>` : ''}${markedNew(d, b.exId) ? html` · <span class="tag" data-tip=${NEW_TIP}>New machine</span>` : ''}</p>${lmChips(ex)}</div>
       <div class="bh-acts">${!d.editingId && blockDone(b) ? html`<button class="ib" aria-label=${`Fold ${ex.name}`} data-act="bFold" data-b=${bi}>▴</button>` : ''}<button class="ib" aria-label="Exercise options" data-act="bMenu" data-b=${bi}>⋯</button></div></div>
       ${
         b.target
@@ -969,6 +973,36 @@ export const WORKOUT_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
     if (moveBlock(Number(t.dataset.b), Number(t.dataset.b) + 1)) fx.rerenderKeepScroll();
   },
   bDel: blockRemove,
+  /* New machine or gym (r61, PENDING 343 7, V's decision of 2026-10-24): the
+     lift starts over from this session, every block of it marked and its
+     suggestion read again as a first session's; tapped again, it reads its
+     history again. Rows typed are kept; rows still on the suggestion take
+     the new one (refreshBlock). In an edit from History it marks the saved
+     session, or takes the mark off, when the edit is saved. */
+  bNew(t) {
+    const d = state.draft;
+    const b0 = d && d.ex[Number(t.dataset.b)];
+    if (!d || !b0) return;
+    const on = !markedNew(d, b0.exId);
+    act(
+      () => {
+        for (const b of d.ex)
+          if (b.exId === b0.exId) {
+            if (on) b.nw = true;
+            else delete b.nw;
+          }
+        // An edit's sets are saved ones, its words "Editing saved sets.": nothing is suggested there to read again.
+        if (!d.editingId) for (const b of d.ex) if (b.exId === b0.exId) refreshBlock(b);
+      },
+      { inProgress: true }
+    );
+    fx.rerenderKeepScroll();
+    fx.toast(
+      on
+        ? `${exName(b0.exId)} starts over from this session. Its history stays.`
+        : `${exName(b0.exId)} reads its history again.`
+    );
+  },
   // A superset made here is this session's; Finish offers to keep it in the plan (r34.2, from the review: it was gone next time without a word).
   bSs(t) {
     const d = state.draft;
