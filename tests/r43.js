@@ -138,9 +138,9 @@ const PATHS = (s, k) => {
   {
     const fs = require('fs'), os = require('os'), path = require('path');
     // Built as a real next build is (r49): the source changed, then bundled by scripts/join.js.
-    // The exercise record is read in src/app/normalize.ts (r56), where Prettier lays it out one field a line.
+    // The exercise record is read in src/app/normalize.ts (r56; in cleanExercise since r61, its name given as read), where Prettier lays it out one field a line.
     const part = 'app/normalize.ts', partSrc = fs.readFileSync(path.join(__dirname, '..', 'src', part), 'utf8');
-    const anchor = partSrc.match(/id: fixId\(e\.id\),\n( +)name: e\.name,\n/);
+    const anchor = partSrc.match(/id: fixId\(e\.id\),\n( +)name,\n/);
     ok(anchor && partSrc.split(anchor[0]).length === 2, 'the simulated next build finds the exercise record to change', part);
     const next = path.join(os.tmpdir(), 'ironlog-next-r43test.html');
     const nextHtml = require('../scripts/join').build({ override: { [part]: partSrc.replace(anchor[0], anchor[0] + anchor[1] + "zz: typeof e.zz === 'string' ? e.zz : undefined,\n") } }).html;
