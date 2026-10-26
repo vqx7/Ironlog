@@ -82,6 +82,10 @@ function report(r){
      so on GitHub it is written as a notice, which the API serves; else a
      stall that comes back would pass unseen. */
   const notes=r.out.split('\n').filter(l=>/^note /.test(l));
+  /* A suite that runs four minutes or more is named with its time, readable
+     through the API as the notes are: a shard past its hour said nothing
+     of which suite took it there (r61's first run, 2026-10-26). */
+  if(r.sec>=240)notes.push(`note ran for ${r.sec} s`);
   for(const l of notes){console.log(l);if(process.env.GITHUB_ACTIONS)console.log(`::notice title=${r.s}${r.tag}::${l.replace(/%/g,'%25').replace(/\r/g,'').replace(/\n/g,'%0A').slice(0,400)}`);}
   if(!pass){bad++;failed.push(r);const lines=r.out.split('\n').filter(l=>!/^ok /.test(l)&&/FAIL|Error|error/.test(l)).slice(0,15);console.log(lines.join('\n'));
     // On GitHub the job log sits behind a sign-in, but annotations can be read
