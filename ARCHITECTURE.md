@@ -49,7 +49,7 @@ Layer 0, config and record shapes: config, types
 Layer 1, data: util, units, library, routines, formulas, records, gym, profile, model, layout
 Layer 2, engine and analytics: session, loads, prs, trend, volume, goals, importing, format, charts, analytics, time, weeks, coach, engine, plans
 Layer 3, storage and sync: chunks, merge, store, live, providers, normalize, storage, sync, act
-Layer 4, screens: icons, feedback, effort, guide, sheets, env, outside, display, view, update, history, settings, graphs, plan, stats, calendar, week, map, today, workout
+Layer 4, screens: icons, feedback, effort, guide, sheets, env, outside, display, view, update, history, settings, graphs, plan, stats, calendar, week, map, today, workstate, worksets, workfinish, workdrag, workout
 
 - **Screens as components**, one per tab, reading copy and labels from one place.
 
