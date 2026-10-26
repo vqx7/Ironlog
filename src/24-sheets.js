@@ -43,18 +43,9 @@ function renderModalBody(keep){
   else if(m.kind==='past'){h=pastSheet(m);}
   else if(m.kind==='feedback'){h=fbSheet(m);}
   else if(m.kind==='fbInbox'){h=fbInboxSheet(m);}
-  else if(m.kind==='restwk'){
-    const cur=weekStart(today());const wk=[[cur,'This week'],[addDays(cur,-7),'Last week']];
-    h=`<div class="sheet" role="dialog" aria-modal="true" aria-labelledby="rwH"><div class="sheet-h"><h3 id="rwH">Rest week</h3><button class="ib" aria-label="Close" data-act="mClose">✕</button></div>
-    <p class="small muted" style="margin:0 0 10px">A week off on purpose. It is not counted as missed: averages, streak, and adherence skip it.</p>
-    <div class="stack">${wk.map(([w,l])=>{const on=isRestWeek(w);return `<button class="btn block ${on?'primary':''}" data-act="restWk" data-w="${w}" aria-pressed="${on}">${l}, ${esc(fmtDate(w))} to ${esc(fmtDate(addDays(w,6)))}${on?': rest week':''}</button>`;}).join('')}</div></div>`;
-  }else if(m.kind==='daypick'){
-    const ss=sessionsOn(m.date);
-    const tm=sessTm;
-    h=`<div class="sheet" role="dialog" aria-modal="true" aria-labelledby="dpH"><div class="sheet-h"><h3 id="dpH">${esc(fmtDate(m.date))}: ${ss.length} sessions</h3><button class="ib" aria-label="Close" data-act="mClose">✕</button></div>
-    <div class="stack">${ss.map(x=>`<button class="btn block pastday" data-act="wkOpen" data-id="${x.id}"><span>${esc(x.dayName)}</span><small>${[tm(x),`${x.ex.length} exercise${x.ex.length===1?'':'s'}`].filter(Boolean).join(', ')}</small></button>`).join('')}</div></div>`;
-  }else if(m.kind==='confirm'){
-    h=`<div class="sheet" role="dialog" aria-modal="true"><div class="sheet-h"><h3>${esc(m.title)}</h3></div><p>${esc(m.body)}</p><div class="row" style="margin-top:12px"><button class="btn ${m.danger?'danger':'primary'}" data-act="mOk">${esc(m.okLabel)}</button>${m.alt&&!m.alt.quiet?`<button class="btn" data-act="mAlt">${esc(m.alt.label)}</button>`:''}${m.alt&&m.alt.only?'':'<button class="btn" data-act="mClose">Cancel</button>'}</div>${m.alt&&m.alt.quiet?`<button class="linkbtn alt-quiet" data-act="mAlt">${esc(m.alt.label)}</button>`:''}</div>`;
+  else if(m.kind==='restwk'){h=restWeekSheet();
+  }else if(m.kind==='daypick'){h=dayPickSheet(m);
+  }else if(m.kind==='confirm'){h=confirmSheet(m);
   }else if(m.kind==='picker'){
     h=`<div class="sheet fixed" role="dialog" aria-modal="true"><div class="sheet-h"><h3>${esc(m.title)}</h3><button class="ib" aria-label="Close" data-act="mClose">✕</button></div>
     <div class="grid2"><input type="search" placeholder="Search" data-mbind="q" value="${esc(m.q)}" id="pickQ" enterkeyhint="search" autocomplete="off"><select data-mbind="m" aria-label="Muscle"><option value="">All muscles</option>${MUSCLES.map(([k,l])=>`<option value="${k}" ${m.m===k?'selected':''}>${l}</option>`).join('')}</select></div>
@@ -142,14 +133,7 @@ function renderModalBody(keep){
     <p class="small muted">The smallest jump the machine or dumbbells allow. Earned increases are whole multiples of it.</p>
     ${e.inc==null&&gymRack(e,m.plan)?`<p class="small" style="margin:0">Following the ${rackKind(e)==='dumbbell'?'dumbbells':'kettlebells'} in Settings > Your gym. A step saved here replaces them for this lift.</p>`:''}
     <div class="row" style="margin-top:10px"><button class="btn primary" data-act="incSave">Save</button><button class="btn" data-act="mClose">Cancel</button></div></div>`;
-  }else if(m.kind==='cardio'){
-    h=`<div class="sheet" role="dialog" aria-modal="true"><div class="sheet-h"><h3>Log cardio or mobility</h3><button class="ib" aria-label="Close" data-act="mClose">✕</button></div>
-    <div class="grid2"><label class="field">Date<input type="date" id="cDate" value="${today()}" max="${today()}"></label><label class="field">Type<select id="cKind">${CARDIO.map(([k,l])=>`<option value="${k}">${l}</option>`).join('')}</select></label></div>
-    <div class="grid2" style="margin-top:8px"><label class="field">Minutes<input type="text" inputmode="numeric" id="cMin"></label><label class="field">Avg heart rate<input type="text" inputmode="numeric" id="cHr" placeholder="optional"></label></div>
-    <label class="field" style="margin-top:8px">Distance (${distU()})<input type="text" inputmode="decimal" id="cDist" placeholder="optional"></label>
-    <label class="field" style="margin-top:8px">Note<input type="text" id="cNote" placeholder="e.g. 3.2 mph, 12% incline"></label>
-    <p class="small muted hastip" data-tip="For cardio before or after lifting, add it inside the session. Cardio never counts as a lifting session or toward your streak.">Logged on its own.</p>
-    <div class="row" style="margin-top:10px"><button class="btn primary" data-act="cardioSave">Save</button><button class="btn" data-act="mClose">Cancel</button></div></div>`;
+  }else if(m.kind==='cardio'){h=cardioSheet();
   }else if(m.kind==='quick'){
     const d=state.draft;const b=d&&d.ex[m.b];if(!b){ui.modal=null;el.hidden=true;return;}const ex=EX(b.exId);
     // Examples in the unit in use (r30: the kg example still said 235x5).
@@ -237,13 +221,10 @@ function renderModalBody(keep){
     <div class="sheet-scroll">${sw.length?`<ul class="eqsw">${sw.map(x=>`<li>${esc(exName(x.from))} → ${x.to?`<b>${esc(exName(x.to))}</b>${x.hard?'<br><span class="small" style="color:var(--yellow)">Much harder than what it replaces: aim for 3 to 6 reps, use a band or a shorter range, and stop 2 reps short.</span>':''}`:'<span class="muted">no match with this equipment, left out</span>'}</li>`).join('')}</ul>`:'<p class="small" style="margin:10px 0 0">Everything in this workout fits the equipment on.</p>'}
     <div class="row" style="margin-top:12px"><button class="btn primary" data-act="eqStart" ${pl.some(x=>x.to)?'':'disabled'}>Start ${esc(day.name)}</button><button class="btn" data-act="mClose">Cancel</button></div>
     <p class="small muted" style="margin:8px 0 0">Sets, reps, and rest as planned (a much harder swap gets 3 to 6 reps); swaps are for this session only.</p></div></div>`;
-  }else if(m.kind==='text'){
-    h=`<div class="sheet" role="dialog" aria-modal="true"><div class="sheet-h"><h3>${esc(m.title)}</h3><button class="ib" aria-label="Close" data-act="mClose">✕</button></div>
-    <p class="small muted">${esc(m.help)}</p><textarea id="mText" aria-label="${esc(m.title||'Text')}" style="min-height:220px;font-size:13px" ${m.readonly?'readonly':''}>${esc(m.text||'')}</textarea>
-    <div class="row" style="margin-top:10px">${m.readonly?'<button class="btn primary" data-act="copyText">Copy</button>':'<button class="btn primary" data-act="importText">Import</button>'}<button class="btn" data-act="mClose">Close</button></div></div>`;
+  }else if(m.kind==='text'){h=textSheet(m);
   }
-  // The account sheet redrawn while signing in keeps its fields, so the one in use stays under the keyboard (r54, src/app/sheets.ts).
-  if(!(keep&&m.kind==='account'&&morphInto(el,h)))el.innerHTML=h;el.hidden=false;const sh=el.querySelector('.sheet');
+  // A moved sheet is its template; the account sheet redrawn while signing in keeps its fields, so the one in use stays under the keyboard (r54, src/app/sheets.ts).
+  sheetDraw(el,h,keep&&m.kind==='account');const sh=el.querySelector('.sheet');
   if(sh){
     if(!sh.hasAttribute('tabindex'))sh.setAttribute('tabindex','-1');
     const hd=sh.querySelector('h3');

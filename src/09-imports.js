@@ -5,7 +5,7 @@
 import { STORAGE_ID, APP_NAME, FILE_PREFIX, PREVIEW_NAME, DISPLAY_VERSION, APP_VERSION, VERSION_LINE, SITE_HOST, SITE_DIR_FALLBACK, THREE_URLS } from './app/config';
 import { esc, uid, pad, parse, addDays, weekStart, daysBetween, today, isNum, isDate, median, r1, andList, numIn, mulberry, WEEK_DAYS } from './app/util';
 import { LB, IN, KM_MI } from './app/units';
-import { MUSCLES, MK, ML, TRACK_ONLY, BANDS, EQUIP, EQL, CARDIO, CARDIOL, CWHENL, JOINTS, JK, JL, injLabel, exJoints, libExercises, COMMON, isCommon, patternOf, autoCompound, isCompound, noE1, BWF, bwShare, loadMode, rackKind, HARD_EX, LONG_TRIAL, LONG_IDS, profHeavy, COMMON_TIP, commonFirst, nameMatch } from './app/library';
+import { MUSCLES, MK, ML, TRACK_ONLY, BANDS, EQUIP, EQL, CARDIOL, CWHENL, JOINTS, JK, JL, injLabel, exJoints, libExercises, COMMON, isCommon, patternOf, autoCompound, isCompound, noE1, BWF, bwShare, loadMode, rackKind, HARD_EX, LONG_TRIAL, LONG_IDS, profHeavy, COMMON_TIP, commonFirst, nameMatch } from './app/library';
 import { dayLabel, defaultRoutine, TEMPLATES, routineFromTemplate, daySets, fixSupersets, plannedPerWeek, dropStarter, planItemOf, pwOf, planSetsOf, withPlanSets, trainOn, routineEmpty, routineSig, sessDayIdx, ssLetters, tplCountLine } from './app/routines';
 import { keepExtra, cleanCardio, normalize, starterRoutine, starterSigs, plainTemplate } from './app/normalize';
 import { ENV, KEY, ACCT_LATER, OB_ACCT, OB_OUT, logBuf, logCut, log, unreadableRaw, unreadableForget, undoStack, undoPersist, undoRestore, undoForget, snapshot, demoFirstRun, demoKeep, backupDue, saveStateNow, storageStart, asideList } from './app/storage';
@@ -32,7 +32,8 @@ import { musTrend } from './app/coach';
 import { EX, U, activeRoutine, bwNoLoad, liftRead, nextSets, exInjury, exName, freeMode, gymOf, injuredSet, invalidate, isDeloadWeek, isRestWeek, prof, rirHalfOn, sortedSessions, fromD, stepRead, toD, defPlan, planCredit, planFor, planSetsPerWeek, profPlan, profRule, routineUpdates, appBand, defBand, fitFloors, refit, plannedSets, stallWeeks, stallWords, barKg, capOf, exBarKg, gymRack, rackTol, fmtW, loadLabel, IDX, allTimeBests, sessionWords, bwAt, bwLoad, bwRef, bwRefLoad, calStats, dateIndex, hardCredit, isHard, loadOf, prFrame, prLoad, rirEff, rirEst, rirUsual, statsUpTo, tonnage, weekSessions, dayMinutes, pace, paceRatios, sessModelMin, actualAvg4, avgFirstWeek, avgWait, avgWeeks, firstFullWeek, lastLighterWeek, logBack, logStart, muscleStatus, recentLighter, regionBalance, weekNeed, weekRoutine, weekStats, weekStreak, weeksAvg, atRangeTop, coach, dropOnlyLift, fatigueStalls, movers, readiness, stalledIds, daysOff, easierText, heavierLoad, oddLoad, lightZero, incOf, lighterLoad, progStep, rackStep, suggestCore, suggest, hasTarget } from './app/live';
 import { AUTH, FB } from './app/providers';
 import { effName, effShow, rirScale } from './app/effort';
-import { morphInto } from './app/sheets';
+import { sheetDraw, sheetClear } from './app/sheets';
+import { cardioSheet, confirmSheet, dayPickSheet, restWeekSheet, textSheet } from './app/sheetsmisc';
 import { guideSheet } from './app/guide';
 import { act } from './app/act';
 import { drawLegacy, drawScreen, drawing, drawnBeforeToday, dragStart, dragDrop, markupOf, viewStart } from './app/view';

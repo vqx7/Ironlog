@@ -11,6 +11,11 @@
    the page under the sheet, then moved the page as the keyboard came, and
    it was taken out (PENDING 322). */
 
+import { nothing, render } from 'lit-html';
+import type { TemplateResult } from 'lit-html';
+import { keyed } from 'lit-html/directives/keyed.js';
+import { unsafeHTML } from 'lit-html/directives/unsafe-html.js';
+
 /* A node with no elements in it, only words or nothing: its words may
    change in a redraw (an error said, a button's label while it works). */
 const wordsOnly = (n: Node): boolean => !Array.from(n.childNodes).some(c => c instanceof Element);
@@ -56,14 +61,39 @@ function copyInto(a: Node, b: Node): void {
   }
 }
 
-/** Puts markup into an element in place of what it holds when the two have
-    the same shape, changing only attributes and words, so its fields stay the
-    same nodes; true when it did, false (and nothing changed) when the shapes
-    differ, for the caller to rebuild the element as before. */
-export function morphInto(el: Element, html: string): boolean {
-  const t = el.ownerDocument.createElement('template');
-  t.innerHTML = html;
-  if (!sameShape(el, t.content)) return false;
-  copyInto(el, t.content);
+/* ---------- the host (r62) ---------- */
+
+let markupDraws = 0;
+/* A sheet into the page's sheet layer (#modal), drawn by lit-html: a moved
+   sheet is its template, updated in place when it is drawn again, so its
+   fields, focus and scroll stay; a sheet still written as markup by the
+   legacy script is drawn fresh each time, as innerHTML drew it, unless it is
+   the account sheet redrawn with the same shape while someone types in it
+   (morphInto, r54), which keeps its fields. */
+/** Draws the open sheet into the sheet layer: a moved sheet's template, or a legacy sheet's markup. */
+export function sheetDraw(el: HTMLElement, sheet: TemplateResult | string, keep: boolean): void {
+  if (typeof sheet !== 'string') render(sheet, el);
+  else {
+    const old = keep ? el.querySelector('.sheet') : null;
+    const t = el.ownerDocument.createElement('template');
+    t.innerHTML = sheet;
+    const now = t.content.firstElementChild;
+    // The account sheet's fields kept: its own element compared with the new one, lit-html's markers beside it left alone.
+    if (!(old && now && morphOne(old, now))) render(keyed(++markupDraws, unsafeHTML(sheet)), el);
+  }
+  el.hidden = false;
+}
+/** Empties the sheet layer, through lit-html so its next draw finds what it drew. */
+export function sheetClear(el: HTMLElement): void {
+  render(nothing, el);
+}
+/* One element into another of the same tag in place, as morphInto puts
+   markup into an element: its attributes, then its contents. */
+function morphOne(a: Element, b: Element): boolean {
+  if (a.tagName !== b.tagName || !sameShape(a, b)) return false;
+  for (const at of Array.from(a.attributes)) if (!b.hasAttribute(at.name)) a.removeAttribute(at.name);
+  for (const at of Array.from(b.attributes))
+    if (a.getAttribute(at.name) !== at.value) a.setAttribute(at.name, at.value);
+  copyInto(a, b);
   return true;
 }

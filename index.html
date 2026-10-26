@@ -9579,49 +9579,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     return k2 === "rpe" ? "RPE 5 to 6.5" : k2 === "half" ? "RIR 3.5 to 5" : "RIR 4 to 5";
   };
 
-  // src/app/sheets.ts
-  var wordsOnly = (n3) => !Array.from(n3.childNodes).some((c4) => c4 instanceof Element);
-  function sameShape(a2, b2) {
-    if (wordsOnly(a2) && wordsOnly(b2)) return true;
-    if (a2.childNodes.length !== b2.childNodes.length) return false;
-    for (let i5 = 0; i5 < a2.childNodes.length; i5++) {
-      const x2 = a2.childNodes[i5], y2 = b2.childNodes[i5];
-      if (x2.nodeType !== y2.nodeType) return false;
-      if (x2 instanceof Element && y2 instanceof Element) {
-        if (x2.tagName !== y2.tagName || x2 instanceof HTMLSelectElement) return false;
-        if (x2 instanceof HTMLInputElement && y2 instanceof HTMLInputElement) {
-          if (x2.type !== y2.type || x2.value !== y2.value || x2.checked !== y2.checked) return false;
-        }
-        if (x2 instanceof HTMLTextAreaElement && y2 instanceof HTMLTextAreaElement && x2.value !== y2.value) return false;
-        if (!sameShape(x2, y2)) return false;
-      }
-    }
-    return true;
-  }
-  function copyInto(a2, b2) {
-    if (wordsOnly(a2) && wordsOnly(b2)) {
-      if (a2.textContent !== b2.textContent) a2.textContent = b2.textContent;
-      return;
-    }
-    for (let i5 = 0; i5 < a2.childNodes.length; i5++) {
-      const x2 = a2.childNodes[i5], y2 = b2.childNodes[i5];
-      if (x2 instanceof Element && y2 instanceof Element) {
-        for (const at of Array.from(x2.attributes)) if (!y2.hasAttribute(at.name)) x2.removeAttribute(at.name);
-        for (const at of Array.from(y2.attributes))
-          if (x2.getAttribute(at.name) !== at.value) x2.setAttribute(at.name, at.value);
-        copyInto(x2, y2);
-      } else if (x2.nodeValue !== y2.nodeValue) x2.nodeValue = y2.nodeValue;
-    }
-  }
-  function morphInto(el, html) {
-    const t4 = el.ownerDocument.createElement("template");
-    t4.innerHTML = html;
-    if (!sameShape(el, t4.content)) return false;
-    copyInto(el, t4.content);
-    return true;
-  }
-
-  // node_modules/lit-html/lit-html.js
+  // ../ironlog/node_modules/lit-html/lit-html.js
   var t = globalThis, i = (t4) => t4, s = t.trustedTypes, e = s ? s.createPolicy("lit-html", { createHTML: (t4) => t4 }) : void 0, h = "$lit$", o = `lit$${Math.random().toFixed(9).slice(2)}$`, n = "?" + o, r = `<${n}>`, l = document, c = () => l.createComment(""), a = (t4) => null === t4 || "object" != typeof t4 && "function" != typeof t4, u = Array.isArray, d = (t4) => u(t4) || "function" == typeof t4?.[Symbol.iterator], f = "[ 	\n\f\r]", v = /<(?:(!--|\/[^a-zA-Z])|(\/?[a-zA-Z][^>\s]*)|(\/?$))/g, _ = /-->/g, m = />/g, p = RegExp(`>|${f}(?:([^\\s"'>=/]+)(${f}*=${f}*(?:[^ 	
 \f\r"'\`<>=]|("|')|))|$)`, "g"), g = /'/g, $ = /"/g, y = /^(?:script|style|textarea|title)$/i, x = (t4) => (i5, ...s3) => ({ _$litType$: t4, strings: i5, values: s3 }), b = x(1), w = x(2), T = x(3), E = /* @__PURE__ */ Symbol.for("lit-noChange"), A = /* @__PURE__ */ Symbol.for("lit-nothing"), C = /* @__PURE__ */ new WeakMap(), P = l.createTreeWalker(l, 129);
   function V(t4, i5) {
@@ -9847,7 +9805,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     return h3._$AI(t4), h3;
   };
 
-  // node_modules/lit-html/directive.js
+  // ../ironlog/node_modules/lit-html/directive.js
   var t2 = { ATTRIBUTE: 1, CHILD: 2, PROPERTY: 3, BOOLEAN_ATTRIBUTE: 4, EVENT: 5, ELEMENT: 6 }, e2 = (t4) => (...e5) => ({ _$litDirective$: t4, values: e5 });
   var i2 = class {
     constructor(t4) {
@@ -9866,7 +9824,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     }
   };
 
-  // node_modules/lit-html/directive-helpers.js
+  // ../ironlog/node_modules/lit-html/directive-helpers.js
   var { I: t3 } = j, i3 = (o3) => o3, n2 = (o3) => null === o3 || "object" != typeof o3 && "function" != typeof o3, e3 = { HTML: 1, SVG: 2, MATHML: 3 }, l2 = (o3, t4) => void 0 === t4 ? void 0 !== o3?._$litType$ : o3?._$litType$ === t4, d2 = (o3) => null != o3?._$litType$?.h, c2 = (o3) => void 0 !== o3?._$litDirective$, f2 = (o3) => o3?._$litDirective$, r2 = (o3) => void 0 === o3.strings, s2 = () => document.createComment(""), v2 = (o3, n3, e5) => {
     const l4 = o3._$AA.parentNode, d3 = void 0 === n3 ? o3._$AB : n3._$AA;
     if (void 0 === e5) {
@@ -9893,26 +9851,94 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     o3._$AR();
   };
 
-  // node_modules/lit-html/directives/live.js
-  var l3 = e2(class extends i2 {
-    constructor(r4) {
-      if (super(r4), r4.type !== t2.PROPERTY && r4.type !== t2.ATTRIBUTE && r4.type !== t2.BOOLEAN_ATTRIBUTE) throw Error("The `live` directive is not allowed on child or event bindings");
-      if (!r2(r4)) throw Error("`live` bindings can only contain a single expression");
+  // ../ironlog/node_modules/lit-html/directives/keyed.js
+  var i4 = e2(class extends i2 {
+    constructor() {
+      super(...arguments), this.key = A;
     }
-    render(r4) {
-      return r4;
+    render(r4, t4) {
+      return this.key = r4, t4;
     }
-    update(i5, [t4]) {
-      if (t4 === E || t4 === A) return t4;
-      const o3 = i5.element, l4 = i5.name;
-      if (i5.type === t2.PROPERTY) {
-        if (t4 === o3[l4]) return E;
-      } else if (i5.type === t2.BOOLEAN_ATTRIBUTE) {
-        if (!!t4 === o3.hasAttribute(l4)) return E;
-      } else if (i5.type === t2.ATTRIBUTE && o3.getAttribute(l4) === t4 + "") return E;
-      return p2(i5), t4;
+    update(r4, [t4, e5]) {
+      return t4 !== this.key && (p2(r4), this.key = t4), e5;
     }
   });
+
+  // ../ironlog/node_modules/lit-html/directives/unsafe-html.js
+  var e4 = class extends i2 {
+    constructor(i5) {
+      if (super(i5), this.it = A, i5.type !== t2.CHILD) throw Error(this.constructor.directiveName + "() can only be used in child bindings");
+    }
+    render(r4) {
+      if (r4 === A || null == r4) return this._t = void 0, this.it = r4;
+      if (r4 === E) return r4;
+      if ("string" != typeof r4) throw Error(this.constructor.directiveName + "() called with a non-string value");
+      if (r4 === this.it) return this._t;
+      this.it = r4;
+      const s3 = [r4];
+      return s3.raw = s3, this._t = { _$litType$: this.constructor.resultType, strings: s3, values: [] };
+    }
+  };
+  e4.directiveName = "unsafeHTML", e4.resultType = 1;
+  var o2 = e2(e4);
+
+  // src/app/sheets.ts
+  var wordsOnly = (n3) => !Array.from(n3.childNodes).some((c4) => c4 instanceof Element);
+  function sameShape(a2, b2) {
+    if (wordsOnly(a2) && wordsOnly(b2)) return true;
+    if (a2.childNodes.length !== b2.childNodes.length) return false;
+    for (let i5 = 0; i5 < a2.childNodes.length; i5++) {
+      const x2 = a2.childNodes[i5], y2 = b2.childNodes[i5];
+      if (x2.nodeType !== y2.nodeType) return false;
+      if (x2 instanceof Element && y2 instanceof Element) {
+        if (x2.tagName !== y2.tagName || x2 instanceof HTMLSelectElement) return false;
+        if (x2 instanceof HTMLInputElement && y2 instanceof HTMLInputElement) {
+          if (x2.type !== y2.type || x2.value !== y2.value || x2.checked !== y2.checked) return false;
+        }
+        if (x2 instanceof HTMLTextAreaElement && y2 instanceof HTMLTextAreaElement && x2.value !== y2.value) return false;
+        if (!sameShape(x2, y2)) return false;
+      }
+    }
+    return true;
+  }
+  function copyInto(a2, b2) {
+    if (wordsOnly(a2) && wordsOnly(b2)) {
+      if (a2.textContent !== b2.textContent) a2.textContent = b2.textContent;
+      return;
+    }
+    for (let i5 = 0; i5 < a2.childNodes.length; i5++) {
+      const x2 = a2.childNodes[i5], y2 = b2.childNodes[i5];
+      if (x2 instanceof Element && y2 instanceof Element) {
+        for (const at of Array.from(x2.attributes)) if (!y2.hasAttribute(at.name)) x2.removeAttribute(at.name);
+        for (const at of Array.from(y2.attributes))
+          if (x2.getAttribute(at.name) !== at.value) x2.setAttribute(at.name, at.value);
+        copyInto(x2, y2);
+      } else if (x2.nodeValue !== y2.nodeValue) x2.nodeValue = y2.nodeValue;
+    }
+  }
+  var markupDraws = 0;
+  function sheetDraw(el, sheet, keep) {
+    if (typeof sheet !== "string") D(sheet, el);
+    else {
+      const old = keep ? el.querySelector(".sheet") : null;
+      const t4 = el.ownerDocument.createElement("template");
+      t4.innerHTML = sheet;
+      const now = t4.content.firstElementChild;
+      if (!(old && now && morphOne(old, now))) D(i4(++markupDraws, o2(sheet)), el);
+    }
+    el.hidden = false;
+  }
+  function sheetClear(el) {
+    D(A, el);
+  }
+  function morphOne(a2, b2) {
+    if (a2.tagName !== b2.tagName || !sameShape(a2, b2)) return false;
+    for (const at of Array.from(a2.attributes)) if (!b2.hasAttribute(at.name)) a2.removeAttribute(at.name);
+    for (const at of Array.from(b2.attributes))
+      if (a2.getAttribute(at.name) !== at.value) a2.setAttribute(at.name, at.value);
+    copyInto(a2, b2);
+    return true;
+  }
 
   // src/app/goals.ts
   function goalOk(ex) {
@@ -10318,6 +10344,68 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     return out;
   }
 
+  // src/app/sheetsmisc.ts
+  var closeX = () => b`<button class="ib" aria-label="Close" data-act="mClose">✕</button>`;
+  function confirmSheet(m3) {
+    const alt = m3.alt;
+    return b`<div class="sheet" role="dialog" aria-modal="true"><div class="sheet-h"><h3>${m3.title}</h3></div><p>${m3.body}</p><div class="row" style="margin-top:12px"><button class=${"btn " + (m3.danger ? "danger" : "primary")} data-act="mOk">${m3.okLabel}</button>${alt && !alt.quiet ? b`<button class="btn" data-act="mAlt">${alt.label}</button>` : ""}${alt && alt.only ? "" : b`<button class="btn" data-act="mClose">Cancel</button>`}</div>${alt && alt.quiet ? b`<button class="linkbtn alt-quiet" data-act="mAlt">${alt.label}</button>` : ""}</div>`;
+  }
+  function textSheet(m3) {
+    return b`<div class="sheet" role="dialog" aria-modal="true"><div class="sheet-h"><h3>${m3.title}</h3>${closeX()}</div>
+    <p class="small muted">${m3.help}</p><textarea id="mText" aria-label=${m3.title || "Text"} style="min-height:220px;font-size:13px" ?readonly=${!!m3.readonly}>${m3.text || ""}</textarea>
+    <div class="row" style="margin-top:10px">${m3.readonly ? b`<button class="btn primary" data-act="copyText">Copy</button>` : b`<button class="btn primary" data-act="importText">Import</button>`}<button class="btn" data-act="mClose">Close</button></div></div>`;
+  }
+  function restWeekSheet() {
+    const cur = weekStart(today());
+    const weeks = [
+      [cur, "This week"],
+      [addDays(cur, -WEEK_DAYS), "Last week"]
+    ];
+    return b`<div class="sheet" role="dialog" aria-modal="true" aria-labelledby="rwH"><div class="sheet-h"><h3 id="rwH">Rest week</h3>${closeX()}</div>
+    <p class="small muted" style="margin:0 0 10px">A week off on purpose. It is not counted as missed: averages, streak, and adherence skip it.</p>
+    <div class="stack">${weeks.map(([w2, l4]) => {
+      const on = isRestWeek(w2);
+      return b`<button class=${"btn block " + (on ? "primary" : "")} data-act="restWk" data-w=${w2} aria-pressed=${String(on)}>${l4}, ${fmtDate(w2)} to ${fmtDate(addDays(w2, WEEK_DAYS - 1))}${on ? ": rest week" : ""}</button>`;
+    })}</div></div>`;
+  }
+  function dayPickSheet(m3) {
+    const ss = sessionsOn(m3.date);
+    return b`<div class="sheet" role="dialog" aria-modal="true" aria-labelledby="dpH"><div class="sheet-h"><h3 id="dpH">${fmtDate(m3.date)}: ${ss.length} sessions</h3>${closeX()}</div>
+    <div class="stack">${ss.map(
+      (x2) => b`<button class="btn block pastday" data-act="wkOpen" data-id=${x2.id}><span>${x2.dayName}</span><small>${[sessTm(x2), `${x2.ex.length} exercise${x2.ex.length === 1 ? "" : "s"}`].filter(Boolean).join(", ")}</small></button>`
+    )}</div></div>`;
+  }
+  function cardioSheet() {
+    return b`<div class="sheet" role="dialog" aria-modal="true"><div class="sheet-h"><h3>Log cardio or mobility</h3>${closeX()}</div>
+    <div class="grid2"><label class="field">Date<input type="date" id="cDate" .value=${today()} max=${today()}></label><label class="field">Type<select id="cKind">${CARDIO.map(([k2, l4]) => b`<option value=${k2}>${l4}</option>`)}</select></label></div>
+    <div class="grid2" style="margin-top:8px"><label class="field">Minutes<input type="text" inputmode="numeric" id="cMin"></label><label class="field">Avg heart rate<input type="text" inputmode="numeric" id="cHr" placeholder="optional"></label></div>
+    <label class="field" style="margin-top:8px">Distance (${distU()})<input type="text" inputmode="decimal" id="cDist" placeholder="optional"></label>
+    <label class="field" style="margin-top:8px">Note<input type="text" id="cNote" placeholder="e.g. 3.2 mph, 12% incline"></label>
+    <p class="small muted hastip" data-tip="For cardio before or after lifting, add it inside the session. Cardio never counts as a lifting session or toward your streak.">Logged on its own.</p>
+    <div class="row" style="margin-top:10px"><button class="btn primary" data-act="cardioSave">Save</button><button class="btn" data-act="mClose">Cancel</button></div></div>`;
+  }
+
+  // ../ironlog/node_modules/lit-html/directives/live.js
+  var l3 = e2(class extends i2 {
+    constructor(r4) {
+      if (super(r4), r4.type !== t2.PROPERTY && r4.type !== t2.ATTRIBUTE && r4.type !== t2.BOOLEAN_ATTRIBUTE) throw Error("The `live` directive is not allowed on child or event bindings");
+      if (!r2(r4)) throw Error("`live` bindings can only contain a single expression");
+    }
+    render(r4) {
+      return r4;
+    }
+    update(i5, [t4]) {
+      if (t4 === E || t4 === A) return t4;
+      const o3 = i5.element, l4 = i5.name;
+      if (i5.type === t2.PROPERTY) {
+        if (t4 === o3[l4]) return E;
+      } else if (i5.type === t2.BOOLEAN_ATTRIBUTE) {
+        if (!!t4 === o3.hasAttribute(l4)) return E;
+      } else if (i5.type === t2.ATTRIBUTE && o3.getAttribute(l4) === t4 + "") return E;
+      return p2(i5), t4;
+    }
+  });
+
   // src/app/act.ts
   var depth = 0;
   var dropInside = false;
@@ -10355,37 +10443,6 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     ].slice(0, TRASH_MAX);
     while (state.trash.length > 1 && JSON.stringify(state.trash).length > TRASH_BYTES) state.trash.pop();
   }
-
-  // node_modules/lit-html/directives/keyed.js
-  var i4 = e2(class extends i2 {
-    constructor() {
-      super(...arguments), this.key = A;
-    }
-    render(r4, t4) {
-      return this.key = r4, t4;
-    }
-    update(r4, [t4, e5]) {
-      return t4 !== this.key && (p2(r4), this.key = t4), e5;
-    }
-  });
-
-  // node_modules/lit-html/directives/unsafe-html.js
-  var e4 = class extends i2 {
-    constructor(i5) {
-      if (super(i5), this.it = A, i5.type !== t2.CHILD) throw Error(this.constructor.directiveName + "() can only be used in child bindings");
-    }
-    render(r4) {
-      if (r4 === A || null == r4) return this._t = void 0, this.it = r4;
-      if (r4 === E) return r4;
-      if ("string" != typeof r4) throw Error(this.constructor.directiveName + "() called with a non-string value");
-      if (r4 === this.it) return this._t;
-      this.it = r4;
-      const s3 = [r4];
-      return s3.raw = s3, this._t = { _$litType$: this.constructor.resultType, strings: s3, values: [] };
-    }
-  };
-  e4.directiveName = "unsafeHTML", e4.resultType = 1;
-  var o2 = e2(e4);
 
   // src/app/view.ts
   var legacyDraws = 0;
@@ -12479,7 +12536,7 @@ ${extraKpis()}</div>${nS ? dashSummary() : A}`;
     }
   };
 
-  // node_modules/lit-html/directives/repeat.js
+  // ../ironlog/node_modules/lit-html/directives/repeat.js
   var u3 = (e5, s3, t4) => {
     const r4 = /* @__PURE__ */ new Map();
     for (let l4 = s3; l4 <= t4; l4++) r4.set(e5[l4], l4);
@@ -18715,7 +18772,7 @@ ${ms.length ? b`<div class="scroll-x" style="margin-top:10px"><table class="t"><
         setTimeout(render, 0);
       }
       $2("#modal").hidden = true;
-      $2("#modal").innerHTML = "";
+      sheetClear($2("#modal"));
       document.body.classList.remove("modal-open");
       renderModal.last = null;
       if (was && was.kind === "exMus") {
@@ -19612,21 +19669,11 @@ ${ms.length ? b`<div class="scroll-x" style="margin-top:10px"><table class="t"><
       } else if (m3.kind === "fbInbox") {
         h3 = fbInboxSheet(m3);
       } else if (m3.kind === "restwk") {
-        const cur = weekStart(today());
-        const wk = [[cur, "This week"], [addDays(cur, -7), "Last week"]];
-        h3 = `<div class="sheet" role="dialog" aria-modal="true" aria-labelledby="rwH"><div class="sheet-h"><h3 id="rwH">Rest week</h3><button class="ib" aria-label="Close" data-act="mClose">✕</button></div>
-    <p class="small muted" style="margin:0 0 10px">A week off on purpose. It is not counted as missed: averages, streak, and adherence skip it.</p>
-    <div class="stack">${wk.map(([w2, l4]) => {
-          const on = isRestWeek(w2);
-          return `<button class="btn block ${on ? "primary" : ""}" data-act="restWk" data-w="${w2}" aria-pressed="${on}">${l4}, ${esc(fmtDate(w2))} to ${esc(fmtDate(addDays(w2, 6)))}${on ? ": rest week" : ""}</button>`;
-        }).join("")}</div></div>`;
+        h3 = restWeekSheet();
       } else if (m3.kind === "daypick") {
-        const ss = sessionsOn(m3.date);
-        const tm = sessTm;
-        h3 = `<div class="sheet" role="dialog" aria-modal="true" aria-labelledby="dpH"><div class="sheet-h"><h3 id="dpH">${esc(fmtDate(m3.date))}: ${ss.length} sessions</h3><button class="ib" aria-label="Close" data-act="mClose">✕</button></div>
-    <div class="stack">${ss.map((x2) => `<button class="btn block pastday" data-act="wkOpen" data-id="${x2.id}"><span>${esc(x2.dayName)}</span><small>${[tm(x2), `${x2.ex.length} exercise${x2.ex.length === 1 ? "" : "s"}`].filter(Boolean).join(", ")}</small></button>`).join("")}</div></div>`;
+        h3 = dayPickSheet(m3);
       } else if (m3.kind === "confirm") {
-        h3 = `<div class="sheet" role="dialog" aria-modal="true"><div class="sheet-h"><h3>${esc(m3.title)}</h3></div><p>${esc(m3.body)}</p><div class="row" style="margin-top:12px"><button class="btn ${m3.danger ? "danger" : "primary"}" data-act="mOk">${esc(m3.okLabel)}</button>${m3.alt && !m3.alt.quiet ? `<button class="btn" data-act="mAlt">${esc(m3.alt.label)}</button>` : ""}${m3.alt && m3.alt.only ? "" : '<button class="btn" data-act="mClose">Cancel</button>'}</div>${m3.alt && m3.alt.quiet ? `<button class="linkbtn alt-quiet" data-act="mAlt">${esc(m3.alt.label)}</button>` : ""}</div>`;
+        h3 = confirmSheet(m3);
       } else if (m3.kind === "picker") {
         h3 = `<div class="sheet fixed" role="dialog" aria-modal="true"><div class="sheet-h"><h3>${esc(m3.title)}</h3><button class="ib" aria-label="Close" data-act="mClose">✕</button></div>
     <div class="grid2"><input type="search" placeholder="Search" data-mbind="q" value="${esc(m3.q)}" id="pickQ" enterkeyhint="search" autocomplete="off"><select data-mbind="m" aria-label="Muscle"><option value="">All muscles</option>${MUSCLES.map(([k2, l4]) => `<option value="${k2}" ${m3.m === k2 ? "selected" : ""}>${l4}</option>`).join("")}</select></div>
@@ -19735,13 +19782,7 @@ ${ms.length ? b`<div class="scroll-x" style="margin-top:10px"><table class="t"><
     ${e5.inc == null && gymRack(e5, m3.plan) ? `<p class="small" style="margin:0">Following the ${rackKind(e5) === "dumbbell" ? "dumbbells" : "kettlebells"} in Settings > Your gym. A step saved here replaces them for this lift.</p>` : ""}
     <div class="row" style="margin-top:10px"><button class="btn primary" data-act="incSave">Save</button><button class="btn" data-act="mClose">Cancel</button></div></div>`;
       } else if (m3.kind === "cardio") {
-        h3 = `<div class="sheet" role="dialog" aria-modal="true"><div class="sheet-h"><h3>Log cardio or mobility</h3><button class="ib" aria-label="Close" data-act="mClose">✕</button></div>
-    <div class="grid2"><label class="field">Date<input type="date" id="cDate" value="${today()}" max="${today()}"></label><label class="field">Type<select id="cKind">${CARDIO.map(([k2, l4]) => `<option value="${k2}">${l4}</option>`).join("")}</select></label></div>
-    <div class="grid2" style="margin-top:8px"><label class="field">Minutes<input type="text" inputmode="numeric" id="cMin"></label><label class="field">Avg heart rate<input type="text" inputmode="numeric" id="cHr" placeholder="optional"></label></div>
-    <label class="field" style="margin-top:8px">Distance (${distU()})<input type="text" inputmode="decimal" id="cDist" placeholder="optional"></label>
-    <label class="field" style="margin-top:8px">Note<input type="text" id="cNote" placeholder="e.g. 3.2 mph, 12% incline"></label>
-    <p class="small muted hastip" data-tip="For cardio before or after lifting, add it inside the session. Cardio never counts as a lifting session or toward your streak.">Logged on its own.</p>
-    <div class="row" style="margin-top:10px"><button class="btn primary" data-act="cardioSave">Save</button><button class="btn" data-act="mClose">Cancel</button></div></div>`;
+        h3 = cardioSheet();
       } else if (m3.kind === "quick") {
         const d3 = state.draft;
         const b2 = d3 && d3.ex[m3.b];
@@ -19865,12 +19906,9 @@ ${ms.length ? b`<div class="scroll-x" style="margin-top:10px"><table class="t"><
     <div class="row" style="margin-top:12px"><button class="btn primary" data-act="eqStart" ${pl.some((x2) => x2.to) ? "" : "disabled"}>Start ${esc(day.name)}</button><button class="btn" data-act="mClose">Cancel</button></div>
     <p class="small muted" style="margin:8px 0 0">Sets, reps, and rest as planned (a much harder swap gets 3 to 6 reps); swaps are for this session only.</p></div></div>`;
       } else if (m3.kind === "text") {
-        h3 = `<div class="sheet" role="dialog" aria-modal="true"><div class="sheet-h"><h3>${esc(m3.title)}</h3><button class="ib" aria-label="Close" data-act="mClose">✕</button></div>
-    <p class="small muted">${esc(m3.help)}</p><textarea id="mText" aria-label="${esc(m3.title || "Text")}" style="min-height:220px;font-size:13px" ${m3.readonly ? "readonly" : ""}>${esc(m3.text || "")}</textarea>
-    <div class="row" style="margin-top:10px">${m3.readonly ? '<button class="btn primary" data-act="copyText">Copy</button>' : '<button class="btn primary" data-act="importText">Import</button>'}<button class="btn" data-act="mClose">Close</button></div></div>`;
+        h3 = textSheet(m3);
       }
-      if (!(keep && m3.kind === "account" && morphInto(el, h3))) el.innerHTML = h3;
-      el.hidden = false;
+      sheetDraw(el, h3, keep && m3.kind === "account");
       const sh = el.querySelector(".sheet");
       if (sh) {
         if (!sh.hasAttribute("tabindex")) sh.setAttribute("tabindex", "-1");
