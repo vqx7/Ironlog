@@ -125,6 +125,13 @@ export function markup(fixed: string): Part {
    each time, as lit's `live` does, so a value typed over and left is put
    back even when the log still holds the value drawn last. */
 const unconfirmed = new WeakSet<EventTarget>();
+// Fields showing text the screen put there for the lifter to type over (a grey load, selected on a tap: workout.ts, r60).
+const shown = new WeakSet<EventTarget>();
+/** Marks a field as showing text the screen put there to be typed over, kept through a draw while it is focused, or unmarks it. */
+export function fieldShown(el: EventTarget, on: boolean): void {
+  if (on) shown.add(el);
+  else shown.delete(el);
+}
 // Notes a field typed in and not yet confirmed (the page's input events), or confirmed or left (its change and focusout).
 function fieldTyped(e: Event): void {
   const t = e.target;
@@ -150,7 +157,11 @@ class FieldValue extends Directive {
     const el = part.element;
     const now = el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement ? el.value : null;
     if (now === v) return noChange;
-    if (el === document.activeElement && now != null && (unconfirmed.has(el) || numIn(now) === numIn(v)))
+    if (
+      el === document.activeElement &&
+      now != null &&
+      (unconfirmed.has(el) || shown.has(el) || numIn(now) === numIn(v))
+    )
       return noChange;
     setCommittedValue(part);
     return v;

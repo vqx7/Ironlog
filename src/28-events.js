@@ -144,6 +144,5 @@ document.addEventListener('keydown',e=>{
   else if(!e.shiftKey&&(a===last||!$('#modal').contains(a))){e.preventDefault();first.focus();}
 });
 
-// Where a touch lands, and a field of the session screen left: auto-mark's routes (workout.ts, r60).
-document.addEventListener('pointerdown',noteDown,true);
-document.addEventListener('focusout',workoutBlur);
+// The session screen's own listeners (workout.ts, r60): added here, after the page's, in the order they ran before.
+workoutStart();

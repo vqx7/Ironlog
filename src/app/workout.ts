@@ -109,7 +109,18 @@ import type { ExerciseLike } from './model';
 import { bestLine, distShow, distU, effTgt, fmtDateLong, fmtE, loadHead, prSet, rirShow, setShort } from './display';
 import { coarse } from './env';
 import { adjOn } from './settings';
-import { drawScreen, drawing, dragDrop, dragStart, fieldValue, helpButton, howText, section, tipButton } from './view';
+import {
+  drawScreen,
+  drawing,
+  dragDrop,
+  dragStart,
+  fieldShown,
+  fieldValue,
+  helpButton,
+  howText,
+  section,
+  tipButton
+} from './view';
 import type { Part } from './view';
 
 /** A tap's element as the page's handler gives it: its data attributes. */
@@ -2726,8 +2737,8 @@ function saveSession(d: Draft, ex: ReturnType<typeof savedEx>[], cardio: CardioE
 
 /* ---------- the screen's fields ---------- */
 
-/** Where the last touch landed, for the routes auto-mark reads (the page's pointerdown, capture phase). */
-export function noteDown(e: Event): void {
+// Where the last touch landed, for the routes auto-mark reads (the page's pointerdown, capture phase).
+function noteDown(e: Event): void {
   lastDown = { el: e.target instanceof Element ? e.target : null, t: Date.now() };
 }
 /* What a field of the session screen typed changes, on every keystroke:
@@ -2768,6 +2779,8 @@ export function workoutInput(t: HTMLInputElement): boolean {
   if (t.dataset.f === 'w' || t.dataset.f === 'r') {
     const s = draftSet(t);
     if (!s) return true;
+    greyTyped(t);
+    if (selAgain === t) selAgain = null;
     const bi = Number(t.dataset.b),
       si = Number(t.dataset.s);
     const n = numIn(t.value);
@@ -2985,10 +2998,53 @@ export function workoutKey(e: KeyboardEvent): boolean {
    phone blurred the field itself (locked, or the app sent to the
    background). Leaving the load field a waiting auto-mark was heading for
    runs it. */
-/** A field of the session screen left (focusout). */
-export function workoutBlur(e: FocusEvent): void {
+/* A tap on a load field shows its number selected (V, PENDING 341 a, from
+   the live r56.1: a grey load was an empty field under a hint, so it could
+   not be edited in place and backspace did nothing, while a filled one took
+   the caret where tapped, 165 then 1 giving 1615). A grey load is put in the
+   field to be typed over: a digit replaces it, backspace clears it, and left
+   untouched it goes back to grey, so it still follows the next sets'
+   adjustment and one tap on the checkmark still logs it. A filled load is
+   selected the same way. The selection is made at once, so a digit typed
+   right away replaces it, and again once the tap is over (the tap's own
+   release can place the caret, on an iPhone as in Chrome) unless something
+   was typed meanwhile; a second tap on the focused field places the caret as
+   any tap does. iPhone selection behaviour is to be tried on V's phone
+   before this ships. */
+const greyIn = new WeakSet<HTMLInputElement>();
+// The field whose selection is made again once the tap is over, until something is typed in it.
+let selAgain: HTMLInputElement | null = null;
+// A field of the session screen focused (focusin): a load field's number selected, a grey one put in to be typed over.
+function workoutFocus(e: FocusEvent): void {
+  const t = e.target;
+  if (!(t instanceof HTMLInputElement) || !t.matches('.sg input[data-f="w"]')) return;
+  if (!t.value && /\d/.test(t.placeholder)) {
+    t.value = t.placeholder;
+    greyIn.add(t);
+    fieldShown(t, true);
+  }
+  t.select();
+  selAgain = t;
+  setTimeout(() => {
+    if (selAgain === t && document.activeElement === t) t.select();
+    if (selAgain === t) selAgain = null;
+  }, 0);
+}
+// A grey load put in a field and typed over is the lifter's own from then on (workoutInput).
+function greyTyped(t: HTMLInputElement): void {
+  if (!greyIn.has(t)) return;
+  greyIn.delete(t);
+  fieldShown(t, false);
+}
+// A field of the session screen left (focusout).
+function workoutBlur(e: FocusEvent): void {
   const t = e.target;
   if (!(t instanceof HTMLInputElement)) return;
+  // A grey load left untouched goes back to grey: nothing was typed.
+  if (greyIn.has(t)) {
+    greyTyped(t);
+    t.value = '';
+  }
   if (
     t.matches('.sg input[data-f="w"]') &&
     pendAuto &&
@@ -3020,6 +3076,13 @@ export function workoutBlur(e: FocusEvent): void {
     if (document.visibilityState !== 'visible' || !document.hasFocus()) return;
     acceptGrey(bi, si);
   }, 0);
+}
+
+/** Adds the session screen's listeners to the page: where a touch lands (capture), a field left, and a field focused. Called once at start, after the page's own. */
+export function workoutStart(): void {
+  document.addEventListener('pointerdown', noteDown, true);
+  document.addEventListener('focusout', workoutBlur);
+  document.addEventListener('focusin', workoutFocus);
 }
 
 /* ---------- an exercise dragged ---------- */

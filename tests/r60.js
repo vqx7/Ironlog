@@ -25,6 +25,10 @@
 //      puts everything back; Settings' Apply with a session in progress, which
 //      also re-plans the exercises not started, is undone whole (the full run
 //      of r60 in progress: tests/r44.js; fails on r59 for a nested change).
+//   6  a tap on a load field, grey or filled, shows its number selected: a
+//      digit replaces it, backspace clears it, a second tap places the caret;
+//      a grey load tapped and left untouched stays grey; one tap on the
+//      checkmark still logs the grey load (V, PENDING 341 a; fails on r59).
 const { open, engine, screenOf, screenDiff } = require('./h');
 const FILE = process.argv[2] || 'index.html';
 const OLD = 'baselines/r59.html';
@@ -218,6 +222,58 @@ const SCREENS = [
     });
     ok(r.before === '[null,null,"auto"]' && r.mid === '[33,"rpe","manual"]' && r.after === r.before, '5. Undo of a change with a change inside it puts all of it back', r);
     ok(!P.errors.length, '5. no page errors', P.errors);
+    await P.page.context().close();
+  }
+
+  // ---- 6. A tap on a load field selects its number (341 a).
+  if (run(6)) {
+    const P = await open(FILE, { browser, clock: '2026-10-24T10:00:00' });
+    const ev = (f, a) => P.page.evaluate(f, a);
+    const W = (b, s) => `#view .sg input[data-f="w"][data-b="${b}"][data-s="${s}"]`;
+    const field = q => ev(q => { const f = document.querySelector(q); return f && { v: f.value, ph: f.placeholder, a: f.selectionStart, z: f.selectionEnd, focused: document.activeElement === f }; }, q);
+    await ev(new Function(`{const L=window.__ironlog;${DEMO}${REAL}${START()}L.state.settings.autoDone=false;L.saveNow();L.render();}`));
+    await wait(150);
+    // A filled load: the first row's load typed.
+    await P.page.fill(W(0, 0), '135'); await ev(q => { const f = document.querySelector(q); f.dispatchEvent(new Event('input', { bubbles: true })); f.dispatchEvent(new Event('change', { bubbles: true })); f.blur(); }, W(0, 0));
+    await P.page.click(W(0, 0)); await wait(60);
+    let f = await field(W(0, 0));
+    ok(f.focused && f.v === '135' && f.a === 0 && f.z === 3, '6. a tap on a filled load selects its number', f);
+    await P.page.keyboard.type('1'); await wait(40);
+    f = await field(W(0, 0));
+    ok(f.v === '1', '6. a digit typed then replaces it', f);
+    await P.page.keyboard.press('Backspace'); await P.page.keyboard.type('140'); await wait(40);
+    // A second tap on the focused field places the caret, as a tap does.
+    await P.page.click(W(0, 0)); await wait(60);
+    f = await field(W(0, 0));
+    ok(f.v === '140' && f.a === f.z, '6. a second tap places the caret', f);
+    await ev(() => document.activeElement.blur()); await wait(60);
+    // A grey load (the second row shows the load above it in grey): a tap shows it selected; left untouched, it stays grey.
+    const g0 = await field(W(0, 1));
+    await P.page.click(W(0, 1)); await wait(60);
+    f = await field(W(0, 1));
+    ok(g0.v === '' && /\d/.test(g0.ph) && f.focused && f.v === g0.ph && f.a === 0 && f.z === g0.ph.length, '6. a tap on a grey load shows its number selected', { before: g0, now: f });
+    await ev(() => document.activeElement.blur()); await wait(60);
+    f = await field(W(0, 1));
+    const w1 = await ev(() => window.__ironlog.state.draft.ex[0].sets[1].w);
+    ok(f.v === '' && f.ph === g0.ph && w1 == null, '6. left untouched, it stays grey and nothing is typed', { f, w1 });
+    // Backspace clears it; left, it is grey again.
+    await P.page.click(W(0, 1)); await wait(60); await P.page.keyboard.press('Backspace'); await wait(40);
+    f = await field(W(0, 1));
+    await ev(() => document.activeElement.blur()); await wait(60);
+    const f2 = await field(W(0, 1));
+    ok(f.v === '' && f2.v === '' && f2.ph === g0.ph, '6. backspace clears it, and left empty it shows the grey load', { f, f2 });
+    // A digit typed over the grey load is the load.
+    await P.page.click(W(0, 1)); await wait(60); await P.page.keyboard.type('145'); await ev(() => document.activeElement.blur()); await wait(60);
+    const w2 = await ev(() => window.__ironlog.state.draft.ex[0].sets[1].w);
+    ok(Math.abs(w2 / 0.45359237 - 145) < 1e-6, '6. a number typed over the grey load is saved as typed', w2);
+    // One tap on the checkmark still logs a row on its grey load, and so does a tap on the field then the checkmark.
+    const g3 = await field(W(0, 2));
+    await P.page.click(W(0, 2)); await wait(60);
+    await ev(() => { const x = window.__ironlog.state.draft.ex[0].sets[2]; x.r = 8; });
+    await P.page.click('#view [data-act="sDone"][data-b="0"][data-s="2"]'); await wait(120);
+    const s3 = await ev(() => { const x = window.__ironlog.state.draft.ex[0].sets[2]; return { w: x.w, done: x.done }; });
+    ok(s3.done && Math.abs(s3.w / 0.45359237 - Number(g3.ph)) < 0.06, '6. the field tapped, then the checkmark: the set logs on its grey load', { s3, grey: g3.ph });
+    ok(!P.errors.length, '6. no page errors', P.errors);
     await P.page.context().close();
   }
 

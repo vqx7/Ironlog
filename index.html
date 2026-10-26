@@ -5087,7 +5087,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
           if (!dominated(p3) && sc(p3) >= floor - 1e-9 && (!repPR || sc(p3) > sc(repPR))) repPR = p3;
         }
       }
-      let pbJ = x2.pb, bandJ = x2.pbb, shown = x2.pb;
+      let pbJ = x2.pb, bandJ = x2.pbb, shown2 = x2.pb;
       if (x2.pb != null && judged.some((j3) => j3.p !== j3.at)) {
         pbJ = null;
         for (const j3 of judged) {
@@ -5095,7 +5095,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
           if (v3 != null && rt != null && (pbJ == null || v3 > pbJ)) {
             pbJ = v3;
             bandJ = rtfBand(rt);
-            shown = e1(j3.at.pl, j3.at.r, j3.at.rq);
+            shown2 = e1(j3.at.pl, j3.at.r, j3.at.rq);
           }
         }
       }
@@ -5114,7 +5114,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
           w: wPR.w,
           r: wPR.r,
           prevW: prevMaxW,
-          value: e1PR ? shown : null,
+          value: e1PR ? shown2 : null,
           prev: e1PR ? pb : null,
           prevAll: maxPb,
           bb: bandJ,
@@ -5126,7 +5126,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
           sid: x2.sid,
           exId: id,
           type: "e1RM",
-          value: shown,
+          value: shown2,
           prev: pb,
           prevAll: maxPb,
           bb: bandJ,
@@ -5426,11 +5426,11 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     const fl = repFloor(wp.length ? wp : repsFrom.pts, repMin);
     const rl = workLoad(rec2.pts, repMin || 0);
     const rp = atLoad(rec2.pts, rl);
-    const shown = rp.length ? rp : rec2.pts;
+    const shown2 = rp.length ? rp : rec2.pts;
     return {
       line,
-      prev: shown.map(fmt).slice(0, 30),
-      prevOff: shown.length < rec2.pts.length || miss.length > 0 || void 0,
+      prev: shown2.map(fmt).slice(0, 30),
+      prevOff: shown2.length < rec2.pts.length || miss.length > 0 || void 0,
       lastR: (wp.length ? wp : repsFrom.pts).map((p3) => fl(p3.r)),
       basis: rec2 !== base ? base.date : null
     };
@@ -9710,6 +9710,11 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     return o2(fixed);
   }
   var unconfirmed = /* @__PURE__ */ new WeakSet();
+  var shown = /* @__PURE__ */ new WeakSet();
+  function fieldShown(el, on) {
+    if (on) shown.add(el);
+    else shown.delete(el);
+  }
   function fieldTyped(e5) {
     const t4 = e5.target;
     if (!t4) return;
@@ -9733,7 +9738,7 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
       const el = part.element;
       const now = el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement ? el.value : null;
       if (now === v3) return E;
-      if (el === document.activeElement && now != null && (unconfirmed.has(el) || numIn(now) === numIn(v3)))
+      if (el === document.activeElement && now != null && (unconfirmed.has(el) || shown.has(el) || numIn(now) === numIn(v3)))
         return E;
       p2(part);
       return v3;
@@ -10407,8 +10412,8 @@ ${cs.length > 40 ? b`<p class="small muted">${cs.length - 40} older entries are 
     const I2 = IDX();
     const withData = Object.keys(I2.byEx).sort((a2, b2) => exName(a2).localeCompare(exName(b2)));
     if (ui.histEx && !I2.byEx[ui.histEx]) ui.histEx = "";
-    const shown = ui.histEx ? ss.filter((x2) => x2.ex.some((b2) => b2.exId === ui.histEx)) : ss;
-    const page = shown.slice(0, ui.histLimit);
+    const shown2 = ui.histEx ? ss.filter((x2) => x2.ex.some((b2) => b2.exId === ui.histEx)) : ss;
+    const page = shown2.slice(0, ui.histLimit);
     const wd = sessionWords(page.map((s3) => s3.id));
     const wTag = (s3, exId) => {
       const w2 = (wd[s3.id] || {})[exId];
@@ -10417,7 +10422,7 @@ ${cs.length > 40 ? b`<p class="small muted">${cs.length - 40} older entries are 
     const vol = new Map(I2.sessVol.map((v3) => [v3.id, v3.vol]));
     const nWork = (s3) => s3.ex.reduce((a2, b2) => a2 + b2.sets.filter(isWork).length, 0);
     const wkTot = {};
-    for (const s3 of shown) {
+    for (const s3 of shown2) {
       const w2 = weekStart(s3.date);
       const o3 = wkTot[w2] || (wkTot[w2] = { n: 0, sets: 0, vol: 0 });
       o3.n++;
@@ -10440,14 +10445,14 @@ ${cs.length > 40 ? b`<p class="small muted">${cs.length - 40} older entries are 
       }
       rows.push(sessionRow(s3, perDay, nWork(s3), vol.get(s3.id) || 0, wd, wTag));
     }
-    const more = shown.length > page.length ? b`<button class="btn block" style="margin-top:10px" data-act="histMore">Show ${Math.min(HIST_PAGE, shown.length - page.length)} more (${page.length} of ${shown.length})</button>` : A;
+    const more = shown2.length > page.length ? b`<button class="btn block" style="margin-top:10px" data-act="histMore">Show ${Math.min(HIST_PAGE, shown2.length - page.length)} more (${page.length} of ${shown2.length})</button>` : A;
     const body = b`<label class="field">Show sessions with<select data-bind="histEx">
 <option value="" .selected=${!ui.histEx}>Any exercise</option>
 ${withData.map(
       (id) => b`<option value=${id} .selected=${ui.histEx === id}>${exName(id)}</option>
 `
     )}</select></label>
-<div style="margin-top:6px">${shown.length ? A : b`<p class="muted">No sessions with that exercise.</p>
+<div style="margin-top:6px">${shown2.length ? A : b`<p class="muted">No sessions with that exercise.</p>
 `}${rows}</div>
 ${more}`;
     const last = ss[ss.length - 1];
@@ -10455,7 +10460,7 @@ ${more}`;
       sk: "history:sessions",
       key: "sessions",
       title: "Sessions",
-      sub: ui.histEx ? `${shown.length} with ${exName(ui.histEx)}` : `since ${last ? fmtDate(last.date) : ""}`,
+      sub: ui.histEx ? `${shown2.length} with ${exName(ui.histEx)}` : `since ${last ? fmtDate(last.date) : ""}`,
       body,
       def: true
     });
@@ -13211,10 +13216,10 @@ ${logBuf.length ? b`<ul class="clist">${logBuf.slice(-5).reverse().map(
     });
     if (!rows.length) return { n: 0, html: b`<p class="muted">Your bests appear here after your first session.</p>` };
     const u4 = (ex) => " " + U() + (ex.bw ? " total" : "");
-    const shown = ui.bestsAll ? rows : rows.slice(0, 6);
+    const shown2 = ui.bestsAll ? rows : rows.slice(0, 6);
     return {
       n: rows.length,
-      html: b`<div class="bests">${shown.map((r4) => {
+      html: b`<div class="bests">${shown2.map((r4) => {
         const ex = r4.ex;
         const est = r4.est && isCompound(ex) ? r4.est : null;
         const top = [
@@ -13226,7 +13231,7 @@ ${logBuf.length ? b`<ul class="clist">${logBuf.slice(-5).reverse().map(
     <table class="t"><tr><th>${ex.assist ? "Load" : loadHead(ex)}</th><th class="r">${ex.timed ? "Seconds" : "Reps"}</th><th class="r">First done</th></tr>${r4.front.map(
           (f3) => b`<tr><td class="num">${loadLabel(ex, f3.p.w)}</td><td class="r num">${f3.p.r}</td><td class="r">${fmtDate(f3.date)}</td></tr>`
         )}</table></details>`;
-      })}</div>${rows.length > shown.length ? b`<button class="btn sm" style="margin-top:8px" data-act="bestsAll">Show all ${rows.length} lifts</button>` : A}<p class="small muted hastip" style="margin:8px 0 0" data-tip="For each load, the most reps you have done, where no heavier set did as many. Beating a line at 90% or more of your strongest set is a rep PR. The best estimate (compound lifts) is the highest estimated 1RM from any set, in the frame you log in. Warm-ups and drop sets are left out.">How to read this</p>`
+      })}</div>${rows.length > shown2.length ? b`<button class="btn sm" style="margin-top:8px" data-act="bestsAll">Show all ${rows.length} lifts</button>` : A}<p class="small muted hastip" style="margin:8px 0 0" data-tip="For each load, the most reps you have done, where no heavier set did as many. Beating a line at 90% or more of your strongest set is a rep PR. The best estimate (compound lifts) is the highest estimated 1RM from any set, in the frame you log in. Warm-ups and drop sets are left out.">How to read this</p>`
     };
   }
   function readinessBody() {
@@ -15357,7 +15362,7 @@ ${ms.length ? b`<div class="scroll-x" style="margin-top:10px"><table class="t"><
     const rtf = rtfOf(r4, q);
     const band = rtf == null ? null : rtfBand(rtf);
     const bd = band == null ? void 0 : st && st.byBand && st.byBand[band];
-    const v3 = noE1(ex) ? null : e1(load2, r4, q), shown = noE1(ex) ? null : e1(f3.own, r4, q);
+    const v3 = noE1(ex) ? null : e1(load2, r4, q), shown2 = noE1(ex) ? null : e1(f3.own, r4, q);
     const bandW = band != null && BAND_WORDS[band] || "";
     if (pr === "Best") {
       if (bd == null || v3 == null) return "";
@@ -15365,12 +15370,12 @@ ${ms.length ? b`<div class="scroll-x" style="margin-top:10px"><table class="t"><
       for (const x2 of exps)
         if (x2.pb != null && !(date && x2.date === date)) all = all == null ? x2.pb : Math.max(all, x2.pb);
       if (!isCompound(ex)) return ` (your best for ${bandW})`;
-      return all == null || (shown ?? 0) > all + 1e-6 ? ` (estimated 1RM ${fmtE(shown)} ${U()}${all != null ? `; was ${fmtE(all)}` : ""})` : ` (your best for ${bandW}, ${fmtE(shown)} ${U()})`;
+      return all == null || (shown2 ?? 0) > all + 1e-6 ? ` (estimated 1RM ${fmtE(shown2)} ${U()}${all != null ? `; was ${fmtE(all)}` : ""})` : ` (your best for ${bandW}, ${fmtE(shown2)} ${U()})`;
     }
     if (pr === "Weight PR") {
       const mw = f3.heaviest;
       const was = ex.assist ? `less help than ever` : `heaviest before ${ex.bw ? loadLabel(ex, mw) : fmtW(mw) + " " + U()}`;
-      return ` (${was}${isCompound(ex) && bd != null && v3 != null && v3 > bd + 1e-6 ? `; best estimate for ${bandW} now ${fmtE(shown)}` : ""})`;
+      return ` (${was}${isCompound(ex) && bd != null && v3 != null && v3 > bd + 1e-6 ? `; best estimate for ${bandW} now ${fmtE(shown2)}` : ""})`;
     }
     let m3 = 0;
     for (const x2 of exps) for (const p3 of x2.pts) if (p3.pl >= load2 - 1e-6) m3 = Math.max(m3, p3.r);
@@ -17120,6 +17125,8 @@ ${ms.length ? b`<div class="scroll-x" style="margin-top:10px"><table class="t"><
     if (t4.dataset.f === "w" || t4.dataset.f === "r") {
       const s3 = draftSet(t4);
       if (!s3) return true;
+      greyTyped(t4);
+      if (selAgain === t4) selAgain = null;
       const bi = Number(t4.dataset.b), si = Number(t4.dataset.s);
       const n3 = numIn(t4.value);
       act(
@@ -17296,9 +17303,35 @@ ${ms.length ? b`<div class="scroll-x" style="margin-top:10px"><table class="t"><
     }
     return false;
   }
+  var greyIn = /* @__PURE__ */ new WeakSet();
+  var selAgain = null;
+  function workoutFocus(e5) {
+    const t4 = e5.target;
+    if (!(t4 instanceof HTMLInputElement) || !t4.matches('.sg input[data-f="w"]')) return;
+    if (!t4.value && /\d/.test(t4.placeholder)) {
+      t4.value = t4.placeholder;
+      greyIn.add(t4);
+      fieldShown(t4, true);
+    }
+    t4.select();
+    selAgain = t4;
+    setTimeout(() => {
+      if (selAgain === t4 && document.activeElement === t4) t4.select();
+      if (selAgain === t4) selAgain = null;
+    }, 0);
+  }
+  function greyTyped(t4) {
+    if (!greyIn.has(t4)) return;
+    greyIn.delete(t4);
+    fieldShown(t4, false);
+  }
   function workoutBlur(e5) {
     const t4 = e5.target;
     if (!(t4 instanceof HTMLInputElement)) return;
+    if (greyIn.has(t4)) {
+      greyTyped(t4);
+      t4.value = "";
+    }
     if (t4.matches('.sg input[data-f="w"]') && pendAuto && pendAuto.s === Number(t4.dataset.s) && blkIdx(pendAuto.b) === Number(t4.dataset.b)) {
       setTimeout(autoPending, 0);
       return;
@@ -17320,6 +17353,11 @@ ${ms.length ? b`<div class="scroll-x" style="margin-top:10px"><table class="t"><
       if (document.visibilityState !== "visible" || !document.hasFocus()) return;
       acceptGrey(bi, si);
     }, 0);
+  }
+  function workoutStart() {
+    document.addEventListener("pointerdown", noteDown, true);
+    document.addEventListener("focusout", workoutBlur);
+    document.addEventListener("focusin", workoutFocus);
   }
   var edgeScroll = /* @__PURE__ */ (() => {
     let y2 = null, raf = 0;
@@ -22414,8 +22452,7 @@ ${JSON.stringify(fb.context, null, 1)}`;
         first.focus();
       }
     });
-    document.addEventListener("pointerdown", noteDown, true);
-    document.addEventListener("focusout", workoutBlur);
+    workoutStart();
     function keyedKids() {
       const v3 = $2("#view");
       return v3 ? [...v3.children].filter((e5) => e5.dataset && e5.dataset.mkey) : [];
