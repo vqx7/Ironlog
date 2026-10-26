@@ -273,6 +273,19 @@ Each release adds here the names it made or changed and why, so the map stays se
 - **Types:** `CloudStatus` (307), `LogEntry`, `DraftSet.rid`, `LoggedSet.rid`, `Base.draft`, `Fx.ask`; `Dated.t` and `startedAt` through `isTime` (308).
 - **Checks:** `tests/r56-1.js` (two phones on a mock cloud; fails on `baselines/r56.html` at its first check), `tests/r56-1b.js` (the question through the real account service, against the stand-in server); `tests/r56.js` pinned to r55 against `baselines/r56.html`.
 
+### r56.2 to r59
+
+Not written here as each shipped; what each moved and changed, with its names, is in PENDING.md's items 338 (r56.2), 342 (r57), 343 (r58) and 345 (r59), and the modules each added in ARCHITECTURE.md's size table.
+
+### r60 (2026-10-25, version 2.14; phase 5's last screen, PENDING 347)
+
+- **The session screen:** `viewWorkout` (was `viewLogger`) and its parts, the taps (`WORKOUT_ACTS`, the menu's own moves and removal among them) and the fields (`workoutInput`, `workoutChange`, `workoutKey`; the focus, blur and touch listeners added by `workoutStart`) in `workout.ts`; a set and what a tick changes in `worksets.ts` (`setDone`, the one place a set is ticked, with `noLoadYet` (344), `settleLoad`, `assessSet` applying `nextSets`, `rowPR`, `livePR`, `blockProgress`, `greyR`, `lastRFor`, `newBlock`, `refreshBlock`, `refreshEx`, `syncDraftPlan`, `unitWords`, `orderAt`, `orderRun`, `moveBlock`, `acceptGrey`); Finish in `workfinish.ts` (`finish`, `finishNow`, `saveSession`, the recap); the drag in `workdrag.ts` (`mountBlockDrag`, `blockDragStop`); what they change between draws in `workstate.ts` (`W`: the auto-mark waiting, the marked load field, the effort strip, the plates line, the folds; the block handles `blkRef`, `blkIdx`; `redraw`, the hook the screen gives at start). The legacy in-place patches (`afterSet`, `updateSessBar`, `refreshPR`, `refreshGrey` and the like) went: the screen is drawn again and lit-html changes what differs.
+- **The next sets after a set:** `nextSetsIn` in `engine.ts` (from `src/17-adjust.js`, deleted), with `stretchTopIn` (341 b, rule 3) and the first session back's aim (rule 4); the session after a return, `sgAfterReturnIn` (rule 5), first among `suggestCoreIn`'s cases; `bwNoLoadIn`.
+- **Fields:** `fieldValue` keeps text typed and not yet confirmed (`viewStart` notes the page's input, change and focusout, view.ts) and text the screen put there to be typed over (`fieldShown`, the grey load selected on a tap, 341 a).
+- **The write path:** `act` runs a change made inside another as part of it (one Undo step, one save at the end; found by r60's full run in `tests/r44.js`).
+- **Elsewhere:** the update bar in `update.ts` (`updateStart`, `UPDATE_ACTS`; "Update ready" with Update); normalize's draft blocks built against `DraftBlock` (`satisfies`), `cleanTgt` returning a `Target`; the installed build's library loaders list its own copies alone (`scripts/build.js`).
+- **Checks:** `tests/r60.js` (section 1 holds the screen to r59 in 35 sessions and modes; sections 2 to 7 fail on r59 or on a build before r60), `tests/inflight.js`, `tests/personas.js`, `tests/loadrules.js`; `tests/engine.js` calls `nextSets` and `bwNoLoad` in Node, with two return histories.
+
 ## PENDING.md's Done section, by release (r55 back)
 
 #### r55, live since 2026-10-20 (pull request #48, merged by V; build 2026.10.19-r55)
