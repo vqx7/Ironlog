@@ -9,7 +9,7 @@
    refuses a write to the log in a moved screen outside `act`, and
    tests/r57.js reads every step on the page after each action's tap. */
 
-import { snapshot } from './storage';
+import { log, snapshot } from './storage';
 import { saveNow, saveSoon } from './sync';
 import { invalidate } from './live';
 import { plainTemplate } from './normalize';
@@ -40,16 +40,20 @@ export interface ActOpts {
    inside drops the caches is kept for the outer one. */
 let depth = 0;
 let dropInside = false;
+// Whether the change being made keeps an Undo step: one asked for inside a change that keeps none cannot be taken (the log is half changed by then), so it is said in the error log rather than lost unsaid.
+let outerUndo = false;
 
 /** Changes the log with every step a change needs, in order; false when its check refused it. Inside another change it is part of that one. */
 export function act(change: () => void, opts: ActOpts = {}): boolean {
   if (opts.check && !opts.check()) return false;
   if (depth > 0) {
     if (!opts.inProgress) dropInside = true;
+    if (opts.undo && !outerUndo) log('act', 'an Undo step was asked inside a change that keeps none');
     change();
     return true;
   }
   if (opts.undo) snapshot(typeof opts.undo === 'function' ? opts.undo : null);
+  outerUndo = !!opts.undo;
   depth++;
   let inside = false;
   try {
