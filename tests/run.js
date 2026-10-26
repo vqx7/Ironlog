@@ -60,8 +60,9 @@ execFileSync('node',[path.join('scripts','build.js'),'--preview'],{stdio:'inheri
 let bad=0;const failed=[];
 /* On GitHub each suite's start and end are also written to
    screenshots/times.txt, which the workflow keeps even from a job stopped
-   at its hour (r61's WebKit shards, 2026-10-26: two passed the hour and
-   the log, behind a sign-in, was all that said which suite was running). */
+   at its limit (r61's WebKit shards, 2026-10-26: two passed the hour and
+   the log, behind a sign-in, was all that could say where; the install had
+   taken it, publish.yml). */
 const timesLog=l=>{if(!process.env.GITHUB_ACTIONS)return;try{fs.mkdirSync('screenshots',{recursive:true});fs.appendFileSync(path.join('screenshots','times.txt'),`${new Date().toISOString()} ${l}\n`);}catch(e){/* a log of times only; the run goes on without it */}};
 function runOne(x){
   timesLog(`start ${x.s}${x.tag}`);
@@ -91,7 +92,7 @@ function report(r){
   const notes=r.out.split('\n').filter(l=>/^note /.test(l));
   /* A suite that runs four minutes or more is named with its time, readable
      through the API as the notes are: a shard past its hour said nothing
-     of which suite took it there (r61's first run, 2026-10-26). */
+     of what took it there (r61's first run, 2026-10-26; the install). */
   if(r.sec>=240)notes.push(`note ran for ${r.sec} s`);
   for(const l of notes){console.log(l);if(process.env.GITHUB_ACTIONS)console.log(`::notice title=${r.s}${r.tag}::${l.replace(/%/g,'%25').replace(/\r/g,'').replace(/\n/g,'%0A').slice(0,400)}`);}
   if(!pass){bad++;failed.push(r);const lines=r.out.split('\n').filter(l=>!/^ok /.test(l)&&/FAIL|Error|error/.test(l)).slice(0,15);console.log(lines.join('\n'));
