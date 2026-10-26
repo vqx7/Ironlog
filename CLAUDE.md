@@ -3,7 +3,7 @@
 A hypertrophy and strength tracker for one lifter, V, used on a phone at the gym. It ships as a standalone
 installable web app: built from `src/` into one page, served by GitHub Pages at https://ironapp.org, working
 offline, with the log on the phone and an optional account that syncs it. Every pull request also publishes a
-preview app at https://ironapp.org/preview/ to try on the phone before merging. Build r60, version 2.14, state schema v5.
+preview app at https://ironapp.org/preview/ to try on the phone before merging. Build r61, version 2.15, state schema v5.
 
 The Claude artifact version was retired by V on 2026-09-27 (`OWNER.md` Done): never work on it or republish it.
 `cloudProvider()` still takes Claude's db when `window.claude` exists, because the sync suites use it as their
@@ -129,7 +129,9 @@ lines, then `ALL PASS` (the fuzz suite prints `fuzz clean`). Type check: `npx ts
   clearly weaker reading the target repeats and the session still counts for the trend, stalls and PRs; done
   lighter it sets no target or trend, and done in full on a
   lighter or deload day it is a full session (a day's label never overrides what a lift did). A break of more than
-  four weeks restarts a lift's readings, and the weeks counted (averages and adherence) start after it. A ticked set
+  four weeks restarts a lift's readings, and the weeks counted (averages and adherence) start after it. A session
+  marked New machine or gym restarts them too, its PRs, bests and dumbbell steps with them, and keeps every session
+  shown (`liftReadIn`, r61). A ticked set
   of 0 reps is a missed set: kept and shown, counted toward no volume, PR, estimate or trend, read by the next target
   as a set short of the range (so sets missed never step a load up, r56.2), and asked about first when its load is well
   under the session's working load (r55.1). With Your gym's plates set, a bar lift's loads are ones the bar and those

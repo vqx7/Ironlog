@@ -2,11 +2,11 @@
 
 Everything that needs you, in one place, with the exact code to paste. Claude keeps this file current: an item moves to Done only when you confirm it, or when Claude can check it from here (and says how it checked). Build work and decisions are tracked in `PENDING.md`; this file is only what you do by hand.
 
-Last updated: r58 live, r59 in pull request #55, r60 building on it, 2026-10-25.
+Last updated: r58 live, r59 and r60 in pull requests #55 and #56, r61 on #56, 2026-10-26.
 
 ## Now, in this order
 
-1. A26 (r59, version 2.13): pull request #55, then r60's pull request on it (version 2.14, the session screen), which Claude opens once every suite passes here; its independent review runs on it, and Claude says when it is clean. The preview carries the latest pull request, so it shows r60 once that is open. Try it on your phone (Checks on your phone, below, r59 and r60), then merge #55 on GitHub's website; Claude then points r60's pull request at `main`, and you merge it the same way. When "Update ready" shows on a phone, tap Update. A25 (r57 and r58): done, merged by you (#53 on 2026-10-25 at 01:48 UTC, #54 at 13:58), r58 live as build 2026.10.24-r58. A24 (r55.1 to r56.2): done, merged by you on 2026-10-24 (#49 and #51 at 20:58 UTC, r56's commits with #51, its own #50 closed; #52 at 21:47).
+1. A26 (r59, version 2.13; r60, 2.14; r61, 2.15): pull requests #55 (r59), #56 (r60, on #55) and r61's (on #56), which Claude opens once every suite passes in both browsers and r61's independent review is clean. The preview carries the newest pull request, so it shows r61, with r60 and r59 under it. Try it on your phone (Checks on your phone, below, r59 to r61), then merge #55 on GitHub's website; Claude then points #56 at `main`, and you merge it the same way; then r61's. When "Update ready" shows on a phone, tap Update. A25 (r57 and r58): done, merged by you (#53 on 2026-10-25 at 01:48 UTC, #54 at 13:58), r58 live as build 2026.10.24-r58. A24 (r55.1 to r56.2): done, merged by you on 2026-10-24 (#49 and #51 at 20:58 UTC, r56's commits with #51, its own #50 closed; #52 at 21:47).
 2. B5, the trigger, then its check: Report a problem from the app and an issue appears in `ironlog-feedback` (steps below). Status: to do, unless you have done it (Claude cannot see Supabase from here).
 3. C6: add the code to the confirmation email (5 minutes, below). The app asks a new person for the code the email should carry. Status: to do, unless you have done it.
    D7, any time (with C6 is easiest): a 1 MB limit on each synced document (1 minute, below). Status: to do, unless you have done it.
@@ -313,8 +313,8 @@ Status: to do. Each step is free and none of them stops Claude from building and
 
 ### D6. Old branches
 Status: to do (checked by Claude on 2026-10-25: the branches below are on GitHub, and Automatically delete head branches is still off). Claude's GitHub access cannot delete branches.
-These are wholly in `main` (GitHub shows each 0 commits ahead of it), so deleting them loses nothing. Leave `r59` and `r60` until their pull requests are merged.
-1. github.com/vqx7/Ironlog/branches > tap the trash icon on `modular`, `modular-2`, `r48`, `r51`, `r52`, `r53`, `r54`, `r55`, `r55.1`, `r56-wip`, `r56`, `r56.1`, `r56.2`, `r57` and `r58`. Two more hold commits that are not in `main`, your call: `r42-look` (the restyle you turned down, pull request #32) and `r31.2` (one commit pushed after its pull request #17 merged).
+These are wholly in `main` (GitHub shows each 0 commits ahead of it), so deleting them loses nothing. Leave `r59`, `r60` and `r61-on-r60` until their pull requests are merged. `r61` (22ac59e) and `r61-normalize-draft` can go now: the first is an earlier copy of r61's first commits, each in `r61-on-r60` (checked by Claude on 2026-10-26), and the second held drafts r61 has since built.
+1. github.com/vqx7/Ironlog/branches > tap the trash icon on `modular`, `modular-2`, `r48`, `r51`, `r52`, `r53`, `r54`, `r55`, `r55.1`, `r56-wip`, `r56`, `r56.1`, `r56.2`, `r57`, `r58`, `r61` and `r61-normalize-draft`. Two more hold commits that are not in `main`, your call: `r42-look` (the restyle you turned down, pull request #32) and `r31.2` (one commit pushed after its pull request #17 merged).
 2. So it does not happen again: Settings > General > Pull Requests > tick **Automatically delete head branches**. Each branch then goes when its pull request is merged.
 
 ### D7. A size limit on each synced document (r45, item 286, 1 minute)
@@ -340,6 +340,7 @@ Status: to do whenever you are at the gym; tell Claude what you see.
 - r55.1, in the preview (pull request #49): tick a set at a light weight with 0 reps (it asks Log it as missed or Fix it); in Settings > Your gym, turn a small plate off and look at a barbell lift's next load and its warm-ups (all loadable with the plates left); after a set, type a load 10 times too heavy in Type or dictate sets (it asks); signed in, Settings > More > Load demo data (it says why it does not).
 - r56.1 to r59, in the preview or live: one workout open on two phones, a set ticked on each (both kept); Your gym's plates and the next load on a barbell lift; History, Settings, Plan, Stats and Today look and work as before (r57 to r59 moved them, nothing meant to change); the calendar's days ahead (r59).
 - r60, in the preview, in Safari and in the home-screen app (no browser here has an on-screen keyboard or iPhone selection): in a workout, tap a load field with a grey number (it shows the number selected; type a digit and it replaces it; tap away untouched and it is grey again) and a typed one (the same); a second tap places the cursor; one tap on the checkmark still logs the grey load. A barbell lift's first time, nothing typed: tap the checkmark (it says Add the weight first and puts the cursor in the load). Back after five weeks or more off a lift: the next sets after an easy first set (V's 165 x 10 at 3 in reserve case: 185 for 6). The update bar says "Update ready".
+- r61, in the preview: in a workout, ⋯ on an exercise you have logged before > New machine or gym (its target and grey load go, the first-time hint shows, and a New machine tag sits by its name); ⋯ again > Same machine as before (they come back). Mark it, log and Finish: no PR for that lift even if the numbers are higher, and on Stats its best estimate is today's, with its earlier sessions still in History.
 ## Reminders
 - Renew the `ironlog-feedback` token (B3) before it expires, a year after you make it. Claude writes the date here when you say B3 is done.
 
