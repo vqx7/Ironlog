@@ -53,7 +53,7 @@ import {
   oddLoad,
   lightZero,
   exName,
-  shortPlanWith
+  trimPlan
 } from './live';
 import { state, fx, ui } from './store';
 import { lastDup, effTarget, blockRest, newRow, greyW, effW, blockDone } from './session';
@@ -126,9 +126,9 @@ export function rowBlank(b: DraftBlock | null | undefined, x: DraftSet): boolean
   return !x.done && x.r == null && x.rir == null && appLoad(b, x);
 }
 
-/** Short on time's trim of the session in progress to so many minutes, taking only blank rows (pick.ts, shortPlanIn). */
-export function shortPlan(d: { ex: DraftBlock[] }, mins: number): ReturnType<typeof shortPlanWith> {
-  return shortPlanWith(
+/** Short on time's trim of the session in progress to so many minutes, taking only blank rows (pick.ts, trimPlanIn). */
+export function shortPlan(d: { ex: DraftBlock[] }, mins: number): ReturnType<typeof trimPlan> {
+  return trimPlan(
     d,
     mins,
     d.ex.map(b => b.sets.map(x => rowBlank(b, x)))

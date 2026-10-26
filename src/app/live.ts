@@ -46,7 +46,7 @@ import {
   rolling7In,
   sessionMuscleSetsIn,
   sessionMusclesIn,
-  shortPlanIn,
+  trimPlanIn,
   strengthPickIn,
   swapCandsIn
 } from './pick';
@@ -189,7 +189,7 @@ export const strengthPick = live(strengthPickIn);
 export const swapCands = live(swapCandsIn);
 export const eqPlan = live(eqPlanIn);
 export const recentExIds = live(recentExIdsIn);
-export const shortPlanWith = live(shortPlanIn);
+export const trimPlan = live(trimPlanIn);
 export const loadOf = live(loadOfIn);
 export const prFrame = live(prFrameIn);
 export const prLoad = live(prLoadIn);

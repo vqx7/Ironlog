@@ -736,7 +736,7 @@ export interface TrimRow {
    trimming takes only blank rows (`blank`, each block's rows as the session
    screen's rowBlank reads them, handed in as data). */
 /** Short on time's trim of a session to so many minutes: each exercise's rows kept, the changes in words, the minutes after, and whether it is still over. */
-export function shortPlanIn(
+export function trimPlanIn(
   M: Model,
   d: { ex: DraftBlock[] },
   mins: number,
