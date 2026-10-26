@@ -43,7 +43,7 @@ function renderModalBody(keep){
     <div class="sheet-scroll" id="pickList">${pickerBody(m)}</div></div>`;
   }else if(m.kind==='exEdit'){h=exEditSheet(m);
   }else if(m.kind==='exhist'){
-    h=exHistSheet(m.exId);
+    h=exHistSheet(m);
   }else if(m.kind==='bmenu'){
     h=bmenuSheet(m);if(!h){ui.modal=null;el.hidden=true;return;}
   }else if(m.kind==='injury'){h=injurySheet();

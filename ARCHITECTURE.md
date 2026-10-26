@@ -61,8 +61,8 @@ The current code is the **legacy script**: `src/10-*.js` to `src/29-*.js`, joine
 
 **The ratchet:** the legacy script may never grow. `tests/hygiene.js` fails when it has more top-level declarations or more lines than the numbers below, and also when it has fewer, until the numbers are lowered to match, so each phase locks in what it moved. A change that adds code adds it in `src/app/`.
 
-Legacy top-level declarations: 128
-Legacy lines: 2637
+Legacy top-level declarations: 124
+Legacy lines: 2572
 
 | Measured (scripts/depmap.js) | r49 | r50 | r51 | r52 | r53 | r54 | r55 | r56 | r57 | r58 | r59 | r60 |
 |---|---|---|---|---|---|---|---|---|---|---|---| --- |

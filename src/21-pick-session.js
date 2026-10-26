@@ -231,28 +231,6 @@ function pickerBody(m){
   const rowG=e=>pickRow(e,used,true);
   return h+(com.length?grp(`Most common (${com.length})`)+com.map(rowG).join(''):'')+grp(com.length?`All other exercises (${rest.length})`:`All exercises (${all.length})`)+rest.map(row).join('');
 }
-function liftTrend(exId){
-  /* The sessions the trend reads (r30: a deload or lighter day in the list
-     read as a drop; since r54 one short of its usual is in). The word
-     follows the numbers shown: within 1% is flat, so "301 → 300.7 · up"
-     cannot happen. Isolation lifts show their top sets, not a 1RM. */
-  const ex=EX(exId);const st=IDX().exStats[exId];
-  const exps=liftRead(exId).filter(x=>x.tv!=null&&!lighter(x)&&(!st||sameRR(x.rr,st.rr))).slice(-3); // in the trend's range, so a heavy and a light day are not read as one line (r55), and since a new machine or gym (liftRead, r61)
-  if(exps.length<2)return '';
-  /* The word follows the lift's trend when it has one (r32, from the third
-     review: a press flat for 7 weeks read "67.5 → 69.7 → 69.7 · up" from its
-     last three sessions). */
-  // With no trend yet (under 3 sessions over 2 weeks), no word at all (r32, second check: "· up" from three sessions in a week).
-  /* The word covers the trend's weeks, not just the three numbers shown (r34.2: "252 → 249 → 252 · up"), and says nothing for a lift weeks off. */
-  const ow=st&&st.spanW?` over ${st.spanW} weeks${st.rrIn?` in the ${repSpan(st.rrIn[0],st.rrIn[1])} range`:''}`:'';
-  const dir=st&&st.fresh&&st.pct!=null?(st.moving?`up${ow}`:st.falling?`down${ow}`:st.holdRR&&(st.holdRR.length||st.quietRR.length)?`down${ow}`:st.pLo!=null&&st.pLo>0?`slowly up${ow}`:st.pHi!=null&&st.pHi<0?`slowly down${ow}`:`no clear change over ${st.spanW||2} weeks`):'';
-  if(isCompound(ex)&&exps.every(x=>x.best!=null)){
-    const v=exps.map(x=>fmtE(x.best));const d2=dir;
-    return `<p class="small muted" style="margin:2px 0">Est. 1RM <span class="trend">${v.join(' → ')} ${U()}</span>${d2?' · '+d2:''}${st&&!st.useAdj?' '+tipi('Read from loads and reps alone: RIR is rated on too few of its sets to compare sessions fairly.','About this trend'):''}</p>`;
-  }
-  return `<p class="small muted" style="margin:2px 0">Top sets <span class="trend">${exps.map(x=>topSetOf(ex,x)).join(' → ')}</span>${dir?' · '+dir:''}</p>`;
-}
-function topSetOf(ex,x){return topSetPt(ex,x).txt;}
 /* A muscle's weekly target with a profile (defBand) and the app's own
    target (appBand) are in src/app/profile.ts since r54, beside the floors a
    first-run pick records (fitFloors) and their refit (refit). */

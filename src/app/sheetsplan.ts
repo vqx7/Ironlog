@@ -1,14 +1,15 @@
-/* The sheets of the plan (r62, PENDING 355): the routine templates (on a
-   first run with Your training folded above them), a new routine, and the
-   recap after Finish, which offers the routine the session's changes. Each
+/* The sheets of the plan (r62, PENDING 355): Change on Today's card (every
+   other way to start), the routine templates (on a first run with Your
+   training folded above them), a new routine, and the recap after Finish, which offers the routine the session's changes. Each
    is drawn by lit-html as src/24-sheets.js drew it (tests/r62.js holds them
    to r61's), and answered by the legacy script's actions by their data-act
    until those move (r63). */
 
-import { html } from 'lit-html';
+import { html, nothing } from 'lit-html';
 import type { TemplateResult } from 'lit-html';
-import { TEMPLATES, routineFromTemplate } from './routines';
-import { dayMinutes, prof } from './live';
+import { TEMPLATES, dayLabel, routineFromTemplate } from './routines';
+import { activeRoutine, dayMinutes, isDeloadWeek, prof } from './live';
+import { cycleState } from './display';
 import { estMin, min5 } from './format';
 import { WEEK_DAYS } from './util';
 import { ui } from './store';
@@ -66,4 +67,43 @@ export function recapSheet(m: RecapSheet): TemplateResult {
   return html`<div class="sheet" role="dialog" aria-modal="true"><div class="sheet-h"><h3>${m.title}</h3>${closeX()}</div>${prs.length ? html`<div class="prblk" id="recapPR"><h4>${prs.length === 1 ? 'New PR' : `${prs.length} new PRs`}</h4><ul>${prs.map(p => html`<li><b>${p.name}</b>: ${p.what}${p.was ? html` <span class="was">(${p.was})</span>` : ''}</li>`)}</ul></div>` : ''}<ul class="recap">${m.lines.map(l => html`<li>${l}</li>`)}</ul>${m.note ? html`<p class="small muted">${m.note}</p>` : ''}
     ${u ? html`<div class="hint"><b>Update ${u.dayName} in your routine?</b><br>${u.text}. Next time this day starts with the change.</div><button class="btn block" data-act="applyUpd">Update ${u.dayName}</button>` : ''}
     <button class="btn primary block" style="margin-top:10px" data-act="mClose">${u ? 'Not now' : 'Done'}</button></div>`;
+}
+
+/** A week's days from Monday, for a weekly routine's today mark (Date counts from Sunday). */
+const MONDAY_FIRST = 6;
+
+/* Change, on either card: one sheet with every other way to start. A
+   choice closes it and runs the start it names (altGo); another day of the
+   plan shows that day's card (dayPick). */
+/** The start options sheet: the plan's day, a lighter day, Short on time, a blank session, Pick for me, and the other days. */
+export function startAltSheet(m: { di?: number | string | undefined; free?: boolean | undefined }): TemplateResult {
+  const R = activeRoutine();
+  const di = Math.min(+(m.di || 0) || 0, R.days.length - 1);
+  const day = R.days[di];
+  const playable = !!day && !day.rest && day.items.length > 0;
+  const deload = isDeloadWeek();
+  const weekly = R.schedule === 'weekly';
+  const wd = (new Date().getDay() + MONDAY_FIRST) % WEEK_DAYS;
+  const cs = weekly ? null : cycleState(R);
+  const mark = (i: number): string =>
+    cs ? (i === cs.next ? ' · next' : i === cs.last ? ' · last done' : '') : i === wd ? ' · today' : '';
+  const opt = (go: string, title: string, what: string, d?: { day: number; light?: boolean }): TemplateResult =>
+    html`<button class="ob-opt" data-act="altGo" data-go=${go} data-day=${d ? String(d.day) : nothing} data-light=${d && d.light ? '1' : nothing}><b>${title}</b><span>${what}</span></button>`;
+  const opts: TemplateResult[] = [];
+  if (day && m.free && playable)
+    opts.push(opt('startSession', `Plan: ${day.name}`, `${day.items.length} exercises from your plan`, { day: di }));
+  if (!m.free && playable && !deload)
+    opts.push(
+      opt('startSession', 'Lighter day', 'Every exercise, half the sets, about 90% loads', { day: di, light: true })
+    );
+  if (!m.free && playable)
+    opts.push(opt('startShort', 'Short on time', 'Your minutes; the main work stays at full effort', { day: di }));
+  if (!m.free) opts.push(opt('startFree', 'Blank session', 'Add exercises as you go; your plan stays where it is'));
+  opts.push(opt('pickToday', 'Pick for me', 'The day that fits today best, and why'));
+  const days = R.days.map((d, i) => {
+    const on = i === di && !m.free;
+    return html`<button type="button" class=${'btn block pastday' + (on ? ' on' : '')} data-act="dayPick" data-i=${String(i)} aria-current=${String(on)}><span>${dayLabel(R, i)}: ${d.name}</span><small>${d.rest ? 'Rest day' : `${d.items.length} exercises`}${mark(i)}</small></button>`;
+  });
+  return html`<div class="sheet" role="dialog" aria-modal="true" aria-labelledby="saH"><div class="sheet-h"><h3 id="saH">Start something else</h3>${closeX()}</div>
+  <div class="ob-opts">${opts}</div><p class="small muted" style="margin:14px 0 6px">Another day</p><div class="stack">${days}</div></div>`;
 }

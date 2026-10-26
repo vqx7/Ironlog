@@ -78,8 +78,11 @@ let draws = 0;
    while someone types in it (r54), which keeps its fields. */
 /** Draws the open sheet into the sheet layer: a moved sheet's template, or a legacy sheet's markup; `same` when it is the open sheet drawn again, `morph` for the account sheet. */
 export function sheetDraw(el: HTMLElement, sheet: TemplateResult | string, same: boolean, morph: boolean): void {
-  if (typeof sheet !== 'string') render(keyed(same ? draws : ++draws, sheet), el);
-  else {
+  if (typeof sheet !== 'string') {
+    // A sheet opened starts from nothing, so lit-html makes it anew rather than updating the one before.
+    if (!same) render(nothing, el);
+    render(sheet, el);
+  } else {
     const old = same && morph ? el.querySelector('.sheet') : null;
     const t = el.ownerDocument.createElement('template');
     t.innerHTML = sheet;
