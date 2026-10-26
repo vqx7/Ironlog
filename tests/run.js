@@ -58,7 +58,13 @@ execFileSync('node',[path.join('scripts','build.js')],{stdio:'inherit'});
 execFileSync('node',[path.join('scripts','build.js'),'--preview'],{stdio:'inherit'});
 
 let bad=0;const failed=[];
+/* On GitHub each suite's start and end are also written to
+   screenshots/times.txt, which the workflow keeps even from a job stopped
+   at its hour (r61's WebKit shards, 2026-10-26: two passed the hour and
+   the log, behind a sign-in, was all that said which suite was running). */
+const timesLog=l=>{if(!process.env.GITHUB_ACTIONS)return;try{fs.mkdirSync('screenshots',{recursive:true});fs.appendFileSync(path.join('screenshots','times.txt'),`${new Date().toISOString()} ${l}\n`);}catch(e){/* a log of times only; the run goes on without it */}};
 function runOne(x){
+  timesLog(`start ${x.s}${x.tag}`);
   return new Promise(done=>{const t=Date.now();
     // 15 minutes a suite, and a suite stopped for time or by a signal says so.
     // Since r43 a stopped suite also names the last check it passed: r33
@@ -71,6 +77,7 @@ function runOne(x){
          2026-10-14: stopped at 15 minutes and said nothing). */
       if(e&&e.killed&&Date.now()-t>=899000){const last=out.trim().split('\n').filter(l=>/^ok /.test(l)).slice(-1)[0]||'(no check passed)';out+=`\nFAIL stopped after 15 minutes; the last check that passed: ${last.replace(/^ok +/,'').slice(0,200)}`;}
       else if(e&&(e.signal||e.killed))out+=`\nFAIL stopped by ${e.signal||'the runner'}`;
+      timesLog(`end ${x.s}${x.tag} ${Math.round((Date.now()-t)/1000)} s`);
       done({...x,out,sec:Math.round((Date.now()-t)/1000)});});});
 }
 // Results print in suite order whatever order they finish in, so a log reads the same every run.
