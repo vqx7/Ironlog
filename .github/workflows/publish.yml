@@ -24,8 +24,8 @@ jobs:
   # about a quarter of the old 19 minutes plus each runner's setup.
   # The hour a job had went to the install on a slow runner (r61, 2026-10-26:
   # in four runs six WebKit shards spent 30 to 60 minutes installing the
-  # browser's system packages, and those past their limit were stopped
-  # before their suites ran; every shard's suites took 12 to 20 minutes, and
+  # browser's system packages, and the four past their limit were stopped
+  # before their suites finished, three before any ran; every shard's suites took 12 to 20 minutes, and
   # Chromium's install at most 13). Since r62 every shard runs in
   # Playwright's own image for the version package-lock.json pins, which
   # holds both browsers and the packages they need, so nothing is installed
