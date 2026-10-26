@@ -226,6 +226,8 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
     await tp('touchStart', x0, y0); await wait(50);
     for (let k = 1; k <= 14; k++) { await tp('touchMove', x0, y0 + (y1 - y0) * k / 20); await wait(25); }
     await q(() => window.__ironlog.render()); await wait(50);
+    // The finger rests where it drops after the redraw, as a finger does (PENDING 346 b; tests/r58.js): SortableJS reads a touch drag every 50 ms.
+    await wait(150);
     await tp('touchEnd', x0, y0 + (y1 - y0) * 14 / 20); await wait(500);
     const after = await read();
     ok(after.dom.join() === before.dom.join() && !after.ghost && after.saved.join() === before.saved.join(), `5a. ${tab}: a draw mid-drag puts the section back where it was drawn, with no ghost and nothing saved`, { before, after });

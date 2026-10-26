@@ -9,7 +9,7 @@
    refuses a write to the log in a moved screen outside `act`, and
    tests/r57.js reads every step on the page after each action's tap. */
 
-import { snapshot } from './storage';
+import { log, snapshot } from './storage';
 import { saveNow, saveSoon } from './sync';
 import { invalidate } from './live';
 import { plainTemplate } from './normalize';
@@ -26,14 +26,45 @@ export interface ActOpts {
   undo?: boolean | (() => boolean) | undefined;
   /** Saves once the typing pauses (400 ms, saveSoon), for a change made on every keystroke; the caches are still dropped at once. */
   soon?: boolean | undefined;
+  /** The change touches only the session in progress, which nothing cached reads (the index, the bests, the pace are built from saved sessions): the caches stay, as the legacy session screen left them on every keystroke and tick (r60). */
+  inProgress?: boolean | undefined;
 }
 
-/** Changes the log with every step a change needs, in order; false when its check refused it. */
+/* A change made inside another one (a helper that changes the log, called
+   from an action's change: Settings' Apply re-plans the session's exercises
+   not started) is part of it. Its own Undo step, caches and save are the
+   outer change's: the log is saved once, when the whole change is made. Run
+   as its own change, it saved half the action, and Undo, which takes the
+   first save after its step as the action's result, kept the rest as if made
+   after it (r60's full run: tests/r44.js, Apply then Undo). Whether a change
+   inside drops the caches is kept for the outer one. */
+let depth = 0;
+let dropInside = false;
+// Whether the change being made keeps an Undo step: one asked for inside a change that keeps none cannot be taken (the log is half changed by then), so it is said in the error log rather than lost unsaid.
+let outerUndo = false;
+
+/** Changes the log with every step a change needs, in order; false when its check refused it. Inside another change it is part of that one. */
 export function act(change: () => void, opts: ActOpts = {}): boolean {
   if (opts.check && !opts.check()) return false;
+  if (depth > 0) {
+    if (!opts.inProgress) dropInside = true;
+    if (opts.undo && !outerUndo) log('act', 'an Undo step was asked inside a change that keeps none');
+    change();
+    return true;
+  }
   if (opts.undo) snapshot(typeof opts.undo === 'function' ? opts.undo : null);
-  change();
-  invalidate();
+  outerUndo = !!opts.undo;
+  depth++;
+  let inside = false;
+  try {
+    change();
+  } finally {
+    // Read and cleared whether or not the change threw, so the next change starts clean.
+    depth--;
+    inside = dropInside;
+    dropInside = false;
+  }
+  if (!opts.inProgress || inside) invalidate();
   if (opts.soon) saveSoon();
   else saveNow();
   return true;

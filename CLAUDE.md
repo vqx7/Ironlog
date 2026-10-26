@@ -3,7 +3,7 @@
 A hypertrophy and strength tracker for one lifter, V, used on a phone at the gym. It ships as a standalone
 installable web app: built from `src/` into one page, served by GitHub Pages at https://ironapp.org, working
 offline, with the log on the phone and an optional account that syncs it. Every pull request also publishes a
-preview app at https://ironapp.org/preview/ to try on the phone before merging. Build r59, version 2.13, state schema v5.
+preview app at https://ironapp.org/preview/ to try on the phone before merging. Build r60, version 2.14, state schema v5.
 
 The Claude artifact version was retired by V on 2026-09-27 (`OWNER.md` Done): never work on it or republish it.
 `cloudProvider()` still takes Claude's db when `window.claude` exists, because the sync suites use it as their
@@ -30,6 +30,8 @@ stand-in cloud.
 3. Passing suites say behaviour did not change, not that it is right. Check a number that moves against what a
    knowledgeable lifter expects. A number shown in two places is one function, and `tests/coherence.js` checks
    that screens showing one quantity agree: extend it when a release adds or moves a number a lifter reads.
+   `tests/personas.js` drives lifters by persona through the screens by taps and typing and checks them against the
+   rules, not the build before (V, 2026-10-25): a release that moves or changes a screen extends it.
 4. Old code in the legacy parts may be fixed in place, with the failing test first. A screen that is being changed
    substantially moves into `src/app/` instead. The legacy parts never grow: each build has no more top-level
    declarations and no more lines than the last (the ratchet in `ARCHITECTURE.md`, checked by `tests/hygiene.js`).
@@ -66,8 +68,11 @@ stand-in cloud.
   nothing on import (`storageStart()`, `syncStart()`). The screens move here from r57 (phase 5): `view.ts` (the
   host that draws every tab into `#view`, and the parts the moved screens share), `act.ts` (the one way to change
   the log), `history.ts`, `settings.ts`, `plan.ts` and `stats.ts` (its charts in `graphs.ts`, r58), `today.ts` with `week.ts`, `map.ts` and
-  `calendar.ts` (r59; three.js loads by address in `outside.ts` alone), with `display.ts` and `env.ts` for what
-  more than one screen reads.
+  `calendar.ts` (r59; three.js loads by address in `outside.ts` alone), the session screen (r60): `workout.ts` (the
+  screen, its taps and fields), `worksets.ts` (a set and what a tick changes), `workfinish.ts` (Finish, save, the
+  recap), `workdrag.ts` and `workstate.ts` (what they change between draws, as `W`), with `update.ts` (the update
+  bar), `display.ts` and `env.ts` for what more than one screen reads. A change made inside another change is part
+  of it (`act`, r60): one Undo step and one save.
 - `src/1*.js`, `src/2*.js`: the legacy script, cut into parts at its section headers (start-up, accounts, the
   screens, sheets, actions and events), one function scope. It reads `src/app/` only through the imports in
   `src/09-imports.js`. `src/01` to `src/03` are the page head, styles and markup.
@@ -175,8 +180,8 @@ lines, then `ALL PASS` (the fuzz suite prints `fuzz clean`). Type check: `npx ts
   The build named at the top of this file is the one in config (`tests/hygiene.js` checks).
 - Work on a branch and open a pull request. `.github/workflows/publish.yml` runs every suite in Chromium and in
   WebKit and, if they pass, publishes the preview to `gh-pages` under `preview/` (one slot: the latest pull request
-  wins). A merge into `main` runs them again and publishes `dist/` to `gh-pages`. Open apps show "New version ready"
-  the next time they come to the foreground.
+  wins). A merge into `main` runs them again and publishes `dist/` to `gh-pages`. Open apps show "Update ready" with
+  Update (r60; "New version ready" with Reload before) the next time they come to the foreground.
 - `main` is protected: V merges on GitHub's website. Check GitHub before saying whether a pull request is merged.
 - A check that fails on GitHub writes each failing line as an annotation, readable without a sign-in:
   `/repos/vqx7/Ironlog/check-runs/<job id>/annotations`. A suite stopped at the 15-minute limit says so, with the

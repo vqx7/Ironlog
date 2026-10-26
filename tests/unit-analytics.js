@@ -85,8 +85,8 @@ const res=await page.evaluate(()=>{
   // A noisy lift does not make its muscle "rising".
   I=reset([[0,100],[7,90],[14,110],[21,104]].map(([k,w])=>S(addDays(T,-21+k),'bench',[[w,8,2]])));
   {const sc=I.scores.find(x=>x.m==='chest');ok(!I.exStats.bench.moving&&sc&&sc.score===0&&sc.label!=='progressing','r14: muscle score ignores a change that is not a clear trend',sc);}
-  // Drop sets are not planned sets.
-  {const b={exId:'bench',tgt:{kind:'load',w:100,repMin:8,prevBest:null},sets:[{w:100,r:8,rir:1,done:true},{w:100,r:8,rir:1,done:true},{w:100,r:8,rir:1,done:true},{w:75,r:8,rir:0,done:true,drop:true}]};
+  // Drop sets are not planned sets. The block carries a plan, as every block in a session does (newBlock, an edit from History and normalize each give one; r60's blockProgress reads it as typed).
+  {const b={exId:'bench',plan:{sets:3,repMin:8,repMax:12,rir:1,rest:90,inc:2.5,ss:null},tgt:{kind:'load',w:100,repMin:8,prevBest:null},sets:[{w:100,r:8,rir:1,done:true},{w:100,r:8,rir:1,done:true},{w:100,r:8,rir:1,done:true},{w:75,r:8,rir:0,done:true,drop:true}]};
    L.state.draft=null;const p=L.blockProgress(b);ok(p.beat&&/3 of 3/.test(p.text),'r14: target beaten with a drop set after it',p);}
   // Stopped early is not too heavy.
   {const u=L.state.settings.unit;L.state.settings.unit='kg';reset([S(addDays(T,-3),'bench',[[100,6,4],[100,6,4],[100,6,4]])]);

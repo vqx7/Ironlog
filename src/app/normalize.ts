@@ -9,7 +9,7 @@
    signatures that tell a ready-made routine from one of the lifter's own,
    live here too, since the log's fresh state is made from them. */
 
-import type { Exercise } from './types';
+import type { DraftBlock, Exercise } from './types';
 import type { State } from './store';
 import { addDays, clampN, hashStr, isDate, isNum, numOr, today } from './util';
 import { LB } from './units';
@@ -902,7 +902,7 @@ export function normalize(input: unknown): State {
         const b = rec(b0) || {};
         const pl = rec(b.plan) || {};
         const jump = Number(pl.jump);
-        const plan: Rec = {
+        const plan: DraftBlock['plan'] = {
           sets: clampN(pl.sets, 1, 30, 3),
           repMin: clampN(pl.repMin, 1, 600, 8),
           repMax: clampN(pl.repMax, 1, 600, 12),
@@ -921,12 +921,16 @@ export function normalize(input: unknown): State {
           lastR = arr(b.lastR),
           keepRR = arr(b.keepRR),
           ln = rec(b.lastNote);
+        /* Checked by the compiler against the block type the session screen
+           reads (satisfies): a field that type requires (the plan, every
+           number in it) is one this builder writes, so the screen reads it
+           without a check of its own (r60). */
         return keepExtra(b0, {
           ...(typeof b.bid === 'string' && b.bid ? { bid: fixId(b.bid) } : {}),
           exId: fixId(b.exId),
           plan,
           note: typeof b.note === 'string' ? b.note : '',
-          inj: isMuscleOrJoint(b.inj) ? b.inj : null,
+          inj: typeof b.inj === 'string' && isMuscleOrJoint(b.inj) ? b.inj : null,
           hint: typeof b.hint === 'string' ? b.hint : '',
           last: typeof b.last === 'string' ? b.last : '',
           // Last time's sets as shown in the Last column (r44): short strings, absent in older drafts.
@@ -954,7 +958,7 @@ export function normalize(input: unknown): State {
             typeof b.full === 'number' && Number.isInteger(b.full) && b.full >= 1 && b.full <= 30 ? b.full : undefined,
           light: b.light === true ? true : undefined,
           // The date the target came from, when "Last" is a newer session short of its usual, lighter, or a deload (r26).
-          basis: isDate(b.basis) ? b.basis : undefined,
+          basis: typeof b.basis === 'string' && isDate(b.basis) ? b.basis : undefined,
           // The suggested load the rows started from (r24); absent in older drafts.
           sw: b.sw === null ? null : b.sw === undefined || !isNum(sw) ? undefined : clampN(b.sw, -300, 20000 * LB, 0),
           // The next sets adjusted from a set (r34), and Keep for the rest of the session.
@@ -982,9 +986,12 @@ export function normalize(input: unknown): State {
             b.keepRR === undefined
               ? undefined
               : keepRR && keepRR.length === 2
-                ? keepRR.map(v => Math.round(Number(v)) || 1)
+                ? [Math.round(Number(keepRR[0])) || 1, Math.round(Number(keepRR[1])) || 1]
                 : null,
-          lastNote: ln && typeof ln.text === 'string' && isDate(ln.date) ? { date: ln.date, text: ln.text } : null,
+          lastNote:
+            ln && typeof ln.text === 'string' && typeof ln.date === 'string' && isDate(ln.date)
+              ? { date: ln.date, text: ln.text }
+              : null,
           sets: (arr(b.sets) || [])
             .filter(x => !!x && typeof x === 'object')
             .map(x0 => {
@@ -1001,7 +1008,7 @@ export function normalize(input: unknown): State {
                 ...(typeof x.rid === 'string' ? { rid: fixId(x.rid) } : {})
               });
             })
-        });
+        } satisfies DraftBlock);
       });
   }
 

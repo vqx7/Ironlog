@@ -143,13 +143,15 @@ const ODD = /shared (phone|device|computer)|someone else|another person|other pe
       if (o.ss1) { d.ex[0].plan.ss = 1; d.ex[1].plan.ss = 1; }
       L.saveNow(); L.ui.tab = 'today'; L.render(); return d.ex.length;
     }, o);
-    const tick = (bi, si, reps, rir) => ev(async ([bi, si, reps, rir]) => {
+    // w, when given, is the load typed first (lb): since r60 a set of a lift with no load to take waits for one (PENDING 344).
+    const tick = (bi, si, reps, rir, w) => ev(async ([bi, si, reps, rir, w]) => {
       const L = window.__ironlog; const b = L.state.draft.ex[bi];
+      if (w != null) { const f = document.querySelector(`[data-f="w"][data-b="${bi}"][data-s="${si}"]`); f.value = String(w); f.dispatchEvent(new Event('input', { bubbles: true })); f.dispatchEvent(new Event('change', { bubbles: true })); }
       const inp = document.querySelector(`[data-f="r"][data-b="${bi}"][data-s="${si}"]`); inp.value = String(reps);
       inp.dispatchEvent(new Event('input', { bubbles: true })); inp.dispatchEvent(new Event('change', { bubbles: true }));
       b.sets[si].rir = rir == null ? null : rir;
       document.querySelector(`[data-act="sDone"][data-b="${bi}"][data-s="${si}"]`).click(); await new Promise(r => setTimeout(r, 120));
-    }, [bi, si, reps, rir]);
+    }, [bi, si, reps, rir, w == null ? null : w]);
 
     // 2a. RPE mode: the exercise header says the target as RPE.
     await start({ rpe: true, ex: [['bench', {}]] });
@@ -183,7 +185,8 @@ const ODD = /shared (phone|device|computer)|someone else|another person|other pe
     // Minutes left are for a planned session (a blank one has no plan to time).
     await ev(() => { const L = window.__ironlog; L.state.draft.free = false; L.render(); });
     const l0 = await ev(() => (document.getElementById('sessLeft') || {}).textContent);
-    await tick(0, 0, 10, 1); await tick(0, 1, 10, 1);
+    // A first session of curls: nothing to take, so the first set's load is typed; the second takes it in grey.
+    await tick(0, 0, 10, 1, 25); await tick(0, 1, 10, 1);
     const l1 = await ev(() => (document.getElementById('sessLeft') || {}).textContent);
     ok(/~\d+ min left/.test(l0 || '') && l1 === '', 'the header\'s minutes left: shown with sets to do, gone once every set is ticked' + T, { l0, l1 });
 
@@ -192,8 +195,9 @@ const ODD = /shared (phone|device|computer)|someone else|another person|other pe
     const resting = () => ev(() => { const t = window.__ironlog.timer; return !!(t.end && t.end > Date.now()); });
     const stop = () => ev(() => { const t = window.__ironlog.timer; t.end = 0; });
     await stop();
-    await tick(0, 0, 8, 1); const r1 = await resting(); await stop();
-    await tick(1, 0, 10, 1); const r2 = await resting(); await stop();
+    // First sessions of both: each first set's load is typed, as a lifter must since r60.
+    await tick(0, 0, 8, 1, 135); const r1 = await resting(); await stop();
+    await tick(1, 0, 10, 1, 100); const r2 = await resting(); await stop();
     await tick(0, 1, 8, 1); const r3 = await resting(); await stop();
     ok(!r1 && r2 && r3, 'superset of 3 and 1 sets: no rest after A1 (B to do), rest after B1, and rest after A2 once B is done' + T, { r1, r2, r3 });
 

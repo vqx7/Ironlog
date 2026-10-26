@@ -1,44 +1,3 @@
-/* ---------- help ---------- */
-/* One ? button per explanation. The paragraph is in the page but hidden until
-   tapped, so nothing has to be read twice and nothing has to be scrolled past. */
-function helpBtn(key){return `<button type="button" class="hb" data-act="help" data-h="${key}" aria-expanded="${ui.help.has(key)}" aria-controls="help-${key}" aria-label="What this shows">?</button>`;}
-/* Inside a section (r28): a ? in the header sat beside the fold arrow, so a
-   tap meant for the arrow opened the explanation instead. Headers now hold
-   only the title, the number and the arrow; the explanation is the first
-   line inside the section. */
-function helpLink(key){return `<div class="sec-help"><button type="button" class="hlink" data-act="help" data-h="${key}" aria-expanded="${ui.help.has(key)}" aria-controls="help-${key}"><span class="hi" aria-hidden="true">i</span>How this works</button></div>`;}
-function helpText(key,text){return `<p class="ht" id="help-${key}" ${ui.help.has(key)?'':'hidden'}>${text}</p>`;}
-
-/* ---------- sections ----------
-   One component for every foldable block on every tab. Fold state lives in
-   memory for this visit only (ui.folds). Each time Ironlog opens, every
-   section starts folded (V, r28: the titles say what is inside), except
-   Sessions on History, which is that tab's content. Every fold inside a
-   section starts closed too. Folds used to be saved to the synced
-   settings, where one tap (or another device) could leave a section open or
-   closed for good. */
-/* o: {sk, key (movable id, optional), title, sub (HTML), help, helpBody, body, def, id} */
-function sec(o){
-  const mk=o.key?` data-mkey="${o.key}"`:'';
-  return `<details class="sec" data-sk="${o.sk}"${mk}${o.id?` id="${o.id}"`:''} ${isOpen(o.sk,o.def)?'open':''}><summary>${o.key?sgrip(o.title):''}<span class="sec-t">${esc(o.title)}</span><span class="sec-s">${o.sub||''}</span><span class="chev" aria-hidden="true"></span></summary><div class="sec-b">${o.help&&o.helpBody?helpLink(o.help)+helpText(o.help,o.helpBody):''}${o.body}</div></details>`;
-}
-function subsec(sk,title,body,sub){
-  return `<details class="subsec" data-sk="${sk}" ${isOpen(sk,false)?'open':''}><summary><span class="subsec-t">${esc(title)}</span><span class="sec-s">${sub||''}</span><span class="chev" aria-hidden="true"></span></summary><div class="sec-b">${body}</div></details>`;
-}
-/* Open the tab's main section (only History has one) when this visit has
-   not decided about it yet. */
-function openMain(){
-  if(ui.tab==='today'&&state.draft)return;
-  if(ui.tab==='program'&&ui.planView==='library')return;
-  const fixed=MAIN_FIXED[ui.tab];if(!fixed)return;
-  const el=keyedKids().find(e=>e.dataset.mkey===fixed);
-  if(el&&el.tagName==='DETAILS'&&el.dataset.sk&&!Object.prototype.hasOwnProperty.call(ui.folds,el.dataset.sk)&&!el.open){el.dataset.auto='1';el.open=true;}
-}
-/* A page whose only action is its ? keeps it at the top right instead of
-   wrapping it onto a line of its own under a long subtitle (r28, Plan). */
-function pageHead(kick,title,meta,actions){const q=!!actions&&actions.lastIndexOf('<button')===0&&actions.includes('class="hb"');return `<div class="ph${q?' q':''}"><div>${kick?`<p class="kick">${kick}</p>`:''}<h2>${esc(title)}</h2>${meta?`<p class="meta">${meta}</p>`:''}</div>${actions?`<div class="ph-a">${actions}</div>`:''}</div>`;}
-
-
 /* ---------- toast / modal ---------- */
 /* Undo used to be one snapshot that the toast timer nulled out after six
    seconds. Destructive actions deserve better than that, so keep a bounded
@@ -189,49 +148,6 @@ function timerResume(){
   let len=0;try{len=+localStorage.getItem(TIMER_KEY+'Len')||0;}catch(e){/* the bar then starts full */}
   timer.end=end;timer.total=len>0?len:Math.round((end-Date.now())/1000);timer.fired=false;$('#timer').hidden=false;timerBuild();if(!timer.iv)timer.iv=setInterval(tick,250);tick();
 }
-/* One place that marks a set done or not done, so the checkmark and auto-done
-   paths cannot drift apart. The rest timer starts here only in Auto mode. */
-// The set waiting to be confirmed, held through blkRef, so neither a move nor a rebuild points it at another exercise (r46).
-let lastAuto=null;
-/* Reps far past anything logged on the lift and its range (a typo: 105 for
-   10) are asked about before they count (r32, second check: 100 x 105 was
-   saved with a gold "Rep PR" and next time asked to beat 124 reps). */
-let oddOk=null;
-function oddReps(b,s){
-  const r=+s.r;if(!(r>30))return false;let best=0;for(const x of IDX().byEx[b.exId]||[])for(const p of x.pts)best=Math.max(best,p.r);
-  return r>2*Math.max(+b.plan.repMax||0,best);
-}
-function setDone(bi,si,val,again){ /* again: the set was ticked before, and is ticked again after the far-off question, so its rest is not started over (r55, the second review) */
-  const b=state.draft.ex[bi];const s=b&&b.sets[si];if(!s)return;const okKey=`${bi}:${si}:${s.r}:${effW(b,si)}`;const far=val&&oddOk!==okKey&&!oddReps(b,s)?oddLoad(b,si,state.draft.date):null;const lz=val&&oddOk!==okKey&&!far&&lightZero(b,si,state.draft.date); /* a 0 at a light weight asks too (r55.1, V 2026-10-19) */
-  if(val&&oddOk!==okKey&&(far||oddReps(b,s)||lz)){const ex=EX(b.exId);const fix=far?'w':'r'; // a load far off asks too (r55, V), and Fix it goes back to the field
-    confirmBox(`${setShort(ex,effW(b,si),s.r)}${ex.bw?'':' '+U()}?`,lz?`0 ${ex.timed?'seconds':'reps'} at a weight well under today's working load. Log it as missed, or go back and fix it.`:`${far||`${s.r} ${ex.timed?'seconds':'reps'} is far past your ${rangeWords(b.plan)} and anything logged on this exercise.`} Log it as typed, or go back and fix it.`,lz?'Log it as missed':'Log it',()=>{oddOk=okKey;setDone(bi,si,true,again);saveNow();rerenderKeepScroll();},false,{label:'Fix it',only:true,fn:()=>{if(again)ui.refix={b:blkRef(bi),s:si};const f=document.querySelector(`.sg input[data-f="${fix}"][data-b="${bi}"][data-s="${si}"]`);if(f){f.focus();if(f.select)f.select();}}});
-    return;}
-  if(val)settleLoad(b,si);
-  s.done=val;if(val&&isMissed(s)&&!s.warm&&!s.drop)toast(MISSED_SAID); // a typed 0 (r55, V)
-  afterSet(bi,si);
-  const btn=document.querySelector(`[data-act="sDone"][data-b="${bi}"][data-s="${si}"]`);
-  if(btn){btn.classList.toggle('on',val);btn.setAttribute('aria-pressed',String(val));btn.setAttribute('aria-label',`Set ${si+1} ${val&&isMissed(s)?'missed':'done'}`);const row=btn.closest('.sg');if(row)row.classList.toggle('done',val);}
-  refreshPR(bi,si,true);
-  const c=$('#doneCount');
-  if(c){const n=state.draft.ex.reduce((a,x)=>a+x.sets.filter(y=>y.done&&!y.warm).length,0);c.textContent=String(n);const w=$('#doneWord');if(w)w.textContent=n===1?'set':'sets';}
-  let autoRest=val&&!again&&!s.warm&&!state.draft.editingId&&!state.draft.past&&+b.plan.rest>0&&state.settings.timerMode==='auto';
-  // In a superset the rest is taken after the last exercise of the group.
-  /* No rest while a partner after this one still has a set to do; once the
-     partners are through (a pair of 5 and 3 sets), every set rests (r34.2). */
-  if(autoRest&&b.plan.ss){const grp=state.draft.ex.filter(x=>x.plan&&x.plan.ss===b.plan.ss);const k=grp.indexOf(b);
-    if(grp.slice(k+1).some(x=>x.sets.some(y=>!y.done&&!y.warm&&!y.drop)))autoRest=false;}
-  if(autoRest)startTimer(+b.plan.rest);
-  updateProgress(bi);updatePlates(bi);updateSessBar();
-  clearTimeout(foldT);foldT=null;
-  // RIR opens by itself only if asked for in Settings > Effort; otherwise a tap
-  // on the set's RIR box opens it. A blank RIR is fine: see rirSettings().
-  const askRir=val&&state.settings.rirAsk===true&&!s.warm&&s.rir==null&&rirShow(EX(b.exId))&&!!document.querySelector(`.rirb[data-b="${bi}"][data-s="${si}"]`);
-  if(askRir)rirShowStrip(bi,si);else if(!val)rirClose();
-  if(val&&!askRir&&!state.draft.editingId&&blockDone(b)){const rf=blkRef(bi);foldT=setTimeout(()=>autoFold(rf),1200);}
-  // The first set ticked on an exercise below untouched ones moves it up (r45).
-  if(val&&b.sets.filter(x=>x.done).length===1&&orderAt(b)>=0)orderSoon(b);
-  saveNow();
-}
 /* Screen wake lock, optional. A locked phone suspends the page and with it the
    rest alert, so keeping the screen on is the only way a web page can
    guarantee the beep. Unsupported or refused requests fail quietly. */
@@ -283,7 +199,7 @@ function killDynamic(){
   obTourStop();
   // A re-render in the middle of a drag (a cloud refresh) would leave Sortable's
   // floating copy of the block on the page; it goes with the old list.
-  blockDrag=false;if(document.body.classList.contains('blkdrag')){document.body.classList.remove('blkdrag');const v=document.getElementById('view');if(v)v.style.paddingBottom='';}if(typeof edgeScroll!=='undefined')edgeScroll.stop();document.querySelectorAll('.sortable-fallback,.sortable-ghost').forEach(e=>{if(!e.closest('#view'))e.remove();});
+  blockDragStop();document.querySelectorAll('.sortable-fallback,.sortable-ghost').forEach(e=>{if(!e.closest('#view'))e.remove();});
   killCharts();dragDrop();sortables.forEach(s=>{try{s.destroy();}catch(e){/* list already gone */}});sortables=[];}
 function applyTheme(){const t=state.settings.theme;if(t==='system')delete document.documentElement.dataset.theme;else document.documentElement.dataset.theme=t;
   document.documentElement.dataset.accent=state.settings.accent||ACCENT0;
@@ -291,15 +207,8 @@ function applyTheme(){const t=state.settings.theme;if(t==='system')delete docume
   const m=document.querySelector('meta[name="theme-color"]');if(m)try{m.setAttribute('content',getComputedStyle(document.body).backgroundColor||'#08090b');}catch(e){/* cosmetic */}}
 /* A code bug inside a view used to leave a blank screen. Now the error is
    logged and a recovery screen offers your data and a way back. */
-/* True while #view is being replaced. Replacing it removes a focused field,
-   and the browser then fires that field's change as if the lifter had left it.
-   They did not, so that change must not tick a set. */
-let rebuilding=false;
-// True while lit-html is putting a tab into #view, and how many draws have begun (r57).
-let drawing=false,drawN=0;
-// The tabs drawn by their modules (phase 5): each a template of the log and ui. Today with a session in progress is the session screen, still the legacy script's markup (r60 moves it).
-const LIT_TABS={today:viewToday,history:viewHistory,settings:viewSettings,program:()=>ui.planView==='library'?viewLibrary():viewProgram(),dash:viewDash};
-function litTab(){return ui.tab==='today'&&state.draft?null:LIT_TABS[ui.tab]||null;}
+// The tabs drawn by their modules (phase 5, r57 to r60): each a template of the log and ui. Today with a session in progress is the session screen (workout.ts, r60).
+const LIT_TABS={today:()=>state.draft?viewWorkout(state.draft):viewToday(),history:viewHistory,settings:viewSettings,program:()=>ui.planView==='library'?viewLibrary():viewProgram(),dash:viewDash};
 function render(){if(!state.draft){if(!$('#timer').hidden)stopTimer();wakeOff();} // no session, no rest timer or screen kept on: a session erased, restored over or finished on another phone left both running (r55, the audit)
   try{renderInner();}
   catch(e){log('render',e);renderCrash(e);}
@@ -314,7 +223,7 @@ function renderCrash(e){
   <label class="field" style="margin-top:10px">Backup text<textarea readonly style="min-height:160px;font-size:12px">${esc(txt)}</textarea></label></div>`);
 }
 function renderInner(){
-  if(drawing){queueMicrotask(render);return;} // asked for mid-draw: once this draw is done (below)
+  if(drawing()){queueMicrotask(render);return;} // asked for mid-draw: once this draw is done (below)
   killDynamic();applyTheme();setSaveState();
   document.querySelectorAll('#tabs button').forEach(b=>{if(b.dataset.tab===ui.tab)b.setAttribute('aria-current','page');else b.removeAttribute('aria-current');});
   {const tb=document.querySelector('#tabs button[data-tab="today"]');if(tb){const live=!!state.draft;tb.classList.toggle('live',live);const sp=tb.querySelector('span');if(sp)sp.textContent=live?'Session':'Today';tb.setAttribute('aria-label',live?(state.draft.editingId?'Session being edited':'Session in progress'):'Today');}}
@@ -323,26 +232,17 @@ function renderInner(){
   // The setup pages stand alone: no tabs or week bar until a way to start is picked.
   if(obActive()&&ui.tab!=='today')ui.tab='today';
   document.body.classList.toggle('obmode',obActive());
-  /* One host draws every tab (r57): a moved screen's template, updated in
-     place, which places its sections itself; a legacy screen's markup, fresh
-     each draw, whose sections are then put in their saved order, the hidden
-     ones taken out and the tab's main section opened, as before. */
-  const moved=litTab();
-  /* A draw asked for while lit-html is drawing (an event a removed field fires
-     mid-draw) runs once this one is done: lit-html takes nodes away one by one,
-     and a draw inside that would find them gone. A legacy screen's field still
-     focused is left before its markup is read, so the change it fires runs
-     first, while rebuilding (so it ticks nothing), and the draw reads the log
-     that change left; innerHTML fired it during its own replacement. */
-  const was=rebuilding;rebuilding=true;
-  try{
-    // A change that drew the page itself (from the blur) has drawn it with the log as it now is: nothing more to draw.
-    if(!moved){const n0=drawN,ae=document.activeElement,vw=$('#view');if(ae&&ae!==document.body&&vw&&vw.contains(ae)&&typeof ae.blur==='function')ae.blur();if(drawN!==n0)return;}
-    drawing=true;drawN++;try{if(moved)drawScreen($('#view'),moved());else drawLegacy($('#view'),viewLogger());}finally{drawing=false;}
-  }finally{rebuilding=was;}
-  if(!moved){applySecOrder();applyHidden();openMain();}
+  /* One host draws every tab (r57; every tab a module's screen since r60): a
+     template, updated in place, which places its sections itself. A draw
+     asked for while lit-html is drawing (an event a removed field fires
+     mid-draw) runs once this one is done: lit-html takes nodes away one by
+     one, and a draw inside that would find them gone. The session screen
+     puts back first what the legacy page's fresh markup reset (the effort
+     strip, the plates line, a fold waiting its moment). */
+  if(ui.tab==='today'&&state.draft)workoutFullDraw();
+  drawScreen($('#view'),(LIT_TABS[ui.tab]||LIT_TABS.today)());
   if(!(ui.tab==='today'&&state.draft)&&!(ui.tab==='program'&&ui.planView==='library'))mountSecSortable();
-  if(ui.tab==='today'&&state.draft)mountBlockSortable();
+  if(ui.tab==='today'&&state.draft){const s=mountBlockDrag();if(s)sortables.push(s);}
   if(ui.tab==='program'&&ui.planView!=='library')mountSortable();
   if(ui.tab==='dash')mountCharts();
   if(ui.tab==='today'&&!state.draft)mount3D();

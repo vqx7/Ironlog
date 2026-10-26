@@ -20,21 +20,6 @@ function pastDraft(date,di){
   if(!day){const d=freeDraft('Freestyle');return {...d,date,startedAt:null,past:true};}
   return {id:uid(),startedAt:null,date,dayIdx:di,dayId:day.id,dayName:day.name,routineId:R.id,deload:false,light:false,past:true,cardio:[],notes:'',note0:'',editingId:null,ex:day.items.map(it=>newBlock(it.exId,it,{before:date}))};
 }
-/* Anything the lifter put into a session: a ticked set, typed reps or a
-   typed load, an RIR, cardio minutes, a note on an exercise, or session notes other than the text the
-   app wrote itself. The grey numbers and prefilled loads are the app's. */
-/* What an edit of a saved session holds, to tell whether anything changed
-   (r30: Cancel on an untouched edit asked "Discard this session?"). Kept in
-   memory per draft; after a reload the edit asks as before. */
-const editFp0=new Map();
-function draftEntered(d){
-  if(!d)return false;
-  // A typed load counts too (r25): with grey loads, a load in the row is the lifter's.
-  if(d.ex.some(b=>(b.note&&b.note.trim())||b.sets.some(x=>x.done||+x.r>0||!rowBlank(b,x))))return true;
-  if((d.cardio||[]).some(c=>c.min>0))return true;
-  const n=(d.notes||'').trim();if(!n)return false;
-  return typeof d.note0==='string'?n!==d.note0.trim():true;
-}
 function pastSheet(m){
   const R=activeRoutine();const due=pastDue(R,m.date);
   const on=sessionsOn(m.date).map(x=>x.dayName||'Session');
@@ -46,47 +31,10 @@ function pastSheet(m){
   <div class="stack" style="margin-top:12px">${opts.map(btn).join('')}<button class="btn block pastday" data-act="pastGo" data-day="free"><span>Freestyle</span><small>any exercises</small></button></div>
   <p class="small muted" style="margin:10px 0 0">Quick entry: type each set. ${tipi('No rest timer or clock. A set counts as done once its reps are typed. Last time, targets, and PRs are read as of that date.','About quick entry')}</p></div>`;
 }
-/* Re-run the suggestion for one block, for example after its heaviest
-   available load changes. Only untouched sets take the new load. A row is
-   untouched when it still holds the load the app suggested (b.sw, null when
-   there was none). Drafts from before r24 have no b.sw and fall back to the
-   old test, the first undone row's load; that test took a load typed on the
-   first row for the app's, and replaced it. */
-/* A change to an exercise or its plan reaches the session in progress (r27):
-   an exercise not started yet re-reads its target, so a new load step, rep
-   range or heaviest load shows at once instead of next session. Exercises with
-   a set done keep what they started with, and typed loads are never touched. */
-function refreshEx(exId){if(state.draft&&!state.draft.editingId)for(const b of state.draft.ex)if(b.exId===exId&&!b.sets.some(x=>x.done))refreshBlock(b);}
-/* After a unit change, a session in progress says its targets and last time
-   in the new unit (r34.2, from the review: "at 60 kg" beside fields in lb).
-   Only the words: the loads are stored in kg and stay as they are, and a
-   suggestion is re-read without the unit's rounding so it names the same
-   load the rows hold. */
-function unitWords(){
-  const d=state.draft;if(!d)return;invalidate();
-  for(const b of d.ex){if(d.deload||d.light||b.light||b.inj)continue;const sg=suggestCore(b.exId,b.plan,{before:d.date});
-    if(b.sw!=null&&sg.w!=null&&Math.abs(sg.w-b.sw)>1e-6)continue;Object.assign(b,{hint:sg.text,last:sg.last,prev:sg.prev||undefined,prevOff:sg.prevOff||undefined,target:sg.target,easier:sg.easier||null});}
-  saveNow();
-}
-function syncDraftPlan(f){
-  const d=state.draft;if(!d||!f||d.editingId||f.r!==(state.routines.find(r=>r.id===d.routineId)||activeRoutine())||planItemOf(f.r,f.it.exId,d.dayId)!==f.it)return; // the item the session's lift took its plan from (planFor's order), so a blank session's follows it too (r55, the audit)
-  for(const b of d.ex)if(b.exId===f.it.exId&&!b.sets.some(x=>x.done)){for(const k of ['repMin','repMax','rir','rest','inc'])b.plan[k]=f.it[k];if(f.it.jump!=null)b.plan.jump=f.it.jump;else delete b.plan.jump;refreshBlock(b);}
-}
-function refreshBlock(b){
-  const d=state.draft;if(!d||!b)return;const old=b.sets.find(x=>!x.done&&!x.warm);const oldW=b.sw!==undefined?b.sw:old?old.w:null;
-  const sg=suggest(b.exId,b.plan,{deload:!!d.deload,light:!!d.light||!!b.light,before:d.date});
-  Object.assign(b,{inj:sg.inj||null,hint:sg.text,last:sg.last,prev:sg.prev||undefined,prevOff:sg.prevOff||undefined,target:sg.target,tgt:sg.tgt,easier:sg.easier||null,lastR:sg.lastR,basis:sg.basis||undefined,lastNote:lastNoteOf(b.exId,d.date),sw:sg.w==null?null:sg.w});
-  for(const x of b.sets)if(!x.done&&!x.warm&&!x.drop&&x.r==null&&x.w===oldW&&!carried.has(x))x.w=sg.w;
-}
 /* The page's actions by data-act: the moved screens' (History and Settings,
-   r57, each change to the log through act) and the legacy script's own. */
-const ACT={...HISTORY_ACTS,...SETTINGS_ACTS,...PLAN_ACTS,...DASH_ACTS,...TODAY_ACTS,...MAP_ACTS,
-  appUpdate(){
-    if(ui.modal&&ui.modal.dirty){toast('Save or cancel first. Your changes are still here.');return;}
-    saveNow();upd.ready=false;updRender();
-    if(typeof window.ironlogApplyUpdate==='function')window.ironlogApplyUpdate();else location.reload();
-  },
-  appUpdateLater(){upd.later=true;updRender();},
+   r57; Plan and Stats, r58; Today, r59; the session screen, r60; each change
+   to the log through act) and the legacy script's own, the sheets'. */
+const ACT={...HISTORY_ACTS,...SETTINGS_ACTS,...PLAN_ACTS,...DASH_ACTS,...TODAY_ACTS,...MAP_ACTS,...WORKOUT_ACTS,...UPDATE_ACTS,
   async acctRetry(){await cloudInit();acctRerender();if(!cloud.on)toast('Still not syncing. Check your connection, or sign out and in again.');},
   iconHow(){openModal({kind:'icon'});},
   guideOpen(t){const k=t&&t.dataset&&t.dataset.g;if(ui.modal)closeModal();openModal({kind:'guide',open:k||''});},
@@ -287,36 +235,6 @@ const ACT={...HISTORY_ACTS,...SETTINGS_ACTS,...PLAN_ACTS,...DASH_ACTS,...TODAY_A
     closeModal();saveNow();rerenderKeepScroll();
     toast(`Trimmed to ${estMin(min5(pl.est))}`,true);
   },
-  chk(t){
-    const d=state.draft;if(!d)return;const k=t.dataset.k,v=+t.dataset.v;
-    const c=Object.assign({},d.chk||{});const was=CHK_Q.every(([q])=>c[q]);if(c[k]===v)delete c[k];else c[k]=v;
-    d.chk=Object.keys(c).length?c:undefined;
-    // Answering the last of the three folds the check-in away.
-    if(!was&&CHK_Q.every(([q])=>c[q]))ui.folds['logger:checkin']=false;
-    saveNow();rerenderKeepScroll();
-  },
-  /* The check-in's lighter session (r30): exercises not started become a
-     lighter day's (half their sets, about 90% loads, 3+ RIR, no target);
-     anything already logged or typed stays exactly as it is. Undo puts it
-     back. */
-  /* r31: only the exercises not started become lighter (b.light); the
-     session itself is not marked, so work already done at full effort still
-     sets next time's target and counts in trends (the review: a bench done
-     4 x 10 before the tap was then ignored, and next week asked for it again). */
-  makeLight(){
-    const d=state.draft;if(!d||d.light||d.deload)return;
-    const todo=d.ex.filter(b=>!b.light&&!b.sets.some(x=>!x.warm&&!rowBlank(b,x)));if(!todo.length){toast('Every exercise is started, so nothing changed');return;}
-    snapshot();
-    if((d.notes||'')===(d.note0||''))d.notes=d.note0='Made lighter after the check-in: exercises not started, half sets at about 90% loads.';
-    let n=0;
-    for(const b of todo){
-      b.light=true;
-      const work=b.sets.filter(x=>!x.warm);const keep=Math.max(1,Math.ceil(work.length/2));let cut=work.length-keep;
-      for(let i=b.sets.length-1;i>=0&&cut>0;i--)if(!b.sets[i].warm){b.sets.splice(i,1);cut--;}
-      refreshBlock(b);n++;
-    }
-    saveNow();rerenderKeepScroll();toast(n?`Lighter: ${n} exercise${n===1?'':'s'} not started now half the sets at about 90% loads`:'Every exercise is started, so nothing changed',true);
-  },
   bCal(t){
     const bi=+t.dataset.b;const d=state.draft;const b=d&&d.ex[bi];if(!b)return;
     const nx=b.sets.find(x=>!x.done&&!x.warm);const w=nx&&nx.w!=null?nx.w:(b.sets.filter(x=>!x.warm&&+x.w>0).map(x=>+x.w).pop());
@@ -338,7 +256,6 @@ const ACT={...HISTORY_ACTS,...SETTINGS_ACTS,...PLAN_ACTS,...DASH_ACTS,...TODAY_A
     const left=tot-at,diff=left-m.pred;
     toast(`${left} rep${left===1?' was':'s were'} left where you called ${m.pred}. ${diff>0?'Your sets are easier than you log.':diff<0?'You were closer to failure than you thought.':'Spot on.'}`,false,7000);
   },
-  calSnooze(){state.settings.calSnooze=today();saveNow();rerenderKeepScroll();toast('The RIR check will come back in 3 weeks');},
   bMax(t){const b=state.draft&&state.draft.ex[+t.dataset.b];if(!b)return;openModal({kind:'max',exId:b.exId,b:+t.dataset.b});},
   maxSave(){
     const m=ui.modal;const e=state.exercises.find(x=>x.id===m.exId);if(!e){closeModal();return;}
@@ -573,14 +490,6 @@ const ACT={...HISTORY_ACTS,...SETTINGS_ACTS,...PLAN_ACTS,...DASH_ACTS,...TODAY_A
     state.cardio.push(cleanCardio({id:uid(),date:isDate(date)?date:today(),kind:$('#cKind').value,min,hr:numIn($('#cHr').value),when:'solo',note:($('#cNote').value||'').trim(),dist:distIn($('#cDist').value)}));
     closeModal();commit();rerenderKeepScroll();toast('Cardio logged');
   },
-  cDraftAdd(t){const d=state.draft;(d.cardio||(d.cardio=[])).push(cleanCardio({id:uid(),kind:'walk',when:t.dataset.when},true));saveNow();rerenderKeepScroll();},
-  /* A filled cardio entry goes with an Undo, like a set with reps; an empty one goes quietly. */
-  cDraftDel(t){const d=state.draft;const list=d&&d.cardio;const i=+t.dataset.c;const c=list&&list[i];if(!c)return;
-    if(+c.min>0||+c.hr>0||(c.note||'').trim()){const did=d.id;
-      confirmBox(`Remove ${(CARDIOL[c.kind]||'entry').toLowerCase()}?`,`${c.min?c.min+' min':'An entry with your notes'}. Undo is offered right after.`,'Remove',()=>{const dd=state.draft;const l2=dd&&dd.id===did?dd.cardio:null;const j=l2?l2.indexOf(c):-1;if(j<0){toast('That entry changed. Nothing was removed.');rerenderKeepScroll();return;}
-        snapshot(()=>{const d3=state.draft;if(!d3||d3.id!==did)return false;(d3.cardio||(d3.cardio=[])).splice(Math.min(j,d3.cardio.length),0,c);return true;});
-        l2.splice(j,1);saveNow();rerenderKeepScroll();toast(`${CARDIOL[c.kind]||'Entry'} removed`,true);},true);return;}
-    list.splice(i,1);saveNow();rerenderKeepScroll();},
   restWkOpen(){openModal({kind:'restwk'});},
   restWk(t){const ws=t.dataset.w;if(!isDate(ws))return;snapshot();const r=(state.settings.restWeeks||[]).slice();const on=r.includes(ws);
     state.settings.restWeeks=on?r.filter(x=>x!==ws):[...r,ws].sort();if(!state.settings.restWeeks.length)delete state.settings.restWeeks;
@@ -590,36 +499,8 @@ const ACT={...HISTORY_ACTS,...SETTINGS_ACTS,...PLAN_ACTS,...DASH_ACTS,...TODAY_A
     if(!MK.includes(m)&&!JK.includes(m))return;state.injuries=(state.injuries||[]).filter(x=>x.m!==m);state.injuries.push({id:uid(),m,note,date:today()});
     closeModal();commit();render();toast(`${injLabel(m)} flagged`);},
   bMenu(t){openModal({kind:'bmenu',b:+t.dataset.b});},
-  rirOpen(t){const bi=+t.dataset.b,si=+t.dataset.s;const open=document.querySelector(`.rirstrip[data-b="${bi}"][data-s="${si}"]`);if(open){rirClose();return;}rirShowStrip(bi,si);
-    const f=document.querySelector('.rirstrip button.on')||document.querySelector('.rirstrip button');if(f&&!coarse())try{f.focus({preventScroll:true});}catch(e){/* focus is best effort */}},
-  rirPick(t){
-    const bi=+t.dataset.b,si=+t.dataset.s;const d=state.draft;const b=d&&d.ex[bi];const s=b&&b.sets[si];if(!s)return;
-    const n=numIn(t.dataset.v);s.rir=n==null?null:Math.min(Math.max(n,0),10);
-    const btn=document.querySelector(`.rirb[data-b="${bi}"][data-s="${si}"]`);
-    if(btn){const cur=effShow(s.rir);btn.textContent=cur===''?(b.plan&&b.plan.rir!=null?'–':effName()):cur;btn.classList.toggle('unset',cur==='');btn.setAttribute('aria-label',`${effAria(si)}: ${cur===''?'not set':cur}`);}
-    rirClose();if(btn)try{btn.focus({preventScroll:true});}catch(e){/* focus is best effort */}
-    if(s.done){refreshPR(bi,si,false);afterSet(bi,si);}updateProgress(bi);
-    // The fold waits for the effort of the last set, then goes.
-    if(!d.editingId&&blockDone(b)){clearTimeout(foldT);const rf=blkRef(bi);foldT=setTimeout(()=>autoFold(rf),900);}
-    saveSoon();},
-  bOpen(t){const bi=+t.dataset.b;const b=state.draft&&state.draft.ex[bi];if(!b)return;ui.blkOpen.add(blkKey(bi,b));blkOpenObj.add(b);rerenderKeepScroll();
-    const el=document.getElementById('blk-'+bi);if(el)try{el.scrollIntoView({block:'nearest'});}catch(e){/* scroll is best effort */}},
-  bFold(t){const bi=+t.dataset.b;const b=state.draft&&state.draft.ex[bi];if(!b)return;
-    // Every place this exercise was opened at, so a move and a fold leave nothing behind.
-    const pre=((state.draft&&state.draft.id)||'')+':';for(const k of [...ui.blkOpen])if(k.startsWith(pre)&&k.endsWith(':'+b.exId))ui.blkOpen.delete(k);
-    blkOpenObj.delete(b);rerenderKeepScroll();},
-  bMenuDo(t){const op=t.dataset.op;closeModal();
-    if(op==='bSs'){const bi=+t.dataset.b;if(linkToggle(state.draft.ex,bi,x=>x.plan)){saveNow();rerenderKeepScroll();
-      // A superset made here is this session's; Plan keeps one (r34.2, from the review: it was gone next time without a word).
-      const b=state.draft.ex[bi];if(b&&b.plan.ss)toast(state.draft.dayId?'Superset. Finish offers to keep it in your plan.':'Superset for this session.');}return;}
-    const f=ACT[op];if(f)f(t);},
-  dropAdd(t){
-    const b=state.draft.ex[+t.dataset.b];
-    // The load the last working set was, or will be (a grey load counts); a missed set's is passed over (r55).
-    let base=0;for(let i=b.sets.length-1;i>=0;i--){const s=b.sets[i];if(s.warm||s.drop||isMissed(s))continue;const w=+effW(b,i)||0;if(w>0){base=w;break;}}
-    b.sets.push(newRow({w:base>0?lighterLoad(EX(b.exId),b.plan,base,base*0.75):null,drop:true}));
-    saveNow();rerenderKeepScroll();toast('Drop set added');
-  },
+  // A choice in the exercise menu: the sheet closes, then the session screen's action it names runs (workout.ts).
+  bMenuDo(t){const op=t.dataset.op;closeModal();const f=ACT[op];if(f)f(t);},
   // Once the rest is over, +15 counts from now (not from the old end, which
   // left it at 0:00) and the alert is armed again.
   tAdd(){const was=Math.max(0,(timer.end-Date.now())/1000);timer.total=was>0?Math.max(timer.total||0,was)+15:15;timer.end=Math.max(timer.end,Date.now())+15000;timer.fired=false;timerSave();if(!timer.iv)timer.iv=setInterval(tick,250);tick();},
@@ -638,68 +519,7 @@ const ACT={...HISTORY_ACTS,...SETTINGS_ACTS,...PLAN_ACTS,...DASH_ACTS,...TODAY_A
     state.draft={id:uid(),startedAt:Date.now(),date:today(),dayIdx:di,dayId:d.id,dayName:d.name+(light?' (lighter)':deload?' (deload)':''),routineId:R.id,deload,light,cardio:[],notes:light?'Lighter session: half sets, about 90% loads, 3+ RIR.':deload?'Deload: half sets, about 90% loads, 3+ RIR.':'',editingId:null,ex:items.map(it=>newBlock(it.exId,it,{deload,light}))};
     state.draft.note0=state.draft.notes||'';saveNow();window.scrollTo(0,0);render();wakeOn();
   },
-  /* These two used to call rerenderKeepScroll(), which rebuilt every set row in
-     the session on a single tap. On a long day that is well over a hundred
-     elements per checkmark. Patch the one row instead. */
-  adjKeep(t){const bi=+t.dataset.b;const b=state.draft&&state.draft.ex[bi];if(!b||!b.adj)return;const prev=b.adj;delete b.adj;b.adjOff=true;adjRows(b,prev,null);
-    const ex=EX(b.exId);b.sets.forEach((x,i)=>{if(i>prev.at&&!x.done&&x.w!=null){const el=document.querySelector(`.sg input[data-f="w"][data-b="${bi}"][data-s="${i}"]`);if(el)el.value=loadIn(ex,x.w);}});
-    refreshGreyW(bi);refreshGrey(bi);const el=document.getElementById('adj-'+bi);if(el)el.remove();saveNow();},
-  sDone(t){
-    const bi=+t.dataset.b,si=+t.dataset.s;const s=draftSet(t);if(!s)return;
-    /* With auto-done on, leaving the reps field marks the set done, and on a
-       phone that blur happens a moment before the tap on the checkmark lands.
-       Without this guard the tap would immediately undo the auto-mark. Since
-       r28 (auto-mark on for new installs) the first tap on that set's
-       checkmark confirms it for 15 s, until another set is touched: typing
-       reps, picking RIR and then tapping the checkmark is the natural order,
-       and it used to untick the set. A second tap undoes it. */
-    if(lastAuto&&(blkIdx(lastAuto.b)!==bi||lastAuto.s!==si))lastAuto=null;
-    if(lastAuto&&Date.now()-lastAuto.t<15000&&s.done){lastAuto=null;return;}
-    /* Tapping done on an empty reps field logs the grey number in it (see
-       greyR), like the paper log you copy from. Warm-ups have none, so
-       those still ask. */
-    if(!s.done&&!(+s.r>0)&&!isMissed(s)){ // a typed 0 is a missed set (r55, V), ticked as typed
-      const b=state.draft.ex[bi];const lr=b?greyR(b,si):null;
-      if(!(lr>0)){toast('Enter reps first');return;}
-      s.r=Math.round(lr);const inp=document.querySelector(`.sg input[data-f="r"][data-b="${bi}"][data-s="${si}"]`);if(inp)inp.value=String(s.r);
-    }
-    const was=!!s.done;setDone(bi,si,!was);if(was){const b=state.draft.ex[bi];if(s.r!=null&&+s.r===greyR(b,si))s.r=null;const gw=greyW(b,si);if(!fillLoads()&&s.w!=null&&gw!=null&&Math.abs(s.w-gw)<1e-9)s.w=null;const o=ui.ordBack&&ui.ordBack.get(b);if(o&&!b.sets.some(x=>x.done)&&Date.now()-o.t<30000){ui.ordBack.delete(b);moveBlock(bi,Math.min(o.i,state.draft.ex.length-1));}saveNow();rerenderKeepScroll();} // Unticked (r55, the audit): numbers that are what the row shows in grey go back to grey, so a tap by mistake leaves nothing typed for Finish to offer to save, and an exercise the tick moved up goes back if it has no set left ticked, within half a minute.
-  },
-  tStart(t){const b=state.draft&&state.draft.ex[+t.dataset.b];if(b&&+b.plan.rest>0)startTimer(+b.plan.rest);},
-  sWarm(t){
-    const s=draftSet(t);const bi=+t.dataset.b,si=+t.dataset.s;if(!s)return;
-    if(!s.warm&&!s.drop)s.warm=true;else if(s.warm){s.warm=false;s.drop=true;}else s.drop=false;
-    adjSync(state.draft.ex[bi]);
-    // Numbers, placeholders and the progress bar all depend on which rows are
-    // working sets, so redraw the block rather than patch one row.
-    refreshPR(bi,si,false);updateProgress(bi);updateSessBar();saveNow();rerenderKeepScroll();
-  },
-  fillLast(t){
-    const b=state.draft.ex[+t.dataset.b];let n=0;
-    b.sets.forEach((s,i)=>{const lr=lastRFor(b,i);if(!s.done&&!s.warm&&!s.drop&&s.r==null&&lr!=null){s.r=lr;n++;}});
-    if(!n){toast('Nothing to fill');return;}
-    saveNow();rerenderKeepScroll();toast(`${n} set${n===1?'':'s'} filled with last time's reps`);
-  },
   goBackup(){if(ui.modal)closeModal();ui.tab='settings';ui.folds['settings:data']=true;window.scrollTo(0,0);render();const el=document.getElementById('dataSec');if(el)el.scrollIntoView({block:'start'});},
-  // The new working set copies the last working set's load, not a drop set's
-  // (75%) or a warm-up's.
-  sAdd(t){const bi=+t.dataset.b;const b=state.draft.ex[bi];const ld=b.sets.reduce((k,x,i)=>x.done&&isWork(x)&&!x.drop?i:k,-1);const row=newRow();
-    // Grey by default: the new row shows the load above it, or what the last set ticked asks for, as a planned row under it would have (r55, V: after 300 x 1, + Set copied 300). Filled in, it takes that load.
-    b.sets.push(row);if(ld>=0)assessSet(bi,ld);if(fillLoads())row.w=effW(b,b.sets.length-1);saveNow();rerenderKeepScroll();},
-  /* Warm-ups were missing entirely, which is also why the planned time estimate
-     was optimistic. New warm-ups go in at the top, already flagged, so they
-     stay out of every analytic, and are seeded from the working load. */
-  wAdd(t){
-    const b=state.draft.ex[+t.dataset.b];
-    let base=0;for(let i=0;i<b.sets.length;i++){const s=b.sets[i];if(s.warm||s.drop)continue;const w=+effW(b,i)||0;if(w>0){base=w;break;}}
-    if(!base)base=Math.max(0,...b.sets.map((s,i)=>+effW(b,i)||0));
-    const n=b.sets.filter(s=>s.warm).length;
-    const frac=[0.4,0.6,0.75,0.85][Math.min(n,3)];
-    // Each new warm-up goes after the ones already there, so they climb to the working load (r27; they used to stack heaviest first).
-    let at=0;while(at<b.sets.length&&b.sets[at].warm)at++;
-    b.sets.splice(at,0,newRow({w:base>0?lighterLoad(EX(b.exId),b.plan,base,base*frac):null,warm:true}));
-    adjSync(b);saveNow();rerenderKeepScroll();toast('Warm-up set added');
-  },
   bQuick(t){openModal({kind:'quick',b:+t.dataset.b,text:''});},
   bHist(t){const b=state.draft&&state.draft.ex[+t.dataset.b];if(b)openModal({kind:'exhist',exId:b.exId});},
   // The editor's muscle pickers already name the muscles; the figure is there on request (r40, V: not both at once).
@@ -719,50 +539,12 @@ m.err=`Could not read that. Try the pattern 225x5, 5, 4 ${rirScale()==='rpe'?'rp
   altGo(t){const go=t.dataset.go;closeModal();if(ACT[go])ACT[go](t);},
   // Another day of the plan on the card (the old Change day list); in a blank-session Today it shows that day's card.
   dayPick(t){const i=+t.dataset.i;closeModal();ui.todayDay=i;ui.todayAt=null;window.scrollTo(0,0);render();},
-  noteReuse(t){const b=state.draft&&state.draft.ex[+t.dataset.b];if(!b||!b.lastNote)return;b.note=b.lastNote.text;saveNow();rerenderKeepScroll();toast('Note carried into this session');},
   bNote(t){const bi=+t.dataset.b;openModal({kind:'note',bi,title:`Note: ${exName(state.draft.ex[bi].exId)}`,text:state.draft.ex[bi].note||''});},
   noteSave(){
     const m=ui.modal;const ta=$('#mNote');if(!m||!ta||!state.draft)return;
     const b=state.draft.ex[m.bi];if(b)b.note=ta.value.trim();
     closeModal();saveNow();rerenderKeepScroll();
   },
-  /* Removes the last set not yet done. A logged set is only removed when
-     every set is done, and then with Undo, since it holds real numbers. */
-  /* − Set (r25 guardrail). It takes the last row that holds nothing of the
-     lifter's (no tick, no reps, no RIR, and a load that is only the app's
-     suggestion), quietly. When every row holds something, it no longer
-     removes the last one on a single tap: it asks first, naming the set, and
-     Undo still follows. A logged set used to go with only a toast. */
-  sDel(t){const d=state.draft;const bi=+t.dataset.b;const b=d&&d.ex[bi];if(!b||!b.sets.length)return;
-    const blank=x=>rowBlank(b,x);
-    let i=-1;for(let k=b.sets.length-1;k>=0;k--)if(blank(b.sets[k])){i=k;break;}
-    if(i>=0){b.sets.splice(i,1);adjSync(b);saveNow();rerenderKeepScroll();return;}
-    // Every row holds something: the last row not ticked goes first, a logged set only after.
-    for(let k=b.sets.length-1;k>=0;k--)if(!b.sets[k].done){i=k;break;}
-    if(i<0)i=b.sets.length-1;
-    const x=b.sets[i],ex=EX(b.exId),did=d.id,exId=b.exId,n=b.sets.slice(0,i+1).filter(y=>!y.warm&&!y.drop).length;
-    const what=`${x.warm?'Warm-up':x.drop?'Drop set':'Set '+n}`;
-    const val=+x.r>0?setShort(ex,x.w==null?0:x.w,x.r):x.w!=null?loadLabel(ex,x.w)+(ex.bw?'':' '+U()):'';
-    confirmBox(`Remove ${what.toLowerCase()}?`,`${ex.name}${val?`: ${val}`:''}, ${x.done?'logged':'typed, not ticked'}. Undo is offered right after.`,'Remove set',()=>{
-      // Found again when confirmed: a cloud refresh may have replaced the session while the dialog was open.
-      const dd=state.draft;const bb=dd&&dd.id===did?dd.ex[bi]:null;const xx=bb&&bb.exId===exId?bb.sets[i]:null;
-      if(!xx||xx.done!==x.done||xx.r!==x.r||xx.w!==x.w){toast('That set changed. Nothing was removed.');rerenderKeepScroll();return;}
-      snapshot(()=>{const d3=state.draft;if(!d3||d3.id!==did||!d3.ex.includes(bb))return false;bb.sets.splice(Math.min(i,bb.sets.length),0,xx);adjSync(bb);return true;});
-      bb.sets.splice(i,1);adjSync(bb);saveNow();rerenderKeepScroll();toast(xx.done?'Logged set removed':'Set removed',true);},true);
-  },
-  bUp(t){if(moveBlock(+t.dataset.b,+t.dataset.b-1))rerenderKeepScroll();},
-  bDown(t){if(moveBlock(+t.dataset.b,+t.dataset.b+1))rerenderKeepScroll();},
-  /* Removing an exercise (r25 guardrail): one with logged or typed sets asks
-     first, naming how many; an untouched one goes with an Undo as before. */
-  bDel(t){const d=state.draft;const bi=+t.dataset.b;const blk=d.ex[bi];if(!blk)return;const did=d.id;
-    const go=()=>{const dd=state.draft;if(!dd||dd.id!==did||dd.ex[bi]!==blk){if(ui.modal)closeModal();toast('That exercise changed. Nothing was removed.');rerenderKeepScroll();return;}
-      // Back after the exercise it followed, which an automatic reorder may have moved (r45 review).
-      const prevBlk=bi>0?dd.ex[bi-1]:null;
-      snapshot(()=>{const d3=state.draft;if(!d3||d3.id!==did)return false;const k=prevBlk?d3.ex.indexOf(prevBlk):-1;d3.ex.splice(prevBlk==null?0:k>=0?k+1:Math.min(bi,d3.ex.length),0,blk);fixSupersets(d3.ex.map(x=>x.plan));return true;});
-      keepOpen(()=>dd.ex.splice(bi,1));saveNow();rerenderKeepScroll();toast('Exercise removed',true);};
-    const logged=blk.sets.filter(x=>x.done).length,typed=blk.sets.filter(x=>!x.done&&(+x.r>0||x.rir!=null)).length;
-    if(logged||typed){if(ui.modal)closeModal();confirmBox(`Remove ${EX(blk.exId).name}?`,`${logged?`${logged} logged set${logged===1?'':'s'}`:''}${logged&&typed?' and ':''}${typed?`${typed} typed set${typed===1?'':'s'}`:''} go with it. Undo is offered right after.`,'Remove exercise',go,true);return;}
-    go();},
   bSwap(t){openModal({kind:'picker',mode:'swapBlock',b:+t.dataset.b,title:'Swap exercise',q:'',m:EX(state.draft.ex[+t.dataset.b].exId).primary});},
   pickSession(){openModal({kind:'picker',mode:'addBlock',title:'Add exercise to session',q:'',m:''});},
   pickDay(t){openModal({kind:'picker',mode:'addDay',day:+t.dataset.day,title:`Add to ${dayLabel(curRoutineB(),+t.dataset.day)}`,q:'',m:''});},
@@ -820,175 +602,6 @@ m.err=`Could not read that. Try the pattern 225x5, 5, 4 ${rirScale()==='rpe'?'rp
     if(!state.draft){const R=activeRoutine();const di=t.dataset.day!=null?+t.dataset.day:null;ui.todayDay=d===today()||di==null||!R.days[di]?null:di;ui.todayAt=ui.todayDay==null?null:{d,di};} // the date it was opened for, said on the card when past this week (329, r59)
     if(ui.modal)closeModal();window.scrollTo(0,0);render();
   },
-  finish(){
-    const d=state.draft;
-    /* Sets left (r30): finishing with half the planned sets untouched used to
-       save without a word. Asked once, only when something was done, and not
-       for an edit or a past workout typed in afterwards. */
-    if(!d._leftAsked&&!d.editingId&&!d.past){
-      let n=0,left=0;for(const b of d.ex)for(const x of b.sets){if(x.warm)continue;n++;if(!x.done&&rowBlank(b,x))left++;}
-      const any=d.ex.some(b=>b.sets.some(x=>x.done&&!x.warm));
-      if(any&&left>0){
-        confirmBox(`${left} of ${n} sets not done`,`Finish now and they are left out. An exercise with fewer sets than usual does not set your next target, and still counts toward its trend.`,'Finish now',()=>{const dd=state.draft;if(!dd)return;dd._leftAsked=true;ACT.finish();},false,{label:'Keep going',fn:()=>{}});
-        return;
-      }
-    }
-    /* Ramp-up sets logged as work count as hard sets and inflate weekly volume.
-       A done working set is treated as a likely ramp-up when it comes before
-       the first set at that exercise's top load and is under 80% of it. Asked
-       once per session; either answer moves on to the normal checks. */
-    if(!d._rampAsked){
-      const ramps=[];
-      for(const b of d.ex){
-        const e=EX(b.exId);const wk=b.sets.filter(x=>x.done&&!x.warm&&!x.drop&&+x.r>0);if(wk.length<2)continue;
-        const L=x=>bwLoad(e,d.date)+(+x.w||0);
-        const top=Math.max(...wk.map(L));if(!(top>0))continue;
-        const firstTop=b.sets.findIndex(x=>x.done&&!x.warm&&!x.drop&&+x.r>0&&Math.abs(L(x)-top)<1e-6);
-        const bi=d.ex.indexOf(b);
-        /* A lighter set before the first top set is a likely warm-up when it
-           was easy: logged at 5+ RIR, or, with no RIR, 5+ reps short of what
-           your estimated 1RM says that load allows. With neither, under 75%
-           of the top load on a compound lift or 80% on isolation work. A set
-           logged at 4 RIR or less is never flagged, so hard pyramid sets
-           stay working sets. */
-        const est=(IDX().exStats[b.exId]||{}).bestAll;const thr=isCompound(e)?0.75:0.8;
-        const easy=x=>{if(!(L(x)<top-1e-6))return false;const q=rirEff(x,e);if(q!=null)return q>=5;
-          if(est&&!noE1(e)){const rtf=rtfAt(est,L(x));if(rtf!=null)return rtf-(+x.r)>=5;}return L(x)<top*thr;};
-        /* A weighted set with no load is a forgotten load, asked about below
-           ("Add the missing loads?"), never a ramp-up (r31: "0×8, lighter
-           and easy" came first). */
-        /* A set at the load the app suggested, or one the app itself raised
-           the load after, is a working set by design (r34.2, from the review:
-           Finish offered to make the app's own adjusted sets warm-ups). */
-        const appSet=(x,si)=>(b.sw!=null&&Math.abs((+x.w||0)-b.sw)<1e-6)||(!!b.adj&&b.adj.up&&si<=b.adj.at);
-        b.sets.forEach((x,si)=>{if(si<firstTop&&x.done&&!x.warm&&!x.drop&&+x.r>0&&(e.bw||+x.w>0)&&!appSet(x,si)&&easy(x))ramps.push({bi,si,name:e.name,txt:`${loadLabel(e,+x.w||0)}×${x.r}`});});
-      }
-      if(ramps.length){
-        const done=()=>{const dd=state.draft;if(!dd)return;dd._rampAsked=true;saveNow();ACT.finish();};
-        confirmBox('These look like ramp-up sets',
-          `${[...new Set(ramps.map(r=>r.bi))].map(bi=>{const rs=ramps.filter(r=>r.bi===bi);return `${rs[0].name}: ${rs.map(r=>r.txt).join(', ')}`;}).join('; ')}. Lighter and easy, before your top set. Mark ${ramps.length>1?'them':'it'} as warm-up${ramps.length>1?'s':''}?`,
-          `Mark as warm-up${ramps.length>1?'s':''}`,
-          ()=>{const dd=state.draft;if(!dd)return;for(const r of ramps){const x=dd.ex[r.bi]&&dd.ex[r.bi].sets[r.si];if(x){x.warm=true;x.drop=false;}}done();},false,
-          {label:'Keep as working sets',fn:done});
-        return;
-      }
-    }
-    /* Only sets marked done are saved. That is the rule, but silently obeying
-       it is how a session of typed reps disappears: you fill five rows, tap the
-       checkmark on one, and four sets are gone with no warning. Count them
-       first and let the user keep them, a typed 0 (a missed set, r55) among them. */
-    const unchecked=[];
-    for(const b of d.ex){const n=b.sets.filter(s=>!s.done&&(+s.r>0||isMissed(s))).length;if(n)unchecked.push({b,n,name:EX(b.exId).name});} // warm-ups too, as the Guide says (r55, the audit)
-    if(unchecked.length){
-      const list=unchecked.map(u=>`${u.name} (${u.n} set${u.n>1?'s':''})`).join(', ');
-      const total=unchecked.reduce((a,u)=>a+u.n,0);
-      confirmBox('Some sets are not marked done',
-        `${total} set${total>1?'s have':' has'} reps entered but no checkmark, so ${total>1?'they':'it'} will not be saved: ${list}.`,
-        `Mark ${total>1?'them':'it'} done and save`,
-        ()=>{const dd=state.draft;if(!dd)return;for(const [bi,b] of dd.ex.entries())for(const [si,s] of b.sets.entries())if(!s.done&&(+s.r>0||isMissed(s))){if(oddReps(b,s)||oddLoad(b,si,dd.date)||lightZero(b,si,dd.date)){setDone(bi,si,true);if(!s.done)return;}else{settleLoad(b,si);s.done=true;}}saveNow();ACT.finishNow();}, // reps or a load far off ask first, as when ticked (r55, the audit: 110 reps put off once was saved here)
-        false,
-        {label:'Save without them',fn:()=>ACT.finishNow()});
-      return;
-    }
-    ACT.finishNow();
-  },
-  finishNow(){
-    const d=state.draft;if(!d)return;
-    /* Nothing is marked trimmed since r54 (V's one rule, PENDING 312 E): an
-       exercise with fewer sets than usual, stopped early, Short on time, typed
-       in afterwards or edited, is read so from the log (analytics.ts,
-       idxShort), so it sets no target and still counts toward its trend. */
-    const ex=d.ex.map(savedEx).filter(b=>b.sets.length); // savedEx (session.ts): one source with a first link keeping another device's workout (r55)
-    // Side by side, the same lift is saved as one exercise (r34.2, V); apart, each stays where it was done.
-    const exJ=withPlanSets(joinAdjacent(ex),d,state.routines);ex.length=0;ex.push(...exJ);
-    const cardio=draftCardio(d).map(c=>cleanCardio(c));
-    if(!ex.length){
-      if(cardio.length&&!d.editingId){putById(state.cardio,cardio);state.draft=null;commit();stopTimer();wakeOff();ui.todayDay=null;window.scrollTo(0,0);render();toast('Cardio saved. No lifting session was recorded.');return;}
-      toast('Mark at least one set done');return;}
-    // A blank load on a weighted lift used to save silently as a real 0 set,
-    // which drags down volume load and still counts toward your weekly sets.
-    const blanks=[];
-    for(const b of ex){const e=EX(b.exId);if(e.bw)continue;const n=b.sets.filter(s=>!(+s.w>0)&&isWork(s)).length;if(n)blanks.push(`${e.name} (${n} set${n>1?'s':''})`);}const help=[];for(const b of d.ex){const e=EX(b.exId);if(!e.assist)continue;const n=b.sets.filter(s=>s.done&&!s.warm&&s.w==null).length;if(n)help.push(`${e.name} (${n} set${n>1?'s':''})`);}
-    const save=()=>{
-      // Timed only when started and finished today in this app; an edit keeps
-      // whatever the original session measured.
-      const durMin=d.editingId?(d.durMin||null):(d.startedAt&&d.date===today()?(()=>{const m=Math.round((Date.now()-d.startedAt)/60000);return m>=1&&m<=360?m:null;})():null);
-      const sess={id:d.editingId||d.id,date:d.date,dayIdx:d.dayIdx,dayId:d.dayId||null,dayName:(d.dayName||'').trim()||'Session',routineId:d.routineId,ex,notes:d.notes||'',durMin,deload:!!d.deload,light:!!d.light,free:d.free?true:undefined,chk:cleanChk(d.chk)||undefined};
-      // When it started: kept on an edit, else the start (or now, for a past workout entered later).
-      {const was=d.editingId?state.sessions.find(x=>x.id===d.editingId):null;const t=was?was.t:(d.startedAt||Date.now());if(t)sess.t=t;const pw=d.editingId||d.free?undefined:pwOf(state.routines,d.routineId);if(pw)sess.pw=pw;} // and, new, what its routine planned a week (r55); an edit keeps the session's own (keepExtra below)
-      if(!d.editingId)putById(state.cardio,cardio);
-      /* An RIR check offered and passed over waits 3 weeks, as Not now does
-         (r32, from the third review: it was offered every session from the
-         fourth to the twelfth). Read before the session is saved, since the
-         check counts sessions. */
-      if(!d.editingId&&calDueIdx(d)>=0&&!d.ex.some(b=>b.sets.some(x=>x.cal&&x.done)))state.settings.calSnooze=today();
-      const upd=d.editingId?null:routineUpdates(d);
-      /* An edit rebuilds the session from the screen, so fields a newer build
-         stored on it, or on an exercise still in its place, are carried over
-         (r43, as normalize keeps them), each exercise matched by its lift in
-         order, so one moved during the edit keeps them; sets are what the edit changes. */
-      if(d.editingId){const i=state.sessions.findIndex(s=>s.id===d.editingId);if(i>=0){const o=state.sessions[i];sess.demo=o.demo;
-        keepExtra(o,sess);const used=new Set();sess.ex.forEach(b=>{const ob=o.ex.find(x=>x.exId===b.exId&&!used.has(x));if(ob){used.add(ob);keepExtra(ob,b);}});state.sessions[i]=sess;}else state.sessions.push(sess);}
-      else putById(state.sessions,[sess]); /* by id: the other phone's copy of this workout, kept at its first link, is replaced, never held twice (r55, the second review) */
-      /* A real session saved while demo data is loaded (r30): the demo goes,
-         so stats never mix generated sessions with yours (the review saw 33
-         sessions, demo and real, in one set of numbers, and the demo note
-         gone). Load demo data in Settings brings it back. */
-      const demoGone=!d.editingId&&(state.sessions.some(x=>x.demo)||state.bodyweights.some(x=>x.demo)||state.measurements.some(x=>x.demo));
-      if(demoGone){stripDemo(state);demoRestore();invalidate();}
-      // Saving an edit of a session that was deleted while the edit was open
-      // brings it back: the save is the newer action.
-      state.trash=state.trash.filter(t=>!(t.kind==='session'&&t.id===sess.id));
-      // Recap is computed before the draft is cleared, while the done flags exist.
-      // Only exercises with a set done count toward targets (r30), and the
-      // planned minutes are what this session planned after any trimming.
-      const tried=d.ex.filter(b=>b.tgt&&b.sets.some(x=>x.done&&!x.warm)&&effTarget(b)===b.tgt); // not one with fewer sets than its target's, which sets no target either way (r55)
-      const targets=tried.length,beaten=tried.filter(b=>{const pr=blockProgress(b);return pr&&pr.beat;}).length;
-      const pmDraft=draftPlanMin(d);
-      const editing=!!d.editingId;
-      state.draft=null;commit();stopTimer();wakeOff();
-      // An Undo offered during the session (a trim, a removed set) has nothing left to undo once it is saved.
-      {const tEl=$('#toast');if(tEl&&tEl.querySelector('[data-act="undo"]')){clearTimeout(toastT);tEl.hidden=true;}}
-      const prAll=IDX().prs.filter(p=>(p.sid?p.sid===sess.id:p.date===sess.date)&&ex.some(b=>b.exId===p.exId));const prs=prAll.filter(p=>p.big);
-      // Heavier than ever without a new best estimate: said once, quietly, not counted as a PR (r32).
-      const heavier=prAll.filter(p=>!p.big&&p.type==='Weight PR').map(p=>{const e=EX(p.exId);return `${e.name} ${setShort(e,p.w,p.r)}`;});
-      const work=ex.reduce((a,b)=>a+b.sets.filter(isWork).length,0),miss=ex.reduce((a,b)=>a+b.sets.filter(q=>!q.warm&&!q.drop&&isMissed(q)).length,0),hard=r1(ex.reduce((a,b)=>{const e=EX(b.exId);return a+b.sets.reduce((c,q)=>c+hardCredit(q,e),0);},0));
-      ui.todayDay=null;window.scrollTo(0,0);render();
-      if(editing){toast('Session updated');return;}
-      const lines=[`${work} working set${work===1?'':'s'}, ${hard} ${rirHalfOn()?'counted toward the week':'counted as hard'}${miss?`, and ${miss} missed`:''}`];
-      // A session dated in the past says where it went, since it is not at the top of History.
-      if(sess.date!==today())lines.unshift(`Saved under ${fmtDateLong(sess.date)}`);
-      if(durMin){const pm=pmDraft;lines.push(`${durMin} minutes${pm&&!sess.free?`, planned ${estMin(pm)}`:''}`);}
-      if(targets)lines.push(`${beaten} of ${targets} exercise target${targets===1?'':'s'} beaten`);
-      if(heavier.length)lines.push(`Heaviest yet: ${andList(heavier,4)}`);
-      // The PR moment in the recap (item 28): its own gold block, each with what it beat.
-      const prList=prs.map(pr=>{const e=EX(pr.exId);if(pr.type==='Weight PR')return {name:e.name,what:`Weight PR, ${setShort(e,pr.w,pr.r)}${pr.value!=null&&isCompound(e)?`, best estimate ${fmtE(pr.value)} ${U()}${loadNote(e)}`:''}`,was:e.assist?'less help than ever':isFinite(pr.prevW)?`heaviest before ${e.bw?loadLabel(e,pr.prevW):fmtW(pr.prevW)+' '+U()}`:''};const ps=pr.type==='e1RM'&&!isCompound(e)?prSet(pr.exId,pr.date):null;if(ps)return {name:e.name,what:`PR, ${setShort(e,ps.w,ps.r)}`,was:'your best for that number of reps'};return pr.type==='e1RM'?{name:e.name,what:`${prName(pr)} ${fmtE(pr.value)} ${U()}${loadNote(e)}`,was:prOverall(pr)?(pr.prevAll!=null?`was ${fmtE(pr.prevAll)}`:''):(pr.prev!=null?`was ${fmtE(pr.prev)} at those reps`:'')}:{name:e.name,what:`${e.timed?'Time':'Rep'} PR, ${setShort(e,pr.w,pr.r)}`,was:pr.prevR?`was ${pr.prevR} ${e.timed?'s':'reps'} at this load or heavier`:'heaviest yet'};});
-      if(cardio.length)lines.push(`Cardio and mobility: ${cardio.reduce((a,c)=>a+c.min,0)} min`);
-      if(demoGone)lines.push('Demo data removed, so your stats show only your own sessions');
-      openModal({kind:'recap',title:'Session saved',lines,prs:prList,note:prs.length?'':(state.sessions.filter(x=>!x.demo).length<=1?'Your first session: these are your starting numbers.':'No PRs this time.'),upd,sid:sess.id});
-    };
-    /* Asked as "add them" first (r29, item 116): saved as 0, such a set still
-       counts as a hard set but gives no estimate, PR, or weight lifted. Add
-       loads goes back to the first one, opened, with its load field focused. */
-    if(blanks.length||help.length)confirmBox(blanks.length?'Add the missing loads?':'Add the help you used?',[blanks.length?`${andList(blanks)} ${blanks.length>1?'have':'has'} reps but no weight. Saved like this, they count as hard sets but give no estimate, PR, or weight lifted.`:'',help.length?`${andList(help)} ${help.length>1?'have':'has'} no help typed, so saved like this ${help.length>1?'they read':'it reads'} as no help, your full bodyweight.`:''].filter(Boolean).join(' '),blanks.length?'Add loads':'Add the help',()=>{
-      const dr=state.draft;if(!dr)return;
-      for(let bi=0;bi<dr.ex.length;bi++){const b=dr.ex[bi];const e=EX(b.exId);if(e.bw&&!e.assist)continue;const si=b.sets.findIndex(x=>x.done&&(e.assist?x.w==null:!(+x.w>0)));if(si<0)continue;
-        ui.blkOpen.add(blkKey(bi,b));blkOpenObj.add(b);render();
-        const f=document.querySelector(`[data-f="w"][data-b="${bi}"][data-s="${si}"]`);if(f){f.scrollIntoView({block:'center'});f.focus();f.classList.add('need');}return;}
-    },false,{label:'Save anyway',fn:save});
-    else save();
-  },
-  /* A session with nothing in it goes at once; one with anything entered
-     (sets, reps, cardio, a note) asks first. An edit always asks, since the
-     saved sets are already in it. */
-  discard(){
-    const d=state.draft;if(!d)return;
-    const out=()=>{state.draft=null;saveNow();stopTimer();wakeOff();window.scrollTo(0,0);render();};
-    if(!d.editingId&&!draftEntered(d)){out();toast('Session discarded');return;}
-    if(d.editingId&&editFp0.get(d.id)===editFp(d)){out();toast('No changes made');return;}
-    confirmBox('Discard this session?',d.editingId?'Your edits will be lost. The saved session stays as it was.':'Sets and cardio logged in this session will not be saved.','Discard',out,true);
-  },
-  bwAskNo(){try{localStorage.setItem(BWASK_KEY,'1');}catch(e){/* per device only */}rerenderKeepScroll();},
   rNew(){openModal({kind:'routineNew'});},
   rNewSave(){const nm=(($('#rNewName')||{}).value||'').trim();if(!nm){toast('Give the routine a name');return;}if(nameTaken(nm)){toast('A routine already has that name. Pick another.');return;}closeModal();ACT.rNewDo(nm);},
   rNewDo(nm){
@@ -1074,15 +687,3 @@ m.err=`Could not read that. Try the pattern 225x5, 5, 4 ${rirScale()==='rpe'?'rp
     // demoRestore puts the settings back when the demo is cleared.
     if(first)fitTargets(activeRoutine());if(!cloud.on)cloudStop(true);makeDemo();ui.tab='dash';window.scrollTo(0,0);render();toast('Demo data loaded');});},
 };
-
-/* A load far from last time's (under 60% or over 140% of it) is the usual
-   sign of a per-dumbbell or per-side mix-up. Said once per exercise per
-   session, never blocking. Warm-ups and drop sets are expected to be lighter. */
-const mixSeen=new Set();
-function mixCheck(bi,si){
-  const d=state.draft;const b=d&&d.ex[bi];const s=b&&b.sets[si];if(!s||s.warm||s.drop||!(+s.w>0))return;
-  const ex=EX(b.exId);const st=IDX().exStats[b.exId];const last=st&&st.last?st.last.topW:0;if(!(last>0))return;
-  const r=(+s.w)/last;if(r>=0.6&&r<=1.4)return;
-  const key=d.id+':'+bi;if(mixSeen.has(key))return;mixSeen.add(key);
-  toast(`${fmtW(+s.w)} ${U()} is ${r>1?'well above':'well below'} last time's ${fmtW(last)}. This one is logged as ${loadWords(ex)}.`,false,7000);
-}

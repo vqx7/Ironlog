@@ -20,6 +20,31 @@ const FACES = [[cfg.FONT_DISPLAY, cfg.FONT_DISPLAY_WEIGHTS], [cfg.FONT_BODY, cfg
 let FCSS = '';
 for (const [family, dir, weights] of FACES) for (const w of weights) FCSS += `@font-face{font-family:'${family}';font-weight:${w};src:url(https://fonts.local/${dir}-${w}.woff2) format('woff2');}`;
 const FILE_TYPES = { '.html': 'text/html', '.js': 'text/javascript', '.mjs': 'text/javascript', '.css': 'text/css', '.woff2': 'font/woff2', '.png': 'image/png', '.svg': 'image/svg+xml', '.webmanifest': 'application/manifest+json', '.json': 'application/json', '.txt': 'text/plain' };
+/* What a page of the app may load: the libraries from node_modules, the fonts, its own files, nothing else. */
+function serve(r) {
+  const u = r.request().url();
+  if (u.includes('Chart.js') || u.includes('chart.js')) return r.fulfill({ contentType: 'application/javascript', body: CHART });
+  if (u.includes('Sortable')) return r.fulfill({ contentType: 'application/javascript', body: SORT });
+  if (/three(@[\d.]+)?\/build\/three\.module\.min\.js/.test(u)) return r.fulfill({ contentType: 'application/javascript', headers: { 'Access-Control-Allow-Origin': '*' }, body: THREE });
+  // What the page made itself (an object URL for a picked screenshot, a data URL) is its own, never another site's.
+  if (u.startsWith('blob:') || u.startsWith('data:')) return r.continue();
+  /* A page opened from a file has the origin null. Chromium lets it read
+     the files beside it; WebKit sends the ones fetched in CORS mode (web
+     fonts are) as cross-origin requests and refuses them ("Origin null is
+     not allowed by Access-Control-Allow-Origin"). Only a file page meets
+     this: the installed app is served from one https origin. So in WebKit
+     the build's own files are served from disk with the header, as that
+     origin would serve them. */
+  if (u.startsWith('file:')) {
+    if (ENGINE !== 'webkit' || r.request().isNavigationRequest()) return r.continue();
+    let f; try { f = require('url').fileURLToPath(u); } catch (e) { return r.continue(); }
+    if (!fs.existsSync(f) || !fs.statSync(f).isFile()) return r.continue();
+    return r.fulfill({ contentType: FILE_TYPES[path.extname(f)] || 'application/octet-stream', headers: { 'Access-Control-Allow-Origin': '*' }, body: fs.readFileSync(f) });
+  }
+  if (u.startsWith(cfg.FONTS_ORIGIN + '/css')) return r.fulfill({ contentType: 'text/css', body: FCSS });
+  const m = u.match(/fonts\.local\/([a-z-]+)-(\d+)\.woff2$/); if (m && FACES.some(([, d, ws]) => d === m[1] && ws.includes(m[2]))) return r.fulfill({ contentType: 'font/woff2', body: fs.readFileSync(`${FD}/${m[1]}/files/${m[1]}-latin-${m[2]}-normal.woff2`) });
+  return r.abort();
+}
 async function open(file, opts = {}) {
   // IRONLOG_FILE runs the same suites against another build (the standalone dist/index.html).
   if (file === 'index.html' && process.env.IRONLOG_FILE) file = process.env.IRONLOG_FILE;
@@ -35,35 +60,25 @@ async function open(file, opts = {}) {
   page.on('pageerror', e => { errors.push('pageerror: ' + e.message); if (process.env.IL_STACK) console.log(e.stack); });
   // Software WebGL in headless Chromium reports itself as warnings; that is the test machine, not the app.
   page.on('console', m => { const t = m.text(); if ((m.type() === 'error' || m.type() === 'warning') && !t.includes('Failed to load resource') && !/GroupMarkerNotSet|swiftshader|GL Driver Message|WebGL-0x/i.test(t)) errors.push(m.type() + ': ' + t); });
-  await page.route('**/*', r => {
-    const u = r.request().url();
-    if (u.includes('Chart.js') || u.includes('chart.js')) return r.fulfill({ contentType: 'application/javascript', body: CHART });
-    if (u.includes('Sortable')) return r.fulfill({ contentType: 'application/javascript', body: SORT });
-    if (/three(@[\d.]+)?\/build\/three\.module\.min\.js/.test(u)) return r.fulfill({ contentType: 'application/javascript', headers: { 'Access-Control-Allow-Origin': '*' }, body: THREE });
-    // What the page made itself (an object URL for a picked screenshot, a data URL) is its own, never another site's.
-    if (u.startsWith('blob:') || u.startsWith('data:')) return r.continue();
-    /* A page opened from a file has the origin null. Chromium lets it read
-       the files beside it; WebKit sends the ones fetched in CORS mode (web
-       fonts are) as cross-origin requests and refuses them ("Origin null is
-       not allowed by Access-Control-Allow-Origin"). Only a file page meets
-       this: the installed app is served from one https origin. So in WebKit
-       the build's own files are served from disk with the header, as that
-       origin would serve them. */
-    if (u.startsWith('file:')) {
-      if (ENGINE !== 'webkit' || r.request().isNavigationRequest()) return r.continue();
-      let f; try { f = require('url').fileURLToPath(u); } catch (e) { return r.continue(); }
-      if (!fs.existsSync(f) || !fs.statSync(f).isFile()) return r.continue();
-      return r.fulfill({ contentType: FILE_TYPES[path.extname(f)] || 'application/octet-stream', headers: { 'Access-Control-Allow-Origin': '*' }, body: fs.readFileSync(f) });
-    }
-    if (u.startsWith(cfg.FONTS_ORIGIN + '/css')) return r.fulfill({ contentType: 'text/css', body: FCSS });
-    const m = u.match(/fonts\.local\/([a-z-]+)-(\d+)\.woff2$/); if (m && FACES.some(([, d, ws]) => d === m[1] && ws.includes(m[2]))) return r.fulfill({ contentType: 'font/woff2', body: fs.readFileSync(`${FD}/${m[1]}/files/${m[1]}-latin-${m[2]}-normal.woff2`) });
-    return r.abort();
-  });
+  await page.route('**/*', serve);
   if (opts.setup) await opts.setup(ctx, page);
   await page.goto('file://' + path.resolve(file));
   await page.waitForFunction(() => window.__libs && window.__libs.chart && window.__libs.sortable);
   await page.evaluate(() => document.fonts.ready);
   return { browser, ctx, page, errors };
+}
+/* A second tab of the same page in the same browser profile as P (open's
+   result): the same storage, so a save in one is a storage event in the
+   other, as two tabs of the app on one phone. */
+async function tab(P, file) {
+  if (file === 'index.html' && process.env.IRONLOG_FILE) file = process.env.IRONLOG_FILE;
+  const page = await P.ctx.newPage();
+  const errors = [];
+  page.on('pageerror', e => errors.push('pageerror: ' + e.message));
+  await page.route('**/*', serve);
+  await page.goto('file://' + path.resolve(file));
+  await page.waitForFunction(() => window.__libs && window.__libs.chart && window.__libs.sortable);
+  return { page, errors };
 }
 /* A finger on the screen: tp('touchStart' | 'touchMove' | 'touchEnd', x, y),
    in viewport pixels. Chromium takes real touches through its DevTools
@@ -207,4 +222,4 @@ function screenDiff(a, b) {
   for (let i = 0; i < n; i++) if (a.tree[i] !== b.tree[i]) { const x = a.tree[i] || '', y = b.tree[i] || ''; let j = 0; while (j < x.length && x[j] === y[j]) j++; return { at: i, before: x.slice(Math.max(0, j - 160), j + 200), now: y.slice(Math.max(0, j - 160), j + 200) }; }
   return a.text === b.text ? null : { text: true, before: a.text.slice(0, 400), now: b.text.slice(0, 400) };
 }
-module.exports = { open, cspFix, build, engine, ENGINE, touchDriver, offlineLoad, settle, sourceFiles, sourceTexts, screenOf, screenDiff };
+module.exports = { open, tab, cspFix, build, engine, ENGINE, touchDriver, offlineLoad, settle, sourceFiles, sourceTexts, screenOf, screenDiff };
