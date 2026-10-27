@@ -7360,7 +7360,7 @@ ${actions ? b`<div class="ph-a">${actions}</div>
         text: `First time, ${opts.deload ? "deload" : "Lighter day"}. About ${loadLabelIn(M3, ex, lw)} ${UIn(M3)}${loadNote(ex)} for ${repSpan(plan.repMin, plan.repMax, "-")} with ${effLeast(effScale(M3.s.settings.rirScale), LIGHT_RIR)}, from your ${EXIn(M3, base.kin).name}. Half the usual sets, nothing to beat.`
       };
     }
-    if (base.inj || !base.last || base.w == null) return base;
+    if (!base.last || base.w == null) return base;
     const word = opts.deload ? "Deload" : opts.light ? "Lighter day" : `Back after ${Math.round(off / WEEK_DAYS)} weeks`;
     const step = incOfIn(M3, ex, plan);
     const w0 = base.top != null ? Math.min(base.w, base.top) : base.w;
@@ -7373,6 +7373,22 @@ ${actions ? b`<div class="ph-a">${actions}</div>
     ) : ex.bw ? (w0 + bl) * LIGHT_SHARE - bl > 0 ? lighterLoadIn(M3, ex, plan, w0, (w0 + bl) * LIGHT_SHARE - bl) : 0 : lighterLoadIn(M3, ex, plan, w0, w0 * LIGHT_SHARE);
     const w2 = w0 > 0 || ex.assist ? dw : w0;
     const n3 = Math.max(1, (base.lastR || []).length || +plan.sets || 1);
+    if (base.inj) {
+      const lw = Math.min(base.w, w2);
+      return snapUnitIn(
+        M3,
+        ex,
+        plan,
+        {
+          ...base,
+          w: lw,
+          text: `${base.last} Injury flagged (${injLabel(base.inj)}): stay at or below ${lbl(lw)}, keep ${effLeast(effScale(M3.s.settings.rirScale), LIGHT_RIR)}, stop on pain.`,
+          lastR: lw < base.w - EPS ? Array(n3).fill(+plan.repMin) : base.lastR,
+          ...back2 ? { back: Math.round(off / WEEK_DAYS) } : {}
+        },
+        true
+      );
+    }
     if (back2)
       return snapUnitIn(
         M3,

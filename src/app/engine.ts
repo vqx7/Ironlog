@@ -425,7 +425,7 @@ export function suggestIn(M: Model, exId: string, plan: Plan, opts?: SuggestOpts
       text: `First time, ${opts.deload ? 'deload' : 'Lighter day'}. About ${loadLabelIn(M, ex, lw)} ${UIn(M)}${loadNote(ex)} for ${repSpan(plan.repMin, plan.repMax, '-')} with ${effLeast(effScale(M.s.settings.rirScale), LIGHT_RIR)}, from your ${EXIn(M, base.kin).name}. Half the usual sets, nothing to beat.`
     };
   }
-  if (base.inj || !base.last || base.w == null) return base;
+  if (!base.last || base.w == null) return base;
   // Never above last time's working load either: after 25 lb x 12 the normal day may ask 30, and a deload at 25 is not lighter.
   const word = opts.deload ? 'Deload' : opts.light ? 'Lighter day' : `Back after ${Math.round(off / WEEK_DAYS)} weeks`;
   const step = incOfIn(M, ex, plan);
@@ -450,6 +450,28 @@ export function suggestIn(M: Model, exId: string, plan: Plan, opts?: SuggestOpts
   const w = w0 > 0 || ex.assist ? dw : w0;
   // Grey reps at the bottom of the range: at about 90% of the load that is 3 or more in reserve for anyone in the range last time.
   const n = Math.max(1, (base.lastR || []).length || +plan.sets || 1);
+  /* An injury flag keeps these rules (r64, the r63 audit's P-S2-1): the
+     lift is held at or below the lower of last time's load and the day's or
+     the return's, in the injury's words, nothing to beat. Until r64 the flag
+     returned first: a flagged bench back after six weeks asked its 195 from
+     before the break, and on a Lighter day or deload flagged lifts kept their
+     full loads while the others dropped to about 90%. */
+  if (base.inj) {
+    const lw = Math.min(base.w, w);
+    return snapUnitIn(
+      M,
+      ex,
+      plan,
+      {
+        ...base,
+        w: lw,
+        text: `${base.last} Injury flagged (${injLabel(base.inj)}): stay at or below ${lbl(lw)}, keep ${effLeast(effScale(M.s.settings.rirScale), LIGHT_RIR)}, stop on pain.`,
+        lastR: lw < base.w - EPS ? Array<number>(n).fill(+plan.repMin) : base.lastR,
+        ...(back ? { back: Math.round(off / WEEK_DAYS) } : {})
+      },
+      true
+    );
+  }
   if (back)
     return snapUnitIn(
       M,
