@@ -34,6 +34,10 @@
 //      target, type and phase, one for one; window.__ironlog with r62's names
 //      in r62's order, each the same kind of value; every action r62 had by
 //      data-act; and no page errors.
+//   5  (the independent review) a phone whose sync stands offline that comes
+//      back online pulls the account at once, so a session another phone
+//      sent meanwhile comes in, as r62's did (r63's move had it only send
+//      this phone's; fails on the build before the fix, passes on r62).
 const { engine, screenOf, screenDiff, open } = require('./h');
 const cfg = require('../scripts/config');
 const FILE = process.argv[2] || 'index.html';
@@ -341,6 +345,44 @@ const CASES = [
     ok(NOT_TAPS.every(k => a.acts.includes(k) && !b.acts.includes(k)), '4. r62\'s one helper in the table (rNewDo) is a function now, not an action');
     ok(a.acts.length > 200 && !gone.length && !extra.length, `4. every other one of r62's ${a.acts.length} actions by data-act, and no new one`, { gone, extra });
     ok(!b.errors.length, '4. no page errors', b.errors);
+  }
+
+  // ---- 5. Back online, the sync pulls (the independent review of r63).
+  if (run(5)) {
+    // Two phones on one stand-in account (as tests/r56-1.js builds it).
+    const store = new Map();
+    const setup = uid => async (ctx, page) => {
+      await page.exposeFunction('__dbGet', p => (store.has(p) ? store.get(p) : null));
+      await page.exposeFunction('__dbSet', (p, v) => { store.set(p, v); return true; });
+      await page.exposeFunction('__dbList', p => JSON.stringify([...store.entries()].filter(([k]) => k.startsWith(p + '/') && !k.slice(p.length + 1).includes('/')).map(([k, v]) => [k.slice(p.length + 1), v])));
+      await page.addInitScript(u => {
+        window.__uid = u;
+        window.claude = { use: async k => {
+          if (k === 'user') return { id: async () => window.__uid };
+          if (k === 'db') return { doc: p => ({ get: async () => { if (window.__dbFail && new RegExp(window.__dbFail).test(p)) { window.__dbFail = null; throw new Error('read failed'); } const v = await window.__dbGet(p); return v == null ? { exists: false, data: () => null } : { exists: true, data: () => JSON.parse(v) }; }, set: async o => { await window.__dbSet(p, JSON.stringify(o)); return true; } }), collection: p => ({ get: async () => { const l = JSON.parse(await window.__dbList(p)); return { docs: l.map(([id, v]) => ({ id, exists: true, data: () => JSON.parse(v) })) }; } }) };
+          return null;
+        } };
+      }, uid);
+    };
+    const pause = ms => new Promise(r => setTimeout(r, ms));
+    const phone = async () => { const P = await open(FILE, { browser, clock: '2026-10-21T10:00:00', realStarter: true, setup: setup('u1') }); await P.page.evaluate(() => { const L = window.__ironlog; L.state.settings.onboarded = true; L.saveNow(); }); return P; };
+    const flush = async P => { await P.page.evaluate(() => window.__ironlog.flush()); await pause(200); };
+    const A = await phone(); await pause(900); await flush(A);
+    const B = await phone(); await pause(1200);
+    // B logs a session and sends it to the account.
+    await B.page.evaluate(() => { const L = window.__ironlog; L.state.sessions.push({ id: 'sB1', date: '2026-10-20', dayIdx: 0, dayId: null, dayName: 'Freestyle', routineId: '', free: true, ex: [{ exId: 'bench', sets: [{ w: 60, r: 8, rir: 1, warm: false, drop: false }] }], notes: '' }); L.invalidate(); L.saveNow(); });
+    await flush(B);
+    // A's connection drops: a change on A cannot be sent (its read before the write fails), so its sync stands offline.
+    await A.page.evaluate(() => { const L = window.__ironlog; L.state.settings.userName = 'Vee'; L.invalidate(); L.saveNow(); window.__dbFail = 'core'; });
+    await A.page.evaluate(() => window.__ironlog.flush()); await pause(300);
+    const off = await A.page.evaluate(() => window.__ironlog.cloudState().status);
+    await A.page.evaluate(() => window.dispatchEvent(new Event('online'))); await pause(1500);
+    const back = await A.page.evaluate(() => ({ has: window.__ironlog.state.sessions.some(s => s.id === 'sB1'), status: window.__ironlog.cloudState().status, name: window.__ironlog.state.settings.userName }));
+    const inAccount = [...store.values()].some(v => v.includes('Vee'));
+    ok(off === 'offline' && back.has && back.status === 'synced', '5. back online, the phone pulls: the session another phone sent meanwhile comes in at once, and the sync reads synced', { off, back });
+    ok(back.name === 'Vee' && inAccount, '5. and the change made while offline is kept and sent', { back, inAccount });
+    ok(!A.errors.length && !B.errors.length, '5. no page errors', [...A.errors, ...B.errors]);
+    await A.ctx.close(); await B.ctx.close();
   }
 
   await browser.close();

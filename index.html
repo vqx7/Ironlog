@@ -19973,7 +19973,7 @@ ${JSON.stringify(ctx, null, 1)}`;
       else if (cloud.on && cloud.status === "offline") {
         cloud.retry = 0;
         if (cloud.t) clearTimeout(cloud.t);
-        cq(cloudFlush);
+        cq(cloudPull);
       }
     });
     document.addEventListener("visibilitychange", () => {

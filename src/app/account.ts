@@ -16,7 +16,7 @@
 import { APP_NAME } from './config';
 import { ACCT_LATER, OB_ACCT, OB_OUT, KEY, log, prefDel, prefGet, prefSet, undoForget } from './storage';
 import { parseJson, rec } from './records';
-import { NET_MS, cloudFlush, cloudInit, cloudStop, cq, hasUnsent, withTimeout } from './sync';
+import { NET_MS, cloudFlush, cloudInit, cloudPull, cloudStop, cq, hasUnsent, withTimeout } from './sync';
 import { normalize } from './normalize';
 import { acct, cloud, setState, state, ui } from './store';
 import type { AccountModal, AcctMode } from './modals';
@@ -260,11 +260,11 @@ export function accountStart(): void {
      foreground: a sign-in that could not refresh offline starts syncing then. */
   window.addEventListener('online', () => {
     if (AUTH() && !cloud.on) cloudInit();
-    // Back from a dead zone: sync now instead of waiting out the retry timer.
+    // Back from a dead zone: sync now instead of waiting out the retry timer, a pull, so what another phone sent meanwhile comes in (r63's review: a flush only sent this phone's).
     else if (cloud.on && cloud.status === 'offline') {
       cloud.retry = 0;
       if (cloud.t) clearTimeout(cloud.t);
-      cq(cloudFlush);
+      cq(cloudPull);
     }
   });
   document.addEventListener('visibilitychange', () => {
