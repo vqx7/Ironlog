@@ -10560,6 +10560,7 @@ ${actions ? b`<div class="ph-a">${actions}</div>
     pullAfter: 2e4
   };
   var RETRY_S = [5, 15, 60, 180];
+  var offline = () => navigator.onLine === false;
   var DOC_MAX = 25e4;
   var KEEP_TRIES = 10;
   var saveT = null;
@@ -10832,8 +10833,9 @@ ${actions ? b`<div class="ph-a">${actions}</div>
       return;
     }
     setCloud("offline", c4 === "denied" && E2 && typeof E2.message === "string" ? E2.message : void 0);
-    const wait2 = RETRY_S[Math.min(cloud.retry++, RETRY_S.length - 1)] * SECOND_MS;
     clearTimer(cloud.t);
+    if (offline()) return;
+    const wait2 = RETRY_S[Math.min(cloud.retry++, RETRY_S.length - 1)] * SECOND_MS;
     cloud.t = setTimeout(() => cq(cloudFlush), wait2);
   }
   function normChunk(id, data) {
@@ -11159,6 +11161,10 @@ ${actions ? b`<div class="ph-a">${actions}</div>
       }
       return;
     }
+    if (offline()) {
+      setCloud("offline");
+      return;
+    }
     setCloud("saving");
     try {
       if (!await takeLease()) {
@@ -11252,6 +11258,10 @@ ${actions ? b`<div class="ph-a">${actions}</div>
   async function cloudPull() {
     if (!cloud.on || !cloud.db) return;
     if (trackT || cloud.pendAt) trackEdits();
+    if (offline()) {
+      setCloud("offline");
+      return;
+    }
     setCloud("connecting");
     let snap;
     try {
@@ -19843,6 +19853,11 @@ ${JSON.stringify(ctx, null, 1)}`;
   }
   var limited = (pr) => withTimeout(pr, NET_MS, "auth-late");
   var failed = (e5, or) => codeOf(e5) === "timeout" ? NO_ANSWER : said(e5, or);
+  function resume() {
+    cloud.retry = 0;
+    if (cloud.t) clearTimeout(cloud.t);
+    cq(cloudPull);
+  }
   function waitStart(email, pw) {
     wait = { email, pw, since: Date.now(), timer: null };
     prefSet(ACCT_WAIT, JSON.stringify({ t: Date.now() }));
@@ -19980,11 +19995,7 @@ ${JSON.stringify(ctx, null, 1)}`;
     });
     window.addEventListener("online", () => {
       if (AUTH() && !cloud.on) cloudInit();
-      else if (cloud.on && cloud.status === "offline") {
-        cloud.retry = 0;
-        if (cloud.t) clearTimeout(cloud.t);
-        cq(cloudPull);
-      }
+      else if (cloud.on && cloud.status === "offline") resume();
     });
     document.addEventListener("visibilitychange", () => {
       if (document.visibilityState !== "visible") return;

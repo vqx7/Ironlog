@@ -102,6 +102,12 @@ function back(): void {
 const limited = <T>(pr: Promise<T>): Promise<T> => withTimeout(pr, NET_MS, 'auth-late');
 /** What the sheet says of a failed request: no answer, or the service's own words. */
 const failed = (e: unknown, or: string): string => (codeOf(e) === 'timeout' ? NO_ANSWER : said(e, or));
+/** A sync waiting to try again goes now: back online, or the sign-in answered. A pull, so what another phone sent meanwhile comes in (r63's review: a flush only sent this phone's). */
+function resume(): void {
+  cloud.retry = 0;
+  if (cloud.t) clearTimeout(cloud.t);
+  cq(cloudPull);
+}
 
 function waitStart(email: string, pw: string): void {
   wait = { email, pw, since: Date.now(), timer: null };
@@ -260,12 +266,8 @@ export function accountStart(): void {
      foreground: a sign-in that could not refresh offline starts syncing then. */
   window.addEventListener('online', () => {
     if (AUTH() && !cloud.on) cloudInit();
-    // Back from a dead zone: sync now instead of waiting out the retry timer, a pull, so what another phone sent meanwhile comes in (r63's review: a flush only sent this phone's).
-    else if (cloud.on && cloud.status === 'offline') {
-      cloud.retry = 0;
-      if (cloud.t) clearTimeout(cloud.t);
-      cq(cloudPull);
-    }
+    // Back from a dead zone: sync now, where the sync waits for the network (r64, F5) or for its retry.
+    else if (cloud.on && cloud.status === 'offline') resume();
   });
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState !== 'visible') return;

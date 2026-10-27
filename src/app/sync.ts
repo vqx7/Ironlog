@@ -79,6 +79,8 @@ const SYNC_MS = {
 } as const;
 /** The waits between tries after a sync fails, in seconds, the last repeated. */
 const RETRY_S: readonly number[] = [5, 15, 60, 180];
+/** Whether the phone says it has no network: the sync then waits for it (the 'online' event, account.ts) rather than trying what cannot reach anything (r64, the r63 audit's F5). */
+const offline = (): boolean => navigator.onLine === false;
 /** A sync document over this many characters of JSON is left unwritten (the account's size cap), so it cannot stop the others. */
 const DOC_MAX = 250000;
 /** Tries at keeping the log aside before giving up (a set ticked while the copy is written makes another). */
@@ -461,8 +463,9 @@ function cloudFail(e: unknown): void {
     return;
   }
   setCloud('offline', c === 'denied' && E && typeof E.message === 'string' ? E.message : undefined);
-  const wait = RETRY_S[Math.min(cloud.retry++, RETRY_S.length - 1)] * SECOND_MS;
   clearTimer(cloud.t);
+  if (offline()) return;
+  const wait = RETRY_S[Math.min(cloud.retry++, RETRY_S.length - 1)] * SECOND_MS;
   cloud.t = setTimeout(() => cq(cloudFlush), wait);
 }
 
@@ -928,6 +931,10 @@ export async function cloudFlush(): Promise<void> {
     }
     return;
   }
+  if (offline()) {
+    setCloud('offline');
+    return;
+  }
   setCloud('saving');
   try {
     if (!(await takeLease())) {
@@ -1054,6 +1061,10 @@ export async function cloudFlush(): Promise<void> {
 export async function cloudPull(): Promise<void> {
   if (!cloud.on || !cloud.db) return;
   if (trackT || cloud.pendAt) trackEdits();
+  if (offline()) {
+    setCloud('offline');
+    return;
+  }
   setCloud('connecting');
   let snap: Awaited<ReturnType<ReturnType<CloudDb['collection']>['get']>>;
   try {
