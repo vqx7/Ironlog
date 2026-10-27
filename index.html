@@ -8190,6 +8190,8 @@ ${actions ? b`<div class="ph-a">${actions}</div>
   }
   var ODD_SESSION = 3;
   var ODD_BEST = 2;
+  var ODD_ADDED_BW = 0.9;
+  var ODD_ADDED_BEST = 2;
   function lightZeroIn(M3, b2, si, date) {
     const s3 = b2.sets[si];
     if (!s3 || s3.warm || s3.drop || !isMissed(s3)) return false;
@@ -8243,6 +8245,18 @@ ${actions ? b`<div class="ph-a">${actions}</div>
         }
     if (best > 0 && load2 > Math.max(best, top) * ODD_BEST + EPS)
       return `${say(w2)} is more than twice the heaviest you have logged on this exercise, ${say(bestW)}.`;
+    if (ex.bw && w2 > 0) {
+      const kg2 = bwAtIn(M3, date);
+      if (kg2 != null && kg2 > 0 && w2 >= kg2 * ODD_ADDED_BW - EPS)
+        return `${say(w2)} adds ${pctOf(ODD_ADDED_BW)}% or more of your bodyweight, ${fmtWIn(M3, kg2)} ${UIn(M3)}.`;
+      let most = 0;
+      for (const x2 of liftReadIn(M3, b2.exId, date)) for (const p3 of x2.pts) most = Math.max(most, p3.w);
+      b2.sets.forEach((x2, i5) => {
+        if (i5 !== si && x2.done && isWork(x2) && !x2.drop && x2.w != null) most = Math.max(most, x2.w);
+      });
+      if (most > 0 && w2 > most * ODD_ADDED_BEST + EPS)
+        return `${say(w2)} is more than ${timesWord(ODD_ADDED_BEST)} the most you have added on this exercise, ${say(most)}.`;
+    }
     return under;
   }
   function stretchTopIn(M3, exId, plan) {
@@ -23899,7 +23913,7 @@ ${JSON.stringify(ctx, null, 1)}`;
    <p><b>Grey loads</b> are the set above, or today's suggested load. To have loads typed in for you: Settings, Rest timer and logging, Fill in suggested loads.</p>
    <p><b>Auto-mark</b> (Settings): a set ticks itself when you leave its reps field.</p>
    <p><b>A missed set</b>: type 0 reps and tick it (auto-mark ticks it too). It is kept and shown as missed, and counts toward no volume, PR, estimate, or target; the next set's grey numbers come from the last set you completed.</p>
-   <p><b>A number far off</b> asks before the set is logged, Log it or Fix it: reps over ${ODD_REPS} and more than ${timesWord(ODD_REPS_TIMES)} the top of your range or your most ever, whichever is more, or a load more than ${timesWord(ODD_SESSION)}, or under ${shareWords(1 / ODD_SESSION)} of, the heaviest set you ticked today, or more than ${timesWord(ODD_BEST)} the heaviest you have logged on the exercise (conventions, to catch a slipped digit or the other unit). So does a load under the empty bar, on any set of a lift on the full bar typed as the total (the bar in Settings, or the exercise's own).</p>
+   <p><b>A number far off</b> asks before the set is logged, Log it or Fix it: reps over ${ODD_REPS} and more than ${timesWord(ODD_REPS_TIMES)} the top of your range or your most ever, whichever is more, or a load more than ${timesWord(ODD_SESSION)}, or under ${shareWords(1 / ODD_SESSION)} of, the heaviest set you ticked today, or more than ${timesWord(ODD_BEST)} the heaviest you have logged on the exercise (conventions, to catch a slipped digit or the other unit). On a bodyweight lift, so does added load of ${pctOf(ODD_ADDED_BW)}% or more of your bodyweight, or more than ${timesWord(ODD_ADDED_BEST)} the most you have added (conventions too). So does a load under the empty bar, on any set of a lift on the full bar typed as the total (the bar in Settings, or the exercise's own).</p>
    <p><b>RIR</b>, reps in reserve: how many more reps you could have done. Tap a set's RIR box for 0 to ${RIR_CALL_TOP} (Settings can switch it to half reps or RPE; RPE ${effAt("rpe", 2)} is RIR 2). ${off ? "RIR is off in Settings, so every working set counts as hard." : `It is optional: a blank reads as your usual RIR on that lift once you have rated ${RIR_USUAL_MIN} of its sets in ${CAL_WEEKS} weeks, and until then as hard.`}</p>
    <p><b>RIR check</b>: once you have ${CAL_OFFER.sessions} sessions, one machine or cable exercise may ask for one set to failure, to see how far your RIR calls are off. Not now, or finishing without it, waits ${CAL_OFFER.weeks} weeks.</p>
    <p><b>Last</b>, beside each set, is what you did on that set last time at your working load, from the session named above the sets; a top single or lighter sets stay in that line. <b>W and D</b>: tap a set's number once for a warm-up (kept, never analysed), twice for a drop set (counts ${shareWords(DROP_CREDIT)} a set of volume, never as a PR or target). <b>+ Drop</b> beside + Set adds one at about ${pctOf(DROP_START)}% once a set is done; warm-ups are in the exercise's ⋯ menu.</p>

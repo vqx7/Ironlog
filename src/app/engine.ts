@@ -9,7 +9,7 @@ import type { DraftBlock, NextSetsAdj, Plan } from './types';
 import type { Drift, ExPoint, Exposure, ExerciseLike, Model, Suggestion } from './model';
 import type { LiftBests } from './analytics';
 import { EXIn, UIn, exInjuryIn, gymOfIn } from './model';
-import { IDXIn, bwLoadIn, bwRefLoadIn, lastOf, liftReadIn, rirEstIn, statsUpToIn, triedAt } from './analytics';
+import { IDXIn, bwAtIn, bwLoadIn, bwRefLoadIn, lastOf, liftReadIn, rirEstIn, statsUpToIn, triedAt } from './analytics';
 import { atCapOfIn, capOfIn, exBarKgIn, gymK, gymRackIn, gymStepIn, platesMode, rackGapIn, rackTolIn } from './gym';
 import {
   DEFAULT_STEP,
@@ -25,7 +25,19 @@ import {
   unitStepIn
 } from './units';
 import { fmtWIn, loadLabelIn, loadNote, roundLoadIn, swapWIn } from './loads';
-import { addDays, daysBetween, isDate, isNum, r1, EPS, EPS_SAME, WEEK_DAYS, MILLIONTHS, pctOf } from './util';
+import {
+  addDays,
+  daysBetween,
+  isDate,
+  isNum,
+  r1,
+  EPS,
+  EPS_SAME,
+  WEEK_DAYS,
+  MILLIONTHS,
+  pctOf,
+  timesWord
+} from './util';
 import {
   BACK_DAYS,
   afterBreak,
@@ -1737,6 +1749,21 @@ export function heavierLoadIn(
 export const ODD_SESSION = 3;
 /** How many times a lift's heaviest logged load a set may be before the app asks (r55, a convention, above). */
 export const ODD_BEST = 2;
+/* Bodyweight typed as added load (r64, V's decision 2 of 2026-10-27, from
+   the r63 audit's P-S2-3: pull-ups at a bodyweight of 180 lb typed as
+   BW+180 were saved with no question and became a PR, "best estimate 463
+   lb"). Read as totals, added load equal to bodyweight sits exactly on the
+   limit of twice the heaviest logged, so on a bodyweight lift the added
+   load is read on its own too: the app asks, Log it or Fix it, when it is
+   ODD_ADDED_BW of the bodyweight or more, or more than ODD_ADDED_BEST times
+   the most added on the lift before (in its log or today's sets). Both are
+   conventions, set to catch the bodyweight typed in the field for added
+   load and a slipped digit: a vest or belt heavier than nine tenths of the
+   lifter is rare, and no lifter doubles their added load in a session. */
+/** The share of bodyweight added load on a bodyweight lift may reach before the app asks (r64, V's decision 2, a convention, above). */
+export const ODD_ADDED_BW = 0.9;
+/** How many times the most added before a bodyweight lift's added load may be before the app asks (r64, V's decision 2, a convention, above). */
+export const ODD_ADDED_BEST = 2;
 /* A set ticked with 0 reps at a load well under the session's working load
    (r55.1, V 2026-10-19): at a warm weight a slip of the finger is likelier
    than a missed attempt, so it is asked about, Log it as missed or Fix it,
@@ -1822,6 +1849,18 @@ export function oddLoadIn(M: Model, b: DraftBlock, si: number, date: string): st
       }
   if (best > 0 && load > Math.max(best, top) * ODD_BEST + EPS)
     return `${say(w)} is more than twice the heaviest you have logged on this exercise, ${say(bestW)}.`;
+  if (ex.bw && w > 0) {
+    const kg = bwAtIn(M, date);
+    if (kg != null && kg > 0 && w >= kg * ODD_ADDED_BW - EPS)
+      return `${say(w)} adds ${pctOf(ODD_ADDED_BW)}% or more of your bodyweight, ${fmtWIn(M, kg)} ${UIn(M)}.`;
+    let most = 0;
+    for (const x of liftReadIn(M, b.exId, date)) for (const p of x.pts) most = Math.max(most, p.w);
+    b.sets.forEach((x, i) => {
+      if (i !== si && x.done && isWork(x) && !x.drop && x.w != null) most = Math.max(most, x.w);
+    });
+    if (most > 0 && w > most * ODD_ADDED_BEST + EPS)
+      return `${say(w)} is more than ${timesWord(ODD_ADDED_BEST)} the most you have added on this exercise, ${say(most)}.`;
+  }
   return under;
 }
 
