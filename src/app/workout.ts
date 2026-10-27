@@ -25,7 +25,7 @@ import { loadMode, CARDIO, CWHEN, ML, injLabel, CARDIOL, CWHENL } from './librar
 import { ssLetters, fixSupersets, linkToggle } from './routines';
 import { missedTag, repSpan, effLeastShort, LIGHT_RIR, fmtDate, estMin } from './format';
 import { isMissed, isWork, DROP_START, WARM_RAMP, LIGHT_SHARE } from './formulas';
-import { today, numIn, uid, isDate, EPS, pctOf } from './util';
+import { today, numIn, uid, isDate, EPS, pctOf, iso, addDays } from './util';
 import { cleanDraftCardio, LOAD_MAX, LOAD_MIN } from './normalize';
 import { platesMode } from './gym';
 import { loadWords, loadNote, emptyLoad } from './loads';
@@ -462,6 +462,18 @@ const LOG_HELP_ON =
 const LOG_HELP =
   'W marks a warm-up (kept, never analysed); tap it again for D, a drop set (counts as work and volume, never as a PR or target). To add a new warm-up or drop set row, use the ⋯ menu on the exercise. Drag an exercise by its ⠿ to change the order. In a superset the rest timer starts after the last exercise of the pair. Timed holds log seconds in the Sec column. The date can be changed to log a past session.';
 
+/* When a workout began, in the header: its time on the day it began, and
+   "yesterday" or its date after that (r64, the r63 audit's P-S4-8: left open
+   overnight, "started 9:00 AM" read as this morning). It is saved on the day
+   it began either way. */
+/** The header's words for when a workout began. */
+function startedWords(t: number): string {
+  const began = iso(new Date(t)),
+    now = today();
+  if (began === now) return new Date(t).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+  return began === addDays(now, -1) ? 'yesterday' : fmtDate(began);
+}
+
 /** The session screen: Today with a workout open, drawn as a template of the session in progress and ui. */
 export function viewWorkout(d: Draft): TemplateResult {
   const hintSeen = new Set<string>();
@@ -471,7 +483,7 @@ export function viewWorkout(d: Draft): TemplateResult {
   const sp = sessProgress(d);
   const calIdx = d.editingId ? -1 : calDueIdx(d);
   const letters = ssLetters(d.ex.map(b => b.plan));
-  return html`<div class="ph"><div style="min-width:0;flex:1 1 auto"><p class="kick">${d.editingId ? 'Editing a saved session' : d.past ? 'Past workout' : 'Session in progress'}</p><div class="hrow"><h2 style="overflow-wrap:anywhere;min-width:0">${d.dayName}</h2>${helpButton('log')}<button class="btn sm danger" style="margin-left:auto;flex:none" data-act="discard">${d.editingId ? 'Cancel edit' : 'Discard'}</button></div><p class="meta"><span id="doneCount">${doneN}</span> <span id="doneWord">${doneN === 1 ? 'set' : 'sets'}</span> done${d.past ? `, for ${fmtDateLong(d.date)}` : ''}${d.startedAt && !d.past ? `, started ${new Date(d.startedAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}` : ''}<span id="sessLeft">${left > 0 ? `, ${estMin(left)} left` : ''}</span></p>${
+  return html`<div class="ph"><div style="min-width:0;flex:1 1 auto"><p class="kick">${d.editingId ? 'Editing a saved session' : d.past ? 'Past workout' : 'Session in progress'}</p><div class="hrow"><h2 style="overflow-wrap:anywhere;min-width:0">${d.dayName}</h2>${helpButton('log')}<button class="btn sm danger" style="margin-left:auto;flex:none" data-act="discard">${d.editingId ? 'Cancel edit' : 'Discard'}</button></div><p class="meta"><span id="doneCount">${doneN}</span> <span id="doneWord">${doneN === 1 ? 'set' : 'sets'}</span> done${d.past ? `, for ${fmtDateLong(d.date)}` : ''}${d.startedAt && !d.past ? `, started ${startedWords(d.startedAt)}` : ''}<span id="sessLeft">${left > 0 ? `, ${estMin(left)} left` : ''}</span></p>${
     sp.n
       ? html`<div class="sprog" aria-hidden="true"><div class="band"><div class="fill prog" id="sessBar" style=${`width:${sp.pct}%`}></div></div><span id="sessOf">${sp.k} of ${sp.n}</span></div>`
       : ''
