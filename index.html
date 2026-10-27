@@ -6873,7 +6873,7 @@ ${actions ? b`<div class="ph-a">${actions}</div>
       return { b: b2, se, my, n: n3 };
     };
     let stalled = false;
-    const current = !!lastReal && lastReal.date >= winStart && lastReal.date >= addDays(M3.today(), -TREND_DAYS) && !exI.archived && M3.s.exercises.some((e5) => e5.id === id) && !exInjuryIn(M3, exI);
+    const current = !!lastReal && lastReal.date >= winStart && !afterBreak(lastReal, M3.today()) && !exI.archived && M3.s.exercises.some((e5) => e5.id === id) && !exInjuryIn(M3, exI);
     const listed = (x2) => prs.some((p3) => p3.big && p3.sid === x2.sid && p3.exId === id);
     const stalledIn = (rr, all) => {
       const inR = all.filter((x2) => !x2.held);

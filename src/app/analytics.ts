@@ -1375,15 +1375,19 @@ export function idxLiftIn(
   };
   let stalled = false;
   /* Only a lift still being trained can be stalled: one not done in the
-     last 42 days (counted from today and from the last session), or deleted
-     or archived, used to stay stalled forever and kept the Coach calling
-     for a deload (r27). Nor one held for a flagged injury (r53, from the
-     audit V asked for): the engine keeps it at last time's load on purpose,
-     and three weeks of doing as told read as a stall to change the range. */
+     42 days up to the log's newest session, or deleted or archived,
+     used to stay stalled forever and kept the Coach calling for a deload
+     (r27). Nor one on a break today (afterBreak, more than BACK_DAYS since
+     its last session, r64, the r63 audit's P-S2-2): its next session starts
+     its readings over, so a pull-up last done 39 days ago read as stalled on
+     Stats and by the coach until then. Nor one held for a flagged injury
+     (r53, from the audit V asked for): the engine keeps it at last time's
+     load on purpose, and three weeks of doing as told read as a stall to
+     change the range. */
   const current =
     !!lastReal &&
     lastReal.date >= winStart &&
-    lastReal.date >= addDays(M.today(), -TREND_DAYS) &&
+    !afterBreak(lastReal, M.today()) &&
     !exI.archived &&
     M.s.exercises.some(e => e.id === id) &&
     !exInjuryIn(M, exI);
