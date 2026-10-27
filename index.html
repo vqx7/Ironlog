@@ -3027,10 +3027,6 @@ ${actions ? b`<div class="ph-a">${actions}</div>
   var isChunkId = (id) => id === "core" || id === "draft" || /^s-\d{4}-\d{2}-[12]$/.test(id) || /^b-\d{4}$/.test(id);
 
   // src/app/routines.ts
-  var fullRoutine = (r4) => ({
-    ...r4,
-    days: r4.days.map((d3) => ({ ...d3, items: d3.items.map((it) => ({ ...it, ss: null })) }))
-  });
   var DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
   var MAX_DAYS = 14;
   function dayLabel(R2, i5) {
@@ -21929,6 +21925,10 @@ ${JSON.stringify(ctx, null, 1)}`;
   // src/app/actsroutine.ts
   var READY_SAID = 6e3;
   var NEW_DAYS = [0, 1, 0, 1, 0, 1, 1];
+  var fullRoutine = (r4) => ({
+    ...r4,
+    days: r4.days.map((d3) => ({ ...d3, items: d3.items.map((it) => ({ ...it, ss: null })) }))
+  });
   function rNewDo(nm) {
     const blank = state.routines.find((r5) => routineEmpty(r5) && r5.id !== state.activeRoutineId);
     if (blank) {

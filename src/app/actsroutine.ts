@@ -8,13 +8,13 @@ import {
   DEFAULT_PLAN,
   dropStarter,
   fixSupersets,
-  fullRoutine,
   routineEmpty,
   routineFromTemplate,
   routineSig,
   trainOn
 } from './routines';
 import type { Routine } from './types';
+import type { NewRoutine } from './routines';
 import { starterSigs } from './normalize';
 import { activeRoutine } from './live';
 import { state, ui } from './store';
@@ -30,6 +30,16 @@ import type { Tap } from './workstate';
 const READY_SAID = 6000;
 /** A new routine's days, laid out as Build my own's (r55, the audit: three training days and no rest planned 7 sessions a week): 1 is a rest day. */
 const NEW_DAYS = [0, 1, 0, 1, 0, 1, 1] as const;
+
+/* A ready-made routine as first made has no superset links; it is given the
+   empty one normalize() gives every item, so it joins the log whole (beside
+   its only use, so the engine's coverage of routines.ts counts only what the
+   engine runs). */
+/** A routine as first made, its items given the empty superset link, so it can join the log. */
+const fullRoutine = (r: NewRoutine): Routine => ({
+  ...r,
+  days: r.days.map(d => ({ ...d, items: d.items.map(it => ({ ...it, ss: null })) }))
+});
 
 /** Makes a new routine named nm, or names an existing empty one (other than the one in use), rather than stacking another blank one. */
 export function rNewDo(nm: string): void {
