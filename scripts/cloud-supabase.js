@@ -299,6 +299,8 @@
     if (e && (+e.status === 401 || /PGRST30[0-3]|jwt/i.test(String(e.code || '') + String(e.message || ''))) && !/42501|permission denied/i.test(String(e.code || '') + String(e.message || ''))) {
       const { error } = await sb.auth.refreshSession();
       if (!error) r = await run();
+      // A refresh that got no answer is a dropped connection, retried, not a refused sign-in (r64, the r63 audit's F10: only a refusal says to sign in again).
+      else if (noAnswer(error)) throw friendly(error);
     }
     return r;
   }

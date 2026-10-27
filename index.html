@@ -10560,6 +10560,7 @@ ${actions ? b`<div class="ph-a">${actions}</div>
     pullAfter: 2e4
   };
   var RETRY_S = [5, 15, 60, 180];
+  var SIGNIN_AGAIN = "Your sign-in has expired. Sign in again to sync. Your log stays on this phone.";
   var offline = () => navigator.onLine === false;
   var DOC_MAX = 25e4;
   var KEEP_TRIES = 10;
@@ -10811,8 +10812,19 @@ ${actions ? b`<div class="ph-a">${actions}</div>
     const E2 = rec(e5);
     const c4 = codeOf(e5);
     if (c4 === "revoked" || c4 === "not_granted" || c4 === "capability_disabled" || c4 === "capability_removed") {
+      const was = cloud.on;
       cloud.on = false;
       setCloud("local");
+      if (c4 === "revoked" && was) {
+        const A2 = AUTH();
+        acct.user = null;
+        cloudStop();
+        if (A2)
+          A2.signOut().catch((x2) => {
+            log("auth", x2);
+          });
+        fx.toast(SIGNIN_AGAIN, null, SYNC_MS.errToast);
+      }
       fx.render();
       return;
     }
@@ -20235,7 +20247,7 @@ ${JSON.stringify(ctx, null, 1)}`;
     async acctRetry() {
       await cloudInit();
       acctRerender();
-      if (!cloud.on) toast("Still not syncing. Check your connection, or sign out and in again.");
+      if (!cloud.on && acct.user) toast("Still not syncing. Check your connection, or sign out and in again.");
     },
     // From a problem report, signing in goes back to it (r55, the audit: the report and what was typed in it were gone).
     acctOpen(t4) {

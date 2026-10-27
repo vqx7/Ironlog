@@ -521,7 +521,8 @@ export const ACCOUNT_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
   async acctRetry() {
     await cloudInit();
     acctRerender();
-    if (!cloud.on) toast('Still not syncing. Check your connection, or sign out and in again.');
+    // A sign-in the server refused has signed the phone out and said so (sync.ts, cloudFail): nothing to add to that.
+    if (!cloud.on && acct.user) toast('Still not syncing. Check your connection, or sign out and in again.');
   },
   // From a problem report, signing in goes back to it (r55, the audit: the report and what was typed in it were gone).
   acctOpen(t) {

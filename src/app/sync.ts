@@ -79,6 +79,8 @@ const SYNC_MS = {
 } as const;
 /** The waits between tries after a sync fails, in seconds, the last repeated. */
 const RETRY_S: readonly number[] = [5, 15, 60, 180];
+/** What a phone whose sign-in the server refuses says (r64, the r63 audit's F10). */
+const SIGNIN_AGAIN = 'Your sign-in has expired. Sign in again to sync. Your log stays on this phone.';
 /** Whether the phone says it has no network: the sync then waits for it (the 'online' event, account.ts) rather than trying what cannot reach anything (r64, the r63 audit's F5). */
 const offline = (): boolean => navigator.onLine === false;
 /** A sync document over this many characters of JSON is left unwritten (the account's size cap), so it cannot stop the others. */
@@ -440,8 +442,24 @@ function cloudFail(e: unknown): void {
   const E = rec(e);
   const c = codeOf(e);
   if (c === 'revoked' || c === 'not_granted' || c === 'capability_disabled' || c === 'capability_removed') {
+    const was = cloud.on;
     cloud.on = false;
     setCloud('local');
+    /* A sign-in the server refuses can never sync again: this phone signs out
+       of it, keeping the log and the sync notes (signing back in to the
+       account goes on from them), and says so, once, as the failure turns the
+       sync off (r64, the r63 audit's F10: nothing was said, and Your data
+       read "Not syncing right now" with no way to sign in). */
+    if (c === 'revoked' && was) {
+      const A = AUTH();
+      acct.user = null;
+      cloudStop();
+      if (A)
+        A.signOut().catch((x: unknown) => {
+          log('auth', x);
+        });
+      fx.toast(SIGNIN_AGAIN, null, SYNC_MS.errToast);
+    }
     fx.render();
     return;
   }
