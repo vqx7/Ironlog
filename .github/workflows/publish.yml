@@ -132,6 +132,13 @@ jobs:
       # CNAME is the file GitHub writes to gh-pages when a custom domain is set
       # in Settings > Pages; deleting it would take the domain off the site.
       # .nojekyll is GitHub's too, if it is ever added.
+      # Files are copied by content (--checksum). rsync's default check skips a
+      # file of the same size and the same whole-second time, and sw.js is the
+      # same size in every release (its cache name is fixed length), so when the
+      # build and the copy fell in one second the r61 publish (40313f7) left
+      # r59's worker live and installed apps stayed on r59. The site is then
+      # compared with the build, file for file, before anything is pushed, so a
+      # publish that would leave any file stale fails instead.
       - name: Publish dist/ to gh-pages (live)
         if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
         run: |
@@ -141,8 +148,9 @@ jobs:
             git fetch --depth 1 origin gh-pages
             rm -rf ../pages; git worktree prune
             git worktree add --detach ../pages origin/gh-pages
-            rsync -a --delete --exclude .git --exclude preview/ --exclude CNAME --exclude .nojekyll dist/ ../pages/
+            rsync -a --checksum --delete --exclude .git --exclude preview/ --exclude CNAME --exclude .nojekyll dist/ ../pages/
             cd ../pages
+            if ! diff -r --exclude .git --exclude preview --exclude CNAME --exclude .nojekyll "$GITHUB_WORKSPACE/dist" .; then echo "::error::gh-pages would not match dist/"; exit 1; fi
             git add -A
             if git diff --cached --quiet; then echo "Nothing changed"; exit 0; fi
             git commit -q -m "Publish ${GITHUB_SHA::7}"
@@ -161,8 +169,9 @@ jobs:
             rm -rf ../pages; git worktree prune
             git worktree add --detach ../pages origin/gh-pages
             mkdir -p ../pages/preview
-            rsync -a --delete dist-preview/ ../pages/preview/
+            rsync -a --checksum --delete dist-preview/ ../pages/preview/
             cd ../pages
+            if ! diff -r "$GITHUB_WORKSPACE/dist-preview" preview; then echo "::error::gh-pages/preview would not match dist-preview/"; exit 1; fi
             git add -A
             if git diff --cached --quiet; then echo "Nothing changed"; exit 0; fi
             git commit -q -m "Preview of #${{ github.event.pull_request.number }} (${GITHUB_SHA::7})"
