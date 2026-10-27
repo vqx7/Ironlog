@@ -47,7 +47,8 @@ import { acct, cloud, setState, state, ui } from './store';
 import type { ImpPreviewModal, ImpTable } from './modals';
 import type { CardioEntry, Exercise } from './types';
 import type { State } from './store';
-import { AUTH } from './providers';
+import { AUTH, codeOf } from './providers';
+import { NO_ANSWER } from './report';
 import { act } from './act';
 import { newItem } from './display';
 import { closeModal, confirmBox, openModal, render, renderModal } from './page';
@@ -959,7 +960,7 @@ export const IMPORT_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
       }
       toast(
         err
-          ? `Could not read your ${APP_NAME} log: ${err instanceof Error ? err.message : String(err)}`
+          ? `Could not read your ${APP_NAME} log: ${codeOf(err) === 'timeout' ? NO_ANSWER : err instanceof Error ? err.message : String(err)}`
           : `No ${APP_NAME} log found for this account or on this phone.`,
         null,
         SAID.notFound

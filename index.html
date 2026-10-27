@@ -11133,6 +11133,7 @@ ${actions ? b`<div class="ph-a">${actions}</div>
   }
   async function cloudFlush() {
     if (!cloud.on) return;
+    if (!pulled) return cloudPull();
     if (trackT || cloud.pendAt) trackEdits();
     const ch = chunksOf(state);
     const ids = /* @__PURE__ */ new Set([...Object.keys(ch), ...Object.keys(cloud.meta)]);
@@ -11272,6 +11273,7 @@ ${actions ? b`<div class="ph-a">${actions}</div>
       return;
     }
     cloud.lastPull = Date.now();
+    pulled = true;
     const remote = {};
     for (const d3 of snap.docs) {
       if (!d3.exists || !isChunkId(d3.id)) continue;
@@ -11431,7 +11433,14 @@ ${actions ? b`<div class="ph-a">${actions}</div>
     }
     return null;
   }
-  var cloudStarting = false;
+  var starting = null;
+  var starts = 0;
+  var firstPull = false;
+  var pulled = false;
+  async function cloudDecided() {
+    while (starting) await starting;
+  }
+  var cloudFirstPull = () => cloud.on && firstPull;
   async function oneTab(fn) {
     const L2 = typeof navigator !== "undefined" ? navigator.locks : void 0;
     if (L2 && typeof L2.request === "function") return await L2.request(KEY + ".account", () => fn());
@@ -11577,8 +11586,19 @@ ${actions ? b`<div class="ph-a">${actions}</div>
     return true;
   }
   async function cloudInit() {
-    if (cloud.on || cloudStarting) return;
-    cloudStarting = true;
+    while (starting) await starting;
+    if (cloud.on) return;
+    const run2 = ++starts;
+    let decided = () => {
+    };
+    const mine = new Promise((r4) => {
+      decided = r4;
+    });
+    starting = mine;
+    const decide = () => {
+      if (starting === mine) starting = null;
+      decided();
+    };
     try {
       const pv = await cloudProvider();
       if (!pv) return;
@@ -11594,7 +11614,10 @@ ${actions ? b`<div class="ph-a">${actions}</div>
       cloud.db = db;
       cloud.uid = id;
       cloud.on = true;
+      pulled = false;
+      firstPull = true;
       setCloud("connecting");
+      decide();
       if (ui.tab === "settings") fx.render();
       await cq(cloudPull);
     } catch (e5) {
@@ -11602,7 +11625,8 @@ ${actions ? b`<div class="ph-a">${actions}</div>
       cloud.on = false;
       setCloud("local");
     } finally {
-      cloudStarting = false;
+      decide();
+      if (run2 === starts) firstPull = false;
       cloudChecked = true;
       if (ui.tab === "today" && !ui.modal && (fx.obGate() || !state.settings.onboarded && !state.draft && !state.sessions.some((s3) => !s3.demo)))
         fx.rerenderKeepScroll();
@@ -17302,7 +17326,7 @@ ${detail}`
     }, TOUR.advanceMs);
   }
   function obView() {
-    if (!cloudChecked || AUTH() && !window.claude && !acct.checked || cloud.on && !cloud.lastPull)
+    if (!cloudChecked || AUTH() && !window.claude && !acct.checked || cloudFirstPull())
       return b`<div class="ob"><div class="ob-splash"><p class="ob-logo">${markup(LOCKUP)}</p></div></div>`;
     const acctStep = !!AUTH() && !window.claude;
     const undo = undoStack.length ? b`<button class="linkbtn ob-skip" data-act="undo">Undo last delete or reset</button>` : A;
@@ -19853,6 +19877,12 @@ ${JSON.stringify(ctx, null, 1)}`;
   }
   var limited = (pr) => withTimeout(pr, NET_MS, "auth-late");
   var failed = (e5, or) => codeOf(e5) === "timeout" ? NO_ANSWER : said(e5, or);
+  async function syncAndSay(msg) {
+    const go = cloudInit();
+    await cloudDecided();
+    if (cloud.on) toast(msg);
+    await go;
+  }
   function resume() {
     cloud.retry = 0;
     if (cloud.t) clearTimeout(cloud.t);
@@ -19909,8 +19939,7 @@ ${JSON.stringify(ctx, null, 1)}`;
       obOutClear();
       prefDel(ACCT_LATER);
       if (waitSheet()) back();
-      toast("Email confirmed. Signed in and syncing.");
-      await cloudInit();
+      await syncAndSay("Email confirmed. Signed in and syncing.");
       acctRerender();
     } catch (e5) {
       const m3 = waitSheet();
@@ -19944,10 +19973,13 @@ ${JSON.stringify(ctx, null, 1)}`;
         waitStop();
         if (waitSheet()) {
           back();
-          toast("Email confirmed. Signed in and syncing.");
+          syncAndSay("Email confirmed. Signed in and syncing.");
         }
       }
-      if (ev === "SIGNED_IN" && !cloud.on) cloudInit();
+      if (user && (ev === "SIGNED_IN" || ev === "TOKEN_REFRESHED" || ev === "INITIAL_SESSION")) {
+        if (!cloud.on) cloudInit();
+        else if (cloud.status === "offline") resume();
+      }
       if (ev === "SIGNED_OUT" && cloud.on && !window.claude) cloudStop();
       if (ev === "SIGNED_IN" || ev === "SIGNED_OUT") fbCheckReader();
       acctRerender();
@@ -20066,8 +20098,7 @@ ${JSON.stringify(ctx, null, 1)}`;
       obOutClear();
       prefDel(ACCT_LATER);
       if (ui.modal === m3) back();
-      toast("Email confirmed. Signed in and syncing.");
-      if (!cloud.on) cloudInit();
+      syncAndSay("Email confirmed. Signed in and syncing.");
       acctRerender();
     };
     try {
@@ -20147,8 +20178,7 @@ ${JSON.stringify(ctx, null, 1)}`;
         obOutClear();
         prefDel(ACCT_LATER);
         done(null);
-        toast("Signed in. Syncing your log.");
-        await cloudInit();
+        await syncAndSay("Signed in. Syncing your log.");
         acctRerender();
       } else if (m3.mode === "signup") {
         const r4 = await limited(A2.signUp(email, pw));
@@ -20159,8 +20189,7 @@ ${JSON.stringify(ctx, null, 1)}`;
           acct.user = r4.user;
           obOutClear();
           done(null);
-          toast("Account created. Syncing your log.");
-          await cloudInit();
+          await syncAndSay("Account created. Syncing your log.");
           acctRerender();
         }
       } else if (m3.mode === "forgot") {
@@ -20271,8 +20300,7 @@ ${JSON.stringify(ctx, null, 1)}`;
       if (t4.dataset.v === "here") {
         if (typeof A2.release === "function") A2.release();
         closeModal();
-        toast("Signed in here. Syncing your log.");
-        await cloudInit();
+        await syncAndSay("Signed in here. Syncing your log.");
         acctRerender();
         return;
       }
@@ -20308,7 +20336,7 @@ ${JSON.stringify(ctx, null, 1)}`;
             await del();
           } catch (e5) {
             log("auth", e5);
-            toast(said(e5, "Could not delete the account. Try again."));
+            toast(failed(e5, "Could not delete the account. Try again."));
             acctRerender();
             return;
           }
@@ -20346,7 +20374,7 @@ ${JSON.stringify(ctx, null, 1)}`;
           await A2.signOut();
         } catch (e5) {
           log("auth", e5);
-          toast(said(e5, "Could not sign out"));
+          toast(failed(e5, "Could not sign out"));
           return;
         }
         acct.user = null;
@@ -21142,7 +21170,7 @@ ${JSON.stringify(ctx, null, 1)}`;
           return;
         }
         toast(
-          err ? `Could not read your ${APP_NAME} log: ${err instanceof Error ? err.message : String(err)}` : `No ${APP_NAME} log found for this account or on this phone.`,
+          err ? `Could not read your ${APP_NAME} log: ${codeOf(err) === "timeout" ? NO_ANSWER : err instanceof Error ? err.message : String(err)}` : `No ${APP_NAME} log found for this account or on this phone.`,
           null,
           SAID.notFound
         );

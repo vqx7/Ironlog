@@ -899,6 +899,11 @@ function cloudSoon(): void {
 /** Writes every document that changed here to the account, merging each the account changed meanwhile. */
 export async function cloudFlush(): Promise<void> {
   if (!cloud.on) return;
+  /* No pull has come through since the sync started (it failed, or got no
+     answer): this one pulls first, which then sends. A retry that only sent
+     found nothing to send and said Synced, the account's own changes never
+     read (found building r64's fix of the r63 audit's F3). */
+  if (!pulled) return cloudPull();
   if (trackT || cloud.pendAt) trackEdits();
   const ch = chunksOf(state);
   const ids = new Set([...Object.keys(ch), ...Object.keys(cloud.meta)]);
@@ -1075,6 +1080,7 @@ export async function cloudPull(): Promise<void> {
     return;
   }
   cloud.lastPull = Date.now();
+  pulled = true;
   const remote: Record<string, { at: number; et: number; data: unknown; h: string }> = {};
   for (const d of snap.docs) {
     if (!d.exists || !isChunkId(d.id)) continue;
@@ -1274,7 +1280,21 @@ async function cloudProvider(): Promise<{ db: CloudDb; userId: string } | null> 
   }
   return null;
 }
-let cloudStarting = false;
+/* A start under way (cloudInit), settled once it has decided whether the
+   sync is on, before its first pull; and where that pull stands: the first
+   pull of the latest start not yet tried (the first page waits for it,
+   today.ts), and whether a pull has come through since the sync started
+   (a flush pulls first until one has, cloudFlush). */
+let starting: Promise<void> | null = null;
+let starts = 0;
+let firstPull = false;
+let pulled = false;
+/** Settles once no start of the sync is under way, so the sync then reads on or off: what a sign-in says waits for it (r64, the r63 audit's F3). */
+export async function cloudDecided(): Promise<void> {
+  while (starting) await starting;
+}
+/** Whether the sync has started and its first pull is not yet tried: the first page shows only the logo until it is, so it never flashes before the account's log (r64, the r63 audit's F3: until a pull came through, which with no answer was never). */
+export const cloudFirstPull = (): boolean => cloud.on && firstPull;
 /* ---------- signing in: which log the phone holds (r56.1, PENDING 328 b and 333) ---------- */
 
 /* The sync notes belong to one account (cloud.acct), and the log on the
@@ -1499,8 +1519,21 @@ async function takeAccount(id: string): Promise<boolean> {
 }
 /** Starts the sync for the account signed in, if there is one: the first pull, then every save flushes. */
 export async function cloudInit(): Promise<void> {
-  if (cloud.on || cloudStarting) return;
-  cloudStarting = true;
+  /* A start under way is waited for, then read: a sign-in made while one was
+     under way said "Signed in. Syncing your log." and nothing synced (r64,
+     the r63 audit's F3). Still off after it, this call starts its own. */
+  while (starting) await starting;
+  if (cloud.on) return;
+  const run = ++starts;
+  let decided = (): void => {};
+  const mine = new Promise<void>(r => {
+    decided = r;
+  });
+  starting = mine;
+  const decide = (): void => {
+    if (starting === mine) starting = null;
+    decided();
+  };
   try {
     const pv = await cloudProvider();
     if (!pv) return;
@@ -1518,7 +1551,10 @@ export async function cloudInit(): Promise<void> {
     cloud.db = db;
     cloud.uid = id;
     cloud.on = true;
+    pulled = false;
+    firstPull = true;
     setCloud('connecting');
+    decide();
     if (ui.tab === 'settings') fx.render();
     await cq(cloudPull);
   } catch (e) {
@@ -1527,7 +1563,8 @@ export async function cloudInit(): Promise<void> {
     cloud.on = false;
     setCloud('local');
   } finally {
-    cloudStarting = false;
+    decide();
+    if (run === starts) firstPull = false;
     cloudChecked = true;
     // The first page waits for this check (a splash until then): after a sign-out too (r33).
     if (

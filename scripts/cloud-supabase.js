@@ -45,16 +45,77 @@
      and only then is sync allowed here. */
   let hold = !!(landing && landing.type && !standalone());
 
+  /* The time limit every request to the account server has, in milliseconds
+     (NET_MS in src/app/config.ts, written in by the build), and what a
+     request given up for want of an answer fails with: code 'timeout', which
+     the app words as it words every request with no answer (NO_ANSWER in
+     src/app/report.ts). It is named AbortError, as the browser names an
+     aborted request, so the database client does not send it again; the
+     libraries keep only its message, which marks it. */
+  const NET_MS = {{NET_MS}};
+  const LATE = `No answer in ${NET_MS / 1000} s`;
+  const late = () => Object.assign(new Error(LATE), { name: 'AbortError', code: 'timeout', unanswered: true });
+  const isLate = e => !!e && [e.message, e.context && e.context.message].some(m => typeof m === 'string' && m.indexOf(LATE) >= 0);
+  /* Every request the account library makes has that limit (r64, the r63
+     audit's F3). supabase-js sets none, and its token refresh, which every
+     later call waits behind, waited for ever on a server that did not
+     answer: the account stalled until the app was relaunched. A timer and an
+     AbortController, not AbortSignal.timeout or AbortSignal.any, which older
+     iPhones lack; a signal the library passes still aborts the request. */
+  function limitedFetch(input, init) {
+    const ctl = new AbortController();
+    const own = init && init.signal;
+    const stop = () => ctl.abort();
+    if (own) { if (own.aborted) ctl.abort(); else own.addEventListener('abort', stop); }
+    let timedOut = false;
+    const t = setTimeout(() => { timedOut = true; ctl.abort(); }, NET_MS);
+    return fetch(input, Object.assign({}, init, { signal: ctl.signal }))
+      .catch(e => { throw timedOut ? late() : e; })
+      .finally(() => { clearTimeout(t); if (own) own.removeEventListener('abort', stop); });
+  }
+
+  /* Where the library keeps this phone's sign-in. */
+  const AUTH_KEY = PREVIEW ? '{{STORAGE_ID}}-preview.auth' : '{{STORAGE_ID}}.auth';
   /* Implicit flow: the tokens travel in the link itself. The PKCE flow would
      need a secret kept by the browser that asked for the email, and the link
      usually opens in a different one. */
   const sb = window.supabase.createClient(CFG.url, CFG.key, {
-    auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true, flowType: 'implicit', storageKey: PREVIEW ? '{{STORAGE_ID}}-preview.auth' : '{{STORAGE_ID}}.auth' }
+    auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true, flowType: 'implicit', storageKey: AUTH_KEY },
+    global: { fetch: limitedFetch }
   });
+  /* The library's own start refreshes an expired sign-in before it answers
+     any call, trying twice when the server does not answer. A call waits for
+     it at most the limit; once one has waited that long, the next ones fail
+     at once until the start ends, rather than each waiting the limit again
+     (r64, F3: a phone not yet set up showed only the logo for over 45 s). */
+  let started = false, waitedOut = false;
+  sb.auth.initialize().then(() => { started = true; }, () => { started = true; });
+  function answered(p) {
+    if (!started && waitedOut) return Promise.reject(late());
+    let t;
+    // Given up on, the call may still fail later; that is no longer anyone's to hear.
+    p.catch(() => {});
+    return Promise.race([p, new Promise((_, no) => { t = setTimeout(() => { if (!started) waitedOut = true; no(late()); }, NET_MS); })]).finally(() => clearTimeout(t));
+  }
+  /* A failure where the server could not be asked: no answer in time, no
+     connection, or a server error (the library's retryable kind). */
+  const noAnswer = e => isLate(e) || (!!e && e.name === 'AuthRetryableFetchError');
+  /* The sign-in the library keeps on this phone, read without the server:
+     who it is, or null. The library removes it when the server refuses it. */
+  function kept() {
+    try {
+      const s = JSON.parse(localStorage.getItem(AUTH_KEY) || 'null');
+      return s && s.refresh_token && s.user && s.user.id ? { id: s.user.id, email: s.user.email || '' } : null;
+    } catch (e) {
+      // Storage blocked or the record damaged: no sign-in can be read here.
+      return null;
+    }
+  }
   const site = () => location.origin + location.pathname;
 
   /* Plain words for the errors people actually hit. */
   function friendly(e) {
+    if (isLate(e)) return late();
     const msg = String((e && (e.message || e.error_description)) || e || '');
     const code = String((e && (e.code || e.error_code)) || '');
     const status = +(e && e.status) || 0;
@@ -95,9 +156,22 @@
   }
   const who = s => (s && s.user ? { id: s.user.id, email: s.user.email || '' } : null);
   async function session() {
-    const { data, error } = await sb.auth.getSession();
-    if (error) throw friendly(error);
+    const { data, error } = await answered(sb.auth.getSession());
+    if (error) throw Object.assign(friendly(error), { unanswered: noAnswer(error) });
     return data ? data.session : null;
+  }
+  /* Who is signed in on this phone (r64, the r63 audit's F3 and F6): the
+     library's sign-in, or, when the server cannot be asked (offline, no
+     connection, no answer), the sign-in kept here, whose token is refreshed
+     once the server answers. Read as signed out, a phone that was signed in
+     said "Saved on this phone only. Create an account" and stopped syncing. */
+  async function signedIn() {
+    if (navigator.onLine === false) return kept();
+    try {
+      return who(await session());
+    } catch (e) {
+      return e && e.unanswered ? kept() : null;
+    }
   }
 
   /* Breached passwords (r26). Supabase's own check (leaked password
@@ -124,7 +198,7 @@
 
   window.ironlogAuth = {
     landing,
-    async user() { try { return who(await session()); } catch (e) { return null; } },
+    user: signedIn,
     /* Returns {confirm: true} when an email must be confirmed first. */
     async signUp(email, password) {
       if (await breached(password) > 0) throw Object.assign(new Error(BREACHED), { code: 'breached' });
@@ -158,11 +232,18 @@
       hold = false;
       return who(data && data.session);
     },
+    /* Local scope: this device only; other devices stay signed in. The
+       sign-out happens here whatever the server does (r64, the r63 audit's
+       F3 and F7): with no signal it said "No connection" though the library
+       had signed the phone out, and with a server that did not answer it
+       waited in silence. The server is told when it answers; the sign-in
+       kept on this phone goes either way. */
     async signOut() {
-      // Local scope: this device only; other devices stay signed in.
-      const { error } = await sb.auth.signOut({ scope: 'local' });
       hold = false;
-      if (error && !/session/i.test(error.message || '')) throw friendly(error);
+      await answered(sb.auth.signOut({ scope: 'local' })).catch(() => {
+        // No answer in time: this phone signs out all the same, below.
+      });
+      if (kept()) localStorage.removeItem(AUTH_KEY);
     },
     async resetPassword(email) {
       const { error } = await sb.auth.resetPasswordForEmail(email, { redirectTo: site() });
@@ -194,8 +275,10 @@
        after a confirmation link, or the link opened where the app waits for
        it): let it sync. */
     release() { hold = false; },
-    /* cb(event, user): SIGNED_IN, SIGNED_OUT, PASSWORD_RECOVERY, TOKEN_REFRESHED, USER_UPDATED. */
-    onChange(cb) { sb.auth.onAuthStateChange((ev, s) => { try { cb(ev, who(s)); } catch (e) { /* the app logs its own errors */ } }); }
+    /* cb(event, user): INITIAL_SESSION, SIGNED_IN, SIGNED_OUT, PASSWORD_RECOVERY, TOKEN_REFRESHED, USER_UPDATED.
+       A sign-in the library could not refresh for want of an answer is still
+       this phone's (signedIn above): its start reports it with no session. */
+    onChange(cb) { sb.auth.onAuthStateChange((ev, s) => { try { cb(ev, ev === 'SIGNED_OUT' ? null : who(s) || kept()); } catch (e) { /* the app logs its own errors */ } }); }
   };
   // The app shows Delete my account only when this function exists.
   if (PREVIEW) delete window.ironlogAuth.deleteAccount;
@@ -206,6 +289,11 @@
      runs ahead, or the token was revoked). Refresh once and try again before
      calling the sign-in lost. */
   async function authed(run) {
+    /* Never a request without the sign-in, which the library would send with
+       the project's key alone: one whose token cannot be refreshed for want
+       of an answer fails as a dropped connection does, and the sync retries
+       (r64). */
+    await uid();
     let r = await run();
     const e = r && r.error;
     if (e && (+e.status === 401 || /PGRST30[0-3]|jwt/i.test(String(e.code || '') + String(e.message || ''))) && !/42501|permission denied/i.test(String(e.code || '') + String(e.message || ''))) {
@@ -251,7 +339,8 @@
        takes reports from signed-in accounts only, at most 5 a day each
        (SUPABASE.md, Part 4). */
     async send(fb) {
-      const s = await session().catch(() => null);
+      // A sign-in the server could not be asked about is not a sign-out: the report says so as any request with no answer does (r64).
+      const s = await session().catch(e => { if (e && e.unanswered) throw e; return null; });
       if (!s) throw Object.assign(new Error('Sign in to send a report.'), { code: 'signin' });
       const row = { category: fb.category, message: fb.message, reply_to: fb.reply_to || null, screenshot: fb.screenshot || null, context: fb.context || {} };
       /* The report's key (r63, PENDING 306): the table keeps a report sent
@@ -290,7 +379,7 @@
      copy is the one place the preview can find the real log. Row level
      security limits the read to the signed-in account's own rows. */
   if (PREVIEW) window.ironlogLiveDocs = async () => {
-    const s = await session().catch(() => null);
+    const s = await session().catch(e => { if (e && e.unanswered) throw e; return null; });
     if (!s) throw Object.assign(new Error('Sign in with your {{APP_NAME}} account first.'), { code: 'signin' });
     const base = `data/users/${s.user.id}`;
     const { data, error } = await authed(() => sb.from('docs').select('path,data').like('path', likeEsc(base) + '/%'));
@@ -299,7 +388,7 @@
   };
   window.ironlogCloud = async () => {
     if (hold) return null;
-    const s = await session().catch(() => null);
-    return s ? { db, userId: s.user.id } : null;
+    const u = await signedIn();
+    return u ? { db, userId: u.id } : null;
   };
 })();
