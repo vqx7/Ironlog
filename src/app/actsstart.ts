@@ -74,7 +74,7 @@ function begin(d: DraftLike, live: boolean): void {
    it opened and saved as one. It is logged as what was done, and a lift done
    lighter reads lighter from its numbers. */
 /** A past workout's session: the routine day given, or a blank one, on its date. */
-export function pastDraft(date: string, di: number | null): DraftLike {
+function pastDraft(date: string, di: number | null): DraftLike {
   const R = activeRoutine();
   const day = di == null ? null : R.days[di];
   if (!day || di == null) return { ...freeDraft('Freestyle'), date, startedAt: null, past: true };

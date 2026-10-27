@@ -54,7 +54,7 @@ export function effTarget(b: DraftBlock): Target | null | undefined {
 /** What a target's reason is read from: a block in the session (its hint)
     or a suggestion (its text), with its Last line and the date of the full
     session the target came from when that was not the last. */
-export interface TargetReason {
+interface TargetReason {
   hint?: string | undefined;
   text?: string | undefined;
   last?: string | undefined;
@@ -282,7 +282,7 @@ export interface DraftLike {
 }
 
 /** A cardio row inside a workout in progress: what `draftCardio` reads of it, and what its card shows. */
-export interface DraftCardio {
+interface DraftCardio {
   id?: string | undefined;
   min?: number | null | undefined;
   kind?: string | undefined;

@@ -45,7 +45,7 @@ type ImpCardio = {
 };
 
 /** An exercise as the reader found it: its sets from a table, or the text of its sets from notes, read once the exercise is known (the import screen's impTextSets). */
-export interface ImpReadItem {
+interface ImpReadItem {
   name: string;
   sets?: ImpSet[] | undefined;
   setsText?: string[] | undefined;
@@ -53,7 +53,7 @@ export interface ImpReadItem {
   ss?: string | undefined;
 }
 /** A session as the reader found it: no date when the notes gave none (the preview asks for one). */
-export interface ImpReadSession {
+interface ImpReadSession {
   date: string | null;
   name: string;
   items: ImpReadItem[];
@@ -189,7 +189,7 @@ export function impDate(str: unknown, ref?: string): string | null {
 /* Spreadsheet day numbers (days since 30 Dec 1899). A blank cell is null,
    which compares as 0 and so fails the range check; the casts say that to
    TypeScript, and past the check the number is real, as the ! says. */
-export function impSerial(n: number | null): string | null {
+function impSerial(n: number | null): string | null {
   if (!((n as number) > SERIAL.min && (n as number) < SERIAL.max)) return null;
   const d = new Date(SERIAL.epoch + Math.floor(n!) * DAY_MS);
   return isoDateOf(d.toISOString());
@@ -511,7 +511,7 @@ export function impGuess(name: unknown): { primary: string; equip: string; assis
    17:29"), across midnight too. A bare number says no unit, so it is left
    out rather than guessed. Null when nothing reads. */
 /** A workout's minutes from a duration cell, or from its start and end cells, or null. */
-export function impSpan(dur: string, start: string, end: string): number | null {
+function impSpan(dur: string, start: string, end: string): number | null {
   const d = String(dur || '').toLowerCase();
   const h = d.match(/(\d+(?:\.\d+)?)\s*h/),
     m = d.match(/(\d+)\s*m(?!s)/);
@@ -596,7 +596,7 @@ export function impHeader(row: readonly unknown[]): Record<string, number> {
 }
 
 /** The unit the weight column's header names ("Weight (kg)", "lbs"), or null when it names none. */
-export function impUnitOf(headers: readonly unknown[], map: Record<string, number>): 'kg' | 'lb' | null {
+function impUnitOf(headers: readonly unknown[], map: Record<string, number>): 'kg' | 'lb' | null {
   const h = map.w != null ? String(headers[map.w]).toLowerCase() : '';
   return /kg|kilo/.test(h) ? 'kg' : /lb|pound/.test(h) ? 'lb' : null;
 }
@@ -604,7 +604,7 @@ export function impUnitOf(headers: readonly unknown[], map: Record<string, numbe
 /* Cardio by name, or null: an imported row with a distance, or with a
    cardio name and no reps, is cardio (r30: Strong's treadmill rows were
    dropped). Carries and lunges that say "walk" are lifting. */
-export function impCardioKind(name: unknown): string | null {
+function impCardioKind(name: unknown): string | null {
   const n = String(name || '').toLowerCase();
   if (/farmer|carry|lunge|suitcase/.test(n)) return null;
   return /treadmill.*incline|incline.*walk/.test(n)
@@ -801,7 +801,7 @@ export function impFromTable(rows: readonly (readonly unknown[])[], map: Record<
    String.replace types them any: every group typed string is one its
    pattern must match ((^|\s) matches empty text at worst), and the RPE
    pattern's two groups are alternatives, so each is string | undefined. */
-export function impSetsText(t: unknown): string {
+function impSetsText(t: unknown): string {
   let s = ' ' + String(t).toLowerCase() + ' ';
   s = s.replace(/(\d),(\d{1,2})(?=\s*(?:lbs?|kgs?)?\s*[x×*])/g, '$1.$2');
   s = s.replace(/(\d)\s*(lbs?|kgs?|#)(?=[\s,x×*@;/]|$)/g, '$1 ');

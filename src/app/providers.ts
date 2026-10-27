@@ -7,7 +7,7 @@ import type { AcctUser, CloudDb } from './store';
 import type { FbItem } from './modals';
 
 /** The account service (window.ironlogAuth, scripts/cloud-supabase.js): who is signed in, the ways to sign in or out, the confirmation code, the password, deleting the account, and what an emailed link opened the page with. */
-export interface AuthService {
+interface AuthService {
   /** What an emailed link opened the page with: an error, or its kind (a sign-up's confirmation, a password reset). */
   landing?: { error?: string | undefined; type?: string | undefined } | null | undefined;
   user(): Promise<AcctUser | null>;
@@ -38,7 +38,7 @@ export interface Report {
 }
 
 /** The report service (window.ironlogFeedback): sending a report, whether this account reads them, and the owner's inbox. */
-export interface ReportService {
+interface ReportService {
   send(fb: Report): Promise<unknown>;
   isReader?: (() => Promise<boolean>) | undefined;
   inbox?: ((limit: number) => Promise<FbItem[]>) | undefined;
@@ -75,7 +75,7 @@ export const SERVICE_CODES = [
   'wait'
 ] as const;
 /** An error code the app reads. */
-export type ServiceCode = (typeof SERVICE_CODES)[number];
+type ServiceCode = (typeof SERVICE_CODES)[number];
 const KNOWN: ReadonlySet<string> = new Set(SERVICE_CODES);
 /** An error's code when it is one the app reads, else null (a code no service listed gives, or no code). */
 export function codeOf(e: unknown): ServiceCode | null {
@@ -89,7 +89,7 @@ export function said(e: unknown, or: string): string {
 }
 
 /** `window.claude.use`, where the page runs inside Claude (retired): the artifact's database, and the viewer. The sync suites inject a stand-in db through it. */
-export interface ClaudeUse {
+interface ClaudeUse {
   (what: 'db'): Promise<CloudDb | null | undefined>;
   (what: 'user'): Promise<{ id(): Promise<unknown> } | null | undefined>;
   /** The artifact's downloads: a saved file, confirmed (the export's). */

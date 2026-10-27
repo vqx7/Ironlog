@@ -117,7 +117,7 @@ export const SAFETY_TXT = `${APP_NAME} works out suggested loads and reps from y
 /* ---------- Your training (r44) ---------- */
 
 /** One routine item a profile's rules would change: its day, the item and the fields with their new values. */
-export interface ProfApply {
+interface ProfApply {
   di: number;
   it: PlanItem;
   ch: Partial<Pick<PlanItem, 'repMin' | 'repMax' | 'rir' | 'rest'>>;

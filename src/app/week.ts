@@ -30,7 +30,7 @@ import type { Routine } from './types';
    the same rule Today uses, so the week shows what is coming. */
 
 /** The bar's seven days: each one a button that opens it, the session in progress marked. */
-export function weekBar(): TemplateResult[] {
+function weekBar(): TemplateResult[] {
   const R = activeRoutine();
   const cur = weekStart(today()),
     t = today();
@@ -135,7 +135,7 @@ export function drawWeekBar(): void {
 /* ---------- the ring on Today's card ---------- */
 
 /** What weekStats says of the week, as the ring and the card read it. */
-export type WeekNow = ReturnType<typeof weekStats>;
+type WeekNow = ReturnType<typeof weekStats>;
 
 /** The week ring's radius, in the units of its 64 by 64 drawing. */
 const RING_R = 26;

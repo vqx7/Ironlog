@@ -40,18 +40,18 @@ import { rerenderKeepScroll } from './page';
 /* ---------- the flat figures ---------- */
 
 /** The body under the muscles: head, torso, arms, hands, legs, feet. */
-export const BM_BASE = svg`<circle cx="60" cy="16" r="11"></circle><rect x="38" y="35" width="44" height="72" rx="12"></rect><rect x="23" y="39" width="14" height="42" rx="7"></rect><rect x="83" y="39" width="14" height="42" rx="7"></rect><rect x="21" y="78" width="11" height="36" rx="5.5"></rect><rect x="88" y="78" width="11" height="36" rx="5.5"></rect><circle cx="26" cy="118" r="5"></circle><circle cx="94" cy="118" r="5"></circle><rect x="37" y="102" width="21" height="54" rx="9"></rect><rect x="62" y="102" width="21" height="54" rx="9"></rect><rect x="40" y="152" width="14" height="46" rx="7"></rect><rect x="66" y="152" width="14" height="46" rx="7"></rect><ellipse cx="47" cy="202" rx="8" ry="4"></ellipse><ellipse cx="73" cy="202" rx="8" ry="4"></ellipse>`;
+const BM_BASE = svg`<circle cx="60" cy="16" r="11"></circle><rect x="38" y="35" width="44" height="72" rx="12"></rect><rect x="23" y="39" width="14" height="42" rx="7"></rect><rect x="83" y="39" width="14" height="42" rx="7"></rect><rect x="21" y="78" width="11" height="36" rx="5.5"></rect><rect x="88" y="78" width="11" height="36" rx="5.5"></rect><circle cx="26" cy="118" r="5"></circle><circle cx="94" cy="118" r="5"></circle><rect x="37" y="102" width="21" height="54" rx="9"></rect><rect x="62" y="102" width="21" height="54" rx="9"></rect><rect x="40" y="152" width="14" height="46" rx="7"></rect><rect x="66" y="152" width="14" height="46" rx="7"></rect><ellipse cx="47" cy="202" rx="8" ry="4"></ellipse><ellipse cx="73" cy="202" rx="8" ry="4"></ellipse>`;
 
 /** The flat body's width in its drawing's units: a shape on the left is mirrored about it to the right. */
 const FLAT_W = 120;
 
 /** One shape of a muscle: an ellipse (cx, cy, rx, ry), a rounded rect (x, y, w, h, r), or a polygon's points. */
-export type BmShape =
+type BmShape =
   | readonly ['e', number, number, number, number]
   | readonly ['r', number, number, number, number, number]
   | readonly ['p', readonly (readonly [number, number])[]];
 /** The muscles' shapes, front (f) and back (b), by muscle. */
-export const BM: {
+const BM: {
   readonly f: Readonly<Record<string, readonly BmShape[]>>;
   readonly b: Readonly<Record<string, readonly BmShape[]>>;
 } = (() => {
@@ -123,7 +123,7 @@ export const BM: {
   };
 })();
 /** One shape, drawn. */
-export function bmShape(x: BmShape): SVGTemplateResult {
+function bmShape(x: BmShape): SVGTemplateResult {
   if (x[0] === 'e') {
     const [, cx, cy, rx, ry] = x;
     return svg`<ellipse cx=${cx} cy=${cy} rx=${rx} ry=${ry}></ellipse>`;
@@ -214,7 +214,7 @@ declare global {
    muscle group; parts without one are the neutral body underneath, and the
    muscle shapes sit almost flush on it, like an anatomy figure. */
 /** One part of the 3D body. */
-export interface B3Part {
+interface B3Part {
   g: 'l' | 's' | 'c';
   m?: string;
   prof?: readonly (readonly [number, number])[];
@@ -637,7 +637,7 @@ function map3dTap(cx: number, cy: number): void {
   rerenderKeepScroll();
 }
 /** Turns the 3D body to face a way (radians), the shorter way round, eased unless motion is reduced. */
-export function map3dTurnTo(to: number): void {
+function map3dTurnTo(to: number): void {
   if (!B3.r) return;
   cancelAnimationFrame(B3.anim);
   const tau = Math.PI * 2;

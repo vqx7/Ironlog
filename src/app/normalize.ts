@@ -206,7 +206,7 @@ keepExtra.n = 0;
 /* ---------- records ---------- */
 
 /** A cardio row of a workout in progress: a saved entry's fields, its minutes blank until typed. */
-export type CardioRow = Omit<CardioEntry, 'min'> & { min: number | null };
+type CardioRow = Omit<CardioEntry, 'min'> & { min: number | null };
 
 /* One cardio or mobility entry, cleaned, its minutes the one field a saved
    entry and a workout's row read differently: a saved one's are 1 at the
@@ -353,7 +353,7 @@ export function starterSigs(): string[] {
    same templates sat there for every new user with no way to clear them). */
 let tplCache: Set<string> | null = null;
 /** The signatures of every ready-made routine, made once. */
-export function tplSigs(): Set<string> {
+function tplSigs(): Set<string> {
   if (!tplCache)
     tplCache = new Set(
       [...TEMPLATES.map(t => routineFromTemplate(t.key)), starterRoutine(), defaultRoutine()]
@@ -376,7 +376,7 @@ export function plainTemplate(r: unknown): boolean {
 /* ---------- the whole log ---------- */
 
 /** The log of a new device, and of Erase everything, before normalize() fills it in. */
-export type Fresh = {
+type Fresh = {
   version: number;
   settings: Rec;
   exercises: Exercise[];
@@ -392,7 +392,7 @@ export type Fresh = {
   trash: unknown[];
 };
 /** A new log: the starter routine, the library and the settings a new install begins with. */
-export function freshState(): Fresh {
+function freshState(): Fresh {
   const r = starterRoutine();
   return {
     version: STATE_VERSION,

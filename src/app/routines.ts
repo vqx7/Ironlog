@@ -15,7 +15,7 @@ import { SESSION_CAP, HARD_RIR, RIR_CALL_TOP, HALF_SET, HELPER_CREDIT, lighterSe
 
 /** A plan item as a routine is first made: normalize() adds its superset
     link (null) when the routine is saved. */
-export type NewItem = Omit<PlanItem, 'ss' | 'jump'>;
+type NewItem = Omit<PlanItem, 'ss' | 'jump'>;
 
 /** A routine as first made, before normalize() completes its items. */
 export type NewRoutine = Omit<Routine, 'days'> & { days: (Omit<Day, 'items'> & { items: NewItem[] })[] };
@@ -26,15 +26,15 @@ export const fullRoutine = (r: NewRoutine): Routine => ({
 });
 
 /** A ready-made routine's exercise: the plan without ids, which a copy gets. */
-export type TemplateItem = Pick<PlanItem, 'exId' | 'sets' | 'repMin' | 'repMax' | 'rir' | 'rest'>;
-export interface TemplateDay {
+type TemplateItem = Pick<PlanItem, 'exId' | 'sets' | 'repMin' | 'repMax' | 'rir' | 'rest'>;
+interface TemplateDay {
   name: string;
   items: TemplateItem[];
   rest?: boolean;
 }
 
 /** A ready-made routine: its name, its lines, and its days. */
-export type Template = { key: string; name: string; who: string; meta: string; hidden?: boolean; days: TemplateDay[] };
+type Template = { key: string; name: string; who: string; meta: string; hidden?: boolean; days: TemplateDay[] };
 
 /** The weekday names, Monday first, in the order a weekly routine's days are kept. */
 export const DAYS: readonly string[] = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
@@ -219,7 +219,7 @@ export function weekFactor(R: RoutineLike): number {
 }
 
 /** Whether a routine day has something to train. */
-export function isTrainDay(d: RoutineLike['days'][number]): boolean {
+function isTrainDay(d: RoutineLike['days'][number]): boolean {
   return !d.rest && d.items.length > 0;
 }
 
@@ -565,7 +565,7 @@ export function basePlanIn(M: Model, exId: string, R?: Routine | null, dayId?: s
    as a logged set; a plan at RIR 4 used to set a weekly target that logging
    it could never meet. In a deload week each exercise is half its sets,
    rounded up, as the sessions are. */
-export function planHardIn(M: Model, it: { rir: number | string }): boolean {
+function planHardIn(M: Model, it: { rir: number | string }): boolean {
   return M.s.settings.rirMode === 'off' || !(+it.rir > HARD_RIR);
 }
 

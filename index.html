@@ -2359,7 +2359,6 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     ["history", "History"],
     ["settings", "Settings"]
   ];
-  var MAIN_FIXED = { history: "sessions" };
 
   // src/app/store.ts
   var state;
@@ -2696,19 +2695,6 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
     o3._$AR();
   };
 
-  // node_modules/lit-html/directives/keyed.js
-  var i4 = e2(class extends i2 {
-    constructor() {
-      super(...arguments), this.key = A;
-    }
-    render(r4, t4) {
-      return this.key = r4, t4;
-    }
-    update(r4, [t4, e5]) {
-      return t4 !== this.key && (p2(r4), this.key = t4), e5;
-    }
-  });
-
   // node_modules/lit-html/directives/live.js
   var l3 = e2(class extends i2 {
     constructor(r4) {
@@ -2750,14 +2736,9 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
 
   // src/app/view.ts
   var fieldOf = (t4) => t4 instanceof HTMLInputElement || t4 instanceof HTMLSelectElement || t4 instanceof HTMLTextAreaElement ? t4 : null;
-  var legacyDraws = 0;
   var drawnFor = "";
   function drawnBeforeToday() {
     return drawnFor !== "" && drawnFor !== today();
-  }
-  function drawLegacy(view, markup2) {
-    drawnFor = today();
-    D(i4(++legacyDraws, o2(markup2)), view);
   }
   var inDraw = 0;
   var drawing = () => inDraw > 0;
@@ -2817,9 +2798,6 @@ loadScript(['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min
   var home = null;
   function dragStart(el) {
     home = el.parentNode ? { el, parent: el.parentNode, next: el.nextSibling } : null;
-  }
-  function dragDone() {
-    home = null;
   }
   function dragDrop() {
     const h3 = home;
@@ -5116,63 +5094,13 @@ ${actions ? b`<div class="ph-a">${actions}</div>
   }
 
   // src/app/sheets.ts
-  var wordsOnly = (n3) => !Array.from(n3.childNodes).some((c4) => c4 instanceof Element);
-  function sameShape(a2, b2) {
-    if (wordsOnly(a2) && wordsOnly(b2)) return true;
-    if (a2.childNodes.length !== b2.childNodes.length) return false;
-    for (let i5 = 0; i5 < a2.childNodes.length; i5++) {
-      const x2 = a2.childNodes[i5], y2 = b2.childNodes[i5];
-      if (x2.nodeType !== y2.nodeType) return false;
-      if (x2 instanceof Element && y2 instanceof Element) {
-        if (x2.tagName !== y2.tagName || x2 instanceof HTMLSelectElement) return false;
-        if (x2 instanceof HTMLInputElement && y2 instanceof HTMLInputElement) {
-          if (x2.type !== y2.type || x2.value !== y2.value || x2.checked !== y2.checked) return false;
-        }
-        if (x2 instanceof HTMLTextAreaElement && y2 instanceof HTMLTextAreaElement && x2.value !== y2.value) return false;
-        if (!sameShape(x2, y2)) return false;
-      }
-    }
-    return true;
-  }
-  function copyInto(a2, b2) {
-    if (wordsOnly(a2) && wordsOnly(b2)) {
-      if (a2.textContent !== b2.textContent) a2.textContent = b2.textContent;
-      return;
-    }
-    for (let i5 = 0; i5 < a2.childNodes.length; i5++) {
-      const x2 = a2.childNodes[i5], y2 = b2.childNodes[i5];
-      if (x2 instanceof Element && y2 instanceof Element) {
-        for (const at2 of Array.from(x2.attributes)) if (!y2.hasAttribute(at2.name)) x2.removeAttribute(at2.name);
-        for (const at2 of Array.from(y2.attributes))
-          if (x2.getAttribute(at2.name) !== at2.value) x2.setAttribute(at2.name, at2.value);
-        copyInto(x2, y2);
-      } else if (x2.nodeValue !== y2.nodeValue) x2.nodeValue = y2.nodeValue;
-    }
-  }
-  var draws = 0;
-  function sheetDraw(el, sheet, same, morph) {
-    if (typeof sheet !== "string") {
-      if (!same) D(A, el);
-      D(sheet, el);
-    } else {
-      const old = same && morph ? el.querySelector(".sheet") : null;
-      const t4 = el.ownerDocument.createElement("template");
-      t4.innerHTML = sheet;
-      const now = t4.content.firstElementChild;
-      if (!(old && now && morphOne(old, now))) D(i4(++draws, o2(sheet)), el);
-    }
+  function sheetDraw(el, sheet, same) {
+    if (!same) D(A, el);
+    D(sheet, el);
     el.hidden = false;
   }
   function sheetClear(el) {
     D(A, el);
-  }
-  function morphOne(a2, b2) {
-    if (a2.tagName !== b2.tagName || !sameShape(a2, b2)) return false;
-    for (const at2 of Array.from(a2.attributes)) if (!b2.hasAttribute(at2.name)) a2.removeAttribute(at2.name);
-    for (const at2 of Array.from(b2.attributes))
-      if (a2.getAttribute(at2.name) !== at2.value) a2.setAttribute(at2.name, at2.value);
-    copyInto(a2, b2);
-    return true;
   }
 
   // src/app/toast.ts
@@ -5765,13 +5693,13 @@ ${actions ? b`<div class="ph-a">${actions}</div>
       el.hidden = true;
       return;
     }
-    const h3 = sheets ? kindOf(sheets, m3).draw(m3) : "";
+    const h3 = sheets ? kindOf(sheets, m3).draw(m3) : null;
     if (h3 === null) {
       ui.modal = null;
       el.hidden = true;
       return;
     }
-    sheetDraw(el, h3, keep, m3.kind === "account");
+    sheetDraw(el, h3, keep);
     const sh = el.querySelector(".sheet");
     if (sh) {
       if (!sh.hasAttribute("tabindex")) sh.setAttribute("tabindex", "-1");
@@ -16307,6 +16235,19 @@ ${extraKpis()}</div>${nS ? dashSummary() : A}`;
     }
   };
 
+  // node_modules/lit-html/directives/keyed.js
+  var i4 = e2(class extends i2 {
+    constructor() {
+      super(...arguments), this.key = A;
+    }
+    render(r4, t4) {
+      return this.key = r4, t4;
+    }
+    update(r4, [t4, e5]) {
+      return t4 !== this.key && (p2(r4), this.key = t4), e5;
+    }
+  });
+
   // src/app/calendar.ts
   var AHEAD_MONTHS = 12;
   function monthPlus(ym, k2) {
@@ -24041,7 +23982,7 @@ ${JSON.stringify(ctx, null, 1)}`;
   var SURE_AT = 0.85;
   var SHOWN = { sessions: 40, cardio: 3, bad: 8, odd: 4 };
   var COL_CHARS = 30;
-  var draws2 = 0;
+  var draws = 0;
   var frame = (t4, body) => b`<div class="sheet fixed" role="dialog" aria-modal="true" aria-labelledby="impH"><div class="sheet-h"><h3 id="impH">${t4}</h3>${closeX()}</div><div class="sheet-scroll">${body}</div></div>`;
   var WHAT_TIP = `Notes: a date on its own line, then one exercise per line with its sets (185x8, 185x7, or 3x10 @ 120). A spreadsheet: a file, or copy the cells and paste them, with columns such as date, exercise, weight, and reps. Another app: export your workouts as a CSV file from its settings, then choose that file here. Handwritten: photograph the page, open it in Photos, press and hold the writing, tap Copy, and paste it here. A backup file from ${APP_NAME} restores your whole log instead.`;
   function inputStep2(m3) {
@@ -24130,7 +24071,7 @@ ${JSON.stringify(ctx, null, 1)}`;
   }
   function impSheet(m3) {
     const body = m3.step === "input" ? inputStep2(m3) : m3.res.needMap ? mapStep(m3) : previewStep(m3);
-    return b`${i4(++draws2, body)}`;
+    return b`${i4(++draws, body)}`;
   }
 
   // src/app/sheetslift.ts

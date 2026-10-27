@@ -106,7 +106,7 @@ function wakeTip(): void {
 const TIMER_KEY = KEY + '.timer';
 const bar = (): HTMLElement | null => document.getElementById('timer');
 /** Keeps the rest's end and length on this device while the bar shows, and forgets them once it is gone. */
-export function timerSave(): void {
+function timerSave(): void {
   const el = bar();
   if (timer.end && el && !el.hidden) {
     if (!prefSet(TIMER_KEY, String(timer.end)) || !prefSet(TIMER_KEY + 'Len', String(timer.total || 0)))

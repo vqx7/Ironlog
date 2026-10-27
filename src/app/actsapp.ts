@@ -32,7 +32,7 @@ export function trashTidy(): void {
     });
 }
 /** Notes that a backup was made today (the Backup due reminder counts from it). */
-export function markExported(): void {
+function markExported(): void {
   act(() => {
     state.settings.lastExport = today();
   });
@@ -51,7 +51,7 @@ const LINK_MS = 1000;
    nothing: it can be blocked silently by a sandboxed frame, and the old code
    still cleared the "Backup due" nag. So that path asks. */
 /** Saves a file the best way this browser allows (the downloads service, the share sheet in the installed app, a download link), or shows its text to copy. */
-export async function exportFile(
+async function exportFile(
   data: string,
   filename: string,
   mime: string,
@@ -142,7 +142,7 @@ export async function exportFile(
   );
 }
 /** Exports the whole log as a backup file. */
-export function exportBackup(): Promise<void> {
+function exportBackup(): Promise<void> {
   const data = JSON.stringify(
     { app: STORAGE_ID, version: APP_VERSION, exported: new Date().toISOString(), state },
     null,

@@ -55,7 +55,7 @@ export function swapPlan<P extends Partial<Plan>>(
 }
 
 /** Scrolls to an exercise just added to the session and marks it, instead of leaving it somewhere below the fold. */
-export function afterAdd(bi: number): void {
+function afterAdd(bi: number): void {
   rerenderKeepScroll();
   const el = document.getElementById('blk-' + bi);
   if (!el) return;

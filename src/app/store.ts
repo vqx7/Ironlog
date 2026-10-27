@@ -48,7 +48,7 @@ export const HIST_PAGE = 25;
 /** What the screens are showing. Fields the legacy script adds later (the
     calendar's month, the bests list opened, and others) are allowed by the
     index signature; a field named here holds what its first value says. */
-export interface Ui {
+interface Ui {
   /** The tab shown before this one (Back's entry, and where a report from Settings says it came from). */
   prevTab?: string | null | undefined;
   blkOpen: Set<unknown>;
@@ -89,6 +89,7 @@ export interface Ui {
   refix: { b: BlkRef | null; s: number } | null;
   [field: string]: unknown;
 }
+/** What the screens are showing (the type above). */
 export const ui: Ui = {
   blkOpen: new Set(),
   tab: 'today',
@@ -125,7 +126,7 @@ export const ui: Ui = {
 /* ---------- the account's documents ---------- */
 
 /** A snapshot of a document in the account: whether it exists, and its content, of no known shape until read. */
-export interface CloudSnap {
+interface CloudSnap {
   exists: boolean;
   data(): unknown;
 }
@@ -171,7 +172,7 @@ export interface SyncNote {
    (editAt) and sent, the queue of writes (chain), and the last error. Typed
    field by field since r56, when its writers moved into sync.ts. The status
    becomes one set of states in r56.1 (PENDING 307). */
-export interface Cloud {
+interface Cloud {
   on: boolean;
   db: CloudDb | null;
   uid: string | null;
@@ -191,6 +192,7 @@ export interface Cloud {
   lastPull: number;
   err: string | null;
 }
+/** The sync with the account (the type above). */
 export const cloud: Cloud = {
   on: false,
   db: null,
@@ -220,7 +222,7 @@ export const cloud: Cloud = {
    functions from page.ts, toast.ts and timer.ts (r63; until r63 every effect
    came through here, filled by the legacy script). */
 /** The page's effects the storage and sync code calls. */
-export interface Fx {
+interface Fx {
   /** Redraws the page. */
   render(): void;
   /** Asks a question with two answers and Cancel (the confirm sheet): the answer, 'cancel' when the sheet is closed without one. */
@@ -246,7 +248,7 @@ export function setFx(f: Fx): void {
 }
 
 /** The account on this device: the user signed in, whether the check has run, and whether they read reports. */
-export interface Acct {
+interface Acct {
   user: AcctUser | null;
   checked: boolean;
   reader: boolean;

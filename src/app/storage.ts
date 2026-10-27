@@ -34,7 +34,7 @@ export const ENV: 'preview' | 'live' =
 /** The key the log is saved under; every other key is built from it. */
 export const KEY = ENV === 'preview' ? `${STORAGE_ID}-preview.v1` : `${STORAGE_ID}.v1`;
 /** The error log's key. */
-export const LOGK = KEY + '.log';
+const LOGK = KEY + '.log';
 /** Week or Month in This week on Today (r26), per device. */
 export const WKVIEW_KEY = KEY + '.wkView';
 /** How many weeks Stats' By region averages (r31), per device. */
@@ -52,14 +52,14 @@ export const OB_ACCT = KEY + '.obAcct',
 export const BWSNOOZE_KEY = KEY + '.bwSnooze',
   BWASK_KEY = KEY + '.bwAsk';
 /** The settings kept aside while the demo is loaded (demoKeep). */
-export const DEMOSET_KEY = KEY + '.demoSettings';
+const DEMOSET_KEY = KEY + '.demoSettings';
 /** The start of the keys a preview of r56.1 kept a log aside under, before it moved to IndexedDB (asideStart). */
-export const ASIDE_KEY = KEY + '.aside.';
+const ASIDE_KEY = KEY + '.aside.';
 
 /* ---------- where the save stands ---------- */
 
 /** Where the save on this device stands, read by the screens and the sync. */
-export interface Device {
+interface Device {
   /** Whether localStorage took the last write: false until a write succeeds again (saveStateNow says so). */
   ok: boolean;
   /** Whether storage passed its check at start. When not, nothing is ever written: the old contents were never read. */
@@ -71,6 +71,7 @@ export interface Device {
   /** The text this tab last wrote or adopted. Another tab's change is merged against it (the storage listener, sync.ts). */
   lastSaved: string | null;
 }
+/** Where the save on this device stands (the type above). */
 export const device: Device = { ok: true, boot: true, hadLocal: false, hadLog: false, lastSaved: null };
 
 /** Clears a timer that may not be set (a browser takes null, TypeScript's types do not). */
@@ -142,7 +143,7 @@ export function log(area: string, err: unknown): void {
 /* ---------- Undo's steps ---------- */
 
 /** One step Undo can take back: the log before the action and right after it (captured at the next save), a direct reversal while the session is open, and when. */
-export interface UndoStep {
+interface UndoStep {
   pre: string;
   post: string | null;
   inv: (() => boolean) | null;
@@ -308,7 +309,7 @@ export function prefDel(key: string): void {
   }
 }
 /** Whether localStorage can be written at all. */
-export function storageTest(): boolean {
+function storageTest(): boolean {
   try {
     localStorage.setItem('__il', '1');
     localStorage.removeItem('__il');
@@ -430,7 +431,7 @@ export function demoRestore(): void {
    held in memory (asideIdx), read from the database at start and kept
    current by every change here. */
 /** What is kept aside for an account: its log, its sync notes, and when. */
-export interface Aside {
+interface Aside {
   at: number;
   state: State;
   meta: unknown;
@@ -438,7 +439,7 @@ export interface Aside {
   last: unknown;
 }
 /** A log kept aside, as Your data lists it: its account, its sessions, and when it was kept. */
-export interface AsideEntry {
+interface AsideEntry {
   acct: string;
   sessions: number;
   at: number;

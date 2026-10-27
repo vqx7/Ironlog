@@ -291,7 +291,7 @@ function dayDirectIn(M: Model, day: Day): Record<string, number> {
 }
 
 /** A routine day as Pick for me ranks it. */
-export interface DayRow {
+interface DayRow {
   i: number;
   day: Day;
   score: number;
@@ -448,7 +448,7 @@ export function strengthPickIn(
 }
 
 /** An exercise as Pick for me ranks it inside a session, with the plan it would be added with. */
-export interface ExPick {
+interface ExPick {
   e: Exercise;
   s: number;
   m: string;
@@ -654,7 +654,7 @@ export function swapCandsIn(
 }
 
 /** One item of a day under Limited equipment: kept (`to` its own lift), swapped (`from` the lift it replaces, `hard` when much harder), or left out (`to` null). */
-export interface EqSwap {
+interface EqSwap {
   it: Day['items'][number];
   to: string | null;
   from: string | null;
@@ -710,7 +710,7 @@ export function recentExIdsIn(M: Model, n: number): string[] {
 /* ---------- Short on time ---------- */
 
 /** One exercise of a session as Short on time weighs it: its sets left and done, the sets it keeps, its seconds a set, its rest, its setup, and its rank. */
-export interface TrimRow {
+interface TrimRow {
   bi: number;
   ex: ExerciseLike;
   undone: number;

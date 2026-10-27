@@ -23,7 +23,7 @@ import { dayCreditIn, nextTrainIdx, planSetsPerWeekIn, plannedPerWeek, plannedSe
     left out, whether the log's first week cut it short, the share of the
     sets whose RIR was logged, per muscle, and the muscles on plan though
     under their minimum (cycleMixIn), and the sessions a week it averages. */
-export interface AvgMeta {
+interface AvgMeta {
   _sess: number;
   _weeks: number;
   _missed: number;
@@ -38,7 +38,7 @@ export interface AvgMeta {
 }
 
 /** A weekly average: hard sets a week per muscle, with what it says about itself (AvgMeta). */
-export type WeeklyAvg = Record<string, number> & AvgMeta;
+type WeeklyAvg = Record<string, number> & AvgMeta;
 
 /* Where the weeks are counted from: the log's first session, or the first
    after its last break of more than BACK_DAYS with nothing logged (r55, from

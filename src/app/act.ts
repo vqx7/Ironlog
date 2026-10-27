@@ -22,7 +22,7 @@ import { setState, state } from './store';
 import { today } from './util';
 
 /** How a change is made: its check, and the Undo step it keeps. */
-export interface ActOpts {
+interface ActOpts {
   /** Read first: false refuses the change, and nothing is kept, changed or written. */
   check?: (() => boolean) | undefined;
   /** An Undo step: true keeps the log as it was before the change, a function reverses the change in place (snapshot's `inv`, for a change a later one may touch). Absent, there is none, as for an edit before r57. */

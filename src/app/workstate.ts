@@ -12,7 +12,7 @@ import { state, ui } from './store';
 import type { DraftLike, BlkRef } from './session';
 import type { DraftSet, DraftBlock } from './types';
 /** What more than one module of the session screen changes between draws, read and written through W. */
-export interface WorkState {
+interface WorkState {
   // A pending fold, the exercise drag and the timer for the blocks waiting to move up (r29, r45).
   foldT: ReturnType<typeof setTimeout> | null;
   blockDrag: boolean;

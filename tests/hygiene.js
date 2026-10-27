@@ -282,6 +282,34 @@ const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log
     }
     ok(runs.length === 0, 'no module but main.ts runs a statement as it is imported', runs);
   }
+  // Every export is read (304, r63): imported by another module, or named by a suite or a script (the suites reach
+  // the page's parts through window.__ironlog, which main.ts fills from imports, and a module's own functions through
+  // tests/engine.js's bundle of every module). An exported table is read by tests/engine.js, which freezes every one so
+  // a write to it throws; config.ts's values are read by the build and the markup through scripts/config.js. A
+  // statement that exports several names, a set of constants under one comment, is read when one of them is.
+  {
+    const ts = require('typescript');
+    const T = ['tests', 'scripts'].flatMap(d => fs.readdirSync(path.join(ROOT, d)).filter(f => f.endsWith('.js')).map(f => fs.readFileSync(path.join(ROOT, d, f), 'utf8'))).join('\n');
+    const named = n => new RegExp('\\b' + n.replace(/\$/g, '\\$') + '\\b').test(T);
+    const table = e0 => { let e = e0; while (e && (ts.isAsExpression(e) || ts.isSatisfiesExpression(e) || ts.isParenthesizedExpression(e))) e = e.expression; return !!e && (ts.isObjectLiteralExpression(e) || ts.isArrayLiteralExpression(e) || ts.isNewExpression(e)); };
+    const imported = new Set(), stmts = [];
+    for (const f of SRC_CODE.filter(f => f.startsWith('app/'))) {
+      const id = path.basename(f, '.ts');
+      const sf = ts.createSourceFile(f, fs.readFileSync(path.join(ROOT, 'src', f), 'utf8'), ts.ScriptTarget.Latest, true);
+      for (const st of sf.statements) {
+        if (ts.isImportDeclaration(st)) {
+          const from = st.moduleSpecifier.text, b = st.importClause && st.importClause.namedBindings;
+          if (from.startsWith('./') && b && ts.isNamedImports(b)) for (const e of b.elements) imported.add(from.slice(2) + ':' + (e.propertyName || e.name).text);
+          continue;
+        }
+        if (id === 'config' || !(ts.canHaveModifiers(st) && (ts.getModifiers(st) || []).some(m => m.kind === ts.SyntaxKind.ExportKeyword))) continue;
+        if (ts.isVariableStatement(st)) { const ds = st.declarationList.declarations; if (!(ds.length === 1 && table(ds[0].initializer))) stmts.push({ id, names: ds.map(d => d.name.getText(sf)) }); }
+        else if (st.name) stmts.push({ id, names: [st.name.text] });
+      }
+    }
+    const unread = stmts.filter(x => !x.names.some(n => imported.has(x.id + ':' + n) || named(n))).map(x => `${x.id}: ${x.names.join(', ')}`);
+    ok(stmts.length > 300 && unread.length === 0, `every export in src/app/ is read by another module, a suite or a script (${stmts.length} exports, tables and config.ts aside)`, unread);
+  }
   // One-way dependencies (ARCHITECTURE.md): config and the record types at
   // the bottom, then data, then the engine and analytics, then storage and
   // sync, then the screens. A module imports only from its own layer or

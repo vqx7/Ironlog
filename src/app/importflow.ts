@@ -269,7 +269,7 @@ function openPreview(res: ImpRead, tab: ImpTable | null): void {
 }
 
 /** A new exercise an import makes, as the legacy script made it: normalize completes it (one side at a time, false) when the log takes it in. */
-export type NewExercise = Omit<Exercise, 'perSide'> & { perSide?: boolean };
+type NewExercise = Omit<Exercise, 'perSide'> & { perSide?: boolean };
 /** One set as it would be saved: load in kilograms, reps, effort, and whether it was a warm-up or a drop set. */
 interface BuiltSet {
   w: number;
@@ -279,7 +279,7 @@ interface BuiltSet {
   drop: boolean;
 }
 /** A session as an import would save it (normalize completes it). */
-export interface BuiltSession {
+interface BuiltSession {
   id: string;
   date: string;
   dayIdx: number;
@@ -294,7 +294,7 @@ export interface BuiltSession {
   light: false;
 }
 /** What the preview would save: the sessions not in the log yet, each session's supersets from the file, the cardio, and what was left out and why. */
-export interface ImpBuilt {
+interface ImpBuilt {
   sessions: BuiltSession[];
   ssOf: Record<string, Record<string, string>>;
   cardio: CardioEntry[];

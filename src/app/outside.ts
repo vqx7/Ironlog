@@ -8,7 +8,7 @@
 import { log } from './storage';
 
 /** A module loaded by address, with the address it came from (so a caller that finds it is not what it wanted can say which). */
-export interface Loaded {
+interface Loaded {
   url: string;
   mod: unknown;
 }

@@ -29,7 +29,7 @@ import { loadLabelIn } from './loads';
 import { CHECKIN_TOP } from './records';
 
 /** The coach's one line: its colour, the advice, the reason behind an i, the action it offers, and whether it says why no weekly average shows yet (`wait`, which Stats' summary shows once, as its Volume line). */
-export interface CoachLine {
+interface CoachLine {
   tone: string;
   text: string;
   why?: string;

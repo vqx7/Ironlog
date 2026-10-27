@@ -370,7 +370,7 @@ export function exHeadline(exId: string): Part {
 }
 
 /** A muscle's headline in Volume's Weekly trend: its hard sets a week against its target, and its strength trend. */
-export function muscleHeadline(m: string): TemplateResult {
+function muscleHeadline(m: string): TemplateResult {
   const I = IDX();
   const avg = actualAvg4();
   const [lo, hi] = bandOf(m);

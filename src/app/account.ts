@@ -47,14 +47,14 @@ const OUT_FLUSH_MS = 15000;
 const PW_MIN = 8;
 
 /** An email address as typed: something, an @, something, a dot, something. */
-export const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 /** The sync line on Settings, drawn again in place (the sync calls it through fx). */
 export function syncLine(): void {
   settingsSyncLine();
 }
 /** After a change to the account: the tabs that show it drawn again, or only Settings' sync line under a sheet. */
-export function acctRerender(): void {
+function acctRerender(): void {
   if ((ui.tab === 'settings' || ui.tab === 'today') && !ui.modal) rerenderKeepScroll();
   else syncLine();
 }
@@ -110,7 +110,7 @@ function waitStart(email: string, pw: string): void {
   waitSchedule();
 }
 /** Stops waiting for the confirmation: the password forgotten, the marker gone. */
-export function waitStop(): void {
+function waitStop(): void {
   if (wait && wait.timer) clearTimeout(wait.timer);
   wait = null;
   prefDel(ACCT_WAIT);

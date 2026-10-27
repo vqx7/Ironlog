@@ -77,7 +77,7 @@ export function render(): void {
    user was typing in. A selector for the focused control is made first, then
    focus and the caret are put back where they were. */
 /** A selector for an element: its id, or its tag with its data- attributes; null when it has neither. */
-export function focusKey(el: Element | null): string | null {
+function focusKey(el: Element | null): string | null {
   if (!el || !el.tagName || el === document.body) return null;
   if (el.id) return '#' + el.id.replace(/([^\w-])/g, '\\$1');
   const at: string[] = [];
@@ -205,8 +205,8 @@ export function pageBack(): void {
 /* ---------- the sheets ---------- */
 
 /** One kind of sheet: its draw (null when what it shows is gone, which closes it) and what closing it does beyond hiding it. */
-export interface SheetKind<K extends ModalKind> {
-  draw(m: ModalOf<K>): TemplateResult | string | null;
+interface SheetKind<K extends ModalKind> {
+  draw(m: ModalOf<K>): TemplateResult | null;
   closed?: ((m: ModalOf<K>) => void) | undefined;
 }
 /** Every kind of sheet. */
@@ -249,14 +249,15 @@ function renderModalBody(keep: boolean): void {
     el.hidden = true;
     return;
   }
-  const h = sheets ? kindOf(sheets, m).draw(m) : '';
+  // No sheet can open before the start gives the table (main.ts gives it first).
+  const h = sheets ? kindOf(sheets, m).draw(m) : null;
   if (h === null) {
     ui.modal = null;
     el.hidden = true;
     return;
   }
-  // A moved sheet is its template, kept in place when the open sheet is drawn again; the account sheet redrawn while signing in keeps its fields, so the one in use stays under the keyboard (r54, sheets.ts).
-  sheetDraw(el, h, keep, m.kind === 'account');
+  // Every sheet is its template, kept in place when the open sheet is drawn again, so the field in use stays under the keyboard (r54, sheets.ts).
+  sheetDraw(el, h, keep);
   const sh = el.querySelector('.sheet');
   if (sh) {
     if (!sh.hasAttribute('tabindex')) sh.setAttribute('tabindex', '-1');

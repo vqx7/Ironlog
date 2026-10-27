@@ -100,7 +100,7 @@ export type Rir = number | string | null | undefined;
 
 /** A RIR check (a calibration set): taken to failure from `at` reps, with
     `pred` the reps in reserve the lifter called there (cleanCal). */
-export interface RirCheck {
+interface RirCheck {
   at: number;
   pred: number;
 }
@@ -237,7 +237,7 @@ export interface Profile {
 
 /** The settings the engine and the analytics read, as normalize() keeps them:
     a field absent unless set is optional. */
-export interface EngineSettings {
+interface EngineSettings {
   unit: 'lb' | 'kg';
   rirMode: 'on' | 'off' | 'cal';
   rirHalf?: true | undefined;

@@ -92,7 +92,7 @@ const BAR_SCALE_MIN = 24;
 /* ---------- small parts ---------- */
 
 /** What a muscle with no weekly target says where its target would be (r58: any muscle may be given one). */
-export const TRACKED_TIP = 'Tracked only: counted, with no target. Give it one in Settings, Weekly set targets.';
+const TRACKED_TIP = 'Tracked only: counted, with no target. Give it one in Settings, Weekly set targets.';
 
 /** An exercise's library tags (exTags): Most common and Less common, but not the one the list is filtered to. */
 export function exTagParts(e: Pick<Exercise, 'id'> & Partial<Pick<Exercise, 'custom' | 'rare'>>, skip?: string): Part {
@@ -183,7 +183,7 @@ export function volumeRows(
 /* The open day: the one picked last, else the day + adds to, else the first
    training day. An empty string means the lifter closed them all. */
 /** The id of the day Plan has open. */
-export function dayFocusId(R: Routine): string {
+function dayFocusId(R: Routine): string {
   const f = ui.dayFocus;
   if (typeof f === 'string' && (f === '' || R.days.some(d => d.id === f))) return f;
   const t = R.days[ui.bTarget];
@@ -863,7 +863,7 @@ export const PLAN_BINDS: Readonly<Record<string, (t: Field) => void>> = {
 /* ---------- drags ---------- */
 
 /** What Sortable says when a drag ends: the lists it left and reached, the element, the copy a copying list keeps, and the places. */
-export interface DragEnd {
+interface DragEnd {
   from: HTMLElement;
   to: HTMLElement;
   item: HTMLElement;

@@ -88,14 +88,14 @@ const RACK_FIT = 0.01;
 const RACK_READ_N = 12;
 
 /** How a suggestion is asked for: for a past session's date (`before`), as a deload, or as a lighter day. */
-export type SuggestOpts = {
+type SuggestOpts = {
   before?: string | null | undefined;
   deload?: boolean | undefined;
   light?: boolean | undefined;
 };
 
 /** What suggestCore works out once for a lift and hands to each of its cases in turn. */
-export interface SuggestCtx {
+interface SuggestCtx {
   ex: ExerciseLike;
   exId: string;
   plan: Plan;
@@ -154,7 +154,7 @@ export interface SuggestCtx {
    a stack with odd pins keeps its whole steps. On a rack read from its
    spacing the result then goes onto the rack (gridSnap, r54), as on a rack
    from Your gym. */
-export function snapUnitIn(M: Model, ex: ExerciseLike, plan: Plan, res: Suggestion, down?: boolean): Suggestion {
+function snapUnitIn(M: Model, ex: ExerciseLike, plan: Plan, res: Suggestion, down?: boolean): Suggestion {
   const G = res && res.w != null && !ex.timed ? plateGridIn(M, ex, plan) : null;
   if (G) return plateSnap(M, ex, plan, res, G, down);
   return gridSnap(M, ex, plan, unitSnap(M, ex, plan, res, down));
@@ -171,7 +171,7 @@ export function snapUnitIn(M: Model, ex: ExerciseLike, plan: Plan, res: Suggesti
    those loads. Plates that are not all multiples of the smallest (10 and 25
    lb without 5s) make other sums, so the lift keeps its step as before. */
 /** A bar lift's loads as Your gym's plates make them, in kg (the bar, and a pair of the smallest plate), or null. */
-export function plateGridIn(
+function plateGridIn(
   M: Model,
   ex: ExerciseLike | null | undefined,
   plan?: Pick<Plan, 'inc'> | null
@@ -695,7 +695,7 @@ function sgAfterReturnIn(M: Model, C: SuggestCtx): Suggestion | null {
 }
 
 /* No history yet: an injury note, a start from a close variation, or the first-time line. */
-export function sgFirstIn(M: Model, ex: ExerciseLike, plan: Plan, T: string, injM: string | null): Suggestion {
+function sgFirstIn(M: Model, ex: ExerciseLike, plan: Plan, T: string, injM: string | null): Suggestion {
   /* An assisted lift's help is the lifter's to set the first time (the text
      says so): with none shown, a set ticked untyped is one Finish asks about,
      where a help of 0 shown saved it at full bodyweight, and the next
@@ -825,7 +825,7 @@ export function sgEasyIn(M: Model, C: SuggestCtx): Suggestion | null {
 }
 
 /* Every top set 2 or more reps over the top of the range. */
-export function sgPastRangeIn(M: Model, C: SuggestCtx): Suggestion | null {
+function sgPastRangeIn(M: Model, C: SuggestCtx): Suggestion | null {
   const { ex, plan, top, step, noAdd, atCap, capW, topPts, lastR, lastS, basis, lbl, prevBest, tgtRir, early } = C;
   /* Well past the range: every top set at least 2 reps over repMax, which is
      what happens when the range is moved down (12s, then a 4 to 6 plan). One
@@ -881,7 +881,7 @@ export function sgPastRangeIn(M: Model, C: SuggestCtx): Suggestion | null {
 }
 
 /* Every top set under the range: drop to a load that fits it. */
-export function sgBelowRangeIn(M: Model, C: SuggestCtx): Suggestion | null {
+function sgBelowRangeIn(M: Model, C: SuggestCtx): Suggestion | null {
   const { ex, plan, last, done, inRR, top, step, noAdd, topPts, lastR, lastS, basis, lbl, prevBest, tgtRir } = C;
   /* Below the rep range. Every top set fell short of repMin, either by 2 or
      more reps, or by any amount two sessions running at the same load. Adding
@@ -956,7 +956,7 @@ export function sgBelowRangeIn(M: Model, C: SuggestCtx): Suggestion | null {
 }
 
 /* At the heaviest load available, a fixed load, or bodyweight never loaded: reps. */
-export function sgNoStep(C: SuggestCtx): Suggestion | null {
+function sgNoStep(C: SuggestCtx): Suggestion | null {
   const { plan, top, step, noAdd, abW, atCap, noHelp, topPts, lastR, lastS, basis, lbl, prevBest, tp } = C;
   /* At the heaviest load available: keep adding reps past the top of the range.
      Once every set reaches about 40% past it, the next step is harder reps
@@ -1004,7 +1004,7 @@ export function sgNoStep(C: SuggestCtx): Suggestion | null {
    With an estimate, reps to failure at the last load are read too: a null
    there (no estimate) reads as 0 in the subtraction, which the casts let
    TypeScript accept. */
-export function sgTopOfRangeIn(M: Model, C: SuggestCtx): Suggestion | null {
+function sgTopOfRangeIn(M: Model, C: SuggestCtx): Suggestion | null {
   const { ex, plan, top, cap, capW, topPts, planPts, lastR, lastS, basis, lbl, prevBest, tgtRir, tp } = C;
   if (planPts.every(p => p.r >= plan.repMax)) {
     const nw = capW(top + progStepIn(M, ex, plan, top + bwRefLoadIn(M, ex), top));
@@ -1109,7 +1109,7 @@ export function sgTopOfRangeIn(M: Model, C: SuggestCtx): Suggestion | null {
 }
 
 /* A bad day under the range at a load done in it before: the bottom of the range again. */
-export function sgBadDay(C: SuggestCtx): Suggestion | null {
+function sgBadDay(C: SuggestCtx): Suggestion | null {
   const { plan, last, done, top, topPts, lastR, lastS, basis, lbl, prevBest } = C;
   /* A bad day at a load already done in the range (r32, second check: 7,
      7, 6, 6 then 5, 5, 4, 4 asked "19+ reps" and greyed 5, 5, 4, 4): every set
@@ -1138,7 +1138,7 @@ export function sgBadDay(C: SuggestCtx): Suggestion | null {
 }
 
 /* Otherwise: beat last time's reps at the same load. */
-export function sgRepsIn(M: Model, C: SuggestCtx): Suggestion {
+function sgRepsIn(M: Model, C: SuggestCtx): Suggestion {
   const { ex, plan, stx, top, topPts, lastR, lastS, basis, lbl, prevBest, tp } = C;
   /* The rep target covers the same number of sets as last time, so an extra
      set can never count as progress on its own. A set under the range that
@@ -1183,11 +1183,7 @@ export function sgRepsIn(M: Model, C: SuggestCtx): Suggestion {
    meant to err light; the next session works out from what was done. Each
    id read from IDX's byEx comes from its own keys, so it is there, as the !
    says. */
-export function kinOfIn(
-  M: Model,
-  ex: ExerciseLike | null | undefined,
-  T: string
-): { ex: ExerciseLike; x: Exposure } | null {
+function kinOfIn(M: Model, ex: ExerciseLike | null | undefined, T: string): { ex: ExerciseLike; x: Exposure } | null {
   if (
     !ex ||
     ex.bw ||
@@ -1232,7 +1228,7 @@ export function kinOfIn(
    related lift, the session it came from, the load, and the set it was read
    from. The best set is kept with the estimate, as the ! after set says;
    toD and fromD of a number are numbers, as the other ! say. */
-export function kinStartIn(
+function kinStartIn(
   M: Model,
   ex: ExerciseLike,
   plan: Plan,
@@ -1274,7 +1270,7 @@ export function kinStartIn(
 
 /* Timed holds: double progression on seconds. Beat the total time at the same
    load; when every hold reaches the top of the range, add the load step. */
-export function suggestTimedIn(
+function suggestTimedIn(
   M: Model,
   ex: ExerciseLike,
   plan: Plan,
@@ -1424,7 +1420,7 @@ export function incOfIn(
    heaviest not past it. A load equal to last time's is left, since it was
    lifted. Engine steps are taken from the rack already, so this is the net
    for multi-step jumps on a rack whose spacing changes. */
-export function rackSnapIn(M: Model, ex: ExerciseLike, plan: Plan, res: Suggestion): Suggestion {
+function rackSnapIn(M: Model, ex: ExerciseLike, plan: Plan, res: Suggestion): Suggestion {
   if (!res || res.w == null || ex.timed) return res;
   const L = gymRackIn(M, ex, plan);
   if (!L) return gridSnap(M, ex, plan, res);
@@ -1511,7 +1507,7 @@ export function rackStepIn(M: Model, ex: ExerciseLike, at?: number | null): numb
    heavier ones (heavierLoadIn), the engine's cases that take several steps
    at once, and the snap of a suggestion onto the rack (rackSnapIn). */
 /** A dumbbell or kettlebell lift's rack spacing in kg when its weights are read from it, or null. */
-export function rackGridIn(
+function rackGridIn(
   M: Model,
   ex: ExerciseLike | null | undefined,
   plan?: Pick<Plan, 'inc'> | null,
@@ -1617,7 +1613,7 @@ export function easierTextIn(M: Model, ex: ExerciseLike, e: Drift): string {
    per-side number has no bar in it, so neither has one. An exercise with no
    bar of its own set reads as none. */
 /** The lightest load a lift can be given: the empty bar where one applies, else 0. */
-export function loadFloorIn(M: Model, ex: ExerciseLike): number {
+function loadFloorIn(M: Model, ex: ExerciseLike): number {
   return platesMode(ex) === 'bar' && loadMode(ex) === 'total' && (isCompound(ex) || (ex.barKg ?? 0) > 0)
     ? exBarKgIn(M, ex)
     : 0;

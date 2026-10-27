@@ -53,7 +53,7 @@ const INBOX_N = 50;
    the real count). */
 const FB_SENT = KEY + '.fbSent';
 /** The times of the reports sent from this device in the last day. */
-export function fbRecent(): number[] {
+function fbRecent(): number[] {
   const raw = prefGet(FB_SENT);
   let a: unknown = [];
   try {
@@ -80,7 +80,7 @@ export async function fbCheckReader(): Promise<void> {
 }
 
 /** What a report says of the app, the device and the log, never the workouts: the build, the device and screen, the look, where it was sent from, the session open, the account and sync, the counts, and the last errors logged. */
-export interface FbContext {
+interface FbContext {
   build: string;
   version: string;
   env: string;

@@ -226,7 +226,7 @@ export function recent4w(): { back: boolean; sess: number; sessP: number; prs: P
 }
 
 /** The weight lifted in a week, to its day `upto` (0 Monday), or all of it. */
-export function weekVolume(ws: string, upto?: number | null): number {
+function weekVolume(ws: string, upto?: number | null): number {
   const end = addDays(ws, upto == null ? SUNDAY : upto);
   let v = 0;
   for (const x of IDX().sessVol) if (x.date >= ws && x.date <= end) v += x.vol;
@@ -451,7 +451,7 @@ export function regionWk(): number {
 }
 
 /** What By region draws from, and how it says so. */
-export interface RegionSrc {
+interface RegionSrc {
   src: Readonly<Record<string, number>> & { readonly _mix?: Readonly<Record<string, boolean>>; readonly _ff?: boolean };
   n?: number;
   label: string;

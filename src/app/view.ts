@@ -16,7 +16,6 @@ import type { TemplateResult, AttributePart } from 'lit-html';
 import { Directive, directive, PartType } from 'lit-html/directive.js';
 import type { DirectiveResult, PartInfo } from 'lit-html/directive.js';
 import { setCommittedValue } from 'lit-html/directive-helpers.js';
-import { keyed } from 'lit-html/directives/keyed.js';
 import { live } from 'lit-html/directives/live.js';
 import { unsafeHTML } from 'lit-html/directives/unsafe-html.js';
 import { moreList, orderKeys } from './layout';
@@ -39,7 +38,7 @@ declare global {
 }
 
 /** The options a screen gives SortableJS for a list it drags: the session's exercises (r60), Plan's lists and a tab's sections (r63). */
-export interface SortableOptions {
+interface SortableOptions {
   group: { name: string; pull: boolean | 'clone'; put: boolean | string[] };
   handle: string;
   draggable?: string | undefined;
@@ -73,7 +72,6 @@ export type Part = TemplateResult | DirectiveResult | string | number | typeof n
 
 /* ---------- the host ---------- */
 
-let legacyDraws = 0;
 /* The day the screen was last drawn for (r59). A phone keeps the app open
    overnight, and nothing draws it again when it comes back to the screen
    without an account, so the next morning Today was yesterday's: its date
@@ -83,11 +81,6 @@ let drawnFor = '';
 /** Whether the screen was last drawn on an earlier day than today, as when the app is brought back the next morning. */
 export function drawnBeforeToday(): boolean {
   return drawnFor !== '' && drawnFor !== today();
-}
-/** Draws a legacy screen's markup into the page's view: fresh nodes each time, as innerHTML made them (its markup was escaped by hand, `esc`, as before r57). */
-export function drawLegacy(view: HTMLElement, markup: string): void {
-  drawnFor = today();
-  render(keyed(++legacyDraws, unsafeHTML(markup)), view);
 }
 /* While lit-html is drawing a screen: a field it takes away fires its
    change and blur as if the lifter had left it, which must not tick a set or
@@ -204,10 +197,6 @@ let home: Home | null = null;
 export function dragStart(el: Element): void {
   home = el.parentNode ? { el, parent: el.parentNode, next: el.nextSibling } : null;
 }
-/** Forgets the drag: it ended where the page keeps it (a legacy screen, drawn fresh). */
-export function dragDone(): void {
-  home = null;
-}
 /** Puts the dragged element back where it was drawn, its drag marks taken off; whether a drag was under way. */
 export function dragDrop(): boolean {
   const h = home;
@@ -239,7 +228,7 @@ export function dragDrop(): boolean {
    legacy script's string copies of these parts went with the last screen
    drawn from it (r60). */
 /** Whether a section is open: what was chosen on this visit, else its default (r28: folded unless it is the tab's content). */
-export function isOpen(sk: string, def?: boolean): boolean {
+function isOpen(sk: string, def?: boolean): boolean {
   return Object.prototype.hasOwnProperty.call(ui.folds, sk) ? !!ui.folds[sk] : !!def;
 }
 
@@ -261,7 +250,7 @@ export function tipButton(text: string, label?: string): TemplateResult {
 }
 
 /** A section's "How this works" line, which shows its explanation. */
-export function howLink(key: string): TemplateResult {
+function howLink(key: string): TemplateResult {
   const on = ui.help.has(key);
   return html`<div class="sec-help"><button type="button" class="hlink" data-act="help" data-h=${key} aria-expanded=${live(String(on))} aria-controls=${`help-${key}`}><span class="hi" aria-hidden="true">i</span>How this works</button></div>
 `;
@@ -309,7 +298,7 @@ export function subsection(sk: string, title: string, body: Part, sub?: Part, id
 }
 
 /** A section: its fold key, its movable key, title, the line beside it, its explanation (`help` alone gives the How this works line, the text placed in the body; with `helpBody`, the text follows the line), its body, whether it starts open, and its id. */
-export interface SecOpts {
+interface SecOpts {
   sk: string;
   key?: string | undefined;
   title: string;

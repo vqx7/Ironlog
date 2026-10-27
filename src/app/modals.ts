@@ -25,7 +25,7 @@ export interface ConfirmSheet {
 }
 
 /** A question as it is open: what its answers do, and what closing it without one does (a question the sync asked reads that as Cancel, r56.1). */
-export interface ConfirmModal extends SheetBase, ConfirmSheet {
+interface ConfirmModal extends SheetBase, ConfirmSheet {
   kind: 'confirm';
   fn: () => void;
   alt?: { label: string; fn: () => void; quiet?: boolean | undefined; only?: boolean | undefined } | null | undefined;

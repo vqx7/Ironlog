@@ -124,7 +124,7 @@ export function adjOn(): boolean {
 }
 
 /** A row's load is the app's, not the lifter's: empty (grey), the suggestion, carried down from a typed load above, or put there by the adjustment (r34). */
-export function appLoad(b: DraftBlock | null | undefined, x: DraftSet): boolean {
+function appLoad(b: DraftBlock | null | undefined, x: DraftSet): boolean {
   return x.w == null || (!!b && x.w === b.sw) || carried.has(x) || !!(b && b.adj && Math.abs(x.w - b.adj.w) < EPS);
 }
 
@@ -795,7 +795,7 @@ export function oddReps(b: DraftBlock, s: DraftSet): boolean {
    weight, often none), an assisted lift (the help, which Finish asks about)
    and a timed hold keep their rules. */
 /** Whether row si of a lift that takes a load has no load typed and none in grey, so it cannot be ticked yet. */
-export function noLoadYet(b: DraftBlock, si: number): boolean {
+function noLoadYet(b: DraftBlock, si: number): boolean {
   const s = b.sets[si];
   const ex = EX(b.exId);
   return !!s && !ex.bw && !ex.timed && s.w == null && greyW(b, si) == null;

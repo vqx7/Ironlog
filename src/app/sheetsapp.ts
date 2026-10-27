@@ -105,7 +105,7 @@ export function installSheet(m: { how?: string | undefined }): TemplateResult {
    date comes first and everything is read as of that day: which routine day
    was due, last time's numbers and targets, and PRs. */
 /** The routine's day due on a past date (its weekday, or the cycle as it stood then), or -1 when that is a rest day or an empty one. */
-export function pastDue(R: Routine, date: string): number {
+function pastDue(R: Routine, date: string): number {
   const ok = (i: number): boolean => {
     const d = R.days[i];
     return !!d && !d.rest && d.items.length > 0;

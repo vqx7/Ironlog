@@ -75,7 +75,7 @@ function pickRow(e: ExerciseLike, used: { set: Set<string>; label: string }, gro
 }
 
 /** The picker's list for its search and muscle. */
-export function pickerBody(m: PickerSheet): TemplateResult {
+function pickerBody(m: PickerSheet): TemplateResult {
   const used = pickerUsed(m);
   const row = (e: ExerciseLike): TemplateResult => pickRow(e, used);
   const grp = (t: string): TemplateResult => html`<p class="pick-grp">${t}</p>`;
