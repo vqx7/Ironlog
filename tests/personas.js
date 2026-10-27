@@ -41,7 +41,8 @@
 //      account's sheets and problem reports moved): a new install imports
 //      a notes app's workouts typed in pounds from the Set up page (each set
 //      stored as typed, in kilograms, on its own date, matched to the
-//      library's lifts), gets a routine made from them, and its first
+//      library's lifts), gets a routine made from them, adds a Strong
+//      export (its RPE stored as RIR, its warm-up kept as one), and its first
 //      session suggests last time's load or one step on; a report sent with
 //      no connection leaves Sending within the sync's limit with words that
 //      say so and the text kept, and goes when sent again; the owner's
@@ -690,6 +691,25 @@ async function finish() {
     const R = after.routine;
     const trained = R ? R.days.filter(d => !d.rest && d.items.length) : [];
     ok(after.onboarded && trained.length === 2 && trained.every(d => d.items.length === 2) && trained.map(d => d.name).sort().join() === 'Legs,Push', '11. a routine is made from the days that repeat, Push and Legs, and the app opens on it', R && R.days.map(d => [d.name, d.items.map(i => i.exId)]));
+    // Then a Strong export with two older weeks, from Settings: added beside the notes' sessions, its RPE stored as RIR, its warm-up as one.
+    const STRONG = ['Date,Workout Name,Duration,Exercise Name,Set Order,Weight,Reps,Distance,Seconds,Notes,Workout Notes,RPE',
+      '2026-09-17 18:02:11,"Push",1h 5m,"Bench Press (Barbell)",W,95,10,0,0,"","",',
+      '2026-09-17 18:02:11,"Push",1h 5m,"Bench Press (Barbell)",1,175,8,0,0,"","",8',
+      '2026-09-17 18:02:11,"Push",1h 5m,"Bench Press (Barbell)",2,175,8,0,0,"","",9',
+      '2026-09-19 07:30:00,"Legs",50m,"Squat (Barbell)",1,205,5,0,0,"","",7.5',
+      '2026-09-19 07:30:00,"Legs",50m,"Squat (Barbell)",2,205,5,0,0,"","",8'].join('\n') + '\n';
+    const fs = require('fs'), os = require('os'), path = require('path');
+    const strongFile = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'ironlog-p11-')), 'strong.csv'); fs.writeFileSync(strongFile, STRONG);
+    await ev(() => { const L = window.__ironlog; L.ui.tab = 'settings'; L.ui.folds['settings:data'] = true; L.render(); }); await wait(150);
+    await page.click('#view [data-act="impOpen"]'); await wait(150);
+    await page.setInputFiles('#impFile', strongFile); await wait(600);
+    if (await page.$('#modal [data-act="impUnit"][data-v="lb"]')) { await page.click('#modal [data-act="impUnit"][data-v="lb"]'); await wait(150); }
+    await page.click('#modal [data-act="impGo"]'); await wait(400);
+    const st = await ev(() => { const L = window.__ironlog; return L.state.sessions.filter(s => s.date < '2026-09-24').map(s => ({ date: s.date, ex: s.ex.map(b => ({ name: L.EX(b.exId).name, sets: b.sets.map(x => [x.w, x.r, x.rir, !!x.warm]) })) })).sort((a, b) => (a.date < b.date ? -1 : 1)); });
+    const bs = st[0] && st[0].ex[0], sq = st[1] && st[1].ex[0];
+    ok(st.length === 2 && st[0].date === '2026-09-17' && st[1].date === '2026-09-19' && /bench/i.test(bs.name) && /squat/i.test(sq.name), '11. a Strong export adds its two sessions on their dates, matched to the library', st);
+    ok(bs && bs.sets.length === 3 && bs.sets[0][3] === true && Math.abs(bs.sets[1][0] - 175 * LB) < 1e-9 && bs.sets[1][2] === 2 && bs.sets[2][2] === 1 && sq.sets[0][2] === 2.5, '11. its warm-up is kept as one, its loads as typed, and its RPE 8, 9 and 7.5 stored as RIR 2, 1 and 2.5', st);
+    await ev(() => { const L = window.__ironlog; L.ui.tab = 'today'; L.render(); }); await wait(150);
     // The first session from it: each lift's grey load is last time's, or at most one step (about 5%) on, never below it.
     await H.start();
     const d1 = await H.draft();
