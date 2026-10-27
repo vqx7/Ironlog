@@ -12,18 +12,10 @@ import { fmtDate, sessTm } from './format';
 import { CARDIO } from './library';
 import { isRestWeek } from './live';
 import { distU, sessionsOn } from './display';
+import type { ConfirmSheet, TextSheet } from './modals';
 
 /** The close button every sheet has in its header. */
 export const closeX = (): TemplateResult => html`<button class="ib" aria-label="Close" data-act="mClose">✕</button>`;
-
-/** A question: what it asks, its answer, and a second answer when it has one. */
-export interface ConfirmSheet {
-  title: string;
-  body: string;
-  okLabel: string;
-  danger?: boolean | undefined;
-  alt?: { label: string; quiet?: boolean | undefined; only?: boolean | undefined } | null | undefined;
-}
 
 /* A question (confirmBox). A second answer is a button beside the first, or
    a quiet link under them; Cancel goes unless the second answer is the only
@@ -32,14 +24,6 @@ export interface ConfirmSheet {
 export function confirmSheet(m: ConfirmSheet): TemplateResult {
   const alt = m.alt;
   return html`<div class="sheet" role="dialog" aria-modal="true"><div class="sheet-h"><h3>${m.title}</h3></div><p>${m.body}</p><div class="row" style="margin-top:12px"><button class=${'btn ' + (m.danger ? 'danger' : 'primary')} data-act="mOk">${m.okLabel}</button>${alt && !alt.quiet ? html`<button class="btn" data-act="mAlt">${alt.label}</button>` : ''}${alt && alt.only ? '' : html`<button class="btn" data-act="mClose">Cancel</button>`}</div>${alt && alt.quiet ? html`<button class="linkbtn alt-quiet" data-act="mAlt">${alt.label}</button>` : ''}</div>`;
-}
-
-/** A block of text to copy (a backup, a report) or to paste (an import). */
-export interface TextSheet {
-  title: string;
-  help: string;
-  text?: string | undefined;
-  readonly?: boolean | undefined;
 }
 
 /** The text sheet: read-only text with Copy, or a field to paste into with Import. */

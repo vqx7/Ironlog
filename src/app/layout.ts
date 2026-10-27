@@ -194,5 +194,3 @@ export const HIDE_TABS: readonly (readonly [string, string])[] = [
   ['history', 'History'],
   ['settings', 'Settings']
 ];
-/** The section a tab opens by itself: only History, whose Sessions are the tab's content. */
-export const MAIN_FIXED: Readonly<Record<string, string>> = { history: 'sessions' };

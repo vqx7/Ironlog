@@ -3,7 +3,7 @@
 A hypertrophy and strength tracker for one lifter, V, used on a phone at the gym. It ships as a standalone
 installable web app: built from `src/` into one page, served by GitHub Pages at https://ironapp.org, working
 offline, with the log on the phone and an optional account that syncs it. Every pull request also publishes a
-preview app at https://ironapp.org/preview/ to try on the phone before merging. Build r62, version 2.16, state schema v5.
+preview app at https://ironapp.org/preview/ to try on the phone before merging. Build r63, version 2.17, state schema v5.
 
 The Claude artifact version was retired by V on 2026-09-27 (`OWNER.md` Done): never work on it or republish it.
 `cloudProvider()` still takes Claude's db when `window.claude` exists, because the sync suites use it as their
@@ -15,8 +15,8 @@ stand-in cloud.
 - `docs/ARCHIVE.md`: the code map and the history behind each rule (which bug or ruling made it, where it lives).
   Search it for a function, setting or release name when you need the reason for something. It is not a rule book.
 - `docs/EVIDENCE.md`: the sources behind every number, and which numbers are conventions.
-- `ARCHITECTURE.md`: the plan for moving the legacy script into typed modules, the module layers, and the ratchet
-  numbers `tests/hygiene.js` reads. Read it when moving code or changing what a module imports.
+- `ARCHITECTURE.md`: the module layers `tests/hygiene.js` reads, the counts of casts it holds, and how the legacy
+  script moved into typed modules (r49 to r63). Read it when moving code or changing what a module imports.
 - `PENDING.md`: what is open; an item is built when V says go. `OWNER.md`: the steps only V does, with the exact
   code (`tests/owner-doc.js` keeps it identical to the repo's). `tests/SUITES.md`: what each suite checks.
   `FEEDBACK.md` and `SUPABASE.md`: problem reports and the account backend.
@@ -32,9 +32,9 @@ stand-in cloud.
    that screens showing one quantity agree: extend it when a release adds or moves a number a lifter reads.
    `tests/personas.js` drives lifters by persona through the screens by taps and typing and checks them against the
    rules, not the build before (V, 2026-10-25): a release that moves or changes a screen extends it.
-4. Old code in the legacy parts may be fixed in place, with the failing test first. A screen that is being changed
-   substantially moves into `src/app/` instead. The legacy parts never grow: each build has no more top-level
-   declarations and no more lines than the last (the ratchet in `ARCHITECTURE.md`, checked by `tests/hygiene.js`).
+4. Every line of the app is in the typed modules since r63, when the last of the legacy script moved and it was
+   deleted (`ARCHITECTURE.md` records how it moved, phase by phase from r49). A fix keeps the rules of the modules
+   (Invariants, Modules) and comes with its failing test first.
 5. Releases are stacked (each pull request on the one before), so the preview carries the whole stack and V tries
    it once; V merges them in order. One independent review a stack, over all of it, before the first merge (V,
    2026-10-21), on the strongest model at full effort when the stack touches storage or sync; briefed to report
@@ -55,15 +55,15 @@ stand-in cloud.
 
 - `src/app/`: the typed modules (TypeScript). `config.ts` is the one place for the app's name, the versions
   (`DISPLAY_VERSION`, `APP_VERSION`), the site address, the library versions and the outside addresses. `store.ts`
-  owns the shared state (`state`, `ui`, `cloud`, `acct`, `acctWait`); the log is replaced only through `setState`.
+  owns the shared state (`state`, `ui`, `cloud`, `acct`); the log is replaced only through `setState`.
   The engine and the analytics are functions of a model (`model.ts`): each takes `M` (the log, the date the engine
   reads as today, the caches) as its first parameter and its name ends in `In` (`suggestIn`, `IDXIn`, `coachIn`).
-  `live.ts` holds the one model the app runs on (`LIVE`) and the adapters through which the legacy script calls
+  `live.ts` holds the one model the app runs on (`LIVE`) and the adapters through which the screens call
   those functions by their old names (`export const suggest = live(suggestIn);`). Storage and sync are typed since
   r56: `normalize.ts` (the log as every build reads it), `storage.ts` (the keys, where the save stands (`device`),
   the error log (`log`), Undo's steps, a log kept aside for another account, in IndexedDB as Undo's copies are) and
   `sync.ts` (every write of the log, the account's documents, the sync notes, another tab, one workout open on two
-  phones, the account question); they reach the screens only through `fx` in `store.ts`, which the legacy script
+  phones, the account question); they reach the screens only through `fx` in `store.ts`, which `main.ts`
   fills at start (`render`, `toast`, `ask`, `confirm`, and the session's effects a moved screen calls), and run
   nothing on import (`storageStart()`, `syncStart()`). The screens move here from r57 (phase 5): `view.ts` (the
   host that draws every tab into `#view`, and the parts the moved screens share), `act.ts` (the one way to change
@@ -74,11 +74,17 @@ stand-in cloud.
   bar), `display.ts` and `env.ts` for what more than one screen reads, and the sheets (r62): `sheets.ts` (the layer every
   sheet is drawn into: a sheet opened is drawn fresh, the open one drawn again is updated in place) with `sheetsmisc.ts`,
   `sheetslift.ts`, `sheetsplan.ts`, `sheetsexercise.ts`, `sheetspicker.ts` and `sheetsapp.ts`; Pick for me, Swap's
-  closest matches, Limited equipment and Short on time are functions of the model in `pick.ts`. A change made inside another change is part
-  of it (`act`, r60): one Undo step and one save.
-- `src/1*.js`, `src/2*.js`: the legacy script, cut into parts at its section headers (start-up, accounts, the
-  screens, sheets, actions and events), one function scope. It reads `src/app/` only through the imports in
-  `src/09-imports.js`. `src/01` to `src/03` are the page head, styles and markup.
+  closest matches, Limited equipment and Short on time are functions of the model in `pick.ts`. The rest moved in
+  r63: the page (`page.ts`: the draw, the sheets opened, closed and drawn by kind, Back, the save state, the theme),
+  `modals.ts` (one type for every sheet), `toast.ts`, `timer.ts` (the rest timer, the screen kept on), `tips.ts`,
+  the account flow (`account.ts`, its sheets in `sheetsaccount.ts`), problem reports (`report.ts`), import
+  (`importflow.ts`, `sheetsimport.ts`), the demo (`demo.ts`), every tap by data-act (`actsapp.ts`, `actsroutine.ts`,
+  `actspick.ts`, `actsstart.ts`, `actslift.ts`), `screens.ts` (every tab's draw, the sections' drags, the table of
+  sheets), `events.ts` (the listeners and the one table of actions) and `main.ts`, the bundle's entry: the only
+  module that runs anything as it is imported, it starts the page in its order and fills `window.__ironlog`. A
+  change made inside another change is part of it (`act`, r60): one Undo step and one save.
+- `src/01-head.html`, `src/02-style.css`, `src/03-body.html`, `src/99-tail.html`: the page head, styles, markup and
+  close.
 - `index.html`: the whole app, built from `src/` by `npm run join` (`scripts/join.js`) and committed, because the
   build and every test use this one file. Never edit it by hand; read the source in `src/`.
 - `tests/`: Playwright suites that drive the real page. `tests/h.js` is the harness (serves the libraries from
@@ -105,7 +111,6 @@ npm run join           # builds index.html from src/ (after any edit in src/); n
 npm test               # every suite, then the lifter-facing ones on dist/; must end "All suites passed"
 npm run test:webkit    # every suite in WebKit; add -- --shard 1/4 or -- --jobs 1
 npm run build          # writes dist/ only
-node scripts/depmap.js # the legacy script's size and what it depends on
 ```
 
 One suite: `node tests/<name>.js`, or `IRONLOG_BROWSER=webkit node tests/<name>.js`. Each prints `ok` and `FAIL`
@@ -170,7 +175,7 @@ lines, then `ALL PASS` (the fuzz suite prints `fuzz clean`). Type check: `npx ts
   log only inside `act` (the check, the Undo step, the change, the caches dropped, the save and the sync, in that
   order). A function of the
   model reads nothing but the model and its arguments: no clock, randomness, store, page or changing module value
-  (new engine or analytics code takes `M` first; the legacy script reaches it through an adapter in `live.ts`).
+  (new engine or analytics code takes `M` first; the screens reach it through an adapter in `live.ts`).
   `tests/hygiene.js` checks these.
 - **Code:** edit `src/`, then `npm run join`. Never reuse a class name the app has (`.tv`). Image tags in the
   script are written `\x3cimg`. Any new inline script, outside host or `eval` needs the Content Security Policy in

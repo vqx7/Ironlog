@@ -29,7 +29,7 @@ export const SUNDAY = WEEK_DAYS - 1;
 /** The letters A to Z, as superset groups and spreadsheet columns are named. */
 export const LETTERS = 26;
 /** Ids and hashes are written in base 36: digits and lowercase letters. */
-export const ID_RADIX = 36;
+const ID_RADIX = 36;
 
 /* ---------- text ---------- */
 
@@ -58,7 +58,7 @@ export const esc = (s: unknown): string =>
   );
 
 /** A new record id: up to UID_RANDOM random base-36 characters, then the last UID_TIME of the time. */
-export const UID_RANDOM = 7,
+const UID_RANDOM = 7,
   UID_TIME = 4;
 /** A new record id, by UID_RANDOM and UID_TIME (a random number's text starts "0.", which is skipped). */
 export const uid = (): string =>

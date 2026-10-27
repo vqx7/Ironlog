@@ -29,12 +29,12 @@ type Save = {
 };
 
 /** The last day of a month whose sessions go in its first document; the rest go in its second. */
-export const CHUNK_HALF_DAY = 15;
+const CHUNK_HALF_DAY = 15;
 /** The session document a date belongs to: s-YYYY-MM-1 for days 1 to CHUNK_HALF_DAY, -2 after. */
 export const chunkOf = (date: string): string => `s-${monthOf(date)}-${dayOfMonth(date) <= CHUNK_HALF_DAY ? 1 : 2}`;
 
 /** Records in a document are kept in the one session order. */
-export const bySess = sessCmp;
+const bySess = sessCmp;
 
 /* Body data (item 19): bodyweights and tape measurements sync in one document
    per year, b-YYYY, instead of inside core, where years of daily weigh-ins

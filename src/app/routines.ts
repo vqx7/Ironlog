@@ -15,21 +15,21 @@ import { SESSION_CAP, HARD_RIR, RIR_CALL_TOP, HALF_SET, HELPER_CREDIT, lighterSe
 
 /** A plan item as a routine is first made: normalize() adds its superset
     link (null) when the routine is saved. */
-export type NewItem = Omit<PlanItem, 'ss' | 'jump'>;
+type NewItem = Omit<PlanItem, 'ss' | 'jump'>;
 
 /** A routine as first made, before normalize() completes its items. */
 export type NewRoutine = Omit<Routine, 'days'> & { days: (Omit<Day, 'items'> & { items: NewItem[] })[] };
 
 /** A ready-made routine's exercise: the plan without ids, which a copy gets. */
-export type TemplateItem = Pick<PlanItem, 'exId' | 'sets' | 'repMin' | 'repMax' | 'rir' | 'rest'>;
-export interface TemplateDay {
+type TemplateItem = Pick<PlanItem, 'exId' | 'sets' | 'repMin' | 'repMax' | 'rir' | 'rest'>;
+interface TemplateDay {
   name: string;
   items: TemplateItem[];
   rest?: boolean;
 }
 
 /** A ready-made routine: its name, its lines, and its days. */
-export type Template = { key: string; name: string; who: string; meta: string; hidden?: boolean; days: TemplateDay[] };
+type Template = { key: string; name: string; who: string; meta: string; hidden?: boolean; days: TemplateDay[] };
 
 /** The weekday names, Monday first, in the order a weekly routine's days are kept. */
 export const DAYS: readonly string[] = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
@@ -214,7 +214,7 @@ export function weekFactor(R: RoutineLike): number {
 }
 
 /** Whether a routine day has something to train. */
-export function isTrainDay(d: RoutineLike['days'][number]): boolean {
+function isTrainDay(d: RoutineLike['days'][number]): boolean {
   return !d.rest && d.items.length > 0;
 }
 
@@ -560,7 +560,7 @@ export function basePlanIn(M: Model, exId: string, R?: Routine | null, dayId?: s
    as a logged set; a plan at RIR 4 used to set a weekly target that logging
    it could never meet. In a deload week each exercise is half its sets,
    rounded up, as the sessions are. */
-export function planHardIn(M: Model, it: { rir: number | string }): boolean {
+function planHardIn(M: Model, it: { rir: number | string }): boolean {
   return M.s.settings.rirMode === 'off' || !(+it.rir > HARD_RIR);
 }
 
@@ -584,7 +584,7 @@ export function dayShare(R: RoutineLike): number {
 
 /* Adds one day's planned hard sets per muscle into `out`, each counted f
    times: each planned set's credit (above), a helper muscle's at half. */
-function addDayCredit(M: Model, d: Day, f: number, out: Record<string, number>): void {
+function addDayCredit(M: Model, d: Day | NewRoutine['days'][number], f: number, out: Record<string, number>): void {
   if (d.rest) return;
   for (const it of d.items) {
     const pc = planCreditIn(M, it);
@@ -611,7 +611,7 @@ export function dayCreditIn(M: Model, d: Day): Record<string, number> {
    divided by its length times a week (weekFactor), and the targets a
    first-run pick fitted by that reading are refitted from it (refitIn). */
 /** Planned hard sets a week for each muscle, from a routine (each day `share` times a week, dayShare unless given). */
-export function plannedSetsIn(M: Model, routine: Routine, share?: number): Record<string, number> {
+export function plannedSetsIn(M: Model, routine: Routine | NewRoutine, share?: number): Record<string, number> {
   const out: Record<string, number> = {};
   const f = share ?? dayShare(routine);
   for (const d of routine.days) addDayCredit(M, d, f, out);

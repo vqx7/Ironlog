@@ -82,7 +82,7 @@ type LoadedSet = { w?: number | string | null | undefined; r?: number | string |
 type WeekCount = { n: number; l: number };
 
 /** The bodyweight logged on or before a date, or null. */
-export function bwKnownAtIn(M: Model, date: string): number | null {
+function bwKnownAtIn(M: Model, date: string): number | null {
   let best: Bodyweight | null = null;
   for (const b of M.s.bodyweights) if (b.date <= date && (!best || b.date >= best.date)) best = b;
   return best ? best.kg : null;
@@ -141,7 +141,7 @@ export const CAL_WEEKS = 12,
   CAL_MIN = 2;
 
 /** The RIR checks of a list summed up: how many, their median error, the correction, the mean error. */
-export function calSummary(list: readonly { err: number }[]): CalSummary {
+function calSummary(list: readonly { err: number }[]): CalSummary {
   const last = list.slice(-CAL_N);
   const n = last.length;
   const med = n ? median(last.map(p => p.err)) : null;
@@ -326,7 +326,7 @@ export function dateIndexIn(M: Model): DateIndex {
 export const PICK_DAYS = 7;
 
 /** Recovery's rule of thumb (used only for ranking, by Pick for me) takes a day off when every hard set of a muscle stopped at RECOVERY_EASY_RIR or more in reserve. */
-export const RECOVERY_EASY_RIR = 3;
+const RECOVERY_EASY_RIR = 3;
 
 /* IDX() is everything the screens read, built once per change (r36: the
    one 420-line function split into its steps, each below, with no change to
@@ -397,7 +397,7 @@ export function liftReadIn(M: Model, exId: string, T?: string): Exposure[] {
 /* Step 1: every session in date order. Hard sets per week, per day and per
    muscle, and each lift's exposure (its working sets read as loads, the
    working load, the best estimate, the trend readings, weight lifted). */
-export function idxSessionsIn(M: Model, sessions: readonly Session[]) {
+function idxSessionsIn(M: Model, sessions: readonly Session[]) {
   // weekSets counts every hard set (and, with rirHalf on, half of each set
   // past RIR 3: hardCredit, r40). weekConf counts only those whose RIR was
   // actually logged. A set with a blank RIR still counts as hard, because
@@ -606,7 +606,7 @@ export function idxSessionsIn(M: Model, sessions: readonly Session[]) {
 /* Step 2: sessions lighter than their lift's usual that nobody tagged. Marks
    each such exposure (auto, or keep for a new level) and returns the count per
    week. */
-export function idxAutoLighter(byEx: Record<string, Exposure[]>): Record<string, WeekCount> {
+function idxAutoLighter(byEx: Record<string, Exposure[]>): Record<string, WeekCount> {
   /* Lighter sessions nobody tagged (r30, from an independent review): an
      imported deload week, or one logged without the Deload or Lighter
      buttons, sat in every trend as a dip and made rising lifts read flat or
@@ -832,7 +832,7 @@ function repsOf(q: Exposure, k: number): number {
     who opens with a heavy single and leaves it out on a lighter day, doing
     the usual sets after it, read lighter, though the single is not where
     reps are built (r31). */
-export function atUsualLoad(x: Exposure, ref: readonly Exposure[]): boolean {
+function atUsualLoad(x: Exposure, ref: readonly Exposure[]): boolean {
   const k = usualSets(ref);
   const mW = Math.max(...ref.map(q => q.topW)),
     mT = Math.max(...ref.map(q => readingOf(q, k) ?? -Infinity)),
@@ -854,7 +854,7 @@ export function atUsualLoad(x: Exposure, ref: readonly Exposure[]): boolean {
     (seconds on a hold) no further under any of theirs than USUAL_SHARE
     allows. With no earlier session in the range to compare with, it is
     not: the day's label stands. */
-export function atUsualWork(x: Exposure, ref: readonly Exposure[]): boolean {
+function atUsualWork(x: Exposure, ref: readonly Exposure[]): boolean {
   if (!ref.length) return false;
   if (x.tRaw != null && ref.some(q => q.tRaw != null)) return atUsualLoad(x, ref);
   const k = usualSets(ref);
@@ -903,7 +903,7 @@ export function atUsualWork(x: Exposure, ref: readonly Exposure[]): boolean {
    reading, as a trend reads it (r34.2, loadUp); a step too big is the
    engine's to read (sgBelowRange). The first session of a lift in a range,
    or back after a break (afterBreak), is its own usual. */
-export function idxShort(byEx: Record<string, Exposure[]>, planSets: (id: string, x: Exposure) => number | null): void {
+function idxShort(byEx: Record<string, Exposure[]>, planSets: (id: string, x: Exposure) => number | null): void {
   for (const id of Object.keys(byEx)) {
     const normal: Exposure[] = [];
     let last: Exposure | null = null;
@@ -1019,7 +1019,7 @@ export function lighterTally(
    a week of deload sessions done at full for every lift, which they left out
    by its labels (the audit V asked for: four weeks of "add sets" after a
    deload tapped on a Thursday, for a lifter doing every planned set). */
-export function idxLightWeeks(
+function idxLightWeeks(
   sessions: readonly Session[],
   byEx: Record<string, Exposure[]>,
   deloadWeek: string | null
@@ -1032,7 +1032,7 @@ export function idxLightWeeks(
 
 /* Step 4: one lift's PRs, in order, into prs (and each exposure's progress
    mark, which the stall test reads). Returns the lift's best estimate ever. */
-export function idxPRsIn(M: Model, id: string, exps: Exposure[], prs: Pr[]): number | null {
+function idxPRsIn(M: Model, id: string, exps: Exposure[], prs: Pr[]): number | null {
   /* A rep PR is a set no earlier set matched on both load and reps. Keeping
      every earlier set to test that was O(exposures^2 x sets^2) and became
      seconds of work after a couple of years of logs. Only the non-dominated
@@ -1209,7 +1209,7 @@ export function idxPRsIn(M: Model, id: string, exps: Exposure[], prs: Pr[]): num
    the test (idxLiftIn) and the coach's words about it (r54, from the audit V
    asked for: "for 3 weeks" was said of a lift flat for ten). */
 /** The stretch of sessions a stall is read over, or null when there is none. */
-export function stallStretch<X extends { date: string }>(wE: readonly X[]): X[] | null {
+function stallStretch<X extends { date: string }>(wE: readonly X[]): X[] | null {
   if (wE.length < STALL.min) return null;
   const lastE = wE[wE.length - 1].date;
   let i0 = wE.length - 1;
@@ -1275,7 +1275,7 @@ export function stallWordsIn(M: Model, id: string): string {
    last break. Until r54 only the newest session's range was read, so a lift
    could read stalled midweek and not at the weekend. */
 /** The rep ranges a lift's stall is read in, each with its sessions. */
-export function stallScopesIn(
+function stallScopesIn(
   M: Model,
   id: string,
   sc: Pick<ReturnType<typeof trendScope>, 'real' | 'curRR' | 'inRange' | 'lastReal' | 'from'>
@@ -1616,7 +1616,7 @@ export function idxLiftIn(
 }
 
 /* Step 6: muscle scores from the lifts' trends. */
-export function idxScoresIn(M: Model, exStats: Record<string, ExStat>): Score[] {
+function idxScoresIn(M: Model, exStats: Record<string, ExStat>): Score[] {
   // muscle scores
   // Direct work is authoritative. Secondary involvement is used only as a
   // fallback, so muscles trained indirectly (front delts, forearms, traps)
@@ -1838,7 +1838,7 @@ export type LiftBests = Pick<ExStat, 'best' | 'bestAll' | 'byBand'> & {
     up to the day and their bests, the heaviest working load among them, the
     set's load as judged (w, prSameLoad), and its PR load (prLoad) as judged
     (load) and as logged (own). */
-export type PrFrame = {
+type PrFrame = {
   ex: ExerciseLike;
   exps: Exposure[];
   st: LiftBests | undefined;
@@ -1877,7 +1877,7 @@ export function prFrameIn(M: Model, exId: string, s: LoadedSet, date: string): P
 }
 
 /** One record on the bests board: the set and the day it was first reached. */
-export type BestAt = { p: ExPoint; date: string };
+type BestAt = { p: ExPoint; date: string };
 
 /* All-time bests (item 27; moved from the legacy script in r55 to judge loads
    as the PR list does): per lift, the best estimate and the heaviest set,

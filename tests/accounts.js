@@ -434,8 +434,23 @@ fs.cpSync(DIST, tmp, { recursive: true });
   await R2.page.click('#modal [data-act="fbSend"]'); await R2.page.waitForFunction(() => { const m = window.__ironlog.ui.modal; return m && !m.busy; }, null, { timeout: 10000 });
   const f2 = fake.feedback[1];
   ok(f2 && f2.category === 'question' && /^data:image\/jpeg;base64,/.test(f2.screenshot || ''), 'a question with a screenshot is sent', f2 && { ...f2, screenshot: (f2.screenshot || '').slice(0, 30) });
+  // r63 (PENDING 306): each report carries a key made on the phone. A report
+  // whose answer is lost on the way back (stored, the connection dropped) and
+  // is sent again is kept once; a table without the key's column yet takes
+  // the report without it.
+  fake.loseReplies(1);
+  fr = await sendFb(R2, 'An answer lost on the way');
+  const lost = fake.feedback[2];
+  // The answer lost, the sheet says the report did not go and Send sends it again; or the account library tries again by itself. Either way it is kept once.
+  if (!fr.sent) { await R2.page.click('#modal [data-act="fbSend"]'); await R2.page.waitForFunction(() => { const m = window.__ironlog.ui.modal; return m && !m.busy; }, null, { timeout: 10000 }); }
+  console.log('note r63: the lost answer was ' + (fr.sent ? 'retried by the account library' : 'said on the sheet, and Send sent it again'));
+  ok(lost && lost.message === 'An answer lost on the way' && /^[a-z0-9]{6,}$/.test(lost.client_id || '') && await R2.ev(() => !!window.__ironlog.ui.modal.sent) && fake.feedback.length === 3 && fake.feedback.filter(f => f.client_id === lost.client_id).length === 1, 'r63: a report whose answer is lost on the way back, sent again, is read as sent and kept once, by its key', { fr, n: fake.feedback.length, key: lost && lost.client_id });
+  fake.feedbackKey(false);
+  fr = await sendFb(R2, 'A table made before r63');
+  fake.feedbackKey(true);
+  ok(fr.sent && fake.feedback.length === 4 && fake.feedback[3].client_id === null, 'r63: a table without the key\'s column yet takes the report without it', fr);
   // Five a day: the app stops the sixth, and so does the database.
-  for (const t of ['Third report here', 'Fourth report here', 'Fifth report here']) await sendFb(R2, t);
+  for (const t of ['Fifth report here']) await sendFb(R2, t);
   ok(fake.feedback.length === 5, 'five reports in a day go through', fake.feedback.length);
   fr = await sendFb(R2, 'Sixth report here');
   ok(!fr.sent && /5 reports today/.test(fr.err) && fake.feedback.length === 5, 'the sixth is stopped with a plain message', fr);

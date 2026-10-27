@@ -88,7 +88,7 @@ export const MONTHS: readonly string[] = [
    day), and so is the time left in a session; under MIN_STEP_FROM minutes, to
    the minute. The budget is compared before rounding. */
 /** The step estimated minutes are rounded to, and the minutes from which they are. */
-export const MIN_STEP = 5,
+const MIN_STEP = 5,
   MIN_STEP_FROM = 10;
 /** Estimated minutes, rounded as above (at least 1). */
 export const min5 = (m: number): number =>
@@ -140,7 +140,7 @@ export const rangeWords = (p: { repMin: number | string; repMax: number | string
 export const DTF: Record<string, Intl.DateTimeFormat> = {};
 
 /** The kept formatter for a format, made on first use. */
-export const dtf = (k: string, o: Intl.DateTimeFormatOptions): Intl.DateTimeFormat =>
+const dtf = (k: string, o: Intl.DateTimeFormatOptions): Intl.DateTimeFormat =>
   DTF[k] || (DTF[k] = new Intl.DateTimeFormat(undefined, o));
 
 /** A date (YYYY-MM-DD) in a kept format; empty for a date that does not parse. */

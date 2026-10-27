@@ -32,12 +32,12 @@ export const RIR_CALL_TOP = 5;
 
 /** Brzycki's formula, 1RM = load x BRZYCKI_A / (BRZYCKI_B - reps to failure)
     (Brzycki 1993), used up to BRZYCKI_TOP reps to failure. */
-export const BRZYCKI_A = 36,
+const BRZYCKI_A = 36,
   BRZYCKI_B = 37;
 /** The reps to failure where Brzycki gives way to Epley, which meet there. */
 export const BRZYCKI_TOP = 10;
 /** Epley's formula, 1RM = load x (1 + reps to failure / EPLEY_REPS) (Epley 1985). */
-export const EPLEY_REPS = 30;
+const EPLEY_REPS = 30;
 /** How far a trend reads, in reps to failure, with Epley past E1_MAX_REPS (r30, a convention): never shown as a 1RM. */
 export const TREND_MAX_RTF = 20;
 /** How far load-finding reads, in reps to failure, with Epley past E1_MAX_REPS (r31, a convention): never shown. */
@@ -106,7 +106,7 @@ export function rtfAt(est: number, load: number): number | null {
 }
 
 /** A rep band PRs are judged within. */
-export type PrBand = 1 | 2 | 3;
+type PrBand = 1 | 2 | 3;
 /** The rep bands for PR comparisons, by the reps to failure each ends at (a
     convention, r56.2): estimates from triples and from sets of 12 are not
     interchangeable, so a best is judged within its own band. The last ends
@@ -130,7 +130,7 @@ export const REP_PR_SHARE = 0.9;
    reads one too), says nothing. Help on an assisted lift is read by its
    size. */
 /** The unit a load was typed in, from its number, or null when the number does not say. */
-export function typedUnit(w: number): 'kg' | 'lb' | null {
+function typedUnit(w: number): 'kg' | 'lb' | null {
   const a = Math.abs(w);
   if (!(a > 0)) return null;
   const kg = onStep(a, TYPED_STEP),
@@ -216,7 +216,7 @@ export function sameRR(
 /** The share of a session's heaviest load a set's must reach to count toward its working load (r31, a convention): unmarked warm-ups sit lower. */
 export const WORK_FLOOR = 0.6;
 /** Loads compared as whole thousandths, so loads typed in either unit and kept in kilograms group by the gram. */
-export const LOAD_KEY = 1000;
+const LOAD_KEY = 1000;
 
 /* The working load of one session of a lift (r31): the load done for the
    most sets, the heavier on a tie, among loads at 60% or more of the
@@ -470,9 +470,9 @@ export const T90: readonly number[] = [
 ];
 
 /** The normal distribution's 0.90 quantile, the limit of T90 as the degrees of freedom grow. */
-export const T90_INF = 1.2816;
+const T90_INF = 1.2816;
 /** The slope of the approximation past T90's last row. */
-export const T90_SLOPE = 0.8521;
+const T90_SLOPE = 0.8521;
 
 /** The quantile for df degrees of freedom, whole degrees only: under 1 reads as 1, past the table the approximation. */
 export function t90(df: number): number {

@@ -65,7 +65,7 @@ import {
   plannedSets,
   sessionMuscleSets
 } from './live';
-import { fx, state, ui } from './store';
+import { state, ui } from './store';
 import { curRoutineB, effTgt, findItem, libFiltered, nameTaken, newItem, rirShow, routineClutter } from './display';
 import {
   dragDrop,
@@ -79,8 +79,12 @@ import {
   tabFoot,
   tipButton
 } from './view';
+import type { Field } from './view';
 import type { Part } from './view';
 import type { Day, Exercise, PlanItem, Routine } from './types';
+import { confirmBox, render, rerenderKeepScroll } from './page';
+import { toast } from './toast';
+import { refreshEx, syncDraftPlan } from './worksets';
 
 /** The fewest sets the volume bars' scale shows, so a light week's bars are not stretched. */
 const BAR_SCALE_MIN = 24;
@@ -88,7 +92,7 @@ const BAR_SCALE_MIN = 24;
 /* ---------- small parts ---------- */
 
 /** What a muscle with no weekly target says where its target would be (r58: any muscle may be given one). */
-export const TRACKED_TIP = 'Tracked only: counted, with no target. Give it one in Settings, Weekly set targets.';
+const TRACKED_TIP = 'Tracked only: counted, with no target. Give it one in Settings, Weekly set targets.';
 
 /** An exercise's library tags (exTags): Most common and Less common, but not the one the list is filtered to. */
 export function exTagParts(e: Pick<Exercise, 'id'> & Partial<Pick<Exercise, 'custom' | 'rare'>>, skip?: string): Part {
@@ -179,7 +183,7 @@ export function volumeRows(
 /* The open day: the one picked last, else the day + adds to, else the first
    training day. An empty string means the lifter closed them all. */
 /** The id of the day Plan has open. */
-export function dayFocusId(R: Routine): string {
+function dayFocusId(R: Routine): string {
   const f = ui.dayFocus;
   if (typeof f === 'string' && (f === '' || R.days.some(d => d.id === f))) return f;
   const t = R.days[ui.bTarget];
@@ -360,19 +364,19 @@ const num = (v: string | undefined): number => +(v ?? NaN);
 export const PLAN_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
   toggleItem(t) {
     ui.openItem = ui.openItem === t.dataset.uid ? null : t.dataset.uid;
-    fx.rerenderKeepScroll();
+    rerenderKeepScroll();
   },
   iUp(t) {
     const d = curRoutineB().days[num(t.dataset.day)];
     if (!d) return;
     act(() => move(d.items, num(t.dataset.i), num(t.dataset.i) - 1));
-    fx.rerenderKeepScroll();
+    rerenderKeepScroll();
   },
   iDown(t) {
     const d = curRoutineB().days[num(t.dataset.day)];
     if (!d) return;
     act(() => move(d.items, num(t.dataset.i), num(t.dataset.i) + 1));
-    fx.rerenderKeepScroll();
+    rerenderKeepScroll();
   },
   iDel(t) {
     const d = curRoutineB().days[num(t.dataset.day)];
@@ -384,8 +388,8 @@ export const PLAN_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
       },
       { undo: true }
     );
-    fx.rerenderKeepScroll();
-    if (gone) fx.toast(`${exName(gone.exId)} removed`, true);
+    rerenderKeepScroll();
+    if (gone) toast(`${exName(gone.exId)} removed`, true);
   },
   libAdd(t) {
     const R = curRoutineB();
@@ -396,8 +400,8 @@ export const PLAN_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
       d.items.push(newItem(exId));
       Object.assign(d, trainOn(d));
     });
-    fx.rerenderKeepScroll();
-    fx.toast(`Added to ${dayLabel(R, ui.bTarget)}`);
+    rerenderKeepScroll();
+    toast(`Added to ${dayLabel(R, ui.bTarget)}`);
   },
   rActive() {
     const id = ui.bRoutine;
@@ -406,13 +410,13 @@ export const PLAN_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
       state.activeRoutineId = id;
     });
     ui.todayDay = null;
-    fx.render();
-    fx.toast('Active routine changed');
+    render();
+    toast('Active routine changed');
   },
   rClean() {
     const c = routineClutter();
     if (!c.length) return;
-    fx.confirm(
+    confirmBox(
       `Remove ${c.length} routine${c.length > 1 ? 's' : ''}?`,
       `${c.map(r => r.name).join(', ')}. ${c.every(plainTemplate) ? 'Ready-made ones can be added again from New from a template.' : `Any you changed stay under Recently deleted in History for ${TRASH_DAYS} days.`}`,
       'Remove',
@@ -430,8 +434,8 @@ export const PLAN_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
         );
         if (!done) return;
         if (!state.routines.find(r => r.id === ui.bRoutine)) ui.bRoutine = state.activeRoutineId;
-        fx.render();
-        fx.toast(`${n} routine${n > 1 ? 's' : ''} removed`, true);
+        render();
+        toast(`${n} routine${n > 1 ? 's' : ''} removed`, true);
       },
       true
     );
@@ -450,12 +454,12 @@ export const PLAN_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
       state.routines.push(r);
     });
     ui.bRoutine = r.id;
-    fx.render();
+    render();
   },
   rDel() {
     const R = curRoutineB();
     if (state.routines.length < 2) return;
-    fx.confirm(
+    confirmBox(
       'Delete routine?',
       `"${R.name}" will be removed. Logged sessions are kept${plainTemplate(R) ? '; it can be added again from New from a template.' : `, and the routine stays under Recently deleted in History for ${TRASH_DAYS} days.`}`,
       'Delete routine',
@@ -471,12 +475,12 @@ export const PLAN_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
           { check: () => !!state.routines.find(r => r.id === R.id) && state.routines.length >= 2, undo: true }
         );
         if (!done) {
-          fx.rerenderKeepScroll();
+          rerenderKeepScroll();
           return;
         }
         ui.bRoutine = state.activeRoutineId;
-        fx.render();
-        fx.toast('Routine deleted', true);
+        render();
+        toast('Routine deleted', true);
       },
       true
     );
@@ -489,8 +493,8 @@ export const PLAN_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
     });
     ui.bTarget = R.days.length - 1;
     ui.dayFocus = undefined;
-    fx.rerenderKeepScroll();
-    fx.toast(`Day ${R.days.length} added`);
+    rerenderKeepScroll();
+    toast(`Day ${R.days.length} added`);
   },
   dAddRest() {
     const R = curRoutineB();
@@ -498,8 +502,8 @@ export const PLAN_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
     act(() => {
       R.days.push({ id: uid(), name: 'Rest', rest: true, items: [] });
     });
-    fx.rerenderKeepScroll();
-    fx.toast(`Day ${R.days.length} added as rest`);
+    rerenderKeepScroll();
+    toast(`Day ${R.days.length} added as rest`);
   },
   dFold(t) {
     const R = curRoutineB();
@@ -510,7 +514,7 @@ export const PLAN_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
       const i = R.days.findIndex(d => d.id === id);
       if (i >= 0) ui.bTarget = i;
     }
-    fx.rerenderKeepScroll();
+    rerenderKeepScroll();
     if (!open) {
       const el = document.querySelector(`.day[data-did="${CSS.escape(id)}"]`);
       if (el)
@@ -527,7 +531,7 @@ export const PLAN_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
     if (!(i >= 1)) return;
     act(() => move(R.days, i, i - 1));
     ui.todayDay = null;
-    fx.rerenderKeepScroll();
+    rerenderKeepScroll();
   },
   dDown(t) {
     const R = curRoutineB();
@@ -535,14 +539,14 @@ export const PLAN_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
     if (!(i < R.days.length - 1)) return;
     act(() => move(R.days, i, i + 1));
     ui.todayDay = null;
-    fx.rerenderKeepScroll();
+    rerenderKeepScroll();
   },
   dDel(t) {
     const R = curRoutineB();
     const i = num(t.dataset.day);
     if (R.schedule === 'weekly') return;
     if (R.days.length < 2) {
-      fx.toast('A cycle needs at least one day');
+      toast('A cycle needs at least one day');
       return;
     }
     const d = R.days[i];
@@ -555,18 +559,18 @@ export const PLAN_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
       const R2 = state.routines.find(r => r.id === rid);
       const j = R2 ? R2.days.findIndex(x => x.id === did) : -1;
       if (!R2 || j < 0 || R2.days.length < 2) {
-        fx.toast('That day changed on another device. Nothing was removed.');
-        fx.rerenderKeepScroll();
+        toast('That day changed on another device. Nothing was removed.');
+        rerenderKeepScroll();
         return;
       }
       act(() => R2.days.splice(j, 1), { undo: true });
       if (ui.bTarget >= R2.days.length) ui.bTarget = R2.days.length - 1;
       ui.todayDay = null;
-      fx.rerenderKeepScroll();
-      fx.toast(`${d.name} removed`, true);
+      rerenderKeepScroll();
+      toast(`${d.name} removed`, true);
     };
     if (d.items.length)
-      fx.confirm(
+      confirmBox(
         'Remove this day?',
         `${dayLabel(R, i)}: ${d.name} and its ${d.items.length} exercise${d.items.length > 1 ? 's' : ''} will be removed from the routine. Sessions you already logged are not affected.`,
         'Remove day',
@@ -585,7 +589,7 @@ export const PLAN_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
     act(() => {
       changed = linkToggle(day.items, f.i, x => x);
     });
-    if (changed) fx.rerenderKeepScroll();
+    if (changed) rerenderKeepScroll();
   },
   exDel(t) {
     const id = t.dataset.ex || '';
@@ -594,7 +598,7 @@ export const PLAN_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
       state.routines.some(r => r.days.some(d => d.items.some(i => i.exId === id))) ||
       state.sessions.some(s => s.ex.some(b => b.exId === id)) ||
       (!!state.draft && state.draft.ex.some(b => b.exId === id));
-    fx.confirm(
+    confirmBox(
       'Delete exercise?',
       used
         ? `${e.name} is used in your routines or history. It will be hidden from the library, and past data stays intact.`
@@ -614,8 +618,8 @@ export const PLAN_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
           },
           { check: () => state.exercises.some(x => x.id === id), undo: true }
         );
-        fx.rerenderKeepScroll();
-        if (done) fx.toast('Exercise deleted', true);
+        rerenderKeepScroll();
+        if (done) toast('Exercise deleted', true);
       },
       true
     );
@@ -624,24 +628,23 @@ export const PLAN_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
     const v = t.dataset.v || '';
     if (!['', 'common', 'rare'].includes(v)) return;
     ui.libKind = v;
-    fx.rerenderKeepScroll();
+    rerenderKeepScroll();
   },
   planLib() {
     ui.planView = 'library';
     window.scrollTo(0, 0);
-    fx.render();
+    render();
   },
   planBack() {
     ui.planView = 'routine';
     window.scrollTo(0, 0);
-    fx.render();
+    render();
   }
 };
 
 /* ---------- Plan's fields ---------- */
 
 /** What a field holds: a box's tick, or the text or option picked. */
-type Field = HTMLInputElement | HTMLSelectElement;
 const clamp = (x: number, lo: number, hi: number): number => Math.min(Math.max(x, lo), hi);
 
 /* An exercise's numbers, typed (data-it): each keystroke that reads as a
@@ -703,12 +706,12 @@ function itemChange(t: Field): void {
     if (k !== 'sets') {
       // The caches go first, so the workout in progress reads the plan as it now is.
       invalidate();
-      fx.syncDraftPlan(f);
-      if (k === 'inc') fx.refreshEx(f.it.exId);
+      syncDraftPlan(f);
+      if (k === 'inc') refreshEx(f.it.exId);
     }
   });
-  if (range) fx.toast(`Range set to ${range}`);
-  fx.rerenderKeepScroll();
+  if (range) toast(`Range set to ${range}`);
+  rerenderKeepScroll();
 }
 
 /** A field on Plan typed in (the input event): whether it was one of Plan's. */
@@ -742,7 +745,7 @@ export function planInput(t: Field): boolean {
   // The searches draw the lists again as each letter is typed; the field, drawn in place, keeps its text and focus.
   if (b === 'libQ' || b === 'bLibQ') {
     ui[b] = t.value;
-    fx.rerenderKeepScroll();
+    rerenderKeepScroll();
     return true;
   }
   return false;
@@ -760,7 +763,7 @@ export function planChange(t: Field): boolean {
       act(() => {
         d.name = t.value;
       });
-    fx.rerenderKeepScroll();
+    rerenderKeepScroll();
     return true;
   }
   if (t.dataset.dayrest != null) {
@@ -773,8 +776,8 @@ export function planChange(t: Field): boolean {
       },
       { undo: true }
     );
-    fx.rerenderKeepScroll();
-    fx.toast(
+    rerenderKeepScroll();
+    toast(
       on
         ? `${d.name || 'Day'} is now a rest day. Its exercises are kept.`
         : `${d.name || 'Day'} is a training day again`,
@@ -794,8 +797,8 @@ export function planChange(t: Field): boolean {
       dest.items.push(f.it);
       Object.assign(dest, trainOn(dest));
     });
-    fx.rerenderKeepScroll();
-    fx.toast(`Moved to ${dayLabel(f.r, to)}`);
+    rerenderKeepScroll();
+    toast(`Moved to ${dayLabel(f.r, to)}`);
     return true;
   }
   return false;
@@ -806,7 +809,7 @@ export const PLAN_BINDS: Readonly<Record<string, (t: Field) => void>> = {
   bRoutine(t) {
     ui.bRoutine = t.value;
     ui.openItem = null;
-    fx.render();
+    render();
   },
   routineName(t) {
     const R = curRoutineB();
@@ -814,16 +817,16 @@ export const PLAN_BINDS: Readonly<Record<string, (t: Field) => void>> = {
       R.name = t.value;
       if (!R.name.trim()) R.name = 'Routine';
     });
-    if (nameTaken(R.name, R.id)) fx.toast('Another routine has the same name');
-    fx.render();
+    if (nameTaken(R.name, R.id)) toast('Another routine has the same name');
+    render();
   },
   rSchedule(t) {
     const R = curRoutineB();
     const v = t.value === 'weekly' ? 'weekly' : 'cycle';
     if (v === R.schedule) return;
     if (v === 'weekly' && R.days.length > WEEK_DAYS) {
-      fx.toast(`Fixed weekdays needs exactly ${WEEK_DAYS} days. Remove ${R.days.length - WEEK_DAYS} first.`);
-      fx.rerenderKeepScroll();
+      toast(`Fixed weekdays needs exactly ${WEEK_DAYS} days. Remove ${R.days.length - WEEK_DAYS} first.`);
+      rerenderKeepScroll();
       return;
     }
     act(
@@ -835,32 +838,32 @@ export const PLAN_BINDS: Readonly<Record<string, (t: Field) => void>> = {
       { undo: true }
     );
     ui.todayDay = null;
-    fx.rerenderKeepScroll();
-    fx.toast(v === 'weekly' ? 'Days are now pinned to Monday to Sunday' : 'Days are now a numbered cycle', true);
+    rerenderKeepScroll();
+    toast(v === 'weekly' ? 'Days are now pinned to Monday to Sunday' : 'Days are now a numbered cycle', true);
   },
   bLibM(t) {
     ui.bLibM = t.value;
-    fx.rerenderKeepScroll();
+    rerenderKeepScroll();
   },
   bTarget(t) {
     ui.bTarget = +t.value;
     ui.dayFocus = undefined;
-    fx.rerenderKeepScroll();
+    rerenderKeepScroll();
   },
   libM(t) {
     ui.libM = t.value;
-    fx.rerenderKeepScroll();
+    rerenderKeepScroll();
   },
   libE(t) {
     ui.libE = t.value;
-    fx.rerenderKeepScroll();
+    rerenderKeepScroll();
   }
 };
 
 /* ---------- drags ---------- */
 
 /** What Sortable says when a drag ends: the lists it left and reached, the element, the copy a copying list keeps, and the places. */
-export interface DragEnd {
+interface DragEnd {
   from: HTMLElement;
   to: HTMLElement;
   item: HTMLElement;
@@ -876,7 +879,7 @@ const after = (f: () => void): void => {
   setTimeout(() => {
     dragDrop();
     f();
-    fx.rerenderKeepScroll();
+    rerenderKeepScroll();
   }, 0);
 };
 
@@ -921,7 +924,7 @@ export function dropDay(evt: DragEnd): void {
     ui.todayDay = null;
     ui.bTarget = 0;
     const d = R.days[ni];
-    fx.toast(`${(d && d.name) || 'Day'} is now ${dayLabel(R, ni)}`);
+    toast(`${(d && d.name) || 'Day'} is now ${dayLabel(R, ni)}`);
   });
 }
 
@@ -944,7 +947,7 @@ export function dropLib(evt: DragEnd): void {
       d.items.splice(ni, 0, newItem(exId));
       Object.assign(d, trainOn(d));
     });
-    fx.toast(`${exName(exId)} added to ${dayLabel(R, to)}`);
+    toast(`${exName(exId)} added to ${dayLabel(R, to)}`);
   });
 }
 
@@ -957,9 +960,9 @@ export function dayKey(dg: HTMLElement, up: boolean): void {
   act(() => move(R.days, i, j));
   ui.todayDay = null;
   ui.bTarget = 0;
-  fx.rerenderKeepScroll();
+  rerenderKeepScroll();
   const n = document.querySelector<HTMLElement>(`.dgrip[data-di="${j}"]`);
   if (n) n.focus();
   const d = R.days[j];
-  fx.toast(`${(d && d.name) || 'Day'} is now ${dayLabel(R, j)}`);
+  toast(`${(d && d.name) || 'Day'} is now ${dayLabel(R, j)}`);
 }

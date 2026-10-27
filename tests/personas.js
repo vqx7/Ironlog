@@ -36,6 +36,20 @@
 //      gym), the new gym's heavier numbers are no PR while the squat, the
 //      same bar at either gym, keeps its target and its PR, and the week
 //      after the leg press asks from the new gym's own session.
+//  10  Pick for me, Limited equipment and Short on time (r62).
+//  11  switching from notes, and reporting a problem (r63: import, the
+//      account's sheets and problem reports moved): a new install imports
+//      a notes app's workouts typed in pounds from the Set up page (each set
+//      stored as typed, in kilograms, on its own date, matched to the
+//      library's lifts), gets a routine made from them, adds a Strong
+//      export (its RPE stored as RIR, its warm-up kept as one), and its first
+//      session suggests last time's load or one step on; a report sent with
+//      no connection leaves Sending within the sync's limit with words that
+//      say so and the text kept, and goes when sent again; the owner's
+//      inbox shows each report's text as written, with a ticket link only
+//      to a real ticket. (Signing up with the email's code is
+//      tests/accounts.js's, on the real account script and a stand-in
+//      Supabase.)
 // Run on r59 (`node tests/personas.js baselines/r59.html`) to see which of
 // these the build before already got wrong. PERSONAS=1,3 runs some of them.
 const { open, engine } = require('./h');
@@ -52,7 +66,7 @@ const addD = (d, n) => new Date(Date.parse(d + 'T12:00:00Z') + n * 864e5).toISOS
 /* A phone whose clock can be moved: the day a session is done is the day
    the clock says, as on a phone. */
 async function phone(start, o = {}) {
-  const setup = async ctx => { await ctx.addInitScript(`(()=>{const R=Date;let off=new R(${JSON.stringify(start + 'T09:00:00')}).getTime()-R.now();window.__setClock=t=>{off=new R(t).getTime()-R.now();};class D extends R{constructor(...a){if(a.length)super(...a);else super(R.now()+off);}static now(){return R.now()+off;}}window.Date=D;})()`); };
+  const setup = async ctx => { if (o.init) await ctx.addInitScript(o.init); await ctx.addInitScript(`(()=>{const R=Date;let off=new R(${JSON.stringify(start + 'T09:00:00')}).getTime()-R.now();window.__setClock=t=>{off=new R(t).getTime()-R.now();};class D extends R{constructor(...a){if(a.length)super(...a);else super(R.now()+off);}static now(){return R.now()+off;}}window.Date=D;})()`); };
   const P = await open(FILE, { browser, realStarter: !!o.realStarter, setup, w: 390, h: 844 });
   const page = P.page;
   const ev = (f, a) => page.evaluate(f, a);
@@ -633,6 +647,100 @@ async function finish() {
     const lifts = await ev(ids => ids.map(id => { const e = window.__ironlog.EX(id); return { id, primary: e.primary, equip: e.equip }; }), d4.ex.map(b => b.exId));
     ok(/Barbell Bench Press →/.test(sw) && !lifts.some(e => e.equip === 'barbell') && lifts.some(e => e.primary === 'chest') && d4.ex[0].sets.filter(x => !x.warm).length === 3, '10. Limited equipment without a barbell swaps the bench for a chest lift on other equipment, its 3 planned sets kept', { sw, lifts });
     ok(!H.P.errors.length, '10. no page errors', H.P.errors);
+    await H.P.ctx.close();
+  }
+
+  // ---- 11. Switching from notes, and reporting a problem (r63).
+  if (run(11)) {
+    const T0 = '2026-10-05'; // a Monday
+    // Signed in as the app's owner, who reads reports; a report service whose first send never answers (no connection), then answers.
+    // The tickets' address is config's (TICKETS_AT); the second link only starts like it.
+    const TICKETS_AT = require('../scripts/config').TICKETS_AT;
+    const ITEMS = [
+      { id: 1, created_at: '2026-10-04T09:12:00Z', category: 'bug', message: 'The timer <b>stuck</b> & went silent', reply_to: 'a@example.com', context: {}, screenshot: null, issue_url: TICKETS_AT + 'vqx7/ironlog-feedback/issues/7' },
+      { id: 2, created_at: '2026-10-03T18:00:00Z', category: 'idea', message: 'A dark theme for the plates line', reply_to: null, context: {}, screenshot: null, issue_url: TICKETS_AT.replace(/\/$/, '.example.net/') + 'issues/8' }
+    ];
+    const init = `window.ironlogAuth={landing:null,onChange(){},user(){return Promise.resolve({id:'u11',email:'owner@example.com'});},signIn(){return new Promise(()=>{});},signUp(){return new Promise(()=>{});},signOut(){return Promise.resolve();},resetPassword(){return Promise.resolve();},updatePassword(){return Promise.resolve();},release(){}};
+      window.__sent=[];window.ironlogFeedback={send(r){window.__sent.push(r);return window.__sent.length===1?new Promise(()=>{}):Promise.resolve();},isReader(){return Promise.resolve(true);},inbox(){return Promise.resolve(${JSON.stringify(ITEMS)});}};`;
+    const H = await phone(T0, { realStarter: true, init });
+    const { ev, page } = H;
+    // From the Set up page: Import my workouts, the notes pasted, read, in pounds, imported.
+    // Two weeks of two days, so the days repeat and a routine can be made from them (with nothing repeated the routine picker opens instead).
+    const LOGGED = [
+      ['2026-09-24', 'Sep 24 Push', [['Bench press', [[180, 8], [180, 8], [180, 8]]], ['Incline DB press', [[55, 10], [55, 10], [55, 10]]]]],
+      ['2026-09-26', 'Sep 26 Legs', [['Squat (Barbell)', [[215, 5], [215, 5], [215, 5]]], ['Leg press', [[340, 12], [340, 12], [340, 12]]]]],
+      ['2026-10-01', 'Oct 1 Push', [['Bench press', [[185, 8], [185, 8], [185, 7]]], ['Incline DB press', [[60, 10], [60, 10], [60, 9]]]]],
+      ['2026-10-03', 'Oct 3 Legs', [['Squat (Barbell)', [[225, 5], [225, 5], [225, 5]]], ['Leg press', [[360, 12], [360, 12], [360, 10]]]]]
+    ];
+    const NOTES = LOGGED.map(([, head, lifts]) => [head, ...lifts.map(([n, sets]) => n + ' ' + sets.map(([w, r]) => `${w}x${r}`).join(', '))].join('\n')).join('\n\n') + '\n';
+    await ev(() => { const b = document.querySelector('[data-act="obAcctLater"]'); if (b) b.click(); });
+    await wait(120);
+    await page.click('#view [data-act="impOpen"]'); await wait(150);
+    await page.fill('#impText', NOTES);
+    await page.click('#modal [data-act="impRead"]'); await wait(300);
+    const pv = await ev(() => { const m = window.__ironlog.ui.modal; return { step: m && m.step, unitKnown: m && m.unitKnown, text: document.getElementById('modal').innerText }; });
+    ok(pv.step === 'preview' && /4 sessions/.test(pv.text), '11. the notes read as four sessions, shown before anything is saved', pv.text.slice(0, 300));
+    if (await page.$('#modal [data-act="impUnit"][data-v="lb"]')) { await page.click('#modal [data-act="impUnit"][data-v="lb"]'); await wait(150); }
+    await page.click('#modal [data-act="impGo"]'); await wait(400);
+    const after = await ev(() => { const L = window.__ironlog; return { sessions: L.state.sessions.map(s => ({ date: s.date, ex: s.ex.map(b => ({ id: b.exId, name: L.EX(b.exId).name, custom: !!L.EX(b.exId).custom, sets: b.sets.map(x => [x.w, x.r]) })) })), routine: L.state.routines.find(r => r.id === L.state.activeRoutineId), onboarded: L.state.settings.onboarded }; });
+    const S = [...after.sessions].sort((a, b) => (a.date < b.date ? -1 : 1));
+    ok(S.length === 4 && S.every((s, i) => s.date === LOGGED[i][0]), '11. each session is saved on its own date', S.map(s => s.date));
+    const asTyped = S.length === 4 && S.every((s, i) => s.ex.length === 2 && s.ex.every((b, j) => { const sets = LOGGED[i][2][j][1]; return b.sets.length === sets.length && b.sets.every(([w, r], k) => Math.abs(w - sets[k][0] * LB) < 1e-9 && r === sets[k][1]); }));
+    ok(asTyped, '11. every set is stored as typed: the pounds in kilograms exactly, the reps as typed', S.map(s => s.ex.map(b => [b.name, b.sets])));
+    const all = S.flatMap(s => s.ex);
+    const LIKE = [/bench/i, /incline/i, /squat/i, /leg press/i];
+    ok(all.every(b => !b.custom) && S.every(s => s.ex.every((b, j) => LIKE[(s.date === '2026-09-24' || s.date === '2026-10-01' ? 0 : 2) + j].test(b.name))), '11. each lift is matched to the library\'s, none made new', all.map(b => b.name));
+    const R = after.routine;
+    const trained = R ? R.days.filter(d => !d.rest && d.items.length) : [];
+    ok(after.onboarded && trained.length === 2 && trained.every(d => d.items.length === 2) && trained.map(d => d.name).sort().join() === 'Legs,Push', '11. a routine is made from the days that repeat, Push and Legs, and the app opens on it', R && R.days.map(d => [d.name, d.items.map(i => i.exId)]));
+    // Then a Strong export with two older weeks, from Settings: added beside the notes' sessions, its RPE stored as RIR, its warm-up as one.
+    const STRONG = ['Date,Workout Name,Duration,Exercise Name,Set Order,Weight,Reps,Distance,Seconds,Notes,Workout Notes,RPE',
+      '2026-09-17 18:02:11,"Push",1h 5m,"Bench Press (Barbell)",W,95,10,0,0,"","",',
+      '2026-09-17 18:02:11,"Push",1h 5m,"Bench Press (Barbell)",1,175,8,0,0,"","",8',
+      '2026-09-17 18:02:11,"Push",1h 5m,"Bench Press (Barbell)",2,175,8,0,0,"","",9',
+      '2026-09-19 07:30:00,"Legs",50m,"Squat (Barbell)",1,205,5,0,0,"","",7.5',
+      '2026-09-19 07:30:00,"Legs",50m,"Squat (Barbell)",2,205,5,0,0,"","",8'].join('\n') + '\n';
+    const fs = require('fs'), os = require('os'), path = require('path');
+    const strongFile = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'ironlog-p11-')), 'strong.csv'); fs.writeFileSync(strongFile, STRONG);
+    await ev(() => { const L = window.__ironlog; L.ui.tab = 'settings'; L.ui.folds['settings:data'] = true; L.render(); }); await wait(150);
+    await page.click('#view [data-act="impOpen"]'); await wait(150);
+    await page.setInputFiles('#impFile', strongFile); await wait(600);
+    if (await page.$('#modal [data-act="impUnit"][data-v="lb"]')) { await page.click('#modal [data-act="impUnit"][data-v="lb"]'); await wait(150); }
+    await page.click('#modal [data-act="impGo"]'); await wait(400);
+    const st = await ev(() => { const L = window.__ironlog; return L.state.sessions.filter(s => s.date < '2026-09-24').map(s => ({ date: s.date, ex: s.ex.map(b => ({ name: L.EX(b.exId).name, sets: b.sets.map(x => [x.w, x.r, x.rir, !!x.warm]) })) })).sort((a, b) => (a.date < b.date ? -1 : 1)); });
+    const bs = st[0] && st[0].ex[0], sq = st[1] && st[1].ex[0];
+    ok(st.length === 2 && st[0].date === '2026-09-17' && st[1].date === '2026-09-19' && /bench/i.test(bs.name) && /squat/i.test(sq.name), '11. a Strong export adds its two sessions on their dates, matched to the library', st);
+    ok(bs && bs.sets.length === 3 && bs.sets[0][3] === true && Math.abs(bs.sets[1][0] - 175 * LB) < 1e-9 && bs.sets[1][2] === 2 && bs.sets[2][2] === 1 && sq.sets[0][2] === 2.5, '11. its warm-up is kept as one, its loads as typed, and its RPE 8, 9 and 7.5 stored as RIR 2, 1 and 2.5', st);
+    await ev(() => { const L = window.__ironlog; L.ui.tab = 'today'; L.render(); }); await wait(150);
+    // The first session from it: each lift's grey load is last time's, or at most one step (about 5%) on, never below it.
+    await H.start();
+    const d1 = await H.draft();
+    const last = id => { const b = [...all].reverse().find(x => x.id === id); return b ? Math.max(...b.sets.map(x => x[0])) / LB : null; };
+    const loads = [];
+    for (let b = 0; b < (d1 ? d1.ex.length : 0); b++) { const r = await H.row(b, 0); loads.push({ id: d1.ex[b].exId, grey: +r.w, last: last(d1.ex[b].exId) }); }
+    ok(loads.length === 2 && loads.every(x => x.last != null && x.grey >= x.last - 1e-6 && x.grey <= x.last * 1.06 + 1e-6), '11. its first session suggests last time\'s load or one step on, for each lift', loads);
+    // A report from the menu, mid-session, with no connection: Sending, then within the sync's limit (20 s) words that say so, the text kept.
+    await page.click('[data-act="menuOpen"]'); await wait(150);
+    await page.click('#modal [data-act="fbOpen"]'); await wait(150);
+    const MSG = 'The rest timer stopped when the phone locked.';
+    await page.fill('#modal textarea[data-fbind="msg"]', MSG); await wait(60);
+    await page.click('#modal [data-act="fbSend"]'); await wait(150);
+    const busy = await ev(() => document.getElementById('modal').innerText);
+    await wait(21000);
+    const late = await ev(() => { const m = window.__ironlog.ui.modal; return { busy: m && m.busy, err: m && m.err, text: document.getElementById('modal').innerText, field: (document.querySelector('#modal textarea[data-fbind="msg"]') || {}).value }; });
+    ok(/Sending/.test(busy) && !late.busy && /No answer/.test(late.err || '') && late.field === MSG, '11. a report sent with no connection says Sending, then no answer within 20 s, its text kept', { busy: busy.slice(0, 200), late });
+    await page.click('#modal [data-act="fbSend"]'); await wait(300);
+    const sent = await ev(() => ({ sent: window.__sent.map(r => [r.message, r.client_id]), text: document.getElementById('modal').innerText }));
+    ok(sent.sent.length === 2 && sent.sent[1][0] === MSG && sent.sent[0][1] === sent.sent[1][1] && /Thanks/.test(sent.text), '11. sent again it goes, under the same key as the first try (so a lost answer cannot make it twice)', sent);
+    // The owner's inbox, from the menu: each report's words as written, a ticket link only to a real ticket.
+    // The report's sheet closed by its ✕, then the menu.
+    await page.click('#modal [data-act="mClose"]'); await wait(150);
+    await page.click('[data-act="menuOpen"]'); await wait(150);
+    await page.click('#modal [data-act="fbInbox"]'); await wait(300);
+    const inbox = await ev(() => ({ text: document.getElementById('modal').innerText, links: [...document.querySelectorAll('#modal a')].map(a => a.getAttribute('href')), bold: document.querySelectorAll('#modal li b').length }));
+    ok(inbox.text.includes('The timer <b>stuck</b> & went silent') && inbox.bold === 0, '11. the inbox shows a report\'s words as written, markup and all, never as markup', inbox.text.slice(0, 300));
+    ok(inbox.links.length === 1 && inbox.links[0] === ITEMS[0].issue_url, '11. a ticket link only to the real ticket, none for an address that merely starts like one', inbox.links);
+    ok(!H.P.errors.length, '11. no page errors', H.P.errors);
     await H.P.ctx.close();
   }
 

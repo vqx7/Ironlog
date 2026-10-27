@@ -53,15 +53,15 @@ import {
   oddLoad,
   lightZero,
   exName,
-  trimPlan
+  trimPlan,
+  fromD
 } from './live';
-import { state, fx, ui } from './store';
+import { state, ui } from './store';
 import { lastDup, effTarget, blockRest, newRow, greyW, effW, blockDone } from './session';
 import type { BlkRef } from './session';
 import type { DraftBlock, DraftSet, Routine, PlanItem, NextSetsAdj } from './types';
 import type { ExerciseLike } from './model';
 import { fmtE, setShort, rirShow } from './display';
-import { adjOn } from './settings';
 import { drawing } from './view';
 import {
   W,
@@ -99,6 +99,11 @@ const MIX_TOAST_MS = 7000;
 /** A ticked exercise moves up this many milliseconds after the tick, and tries again after ORDER_MS.again while something is being typed or open. */
 const ORDER_MS = { soon: 900, again: 1500 } as const;
 import { LIMITS } from './records';
+import { readSets } from './importing';
+import type { TypedSet } from './importing';
+import { toast } from './toast';
+import { confirmBox, rerenderKeepScroll } from './page';
+import { startTimer } from './timer';
 
 /* ---------- rows and blocks ---------- */
 
@@ -113,8 +118,13 @@ import { LIMITS } from './records';
 /** Whether suggested loads are filled into the rows (a setting), rather than shown in grey. */
 export const fillLoads = (): boolean => state.settings.loadFill === 'fill';
 
+/** Whether the next sets move after a set clearly off its plan (r34; on unless turned off in Settings). */
+export function adjOn(): boolean {
+  return state.settings.autoAdj !== false;
+}
+
 /** A row's load is the app's, not the lifter's: empty (grey), the suggestion, carried down from a typed load above, or put there by the adjustment (r34). */
-export function appLoad(b: DraftBlock | null | undefined, x: DraftSet): boolean {
+function appLoad(b: DraftBlock | null | undefined, x: DraftSet): boolean {
   return x.w == null || (!!b && x.w === b.sw) || carried.has(x) || !!(b && b.adj && Math.abs(x.w - b.adj.w) < EPS);
 }
 
@@ -785,7 +795,7 @@ export function oddReps(b: DraftBlock, s: DraftSet): boolean {
    weight, often none), an assisted lift (the help, which Finish asks about)
    and a timed hold keep their rules. */
 /** Whether row si of a lift that takes a load has no load typed and none in grey, so it cannot be ticked yet. */
-export function noLoadYet(b: DraftBlock, si: number): boolean {
+function noLoadYet(b: DraftBlock, si: number): boolean {
   const s = b.sets[si];
   const ex = EX(b.exId);
   return !!s && !ex.bw && !ex.timed && s.w == null && greyW(b, si) == null;
@@ -825,7 +835,7 @@ export function setDone(bi: number, si: number, val: boolean, again?: boolean): 
   if (val && noLoadYet(b, si)) {
     W.needAt = { b: blkRef(bi), s: si };
     redraw();
-    fx.toast('Add the weight first');
+    toast('Add the weight first');
     const f = document.querySelector<HTMLInputElement>(`.sg input[data-f="w"][data-b="${bi}"][data-s="${si}"]`);
     if (f) f.focus();
     return;
@@ -841,7 +851,7 @@ export function setDone(bi: number, si: number, val: boolean, again?: boolean): 
   if (val && W.oddOk !== okKey && (far || oddReps(b, s) || lz)) {
     const ex = EX(b.exId);
     const fix = far ? 'w' : 'r';
-    fx.confirm(
+    confirmBox(
       `${setShort(ex, effW(b, si), s.r)}${ex.bw ? '' : ' ' + U()}?`,
       lz
         ? `0 ${ex.timed ? 'seconds' : 'reps'} at a weight well under today's working load. Log it as missed, or go back and fix it.`
@@ -850,7 +860,7 @@ export function setDone(bi: number, si: number, val: boolean, again?: boolean): 
       () => {
         W.oddOk = okKey;
         setDone(bi, si, true, again);
-        fx.rerenderKeepScroll();
+        rerenderKeepScroll();
       },
       false,
       {
@@ -879,14 +889,14 @@ export function setDone(bi: number, si: number, val: boolean, again?: boolean): 
     },
     { inProgress: true }
   );
-  if (val && isMissed(s) && !s.warm && !s.drop) fx.toast(MISSED_SAID);
+  if (val && isMissed(s) && !s.warm && !s.drop) toast(MISSED_SAID);
   W.platesAt = null;
   if (val && !d.editingId && blockDone(b) && !blkIsOpen(bi, b)) W.foldWait.add(b);
   redraw();
   const pr = rowPR(b, si, d.date);
   if (pr && !wasPR) {
     const ex = EX(b.exId);
-    fx.toast(
+    toast(
       `${pr === 'Best' ? (isCompound(ex) ? 'New best estimate' : 'PR') : pr}: ${exName(b.exId)}, ${setShort(ex, +(s.w ?? 0) || 0, s.r)}${prBeat(b.exId, s, d.date, pr)}`,
       false,
       PR_TOAST_MS,
@@ -916,7 +926,7 @@ export function setDone(bi: number, si: number, val: boolean, again?: boolean): 
     const k = grp.indexOf(b);
     if (grp.slice(k + 1).some(x => x.sets.some(y => !y.done && !y.warm && !y.drop))) autoRest = false;
   }
-  if (autoRest) fx.startTimer(+b.plan.rest);
+  if (autoRest) startTimer(+b.plan.rest);
   if (W.foldT) clearTimeout(W.foldT);
   W.foldT = null;
   const askRir =
@@ -1004,7 +1014,7 @@ export function mixCheck(bi: number, si: number): void {
   const key = d.id + ':' + bi;
   if (mixSeen.has(key)) return;
   mixSeen.add(key);
-  fx.toast(
+  toast(
     `${fmtW(+(s.w ?? 0))} ${U()} is ${r > 1 ? 'well above' : 'well below'} last time's ${fmtW(last)}. This one is logged as ${loadWords(ex)}.`,
     false,
     MIX_TOAST_MS
@@ -1044,7 +1054,7 @@ export function autoFold(ref: BlkRef | null): void {
   if (nx < 0) nx = d.ex.findIndex(x => !blockDone(x));
   const a0 = nx >= 0 ? document.getElementById('blk-' + nx) : null;
   const top0 = a0 ? a0.getBoundingClientRect().top : null;
-  fx.rerenderKeepScroll();
+  rerenderKeepScroll();
   const a1 = nx >= 0 ? document.getElementById('blk-' + nx) : null;
   if (a1 && top0 != null) {
     window.scrollBy(0, a1.getBoundingClientRect().top - top0);
@@ -1155,7 +1165,7 @@ export function orderRun(): void {
     ordBack.set(b, { i: bi, t: Date.now() });
   }
   if (!moved || ui.tab !== 'today') return;
-  fx.rerenderKeepScroll();
+  rerenderKeepScroll();
   const el1 = document.getElementById('blk-' + d.ex.indexOf(anchor));
   if (el1 && top0 != null) window.scrollBy(0, el1.getBoundingClientRect().top - top0);
 }
@@ -1198,3 +1208,54 @@ export const distIn = (v: string): number | null => {
   const n = numIn(v);
   return n != null && n > 0 ? Math.min(r3(U() === 'kg' ? n : n * KM_MI), LIMITS.distKm) : null;
 };
+
+/* ---------- typed sets (r63, from the legacy script's 29-sections.js) ---------- */
+
+/** Sets typed or dictated for a lift (importing.ts's readSets), the loads in the unit on screen unless conv says otherwise. */
+export function parseSets(
+  text: unknown,
+  ex: { bw?: boolean | undefined },
+  defW: number | null | undefined,
+  conv?: ((v: number) => number) | null,
+  rpe?: boolean
+): TypedSet[] | null {
+  // A load typed is a number, which fromD always turns into one.
+  return readSets(text, ex, defW, conv || ((v: number) => Number(fromD(v))), rpe);
+}
+/* Sets typed for a lift fill its rows from the first one not done, each
+   ticked; a set far off is left for setDone's question, as a tick asks it
+   (r55.1, the audit of r55: 1000x8 was saved as typed, a 1285 kg PR). On an
+   assisted lift the numbers typed or said are the machine's help. */
+/** Fills a lift's rows with typed sets, ticked unless one is far off (then asked about); how many sets were typed. */
+export function fillSets(bi: number, list: TypedSet[]): number {
+  const d = state.draft;
+  const b = d && d.ex[bi];
+  if (!d || !b) return 0;
+  if (EX(b.exId).assist) for (const p of list) if (p.w > 0) p.w = -p.w;
+  let far = -1;
+  act(
+    () => {
+      let si = b.sets.findIndex(x => !x.done && !x.warm);
+      if (si < 0) si = b.sets.length;
+      for (const p of list) {
+        if (si >= b.sets.length) b.sets.push(newRow());
+        const x = b.sets[si];
+        if (!x) break;
+        x.w = p.w;
+        x.r = p.r;
+        x.rir = p.rir;
+        x.warm = false;
+        x.drop = false;
+        x.done = !oddLoad(b, si, d.date) && !oddReps(b, x);
+        if (!x.done && far < 0) far = si;
+        si++;
+      }
+    },
+    { inProgress: true }
+  );
+  if (far >= 0) {
+    rerenderKeepScroll();
+    setDone(bi, far, true);
+  }
+  return list.length;
+}

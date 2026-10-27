@@ -10,6 +10,7 @@ import type { Model } from './model';
 import { activeRoutineIn, profIn } from './model';
 import { BANDS, MK, TARGETED, TRACK_ONLY } from './library';
 import { plannedSetsIn, weekFactor, PROFILE_PLAN } from './routines';
+import type { NewRoutine } from './routines';
 import { MINUTE_S, numWord, pctOf, shareWords } from './util';
 
 /* The profile (r44): its choices, read by normalize while the save loads. */
@@ -159,7 +160,7 @@ export function hasTargetIn(M: Model, m: string): boolean {
 /** The floors a first-run pick of a routine records as settings.bandsFit. */
 export function fitFloorsIn(
   M: Model,
-  R: Routine,
+  R: Routine | NewRoutine,
   actual?: Readonly<Record<string, number>> | null,
   share?: number
 ): Partial<Record<MuscleKey, number>> {

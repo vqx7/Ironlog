@@ -2,11 +2,11 @@
 
 Everything that needs you, in one place, with the exact code to paste. Claude keeps this file current: an item moves to Done only when you confirm it, or when Claude can check it from here (and says how it checked). Build work and decisions are tracked in `PENDING.md`; this file is only what you do by hand.
 
-Last updated: r58 live, r59, r60 and r61 in pull requests #55, #56 and #57, r62 on #57, 2026-10-26.
+Last updated: r62 live (2026-10-27 02:41 UTC, from #59), r63 next as its own pull request, 2026-10-27.
 
 ## Now, in this order
 
-1. A26 (r59, version 2.13; r60, 2.14; r61, 2.15; r62, 2.16): pull requests #55 (r59), #56 (r60, on #55), #57 (r61, on #56) and r62's (on #57), which Claude opens once every suite passes in both browsers and r62's independent review is clean. The preview carries the newest pull request, so it shows r61 now and r62 once its pull request is open. Try it on your phone (Checks on your phone, below, r59 to r62), then merge #55 on GitHub's website; Claude then points #56 at `main`, and you merge it the same way; then #57, then r62's. When "Update ready" shows on a phone, tap Update. A25 (r57 and r58): done, merged by you (#53 on 2026-10-25 at 01:48 UTC, #54 at 13:58), r58 live as build 2026.10.24-r58. A24 (r55.1 to r56.2): done, merged by you on 2026-10-24 (#49 and #51 at 20:58 UTC, r56's commits with #51, its own #50 closed; #52 at 21:47).
+1. A27 (r63, version 2.17): its pull request, which Claude opens once every suite passes in both browsers and r63's independent review is clean. Before you merge it, run B1a (below, one SQL block, a minute): it lets a report sent again after a lost answer be kept once. Until it runs nothing breaks; reports go without the key. Try the preview on your phone (Checks on your phone, below), then merge on GitHub's website. When "Update ready" shows on a phone, tap Update. A26 (r59 to r62): done, merged by you (#55 on 2026-10-26 at 21:09 UTC; #58, r60 and r61, at 2026-10-27 00:04; #59, r62, at 02:14), r62 live as build 2026.10.26-r62 (checked file for file against main's build).
 2. B5, the trigger, then its check: Report a problem from the app and an issue appears in `ironlog-feedback` (steps below). Status: to do, unless you have done it (Claude cannot see Supabase from here).
 3. C6: add the code to the confirmation email (5 minutes, below). The app asks a new person for the code the email should carry. Status: to do, unless you have done it.
    D7, any time (with C6 is easiest): a 1 MB limit on each synced document (1 minute, below). Status: to do, unless you have done it.
@@ -36,8 +36,11 @@ create table public.feedback (
   reply_to text check (reply_to is null or char_length(reply_to) <= 200),
   screenshot text check (screenshot is null or (screenshot ~ '^data:image/jpeg;base64,[A-Za-z0-9+/]+={0,2}$' and char_length(screenshot) <= 1500000)),
   context jsonb not null default '{}'::jsonb check (pg_column_size(context) <= 20000),
-  issue_url text
+  issue_url text,
+  client_id text check (client_id is null or char_length(client_id) <= 40)
 );
+-- A report's key, made on the phone (r63): the same report sent again is kept once.
+create unique index feedback_client_once on public.feedback (user_id, client_id);
 alter table public.feedback enable row level security;
 create policy "signed-in people can add" on public.feedback
   for insert to authenticated
@@ -49,6 +52,10 @@ begin
   -- report would slip past the daily limit, and a made-up link would show in your Inbox.
   new.created_at := now();
   new.issue_url := null;
+  -- The same report sent again (its answer lost on the way back, r63): kept once, and not counted again.
+  if new.client_id is not null and exists (select 1 from public.feedback where user_id = new.user_id and client_id = new.client_id) then
+    return null;
+  end if;
   if (select count(*) from public.feedback where user_id = new.user_id and created_at > now() - interval '24 hours') >= 5 then
     raise exception 'feedback_rate_limited' using errcode = 'P0001';
   end if;
@@ -72,6 +79,32 @@ insert into public.feedback_readers (user_id) select id from auth.users where em
 ```
 
 Check: Report a problem from the app (signed in), then Supabase > **Table Editor** > `feedback` shows it, and Settings > Help shows **Inbox** for your account.
+
+### B1a. A report's key (r63): before you merge r63
+Status: to do. Supabase > **SQL Editor** > **New query**, paste, Run. It is safe to run more than once. A report sent again after its answer was lost on the way back (a phone dropping off the network mid-send) is then kept once, so it makes one ticket, not two. Until it runs, r63 sends reports as before, without the key, so nothing breaks if it waits.
+
+```sql
+alter table public.feedback add column if not exists client_id text check (client_id is null or char_length(client_id) <= 40);
+create unique index if not exists feedback_client_once on public.feedback (user_id, client_id);
+create or replace function public.feedback_limit() returns trigger language plpgsql security definer set search_path = '' as $$
+begin
+  -- The time and the ticket link are the server's, never the sender's: a back-dated
+  -- report would slip past the daily limit, and a made-up link would show in your Inbox.
+  new.created_at := now();
+  new.issue_url := null;
+  -- The same report sent again (its answer lost on the way back, r63): kept once, and not counted again.
+  if new.client_id is not null and exists (select 1 from public.feedback where user_id = new.user_id and client_id = new.client_id) then
+    return null;
+  end if;
+  if (select count(*) from public.feedback where user_id = new.user_id and created_at > now() - interval '24 hours') >= 5 then
+    raise exception 'feedback_rate_limited' using errcode = 'P0001';
+  end if;
+  return new;
+end $$;
+revoke all on function public.feedback_limit() from public, anon, authenticated;
+```
+
+Check: Supabase > **Table Editor** > `feedback` has a `client_id` column, and a report sent from r63 fills it.
 
 Only if you ever ran the older version of this step (before r25), run this instead:
 
@@ -342,6 +375,7 @@ Status: to do whenever you are at the gym; tell Claude what you see.
 - r60, in the preview, in Safari and in the home-screen app (no browser here has an on-screen keyboard or iPhone selection): in a workout, tap a load field with a grey number (it shows the number selected; type a digit and it replaces it; tap away untouched and it is grey again) and a typed one (the same); a second tap places the cursor; one tap on the checkmark still logs the grey load. A barbell lift's first time, nothing typed: tap the checkmark (it says Add the weight first and puts the cursor in the load). Back after five weeks or more off a lift: the next sets after an easy first set (V's 165 x 10 at 3 in reserve case: 185 for 6). The update bar says "Update ready".
 - r61, in the preview: in a workout, ⋯ on an exercise you have logged before > New machine or gym (its target and grey load go, the first-time hint shows, and a New machine tag sits by its name); ⋯ again > Same machine as before (they come back). Mark it, log and Finish: no PR for that lift even if the numbers are higher, and on Stats its best estimate is today's, with its earlier sessions still in History.
 - r62, in the preview (every sheet but the account, menu, problem report and import ones is drawn anew; nothing meant to change): Pick for me from Change and inside a workout, Short on time, Limited equipment, ⋯ on an exercise and each choice in it, typed sets, a goal, the exercise editor (type a name, then tick Bodyweight: the name stays), the picker's search (type and the list follows, the keyboard stays), install and a past workout. Then tick a set on its grey load, clear the load and tap away: the set unticks (356); tick it again and it takes the grey load.
+- r63, in the preview (every action and the start moved, the legacy script gone; nothing meant to change but two time limits): a workout from start to Finish, Undo after a change, swap and add an exercise, the exercise editor's Save, Short on time and Limited equipment, a past workout, the calendar's days; in Settings, Import workouts (a pasted note) and Export; the menu's account sheet (sign in, a wrong password, Forgot password); Report a problem with the phone in airplane mode: after about 20 s it says No answer and keeps your text, and sent again with the connection back it goes once.
 ## Reminders
 - Renew the `ironlog-feedback` token (B3) before it expires, a year after you make it. Claude writes the date here when you say B3 is done.
 

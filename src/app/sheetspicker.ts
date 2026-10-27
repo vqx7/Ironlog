@@ -37,6 +37,7 @@ import { exTagParts } from './plan';
 import type { ExerciseLike } from './model';
 import { state } from './store';
 import { closeX } from './sheetsmisc';
+import type { PickerSheet } from './modals';
 
 /** The lifts logged last the picker lists, newest first. */
 const RECENT_PICKS = 8;
@@ -48,20 +49,6 @@ const DAY_PICKS = 3;
 const READY = { rest: 0.5, lighter: 0.85 } as const;
 /** The minutes Short on time offers. */
 const SHORT_CHOICES = [15, 20, 30, 45, 60, 75] as const;
-
-/** The picker as it is open: what it adds to or swaps, its search and muscle, and its title. */
-export interface PickerSheet {
-  mode: string;
-  title: string;
-  q?: string | undefined;
-  m?: string | undefined;
-  /** The day of the routine shown in Plan (addDay). */
-  day?: number | undefined;
-  /** The routine item swapped (swapItem). */
-  uid?: string | undefined;
-  /** The session's exercise swapped (swapBlock). */
-  b?: number | undefined;
-}
 
 /** The lifts already where the picker adds, and the tag that says so. */
 function pickerUsed(m: PickerSheet): { set: Set<string>; label: string } {
@@ -88,7 +75,7 @@ function pickRow(e: ExerciseLike, used: { set: Set<string>; label: string }, gro
 }
 
 /** The picker's list for its search and muscle. */
-export function pickerBody(m: PickerSheet): TemplateResult {
+function pickerBody(m: PickerSheet): TemplateResult {
   const used = pickerUsed(m);
   const row = (e: ExerciseLike): TemplateResult => pickRow(e, used);
   const grp = (t: string): TemplateResult => html`<p class="pick-grp">${t}</p>`;
@@ -226,7 +213,7 @@ export function eqSheet(m: { day: number; equip: readonly string[] }): TemplateR
 /* ---------- Short on time ---------- */
 
 /** Short on time: the minutes there are, what the trim changes, and the minutes after; null once the session is gone. */
-export function shortSheet(m: { mins?: number | undefined }): TemplateResult | null {
+export function shortSheet(m: { mins?: number | null | undefined }): TemplateResult | null {
   const d = state.draft;
   if (!d) return null;
   const left = remainMin(d);

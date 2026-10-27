@@ -14,14 +14,11 @@
 //    build exist only in src/app/config.ts. Everything else reads them, and a
 //    copy typed anywhere in code, markup or the scripts fails here. Comments
 //    may still say the name; they are prose, not values.
-// 5. The module boundary (r49, ARCHITECTURE.md): src/app/ never imports the
-//    legacy parts, and the typed modules pass the TypeScript checker. Since
-//    r50, when code moves: nothing exists twice (no legacy declaration takes
-//    a module export's name, which would hide the module's copy), nothing
-//    moved is left unimported (the legacy script would fail only when that
-//    line ran), nothing is imported that the legacy script does not use, and
-//    every name the legacy script reads without declaring or importing it is
-//    a known global.
+// 5. The module boundary (r49, ARCHITECTURE.md): src/app/ imports only
+//    itself and lit-html, and the typed modules pass the TypeScript checker.
+//    Since r63 the legacy script is gone: src/ holds no script outside
+//    src/app/, and no module but the page's start (main.ts) runs anything
+//    as it is imported.
 // 6. Nothing behind the model's back (r52, ARCHITECTURE.md phase 3b): the
 //    engine and the analytics read the log, the date and their caches only
 //    through the model they are given, all the way down.
@@ -29,7 +26,7 @@
 //    is part of a named constant declared at the top of a module.
 const fs = require('fs'); const path = require('path');
 const ROOT = path.join(__dirname, '..');
-// Every script file under src/: the legacy parts and the typed modules in src/app/.
+// Every script file under src/: the typed modules in src/app/ (and any script beside the page parts, which section 5 refuses).
 // src/app/ is read at any depth.
 const appFiles = d => fs.readdirSync(path.join(ROOT, 'src', d), { withFileTypes: true }).flatMap(e => e.isDirectory() ? appFiles(d + '/' + e.name) : /\.ts$/.test(e.name) ? [d + '/' + e.name] : []);
 const SRC_CODE = [...fs.readdirSync(path.join(ROOT, 'src')).filter(f => f.endsWith('.js')), ...appFiles('app')];
@@ -144,11 +141,8 @@ const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log
     // Every script, not a list of them (the r51 review added one the list never read).
     ...fs.readdirSync(path.join(ROOT, 'scripts')).filter(f => f.endsWith('.js')).map(f => ['scripts/' + f, 'js']),
   ];
-  // The legacy parts are pieces of one script, so they are read joined.
-  const isLegacy = f => /^src\/[12]\d-.+\.js$/.test(f);
-  const texts = [['src/10-29 (legacy parts)', read(files.filter(([f]) => isLegacy(f)).map(([f]) => fs.readFileSync(path.join(ROOT, f), 'utf8')).join(''), false)]];
+  const texts = [];
   for (const [f, k] of files) {
-    if (isLegacy(f)) continue;
     const raw = fs.readFileSync(path.join(ROOT, f), 'utf8');
     if (k === 'page') { const t = raw.replace(/<!--[\s\S]*?-->/g, '').replace(/\/\*[\s\S]*?\*\//g, ''); texts.push([f, { code: t, lits: [t] }]); }
     else texts.push([f, read(raw, k === 'ts')]);
@@ -176,8 +170,8 @@ const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log
   // markup, the style sheet, the build, the account script and the test
   // fixtures read them. Each version is the one package.json pins. Every
   // outside address in src/ and scripts/ (https, http, wss or written from
-  // //) is config's, or waits for its phase in ARCHITECTURE.md's list, and a
-  // listed one must still be there, so the list only shrinks. Searched for
+  // //) is config's (until r63 one could wait in the legacy script for its
+  // phase, on ARCHITECTURE.md's list; the list is empty). Searched for
   // as typed: an address or version assembled from pieces at run time is
   // beyond a search of the text, and is review's to catch.
   {
@@ -191,8 +185,7 @@ const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log
     ok(['cdnjs.cloudflare.com', 'cdn.jsdelivr.net', 'unpkg.com', 'fonts.googleapis.com', 'fonts.gstatic.com', 'api.pwnedpasswords.com'].every(h => owned.has(h)), 'config.ts defines the CDNs, the fonts\' two origins and the password check\'s origin', [...owned]);
     const arch = fs.readFileSync(path.join(ROOT, 'ARCHITECTURE.md'), 'utf8');
     const line = (arch.match(/^Addresses waiting for their phase: (.+)$/m) || [])[1];
-    const waiting = new Map(line ? [...line.matchAll(/([a-z0-9-]+(?:\.[a-z0-9-]+)+) \(([^)]+)\)/g)].map(m => [m[1].toLowerCase(), m[2]]) : []);
-    ok(line !== undefined, 'ARCHITECTURE.md lists the outside addresses still waiting for their phase');
+    ok(line === 'none', 'ARCHITECTURE.md lists no outside address waiting for its phase (they waited in the legacy script, gone since r63)', line);
     // The values config owns that are not addresses: the versions, the faces and their weights, the style sheet's address whole, and a library's name with the first two parts of its version ("three.js 0.159").
     const short = v => v.split('.').slice(0, 2).join('\\.');
     const named = [['chart\\.js', cfg.CHART_VERSION], ['sortable(?:js)?', cfg.SORTABLE_VERSION], ['three(?:\\.js)?', cfg.THREE_VERSION]].map(([n, v]) => new RegExp(`${n}[\\s@/v-]*${short(v)}(?![\\d])`, 'i'));
@@ -201,11 +194,11 @@ const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log
     const weights = [cfg.FONT_DISPLAY_WEIGHTS, cfg.FONT_BODY_WEIGHTS].map(w => new RegExp(`(?<![\\d])${w.split(';').join('[\\s\'"]*[,;][\\s\'"]*')}(?![\\d])`));
     // Read as written and with a pattern's escapes undone ("https:\/\/api\.pwned..." is the address), in any case.
     const owns = s0 => { const s = s0.replace(/\\([./])/g, '$1'), low = s.toLowerCase(); return [...[...owned].filter(h => low.includes(h)), ...values.filter(v => low.includes(v)), ...named.filter(re => re.test(s)).map(re => re.source), ...weights.filter(re => re.test(s)).map(re => re.source)]; };
-    const hosts = [], copies = [], seen = new Set();
+    const hosts = [], copies = [];
     for (const [f, t] of texts) {
       for (const m of t.code.replace(/\\([./])/g, '$1').matchAll(HOST)) {
-        const h = m[1].toLowerCase(); seen.add(h);
-        if (!owned.has(h) && !(waiting.has(h) && f === 'src/10-29 (legacy parts)')) hosts.push(`${f}: ${h}`);
+        const h = m[1].toLowerCase();
+        if (!owned.has(h)) hosts.push(`${f}: ${h}`);
       }
       for (const l of [t.code, ...t.lits]) for (const v of owns(l)) copies.push(`${f}: ${v}`);
     }
@@ -215,9 +208,7 @@ const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log
       for (const l of [r.code, ...r.lits]) for (const v of owns(l)) copies.push(`tests/${f}: ${v}`);
     }
     ok(copies.length === 0, 'the outside addresses, library versions, font faces and weights config.ts defines are typed nowhere else in src/, scripts/ or tests/', [...new Set(copies)]);
-    ok(hosts.length === 0, 'every other outside address in src/ or scripts/ waits for its phase in ARCHITECTURE.md, in the legacy script', hosts);
-    const gone = [...waiting.keys()].filter(h => !seen.has(h));
-    ok(gone.length === 0, 'every address ARCHITECTURE.md lists as waiting is still in the legacy script (a moved one leaves the list)', gone);
+    ok(hosts.length === 0, 'every outside address in src/ or scripts/ is one config.ts defines', hosts);
   }
   ok((cfg.WORDMARK.mark + cfg.WORDMARK.strong + cfg.WORDMARK.light).toLowerCase() === cfg.APP_NAME.toLowerCase(), 'the logo\'s wordmark spells the app name (a new name needs a new wordmark)', cfg.WORDMARK);
   ok(/^\d+\.\d+$/.test(cfg.DISPLAY_VERSION), 'the version people see is major.minor', cfg.DISPLAY_VERSION);
@@ -273,77 +264,51 @@ const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log
   // Since the r59 review it also imports storage.ts, for the error log each failed address is written to (log), and nothing else.
   { const E = EDGES.get('outside') || []; const R = E.filter(e => runtime('outside', e)), I = E.filter(e => !runtime('outside', e));
     ok(R.length === 1 && I.length === 1 && I[0].to === 'storage' && !I[0].typeOnly, 'outside.ts loads by address in one place and imports only storage.ts (its error log)', E); }
-  const legacyImports = fs.readdirSync(path.join(ROOT, 'src')).filter(f => /^[12]\d-.+\.js$/.test(f)).filter(f => /^\s*import[\s('"{*]/m.test(fs.readFileSync(path.join(ROOT, 'src', f), 'utf8')));
-  ok(legacyImports.length === 0, 'the legacy parts import only through src/09-imports.js', legacyImports);
-  // The ratchet (ARCHITECTURE.md): the legacy script never grows, in declarations or in lines.
-  const arch = fs.readFileSync(path.join(ROOT, 'ARCHITECTURE.md'), 'utf8');
-  const capD = +((arch.match(/^Legacy top-level declarations: (\d+)$/m) || [])[1]);
-  const capL = +((arch.match(/^Legacy lines: (\d+)$/m) || [])[1]);
-  const nowD = require('../scripts/depmap').count();
-  const nowL = fs.readdirSync(path.join(ROOT, 'src')).filter(f => /^[12]\d-.+\.js$/.test(f)).reduce((n, f) => n + fs.readFileSync(path.join(ROOT, 'src', f), 'utf8').split('\n').length - 1, 0);
-  ok(capD > 0 && capL > 0 && nowD <= capD && nowL <= capL, `the legacy script is no larger than ARCHITECTURE.md records (${nowD} of ${capD} declarations, ${nowL} of ${capL} lines); new code goes in src/app/`);
-  ok(nowD >= capD && nowL >= capL, 'when code leaves the legacy script, the numbers in ARCHITECTURE.md are lowered to match, so the ratchet holds at the new level', { nowD, capD, nowL, capL });
-  // The dependency map counts a module function that reads the store, the
-  // live model or the page as shared state for the legacy code that calls it,
-  // through any module between (r53, scripts/depmap.js moduleReach). With
-  // live.ts as the only rule, the seven legacy declarations that call
-  // rirScale, moved to effort.ts in r53, counted as pure though they read a
-  // setting. A small source tree of its own, so the check outlives the
-  // names it was found with.
+  // The legacy script is gone (r63): the page's script is the bundle of src/app/main.ts (scripts/join.js), and a
+  // script part put back beside the page parts would be code no check here reads.
+  const stray = fs.readdirSync(path.join(ROOT, 'src')).filter(f => /\.(js|ts|mjs|cjs)$/.test(f));
+  ok(stray.length === 0, 'src/ holds no script outside src/app/ (the legacy script is gone since r63)', stray);
+  // Every module runs nothing as it is imported, but the page's start: storage, sync, the listeners and the first
+  // draw each wait for main.ts to start them, in the page's order (a module that ran something on import would run
+  // it wherever the bundle placed the module, before or after what it needs).
   {
-    const os = require('os'); const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'ironlog-depmap-'));
-    try {
-      fs.mkdirSync(path.join(tmp, 'app'));
-      const put = (f, t) => fs.writeFileSync(path.join(tmp, f), t);
-      put('app/store.ts', 'export let state: { a: number } = { a: 1 };\n');
-      put('app/eff.ts', "import { state } from './store';\nexport const scale = (): number => state.a;\n");
-      put('app/via.ts', "import { scale } from './eff';\nexport const twice = (): number => scale() * 2;\n");
-      put('app/page.ts', 'export const wide = (): number => window.innerWidth;\n');
-      put('app/calc.ts', 'export const two = (): number => 2;\n');
-      put('09-imports.js', "import { scale } from './app/eff';\nimport { twice } from './app/via';\nimport { wide } from './app/page';\nimport { two } from './app/calc';\n");
-      put('10-a.js', '(function(){\nfunction a(){ return scale(); }\nfunction b(){ return twice(); }\nfunction c(){ return wide(); }\nfunction d(){ return two(); }\nfunction e(){ return d(); }\n})();\n');
-      const fx = require('../scripts/depmap').map(tmp); const pure = Object.fromEntries(fx.decls.map(x => [x.name, x.pure]));
-      ok(pure.a === false && pure.b === false && pure.c === false && pure.d === true && pure.e === true, 'the dependency map reads a module function that reads the store, directly or through another module, or the page, as not pure for its callers, and one that reads none as pure', pure);
-    } finally { fs.rmSync(tmp, { recursive: true, force: true }); }
-  }
-  // Every name the modules export, read from the code esbuild makes of them.
-  const esbuild = require('esbuild'), acorn = require('acorn'); const exported = new Map();
-  for (const f of SRC_CODE.filter(f => f.startsWith('app/'))) {
-    const js = esbuild.transformSync(fs.readFileSync(path.join(ROOT, 'src', f), 'utf8'), { loader: 'ts', format: 'esm' }).code;
-    for (const st of acorn.parse(js, { ecmaVersion: 'latest', sourceType: 'module' }).body) if (st.type === 'ExportNamedDeclaration') {
-      for (const sp of st.specifiers || []) exported.set(sp.exported.name, f);
-      const d = st.declaration; if (d && d.id) exported.set(d.id.name, f); if (d && d.declarations) for (const x of d.declarations) exported.set(x.id.name, f);
+    const ts = require('typescript'); const runs = [];
+    for (const f of SRC_CODE.filter(f => f.startsWith('app/') && f !== 'app/main.ts')) {
+      const sf = ts.createSourceFile(f, fs.readFileSync(path.join(ROOT, 'src', f), 'utf8'), ts.ScriptTarget.Latest, true);
+      // A value set on one of the module's own functions (normalize's count of what it dropped) runs nothing.
+      const own = new Set(sf.statements.flatMap(st => (ts.isFunctionDeclaration(st) && st.name ? [st.name.text] : [])));
+      const setsOwn = st => ts.isBinaryExpression(st.expression) && st.expression.operatorToken.kind === ts.SyntaxKind.EqualsToken && ts.isPropertyAccessExpression(st.expression.left) && ts.isIdentifier(st.expression.left.expression) && own.has(st.expression.left.expression.text) && (ts.isLiteralExpression(st.expression.right) || st.expression.right.kind === ts.SyntaxKind.NullKeyword);
+      for (const st of sf.statements) if (ts.isExpressionStatement(st) && !setsOwn(st)) runs.push(`${f}:${sf.getLineAndCharacterOfPosition(st.getStart(sf)).line + 1}: ${st.getText(sf).slice(0, 80)}`);
     }
+    ok(runs.length === 0, 'no module but main.ts runs a statement as it is imported', runs);
   }
-  const dm = require('../scripts/depmap').map(path.join(ROOT, 'src'));
-  ok(exported.size > 100 && dm.imports.length > 100, `the modules' exports and the legacy script's imports are read (${exported.size} exports, ${dm.imports.length} imports)`);
-  const twice = dm.decls.filter(d => exported.has(d.name)).map(d => `${d.file}: ${d.name} (also in src/${exported.get(d.name)})`);
-  ok(twice.length === 0, 'no legacy declaration has the name of a module export: moved code exists once, and the module copy is the one that runs', twice);
-  const unimported = dm.free.filter(n => exported.has(n)).map(n => `${n} (src/${exported.get(n)})`);
-  ok(unimported.length === 0, 'every module export the legacy script uses is imported in src/09-imports.js', unimported);
-  const dead = dm.imports.filter(x => !x.used).map(x => `${x.name} from ${x.from}`);
-  ok(dead.length === 0, 'every name src/09-imports.js imports is used by the legacy script', dead);
-  // The names the legacy script reads without declaring or importing them are
-  // the browser's and JavaScript's own (r50 review): a moved name deleted with
-  // its import, or misspelt, would otherwise pass every check here and fail
-  // only when its line ran. A new global the code really needs goes on this list.
-  const GLOBALS = new Set(['Array', 'Blob', 'Boolean', 'CSS', 'DOMParser', 'DataView', 'Date', 'DecompressionStream', 'Error', 'File', 'FileReader', 'Image', 'Infinity', 'Intl', 'JSON', 'Map', 'Math', 'MouseEvent', 'MutationObserver', 'NaN', 'Number', 'Object', 'Promise', 'Response', 'Set', 'String', 'TextDecoder', 'TextEncoder', 'URL', 'Uint8Array', 'WeakMap', 'WeakSet', 'cancelAnimationFrame', 'clearInterval', 'clearTimeout', 'document', 'encodeURIComponent', 'getComputedStyle', 'history', 'indexedDB', 'isFinite', 'isNaN', 'localStorage', 'location', 'matchMedia', 'navigator', 'parseFloat', 'parseInt', 'performance', 'queueMicrotask', 'requestAnimationFrame', 'setInterval', 'setTimeout', 'undefined', 'window']);
-  const unknown = dm.free.filter(n => !GLOBALS.has(n));
-  // The count only shows the map read the script at all: the script shrinks phase by phase (37 globals at r60, from over 40).
-  ok(dm.free.length > 20 && unknown.length === 0, 'every name the legacy script reads without declaring or importing it is a known browser or JavaScript global', unknown);
-  // src/09-imports.js holds named imports from src/app/ and nothing else: an
-  // import with no names (`import './x'`, `import {} from './x'`) or a
-  // re-export (`export * from './x'`) runs a module for its effects alone,
-  // which nothing compares (the two r51 reviews), and a renamed or namespace
-  // import would let one name stand for another.
+  // Every export is read (304, r63): imported by another module, or named by a suite or a script (the suites reach
+  // the page's parts through window.__ironlog, which main.ts fills from imports, and a module's own functions through
+  // tests/engine.js's bundle of every module). An exported table is read by tests/engine.js, which freezes every one so
+  // a write to it throws; config.ts's values are read by the build and the markup through scripts/config.js. A
+  // statement that exports several names, a set of constants under one comment, is read when one of them is.
   {
-    const txt = fs.readFileSync(path.join(ROOT, 'src', '09-imports.js'), 'utf8'); const odd = [];
-    for (const st of acorn.parse(txt, { ecmaVersion: 'latest', sourceType: 'module' }).body) {
-      const named = st.type === 'ImportDeclaration' && st.specifiers.length > 0 && st.specifiers.every(sp => sp.type === 'ImportSpecifier' && sp.imported.name === sp.local.name);
-      const to = named && st.source.value.startsWith('./app/') ? path.resolve(ROOT, 'src', st.source.value) : null;
-      if (!to || !fs.existsSync(to + '.ts')) odd.push(txt.slice(st.start, Math.min(st.end, st.start + 100)));
+    const ts = require('typescript');
+    const T = ['tests', 'scripts'].flatMap(d => fs.readdirSync(path.join(ROOT, d)).filter(f => f.endsWith('.js')).map(f => fs.readFileSync(path.join(ROOT, d, f), 'utf8'))).join('\n');
+    const named = n => new RegExp('\\b' + n.replace(/\$/g, '\\$') + '\\b').test(T);
+    const table = e0 => { let e = e0; while (e && (ts.isAsExpression(e) || ts.isSatisfiesExpression(e) || ts.isParenthesizedExpression(e))) e = e.expression; return !!e && (ts.isObjectLiteralExpression(e) || ts.isArrayLiteralExpression(e) || ts.isNewExpression(e)); };
+    const imported = new Set(), stmts = [];
+    for (const f of SRC_CODE.filter(f => f.startsWith('app/'))) {
+      const id = path.basename(f, '.ts');
+      const sf = ts.createSourceFile(f, fs.readFileSync(path.join(ROOT, 'src', f), 'utf8'), ts.ScriptTarget.Latest, true);
+      for (const st of sf.statements) {
+        if (ts.isImportDeclaration(st)) {
+          const from = st.moduleSpecifier.text, b = st.importClause && st.importClause.namedBindings;
+          if (from.startsWith('./') && b && ts.isNamedImports(b)) for (const e of b.elements) imported.add(from.slice(2) + ':' + (e.propertyName || e.name).text);
+          continue;
+        }
+        if (id === 'config' || !(ts.canHaveModifiers(st) && (ts.getModifiers(st) || []).some(m => m.kind === ts.SyntaxKind.ExportKeyword))) continue;
+        if (ts.isVariableStatement(st)) { const ds = st.declarationList.declarations; if (!(ds.length === 1 && table(ds[0].initializer))) stmts.push({ id, names: ds.map(d => d.name.getText(sf)) }); }
+        else if (st.name) stmts.push({ id, names: [st.name.text] });
+      }
     }
-    ok(odd.length === 0, 'src/09-imports.js holds only imports of names, under their own names, from src/app/', odd);
+    const unread = stmts.filter(x => !x.names.some(n => imported.has(x.id + ':' + n) || named(n))).map(x => `${x.id}: ${x.names.join(', ')}`);
+    ok(stmts.length > 300 && unread.length === 0, `every export in src/app/ is read by another module, a suite or a script (${stmts.length} exports, tables and config.ts aside)`, unread);
   }
   // One-way dependencies (ARCHITECTURE.md): config and the record types at
   // the bottom, then data, then the engine and analytics, then storage and
@@ -749,6 +714,7 @@ const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log
   // values src/app/config.ts defines: a loader that changed one passed, with
   // the page saying one build and its meta tag another (the r51 mutation test).
   {
+    const esbuild = require('esbuild');
     const out = esbuild.buildSync({ entryPoints: [path.join(APP, 'config.ts')], bundle: true, format: 'cjs', platform: 'neutral', write: false, logLevel: 'silent' }).outputFiles[0].text;
     const file = path.join(require('os').tmpdir(), `ironlog-config-${process.pid}.cjs`); fs.writeFileSync(file, out);
     let direct; try { direct = require(file); } finally { fs.unlinkSync(file); }
@@ -813,7 +779,7 @@ const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log
 // reads the rest.
 {
   const acorn = require('acorn'), esbuild = require('esbuild');
-  const { freeNames, scanWrites } = require('../scripts/depmap');
+  const { freeNames, scanWrites } = require('../scripts/scope');
   const APP = path.join(ROOT, 'src', 'app');
   const ids = SRC_CODE.filter(f => f.startsWith('app/')).map(f => f.slice(4, -3));
   // JavaScript's own names that read nothing outside the code: no clock, no randomness, no page.
@@ -1025,21 +991,6 @@ const fails = []; const ok = (c, m, x) => { if (!c) { fails.push(m); console.log
   const src = fs.readdirSync(path.join(ROOT, 'src')).filter(f => /\.(js|html|css)$/.test(f)).map(f => fs.readFileSync(path.join(ROOT, 'src', f), 'utf8')).join('\n') + SRC_CODE.filter(f => f.startsWith('app/')).map(f => fs.readFileSync(path.join(ROOT, 'src', f), 'utf8')).join('\n');
   const back = ['/*ai{', '/*}ai', 'debriefPrompt', 'aiDigest', 'AI_STYLE', 'exProjection', 'loadAskCard', 'SIMPLE_HIDE'].filter(w => src.includes(w));
   ok(back.length === 0, 'nothing the documents record as removed is back in the source', back);
-
-  // A comment added at the end of a line of the legacy script must end the line (r55, the review: one added after
-  // Build my own's first statements swallowed two more, so the Days section opened folded and a day picked on Today
-  // stayed picked). Code after a line comment reads as a statement end and an assignment or call inside the comment.
-  {
-    const swallowed = [];
-    for (const f of fs.readdirSync(path.join(ROOT, 'src')).filter(f => /^[12]\d-.+\.js$/.test(f)))
-      fs.readFileSync(path.join(ROOT, 'src', f), 'utf8').split('\n').forEach((l, i) => {
-        const at = [l.indexOf('; //'), l.indexOf('} //'), l.indexOf(') //'), l.indexOf(', //')].filter(p => p >= 0);
-        if (!at.length) return;
-        const tail = l.slice(Math.min(...at) + 3);
-        if (/[;{}]\s*[A-Za-z_$][\w$.\[\]']*\s*[=(]/.test(tail) || /\w\.\w+=\w/.test(tail) || /\w\(\);/.test(tail)) swallowed.push(`${f}:${i + 1}: ${tail.slice(0, 120)}`);
-      });
-    ok(swallowed.length === 0, 'no comment at the end of a legacy line hides code after it', swallowed);
-  }
 
   const cm = fs.readFileSync(path.join(ROOT, 'CLAUDE.md'), 'utf8');
   ok(!/ships two ways|as a Claude artifact \(a hosted/.test(cm), 'CLAUDE.md does not call the retired artifact a shipping channel');

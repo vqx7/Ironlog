@@ -51,7 +51,7 @@ export function planForIn(
 
 /** The parts of a finished session that Finish's offer reads: the routine day
     it was logged against, its marks, and each exercise's plan and sets. */
-export interface FinishedDraft {
+interface FinishedDraft {
   routineId: string;
   dayId: string | null;
   date?: string | undefined;

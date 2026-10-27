@@ -19,12 +19,15 @@ import { addDays, today, weekStart, WEEK_DAYS } from './util';
 import { EX, IDX, U, exName, sessionWords, toD } from './live';
 import { loadNote } from './loads';
 import { normalize } from './normalize';
-import { HIST_PAGE, fx, setState, state, ui } from './store';
+import { HIST_PAGE, setState, state, ui } from './store';
 import { distShow, distU, fmtK, noLog, setStr } from './display';
 import { pageTitle, placed, section, tabFoot } from './view';
+import type { Field } from './view';
 import type { CardioEntry, Session } from './types';
 import type { ExerciseLike } from './model';
 import { UNDO_DAYS } from './storage';
+import { confirmBox, render, rerenderKeepScroll } from './page';
+import { toast } from './toast';
 
 /** The cardio entries History lists; older ones are in the CSV export. */
 const CARDIO_SHOWN = 40;
@@ -260,17 +263,17 @@ type Tap = { dataset: DOMStringMap };
 export const HISTORY_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
   histToggle(t) {
     ui.histOpen = ui.histOpen === t.dataset.id ? null : t.dataset.id;
-    fx.rerenderKeepScroll();
+    rerenderKeepScroll();
   },
   histMore() {
     ui.histLimit += HIST_PAGE;
-    fx.rerenderKeepScroll();
+    rerenderKeepScroll();
   },
   cardioDel(t) {
     const c = state.cardio.find(x => x.id === t.dataset.id);
     if (!c) return;
     const id = c.id;
-    fx.confirm(
+    confirmBox(
       'Delete cardio entry?',
       `${CARDIOL[c.kind] || 'Cardio'}, ${fmtDate(c.date)}, ${c.min} min. It stays under Recently deleted for ${TRASH_DAYS} days.`,
       'Delete',
@@ -284,8 +287,8 @@ export const HISTORY_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
           { check: () => state.cardio.some(x => x.id === id) }
         );
         if (!done) return;
-        fx.rerenderKeepScroll();
-        fx.toast('Cardio entry moved to Recently deleted');
+        rerenderKeepScroll();
+        toast('Cardio entry moved to Recently deleted');
       },
       true
     );
@@ -301,13 +304,13 @@ export const HISTORY_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
       },
       { undo: true }
     );
-    fx.rerenderKeepScroll();
-    fx.toast('Deleted for good', true);
+    rerenderKeepScroll();
+    toast('Deleted for good', true);
   },
   trashEmpty() {
     const n = state.trash.length;
     if (!n) return;
-    fx.confirm(
+    confirmBox(
       `Empty Recently deleted (${n} item${n > 1 ? 's' : ''})?`,
       `Undo in Settings can still bring ${n > 1 ? 'them' : 'it'} back for ${UNDO_DAYS} days.`,
       'Delete all',
@@ -318,8 +321,8 @@ export const HISTORY_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
           },
           { undo: true }
         );
-        fx.render();
-        fx.toast('Recently deleted cleared', true);
+        render();
+        toast('Recently deleted cleared', true);
       },
       true
     );
@@ -342,12 +345,12 @@ export const HISTORY_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
               : base;
       setState(normalize(next));
     });
-    fx.render();
-    fx.toast('Restored');
+    render();
+    toast('Restored');
   },
   histDel(t) {
     const id = t.dataset.id;
-    fx.confirm(
+    confirmBox(
       'Delete session?',
       `This removes it from history and all analytics. It stays under Recently deleted for ${TRASH_DAYS} days (the ${TRASH_MAX} most recent items are kept).`,
       'Delete session',
@@ -360,8 +363,8 @@ export const HISTORY_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
           },
           { undo: true }
         );
-        fx.render();
-        fx.toast('Session deleted', true);
+        render();
+        toast('Session deleted', true);
       },
       true
     );
@@ -369,10 +372,10 @@ export const HISTORY_ACTS: Readonly<Record<string, (t: Tap) => void>> = {
 };
 
 /** History's fields, by the data-bind they carry: what was picked, read on change. */
-export const HISTORY_BINDS: Readonly<Record<string, (t: HTMLInputElement | HTMLSelectElement) => void>> = {
+export const HISTORY_BINDS: Readonly<Record<string, (t: Field) => void>> = {
   histEx(t) {
     ui.histEx = t.value;
     ui.histLimit = HIST_PAGE;
-    fx.rerenderKeepScroll();
+    rerenderKeepScroll();
   }
 };

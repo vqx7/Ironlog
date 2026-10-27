@@ -6,7 +6,7 @@
 
 import { today, isDate, yearOf, DAY_MS, isoDateOf, HOUR_MIN, MINUTE_S, SECOND_MS, LETTERS, WEEK_DAYS } from './util';
 import { CARDIO, CWHEN } from './library';
-import { KM_MI } from './units';
+import { KM_MI, LB } from './units';
 import { EFFORT_TOP, LIMITS } from './records';
 
 /** One set read from a table row, in the row's unit (u) when the row says it. */
@@ -43,6 +43,39 @@ type ImpCardio = {
   note?: string;
   km?: number;
 };
+
+/** An exercise as the reader found it: its sets from a table, or the text of its sets from notes, read once the exercise is known (the import screen's impTextSets). */
+interface ImpReadItem {
+  name: string;
+  sets?: ImpSet[] | undefined;
+  setsText?: string[] | undefined;
+  note?: string | undefined;
+  ss?: string | undefined;
+}
+/** A session as the reader found it: no date when the notes gave none (the preview asks for one). */
+interface ImpReadSession {
+  date: string | null;
+  name: string;
+  items: ImpReadItem[];
+  deload?: boolean | undefined;
+  note?: string | undefined;
+  durMin?: number | undefined;
+}
+/** What a file or pasted text was read as, before the preview: the sessions, the unit when it says one, what was skipped or not understood, cardio from a table, and whether it came from notes or still needs its columns named. */
+export interface ImpRead {
+  sessions: ImpReadSession[];
+  unit?: 'kg' | 'lb' | null | undefined;
+  skipped?: number | undefined;
+  cardio?: number | undefined;
+  cardioRows?: ImpCardio[] | undefined;
+  unread?: string[] | undefined;
+  unreadN?: number | undefined;
+  cut?: boolean | undefined;
+  text?: boolean | undefined;
+  needMap?: boolean | undefined;
+}
+/** A table's columns as read or as chosen in the preview: the column index of each field. */
+export type ImpMap = Record<string, number | undefined>;
 
 /** The weeks of sessions the demo log makes (Settings, Load demo data). */
 export const DEMO_WEEKS = 8;
@@ -156,7 +189,7 @@ export function impDate(str: unknown, ref?: string): string | null {
 /* Spreadsheet day numbers (days since 30 Dec 1899). A blank cell is null,
    which compares as 0 and so fails the range check; the casts say that to
    TypeScript, and past the check the number is real, as the ! says. */
-export function impSerial(n: number | null): string | null {
+function impSerial(n: number | null): string | null {
   if (!((n as number) > SERIAL.min && (n as number) < SERIAL.max)) return null;
   const d = new Date(SERIAL.epoch + Math.floor(n!) * DAY_MS);
   return isoDateOf(d.toISOString());
@@ -478,7 +511,7 @@ export function impGuess(name: unknown): { primary: string; equip: string; assis
    17:29"), across midnight too. A bare number says no unit, so it is left
    out rather than guessed. Null when nothing reads. */
 /** A workout's minutes from a duration cell, or from its start and end cells, or null. */
-export function impSpan(dur: string, start: string, end: string): number | null {
+function impSpan(dur: string, start: string, end: string): number | null {
   const d = String(dur || '').toLowerCase();
   const h = d.match(/(\d+(?:\.\d+)?)\s*h/),
     m = d.match(/(\d+)\s*m(?!s)/);
@@ -563,7 +596,7 @@ export function impHeader(row: readonly unknown[]): Record<string, number> {
 }
 
 /** The unit the weight column's header names ("Weight (kg)", "lbs"), or null when it names none. */
-export function impUnitOf(headers: readonly unknown[], map: Record<string, number>): 'kg' | 'lb' | null {
+function impUnitOf(headers: readonly unknown[], map: Record<string, number>): 'kg' | 'lb' | null {
   const h = map.w != null ? String(headers[map.w]).toLowerCase() : '';
   return /kg|kilo/.test(h) ? 'kg' : /lb|pound/.test(h) ? 'lb' : null;
 }
@@ -571,7 +604,7 @@ export function impUnitOf(headers: readonly unknown[], map: Record<string, numbe
 /* Cardio by name, or null: an imported row with a distance, or with a
    cardio name and no reps, is cardio (r30: Strong's treadmill rows were
    dropped). Carries and lunges that say "walk" are lifting. */
-export function impCardioKind(name: unknown): string | null {
+function impCardioKind(name: unknown): string | null {
   const n = String(name || '').toLowerCase();
   if (/farmer|carry|lunge|suitcase/.test(n)) return null;
   return /treadmill.*incline|incline.*walk/.test(n)
@@ -600,7 +633,7 @@ export function impCardioKind(name: unknown): string | null {
    one above (sheets often write the date once). Rest timer rows, and rows
    with neither reps nor seconds that are not cardio, are skipped and
    counted; cardio rows become cardio entries (r30). */
-export function impFromTable(rows: readonly (readonly unknown[])[], map: Record<string, number>) {
+export function impFromTable(rows: readonly (readonly unknown[])[], map: Record<string, number>): ImpRead {
   const head = rows[0];
   let unit = impUnitOf(head, map);
   // Strong's Set Order is the set's number (W, D and F mark types); only Hevy's set_type uses numbers as types.
@@ -768,7 +801,7 @@ export function impFromTable(rows: readonly (readonly unknown[])[], map: Record<
    String.replace types them any: every group typed string is one its
    pattern must match ((^|\s) matches empty text at worst), and the RPE
    pattern's two groups are alternatives, so each is string | undefined. */
-export function impSetsText(t: unknown): string {
+function impSetsText(t: unknown): string {
   let s = ' ' + String(t).toLowerCase() + ' ';
   s = s.replace(/(\d),(\d{1,2})(?=\s*(?:lbs?|kgs?)?\s*[x×*])/g, '$1.$2');
   s = s.replace(/(\d)\s*(lbs?|kgs?|#)(?=[\s,x×*@;/]|$)/g, '$1 ');
@@ -855,3 +888,291 @@ export function impSetsText(t: unknown): string {
    lifts they share instead of by name. */
 export const GENERIC_WORKOUT =
   /^\s*((early|late)\s+)?(morning|afternoon|evening|night|midday|lunch|weekend)?\s*(workout|session|training|lifting|lift|gym)?\s*$|^imported$/i;
+
+/* ---------- typed sets and notes (r63, from the legacy script) ---------- */
+
+/** What one line of typed sets may hold: the most reps in a set and the most sets. */
+const TYPED = { reps: 100, sets: 20 } as const;
+/** One decimal place, for a reading of RPE as RIR. */
+const TENTHS = 10;
+/** One set read from typed text: its load (in the unit the reader gives, 0 when none), reps and reps in reserve. */
+export interface TypedSet {
+  w: number;
+  r: number;
+  rir: number | null;
+}
+/* Typed or dictated sets. Examples it reads:
+   "235x5, 5, 4 rir 1"   three sets at 235, RIR 1 on each
+   "185x8@2 205x6@1"      load changes mid-exercise, RIR per set
+   "225 for 5 5 4 at 1"   "for" and "at" work like x and @ (RIR 1 on the last set)
+   "bw x 10, bw+25 x 6"   bodyweight exercises, added load after the plus
+   A bare number after the first set repeats the last load. Anything it
+   cannot read returns null. rpe: effort is entered as RPE (Settings, r33),
+   so @8 is RPE 8, read as RIR 2; "rpe 8" at the end is RPE in either mode, as
+   "rir 2" is RIR. conv turns a typed load into the stored one. */
+/** Sets typed as text, or null when any part cannot be read: the loads through conv, bodyweight allowed when the lift is one. */
+export function readSets(
+  text: unknown,
+  ex: { bw?: boolean | undefined },
+  defW: number | null | undefined,
+  conv: (v: number) => number,
+  rpe?: boolean
+): TypedSet[] | null {
+  const fromRpe = (v: number) => (v >= 1 && v <= EFFORT_TOP ? Math.round((EFFORT_TOP - v) * TENTHS) / TENTHS : NaN);
+  let s = String(text || '')
+    .toLowerCase()
+    .replace(/[×*]/g, 'x')
+    .replace(/\bfor\b/g, 'x')
+    .replace(/\bat\b/g, '@')
+    .replace(/\breps?\b/g, '')
+    .replace(/\blbs?\b|\bkgs?\b/g, '');
+  let allRir: number | null = null;
+  const m = s.match(/\b(rir|rpe)\s*(\d+(?:\.\d+)?)\s*$/);
+  if (m) {
+    allRir = m[1] === 'rpe' ? fromRpe(+(m[2] || '')) : +(m[2] || '');
+    if (!isFinite(allRir)) return null;
+    s = s.slice(0, m.index);
+  }
+  s = s
+    .replace(/\s*x\s*/g, 'x')
+    .replace(/\s*@\s*/g, '@')
+    .replace(/\s*\+\s*/g, '+')
+    .trim();
+  if (!s) return null;
+  const toks = s.split(/[\s,;/]+/).filter(Boolean);
+  const re = /^(?:(bw)(?:\+(\d+(?:\.\d+)?))?x|(\d+(?:\.\d+)?)x)?(\d{1,3})(?:@(\d+(?:\.\d+)?))?$/;
+  let w = defW == null ? null : defW;
+  const out: TypedSet[] = [];
+  for (const t of toks) {
+    const g = t.match(re);
+    if (!g) return null;
+    const [, bw, added, load, reps, at] = g;
+    if (bw) w = added ? conv(+added) : 0;
+    else if (load != null) w = conv(+load);
+    const r = +(reps || '');
+    if (!(r >= 1 && r <= TYPED.reps)) return null;
+    const rir = at != null ? (rpe ? fromRpe(+at) : +at) : allRir;
+    if (rir != null && !(rir >= 0 && rir <= EFFORT_TOP)) return null;
+    if (w == null && !ex.bw) return null;
+    out.push({ w: w == null ? 0 : w, r, rir });
+  }
+  return out.length && out.length <= TYPED.sets ? out : null;
+}
+
+/** The lines of notes not understood that the preview lists. */
+const UNREAD_SHOWN = 50;
+/** A loose exercise of notes, its sets as text until the exercise is known. */
+interface TextItem {
+  name: string;
+  sets: ImpSet[];
+  setsText: string[];
+}
+/* Free text: a date line starts a day; each other line is an exercise name
+   followed by its sets, or sets alone continuing the exercise above, or a
+   name alone with its sets on the next lines (impSetsText reads the sets). */
+/** Notes read as sessions: a date line starts a day, an exercise's sets kept as text until its exercise is known. */
+export function impFromText(text: unknown): ImpRead {
+  const lines = String(text).split(/\r?\n/);
+  const S: { date: string | null; name: string; items: TextItem[] }[] = [];
+  let cur: (typeof S)[number] | null = null,
+    ex: TextItem | null = null,
+    pend: { name: string; raw: string } | null = null,
+    hint: 'kg' | 'lb' | null = null;
+  const unread: string[] = [];
+  const day = (date: string | null, name: string): { date: string | null; name: string; items: TextItem[] } => {
+    if (pend) unread.push(pend.raw);
+    const d = { date, name: name || '', items: [] };
+    cur = d;
+    S.push(d);
+    ex = null;
+    pend = null;
+    return d;
+  };
+  const raw = (v: number) => v;
+  const nextIsName = (i: number) => {
+    for (let j = i + 1; j < lines.length; j++) {
+      const t = (lines[j] || '').trim();
+      if (t) return /^[\s\-•*–]*[a-z]{3,}/i.test(t) && !impDate(t);
+    }
+    return true;
+  };
+  const REPS = /^\d{1,2}(\s*[/,]\s*\d{1,2})+$/;
+  for (let li = 0; li < lines.length; li++) {
+    const L0 = lines[li] || '';
+    const L = L0.replace(/^[\s\-•*–]+/, '').trim();
+    if (!L) continue;
+    const under = li > 0 && !!(lines[li - 1] || '').trim();
+    if (/\bkgs?\b|\dkg/i.test(L)) hint = hint || 'kg';
+    else if (/\blbs?\b|\dlb|#/i.test(L)) hint = hint || 'lb';
+    const words = L.split(/\s+/);
+    // A date line: a date and no sets on it; what is left may be the workout's name.
+    let dt = impDate(L);
+    // Only numbers and slashes after an exercise, with sets (not a new exercise) after: reps, not a date.
+    if (dt && (ex || pend) && /^[\d\s/.,-]+$/.test(L) && !nextIsName(li)) dt = null;
+    // "Bench press 185" then "10/10/10": the line under a lone load is its reps, even when it could be a date.
+    const e0: TextItem | null = ex;
+    const lone =
+      !!e0 && e0.setsText.length > 0 && /^\d{2,}(\.\d+)?$/.test((e0.setsText[e0.setsText.length - 1] || '').trim());
+    if (e0 && lone && REPS.test(L)) {
+      e0.setsText[e0.setsText.length - 1] += ' ' + L;
+      continue;
+    }
+    // Numbers directly under a lift still waiting for its sets (no blank line between) are its reps.
+    if (dt && pend && under && REPS.test(L)) dt = null;
+    if (dt) {
+      const rest = L.replace(/\b(mon|tues?|wed(nes)?|thu(rs)?|fri|sat(ur)?|sun)(day)?\b/gi, '')
+        .replace(
+          /\b\d{4}[-/.]\d{1,2}[-/.]\d{1,2}\b|\b\d{1,2}[/.-]\d{1,2}([/.-]\d{2,4})?\b|\b\d{1,2}(st|nd|rd|th)?\s+[a-z]{3,9}\.?,?(\s*\d{4})?\b|\b[a-z]{3,9}\.?\s+\d{1,2}(st|nd|rd|th)?(,?\s*\d{4})?\b/gi,
+          ''
+        )
+        .replace(/[,:;\-–|]+/g, ' ')
+        .trim();
+      if (!/\d/.test(rest)) {
+        day(dt, rest);
+        continue;
+      }
+    }
+    // Sets alone continue the exercise above, or the name waiting on the line before.
+    const target: TextItem | { name: string; raw: string } | null = ex || pend;
+    const alone = readSets(impSetsText(L), { bw: true }, null, raw);
+    if (
+      alone &&
+      target &&
+      !/[a-z]{3,}/i.test(L.replace(/\b(bw|x|at|for|rir|reps?|sets?|of|lbs?|kgs?|sec|secs|seconds)\b/gi, ''))
+    ) {
+      const p: { name: string; raw: string } | null = pend;
+      // A first day made here takes no waiting name to the lines not understood: the name is the lift these sets are for.
+      let into: (typeof S)[number] | null = cur;
+      if (!into) {
+        pend = null;
+        into = day(null, '');
+      }
+      let e: TextItem | null = ex;
+      if (p && target === p) {
+        e = { name: p.name, sets: [], setsText: [] };
+        into.items.push(e);
+        ex = e;
+        pend = null;
+      }
+      if (e) e.setsText.push(L);
+      continue;
+    }
+    // Name then sets: the shortest name whose remainder reads as sets, so no set is read as part of the name.
+    let done = false;
+    for (let i = 1; i < words.length; i++) {
+      const name = words
+        .slice(0, i)
+        .join(' ')
+        .replace(/[:\-–]+$/, '')
+        .trim();
+      const rest = words.slice(i).join(' ');
+      if (!/[a-z]/i.test(name)) continue;
+      const got = readSets(impSetsText(rest), { bw: true }, null, raw);
+      if (got) {
+        const into = cur || day(null, '');
+        const e: TextItem = { name, sets: [], setsText: [rest] };
+        into.items.push(e);
+        ex = e;
+        pend = null;
+        done = true;
+        break;
+      }
+    }
+    if (done) continue;
+    // A name then a load, with the reps on the line right under it: "Bench press 185" then "10/10/10".
+    {
+      const g = L.match(/^(.*?[a-z].*?)\s+(\d{2,}(?:\.\d+)?\s*(?:lbs?|kgs?|#)?)$/i);
+      const nx = (lines[li + 1] || '').replace(/^[\s\-•*–]+/, '').trim();
+      if (g && REPS.test(nx)) {
+        const into = cur || day(null, '');
+        const pw: { name: string; raw: string } | null = pend;
+        if (pw) unread.push(pw.raw);
+        pend = null;
+        const e: TextItem = {
+          name: (g[1] || '').replace(/[:\-–]+$/, '').trim(),
+          sets: [],
+          setsText: [g[2] + ' ' + nx]
+        };
+        into.items.push(e);
+        ex = e;
+        li++;
+        continue;
+      }
+    }
+    // A name alone: its sets may follow on the next lines.
+    if (/[a-z]{3,}/i.test(L) && !/\d{2,}\s*[x×*]/.test(L)) {
+      const pw: { name: string; raw: string } | null = pend;
+      if (pw) unread.push(pw.raw);
+      pend = { name: L.replace(/[:\-–]+$/, '').trim(), raw: L0.trim() };
+      ex = null;
+      continue;
+    }
+    unread.push(L0.trim());
+  }
+  const last: { name: string; raw: string } | null = pend;
+  if (last) unread.push(last.raw);
+  return {
+    sessions: S.filter(x => x.items.length).map(x => ({ date: x.date, name: x.name, items: x.items })),
+    unit: hint,
+    skipped: 0,
+    cardio: 0,
+    unread: unread.slice(0, UNREAD_SHOWN),
+    unreadN: unread.length,
+    text: true
+  };
+}
+
+/** On a bodyweight lift, the most sets a line of sets of reps alone ("3x10") is read as. */
+const BW_SETS_OF = 10;
+/* Sets from text are read once the exercise is known, so a bodyweight lift
+   may have reps alone. The unit is applied at the end. A unit written on
+   the line is that line's, glued to the x or as # for pounds too (r55, the
+   audit: 100kg under an earlier 30lb was read as 100 lb; the second review:
+   100kgx8 and 225#). */
+/** A notes exercise's sets, read as the exercise it was matched to, the loads through conv unless a line says its unit; null when a line cannot be read. */
+export function impTextSets(
+  it: { setsText?: readonly string[] | undefined },
+  exo: { bw?: boolean | undefined; assist?: boolean | undefined; timed?: boolean | undefined },
+  conv: (v: number) => number
+): { w: number; r: number; rir: number | null | undefined; warm: boolean; drop: boolean }[] | null {
+  const out: { w: number; r: number; rir: number | null | undefined; warm: boolean; drop: boolean }[] = [];
+  let defW: number | null = null;
+  for (const t of it.setsText || []) {
+    let st = impSetsText(t);
+    const lu = /(?:\b|\d)kgs?(?![a-wyz])/i.test(t) ? 'kg' : /(?:\b|\d)lbs?(?![a-wyz])|\d\s*#/i.test(t) ? 'lb' : null;
+    const cv = lu === 'kg' ? (v: number) => v : lu === 'lb' ? (v: number) => v * LB : conv;
+    // On a bodyweight lift a bare "3x10" is sets of reps (no load to read); on a weighted lift it stays load x reps.
+    if (exo.bw && !exo.assist) {
+      // The line as it was before the replace reads its @ (the replace reads the text it is given, not the result).
+      const at = /@/.test(st);
+      st = st.replace(/(^|[\s,])(\d{1,2})x(\d{1,3})(?=$|[\s,])/g, (m: unknown, p: unknown, a: unknown, b: unknown) =>
+        Number(a) <= BW_SETS_OF && !at
+          ? String(p) +
+            Array<string>(Number(a))
+              .fill('bwx' + String(b))
+              .join(' ')
+          : String(m)
+      );
+    }
+    // On a weighted lift a bare "3x10" (up to 5 sets, no unit, no load anywhere on the line) is sets of reps with no load:
+    // at the load carried from the line above, else asked for rather than read as 3 lb for 10 reps.
+    else if (
+      !exo.timed &&
+      /^\s*[1-5]\s*[x×*]\s*\d{1,3}(\s*,?\s*[1-5]\s*[x×*]\s*\d{1,3})*\s*$/.test(String(t).toLowerCase())
+    ) {
+      if (defW == null) return null;
+      for (const g of String(t)
+        .toLowerCase()
+        .matchAll(/([1-5])\s*[x×*]\s*(\d{1,3})/g))
+        for (let k = 0; k < +(g[1] || 0); k++)
+          out.push({ w: defW, r: +(g[2] || 0), rir: undefined, warm: false, drop: false });
+      continue;
+    }
+    const g = readSets(st, { bw: !!exo.bw || !!exo.timed }, defW, cv);
+    if (!g) return null;
+    out.push(...g.map(x => ({ w: x.w, r: x.r, rir: x.rir, warm: false, drop: false })));
+    const lastSet = g[g.length - 1];
+    defW = lastSet ? lastSet.w : defW;
+  }
+  return out;
+}

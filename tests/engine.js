@@ -375,9 +375,10 @@ function lineCoverage(covDir, bundleFile, mapPayload) {
 
   // The engine's modules, bundled for Node with their source map.
   // The engine's modules, and every other module but the store and the live
-  // model (which the engine never reaches), so each table the engine could
-  // reach is there to be frozen in the child.
-  const others = fs.readdirSync(APP).filter(f => f.endsWith('.ts')).map(f => f.slice(0, -3)).filter(m => !MODULES.includes(m) && !['store', 'live'].includes(m)).sort();
+  // model (which the engine never reaches) and the page's start (main.ts,
+  // r63, which starts the page as it is imported and exports nothing), so
+  // each table the engine could reach is there to be frozen in the child.
+  const others = fs.readdirSync(APP).filter(f => f.endsWith('.ts')).map(f => f.slice(0, -3)).filter(m => !MODULES.includes(m) && !['store', 'live', 'main'].includes(m)).sort();
   const entry = [...MODULES, ...others].map(m => `export * from './${m}';`).join('\n');
   // Strict, as the page's bundle is (scripts/join.js) and as modules always
   // are: in sloppy mode a write to a frozen object fails silently, so a write

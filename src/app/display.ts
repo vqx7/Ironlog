@@ -198,6 +198,13 @@ export function prSet(exId: string, date: string): { v: number; w: number; r: nu
    sessions and PRs on Today, the Stats tiles and Recent PRs (r46). The 4
    weeks before are given only when the log covers all of them, so 2 days of
    a first month never read as a jump. Counted PRs only (r32). */
+/* The screens use recent4w; the suites reach for this one to check a window
+   of their own (r63, from the legacy script's 19-today.js). */
+/** The counted PRs (the ones marked big, r32) of the last days given. */
+export function prsWithin(days: number): Pr[] {
+  const from = addDays(today(), -days);
+  return IDX().prs.filter(x => x.date >= from && x.big);
+}
 /** Sessions and counted PRs in the last 4 weeks, and in the 4 before when the log covers them. */
 export function recent4w(): { back: boolean; sess: number; sessP: number; prs: Pr[]; prsP: number } {
   // The window's days counted with today: RECENT_DAYS of them, and the RECENT_DAYS before.
@@ -219,7 +226,7 @@ export function recent4w(): { back: boolean; sess: number; sessP: number; prs: P
 }
 
 /** The weight lifted in a week, to its day `upto` (0 Monday), or all of it. */
-export function weekVolume(ws: string, upto?: number | null): number {
+function weekVolume(ws: string, upto?: number | null): number {
   const end = addDays(ws, upto == null ? SUNDAY : upto);
   let v = 0;
   for (const x of IDX().sessVol) if (x.date >= ws && x.date <= end) v += x.vol;
@@ -444,7 +451,7 @@ export function regionWk(): number {
 }
 
 /** What By region draws from, and how it says so. */
-export interface RegionSrc {
+interface RegionSrc {
   src: Readonly<Record<string, number>> & { readonly _mix?: Readonly<Record<string, boolean>>; readonly _ff?: boolean };
   n?: number;
   label: string;

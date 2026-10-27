@@ -9,17 +9,20 @@
    refuses a write to the log in a moved screen outside `act`, and
    tests/r57.js reads every step on the page after each action's tap. */
 
-import { log, snapshot } from './storage';
-import { saveNow, saveSoon } from './sync';
+import { log, snapshot, undoPersist, undoStack } from './storage';
+import { assemble, baseOf, mergeChunk, saveNow, saveSoon } from './sync';
+import { canon, mergeDraft } from './merge';
+import { chunksOf, emptyChunk } from './chunks';
+import type { Rec } from './records';
 import { invalidate } from './live';
-import { plainTemplate } from './normalize';
+import { normalize, plainTemplate } from './normalize';
 import { TRASH_BYTES, TRASH_MAX, parseJson, rec } from './records';
 import type { Trashed } from './records';
-import { state } from './store';
+import { setState, state } from './store';
 import { today } from './util';
 
 /** How a change is made: its check, and the Undo step it keeps. */
-export interface ActOpts {
+interface ActOpts {
   /** Read first: false refuses the change, and nothing is kept, changed or written. */
   check?: (() => boolean) | undefined;
   /** An Undo step: true keeps the log as it was before the change, a function reverses the change in place (snapshot's `inv`, for a change a later one may touch). Absent, there is none, as for an edit before r57. */
@@ -79,4 +82,71 @@ export function toTrash(kind: Trashed['kind'], data: { id: string }): void {
     ...state.trash.filter(t => !(t.id === data.id && t.kind === kind))
   ].slice(0, TRASH_MAX);
   while (state.trash.length > 1 && JSON.stringify(state.trash).length > TRASH_BYTES) state.trash.pop();
+}
+
+/* ---------- Undo (moved from the legacy script's 27-actions.js in r63) ----------
+   Undo used to put back the whole state from before the action, which also
+   threw away every session, weigh-in or set logged since then. Now only the
+   action is reversed: its own reversal while the session it changed is open
+   (an Undo step given a function), else a three-way merge with the state
+   right after the action as the base, what is here now as one side and the
+   state before the action as the other. Records changed since the action
+   keep their newer version. */
+/** Takes back the newest Undo step: 'none' when there is none, 'failed' when it could not be read, 'unchanged' when nothing it changed is left to undo, else how many steps are left. */
+export function undoStep(): 'none' | 'failed' | 'unchanged' | number {
+  const e = undoStack.pop();
+  if (!e) return 'none';
+  undoPersist();
+  const before = canon(state);
+  let done = false;
+  if (e.inv) {
+    try {
+      done = e.inv() === true;
+    } catch (x) {
+      log('undo', x);
+      done = false;
+    }
+    if (done) setState(normalize(state));
+  }
+  if (!done)
+    try {
+      const pre = normalize(parseJson(e.pre));
+      const post = e.post ? normalize(parseJson(e.post)) : state;
+      const P = chunksOf(pre),
+        Q = chunksOf(post),
+        C = chunksOf(state);
+      const stat = { conflicts: 0 };
+      const parts: Record<string, Rec | null> = {};
+      for (const id of new Set([...Object.keys(P), ...Object.keys(Q), ...Object.keys(C)])) {
+        const q = Q[id] || emptyChunk(id);
+        /* The session in progress compared in one form, all three normalized,
+           as a reload leaves it: the live one compared raw read every exercise
+           as changed since and nothing went back (r55.1, the audit of r55:
+           Undo after Make it lighter). */
+        const qd = Q['draft'],
+          pd = P['draft'];
+        parts[id] =
+          id === 'draft'
+            ? {
+                draft: mergeDraft(
+                  qd && qd['draft'],
+                  normalize(parseJson(JSON.stringify(state))).draft,
+                  pd && pd['draft']
+                )
+              }
+            : mergeChunk(id, q ? baseOf(id, q) : null, C[id] || emptyChunk(id), P[id] || emptyChunk(id), false, stat);
+      }
+      setState(assemble(parts));
+    } catch (x) {
+      log('undo', x);
+      return 'failed';
+    }
+  // If the step below never saw a save of its own, its result is the state
+  // before the step just undone, not what this undo is about to save.
+  const below = undoStack[undoStack.length - 1];
+  if (below && below.post == null) below.post = e.pre;
+  if (canon(state) === before) return 'unchanged';
+  invalidate();
+  saveNow();
+  return undoStack.length;
 }

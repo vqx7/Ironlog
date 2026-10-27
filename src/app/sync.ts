@@ -43,7 +43,7 @@ import type { CardioEntry } from './types';
 import { routineEmpty } from './routines';
 import { cleanCardio, normalize, plainTemplate } from './normalize';
 import { invalidate } from './live';
-import { AUTH } from './providers';
+import { AUTH, codeOf } from './providers';
 import { acct, cloud, fx, setState, state, ui } from './store';
 import type { Base, CloudDb, CloudRef, CloudStatus, State, SyncNote } from './store';
 import {
@@ -65,6 +65,8 @@ import {
     lease), the lease and the wait for it, the wait for any answer from the
     account, an account error's toast, and how long after the last pull a
     return to the app pulls again. */
+/** How long a request to the account may go without an answer before it is given up, in milliseconds: the sync's, the sign-in's and a problem report's (r63, PENDING 306 and 309). */
+export const NET_MS = 20000;
 const SYNC_MS = {
   save: 400,
   track: 800,
@@ -72,7 +74,7 @@ const SYNC_MS = {
   leaseBusy: 2500,
   lease: 30000,
   leaseWait: 10000,
-  net: 20000,
+  net: NET_MS,
   errToast: 8000,
   pullAfter: 20000
 } as const;
@@ -85,18 +87,11 @@ const KEEP_TRIES = 10;
 
 declare global {
   interface Window {
-    /** Claude's artifact services, where the page runs inside Claude (retired; the sync suites inject a stand-in db through it). */
-    claude?: { use?: ClaudeUse | undefined } | undefined;
     /** The account backend's handle for the sync (scripts/cloud-supabase.js): the document store and who is signed in. */
     ironlogCloud?:
       | (() => Promise<{ db?: CloudDb | null | undefined; userId?: unknown } | null | undefined>)
       | undefined;
   }
-}
-/** `window.claude.use`: the artifact's database, and the viewer. */
-interface ClaudeUse {
-  (what: 'db'): Promise<CloudDb | null | undefined>;
-  (what: 'user'): Promise<{ id(): Promise<unknown> } | null | undefined>;
 }
 
 /* ---------- the save on this device ---------- */
@@ -175,7 +170,7 @@ export function commit(): void {
 /* ---------- the sync notes ---------- */
 
 /** The key the sync notes are saved under: each document's last agreed copy, the device id and the account. */
-export const SYNC_KEY = KEY + '.sync';
+const SYNC_KEY = KEY + '.sync';
 /* The notes as they were saved, each entry checked field by field (r56.1,
    PENDING 305): a note that fails is dropped, with a line in the error log,
    so a damaged note never reads as agreement with the account (its document
@@ -278,7 +273,7 @@ const newEp = (): void => {
 /** The moment stored notes last stopped describing the log before them; 0 when they say none. */
 const epOf = (m: Rec | null): number => (m && typeof m.ep === 'number' ? m.ep : 0);
 /** Writes the sync notes to this device: whether they were written (above). */
-export function saveMeta(): boolean {
+function saveMeta(): boolean {
   if (device.boot && !device.ok) return false;
   try {
     if (epOf(rec(parseJson(localStorage.getItem(SYNC_KEY) || 'null'))) > notesEp) {
@@ -416,7 +411,7 @@ function ref(id: string): CloudRef {
 }
 function cloudFail(e: unknown): void {
   const E = rec(e);
-  const c = E && E.code;
+  const c = codeOf(e);
   if (c === 'revoked' || c === 'not_granted' || c === 'capability_disabled' || c === 'capability_removed') {
     cloud.on = false;
     setCloud('local');
@@ -622,7 +617,7 @@ function markEdit(): void {
   trackT = setTimeout(trackEdits, SYNC_MS.track);
 }
 /** Notes which documents changed since the last look, and when (editAt). */
-export function trackEdits(): void {
+function trackEdits(): void {
   clearTimer(trackT);
   trackT = null;
   try {
@@ -649,7 +644,7 @@ export function trackEdits(): void {
 /* After adopting or merging, record the new content as seen without marking
    it as a local edit. */
 /** Takes the log as it is now as this device's last-seen content. */
-export function resyncLocalH(): void {
+function resyncLocalH(): void {
   try {
     const ch = chunksOf(state);
     cloud.localH = {};
@@ -812,7 +807,7 @@ async function sessionFromCloud(d: DraftLike, legB: Base | null): Promise<void> 
   saveMeta();
 }
 /** Says how many records were edited on two devices, if any (the later edit kept). */
-export function conflictNote(stat: { conflicts: number }): void {
+function conflictNote(stat: { conflicts: number }): void {
   if (stat.conflicts) {
     log('sync-conflict', `${stat.conflicts} record(s) edited on two devices; kept the later edit`);
     fx.toast(
@@ -864,7 +859,7 @@ export function hasUnsent(): boolean {
   return false;
 }
 /** Schedules a flush once the taps pause (SYNC_MS.flush). */
-export function cloudSoon(): void {
+function cloudSoon(): void {
   if (!cloud.on) return;
   cloud.dirtyAt = Date.now();
   clearTimer(cloud.t);

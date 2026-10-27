@@ -30,13 +30,17 @@ import {
   U,
   fmtW
 } from './live';
-import { state, fx, ui } from './store';
+import { state, ui } from './store';
 import { joinAdjacent, savedEx, draftCardio, effTarget, withNew } from './session';
 import type { DraftSet, CardioEntry, SessionEx, Session } from './types';
 import { setShort, fmtDateLong, fmtE, prSet } from './display';
 import { W, blkOpen, blkRef, redraw } from './workstate';
 import type { Draft } from './workstate';
 import { blockProgress, calDueIdx, draftPlanMin, oddReps, rowBlank, setDone, settleLoad } from './worksets';
+import { confirmBox, openModal, render } from './page';
+import { stopTimer, wakeOff } from './timer';
+import { toast, undoToastHide } from './toast';
+import type { RoutineUpdate } from './plans';
 
 /** An unmarked set lighter than a session's first top set reads as a warm-up at Finish under this share of the top load, when neither its RIR nor the best estimate says (a convention, r56.2). */
 const WARM_SHARE = { compound: 0.75, isolation: 0.8 } as const;
@@ -77,7 +81,7 @@ export function finish(): void {
       }
     const any = d.ex.some(b => b.sets.some(x => x.done && !x.warm));
     if (any && left > 0) {
-      fx.confirm(
+      confirmBox(
         `${left} of ${n} sets not done`,
         `Finish now and they are left out. An exercise with fewer sets than usual does not set your next target, and still counts toward its trend.`,
         'Finish now',
@@ -147,7 +151,7 @@ export function finish(): void {
         );
         finish();
       };
-      fx.confirm(
+      confirmBox(
         'These look like ramp-up sets',
         `${[...new Set(ramps.map(r => r.bi))]
           .map(bi => {
@@ -189,7 +193,7 @@ export function finish(): void {
   if (unchecked.length) {
     const list = unchecked.map(u => `${u.name} (${u.n} set${u.n > 1 ? 's' : ''})`).join(', ');
     const total = unchecked.reduce((a, u) => a + u.n, 0);
-    fx.confirm(
+    confirmBox(
       'Some sets are not marked done',
       `${total} set${total > 1 ? 's have' : ' has'} reps entered but no checkmark, so ${total > 1 ? 'they' : 'it'} will not be saved: ${list}.`,
       `Mark ${total > 1 ? 'them' : 'it'} done and save`,
@@ -244,15 +248,15 @@ export function finishNow(): void {
         putById(state.cardio, cardio);
         state.draft = null;
       });
-      fx.stopTimer();
-      fx.wakeOff();
+      stopTimer();
+      wakeOff();
       ui.todayDay = null;
       window.scrollTo(0, 0);
-      fx.render();
-      fx.toast('Cardio saved. No lifting session was recorded.');
+      render();
+      toast('Cardio saved. No lifting session was recorded.');
       return;
     }
-    fx.toast('Mark at least one set done');
+    toast('Mark at least one set done');
     return;
   }
   const blanks: string[] = [];
@@ -271,7 +275,7 @@ export function finishNow(): void {
   }
   const save = (): void => saveSession(d, ex, cardio);
   if (blanks.length || help.length)
-    fx.confirm(
+    confirmBox(
       blanks.length ? 'Add the missing loads?' : 'Add the help you used?',
       [
         blanks.length
@@ -294,7 +298,7 @@ export function finishNow(): void {
           const si = b.sets.findIndex(x => x.done && (e.assist ? x.w == null : !(+(x.w ?? 0) > 0)));
           if (si < 0) continue;
           blkOpen(bi, b);
-          fx.render();
+          render();
           W.needAt = { b: blkRef(bi), s: si };
           redraw();
           const f = document.querySelector<HTMLElement>(`[data-f="w"][data-b="${bi}"][data-s="${si}"]`);
@@ -356,7 +360,7 @@ function saveSession(d: Draft, ex: ReturnType<typeof savedEx>[], cardio: CardioE
     free: d.free ? true : undefined,
     chk: cleanChk(d.chk) || undefined
   };
-  let upd: unknown = null,
+  let upd: RoutineUpdate | null = null,
     demoGone = false,
     targets = 0,
     beaten = 0,
@@ -409,10 +413,10 @@ function saveSession(d: Draft, ex: ReturnType<typeof savedEx>[], cardio: CardioE
     pmDraft = draftPlanMin(d);
     state.draft = null;
   });
-  fx.stopTimer();
-  fx.wakeOff();
+  stopTimer();
+  wakeOff();
   // An Undo offered during the session (a trim, a removed set) has nothing left to undo once it is saved.
-  fx.undoToastHide();
+  undoToastHide();
   const prAll = IDX().prs.filter(
     p => (p.sid ? p.sid === sess.id : p.date === sess.date) && ex.some(b => b.exId === p.exId)
   );
@@ -432,9 +436,9 @@ function saveSession(d: Draft, ex: ReturnType<typeof savedEx>[], cardio: CardioE
     );
   ui.todayDay = null;
   window.scrollTo(0, 0);
-  fx.render();
+  render();
   if (editing) {
-    fx.toast('Session updated');
+    toast('Session updated');
     return;
   }
   const lines = [
@@ -479,7 +483,8 @@ function saveSession(d: Draft, ex: ReturnType<typeof savedEx>[], cardio: CardioE
   });
   if (cardio.length) lines.push(`Cardio and mobility: ${cardio.reduce((a, c) => a + c.min, 0)} min`);
   if (demoGone) lines.push('Demo data removed, so your stats show only your own sessions');
-  fx.recap({
+  openModal({
+    kind: 'recap',
     title: 'Session saved',
     lines,
     prs: prList,

@@ -1,7 +1,7 @@
 /* The app's shared state, owned here (phase 3a, r51): the log (state), what
    the screens are showing (ui), the sync's progress (cloud), and the account
-   (acct, and acctWait while a new account waits for its email to be
-   confirmed). The legacy script imports them under the same names, so every
+   (acct; the wait for a new account's email is account.ts's own since r63).
+   The legacy script imports them under the same names, so every
    reader is as it was. An import cannot be assigned to, so the log is
    replaced only through setState, which returns the value as the
    assignment did; the properties of ui and the log are still written from
@@ -11,9 +11,10 @@
    typed field by field, written by sync.ts and a few account actions. The
    four objects moved unchanged. */
 
-import type { DbRack, EngineState, Measurement, PlanItem, Routine, Settings } from './types';
+import type { DbRack, EngineState, Measurement, Settings } from './types';
 import type { BlkRef, DraftLike } from './session';
 import type { Trashed } from './records';
+import type { Modal } from './modals';
 
 /** The whole log as normalize() returns it: the fields the engine and the
     analytics read, typed field by field since 3b (EngineState), the settings
@@ -44,10 +45,12 @@ export function setState(next: State): State {
     page (kept here, so the state layer imports no screen module). */
 export const HIST_PAGE = 25;
 
-/** What the screens are showing. Fields the legacy script adds later (the
-    calendar's month, the bests list opened, and others) are allowed by the
-    index signature; a field named here holds what its first value says. */
-export interface Ui {
+/** What the screens are showing, field by field (r63 closed the index
+    signature the legacy script's own fields went in): a field set only once
+    a screen needs it is optional. */
+interface Ui {
+  /** The tab shown before this one (Back's entry, and where a report from Settings says it came from). */
+  prevTab?: string | null | undefined;
   blkOpen: Set<unknown>;
   help: Set<unknown>;
   tab: string;
@@ -73,18 +76,37 @@ export interface Ui {
   dashMuscle: string;
   volMode: string;
   histOpen: unknown;
-  modal: unknown;
+  modal: Modal | null;
   folds: Record<string, unknown>;
   rng: Record<string, unknown>;
-  eqLast: unknown;
+  /** The equipment Limited equipment last started with, which it opens on next. */
+  eqLast: string[] | null;
   /** Your gym's dumbbell fields as typed, until they make a rack (r33). */
   gymDb?: Partial<DbRack> | null | undefined;
   /** The unit Your gym is labelled in, chosen before anything is saved there. */
   gymU?: 'lb' | 'kg' | undefined;
   /** A ticked set unticked to ask about a load far off, to tick again once Fix it's load is in (r55): its block, through blkRef, and its row. */
   refix: { b: BlkRef | null; s: number } | null;
-  [field: string]: unknown;
+  /** The exercise editor's body figure shown (r40). */
+  exBody?: boolean | undefined;
+  /** Your training's fold in the first-run routine picker opened (r44). */
+  obProf?: boolean | undefined;
+  /** The date a day of the plan was opened for from the week bar or the calendar, said on Today's card when past this week (329, r59). */
+  todayAt?: { d: string | undefined; di: number } | null | undefined;
+  /** The month This week shows, when moved off this one. */
+  calYm?: string | undefined;
+  /** This week on Today as the week or the month (remembered on this device). */
+  wkView?: 'week' | 'month' | undefined;
+  /** The weeks Volume by region averages, picked this visit. */
+  regionWk?: number | undefined;
+  /** The day Plan has open: its id, '' for none, unset for the routine's target day. */
+  dayFocus?: string | undefined;
+  /** Stats' bests list shown whole. */
+  bestsAll?: boolean | undefined;
+  /** More options opened on Today's start card. */
+  heroMore?: boolean | undefined;
 }
+/** What the screens are showing (the type above). */
 export const ui: Ui = {
   blkOpen: new Set(),
   tab: 'today',
@@ -121,7 +143,7 @@ export const ui: Ui = {
 /* ---------- the account's documents ---------- */
 
 /** A snapshot of a document in the account: whether it exists, and its content, of no known shape until read. */
-export interface CloudSnap {
+interface CloudSnap {
   exists: boolean;
   data(): unknown;
 }
@@ -167,7 +189,7 @@ export interface SyncNote {
    (editAt) and sent, the queue of writes (chain), and the last error. Typed
    field by field since r56, when its writers moved into sync.ts. The status
    becomes one set of states in r56.1 (PENDING 307). */
-export interface Cloud {
+interface Cloud {
   on: boolean;
   db: CloudDb | null;
   uid: string | null;
@@ -187,6 +209,7 @@ export interface Cloud {
   lastPull: number;
   err: string | null;
 }
+/** The sync with the account (the type above). */
 export const cloud: Cloud = {
   on: false,
   db: null,
@@ -207,33 +230,22 @@ export const cloud: Cloud = {
   err: null
 };
 
-/* ---------- the screens, as the storage and sync code reaches them ---------- */
+/* ---------- the page, as the storage and sync code reaches it ---------- */
 
-/* The storage and sync modules (phase 4, r56) and the screens moved so far
-   (phase 5, r57 on) redraw the page, ask, show a toast and read the first
-   page's state through this one object, which the legacy script fills once
-   at start (setFx) with its own functions, so no module imports the legacy
-   script. Each effect moves into a module with the screen code it belongs
-   to, and the object goes with the last screen (r60). */
-/** The screens' effects the storage and sync code calls. */
-export interface Fx {
+/* The storage and sync modules (layer 3) redraw the page, ask, show a toast
+   and read the first page's state through this one object, filled once at
+   start with the page's own functions, since a module of layer 3 may not
+   import a screen. The screens themselves (layer 4) import the page's
+   functions from page.ts, toast.ts and timer.ts (r63; until r63 every effect
+   came through here, filled by the legacy script). */
+/** The page's effects the storage and sync code calls. */
+interface Fx {
   /** Redraws the page. */
   render(): void;
   /** Asks a question with two answers and Cancel (the confirm sheet): the answer, 'cancel' when the sheet is closed without one. */
   ask(title: string, body: string, ok: string, alt: string): Promise<'ok' | 'alt' | 'cancel'>;
-  /** Asks before an action (the confirm sheet): the title, the question, the button's words, what the button does, whether it deletes, and a second answer (`only`: no Cancel beside it; `quiet`: a link under the buttons). */
-  confirm(
-    title: string,
-    body: string,
-    okLabel: string,
-    fn: () => void,
-    danger?: boolean,
-    alt?: { label: string; fn: () => void; only?: boolean; quiet?: boolean }
-  ): void;
   /** Redraws the page keeping the scroll position. */
   rerenderKeepScroll(): void;
-  /** Closes the sheet that is open (the sheets are the legacy script's until r60). */
-  closeModal(): void;
   /** Shows a toast: the message, whether it offers Undo, for how long, and its kind. */
   toast(msg: string, undo?: boolean | null, ms?: number | null, kind?: string): void;
   /** Draws the save state's button (the menu button's dot and words). */
@@ -242,38 +254,9 @@ export interface Fx {
   syncLine(): void;
   /** Whether the first page is held open on this device after a sign-out (Today's obGate). */
   obGate(): boolean;
-  /** The session's exercise given the loads a change of Your gym or a step makes (refreshEx; with the session screen, r60). */
-  refreshEx(exId: string): void;
-  /** A plan item's change carried into the session in progress (syncDraftPlan; with the session screen, r60). */
-  syncDraftPlan(f: { r: Routine; di: number; it: PlanItem }): void;
-  /** A session in progress worded again in the unit just chosen (unitWords; with the session screen, r60). */
-  unitWords(): void;
-  /** Stops the rest timer (with the session screen, r60). */
-  stopTimer(): void;
-  /** Starts the rest timer for so many seconds (the bar is the page's, outside the screens; r60). */
-  startTimer(sec: number): void;
-  /** Opens the recap after a session is saved (the sheets are the legacy script's until they move; r60). */
-  recap(m: {
-    title: string;
-    lines: string[];
-    prs: { name: string; what: string; was: string }[];
-    note: string;
-    upd: unknown;
-    sid: string;
-  }): void;
-  /** Hides the toast when it offers an Undo: a session saved has nothing left to undo from its own steps (r60). */
-  undoToastHide(): void;
-  /** Readies the rest timer's sound, on a tap (with the session screen, r60). */
-  primeAudio(): void;
-  /** Draws the rest timer again in its current style, when it is showing (with the session screen, r60). */
-  timerRefresh(): void;
-  /** Keeps the screen on during a session, where the browser allows it (with the session screen, r60). */
-  wakeOn(): void;
-  /** Lets the screen sleep again (with the session screen, r60). */
-  wakeOff(): void;
 }
-/* Set once at the start of the legacy script, before anything that could
-   call an effect runs (the ! says so), as state is set by load(). */
+/* Set once at start, before anything that could call an effect runs (the !
+   says so), as state is set by load(). */
 export let fx!: Fx;
 
 /** Gives the storage and sync code the screens' effects, once, at start. */
@@ -282,22 +265,14 @@ export function setFx(f: Fx): void {
 }
 
 /** The account on this device: the user signed in, whether the check has run, and whether they read reports. */
-export interface Acct {
-  user: unknown;
+interface Acct {
+  user: AcctUser | null;
   checked: boolean;
   reader: boolean;
-  [field: string]: unknown;
+}
+/** A signed-in account, as the account service gives it (scripts/cloud-supabase.js, who()): its id and email. */
+export interface AcctUser {
+  id: string;
+  email: string;
 }
 export const acct: Acct = { user: null, checked: false, reader: false };
-
-/** A new account waiting for its email to be confirmed: kept in memory only (r21), the password never stored. */
-export interface AcctWait {
-  email: string;
-  pw: string;
-  t: number;
-  timer: unknown;
-  busy: boolean;
-  last: number;
-  [field: string]: unknown;
-}
-export const acctWait: AcctWait = { email: '', pw: '', t: 0, timer: null, busy: false, last: 0 };
