@@ -661,9 +661,10 @@ export function suggestCoreIn(M: Model, exId: string, plan: Plan, opts?: Suggest
      is read from that mark), whatever their rep range (r64, the r63 audit's
      R-4: counted in the plan's range only, a bench with 11 sessions whose
      range changed was allowed 25%, 200 to 240, where 10% gives 220). */
-  let since = all!.length - 1;
-  while (since > 0 && !afterBreak(all![since - 1], all![since].date)) since--;
-  const early = all!.length - since <= EARLY_SESSIONS;
+  const xs = all || [];
+  let since = xs.length - 1;
+  while (since > 0 && !afterBreak(xs[since - 1], xs[since].date)) since--;
+  const early = xs.length - since <= EARLY_SESSIONS;
   // One set under the range among sets made reads as the bottom of it (repFloor); a missed set never does.
   const fl = repFloor(
     topPts.filter(p => !p.missed),

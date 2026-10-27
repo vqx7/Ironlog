@@ -7489,9 +7489,10 @@ ${actions ? b`<div class="ph-a">${actions}</div>
         inj: injM
       };
     const tgtRir = +plan.rir || 0;
-    let since = all.length - 1;
-    while (since > 0 && !afterBreak(all[since - 1], all[since].date)) since--;
-    const early = all.length - since <= EARLY_SESSIONS;
+    const xs = all || [];
+    let since = xs.length - 1;
+    while (since > 0 && !afterBreak(xs[since - 1], xs[since].date)) since--;
+    const early = xs.length - since <= EARLY_SESSIONS;
     const fl = repFloor(
       topPts.filter((p3) => !p3.missed),
       plan.repMin
