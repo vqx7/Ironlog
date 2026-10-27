@@ -7,15 +7,13 @@ Last updated: r63 live (#60 merged by you at 05:28 UTC, published 05:57 from ce8
 ## Now, in this order
 
 1. A28 (r64 and r65, the hardening of the r63 audit): Claude opens r64's and r65's pull requests, stacked, once every suite passes in both browsers and one independent review over both is clean; you try the preview and merge them in order on GitHub's website. When r64 is built: one SQL step for problem reports (exact code given then). A27 (r63): done, merged by you (#60, 2026-10-27 05:28 UTC), r63 live as build 2026.10.27-r63. B1a (below), meant to run before that merge: status unknown, asked 2026-10-27; it is safe to run now if you have not (nothing breaks meanwhile: reports go without the key).
-2. B5, the trigger, then its check: Report a problem from the app and an issue appears in `ironlog-feedback` (steps below). Status: to do, unless you have done it (Claude cannot see Supabase from here).
+2. Problem reports, two pastes, any time, before or after r64's merge: B4 again with r64's code, then B1a, the r64 block (both below). Then confirm B5 (you believe it is done): Supabase > Integrations > Database Webhooks lists `feedback-to-issue`.
 3. C6: add the code to the confirmation email (5 minutes, below). The app asks a new person for the code the email should carry. Status: to do, unless you have done it.
-   D7, any time (with C6 is easiest): a 1 MB limit on each synced document (1 minute, below). Status: to do, unless you have done it.
-4. B7: choose who picks up the tickets.
-5. D6: delete the old branches and stop them piling up (2 minutes, below).
-6. D5: lock down every account (two-step verification everywhere, push protection, DNSSEC, Claude's GitHub access limited to Ironlog).
-7. Before friends sign up, decide item 15 in PENDING.md: optional encryption. Today you can read every account's log in Supabase's Table Editor, and the app's privacy line says so. With encryption on, nobody but the owner of a log can read it, and a forgotten passphrase loses that cloud copy for good. You chose to launch without it (2026-09-27); this is the last point to change that before other people's logs are in it.
-8. After that, if you want it: decision 129 (make the repository private). Note that it hides the repository, not the app: every website's code is downloaded to the phone that opens it, so anyone can read the app's code at ironapp.org either way. No secret key is in it (checked 2026-10-04).
-9. At the gym: Checks on your phone (below).
+4. D6: delete the old branches and stop them piling up (2 minutes, below).
+5. D5: lock down every account (two-step verification everywhere, push protection, DNSSEC, Claude's GitHub access limited to Ironlog).
+6. Before friends sign up, decide item 15 in PENDING.md: optional encryption. Today you can read every account's log in Supabase's Table Editor, and the app's privacy line says so. With encryption on, nobody but the owner of a log can read it, and a forgotten passphrase loses that cloud copy for good. You chose to launch without it (2026-09-27); this is the last point to change that before other people's logs are in it.
+7. After that, if you want it: decision 129 (make the repository private). Note that it hides the repository, not the app: every website's code is downloaded to the phone that opens it, so anyone can read the app's code at ironapp.org either way. No secret key is in it (checked 2026-10-04).
+8. At the gym: Checks on your phone (below).
 
 ## When you want problem reports to reach you (item 58, about 20 minutes)
 
@@ -52,6 +50,8 @@ begin
   -- report would slip past the daily limit, and a made-up link would show in your Inbox.
   new.created_at := now();
   new.issue_url := null;
+  -- The reply address is the account's own email, never what was sent (r64): a made-up one could write anything into the ticket.
+  new.reply_to := (select u.email from auth.users u where u.id = new.user_id and char_length(u.email) <= 200);
   -- The same report sent again (its answer lost on the way back, r63): kept once, and not counted again.
   if new.client_id is not null and exists (select 1 from public.feedback where user_id = new.user_id and client_id = new.client_id) then
     return null;
@@ -80,10 +80,14 @@ insert into public.feedback_readers (user_id) select id from auth.users where em
 
 Check: Report a problem from the app (signed in), then Supabase > **Table Editor** > `feedback` shows it, and Settings > Help shows **Inbox** for your account.
 
-### B1a. A report's key (r63)
-Status: unknown (asked 2026-10-27; meant to run before r63's merge, safe to run any time). Supabase > **SQL Editor** > **New query**, paste, Run. It is safe to run more than once. A report sent again after its answer was lost on the way back (a phone dropping off the network mid-send) is then kept once, so it makes one ticket, not two. Until it runs, r63 sends reports as before, without the key, so nothing breaks if it waits.
+### B1a. The r64 block: one paste, any time
+Status: to do. It replaces r63's B1a (a report's key, which you may not have run) and D7 (a size limit on each synced document): this block does both, and adds two r64 rules. Supabase > **SQL Editor** > **New query**, paste, **Run**. It is safe to run more than once, and nothing in the app waits for it.
+- A report sent again after its answer was lost is kept once, so one ticket, not two (r63).
+- A report's reply address is your friend's account email, set by the database, never what the phone sent: a made-up one could write lines into the GitHub issue (r64, the r63 audit's A-3).
+- A synced document is at most 1 MB (r45, D7), and one account at most 2,000 documents and 25 MB, about 20 times a three-year log, so no account can fill the free database (r64, PENDING 339 l).
 
 ```sql
+-- r64: run once, after any block above; running it again does no harm.
 alter table public.feedback add column if not exists client_id text check (client_id is null or char_length(client_id) <= 40);
 create unique index if not exists feedback_client_once on public.feedback (user_id, client_id);
 create or replace function public.feedback_limit() returns trigger language plpgsql security definer set search_path = '' as $$
@@ -92,6 +96,8 @@ begin
   -- report would slip past the daily limit, and a made-up link would show in your Inbox.
   new.created_at := now();
   new.issue_url := null;
+  -- The reply address is the account's own email, never what was sent (r64): a made-up one could write anything into the ticket.
+  new.reply_to := (select u.email from auth.users u where u.id = new.user_id and char_length(u.email) <= 200);
   -- The same report sent again (its answer lost on the way back, r63): kept once, and not counted again.
   if new.client_id is not null and exists (select 1 from public.feedback where user_id = new.user_id and client_id = new.client_id) then
     return null;
@@ -102,9 +108,40 @@ begin
   return new;
 end $$;
 revoke all on function public.feedback_limit() from public, anon, authenticated;
+-- At most 2,000 documents and 25 MB stored per account (r64): three and a half years
+-- of four sessions a week is 88 documents and about 1.1 MB, so this only stops one
+-- account filling the free database. A document being replaced is not counted twice.
+create or replace function public.docs_limit() returns trigger language plpgsql security definer set search_path = '' as $$
+declare n bigint; b bigint;
+begin
+  execute format('select count(*), coalesce(sum(pg_column_size(data)), 0) from %I.%I where user_id = $1 and path <> $2', tg_table_schema, tg_table_name)
+    into n, b using new.user_id, new.path;
+  if n >= 2000 or b + pg_column_size(new.data) > 26214400 then
+    raise exception 'docs_limit' using errcode = 'P0001';
+  end if;
+  return new;
+end $$;
+-- Only the triggers run it; nobody can call it through the API.
+revoke all on function public.docs_limit() from public, anon, authenticated;
+-- Each table only if this project has it, and each limit only once.
+do $$
+begin
+  if to_regclass('public.docs') is not null then
+    if not exists (select 1 from pg_constraint where conname = 'docs_data_size') then
+      alter table public.docs add constraint docs_data_size check (pg_column_size(data) <= 1048576) not valid;
+    end if;
+    create or replace trigger docs_limit before insert or update on public.docs for each row execute function public.docs_limit();
+  end if;
+  if to_regclass('public.docs_preview') is not null then
+    if not exists (select 1 from pg_constraint where conname = 'docs_preview_data_size') then
+      alter table public.docs_preview add constraint docs_preview_data_size check (pg_column_size(data) <= 1048576) not valid;
+    end if;
+    create or replace trigger docs_preview_limit before insert or update on public.docs_preview for each row execute function public.docs_limit();
+  end if;
+end $$;
 ```
 
-Check: Supabase > **Table Editor** > `feedback` has a `client_id` column, and a report sent from r63 fills it.
+Check: Supabase > **Table Editor** > `feedback` has a `client_id` column; and in a new query, `select tgname from pg_trigger where tgname like 'docs%limit';` lists `docs_limit` and `docs_preview_limit`.
 
 Only if you ever ran the older version of this step (before r25), run this instead:
 
@@ -166,7 +203,7 @@ GitHub > your photo > **Settings** > **Developer settings** > **Personal access 
 - **Generate token**, copy it. It is shown once. It goes only into Supabase in B4.
 
 ### B4. The function that turns a report into a GitHub issue
-Status: done, as you reported (2026-10-04).
+Status: done, as you reported (2026-10-04). **Paste it again with r64's code** (to do): Supabase > **Edge Functions** > `feedback-to-issue` > **Code**, select all, paste the code below over it, **Deploy**. r64 keeps a report's words inside their quote whatever line endings they carry, shows the reply address as code on one line, cuts text to the app's own limits, and logs a report it could not link to its issue (the r63 audit's A-3, A-9 and A-12). It is not published by a merge: the copy in Supabase changes only when you paste it.
 Supabase > **Edge Functions** > **Deploy a new function** > **Via editor**. Name it exactly `feedback-to-issue`. Delete the sample code, paste all of this:
 
 ````ts
@@ -191,7 +228,17 @@ const reply = (status: number, body: unknown) =>
   new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } });
 // "@name" would notify a GitHub user; a zero-width space after @ stops that.
 const quiet = (s: string) => s.replace(/@/g, '@​');
-const quote = (s: string) => quiet(s).split('\n').map((l) => '> ' + l).join('\n');
+// GitHub ends a line at \n, \r or \r\n (CommonMark), so a report is split at each, or a bare \r
+// would end the quote and let the sender write the issue's own lines (r64, the r63 audit's A-3).
+const lines = (s: string) => s.split(/\r\n|\r|\n/);
+const quote = (s: string) => lines(quiet(s)).map((l) => '> ' + l).join('\n');
+// A value shown in a line of the app's own: one line, as code, so nothing in it is read as markup.
+const code = (s: string) => '`' + lines(quiet(s)).join(' ').replace(/`/g, "'") + '`';
+// The app's limit on a report's text (FB_MAX in src/app/feedback.ts, and the table's check);
+// tests/report-fn.js holds them equal.
+const MSG_MAX = 1000;
+// GitHub refuses an issue whose body is longer than this many characters.
+const BODY_MAX = 65536;
 
 Deno.serve(async (req) => {
   if (req.method !== 'POST') return reply(405, { error: 'Use POST' });
@@ -218,26 +265,27 @@ Deno.serve(async (req) => {
   }
 
   const cat = ['bug', 'idea', 'question'].includes(r.category) ? r.category : 'bug';
-  const msg = String(r.message ?? '').slice(0, 4000);
-  const first = msg.split('\n')[0].trim().slice(0, 70) || 'Feedback';
-  const ctx = JSON.stringify(r.context ?? {}, null, 1).slice(0, 20000).replace(/```/g, "'''");
-  const lines = [
+  const msg = String(r.message ?? '').slice(0, MSG_MAX);
+  const first = lines(msg)[0].trim().slice(0, 70) || 'Feedback';
+  const ctx = JSON.stringify(r.context ?? {}, null, 1).replace(/```/g, "'''");
+  // The address is the account's own email, set by the database (SUPABASE.md, r64); shown as code all the same.
+  const head = [
     `**${cat}** from ${r.user_id ? 'a signed-in user' : 'a signed-out user'}, ${r.created_at}. Feedback id ${r.id}.`,
     '',
     quote(msg),
     '',
     shot ? `![screenshot](${shot})` : '_No screenshot._',
     '',
-    r.reply_to ? `Reply to: ${quiet(String(r.reply_to).slice(0, 200))}` : '_No reply address._',
+    r.reply_to ? `Reply to: ${code(String(r.reply_to).slice(0, 200))}` : '_No reply address._',
     '',
     '<details><summary>Attached by the app</summary>',
     '',
     '```json',
-    ctx,
-    '```',
-    '</details>',
-  ];
-  const res = await gh(`/repos/${repo}/issues`, { method: 'POST', body: JSON.stringify({ title: `[${cat}] ${quiet(first)}`, body: lines.join('\n'), labels: ['feedback', cat] }) });
+  ].join('\n');
+  const tail = ['```', '</details>'].join('\n');
+  // What the app attached is cut, if it must be, so the whole body fits GitHub's limit and its code block still closes.
+  const text = [head, ctx.slice(0, Math.max(0, BODY_MAX - head.length - tail.length - 2)), tail].join('\n');
+  const res = await gh(`/repos/${repo}/issues`, { method: 'POST', body: JSON.stringify({ title: `[${cat}] ${quiet(first)}`, body: text, labels: ['feedback', cat] }) });
   if (!res.ok) return reply(502, { error: 'GitHub refused the issue', status: res.status, detail: (await res.text()).slice(0, 300) });
   const issue = await res.json();
 
@@ -246,8 +294,14 @@ Deno.serve(async (req) => {
   let key = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
   if (!key) { try { const k = JSON.parse(Deno.env.get('SUPABASE_SECRET_KEYS') ?? '{}'); key = k.default ?? Object.values(k)[0] ?? ''; } catch { key = ''; } }
   if (url && key) {
-    const admin = createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } });
-    await admin.from('feedback').update({ issue_url: issue.html_url }).eq('id', r.id);
+    // The issue is made either way; a link that fails is logged (Edge Functions > feedback-to-issue > Logs), so the Inbox's missing link can be explained.
+    try {
+      const admin = createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } });
+      const { error } = await admin.from('feedback').update({ issue_url: issue.html_url }).eq('id', r.id);
+      if (error) console.error('issue_url not saved', r.id, error.message ?? error);
+    } catch (e) {
+      console.error('issue_url not saved', r.id, String(e));
+    }
   }
   return reply(200, { issue: issue.html_url });
 });
@@ -259,7 +313,7 @@ Turn **Verify JWT** off for this function, then **Deploy**. Then Edge Functions 
 - `WEBHOOK_SECRET`: a long random string (your password manager can make one). Keep it for B5.
 
 ### B5. The trigger
-Status: to do.
+Status: you believe it is done (2026-10-27); to confirm: Supabase > **Integrations** > **Database Webhooks** lists `feedback-to-issue`. If it does, paste B4's r64 code first, since until then a report's words can write lines of their own into the issue.
 Supabase > **Integrations** > **Database Webhooks** (enable it if asked) > **Create a new hook**.
 - Name `feedback-to-issue`. Table `feedback`. Events: **Insert** only.
 - Type: **Supabase Edge Functions**. Function `feedback-to-issue`. Method **POST**. Leave the timeout as it is.
@@ -276,10 +330,8 @@ GitHub > vqx7/Ironlog > **Settings** > **Rules** > **Rulesets** > **New ruleset*
 - Tick **Require status checks to pass** > **Add checks** > `test`.
 - **Create**.
 
-### B7. Choose who picks up the tickets
-Status: your decision. Say which in chat and Claude sets it up.
-- A scheduled Claude task (recommended): runs on your Claude plan, nothing extra to pay.
-- Claude's GitHub Action: faster, but needs an Anthropic API key billed per run.
+### B7. Who reads the tickets
+Status: decided by you (2026-10-15, PENDING 349 b): you do, and nothing automated ever reads a ticket. A report is written by someone else, so no agent acts on one; when you want something in a report fixed, you say so in a chat with Claude, which reproduces it from your words. No ticket fixer was ever set up (checked 2026-10-27: no such scheduled task on your Claude account, and Claude's GitHub access does not reach `ironlog-feedback`). Keep it that way: leave `ironlog-feedback` out of Claude's GitHub access (D5 step 5), and add no Claude GitHub Action there.
 
 ## Before friends sign up (item 6, about $10 to $12 a year)
 
@@ -337,7 +389,7 @@ Status: to do. Each step is free and none of them stops Claude from building and
 2. **GitHub:** your photo > Settings > Password and authentication > enable two-factor authentication (authenticator app or passkey). Save the recovery codes in your password manager.
 3. **GitHub, the Ironlog repository:** Settings > Advanced Security (or Code security) > turn on **Dependabot alerts**, **Secret Protection** and **Push protection**. They warn you if a key is ever committed by mistake. The repository stays public for now: free GitHub Pages needs that, and nothing secret is in it (the Supabase keys in it are the public ones; row level security protects the data). Making it private is decision 129 in PENDING.md.
 4. **GitHub, B6:** protect main: done 2026-10-15 (B6 above).
-5. **GitHub, what Claude can reach:** your photo > Settings > Applications > Installed GitHub Apps > the Claude app > Configure > Repository access: **Only select repositories**, with `Ironlog` (and `ironlog-feedback` only if you want Claude to read tickets later). You can revoke it here at any time.
+5. **GitHub, what Claude can reach:** your photo > Settings > Applications > Installed GitHub Apps > the Claude app > Configure > Repository access: **Only select repositories**, with `Ironlog` only (checked 2026-10-27: it reaches Ironlog and not `ironlog-feedback`). Nothing automated reads a ticket (B7). You can revoke it here at any time.
 6. **Supabase:** your account (top right) > Account preferences > Security > enable multi-factor authentication. Then Authentication > Sign In / Providers > Email: keep **Confirm email** on. Then Advisors > Security Advisor > Refresh: only the Leaked Password Protection warning should remain (Pro plan; the app checks passwords itself).
 7. **Cloudflare:** My Profile > Authentication > enable two-factor. Then your domain > DNS > Settings > **Enable DNSSEC** (one tap on a Cloudflare-registered domain). Domain Registration > Manage > check **Registrar lock** is on.
 8. **Resend:** Settings > Account > enable two-factor. The API key you made is sending-only for `mail.ironapp.org`; leave it that way.
@@ -350,17 +402,8 @@ These are wholly in `main` (GitHub shows each 0 commits ahead of it), so deletin
 1. github.com/vqx7/Ironlog/branches > tap the trash icon on `modular`, `modular-2`, `r48`, `r51`, `r52`, `r53`, `r54`, `r55`, `r55.1`, `r56-wip`, `r56`, `r56.1`, `r56.2`, `r57`, `r58`, `r59`, `r60`, `r61`, `r61-normalize-draft`, `r61-on-r60`, `r62` and `r63`. Two more hold commits that are not in `main`, your call: `r42-look` (the restyle you turned down, pull request #32) and `r31.2` (one commit pushed after its pull request #17 merged).
 2. So it does not happen again: Settings > General > Pull Requests > tick **Automatically delete head branches**. Each branch then goes when its pull request is merged.
 
-### D7. A size limit on each synced document (r45, item 286, 1 minute)
-Status: to do, any time (with C6 is easiest). Tables made before r45 have no limit, so one account could fill the free plan's 500 MB database; the app's largest document is tens of kilobytes, so nothing changes in the app.
-1. Supabase > **SQL Editor** > **New query**, paste this, **Run**:
-
-```sql
--- At most 1 MB stored per synced document. "not valid" skips the check on rows already there.
-alter table public.docs add constraint docs_data_size check (pg_column_size(data) <= 1048576) not valid;
-alter table public.docs_preview add constraint docs_preview_data_size check (pg_column_size(data) <= 1048576) not valid;
-```
-
-2. Check: run `select conname from pg_constraint where conname like '%data_size';` in a new query. It lists both names.
+### D7. A size limit on each synced document (r45, item 286)
+Status: in B1a, the r64 block, which adds it only where it is missing. Nothing separate to run.
 
 ## Checks on your phone (items 7 and 63)
 Status: to do whenever you are at the gym; tell Claude what you see.

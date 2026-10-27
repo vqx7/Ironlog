@@ -19,7 +19,17 @@ const reply = (status: number, body: unknown) =>
   new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } });
 // "@name" would notify a GitHub user; a zero-width space after @ stops that.
 const quiet = (s: string) => s.replace(/@/g, '@​');
-const quote = (s: string) => quiet(s).split('\n').map((l) => '> ' + l).join('\n');
+// GitHub ends a line at \n, \r or \r\n (CommonMark), so a report is split at each, or a bare \r
+// would end the quote and let the sender write the issue's own lines (r64, the r63 audit's A-3).
+const lines = (s: string) => s.split(/\r\n|\r|\n/);
+const quote = (s: string) => lines(quiet(s)).map((l) => '> ' + l).join('\n');
+// A value shown in a line of the app's own: one line, as code, so nothing in it is read as markup.
+const code = (s: string) => '`' + lines(quiet(s)).join(' ').replace(/`/g, "'") + '`';
+// The app's limit on a report's text (FB_MAX in src/app/feedback.ts, and the table's check);
+// tests/report-fn.js holds them equal.
+const MSG_MAX = 1000;
+// GitHub refuses an issue whose body is longer than this many characters.
+const BODY_MAX = 65536;
 
 Deno.serve(async (req) => {
   if (req.method !== 'POST') return reply(405, { error: 'Use POST' });
@@ -46,26 +56,27 @@ Deno.serve(async (req) => {
   }
 
   const cat = ['bug', 'idea', 'question'].includes(r.category) ? r.category : 'bug';
-  const msg = String(r.message ?? '').slice(0, 4000);
-  const first = msg.split('\n')[0].trim().slice(0, 70) || 'Feedback';
-  const ctx = JSON.stringify(r.context ?? {}, null, 1).slice(0, 20000).replace(/```/g, "'''");
-  const lines = [
+  const msg = String(r.message ?? '').slice(0, MSG_MAX);
+  const first = lines(msg)[0].trim().slice(0, 70) || 'Feedback';
+  const ctx = JSON.stringify(r.context ?? {}, null, 1).replace(/```/g, "'''");
+  // The address is the account's own email, set by the database (SUPABASE.md, r64); shown as code all the same.
+  const head = [
     `**${cat}** from ${r.user_id ? 'a signed-in user' : 'a signed-out user'}, ${r.created_at}. Feedback id ${r.id}.`,
     '',
     quote(msg),
     '',
     shot ? `![screenshot](${shot})` : '_No screenshot._',
     '',
-    r.reply_to ? `Reply to: ${quiet(String(r.reply_to).slice(0, 200))}` : '_No reply address._',
+    r.reply_to ? `Reply to: ${code(String(r.reply_to).slice(0, 200))}` : '_No reply address._',
     '',
     '<details><summary>Attached by the app</summary>',
     '',
     '```json',
-    ctx,
-    '```',
-    '</details>',
-  ];
-  const res = await gh(`/repos/${repo}/issues`, { method: 'POST', body: JSON.stringify({ title: `[${cat}] ${quiet(first)}`, body: lines.join('\n'), labels: ['feedback', cat] }) });
+  ].join('\n');
+  const tail = ['```', '</details>'].join('\n');
+  // What the app attached is cut, if it must be, so the whole body fits GitHub's limit and its code block still closes.
+  const text = [head, ctx.slice(0, Math.max(0, BODY_MAX - head.length - tail.length - 2)), tail].join('\n');
+  const res = await gh(`/repos/${repo}/issues`, { method: 'POST', body: JSON.stringify({ title: `[${cat}] ${quiet(first)}`, body: text, labels: ['feedback', cat] }) });
   if (!res.ok) return reply(502, { error: 'GitHub refused the issue', status: res.status, detail: (await res.text()).slice(0, 300) });
   const issue = await res.json();
 
@@ -74,8 +85,14 @@ Deno.serve(async (req) => {
   let key = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
   if (!key) { try { const k = JSON.parse(Deno.env.get('SUPABASE_SECRET_KEYS') ?? '{}'); key = k.default ?? Object.values(k)[0] ?? ''; } catch { key = ''; } }
   if (url && key) {
-    const admin = createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } });
-    await admin.from('feedback').update({ issue_url: issue.html_url }).eq('id', r.id);
+    // The issue is made either way; a link that fails is logged (Edge Functions > feedback-to-issue > Logs), so the Inbox's missing link can be explained.
+    try {
+      const admin = createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } });
+      const { error } = await admin.from('feedback').update({ issue_url: issue.html_url }).eq('id', r.id);
+      if (error) console.error('issue_url not saved', r.id, error.message ?? error);
+    } catch (e) {
+      console.error('issue_url not saved', r.id, String(e));
+    }
   }
   return reply(200, { issue: issue.html_url });
 });
