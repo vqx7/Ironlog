@@ -165,11 +165,17 @@ interface SuggestCtx {
    day), and the words follow. Loads already on the step are untouched, so
    a stack with odd pins keeps its whole steps. On a rack read from its
    spacing the result then goes onto the rack (gridSnap, r54), as on a rack
-   from Your gym. */
+   from Your gym. A lighter day, a deload or a return after a break (down)
+   never comes out heavier than last time's load (r64, the r63 audit's R-2:
+   20 kg logged on the bar, shown in lb, was raised to the 45 lb bar the app
+   assumes, so a Lighter day asked more than last time); when nothing
+   lighter is loadable, last time's own load, which was lifted, is the one
+   asked. */
 function snapUnitIn(M: Model, ex: ExerciseLike, plan: Plan, res: Suggestion, down?: boolean): Suggestion {
   const G = res && res.w != null && !ex.timed ? plateGridIn(M, ex, plan) : null;
-  if (G) return plateSnap(M, ex, plan, res, G, down);
-  return gridSnap(M, ex, plan, unitSnap(M, ex, plan, res, down));
+  const out = G ? plateSnap(M, ex, plan, res, G, down) : gridSnap(M, ex, plan, unitSnap(M, ex, plan, res, down));
+  if (!down || res.top == null || res.w == null || out.w == null || out.w <= res.top + EPS) return out;
+  return Math.abs(res.w - res.top) < EPS ? res : swapWIn(M, ex, res, res.top);
 }
 
 /* Your gym's plates on a bar lift (r55.1, from the audit of r55: with no 2.5
@@ -247,17 +253,40 @@ function plateSnap(
 function unitSnap(M: Model, ex: ExerciseLike, plan: Plan, res: Suggestion, down?: boolean): Suggestion {
   if (!res || res.w == null || res.top == null || ex.timed) return res;
   if (gymRackIn(M, ex, plan)) return rackSnapIn(M, ex, plan, res);
+  const nw = unitGridIn(M, ex, plan, res.top, res.w, down);
+  if (nw == null || Math.abs(nw - res.w) < EPS) return res;
+  return moveIn(M, ex, plan, res, nw, `the nearest load in ${UIn(M)}`);
+}
+
+/* The load on the step in the unit on screen for a load `w` asked after
+   last time's `top` (kg), or null where that step does not apply: a load
+   typed in the unit on screen, or on its step already (unitSnap, above). The
+   engine's cases whose words depend on the load (the step at the top of the
+   range, the way back after a break) take it before they word it, so what
+   they say is said of the load shown. */
+function unitGridIn(M: Model, ex: ExerciseLike, plan: Plan, top: number, w: number, down?: boolean): number | null {
+  if (ex.timed || gymRackIn(M, ex, plan) || plateGridIn(M, ex, plan)) return null;
   const st = inUnitIn(M, incOfIn(M, ex, plan));
-  if (!(st > 0)) return res;
+  if (!(st > 0)) return null;
+  /* The loads the step makes are counted from the bar on a lift on the full
+     bar typed as the total (loadFloorIn), from 0 on any other (r64, the r63
+     audit's R-2): counted from 0, a 10 lb step made 40 and 50 around a 20 kg
+     bar (44.1 lb), so 50 was called "the nearest load in lb" where the 45
+     lb bar and 10 lb steps make 45, 55 and so on. */
+  const o = inUnitIn(M, loadFloorIn(M, ex));
+  const at = (k: number): number => o + k * st;
   /* Off the step and not a number anyone types (220.462 from 100 kg): a
      custom step (185 lb on a 10 lb step) or microplates (101.25) are left as
      they are. Typed is exact in the unit on screen, as a number typed in it
      reads back (r54, from the audit V asked for: within a tenth of 0.05, one
      load in five converted from the other unit passed for typed, so 42.5 kg
      shown as 93.7 lb was told to add 5 lb, to 98.7). */
-  const off = (v: number): boolean => Math.abs(inUnitIn(M, v) / st - Math.round(inUnitIn(M, v) / st)) > OFF_STEP;
+  const off = (v: number): boolean => {
+    const k = (inUnitIn(M, v) - o) / st;
+    return Math.abs(k - Math.round(k)) > OFF_STEP;
+  };
   const typed = (v: number): boolean => onStep(inUnitIn(M, v), TYPED_STEP);
-  if (!off(res.top) || !off(res.w) || typed(res.top)) return res;
+  if (!off(top) || !off(w) || typed(top)) return null;
   /* Which step (r54). A lighter day, a deload or a return after a break takes
      the step below; anything else the nearest. Never under the floor (the
      empty bar on a full-bar lift typed as the total, else one step on a
@@ -267,16 +296,29 @@ function unitSnap(M: Model, ex: ExerciseLike, plan: Plan, res: Suggestion, down?
      then. From the review of r54's first fix, which rounded down under every
      target of reps: 2 kg dumbbells read in lb went to 0 lb, the 20 kg bar to
      40 lb, and 4 kg to 5 lb, three sessions running. */
-  const x = inUnitIn(M, res.w);
-  const lo = Math.floor(x / st + EPS) * st;
+  const x = inUnitIn(M, w);
+  const lo = at(Math.floor((x - o) / st + EPS));
   const loaded = !ex.bw && !ex.assist;
-  const fl = Math.max(inUnitIn(M, loadFloorIn(M, ex)), loaded ? st : 0);
-  let d = down ? lo : Math.round(x / st) * st;
+  const fl = Math.max(o, loaded ? st : 0);
+  let d = down ? lo : at(Math.round((x - o) / st));
   if (!down && loaded && d < x * LIGHTER_LOAD - EPS) d = lo + st;
-  if (!ex.assist && d < fl - EPS) d = Math.ceil(fl / st - EPS) * st;
-  const nw = kgOfIn(M, d);
-  if (Math.abs(nw - res.w) < EPS) return res;
-  return moveIn(M, ex, plan, res, nw, `the nearest load in ${UIn(M)}`);
+  if (!ex.assist && d < fl - EPS) d = at(Math.ceil((fl - o) / st - EPS));
+  /* Up from last time, never past both what was asked and the cap on one
+     session's rise (jumpCap, on the load as moved: a bodyweight lift's share
+     of its bodyweight with it) while a step under that is still above last
+     time (r64, the r63 audit's R-2: 57.5 kg on its own 10 lb step, 126.8 lb,
+     was rounded from 136.8 to 140, 10.4% up; a 44 kg kettlebell, 97 lb, from
+     107 to 110). With no step between last time and the cap, the step past
+     it: one real step at least, as at the top of the range. */
+  const bwK = bwRefLoadIn(M, ex);
+  const tp = inUnitIn(M, top);
+  if (!down && !ex.assist && !(ex.bw && !(bwK > 0)) && d > tp + EPS) {
+    const tot = top + bwK;
+    const most = Math.max(x, inUnitIn(M, tot * jumpCap(ex, tot) - bwK));
+    const under = at(Math.floor((most - o) / st + EPS));
+    if (d > most + EPS && under > tp + EPS) d = under;
+  }
+  return kgOfIn(M, d);
 }
 
 /* A suggestion moved to another load (by unitSnap or plateSnap): the load
@@ -1025,7 +1067,9 @@ function sgNoStep(C: SuggestCtx): Suggestion | null {
 function sgTopOfRangeIn(M: Model, C: SuggestCtx): Suggestion | null {
   const { ex, plan, top, cap, capW, topPts, planPts, lastR, lastS, basis, lbl, prevBest, tgtRir, tp } = C;
   if (planPts.every(p => p.r >= plan.repMax)) {
-    const nw = capW(top + progStepIn(M, ex, plan, top + bwRefLoadIn(M, ex), top));
+    const n0 = capW(top + progStepIn(M, ex, plan, top + bwRefLoadIn(M, ex), top));
+    // On the step in the unit on screen before it is worded (unitGridIn, r64), so the reps aimed for are those of the load shown.
+    const nw = ex.assist ? n0 : capW(unitGridIn(M, ex, plan, top, n0) ?? n0);
     if (ex.assist) {
       const aw = top < 0 ? Math.min(0, nw) : nw;
       return {

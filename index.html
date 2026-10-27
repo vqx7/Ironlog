@@ -7240,8 +7240,9 @@ ${actions ? b`<div class="ph-a">${actions}</div>
   var RACK_READ_N = 12;
   function snapUnitIn(M3, ex, plan, res, down) {
     const G = res && res.w != null && !ex.timed ? plateGridIn(M3, ex, plan) : null;
-    if (G) return plateSnap(M3, ex, plan, res, G, down);
-    return gridSnap(M3, ex, plan, unitSnap(M3, ex, plan, res, down));
+    const out = G ? plateSnap(M3, ex, plan, res, G, down) : gridSnap(M3, ex, plan, unitSnap(M3, ex, plan, res, down));
+    if (!down || res.top == null || res.w == null || out.w == null || out.w <= res.top + EPS) return out;
+    return Math.abs(res.w - res.top) < EPS ? res : swapWIn(M3, ex, res, res.top);
   }
   function plateGridIn(M3, ex, plan) {
     const g2 = gymOfIn(M3);
@@ -7270,21 +7271,38 @@ ${actions ? b`<div class="ph-a">${actions}</div>
   function unitSnap(M3, ex, plan, res, down) {
     if (!res || res.w == null || res.top == null || ex.timed) return res;
     if (gymRackIn(M3, ex, plan)) return rackSnapIn(M3, ex, plan, res);
-    const st = inUnitIn(M3, incOfIn(M3, ex, plan));
-    if (!(st > 0)) return res;
-    const off = (v3) => Math.abs(inUnitIn(M3, v3) / st - Math.round(inUnitIn(M3, v3) / st)) > OFF_STEP;
-    const typed = (v3) => onStep(inUnitIn(M3, v3), TYPED_STEP);
-    if (!off(res.top) || !off(res.w) || typed(res.top)) return res;
-    const x2 = inUnitIn(M3, res.w);
-    const lo = Math.floor(x2 / st + EPS) * st;
-    const loaded = !ex.bw && !ex.assist;
-    const fl = Math.max(inUnitIn(M3, loadFloorIn(M3, ex)), loaded ? st : 0);
-    let d3 = down ? lo : Math.round(x2 / st) * st;
-    if (!down && loaded && d3 < x2 * LIGHTER_LOAD - EPS) d3 = lo + st;
-    if (!ex.assist && d3 < fl - EPS) d3 = Math.ceil(fl / st - EPS) * st;
-    const nw = kgOfIn(M3, d3);
-    if (Math.abs(nw - res.w) < EPS) return res;
+    const nw = unitGridIn(M3, ex, plan, res.top, res.w, down);
+    if (nw == null || Math.abs(nw - res.w) < EPS) return res;
     return moveIn(M3, ex, plan, res, nw, `the nearest load in ${UIn(M3)}`);
+  }
+  function unitGridIn(M3, ex, plan, top, w2, down) {
+    if (ex.timed || gymRackIn(M3, ex, plan) || plateGridIn(M3, ex, plan)) return null;
+    const st = inUnitIn(M3, incOfIn(M3, ex, plan));
+    if (!(st > 0)) return null;
+    const o3 = inUnitIn(M3, loadFloorIn(M3, ex));
+    const at2 = (k2) => o3 + k2 * st;
+    const off = (v3) => {
+      const k2 = (inUnitIn(M3, v3) - o3) / st;
+      return Math.abs(k2 - Math.round(k2)) > OFF_STEP;
+    };
+    const typed = (v3) => onStep(inUnitIn(M3, v3), TYPED_STEP);
+    if (!off(top) || !off(w2) || typed(top)) return null;
+    const x2 = inUnitIn(M3, w2);
+    const lo = at2(Math.floor((x2 - o3) / st + EPS));
+    const loaded = !ex.bw && !ex.assist;
+    const fl = Math.max(o3, loaded ? st : 0);
+    let d3 = down ? lo : at2(Math.round((x2 - o3) / st));
+    if (!down && loaded && d3 < x2 * LIGHTER_LOAD - EPS) d3 = lo + st;
+    if (!ex.assist && d3 < fl - EPS) d3 = at2(Math.ceil((fl - o3) / st - EPS));
+    const bwK = bwRefLoadIn(M3, ex);
+    const tp = inUnitIn(M3, top);
+    if (!down && !ex.assist && !(ex.bw && !(bwK > 0)) && d3 > tp + EPS) {
+      const tot = top + bwK;
+      const most = Math.max(x2, inUnitIn(M3, tot * jumpCap(ex, tot) - bwK));
+      const under = at2(Math.floor((most - o3) / st + EPS));
+      if (d3 > most + EPS && under > tp + EPS) d3 = under;
+    }
+    return kgOfIn(M3, d3);
   }
   function moveIn(M3, ex, plan, res, nw, why) {
     if (res.w == null || Math.abs(nw - res.w) < EPS) return res;
@@ -7744,7 +7762,8 @@ ${actions ? b`<div class="ph-a">${actions}</div>
   function sgTopOfRangeIn(M3, C2) {
     const { ex, plan, top, cap, capW, topPts, planPts, lastR, lastS, basis, lbl, prevBest, tgtRir, tp } = C2;
     if (planPts.every((p3) => p3.r >= plan.repMax)) {
-      const nw = capW(top + progStepIn(M3, ex, plan, top + bwRefLoadIn(M3, ex), top));
+      const n0 = capW(top + progStepIn(M3, ex, plan, top + bwRefLoadIn(M3, ex), top));
+      const nw = ex.assist ? n0 : capW(unitGridIn(M3, ex, plan, top, n0) ?? n0);
       if (ex.assist) {
         const aw = top < 0 ? Math.min(0, nw) : nw;
         return {
