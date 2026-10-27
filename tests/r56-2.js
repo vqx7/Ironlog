@@ -54,7 +54,12 @@ const ses = (id, date, exId, rr, sets, x, bx) => Object.assign({ id, date, dayId
     const once = await suggest('backSquat', plan);
     await log([...base, mk('2026-09-05', 102.5, [5, 5, 5, 0, 0])], R);
     const twice = await suggest('backSquat', plan);
-    ok(Math.abs(once.w - 102.5) < 1e-9 && Math.abs(twice.w - 102.5) < 1e-9 && /^Last \(Sep 5, fewer sets\)/.test(twice.text), 'a 5 x 5 at 102.5 with sets 4 and 5 missed, once and twice running: the next target stays 102.5 until every set is made, each session short of the plan\'s five (r56.1 and r55: 105 after the second; since r58 two in a row are no new usual on a day of the routine)', { once, twice });
+    /* r64 (the r63 audit's R-1): a set tried and missed is one of the session's sets, so five sets were tried, short of the
+       range in two, and the session is not one of fewer sets; until r64 it read as one ("Last (Sep 5, fewer sets)") and the
+       target came from the session before, which stepped a load up after sets missed at that load (tests/r64a.js). The load
+       held is asserted as before, and the words now say exactly what was done and what to beat. */
+    const said = d => new RegExp(`^Last \\(${d}\\): 102\\.5×5, 102\\.5×5, 102\\.5×5, 102\\.5×0 missed, 102\\.5×0 missed\\. Beat 15 reps over 5 sets at 102\\.5 kg\\.`);
+    ok(Math.abs(once.w - 102.5) < 1e-9 && Math.abs(twice.w - 102.5) < 1e-9 && said('Sep 3').test(once.text) && said('Sep 5').test(twice.text), 'a 5 x 5 at 102.5 with sets 4 and 5 missed, once and twice running: the next target stays 102.5 until every set is made, the missed sets read as sets short of the range (r56.1 and r55: 105 after the second; since r58 two in a row are no new usual on a day of the routine)', { once, twice });
     // A plan of 4 x 6 to 10: 50 x 8 x 4, then 50 x 8, 8 and two missed, twice.
     const p4 = { sets: 4, repMin: 6, repMax: 10, rir: 2, rest: 150, inc: 2.5 };
     await log(['2026-09-01', '2026-09-05', '2026-09-09'].map((d, i) => ses('m' + i, d, 'bench', [6, 10], (i ? [8, 8, 0, 0] : [8, 8, 8, 8]).map(r => [50, r, null]))));

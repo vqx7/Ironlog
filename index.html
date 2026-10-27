@@ -6575,11 +6575,12 @@ ${actions ? b`<div class="ph-a">${actions}</div>
   var USUAL_SHARE = 0.97;
   var mid = (v3) => [...v3].sort((a2, b2) => a2 - b2)[Math.floor(v3.length / 2)];
   function setsAt(q, usualW) {
+    const tried = q.miss ? [...q.pts, ...q.miss] : q.pts;
     let tw = -Infinity;
     for (const p3 of q.pts) if (Math.abs(p3.w - q.topW) < EPS_SAME) tw = Math.max(tw, p3.load);
-    if (!(tw > 0)) return q.pts.length;
+    if (!(tw > 0)) return tried.length;
     let n3 = 0;
-    for (const p3 of q.pts)
+    for (const p3 of tried)
       if (p3.load >= tw * LIGHTER_LOAD - EPS && (p3.load * LIGHTER_LOAD <= tw + EPS || p3.w <= usualW + EPS_SAME)) n3++;
     return n3;
   }
